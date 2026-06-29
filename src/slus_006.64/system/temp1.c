@@ -100,9 +100,16 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023804);
 
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002393C);
+void func_8002393C(void* arg0) {
+    *(s16*)((u8*)arg0 + 0x0) = 0;
+    *(s16*)((u8*)arg0 + 0x2) = 0;
+    *(s16*)((u8*)arg0 + 0x4) = 0;
+    *(s32*)((u8*)arg0 + 0x2C) = 0;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023950);
+void func_80023950(void* arg0) {
+    *(s32*)((u8*)arg0 + 0x20) = 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023958);
 

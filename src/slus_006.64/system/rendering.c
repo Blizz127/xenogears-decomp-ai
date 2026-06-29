@@ -78,9 +78,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E3D8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E9BC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001EE68);
+int func_8001EE68(u8* arg0) {
+    return arg0[1] >> 7;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001EE74);
+int func_8001EE74(u16* arg0) {
+    return (arg0[0] >> 9) & 0x3F;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001EE88);
 

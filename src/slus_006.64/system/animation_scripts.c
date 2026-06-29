@@ -28,13 +28,29 @@ s32 func_80021AD8(s32 color, s32 value) {
     return color;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021B04);
+void func_80021B04(void* arg0, s16 arg1, s16 arg2, s16 arg3) {
+    *(s16*)((u8*)arg0 + 0x0) = arg1;
+    *(s16*)((u8*)arg0 + 0x2) = arg2;
+    *(s16*)((u8*)arg0 + 0x4) = arg3;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021B14);
+void func_80021B14(void* arg0, s32 arg1, s32 arg2, s32 arg3) {
+    *(s32*)((u8*)arg0 + 0x0) = arg1;
+    *(s32*)((u8*)arg0 + 0x4) = arg2;
+    *(s32*)((u8*)arg0 + 0x8) = arg3;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021B24);
+void func_80021B24(void* arg0, void* arg1) {
+    *(u16*)((u8*)arg0 + 0x0) = *(u16*)((u8*)arg1 + 0x0);
+    *(u16*)((u8*)arg0 + 0x2) = *(u16*)((u8*)arg1 + 0x2);
+    *(u16*)((u8*)arg0 + 0x4) = *(u16*)((u8*)arg1 + 0x4);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021B48);
+void func_80021B48(void* arg0, void* arg1) {
+    *(s32*)((u8*)arg0 + 0x0) = *(s32*)((u8*)arg1 + 0x0);
+    *(s32*)((u8*)arg0 + 0x4) = *(s32*)((u8*)arg1 + 0x4);
+    *(s32*)((u8*)arg0 + 0x8) = *(s32*)((u8*)arg1 + 0x8);
+}
 
 void func_80021B6C(SpriteData* pSpriteData) {
     pSpriteData->prim |= 1;
@@ -49,15 +65,23 @@ void SpriteSetColor(SpriteData *pSpriteData, u8 red, u8 green, u8 blue) {
     func_8001F6B0(pSpriteData);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021BCC);
+void func_80021BCC(void* arg0, u32 arg1) {
+    u32* p = (u32*)((u8*)arg0 + 0xAC);
+    *p = (*p & ~0x7FF80) | ((arg1 & 0xFFF) << 7);
+}
 
 void SpriteSetSpecialAnimFile(SpriteData* pSpriteData, void* pAnimFile) {
     pSpriteData->pSpecialAnimFile = pAnimFile;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021BF8);
+void func_80021BF8(void* arg0, s32 arg1) {
+    *(s32*)((u8*)arg0 + 0x68) = arg1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021C00);
+void func_80021C00(void* arg0, u32 arg1) {
+    u32* p = (u32*)((u8*)arg0 + 0x40);
+    *p = (*p & ~0x1F00) | ((arg1 & 0x1F) << 8);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU8);
 /*
@@ -83,7 +107,10 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptS
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU24);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021D3C);
+void func_80021D3C(void* arg0, s32 arg1, s32 arg2) {
+    *(s32*)((u8*)arg0 + 0x8) = arg2 << 16;
+    *(s32*)((u8*)arg0 + 0x0) = arg1 << 16;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021D50);
 
