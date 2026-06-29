@@ -86,10 +86,14 @@ void MainLoop(int errorCode) {
 
     // Error handler
     if (errorCode) {
+#ifndef XENO_PC_PORT
         asm volatile(
             "move $t7, %0\n\t"
             "sw $ra, 0($t7)\n\t"
         :: "r"(&nCallerAddr));
+#else
+        nCallerAddr = 0; /* native port: no MIPS $ra capture */
+#endif
         GameHandleError(errorCode, nCallerAddr);
     }
     

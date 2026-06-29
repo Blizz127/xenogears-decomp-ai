@@ -13,9 +13,12 @@
 #include "xeno_pc.h"
 #include "PsyX/PsyX_public.h"
 
-#define WINDOW_TITLE  "Xenogears (PC port - Phase 0 scaffold)"
+#define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 480
+
+/* Decompiled game entry (src/slus_006.64/main/main_loop.c). */
+extern void MainLoop(int errorCode);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -26,13 +29,13 @@ int main(int argc, char** argv) {
 
     PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-    /* TODO(phase 1): hand off to the game.
-     *   - initialise the PsyQ runtime state the game expects
-     *   - load the extracted disc image / assets
-     *   - call the decompiled entry point (e.g. the game's main loop)
-     * For now we just confirm the HAL came up and tear it down. */
-
-    printf("[xeno-port] PsyCross initialised. (No game loop yet.)\n");
+    /* Oracle bootstrap: the real entry `start` (0x80019524) is still raw MIPS
+     * asm, so we call the decompiled MainLoop() directly. It will run real game
+     * code until it reaches the first not-yet-decompiled function on the live
+     * path, which the stub layer logs as "[stub] <name>". That name is the next
+     * thing to decompile. Expect crashes/loops until the boot chain is filled in. */
+    printf("[xeno-port] entering decompiled MainLoop() (oracle)...\n");
+    MainLoop(0);
 
     PsyX_Shutdown();
     printf("[xeno-port] Clean shutdown.\n");
