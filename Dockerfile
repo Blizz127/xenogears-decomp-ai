@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update; apt install -y git make binutils-mips-linux-gnu cpp-mips-linux-gnu python3 python3-pip python3-venv
 
