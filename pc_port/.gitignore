@@ -1,0 +1,4 @@
+extern/
+build/
+generated/
+*.log
