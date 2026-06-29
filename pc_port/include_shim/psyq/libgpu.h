@@ -12,6 +12,10 @@
 #ifndef XENO_COMPAT_RECT
 #define XENO_COMPAT_RECT
 typedef RECT16 RECT;
+/* PsyCross bulk-renamed Sony's RECT to RECT16, including TIM_IMAGE members
+ * crect/prect -> cRECT16/pRECT16. Map the game's field names back. */
+#define crect cRECT16
+#define prect pRECT16
 #endif
 
 #endif
