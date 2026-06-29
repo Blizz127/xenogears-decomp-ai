@@ -7,7 +7,11 @@
 #include "field/graphics.h"
 
 //
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A55B8);
+void func_800A55B8(void* arg0, s32 arg1, s32 arg2, s32 arg3) {
+    *(s32*)((u8*)arg0 + 0x14) = arg1;
+    *(s32*)((u8*)arg0 + 0x18) = arg2;
+    *(s32*)((u8*)arg0 + 0x1C) = arg3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A55C8);
 

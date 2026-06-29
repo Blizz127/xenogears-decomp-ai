@@ -90,7 +90,9 @@ void SystemTransferPaletteToVRAM(short xDest, short yDest) {
     g_SystemPalette2 = GetClut(xDest + 16, yDest);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetStringEntry);
+void* GetStringEntry(void* arg0, s32 arg1) {
+    return (u8*)arg0 + *(u16*)((u8*)arg0 + arg1 * 2 + 4);
+}
 
 // TODO: Cleanup code
 // Dialog data format:
@@ -150,11 +152,20 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033BAC);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033CD0);
+s32 func_80033CD0(void* arg0) {
+    if (*(u16*)((u8*)arg0 + 0x10) & 0x8) {
+        return *(u8*)((u8*)arg0 + 0x6B);
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033CF0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033DD4);
+void func_80033DD4(void* arg0, s32 arg1) {
+    *(s32*)((u8*)arg0 + 0x20) = *(s32*)((u8*)arg0 + 0x1C);
+    *(s32*)((u8*)arg0 + 0x1C) = arg1;
+    *(u16*)((u8*)arg0 + 0x10) |= 0x80;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033DF0);
 
@@ -170,15 +181,23 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800346D4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034714);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347AC);
+s32 func_800347AC(void* arg0) {
+    return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347C0);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034800);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034874);
+void func_80034874(void* arg0, u8 arg1) {
+    *(u8*)((u8*)arg0 + 0x6E) = arg1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_8003487C);
+int func_8003487C(void* arg0) {
+    int value = 0xFF;
+    *(u8*)((u8*)arg0 + 0x6E) = value;
+    return value;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034888);
 

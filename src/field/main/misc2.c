@@ -79,7 +79,11 @@ void func_80073684(VECTOR* pEye, VECTOR* pAt) {
     PopMatrix();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073734);
+void func_80073734(void* arg0) {
+    *(s32*)((u8*)arg0 + 0x0) = *(s16*)((u8*)arg0 + 0x2);
+    *(s32*)((u8*)arg0 + 0x4) = *(s16*)((u8*)arg0 + 0x6);
+    *(s32*)((u8*)arg0 + 0x8) = *(s16*)((u8*)arg0 + 0xA);
+}
 
 // Computes a LookAt / View Matrix
 // Eye: The position of the camera
