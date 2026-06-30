@@ -31,6 +31,12 @@ void FieldScriptCheckPartyMember(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096534);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_800965A8);
+void func_800965A8(void) {
+    g_pGameState->unk1D30 |= 1 << SCRIPT_READ_U8_REL(1);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_800965F4);
+void func_800965F4(void) {
+    g_pGameState->unk1D30 &= ~(1 << SCRIPT_READ_U8_REL(1));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
