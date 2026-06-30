@@ -29,6 +29,8 @@ extern void MainLoop(int errorCode);
 extern void PcPort_InitGameStates(void);
 /* Port-side one-time HeapInit the asm boot would have done (game_overrides.c). */
 extern void PcPort_HeapBoot(void);
+/* "Published by Square" splash, decompressed + drawn from the migrated EXE data. */
+extern void GameShowSplashScreen(void);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -52,6 +54,12 @@ int main(int argc, char** argv) {
     /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
      * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */
     PcPort_HeapBoot();
+
+    /* 6. Boot splash: the asm boot shows the "Published by Square" logo before
+     * handing off to the game. It is fully self-contained (LZSS-decompress the
+     * migrated EXE blob, LoadImage CLUT+texture, DrawPrim a sprite with a
+     * fade-in/hold/fade-out via Vsync), and bypasses the game ordering table. */
+    GameShowSplashScreen();
 
     /* Oracle bootstrap: the real entry `start` (0x80019524) is still raw MIPS
      * asm, so we call the decompiled MainLoop() directly. It will run real game

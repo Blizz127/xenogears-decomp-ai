@@ -13,8 +13,9 @@
  */
 
 /* --- PsyCross internals / exports used below (extern "C") --- */
-extern void PsyX_EndScene(void); /* GR_EndScene + GR_StoreFrameBuffer + GR_SwapWindow (SDL_GL_SwapWindow) */
-extern int  VSync(int mode);     /* PsyCross frame pacing; returns vblank count. Does NOT present. */
+extern void PsyX_EndScene(void);  /* GR_EndScene + GR_StoreFrameBuffer + GR_SwapWindow (SDL_GL_SwapWindow) */
+extern int  VSync(int mode);      /* PsyCross frame pacing; returns vblank count. Does NOT present. */
+extern void DrawAllSplits(void);  /* flush queued primitives to the GL framebuffer; no-op when none */
 
 /*
  * Vsync (game spelling, lowercase 's'; ELF symbol `Vsync` @ 0x8004b54c) vs PsyQ
@@ -32,6 +33,14 @@ extern int  VSync(int mode);     /* PsyCross frame pacing; returns vblank count.
  */
 int Vsync(int mode)
 {
+    /* Flush any primitives queued this frame before presenting. DrawOTag flushes
+     * its own ordering table via DrawAllSplits, but immediate-mode DrawPrim (used
+     * by GameShowSplashScreen's fade loops) does NOT -- it only queues into the
+     * split list, relying on a later DrawSync/DrawOTag to flush. The splash issues
+     * DrawPrim + Vsync with no such flush in between, so its sprite would never
+     * reach the framebuffer. Flushing here (idempotent when empty, like DrawSync)
+     * makes the present show everything drawn since the last frame. */
+    DrawAllSplits();
     PsyX_EndScene();      /* present the frame the game just finished building */
     return VSync(mode);   /* then pace to the next vblank */
 }

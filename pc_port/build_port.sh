@@ -74,7 +74,7 @@ echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c; do
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/data_published_logo.c; do
     o="$OBJ/$(basename "$pf").o"
     if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
         GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
