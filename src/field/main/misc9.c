@@ -240,7 +240,21 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC99C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACB90);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACC58);
+extern s32 D_8004F300;
+extern void* D_800AF76C;
+extern void* D_800AF774;
+extern s32 D_800AF778;
+extern s32 D_800AF77C;
+
+void func_800ACC58(void) {
+    if (D_8004F300 != 0) {
+        func_800AC308();
+        func_800AC3AC();
+        D_800AF77C = 0;
+        D_800AF778 = 0xF;
+        D_800AF774 = D_800AF76C;
+    }
+}
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;
