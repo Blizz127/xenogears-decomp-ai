@@ -13,7 +13,13 @@ void func_800A55B8(void* arg0, s32 arg1, s32 arg2, s32 arg3) {
     *(s32*)((u8*)arg0 + 0x1C) = arg3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A55C8);
+extern void* D_800AFE80;
+extern void* D_800B069C;
+
+void func_800A55C8(void) {
+    HeapFree(D_800AFE80);
+    HeapFree(D_800B069C);
+}
 
 // Set PolyFT4 color for PolyFT4s of next swap chain
 void func_800A5600(u_char color) {

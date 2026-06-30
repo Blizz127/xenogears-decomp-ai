@@ -659,7 +659,11 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A06E8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A08B8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0C4C);
+extern s32 g_PlayerActorIndex;
+
+void func_800A0C4C(void) {
+    g_FieldActors[g_PlayerActorIndex].pActorData->scriptFlags.flags |= 0x80;
+}
 
 // FieldResetActorPosition, set translation and sprite position of actor based on current actor data position
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0C94);
@@ -672,13 +676,24 @@ void func_800A0D3C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0DC0);
+extern s16 D_800B234A;
+
+void func_800A0DC0(void) {
+    D_800B234A = FieldScriptVMGetArgument(1);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0DFC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0E54);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0EB0);
+extern s32 D_800ADB84;
+
+void func_800A0EB0(void) {
+    D_800B00C0 = 1;
+    D_800ADB84++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0EE8);
 

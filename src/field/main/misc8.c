@@ -95,7 +95,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085560);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800855C8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085634);
+extern s32 D_800B21B8;
+
+void func_80085634(int a0, int a1) {
+    if (a0 == 0) {
+        func_8003A20C((a1 & 7) * 2);
+    } else {
+        D_800B21B8 = a0;
+        func_800855C8(a0, 0x7F, 0x40);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
 
