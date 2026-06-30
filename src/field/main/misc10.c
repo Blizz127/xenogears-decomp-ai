@@ -5,7 +5,13 @@
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096214);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_800962C0);
+void func_800962C0(void) {
+    if (func_80095124(FieldScriptVMGetArgument(1)) != -1) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(3);
+    }
+}
 
 void func_8009631C(void) {
     func_8009635C(FieldScriptVMGetArgument(1));

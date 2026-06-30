@@ -86,7 +86,10 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098738);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800988B8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009899C);
+void func_8009899C(void) {
+    FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), g_FieldScriptVMCurActor->rotation.vy & 0xFFF);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800989F0);
 

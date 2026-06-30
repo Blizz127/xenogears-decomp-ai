@@ -955,7 +955,10 @@ void func_8008E46C(void) {
     FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[3]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E498);
+void func_8008E498(int a0) {
+    FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), a0 & 0xFFFF);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void func_8008E4EC(void) {
     func_8008E498(((u16*)g_FieldScriptVMCurActor)[0]);
