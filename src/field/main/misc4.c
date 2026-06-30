@@ -46,7 +46,176 @@ void func_80078C5C(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078D44);
+/* ---- func_80078D44: field-init / initial map-load orchestrator --------------
+ * Functional decompile (port-first; control flow mirrors the asm). FieldMain's
+ * setup calls this: it loads the map file (func_800777DC -> func_8001B484), brings
+ * up the render contexts + VRAM, sets g_FieldCurRenderContextIndex=1, then parses
+ * the map via FieldLoad (which allocates g_FieldActors). The fade/zoom loops play a
+ * transition; in the port their effect calls stub out and ArchiveDataSync returns
+ * 0, so the loops just iterate their fixed counts. */
+extern s32 D_8004F2F8, D_8004F304, D_8004F308, D_8004F310, D_8004F324, D_8004F338;
+extern s32 D_8004F2FC, D_8004F348, D_800ADB60, D_800C2684, D_800B2264, D_800AFD04;
+extern s32 g_GamePartySkinsInitialized;
+extern u8 D_800594D0, D_8005942C;
+extern void *D_800ADC14, *D_80062528, *g_GameCurLoadedWDS;
+extern void func_80077544(), func_800A915C(), func_800777DC(), func_800A4748();
+extern void func_800A476C(), func_800A5884(), func_80070488(), func_801E7378();
+extern void func_800A5600(), func_80039C4C(), func_800399D4(), func_800A24C4();
+extern void func_8001B66C(), func_80085B20(), func_80085EEC(), func_800A31E8();
+extern void func_800A91F0(), func_80077DAC(), func_80078B5C(), func_8007554C();
+
+void func_80078D44(void) {
+    RECT rect;
+    s32 s0, s1, s2;
+
+    func_80077544();
+    func_800A915C();
+    ArchiveSetIndex(4, 0);
+    func_800777DC();              /* load the map file into D_8005A4E0 */
+    FieldRenderSync();
+    if (D_8004F2F8 == 0) {
+        FieldImageConvert24BitTo15Bit(0);
+    }
+    FieldInitializeRenderContexts();
+    s0 = 1;
+    if (D_8004F2F8 == 0) {
+        rect.x = 0; rect.y = 0x100; rect.w = 0x140; rect.h = 0xE0;
+        MoveImage(&rect, 0, 0);
+        s0 = 1;
+    }
+    g_FieldCurRenderContextIndex = s0;
+    func_800A4748();
+    func_800A476C(0, 0x100);
+    DrawSync(0);
+    FieldClearAndSwapOTag();
+    FieldRenderSync();
+    if (D_800594D0 == 1) {
+        func_800A5884(0, 0);
+    } else if (D_8005942C != 1) {
+        func_800A5884(1, 1);
+    } else {
+        func_800A5884(0, 0);
+    }
+    D_8004F2F8 = 1;
+    ArchiveCdDataSync(0);
+    ArchiveSetIndex(4, 0);
+    FieldLoad();                  /* parse map -> allocates g_FieldActors */
+    func_80070488();
+    D_800AFD04 = 1;
+    if (D_800B2264 != 0) {
+        func_801E7378(1);
+    }
+    if (D_800594D0 == 1) {
+        s2 = 0;
+    } else if (D_8005942C != 1) {
+        s2 = 0x20;
+    } else {
+        s2 = 0;
+    }
+
+    s0 = 0x800000;
+    if (D_800ADB60 == 1) {
+        do {
+            FieldClearAndSwapOTag();
+            FieldZoomFadeEffectUpdate();
+            FieldDisplay();
+            if (D_8005942C == 1) {
+                func_800A5600(s0 >> 16);
+                s0 -= 0x40000;
+                if (s0 < 0) s0 = 0;
+            } else if (D_800C2684 < 0x22C0) {
+                D_800C2684 += s2;
+            }
+        } while (ArchiveDataSync() != 0);
+        DrawSync(0);
+        HeapFree(D_800ADC14);
+        D_800ADB60 = 0;
+        func_80078C5C();
+    }
+
+    if (D_8005942C == 1) {
+        do {
+            FieldClearAndSwapOTag();
+            FieldZoomFadeEffectUpdate();
+            FieldDisplay();
+            func_800A5600(s0 >> 16);
+            s0 -= 0x40000;
+        } while (s0 >= 0);
+    }
+
+    if (D_800594D0 == 1) {
+        rect.x = 0; rect.y = 0; rect.w = 0x140; rect.h = 0xE0;
+        MoveImage(&rect, 0x200, 0);
+    }
+    if (D_8004F304 != 0) {
+        func_80039C4C(D_80062528);
+        func_800399D4(D_80062528);
+        SoundFreeWdsEntry(g_GameCurLoadedWDS);
+        D_8004F304 = 0;
+    }
+    func_800A24C4();
+    D_8004F310 = 0;
+    g_GamePartySkinsInitialized = 0;
+    FieldRenderSync();
+    ControllerResetState();
+    D_8004F308 = 0;
+    if (D_800594D0 == 1) {
+        D_8004F324 = 0xE;
+        func_80085EEC();
+    }
+    if (D_8004F338 != D_8004F324) {
+        func_8001B66C();
+        D_8004F308 = -1;
+        if (D_8004F2FC != 0) {
+            D_8004F348 = 1;
+        }
+        func_80085B20(D_8004F324, 1);
+    } else {
+        func_80085EEC();
+    }
+    func_800A31E8();
+
+    if (D_800594D0 == 1) {
+        s1 = 0;
+        do {
+            func_80077DAC();
+            s1++;
+            FieldZoomFadeEffectUpdate();
+            func_8007554C();
+            func_80078B5C();
+        } while (s1 < 8);
+    } else if (D_8005942C == 1) {
+        FieldFadeToBlack(0x20);
+    } else {
+        FieldFadeToBlack(0x20);
+        s0 = 0x800000;
+        s1 = 0;
+        do {
+            func_80077DAC();
+            FieldZoomFadeEffectUpdate();
+            func_8007554C();
+            func_80078B5C();
+            if (D_800594D0 != 1) {
+                func_800A5600(s0 >> 16);
+                s0 -= 0x40000;
+                if (s0 < 0) s0 = 0;
+                if (D_800C2684 < 0x22C0) {
+                    D_800C2684 += s2;
+                }
+            }
+            s1++;
+        } while (s1 < 0x20);
+    }
+
+    if (D_800B2264 != 0) {
+        func_801E7378(0);
+    }
+    func_800A91F0();
+    HeapConsolidate();
+    FontFree();
+    func_80077544();
+    D_800AFD04 = 0;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80079288);
 
