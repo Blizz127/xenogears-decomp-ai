@@ -15,7 +15,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091944);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A08);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A78);
+extern u8 D_800B219C;
+extern u8 D_800B219D;
+extern u8 D_800B219E;
+
+void func_80091A78(void) {
+    D_800B219C = FieldScriptVMGetArgument(1);
+    D_800B219D = FieldScriptVMGetArgument(3);
+    D_800B219E = FieldScriptVMGetArgument(5);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void func_80091AD4(void) {
 }
@@ -633,13 +642,45 @@ s32 func_80094E8C(s32 a0) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094EDC);
+s32 func_80094EDC(s32 a0) {
+    s32 i;
+    for (i = 0; i < 0xC8; i++) {
+        if (((u8*)g_pGameState)[0x1EC8 + i] == a0 && ((u8*)g_pGameState)[0x1E00 + i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094F2C);
+s32 func_80094F2C(s32 a0) {
+    s32 i;
+    for (i = 0; i < 0x64; i++) {
+        if (((u8*)g_pGameState)[0x1D9C + i] == a0 && ((u8*)g_pGameState)[0x1D38 + i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094F7C);
+s32 func_80094F7C(s32 a0) {
+    s32 i;
+    for (i = 0; i < 0x64; i++) {
+        if (((u8*)g_pGameState)[0x2120 + i] == a0 && ((u8*)g_pGameState)[0x20BC + i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094FCC);
+s32 func_80094FCC(s32 a0) {
+    s32 i;
+    for (i = 0; i < 0x96; i++) {
+        if (((u8*)g_pGameState)[0x221A + i] == a0 && ((u8*)g_pGameState)[0x2184 + i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_8009501C);
 
