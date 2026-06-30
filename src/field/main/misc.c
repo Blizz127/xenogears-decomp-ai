@@ -802,13 +802,21 @@ void func_8008E46C(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E498);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E4EC);
+void func_8008E4EC(void) {
+    func_8008E498(((u16*)g_FieldScriptVMCurActor)[0]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E518);
+void func_8008E518(void) {
+    func_8008E498(((u16*)g_FieldScriptVMCurActor)[1]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E544);
+void func_8008E544(void) {
+    func_8008E498(((u16*)g_FieldScriptVMCurActor)[2]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E570);
+void func_8008E570(void) {
+    func_8008E498(((u16*)g_FieldScriptVMCurActor)[3]);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E59C);
 
