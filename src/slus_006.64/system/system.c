@@ -110,7 +110,9 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex) {
     return pDialog[1];
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033784);
+void* func_80033784(s32 tableIndex, s32 stringIndex) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + tableIndex * 4), stringIndex);
+}
 
 void* func_800337B8(s32 index) {
     return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x40), index);
@@ -201,13 +203,32 @@ void func_80033DD4(void* arg0, s32 arg1) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033DF0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800345E0);
+void func_800345E0(void* a0) {
+    u16 flags = *(u16*)((u8*)a0 + 0x10);
+    *(u16*)((u8*)a0 + 0x10) = flags & ~0x8;
+    if (flags & 0x200) {
+        *(u16*)((u8*)a0 + 0x84) = 0;
+        *(u8*)((u8*)a0 + 0x6C) = 0;
+        *(u16*)((u8*)a0 + 0x10) &= ~0x200;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034614);
+void func_80034614(void* a0) {
+    if (*(s16*)((u8*)a0 + 0x84) == 0) {
+        *(u8*)((u8*)a0 + 0x6C) = 0;
+        *(u16*)((u8*)a0 + 0x10) &= 0x2;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_8003463C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800346A4);
+void func_800346A4(void* a0) {
+    u16 v = *(u16*)((u8*)a0 + 0x10);
+    *(u8*)((u8*)a0 + 0x6C) = 0;
+    *(u16*)((u8*)a0 + 0x84) = 0;
+    *(u16*)((u8*)a0 + 0x10) = v & 0x2;
+    func_8003463C(a0);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800346D4);
 
