@@ -1704,7 +1704,11 @@ u8* SoundScriptSetUnkCEAndUnk136(u8* pScript, AudioManager* pAudioManager, Audio
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E160);
+s32 func_8003E160(s32 a0, s32 a1, u16* a2) {
+    a2[0x67] &= 0xFFFB;
+    a2[0x9B] &= 0xFFFE;
+    return a0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E180);
 

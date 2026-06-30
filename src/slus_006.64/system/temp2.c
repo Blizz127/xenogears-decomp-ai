@@ -41,7 +41,15 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C644);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C68C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C6E0);
+extern u8 D_80059598;
+extern u8 D_80059599;
+extern u8 D_8005959A;
+
+void func_8002C6E0(u8 a0, u8 a1, u8 a2) {
+    D_80059598 = a0;
+    D_80059599 = a1;
+    D_8005959A = a2;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
 
@@ -53,11 +61,22 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CBBC);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC10);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC54);
+extern s32 D_80059310;
+extern s32 D_80050108;
+
+void func_8002CC54(u16 a0) {
+    D_80059310 = a0;
+    D_80050108 = 2;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC74);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CCAC);
+extern s32 D_8005010C;
+
+void func_8002CCAC(void) {
+    D_80050108 = 0;
+    D_8005010C = 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CCC8);
 
@@ -111,7 +130,13 @@ void* func_8002DFE0(void) {
     return D_8006FAF0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DFF0);
+extern s32 D_800500FC;
+extern s32 D_800500F8;
+
+void func_8002DFF0(s32 a0, s32 a1) {
+    D_800500FC = (a1 - 1) << 16;
+    D_800500F8 = a0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E010);
 
