@@ -20,6 +20,22 @@ OUT="pc_port/build_native"
 OBJ="$OUT/obj"
 mkdir -p "$OBJ"
 
+# This must run in an environment with the toolchain + libs (the distrobox on
+# Bazzite, NOT the immutable host). Fail fast with guidance if it's the wrong one.
+for tool in cmake gcc pkg-config python3 ar; do
+    command -v "$tool" >/dev/null 2>&1 || {
+        echo "ERROR: '$tool' not found in this shell."
+        echo "       Run inside the dev container:  distrobox enter xenogears-dev"
+        echo "       (the host base system is immutable and lacks the toolchain.)"
+        exit 1
+    }
+done
+pkg-config --exists sdl2 2>/dev/null || {
+    echo "ERROR: SDL2 development files not found."
+    echo "       You are probably on the host. Run:  distrobox enter xenogears-dev"
+    exit 1
+}
+
 INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 # -std=gnu17: the game predates C23; gcc >= 15 defaults to C23 and rejects it.
 # -fpermissive: gcc >= 14 promotes old-C constructs (implicit decls, int/pointer
@@ -35,7 +51,12 @@ if [ -f pc_port/build/CMakeCache.txt ] && \
 fi
 cmake -S pc_port -B pc_port/build -DCMAKE_BUILD_TYPE=Debug >/dev/null
 cmake --build pc_port/build --target psycross -j"$(nproc)" >/dev/null
-PSYLIB="$(find pc_port/build -name 'libpsycross.a' | head -1)"
+PSYLIB="$(find pc_port/build -name 'libpsycross.a' 2>/dev/null | head -1)"
+if [ -z "$PSYLIB" ] || [ ! -s "$PSYLIB" ]; then
+    echo "ERROR: libpsycross.a was not built (the CMake step failed above)."
+    echo "       Make sure you're in the distrobox with SDL2/OpenAL/OpenGL dev installed."
+    exit 1
+fi
 echo "    libpsycross.a: $PSYLIB"
 
 echo "==> [2/5] Compiling game translation units in port mode"
