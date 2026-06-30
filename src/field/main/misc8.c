@@ -50,7 +50,11 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800815F0);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081C54);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081F5C);
+s32 func_80081F5C(u32* a0) {
+    u32 a = (a0[0] >> 9) & 3;
+    u32 b = a0[5] >> 3;
+    return -((a & b) != 0);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081F80);
 
