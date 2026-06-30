@@ -12,10 +12,41 @@
  * extern "C" (unmangled T symbols in libpsycross.a), so they're callable from C.
  */
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <libgte.h>   /* PsyCross: pull in before libgpu.h (it uses SVECTOR) */
+#include <libgpu.h>   /* PsyCross: POLY_F3, setPolyF3 macro (setlen/setcode) */
+
 /* --- PsyCross internals / exports used below (extern "C") --- */
 extern void PsyX_EndScene(void);  /* GR_EndScene + GR_StoreFrameBuffer + GR_SwapWindow (SDL_GL_SwapWindow) */
 extern int  VSync(int mode);      /* PsyCross frame pacing; returns vblank count. Does NOT present. */
 extern void DrawAllSplits(void);  /* flush queued primitives to the GL framebuffer; no-op when none */
+
+/*
+ * SetPolyF3: PsyCross declares it (libgpu.h) but ships only the setPolyF3 macro,
+ * not the function -- so the game's call falls through to a no-op auto-stub and
+ * the KernelMenu cursor (a flat triangle) never gets a valid primitive tag. This
+ * is the exact body of the game's own decompiled SetPolyF3 (psyq/libgpu.c).
+ */
+void SetPolyF3(POLY_F3* p)
+{
+    setPolyF3(p);   /* setlen(p, 4), setcode(p, 0x20) */
+}
+
+/*
+ * Sprintf (PsyQ): the game's variadic string formatter (KernelMenu builds its
+ * menu text with it). Forward to libc vsprintf. Signature matches the game's
+ * include/system/memory.h declaration.
+ */
+int Sprintf(char* dest, char* fmt, ...)
+{
+    va_list ap;
+    int n;
+    va_start(ap, fmt);
+    n = vsprintf(dest, fmt, ap);
+    va_end(ap);
+    return n;
+}
 
 /*
  * Vsync (game spelling, lowercase 's'; ELF symbol `Vsync` @ 0x8004b54c) vs PsyQ
