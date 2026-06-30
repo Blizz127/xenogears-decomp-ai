@@ -108,13 +108,30 @@ void func_80085634(int a0, int a1) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085738);
+extern s16 D_800C3A38;
+extern void* D_800B235C;
+
+void func_80085738(void) {
+    if (D_800C3A38 != 0xFF) {
+        func_80039FF8();
+        func_8003852C(D_800B235C);
+        HeapFree(D_800B235C);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085788);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085890);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085988);
+extern void* D_8006259C;
+extern s32 D_8004F32C;
+
+void func_80085988(void) {
+    func_8003852C(D_8006259C);
+    HeapUnpinBlock(D_8006259C);
+    HeapFree(D_8006259C);
+    D_8004F32C = -1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
 
