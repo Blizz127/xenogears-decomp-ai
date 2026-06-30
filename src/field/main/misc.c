@@ -776,11 +776,17 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E340);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E394);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E3E8);
+void func_8008E3E8(void) {
+    FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[0]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E414);
+void func_8008E414(void) {
+    FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[1]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E440);
+void func_8008E440(void) {
+    FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[2]);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E46C);
 
