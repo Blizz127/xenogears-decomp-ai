@@ -28,7 +28,30 @@ Reproduce: `cd pc_port/build_native && XENO_KERNEL_SEL=0 ./xeno-port`
 With those, **FieldMain now runs its entire setup and enters the main loop**
 (`[FieldMain] entering main loop`), executing loop-body stubs.
 
-## The frontier (start here next): field initial map load — func_80078D44 → FieldLoad
+## DONE: func_80078D44 ported + misc2.c unblocked (commit c54bd18)
+- `func_80078D44` (misc4.c) decompiled — the field-init orchestrator now runs: loads
+  the map file, sets up render contexts, `g_FieldCurRenderContextIndex=1`, calls
+  FieldLoad, runs fade loops.
+- Guarded `asm("break 0x400")` (MIPS trap, PC-HDD-dev-only) in misc2.c + shop_menu
+  behind `#ifndef XENO_PC_PORT` — the host assembler can't emit it. This unblocked
+  **misc2.c's whole TU**, so `FieldClearAndSwapOTag` is real C and sets
+  `g_FieldCurRenderContext`.
+- Field now runs the init through render-context setup (`ClearImage`/`PutDrawEnv`/
+  `PutDispEnv` work) and reaches `FieldDisplay`.
+
+## The frontier (start here next): field render OT — FieldDisplay → DrawOTag
+`func_80078D44 → func_800A5884 (misc5.c:108) → FieldDisplay (misc5.c:139) →
+DrawOTag(g_FieldCurRenderContext->ot3 + 7) → ParsePrimitivesLinkedList SIGSEGV`
+in PsyCross (PsyX_GPU.cpp:824). This happens BEFORE FieldLoad (the early render).
+The field's ordering-table walk hits a bad next-pointer. g_FieldRenderContexts is
+correctly sized (0x203D0 = 2× PSX, from the pointer-widening fix), and ot3 is
+ClearOTagR'd by FieldClearAndSwapOTag — so suspect: a primitive added by
+func_800A5884/FieldDisplay with a bad addr, or a u_long(8-byte) OT vs PsyCross
+P_TAG mismatch. The KernelMenu's DrawOTag works, so compare its OT setup. This is
+render-pipeline OT integration (PsyCross). FieldLoad (g_FieldActors) is the
+frontier AFTER this.
+
+## (later) field initial map load — func_80078D44 → FieldLoad
 `FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`
 because **`g_FieldActors` is NULL** — the map was never loaded. Traced the exact path:
 
