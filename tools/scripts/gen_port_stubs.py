@@ -22,8 +22,44 @@ Usage:
 
 import argparse
 import os
+import re
 import subprocess
 import sys
+
+
+# Matches a splat symbol_addrs line carrying a size annotation, e.g.
+#   g_GameState = 0x8006D634; // type:GameState size:0x2300
+# The ELF symbol table frequently records size 0 for data globals (they live in
+# .bss/COMMON), so these annotations are the only reliable struct sizes -- without
+# them a struct like g_GameState gets a 16-byte stub and field code reading e.g.
+# partyMembers at offset 0x1D34 walks off the end into other stubs.
+_SIZE_RE = re.compile(
+    r"^\s*([A-Za-z_.$][\w.$]*)\s*=\s*0x[0-9A-Fa-f]+\s*;.*?\bsize:\s*(0x[0-9A-Fa-f]+|\d+)"
+)
+
+
+def parse_symbol_sizes(paths):
+    """Return {name: size} from symbol_addrs files' `size:` annotations (max wins)."""
+    sizes = {}
+    for p in paths:
+        try:
+            with open(p) as fh:
+                lines = fh.readlines()
+        except FileNotFoundError:
+            print(f"  (warning: symbol-addrs file not found: {p})", file=sys.stderr)
+            continue
+        for line in lines:
+            m = _SIZE_RE.match(line)
+            if not m:
+                continue
+            try:
+                sz = int(m.group(2), 0)
+            except ValueError:
+                continue
+            name = m.group(1)
+            if sz > sizes.get(name, 0):
+                sizes[name] = sz
+    return sizes
 
 
 def classify_symbols(elf_paths):
@@ -70,6 +106,9 @@ def main():
                         help="matching-build ELF(s) used to classify symbols")
     parser.add_argument("--undefined", default="-",
                         help="file with undefined symbol names (default: stdin)")
+    parser.add_argument("--symbol-addrs", action="append", default=[],
+                        help="splat symbol_addrs file(s); their size: annotations "
+                             "give data globals their real struct sizes")
     parser.add_argument("--out", required=True, help="output C file path")
     args = parser.parse_args()
 
@@ -81,8 +120,9 @@ def main():
     names = sorted(set(n for n in names if n))
 
     table = classify_symbols(args.elf)
+    sym_sizes = parse_symbol_sizes(args.symbol_addrs)
 
-    funcs, data, unknown = [], [], []
+    funcs, data, unknown, resized = [], [], [], 0
     for n in names:
         info = table.get(n)
         if info is None:
@@ -91,9 +131,13 @@ def main():
         elif info[0]:  # is_func
             funcs.append((n, info[1]))
         else:
-            # NOTYPE/OBJECT data; symbol table often records size 0, so reserve
-            # a safe minimum (covers 64-bit pointer globals).
-            data.append((n, max(info[1], 16)))
+            # NOTYPE/OBJECT data; the ELF symbol table often records size 0, so
+            # take the largest of the ELF size, the symbol_addrs `size:` (the only
+            # reliable struct size), and a 16-byte floor (covers pointer globals).
+            sz = max(info[1], sym_sizes.get(n, 0), 16)
+            if sym_sizes.get(n, 0) > max(info[1], 16):
+                resized += 1
+            data.append((n, sz))
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w") as f:
@@ -117,8 +161,8 @@ def main():
         for name, _size in funcs:
             f.write(f"long {name}(void) {{ xeno_port_stub(\"{name}\"); return 0; }}\n")
 
-    print(f"Wrote {args.out}: {len(funcs)} function stubs, {len(data)} data symbols",
-          file=sys.stderr)
+    print(f"Wrote {args.out}: {len(funcs)} function stubs, {len(data)} data symbols "
+          f"({resized} sized from symbol_addrs)", file=sys.stderr)
     if unknown:
         print(f"  (warning: {len(unknown)} symbols not found in ELF, assumed functions: "
               f"{', '.join(unknown[:8])}{'...' if len(unknown) > 8 else ''})", file=sys.stderr)

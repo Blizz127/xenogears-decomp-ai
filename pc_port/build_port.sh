@@ -137,7 +137,14 @@ if [ -s "$OUT/undef.txt" ]; then
     for e in build/out/slus_006.64.elf build/out/field.elf build/out/member_change_menu.elf build/out/shop_menu.elf; do
         [ -f "$e" ] && ELFS+=(--elf "$e")
     done
-    python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
+    # symbol_addrs files carry the real struct sizes (size:) the ELF omits, so data
+    # stubs (e.g. g_GameState = 0x2300) are reserved at full size instead of 16 bytes.
+    SYMS=()
+    for s in config/symbol_addrs.slus_006.64.txt config/symbol_addrs.field.txt \
+             config/symbol_addrs.member_change_menu.txt config/symbol_addrs.shop_menu.txt; do
+        [ -f "$s" ] && SYMS+=(--symbol-addrs "$s")
+    done
+    python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
     gcc -c "$OUT/stubs.c" -O0 -g -o "$OBJ/stubs.o"
 fi
 

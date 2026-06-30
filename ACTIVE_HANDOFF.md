@@ -15,17 +15,33 @@ _Last updated: 2026-06-30. Canonical roadmap lives in the `pc-port-phases` memor
 
 Reproduce: `cd pc_port/build_native && XENO_KERNEL_SEL=0 ./xeno-port`
 
-## The frontier (start here next)
-`FieldMain → GamePartySyncSkinData → GamePartyCharactersInitializeSkins (temp3.c:76) → HeapAlloc(~6 MB) FAILS → GameHandleError(130) hangs.`
+## DONE since: stub sizing (commit ffe5b5a)
+`gen_port_stubs.py` now sizes data stubs from `symbol_addrs` `size:` annotations
+(`max(elf_size, symaddr_size, 16)`); `build_port.sh` passes the four symbol_addrs
+files. 10 stubs resized, `g_GameState` → 0x2300, so `partyMembers` (offset 0x1D34)
+no longer reads out of bounds. Necessary infra fix, broadly useful — but it did
+not by itself unblock the field (the alloc size below was the same before/after,
+because the OOB read happened to land on zeroed memory).
 
-Root cause: **`g_GameState` is a 16-byte stub, but the struct is 0x2300** and `partyMembers` is at offset `0x1D34`. `g_pGameState->partyMembers[]` reads OOB garbage → garbage party IDs → `ArchiveDecodeAlignedSize(garbage+5)` ≈ 6 MB.
+## The frontier (start here next): game-state / party + archive-context init
+`FieldMain → GamePartySyncSkinData → GamePartyCharactersInitializeSkins (temp3.c:76)
+→ HeapAlloc(6143680 ≈ 6 MB) FAILS → GameHandleError(130) hangs.`
 
-Why 16 bytes: `tools/scripts/gen_port_stubs.py` sizes data stubs `max(elf_sym_size, 16)`; `g_GameState`'s ELF size is ≤16. The real `size:0x2300` is only in `config/symbol_addrs.slus_006.64.txt`.
+The KernelMenu→Field debug path enters with a **zeroed g_GameState** and **no archive
+directory set**, neither of which the normal new-game/save-load entry would leave:
+- `partyMembers[]` are all 0 → every slot treated as character 0 (CHARACTER_ID_NONE=0xFF).
+- `ArchiveDecodeAlignedSize(member0 + 5)` → `ArchiveDecodeSize(5)` reads
+  `g_ArchiveTable[(5 + g_CurArchiveOffset − 1) * 7]`. `g_CurArchiveOffset` is not the
+  party-skin directory (the normal flow sets it via `ArchiveSetIndex`), so it reads
+  the wrong table entry → 6 MB → alloc fail.
 
-### Next steps (in order)
-1. **Size data stubs from `symbol_addrs` `size:` annotations** in `gen_port_stubs.py` (fixes `g_GameState`=0x2300 and other undersized structs; eliminates OOB reads). Port-infra fix; low risk; helps broadly.
-2. **Initialize a valid game state / party** (new-game-style setup) so `partyMembers[]` hold real character IDs before entering the field — otherwise a zeroed `g_GameState` still yields member 0 / a wrong skin archive index.
-3. Then oracle-iterate FieldMain's remaining ~33 stub callees in the order it reveals; bring up the field map/actor/render pipeline.
+### Next steps (do NOT fake party IDs — fix the underlying setup)
+1. Find where the real game initializes the game state / party + selects the
+   party-skin archive directory before the field runs (new-game path / the field
+   debug entry's own setup). Port/invoke that so `g_GameState.partyMembers[]` and
+   `g_CurArchiveOffset` are valid.
+2. Then oracle-iterate FieldMain's remaining ~33 stub callees in the order it
+   reveals; bring up the field map/actor/render pipeline.
 
 ## Rules in effect
 One reversible change at a time; stop at each frontier; no fake field load; no permanent hardcoded mode without proof.
