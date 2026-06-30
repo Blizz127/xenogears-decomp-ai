@@ -269,9 +269,32 @@ INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801C5A7C);
 
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801C5CBC);
 
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801C5E6C);
+void func_801C5E6C(void) {
+    RECT rect;
+    u_short* pVramData;
+    u8 _unused[0x8];
 
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801C5EE8);
+    pVramData = HeapAlloc(0x20, 0);
+    bzero(pVramData, 0x20);
+    pVramData[1] = 0x7FFF;
+    rect.y = 448;
+    rect.w = 16;
+    rect.x = 0;
+    rect.h = 1;
+    LoadImage(&rect, pVramData);
+    DrawSync(0);
+    HeapFree(pVramData);
+}
+
+extern void func_801C5CBC(void* a0, void* a1, s32 a2, s32 a3);
+extern u8 D_801D2018[];
+
+void func_801C5EE8(void) {
+    SystemTransferPaletteToVRAM(0, 0x1D1);
+    *(void**)((u8*)g_Menu + 0x558) = HeapAlloc(0x38E, 0);
+    func_801C5CBC((u8*)g_Menu + 0x4E0, D_801D2018, 0, 4);
+    func_801C5E6C();
+}
 
 void ShopMenuInitializeWindowBorders(void) {
     POLY_FT4 _unusued;
@@ -2095,7 +2118,16 @@ void ShopMenuFree(void) {
     HeapFree(g_Menu);
 }
 
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CBC88);
+void func_801CBC88(u8 a0, u8 a1, void* a2, void* a3, u8* pClear) {
+    s32 i;
+    if (a0) {
+        func_801C5CBC(a2, a3, 2, a1);
+    } else {
+        for (i = 0; i < a1; i++) {
+            pClear[i] = 0;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CBCF0);
 
@@ -3011,4 +3043,9 @@ int ShopMenuSellModeMenu() {
     return TRUE;
 }
 
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801D1F10);
+void func_801D1F10(void) {
+    if (g_Menu->menu1Choice == 1) {
+    } else if (g_Menu->menu1Choice == 2) {
+        func_801D1968(1, 1);
+    }
+}
