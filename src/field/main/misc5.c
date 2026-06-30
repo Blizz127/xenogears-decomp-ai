@@ -172,12 +172,17 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A73E8);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A74F8);
 
 extern int g_FieldPixelIndex;
-extern u_long g_FieldCurPixel;
-extern u_long* g_Field24BitImageData;
-extern u_long* g_Field15BitImageData;
+/* These image-convert buffers are 32-bit words on PSX (u_long == u32 == 4 bytes
+ * there). The 64-bit port widens u_long to 8 bytes, which would double the deref
+ * width and pointer stride below -- overflowing pImage15Bit (0x7000 bytes, written
+ * 0x1C00 times) into adjacent heap blocks. Use u32 so the stride stays 4 bytes;
+ * byte-identical to u_long on the MIPS target, so matching is preserved. */
+extern u32 g_FieldCurPixel;
+extern u32* g_Field24BitImageData;
+extern u32* g_Field15BitImageData;
 
 u_int FieldImageConvert24BitColorTo15Bit(void) {
-    u_long nPixel;
+    u32 nPixel;
     u_int nLSB;
 
     // Are we done reading RGB channels?
@@ -205,9 +210,9 @@ void FieldImageConvert24BitTo15Bit(void) {
     RECT rect;
     int i;
     int j;
-    u_long* pImage24Bit;
-    u_long* pImage15Bit;
-    u_long n15BitPixels;
+    u32* pImage24Bit;
+    u32* pImage15Bit;
+    u32 n15BitPixels;
 
     pImage24Bit = HeapAlloc(0xA800, 0x0);
     pImage15Bit = HeapAlloc(0x7000, 0x0);
