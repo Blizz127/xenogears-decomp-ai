@@ -38,9 +38,13 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800923E4);
+void func_800923E4(void) {
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092404);
+void func_80092404(void) {
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092424);
 
