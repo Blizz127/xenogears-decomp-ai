@@ -310,7 +310,15 @@ void func_801C57A0(MenuString* pString, int index, s32 arg2, u32 attributes) {
 
 INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C59E0);
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C5B90);
+extern void func_801C59E0(void* a0, void* a1, s32 a2, s32 a3);
+extern u8 D_801CB400[];
+
+void func_801C5B90(void) {
+    SystemTransferPaletteToVRAM(0, 0x1D1);
+    *(void**)((u8*)g_Menu + 0x558) = HeapAlloc(0x38E, 0);
+    func_801C59E0((u8*)g_Menu + 0x4E0, D_801CB400, 0, 4);
+    func_801C5724();
+}
 
 void MemberChangeMenuInitializeWindowBorders(void) {
     POLY_FT4 _unusued;
