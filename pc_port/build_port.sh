@@ -40,7 +40,12 @@ INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 # -std=gnu17: the game predates C23; gcc >= 15 defaults to C23 and rejects it.
 # -fpermissive: gcc >= 14 promotes old-C constructs (implicit decls, int/pointer
 #   conversions) to hard errors that -w can't silence; -fpermissive demotes them.
-GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -include assert.h -w -O0 -g -m64 -fno-builtin"
+# -DUSE_EXTENDED_PRIM_POINTERS=0: use PsyCross's simple (non-PGXP) primitive
+#   pipeline. The extended/PGXP path (default 1) routes 2D prims through a
+#   perspective/offscreen path that doesn't render here, and its 24-byte SPRT
+#   layout mismatches the game's hardcoded 0x10 strides (font.c). MUST match the
+#   value PsyCross's lib is built with (see pc_port/CMakeLists.txt).
+GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
