@@ -98,7 +98,18 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80084A40);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800854D0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085560);
+extern s32 D_800ADB2C;
+extern s32 D_800ADBB8;
+extern s32 D_800AFEA4;
+
+void func_80085560(s32 a0, s32 a1, s32 a2) {
+    s32 r;
+    D_800ADB2C = 1;
+    r = ArchiveAllocStreamFile(8);
+    D_800ADBB8 = r;
+    ArchiveReadFileToBuffer(a0, r, 0, 0x100);
+    D_800AFEA4 = a2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800855C8);
 
