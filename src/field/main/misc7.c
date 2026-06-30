@@ -12,7 +12,10 @@ extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800972F4);
+void func_800972F4(void) {
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+}
 
 void FieldScriptFadeOut(void) {
     int duration;
