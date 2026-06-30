@@ -47,6 +47,17 @@ INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 #   value PsyCross's lib is built with (see pc_port/CMakeLists.txt).
 GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
 
+# PsyCross bugfix (idempotent; the vendored tree is gitignored so this patch lives
+# here in the tracked build, not as an untracked source edit). The sprite/tile
+# primitive switch masks the code with 0xFD, which clears the semi-transparency bit
+# but NOT bit 0. Every case (0x60..0x7C) has bit 0 == 0, so any "shaded" sprite with
+# bit 0 set (0x65/0x75/0x7D) -- which the game's font uses (primitiveCode 0x75/0x7D
+# in font.c) -- falls through unrendered. 0xFC clears both flag bits so they map to
+# their base case; shading/semi-trans are read from the unmasked code, so this is
+# strictly additive (bit-0-clear codes are unaffected).
+sed -i 's/switch (polyTag->code & 0xFD)/switch (polyTag->code \& 0xFC)/' \
+    "$PSX/src/gpu/PsyX_GPU.cpp"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
@@ -79,7 +90,7 @@ echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/data_published_logo.c; do
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c; do
     o="$OBJ/$(basename "$pf").o"
     if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
         GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
