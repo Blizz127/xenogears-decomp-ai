@@ -263,7 +263,11 @@ int SetGraphDebug(int level) {
 // SetGrapQue ?
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_8004440C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_800444B8);
+extern u8 D_800568D0;
+
+u8 func_800444B8(void) {
+    return D_800568D0;
+}
 
 int GetGraphDebug(void) {
     return g_GraphDebugLevel;

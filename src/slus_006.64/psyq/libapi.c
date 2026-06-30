@@ -70,9 +70,15 @@ long ResetRCnt(long spec) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004076C);
+extern s32 D_80056414;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004077C);
+void func_8004076C(s32 a0) {
+    D_80056414 = a0;
+}
+
+s32 func_8004077C(void) {
+    return D_80056414;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004078C);
 
