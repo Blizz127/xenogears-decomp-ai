@@ -14,6 +14,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>   /* getenv/atoi for the headless test hook below */
 #include <libgte.h>   /* PsyCross: pull in before libgpu.h (it uses SVECTOR) */
 #include <libgpu.h>   /* PsyCross: POLY_F3, setPolyF3 macro (setlen/setcode) */
 
@@ -62,6 +63,40 @@ int Sprintf(char* dest, char* fmt, ...)
  * PsyX_EndScene() is a no-op when no scene is open (begin_scene_flag == 0), so
  * the early boot Vsync(2) before any DrawOTag is safe.
  */
+/*
+ * Headless test hook for the KernelMenu. Synthetic X11/SDL key events can't reach
+ * the focused XWayland window in automated runs, so the only way to drive the menu
+ * from a script is to inject the game's button state in code. With XENO_KERNEL_SEL
+ * set to an option index (Field=0, Battle=1, Worldmap=2, Battling=3, Menu=4,
+ * Movie=5) this presses Circle on that option once, XENO_KERNEL_DELAY frames (def
+ * 60) after the KernelMenu becomes active -- exercising ChangeGameState ->
+ * MainLoop's overlay load (LoadGameStateOverlay -> ArchiveReadFileToBuffer ->
+ * LZSSDecompress) without a human at the keyboard. No-op unless the env var is set.
+ */
+static void PcPort_ForcedKernelSelect(void)
+{
+    extern int g_KernelMenuCurChoice;
+    extern int g_KernelMenuIsRunning;
+    extern unsigned short g_C1ButtonStateReleased;
+    static int sel = -2, delay, frame;
+
+    if (sel == -2) {  /* first call: read config */
+        const char* e = getenv("XENO_KERNEL_SEL");
+        const char* d = getenv("XENO_KERNEL_DELAY");
+        sel = (e && *e) ? atoi(e) : -1;
+        delay = (d && *d) ? atoi(d) : 60;
+        frame = 0;
+    }
+    if (sel < 0 || !g_KernelMenuIsRunning)
+        return;  /* disabled, or menu not up yet -- don't start the countdown */
+
+    if (++frame == delay) {
+        g_KernelMenuCurChoice = sel;
+        g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
+        printf("[xeno-port][test] forcing KernelMenu select %d (Circle)\n", sel);
+    }
+}
+
 int Vsync(int mode)
 {
     /* Flush any primitives queued this frame before presenting. DrawOTag flushes
@@ -81,6 +116,11 @@ int Vsync(int mode)
      * g_C1ButtonState* edge/repeat state that the menus/field read. */
     { extern void PsyX_UpdateInput(void); PsyX_UpdateInput(); }
     { extern void ControllerPoll(void);   ControllerPoll();   }
+
+    /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
+     * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the
+     * synthetic Circle in afterwards so it survives to the next KernelMenuUpdate. */
+    PcPort_ForcedKernelSelect();
 
     return VSync(mode);   /* then pace to the next vblank */
 }

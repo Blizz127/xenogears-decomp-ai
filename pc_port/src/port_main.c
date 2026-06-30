@@ -9,6 +9,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "xeno_pc.h"
 #include "psx_memory.h"
@@ -45,6 +46,43 @@ extern void PsyX_Pad_InitPad(int slot, unsigned char* padData);
 extern int g_padCommEnable;
 #define PORT_CONTROLLER_BUFFER_SIZE 0x22
 
+/* Disc / archive bring-up. The asm boot (func_80019578) calls
+ * ArchiveInit(&D_80010004 [table buf], &D_80018004 [header buf], 0 [CD path])
+ * after HeapInit; it CdInit()s and reads the archive index off the disc (sectors
+ * 0x18/0x28). The port replaces the async CD path with synchronous PsyCross-libcd
+ * reads (archive_port.c), so we just point PsyCross at the disc image and make the
+ * same call. ArchiveReadFileToBuffer (used by the menu/field overlay loads) then
+ * pulls real file data straight from disc1.bin. Gated on the image being present
+ * so a disc-less run still boots to the menu as before. */
+extern void PsyX_CDFS_Init(const char* imageFileName, int track, int sectorSize);
+extern void ArchiveInit(unsigned int pArchiveTable, unsigned int pHeaderTable,
+                        unsigned int pDebugTable);
+extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  */
+extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
+
+/* MODE2/2352 image; PsyCross extracts the 2048-byte data payload per sector. */
+#define PORT_CD_SECTOR_SIZE 2352
+
+/* Return the first readable disc-image path, or NULL. XENO_DISC overrides; the
+ * defaults assume the binary is run from pc_port/build_native (repo disc/ dir). */
+static const char* PcPort_FindDiscImage(void) {
+    static const char* defaults[] = {
+        "../../disc/disc1.bin", "disc/disc1.bin", "../disc/disc1.bin",
+    };
+    const char* env = getenv("XENO_DISC");
+    unsigned i;
+    FILE* f;
+    if (env && *env) {
+        f = fopen(env, "rb");
+        if (f) { fclose(f); return env; }
+    }
+    for (i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++) {
+        f = fopen(defaults[i], "rb");
+        if (f) { fclose(f); return defaults[i]; }
+    }
+    return NULL;
+}
+
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
@@ -72,6 +110,22 @@ int main(int argc, char** argv) {
     /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
      * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */
     PcPort_HeapBoot();
+
+    /* 5b. Disc / archive init (see notes above). Only when the image is found,
+     * so a disc-less run still reaches the menu instead of hanging in
+     * ArchiveInit's `while (CdInit() == 0)`. */
+    {
+        const char* disc = PcPort_FindDiscImage();
+        if (disc) {
+            printf("[xeno-port] CD image: %s\n", disc);
+            PsyX_CDFS_Init(disc, 0, PORT_CD_SECTOR_SIZE);
+            ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
+            printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
+        } else {
+            printf("[xeno-port] WARNING: no disc image found "
+                   "(set XENO_DISC or place disc/disc1.bin); archive reads disabled.\n");
+        }
+    }
 
     /* 6. Boot splash: the asm boot shows the "Published by Square" logo before
      * handing off to the game. It is fully self-contained (LZSS-decompress the
