@@ -27,6 +27,7 @@ void func_800363F0(int arg0) { D_800501FC = arg0; }
  * --------------------------------------------------------------------------- */
 #include "common.h"
 #include "main/main.h"
+#include "system/memory.h"
 #include "psx_memory.h"
 
 extern void KernelMenuMain(void);
@@ -61,4 +62,76 @@ void PcPort_InitGameStates(void)
     g_MainGameStates[5].pMemStart  = PSX_ADDR(0x000592b8);
     g_MainGameStates[5].pHeapStart = PSX_ADDR(0x0006faec);
     g_MainGameStates[5].hasOverlay = 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Heap bootstrap.
+ *
+ * On hardware the boot routine func_80019578 (asm/.../main/main) calls
+ * HeapInit(func_8002DFE0(), 0x801FC000) once before falling into MainLoop, where
+ * func_8002DFE0 returns &D_8006FAF0. MainLoop never re-inits the heap; it only
+ * HeapRelocate()s within it, which walks g_Heap and crashes if it was never set
+ * up. The oracle enters MainLoop() directly (the asm `start`/boot is not yet C),
+ * so the port performs that one-time HeapInit here, translated into emulated RAM.
+ * --------------------------------------------------------------------------- */
+void PcPort_HeapBoot(void)
+{
+    HeapInit(PSX_ADDR(0x8006FAF0), PSX_ADDR(0x801FC000));
+}
+
+/* ---------------------------------------------------------------------------
+ * LZSS decompressor.
+ *   LZSSHeapDecompress @ 0x80032E88, LZSSDecompress @ 0x80032EB4
+ *   (asm/slus_006.64/util/lzss.s -- pure asm, no C translation unit yet).
+ *
+ * Functional re-implementation, correct-by-inspection of the disassembly (not
+ * byte-matched). Stream format: the first 4 bytes of the source are the
+ * decompressed size. The remainder is a token stream of one flag byte (8 bits
+ * consumed LSB-first) followed by that many tokens:
+ *   bit 0 -> literal: copy the next source byte verbatim.
+ *   bit 1 -> back-reference from two bytes b0,b1:
+ *              offset = b0 | ((b1 & 0xF) << 8)   (12-bit window)
+ *              length = (b1 >> 4) + 3
+ *            copy `length` bytes from (dst - offset).
+ * The original checks the output-end only at each 8-token group boundary, so a
+ * group is always processed in full; this mirrors that exactly.
+ * --------------------------------------------------------------------------- */
+void* LZSSDecompress(void* pSrc, void* pDst)
+{
+    u8* src = (u8*)pSrc;
+    u8* dst = (u8*)pDst;
+    u8* dstStart = dst;
+    u8* dstEnd = dst + *(u32*)src;
+    src += 4;
+
+    while (dst != dstEnd) {
+        u8 flags = *src++;
+        int n;
+        for (n = 0; n < 8; n++, flags >>= 1) {
+            if (flags & 1) {
+                u32 b0 = *src++;
+                u32 b1 = *src++;
+                u32 offset = b0 | ((b1 & 0xF) << 8);
+                u32 length = (b1 >> 4) + 3;
+                u8* ref = dst - offset;
+                u32 i;
+                for (i = 0; i < length; i++) {
+                    *dst++ = *ref++;
+                }
+            } else {
+                *dst++ = *src++;
+            }
+        }
+    }
+    return dstStart;
+}
+
+void* LZSSHeapDecompress(void* pCompressed, int flags)
+{
+    u32 size = *(u32*)pCompressed;
+    void* pDst = HeapAlloc(size, (u_int)flags);
+    if (pDst == NULL) {
+        return NULL;
+    }
+    return LZSSDecompress(pCompressed, pDst);
 }

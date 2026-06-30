@@ -74,7 +74,7 @@ echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c; do
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c; do
     o="$OBJ/$(basename "$pf").o"
     if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
         GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
@@ -88,7 +88,13 @@ gcc -c pc_port/src/port_main.c $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/in
     echo "    port_main FAILED:"; grep -m6 "error:" /tmp/pmerr | sed "s|^|      |"; }
 
 LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
-LINK=(gcc -m64 "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
+# -no-pie: link non-PIE so the executable loads at a fixed low base and ALL of
+# its BSS (the emulated PSX RAM g_PsxRam[] plus every auto-stubbed data symbol)
+# lives below 4 GiB. The decompiled game truncates its own pointers to 32 bits
+# all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
+# low 32-bit address space makes every such truncation a lossless round-trip.
+NOPIE="-no-pie -fno-pie"
+LINK=(gcc -m64 $NOPIE "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
 "${LINK[@]}" 2> "$OUT/link1.err"
@@ -106,7 +112,7 @@ if [ -s "$OUT/undef.txt" ]; then
 fi
 
 echo "==> [5/5] Final link"
-gcc -m64 "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
+gcc -m64 $NOPIE "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     echo "    LINK OK -> $OUT/xeno-port"
 else
