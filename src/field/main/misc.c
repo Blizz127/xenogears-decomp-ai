@@ -512,7 +512,10 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D26C);
 void func_8008D2D8(void) {
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D2E0);
+void func_8008D2E0(s32 a0, s32 a1) {
+    *(u8*)(a1 + (s32)g_FieldScriptVMCurScriptData + 1) = a0 >> 8;
+    *(u8*)((u8*)g_FieldScriptVMCurScriptData + a1) = a0;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D30C);
 
