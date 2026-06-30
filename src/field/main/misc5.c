@@ -66,8 +66,11 @@ void func_800A5774(int x, int y, int h) {
     RECT rect;
     int nSize;
     int i;
-    u_long* pImageBuffer;
-    u_long* pWorkBuffer;
+    /* 15-bit VRAM words: u32 (not u_long) so each |= 0x80008000 covers exactly two
+     * pixels and the stride stays 4 bytes on the 64-bit port. u32 == u_long on PSX,
+     * and nSize keys off sizeof, so this is byte-identical for matching. */
+    u32* pImageBuffer;
+    u32* pWorkBuffer;
 
     rect.x = x;
     rect.y = y;
@@ -76,9 +79,9 @@ void func_800A5774(int x, int y, int h) {
     pImageBuffer = HeapAlloc(h * 0x80, 0x1);
     StoreImage( &rect, pImageBuffer);
     DrawSync(0);
-    
+
     pWorkBuffer = pImageBuffer;
-    nSize = h * (0x80 / sizeof(u_long));
+    nSize = h * (0x80 / sizeof(u32));
     for (i = 0; i < nSize; i += 8) {
         pWorkBuffer[0] |= 0x80008000;
         pWorkBuffer[1] |= 0x80008000;
