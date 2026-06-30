@@ -768,13 +768,21 @@ void FieldScriptWriteActorDistance(void) {
 }
 */
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E298);
+void func_8008E298(void) {
+    FieldScriptVMConditionalJump6(((u16*)g_FieldActors[FieldScriptVMGetActorIndex(3)].pActorData)[0]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E2EC);
+void func_8008E2EC(void) {
+    FieldScriptVMConditionalJump6(((u16*)g_FieldActors[FieldScriptVMGetActorIndex(3)].pActorData)[1]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E340);
+void func_8008E340(void) {
+    FieldScriptVMConditionalJump6(((u16*)g_FieldActors[FieldScriptVMGetActorIndex(3)].pActorData)[2]);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E394);
+void func_8008E394(void) {
+    FieldScriptVMConditionalJump6(((u16*)g_FieldActors[FieldScriptVMGetActorIndex(3)].pActorData)[3]);
+}
 
 void func_8008E3E8(void) {
     FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[0]);
@@ -788,7 +796,9 @@ void func_8008E440(void) {
     FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[2]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E46C);
+void func_8008E46C(void) {
+    FieldScriptVMConditionalJump5(((u16*)g_FieldScriptVMCurActor)[3]);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E498);
 
