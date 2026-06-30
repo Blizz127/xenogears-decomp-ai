@@ -11,7 +11,13 @@
 #include <stdio.h>
 
 #include "xeno_pc.h"
+#include "psx_memory.h"
 #include "PsyX/PsyX_public.h"
+
+/* Forward-declared to avoid pulling the full PsyQ headers (libgpu needs libgte
+ * first, etc.). Signatures match PsyCross. */
+extern int ResetCallback(void);
+extern int ResetGraph(int mode);
 
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
@@ -19,15 +25,27 @@
 
 /* Decompiled game entry (src/slus_006.64/main/main_loop.c). */
 extern void MainLoop(int errorCode);
+/* Port-side runtime build of the game-state dispatch table (game_overrides.c). */
+extern void PcPort_InitGameStates(void);
 
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    printf("[xeno-port] Phase 0 scaffold\n");
-    printf("[xeno-port] Bringing up PsyCross (PSX HAL: GTE/GPU/SPU/CD)...\n");
+    printf("[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)\n");
 
+    /* 1. PSX main-RAM emulation must come first (PSX_ADDR targets live here). */
+    PsxMemory_Init();
+
+    /* 2. Data migration: build the game-state dispatch table at runtime. */
+    PcPort_InitGameStates();
+
+    /* 3. Bring up PsyCross (SDL2 window + OpenGL context). */
     PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+
+    /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
+    ResetCallback();
+    ResetGraph(0);
 
     /* Oracle bootstrap: the real entry `start` (0x80019524) is still raw MIPS
      * asm, so we call the decompiled MainLoop() directly. It will run real game
