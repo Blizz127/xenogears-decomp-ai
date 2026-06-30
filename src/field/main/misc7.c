@@ -284,7 +284,10 @@ void FieldScriptVMHandlerGetActorPosition(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A0FC);
+void func_8009A0FC(void) {
+    g_FieldScriptVMCurActor->defaultAnimationId = SCRIPT_READ_U8_REL(1);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 void FieldScriptVMHandlerPlayAnimation(void) {
     unsigned char animationID;
@@ -295,7 +298,10 @@ void FieldScriptVMHandlerPlayAnimation(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A174);
+void func_8009A174(void) {
+    FieldScriptVMHandlerPlayAnimation();
+    g_FieldScriptVMCurActor->flags &= 0xFFFEFFFF;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1AC);
 
@@ -492,9 +498,15 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009ACEC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AD6C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009ADDC);
+void func_8009ADDC(void) {
+    g_Scene.unk48 |= 0x4000;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AE0C);
+void func_8009AE0C(void) {
+    g_Scene.unk48 &= 0xBFFF;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AE3C);
 

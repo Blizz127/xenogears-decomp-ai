@@ -115,7 +115,15 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C3C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C90);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085EEC);
+extern void* D_8004F2FC;
+
+void func_80085EEC(void) {
+    if (D_8004F2FC != NULL) {
+        func_80039C4C(D_8004F2FC);
+        func_800399D4(D_8004F2FC);
+        D_8004F2FC = NULL;
+    }
+}
 
 extern s32 D_8004F364;
 extern s32 D_8004F368;
@@ -217,4 +225,8 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086BA8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086C34);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086D4C);
+void func_80086D4C(void) {
+    GameSoftReset();
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
