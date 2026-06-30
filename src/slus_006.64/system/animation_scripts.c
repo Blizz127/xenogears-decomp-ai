@@ -116,7 +116,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021D
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021EBC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FB8);
+void func_80021FB8(u8* arg0, u8 arg1) {
+    arg0[0xB0] = arg1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FC0);
 
@@ -213,4 +215,6 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_800226
 // Recompute animation speed
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022974);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022A00);
+s32 func_80022A00(s32* arg0) {
+    return *arg0;
+}

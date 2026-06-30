@@ -990,7 +990,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A5D0);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A65C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A82C);
+s32 func_8003A82C(u16* arg0) {
+    return arg0[8] >> 15;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A838);
 
@@ -1004,7 +1006,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AA30);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AAC4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABE8);
+void func_8003ABE8(u8* arg0, u8 arg1) {
+    arg0[0x1B] = arg1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABF0);
 
