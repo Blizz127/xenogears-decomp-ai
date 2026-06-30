@@ -598,7 +598,14 @@ void func_8009B884(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B8E4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B9A0);
+void func_8009B9A0(void) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        *(s16*)((u8*)&g_Scene + 0xB8) = FieldGetCameraDirection();
+        *(s32*)((u8*)&g_Scene + 0xBC) = g_Scene.sceneScrZ;
+        *(u16*)((u8*)&g_Scene + 0xC0) = g_Scene.sceneDIP;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009BA0C);
 
