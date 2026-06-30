@@ -159,7 +159,13 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A732C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7394);
+void func_800A7394(void) {
+    do {
+        func_80077DAC();
+        func_8007554C();
+    } while (ArchiveDataSync() != 0 || g_FieldCurRenderContextIndex != 0);
+    CdDataSync(0);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A73E8);
 
@@ -246,7 +252,18 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7C58);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8314);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A83B4);
+extern s32 D_800AF278;
+extern void* D_800AFC60;
+extern void* D_800AFC64;
+
+void func_800A83B4(void) {
+    if (D_800AF278 != 0) {
+        D_800AF278 = 0;
+        DrawSync(0);
+        HeapFree(D_800AFC60);
+        HeapFree(D_800AFC64);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8408);
 

@@ -137,7 +137,15 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085B20);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C3C);
+s32 func_80085C3C(void) {
+    s32 count;
+    for (count = 0; count < 5; count++) {
+        if (func_800854D0() == -1) {
+            return 0;
+        }
+    }
+    return -1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C90);
 
@@ -207,9 +215,29 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800863E8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086470);
+extern u16 D_800AFE88[];
+extern u16 D_800AFE8A[];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864B4);
+s32 func_80086470(s32 a0, s32 a1) {
+    s32 i;
+    if (a0 == -1) {
+        return -1;
+    }
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE88[i * 3] == a1) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void func_800864B4(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        D_800AFE88[i * 3] = 0xFFFF;
+        D_800AFE8A[i * 3] = 0xFFFF;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864F0);
 
