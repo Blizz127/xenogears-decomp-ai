@@ -558,9 +558,21 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B708);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B7A8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B824);
+void func_8009B824(void) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        func_8009B7A8(0, FieldScriptVMGetArgument(1));
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    }
+    D_800B00C0 = 1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B884);
+void func_8009B884(void) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        func_8009B7A8(0, FieldScriptVMGetArgument(1));
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B8E4);
 
