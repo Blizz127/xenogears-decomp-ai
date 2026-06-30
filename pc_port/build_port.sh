@@ -43,6 +43,12 @@ done < <(find src -name '*.c' | grep -v '/psyq/' | sort)
 echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
+echo "==> [2b/5] Compiling port-only game overrides (boot-path functions)"
+if gcc -c pc_port/src/game_overrides.c $GFLAGS -Ipc_port/src -o "$OBJ/game_overrides.o" 2>/dev/null; then
+    GAME_OBJS+=("$OBJ/game_overrides.o")
+    echo "    game_overrides.o ok"
+fi
+
 echo "==> [3/5] Compiling port entry point"
 gcc -c pc_port/src/port_main.c $GFLAGS -Ipc_port/src -I"$PSX/include" -o "$OBJ/port_main.o" 2>/dev/null
 
