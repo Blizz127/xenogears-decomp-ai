@@ -120,9 +120,17 @@ void func_80021FB8(u8* arg0, u8 arg1) {
     arg0[0xB0] = arg1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FC0);
+extern void func_80022974(void* arg0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FE0);
+void func_80021FC0(void* a0, s32 a1) {
+    *(s32*)((u8*)a0 + 0x18) = a1;
+    func_80022974(a0);
+}
+
+void func_80021FE0(void* a0, s16 a1) {
+    *(s16*)((u8*)a0 + 0x32) = a1;
+    func_80022974(a0);
+}
 
 void SpriteSetScale(SpriteData* pSpriteData, short scale) {
     SpriteDataI1* pBase = pSpriteData->pBase;
