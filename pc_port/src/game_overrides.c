@@ -35,6 +35,27 @@ extern void FieldMain(void);
 extern void func_8001B6C4(void);
 extern void MenuMain(void);
 
+/* Controller button remap tables (system/controller.h declares these extern; the
+ * initialisers are commented out there because the data lives in the game's
+ * .data section -- which the port's stub generator zeroes since it isn't part of
+ * the migrated blob). ControllerRemapButtonState() folds the face/shoulder bits
+ * through these; with zeroed tables every face button (Circle/Cross/...) is
+ * dropped, so KernelMenu navigation (d-pad, passed through directly) worked but
+ * Circle = confirm did nothing. Provide the real values (digital pad: identity
+ * mapping, masks = the CTRL_BTN_* face/shoulder bits). Real addrs: masks
+ * @0x800501e8, mappings @0x80050238 in slus_006.64. */
+u_char  g_ControllerButtonMappings[8] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7 };
+u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x08, 0x02 };
+
+/* ClearMemory(pStart, pEnd): zero a word range. Real one is asm/BIOS (bypassed);
+ * main_loop.c calls it to wipe a game state's memory region before entering it,
+ * so the stub (no-op) left uninitialised state -> crash on state change. */
+void ClearMemory(u32* pStart, u32* pEnd)
+{
+    while (pStart < pEnd)
+        *pStart++ = 0;
+}
+
 MainGameState g_MainGameStates[7];
 
 void PcPort_InitGameStates(void)
