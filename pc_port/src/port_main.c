@@ -137,6 +137,24 @@ int main(int argc, char** argv) {
              * from disc (pDebugTable = 0); g_ArchiveDebugTable still ends up NULL. */
             ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
             printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
+
+            /* Field debug-entry harness (opt-in via XENO_FIELD_TEST). The KernelMenu
+             * "Field" option jumps straight into the field without the new-game /
+             * worldmap setup that normally (a) fills g_GameState.partyMembers and
+             * (b) selects the party-skin archive directory (#4, as the skin loader
+             * func_8001ACA4 does) before field entry. Without (b),
+             * GamePartyCharactersInitializeSkins resolves ArchiveDecodeAlignedSize
+             * against the wrong directory -> bogus ~6MB -> HeapAlloc fail. Setting
+             * the real directory here lets the field's party-skin init proceed so we
+             * can drive past it and find the next frontier. This is a stand-in for
+             * the not-yet-ported new-game init, not a permanent solution. The
+             * LoadGameStateOverlay save/restore preserves this index through the
+             * field overlay load. */
+            if (getenv("XENO_FIELD_TEST")) {
+                extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
+                ArchiveSetIndex(4, 0);
+                printf("[xeno-port][field-test] ArchiveSetIndex(4,0): party-skin dir\n");
+            }
         } else {
             printf("[xeno-port] WARNING: no disc image found "
                    "(set XENO_DISC or place disc/disc1.bin); archive reads disabled.\n");
