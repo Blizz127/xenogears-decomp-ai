@@ -734,7 +734,11 @@ void func_8008D2E0(s32 a0, s32 a1) {
     *(u8*)((u8*)g_FieldScriptVMCurScriptData + a1) = a0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D30C);
+s32 func_8008D30C(s32 a0, s32 a1) {
+    s32 dx = g_FieldActors[a0].transformMatrix.t[0] - g_FieldActors[a1].transformMatrix.t[0];
+    s32 dz = g_FieldActors[a0].transformMatrix.t[2] - g_FieldActors[a1].transformMatrix.t[2];
+    return -(FieldGetVec2Magnitude(dx, dz) >= 0x10);
+}
 
 static inline void CopySpriteFieldS32(FieldActor* actors, int dstId, int srcId, int offset) {
     void* dst = actors[dstId].pSpriteData;
@@ -1144,7 +1148,10 @@ void func_8008F394(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F3D0);
+void func_8008F3D0(void) {
+    func_8003A450(FieldScriptVMGetArgument(3) << 1, FieldScriptVMGetArgument(1), FieldScriptVMGetArgument(5));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void func_8008F444(void) {
     func_8003A344(FieldScriptVMGetArgument(3) << 1, FieldScriptVMGetArgument(1));
@@ -1170,7 +1177,10 @@ void func_8008F668(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F6AC);
+void func_8008F6AC(void) {
+    func_800855C8(FieldScriptVMGetArgument(1), FieldScriptVMGetArgument(5), FieldScriptVMGetArgument(3), 3);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 extern s32 D_800ADBDC;
 extern s32 D_8004F340;
