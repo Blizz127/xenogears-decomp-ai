@@ -248,7 +248,13 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800759E4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075B08);
+extern s16 D_800B218E;
+
+void func_80075B08(void* sprite, u8* color) {
+    if (D_800B218E == 0) {
+        SpriteSetColor(sprite, color[0], color[1], color[2]);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075B44);
 
