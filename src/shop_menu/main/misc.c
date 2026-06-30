@@ -1852,7 +1852,9 @@ void ShopMenuUpdateAndRender(void) {
 
     // Debugging
     if (*D_8005917C != -1) {
-        asm("break 0x400");
+#ifndef XENO_PC_PORT
+        asm("break 0x400");   /* MIPS trap; host assembler can't emit it (debug-only) */
+#endif
     }
     
     ShopMenuPollInput();

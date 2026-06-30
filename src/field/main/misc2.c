@@ -185,8 +185,12 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800739C0);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073E38);
 
 void FieldClearAndSwapOTagInternal(void) {
-    if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD)
-        asm("break 0x400");
+    if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
+#ifndef XENO_PC_PORT
+        asm("break 0x400");   /* MIPS trap; host assembler can't emit it. PC-HDD
+                                 dev path only -- never taken in the CD_ROM port. */
+#endif
+    }
 
     g_FieldCurRenderContextIndex = (g_FieldCurRenderContextIndex + 1) % 2;
     g_FieldCurRenderContext = &g_FieldRenderContexts[g_FieldCurRenderContextIndex];
