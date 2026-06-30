@@ -208,9 +208,23 @@ void func_80087D30(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087D80);
+void func_80087D80(void) {
+    *(u16*)((u8*)g_pGameState + 0x1834) = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(3));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087DE0);
+extern u8 D_800B2355;
+extern u8 D_800B2356;
+
+void func_80087DE0(void) {
+    int arg = FieldScriptVMGetArgument(2);
+    if (SCRIPT_READ_U8_REL(1) == 0) {
+        D_800B2355 = arg;
+    } else {
+        D_800B2356 = arg;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 extern s16 D_800B234C;
 
@@ -482,7 +496,19 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A640);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A6E0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A790);
+s32 func_8008A790(s32 value, s32* outIndex) {
+    s32 i;
+    for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
+        if (g_GamePartyMembers[i] == value) {
+            return -1;
+        }
+        if (g_GamePartyMembers[i] == 0xFF) {
+            *outIndex = i;
+            return 0;
+        }
+    }
+    return -1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A7DC);
 
@@ -498,7 +524,14 @@ void func_8008A974(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A9AC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AA60);
+void func_8008AA60(void) {
+    if (g_FieldScriptVMCurActor->unk124 != -1) {
+        HeapFree(g_FieldScriptVMCurActor->unk120);
+        g_FieldScriptVMCurActor->unk124 = -1;
+    }
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AACC);
 
@@ -526,7 +559,15 @@ void func_8008B210(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B248);
+void func_8008B248(void) {
+    FieldFadeSetParameters(1,
+        FieldScriptVMGetArgument(9),
+        FieldScriptVMGetArgument(3),
+        FieldScriptVMGetArgument(5),
+        FieldScriptVMGetArgument(7),
+        FieldScriptVMGetArgument(1));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xB;
+}
 
 void func_8008B2F0(void) {
     FieldDistortionInitialize(0);
