@@ -69,7 +69,14 @@ void func_8002CC54(u16 a0) {
     D_80050108 = 2;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC74);
+extern u_short GetClut(int x, int y);
+extern s32 D_80059314;
+extern s32 D_8005010C;
+
+void func_8002CC74(u16 a0, u16 a1) {
+    D_80059314 = GetClut(a0, a1) & 0xFFF0;
+    D_8005010C = 0;
+}
 
 extern s32 D_8005010C;
 
@@ -86,11 +93,23 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD64);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CDCC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CF34);
+extern u8* D_80059424;
+
+s32 func_8002CF34(s32* a0) {
+    u8* p = D_80059424;
+    p[3] = 4;
+    *(s32*)(p + 4) = *a0;
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CF58);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D0C0);
+s32 func_8002D0C0(s32* a0) {
+    u8* p = D_80059424;
+    p[3] = 5;
+    *(s32*)(p + 4) = *a0;
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D0E4);
 
