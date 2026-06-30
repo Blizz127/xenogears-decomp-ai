@@ -73,14 +73,19 @@ done < <(find src -name '*.c' | grep -v '/psyq/' | sort)
 echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
-echo "==> [2b/5] Compiling port-only game overrides (boot-path functions)"
-if gcc -c pc_port/src/game_overrides.c $GFLAGS -Ipc_port/src -o "$OBJ/game_overrides.o" 2>/dev/null; then
-    GAME_OBJS+=("$OBJ/game_overrides.o")
-    echo "    game_overrides.o ok"
-fi
+echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c; do
+    o="$OBJ/$(basename "$pf").o"
+    if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
+        GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
+    else
+        echo "    $(basename "$pf") FAILED:"; grep -m4 "error:" /tmp/pcerr | sed "s|^|      |"
+    fi
+done
 
 echo "==> [3/5] Compiling port entry point"
-gcc -c pc_port/src/port_main.c $GFLAGS -Ipc_port/src -I"$PSX/include" -o "$OBJ/port_main.o" 2>/dev/null
+gcc -c pc_port/src/port_main.c $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/include/psx" -o "$OBJ/port_main.o" 2>/tmp/pmerr || {
+    echo "    port_main FAILED:"; grep -m6 "error:" /tmp/pmerr | sed "s|^|      |"; }
 
 LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
 LINK=(gcc -m64 "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
