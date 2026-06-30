@@ -559,7 +559,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AEC8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AFD8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B0E8);
+extern u8 D_800B225C;
+extern u8 D_800B225D;
+extern u8 D_800B225E;
+
+void func_8008B0E8(void) {
+    D_800B225C = FieldScriptVMGetArgument(1);
+    D_800B225D = FieldScriptVMGetArgument(3);
+    D_800B225E = FieldScriptVMGetArgument(5);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 extern s16 D_800B21B4;
 

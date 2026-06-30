@@ -337,9 +337,21 @@ void FieldScriptWriteCameraDirection(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A58C);
+void func_8009A58C(void) {
+    if ((g_Scene.unk48 & SCRIPT_READ_U8_REL(1)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+    } else {
+        D_800B00C0 = 1;
+    }
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A5E0);
+void func_8009A5E0(void) {
+    if ((g_Scene.unk48 & SCRIPT_READ_U8_REL(1)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+    } else {
+        D_800B00C0 = 1;
+    }
+}
 
 void FieldScriptSetDollySet(void) {
     g_Scene.dollySet = FieldScriptVMGetArgument(1);
@@ -537,7 +549,10 @@ void func_8009B664(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B6AC);
+void func_8009B6AC(void) {
+    func_8009AE3C(FieldScriptVMGetArgument(1), FieldScriptVMGetArgument(3));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B708);
 

@@ -66,7 +66,18 @@ void func_80070594(MATRIX* dest) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_800705DC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070C84);
+extern u16 D_800B06A4[];
+extern u16 D_800B06A6[];
+extern s32 D_800ADB0C;
+
+void func_80070C84(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        D_800B06A4[i * 3] = 0xFF;
+        D_800B06A6[i * 3] = 0xFF;
+    }
+    D_800ADB0C = 0;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc3", FieldLoad);
 
