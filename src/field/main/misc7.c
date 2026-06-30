@@ -38,7 +38,9 @@ void func_800973A4(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097410);
+void func_80097410(void) {
+    g_FieldScriptVMCurActor->scriptInstructionPointer += FieldScriptVMGetArgument(1) * 3 + 3;
+}
 
 int FieldGetPlayerActorDirection(void) {
     int halfDirection = PSX_DEGREES(22.5);
@@ -303,7 +305,12 @@ void func_8009A174(void) {
     g_FieldScriptVMCurActor->flags &= 0xFFFEFFFF;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1AC);
+void func_8009A1AC(void) {
+    if (g_FieldScriptVMCurActor->flags & 0x10000) {
+        g_FieldScriptVMCurActor->unkAnimationId = 0xFF;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1E4);
 
@@ -522,7 +529,10 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B338);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B398);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B664);
+void func_8009B664(void) {
+    FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), g_Scene.sceneScrZ);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B6AC);
 
