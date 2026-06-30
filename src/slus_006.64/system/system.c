@@ -156,7 +156,9 @@ void* func_80033998(s32 index) {
     return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x6C), index);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339C8);
+void* func_800339C8(s32 tableIndex, s32 stringIndex) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + tableIndex * 4 + 0x70), stringIndex);
+}
 
 void* func_800339FC(s32 index) {
     return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xC0), index);
