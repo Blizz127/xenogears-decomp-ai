@@ -1467,12 +1467,28 @@ u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* 
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D21C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D298);
+u8* func_8003D298(u8* a0, s32 a1, s32 a2) {
+    func_8003E5BC(*a0++, a2);
+    return a0;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D2D0);
+u8* func_8003D2D0(u8* a0, s32 a1, u8* a2) {
+    u8 b = *a0++;
+    if (b != 0) {
+        a2[0x60] += b;
+    } else {
+        a2[0x60] = 0;
+    }
+    return a0;
+}
 
 // Percussion On handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D300);
+s32 func_8003D300(s32 a0, s32* a1, u16* a2) {
+    if (a1[3] != 0) {
+        a2[0] |= 0x10;
+    }
+    return a0;
+}
 
 u8* SoundScriptPercussionOff(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->active_flag &= ~SOUND_CHANNEL_PERCUSSION_ACTIVE;
