@@ -112,37 +112,67 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033784);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800337B8);
+void* func_800337B8(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x40), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetAccessoryName);
+void* GetAccessoryName(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x44), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetItemName);
+void* GetItemName(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x58), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetWeaponName);
+void* GetWeaponName(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x5C), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033878);
+void* func_80033878(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x60), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338A8);
+void* func_800338A8(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x64), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338D8);
+void* func_800338D8(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x48), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033908);
+void* func_80033908(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x50), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033938);
+void* func_80033938(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x4C), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033968);
+void* func_80033968(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x54), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033998);
+void* func_80033998(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x6C), index);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339C8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339FC);
+void* func_800339FC(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xC0), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A2C);
+void* func_80033A2C(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xC8), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A5C);
+void* func_80033A5C(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xCC), index);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A8C);
+void* func_80033A8C(s32 index) {
+    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xD0), index);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
 
