@@ -262,7 +262,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088198);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800881E8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008825C);
+extern s32 D_8004F308;
+
+void func_8008825C(void) {
+    if (D_8004F308 == -1) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800882B8);
 
@@ -464,7 +473,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A08C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A148);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A244);
+extern s32 D_800ADB88;
+
+void func_8008A244(void) {
+    if (D_800ADB88 == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 extern s32 D_800B06A0;
 
@@ -503,7 +521,12 @@ s32 func_8008A558(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A5A0);
+void func_8008A5A0(void) {
+    if (SCRIPT_READ_U8_REL(1) == 0) {
+        func_8003633C(0);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 extern s16 D_800B21D4;
 
