@@ -7,7 +7,10 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096214);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_800962C0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009631C);
+void func_8009631C(void) {
+    func_8009635C(FieldScriptVMGetArgument(1));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009635C);
 

@@ -46,7 +46,11 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070488);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070508);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070560);
+void func_80070560(s32* dest, s16* src) {
+    dest[0] = src[0] << 16;
+    dest[1] = src[1] << 16;
+    dest[2] = src[2] << 16;
+}
 
 void func_80070594(MATRIX* dest) {
     SVECTOR rotation;
