@@ -93,7 +93,170 @@ void MenuProcessControllerInput(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", func_8001C074);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", MenuExecute);
+extern char D_8001833C[];
+extern char D_80018350[];
+extern char D_80018364[];
+extern char D_80018378[];
+extern char D_80018390[];
+extern void* D_8004FA9C[];
+extern u8 D_80059460;
+extern u8 D_80059171;
+extern void* D_8005945C;
+extern void* D_800658CC;
+extern void* D_8006BE24;
+extern void* D_8005A4AC;
+extern void* D_8005A4B0;
+extern GameState g_GameState;
+
+extern void func_8001C074(void);
+extern void func_801C62A8(void);
+extern void func_801CB0A8(void);
+extern void func_801CBDBC(void);
+extern void func_801CCD28(void);
+extern void func_801CE024(void);
+
+void MenuExecute(void) {
+    int i = 0;
+    int j = 0;
+    int running = 1;
+    void* pBuf0;
+    void* pBuf1;
+
+    if (g_MenuDebugEnabled) {
+        do {
+            FontPrintf(&D_8001833C, i, D_8004FA9C[i]);
+
+            if (i < 4) {
+                if (j < 0xB) {
+                    FontPrintf(&D_80018350, j);
+                } else {
+                    FontPrintf(&D_80018364, j - 0xB);
+                }
+            } else if (i == 6) {
+                FontPrintf(&D_80018390, j);
+            } else {
+                FontPrintf(&D_80018378, j);
+            }
+
+            switch (g_Menu->input) {
+                case 0:
+                    running = 0;
+                    break;
+                case 1:
+                    i++;
+                    j = 0;
+                    if (i >= 7) {
+                        i = 0;
+                    }
+                    break;
+                case 2:
+                    i--;
+                    j = 0;
+                    if (i < 0) {
+                        i = 6;
+                    }
+                    break;
+                case 3:
+                    if (i < 4) {
+                        j++;
+                        if (j >= 0x1F) {
+                            j = 0;
+                        }
+                    } else if (i == 6) {
+                        j = (j == 0);
+                    } else {
+                        j++;
+                    }
+                    break;
+                case 4:
+                    j--;
+                    if (j < 0) {
+                        if (i < 4) {
+                            j = 0x1E;
+                        } else if (i == 6) {
+                            j = (j == 0);
+                        } else {
+                            j = 0xFF;
+                        }
+                    }
+                    break;
+            }
+
+            func_8001C074();
+        } while (running & 0xFF);
+
+        D_80059460 = i;
+        D_80059171 = j;
+        *(u8*)((u8*)g_Menu + 0x84) = 0;
+        *(u8*)((u8*)g_Menu + 0x138) = 0;
+        SetDispMask(0);
+        g_Menu->pGfxEnv = (GfxEnvironment*)((u8*)g_Menu + 0x120);
+        SetDispMask(1);
+    }
+
+    ArchiveSetIndex(0x10, 0);
+
+    if (g_MenuDebugEnabled) {
+        g_GameState.gold = 0x3B9AC9FF;
+        HeapChangeCurrentUser(0x2, NULL);
+        D_8005945C = HeapAlloc(ArchiveDecodeAlignedSize(0x1), 0);
+        ArchiveReadFileToBuffer(0x1, D_8005945C, 0, 0x80);
+        ArchiveCdDataSync(0);
+
+        if (D_80059460 == 5) {
+            ArchiveSetIndex(0x4, 0);
+            D_800658CC = HeapAlloc(0x4, 0x1);
+            D_8006BE24 = HeapAlloc((u32)D_800658CC + 0x7FE24000, 0x1);
+            ArchiveReadFileToBuffer(0x6B9, (void*)0x801DC000, 0, 0x80);
+            ArchiveCdDataSync(0);
+            ArchiveSetIndex(0x10, 0);
+            D_8005A4AC = HeapAlloc(0x4000, 0);
+            D_8005A4B0 = HeapAlloc(0x4000, 0);
+        }
+
+        pBuf0 = HeapAlloc(0x4, 0x1);
+        pBuf1 = HeapAlloc((u32)pBuf0 + 0x7FE3B000, 0x1);
+        ArchiveReadFileToBuffer(D_80059460 + 5, (void*)0x801C5000, 0, 0x80);
+        ArchiveCdDataSync(0);
+    }
+
+    ArchiveSetIndex(0x10, 0);
+
+    switch (D_80059460) {
+        case 0:
+            func_801C62A8();
+            break;
+        case 1:
+            func_801CB0A8();
+            break;
+        case 2:
+            func_801CBDBC();
+            break;
+        case 3:
+            func_801CCD28();
+            break;
+        case 4:
+            func_801C62A8();
+            ChangeGameState(1);
+            break;
+        case 5:
+            func_801CE024();
+            break;
+    }
+
+    if (g_MenuDebugEnabled) {
+        HeapFree(pBuf0);
+        HeapFree(pBuf1);
+        if (D_80059460 == 5) {
+            HeapFree(D_800658CC);
+            HeapFree(D_8006BE24);
+            HeapFree(D_8005A4AC);
+            HeapFree(D_8005A4B0);
+        }
+        g_MenuDebugEnabled = 1;
+        MainLoop(0);
+    }
+}
 
 // Before calling this, it's expected that the caller have loaded the correct
 // menu overlay to the correct address (0x801C5000).
