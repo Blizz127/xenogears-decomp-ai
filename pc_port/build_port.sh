@@ -21,9 +21,18 @@ OBJ="$OUT/obj"
 mkdir -p "$OBJ"
 
 INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
-GFLAGS="-DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -include assert.h -w -O0 -g -m64 -fno-builtin"
+# -std=gnu17: the game predates C23; gcc >= 15 defaults to C23 and rejects it.
+# -fpermissive: gcc >= 14 promotes old-C constructs (implicit decls, int/pointer
+#   conversions) to hard errors that -w can't silence; -fpermissive demotes them.
+GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -include assert.h -w -O0 -g -m64 -fno-builtin"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
+# Drop a stale CMake cache generated under a different absolute path (e.g. from a
+# different container mount) so it reconfigures cleanly in the current env.
+if [ -f pc_port/build/CMakeCache.txt ] && \
+   ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$ROOT/pc_port" pc_port/build/CMakeCache.txt; then
+    echo "    (removing stale CMake cache)"; rm -rf pc_port/build
+fi
 cmake -S pc_port -B pc_port/build -DCMAKE_BUILD_TYPE=Debug >/dev/null
 cmake --build pc_port/build --target psycross -j"$(nproc)" >/dev/null
 PSYLIB="$(find pc_port/build -name 'libpsycross.a' | head -1)"
