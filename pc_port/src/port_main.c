@@ -27,6 +27,8 @@ extern int ResetGraph(int mode);
 extern void MainLoop(int errorCode);
 /* Port-side runtime build of the game-state dispatch table (game_overrides.c). */
 extern void PcPort_InitGameStates(void);
+/* Port-side one-time HeapInit the asm boot would have done (game_overrides.c). */
+extern void PcPort_HeapBoot(void);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -46,6 +48,10 @@ int main(int argc, char** argv) {
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
     ResetGraph(0);
+
+    /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
+     * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */
+    PcPort_HeapBoot();
 
     /* Oracle bootstrap: the real entry `start` (0x80019524) is still raw MIPS
      * asm, so we call the decompiled MainLoop() directly. It will run real game

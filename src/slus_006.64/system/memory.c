@@ -174,11 +174,15 @@ void* HeapAlloc(u_int allocSize, u_int allocFlags) {
     HeapBlock* pCurBlock;
 
     // Save address the called HeapAlloc
+#ifndef XENO_PC_PORT
     asm volatile(
         "move $t7, %0\n\t"
         "sw $ra, 0($t7)\n\t"
     :: "r"(&nCallerAddr));
-    
+#else
+    nCallerAddr = 0; /* native port: no MIPS $ra capture (debug source-addr only) */
+#endif
+
     nCallerAddr -= 8;
     g_HeapLastAllocSrcAddr = nCallerAddr;
     nCallerAddr = ((nCallerAddr << 7) >> 9);
@@ -368,10 +372,14 @@ u_int HeapFree(void* pMem) {
             return 1;
         }
         
+#ifndef XENO_PC_PORT
         asm volatile(
             "move $t7, %0\n\t"
             "sw $ra, 0($t7)\n\t"
         :: "r"(&nCallerAddr));
+#else
+        nCallerAddr = 0; /* native port: no MIPS $ra capture (debug source-addr only) */
+#endif
         g_HeapLastAllocSize = 0;
         g_HeapLastAllocSrcAddr = nCallerAddr - 8;
         MainLoop(ERR_HEAP_FREE_NULL);
@@ -755,10 +763,14 @@ void HeapDelayedFree(void* pMem, u_int delay) {
     mem_addr nCallerAddr;
     
     if (pMem == NULL) {
+#ifndef XENO_PC_PORT
         asm volatile(
             "move $t7, %0\n\t"
             "sw $ra, 0($t7)\n\t"
         :: "r"(&nCallerAddr));
+#else
+        nCallerAddr = 0; /* native port: no MIPS $ra capture (debug source-addr only) */
+#endif
         g_HeapLastAllocSize = 0;
         g_HeapLastAllocSrcAddr = nCallerAddr - 8;
         MainLoop(ERR_HEAP_FREE_NULL);

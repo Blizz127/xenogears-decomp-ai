@@ -77,7 +77,18 @@ extern int Sprintf(char* pStr, char* pFormat, ...);
 #define HEAP_DEBUG_PRINT_ALL 0xFFFFFFFF
 
 typedef struct {
+#ifdef XENO_PC_PORT
+    /* Native port: store the next-block link as a 32-bit PSX address rather than
+     * a host pointer. Emulated PSX RAM is linked below 4 GiB (build_port.sh
+     * -no-pie), so a host pointer round-trips through 32 bits losslessly. This
+     * also keeps sizeof(HeapBlock)==8 exactly as on PSX, which the allocator
+     * relies on via hardcoded header arithmetic (e.g. `pMem + 8` for the user
+     * pointer and `sizeof(HeapBlock)*2 == 0x10`); a 16-byte host struct would
+     * desync those offsets and corrupt the free list. */
+    mem_addr pNext;
+#else
     void* pNext;
+#endif
     u_int sourceAddress: 21;
     u_int userTag: 4;
     u_int isPinned: 1;
