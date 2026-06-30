@@ -32,6 +32,19 @@ extern void PcPort_HeapBoot(void);
 /* "Published by Square" splash, decompressed + drawn from the migrated EXE data. */
 extern void GameShowSplashScreen(void);
 
+/* Input wiring. The game reads its BIOS controller buffer g_C1Buffer directly
+ * (system/controller.c: ControllerGetButtonState reads [status,type,btn,btn] at
+ * stride 0x22). On PSX the BIOS auto-fills it each vblank after InitPAD/StartPAD;
+ * those are asm (bypassed boot) and PsyCross's InitPAD/PadRead are unimplemented.
+ * PsyCross's PADRAW layout (status,id,buttons[2],analog[4]) matches the game's
+ * buffer byte-for-byte, so we register g_C1Buffer's two pad slots with PsyX_Pad
+ * and enable pad comms here. The per-frame refresh (PsyX_UpdateInput +
+ * ControllerPoll) is driven from the Vsync shim in psyq_compat.c. */
+extern unsigned char g_C1Buffer[];
+extern void PsyX_Pad_InitPad(int slot, unsigned char* padData);
+extern int g_padCommEnable;
+#define PORT_CONTROLLER_BUFFER_SIZE 0x22
+
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
@@ -50,6 +63,11 @@ int main(int argc, char** argv) {
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
     ResetGraph(0);
+
+    /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */
+    PsyX_Pad_InitPad(0, &g_C1Buffer[0]);
+    PsyX_Pad_InitPad(1, &g_C1Buffer[PORT_CONTROLLER_BUFFER_SIZE]);
+    g_padCommEnable = 1;
 
     /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
      * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */

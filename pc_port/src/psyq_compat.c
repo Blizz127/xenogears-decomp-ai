@@ -73,5 +73,14 @@ int Vsync(int mode)
      * makes the present show everything drawn since the last frame. */
     DrawAllSplits();
     PsyX_EndScene();      /* present the frame the game just finished building */
+
+    /* Per-frame input, normally driven by the BIOS vblank IRQ + the game's main
+     * loop, both of which live in bypassed asm. PsyX_UpdateInput() polls SDL
+     * events and refreshes the registered pad buffer (g_C1Buffer) from the
+     * keyboard/gamepad; ControllerPoll() then folds that buffer into the game's
+     * g_C1ButtonState* edge/repeat state that the menus/field read. */
+    { extern void PsyX_UpdateInput(void); PsyX_UpdateInput(); }
+    { extern void ControllerPoll(void);   ControllerPoll();   }
+
     return VSync(mode);   /* then pace to the next vblank */
 }
