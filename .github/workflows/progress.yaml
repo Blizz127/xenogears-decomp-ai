@@ -1,0 +1,80 @@
+name: Progress Dashboard
+
+# Builds the matching decompilation, generates the objdiff progress report, renders
+# the self-contained dashboard (tools/scripts/progress_dashboard.py), and publishes
+# it to GitHub Pages -- a decomp.dev-style board for THIS fork alone.
+#
+# One-time setup in the repo settings:
+#   1. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#   2. The matching build needs the (copyrighted) game files; this reuses the same
+#      repository secrets as build.yaml: FILE_URL, FILE_URL_2..FILE_URL_5.
+# The board then lives at https://blizz127.github.io/xenogears-decomp-ai/
+
+on:
+  push:
+    branches: [ ai-private-main, main ]
+  workflow_dispatch:
+
+# Least-privilege token, plus what Pages deployment needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deployments at once; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -U -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y make binutils-mips-linux-gnu cpp-mips-linux-gnu
+
+      - name: Fetch game files
+        run: |
+          curl -L -o disc/SLUS_006.64 "${{ secrets.FILE_URL }}"
+          curl -L -o disc/movie.bin "${{ secrets.FILE_URL_2 }}"
+          curl -L -o disc/field.bin "${{ secrets.FILE_URL_3 }}"
+          curl -L -o disc/member_change_menu.bin "${{ secrets.FILE_URL_4 }}"
+          curl -L -o disc/shop_menu.bin "${{ secrets.FILE_URL_5 }}"
+
+      - name: Build (matching)
+        run: make build
+
+      - name: Generate progress report
+        run: make report
+
+      - name: Render dashboard
+        run: |
+          mkdir -p _site
+          python3 tools/scripts/progress_dashboard.py build/progress.json -o _site/index.html
+          cp build/progress.json _site/progress.json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
