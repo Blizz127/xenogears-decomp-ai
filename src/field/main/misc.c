@@ -173,7 +173,11 @@ void func_80087800(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087848);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087960);
+void func_80087960(void) {
+    FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)((u8*)g_pGameState + 0x1844));
+    FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), *(u16*)((u8*)g_pGameState + 0x1846));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 void func_800879D0(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), g_pGameState->unk184E);
@@ -641,7 +645,19 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CE64);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CED0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CF3C);
+s32 func_8008CF3C(s32 a0) {
+    switch (a0) {
+    case 0xFF:
+        return g_GamePartyMembers[2];
+    case 0xFE:
+        return g_GamePartyMembers[1];
+    case 0xFD:
+        return g_GamePartyMembers[0];
+    case 0xFC:
+        return 0xFF;
+    }
+    return a0;
+}
 
 void func_8008CF9C(void) {
     g_FieldScriptVMCurActor->faceId = func_8008CF3C(FieldScriptVMGetArgument(1));
