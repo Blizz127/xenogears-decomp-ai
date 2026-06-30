@@ -135,3 +135,51 @@ void* LZSSHeapDecompress(void* pCompressed, int flags)
     }
     return LZSSDecompress(pCompressed, pDst);
 }
+
+/* ---------------------------------------------------------------------------
+ * func_80036718 (asm/slus_006.64/26644.s:655) -- the font's printf-style text
+ * formatter that FontPrintf delegates to. The original is a 422-line custom
+ * printf that, per output character, calls func_800366F0 -> (*D_80050594) =
+ * FontAddLetterPrimitive (the glyph queuer, already decompiled in font.c).
+ *
+ * Functional re-implementation (not byte-matched): format with vsprintf, then
+ * queue each character's glyph directly via FontAddLetterPrimitive. FontPrintf
+ * does va_start then passes the va_list as the 3rd argument, so it arrives here
+ * as `args` (x86-64 passes a va_list by reference, matching the variadic decl).
+ * --------------------------------------------------------------------------- */
+#include <stdarg.h>
+#include <stdio.h>
+extern void FontAddLetterPrimitive(int letter);
+
+void func_80036718(int mode, char* format, va_list args)
+{
+    char buf[512];
+    char* p;
+    (void)mode;
+    vsprintf(buf, format, args);
+    for (p = buf; *p != '\0'; p++) {
+        FontAddLetterPrimitive((unsigned char)*p);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * func_800317E0 / func_80031804 (asm/slus_006.64/.../temp2 -- byte-identical):
+ * a fast addPrim that threads a primitive onto the head of an ordering table
+ * with tag length 3:  old = *ot;  *ot = addr(prim) & 0xFFFFFF;  *prim = old | (3<<24);
+ * FontDrawLetters' per-glyph loop calls this to link each queued letter's SPRT
+ * into the OT that DrawOTag walks. PSX OT links are 24-bit addresses; the
+ * emulated RAM is linked below 16 MiB (-no-pie) so the mask is lossless.
+ * --------------------------------------------------------------------------- */
+void func_800317E0(void* ot, void* prim)
+{
+    u32 old = *(u32*)ot;
+    *(u32*)ot = (u32)(uintptr_t)prim & 0xFFFFFF;
+    *(u32*)prim = old | 0x03000000;
+}
+
+void func_80031804(void* ot, void* prim)
+{
+    u32 old = *(u32*)ot;
+    *(u32*)ot = (u32)(uintptr_t)prim & 0xFFFFFF;
+    *(u32*)prim = old | 0x03000000;
+}
