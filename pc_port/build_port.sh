@@ -69,6 +69,22 @@ sed -i 's/switch (polyTag->code & 0xFD)/switch (polyTag->code \& 0xFC)/' \
 sed -i 's/const bool drawOnScreen = split.drawenv.dfe;/const bool drawOnScreen = true; \/* XENO_PC_PORT: dfe=0 is normal back-buffer draw; see build_port.sh *\//' \
     "$PSX/src/gpu/PsyX_GPU.cpp"
 
+# PsyCross bugfix (idempotent, grep-guarded so it inserts the pad field exactly
+# once). ClearOTag/ClearOTagR build the OT linked list by casting the caller's
+# array to OT_TAG* and striding by sizeof(OT_TAG). On PSX u_long is 4 bytes and
+# OT_TAG (addr:24,len:8) is also 4, so they coincide. In the port u_long is 8
+# bytes, so the game declares its OTs as 8-byte-strided u_long[] arrays (e.g.
+# RenderContext.ot3[8], field ot1/ot2[0x1000], menu ot[0x10]) and indexes/draws
+# them at 8-byte stride -- but ClearOTagR still wrote a 4-byte-strided list,
+# leaving the upper half of every slot zeroed. DrawOTag(ot3+7) then read slot 7
+# at byte 56 (zero) -> addr=0 (not the 0xffffff terminator) -> walked to null ->
+# SIGSEGV in ParsePrimitivesLinkedList. Pad OT_TAG to the host u_long size so
+# ClearOTag(R)'s stride matches the game's u_long[] OTs. (Port is always built
+# non-extended; OT_TAG is only used by ClearOTag(R) + the unused prim_terminator.)
+grep -q "_xeno_ot_pad" "$PSX/include/psx/libgpu.h" || \
+sed -i 's|^} OT_TAG;|\tu_int _xeno_ot_pad; /* XENO_PC_PORT: pad OT slot to host u_long (8B) so ClearOTag(R) stride matches the game'"'"'s u_long[] OTs; see build_port.sh */\n} OT_TAG;|' \
+    "$PSX/include/psx/libgpu.h"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.

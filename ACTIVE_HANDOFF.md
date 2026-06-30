@@ -39,17 +39,39 @@ With those, **FieldMain now runs its entire setup and enters the main loop**
 - Field now runs the init through render-context setup (`ClearImage`/`PutDrawEnv`/
   `PutDispEnv` work) and reaches `FieldDisplay`.
 
-## The frontier (start here next): field render OT — FieldDisplay → DrawOTag
-`func_80078D44 → func_800A5884 (misc5.c:108) → FieldDisplay (misc5.c:139) →
-DrawOTag(g_FieldCurRenderContext->ot3 + 7) → ParsePrimitivesLinkedList SIGSEGV`
-in PsyCross (PsyX_GPU.cpp:824). This happens BEFORE FieldLoad (the early render).
-The field's ordering-table walk hits a bad next-pointer. g_FieldRenderContexts is
-correctly sized (0x203D0 = 2× PSX, from the pointer-widening fix), and ot3 is
-ClearOTagR'd by FieldClearAndSwapOTag — so suspect: a primitive added by
-func_800A5884/FieldDisplay with a bad addr, or a u_long(8-byte) OT vs PsyCross
-P_TAG mismatch. The KernelMenu's DrawOTag works, so compare its OT setup. This is
-render-pipeline OT integration (PsyCross). FieldLoad (g_FieldActors) is the
-frontier AFTER this.
+## DONE: field render OT — FieldDisplay → DrawOTag (OT_TAG stride fix)
+The early-render crash `FieldDisplay (misc5.c:139) → DrawOTag(ot3+7) →
+ParsePrimitivesLinkedList SIGSEGV` was an **OT slot stride mismatch** between the
+game and PsyCross, NOT a bad prim from FieldDisplay.
+- PsyCross's `ClearOTag`/`ClearOTagR` (LIBGPU.C) build the OT linked list by casting
+  the array to `OT_TAG*` and striding by `sizeof(OT_TAG)`. `OT_TAG` is `{addr:24,
+  len:8}` = **4 bytes**. On PSX `u_long` is also 4 bytes so they coincide.
+- In the 64-bit port `u_long` is **8 bytes**, so the game's OT arrays
+  (`RenderContext.ot3[8]`, `ot1`/`ot2[0x1000]`, menu `ot[0x10]`) are 8-byte-strided
+  and the game indexes/draws them that way (`DrawOTag(ot3 + 7)` = byte 56).
+  `ClearOTagR` wrote a 4-byte-strided list (only bytes 0–31), leaving slots 4–7 (the
+  upper half) **zeroed**. Confirmed by dumping ot3: slots 0–7 linked at +0/+4/+8…/+28,
+  bytes 32–63 all `0x00000000`. `DrawOTag(ot3+7)` read slot 7 at byte 56 → `addr=0`
+  (not the `0xffffff` terminator) → walked to null → SIGSEGV.
+- **Fix (build_port.sh, idempotent grep-guarded sed):** pad PsyCross's `OT_TAG` to the
+  host `u_long` size (8 B) so `ClearOTag(R)`'s stride matches the game's `u_long[]` OTs.
+  General fix — also unblocks the in-game menu's `ot[0x10]` and battle OTs later.
+- The KernelMenu was unaffected because it uses a **single-element** OT (`TermPrim` +
+  `AddPrim`), never the array stride. Verified: field passes two full
+  `FieldDisplay`/`DrawOTag` iterations; KernelMenu still reaches the sustained loop.
+
+## The frontier (start here next): field heap — HeapConsolidate during func_800A5774
+After the OT fix the render advances into the zoom-fade effect:
+`func_80078D44 → func_800A5884 (misc5.c:113) → func_800A5774(704,256,224) →
+HeapAlloc(0x7000,1) → HeapConsolidate (memory.c:342) SIGSEGV`.
+`HeapConsolidate` walks the free list and dereferences `pOther[-1].userTag` where
+`pOther = pCurrent->pNext` is a corrupt/garbage block pointer — i.e. the heap free
+list was corrupted by an earlier field-path operation (this is the first time
+`g_HeapNeedsConsolidation` is exercised on the field path; the KernelMenu path never
+trips it). `func_800A5774` itself is innocent (`HeapAlloc(h*0x80)` then StoreImage/
+LoadImage/HeapFree). Next: find which earlier field alloc/free corrupts a `pNext`
+(suspect a too-small data stub OOB-writing, or a pointer-width issue in a field
+allocation). FieldLoad (g_FieldActors) is the frontier AFTER this.
 
 ## (later) field initial map load — func_80078D44 → FieldLoad
 `FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`
