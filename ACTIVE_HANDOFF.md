@@ -15,33 +15,35 @@ _Last updated: 2026-06-30. Canonical roadmap lives in the `pc-port-phases` memor
 
 Reproduce: `cd pc_port/build_native && XENO_KERNEL_SEL=0 ./xeno-port`
 
-## DONE since: stub sizing (commit ffe5b5a)
-`gen_port_stubs.py` now sizes data stubs from `symbol_addrs` `size:` annotations
-(`max(elf_size, symaddr_size, 16)`); `build_port.sh` passes the four symbol_addrs
-files. 10 stubs resized, `g_GameState` → 0x2300, so `partyMembers` (offset 0x1D34)
-no longer reads out of bounds. Necessary infra fix, broadly useful — but it did
-not by itself unblock the field (the alloc size below was the same before/after,
-because the OOB read happened to land on zeroed memory).
+## DONE: stub sizing + 64-bit pointer widening (commits 3c072b8, + this batch)
+- `gen_port_stubs.py` sizes data stubs from `symbol_addrs` `size:` annotations, then
+  **doubles** them: PSX sizes assume 4-byte pointers but the 64-bit port widens them
+  to 8, so `void*[3]` (12 B on PSX) needs 24, and pointer-heavy structs up to 2x.
+  Fixed `g_GameState`→0x2300 (was 16; `partyMembers`@0x1D34 was OOB) and the party
+  pointer-arrays `g_PartyDataBuffers`/`g_PartyStreamDataPointers`/`g_PartyStreamDataQueue`.
+- Field debug-entry harness (`XENO_FIELD_TEST`, port_main.c): sets `ArchiveSetIndex(4,0)`
+  — the party-skin archive directory the new-game flow establishes — so the debug
+  field entry's `GamePartyCharactersInitializeSkins` resolves sane sizes.
 
-## The frontier (start here next): game-state / party + archive-context init
-`FieldMain → GamePartySyncSkinData → GamePartyCharactersInitializeSkins (temp3.c:76)
-→ HeapAlloc(6143680 ≈ 6 MB) FAILS → GameHandleError(130) hangs.`
+With those, **FieldMain now runs its entire setup and enters the main loop**
+(`[FieldMain] entering main loop`), executing loop-body stubs.
 
-The KernelMenu→Field debug path enters with a **zeroed g_GameState** and **no archive
-directory set**, neither of which the normal new-game/save-load entry would leave:
-- `partyMembers[]` are all 0 → every slot treated as character 0 (CHARACTER_ID_NONE=0xFF).
-- `ArchiveDecodeAlignedSize(member0 + 5)` → `ArchiveDecodeSize(5)` reads
-  `g_ArchiveTable[(5 + g_CurArchiveOffset − 1) * 7]`. `g_CurArchiveOffset` is not the
-  party-skin directory (the normal flow sets it via `ArchiveSetIndex`), so it reads
-  the wrong table entry → 6 MB → alloc fail.
+## The frontier (start here next): field map-loading pipeline (g_FieldActors)
+`FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`
+because **`g_FieldActors` is NULL**. It's allocated/set by **`FieldLoad`** (the field
+map/scene loader, `asm/field/.../misc3/FieldLoad.s`, writes g_FieldActors @ misc3.s:1451),
+which never runs because the loop's map-load drivers are stubs:
+`func_80077DAC`, `func_8007554C`, `func_800A5924`, `func_80078BC8`, and the
+render-context dispatch.
 
-### Next steps (do NOT fake party IDs — fix the underlying setup)
-1. Find where the real game initializes the game state / party + selects the
-   party-skin archive directory before the field runs (new-game path / the field
-   debug entry's own setup). Port/invoke that so `g_GameState.partyMembers[]` and
-   `g_CurArchiveOffset` are valid.
-2. Then oracle-iterate FieldMain's remaining ~33 stub callees in the order it
-   reveals; bring up the field map/actor/render pipeline.
+### Next steps
+1. Decompile/port the field map-load path: the loop drivers above + `FieldLoad`
+   (allocates g_FieldActors, loads the map/actors/walkmesh). This is the core field
+   subsystem; expect it to pull in actor data, TIM/texture, and model loading.
+2. Run `XENO_KERNEL_SEL=0 XENO_FIELD_TEST=1` and oracle-iterate from there.
+
+## Reproduce
+`cd pc_port/build_native && XENO_KERNEL_SEL=0 XENO_FIELD_TEST=1 ./xeno-port`
 
 ## Rules in effect
 One reversible change at a time; stop at each frontier; no fake field load; no permanent hardcoded mode without proof.

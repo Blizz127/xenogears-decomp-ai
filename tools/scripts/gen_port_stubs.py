@@ -131,13 +131,18 @@ def main():
         elif info[0]:  # is_func
             funcs.append((n, info[1]))
         else:
-            # NOTYPE/OBJECT data; the ELF symbol table often records size 0, so
-            # take the largest of the ELF size, the symbol_addrs `size:` (the only
-            # reliable struct size), and a 16-byte floor (covers pointer globals).
-            sz = max(info[1], sym_sizes.get(n, 0), 16)
+            # NOTYPE/OBJECT data. Base size = largest of the ELF size, the
+            # symbol_addrs `size:` (the only reliable struct size), and a 16-byte
+            # floor. Then DOUBLE it: all these sizes describe the 32-bit PSX layout
+            # (4-byte pointers), but the 64-bit port widens every pointer to 8 bytes,
+            # so a void*[3] (12 bytes on PSX) needs 24, and a pointer-heavy struct
+            # up to 2x. Doubling is the safe upper bound (pointer-only data is exactly
+            # 2x; byte/int data merely over-reserves zeroed memory). Without this,
+            # e.g. g_PartyDataBuffers[2] reads off the end of its stub.
+            base = max(info[1], sym_sizes.get(n, 0), 16)
             if sym_sizes.get(n, 0) > max(info[1], 16):
                 resized += 1
-            data.append((n, sz))
+            data.append((n, base * 2))
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w") as f:
