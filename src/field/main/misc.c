@@ -729,7 +729,17 @@ void FieldActorCopyPlacement(int dstActorId, int srcActorId) {
     CopyActorFieldS32(g_FieldActors, dstActorId, srcActorId, offsetof(FieldActor, transformMatrix.t[2]));
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D570);
+extern s32 D_8005A444[];
+extern u8 D_800B219F;
+
+void func_8008D570(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        if (D_8005A444[i] == D_800AFD1C) {
+            D_800B219F &= ~(1 << i);
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D5C8);
 

@@ -44,7 +44,18 @@ void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070488);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070508);
+extern s32 D_800ADB60;
+extern void* D_800ADC14;
+
+void func_80070508(void) {
+    if (D_800ADB60 == 1) {
+        ArchiveCdDataSync(0);
+        DrawSync(0);
+        HeapFree(D_800ADC14);
+        D_800ADB60 = 0;
+    }
+    func_80078C5C();
+}
 
 void func_80070560(s32* dest, s16* src) {
     dest[0] = src[0] << 16;
