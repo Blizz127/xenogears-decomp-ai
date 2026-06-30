@@ -1633,7 +1633,11 @@ u8* SoundScriptAddUnk6E(u8* pScript, AudioManager* pAudioManager, AudioElement* 
     return pScript + 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D79C);
+u8* func_8003D79C(u8* a0, s32 a1, void* a2) {
+    *(u16*)((u8*)a2 + 0x6E) += (s8)a0[0] << 3;
+    *(u16*)((u8*)a2 + 0x2) |= 0x200;
+    return a0 + 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7C8);
 
