@@ -1910,7 +1910,9 @@ void SoundStopVoiceOnChannel(SoundVoiceData* voiceData, u32 channelIndex) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003EFE4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F190);
+void func_8003F190(u16* arg0) {
+    arg0[0xF] &= 0xFFFE;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F1A4);
 
@@ -1926,7 +1928,11 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F354);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F3C0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F42C);
+extern s32 D_800594E4;
+
+void func_8003F42C(s32 arg0) {
+    D_800594E4 = arg0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F43C);
 

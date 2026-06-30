@@ -10,7 +10,12 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B5D0);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B8B0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA40);
+extern s32 D_8004FE00;
+extern s32 D_8004FDFC;
+
+void func_8002BA40(void) {
+    D_8004FDFC = D_8004FE00;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
 
@@ -20,7 +25,11 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BF38);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C310);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C3D8);
+extern u32 g_ArchiveDebugTable;
+
+u32 func_8002C3D8(void) {
+    return g_ArchiveDebugTable;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C3E8);
 
@@ -96,7 +105,11 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DD20);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DFE0);
+extern u8 D_8006FAF0[];
+
+void* func_8002DFE0(void) {
+    return D_8006FAF0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DFF0);
 

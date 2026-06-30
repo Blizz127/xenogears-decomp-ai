@@ -26,9 +26,17 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023124);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023170);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800231E0);
+s32 func_800231E0(u8* a0) {
+    s32 p = *(s32*)(a0 + 0xC);
+    p += (s32)a0;
+    return *(s32*)p;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800231F8);
+s32 func_800231F8(u8* a0) {
+    s32 p = *(s32*)(a0 + 0xC);
+    p += (s32)a0;
+    return *(s32*)(p + 4) + 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", AnimScriptTick);
 /*
@@ -177,11 +185,11 @@ void GfxFreeWorkBuffers(void) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", GfxSetCurrentOT);
-/*void GfxSetCurrentOT(u_long* ot) {
+extern u_long* g_GfxCurOT;
+
+void GfxSetCurrentOT(u_long* ot) {
     g_GfxCurOT = ot;
 }
-*/
 
 
 
