@@ -688,7 +688,16 @@ void func_800A0DFC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0E54);
+extern s32 D_800ADB74;
+
+void func_800A0E54(void) {
+    if (D_800ADB74 == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 extern s32 D_800ADB84;
 

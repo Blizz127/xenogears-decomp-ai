@@ -78,7 +78,15 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098430);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800984EC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800985BC);
+extern u8 D_8006FD1C[];
+
+void func_800985BC(void) {
+    if (g_FieldSystemMode == 0) {
+        s32 v = FieldScriptVMGetVariableValue(FieldScriptVMGetInstructionArgument(1) & 0xFFFF);
+        func_800379C8(D_8006FD1C, v, v);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009861C);
 
@@ -540,7 +548,21 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B184);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B210);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B338);
+extern s32 D_800B2360;
+extern s32 D_800B2364;
+extern s32 D_800B2368;
+extern u8 D_800B21CE;
+
+void func_8009B338(void) {
+    s32 i;
+    D_800B2368 = 0;
+    D_800B2364 = 0;
+    D_800B2360 = 0;
+    D_800B21CE = 0;
+    for (i = 0; i < 0x20; i++) {
+        func_80081C54(g_PlayerActorIndex);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B398);
 
