@@ -32,6 +32,12 @@ MenuInitializeGfxEnvironments = 0x8001BE14;
 func_8001BEEC = 0x8001BEEC;
 MenuProcessControllerInput = 0x8001BF38;
 MenuExecute = 0x8001C1A8;
+// MenuExecute is decompiled to C (nonmatching), so GCC emits its own switch jump
+// tables and these original hand-data tables are dead. Declare them as plain u32
+// data so gears emits literal word values instead of symbolic `.word .L8001Cxxx`
+// references to case-target labels that no longer exist (which broke the link).
+jtbl_800183A4 = 0x800183A4; // type:u32 size:0x18
+jtbl_800183BC = 0x800183BC; // type:u32 size:0x1C
 MenuMain = 0x8001C634;
 
 // Work List
