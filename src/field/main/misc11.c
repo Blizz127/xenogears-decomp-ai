@@ -558,9 +558,31 @@ void func_80094C8C(void) {
     func_80072254(D_800AFD1C);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094CFC);
+s32 func_80094CFC(void) {
+    s32 i;
+    for (i = 0; i < 0x96; i++) {
+        if (((u8*)g_pGameState)[0x1F90 + i] == 0) {
+            return i;
+        }
+        if (((u8*)g_pGameState)[0x2026 + i] == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094D4C);
+s32 func_80094D4C(void) {
+    s32 i;
+    for (i = 0; i < 0x64; i++) {
+        if (((u8*)g_pGameState)[0x1D38 + i] == 0) {
+            return i;
+        }
+        if (((u8*)g_pGameState)[0x1D9C + i] == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80094D9C);
 

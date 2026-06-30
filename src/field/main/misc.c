@@ -481,7 +481,18 @@ void func_8008A520(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A558);
+extern s32 D_800ADB2C;
+
+s32 func_8008A558(void) {
+    if (D_800ADB2C != 0) {
+        return -1;
+    }
+    if (ArchiveDataSync() != 0) {
+        return -1;
+    }
+    ArchiveCdDataSync(0);
+    return 0;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A5A0);
 

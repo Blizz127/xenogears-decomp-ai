@@ -352,7 +352,9 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B614);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B694);
+s32 func_8007B694(s32* arg0) {
+    return -ratan2(arg0[2], arg0[0]) & 0xFFF;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B6C4);
 
