@@ -33,6 +33,13 @@ file(GLOB_RECURSE PSYCROSS_SRCS CONFIGURE_DEPENDS
 
 add_library(psycross STATIC ${PSYCROSS_SRCS})
 
+# Use the simple (non-PGXP) primitive pipeline. MUST match the game/port build's
+# -DUSE_EXTENDED_PRIM_POINTERS=0 (see pc_port/build_port.sh) or the SPRT/POLY
+# struct layouts diverge between the lib and the game TUs. The default extended/
+# PGXP path routes 2D primitives through a perspective/offscreen path that does
+# not render in this integration.
+target_compile_definitions(psycross PRIVATE USE_EXTENDED_PRIM_POINTERS=0)
+
 # PsyCross is Windows-first. On Linux/gcc, force-include a compat shim (by
 # absolute path so it isn't shadowed by PsyCross's own include/psx/strings.h)
 # and relax C++ narrowing/format diagnostics, rather than patch vendored sources.
