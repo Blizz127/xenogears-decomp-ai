@@ -103,7 +103,12 @@ void func_80086FD0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087148);
+void func_80087148(void) {
+    s32 a = FieldScriptVMGetArgument(1);
+    s32 b = FieldScriptVMGetArgument(3);
+    *(u16*)((u8*)g_pGameState + a * 0x20 + 0x16DA) |= b;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800871B0);
 

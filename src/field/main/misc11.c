@@ -87,7 +87,17 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092EA0);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092F44);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092FB4);
+extern s32 D_800ADBD8;
+extern s32 D_800B0064;
+
+void func_80092FB4(void) {
+    if (D_800ADBD8 != 0) {
+        g_FieldControl.controllerBtnMask = -1;
+        D_800ADBD8 = 0;
+        D_800B0064 = FieldScriptVMGetArgument(1);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093014);
 
