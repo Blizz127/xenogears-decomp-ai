@@ -13,7 +13,13 @@ extern s32 g_PlayerActorIndex;
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091944);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A08);
+void func_80091A08(void) {
+    *(s16*)((u8*)&g_Scene + 0x4C) = FieldScriptVMGetInstructionArgumentS16(1);
+    *(s16*)((u8*)&g_Scene + 0x4E) = FieldScriptVMGetInstructionArgumentS16(3);
+    *(s16*)((u8*)&g_Scene + 0x50) = FieldScriptVMGetInstructionArgumentS16(5);
+    *(s16*)((u8*)&g_Scene + 0x52) = -FieldScriptVMGetInstructionArgumentS16(7);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 extern u8 D_800B219C;
 extern u8 D_800B219D;
@@ -85,7 +91,14 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092DFC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092EA0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092F44);
+extern s32 g_GameSceneMapNum;
+
+void func_80092F44(void) {
+    FieldScriptMemoryWriteU16(4, g_GameSceneMapNum & 0x3FFF);
+    FieldScriptMemoryWriteU16(6, FieldGetPlayerActorDirection() & 0xFFFF);
+    FieldScriptMemoryWriteU16(8, FieldGetCameraDirection() & 0xFFFF);
+    FieldScriptMemoryWriteU16(0x12, (s16)(FieldScriptVMGetVariableValue(0x12) + 1));
+}
 
 extern s32 D_800ADBD8;
 extern s32 D_800B0064;
