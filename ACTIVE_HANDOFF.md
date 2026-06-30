@@ -28,19 +28,33 @@ Reproduce: `cd pc_port/build_native && XENO_KERNEL_SEL=0 ./xeno-port`
 With those, **FieldMain now runs its entire setup and enters the main loop**
 (`[FieldMain] entering main loop`), executing loop-body stubs.
 
-## The frontier (start here next): field map-loading pipeline (g_FieldActors)
+## The frontier (start here next): field initial map load — func_80078D44 → FieldLoad
 `FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`
-because **`g_FieldActors` is NULL**. It's allocated/set by **`FieldLoad`** (the field
-map/scene loader, `asm/field/.../misc3/FieldLoad.s`, writes g_FieldActors @ misc3.s:1451),
-which never runs because the loop's map-load drivers are stubs:
-`func_80077DAC`, `func_8007554C`, `func_800A5924`, `func_80078BC8`, and the
-render-context dispatch.
+because **`g_FieldActors` is NULL** — the map was never loaded. Traced the exact path:
+
+- **`func_80078D44`** (365 lines, `asm/field/.../misc4/func_80078D44.s`) is the field-init
+  orchestrator. FieldMain calls it UNCONDITIONALLY in setup (main.c:223-ish). It calls
+  **`FieldLoad`** (at 0x80078E80) plus the render/texture bring-up:
+  `FieldInitializeRenderContexts`, `FieldDisplay`, `FieldImageConvert24BitTo15Bit`,
+  `MoveImage`, `FieldLoadTIM`, `func_80070488`, `func_800A24C4`, etc.
+- **`FieldLoad`** (904 lines, `asm/field/.../misc3/FieldLoad.s`) is the map parser: it
+  HeapAllocs + `FieldLZSSDecompress`es the map's sections and **sets g_FieldActors**
+  (misc3.s:1451). No archive streaming needed (good).
+- The in-field scene-transition state machine `func_800A5924` (driven by `D_800ADB38`)
+  is a DIFFERENT path (early-exits when D_800ADB38==0); not the initial load.
+
+This is a large COHERENT slice (~1300 lines core + texture/render callees) that must be
+ported as a unit before anything observable changes — single functions won't validate
+(porting func_80078D44 with FieldLoad still stubbed leaves g_FieldActors NULL → same
+crash). It's the heart of the field: map parse → actors/walkmesh + TIM textures (VRAM
+via PsyCross) + render-context setup.
 
 ### Next steps
-1. Decompile/port the field map-load path: the loop drivers above + `FieldLoad`
-   (allocates g_FieldActors, loads the map/actors/walkmesh). This is the core field
-   subsystem; expect it to pull in actor data, TIM/texture, and model loading.
+1. Port `func_80078D44` + `FieldLoad` together (+ the map-parse/texture/render callees
+   they pull in). Expect to bring up TIM/texture loading to VRAM and the field render
+   context. Multi-session; budget for it.
 2. Run `XENO_KERNEL_SEL=0 XENO_FIELD_TEST=1` and oracle-iterate from there.
+   (XENO_FIELD_TEST sets the party-skin archive dir; still a stand-in for new-game init.)
 
 ## Reproduce
 `cd pc_port/build_native && XENO_KERNEL_SEL=0 XENO_FIELD_TEST=1 ./xeno-port`
