@@ -25,6 +25,18 @@ env:
 on:
   push:
     branches: [ ai-private-main, main ]
+    # Only rebuild the board when something that affects the matching % changes,
+    # so port/doc/CI-only pushes don't burn CI minutes on the heavy build.
+    paths:
+      - 'src/**'
+      - 'asm/**'
+      - 'include/**'
+      - 'config/**'
+      - 'linker/**'
+      - 'gears.toml'
+      - 'objdiff.json'
+      - 'Makefile'
+      - '.github/workflows/progress.yaml'
   workflow_dispatch:
 
 # Only checkout needs the default token; the cross-repo push uses BOARD_DEPLOY_TOKEN.
