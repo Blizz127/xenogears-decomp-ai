@@ -58,6 +58,17 @@ GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EX
 sed -i 's/switch (polyTag->code & 0xFD)/switch (polyTag->code \& 0xFC)/' \
     "$PSX/src/gpu/PsyX_GPU.cpp"
 
+# PsyCross bugfix (idempotent). DrawSplit() routes a split off-screen (to the
+# render-to-VRAM offscreen RT, which never reaches the presented framebuffer)
+# whenever the PSX "draw to display area" flag dfe (GP0(E1) bit 10) is 0. But
+# dfe=0 is just normal back-buffer drawing on PSX: Xenogears' font issues a
+# DR_TPAGE with dfe=0 (font.c SetDrawTPage(...,0,0,...)), so every KernelMenu/UI
+# glyph after it was drawn off-screen and never seen (the cursor/background use
+# dfe=1 and rendered). This title doesn't use the render-to-VRAM path at this
+# stage, so always draw on-screen.
+sed -i 's/const bool drawOnScreen = split.drawenv.dfe;/const bool drawOnScreen = true; \/* XENO_PC_PORT: dfe=0 is normal back-buffer draw; see build_port.sh *\//' \
+    "$PSX/src/gpu/PsyX_GPU.cpp"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
