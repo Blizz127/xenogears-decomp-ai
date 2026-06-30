@@ -96,12 +96,15 @@ while IFS= read -r f; do
     else
         skipped=$((skipped+1)); SKIPPED="$SKIPPED $f"
     fi
-done < <(find src -name '*.c' | grep -v '/psyq/' | sort)
+# src/.../system/archive.c is excluded: the port replaces its async CD state
+# machine with a synchronous PsyCross-libcd read in pc_port/src/archive_port.c
+# (ArchiveReadFile). Its other (async/stream) symbols become no-op stubs.
+done < <(find src -name '*.c' | grep -v '/psyq/' | grep -v '/system/archive\.c$' | sort)
 echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c; do
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/archive_port.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c; do
     o="$OBJ/$(basename "$pf").o"
     if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
         GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
