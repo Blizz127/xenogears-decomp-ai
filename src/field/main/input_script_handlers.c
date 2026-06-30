@@ -3,6 +3,7 @@
 #include "field/script_vm.h"
 
 extern u16 D_800AFC6C; // Held buttons state?
+extern u16 D_800AFE9C;
 
 void FieldScriptVMCheckControllerInput(u_short buttonState) {
     u_short nButtonMask;
@@ -26,28 +27,24 @@ void FieldScriptCheckControllerInputExact(u_short buttonState) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/input_script_handlers", func_80096150);
-/*
-void func_80096150(u_short targetButtonState) {
-    FieldScriptCheckControllerInputExact(targetButtonState);
+void func_80096150(void) {
+    FieldScriptCheckControllerInputExact(D_800AFE9C);
 }
-*/
 
-INCLUDE_ASM("asm/field/nonmatchings/main/input_script_handlers", func_80096178);
-/*
 void func_80096178(void) {
     FieldScriptCheckControllerInputExact(D_800AFC6C);
 }
-*/
 
 // Is button pressed handler
-INCLUDE_ASM("asm/field/nonmatchings/main/input_script_handlers", func_800961A0);
-/*
 void func_800961A0(void) {
     FieldScriptVMCheckControllerInput(D_800AFE9C);
 }
-*/
 
-INCLUDE_ASM("asm/field/nonmatchings/main/input_script_handlers", func_800961C8);
+void func_800961C8(void) {
+    FieldScriptVMCheckControllerInput(D_800AFC6C);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/input_script_handlers", func_800961F0);
+void func_800961F0(void) {
+    D_800AFC6C = 0;
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+}
