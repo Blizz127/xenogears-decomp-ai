@@ -26,19 +26,38 @@ void FieldRenderSync(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldLoadUITextures);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_800777DC);
+extern s32 g_GameSceneMapNum;
+
+void func_800777DC(void) {
+    ArchiveCdDataSync(0);
+    while (func_8001B484((g_GameSceneMapNum & 0xFFF) << 1, 0) != 0) {
+    }
+}
 
 void FieldUpdateDeltaTime(void) {
     g_FrameDeltaTime = Vsync(1);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077844);
+void func_80077844(short* dst, short a, short b, short c, short d, short e, short f, short g, short h, short i) {
+    dst[0] = a;
+    dst[1] = b;
+    dst[2] = c;
+    dst[3] = d;
+    dst[4] = e;
+    dst[5] = f;
+    dst[6] = g;
+    dst[7] = h;
+    dst[8] = i;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077884);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077AB4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077C60);
+void func_80077C60(void) {
+    func_80077884();
+    func_80077AB4();
+}
 
 extern void* g_PartyDataBuffers[];
 
