@@ -60,18 +60,32 @@ game and PsyCross, NOT a bad prim from FieldDisplay.
   `AddPrim`), never the array stride. Verified: field passes two full
   `FieldDisplay`/`DrawOTag` iterations; KernelMenu still reaches the sustained loop.
 
-## The frontier (start here next): field heap — HeapConsolidate during func_800A5774
-After the OT fix the render advances into the zoom-fade effect:
-`func_80078D44 → func_800A5884 (misc5.c:113) → func_800A5774(704,256,224) →
-HeapAlloc(0x7000,1) → HeapConsolidate (memory.c:342) SIGSEGV`.
-`HeapConsolidate` walks the free list and dereferences `pOther[-1].userTag` where
-`pOther = pCurrent->pNext` is a corrupt/garbage block pointer — i.e. the heap free
-list was corrupted by an earlier field-path operation (this is the first time
-`g_HeapNeedsConsolidation` is exercised on the field path; the KernelMenu path never
-trips it). `func_800A5774` itself is innocent (`HeapAlloc(h*0x80)` then StoreImage/
-LoadImage/HeapFree). Next: find which earlier field alloc/free corrupts a `pNext`
-(suspect a too-small data stub OOB-writing, or a pointer-width issue in a field
-allocation). FieldLoad (g_FieldActors) is the frontier AFTER this.
+## DONE: field heap corruption — FieldImageConvert24BitTo15Bit u_long overflow
+The `HeapConsolidate` SIGSEGV (during `func_800A5774`'s HeapAlloc, walking a free
+list with a garbage `pNext`) was traced with a gdb hardware watchpoint to its
+origin: `FieldImageConvert24BitTo15Bit` (misc5.c) overflowing its `pImage15Bit`
+buffer into adjacent heap block headers.
+- The convert loop runs `0x1C00` (7168) times doing `*g_Field15BitImageData = ...;
+  g_Field15BitImageData += 1`. `g_Field15BitImageData` is `u_long*`; on PSX
+  `u_long`=4 B so 7168×4 = `0x7000` exactly fills the `HeapAlloc(0x7000)` buffer.
+  In the 64-bit port `u_long`=8 B → 7168×8 = `0xE000`, writing `0x7000` bytes PAST
+  the buffer into the next blocks' headers (corrupting a `pNext` to e.g. `0x2a74`,
+  which HeapConsolidate later followed off the heap). The 24-bit *read* side
+  (`g_Field24BitImageData`) was broken the same way.
+- **Fix (matching-safe):** typed these image buffers as `u32` instead of `u_long`
+  (misc5.c) so the deref/stride stays 4 bytes. `u32`≡`u_long`≡4 B on the MIPS
+  target → byte-identical codegen, matching preserved; correct in the port.
+- Same class as the OT fix — a `u_long` 8-byte widening port-ism. Watch for more.
+- Verified: field now clears the convert pass, runs the rest of `func_80078D44`,
+  and **enters the FieldMain main loop** (`[FieldMain] entering main loop`).
+  KernelMenu still reaches the sustained loop (exit 124).
+
+## The frontier (start here next): field initial map load — FieldLoad (g_FieldActors NULL)
+With the heap fixed, FieldMain reaches its main loop and crashes at the
+previously-scoped spot: `FieldMain main.c:395 → FIELD_ACTOR_FLAGS(g_PlayerActorIndex)
+→ SIGSEGV` because **`g_FieldActors` is NULL** — `FieldLoad` (the map parser at
+0x80078E80, called by `func_80078D44`) is still a `[stub]` so the map/actors were
+never loaded. This is the large coherent slice scoped below.
 
 ## (later) field initial map load — func_80078D44 → FieldLoad
 `FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`
