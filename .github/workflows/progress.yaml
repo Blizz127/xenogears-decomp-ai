@@ -2,36 +2,42 @@ name: Progress Dashboard
 
 # Builds the matching decompilation, generates the objdiff progress report, renders
 # the self-contained dashboard (tools/scripts/progress_dashboard.py), and publishes
-# it to GitHub Pages -- a decomp.dev-style board for THIS fork alone.
+# it to a SEPARATE PUBLIC repo's gh-pages branch. This keeps THIS decomp repo
+# private while the board is public on GitHub Pages -- a decomp.dev-style board for
+# this fork alone, distinct from the upstream Xenogears project.
 #
-# One-time setup in the repo settings:
-#   1. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
-#   2. The matching build needs the (copyrighted) game files; this reuses the same
-#      repository secrets as build.yaml: FILE_URL, FILE_URL_2..FILE_URL_5.
-# The board then lives at https://blizz127.github.io/xenogears-decomp-ai/
+# One-time setup:
+#   1. Create a public repo to host the board, e.g. Blizz127/xenogears-progress
+#      (a bare repo with just a README is fine).
+#   2. Create a fine-grained Personal Access Token scoped to ONLY that board repo
+#      with "Contents: Read and write", and add it to THIS repo as the secret
+#      BOARD_DEPLOY_TOKEN (Settings -> Secrets and variables -> Actions).
+#   3. The matching build needs the (copyrighted) game files; this reuses the same
+#      secrets as build.yaml: FILE_URL, FILE_URL_2..FILE_URL_5.
+#   4. After the first run pushes the gh-pages branch, in the BOARD repo set
+#      Settings -> Pages -> Source: "Deploy from a branch" -> gh-pages / (root).
+#   The board then lives at https://blizz127.github.io/xenogears-progress/
+#
+# To point at a different board repo, edit BOARD_REPO below.
+env:
+  BOARD_REPO: Blizz127/xenogears-progress
 
 on:
   push:
     branches: [ ai-private-main, main ]
   workflow_dispatch:
 
-# Least-privilege token, plus what Pages deployment needs.
+# Only checkout needs the default token; the cross-repo push uses BOARD_DEPLOY_TOKEN.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Never run two Pages deployments at once; let an in-flight one finish.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: progress-dashboard
+  cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,12 +75,14 @@ jobs:
           mkdir -p _site
           python3 tools/scripts/progress_dashboard.py build/progress.json -o _site/index.html
           cp build/progress.json _site/progress.json
+          touch _site/.nojekyll
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish to public board repo
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: _site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          personal_token: ${{ secrets.BOARD_DEPLOY_TOKEN }}
+          external_repository: ${{ env.BOARD_REPO }}
+          publish_branch: gh-pages
+          publish_dir: ./_site
+          force_orphan: true
+          commit_message: "progress: ${{ github.sha }}"
