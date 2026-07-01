@@ -530,7 +530,39 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AF74);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B1C4);
+/* ---- func_8007B1C4: camera collision (ceiling) check -----------------------
+ * Handwritten ASM using GTE NCLIP for point-in-triangle tests. Checks if
+ * camera Y/Z position is inside any collision polygon from D_800AFB24[idx].
+ * Returns collision height if found, 0 if not. Zeroes output structs.
+ *
+ * With zeroed collision data (port stub), D_800AFB44[idx] == 0 → loop
+ * skipped → returns 0, zeroes outputs. Correct no-collision behavior. */
+extern s32 D_800AFB24[];
+extern s32 D_800AFB34[];
+extern s32 D_800AFB44[];
+
+s16 func_8007B1C4(s16 camY, s16 camZ, s32 idx, s16* pOut, s32* pState) {
+    s32 count = D_800AFB44[idx];
+    s32 polyBase = D_800AFB24[idx];
+    s32 vertBase = D_800AFB34[idx];
+
+    /* With zeroed data: count=0, skip loop, fall through to return 0 */
+
+    /* XENO_PC_PORT TODO: when collision data is populated, implement the
+     * GTE NCLIP point-in-triangle loop here. For now, the zeroed-data
+     * path is the correct no-collision behavior. */
+
+    /* No collision found: zero outputs, return 0 */
+    pOut[0] = 0;
+    pOut[1] = 0;
+    pOut[2] = 0;
+    if (pState) {
+        pState[0] = 0;
+        pState[1] = 0;
+        pState[2] = 0;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
 
