@@ -24,7 +24,76 @@ void FieldRenderSync(void) {
     Vsync(0);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldLoadUITextures);
+/* ---- FieldLoadUITextures: load UI texture CLUT from archive ------------------
+ * Loads archive 0xA7, unpacks 8 TIM images via FieldLoadTIMWithClut,
+ * stores combined CLUT to VRAM at D_800B004C RECT, reads back into
+ * D_800AFC08 via StoreImage for later use by func_80074108.
+ *
+ * Guard: D_8004F344 — non-zero skips archive load (textures already loaded).
+ * Texture descriptors: D_800ADC44[8] — 0xC bytes/entry (ROM data).
+ * Temp buffer D_8005A4A0 is HeapAlloc'd, freed at end. */
+extern s32 D_8004F344;
+extern void* D_8005A4A0;
+extern u16 D_800ADC44[8 * 6];
+extern u16 D_800C2692, D_800C2690, D_800C38FE, D_800C38FC;
+extern u16 D_800B004C, D_800B004E, D_800B0050, D_800B0052;
+extern u16 D_800AFC08[0x80];
+extern void ResolveArchiveEntryPointers(void* pData);
+
+void FieldLoadUITextures(void) {
+    u16* pTable;
+    u16* pScan;
+    u16* pTableB;
+    s32 byteOff;
+    u32* pDataPtr;
+    s32 i;
+
+    if (D_8004F344 == 0) {
+        s32 size = ArchiveDecodeAlignedSize(0xA7);
+        void* pBuf = HeapAlloc(size, 1);
+        D_8005A4A0 = pBuf;
+        HeapPinBlock(pBuf);
+        ArchiveReadFileToBuffer(0xA7, (u32*)pBuf, 0, 0x80);
+        ArchiveCdDataSync(0);
+    }
+
+    pTable = D_800ADC44;
+    pTableB = D_800ADC44 + 5;
+    HeapUnpinBlock(D_8005A4A0);
+    D_8004F344 = 0;
+    D_800C2692 = 0;
+    D_800C2690 = 0;
+    D_800C38FE = 0;
+    D_800C38FC = 0;
+    ResolveArchiveEntryPointers(D_8005A4A0);
+
+    byteOff = 0;
+    pDataPtr = (u32*)((u8*)D_8005A4A0 + 4);
+    pScan = pTable;
+
+    for (i = 0; i < 8; i++) {
+        FieldLoadTIMWithClut((u_long*)*pDataPtr,
+            pScan[0],
+            *(s16*)((u8*)pTable + byteOff + 2),
+            *(s16*)((u8*)pTable + byteOff + 4),
+            *(s16*)((u8*)pTable + byteOff + 6),
+            *(s16*)((u8*)pTable + byteOff + 8),
+            pTableB[0]);
+        DrawSync(0);
+        pScan += 6;
+        pTableB += 6;
+        byteOff += 0xC;
+        pDataPtr += 1;
+    }
+
+    D_800B004C = 0;
+    D_800B004E = 0xFB;
+    D_800B0050 = 0x10;
+    D_800B0052 = 1;
+    StoreImage((RECT*)&D_800B004C, (u_long*)D_800AFC08);
+    DrawSync(0);
+    HeapFree(D_8005A4A0);
+}
 
 extern s32 g_GameSceneMapNum;
 
