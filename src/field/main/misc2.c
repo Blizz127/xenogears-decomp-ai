@@ -264,7 +264,78 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072D74);
+/* ---- func_80072D74: camera interpolation/smoothing --------------------------
+ * Called every frame at end of func_80073230. Interpolates g_CameraEye/At
+ * toward g_CameraEye2/At2 using g_CamInterpolation step distances.
+ * Also handles screen-Z transitions, shake offsets, and countdowns. */
+extern s32 D_800B21D8;
+extern s32 D_800AF8E0, D_800AF8E4, D_800AF8E8;
+
+/* Helper: interpolate one 32-bit component toward target.
+ * If difference is small enough (diff^2 < threshold), snap. Otherwise step. */
+static inline void cam_lerp(s32* pCur, s32 target, s32 step, s32 threshold) {
+    s32 cur = *pCur;
+    if ((cur >> 16) == (target >> 16)) return;
+    s32 diff = target - cur;
+    s32 diff16 = diff >> 16;
+    if (diff16 * diff16 < threshold) return;
+    *pCur = cur + diff / step;
+}
+
+void func_80072D74(void) {
+    s32 scene48 = *(s32*)((u8*)&g_Scene + 0x48);
+    s32 eyeStepSq, atStepSq;
+
+    /* Screen-Z transition (bit 4) */
+    if (scene48 & 0x10) {
+        s16 z8C = *(s16*)((u8*)&g_Scene + 0x88);
+        if (z8C != 0) {
+            s32 val = *(s32*)((u8*)&g_Scene + 0x84) + *(s32*)((u8*)&g_Scene + 0x88);
+            *(s32*)((u8*)&g_Scene + 0x84) = val;
+            *(s32*)((u8*)&g_Scene + 0x68) = val >> 16;
+        }
+        s16 newZ8C = z8C - 1;
+        *(s16*)((u8*)&g_Scene + 0x88) = newZ8C;
+        if (newZ8C < 0) {
+            *(s32*)((u8*)&g_Scene + 0x48) = scene48 & 0xFFEF;
+            *(s16*)((u8*)&g_Scene + 0x88) = 0;
+        }
+    }
+
+    /* D_800B21D8 countdown → reset interpolation steps */
+    if (D_800B21D8 != 0) {
+        g_CamInterpolation.atStepDistance = 1;
+        g_CamInterpolation.eyeStepDistance = 1;
+        D_800B21D8--;
+    }
+
+    /* Compute step^2 thresholds */
+    atStepSq = g_CamInterpolation.atStepDistance * g_CamInterpolation.atStepDistance;
+    eyeStepSq = g_CamInterpolation.eyeStepDistance * g_CamInterpolation.eyeStepDistance;
+
+    /* Interpolate eye components (uses eyeStepSq threshold, eyeStepDistance divisor) */
+    cam_lerp(&g_CameraEye.vx, g_CameraEye2.vx, g_CamInterpolation.eyeStepDistance, eyeStepSq);
+    cam_lerp(&g_CameraEye.vz, g_CameraEye2.vz, g_CamInterpolation.eyeStepDistance, eyeStepSq);
+    cam_lerp(&g_CameraEye.vy, g_CameraEye2.vy, g_CamInterpolation.eyeStepDistance, eyeStepSq);
+
+    /* Interpolate at components (uses atStepSq threshold, atStepDistance divisor) */
+    cam_lerp(&g_CameraAt.vx,  g_CameraAt2.vx,  g_CamInterpolation.atStepDistance, atStepSq);
+    cam_lerp(&g_CameraAt.vz,  g_CameraAt2.vz,  g_CamInterpolation.atStepDistance, atStepSq);
+    cam_lerp(&g_CameraAt.vy,  g_CameraAt2.vy,  g_CamInterpolation.atStepDistance, atStepSq);
+
+    /* Shake offset clamping (negative → zero + clear flags) */
+    if (D_800AF8E0 < 0) { D_800AF8E0 = 0; *(s32*)((u8*)&g_Scene + 0xA0) = 0; }
+    if (D_800AF8E4 < 0) { D_800AF8E4 = 0; *(s32*)((u8*)&g_Scene + 0xA4) = 0; }
+    if (D_800AF8E8 < 0) { D_800AF8E8 = 0; *(s32*)((u8*)&g_Scene + 0xA8) = 0; }
+
+    /* g_Scene + 0x9A countdown */
+    {
+        s16 val = *(s16*)((u8*)&g_Scene + 0x9A);
+        if (val > 0) {
+            *(s16*)((u8*)&g_Scene + 0x9A) = val - 1;
+        }
+    }
+}
 
 /* ---- func_80073230: per-frame camera update (FieldComputeSceneMatrices) ------
  * Called every frame. Dispatches on g_FieldCameraMode:
