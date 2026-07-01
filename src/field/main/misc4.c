@@ -9,7 +9,18 @@
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078B5C);
+/* Per-frame helper: rand seed, map-load check, angle-step timer. */
+extern s32 D_8004F308, D_8004F324, D_800ADC18;
+extern int func_80085C90(int);
+void func_80078B5C(void) {
+    rand();
+    if (D_8004F308 == -1) {
+        D_8004F308 = func_80085C90(D_8004F324);
+    }
+    if (D_800ADC18 != 0) {
+        D_800ADC18--;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078BC8);
 
@@ -103,7 +114,9 @@ void func_80078D44(void) {
     func_80070488();
     D_800AFD04 = 1;
     if (D_800B2264 != 0) {
+#ifndef XENO_PC_PORT
         func_801E7378(1);
+#endif
     }
     if (D_800594D0 == 1) {
         s2 = 0;
@@ -208,7 +221,9 @@ void func_80078D44(void) {
     }
 
     if (D_800B2264 != 0) {
+#ifndef XENO_PC_PORT
         func_801E7378(0);
+#endif
     }
     func_800A91F0();
     HeapConsolidate();
