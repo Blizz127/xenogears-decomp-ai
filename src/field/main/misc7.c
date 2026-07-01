@@ -44,7 +44,7 @@ void func_80097410(void) {
 
 int FieldGetPlayerActorDirection(void) {
     int halfDirection = PSX_DEGREES(22.5);
-    return (PSX_ANGLE_TO_DIRECTION_8(g_FieldActors[g_PlayerActorIndex].pActorData->rotation.vy + halfDirection) + 2) 
+    return (PSX_ANGLE_TO_DIRECTION_8(((ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData)->rotation.vy + halfDirection) + 2) 
         & MASK_8DIR_MOVEMENT_NUM_DIRECTIONS;
 }
 
@@ -131,8 +131,8 @@ void func_80098CAC(s32 arg0) {
     ActorData *pActorData;
 
     pFieldActor = g_FieldActors;
-    pActorData = pFieldActor[D_800AFD1C].pActorData;
-    pSprite = pFieldActor[D_800AFD1C].pSpriteData;
+    pActorData = (ActorData*)(uintptr_t)pFieldActor[D_800AFD1C].pActorData;
+    (void*)(uintptr_t)pFieldActor[D_800AFD1C].pSpriteData;
     if (pActorData->flags & 0x2000) {
         speed = CONV_TO_GTE(0x8000000 / g_FieldScriptVMCurActor->moveSpeed);
     } else {
@@ -446,7 +446,7 @@ void FieldScriptSetActorRotation(int angle) {
 
     actorIndex = FieldScriptVMGetActorIndex(1);
     if (actorIndex != ACTOR_ID_INVALID) {
-        pActor = g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
         if (D_800ADB1C == 0) {
             rotAngle3D = angle | 0x8000;
             pActor->rotation.vx = rotAngle3D;

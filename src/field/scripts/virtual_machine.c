@@ -268,9 +268,9 @@ void func_800A22AC(int scriptRoutineIndex) {
 
     // Change current actor to the first actor in the list
     D_800B06B8 = g_FieldActors;
-    g_FieldScriptVMCurActor = D_800B06B8->pActorData;
+    g_FieldScriptVMCurActor = (ActorData*)(uintptr_t)D_800B06B8->pActorData;
     pNewActor = HeapAlloc(0x138, 0x1);
-    *pNewActor = *D_800B06B8->pActorData;
+    *pNewActor = *(ActorData*)(uintptr_t)D_800B06B8->pActorData;
 
     // Reset all event slots
     for (i = 0; i < ACTOR_MAX_NUM_SCRIPTS; i++) {
@@ -295,7 +295,7 @@ void func_800A22AC(int scriptRoutineIndex) {
 
     // Running VM bytecode will likely have changed some fields, so they are copied back into the top
     // of the actor array.
-    *D_800B06B8->pActorData = *pNewActor;
+    *(ActorData*)(uintptr_t)D_800B06B8->pActorData = *pNewActor;
     HeapFree(pNewActor);
 }
 
@@ -316,7 +316,7 @@ void func_800A2714(void) {
         // Read animation files
         for (i = 0; i < D_800ADBFC; i++) {
             ArchiveSetIndex(0x4, 0x0);
-            pActor = g_FieldActors[i].pActorData;
+            pActor = (ActorData*)(uintptr_t)g_FieldActors[i].pActorData;
             if (pActor->unk124 != -1) {
                 g_FieldScriptVMCurActor = pActor;
                 pData = HeapAlloc(ArchiveDecodeAlignedSize(pActor->unk124, pActor) + 8, 0x0);
@@ -329,9 +329,9 @@ void func_800A2714(void) {
         // Set Special animation file
         for (i = 0; i < D_800ADBFC; i++) {
             pFieldActors = g_FieldActors;
-            pActor = pFieldActors[i].pActorData;
+            pActor = (ActorData*)(uintptr_t)pFieldActors[i].pActorData;
             if (pActor->unk124 != -1) {
-                SpriteSetSpecialAnimFile(pFieldActors[i].pSpriteData, pActor->unk120);
+                SpriteSetSpecialAnimFile((void*)(uintptr_t)pFieldActors[i].pSpriteData, pActor->unk120);
             }
         }
         

@@ -15,7 +15,7 @@ void func_8008083C(int actorIndex) {
     ActorData* pActor;
 
     if (actorIndex < D_800ADBFC) {
-        pActor = g_FieldActors[actorIndex].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         if (pActor->flags134 & 0x80) {
             HeapFree(pActor->unk110);
         }
@@ -29,8 +29,8 @@ void func_8008083C(int actorIndex) {
             HeapFree(pActor->unk120);
         }
         HeapFree(pActor);
-        HeapFree(g_FieldActors[actorIndex].pShadow);
-        func_800230A8(g_FieldActors[actorIndex].pSpriteData);
+        HeapFree((void*)(uintptr_t)g_FieldActors[actorIndex].pShadow);
+        func_800230A8((void*)(uintptr_t)g_FieldActors[actorIndex].pSpriteData);
     }
 }
 
@@ -42,7 +42,7 @@ extern s32 D_800ADB58;
 extern s32 D_800ADB5C;
 
 s32 func_80080A18(void) {
-    ActorData* p = g_FieldActors[D_800ADB58].pActorData;
+    ActorData* p = (ActorData*)(uintptr_t)g_FieldActors[D_800ADB58].pActorData;
     s32 i = D_800ADB5C++;
     return ((s32*)p->unk118)[i];
 }
@@ -271,7 +271,7 @@ extern s32 g_PlayerActorIndex;
 void func_80086908(void) {
     switch (D_800B22E0) {
         case 0:
-            func_80086590(&g_FieldActors[g_PlayerActorIndex].pActorData->position);
+            func_80086590(&((ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData)->position);
             return;
         case 1:
             func_80086590(&g_CameraEye);

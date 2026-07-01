@@ -23,7 +23,7 @@ void func_8009BB0C(void) {
         return;
     }
     
-    if (g_FieldActors[g_FieldTextBoxes[nTextBoxIndex].talkingActorID].pActorData->flags & 0x200) {
+    if (((ActorData*)(uintptr_t)g_FieldActors[g_FieldTextBoxes[nTextBoxIndex].talkingActorID].pActorData)->flags & 0x200) {
         upperFlags = g_FieldScriptVMCurActor->dialogFlags >> 0x10;
         if (g_FieldScriptVMCurActor->dialogFlags >> 0x10 == 0) {
             lowerFlags = g_FieldScriptVMCurActor->dialogFlags & 0xFFFF;
@@ -72,7 +72,7 @@ void func_8009BE9C(void) {
 // modifies the face id.. is this changing out the portrait?
 void func_8009BF8C(void) {
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
-        g_FieldScriptVMCurActor->faceId = g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData->faceId;
+        g_FieldScriptVMCurActor->faceId = ((ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData)->faceId;
         func_8009C01C();
         return;
     }
