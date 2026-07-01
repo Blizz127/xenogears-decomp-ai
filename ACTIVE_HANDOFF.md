@@ -1,53 +1,53 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-06-30. Canonical roadmap lives in the `pc-port-phases` memory; this is the short cross-session frontier note._
+_Last updated: 2026-07-01. Commit f35238c._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
-- **Menu.2** (disc/archive overlay loading): DONE + verified. Disc image mounts, `ArchiveInit` loads the index, synchronous archive reads work; selecting Field loads + LZSS-decompresses the field overlay from disc.
-- **Phase C (Field)**: STARTED — `FieldMain` decompiled and entering.
+- **Menu.2** (disc/archive overlay loading): DONE.
+- **Phase C (Field)** — render loop stable, crash-free. Black screen (render data zero/stubbed).
 
-## What was just done (FieldMain gateway)
-- `src/field/main/main.c`: `FieldMain` decompiled (port-first functional C, control flow 1:1 with asm, all calls preserved, logging under `#ifdef XENO_PC_PORT`). It now **enters and runs its full setup**.
-- `pc_port/src/port_main.c`:
-  - `*(int*)D_80010000 = -1` — restores the real static rodata value so `g_FieldSystemMode = SYSTEM_MODE_CD_ROM(1)` and the mode-0 `break 1` trap is skipped (the original control flow decides the mode; not a forced value).
-  - `ArchiveInit(...,0)` kept (NOT D_80010000's -1): with -1 ArchiveInit skips the CD table/header read and expects an EXE-baked table the port doesn't migrate.
+## Recent commits (this session)
+```
+f35238c  field: implement func_80074108 — background/camera draw dispatch
+8f2b712  field: implement func_80080968 — actor state table lookup
+18a3e97  field: implement func_80080A74 — per-actor ActorData field init
+d0675c2  field: implement func_80080F44 — per-actor data initialization
+29727c6  field: fix func_8007554C DrawOTag crash — byte-offset pointer arithmetic
+```
 
-Reproduce: `cd pc_port/build_native && XENO_KERNEL_SEL=0 ./xeno-port`
+## Actor init chain: COMPLETE
+func_80080F44 → func_80080A74 → func_80080968 all implemented.
+Actor data blocks allocated, FieldActor.pActorData valid.
+func_8007AA44 was already decompiled (misc4.c).
 
-## DONE: stub sizing + 64-bit pointer widening (commits 3c072b8, + this batch)
-- `gen_port_stubs.py` sizes data stubs from `symbol_addrs` `size:` annotations, then
-  **doubles** them: PSX sizes assume 4-byte pointers but the 64-bit port widens them
-  to 8, so `void*[3]` (12 B on PSX) needs 24, and pointer-heavy structs up to 2x.
-  Fixed `g_GameState`→0x2300 (was 16; `partyMembers`@0x1D34 was OOB) and the party
-  pointer-arrays `g_PartyDataBuffers`/`g_PartyStreamDataPointers`/`g_PartyStreamDataQueue`.
-- Field debug-entry harness (`XENO_FIELD_TEST`, port_main.c): sets `ArchiveSetIndex(4,0)`
-  — the party-skin archive directory the new-game flow establishes — so the debug
-  field entry's `GamePartyCharactersInitializeSkins` resolves sane sizes.
+## Background draw: COMPLETE (func_80074108)
+Full decompile from 371-line ASM. Three phases: CLUT populate, camera matrix setup, quad rendering loops. All g_Scene sub-offsets use raw byte offsets.
 
-With those, **FieldMain now runs its entire setup and enters the main loop**
-(`[FieldMain] entering main loop`), executing loop-body stubs.
+## Known zero/stubbed render inputs
+| Symbol | State | Upstream writer |
+|--------|-------|-----------------|
+| g_CameraEye, g_CameraAt | (0,0,0) | func_80072A38 et al (stubs) |
+| D_800AFD24 (CLUT dest) | all zero | populated by func_80074108 from D_800AFC08 |
+| D_800AFC08 (CLUT source) | all zero | **FieldLoadUITextures** (STUB) |
+| D_800B0050 (LoadImage RECT) | (0,0,0,0) | **FieldLoadUITextures** (STUB) |
+| D_800B0F7C (bg quads) | HAS DATA | FieldLoad (partially decompiled) |
+| D_800B06BC (trigger zones) | all zero | FieldLoad |
+| D_800B0FEC (extra quads) | partial data | func_8007A5C4 (STUB) |
+| D_800B1E00 (render swap) | all zero | no writer found (constant data?) |
 
-## DONE: func_80078D44 ported + misc2.c unblocked (commit c54bd18)
-- `func_80078D44` (misc4.c) decompiled — the field-init orchestrator now runs: loads
-  the map file, sets up render contexts, `g_FieldCurRenderContextIndex=1`, calls
-  FieldLoad, runs fade loops.
-- Guarded `asm("break 0x400")` (MIPS trap, PC-HDD-dev-only) in misc2.c + shop_menu
-  behind `#ifndef XENO_PC_PORT` — the host assembler can't emit it. This unblocked
-  **misc2.c's whole TU**, so `FieldClearAndSwapOTag` is real C and sets
-  `g_FieldCurRenderContext`.
-- Field now runs the init through render-context setup (`ClearImage`/`PutDrawEnv`/
-  `PutDispEnv` work) and reaches `FieldDisplay`.
+## Next frontier
+**FieldLoadUITextures** — ~55 instructions, called from FieldMain line 230.
+Populates D_800AFC08 (CLUT source) and D_800B0050 (LoadImage RECT).
+ASM: `asm/field/nonmatchings/main/main/FieldLoadUITextures.s`
+Most callees are decompiled (ArchiveDecodeAlignedSize, HeapAlloc, FieldLoadTIMWithClut, StoreImage).
+Currently INCLUDE_ASM in `src/field/main/main.c:27`.
 
-## DONE: field render OT — FieldDisplay → DrawOTag (OT_TAG stride fix)
-The early-render crash `FieldDisplay (misc5.c:139) → DrawOTag(ot3+7) →
-ParsePrimitivesLinkedList SIGSEGV` was an **OT slot stride mismatch** between the
-game and PsyCross, NOT a bad prim from FieldDisplay.
-- PsyCross's `ClearOTag`/`ClearOTagR` (LIBGPU.C) build the OT linked list by casting
-  the array to `OT_TAG*` and striding by `sizeof(OT_TAG)`. `OT_TAG` is `{addr:24,
-  len:8}` = **4 bytes**. On PSX `u_long` is also 4 bytes so they coincide.
-- In the 64-bit port `u_long` is **8 bytes**, so the game's OT arrays
-  (`RenderContext.ot3[8]`, `ot1`/`ot2[0x1000]`, menu `ot[0x10]`) are 8-byte-strided
+## Reproduce
+```
+cd pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 10 build_native/xeno-port
+```
+Expected: exit 124 (timeout), black screen, 52 stubs.
   and the game indexes/draws them that way (`DrawOTag(ot3 + 7)` = byte 56).
   `ClearOTagR` wrote a 4-byte-strided list (only bytes 0–31), leaving slots 4–7 (the
   upper half) **zeroed**. Confirmed by dumping ot3: slots 0–7 linked at +0/+4/+8…/+28,
