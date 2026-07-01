@@ -1,6 +1,6 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-07-01. Commit e0222d8._
+_Last updated: 2026-07-01. Commit e5982f8._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
@@ -9,6 +9,8 @@ _Last updated: 2026-07-01. Commit e0222d8._
 
 ## Recent commits (this session)
 ```
+e5982f8  field: migrate D_800ADC44 texture descriptor data (clean)
+9d20b49  Revert "field: migrate D_800ADC44 texture descriptor ROM data"
 e0222d8  field: implement FieldLoadUITextures — archive texture CLUT loader
 f35238c  field: implement func_80074108 — background/camera draw dispatch
 8f2b712  field: implement func_80080968 — actor state table lookup
@@ -23,18 +25,25 @@ func_80080F44 → func_80080A74 → func_80080968 all implemented.
 ## Draw dispatch: COMPLETE
 func_80074108 (background/camera) implemented. func_8007554C (per-frame render) implemented.
 
-## Texture loading: COMPLETE (code), BLOCKED (data)
+## Texture loading: COMPLETE (code + data)
 FieldLoadUITextures implemented. RECT populated (x=0,y=0xFB,w=0x10,h=1).
 LoadImage path in func_80074108 now **unblocked** (h=1, non-zero).
 
-**Blocking**: D_800ADC44 texture descriptor table is stubbed ROM data (all zeros).
-Without real values, FieldLoadTIMWithClut uploads CLUTs to wrong VRAM locations
-and the StoreImage readback into D_800AFC08 gets zeros.
+**D_800ADC44 data migration: DONE (clean).** Commit 1cf8a56 was BLOCKED by Kimi
+because it replaced the `if (D_8004F344 == 0)` guard with an in-function memcpy,
+breaking asm-faithful control flow. Reverted 1cf8a56 and reapplied the data
+correctly as a dedicated PC port data file (`pc_port/src/data_field.c`), compiled
+into the port-only sources list. `src/field/main/main.c` is byte-identical to the
+Kimi-approved e0222d8. D_800ADC44 is now in `.data` with real values (verified
+via objdump: entry 0 = {672, 448, 0, 251, 0, 0}). D_800AFC08 remains in `.bss`
+(zeroed) — StoreImage does not read back VRAM in PsyCross yet.
 
 ## Next frontier
-**D_800ADC44 data migration** — needs real values from matching ELF or disc.
-Table is 8 entries × 12 bytes = 96 bytes of texture coordinates.
-Alt: hardcode known values from the matching decompilation if available.
+**StoreImage / GR_ReadVRAM** — PsyCross's StoreImage does not read back from VRAM
+into host memory. D_800AFC08 (the CLUT readback buffer) stays zero after
+StoreImage. This is the next frontier for a visible field: either implement
+VRAM read-back in PsyCross's GR_ReadVRAM path, or find an alternative CLUT
+source for func_80074108's rendering.
 
 ## Reproduce
 ```
