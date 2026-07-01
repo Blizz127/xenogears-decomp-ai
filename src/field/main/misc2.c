@@ -1,5 +1,7 @@
 #include "common.h"
 #include "field/main.h"
+#include "field/actor.h"
+#include "field/camera.h"
 #include "system/math.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
@@ -228,7 +230,212 @@ void FieldMatrixCopyTransform(MATRIX* dest, MATRIX* source) {
     dest->m[2][2] = source->m[2][2];
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80074108);
+/* ---- func_80074108: background/camera draw dispatch -------------------------
+ * Full decompile from ASM (371 lines). Three phases:
+ *   1. CLUT/color table populate: 8-iteration loop filling D_800AFD24
+ *   2. Camera matrix setup: LookAt, angle update, matrix chain for bg layer
+ *   3. Quad rendering: multiple FieldRenderQuad loops for background/tiles */
+extern u16 D_800AFD24[0x80];
+extern u16 D_800AFC08[0x80];
+extern u16 D_800ADC24[8];
+extern u8 D_800B0050[];  /* base symbol; RECT is at D_800B0050 - 4 */
+extern VECTOR g_CameraEye;
+extern VECTOR g_CameraAt;
+extern u16 D_800B233E;
+extern s16 D_800ADB48;
+extern s16 D_800ADB4A;
+extern u8 D_800B21D1;
+extern s32 D_8004F378;
+extern u8 D_800B0F7C[];
+extern u8 D_800B06BC[];
+extern u8 D_800B0FEC[];
+extern u8 D_800B1E00[];
+extern CameraInterpolation g_CamInterpolation;
+extern void func_80070594(MATRIX* dest);
+extern s32 FieldGetVec2Magnitude(s32 dx, s32 dy);
+extern void func_8007AC58(u_long* ot, void* pQuad, MATRIX* pMat, s32 renderCtx);
+extern void SetTransMatrix(MATRIX* m);
+
+void func_80074108(void) {
+    s32 i, j;
+    u16* pDst;
+    u16* pSrc;
+    u16* pFlags;
+    u8 sceneFlag;
+    s32 idx;
+    s32 newAngle;
+    s32 unused6C;
+    s32 unused64;
+    u8* pRenderCtx;
+    s32 renderCtxIdx;
+    u8* pQuadData;
+    u32 mask24;
+    u32 maskHi;
+    MATRIX matView;
+    MATRIX matTemp;
+    MATRIX matComposite;
+    MATRIX matWork;
+    SVECTOR svRot;
+
+    /* ======== PHASE 1: CLUT / color table population (loop 0..7) ======== */
+    pDst = D_800AFD24;
+    pSrc = D_800AFC08;
+    pFlags = D_800ADC24;
+    sceneFlag = *(u8*)((u8*)&g_Scene + 0x65);
+    idx = 0;
+
+    for (i = 0; i < 8; i++) {
+        if (sceneFlag & pFlags[i]) {
+            for (j = 0; j < 0x10; j++) {
+                pDst[idx + j] = 0;
+            }
+        } else {
+            for (j = 0; j < 0x10; j++) {
+                pDst[idx + j] = pSrc[j];
+            }
+            pSrc += 0x10;
+        }
+        idx += 0x10;
+    }
+
+    /* Upload CLUT via LoadImage. RECT is at D_800B0050-4, w field at D_800B0050+0. */
+    {
+        u8* pRect = (u8*)D_800B0050 - 4;
+        *(u16*)(pRect + 4) = 0x80;  /* sh 0x80, 0($v1) where $v1 = D_800B0050 */
+#ifdef XENO_PC_PORT
+        if (*(s16*)(pRect + 6) != 0)  /* guard: stubbed h=0 would crash LoadImage */
+#endif
+        LoadImage((RECT*)pRect, (u_long*)D_800AFD24);
+    }
+
+    /* ======== PHASE 2: Camera / matrix setup ======== */
+    SetGeomScreen(0x80);
+    SetGeomOffset(0x10A, 0xA6);
+
+    /* Build view matrix: FieldMatrixLookAt(matView, eye, at, up)
+     * eye = {0, g_CameraEye.vy - g_CameraAt.vy, -mag<<16}
+     * at  = {0, 0, 0}
+     * up  = (VECTOR*)((u8*)&g_CameraEye + 0x20) = &g_CameraAt (adjacent globals) */
+    {
+        s32 dx = (g_CameraEye.vx - g_CameraAt.vx) >> 16;
+        s32 dy = (g_CameraEye.vz - g_CameraAt.vz) >> 16;
+        s32 mag = FieldGetVec2Magnitude(dx, dy);
+        VECTOR eye; eye.vx = 0; eye.vy = g_CameraEye.vy - g_CameraAt.vy; eye.vz = (-mag) << 16;
+        VECTOR at;  at.vx = 0;  at.vy = 0;                         at.vz = 0;
+        FieldMatrixLookAt(&matView, &eye, &at, (VECTOR*)((u8*)&g_CameraEye + 0x20));
+    }
+
+    /* Setup matWork for composite matrix chain */
+    func_80070594(&matWork);
+    SetRotMatrix(&matWork);
+    SetTransMatrix(&matWork);
+
+    /* Actor-based camera angle */
+    {
+        u16 actorIdx = D_800B233E;
+        s16 curAngle = D_800ADB48;
+        u8* pActor = (u8*)g_FieldActors + actorIdx * 0x5C;
+        s16 actorAngle = *(s16*)(*(u32*)(pActor + 0x4C) + 0x106);
+        s32 targetAngle = actorAngle + (*(u16*)((u8*)&g_CamInterpolation + 0xA) + 0x400);
+        D_800ADB4A = (s16)targetAngle;
+        newAngle = FieldMathUpdateAngle(curAngle, (s16)(targetAngle >> 16), 0x40);
+    }
+    D_800ADB48 = (s16)newAngle;
+
+    /* Build Y-rotation matrix, chain into view */
+    FieldMatrixResetTranslation(&matTemp);
+    svRot.vx = 0; svRot.vy = (s16)newAngle; svRot.vz = 0;
+    RotMatrix(&svRot, &matTemp);
+    MulMatrix2(&matView, &matTemp);
+    unused6C = 0x1000;
+    CompMatrix(&matWork, &matTemp, &matComposite);
+
+    /* ---- First quad loop: D_800B0F7C, 0x14 iterations ---- */
+    if (!D_800B21D1 && D_800ADC18 == 0 && D_8004F378 == 0) {
+        pQuadData = D_800B0F7C;
+        pRenderCtx = (u8*)g_FieldCurRenderContext;
+        renderCtxIdx = g_FieldCurRenderContextIndex;
+        for (i = 0; i < 0x14; i++) {
+            FieldRenderQuad((u_long*)(pRenderCtx + 0x80D4),
+                           pQuadData, &matComposite, renderCtxIdx);
+            pQuadData += 0x70;
+        }
+    }
+
+    /* ---- Second matrix chain ---- */
+    func_80070594(&matTemp);
+    MulMatrix2(&matView, &matTemp);
+    unused6C = 0x1000;
+    CompMatrix(&matWork, &matTemp, &matComposite);
+    MulMatrix0(&matWork, &matTemp, (MATRIX*)((u8*)&g_Scene + 0xF4));
+    SetRotMatrix(&matWork);
+    SetTransMatrix(&matWork);
+
+    /* ---- Third matrix chain ---- */
+    func_80070594(&matTemp);
+    MulMatrix2((MATRIX*)&g_Scene, &matTemp);
+    unused6C = 0x1000;
+    CompMatrix(&matWork, &matTemp, &matComposite);
+    FieldMatrixCopy(&matWork, &matComposite);
+
+    /* ---- Rotation for trigger-zone quad loop ---- */
+    svRot.vx = 0x400; svRot.vy = 0; svRot.vz = 0;
+    {
+        MATRIX matRot;
+        RotMatrix(&svRot, &matRot);
+
+        if (!D_800B21D1 && D_800ADC18 == 0 && D_8004F378 == 0) {
+            u8* pTrigger = (u8*)(uintptr_t)g_pFieldTriggerZones;
+            pRenderCtx = (u8*)g_FieldCurRenderContext;
+            renderCtxIdx = g_FieldCurRenderContextIndex;
+
+            /* Trigger-zone loop: 0x10 iterations */
+            for (i = 0; i < 0x10; i++) {
+                func_80070594(&matTemp);
+                unused64 = *(s16*)(pTrigger + 0x40 + i * 4);
+                unused6C = *(s16*)(pTrigger + 0x42 + i * 4);
+                CompMatrix(&matWork, &matTemp, &matComposite);
+                FieldMatrixCopyTransform(&matComposite, &matRot);
+                func_8007AC58((u_long*)(pRenderCtx + 0x80D4),
+                             D_800B06BC + i * 0x70, &matComposite, renderCtxIdx);
+            }
+
+            /* Third quad loop: D_800B06BC, 0x10 iterations */
+            pQuadData = D_800B06BC;
+            for (i = 0; i < 0x10; i++) {
+                FieldRenderQuad((u_long*)(pRenderCtx + 0x80D4),
+                               pQuadData, &matWork, renderCtxIdx);
+                pQuadData += 0x70;
+            }
+        }
+    }
+
+    /* ---- Fourth quad loop: D_800B0FEC, 4 iterations ---- */
+    if (!D_800B21D1 && D_800ADC18 == 0 && D_8004F378 == 0) {
+        pQuadData = D_800B0FEC;
+        pRenderCtx = (u8*)g_FieldCurRenderContext;
+        renderCtxIdx = g_FieldCurRenderContextIndex;
+        for (i = 0; i < 4; i++) {
+            FieldRenderQuad((u_long*)(pRenderCtx + 0x80D4),
+                           pQuadData, &matWork, renderCtxIdx);
+            pQuadData += 0x70;
+        }
+    }
+
+    /* ---- Final: D_800B1E00 word swap + GTE reset ---- */
+    {
+        s32* pEntry = (s32*)(D_800B1E00 + g_FieldCurRenderContextIndex * 0xC0);
+        u8* pRC = (u8*)g_FieldCurRenderContext;
+        s32 valA = pEntry[0];
+        s32 valB = *(s32*)(pRC + 0x80D4);
+        pEntry[0] = (valA & 0xFF000000) | (valB & 0x00FFFFFF);
+        *(s32*)(pRC + 0x80D4) = (valB & 0xFF000000) | (pEntry[0] & 0x00FFFFFF);
+    }
+
+    SetGeomOffset(0xA0, 0x70);
+    SetGeomScreen(*(s32*)((u8*)&g_Scene + 0x68));
+}
+
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007469C);
 
