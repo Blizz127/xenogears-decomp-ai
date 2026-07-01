@@ -241,12 +241,179 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007520C);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800752C8);
 
 void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
+    /* XENO_PC_PORT: skip if primitive chain is empty (all draw funcs stubbed).
+     * Check raw lower 32 bits of first entry: addr:24|len:8 = 0 means empty. */
+    if (*(u32*)pPrimList == 0) return;
     AddPrims(ot, pPrimList + size, pPrimList);
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075484);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007554C);
+/* ---- func_8007554C: per-frame field render pipeline ------------------------
+ * Port-first functional decompile (control flow mirrors the asm). This is the
+ * main render function called every frame from FieldMain's loop (via
+ * func_80078D44's fade loops and the per-frame dispatch). It:
+ *   - Vsync for frame timing,
+ *   - updates field/actor/particle state,
+ *   - renders fade/background/particles/distortion/actors,
+ *   - swaps render contexts, clears the framebuffer, uploads DrawEnv/DispEnv,
+ *   - adds primitives to the OT and calls DrawOTag to present the frame.
+ * Many callees are still stubs in the port; the key path is DrawOTag at the end. */
+extern s32 D_800ADB9C, D_800ADBA0, D_800ADC18, D_800ADBB4;
+extern s32 g_FieldRenderContextUseOT2;
+extern s16 D_800B21D4;
+extern u8 D_800B219C, D_800B219D, D_800B219E;
+extern s32 D_800B0048;
+extern s32 D_800B217C;
+extern void* D_800AF87C;
+extern u8 D_800AFC58[];
+extern void func_800739C0(void);
+extern void func_80086908(void);
+extern void func_80281B00(void*);
+extern void FieldFadeUpdateAndDraw(void* arg0, int arg1);
+extern void func_80074108(void);
+extern void func_800748E8(void);
+extern void func_800752C8(void);
+extern void func_8007520C(void);
+extern void func_80075484(void);
+extern void func_80281450(void);
+extern void func_80281400(void);
+extern void func_800A84C0(void);
+extern void func_800ABEC8(void);
+extern void func_800805F4(void);
+extern void func_8008004C(void* arg0, int arg1);
+extern void func_80025044(void);
+extern void func_800920D8(void);
+extern char D_8006FB34, D_8006FB40, D_8006FB4C, D_8006FB58, D_8006FB64;
+extern void HeapTickDelayedFree(void);
+
+void func_8007554C(void) {
+    s32 s1;
+    s32 s0 = 0x80D4; /* offset into RenderContext for fade draw args */
+
+    D_800ADB9C = Vsync(1);
+    s1 = Vsync(-1);
+    func_800739C0();
+    func_80086908();
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB34);
+    }
+
+    /* Fade update + draw (args: renderContext + 0x80D4, renderContextIndex) */
+    FieldFadeUpdateAndDraw((u8*)g_FieldCurRenderContext + s0,
+                           g_FieldCurRenderContextIndex);
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB40);
+    }
+
+    func_80074108();
+
+    /* Scratchpad stack save (0x1F8003FC area — PSX-specific; harmless on host) */
+    {
+        /* The asm stores $sp to the scratchpad top and allocates 4 bytes.
+         * On the host this is a no-op (no scratchpad); skip it. */
+    }
+
+    func_800748E8();
+    func_800752C8();
+    FieldParticlesTickAndRender();
+
+    if (g_FieldSystemMode == 0) {
+        func_80281450();
+    }
+
+    FieldDistortionDraw();
+
+    /* Restore scratchpad stack (no-op on host) */
+    func_800A84C0();
+    func_80075484();
+    func_8007520C();
+    func_800ABEC8();
+
+    if (g_FieldSystemMode == 0) {
+        func_80281400();
+        func_80281B00(&D_8006FB4C);
+    }
+
+    D_800ADBA0 = Vsync(1);
+    DrawSync(0);
+    func_800805F4();
+
+    /* Render context swap */
+    func_8008004C((u8*)g_FieldCurRenderContext + s0,
+                  g_FieldCurRenderContextIndex);
+
+    Vsync(0);
+    HeapTickDelayedFree();
+
+    /* Framebuffer clear / display setup */
+    if (D_800ADC18 == 0) {
+        /* Normal path: clear the framebuffer area */
+        ClearImage(&g_FieldCurRenderContext->drawEnvs[0].clip, 0, 0, 0);
+    } else if (D_800B0048 == D_800ADC18) {
+        /* MoveImage path: scroll the framebuffer */
+        RECT rect;
+        rect.x = 0x2C0; rect.y = 0x100; rect.w = 0x140; rect.h = 0xE0;
+        MoveImage(&rect, 0, g_FieldCurRenderContextIndex << 8);
+    } else {
+        ClearImage(&g_FieldCurRenderContext->drawEnvs[0].clip, 0, 0, 0);
+    }
+
+    PutDispEnv(&g_FieldCurRenderContext->dispEnv);
+    PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
+
+    if (g_FieldSystemMode == 0) {
+        D_800ADB9C = Vsync(1);
+    }
+
+    func_80025044();
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB58);
+    }
+
+    func_800920D8();
+
+    /* Conditional VRAM upload */
+    if (D_800ADBB4 != 0) {
+        LoadImage((RECT*)D_800AFC58, D_800AF87C);
+        D_800ADBB4 = 0;
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB64);
+    }
+
+    /* Add primitives to OT and draw. All offsets are BYTE offsets (MIPS addu).
+     * XENO_PC_PORT: the C struct places ot1 at ~0x6C (host layout), but the ASM
+     * accesses it at byte offset 0x80F0. ClearOTagR(->ot1) never touches the
+     * ASM-offset OT, so we explicitly clear it here. This is a narrow workaround
+     * until the RenderContext struct layout matches the PSX offsets. */
+    if (D_800ADC18 == 0) {
+        u_long* ot1_asm = (u_long*)((u8*)g_FieldCurRenderContext + 0x80F0);
+        ClearOTagR(ot1_asm, 0x1000);
+        if (g_FieldRenderContextUseOT2) {
+            u_long* ot2_asm = (u_long*)((u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0xCC);
+            ClearOTagR(ot2_asm, 0x1000);
+            FieldAddPrimitives(ot2_asm,
+                               (u_long*)((u8*)g_FieldCurRenderContext + 0x40D0), 0);
+        }
+        FieldAddPrimitives(ot1_asm,
+                           (u_long*)((u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0xCC), 0);
+    }
+
+    /* The actual draw call (byte offset 0x80F0 into RenderContext = ot1) */
+    DrawOTag((u_long*)((u8*)g_FieldCurRenderContext + 0x80F0));
+
+    /* Frame timing wait loop */
+    {
+        s32 target = s1 + D_800B217C + 2;
+        while (Vsync(-1) < target) {
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
 
