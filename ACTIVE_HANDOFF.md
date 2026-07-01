@@ -1,6 +1,6 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-07-01. Commit 093e798._
+_Last updated: 2026-07-01. Commit da88076._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
@@ -32,24 +32,34 @@ d0675c2  field: implement func_80080F44 — per-actor data initialization
 having valid data. Worked around with direct `vram[y*1024+x]` copy in
 `FieldLoadUITextures`. Remove once GR_ReadVRAM is fixed upstream.
 
-## Camera chain: 3 of 4 functions implemented
+## Camera chain: COMPLETE (all functions implemented)
 ```
-func_8007254C ✅  camera/scene default init (called from FieldLoad)
-func_80072A38 ✅  camera position update from actor (called from func_80073230)
-func_80073230 ✅  per-frame camera mode dispatch (called from func_800739C0)
-func_800739C0 ❌  scene matrix computation — THE BLOCKER (301 lines ASM)
+func_8007254C ✅  camera/scene default init (FieldLoad)
+func_80072A38 ✅  camera position from actor
+func_80073230 ✅  camera mode dispatch
+func_800739C0 ✅  scene matrix computation (ACTIVATES CAMERA)
+func_80072D74 ✅  camera interpolation/smoothing
+func_800726E8 ✅  camera mode transition handler
+func_8007B1C4 ✅  camera collision check (zeroed-data path)
 ```
 
-func_800739C0 is the final piece. It:
-- Computes camera angles via ratan2 → g_CamInterpolation
-- Calls func_80073230 (camera update)
-- Calls FieldMatrixLookAt + FieldMatrixCreateWorldToScreen (view matrix)
-- Loops over all actors for per-actor angle updates
-- Uses PSX scratchpad (0x1F8003FC) as temporary stack — must be skipped on host
-- Uses $s0 = &g_CameraAt+0x8 with negative offsets to access g_CameraEye etc.
-  (same port issue as func_8007254C — needs named symbol access)
+**Camera chain is fully active at runtime.** All camera functions execute
+every frame. View matrix computed via FieldMatrixLookAt → g_Scene.viewMatrix.
+Camera interpolation (lerp toward target) running.
 
-Without func_800739C0, the camera functions never execute at runtime.
+Remaining camera stubs (not on the critical path):
+- func_8008110C (332 lines) — pre-camera setup
+- func_8007CD80 (438 lines) — camera target lookup
+- func_800223B0 (189 lines) — actor facing direction
+
+## Next frontier
+Camera data (g_CameraEye/At) is still (0,0,0) because actor position
+fields (pActorData offsets 0x20/0x24/0x28) are zeroed. These are set
+from FieldActor transformMatrix during FieldLoad. The camera chain
+works but has no position data to work with.
+
+Options: populate actor position data from map file, or implement
+remaining setup stubs (func_8008110C, func_8007CD80).
 
 ## Reproduce
 ```
