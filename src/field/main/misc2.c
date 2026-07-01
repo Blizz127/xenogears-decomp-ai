@@ -55,7 +55,70 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072398);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800723E4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007254C);
+/* ---- func_8007254C: camera/scene default initialization ---------------------
+ * Called from FieldLoad. Zeros camera vectors, sets default scene angles,
+ * interpolation step distances, and scale factors.
+ *
+ * ASM uses $s0 = &g_CamInterpolation as a base for $s0-relative negative
+ * offsets to reach adjacent camera globals (g_CameraEye, g_CameraAt, etc.).
+ * The port's stub layout does NOT preserve PSX-relative positions, so each
+ * global is accessed by its own symbol name instead. */
+extern VECTOR g_CameraEye;
+extern VECTOR g_CameraAt;
+extern VECTOR g_CameraUp;
+extern VECTOR g_CameraEye2;
+extern VECTOR g_CameraAt2;
+
+void func_8007254C(void) {
+    /* g_CamInterpolation fields */
+    g_CamInterpolation.atStepDistance = 8;
+    g_CamInterpolation.eyeStepDistance = 8;
+    g_CamInterpolation.targetAngleY = 0;
+    g_CamInterpolation.curAngleY = 0;
+
+    /* g_Scene defaults */
+    *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+    *(s32*)((u8*)&g_Scene + 0x60) = 0x08000000;
+    *(s16*)((u8*)&g_Scene + 0x56) = 0x800;
+    *(s32*)((u8*)&g_Scene + 0xA8) = 0;
+    *(s32*)((u8*)&g_Scene + 0xA4) = 0;
+    *(s32*)((u8*)&g_Scene + 0xA0) = 0;
+    *(s32*)((u8*)&g_Scene + 0xB4) = 0;
+    *(s32*)((u8*)&g_Scene + 0xB0) = 0;
+    *(s32*)((u8*)&g_Scene + 0xAC) = 0;
+    *(s16*)((u8*)&g_Scene + 0x98) = 0;
+    *(s16*)((u8*)&g_Scene + 0x9C) = 0;
+    *(s32*)((u8*)&g_Scene + 0x48) = 0;
+    *(s8*)((u8*)&g_Scene + 0x64) = 0;
+    *(s8*)((u8*)&g_Scene + 0x65) = 0;
+    *(s16*)((u8*)&g_Scene + 0x66) = 0;
+    *(s16*)((u8*)&g_Scene + 0x54) = 0;
+    *(s16*)((u8*)&g_Scene + 0x58) = 0;
+    *(s32*)((u8*)&g_Scene + 0x7C) = 0x800;
+    *(s16*)((u8*)&g_Scene + 0x40) = 0;
+    *(s16*)((u8*)&g_Scene + 0x42) = 0;
+    *(s16*)((u8*)&g_Scene + 0x44) = 0;
+
+    /* Camera vectors — zero all named camera globals.
+     * On PSX these are at g_CamInterpolation-relative offsets; the port
+     * accesses them by symbol name to avoid layout mismatch. */
+    g_CameraEye.vx = 0;  g_CameraEye.vy = 0;  g_CameraEye.vz = 0;
+    g_CameraAt.vx = 0;   g_CameraAt.vy = 0;   g_CameraAt.vz = 0;
+    g_CameraUp.vx = 0x10000000;  /* -0xE0: nonzero default */
+    g_CameraUp.vy = 0;
+    g_CameraUp.vz = 0;
+    g_CameraEye2.vx = 0x10000000;  /* -0xB0: nonzero default */
+    g_CameraEye2.vy = 0;
+    g_CameraEye2.vz = 0;
+    g_CameraAt2.vx = 0;
+    g_CameraAt2.vy = 0;
+    g_CameraAt2.vz = 0;
+
+    /* XENO_PC_PORT TODO: func_80070594 writes a matrix at an unnamed
+     * camera work variable (PSX 0x800AF9B0). Skip until the symbol is
+     * resolved — it initializes camera transform state not needed until
+     * the camera update functions run. */
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800726E8);
 
