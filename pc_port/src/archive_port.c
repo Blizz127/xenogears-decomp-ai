@@ -27,8 +27,13 @@
 #include "common.h"
 #include "system/archive.h"
 #include "psyq/libcd.h"
-#include <stdlib.h>
-#include <string.h>
+
+/* Forward-declare the two host-libc calls used for the partial-sector bounce.
+ * Pulling in <stdlib.h> here fails to compile: the game headers (via common.h)
+ * leave the TU without int32_t, which glibc's <stdlib.h> then references. memcpy
+ * is already declared through common.h (psyq/memory.h). */
+extern void* malloc(unsigned long size);
+extern void  free(void* ptr);
 
 /* Set by ArchiveReadFileToBuffer/ArchiveReadFileFromCdSector (libarchive.c) just
  * before they call us: the absolute CD sector and the byte length to read. */
