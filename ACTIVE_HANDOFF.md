@@ -1,6 +1,6 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-07-01. Commit ed4a9b8._
+_Last updated: 2026-07-01. Commit 093e798._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
@@ -32,11 +32,24 @@ d0675c2  field: implement func_80080F44 — per-actor data initialization
 having valid data. Worked around with direct `vram[y*1024+x]` copy in
 `FieldLoadUITextures`. Remove once GR_ReadVRAM is fixed upstream.
 
-## Next frontier
-Camera vectors (`g_CameraEye`/`g_CameraAt`) are still (0,0,0) — camera init
-functions (func_80072A38 et al) are stubbed. Without camera, the view matrix
-is identity and background quads render at origin with no perspective.
-Implementing camera init is the next step toward visible field output.
+## Camera chain: 3 of 4 functions implemented
+```
+func_8007254C ✅  camera/scene default init (called from FieldLoad)
+func_80072A38 ✅  camera position update from actor (called from func_80073230)
+func_80073230 ✅  per-frame camera mode dispatch (called from func_800739C0)
+func_800739C0 ❌  scene matrix computation — THE BLOCKER (301 lines ASM)
+```
+
+func_800739C0 is the final piece. It:
+- Computes camera angles via ratan2 → g_CamInterpolation
+- Calls func_80073230 (camera update)
+- Calls FieldMatrixLookAt + FieldMatrixCreateWorldToScreen (view matrix)
+- Loops over all actors for per-actor angle updates
+- Uses PSX scratchpad (0x1F8003FC) as temporary stack — must be skipped on host
+- Uses $s0 = &g_CameraAt+0x8 with negative offsets to access g_CameraEye etc.
+  (same port issue as func_8007254C — needs named symbol access)
+
+Without func_800739C0, the camera functions never execute at runtime.
 
 ## Reproduce
 ```
