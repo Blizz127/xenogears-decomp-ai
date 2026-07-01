@@ -122,7 +122,147 @@ void func_8007254C(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800726E8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072A38);
+/* ---- func_80072A38: camera position update from input vector ----------------
+ * Takes a VECTOR* ($a0/$s0) and a flag ($a1/$s2). Calls func_8007CD80 to
+ * look up a camera target; if not found (-1), computes via func_800723E4
+ * + rsin/rcos. Sets g_CameraAt2 and g_CameraEye2. Calls func_80073684
+ * for eye/at adjustment. Handles g_Scene+0x48 camera transition flags. */
+extern s32 D_800ADBA8;
+extern u8 D_800B21CD;
+extern s32 func_8007CD80(VECTOR* a0, VECTOR* a1, VECTOR* a2);
+extern s32 func_800723E4(VECTOR* a0, VECTOR* a1, VECTOR* a2);
+extern s32 rsin(s32 angle);
+extern s32 rcos(s32 angle);
+extern void func_80073684(VECTOR* pEye, VECTOR* pAt);
+
+void func_80072A38(VECTOR* pCamInput, s32 flag) {
+    VECTOR vecArg;
+    VECTOR stackVec;
+    s32 result;
+    s32 sinVal, cosVal;
+    s32 sceneAngle, sceneScrZ, scene6E;
+
+    /* Build a 2-element vector from pCamInput */
+    vecArg.vx = pCamInput->vx;
+    vecArg.vy = 0;
+    vecArg.vz = pCamInput->vz;
+
+    result = func_8007CD80(&vecArg, &stackVec, &stackVec);
+
+    if (result == -1) {
+        /* Camera target not found — compute via func_800723E4 */
+        VECTOR outVec;
+        s16 h0 = *(s16*)((u8*)&stackVec + 0x00);
+        s16 h2 = *(s16*)((u8*)&stackVec + 0x04);
+        s16 h4 = *(s16*)((u8*)&stackVec + 0x08);
+        s16 h6 = *(s16*)((u8*)&stackVec + 0x0C);
+
+        *(s16*)((u8*)&outVec + 0x00) = h0;
+        *(s16*)((u8*)&outVec + 0x02) = h2;
+        *(s16*)((u8*)&outVec + 0x04) = h4;
+        *(s16*)((u8*)&outVec + 0x06) = h6;
+        func_800723E4(&outVec, &stackVec, &stackVec);
+
+        g_CameraAt2.vx = (s32)*(s16*)((u8*)&outVec + 0x00) << 16;
+        g_CameraAt2.vz = (s32)*(s16*)((u8*)&outVec + 0x02) << 16;
+
+        if (!D_800B21CD) {
+            if (!D_800ADBA8) {
+                g_CameraAt2.vy = flag << 16;
+                D_800ADBA8 = 1;
+            }
+        } else {
+            g_CameraAt2.vy = pCamInput->vy + 0xFFE00000;
+        }
+    } else {
+        /* Camera target found — copy directly */
+        g_CameraAt2.vx = pCamInput->vx;
+        D_800ADBA8 = 0;
+        g_CameraAt2.vy = pCamInput->vy;
+        g_CameraAt2.vy = pCamInput->vy + 0xFFE00000;
+        g_CameraAt2.vz = pCamInput->vz;
+    }
+
+    /* Compute camera eye offset using sin/cos of scene angle */
+    sceneAngle = *(s16*)((u8*)&g_Scene + 0x6C);
+    sceneScrZ = *(s32*)((u8*)&g_Scene + 0x68);
+    scene6E = *(s16*)((u8*)&g_Scene + 0x6E);
+
+    /* Angle calculation: angle*23/8 + 0xC00, then rsin */
+    {
+        s32 angleCalc = sceneAngle;
+        s32 sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
+        sinArg = sinArg >> 3;
+        sinArg += 0xC00;
+        sinVal = rsin(sinArg);
+    }
+
+    {
+        s32 sinResult = (s32)(sinVal * sceneScrZ) << 5;
+        sinResult = -sinResult >> 16;
+        s32 cosMult = (s32)(sinResult * scene6E);
+        s32 angleCalc = sceneAngle;
+        s32 sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
+        sinArg = sinArg >> 3;
+        cosMult = (s32)cosMult << 4;
+        g_CameraEye2.vy = cosMult + g_CameraAt2.vy;
+    }
+
+    {
+        s32 angleCalc = sceneAngle;
+        s32 cosArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
+        cosArg = cosArg >> 3;
+        cosArg += 0xC00;
+        cosVal = rcos(cosArg);
+    }
+
+    {
+        s32 cosResult = (s32)(cosVal * sceneScrZ) << 5;
+        cosResult = cosResult >> 16;
+        s32 cosMult = (s32)(cosResult * scene6E);
+        cosMult = (s32)cosMult << 4;
+        g_CameraEye2.vz = cosMult + g_CameraAt2.vz;
+    }
+
+    /* Eye/at adjustment */
+    func_80073684(&g_CameraEye2, &g_CameraAt2);
+
+    /* Camera transition flag handling (g_Scene + 0x48) */
+    {
+        s32 scene48 = *(s32*)((u8*)&g_Scene + 0x48);
+        if (scene48 & 0x1) {
+            s16 scene8C = *(s16*)((u8*)&g_Scene + 0x8C);
+            if (scene8C != 0) {
+                s32 scene90 = *(s32*)((u8*)&g_Scene + 0x90);
+                s32 scene94 = *(s32*)((u8*)&g_Scene + 0x94);
+                s32 newVal = scene90 + scene94;
+                *(s32*)((u8*)&g_Scene + 0x90) = newVal;
+                *(s16*)((u8*)&g_Scene + 0x6E) = (s16)(newVal >> 16);
+            }
+            s16 new8C = scene8C - 1;
+            *(s16*)((u8*)&g_Scene + 0x8C) = new8C;
+            if (new8C == 0) {
+                *(s32*)((u8*)&g_Scene + 0x48) = scene48 & 0xFFFE;
+            }
+        }
+
+        /* Bit 3: scroll transition */
+        scene48 = *(s32*)((u8*)&g_Scene + 0x48);
+        if (scene48 & 0x8) {
+            s32 scene74 = *(s32*)((u8*)&g_Scene + 0x74);
+            s32 scene78 = *(s32*)((u8*)&g_Scene + 0x78);
+            s32 newVal = scene74 + scene78;
+            *(s32*)((u8*)&g_Scene + 0x74) = newVal;
+            *(s16*)((u8*)&g_Scene + 0x6C) = (s16)(newVal >> 16);
+            s16 scene70 = *(s16*)((u8*)&g_Scene + 0x70);
+            scene70--;
+            *(s16*)((u8*)&g_Scene + 0x70) = scene70;
+            if (scene70 == 0) {
+                *(s32*)((u8*)&g_Scene + 0x48) = scene48 & 0xFFF7;
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072D74);
 
