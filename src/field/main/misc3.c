@@ -167,7 +167,7 @@ extern void func_800303C8(void* modelData, int a1);
 extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(void* a0, void* a1, int a2);
 extern void func_8002C644(void* a0);
-extern void func_8002C3E8(void* a0);
+extern int  func_8002C3E8(void* a0);
 extern int  func_8002709C();
 extern void func_800223B0(void* a0, s16 a1);
 extern void FieldTextBoxInitialize(void);
