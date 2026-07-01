@@ -152,8 +152,19 @@ int main(int argc, char** argv) {
              * field overlay load. */
             if (getenv("XENO_FIELD_TEST")) {
                 extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
+                extern int D_8004F334, D_8004F330;
                 ArchiveSetIndex(4, 0);
-                printf("[xeno-port][field-test] ArchiveSetIndex(4,0): party-skin dir\n");
+                /* Map-file cache sentinels. func_8001ACA4 (real field-entry init,
+                 * skipped by the KernelMenu debug path) sets both to -1 = "no map
+                 * cached". The port stubs leave them 0, so func_800777DC ->
+                 * func_8001B484(fileIndex=0, arg1=0) sees D_8004F334==0 &&
+                 * D_8004F330==0 -> thinks map 0 is already loaded -> returns 0 and
+                 * the map is NEVER read into D_8005A4E0 (stays NULL -> FieldLoad
+                 * would parse garbage). Restore the -1 sentinels so the first map
+                 * actually loads. Same class as the D_80010000=-1 fix. */
+                D_8004F334 = -1;
+                D_8004F330 = -1;
+                printf("[xeno-port][field-test] ArchiveSetIndex(4,0) + map cache sentinels=-1\n");
             }
         } else {
             printf("[xeno-port] WARNING: no disc image found "

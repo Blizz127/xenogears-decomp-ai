@@ -25,6 +25,7 @@ void func_800363F0(int arg0) { D_800501FC = arg0; }
  * to the real state mains, and PSX_ADDR() for the mem/heap regions so they live
  * in the emulated PSX RAM buffer. Values extracted from the matching ELF.
  * --------------------------------------------------------------------------- */
+#include <stdio.h>
 #include "common.h"
 #include "main/main.h"
 #include "system/memory.h"
@@ -46,6 +47,23 @@ extern void MenuMain(void);
  * @0x800501e8, mappings @0x80050238 in slus_006.64. */
 u_char  g_ControllerButtonMappings[8] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7 };
 u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x08, 0x02 };
+
+/* State->overlay-archive-index table (real ROM data @0x8004EAA0, .sdata). The
+ * stub generator zeroes it, so LoadGameStateOverlay(state) read archive offset 0
+ * for every state -> ArchiveDecodeSize(0)=0 -> no read -> the overlay buffer was
+ * never populated (LZSSDecompress then ran on stale heap garbage). Same class as
+ * the button tables / D_80010000: initialised game data the port must supply.
+ * Order: KernelMenu=0, Field=0xE, Battle=0x10, Worldmap=0xF, Battling=0xD,
+ * Menu=0x11, Movie=0x12. */
+int g_GameStateOverlayArchiveOffsets[NUM_GAME_STATE_OVERLAYS] = {
+    0x0, 0xE, 0x10, 0xF, 0xD, 0x11, 0x12,
+};
+
+/* Fixed destination the per-state overlay decompresses to (ROM: .word D_8006FAF0
+ * @0x80018084 -> PSX 0x8006FAF0, the low scratch region below each state's
+ * relocated heap). Zeroed stub -> NULL -> LZSSDecompress(overlay, NULL) segfaults.
+ * Set to the real emulated-RAM address in PcPort_HeapBoot (needs g_PsxRam base). */
+void* g_MainGameStateOverlayBuffer;
 
 /* ClearMemory(pStart, pEnd): zero a word range. Real one is asm/BIOS (bypassed);
  * main_loop.c calls it to wipe a game state's memory region before entering it,
@@ -98,6 +116,9 @@ void PcPort_InitGameStates(void)
 void PcPort_HeapBoot(void)
 {
     HeapInit(PSX_ADDR(0x8006FAF0), PSX_ADDR(0x801FC000));
+    /* Overlay decompress target (see the extern def above): 0x8006FAF0 in
+     * emulated RAM, resolvable only now that g_PsxRam exists. */
+    g_MainGameStateOverlayBuffer = PSX_ADDR(0x8006FAF0);
 }
 
 /* ---------------------------------------------------------------------------
@@ -122,7 +143,26 @@ void* LZSSDecompress(void* pSrc, void* pDst)
     u8* src = (u8*)pSrc;
     u8* dst = (u8*)pDst;
     u8* dstStart = dst;
-    u8* dstEnd = dst + *(u32*)src;
+    u32 nDecompressedSize = *(u32*)src;
+    u8* dstEnd;
+
+    /* XENO_PC_PORT stopgap. A per-state overlay whose archive entry the port's
+     * disc/overlay path can't yet resolve (e.g. the field overlay: the archive
+     * directory the overlay index lives in isn't set up, so ArchiveDecodeSize
+     * returns 0) makes LoadGameStateOverlay return an UNWRITTEN buffer -- so this
+     * size header is heap garbage (megabytes) and decompressing it walks straight
+     * off emulated RAM. The overlay is redundant in the port anyway (field/menu
+     * code is statically linked), so until the overlay archive read is implemented,
+     * treat an implausible size (larger than all of emulated RAM) as an empty /
+     * no-op overlay rather than crashing. Real streams (splash ~4KB, overlays
+     * <=~345KB) are far under this bound. */
+    if (nDecompressedSize > (u32)PSX_RAM_SIZE) {
+        fprintf(stderr, "[xeno-port] LZSSDecompress: implausible size 0x%x "
+                        "(overlay not resolved?) -> skipping\n", nDecompressedSize);
+        return pDst;
+    }
+
+    dstEnd = dst + nDecompressedSize;
     src += 4;
 
     while (dst != dstEnd) {
