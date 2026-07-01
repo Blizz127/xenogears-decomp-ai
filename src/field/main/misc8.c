@@ -47,7 +47,157 @@ s32 func_80080A18(void) {
     return ((s32*)p->unk118)[i];
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080A74);
+/* ---- func_80080A74: per-actor second-pass ActorData initialization ----------
+ * Called from func_80080F44 for each actor. Initializes ActorData with
+ * hardcoded defaults and state-array entries. Calls func_80080968 for
+ * additional setup. Conditionally runs func_8007B1C4 distance-init loop
+ * (skipped in port: D_800AFB54 stubbed to 0/1).
+ *
+ * All offsets are byte offsets into the ActorData allocation (0x138 bytes),
+ * verified against MIPS asm. */
+extern s16 D_800AFB54;
+extern s32 D_800AFB44[];
+
+void func_80080A74(s32 actorIndex) {
+    u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
+    s32 i;
+    s32 actorByteOff = actorIndex * 0x5C;
+    u8* pActorBytes = (u8*)g_FieldActors + actorByteOff;
+
+    /* ---- early field defaults ---- */
+    *(s32*)(p + 0x00) = 0xB0;
+    *(s32*)(p + 0x04) = 0x800;
+    *(s16*)(p + 0x18) = 0x10;
+    *(s16*)(p + 0x1C) = 0x10;
+    *(s16*)(p + 0x1A) = 0x60;
+    *(u8*)(p + 0x74) = 0xFF;
+    *(u8*)(p + 0x75) = 0xFF;
+    *(s32*)(p + 0x40) = 0;
+    *(s32*)(p + 0x44) = 0;
+    *(s32*)(p + 0x48) = 0;
+    *(s32*)(p + 0x30) = 0;
+    *(s32*)(p + 0x34) = 0;
+    *(s32*)(p + 0x38) = 0;
+    *(s16*)(p + 0x64) = 0;
+    *(s16*)(p + 0x60) = 0;
+    *(s16*)(p + 0x62) = 0;
+    *(s32*)(p + 0xD0) = 0;
+    *(s32*)(p + 0xD4) = 0;
+    *(s32*)(p + 0xD8) = 0;
+    *(s16*)(p + 0xE6) = 0;
+    *(s16*)(p + 0xEA) = 0xFF;
+    *(u8*)(p + 0xE2) = 0;
+    *(s16*)(p + 0xCC) = 0;
+    *(s16*)(p + 0x6E) = 0;
+
+    /* flags at 0x12C / 0x130 / 0x134: clear specific bits */
+    *(s32*)(p + 0x12C) &= ~0x30000;
+    *(s16*)(p + 0x1E) = *(s16*)(p + 0x18);
+    *(s32*)(p + 0x12C) &= ~0x3;
+    *(s16*)(p + 0x11E) = 0x200;
+    *(u8*)(p + 0x101) = 0x80;
+    *(u8*)(p + 0x100) = 0x80;
+    *(u8*)(p + 0xFF)  = 0x80;
+    *(u8*)(p + 0xFE)  = 0x80;
+    *(u8*)(p + 0xFD)  = 0x80;
+    *(u8*)(p + 0xFC)  = 0x80;
+    *(s16*)(p + 0x128) = 0xFFFF;
+    *(s32*)(p + 0x12C) &= 0xFFFCFFFF;
+    *(s32*)(p + 0x130) &= 0xF007FFFF;
+    *(s32*)(p + 0x130) &= ~0x200;
+    *(s32*)(p + 0x12C) &= 0xF003FFFF;
+
+    /* state array: 8 entries of 8 bytes each at offset 0x90 */
+    for (i = 0; i < 8; i++) {
+        u8* e = p + 0x90 + i * 8;
+        *(s32*)(e + 0) = (*(s32*)(e + 0) & 0xFE7FFFFF) | 0x3C0000;
+        *(u8*)(e + 0) = 0;
+        *(s16*)(e + 2) = 0xFFFF;
+        *(u8*)(e + 5) = 0xFF;
+        *(s16*)(e + 6) = 0xFFFF;
+    }
+
+    *(s32*)(p + 0x120) = 0;
+    *(s16*)(p + 0xE4) = 0xFF;
+    *(s16*)(p + 0x76) = 0x100;
+    *(s32*)(p + 0x12C) &= ~0x1C0;
+    *(u8*)(p + 0x83) = 0;
+    *(u8*)(p + 0x82) = 0;
+    *(s16*)(p + 0x8A) = 0;
+    *(s16*)(p + 0x88) = 0;
+    *(s32*)(p + 0x84) = 0;
+    *(u8*)(p + 0xCF) = 0;
+    *(u8*)(p + 0xCE) = 0;
+    *(s16*)(p + 0xE8) = 0;
+    *(s16*)(p + 0x10) = 0;
+    *(s16*)(p + 0xEC) = 0;
+    *(s32*)(p + 0x134) &= ~0x80;
+    *(s32*)(p + 0x12C) &= ~0xE00;
+    *(s32*)(p + 0x12C) &= ~0x1000;
+    *(s32*)(p + 0x134) &= ~0x60;
+
+    *(s16*)(p + 0x102) = (s16)rand();
+    *(s16*)(p + 0xF4) = 0x1000;
+    *(s16*)(p + 0xF6) = 0x1000;
+    *(s16*)(p + 0xF8) = 0x1000;
+    *(u8*)(p + 0x10D) = 0xFF;
+    *(u8*)(p + 0x80) = 0xFF;
+    *(s16*)(p + 0x106) = -0x8000;
+    *(s16*)(p + 0x104) = -0x8000;
+    *(s16*)(p + 0x108) = -0x8000;
+    *(s16*)(p + 0x124) = -1;
+    *(u8*)(p + 0xE3) = 0;
+    *(s16*)(p + 0x0E) = 0;
+    *(s16*)(p + 0x0C) = 0;
+    *(s16*)(p + 0x0A) = 0;
+    *(s16*)(p + 0x08) = 0;
+    *(s32*)(p + 0x12C) &= ~0x1C;
+
+    /* ---- D_800AFB54 loop (distance-based init; skipped when count <= 1) ---- */
+    if (D_800AFB54 > 1) {
+        s16 stateBuf[6];
+        s16* pState = stateBuf;
+        s16* pDst = (s16*)(p + 0x08);
+
+        for (i = 0; i < D_800AFB54 - 1; i++) {
+            s16 r = func_8007B1C4(
+                *(s16*)(pActorBytes + 0x20),
+                *(s16*)(pActorBytes + 0x28),
+                i, (u8*)p + 0x58 + i * 8, pState);
+            *pDst = r;
+            if (r != -1 && (u32)r >= (u32)D_800AFB44[i]) {
+                D_800AFB44[i] = 0;
+                pState[0] = 0; pState[1] = 0; pState[2] = 0;
+                pState[3] = 0; pState[4] = 0; pState[5] = 0;
+            }
+            pState += 8;
+            pDst += 1;
+        }
+
+        /* status & 0x80 check + field_24 copy */
+        if (!(*(s16*)(pActorBytes + 0x58) & 0x80)) {
+            s16 choice = *(s16*)(p + 0x10);
+            *(s32*)(pActorBytes + 0x24) = stateBuf[choice * 4 + (0x5A - 0x18)/2];
+        }
+    }
+
+    /* ---- post-loop setup ---- */
+    func_80080968(p);
+    *(s32*)(p + 0x14) = *(s16*)(p + 0x10);
+    {
+        s16 choice = *(s16*)(p + 0x10);
+        s16* stateBase = (s16*)(p + 0x18);
+        *(s32*)(p + 0x50) = *(s32*)((u8*)stateBase + choice * 16 + 0);
+        *(s32*)(p + 0x54) = *(s32*)((u8*)stateBase + choice * 16 + 4);
+        *(s32*)(p + 0x58) = *(s32*)((u8*)stateBase + choice * 16 + 8);
+    }
+
+    /* Copy FieldActor fields 0x20/0x24/0x28 into ActorData */
+    *(s32*)(p + 0x20) = *(s32*)(pActorBytes + 0x20) << 16;
+    *(s32*)(p + 0x24) = *(s32*)(pActorBytes + 0x24) << 16;
+    *(s32*)(p + 0x28) = *(s32*)(pActorBytes + 0x28) << 16;
+    *(s16*)(p + 0x72) = *(s16*)(pActorBytes + 0x24);
+}
 
 /* ---- func_80080F44: per-actor data initialization ---------------------------
  * Called from FieldLoad for each actor (0..D_800ADBFC-1).
