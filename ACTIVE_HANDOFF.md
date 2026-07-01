@@ -80,12 +80,48 @@ buffer into adjacent heap block headers.
   and **enters the FieldMain main loop** (`[FieldMain] entering main loop`).
   KernelMenu still reaches the sustained loop (exit 124).
 
-## The frontier (start here next): field initial map load — FieldLoad (g_FieldActors NULL)
-With the heap fixed, FieldMain reaches its main loop and crashes at the
-previously-scoped spot: `FieldMain main.c:395 → FIELD_ACTOR_FLAGS(g_PlayerActorIndex)
-→ SIGSEGV` because **`g_FieldActors` is NULL** — `FieldLoad` (the map parser at
-0x80078E80, called by `func_80078D44`) is still a `[stub]` so the map/actors were
-never loaded. This is the large coherent slice scoped below.
+## DONE: FieldLoad prerequisites — map load + archive overflow + overlay
+Before FieldLoad can parse anything, its inputs must be real. Cleared a chain of
+port-init gaps (all committed together):
+- **Map file now loads.** `func_800777DC → func_8001B484` early-returned "already
+  loaded" because the map-cache sentinels `D_8004F334`/`D_8004F330` were zeroed
+  stubs (== fileIndex 0) — the real field-entry init `func_8001ACA4` sets them to
+  -1 but the KernelMenu debug path skips it. Set both to -1 in the XENO_FIELD_TEST
+  harness (same class as `D_80010000=-1`). Verified: `D_8005A4E0` now holds a real
+  ~106KB map file with a structured header.
+- **Archive read no longer overflows the heap.** The sync `ArchiveReadFile`
+  (archive_port.c) `CdRead`s whole 2048-byte sectors, but buffers are sized to
+  `ArchiveDecodeAlignedSize` (4-aligned, NOT sector-rounded), so a partial last
+  sector scribbled up to 2047 bytes past the buffer into the next heap block's
+  header (→ HeapConsolidate crash). Now bounces the tail through a scratch buffer
+  and copies only the file's bytes.
+- **Overlay symbols populated / overlay no longer crashes.**
+  `g_GameStateOverlayArchiveOffsets` (the state→archive-index table, real ROM data
+  {0,0xE,0x10,0xF,0xD,0x11,0x12}) and `g_MainGameStateOverlayBuffer` (→ 0x8006FAF0)
+  were zeroed stubs, so per-state overlay decompress ran on garbage. Defined both
+  (game_overrides.c). The overlay archive read still returns size 0 (see frontier
+  below), so the port's `LZSSDecompress` now treats an implausible size (> emulated
+  RAM) as a no-op — the overlay is redundant in the port (field code statically
+  linked) so skipping it is safe. Field now runs its full setup with the map loaded.
+
+## The frontier (start here next): decompile FieldLoad (g_FieldActors NULL)
+`FieldMain main.c:395 → FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV` because
+**`g_FieldActors` is NULL** — `FieldLoad` (904-line map parser at 0x80078E80,
+misc3) is still a `[stub]`. Its input `D_8005A4E0` (the map file) NOW loads with
+real data, so it can finally be ported. It sets `g_FieldActors`/`g_FieldNumActors`
+in its own body (asm 0x80071354) then runs a per-actor init loop (0x5C-byte
+actors). ~30 callees, ~50 data symbols (see the scoped slice below). Audit new
+field code for more `u_long` byte-buffers (each is a latent 2× overflow — two
+found+fixed this session in misc5.c).
+
+### Separate frontier (later): overlay archive resolution
+The per-state overlay never actually loads: `ArchiveDecodeSize(0xE)` returns 0 in
+the overlay's archive context (`LoadGameStateOverlay` does `ArchiveSetIndex(0,1)`
+then reads `g_GameStateOverlayArchiveOffsets[state]`). The overlay-directory /
+archive-offset resolution is incomplete. Redundant for field CODE (statically
+linked) but the field's initialised DATA (overlay `.data`, currently host-address
+zeroed stubs) may need it eventually — a data-migration concern, not a FieldLoad
+blocker.
 
 ## (later) field initial map load — func_80078D44 → FieldLoad
 `FieldMain main loop → (main.c:395) FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`

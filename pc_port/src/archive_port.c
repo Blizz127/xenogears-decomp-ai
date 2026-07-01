@@ -27,6 +27,8 @@
 #include "common.h"
 #include "system/archive.h"
 #include "psyq/libcd.h"
+#include <stdlib.h>
+#include <string.h>
 
 /* Set by ArchiveReadFileToBuffer/ArchiveReadFileFromCdSector (libarchive.c) just
  * before they call us: the absolute CD sector and the byte length to read. */
@@ -61,8 +63,29 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
      * CdReadSync extracts the 2048-byte data payload from each MODE2/2352 sector. */
     CdIntToPos(g_ArchiveCurFileSector, &loc);
     CdControlB(CdlSetloc, (u_char*)&loc, NULL);
-    CdRead(nSectors, (u_long*)pDestBuffer, 0);
-    CdReadSync(0, NULL);
+
+    if (nSectors * CD_SECTOR_SIZE == (int)g_ArchiveCurFileSize) {
+        /* File is a whole number of sectors: read straight into the buffer. */
+        CdRead(nSectors, (u_long*)pDestBuffer, 0);
+        CdReadSync(0, NULL);
+    } else {
+        /* Partial last sector. The game sizes buffers to ArchiveDecodeAlignedSize
+         * (4-byte aligned, NOT sector-rounded), so pDestBuffer holds exactly
+         * g_ArchiveCurFileSize bytes. CdRead always delivers whole sectors, so
+         * reading directly would scribble up to 2047 bytes past the buffer into
+         * the next heap block (on PSX the async sector-copy callbacks only write
+         * the file's bytes). Bounce through a sector-rounded scratch buffer and
+         * copy back just the file's bytes. */
+        int nAlignedBytes = nSectors * CD_SECTOR_SIZE;
+        u8* pBounce = (u8*)malloc(nAlignedBytes);
+        if (pBounce == NULL) {
+            return -1;
+        }
+        CdRead(nSectors, (u_long*)pBounce, 0);
+        CdReadSync(0, NULL);
+        memcpy(pDestBuffer, pBounce, g_ArchiveCurFileSize);
+        free(pBounce);
+    }
 
     /* Mark the transfer complete so ArchiveDataSync()/ArchiveCdDataSync() return
      * immediately (g_ArchiveCdDriveState IDLE, no in-flight file). */
