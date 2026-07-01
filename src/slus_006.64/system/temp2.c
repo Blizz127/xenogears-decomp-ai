@@ -32,7 +32,57 @@ u32 func_8002C3D8(void) {
     return g_ArchiveDebugTable;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C3E8);
+/* Relocates a model's internal offset fields to absolute addresses (adds the model
+ * base). Runs once per model (guarded by flag bit 0x1 at +0x4). For each of the
+ * `count` (at +0x0) sub-entries (0x38 stride from +0x2C): relocate the four offset
+ * fields at entry-0x14/-0x10/-0xC/-0x8, and if the entry+0x0 offset is set, relocate
+ * it and walk its sub-list (0xC stride) relocating each element's +0x4/+0x8. Stores
+ * are `sw` (32-bit); write truncated u32 (host RAM below 4 GiB) so pointer fields
+ * stay 4 bytes -- FieldLoad's model actors read these back via func_8002C8CC. */
+int func_8002C3E8(u8* pModel) {
+    s32 count = *(s32*)(pModel + 0x0);
+    s32 flags = *(s32*)(pModel + 0x4);
+    u8* pEntry;
+    s32 i;
+
+    if (flags & 0x1) {
+        return count;
+    }
+    *(s32*)(pModel + 0x4) = flags | 0x1;
+    if (count <= 0) {
+        return count;
+    }
+
+    pEntry = pModel + 0x2C;
+    for (i = 0; i < count; i++) {
+        *(u32*)(pEntry - 0x14) = *(u32*)(pEntry - 0x14) + (u32)pModel;
+        *(u32*)(pEntry - 0x10) = *(u32*)(pEntry - 0x10) + (u32)pModel;
+        *(u32*)(pEntry - 0x0C) = *(u32*)(pEntry - 0x0C) + (u32)pModel;
+        *(u32*)(pEntry - 0x08) = *(u32*)(pEntry - 0x08) + (u32)pModel;
+
+        {
+            u32 subOff = *(u32*)(pEntry + 0x0);
+            if (subOff != 0) {
+                u8* pSub = (u8*)(u32)(subOff + (u32)pModel);
+                s32 subCount;
+                *(u32*)(pEntry + 0x0) = (u32)pSub;
+                subCount = *(s32*)(pSub + 0x0);
+                if (subCount != -1) {
+                    /* a1 = pSub + 4 + subCount*0xC, walked backwards by 0xC */
+                    u8* a1 = (pSub + 0x4) + (((subCount << 1) + subCount) << 2);
+                    do {
+                        subCount -= 1;
+                        *(u32*)(a1 + 0x4) = *(u32*)(a1 + 0x4) + (u32)pModel;
+                        *(u32*)(a1 + 0x8) = *(u32*)(a1 + 0x8) + (u32)pModel;
+                        a1 -= 0xC;
+                    } while (subCount != -1);
+                }
+            }
+        }
+        pEntry += 0x38;
+    }
+    return count;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
 

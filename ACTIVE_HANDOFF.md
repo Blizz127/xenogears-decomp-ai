@@ -121,16 +121,33 @@ pointer is typed `u32*` (not `u_long*`) to avoid the widening-overflow class.
   `D_800AFB14/18/20/…` (may default to 16 B; needed larger). See the subagent's
   section-by-section notes if these misbehave.
 
-## The frontier (start here next): per-actor model init (func_8002CB54 & siblings)
-`FieldLoad → per-actor loop → memcpy (misc3.c:402) → SIGSEGV` on actor 17 (first
-with `status & 0x40 == 0`, the model branch). The memcpy dst/src (`pModel+0xC` /
-`pModel+0x8`) are heap-fill garbage because **`func_8002CB54`** (which should write
-those model-buffer pointers) is a `[stub]`. Port the per-actor model-load
-subsystem: `func_8002CB54` (sizes/ptrs from model data), `func_8002C8CC`,
-`func_8002C644`, `func_800303C8` (all in the 0x8002xxxx model TU). These decompress
-/ set up each actor's model from the map's model section (`D_800AFB14`). After that,
-oracle-iterate the rest of FieldLoad's tail (geometry work-area, camera, anim init)
-and then FieldMain's own main loop.
+## DONE: per-actor model init + model relocation
+Ported the model-init pipeline FieldLoad runs per model actor (temp2.c):
+`func_8002CB54` (double-buffer alloc), `func_8002C8CC` (command-list build),
+`func_8002C644` (buffer pin), `func_800303C8` (skeletal block), and
+`func_8002C3E8` (offset→pointer relocation of the model data). Fixed two
+integration bugs in the FieldLoad decompile: (1) the model control block `pModel`
+uses PSX 4-byte pointer slots (+0x4/+0x8/+0xC) — store/load them as truncated u32,
+not 8-byte `void*`, or an 8-byte write clobbers the neighbour; (2) `func_8002C8CC`'s
+first arg is `pModel[0x4]` (modelData), not `pModel[0xC]` (the uninitialised out2).
+The field now runs alloc → relocate → command-list-build per model actor.
+
+## The frontier (start here next): model primitive-processor subsystem (D_8004FE50)
+`func_8002C8CC → per-primitive callback (temp2.c:222) → calls a NULL fn ptr`.
+The callback is `*(u32*)(D_8004FE50 + prim*0x28 + 0x18)`. **`D_8004FE50`** is the
+primitive-descriptor table (0x28-byte entries: 6 fn ptrs at +0x0..+0x14, the
+per-primitive callback at +0x18, advance counts at +0x1C/+0x20/+0x24) — real ROM
+data (`.sdata` @0x8004FE50) that the port zeroes, so every callback is NULL. But
+populating it isn't enough: the pointers target `0x8002Exxx` **model-primitive
+processor** functions (`func_8002E038/ED20/E470/…`, ~dozens in the temp2 TU) that
+are nearly all still `[stub]`s — a stubbed callback returning 0 makes the parse
+loop misbehave. This is the deep core of model rendering: (a) define `D_8004FE50`
+from ROM (game_overrides.c, same as the other zeroed data tables), (b) port the
+`0x8002Exxx` primitive processors it dispatches to. Large multi-session slice.
+- Alternative to see a VISIBLE field sooner: temporarily guard FieldLoad's
+  per-actor model-init block so FieldLoad completes without models, and drive on
+  to FieldMain's render loop to try to show the map background (no actor models).
+  Stopgap, not faithful — but a fast way to a first field screenshot.
 
 ### Separate frontier (later): overlay archive resolution
 The per-state overlay never actually loads: `ArchiveDecodeSize(0xE)` returns 0 in
