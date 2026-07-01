@@ -104,15 +104,33 @@ port-init gaps (all committed together):
   RAM) as a no-op — the overlay is redundant in the port (field code statically
   linked) so skipping it is safe. Field now runs its full setup with the map loaded.
 
-## The frontier (start here next): decompile FieldLoad (g_FieldActors NULL)
-`FieldMain main.c:395 → FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV` because
-**`g_FieldActors` is NULL** — `FieldLoad` (904-line map parser at 0x80078E80,
-misc3) is still a `[stub]`. Its input `D_8005A4E0` (the map file) NOW loads with
-real data, so it can finally be ported. It sets `g_FieldActors`/`g_FieldNumActors`
-in its own body (asm 0x80071354) then runs a per-actor init loop (0x5C-byte
-actors). ~30 callees, ~50 data symbols (see the scoped slice below). Audit new
-field code for more `u_long` byte-buffers (each is a latent 2× overflow — two
-found+fixed this session in misc5.c).
+## DONE: FieldLoad decompiled — g_FieldActors now allocated
+`FieldLoad` (904-line map parser, misc3) is a port-first functional C decompile
+(src/field/main/misc3.c:93; replaces the INCLUDE_ASM). It parses the loaded map
+`D_8005A4E0` (header sizes at 0x10C–0x12C, LZSS section offsets 0x130–0x154): TIM
+textures, CLUTs, model data, walkmesh, scripts (`g_FieldCurScriptFile`), triggers
+(`g_pFieldTriggerZones`), sprites (`g_FieldSpriteData`), then **allocates + zeroes
+`g_FieldActors` = HeapAlloc(numActors*0x5C) and sets `g_FieldNumActors` =
+*(u16*)(map+0x18C)**, then a per-actor (0x5C-byte) init loop. Verified at runtime:
+`g_FieldActors`=valid, `g_FieldNumActors`=27, 17 actors processed. The old
+main.c:395 (`g_FieldActors` NULL) crash is RESOLVED. Every 32-bit map/section
+pointer is typed `u32*` (not `u_long*`) to avoid the widening-overflow class.
+- Flagged-uncertain (port-first, watch at runtime): actor position reads
+  (misc3.c:372-377 read `*(u16*)` entries — may need s16/32-bit), the model/fixup
+  sections, `func_8002709C` 13-arg marshalling, and the unsized scratch stubs
+  `D_800AFB14/18/20/…` (may default to 16 B; needed larger). See the subagent's
+  section-by-section notes if these misbehave.
+
+## The frontier (start here next): per-actor model init (func_8002CB54 & siblings)
+`FieldLoad → per-actor loop → memcpy (misc3.c:402) → SIGSEGV` on actor 17 (first
+with `status & 0x40 == 0`, the model branch). The memcpy dst/src (`pModel+0xC` /
+`pModel+0x8`) are heap-fill garbage because **`func_8002CB54`** (which should write
+those model-buffer pointers) is a `[stub]`. Port the per-actor model-load
+subsystem: `func_8002CB54` (sizes/ptrs from model data), `func_8002C8CC`,
+`func_8002C644`, `func_800303C8` (all in the 0x8002xxxx model TU). These decompress
+/ set up each actor's model from the map's model section (`D_800AFB14`). After that,
+oracle-iterate the rest of FieldLoad's tail (geometry work-area, camera, anim init)
+and then FieldMain's own main loop.
 
 ### Separate frontier (later): overlay archive resolution
 The per-state overlay never actually loads: `ArchiveDecodeSize(0xE)` returns 0 in
