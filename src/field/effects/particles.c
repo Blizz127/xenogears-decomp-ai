@@ -387,25 +387,25 @@ void FieldParticleUpdateAndRender(ParticleBank* pParticleBank, ParticlePrimitive
         switch (PARTICLE_FLAG_TYPE(pParticleBank->flags)) {
             case 3:
                 rotationVec.vx = 0;
-                rotationVec.vy = g_FieldActors[pParticleBank->targetActorID].pActorData->rotation.vz;
+                rotationVec.vy = ((ActorData*)(uintptr_t)g_FieldActors[pParticleBank->targetActorID].pActorData)->rotation.vz;
                 rotationVec.vz = 0;
                 RotMatrix(&rotationVec, &matrix);
                 pFieldActors = g_FieldActors;
-                sp70.vx = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vx);
-                sp70.vy = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vy);
-                sp70.vz = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vz);
-                pParticleBank->unk50 = pFieldActors[pParticleBank->targetActorID].pActorData->scaleX;
+                sp70.vx = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vx);
+                sp70.vy = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vy);
+                sp70.vz = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vz);
+                pParticleBank->unk50 = ((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->scaleX;
                 var_s5 = 1;
                 break;
             case 0:
                 rotationVec.vx = 0;
-                rotationVec.vy = g_FieldActors[pParticleBank->targetActorID].pActorData->rotation.vz;
+                rotationVec.vy = ((ActorData*)(uintptr_t)g_FieldActors[pParticleBank->targetActorID].pActorData)->rotation.vz;
                 rotationVec.vz = 0;
                 RotMatrix(&rotationVec, &matrix);
                 pFieldActors = g_FieldActors;
-                sp70.vx = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vx);
-                sp70.vy = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vy);
-                sp70.vz = CONV_TO_GTE(pFieldActors[pParticleBank->targetActorID].pActorData->position.vz);
+                sp70.vx = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vx);
+                sp70.vy = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vy);
+                sp70.vz = CONV_TO_GTE(((ActorData*)(uintptr_t)pFieldActors[pParticleBank->targetActorID].pActorData)->position.vz);
                 pParticleBank->unk50 = 0x1000;
                 break;
             case 1:
@@ -551,7 +551,7 @@ void FieldParticleStart(ParticleBank* pParticleBank, ParticlePrimitive* pPrim, i
         initialPosition.vz = 0;
     }
 
-    rotation = g_CamInterpolation.curAngleY + PSX_ANGLE(g_FieldActors[pParticleBank->targetActorID].pActorData->rotation.vz);
+    rotation = g_CamInterpolation.curAngleY + PSX_ANGLE(((ActorData*)(uintptr_t)g_FieldActors[pParticleBank->targetActorID].pActorData)->rotation.vz);
     direction = D_800AF474[rotation >> 9];
     
     initialPosition.vx += pParticleBank->pos.vx + pParticleBank->directions[direction].x;

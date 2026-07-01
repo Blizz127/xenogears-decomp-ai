@@ -750,7 +750,7 @@ void FieldScriptHandleTriggerZone2D(void) {
     FieldTriggerZone* pTrigger;
 
     triggerIndex = SCRIPT_READ_U8_REL(1);
-    pActor = g_FieldActors[g_PlayerActorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
 
     // Pack Z and X position into a long for use w/ NormalClip
     actorPosition2D = (CONV_TO_GTE(pActor->position.vz) << 0x10) + CONV_TO_GTE(pActor->position.vx);
@@ -792,7 +792,7 @@ void FieldScriptHandleTriggerZone(void) {
     FieldTriggerZone* pTrigger;
 
     triggerIndex = SCRIPT_READ_U8_REL(1);
-    pActor = g_FieldActors[g_PlayerActorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
 
     actorPositionY = CONV_TO_GTE(pActor->position.vy);
     if (g_pFieldTriggerZones[triggerIndex].y0 < actorPositionY && 
@@ -834,7 +834,7 @@ void FieldScriptCheckTriggerZone2D(void) {
     FieldTriggerZone* pTrigger;
 
     triggerIndex = SCRIPT_READ_U8_REL(1);
-    pActor = g_FieldActors[g_PlayerActorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
 
     // Pack Z and X position into a long for use w/ NormalClip
     actorPosition2D = (CONV_TO_GTE(pActor->position.vz) << 0x10) + CONV_TO_GTE(pActor->position.vx);
@@ -869,7 +869,7 @@ void FieldScriptCheckTriggerZone(void) {
     FieldTriggerZone* pTrigger;
 
     triggerIndex = SCRIPT_READ_U8_REL(1);
-    pActor = g_FieldActors[g_PlayerActorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
 
     actorPositionY = CONV_TO_GTE(pActor->position.vy);
     if (g_pFieldTriggerZones[triggerIndex].y0 < actorPositionY && 
@@ -954,8 +954,8 @@ void FieldScriptCheckActorDistance(void) {
     if (actorIndex != 0xFF) {
         pFieldActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
         
-        pActor = D_800B06B8->pActorData;
-        pActorOther = pFieldActor->pActorData;
+        pActor = (ActorData*)(uintptr_t)D_800B06B8->pActorData;
+        pActorOther = (ActorData*)(uintptr_t)pFieldActor->pActorData;
         distance = FieldGetVec3Magnitude(
             CONV_TO_GTE(pActor->position.vx) - CONV_TO_GTE(pActorOther->position.vx), 
             CONV_TO_GTE(pActor->position.vy) - CONV_TO_GTE(pActorOther->position.vy), 

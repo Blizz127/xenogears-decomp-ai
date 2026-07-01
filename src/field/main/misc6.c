@@ -35,7 +35,7 @@ void func_8009DAC4(void) {
     FieldActor* pFieldActor;
 
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
-        pActor = g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
         pActor->scriptFlags.fields.scriptFlags_0x0 = 0x1;
         pActor->flags |= 0x100000;
         pFieldActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
@@ -51,7 +51,7 @@ void FieldScriptVMHandlerEnableActorVM(void) {
     ActorData* pActor;
 
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
-        pActor = g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
         pActor->scriptFlags.fields.scriptFlags_0x0 = 0;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
@@ -63,7 +63,7 @@ void func_8009DC4C(void) {
     short nNewRotation;
 
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
-        pActor = g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
         pActor->moveModified.vx = 0;
         pActor->moveModified.vy = 0;
         pActor->moveModified.vz = 0;
@@ -106,9 +106,9 @@ void FieldScriptVMHandlerShowActorById(void) {
 
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
         pFieldActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
-        if (!(pFieldActor->pActorData->flags & 0x100000)) {
+        if (!(((ActorData*)(uintptr_t)pFieldActor->pActorData)->flags & 0x100000)) {
             pFieldActor->status &= ~ACTOR_STATUS_INVISIBLE;
-            pFieldActor->pActorData->flags &= ~0x2000000;
+            ((ActorData*)(uintptr_t)pFieldActor->pActorData)->flags &= ~0x2000000;
         }
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
@@ -137,8 +137,8 @@ void func_8009DF78(void) {
 
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
         pFieldActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
-        pFieldActor->pActorData->flags |= 0x02000000;
-        pFieldActor->pActorData->flags |= 0x800;
+        ((ActorData*)(uintptr_t)pFieldActor->pActorData)->flags |= 0x02000000;
+        ((ActorData*)(uintptr_t)pFieldActor->pActorData)->flags |= 0x800;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
@@ -160,7 +160,7 @@ void func_8009E094(void) {
 
     nMoveSpeed = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->moveSpeed = nMoveSpeed;
-    func_80021BCC(g_FieldActors[D_800AFD1C].pSpriteData, nMoveSpeed);
+    func_80021BCC((void*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData, nMoveSpeed);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
@@ -244,7 +244,7 @@ void func_8009E428(void) {
     ActorData* pActor;
 
     g_FieldScriptVMCurActor->walkmeshId = SCRIPT_READ_U8_REL(1);
-    pActor = g_FieldActors[D_800AFD1C].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[D_800AFD1C].pActorData;
     func_8009E574(
         CONV_TO_GTE(pActor->position.vx), 
         CONV_TO_GTE(pActor->position.vz)
@@ -344,7 +344,7 @@ void func_8009EB78(void) {
 
     if (FieldScriptVMGetActorIndex(1) != 0xFF) {
         actorIndex = FieldScriptVMGetActorIndex(1);
-        pActor = g_FieldActors[actorIndex].pActorData;
+        pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         if (pActor->flags & 0x100000) {
             curScriptId = g_FieldScriptVMCurActor->curScriptIndex;
             g_FieldScriptVMCurActor->scripts[curScriptId].state = SCRIPT_STATE_IDLE;
@@ -378,7 +378,7 @@ void func_8009ED68(void) {
     }
     
     actorIndex = FieldScriptVMGetActorIndex(1);
-    pActor = g_FieldActors[actorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
     if (pActor->flags & 0x100000) {
         g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].state = SCRIPT_STATE_IDLE;
         pActor->scripts[g_FieldScriptVMCurActor->unkCF].isInUse = 0;
@@ -430,7 +430,7 @@ void func_8009F0A0(void) {
     }
     
     actorIndex = FieldScriptVMGetActorIndex(1);
-    pActor = g_FieldActors[actorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
     if (pActor->flags & 0x100000) {
         g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].state = SCRIPT_STATE_IDLE;
         pActor->scripts[g_FieldScriptVMCurActor->unkCF].isInUse = 0;
@@ -662,7 +662,7 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A08B8);
 extern s32 g_PlayerActorIndex;
 
 void func_800A0C4C(void) {
-    g_FieldActors[g_PlayerActorIndex].pActorData->scriptFlags.flags |= 0x80;
+    ((ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData)->scriptFlags.flags |= 0x80;
 }
 
 // FieldResetActorPosition, set translation and sprite position of actor based on current actor data position

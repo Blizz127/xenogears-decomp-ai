@@ -156,7 +156,7 @@ void func_800AB378(s8 color) {
     int y;
     int x;
     
-    pActor = g_FieldActors[g_PlayerActorIndex].pActorData;
+    pActor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
     x = (CONV_TO_GTE(pActor->position.vx) * D_800C3914) >> 0x10;
     y = -(CONV_TO_GTE(pActor->position.vz) * D_800C3A18) >> 0x10;
     

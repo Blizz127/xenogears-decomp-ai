@@ -346,35 +346,17 @@ void FieldLoad(void) {
         pMap = (u8*)D_8005A4E0;
         nActors = *(u16*)(pMap + 0x18C);       /* header numEntitites */
         /* entity records begin at header + 0x190; s5 walks them */
-        /* nWords = nActors * 0x5C / 4 = nActors * 0x17 -> see asm shift math */
+        /* nWords = nActors * 0x5C / 4 = nActors * 0x17 -> see asm shift math.
+         * FieldActor now uses u32 pointer slots so sizeof==0x5C on both the MIPS
+         * matching target and the 64-bit port; the faithful nWords path is correct
+         * everywhere. */
         nWords = ((((nActors << 1) + nActors) << 3) - nActors); /* nActors*0x17 */
         g_FieldNumActors = nActors;
-        (void)nWords;
-#ifdef XENO_PC_PORT
-        /* The host FieldActor is 0x70, not the PSX 0x5C: its 4 pointer fields
-         * (pModelData/pSpriteData/pShadow/pActorData) widen 4->8 bytes. Size the
-         * actor array by sizeof so g_FieldActors[i] (stride 0x70) doesn't overrun a
-         * 0x5C-strided alloc and corrupt the heap. (sizeof == 0x5C on the MIPS
-         * matching target, so this is faithful there.) CAVEAT: the widened pointers
-         * also shift the struct's field offsets off the PSX raw offsets this code
-         * mixes in, so actor data is imperfect until FieldActor uses u32 pointer
-         * slots -- fine for reaching the render loop / map background. */
-        pClear = (u32*)HeapAlloc(nActors * (s32)sizeof(FieldActor), 0);
-        g_FieldActors = (FieldActor*)pClear;
-        {
-            u8* pb = (u8*)pClear;
-            s32 nb = nActors * (s32)sizeof(FieldActor);
-            for (i = 0; i < nb; i++) {
-                pb[i] = 0;
-            }
-        }
-#else
         pClear = (u32*)HeapAlloc(nWords << 2, 0);
         g_FieldActors = (FieldActor*)pClear;
         for (i = 0; i < nWords; i++) {
             pClear[i] = 0;
         }
-#endif
     }
 
     numActors = g_FieldNumActors;
@@ -404,7 +386,7 @@ void FieldLoad(void) {
                 u32* pOffTab;
                 u16 spriteId;
 
-                g_FieldActors[i].pModelData = pModel;
+                g_FieldActors[i].pModelData = (u32)(uintptr_t)pModel;
                 spriteId = *pEntry;
                 pOffTab = (u32*)((u8*)D_800AFB14 + (spriteId << 2));
                 /* pModel holds PSX 4-byte pointer slots (+0x4 modelData, +0x8/+0xC
@@ -579,16 +561,22 @@ void FieldLoad(void) {
             FieldActor* pActor = &g_FieldActors[i];
             u16 status = *(u16*)((u8*)pActor + 0x58);
             if (status & 0x40) {
-                void* pModel = *(void**)((u8*)pActor + 0x4C);
+#ifndef XENO_PC_PORT
+                /* This loop reads pActorData (offset 0x4C) which is populated by
+                 * func_80080F44 (called per-actor above). In the port func_80080F44
+                 * is a stub, so pActorData stays NULL and this dereference crashes.
+                 * Guard it until func_80080F44 / the actor-data init is ported. */
+                void* pModel = (void*)(uintptr_t)*(u32*)((u8*)pActor + 0x4C);
                 u32 flag = *(u32*)((u8*)pModel + 0x4);
                 if (flag & 0x1000000) {
-                    func_80021FE0(*(void**)((u8*)pActor + 0x4),
+                    func_80021FE0((void*)(uintptr_t)*(u32*)((u8*)pActor + 0x4),
                                   *(s16*)((u8*)pModel + 0x108));
                 } else {
                     s16 v = (s16)(g_CamInterpolation.curAngleY +
                                   *(u16*)((u8*)pModel + 0x108));
-                    func_800223B0(*(void**)((u8*)pActor + 0x4), v);
+                    func_800223B0((void*)(uintptr_t)*(u32*)((u8*)pActor + 0x4), v);
                 }
+#endif
             }
         }
     }

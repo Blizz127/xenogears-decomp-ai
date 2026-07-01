@@ -322,13 +322,19 @@ typedef struct {
     int flags134;
 } ActorData;
 
+/* PSX-faithful pointer slots: typed as u32 (== pointer size on the MIPS target,
+ * so byte-identical codegen / sizeof==0x5C on both builds). On the 64-bit port
+ * this keeps the struct at 0x5C instead of widening to 0x70, so raw PSX offsets
+ * (0x4C pActorData, 0x50 rotation, 0x58 status, etc.) used throughout the field
+ * code stay correct. Reconstruct host pointers at use sites via
+ * (void*)(uintptr_t) / (ActorData*)(uintptr_t). */
 typedef struct {
-    /* 0x0  */ void* pModelData; // 0x24 size, model related data
-    /* 0x4  */ void* pSpriteData; // 0x164 size
-    /* 0x8  */ void* pShadow; // 0x70 size
+    /* 0x0  */ u32 pModelData; // 0x24 size, model related data
+    /* 0x4  */ u32 pSpriteData; // 0x164 size
+    /* 0x8  */ u32 pShadow; // 0x70 size
     /* 0xC  */ MATRIX transformMatrix;
     /* 0x2C */ MATRIX childMatrix;
-    /* 0x4C */ ActorData* pActorData;
+    /* 0x4C */ u32 pActorData;
     /* 0x50 */ SVEC rotation;
     /* 0x56 */ short flags;
     /* 0x58 */ short status;

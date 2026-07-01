@@ -722,7 +722,7 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D180);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D230);
 
 void func_8008D26C(void) {
-    *(s16*)((u8*)g_FieldActors[D_800AFD1C].pSpriteData + 0x82) = FieldScriptVMGetArgument(1) << 1;
+    *(s16*)((u8*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData + 0x82) = FieldScriptVMGetArgument(1) << 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
@@ -741,14 +741,14 @@ s32 func_8008D30C(s32 a0, s32 a1) {
 }
 
 static inline void CopySpriteFieldS32(FieldActor* actors, int dstId, int srcId, int offset) {
-    void* dst = actors[dstId].pSpriteData;
-    void* src = actors[srcId].pSpriteData;
+    void* dst = (void*)(uintptr_t)actors[dstId].pSpriteData;
+    void* src = (void*)(uintptr_t)actors[srcId].pSpriteData;
     *(s32*)((u8*)dst + offset) = *(s32*)((u8*)src + offset);
 }
 
 static inline void CopySpriteFieldU16(FieldActor* actors, int dstId, int srcId, int offset) {
-    void* dst = actors[dstId].pSpriteData;
-    void* src = actors[srcId].pSpriteData;
+    void* dst = (void*)(uintptr_t)actors[dstId].pSpriteData;
+    void* src = (void*)(uintptr_t)actors[srcId].pSpriteData;
     *(u16*)((u8*)dst + offset) = *(u16*)((u8*)src + offset);
 }
 
@@ -762,8 +762,8 @@ void FieldActorCopyPlacement(int dstActorId, int srcActorId) {
     ActorData* srcActor;
     int i;
 
-    srcActor = actors[srcActorId].pActorData;
-    dstActor = actors[dstActorId].pActorData;
+    srcActor = (ActorData*)(uintptr_t)actors[srcActorId].pActorData;
+    dstActor = (ActorData*)(uintptr_t)actors[dstActorId].pActorData;
 
     for (i = 0; i < 4; i++) {
         dstActor->walkmeshTriIds[i] = srcActor->walkmeshTriIds[i];
@@ -944,7 +944,7 @@ void FieldScriptWriteActorFlags1(void) {
 
     actorIndex = FieldScriptVMGetActorIndex(1);
     if (actorIndex != ACTOR_ID_INVALID) {
-        pActorData = g_FieldActors[actorIndex].pActorData;
+        pActorData = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(
             SCRIPT_IMM_ARG(1), 
             pActorData->scriptFlags
@@ -995,8 +995,8 @@ void FieldScriptWriteActorDistance(void) {
     actorIndexA = FieldScriptVMGetActorIndex(3);
     actorIndexB = FieldScriptVMGetActorIndex(4);
     if ((actorIndexA != ACTOR_ID_INVALID) && (actorIndexB != ACTOR_ID_INVALID)) {
-        pActorA = g_FieldActors[actorIndexA].pActorData;
-        pActorB = g_FieldActors[actorIndexB].pActorData;
+        pActorA = (ActorData*)(uintptr_t)g_FieldActors[actorIndexA].pActorData;
+        pActorB = (ActorData*)(uintptr_t)g_FieldActors[actorIndexB].pActorData;
         distance = FieldGetVec2Magnitude(
             CONV_TO_GTE(pActorA->position.vx) - CONV_TO_GTE(pActorB->position.vx), 
             CONV_TO_GTE(pActorA->position.vz) - CONV_TO_GTE(pActorB->position.vz)
@@ -1128,7 +1128,7 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F0B4);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F1C8);
 
 void func_8008F2D8(void) {
-    func_80023290(g_FieldActors[D_800AFD1C].pSpriteData, FieldScriptVMGetArgument(1));
+    func_80023290((void*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData, FieldScriptVMGetArgument(1));
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 

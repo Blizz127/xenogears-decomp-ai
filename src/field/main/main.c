@@ -148,11 +148,20 @@ extern void FieldPollControllers(), SoundMuteAllSpuChannels(), SoundEnableAllSpu
 extern void GameCheckAndHandleSoftReset(), FieldParticlesFreeAll(), FieldFree();
 extern void FieldScriptMemoryWriteU16();
 
-/* g_FieldActors[idx].pActorData->flags. pActorData is a 4-byte field read as u32,
- * widened via long so this compiles on both the 32-bit matching build and the
- * 64-bit port. */
+/* g_FieldActors[idx].pActorData->flags. pActorData is a u32 slot (== pointer
+ * size on MIPS, so matching-safe). On the 64-bit port the u32 is widened to a
+ * host pointer via uintptr_t before dereferencing. sizeof(FieldActor)==0x5C on
+ * both builds, so the raw offset 0x4C is correct.
+ * XENO_PC_PORT: pActorData is NULL until func_80080F44 (actor-data init) is
+ * ported; return 0 (no flags set) instead of dereferencing NULL. */
+#ifdef XENO_PC_PORT
 #define FIELD_ACTOR_FLAGS(idx) \
-    (*(s32*)(long)(*(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C)))
+    ({ u32 _p = *(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C); \
+       _p ? *(s32*)(uintptr_t)_p : 0; })
+#else
+#define FIELD_ACTOR_FLAGS(idx) \
+    (*(s32*)(uintptr_t)(*(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C)))
+#endif
 
 void FieldMain(void) {
     int exitCode = 0;   /* s0 at teardown (set 0/1/2/3 on the exit paths) */
