@@ -157,7 +157,7 @@ extern void func_8007A5C4(void);
 extern void func_80077844();
 extern void func_80077C60(void);
 extern void func_8007469C(void);
-extern void func_80080F44(void);
+extern void func_80080F44(s32 actorIndex);
 extern void func_802812A4(void);
 extern void func_800A28D4(void);
 extern void func_800A2714(void);
@@ -442,7 +442,7 @@ void FieldLoad(void) {
                 g_FieldActors[i].rotation.z = 0;
             }
             pEntry += 1;    /* asm: s5 += 2, delay slot of func_80080F44 */
-            func_80080F44();
+            func_80080F44(i);
         }
     }
 
