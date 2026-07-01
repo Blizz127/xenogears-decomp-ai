@@ -1,16 +1,16 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-07-01. Commit e5982f8._
+_Last updated: 2026-07-01. Commit ed4a9b8._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
 - **Menu.2** (disc/archive overlay loading): DONE.
-- **Phase C (Field)** — render loop stable, crash-free. Black screen (CLUT data zero).
+- **Phase C (Field)** — render loop stable, crash-free. CLUT data now flowing.
 
 ## Recent commits (this session)
 ```
+ed4a9b8  field: implement OpenTIM/ReadTIM + VRAM CLUT read-back shim
 e5982f8  field: migrate D_800ADC44 texture descriptor data (clean)
-9d20b49  Revert "field: migrate D_800ADC44 texture descriptor ROM data"
 e0222d8  field: implement FieldLoadUITextures — archive texture CLUT loader
 f35238c  field: implement func_80074108 — background/camera draw dispatch
 8f2b712  field: implement func_80080968 — actor state table lookup
@@ -19,31 +19,24 @@ d0675c2  field: implement func_80080F44 — per-actor data initialization
 29727c6  field: fix func_8007554C DrawOTag crash
 ```
 
-## Actor init chain: COMPLETE
-func_80080F44 → func_80080A74 → func_80080968 all implemented.
+## CLUT pipeline: NOW WORKING
+1. `FieldLoadUITextures` loads archive 0xA7, calls `FieldLoadTIMWithClut` × 8
+2. `OpenTIM`/`ReadTIM` (implemented in psyq_compat.c) parse TIM data → CLUT rects
+3. `LoadImage` uploads CLUTs to PsyCross VRAM at y=0xFB
+4. Direct `vram[]→D_800AFC08` copy (XENO_PC_PORT shim) bypasses broken StoreImage
+5. `D_800AFC08` verified populated: `0000 8020 8841 9083 98c5 a106 ad48 b58a`
+6. `func_80074108` copies D_800AFC08 → D_800AFD24 → LoadImage uploads to VRAM
 
-## Draw dispatch: COMPLETE
-func_80074108 (background/camera) implemented. func_8007554C (per-frame render) implemented.
-
-## Texture loading: COMPLETE (code + data)
-FieldLoadUITextures implemented. RECT populated (x=0,y=0xFB,w=0x10,h=1).
-LoadImage path in func_80074108 now **unblocked** (h=1, non-zero).
-
-**D_800ADC44 data migration: DONE (clean).** Commit 1cf8a56 was BLOCKED by Kimi
-because it replaced the `if (D_8004F344 == 0)` guard with an in-function memcpy,
-breaking asm-faithful control flow. Reverted 1cf8a56 and reapplied the data
-correctly as a dedicated PC port data file (`pc_port/src/data_field.c`), compiled
-into the port-only sources list. `src/field/main/main.c` is byte-identical to the
-Kimi-approved e0222d8. D_800ADC44 is now in `.data` with real values (verified
-via objdump: entry 0 = {672, 448, 0, 251, 0, 0}). D_800AFC08 remains in `.bss`
-(zeroed) — StoreImage does not read back VRAM in PsyCross yet.
+## Known PsyCross workaround
+`StoreImage`/`GR_ReadVRAM` doesn't write back to caller's buffer despite VRAM
+having valid data. Worked around with direct `vram[y*1024+x]` copy in
+`FieldLoadUITextures`. Remove once GR_ReadVRAM is fixed upstream.
 
 ## Next frontier
-**StoreImage / GR_ReadVRAM** — PsyCross's StoreImage does not read back from VRAM
-into host memory. D_800AFC08 (the CLUT readback buffer) stays zero after
-StoreImage. This is the next frontier for a visible field: either implement
-VRAM read-back in PsyCross's GR_ReadVRAM path, or find an alternative CLUT
-source for func_80074108's rendering.
+Camera vectors (`g_CameraEye`/`g_CameraAt`) are still (0,0,0) — camera init
+functions (func_80072A38 et al) are stubbed. Without camera, the view matrix
+is identity and background quads render at origin with no perspective.
+Implementing camera init is the next step toward visible field output.
 
 ## Reproduce
 ```
