@@ -120,7 +120,77 @@ void func_8007254C(void) {
      * the camera update functions run. */
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800726E8);
+/* ---- func_800726E8: camera mode transition handler --------------------------
+ * Called from func_80073230. Checks scene flags and transitions camera modes.
+ * With zeroed scene data, most paths are skipped. */
+extern u8 D_800ADC1C[];
+extern s32 func_8007234C(void);
+extern s32 func_80072398(u8 scene65, s32 modeIdx);
+extern void func_80284EA4(void);
+
+void func_800726E8(void) {
+    u8 scene64 = *(u8*)((u8*)&g_Scene + 0x64);
+    u8 scene65 = *(u8*)((u8*)&g_Scene + 0x65);
+    s16 scene66 = *(s16*)((u8*)&g_Scene + 0x66);
+
+    if (scene64 == 0xFF || scene65 == 0xFF) goto tail;
+
+    if (scene66 == 0) {
+        /* Check mode flags via D_800ADC1C indexed by scene mode */
+        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+        s32 modeIdx = scene56 >> 9;
+        if (D_800ADC1C[modeIdx] & scene64) {
+            s32 scene5C = *(s32*)((u8*)&g_Scene + 0x5C);
+            if (scene5C == (s32)0xFFC00000) {
+                *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            } else if (scene5C == 0x400000) {
+                *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            } else {
+                *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+                *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
+                *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            }
+        }
+    }
+
+    /* Second mode check using scene65 */
+    {
+        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+        s32 modeIdx = scene56 >> 9;
+        if (D_800ADC1C[modeIdx] & scene65) {
+            s32 r1 = func_8007234C();
+            scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+            s32 r2 = func_80072398(scene65, scene56 >> 9);
+            if (r2 < r1) {
+                *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
+                *(s32*)((u8*)&g_Scene + 0x7C) = *(s32*)((u8*)&g_Scene + 0x7C);
+                *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            }
+        }
+    }
+
+tail:
+    /* Z-scroll transition countdown */
+    if (*(s16*)((u8*)&g_Scene + 0x66) != 0) {
+        s32 new60 = *(s32*)((u8*)&g_Scene + 0x60) + *(s32*)((u8*)&g_Scene + 0x5C);
+        *(s32*)((u8*)&g_Scene + 0x60) = new60;
+        *(u16*)((u8*)&g_Scene + 0x56) = (u16)(new60 >> 16);
+        s16 v = *(u16*)((u8*)&g_Scene + 0x66) - 1;
+        *(u16*)((u8*)&g_Scene + 0x66) = v;
+        if (v == 0) goto set56;
+    } else {
+        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+    }
+
+    if (0) {
+    set56:
+        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_80284EA4();
+    }
+}
 
 /* ---- func_80072A38: camera position update from input vector ----------------
  * Takes a VECTOR* ($a0/$s0) and a flag ($a1/$s2). Calls func_8007CD80 to
