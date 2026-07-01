@@ -1,53 +1,46 @@
 # Active Handoff — PC Port
 
-_Last updated: 2026-07-01. Commit f35238c._
+_Last updated: 2026-07-01. Commit e0222d8._
 
 ## Where we are
 - **Phase A** (boot → interactive KernelMenu): DONE.
 - **Menu.2** (disc/archive overlay loading): DONE.
-- **Phase C (Field)** — render loop stable, crash-free. Black screen (render data zero/stubbed).
+- **Phase C (Field)** — render loop stable, crash-free. Black screen (CLUT data zero).
 
 ## Recent commits (this session)
 ```
+e0222d8  field: implement FieldLoadUITextures — archive texture CLUT loader
 f35238c  field: implement func_80074108 — background/camera draw dispatch
 8f2b712  field: implement func_80080968 — actor state table lookup
 18a3e97  field: implement func_80080A74 — per-actor ActorData field init
 d0675c2  field: implement func_80080F44 — per-actor data initialization
-29727c6  field: fix func_8007554C DrawOTag crash — byte-offset pointer arithmetic
+29727c6  field: fix func_8007554C DrawOTag crash
 ```
 
 ## Actor init chain: COMPLETE
 func_80080F44 → func_80080A74 → func_80080968 all implemented.
-Actor data blocks allocated, FieldActor.pActorData valid.
-func_8007AA44 was already decompiled (misc4.c).
 
-## Background draw: COMPLETE (func_80074108)
-Full decompile from 371-line ASM. Three phases: CLUT populate, camera matrix setup, quad rendering loops. All g_Scene sub-offsets use raw byte offsets.
+## Draw dispatch: COMPLETE
+func_80074108 (background/camera) implemented. func_8007554C (per-frame render) implemented.
 
-## Known zero/stubbed render inputs
-| Symbol | State | Upstream writer |
-|--------|-------|-----------------|
-| g_CameraEye, g_CameraAt | (0,0,0) | func_80072A38 et al (stubs) |
-| D_800AFD24 (CLUT dest) | all zero | populated by func_80074108 from D_800AFC08 |
-| D_800AFC08 (CLUT source) | all zero | **FieldLoadUITextures** (STUB) |
-| D_800B0050 (LoadImage RECT) | (0,0,0,0) | **FieldLoadUITextures** (STUB) |
-| D_800B0F7C (bg quads) | HAS DATA | FieldLoad (partially decompiled) |
-| D_800B06BC (trigger zones) | all zero | FieldLoad |
-| D_800B0FEC (extra quads) | partial data | func_8007A5C4 (STUB) |
-| D_800B1E00 (render swap) | all zero | no writer found (constant data?) |
+## Texture loading: COMPLETE (code), BLOCKED (data)
+FieldLoadUITextures implemented. RECT populated (x=0,y=0xFB,w=0x10,h=1).
+LoadImage path in func_80074108 now **unblocked** (h=1, non-zero).
+
+**Blocking**: D_800ADC44 texture descriptor table is stubbed ROM data (all zeros).
+Without real values, FieldLoadTIMWithClut uploads CLUTs to wrong VRAM locations
+and the StoreImage readback into D_800AFC08 gets zeros.
 
 ## Next frontier
-**FieldLoadUITextures** — ~55 instructions, called from FieldMain line 230.
-Populates D_800AFC08 (CLUT source) and D_800B0050 (LoadImage RECT).
-ASM: `asm/field/nonmatchings/main/main/FieldLoadUITextures.s`
-Most callees are decompiled (ArchiveDecodeAlignedSize, HeapAlloc, FieldLoadTIMWithClut, StoreImage).
-Currently INCLUDE_ASM in `src/field/main/main.c:27`.
+**D_800ADC44 data migration** — needs real values from matching ELF or disc.
+Table is 8 entries × 12 bytes = 96 bytes of texture coordinates.
+Alt: hardcode known values from the matching decompilation if available.
 
 ## Reproduce
 ```
 cd pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 10 build_native/xeno-port
 ```
-Expected: exit 124 (timeout), black screen, 52 stubs.
+Expected: exit 124 (timeout), black screen, ~53 stubs.
   and the game indexes/draws them that way (`DrawOTag(ot3 + 7)` = byte 56).
   `ClearOTagR` wrote a 4-byte-strided list (only bytes 0–31), leaving slots 4–7 (the
   upper half) **zeroed**. Confirmed by dumping ot3: slots 0–7 linked at +0/+4/+8…/+28,
