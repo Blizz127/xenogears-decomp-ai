@@ -92,6 +92,20 @@ void FieldLoadUITextures(void) {
     D_800B0052 = 1;
     StoreImage((RECT*)&D_800B004C, (u_long*)D_800AFC08);
     DrawSync(0);
+#ifdef XENO_PC_PORT
+    /* PsyCross StoreImage/GR_ReadVRAM doesn't write back to the caller's
+     * buffer (VRAM data exists but the memcpy path is broken). Copy directly
+     * from PsyCross's host VRAM array to D_800AFC08 as a compatibility shim.
+     * Remove once GR_ReadVRAM is fixed upstream. */
+    {
+        extern unsigned short vram[];  /* PsyCross host VRAM (PsyX_render.cpp) */
+        s32 vy = D_800B004E;
+        s32 vw = D_800B0050;
+        for (i = 0; i < vw && i < 0x80; i++) {
+            D_800AFC08[i] = vram[i + vy * 1024];
+        }
+    }
+#endif
     HeapFree(D_8005A4A0);
 }
 

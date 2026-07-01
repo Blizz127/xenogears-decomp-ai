@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>   /* getenv/atoi for the headless test hook below */
+#include <string.h>   /* memcpy for TIM parsing */
 #include <libgte.h>   /* PsyCross: pull in before libgpu.h (it uses SVECTOR) */
 #include <libgpu.h>   /* PsyCross: POLY_F3, setPolyF3 macro (setlen/setcode) */
 
@@ -22,6 +23,72 @@
 extern void PsyX_EndScene(void);  /* GR_EndScene + GR_StoreFrameBuffer + GR_SwapWindow (SDL_GL_SwapWindow) */
 extern int  VSync(int mode);      /* PsyCross frame pacing; returns vblank count. Does NOT present. */
 extern void DrawAllSplits(void);  /* flush queued primitives to the GL framebuffer; no-op when none */
+
+/*
+ * OpenTIM / ReadTIM: PsyCross declares these in libgpu.h but provides NO
+ * implementation — they fall through to auto-generated no-op stubs that return
+ * 0/NULL. FieldLoadTIMWithClut calls OpenTIM(pTimData) then ReadTIM(&tim);
+ * the stubbed ReadTIM returns NULL, so the `if (pTIM)` guard fails and
+ * LoadImage is never called — no CLUT or pixel data reaches host VRAM (vram[]),
+ * and StoreImage/GR_ReadVRAM reads zeros.
+ *
+ * Implementation follows PsyCross's own GetTimInfo (src/gpu/font.h) exactly:
+ * TIM format is [0]=u32 header (ID=0x10, version=0x00), [1]=u32 mode,
+ * then if mode&8: [2]=u32 blocklen, [3..4]=RECT16 clut rect, [5..]=clut pixels,
+ * then [N]=u32 blocklen, [N+1..N+2]=RECT16 pixel rect, [N+3..]=pixel data.
+ *
+ * OpenTIM stores the data pointer; ReadTIM parses it into the caller's
+ * TIM_IMAGE struct and returns a pointer to it (or NULL on bad ID/version).
+ */
+static u_long* s_pTimData = NULL;
+
+int OpenTIM(u_long* addr)
+{
+    s_pTimData = addr;
+    return 0;
+}
+
+TIM_IMAGE* ReadTIM(TIM_IMAGE* timimg)
+{
+    u_int* rtim = (u_int*)s_pTimData;
+
+    if (!rtim) {
+        printf("[psyq_compat] ReadTIM: no TIM data (OpenTIM not called)\n");
+        return NULL;
+    }
+
+    /* Check ID */
+    if ((rtim[0] & 0xff) != 0x10) {
+        printf("[psyq_compat] ReadTIM: bad TIM ID 0x%02x (expected 0x10)\n",
+               (unsigned)(rtim[0] & 0xff));
+        return NULL;
+    }
+
+    /* Check version */
+    if (((rtim[0] >> 8) & 0xff) != 0x00) {
+        printf("[psyq_compat] ReadTIM: bad TIM version 0x%02x\n",
+               (unsigned)((rtim[0] >> 8) & 0xff));
+        return NULL;
+    }
+
+    timimg->mode = rtim[1];
+    rtim += 2;
+
+    /* Clut present? */
+    if (timimg->mode & 0x8) {
+        timimg->cRECT16 = (RECT16*)&rtim[1];
+        timimg->caddr = (u_int*)&rtim[3];
+        rtim += rtim[0] >> 2;  /* advance by block length (in words) */
+    } else {
+        timimg->caddr = 0;
+        timimg->cRECT16 = 0;
+    }
+
+    timimg->pRECT16 = (RECT16*)&rtim[1];
+    timimg->paddr = (u_int*)&rtim[3];
+
+    return timimg;
+}
 
 /*
  * SetPolyF3: PsyCross declares it (libgpu.h) but ships only the setPolyF3 macro,
