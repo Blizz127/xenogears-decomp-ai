@@ -34,7 +34,43 @@ void func_8008083C(int actorIndex) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080968);
+/* ---- func_80080968: actor state table lookup -------------------------------
+ * Called from func_80080A74. Reads ActorData.field_10 as a state index,
+ * checks a gate bit in field_04, then looks up a pointer in two-level
+ * tables (D_800AFB24 / D_800AFB20) indexed by sub-state values.
+ * Returns the looked-up pointer (stored at ActorData offset 0x14). */
+extern s32 D_800AFB20;
+extern s32 D_800AFB24[];
+
+s32 func_80080968(u8* pActorData) {
+    s16 stateIdx = *(s16*)(pActorData + 0x10);
+    s32 gateWord = *(s32*)(pActorData + 0x04);
+
+    /* Gate check: if bit (stateIdx+3) of field_04 is set, return 0 */
+    if ((gateWord >> (stateIdx + 3)) & 1) {
+        return 0;
+    }
+
+    /* Sub-state lookup: read s16 at pActorData[stateIdx].offset_08
+     * (entries are 2 bytes each, starting at pActorData + 0) */
+    {
+        s16 subIdx = *(s16*)(pActorData + stateIdx * 2 + 0x08);
+        s32 val = subIdx * 7;  /* subIdx * 8 - subIdx = subIdx * 7 */
+
+        /* D_800AFB24[stateIdx] points to an array of 14-byte structs.
+         * val * 2 indexes into it (14-byte stride). */
+        u8* tableRow = (u8*)(uintptr_t)D_800AFB24[stateIdx];
+        if (tableRow == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+
+        s32 byteVal = *(u8*)(tableRow + val * 2 + 0x0C);
+
+        /* Final lookup: D_800AFB20[byteVal] */
+        u32* finalTable = (u32*)(uintptr_t)D_800AFB20;
+        if (finalTable == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+
+        return (s32)finalTable[byteVal];
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800809D0);
 
@@ -182,8 +218,7 @@ void func_80080A74(s32 actorIndex) {
     }
 
     /* ---- post-loop setup ---- */
-    func_80080968(p);
-    *(s32*)(p + 0x14) = *(s16*)(p + 0x10);
+    *(s32*)(p + 0x14) = func_80080968(p);
     {
         s16 choice = *(s16*)(p + 0x10);
         s16* stateBase = (s16*)(p + 0x18);
