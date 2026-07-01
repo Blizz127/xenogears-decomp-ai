@@ -40,20 +40,6 @@ extern u16 D_800B004C, D_800B004E, D_800B0050, D_800B0052;
 extern u16 D_800AFC08[0x80];
 extern void ResolveArchiveEntryPointers(void* pData);
 
-/* D_800ADC44 real ROM data — 8 texture descriptors (6 halfwords each).
- * Extracted from disc/field.bin offset 0x3E154 (RAM 0x800ADC44).
- * Mapping: field overlay base = 0x8006FAF0 (linker/field.ld). */
-static const u16 kFieldTimDescs[48] = {
-    672, 448,   0, 251,   0,   0,
-    640, 480, 256, 243,  16,   1,
-    668, 448, 256, 245,   0,   0,
-    640, 448, 256, 242,   0,   0,
-    640, 496, 256, 244,  16,   1,
-    960, 320, 256, 247,  16,   1,
-    664, 448, 256, 246,  16,   1,
-    648, 448, 256, 246,  16,   1,
-};
-
 void FieldLoadUITextures(void) {
     u16* pTable;
     u16* pScan;
@@ -62,14 +48,7 @@ void FieldLoadUITextures(void) {
     u32* pDataPtr;
     s32 i;
 
-    /* XENO_PC_PORT: D_800ADC44 is stubbed to zero. Copy real ROM data. */
-    {
-        static int dataMigrated = 0;
-        if (!dataMigrated) {
-            dataMigrated = 1;
-            for (i = 0; i < 48; i++) D_800ADC44[i] = kFieldTimDescs[i];
-        }
-    }
+    if (D_8004F344 == 0) {
         s32 size = ArchiveDecodeAlignedSize(0xA7);
         void* pBuf = HeapAlloc(size, 1);
         D_8005A4A0 = pBuf;
