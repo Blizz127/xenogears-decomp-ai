@@ -49,7 +49,72 @@ s32 func_80080A18(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080A74);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080F44);
+/* ---- func_80080F44: per-actor data initialization ---------------------------
+ * Called from FieldLoad for each actor (0..D_800ADBFC-1).
+ * Allocates and zeroes the 0x138-byte ActorData block, sets up animation
+ * dispatch if status & 0x2000, allocates a 0x70-byte shadow buffer, and calls
+ * func_80080A74 / func_8007AA44 for further init.
+ *
+ * ASM-verified FieldActor byte offsets (struct uses u32 for PSX pointer fidelity):
+ *   0x00 pModelData  0x04 pSpriteData  0x08 pShadow  0x4C pActorData
+ *   0x50 rotation.x  0x52 rotation.y   0x54 rotation.z
+ *   0x56 flags        0x58 status
+ *   sizeof(FieldActor) = 0x5C
+ *
+ * ActorData byte offsets (allocated 0x138 bytes):
+ *   0x110 unk110  0x114 unk114  0x118 pAnimTable  0x120 unk120
+ *   0x124 unk124  0x12C flags12C  0x134 flags134
+ */
+extern s32 D_800B2180;
+extern void func_8007AA44(void*);
+
+void func_80080F44(s32 actorIndex) {
+    FieldActor* pActor;
+    ActorData* pData;
+    s32 i;
+
+    if (actorIndex >= D_800ADBFC) return;
+
+    /* 1. Allocate and zero the 0x138-byte ActorData block */
+    D_800B2180++;
+    pData = (ActorData*)(uintptr_t)HeapAlloc(0x138, 0);
+    g_FieldActors[actorIndex].pActorData = (u32)(uintptr_t)pData;
+
+    for (i = 0; i < 0x4E; i++) {
+        ((s32*)pData)[i] = 0;
+    }
+
+    /* 2. Zero field_5A (halfword at actor offset 0x5A, past status) */
+    *(s16*)((u8*)&g_FieldActors[actorIndex] + 0x5A) = 0;
+
+    /* 3. If status has bit 0x2000: allocate animation dispatch table */
+    if (g_FieldActors[actorIndex].status & 0x2000) {
+        u32* pModel = (u32*)(uintptr_t)g_FieldActors[actorIndex].pModelData;
+        void* pAnimTable = HeapAlloc(0x80, 0);
+        pData->unk118 = (u32)(uintptr_t)pAnimTable;
+
+        if (pModel != NULL) {
+            void* pAnimInfo = (void*)(uintptr_t)pModel[0x14 / 4];
+            if (pAnimInfo != NULL) {
+                s32 count = ((s32*)pAnimInfo)[0xC / 4];
+                if (count > 0) {
+                    void* pEntries = (void*)(uintptr_t)((u32*)pAnimInfo)[0x10 / 4];
+                    for (i = 0; i < count; i++) {
+                        ((u32*)pEntries)[i * 8] = (u32)(uintptr_t)func_80080A18;
+                        ((s32*)pAnimTable)[i] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /* 4. Per-actor init callback (stubbed in port) */
+    func_80080A74(actorIndex);
+
+    /* 5. Allocate 0x70-byte shadow buffer */
+    g_FieldActors[actorIndex].pShadow = (u32)(uintptr_t)HeapAlloc(0x70, 0);
+    func_8007AA44((void*)(uintptr_t)g_FieldActors[actorIndex].pShadow);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008110C);
 
