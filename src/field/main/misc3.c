@@ -163,8 +163,8 @@ extern void func_800A28D4(void);
 extern void func_800A2714(void);
 extern void func_80073E38(void);
 extern void func_80077268(void);
-extern void func_800303C8(int a0, int a1);
-extern void func_8002CB54(int a0, void* a1, void* a2);
+extern void func_800303C8(void* modelData, int a1);
+extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(void* a0, void* a1, int a2);
 extern void func_8002C644(void* a0);
 extern void func_8002C3E8(void* a0);
@@ -386,33 +386,40 @@ void FieldLoad(void) {
                 g_FieldActors[i].pModelData = pModel;
                 spriteId = *pEntry;
                 pOffTab = (u32*)((u8*)D_800AFB14 + (spriteId << 2));
-                *(void**)((u8*)pModel + 0x4) =
-                    (u8*)D_800AFB14 + pOffTab[1] + 0x10;
-                func_8002CB54(*(s32*)((u8*)pModel + 0x4),
-                              (u8*)pModel + 0x8,
-                              (u8*)pModel + 0xC);
+                /* pModel holds PSX 4-byte pointer slots (+0x4 modelData, +0x8/+0xC
+                 * the model's double-buffer halves). Store/load them as truncated
+                 * u32 (host RAM is linked below 4 GiB, so it round-trips): an 8-byte
+                 * host-pointer store here would clobber the neighbouring slot. */
+                *(u32*)((u8*)pModel + 0x4) =
+                    (u32)((u8*)D_800AFB14 + pOffTab[1] + 0x10);
+                func_8002CB54((void*)(u32)*(u32*)((u8*)pModel + 0x4),
+                              (u32*)((u8*)pModel + 0x8),
+                              (u32*)((u8*)pModel + 0xC));
                 {
+                    /* asm: a0 = pModel[0x4] (modelData, the model with header),
+                     * a1 = pModel[0x8] (out1), a2 = (status & 0xC) >> 2. (The first
+                     * arg is the model source, NOT the still-uninitialised out2.) */
                     u16 st = (u16)g_FieldActors[i].status;
-                    func_8002C8CC(*(void**)((u8*)pModel + 0xC),
-                                  *(void**)((u8*)pModel + 0x8),
+                    func_8002C8CC((void*)(u32)*(u32*)((u8*)pModel + 0x4),
+                                  (void*)(u32)*(u32*)((u8*)pModel + 0x8),
                                   (st & 0xC) >> 2);
                 }
                 {
-                    void* pSrcModel = *(void**)((u8*)pModel + 0x4);
-                    memcpy(*(void**)((u8*)pModel + 0xC),
-                           *(void**)((u8*)pModel + 0x8),
+                    void* pSrcModel = (void*)(u32)*(u32*)((u8*)pModel + 0x4);
+                    memcpy((void*)(u32)*(u32*)((u8*)pModel + 0xC),
+                           (void*)(u32)*(u32*)((u8*)pModel + 0x8),
                            *(s32*)((u8*)pSrcModel + 0x34));
                 }
                 if (g_FieldActors[i].status & 0x2000) {
                     HeapChangeCurrentUser(HEAP_USER_KAZM, NULL);
-                    func_800303C8(*(s32*)((u8*)pModel + 0x4), 0);
+                    func_800303C8((void*)(u32)*(u32*)((u8*)pModel + 0x4), 0);
                     /* asm: sw v0, 0x14(s0) captures HeapChangeCurrentUser's
                      * return (prior user tag); the shared header types it void,
                      * so preserve the store without the (unused) value. */
                     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
                     *(s32*)((u8*)pModel + 0x14) = 0;
                 }
-                func_8002C644(*(void**)((u8*)pModel + 0x4));
+                func_8002C644((void*)(u32)*(u32*)((u8*)pModel + 0x4));
             } else {
                 g_FieldActors[i].status = status | 0x20;
                 g_FieldActors[i].rotation.x = 0;
