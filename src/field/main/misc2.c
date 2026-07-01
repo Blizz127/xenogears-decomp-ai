@@ -266,7 +266,150 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072D74);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073230);
+/* ---- func_80073230: per-frame camera update (FieldComputeSceneMatrices) ------
+ * Called every frame. Dispatches on g_FieldCameraMode:
+ *   0: direct camera from actor position (calls func_80072A38)
+ *   1: camera movement interpolation
+ *   2: transition mode
+ * Always calls func_80072D74 at end, then masks g_Scene+0x56. */
+extern s16 g_FieldCameraMode;
+extern s32 D_800ADBAC;
+extern s32 D_800ADBB0;
+extern FieldCameraMovement g_CamAtMovementFrom;
+extern FieldCameraMovement g_CamAtMovementTo;
+extern FieldCameraMovement g_CamEyeMovementFrom;
+extern FieldCameraMovement g_CamEyeMovementTo;
+extern u16 g_CamMovementFlags;
+extern VECTOR g_CamAtMovementCurrent;
+extern VECTOR g_CamAtMovementDelta;
+extern VECTOR g_CamEyeMovementCurrent;
+extern VECTOR g_CamEyeMovementDelta;
+extern s16 g_CamAtMovementDuration;
+extern s16 g_CamEyeMovementDuration;
+extern u16 D_800B233E;
+extern s16 D_800AFB54;
+extern void func_800726E8(void);
+extern s16 func_8007B1C4(s16 a0, s16 a1, s32 a2, void* a3, void* a4);
+extern void func_80072D74(void);
+
+void func_80073230(void) {
+    s16 camMode = g_FieldCameraMode;
+
+    if (camMode == 1) {
+        /* Mode 1: camera movement interpolation */
+        u16 flags = g_CamMovementFlags;
+        D_800ADBAC = 0;
+        D_800ADBB0 = 0;
+
+        if (flags & 0x1) {
+            /* At movement */
+            s16 dur = g_CamAtMovementDuration;
+            if (dur != 0) {
+                g_CamAtMovementCurrent.vx += g_CamAtMovementDelta.vx;
+                g_CamAtMovementCurrent.vy += g_CamAtMovementDelta.vy;
+                g_CamAtMovementCurrent.vz += g_CamAtMovementDelta.vz;
+            }
+            g_CamAtMovementDuration = dur - 1;
+            if (g_CamAtMovementDuration == 0) {
+                g_CamMovementFlags = flags & 0xFFFE;
+            }
+            g_CameraAt2.vx = g_CamAtMovementCurrent.vx;
+            g_CameraAt2.vy = g_CamAtMovementCurrent.vy;
+            g_CameraAt2.vz = g_CamAtMovementCurrent.vz;
+        }
+
+        flags = g_CamMovementFlags;
+        if (flags & 0x2) {
+            /* Eye movement */
+            s16 dur = g_CamEyeMovementDuration;
+            if (dur != 0) {
+                g_CamEyeMovementCurrent.vx += g_CamEyeMovementDelta.vx;
+                g_CamEyeMovementCurrent.vy += g_CamEyeMovementDelta.vy;
+                g_CamEyeMovementCurrent.vz += g_CamEyeMovementDelta.vz;
+            }
+            g_CamEyeMovementDuration = dur - 1;
+            if (g_CamEyeMovementDuration == 0) {
+                g_CamMovementFlags = flags & 0xFFFD;
+            }
+            g_CameraEye2.vx = g_CamEyeMovementCurrent.vx;
+            g_CameraEye2.vy = g_CamEyeMovementCurrent.vy;
+            g_CameraEye2.vz = g_CamEyeMovementCurrent.vz;
+        }
+    } else if (camMode == 0 || camMode == 2) {
+        /* Mode 0 or 2: direct camera from actor position */
+        VECTOR camInput;
+        u8* pActorData;
+
+        if (camMode == 0) {
+            if ((D_800ADBAC & 3) == 0) {
+                if (g_CamInterpolation.atStepDistance < 9)
+                    g_CamInterpolation.atStepDistance = 8;
+                else
+                    g_CamInterpolation.atStepDistance -= 2;
+                if (g_CamInterpolation.eyeStepDistance < 9)
+                    g_CamInterpolation.eyeStepDistance = 8;
+                else
+                    g_CamInterpolation.eyeStepDistance -= 2;
+            }
+            D_800ADBAC++;
+        } else {
+            /* Mode 2 */
+            D_800ADBAC = 0;
+            D_800ADBB0++;
+            if (D_800ADBB0 >= 0x41) {
+                g_FieldCameraMode = 0;
+            }
+        }
+
+        func_800726E8();
+
+        /* Get camera position from current actor */
+        {
+            u16 actorIdx = D_800B233E;
+            u8* pActor = (u8*)g_FieldActors + actorIdx * 0x5C;
+            u8* pData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+            camInput.vx = *(s32*)(pData + 0x20);
+            camInput.vy = *(s32*)(pData + 0x24);
+            camInput.vz = *(s32*)(pData + 0x28);
+            pActorData = pData;
+        }
+
+        func_80072A38(&camInput, *(s16*)(pActorData + 0x72));
+
+        /* Collision/ceiling check */
+        if (!(g_Scene.unk48 & 0x4000)) {
+            /* func_8007B1C4 is stubbed (returns 0) — ceiling check */
+            VECTOR stackOut;
+            func_8007B1C4(
+                (s16)(g_CameraEye2.vy >> 16),
+                (s16)(g_CameraEye2.vz >> 16),
+                D_800AFB54 - 1,
+                &stackOut, &stackOut);
+            if (*(s16*)((u8*)&stackOut + 0x02) < (s16)(g_CameraEye2.vy >> 16)) {
+                g_CameraEye2.vy = (s32)*(s16*)((u8*)&stackOut + 0x02) << 16;
+            }
+        }
+
+        /* Mode 2: distance check to end transition */
+        if (g_FieldCameraMode == 2) {
+            s32 atDist = FieldGetVec2Magnitude(
+                (s16)(g_CameraAt2.vx >> 16) - (s16)(g_CameraAt.vx >> 16),
+                (s16)(g_CameraAt2.vz >> 16) - (s16)(g_CameraAt.vz >> 16));
+            s32 eyeDist = FieldGetVec2Magnitude(
+                (s16)(g_CameraEye2.vx >> 16) - (s16)(g_CameraEye.vx >> 16),
+                (s16)(g_CameraEye2.vz >> 16) - (s16)(g_CameraEye.vz >> 16));
+            if (atDist < 0x80 && eyeDist < 0x80) {
+                g_FieldCameraMode = 0;
+            }
+        }
+    }
+
+    /* Always called: final camera adjustment */
+    func_80072D74();
+
+    /* Mask g_Scene + 0x56 (clear upper nibble) */
+    *(u16*)((u8*)&g_Scene + 0x56) &= 0x0FFF;
+}
 
 void func_80073684(VECTOR* pEye, VECTOR* pAt) {
     MATRIX matSceneRotation;
