@@ -349,11 +349,32 @@ void FieldLoad(void) {
         /* nWords = nActors * 0x5C / 4 = nActors * 0x17 -> see asm shift math */
         nWords = ((((nActors << 1) + nActors) << 3) - nActors); /* nActors*0x17 */
         g_FieldNumActors = nActors;
+        (void)nWords;
+#ifdef XENO_PC_PORT
+        /* The host FieldActor is 0x70, not the PSX 0x5C: its 4 pointer fields
+         * (pModelData/pSpriteData/pShadow/pActorData) widen 4->8 bytes. Size the
+         * actor array by sizeof so g_FieldActors[i] (stride 0x70) doesn't overrun a
+         * 0x5C-strided alloc and corrupt the heap. (sizeof == 0x5C on the MIPS
+         * matching target, so this is faithful there.) CAVEAT: the widened pointers
+         * also shift the struct's field offsets off the PSX raw offsets this code
+         * mixes in, so actor data is imperfect until FieldActor uses u32 pointer
+         * slots -- fine for reaching the render loop / map background. */
+        pClear = (u32*)HeapAlloc(nActors * (s32)sizeof(FieldActor), 0);
+        g_FieldActors = (FieldActor*)pClear;
+        {
+            u8* pb = (u8*)pClear;
+            s32 nb = nActors * (s32)sizeof(FieldActor);
+            for (i = 0; i < nb; i++) {
+                pb[i] = 0;
+            }
+        }
+#else
         pClear = (u32*)HeapAlloc(nWords << 2, 0);
         g_FieldActors = (FieldActor*)pClear;
         for (i = 0; i < nWords; i++) {
             pClear[i] = 0;
         }
+#endif
     }
 
     numActors = g_FieldNumActors;
@@ -392,13 +413,24 @@ void FieldLoad(void) {
                  * host-pointer store here would clobber the neighbouring slot. */
                 *(u32*)((u8*)pModel + 0x4) =
                     (u32)((u8*)D_800AFB14 + pOffTab[1] + 0x10);
+#ifndef XENO_PC_PORT
+                /* XENO_PC_PORT stopgap: the per-actor model build below (double-
+                 * buffer alloc, GPU command-list build, memcpy, skeletal work block,
+                 * pin) dispatches through D_8004FE50 -> the 0x8002Exxx model-
+                 * primitive processors, which aren't ported yet. The table is a
+                 * zeroed stub so func_8002C8CC calls a NULL callback, and running the
+                 * dependent memcpy/func_800303C8 without its setup corrupts the heap.
+                 * Skip the whole model build so FieldLoad completes: each model actor
+                 * keeps an allocated-but-empty control block (pModel, with modelData
+                 * at +0x4; +0x8/+0xC stay NULL). The field then reaches its render
+                 * loop and can show the map background without actor models. Remove
+                 * once the D_8004FE50 primitive subsystem is ported. */
                 func_8002CB54((void*)(u32)*(u32*)((u8*)pModel + 0x4),
                               (u32*)((u8*)pModel + 0x8),
                               (u32*)((u8*)pModel + 0xC));
                 {
                     /* asm: a0 = pModel[0x4] (modelData, the model with header),
-                     * a1 = pModel[0x8] (out1), a2 = (status & 0xC) >> 2. (The first
-                     * arg is the model source, NOT the still-uninitialised out2.) */
+                     * a1 = pModel[0x8] (out1), a2 = (status & 0xC) >> 2. */
                     u16 st = (u16)g_FieldActors[i].status;
                     func_8002C8CC((void*)(u32)*(u32*)((u8*)pModel + 0x4),
                                   (void*)(u32)*(u32*)((u8*)pModel + 0x8),
@@ -420,6 +452,7 @@ void FieldLoad(void) {
                     *(s32*)((u8*)pModel + 0x14) = 0;
                 }
                 func_8002C644((void*)(u32)*(u32*)((u8*)pModel + 0x4));
+#endif
             } else {
                 g_FieldActors[i].status = status | 0x20;
                 g_FieldActors[i].rotation.x = 0;

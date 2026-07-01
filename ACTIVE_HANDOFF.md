@@ -132,7 +132,31 @@ not 8-byte `void*`, or an 8-byte write clobbers the neighbour; (2) `func_8002C8C
 first arg is `pModel[0x4]` (modelData), not `pModel[0xC]` (the uninitialised out2).
 The field now runs alloc → relocate → command-list-build per model actor.
 
-## The frontier (start here next): model primitive-processor subsystem (D_8004FE50)
+## DONE: FieldLoad completes (model build guarded + actor array sized for host)
+Toward a fast visible field (chosen direction), guarded FieldLoad's per-actor model
+build under `#ifndef XENO_PC_PORT` (it needs the unported D_8004FE50 primitive
+subsystem; running it partially corrupts the heap), and sized the actor-array alloc
+by `sizeof(FieldActor)` instead of the hardcoded PSX 0x5C. **FieldLoad now runs to
+completion** and the crash moved into FieldMain.
+
+## The real blocker for a visible field: FieldActor struct widening (0x70 vs 0x5C)
+`FieldMain main.c:395 → FIELD_ACTOR_FLAGS(g_PlayerActorIndex) → SIGSEGV`. The macro
+is `*(s32*)(*(u32*)((u8*)g_FieldActors + idx*0x5C + 0x4C))` — reads the actor's
+`pActorData` (PSX offset 0x4C) and derefs it. But on the host **`sizeof(FieldActor)
+= 0x70`, not 0x5C**: its 4 pointer fields (`pModelData`/`pSpriteData`/`pShadow`/
+`pActorData`, actor.h) widen 4→8 bytes, which (a) makes the array stride wrong and
+(b) shifts every field past the first pointer, so PSX raw offsets like `0x4C`/`0x5C`
+that the field code + macros use everywhere land on the wrong bytes (0x4C hits a
+matrix element → garbage pointer → crash). The alloc-by-sizeof above stops the array
+overrun, but the offset mismatch remains.
+**Fix (the right one, unblocks the visible field AND correct actors): make FieldActor
+PSX-faithful — change its 4 pointer fields to `u32` slots (== pointer size on the
+MIPS target, so matching-safe; sizeof→0x5C) and reconstruct pointers at use sites.**
+Scope: ~145 use sites across ~15 field files (camera/text_box/particles/misc*/main),
+so it's a sizeable refactor (consider delegating). This same class recurs wherever a
+game struct with pointer fields is accessed by raw PSX offset.
+
+## Other frontier: model primitive-processor subsystem (D_8004FE50)
 `func_8002C8CC → per-primitive callback (temp2.c:222) → calls a NULL fn ptr`.
 The callback is `*(u32*)(D_8004FE50 + prim*0x28 + 0x18)`. **`D_8004FE50`** is the
 primitive-descriptor table (0x28-byte entries: 6 fn ptrs at +0x0..+0x14, the
