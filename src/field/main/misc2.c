@@ -528,7 +528,158 @@ int FieldMathUpdateAngle(int curAngle, int targetAngle, int delta) {
     return result;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800739C0);
+/* ---- func_800739C0: scene matrix computation (FieldComputeSceneMatrices2) -----
+ * Called every frame from func_8007554C. Computes camera angles from eye/at
+ * vectors, calls func_80073230 (camera update), builds view matrix via
+ * FieldMatrixLookAt + FieldMatrixCreateWorldToScreen, updates per-actor
+ * facing angles.
+ *
+ * ASM uses $s0 = &g_CameraAt+0x8 as base; +0xF8 = g_Scene (viewMatrix),
+ * +0x8 = g_CameraUp. Scratchpad stack switches (0x1F8003FC) are skipped
+ * on host — functions called directly with normal stack. */
+extern s16 D_800B2184[];
+extern MATRIX D_800AFC30;
+extern s32 D_800AFC44, D_800AFC48, D_800AFC4C;
+extern s32 D_800AF8E0, D_800AF8E4, D_800AF8E8;
+extern MATRIX D_800AF85C;
+extern s32 D_800B00B4;
+extern u8 D_800ADB05;
+extern s16 D_800B21B4;
+extern s32 D_800ADBFC;
+extern u8 D_8006FB04;
+extern void func_8008110C(void);
+extern void FieldMatrixCreateWorldToScreen(void);
+extern s32 ratan2(s32 y, s32 x);
+extern void func_800223B0(s32 actorIdx, s32 angle);
+extern void func_80021FE0(s32 actorIdx, s32 angle);
+
+void func_800739C0(void) {
+    s32 yawCur, yawTarget;
+    s32 camDist;
+    s32 pitch;
+
+    func_8008110C();
+    RotMatrix((SVECTOR*)D_800B2184, &D_800AFC30);
+
+    D_800AFC4C = 0;
+    D_800AFC48 = 0;
+    D_800AFC44 = 0;
+
+    /* Yaw from current eye/at */
+    yawCur = ratan2(g_CameraAt.vz - g_CameraEye.vz,
+                    g_CameraAt.vx - g_CameraEye.vx);
+    g_CamInterpolation.targetAngleY = (s16)(yawCur - 0x400);
+
+    /* Yaw from target eye2/at2 */
+    yawTarget = ratan2(g_CameraAt2.vz - g_CameraEye2.vz,
+                       g_CameraAt2.vx - g_CameraEye2.vx);
+    g_CamInterpolation.curAngleY = (s16)(yawTarget - 0x400);
+
+    /* Horizontal distance */
+    camDist = FieldGetVec2Magnitude(
+        (g_CameraAt.vx - g_CameraEye.vx) >> 16,
+        (g_CameraAt.vz - g_CameraEye.vz) >> 16);
+
+    /* Pitch */
+    pitch = ratan2(camDist, (g_CameraAt.vy - g_CameraEye.vy) >> 16);
+    D_800B00B4 = pitch;
+
+    /* Camera update (ASM uses scratchpad stack — skipped on host) */
+    func_80073230();
+
+    /* Build camera vectors with D_800AF8E0/E4/E8 offsets */
+    {
+        VECTOR eyeVec, atVec;
+        eyeVec.vx = g_CameraEye.vx + D_800AF8E0;
+        eyeVec.vy = g_CameraEye.vy + D_800AF8E4;
+        eyeVec.vz = g_CameraEye.vz + D_800AF8E8;
+        atVec.vx = g_CameraAt.vx + D_800AF8E0;
+        atVec.vy = g_CameraAt.vy + D_800AF8E4;
+        atVec.vz = g_CameraAt.vz + D_800AF8E8;
+
+        if (D_800ADC18 == 0) {
+            /* Compute new view matrix */
+            FieldMatrixLookAt((MATRIX*)&g_Scene, &eyeVec, &atVec, &g_CameraUp);
+            /* Copy g_Scene.viewMatrix to D_800AF85C */
+            D_800AF85C = g_Scene.viewMatrix;
+        } else {
+            /* Restore from D_800AF85C */
+            g_Scene.viewMatrix = D_800AF85C;
+            FieldMatrixLookAt((MATRIX*)&g_Scene, &eyeVec, &atVec, &g_CameraUp);
+        }
+    }
+
+    /* World-to-screen matrix (ASM uses scratchpad stack — skipped on host) */
+    FieldMatrixCreateWorldToScreen();
+
+    /* Per-actor angle updates */
+    {
+        s32 actorIdx;
+        for (actorIdx = 0; actorIdx < D_800ADBFC; actorIdx++) {
+            u8* pActor = (u8*)g_FieldActors + actorIdx * 0x5C;
+            u16 status = *(u16*)(pActor + 0x58);
+            u8* pData;
+
+            if ((status & 0xF40) == 0 || (status & 0x20))
+                continue;
+
+            pData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+            if (pData == NULL)
+                continue;
+
+            {
+                s32 flags = *(s32*)(pData + 0x04);
+                if (flags & 0x100000)
+                    continue;
+                if ((flags & 0x600) == 0x200)
+                    continue;
+            }
+
+            {
+                s32 dataFlags = *(s32*)(pData + 0x00);
+                if (dataFlags & 0x8000) {
+                    /* Has animation */
+                    s32 pflags = *(s32*)(pData + 0x14);
+                    if (!(pflags & 0x200000)) {
+                        if (dataFlags & 0x1800) {
+                            /* Use D_800B21B4 angle */
+                            s16 angle = D_800B21B4;
+                            s16 curAng = *(s16*)(pData + 0x108);
+                            s16 targAng = *(s16*)(pData + 0x106);
+                            *(s16*)(pData + 0x108) =
+                                (s16)FieldMathUpdateAngle(curAng, targAng, angle);
+                        } else {
+                            /* Computed angle */
+                            s16 angle = (s16)((((pflags >> 11) - 2) & 7) << 9);
+                            s16 curAng = *(s16*)(pData + 0x108);
+                            *(s16*)(pData + 0x108) =
+                                (s16)FieldMathUpdateAngle(curAng, 0, angle);
+                        }
+                    }
+                }
+
+                /* Facing direction update */
+                if (!D_800ADB05) {
+                    s32 flags = *(s32*)(pData + 0x04);
+                    if (!(flags & 0x1000000)) {
+                        s32 camAng = g_CamInterpolation.targetAngleY;
+                        s32 actorAng = *(u16*)(pData + 0x108);
+                        func_800223B0(*(s32*)(pActor + 0x04),
+                                     (camAng + actorAng) << 16 >> 16);
+                    } else {
+                        func_80021FE0(*(s32*)(pActor + 0x04),
+                                     *(s16*)(pData + 0x108));
+                    }
+                }
+            }
+        }
+    }
+
+    /* System mode 0: call func_80281B00 */
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB04);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073E38);
 
