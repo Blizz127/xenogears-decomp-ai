@@ -110,6 +110,9 @@ void func_8007254C(void) {
     g_CameraEye2.vx = 0x10000000;  /* -0xB0: nonzero default */
     g_CameraEye2.vy = 0;
     g_CameraEye2.vz = 0;
+    *(s32*)((u8*)&g_Scene + 0x68) = 0x200;
+    *(s16*)((u8*)&g_Scene + 0x6C) = 0x1E;
+    *(s16*)((u8*)&g_Scene + 0x6E) = 0x1000;
     g_CameraAt2.vx = 0;
     g_CameraAt2.vy = 0;
     g_CameraAt2.vz = 0;
