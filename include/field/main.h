@@ -31,7 +31,7 @@ typedef struct {
     /* 0x6C  */ u_short sceneDIP;
     /* 0x6E  */ u_short sceneScale;
     /* 0x70  */ undefined8 unk70[0xC];
-    /* 0x7C  */ u_long unk7C;
+    /* 0x7C  */ u_int unk7C;
     /* 0x80  */ undefined8 unk71[0x44];
     /* 0xC4  */ SVECTOR worldRotation;
     /* 0xCC  */ SVECTOR worldTranslation;
