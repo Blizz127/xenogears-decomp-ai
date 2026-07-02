@@ -16,6 +16,7 @@ extern s32 D_800B00C0;
 
 extern void func_800379C8(char*, ...);
 extern char D_8006FD44; // "STACKERR ACT=%d\n"
+u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
 // Store instruction pointer + 5 on stack
 void func_800A1730(void) {
@@ -306,6 +307,8 @@ INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A24C4);
 
 extern s32 g_GamePartySkinsInitialized;
 extern s32 D_800ADBFC;
+extern s32 D_800AFC74;
+extern void func_80076AC0(s32, s32, void*, s32, s32, s32, s32);
 void func_800A2714(void) {
     ActorData* pActor;
     FieldActor* pFieldActors;
@@ -351,7 +354,47 @@ void func_800A2714(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A28D4);
+void func_800A28D4(void) {
+    int i;
+
+    if (g_GamePartySkinsInitialized) {
+        assert(0 && "func_800A28D4 initialized party-skin path is not implemented");
+        return;
+    }
+
+    FieldScriptMemoryWriteU16(0x10, 0);
+    FieldScriptWritePartyMemberIDs();
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        D_800AFD1C = i;
+        D_800B06B8 = &g_FieldActors[i];
+        g_FieldScriptVMCurActor = (ActorData*)(uintptr_t)D_800B06B8->pActorData;
+        g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptGetBytecodeOffset(i, 2);
+        if (((u8*)g_FieldScriptVMCurScriptData)[g_FieldScriptVMCurActor->scriptInstructionPointer] == 0) {
+            g_FieldScriptVMCurActor->flags |= 0x4000000;
+        }
+
+        D_800AFD1C = i;
+        D_800B06B8 = &g_FieldActors[i];
+        g_FieldScriptVMCurActor = (ActorData*)(uintptr_t)D_800B06B8->pActorData;
+        g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptGetBytecodeOffset(i, 0);
+    }
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        D_800AFD1C = i;
+        D_800AFC74 = 0;
+        D_800AFFEC = 0;
+        D_800B06B8 = &g_FieldActors[i];
+        g_FieldScriptVMCurActor = (ActorData*)(uintptr_t)D_800B06B8->pActorData;
+        FieldScriptVMRun(0xFFFF);
+
+        if (D_800AFC74 == 0) {
+            u8* pSpriteData = (u8*)g_FieldSpriteData;
+            func_80076AC0(i, 0, pSpriteData + *(s32*)(pSpriteData + 4), 0, 0, 0x80, 0);
+            g_FieldScriptVMCurActor->flags |= 0x800;
+        }
+    }
+}
 
 void FieldScriptVMHandlerNop(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
@@ -390,9 +433,96 @@ void FieldScriptWritePartyMemberIDs(void) {
     FieldScriptMemoryWriteU16(0x42, g_GamePartyMembers[2]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A30FC);
+extern u16 D_8005941C;
+extern u8 D_80059418, D_80059420, D_80059484, D_800594D0;
+extern s32 D_8004F2F4, D_8004F318, D_8004F324, D_8004F328;
+extern s32 g_GameSceneMapNum, g_PlayerActorIndex;
+extern u8 D_800B02C8;
+extern u16 D_800AFC6C, D_800AFE9C;
+extern int FieldGetPlayerActorDirection(void);
+extern int FieldGetCameraDirection(void);
+extern void func_8009FEE4(s32 arg0);
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A31E8);
+void func_800A30FC(void) {
+    s32 i;
+    u16* src;
+    u16* dst;
+
+    *(s16*)((u8*)g_pGameState + 0x231A) = g_GameSceneMapNum;
+    *(s16*)((u8*)g_pGameState + 0x2322) = D_8004F324;
+    *(s16*)((u8*)g_pGameState + 0x2320) = *(u16*)((u8*)g_pGameState + 0x1932);
+    *(s16*)((u8*)g_pGameState + 0x231C) = *(u16*)((u8*)g_pGameState + 0x1938) << 9;
+
+    FieldScriptMemoryWriteU16(0x44, D_8005941C);
+    FieldScriptMemoryWriteU16(0x46, D_800594D0);
+    FieldScriptMemoryWriteU16(0x6, FieldGetPlayerActorDirection() & 0xFFFF);
+    FieldScriptMemoryWriteU16(0x8, FieldGetCameraDirection() & 0xFFFF);
+    FieldScriptMemoryWriteU16(0x24, *(s16*)((u8*)&g_Scene + 0x6C));
+    FieldScriptMemoryWriteU16(0x3C, g_GameSceneMapNum);
+    FieldScriptWritePartyMemberIDs();
+
+    src = (u16*)&g_FieldScriptMemory;
+    dst = (u16*)((u8*)g_pGameState + 0x1930);
+    for (i = 0; i < 0x200; i++) {
+        *dst++ = *src++;
+    }
+}
+
+void func_800A31E8(void) {
+    s32 i;
+
+    if (D_800B02C8 == 1) {
+        return;
+    }
+
+    D_800AFC6C |= D_800AFE9C;
+
+    for (i = 0; i < 3; i++) {
+        ((u8*)g_pGameState)[0x1D34 + i] = g_GamePartyMembers[i];
+    }
+
+    func_800A30FC();
+
+    D_8004F2F4 = 0;
+    D_8004F318 += 1;
+
+    for (i = 0; i < 3; i++) {
+        if (((u8*)g_pGameState)[0x22B1 + i] == 1) {
+            func_8009FEE4(i);
+        }
+    }
+
+    if (D_8004F318 >= 0x1F) {
+        D_8004F318 = 0;
+        if (!(D_8004F328 & 0x80)) {
+            s32 value = FieldScriptVMGetVariableValue(0xA);
+            s32 seconds = value & 0xFF;
+            s32 minutes = (value >> 8) & 0xFF;
+
+            if (!(D_8004F328 & 0x4)) {
+                seconds += 1;
+                if (seconds >= 0x3D) {
+                    seconds = 0;
+                    minutes += 1;
+                }
+            } else if (seconds == 0) {
+                if (minutes != 0) {
+                    seconds = 0x3B;
+                    minutes -= 1;
+                }
+            } else {
+                seconds -= 1;
+            }
+            FieldScriptMemoryWriteU16(0xA, (minutes << 8) | (seconds & 0xFF));
+        }
+    }
+
+    FieldScriptMemoryWriteU16(0xC, D_80059418 | (D_80059420 << 8));
+    FieldScriptMemoryWriteU16(0xE, D_80059484);
+    FieldScriptMemoryWriteU16(0x1E, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x22));
+    FieldScriptMemoryWriteU16(0x20, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x2A));
+    FieldScriptMemoryWriteU16(0x22, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x26));
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3474);
 
