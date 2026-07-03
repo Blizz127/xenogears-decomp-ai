@@ -40,6 +40,24 @@ jtbl_800183A4 = 0x800183A4; // type:u32 size:0x18
 jtbl_800183BC = 0x800183BC; // type:u32 size:0x1C
 MenuMain = 0x8001C634;
 
+// Same class as jtbl_800183A4/BC above. Each table's owning function is now
+// decompiled to C as an if/else-chain (opcode/dispatch-index bounds checks)
+// instead of a GCC switch, so the original hand-data case-target labels are
+// dead; declare them as plain u32 data so gears emits literal word values.
+// jtbl_800183D8 (0x1D0) + jtbl_800185A8 (0x9C): func_8001FBE4
+//   (animation_scripts.c) -- stub decompile, real dispatch not yet migrated
+//   (dispatchIndex bounds check 0x73 matches a ~115-entry table).
+// jtbl_800186E0 (0x1EC): func_800248D4 (temp1.c) -- opcode dispatch rewritten
+//   as if/else chains (`if (opcode < 0x10)`, etc.), tail case still asserts.
+jtbl_800183D8 = 0x800183D8; // type:u32 size:0x1D0
+jtbl_800185A8 = 0x800185A8; // type:u32 size:0x9C
+jtbl_800186E0 = 0x800186E0; // type:u32 size:0x1EC
+// jtbl_80018A7C (0x40, in data/927C.rodata.s -- a different rodata object,
+// grouped here with its sibling fixes for readability): func_80033DF0
+// (system.c) -- the script-byte dispatch loop rewritten as if/else-if chains
+// on code/subcode values instead of a GCC switch.
+jtbl_80018A7C = 0x80018A7C; // type:u32 size:0x40
+
 // Work List
 WorkListsFreeAllEntries = 0x8001C8DC;
 WorkListsReset = 0x8001C944;
