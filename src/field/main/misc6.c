@@ -3,11 +3,35 @@
 #include "system/math.h"
 #include "field/script_vm.h"
 #include "field/actor.h"
+#include "field/main.h"
 #include "field/text_box.h"
+#ifdef XENO_PC_PORT
+#include <assert.h>
+#else
+/* <assert.h> is unavailable under the matching build's -nostdinc MIPS
+ * preprocessor. The assert(...) calls below mark invariant checks in
+ * functions not yet byte-matched, so a no-op assert compiles safely there. */
+#define assert(x) ((void)0)
+#endif
 
 extern void func_80076AC0(s32, s32, void*, s32, s32, s32, s32);
-extern void func_800A0C94();
 extern s32 D_800AFD1C; // Current actor index
+extern s32 D_800ADB1C;
+extern u8 D_800B21CE;
+extern u16 D_800AEA54[];
+extern s16 D_800AFB54;
+extern s32 D_8005A444[];
+extern s32 D_800AFFEC;
+extern s32 D_800B2268;
+extern s16 D_800AFD20;
+extern s16 D_800B233E;
+extern s32 g_PlayerActorIndex;
+extern void* g_PartyDataBuffers[];
+extern s16 func_8007B1C4(s16, s16, s32, s16*, s32*);
+extern s32 func_80080968(u8*);
+extern s32 func_8008CF3C(s32);
+extern s32 FieldScriptVMGetArgument(s32);
+extern void func_8009FA54(s32);
 
 void FieldScriptVMHandlerDisableDialogActivation(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0xA = 0x1;
@@ -262,10 +286,74 @@ void func_8009E4BC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
 
+void func_8009E574(s16 x, s16 z) {
+    FieldActor* pFieldActor = &g_FieldActors[D_800AFD1C];
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    u8* pSpriteData = (u8*)(uintptr_t)pFieldActor->pSpriteData;
+    s32 state[4][4];
+    s16 out[4][4];
+    s32 i;
+    s32 walkmeshId;
+    s16 y;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E574);
+    for (i = 0; i < D_800AFB54 - 1; i++) {
+        pActor->walkmeshTriIds[i] = func_8007B1C4(x, z, i, out[i], state[i]);
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E810);
+    pActor->curWalkmeshTriMaterial = func_80080968((u8*)pActor);
+    walkmeshId = pActor->walkmeshId;
+    pActor->curTriNormal.vx = state[walkmeshId][0];
+    pActor->curTriNormal.vy = state[walkmeshId][1];
+    pActor->curTriNormal.vz = state[walkmeshId][2];
+
+    pFieldActor->transformMatrix.t[0] = x;
+    pFieldActor->childMatrix.t[0] = x;
+    y = out[walkmeshId][1];
+    pFieldActor->transformMatrix.t[1] = y;
+    pFieldActor->childMatrix.t[1] = y;
+    pFieldActor->transformMatrix.t[2] = z;
+    pFieldActor->childMatrix.t[2] = z;
+
+    *(s16*)(pSpriteData + 0x84) = (u16)y;
+
+    pActor->position.vx = x << 16;
+    pActor->position.vz = z << 16;
+    pActor->position.vy = y << 16;
+    pActor->curYPos = (u16)y;
+
+    *(u32*)(pSpriteData + 0x00) = pActor->position.vx;
+    *(u32*)(pSpriteData + 0x04) = pActor->position.vy;
+    *(u32*)(pSpriteData + 0x08) = pActor->position.vz;
+
+    pActor->move.vx = 0;
+    pActor->move.vy = 0;
+    pActor->move.vz = 0;
+    pActor->moveModified.vx = 0;
+    pActor->moveModified.vy = 0;
+    pActor->moveModified.vz = 0;
+    pActor->unkD0.vx = 0;
+    pActor->unkD0.vy = 0;
+    pActor->unkD0.vz = 0;
+    pActor->unk60.vx = 0;
+    pActor->unk60.vy = 0;
+    pActor->unk60.vz = 0;
+
+    *(u32*)(pSpriteData + 0x0C) = 0;
+    *(u32*)(pSpriteData + 0x10) = 0;
+    *(u32*)(pSpriteData + 0x14) = 0;
+
+    pActor->unkF0 = 0;
+    pActor->unkEC = 0;
+    pActor->curYPos = CONV_TO_GTE(pActor->position.vy);
+    pActor->scriptFlags.flags &= ~0x40000;
+    pActor->scriptFlags.flags |= 0x400000;
+}
+
+void func_8009E810(s16 arg0) {
+    g_FieldScriptVMCurActor->position.vy = arg0 << 16;
+    g_FieldScriptVMCurActor->unkEC = arg0;
+    g_FieldScriptVMCurActor->curYPos = arg0;
+}
 
 void func_8009E83C(void) {
     unsigned char width;
@@ -534,7 +622,14 @@ void func_8009F5A8(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009F5F4);
+void func_8009F5F4(void) {
+    assert(!(g_FieldScriptVMCurActor->flags & 0x4000));
+
+    if (D_800B21CE == 0) {
+        g_FieldScriptVMCurActor->flags |= 0x1000000;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+}
 
 int FieldCharacterIdToPartyId(int characterId) {
     int i;
@@ -555,7 +650,47 @@ int FieldCharacterIdToPartyId(int characterId) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FA54);
+void func_8009FA54(s32 scriptEntryIndex) {
+    u8* scriptData = (u8*)g_FieldScriptVMCurScriptData;
+    s32 entryOffset;
+    s16 x;
+    s16 z;
+    u8 rotByte;
+    s16 angle;
+
+    if (scriptData[0] != 0xFF) {
+        return;
+    }
+
+    entryOffset = scriptEntryIndex * 7;
+    g_FieldScriptVMCurActor->walkmeshId = scriptData[entryOffset + 5];
+
+    x = func_8009E330(entryOffset + 1);
+    z = func_8009E330(entryOffset + 3);
+    func_8009E574(x, z);
+
+    rotByte = scriptData[entryOffset + 6];
+    if (rotByte == 0xFF) {
+        rotByte = FieldScriptVMGetVariableValue(0x8) + 4;
+    } else {
+        rotByte += 4;
+    }
+    angle = (rotByte & 0x7) << 9;
+    *(s16*)((u8*)&g_Scene + 0x56) = angle;
+    *(s32*)((u8*)&g_Scene + 0x7C) = angle;
+    *(s32*)((u8*)&g_Scene + 0x60) = angle << 16;
+
+    rotByte = scriptData[entryOffset + 7];
+    if (rotByte == 0xFF) {
+        rotByte = FieldScriptVMGetVariableValue(0x6) - 2;
+    } else {
+        rotByte -= 2;
+    }
+    angle = ((rotByte & 0x7) << 9) | 0x8000;
+    g_FieldScriptVMCurActor->rotation.vx = angle;
+    g_FieldScriptVMCurActor->rotation.vy = angle;
+    g_FieldScriptVMCurActor->rotation.vz = angle;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FB98);
 /*
@@ -657,16 +792,78 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0524);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A06E8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A08B8);
+void func_800A08B8(void) {
+    FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
+    s32 characterId = func_8008CF3C(FieldScriptVMGetArgument(1));
+    s32 partyId = FieldCharacterIdToPartyId(characterId);
 
-extern s32 g_PlayerActorIndex;
+    g_FieldScriptVMCurActor->characterId = characterId;
+    fieldActor->status = (fieldActor->status & 0xF07F) | 0x200;
+
+    assert(D_800B2268 == 0);
+
+    if (partyId == -1) {
+        func_80076AC0(D_800AFD1C, 0, g_PartyDataBuffers[0], 1, 0, 0, 1);
+        g_FieldScriptVMCurActor->scriptFlags.flags |= 0x1;
+        g_FieldScriptVMCurActor->flags |= 0x100000;
+        D_800AFFEC = 1;
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptFlags.flags |= 0x20000;
+        g_FieldScriptVMCurActor->flags |= 0x400;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+        return;
+    }
+
+    assert(partyId == 0);
+
+    g_PlayerActorIndex = D_800AFD1C;
+    D_800B233E = D_800AFD1C;
+    g_FieldScriptVMCurActor->scriptFlags.flags =
+        (g_FieldScriptVMCurActor->scriptFlags.flags | 0x4400) & ~0x80;
+    D_8005A444[partyId] = D_800AFD1C;
+
+    func_80076AC0(D_800AFD1C, partyId, g_PartyDataBuffers[partyId], 1, 0, partyId, 1);
+    g_FieldScriptVMCurActor->scriptFlags.flags =
+        (g_FieldScriptVMCurActor->scriptFlags.flags | 0x400) & ~0x300;
+
+    fieldActor = &g_FieldActors[D_800AFD1C];
+    fieldActor->status &= ~ACTOR_STATUS_INVISIBLE;
+    D_800AFD20 = -0xC0;
+    func_8009FA54(FieldScriptVMGetVariableValue(2));
+    func_800A0C94();
+    g_FieldScriptVMCurActor->flags &= ~0x800;
+    g_FieldScriptVMCurActor->scriptFlags.flags |= 0x20000;
+    g_FieldScriptVMCurActor->flags |= 0x400;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void func_800A0C4C(void) {
     ((ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData)->scriptFlags.flags |= 0x80;
 }
 
 // FieldResetActorPosition, set translation and sprite position of actor based on current actor data position
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0C94);
+void func_800A0C94(void) {
+    u8* actorData = (u8*)g_FieldScriptVMCurActor;
+    u8* fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
+    u8* spriteData = (u8*)(uintptr_t)*(u32*)(fieldActor + 0x04);
+    s16 x = *(s16*)(actorData + 0x22);
+    s16 y = *(s16*)(actorData + 0x26);
+    s16 z = *(s16*)(actorData + 0x2A);
+
+    *(s32*)(fieldActor + 0x20) = x;
+    *(s32*)(fieldActor + 0x40) = x;
+    *(s32*)(fieldActor + 0x24) = y;
+    *(s32*)(fieldActor + 0x44) = y;
+    *(s32*)(fieldActor + 0x28) = z;
+    *(s32*)(fieldActor + 0x48) = z;
+
+    *(s32*)(spriteData + 0x00) = *(s32*)(actorData + 0x20);
+    *(s32*)(spriteData + 0x04) = *(s32*)(actorData + 0x24);
+    *(s32*)(spriteData + 0x08) = *(s32*)(actorData + 0x28);
+    *(s32*)(spriteData + 0x10) = 0;
+    *(s16*)(spriteData + 0x84) = y;
+    *(s16*)(actorData + 0x72) = y;
+}
 
 void func_800A0D3C(void) {
     func_80076AC0(D_800AFD1C, 0, (void*)((*(s32*)(g_FieldSpriteData + 4)) + (s32)g_FieldSpriteData), 0, 0, 0x80, 1);
@@ -715,4 +912,26 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A1364);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A14F0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A1624);
+void func_800A1624(void) {
+    u8* actorData;
+    u8* fieldActor;
+    u8* spritePackage;
+    s32 skinIndex;
+
+    fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
+    *(u16*)(fieldActor + 0x58) = (*(u16*)(fieldActor + 0x58) & 0xF07F) | 0x200;
+
+    skinIndex = FieldScriptVMGetArgument(1);
+    spritePackage = (u8*)g_FieldSpriteData +
+                    *(u32*)((u8*)g_FieldSpriteData + (skinIndex * 4) + 4);
+    func_80076AC0(D_800AFD1C, skinIndex, spritePackage, 0, 0, skinIndex | 0x80, 0);
+    func_800A0C94();
+
+    actorData = (u8*)g_FieldScriptVMCurActor;
+    *(u16*)(actorData + 0xCC) += 3;
+    *(u32*)(actorData + 0x0) = (*(u32*)(actorData + 0x0) | 0x100) & ~0x80;
+    *(u32*)(actorData + 0x4) &= ~0x800;
+
+    fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
+    *(u16*)(fieldActor + 0x58) &= ~0x20;
+}
