@@ -70,6 +70,8 @@ else
 build:
 	$(MAKE) clean; \
 	$(GEARS) matching; \
+	grep -q '^ApplyMatrixSV = ' linker/undefined_funcs_auto.field.txt || \
+		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC)
 endif
