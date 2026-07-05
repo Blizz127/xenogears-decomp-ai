@@ -555,7 +555,20 @@ void func_8009ACB4(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009ACEC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AD6C);
+extern u16 D_800AEA54[];
+
+void func_8009AD6C(void) {
+    int directionIndex = SCRIPT_READ_U8_REL(1);
+    short rotation = D_800AEA54[directionIndex] | 0x8000;
+
+    g_FieldScriptVMCurActor->rotation.vx = rotation;
+    g_FieldScriptVMCurActor->rotation.vy = rotation;
+    if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->rotation.vz = rotation;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 void func_8009ADDC(void) {
     g_Scene.unk48 |= 0x4000;

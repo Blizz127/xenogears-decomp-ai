@@ -24,6 +24,12 @@
   - Work-list/sprite-frame stubs remain absent.
   - Actor sprite primitive linking remains restored: `frames=2 linked=2`, `frames=6 linked=6`, `frames=8 linked=8`, `frames=3 linked=3`.
   - Only observed `[stub]` line in the final verification log is `func_8009AD6C`.
+- Next-phase stub cleanup:
+  - Implemented `func_8009AD6C` in `src/field/main/misc7.c`.
+  - Build still links cleanly; generated function stub count dropped from `260` to `259`.
+  - Latest verification log: `captures/render_diag/func8009AD6C_verify_20260705_101605.log`.
+  - `grep`/`rg` result: zero `[stub]` lines in that run.
+  - Actor sprite primitive linking remains intact (`frames=2/6/8/3`, `done linked=...`).
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -32,7 +38,7 @@
 - 30-second kernel1 timeout run confirmed immediate abort:
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=1 timeout -s KILL 30 build_native/xeno-port`
   - Exactly 1 stub: `func_8001B6C4`, then nothing else — battle state main function is stubbed.
-- Build-generated function stub count is `260` after supplying the work-list/sprite-frame functions from a port-only file.
+- Build-generated function stub count is `259` after supplying the work-list/sprite-frame functions from a port-only file and implementing `func_8009AD6C`.
 - Field overlay loads and field main loop runs.
 - Actor sprite data reaches `27/27` after VM/post-VM setup.
 - Actor draw path runs, and `func_8001E3D8` links real `code=2d` actor `POLY_FT4` packets into the OT in early-frame logs.
@@ -143,7 +149,7 @@
 
 ## Exact Next Function To Implement
 
-- **No bounded stub blocker found** — confirmed via 30s kernel0 run (zero `[stub]` lines, 79-line log at `captures/render_diag/kernel0_30s_20260704_170009.log`).
+- **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
 - `primSubmits=0` before frame 4 is **expected** — `FieldAddPrimitives` is gated behind `D_800ADC18 == 0`. In the latest 45s audit run the countdown reaches 0 at frame 4 and `primSubmits` becomes 2.
 - Actor packets ARE drawn via direct OT-linking (`func_8001E3D8`), independent of `FieldAddPrimitives`.
 - **45s timeout test: COMPLETED** — frames 0–7, D_800ADC18=4→3→2→1→0, gate cleared, `primSubmits=2`.
