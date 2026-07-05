@@ -14,6 +14,8 @@
   - `cb0afb6 Update workbench after diagnostic ignore cleanup`
   - `0d3ffe0 Mark PSX cpp tool executable`
   - `78e1b5d Update workbench after tool permission cleanup`
+  - `709f922 Record final field recovery verification`
+  - `2627286 Implement field VM actor direction handler`
 - Working tree is clean after the final tool-permission cleanup. `tools/gcc-2.7.2-psx/cpp` is intentionally executable (`100755`).
 - Ignored local diagnostic artifacts: `"Xenogears (PC port).log"`, `captures/`, and `xenogears-decomp-ai`.
 - Final verification after cleanup:
@@ -30,6 +32,16 @@
   - Latest verification log: `captures/render_diag/func8009AD6C_verify_20260705_101605.log`.
   - `grep`/`rg` result: zero `[stub]` lines in that run.
   - Actor sprite primitive linking remains intact (`frames=2/6/8/3`, `done linked=...`).
+- Menu-route probe (`XENO_KERNEL_SEL=4`) is **not** a normal missing C-function proof:
+  - Latest probe log: `captures/render_diag/menu_sel4_probe_20260705_101937.log`.
+  - It hits exactly one stub: `[stub] func_801C62A8`.
+  - `func_801C62A8` is an overlay entry address expected at `0x801C62A8` after a menu overlay has been loaded to `0x801C5000`, not a standalone source function found in the static tree.
+  - GDB context log: `captures/render_diag/menu_sel4_func801C62A8_context_bytes_20260705_102058.log`.
+  - At the stub hit: `D_80059460=0`, `g_MenuDebugEnabled=0`, `D_80059171=0`.
+  - Stack: `func_801C62A8 -> MenuExecute -> MenuMain -> MainLoop -> KernelMenuMain -> MainLoop -> main`.
+  - `MenuMain()` documents that callers are expected to have loaded the correct menu overlay before entry. `MenuExecute()` only loads that overlay itself when `g_MenuDebugEnabled != 0`.
+  - Original `g_MainGameStates[5]` has `hasOverlay=0`, matching `PcPort_InitGameStates()`, so this is not evidence that the port state table is wrong.
+  - Do **not** implement a fake `func_801C62A8`; the direct kernel-menu menu route needs an overlay-aware harness or a field/menu caller path that performs the expected overlay load.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -72,6 +84,7 @@
   - `[1]` = `FieldMain` (field state; selected when `XENO_KERNEL_SEL=0`)
   - `[2]` = `func_8001B6C4` (battle state; selected when `XENO_KERNEL_SEL=1`) — **STUBBED**
   - `[5]` = `MenuMain` (menu state; selected when `XENO_KERNEL_SEL=4`)
+  - `[3]`, `[4]`, and `[6]` are currently left NULL in the port override table, while the original table points them at overlay entry addresses (`0x80070CFC`, `0x80088E90`, `0x800737EC`) with `hasOverlay=1`.
 - KernelMenu option→state mapping: 0=Field, 1=Battle, 2=Worldmap, 3=Battling, 4=Menu, 5=Movie.
 
 ### Kernel1 Root Cause Chain (func_8001B6C4 stub)
@@ -138,6 +151,7 @@
 ## Current Frontier
 
 - **Kernel0 field test confirmed** (`XENO_KERNEL_SEL=0`): latest audit run reached frame 7 and timed out cleanly (`RUN_RC=124`) without crash.
+- **Kernel4 direct menu test is an invalid/incomplete direct route for now** (`XENO_KERNEL_SEL=4`): it enters `MenuMain()` without a menu overlay loaded and therefore reaches `func_801C62A8` as a generated stub. This should be treated as a harness/overlay-loading problem, not as a real source function to implement.
 - **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
 - `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
 - Actor packets ARE created/OT-linked via `func_8001E3D8` independently of the `D_800ADC18` gate — so actor rendering is not blocked by the gate, only primitive submission is.
@@ -156,8 +170,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Commit/checkpoint the recovered field pipeline state, including `pc_port/src/work_list_port.c`, `pc_port/build_port.sh`, `docs/ai_context/ACTIVE_HANDOFF.md`, and other intentional buildable field-pipeline changes.
-  - Exclude `captures/`, generated logs, build outputs, `xenogears-decomp-ai`, and accidental root `ACTIVE_HANDOFF.md` unless explicitly kept.
+  - Pick one overlay-aware next route. Safest read-only proof: inspect the original game-state table versus `PcPort_InitGameStates()` for states 3/4/6 and decide whether a bounded direct probe would only prove the known NULL-port limitation. Do not fabricate overlay entry functions.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified
