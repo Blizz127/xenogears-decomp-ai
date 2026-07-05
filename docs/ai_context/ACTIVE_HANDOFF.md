@@ -42,6 +42,11 @@
   - `MenuMain()` documents that callers are expected to have loaded the correct menu overlay before entry. `MenuExecute()` only loads that overlay itself when `g_MenuDebugEnabled != 0`.
   - Original `g_MainGameStates[5]` has `hasOverlay=0`, matching `PcPort_InitGameStates()`, so this is not evidence that the port state table is wrong.
   - Do **not** implement a fake `func_801C62A8`; the direct kernel-menu menu route needs an overlay-aware harness or a field/menu caller path that performs the expected overlay load.
+- Extended Kernel0 field probe:
+  - Log: `captures/render_diag/kernel0_extended_stub_probe_20260705_102300.log`.
+  - Command used `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 90 ./pc_port/build_native/xeno-port`.
+  - Result: `RUN_RC=124` timeout success, zero `[stub]` lines.
+  - The log is only 79 lines because the current diagnostic printfs are front-loaded/capped and the timeout appended `RUN_RC=124` to a final partial line; treat this as a stability/no-new-stub proof, not as a deep frame trace.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -151,6 +156,7 @@
 ## Current Frontier
 
 - **Kernel0 field test confirmed** (`XENO_KERNEL_SEL=0`): latest audit run reached frame 7 and timed out cleanly (`RUN_RC=124`) without crash.
+- **Kernel0 extended field probe confirmed**: 90s bounded run timed out cleanly (`RUN_RC=124`) with zero `[stub]` lines. No new live field-route function target surfaced.
 - **Kernel4 direct menu test is an invalid/incomplete direct route for now** (`XENO_KERNEL_SEL=4`): it enters `MenuMain()` without a menu overlay loaded and therefore reaches `func_801C62A8` as a generated stub. This should be treated as a harness/overlay-loading problem, not as a real source function to implement.
 - **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
 - `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
@@ -170,7 +176,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Pick one overlay-aware next route. Safest read-only proof: inspect the original game-state table versus `PcPort_InitGameStates()` for states 3/4/6 and decide whether a bounded direct probe would only prove the known NULL-port limitation. Do not fabricate overlay entry functions.
+  - Decide whether to do a small cleanup/hardening pass on the remaining field diagnostic printfs and assert-only rare branches, or keep them temporarily while moving to an overlay-aware route. Before editing source, show exact lines and get approval.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified
