@@ -3,7 +3,7 @@
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
-- Git HEAD: `0d3ffe0` on branch `ai-private-main` (11 commits ahead of origin `b7d9ac3`).
+- Branch state at final verification: `ai-private-main` was 13 commits ahead of origin `b7d9ac3`.
   - **Note:** `git` is NOT on PATH inside the distrobox container. Run git commands on the HOST at `/home/blizz/Projects/xenogears-decomp`.
 - Working convention: keep this canonical handoff updated as the project workbench after each meaningful proof, fix, visual confirmation, or checkpoint commit.
 - Latest checkpoint commit: `f5aa055 Checkpoint recovered field pipeline; visual mismatch unresolved`.
@@ -13,8 +13,17 @@
   - `b4290ec Ignore local diagnostic artifacts`
   - `cb0afb6 Update workbench after diagnostic ignore cleanup`
   - `0d3ffe0 Mark PSX cpp tool executable`
+  - `78e1b5d Update workbench after tool permission cleanup`
 - Working tree is clean after the final tool-permission cleanup. `tools/gcc-2.7.2-psx/cpp` is intentionally executable (`100755`).
 - Ignored local diagnostic artifacts: `"Xenogears (PC port).log"`, `captures/`, and `xenogears-decomp-ai`.
+- Final verification after cleanup:
+  - Build command completed with `LINK OK -> pc_port/build_native/xeno-port`.
+  - `work_list_port.c ok` during port-only source compilation.
+  - Kernel0 field run completed the 45s timeout path without crash.
+  - Latest final verification log: `captures/render_diag/final_verify_kernel0_20260705_100734.log`.
+  - Work-list/sprite-frame stubs remain absent.
+  - Actor sprite primitive linking remains restored: `frames=2 linked=2`, `frames=6 linked=6`, `frames=8 linked=8`, `frames=3 linked=3`.
+  - Only observed `[stub]` line in the final verification log is `func_8009AD6C`.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
