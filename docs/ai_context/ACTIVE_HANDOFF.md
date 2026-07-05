@@ -72,6 +72,14 @@
   - `captures/render_diag/func80075B44_double_render_breakstop_20260705_104558.log`: breakpoint set at `misc2.c:1923`, `RUN_RC=124`, `RESULT double_render NO_HIT_OBSERVED`.
   - `captures/render_diag/func80075B44_rotated_actor_breakstop_20260705_104644.log`: breakpoint set at `misc2.c:1950`, `RUN_RC=124`, `RESULT rotated_actor NO_HIT_OBSERVED`.
   - Conclusion: the recovered Kernel0 field route does not reach the four currently asserted `func_80075B44` rare branches during the bounded proof window. They remain real missing behavior for broader field coverage, but they are not current Kernel0 recovery blockers.
+- Field-map selector harness:
+  - Added `XENO_FIELD_MAP=<n>` for `XENO_FIELD_TEST` mode in `pc_port/src/port_main.c`.
+  - It sets original field selector `D_8006F94E`, which `FieldMain()` copies into `g_GameSceneMapNum`.
+  - Default route still works after selector addition: `captures/render_diag/field_map_default_after_selector_20260705_105127.log` (`RUN_RC=124`).
+  - Field 1 probe: `captures/render_diag/field_map1_probe_20260705_105207.log` aborts quickly with `*** stack smashing detected ***`, `RUN_RC=134`.
+  - Field 1 backtrace: `captures/render_diag/field_map1_stack_smash_bt_20260705_105217.log`.
+  - Backtrace root: `__stack_chk_fail -> func_80080A74(actorIndex=0) at src/field/main/misc8.c:247 -> func_80080F44 -> FieldLoad`.
+  - Suspected cause: `func_80080A74` declares `s16 stateBuf[6]`, but original asm uses stack scratch from `sp+0x18` and advances one cursor by `0x10` bytes per loop plus another by `0x8` bytes, leaving far more than 12 bytes available before saved registers at `sp+0x80`. Field 1 likely has `D_800AFB54 > 1`, causing the current C buffer to overflow.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -184,6 +192,7 @@
 - **Kernel0 extended field probe confirmed**: 90s bounded run timed out cleanly (`RUN_RC=124`) with zero `[stub]` lines. No new live field-route function target surfaced.
 - **Field diagnostics are quiet by default**: set `XENO_FIELD_DIAG=1` to re-enable the current bounded `[field-diag]` prints.
 - **`func_80075B44` rare branches are mapped but not implemented**: asm confirms the asserted branches are real behavior. Clean break-and-stop gdb probes did not observe any of the four branches in the recovered Kernel0 field route.
+- **`XENO_FIELD_MAP` selector added for coverage expansion**: default map 0 remains stable; map 1 exposes a stack-smash in `func_80080A74` during actor init.
 - **Kernel4 direct menu test is an invalid/incomplete direct route for now** (`XENO_KERNEL_SEL=4`): it enters `MenuMain()` without a menu overlay loaded and therefore reaches `func_801C62A8` as a generated stub. This should be treated as a harness/overlay-loading problem, not as a real source function to implement.
 - **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
 - `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
@@ -203,7 +212,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Do not change the recovered render path. Start an overlay-aware route proof for menu/worldmap/movie without fabricating overlay entry functions, or inspect one rare branch implementation against asm only if broader field coverage starts hitting it.
+  - Proposed smallest recovery edit: fix `func_80080A74`'s stack scratch buffer to match the original asm capacity/stride, then build and rerun `XENO_FIELD_MAP=1`. Do not change render logic.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified

@@ -73,6 +73,7 @@ extern void func_8001ACA4(void);
 extern unsigned char D_80010000[];  /* build/mode flag: -1 in retail ROM        */
 extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  */
 extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
+extern unsigned short D_8006F94E;    /* field map selected by FieldMain         */
 
 /* MODE2/2352 image; PsyCross extracts the 2048-byte data payload per sector. */
 #define PORT_CD_SECTOR_SIZE 2352
@@ -191,10 +192,17 @@ int main(int argc, char** argv) {
              * LoadGameStateOverlay save/restore preserves this index through the
              * field overlay load. */
             if (getenv("XENO_FIELD_TEST")) {
+                const char* fieldMap = getenv("XENO_FIELD_MAP");
+
                 PcPort_LoadSystemTextData();
                 /* Real field-entry init: map-cache sentinels, heap user, archive
                  * directory, and party/special skin stream queue. */
                 func_8001ACA4();
+                if (fieldMap != NULL && fieldMap[0] != '\0') {
+                    D_8006F94E = (unsigned short)strtoul(fieldMap, NULL, 0);
+                    printf("[xeno-port][field-test] XENO_FIELD_MAP=%u\n",
+                           (unsigned int)D_8006F94E);
+                }
                 printf("[xeno-port][field-test] func_8001ACA4 field-entry init\n");
             }
         } else {
