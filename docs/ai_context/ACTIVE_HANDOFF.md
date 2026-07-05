@@ -65,6 +65,13 @@
     - `captures/render_diag/func80075B44_assert_branch_probe3_20260705_104148.log`
   - The first two gdb runs timed out with `RUN_RC=124` and did not stop at the branch line breakpoints, but the `commands` blocks were not attached cleanly in batch mode; treat them only as "no breakpoint stop observed", not as a clean hit count.
   - The third process-substitution attempt failed before running (`/dev/fd` invalid in this gdb/container setup).
+- Clean `func_80075B44` rare-branch reachability proof:
+  - Used one plain break-and-stop gdb run per branch. No gdb `commands` blocks, no source edits.
+  - `captures/render_diag/func80075B44_special_0x2000_breakstop_20260705_104428.log`: breakpoint set at `misc2.c:1821`, `RUN_RC=124`, `RESULT special_0x2000 NO_HIT_OBSERVED`.
+  - `captures/render_diag/func80075B44_far_color_breakstop_20260705_104513.log`: breakpoint set at `misc2.c:1915`, `RUN_RC=124`, `RESULT far_color NO_HIT_OBSERVED`.
+  - `captures/render_diag/func80075B44_double_render_breakstop_20260705_104558.log`: breakpoint set at `misc2.c:1923`, `RUN_RC=124`, `RESULT double_render NO_HIT_OBSERVED`.
+  - `captures/render_diag/func80075B44_rotated_actor_breakstop_20260705_104644.log`: breakpoint set at `misc2.c:1950`, `RUN_RC=124`, `RESULT rotated_actor NO_HIT_OBSERVED`.
+  - Conclusion: the recovered Kernel0 field route does not reach the four currently asserted `func_80075B44` rare branches during the bounded proof window. They remain real missing behavior for broader field coverage, but they are not current Kernel0 recovery blockers.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -176,7 +183,7 @@
 - **Kernel0 field test confirmed** (`XENO_KERNEL_SEL=0`): latest audit run reached frame 7 and timed out cleanly (`RUN_RC=124`) without crash.
 - **Kernel0 extended field probe confirmed**: 90s bounded run timed out cleanly (`RUN_RC=124`) with zero `[stub]` lines. No new live field-route function target surfaced.
 - **Field diagnostics are quiet by default**: set `XENO_FIELD_DIAG=1` to re-enable the current bounded `[field-diag]` prints.
-- **`func_80075B44` rare branches are mapped but not implemented**: asm confirms the asserted branches are real behavior. The recovered Kernel0 field route has not been observed hitting them, but there is not yet a clean gdb hit-count proof.
+- **`func_80075B44` rare branches are mapped but not implemented**: asm confirms the asserted branches are real behavior. Clean break-and-stop gdb probes did not observe any of the four branches in the recovered Kernel0 field route.
 - **Kernel4 direct menu test is an invalid/incomplete direct route for now** (`XENO_KERNEL_SEL=4`): it enters `MenuMain()` without a menu overlay loaded and therefore reaches `func_801C62A8` as a generated stub. This should be treated as a harness/overlay-loading problem, not as a real source function to implement.
 - **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
 - `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
@@ -196,7 +203,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Do not change the recovered render path. Pick exactly one next target: either make a clean non-invasive proof for whether any `func_80075B44` rare branch is reachable in Kernel0, or start an overlay-aware route proof for menu/worldmap/movie without fabricating overlay entry functions.
+  - Do not change the recovered render path. Start an overlay-aware route proof for menu/worldmap/movie without fabricating overlay entry functions, or inspect one rare branch implementation against asm only if broader field coverage starts hitting it.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified
