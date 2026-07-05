@@ -17,3 +17,6 @@ build.ninja
 pc_port/logs/
 pc_port/screenshots/
 pc_port/.clinerules
+captures/
+Xenogears (PC port).log
+xenogears-decomp-ai
