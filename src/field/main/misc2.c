@@ -7,12 +7,25 @@
 #include "psyq/libgte.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdlib.h>
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(...) calls below mark unimplemented/invariant
  * checks in functions not yet byte-matched, so a no-op assert compiles
  * safely there. */
 #define assert(x) ((void)0)
+#endif
+
+#ifdef XENO_PC_PORT
+static int XenoFieldDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
 #endif
 
 void FieldMatrixResetTranslation(MATRIX *matrix) {
@@ -1516,7 +1529,7 @@ void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
     u32 tag = *(u32*)pPrimList;
 
     g_FieldDiagSubmittedThisFrame++;
-    if (s_loggedSubmits < 8) {
+    if (XenoFieldDiagEnabled() && s_loggedSubmits < 8) {
         printf("[field-diag] submit[%d] srcOff=0x%lx size=%d tag=%08x w1=%08x w2=%08x w3=%08x\n",
                (int)s_loggedSubmits,
                (unsigned long)((uintptr_t)pPrimList - (uintptr_t)g_FieldCurRenderContext),
@@ -1719,7 +1732,7 @@ void func_8007554C(void) {
 
     /* The actual draw call (byte offset 0x80F0 into RenderContext = ot1) */
 #ifdef XENO_PC_PORT
-    if (diagFrame < 8) {
+    if (XenoFieldDiagEnabled() && diagFrame < 8) {
         printf("[field-diag] frame=%d D_800ADC18=%d useOT2=%d primSubmits=%d DrawOTag=1\n",
                (int)diagFrame, (int)D_800ADC18, (int)g_FieldRenderContextUseOT2,
                (int)g_FieldDiagSubmittedThisFrame);
@@ -1921,7 +1934,7 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         if ((*(u32*)(pActorData + 0x134) & 0x60) == 0) {
 #ifdef XENO_PC_PORT
             diagPlain++;
-            if (s_diagFrames < 4) {
+            if (XenoFieldDiagEnabled() && s_diagFrames < 4) {
                 printf("[field-diag] func_80075B44 draw actor=%d sprite=%p otIndex=%d ot=%p status=%08x flags4=%08x flag=%08lx screen=%08lx\n",
                        (int)actorIndex, pSpriteData, (int)otIndex, ot,
                        (unsigned int)status, (unsigned int)actorFlags4,
@@ -1939,7 +1952,7 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
     }
 
 #ifdef XENO_PC_PORT
-    if (s_diagFrames < 8) {
+    if (XenoFieldDiagEnabled() && s_diagFrames < 8) {
         printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d\n",
                (int)s_diagFrames, (int)diagActive, (int)diagPlain,
                (int)diagStatus20, (int)diagFlagNeg, (int)diagGlobalSkip,
