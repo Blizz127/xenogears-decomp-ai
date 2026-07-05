@@ -47,6 +47,11 @@
   - Command used `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 90 ./pc_port/build_native/xeno-port`.
   - Result: `RUN_RC=124` timeout success, zero `[stub]` lines.
   - The log is only 79 lines because the current diagnostic printfs are front-loaded/capped and the timeout appended `RUN_RC=124` to a final partial line; treat this as a stability/no-new-stub proof, not as a deep frame trace.
+- Field diagnostics are now opt-in:
+  - Existing `[field-diag]` printfs in `src/slus_006.64/system/rendering.c` and `src/field/main/misc2.c` are gated by `XENO_FIELD_DIAG`.
+  - Default verification log: `captures/render_diag/field_diag_default_quiet_20260705_103544.log` (`RUN_RC=124`, zero `[field-diag]`, zero `[stub]`).
+  - Opt-in verification log: `captures/render_diag/field_diag_optin_20260705_103624.log` (`RUN_RC=124`, 59 `[field-diag]` lines, zero `[stub]`).
+  - This cleanup does not alter render logic, primitive linking, fade logic, or the remaining assert-only rare branches in `func_80075B44`.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
   - Latest audit run reached frame 7 without crash.
@@ -157,6 +162,7 @@
 
 - **Kernel0 field test confirmed** (`XENO_KERNEL_SEL=0`): latest audit run reached frame 7 and timed out cleanly (`RUN_RC=124`) without crash.
 - **Kernel0 extended field probe confirmed**: 90s bounded run timed out cleanly (`RUN_RC=124`) with zero `[stub]` lines. No new live field-route function target surfaced.
+- **Field diagnostics are quiet by default**: set `XENO_FIELD_DIAG=1` to re-enable the current bounded `[field-diag]` prints.
 - **Kernel4 direct menu test is an invalid/incomplete direct route for now** (`XENO_KERNEL_SEL=4`): it enters `MenuMain()` without a menu overlay loaded and therefore reaches `func_801C62A8` as a generated stub. This should be treated as a harness/overlay-loading problem, not as a real source function to implement.
 - **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
 - `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
@@ -176,7 +182,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Decide whether to do a small cleanup/hardening pass on the remaining field diagnostic printfs and assert-only rare branches, or keep them temporarily while moving to an overlay-aware route. Before editing source, show exact lines and get approval.
+  - Do not change the recovered render path. Pick exactly one next target: either inspect the remaining `func_80075B44` assert-only rare branches against asm, or start an overlay-aware route proof for menu/worldmap/movie without fabricating overlay entry functions.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified

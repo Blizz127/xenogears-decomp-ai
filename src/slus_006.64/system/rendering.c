@@ -4,6 +4,7 @@
 #include "system/memory.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdlib.h>
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -13,6 +14,18 @@
 #endif
 
 // Rendering-related stuff
+
+#ifdef XENO_PC_PORT
+static int XenoFieldDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
+#endif
 
 static const s16 s_TPageCoords8004FAB8[] = {
     0x300, 0x000,
@@ -548,7 +561,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 
 #ifdef XENO_PC_PORT
-    if (s_diagCalls < 8) {
+    if (XenoFieldDiagEnabled() && s_diagCalls < 8) {
         printf("[field-diag] func_8001E3D8 call=%d sprite=%p ot=%p frames=%d flags3c=%08x flags40=%08x base30=%p mask3d=%02x work=%p end=%p\n",
                (int)s_diagCalls, pSpriteData, ot, (int)frameCount,
                (unsigned int)flags3C, (unsigned int)flags40,
@@ -713,7 +726,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
             }
 #ifdef XENO_PC_PORT
             linkedThisCall++;
-            if (s_diagLinked < 8) {
+            if (XenoFieldDiagEnabled() && s_diagLinked < 8) {
                 printf("[field-diag] func_8001E3D8 link=%d poly=%p ot=%p tag=%08x code=%02x xy0=(%d,%d) uv0=(%u,%u) tpage=%04x clut=%04x dir=%d\n",
                        (int)s_diagLinked, (void*)poly, ot,
                        (unsigned int)*(u32*)poly, (unsigned int)poly->code,
@@ -728,7 +741,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 
 #ifdef XENO_PC_PORT
-    if (s_diagCalls <= 8) {
+    if (XenoFieldDiagEnabled() && s_diagCalls <= 8) {
         printf("[field-diag] func_8001E3D8 done linked=%d workNow=%p\n",
                (int)linkedThisCall, g_GfxCurWorkBuffer);
     }
