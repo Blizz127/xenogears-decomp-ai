@@ -3,7 +3,7 @@
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
-- Git HEAD: `b4290ec` on branch `ai-private-main` (9 commits ahead of origin `b7d9ac3`).
+- Git HEAD: `0d3ffe0` on branch `ai-private-main` (11 commits ahead of origin `b7d9ac3`).
   - **Note:** `git` is NOT on PATH inside the distrobox container. Run git commands on the HOST at `/home/blizz/Projects/xenogears-decomp`.
 - Working convention: keep this canonical handoff updated as the project workbench after each meaningful proof, fix, visual confirmation, or checkpoint commit.
 - Latest checkpoint commit: `f5aa055 Checkpoint recovered field pipeline; visual mismatch unresolved`.
@@ -11,7 +11,9 @@
   - `9c680b9 Update workbench after field recovery checkpoint`
   - `9f6381d Make root handoff point to canonical workbench`
   - `b4290ec Ignore local diagnostic artifacts`
-- Local uncommitted item after cleanup: `tools/gcc-2.7.2-psx/cpp` has a mode-only change (`100644` -> `100755`). Do not revert or commit it without explicit user approval.
+  - `cb0afb6 Update workbench after diagnostic ignore cleanup`
+  - `0d3ffe0 Mark PSX cpp tool executable`
+- Working tree is clean after the final tool-permission cleanup. `tools/gcc-2.7.2-psx/cpp` is intentionally executable (`100755`).
 - Ignored local diagnostic artifacts: `"Xenogears (PC port).log"`, `captures/`, and `xenogears-decomp-ai`.
 - Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
   - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
