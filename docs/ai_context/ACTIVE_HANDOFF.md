@@ -5,24 +5,66 @@
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
 - Git HEAD: `7cb7e8b` on branch `ai-private-main` (4 commits ahead of origin `b7d9ac3`).
   - **Note:** `git` is NOT on PATH inside the distrobox container. Run git commands on the HOST at `/home/blizz/Projects/xenogears-decomp`.
-- Exact repro command runs to timeout/no-crash:
-  - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 10 build_native/xeno-port`
-  - Observed result is `RUN_RC=124` (timeout kill, no crash).
-- A filtered 10-second run prints **zero** `[stub]` lines — none of the 262 stubs are triggered.
-- Build-generated function stub count is `262`.
-- `func_8009E574` was investigated as a candidate bounded blocker: confirmed **NOT a stub** — it is compiled C code (nm symbol type `T` at `0x41cf83`, absent from `stubs.c`).
+- Kernel0 field test run confirmed stable (no crash, `RUN_RC=124` timeout success):
+  - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port`
+  - Latest audit run reached frame 7 without crash.
+  - `D_800ADC18` reaches `0` at frame 4.
+  - `primSubmits` becomes nonzero at frame 4 (`primSubmits=2`) and remains nonzero afterward.
+- 30-second kernel1 timeout run confirmed immediate abort:
+  - `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=1 timeout -s KILL 30 build_native/xeno-port`
+  - Exactly 1 stub: `func_8001B6C4`, then nothing else — battle state main function is stubbed.
+- Build-generated function stub count is `260` after supplying the work-list/sprite-frame functions from a port-only file.
 - Field overlay loads and field main loop runs.
 - Actor sprite data reaches `27/27` after VM/post-VM setup.
-- Actor draw path runs, and `func_8001E3D8` links real `code=2d` actor `POLY_FT4` packets into the OT.
-- `DrawOTag` runs.
-- `FieldAddPrimitives` reports `primSubmits=0` — this is **expected behavior**, NOT a bug:
-  - Primitive submission via `FieldAddPrimitives` is gated behind `if (D_800ADC18 == 0)` in `func_8007554C`.
-  - `D_800ADC18` is a countdown timer that starts at 4 and decrements by 1 per frame.
-  - In a 10-second timeout run, only ~3 frames execute before the process is killed.
-  - Observed: `D_800ADC18` goes 4→3→2 over 3 frames, never reaching 0 before timeout.
-  - Actor packets are still drawn via direct OT-linking, independent of `FieldAddPrimitives`.
+- Actor draw path runs, and `func_8001E3D8` links real `code=2d` actor `POLY_FT4` packets into the OT in early-frame logs.
+- `DrawOTag` runs (called once per frame).
+- `FieldAddPrimitives` reports `primSubmits=0` until `D_800ADC18` clears, then `primSubmits=2`:
+  - Primitive submission via `FieldAddPrimitives` is gated behind `if (D_800ADC18 == 0)` in `func_8007554C` (`misc2.c:1508`).
+  - `D_800ADC18` is a field transition/fade-in counter that starts at 4 and decrements by 1 per frame.
+  - **D_800ADC18 lifecycle (full source trace)**:
+    - INIT: Set to 4 at `misc3.c:299` during field-load bulk initialization (~100+ vars reset across lines 240–370).
+    - DECREMENT: Once per frame at `misc4.c:21–22` inside `func_80078B5C()`.
+    - EFFECT while ≠0: `FieldMathUpdateAngle()` skips interpolation (`misc2.c:716`), `FieldAddPrimitives()` not called (`misc2.c:1508`), multiple other render paths gated.
+  - Current 45s audit run reached the gate clear: counter goes 4→3→2→1→0 across frames 0–4.
+  - Actor packets are still drawn via direct OT-linking via `func_8001E3D8`, independent of `FieldAddPrimitives`.
 - Primitive submission functions (`AddPrim`, `AddPrims`, `CatPrim`, `DrawPrim`) are **NOT stubbed** — provided by Psy-X (compiled implementations).
-- Visual output is still not externally confirmed. Host `import -window root` screenshot capture failed from this shell.
+- Visual recovery is **confirmed by the user** for the earlier field-view sprite/fade behavior: the sprite is visible again and slowly zooms in during the field view.
+- Recovery cause: the current build was skipping `src/slus_006.64/system/work_list.c`, so the runtime fell back to stubs for `func_8001D298`, `WorkListsReset`, `func_8001D2B0`, `TimerWorkListUpdate`, `func_8001D468`, and `WorkListUpdate`. A new port-only file, `pc_port/src/work_list_port.c`, now supplies those six functions without touching the skipped decomp TU.
+- Latest recovery log: `captures/render_diag/worklist_port_recovery_20260705_095407.log`.
+  - No work-list/sprite-frame stub lines appear.
+  - `func_8001E3D8` again reports nonzero frame counts and linked actor sprite primitives: `frames=2 linked=2`, `frames=6 linked=6`, `frames=8 linked=8`, `frames=3 linked=3`.
+  - User visually confirmed: "yes its back".
+
+### XENO_KERNEL_SEL Routing Mechanism
+
+- `psyq_compat.c:318–340` — `PcPort_ForcedKernelSelect()`:
+  - On first call, reads `XENO_KERNEL_SEL` env var (default -1 = disabled).
+  - Also reads `XENO_KERNEL_DELAY` (default 60 frames).
+  - When `g_KernelMenuIsRunning` and frame count reaches delay, sets `g_KernelMenuCurChoice = sel` and ORs `g_C1ButtonStateReleased |= 0x20` (CTRL_BTN_CIRCLE).
+- `psyq_compat.c:343–375` — `Vsync(int mode)` override calls `PcPort_ForcedKernelSelect()` every frame.
+- `game_overrides.c:247–277` — `PcPort_InitGameStates()` populates `g_MainGameStates[7]` table:
+  - `[0]` = `KernelMenuMain` (boot state)
+  - `[1]` = `FieldMain` (field state; selected when `XENO_KERNEL_SEL=0`)
+  - `[2]` = `func_8001B6C4` (battle state; selected when `XENO_KERNEL_SEL=1`) — **STUBBED**
+  - `[5]` = `MenuMain` (menu state; selected when `XENO_KERNEL_SEL=4`)
+- KernelMenu option→state mapping: 0=Field, 1=Battle, 2=Worldmap, 3=Battling, 4=Menu, 5=Movie.
+
+### Kernel1 Root Cause Chain (func_8001B6C4 stub)
+
+1. `psyq_compat.c:327` — `getenv("XENO_KERNEL_SEL")` → `sel=1` (Battle)
+2. `psyq_compat.c:336–337` — Sets `g_KernelMenuCurChoice=1`, presses Circle
+3. KernelMenu auto-selects option 1 → `ChangeGameState(1)`
+4. `game_overrides.c:260` — `g_MainGameStates[2].pFnMain = func_8001B6C4`
+5. `temp3.c:301` — `INCLUDE_ASM` (nonmatching MIPS assembly — function exists only as raw .s)
+6. `stubs.c:479` — Stub prints `[stub] func_8001B6C4`, returns 0
+7. State 2 aborts immediately → no field rendering at all (only 2 log lines total)
+
+### Screen Coordinate Anomaly
+
+- Frame 0 (OT1, `useOT2=0`): screen addresses like `0x7ffdfe4a0093`, `0x7ffd00700088` — high 16 bits = `0x7ffd`
+- Frame 1 (OT2, `useOT2=1`): screen addresses like `0x25fe4a0093`, `0x2500700088` — high byte = `0x25`
+- Frame 2 (OT1, `useOT2=0`): back to `0x7ffd...`
+- Lower 32 bits appear consistent — only the high portion differs, suggesting a pointer/address formation issue in OT switching or screen coordinate calculation.
 
 ## Last Changes
 
@@ -70,36 +112,52 @@
 
 ## Current Frontier
 
-- No live stubs appear during the 10-second filtered field repro.
-- Actor packets are now OT-linked with sane projected coordinates.
-- PsyCross parses at least one actor `POLY_FT4` from the OT during `DrawOTag`.
-- Visible output is not yet confirmed from an external screenshot.
-- Next practical frontier is to prove whether those parsed actor packets emit backend vertices and present visibly, or whether the next issue is texture/CLUT/tpage decode, display capture, draw-env/display-env state, or another packet/render compatibility mismatch.
+- **Kernel0 field test confirmed** (`XENO_KERNEL_SEL=0`): latest audit run reached frame 7 and timed out cleanly (`RUN_RC=124`) without crash.
+- **`D_800ADC18` gate now observed clearing**: field-transition counter starts at 4 (`misc3.c:299`), decrements once per frame (`misc4.c:21-22`), and reaches 0 at frame 4 in the 45s audit run.
+- `FieldAddPrimitives` submission is observed after the gate clears: `primSubmits=2` at frame 4 and later.
+- Actor packets ARE created/OT-linked via `func_8001E3D8` independently of the `D_800ADC18` gate — so actor rendering is not blocked by the gate, only primitive submission is.
+- PsyCross `ParsePrimitive` hits actor `code=0x2d` `POLY_FT4` during `DrawOTag`.
+- **Screen coordinate anomaly unresolved**: OT1 frames have high 16 bits = `0x7ffd`, OT2 frame has high byte = `0x25`. Lower 32 bits consistent across both. Possible OT-switching or screen-coordinate address-formation issue.
+- Visual correctness for the recovered field-view sprite/fade milestone is confirmed by the user after restoring the work-list/sprite-frame path through `pc_port/src/work_list_port.c`.
+- The earlier `func_8001E3D8` concern is cleared: gdb proved it is called after `D_800ADC18 == 0`, and the frame-0-only filtered log was capped/misleading.
+- Remaining frontier: preserve this recovered state before starting new diagnostics or implementation work.
 
 ## Exact Next Function To Implement
 
-- `func_8009E574` was investigated as the next candidate bounded blocker — confirmed **NOT a stub**.
-  - It is compiled C code (nm symbol type `T` at `0x41cf83`, absent from `stubs.c`).
-  - No action needed on this function.
-- **No bounded stub blocker was found** in the current test configuration.
-  - Zero `[stub]` lines in a filtered 10-second run.
-  - `primSubmits=0` is expected — `FieldAddPrimitives` is gated behind `D_800ADC18 == 0`, and the countdown (4→3→2) never reaches 0 within the 3 frames that execute before the 10s timeout.
-  - Actor packets are still drawn via direct OT-linking, independent of `FieldAddPrimitives`.
-- Do not start broad feature work or add stub replacements.
-- Next investigative directions (not code changes yet):
-  - Run with a longer timeout (e.g. 30s) to pass the `D_800ADC18` countdown and confirm whether `FieldAddPrimitives` primitives begin submitting.
-  - Try `XENO_KERNEL_SEL=1` to see if a different kernel path reveals different stubs.
-  - Try different field IDs to exercise different field overlays.
-  - Inspect actual rendered output or PsyCross handling of the now-sane actor `POLY_FT4` packets.
-  - If output is still blank or corrupted, investigate: actor packet decode path for `code=0x2d`, tpage/CLUT/texture upload state, draw-env/display-env/present path, OT traversal, or host-width issues around `long*` depth/flag outputs from GTE wrappers.
+- **No bounded stub blocker found** — confirmed via 30s kernel0 run (zero `[stub]` lines, 79-line log at `captures/render_diag/kernel0_30s_20260704_170009.log`).
+- `primSubmits=0` before frame 4 is **expected** — `FieldAddPrimitives` is gated behind `D_800ADC18 == 0`. In the latest 45s audit run the countdown reaches 0 at frame 4 and `primSubmits` becomes 2.
+- Actor packets ARE drawn via direct OT-linking (`func_8001E3D8`), independent of `FieldAddPrimitives`.
+- **45s timeout test: COMPLETED** — frames 0–7, D_800ADC18=4→3→2→1→0, gate cleared, `primSubmits=2`.
+- **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
+- Do not start broad feature work or add unrelated stub replacements yet.
+- Next single step:
+  - Commit/checkpoint the recovered field pipeline state, including `pc_port/src/work_list_port.c`, `pc_port/build_port.sh`, `docs/ai_context/ACTIVE_HANDOFF.md`, and other intentional buildable field-pipeline changes.
+  - Exclude `captures/`, generated logs, build outputs, `xenogears-decomp-ai`, and accidental root `ACTIVE_HANDOFF.md` unless explicitly kept.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified
 
-- `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && ./pc_port/build_port.sh'`
-- `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 10 build_native/xeno-port; rc=$?; echo RUN_RC=$rc'`
-- `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 10 build_native/xeno-port 2>&1 | grep -E "RUN_RC|\\[stub\\]|func_8001E3D8 link|func_80075B44 frame|frame=|Unhandled zero length|did not output valid primitive|ParsePrimitive|ParsePrimitivesLinkedList|assert|SIG|Aborted"; rc=${PIPESTATUS[0]}; echo RUN_RC=$rc'`
-  - **Note:** `rg` is NOT available inside the distrobox container — use `grep -E` instead.
+- **Build**: `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && ./pc_port/build_port.sh'`
+- **Visual recovery run**:
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 45 ./pc_port/build_native/xeno-port'`
+  - Latest log: `captures/render_diag/worklist_port_recovery_20260705_095407.log`.
+  - User visually confirmed the sprite/fade/slow-zoom milestone is restored.
+- **Checkpoint snapshot after visual recovery**:
+  - `captures/render_diag/sprite_recovered_status_20260705_095615.txt`
+  - `captures/render_diag/sprite_recovered_full_diff_20260705_095615.patch`
+- **Kernel0 45s audit run** (field path, XENO_KERNEL_SEL=0):
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout 45 build_native/xeno-port'`
+  - Latest audit result: `RUN_RC=124`, no crash, frames 0-7 observed, `D_800ADC18=4→3→2→1→0`, `primSubmits=2` from frame 4 onward.
+- **Kernel0 30s run** (field path, XENO_KERNEL_SEL=0):
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 30 build_native/xeno-port 2>&1 | tee captures/render_diag/kernel0_30s_$(date +%Y%m%d_%H%M%S).log; rc=${PIPESTATUS[0]}; echo RUN_RC=$rc'`
+  - Historical log: `captures/render_diag/kernel0_30s_20260704_170009.log` (79 lines, 3 frames, D_800ADC18=4→3→2, primSubmits=0, DrawOTag=1, ~25 POLY_FT4 packets OT-linked, RC=137)
+- **Kernel0 30s filtered run** (grep for key events):
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 30 build_native/xeno-port 2>&1 | grep -E "RUN_RC|\\[stub\\]|func_8001E3D8 link|func_80075B44 frame|frame=|Unhandled zero length|did not output valid primitive|ParsePrimitive|ParsePrimitivesLinkedList|assert|SIG|Aborted" | tee captures/render_diag/kernel0_filtered_$(date +%Y%m%d_%H%M%S).log; rc=${PIPESTATUS[0]}; echo RUN_RC=$rc'`
+- **Kernel1 30s run** (battle path, XENO_KERNEL_SEL=1):
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_FIELD_TEST=1 XENO_KERNEL_SEL=1 timeout -s KILL 30 build_native/xeno-port 2>&1 | tee captures/render_diag/kernel1_30s_$(date +%Y%m%d_%H%M%S).log; rc=${PIPESTATUS[0]}; echo RUN_RC=$rc'`
+  - Latest log: `captures/render_diag/kernel1_30s_20260704_170523.log` (2 lines: `[stub] func_8001B6C4`, `RUN_RC=137`)
+- **Note:** `rg` is NOT available inside the distrobox container — use `grep -E` instead.
+- **Note:** All run logs are persisted under `captures/render_diag/` in the repo (not Copilot temp files).
 - Targeted gdb runs for:
   - `FieldScene` offsets and `worldToScreenMatrix` address.
   - `func_80024FF4` source matrix copied into `D_8004FBB8`.

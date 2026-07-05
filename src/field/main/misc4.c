@@ -6,6 +6,7 @@
 #include "system/memory.h"
 #include "system/archive.h"
 #include "system/sound.h"
+#include "system/math.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
 
@@ -22,7 +23,29 @@ void func_80078B5C(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078BC8);
+extern s32 D_800ADB2C;
+extern s32 D_800ADB90;
+extern s32 D_800ADB34;
+extern s32 D_800ADBC4;
+
+s32 func_80078BC8(void) {
+    if (D_800ADB2C != 0) {
+        return -1;
+    }
+    if (ArchiveDataSync() != 0) {
+        return -1;
+    }
+    if (D_8004F308 != 0) {
+        return -1;
+    }
+    if (D_800ADB90 != 0) {
+        return -1;
+    }
+    if (D_800ADB34 != 0) {
+        return -1;
+    }
+    return D_800ADBC4 != 0xFF ? -1 : 0;
+}
 
 extern s16 D_800B2344;
 void func_80078C5C(void) {
@@ -316,7 +339,44 @@ void FieldClampPolyFT4UVs(POLY_FT4* poly, short u0, short v0, short u1, short v1
     poly->v3 = v3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007A5C4);
+extern u8 D_800B0FEC[];
+extern s16 D_800ADE30[][8];
+extern u8 D_800ADE70[][8];
+
+void func_8007A5C4(void) {
+    s32 i;
+
+    for (i = 0; i < 4; i++) {
+        Quad* pPart = (Quad*)(D_800B0FEC + (i * 0x70));
+        POLY_FT4* pPoly = &pPart->polys[0];
+
+        SetPolyFT4(pPoly);
+
+        pPart->vertices[0].vx = D_800ADE30[i][0];
+        pPart->vertices[0].vy = 0;
+        pPart->vertices[0].vz = D_800ADE30[i][1];
+        pPart->vertices[1].vx = D_800ADE30[i][2];
+        pPart->vertices[1].vy = 0;
+        pPart->vertices[1].vz = D_800ADE30[i][3];
+        pPart->vertices[2].vx = D_800ADE30[i][4];
+        pPart->vertices[2].vy = 0;
+        pPart->vertices[2].vz = D_800ADE30[i][5];
+        pPart->vertices[3].vx = D_800ADE30[i][6];
+        pPart->vertices[3].vy = 0;
+        pPart->vertices[3].vz = D_800ADE30[i][7];
+
+        setRGB0(pPoly, 0x80, 0x80, 0x80);
+        FieldClampPolyFT4UVs(pPoly,
+                             D_800ADE70[i][0], D_800ADE70[i][1] + 0xC0,
+                             D_800ADE70[i][2], D_800ADE70[i][3] + 0xC0,
+                             D_800ADE70[i][4], D_800ADE70[i][5] + 0xC0,
+                             D_800ADE70[i][6], D_800ADE70[i][7] + 0xC0);
+        SetSemiTrans(pPoly, 1);
+        pPoly->tpage = GetTPage(0, 2, 0x280, 0x1C0);
+        pPoly->clut = GetClut(0x100, 0xF2);
+        pPart->polys[1] = *pPoly;
+    }
+}
 
 extern SVec4 D_800ADCE0[]; // X0 -> X3 positions
 extern SVec4 D_800ADD28[]; // Y0 -> Y3 positions
@@ -524,11 +584,80 @@ void FieldSetMousePosition(int mouseIndex, int xMovement, int yMovement) {
     g_FieldMousePositionsY[mouseIndex] = yMovement * g_FieldMouseSpeedY;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AE78);
+extern void func_8007AF74(s32 mouseIndex);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AF74);
+void func_8007AE78(s32 mouseIndex, void* out) {
+    s32* pOut = out;
+    u8* pController;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
+    func_8007AF74(mouseIndex);
+
+    pOut[0] = g_FieldMousePositionsX[mouseIndex] / g_FieldMouseSpeedX;
+    pOut[1] = g_FieldMousePositionsY[mouseIndex] / g_FieldMouseSpeedY;
+    pOut[2] = -0x100;
+
+    pController = (u8*)(uintptr_t)(mouseIndex ? g_pFieldControllerBuffer2 : g_pFieldControllerBuffer1);
+    pOut[3] = (s8)pController[4];
+    pOut[4] = (s8)pController[5];
+
+    if ((s8)pController[0] == 0 && (s8)pController[1] == 0x12) {
+        pOut[2] = (u8)(~pController[3]) & 0x0C;
+    }
+}
+
+void func_8007AF74(s32 mouseIndex) {
+    u8* pController = (u8*)(uintptr_t)(mouseIndex ? g_pFieldControllerBuffer2 : g_pFieldControllerBuffer1);
+    s32 pos;
+
+    if ((s8)pController[0] != 0 || (s8)pController[1] != 0x12) {
+        return;
+    }
+
+    g_FieldMousePositionsX[mouseIndex] += (s8)pController[4];
+    g_FieldMousePositionsY[mouseIndex] += (s8)pController[5];
+
+    pos = g_FieldMousePositionsX[mouseIndex];
+    if (pos > D_800C3A50) {
+        g_FieldMousePositionsX[mouseIndex] = D_800C3A50;
+    } else if (pos < D_800C3A44) {
+        g_FieldMousePositionsX[mouseIndex] = D_800C3A44;
+    }
+
+    pos = g_FieldMousePositionsY[mouseIndex];
+    if (pos > D_800C3A54) {
+        g_FieldMousePositionsY[mouseIndex] = D_800C3A54;
+    } else if (pos < D_800C3A4C) {
+        g_FieldMousePositionsY[mouseIndex] = D_800C3A4C;
+    }
+}
+
+void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4) {
+    VECTOR vec0;
+    VECTOR normal0;
+    VECTOR normal1;
+
+    vec0.vx = arg1[0] - arg0[0];
+    vec0.vy = arg1[1] - arg0[1];
+    vec0.vz = arg1[2] - arg0[2];
+    VectorNormal(&vec0, &normal0);
+
+    vec0.vx = arg2[0] - arg0[0];
+    vec0.vy = arg2[1] - arg0[1];
+    vec0.vz = arg2[2] - arg0[2];
+    VectorNormal(&vec0, &normal1);
+
+    OuterProduct12(&normal0, &normal1, arg4);
+
+    if (arg4->vy == 0) {
+        arg3[1] = 0;
+        return;
+    }
+
+    arg3[1] = arg0[1] +
+              ((-(arg4->vx * (arg3[0] - arg0[0])) -
+                (arg4->vz * (arg3[2] - arg0[2]))) /
+               arg4->vy);
+}
 
 /* ---- func_8007B1C4: camera collision (ceiling) check -----------------------
  * Handwritten ASM using GTE NCLIP for point-in-triangle tests. Checks if
@@ -540,6 +669,9 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
 extern s32 D_800AFB24[];
 extern s32 D_800AFB34[];
 extern s32 D_800AFB44[];
+extern u32 D_800AFB20[];
+extern u8 D_800B21CC;
+extern s16 D_800AFB54;
 
 s16 func_8007B1C4(s16 camY, s16 camZ, s32 idx, s16* pOut, s32* pState) {
     s32 count = D_800AFB44[idx];
@@ -566,23 +698,573 @@ s16 func_8007B1C4(s16 camY, s16 camZ, s32 idx, s16* pOut, s32* pState) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B614);
+extern s16 D_800B218C;
+
+void func_8007B614(s32* pOut, s16 scale, s16 angle) {
+    s32 magnitude = (scale << 4) * D_800B218C;
+
+    magnitude >>= 12;
+    angle &= 0xFFF;
+
+    pOut[0] = rsin(angle) * magnitude;
+    pOut[1] = 0;
+    pOut[2] = -(rcos(angle) * magnitude);
+}
 
 s32 func_8007B694(s32* arg0) {
     return -ratan2(arg0[2], arg0[0]) & 0xFFF;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B6C4);
+extern long FieldGetVec2Magnitude(long x, long y);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B814);
+s32 func_8007B6C4(s16 angle, s16* edge, s32* vec) {
+    VECTOR side;
+    VECTOR normal;
+    s32 edgeAngle;
+    s32 deltaAngle;
+    s32 magnitude;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007BAC0);
+    deltaAngle = (0xC00 - angle) & 0xFFF;
+    edgeAngle = -ratan2(edge[6] - edge[2], edge[4] - edge[0]) & 0xFFF;
+    deltaAngle = (deltaAngle + edgeAngle) & 0xFFF;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007BEF4);
+    if ((u32)(deltaAngle - 0x80) >= 0xF01) {
+        vec[0] = 0;
+        vec[1] = 0;
+        vec[2] = 0;
+        return edgeAngle;
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007C670);
+    if (deltaAngle < 0x800) {
+        side.vx = edge[0] - edge[4];
+        side.vy = 0;
+        side.vz = edge[2] - edge[6];
+        edgeAngle = (edgeAngle + 0x800) & 0xFFF;
+    } else {
+        side.vx = edge[4] - edge[0];
+        side.vy = 0;
+        side.vz = edge[6] - edge[2];
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007C694);
+    VectorNormal(&side, &normal);
+    magnitude = FieldGetVec2Magnitude(vec[0] >> 12, vec[2] >> 12);
+    vec[0] = normal.vx * magnitude;
+    vec[1] = 0;
+    vec[2] = normal.vz * magnitude;
+    return edgeAngle;
+}
+
+extern s32 D_800ADB98;
+extern s32 func_8007C694(s32* move, s32* base, void* pActorData,
+                         s16* outEdge, s16* outPoint, s32 mode);
+
+void* func_8007B814(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
+    u8* actorData = pActorData;
+    s16 resolvedAngle = angle;
+    s16 point[16];
+    s32 move[3];
+    s32 result;
+    s32 candidateAngle;
+
+    candidateAngle = angle & 0x0FFF;
+    move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+    move[1] = 0;
+    move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+    result = func_8007C694(move, (s32*)(actorData + 0x20), actorData,
+                           (s16*)pOut, point, -1);
+
+    if (result != -1) {
+        resolvedAngle = result >> 16;
+
+        candidateAngle = (resolvedAngle - 0x100) & 0x0FFF;
+        move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+        move[1] = 0;
+        move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+        result = func_8007C694(move, (s32*)(actorData + 0x20), actorData,
+                               (s16*)pOut, point, -1);
+
+        if (result != -1) {
+            candidateAngle = (resolvedAngle + 0x100) & 0x0FFF;
+            move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+            move[1] = 0;
+            move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+            result = func_8007C694(move, (s32*)(actorData + 0x20), actorData,
+                                   (s16*)pOut, point, -1);
+
+            if (result != -1) {
+                move[0] = pVec[0];
+                move[1] = pVec[1];
+                move[2] = pVec[2];
+            } else {
+                move[0] = pVec[0];
+                move[1] = pVec[1];
+                move[2] = pVec[2];
+                func_8007B6C4(resolvedAngle, (s16*)pOut, move);
+            }
+        } else {
+            move[0] = pVec[0];
+            move[1] = pVec[1];
+            move[2] = pVec[2];
+            func_8007B6C4(resolvedAngle, (s16*)pOut, move);
+        }
+    } else {
+        move[0] = pVec[0];
+        move[1] = pVec[1];
+        move[2] = pVec[2];
+        func_8007B6C4(resolvedAngle, (s16*)pOut, move);
+    }
+
+    if (func_8007C694(move, (s32*)(actorData + 0x20), actorData,
+                      (s16*)pOut, point, 0) == -1) {
+        return (void*)-1;
+    }
+
+    if ((*(u32*)actorData & 0x00040000) != 0) {
+        point[1] = *(u16*)(actorData + 0xEC);
+    } else if (((s32)point[1] << 16) < *(s32*)(actorData + 0x24) &&
+               D_800ADB98 == 0) {
+        return (void*)-1;
+    }
+
+    move[1] = ((s32)point[1] << 16) - *(s32*)(actorData + 0x24);
+    pVec[0] = move[0];
+    pVec[1] = move[1];
+    pVec[2] = move[2];
+    *(s16*)(actorData + 0x72) = (*(s32*)(actorData + 0x24) + pVec[1]) >> 16;
+    return 0;
+}
+
+void* func_8007BAC0(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
+    u8* actorData = pActorData;
+    s16 signedAngle = angle;
+    s16 edge[4];
+    s16 point[16];
+    s16 savedPoint[16];
+    s32 move[3];
+    s32 savedMove[3];
+    s32 flags = 0;
+    s32 candidateAngle;
+    s32 magnitude;
+    VECTOR normalIn;
+    VECTOR normalOut;
+
+    candidateAngle = (signedAngle - 0x100) & 0x0FFF;
+    move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+    move[1] = 0;
+    move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+    if (func_8007BEF4(move, (s32*)(actorData + 0x20), actorData,
+                      (s16*)pOut, point, -1, &flags) != -1) {
+        candidateAngle = (signedAngle + 0x100) & 0x0FFF;
+        move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+        move[1] = 0;
+        move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+        if (func_8007BEF4(move, (s32*)(actorData + 0x20), actorData,
+                          (s16*)pOut, point, -1, &flags) != -1) {
+            candidateAngle = angle & 0x0FFF;
+            move[0] = pVec[0] + (rsin(candidateAngle) << 6);
+            move[1] = 0;
+            move[2] = pVec[2] - (rcos(candidateAngle) << 6);
+            if (func_8007BEF4(move, (s32*)(actorData + 0x20), actorData,
+                              (s16*)pOut, point, -1, &flags) != -1) {
+                move[0] = pVec[0];
+                move[1] = pVec[1];
+                move[2] = pVec[2];
+            } else {
+                move[0] = pVec[0];
+                move[1] = pVec[1];
+                move[2] = pVec[2];
+                func_8007B6C4(signedAngle, (s16*)pOut, move);
+            }
+        } else {
+            move[0] = pVec[0];
+            move[1] = pVec[1];
+            move[2] = pVec[2];
+            func_8007B6C4(signedAngle, (s16*)pOut, move);
+        }
+    } else {
+        move[0] = pVec[0];
+        move[1] = pVec[1];
+        move[2] = pVec[2];
+        func_8007B6C4(signedAngle, (s16*)pOut, move);
+    }
+
+    if (func_8007BEF4(move, (s32*)(actorData + 0x20), actorData,
+                      (s16*)pOut, point, 0, &flags) == -1) {
+        return (void*)-1;
+    }
+
+    savedMove[0] = move[0];
+    savedMove[1] = move[1];
+    savedMove[2] = move[2];
+    savedPoint[0] = point[0];
+    savedPoint[1] = point[1];
+    savedPoint[2] = point[2];
+    savedPoint[3] = point[3];
+
+    if (point[1] < *(s16*)(actorData + 0x26)) {
+retry_along_normal:
+        normalIn.vx = -move[0] >> 8;
+        normalIn.vy = (((s32)point[1] << 16) - *(s32*)(actorData + 0x24)) >> 8;
+        normalIn.vz = -move[2] >> 8;
+        VectorNormal(&normalIn, &normalOut);
+
+        magnitude = FieldGetVec2Magnitude(move[0] >> 8, move[2] >> 8);
+        move[0] = -(magnitude * normalOut.vx) >> 4;
+        move[1] = (magnitude * normalOut.vy) >> 4;
+        move[2] = -(magnitude * normalOut.vz) >> 4;
+
+        if (func_8007BEF4(move, (s32*)(actorData + 0x20), actorData,
+                          (s16*)pOut, point, 0, &flags) == -1) {
+            return (void*)-1;
+        }
+
+        *(u32*)actorData |= 0x04000000;
+    } else {
+        if ((flags & 0x00200000) != 0) {
+            goto retry_along_normal;
+        }
+
+        if ((flags & 0x00420000) != 0) {
+            if ((*(u32*)(actorData + 0x14) & 0x00420000) != 0) {
+                goto retry_along_normal;
+            }
+        } else if (point[1] < *(s16*)(actorData + 0x26) + 0x40) {
+            goto retry_along_normal;
+        }
+
+        move[0] = savedMove[0];
+        move[1] = savedMove[1];
+        move[2] = savedMove[2];
+        point[0] = savedPoint[0];
+        point[1] = savedPoint[1];
+        point[2] = savedPoint[2];
+        point[3] = savedPoint[3];
+    }
+
+    move[1] = ((s32)point[1] << 16) - *(s32*)(actorData + 0x24);
+    pVec[0] = move[0];
+    pVec[1] = move[1];
+    pVec[2] = move[2];
+    *(s16*)(actorData + 0x72) = (*(s32*)(actorData + 0x24) + pVec[1]) >> 16;
+    return 0;
+}
+
+static s32 FieldPackedXZ(const s16* vert);
+static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b);
+
+s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
+                  s16* outPoint, s32 mode, s32* outFlags) {
+    s32 state = *(s16*)(actorData + 0x10);
+    s16 triIndex = *(s16*)(actorData + state * 2 + 0x08);
+    u8* triBase = (u8*)(uintptr_t)(u32)D_800AFB24[state];
+    u8* vertBase = (u8*)(uintptr_t)(u32)D_800AFB34[state];
+    s32 packedNewXZ;
+    s32 packedOldXZ;
+    s32 collisionMask = 0;
+    s32 forceEdgeSearch;
+    s32 steps = 0;
+    s32 lastTri = triIndex;
+    s32 sideMask = 0;
+
+    if (triIndex == -1) {
+        return -1;
+    }
+
+    outPoint[0] = (base[0] + move[0]) >> 16;
+    outPoint[1] = 0;
+    outPoint[2] = (base[2] + move[2]) >> 16;
+    packedNewXZ = ((s32)outPoint[0] << 16) + outPoint[2];
+    packedOldXZ = ((base[0] >> 16) << 16) + (base[2] >> 16);
+
+    if (((*(u32*)(actorData + 0x04) >> (state + 3)) & 1) == 0) {
+        collisionMask = (D_800B21CC == 0) ? -1 : 0;
+    }
+
+    {
+        s16* tri = (s16*)(triBase + triIndex * 14);
+        u32 triFlags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)];
+        forceEdgeSearch = ((triFlags & 0x00400000) != 0) || mode == 0x80;
+    }
+
+    for (;;) {
+        s16* tri = (s16*)(triBase + triIndex * 14);
+        s16* v0 = (s16*)(vertBase + tri[0] * 8);
+        s16* v1 = (s16*)(vertBase + tri[1] * 8);
+        s16* v2 = (s16*)(vertBase + tri[2] * 8);
+        s32 p0 = FieldPackedXZ(v0);
+        s32 p1 = FieldPackedXZ(v1);
+        s32 p2 = FieldPackedXZ(v2);
+        s32 nextTri = -1;
+        u32 flags;
+
+        lastTri = triIndex;
+        sideMask = 0;
+        if (NormalClip(p0, p1, packedNewXZ) < 0) {
+            sideMask |= 1;
+        }
+        if (NormalClip(p1, p2, packedNewXZ) < 0) {
+            sideMask |= 2;
+        }
+        if (NormalClip(p2, p0, packedNewXZ) < 0) {
+            sideMask |= 4;
+        }
+
+        switch (sideMask) {
+        case 0:
+            steps = 0xFF;
+            break;
+        case 1:
+            nextTri = tri[3];
+            break;
+        case 2:
+            nextTri = tri[4];
+            break;
+        case 3:
+            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
+            break;
+        case 4:
+            nextTri = tri[5];
+            break;
+        case 5:
+            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            break;
+        case 6:
+            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            break;
+        default:
+            triIndex = -1;
+            break;
+        }
+
+        if (sideMask != 0 && sideMask < 7) {
+            triIndex = (s16)nextTri;
+        }
+
+        if (triIndex != -1) {
+            tri = (s16*)(triBase + triIndex * 14);
+            flags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)] & collisionMask;
+            *outFlags = flags;
+
+            if ((((*(u32*)actorData >> 8) & 7) & (flags >> 5)) != 0) {
+                triIndex = -1;
+            } else if ((flags & 0x00800000) != 0 && *(s16*)(actorData + 0x10) == 0) {
+                triIndex = -1;
+            } else if ((flags & 0x00400000) != 0) {
+                if (!forceEdgeSearch) {
+                    func_8007B07C((s16*)(vertBase + tri[0] * 8),
+                                  (s16*)(vertBase + tri[1] * 8),
+                                  (s16*)(vertBase + tri[2] * 8),
+                                  outPoint, (VECTOR*)((u8*)outPoint + 0x08));
+                    if (outPoint[1] < *(s16*)((u8*)base + 0x06)) {
+                        triIndex = -1;
+                    }
+                }
+            }
+        }
+
+        if (triIndex != -1) {
+            steps++;
+            if (steps < 0x20) {
+                continue;
+            }
+        }
+        break;
+    }
+
+    if (triIndex != -1 && steps != 0x20) {
+        if (mode == -1) {
+            return 0;
+        }
+
+        {
+            s16* tri = (s16*)(triBase + triIndex * 14);
+            func_8007B07C((s16*)(vertBase + tri[0] * 8),
+                          (s16*)(vertBase + tri[1] * 8),
+                          (s16*)(vertBase + tri[2] * 8),
+                          outPoint, (VECTOR*)((u8*)outPoint + 0x08));
+        }
+        return 0;
+    }
+
+    if (sideMask == 1 || sideMask == 2 || sideMask == 4) {
+        s16* tri = (s16*)(triBase + lastTri * 14);
+        if (sideMask == 1) {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[0] * 8),
+                                (s16*)(vertBase + tri[1] * 8));
+        } else if (sideMask == 2) {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[1] * 8),
+                                (s16*)(vertBase + tri[2] * 8));
+        } else {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[2] * 8),
+                                (s16*)(vertBase + tri[0] * 8));
+        }
+    }
+
+    return -1;
+}
+
+void func_8007C670(s32* arg0, s32* arg1, s32 arg2) {
+    s32 value = *arg0;
+
+    if (arg2 >= 0) {
+        value += arg2;
+    }
+
+    *arg1 = value;
+}
+
+s32 func_8007C694(s32* move, s32* base, void* pActorData,
+                  s16* outEdge, s16* outPoint, s32 mode) {
+    u8* actorData = pActorData;
+    s32 state = *(s16*)(actorData + 0x10);
+    s16 triIndex = *(s16*)(actorData + state * 2 + 0x08);
+    u8* triBase = (u8*)(uintptr_t)(u32)D_800AFB24[state];
+    u8* vertBase = (u8*)(uintptr_t)(u32)D_800AFB34[state];
+    s32 packedNewXZ;
+    s32 packedOldXZ;
+    s32 collisionMask = 0;
+    s32 steps = 0;
+    s32 lastTri = triIndex;
+    s32 sideMask = 0;
+
+    if (triIndex == -1) {
+        return -1;
+    }
+
+    outPoint[0] = (base[0] + move[0]) >> 16;
+    outPoint[1] = 0;
+    outPoint[2] = (base[2] + move[2]) >> 16;
+    packedNewXZ = ((s32)outPoint[0] << 16) + outPoint[2];
+    packedOldXZ = ((base[0] >> 16) << 16) + (base[2] >> 16);
+
+    if (((*(u32*)(actorData + 0x04) >> (state + 3)) & 1) == 0) {
+        collisionMask = (D_800B21CC == 0) ? -1 : 0;
+    }
+
+    for (;;) {
+        s16* tri = (s16*)(triBase + triIndex * 14);
+        s16* v0 = (s16*)(vertBase + tri[0] * 8);
+        s16* v1 = (s16*)(vertBase + tri[1] * 8);
+        s16* v2 = (s16*)(vertBase + tri[2] * 8);
+        s32 p0 = FieldPackedXZ(v0);
+        s32 p1 = FieldPackedXZ(v1);
+        s32 p2 = FieldPackedXZ(v2);
+        s32 nextTri = -1;
+        u32 flags;
+
+        lastTri = triIndex;
+        sideMask = 0;
+        if (NormalClip(p0, p1, packedNewXZ) < 0) {
+            sideMask |= 1;
+        }
+        if (NormalClip(p1, p2, packedNewXZ) < 0) {
+            sideMask |= 2;
+        }
+        if (NormalClip(p2, p0, packedNewXZ) < 0) {
+            sideMask |= 4;
+        }
+
+        switch (sideMask) {
+        case 0:
+            steps = 0xFF;
+            break;
+        case 1:
+            nextTri = tri[3];
+            break;
+        case 2:
+            nextTri = tri[4];
+            break;
+        case 3:
+            if (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[3];
+                sideMask = 1;
+            } else {
+                nextTri = tri[4];
+                sideMask = 2;
+            }
+            break;
+        case 4:
+            nextTri = tri[5];
+            break;
+        case 5:
+            if (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[5];
+                sideMask = 4;
+            } else {
+                nextTri = tri[3];
+                sideMask = 1;
+            }
+            break;
+        case 6:
+            if (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) {
+                nextTri = tri[5];
+                sideMask = 4;
+            } else {
+                nextTri = tri[4];
+                sideMask = 2;
+            }
+            break;
+        default:
+            triIndex = -1;
+            break;
+        }
+
+        if (sideMask != 0 && triIndex != -1) {
+            triIndex = (s16)nextTri;
+        }
+
+        if (triIndex == -1) {
+            break;
+        }
+
+        tri = (s16*)(triBase + triIndex * 14);
+        flags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)] & collisionMask;
+
+        if ((((*(u32*)actorData >> 9) & 3) & (flags >> 3)) != 0 ||
+            (((*(u32*)actorData >> 8) & 7) & (flags >> 5)) != 0 ||
+            ((flags & 0x00800000) != 0 && *(s16*)(actorData + 0x10) == 0)) {
+            triIndex = -1;
+            break;
+        }
+
+        steps++;
+        if (steps < 0x20) {
+            continue;
+        }
+        break;
+    }
+
+    if (triIndex != -1 && steps != 0x20) {
+        if (mode == -1) {
+            return 0;
+        }
+
+        {
+            s16* tri = (s16*)(triBase + triIndex * 14);
+            func_8007B07C((s16*)(vertBase + tri[0] * 8),
+                          (s16*)(vertBase + tri[1] * 8),
+                          (s16*)(vertBase + tri[2] * 8),
+                          outPoint, (VECTOR*)((u8*)outPoint + 0x08));
+        }
+        return 0;
+    }
+
+    if (sideMask == 1 || sideMask == 2 || sideMask == 4) {
+        s16* tri = (s16*)(triBase + lastTri * 14);
+        if (sideMask == 1) {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[0] * 8),
+                                (s16*)(vertBase + tri[1] * 8));
+        } else if (sideMask == 2) {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[1] * 8),
+                                (s16*)(vertBase + tri[2] * 8));
+        } else {
+            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[2] * 8),
+                                (s16*)(vertBase + tri[0] * 8));
+        }
+    }
+
+    return -1;
+}
 
 extern s32 D_800ADC10;
 
@@ -596,14 +1278,319 @@ void func_8007CD60(s32 a0) {
     D_800ADC10 -= a0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007CD80);
+static s32 FieldPackedXZ(const s16* vert) {
+    return ((s32)vert[0] << 16) + vert[2];
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D3D4);
+static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
+    *(u16*)(out + 0x00) = (u16)a[0];
+    *(u16*)(out + 0x02) = (u16)a[1];
+    *(u16*)(out + 0x04) = (u16)a[2];
+    *(u16*)(out + 0x08) = (u16)b[0];
+    *(u16*)(out + 0x0A) = (u16)b[1];
+    *(u16*)(out + 0x0C) = (u16)b[2];
+}
+
+s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
+    s16 posX = *(s16*)((u8*)arg0 + 0x02);
+    s16 posZ = *(s16*)((u8*)arg0 + 0x0A);
+    s16 clampedX;
+    s16 clampedZ;
+    s32 packedPos = ((s32)posX << 16) + posZ;
+    s32 packedClamped;
+    u8* triBase;
+    u8* vertBase;
+    s16 triIndex;
+    s16 edgeTri = 0;
+    s32 edge = 0;
+    s32 steps = 0;
+
+    if (posX < *(s16*)((u8*)&g_Scene + 0x4C)) {
+        clampedX = *(s16*)((u8*)&g_Scene + 0x4C);
+    } else {
+        s32 maxX = *(s16*)((u8*)&g_Scene + 0x4C) +
+                   *(s16*)((u8*)&g_Scene + 0x50);
+        clampedX = (maxX < posX) ? (s16)maxX : posX;
+    }
+
+    if (*(s16*)((u8*)&g_Scene + 0x4E) < posZ) {
+        clampedZ = *(s16*)((u8*)&g_Scene + 0x4E);
+    } else {
+        s32 maxZ = *(s16*)((u8*)&g_Scene + 0x4E) +
+                   *(s16*)((u8*)&g_Scene + 0x52);
+        clampedZ = (posZ < maxZ) ? posZ : (s16)maxZ;
+    }
+
+    packedClamped = ((s32)clampedX << 16) + clampedZ;
+    triIndex = func_8007B1C4(clampedX, clampedZ, D_800AFB54 - 1,
+                             (s16*)arg2, (s32*)((u8*)arg2 + 0x08));
+    triBase = (u8*)(uintptr_t)D_800AFB20[D_800AFB54];
+    vertBase = (u8*)(uintptr_t)D_800AFB20[D_800AFB54 + 4];
+
+    for (;;) {
+        s16* tri;
+        s16* v0;
+        s16* v1;
+        s16* v2;
+        s32 p0;
+        s32 p1;
+        s32 p2;
+        s32 sideMask;
+        s32 nextTri;
+
+        if (triIndex < 0) {
+            break;
+        }
+
+        tri = (s16*)(triBase + triIndex * 14);
+        v0 = (s16*)(vertBase + tri[0] * 8);
+        v1 = (s16*)(vertBase + tri[1] * 8);
+        v2 = (s16*)(vertBase + tri[2] * 8);
+        p0 = FieldPackedXZ(v0);
+        p1 = FieldPackedXZ(v1);
+        p2 = FieldPackedXZ(v2);
+
+        sideMask = 0;
+        if (NormalClip(p0, p1, packedPos) < 0) {
+            sideMask |= 1;
+        }
+        if (NormalClip(p1, p2, packedPos) < 0) {
+            sideMask |= 2;
+        }
+        if (NormalClip(p2, p0, packedPos) < 0) {
+            sideMask |= 4;
+        }
+
+        nextTri = -1;
+        switch (sideMask) {
+        case 0:
+            steps = 0xFF;
+            break;
+        case 1:
+            nextTri = tri[3];
+            break;
+        case 2:
+            nextTri = tri[4];
+            break;
+        case 3:
+            nextTri = (NormalClip(p1, packedPos, packedClamped) < 0) ?
+                      tri[3] : tri[4];
+            break;
+        case 4:
+            nextTri = tri[5];
+            break;
+        case 5:
+            nextTri = (NormalClip(p0, packedPos, packedClamped) < 0) ?
+                      tri[5] : tri[3];
+            break;
+        case 6:
+            nextTri = (NormalClip(p2, packedPos, packedClamped) >= 0) ?
+                      tri[5] : tri[4];
+            break;
+        default:
+            nextTri = -1;
+            break;
+        }
+
+        if (sideMask != 0) {
+            edgeTri = triIndex;
+            triIndex = (s16)nextTri;
+            edge = sideMask;
+        }
+
+        {
+            s16* curTri;
+            u32 flags;
+
+            if (triIndex < 0) {
+                break;
+            }
+
+            curTri = (s16*)(triBase + triIndex * 14);
+            flags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)curTri + 0x0C)];
+            if ((flags & 0x800000) == 0) {
+                triIndex = -1;
+                break;
+            }
+        }
+
+        steps++;
+        if (triIndex == -1 || steps >= 0xF0) {
+            break;
+        }
+        if (sideMask == 0) {
+            break;
+        }
+    }
+
+    if (triIndex != -1 && steps != 0xF0) {
+        return 0;
+    }
+
+    if (edge == 1 || edge == 2 || edge == 4) {
+        s16* tri = (s16*)(triBase + edgeTri * 14);
+        s16* a;
+        s16* b;
+
+        if (edge == 1) {
+            a = (s16*)(vertBase + tri[0] * 8);
+            b = (s16*)(vertBase + tri[1] * 8);
+        } else if (edge == 2) {
+            a = (s16*)(vertBase + tri[1] * 8);
+            b = (s16*)(vertBase + tri[2] * 8);
+        } else {
+            a = (s16*)(vertBase + tri[2] * 8);
+            b = (s16*)(vertBase + tri[0] * 8);
+        }
+        FieldCopyCameraEdge((u8*)arg1, a, b);
+    }
+
+    *(s16*)((u8*)arg2 + 0x00) = posX;
+    *(s16*)((u8*)arg2 + 0x02) = posZ;
+    *(s16*)((u8*)arg2 + 0x04) = clampedX;
+    *(s16*)((u8*)arg2 + 0x06) = clampedZ;
+    return -1;
+}
+
+s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
+                  VECTOR* outNormal, s16* outTriangle, s32* outHeight1) {
+    s16 triIndex;
+    u8* triBase;
+    u8* vertBase;
+    s16 point[4];
+    s32 packedNewXZ;
+    s32 packedOldXZ;
+    s32 collisionMask;
+    s32 steps;
+
+    triIndex = *(s16*)(actorData + idx * 2 + 0x08);
+    triBase = (u8*)(uintptr_t)(u32)D_800AFB24[idx];
+    vertBase = (u8*)(uintptr_t)(u32)D_800AFB34[idx];
+
+    if (triIndex == -1) {
+        return -1;
+    }
+
+    point[0] = (*(s32*)(actorData + 0x20) + *(s32*)(actorData + 0x30)) >> 16;
+    point[1] = 0;
+    point[2] = (*(s32*)(actorData + 0x28) + *(s32*)(actorData + 0x38)) >> 16;
+    packedNewXZ = (point[0] << 16) + point[2];
+    packedOldXZ = ((*(s32*)(actorData + 0x20) >> 16) << 16) +
+                  (*(s32*)(actorData + 0x28) >> 16);
+
+    collisionMask = 0;
+    if (((*(u32*)(actorData + 0x04) >> (idx + 3)) & 1) == 0) {
+        collisionMask = (D_800B21CC == 0) ? -1 : 0;
+    }
+
+    steps = 0;
+    for (;;) {
+        s16* tri = (s16*)(triBase + triIndex * 14);
+        s16* v0 = (s16*)(vertBase + tri[0] * 8);
+        s16* v1 = (s16*)(vertBase + tri[1] * 8);
+        s16* v2 = (s16*)(vertBase + tri[2] * 8);
+        s32 p0 = (v0[0] << 16) + v0[2];
+        s32 p1 = (v1[0] << 16) + v1[2];
+        s32 p2 = (v2[0] << 16) + v2[2];
+        s32 sideMask = 0;
+        s32 nextTri = -1;
+
+        if (NormalClip(p0, p1, packedNewXZ) < 0) {
+            sideMask |= 1;
+        }
+        if (NormalClip(p1, p2, packedNewXZ) < 0) {
+            sideMask |= 2;
+        }
+        if (NormalClip(p2, p0, packedNewXZ) < 0) {
+            sideMask |= 4;
+        }
+
+        switch (sideMask) {
+        case 0:
+            steps = 0xFF;
+            break;
+        case 1:
+            nextTri = tri[5];
+            break;
+        case 2:
+            nextTri = tri[4];
+            break;
+        case 3:
+            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
+            break;
+        case 4:
+            nextTri = tri[5];
+            break;
+        case 5:
+            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            break;
+        case 6:
+            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            break;
+        default:
+            nextTri = -1;
+            break;
+        }
+
+        if (sideMask == 0) {
+            steps++;
+        } else {
+            triIndex = nextTri;
+            if (triIndex == -1) {
+                return -1;
+            }
+            steps++;
+            if (steps < 0x20) {
+                continue;
+            }
+            if (steps == 0x20) {
+                return -1;
+            }
+        }
+
+        tri = (s16*)(triBase + triIndex * 14);
+        v0 = (s16*)(vertBase + tri[0] * 8);
+        v1 = (s16*)(vertBase + tri[1] * 8);
+        v2 = (s16*)(vertBase + tri[2] * 8);
+        func_8007B07C(v0, v1, v2, point, outNormal);
+
+        *outTriangle = triIndex;
+
+        {
+            s32 extraHeight = ((s8)*((u8*)tri + 0x0D)) << 2;
+            u32 flags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)];
+            s32 blocked = flags & (collisionMask & 0x800000);
+
+            if (*(s16*)(actorData + 0x10) != idx) {
+                if (blocked != 0) {
+                    *outHeight0 = 0x7FFFFFFF;
+                    *outHeight1 = 0x7FFFFFFF;
+                    return 0;
+                }
+                *outHeight0 = point[1];
+                func_8007C670(outHeight0, outHeight1, extraHeight);
+                return 0;
+            }
+
+            if (blocked != 0) {
+                *outHeight0 = 0x7FFFFFFF;
+                *outHeight1 = 0x7FFFFFFF;
+                return 0;
+            }
+
+            if (*(s32*)(actorData + 0x30) == 0 &&
+                *(s32*)(actorData + 0x34) == 0 &&
+                *(s32*)(actorData + 0x38) == 0) {
+                *outHeight0 = point[1];
+            } else {
+                *outHeight0 = *(s16*)(actorData + 0x72);
+            }
+            func_8007C670(outHeight0, outHeight1, extraHeight);
+            return 0;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D818);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
-
-
-
-

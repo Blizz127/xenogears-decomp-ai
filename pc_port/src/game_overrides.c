@@ -17,6 +17,11 @@
 int D_800501FC;
 void func_800363F0(int arg0) { D_800501FC = arg0; }
 
+/* func_80019548 (asm/slus_006.64/9D24.s): PSX boot tail that restores the
+ * hardware stack/global registers before returning. Native PC state is already
+ * established by the C runtime, so the port equivalent is intentionally empty. */
+void func_80019548(void) {}
+
 /* ---------------------------------------------------------------------------
  * Game-state dispatch table (data migration, Silent-Hill style).
  *
@@ -28,8 +33,18 @@ void func_800363F0(int arg0) { D_800501FC = arg0; }
 #include <stdio.h>
 #include "common.h"
 #include "main/main.h"
+#include "field/actor.h"
+#include "field/camera.h"
+#include "field/effects.h"
+#include "system/math.h"
 #include "system/memory.h"
+#include "system/sound.h"
+#include "psyq/libcd.h"
+#include "psyq/libgpu.h"
 #include "psx_memory.h"
+
+extern long DisableEvent(long event);
+extern long EnableEvent(long event);
 
 extern void KernelMenuMain(void);
 extern void FieldMain(void);
@@ -58,6 +73,159 @@ u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x
 int g_GameStateOverlayArchiveOffsets[NUM_GAME_STATE_OVERLAYS] = {
     0x0, 0xE, 0x10, 0xF, 0xD, 0x11, 0x12,
 };
+
+/* Main executable .sdata sentinels near 0x8004F308. These are initialized ROM
+ * data, not BSS; leaving them as zeroed auto-stubs changes cold field state. */
+s32 D_8004F308 = -1;
+s32 D_8004F324 = 0xFF;
+s32 D_8004F328 = 0xFF;
+s32 D_8004F330 = -1;
+s32 D_8004F334 = -1;
+s32 D_8004F338 = -1;
+s32 D_8004F340 = -1;
+s32 g_GameSceneMapNum = -1;
+
+/* Main executable .sdata @0x8005917C. Retail stores a pointer to D_80010000;
+ * func_8001B6C4/shop setup test *D_8005917C for the boot/media sentinel. */
+extern s32 D_80010000;
+s32* D_8005917C = &D_80010000;
+
+/* Main executable .sdata @0x8004F32C. This gates whether the field SEDS data is
+ * already present in the streamed party-data buffer. Retail initializes it to
+ * -1; a zeroed data stub makes func_80085890 memcpy from an absent stream. */
+s32 D_8004F32C = -1;
+
+/* Main executable .sdata @0x8004F33C. Current streamed audio bank id; retail
+ * starts at -1 so the first field request is not mistaken for already loaded. */
+s32 D_8004F33C = -1;
+
+/* Main executable .sdata @0x8004FE50: model primitive dispatch descriptors.
+ * The PSX table stores raw RAM addresses, including internal entry points such
+ * as 0x8002E688. Native PC needs callable host pointers, so migrate only the
+ * currently reached descriptor entry (primitive 0x0D, render variant 2). */
+typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+
+typedef struct ModelPrimDesc {
+    ModelPrimProc proc[6];
+    u32 buildProc;
+    u32 cmdStride;
+    u32 packetStride;
+    u32 outputStride;
+} ModelPrimDesc;
+
+extern s32 func_8002E688(u8* pCmd, s32 count);
+
+ModelPrimDesc D_8004FE50[15] = {
+    [0x0D] = {
+        .proc = { NULL, NULL, func_8002E688, NULL, NULL, NULL },
+        .buildProc = 0x8002D0E4,
+        .cmdStride = 0x08,
+        .packetStride = 0x0C,
+        .outputStride = 0x28,
+    },
+};
+
+/* Initialized renderer bounds/depth-shift globals adjacent to D_8004FE50. */
+s32 D_800500F8 = 0x13F;
+s32 D_800500FC = 0x00EE0000;
+s32 D_80050100 = 2;
+s32 D_80050104 = 1;
+
+extern s32 D_8004F2F4;
+extern s32 D_8004F2F8;
+extern s32 D_8004F2FC;
+extern s32 D_8004F300;
+extern s32 D_8004F304;
+extern s32 D_8004F310;
+extern s32 D_8004F314;
+extern s32 D_8004F318;
+extern s32 D_8004F31C;
+extern s32 D_8004F320;
+extern s32 D_8004F344;
+extern s32 D_8004F348;
+extern s32 D_8004F350;
+extern s32 D_8004F354;
+extern s32 D_8004F358;
+extern s32 D_8004F35C;
+extern s32 g_GameHasLoadedWDS;
+extern s32 D_8004F364;
+extern s32 D_8004F368;
+extern s32 D_8004F36C;
+extern s32 D_8004F370;
+extern s32 D_8004F378;
+extern s32 D_8004F37C;
+extern s32 D_8004F380;
+extern s16 D_8004F384;
+extern u8 D_8005942C;
+extern u8 D_800594D0;
+extern s32 D_8005A444[3];
+extern s32 D_8006F990[3];
+extern s32 D_80062518;
+extern s32 D_8006251C;
+extern s32 D_80062524;
+extern s32 g_GamePartySkinsInitialized;
+extern s32 g_GamePartyMembers[3];
+extern s32 g_GamePartyMemberSkins[3];
+extern s32 g_PartyIsWaitingForStreamData;
+
+/* func_8001AADC (asm/slus_006.64/system/temp3.s): original boot global-state
+ * initializer called by func_80019578 before MainLoop. The native port enters
+ * MainLoop directly, so keep this small reset here until temp3.c is buildable. */
+void func_8001AADC(void)
+{
+    s32 i;
+
+    D_8004F364 = 1;
+    D_8004F328 = 0xFF;
+    D_8004F324 = 0xFF;
+    D_8004F2FC = 0;
+    D_8004F36C = 0;
+    D_8004F2F8 = 0;
+    D_8004F31C = 0;
+    D_8004F320 = 0;
+    D_8004F314 = 0;
+    D_8004F310 = 0;
+    g_GamePartySkinsInitialized = 0;
+    D_8004F370 = 0;
+    D_8004F35C = 0;
+    g_GameHasLoadedWDS = 0;
+    g_PartyIsWaitingForStreamData = 0;
+    D_8004F358 = 0;
+    D_8004F354 = 0;
+    D_8004F350 = 0;
+    D_8004F2F4 = 0;
+    D_8004F344 = 0;
+    D_8004F348 = 0;
+    D_8004F304 = 0;
+    D_8004F368 = 0;
+    D_8004F300 = 0;
+    D_8004F380 = 0;
+    D_8004F37C = 0;
+    D_8004F378 = 0;
+    D_8005942C = 0;
+    D_800594D0 = 0;
+    D_8004F384 = 0;
+    D_8004F318 = 0;
+    D_8004F334 = -1;
+    g_GameSceneMapNum = -1;
+    D_8004F33C = -1;
+    D_8004F338 = -1;
+    D_8004F330 = -1;
+    D_8004F32C = -1;
+    D_8004F340 = -1;
+    D_8004F308 = -1;
+
+    for (i = 0; i < 3; i++) {
+        g_GamePartyMemberSkins[i] = 0;
+        D_8006F990[i] = 0;
+        D_8005A444[i] = 0;
+        g_GamePartyMembers[i] = 0;
+    }
+
+    D_80062524 = 0;
+    D_8006251C = 0;
+    D_80062518 = 0;
+}
 
 /* Fixed destination the per-state overlay decompresses to (ROM: .word D_8006FAF0
  * @0x80018084 -> PSX 0x8006FAF0, the low scratch region below each state's
@@ -120,6 +288,101 @@ void PcPort_HeapBoot(void)
      * emulated RAM, resolvable only now that g_PsxRam exists. */
     g_MainGameStateOverlayBuffer = PSX_ADDR(0x8006FAF0);
 }
+
+int SoundFileComputeChecksum(SoundFile* pSoundFile)
+{
+    int nResult = 0;
+    int* pCurrent = (int*)pSoundFile;
+    unsigned int nCount = (pSoundFile->unk8 + 3) / 4;
+
+    do {
+        nResult += *pCurrent++;
+    } while (--nCount);
+
+    return nResult;
+}
+
+int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, unsigned short targetValue)
+{
+    unsigned char bIsError;
+
+    if (pSoundFile->magic != magicBytes) {
+        return SOUND_ERR_INVALID_SIGNATURE;
+    }
+
+    if (SoundFileComputeChecksum(pSoundFile) == 0) {
+        bIsError = (pSoundFile->unkC != targetValue);
+        return bIsError * SOUND_ERR_UNK_0X4;
+    }
+
+    return SOUND_ERR_INVALID_CHECKSUM;
+}
+
+void SoundAddSedsEntry(SoundFile* pSoundFile)
+{
+    SoundFile* pEntry;
+    short nSedsStatus;
+    SoundFile** pList;
+
+    if (!(g_SoundControlFlags & 0x80)) {
+        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL; pEntry = pEntry->pNext) {
+            if (pSoundFile->sedId == pEntry->sedId) {
+                SoundHandleError(SOUND_ERR_ENTRY_ALREADY_EXISTS);
+                return;
+            }
+        }
+    }
+
+    nSedsStatus = SoundValidateFile(pSoundFile, FILE_SIGNATURE('s','e','d','s'), 0x101);
+    if (nSedsStatus != SOUND_STATUS_OK) {
+        SoundHandleError(nSedsStatus);
+        return;
+    }
+
+    DisableEvent(g_unk_SoundEvent);
+    pList = &g_SoundSedsLinkedList;
+    while (*pList != NULL) {
+        pList = &((*pList)->pNext);
+    }
+    *pList = pSoundFile;
+    pSoundFile->pNext = NULL;
+    EnableEvent(g_unk_SoundEvent);
+}
+
+int func_8003BDFC(int flags)
+{
+    if (flags & 0x10) {
+        while (g_SoundControlFlags & 0x10) {
+        }
+    }
+
+    if (g_SoundControlFlags & 0x10) {
+        return g_SoundTransferQueue[g_SoundTransferQueueReadIndex].commandType;
+    }
+    return 0;
+}
+
+extern void* g_FieldScriptMemory;
+
+void FieldScriptMemoryWriteU16(int index, int value)
+{
+    ((u16*)&g_FieldScriptMemory)[index >> 1] = value;
+}
+
+extern s32 g_GamePartySkinsInitialized;
+extern s32 D_800ADBFC;
+extern FieldActor* volatile g_FieldActors;
+extern s32 g_PlayerActorIndex;
+extern ActorData* g_FieldScriptVMCurActor;
+extern s32 ArchiveSetIndex(s32 directoryIndex, s32 entryIndex);
+extern s32 ArchiveDecodeAlignedSize(u32 entryIndex);
+extern s32 ArchiveReadFileToBuffer(s32 index, void* pBuffer, u32 arg2, u32 flags);
+extern s32 ArchiveCdDataSync(s32 mode);
+extern void SpriteSetSpecialAnimFile(SpriteData* pSpriteData, void* pAnimFile);
+extern void func_800A3C8C(void);
+extern void FieldDistortionInitialize(s32 arg0);
+extern void FieldScriptWritePartyMemberIDs(void);
+extern void func_80072254(s32 actorIndex);
 
 /* ---------------------------------------------------------------------------
  * LZSS decompressor.

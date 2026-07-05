@@ -2,22 +2,16 @@
 #include "psyq/libgpu.h"
 #include "psyq/libetc.h"
 #include "system/memory.h"
+#include "system/archive.h"
 #include "system/controller.h"
 
 extern int g_FrameDeltaTime;
 
-
-INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldInitializeControllers);
-/*
 void FieldInitializeControllers(void) {
-    FieldSetControllerBuffers(&g_C1Buffer, &g_C2Buffer);
-    FieldSetMouseSpeed(3, 4);
-    func_8007ADA4(0, 0x140, 0, 0xE0); // SetMouseArea?
-    FieldSetMousePosition(0, 0x50, 100);
-    FieldSetMousePosition(1, 0xFA, 100);
-    func_8007ADA4(0, 300, 10, 0xDC); // SetMouseArea?
+    HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
+    ArchiveSetIndex(4, 0);
+    FieldInitializeControllersAndMouse();
 }
-*/
 
 void FieldRenderSync(void) {
     DrawSync(0);
@@ -133,9 +127,106 @@ void func_80077844(short* dst, short a, short b, short c, short d, short e, shor
     dst[8] = i;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077884);
+extern s32 D_800B2264;
+extern u8 D_800B2394;
+extern s32 D_8004F370;
+extern void* D_800ADB20;
+extern void* D_800ADB30;
+extern s16 D_800B234A;
+extern u8 D_800B225C, D_800B225D, D_800B225E;
+extern u8 g_FieldEffects[];
+extern void* D_8005A420[];
+extern void* D_8005A450[];
+extern void* D_801E8644;
+extern void* D_801E8670[];
+extern void FieldRenderSyncAndFlush(void);
+extern void func_801E738C(s32 arg0);
+extern void func_801E742C(s32 arg0, s32 arg1, void* arg2, void* arg3,
+                          s32 arg4, s32 arg5, s32 arg6, s32 arg7, void* arg8);
+extern void func_800A90B4(s32 arg0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077AB4);
+static void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* pData) {
+    u8* entry = &D_800B2394 + index * 8;
+
+    *(u16*)entry = archiveIndex;
+    *(u32*)(entry + 4) = (u32)(unsigned long)pData;
+}
+
+void func_80077884(void) {
+    s32 i;
+    s16* archiveIds;
+    s32 size;
+
+    if (D_800B2264 == 0) {
+        return;
+    }
+
+    func_8008A520();
+    ArchiveSetIndex(4, 0);
+    func_800A90B4(0);
+
+    if (D_8004F370 == 0) {
+        size = ((u32)(unsigned long)D_800ADB30 & 0xFFFFFF) + (s32)0xFFE23FF8;
+    } else {
+        size = ArchiveDecodeAlignedSize(0x6B9);
+    }
+    D_800ADB20 = HeapAlloc(size, 1);
+
+    func_800A90B4(1);
+
+    archiveIds = (s16*)((u8*)&D_800B2264 - 0x88);
+    for (i = 0; i < D_800B2264; i++) {
+        s32 archiveIndex = (u16)archiveIds[i] + 0x6BB;
+        D_8005A450[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 1);
+        FieldSetArchiveQueueEntry(i * 2 + 1, archiveIndex, D_8005A450[i]);
+    }
+
+    for (i = 0; i < D_800B2264; i++) {
+        s32 archiveIndex = (u16)archiveIds[i] + 0x6BA;
+        D_8005A420[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 0);
+        FieldSetArchiveQueueEntry(i * 2, archiveIndex, D_8005A420[i]);
+    }
+
+    FieldSetArchiveQueueEntry(D_800B2264 * 2, 0x6B9, D_800ADB20);
+    FieldSetArchiveQueueEntry(D_800B2264 * 2 + 1, 0, NULL);
+    func_8008A520();
+    func_80029AFC((StreamDataQueueEntry*)&D_800B2394, 0, 0);
+}
+
+void func_80077AB4(void) {
+    s32 i;
+    u8* work;
+    s32 top;
+
+    work = (u8*)&D_800B2264 - 0x78;
+    if (D_800B2264 == 0) {
+        return;
+    }
+
+    func_8008A520();
+    FieldRenderSyncAndFlush();
+    func_801E738C(D_800B234A);
+    D_801E8644 = (u8*)&D_800B2264 - 0x28;
+    SetBackColor(D_800B225C, D_800B225D, D_800B225E);
+
+    top = 0xFC;
+    for (i = 0; i < D_800B2264; i++) {
+        s16* vec = (s16*)(work + i * 8);
+        s32 effect = ((u8*)g_FieldEffects)[0x1E7 + i];
+        s32 x = (s16)(0x240 - ((i + effect) << 6));
+
+        vec[0] = 0;
+        vec[1] = 0;
+        vec[2] = 0;
+        func_801E742C(i, 0, D_8005A420[i], D_8005A450[i],
+                      x, 0x100, 0, top, vec);
+        HeapFree(D_8005A450[i]);
+        *(s32*)(work + 0x20 + i * 4) = *(s16*)((u8*)D_801E8670[i] + 0x1C);
+        top += 1;
+    }
+
+    HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
+}
 
 void func_80077C60(void) {
     func_80077884();
@@ -163,7 +254,25 @@ void FieldPartyFreeSkinDataBuffers(void) {
     HeapFree(g_PartyDataBuffers[2]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077DAC);
+extern s32 D_800ADB9C;
+extern int g_FieldSystemMode;
+extern void FieldClearAndSwapOTag(void);
+extern void FieldPollControllers(void);
+extern void func_80281B00(void* arg0);
+extern u8 D_8006FB80;
+extern void func_800A31E8(void);
+
+void func_80077DAC(void) {
+    D_800ADB9C = Vsync(1);
+    FieldClearAndSwapOTag();
+    FieldPollControllers();
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB80);
+    }
+
+    func_800A31E8();
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077E10);
 

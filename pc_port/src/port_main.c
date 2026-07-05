@@ -30,6 +30,8 @@ extern void MainLoop(int errorCode);
 extern void PcPort_InitGameStates(void);
 /* Port-side one-time HeapInit the asm boot would have done (game_overrides.c). */
 extern void PcPort_HeapBoot(void);
+/* Original boot global-state initializer called by func_80019578 before MainLoop. */
+extern void func_8001AADC(void);
 /* "Published by Square" splash, decompressed + drawn from the migrated EXE data. */
 extern void GameShowSplashScreen(void);
 
@@ -57,6 +59,17 @@ extern int g_padCommEnable;
 extern void PsyX_CDFS_Init(const char* imageFileName, int track, int sectorSize);
 extern void ArchiveInit(unsigned int pArchiveTable, unsigned int pHeaderTable,
                         unsigned int pDebugTable);
+extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
+extern int ArchiveDecodeSize(int fileIndex);
+extern void ArchiveReadFileToBuffer(int fileIndex, void* pBuffer, int arg2, int arg3);
+extern int ArchiveCdDataSync(int mode);
+extern void* HeapAlloc(int size, int flags);
+extern void HeapFree(void* pMemory);
+extern void HeapSetCurrentContentType(int contentType);
+extern void* LZSSHeapDecompress(void* pCompressed, int flags);
+extern void SystemInitializeFont(void* pSystemFont);
+extern void SystemInitializeData(void* pSystemData);
+extern void func_8001ACA4(void);
 extern unsigned char D_80010000[];  /* build/mode flag: -1 in retail ROM        */
 extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  */
 extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
@@ -82,6 +95,29 @@ static const char* PcPort_FindDiscImage(void) {
         if (f) { fclose(f); return defaults[i]; }
     }
     return NULL;
+}
+
+static void PcPort_LoadSystemTextData(void) {
+    void* pCompressed;
+    void* pDecoded;
+
+    ArchiveSetIndex(0, 1);
+
+    pCompressed = HeapAlloc(ArchiveDecodeSize(6), 0);
+    ArchiveReadFileToBuffer(6, pCompressed, 0, 0);
+    ArchiveCdDataSync(0);
+    HeapSetCurrentContentType(0x30);
+    pDecoded = LZSSHeapDecompress(pCompressed, 1);
+    SystemInitializeFont(pDecoded);
+    HeapFree(pCompressed);
+
+    pCompressed = HeapAlloc(ArchiveDecodeSize(7), 0);
+    ArchiveReadFileToBuffer(7, pCompressed, 0, 0);
+    ArchiveCdDataSync(0);
+    HeapSetCurrentContentType(0x31);
+    pDecoded = LZSSHeapDecompress(pCompressed, 1);
+    SystemInitializeData(pDecoded);
+    HeapFree(pCompressed);
 }
 
 int main(int argc, char** argv) {
@@ -111,6 +147,10 @@ int main(int argc, char** argv) {
     /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
      * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */
     PcPort_HeapBoot();
+
+    /* 5a. Original boot state reset normally performed by func_80019578 before
+     * entering MainLoop. The native oracle bypasses that raw asm entry point. */
+    func_8001AADC();
 
     /* 5b. Disc / archive init (see notes above). Only when the image is found,
      * so a disc-less run still reaches the menu instead of hanging in
@@ -151,20 +191,11 @@ int main(int argc, char** argv) {
              * LoadGameStateOverlay save/restore preserves this index through the
              * field overlay load. */
             if (getenv("XENO_FIELD_TEST")) {
-                extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
-                extern int D_8004F334, D_8004F330;
-                ArchiveSetIndex(4, 0);
-                /* Map-file cache sentinels. func_8001ACA4 (real field-entry init,
-                 * skipped by the KernelMenu debug path) sets both to -1 = "no map
-                 * cached". The port stubs leave them 0, so func_800777DC ->
-                 * func_8001B484(fileIndex=0, arg1=0) sees D_8004F334==0 &&
-                 * D_8004F330==0 -> thinks map 0 is already loaded -> returns 0 and
-                 * the map is NEVER read into D_8005A4E0 (stays NULL -> FieldLoad
-                 * would parse garbage). Restore the -1 sentinels so the first map
-                 * actually loads. Same class as the D_80010000=-1 fix. */
-                D_8004F334 = -1;
-                D_8004F330 = -1;
-                printf("[xeno-port][field-test] ArchiveSetIndex(4,0) + map cache sentinels=-1\n");
+                PcPort_LoadSystemTextData();
+                /* Real field-entry init: map-cache sentinels, heap user, archive
+                 * directory, and party/special skin stream queue. */
+                func_8001ACA4();
+                printf("[xeno-port][field-test] func_8001ACA4 field-entry init\n");
             }
         } else {
             printf("[xeno-port] WARNING: no disc image found "

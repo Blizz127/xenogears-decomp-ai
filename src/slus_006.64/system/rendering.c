@@ -1,7 +1,52 @@
 #include "common.h"
 #include "field/actor.h"
+#include "psyq/libgpu.h"
+#include "system/memory.h"
+#ifdef XENO_PC_PORT
+#include <assert.h>
+#else
+/* <assert.h> is unavailable under the matching build's -nostdinc MIPS
+ * preprocessor. The assert(0) below marks an unimplemented path in a function
+ * not yet byte-matched, so a no-op assert compiles safely there. (uintptr_t
+ * comes from include/types.h for both builds.) */
+#define assert(x) ((void)0)
+#endif
 
 // Rendering-related stuff
+
+static const s16 s_TPageCoords8004FAB8[] = {
+    0x300, 0x000,
+    0x340, 0x000,
+    0x380, 0x000,
+    0x3C0, 0x000,
+    0x300, 0x100,
+    0x340, 0x100,
+    0x380, 0x100,
+    0x3C0, 0x100,
+};
+
+static const u16 s_DirectionMask8004FAF8[] = {
+    0x0001,
+    0x0002,
+    0x0004,
+    0x0008,
+    0x0010,
+    0x0020,
+    0x0040,
+    0x0080,
+};
+
+static SVECTOR s_QuadWork8004FB98[4];
+
+static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
+    s32 result = value * scale;
+
+    if (result < 0) {
+        result += 0xFFF;
+    }
+
+    return result >> 12;
+}
 
 // Allocate directions array
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D4E8);
@@ -16,24 +61,396 @@ void func_8001D4E8(SpriteData* pSpriteData) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D53C);
+extern void func_800251C8(u_long* addr, int x, int y, int width, int height);
+extern void func_800234AC(void* pSpriteData);
+extern void func_8001F530(void* arg0, s32 arg1);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001DAE8);
+void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
+    u8* pData = pSpriteData;
+    u8* pPackage = pAnimPackage;
+    u8* pFrames = (u8*)(uintptr_t)*(u32*)(pPackage + 0x0);
+    u8* pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2);
+    u8 header = pFrame[0];
+    s32 hasWideOffsets = header & 0x80;
+    s32 partCount = header & 0x3F;
+    u8* pFrameOffsets = pFrame + 0x4;
+    u8* pStream = pFrame + partCount * 2 + 0x4;
+    u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+    u8* pPrim = (u8*)(uintptr_t)*(u32*)(pBase + 0x30);
+    s32 baseClutY = *(u8*)(pPackage + 0x6);
+    s32 spriteMode = (*(u8*)(pData + 0x3C) >> 5);
+    u32 colorAndCode = *(u32*)(pData + 0x28);
+    s32 directionIndex = 4;
+    s32 i;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E148);
-/*
-Matches on  GCC 2.7.2-970404, ASPSX 2.67
+    *(s16*)(pData + 0x36) = ScaleSpriteFrameByte(pFrame[3], *(s16*)(pData + 0x2C));
+    *(s16*)(pData + 0x38) = ScaleSpriteFrameByte(pFrame[1], *(s16*)(pData + 0x2C));
+
+    for (i = 0; i < partCount; i++, pPrim += 0x18) {
+        u8* pTile;
+        u8 command;
+        u8 texByte;
+        u8 tileHeader;
+        s32 abr;
+        s32 clutXNibble;
+        s32 texXOffset;
+        u32 flags;
+
+        *(u8*)(pPrim + 0x8) = 0;
+        *(u8*)(pPrim + 0x9) = 0;
+        *(u32*)(pPrim + 0x14) &= ~0x20;
+
+        while (1) {
+            command = *pStream;
+            if ((command & 0x80) == 0) {
+                break;
+            }
+
+            if (command & 0x40) {
+                u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+                u8* pDirection;
+
+                pStream++;
+                directionIndex = command & 0x7;
+                if (pDirTransforms == NULL) {
+                    pDirTransforms = HeapAlloc(0x40, 0);
+                    *(u32*)(pBase + 0x34) = (u32)(uintptr_t)pDirTransforms;
+                    func_800234AC(pData);
+                }
+
+                pDirection = pDirTransforms + directionIndex * 8;
+                if (command & 0x20) {
+                    pDirection[0] = *pStream++;
+                    pDirection[1] = *pStream++;
+                }
+
+                if (command & 0x10) {
+                    *(u16*)(pDirection + 0x6) = (u16)(*pStream++ << 4);
+                } else {
+                    *(u16*)(pDirection + 0x6) = 0;
+                }
+            } else {
+                pStream++;
+                if (command & 0x4) {
+                    *(u32*)(pPrim + 0x14) |= 0x20;
+                }
+                if (command & 0x1) {
+                    *(u8*)(pPrim + 0x8) = *pStream++;
+                }
+                if (command & 0x2) {
+                    *(u8*)(pPrim + 0x9) = *pStream++;
+                }
+            }
+        }
+
+        pTile = pFrames + *(u16*)pFrameOffsets;
+        pFrameOffsets += 2;
+        tileHeader = pTile[0];
+
+        if (tileHeader & 0x1) {
+            *(u32*)(pPrim + 0x14) |= 0x8;
+            texXOffset = (*(u16*)(pPackage + 0x4) & 0x3F) >> 1;
+        } else {
+            *(u32*)(pPrim + 0x14) &= ~0x8;
+            texXOffset = (*(u16*)(pPackage + 0x4) & 0x3F) >> 2;
+        }
+
+        texByte = *pStream;
+        abr = (texByte >> 4) & 0x3;
+        clutXNibble = texByte & 0xF;
+        *(u32*)(pPrim + 0x10) = colorAndCode;
+
+        if (abr == 0) {
+            abr = spriteMode;
+        }
+        if (abr != 0) {
+            *(u8*)(pPrim + 0x13) |= 0x2;
+            abr--;
+        }
+
+        if ((tileHeader >> 4) & 0x1) {
+            const s16* pCoords;
+
+            pTile++;
+            tileHeader |= pTile[0] << 8;
+            pCoords = (const s16*)((const u8*)s_TPageCoords8004FAB8 + ((tileHeader << 1) & 0x1C));
+            *(u16*)(pPrim + 0xA) = GetTPage(tileHeader & 0x1, abr, pCoords[0], pCoords[1]);
+            *(u16*)(pPrim + 0xC) = GetClut((tileHeader >> 1) & 0xF0,
+                                           ((tileHeader >> 9) & 0xF) + 0x1CC);
+        } else {
+            u8* pTableHolder = (u8*)(uintptr_t)*(u32*)(pData + 0x7C);
+            u8* pTexTable = NULL;
+
+            if ((*(u32*)(pData + 0xA8) & 0x1) && pTableHolder != NULL) {
+                pTexTable = (u8*)(uintptr_t)*(u32*)(pTableHolder + 0x18);
+            }
+
+            if (pTexTable != NULL) {
+                u8* pEntry = pTexTable + ((tileHeader << 1) & 0x1C);
+                u16 word0 = *(u16*)(pEntry + 0x0);
+                u16 word2 = *(u16*)(pEntry + 0x2);
+                u32 tpage;
+
+                baseClutY = word2 & 0xFF;
+                texXOffset = (word0 & 0x3F) >> 2;
+                tpage = ((tileHeader & 0x1) << 7) |
+                        ((abr & 0x3) << 5) |
+                        (((word2 & 0x100) << 16) >> 20) |
+                        ((word0 & 0x3FF) >> 6) |
+                        ((word2 & 0x200) << 2);
+                *(u16*)(pPrim + 0xA) = tpage;
+            } else {
+                u16 packageTex = *(u16*)(pPackage + 0x4);
+                u16 packageClut = *(u16*)(pPackage + 0x6);
+                u32 tpage = ((tileHeader & 0x1) << 7) |
+                             ((abr & 0x3) << 5) |
+                             (((packageClut & 0x100) << 16) >> 20) |
+                             (((packageTex + ((tileHeader << 5) & 0x1C0)) & 0x3FF) >> 6) |
+                             ((packageClut & 0x200) << 2);
+
+                *(u16*)(pPrim + 0xA) = tpage;
+            }
+
+            *(u16*)(pPrim + 0xC) = (*(u16*)(pPackage + 0xA) << 6) |
+                                   (((*(s16*)(pPackage + 0x8) + (clutXNibble << 4)) >> 4) & 0x3F);
+        }
+
+        flags = *(u32*)(pPrim + 0x14);
+        flags &= ~0x7;
+        flags |= directionIndex;
+        *(u32*)(pPrim + 0x14) = flags;
+
+        *(u8*)(pPrim + 0x4) = texXOffset + pTile[1];
+        *(u8*)(pPrim + 0x5) = baseClutY + pTile[2];
+        *(u8*)(pPrim + 0x6) = pTile[3];
+        *(u8*)(pPrim + 0x7) = pTile[4];
+
+        flags = *(u32*)(pPrim + 0x14);
+        flags &= ~0x10;
+        flags |= ((*pStream >> 2) & 0x10);
+        *(u32*)(pPrim + 0x14) = flags;
+
+        if (hasWideOffsets) {
+            *(s16*)(pPrim + 0x0) = (s16)(pStream[1] | ((s8)pStream[2] << 8));
+            *(s16*)(pPrim + 0x2) = (s16)(pStream[3] | ((s8)pStream[4] << 8));
+            pStream += 2;
+        } else {
+            *(s16*)(pPrim + 0x0) = (s8)pStream[1];
+            *(s16*)(pPrim + 0x2) = (s8)pStream[2];
+        }
+
+        pStream += 3;
+    }
+
+    *(u32*)(pData + 0x40) = (*(u32*)(pData + 0x40) & ~0xFC) | ((i & 0x3F) << 2);
+}
+
+void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
+    u8* pData = pSpriteData;
+    u8* pAnimPackage = (u8*)(uintptr_t)animPackageAddr;
+    u8* pFrames;
+    u16 frameHeader;
+
+    *(u32*)(pData + 0x40) &= ~0xA0000;
+
+    pFrames = (u8*)(uintptr_t)*(u32*)(pAnimPackage + 0x0);
+    frameHeader = *(u16*)pFrames;
+    if (frameIndex >= ((frameHeader & 0x1FF) + 1)) {
+        return;
+    }
+
+    if (((*(u32*)(pData + 0x3C) >> 30) & 0x1) != 0) {
+        u8* pTransfer = (u8*)(uintptr_t)*(u32*)(pAnimPackage + 0xC);
+        u16 count;
+
+        *(u32*)(pData + 0x3C) &= ~0x40000000;
+        count = *(u16*)pTransfer;
+        if (count != 0) {
+            s32 offset = ((count * (*(u16*)(pData + 0x3E) & 0xF0)) << 1) + 4;
+            func_800251C8((u_long*)(pTransfer + offset),
+                          *(s16*)(pAnimPackage + 0x8),
+                          *(s16*)(pAnimPackage + 0xA),
+                          count << 4,
+                          1);
+        }
+    }
+
+    if (frameHeader & 0x8000) {
+        func_8001D53C(pData, frameIndex, pAnimPackage);
+        return;
+    }
+
+    {
+        u8* pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2);
+        u8* pVramData = (u8*)(uintptr_t)*(u32*)(pData + 0x24);
+        u16 vramX = *(u16*)(pVramData + 0x4);
+        u16 vramYWord = *(u16*)(pVramData + 0x6);
+        u8 header = pFrame[0];
+        s32 hasWideOffsets = header & 0x80;
+        s32 partCount = header & 0x3F;
+        u8* pDescriptors = pFrame + 0x6;
+        u8* pStream = pFrame + partCount * 4 + 0x6;
+        u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+        u8* pPrim = (u8*)(uintptr_t)*(u32*)(pBase + 0x30);
+        s32 baseClutY = *(u8*)(pVramData + 0x6);
+        s32 spriteMode = (*(u8*)(pData + 0x3C) >> 5);
+        u32 colorAndCode = *(u32*)(pData + 0x28);
+        s32 directionIndex = 4;
+        s32 i;
+
+        if (((*(u32*)(pData + 0x40) >> 13) & 0xF) == 0xE) {
+            func_8001F530(&vramX, pFrame[4]);
+        }
+
+        *(s16*)(pData + 0x36) = ScaleSpriteFrameByte(pFrame[3], *(s16*)(pData + 0x2C));
+        *(s16*)(pData + 0x38) = ScaleSpriteFrameByte(pFrame[1], *(s16*)(pData + 0x2C));
+
+        for (i = 0; i < partCount; i++, pPrim += 0x18, pDescriptors += 4) {
+            u8* pTile;
+            u8 command;
+            u16 descriptor1;
+            u16 tileHeader;
+            s32 texX;
+            s32 texY;
+            s32 width;
+            s32 abr;
+            s32 clutXNibble;
+            u32 flags;
+
+            *(u8*)(pPrim + 0x8) = 0;
+            *(u8*)(pPrim + 0x9) = 0;
+            *(u32*)(pPrim + 0x14) &= ~0x20;
+
+            while (1) {
+                command = *pStream;
+                if ((command & 0x80) == 0) {
+                    break;
+                }
+
+                if (command & 0x40) {
+                    u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+                    u8* pDirection;
+
+                    pStream++;
+                    directionIndex = command & 0x7;
+                    if (pDirTransforms == NULL) {
+                        pDirTransforms = HeapAlloc(0x40, 0);
+                        *(u32*)(pBase + 0x34) = (u32)(uintptr_t)pDirTransforms;
+                        func_800234AC(pData);
+                    }
+
+                    pDirection = pDirTransforms + directionIndex * 8;
+                    if (command & 0x20) {
+                        pDirection[0] = *pStream++;
+                        pDirection[1] = *pStream++;
+                    }
+
+                    if (command & 0x10) {
+                        *(u16*)(pDirection + 0x6) = (u16)(*pStream++ << 4);
+                    } else {
+                        *(u16*)(pDirection + 0x6) = 0;
+                    }
+                } else {
+                    pStream++;
+                    if (command & 0x4) {
+                        *(u32*)(pPrim + 0x14) |= 0x20;
+                    }
+                    if (command & 0x1) {
+                        *(u8*)(pPrim + 0x8) = *pStream++;
+                    }
+                    if (command & 0x2) {
+                        *(u8*)(pPrim + 0x9) = *pStream++;
+                    }
+                }
+            }
+
+            pTile = pFrames + (*(u16*)pDescriptors << 2);
+            descriptor1 = *(u16*)(pDescriptors + 2);
+            texX = descriptor1 & 0x1F;
+            texY = (descriptor1 >> 5) & 0x3F;
+            tileHeader = *(u16*)(pTile + 2);
+
+            if (tileHeader & 0x1) {
+                *(u32*)(pPrim + 0x14) |= 0x8;
+                texX <<= 1;
+                width = pTile[0] >> 1;
+            } else {
+                *(u32*)(pPrim + 0x14) &= ~0x8;
+                texX <<= 2;
+                width = pTile[0] >> 2;
+            }
+
+            flags = *(u32*)(pPrim + 0x14);
+            flags &= ~0x7;
+            flags |= directionIndex;
+            *(u32*)(pPrim + 0x14) = flags;
+
+            *(u8*)(pPrim + 0x4) = texX;
+            *(u8*)(pPrim + 0x5) = texY + baseClutY;
+            *(u8*)(pPrim + 0x6) = pTile[0];
+            *(u8*)(pPrim + 0x7) = pTile[1];
+
+            flags = *(u32*)(pPrim + 0x14);
+            flags &= ~0x10;
+            flags |= ((*pStream >> 2) & 0x10);
+            *(u32*)(pPrim + 0x14) = flags;
+
+            abr = (*pStream >> 4) & 0x3;
+            clutXNibble = *pStream & 0xF;
+            *(u32*)(pPrim + 0x10) = colorAndCode;
+            if (abr == 0) {
+                abr = spriteMode;
+            }
+            if (abr != 0) {
+                *(u8*)(pPrim + 0x13) |= 0x2;
+                abr--;
+            }
+
+            *(u16*)(pPrim + 0xA) =
+                ((tileHeader & 0x1) << 7) |
+                ((abr & 0x3) << 5) |
+                (((vramYWord & 0x100) << 16) >> 20) |
+                ((vramX & 0x3FF) >> 6) |
+                ((vramYWord & 0x200) << 2);
+            *(u16*)(pPrim + 0xC) =
+                GetClut(*(s16*)(pAnimPackage + 0x8) + (clutXNibble << 4),
+                        *(s16*)(pAnimPackage + 0xA));
+
+            func_800251C8((u_long*)(pTile + 4),
+                          (s16)(vramX + texX),
+                          (s16)(vramYWord + texY),
+                          width,
+                          pTile[1]);
+
+            if (hasWideOffsets) {
+                *(s16*)(pPrim + 0x0) = (s16)(pStream[1] | ((s8)pStream[2] << 8));
+                *(s16*)(pPrim + 0x2) = (s16)(pStream[3] | ((s8)pStream[4] << 8));
+                pStream += 2;
+            } else {
+                *(s16*)(pPrim + 0x0) = (s8)pStream[1];
+                *(s16*)(pPrim + 0x2) = (s8)pStream[2];
+            }
+
+            pStream += 3;
+        }
+
+        *(u32*)(pData + 0x40) = (*(u32*)(pData + 0x40) & ~0xFC) | ((i & 0x3F) << 2);
+        func_800251C8(NULL, (s16)vramX, (s16)vramYWord, pFrame[4], pFrame[5]);
+    }
+}
 
 extern MATRIX D_8004FBB8;
 extern u8 D_800591AD;
 extern u8 D_800591AE;
+extern void func_80022038(void* pSpriteData);
 
-void func_8001E148(SpriteData* pSpriteData) {
+void func_8001E148(void* pSpriteData) {
+    u8* pData = pSpriteData;
+    u8* pBase;
     SVECTOR position;
     VECTOR vec;
     MATRIX* pMatrix;
     s32 var_n;
-    s32 var_v0;
     int xOffset;
     int yOffset;
     
@@ -41,40 +458,282 @@ void func_8001E148(SpriteData* pSpriteData) {
         func_80022038(pSpriteData);
     }
 
-    var_n = pSpriteData->field_0x40_0x8 & 0x1F;
-    yOffset = pSpriteData->pBase->offsetY;
+    pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+    var_n = *(u32*)(pData + 0x40) & 0x1F;
+    yOffset = *(u8*)(pBase + 0x3D);
     yOffset <<= var_n;
-    xOffset = pSpriteData->pBase->offsetX;
+    xOffset = *(u8*)(pBase + 0x3C);
     xOffset <<= var_n;
 
-    // Flip X?
-    if (pSpriteData->flags_0xAC_0x2) {
+    if ((*(u32*)(pData + 0xAC) >> 2) & 0x1) {
         xOffset = -xOffset;
     }
     
-    yOffset = yOffset * pSpriteData->scale / 0x1000;
-    xOffset = xOffset * pSpriteData->scale / 0x1000;
+    yOffset = (yOffset * *(s16*)(pData + 0x2C)) / 0x1000;
+    xOffset = (xOffset * *(s16*)(pData + 0x2C)) / 0x1000;
     
-    position.vx = pSpriteData->position.x >> 0x10;
-    position.vy = pSpriteData->position.y >> 0x10;
-    position.vz = pSpriteData->position.z >> 0x10;
+    position.vx = *(s32*)(pData + 0x0) >> 0x10;
+    position.vy = *(s32*)(pData + 0x4) >> 0x10;
+    position.vz = *(s32*)(pData + 0x8) >> 0x10;
     ApplyMatrix(&D_8004FBB8, &position, &vec);
-    pMatrix = &pSpriteData->pBase->transformMatrix;
+    pMatrix = (MATRIX*)(pBase + 0x0C);
     pMatrix->t[0] = D_8004FBB8.t[0] + vec.vx + xOffset;
     pMatrix->t[1] = D_8004FBB8.t[1] + vec.vy + yOffset;
     pMatrix->t[2] = D_8004FBB8.t[2] + vec.vz;
     SetRotMatrix(pMatrix);
     SetTransMatrix(pMatrix);
 }
-*/
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E298);
+extern void func_8001E9BC(void* pSpriteData, void* ot);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E2F8);
+void func_8001E298(void* pSpriteData, void* ot) {
+    u8* pData = pSpriteData;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E368);
+    func_8001E148(pData);
+    func_8001E3D8(pData, ot);
+    if (((*(u32*)(pData + 0x3C) >> 2) & 0x1) != 0) {
+        func_8001E9BC(pData, ot);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E3D8);
+extern void func_8001EE88(void* pSpriteData, void* ot, s16 angle);
+
+void func_8001E2F8(void* pSpriteData, void* ot, s16 angle) {
+    u8* pData = pSpriteData;
+
+    func_8001E148(pData);
+    func_8001EE88(pData, ot, angle);
+    if (((*(u32*)(pData + 0x3C) >> 2) & 0x1) != 0) {
+        func_8001E9BC(pData, ot);
+    }
+}
+
+extern void func_8001F1D4(void* pSpriteData, void* ot, s16 angle);
+
+void func_8001E368(void* pSpriteData, void* ot, s16 angle) {
+    u8* pData = pSpriteData;
+
+    func_8001E148(pData);
+    func_8001F1D4(pData, ot, angle);
+    if (((*(u32*)(pData + 0x3C) >> 2) & 0x1) != 0) {
+        func_8001E9BC(pData, ot);
+    }
+}
+
+extern void* g_GfxCurWorkBuffer;
+extern void* g_GfxCurWorkBufferEnd;
+
+void func_8001E3D8(void* pSpriteData, void* ot) {
+    u8* pData = pSpriteData;
+    u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+    u32 flags40 = *(u32*)(pData + 0x40);
+    u32 flags3C = *(u32*)(pData + 0x3C);
+    u32 flagsAC = *(u32*)(pData + 0xAC);
+    s32 scaleShift = (flags40 >> 8) & 0x1F;
+    s32 baseYOffset = (s8)*(u8*)(pBase + 0x3D) << scaleShift;
+    s32 baseXOffset = (s8)*(u8*)(pBase + 0x3C) << scaleShift;
+    u8* pFramePrim = (u8*)(uintptr_t)*(u32*)(pBase + 0x30);
+    s32 frameCount = (flags40 >> 2) & 0x3F;
+    s32 currentDirection = -1;
+    s32 drawDirection = 0;
+    s32 i;
+#ifdef XENO_PC_PORT
+    static s32 s_diagCalls;
+    static s32 s_diagLinked;
+    s32 linkedThisCall = 0;
+#endif
+
+    if ((flagsAC >> 2) & 1) {
+        baseXOffset = -baseXOffset;
+    }
+
+#ifdef XENO_PC_PORT
+    if (s_diagCalls < 8) {
+        printf("[field-diag] func_8001E3D8 call=%d sprite=%p ot=%p frames=%d flags3c=%08x flags40=%08x base30=%p mask3d=%02x work=%p end=%p\n",
+               (int)s_diagCalls, pSpriteData, ot, (int)frameCount,
+               (unsigned int)flags3C, (unsigned int)flags40,
+               (void*)pFramePrim, (unsigned int)*(u8*)(pData + 0x3D),
+               g_GfxCurWorkBuffer, g_GfxCurWorkBufferEnd);
+    }
+    s_diagCalls++;
+#endif
+
+    if (((u8*)g_GfxCurWorkBuffer + frameCount * 0x28) >= (u8*)g_GfxCurWorkBufferEnd) {
+        return;
+    }
+    if (frameCount == 0) {
+        return;
+    }
+
+    for (i = 0; i < frameCount; i++, pFramePrim += 0x18) {
+        s32 direction = *(u32*)(pFramePrim + 0x14) & 0x7;
+
+        if (currentDirection != direction) {
+            u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+            u16 mask = s_DirectionMask8004FAF8[direction];
+
+            currentDirection = direction;
+            drawDirection = (mask & *(u8*)(pData + 0x3D)) == 0;
+
+            if (pDirTransforms != NULL) {
+                u8* pDirection = pDirTransforms + direction * 8;
+                s32 dirYOffset;
+                s32 dirXOffset;
+
+                if ((*(u16*)pDirection != 0) || (*(s16*)(pDirection + 0x6) != 0)) {
+                    SVECTOR rotation;
+                    MATRIX matrix;
+
+                    dirYOffset = (s8)pDirection[1] << scaleShift;
+                    dirXOffset = (s8)pDirection[0] << scaleShift;
+                    if ((flags3C >> 3) & 1) {
+                        dirXOffset = -dirXOffset;
+                    }
+                    dirYOffset = (dirYOffset * *(s16*)(pData + 0x2C)) >> 12;
+                    dirXOffset = (dirXOffset * *(s16*)(pData + 0x2C)) >> 12;
+
+                    rotation.vx = *(u16*)(pDirection + 0x2);
+                    rotation.vy = *(u16*)(pDirection + 0x4);
+                    rotation.vz = *(u16*)(pDirection + 0x6);
+                    RotMatrix(&rotation, &matrix);
+                    matrix.t[0] = *(s32*)(pBase + 0x20) + dirXOffset;
+                    matrix.t[1] = *(s32*)(pBase + 0x24) + dirYOffset;
+                    matrix.t[2] = *(s32*)(pBase + 0x28);
+                    SetMulMatrix((MATRIX*)(pBase + 0x0C), &matrix);
+                    SetTransMatrix(&matrix);
+                } else {
+                    SetRotMatrix((MATRIX*)(pBase + 0x0C));
+                    SetTransMatrix((MATRIX*)(pBase + 0x0C));
+                }
+            } else {
+                SetRotMatrix((MATRIX*)(pBase + 0x0C));
+                SetTransMatrix((MATRIX*)(pBase + 0x0C));
+            }
+        }
+
+        if (drawDirection != 0) {
+            POLY_FT4* poly = (POLY_FT4*)g_GfxCurWorkBuffer;
+            s32 texU = *(u8*)(pFramePrim + 0x4);
+            s32 texV = *(u8*)(pFramePrim + 0x5);
+            s32 width = *(u8*)(pFramePrim + 0x6);
+            s32 height = *(u8*)(pFramePrim + 0x7);
+            s32 xOffset = (s8)*(u8*)(pFramePrim + 0x8);
+            s32 yOffset = (s8)*(u8*)(pFramePrim + 0x9);
+            s32 x0 = *(s16*)(pFramePrim + 0x0) << scaleShift;
+            s32 y0 = *(s16*)(pFramePrim + 0x2) << scaleShift;
+            s32 x1 = (width + xOffset) << scaleShift;
+            s32 y1 = (height + yOffset) << scaleShift;
+            s32 texU1;
+            s32 texV1;
+            long p;
+            long flag;
+
+            g_GfxCurWorkBuffer = (u8*)g_GfxCurWorkBuffer + 0x28;
+            setlen(poly, 9);
+            *(u32*)((u8*)poly + 0x4) = *(u32*)(pFramePrim + 0x10);
+            poly->tpage = *(u16*)(pFramePrim + 0xA);
+            poly->clut = *(u16*)(pFramePrim + 0xC);
+
+            if ((flags3C >> 3) & 1) {
+                x1 = -x1;
+                x0 = -x0;
+            }
+            if ((flags3C >> 4) & 1) {
+                y1 = -y1;
+                y0 = -y0;
+            }
+
+            if (((*(u32*)(pFramePrim + 0x14) >> 4) & 1) == 0) {
+                s_QuadWork8004FB98[0].vx = x0;
+                s_QuadWork8004FB98[1].vx = x0 + x1;
+                s_QuadWork8004FB98[2].vx = x0 + x1;
+                s_QuadWork8004FB98[3].vx = x0;
+            } else {
+                s_QuadWork8004FB98[0].vx = x0 + x1;
+                s_QuadWork8004FB98[1].vx = x0;
+                s_QuadWork8004FB98[2].vx = x0;
+                s_QuadWork8004FB98[3].vx = x0 + x1;
+            }
+
+            if (((*(u32*)(pFramePrim + 0x14) >> 5) & 1) == 0) {
+                s_QuadWork8004FB98[0].vy = y0;
+                s_QuadWork8004FB98[1].vy = y0;
+                s_QuadWork8004FB98[2].vy = y0 + y1;
+                s_QuadWork8004FB98[3].vy = y0 + y1;
+            } else {
+                s_QuadWork8004FB98[0].vy = y0 + y1;
+                s_QuadWork8004FB98[1].vy = y0 + y1;
+                s_QuadWork8004FB98[2].vy = y0;
+                s_QuadWork8004FB98[3].vy = y0;
+            }
+
+            s_QuadWork8004FB98[0].vy -= baseYOffset;
+            s_QuadWork8004FB98[1].vy -= baseYOffset;
+            s_QuadWork8004FB98[2].vy -= baseYOffset;
+            s_QuadWork8004FB98[3].vy -= baseYOffset;
+            s_QuadWork8004FB98[0].vx -= baseXOffset;
+            s_QuadWork8004FB98[1].vx -= baseXOffset;
+            s_QuadWork8004FB98[2].vx -= baseXOffset;
+            s_QuadWork8004FB98[3].vx -= baseXOffset;
+
+            RotTransPers4(&s_QuadWork8004FB98[0],
+                          &s_QuadWork8004FB98[1],
+                          &s_QuadWork8004FB98[2],
+                          &s_QuadWork8004FB98[3],
+                          (long*)&poly->x0,
+                          (long*)&poly->x1,
+                          (long*)&poly->x3,
+                          (long*)&poly->x2,
+                          &p,
+                          &flag);
+
+            texU1 = width - 1;
+            texV1 = height - 1;
+            if (poly->x3 < poly->x0) {
+                texU--;
+                if (texU < 0) {
+                    texU = 0;
+                    texU1 = width - 2;
+                }
+            }
+
+            poly->u0 = texU;
+            poly->v0 = texV;
+            poly->u1 = texU + texU1;
+            poly->v1 = texV;
+            poly->u2 = texU;
+            poly->v2 = texV + texV1;
+            poly->u3 = texU + texU1;
+            poly->v3 = texV + texV1;
+
+            if ((flags3C >> 27) & 1) {
+                addPrim((u8*)ot - direction * 4, poly);
+            } else {
+                addPrim(ot, poly);
+            }
+#ifdef XENO_PC_PORT
+            linkedThisCall++;
+            if (s_diagLinked < 8) {
+                printf("[field-diag] func_8001E3D8 link=%d poly=%p ot=%p tag=%08x code=%02x xy0=(%d,%d) uv0=(%u,%u) tpage=%04x clut=%04x dir=%d\n",
+                       (int)s_diagLinked, (void*)poly, ot,
+                       (unsigned int)*(u32*)poly, (unsigned int)poly->code,
+                       (int)poly->x0, (int)poly->y0,
+                       (unsigned int)poly->u0, (unsigned int)poly->v0,
+                       (unsigned int)poly->tpage, (unsigned int)poly->clut,
+                       (int)direction);
+                s_diagLinked++;
+            }
+#endif
+        }
+    }
+
+#ifdef XENO_PC_PORT
+    if (s_diagCalls <= 8) {
+        printf("[field-diag] func_8001E3D8 done linked=%d workNow=%p\n",
+               (int)linkedThisCall, g_GfxCurWorkBuffer);
+    }
+#endif
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E9BC);
 
@@ -92,14 +751,151 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F1D4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F530);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F5BC);
+static s32 ScaleFrameExtent(s32 value, s16 scale) {
+    s32 result = value * scale;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F6B0);
+    if (result < 0) {
+        result += 0xFFF;
+    }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F750);
+    return result >> 12;
+}
+
+void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY) {
+    u8* pData = pSpriteData;
+    u8* pVramData = (u8*)(uintptr_t)*(u32*)(pData + 0x24);
+    u8* pAnimations = (u8*)(uintptr_t)*(u32*)(pVramData + 0x10);
+    u8* pAnim = pAnimations + *(u16*)(pAnimations + 0x2);
+    u8* pDirAnim = pAnim + *(u16*)(pAnim + 0x4);
+    u8 frameIndex = *(u8*)(pDirAnim + 0x4);
+    u8* pFrames = (u8*)(uintptr_t)*(u32*)(pVramData + 0x0);
+    u8* pFrame;
+    s16 scale = *(s16*)(pData + 0x2C);
+
+    (void)arg1;
+
+    if (frameIndex != 0) {
+        frameIndex--;
+    }
+
+    if (*(u16*)(pFrames + frameIndex * 2) < frameIndex) {
+        frameIndex = 0;
+    }
+
+    pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2 + 0x2);
+    *outX = ScaleFrameExtent(*(u8*)(pFrame + 0x3), scale);
+    *outY = ScaleFrameExtent(*(u8*)(pFrame + 0x1), scale);
+    *outZ = ScaleFrameExtent(*(u8*)(pFrame + 0x2), scale);
+}
+
+void func_8001F6B0(void* pSpriteData) {
+    u8* pData = pSpriteData;
+    u32 flags3C = *(u32*)(pData + 0x3C);
+    s32 abr = (flags3C >> 5) & 0x7;
+    u32 color = *(u32*)(pData + 0x28);
+    u8 frameCount;
+    u8* pBase;
+    u8* pPrim;
+    s32 i;
+
+    if ((flags3C & 0x3) != 1) {
+        return;
+    }
+
+    if (abr != 0) {
+        abr--;
+    }
+
+    frameCount = *(u8*)(pData + 0x40) >> 2;
+    pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+    pPrim = (u8*)(uintptr_t)*(u32*)(pBase + 0x30);
+
+    for (i = 0; i < frameCount; i++, pPrim += 0x18) {
+        u16 tpage = *(u16*)(pPrim + 0xA);
+
+        *(u32*)(pPrim + 0x10) = color;
+        tpage &= 0xFF9F;
+        tpage |= abr << 5;
+        *(u16*)(pPrim + 0xA) = tpage;
+    }
+}
+
+extern void func_800234AC(void* pSpriteData);
+
+void func_8001F750(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
+    u8* pData = pSpriteData;
+    u8* pPackage = pAnimPackage;
+    u8* pFrames = (u8*)(uintptr_t)*(u32*)(pPackage + 0x0);
+    u8* pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2);
+    u8 header = pFrame[0];
+    s32 hasWideOffsets = header & 0x80;
+    s32 partCount = header & 0x3F;
+    u8* pStream = pFrame + partCount * 2 + 4;
+    s32 i;
+
+    for (i = 0; i < partCount; i++) {
+        u8 command = *pStream;
+
+        if (command & 0x80) {
+            if (command & 0x40) {
+                u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+                u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+                s32 directionIndex = command & 0x7;
+                u8* pDirection;
+
+                pStream++;
+                if (pDirTransforms == NULL) {
+                    pDirTransforms = HeapAlloc(0x40, 0);
+                    *(u32*)(pBase + 0x34) = (u32)(uintptr_t)pDirTransforms;
+                    func_800234AC(pData);
+                }
+
+                pDirection = pDirTransforms + directionIndex * 8;
+                if (command & 0x20) {
+                    pDirection[0] = *pStream++;
+                    pDirection[1] = *pStream++;
+                }
+
+                if (command & 0x10) {
+                    *(u16*)(pDirection + 0x6) = (u16)(*pStream++ << 4);
+                } else {
+                    *(u16*)(pDirection + 0x6) = 0;
+                }
+            } else {
+                pStream++;
+                if (command & 0x1) {
+                    pStream++;
+                }
+                if (command & 0x2) {
+                    pStream++;
+                }
+            }
+        } else {
+            if (hasWideOffsets) {
+                pStream += 2;
+            }
+            pStream += 3;
+        }
+    }
+}
 
 // Animation frame and tile data stuff
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F8E8)
+void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
+    u8* pAnimPackage = (u8*)(uintptr_t)animPackageAddr;
+    u8* pFrames = (u8*)(uintptr_t)*(u32*)(pAnimPackage + 0x0);
+    u16 frameHeader = *(u16*)pFrames;
+
+    if (frameIndex >= ((frameHeader & 0x1FF) + 1)) {
+        return;
+    }
+
+    if (frameHeader & 0x8000) {
+        func_8001F750(pSpriteData, frameIndex, pAnimPackage);
+        return;
+    }
+
+    assert(0 && "func_8001F8E8 non-delegating frame path is not implemented");
+}
 
 
 
@@ -119,4 +915,3 @@ void GraphicsDrawPauseLetters(int x, int y) {
 
 // 800592E4 -> EA is bss local
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001FB30);
-

@@ -10,7 +10,7 @@
 extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
-
+long FieldGetVec3Magnitude(long x, long y, long z);
 
 void func_800972F4(void) {
     D_800B00C0 = 1;
@@ -101,7 +101,36 @@ void func_8009899C(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800989F0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098A7C);
+void func_80098A7C(void) {
+    FieldActor* pFieldActor;
+    SpriteData* pSpriteData;
+    u8 argMask;
+
+    pFieldActor = &g_FieldActors[D_800AFD1C];
+    pSpriteData = (SpriteData*)(uintptr_t)pFieldActor->pSpriteData;
+
+    g_FieldScriptVMCurActor->scriptFlags.flags |= 0x10000;
+    g_FieldScriptVMCurActor->flags |= 0x200000;
+
+    argMask = ((u8*)g_FieldScriptVMCurScriptData)[g_FieldScriptVMCurActor->scriptInstructionPointer + 7];
+    g_FieldScriptVMCurActor->position.vx = FieldScriptArgument1(1, argMask) << 16;
+
+    argMask = ((u8*)g_FieldScriptVMCurScriptData)[g_FieldScriptVMCurActor->scriptInstructionPointer + 7];
+    g_FieldScriptVMCurActor->position.vz = FieldScriptArgument2(3, argMask) << 16;
+
+    argMask = ((u8*)g_FieldScriptVMCurScriptData)[g_FieldScriptVMCurActor->scriptInstructionPointer + 7];
+    g_FieldScriptVMCurActor->position.vy = FieldScriptArgument3(5, argMask) << 16;
+
+    pFieldActor->transformMatrix.t[0] = g_FieldScriptVMCurActor->position.vx >> 16;
+    pFieldActor->transformMatrix.t[1] = g_FieldScriptVMCurActor->position.vy >> 16;
+    pFieldActor->transformMatrix.t[2] = g_FieldScriptVMCurActor->position.vz >> 16;
+
+    pSpriteData->position.x = g_FieldScriptVMCurActor->position.vx;
+    pSpriteData->position.y = g_FieldScriptVMCurActor->position.vy;
+    pSpriteData->position.z = g_FieldScriptVMCurActor->position.vz;
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+}
 
 void func_80098C00(void) {
     g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = 0xFFFF;

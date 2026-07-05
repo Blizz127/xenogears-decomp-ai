@@ -280,7 +280,21 @@ void func_8001B5A8(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B5E8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B66C);
+extern s32 D_8004F338;
+extern s32 D_8004F33C;
+extern s32 D_8004F36C;
+extern void func_8001B5E8(void);
+
+void func_8001B66C(void) {
+    if (D_8004F36C != 0) {
+        func_8001B5E8();
+        func_8001B5A8();
+    }
+
+    D_8004F33C = -1;
+    D_8004F338 = -1;
+    D_8004F36C = 0;
+}
 
 void func_8001B6BC(void) {}
 
@@ -305,4 +319,3 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB50);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BBAC);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BD40);
-

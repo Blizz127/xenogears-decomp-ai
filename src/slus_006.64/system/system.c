@@ -3,16 +3,126 @@
 #include "system/memory.h"
 
 
-extern void* g_SystemDataFile;
-extern void* g_SystemFontFile;
-extern void* g_SystemDataEntries;
+void* g_SystemDataFile;
+void* g_SystemFontFile;
+void* g_SystemDataEntries;
+u32 D_8005934C;
+u32 D_80059350;
+u32 D_80059354;
+u32 D_80059358;
+u32 D_8005935C;
+u32 D_80059364;
+/* Real retail data already defined in asm/slus_006.64/data/3F290.sdata.s
+ * (24 bytes, verified byte-identical to the values previously duplicated
+ * here); a second C definition of the same symbol caused a link-time
+ * "multiple definition" error against the .sdata original. */
+extern u16 D_800501D0[];
 
 extern u8 g_SystemPaletteData[];
 extern s16 g_SystemPalette1;
 extern s16 g_SystemPalette2;
 
+void func_80031798(void* ot, void* prim);
+void func_80033DD4(void* arg0, s32 arg1);
+void func_80033DF0(void* arg0);
+int func_80034F98(s32 arg0, s32 arg1);
+void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4);
+void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, s32 mode, s32 height) {
+    u8* pWindow = arg0;
+    s32 i;
+    s32 textureUBase;
+    s32 rowStride;
+    u8* rowPrim;
+    s16 tpage0;
+    s16 tpage1;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80032F54);
+    (void)mode;
+
+    *(s16*)(pWindow + 0x04) = x;
+    *(s16*)(pWindow + 0x10) = 0;
+    *(s16*)(pWindow + 0x84) = 0;
+    *(s32*)(pWindow + 0x8C) = 0;
+    *(s16*)(pWindow + 0x82) = 0;
+    *(s16*)(pWindow + 0x14) = 0x0E;
+    *(u8*)(pWindow + 0x68) = 1;
+    *(u8*)(pWindow + 0x69) = 1;
+    *(s16*)(pWindow + 0x0A) = width;
+    *(u8*)(pWindow + 0x6C) = 0;
+    *(u8*)(pWindow + 0x6A) = 0;
+    *(u8*)(pWindow + 0x6D) = 0;
+    *(u8*)(pWindow + 0x6B) = 0;
+    *(u8*)(pWindow + 0x6E) = 0xFF;
+    *(s16*)(pWindow + 0x0E) = tpageY;
+    *(s16*)(pWindow + 0x06) = y;
+    *(s16*)(pWindow + 0x0C) = height;
+    *(s16*)(pWindow + 0x0A) = *(u16*)(pWindow + 0x0A) | 1;
+    *(s16*)(pWindow + 0x08) = *(s16*)(pWindow + 0x0A) << 2;
+    *(s16*)(pWindow + 0x12) = *(u16*)(pWindow + 0x0A) + 3;
+
+    HeapSetCurrentContentType(0x29);
+    *(u32*)(pWindow + 0x28) = (u32)(uintptr_t)HeapAlloc(height * 0x60, 2);
+    HeapSetCurrentContentType(0x28);
+    *(u32*)(pWindow + 0x2C) = (u32)(uintptr_t)HeapAlloc(*(s16*)(pWindow + 0x12) * 0x1C, 2);
+
+    *(u8*)(pWindow + 0x4B) = 3;
+    *(u32*)(pWindow + 0x4C) = 0x60000000;
+    *(u32*)(pWindow + 0x50) = ((y - 5) << 16) | ((x - 7) & 0xFFFF);
+    *(u32*)(pWindow + 0x54) = ((height * 0x0E + 0x0A) << 16) | (((*(s16*)(pWindow + 0x0A) << 2) + 0x0D) & 0xFFFF);
+    SetSemiTrans(pWindow + 0x48, 1);
+
+    *(u32*)(pWindow + 0x58) = *(u32*)(pWindow + 0x48);
+    *(u32*)(pWindow + 0x5C) = *(u32*)(pWindow + 0x4C);
+    *(u32*)(pWindow + 0x60) = *(u32*)(pWindow + 0x50);
+    *(u32*)(pWindow + 0x64) = *(u32*)(pWindow + 0x54);
+
+    textureUBase = (tpageX & 0x3F) << 2;
+    rowStride = *(s16*)(pWindow + 0x14);
+    rowPrim = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+    for (i = 0; i < height; i++, rowPrim += 0x60) {
+        s32 pairIndex = i / 2;
+        s32 oddRow = i & 1;
+        s32 textureX = tpageY + pairIndex * 0x0D;
+        u16 uv = textureUBase | ((textureX & 0xFF) << 8);
+        u32 tpageLeft = (*(s16*)(pWindow + 0x08) < 0x101) ? (0x000D0000 | *(u16*)(pWindow + 0x08)) : 0x000D0100;
+        u32 tpageRight = (*(s16*)(pWindow + 0x08) < 0x101) ? 0x000D0000 : (0x000D0000 | (*(s16*)(pWindow + 0x08) - 0xF0));
+
+        *(u32*)(rowPrim + 0x08) = ((y + rowStride * i) << 16) | (x & 0xFFFF);
+        *(u32*)(rowPrim + 0x1C) = ((y + rowStride * i) << 16) | ((x + 0x100) & 0xFFFF);
+        *(u32*)(rowPrim + 0x10) = tpageLeft;
+        *(u32*)(rowPrim + 0x24) = tpageRight;
+        *(u16*)(rowPrim + 0x0C) = uv;
+        *(u16*)(rowPrim + 0x20) = uv;
+        *(u8*)(rowPrim + 0x03) = 4;
+        *(u8*)(rowPrim + 0x07) = 0x65;
+        *(u8*)(rowPrim + 0x17) = 4;
+        *(u8*)(rowPrim + 0x1B) = 0x65;
+
+        *(u32*)(rowPrim + 0x28) = *(u32*)(rowPrim + 0x00);
+        *(u32*)(rowPrim + 0x2C) = *(u32*)(rowPrim + 0x04);
+        *(u32*)(rowPrim + 0x30) = *(u32*)(rowPrim + 0x08);
+        *(u32*)(rowPrim + 0x34) = *(u32*)(rowPrim + 0x0C);
+        *(u32*)(rowPrim + 0x38) = *(u32*)(rowPrim + 0x10);
+        *(u32*)(rowPrim + 0x3C) = *(u32*)(rowPrim + 0x14);
+        *(u32*)(rowPrim + 0x40) = *(u32*)(rowPrim + 0x18);
+        *(u32*)(rowPrim + 0x44) = *(u32*)(rowPrim + 0x1C);
+        *(u32*)(rowPrim + 0x48) = *(u32*)(rowPrim + 0x20);
+        *(u32*)(rowPrim + 0x4C) = *(u32*)(rowPrim + 0x24);
+        *(s16*)(rowPrim + 0x50) = tpageX;
+        *(s16*)(rowPrim + 0x52) = textureX;
+        *(s16*)(rowPrim + 0x54) = *(u16*)(pWindow + 0x12);
+        *(s16*)(rowPrim + 0x56) = 0x0D;
+        *(s16*)(rowPrim + 0x58) = 0;
+        *(s16*)(rowPrim + 0x5E) = oddRow ? g_SystemPalette2 : g_SystemPalette1;
+        *(u8*)(rowPrim + 0x5C) = textureX;
+        *(u8*)(rowPrim + 0x5A) = oddRow;
+        *(u8*)(rowPrim + 0x5B) = i;
+    }
+
+    tpage0 = GetTPage(0, 0, tpageX, tpageY);
+    SetDrawMode((DR_MODE*)(pWindow + 0x30), 0, 0, tpage0, NULL);
+    tpage1 = GetTPage(0, 0, tpageX + 0x40, tpageY);
+    SetDrawMode((DR_MODE*)(pWindow + 0x3C), 0, 0, tpage1, NULL);
+}
 
 unsigned int ResolveArchiveEntryPointers(u32* pFile) {
     int i;
@@ -62,7 +172,22 @@ void SystemFreeData(void) {
 }
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemInitializeFont);
+void SystemInitializeFont(void* pSystemFont) {
+    if (pSystemFont == NULL) {
+        HeapSetCurrentContentType(0x20);
+        return;
+    }
+
+    HeapPinBlock(pSystemFont);
+    g_SystemFontFile = pSystemFont;
+    D_8005935C = (u32)(uintptr_t)pSystemFont;
+    D_8005934C = *(u16*)((u8*)pSystemFont + 0x04);
+    D_80059350 = *(u16*)((u8*)pSystemFont + 0x06);
+    D_80059354 = *(u16*)((u8*)pSystemFont + 0x08);
+    D_80059358 = *(u16*)((u8*)pSystemFont + 0x0A);
+    D_8005935C = (u32)(uintptr_t)((u8*)pSystemFont + *(u16*)((u8*)pSystemFont + 0x02));
+    D_80059364 = *(u16*)((u8*)pSystemFont + 0x0C);
+}
 
 void SystemInitializeData(void* pSystemData) {
     if (pSystemData == 0) {
@@ -201,7 +326,158 @@ void func_80033DD4(void* arg0, s32 arg1) {
     *(u16*)((u8*)arg0 + 0x10) |= 0x80;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033DF0);
+void func_80033DF0(void* arg0) {
+    u8* pWindow = arg0;
+    s32 count;
+
+    count = pWindow[0x69];
+
+    if (*(s16*)(pWindow + 0x0A) < *(s16*)(pWindow + 0x00)) {
+        s16 row = *(s16*)(pWindow + 0x02) + 1;
+        s16 pageCount;
+
+        *(s16*)(pWindow + 0x00) = 0;
+        *(s16*)(pWindow + 0x02) = row;
+        *(s16*)(pWindow + 0x18) += 1;
+        if (row >= *(s16*)(pWindow + 0x0C)) {
+            *(s16*)(pWindow + 0x02) = 0;
+            *(u16*)(pWindow + 0x10) |= 1;
+        }
+
+        if (*(u16*)(pWindow + 0x10) & 1) {
+            u8* pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+            s16 oldBase = *(s16*)(pWindow + 0x16);
+
+            *(s16*)(pRows + oldBase * 0x60 + 0x58) = 0;
+            oldBase++;
+            *(s16*)(pWindow + 0x16) = oldBase;
+            if (oldBase >= *(s16*)(pWindow + 0x0C)) {
+                *(s16*)(pWindow + 0x16) = 0;
+            }
+        }
+
+        pageCount = *(s16*)(pWindow + 0x18) % (*(s16*)(pWindow + 0x0C) + 1);
+        {
+            s16 row = *(s16*)(pWindow + 0x02);
+            u8* pRow = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28) + row * 0x60;
+            s32 shade = (pageCount + ((u32)pageCount >> 31)) >> 1;
+            s32 color = *(u8*)(pWindow + 0x0E) + shade * 13;
+
+            pRow[0x5C] = color;
+            *(u16*)(pRow + 0x5E) = (pageCount & 1) ? g_SystemPalette2 : g_SystemPalette1;
+            pRow[0x5A] = pageCount & 1;
+            pRow[0x5B] = pageCount;
+            *(u16*)(pRow + 0x52) = *(u16*)(pWindow + 0x0E) + shade * 13;
+        }
+    }
+
+    if (pWindow[0x6C] != 0) {
+        pWindow[0x6C] = 0;
+        *(u16*)(pWindow + 0x10) &= 0xFFFB;
+        return;
+    }
+
+    count--;
+    if (count == -1) {
+        return;
+    }
+
+    while (count != -1) {
+        u8* pScript = (u8*)(uintptr_t)*(u32*)(pWindow + 0x1C);
+        s32 code = pScript[0];
+
+        if (code == 0) {
+            u16 flags = *(u16*)(pWindow + 0x10);
+
+            if (flags & 0x80) {
+                *(u16*)(pWindow + 0x10) = flags & 0xFF7F;
+                *(u32*)(pWindow + 0x1C) = *(u32*)(pWindow + 0x20) + 1;
+            } else {
+                *(u16*)(pWindow + 0x10) = flags | 0x8;
+                pWindow[0x6B] = 1;
+                pWindow[0x6C] = 1;
+                return;
+            }
+        } else if (code == 2) {
+            pWindow[0x6B] = 3;
+            *(u16*)(pWindow + 0x10) |= 0x8;
+            *(u32*)(pWindow + 0x1C) += 1;
+            return;
+        } else if (code == 1) {
+            *(s16*)(pWindow + 0x00) = 0x64;
+            *(u32*)(pWindow + 0x1C) += 1;
+            return;
+        } else if (code == 0x0F) {
+            s32 subcode = pScript[1];
+
+            if (subcode == 0) {
+                *(s16*)(pWindow + 0x84) = pScript[2];
+                *(u32*)(pWindow + 0x1C) += 3;
+                return;
+            } else if (subcode == 1) {
+                s32 value = pScript[2];
+
+                if (value != 0) {
+                    u8 old = pWindow[0x68];
+
+                    count += value;
+                    pWindow[0x68] = value;
+                    pWindow[0x69] = value;
+                    pWindow[0x6A] = old;
+                } else {
+                    pWindow[0x68] = pWindow[0x6A];
+                    pWindow[0x69] = pWindow[0x6A];
+                    pWindow[0x6A] = 0;
+                }
+                *(u32*)(pWindow + 0x1C) += 3;
+            } else if (subcode == 2) {
+                pWindow[0x6C] = 1;
+                *(s16*)(pWindow + 0x84) = pScript[2];
+                *(u32*)(pWindow + 0x1C) += 3;
+                return;
+            } else {
+                *(u32*)(pWindow + 0x1C) += 1;
+            }
+        } else {
+            s32 lead;
+            s32 trail;
+            s32 consumed;
+            s32 width;
+            s32 oldX;
+
+            if (code < D_8005934C) {
+                lead = 0;
+                trail = code & 0xFF;
+                consumed = 1;
+            } else {
+                lead = code & 0xFF;
+                trail = pScript[1];
+                consumed = 2;
+            }
+
+            width = func_80034F98(lead, trail);
+            oldX = *(s16*)(pWindow + 0x00);
+            if (*(s16*)(pWindow + 0x0A) < oldX + (width & 0xFFFF)) {
+                *(s16*)(pWindow + 0x00) = oldX + width;
+                return;
+            }
+
+            {
+                s16 row = *(s16*)(pWindow + 0x02);
+                u8* pRow = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28) + row * 0x60;
+                u8 rowPage = pRow[0x5A];
+
+                func_80034FFC(lead, trail, (u8*)(uintptr_t)*(u32*)(pWindow + 0x2C) + oldX * 2,
+                              *(s16*)(pWindow + 0x12), rowPage);
+                *(u32*)(pWindow + 0x1C) += consumed;
+                *(s16*)(pWindow + 0x00) = oldX + width;
+                *(s16*)(pRow + 0x58) = oldX + width;
+            }
+        }
+
+        count--;
+    }
+}
 
 void func_800345E0(void* a0) {
     u16 flags = *(u16*)((u8*)a0 + 0x10);
@@ -220,7 +496,23 @@ void func_80034614(void* a0) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_8003463C);
+void func_8003463C(void* arg0) {
+    u8* pWindow = arg0;
+    u32 nodeAddr;
+
+    if (*(s16*)(pWindow + 0x84) != 0) {
+        return;
+    }
+
+    nodeAddr = *(u32*)(pWindow + 0x8C);
+    while (nodeAddr != 0) {
+        u8* node = (u8*)(uintptr_t)nodeAddr;
+        nodeAddr = *(u32*)node;
+        HeapFree(node);
+    }
+    *(u32*)(pWindow + 0x8C) = 0;
+    *(s16*)(pWindow + 0x82) = 0;
+}
 
 void func_800346A4(void* a0) {
     u16 v = *(u16*)((u8*)a0 + 0x10);
@@ -230,17 +522,65 @@ void func_800346A4(void* a0) {
     func_8003463C(a0);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800346D4);
+void func_800346D4(void* arg0) {
+    u8* pWindow = arg0;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034714);
+    func_800346A4(arg0);
+    HeapFree((void*)(uintptr_t)*(u32*)(pWindow + 0x28));
+    HeapFree((void*)(uintptr_t)*(u32*)(pWindow + 0x2C));
+}
+
+void func_80034714(void* arg0, void* arg1) {
+    u8* pWindow = arg0;
+    u32 oldHead;
+    u8* node;
+
+    HeapSetCurrentContentType(0x2A);
+    *(u16*)(pWindow + 0x82) = *(u16*)(pWindow + 0x82) + 1;
+    oldHead = *(u32*)(pWindow + 0x8C);
+    node = HeapAlloc(8, 2);
+    *(u32*)(node + 0x00) = 0;
+    *(u32*)(node + 0x04) = (u32)(uintptr_t)arg1;
+
+    if (oldHead == 0) {
+        *(u32*)(pWindow + 0x8C) = (u32)(uintptr_t)node;
+        return;
+    }
+
+    while (*(u32*)(uintptr_t)oldHead != 0) {
+        oldHead = *(u32*)(uintptr_t)oldHead;
+    }
+    *(u32*)(uintptr_t)oldHead = (u32)(uintptr_t)node;
+}
 
 s32 func_800347AC(void* arg0) {
     return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347C0);
+s32 func_800347C0(void* arg0) {
+    return *(s16*)((u8*)arg0 + 0x6) + (*(s16*)((u8*)arg0 + 0x2) << 2);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034800);
+void func_80034800(void* arg0, s32 r, s32 g, s32 b) {
+    u8* pWindow = arg0;
+    u8* pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+    s32 i;
+
+    for (i = 0; i < *(s16*)(pWindow + 0x0C); i++, pRows += 0x60) {
+        pRows[0x04] = r;
+        pRows[0x18] = r;
+        pRows[0x2C] = r;
+        pRows[0x40] = r;
+        pRows[0x05] = g;
+        pRows[0x19] = g;
+        pRows[0x2D] = g;
+        pRows[0x41] = g;
+        pRows[0x06] = b;
+        pRows[0x1A] = b;
+        pRows[0x2E] = b;
+        pRows[0x42] = b;
+    }
+}
 
 void func_80034874(void* arg0, u8 arg1) {
     *(u8*)((u8*)arg0 + 0x6E) = arg1;
@@ -252,11 +592,350 @@ int func_8003487C(void* arg0) {
     return value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034888);
+void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
+    u8* pWindow = arg0;
+    u16 flags;
+    u8* pRows;
+    s32 rowIndex;
+    s32 rowOffset;
+    s32 ctxOffset;
+
+    flags = *(u16*)(pWindow + 0x10);
+    if (!(flags & 0x4)) {
+        u32 nodeAddr = *(u32*)(pWindow + 0x8C);
+
+        if (*(s16*)(pWindow + 0x82) == 0) {
+            return;
+        }
+
+        *(u32*)(pWindow + 0x1C) = *(u32*)(uintptr_t)(nodeAddr + 4);
+        *(u32*)(pWindow + 0x8C) = *(u32*)(uintptr_t)nodeAddr;
+        HeapFree((void*)(uintptr_t)nodeAddr);
+
+        flags = (*(u16*)(pWindow + 0x10) & 0x2) | 0x24;
+        *(s16*)(pWindow + 0x82) -= 1;
+        *(u16*)(pWindow + 0x10) = flags;
+        if (*(u8*)(pWindow + 0x6A) != 0) {
+            u8 value = *(u8*)(pWindow + 0x6A);
+
+            *(u8*)(pWindow + 0x68) = value;
+            *(u8*)(pWindow + 0x6A) = 0;
+            *(u8*)(pWindow + 0x69) = value;
+        }
+        *(s16*)(pWindow + 0x88) = 0;
+        *(s16*)(pWindow + 0x86) = 0;
+        *(u8*)(pWindow + 0x69) = *(u8*)(pWindow + 0x68);
+    }
+
+    flags = *(u16*)(pWindow + 0x10);
+    if (flags & 0x100) {
+        *(u8*)(pWindow + 0x69) = *(u8*)(pWindow + 0x68) * 3;
+    } else {
+        *(u8*)(pWindow + 0x69) = *(u8*)(pWindow + 0x68);
+    }
+
+    flags = *(u16*)(pWindow + 0x10);
+    if ((flags & 0x40) && !(flags & 0x8)) {
+        *(u16*)(pWindow + 0x10) = (flags & 0xFFBF) | 0x20;
+    }
+
+    pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+    if (*(u16*)(pWindow + 0x10) & 0x20) {
+        *(s16*)(pWindow + 0x16) = 0;
+        *(s16*)(pWindow + 0x18) = 0;
+        *(s16*)(pWindow + 0x02) = 0;
+        *(s16*)(pWindow + 0x00) = 0;
+        pRows[0x5C] = *(u16*)(pWindow + 0x0E);
+        *(u16*)(pRows + 0x5E) = g_SystemPalette1;
+        pRows[0x5A] = 0;
+        *(u16*)(pRows + 0x52) = *(u16*)(pWindow + 0x0E);
+
+        for (rowIndex = 0; rowIndex < *(s16*)(pWindow + 0x0C); rowIndex++) {
+            *(s16*)(pRows + rowIndex * 0x60 + 0x58) = 0;
+        }
+
+        *(u16*)(pWindow + 0x10) &= 0xFFDE;
+    }
+
+    ctxOffset = renderContextIndex * 0x28;
+    rowIndex = 0;
+    rowOffset = *(s16*)(pWindow + 0x16) * 0x60;
+    while (rowIndex < *(s16*)(pWindow + 0x0C)) {
+        u8* row = pRows + rowOffset;
+        u8* prim = row + ctxOffset;
+
+        if (*(u8*)(pWindow + 0x6E) != rowIndex) {
+            prim[0x1B] |= 1;
+        } else {
+            prim[0x1B] &= 0xFE;
+        }
+
+        if (*(s16*)(row + 0x58) >= 0x41) {
+            prim[0x21] = row[0x5C];
+            *(u16*)(prim + 0x22) = *(u16*)(row + 0x5E);
+            *(u16*)(prim + 0x1E) = *(u16*)(pWindow + 0x06) + *(s16*)(pWindow + 0x14) * rowIndex;
+            *(u16*)(prim + 0x24) = (*(s16*)(row + 0x58) - 0x40) << 2;
+            func_80031798(ot, prim + 0x14);
+        }
+
+        rowIndex++;
+        rowOffset += 0x60;
+        if (rowIndex >= *(s16*)(pWindow + 0x0C)) {
+            rowOffset = 0;
+        }
+    }
+
+    AddPrim(ot, pWindow + 0x3C);
+
+    rowIndex = 0;
+    rowOffset = *(s16*)(pWindow + 0x16) * 0x60;
+    while (rowIndex < *(s16*)(pWindow + 0x0C)) {
+        u8* row = pRows + rowOffset;
+        u8* prim = row + ctxOffset;
+
+        if (*(u8*)(pWindow + 0x6E) != rowIndex) {
+            prim[0x07] |= 1;
+        } else {
+            prim[0x07] &= 0xFE;
+        }
+
+        if (*(s16*)(row + 0x58) != 0) {
+            prim[0x0D] = row[0x5C];
+            *(u16*)(prim + 0x0E) = *(u16*)(row + 0x5E);
+            *(u16*)(prim + 0x0A) = *(u16*)(pWindow + 0x06) + *(s16*)(pWindow + 0x14) * rowIndex;
+            *(u16*)(prim + 0x10) = (*(s16*)(row + 0x58) < 0x41) ? (*(s16*)(row + 0x58) << 2) : 0x100;
+            func_80031798(ot, prim);
+        }
+
+        rowIndex++;
+        rowOffset += 0x60;
+        if (rowIndex >= *(s16*)(pWindow + 0x0C)) {
+            rowOffset = 0;
+        }
+    }
+
+    if (*(s16*)(pWindow + 0x84) != 0) {
+        *(s16*)(pWindow + 0x84) -= 1;
+    } else if (*(s16*)(pWindow + 0x86) != 0) {
+        *(s16*)(pWindow + 0x86) -= 1;
+    } else {
+        *(s16*)(pWindow + 0x86) = *(s16*)(pWindow + 0x88);
+        if ((*(u16*)(pWindow + 0x10) & 0x58) == 0) {
+            func_80033DF0(pWindow);
+            LoadImage((RECT*)(pRows + *(s16*)(pWindow + 0x02) * 0x60 + 0x50),
+                      (u_long*)(uintptr_t)*(u32*)(pWindow + 0x2C));
+        }
+    }
+
+    if (*(s16*)(pWindow + 0x84) != 0) {
+        *(s16*)(pWindow + 0x84) -= 1;
+        if (*(s16*)(pWindow + 0x84) == -1) {
+            *(u16*)(pWindow + 0x10) &= 0xFFEF;
+        }
+    }
+
+    if (!(*(u16*)(pWindow + 0x10) & 0x2)) {
+        u8* prim = pWindow + renderContextIndex * 0x10;
+        s32 xy = (*(s16*)(pWindow + 0x04) - 7) | ((*(s16*)(pWindow + 0x06) - 5) << 16);
+        s32 wh = (((*(s16*)(pWindow + 0x0A) | 1) << 2) + 0xD) |
+                 (((*(s16*)(pWindow + 0x0C) * *(s16*)(pWindow + 0x14) + 0xA) << 16));
+
+        *(s32*)(prim + 0x50) = xy;
+        *(s32*)(prim + 0x54) = wh;
+        AddPrim(ot, prim + 0x48);
+    }
+
+    *(u16*)(pWindow + 0x10) &= 0xFEFF;
+    AddPrim(ot, pWindow + 0x30);
+}
 
 // Render string entry to a buffer
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemRenderStringEntry);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034F98);
+s32 func_80034F98(s32 arg0, s32 arg1) {
+    u16 lead = arg0;
+    u16 trail = arg1;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034FFC);
+    if (lead == 0) {
+        if ((s32)(trail - D_80059364) < (s32)D_80059354) {
+            return 2;
+        }
+        return 3;
+    }
+
+    if (lead == D_8005934C) {
+        if (trail < D_80059358) {
+            return 2;
+        }
+    }
+
+    return 3;
+}
+
+static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
+    u16 v;
+    u16 w;
+
+    v = (glyph & 0x80) ? 0x222 : 0;
+    if (glyph & 0x40) v |= 0x2220;
+    if (glyph & 0x20) v |= 0x2200;
+    w = (glyph & 0x10) ? v : (v | 0x2000);
+    prev[0] |= w;
+    next[0] |= w;
+
+    v = (glyph & 0x80) ? 0x212 : 0;
+    if (glyph & 0x40) v |= 0x2120;
+    if (glyph & 0x20) v |= 0x1200;
+    cur[0] |= (glyph & 0x10) ? (u16)(v | 0x2000) : v;
+
+    if (glyph & 0x08) {
+        v = 0x222;
+    } else if (glyph & 0x10) {
+        v = 0x22;
+    } else {
+        v = (glyph >> 4) & 0x2;
+    }
+    if (glyph & 0x04) v |= 0x2220;
+    if (glyph & 0x02) v |= 0x2200;
+    w = (glyph & 0x01) ? v : (v | 0x2000);
+    prev[1] |= w;
+    next[1] |= w;
+
+    v = (glyph >> 4) & 0x2;
+    if (glyph & 0x10) v |= 0x21;
+    if (glyph & 0x08) v |= 0x212;
+    if (glyph & 0x04) v |= 0x2120;
+    if (glyph & 0x02) v |= 0x1200;
+    cur[1] |= (glyph & 0x01) ? (u16)(v | 0x2000) : v;
+
+    if (glyph & 0x8000) {
+        v = 0x222;
+    } else if (glyph & 0x0001) {
+        v = 0x22;
+    } else {
+        v = glyph & 0x2;
+    }
+    if (glyph & 0x4000) v |= 0x2220;
+    if (glyph & 0x2000) v |= 0x2200;
+    w = (glyph & 0x1000) ? v : (v | 0x2000);
+    prev[2] |= w;
+    next[2] |= w;
+
+    v = glyph & 0x2;
+    if (glyph & 0x0001) v |= 0x21;
+    if (glyph & 0x8000) v |= 0x212;
+    if (glyph & 0x4000) v |= 0x2120;
+    if (glyph & 0x2000) v |= 0x1200;
+    cur[2] |= (glyph & 0x1000) ? (u16)(v | 0x2000) : v;
+}
+
+static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
+    u16 v;
+    u16 w;
+
+    v = (glyph & 0x80) ? 0x888 : 0;
+    if (glyph & 0x40) v |= 0x8880;
+    if (glyph & 0x20) v |= 0x8800;
+    w = (glyph & 0x10) ? v : (v | 0x8000);
+    prev[0] |= w;
+    next[0] |= w;
+
+    v = (glyph & 0x80) ? 0x848 : 0;
+    if (glyph & 0x40) v |= 0x8480;
+    if (glyph & 0x20) v |= 0x4800;
+    cur[0] |= (glyph & 0x10) ? (u16)(v | 0x8000) : v;
+
+    if (glyph & 0x08) {
+        v = 0x888;
+    } else if (glyph & 0x10) {
+        v = 0x88;
+    } else {
+        v = (glyph >> 2) & 0x8;
+    }
+    if (glyph & 0x04) v |= 0x8880;
+    if (glyph & 0x02) v |= 0x8800;
+    w = (glyph & 0x01) ? v : (v | 0x8000);
+    prev[1] |= w;
+    next[1] |= w;
+
+    v = (glyph >> 2) & 0x8;
+    if (glyph & 0x10) v |= 0x84;
+    if (glyph & 0x08) v |= 0x848;
+    if (glyph & 0x04) v |= 0x8480;
+    if (glyph & 0x02) v |= 0x4800;
+    cur[1] |= (glyph & 0x01) ? (u16)(v | 0x8000) : v;
+
+    if (glyph & 0x8000) {
+        v = 0x888;
+    } else if (glyph & 0x0001) {
+        v = 0x88;
+    } else {
+        v = (glyph << 2) & 0x8;
+    }
+    if (glyph & 0x4000) v |= 0x8880;
+    if (glyph & 0x2000) v |= 0x8800;
+    w = (glyph & 0x1000) ? v : (v | 0x8000);
+    prev[2] |= w;
+    next[2] |= w;
+
+    v = (glyph << 2) & 0x8;
+    if (glyph & 0x0001) v |= 0x84;
+    if (glyph & 0x8000) v |= 0x848;
+    if (glyph & 0x4000) v |= 0x8480;
+    if (glyph & 0x2000) v |= 0x4800;
+    cur[2] |= (glyph & 0x1000) ? (u16)(v | 0x8000) : v;
+}
+
+void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4) {
+    u16 lead = arg0;
+    u16 trail = arg1;
+    u8* glyphData;
+    u16* prev;
+    u16* cur;
+    u16* next;
+    s32 stride = (s16)arg3;
+    s32 step = stride * 2;
+    s32 i;
+    u16 clearMask;
+
+    if (lead == 0) {
+        glyphData = (u8*)(uintptr_t)D_8005935C + (trail - D_80059364) * 0x16;
+    } else if (lead == 0xFF && trail == 0xFF) {
+        glyphData = (u8*)D_800501D0;
+    } else {
+        glyphData = (u8*)(uintptr_t)D_8005935C + D_80059350 + (trail * 0x16)
+            + ((lead - D_8005934C) * 0x1600);
+    }
+
+    clearMask = arg4 ? 0x3333 : 0xCCCC;
+    prev = arg2;
+    prev[0] &= clearMask;
+    prev[1] &= clearMask;
+    prev[2] &= clearMask;
+
+    cur = (u16*)((u8*)arg2 + step);
+    cur[0] &= clearMask;
+    cur[1] &= clearMask;
+    cur[2] &= clearMask;
+
+    next = (u16*)((u8*)cur + step);
+
+    for (i = 0; i < 0xB; i++) {
+        u16 glyph = *(u16*)glyphData;
+
+        next[0] &= clearMask;
+        next[1] &= clearMask;
+        next[2] &= clearMask;
+
+        if (arg4) {
+            func_80034FFC_row1(prev, cur, next, glyph);
+        } else {
+            func_80034FFC_row0(prev, cur, next, glyph);
+        }
+
+        glyphData += 2;
+        prev = (u16*)((u8*)prev + step);
+        cur = (u16*)((u8*)cur + step);
+        next = (u16*)((u8*)next + step);
+    }
+}

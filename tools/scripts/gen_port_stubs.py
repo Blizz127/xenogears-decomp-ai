@@ -128,7 +128,10 @@ def main():
         if info is None:
             unknown.append(n)
             funcs.append((n, 0))  # default: assume function
-        elif info[0]:  # is_func
+        elif info[0] or n.startswith("func_"):  # is_func
+            # Some overlay entrypoints are referenced from the main executable at
+            # addresses that are BSS in the main map. Prefer the code-style name
+            # over NOTYPE/BSS so native calls cannot bind to data storage.
             funcs.append((n, info[1]))
         else:
             # NOTYPE/OBJECT data. Base size = largest of the ELF size, the

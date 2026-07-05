@@ -9,9 +9,89 @@
 #include "field/particles.h"
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AA9DC);
+void func_800AA9DC(void* pModelData) {
+    u8* pModel = pModelData;
+    u8* pBounds = (u8*)(uintptr_t)*(u32*)(pModel + 0x4);
+    s32 minX = *(s16*)(pBounds + 0x20);
+    s32 minY = *(s16*)(pBounds + 0x22);
+    s32 minZ = *(s16*)(pBounds + 0x24);
+    s32 dx = *(s16*)(pBounds + 0x28) - minX;
+    s32 dy = *(s16*)(pBounds + 0x2A) - minY;
+    s32 dz = *(s16*)(pBounds + 0x2C) - minZ;
+    s32 max = dx;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AAA74);
+    if (max < dy) {
+        max = dy;
+    }
+    if (max < dz) {
+        max = dz;
+    }
+
+    *(s16*)(pModel + 0x18) = minX + ((dx + ((u32)dx >> 31)) >> 1);
+    *(s16*)(pModel + 0x1A) = minY + ((dy + ((u32)dy >> 31)) >> 1);
+    *(s16*)(pModel + 0x1C) = minZ + ((dz + ((u32)dz >> 31)) >> 1);
+    *(s16*)(pModel + 0x20) = (max << 1) + 1;
+}
+
+extern MATRIX D_800B00E8;
+extern s32 D_800B00FC;
+extern s32 D_800B0100;
+extern s32 D_800B0104;
+extern s32 D_800C3A5C;
+extern s32 D_800C3A60;
+
+s32 func_800AAA74(void* pModelData) {
+    u8* pModel = (u8*)pModelData;
+    VECTOR transformed;
+    long flag;
+    SVECTOR corner;
+    long screenXY;
+    long p;
+    s32 radius;
+    s32 minX;
+    s32 minY;
+    s32 maxX;
+    s32 maxY;
+
+    RotTrans((SVECTOR*)(pModel + 0x18), &transformed, &flag);
+    D_800B00FC = transformed.vx;
+    D_800B0100 = transformed.vy;
+    D_800B0104 = transformed.vz;
+
+    SetRotMatrix(&D_800B00E8);
+    SetTransMatrix(&D_800B00E8);
+
+    radius = *(s16*)(pModel + 0x20);
+    corner.vx = -radius;
+    corner.vy = -radius;
+    corner.vz = 0;
+    corner.pad = 0;
+    RotTransPers(&corner, &screenXY, &p, &flag);
+    minX = (s16)(screenXY >> 16);
+    minY = (s16)screenXY;
+
+    corner.vx = radius;
+    corner.vy = radius;
+    corner.vz = 0;
+    corner.pad = 0;
+    RotTransPers(&corner, &screenXY, &p, &flag);
+    maxX = (s16)(screenXY >> 16);
+    maxY = (s16)screenXY;
+
+    if (minX >= D_800C3A60 + 0xE0) {
+        return -1;
+    }
+    if (-D_800C3A60 >= maxX) {
+        return -1;
+    }
+    if (minY >= D_800C3A5C + 0x140) {
+        return -1;
+    }
+    if (-D_800C3A5C >= maxY) {
+        return -1;
+    }
+    return 0;
+}
 
 extern SpriteList* D_800AFC68;
 

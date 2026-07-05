@@ -3,8 +3,17 @@
 #include "field/actor.h"
 #include "system/memory.h"
 #include "psyq/libgpu.h"
+#include "psyq/libgte.h"
 #include "field/effects.h"
 #include "field/graphics.h"
+#ifdef XENO_PC_PORT
+#include <assert.h>
+#else
+/* <assert.h> is unavailable under the matching build's -nostdinc MIPS
+ * preprocessor. The assert(0) below marks an unimplemented path in a function
+ * not yet byte-matched, so a no-op assert compiles safely there. */
+#define assert(x) ((void)0)
+#endif
 
 //
 void func_800A55B8(void* arg0, s32 arg1, s32 arg2, s32 arg3) {
@@ -100,11 +109,11 @@ void func_800A5774(int x, int y, int h) {
 }
 
 // Zoom fade effect stuff
-void func_800A5884(void) {
+void func_800A5884(int semiTrans, int abr) {
     int i;
     int nCurX;
 
-    FieldZoomFadeEffectInitialize();
+    FieldZoomFadeEffectInitialize(semiTrans, abr);
     for (i = 0; i < 2; i++) {
         FieldClearAndSwapOTag();
         FieldZoomFadeEffectUpdate();
@@ -124,14 +133,225 @@ void func_800A5884(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A5924);
+extern s32 D_800ADB38;
+extern s32 D_800ADB3C;
+extern s16 D_800ADC08;
+extern s32 D_800C3A40;
+extern void FontFree(void);
+extern void func_80070C84(void);
+extern void func_800A915C(void);
+extern void func_800A4748(void);
+extern void FieldClearAndSwapOTag(void);
+extern void FieldRenderSync(void);
+extern void func_800A6C40(void);
+extern void func_800A6E70(void);
+extern void func_80077DAC(void);
+extern void func_8007554C(void);
+extern void func_80078B5C(void);
+extern void FieldFadeToBlack(s32 duration);
+extern void FieldFadeToWhite(s32 duration);
+extern void func_800A91F0(void);
+extern void func_80077544(void);
+
+void func_800A5924(void) {
+    s32 i;
+    s32 color;
+
+    if (D_800ADB38 == 0) {
+        return;
+    }
+
+    FontFree();
+    func_80070C84();
+    func_800A915C();
+
+    if (D_800ADB38 == 1 || D_800ADB38 == 4) {
+        func_800A4748();
+        DrawSync(0);
+        FieldClearAndSwapOTag();
+        FieldRenderSync();
+    }
+
+    FieldRenderSync();
+
+    for (;;) {
+        if (D_800ADB38 == 3) {
+            FieldZoomFadeEffectInitialize(1, 1);
+            for (i = 0; i < 5; i++) {
+                func_800A5774(0x2C0 + i * 0x40, 0x100, 0xE0);
+            }
+            FieldFadeToWhite(D_800ADB3C);
+            func_800A5600(0);
+
+            color = 0;
+            for (i = 0; i < D_800ADB3C; i++) {
+                func_80077DAC();
+                FieldZoomFadeEffectUpdate();
+                func_8007554C();
+                func_80078B5C();
+                func_800A5600(color >> 16);
+                color += 0x800000 / D_800ADB3C;
+            }
+
+            while (D_800ADB38 == 3) {
+                func_80077DAC();
+                FieldZoomFadeEffectUpdate();
+                func_8007554C();
+                func_80078B5C();
+            }
+            continue;
+        }
+
+        if (D_800ADB38 == 4) {
+            func_800A5884(1, 1);
+            func_800A6E70();
+            D_800ADC08 = 1;
+            FieldFadeToBlack(D_800ADB3C);
+            D_800C3A40 = 0;
+
+            for (i = 0; i < D_800ADB3C; i++) {
+                func_80077DAC();
+                func_800A6C40();
+                func_8007554C();
+                func_80078B5C();
+                D_800C3A40 += 6;
+            }
+
+            DrawSync(0);
+            func_800A7064();
+        } else if (D_800ADB38 > 0 && D_800ADB38 < 4) {
+            func_800A5884(1, 1);
+            D_800ADC08 = 1;
+            FieldFadeToBlack(D_800ADB3C);
+
+            color = 0x800000;
+            for (i = 0; i < D_800ADB3C; i++) {
+                func_80077DAC();
+                FieldZoomFadeEffectUpdate();
+                func_8007554C();
+                func_80078B5C();
+                func_800A5600(color >> 16);
+                color -= 0x800000 / D_800ADB3C;
+                if (color < 0) {
+                    color = 0;
+                }
+            }
+        }
+
+        D_800ADB38 = 0;
+        func_800A91F0();
+        func_80077544();
+        return;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A5C40);
 
-// Or Draw?
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectUpdate);
+extern s32 D_800C2684;
+extern SVECTOR D_800B00B8;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectInitialize);
+// Or Draw?
+void FieldZoomFadeEffectUpdate(void) {
+    MATRIX matrix;
+    VECTOR scale;
+    int interpolation;
+    int flag;
+    int i;
+
+    RotMatrix(&D_800B00B8, &matrix);
+    scale.vx = D_800C2684;
+    scale.vy = D_800C2684;
+    scale.vz = D_800C2684;
+    ScaleMatrix(&matrix, &scale);
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+
+    for (i = 0; i < 5; i++) {
+        POLY_FT4* poly = &g_FieldZoomFadeEffect.polygons[(i * 2) + g_FieldCurRenderContextIndex];
+        DR_MODE* drMode = &g_FieldZoomFadeEffect.drawModes[(i * 2) + g_FieldCurRenderContextIndex];
+
+        if (D_800C2684 != 0x1000) {
+            SVECTOR* vertices = &g_FieldZoomFadeEffect.vectors[i * 4];
+            RotAverage4(
+                &vertices[0], &vertices[1], &vertices[2], &vertices[3],
+                (long*)&poly->x0, (long*)&poly->x1, (long*)&poly->x2, (long*)&poly->x3,
+                (long*)&interpolation, (long*)&flag
+            );
+        }
+
+        addPrim(g_FieldCurRenderContext->ot3, poly);
+        addPrim(g_FieldCurRenderContext->ot3, drMode);
+    }
+}
+
+void FieldZoomFadeEffectInitialize(int semiTrans, int abr) {
+    int i;
+    int tpageX;
+    int x0;
+    int x1;
+    int vx0;
+    int vx1;
+
+    D_800C2684 = 0x1000;
+    D_800B00B8.vx = 0;
+    D_800B00B8.vy = 0;
+    D_800B00B8.vz = 0;
+
+    tpageX = 0x2C0;
+    x0 = 0;
+    x1 = 0x40;
+    vx0 = -0x50;
+    vx1 = -0x30;
+
+    for (i = 0; i < 5; i++) {
+        POLY_FT4* poly0 = &g_FieldZoomFadeEffect.polygons[i * 2];
+        POLY_FT4* poly1 = &g_FieldZoomFadeEffect.polygons[(i * 2) + 1];
+        RECT* rect0 = &g_FieldZoomFadeEffect.rects[i * 2];
+        RECT* rect1 = &g_FieldZoomFadeEffect.rects[(i * 2) + 1];
+        u_short tpage = GetTPage(2, abr, tpageX, 0x100);
+        SVECTOR* vertices = &g_FieldZoomFadeEffect.vectors[i * 4];
+
+        SetPolyFT4(poly0);
+        setRGB0(poly0, 0x80, 0x80, 0x80);
+        setXY4(poly0, x0, 0, x1, 0, x0, 0xDF, x1, 0xDF);
+        setUV4(poly0, 0, 0, 0x40, 0, 0, 0xDF, 0x40, 0xDF);
+        poly0->tpage = tpage;
+        SetSemiTrans(poly0, semiTrans);
+
+        vertices[0].vx = vx0;
+        vertices[0].vy = -0x38;
+        vertices[0].vz = 0;
+        vertices[1].vx = vx1;
+        vertices[1].vy = -0x38;
+        vertices[1].vz = 0;
+        vertices[2].vx = vx0;
+        vertices[2].vy = 0x38;
+        vertices[2].vz = 0;
+        vertices[3].vx = vx1;
+        vertices[3].vy = 0x38;
+        vertices[3].vz = 0;
+
+        rect0->x = 0;
+        rect0->y = 0;
+        rect0->w = 0xFF;
+        rect0->h = 0xFF;
+        rect1->x = 0;
+        rect1->y = 0;
+        rect1->w = 0xFF;
+        rect1->h = 0xFF;
+
+        SetDrawMode(&g_FieldZoomFadeEffect.drawModes[i * 2], 0, 0, tpage, rect0);
+        SetDrawMode(&g_FieldZoomFadeEffect.drawModes[(i * 2) + 1], 0, 0, tpage, rect1);
+
+        memcpy(poly1, poly0, sizeof(POLY_FT4));
+
+        tpageX += 0x40;
+        x0 += 0x40;
+        x1 += 0x40;
+        vx0 += 0x20;
+        vx1 += 0x20;
+    }
+}
 
 void FieldDisplay(void) {
     DrawSync(0);
@@ -275,7 +495,13 @@ void func_800A83B4(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8408);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A84C0);
+void func_800A84C0(void) {
+    if (D_800AF278 == 0) {
+        return;
+    }
+
+    assert(0 && "func_800A84C0 active field overlay path is not migrated");
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8BA4);
 
@@ -284,26 +510,31 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldInitializeParticlePrimitiv
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A90B4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A915C);
-
-/*
-Matches, but g_FieldStoredImageDest seems to be part of some struct which needs recovery first.
+/* Matches, but g_FieldStoredImageDest seems to be part of some struct which
+ * needs recovery first. */
 
 extern int D_800ADB34;
 extern RECT g_FieldStoredImageDest[];
-extern u_long* D_800AFC70;
+extern u32 D_800AFC70;
 
 void func_800A915C(void) {
     if (D_800ADB34 != 1) {
         D_800ADB34 = 1;
         HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
-        D_800AFC70 = HeapAlloc(0x8000, 0x1);
+        D_800AFC70 = (u32)(uintptr_t)HeapAlloc(0x8000, 0x1);
         setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
-        StoreImage(&g_FieldStoredImageDest[0], D_800AFC70);
+        StoreImage(&g_FieldStoredImageDest[0], (u_long*)(uintptr_t)D_800AFC70);
         DrawSync(0);
     }
 }
-*/
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A91F0);
+void func_800A91F0(void) {
+    if (D_800ADB34) {
+        setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
+        D_800ADB34 = 0;
+        LoadImage(&g_FieldStoredImageDest[0], (u_long*)(uintptr_t)D_800AFC70);
+        DrawSync(0);
+        HeapFree((void*)(uintptr_t)D_800AFC70);
+    }
+}

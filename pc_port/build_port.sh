@@ -69,6 +69,31 @@ sed -i 's/switch (polyTag->code & 0xFD)/switch (polyTag->code \& 0xFC)/' \
 sed -i 's/const bool drawOnScreen = split.drawenv.dfe;/const bool drawOnScreen = true; \/* XENO_PC_PORT: dfe=0 is normal back-buffer draw; see build_port.sh *\//' \
     "$PSX/src/gpu/PsyX_GPU.cpp"
 
+# PsyCross bugfix (idempotent). DR_MODE/DR_ENV packets may carry a zero command
+# terminator inside the declared packet length. ProcessDrawEnv used to return
+# only the number of non-zero GP0(E*) commands processed before the terminator;
+# ParsePrimitivesLinkedList then advanced into the terminator word and treated it
+# as a fake zero-length primitive. The packet has still been consumed on PSX, so
+# advance by the tag's declared length.
+sed -i 's/return processedLongs;$/return polyTag->len; \/* XENO_PC_PORT: consume full DR_MODE packet including zero terminator; see build_port.sh *\//' \
+    "$PSX/src/gpu/PsyX_GPU.cpp"
+
+# PsyCross bugfix (idempotent). In this native port the non-extended primitive
+# tag stores a host pointer-sized addr plus len/code bytes, so DR_MODE has two
+# payload words after the tag. The stock PSX setDrawMode macro still writes
+# len=3; ParsePrimitivesLinkedList then advances one word past each DR_MODE and
+# logs "diff=-12" when the field zoom fade queues draw-mode packets.
+sed -i '/#define setDrawMode/,/((p)->code\\[1\\] = _get_tw/s/setlen(p, 3)/setlen(p, 2)/' \
+    "$PSX/include/psx/libgpu.h"
+
+# PsyCross bugfix (idempotent). The full-size TILE primitive has three payload
+# words after the tag (color/code, xy, wh). The stock PsyCross header used len=2
+# while its parser consumes three payload words, so field fade TILE packets
+# (code 0x62 with semi-transparency) leave ParsePrimitivesLinkedList one word
+# past the packet and produce diff=-4 / zero-length primitive traversal noise.
+sed -i 's/#define setTile(p)[[:space:]]*setlen(p, 2),[[:space:]]*setcode(p, 0x60)/#define setTile(p)\tsetlen(p, 3),  setcode(p, 0x60)/' \
+    "$PSX/include/psx/libgpu.h"
+
 # PsyCross bugfix (idempotent, grep-guarded so it inserts the pad field exactly
 # once). ClearOTag/ClearOTagR build the OT linked list by casting the caller's
 # array to OT_TAG* and striding by sizeof(OT_TAG). On PSX u_long is 4 bytes and
@@ -120,7 +145,7 @@ echo "    compiled=$compiled  skipped=$skipped"
 [ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/archive_port.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c pc_port/src/data_field.c; do
+for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/archive_port.c pc_port/src/work_list_port.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c pc_port/src/data_field.c; do
     o="$OBJ/$(basename "$pf").o"
     if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
         GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"

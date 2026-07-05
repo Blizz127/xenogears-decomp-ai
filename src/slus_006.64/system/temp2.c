@@ -1,5 +1,10 @@
 #include "common.h"
+#include "psyq/libgte.h"
 #include "system/memory.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002AC24);
 
@@ -116,8 +121,6 @@ void func_8002C6E0(u8 a0, u8 a1, u8 a2) {
     D_8005959A = a2;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
-
 extern void func_8002CCAC(void);
 extern u8* D_80059424;
 extern u32 D_80059538;
@@ -126,7 +129,144 @@ extern u32 D_8005952C;
 extern u32 D_8005953C;
 extern u32 D_80059498;
 extern u32 D_800595C0;
+#ifndef XENO_PC_PORT
 extern u8 D_8004FE50[];
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
+#else
+typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+
+typedef struct ModelPrimDesc {
+    ModelPrimProc proc[6];
+    u32 buildProc;
+    u32 cmdStride;
+    u32 packetStride;
+    u32 outputStride;
+} ModelPrimDesc;
+
+extern ModelPrimDesc D_8004FE50[];
+extern s32 D_80050104;
+extern s32 D_80050100;
+extern s32 D_800500F8;
+extern s32 D_800500FC;
+extern u32 D_80059568;
+extern s32 D_80059578;
+extern s32 func_8003101C(void);
+
+static u32 ModelPrimVertexIndex1(u32 word) {
+    return (word >> 16) & 0xFFFF;
+}
+
+static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+    u32 yMaxPacked = (u32)D_800500FC;
+    u32 xMax = (u32)D_800500F8;
+
+    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked || xy3 > yMaxPacked)) {
+        return 0;
+    }
+    return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
+            ((xy2 & 0xFFFF) < xMax) || ((xy3 & 0xFFFF) < xMax));
+}
+
+s32 func_8002E688(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x28;
+    const u32 tagLen = 0x09000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long p = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || p <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimPackedOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x10) = (u32)xy1;
+            *(u32*)(out + 0x18) = (u32)xy2;
+            *(u32*)(out + 0x20) = (u32)xy3;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
+    s32 groupCount;
+
+    if (D_80050104 != 0 && func_8003101C() != 0) {
+        return 0;
+    }
+
+    D_80059424 = a1;
+    D_80059568 = (u32)(uintptr_t)a2;
+    D_800595C0 += *(u16*)(a0 + 0x4);
+    D_80059528 = *(u32*)(a0 + 0x10);
+    D_80059498 = *(u32*)(a0 + 0x18);
+    D_8005952C = *(u32*)(a0 + 0x0C);
+    D_8005953C = *(u32*)(a0 + 0x08);
+
+    groupCount = *(u16*)(a0 + 0x06) - 1;
+    if (groupCount != -1) {
+        do {
+            u8* pGroup = (u8*)(uintptr_t)D_80059528;
+            u8 prim = pGroup[0];
+            s32 count = *(s16*)(pGroup + 0x02);
+            ModelPrimDesc* desc = &D_8004FE50[prim];
+            ModelPrimProc proc = (a3 < 6) ? desc->proc[a3] : NULL;
+
+            D_80059528 += 4;
+            if (proc == NULL) {
+                fprintf(stderr, "[xeno-port] missing D_8004FE50 prim=%u variant=%d\n", prim, a3);
+                abort();
+            }
+
+            proc((u8*)(uintptr_t)D_80059528, count);
+            D_80059528 += count * desc->cmdStride;
+            groupCount--;
+        } while (groupCount != -1);
+    }
+
+    return 1;
+}
+#endif
 
 /* Builds the render command list for one model into the destination double
  * buffer half (a0=dst header, a1=src buffer, a2=mode).
@@ -477,9 +617,52 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030988);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030A30);
+MATRIX D_80059F64;
+MATRIX D_80059F84;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030B14);
+static s16 func_80030A18(s64 value) {
+    value >>= 12;
+    if (value > 0x7FFF) {
+        return 0x7FFF;
+    }
+    if (value < -0x8000) {
+        return -0x8000;
+    }
+    return value;
+}
+
+void func_80030A30(s32 lightId, void* pLight) {
+    VECTOR lightDirection;
+    u16 id = lightId;
+    s16* pLightMatrix = (s16*)&D_80059F64;
+    s16* pColorMatrix = (s16*)&D_80059F84;
+
+    lightDirection.vx = -*(s32*)((u8*)pLight + 0x0);
+    lightDirection.vy = -*(s32*)((u8*)pLight + 0x4);
+    lightDirection.vz = -*(s32*)((u8*)pLight + 0x8);
+    VectorNormalS(&lightDirection, (SVECTOR*)(pLightMatrix + (id * 3)));
+
+    pColorMatrix[id] = *(u16*)((u8*)pLight + 0xC);
+    pColorMatrix[id + 3] = *(u16*)((u8*)pLight + 0xE);
+    pColorMatrix[id + 6] = *(u16*)((u8*)pLight + 0x10);
+    SetColorMatrix(&D_80059F84);
+}
+
+void func_80030B14(MATRIX* pMatrix) {
+    MATRIX matrix;
+    s32 row;
+    s32 col;
+
+    for (row = 0; row < 3; row++) {
+        for (col = 0; col < 3; col++) {
+            matrix.m[row][col] = func_80030A18(
+                (s64)D_80059F64.m[row][0] * pMatrix->m[0][col] +
+                (s64)D_80059F64.m[row][1] * pMatrix->m[1][col] +
+                (s64)D_80059F64.m[row][2] * pMatrix->m[2][col]);
+        }
+    }
+    SetLightMatrix(&matrix);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C40);
 
@@ -519,7 +702,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031750);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031774);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031798);
+void func_80031798(void* ot, void* prim) {
+    u32 primAddr = (u32)(uintptr_t)prim & 0x00FFFFFF;
+    u32 old = *(u32*)ot;
+
+    *(u32*)ot = primAddr;
+    *(u32*)(uintptr_t)primAddr = old | 0x04000000;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317BC);
 
