@@ -13,10 +13,12 @@
  */
 
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>   /* getenv/atoi for the headless test hook below */
 #include <string.h>   /* memcpy for TIM parsing */
 #include <libgte.h>   /* PsyCross: pull in before libgpu.h (it uses SVECTOR) */
+#include <inline_c.h>
 #include <libgpu.h>   /* PsyCross: POLY_F3, setPolyF3 macro (setlen/setcode) */
 
 /* --- PsyCross internals / exports used below (extern "C") --- */
@@ -101,6 +103,180 @@ void SetPolyF3(POLY_F3* p)
     setPolyF3(p);   /* setlen(p, 4), setcode(p, 0x20) */
 }
 
+VECTOR* Square0(VECTOR* v0, VECTOR* v1)
+{
+    v1->vx = v0->vx * v0->vx;
+    v1->vy = v0->vy * v0->vy;
+    v1->vz = v0->vz * v0->vz;
+    return v1;
+}
+
+MATRIX* ScaleMatrixL(MATRIX* m, VECTOR* v)
+{
+    m->m[0][0] = (m->m[0][0] * v->vx) >> 12;
+    m->m[0][1] = (m->m[0][1] * v->vx) >> 12;
+    m->m[0][2] = (m->m[0][2] * v->vx) >> 12;
+    m->m[1][0] = (m->m[1][0] * v->vy) >> 12;
+    m->m[1][1] = (m->m[1][1] * v->vy) >> 12;
+    m->m[1][2] = (m->m[1][2] * v->vy) >> 12;
+    m->m[2][0] = (m->m[2][0] * v->vz) >> 12;
+    m->m[2][1] = (m->m[2][1] * v->vz) >> 12;
+    m->m[2][2] = (m->m[2][2] * v->vz) >> 12;
+
+    return m;
+}
+
+static int32_t GteClampS32(int64_t value)
+{
+    if (value > 0x7FFFFFFFLL)
+        return 0x7FFFFFFF;
+    if (value < -0x80000000LL)
+        return (int32_t)0x80000000u;
+    return (int32_t)value;
+}
+
+void OuterProduct12(VECTOR* v0, VECTOR* v1, VECTOR* v2)
+{
+    int32_t x0 = (int16_t)v0->vx;
+    int32_t y0 = (int16_t)v0->vy;
+    int32_t z0 = (int16_t)v0->vz;
+    int32_t x1 = (int16_t)v1->vx;
+    int32_t y1 = (int16_t)v1->vy;
+    int32_t z1 = (int16_t)v1->vz;
+
+    v2->vx = GteClampS32(((int64_t)y0 * z1 - (int64_t)z0 * y1) >> 12);
+    v2->vy = GteClampS32(((int64_t)z0 * x1 - (int64_t)x0 * z1) >> 12);
+    v2->vz = GteClampS32(((int64_t)x0 * y1 - (int64_t)y0 * x1) >> 12);
+}
+
+static const int16_t s_InvSqrtTable[] = {
+    0x1000, 0x0FE0, 0x0FC1, 0x0FA3, 0x0F85, 0x0F68, 0x0F4C, 0x0F30,
+    0x0F15, 0x0EFB, 0x0EE1, 0x0EC7, 0x0EAE, 0x0E96, 0x0E7E, 0x0E66,
+    0x0E4F, 0x0E38, 0x0E22, 0x0E0C, 0x0DF7, 0x0DE2, 0x0DCD, 0x0DB9,
+    0x0DA5, 0x0D91, 0x0D7E, 0x0D6B, 0x0D58, 0x0D45, 0x0D33, 0x0D21,
+    0x0D10, 0x0CFF, 0x0CEE, 0x0CDD, 0x0CCC, 0x0CBC, 0x0CAC, 0x0C9C,
+    0x0C8D, 0x0C7D, 0x0C6E, 0x0C5F, 0x0C51, 0x0C42, 0x0C34, 0x0C26,
+    0x0C18, 0x0C0A, 0x0BFD, 0x0BEF, 0x0BE2, 0x0BD5, 0x0BC8, 0x0BBB,
+    0x0BAF, 0x0BA2, 0x0B96, 0x0B8A, 0x0B7E, 0x0B72, 0x0B67, 0x0B5B,
+    0x0B50, 0x0B45, 0x0B39, 0x0B2E, 0x0B24, 0x0B19, 0x0B0E, 0x0B04,
+    0x0AF9, 0x0AEF, 0x0AE5, 0x0ADB, 0x0AD1, 0x0AC7, 0x0ABD, 0x0AB4,
+    0x0AAA, 0x0AA1, 0x0A97, 0x0A8E, 0x0A85, 0x0A7C, 0x0A73, 0x0A6A,
+    0x0A61, 0x0A59, 0x0A50, 0x0A47, 0x0A3F, 0x0A37, 0x0A2E, 0x0A26,
+    0x0A1E, 0x0A16, 0x0A0E, 0x0A06, 0x09FE, 0x09F6, 0x09EF, 0x09E7,
+    0x09E0, 0x09D8, 0x09D1, 0x09C9, 0x09C2, 0x09BB, 0x09B4, 0x09AD,
+    0x09A5, 0x099E, 0x0998, 0x0991, 0x098A, 0x0983, 0x097C, 0x0976,
+    0x096F, 0x0969, 0x0962, 0x095C, 0x0955, 0x094F, 0x0949, 0x0943,
+    0x093C, 0x0936, 0x0930, 0x092A, 0x0924, 0x091E, 0x0918, 0x0912,
+    0x090D, 0x0907, 0x0901, 0x08FB, 0x08F6, 0x08F0, 0x08EB, 0x08E5,
+    0x08E0, 0x08DA, 0x08D5, 0x08CF, 0x08CA, 0x08C5, 0x08BF, 0x08BA,
+    0x08B5, 0x08B0, 0x08AB, 0x08A6, 0x08A1, 0x089C, 0x0897, 0x0892,
+    0x088D, 0x0888, 0x0883, 0x087E, 0x087A, 0x0875, 0x0870, 0x086B,
+    0x0867, 0x0862, 0x085E, 0x0859, 0x0855, 0x0850, 0x084C, 0x0847,
+    0x0843, 0x083E, 0x083A, 0x0836, 0x0831, 0x082D, 0x0829, 0x0824,
+    0x0820, 0x081C, 0x0818, 0x0814, 0x0810, 0x080C, 0x0808, 0x0804,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
+};
+
+static int32_t VectorNormalWork(int32_t x, int32_t y, int32_t z, int32_t* outX, int32_t* outY, int32_t* outZ)
+{
+    int32_t sx = (int16_t)x;
+    int32_t sy = (int16_t)y;
+    int32_t sz = (int16_t)z;
+    uint32_t squared = (uint32_t)(sx * sx + sy * sy + sz * sz);
+    int lzc;
+    int lzcEven;
+    int shift;
+    int index;
+    int32_t scale;
+
+    if (squared == 0) {
+        *outX = 0;
+        *outY = 0;
+        *outZ = 0;
+        return 0;
+    }
+
+    lzc = __builtin_clz(squared);
+    lzcEven = lzc & ~1;
+    shift = (31 - lzcEven) >> 1;
+
+    if (lzcEven - 24 >= 0)
+        index = (int)(squared << (lzcEven - 24));
+    else
+        index = (int)(squared >> (24 - lzcEven));
+
+    index -= 0x40;
+    if (index < 0)
+        index = 0;
+    if (index >= (int)(sizeof(s_InvSqrtTable) / sizeof(s_InvSqrtTable[0])))
+        index = (sizeof(s_InvSqrtTable) / sizeof(s_InvSqrtTable[0])) - 1;
+
+    scale = s_InvSqrtTable[index];
+    *outX = GteClampS32(((int64_t)scale * sx) >> shift);
+    *outY = GteClampS32(((int64_t)scale * sy) >> shift);
+    *outZ = GteClampS32(((int64_t)scale * sz) >> shift);
+    return (int32_t)squared;
+}
+
+long VectorNormal(VECTOR* v0, VECTOR* v1)
+{
+    int32_t x, y, z;
+    int32_t squared = VectorNormalWork(v0->vx, v0->vy, v0->vz, &x, &y, &z);
+    v1->vx = x;
+    v1->vy = y;
+    v1->vz = z;
+    return squared;
+}
+
+long VectorNormalS(VECTOR* v0, SVECTOR* v1)
+{
+    int32_t x, y, z;
+    int32_t squared = VectorNormalWork(v0->vx, v0->vy, v0->vz, &x, &y, &z);
+    v1->vx = x;
+    v1->vy = y;
+    v1->vz = z;
+    return squared;
+}
+
+long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
+                 long* sxy0, long* sxy1, long* sxy2, long* sxy3,
+                 long* p, long* flag)
+{
+    long flag0;
+
+    gte_ldv3(v0, v1, v2);
+    gte_rtpt();
+    gte_stsxy3(sxy0, sxy1, sxy2);
+    gte_stflg(&flag0);
+
+    gte_ldv0(v3);
+    gte_rtps();
+    gte_stsxy(sxy3);
+    gte_stflg(flag);
+    gte_stdp(p);
+    *flag |= flag0;
+
+    gte_avsz4();
+    gte_stotz(p);
+
+    return *p;
+}
+
+int EnterCriticalSection(void)
+{
+    return 0;
+}
+
+void ExitCriticalSection(void)
+{
+}
+
+int CdDataSync(int mode)
+{
+    (void)mode;
+    return 0;
+}
+
 /*
  * Sprintf (PsyQ): the game's variadic string formatter (KernelMenu builds its
  * menu text with it). Forward to libc vsprintf. Signature matches the game's
@@ -174,6 +350,7 @@ int Vsync(int mode)
      * reach the framebuffer. Flushing here (idempotent when empty, like DrawSync)
      * makes the present show everything drawn since the last frame. */
     DrawAllSplits();
+
     PsyX_EndScene();      /* present the frame the game just finished building */
 
     /* Per-frame input, normally driven by the BIOS vblank IRQ + the game's main

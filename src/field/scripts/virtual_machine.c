@@ -6,6 +6,14 @@
 #include "field/effects.h"
 #include "system/memory.h"
 #include "system/archive.h"
+#ifdef XENO_PC_PORT
+#include <assert.h>
+#else
+/* <assert.h> is unavailable under the matching build's -nostdinc MIPS
+ * preprocessor. The assert(0) below marks an unimplemented path in a function
+ * not yet byte-matched, so a no-op assert compiles safely there. */
+#define assert(x) ((void)0)
+#endif
 #include "system/debug.h"
 #include "psyq/libgpu.h"
 #include "psyq/libcd.h"
@@ -258,7 +266,108 @@ void FieldScriptVMRun(int maxInstructionCount) {
 
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A2030);
+extern s32 D_800ADB68;
+extern s32 D_800ADB74;
+extern s32 D_800ADBFC;
+extern s32 D_800ADBE0;
+extern s32 D_800ADBE4;
+extern s32 D_800ADBEC;
+extern s32 D_800ADB1C;
+extern s32 D_800C4268;
+extern s32 D_8005A444[];
+extern u8 D_800B21CC;
+extern FieldActor* D_800B06B8;
+
+void func_800A2030(void) {
+    s32 numActors;
+    s32 actorIndex;
+
+    if (D_800ADB74 == 1) {
+        numActors = 1;
+    } else {
+        numActors = D_800ADBFC;
+    }
+
+    D_800ADB68 = 0;
+    D_800C4268 = 0;
+
+    for (actorIndex = 0; actorIndex < numActors; actorIndex++) {
+        FieldActor* fieldActor = &g_FieldActors[actorIndex];
+        ActorData* actor = (ActorData*)(uintptr_t)fieldActor->pActorData;
+        s32 slot;
+        s32 bestPriority;
+
+        if ((fieldActor->status & 0x0F00) == 0) {
+            continue;
+        }
+
+        if (*(u32*)((u8*)actor + 0x04) & 0x00100000) {
+            continue;
+        }
+
+        if (D_800ADB1C != 0) {
+            if (D_800ADBE0 == 0 || D_800ADBE4 == 0 || D_800ADBEC == 0) {
+                return;
+            }
+        }
+
+        actor->flags &= 0xFEFFFFFF;
+        D_800B06B8 = fieldActor;
+        D_800AFD1C = actorIndex;
+        g_FieldScriptVMCurActor = actor;
+
+        if (D_800B21CC != 0) {
+            s32 i;
+            s32 shouldSkip = 0;
+
+            for (i = 0; i < 3; i++) {
+                if (D_8005A444[i] != 0xFF && D_8005A444[i] == actorIndex) {
+                    shouldSkip = 1;
+                    break;
+                }
+            }
+            if (shouldSkip) {
+                continue;
+            }
+        }
+
+        bestPriority = 0xF;
+        for (slot = 0; slot < 8; slot++) {
+            u32 scriptWord = *(u32*)((u8*)g_FieldScriptVMCurActor + 0x90 + slot * 8);
+            s32 priority = (scriptWord >> 18) & 0xF;
+
+            if (priority <= bestPriority) {
+                bestPriority = priority;
+                *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE) = slot;
+            }
+        }
+
+        if (bestPriority == 0xF) {
+            u16 ip = FieldScriptGetBytecodeOffset(actorIndex, 1);
+
+            *(u16*)((u8*)g_FieldScriptVMCurActor + 0x8C) = ip;
+            *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE) = 0;
+            *(u32*)((u8*)g_FieldScriptVMCurActor + 0x90) =
+                (*(u32*)((u8*)g_FieldScriptVMCurActor + 0x90) & 0xFFC3FFFF) | 0x001C0000;
+        }
+
+        {
+            u8 curScript = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
+            u16 ip = *(u16*)((u8*)g_FieldScriptVMCurActor + 0x8C + curScript * 8);
+
+            D_800AFFEC = 1;
+            *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) = ip;
+
+            if ((g_FieldScriptVMCurActor->flags & 1) == 0) {
+                FieldScriptVMRun(8);
+            }
+
+            curScript = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
+            *(u16*)((u8*)g_FieldScriptVMCurActor + 0x8C + curScript * 8) =
+                *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC);
+        }
+    }
+}
 
 // Changes current actor to the top of the field actor array and runs a script routine on it
 extern FieldActor* D_800B06B8;
@@ -303,12 +412,25 @@ void func_800A22AC(int scriptRoutineIndex) {
 
 INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A2488);
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A24C4);
-
 extern s32 g_GamePartySkinsInitialized;
 extern s32 D_800ADBFC;
 extern s32 D_800AFC74;
+extern s32 D_800B2268;
+extern s32 D_8005A444[];
+extern s32 D_8006F990[];
+extern void* g_PartyDataBuffers[];
+extern void func_800A3474(void);
+extern void func_8002303C(void*, s32, s32);
 extern void func_80076AC0(s32, s32, void*, s32, s32, s32, s32);
+
+void func_800A24C4(void) {
+    if (g_GamePartySkinsInitialized == 0) {
+        return;
+    }
+
+    assert(0 && "func_800A24C4 initialized party-skin branch is not implemented");
+}
+
 void func_800A2714(void) {
     ActorData* pActor;
     FieldActor* pFieldActors;
@@ -358,7 +480,75 @@ void func_800A28D4(void) {
     int i;
 
     if (g_GamePartySkinsInitialized) {
-        assert(0 && "func_800A28D4 initialized party-skin path is not implemented");
+        func_800A3474();
+
+        for (i = 0; i < D_800ADBFC; i++) {
+            FieldActor* pFieldActor = &g_FieldActors[i];
+            ActorData* pActor = (ActorData*)(uintptr_t)pFieldActor->pActorData;
+            u8 skinId = *(u8*)((u8*)pActor + 0x126);
+            u8 spriteId = *(u8*)((u8*)pActor + 0x127);
+            u32 flags130 = *(u32*)((u8*)pActor + 0x130);
+            u32 flags134 = *(u32*)((u8*)pActor + 0x134);
+
+            if (!(skinId & 0x80)) {
+                func_80076AC0(i, spriteId, g_PartyDataBuffers[skinId],
+                              (flags130 >> 28) & 0x3, flags134 & 0xF,
+                              skinId, (flags134 >> 4) & 0x1);
+            } else {
+                u8* pSpriteData = (u8*)g_FieldSpriteData;
+                u32* pOffsets = (u32*)pSpriteData;
+                u8* pAnimData = pSpriteData + pOffsets[(skinId & 0x7F) + 1];
+                u32 mode;
+
+                func_80076AC0(i, spriteId, pAnimData, (flags130 >> 28) & 0x3,
+                              flags134 & 0xF, skinId, (flags134 >> 4) & 0x1);
+
+                mode = *(u16*)((u8*)pActor + 0x12E) & 0x3;
+                if (mode == 1 || mode == 2) {
+                    u8* pSprite = (u8*)(uintptr_t)pFieldActor->pSpriteData;
+                    u8* pBase;
+                    u8* pState;
+
+                    func_8002303C(pSprite, mode + 1, 0);
+                    pBase = (u8*)(uintptr_t)*(u32*)(pSprite + 0x7C);
+                    pState = (u8*)(uintptr_t)*(u32*)(pBase + 0x18);
+                    *(u16*)(pState + 0x4) = (*(u32*)((u8*)pActor + 0x12C) >> 18) & 0x3FF;
+                    *(u16*)(pState + 0x6) = flags130 & 0x1FF;
+                    if (mode == 2) {
+                        *(u16*)(pState + 0x8) = (flags130 >> 9) & 0x3FF;
+                        *(u16*)(pState + 0xA) = (flags130 >> 19) & 0x1FF;
+                    }
+                }
+            }
+        }
+
+        if (D_800B2268) {
+            for (i = 0; i < 3; i++) {
+                s32 actorIndex = D_8005A444[i];
+
+                if (actorIndex != 0xFF) {
+                    s32 swapActorIndex = D_8006F990[i];
+                    ActorData* pSwapActor;
+
+                    if (((u8*)g_pGameState)[0x22B1 + i]) {
+                        u32 savedSpriteData = g_FieldActors[actorIndex].pSpriteData;
+
+                        g_FieldActors[actorIndex].pSpriteData = g_FieldActors[swapActorIndex].pSpriteData;
+                        g_FieldActors[swapActorIndex].pSpriteData = savedSpriteData;
+
+                        pSwapActor = (ActorData*)(uintptr_t)g_FieldActors[swapActorIndex].pActorData;
+                        pSwapActor->flags |= 0x200;
+                        pSwapActor->flags &= ~0x500;
+                        g_FieldActors[swapActorIndex].status |= 0x20;
+                    } else {
+                        pSwapActor = (ActorData*)(uintptr_t)g_FieldActors[swapActorIndex].pActorData;
+                        pSwapActor->flags |= 0x400;
+                        pSwapActor->flags &= ~0x300;
+                    }
+                }
+            }
+        }
+
         return;
     }
 
@@ -390,7 +580,23 @@ void func_800A28D4(void) {
 
         if (D_800AFC74 == 0) {
             u8* pSpriteData = (u8*)g_FieldSpriteData;
-            func_80076AC0(i, 0, pSpriteData + *(s32*)(pSpriteData + 4), 0, 0, 0x80, 0);
+            u8* pAnimData = pSpriteData + *(s32*)(pSpriteData + 4);
+#ifdef XENO_PC_PORT
+            /* Diagnostic-only static; see the matching-build note in
+             * FieldAddPrimitives (misc2.c) -- confined to the port build so no
+             * .sbss storage for it is emitted for the matching target. */
+            {
+                static s32 s_loggedFirstAttach;
+                if (!s_loggedFirstAttach) {
+                    printf("[field-diag] func_80076AC0 first: actor=%d actorPtr=%p actorSpriteSlot=%p curSprite=%p args=(%d,%d,%p,%d,%d,%d,%d)\n",
+                           i, &g_FieldActors[i], &g_FieldActors[i].pSpriteData,
+                           (void*)(uintptr_t)g_FieldActors[i].pSpriteData,
+                           i, 0, pAnimData, 0, 0, 0x80, 0);
+                    s_loggedFirstAttach = 1;
+                }
+            }
+#endif
+            func_80076AC0(i, 0, pAnimData, 0, 0, 0x80, 0);
             g_FieldScriptVMCurActor->flags |= 0x800;
         }
     }
@@ -422,7 +628,7 @@ u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex) {
     int nOffset;
     u_short* pScriptData;
 
-    pScriptData = &g_FieldCurScriptFile->metadata;
+    pScriptData = (u_short*)((u8*)g_FieldCurScriptFile + 0x84);
     nOffset = (scriptIndex * (SCRIPT_OFFSET_TABLE_SIZE / sizeof(u_short)) + routineIndex);
     return *(pScriptData + nOffset);
 }
@@ -524,11 +730,126 @@ void func_800A31E8(void) {
     FieldScriptMemoryWriteU16(0x22, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x26));
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3474);
+extern u8 D_8005A4E4[];
+extern s32 D_8005A408[];
+extern u8* D_800AFC50;
+extern u8 D_800B007C[];
+extern u32 D_800AFB20[];
+extern VECTOR g_CameraEye;
+extern char D_8006FD9C;
+extern void func_80021EBC(void*, void*);
+
+static void FieldStateRestoreCopy(void* dst, size_t size) {
+    u8* dstBytes = dst;
+    size_t i;
+
+    for (i = 0; i < size; i++) {
+        dstBytes[i] = D_800AFC50[i];
+    }
+
+    D_800AFC50 += size;
+}
+
+void func_800A3474(void) {
+    int i;
+
+    D_800AFC50 = D_8005A4E4 + 4;
+    g_FieldNumActors = D_8005A4E4[0];
+
+    FieldStateRestoreCopy(D_800B007C, 0x38);
+    FieldStateRestoreCopy((u8*)&g_Scene + 0xC4, 0x74);
+    FieldStateRestoreCopy((void*)(uintptr_t)D_800AFB20[0], 0x400);
+    FieldStateRestoreCopy((u8*)&g_FieldEffects, 0x2E4);
+    FieldStateRestoreCopy((u8*)&g_CameraEye, 0x1C8);
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        u8* actor = (u8*)&g_FieldActors[i];
+        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+        u8* actorSave = D_800AFC50;
+        u32 saved118;
+
+        FieldStateRestoreCopy(actor + 0x50, 0x8);
+        *(u16*)(actor + 0x58) = *(u16*)D_800AFC50;
+        D_800AFC50 = actorSave + 0x3C;
+
+        saved118 = *(u32*)(actorData + 0x118);
+        FieldStateRestoreCopy(actorData, 0x138);
+        *(u32*)(actorData + 0x118) = saved118;
+
+        if (*(u32*)(actorData + 0x134) & 0x80) {
+            *(u32*)(actorData + 0x110) = (u32)(uintptr_t)HeapAlloc(0xC, 0);
+            FieldStateRestoreCopy((void*)(uintptr_t)*(u32*)(actorData + 0x110), 0xC);
+        }
+
+        if (*(u32*)(actorData + 0x12C) & 0x1000) {
+            *(u32*)(actorData + 0x114) = (u32)(uintptr_t)HeapAlloc(0x10, 0);
+            FieldStateRestoreCopy((void*)(uintptr_t)*(u32*)(actorData + 0x114), 0x10);
+        }
+    }
+
+    FieldStateRestoreCopy(&g_FieldScriptMemory, 0x800);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3C8C);
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3F4C);
+static void FieldStateSaveCopy(const void* src, size_t size) {
+    const u8* srcBytes = src;
+    size_t i;
+
+    for (i = 0; i < size; i++) {
+        D_800AFC50[i] = srcBytes[i];
+    }
+
+    D_800AFC50 += size;
+}
+
+void func_800A3F4C(void) {
+    int i;
+
+    D_800AFC50 = D_8005A4E4 + 4;
+    D_8005A4E4[0] = (u8)g_FieldNumActors;
+
+    FieldStateSaveCopy(D_800B007C, 0x38);
+    FieldStateSaveCopy((u8*)&g_Scene + 0xC4, 0x74);
+    FieldStateSaveCopy((void*)(uintptr_t)D_800AFB20[0], 0x400);
+    FieldStateSaveCopy((u8*)&g_FieldEffects, 0x2E4);
+    FieldStateSaveCopy((u8*)&g_CameraEye, 0x1C8);
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        u8* actor = (u8*)&g_FieldActors[i];
+        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+        u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+        u8* actorSave = D_800AFC50;
+
+        FieldStateSaveCopy(actor + 0x50, 0x8);
+        *(u16*)(actorSave + 0x8) = *(u16*)(actor + 0x58);
+        *(u16*)(actorSave + 0xA) = 0;
+        D_800AFC50 = actorSave + 0xC;
+
+        func_80021EBC(spriteData, D_800AFC50);
+        D_800AFC50 += 0x30;
+
+        FieldStateSaveCopy(actorData, 0x138);
+
+        if (*(u32*)(actorData + 0x134) & 0x80) {
+            FieldStateSaveCopy((void*)(uintptr_t)*(u32*)(actorData + 0x110), 0xC);
+        }
+
+        if (*(u32*)(actorData + 0x12C) & 0x1000) {
+            FieldStateSaveCopy((void*)(uintptr_t)*(u32*)(actorData + 0x114), 0x10);
+        }
+    }
+
+    FieldStateSaveCopy(&g_FieldScriptMemory, 0x800);
+
+    for (i = 0; i < 3; i++) {
+        D_8005A408[i] = ((u8*)g_pGameState)[0x22B1 + i];
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_800379C8(&D_8006FD9C, D_800AFC50 - D_8005A4E4, D_800AFC50 - D_8005A4E4);
+    }
+}
 
 void func_800A4748(void) {
     func_800A476C(0x2c0,0x100);

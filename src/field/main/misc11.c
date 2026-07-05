@@ -10,6 +10,7 @@
 
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
+extern FieldActor* D_800B06B8;
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091944);
 
@@ -47,7 +48,22 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091F84);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092044);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800920D8);
+extern s16 D_800AFEA8;
+extern void GfxLineScrollUpdate(void* pLineScroll);
+
+void func_800920D8(void) {
+    s32 i;
+    u32* entries;
+
+    if (D_800AFEA8 <= 0) {
+        return;
+    }
+
+    entries = (u32*)((u8*)&D_800AFEA8 + 4);
+    for (i = 0; i < D_800AFEA8; i++) {
+        GfxLineScrollUpdate((void*)(uintptr_t)entries[i]);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
 
@@ -63,7 +79,34 @@ void func_80092404(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092424);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800924D4);
+extern u32* D_800AFB20;
+
+void func_800924D4(s32 index, s32 component, s32 value) {
+    u32* entry;
+    u32 mask;
+
+    switch (component) {
+        case 0:
+            entry = (u32*)((u8*)D_800AFB20 + index * 4);
+            *entry = (*entry & ~0xFFu) | (value & 0xFF);
+            break;
+        case 1:
+            entry = &D_800AFB20[index];
+            mask = 0xFFFF00FF;
+            *entry = (*entry & mask) | ((value & 0xFF) << 8);
+            break;
+        case 2:
+            entry = &D_800AFB20[index];
+            mask = 0xFF00FFFF;
+            *entry = (*entry & mask) | ((value & 0xFF) << 16);
+            break;
+        case 3:
+            entry = &D_800AFB20[index];
+            mask = 0x00FFFFFF;
+            *entry = (*entry & mask) | ((value & 0xFF) << 24);
+            break;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800925A0);
 
@@ -81,7 +124,22 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800926C8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092768);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092808);
+void func_80092808(void) {
+    u8* actorData = (u8*)g_FieldScriptVMCurActor;
+    s16 angle = *(s16*)((u8*)D_800B06B8 + 0x52);
+    s32 sinTerm = rsin(angle) * 9;
+    s32 cosTerm;
+    s32 zMove;
+
+    *(s16*)(actorData + 0x60) = (s16)(u16)((u32)sinTerm >> 10);
+
+    cosTerm = rcos(angle) * 9;
+    zMove = -(cosTerm << 2);
+    *(s16*)(actorData + 0x64) = (s16)(zMove >> 12);
+
+    *(u32*)(actorData + 0x4) |= 0x800;
+    *(u16*)(actorData + 0xCC) += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
 

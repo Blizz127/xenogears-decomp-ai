@@ -14,6 +14,14 @@
     \label:
 .endm
 
+.macro nonmatching label, size
+    /* splat-generated marker, no-op */
+.endm
+
+.macro enddlabel label
+    .size \label, . - \label
+.endm
+
 .macro move a, b
     addu \a, \b, $zero
 .endm

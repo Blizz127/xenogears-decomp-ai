@@ -9,10 +9,125 @@
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007DCF8);
+extern u16 D_800C3900;
+void func_80034874(void* arg0, u8 arg1);
+int func_8003487C(void* arg0);
+
+void func_8007DCF8(s32 index, void* ot, s32 renderContextIndex) {
+    u8* pTextBox = (u8*)&g_FieldTextBoxes[index];
+    u8* pWindow = pTextBox + 0x18;
+
+    (void)ot;
+    (void)renderContextIndex;
+
+    if (*(s16*)(pTextBox + 0x37C) != 0 || *(s16*)(pTextBox + 0x408) != 0) {
+        return;
+    }
+
+    if (*(u16*)(pTextBox + 0x410) != 0) {
+        func_8003487C(pWindow);
+        return;
+    }
+
+    if (D_800C3900 & 0x4000) {
+        s16 value = *(s16*)(pTextBox + 0x382) + 1;
+
+        *(s16*)(pTextBox + 0x382) = value;
+        if ((*(s16*)(pTextBox + 0x380) - 1) < value) {
+            *(s16*)(pTextBox + 0x382) = 0;
+        }
+    }
+
+    if (D_800C3900 & 0x1000) {
+        s16 value = *(s16*)(pTextBox + 0x382) - 1;
+
+        *(s16*)(pTextBox + 0x382) = value;
+        if (value < 0) {
+            *(s16*)(pTextBox + 0x382) = *(s16*)(pTextBox + 0x380) - 1;
+        }
+    }
+
+    func_80034874(pWindow, *(s16*)(pTextBox + 0x382) + *(s16*)(pTextBox + 0x37E));
+}
 
 // https://decomp.me/scratch/NE0tE
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", FieldTextBoxInitialize);
+extern u8 D_800B1DF4[];
+extern RECT D_800AFC80[];
+extern s32 D_800B068C[];
+extern u16 D_800B2174[];
+extern s32 D_800ADE90;
+extern s32 D_800ADE94;
+extern s32 D_800ADE98;
+extern u16 D_800C2694;
+extern u16 D_800ADF54;
+extern u16 D_800ADF56;
+extern s16 D_800B21D6;
+extern void* D_800ADBF0;
+
+void FieldTextBoxInitializePrimitives(int index);
+void* GetStringEntry(void* arg0, s32 arg1);
+s32 FieldScriptVMGetVariableValue(s32 index);
+void func_8007F5AC(s32 index, s32 faceDirection);
+void func_80032F54(void* arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7);
+void func_800345E0(void* arg0);
+void func_80034614(void* arg0);
+void func_800346D4(void* arg0);
+void func_80034714(void* arg0, void* arg1);
+void func_80034888(void* arg0, void* arg1, s32 arg2);
+void func_80034874(void* arg0, u8 arg1);
+int func_8003487C(void* arg0);
+int func_80033CD0(void* arg0);
+void func_8007E1C0(void* arg0, s32 arg1, s32 arg2);
+
+static void FieldTextBoxLinkPrim(void* ot, void* prim) {
+    u32 old = *(u32*)ot;
+    u32 addr = (u32)(uintptr_t)prim & 0x00FFFFFF;
+
+    *(u32*)prim = (*(u32*)prim & 0xFF000000) | (old & 0x00FFFFFF);
+    *(u32*)ot = (old & 0xFF000000) | addr;
+}
+
+void FieldTextBoxInitialize(void) {
+    RECT rect;
+    s32 i;
+
+    for (i = 0; i < 0x10; i++) {
+        RECT* pRect = &D_800AFC80[i];
+        short tpage = GetTPage(0, 0, 0x380, 0x100);
+
+        pRect->x = 0;
+        pRect->y = 0;
+        pRect->w = 0xFF;
+        pRect->h = 0xFF;
+        SetDrawMode((DR_MODE*)(D_800B1DF4 + i * 0xC), 0, 0, tpage, pRect);
+        SetDrawMode((DR_MODE*)(D_800B1DF4 + 0xC0 + i * 0xC), 0, 0, tpage, pRect);
+    }
+
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0xFF;
+    rect.h = 0xFF;
+
+    for (i = 0; i < 4; i++) {
+        u8* pTextBox = (u8*)&g_FieldTextBoxes[i];
+        short tpage;
+
+        *(s16*)(pTextBox + 0x416) = 0xFF;
+        *(s16*)(pTextBox + 0x418) = 0xFF;
+        *(s16*)(pTextBox + 0x37C) = -1;
+        *(s16*)(pTextBox + 0x3C4) = -1;
+        *(s16*)(pTextBox + 0x40E) = -1;
+        *(s16*)(pTextBox + 0x414) = -1;
+        *(u16*)(pTextBox + 0x410) = 0xFFFF;
+        *(s16*)(pTextBox + 0x412) = 0;
+        FieldTextBoxInitializePrimitives(i);
+
+        D_800B068C[i] = -1;
+        tpage = GetTPage(0, 0, 0x300, 0x100);
+        SetDrawMode(&g_FieldTextBoxes[i].drawModes[0], 0, 0, tpage, &rect);
+        SetDrawMode(&g_FieldTextBoxes[i].drawModes[1], 0, 0, tpage, &rect);
+    }
+}
 
 // _pad[0x4A] is possibly a RECT?
 void func_8007E114(int index, int arg1, int arg2, int arg3, s32 arg4) {
@@ -22,12 +137,148 @@ void func_8007E114(int index, int arg1, int arg2, int arg3, s32 arg4) {
     g_FieldTextBoxes[index]._pad[0x4D] = arg4;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007E16C);
+void func_8007E16C(void* arg0, s32 x, s32 y, s32 w, s32 h, s32 flipX) {
+    u8* pPrim = arg0;
+    s32 x1;
+    s32 y1;
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007E1C0);
+    if (flipX == 0) {
+        x--;
+        x1 = x + w;
+        *(s16*)(pPrim + 0x08) = x;
+        *(s16*)(pPrim + 0x10) = x1;
+        *(s16*)(pPrim + 0x18) = x;
+        *(s16*)(pPrim + 0x20) = x1;
+    } else {
+        x1 = x + w;
+        *(s16*)(pPrim + 0x10) = x;
+        *(s16*)(pPrim + 0x08) = x1;
+        *(s16*)(pPrim + 0x20) = x;
+        *(s16*)(pPrim + 0x18) = x1;
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", FieldTextBoxInitializePrimitives);
-/*
+    y1 = y + h;
+    *(s16*)(pPrim + 0x0A) = y;
+    *(s16*)(pPrim + 0x12) = y;
+    *(s16*)(pPrim + 0x1A) = y1;
+    *(s16*)(pPrim + 0x22) = y1;
+}
+
+void func_8007E1C0(void* ot, s32 renderContextIndex, s32 textBoxIndex) {
+    u8* pTextBox = (u8*)&g_FieldTextBoxes[textBoxIndex];
+    s32 x;
+    s32 y;
+    s32 w;
+    s32 h;
+    s32 flags;
+    FieldTextBoxBackground* pBackground;
+    FieldTextBoxBorders* pBorders;
+    DR_MODE* borderDrawModes;
+    SPRT* borderSprites;
+    s32 i;
+
+    if (*(s16*)(pTextBox + 0x40E) != 0) {
+        return;
+    }
+
+    x = *(s16*)(pTextBox + 0xAC);
+    y = *(s16*)(pTextBox + 0xAE);
+    w = *(s16*)(pTextBox + 0xB0);
+    h = *(s16*)(pTextBox + 0xB2);
+
+    if (*(s16*)(pTextBox + 0x408) != 0) {
+        s32 openTimer = *(s16*)(pTextBox + 0x408);
+        s32 baseTimer = D_800B21D6;
+        s32 halfW;
+        s32 halfH;
+        s32 animW;
+        s32 animH;
+
+        animW = ((w << 16) / (baseTimer * 2)) * (baseTimer - openTimer);
+        animH = ((h << 16) / (baseTimer * 2)) * (baseTimer - openTimer);
+        halfW = (w + ((u32)w >> 31)) >> 1;
+        halfH = (h + ((u32)h >> 31)) >> 1;
+        w = (animW << 1) >> 16;
+        h = (animH << 1) >> 16;
+        x = x + halfW - (animW >> 16);
+        y = y + halfH - (animH >> 16);
+        if (w < 0x10) {
+            x -= (0x10 - w) / 2;
+            w = 0x10;
+        }
+        if (h < 0x10) {
+            y -= (0x10 - h) / 2;
+            h = 0x10;
+        }
+
+        *(s32*)(pTextBox + 0x41C) += *(s32*)(pTextBox + 0x424);
+        *(s32*)(pTextBox + 0x420) += *(s32*)(pTextBox + 0x428);
+        x += *(s16*)(pTextBox + 0x41E);
+        y += *(s32*)(pTextBox + 0x420) >> 16;
+    }
+
+    if (*(s16*)(pTextBox + 0x3C4) != 0 || *(u16*)(pTextBox + 0x410) != 0 ||
+        *(s16*)(pTextBox + 0x408) != 0 || (*(u16*)(pTextBox + 0x40C) & 0x40) ||
+        *(s16*)(pTextBox + 0x37C) == 0) {
+        *(s16*)(pTextBox + 0x40A) = 2;
+    } else if (*(s16*)(pTextBox + 0x40A) != 0) {
+        *(s16*)(pTextBox + 0x40A) -= 1;
+    }
+
+    pBorders = &g_FieldTextBoxes[textBoxIndex].borders;
+    if (renderContextIndex == 0) {
+        borderDrawModes = pBorders->drawModes1;
+        borderSprites = pBorders->sprites1;
+    } else {
+        borderDrawModes = pBorders->drawModes2;
+        borderSprites = pBorders->sprites2;
+    }
+
+    borderSprites[0].x0 = x - 8;
+    borderSprites[0].y0 = y - 7;
+    borderSprites[1].x0 = x + w - 8;
+    borderSprites[1].y0 = y + 9;
+    borderSprites[2].x0 = x + w - 8;
+    borderSprites[2].y0 = y - 7;
+    borderSprites[3].x0 = x - 8;
+    borderSprites[3].y0 = y + 9;
+    borderSprites[4].x0 = x - 8;
+    borderSprites[4].y0 = y + h - 9;
+    borderSprites[5].x0 = x + 8;
+    borderSprites[5].y0 = y - 7;
+    borderSprites[6].x0 = x + w - 8;
+    borderSprites[6].y0 = y + h - 9;
+    borderSprites[7].x0 = x + 8;
+    borderSprites[7].y0 = y + h - 9;
+
+    borderSprites[1].h = h - 0x12;
+    borderSprites[3].h = h - 0x12;
+    if ((s16)borderSprites[1].h < 0) {
+        borderSprites[1].h = 0;
+        borderSprites[3].h = 0;
+    }
+    borderSprites[5].w = w - 0x10;
+    borderSprites[7].w = w - 0x10;
+
+    flags = *(u16*)(pTextBox + 0x40C);
+    if (!(flags & 0x40)) {
+        for (i = 0; i < 8; i++) {
+            FieldTextBoxLinkPrim(ot, &borderSprites[i]);
+            FieldTextBoxLinkPrim(ot, &borderDrawModes[i]);
+        }
+    }
+
+    pBackground = &g_FieldTextBoxes[textBoxIndex].background;
+    pBackground->tiles[renderContextIndex].x0 = x;
+    pBackground->tiles[renderContextIndex].y0 = y + 1;
+    pBackground->tiles[renderContextIndex].w = w;
+    pBackground->tiles[renderContextIndex].h = h - 2;
+    if (!(flags & 0x40)) {
+        FieldTextBoxLinkPrim(ot, &pBackground->tiles[renderContextIndex]);
+        FieldTextBoxLinkPrim(ot, &pBackground->drawModes[renderContextIndex]);
+    }
+}
+
 extern u8 D_800594D4;
 extern u8 D_800594D5;
 extern u8 D_800594D6;
@@ -78,7 +329,7 @@ void FieldTextBoxInitializePrimitives(int index) {
     SetSprt(&pArrow->sprites[0]);
     pArrowSprite = &pArrow->sprites[0];
     setRGB0(pArrowSprite, 0x80, 0x80, 0x80);
-    setWH0(pArrowSprite, 0xC, 0x8);
+    setWH(pArrowSprite, 0xC, 0x8);
     pArrowSprite->clut = GetClut(0x100, 0xF6);
     pArrowSprite2 = &pArrow->sprites[1];
     setUV0(pArrowSprite, 0x80, 0xC0);
@@ -97,7 +348,7 @@ void FieldTextBoxInitializePrimitives(int index) {
     setRGB0(&pCursor->sprites[0], 0x80, 0x80, 0x80);
     pCursor->sprites[0].clut = GetClut(0x100, 0xF6);
     pCursorSprite2 = &pCursor->sprites[1];
-    setWH0(&pCursor->sprites[0], 0x8, 0xC);
+    setWH(&pCursor->sprites[0], 0x8, 0xC);
     setUV0(&pCursor->sprites[0], 0x80, 0xC0);
     setXY0(&pCursor->sprites[0], 0x0, 0x0);
     *pCursorSprite2 = pCursor->sprites[0];
@@ -122,7 +373,7 @@ void FieldTextBoxInitializePrimitives(int index) {
         pBorderSprite1->clut = GetClut(0x100, 0xF4);
         SetSemiTrans(pBorderSprite1, 1);
         setUV0(pBorderSprite1, 0x80, 0xC0);
-        setWH0(pBorderSprite1, *pWidth, *pHeight);
+        setWH(pBorderSprite1, *pWidth, *pHeight);
         setXY0(pBorderSprite1, 0x0, 0x0);
         pBorderSprite2 =  &pBorders->sprites2[i];
         *pBorderSprite2 = *pBorderSprite1;
@@ -144,16 +395,167 @@ void FieldTextBoxInitializePrimitives(int index) {
     pPoly->tpage = GetTPage(1, 0, 0x2C0, 0x100);
     *pPoly2 = *pPoly;
 }
-*/
 
 INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F5AC);
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F6F8);
+void func_8007F6F8(s16 index) {
+    u8* pTextBox;
+    u32 mask;
+
+    if (g_FieldTextBoxes[index].visibility != 0) {
+        return;
+    }
+
+    pTextBox = (u8*)&g_FieldTextBoxes[index];
+    func_80034614(pTextBox + 0x18);
+    func_800345E0(pTextBox + 0x18);
+    func_800346D4(pTextBox + 0x18);
+
+    g_FieldTextBoxes[index].cursor.visibility = -1;
+    g_FieldTextBoxes[index].visibility = -1;
+    g_FieldTextBoxes[index].status = -1;
+    g_FieldTextBoxes[index].order = 0xFFFF;
+    D_800B068C[index] = -1;
+    mask = 1 << index;
+    D_800B2174[0] &= (u16)(mask ^ 0xFF);
+    g_FieldTextBoxes[index].ownerActorID = 0xFF;
+    g_FieldTextBoxes[index].unk412 = 0;
+}
 
 // Project (0, Y, 0) from actor's model/local space to screen
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F814);
+void func_8007F814(s32 actorIndex, s32* screenX, s32* screenY, s32 yOffset) {
+    MATRIX matrix;
+    SVECTOR localPos;
+    long screenXY;
+    long depth;
+    long flag;
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F8DC);
+    CompMatrix(&g_Scene.worldToScreenMatrix, &g_FieldActors[actorIndex].transformMatrix, &matrix);
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+
+    localPos.vx = 0;
+    localPos.vy = yOffset;
+    localPos.vz = 0;
+    RotTransPers(&localPos, &screenXY, &depth, &flag);
+
+    *screenX = (s16)screenXY;
+    *screenY = (s16)(screenXY >> 16);
+}
+
+s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s32 height,
+                  s32 ownerActorIndex, s32 talkingActorIndex, s32 mode, s32 orientationFlags,
+                  s32 dialogFlags) {
+    u8* pTextBox;
+    ActorData* pTalkingActor;
+    s32 flags;
+    s32 slot;
+    s32 i;
+    s32 targetX;
+    s32 targetY;
+    s32 boxPixelWidth;
+    s32 boxPixelHeight;
+    s32 boxOffset;
+    s32 openTimer;
+    s32 portraitFlags;
+    u16* tpageCoords;
+
+    pTalkingActor = (ActorData*)(uintptr_t)g_FieldActors[talkingActorIndex].pActorData;
+    flags = pTalkingActor->dialogFlags >> 16;
+    if (flags == 0) {
+        flags = pTalkingActor->dialogFlags & 0xFFFF;
+    }
+    flags |= orientationFlags;
+
+    slot = D_800ADE90 & 3;
+    for (i = 0; i < 4; i++) {
+        slot = D_800ADE90 & 3;
+        D_800ADE90++;
+        if (D_800B068C[slot] == -1) {
+            D_800B068C[slot] = 0;
+            break;
+        }
+    }
+
+    pTextBox = (u8*)&g_FieldTextBoxes[textBoxIndex];
+    *(s32*)(pTextBox + 0x88) = FieldScriptVMGetVariableValue(0x16);
+    *(s32*)(pTextBox + 0x8C) = FieldScriptVMGetVariableValue(0x18);
+    *(s32*)(pTextBox + 0x90) = FieldScriptVMGetVariableValue(0x1A);
+    *(s32*)(pTextBox + 0x94) = FieldScriptVMGetVariableValue(0x1C);
+    *(s16*)(pTextBox + 0x98) = *(s32*)(pTextBox + 0x94);
+
+    if (mode == 2) {
+        targetX = 0xA0;
+        targetY = y + 0x20;
+    } else if (mode == 3) {
+        targetX = x + 8 + width * 2;
+        targetY = y + 8 + height * 7;
+    } else {
+        func_8007F814(talkingActorIndex, &targetX, &targetY, -0x40);
+    }
+
+    if (pTalkingActor->faceId != 0xFF) {
+        if ((flags & 0x402) == 0) {
+            func_8007F5AC(textBoxIndex, ((pTalkingActor->direction << 1) & 0xE) | 1);
+        } else {
+            func_8007F5AC(textBoxIndex, (pTalkingActor->direction << 1) & 0xE);
+        }
+        g_FieldTextBoxes[textBoxIndex].portrait.shouldRenderPortrait = 1;
+        g_FieldTextBoxes[textBoxIndex].portrait.portraitID = pTalkingActor->faceId;
+    } else {
+        g_FieldTextBoxes[textBoxIndex].portrait.shouldRenderPortrait = 0;
+        g_FieldTextBoxes[textBoxIndex].portrait.portraitID = 0x80;
+    }
+
+    boxPixelWidth = width * 4 + 0x10;
+    boxPixelHeight = height * 14 + 0x10;
+    g_FieldTextBoxes[textBoxIndex].cursor.visibility = -1;
+    func_8007E114(textBoxIndex, x, y, boxPixelWidth, boxPixelHeight);
+
+    portraitFlags = 0;
+    if (pTalkingActor->faceId != 0xFF && (flags & 0x402) == 0) {
+        portraitFlags = 0x44;
+    }
+
+    tpageCoords = &D_800ADF54 + slot * 2;
+    func_80032F54(pTextBox + 0x18, tpageCoords[0], tpageCoords[1], x + portraitFlags + 8, y + 8,
+                  width * 2 + 8, mode, height);
+
+    if (flags & 0x400) {
+        g_FieldTextBoxes[textBoxIndex].flags |= 0x20;
+    }
+
+    g_FieldTextBoxes[textBoxIndex]._pad[0x68] = (D_800B21D6 == 8) ? 1 : 2;
+    *(void**)(pTextBox + 0xA8) = GetStringEntry(D_800ADBF0, stringIndex);
+    g_FieldTextBoxes[textBoxIndex].visibility = 0;
+    *(u16*)(pTextBox + 0x28) |= 2;
+    g_FieldTextBoxes[textBoxIndex].ownerActorID = ownerActorIndex;
+    g_FieldTextBoxes[textBoxIndex].talkingActorID = talkingActorIndex;
+    g_FieldTextBoxes[textBoxIndex].windowOpenTimer = D_800B21D6;
+    g_FieldTextBoxes[textBoxIndex].unk412 = (dialogFlags & 0x800) ? 1 : 0;
+
+    boxOffset = width * 2 + 8;
+    boxPixelHeight = height * 7 + 8;
+    g_FieldTextBoxes[textBoxIndex].positionOffsetX = (targetX - boxOffset - x) << 16;
+    g_FieldTextBoxes[textBoxIndex].positionOffsetY = (targetY - boxPixelHeight - y) << 16;
+
+    if (dialogFlags & 0x100) {
+        g_FieldTextBoxes[textBoxIndex].windowOpenTimer = 1;
+        g_FieldTextBoxes[textBoxIndex].positionOffsetDeltaX = -g_FieldTextBoxes[textBoxIndex].positionOffsetX;
+        g_FieldTextBoxes[textBoxIndex].positionOffsetDeltaY = -g_FieldTextBoxes[textBoxIndex].positionOffsetY;
+    } else {
+        openTimer = D_800B21D6;
+        g_FieldTextBoxes[textBoxIndex].positionOffsetDeltaX = -g_FieldTextBoxes[textBoxIndex].positionOffsetX / openTimer;
+        g_FieldTextBoxes[textBoxIndex].positionOffsetDeltaY = -g_FieldTextBoxes[textBoxIndex].positionOffsetY / openTimer;
+    }
+
+    if ((pTalkingActor->flags & 0x200) && !(flags & 1)) {
+        g_FieldTextBoxes[textBoxIndex].status = 0;
+        return -1;
+    }
+
+    return 0;
+}
 
 void func_8007FFE8(void) {
     int i;
@@ -165,7 +567,81 @@ void func_8007FFE8(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8008004C);
+void func_8008004C(void* ot, s32 renderContextIndex) {
+    s32 skipIndex;
+    s32 orders[4];
+    s32 order;
+    s32 i;
+
+    D_800ADE98++;
+    if ((D_800ADE98 & 3) == 0) {
+        D_800ADE94++;
+    }
+    if (D_800ADE94 >= 5) {
+        D_800ADE94 = 0;
+    }
+
+    skipIndex = 0xFF;
+    for (i = 0; i < 4; i++) {
+        if (*(s16*)((u8*)&g_FieldTextBoxes[i] + 0x412) != 0) {
+            skipIndex = i;
+        }
+    }
+
+    for (i = 0; i < 4; i++) {
+        orders[i] = 0xFFFF;
+    }
+
+    for (order = 0; order < 4; order++) {
+        for (i = 0; i < 4; i++) {
+            u8* pTextBox = (u8*)&g_FieldTextBoxes[i];
+            u8* pWindow = pTextBox + 0x18;
+
+            if (*(u16*)(pTextBox + 0x410) != order) {
+                continue;
+            }
+
+            orders[i] = order;
+            if (*(s16*)(pTextBox + 0x40E) != 0 || i == skipIndex) {
+                continue;
+            }
+
+            *(s16*)(pTextBox + 0x3C4) = -1;
+            if (*(s16*)(pTextBox + 0x408) == 0) {
+                if ((D_800C2694 & 0x20) != 0 && order == 0) {
+                    s32 actorIndex = *(s16*)(pTextBox + 0x416);
+                    ActorData* pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
+
+                    *(s16*)(pTextBox + 0x37C) = -1;
+                    pActor->unk81 = *(u8*)(pTextBox + 0x382) + *(u8*)(pTextBox + 0x37E);
+                    func_800345E0(pWindow);
+                }
+
+                if (*(s16*)(pWindow + 0x82) == 0) {
+                    func_80034714(pWindow, *(void**)(pTextBox + 0xA8));
+                }
+
+                func_80034888(pWindow, ot, renderContextIndex);
+                if (func_80033CD0(pWindow) != 0) {
+                    if (*(s16*)(pTextBox + 0x37C) == 0) {
+                        continue;
+                    }
+                    *(s16*)(pTextBox + 0x3C4) = 0;
+                }
+            }
+
+            FieldTextBoxLinkPrim(ot, (u8*)pTextBox + renderContextIndex * sizeof(DR_MODE));
+            func_8007E1C0(ot, renderContextIndex, i);
+            func_8007DCF8(i, ot, renderContextIndex);
+        }
+    }
+
+    for (i = 0; i < 4; i++) {
+        g_FieldTextBoxes[i].order = orders[i];
+    }
+
+    FieldTextBoxLinkPrim(ot, D_800B1DF4 + g_FieldCurRenderContextIndex * 0xC0);
+}
 
 void func_800805F4(void) {
     int i;

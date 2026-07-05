@@ -5,6 +5,15 @@
 #include "system/math.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
+#ifdef XENO_PC_PORT
+#include <assert.h>
+#else
+/* <assert.h> is unavailable under the matching build's -nostdinc MIPS
+ * preprocessor. The assert(...) calls below mark unimplemented/invariant
+ * checks in functions not yet byte-matched, so a no-op assert compiles
+ * safely there. */
+#define assert(x) ((void)0)
+#endif
 
 void FieldMatrixResetTranslation(MATRIX *matrix) {
     matrix->t[2] = 0;
@@ -53,7 +62,39 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007234C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072398);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800723E4);
+void func_800723E4(void* arg0, void* arg1, void* arg2) {
+    VECTOR delta;
+    VECTOR normal0;
+    VECTOR normal1;
+    s32 denom;
+    s32 scale;
+
+    delta.vx = *(s16*)((u8*)arg0 + 0x04) - *(s16*)((u8*)arg0 + 0x00);
+    delta.vy = 0;
+    delta.vz = *(s16*)((u8*)arg0 + 0x06) - *(s16*)((u8*)arg0 + 0x02);
+    VectorNormal(&delta, &normal0);
+
+    delta.vx = *(s16*)((u8*)arg1 + 0x04) - *(s16*)((u8*)arg1 + 0x00);
+    delta.vy = 0;
+    delta.vz = *(s16*)((u8*)arg1 + 0x06) - *(s16*)((u8*)arg1 + 0x02);
+    VectorNormal(&delta, &normal1);
+
+    denom = ((normal1.vx * normal0.vz) - (normal1.vz * normal0.vx)) >> 12;
+    if (denom == 0) {
+        scale = 0;
+    } else {
+        s32 num = ((*(s16*)((u8*)arg1 + 0x02) - *(s16*)((u8*)arg0 + 0x02)) *
+                   normal0.vx) -
+                  ((*(s16*)((u8*)arg1 + 0x00) - *(s16*)((u8*)arg0 + 0x00)) *
+                   normal0.vz);
+        scale = num / denom;
+    }
+
+    *(s16*)((u8*)arg2 + 0x00) =
+        *(u16*)((u8*)arg1 + 0x00) + ((scale * normal1.vx) >> 12);
+    *(s16*)((u8*)arg2 + 0x02) =
+        *(u16*)((u8*)arg1 + 0x02) + ((scale * normal1.vz) >> 12);
+}
 
 /* ---- func_8007254C: camera/scene default initialization ---------------------
  * Called from FieldLoad. Zeros camera vectors, sets default scene angles,
@@ -162,8 +203,9 @@ void func_800726E8(void) {
         s32 modeIdx = scene56 >> 9;
         if (D_800ADC1C[modeIdx] & scene65) {
             s32 r1 = func_8007234C();
+            s32 r2;
             scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-            s32 r2 = func_80072398(scene65, scene56 >> 9);
+            r2 = func_80072398(scene65, scene56 >> 9);
             if (r2 < r1) {
                 *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
                 *(s32*)((u8*)&g_Scene + 0x7C) = *(s32*)((u8*)&g_Scene + 0x7C);
@@ -176,9 +218,10 @@ tail:
     /* Z-scroll transition countdown */
     if (*(s16*)((u8*)&g_Scene + 0x66) != 0) {
         s32 new60 = *(s32*)((u8*)&g_Scene + 0x60) + *(s32*)((u8*)&g_Scene + 0x5C);
+        s16 v;
         *(s32*)((u8*)&g_Scene + 0x60) = new60;
         *(u16*)((u8*)&g_Scene + 0x56) = (u16)(new60 >> 16);
-        s16 v = *(u16*)((u8*)&g_Scene + 0x66) - 1;
+        v = *(u16*)((u8*)&g_Scene + 0x66) - 1;
         *(u16*)((u8*)&g_Scene + 0x66) = v;
         if (v == 0) goto set56;
     } else {
@@ -202,15 +245,15 @@ tail:
  * for eye/at adjustment. Handles g_Scene+0x48 camera transition flags. */
 extern s32 D_800ADBA8;
 extern u8 D_800B21CD;
-extern s32 func_8007CD80(VECTOR* a0, VECTOR* a1, VECTOR* a2);
-extern s32 func_800723E4(VECTOR* a0, VECTOR* a1, VECTOR* a2);
+extern s32 func_8007CD80(void* a0, void* a1, void* a2);
 extern s32 rsin(s32 angle);
 extern s32 rcos(s32 angle);
 extern void func_80073684(VECTOR* pEye, VECTOR* pAt);
 
 void func_80072A38(VECTOR* pCamInput, s32 flag) {
     VECTOR vecArg;
-    VECTOR stackVec;
+    u8 cd80Segment[0x10];
+    SVECTOR cd80Clipped;
     s32 result;
     s32 sinVal, cosVal;
     s32 sceneAngle, sceneScrZ, scene6E;
@@ -220,24 +263,21 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
     vecArg.vy = 0;
     vecArg.vz = pCamInput->vz;
 
-    result = func_8007CD80(&vecArg, &stackVec, &stackVec);
+    result = func_8007CD80(&vecArg, cd80Segment, &cd80Clipped);
 
     if (result == -1) {
         /* Camera target not found — compute via func_800723E4 */
-        VECTOR outVec;
-        s16 h0 = *(s16*)((u8*)&stackVec + 0x00);
-        s16 h2 = *(s16*)((u8*)&stackVec + 0x04);
-        s16 h4 = *(s16*)((u8*)&stackVec + 0x08);
-        s16 h6 = *(s16*)((u8*)&stackVec + 0x0C);
+        SVECTOR segmentEnds;
+        SVECTOR intersection;
 
-        *(s16*)((u8*)&outVec + 0x00) = h0;
-        *(s16*)((u8*)&outVec + 0x02) = h2;
-        *(s16*)((u8*)&outVec + 0x04) = h4;
-        *(s16*)((u8*)&outVec + 0x06) = h6;
-        func_800723E4(&outVec, &stackVec, &stackVec);
+        segmentEnds.vx = *(s16*)(cd80Segment + 0x00);
+        segmentEnds.vy = *(s16*)(cd80Segment + 0x04);
+        segmentEnds.vz = *(s16*)(cd80Segment + 0x08);
+        segmentEnds.pad = *(s16*)(cd80Segment + 0x0C);
+        func_800723E4(&segmentEnds, &cd80Clipped, &intersection);
 
-        g_CameraAt2.vx = (s32)*(s16*)((u8*)&outVec + 0x00) << 16;
-        g_CameraAt2.vz = (s32)*(s16*)((u8*)&outVec + 0x02) << 16;
+        g_CameraAt2.vx = (s32)intersection.vx << 16;
+        g_CameraAt2.vz = (s32)intersection.vy << 16;
 
         if (!D_800B21CD) {
             if (!D_800ADBA8) {
@@ -272,10 +312,13 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
 
     {
         s32 sinResult = (s32)(sinVal * sceneScrZ) << 5;
+        s32 cosMult;
+        s32 angleCalc;
+        s32 sinArg;
         sinResult = -sinResult >> 16;
-        s32 cosMult = (s32)(sinResult * scene6E);
-        s32 angleCalc = sceneAngle;
-        s32 sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
+        cosMult = (s32)(sinResult * scene6E);
+        angleCalc = sceneAngle;
+        sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
         sinArg = sinArg >> 3;
         cosMult = (s32)cosMult << 4;
         g_CameraEye2.vy = cosMult + g_CameraAt2.vy;
@@ -291,8 +334,9 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
 
     {
         s32 cosResult = (s32)(cosVal * sceneScrZ) << 5;
+        s32 cosMult;
         cosResult = cosResult >> 16;
-        s32 cosMult = (s32)(cosResult * scene6E);
+        cosMult = (s32)(cosResult * scene6E);
         cosMult = (s32)cosMult << 4;
         g_CameraEye2.vz = cosMult + g_CameraAt2.vz;
     }
@@ -305,6 +349,7 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
         s32 scene48 = *(s32*)((u8*)&g_Scene + 0x48);
         if (scene48 & 0x1) {
             s16 scene8C = *(s16*)((u8*)&g_Scene + 0x8C);
+            s16 new8C;
             if (scene8C != 0) {
                 s32 scene90 = *(s32*)((u8*)&g_Scene + 0x90);
                 s32 scene94 = *(s32*)((u8*)&g_Scene + 0x94);
@@ -312,7 +357,7 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
                 *(s32*)((u8*)&g_Scene + 0x90) = newVal;
                 *(s16*)((u8*)&g_Scene + 0x6E) = (s16)(newVal >> 16);
             }
-            s16 new8C = scene8C - 1;
+            new8C = scene8C - 1;
             *(s16*)((u8*)&g_Scene + 0x8C) = new8C;
             if (new8C == 0) {
                 *(s32*)((u8*)&g_Scene + 0x48) = scene48 & 0xFFFE;
@@ -325,9 +370,10 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
             s32 scene74 = *(s32*)((u8*)&g_Scene + 0x74);
             s32 scene78 = *(s32*)((u8*)&g_Scene + 0x78);
             s32 newVal = scene74 + scene78;
+            s16 scene70;
             *(s32*)((u8*)&g_Scene + 0x74) = newVal;
             *(s16*)((u8*)&g_Scene + 0x6C) = (s16)(newVal >> 16);
-            s16 scene70 = *(s16*)((u8*)&g_Scene + 0x70);
+            scene70 = *(s16*)((u8*)&g_Scene + 0x70);
             scene70--;
             *(s16*)((u8*)&g_Scene + 0x70) = scene70;
             if (scene70 == 0) {
@@ -348,9 +394,11 @@ extern s32 D_800AF8E0, D_800AF8E4, D_800AF8E8;
  * If difference is small enough (diff^2 < threshold), snap. Otherwise step. */
 static inline void cam_lerp(s32* pCur, s32 target, s32 step, s32 threshold) {
     s32 cur = *pCur;
+    s32 diff;
+    s32 diff16;
     if ((cur >> 16) == (target >> 16)) return;
-    s32 diff = target - cur;
-    s32 diff16 = diff >> 16;
+    diff = target - cur;
+    diff16 = diff >> 16;
     if (diff16 * diff16 < threshold) return;
     *pCur = cur + diff / step;
 }
@@ -362,12 +410,13 @@ void func_80072D74(void) {
     /* Screen-Z transition (bit 4) */
     if (scene48 & 0x10) {
         s16 z8C = *(s16*)((u8*)&g_Scene + 0x88);
+        s16 newZ8C;
         if (z8C != 0) {
             s32 val = *(s32*)((u8*)&g_Scene + 0x84) + *(s32*)((u8*)&g_Scene + 0x88);
             *(s32*)((u8*)&g_Scene + 0x84) = val;
             *(s32*)((u8*)&g_Scene + 0x68) = val >> 16;
         }
-        s16 newZ8C = z8C - 1;
+        newZ8C = z8C - 1;
         *(s16*)((u8*)&g_Scene + 0x88) = newZ8C;
         if (newZ8C < 0) {
             *(s32*)((u8*)&g_Scene + 0x48) = scene48 & 0xFFEF;
@@ -693,9 +742,10 @@ extern s32 D_800ADBFC;
 extern u8 D_8006FB04;
 extern void func_8008110C(void);
 extern void FieldMatrixCreateWorldToScreen(void);
-extern s32 ratan2(s32 y, s32 x);
+/* ratan2 prototype comes from psyq/libgte.h (already included above); a local
+ * extern here conflicted with it (s32/int vs the real long params). */
 extern void func_800223B0(s32 actorIdx, s32 angle);
-extern void func_80021FE0(s32 actorIdx, s32 angle);
+extern void func_80021FE0(void* pSpriteData, s16 angle);
 
 void func_800739C0(void) {
     s32 yawCur, yawTarget;
@@ -825,7 +875,53 @@ void func_800739C0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073E38);
+extern s16 D_800B218E;
+extern void func_800AA9DC(void* pModelData);
+
+void func_80073E38(void) {
+    s32 i;
+    u8* pActor;
+
+    for (i = 0; i < g_FieldNumActors; i++) {
+        pActor = (u8*)g_FieldActors + i * 0x5C;
+
+        if (!(*(u16*)(pActor + 0x58) & 0x40)) {
+            u8* pModelData = (u8*)(uintptr_t)*(u32*)(pActor + 0x00);
+            u16 status;
+
+            func_800AA9DC(pModelData);
+
+            status = *(u16*)(pActor + 0x58);
+            if (D_800B218E != 0) {
+                *(s16*)(pModelData + 0x12) = (status & 0x10) ? 5 : 4;
+            } else if (status & 0x0C) {
+                *(s16*)(pModelData + 0x12) = 1;
+            } else if (status & 0x4000) {
+                *(s16*)(pModelData + 0x12) = 3;
+            } else if (status & 0x10) {
+                *(s16*)(pModelData + 0x12) = 2;
+            } else {
+                *(s16*)(pModelData + 0x12) = 0;
+            }
+        }
+    }
+}
+
+#ifdef XENO_PC_PORT
+static void FieldClearOTagR4(void* ot, s32 count) {
+    u32* tags = ot;
+    s32 i;
+
+    if (count == 0) {
+        return;
+    }
+
+    tags[0] = 0x00FFFFFF;
+    for (i = 1; i < count; i++) {
+        tags[i] = (u32)(uintptr_t)&tags[i - 1] & 0x00FFFFFF;
+    }
+}
+#endif
 
 void FieldClearAndSwapOTagInternal(void) {
     if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
@@ -837,15 +933,27 @@ void FieldClearAndSwapOTagInternal(void) {
 
     g_FieldCurRenderContextIndex = (g_FieldCurRenderContextIndex + 1) % 2;
     g_FieldCurRenderContext = &g_FieldRenderContexts[g_FieldCurRenderContextIndex];
+#ifdef XENO_PC_PORT
+    FieldClearOTagR4((u8*)g_FieldCurRenderContext + 0x80D4, 0x8);
     ClearOTagR(g_FieldCurRenderContext->ot3, 0x8);
+#else
+    ClearOTagR(g_FieldCurRenderContext->ot3, 0x8);
+#endif
 }
 
 void FieldClearAndSwapOTag(void) {
     FieldClearAndSwapOTagInternal();
-    ClearOTagR(g_FieldCurRenderContext->ot1, 0x1000);
+#ifdef XENO_PC_PORT
+    FieldClearOTagR4((u8*)g_FieldCurRenderContext + 0xCC, 0x1000);
     if (g_FieldRenderContextUseOT2) {
-        ClearOTagR(g_FieldCurRenderContext->ot2, 0x1000);
+        FieldClearOTagR4((u8*)g_FieldCurRenderContext + 0x40D0, 0x1000);
     }
+#else
+    ClearOTagR((u_long*)((u8*)g_FieldCurRenderContext + 0xCC), 0x1000);
+    if (g_FieldRenderContextUseOT2) {
+        ClearOTagR((u_long*)((u8*)g_FieldCurRenderContext + 0x40D0), 0x1000);
+    }
+#endif
 }
 
 void FieldMatrixCopy(MATRIX* dest, MATRIX* source) {
@@ -893,6 +1001,9 @@ extern u8 D_800B0FEC[];
 extern u8 D_800B1E00[];
 extern CameraInterpolation g_CamInterpolation;
 extern void func_80070594(MATRIX* dest);
+/* Square0 prototype comes from psyq/libgte.h (already included above); a local
+ * extern here conflicted with it (void vs the real VECTOR* return) and was
+ * unused (Square0 is never called in this file). */
 extern s32 FieldGetVec2Magnitude(s32 dx, s32 dy);
 extern void func_8007AC58(u_long* ot, void* pQuad, MATRIX* pMat, s32 renderCtx);
 extern void SetTransMatrix(MATRIX* m);
@@ -961,8 +1072,10 @@ void func_80074108(void) {
         s32 dx = (g_CameraEye.vx - g_CameraAt.vx) >> 16;
         s32 dy = (g_CameraEye.vz - g_CameraAt.vz) >> 16;
         s32 mag = FieldGetVec2Magnitude(dx, dy);
-        VECTOR eye; eye.vx = 0; eye.vy = g_CameraEye.vy - g_CameraAt.vy; eye.vz = (-mag) << 16;
-        VECTOR at;  at.vx = 0;  at.vy = 0;                         at.vz = 0;
+        VECTOR eye;
+        VECTOR at;
+        eye.vx = 0; eye.vy = g_CameraEye.vy - g_CameraAt.vy; eye.vz = (-mag) << 16;
+        at.vx = 0;  at.vy = 0;                         at.vz = 0;
         FieldMatrixLookAt(&matView, &eye, &at, (VECTOR*)((u8*)&g_CameraEye + 0x20));
     }
 
@@ -991,12 +1104,12 @@ void func_80074108(void) {
     unused6C = 0x1000;
     CompMatrix(&matWork, &matTemp, &matComposite);
 
-    /* ---- First quad loop: D_800B0F7C, 0x14 iterations ---- */
+    /* ---- First quad loop: asm runs entry 0x14 only (D_800B0F7C) ---- */
     if (!D_800B21D1 && D_800ADC18 == 0 && D_8004F378 == 0) {
         pQuadData = D_800B0F7C;
         pRenderCtx = (u8*)g_FieldCurRenderContext;
         renderCtxIdx = g_FieldCurRenderContextIndex;
-        for (i = 0; i < 0x14; i++) {
+        for (i = 0; i < 1; i++) {
             FieldRenderQuad((u_long*)(pRenderCtx + 0x80D4),
                            pQuadData, &matComposite, renderCtxIdx);
             pQuadData += 0x70;
@@ -1030,15 +1143,16 @@ void func_80074108(void) {
             pRenderCtx = (u8*)g_FieldCurRenderContext;
             renderCtxIdx = g_FieldCurRenderContextIndex;
 
-            /* Trigger-zone loop: 0x10 iterations */
-            for (i = 0; i < 0x10; i++) {
+            /* Trigger-zone loop: asm starts at D_800B06BC + 0x700 and runs
+             * entries 0x10..0x13, the D_800B0DBC extra-quad area. */
+            for (i = 0; i < 4; i++) {
                 func_80070594(&matTemp);
                 unused64 = *(s16*)(pTrigger + 0x40 + i * 4);
                 unused6C = *(s16*)(pTrigger + 0x42 + i * 4);
                 CompMatrix(&matWork, &matTemp, &matComposite);
                 FieldMatrixCopyTransform(&matComposite, &matRot);
                 func_8007AC58((u_long*)(pRenderCtx + 0x80D4),
-                             D_800B06BC + i * 0x70, &matComposite, renderCtxIdx);
+                             D_800B06BC + 0x700 + i * 0x70, &matComposite, renderCtxIdx);
             }
 
             /* Third quad loop: D_800B06BC, 0x10 iterations */
@@ -1078,24 +1192,370 @@ void func_80074108(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007469C);
+s32 func_8007469C(void) {
+    s32 i;
+    u8* pActor;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", FieldPollControllers);
+    if (g_FieldNumActors <= 0) {
+        return 0;
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800748E8);
+    pActor = (u8*)g_FieldActors;
+    for (i = 0; i < g_FieldNumActors; i++, pActor += 0x5C) {
+        u16 status = *(u16*)(pActor + 0x58);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007520C);
+        if (!(status & 0x40) && (status & 0x8000)) {
+            return 1;
+        }
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800752C8);
-
-void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
-    /* XENO_PC_PORT: skip if primitive chain is empty (all draw funcs stubbed).
-     * Check raw lower 32 bits of first entry: addr:24|len:8 = 0 means empty. */
-    if (*(u32*)pPrimList == 0) return;
-    AddPrims(ot, pPrimList + size, pPrimList);
+    return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075484);
+extern u16 D_800AFE9C;
+extern u16 D_800AFEA0;
+extern u16 D_800C2694;
+extern u16 D_800C38F8;
+extern u16 D_800C3900;
+extern u16 D_800C3908;
+extern u16 D_800ADB00;
+extern s32 D_800ADBDC;
+extern u16 g_C1ButtonState;
+extern u16 g_C2ButtonState;
+extern u16 g_C1ButtonStateReleased;
+extern u16 g_C2ButtonStateReleased;
+extern u16 g_C1ButtonStatePressedOnce;
+extern u16 g_C2ButtonStatePressedOnce;
+extern s32 ControllerPopState(void);
+extern void ControllerResetState(void);
+extern u8 D_80065848;
+extern void func_8007AE78(s32 arg0, void* arg1);
+
+void FieldPollControllers(void) {
+    D_800AFE9C = 0;
+    D_800AFEA0 = 0;
+    D_800C2694 = 0;
+    D_800C38F8 = 0;
+    D_800C3900 = 0;
+    D_800C3908 = 0;
+
+    while (ControllerPopState() != 0) {
+        u16 mask = g_FieldControl.controllerBtnMask;
+
+        D_800AFE9C |= g_C1ButtonState & mask;
+        D_800AFEA0 |= g_C2ButtonState;
+        D_800C2694 |= g_C1ButtonStateReleased & mask;
+        D_800C38F8 |= g_C2ButtonStateReleased;
+        D_800C3900 |= g_C1ButtonStatePressedOnce & mask;
+        D_800C3908 |= g_C2ButtonStatePressedOnce;
+    }
+
+    D_800AFE9C &= D_800ADB00;
+    D_800C3900 &= D_800ADB00;
+    D_800C2694 &= D_800ADB00;
+
+    ControllerResetState();
+    func_8007AE78(1, &D_80065848);
+
+    if (D_800ADC18 != 0) {
+        D_800AFE9C = 0;
+        D_800AFEA0 = 0;
+        D_800C2694 = 0;
+        D_800C38F8 = 0;
+        D_800C3900 = 0;
+        D_800C3908 = 0;
+    }
+
+    if (D_800ADBDC == 0) {
+        D_800C2694 &= 0xFF7F;
+    }
+}
+
+extern s32 D_80059578;
+extern s32 D_800595C0;
+extern s32 D_80050104;
+extern s16 D_800B21AE;
+extern s16 D_800B21B0;
+extern s16 D_800B21B2;
+extern s32 D_800B21BC;
+extern s32 D_800B21C0;
+extern s32 D_800B21C4;
+extern u8 D_800B2190;
+extern u8 D_800B2191;
+extern u8 D_800B2192;
+extern u8 D_800B2194;
+extern u8 D_800B2195;
+extern u8 D_800B2196;
+extern s16 D_800B2198;
+extern s16 D_800B219A;
+extern void func_8002C6E0(u8 a0, u8 a1, u8 a2);
+extern void func_80048AB0(s32 a0, s32 a1, s32 a2);
+extern s32 func_800AAA74(void* modelData);
+extern s32 func_8002C700(void* a0, void* a1, void* a2, s32 a3);
+
+void func_800748E8(void) {
+    VECTOR scale;
+    MATRIX work;
+    s32 actorIndex;
+
+    D_80059578 = 0;
+    D_800595C0 = 0;
+
+    if (D_800B218E != 0) {
+        func_8002C6E0(D_800B2190, D_800B2191, D_800B2192);
+        SetFarColor(D_800B2194, D_800B2195, D_800B2196);
+        func_80048AB0(D_800B2198, D_800B219A, *(s32*)((u8*)&g_Scene + 0x68));
+    }
+
+    scale.vx = g_WorldScale;
+    scale.vy = g_WorldScale;
+    scale.vz = g_WorldScale;
+    ScaleMatrix((MATRIX*)((u8*)&g_Scene + 0xF4), &scale);
+    CompMatrix(&g_Scene.worldToScreenMatrix, &D_800AFC30, &work);
+
+    D_80050104 = 0;
+    D_800B21C0 += D_800B21B2;
+    D_800B21BC += D_800B21AE;
+    D_800B21C4 += D_800B21B0;
+
+    for (actorIndex = 0; actorIndex < g_FieldNumActors; actorIndex++) {
+        u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
+        u32 status;
+
+        *(u32*)(actor + 0x2C) = *(u32*)(actor + 0x0C);
+        *(u32*)(actor + 0x30) = *(u32*)(actor + 0x10);
+        *(u32*)(actor + 0x34) = *(u32*)(actor + 0x14);
+        *(u32*)(actor + 0x38) = *(u32*)(actor + 0x18);
+        *(u32*)(actor + 0x3C) = *(u32*)(actor + 0x1C);
+        *(u32*)(actor + 0x40) = *(u32*)(actor + 0x20);
+        *(u32*)(actor + 0x44) = *(u32*)(actor + 0x24);
+        *(u32*)(actor + 0x48) = *(u32*)(actor + 0x28);
+
+        status = *(u16*)(actor + 0x58);
+        if (status & 0x40) {
+            continue;
+        }
+
+        {
+            u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            u8* modelData = (u8*)(uintptr_t)*(u32*)actor;
+            u8* env = (u8*)&D_800B218E;
+            u8 mode;
+            MATRIX modelMatrix;
+            VECTOR modelPosition;
+            SVECTOR row;
+            s32 hiddenByModel;
+
+            assert(actorIndex < D_800ADBFC);
+            assert(actorData != NULL);
+            assert(modelData != NULL);
+
+            mode = *(u32*)(actorData + 0x12C) & 3;
+            assert(mode == 0);
+            assert(*(u16*)(actorData + 0x128) == 0xFFFF);
+            assert(*(u8*)(actorData + 0x75) == 0xFF);
+
+            if ((env[0x44] & 0x7F) == 0) {
+                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+            }
+
+            if ((env[0x44] & 0x7F) == 1) {
+                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+            }
+
+            assert((env[0x44] & 0x80) == 0);
+            assert(*(s16*)(modelData + 0x12) != 1);
+            assert((status & 3) == 0);
+
+            D_80050104 = 0;
+            if (status & 0x20) {
+                continue;
+            }
+
+            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x0C), &row);
+            modelMatrix.m[0][0] = row.vx;
+            modelMatrix.m[0][1] = row.vy;
+            modelMatrix.m[0][2] = row.vz;
+            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x0E), &row);
+            modelMatrix.m[1][0] = row.vx;
+            modelMatrix.m[1][1] = row.vy;
+            modelMatrix.m[1][2] = row.vz;
+            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x10), &row);
+            modelMatrix.m[2][0] = row.vx;
+            modelMatrix.m[2][1] = row.vy;
+            modelMatrix.m[2][2] = row.vz;
+
+            modelPosition.vx = *(s16*)(actor + 0x20);
+            modelPosition.vy = *(s16*)(actor + 0x24);
+            modelPosition.vz = *(s16*)(actor + 0x28);
+            ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
+            SetRotMatrix(&modelMatrix);
+            SetTransMatrix(&modelMatrix);
+
+            hiddenByModel = func_800AAA74(modelData);
+            if (hiddenByModel != 0 && (env[0x44] & 0x80) == 0) {
+                continue;
+            }
+
+            {
+                u8* renderContext = (u8*)g_FieldCurRenderContext;
+                s32 renderIndex = g_FieldCurRenderContextIndex;
+                void* modelPacket = (void*)(uintptr_t)*(u32*)(modelData + 0x04);
+                void* modelWork = (void*)(uintptr_t)*(u32*)(modelData + 0x08 + renderIndex * 4);
+                void* ot = renderContext + ((status & 0x8000) ? 0x40D0 : 0xCC);
+                func_8002C700(modelPacket, modelWork, ot, *(s16*)(modelData + 0x12));
+            }
+        }
+    }
+
+    if (g_FieldSystemMode == 0) {
+        assert(0 && "func_800748E8 PC-HDD timing marker branch is not migrated");
+    }
+}
+
+extern s32 D_8004F380;
+extern s32 D_800B2264;
+extern u8 D_800B225C;
+extern u8 D_800B225D;
+extern u8 D_800B225E;
+extern u8 D_800B221C;
+extern u8 D_8006FB1C;
+extern void func_80086BA8(void);
+/* SetBackColor prototype comes from psyq/libgte.h (already included above); a
+ * local extern here conflicted with it (int vs the real long params). */
+extern void func_801E7D14(void* sceneData, void* arg1, void* prim, s32 renderContextIndex, s32 arg4);
+
+void func_8007520C(void) {
+    if (D_8004F380 != 0) {
+        return;
+    }
+
+    if (D_800B2264 != 0) {
+        func_80086BA8();
+        SetBackColor(D_800B225C, D_800B225D, D_800B225E);
+        func_801E7D14((u8*)&g_Scene + 0xD4,
+                      &D_800B221C,
+                      (u8*)g_FieldCurRenderContext + 0xCC,
+                      g_FieldCurRenderContextIndex,
+                      1);
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB1C);
+    }
+}
+
+extern u8 D_800ADB05;
+extern void func_800250E0(s32 context);
+extern void GfxSetCurrentOT(u_long* ot);
+extern void func_80024FF4(MATRIX* matrix);
+extern void func_8001D468(void);
+extern void WorkListUpdate(void);
+extern void TimerWorkListUpdate(void);
+extern void func_80075B44(void* ot, s32 renderContextIndex);
+extern void AnimScriptTick(void* pSpriteData);
+extern void func_800764B4(void* ot, s32 renderContextIndex);
+extern u8 D_8006FB28;
+
+void func_800752C8(void) {
+    s32 i;
+    u8* pActor;
+
+    if (D_800ADB05 == 1) {
+        return;
+    }
+
+    func_800250E0(g_FieldCurRenderContextIndex);
+    GfxSetCurrentOT((u_long*)((u8*)g_FieldCurRenderContext + 0xCC));
+    func_80024FF4((MATRIX*)((u8*)&g_Scene + 0xD4));
+    func_8001D468();
+    WorkListUpdate();
+    TimerWorkListUpdate();
+    func_80075B44((u8*)g_FieldCurRenderContext + 0xCC, g_FieldCurRenderContextIndex);
+
+    pActor = (u8*)g_FieldActors;
+    for (i = 0; i < D_800ADBFC; i++, pActor += 0x5C) {
+        u32 status = *(u32*)(pActor + 0x58);
+        u8* pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+        s32 shouldTick = 0;
+
+        if ((status & 0x60) == 0x40) {
+            u32 flags = *(u32*)(pActorData + 0x4);
+            if ((flags & 0x600) != 0x200 && (flags & 0x1000) == 0 &&
+                (*(u32*)pActorData & 0x1) == 0) {
+                shouldTick = 1;
+            }
+        } else if (*(u32*)(pActorData + 0x4) & 0x1000000) {
+            shouldTick = 1;
+        }
+
+        if (shouldTick) {
+            AnimScriptTick((void*)(uintptr_t)*(u32*)(pActor + 0x4));
+        }
+    }
+
+    func_800764B4((u8*)g_FieldCurRenderContext + 0xCC, g_FieldCurRenderContextIndex);
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB28);
+    }
+}
+
+void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
+#ifdef XENO_PC_PORT
+    /* Diagnostic-only counters/statics: on the matching build these have no
+     * output-section mapping (the retail binary never had them), so any
+     * .sbss/.scommon storage for them here is discarded at link time. Confine
+     * the whole diagnostic apparatus to the port build. */
+    extern s32 g_FieldDiagSubmittedThisFrame;
+    static s32 s_loggedSubmits;
+    u32 tag = *(u32*)pPrimList;
+
+    g_FieldDiagSubmittedThisFrame++;
+    if (s_loggedSubmits < 8) {
+        printf("[field-diag] submit[%d] srcOff=0x%lx size=%d tag=%08x w1=%08x w2=%08x w3=%08x\n",
+               (int)s_loggedSubmits,
+               (unsigned long)((uintptr_t)pPrimList - (uintptr_t)g_FieldCurRenderContext),
+               (int)size,
+               (unsigned int)tag,
+               (unsigned int)((u32*)pPrimList)[1],
+               (unsigned int)((u32*)pPrimList)[2],
+               (unsigned int)((u32*)pPrimList)[3]);
+        s_loggedSubmits++;
+    }
+#endif
+    AddPrims(ot, (u8*)pPrimList + size * 4, pPrimList);
+}
+
+extern s16 D_800B00B2;
+extern s32 D_800ADB50;
+extern s32 D_800B007C;
+extern s16 D_800B21D4;
+extern void func_800273C4(s32 arg0, SVECTOR* eye, SVECTOR* at, void* arg3,
+                          void* prim, s32 renderCtxIndex);
+
+void func_80075484(void) {
+    if (D_800B00B2 != 0 && D_800ADB50 == 0) {
+        SVECTOR eye;
+        SVECTOR at;
+        void* prim;
+
+        eye.vx = (s16)(g_CameraEye.vx >> 16);
+        eye.vy = (s16)(g_CameraEye.vy >> 16);
+        eye.vz = (s16)(g_CameraEye.vz >> 16);
+        at.vx = (s16)(g_CameraAt.vx >> 16);
+        at.vy = (s16)(g_CameraAt.vy >> 16);
+        at.vz = (s16)(g_CameraAt.vz >> 16);
+
+        prim = (u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0x40CC;
+        func_800273C4(D_800B007C, &eye, &at, (u8*)&g_CameraEye + 0x1E4,
+                      prim, g_FieldCurRenderContextIndex);
+    }
+}
 
 /* ---- func_8007554C: per-frame field render pipeline ------------------------
  * Port-first functional decompile (control flow mirrors the asm). This is the
@@ -1134,11 +1594,20 @@ extern void func_80025044(void);
 extern void func_800920D8(void);
 extern char D_8006FB34, D_8006FB40, D_8006FB4C, D_8006FB58, D_8006FB64;
 extern void HeapTickDelayedFree(void);
+#ifdef XENO_PC_PORT
+/* Diagnostic-only globals; see the matching-build note in FieldAddPrimitives. */
+s32 g_FieldDiagSubmittedThisFrame;
+static s32 g_FieldDiagFrameCount;
+#endif
 
 void func_8007554C(void) {
     s32 s1;
     s32 s0 = 0x80D4; /* offset into RenderContext for fade draw args */
+#ifdef XENO_PC_PORT
+    s32 diagFrame = g_FieldDiagFrameCount++;
 
+    g_FieldDiagSubmittedThisFrame = 0;
+#endif
     D_800ADB9C = Vsync(1);
     s1 = Vsync(-1);
     func_800739C0();
@@ -1234,25 +1703,28 @@ void func_8007554C(void) {
         func_80281B00(&D_8006FB64);
     }
 
-    /* Add primitives to OT and draw. All offsets are BYTE offsets (MIPS addu).
-     * XENO_PC_PORT: the C struct places ot1 at ~0x6C (host layout), but the ASM
-     * accesses it at byte offset 0x80F0. ClearOTagR(->ot1) never touches the
-     * ASM-offset OT, so we explicitly clear it here. This is a narrow workaround
-     * until the RenderContext struct layout matches the PSX offsets. */
-    if (D_800ADC18 == 0) {
-        u_long* ot1_asm = (u_long*)((u8*)g_FieldCurRenderContext + 0x80F0);
-        ClearOTagR(ot1_asm, 0x1000);
-        if (g_FieldRenderContextUseOT2) {
-            u_long* ot2_asm = (u_long*)((u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0xCC);
-            ClearOTagR(ot2_asm, 0x1000);
-            FieldAddPrimitives(ot2_asm,
-                               (u_long*)((u8*)g_FieldCurRenderContext + 0x40D0), 0);
+    /* Add primitives to OT and draw. All offsets are BYTE offsets (MIPS addu). */
+    {
+        u8* ctx = (u8*)g_FieldCurRenderContext;
+
+        if (D_800ADC18 == 0) {
+            if (g_FieldRenderContextUseOT2) {
+                FieldAddPrimitives((u_long*)(ctx + D_800B21D4 * 4 + 0xCC),
+                                   (u_long*)(ctx + 0x40D0), D_800B21D4);
+            }
+            FieldAddPrimitives((u_long*)(ctx + 0x80F0),
+                               (u_long*)(ctx + 0xCC), D_800B21D4);
         }
-        FieldAddPrimitives(ot1_asm,
-                           (u_long*)((u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0xCC), 0);
     }
 
     /* The actual draw call (byte offset 0x80F0 into RenderContext = ot1) */
+#ifdef XENO_PC_PORT
+    if (diagFrame < 8) {
+        printf("[field-diag] frame=%d D_800ADC18=%d useOT2=%d primSubmits=%d DrawOTag=1\n",
+               (int)diagFrame, (int)D_800ADC18, (int)g_FieldRenderContextUseOT2,
+               (int)g_FieldDiagSubmittedThisFrame);
+    }
+#endif
     DrawOTag((u_long*)((u8*)g_FieldCurRenderContext + 0x80F0));
 
     /* Frame timing wait loop */
@@ -1263,25 +1735,419 @@ void func_8007554C(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800759E4);
-
-extern s16 D_800B218E;
-
 void func_80075B08(void* sprite, u8* color) {
     if (D_800B218E == 0) {
         SpriteSetColor(sprite, color[0], color[1], color[2]);
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075B44);
+extern s32 D_8004F37C;
+extern s32 D_80050100;
+extern s32 D_800B2268;
+extern u8 D_800B2357;
+extern void func_8001E298(void* pSpriteData, void* ot);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800764B4);
+void func_80075B44(void* ot, s32 renderContextIndex) {
+    MATRIX baseSpriteMatrix;
+    s32 cameraDirection = FieldGetCameraDirection() & 0xFFFF;
+    s32 sceneDip = *(s16*)((u8*)&g_Scene + 0x6C);
+    s32 centerYOffset = -(((sceneDip / 3) << 1));
+    s32 actorIndex;
+#ifdef XENO_PC_PORT
+    static s32 s_diagFrames;
+    s32 diagActive = 0;
+    s32 diagStatus20 = 0;
+    s32 diagFlagNeg = 0;
+    s32 diagGlobalSkip = 0;
+    s32 diagActorFlagSkip = 0;
+    s32 diagPlain = 0;
+    s32 diagSpecial = 0;
+#endif
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80076A74);
+    (void)renderContextIndex;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80076AC0);
+    FieldMatrixCopyTransform(&baseSpriteMatrix, (MATRIX*)((u8*)&g_Scene + 0x20));
+
+    for (actorIndex = 0; actorIndex < D_800ADBFC; actorIndex++) {
+        u8* pActor = (u8*)g_FieldActors + actorIndex * 0x5C;
+        u32 status = *(u32*)(pActor + 0x58);
+        u8* pActorData;
+        u8* pSpriteData;
+        u8* pSpriteBase;
+        MATRIX actorMatrix;
+        VECTOR actorTranslation;
+        SVECTOR center;
+        long screenXY;
+        long p;
+        long flag;
+        s32 otIndex;
+        u32 actorFlags4;
+        VECTOR scale;
+
+        if ((status & 0x40) == 0) {
+            continue;
+        }
+#ifdef XENO_PC_PORT
+        diagActive++;
+#endif
+
+        pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+        pSpriteData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4);
+
+        *(u32*)(pActor + 0x2C) = *(u32*)(pActor + 0x0C);
+        *(u32*)(pActor + 0x30) = *(u32*)(pActor + 0x10);
+        *(u32*)(pActor + 0x34) = *(u32*)(pActor + 0x14);
+        *(u32*)(pActor + 0x38) = *(u32*)(pActor + 0x18);
+        *(u32*)(pActor + 0x3C) = *(u32*)(pActor + 0x1C);
+        *(u32*)(pActor + 0x40) = *(u32*)(pActor + 0x20);
+        *(u32*)(pActor + 0x44) = *(u32*)(pActor + 0x24);
+        *(u32*)(pActor + 0x48) = *(u32*)(pActor + 0x28);
+
+        actorFlags4 = *(u32*)(pActorData + 0x04);
+        if (actorFlags4 & 0x2000) {
+            assert(0 && "func_80075B44 special actor branch is not implemented");
+        }
+
+        {
+            SVECTOR row;
+
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x0C), &row);
+            actorMatrix.m[0][0] = row.vx;
+            actorMatrix.m[0][1] = row.vy;
+            actorMatrix.m[0][2] = row.vz;
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x0E), &row);
+            actorMatrix.m[1][0] = row.vx;
+            actorMatrix.m[1][1] = row.vy;
+            actorMatrix.m[1][2] = row.vz;
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x10), &row);
+            actorMatrix.m[2][0] = row.vx;
+            actorMatrix.m[2][1] = row.vy;
+            actorMatrix.m[2][2] = row.vz;
+        }
+
+        {
+            VECTOR actorPosition;
+
+            actorPosition.vx = *(s16*)(pActor + 0x20);
+            actorPosition.vy = *(s16*)(pActor + 0x24);
+            actorPosition.vz = *(s16*)(pActor + 0x28);
+            ApplyMatrixLV(&g_Scene.worldToScreenMatrix, &actorPosition, &actorTranslation);
+        }
+
+        actorMatrix.t[0] = actorTranslation.vx;
+        actorMatrix.t[1] = actorTranslation.vy;
+        actorMatrix.t[2] = actorTranslation.vz;
+        SetRotMatrix(&actorMatrix);
+        SetTransMatrix(&actorMatrix);
+
+        center.vx = 0;
+        center.vy = centerYOffset;
+        center.vz = 0;
+        otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+
+        if ((((s16)(screenXY >> 16) + 9) >= 0x143) ||
+            (((s16)screenXY + 0x27) >= 0x18F)) {
+            *(u32*)(pActorData + 0x04) |= 0x200;
+        } else {
+            *(u32*)(pActorData + 0x04) &= ~0x200;
+        }
+
+        if (D_8004F37C != 0 || (status & 0x20) || flag < 0) {
+#ifdef XENO_PC_PORT
+            if (D_8004F37C != 0) {
+                diagGlobalSkip++;
+            }
+            if (status & 0x20) {
+                diagStatus20++;
+            }
+            if (flag < 0) {
+                diagFlagNeg++;
+            }
+#endif
+            continue;
+        }
+
+        scale.vx = (*(s16*)(pActorData + 0xF4) * 3) >> 2;
+        scale.vy = (*(s16*)(pActorData + 0xF6) * 3) >> 2;
+        scale.vz = (*(s16*)(pActorData + 0xF8) * 3) >> 2;
+        if ((*(s16*)(pActorData + 0xE4) == 7) && (D_800B2268 != 0)) {
+            scale.vx = (scale.vx * 5) >> 2;
+            scale.vy = (scale.vy * 5) >> 2;
+            scale.vz = (scale.vz * 5) >> 2;
+        }
+
+        pSpriteBase = (u8*)(uintptr_t)*(u32*)(pSpriteData + 0x20);
+        FieldMatrixCopyTransform((MATRIX*)(pSpriteBase + 0x0C), &baseSpriteMatrix);
+        ScaleMatrix((MATRIX*)(pSpriteBase + 0x0C), &scale);
+
+        if (*(u32*)(pActorData + 0x14) & 0x200000) {
+            s32 facingDelta = (cameraDirection - (((*(u32*)(pActorData + 0x14) >> 11) - 2) & 0x7)) & 0x7;
+
+            if (facingDelta != 0) {
+                if (facingDelta < 4) {
+                    center.vx = 0;
+                    center.vy = -0x80;
+                    center.vz = 0;
+                    otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+                } else if (facingDelta >= 5 && facingDelta < 8) {
+                    center.vx = 0;
+                    center.vy = 0x80;
+                    center.vz = 0;
+                    otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+                }
+            }
+        }
+
+        if (D_800B2357 == 0 && D_800B218E != 0) {
+            assert(0 && "func_80075B44 far-color branch is not implemented");
+        }
+
+        if (otIndex >= 2) {
+            otIndex -= 2;
+        }
+
+        if (((*(u16*)(pActorData + 0xE8) + 0x22) & 0xFFFF) < 2) {
+            assert(0 && "func_80075B44 actor double-render branch is not implemented");
+        }
+
+        *(u8*)(pSpriteData + 0x3D) = 0;
+        if (actorFlags4 & 0x02000000) {
+#ifdef XENO_PC_PORT
+            diagActorFlagSkip++;
+#endif
+            continue;
+        }
+
+        if ((*(u32*)(pActorData + 0x134) & 0x60) == 0) {
+#ifdef XENO_PC_PORT
+            diagPlain++;
+            if (s_diagFrames < 4) {
+                printf("[field-diag] func_80075B44 draw actor=%d sprite=%p otIndex=%d ot=%p status=%08x flags4=%08x flag=%08lx screen=%08lx\n",
+                       (int)actorIndex, pSpriteData, (int)otIndex, ot,
+                       (unsigned int)status, (unsigned int)actorFlags4,
+                       (unsigned long)flag, (unsigned long)screenXY);
+            }
+#endif
+            func_80075B08(pSpriteData, pActorData + 0xFC);
+            func_8001E298(pSpriteData, (u8*)ot + otIndex * 4);
+        } else {
+#ifdef XENO_PC_PORT
+            diagSpecial++;
+#endif
+            assert(0 && "func_80075B44 rotated actor branch is not implemented");
+        }
+    }
+
+#ifdef XENO_PC_PORT
+    if (s_diagFrames < 8) {
+        printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d\n",
+               (int)s_diagFrames, (int)diagActive, (int)diagPlain,
+               (int)diagStatus20, (int)diagFlagNeg, (int)diagGlobalSkip,
+               (int)diagActorFlagSkip, (int)diagSpecial);
+    }
+    s_diagFrames++;
+#endif
+}
+
+extern s32 D_8004F37C;
+
+void func_800764B4(void* ot, s32 renderContextIndex) {
+    s32 actorIndex;
+    u8* pActor;
+
+    (void)ot;
+    (void)renderContextIndex;
+
+    if (D_8004F37C != 0 || D_800ADBFC <= 0) {
+        return;
+    }
+
+    pActor = (u8*)g_FieldActors;
+    for (actorIndex = 0; actorIndex < D_800ADBFC; actorIndex++, pActor += 0x5C) {
+        u32 status = *(u32*)(pActor + 0x58);
+        u8* pActorData;
+        u32 flags4;
+
+        if ((status & 0x60) != 0x40) {
+            continue;
+        }
+
+        pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+        flags4 = *(u32*)(pActorData + 0x04);
+
+        if ((flags4 & 0x102200) != 0) {
+            continue;
+        }
+        if ((flags4 & 0x800) != 0) {
+            continue;
+        }
+        if ((*(u32*)(pActorData + 0x00) & 0x10000) != 0) {
+            continue;
+        }
+        if ((*(u32*)(pActorData + 0x14) & 0x200002) != 0) {
+            continue;
+        }
+
+        assert(0 && "func_800764B4 active actor quad path is not migrated");
+    }
+}
+
+void func_80076A74(void* pSpriteData) {
+    u8* pAnimState = (u8*)(uintptr_t)*(u32*)((u8*)pSpriteData + 0x7C);
+    s16 actorIndex = *(s16*)(pAnimState + 0x14);
+    u8* pActor = (u8*)g_FieldActors + actorIndex * 0x5C;
+    u8* pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+
+    *(u32*)(pActorData + 0x04) |= 0x10000;
+}
+
+extern void HeapChangeCurrentUser(u_int userTag, char** pContentTypes);
+extern void func_800230A8(void* pSpriteData);
+extern void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6);
+extern void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5);
+extern void func_80023340(void* pSpriteData, s32 arg1);
+extern void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY);
+extern void func_80021C00(void* pSpriteData, u32 arg1);
+extern void func_800245D8(void* pSpriteData, s16 animIndex);
+extern void func_80021FE0(void* pSpriteData, s16 angle);
+extern void func_80021BF8(void* pSpriteData, s32 callback);
+extern void AnimScriptTick(void* pSpriteData);
+extern void TimerWorkListUpdate(void);
+extern s32 g_GamePartySkinsInitialized;
+extern u8 D_800B1F78[];
+extern s32 D_800AFC74;
+
+static void FieldActorSyncSpritePosition(u8* pActor, u8* pSpriteData) {
+    u8* pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+
+    *(u32*)(pSpriteData + 0x00) = *(u32*)(pActorData + 0x20);
+    *(u32*)(pSpriteData + 0x04) = *(u32*)(pActorData + 0x24);
+    *(u32*)(pSpriteData + 0x08) = *(u32*)(pActorData + 0x28);
+}
+
+void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 spriteMode, s32 arg4, s32 texPageOffset, s32 skipInitialTick) {
+    u8* pActor;
+    u8* pActorData;
+    u8* pSpriteData;
+    s32 outZ;
+    s32 outX;
+    s32 outY;
+    s32 actorOffset = actorIndex * 0x5C;
+
+    HeapChangeCurrentUser(8, NULL);
+
+    pActor = (u8*)g_FieldActors + actorOffset;
+    pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+
+    *(u8*)(pActorData + 0x127) = skinIndex;
+    *(u8*)(pActorData + 0x126) = arg4;
+    *(u32*)(pActorData + 0x134) =
+        (*(u32*)(pActorData + 0x134) & ~0xF) | (texPageOffset & 0xF);
+    *(u32*)(pActorData + 0x130) =
+        (*(u32*)(pActorData + 0x130) & 0xCFFFFFFF) | ((spriteMode & 0x3) << 28);
+    *(u32*)(pActorData + 0x134) =
+        (*(u32*)(pActorData + 0x134) & ~0x10) | ((skipInitialTick & 0x1) << 4);
+
+    if (spriteMode == 0) {
+        s16 clutX = *(u16*)(D_800B1F78 + skinIndex * 8 + 0);
+        s16 clutY = *(u16*)(D_800B1F78 + skinIndex * 8 + 2);
+
+        if (*(u16*)(pActor + 0x5A) & 0x1) {
+            func_800230A8((void*)(uintptr_t)*(u32*)(pActor + 0x04));
+        }
+
+        if (texPageOffset == 0) {
+            pSpriteData = func_80024524(pAnimPackage, 0x100, skinIndex + 0x1E0, clutX, clutY, 0x40);
+        } else {
+            pSpriteData = func_80024294(pAnimPackage,
+                                        (s16)((texPageOffset << 4) + 0x100),
+                                        (s16)(skinIndex + 0x1E0),
+                                        clutX,
+                                        clutY,
+                                        0x40,
+                                        texPageOffset);
+        }
+    } else {
+        if (*(u16*)(pActor + 0x5A) & 0x1) {
+            func_800230A8((void*)(uintptr_t)*(u32*)(pActor + 0x04));
+        }
+
+        if (spriteMode == 1) {
+            pSpriteData = func_80024524(pAnimPackage,
+                                        0x100,
+                                        (s16)(skinIndex + 0xE0),
+                                        0x280,
+                                        (s16)(skinIndex * 0x40 + 0x100),
+                                        8);
+        } else {
+            pSpriteData = func_80024524(pAnimPackage,
+                                        0x100,
+                                        (s16)(skinIndex + 0xE3),
+                                        0x2A0,
+                                        (s16)(skinIndex * 0x40 + 0x100),
+                                        8);
+        }
+
+        func_80023340(pSpriteData, 0x20);
+    }
+
+    *(u32*)(pActor + 0x04) = (u32)(uintptr_t)pSpriteData;
+    *(u16*)(pActor + 0x5A) |= 0x1;
+
+    func_8001F5BC(pSpriteData, 0, &outZ, &outX, &outY);
+    func_80021C00(pSpriteData, 3);
+
+    *(s16*)(pSpriteData + 0x2C) = 0xC00;
+    *(s16*)(pSpriteData + 0x82) = 0x2000;
+
+    if (g_GamePartySkinsInitialized == 0) {
+        FieldActorSyncSpritePosition(pActor, pSpriteData);
+        *(u32*)(pSpriteData + 0x10) = 0;
+        *(u32*)(pSpriteData + 0x0C) = 0;
+        *(u32*)(pSpriteData + 0x10) = 0;
+        *(u32*)(pSpriteData + 0x14) = 0;
+        *(u32*)(pSpriteData + 0x1C) = 0x10000;
+        *(s16*)(pSpriteData + 0x84) = *(u32*)(pActor + 0x24);
+
+        if (spriteMode == 0) {
+            *(s16*)(pActorData + 0x1A) = outX * 2;
+        } else {
+            *(s16*)(pActorData + 0x1A) = 0x40;
+        }
+    }
+
+    if (D_800B218E != 0) {
+        *(u32*)(pSpriteData + 0x40) |= 0x40000;
+    }
+
+    func_800245D8(pSpriteData, 0);
+    func_80021FE0(pSpriteData, 0);
+    HeapChangeCurrentUser(8, NULL);
+
+    *(s16*)((u8*)(uintptr_t)*(u32*)(pSpriteData + 0x7C) + 0x14) = actorIndex;
+    func_80021BF8(pSpriteData, (s32)func_80076A74);
+
+    if (skipInitialTick == 0) {
+        AnimScriptTick(pSpriteData);
+        TimerWorkListUpdate();
+
+        if (*(u16*)((u8*)(uintptr_t)*(u32*)(pSpriteData + 0x7C) + 0x0C) == 0xFF) {
+            *(s16*)(pActorData + 0xEA) = 0xFF;
+            *(u32*)(pActorData + 0x04) |= 0x1000000;
+            FieldActorSyncSpritePosition(pActor, pSpriteData);
+        }
+    }
+
+    *(u32*)(pActor + 0x20) = *(s16*)(pActorData + 0x22);
+    *(u32*)(pActor + 0x40) = *(s16*)(pActorData + 0x22);
+    *(u32*)(pActor + 0x24) = *(s16*)(pActorData + 0x26);
+    *(u32*)(pActor + 0x44) = *(s16*)(pActorData + 0x26);
+    *(u32*)(pActor + 0x28) = *(s16*)(pActorData + 0x2A);
+    *(u32*)(pActor + 0x48) = *(s16*)(pActorData + 0x2A);
+    *(s16*)(pSpriteData + 0x84) = *(u32*)(pActor + 0x24);
+    FieldActorSyncSpritePosition(pActor, pSpriteData);
+    D_800AFC74++;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800771B0);
 
@@ -1300,6 +2166,68 @@ void FieldLoadTIM(u_long* pTimData) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80077268);
+extern s32 D_800ADBFC;
+extern s32 g_PlayerActorIndex;
+extern s32 D_800B2360;
+extern s32 D_800B2364;
+extern s32 D_800B2368;
+extern s32 FieldCharacterIdToPartyId(s32 characterId);
+extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActorData);
+extern void func_80081C54(s32 actorIndex);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80077544);
+void func_80077268(void) {
+    s32 i;
+    u8* playerActor;
+    u8* playerActorData;
+
+    playerActor = (u8*)g_FieldActors + g_PlayerActorIndex * 0x5C;
+    playerActorData = (u8*)(uintptr_t)*(u32*)(playerActor + 0x4C);
+    func_80084A40(g_PlayerActorIndex, *(s16*)(playerActorData + 0x26), playerActor, playerActorData);
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+
+        if ((*(u16*)(actor + 0x58) & 0x0F80) == 0x0200) {
+            s32 partyId = FieldCharacterIdToPartyId(*(s16*)(actorData + 0xE4));
+
+            if (partyId != -1 && partyId != 0) {
+                u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+
+                func_80084A40(i, *(s16*)(actorData + 0x26), actor, actorData);
+
+                *(u32*)(spriteData + 0x00) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x00);
+                *(u32*)(spriteData + 0x04) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x04);
+                *(u32*)(spriteData + 0x08) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x08);
+                *(u32*)(actor + 0x20) = *(u32*)(playerActor + 0x20);
+                *(u32*)(actor + 0x24) = *(u32*)(playerActor + 0x24);
+                *(u32*)(actor + 0x28) = *(u32*)(playerActor + 0x28);
+            }
+        }
+    }
+
+    D_800B2368 = 0;
+    D_800B2364 = 0;
+    D_800B2360 = 0;
+
+    for (i = 0; i < 0x20; i++) {
+        func_80081C54(g_PlayerActorIndex);
+    }
+}
+
+extern void func_8003747C(void* pFont);
+extern void* FontLoadFont(int startX, int startY, int width, int height,
+                          int maxLetters, unsigned int flags, int texpageX,
+                          int texpageY, int clutX, int clutY,
+                          void* pCompressedFontFile);
+extern void SystemTransferPaletteToVRAM(short xDest, short yDest);
+
+void func_80077544(void) {
+    if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
+        func_8003747C((void*)0x80270000);
+        FontLoadFont(0x10, 0x10, 0x130, 0xE0, 0x400, 4,
+                     0x3C0, 0x100, 0x100, 0x1FF, 0);
+    }
+
+    SystemTransferPaletteToVRAM(0x100, 0xF0);
+}

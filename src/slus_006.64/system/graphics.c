@@ -1,6 +1,13 @@
 #include "common.h"
+#include "psyq/libgpu.h"
+#include "system/memory.h"
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/graphics", GfxLoadImageAccelerated);
+RECT* D_800592F0;
+u_long* D_800592F4;
+
+void GfxLoadImageAccelerated(void) {
+    LoadImage(D_800592F0, D_800592F4);
+}
 /*
 Matches on ASPSX 2.56, GCC 2.6.0
 
@@ -32,4 +39,21 @@ void GfxLoadImageAccelerated(void) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/graphics", GfxLoadClutsAccelerated);
+void GfxLoadClutsAccelerated(void* pClutData, s32 x, s32 y) {
+    RECT rect;
+    u8* pData = pClutData;
+    s32 count = *(s32*)pData;
+    s32 i;
+
+    pData += 4;
+    for (i = 0; i < count; i++) {
+        u8* pClut = (u8*)pClutData + ((s32*)pData)[i];
+        rect.x = x + (i * 0x40);
+        rect.y = y;
+        rect.w = *(u16*)(pClut + 0x0);
+        rect.h = *(u16*)(pClut + 0x2);
+        D_800592F0 = &rect;
+        D_800592F4 = (u_long*)(pClut + 0x4);
+        GfxLoadImageAccelerated();
+    }
+}

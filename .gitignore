@@ -13,3 +13,7 @@ notes/
 objdiff.json
 build.ninja
 .ninja_log
+# Local AI/tool diagnostic output
+pc_port/logs/
+pc_port/screenshots/
+pc_port/.clinerules

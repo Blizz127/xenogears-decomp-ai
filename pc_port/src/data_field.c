@@ -43,6 +43,11 @@ unsigned short D_800ADC44[54] = {
     0x0380, 0x0100, 0x0000, 0x00E8, 0x0010, 0x0001,
 };
 
+unsigned short D_800AEA54[8] = {
+    0x8C00, 0x8400, 0x8800, 0x8000,
+    0x8A00, 0x8E00, 0x8600, 0x8200,
+};
+
 unsigned short g_FieldData_800ADCE0[0x1B0 / 2] __attribute__((aligned(8))) = {
     0x0400, 0x0200, 0x0400, 0x0200, 0x0200, 0x0000, 0x0200, 0x0000,
     0x0000, 0xFE00, 0x0000, 0xFE00, 0xFE00, 0xFC00, 0xFE00, 0xFC00,
@@ -91,6 +96,10 @@ FIELD_DATA_ALIAS(D_800ADE70, 0x190);
 
 #undef FIELD_DATA_ALIAS
 
+u32 D_800ADE90 = 0;
+u32 D_800ADE94 = 0;
+u32 D_800ADE98 = 0;
+
 unsigned short g_FieldData_800ADE9C[0xB8 / 2] __attribute__((aligned(8))) = {
     0x0020, 0x00F0, 0x0010, 0x0010, 0x0010, 0x00F8, 0x0010, 0x0008,
     0x0030, 0x00F0, 0x0010, 0x0010, 0x0010, 0x00F0, 0x0010, 0x0008,
@@ -119,6 +128,41 @@ FIELD_DATA_ALIAS(D_800ADF06, 0x06A);
 FIELD_DATA_ALIAS(D_800ADF08, 0x06C);
 FIELD_DATA_ALIAS(D_800ADF0A, 0x06E);
 FIELD_DATA_ALIAS(D_800ADF34, 0x098);
+
+#undef FIELD_DATA_ALIAS
+
+u16 g_FieldData_800ADF54[8] __attribute__((aligned(8))) = {
+    0x0300, 0x0100, 0x0300, 0x0180, 0x0300, 0x0134, 0x0300, 0x01B4,
+};
+
+#define FIELD_DATA_ALIAS(name, offset) \
+    asm(".globl " #name "\n.set " #name ", g_FieldData_800ADF54 + " #offset)
+
+FIELD_DATA_ALIAS(D_800ADF54, 0x000);
+FIELD_DATA_ALIAS(D_800ADF56, 0x002);
+
+#undef FIELD_DATA_ALIAS
+
+u16 g_FieldData_800ADF64[0x68 / 2] __attribute__((aligned(8))) = {
+    0x0000, 0x0000,
+    0x8000, 0x0400, 0x0800, 0x0600, 0x0C00, 0x8000, 0x0A00, 0x0800,
+    0x0000, 0x0200, 0x8000, 0x0400, 0x0E00, 0x0000, 0x0C00, 0x8000,
+    0x8000, 0x0C00, 0x0000, 0x0E00, 0x0400, 0x8000, 0x0200, 0x0000,
+    0x0800, 0x0A00, 0x8000, 0x0C00, 0x0600, 0x0800, 0x0400, 0x8000,
+    0x0C00, 0x0E00, 0x0000, 0x0200, 0x0400, 0x0600, 0x0800, 0x0A00,
+    0x0201, 0x0202, 0x0000, 0x0600, 0x0000, 0x0000,
+    0x0004, 0x0008, 0x0010, 0x0020,
+};
+
+#define FIELD_DATA_ALIAS(name, offset) \
+    asm(".globl " #name "\n.set " #name ", g_FieldData_800ADF64 + " #offset)
+
+FIELD_DATA_ALIAS(D_800ADF64, 0x000);
+FIELD_DATA_ALIAS(D_800ADF68, 0x004);
+FIELD_DATA_ALIAS(D_800ADF88, 0x024);
+FIELD_DATA_ALIAS(D_800ADFA8, 0x044);
+FIELD_DATA_ALIAS(D_800ADFB8, 0x054);
+FIELD_DATA_ALIAS(D_800ADFC4, 0x060);
 
 #undef FIELD_DATA_ALIAS
 
@@ -650,6 +694,8 @@ FIELD_VM_HANDLER(func_80086D4C)
 #undef FIELD_VM_HANDLER
 
 ZoomFadeEffect g_FieldZoomFadeEffect;
+s32 D_800ADB98;
+s32 D_800ADC0C;
 s32 D_800B14A4;
 s32 g_FieldPixelIndex;
 u_char g_FieldParticleStatuses[NUM_PARTICLES];
@@ -659,6 +705,7 @@ ParticleBank* g_FieldParticleBanks[NUM_PARTICLES];
 s32 g_FieldParticleBankIndex;
 s32 g_FieldParticleCurActor;
 s32 D_800AF278;
+s32 D_800AF858;
 
 /*
  * Field overlay BSS work areas.
@@ -668,20 +715,59 @@ s32 D_800AF278;
  * the native port layout faithful by backing the known labels with shared blocks
  * instead of letting the auto-stubber allocate each label separately.
  */
-unsigned char g_FieldBss_800B2174[0x328] __attribute__((aligned(8)));
+unsigned char g_FieldBss_800B20A8[0x424] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFC60[0xC0] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AEB60[0x08] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFE9C[0x110] __attribute__((aligned(8)));
+unsigned char g_FieldBss_800AFB20[0x108] __attribute__((aligned(8)));
+unsigned char g_FieldBss_800AF85C[0x2A0] __attribute__((aligned(8)));
+unsigned char g_FieldBss_800B007C[0x40] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800B06BC[0x1734] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800B1DF0[0x384] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800C2688[0x1270] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800C38F8[0x974] __attribute__((aligned(8)));
 
+/*
+ * Field state save/restore scratch.
+ *
+ * The field overlay treats D_8005A4E4 as a packed save image used by
+ * func_800A3F4C/func_800A3474, with D_800AFC50 as the walking cursor. These
+ * are overlay-owned in field.elf even though the addresses sit in the main
+ * executable's low BSS range, so the PC port must not fall back to unrelated
+ * auto-stub symbols from that address neighborhood.
+ */
+s32 D_8005A408[3];
+unsigned char D_8005A4E4[0x10000] __attribute__((aligned(8)));
+unsigned char* D_800AFC50;
+
 #define FIELD_BSS_ALIAS(name, block, offset) \
     asm(".globl " #name "\n.set " #name ", " #block " + " #offset)
 
+FIELD_BSS_ALIAS(g_FieldEffects, g_FieldBss_800B20A8, 0x000);
+asm(".globl g_FieldBss_800B2174\n.set g_FieldBss_800B2174, g_FieldBss_800B20A8 + 0x0FC");
+
 FIELD_BSS_ALIAS(D_800AEB60, g_FieldBss_800AEB60, 0x000);
 FIELD_BSS_ALIAS(D_800AEB64, g_FieldBss_800AEB60, 0x004);
+
+FIELD_BSS_ALIAS(D_800AFB20, g_FieldBss_800AFB20, 0x000);
+FIELD_BSS_ALIAS(D_800AFB24, g_FieldBss_800AFB20, 0x004);
+FIELD_BSS_ALIAS(D_800AFB34, g_FieldBss_800AFB20, 0x014);
+FIELD_BSS_ALIAS(D_800AFB44, g_FieldBss_800AFB20, 0x024);
+FIELD_BSS_ALIAS(D_800AFB54, g_FieldBss_800AFB20, 0x034);
+FIELD_BSS_ALIAS(D_800AFC08, g_FieldBss_800AFB20, 0x0E8);
+
+FIELD_BSS_ALIAS(D_800AF85C, g_FieldBss_800AF85C, 0x000);
+FIELD_BSS_ALIAS(D_800AF87C, g_FieldBss_800AF85C, 0x020);
+FIELD_BSS_ALIAS(g_CameraEye, g_FieldBss_800AF85C, 0x054);
+FIELD_BSS_ALIAS(g_CameraAt, g_FieldBss_800AF85C, 0x064);
+FIELD_BSS_ALIAS(g_CameraUp, g_FieldBss_800AF85C, 0x074);
+FIELD_BSS_ALIAS(g_CameraEye2, g_FieldBss_800AF85C, 0x084);
+FIELD_BSS_ALIAS(D_800AF8E0, g_FieldBss_800AF85C, 0x084);
+FIELD_BSS_ALIAS(D_800AF8E4, g_FieldBss_800AF85C, 0x088);
+FIELD_BSS_ALIAS(D_800AF8E8, g_FieldBss_800AF85C, 0x08C);
+FIELD_BSS_ALIAS(g_CameraAt2, g_FieldBss_800AF85C, 0x094);
+FIELD_BSS_ALIAS(D_800AF93A, g_FieldBss_800AF85C, 0x0DE);
+FIELD_BSS_ALIAS(g_WorldScale, g_FieldBss_800AF85C, 0x298);
 
 FIELD_BSS_ALIAS(D_800AFC60, g_FieldBss_800AFC60, 0x000);
 FIELD_BSS_ALIAS(D_800AFC64, g_FieldBss_800AFC60, 0x004);
@@ -705,6 +791,19 @@ FIELD_BSS_ALIAS(D_800AFE9C, g_FieldBss_800AFE9C, 0x000);
 FIELD_BSS_ALIAS(D_800AFEA0, g_FieldBss_800AFE9C, 0x004);
 FIELD_BSS_ALIAS(D_800AFEA4, g_FieldBss_800AFE9C, 0x008);
 FIELD_BSS_ALIAS(D_800AFEA8, g_FieldBss_800AFE9C, 0x00C);
+
+FIELD_BSS_ALIAS(D_800B007C, g_FieldBss_800B007C, 0x000);
+FIELD_BSS_ALIAS(D_800B0080, g_FieldBss_800B007C, 0x004);
+FIELD_BSS_ALIAS(D_800B0082, g_FieldBss_800B007C, 0x006);
+FIELD_BSS_ALIAS(D_800B0084, g_FieldBss_800B007C, 0x008);
+FIELD_BSS_ALIAS(D_800B0086, g_FieldBss_800B007C, 0x00A);
+FIELD_BSS_ALIAS(D_800B0088, g_FieldBss_800B007C, 0x00C);
+FIELD_BSS_ALIAS(D_800B008A, g_FieldBss_800B007C, 0x00E);
+FIELD_BSS_ALIAS(D_800B008C, g_FieldBss_800B007C, 0x010);
+FIELD_BSS_ALIAS(D_800B008E, g_FieldBss_800B007C, 0x012);
+FIELD_BSS_ALIAS(D_800B0090, g_FieldBss_800B007C, 0x014);
+FIELD_BSS_ALIAS(D_800B0094, g_FieldBss_800B007C, 0x018);
+FIELD_BSS_ALIAS(D_800B0098, g_FieldBss_800B007C, 0x01C);
 
 FIELD_BSS_ALIAS(D_800B06BC, g_FieldBss_800B06BC, 0x000);
 FIELD_BSS_ALIAS(D_800B0DBC, g_FieldBss_800B06BC, 0x700);
@@ -821,6 +920,9 @@ FIELD_BSS_ALIAS(D_800B2356, g_FieldBss_800B2174, 0x1E2);
 FIELD_BSS_ALIAS(D_800B2357, g_FieldBss_800B2174, 0x1E3);
 FIELD_BSS_ALIAS(D_800B2358, g_FieldBss_800B2174, 0x1E4);
 FIELD_BSS_ALIAS(D_800B235C, g_FieldBss_800B2174, 0x1E8);
+FIELD_BSS_ALIAS(D_800B2360, g_FieldBss_800B2174, 0x1EC);
+FIELD_BSS_ALIAS(D_800B2364, g_FieldBss_800B2174, 0x1F0);
+FIELD_BSS_ALIAS(D_800B2368, g_FieldBss_800B2174, 0x1F4);
 FIELD_BSS_ALIAS(D_800B236C, g_FieldBss_800B2174, 0x1F8);
 FIELD_BSS_ALIAS(D_800B2374, g_FieldBss_800B2174, 0x200);
 FIELD_BSS_ALIAS(D_800B2378, g_FieldBss_800B2174, 0x204);
@@ -861,5 +963,6 @@ FIELD_BSS_ALIAS(D_800C3A54, g_FieldBss_800C38F8, 0x15C);
 FIELD_BSS_ALIAS(D_800C3A5C, g_FieldBss_800C38F8, 0x164);
 FIELD_BSS_ALIAS(D_800C3A60, g_FieldBss_800C38F8, 0x168);
 FIELD_BSS_ALIAS(g_FieldScriptMemory, g_FieldBss_800C38F8, 0x170);
+FIELD_BSS_ALIAS(D_800C4268, g_FieldBss_800C38F8, 0x970);
 
 #undef FIELD_BSS_ALIAS

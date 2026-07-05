@@ -4,10 +4,69 @@
 #include "field/actor.h"
 #include "field/main.h"
 #include "field/camera.h"
+#include "field/effects.h"
 #include "system/memory.h"
+#include "system/controller.h"
 
-// Light data stuff
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_8006FDEC);
+extern VECTOR g_CameraEye;
+extern VECTOR g_CameraAt;
+extern VECTOR g_CameraUp;
+extern void func_80030A30(s32 lightId, void* pLight);
+extern void func_80030B14(MATRIX* pMatrix);
+
+static void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
+    u8* pData = *ppLightData;
+
+    *(s32*)(pLight + 0x0) = *(s16*)(pData + 0x0);
+    pData += 2;
+    *(s32*)(pLight + 0x4) = *(s16*)(pData + 0x0);
+    pData += 2;
+    *(s32*)(pLight + 0x8) = *(s16*)(pData + 0x0);
+    pData += 4;
+    *(s16*)(pLight + 0xC) = *(u16*)(pData + 0x0) << 3;
+    pData += 2;
+    *(s16*)(pLight + 0xE) = *(u16*)(pData + 0x0) << 3;
+    pData += 2;
+    *(s16*)(pLight + 0x10) = *(u16*)(pData + 0x0) << 3;
+    pData += 4;
+
+    *ppLightData = pData;
+}
+
+void func_8006FDEC(void* pLightData) {
+    u8* pData = pLightData;
+    u8* pScene = (u8*)&g_Scene;
+    u8* pLight0 = pScene + 0x138;
+    u8* pLight1 = pScene + 0x14C;
+    u8* pLight2 = pScene + 0x160;
+    s32 flag;
+
+    FieldMatrixLookAt(&g_Scene.viewMatrix, &g_CameraEye, &g_CameraAt, &g_CameraUp);
+    RotMatrix(&g_Scene.worldRotation, &g_Scene.worldToScreenMatrix);
+    MulMatrix2(&g_Scene.viewMatrix, &g_Scene.worldToScreenMatrix);
+
+    FieldLoadLightRecord(&pData, pLight0);
+    func_80030A30(0, pLight0);
+
+    FieldLoadLightRecord(&pData, pLight1);
+    func_80030A30(1, pLight1);
+
+    FieldLoadLightRecord(&pData, pLight2);
+    memcpy(pLight1, pLight0, 0x14);
+    memcpy(pLight2, pLight0, 0x14);
+    func_80030A30(2, pLight2);
+
+    *(s16*)(pScene + 0x174) = *(u16*)(pData + 0x0) << 4;
+    *(s16*)(pScene + 0x176) = *(u16*)(pData + 0x2) << 4;
+    *(s16*)(pScene + 0x178) = *(u16*)(pData + 0x4) << 4;
+
+    SetRotMatrix(&g_Scene.viewMatrix);
+    SetTransMatrix(&g_Scene.viewMatrix);
+    RotTrans(&g_Scene.worldTranslation, (VECTOR*)(pScene + 0xE8), &flag);
+    func_80030B14(&g_Scene.worldToScreenMatrix);
+    SetRotMatrix(&g_Scene.worldToScreenMatrix);
+    SetTransMatrix(&g_Scene.worldToScreenMatrix);
+}
 
 void FieldLZSSDecompress(void* _unused, void* pCompressed, void* pDecompressed) {
     LZSSDecompress(pCompressed, pDecompressed);
@@ -46,10 +105,28 @@ void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070488);
-
 extern s32 D_800ADB60;
 extern void* D_800ADC14;
+extern s32 g_GameSceneMapNum;
+extern int* ArchiveAllocStreamFile(int numEntries, int allocMode);
+extern int func_80029EB0(s32 archiveIndex, void* pStreamFile, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7, s32 arg8, s32 arg9);
+
+void func_80070488(void) {
+    if (D_800ADB60 == 0) {
+        D_800ADB60 = 1;
+        D_800ADC14 = ArchiveAllocStreamFile(4, 1);
+        func_80029EB0(((g_GameSceneMapNum & 0xFFF) << 1) + 0xB9,
+                      D_800ADC14,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0);
+    }
+}
 
 void func_80070508(void) {
     if (D_800ADB60 == 1) {
@@ -79,7 +156,267 @@ void func_80070594(MATRIX* dest) {
     dest->t[0] = 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_800705DC);
+extern void func_8028125C(void);
+extern void func_8007254C(void);
+extern void func_800864B4(void);
+extern void FieldInitializeParticles(void);
+extern void func_800ABD18(void);
+
+extern MATRIX D_800B00E8;
+extern s16 D_800ADB00, D_800AFE9C, D_800AFEA0, D_800C2694;
+extern s16 D_800C38F8, D_800C3900, D_800C3908;
+extern u8 D_800B2356;
+extern s16 D_800B2346, D_800B234A, D_800B234C, D_800C3A38;
+extern s32 D_800C3A60, D_800C3A5C;
+extern s32 D_800B21BC, D_800B21C0, D_800B21C4, D_800B2264, D_800B21B8;
+extern s32 D_800B2268;
+extern u8 D_800B21D1, D_800B21D0, D_800B21CE;
+extern s16 D_800B21B0, D_800B21B2, D_800B21AE;
+extern u8 D_800B21CD, D_800B219F, D_800B219E, D_800B219D, D_800B219C;
+extern u8 D_800B21CC, D_800B21CF, D_800B21D2;
+extern s32 D_800ADB74, D_800ADB90, D_800ADB24, D_800ADB98, D_800ADB94;
+extern s32 D_800ADB70, D_800ADB2C, D_800ADB68, D_800ADB88, D_800ADBA8;
+extern s32 D_800B0064, D_800ADB18, D_800ADB50, D_800AFE84, D_800AFD04;
+extern u8 D_800B02C8;
+extern s32 D_800ADBD4, D_800ADBD0;
+extern s16 D_800B22E0, D_800B233C, D_800B236C;
+extern s32 D_800B14A4, D_800ADB38, D_800ADB3C, D_800AFD14, D_800B0048;
+extern s16 D_800B21AC, D_800ADC08, D_800AF93A;
+extern s16 D_800B21D4, D_800B21A4, D_800B21A2, D_800B21A0;
+extern s16 D_800B21AA, D_800B21A8, D_800B21A6, D_800B21B4, D_800B218C;
+extern s16 D_800B2184, D_800B2186, D_800B2188;
+extern s32 D_800ADBC4, D_800ADB6C, D_800ADBEC, D_800B21D8;
+extern s16 D_800B2290;
+extern s16 D_800B2270[];
+extern s16 D_800B22A0[];
+extern s16 D_800B22E2[];
+extern u16 D_8005A444[], D_8006F990[];
+extern s32 D_80050100, D_800B229C, D_800B2298;
+extern u8 D_800B2192, D_800B2191, D_800B2190;
+extern u8 D_800B2196, D_800B2195, D_800B2194;
+extern s16 D_800B2198, D_800B219A, D_800B21D6;
+extern s16 D_800AFEA8, D_800B2174;
+extern s32 D_800B2180, D_800B217C;
+extern u16 D_800B218E;
+extern s16 D_800ADB02, D_800B2344, D_800B2342, D_800B2348, D_800B234E;
+extern u16 D_800B233E;
+extern u8 D_800B2355, D_800ADB04, D_800ADB05, D_800B2357, D_800B2354;
+extern s32 D_800ADBB4, D_800B2350, D_800ADB84, D_800ADB7C, D_800ADB8C, D_800ADB64;
+extern s16 D_800ADB54;
+extern u8 D_800B2358;
+extern s32 D_800ADC18, D_800ADC0C, g_FieldParticleCurActor;
+extern s32 g_PlayerActorIndex;
+extern s32 g_GamePartySkinsInitialized;
+extern void* g_pGameState;
+extern MATRIX D_800AF85C;
+
+void func_800705DC(void) {
+    SVECTOR rotation;
+    s32 i;
+    u16* scriptDst;
+    u16* scriptClear;
+    u16* gameStateSrc;
+
+    if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
+        func_8028125C();
+    }
+
+    FieldSetClipDimensions(0, 0, 0x140, 0xE0);
+    ControllerResetState();
+
+    D_800ADB00 = -1;
+    D_800AFE9C = 0;
+    D_800AFEA0 = 0;
+    D_800C2694 = 0;
+    D_800C38F8 = 0;
+    D_800C3900 = 0;
+    D_800C3908 = 0;
+    D_800B2356 = 5;
+    D_800B2346 = 3;
+    D_800B234A = 0x40;
+    D_800B234C = 0xFF;
+    D_800C3A38 = 0xFF;
+    D_800C3A60 = 0;
+    D_800C3A5C = 0;
+    D_800B21BC = 0;
+    D_800B21C0 = 0;
+    D_800B21C4 = 0;
+    D_800B2264 = 0;
+    D_800B21B8 = 0;
+    D_800B21D1 = 0;
+    D_800B21D0 = 0;
+
+    g_FieldEffects.distortion.v6 = 0;
+    g_FieldEffects.distortion.v5 = 0;
+    g_FieldEffects.distortion.v4 = 0;
+    g_FieldEffects.distortion.v3 = 0;
+    g_FieldEffects.distortion.v2 = 0;
+    g_FieldEffects.distortion.v1 = 0;
+    g_FieldEffects.distortion.unk3C = 0;
+    g_FieldEffects.distortion.unk38 = 0;
+    D_800B2268 = 0;
+    D_800B21CE = 0;
+    D_800B21B0 = 0;
+    D_800B21B2 = 0;
+    D_800B21AE = 0;
+    g_FieldEffects.distortion.isActive = 0;
+    D_800B21CD = 0;
+    D_800B219F = 0;
+    D_800B219E = 0;
+    D_800B219D = 0;
+    D_800B219C = 0;
+    D_800B21CC = 0;
+    D_800B21CF = 0;
+    D_800B21D2 = 0;
+    D_800ADB74 = 0;
+    g_FieldRenderContextUseOT2 = 0;
+    D_800ADB90 = 0;
+    D_800ADB24 = 0;
+    D_800ADB98 = 0;
+    D_800ADB94 = 0;
+    D_800ADB70 = 0;
+    D_800ADB2C = 0;
+    D_800ADB68 = 0;
+    D_800ADB88 = 0;
+    D_800ADBA8 = 0;
+    D_800B0064 = 0;
+    D_800ADB18 = 0;
+    D_800ADB50 = 0;
+    D_800AFE84 = 0;
+    D_800AFD04 = 0;
+    D_800B02C8 = 0;
+    D_800ADBD4 = 0;
+    D_800ADBD0 = 0;
+    D_800B22E0 = 0;
+    D_800B233C = 0;
+    D_800B14A4 = 0;
+    D_800B236C = 0;
+    D_800ADB38 = 0;
+    D_800ADB3C = 0;
+    D_800AFD14 = 0x20;
+    D_800B0048 = 2;
+    D_800B21AC = 0x3FF;
+    D_800ADC18 = 4;
+    g_FieldParticleCurActor = 0;
+    D_800ADB02 = 0;
+    D_800B233E = 0;
+    D_800B2344 = 0;
+    D_800B2342 = 0;
+    D_800B2348 = 0;
+    D_800B234E = 0;
+    D_800B2355 = 0;
+    D_800ADB04 = 0;
+    D_800ADB05 = 0;
+    D_800B2357 = 0;
+    D_800B2354 = 0;
+    D_800ADBB4 = 0;
+    D_800B2350 = 0;
+    D_800ADB54 = 0;
+    D_800B2358 = 0;
+    D_800ADB84 = 0;
+    D_800ADB7C = 0;
+    D_800ADB8C = 0;
+    D_800ADB64 = 0xFF;
+
+    rotation.vx = 0;
+    rotation.vy = 0;
+    rotation.vz = 0;
+    RotMatrix(&rotation, &D_800B00E8);
+
+    for (i = 0; i < 3; i++) {
+        D_800B22E2[i] = -1;
+    }
+
+    D_800ADC08 = 1;
+    D_800AF93A = 0x1000;
+    D_800B21D4 = 0x720;
+    D_800B21A4 = 0x100;
+    D_800B21A2 = 0x100;
+    D_800B21A0 = 0x100;
+    D_800B21AA = 0x200;
+    D_800B21A8 = 0x200;
+    D_800B21A6 = 0x200;
+    D_800B21B4 = 0x80;
+    D_800ADBC4 = 0xFF;
+    D_800B218C = 0x1000;
+    D_800B2184 = 0;
+    D_800B2186 = 0;
+    D_800B2188 = 0;
+    D_800ADB6C = -1;
+
+    for (i = 0; i < 16; i++) {
+        D_800B2270[i] = 0x1D;
+    }
+
+    D_800B2290 = 0x1D;
+    D_800ADBEC = -1;
+    D_800B21D8 = 2;
+    g_FieldControl.controllerBtnMask = 0xFFFF;
+    D_800B2192 = 0x80;
+    D_800B2191 = 0x80;
+    D_800B2190 = 0x80;
+    D_800B2196 = 0xFF;
+    D_800B2195 = 0xFF;
+    D_800B2194 = 0xFF;
+    D_800B2198 = 0x15E0;
+    D_800B219A = 0x300C;
+    g_FieldCurRenderContextIndex = 0;
+    D_800ADC0C = 0;
+    D_800AFEA8 = 0;
+    g_PlayerActorIndex = 0;
+    g_FieldControl.unkAngle = 0;
+    D_800B2174 = 0;
+    g_FieldControl.isRandomEncountersEnabled = 0;
+    D_800B2180 = 0;
+    D_800B217C = 0;
+    D_800B218E = 0;
+    D_800B21D6 = 8;
+
+    if (!g_GamePartySkinsInitialized) {
+        for (i = 0; i < 3; i++) {
+            D_8005A444[i] = 0xFF;
+            D_8006F990[i] = 0xFF;
+        }
+    }
+
+    for (i = 0; i < 32; i++) {
+        D_800B22A0[i] = -1;
+    }
+
+    D_800B229C = 0;
+    D_800B2298 = 0;
+    D_80050100 = 2;
+
+    scriptDst = (u16*)&g_FieldScriptMemory;
+    scriptClear = (u16*)((u8*)&g_FieldScriptMemory + 0x400);
+    gameStateSrc = (u16*)((u8*)g_pGameState + 0x1930);
+    for (i = 0; i < 0x200; i++) {
+        scriptDst[i] = gameStateSrc[i];
+        scriptClear[i] = 0;
+    }
+
+    SetGeomScreen(0x200);
+    func_80070594(&g_Scene.viewMatrix);
+    func_80070594(&D_800AF85C);
+    func_80070594(&g_Scene.worldToScreenMatrix);
+    func_80070594(&g_Scene.worldRotationMatrix);
+
+    g_Scene.worldRotation.vx = 0;
+    g_Scene.worldRotation.vy = 0;
+    g_Scene.worldRotation.vz = 0;
+    g_Scene.worldTranslation.vx = 0;
+    g_Scene.worldTranslation.vy = 0;
+    g_Scene.worldTranslation.vz = 0;
+    g_WorldScale = 0x3000;
+    RotMatrix(&g_Scene.worldRotation, &g_Scene.worldToScreenMatrix);
+
+    g_FieldCurRenderContext = g_FieldRenderContexts;
+    func_8007254C();
+    func_80070C84();
+    func_800864B4();
+    FieldInitializeParticles();
+    func_800ABD18();
+}
 
 extern u16 D_800B06A4[];
 extern u16 D_800B06A6[];
@@ -126,6 +463,7 @@ extern u32 D_800AFB20[];    /* fixup base pointer table (>= 0x38 bytes) */
 #define D_800AFB54 (((s16*)D_800AFB20)[0x1A])
 extern s32 D_800AFD10;
 extern s32 D_800ADBFC;      /* == g_FieldNumActors snapshot (script actor count) */
+extern s32 D_800AFC74;
 extern void* D_800ADBF0;    /* decompressed dialogs buffer (0x128 section) */
 extern u8 D_800658DC[];     /* walkmesh decompress scratch/destination */
 extern s32 D_8004F330;
@@ -172,7 +510,7 @@ extern int  func_8002709C();
 extern void func_800223B0(void* a0, s16 a1);
 extern void FieldTextBoxInitialize(void);
 extern void FieldLoadTIM(u_long* pTimData);
-extern void GfxLoadClutsAccelerated(void* pClutData);
+extern void GfxLoadClutsAccelerated(void* pClutData, s32 x, s32 y);
 extern void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag);
 
 void FieldLoad(void) {
@@ -182,11 +520,16 @@ void FieldLoad(void) {
     s32 numEntries;
     s32 i, j;
     s32 numActors;
+    s32 timEntryCount = 0;
+    s32 clutEntryCount = 0;
 
     /* Entry: copies a 4-word blob out of D_8006FAF4 to the stack (dead; the
      * slots are never read again) then does field-camera / controller setup. */
     (void)D_8006FAF4;
     func_800705DC();
+#ifdef XENO_PC_PORT
+    printf("[field-diag] FieldLoad begin field=%d mapBuf=%p\n", (int)g_GameSceneMapNum, D_8005A4E0);
+#endif
 
     /* Copy the 0x100-byte TIM/CLUT header table out of the map header. The asm
      * chooses an aligned (lw/sw) or unaligned (lwl/lwr) copy loop; both move the
@@ -215,6 +558,7 @@ void FieldLoad(void) {
                         (u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x130),
                         pTimTable);
     numEntries = (s32)pTimTable[0];
+    timEntryCount = numEntries;
     for (i = 0; i < numEntries; i++) {
         FieldLoadTIM((u_long*)((u8*)pTimTable + pTimTable[1 + i]));
     }
@@ -226,13 +570,16 @@ void FieldLoad(void) {
                         (u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x140),
                         pClutTable);
     numEntries = (s32)pClutTable[0];
+    clutEntryCount = numEntries;
     numEntries <<= 3; /* iterate the header table in 8-byte strides */
     for (i = 0; i < numEntries; i += 8) {
         /* D_800B1F78 header holds, per entry: [+0]=u16 idx, [+2]=u16, [+4]=s16 flag */
         s16 flag = *(s16*)(D_800B1F78 + i + 6);
         if (flag == 0) {
             /* clut table entries start after the count word */
-            GfxLoadClutsAccelerated((u8*)pClutTable + pClutTable[1 + (i >> 3)]);
+            GfxLoadClutsAccelerated((u8*)pClutTable + pClutTable[1 + (i >> 3)],
+                                    *(u16*)(D_800B1F78 + i + 0),
+                                    *(u16*)(D_800B1F78 + i + 2));
         }
     }
     DrawSync(0);
@@ -268,7 +615,11 @@ void FieldLoad(void) {
                         g_FieldCurScriptFile);
     D_800ADBFC = (s32)g_FieldCurScriptFile->numScripts;
     g_FieldScriptVMCurScriptData =
-        (u8*)&g_FieldCurScriptFile->metadata + (g_FieldCurScriptFile->numScripts << 6);
+        (u8*)g_FieldCurScriptFile + 0x84 + (g_FieldCurScriptFile->numScripts << 6);
+#ifdef XENO_PC_PORT
+    printf("[field-diag] assets before VM: tim=%d clut=%d scripts=%d scriptData=%p\n",
+           (int)timEntryCount, (int)clutEntryCount, (int)D_800ADBFC, g_FieldScriptVMCurScriptData);
+#endif
 
     /* --- Triggers section (size 0x12C, offset 0x150) ------------------------ */
     g_pFieldTriggerZones =
@@ -308,7 +659,7 @@ void FieldLoad(void) {
             *pDst++ = (u32)(prod >> 32) >> 2;
         }
 
-        pBaseTab[0] = *pSrc++ + *(u32*)pBufBase;   /* D_800AFB20 = base + off */
+        pBaseTab[0] = (u32)(uintptr_t)(pBufBase + *pSrc++);   /* D_800AFB20 = base + off */
         if (D_800AFB54 > 0) {
             u32* pA = &pBaseTab[1];        /* a2 walks from D_800AFB20+4  */
             u32* pB = &pBaseTab[1 + 4];    /* a1 walks from D_800AFB20+0x14 */
@@ -329,6 +680,9 @@ void FieldLoad(void) {
     FieldLZSSDecompress(NULL,
                         (u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x13C),
                         g_FieldSpriteData);
+#ifdef XENO_PC_PORT
+    printf("[field-diag] sprite package loaded: spriteData=%p\n", g_FieldSpriteData);
+#endif
 
     /* Reset scene world-rotation flags and load light data (header + 0x154). */
     *(s16*)((u8*)&g_Scene + 0x4C) = 1;
@@ -357,6 +711,9 @@ void FieldLoad(void) {
         for (i = 0; i < nWords; i++) {
             pClear[i] = 0;
         }
+#ifdef XENO_PC_PORT
+        printf("[field-diag] actors allocated: count=%d actorArray=%p\n", (int)g_FieldNumActors, g_FieldActors);
+#endif
     }
 
     numActors = g_FieldNumActors;
@@ -494,7 +851,53 @@ void FieldLoad(void) {
     D_800B0094 = 0;
     D_800B00AA = 0x20;
     D_800ADB1C = 0;
+    {
+        s32 actorDataCount = 0;
+        s32 spriteDataCount = 0;
+        s32 activeCount = 0;
+
+        for (i = 0; i < g_FieldNumActors; i++) {
+            FieldActor* pActor = &g_FieldActors[i];
+            if ((pActor->status & 0x20) == 0) {
+                activeCount++;
+            }
+            if (pActor->pActorData != 0) {
+                actorDataCount++;
+            }
+            if (pActor->pSpriteData != 0) {
+                spriteDataCount++;
+            }
+        }
+#ifdef XENO_PC_PORT
+        printf("[field-diag] before VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
+               (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
+               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+#endif
+    }
     func_800A28D4();
+    {
+        s32 actorDataCount = 0;
+        s32 spriteDataCount = 0;
+        s32 activeCount = 0;
+
+        for (i = 0; i < g_FieldNumActors; i++) {
+            FieldActor* pActor = &g_FieldActors[i];
+            if ((pActor->status & 0x20) == 0) {
+                activeCount++;
+            }
+            if (pActor->pActorData != 0) {
+                actorDataCount++;
+            }
+            if (pActor->pSpriteData != 0) {
+                spriteDataCount++;
+            }
+        }
+#ifdef XENO_PC_PORT
+        printf("[field-diag] after VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
+               (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
+               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+#endif
+    }
 
     D_800ADB1C = 1;
     RotMatrix((SVECTOR*)(D_800B223C - 0xB8), (MATRIX*)D_800AFC30);
@@ -581,4 +984,3 @@ void FieldLoad(void) {
         }
     }
 }
-
