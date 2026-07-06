@@ -137,10 +137,14 @@ extern u8 D_8004FE50[];
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
 #else
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+/* Build-pass proc, called per packet-source record by func_8002C8CC as
+ * fn(D_80059538, D_80059528, shade) — mirrors the retail dispatch; the ported
+ * buildProcs only consume the first arg. */
+typedef s32 (*ModelPrimBuildProc)(u32 pSrc, u32 pCmd, s32 shade);
 
 typedef struct ModelPrimDesc {
     ModelPrimProc proc[6];
-    u32 buildProc;
+    ModelPrimBuildProc buildProc;   /* host pointer; PSX addr kept in comments */
     u32 cmdStride;
     u32 packetStride;
     u32 outputStride;
@@ -342,6 +346,48 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
     D_800595C0 = D_800595C0 + *(u16*)(s0 + 0x4);
 
     s4 = -1;
+#ifdef XENO_PC_PORT
+    /* Port dispatch: the host ModelPrimDesc is 0x40 bytes (64-bit proc
+     * pointers), so the retail byte math below (+prim*0x28, field reads at
+     * +0x18/+0x1C/+0x20/+0x24) would misindex it. Use structural access and
+     * the typed host buildProc pointer instead (same migration as
+     * func_8002C700's render dispatch). */
+    if (s2 != s4) {
+        do {
+            u8* pCur = (u8*)D_80059528;
+            s32 s0_cnt = (s32)*(s16*)(pCur + 0x2) - 1;
+            ModelPrimDesc* desc;
+            ModelPrimBuildProc fn;
+
+            D_80059528 = (u32)(pCur + 0x4);
+            {
+                u32 prim = *(u8*)(pCur + 0x0);
+                desc = &D_8004FE50[prim];
+                if (desc->buildProc == NULL) {
+                    fprintf(stderr, "[xeno-port] missing D_8004FE50 buildProc prim=%u\n", prim);
+                    abort();
+                }
+            }
+            fn = desc->buildProc;
+
+            if (s0_cnt != s4) {
+                do {
+                    s32 ret = fn(D_80059538, D_80059528, (s5 << 16) >> 16);
+                    if (ret != 0) {
+                        D_80059528 = D_80059528 + desc->cmdStride;
+                        D_80059424 = D_80059424 + desc->outputStride;
+                        D_80059538 = D_80059538 + desc->packetStride;
+                        s0_cnt = s0_cnt - 1;
+                    } else {
+                        D_80059538 = D_80059538 + 4;
+                        /* s0 += 1; s0 -= 1  (net no change to counter) */
+                    }
+                } while (s0_cnt != s4);
+            }
+            s2 = s2 - 1;
+        } while (s2 != s4);
+    }
+#else
     if (s2 != s4) {
         do {
             u8* pCur = (u8*)D_80059528;
@@ -374,6 +420,7 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
             s2 = s2 - 1;
         } while (s2 != s4);
     }
+#endif
 
     func_8002CCAC();
 }
