@@ -899,12 +899,19 @@ void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4) {
     u16 clearMask;
 
     if (lead == 0) {
-        glyphData = (u8*)(uintptr_t)D_8005935C + (trail - D_80059364) * 0x16;
+        /* Original PS1 asm computes the glyph offset in signed 32-bit arithmetic,
+           so low glyph codes (trail < D_80059364) index NEGATIVELY into the font
+           block below D_8005935C. Compute the delta as a signed s32 so it sign-
+           extends when added to the 64-bit host pointer; unsigned subtraction here
+           would zero-extend (e.g. -286 -> 0xFFFFFEE2) and corrupt the address. */
+        s32 glyphOffset = ((s32)trail - (s32)D_80059364) * 0x16;
+        glyphData = (u8*)(uintptr_t)D_8005935C + glyphOffset;
     } else if (lead == 0xFF && trail == 0xFF) {
         glyphData = (u8*)D_800501D0;
     } else {
-        glyphData = (u8*)(uintptr_t)D_8005935C + D_80059350 + (trail * 0x16)
-            + ((lead - D_8005934C) * 0x1600);
+        s32 leadOffset = ((s32)lead - (s32)D_8005934C) * 0x1600;
+        s32 trailOffset = (s32)trail * 0x16;
+        glyphData = (u8*)(uintptr_t)D_8005935C + D_80059350 + trailOffset + leadOffset;
     }
 
     clearMask = arg4 ? 0x3333 : 0xCCCC;

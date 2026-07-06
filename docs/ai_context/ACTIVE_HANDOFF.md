@@ -203,6 +203,82 @@
 - The earlier `func_8001E3D8` concern is cleared: gdb proved it is called after `D_800ADC18 == 0`, and the frame-0-only filtered log was capped/misleading.
 - Remaining frontier: preserve this recovered state before starting new diagnostics or implementation work.
 
+## July 5 Map1 Expansion Checkpoint
+
+- User visually confirmed the default map0 sprite/fade/slow-zoom behavior is back. Treat this as the protected visual baseline.
+- Build continues to pass via:
+  `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && ./pc_port/build_port.sh'`
+- After each map1 expansion edit, default map0 was rerun with:
+  `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 timeout -s KILL 35 ./pc_port/build_native/xeno-port`
+  and survived to timeout (`RUN_RC=137`).
+- Map1 has advanced beyond the earlier blockers:
+  - `func_80080A74` stack scratch overwrite.
+  - `func_8009E574` null `pSpriteData`.
+  - missing model primitive descriptors for prim5v0, prim13v0, prim5v2, prim4v0, prim4v2, prim12v2, prim12v0, and prim8v0.
+  - `func_800748E8` actorIndex/D_800ADBFC assertion for model-only slots.
+  - `func_80084158` / `func_8008399C` source assertions for observed actor interaction branches.
+- Latest verified map1 run:
+  `captures/render_diag/field_map1_after_prim8v0_20260705_112439.log`
+  - `RUN_RC=134`
+  - Current stop:
+    `src/field/main/misc2.c:2005: func_800764B4: Assertion '0 && "func_800764B4 active actor quad path is not migrated"' failed.`
+- This is a failsafe, not another small descriptor entry. The original asm for `func_800764B4` is a full active-actor quad path: matrix/normal setup, actor scale, `RotAverage4`, and OT insertion. Do not replace the assertion with a blind skip and do not make a broad rendering migration without an explicit plan.
+- Recommended next single step:
+  - Audit `func_800764B4` against `asm/field/matchings/main/misc2/func_800764B4.s` and decide whether to implement the exact active actor quad path or defer map1 until a smaller visual target is chosen. Protect default map0 before and after any experiment.
+
+## July 5 Map0 Actor-18 Visual Baseline Correction (VERIFIED)
+
+- **Corrected Map0 draw-list baseline: 6 sprite actors (1, 2, 16, 23, 25, 26).** Actor 18 is correctly hidden by its own field-load script. This SUPERSEDES the earlier `worklist_port_recovery_20260705_095407.log` baseline, which showed 7 actors (incl. 18) — that extra actor was a **stub artifact**, not correct rendering.
+- Root cause of the apparent "missing sprite": actor 18's init script legitimately runs `HideActor` (opcode `0x23`) on itself after being shown. At the 09:54 GOOD log, `func_8009AD6C` (opcode `0x5f`) was still a **no-op stub** (`[stub] func_8009AD6C` appears in that log), so the VM spun on it (IP stuck at 2336, never advancing) and never reached the `HideActor` opcode — leaving actor 18 visible by accident.
+- Commit `2627286` ("Implement field VM actor direction handler", 10:17:14) implemented `func_8009AD6C`, so the script now advances past it (`IP += 2`) to `DisableDialogActivation` (`0x2a`) → `HideActor` (`0x23`). Actor 18 hides as the original game intends.
+- Actor 18's verified load opcode trace: `IP2324 op0x0b func_800A1624` (show) → `IP2327 op0xfe FieldScriptVM2Run` → `IP2336 op0x5f func_8009AD6C` (direction) → `IP2338 op0x2a DisableDialogActivation` → `IP2339 op0x23 HideActor` → `IP2340 op0x00 func_800A1B70` (idle spin).
+- **`func_8009AD6C` verified FAITHFUL** against `asm/field/nonmatchings/main/misc7/func_8009AD6C.s` (byte-exact: reads 1 direction operand, sets `rotation` SVECTOR @0x104/0x106/0x108 with a `D_800ADB1C` conditional on `vz`, `IP += 2`, no script branch). No edit made.
+- **This regression is NOT caused by the uncommitted working-tree diff** (`func_800764B4` skip, map1 work, `port_main.c` init refactor). None of actor 18's script handlers are uncommitted-changed functions. The uncommitted `misc2.c`/`port_main.c` changes are behaviorally inert on Map0.
+- Map0 render path remains healthy: `RUN_RC=124`, zero `[stub]` lines, `func_8001E3D8` links sprites (`2/6/8/3/2/4`), `DrawOTag=1`, `D_800ADC18` gate behaves identically to the GOOD log.
+- **Do not force actor 18 visible and do not re-stub `func_8009AD6C`.** If a future visual milestone needs actor 18 shown, that must come from a legitimate un-hide trigger, not from breaking the VM.
+
+## July 5 func_800764B4 Active-Actor Quad Path (VERIFIED, Version B / TR-drop)
+
+- **`func_800764B4` implemented** (active-actor billboard quad render path), replacing the skip-stub. Faithful port of `asm/field/matchings/main/misc2/func_800764B4.s` (real disassembly; the `/* Handwritten function */` header only means the GTE COP2 opcodes were hand-annotated).
+- **Exact files changed this turn: `src/field/main/misc2.c` ONLY** (the `func_800764B4` body). No other file edited. The rest of the dirty file set (`docs/ai_context/ACTIVE_HANDOFF.md`, `pc_port/src/game_overrides.c`, `pc_port/src/port_main.c`, `src/field/main/misc.c`, `misc6.c`, `misc7.c`, `misc8.c`, and the `func_800748E8` assert-guard hunk within `misc2.c`) was **pre-existing and unchanged** by this turn.
+- `s_ActiveActorSkipCount` retained (per instruction) via `(void)` reference — kept as a fallback for any other unmigrated path.
+- **GTE-op → wrapper mapping** (all implemented, non-stubbed `T` symbols): `op` (outer product) → `OuterProduct12`; `mvmva 1,0,3,3,0` (RT×IR) → `ApplyMatrixSV` (column-wise); `ScaleMatrix`; `RotAverage4`; `VectorNormal`; `SetRot/TransMatrix`.
+- **TR-drop decision (Version B), empirically PROVEN** — do not add `+worldToScreenMatrix.t`:
+  - The asm translation step @`80076850` is `mvmva 1,0,0,0,0` (cv=0, adds GTE TR). The sibling `func_80075B44.s` @`80075DE4` is the *identical* `cv=0`.
+  - But the port's `ApplyMatrixLV` (PsyCross `LIBGTE.C:526`, and ROM `ApplyMatrixLV.s`) is **rotation-only** (`gte_SetRotMatrix`+`RTIR`, no `m->t`). The proven-working sibling `func_80075B44` (misc2.c:1848-1853) feeds `ApplyMatrixLV` output straight into `actorMatrix.t` and renders correctly.
+  - Runtime proof (gdb, `worldToScreenMatrix.t=[0,-189,24794]`): for actor pos `[-100,0,100]`, `ApplyMatrixLV` OUT = `[0,-340,258]` == `R*pos>>12` **exactly** (TR-drop). TR-add would give `[0,-529,25052]` (Z=25052 → actor pushed off-screen). So `func_800764B4` mirrors the sibling: `actorMatrix.t = ApplyMatrixLV(...)`, no explicit `+t`.
+- **Build:** `LINK OK -> pc_port/build_native/xeno-port` (`misc2.c` compiled clean, `compiled=43`).
+- **Map1 target test** (`XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1`):
+  - **`func_800764B4` skip count: 16 → 0** — Map1 now executes the real actor quad path.
+  - **gdb count: 128 OT splices** at the OT-insert line (`misc2.c` `func_800764B4` tail) before the crash — ~21 actor-quads/frame actively linked (was 0/all-skipped).
+  - **`primSubmits` clears to 2** (gate `D_800ADC18` reaches 0 at frame 4).
+  - **Run advances to frame 5** (pre-impl capture stalled at frame 2 with `primSubmits=0`).
+  - **`DrawOTag=1` every frame**, with **no crash inside `func_800764B4` or `DrawOTag`** — the 128 splices are well-formed (a corrupt splice would crash OT traversal).
+  - Latest Map1 log: `captures/render_diag/map1_764B4_20260705_172450.log`.
+- **Map0 guard remains SAFE:** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 still hidden), **0 `[stub]` lines**.
+- **Map1 `RUN_RC=139`** is the **pre-existing downstream text-render crash**, present since before any of this session's work — NOT introduced by `func_800764B4`.
+- **Current next blocker (from crash backtrace):**
+  - `SIGSEGV in func_80034FFC at src/slus_006.64/system/system.c:924`: `glyph = *(u16*)glyphData;` (null/bad `glyphData`).
+  - Stack: `func_80034FFC` → `func_80033DF0` (system.c:470) → `func_80034888` (system.c:724, text-box render) → `func_8008004C` (text_box_render.c:624) → `func_8007554C` (misc2.c:1676) → `func_80078D44` / `FieldMain`.
+  - **`func_800764B4` is ABSENT from the crash stack.**
+- Remaining Map1 `[stub]` field functions still present: `func_80085C90`, `func_80072254`, `func_8008D0F4`, `func_80091F84`, `func_80095284`, `func_800975C0`, `func_80098038`, `func_800980FC`, `func_8009E91C`.
+- **Bigger goal:** aim for a fully readable/visible field, not stub-artifact single-sprite visuals. After the text-render crash, prioritize camera/depth/scale/OT/texture correctness of the now-rendered quads.
+
+## July 5 func_80034FFC Glyph Offset Sign-Extension Fix (VERIFIED)
+
+- **Root cause:** 64-bit pointer **sign-extension bug** in `func_80034FFC` glyph-offset math (`src/slus_006.64/system/system.c`). The original PS1 asm (`func_80034FFC.s`: `subu`/`addu`) computes the glyph offset in **signed 32-bit** arithmetic, so low glyph codes (below the font table base) index **negatively** into the font block below `D_8005935C`. The port did **unsigned** subtraction and added the **zero-extended** 32-bit result to the 64-bit host font pointer → corrupt addresses.
+- **Evidence:** at the crash `lead=0, trail=3, D_8005935C=0x67d282, D_80059364=16 (table base)`. Correct offset = `(3-16)*0x16 = -286`; correct `glyphData = 0x67d282 - 286 = 0x67d164` (valid `g_PsxRam`, reads `0x2510`). The port produced `0x10067d164` (delta `0xFFFFFEE2` = -286 zero-extended). Font init is correct (`D_8005934C=254`, `D_80059350=5236`, `D_80059364=16` loaded from `pSystemFont`), and char 3 is a legit negative-index glyph (not a control code: `func_80033DF0` handles `0/1/2/0x0F`). NOT a missing-init bug.
+- **Fix (signed-delta form, no null guard, no fallback glyph):** cast the deltas to `s32` so they sign-extend into the 64-bit pointer:
+  - lead==0: `s32 glyphOffset = ((s32)trail - (s32)D_80059364) * 0x16; glyphData = (u8*)(uintptr_t)D_8005935C + glyphOffset;`
+  - lead/trail table path: `s32 leadOffset = ((s32)lead - (s32)D_8005934C) * 0x1600; s32 trailOffset = (s32)trail * 0x16; glyphData = (u8*)(uintptr_t)D_8005935C + D_80059350 + trailOffset + leadOffset;`
+  - `0xFF/0xFF` special case unchanged. Text-box activation logic untouched.
+- **Files changed: `src/slus_006.64/system/system.c` ONLY.**
+- **Build:** `LINK OK` (`compiled=43`).
+- **Map1 result** (`captures/render_diag/map1_glyphfix_20260705_185647.log`): `RUN_RC=134`. **The `system.c:924` SIGSEGV is GONE** (0 occurrences). Map1 advances past the text-box render (frame 5, `primSubmits=2`, `func_800764B4` skip=0).
+- **Map0 guard:** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 still hidden), 0 `[stub]`. SAFE.
+- **Next blocker (new, different failsafe — NOT from this fix):** `func_800248D4` assertion `"opcode path is not implemented"` at `src/slus_006.64/system/temp1.c:729` (sprite **animation-script VM**). Stack: `func_800248D4(pSpriteData) [temp1.c:729]` → `AnimScriptTick [temp1.c:91]` → `func_800752C8 [misc2.c:1511]` → `func_8007554C [misc2.c:1651]`. Also a new `[stub] func_80081F80` appears just before it. This is an unmigrated anim-script opcode handler (a deliberate assert, like `func_800764B4` was), reached only because the glyph fix let Map1 run further.
+- **Open follow-up (unchanged from prior note):** whether Map1 should auto-display the dialogue at all (text box activated via the `pWindow+0x8C` node list; script is structured encoded text) — a dialogue-activation question, separate from the (now-fixed) font-pointer bug.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
@@ -212,7 +288,7 @@
 - **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
 - Do not start broad feature work or add unrelated stub replacements yet.
 - Next single step:
-  - Proposed smallest recovery edit: fix `func_80080A74`'s stack scratch buffer to match the original asm capacity/stride, then build and rerun `XENO_FIELD_MAP=1`. Do not change render logic.
+  - Stop at the current `func_800764B4` active actor quad failsafe. It is a large visual path and should not be patched around. Audit first, then implement only if the exact behavior is understood.
 - Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
 
 ## Commands Verified

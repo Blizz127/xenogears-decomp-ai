@@ -188,10 +188,6 @@ void func_8009E094(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E10C);
-/*
-Matches when scriptFlags is a u32, not bitfields.
-
 void func_8009E10C(void) {
     int nValue;
     int nUnkFlags;
@@ -204,11 +200,10 @@ void func_8009E10C(void) {
     if (nValue & 0x20) nUnkFlags |= 4;
     if (nValue & 0x40) nUnkFlags |= 0x08000000;
     
-    g_FieldScriptVMCurActor->scriptFlags &= 0xF7FFFF43;
-    g_FieldScriptVMCurActor->scriptFlags |= nUnkFlags;
+    g_FieldScriptVMCurActor->scriptFlags.flags &= 0xF7FFFF43;
+    g_FieldScriptVMCurActor->scriptFlags.flags |= nUnkFlags;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-*/
 
 void func_8009E1A0(void) {
     u32 nValue;
@@ -910,7 +905,31 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0FD8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A1364);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A14F0);
+void func_800A14F0(void) {
+    u8* actorData;
+    u8* fieldActor;
+    u8* spritePackage;
+    s32 skinIndex;
+    s32 arg3;
+
+    fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
+    *(u16*)(fieldActor + 0x58) = (*(u16*)(fieldActor + 0x58) & 0xF07F) | 0x200;
+
+    skinIndex = FieldScriptVMGetArgument(1);
+    spritePackage = (u8*)g_FieldSpriteData +
+                    *(u32*)((u8*)g_FieldSpriteData + (skinIndex * 4) + 4);
+    arg3 = FieldScriptVMGetArgument(3);
+    func_80076AC0(D_800AFD1C, skinIndex, spritePackage, 0, arg3, skinIndex | 0x80, 1);
+    func_800A0C94();
+
+    actorData = (u8*)g_FieldScriptVMCurActor;
+    *(u16*)(actorData + 0xCC) += 5;
+    *(u32*)(actorData + 0x0) = (*(u32*)(actorData + 0x0) | 0x100) & ~0x80;
+    *(u32*)(actorData + 0x4) &= ~0x800;
+
+    fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
+    *(u16*)(fieldActor + 0x58) &= ~0x20;
+}
 
 void func_800A1624(void) {
     u8* actorData;
