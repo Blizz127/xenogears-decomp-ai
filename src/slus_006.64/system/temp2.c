@@ -226,14 +226,15 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         long xy2 = 0;
         long xy3 = 0;
         long p = 0;
+        long otz = 0;
         long flag = 0;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        if (flag < 0 || p <= 0) {
+        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || otz <= 0) {
             continue;
         }
         if (NormalClip(xy0, xy1, xy2) < 0) {
@@ -244,7 +245,10 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         }
 
         {
-            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers4 return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             if (otIndex <= 0) {
                 continue;

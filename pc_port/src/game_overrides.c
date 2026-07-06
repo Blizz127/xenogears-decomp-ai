@@ -126,6 +126,7 @@ extern s32 func_8002D0C0(s32* a0);
 extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriVariant0(u8* pCmd, s32 count);
@@ -160,7 +161,7 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x28,
     },
     [0x0C] = {
-        .proc = { ModelPrimQuadVariant0, NULL, ModelPrimTriMediumVariant2, NULL, NULL, NULL },
+        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimTriMediumVariant2, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002D0C0,   /* PSX 0x8002D0C0 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
@@ -222,14 +223,15 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long p = 0;
+        long otz = 0;
         long flag = 0;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
-        if (flag < 0 || p <= 0) {
+        otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || otz <= 0) {
             continue;
         }
         if (NormalClip(xy0, xy1, xy2) < 0) {
@@ -240,7 +242,10 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
         }
 
         {
-            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             if (otIndex <= 0) {
                 continue;
@@ -279,14 +284,15 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
         long xy2 = 0;
         long xy3 = 0;
         long p = 0;
+        long otz = 0;
         long flag = 0;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        if (flag < 0 || p <= 0) {
+        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || otz <= 0) {
             continue;
         }
         if (NormalClip(xy0, xy1, xy2) < 0) {
@@ -297,7 +303,10 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
         }
 
         {
-            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             if (otIndex <= 0) {
                 continue;
@@ -309,6 +318,74 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x14) = (u32)xy1;
             *(u32*)(out + 0x20) = (u32)xy2;
             *(u32*)(out + 0x2C) = (u32)xy3;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* POLY_F4 walker for prim 0x0C variant 0 (retail 0x8002E254: 4 vertices,
+ * tag len 5, 0x18-byte packets matching buildProc func_8002D0C0's templates —
+ * tag +0x0, rgb|code +0x4, xy0..xy3 at +0x8/+0xC/+0x10/+0x14). Replaces the
+ * mis-wired 0x34-step GT4 walker that stomped neighbouring packet slots
+ * (Bug 6). Cull/bucket convention matches the other walkers: flag<0 or
+ * otz<=0 skip, otIndex = otz >> D_80050100. */
+static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x18;
+    const u32 tagLen = 0x05000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long p = 0;
+        long otz = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || otz <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+
+        {
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x0C) = (u32)xy1;
+            *(u32*)(out + 0x10) = (u32)xy2;
+            *(u32*)(out + 0x14) = (u32)xy3;
             emitted++;
         }
     }
@@ -335,14 +412,15 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long p = 0;
+        long otz = 0;
         long flag = 0;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
-        if (flag < 0 || p <= 0) {
+        otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || otz <= 0) {
             continue;
         }
         if (NormalClip(xy0, xy1, xy2) < 0) {
@@ -353,7 +431,10 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         }
 
         {
-            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             if (otIndex <= 0) {
                 continue;
@@ -390,14 +471,15 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long p = 0;
+        long otz = 0;
         long flag = 0;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
-        if (flag < 0 || p <= 0) {
+        otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || otz <= 0) {
             continue;
         }
         if (NormalClip(xy0, xy1, xy2) < 0) {
@@ -408,7 +490,10 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
         }
 
         {
-            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
+             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
+             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             if (otIndex <= 0) {
                 continue;
