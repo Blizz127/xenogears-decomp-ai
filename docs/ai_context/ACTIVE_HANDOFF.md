@@ -482,6 +482,13 @@
 - **Result:** `XENO_FIELD_MODEL_BUILD=1` runs **clean to timeout** (`RC=124`) — zero ParsePrimitive errors, model/environment primitives flowing through the OT every frame. Map0 guard `1,2,16,23,25,26`; flag OFF byte-identical; Fei intact.
 - **Remaining caveats:** TR-add **not applied** (model camera-depth still rotation-only → ~388/400 still flag-culled); **C4/C8 handlers (`func_8002CCC8/func_8002CD24`) still unported** — they are the **tpage→`D_80059308` / clut→`D_8005930C` writers** (Stage A open item solved analytically), and the port's `func_8002CD64` must pass `pSrc` through when they're ported (temp2.c currently drops the arg); rgb currently black / texture state wrong. Also noted: misc2.c selects `proc[1]` (NULL) for `status&0x0C` actors — future landmine.
 
+## July 6 — Combined TR-add test (visual = black; experiment reverted again) + C4/C8 handlers PORTED (uncommitted)
+
+- **Combined `MODEL_BUILD + OTZ + F4 + TR_ADD` run:** cull went **388→0 `flag<0`, 12→400/400 PASSED** — the entire environment geometry emits cleanly (`RC=124`, zero packet errors, Map0 guard intact, Fei sprite still emitting at (161,81)). **User visual: black screen.** Leading (unproven) theory: environment renders black (FT3 rgb unwritten by stubbed lighting; textured prims sampled tpage/clut 0) over/around the sprites. Per instruction, black screen NOT treated as fully diagnosed. TR-add preserved + reverted again (`captures/render_diag/tradd_black_screen_dirty_state_20260706_171334.patch`).
+- **C4/C8 handlers ported (temp2.c only):** `func_8002CCC8` (0xC4: tpage latch → `D_80059308`, modes via `D_80050108`: raw / mask+merge `D_80059310` / override) and `func_8002CD24` (0xC8: CLUT latch → `D_8005930C`, mode `D_8005010C`==0: low-nibble + `D_80059314` base; else raw) — asm-faithful, state-only. **`func_8002CD64` now passes `pSrc`** (retail keeps it in `$a0`; the Stage A port dropped it). `D_80050108/D_8005010C` are retail `.bss` (zero-init faithful).
+- **Verified:** compiled C (0 in stubs.c), `[stub]` logs gone; live latches carry **real state — tpage `0x0015` (VRAM 320,256), clut `0x7a42` (≈32,489)**; `MODEL_BUILD=1` `RC=124`, no packet errors; Map0 guard `1,2,16,23,25,26`; flag OFF untouched.
+- **Next:** checkpoint C4/C8, then re-apply TR-add for the textured combined visual test (real tpage/clut this time; FT3 rgb/lighting `func_8002DB84`+`NormalLightCol` still the remaining color gap).
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
