@@ -489,6 +489,17 @@
 - **Verified:** compiled C (0 in stubs.c), `[stub]` logs gone; live latches carry **real state — tpage `0x0015` (VRAM 320,256), clut `0x7a42` (≈32,489)**; `MODEL_BUILD=1` `RC=124`, no packet errors; Map0 guard `1,2,16,23,25,26`; flag OFF untouched.
 - **Next:** checkpoint C4/C8, then re-apply TR-add for the textured combined visual test (real tpage/clut this time; FT3 rgb/lighting `func_8002DB84`+`NormalLightCol` still the remaining color gap).
 
+## July 6 — Lighting unit ported (committed); rgb EXONERATED; blocker relocated to VRAM textures (0xBB)
+
+- **Combined textured TR-add test:** 400/400 model quads pass, real tpage/clut in packets, `RC=124`, **Fei visible (user screenshot)** — environment still black. TR-add preserved+reverted again.
+- **Lighting unit (this commit):** `NormalLightCol` (real NCCS wrapper via PsyX MTC2/doCOP2/MFC2), `OuterProduct0` (GTE OP cross, exact plain-math), `func_8002DC9C` (signed dominant-magnitude component select; dead branches proven unreachable), `func_8002DB84` (4-arg face normal: cross → sqrt range-reduce → `VectorNormalS(outNormal)`; host div-by-zero guard documented) — in libgte.c (`#ifndef XENO_PC_PORT` pattern) + temp2.c. **`func_8002CF58` call sites fixed to pass the 4th out-normal arg** (stack normal / `D_80059498` slot per asm `$a3`). Gotcha for future ports: `pc_port/include_shim/psyq/libgte.h` redirects to PsyX's header — extern signatures must match PsyX (`int SquareRoot0(int)`, `long VectorNormalS(VECTOR*,SVECTOR*)` in psyq_compat.c); build_port.sh compiles game TUs with `2>/dev/null` and silently stubs failures — verify with `nm`, not `LINK OK`.
+- **Lighting state chain live:** `SetLightMatrix`/`SetColorMatrix`/`SetBackColor` (PsyX) + `func_80030A30` (field light loader) all real.
+- **Measured:** all **96 Map1 models build with shade mode 0** (`(status&0xC)>>2==0`; CF58 called once, shade=0) — lit paths legitimately never execute on this map.
+- **rgb EXONERATED:** model packets use **raw-texture codes `0x25`/`0x2d` (bit 0 = no modulation)** — the PSX GPU ignores rgb for these prims. Black rgb was never the Map1 visual blocker.
+- **Current best blocker:** the texture pages the model packets sample (tpage `0x15`/`0x95` ≈ VRAM (320,256)) are **empty in port VRAM** — Map1's header TIM package is empty (`tim=0 clut=0`) and the field VRAM payload ships in the **streamed `0xBB` archive** (read-then-discarded by the port; the early `PcPortDrainBgToVram` experiment uploaded exactly these pages before being reverted for the Fei clobber; retail reconciles via the per-frame sprite re-blit `func_80025044`, which the port dispatch already calls).
+- **Next experiment:** guarded opt-in `0xBB` streamed-archive→VRAM upload (bounds-checked; verify the per-frame sprite refresh restores Fei's page, or defer sprite-band strips first).
+- **Sanity:** distrobox display/GPU passthrough verified healthy (`/dev/dri` present; binary even runs on the host) — container not a suspect.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.

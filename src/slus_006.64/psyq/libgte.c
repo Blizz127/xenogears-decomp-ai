@@ -120,7 +120,24 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq3);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalLightCol);
+#else
+/* asm: lwc2 $0/$1 <- normal (V0), lwc2 $6 <- rgb|code (RGBC), nccs,
+ * swc2 $22 -> out (RGB2). Consumes the GTE light state (LLM/LCM/BK) set by
+ * SetLightMatrix/SetColorMatrix/SetBackColor -- all real in PsyX. */
+extern void MTC2(unsigned int value, int reg);
+extern unsigned int MFC2(int reg);
+extern void doCOP2(int op);
+
+void NormalLightCol(void* pNormal, void* pInColor, void* pOutColor) {
+    MTC2(*(u32*)((u8*)pNormal + 0), 0);
+    MTC2(*(u32*)((u8*)pNormal + 4), 1);
+    MTC2(*(u32*)pInColor, 6);
+    doCOP2(0x0108041B); /* nccs */
+    *(u32*)pOutColor = MFC2(22);
+}
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorCol3);
 
@@ -150,7 +167,21 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct12);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct0);
+#else
+#include "psyq/libgte.h" /* shim -> PsyX libgte.h: VECTOR/SVECTOR types */
+/* asm: loads v0 into the GTE rotation diagonal (D1/D2/D3), v1 into IR1/2/3,
+ * executes OP with sf=0 and stores MAC1/2/3. GTE OP semantics:
+ *   MAC1 = IR3*D2 - IR2*D3, MAC2 = IR1*D3 - IR3*D1, MAC3 = IR2*D1 - IR1*D2
+ * i.e. out = cross(v0, v1); sf=0 means no shift and 32-bit MACs, so plain
+ * integer math is exact for the small edge vectors this path feeds it. */
+void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out) {
+    out->vx = v0->vy * v1->vz - v0->vz * v1->vy;
+    out->vy = v0->vz * v1->vx - v0->vx * v1->vz;
+    out->vz = v0->vx * v1->vy - v0->vy * v1->vx;
+}
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Lzc);
 
