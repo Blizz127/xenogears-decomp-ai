@@ -1063,7 +1063,46 @@ void func_8008E570(void) {
     func_8008E498(((u16*)g_FieldScriptVMCurActor)[3]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E59C);
+void func_8008E59C(void) {
+    u32 mask;
+
+    mask = FieldScriptVMGetInstructionArgument(2) & 0xFFFF;
+    switch (SCRIPT_READ_U8_REL(1)) {
+        case 0:
+            g_FieldScriptVMCurActor->scriptFlags.flags |= mask;
+            break;
+
+        case 1:
+            g_FieldScriptVMCurActor->scriptFlags.flags |= mask << 16;
+            break;
+
+        case 2:
+            g_FieldScriptVMCurActor->flags |= mask;
+            break;
+
+        case 3:
+            g_FieldScriptVMCurActor->flags |= mask << 16;
+            break;
+
+        case 4:
+            g_FieldScriptVMCurActor->scriptFlags.flags &= ~mask;
+            break;
+
+        case 5:
+            g_FieldScriptVMCurActor->scriptFlags.flags &= ~(mask << 16);
+            break;
+
+        case 6:
+            g_FieldScriptVMCurActor->flags &= ~mask;
+            break;
+
+        case 7:
+            g_FieldScriptVMCurActor->flags &= ~(mask << 16);
+            break;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E718);
 
@@ -1184,6 +1223,13 @@ void func_8008F6AC(void) {
 
 extern s32 D_800ADBDC;
 extern s32 D_8004F340;
+extern s32 D_800ADB1C;
+extern s32 D_8004F324;
+extern s32 D_8004F308;
+extern s32 D_8004F354;
+extern void func_80085EEC(void);
+extern void func_8001B66C(void);
+extern void func_80085B20(s32);
 
 void func_8008F724(void) {
     if (D_800ADBDC == 0) {
@@ -1203,6 +1249,43 @@ void func_8008F76C(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F7B8);
+void func_8008F7B8(void) {
+    s32 fieldId = FieldScriptVMGetArgument(1);
+
+    if (D_800ADB1C == 0) {
+        func_80085EEC();
+        if (fieldId != D_8004F324) {
+            func_8001B66C();
+            D_8004F308 = -1;
+        }
+        D_8004F324 = fieldId;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+        return;
+    }
+
+    if (func_8008A558() != 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    if (D_800ADBDC == 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    if (D_8004F354 == 1 || D_8004F308 == -1) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    if (fieldId != D_8004F324) {
+        func_8001B66C();
+        D_8004F324 = fieldId;
+        D_8004F308 = -1;
+        func_80085B20(fieldId);
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F90C);

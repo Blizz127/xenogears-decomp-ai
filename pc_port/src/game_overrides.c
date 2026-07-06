@@ -40,6 +40,7 @@ void func_80019548(void) {}
 #include "system/memory.h"
 #include "system/sound.h"
 #include "psyq/libcd.h"
+#include "psyq/libgte.h"
 #include "psyq/libgpu.h"
 #include "psx_memory.h"
 
@@ -101,8 +102,8 @@ s32 D_8004F33C = -1;
 
 /* Main executable .sdata @0x8004FE50: model primitive dispatch descriptors.
  * The PSX table stores raw RAM addresses, including internal entry points such
- * as 0x8002E688. Native PC needs callable host pointers, so migrate only the
- * currently reached descriptor entry (primitive 0x0D, render variant 2). */
+ * as 0x8002E04C/0x8002E688. Native PC needs callable host pointers, so migrate
+ * only descriptor entries reached by the field harness. */
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
 
 typedef struct ModelPrimDesc {
@@ -114,14 +115,46 @@ typedef struct ModelPrimDesc {
 } ModelPrimDesc;
 
 extern s32 func_8002E688(u8* pCmd, s32 count);
+static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriVariant0(u8* pCmd, s32 count);
 
 ModelPrimDesc D_8004FE50[15] = {
+    [0x04] = {
+        .proc = { ModelPrimTriSmallVariant0, NULL, ModelPrimTriSmallVariant0, NULL, NULL, NULL },
+        .buildProc = 0x8002CF34,
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x14,
+    },
+    [0x05] = {
+        .proc = { ModelPrimTriVariant0, NULL, ModelPrimTriVariant0, NULL, NULL, NULL },
+        .buildProc = 0x8002D984,
+        .cmdStride = 0x08,
+        .packetStride = 0x08,
+        .outputStride = 0x20,
+    },
+    [0x08] = {
+        .proc = { ModelPrimTriMediumVariant2, NULL, NULL, NULL, NULL, NULL },
+        .buildProc = 0x8002CF58,
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x18,
+    },
     [0x0D] = {
-        .proc = { NULL, NULL, func_8002E688, NULL, NULL, NULL },
+        .proc = { func_8002E688, NULL, func_8002E688, NULL, NULL, NULL },
         .buildProc = 0x8002D0E4,
         .cmdStride = 0x08,
         .packetStride = 0x0C,
         .outputStride = 0x28,
+    },
+    [0x0C] = {
+        .proc = { ModelPrimQuadVariant0, NULL, ModelPrimTriMediumVariant2, NULL, NULL, NULL },
+        .buildProc = 0x8002D0C0,
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x18,
     },
 };
 
@@ -130,6 +163,260 @@ s32 D_800500F8 = 0x13F;
 s32 D_800500FC = 0x00EE0000;
 s32 D_80050100 = 2;
 s32 D_80050104 = 1;
+
+extern u8* D_80059424;
+extern u32 D_8005953C;
+extern u32 D_80059568;
+extern s32 D_80059578;
+
+static u32 ModelPrimVertexIndex1(u32 word) {
+    return (word >> 16) & 0xFFFF;
+}
+
+static int ModelPrimTriOverlapsScreen(u32 xy0, u32 xy1, u32 xy2) {
+    u32 yMaxPacked = (u32)D_800500FC;
+    u32 xMax = (u32)D_800500F8;
+
+    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked)) {
+        return 0;
+    }
+    return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
+            ((xy2 & 0xFFFF) < xMax));
+}
+
+static int ModelPrimQuadOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+    u32 yMaxPacked = (u32)D_800500FC;
+    u32 xMax = (u32)D_800500F8;
+
+    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked || xy3 > yMaxPacked)) {
+        return 0;
+    }
+    return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
+            ((xy2 & 0xFFFF) < xMax) || ((xy3 & 0xFFFF) < xMax));
+}
+
+static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x14;
+    const u32 tagLen = 0x04000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || p <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x0C) = (u32)xy1;
+            *(u32*)(out + 0x10) = (u32)xy2;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x34;
+    const u32 tagLen = 0x0C000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long p = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || p <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x14) = (u32)xy1;
+            *(u32*)(out + 0x20) = (u32)xy2;
+            *(u32*)(out + 0x2C) = (u32)xy3;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x18;
+    const u32 tagLen = 0x05000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || p <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x0C) = (u32)xy1;
+            *(u32*)(out + 0x10) = (u32)xy2;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x20;
+    const u32 tagLen = 0x07000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        if (flag < 0 || p <= 0) {
+            continue;
+        }
+        if (NormalClip(xy0, xy1, xy2) < 0) {
+            continue;
+        }
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)p >> (D_80050100 + 2);
+            u32 oldTag;
+            if (otIndex <= 0) {
+                continue;
+            }
+            oldTag = ot[otIndex];
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x10) = (u32)xy1;
+            *(u32*)(out + 0x18) = (u32)xy2;
+            emitted++;
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
 
 extern s32 D_8004F2F4;
 extern s32 D_8004F2F8;

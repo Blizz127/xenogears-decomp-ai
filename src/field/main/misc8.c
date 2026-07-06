@@ -20,6 +20,7 @@
 #endif
 
 extern int D_800ADBFC;
+extern void func_80281678(void*);
 void func_8008083C(int actorIndex) {
     ActorData* pActor;
 
@@ -108,6 +109,8 @@ extern s32 D_800AFB44[];
 
 void func_80080A74(s32 actorIndex) {
     u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
+    s16 stateBuf[0x34] = { 0 };
+    s32 useStateBuf = 0;
     s32 i;
     s32 actorByteOff = actorIndex * 0x5C;
     u8* pActorBytes = (u8*)g_FieldActors + actorByteOff;
@@ -203,15 +206,15 @@ void func_80080A74(s32 actorIndex) {
 
     /* ---- D_800AFB54 loop (distance-based init; skipped when count <= 1) ---- */
     if (D_800AFB54 > 1) {
-        s16 stateBuf[6];
         s16* pState = stateBuf;
         s16* pDst = (s16*)(p + 0x08);
 
+        useStateBuf = 1;
         for (i = 0; i < D_800AFB54 - 1; i++) {
             s16 r = func_8007B1C4(
                 *(s16*)(pActorBytes + 0x20),
                 *(s16*)(pActorBytes + 0x28),
-                i, (u8*)p + 0x58 + i * 8, pState);
+                i, (u8*)stateBuf + 0x40 + i * 8, pState);
             *pDst = r;
             if (r != -1 && (u32)r >= (u32)D_800AFB44[i]) {
                 D_800AFB44[i] = 0;
@@ -233,7 +236,7 @@ void func_80080A74(s32 actorIndex) {
     *(s32*)(p + 0x14) = func_80080968(p);
     {
         s16 choice = *(s16*)(p + 0x10);
-        s16* stateBase = (s16*)(p + 0x18);
+        s16* stateBase = useStateBuf ? stateBuf : (s16*)(p + 0x18);
         *(s32*)(p + 0x50) = *(s32*)((u8*)stateBase + choice * 16 + 0);
         *(s32*)(p + 0x54) = *(s32*)((u8*)stateBase + choice * 16 + 4);
         *(s32*)(p + 0x58) = *(s32*)((u8*)stateBase + choice * 16 + 8);
@@ -586,7 +589,41 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
     assert(!"func_800821F4 battle animation branch not migrated");
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008237C);
+s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
+    u8* actorData = pActorData;
+    s32 xMin;
+    s32 xMax;
+    s32 zMin;
+    s32 zMax;
+    long actorPos;
+    long p0;
+    long p1;
+    long p2;
+    long p3;
+
+    actorPos = (x << 16) + z;
+    xMin = *(s16*)(actorData + 0x22) - *(u16*)(actorData + 0x18) - extraRadius;
+    xMax = *(s16*)(actorData + 0x22) + *(u16*)(actorData + 0x18) + extraRadius;
+    zMin = *(s16*)(actorData + 0x2A) - *(u16*)(actorData + 0x1C) - extraRadius;
+    zMax = *(s16*)(actorData + 0x2A) + *(u16*)(actorData + 0x1C) + extraRadius;
+
+    p0 = (xMin << 16) + zMax;
+    p1 = (xMax << 16) + zMax;
+    p2 = (xMax << 16) + zMin;
+    p3 = (xMin << 16) + zMin;
+
+    if (NormalClip(p0, p1, actorPos) < 0 ||
+        NormalClip(p1, p2, actorPos) < 0 ||
+        NormalClip(p2, p3, actorPos) < 0 ||
+        NormalClip(p3, p0, actorPos) < 0) {
+        return -1;
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_80281678(actorData);
+    }
+    return 0;
+}
 
 s32 func_80082494(s32* pVec, u8* actorData) {
     (void)pVec;
@@ -926,6 +963,7 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         s32 sq[3];
         s32 scriptId = 0xFF;
         s32 scriptRoutine = defaultScriptId;
+        s32 forceInteraction = 0;
 
         otherFlags0 = *(u32*)(otherData + 0x00);
         if (otherFlags0 & 0x1) {
@@ -948,7 +986,19 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
 
         if (otherFlags0 & 0x2000) {
-            assert(!"func_8008399C blocking actor branch not migrated");
+            if (otherY < playerFloor) {
+                continue;
+            }
+            if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
+                continue;
+            }
+            if (i == actorIndex) {
+                continue;
+            }
+            if (func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
+                continue;
+            }
+            forceInteraction = 1;
         }
 
         radius = outerRadius + *(u16*)(otherData + 0x1E);
@@ -957,7 +1007,7 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         vec[2] = dz;
         Square0((VECTOR*)vec, (VECTOR*)sq);
 
-        if (sq[0] + sq[2] >= sq[1]) {
+        if (!forceInteraction && sq[0] + sq[2] >= sq[1]) {
             continue;
         }
         if (otherY < playerFloor) {
@@ -985,7 +1035,7 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
             innerLimit[2] = outerRadius + *(u16*)(otherData + 0x1E);
             Square0((VECTOR*)innerLimit, (VECTOR*)innerLimitSq);
 
-            if (dist < innerLimitSq[0]) {
+            if (forceInteraction || dist < innerLimitSq[0]) {
                 if (D_800C2694 & 0x20) {
                     assert(!"func_8008399C confirm-button branch not migrated");
                 }
@@ -1096,13 +1146,19 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
         }
 
         if (otherFlags0 & 0x2000) {
-            assert(!"func_80084158 func_8008237C branch not migrated");
+            if (func_8008237C(currentPos.vx, currentPos.vz, otherData, 0) != 0) {
+                *(u32*)(otherData + 0x04) &= 0xFF3FFFFF;
+                continue;
+            }
+            scratch[4] = 0;
+            scratch[5] = 1;
+            scratch[6] = 0;
+        } else {
+            scratch[0] = ((*(s32*)(otherData + 0x20) + *(s32*)(otherData + 0x30)) >> 16) - currentPos.vx;
+            scratch[1] = *(u16*)(actorData + 0x1E) + *(u16*)(otherData + 0x1E);
+            scratch[2] = ((*(s32*)(otherData + 0x28) + *(s32*)(otherData + 0x38)) >> 16) - currentPos.vz;
+            Square0((VECTOR*)scratch, (VECTOR*)&scratch[4]);
         }
-
-        scratch[0] = ((*(s32*)(otherData + 0x20) + *(s32*)(otherData + 0x30)) >> 16) - currentPos.vx;
-        scratch[1] = *(u16*)(actorData + 0x1E) + *(u16*)(otherData + 0x1E);
-        scratch[2] = ((*(s32*)(otherData + 0x28) + *(s32*)(otherData + 0x38)) >> 16) - currentPos.vz;
-        Square0((VECTOR*)scratch, (VECTOR*)&scratch[4]);
 
         if (scratch[4] + scratch[6] < scratch[5]) {
             if (actorFlags14 & 0x00400000) {

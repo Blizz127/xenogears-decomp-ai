@@ -10,6 +10,7 @@
 extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
+extern s32 D_800B21D8;
 long FieldGetVec3Magnitude(long x, long y, long z);
 
 void func_800972F4(void) {
@@ -356,7 +357,25 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1E4);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A2A8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A34C);
+void func_8009A34C(void) {
+    s32 duration;
+    s32 targetAngle;
+
+    duration = SCRIPT_READ_U8_REL(3);
+    *(s16*)((u8*)&g_Scene + 0x8C) = duration;
+    if (duration == 0) {
+        duration = 1;
+        *(s16*)((u8*)&g_Scene + 0x8C) = duration;
+        D_800B21D8 += 2;
+    }
+
+    targetAngle = FieldScriptVMGetArgument(1);
+    *(s32*)((u8*)&g_Scene + 0x90) = *(s16*)((u8*)&g_Scene + 0x6E) << 16;
+    g_Scene.unk48 |= 1;
+    *(s32*)((u8*)&g_Scene + 0x94) = -((*(s16*)((u8*)&g_Scene + 0x6E) - targetAngle) << 16) / duration;
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A420);
 
@@ -651,4 +670,20 @@ void func_8009B9A0(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009BA0C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009BA7C);
+void func_8009BA7C(void) {
+    s32 angle;
+    s32 scrZ;
+
+    *(s16*)((u8*)&g_Scene + 0x6C) = FieldScriptVMGetArgument(3);
+
+    angle = ((FieldScriptVMGetArgument(1) + 4) & 7) << 9;
+    *(s32*)((u8*)&g_Scene + 0x7C) = angle;
+    *(s16*)((u8*)&g_Scene + 0x56) = angle;
+    *(s32*)((u8*)&g_Scene + 0x60) = angle << 16;
+
+    scrZ = FieldScriptVMGetArgument(5);
+    *(s32*)((u8*)&g_Scene + 0x68) = scrZ;
+    SetGeomScreen(scrZ);
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}

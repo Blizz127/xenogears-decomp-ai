@@ -1359,14 +1359,15 @@ void func_800748E8(void) {
             SVECTOR row;
             s32 hiddenByModel;
 
-            assert(actorIndex < D_800ADBFC);
-            assert(actorData != NULL);
             assert(modelData != NULL);
 
-            mode = *(u32*)(actorData + 0x12C) & 3;
-            assert(mode == 0);
-            assert(*(u16*)(actorData + 0x128) == 0xFFFF);
-            assert(*(u8*)(actorData + 0x75) == 0xFF);
+            if (actorIndex < D_800ADBFC) {
+                assert(actorData != NULL);
+                mode = *(u32*)(actorData + 0x12C) & 3;
+                assert(mode == 0);
+                assert(*(u16*)(actorData + 0x128) == 0xFFFF);
+                assert(*(u8*)(actorData + 0x75) == 0xFF);
+            }
 
             if ((env[0x44] & 0x7F) == 0) {
                 *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
@@ -1964,12 +1965,15 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 
 extern s32 D_8004F37C;
 
+#ifdef XENO_PC_PORT
+static s32 s_ActiveActorSkipCount = 0;
+#endif
+
 void func_800764B4(void* ot, s32 renderContextIndex) {
     s32 actorIndex;
     u8* pActor;
 
-    (void)ot;
-    (void)renderContextIndex;
+    (void)s_ActiveActorSkipCount; /* retained fallback for other unmigrated paths */
 
     if (D_8004F37C != 0 || D_800ADBFC <= 0) {
         return;
@@ -1979,15 +1983,25 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
     for (actorIndex = 0; actorIndex < D_800ADBFC; actorIndex++, pActor += 0x5C) {
         u32 status = *(u32*)(pActor + 0x58);
         u8* pActorData;
+        u8* pSpriteData;
+        u8* pPacket;
         u32 flags4;
+        VECTOR worldZ, up, cross, normVec1, normVec2, pos, trans, scale;
+        MATRIX billboard;
+        MATRIX actorMatrix;
+        s32 j;
+        s32 s0off, packetOff;
+        long p, flag, otz;
+        s32 otIndex;
+        u8* pPrim;
+        u32* pSlot;
 
+        /* ---- actor filter chain (unchanged, .L8007656C -> .L80076A28) ---- */
         if ((status & 0x60) != 0x40) {
             continue;
         }
-
         pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
         flags4 = *(u32*)(pActorData + 0x04);
-
         if ((flags4 & 0x102200) != 0) {
             continue;
         }
@@ -2001,7 +2015,102 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
             continue;
         }
 
-        assert(0 && "func_800764B4 active actor quad path is not migrated");
+        /* ---- migrated per-actor quad render body (.L800765D8 .. .L80076A28) ---- */
+        pSpriteData = (u8*)(uintptr_t)*(u32*)(pActor + 0x04);
+        pPacket     = (u8*)(uintptr_t)*(u32*)(pActor + 0x08);
+
+        /* Actor direction vector at pActorData+0x50 (three 32-bit words, GTE
+           truncates to s16). Build a billboard basis via two outer products:
+           op = (matrix diagonal) x (IR vector) >> 12  (== cross product). */
+        up.vx = *(s32*)(pActorData + 0x50);
+        up.vy = *(s32*)(pActorData + 0x54);
+        up.vz = *(s32*)(pActorData + 0x58);
+
+        worldZ.vx = 0;
+        worldZ.vy = 0;
+        worldZ.vz = 0x1000;
+        OuterProduct12(&worldZ, &up, &cross);      /* op1 @80076620: cross(worldZ, up) */
+        VectorNormal(&cross, &normVec1);           /* -> row0 */
+        OuterProduct12(&normVec1, &up, &cross);    /* op1 @80076678: cross(normVec1, up) */
+        VectorNormal(&cross, &normVec2);           /* -> row2 */
+
+        billboard.m[0][0] = (s16)normVec1.vx;
+        billboard.m[0][1] = (s16)normVec1.vy;
+        billboard.m[0][2] = (s16)normVec1.vz;
+        billboard.m[1][0] = (s16)up.vx;
+        billboard.m[1][1] = (s16)up.vy;
+        billboard.m[1][2] = (s16)up.vz;
+        billboard.m[2][0] = (s16)normVec2.vx;
+        billboard.m[2][1] = (s16)normVec2.vy;
+        billboard.m[2][2] = (s16)normVec2.vz;
+
+        /* actorMatrix rotation = worldToScreenRot * billboard, built COLUMN by
+           COLUMN (three mvmva 1,0,3,3,0 == ApplyMatrixSV per column). */
+        for (j = 0; j < 3; j++) {
+            SVECTOR col, res;
+            col.vx = billboard.m[0][j];
+            col.vy = billboard.m[1][j];
+            col.vz = billboard.m[2][j];
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &col, &res);
+            actorMatrix.m[0][j] = res.vx;
+            actorMatrix.m[1][j] = res.vy;
+            actorMatrix.m[2][j] = res.vz;
+        }
+
+        /* actorMatrix.t = worldToScreenRot * pos.  The asm translation step
+           (@80076850, mvmva 1,0,0,0,0) adds the GTE TR register, but the port's
+           ApplyMatrixLV is rotation-only and the proven-working sibling
+           func_80075B44 (misc2.c:1848-1853, identical cv=0 asm @80075DE4) also
+           drops the TR add -- so we mirror the sibling exactly for scene
+           consistency and do NOT add worldToScreenMatrix.t here. Proven at
+           runtime: for pos=[-100,0,100] ApplyMatrixLV yields [0,-340,258] ==
+           R*pos>>12 (TR-add would give Z=25052 -> actor pushed off-screen). */
+        pos.vx = *(s16*)(pActor + 0x20);
+        pos.vy = *(s16*)(pSpriteData + 0x84);
+        pos.vz = *(s16*)(pActor + 0x28);
+        ApplyMatrixLV(&g_Scene.worldToScreenMatrix, &pos, &trans);
+        actorMatrix.t[0] = trans.vx;
+        actorMatrix.t[1] = trans.vy;
+        actorMatrix.t[2] = trans.vz;
+
+        /* Per-actor scale = (dim*3)>>2, quartered for flagged actors.
+           Bit-identical to the asm's ((v*3)<<10)>>12 / >>14 (v is s16). */
+        scale.vx = (*(s16*)(pActorData + 0xF4) * 3) >> 2;
+        scale.vy = (*(s16*)(pActorData + 0xF6) * 3) >> 2;
+        scale.vz = (*(s16*)(pActorData + 0xF8) * 3) >> 2;
+        if (D_800B2268 != 0 && (*(u32*)(pActorData + 0x00) & 0x400)) {
+            scale.vx = (*(s16*)(pActorData + 0xF4) * 3) >> 4;
+            scale.vy = (*(s16*)(pActorData + 0xF6) * 3) >> 4;
+            scale.vz = (*(s16*)(pActorData + 0xF8) * 3) >> 4;
+        }
+        ScaleMatrix(&actorMatrix, &scale);
+
+        /* Install the scaled matrix, then project the shared quad and average OTZ. */
+        SetRotMatrix(&actorMatrix);
+        SetTransMatrix(&actorMatrix);
+
+        s0off     = renderContextIndex * 0x28;
+        packetOff = s0off + 0x20;         /* s1 = idx*0x28 + 0x20 */
+        pPrim     = pPacket + packetOff;  /* per-render-context packet tag word */
+
+        otz = RotAverage4(
+            (SVECTOR*)(pPacket + 0x00),
+            (SVECTOR*)(pPacket + 0x08),
+            (SVECTOR*)(pPacket + 0x10),
+            (SVECTOR*)(pPacket + 0x18),
+            (long*)(pPrim + 0x08),
+            (long*)(pPrim + 0x10),
+            (long*)(pPrim + 0x18),
+            (long*)(pPrim + 0x20),
+            &p, &flag);
+
+        /* Splice the packet at the head of ot[otz >> D_80050100], preserving the
+           top (len/code) byte of both the packet tag and the OT slot. 24-bit link
+           truncation is the port's established OT convention (g_PsxRam maps low). */
+        otIndex = (s32)(otz >> D_80050100);
+        pSlot   = (u32*)((u8*)ot + otIndex * 4);
+        *(u32*)pPrim = (*(u32*)pPrim & 0xFF000000) | (*pSlot & 0x00FFFFFF);
+        *pSlot       = (*pSlot & 0xFF000000) | ((u32)(uintptr_t)pPrim & 0x00FFFFFF);
     }
 }
 

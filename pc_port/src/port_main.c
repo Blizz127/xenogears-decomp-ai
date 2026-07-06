@@ -179,32 +179,31 @@ int main(int argc, char** argv) {
             ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
             printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
 
-            /* Field debug-entry harness (opt-in via XENO_FIELD_TEST). The KernelMenu
-             * "Field" option jumps straight into the field without the new-game /
-             * worldmap setup that normally (a) fills g_GameState.partyMembers and
-             * (b) selects the party-skin archive directory (#4, as the skin loader
-             * func_8001ACA4 does) before field entry. Without (b),
-             * GamePartyCharactersInitializeSkins resolves ArchiveDecodeAlignedSize
-             * against the wrong directory -> bogus ~6MB -> HeapAlloc fail. Setting
-             * the real directory here lets the field's party-skin init proceed so we
-             * can drive past it and find the next frontier. This is a stand-in for
-             * the not-yet-ported new-game init, not a permanent solution. The
-             * LoadGameStateOverlay save/restore preserves this index through the
-             * field overlay load. */
-            if (getenv("XENO_FIELD_TEST")) {
+            /* The KernelMenu "Field" option jumps straight into the field without
+             * the new-game / worldmap setup that normally (a) fills
+             * g_GameState.partyMembers and (b) selects the party-skin archive
+             * directory (#4, as the skin loader func_8001ACA4 does) before field
+             * entry. Without (b), GamePartyCharactersInitializeSkins resolves
+             * ArchiveDecodeAlignedSize against the wrong directory -> bogus ~6MB ->
+             * HeapAlloc fail. Setting the real directory here lets the field's
+             * party-skin init proceed. This is a stand-in for the not-yet-ported
+             * new-game init, not a permanent solution. The LoadGameStateOverlay
+             * save/restore preserves this index through the field overlay load.
+             *
+             * These initializations are needed for BOTH the XENO_FIELD_TEST
+             * harness AND the normal KernelMenu path, so they run unconditionally
+             * once the archive is available. */
+            PcPort_LoadSystemTextData();
+            func_8001ACA4();
+            {
                 const char* fieldMap = getenv("XENO_FIELD_MAP");
-
-                PcPort_LoadSystemTextData();
-                /* Real field-entry init: map-cache sentinels, heap user, archive
-                 * directory, and party/special skin stream queue. */
-                func_8001ACA4();
                 if (fieldMap != NULL && fieldMap[0] != '\0') {
                     D_8006F94E = (unsigned short)strtoul(fieldMap, NULL, 0);
-                    printf("[xeno-port][field-test] XENO_FIELD_MAP=%u\n",
+                    printf("[xeno-port][field] XENO_FIELD_MAP=%u\n",
                            (unsigned int)D_8006F94E);
                 }
-                printf("[xeno-port][field-test] func_8001ACA4 field-entry init\n");
             }
+            printf("[xeno-port][field] font + party-skin init done\n");
         } else {
             printf("[xeno-port] WARNING: no disc image found "
                    "(set XENO_DISC or place disc/disc1.bin); archive reads disabled.\n");
