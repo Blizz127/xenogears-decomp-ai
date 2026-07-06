@@ -403,6 +403,34 @@
   - visual correctness remains incomplete.
 - **Next frontier:** field background rendering + sprite scale/placement (visual correctness). The near-black blocker (inverted Z-clamp) is resolved and committed. **Milestone recorded; next investigation not yet started (per checkpoint).**
 
+## July 6 — EXPERIMENT (opt-in, uncommitted, VISUAL RESULT = BLACK/FAILED): streamed-background VRAM uploader `PcPortDrainBgToVram`
+
+**Status: implemented and mechanically correct, but the visual result is BLACK and it HIDES Fei — failed visual test. `pc_port/src/archive_port.c` has been REVERTED (working tree clean except this doc); the experiment lives ONLY in the preserved patches. Not committed; no second fix attempted.** Root cause: the upload destinations overlap the actor texture pages (VRAM clobber). Patches: `captures/render_diag/bg_upload_black_screen_experiment_20260706_001559.patch` and `captures/render_diag/bg_upload_failed_visual_20260706_002349.patch`. **Do not re-apply the uploader until the VRAM layout / load order is understood.**
+- **Visual (user screenshot):** flag ON = entirely black, Fei not visible (worse than flag OFF, where Fei is visible). Flag OFF still preserves the Fei milestone (byte-identical baseline; user visual re-confirm pending).
+- **Diagnosis (read-only):**
+  - Upload is mechanically fine: **12/12 sections, 0 STOP, all rects VRAM-valid.** Fei's actor path intact (draws, `func_8001E3D8 call=0`, `code=2d` reaches ParsePrimitive). So the pipeline is fine — the VRAM *data* is the problem.
+  - **VRAM clobber:** the 12 sections cover ~the entire VRAM (x columns 0,320,384,448,512,576,640,832,896,960; y up to ~486). The **x=576 section (y 0..408) overwrites Fei's texture page** (tpage 0x19 → VRAM (576,256)) → Fei's quads sample background data → Fei invisible. (Fei's CLUT 0x7914 → (320,484) is NOT clobbered; x=320 sections only reach y≤384.)
+  - **Background still doesn't appear:** the uploaded tiles don't render — the field BG quad grid (`func_8007A7F4`) isn't sampling them (primSubmits stuck 0/2; fade gate not cleared; likely tpage/UV mismatch vs where tiles landed).
+  - **Fade never cleared:** 245 `LoadImage`+`DrawSync(0)` at load slowed the run — only 3 frames in 20s, `D_800ADC18` stuck at 2 (fade-in incomplete → dark). `RUN_RC=124` (no crash).
+- **Next step (diagnosis only, not this experiment):** the background/actor-sprite **VRAM layout conflict** — in retail they coexist via VRAM allocation + load order; the synchronous port upload clobbers the actor texture pages. Investigate: (1) correct upload destination / whether load order should place BG before sprite TIMs; (2) why the BG quad grid (`func_8007A7F4`) UV/tpage doesn't sample the uploaded tiles; (3) whether `DrawSync`-per-strip should be one final `DrawSync`.
+
+### (original implementation notes — mechanically correct, visual failed)
+
+## July 6 — streamed-background VRAM uploader `PcPortDrainBgToVram` (details)
+
+**Goal:** the per-map field background is a CD-streamed archive (`(mapNum<<1)+0xB9`, `0xBB` for Map1) that the port read into a buffer and freed without uploading to VRAM → black field. Ported the retail uploader `func_8002BF38` synchronously.
+
+- **Change (`pc_port/src/archive_port.c` ONLY):** added `static void PcPortDrainBgToVram(u8* buf, s32 sizeBytes)` and, in `func_80029EB0`, when `XENO_FIELD_BG_UPLOAD=1` and the sync `ArchiveReadFile` succeeded, parse the `0x1200/0x1201` section command stream and `LoadImage`+`DrawSync(0)` each strip before freeing. Added `#include "psyq/libgpu.h"` + `extern getenv`. **Default off → byte-identical to prior behavior.**
+- **Decoded format (from `func_8002BF38.s`, verified live):** sections are `0x800`-aligned = 1 header sector + `stripCount` strip sectors (one strip per sector). Header: `+0x00 u32 tag`, `+0x04/+0x08 u16 → x`, `+0x06/+0x0A u16 → y`, `+0x0C u16 width`, `+0x14 u32 blockCount` (first section; == section count = **12** for Map1), `+0x18 u32 stripCount`, `+0x1C u16[] heights`. Strip i pixels = sector `off+(1+i)*0x800`, `width*height*2` bytes raw 15-bit RGB; `y += height` per strip. Base coords are 0 (caller passes zeros) → absolute placement. **No decompression.**
+- **Hard bounds checks** before every `LoadImage` (tag∈{0x1200,0x1201}, w/h>0, x/y≥0, x+w≤1024, y+h≤512, pixel range ≤ buffer); on any violation it prints the reason and **stops** (no crash, no garbage upload).
+- **Verified (automated — all pass):**
+  - Build `LINK OK`.
+  - **Flag OFF:** Map1 baseline byte-identical (`D_800ADC18` 4→0, `primSubmits=2`, `RUN_RC=124`), no `[field-bg]` output.
+  - **Flag ON (Map1 entry 6):** **12/12 sections uploaded, 0 STOP/out-of-bounds**, `RUN_RC=124`. Section-stepping lands exactly on every tag boundary (`0x4800, 0x1f000, …`) — validates the header decode. Sample rects: sec0 `(0,481,256,4..2)` ×8, sec1 `(640,0,192,5)` ×N. Fei sprite path unchanged (`func_8001E3D8 call=0 sprite=0x5d7984` identical).
+  - **Map0 guard (flag ON):** draw list `1,2,16,23,25,26` — unchanged. SAFE.
+- **PENDING: user visual confirmation** — does the field background image now appear (or non-black field data) behind Fei, with Fei's sprite uncorrupted? Logs: `captures/render_diag/map1_bg_upload_*.log`, `map1_bg_flagoff_*.log`.
+- **Not committed** (per instruction). Constraints honored: only `archive_port.c` touched; no PsyCross/LoadImage/camera/actor/async-CD changes; default-off.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
