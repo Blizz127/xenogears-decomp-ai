@@ -386,6 +386,23 @@
 - **Next likely target:** projection / vertical offset / sprite scale / fade / residual camera alignment — a *placement* refinement, **not** black-screen recovery. The near-black blocker (inverted Z-clamp) is resolved. **STOP here for checkpoint review; do not chase the placement issue yet.**
 - **Note on prior work:** the `XENO_FIELD_ENTRANCE` selector (commit 58f1c10) was **necessary but not sufficient** — it put the player in-bounds at `[405,-72]`, but the near-black screen persisted until this Z-clamp fix. The TR-add experiment and the sprite-base-matrix thread were chasing symptoms of the same camera corruption.
 
+## July 5 — VISUAL MILESTONE CONFIRMED: Fei/player actor visible on Map1
+
+**User provided a screenshot and confirmed the visible Map1 actor is Fei / the player sprite.**
+
+- **Milestone (after the `func_8007CD80` Z-clamp fix, commit 4334c3b):** the Fei/player actor is visible on Map1, near the **lower center/bottom** of the screen.
+- **Before this fix:** black screen / red flash / actor off-screen.
+- **Current state (2nd screenshot):** a **recognizable player sprite shape** is clearly visible on-screen, plus a **smaller visible sprite/primitive to the left**. Still visually broken — field/background mostly black, sprite low/tiny, positioning not yet correct.
+- **Why this matters — the full render chain is alive:** `actor data → animation path → sprite primitive → texture/CLUT → OT → renderer → visible screen` now works end-to-end. This is the "first recognizable character on screen" moment on Map1.
+- **Identity (confirmed):** actor index **1** is the leader/player slot (`D_800B233E` / `g_PlayerActorIndex`); character identity fields for reference live at `pActorData+0xE4` (`ActorData.characterId`) and `pActorData+0x127` (`ActorData.spriteId`). Visual confirmation (screenshot) is the ground truth: it is Fei/the player sprite, not a placeholder.
+- **Enabled by (cumulative):** (1) the `XENO_FIELD_ENTRANCE` spawn selector (commit 58f1c10) → in-bounds spawn `[405,-72]`; (2) the `func_8007CD80` Z-clamp fix (commit 4334c3b) → sane camera/projection.
+- **Remaining issues (visual correctness — NOT black-screen recovery):**
+  - field/background still mostly black,
+  - sprite appears low / tiny / positioning not yet correct,
+  - possible missing field/background data or soft stubs,
+  - visual correctness remains incomplete.
+- **Next frontier:** field background rendering + sprite scale/placement (visual correctness). The near-black blocker (inverted Z-clamp) is resolved and committed. **Milestone recorded; next investigation not yet started (per checkpoint).**
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
