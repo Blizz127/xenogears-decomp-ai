@@ -34,9 +34,9 @@ void func_800AA9DC(void* pModelData) {
 }
 
 extern MATRIX D_800B00E8;
-extern s32 D_800B00FC;
-extern s32 D_800B0100;
-extern s32 D_800B0104;
+/* On PSX, D_800B00FC/D_800B0100/D_800B0104 alias D_800B00E8+0x14/+0x18/+0x1C —
+ * i.e. they ARE D_800B00E8.t[0..2]. The port's generated data symbols detach
+ * them, so writes below go directly into the matrix translation instead. */
 extern s32 D_800C3A5C;
 extern s32 D_800C3A60;
 
@@ -54,9 +54,9 @@ s32 func_800AAA74(void* pModelData) {
     s32 maxY;
 
     RotTrans((SVECTOR*)(pModel + 0x18), &transformed, &flag);
-    D_800B00FC = transformed.vx;
-    D_800B0100 = transformed.vy;
-    D_800B0104 = transformed.vz;
+    D_800B00E8.t[0] = transformed.vx;
+    D_800B00E8.t[1] = transformed.vy;
+    D_800B00E8.t[2] = transformed.vz;
 
     SetRotMatrix(&D_800B00E8);
     SetTransMatrix(&D_800B00E8);
