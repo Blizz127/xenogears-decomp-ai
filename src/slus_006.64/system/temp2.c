@@ -505,19 +505,49 @@ void func_8002CCAC(void) {
     D_8005010C = 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CCC8);
+/* Inline-state handler for code 0xC4: latch the record's texture page into
+ * D_80059308 (the hi half OR'd into textured packet words at +0x14). Mode
+ * D_80050108: 0 = raw latch, 1 = mask low bits and merge the D_80059310
+ * override, 2 = full override from D_80059310. State-only; no cursor effects.
+ * asm: func_8002CCC8.s. */
+extern u16 D_80059308;
+extern u16 D_8005930C;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD24);
+void func_8002CCC8(u8* pSrc) {
+    u16 v = *(u16*)pSrc;
+    s32 mode = D_80050108;
+
+    D_80059308 = v;
+    if (mode == 1) {
+        u16 masked = v & 0xFFE0;
+        D_80059308 = masked;
+        D_80059308 = masked | (u16)D_80059310;
+    } else if (mode == 2) {
+        D_80059308 = (u16)D_80059310;
+    }
+}
+
+/* Inline-state handler for code 0xC8: latch the record's CLUT id into
+ * D_8005930C (the hi half OR'd into textured packet words at +0x0C). Mode
+ * D_8005010C == 0: keep only the low nibble and merge the D_80059314 CLUT
+ * base (set by func_8002CC74); nonzero: raw latch. State-only. asm:
+ * func_8002CD24.s. */
+void func_8002CD24(u8* pSrc) {
+    u16 v = *(u16*)pSrc;
+
+    D_8005930C = v;
+    if (D_8005010C == 0) {
+        u16 lo = v & 0xF;
+        D_8005930C = lo;
+        D_8005930C = lo | (u16)D_80059314;
+    }
+}
 
 /* Gate shared by the textured model buildProcs (func_8002D984/func_8002D0E4):
  * packet-source records whose code byte (+0x3) is a 0xC0-class inline state
  * command dispatch to a state handler and emit no primitive (return 0);
- * anything else emits (return 1). func_8002CCC8/func_8002CD24 are still
- * INCLUDE_ASM -> auto-stubs; a "[stub]" log on those names means Map1 models
- * carry 0xC4/0xC8 inline state commands and the handlers must be ported. */
-extern void func_8002CCC8(void);
-extern void func_8002CD24(void);
-
+ * anything else emits (return 1). The handlers receive the record pointer
+ * (retail keeps pSrc in $a0 across the call) and latch tpage/CLUT state. */
 s32 func_8002CD64(u8* pSrc) {
     u8 code = pSrc[0x3];
 
@@ -525,11 +555,11 @@ s32 func_8002CD64(u8* pSrc) {
         return 1;
     }
     if (code == 0xC4) {
-        func_8002CCC8();
+        func_8002CCC8(pSrc);
         return 0;
     }
     if (code == 0xC8) {
-        func_8002CD24();
+        func_8002CD24(pSrc);
         return 0;
     }
     return 1;
