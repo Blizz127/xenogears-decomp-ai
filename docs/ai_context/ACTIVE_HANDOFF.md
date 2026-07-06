@@ -315,6 +315,77 @@
 - **Map0 guard (env unset):** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 hidden), 0 `[stub]`. SAFE.
 - **Open follow-up:** with entry 6, `g_CameraAt2.z >> 16 = -28567` (X tracks the player correctly, but the Z target is far outside `Z[-775,1000]`) — worth a look, but secondary; the primary goal (in-bounds spawn so the camera can frame the player) is achieved. **Visual confirmation from the user still pending** — does the Map1 sprite now move away from top-center into a proper field view?
 
+## July 5 TR-add Actor Projection Experiment (RUN + REVERTED, not committed)
+
+- **Context:** Map1 stays black even after the entrance selector places the player in-bounds at `[405,-72]`. Player actor projects off-screen: `func_80075B44` `screenXY=(134,1023)`, `actorMatrix.t=[0,459,-1148]`, GTE clip flag set. Root suspicion: the port's `ApplyMatrixLV` is rotation-only, so `actorMatrix.t = R_w2s*pos` **drops** the world-to-screen translation the original asm's `mvmva cv=0` includes (negligible near origin/Map0, large for Map1's far actors).
+- **Experiment (opt-in `XENO_FIELD_ACTOR_TR_ADD=1`, `misc2.c` only, now reverted):** after the rotation-only `actorMatrix.t` in `func_80075B44` and `func_800764B4`, add `g_Scene.worldToScreenMatrix.t`. Env-guarded; default unchanged.
+- **Result:**
+  - Fixed the `func_80075B44` **center/OT-depth** projection: `actorMatrix.t [0,459,-1148] -> [0,-917,24959]`, `screenXY (134,1023) -> (159,83)` (on-screen), clip flag `0x80… -> 0x1000` (clean).
+  - **Map0 guard stayed safe** (`1,2,16,23,25,26`) with the flag ON — so TR-add is the asm-faithful direction and is Map0-safe.
+  - **BUT the visible sprite quads remained off-screen at Y≈-1008** (unchanged).
+- **Reason (the real blocker):** the drawn sprite quads are projected by **`func_8001E3D8`** using its **own** matrix `pBase+0x0C` (rendering.c:618-623 `SetRotMatrix/SetTransMatrix((MATRIX*)(pBase+0x0C))`), NOT the `actorMatrix` that `func_80075B44` sets. Captured `pBase+0x0C.t = [0, -32122, 17414]` — a separate, independently-bad translation (huge `Y=-32122`) that TR-add never touches.
+- **Reverted** (`git restore src/field/main/misc2.c`); experiment patch preserved at `captures/render_diag/tradd_experiment_result_20260705_214422.patch`. Not committed. TR-add is NOT the permanent fix on its own.
+- **Next blocker:** trace where `pBase+0x0C.t` becomes `[0,-32122,17414]` on Map1 entry 6 (the sprite base matrix translation used by `func_8001E3D8`) — that, not the actor-center path, is what keeps the sprite off-screen.
+
+## July 5 — ROOT CAUSE of Map1 black screen: camera target corrupted by `func_80072A38` fallback (A–E verdict = A)
+
+**This supersedes the "sprite base matrix translation" thread above — that was a symptom, not the cause.** Full read-only gdb trace (Map1, `XENO_FIELD_ENTRANCE=6`, `XENO_KERNEL_SEL=0`). No code changed.
+
+- **Symptom holds:** Map1 with `XENO_FIELD_ENTRANCE=6` is still black. Player spawns at `[405,0,-72]` and the camera initially targets it (frame 1 `CamAt=[405,0,-72]`).
+- **The camera corrupts on frame 2:** `g_CameraAt2.z` (target) goes `-72` (frame 1, correct) → **`-9256`** (frame 2+). The current camera (`g_CameraEye/At`) follows it: frame 2+ `CamAt.z=-9256`, `CamEye.z=-8377`.
+- **This cascades into every sprite:**
+  - `g_Scene.worldToScreenMatrix.t`: Map0 `[0,-189,24794]` (sane); Map1 frame 1 `[0,-917,24959]` (sane) → **frame 2+ `[0,-30211,18106]` (corrupt)**.
+  - `D_8004FBB8` is just a per-frame copy of `worldToScreenMatrix` ([misc2.c:1488](../../src/field/main/misc2.c#L1488) `func_80024FF4`). Captured `D_8004FBB8.t == worldToScreenMatrix.t` at the same instant.
+  - [func_8001E148](../../src/slus_006.64/system/rendering.c#L488-L495) sets the sprite matrix translation `pBase+0x20 = D_8004FBB8.t + (D_8004FBB8.rot × spritePos)`. For the player: `spritePos=[405,0,-72]` ✓, rotation `vec=[0,492,-1134]` ✓, but `D_8004FBB8.t=[0,-30211,18106]` → `pBase+0x20=[0,-29719,16972]` → screen-y ≈ -1008 (off-screen). **The sprite path is correct; it faithfully transforms the correct player position with a corrupt camera matrix.**
+- **Watchpoint proof (`watch g_CameraAt2.vz`):** written **exactly once** to `-9256`, in [func_80072A38](../../src/field/main/misc2.c#L281-L293) via `func_80073230:599` ← `func_800739C0:811` ← `func_8007554C:1643`. At the write: `pCamInput=[405,·,-72]` (**correct input**), and the written value `-9256 ≠ pCamInput->vz (-72)` → it is the **fallback** `intersection.vy<<16` (line 293), **NOT** the direct-copy path (line 309). The value is never restored to a good value (stays `-9256` frames 2–8).
+- **A–E verdict = A** (`func_80072A38` fallback computes bad `intersection.vy`). Ruled out: **B** (direct copy) — write is the fallback, not direct; **C** (`pCamInput` built wrong) — input is the correct `[405,·,-72]`; **D** (later overwrite) — single write, never restored; **E** (camera fine / sprite TR wrong) — camera is demonstrably corrupt; TR-drop/TR-add/sprite-base theories were all symptoms of this one corruption.
+- **One level below A:** the fallback fires because `func_8007CD80` (walkmesh lookup) returns `-1` for the player, and `func_800723E4` extrapolates `intersection.vy=-9256`. **Both maps take this fallback equally (20×/20×), but Map0's intersection is sane and Map1's is garbage** — so the fallback *code* is correct (Map0 proves it); its *inputs* (the walkmesh segment for the player point) differ on Map1.
+- **Constraint note:** `func_80072A38`, `func_8007CD80`, `func_800723E4` are **off-limits** (camera/walkmesh) and behave identically to the original. The real fix is **upstream**.
+- **Open fork (undecided):**
+  1. **Map1 walkmesh data missing/degenerate** → lookup fails, fallback extrapolates. (field-data/walkmesh loading)
+  2. **Player spawn `[405,-72]` is outside the actual walkmesh triangles** despite being inside coarse bounds → lookup legitimately fails. (entrance/spawn selection)
+- **Next diagnostic (read-only):** walkmesh-membership check for `[405,-72]` — dump `D_800AFB20`/`D_800AFB54`, triangle count + bounds, and test whether `[405,-72]` (and entrance entries 3,5,6,7) fall inside any loaded triangle. That single check decides fork 1 vs fork 2.
+
+## July 5 — RESOLVED: root cause is an inverted Z-bounds clamp in `func_8007CD80` (C port decompilation bug)
+
+**The fork is NEITHER 1 nor 2.** The walkmesh data IS loaded and valid, and the spawn `[405,-72]` IS inside a real triangle. The bug is a single-line decompilation error in [func_8007CD80](../../src/field/main/misc4.c#L1316-L1322) (the walkmesh point lookup).
+
+- **Walkmesh IS loaded (Map1):** `D_800AFB20[0]=0x5bdbe4` (non-null), `D_800AFB54=3` (partition index, not a triangle count), `triBase`/`vertBase` non-null. Scene bounds: X`[-877, 453]`, Z`[-775, 1000]`. Player `[405,-72]` is inside those coarse bounds.
+- **The bug** — [misc4.c:1316-1321](../../src/field/main/misc4.c#L1316):
+  ```c
+  s32 maxZ = g_Scene+0x4E + g_Scene+0x52;          // 1000 + (-1775) = -775 (bottom edge)
+  clampedZ = (posZ < maxZ) ? posZ : (s16)maxZ;     // PORT BUG: = min(posZ, -775)
+  ```
+  For `posZ=-72` (well inside `[-775, 1000]`) this yields `clampedZ = -775` (forced to the bottom edge).
+- **Original asm proves the C is inverted** ([func_8007CD80.s](../../asm/field/matchings/main/misc4/func_8007CD80.s) lines 64-67, MIPS delay-slot): `slt v0,$s7(posZ),$v1(maxZ)` / `beqz .CE6C` / delay-slot `clampedZ=posZ` / fallthrough `clampedZ=maxZ`. Net: `posZ>=maxZ → clampedZ=posZ`, `posZ<maxZ → clampedZ=maxZ` = **`clampedZ = max(posZ, maxZ)`** (floor at -775). The C computes `min` where the asm computes `max` — the ternary arms are swapped. (The X clamp just above it, `clampedX = (maxX < posX) ? maxX : posX`, is correct; only the Z branch is wrong.)
+- **Why Map0 works, Map1 is black:** the default scene bounds are `[1,1,1,1]` ([misc3.c:688-691](../../src/field/main/misc3.c#L688)); the test-harness Map0 keeps them (trivial → clamp never bites), Map1 loads real bounds (`maxZ=-775` → clamp mis-fires).
+- **Downstream chain:** wrong `clampedZ=-775` → `func_8007B1C4(405,-775,…)` returns sentinel triangle 0 (degenerate: all 3 vertex indices 0) → the walk is stuck at tri 0 (observed 8 iters, `v0==v1==v2==[244,·,7948]`, Z far out of bounds) → `func_8007CD80` returns -1 → `func_80072A38` fallback → `g_CameraAt2.z=-9256` → camera diverges → `worldToScreenMatrix.t` corrupt → every sprite off-screen → black.
+- **CAUSATION PROVEN by runtime gdb poke (no code changed):** breaking at the `func_8007B1C4` call and forcing `clampedZ=-72` (the value the asm would produce) fixes the whole chain:
+  - `g_CameraAt2.z: -9256 → -72`, `g_CameraAt.z: -8377 → -72`
+  - `worldToScreenMatrix.t: [0,-30211,18106] → [0,-991,25072]` (sane)
+  - player sprite matrix translation `pBase+0x20: [0,-29719,16972] (off-screen) → [0,-499,23938]` (on-screen; matches Map0's working `[-4,-189,24794]`)
+- **Fork verdict:** walkmesh data present & valid; entry-6 spawn `[405,-72]` is inside a real triangle once queried with the correct `clampedZ`. So it is **not** a field-data/walkmesh-loading problem and **not** an entrance-selection problem — it is the C-port Z-clamp bug. The bug is map-wide (any map with real Z bounds), which is consistent with the user seeing entrances 3/5/6/7 all black.
+- **Proposed fix (NOT applied — `func_8007CD80` is walkmesh/off-limits; needs approval):** swap the ternary arms at [misc4.c:1321](../../src/field/main/misc4.c#L1321) to match the asm: `clampedZ = (posZ < maxZ) ? (s16)maxZ : posZ;`. One line. Rebuild and check Map1 renders and the Map0 guard (`1,2,16,23,25,26`) is unchanged.
+
+## July 5 — APPLIED + VERIFIED: Z-clamp fix; Map1 actor now visible (VISUAL MILESTONE)
+
+**Approved and applied.** [misc4.c:1321](../../src/field/main/misc4.c#L1321): `clampedZ = (posZ < maxZ) ? posZ : (s16)maxZ;` → `clampedZ = (posZ < maxZ) ? (s16)maxZ : posZ;` (one line; matches the original asm's floor-at-lower-bound). No other files changed.
+
+- **Mechanism refinement (accurate):** `func_8007B1C4` (the walk seed / ceiling check) is a **port stub** ([misc4.c:676](../../src/field/main/misc4.c#L676), always returns 0 because `D_800AFB44[]` is never populated), so `func_8007CD80` still returns -1 for the player and `func_80072A38` still takes its fallback. The fix works because the corrected `clampedZ` propagates into **`packedClamped`** (walk tie-breaks) and **`cd80Clipped`** (the fallback's input to `func_800723E4`), so the fallback now computes a sane camera target instead of the -9256 garbage. Net effect proven end-to-end below. (The stubbed seed is a separate, untouched issue.)
+- **Verification (all pass):**
+  - **Build:** `LINK OK -> pc_port/build_native/xeno-port` (254 stubs, links cleanly).
+  - **Map1 entry 6 `RUN_RC=124`** (timeout, no crash). Log: `captures/render_diag/map1_zclamp_fix_20260705_*.log`.
+  - **Map0 guard UNCHANGED:** draw list exactly `1, 2, 16, 23, 25, 26`, actor 18 hidden. SAFE.
+  - **`g_CameraAt2.z` / `g_CameraAt.z` = -72** (stable across frames; was -9256). No more camera-Z corruption.
+  - **`worldToScreenMatrix.t` = `[0,-991,25072]`** (sane; was `[0,-30211,18106]`).
+  - **Player sprite `pBase+0x20` = `[0,-499,23938]`** (on-screen; was `[0,-29719,16972]`).
+  - **Player POLY_FT4 projects to ~`(158, 90)`** — inside the visible frame (was Y≈1008 off-screen). Sprite is small (~2-4 px quad).
+  - **`D_800ADC18` 4→0 by frame 4, `primSubmits=2`** (fade gate clears, primitives submit).
+- **VISUAL MILESTONE (user-confirmed):** the actor is now **visible at the bottom of the screen**. Before: black screen / red flash / actor off-screen. After: actor visible.
+- **Remaining issue (NOT the black-screen bug):** vertical placement/projection is not yet correct — the sprite is visible but positioned low/small rather than framed as expected.
+- **Next likely target:** projection / vertical offset / sprite scale / fade / residual camera alignment — a *placement* refinement, **not** black-screen recovery. The near-black blocker (inverted Z-clamp) is resolved. **STOP here for checkpoint review; do not chase the placement issue yet.**
+- **Note on prior work:** the `XENO_FIELD_ENTRANCE` selector (commit 58f1c10) was **necessary but not sufficient** — it put the player in-bounds at `[405,-72]`, but the near-black screen persisted until this Z-clamp fix. The TR-add experiment and the sprite-base-matrix thread were chasing symptoms of the same camera corruption.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.

@@ -1318,7 +1318,7 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
     } else {
         s32 maxZ = *(s16*)((u8*)&g_Scene + 0x4E) +
                    *(s16*)((u8*)&g_Scene + 0x52);
-        clampedZ = (posZ < maxZ) ? posZ : (s16)maxZ;
+        clampedZ = (posZ < maxZ) ? (s16)maxZ : posZ;
     }
 
     packedClamped = ((s32)clampedX << 16) + clampedZ;
