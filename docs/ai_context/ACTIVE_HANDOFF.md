@@ -279,6 +279,23 @@
 - **Next blocker (new, different failsafe — NOT from this fix):** `func_800248D4` assertion `"opcode path is not implemented"` at `src/slus_006.64/system/temp1.c:729` (sprite **animation-script VM**). Stack: `func_800248D4(pSpriteData) [temp1.c:729]` → `AnimScriptTick [temp1.c:91]` → `func_800752C8 [misc2.c:1511]` → `func_8007554C [misc2.c:1651]`. Also a new `[stub] func_80081F80` appears just before it. This is an unmigrated anim-script opcode handler (a deliberate assert, like `func_800764B4` was), reached only because the glyph fix let Map1 run further.
 - **Open follow-up (unchanged from prior note):** whether Map1 should auto-display the dialogue at all (text box activated via the `pWindow+0x8C` node list; script is structured encoded text) — a dialogue-activation question, separate from the (now-fixed) font-pointer bug.
 
+## July 5 Anim-Script Opcode 0xA0 Implementation (VERIFIED, bounded)
+
+- **Root cause:** opcode `0xA0` is a genuinely unmigrated **two-layer** animation-script opcode (NOT a mis-dispatch, NOT a no-op). The C port asserted at `func_800248D4` (temp1.c:729) because its opcode dispatcher omitted the generic default path, and `func_8001FBE4` also lacked the `0xA0` sub-handler.
+- **ASM evidence:**
+  - `func_800248D4.s`: opcode `>=0x80` indexes `jtbl_800186E0[opcode-0x80]`; `[0x20]` (opcode `0xA0`, rodata 800.rodata.s:8815) = `0x80024EC8` = the **default handler** `.L80024EC8`, which calls `func_8001FBE4(pData, opcode, pc+1)` then advances `pData+0x64` by `D_8004FC40[0xA0] == 2` (→ `pc+3`). Runtime script bytes: `a0 14 13 03 …` (opcode + 2 operands, next opcode `0x03`).
+  - `func_8001FBE4.s`: dispatches `jtbl_800183D8[opcode-0x8A]`; `[0x16]` (opcode `0xA0`, 800.rodata.s:8586) = `0x80021958` (a **real** handler, not the shared no-op `0x80021AB8`): `pData[0x18] = ((s8)op0*16 * (D_80059198+1) * (s16)pData[0x82]) >>12 <<8` (neg rounds `+0xFFF`), then `func_80022974(pData)`.
+  - Runtime (gdb): `opcode=0xa0 pc=0x5c0a92 pSpriteData=0x5db8a8`, `D_8004FC40[0xA0]=0x02`.
+  - Deps all present in port: `func_80022974` (T), `D_80059198` (B, =1 from init.c:39), `func_8001FBE4`/`func_800248D4` (T).
+- **Fix (bounded, per-opcode — no full anim VM, no D_8004FC40 table, no no-op, no silenced assert):**
+  - `src/slus_006.64/system/temp1.c` `func_800248D4`: added `if (opcode == 0xa0)` → `func_8001FBE4(pData, opcode, pc+1); pData+0x64 = pc+3; return;`.
+  - `src/slus_006.64/system/animation_scripts.c` `func_8001FBE4`: added `if (dispatchIndex == 0x16)` handler (the `0x80021958` computation + `func_80022974`); also added `extern s32 D_80059198;` / `extern void func_80022974(void*)` forward decls so the TU compiles (without them the build silently skips/stubs `animation_scripts.c`).
+- **Files changed: `src/slus_006.64/system/temp1.c` + `src/slus_006.64/system/animation_scripts.c` only.**
+- **Build:** `LINK OK` (`compiled=43`; `animation_scripts.c` compiled, not stubbed).
+- **Map1 result** (`captures/render_diag/map1_opcode_a0_20260705_192940.log`): `RUN_RC=124` — went from `134` (assert abort) to a **clean 20s timeout, no crash**. `temp1.c:729` opcode-`0xA0` assert and `func_8001FBE4` assert both **gone** (0 each). Reaches frame 5, `primSubmits=2`, `DrawOTag=1`.
+- **Map0 guard:** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 hidden), 0 `[stub]`. SAFE.
+- **Next blocker:** **no hard crash/assert remains on Map1** — it now runs to timeout. Remaining are **soft (non-crashing) stubs** that were already present: `func_80085C90`, `func_80081F80`, `func_80072254`, `func_80091F84`, `func_80095284`, `func_800975C0`, `func_80098038`, `func_800980FC`, `func_8009E91C`. These are missing behavior, not crashes. Next frontier is either implementing those soft stubs or assessing Map1 visual correctness now that it runs stably.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
