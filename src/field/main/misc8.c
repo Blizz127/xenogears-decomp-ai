@@ -677,11 +677,18 @@ void func_80082620(s32 actorIndex, void* pFieldActor, void* pActorData) {
         return;
     }
 
+    /* asm .L80082888: pending-movement application — add the computed move
+     * vector into the actor's position accumulators, then continue. */
+    if (moveFlags & 0x00008000) {
+        *(s32*)(actorData + 0x40) += moveVec[0];
+        *(s32*)(actorData + 0x44) += moveVec[1];
+        *(s32*)(actorData + 0x48) += moveVec[2];
+    }
+
     if ((moveFlags & 0x00420000) != 0 ||
         (moveFlags & 0x00400000) != 0 ||
         *(u8*)(actorData + 0x74) != 0xFF ||
         (moveFlags & 0x00020000) != 0 ||
-        (moveFlags & 0x00008000) != 0 ||
         (flags4 & 0x00022000) == 0x00022000) {
         assert(!"func_80082620 unsupported actor movement branch");
     }
