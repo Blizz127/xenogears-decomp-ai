@@ -467,6 +467,13 @@
 - **Safety:** flag OFF unchanged (`RC=124`, Fei baseline intact); Map0 guard with flag ON: `1, 2, 16, 23, 25, 26`.
 - **NEXT BLOCKER (flag ON):** FieldLoad completes, the field loop starts, and the run stops at the **pre-existing deliberate assert** `misc8.c:686 func_80082620 "unsupported actor movement branch"` — model actors now animate/move and hit an unmigrated movement branch. This must be understood/migrated before Stage D (OTZ + TR-add) is meaningful.
 
+## July 6 — func_80082620 moveFlags&0x8000 branch migrated (uncommitted): XENO_FIELD_MODEL_BUILD=1 now RUNS TO TIMEOUT — Stage D UNBLOCKED
+
+- **Investigation (read-only, then approved fix):** at the assert, exactly one of the six unmigrated conditions fired — **`moveFlags & 0x8000`** (actor 21, a sprite actor, `moveFlags=0x8600`; the other five conditions false). Original asm ([func_80082620.s](../../asm/field/matchings/main/misc8/func_80082620.s) `.L80082888`) shows the 0x8000 case is a trivial pending-movement application: `actorData+0x40/44/48 += moveVec[0/1/2]`, then continue. No calls, no new deps.
+- **Fix (misc8.c only):** migrated exactly that branch (same accumulator pattern as the function's existing `flags0&0x41800` path); **the assert remains for the other five unmigrated conditions.**
+- **Results:** flag OFF unchanged (`RC=124`); Map0 guard (flag ON) `1,2,16,23,25,26`; **flag ON: frames 0-4, fade gate clears, primSubmits=2, DrawOTag runs, `RC=124` — no assert, no crash. The field render loop now executes with all 96 built model packets live.**
+- **STAGE D IS UNBLOCKED:** next steps (after this movement fix is checkpointed) — re-apply the preserved OTZ fix (`captures/render_diag/otz_fix_20260706_134500.patch`) and the `XENO_FIELD_MODEL_TR_ADD` experiment (`captures/render_diag/model_tradd_experiment_20260706_092425.patch`) for the combined model-visibility test.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
