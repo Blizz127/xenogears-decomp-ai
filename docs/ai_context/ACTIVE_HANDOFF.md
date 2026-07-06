@@ -296,6 +296,25 @@
 - **Map0 guard:** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 hidden), 0 `[stub]`. SAFE.
 - **Next blocker:** **no hard crash/assert remains on Map1** — it now runs to timeout. Remaining are **soft (non-crashing) stubs** that were already present: `func_80085C90`, `func_80081F80`, `func_80072254`, `func_80091F84`, `func_80095284`, `func_800975C0`, `func_80098038`, `func_800980FC`, `func_8009E91C`. These are missing behavior, not crashes. Next frontier is either implementing those soft stubs or assessing Map1 visual correctness now that it runs stably.
 
+## July 5 XENO_FIELD_ENTRANCE Harness Spawn Selector (VERIFIED)
+
+- **Problem:** Map1 near-black was NOT a renderer/texture/camera-math bug. Full trace: player (actor 1) *was* placed, but at spawn-table **entrance 0 = `[-906,-863]`**, which is *outside* Map1's walkable bounds `X[-877,453] Z[-775,1000]`. `func_8007CD80` (walkmesh lookup) rejects the out-of-bounds actor, so `func_80072A38` falls back to a mesh-edge camera target (`x≈-2`) far from the player → the player projects off-screen (top-center). The camera/projection/walkmesh code is all correct.
+- **Root cause:** the field-load script (`func_800A08B8` → `func_8009FA54`) picks the spawn-table entry from field-script **variable 2**, which the real worldmap→field / field→field transition sets. Direct `XENO_FIELD_MAP` entry skips that transition → var 2 = 0 → entrance 0. Valid in-bounds entries exist (3 `[210,736]`, 5 `[370,900]`, 6 `[405,-72]`, 7 `[-751,218]`).
+- **Copy chain (found by watchpointing each stage) — the source is 3 layers up:**
+  - `D_8006F954` (transition input, sister global of the map selector `D_8006F94E`) → FieldMain (main.c:408) copies it to `g_GameState+0x1932`
+  - `g_GameState+0x1930` → FieldLoad `func_800705DC` (misc3.c:390-396) copies it into `g_FieldScriptMemory`
+  - `g_FieldScriptMemory+2` = field-script var 2, read by `func_800A08B8`.
+- **Two mis-targeted attempts (documented so we don't repeat):**
+  - Writing `g_FieldScriptMemory+2` at boot → **overwritten by FieldLoad's copy** from `g_GameState+0x1930` (misc3.c:394).
+  - Writing `g_GameState+0x1932` at boot → **overwritten by FieldMain** (`main.c:408`, `= D_8006F954`).
+  - (Both looked "safe" at first because a value-based gdb `watch` doesn't fire on a `0→0` copy; setting the value to 6 first exposed each clobber.)
+- **Correct fix:** write **`D_8006F954`** — the top of the chain, the same global the game's transition writes, set exactly like the working `XENO_FIELD_MAP → D_8006F94E`. Coordinates still come from the game's own spawn table; only the index is selected.
+- **Fix (`pc_port/src/port_main.c` ONLY):** added `extern unsigned short D_8006F954;` and, in the field-entry block after `XENO_FIELD_MAP`, `D_8006F954 = (unsigned short)entrance;` guarded by an `XENO_FIELD_ENTRANCE=N` env var (parse + `0..0xFFFF` validity check; unset → no write → current behavior preserved).
+- **Build:** `LINK OK` (`compiled=43`).
+- **Map1 result** (`captures/render_diag/map1_entrance6_d8006f954_20260705_211304.log`, `XENO_FIELD_ENTRANCE=6`): `RUN_RC=124`, prints `XENO_FIELD_ENTRANCE=6`. Verified full chain: `D_8006F954=6` → `g_GameState+0x1932=6` (FieldMain) → `g_FieldScriptMemory var2=6` (at `func_800A08B8`) → **player spawns at `[405,0,-72]`** (entry-6 table coords, was `[-906,-863]`), now **inside** the walkable bounds. Camera target X = **405** now tracks the player (was pinned at edge `-2`).
+- **Map0 guard (env unset):** `RUN_RC=124`, draw list unchanged **`1, 2, 16, 23, 25, 26`**, `active=22 plain=6 status20=16` (actor 18 hidden), 0 `[stub]`. SAFE.
+- **Open follow-up:** with entry 6, `g_CameraAt2.z >> 16 = -28567` (X tracks the player correctly, but the Z target is far outside `Z[-775,1000]`) — worth a look, but secondary; the primary goal (in-bounds spawn so the camera can frame the player) is achieved. **Visual confirmation from the user still pending** — does the Map1 sprite now move away from top-center into a proper field view?
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
