@@ -579,33 +579,33 @@ s32 func_8002CF34(s32* a0) {
 /* buildProc for prim 0x08 (lit flat tri template, tag len 4). Four paths by
  * shade mode: unlit (copy rgb|code word), lit (face normal via func_8002DB84 +
  * NormalLightCol into packet color), lit+stream (also store rgb and normals to
- * the D_80059498 work stream), and pre-lit stream (shade&4). func_8002DB84 and
- * NormalLightCol are still INCLUDE_ASM -> auto-stubs; "[stub]" logs on those
- * names mean a lit model path is active and they must be ported for correct
- * colors (non-fatal until then). asm: func_8002CF58.s. */
-extern void func_8002DB84(void* n0, void* n1, void* n2);
+ * the D_80059498 work stream), and pre-lit stream (shade&4). The lit paths
+ * compute the face normal via func_8002DB84 (out param: stack normal for the
+ * plain-lit path, the D_80059498 stream slot for the lit+stream path, per the
+ * asm's $a3) and light it with NormalLightCol/NCCS. asm: func_8002CF58.s. */
+extern void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal);
 extern void NormalLightCol(void* a0, void* a1, void* a2);
 
 s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade) {
     u8* p = D_80059424;
-    u8 tmpNormal[8]; /* asm passes uninitialized sp+0x10 here; kept faithful */
+    SVECTOR tmpNormal; /* asm's sp+0x10 out-normal for the plain-lit path */
 
     p[0x3] = 0x4;
     if (shade & 0x1) {
         u8* vb = (u8*)(uintptr_t)D_8005953C;
-        void* n0 = vb + ((s32)*(s16*)(pCmd + 0x0) << 3);
-        void* n1 = vb + ((s32)*(s16*)(pCmd + 0x2) << 3);
-        void* n2 = vb + ((s32)*(s16*)(pCmd + 0x4) << 3);
+        SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+        SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+        SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
 
         if (shade & 0x2) {
             *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
             D_80059498 += 4;
-            func_8002DB84(n0, n1, n2);
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
             NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
             D_80059498 += 8;
         } else {
-            func_8002DB84(n0, n1, n2);
-            NormalLightCol(tmpNormal, pSrc, p + 0x4);
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pSrc, p + 0x4);
         }
         p[0x7] = pSrc[0x3];
     } else if (shade & 0x4) {
@@ -691,9 +691,64 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DAFC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DB84);
+/* Computes the normalized face normal of the triangle (v0,v1,v2) into
+ * outNormal (SVECTOR, 4096-scale via VectorNormalS). asm: edge diffs ->
+ * OuterProduct0 cross -> divide by sqrt(|dominant component|) as range
+ * reduction -> VectorNormalS. The asm does a raw MIPS div (div-by-zero is
+ * non-trapping garbage on PSX); the host must guard the degenerate-triangle
+ * case explicitly, so len==0 skips the reduction (VectorNormalS of the zero
+ * vector then yields a zero normal, matching the garbage-tolerant intent). */
+/* SquareRoot0 comes from the shim psyq/libgte.h (PsyX: int SquareRoot0(int)). */
+extern long VectorNormalS(VECTOR* in, SVECTOR* out);
+extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out);
+s32 func_8002DC9C(s32 x, s32 y, s32 z);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DC9C);
+void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
+    VECTOR d1;
+    VECTOR d2;
+    VECTOR cross;
+    s32 dom;
+    s32 len;
+
+    d1.vx = v1->vx - v0->vx;
+    d1.vy = v1->vy - v0->vy;
+    d1.vz = v1->vz - v0->vz;
+    d2.vx = v2->vx - v0->vx;
+    d2.vy = v2->vy - v0->vy;
+    d2.vz = v2->vz - v0->vz;
+
+    OuterProduct0(&d1, &d2, &cross);
+
+    dom = func_8002DC9C(cross.vx, cross.vy, cross.vz);
+    if (dom < 0) {
+        dom = -dom;
+    }
+    len = SquareRoot0(dom);
+    if (len != 0) {
+        cross.vx /= len;
+        cross.vy /= len;
+        cross.vz /= len;
+    }
+    VectorNormalS(&cross, outNormal);
+}
+
+/* Returns the signed component with the largest absolute value (ties favor
+ * x, then y). Used by func_8002DB84 as the range-reduction pivot before
+ * normalizing a face normal. asm: abs-compare branch tree in func_8002DC9C.s
+ * (the "return 1" edges in the tree are unreachable for real inputs). */
+s32 func_8002DC9C(s32 x, s32 y, s32 z) {
+    s32 ax = (x < 0) ? -x : x;
+    s32 ay = (y < 0) ? -y : y;
+    s32 az = (z < 0) ? -z : z;
+
+    if (ax >= ay && ax >= az) {
+        return x;
+    }
+    if (ay >= ax && ay >= az) {
+        return y;
+    }
+    return z;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DD20);
 
