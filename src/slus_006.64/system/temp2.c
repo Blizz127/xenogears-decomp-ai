@@ -103,6 +103,39 @@ s32 func_8002C644(u8* a0) {
     if ((v1 & 0x2) == 0) {
         s32 a1 = *(s32*)(a0 + 0x24);
         *(s32*)(a0 + 0x4) = v1 | 0x2;
+#ifdef XENO_PC_PORT
+        /* PC-port hardening: this pin is only meaningful for heap-standalone
+         * models, where a0 is a real heap block and +0x24 holds an end pointer.
+         * FieldLoad package models reach here mid-blob with +0x24 = baked file
+         * data (packed s16 pairs, not a pointer); on PSX the resulting wild
+         * HeapInsertAlloc write lands harmlessly in mirrored RAM, on the host
+         * it corrupts the heap block list / faults. Validate before pinning:
+         * end must lie after base within a 2 MiB (PSX RAM) bound, and the
+         * heap header HeapInsertAlloc trusts (pMem[-1].pNext) must itself be
+         * plausible. No heap-end API exists in memory.c, so the 2 MiB bound is
+         * a documented temporary guard. Skips keep the retail control flow
+         * (flag 0x2 set above, return 0) minus the junk insert. */
+        {
+            u32 base = (u32)(uintptr_t)a0;
+            u32 end = (u32)a1;
+            u32 hdrNext = (u32)(uintptr_t)((HeapBlock*)a0)[-1].pNext;
+            static s32 s_skippedPins;
+            static s32 s_realPins;
+
+            if (end <= base || (end - base) >= 0x200000 ||
+                hdrNext <= base || (hdrNext - base) >= 0x200000) {
+                s_skippedPins++;
+                if (s_skippedPins <= 4) {
+                    printf("[field-diag] func_8002C644: skip invalid pin base=0x%x end=0x%x hdrNext=0x%x (skips=%d)\n",
+                           base, end, hdrNext, s_skippedPins);
+                }
+                return 0;
+            }
+            s_realPins++;
+            printf("[field-diag] func_8002C644: real pin base=0x%x size=%u (pins=%d)\n",
+                   base, end - base, s_realPins);
+        }
+#endif
         HeapInsertAlloc((HeapBlock*)a0, (u_int)(a1 - (s32)a0));
         return 0;
     }
@@ -509,7 +542,48 @@ s32 func_8002CF34(s32* a0) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CF58);
+/* buildProc for prim 0x08 (lit flat tri template, tag len 4). Four paths by
+ * shade mode: unlit (copy rgb|code word), lit (face normal via func_8002DB84 +
+ * NormalLightCol into packet color), lit+stream (also store rgb and normals to
+ * the D_80059498 work stream), and pre-lit stream (shade&4). func_8002DB84 and
+ * NormalLightCol are still INCLUDE_ASM -> auto-stubs; "[stub]" logs on those
+ * names mean a lit model path is active and they must be ported for correct
+ * colors (non-fatal until then). asm: func_8002CF58.s. */
+extern void func_8002DB84(void* n0, void* n1, void* n2);
+extern void NormalLightCol(void* a0, void* a1, void* a2);
+
+s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade) {
+    u8* p = D_80059424;
+    u8 tmpNormal[8]; /* asm passes uninitialized sp+0x10 here; kept faithful */
+
+    p[0x3] = 0x4;
+    if (shade & 0x1) {
+        u8* vb = (u8*)(uintptr_t)D_8005953C;
+        void* n0 = vb + ((s32)*(s16*)(pCmd + 0x0) << 3);
+        void* n1 = vb + ((s32)*(s16*)(pCmd + 0x2) << 3);
+        void* n2 = vb + ((s32)*(s16*)(pCmd + 0x4) << 3);
+
+        if (shade & 0x2) {
+            *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
+            D_80059498 += 4;
+            func_8002DB84(n0, n1, n2);
+            NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+            D_80059498 += 8;
+        } else {
+            func_8002DB84(n0, n1, n2);
+            NormalLightCol(tmpNormal, pSrc, p + 0x4);
+        }
+        p[0x7] = pSrc[0x3];
+    } else if (shade & 0x4) {
+        D_80059498 += 4;
+        NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+        D_80059498 += 8;
+        p[0x7] = pSrc[0x3];
+    } else {
+        *(u32*)(p + 0x4) = *(u32*)pSrc;
+    }
+    return 1;
+}
 
 s32 func_8002D0C0(s32* a0) {
     u8* p = D_80059424;

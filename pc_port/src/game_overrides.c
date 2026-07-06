@@ -121,6 +121,7 @@ extern s32 func_8002E688(u8* pCmd, s32 count);
 /* Build-pass handlers ported in temp2.c; only the first arg is consumed, so the
  * (ModelPrimBuildProc) casts are ABI-safe truncated-u32 host-pointer calls. */
 extern s32 func_8002CF34(s32* a0);
+extern s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade);
 extern s32 func_8002D0C0(s32* a0);
 extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
@@ -146,7 +147,7 @@ ModelPrimDesc D_8004FE50[15] = {
     },
     [0x08] = {
         .proc = { ModelPrimTriMediumVariant2, NULL, NULL, NULL, NULL, NULL },
-        .buildProc = NULL,   /* PSX 0x8002CF58 not ported yet; func_8002C8CC aborts if hit */
+        .buildProc = (ModelPrimBuildProc)func_8002CF58,   /* PSX 0x8002CF58 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x18,
