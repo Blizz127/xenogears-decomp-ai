@@ -105,16 +105,25 @@ s32 D_8004F33C = -1;
  * as 0x8002E04C/0x8002E688. Native PC needs callable host pointers, so migrate
  * only descriptor entries reached by the field harness. */
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+/* Build-pass proc (func_8002C8CC dispatch): fn(D_80059538, D_80059528, shade);
+ * must stay layout-identical to the typedef in src/slus_006.64/system/temp2.c. */
+typedef s32 (*ModelPrimBuildProc)(u32 pSrc, u32 pCmd, s32 shade);
 
 typedef struct ModelPrimDesc {
     ModelPrimProc proc[6];
-    u32 buildProc;
+    ModelPrimBuildProc buildProc;   /* host pointer; PSX addr kept in comments */
     u32 cmdStride;
     u32 packetStride;
     u32 outputStride;
 } ModelPrimDesc;
 
 extern s32 func_8002E688(u8* pCmd, s32 count);
+/* Build-pass handlers ported in temp2.c; only the first arg is consumed, so the
+ * (ModelPrimBuildProc) casts are ABI-safe truncated-u32 host-pointer calls. */
+extern s32 func_8002CF34(s32* a0);
+extern s32 func_8002D0C0(s32* a0);
+extern s32 func_8002D984(u8* pSrc);
+extern s32 func_8002D0E4(u8* pSrc);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
@@ -123,35 +132,35 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count);
 ModelPrimDesc D_8004FE50[15] = {
     [0x04] = {
         .proc = { ModelPrimTriSmallVariant0, NULL, ModelPrimTriSmallVariant0, NULL, NULL, NULL },
-        .buildProc = 0x8002CF34,
+        .buildProc = (ModelPrimBuildProc)func_8002CF34,   /* PSX 0x8002CF34 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x14,
     },
     [0x05] = {
         .proc = { ModelPrimTriVariant0, NULL, ModelPrimTriVariant0, NULL, NULL, NULL },
-        .buildProc = 0x8002D984,
+        .buildProc = (ModelPrimBuildProc)func_8002D984,   /* PSX 0x8002D984 */
         .cmdStride = 0x08,
         .packetStride = 0x08,
         .outputStride = 0x20,
     },
     [0x08] = {
         .proc = { ModelPrimTriMediumVariant2, NULL, NULL, NULL, NULL, NULL },
-        .buildProc = 0x8002CF58,
+        .buildProc = NULL,   /* PSX 0x8002CF58 not ported yet; func_8002C8CC aborts if hit */
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x18,
     },
     [0x0D] = {
         .proc = { func_8002E688, NULL, func_8002E688, NULL, NULL, NULL },
-        .buildProc = 0x8002D0E4,
+        .buildProc = (ModelPrimBuildProc)func_8002D0E4,   /* PSX 0x8002D0E4 */
         .cmdStride = 0x08,
         .packetStride = 0x0C,
         .outputStride = 0x28,
     },
     [0x0C] = {
         .proc = { ModelPrimQuadVariant0, NULL, ModelPrimTriMediumVariant2, NULL, NULL, NULL },
-        .buildProc = 0x8002D0C0,
+        .buildProc = (ModelPrimBuildProc)func_8002D0C0,   /* PSX 0x8002D0C0 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x18,
