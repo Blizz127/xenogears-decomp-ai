@@ -8,6 +8,24 @@
 #include "system/memory.h"
 #include "system/controller.h"
 
+#ifdef XENO_PC_PORT
+#include <stdlib.h>
+
+/* Opt-in (XENO_FIELD_MODEL_BUILD=1): run FieldLoad's per-actor model build
+ * (double-buffer alloc + GPU command-list build). Default off preserves the
+ * prior port behavior (model actors keep empty control blocks). Mirrors the
+ * XenoFieldDiagEnabled pattern in misc2.c. */
+static int PcPortModelBuildEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_MODEL_BUILD");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
+#endif
+
 extern VECTOR g_CameraEye;
 extern VECTOR g_CameraAt;
 extern VECTOR g_CameraUp;
@@ -752,18 +770,17 @@ void FieldLoad(void) {
                  * host-pointer store here would clobber the neighbouring slot. */
                 *(u32*)((u8*)pModel + 0x4) =
                     (u32)((u8*)D_800AFB14 + pOffTab[1] + 0x10);
-#ifndef XENO_PC_PORT
-                /* XENO_PC_PORT stopgap: the per-actor model build below (double-
-                 * buffer alloc, GPU command-list build, memcpy, skeletal work block,
-                 * pin) dispatches through D_8004FE50 -> the 0x8002Exxx model-
-                 * primitive processors, which aren't ported yet. The table is a
-                 * zeroed stub so func_8002C8CC calls a NULL callback, and running the
-                 * dependent memcpy/func_800303C8 without its setup corrupts the heap.
-                 * Skip the whole model build so FieldLoad completes: each model actor
-                 * keeps an allocated-but-empty control block (pModel, with modelData
-                 * at +0x4; +0x8/+0xC stay NULL). The field then reaches its render
-                 * loop and can show the map background without actor models. Remove
-                 * once the D_8004FE50 primitive subsystem is ported. */
+#ifdef XENO_PC_PORT
+                /* Opt-in model build (XENO_FIELD_MODEL_BUILD=1). Historically
+                 * skipped as a stopgap while the D_8004FE50 build subsystem was
+                 * unported; the buildProcs for prims 0x04/0x05/0x0C/0x0D and the
+                 * host-callable func_8002C8CC dispatch are now in place. Unproven
+                 * paths fail loudly (prim 0x08 buildProc -> abort; 0xC4/0xC8
+                 * inline commands -> "[stub]" logs). Flag unset -> block skipped,
+                 * prior port behavior unchanged (empty model control blocks). */
+                if (PcPortModelBuildEnabled())
+#endif
+                {
                 func_8002CB54((void*)(u32)*(u32*)((u8*)pModel + 0x4),
                               (u32*)((u8*)pModel + 0x8),
                               (u32*)((u8*)pModel + 0xC));
@@ -791,7 +808,7 @@ void FieldLoad(void) {
                     *(s32*)((u8*)pModel + 0x14) = 0;
                 }
                 func_8002C644((void*)(u32)*(u32*)((u8*)pModel + 0x4));
-#endif
+                }
             } else {
                 g_FieldActors[i].status = status | 0x20;
                 g_FieldActors[i].rotation.x = 0;
