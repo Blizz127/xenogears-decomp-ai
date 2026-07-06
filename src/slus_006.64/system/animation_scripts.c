@@ -25,6 +25,9 @@ void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
 }
 */
 
+extern s32 D_80059198;
+extern void func_80022974(void* pSpriteData);
+
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
 
@@ -36,6 +39,26 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     }
 
     if (dispatchIndex == 0x28) {
+        return;
+    }
+
+    if (dispatchIndex == 0x16) {
+        /* Opcode 0xA0 handler (original asm at 0x80021958): fixed-point value
+           from signed operand byte 0, (D_80059198 + 1), and signed pData+0x82,
+           with the negative rounding adjustment, stored to pData+0x18, then
+           func_80022974. */
+        u8* p = pSpriteData;
+        u8 op0 = ((u8*)operands)[0];
+
+        s32 v = ((s32)(s8)op0 * 16) * (D_80059198 + 1);
+        s32 val = v * *(s16*)(p + 0x82);
+
+        if (val < 0) {
+            val += 0xFFF;
+        }
+
+        *(u32*)(p + 0x18) = (val >> 12) << 8;
+        func_80022974(p);
         return;
     }
 

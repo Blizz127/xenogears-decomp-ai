@@ -726,6 +726,15 @@ void func_800248D4(void* pSpriteData) {
         return;
     }
 
+    if (opcode == 0xa0) {
+        /* Original asm default path .L80024EC8: call func_8001FBE4 with the
+           raw opcode + operand pointer, then advance the cursor by
+           D_8004FC40[0xA0] == 2 operand bytes (pc+1 from loop entry, +2). */
+        func_8001FBE4(pData, opcode, pc + 1);
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 3);
+        return;
+    }
+
     assert(0 && "func_800248D4 opcode path is not implemented");
 }
 
