@@ -500,6 +500,15 @@
 - **Next experiment:** guarded opt-in `0xBB` streamed-archive→VRAM upload (bounds-checked; verify the per-frame sprite refresh restores Fei's page, or defer sprite-band strips first).
 - **Sanity:** distrobox display/GPU passthrough verified healthy (`/dev/dri` present; binary even runs on the host) — container not a suspect.
 
+## July 6 — 🎉 VISUAL MILESTONE: TEXTURED FIELD GEOMETRY ON SCREEN (0xBB upload committed opt-in; TR-add still experiment-only)
+
+**User-confirmed visuals: first "GRASS!" (upload only), then textured band across the top + lighter strip near the bottom (upload + TR-add). The field model path now samples streamed texture data and displays it.**
+
+- **`PcPortDrain0xBBToVram` (archive_port.c, committed, opt-in `XENO_FIELD_0BB_VRAM_UPLOAD=1`):** synchronous port of the retail streamed-VRAM drain (`func_8002BF38` format, verified strip parser + hard bounds checks, single end-of-drain `DrawSync` — the per-strip syncs that starved the fade loop in the first experiment are gone). Map1: **12/12 sections, 245 strips clean** (22 hit the model texture pages ~VRAM (320-448,256+), 38 hit the sprite band; Fei survives via the per-frame sprite re-blit `func_80025044`). Default-off = byte-identical.
+- **Control matrix (the proof):** **A** upload ON/TR OFF → grass, near quads only (~12/400 pass) · **B** upload OFF/TR ON → 400/400 geometry passes but black · **C** both → **visible textured field bands**. Visible texture is **sampled by model primitives** (0xBB strips land outside the display framebuffers — no direct-blit side effect). Fei emits in all configs; Map0 guard `1,2,16,23,25,26` throughout.
+- **TR-add remains experiment-only and UNCOMMITTED** (patch: `captures/render_diag/model_tradd_experiment_20260706_092425.patch`; milestone dirty-state: `visible_textured_fragments_20260706_184038.patch`; milestone log: `map1_0bb_tradd_visual_20260706_183941.log`).
+- **Remaining work:** (1) make the 0xBB upload retail-shaped/permanent loader behavior (drive from `func_80070488` arm/drain, not an env flag); (2) **prove the correct permanent model translation fix** (where does retail add worldToScreen.t for model actors? — the gating question before TR-add can be promoted); (3) camera/framing/scale cleanup (center-black region, tiny sprites); (4) sprite-band overlap correctness.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
