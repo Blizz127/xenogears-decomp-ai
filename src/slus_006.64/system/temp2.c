@@ -425,7 +425,31 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CCC8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD24);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD64);
+/* Gate shared by the textured model buildProcs (func_8002D984/func_8002D0E4):
+ * packet-source records whose code byte (+0x3) is a 0xC0-class inline state
+ * command dispatch to a state handler and emit no primitive (return 0);
+ * anything else emits (return 1). func_8002CCC8/func_8002CD24 are still
+ * INCLUDE_ASM -> auto-stubs; a "[stub]" log on those names means Map1 models
+ * carry 0xC4/0xC8 inline state commands and the handlers must be ported. */
+extern void func_8002CCC8(void);
+extern void func_8002CD24(void);
+
+s32 func_8002CD64(u8* pSrc) {
+    u8 code = pSrc[0x3];
+
+    if ((code & 0xF0) != 0xC0) {
+        return 1;
+    }
+    if (code == 0xC4) {
+        func_8002CCC8();
+        return 0;
+    }
+    if (code == 0xC8) {
+        func_8002CD24();
+        return 0;
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CDCC);
 
@@ -447,7 +471,30 @@ s32 func_8002D0C0(s32* a0) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D0E4);
+/* buildProc for prim 0x0D (textured quad, POLY_FT4 template, tag len 9).
+ * Reads one 0x0C-byte packet-source record (a0 = D_80059538 cursor) and writes
+ * the static packet fields at the D_80059424 output cursor; the per-frame render
+ * proc (func_8002E688) later patches the projected xy words in. asm:
+ * func_8002D984.s sibling — p[3]=9; +0x4 = rgb|code word; +0xC = uv0 | clut<<16;
+ * +0x14 = uv1 | tpage<<16; +0x1C = uv2; +0x24 = uv3. */
+extern u16 D_80059308;  /* current model texture page (hi half of packet +0x14) */
+extern u16 D_8005930C;  /* current model CLUT id      (hi half of packet +0x0C) */
+
+s32 func_8002D0E4(u8* pSrc) {
+    u8* p;
+
+    if (func_8002CD64(pSrc) == 0) {
+        return 0;
+    }
+    p = D_80059424;
+    p[0x3] = 0x9;
+    *(u32*)(p + 0x04) = *(u32*)(pSrc + 0x0);
+    *(u32*)(p + 0x0C) = *(u16*)(pSrc + 0x4) | ((u32)D_8005930C << 16);
+    *(u32*)(p + 0x14) = *(u16*)(pSrc + 0x6) | ((u32)D_80059308 << 16);
+    *(u16*)(p + 0x1C) = *(u16*)(pSrc + 0x8);
+    *(u16*)(p + 0x24) = *(u16*)(pSrc + 0xA);
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D180);
 
@@ -465,7 +512,25 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D77C);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D984);
+/* buildProc for prim 0x05 (textured tri, POLY_FT3 template, tag len 7).
+ * Reads one 0x08-byte packet-source record and writes the static packet fields;
+ * the render proc (ModelPrimTriVariant0) later patches the xy words. asm:
+ * p[3]=7; +0xC = uv0 | clut<<16; +0x14 = uv1 | tpage<<16; +0x1C = uv2;
+ * p[0x7] = code byte (rgb bytes at +0x4..+0x6 are owned by the render pass). */
+s32 func_8002D984(u8* pSrc) {
+    u8* p;
+
+    if (func_8002CD64(pSrc) == 0) {
+        return 0;
+    }
+    p = D_80059424;
+    p[0x3] = 0x7;
+    *(u32*)(p + 0x0C) = *(u16*)(pSrc + 0x4) | ((u32)D_8005930C << 16);
+    *(u32*)(p + 0x14) = *(u16*)(pSrc + 0x6) | ((u32)D_80059308 << 16);
+    *(u16*)(p + 0x1C) = *(u16*)(pSrc + 0x0);
+    p[0x7] = pSrc[0x3];
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
 
