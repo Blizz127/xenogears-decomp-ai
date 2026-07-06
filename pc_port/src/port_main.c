@@ -70,6 +70,7 @@ extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void SystemInitializeFont(void* pSystemFont);
 extern void SystemInitializeData(void* pSystemData);
 extern void func_8001ACA4(void);
+extern unsigned short D_8006F954;    /* field entrance/spawn index (sister of D_8006F94E) */
 extern unsigned char D_80010000[];  /* build/mode flag: -1 in retail ROM        */
 extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  */
 extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
@@ -201,6 +202,35 @@ int main(int argc, char** argv) {
                     D_8006F94E = (unsigned short)strtoul(fieldMap, NULL, 0);
                     printf("[xeno-port][field] XENO_FIELD_MAP=%u\n",
                            (unsigned int)D_8006F94E);
+                }
+                /* Field entrance/spawn index. D_8006F954 is the real field
+                 * entrance/spawn transition input, the sister global of the map
+                 * selector D_8006F94E (set just above the same way). The value
+                 * propagates: FieldMain copies D_8006F954 -> g_GameState+0x1932
+                 * (main.c:408); FieldLoad copies g_GameState+0x1930 ->
+                 * g_FieldScriptMemory (misc3.c:390-396); the field-load script
+                 * (func_800A08B8 -> func_8009FA54) reads field-script variable 2
+                 * at g_FieldScriptMemory+2 to pick a spawn-table entry. Direct
+                 * XENO_FIELD_MAP entry skips the transition, leaving var 2 = 0 ->
+                 * entrance 0, which on some maps is an edge spawn outside the
+                 * walkmesh (camera can't frame the player). Writing D_8006F954
+                 * here -- the top of that copy chain, not an intermediate buffer
+                 * that gets overwritten -- stands in for the missing transition.
+                 * Coordinates still come from the game's own spawn table; only
+                 * the index is selected. */
+                const char* fieldEntrance = getenv("XENO_FIELD_ENTRANCE");
+                if (fieldEntrance != NULL && fieldEntrance[0] != '\0') {
+                    char* end = NULL;
+                    long entrance = strtol(fieldEntrance, &end, 0);
+                    if (end != fieldEntrance && entrance >= 0 &&
+                        entrance <= 0xFFFF) {
+                        D_8006F954 = (unsigned short)entrance;
+                        printf("[xeno-port][field] XENO_FIELD_ENTRANCE=%ld "
+                               "(D_8006F954 -> field-script var 2)\n", entrance);
+                    } else {
+                        printf("[xeno-port][field] ignoring invalid "
+                               "XENO_FIELD_ENTRANCE=%s\n", fieldEntrance);
+                    }
                 }
             }
             printf("[xeno-port][field] font + party-skin init done\n");
