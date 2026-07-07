@@ -610,6 +610,12 @@
 - **Verified:** table linked real+nonzero (`R D_8004FC40`, [0xA0]=2); opcode 0xA0 (actor 23) no longer asserts; Map0 guard `1,2,16,23,25,26`; entrance 10: FE54 fires, `unk48=0xC000` set — then both entrances now run the interpreter deeper and hit the next gap.
 - **Next blocker (bounded, all callees ported):** opcode **0x09** (family `0x00-0x0F`), actor 42, `pc=0x5c1f77` (`09 05`), same caller chain (`func_800739C0` → `func_800223B0(pSprite, 0x7C00)`). Retail: 1-byte op → `func_8001D2B0(pData, curFrame(+0x34)+1)` then the SAME shared delay tail as the existing 0x10/0x30 C blocks (asm 12ED4-12F28, ~10 insns); `0x20-0x2F` is the mirror (`curFrame−1`). `func_8001D2B0` is already ported and linked.
 
+## July 7 — Animation frame-step families 0x00-0x0F / 0x20-0x2F implemented; next: 0xB3 (trivial)
+
+- `func_80022660` now implements the one-byte frame-step ops (asm 12ED4-12F28): `pc += 1`, `func_8001D2B0(pData, curFrame(+0x34) ± 1)` (0x0x = +1, 0x2x = −1), then the shared delay tail (`delay=(op&0xF)+1`, 9E/A8 subIndex machinery, same as the 0x30 case). Verified live: actor 42 executed three consecutive frame-steps (`09 05 09`, pc 0x5c1f77→0x5c1f7a).
+- Battery: stubs steady 251; Map0 guard `1,2,16,23,25,26`; entrance 10 FE54 → `unk48=0xC000` before the next shared gap.
+- **Next blocker (trivial, asm-sized):** opcode **0xB3** (actor 42, pc=0x5c1f7a, operand 0xFF): `A8 = (A8 & 0xFFFE07FF) | (((s8)pc[1] & 0x3F) << 11)`, then the standard table advance (+2) — asm `.L800228F8` → `.L80022928`, ~8 insns, no calls. Companions in the same tail pattern if wanted: `0x86/0x87/0x97` = `if (pc==pBytecode) return; else table-advance` (asm `.L80022920`). Remaining bigger units: 0xBE (anim state rewrite + conditional D2B0 + delay), 0xE2 (relative jump + AnimScriptStackPushU24), 0x40-0x7F families.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
