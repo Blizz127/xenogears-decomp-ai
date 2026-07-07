@@ -402,6 +402,31 @@ void func_800223B0(void* pSpriteData, s16 arg1) {
     *(u32*)(pData + 0x3C) = flags3C;
 }
 
+/* Animation bytecode length table, mechanically copied from the retail
+ * sdata blob (asm/slus_006.64/data/3F290.sdata.s, dlabel D_8004FC40).
+ * Only entries >= 0x80 are ever consulted (the sub-0x80 opcodes take
+ * dedicated paths); the low bytes are kept verbatim for fidelity.
+ * A real definition is required: an auto-stubbed zero table would
+ * advance the bytecode PC by 0 and hang the interpreter. */
+const u8 D_8004FC40[256] = {
+    16, 231, 46, 112, 80, 16, 60, 112, 255, 127, 80, 144, 160, 16, 88, 16,  /* 0x00 */
+    251, 80, 144, 156, 16, 22, 80, 160, 14, 48, 160, 48, 82, 48, 134, 48,  /* 0x10 */
+    31, 162, 176, 80, 208, 156, 48, 144, 48, 80, 48, 25,  0, 25, 63, 80,  /* 0x20 */
+    128, 188, 48, 242, 48, 160, 144, 80, 144, 240, 144, 255, 127, 251, 62, 49,  /* 0x30 */
+    80, 240, 24, 68, 65, 34, 49, 80, 80, 160, 240, 240, 48, 255, 142, 49,  /* 0x40 */
+    18, 145, 226, 80, 240, 240, 240, 240, 80, 240, 80, 112, 160, 80, 191, 162,  /* 0x50 */
+    112, 78, 48, 230, 17, 144, 241, 144, 209, 48, 146, 14, 48, 34, 254, 17,  /* 0x60 */
+    48, 98, 46, 82,  4, 48, 48, 18, 50, 50, 48, 242, 124, 50,  0,  0,  /* 0x70 */
+     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  /* 0x80 */
+     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  /* 0x90 */
+     2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  /* 0xA0 */
+     2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  /* 0xB0 */
+     2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xC0 */
+     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xD0 */
+     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xE0 */
+     3,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  /* 0xF0 */
+};
+
 // Run Sprite Animation VM
 void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
     u8* pData = pSpriteData;
@@ -462,17 +487,20 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
             return;
         }
 
-        if (opcode == 0xB4) {
-            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 4);
-            continue;
+        /* Retail-switch cases with side effects that are not yet ported:
+         * 0x00-0x0F / 0x20-0x2F / 0x40-0x7F frame-op families, 0x86/0x87/0x97
+         * tail handling, 0xB3 (speed bits), 0xBE (anim state), 0xE2 (relative
+         * jump + AnimScriptStackPushU24). These must not be silently skipped. */
+        if (opcode < 0x80 || opcode == 0x86 || opcode == 0x87 || opcode == 0x97 ||
+            opcode == 0xB3 || opcode == 0xBE || opcode == 0xE2) {
+            assert(0 && "func_80022660 bytecode path is not implemented");
         }
 
-        if (opcode == 0xB2) {
-            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 2);
-            continue;
-        }
-
-        assert(0 && "func_80022660 bytecode path is not implemented");
+        /* asm .L80022930: every other opcode advances by the per-opcode
+         * length table D_8004FC40 (retail: pc += D_8004FC40[opcode]). This
+         * also owns the strides of 0xB2/0xB4, previously hardcoded here with
+         * 0xB4 mis-transcribed as +4 (table value is 2). */
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
     }
 }
 
