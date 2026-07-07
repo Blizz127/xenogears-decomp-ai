@@ -44,7 +44,25 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E00);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E98);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091F84);
+/* ---- func_80091F84: VM opcode 0xDB — write clamped value into the actor's
+ * animation dispatch table.
+ * asm 80091F84-80092040: arg(1) = table index, arg(3) = value, clamped to
+ * 0xFFF (slti 0x1000 / ori 0xFFF). If g_FieldActors[D_800AFD1C].status has
+ * bit 0x2000, stores it at ((s32*)actorData->unk118)[index] — the 0x80-byte
+ * table func_80080A74 allocates under the same status gate. IP += 5
+ * unconditionally (sh at 8009202C). */
+void func_80091F84(void) {
+    s32 index = FieldScriptVMGetArgument(1);
+    s32 value = FieldScriptVMGetArgument(3);
+
+    if (value >= 0x1000) {
+        value = 0xFFF;
+    }
+    if (g_FieldActors[D_800AFD1C].status & 0x2000) {
+        ((s32*)(uintptr_t)g_FieldScriptVMCurActor->unk118)[index] = value;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092044);
 

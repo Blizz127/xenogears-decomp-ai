@@ -445,7 +445,7 @@ void func_800A2714(void) {
             if (pActor->unk124 != -1) {
                 g_FieldScriptVMCurActor = pActor;
                 pData = HeapAlloc(ArchiveDecodeAlignedSize(pActor->unk124, pActor) + 8, 0x0);
-                g_FieldScriptVMCurActor->unk120 = pData;
+                g_FieldScriptVMCurActor->unk120 = (u32)(uintptr_t)pData;
                 ArchiveReadFileToBuffer(g_FieldScriptVMCurActor->unk124, pData, 0, CdlModeSpeed); // Read from disc into buffer
                 ArchiveCdDataSync(0);
             }

@@ -27,16 +27,16 @@ void func_8008083C(int actorIndex) {
     if (actorIndex < D_800ADBFC) {
         pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         if (pActor->flags134 & 0x80) {
-            HeapFree(pActor->unk110);
+            HeapFree((void*)(uintptr_t)pActor->unk110);
         }
         if (pActor->flags12C_0xD) {
-            HeapFree(pActor->unk114);
+            HeapFree((void*)(uintptr_t)pActor->unk114);
         }
         if (g_FieldActors[actorIndex].status & 0x2000) {
-            HeapFree(pActor->unk118);
+            HeapFree((void*)(uintptr_t)pActor->unk118);
         }
         if (pActor->unk124 != -1) {
-            HeapFree(pActor->unk120);
+            HeapFree((void*)(uintptr_t)pActor->unk120);
         }
         HeapFree(pActor);
         HeapFree((void*)(uintptr_t)g_FieldActors[actorIndex].pShadow);
@@ -93,7 +93,7 @@ extern s32 D_800ADB5C;
 s32 func_80080A18(void) {
     ActorData* p = (ActorData*)(uintptr_t)g_FieldActors[D_800ADB58].pActorData;
     s32 i = D_800ADB5C++;
-    return ((s32*)p->unk118)[i];
+    return ((s32*)(uintptr_t)p->unk118)[i];
 }
 
 /* ---- func_80080A74: per-actor second-pass ActorData initialization ----------
@@ -275,9 +275,10 @@ void func_80080F44(s32 actorIndex) {
 
     if (actorIndex >= D_800ADBFC) return;
 
-    /* 1. Allocate and zero the 0x138-byte ActorData block */
+    /* 1. Allocate and zero the ActorData block (sizeof == retail 0x138 now
+     * that the 0x110 pointer run is u32 — see actor.h) */
     D_800B2180++;
-    pData = (ActorData*)(uintptr_t)HeapAlloc(0x138, 0);
+    pData = (ActorData*)(uintptr_t)HeapAlloc(sizeof(ActorData), 0);
     g_FieldActors[actorIndex].pActorData = (u32)(uintptr_t)pData;
 
     for (i = 0; i < 0x4E; i++) {

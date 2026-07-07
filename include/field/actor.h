@@ -295,12 +295,17 @@ typedef struct {
     /* 0x10A */ short unk10A;
     /* 0x10C */ u_char unk10C;
     /* 0x10D */ u_char unk10D;
-    /* 0x110 */ void* unk110;
-    /* 0x114 */ void* unk114;
-    /* 0x118 */ void* unk118;
+    /* PSX pointers kept as u32 (same convention as FieldActor below) so
+     * sizeof(ActorData) stays 0x138 and the raw PSX offsets used across the
+     * field code (e.g. func_80080A74 init, func_800748E8 +0x128/+0x12C
+     * reads) remain correct on the 64-bit port. Reconstruct host pointers
+     * at use sites via (void*)(uintptr_t). */
+    /* 0x110 */ u32 unk110;
+    /* 0x114 */ u32 unk114;
+    /* 0x118 */ u32 unk118;
     /* 0x11C */ short unk11C;
     /* 0x11E */ short unk11E;
-    /* 0x120 */ void* unk120; // Special animation file?
+    /* 0x120 */ u32 unk120; // Special animation file?
     /* 0x124 */ short unk124; // Archive index of special anim file?
     /* 0x126 */ u_char unk126;
     /* 0x127 */ u_char spriteId;
