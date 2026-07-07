@@ -645,6 +645,16 @@ Pushed range `3ba4611..502ba6b` on `ai-private-main`. Everything below is verifi
 - **Verified:** stubs steady 251; **entrance 10 runs clean past frame 400** (`unk48=0xC000`, elevated camera eye=(−9679,1524,24836) live) — the first properly-framed visual is now capturable; entrance 6 clean RC=124; Map0 guard `1,2,16,23,25,26`.
 - Banked from the audit for future passes (all currently loud asserts): jump table `jtbl_800186E0` dedicated handlers still unported (0x85/0x86/0x87/0x8E/0x98/0xA7/0xBE/0xC8/0xD4/0xE1/0xE2/0xE4/0xFA), generic `func_8001FBE4` + `D_8004FC40` default fallback, anim stack ops (INCLUDE_ASM; matched C preserved in comments for PopU8/FBA4), 0x20-0x2F inline family, and the documented retail stale-delay quirk in 0x40-0x7F.
 
+## July 7 — Multi-entrance MILESTONE VISUALS captured (user screenshots, a0c819a)
+
+Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders distinct real views per entrance. Three user-captured visuals preserved under `captures/render_diag/` (git-ignored; local artifacts referenced here). **These are milestone visuals, not claims of fully complete rendering** — placement gaps, black regions, and unlit areas remain expected:
+
+- `map1_entrance6_cleanrun_visual_20260707.png` — **entrance 6: clean-running visual baseline** (village, Fei + NPC, background hills; the RC=124 clean-run configuration).
+- `map1_entrance2_far_region_visual_20260707.png` — **entrance 2: far-region field view with visible actors** (mountain panorama, tiny actor sprites center).
+- `map1_entrance8_field_geometry_visual_20260707.png` — **entrance 8: best recognizable field-geometry view** — wooden hut structure + terrain + mountain range; the strongest model-geometry visual to date.
+- Entrance 10: **log-proven elevated camera only** (`FE54` → `unk48=0xC000`, eye=(−9679,1524,24836), runs clean past frame 400) — manual capture currently shows black (geometry does not project at that spawn's view); **do not use as the visual payoff yet**.
+- Region insight from the sweep: entrances cluster in two map regions — village (0/3/4/5/6/7, z≈800-3700) and far-field (2/8/10, z≈23000-25000, where the large model geometry lives; entrance 6's "distant hills" are those models seen from ~23k units).
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
