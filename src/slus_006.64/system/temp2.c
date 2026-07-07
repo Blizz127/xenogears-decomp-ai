@@ -353,6 +353,28 @@ static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
             ((xy2 & 0xFFFF) < xMax) || ((xy3 & 0xFFFF) < xMax));
 }
 
+/* PSX GPU hardware rule (see game_overrides.c ModelPrimTriOversized):
+ * polygons wider than 1023 or taller than 511 in projected screen space are
+ * silently rejected by the rasterizer; PsyX does not implement this. */
+static int ModelPrimPackedOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+    s32 xs[4], ys[4], xmin, xmax, ymin, ymax, i;
+    u32 v[4];
+    v[0] = xy0; v[1] = xy1; v[2] = xy2; v[3] = xy3;
+    for (i = 0; i < 4; i++) {
+        xs[i] = (s16)(v[i] & 0xFFFF);
+        ys[i] = (s16)(v[i] >> 16);
+    }
+    xmin = xmax = xs[0];
+    ymin = ymax = ys[0];
+    for (i = 1; i < 4; i++) {
+        if (xs[i] < xmin) xmin = xs[i];
+        if (xs[i] > xmax) xmax = xs[i];
+        if (ys[i] < ymin) ymin = ys[i];
+        if (ys[i] > ymax) ymax = ys[i];
+    }
+    return (xmax - xmin) > 1023 || (ymax - ymin) > 511;
+}
+
 s32 func_8002E688(u8* pCmd, s32 count) {
     const s32 packetStep = 0x28;
     const u32 tagLen = 0x09000000;
@@ -387,6 +409,9 @@ s32 func_8002E688(u8* pCmd, s32 count) {
             continue;
         }
         if (!ModelPrimPackedOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+        if (ModelPrimPackedOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
 
