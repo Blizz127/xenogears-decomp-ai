@@ -509,6 +509,34 @@
 - **TR-add remains experiment-only and UNCOMMITTED** (patch: `captures/render_diag/model_tradd_experiment_20260706_092425.patch`; milestone dirty-state: `visible_textured_fragments_20260706_184038.patch`; milestone log: `map1_0bb_tradd_visual_20260706_183941.log`).
 - **Remaining work:** (1) make the 0xBB upload retail-shaped/permanent loader behavior (drive from `func_80070488` arm/drain, not an env flag); (2) **prove the correct permanent model translation fix** (where does retail add worldToScreen.t for model actors? — the gating question before TR-add can be promoted); (3) camera/framing/scale cleanup (center-black region, tiny sprites); (4) sprite-band overlap correctness.
 
+## July 6 — Visual corroboration: RECOGNIZABLE GRASS TEXTURE
+
+**The user visually recognized the top-band texture as the actual grass texture from the Xenogears field.** This corroborates the control-matrix result: the visible textured bands are sampled field/model texture data from the streamed 0xBB VRAM payload — not a direct-blit artifact or random VRAM garbage. Honest status: recognizable grass texture appears; **placement/framing is still wrong; the field is not correct yet**; 0xBB upload remains opt-in.
+
+## July 6 — TR-add PROVEN retail-correct (asm cv=0); permanent fix staged but NOT committed (exposes model-build default)
+
+- **PROOF (primary source, [func_800748E8.s](../../asm/field/matchings/main/misc2/func_800748E8.s) 53EC-542C):** the original handwritten GTE sequence loads `work.t` into the GTE translation registers (`ctc2 $5/$6/$7` from the work matrix +0x14/18/1C) then transforms the actor position with **`mvmva cv=0` — translation INCLUDED**: `modelMatrix.t = work.R × pos + work.t`. The C's `ApplyMatrixLV` is the rotation-only (cv=3) library op — a **mis-decompilation** that dropped `work.t`. The TR-add experiment reconstructed retail behavior exactly. (Audit note: other handwritten-GTE decomp lines may hide cv=0 vs cv=3 mis-transcriptions — future audit item, not started.)
+- **Permanent fix applied to misc2.c (unconditional, asm-cited comment, no env flag) — VERIFICATION SPLIT:**
+  - model build ON (upload off / upload on): `RC=124`, no malformed packets, 12/12 upload, Map0 guard `1,2,16,23,25,26` ✅
+  - **baseline (model build OFF): `RC=139` SEGV** — gdb: `func_8002C700(a1=NULL)` → prim proc writes at NULL `out`. **Expected consequence of correctness:** the fixed translation makes model prims project and write packets, which requires the packet buffers only `XENO_FIELD_MODEL_BUILD=1` allocates. Retail always runs the build; the opt-in gate (a port scaffolding choice) is now the incompatibility.
+  - **NOT committed** (per failure protocol). Patch preserved: `captures/render_diag/permanent_model_translation_failed_*.patch`.
+- **Completing change (needs approval):** make the FieldLoad model build **default-ON** (retail-shaped) — e.g. invert `PcPortModelBuildEnabled()` to opt-OUT (`XENO_FIELD_NO_MODEL_BUILD` escape hatch) in misc3.c — and land it together with the misc2.c translation fix as one coherent commit. Alternative (rejected as unfaithful): NULL-guard the draw path.
+
+## July 6 — PERMANENT translation fix LANDED (misc2.c + misc3.c, one commit)
+
+- **Approval:** user re-sent the milestone handoff with "Next step: Land the permanent func_800748E8 translation fix" — taken as the go for the completing change above.
+- **What landed (3 pieces, one commit):**
+  1. **misc2.c `func_800748E8`:** unconditional TR-add (`modelMatrix.t += work.t`, asm-cited: 53EC-542C `ctc2 $5/$6/$7` + `mvmva cv=0`) and the post-`func_800AAA74` `SetRotMatrix`/`SetTransMatrix` re-issue (asm `.L800750EC`). No env flag — this is the retail path.
+  2. **misc3.c gate inverted:** `PcPortModelBuildEnabled()` now default-ON (retail-shaped); `XENO_FIELD_NO_MODEL_BUILD=1` is the opt-out escape hatch. **`XENO_FIELD_MODEL_BUILD` no longer exists.**
+  3. **misc2.c draw gate (scaffolding consistency, not a retail NULL-guard):** the model draw block skips via a mirrored static `PcPortModelBuildEnabled()` when the build is opted out — the double-buffer slots are empty in that config, so drawing would write at NULL (the old `RC=139` mechanism). The retail-default path runs the draw unconditionally; only the opt-out scaffolding skips it.
+- **Verification (all `RC=124`, logs `captures/render_diag/permfix_*_20260706_191855.log`):**
+  - **Map0 guard (default flags, build now ON):** draw list exactly `1,2,16,23,25,26`, `active=22 plain=6 status20=16`, 0 `[stub]`, 0 malformed. SAFE.
+  - **Map1 + upload:** 0xBB drain identical to the milestone log (22 model-page strip lines), stub set byte-identical to `map1_0bb_tradd_visual_20260706_183941.log` (same 10 known soft stubs), 0 malformed, sprites emitting.
+  - **Map1 no upload:** clean.
+  - **Map1 + `XENO_FIELD_NO_MODEL_BUILD=1` (the former SEGV config):** clean to timeout — no `func_8002C700(a1=NULL)`.
+  - Build sanity per protocol: `nm` shows `func_800748E8` compiled C, 0 hits in stubs.c.
+- **Remaining-work list update:** item (2) permanent model translation fix is **DONE**. Still open: (1) retail-shaped 0xBB upload (drive from `func_80070488` arm/drain, not env flag); (3) camera/framing/scale; (4) sprite-band overlap; plus the cv=0-vs-cv=3 mis-transcription audit of other handwritten-GTE decomp lines.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
