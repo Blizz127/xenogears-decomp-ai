@@ -669,6 +669,14 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - Entrance 7 (user capture 12:06, all black, not preserved): never part of the verified visual set — expected to be another no-geometry-in-view camera like entrance 10; one-line audit candidate later.
 - Probe-hygiene note for future sessions: two false readings this arc came from **breakpoint line-drift after edits** (anim assert line, temp2.c FT4 walker line). Re-derive line numbers after any edit to a probed file.
 
+## July 7 — PSX GPU primitive size rejection added to all six walkers; oversized smear eliminated
+
+- **`func_800748E8` OT/context selection exonerated** (asm 80075134-80075190 = C exactly; the earlier "stale context" reading was a probe artifact comparing a `D_800ADC18`-gated frame against the next). Ground FT4s are emitted, linked, submitted, and drawn with correct sand/grass texels (chain-scan proven; VRAM page PNGs `vram_page8A/8C_clut506_20260707.png` show real ground art).
+- **Root cause of the black midband cover:** 42 packets per frame with overflow screen coordinates (|x| up to ~32k, flat-camera projections of near/behind geometry) drew AFTER the ground quads. Retail PSX GPU silently rejects polygons wider than 1023 or taller than 511; **PsyX has no such rule** — it rasterized them as giant dark triangles.
+- **Fix:** hardware-faithful bbox rejection (`w>1023 || h>511`) added after projection in all six walkers (`ModelPrimTriSmallVariant0/QuadVariant0/QuadF4Variant0/TriMediumVariant2/TriVariant0` in game_overrides.c + `func_8002E688` in temp2.c), sibling to the OverlapsScreen checks. PsyX untouched.
+- **Verified:** oversized packets in the drawn chain 42 → **0**; ground FT4s unchanged (95/10/1); RC=124 on 2/6/8; Map0 guard `1,2,16,23,25,26`; entrance-10 control `unk48=0xC000`. Headless captures `map1_entrance{6,8}_sizereject_20260707_xvfb.png`.
+- **Honest visual outcome:** entrances 6/8 look largely similar — the smears painted over regions that are mostly clear-color black anyway, because **the flat eye.y=0 camera projects almost no ground geometry into the visible band** (exactly 1 midband ground quad per frame at entrance 6). The dominant remaining path to a ground-rich view is the known camera-height/event gate (`unk48` bit 0x4000 — event-driven on entrance 6; entrance 10 has height but no local geometry). The size rejection remains correct and necessary hardware semantics regardless.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.

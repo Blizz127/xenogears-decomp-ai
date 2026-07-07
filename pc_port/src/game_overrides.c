@@ -184,6 +184,31 @@ static u32 ModelPrimVertexIndex1(u32 word) {
     return (word >> 16) & 0xFFFF;
 }
 
+/* PSX GPU hardware rule: polygons wider than 1023 or taller than 511 in
+ * projected screen space are silently rejected by the rasterizer. PsyX does
+ * not implement this, so oversized overflow projections (e.g. near/behind
+ * geometry from a ground-level camera) would smear giant triangles across
+ * the frame. Reject them here, sibling to the screen-overlap checks. */
+static int ModelPrimTriOversized(u32 xy0, u32 xy1, u32 xy2) {
+    s32 x0 = (s16)(xy0 & 0xFFFF), y0 = (s16)(xy0 >> 16);
+    s32 x1 = (s16)(xy1 & 0xFFFF), y1 = (s16)(xy1 >> 16);
+    s32 x2 = (s16)(xy2 & 0xFFFF), y2 = (s16)(xy2 >> 16);
+    s32 xmin = x0 < x1 ? x0 : x1, xmax = x0 > x1 ? x0 : x1;
+    s32 ymin = y0 < y1 ? y0 : y1, ymax = y0 > y1 ? y0 : y1;
+    if (x2 < xmin) xmin = x2;
+    if (x2 > xmax) xmax = x2;
+    if (y2 < ymin) ymin = y2;
+    if (y2 > ymax) ymax = y2;
+    return (xmax - xmin) > 1023 || (ymax - ymin) > 511;
+}
+
+static int ModelPrimQuadOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+    if (ModelPrimTriOversized(xy0, xy1, xy2)) {
+        return 1;
+    }
+    return ModelPrimTriOversized(xy1, xy2, xy3);
+}
+
 static int ModelPrimTriOverlapsScreen(u32 xy0, u32 xy1, u32 xy2) {
     u32 yMaxPacked = (u32)D_800500FC;
     u32 xMax = (u32)D_800500F8;
@@ -238,6 +263,9 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
             continue;
         }
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
+        if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
             continue;
         }
 
@@ -299,6 +327,9 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
             continue;
         }
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+        if (ModelPrimQuadOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
 
@@ -369,6 +400,9 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
+        if (ModelPrimQuadOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
 
         {
             /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
@@ -429,6 +463,9 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
             continue;
         }
+        if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
 
         {
             /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
@@ -486,6 +523,9 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
             continue;
         }
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            continue;
+        }
+        if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
             continue;
         }
 
