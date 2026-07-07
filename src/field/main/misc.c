@@ -574,7 +574,7 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A9AC);
 
 void func_8008AA60(void) {
     if (g_FieldScriptVMCurActor->unk124 != -1) {
-        HeapFree(g_FieldScriptVMCurActor->unk120);
+        HeapFree((void*)(uintptr_t)g_FieldScriptVMCurActor->unk120);
         g_FieldScriptVMCurActor->unk124 = -1;
     }
     D_800B00C0 = 1;
