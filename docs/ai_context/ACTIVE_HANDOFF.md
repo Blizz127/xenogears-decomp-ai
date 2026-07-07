@@ -636,9 +636,8 @@ Pushed range `3ba4611..502ba6b` on `ai-private-main`. Everything below is verifi
 - **Map1 entrance 6 now clean-runs to timeout** (`RUN_RC=124`, zero asserts/signals, 0 malformed, 0xBB 12/12+245) — scripts, movement, animation, camera, and textured geometry all alive simultaneously for the first time.
 - **Entrance 6 does NOT auto-set `g_Scene.unk48`** — re-verified over 400 clean frames (stays 0x0). The ceiling-disarm flag on this entrance is event/movement-gated retail behavior, not a port defect.
 - **Entrance 10 remains the camera-proof path**: `FE54` → `unk48=0xC000`, elevated camera eye=(−9679, 1524, 24836). Its long-run blocker is the recorded `func_800248D4` opcode-0x82 pass (not started).
-- Visual capture commands (screenshots must be taken manually — GNOME/Wayland blocks automated capture; X11-grab and Shell D-Bus both denied):
-  - Entrance 6 (walking/animating actors): `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=6 XENO_FIELD_0BB_VRAM_UPLOAD=1 ./build_native/xeno-port'`
-  - Entrance 10 (elevated camera after FE54): same with `XENO_FIELD_ENTRANCE=10`
+- **Milestone visual (user-captured, 2026-07-07 10:19):** `captures/render_diag/milestone_entrance6_walking_actors_20260707_102408.png` — Map1 entrance 6 with the clean-running field. Command: `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=6 XENO_FIELD_0BB_VRAM_UPLOAD=1 ./build_native/xeno-port'`
+- **Entrance 10 visual capture NOT possible yet:** the window opens black and closes before a useful frame — the known future `func_800248D4` / opcode `0x82` / `AnimScriptTick` blocker kills the run before rendering stabilizes. Not a new code task; the entrance-10 camera proof remains **log-based only** (`FE54` fires, `g_Scene.unk48 = 0xC000`). A visual for it becomes possible once the `func_800248D4` bounded pass lands.
 
 ## Exact Next Function To Implement
 
