@@ -4,6 +4,14 @@
 > https://docs.google.com/document/d/14gbbdBZALGGAqSkX6QxsQRsbZnvMI1UVF_QFHeoevsY/edit
 > Keep the high-level status + milestone log there; this file remains the deep per-session journal.
 
+> **Reference source:** yaz0r/Noah (non-matching C++ Xenogears reimplementation)
+> is an approved research reference — see `docs/ai_context/REFERENCE_SOURCES.md`
+> (local clone at `~/Projects/xenogears-reference/Noah`, outside this repo).
+> Reference-only: behavior/naming/data-format/VM-opcode research. Never
+> authoritative without SLUS_006.64 asm or runtime confirmation; no code import
+> without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
+> PC-port correctness.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
