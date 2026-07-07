@@ -26,6 +26,20 @@ static int XenoFieldDiagEnabled(void) {
     }
     return s_enabled;
 }
+
+/* Mirror of misc3.c's model-build gate (retail-shaped default ON;
+ * XENO_FIELD_NO_MODEL_BUILD=1 opts out). The draw path below must agree with
+ * FieldLoad: when the build was skipped, the model double-buffer slots are
+ * empty and func_8002C700's prim procs would write at NULL. */
+static int PcPortModelBuildEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_NO_MODEL_BUILD");
+        s_enabled = !(env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
 #endif
 
 void FieldMatrixResetTranslation(MATRIX *matrix) {
@@ -1407,6 +1421,16 @@ void func_800748E8(void) {
             modelPosition.vy = *(s16*)(actor + 0x24);
             modelPosition.vz = *(s16*)(actor + 0x28);
             ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
+            /*
+             * Original func_800748E8 asm (53EC-542C) loads work.t into the GTE
+             * translation registers (ctc2 $5/$6/$7) and transforms the actor
+             * position with mvmva cv=0, which INCLUDES the translation:
+             * modelMatrix.t = work.R * pos + work.t. ApplyMatrixLV is the
+             * rotation-only (cv=3) library op, so add work.t explicitly here.
+             */
+            modelMatrix.t[0] += work.t[0];
+            modelMatrix.t[1] += work.t[1];
+            modelMatrix.t[2] += work.t[2];
             SetRotMatrix(&modelMatrix);
             SetTransMatrix(&modelMatrix);
 
@@ -1415,6 +1439,25 @@ void func_800748E8(void) {
                 continue;
             }
 
+            /*
+             * Original asm .L800750EC (800750EC-80075128): after the
+             * func_800AAA74 visibility check (which leaves the GTE loaded with
+             * D_800B00E8 for its own bbox test), retail re-issues a full inline
+             * SetRotMatrix+SetTransMatrix from modelMatrix (lw 0x0..0x1C($s4)
+             * -> ctc2 $0..$7) before func_8002C700 -- the prim procs' rtpt must
+             * run with R = work.R x actorR, TR = work.R x pos + work.t.
+             */
+            SetRotMatrix(&modelMatrix);
+            SetTransMatrix(&modelMatrix);
+
+#ifdef XENO_PC_PORT
+            /* Opt-out scaffolding: without the FieldLoad model build the
+             * double-buffer slots read below are 0, so skip the draw (the
+             * pre-model-build port behavior) instead of writing at NULL. */
+            if (!PcPortModelBuildEnabled()) {
+                continue;
+            }
+#endif
             {
                 u8* renderContext = (u8*)g_FieldCurRenderContext;
                 s32 renderIndex = g_FieldCurRenderContextIndex;

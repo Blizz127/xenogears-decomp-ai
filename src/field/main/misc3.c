@@ -11,16 +11,18 @@
 #ifdef XENO_PC_PORT
 #include <stdlib.h>
 
-/* Opt-in (XENO_FIELD_MODEL_BUILD=1): run FieldLoad's per-actor model build
- * (double-buffer alloc + GPU command-list build). Default off preserves the
- * prior port behavior (model actors keep empty control blocks). Mirrors the
- * XenoFieldDiagEnabled pattern in misc2.c. */
+/* Retail-shaped default: FieldLoad's per-actor model build (double-buffer
+ * alloc + GPU command-list build) always runs, as on PSX. Required since the
+ * func_800748E8 translation fix (asm mvmva cv=0): correctly translated model
+ * prims project and write packets, so the buffers must exist or the prim
+ * procs write at NULL. XENO_FIELD_NO_MODEL_BUILD=1 is the opt-out escape
+ * hatch for debugging. */
 static int PcPortModelBuildEnabled(void) {
     static int s_enabled = -1;
 
     if (s_enabled < 0) {
-        const char* env = getenv("XENO_FIELD_MODEL_BUILD");
-        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+        const char* env = getenv("XENO_FIELD_NO_MODEL_BUILD");
+        s_enabled = !(env != NULL && env[0] != '\0' && env[0] != '0');
     }
     return s_enabled;
 }
@@ -771,13 +773,15 @@ void FieldLoad(void) {
                 *(u32*)((u8*)pModel + 0x4) =
                     (u32)((u8*)D_800AFB14 + pOffTab[1] + 0x10);
 #ifdef XENO_PC_PORT
-                /* Opt-in model build (XENO_FIELD_MODEL_BUILD=1). Historically
-                 * skipped as a stopgap while the D_8004FE50 build subsystem was
-                 * unported; the buildProcs for prims 0x04/0x05/0x0C/0x0D and the
-                 * host-callable func_8002C8CC dispatch are now in place. Unproven
-                 * paths fail loudly (prim 0x08 buildProc -> abort; 0xC4/0xC8
-                 * inline commands -> "[stub]" logs). Flag unset -> block skipped,
-                 * prior port behavior unchanged (empty model control blocks). */
+                /* Retail-shaped model build (default ON; opt out with
+                 * XENO_FIELD_NO_MODEL_BUILD=1). Historically skipped as a
+                 * stopgap while the D_8004FE50 build subsystem was unported;
+                 * the buildProcs for prims 0x04/0x05/0x0C/0x0D and the
+                 * host-callable func_8002C8CC dispatch are now in place.
+                 * Unproven paths fail loudly (prim 0x08 buildProc -> abort;
+                 * 0xC4/0xC8 inline commands -> "[stub]" logs). Opting out
+                 * skips the block (empty model control blocks), which also
+                 * skips model prim emission in func_800748E8. */
                 if (PcPortModelBuildEnabled())
 #endif
                 {
