@@ -2,6 +2,8 @@
 #include "field/actor.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+
+extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) calls below mark unimplemented paths in
@@ -443,6 +445,31 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
         }
 
         opcode = *pc;
+        if (opcode < 0x10 || (opcode >= 0x20 && opcode < 0x30)) {
+            /* asm 12ED4-12F28: one-byte frame-step families. 0x00-0x0F steps
+             * to the next sprite frame (curFrame+1), 0x20-0x2F to the
+             * previous (curFrame-1); both then run the same shared delay
+             * tail as the 0x30-0x3F case (delay = (op & 0xF) + 1). */
+            s32 step = (opcode < 0x10) ? 1 : -1;
+
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
+            func_8001D2B0(pData, (s16)(*(u16*)(pData + 0x34) + step));
+
+            delay = (opcode & 0xF) + 1;
+            *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
+
+            flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+            subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) + 1) & 0x3F;
+            *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+
+            if (subIndex == 0) {
+                flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+                subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
+                *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+            }
+            continue;
+        }
+
         if (opcode >= 0x10 && opcode < 0x20) {
             *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
             flags = *(u32*)(pData + 0xA8);
@@ -493,6 +520,7 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
          * jump + AnimScriptStackPushU24). These must not be silently skipped. */
         if (opcode < 0x80 || opcode == 0x86 || opcode == 0x87 || opcode == 0x97 ||
             opcode == 0xB3 || opcode == 0xBE || opcode == 0xE2) {
+            /* remaining: 0x40-0x7F families, 0x86/0x87/0x97, 0xB3, 0xBE, 0xE2 */
             assert(0 && "func_80022660 bytecode path is not implemented");
         }
 
