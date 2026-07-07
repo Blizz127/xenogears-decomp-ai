@@ -360,6 +360,11 @@ int Vsync(int mode)
      * g_C1ButtonState* edge/repeat state that the menus/field read. */
     { extern void PsyX_UpdateInput(void); PsyX_UpdateInput(); }
     { extern void ControllerPoll(void);   ControllerPoll();   }
+    /* Retail's per-vblank handler func_8003634C pairs ControllerPoll with
+     * ControllerPushState (asm 80036368/80036370). FieldPollControllers reads
+     * input only by draining that queue via ControllerPopState, so without the
+     * push the field never sees any input. */
+    { extern void ControllerPushState(void); ControllerPushState(); }
 
     /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the
