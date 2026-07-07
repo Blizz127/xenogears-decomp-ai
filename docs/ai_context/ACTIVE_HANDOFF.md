@@ -639,6 +639,12 @@ Pushed range `3ba4611..502ba6b` on `ai-private-main`. Everything below is verifi
 - **Milestone visual (user-captured, 2026-07-07 10:19):** `captures/render_diag/milestone_entrance6_walking_actors_20260707_102408.png` — Map1 entrance 6 with the clean-running field. Command: `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=6 XENO_FIELD_0BB_VRAM_UPLOAD=1 ./build_native/xeno-port'`
 - **Entrance 10 visual capture NOT possible yet:** the window opens black and closes before a useful frame — the known future `func_800248D4` / opcode `0x82` / `AnimScriptTick` blocker kills the run before rendering stabilizes. Not a new code task; the entrance-10 camera proof remains **log-based only** (`FE54` fires, `g_Scene.unk48 = 0xC000`). A visual for it becomes possible once the `func_800248D4` bounded pass lands.
 
+## July 7 — AnimScriptTick restart opcode 0x82 implemented; entrance 10 now runs clean — VISUAL CAPTURE UNBLOCKED
+
+- **`func_800248D4` opcode 0x82 implemented** (temp1.c, asm 80024D40-80024D7C): the animation loop terminator — invoke the +0x68 callback, THEN read animId (s8, +0xAF) and save +0x10 (asm reads them post-callback), `func_800245D8(pData, animId)` restart (rewrites the cursor to the script start), restore +0x10, zero wait timer +0x9E, recurse. Zero operand bytes; cursor never advanced by the handler.
+- **Verified:** stubs steady 251; **entrance 10 runs clean past frame 400** (`unk48=0xC000`, elevated camera eye=(−9679,1524,24836) live) — the first properly-framed visual is now capturable; entrance 6 clean RC=124; Map0 guard `1,2,16,23,25,26`.
+- Banked from the audit for future passes (all currently loud asserts): jump table `jtbl_800186E0` dedicated handlers still unported (0x85/0x86/0x87/0x8E/0x98/0xA7/0xBE/0xC8/0xD4/0xE1/0xE2/0xE4/0xFA), generic `func_8001FBE4` + `D_8004FC40` default fallback, anim stack ops (INCLUDE_ASM; matched C preserved in comments for PopU8/FBA4), 0x20-0x2F inline family, and the documented retail stale-delay quirk in 0x40-0x7F.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.

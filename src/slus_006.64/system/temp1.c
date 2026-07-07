@@ -689,6 +689,31 @@ void func_800248D4(void* pSpriteData) {
         return;
     }
 
+    if (opcode == 0x82) {
+        /* asm 80024D40-80024D7C: restart the current animation (loop
+         * terminator). Consumes NO operand bytes and never advances the
+         * cursor at +0x64 — func_800245D8 rewrites it to the script start.
+         * pData+0x10 is saved across the restart (245D8's callees clobber
+         * it), the wait timer is zeroed, and the restarted script runs
+         * immediately via recursion. */
+        void (*callback)(void*) = (void (*)(void*))(uintptr_t)*(u32*)(pData + 0x68);
+        s8 animIndex;
+        u32 saved10;
+
+        if (callback != NULL) {
+            callback(pData);
+        }
+        /* asm reads these AFTER the callback (80024D58/80024D5C) — the
+         * callback may change the current animation. */
+        animIndex = *(s8*)(pData + 0xAF);
+        saved10 = *(u32*)(pData + 0x10);
+        func_800245D8(pData, animIndex);
+        *(u32*)(pData + 0x10) = saved10;
+        *(s16*)(pData + 0x9E) = 0;
+        func_800248D4(pData);
+        return;
+    }
+
     if (opcode == 0xB4) {
         s32 delay;
         s32 speed;
