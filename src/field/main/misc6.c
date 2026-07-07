@@ -5,6 +5,7 @@
 #include "field/actor.h"
 #include "field/main.h"
 #include "field/text_box.h"
+#include "field/camera.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #else
@@ -617,11 +618,89 @@ void func_8009F5A8(void) {
 }
 
 
-void func_8009F5F4(void) {
-    assert(!(g_FieldScriptVMCurActor->flags & 0x4000));
+extern u16 D_800AFE9C;      /* held-button field mask (d-pad in top nibble) */
+extern s32 D_800ADB68;      /* playerCanRun flag */
+extern s16 D_800ADB02;      /* stuck-frame counter */
+extern u8  D_800B2354;      /* selects which d-pad->angle table */
+extern u16 D_800ADF68[];    /* d-pad -> angle table 1 (16 entries) */
+extern u16 D_800ADF88[];    /* d-pad -> angle table 2 (16 entries) */
+extern void func_80079288(void); /* checkForRandomEncounter (side behavior) */
 
+/* func_8009F5F4 = OP_UPDATE_CHARACTER (opcode 0xA7). Called every frame for the
+ * player via the idle-hold wrapper func_8009F5A8. Retail asm 8009F5F4-8009F9FC;
+ * Noah OP_UPDATE_CHARACTER is the readable reference. The 0x4000 test is on
+ * scriptFlags at offset 0x00 (asm lw 0x0($a0)), NOT the ->flags field at 0x04
+ * that the prior partial port checked. */
+void func_8009F5F4(void) {
+    u8* p = (u8*)(uintptr_t)g_FieldScriptVMCurActor;
+    u32 scriptFlags = *(u32*)(p + 0x00);
+
+    if (scriptFlags & 0x4000) {
+        /* ---- player-controlled branch (asm 8009F614-8009F9A4) ---- */
+        s32 i;
+
+        /* Dialog-window gate: idle if any text box is in use (m37C == 0) or the
+         * field battle/control var is set (asm 8009F620-8009F66C). */
+        for (i = 0; i < 4; i++) {
+            if (*(s16*)((u8*)&g_FieldTextBoxes + 0x37C + i * 0x498) == 0) {
+                break;
+            }
+        }
+        if (i != 4 || *(s16*)((u8*)&g_FieldControl) != 0) {
+            *(s16*)(p + 0x104) = (s16)0x8000; /* idle angle (asm .L8009F9A8, a1=0) */
+            g_FieldScriptVMCurActor->scriptInstructionPointer++;
+            return;
+        }
+
+        /* Random-encounter step roll when a direction is held (asm 8009F674-90).
+         * func_80079288 is still a stub in the port; it only affects encounters,
+         * not walking, and runs solely when a d-pad direction is pressed. */
+        if ((D_800AFE9C >> 12) != 0) {
+            func_80079288();
+        }
+
+        D_800ADB68 = 1; /* playerCanRun (asm 8009F6A0) */
+
+        /* Stuck detection (asm 8009F6A8-8009F71C): count frames where a
+         * 0x400000 move is requested but the position did not change. */
+        if (*(u32*)(p + 0x14) & 0x00400000) {
+            if (*(s16*)(p + 0x68) == *(s16*)(p + 0x22) &&
+                *(s16*)(p + 0x6A) == *(s16*)(p + 0x26) &&
+                *(s16*)(p + 0x6C) == *(s16*)(p + 0x2A)) {
+                D_800ADB02++;
+            }
+        } else {
+            D_800ADB02 = 0;
+        }
+
+        /* asm .L8009F720-.L8009F8FC: stuck-clamp + jump-button / NPC-talk
+         * interaction sub-block. DEFERRED -- it needs several still-unported
+         * event globals and does not affect the walk direction (every path
+         * falls through to the direction computation below). Basic d-pad
+         * walking works without it; jump/talk are a separate bounded feature. */
+
+        /* Direction from d-pad + camera angle (asm .L8009F910-8009F9A4). */
+        {
+            u16 nibble = (u16)(D_800AFE9C >> 12);
+            u16 angle;
+            if (D_800B2354 == 0) {
+                angle = D_800ADF68[nibble ^ 0xF];
+            } else {
+                angle = D_800ADF88[nibble ^ 0xF];
+            }
+            if ((angle & 0x8000) == 0) {
+                angle = (u16)((angle - *(s16*)((u8*)&g_CamInterpolation + 0x8)) & 0xFFF);
+            }
+            *(s16*)(p + 0x104) = (s16)angle;
+        }
+        g_FieldScriptVMCurActor->scriptInstructionPointer++;
+        return;
+    }
+
+    /* ---- not-player-controlled idle branch (asm .L8009F9BC) ----
+     * Writes scriptFlags at 0x00 (asm sw 0x0($a0)), not ->flags at 0x04. */
     if (D_800B21CE == 0) {
-        g_FieldScriptVMCurActor->flags |= 0x1000000;
+        *(u32*)(p + 0x00) = scriptFlags | 0x1000000;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
