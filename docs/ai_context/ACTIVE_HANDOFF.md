@@ -662,6 +662,13 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - **Verified:** stubs 251 (temp2.c compiles; watch the silent-drop trap — first attempt jumped to 264); decoder consumes 257/257 sectors, `sectionsLeft=0, done=1` (file's own section count exhausted); **pages 0x8A (640,0) and 0x8C (768,0): 48 thin rows → FULL 256/256-row coverage** — the exact ground-texture gap from the render audit closed; 0x86 unchanged-correct; RC=124 on entrances 2/6/8; Map0 guard `1,2,16,23,25,26`; entrance-10 control `unk48=0xC000` at f400. Visual re-check of entrances 2/6/8 pending user (expect textured ground where the lower half was black).
 - Remaining related items: `func_8002BB50` (async streaming twin, 250 insns) for retail-shaped progressive loading + retiring the env flag; the `func_80025044` x=2304 wrap rects (PSX wraps x&1023, PsyX behavior unverified); sprite-band overlap at x=640 (may now visibly interact with the ground pages — watch for per-frame re-blit clobber).
 
+## July 7 — Post-decoder visual results (user-confirmed, 72ad3dd pushed)
+
+- **Entrances 6 and 8 are the after-decoder payoff visuals**: user confirms newly textured ground/field coverage where the lower half was black. (Their capture files were not saved to disk — re-capture wanted for the record; runtime proof stands regardless: pages 0x8A/0x8C at 256/256 rows, entrance-6 FT4 emission unchanged at n=100.)
+- **Entrance 2 recorded separately as a PARTIAL view**: `captures/render_diag/map1_entrance2_postdecoder_partial_20260707.png` (12:15 capture) — mountain panorama + actors render, but a black middle band remains. **Not a decoder regression** (6/8 visibly improved; page coverage proven); the entrance-2 gap is a distinct render question for a future read-only audit.
+- Entrance 7 (user capture 12:06, all black, not preserved): never part of the verified visual set — expected to be another no-geometry-in-view camera like entrance 10; one-line audit candidate later.
+- Probe-hygiene note for future sessions: two false readings this arc came from **breakpoint line-drift after edits** (anim assert line, temp2.c FT4 walker line). Re-derive line numbers after any edit to a probed file.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
