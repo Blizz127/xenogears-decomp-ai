@@ -907,7 +907,72 @@ void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         return;
     }
 
-    assert(0 && "func_8001F8E8 non-delegating frame path is not implemented");
+    /* Non-delegating frame path (asm .L8001F948-.L8001FA88). Unlike the
+     * delegating sibling func_8001F750, the per-part header is stride 4 with a
+     * 6-byte lead (pFrame + partCount*4 + 6), and the loop counts only the
+     * non-control (0x00-0x7F) sprite parts toward partCount -- interspersed
+     * control commands (0x80+) are processed without advancing the count. */
+    {
+        u8* pData = (u8*)pSpriteData;
+        u8* pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2);
+        u8 header = pFrame[0];
+        s32 hasWideOffsets = header & 0x80;
+        s32 partCount = header & 0x3F;
+        u8* pStream;
+        s32 i = 0;
+
+        if (partCount == 0) {
+            return;
+        }
+        pStream = pFrame + partCount * 4 + 6;
+
+        while (1) {
+            u8 command = *pStream;
+
+            if (command & 0x80) {
+                pStream++;
+                if (command & 0x40) {
+                    u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+                    u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+                    s32 directionIndex = command & 0x7;
+                    u8* pDirection;
+
+                    if (pDirTransforms == NULL) {
+                        pDirTransforms = HeapAlloc(0x40, 0);
+                        *(u32*)(pBase + 0x34) = (u32)(uintptr_t)pDirTransforms;
+                        func_800234AC(pData);
+                    }
+
+                    pDirection = pDirTransforms + directionIndex * 8;
+                    if (command & 0x20) {
+                        pDirection[0] = *pStream++;
+                        pDirection[1] = *pStream++;
+                    }
+                    if (command & 0x10) {
+                        *(u16*)(pDirection + 0x6) = (u16)(*pStream++ << 4);
+                    } else {
+                        *(u16*)(pDirection + 0x6) = 0;
+                    }
+                } else {
+                    if (command & 0x1) {
+                        pStream++;
+                    }
+                    if (command & 0x2) {
+                        pStream++;
+                    }
+                }
+            } else {
+                if (hasWideOffsets) {
+                    pStream += 2;
+                }
+                pStream += 3;
+                i++;
+                if (i == partCount) {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 
