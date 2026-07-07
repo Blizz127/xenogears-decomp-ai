@@ -622,6 +622,24 @@
 - **Verified:** stubs steady 251; actor 42's `A8` went `0x21200001→0x2121f801` for operand 0xFF, pc `0x5c1f7a→0x5c1f7c` (+2, matches `D_8004FC40[0xB3]`); **Map1 entrance 6 now runs clean to timeout, `RUN_RC=124`, no assert, no malformed packets, 0xBB 12/12+245 strips** — first time this repro has completed rather than crashed. Entrance 10: `unk48=0xC000` at the standard checkpoint. Map0 guard `1,2,16,23,25,26`.
 - **New blocker recorded, NOT started (separate subsystem):** running entrance 10 further past its usual checkpoint hits **`func_800248D4`** (`temp1.c:738`, asm 0x64C/441 lines, called via `AnimScriptTick` — not `func_80022660`) on **opcode 0x82**, `pc` bytes `82 00 19`. This is a sibling bytecode dispatcher with its own partial opcode table and its own unimplemented-opcode assert; scope it as its own bounded pass rather than folding into `func_80022660` work.
 
+## July 7 — 🏁 MILESTONE CHECKPOINT: Map1 entrance 6 clean-runs end to end (remote `502ba6b`)
+
+Pushed range `3ba4611..502ba6b` on `ai-private-main`. Everything below is verified on this exact HEAD:
+
+- **Camera stack repaired** (July 6-7 arc): camera vector alias layout + `func_8007254C` init (`e656748`), `eye2.vx` store (`2430bcf`), VM2 unsigned dispatch (`9e777b3`) — roll, doubling, skew, and the eye-X drift all fixed; chain proven end to end by entrance 10.
+- **ActorData PSX-layout repair complete** (`4f1e0c7`): pointer run at +0x110 is `u32`, `sizeof(ActorData)` back to retail 0x138, raw-offset and named accessors agree, allocations exactly sized.
+- **Movement executor `func_80099AC0` implemented** (`3ba4611`) — actors genuinely walk (4 target modes, per-slot countdown, approach/arrive semantics).
+- **Wait opcodes `0x52`/`0x53` implemented** as thin wrappers over the real executor.
+- **Animation bytecode table fallback** (`3f469b4`): real 256-byte `D_8004FC40`, generic retail table-advance, `0xB4` stride fixed.
+- **Frame-step bytecodes `0x00-0x0F`/`0x20-0x2F` implemented** (`564aecc`) — sprite frames step via `func_8001D2B0`.
+- **Small animation control bytecodes `0xB3`/`0x86`/`0x87`/`0x97` implemented** (`5444fe4`).
+- **Map1 entrance 6 now clean-runs to timeout** (`RUN_RC=124`, zero asserts/signals, 0 malformed, 0xBB 12/12+245) — scripts, movement, animation, camera, and textured geometry all alive simultaneously for the first time.
+- **Entrance 6 does NOT auto-set `g_Scene.unk48`** — re-verified over 400 clean frames (stays 0x0). The ceiling-disarm flag on this entrance is event/movement-gated retail behavior, not a port defect.
+- **Entrance 10 remains the camera-proof path**: `FE54` → `unk48=0xC000`, elevated camera eye=(−9679, 1524, 24836). Its long-run blocker is the recorded `func_800248D4` opcode-0x82 pass (not started).
+- Visual capture commands (screenshots must be taken manually — GNOME/Wayland blocks automated capture; X11-grab and Shell D-Bus both denied):
+  - Entrance 6 (walking/animating actors): `distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp/pc_port && XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=6 XENO_FIELD_0BB_VRAM_UPLOAD=1 ./build_native/xeno-port'`
+  - Entrance 10 (elevated camera after FE54): same with `XENO_FIELD_ENTRANCE=10`
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
