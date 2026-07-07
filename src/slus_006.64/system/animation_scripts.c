@@ -514,13 +514,31 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
             return;
         }
 
+        if (opcode == 0xB3) {
+            /* asm .L800228F8-.L80022928: pc[1] sign-extended then masked to
+             * 6 bits sets the speed-index field at +0xA8 bits 11-16; falls
+             * straight into the table-advance tail with no early-return
+             * check (unlike 0x86/0x87/0x97 below). */
+            flags = *(u32*)(pData + 0xA8) & 0xFFFE07FF;
+            *(u32*)(pData + 0xA8) = flags | ((((s8)pc[1]) & 0x3F) << 11);
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+            continue;
+        }
+
+        if (opcode == 0x86 || opcode == 0x87 || opcode == 0x97) {
+            /* asm .L80022920-.L80022930: no side effect beyond the shared
+             * exit check and generic table advance. */
+            if (pc == pBytecode) {
+                return;
+            }
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+            continue;
+        }
+
         /* Retail-switch cases with side effects that are not yet ported:
-         * 0x00-0x0F / 0x20-0x2F / 0x40-0x7F frame-op families, 0x86/0x87/0x97
-         * tail handling, 0xB3 (speed bits), 0xBE (anim state), 0xE2 (relative
+         * 0x40-0x7F frame-op families, 0xBE (anim state), 0xE2 (relative
          * jump + AnimScriptStackPushU24). These must not be silently skipped. */
-        if (opcode < 0x80 || opcode == 0x86 || opcode == 0x87 || opcode == 0x97 ||
-            opcode == 0xB3 || opcode == 0xBE || opcode == 0xE2) {
-            /* remaining: 0x40-0x7F families, 0x86/0x87/0x97, 0xB3, 0xBE, 0xE2 */
+        if (opcode < 0x80 || opcode == 0xBE || opcode == 0xE2) {
             assert(0 && "func_80022660 bytecode path is not implemented");
         }
 
