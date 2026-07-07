@@ -550,7 +550,89 @@ s32 func_80081F5C(u32* a0) {
     return -((a & b) != 0);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081F80);
+extern int rsin(int);
+extern int rcos(int);
+extern void func_80021FE0(void* pSpriteData, s16 angle);
+extern void* D_801E8670[];
+
+/* func_80081F80: compute the per-frame walk-step vector into the sprite's step
+ * fields (spriteData +0x0C / +0x14, plus +0x18 for the 0x80000 case) from the
+ * actor's facing angle. asm 80081F80-800821F0. Branches on fieldActor->status
+ * bit 0x40 and actorData->flags. Fei (status 0x40 set; flags & 0x2000 and
+ * & 0x80000 both clear) takes the func_80021FE0 path, which stamps the angle
+ * into the sprite so func_80022974 derives the step from angle + sprite radius.
+ * Divisions are guarded against moveSpeed==0 for host safety (PSX tolerates
+ * div-by-zero; the guard is a no-op whenever moveSpeed != 0). */
+void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
+    u8* pSprite = (u8*)pSpriteData;
+    u8* pFA = (u8*)pFieldActor;
+    u16 status = *(u16*)(pFA + 0x58);
+    u8* pAD = NULL;
+    u16 moveSpeed = 0;
+    s32 stepMag = 0;
+    s32 doStep = 0;
+    s32 set0x18 = 0;
+    s32 zeroStep = 0;
+
+    if ((status & 0x40) == 0) {
+        pAD = (u8*)(uintptr_t)*(u32*)(pFA + 0x4C);
+        moveSpeed = *(u16*)(pAD + 0x76);
+        stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+        if ((u16)angle & 0x8000) {
+            zeroStep = 1;
+        } else {
+            doStep = 1;
+        }
+    } else if ((u16)angle & 0x8000) {
+        zeroStep = 1;
+    } else {
+        u32 flags;
+        pAD = (u8*)(uintptr_t)*(u32*)(pFA + 0x4C);
+        flags = *(u32*)(pAD + 0x04);
+        if (flags & 0x2000) {
+            if (flags & 0x20000) {
+                /* asm .L80082158: step comes from a special-actor work object
+                 * indexed by flags12C (D_801E8670 table). */
+                u32 f12C = *(u32*)(pAD + 0x12C);
+                u8* pEntry = (u8*)&D_801E8670 + ((f12C >> 11) & 0x1C);
+                u8* pObj = (u8*)(uintptr_t)*(u32*)pEntry;
+                *(s32*)(pSprite + 0xC) = (s32)(-*(s32*)(pObj + 0x128)) << 16;
+                *(s32*)(pSprite + 0x14) = (s32)(-*(s32*)(pObj + 0x130)) << 16;
+            } else {
+                moveSpeed = *(u16*)(pAD + 0x76);
+                stepMag = (((s32)(moveSpeed ? 0x80000 / moveSpeed : 0)) >> 8) << 5;
+                doStep = 1;
+            }
+        } else if (flags & 0x80000) {
+            moveSpeed = *(u16*)(pAD + 0x76);
+            stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+            doStep = 1;
+            set0x18 = 1;
+        } else {
+            /* Fei's path: stamp the angle; func_80021FE0 -> func_80022974
+             * computes the step from angle + sprite radius (spriteData+0x18). */
+            func_80021FE0(pSpriteData, angle);
+        }
+    }
+
+    if (zeroStep) {
+        *(s32*)(pSprite + 0xC) = 0;
+        *(s32*)(pSprite + 0x14) = 0;
+    } else if (doStep) {
+        s32 am = angle & 0xFFF;
+        s16 scaleX = *(s16*)(pAD + 0xF4);
+        s16 scaleZ = *(s16*)(pAD + 0xF8);
+        *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * scaleX;
+        *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * scaleZ;
+        if (set0x18) {
+            *(s32*)(pSprite + 0x18) = (s32)(moveSpeed ? 0x4000000 / moveSpeed : 0);
+        }
+    }
+
+    /* asm .L800821BC: clear the low 12 (sub-pixel) bits of the X/Z step. */
+    *(s32*)(pSprite + 0xC) &= ~0xFFF;
+    *(s32*)(pSprite + 0x14) &= ~0xFFF;
+}
 
 extern s16 D_800B2344;
 extern s16 D_800B2346;
