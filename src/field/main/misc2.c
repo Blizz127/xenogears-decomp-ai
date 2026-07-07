@@ -360,6 +360,10 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
         g_CameraEye2.vy = cosMult + g_CameraAt2.vy;
     }
 
+    /* asm 80072C40/80072C48: lw -0x13C($s0)=at2.vx, sw -0x14C($s0)=eye2.vx
+     * ($s0 = g_Scene+0x6C = 0x800AF9FC) — unconditional, before func_80073684. */
+    g_CameraEye2.vx = g_CameraAt2.vx;
+
     {
         s32 angleCalc = sceneAngle;
         s32 cosArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
