@@ -27,7 +27,153 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BB50);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BF38);
+/* ---- func_8002BF38: synchronous VRAM stream section decoder -----------------
+ * asm 8002BF38-8002C30C. Consumes at most ONE 0x800 stream sector per call,
+ * selected from the slot ring at D_8004FE2C (slots {u16 state,u16 id,..}, 8B
+ * stride): the slot with state==1 and id==D_8004FE28. Sector data lives at
+ * D_8004FE08 + slot*0x800.
+ *
+ * State machine: while D_80059F50 (strips remaining) is 0 the sector is a
+ * SECTION HEADER: u32 tag 0x1200/0x1201; x/y derived per mode registers
+ * (D_80059F24 + D_80059F28/2C bias for 0x1200, D_80059F30 + D_80059F34/38
+ * for 0x1201 -- mode 0, the field-stream case, sums u16 pairs at +4/+8 and
+ * +6/+A); u16 width at +0xC; u32 total-section count at +0x14 (latched into
+ * D_80059F3C only when it is 0); u32 strip count at +0x18 into D_80059F50;
+ * height table (u16 per strip) from +0x1C via D_80059F4C. The header's slot
+ * stays CLAIMED (state 2) so the height table survives until section end.
+ * Otherwise the sector is one STRIP: LoadImage((x,y,w,heights[i]), sector),
+ * DrawSync, y += height. On section end the whole ring is reset; when
+ * D_80059F3C reaches 0 the stream finishes (g_ArchiveCurFileSize = 0,
+ * D_8004FDFC = 0) without bumping the sequence counter. */
+#include "system/archive.h"
+#include "psyq/libgpu.h"
+
+extern s8* D_8004FE08;
+extern s16 D_8004FE28;
+extern s32 D_8004FE40;
+extern s16 D_80059F24, D_80059F30;
+extern u16 D_80059F28, D_80059F2C, D_80059F34, D_80059F38;
+extern u16 D_80059F40, D_80059F44, D_80059F48;
+extern s32 D_80059F3C;
+extern u16* D_80059F4C;
+extern s32 D_80059F50;
+
+void func_8002BF38(void) {
+    s32 slotCount = D_8004FE40;
+    u8* slot = (u8*)D_8004FE2C;
+    s16 i = 0;
+    u8* sector;
+
+    if (slotCount > 0) {
+        u16 seq = (u16)D_8004FE28;
+        for (i = 0; i < slotCount; i++, slot += 8) {
+            if (*(u16*)(slot + 0) == 1 && *(u16*)(slot + 2) == seq) {
+                break;
+            }
+        }
+    }
+    if (i == slotCount) {
+        return;
+    }
+
+    *(u16*)(slot + 0) = 2;
+    sector = (u8*)D_8004FE08 + ((s32)i << 11);
+
+    if (D_80059F50 == 0) {
+        /* header sector */
+        u32 tag = *(u32*)sector;
+        u8* hdr = sector + 4;
+        u8* p = hdr;
+
+        if (tag - 0x1200 >= 2u) {
+            return;
+        }
+
+        if (tag == 0x1200) {
+            switch (D_80059F24) {
+            case 1:
+                D_80059F40 = D_80059F28 + *(u16*)(hdr + 4);
+                D_80059F44 = D_80059F2C + *(u16*)(hdr + 6);
+                break;
+            case 2:
+                D_80059F40 = D_80059F28 + *(u16*)(hdr + 0) + *(u16*)(hdr + 4);
+                D_80059F44 = D_80059F2C + *(u16*)(hdr + 2) + *(u16*)(hdr + 6);
+                break;
+            default:
+                D_80059F40 = *(u16*)(hdr + 0) + *(u16*)(hdr + 4);
+                D_80059F44 = *(u16*)(hdr + 2) + *(u16*)(hdr + 6);
+                break;
+            }
+        } else {
+            switch (D_80059F30) {
+            case 1:
+                D_80059F40 = D_80059F34 + *(u16*)(hdr + 4);
+                D_80059F44 = D_80059F38 + *(u16*)(hdr + 6);
+                break;
+            case 2:
+                D_80059F40 = D_80059F34 + *(u16*)(hdr + 0) + *(u16*)(hdr + 4);
+                D_80059F44 = D_80059F38 + *(u16*)(hdr + 2) + *(u16*)(hdr + 6);
+                break;
+            default:
+                D_80059F40 = *(u16*)(hdr + 0) + *(u16*)(hdr + 4);
+                D_80059F44 = *(u16*)(hdr + 2) + *(u16*)(hdr + 6);
+                break;
+            }
+        }
+        p += 8;
+        D_80059F48 = *(u16*)p;
+        p += 8;
+        if (D_80059F3C == 0) {
+            D_80059F3C = *(s32*)p;
+        }
+        p += 4;
+        D_80059F50 = *(s32*)p;
+        p += 4;
+        D_80059F4C = (u16*)p;
+        /* header slot stays claimed (state 2); sequence advances */
+        D_8004FE28 = D_8004FE28 + 1;
+        return;
+    }
+
+    /* strip sector */
+    {
+        RECT rect;
+        u16 stripHeight = *D_80059F4C;
+
+        rect.x = (short)D_80059F40;
+        rect.y = (short)D_80059F44;
+        rect.w = (short)D_80059F48;
+        rect.h = (short)stripHeight;
+        LoadImage(&rect, (u_long*)sector);
+        DrawSync(0);
+
+        D_80059F4C = D_80059F4C + 1;
+        D_80059F50 = D_80059F50 - 1;
+        D_80059F44 = D_80059F44 + stripHeight;
+
+        if (D_80059F50 > 0) {
+            *(u16*)(slot + 0) = 0;
+            D_8004FE28 = D_8004FE28 + 1;
+            return;
+        }
+
+        /* section complete: reset the whole ring */
+        D_80059F3C = D_80059F3C - 1;
+        D_80059F50 = 0;
+        for (i = 0; i < D_8004FE40; i++) {
+            u8* s2 = (u8*)D_8004FE2C + ((s32)i << 3);
+            *(u16*)(s2 + 0) = 0;
+            *(u16*)(s2 + 2) = 0;
+        }
+        if (D_80059F3C > 0) {
+            *(u16*)(slot + 0) = 0;
+            D_8004FE28 = D_8004FE28 + 1;
+            return;
+        }
+        g_ArchiveCurFileSize = 0;
+        D_8004FDFC = 0;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C310);
 
