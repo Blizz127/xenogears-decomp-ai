@@ -12,6 +12,8 @@ extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
 extern s32 D_800B21D8;
 long FieldGetVec3Magnitude(long x, long y, long z);
+s32 func_80099AC0(s32 useStoredAngle);
+extern s32 func_8007B694(s32* arg0);
 
 void func_800972F4(void) {
     D_800B00C0 = 1;
@@ -65,9 +67,39 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800979F0);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097A50);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098038);
+/* asm 80098038-800980F8, opcode 0x53. Unlike 0x52, the caller supplies the
+ * countdown seed and the useStoredAngle flag as an explicit script argument
+ * rather than the fixed 0xFFFF sentinel. */
+void func_80098038(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800980FC);
+    slot->flags_0x17 = 2;
+
+    if (slot->flags_0 == 0xFFFF) {
+        slot->flags_0 = FieldScriptVMGetArgument(2);
+    }
+
+    if (func_80099AC0(FieldScriptVMGetArgument(2)) == 0) {
+        actor->scriptInstructionPointer += 4;
+    }
+}
+
+/* asm 800980FC-80098180, opcode 0x52. Thin wrapper: always (re)start the
+ * per-script movement countdown at the 0xFFFF sentinel and wait via
+ * func_80099AC0(0xFFFF) -- do not implement against the stub, which returns
+ * 0 unconditionally and would fake instant movement completion. */
+void func_800980FC(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+
+    slot->flags_0x17 = 2;
+    slot->flags_0 = 0xFFFF;
+
+    if (func_80099AC0(0xFFFF) == 0) {
+        actor->scriptInstructionPointer += 2;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098184);
 
@@ -297,7 +329,127 @@ long FieldGetVec1Magnitude(long x) {
     return SquareRoot0(vecSquared.vx);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80099AC0);
+extern u32 FieldScriptVMGetActorIndex(int bytecodeOffset);
+extern int FieldScriptArgument1(int index, int mask);
+extern int FieldScriptArgument2(int index, int mask);
+
+/*
+ * asm 80099AC0-80099EF4. Movement-toward-target tick: advances a per-script
+ * "steps remaining" counter (scripts[curScriptIndex].flags_0, a 16-bit
+ * countdown reusing the ActorScriptSlot bitfield word at +0x90 -- verified
+ * against func_80099980's asm, which writes the identical field at the same
+ * offset) while g_FieldScriptVMCurActor closes on a target point selected by
+ * scripts[curScriptIndex].flags_0x17 (0=relative to unkD0, 1=another actor,
+ * 2=random point on a circle, 3=absolute). Returns -1 while still
+ * approaching (and holds the VM via D_800B00C0=1), 0 once arrived (or if a
+ * case-1 target actor index is invalid).
+ */
+s32 func_80099AC0(s32 useStoredAngle) {
+    FieldActor* refFieldActor = &g_FieldActors[D_800AFD1C];
+    ActorData* refActorData = (ActorData*)(uintptr_t)refFieldActor->pActorData;
+    u8* refSpriteData = (u8*)(uintptr_t)refFieldActor->pSpriteData;
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    s32 selfX, selfZ, targetX = 0, targetZ = 0, combinedSolidRange = 0;
+    s32 dx, dz, distance, stepMagnitude;
+    s32 deltaVec[3];
+    s16 finalAngle;
+
+    /*
+     * asm 80099AD8-80099B80: per-frame movement quantum, cached in the
+     * reference actor's sprite data at +0x18 (an opaque SpriteData sub-field;
+     * SpriteData itself has no declared layout in actor.h, matching the raw
+     * pSpriteData+offset convention already used elsewhere, e.g. misc6.c).
+     */
+    if (refActorData->flags & 0x2000) {
+        *(s32*)(refSpriteData + 0x18) = 0x08000000 / (s16)actor->moveSpeed;
+    } else if (*(s32*)(refSpriteData + 0x18) == 0) {
+        *(s32*)(refSpriteData + 0x18) = 0x04000000 / (s16)actor->moveSpeed;
+    }
+    stepMagnitude = FieldGetVec1Magnitude(*(s32*)(refSpriteData + 0x18) >> 15) + 1;
+
+    /* asm 80099B98/80099BAC: upper halfword of self position.vx/vz. */
+    selfX = *(s16*)((u8*)actor + 0x22);
+    selfZ = *(s16*)((u8*)actor + 0x2A);
+
+    switch (slot->flags_0x17) {
+    case 0:
+        targetX = FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(5)) + actor->unkD0.vx;
+        targetZ = FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(5)) + actor->unkD0.vz;
+        break;
+
+    case 1: {
+        u32 otherIdx = FieldScriptVMGetActorIndex(1);
+        ActorData* other;
+
+        if (otherIdx == 0xFF) {
+            return 0;
+        }
+        otherIdx = FieldScriptVMGetActorIndex(1);
+        other = (ActorData*)(uintptr_t)g_FieldActors[otherIdx].pActorData;
+
+        combinedSolidRange = FieldGetVec1Magnitude(other->solidRange + actor->solidRange);
+        targetX = *(s16*)((u8*)other + 0x22);
+        targetZ = *(s16*)((u8*)other + 0x2A);
+
+        if (SCRIPT_READ_U8_REL(1) == g_PlayerActorIndex) {
+            actor->scriptFlags.flags |= 0x200000;
+        }
+        break;
+    }
+
+    case 2: {
+        s32 angle = FieldScriptVMGetArgument(1) & 0xFFF;
+        targetX = actor->unkD0.vx + ((rsin(angle) << 12) >> 12);
+        targetZ = actor->unkD0.vz - ((rcos(angle) << 12) >> 12);
+        break;
+    }
+
+    case 3:
+        targetX = FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(5));
+        targetZ = FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(5));
+        break;
+    }
+
+    dx = targetX - selfX;
+    dz = targetZ - selfZ;
+    distance = FieldGetVec2Magnitude(dx, dz);
+    deltaVec[0] = dx;
+    deltaVec[1] = 0;
+    deltaVec[2] = dz;
+
+    actor->scriptFlags.flags |= 0x400000;
+
+    if (slot->flags_0 != 0 && stepMagnitude + combinedSolidRange < distance) {
+        /* asm 80099E9C: still approaching -- tick the countdown, face the
+         * target, and hold the VM (D_800B00C0=1) instead of advancing IP. */
+        slot->flags_0 = slot->flags_0 - 1;
+        finalAngle = (s16)func_8007B694(deltaVec);
+        D_800B00C0 = 1;
+        actor->rotation.vx = finalAngle;
+        actor->rotation.vy = finalAngle;
+        return -1;
+    }
+
+    /* asm 80099DF4+: arrived (or flags_0==0 short-circuit). Snap the final
+     * facing angle, then reset the per-script movement state. */
+    if (useStoredAngle != 0) {
+        if ((actor->scriptFlags.flags & 0x8000) == 0) {
+            finalAngle = actor->rotation.vy | 0x8000;
+        } else {
+            finalAngle = actor->unk11C | 0x8000;
+        }
+    } else {
+        finalAngle = (s16)func_8007B694(deltaVec);
+    }
+    actor->rotation.vx = finalAngle;
+    actor->rotation.vy = finalAngle;
+
+    slot->flags_0 = 0xFFFF;
+    slot->flags_0x17 = 0;
+    actor->scriptFlags.flags &= 0xFDDFF7FF;
+    return 0;
+}
 
 void FieldScriptVMWriteCurCharacterID(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), g_FieldScriptVMCurActor->characterId);
