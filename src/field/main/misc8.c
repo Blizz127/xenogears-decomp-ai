@@ -1927,8 +1927,12 @@ void func_80086908(void) {
 void FieldScriptVM2Run(void) {
     char *script = (char *)g_FieldScriptVMCurScriptData;
     size_t vmIP = ++(g_FieldScriptVMCurActor->scriptInstructionPointer);
+    /* asm 800869E8: lbu — the extended opcode is zero-extended. A signed
+     * char index sent FE 8E-style opcodes to handlers2[-0x72], i.e. into
+     * the tail of the first handler table. */
+    u8 opcode = (u8)script[vmIP];
 
-    ScriptVMHandler *handler = &g_FieldScriptVMHandlers2[script[vmIP]];
+    ScriptVMHandler *handler = &g_FieldScriptVMHandlers2[opcode];
     (*handler)();
 }
 
