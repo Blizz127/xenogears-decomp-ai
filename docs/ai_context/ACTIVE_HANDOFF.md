@@ -537,6 +537,14 @@
   - Build sanity per protocol: `nm` shows `func_800748E8` compiled C, 0 hits in stubs.c.
 - **Remaining-work list update:** item (2) permanent model translation fix is **DONE**. Still open: (1) retail-shaped 0xBB upload (drive from `func_80070488` arm/drain, not env flag); (3) camera/framing/scale; (4) sprite-band overlap; plus the cv=0-vs-cv=3 mis-transcription audit of other handwritten-GTE decomp lines.
 
+## July 6 — Rotation-build mis-decompilation FIXED (committed); post-permfix black regression resolved
+
+- **Regression triage (post-permfix black screen):** upload fine (12/12), Fei emitting (161,81), 400/400 pass — but **all 400 linked env quads collapsed to a ~9×7 px patch at (133..142, −9..−1)**, clipped above the frame. Cause: the landed GTE reload made rtpt use the real `modelMatrix` for the first time — exposing the **second mis-decompilation** in `func_800748E8`.
+- **Root cause:** the C built `modelMatrix.R` from `ApplyMatrixSV(work, actor+0x0C/0x0E/0x10)` — **overlapping SVECTOR reads** of the row-major 3×3 (at +0x0E that's `(m01,m02,m10)` = `(0,0,0)` for identity!) and stored **rows**. The handwritten asm (80074E14-80074ED8) gathers actor matrix **columns** with stride-6 halfword loads (`lhu +0x0/+0x6/+0xC` from bases +0xC/+0xE/+0x10), transforms each with `mvmva cv=3`, and stores transformed **columns** (`sh +0x0/+0x6/+0xC` at dests +0x0/+0x2/+0x4): `M = work.R × actorR`, column-routed.
+- **Fix (misc2.c, committed):** column-gather loop with `ApplyMatrixSV` per column, column stores, asm-cited. Verified: actor 51 `R=[0 12294 0 / 11979 0 2856 / 2856 0 -11973]` (full, non-degenerate, 3×-scaled), `t=[87,-564,23709]` intact; **collapse gone** — quads spread (132..167, −118..240) with real extents; `RC=124` both configs; Map0 guard `1,2,16,23,25,26`; 0 malformed.
+- **Honest visual status:** geometry is de-collapsed and extended, but the bulk projects **above the viewport** (y<0) — this is the known open item (3) camera/framing/scale, not a defect of this fix. Visual check pending user.
+- **Both `func_800748E8` mis-decompilations are now fixed** (translation cv=0 + rotation column routing) — the function now mirrors the handwritten GTE transform end to end.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.

@@ -1404,18 +1404,32 @@ void func_800748E8(void) {
                 continue;
             }
 
-            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x0C), &row);
-            modelMatrix.m[0][0] = row.vx;
-            modelMatrix.m[0][1] = row.vy;
-            modelMatrix.m[0][2] = row.vz;
-            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x0E), &row);
-            modelMatrix.m[1][0] = row.vx;
-            modelMatrix.m[1][1] = row.vy;
-            modelMatrix.m[1][2] = row.vz;
-            ApplyMatrixSV(&work, (SVECTOR*)(actor + 0x10), &row);
-            modelMatrix.m[2][0] = row.vx;
-            modelMatrix.m[2][1] = row.vy;
-            modelMatrix.m[2][2] = row.vz;
+            /*
+             * func_800748E8 is handwritten/nonmatching GTE code. The original
+             * asm (80074E14-80074ED8) builds modelMatrix.R = work.R x actorR
+             * COLUMN by COLUMN: for each j it gathers actor matrix column j
+             * with stride-6 halfword loads (lhu +0x0/+0x6/+0xC from bases
+             * actor+0xC/+0xE/+0x10), transforms it with mvmva cv=3
+             * (= ApplyMatrixSV), and stores the result as modelMatrix column j
+             * (sh +0x0/+0x6/+0xC from dests +0x0/+0x2/+0x4). The previous C
+             * read overlapping SVECTORs and stored rows, producing a
+             * near-degenerate rotation.
+             */
+            {
+                s16* actorR = (s16*)(actor + 0x0C); /* row-major 3x3 */
+                SVECTOR col;
+                s32 j;
+
+                for (j = 0; j < 3; j++) {
+                    col.vx = actorR[0 + j];
+                    col.vy = actorR[3 + j];
+                    col.vz = actorR[6 + j];
+                    ApplyMatrixSV(&work, &col, &row);
+                    modelMatrix.m[0][j] = row.vx;
+                    modelMatrix.m[1][j] = row.vy;
+                    modelMatrix.m[2][j] = row.vz;
+                }
+            }
 
             modelPosition.vx = *(s16*)(actor + 0x20);
             modelPosition.vy = *(s16*)(actor + 0x24);
