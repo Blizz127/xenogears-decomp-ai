@@ -788,7 +788,33 @@ void func_8009524C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80095284);
+/* ---- func_80095284: VM opcode 0x5B — halt actor movement and hold ----------
+ * asm 80095284-800952FC: zeroes ActorData moveModified (+0x30..0x38) and move
+ * (+0x40..0x48), ORs 0x8000 into rotation.vx/.vy (+0x104/+0x106, vy stored
+ * first), zeroes three words in the FieldActor pSpriteData object (+0xC,
+ * +0x14, +0x18), and sets D_800B00C0 = 1 (yields the VM turn). Does NOT
+ * advance scriptInstructionPointer — the opcode re-runs every turn (hold).
+ * func_8009524C (opcode 0x5A) is the halt-then-advance variant. */
+void func_80095284(void) {
+    FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
+    u8* pSprite = (u8*)(uintptr_t)fieldActor->pSpriteData;
+    ActorData* actor = g_FieldScriptVMCurActor;
+    u16 rot = (u16)actor->rotation.vx;
+
+    D_800B00C0 = 1;
+    actor->moveModified.vx = 0;
+    actor->moveModified.vy = 0;
+    actor->moveModified.vz = 0;
+    actor->move.vx = 0;
+    actor->move.vy = 0;
+    actor->move.vz = 0;
+    rot |= 0x8000;
+    actor->rotation.vy = rot;
+    actor->rotation.vx = rot;
+    *(s32*)(pSprite + 0x0C) = 0;
+    *(s32*)(pSprite + 0x14) = 0;
+    *(s32*)(pSprite + 0x18) = 0;
+}
 
 void func_80095300(void) {
     g_FieldControl.unkAngle = FieldScriptVMGetArgument(1);
