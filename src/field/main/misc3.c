@@ -15,8 +15,10 @@
  * alloc + GPU command-list build) always runs, as on PSX. Required since the
  * func_800748E8 translation fix (asm mvmva cv=0): correctly translated model
  * prims project and write packets, so the buffers must exist or the prim
- * procs write at NULL. XENO_FIELD_NO_MODEL_BUILD=1 is the opt-out escape
- * hatch for debugging. */
+ * procs write at NULL. XENO_FIELD_NO_MODEL_BUILD=1 is a diagnostic-only
+ * opt-out: it is NOT retail behavior (no model actors are drawn); the
+ * mirrored gate in misc2.c func_800748E8 skips the model draw so the
+ * empty double-buffer slots are never dereferenced. */
 static int PcPortModelBuildEnabled(void) {
     static int s_enabled = -1;
 
