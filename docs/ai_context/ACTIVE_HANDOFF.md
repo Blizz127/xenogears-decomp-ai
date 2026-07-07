@@ -616,6 +616,12 @@
 - Battery: stubs steady 251; Map0 guard `1,2,16,23,25,26`; entrance 10 FE54 → `unk48=0xC000` before the next shared gap.
 - **Next blocker (trivial, asm-sized):** opcode **0xB3** (actor 42, pc=0x5c1f7a, operand 0xFF): `A8 = (A8 & 0xFFFE07FF) | (((s8)pc[1] & 0x3F) << 11)`, then the standard table advance (+2) — asm `.L800228F8` → `.L80022928`, ~8 insns, no calls. Companions in the same tail pattern if wanted: `0x86/0x87/0x97` = `if (pc==pBytecode) return; else table-advance` (asm `.L80022920`). Remaining bigger units: 0xBE (anim state rewrite + conditional D2B0 + delay), 0xE2 (relative jump + AnimScriptStackPushU24), 0x40-0x7F families.
 
+## July 7 — `0xB3` + `0x86`/`0x87`/`0x97` implemented (5444fe4); Map1 entrance 6 clears to RC=124
+
+- **`func_80022660`:** `0xB3` sets the speed-index bits (`A8 = (A8 & 0xFFFE07FF) | ((pc[1]&0x3F)<<11)`) with no early-exit, then table-advances (asm `.L800228F8`→`.L80022928`→`.L80022930`). `0x86`/`0x87`/`0x97` share the no-side-effect tail: `if (pc==pBytecode) return; else table-advance` (asm `.L80022920`). Both pulled out of the unimplemented-opcode assert.
+- **Verified:** stubs steady 251; actor 42's `A8` went `0x21200001→0x2121f801` for operand 0xFF, pc `0x5c1f7a→0x5c1f7c` (+2, matches `D_8004FC40[0xB3]`); **Map1 entrance 6 now runs clean to timeout, `RUN_RC=124`, no assert, no malformed packets, 0xBB 12/12+245 strips** — first time this repro has completed rather than crashed. Entrance 10: `unk48=0xC000` at the standard checkpoint. Map0 guard `1,2,16,23,25,26`.
+- **New blocker recorded, NOT started (separate subsystem):** running entrance 10 further past its usual checkpoint hits **`func_800248D4`** (`temp1.c:738`, asm 0x64C/441 lines, called via `AnimScriptTick` — not `func_80022660`) on **opcode 0x82**, `pc` bytes `82 00 19`. This is a sibling bytecode dispatcher with its own partial opcode table and its own unimplemented-opcode assert; scope it as its own bounded pass rather than folding into `func_80022660` work.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
