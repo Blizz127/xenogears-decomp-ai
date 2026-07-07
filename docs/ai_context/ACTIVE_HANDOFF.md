@@ -655,6 +655,13 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - Entrance 10: **log-proven elevated camera only** (`FE54` → `unk48=0xC000`, eye=(−9679,1524,24836), runs clean past frame 400) — manual capture currently shows black (geometry does not project at that spawn's view); **do not use as the visual payoff yet**.
 - Region insight from the sweep: entrances cluster in two map regions — village (0/3/4/5/6/7, z≈800-3700) and far-field (2/8/10, z≈23000-25000, where the large model geometry lives; entrance 6's "distant hills" are those models seen from ~23k units).
 
+## July 7 — Retail 0xBB VRAM section decoder ported (`func_8002BF38`); ground texture pages now fully populated
+
+- **`func_8002BF38` implemented** (temp2.c, asm 8002BF38-8002C30C): the synchronous stream-section decoder — one 0x800 sector per call from the slot ring (`D_8004FE2C` slots / `D_8004FE08` buffers / `D_8004FE28` sequence), header sectors (tag 0x1200/0x1201, x/y per mode registers `D_80059F24-F38` — all zero for the field stream since `func_80070488` passes zero args, asm-proven at 8002A050-A094), strip sectors LoadImage'd with per-strip heights from the header's table (header slot stays claimed until section end; ring reset per section; stream ends via `D_80059F3C` count → `D_8004FDFC=0`).
+- **Drain rewired** (archive_port.c): `PcPortDrain0xBBToVram` now copies sectors into the real 4-slot ring and calls the retail decoder — heuristic parser deleted. Env flag `XENO_FIELD_0BB_VRAM_UPLOAD` retained this pass.
+- **Verified:** stubs 251 (temp2.c compiles; watch the silent-drop trap — first attempt jumped to 264); decoder consumes 257/257 sectors, `sectionsLeft=0, done=1` (file's own section count exhausted); **pages 0x8A (640,0) and 0x8C (768,0): 48 thin rows → FULL 256/256-row coverage** — the exact ground-texture gap from the render audit closed; 0x86 unchanged-correct; RC=124 on entrances 2/6/8; Map0 guard `1,2,16,23,25,26`; entrance-10 control `unk48=0xC000` at f400. Visual re-check of entrances 2/6/8 pending user (expect textured ground where the lower half was black).
+- Remaining related items: `func_8002BB50` (async streaming twin, 250 insns) for retail-shaped progressive loading + retiring the env flag; the `func_80025044` x=2304 wrap rects (PSX wraps x&1023, PsyX behavior unverified); sprite-band overlap at x=640 (may now visibly interact with the ground pages — watch for per-frame re-blit clobber).
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
