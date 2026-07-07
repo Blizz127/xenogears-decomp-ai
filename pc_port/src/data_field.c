@@ -758,16 +758,21 @@ FIELD_BSS_ALIAS(D_800AFC08, g_FieldBss_800AFB20, 0x0E8);
 
 FIELD_BSS_ALIAS(D_800AF85C, g_FieldBss_800AF85C, 0x000);
 FIELD_BSS_ALIAS(D_800AF87C, g_FieldBss_800AF85C, 0x020);
-FIELD_BSS_ALIAS(g_CameraEye, g_FieldBss_800AF85C, 0x054);
-FIELD_BSS_ALIAS(g_CameraAt, g_FieldBss_800AF85C, 0x064);
-FIELD_BSS_ALIAS(g_CameraUp, g_FieldBss_800AF85C, 0x074);
-FIELD_BSS_ALIAS(g_CameraEye2, g_FieldBss_800AF85C, 0x084);
+/* Camera vector block (retail 0x800AF880..0x800AF8EC). Offsets must be
+ * psx_addr - 0x800AF85C. The previous values were derived from the wrong
+ * base (0x800AF82C), shifting the named vectors +0x30 and colliding
+ * g_CameraEye2 with the D_800AF8E0 shake offsets. */
+FIELD_BSS_ALIAS(g_CameraEye, g_FieldBss_800AF85C, 0x024);  /* 0x800AF880 */
+FIELD_BSS_ALIAS(g_CameraAt, g_FieldBss_800AF85C, 0x034);   /* 0x800AF890 */
+FIELD_BSS_ALIAS(g_CameraUp, g_FieldBss_800AF85C, 0x044);   /* 0x800AF8A0 */
+FIELD_BSS_ALIAS(g_CameraEye2, g_FieldBss_800AF85C, 0x054); /* 0x800AF8B0 */
+FIELD_BSS_ALIAS(g_CameraAt2, g_FieldBss_800AF85C, 0x064);  /* 0x800AF8C0 */
+FIELD_BSS_ALIAS(D_800AF8D0, g_FieldBss_800AF85C, 0x074);   /* 0x800AF8D0: second up vector, pairs with eye2/at2 */
 FIELD_BSS_ALIAS(D_800AF8E0, g_FieldBss_800AF85C, 0x084);
 FIELD_BSS_ALIAS(D_800AF8E4, g_FieldBss_800AF85C, 0x088);
 FIELD_BSS_ALIAS(D_800AF8E8, g_FieldBss_800AF85C, 0x08C);
-FIELD_BSS_ALIAS(g_CameraAt2, g_FieldBss_800AF85C, 0x094);
 FIELD_BSS_ALIAS(D_800AF93A, g_FieldBss_800AF85C, 0x0DE);
-FIELD_BSS_ALIAS(g_WorldScale, g_FieldBss_800AF85C, 0x298);
+FIELD_BSS_ALIAS(g_WorldScale, g_FieldBss_800AF85C, 0x268); /* 0x800AFAC4; was 0x298, same wrong-base (0x800AF82C) error as the camera vectors */
 
 FIELD_BSS_ALIAS(D_800AFC60, g_FieldBss_800AFC60, 0x000);
 FIELD_BSS_ALIAS(D_800AFC64, g_FieldBss_800AFC60, 0x004);
