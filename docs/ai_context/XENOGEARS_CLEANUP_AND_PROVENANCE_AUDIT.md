@@ -315,9 +315,12 @@ Use this before rewriting:
 
 ### P2 — Remove obsolete instrumentation (after docs)
 
-- Audit `[field-diag]` sites: ensure all are behind `XENO_FIELD_DIAG` or remove dead ones
-- Remove leftover one-off gdb helper noise from tracked tree if any (prefer `captures/` gitignore)
-- Optional: quiet generated stub spam for classified no-ops (`func_80079288`) with **documented** shims, not silent deletes of needed oracle
+- **Done (docs):** full inventory + classification + host-rand smoke protocol in  
+  `docs/ai_context/XENOGEARS_P2_INSTRUMENTATION_AUDIT.md` (2026-07-08).
+- Key finding: several `[field-diag]` sites in `misc3.c` / `temp2.c` / `virtual_machine.c`
+  are **always-on** under `XENO_PC_PORT`; only `misc2.c` / `rendering.c` honor `XENO_FIELD_DIAG`.
+- Future code (not yet): gate those always-on prints; do **not** mix with rand PR.
+- gdb probes stay under gitignored `captures/`; stub oracle stays until replaced deliberately.
 
 ### P3 — Replace one hack with verified behavior (one at a time)
 
