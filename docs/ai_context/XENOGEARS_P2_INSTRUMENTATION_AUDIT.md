@@ -351,7 +351,12 @@ Expect `RUN_RC=124`. Do not enable `XENO_FIELD_DIAG`.
 - [x] Identify actor-20 / host-rand required surface  
 - [x] Mark stale, noisy, dangerous probes  
 - [x] Write before/after rand smoke protocol with baseline log path  
-- [ ] (Future code) Gate ungated `[field-diag]` / optional `FM_LOG`  
+- [x] **Code:** gate always-on `[field-diag]` in `misc3.c` / `temp2.c` / `virtual_machine.c`  
+  via per-file `XenoFieldDiagEnabled()` (same `XENO_FIELD_DIAG` contract as misc2/rendering).  
+  Verified 2026-07-08: Map1 ent0 default → `field-diag=0`, `RUN_RC=124`, stubs still fire;  
+  `XENO_FIELD_DIAG=1` restores FieldLoad/pin/`func_80076AC0 first` lines.  
+  Did **not** silence `[xeno-port]`, `[FieldMain]`, stubs, or `[field-0bb]`.  
+- [ ] (Optional later) gate `FM_LOG`  
 - [ ] (Future code, separate) PSX rand range PR using §5  
 
 ---

@@ -317,10 +317,10 @@ Use this before rewriting:
 
 - **Done (docs):** full inventory + classification + host-rand smoke protocol in  
   `docs/ai_context/XENOGEARS_P2_INSTRUMENTATION_AUDIT.md` (2026-07-08).
-- Key finding: several `[field-diag]` sites in `misc3.c` / `temp2.c` / `virtual_machine.c`
-  are **always-on** under `XENO_PC_PORT`; only `misc2.c` / `rendering.c` honor `XENO_FIELD_DIAG`.
-- Future code (not yet): gate those always-on prints; do **not** mix with rand PR.
+- **Done (code):** always-on `[field-diag]` in `misc3.c` / `temp2.c` / `virtual_machine.c`
+  now honors `XENO_FIELD_DIAG` (diagnostic-gating only; no VM/load behavior change).
 - gdb probes stay under gitignored `captures/`; stub oracle stays until replaced deliberately.
+- Next code PR: PSX rand range (do not mix with further log cleanup).
 
 ### P3 — Replace one hack with verified behavior (one at a time)
 
