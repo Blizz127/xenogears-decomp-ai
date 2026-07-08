@@ -89,6 +89,79 @@ and was NOT reachable from valid entrances in this pass.** Full write-up:
 - **To fire next time:** need an entrance that spawns Fei in/adjacent to an exit box, or precise
   real-time path-navigation (xdotool) around walkmesh obstacles into z8/z9/z11 (var still ==0).
 
+## July 8 — Map1 exit route probe verdict: zone 8 X/Z reached, height gate failed
+
+- **No code changes.** Clean-state read-only gdb probe on HEAD `0e2c18148d02aca4b405b8c71a3dafb29252de38`.
+- Latest log: `captures/render_diag/map1_exit_route_probe_zonebytes_ent9_20260707_235956.log`.
+- Probe command used `XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=9 XENO_FIELD_0BB_VRAM_UPLOAD=1` and a repeatable synthetic d-pad route.
+- **Movement is no longer the blocker:** Fei physically reached the rough zone 8 X/Z slab. Example runtime line:
+  - `frame=620 zone=8 pos=(667,-1,-1456) box x=(438,571,571,438) z=(-1569,-1569,-1452,-1452)`.
+- **Verdict A: reached zone 8 but height gate failed.**
+  - Runtime zone id is correct: opcode 203 polls zones 8/9/10/11 at IPs 5991/6018/6045/6072.
+  - Runtime table matches the decoded notes for zones 8/9/10/11.
+  - For zone 8, `hTestRaw=(1,0)` throughout the pass: `y0=-106`, Fei `y=-1`, height `64`, so `y0 < y` passes but `(y - height) < y0` fails (`-65 < -106` is false).
+  - `INSIDE3D` did not fire, so this was not a NormalClip/winding proof and not a transition-opcode proof.
+- Zone 11 height passes at the same Z strip (`hTestRaw=(1,1)`) but Fei is far outside its X range (`x=150..283` while Fei is already `x=648+` in the logged window).
+- Continuing the route later hit soft stubs `FieldProjectActorOriginToScreen` and `func_80093014` around `pos=(917,-1,-1456)`, but no exit transition was proven before that.
+- **Next safe diagnostic:** find a route/position that intersects zone 8's X/Z while Fei's vertical span crosses `y0=-106`, or instead target zone 11's X range (`150..283`) where the height gate already passes.
+
+## July 8 — Map1 exit reachability SOLVED: zone 11 is physically reachable and fires
+
+- **No source changes.** Continued from HEAD `0e2c18148d02aca4b405b8c71a3dafb29252de38`; only pre-existing dirty file was this handoff. Temporary probe: `captures/render_diag/map1_height_valid_exit_probe.gdb`.
+- **Required setup checks passed:** `pc_port/build_native/xeno-port` exists with debug info; `XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=9 XENO_FIELD_0BB_VRAM_UPLOAD=1` still runs under `distrobox enter xenogears-dev` and times out cleanly (`RUN_RC=124`).
+- **Key logs:**
+  - Success: `captures/render_diag/map1_height_valid_exit_case8_20260708_001626.log`.
+  - Zone 9 near misses: `captures/render_diag/map1_height_valid_exit_case1_20260708_001448.log`, `...case2_20260708_001523.log`, `...case7_20260708_001647.log`.
+- **Winning route (case 8, entrance 9):** `0x1000` (+X) frames 1-89 -> `0x2000` (+Z) frames 90-119 -> `0x1000` (+X) from frame 120. Position summary: frame80 `(93,-1,-1718)`, frame100 `(143,-1,-1668)`, frame110 `(143,-1,-1618)`, frame120 `(143,-1,-1568)`, frame121 `(148,-1,-1568)`, **frame122 `(153,-1,-1568)`**.
+- **Trigger proof:** at frame122, opcode **203 `FieldScriptCheckTriggerZone`** at **IP 6072** checked **zone 11**, target **6096**, `g_PlayerActorIndex=1`, Fei pos `(153,-1,-1568)`, height `64`; height gate `hTestRaw=(1,1)` and X/Z is inside zone 11 (`x=150..283`, `z=-1574..-1457`). **`misc11.c:992` fired** (`INSIDE3D_LINE992`).
+- **Important nuance:** `misc11.c:873-874` did **not** fire because that breakpoint belongs to `FieldScriptHandleTriggerZone2D`; this exit path uses opcode 203 / `FieldScriptCheckTriggerZone`, whose inside path is line 992. This is expected, not a reachability failure.
+- **Post-hit behavior:** after line 992, the VM reached **opcode 7 at IP 6084** (`func_8009EB78`, actor-script starter) and stayed there for the 90-frame continuation window. No op116/op54/fade/map-load observed yet. No new assert/SIG; only known startup/field soft stubs were printed before the trigger.
+- **Zone results:**
+  - Zone 11: **reachable**, height passed, X/Z reached, inside line fired.
+  - Zone 9: height passed at current elevation, but route still misses: case1 reached X band but stopped at `z=-1325` (too negative); case7 reached `z=-1200` but X drifted to `597` (zone max `574`); case2 hit a wall/route trap around `x=-217`.
+  - Zone 8: X/Z can be reached, but height fails at `y=-1`, height `64`, `y0=-106`.
+  - Zone 10: height fails at current elevation and is not near the entrance-9 route.
+- **Remaining gate after success:** transition continuation is blocked/stalled at opcode 7 (`ip=6084`), before op116/op54/fade/map-load. Next pass should inspect why `func_8009EB78` does not advance on this path (target actor/script slot state), without forcing position/height.
+
+### July 8 addendum — op7 stall path identified
+
+- Fresh confirmation logs:
+  - `captures/render_diag/map1_exit_z9z11_ent9_routeA_20260708.log`
+  - `captures/render_diag/map1_exit_z11_op7_followup_ent9_20260708.log`
+
+### July 8 addendum — independent zone 9 reachable proof
+
+- **No source changes.** Continued on HEAD `0e2c18148d02aca4b405b8c71a3dafb29252de38`; dirty state was this handoff plus temporary `captures/render_diag/*.gdb` probes/logs.
+- **Setup checks:** `pc_port/build_native/xeno-port` rebuilt/linked in `distrobox enter xenogears-dev`; `XENO_FIELD_MAP=1` entrances 9 and 0 run under `SDL_VIDEODRIVER=x11` to timeout (`RC=124`). Host/dummy-video direct run is not a valid signal here.
+- **Key logs:** `captures/render_diag/map1_exit_ent9_calibration_20260708.log`, `captures/render_diag/map1_exit_ent9_route_case2_20260708.log`, `captures/render_diag/map1_exit_ent9_zone9_vm_only_20260708.log`.
+- **Route from entrance 9:** synthetic `0x1000` through frame 259, then `0x2000` through frame 559, then `0x1000`. Direction calibration reconfirmed `0x1000=+X`, `0x2000=+Z`, `0x4000=-X`, `0x8000=-Z`.
+- **Zone 9 fires:** frame 533, Fei physically at `(444,-1,-1188)`, height `64`; opcode 203 at IP `6018`, zone `9`, target `6042`, `y0=-55`, `hTest=(1,1)`, inside line `misc11.c:992` fired. This solves the height gate + route problem for a height-valid exit box.
+- **Downstream blocker:** after the inside path, VM reaches **IP 6030 op7** (`bytes 07 0f 24 74...`) and repeats there through frame 700. It does **not** reach `op116@6033`, `op54@6036`, fade, or map-load. No new assert/SIG was seen.
+- **Zone status from this pass:** zone 9 reachable + height-valid + inside fired; zone 11 height-valid and near-miss in calibration (`x=143,z=-1468`, 7 units short on X); zones 8/10 still height-fail at `y=-1,height=64`.
+- **Next diagnostic:** inspect `func_8009EB78` at IP 6030 for actor `15` / script byte `0x24` slot state; likely the script-start opcode is not advancing because the target actor script slot is unavailable or already active.
+  - `captures/render_diag/map1_visible_control_smoke_20260708_001329.log`
+  - `captures/render_diag/map1_exit_route_zone11_direct_ent9_20260708_001421.log`
+  - `captures/render_diag/map1_exit_route_zone11_postinside_vm_ent9_20260708_001718.log`
+- Route A (entrance 9) used `0x1000` (+X) to frame 230, then `0x2000` (+Z). It physically entered **zone 11** at frame 316: pos `(248,-1,-1570)`, height `64`, IP `6072`, target `6096`, height gate passed, X/Z inside (`x=150..283`, `z=-1574..-1457`), and `misc11.c:992` fired.
+- Direct confirmation route (entrance 9) used `0x1000` (+X) until frame 105, then `0x2000` (+Z). It physically entered **zone 11** at frame 134: pos `(208,-1,-1573)`, height `64`, IP `6072`, target `6096`, height gate passed, X/Z inside, and `misc11.c:992` fired. This is the shortest reproducible route so far.
+- The continuation blocker is now pinned: after inside success, bytecode reached **op7 at IP 6084** (`bytes=(7,18,36)`), but `func_8009EB78` repeatedly hit **`misc6.c:448` no-free-slot return** (`OP7_NO_FREE_SLOT_RETURN`) without advancing IP. No `func_8008F668`/op116, op54, fade, map-load, assert, or SIG was observed.
+- So the exit trigger itself is reachable and valid. The remaining gate is target actor/script-slot state for the op7-started transition script, not movement, height, X/Z, or NormalClip/winding.
+
+### July 8 addendum — opcode 7 target-slot diagnostic
+
+- **No source changes.** HEAD remains `0e2c18148d02aca4b405b8c71a3dafb29252de38`; tracked dirty state remains this handoff only.
+- Probe scripts/logs:
+  - `captures/render_diag/map1_op7_zone11_probe_20260708.gdb`
+  - `captures/render_diag/map1_op7_zone11_probe_20260708_095814.log`
+  - `captures/render_diag/map1_op7_slot_raw_probe_20260708.gdb`
+  - `captures/render_diag/map1_op7_slot_raw_probe_20260708_095928.log`
+- Repro route: `XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=9 XENO_FIELD_0BB_VRAM_UPLOAD=1`, inject `0x1000` (+X) until frame 105, then `0x2000` (+Z). Zone 11 fires again at frame 134: IP `6072`, target `6096`, pos `(208,-1,-1573)`, height `64`, `misc11.c:992`.
+- **Opcode 7 decode:** after the trigger, current VM IP is `6084`, bytes `07 12 24`. This means target actor selector `0x12` -> actor **18**, routine byte `0x24` -> script/routine **4**, priority **1**.
+- **Target exists:** `g_FieldActors[18]` has status `0x0280`, flags `0x0000`, `pActorData=0x5d3668`, `pSpriteData=0x6365e0`, `pModelData=0x5d1ef4`; target actor flags `0x04400800`.
+- **Why op7 does not advance:** `func_8009EB78` is reaching its no-free-slot return. Actor 18 slot flags are not allocatable by the retail test `(priority == 0xF && busy == 0)`: slot0 flag word `0xffdf0000` -> priority `7`, busy `1`; slots1-7 flag word `0xffff0000` -> priority `0xF`, busy `1`. Therefore **no target slot is free**, so op7 returns without advancing IP and the caller keeps re-running IP `6084`.
+- **Static comparison:** current C behavior matches retail asm for `func_8009EB78`: resolve actor from byte 1, skip if target actor invalid, check existing script id, scan 8 slots for priority `0xF` and busy bit clear, write target IP/script id/priority and advance by 3 only if a free slot is found. Noah's field reference shows the same free-slot condition as readability corroboration, but retail asm is the source of truth.
+- **Next exact gate:** determine why actor 18's nominally idle slots have their busy bit set before the exit op7 runs. This is likely upstream script-slot initialization/lifecycle state, not movement, trigger math, NormalClip, or `func_8009EB78` itself.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
@@ -840,6 +913,17 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
   - **`func_80082620`** full tail (asm/.../matchings/misc8/func_80082620.s, 0x598) — replaced the single catch-all assert with the real branches: the slope-normal projected move (`.L800826FC`/`.L80082820`: curTriNormal+VectorNormal → +0xF0/+0x40/+0x48, sets +0x104|0x8000), the actor-follow branch (`.L800828E0`: HeapAlloc 0xC work object at +0x110, func_800825AC distance, ratan2/rsin/rcos toward the followed actor), and the `D_801E8670` work-object divide path (`.L80082AF4`, gated by flags4 & 0x22000 == 0x22000). gotos mirror the shared asm labels (`.L8008288C` reached with 0x4000 vs 0x8000 test; `.L800828D0` falls through to `.L800828E0`).
 - **Verified:** build LINK OK, **stubs 251 (no increase)**; `XENO_FIELD_MAP=1` ent0 **RC=134→124**, ent8 **RC=134→124**, no unsupported-branch assert; ent0 renders (117 KB, Fei visible); synthetic movement position advances; default-map/**Map0 guard unchanged** (`active=22 plain=6 status20=16`, 0 `[stub]`, RC=124) — not worsened; movement at default entrance 0 (actor 2) still walks. Only misc8.c + this handoff dirty; no debug harness in the diff. func_800825AC asm-verified FAITHFUL (independent trace); func_80082620 asm-verified.
 - **Repro artifacts:** `captures/render_diag/fei_control_repro_20260707_211919.*` (write-up + gdb log + Fei-visible screenshot + real-input before/after).
+
+## July 8 — Map1 exit-trigger reachability: zone 11 is physically reachable and height-valid; trigger check fires, then script stalls at opcode 7
+
+- **HEAD/status at start:** `0e2c18148d02aca4b405b8c71a3dafb29252de38`; only dirty tracked file was this handoff. No source edits.
+- **Runtime setup correction:** current `XENO_FIELD_MAP=1` gdb runs must also drive kernel selection with `XENO_KERNEL_SEL=0` (and the usual field-test runtime env) to reach `FieldMain`; without it the process sits before field frames. Confirmed with startup trace: `FieldMain scene=-1 entrance=9`, then `func_8007554C player=1 scene=1`.
+- **Real route found from safe entrance 9:** inject `+X` (`0x1000`) through frame 105, then `+Z` (`0x2000`) through frame 159. Position summary from the final proof log: frame 20 `(-207,-1,-1718)`, frame 60 `(-7,-1,-1718)`, frame 100 `(193,-1,-1718)`, frame 120 `(209,-1,-1648)`, frame 130 `(209,-1,-1598)`, frame 135 `(209,-1,-1573)`.
+- **Zone 11 fired naturally through movement:** opcode 203 at `ip=6072`, zone byte `11`, target `6096`, player `g_PlayerActorIndex=1`, Fei `(209,-1,-1573)`, height `64`, `y0=-29`, height predicates `(y0 < y, y-height < y0) = (1,1)`, zone X `(150,283,283,150)`, zone Z `(-1574,-1574,-1457,-1457)`. `FieldScriptCheckTriggerZone` reached `misc11.c:992` inside/success path at frame 135.
+- **Other zones in the same proof:** zone 8 remains height-gated out at `y0=-106` (`hTestRaw=(1,0)`); zone 10 remains height-gated out at `y0=-276` (`hTestRaw=(1,0)`); zone 9 is height-valid (`y0=-55`, `hTestRaw=(1,1)`) but X/Z is not reached on the zone-11 route (`x=209`, `z=-1573` at fire vs zone 9 X `442..574`, Z `-1277..-1160`).
+- **Post-trigger blocker:** `misc11.c:873-874` did **not** fire on this route. After zone 11 inside succeeds, the VM repeatedly reaches opcode 7 at `ip=6084` (`func_8009EB78`, bytes `07 12 24`) and does not progress to op116/op54/fade/map-load. Source read-only note: `func_8009EB78` returns without advancing IP if no free script slot is found for the target actor/script, matching the repeated `OP7_START_SCRIPT` log. No `NormalClip` calls were made from gdb in the primary proof.
+- **Artifacts:** final proof `captures/render_diag/map1_exit_zone11_route_ent9_20260708.gdb`, `captures/render_diag/map1_exit_zone11_route_ent9_20260708_002559.log`; startup trace `captures/render_diag/map1_startup_trace_kernel_sel_20260708_001913.log`; actor-slot/debugger alias probe `captures/render_diag/map1_actor_slots_probe_20260708_002137.log`.
+- **Next exact remaining gate:** not movement, height, or X/Z for zone 11. The remaining blocker is script progression after the zone-11 success path: opcode 7 at `ip=6084` loops/does not advance, so the expected subroutine jump at `misc11.c:873-874` and transition/fade/map-load path are not reached in this route.
 
 ## Exact Next Function To Implement
 
