@@ -12,6 +12,20 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## 📌 Current known-good (2026-07-08)
+
+| Item | Value |
+|------|--------|
+| **Git tag** | `known-good-map1-field-control` → `32222ed` |
+| **Branch** | `xenogears-cleanup-provenance-audit` (cleanup + field stack) |
+| **Audit docs** | `docs/ai_context/XENOGEARS_CLEANUP_AND_PROVENANCE_AUDIT.md`, `XENOGEARS_P2_INSTRUMENTATION_AUDIT.md` |
+| **PR1** | `412c482` — gate `[field-diag]` behind `XENO_FIELD_DIAG` (default Map1 logs quiet) |
+| **PR2** | `32222ed` — PSX-range `rand`/`srand` (`pc_port/src/psx_rand.c`); **host-rand is FIXED, not open** |
+| **Control smoke** | Map1 ent **0** / **8**: Fei visible + movable, `RUN_RC=124` |
+| **Progression** | Zone 11 fires (ent9 route); **map transition/load still not proven** |
+
+**Next investigation (read-only first, evidence-gated):** exit-zone transition path only — from “Zone 11 fires” to the first missing/incorrect transition side effect (fade / map-load / `func_800A5C40` / scene globals). Do **not** open camera, actor layout, movement, renderer, or broad VM cleanup.
+
 ## 🏁 MILESTONE — First visible field-control (2026-07-07)
 
 **Fei is visibly controllable with real keyboard input on a rendered field.** First time the full chain works end-to-end and on screen.
@@ -1034,7 +1048,7 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - **Runtime path after zone 11/op7/routine4:** actor 18 slot 0 takes `0x06a4 -> 0x06a7 -> 0x0708 -> 0x0710 -> 0x0713 -> 0x07cd`. The trace shows `0x0710` sleeps for 60 frames, `0x0713` jumps to `0x07cd`, and `0x07cd` stops/yields. The same path repeats later.
 - **Exact gate:** the observed path proves `var0x0408 != 0` at `0x06a7`, then `var0x0408 == 1` at `0x0708`. State `1` is the sleep/stop branch. The routine does not enter the state-2 branch at `0x0716 -> 0x071e`, nor the fallback branch at `0x0716 -> 0x0777`.
 - **Routine 4 relation:** actor 18 routine 4 only runs the shared Y-rotation subroutine and frees slot 1. Its decoded bytecode does not write `0x0408`; it does not appear to change the state that would make routine 1 leave the `0x0408 == 1` branch.
-- **Corrected next target:** find who owns/writes actor 18 state variable `0x0408` and why it remains `1` after the zone-11 op7/routine4 path. This is now a script-state/scheduling question, not an op7, op54, `0x0462`, routine4, or confirmed fade-opcode problem.
+- **Corrected next target (resolved):** ownership is actor 20 via `0xA8` (see following sections). Pre-fix host-rand forced perpetual `1`; **rand is fixed** at `32222ed`. Post-fix door-state may still idle on `1` by script design after state-0 — **not** the map-transition blocker. Next: exit-zone transition handoff.
 
 ## July 8 — READ-ONLY Map1 var 0x0408 ownership diagnostic: actor 20 drives the shared door-state variable
 
@@ -1083,24 +1097,58 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - The fallback branch `0x0777-0x07ca` is the same shape: counter `0x0418`, sleeps 6/5/20, `func_80094B3C`/`func_80094BAC`, then stop.
 - No real `FieldScriptFadeOut` (`0xB3`), `FieldScriptFadeIn` (`0xB4`), map-load, `func_800A5C40`, op152/71/234/286, or map/scene global writer appears in the decoded state-2/fallback span. The previous raw `0xB3` at `0x07a8` is the low byte of conditional target `0x07b3`, not an opcode.
 
-### Corrected conclusion
+### Corrected conclusion (pre-rand-fix historical)
 
 - The current zone-11 route does not leave `0x0408` at `1` because actor 18 routine 4 failed to update it. Actor 18 routine 4 never owns it.
-- Actor 20 routine 1 actively maintains shared `0x0408` and forces it back to `1`. Actor 18 routine 1 reads that shared state and therefore idles in the `0x0408 == 1` branch.
+- Actor 20 routine 1 drives shared `0x0408` via `0xA8` then later may assign `1` at `0x0997`. Actor 18 routine 1 **reads** that shared state.
 - Actor 18 state 2 is not a transition/fade path; it is another door/actor rotation animation path.
-- **Correct next single target:** decode/trace actor 20 routine 1's state machine around the `0x088f` random write and `0x0997` assignment. Find what conditions make actor 20 assign `0x0408` to a value other than `1`, or whether another route/trigger is expected to drive the shared door-state variable. Do not patch actor scripts or force `0x0408`.
+- **Historical next target (DONE):** PC-port host `rand` range was breaking the `0xA8` chooser — see sections below. **Do not** treat host-rand as still open.
 
-## Exact Next Function To Implement
+## July 8 — READ-ONLY actor 20 routine 1: host-rand broke `0xA8` branch (diagnosis; now FIXED)
 
-- **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
-- `primSubmits=0` before frame 4 is **expected** — `FieldAddPrimitives` is gated behind `D_800ADC18 == 0`. In the latest 45s audit run the countdown reaches 0 at frame 4 and `primSubmits` becomes 2.
-- Actor packets ARE drawn via direct OT-linking (`func_8001E3D8`), independent of `FieldAddPrimitives`.
-- **45s timeout test: COMPLETED** — frames 0–7, D_800ADC18=4→3→2→1→0, gate cleared, `primSubmits=2`.
-- **`XENO_KERNEL_SEL=1` test: COMPLETED** — hits `func_8001B6C4` stub immediately (2-line log at `captures/render_diag/kernel1_30s_20260704_170523.log`). Root cause fully traced (7-step chain: `psyq_compat.c:327` → `g_KernelMenuCurChoice=1` → `ChangeGameState(1)` → `game_overrides.c:260` → `temp3.c:301` INCLUDE_ASM → `stubs.c:479` stub → returns 0, state aborts).
-- Do not start broad feature work or add unrelated stub replacements yet.
-- Next single step:
-  - Stop at the current `func_800764B4` active actor quad failsafe. It is a large visual path and should not be patched around. Audit first, then implement only if the exact behavior is understood.
-- Do not clamp coordinates, skip primitives, fake rendering, or add dummy packets.
+- **Pre-fix logs (keep as before-evidence):**  
+  `captures/render_diag/map1_actor20_var0408_branch_trace_20260708_151951.log`  
+  gdb: `captures/render_diag/map1_actor20_var0408_branch_trace_20260708.gdb`  
+  static decode: `captures/render_diag/map1_actor20_routine1_decode_20260708_151729.log`
+- **Actor 20 routine offsets:** routine 0 `0x0885`, routine 1 `0x0888`, routine 2/3 `0x09d5`.
+- **Routine 1 shape:** clear counters `0x041c`/`0x041a`, extend budget (`0xC6`), then **`0xA8`** at `0x088f` with max arg `4` chooses `var0x0408`, then branch on `0/1/2/3/4`:
+  - state 0 (`0x089c`): actor `0x13` script/prio `0x64`, rotate `0x041c < 24`, wait `0x041a == 600`, jump `0x0997`
+  - state 1 (`0x08d6`): wait `0x041a == 240`, stop/yield
+  - state 2 (`0x08f1`): rotate `0x041c < 64`, wait `0x041a == 256`, jump `0x0997`
+  - state 3 / 4: similar rotate/wait then `0x0997`
+  - after states: `0x0997` assigns `var0x0408 = 1`, cleanup through `0x09d4` stop
+- **Pre-fix runtime (broken):** every `0xA8` write was far outside `0..4` (e.g. `36875`, `47494`, `62140`), all five compares missed, immediate fall-through to `0x0997` → `1` every ~28 frames. Zone 11 did **not** drive this; actor 20 cycled independently.
+- **Root cause (confirmed):** `FieldScriptVMHandlerMulVariableWithRand` is retail-faithful  
+  `nValue = (rand() * (arg + 1)) >> 15` and expects PSX `rand()` ∈ **0..32767**.  
+  Port binary had been importing **glibc** `rand@GLIBC_2.2.5` (large range).  
+  Retail LCG: `src/slus_006.64/psyq/libc.c` / `include/psyq/rand.h` (`RAND_MAX 32767`).
+
+### FIXED — `32222ed` Match PSX rand range for field script RNG
+
+- **Code:** `pc_port/src/psx_rand.c` + `build_port.sh` — retail LCG `rand`/`srand`; no Map1/actor-20 special case; no VM opcode edits.
+- **Symbols:** `nm` shows local `T rand` / `T srand` (no glibc `U rand@GLIBC`).
+- **After-fix (actor 20):** `0x088f` write `value=0` ∈ **0..4**; later legitimate `0x0997` assign `1` after state-0 wait (~frame 650). No host-scale values.
+- **Control:** Map1 ent0/ent8 `RUN_RC=124`; default `[field-diag]=0` (PR1).
+- **Zone 11:** still fires on ent9 route. Remaining gap is **post-trigger transition**, not RNG/control.
+- **Do not reopen** host-rand, force `0x0408`, or patch actor scripts for this.
+
+## July 8 — Cleanup pass status (docs → log gate → rand)
+
+1. Docs-only cleanup + provenance audit: `10d9517`, `becfd54`
+2. PR1 gate ungated `[field-diag]`: `412c482` (misc3 / temp2 / virtual_machine diagnostic-gating only)
+3. PR2 PSX rand: `32222ed`
+4. Tag: **`known-good-map1-field-control`** @ `32222ed`
+
+## Exact Next Step (investigation, not a code rewrite)
+
+**Exit-zone → map-transition handoff only.** Evidence-gated:
+
+1. Repro: Map1 `XENO_FIELD_ENTRANCE=9`, synthetic `+X` then `+Z` → zone 11 inside (~frame 134).
+2. Already known after fire: op7 (actor 18 routine 4) → op116 sound shim → op54 latch `0x0462`; routine 4 is door Y-rotation, not fade/map-load.
+3. **Prove** the next retail side effect that should run after a successful exit (which actor/IP/opcode writes `g_GameSceneMapNum` / entrance / fade / `D_800ADBEC` / reaches `func_800A5C40`), and whether that path is missing C, wrong globals, or a script-state gate.
+4. **Out of scope until evidence demands:** camera core, actor layout rewrite, movement/walkmesh, renderer architecture, broad VM redesign, further log cleanup, stash archaeology.
+
+Historical notes still true for field recovery (not the next blocker): Kernel0 path can run without hard stub crash; battle `XENO_KERNEL_SEL=1` still hits `func_8001B6C4` stub; do not fake primitives or clamp for “looks better.”
 
 ## Commands Verified
 
