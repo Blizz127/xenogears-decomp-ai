@@ -357,7 +357,9 @@ Expect `RUN_RC=124`. Do not enable `XENO_FIELD_DIAG`.
   `XENO_FIELD_DIAG=1` restores FieldLoad/pin/`func_80076AC0 first` lines.  
   Did **not** silence `[xeno-port]`, `[FieldMain]`, stubs, or `[field-0bb]`.  
 - [ ] (Optional later) gate `FM_LOG`  
-- [ ] (Future code, separate) PSX rand range PR using §5  
+- [x] **Code:** PSX-range `rand`/`srand` via `pc_port/src/psx_rand.c` (retail LCG;  
+  no glibc import). Verified: actor-20 `0x088f` writes `0` (∈0..4), no host-scale  
+  values; Map1 ent0/ent8 `RUN_RC=124`, default `field-diag=0`; zone 11 still fires.
 
 ---
 
