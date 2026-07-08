@@ -1167,8 +1167,23 @@ void func_80083994(void) {
 }
 
 extern u16 D_800C2694;
+extern s16 D_800B2174;
+extern s32 D_800ADF64;
+extern int g_FieldSystemMode;
 extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
+/* Retail D_80285988 (field-overlay BSS) is written from the flags0&0x2000 path
+ * when g_FieldSystemMode==0. PC has no overlay map for 0x8028xxxx yet; keep a
+ * local latch so the store is side-effect-safe without inventing readers. */
+#ifdef XENO_PC_PORT
+static s32 s_D_80285988;
+#endif
+
+/* Provenance: asm/field/matchings/main/misc8/func_8008399C.s (SLUS_006.64).
+ * s2=scriptId, s4=scriptRoutine (prio packing <<18), s7=found.
+ * Confirm (D_800C2694&0x20) selects scriptId=2 / routine=3.
+ * Proximity / non-confirm special selects scriptId=3 / routine=4.
+ * flags4&0x180 is a distance-independent special interact path. */
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actorData = (u8*)pActorData;
     s32 playerY = *(s16*)(actorData + 0x26);
@@ -1179,10 +1194,7 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
     s32 playerX = *(s16*)(actorData + 0x22);
     s32 playerZ = *(s16*)(actorData + 0x2A);
     s32 found = 0;
-    s32 defaultScriptId = 7;
     s32 i;
-
-    (void)pFieldActor;
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* otherActor = (u8*)g_FieldActors + i * 0x5C;
@@ -1196,8 +1208,15 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         s32 vec[3];
         s32 sq[3];
         s32 scriptId = 0xFF;
-        s32 scriptRoutine = defaultScriptId;
-        s32 forceInteraction = 0;
+        s32 scriptRoutine = 7;
+        s32 dist;
+        s32 limit[3];
+        s32 limitSq[3];
+        s32 innerSq;
+        s32 outerSq;
+        s32 angle;
+        s32 dir;
+        s32 facingDelta;
 
         otherFlags0 = *(u32*)(otherData + 0x00);
         if (otherFlags0 & 0x1) {
@@ -1212,80 +1231,185 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         otherY = *(s16*)(otherData + 0x26) + *(s16*)(otherData + 0x62);
         otherFlags4 = *(u32*)(otherData + 0x04);
 
+        /* ---- flags4 & 0x180 special interact (retail 80083A98..80083BFC) ---- */
         if (otherFlags4 & 0x180) {
-            assert(!"func_8008399C button/special interaction branch not migrated");
+            if (otherFlags4 & 0x100) {
+                if ((D_800C2694 & 0x20) != 0 && found == 0 &&
+                    (otherFlags4 & 0x4000000) == 0) {
+                    if ((otherFlags0 & 0x220000) == 0 && D_800B2174 == 0) {
+                        /* Confirm special: scriptId=2, routine/prio=3 */
+                        found = 1;
+                        scriptId = 2;
+                        scriptRoutine = 3;
+                        dx = *(s16*)(otherData + 0x22) - playerX +
+                             *(s16*)(otherData + 0x60);
+                        dz = *(s16*)(otherData + 0x2A) - playerZ +
+                             *(s16*)(otherData + 0x64);
+                        angle = -ratan2(dz, dx);
+                        *(u32*)(otherData + 0x12C) =
+                            (*(u32*)(otherData + 0x12C) & ~0xE00u) |
+                            ((u32)angle & 0xE00u);
+                    }
+                } else if ((otherFlags0 & 0xA20000) == 0) {
+                    /* Non-confirm special: scriptId=3, routine/prio=4 */
+                    scriptId = 3;
+                    scriptRoutine = 4;
+                    dx = *(s16*)(otherData + 0x22) - playerX +
+                         *(s16*)(otherData + 0x60);
+                    dz = *(s16*)(otherData + 0x2A) - playerZ +
+                         *(s16*)(otherData + 0x64);
+                    angle = ratan2(dz, dx);
+                    dir = (-angle >> 9) & 7;
+                    *(u32*)(otherData + 0x12C) =
+                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                    if (D_800ADF64 == 0 && (otherFlags0 & 0x8000000) != 0) {
+                        u8* fieldActor = (u8*)pFieldActor;
+                        u8* unk4 = (u8*)(uintptr_t)*(u32*)(fieldActor + 0x4);
+                        D_800ADF64 = 1;
+                        if (unk4 != NULL) {
+                            *(u32*)(unk4 + 0x10) = 0;
+                        }
+                    }
+                }
+            } else {
+                /* flags4 has 0x80 but not 0x100 */
+                D_800ADF64 = 0;
+            }
         }
 
         dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
         dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
 
+        /* ---- flags0 & 0x2000 force interact (retail 80083C08..80083DF4) ---- */
         if (otherFlags0 & 0x2000) {
             if (otherY < playerFloor) {
-                continue;
+                goto assign_script;
             }
             if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-                continue;
+                goto assign_script;
             }
             if (i == actorIndex) {
-                continue;
+                goto assign_script;
             }
             if (func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
-                continue;
+                goto assign_script;
             }
-            forceInteraction = 1;
+
+            if ((D_800C2694 & 0x20) != 0 && found == 0 &&
+                (otherFlags4 & 0x4000000) == 0) {
+                if ((otherFlags0 & 0x220000) != 0 || D_800B2174 != 0) {
+                    goto assign_script;
+                }
+                angle = -ratan2(dz, dx);
+                dir = (angle >> 9) & 7;
+                facingDelta = (playerRot - (angle & 0xFFF)) & 0xFFF;
+                if ((otherFlags4 & 0x40000) != 0) {
+                    if ((u32)(facingDelta - 0x2BC) < 0xA89u) {
+                        goto assign_script;
+                    }
+                }
+                found = 1;
+                scriptId = 2;
+                scriptRoutine = 3;
+                *(u32*)(otherData + 0x12C) =
+                    (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+#ifdef XENO_PC_PORT
+                if (g_FieldSystemMode == 0) {
+                    s_D_80285988 = found;
+                }
+#endif
+                goto assign_script;
+            }
+
+            if ((otherFlags0 & 0xA20000) != 0) {
+                goto assign_script;
+            }
+            scriptId = 3;
+            scriptRoutine = 4;
+            angle = ratan2(dz, dx);
+            dir = (-angle >> 9) & 7;
+            *(u32*)(otherData + 0x12C) =
+                (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+#ifdef XENO_PC_PORT
+            if (g_FieldSystemMode == 0) {
+                s_D_80285988 = 1;
+            }
+#endif
+            goto assign_script;
         }
 
+        /* ---- Normal proximity / confirm (retail 80083DF8..80084088) ---- */
         radius = outerRadius + *(u16*)(otherData + 0x1E);
         vec[0] = dx;
         vec[1] = radius;
         vec[2] = dz;
         Square0((VECTOR*)vec, (VECTOR*)sq);
+        dist = sq[0] + sq[2];
 
-        if (!forceInteraction && sq[0] + sq[2] >= sq[1]) {
-            continue;
+        if (dist >= sq[1]) {
+            goto assign_script;
         }
         if (otherY < playerFloor) {
-            continue;
+            goto assign_script;
         }
         if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-            continue;
+            goto assign_script;
         }
         if (i == actorIndex) {
-            continue;
+            goto assign_script;
         }
 
+        /* Re-square dx/dz for dist; build (inner,0,outer) limit squares */
         vec[0] = dx;
-        vec[1] = innerRadius + *(u16*)(otherData + 0x1E);
+        vec[1] = 0;
         vec[2] = dz;
         Square0((VECTOR*)vec, (VECTOR*)sq);
+        dist = sq[0] + sq[2];
 
-        {
-            s32 dist = sq[0] + sq[2];
-            s32 innerLimit[3];
-            s32 innerLimitSq[3];
+        limit[0] = innerRadius + *(u16*)(otherData + 0x1E);
+        limit[1] = 0;
+        limit[2] = outerRadius + *(u16*)(otherData + 0x1E);
+        Square0((VECTOR*)limit, (VECTOR*)limitSq);
+        innerSq = limitSq[0];
+        outerSq = limitSq[2];
 
-            innerLimit[0] = innerRadius + *(u16*)(otherData + 0x1E);
-            innerLimit[1] = 0;
-            innerLimit[2] = outerRadius + *(u16*)(otherData + 0x1E);
-            Square0((VECTOR*)innerLimit, (VECTOR*)innerLimitSq);
-
-            if (forceInteraction || dist < innerLimitSq[0]) {
-                if (D_800C2694 & 0x20) {
-                    assert(!"func_8008399C confirm-button branch not migrated");
+        /* Outer-ring (and inward): try confirm first */
+        if (dist < outerSq) {
+            if ((D_800C2694 & 0x20) != 0 && found == 0 &&
+                (otherFlags4 & 0x4000000) == 0) {
+                if ((otherFlags0 & 0x220000) != 0) {
+                    goto assign_script;
                 }
-
-                if ((otherFlags0 & 0x00A20000) == 0) {
-                    s32 angle = ratan2(dz, dx);
-                    s32 dir = (-angle >> 9) & 7;
-
-                    scriptId = 3;
-                    scriptRoutine = 4;
-                    *(u32*)(otherData + 0x12C) =
-                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                angle = -ratan2(dz, dx);
+                dir = (angle >> 9) & 7;
+                facingDelta = (playerRot - (angle & 0xFFF)) & 0xFFF;
+                /* Reject when facing delta is in the 0x2BC..0x2BC+0xA88 band */
+                if ((u32)(facingDelta - 0x2BC) < 0xA89u) {
+                    goto assign_script;
                 }
+                if (D_800B2174 != 0) {
+                    goto assign_script;
+                }
+                found = 1;
+                scriptId = 2;
+                scriptRoutine = 3;
+                *(u32*)(otherData + 0x12C) =
+                    (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                goto assign_script;
             }
         }
 
+        /* Non-confirm proximity: inner radius only, scriptId=3 / routine=4 */
+        if ((otherFlags0 & 0xA20000) == 0 && dist < innerSq) {
+            scriptId = 3;
+            scriptRoutine = 4;
+            angle = ratan2(dz, dx);
+            dir = (-angle >> 9) & 7;
+            *(u32*)(otherData + 0x12C) =
+                (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+        }
+
+    assign_script:
         if (scriptId != 0xFF) {
             s32 slot;
             u8* slotBase;
@@ -1312,8 +1436,6 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
                 }
             }
         }
-
-        (void)found;
     }
 }
 
