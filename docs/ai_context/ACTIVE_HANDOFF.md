@@ -1021,6 +1021,69 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - **Next breadcrumb:** Map1 script static scan shows `FieldScriptFadeOut` opcodes elsewhere. The closest relevant-looking one is inside actor 18 routine 1 at IP `0x07a8` (owner actor 18 routine 1), while actor 18 routine 4 owns no fade. During the trace, actor 18's normal slot 0 repeatedly runs routine 1 around `0x06a1 -> 0x0708 -> 0x0710` and sleeps/loops; it does not branch to `0x07a8`.
 - **Next single diagnostic:** trace actor 18 routine 1's branch conditions/state variables around `0x06a1-0x07a8`, especially the conditionals at `0x0708/0x0716/...`, to determine what gate prevents reaching the `FieldScriptFadeOut` at `0x07a8` after zone 11/op7 completes. Do not patch op7/routine4/0x0462.
 
+## July 8 — READ-ONLY actor 18 routine 1 state trace: slot 0 is gated by state var 0x0408 == 1
+
+- **Checkpoint:** committed/pushed docs-only `bb31b27f4f9ca519ada3906946d2a87608bd8188` (`Document actor 18 routine 4 exit trace`) before this pass. HEAD/status at start were clean; no source edits.
+- **Primary evidence:** `captures/render_diag/map1_actor18_routine4_trace_20260708_134118.log` already contains the useful actor 18 slot-0 VM trace around the exit route. Two later focused gdb probes, `captures/render_diag/map1_actor18_routine1_cond_trace_20260708_134837.log` and `captures/render_diag/map1_actor18_routine1_vars_snapshot_20260708_135112.log`, were too heavy and timed out before useful hits; treat them as non-evidence, not as negative proof.
+- **Static decode correction:** the earlier raw-byte scan claiming a `FieldScriptFadeOut` at `0x07a8` was misleading. `0x07a8` is inside the operand bytes of the conditional at `0x07a2` (`... target=0x07b3`), not a proven executable opcode. Do not treat `0x07a8` as a confirmed fade path until reached by a real script decode/runtime trace.
+- **Actor 18 routine 1 branch map, key section:** routine 1 starts at `0x06a1`. The state selector is script var `0x0408`; local counter/rotation var is `0x0418`.
+  - `0x06a7`: `var0x0408 == 0 ? next 0x06af : target 0x0708`
+  - `0x0708`: `var0x0408 == 1 ? next 0x0710 : target 0x0716`
+  - `0x0716`: `var0x0408 == 2 ? next 0x071e : target 0x0777`
+  - downstream branches use `0x0418` as the rotation/counter loop variable (`0x071e`, `0x0735`, `0x074c`, `0x0763`, `0x0777`, `0x078e`, `0x07a2`).
+- **Runtime path after zone 11/op7/routine4:** actor 18 slot 0 takes `0x06a4 -> 0x06a7 -> 0x0708 -> 0x0710 -> 0x0713 -> 0x07cd`. The trace shows `0x0710` sleeps for 60 frames, `0x0713` jumps to `0x07cd`, and `0x07cd` stops/yields. The same path repeats later.
+- **Exact gate:** the observed path proves `var0x0408 != 0` at `0x06a7`, then `var0x0408 == 1` at `0x0708`. State `1` is the sleep/stop branch. The routine does not enter the state-2 branch at `0x0716 -> 0x071e`, nor the fallback branch at `0x0716 -> 0x0777`.
+- **Routine 4 relation:** actor 18 routine 4 only runs the shared Y-rotation subroutine and frees slot 1. Its decoded bytecode does not write `0x0408`; it does not appear to change the state that would make routine 1 leave the `0x0408 == 1` branch.
+- **Corrected next target:** find who owns/writes actor 18 state variable `0x0408` and why it remains `1` after the zone-11 op7/routine4 path. This is now a script-state/scheduling question, not an op7, op54, `0x0462`, routine4, or confirmed fade-opcode problem.
+
+## July 8 — READ-ONLY Map1 var 0x0408 ownership diagnostic (actor 18 state gate)
+
+- **Checkpoint:** docs-only commit intended: `Document actor 18 routine 1 state gate` on top of `bb31b27f4f9ca519ada3906946d2a87608bd8188`. No source edits in this pass.
+- **Tools added (captures only):**
+  - `captures/render_diag/map1_var0408_opcode_scan.py` — walks Map1 script routines with handler-derived opcode sizes (not raw-byte search); reports decoded refs to var `0x0408`.
+  - `captures/render_diag/map1_var0408_trace_20260708.gdb` — lightweight runtime trace on `FieldScriptMemoryWriteU16`, `VariableSetTrue/False`, and `ConditionalJmp` for var `0x0408` only, plus timeline samples at FieldLoad / pre-zone / post-routine4.
+- **Repro confirmed (prior logs):** `XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=9`, `+X` through frame 105, `+Z` afterward; zone 11 inside @ frame 134, op7 actor 18 routine 4 @ frame 134, routine 4 completes ~frame 147, actor 18 slot 0 stays on routine 1 state-1 loop through frame 341 (`map1_actor18_routine4_trace_20260708_134118.log`).
+
+### Static decode — actor 18 routine 1 owns/consumes 0x0408 (confirmed opcodes)
+
+Routine 1 @ `0x06a1`. Counter var `0x0418`. All refs below are **decoded opcodes**, not raw-byte hits:
+
+| IP | Opcode | Operands / effect |
+|----|--------|-------------------|
+| `0x06a7` | `0x02` ConditionalJmp | `var0x0408 == 0` → next `0x06af`, else → `0x0708` |
+| `0x0708` | `0x02` ConditionalJmp | `var0x0408 == 1` → next `0x0710`, else → `0x0716` |
+| `0x0716` | `0x02` ConditionalJmp | `var0x0408 == 2` → next `0x071e`, else → `0x0777` |
+
+Runtime path after zone 11: `0x06a4 → 0x06a7 → 0x0708 → 0x0710` (sleep 60) → `0x0713` (jmp `0x07cd`) → stop. Proves `0x0408 == 1` throughout.
+
+**False positive avoided:** byte `0xB3` at file offset `0x07a8` is inside the operand stream of the conditional @ `0x07a2` (jump target `0x07b3`), not a reachable `FieldScriptFadeOut` opcode.
+
+### Static decode — routine 4 does not touch 0x0408
+
+Routine 4 @ `0x07cf`: `0x05` call `0x17d5` (shared Y-rotation subroutine) → `0x00` stop. No `0x36`/`0x37`/`0x35` on var `0x0408`.
+
+### Runtime write audit (existing global var-write trace)
+
+`map1_op54_script_bytes_trace_20260708_125021.log` breaks on every `FieldScriptMemoryWriteU16` during the zone-11 route (frames 134–180+). Sampled windows show many writes (`0x406`, `0x41c`, `0x462`, …) but **no `addr=0x408` write** during or after op7/routine4/op54. Prior `0x0462` handler trace likewise only touched `0x0462`.
+
+**Working conclusion:** on this fresh-map route, `0x0408` is already `1` before zone 11 and is **not rewritten** by the exit trigger chain. The blocker is stale/init state, not a missing fade opcode in routine 4.
+
+### Ownership model
+
+- **Consumer/owner:** actor 18 routine 1 (slot 0 default loop) uses `0x0408` as a 3-state door/actor FSM (`0`=?, `1`=sleep/stop idle, `2`=rotation sub-path toward further branches).
+- **Not owners:** actor 48 exit latch `0x0462`; routine 4 subroutine; op54.
+- **Likely writer (hypothesis, needs routine-0 scan confirmation):** actor 18 **routine 0** run from `func_800A28D4` during `FieldLoad` (`FieldScriptGetBytecodeOffset(actor, 0)` + `FieldScriptVMRun(0xFFFF)` for each actor). Fresh map load probably sets `0x0408 = 1` (door idle) before gameplay frames.
+
+### Why actor 18 routine 1 stays on state-1 path
+
+Zone 11 → op7 → routine 4 runs the door **animation** only. Nothing in that chain advances `0x0408` from `1` → `2`. Routine 1 therefore keeps taking `0x0708` (`== 1`) → 60-frame sleep → jmp `0x07cd` → stop, never entering the `0x0716`/`0x071e` state-2 branch where further transition logic (including any real fade) would live.
+
+### Next single target
+
+1. Run `map1_var0408_opcode_scan.py` to list **all** Map1 decoded refs (read/write/cond) to `0x0408` across every actor routine.
+2. Run `map1_var0408_trace_20260708.gdb` to pin **first** runtime write of `0x0408` (expect FieldLoad / actor 18 routine 0 if hypothesis holds).
+3. Decode actor 18 routine 0 and the routine-1 state-2 path (`0x071e`–`0x07b3`) for the exact opcode that should set `0x0408` to `2` after routine 4 — that is the missing transition step, not op7/op54/`0x0462`.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
