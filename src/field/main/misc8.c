@@ -158,14 +158,19 @@ void func_80080A74(s32 actorIndex) {
     *(s32*)(p + 0x130) &= ~0x200;
     *(s32*)(p + 0x12C) &= 0xF003FFFF;
 
-    /* state array: 8 entries of 8 bytes each at offset 0x90 */
+    /* script slots: 8 entries of 8 bytes each at offset 0x8C */
     for (i = 0; i < 8; i++) {
-        u8* e = p + 0x90 + i * 8;
-        *(s32*)(e + 0) = (*(s32*)(e + 0) & 0xFE7FFFFF) | 0x3C0000;
-        *(u8*)(e + 0) = 0;
-        *(s16*)(e + 2) = 0xFFFF;
-        *(u8*)(e + 5) = 0xFF;
-        *(s16*)(e + 6) = 0xFFFF;
+        u8* e = p + 0x8C + i * 8;
+        s32 flags = *(s32*)(e + 4);
+        *(s16*)(e + 0) = 0xFFFF;
+        *(u8*)(e + 2) = 0;
+        *(u8*)(e + 3) = 0xFF;
+        flags &= 0xFFFCFFFF;
+        flags &= 0xFFBFFFFF;
+        flags &= 0xFE7FFFFF;
+        flags |= 0x3C0000;
+        *(s32*)(e + 4) = flags;
+        *(s16*)(e + 4) = 0xFFFF;
     }
 
     *(s32*)(p + 0x120) = 0;
