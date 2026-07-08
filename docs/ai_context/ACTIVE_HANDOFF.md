@@ -22,9 +22,9 @@
 | **PR1** | `412c482` — gate `[field-diag]` behind `XENO_FIELD_DIAG` (default Map1 logs quiet) |
 | **PR2** | `32222ed` — PSX-range `rand`/`srand` (`pc_port/src/psx_rand.c`); **host-rand is FIXED, not open** |
 | **Control smoke** | Map1 ent **0** / **8**: Fei visible + movable, `RUN_RC=124` |
-| **Progression** | Zone 11 fires (ent9 route); **map transition/load still not proven** |
+| **Progression** | Zone 11 fires (ent9 route) → **door open + latch only**; map-load **not** on that script path |
 
-**Next investigation (read-only first, evidence-gated):** exit-zone transition path only — from “Zone 11 fires” to the first missing/incorrect transition side effect (fade / map-load / `func_800A5C40` / scene globals). Do **not** open camera, actor layout, movement, renderer, or broad VM cleanup.
+**Next investigation (read-only, evidence-gated):** find the **real** Map1 map-leave handoff (`D_800ADBEC=0` / map-swap / fade / geometry exit) — zones 8–11 are door-open, not map-load. Do **not** open camera, actor layout, movement, renderer, or broad VM cleanup.
 
 ## 🏁 MILESTONE — First visible field-control (2026-07-07)
 
@@ -1141,14 +1141,55 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 
 ## Exact Next Step (investigation, not a code rewrite)
 
-**Exit-zone → map-transition handoff only.** Evidence-gated:
-
-1. Repro: Map1 `XENO_FIELD_ENTRANCE=9`, synthetic `+X` then `+Z` → zone 11 inside (~frame 134).
-2. Already known after fire: op7 (actor 18 routine 4) → op116 sound shim → op54 latch `0x0462`; routine 4 is door Y-rotation, not fade/map-load.
-3. **Prove** the next retail side effect that should run after a successful exit (which actor/IP/opcode writes `g_GameSceneMapNum` / entrance / fade / `D_800ADBEC` / reaches `func_800A5C40`), and whether that path is missing C, wrong globals, or a script-state gate.
-4. **Out of scope until evidence demands:** camera core, actor layout rewrite, movement/walkmesh, renderer architecture, broad VM redesign, further log cleanup, stash archaeology.
+See **July 8 — Zone 11 exit handoff investigation** below (updated). Summary: zone 8–11 paths are **door-open scripts**, not map-load scripts. Next evidence target is who actually sets `D_800ADBEC=0` / map-swap opcodes on Map1.
 
 Historical notes still true for field recovery (not the next blocker): Kernel0 path can run without hard stub crash; battle `XENO_KERNEL_SEL=1` still hits `func_8001B6C4` stub; do not fake primitives or clamp for “looks better.”
+
+## July 8 — Zone 11 → transition handoff investigation (read-only, post-rand known-good)
+
+- **Baseline:** tag `known-good-map1-field-control` @ `32222ed`; handoff refresh `3e20bd1`. No source edits this pass.
+- **Repro:** Map1 ent9, `+X` frames 1–104 then `+Z`; zone 11 inside ~frame 134 (`misc11.c:992`).
+- **Runtime log:** `captures/render_diag/map1_exit_handoff_trace_20260708_161216.log`
+  - Zone fires; `var0462` 0→1 after latch; **`g_GameSceneMapNum` stays 1** through frame 320.
+  - Breakpoints on `func_800932D0`, `func_80092EA0`, `func_80092894`, `FieldScriptFadeOut`, `FieldScriptFadeIn`, `func_8009FB98`, `func_800A5C40`: **zero hits**.
+- **Static decode (Map1 script dump `map1_scriptfile_20260708.bin`, scriptData base file+`0x1084`):** actor **48** routine 1 owns zones 8–11 as one chain:
+
+| Zone | op7 target | Post-op7 |
+|------|------------|----------|
+| 8 | actor **17** routine **4** | op116 sound `74 14 80`, op54 latch var `0x045c` |
+| 9 | actor **15** routine **4** | sound + latch `0x045e` |
+| 10 | actor **16** routine **4** | sound + latch `0x0460` |
+| 11 | actor **18** routine **4** | sound + latch `0x0462` |
+
+- **Door routine 4 (all four actors):** only `05 d5 17` (call shared Y-rotation sub `@0x17d5`) + `00` stop. No fade, no map num write, no `D_800ADBEC` arm.
+- **op116 `func_8008F668`:** sound cue → `func_80085634` → shim `func_800855C8` (audio only). **Not** warp-destination setup (early hunt mislabeled this).
+- **Correction to early “exit/transition system FOUND” note:** zones 8–11 are a **door-open + one-shot latch** system. Engine map-swap helpers (`func_80092894` / op152-class / fades / `FieldMain` seamless reload when `D_800ADBEC==0`) exist, but **this trigger chain never calls them**. The missing map change is not “op7 stalled” or “op54 failed” on current HEAD — those already succeed.
+
+### Proven chain (complete, no code gap on this path)
+
+```text
+Zone 11 inside → actor48: op7 actor18 r4 → door rotate → op116 sound → op54 latch 0x0462 → stop
+```
+
+### What is *not* missing on this path
+
+- Slot init / op7 allocation (fixed earlier)
+- Sound shim (intentional no-op)
+- Host rand (fixed; door-state separate)
+
+### Actual gap for “leave Map1”
+
+Need a **different** retail handoff after/beside the door open, e.g.:
+
+1. Script elsewhere that runs map-swap / fade / `D_800ADBEC=0` (C writers of `D_800ADBEC` are mostly init `-1`, debug path in `FieldMain`, and **INCLUDE_ASM** `func_80092894`), or
+2. Collision/walkmesh change after door anim that allows a **geometry** exit, or
+3. Another trigger/interaction once the door state/vars change.
+
+### Next single diagnostic (still read-only)
+
+1. Find Map1 bytecode that actually reaches `func_80092894` / map-swap / `FieldScriptFadeOut` (length-aware scan or Noah cross-check + asm), **or** watch writes to `D_800ADBEC` / `g_GameSceneMapNum` on a longer/post-door route.
+2. Do **not** implement `func_800A5C40` until something sets `D_800ADBEC==0` and queues a new map.
+3. Still out of scope: camera, actor layout, movement rewrite, renderer, broad VM, log cleanup.
 
 ## Commands Verified
 
