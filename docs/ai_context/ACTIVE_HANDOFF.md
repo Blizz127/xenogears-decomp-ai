@@ -30,6 +30,38 @@
 - **Do NOT use entrances 6/10** — harness-invalid indices (out-of-range spawn-table walkmeshId), they crash and are not part of the milestone.
 - **Not the milestone / known-separate:** the default-boot "Map0" (no `XENO_FIELD_MAP`) renders BLACK — pre-existing at baseline `79c7ee7`, not a regression.
 
+## 🎯 First field progression — trigger zone fires (2026-07-07, VERIFIED, read-only, uncommitted)
+
+**Driving Fei into a Map1 trigger zone fires the trigger subroutine end-to-end. The first real
+field-progression event: walking into a zone enables random encounters for that region.**
+
+- **No code changes** — pure gdb/diagnostic on clean HEAD `b9266c5`. Full write-up:
+  `captures/render_diag/map1_zone5_trigger_fire_20260707.md`.
+- **Repro:** `XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8` spawns Fei at **(−10,2207)**, ~34 units below
+  ZONE 5's edge (Z=2241); synthetic +Z injection (`D_800AFE9C=0x2000`) walks him in at hit 132.
+  (Entrance 8 chosen over 0 because it's zone-adjacent — task allows "another valid visible entrance
+  if better"; entrance 8 renders real field terrain, 45 KB frame `vis_ent8_20260707.png`. Entrance 0's
+  nearest zone is ~3100 units away → impractical to reach under gdb, ~22k injection-hits.)
+- **Chain (position-verified):** Fei inside ZONE 5 → `FieldScriptHandleTriggerZone2D` (misc11.c:844)
+  NormalClip point-in-quad passes → misc11.c:873–874 push return IP 6156, jump script IP **6152→6186**
+  → subroutine runs **func_80093B10** (misc11.c:302) → `isRandomEncountersEnabled=-1`,
+  `g_Scene.unk48` 0x0→**0xc000**, `D_800B00C0=0` (no VM stall; `D_800ADBDC/E4=-1` so the misc11.c:307
+  stall branch is not taken). **No stub, no assert, clean exit.**
+- **Direction map (spawn −906,−863):** `D_800AFE9C` 0x1000=+X · 0x2000=+Z · 0x4000=−X · 0x8000=−Z.
+- **All 7 zones characterized (exhaustive):** the 7 trigger opcodes are a contiguous per-frame block
+  (IPs 6152–6176 → zones 5/2/7/1/0/4/6) pointing at **only 2 subroutines** — A@6186 (zones 5,2) and
+  B@6210 (zones 7,1,0,4,6). **Both route into func_80093B10 = enable random encounters** (A traced
+  live; B confirmed — its `func_80095B3C` arg2=6219 lands on `254 84`=func_80093B10). **All 7 zones are
+  random-encounter-region activators; none is a map transition / fade / scripted camera.** The two
+  variants differ only in a `func_80095B3C` operand (per-region encounter params).
+- **VM opcode encoding learned:** byte `254`=`FieldScriptVM2Run` prefixes an extended opcode via
+  `g_FieldScriptVMHandlers2 = &g_FieldScriptVMHandlers[256]` (table1=opcodes 0–255, table2=256–482,
+  483 total; full list in `pc_port/src/data_field.c`). Dispatch: `virtual_machine.c:250`.
+- **Next progression step (not yet done):** these zones only toggle encounters — to see a *scene
+  change* look for fade/transition opcodes (179 FadeOut / 180 FadeIn) or map-load opcodes driven by a
+  different trigger or a dialog/scenario-flag path, or reach an exit warp. Encounters being ON also
+  means a battle transition could now fire while walking (untested).
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
