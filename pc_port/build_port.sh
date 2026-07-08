@@ -185,7 +185,48 @@ if [ -s "$OUT/undef.txt" ]; then
              config/symbol_addrs.member_change_menu.txt config/symbol_addrs.shop_menu.txt; do
         [ -f "$s" ] && SYMS+=(--symbol-addrs "$s")
     done
-    python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
+    if [ "${#ELFS[@]}" -gt 0 ]; then
+        python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
+    elif [ -f "$OUT/stubs.c" ]; then
+        echo "    (warning: matching ELFs missing; reusing existing stubs.c)"
+    else
+        echo "ERROR: matching ELFs missing and no existing $OUT/stubs.c to reuse."
+        exit 1
+    fi
+    nm -g --defined-only "$OBJ/port_main.o" "${GAME_OBJS[@]}" 2>/dev/null \
+        | awk '{print $3}' | sort -u > "$OUT/defined.txt"
+    python3 - "$OUT/stubs.c" "$OUT/defined.txt" <<'PY'
+import re
+import sys
+
+stubs_path, defined_path = sys.argv[1], sys.argv[2]
+with open(defined_path) as f:
+    defined = set(f.read().split())
+with open(stubs_path) as f:
+    lines = f.readlines()
+
+stub_re = re.compile(r"^long\s+([A-Za-z_]\w*)\(void\)\s+\{")
+out = []
+removed = []
+for line in lines:
+    m = stub_re.match(line)
+    if m and m.group(1) in defined:
+        removed.append(m.group(1))
+        continue
+    out.append(line)
+
+func_count = sum(1 for line in out if stub_re.match(line))
+for i, line in enumerate(out):
+    if re.match(r"/\* ---- \d+ function symbols ---- \*/", line):
+        out[i] = f"/* ---- {func_count} function symbols ---- */\n"
+        break
+
+if removed:
+    with open(stubs_path, "w") as f:
+        f.writelines(out)
+    print(f"    pruned stale function stubs: {', '.join(removed[:8])}"
+          f"{'...' if len(removed) > 8 else ''}")
+PY
     gcc -c "$OUT/stubs.c" -O0 -g -o "$OBJ/stubs.o"
 fi
 
