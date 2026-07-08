@@ -162,6 +162,21 @@ and was NOT reachable from valid entrances in this pass.** Full write-up:
 - **Static comparison:** current C behavior matches retail asm for `func_8009EB78`: resolve actor from byte 1, skip if target actor invalid, check existing script id, scan 8 slots for priority `0xF` and busy bit clear, write target IP/script id/priority and advance by 3 only if a free slot is found. Noah's field reference shows the same free-slot condition as readability corroboration, but retail asm is the source of truth.
 - **Next exact gate:** determine why actor 18's nominally idle slots have their busy bit set before the exit op7 runs. This is likely upstream script-slot initialization/lifecycle state, not movement, trigger math, NormalClip, or `func_8009EB78` itself.
 
+### July 8 addendum — ROOT CAUSE: `func_80080A74` slot-init offset bug makes idle slots busy
+
+- **No source changes.** Docs-only checkpoint `213b826` was committed/pushed first; this addendum is the new read-only diagnostic result.
+- Probe script/log: `captures/render_diag/map1_actor18_slot_writer_probe_20260708.gdb`, `captures/render_diag/map1_actor18_slot_writer_probe_20260708_100530.log`.
+- Watchpoint result: actor 18 `ActorData` is allocated zeroed (`slot0=0`, `slot1=0`), then **`func_80080A74` writes slot flags during FieldLoad before frame 1**:
+  - slot0/slot1 first become `0x003c0000` (priority `0xF`, busy `0`).
+  - immediately after, the same function writes them to `0xffff0000` (priority `0xF`, busy `1`).
+  - Backtrace: `func_80080A74` -> `func_80080F44` -> `FieldLoad` -> `func_80078D44` -> `FieldMain`.
+- **C-vs-asm divergence found in `src/field/main/misc8.c:161-168`.** The current C loop uses `u8* e = p + 0x90 + i * 8`, then writes `e+0`, `e+2`, `e+5`, `e+6`. Retail asm treats the slot base as `p+0x8C+i*8`: it writes slot metadata at offsets `0x8C/0x8E/0x8F`, writes the flag word at `0x90`, then writes `0xFFFF` to the low half of the flag word at `0x90`.
+- Consequence from zeroed memory:
+  - **Retail expected idle/free flag word:** `0x003cffff` -> priority `0xF`, busy `0`, free for op7.
+  - **Current C produces:** `0xffff0000` -> priority `0xF`, busy `1`, not free for op7.
+- This explains the exit blocker: actor 18 slot1-7 are not genuinely busy with real scripts; they are initialized with the busy bit set by a slot-base transcription bug. Slot0 later receives scheduler routine priority `7` (`0xffdf0000`), but the nominally idle slots remain busy, so op7 cannot allocate routine 4 and IP `6084` repeats.
+- **Smallest fix candidate (not applied):** in `func_80080A74`, make the loop base the slot start (`p + 0x8C + i * 8`) and mirror the retail writes: currentIP `0xFFFF`, wait `0`, scriptId `0xFF`, flag word priority `0xF` with busy cleared, then low half `0xFFFF`. Verify actor 18 slots initialize as `0x003cffff`, zone 11 op7 advances to op116/op54, and Map0/Map1 guard runs stay clean.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
