@@ -196,6 +196,19 @@ and was NOT reachable from valid entrances in this pass.** Full write-up:
 - **Transition continuation:** follow-up log `captures/render_diag/map1_transition_after_op116_follow_20260708_104440.log` reaches op116 handler `func_8008F668` at `ip=6087`, then exposes new runtime stub `[stub] func_800855C8`, then reaches op54 `FieldScriptVMHandlerVariableSetTrue` at `ip=6090`. No fade/map-load reached by frame 261; state remains `D_800ADBEC=-1`, `D_800B00C0=1`, map `1`. The next blocker is the unimplemented `func_800855C8` INCLUDE_ASM in `src/field/main/misc8.c` (called from op116 path), not op7/slot allocation.
 - **Post-combined smoke:** build still links; Map1 entrance 9 `RUN_RC=124` (`captures/render_diag/combined_slotfix_map1_ent9_smoke_20260708_104518.log`); Map1 entrance 0 visible-control smoke `RUN_RC=124` (`captures/render_diag/combined_slotfix_visible_control_ent0_20260708_104518.log`); default/Map0 guard smoke `RUN_RC=124` (`captures/render_diag/combined_slotfix_map0_guard_20260708_104518.log`). Dirty source scope is limited to `src/field/main/misc7.c` and `src/field/main/misc8.c`.
 
+### July 8 addendum — READ-ONLY classification: `func_800855C8` is sound-side, not a hard field-transition blocker
+
+- **No source edits / no commit.** HEAD remains `9e1b6670e8f3ea43eb579d47e987ea9921737d81`; status was clean before this docs update.
+- Repro/classification log: `captures/render_diag/map1_func800855C8_classify_20260708.gdb`, `captures/render_diag/map1_func800855C8_classify_20260708_105240.log`.
+- Route still reaches zone 11 and op7 still succeeds. `func_800855C8` is reached via `func_8008F668` (op116) -> `func_80085634(a0=20, a1=3)` -> `func_800855C8(20, 0x7F, 0x40, 3)`. Backtrace: generated `func_800855C8` stub -> `func_80085634` -> `func_8008F668` -> `FieldScriptVMRun`.
+- `func_800855C8` asm (`asm/field/nonmatchings/main/misc8/func_800855C8.s`) is tiny (`0x6C` bytes): mask `a3 & 7`, call `func_8003A20C((a3 & 7) * 2)`, then call `func_80039F9C(a0, (a3 & 7) * 2, a1, a2)`.
+- Dependency classification:
+  - `func_8003A20C` (`0xC8` bytes, `asm/slus_006.64/nonmatchings/system/sound/func_8003A20C.s`) walks two sound-channel records under `D_800595D8`, clears active voice bits, and calls `SoundReleaseVoiceFromChannel`. It is currently a generated PC-port runtime stub (`pc_port/build_native/stubs.c`).
+  - `func_80039F9C` (`0x5C` bytes) gates on `g_SoundControlFlags & 0x800`, sets `D_80059404 = 2`, and calls `func_8003B644(...)`. It is not linked while `func_800855C8` remains stubbed.
+  - `func_8003B644` is **not bounded** (`0x2EC` bytes): it touches `g_SoundSedsLinkedList`, `g_SoundWdsLinkedList`, `D_800595D8`, `D_80059404`, `D_80059504`, disables/enables `g_unk_SoundEvent`, and calls `SoundFindWdsEntry`, `func_8003E5BC`, `SoundAssignVoiceToChannelAndStop`, and `SoundReleaseVoiceFromChannel`.
+- Conclusion: this is a sound/channel cue path. The current generated no-op for `func_800855C8` already returns, allowing op116 to complete and op54 to run (proved in `map1_transition_after_op116_follow_20260708_104440.log`). Therefore `func_800855C8` is **audio-side fallout, not the next hard game-logic transition blocker**.
+- Recommended next implementation step: do **not** port the deep sound chain just for field progression. Instead, add a narrowly documented PC-port sound shim/no-op for field sound cue wrappers only after deciding the shim boundary (`func_800855C8` vs `func_8003A20C`/`func_80039F9C`). Then continue field-transition diagnostics past op54 to find the next non-audio blocker.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
