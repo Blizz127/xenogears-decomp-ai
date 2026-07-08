@@ -1011,6 +1011,16 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - **Conclusion:** `0x0462` is not a short pulse consumed by another actor. It is a local latch for actor 48's zone-11 exit branch, preventing repeated op7 starts after the first trigger. The transition/fade/map-load path should be sought in the actor 18 routine started by op7 (`07 12 24`), not in a `0x0462` consumer.
 - **Next single diagnostic:** trace actor 18 routine 4 after op7 allocation: start offset from the Map1 offset table is `0x07cf`. Follow its runtime branch path until fade/map-load, a known side-system stub, or the next real blocker. Keep `0x0462` unchanged; it is doing latch work.
 
+## July 8 — READ-ONLY actor 18 routine 4 trace: op7 subroutine completes, no transition effect
+
+- **Checkpoint:** committed/pushed docs-only `e13c0e32142c7d5216f2f86c0adf97e9665cee17` (`Document Map1 var0462 latch finding`) before this pass. HEAD/status at start were clean; no source edits.
+- **Trace:** `captures/render_diag/map1_actor18_routine4_trace_20260708_134118.log` using Map1 entrance 9 route (`+X` through frame 105, then `+Z`). It confirms zone 11 inside path (`misc11.c:992`), op7, op116, and op54 all run.
+- **op7 allocation:** at frame 134, actor 18 slot 1 is allocated from free state `0x003cffff` to IP `0x07cf`, script id `4`, priority `1`, flag word `0x0004ffff`. Slot 0 was already actor 18's normal routine slot (`ip=0x710`, priority 7, scriptId `0xff`).
+- **Routine 4 execution:** actor 18 slot 1 starts at `0x07cf` and executes `05 d5 17` (`func_800A17F4`, call subroutine `0x17d5`, return `0x07d2`). Shared tail at `0x17d5` performs `func_80094B3C`/`func_80094BAC` Y-rotation steps with one-frame sleeps, then `0x17f9: 0d` (`func_800A18B8`, return). It returns to `0x07d2: 00` (`func_800A1B70`, stop/yield), freeing slot 1 by frame 147. Final slot 1 is idle/free-ish (`ip=0x07d2`, scriptId `0xff`, word `0x003cffff`).
+- **No transition:** no `FieldScriptFadeOut`, `func_800A5C40`, map reload, or fade/map-load effect was reached through frame 341. Actor 18 routine 4 contains no fade/map-load candidate; it is a short door/actor animation subroutine, not the transition itself.
+- **Next breadcrumb:** Map1 script static scan shows `FieldScriptFadeOut` opcodes elsewhere. The closest relevant-looking one is inside actor 18 routine 1 at IP `0x07a8` (owner actor 18 routine 1), while actor 18 routine 4 owns no fade. During the trace, actor 18's normal slot 0 repeatedly runs routine 1 around `0x06a1 -> 0x0708 -> 0x0710` and sleeps/loops; it does not branch to `0x07a8`.
+- **Next single diagnostic:** trace actor 18 routine 1's branch conditions/state variables around `0x06a1-0x07a8`, especially the conditionals at `0x0708/0x0716/...`, to determine what gate prevents reaching the `FieldScriptFadeOut` at `0x07a8` after zone 11/op7 completes. Do not patch op7/routine4/0x0462.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
