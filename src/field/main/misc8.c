@@ -1840,7 +1840,23 @@ void func_80085560(s32 a0, s32 a1, s32 a2) {
     D_800AFEA4 = a2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800855C8);
+/* XENO_PC_PORT temporary audio boundary:
+ * Field transition scripts reach func_800855C8 for a sound cue. Retail then
+ * enters the deeper sound voice/SED/WDS assignment path
+ * (func_8003A20C/func_80039F9C/func_8003B644). That subsystem is not ported
+ * yet, and this sound call does not own field transition state, so the native
+ * port intentionally treats it as a no-op while field progression is traced.
+ * Remove this shim when the real audio engine path is implemented.
+ *
+ * The variadic form preserves current native call sites while func_80085634 is
+ * still a nonmatching register-style transcription that omits the fourth arg in
+ * C but preserves it in the original MIPS register flow. */
+void func_800855C8(s32 soundId, s32 volume, s32 pan, ...)
+{
+    (void)soundId;
+    (void)volume;
+    (void)pan;
+}
 
 extern s32 D_800B21B8;
 
