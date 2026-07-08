@@ -12,6 +12,24 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## 🏁 MILESTONE — First visible field-control (2026-07-07)
+
+**Fei is visibly controllable with real keyboard input on a rendered field.** First time the full chain works end-to-end and on screen.
+
+- **Milestone commits:** `55a2dda Fix walkmesh triangle lookup and movement resolution` + `6bc1752 Implement func_80082620 collision-aware auto-move + func_800825AC`.
+- **Chain complete:** input delivery ✅ · player-control opcode (0xA7) ✅ · animation/facing render ✅ · walk-step vector (func_80081F80) ✅ · walkmesh triangle lookup (func_8007B1C4) ✅ · walkmesh movement (func_8007BAC0) ✅ · collision auto-move (func_80082620) ✅ · **visible Fei control** ✅.
+- **Exact demo command** (run on HOST via distrobox; needs a live X display for real input — `DISPLAY=:0` on the desktop, or Xvfb+xdotool headless):
+  ```
+  distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+    SDL_VIDEODRIVER=x11 XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 \
+    XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=0 XENO_FIELD_0BB_VRAM_UPLOAD=1 \
+    ./pc_port/build_native/xeno-port'
+  ```
+  Fei = **actor 1** (`g_PlayerActorIndex=1`) here. Arrows = D-pad; C = run/Cross. `XENO_FIELD_ENTRANCE=8` also works. RC=124, field renders (Fei visible), position advances.
+- **Demo capture on record:** `captures/render_diag/fei_control_repro_20260707_211919.*` (write-up + gdb position trace + Fei-visible screenshot + real-input before/after camera-pan).
+- **Do NOT use entrances 6/10** — harness-invalid indices (out-of-range spawn-table walkmeshId), they crash and are not part of the milestone.
+- **Not the milestone / known-separate:** the default-boot "Map0" (no `XENO_FIELD_MAP`) renders BLACK — pre-existing at baseline `79c7ee7`, not a regression.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
