@@ -177,6 +177,15 @@ and was NOT reachable from valid entrances in this pass.** Full write-up:
 - This explains the exit blocker: actor 18 slot1-7 are not genuinely busy with real scripts; they are initialized with the busy bit set by a slot-base transcription bug. Slot0 later receives scheduler routine priority `7` (`0xffdf0000`), but the nominally idle slots remain busy, so op7 cannot allocate routine 4 and IP `6084` repeats.
 - **Smallest fix candidate (not applied):** in `func_80080A74`, make the loop base the slot start (`p + 0x8C + i * 8`) and mirror the retail writes: currentIP `0xFFFF`, wait `0`, scriptId `0xFF`, flag word priority `0xF` with busy cleared, then low half `0xFFFF`. Verify actor 18 slots initialize as `0x003cffff`, zone 11 op7 advances to op116/op54, and Map0/Map1 guard runs stay clean.
 
+### July 8 addendum — slot-init fix attempt exposed earlier script-move pointer bug; code not committed
+
+- Docs-only blocker commit landed first: `7441ca9 Document actor script slot init blocker` (pushed).
+- Code attempt was saved but **not committed**: `captures/render_diag/slotinit_full_write_attempt_exposed_misc7_crash_20260708_103616.patch`. It first tried the base-only offset change, then the full retail write pattern (`currentIP=0xFFFF`, wait `0`, scriptId `0xFF`, flags word at `e+4`, low-half `0xFFFF`).
+- Verification conflict: the base-only offset still produced actor 18 idle slot flags `0xffffff00` and op7 stayed blocked. The full retail write pattern began producing the expected free flags (`0x003cffff`, busy clear) during initialization, but Map1 entrance 9 then crashed before the exit route (`RUN_RC=139`, SIGSEGV) at `func_80098CAC` `src/field/main/misc7.c:272`.
+- Crash evidence: `captures/render_diag/map1_slotinit_fix_verify_20260708_103519.log`, `captures/render_diag/map1_slotinit_fix_plain_20260708_103544.log`. Backtrace: `func_80098CAC -> func_80098C00 -> FieldScriptVMRun -> func_800A2030 -> func_8008110C -> func_800739C0 -> func_8007554C -> ...`.
+- Immediate C evidence: in `func_80098CAC`, line 197 currently evaluates `(void*)(uintptr_t)pFieldActor[D_800AFD1C].pSpriteData;` but does not assign it to local `pSprite`; later lines 272-287 dereference `pSprite`. The old bad slot init masked this by keeping affected script slots busy/stalled. Once idle slots become truly allocatable/runnable, this pre-existing script-move pointer bug becomes the next blocker.
+- Safety outcome: `src/field/main/misc8.c` was restored to the pre-attempt state to preserve the current buildable/runnable field state, then rebuilt; Map1 entrance 9 smoke returned to timeout/no-crash (`RUN_RC=124`) in `captures/render_diag/map1_restored_after_failed_slotfix_20260708_103726.log`. No code fix is committed. Next smallest code pass, if approved, should first asm-check/fix `func_80098CAC`'s `pSprite` assignment, then re-apply the saved `func_80080A74` slot-init patch and rerun the same zone-11/op7 verification.
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
