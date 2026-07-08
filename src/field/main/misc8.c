@@ -719,15 +719,38 @@ s32 func_80082494(s32* pVec, u8* actorData) {
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800825AC);
+extern long FieldGetVec2Magnitude(long x, long y);
+
+/* ---- func_800825AC: 2D distance between two field actors ------------------
+ * Faithful port of asm/.../misc8/func_800825AC.s (0x74 bytes). Reads each
+ * actor's ActorData (FieldActor stride 0x5C, pActorData at +0x4C) integer XZ
+ * position (+0x22 / +0x2A) and returns FieldGetVec2Magnitude of the delta.
+ * Used by func_80082620's actor-follow branch. */
+s32 func_800825AC(s32 actorA, s32 actorB) {
+    u8* dataA = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + actorA * 0x5C + 0x4C);
+    u8* dataB = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + actorB * 0x5C + 0x4C);
+    s32 dx = *(s16*)(dataB + 0x22) - *(s16*)(dataA + 0x22);
+    s32 dz = *(s16*)(dataB + 0x2A) - *(s16*)(dataA + 0x2A);
+    return FieldGetVec2Magnitude(dx, dz);
+}
 
 extern u16 D_800ADFA8[];
 extern s16 D_800ADFC4[];
 extern void func_8007B614(s32* pOut, s16 scale, s16 angle);
 
+/* ---- func_80082620: environmental / collision-aware auto-move -------------
+ * Faithful port of asm/.../misc8/func_80082620.s (0x598 bytes). Beyond the
+ * simple auto-move (LUT scale/angle -> func_8007B614), it now implements the
+ * tail branches that the corrected walkmesh material (moveFlags = +0x14) drives
+ * actors into: the slope-normal projected move (.L800826FC/.L80082820), the
+ * actor-follow branch (.L800828E0: HeapAlloc work object + func_800825AC +
+ * ratan2/rsin/rcos), and the D_801E8670 work-object divide path (.L80082AF4).
+ * gotos mirror the shared asm labels; the previous "unsupported branch" assert
+ * is now covered by real retail behavior. */
 void func_80082620(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actor = pFieldActor;
     u8* actorData = pActorData;
+    u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
     s32 moveVec[3];
     u32 moveFlags = 0;
     u32 flags0 = *(u32*)(actorData + 0x00);
@@ -735,8 +758,10 @@ void func_80082620(s32 actorIndex, void* pFieldActor, void* pActorData) {
     s32 shift = *(s16*)(actorData + 0x10) + 3;
     s16 scale;
     u16 angle;
-
-    (void)actorIndex;
+    s32 s0move = 0;   /* $s0: X slope-move accumulator */
+    s32 s3move = 0;   /* $s3: Z slope-move accumulator */
+    s32 f0val;        /* $s4: actorData+0xF0 snapshot */
+    s32 addTest;      /* moveVec-add gate (0x4000 via flags0 path, else 0x8000) */
 
     if (((flags4 >> shift) & 1) == 0) {
         if (D_800B21CC == 0) {
@@ -750,33 +775,147 @@ void func_80082620(s32 actorIndex, void* pFieldActor, void* pActorData) {
     func_8007B614(moveVec, scale, angle);
 
     if ((flags0 & 0x00041800) != 0) {
-        if (moveFlags & 0x00004000) {
-            *(s32*)(actorData + 0x40) += moveVec[0];
-            *(s32*)(actorData + 0x44) += moveVec[1];
-            *(s32*)(actorData + 0x48) += moveVec[2];
-        }
-        assert(*(u8*)(actorData + 0x74) == 0xFF);
-        assert((flags4 & 0x00022000) != 0x00022000);
-        return;
+        /* asm 800826E4: skip the slope path; gate the moveVec add on 0x4000 */
+        addTest = moveFlags & 0x00004000;
+        goto apply_movevec;
     }
 
-    /* asm .L80082888: pending-movement application — add the computed move
-     * vector into the actor's position accumulators, then continue. */
-    if (moveFlags & 0x00008000) {
+    /* ---- main path (asm .L800826EC) ---- */
+    f0val = *(s32*)(actorData + 0xF0);
+    if ((moveFlags & 0x00420000) != 0) {
+        /* slope-normal projected move (asm .L800826FC-.L8008281C) */
+        VECTOR nIn;
+        VECTOR nOut;
+        s32 nvx = *(s32*)(actorData + 0x50);
+        s32 nvy = *(s32*)(actorData + 0x54);
+        s32 nvz = *(s32*)(actorData + 0x58);
+        s32 vshift;
+        s32 bound;
+        s32 nf0;
+
+        nIn.vx = (-(nvx * nvy)) >> 15;
+        nIn.vz = (-(nvz * nvy)) >> 15;
+        if (nIn.vx == 0) {
+            nIn.vx = 1;
+        }
+        nIn.vy = 1; /* asm zeroes sp+0x24 then unconditionally stores 1 */
+        if (nIn.vz == 0) {
+            nIn.vz = 1;
+        }
+        VectorNormal(&nIn, &nOut);
+        if (nOut.vx == 0) {
+            nOut.vx = 1;
+        }
+        if (nOut.vy == 0) {
+            nOut.vy = 1;
+        }
+        if (nOut.vz == 0) {
+            nOut.vz = 1;
+        }
+
+        vshift = f0val >> 17;
+        s0move = (nOut.vx * vshift) << 4;
+        s3move = (nOut.vz * vshift) << 4;
+        bound = ((moveFlags & 0x00400000) != 0) ? 0x18 : 0xC;
+
+        if ((f0val >> 16) < bound) {
+            nf0 = f0val + *(s32*)(spriteData + 0x1C);
+        } else {
+            nf0 = bound << 16;
+        }
+        *(s32*)(actorData + 0xF0) = nf0;
+        *(s32*)(spriteData + 0x10) = *(s32*)(actorData + 0xF0) >> 1;
+    }
+
+    /* asm .L80082820 */
+    if ((moveFlags & 0x00400000) != 0) {
+        *(s32*)(actorData + 0x40) += s0move;
+        *(u16*)(actorData + 0x104) |= 0x8000;
+        *(s32*)(actorData + 0x48) += s3move;
+    }
+
+    /* asm .L80082850 */
+    if (*(u8*)(actorData + 0x74) == 0xFF) {
+        if ((moveFlags & 0x00020000) != 0) {
+            *(s32*)(actorData + 0x40) += s0move;
+            *(s32*)(actorData + 0x48) += s3move;
+        }
+        addTest = moveFlags & 0x00008000;
+        goto apply_movevec;
+    }
+    goto follow_actor;
+
+apply_movevec: /* asm .L8008288C */
+    if (addTest != 0) {
         *(s32*)(actorData + 0x40) += moveVec[0];
         *(s32*)(actorData + 0x44) += moveVec[1];
         *(s32*)(actorData + 0x48) += moveVec[2];
     }
+    /* asm .L800828D0 */
+    if (*(u8*)(actorData + 0x74) == 0xFF) {
+        goto work_object;
+    }
+    /* else fall through to the actor-follow branch */
 
-    if ((moveFlags & 0x00420000) != 0 ||
-        (moveFlags & 0x00400000) != 0 ||
-        *(u8*)(actorData + 0x74) != 0xFF ||
-        (moveFlags & 0x00020000) != 0 ||
-        (flags4 & 0x00022000) == 0x00022000) {
-        assert(!"func_80082620 unsupported actor movement branch");
+follow_actor: /* asm .L800828E0 */
+    {
+        s32 followIdx = *(u8*)(actorData + 0x74);
+        u8* followFA = (u8*)g_FieldActors + followIdx * 0x5C;
+        u8* followData = (u8*)(uintptr_t)*(u32*)(followFA + 0x4C);
+        u8* work;
+        s32 myX;
+        s32 myZ;
+        s32 followX;
+        s32 followZ;
+        s32 s0y;   /* $s0: change in the followed actor's +0x52 bound */
+        s32 dist;  /* $s1 */
+        s32 followAngle;
+
+        if ((*(u32*)(followData + 0x04) & 0xC0) != 0xC0) {
+            goto work_object;
+        }
+
+        if ((*(u32*)(actorData + 0x134) & 0x80) == 0) {
+            *(u32*)(actorData + 0x110) = (u32)(uintptr_t)HeapAlloc(0xC, 0);
+            *(u32*)(actorData + 0x134) |= 0x80;
+        }
+
+        /* asm .L80082944 */
+        work = (u8*)(uintptr_t)*(u32*)(actorData + 0x110);
+        s0y = (s16)(*(u16*)(followFA + 0x52) - *(u16*)(work + 0x2));
+        *(u16*)(work + 0x2) = *(u16*)(followFA + 0x52);
+
+        myX = *(s32*)(actorData + 0x20);
+        myZ = *(s32*)(actorData + 0x28);
+        followX = *(s32*)(followData + 0x20);
+        followZ = *(s32*)(followData + 0x28);
+
+        if ((*(s16*)(actorData + 0x104) & 0x8000) == 0) {
+            *(u16*)(work + 0x8) = (u16)func_800825AC(actorIndex, followIdx);
+        }
+        dist = *(s16*)(work + 0x8);
+
+        followAngle = ratan2(followZ - myZ, followX - myX);
+        followAngle = ((s16)followAngle - s0y) - 0x800;
+
+        *(s32*)(actorData + 0x40) +=
+            (followX + ((rsin(followAngle) * dist) << 4)) - myX;
+        *(s32*)(actorData + 0x48) +=
+            (followZ + ((rcos(followAngle) * dist) << 4)) - myZ;
     }
 
-    (void)actor;
+work_object: /* asm .L80082AF4 */
+    if ((flags4 & 0x00022000) == 0x00022000) {
+        s32 idx = D_800AF858;
+        u8* obj = (u8*)(uintptr_t)D_801E8670[idx];
+        u16 speed = *(u16*)(actorData + 0x76);
+
+        *(s32*)(actorData + 0x40) -=
+            ((*(s32*)(obj + 0x128) << 16) / speed) << 8;
+        D_800AF858 = idx + 1;
+        *(s32*)(actorData + 0x48) -=
+            ((*(s32*)(obj + 0x130) << 16) / speed) << 8;
+    }
 }
 
 extern s32 D_8005A448;
