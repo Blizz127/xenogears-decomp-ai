@@ -62,6 +62,33 @@ field-progression event: walking into a zone enables random encounters for that 
   different trigger or a dialog/scenario-flag path, or reach an exit warp. Encounters being ON also
   means a battle transition could now fire while walking (untested).
 
+## 🚪 Map1 exit/transition system FOUND (2026-07-07, read-only, uncommitted)
+
+**Map1 has a real map-transition system — a SECOND, height-gated trigger set (zones 8–11) distinct
+from the encounter zones — that fires an exit/warp → map-load + fade. It is ARMED but position-gated
+and was NOT reachable from valid entrances in this pass.** Full write-up:
+`captures/render_diag/map1_exit_transition_hunt_20260707.md`. No code changes; HEAD `94d8cfc`.
+
+- **Exit trigger:** opcode **203 `FieldScriptCheckTriggerZone`** (3D height-aware) polls **zones
+  8/9/10/11** every frame (IPs 5991/6018/6045/6072). Small (~130u) height-gated boxes (y0 −29..−276):
+  z8(438..571,−1569..−1452) z9(442..574,−1277..−1160) z10(−1434..−1302,1454..1571) z11(150..283,−1574..−1457).
+- **Armed:** the inside path is `ConditionalJmp(var==0)`; gdb read `var1116=1118=1120=1122=0` → live.
+  Inside path (zone 8 @6003) = **op7** (start transition script) + **op116** (`func_8008F668`, set warp
+  dest) + **op54** (VariableSetTrue var1116, mark used) + Jmp. Only **position** gates it.
+- **Transition mechanism** (in the op-7 started script): geometry/map swap via opcodes **152
+  `func_800932D0` / 71 `func_80092EA0` / 234** (shared `func_80092894`: write `g_GameSceneMapNum` +
+  entrance var2 + `D_800ADBEC=0`) → FieldMain seamless reload (`main.c:510`) → `func_8001B484` stream →
+  `FieldLoad` → **`func_800A5C40`** (misc5.c:248, **INCLUDE_ASM** = likely-first blocker if reached).
+  Also opcode **286 `func_8009FB98`** (`g_GameSceneMapNum |= 0xC000`), area-bank opcodes **114/117**,
+  fades **179/180**. None execute at idle — all gated behind the exit path.
+- **Reachability gate (3 fire attempts, synthetic injection):** entrance 9 (−292,−1713, nearest) →
+  Fei walks to (−27,−1215) then **wall-stuck** before the exits (X≥150); entrance 4 (535,1052,
+  exit-side) → Fei can't move that heading (walled at spawn); entrances 0/8 are ~1366–2500u away
+  (beyond synthetic-walk reach). **Gate = walkmesh navigation to a small height-gated box; no near
+  entrance.** Transition never fired → no fade/map-load effect observed, no new stub/assert hit.
+- **To fire next time:** need an entrance that spawns Fei in/adjacent to an exit box, or precise
+  real-time path-navigation (xdotool) around walkmesh obstacles into z8/z9/z11 (var still ==0).
+
 ## Current Verified State
 
 - Native PC field repro builds and links cleanly inside `xenogears-dev`.
