@@ -194,7 +194,7 @@ void func_80098CAC(s32 arg0) {
 
     pFieldActor = g_FieldActors;
     pActorData = (ActorData*)(uintptr_t)pFieldActor[D_800AFD1C].pActorData;
-    (void*)(uintptr_t)pFieldActor[D_800AFD1C].pSpriteData;
+    pSprite = (SpriteData*)(uintptr_t)pFieldActor[D_800AFD1C].pSpriteData;
     if (pActorData->flags & 0x2000) {
         speed = CONV_TO_GTE(0x8000000 / g_FieldScriptVMCurActor->moveSpeed);
     } else {
