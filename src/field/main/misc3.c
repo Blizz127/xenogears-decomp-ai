@@ -11,6 +11,17 @@
 #ifdef XENO_PC_PORT
 #include <stdlib.h>
 
+/* Opt-in [field-diag] gate (same contract as misc2.c / rendering.c). */
+static int XenoFieldDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
+
 /* Retail-shaped default: FieldLoad's per-actor model build (double-buffer
  * alloc + GPU command-list build) always runs, as on PSX. Required since the
  * func_800748E8 translation fix (asm mvmva cv=0): correctly translated model
@@ -550,7 +561,10 @@ void FieldLoad(void) {
     (void)D_8006FAF4;
     func_800705DC();
 #ifdef XENO_PC_PORT
-    printf("[field-diag] FieldLoad begin field=%d mapBuf=%p\n", (int)g_GameSceneMapNum, D_8005A4E0);
+    if (XenoFieldDiagEnabled()) {
+        printf("[field-diag] FieldLoad begin field=%d mapBuf=%p\n",
+               (int)g_GameSceneMapNum, D_8005A4E0);
+    }
 #endif
 
     /* Copy the 0x100-byte TIM/CLUT header table out of the map header. The asm
@@ -639,8 +653,11 @@ void FieldLoad(void) {
     g_FieldScriptVMCurScriptData =
         (u8*)g_FieldCurScriptFile + 0x84 + (g_FieldCurScriptFile->numScripts << 6);
 #ifdef XENO_PC_PORT
-    printf("[field-diag] assets before VM: tim=%d clut=%d scripts=%d scriptData=%p\n",
-           (int)timEntryCount, (int)clutEntryCount, (int)D_800ADBFC, g_FieldScriptVMCurScriptData);
+    if (XenoFieldDiagEnabled()) {
+        printf("[field-diag] assets before VM: tim=%d clut=%d scripts=%d scriptData=%p\n",
+               (int)timEntryCount, (int)clutEntryCount, (int)D_800ADBFC,
+               g_FieldScriptVMCurScriptData);
+    }
 #endif
 
     /* --- Triggers section (size 0x12C, offset 0x150) ------------------------ */
@@ -720,7 +737,9 @@ void FieldLoad(void) {
                         (u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x13C),
                         g_FieldSpriteData);
 #ifdef XENO_PC_PORT
-    printf("[field-diag] sprite package loaded: spriteData=%p\n", g_FieldSpriteData);
+    if (XenoFieldDiagEnabled()) {
+        printf("[field-diag] sprite package loaded: spriteData=%p\n", g_FieldSpriteData);
+    }
 #endif
 
     /* Reset scene world-rotation flags and load light data (header + 0x154). */
@@ -751,7 +770,10 @@ void FieldLoad(void) {
             pClear[i] = 0;
         }
 #ifdef XENO_PC_PORT
-        printf("[field-diag] actors allocated: count=%d actorArray=%p\n", (int)g_FieldNumActors, g_FieldActors);
+        if (XenoFieldDiagEnabled()) {
+            printf("[field-diag] actors allocated: count=%d actorArray=%p\n",
+                   (int)g_FieldNumActors, g_FieldActors);
+        }
 #endif
     }
 
@@ -909,9 +931,11 @@ void FieldLoad(void) {
             }
         }
 #ifdef XENO_PC_PORT
-        printf("[field-diag] before VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
-               (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
-               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+        if (XenoFieldDiagEnabled()) {
+            printf("[field-diag] before VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
+                   (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
+                   (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+        }
 #endif
     }
     func_800A28D4();
@@ -933,9 +957,11 @@ void FieldLoad(void) {
             }
         }
 #ifdef XENO_PC_PORT
-        printf("[field-diag] after VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
-               (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
-               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+        if (XenoFieldDiagEnabled()) {
+            printf("[field-diag] after VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
+                   (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
+                   (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+        }
 #endif
     }
 

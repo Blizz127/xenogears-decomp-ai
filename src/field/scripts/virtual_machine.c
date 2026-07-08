@@ -8,6 +8,19 @@
 #include "system/archive.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdlib.h>
+
+/* Diagnostic-gating only — no VM semantic changes.
+ * Same XENO_FIELD_DIAG contract as misc2.c / rendering.c. */
+static int XenoFieldDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -584,10 +597,11 @@ void func_800A28D4(void) {
 #ifdef XENO_PC_PORT
             /* Diagnostic-only static; see the matching-build note in
              * FieldAddPrimitives (misc2.c) -- confined to the port build so no
-             * .sbss storage for it is emitted for the matching target. */
+             * .sbss storage for it is emitted for the matching target.
+             * Gated by XENO_FIELD_DIAG; does not alter attach/run semantics. */
             {
                 static s32 s_loggedFirstAttach;
-                if (!s_loggedFirstAttach) {
+                if (XenoFieldDiagEnabled() && !s_loggedFirstAttach) {
                     printf("[field-diag] func_80076AC0 first: actor=%d actorPtr=%p actorSpriteSlot=%p curSprite=%p args=(%d,%d,%p,%d,%d,%d,%d)\n",
                            i, &g_FieldActors[i], &g_FieldActors[i].pSpriteData,
                            (void*)(uintptr_t)g_FieldActors[i].pSpriteData,

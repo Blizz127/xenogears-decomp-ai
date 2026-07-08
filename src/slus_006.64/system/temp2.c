@@ -4,6 +4,17 @@
 #ifdef XENO_PC_PORT
 #include <stdio.h>
 #include <stdlib.h>
+
+/* Opt-in [field-diag] gate (same contract as misc2.c / rendering.c). */
+static int XenoFieldDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
 #endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002AC24);
@@ -271,15 +282,17 @@ s32 func_8002C644(u8* a0) {
             if (end <= base || (end - base) >= 0x200000 ||
                 hdrNext <= base || (hdrNext - base) >= 0x200000) {
                 s_skippedPins++;
-                if (s_skippedPins <= 4) {
+                if (XenoFieldDiagEnabled() && s_skippedPins <= 4) {
                     printf("[field-diag] func_8002C644: skip invalid pin base=0x%x end=0x%x hdrNext=0x%x (skips=%d)\n",
                            base, end, hdrNext, s_skippedPins);
                 }
                 return 0;
             }
             s_realPins++;
-            printf("[field-diag] func_8002C644: real pin base=0x%x size=%u (pins=%d)\n",
-                   base, end - base, s_realPins);
+            if (XenoFieldDiagEnabled()) {
+                printf("[field-diag] func_8002C644: real pin base=0x%x size=%u (pins=%d)\n",
+                       base, end - base, s_realPins);
+            }
         }
 #endif
         HeapInsertAlloc((HeapBlock*)a0, (u_int)(a1 - (s32)a0));
