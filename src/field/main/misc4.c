@@ -659,13 +659,18 @@ void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4) {
                arg4->vy);
 }
 
-/* ---- func_8007B1C4: camera collision (ceiling) check -----------------------
- * Handwritten ASM using GTE NCLIP for point-in-triangle tests. Checks if
- * camera Y/Z position is inside any collision polygon from D_800AFB24[idx].
- * Returns collision height if found, 0 if not. Zeroes output structs.
- *
- * With zeroed collision data (port stub), D_800AFB44[idx] == 0 → loop
- * skipped → returns 0, zeroes outputs. Correct no-collision behavior. */
+/* ---- func_8007B1C4: walkmesh point-to-triangle locator ---------------------
+ * Faithful port of the handwritten GTE asm (asm/.../misc4/func_8007B1C4.s,
+ * 181 insns). For layer `idx`, walks its D_800AFB44[idx] triangles and finds
+ * the one that contains the XZ point (posX, posZ) via three NCLIP
+ * (cross-product) sign tests (all >= 0 => inside). On a hit it calls
+ * func_8007B07C to interpolate the surface Y at the point (into pOut) and the
+ * face normal (into pState), then returns the triangle index. If no triangle
+ * contains the point (or the layer has no triangles), it zeroes both outputs
+ * and returns 0 -- exactly the asm's fall-through behavior. Used at actor
+ * spawn (func_8009E574 / func_80080A74) to seed walkmeshTriIds[], and for the
+ * camera path (func_8007B478). Requires D_800AFB44 to be populated by the
+ * walkmesh loader (FieldLoad); with it zero the loop is skipped. */
 extern s32 D_800AFB24[];
 extern s32 D_800AFB34[];
 extern s32 D_800AFB44[];
@@ -673,26 +678,52 @@ extern u32 D_800AFB20[];
 extern u8 D_800B21CC;
 extern s16 D_800AFB54;
 
-s16 func_8007B1C4(s16 camY, s16 camZ, s32 idx, s16* pOut, s32* pState) {
+s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
+    u8* triBase = (u8*)(uintptr_t)(u32)D_800AFB24[idx];
     s32 count = D_800AFB44[idx];
-    s32 polyBase = D_800AFB24[idx];
-    s32 vertBase = D_800AFB34[idx];
+    u8* vertBase = (u8*)(uintptr_t)(u32)D_800AFB34[idx];
+    s32 packedPos = ((s32)posX << 16) + posZ;
+    s16 point[3];
+    s32 i;
 
-    /* With zeroed data: count=0, skip loop, fall through to return 0 */
+    point[0] = posX;
+    point[1] = 0;
+    point[2] = posZ;
 
-    /* XENO_PC_PORT TODO: when collision data is populated, implement the
-     * GTE NCLIP point-in-triangle loop here. For now, the zeroed-data
-     * path is the correct no-collision behavior. */
+    for (i = 0; i < count; i++) {
+        s16* tri = (s16*)(triBase + i * 14);
+        s16* v0 = (s16*)(vertBase + tri[0] * 8);
+        s16* v1 = (s16*)(vertBase + tri[1] * 8);
+        s16* v2 = (s16*)(vertBase + tri[2] * 8);
+        s32 p0 = ((s32)v0[0] << 16) + v0[2];
+        s32 p1 = ((s32)v1[0] << 16) + v1[2];
+        s32 p2 = ((s32)v2[0] << 16) + v2[2];
 
-    /* No collision found: zero outputs, return 0 */
+        if (NormalClip(p0, p1, packedPos) < 0) {
+            continue;
+        }
+        if (NormalClip(p1, p2, packedPos) < 0) {
+            continue;
+        }
+        if (NormalClip(p2, p0, packedPos) < 0) {
+            continue;
+        }
+
+        /* Point is inside triangle i: interpolate Y + normal, return index. */
+        func_8007B07C(v0, v1, v2, point, (VECTOR*)pState);
+        pOut[0] = point[0];
+        pOut[1] = point[1];
+        pOut[2] = point[2];
+        return (s16)i;
+    }
+
+    /* No containing triangle: zero outputs, return 0. */
     pOut[0] = 0;
     pOut[1] = 0;
     pOut[2] = 0;
-    if (pState) {
-        pState[0] = 0;
-        pState[1] = 0;
-        pState[2] = 0;
-    }
+    pState[0] = 0;
+    pState[1] = 0;
+    pState[2] = 0;
     return 0;
 }
 
@@ -1510,7 +1541,7 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
             steps = 0xFF;
             break;
         case 1:
-            nextTri = tri[5];
+            nextTri = tri[3];
             break;
         case 2:
             nextTri = tri[4];

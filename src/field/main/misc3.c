@@ -662,14 +662,23 @@ void FieldLoad(void) {
                         (u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x134),
                         D_800AFB18);
     /* Fixup pass over the decompressed model-2 buffer. The buffer begins with a
-     * count word, then a run of raw words. The first 4 are scaled ((w>>1)/7) and
-     * written to D_800AFB18+0x2C..0x38; the rest are relocated (add the buffer
-     * base) into the D_800AFB20 pointer table. */
+     * count word (numWalkMeshes) then per-layer block_size words. The first 4
+     * are scaled to per-layer triangle counts (block_size / 0xE == (w>>1)/7)
+     * and stored into D_800AFB44[0..3]; the rest are relocated (add the buffer
+     * base) into the D_800AFB20 pointer table.
+     *
+     * Retail asm (FieldLoad 800711B0) stores these counts to `&D_800AFB18 +
+     * 0x2C`, which in the game's contiguous layout is the ADDRESS D_800AFB44
+     * (0x800AFB18 + 0x2C == 0x800AFB44) -- NOT an offset into the decompressed
+     * buffer. The port must express that as D_800AFB44 explicitly (= the
+     * D_800AFB20 pointer table + 0x24, i.e. D_800AFB20[9]); writing into the
+     * buffer instead left D_800AFB44 zero, which disabled the walkmesh
+     * point-to-triangle locator func_8007B1C4 (its loop bound is this count). */
     {
         const u32 kDiv = 0x92492493u; /* fixed-point reciprocal used for /7 */
         u8* pBufBase = (u8*)D_800AFB18;
         u32* pSrc;
-        u32* pDst = (u32*)(pBufBase + 0x2C);
+        u32* pDst = &D_800AFB20[9];    /* = D_800AFB44[]: per-layer tri counts */
         u32* pBaseTab = D_800AFB20;
 
         D_800AFB54 = (s16)*(u32*)pBufBase;  /* count */
@@ -683,12 +692,20 @@ void FieldLoad(void) {
 
         pBaseTab[0] = (u32)(uintptr_t)(pBufBase + *pSrc++);   /* D_800AFB20 = base + off */
         if (D_800AFB54 > 0) {
-            u32* pA = &pBaseTab[1];        /* a2 walks from D_800AFB20+4  */
-            u32* pB = &pBaseTab[1 + 4];    /* a1 walks from D_800AFB20+0x14 */
+            u32* pA = &pBaseTab[1];        /* a0 walks D_800AFB24[k] from +0x4  */
+            u32* pB = &pBaseTab[1 + 4];    /* a1 walks D_800AFB34[k] from +0x14 */
             s32 k = 0;
             do {
-                pA[0] = *pSrc++ + pBaseTab[0];
-                pB[0] = *pSrc++ + pBaseTab[0];
+                /* Relocate the per-layer triangle/vertex block offsets against
+                 * the DECOMPRESSED BUFFER BASE (D_800AFB18), not FB20[0].
+                 * Retail (FieldLoad 80071244) reads the relocation base from
+                 * -0xC($a2) where $a2 = &D_800AFB20+4, i.e. *(&D_800AFB20-8) ==
+                 * *(&D_800AFB18) == pBufBase. The earlier hand-port added
+                 * pBaseTab[0] (== pBufBase + off0), over-shifting every
+                 * triangle/vertex base by off0 (~0x268) and turning all
+                 * walkmesh triangle indices into garbage. */
+                pA[0] = (u32)(uintptr_t)(pBufBase + *pSrc++);
+                pB[0] = (u32)(uintptr_t)(pBufBase + *pSrc++);
                 k++;
                 pA++;
                 pB++;
