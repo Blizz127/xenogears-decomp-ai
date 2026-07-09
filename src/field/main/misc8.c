@@ -1825,7 +1825,41 @@ finish:
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800854D0);
+extern s32 D_800ADBBC;
+extern s32 D_800ADBB8;
+extern s32 D_800ADB2C;
+extern s32 D_800AFEA4;
+extern s32 func_80028B14(void);
+
+// Per-frame CD-stream pump for the in-flight archive read kicked off by
+// func_80085560: func_80028B14 (still-unimplemented low-level PSX CD/DMA
+// polling primitive) reports which buffered chunk index is ready, or 0 when
+// no chunk transfer is in flight. While a chunk is in flight, forward it to
+// the read's registered per-chunk callback (D_800AFEA4, e.g. func_800859DC)
+// and report busy. Once idle and ArchiveDataSync confirms the CD/archive
+// subsystem is fully caught up, free the streaming buffer and clear
+// D_800ADB2C -- the flag func_800932D0 (CHANGE_FIELD) gates on.
+s32 func_800854D0(void) {
+    s32 chunkIndex;
+
+    chunkIndex = func_80028B14();
+    D_800ADBBC = chunkIndex;
+    if (chunkIndex != 0) {
+        ((void (*)(s32))(uintptr_t)D_800AFEA4)(chunkIndex);
+        return 0;
+    }
+
+    if (ArchiveDataSync() != 0) {
+        return 0;
+    }
+    if (D_800ADBBC != 0) {
+        return 0;
+    }
+
+    HeapFree((void*)(uintptr_t)D_800ADBB8);
+    D_800ADB2C = 0;
+    return -1;
+}
 
 extern s32 D_800ADB2C;
 extern s32 D_800ADBB8;
@@ -1972,23 +2006,52 @@ s32 func_80085C3C(void) {
 
 extern s32 D_8004F338;
 extern s32 D_8004F36C;
+extern s32 D_8004F354;
+extern s32 D_8004F33C;
+extern s32 g_GameHasLoadedWDS;
+extern u8 D_800ADFCC[];
+extern void* D_800C3A1C;
+extern void func_8003BDFC(s32);
 
 /* XENO_PC_PORT temporary audio boundary:
  * Retail func_80085C90 is the per-frame poller for an in-flight CD music-bank
- * stream started by func_80085B20: while the transfer is in progress it
- * returns -1 (caller keeps polling via D_8004F308), and once the retail CD/SPU
- * voice-assignment chain (func_80085C3C/func_80085F30/func_80085FB8, then
- * SPU voice setup via func_80039850/func_80039A80/func_8003A89C, or the
- * func_80039B68 alternate branch) finishes it marks the requested bank
- * loaded: D_8004F338 = requested id, D_8004F36C = 1.
- * That SPU voice-assignment chain is not ported (same boundary decision as
- * func_800855C8), so field scripts gated on "music ready" (e.g. FE0E,
- * func_8008C84C) would otherwise wait forever. Since the port has no CD
- * streaming to poll, report the requested bank loaded immediately: this is
- * the only externally-observed completion state, without reproducing the
- * internal SPU voice-assignment bookkeeping. Remove this shim when the real
- * audio engine path is implemented. */
+ * stream started by func_80085B20. If a file swap is queued (D_8004F354==1)
+ * it first drives the real archive-completion poll (func_80085C3C, which
+ * calls func_800854D0 up to 5x/frame) and the rest of retail's gating/
+ * bookkeeping for that branch (func_8003BDFC(0x10) transfer-queue wait,
+ * freeing the stream buffer, clearing D_8004F354, recording the now-loaded
+ * archive file in D_8004F33C, marking g_GameHasLoadedWDS so the next swap's
+ * func_8001B66C frees the previous WDS entry) -- all of that is genuinely
+ * ported here, not skipped, and is what clears D_800ADB2C (the gate
+ * func_800932D0/CHANGE_FIELD waits on). Note this only faithfully reproduces
+ * the *gating* logic: the underlying CD read itself is a pre-existing no-op
+ * for streaming reads in pc_port/src/archive_port.c (ArchiveReadFile bails
+ * out for CdlModeStream, "not ported yet"), so no real WDS/SEQ data actually
+ * lands in the stream buffer -- consistent with the rest of this boundary,
+ * since nothing currently compiled reads it back out.
+ * Once idle, retail continues into the deeper SPU voice-assignment chain
+ * (func_80085F30/func_80085FB8, then SPU voice setup via
+ * func_80039850/func_80039A80/func_8003A89C, or the func_80039B68 alternate
+ * branch) before marking the requested bank loaded: D_8004F338 = requested
+ * id, D_8004F36C = 1. That SPU voice-assignment chain is not ported (same
+ * boundary decision as func_800855C8), so field scripts gated on "music
+ * ready" (e.g. FE0E, func_8008C84C) would otherwise wait forever behind it.
+ * Since the port has no SPU backend, report the requested bank loaded
+ * immediately: this is the only externally-observed completion state,
+ * without reproducing the internal SPU voice-assignment bookkeeping.
+ * Remove this shim when the real audio engine path is implemented. */
 s32 func_80085C90(s32 a0) {
+    if (D_8004F354 == 1) {
+        if (func_80085C3C() == -1) {
+            return -1;
+        }
+        func_8003BDFC(0x10);
+        HeapFree(D_800C3A1C);
+        g_GameHasLoadedWDS = 1;
+        D_8004F354 = 0;
+        D_8004F33C = D_800ADFCC[a0 * 2];
+    }
+
     D_8004F338 = a0;
     D_8004F36C = 1;
     return 0;
