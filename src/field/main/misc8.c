@@ -1970,7 +1970,29 @@ s32 func_80085C3C(void) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C90);
+extern s32 D_8004F338;
+extern s32 D_8004F36C;
+
+/* XENO_PC_PORT temporary audio boundary:
+ * Retail func_80085C90 is the per-frame poller for an in-flight CD music-bank
+ * stream started by func_80085B20: while the transfer is in progress it
+ * returns -1 (caller keeps polling via D_8004F308), and once the retail CD/SPU
+ * voice-assignment chain (func_80085C3C/func_80085F30/func_80085FB8, then
+ * SPU voice setup via func_80039850/func_80039A80/func_8003A89C, or the
+ * func_80039B68 alternate branch) finishes it marks the requested bank
+ * loaded: D_8004F338 = requested id, D_8004F36C = 1.
+ * That SPU voice-assignment chain is not ported (same boundary decision as
+ * func_800855C8), so field scripts gated on "music ready" (e.g. FE0E,
+ * func_8008C84C) would otherwise wait forever. Since the port has no CD
+ * streaming to poll, report the requested bank loaded immediately: this is
+ * the only externally-observed completion state, without reproducing the
+ * internal SPU voice-assignment bookkeeping. Remove this shim when the real
+ * audio engine path is implemented. */
+s32 func_80085C90(s32 a0) {
+    D_8004F338 = a0;
+    D_8004F36C = 1;
+    return 0;
+}
 
 extern void* D_8004F2FC;
 
