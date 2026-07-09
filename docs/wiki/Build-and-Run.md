@@ -46,7 +46,7 @@ distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-dec
 
 - `XENO_FIELD_TEST=1` — enter field test harness (skips full boot).
 - `XENO_KERNEL_SEL=0` — force kernel menu to select field state (`FieldMain`).
-- `RUN_RC=124` — timeout success (no crash).
+- `RUN_RC=124` — timeout success (no crash); only meaningful with `XENO_KERNEL_SEL=0` set; without it the kernel menu spins forever and still exits RC=124 (see [Debugging and Tracing](Debugging-and-Tracing)).
 
 **Known issue:** default Map0 route (no `XENO_FIELD_MAP`) may render **black**. This is pre-existing and separate from Map1 milestones.
 
@@ -105,7 +105,7 @@ See root [`README.md`](https://github.com/Blizz127/xenogears-decomp-ai/blob/main
 | Signal | Meaning |
 |--------|---------|
 | `LINK OK -> pc_port/build_native/xeno-port` | Build succeeded |
-| `RUN_RC=124` | Timed out cleanly (expected for harness runs) |
+| `RUN_RC=124` | Timed out cleanly (expected for harness runs) — only meaningful with `XENO_KERNEL_SEL=0` set; without it the kernel menu spins forever and still exits RC=124 (see [Debugging and Tracing](Debugging-and-Tracing)) |
 | `RUN_RC=134` / `139` | SIGABRT / SIGSEGV — investigate backtrace |
 | Zero `[stub]` lines | No missing functions hit on that route (bounded window) |
 | `[stub] <name>` | Next boot-path oracle target |

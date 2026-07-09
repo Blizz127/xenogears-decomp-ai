@@ -1,6 +1,6 @@
 # Current Status
 
-> Last aligned to handoff/commits through `8db4fb2` (July 8, 2026).
+> Last aligned to handoff/commits through `3442f3f` (July 9, 2026).
 > For live detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/xenogears-decomp-ai/blob/main/docs/ai_context/ACTIVE_HANDOFF.md).
 
 This page answers six questions the project tracks constantly.
@@ -40,6 +40,22 @@ This page answers six questions the project tracks constantly.
 | Exit trigger zone 11 reachability | **Proven (read-only)** | Height-valid zone 11 fires opcode 203 inside path |
 | Exit op7 → op116 → op54 | **Committed fix** | Slot init + sprite pointer + sound shim (`9e1b667`, `ae8c753`) |
 
+### Map1 → Map15 seamless reload (July 8–9, 2026 campaign)
+
+Driven by the zone-5 input-injection probe with `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8`: the probe gdb-injects synthetic d-pad input (`D_800AFE9C = 0x2000`, +Z) at `misc2.c:1688`, gated to pre-reload frames; Fei walks into Map1's zone-5 trigger, whose script chain (the A50 script) issues CHANGE_FIELD (op 152) through the retail path — the transition itself is not injected. From the `0xE0` pass onward the probe file is `captures/render_diag/map1_opcode_e0_reload_20260709.gdb` (earlier passes used scratchpad-only probes). The full chain — FieldLoad #1 (map1) → CHANGE_FIELD → FieldFree → FieldLoad #2 (map15, frame 116) → load-time script VM → frame 117 — now runs end-to-end.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| CHANGE_FIELD transition chain | **Verified working** | Music-ready shim + `func_800932D0` (VM op 152) + `func_800854D0` archive gate; CHANGE_FIELD completes end-to-end (`60035b6`, `fe66d9e`, `7acb74a`, `3c8f954`) |
+| `func_800A5C40` + `FieldFree` | **Committed fix** | Transition orchestrator (all 7 branches) + `FieldFree` implemented (`4b377be`); FieldFree per-actor cleanup bug fixed — wrong-width pointer reads + two skipped frees (`fe8933f`) |
+| Heap reclaim across reload | **Verified working** | Reload `HeapAlloc(171056)` succeeds, no OOM (`f48a4ad`) |
+| Load-time anim-script VM | **Verified working** | Full opcode chain `0xC6 → 0x96 → 0xFC → 0xE0 → 0x8D → 0xF5/0xF6 → 0xA3 → 0xBC/0x24 → 0x94` cleared; 3 type-2 child sprites spawn, tick, and complete their scripts (`ce61f3d`, `11b2474`, `f24e035`, `de23142`, `a389755`) |
+| First post-load frame 117 | **Verified working** | `FieldLoad` returns; map15's first post-load frame begins (`a389755`; `map1_opcode_94_reload_20260709_run1.log`) |
+| POLYCHECK actor interaction | **Committed fix** | `func_80083288` mesh containment test + `func_80084158` flags4-0x80 branch live at frame 117, incl. real miss-path test vs actor 32's mesh (`3858bd8`; `map15_polycheck_20260709_run3.log`) |
+| Per-frame child pump | **Verified working** | `func_800752C8` → `TimerWorkListUpdate` ticks children each frame (ticks=8 observed) |
+| WorkListEntry PSX layout | **Committed fix** | Pointer fields now u32 (PSX 0x1C-byte layout), fixing a latent garbage-callback bug; same fix in `func_8001CE74` (`ce61f3d`) — see [Matching and Porting Rules](Matching-and-Porting-Rules) |
+| Child-sprite rendering | **Queued** | Children tick but do NOT render — `func_80025718` (type-2 render callback, `D_8004FD40[2]`) not ported |
+
 ---
 
 ## What was proven
@@ -53,6 +69,12 @@ This page answers six questions the project tracks constantly.
 - **Var `0x0462` is a local exit latch** on actor 48 routine 1, not a separate consumer (`4856738`, `e13c0e3`).
 - **Actor 18 routine 4 is a short door animation** — not the map transition itself (`bb31b27`).
 - **Shared door state var `0x0408`** — owned by actor 20 routine 1; actor 18 routine 1 branches on it (`0545ef3`, `8db4fb2`).
+- **`FieldLoad` does NOT hang on reload** — the apparent hang was `HeapAlloc` exhaustion caused by a genuine `FieldFree` leak (wrong-width pointer reads + two skipped frees), fixed in `fe8933f` (`4f8ca5a` correction docs).
+- **Map15 load-time script VM completes** — the anim-opcode frontier chain is done for this path; three type-2 children spawn, tick, and finish their scripts (`a389755` milestone, `5a75ae2`).
+- **Child sprites tick but do not render yet** — only `func_80025710` of the render-callback table `D_8004FD40[16]` is decompiled; type-2 children need `func_80025718` (log-once "not ported" stubs cover the gap).
+- **`func_8007CD3C` returns PSX scratchpad pointers** (`0x1F800000`-based) — unmapped on the port; convention is to keep push/pop calls balanced and back the workspace with a C local (found via live SIGSEGV; `832dabd`).
+- **Retail `$sp`-switch trampolines cannot be expressed in C** — the `0xFC` upload chain elides the switch but keeps both `HeapAlloc(0x2000)`/`HeapFree` pairs so heap state stays retail-exact (`b21f164`).
+- **Most July 9 passes were adversarially verified** against retail asm by independent refutation agents before commit (0xFC: 3 agents; 0xE0 chain: 5; 0xF5/0xF6: 2; 0xBC/0x24: 1; POLYCHECK: 1 — none refuted). Documented catches: the 0x8FE7→0xC3E7 diagnostic mask typo and a degenerate-loop convention fix; the scratchpad-pointer deref was caught by a live SIGSEGV during the POLYCHECK build, not by review. The 0xA3, 0x94, and 0xBC/0x25 passes were verified by live probe + smokes only.
 
 ---
 
@@ -60,22 +82,46 @@ This page answers six questions the project tracks constantly.
 
 | Blocker | Severity | Notes |
 |---------|----------|-------|
-| **Map1 exit transition incomplete** | **Active frontier** | Zone 11 fires, op7/op116/op54 run, but no fade/map-load yet |
-| **Host `rand()` range mismatch** | **Active frontier** | Actor 20's `var0x0408` chooser expects PSX `0..32767`; host glibc `rand()` writes out-of-range values → always falls back to `1` (`8db4fb2`) |
+| **Anim opcode `0xBC` sub-command `0x16`** | **Active frontier** | Move-to-parent (snap child to parent position via `+0x70` back-link); Decoded (jtbl entry `0x8002044C`), trivial next pass; hit on the frame-117 child tick (`map15_bc25_20260709_run1.log`, `3442f3f`) |
+| **Child sprites invisible** | Queued | `func_80025718` (type-2 render callback, `D_8004FD40[2]`) not ported — children tick but do not render |
+| **Frame-117 full render not proven** | Unresolved | Abort happens mid-frame in the child tick pump; no complete frame/present of map15 observed yet |
+| **Remaining `0xBC` sub-commands + paths** | Assert-only | Other 36 subs, the bit7-clear anchor path, and the camera-relative `ApplyMatrixSV` tail assert loudly by design; more subs may surface as the positioning preamble unwinds |
+| **misc8 select-target / standing-on-top** | Assert-only | `.L80084520`/`.L80084570` machinery of the reduced `func_80084158` migration still asserts (3 deliberate asserts, `3858bd8`) |
+| **Host `rand()` range mismatch** | Known separate | Actor 20's `var0x0408` chooser expects PSX `0..32767`; host glibc `rand()` writes out-of-range values → always falls back to `1` (`8db4fb2`); affects the natural door path — the reload campaign drives CHANGE_FIELD via the zone-5 probe |
 | **Default boot Map0 black screen** | Known separate | Without `XENO_FIELD_MAP`, default route renders black — pre-existing, not a regression |
 | **Battle route (`XENO_KERNEL_SEL=1`)** | Stubbed | `func_8001B6C4` is INCLUDE_ASM; immediate stub abort |
 | **Direct menu route (`XENO_KERNEL_SEL=4`)** | Harness gap | `MenuMain` without overlay load hits `func_801C62A8` stub |
-| **`func_800A5C40` at map reload** | Future blocker | INCLUDE_ASM; likely first hard blocker if full transition reached |
 | **`func_80075B44` rare branches** | Assert-only | Four real asm branches not hit on Kernel0 route; not current gate |
 | **Screen coordinate OT anomaly** | Unresolved | OT1 vs OT2 high-address bits differ; lower 32 bits consistent |
 | **Entrances 6/10** | Harness-invalid | Out-of-range spawn-table walkmeshId; crash — do not use for milestones |
-| **~250 generated function stubs** | Ongoing | Boot-path oracle still reports missing functions on broader routes |
+| **697 generated function stubs** | Ongoing | Boot-path oracle still reports missing functions on broader routes; new *soft* (log-once, non-blocking) stubs reached July 9: load path `func_8001B5E8`, `SoundFreeWdsEntry`, `func_8008E718`; frame 117 `func_80097954`, `func_8003A450`, `func_8008FB98` |
 
 ---
 
 ## Which fixes are committed
 
 Recent committed milestones (see [Phase Log](Phase-Log) for full list):
+
+### July 8–9 Map1 → Map15 reload campaign
+
+| Commit | What |
+|--------|------|
+| `60035b6` | PC-port sound-readiness shim for the transition music-ready gate |
+| `fe66d9e` | `func_800932D0` — CHANGE_FIELD field-VM opcode 152 |
+| `7acb74a` | `func_800854D0` archive-completion gate; CHANGE_FIELD completes end-to-end |
+| `4b377be` | `func_800A5C40` (FieldMain transition orchestrator, all 7 branches) + `FieldFree` |
+| `fe8933f` | FieldFree per-actor model-data cleanup fix (wrong-width reads + two skipped frees) |
+| `ce61f3d` | Anim opcodes `0xC6`/`0x96`/`0xFC`/`0xE0`/`0x8D` + child-sprite spawn subsystem + WorkListEntry PSX-layout fix |
+| `11b2474` | Child opcodes `0xF5`/`0xF6` (script-embedded model-data load) + `func_8002C59C` relocator |
+| `f24e035` | Child opcode `0xA3` (gravity setter) |
+| `de23142` | Opcode `0xBC` sub-command `0x24` (multi-command position opcode, bounded) |
+| `a389755` | Opcode `0x94` (inherit-parent-rotation) — **map15 load-time script VM completes; frame 117 begins** |
+| `3858bd8` | `func_80083288` POLYCHECK interaction-region test + `func_80084158` flags4-0x80 branch |
+| `ae30d53` | Opcode `0xBC` sub-command `0x25` (clear sticky bit) |
+
+Docs/verification checkpoints for the campaign: `afb5535`, `12a01b9`, `3c8f954`, `5b3249c`, `4f8ca5a`, `f48a4ad`, `b21f164`, `9f5aaa1`, `261343f`, `494b18f`, `5a75ae2`, `832dabd`, `3442f3f`. Each code pass was built (`LINK OK`), run through the zone-5 reload probe, smoke-tested (ent8/ent0/Map0, `RC=124`, zero new stubs), and most passes were adversarially verified against retail asm before commit. Key logs: `captures/render_diag/map1_opcode_{fc,e0,8d,f5,a3,bc,94}_reload_20260709*.log`, `map15_polycheck_20260709_run3.log`, `map15_bc25_20260709_run1.log`.
+
+### Earlier milestones (July 5–8)
 
 | Commit | What |
 |--------|------|
@@ -101,6 +147,9 @@ Docs-only investigation checkpoints (no code): `94d8cfc`, `0e2c181`, `213b826`, 
 | `XENO_FIELD_ENTRANCE` | `port_main.c` | Set `D_8006F954` spawn entrance index | No — spawn harness |
 | `XENO_FIELD_0BB_VRAM_UPLOAD` | `archive_port.c` | Synchronous `0xBB` VRAM drain | No — opt-in; needs retail-shaped loader |
 | `func_800855C8` PC-port no-op | `misc8.c` (`ae8c753`) | Skip deep sound chain on transition cue | Shim — documented audio boundary |
+| Music-ready gate shim | `misc8.c` (`60035b6`) | Sound-readiness gate for CHANGE_FIELD without ported audio | Shim — documented audio boundary |
+| Zone-5 reload injection probe | `captures/render_diag/map1_opcode_e0_reload_20260709.gdb` | Gdb-injects synthetic d-pad input (`D_800AFE9C = 0x2000`, +Z; pre-reload frames only) so Fei walks into zone 5 and the A50 script issues CHANGE_FIELD via the retail path — the transition itself is not injected; drives Map1→Map15 reload (0xE0 pass onward; earlier passes used scratchpad-only probes) | No — test driver, no source edits |
+| Render-callback log-once stubs | `pc_port/src/game_overrides.c` | Missing `D_8004FD40[N]` slots log `[port] anim render callback ... not ported` once | Temporary until callbacks are decompiled |
 | PsyCross GPU patches | `build_port.sh` | Font rendering, DR_MODE length, dfe draw | Port compatibility fixes |
 | Generated function stubs | `pc_port/build_native/stubs.c` | Oracle for missing decomp | Temporary by design |
 
@@ -121,4 +170,9 @@ Docs-only investigation checkpoints (no code): `94d8cfc`, `0e2c181`, `213b826`, 
 | Map1 exit zones 8–11 | **High** | Separate 3D height-gated system; zone 11 reachable |
 | Actor 20 `var0x0408` state machine | **Medium-high** | Static decode + runtime writes traced; RNG cause identified |
 | Camera Z-clamp (`func_8007CD80`) | **High** | Inverted clamp bug found and fixed (July 5 handoff) |
+| Anim-script opcode dispatch (`func_8001FBE4`) | **High** | 10 opcodes (`0xC6`/`0x96`/`0xFC`/`0xE0`/`0x8D`/`0xF5`/`0xF6`/`0xA3`/`0xBC`/`0x94`) implemented asm-faithful in `animation_scripts.c` across 9 passes; most passes adversarially verified vs retail asm (July 9 chain) |
+| Child-sprite spawn subsystem (opcode `0xE0`) | **High** | ~16 functions; live spawn + tick + script completion for 3 children on the map15 reload (`ce61f3d`) |
+| Opcode `0xBC` sub-dispatch (`jtbl_800185A8`, 0x27 entries) | **Medium-high** | Subs `0x24`/`0x25` implemented, `0x16` decoded; remaining subs assert loudly |
+| POLYCHECK mesh test (`func_80083288`) | **High** | Live miss-path test vs actor 32's mesh at frame 117 (`3858bd8`) |
+| FieldFree heap reclaim | **High** | Reload `HeapAlloc(171056)` verified post-fix (`fe8933f`, `f48a4ad`) |
 | Noah reference | **Low (research only)** | Non-matching; confirm against SLUS asm/runtime always |

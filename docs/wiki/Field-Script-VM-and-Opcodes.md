@@ -2,7 +2,9 @@
 
 Decoded field script VM behavior from committed handoff notes and source references. Noah is cited only as readability corroboration — retail asm and runtime traces are authoritative.
 
-## VM dispatch (decoded / trusted)
+**Two interpreters live on this page.** The sections down through "Opcode 7 decode example" cover the **field script VM** (per-map bytecode, `FieldScriptVMRun`). The July 9, 2026 reload campaign decoded a second, separate interpreter — the **sprite animation-script VM** — documented in its own section below. Opcode numbers are NOT shared between the two.
+
+## Field VM dispatch (decoded / trusted)
 
 - Primary handler table: `g_FieldScriptVMHandlers` — opcodes 0–255
 - Extended table: `g_FieldScriptVMHandlers2 = &g_FieldScriptVMHandlers[256]` — opcodes 256–482 (483 total handlers)
@@ -25,7 +27,7 @@ Decoded field script VM behavior from committed handoff notes and source referen
 | `0x5F` (95) | `func_8009AD6C` | Actor direction handler | **Committed** `2627286` |
 | `0x23` (35) | HideActor | Hides actor (actor 18 init script) | **Observed** |
 | `179` / `180` | FadeOut / FadeIn | Transition fades | **Not reached** on current exit route |
-| `152` / `71` / `234` | Map-load family via `func_80092894` | Writes `g_GameSceneMapNum`, entrance, `D_800ADBEC` | **Gated** behind exit path |
+| `152` / `71` / `234` | Map-load family via `func_80092894` | Writes `g_GameSceneMapNum`, entrance, `D_800ADBEC` | Op 152 (`func_800932D0`, CHANGE_FIELD) **Committed fix** `fe66d9e`, verified on zone-5 reload; 71/234 still gated |
 
 ## Map1 trigger systems (proven)
 
@@ -34,7 +36,7 @@ Decoded field script VM behavior from committed handoff notes and source referen
 - Opcodes at IPs 6152–6176 poll zones 5, 2, 7, 1, 0, 4, 6
 - Handler: `FieldScriptHandleTriggerZone2D` (`misc11.c:844`)
 - Inside path: `misc11.c:873–874` → subroutine → **`func_80093B10`** enables random encounters
-- **All 7 zones are encounter-region activators**, not map transitions
+- **All 7 zones are encounter-region activators**, not map transitions (July 7 reading; superseded — the zone-5 trigger path drives the A50 script chain which issues CHANGE_FIELD, commits afb5535/fe66d9e/3c8f954)
 - Verified: zone 5 fires with Fei at documented position (`94d8cfc`)
 
 ### Exit zones (8–11) — 3D height-gated
@@ -43,7 +45,7 @@ Decoded field script VM behavior from committed handoff notes and source referen
 - Inside path: **`misc11.c:992`** (`FieldScriptCheckTriggerZone`)
 - Armed when script vars `1116/1118/1120/1122 == 0`
 - Transition bytecode after inside: **op7** + **op116** + **op54** + jump + clear
-- Full transition chain (if reached): map swap opcodes → `FieldMain` reload → `FieldLoad` → **`func_800A5C40`** (INCLUDE_ASM)
+- Via the zone-5 reload probe — not the zones 8–11 door bytecode: full transition chain now **Verified working** end-to-end (July 9, 2026): zone-5 CHANGE_FIELD (op 152, `func_800932D0`, `fe66d9e`) → `func_800A5C40` transition orchestrator (`4b377be`) → `FieldFree` heap reclaim (leak fixed `fe8933f`, verified `f48a4ad`) → `FieldLoad` #2 map15 @ frame 116 → load-time animation-script VM (section below) → first post-load frame 117. The natural exit path through zones 8–11 remains gated by the `rand()`/`var0x0408` issue.
 
 ## Exit route script decode (actor 48 routine 1)
 
@@ -77,7 +79,7 @@ Actor 18 routine 1 branches:
 - `var0x0408 == 2` → rotation branch `0x071e`
 - else → fallback `0x0777`
 
-## Actor 20 — owner of `var0x0408` (frontier)
+## Actor 20 — owner of `var0x0408` (July 8 frontier, superseded)
 
 - Routine 1 at `0x0888` uses `0xA8` random chooser (max 4) then dispatches states 0–4
 - Fallback at `0x0997` assigns `var0x0408 = 1`
@@ -98,9 +100,48 @@ After trigger, bytes at IP 6084: `07 12 24`
 - Routine byte `0x24` → script/routine **4**
 - Priority **1**
 
+## Sprite animation-script VM — second interpreter (July 9, 2026)
+
+**This is NOT the field script VM.** Every field sprite runs its own animation script: dispatcher **`func_800248D4`** (`src/slus_006.64/system/temp1.c`) executes base opcodes and advances the script pc via the per-opcode stride table **`D_8004FC40[256]`**; opcodes `>= 0x8A` go through the extended-opcode handler **`func_8001FBE4`** (`src/slus_006.64/system/animation_scripts.c`) via `jtbl_800183D8[opcode - 0x8A]`. The Map1→Map15 reload hit it when map15's load-time field script started ticking sprites (`FieldScriptVMRun` → `func_800A1624` → `func_80076AC0` → `AnimScriptTick` → `func_800248D4`). Depth: the July 9 entries in `docs/ai_context/ACTIVE_HANDOFF.md`.
+
+### Cleared anim opcodes (asm-faithful, adversarially verified vs retail asm)
+
+| Opcode (ext idx) | Semantics | Status |
+|------------------|-----------|--------|
+| `0xC6` (`0x3C`) | Conditional operand store to `*(+0x7C)+0xC` | **Committed fix** `ce61f3d` |
+| `0x96` (`0x0C`) | Unlink owned work-list entries via `func_8001CE74` | **Committed fix** `ce61f3d` |
+| `0xFC` (`0x72`) | Script-embedded VRAM image upload: 24-bit script-relative blob → `func_8001FB30` → `func_8002DDE4` multi-block `LoadImage` (pixel `0x1100` / CLUT `0x1101` blocks) | **Verified working** `ce61f3d` — blob live at VRAM 512,256 (`map1_opcode_fc_reload_20260709_run1.log`) |
+| `0xE0` (`0x56`) | Child-sprite spawn via `func_80023B84` (subsystem below) | **Verified working** `ce61f3d` (`map1_opcode_e0_reload_20260709` logs) |
+| `0x8D` (`0x03`) | Texture-page latch `func_8002CC10`: `D_80059310 = GetTPage(0,0,x,y) & 0x1F`; merge-override mode `D_80050108 = 1` | **Committed fix** `ce61f3d` |
+| `0xF5` / `0xF6` (`0x6B`/`0x6C`) | Per-sprite model-data (re)load from a 24-bit script-relative blob under heap user 5: relocate → free old buffer → rebuild → fixup → mirror | **Committed fix** `11b2474` (`0xF7` left asserting by design) |
+| `0xA3` (`0x19`) | Gravity setter → sprite`+0x1C` (consumed by the `func_80022B2C` integrator) | **Committed fix** `f24e035` |
+| `0xBC` (`0x32`) | Multi-command position opcode; sub-dispatch below (subs `0x24`/`0x25` done) | **Committed fix** `de23142` / `ae30d53` |
+| `0x94` (`0x0A`) | Mode 2: inherit parent's angle (`+0x32`) into transform rotation-Y + matrix-dirty flag | **Committed fix** `a389755` — **milestone: map15 load-time script VM completes** |
+
+### `0xBC` sub-dispatch structure
+
+- op0 **bit7 set** → sub-command dispatch through **`jtbl_800185A8`** (`0x27` entries, indexed by `op0 & 0x3F`); **bit7 clear** → anchor path (asserts, unported)
+- op0 **bit6** picks the store target: target-position halfwords (`+0xA0/A2/A4`) vs live position words (`+0x0/4/8`)
+- Sub `0x24`: set wrapper sticky bit (`unk14` bit 30 — detaches the entry from opcode-`0x96` bulk unlink); sub `0x25`: clear it — both **Committed fix**
+- Sub `0x16` (move child to parent's position via the `+0x70` back-link; jtbl entry `0x8002044C`): **Decoded** — the current **Blocker**
+- All other subs and the camera-relative `ApplyMatrixSV` tail assert loudly (bounded port)
+
+### Child-sprite spawn subsystem (opcode `0xE0`)
+
+- **`func_80023B84`** heap-allocates an `AnimTask` (timer work-list task; render work-list task at `+0x1C`; `SpriteData` at `+0x38`), clones ~40 parent fields/flag bits, binds the child script (`func_80023538`), runs per-type post-init `func_80024730`, and binds a render callback from retail table `D_8004FD40[16]` (`func_80025224`). Only slot `func_80025710` is ported; type-2 children need **`func_80025718`** — the queued child-visibility gap
+- Tick callback `func_80022DF4` = `AnimScriptTick` + motion integrators (slow-motion scale, floor/bounce gravity, XZ motion); free callback `func_80022EB8`; ~16 functions in `pc_port/src/game_overrides.c` + work-list machinery in `pc_port/src/work_list_port.c` (`ce61f3d`)
+- **Critical latent-bug fix** (`ce61f3d`): the port's `WorkListEntry` used native 64-bit pointers instead of the PSX `0x1C`-byte layout the game embeds in heap objects; the first real entries made `TimerWorkListUpdate` call a garbage callback. Fields are now `u32` — see [Matching-and-Porting-Rules](Matching-and-Porting-Rules)
+
+### Runtime proof (zone-5 Map1→Map15 reload probe)
+
+- Probe mechanism: the probe gdb-injects synthetic d-pad input (`D_800AFE9C = 0x2000`, +Z) at `misc2.c:1688`, gated to pre-reload frames; Fei walks into Map1's zone-5 trigger, whose script chain (the A50 script) issues CHANGE_FIELD (op 152) through the retail path — the transition itself is not injected
+- **Verified working** `a389755`: map15's load-time script VM completes — 3 type-2 child sprites spawn, tick, and finish their scripts; `FieldLoad` returns and the first post-load frame (117) begins (`map1_opcode_94_reload_20260709` log, `captures/render_diag/`)
+- Frame 117's per-frame child pump (`func_800752C8` → `TimerWorkListUpdate`, child ticks = 8) then reaches the `0xBC` sub-`0x16` **Blocker** (`map15_bc25_20260709_run1.log`)
+
 ## What is NOT decoded enough to implement blindly
 
-- Full fade/map-load chain past op54 (still tracing script state)
-- `func_800A5C40` field reload (INCLUDE_ASM)
 - Battle overlay handoff (`func_80281204`, `LoadGameStateOverlay(2)`)
 - Full encounter selection path in `func_80079288`
+- Anim VM: `0xBC` bit7-clear anchor path, camera-relative `ApplyMatrixSV` tail, and the remaining sub-commands (assert loudly by design)
+- Anim VM: opcode `0xF7` (retail reads an uninitialized-in-function `$s2`; left asserting by design)
+- Anim VM: `D_8004FD40` render-callback slots beyond `func_80025710` — `func_80025718` (type-2 child visibility) is the queued next

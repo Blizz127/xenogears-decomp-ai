@@ -6,7 +6,7 @@ Practical gdb/logging commands from documented handoff workflows. Logs are store
 
 - Build with debug symbols: `./pc_port/build_port.sh` (uses `-g -O0`)
 - Run inside `distrobox enter xenogears-dev`
-- For field routes, always set **`XENO_KERNEL_SEL=0`** (otherwise process may not reach `FieldMain`)
+- For **any** run that must reach the field, **`XENO_KERNEL_SEL=0` is mandatory** — without it `PcPort_ForcedKernelSelect` is a no-op and the process spins at the kernel menu forever. Documented harness lesson (July 9): this menu-spin was once misread as a host stall, and it still exits `RC=124`, so a timeout alone does not prove the field was reached. With it set, cold-boot `FieldLoad` is ~6 s and the full Map1→Map15 reload ~10 s.
 - `rg` is **not** available in container — use `grep -E`
 
 ## Basic harness runs
@@ -113,6 +113,75 @@ Lightweight approach (heavy global watchpoints timed out in documented probes):
 - Log actor index + IP + value written
 - Reference log: `captures/render_diag/map1_actor18_var0408_init_probe_20260708_150922.log`
 
+## Gdb — zone-5 one-shot reload probe (Map1 → Map15)
+
+The July 9 campaign's standard probe: the probe gdb-injects synthetic d-pad input (`D_800AFE9C = 0x2000`, +Z) at `misc2.c:1688`, gated to pre-reload frames; Fei walks into Map1's zone-5 trigger, whose script chain (the A50 script) issues `CHANGE_FIELD` (op 152) through the retail path — the transition itself is not injected. The probe then follows the live reload into Map15 and counts every milestone. Script: `captures/render_diag/map1_opcode_e0_reload_20260709.gdb` — reused unchanged for every opcode pass from `0x8D` through `0xBC` sub `0x25`.
+
+What it does:
+
+- Breaks `misc2.c:1688` every frame; injects `D_800AFE9C=0x2000` (+Z) **only while `FieldLoad` hits < 2**, so synthetic input stops once the reload starts
+- Counters: `FieldLoad` hits, `FieldTextBoxInitialize` / `FieldFadeInitialize` (reload-gated), child spawns (`func_80023B84`), child ticks (`func_80022DF4`), child frees (`func_80022EB8`)
+- `catch signal SIGABRT` / `catch signal SIGSEGV` → prints all counters + `bt 16`, then quits
+- Prints `POST_RELOAD_OK` and exits clean if the run survives to frame ≥ 200 post-reload
+
+```bash
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  topic=my_topic; \
+  SDL_VIDEODRIVER=x11 DISPLAY=:0 \
+  XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8 \
+  timeout -s KILL 180 gdb -batch -x captures/render_diag/map1_opcode_e0_reload_20260709.gdb \
+    ./pc_port/build_native/xeno-port 2>&1 | \
+  tee captures/render_diag/${topic}_reload_$(date +%Y%m%d_%H%M%S).log'
+```
+
+Healthy-run milestones (state as of `3442f3f`): `FIELDLOAD #2 frame=116 map=15` → `RELOAD_TEXTBOX` / `RELOAD_FADE` → `SPAWN #1..#3` (type-2 children, `hdr=0200`) → `ticks` climbing (8 by the frame-117 pump) → the next `SIGABRT` backtrace names the current frontier opcode. Evidence logs: `map1_opcode_{fc,e0,8d,f5,a3,bc,94}_reload_20260709*.log`, `map15_polycheck_20260709_run3.log`, `map15_bc25_20260709_run1.log`.
+
+Probe gotchas (documented July 9):
+
+- Compound `break FUNC if $a && $b` conditions can silently never fire in batch mode — put a simple condition on the `break` line and move compound logic into the `commands` `if` block. This exact artifact produced the false "`FieldLoad` hangs in its first ~35 lines" conclusion.
+- Conditional breaks on hot functions (e.g. `break HeapAlloc if allocSize==171056`) force a stop/evaluate/resume cycle on every call and can starve the run — prefer unconditional breaks on rarely-called functions.
+
+## Gdb — targeted anim-opcode operand capture
+
+One-shot capture of live operand bytes for a specific anim-script opcode, before or after implementing it. Add to the zone-5 probe above (before its `run` line), with `N` = the opcode byte:
+
+```gdb
+# N = opcode byte, e.g. 0xBC
+break func_8001FBE4 if opcodeIndex == 0xBC
+commands
+  silent
+  printf "OPC 0x%02x sprite=%p operands=%p op0=%02x op1=%02x op2=%02x sub=0x%02x\n", \
+    opcodeIndex, pSpriteData, operands, \
+    ((unsigned char*)operands)[0], ((unsigned char*)operands)[1], \
+    ((unsigned char*)operands)[2], ((unsigned char*)operands)[0] & 0x3f
+  bt 8
+  quit
+end
+```
+
+Change `quit` to `continue` to log every hit instead of the first. For `0xBC`, `op0` bit 7 selects the sub-dispatch, bit 6 the target-position vs position store, and `op0 & 0x3f` is the sub-command (live example: `op0=0xA4` → sub `0x24`). See [Field-Script-VM-and-Opcodes](Field-Script-VM-and-Opcodes) for the decoded chain.
+
+## Smoke triple (ent8 / ent0 / Map0)
+
+Standard no-regression gate after every pass: three plain 30-second runs. Pass = all `RC=124`, stub lines equal to the documented baseline family (`func_80028B14`, `func_80072254`, `func_8008CD48`, `func_8008D0F4`, `func_8009E91C` + Map0's own), zero asserts, zero new `[port]` lines.
+
+```bash
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  topic=my_topic; ts=$(date +%Y%m%d_%H%M%S); \
+  for cfg in "ent8|XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8" \
+             "ent0|XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=0" \
+             "map0|"; do \
+    name=${cfg%%|*}; extra=${cfg#*|}; \
+    log=captures/render_diag/${topic}_smoke_${name}_${ts}.log; \
+    env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 $extra \
+      timeout -s KILL 30 ./pc_port/build_native/xeno-port > "$log" 2>&1; \
+    echo "$name RC=$?"; \
+    grep -E "\[stub\]|\[port\]|Assertion|assert|SIG|field-diag" "$log" | sort -u; \
+  done'
+```
+
+A meaningful field-reaching smoke shows exactly one `[field-diag] actors allocated` line per run — with `XENO_KERNEL_SEL=0` missing, `RC=124` passes vacuously from the menu-spin (see Prerequisites).
+
 ## Stub oracle
 
 Any `[stub] <symbol>` line in port output = next missing function on the live path.
@@ -123,7 +192,7 @@ distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-dec
   grep "\[stub\]" | sort -u'
 ```
 
-Current stub count after recent fixes: **~250** generated function stubs (handoff `ae8c753`).
+Current generated stub count: **697**, unchanged across the entire July 9 opcode chain (handoff, July 9 entries). Soft stubs newly *reached* on the map15 path (log-once, non-blocking): load path `func_8001B5E8`, `SoundFreeWdsEntry`, `func_8008E718`; frame 117 `func_80097954`, `func_8003A450`, `func_8008FB98`.
 
 ## What NOT to treat as signal
 

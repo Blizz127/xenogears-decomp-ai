@@ -60,6 +60,19 @@ For session-level detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/x
 | Jul 8 | Actor 18 routine 1 gated by `var0x0408 == 1` | `0545ef3` (docs) |
 | Jul 8 | Actor 20 owns `var0x0408`; host rand range mismatch | `8db4fb2` (docs) |
 
+## 2026-07-09 — Map1→Map15 reload: anim-script VM cleared, frame 117 reached
+
+| When | Milestone | Commit / evidence |
+|------|-----------|-------------------|
+| Jul 9 | `fe8933f` FieldFree fix verified working — reload `HeapAlloc(171056)` succeeds; frontier moved to anim opcode 0xC6 | `f48a4ad`; zone-5 injection + heap-free-list-walk probes (scratchpad, not committed) |
+| Jul 9 | Anim opcodes 0xC6/0x96/0xFC/0xE0/0x8D + child-sprite spawn subsystem (~16 functions); `WorkListEntry` PSX 0x1C-byte layout fix (latent native-pointer bug) | `ce61f3d`, `b21f164` (docs) |
+| Jul 9 | Child model-data load opcodes 0xF5/0xF6 + `func_8002C59C` relocator; first child's script completes | `11b2474`, `9f5aaa1` (docs) |
+| Jul 9 | Opcode 0xA3 (gravity setter → sprite `+0x1C`) | `f24e035`, `261343f` (docs) |
+| Jul 9 | Opcode 0xBC sub-command 0x24 (multi-command position opcode, bounded — other 38 subs assert) | `de23142`, `494b18f` (docs) |
+| Jul 9 | **MILESTONE:** opcode 0x94 (inherit-parent-rotation) — map15 **load-time script VM completes**; first post-load frame 117 begins | `a389755`, `5a75ae2` (docs); `map1_opcode_94_reload_20260709` log |
+| Jul 9 | `func_80083288` "POLYCHECK" interaction-region test + `func_80084158` flags4-0x80 branch migrated; frame-117 actor update completes for all actors | `3858bd8`, `832dabd` (docs); `map15_polycheck_20260709_run3.log` |
+| Jul 9 | Opcode 0xBC sub-command 0x25 (clear sticky bit); frontier = 0xBC sub-command 0x16 (move-to-parent, decoded) | `ae30d53`, `3442f3f` (docs); `map15_bc25_20260709_run1.log` |
+
 ---
 
 ## Milestone demo command (field control)

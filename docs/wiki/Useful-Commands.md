@@ -25,11 +25,38 @@ distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-dec
   XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=0 XENO_FIELD_0BB_VRAM_UPLOAD=1 \
   ./pc_port/build_native/xeno-port'
 
-# Map1 entrance 9 (exit-route probes)
+# Map1 entrance 9 (July 8 exit-route probes — historical)
 distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
   SDL_VIDEODRIVER=x11 XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 \
   XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=9 XENO_FIELD_0BB_VRAM_UPLOAD=1 \
   timeout -s KILL 90 ./pc_port/build_native/xeno-port'
+```
+
+## Run — current standard (July 9): zone-5 reload probe + smoke triple
+
+See [Debugging and Tracing](Debugging-and-Tracing) for the probe internals.
+
+```bash
+# Zone-5 reload probe run (entrance 8, gdb-injected +Z d-pad → A50 CHANGE_FIELD)
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && SDL_VIDEODRIVER=x11 DISPLAY=:0 XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8 timeout -s KILL 240 gdb -batch -x captures/render_diag/map1_opcode_e0_reload_20260709.gdb ./pc_port/build_native/xeno-port'
+```
+
+```bash
+# Smoke triple (ent8 / ent0 / Map0 — 30s plain runs, expect baseline stub family only)
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=8 \
+  timeout -s KILL 30 ./pc_port/build_native/xeno-port 2>&1 | \
+  grep -E "\[stub\]|\[port\]|assert|SIG|Abort"'
+
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=1 XENO_FIELD_ENTRANCE=0 \
+  timeout -s KILL 30 ./pc_port/build_native/xeno-port 2>&1 | \
+  grep -E "\[stub\]|\[port\]|assert|SIG|Abort"'
+
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 \
+  timeout -s KILL 30 ./pc_port/build_native/xeno-port 2>&1 | \
+  grep -E "\[stub\]|\[port\]|assert|SIG|Abort"'
 ```
 
 ## Run — with logging

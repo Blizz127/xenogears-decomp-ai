@@ -83,7 +83,7 @@ Synthetic injection via `D_800AFE9C`:
 | Synthetic vs real input | Exit-route proofs use gdb injection; milestone uses real keyboard |
 | `func_80079288` stub noise | Encounter bookkeeping fires per held-input frame |
 | Battle movement | `XENO_KERNEL_SEL=1` hits `func_8001B6C4` stub immediately |
-| Walkmesh navigation to exit boxes | Some zones reachable; transition script state still blocked (see [Active Frontier](Active-Frontier)) |
+| Walkmesh navigation to exit boxes | Some zones reachable; the Map1->Map15 transition chain is verified via the zone-5 reload probe (July 9); the natural door path is still gated by the rand()/var0x0408 issue (see [Current Status](Current-Status)) |
 
 ## Map1 movement proofs (read-only)
 

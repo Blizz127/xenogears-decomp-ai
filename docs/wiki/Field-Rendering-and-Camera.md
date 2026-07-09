@@ -55,6 +55,8 @@ Camera, framing, and visibility findings from committed handoff notes. Only **pr
 | Permanent `0xBB` loader | **Not done** | Opt-in env flag; needs retail-shaped drain from `func_80070488` |
 | Camera framing/scale cleanup | **Open** | Center-black region, tiny sprites noted in handoff |
 | `func_80075B44` rare branches | **Assert-only** | Four real asm branches; not hit on Kernel0 route in bounded probes |
+| Child sprites invisible | **Open** | Type-2 render callback `func_80025718` (`D_8004FD40[2]`) not ported; one-shot `[port]` log marks it; queued behind the anim-opcode frontier (see [Active Frontier](Active-Frontier)) |
+| Map15 frame-117 full render | **Not yet proven** | Current abort happens mid-frame in the anim tick (`0xBC` sub `0x16`) |
 
 ## Temporary rendering hacks
 
