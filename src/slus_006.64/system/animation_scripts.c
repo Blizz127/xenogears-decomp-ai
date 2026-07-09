@@ -83,6 +83,53 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x19) {
+        /* Opcode 0xA3 handler (asm 800217A4-80021880): set the sprite's
+         * gravity at +0x1C (consumed by the func_80022B2C integrator). When
+         * A8 bit0 is set and the shared state block (+0x7C) carries a
+         * gravity value at +0x4, reuse it. Otherwise: signed operand scaled
+         * by +0x82 with the >>12<<5 fixed-point step, times the squared
+         * inverse of the speed divisor (AC bits 7-18, same unguarded
+         * 0x10000/denom as func_80023538), times (D_80059198+1)^2, with the
+         * negative rounding adjustments at each step. Retail's intermediate
+         * +0x1C stores are dead (no calls intervene) and collapsed here,
+         * matching the 0xA0 case below. */
+        u8* p = pSpriteData;
+        s32 a;
+        s32 inv;
+        s32 sq;
+        s32 v;
+        s32 t;
+
+        if ((*(u32*)(p + 0xA8) & 1) == 1) {
+            u32 shared =
+                *(u32*)((u8*)(uintptr_t)*(u32*)(p + 0x7C) + 0x4);
+            if (shared != 0) {
+                *(u32*)(p + 0x1C) = shared;
+                return;
+            }
+        }
+
+        a = ((s32)(s8)((u8*)operands)[0] << 6) * *(s16*)(p + 0x82);
+        if (a < 0) {
+            a += 0xFFF;
+        }
+        a = (a >> 12) << 5;
+
+        inv = 0x10000 / (s32)((*(u32*)(p + 0xAC) >> 7) & 0xFFF);
+        sq = inv * inv;
+        if (sq < 0) {
+            sq += 0xFF;
+        }
+        v = a * (sq >> 8);
+        if (v < 0) {
+            v += 0xFF;
+        }
+        t = D_80059198 + 1;
+        *(s32*)(p + 0x1C) = (v >> 8) * (t * t);
+        return;
+    }
+
     if (dispatchIndex == 0x16) {
         /* Opcode 0xA0 handler (original asm at 0x80021958): fixed-point value
            from signed operand byte 0, (D_80059198 + 1), and signed pData+0x82,
