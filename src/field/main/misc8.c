@@ -1161,7 +1161,224 @@ void func_800831D0(SVECTOR* out, s16* in) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80083288);
+extern void* func_8007CD3C(s32 arg0);
+extern void func_8007CD60(s32 arg0);
+extern void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4);
+extern MATRIX D_800AFC30;
+/* GTE prototypes come through field/actor.h -> psyq/libgte.h (shimmed to
+ * PsyCross's on the port build). */
+
+/* Point-vs-actor-collision-mesh test (asm 80083288, "POLYCHECK"). Composes
+ * the owning actor's model matrix - rotated about one axis by +0x70 when
+ * +0x12C mode is 1/2/3, else the static/parented composition through the
+ * camera matrix D_800AFC30 (and the +0x75 parent actor's +0x2C matrix when
+ * set) - loads it into the GTE, then walks the mesh's primitive groups
+ * (header word: type byte, count in the top half; types 0xC4/0xC8 skipped;
+ * type bit 3 selects quads). Each tri/quad is transformed with RotTransSV
+ * and tested with NormalClip winding checks against the packed (x<<16)|z
+ * query point; for containing polygons func_8007B07C interpolates the
+ * surface Y at (x, z) (also filling pOut2, which the caller consumes as the
+ * contact data). Returns 0 with *pOutY = the minimum such Y, or -1 when no
+ * polygon contains the point. All locals live in a func_8007CD3C(0xB8)
+ * scratch block, mirroring the retail layout. */
+s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
+                  void* pOut2) {
+    /* Retail places the workspace in the PSX scratchpad via
+     * func_8007CD3C(0xB8) (returns 0x1F800000-based pointers, unmapped on
+     * the PC port). Follow func_80084158's port convention: keep the arena
+     * push/pop balanced but back the workspace with a local. */
+    s32 wsBuf[0xB8 / 4];
+    u8* ws = (u8*)wsBuf;
+    u8* mesh = (u8*)pMesh;
+    u8* ownEntry;
+    u8* ownData;
+    u8* prim;
+    u32 rotMode;
+    s32 groupCount;
+
+    func_8007CD3C(0xB8);
+    *(s32*)(ws + 0xA0) = 0x7FFFFFFF;
+    *(u32*)(ws + 0xA4) = *(u32*)(mesh + 0x8);
+    *(s32*)(ws + 0x10) = (curX << 16) + curZ;
+
+    ownEntry = (u8*)g_FieldActors + ownIndex * 0x5C;
+    ownData = (u8*)(uintptr_t)*(u32*)(ownEntry + 0x4C);
+    rotMode = *(u32*)(ownData + 0x12C) & 0x3;
+
+    if (rotMode != 0) {
+        SVECTOR* rot = (SVECTOR*)(ws + 0xB0);
+
+        if (rotMode == 1) {
+            rot->vx = *(u16*)(ownData + 0x70);
+            rot->vy = 0;
+            rot->vz = 0;
+        } else if (rotMode == 2) {
+            rot->vx = 0;
+            rot->vy = *(u16*)(ownData + 0x70);
+            rot->vz = 0;
+        } else {
+            rot->vx = 0;
+            rot->vy = 0;
+            rot->vz = *(u16*)(ownData + 0x70);
+        }
+        RotMatrix(rot, (MATRIX*)(ws + 0x60));
+        MulMatrix2((MATRIX*)(ownEntry + 0xC), (MATRIX*)(ws + 0x60));
+        *(s32*)(ws + 0x74) = *(s32*)(ownEntry + 0x20);
+        *(s32*)(ws + 0x78) = *(s32*)(ownEntry + 0x24);
+        *(s32*)(ws + 0x7C) = *(s32*)(ownEntry + 0x28);
+        CompMatrix(&g_Scene.worldRotationMatrix, (MATRIX*)(ws + 0x60),
+                   (MATRIX*)(ws + 0x40));
+    } else {
+        u8 parentIdx;
+
+        /* Retail zeroes both work matrices' translation columns first. */
+        *(s32*)(ws + 0x54) = 0;
+        *(s32*)(ws + 0x58) = 0;
+        *(s32*)(ws + 0x5C) = 0;
+        *(s32*)(ws + 0x94) = 0;
+        *(s32*)(ws + 0x98) = 0;
+        *(s32*)(ws + 0x9C) = 0;
+
+        parentIdx = *(u8*)(ownData + 0x75);
+        CompMatrix(&g_Scene.worldRotationMatrix, &D_800AFC30,
+                   (MATRIX*)(ws + 0x80));
+        if (parentIdx != 0xFF) {
+            CompMatrix((MATRIX*)(ws + 0x80),
+                       (MATRIX*)((u8*)g_FieldActors + parentIdx * 0x5C + 0x2C),
+                       (MATRIX*)(ws + 0x60));
+            CompMatrix((MATRIX*)(ws + 0x60), (MATRIX*)(ownEntry + 0xC),
+                       (MATRIX*)(ws + 0x40));
+        } else {
+            CompMatrix((MATRIX*)(ws + 0x80), (MATRIX*)(ownEntry + 0xC),
+                       (MATRIX*)(ws + 0x40));
+        }
+    }
+    SetRotMatrix((MATRIX*)(ws + 0x40));
+    SetTransMatrix((MATRIX*)(ws + 0x40));
+
+    groupCount = *(u16*)(mesh + 0x6);
+    prim = (u8*)(uintptr_t)*(u32*)(mesh + 0x10);
+
+    for (; groupCount > 0; groupCount--) {
+        u32 header = *(u32*)prim;
+        u32 type = header & 0xFF;
+        s32 primCount = header >> 16;
+        s32 n;
+
+        prim += 4;
+        *(u32*)(ws + 0xAC) = type;
+        if (type == 0xC4 || type == 0xC8) {
+            continue;
+        }
+
+        if ((header & 0x8) == 0) {
+            /* Triangles: 3 vertex indices + 1 pad halfword per primitive. */
+            for (n = 0; n < primCount; n++) {
+                u8* verts = (u8*)(uintptr_t)*(u32*)(ws + 0xA4);
+
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x14), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x1C), (long*)(ws + 0x3C));
+                prim += 4;
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x24), (long*)(ws + 0x3C));
+                prim += 4;
+
+                /* Packed (screenX<<16)|screenZ per vertex, ground plane. */
+                *(s32*)(ws + 0x0) =
+                    (*(s16*)(ws + 0x14) << 16) + *(s16*)(ws + 0x18);
+                *(s32*)(ws + 0x4) =
+                    (*(s16*)(ws + 0x1C) << 16) + *(s16*)(ws + 0x20);
+                *(s32*)(ws + 0x8) =
+                    (*(s16*)(ws + 0x24) << 16) + *(s16*)(ws + 0x28);
+
+                if (NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x8), *(s32*)(ws + 0x0),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x8)) < 0) {
+                    continue;
+                }
+
+                *(u16*)(ws + 0x34) = (u16)curX;
+                *(u16*)(ws + 0x38) = (u16)curZ;
+                func_8007B07C((s16*)(ws + 0x14), (s16*)(ws + 0x1C),
+                              (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                              (VECTOR*)pOut2);
+                if (*(s16*)(ws + 0x36) < *(s32*)(ws + 0xA0)) {
+                    *(s32*)(ws + 0xA0) = *(s16*)(ws + 0x36);
+                }
+            }
+        } else {
+            /* Quads: 4 vertex indices per primitive, wound (0,1,3,2); the
+             * final diagonal test picks which half-triangle interpolates. */
+            for (n = 0; n < primCount; n++) {
+                u8* verts = (u8*)(uintptr_t)*(u32*)(ws + 0xA4);
+
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x14), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x1C), (long*)(ws + 0x3C));
+                prim += 4;
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x24), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x2C), (long*)(ws + 0x3C));
+                prim += 4;
+
+                *(s32*)(ws + 0x0) =
+                    (*(s16*)(ws + 0x14) << 16) + *(s16*)(ws + 0x18);
+                *(s32*)(ws + 0x4) =
+                    (*(s16*)(ws + 0x1C) << 16) + *(s16*)(ws + 0x20);
+                *(s32*)(ws + 0x8) =
+                    (*(s16*)(ws + 0x24) << 16) + *(s16*)(ws + 0x28);
+                *(s32*)(ws + 0xC) =
+                    (*(s16*)(ws + 0x2C) << 16) + *(s16*)(ws + 0x30);
+
+                if (NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0xC),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0xC), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x8), *(s32*)(ws + 0x0),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x8)) < 0) {
+                    continue;
+                }
+
+                *(u16*)(ws + 0x34) = (u16)curX;
+                *(u16*)(ws + 0x38) = (u16)curZ;
+                if (NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) >= 0) {
+                    func_8007B07C((s16*)(ws + 0x14), (s16*)(ws + 0x1C),
+                                  (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                                  (VECTOR*)pOut2);
+                } else {
+                    func_8007B07C((s16*)(ws + 0x1C), (s16*)(ws + 0x2C),
+                                  (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                                  (VECTOR*)pOut2);
+                }
+                if (*(s16*)(ws + 0x36) < *(s32*)(ws + 0xA0)) {
+                    *(s32*)(ws + 0xA0) = *(s16*)(ws + 0x36);
+                }
+            }
+        }
+    }
+
+    if (*(s32*)(ws + 0xA0) != 0x7FFFFFFF) {
+        *pOutY = *(s32*)(ws + 0xA0);
+        func_8007CD60(0xB8);
+        return 0;
+    }
+    func_8007CD60(0xB8);
+    return -1;
+}
 
 void func_80083994(void) {
 }
@@ -1319,6 +1536,8 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
 
 extern void* func_8007CD3C(s32 arg0);
 extern void func_8007CD60(s32 arg0);
+extern void func_800379C8(char*, ...);
+extern char D_8006FC48[];
 extern char D_8006FC58[];
 extern s32 D_800ADB98;
 
@@ -1376,7 +1595,78 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
         *(u32*)(otherData + 0x04) = otherFlags4 & 0xFFFF3EFF;
 
         if (otherFlags4 & 0x80) {
-            assert(!"func_80084158 func_80083288 branch not migrated");
+            /* asm 800842B8-80084380: interaction-region actor. Test whether
+             * our predicted (x, z) lies inside the other actor's collision
+             * mesh (model header +0x4, via the FieldActor +0x0 pointer);
+             * regionY[0] receives the surface Y under us, contact[] the
+             * func_8007B07C contact data. Miss -> clear 0x400000|0x800000
+             * and skip the actor, exactly like the far case below. */
+            s32 regionY[4];
+            s32 contact[4];
+            u8* otherModel = (u8*)(uintptr_t)*(u32*)(otherActor + 0x0);
+            s32 regionTop;
+
+            if (func_80083288(i,
+                              (void*)(uintptr_t)*(u32*)(otherModel + 0x4),
+                              currentPos.vx, currentPos.vz,
+                              regionY, contact) != 0) {
+                *(u32*)(otherData + 0x04) &= 0xFF3FFFFF;
+                continue;
+            }
+
+            /* Hit ("POLYCHECK"): asm 80084304-80084380 + tail joins. */
+            if (g_FieldSystemMode == 0) {
+                func_800379C8(D_8006FC48, i);
+            }
+            *(u32*)(otherData + 0x04) |= 0x100;
+            regionTop = regionY[0] + *(u16*)(otherData + 0x1A);
+
+            if (*(u8*)(actorData + 0x74) == i) {
+                /* Already interacting with this actor: latch the contact
+                 * data and mark it (asm 8008434C-80084380)... */
+                *(u32*)(actorData + 0x50) = (u32)contact[0];
+                *(u32*)(actorData + 0x54) = (u32)contact[1];
+                *(u32*)(actorData + 0x58) = (u32)contact[2];
+                *(u32*)(otherData + 0x04) |= 0x4000;
+                /* ...then asm .L800844B8 routes to the select-target
+                 * machinery (.L80084520) unless flags0 has 0x40800 set.
+                 * That machinery (velocity latch + interact-actor commit)
+                 * is not migrated yet - same gap the deliberate assert
+                 * below the loop guards. */
+                if ((actorFlags0 & 0x40800) == 0) {
+                    assert(!"func_80084158 select-target branch not migrated");
+                }
+            }
+
+            /* asm .L800844D8 dispatch: regionTop plays the raw-top role,
+             * regionY[0] the floor-height role. */
+            if (regionTop < targetYMin ||
+                *(s16*)(actorData + 0x26) < regionY[0]) {
+                /* .L80084660/.L8008465C track-height + .L800846A8 tail. */
+                u32 v = *(u32*)(otherData + 0x04) & ~0x100u;
+
+                if (*(s16*)(actorData + 0x26) < regionY[0]) {
+                    v |= 0x00800000;
+                    if (regionY[0] < selectedY) {
+                        selectedY = regionY[0];
+                    }
+                } else {
+                    v &= ~0x00800000u;
+                }
+                *(u32*)(otherData + 0x04) = v | 0x00400000;
+                continue;
+            }
+            if (*(s16*)(actorData + 0x26) < regionY[0] + 0x10) {
+                /* .L80084520 select-target machinery, not migrated. */
+                assert(!"func_80084158 select-target branch not migrated");
+            }
+            if (*(u32*)(otherData + 0x04) & 0x00800000) {
+                /* Falls into .L80084520 as well. */
+                assert(!"func_80084158 select-target branch not migrated");
+            }
+            /* .L80084570 standing-on-top machinery, not migrated. */
+            assert(!"func_80084158 on-top branch not migrated");
+            continue;
         }
 
         if (otherFlags0 & 0x2000) {
@@ -1519,7 +1809,8 @@ extern u8 D_800B21CF;
 extern s32 g_FieldSystemMode;
 extern char D_8006FC60[];
 extern char D_8006FC74[];
-extern void func_800379C8(char* arg0, s32 arg1);
+/* (func_800379C8 is the field's variadic printf; declared once at the top
+ * of this file's interaction section.) */
 extern s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
                          VECTOR* outNormal, s16* outTriangle, s32* outHeight1);
 

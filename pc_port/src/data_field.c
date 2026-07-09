@@ -2,6 +2,12 @@
 #include "field/main.h"
 #include "field/particles.h"
 
+/* Field overlay .rodata debug string @0x8006FC48 (asm/field/data/0.rodata.s
+ * line 160): the "POLYCHECK %d\n" printf format used by func_80084158's
+ * interaction-region branch. The sibling "HITOFF\n" string (D_8006FC58) is
+ * already covered by the zeroed stub set; this one is newly referenced. */
+char D_8006FC48[] = "POLYCHECK %d\n";
+
 /*
  * data_field.c - migrated field overlay initialized data for the Xenogears PC port.
  *
