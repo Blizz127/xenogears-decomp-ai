@@ -129,15 +129,20 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
             s16 vy;
             s16 vz;
 
-            if (sub == 0x24) {
-                /* asm 800203B0-800203C8: mark the wrapper task sticky
+            if (sub == 0x24 || sub == 0x25) {
+                /* asm 800203B0-800203C8 (0x24) / 800203CC-800203E4 (0x25):
+                 * set (0x24) or clear (0x25) the wrapper task's sticky bit
                  * (unk14 bit 30 - the bit func_8001CE74 / opcode 0x96 bulk
-                 * unlink skips: detach this child from the parent's
+                 * unlink skips: detach from / re-attach to the parent's
                  * cleanup), then shared prologue .L80020428: vector = the
                  * sprite's own position halfwords, camera flag cleared. */
                 u8* pWrapper = (u8*)(uintptr_t)*(u32*)(p + 0x6C);
 
-                *(u32*)(pWrapper + 0x14) |= 0x40000000;
+                if (sub == 0x24) {
+                    *(u32*)(pWrapper + 0x14) |= 0x40000000;
+                } else {
+                    *(u32*)(pWrapper + 0x14) &= 0xBFFFFFFF;
+                }
                 vx = *(s16*)(p + 0x2);
                 vy = *(s16*)(p + 0x6);
                 vz = *(s16*)(p + 0xA);
