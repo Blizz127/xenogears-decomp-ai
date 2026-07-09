@@ -1090,6 +1090,30 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
 - Actor 18 state 2 is not a transition/fade path; it is another door/actor rotation animation path.
 - **Correct next single target:** decode/trace actor 20 routine 1's state machine around the `0x088f` random write and `0x0997` assignment. Find what conditions make actor 20 assign `0x0408` to a value other than `1`, or whether another route/trigger is expected to drive the shared door-state variable. Do not patch actor scripts or force `0x0408`.
 
+## July 8 — READ-ONLY actor 20 routine 1 trace: var0408 branch broken by host rand range
+
+- **Checkpoint:** committed/pushed docs-only `8db4fb28fa847b64c57d90b7c73f883ef979a7fd` (`Document actor 20 var0408 writer finding`) before this pass. No source edits.
+- **Logs:** static decode `captures/render_diag/map1_actor20_routine1_decode_20260708_151729.log`; runtime branch trace `captures/render_diag/map1_actor20_var0408_branch_trace_20260708_151951.log`; captures-only gdb script `captures/render_diag/map1_actor20_var0408_branch_trace_20260708.gdb`.
+- **Actor 20 routine offsets:** routine 0 `0x0885`, routine 1 `0x0888`, routine 2/3 `0x09d5`.
+- **Routine 1 shape:** starts by clearing local counters `0x041c` and `0x041a`, extends VM budget (`0xC6`), then uses `0xA8 FieldScriptVMHandlerMulVariableWithRand` at `0x088f` to choose `var0x0408` with max argument `4`. It then dispatches on `var0x0408 == 0/1/2/3/4`:
+  - state 0: `0x089c` branch, starts/waits actor selector `0x13` script/prio `0x64`, rotates through `0x041c < 24`, then waits `0x041a == 600`, then jumps to `0x0997`
+  - state 1: `0x08d6` branch, waits `0x041a == 240`, then stops/yields
+  - state 2: `0x08f1` branch, starts actor `0x13` script/prio `0x64`, rotates through `0x041c < 64`, then waits `0x041a == 256`, then jumps to `0x0997`
+  - state 3: `0x092b` branch, similar rotation/wait with thresholds `0x041c < 48`, `0x041a == 300`, then jumps to `0x0997`
+  - state 4: `0x0965` branch, similar rotation/wait with thresholds `0x041c < 36`, `0x041a == 500`, then jumps to `0x0997`
+  - fallback / after states: `0x0997` assigns `var0x0408 = 1`, then runs cleanup scripts/rotation counters through `0x09d4` stop.
+- **All decoded `var0x0408` refs in actor 20 routine 1:** `0x088f` random write; `0x0894` compare `==0`; `0x08ce` compare `==1`; `0x08e9` compare `==2`; `0x0923` compare `==3`; `0x095d` compare `==4`; `0x0997` assign `1`.
+- **Runtime branch proof:** every observed `0xA8` write produces a value far outside `0..4`, so all five comparisons fail and the script falls through to `0x0997`, which assigns `1`:
+  - frame 1: `0x088f` writes `36875`; `0x0894/0x08ce/0x08e9/0x0923/0x095d` compare against `0..4` and miss; `0x0997` writes `1`
+  - frame 29: writes `47494` after signed print `-18042`, then misses all `0..4` compares and writes `1`
+  - frame 57: writes `62140`, then misses all `0..4` compares and writes `1`
+  - frame 113: writes `48347`, then misses all `0..4` compares and writes `1`
+  - frame 141, after zone 11 fires: writes `28977`, misses all `0..4` compares and writes `1`
+- **Zone-11 effect:** zone 11/routine4 does not affect actor 20's state machine. Actor 20 keeps cycling independently after the trigger; at frame 147 `var0408=1`, and at frame 169 it repeats the same random-out-of-range -> fallback-to-1 sequence.
+- **PC-port cause candidate:** `FieldScriptVMHandlerMulVariableWithRand` is retail-faithful (`nValue = (rand() * (arg + 1)) >> 15`) and expects PSX `rand()` range `0..32767` (`include/psyq/rand.h` defines `RAND_MAX 32767`; `src/slus_006.64/psyq/libc.c` implements that RNG). The current PC binary imports host `rand@GLIBC_2.2.5`, whose much larger range produces huge script states instead of `0..4`. `nm -D pc_port/build_native/xeno-port` confirms the unresolved dynamic `rand@GLIBC_2.2.5` import.
+- **Corrected interpretation:** `0x0408` is a shared randomized door-state variable driven by actor 20. Actor 18 reads it, but actor 18 is not the owner. Actor 18 state 2 is reachable in principle if actor 20's random chooser produces `2`, but the current PC-port RNG range makes actor 20 choose an out-of-range state every cycle, then reset to `1`.
+- **Correct next single target:** implement or route PC-port `rand()`/`srand()` to the PSX-compatible RNG (`0..32767`) used by retail, then rerun the actor-20/zone-11 trace. Do not patch actor scripts or force `0x0408`.
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
