@@ -1301,6 +1301,27 @@ Entrance sweep (spawn-table entries 0-10) confirmed the whole stack renders dist
   - **Next pass guidance:** this is NOT a tiny store — budget for decoding the `0xBC` family's shared tail `.L80020A20` (and `.L80020AD0`) before implementing anything; consider porting only the live sub-command `0x24` + the shared tail first, keeping the other 38 sub-cases asserting individually so each surfaces with its sub-command id. The sticky-bit half is trivial (`*(u32*)(*(u32*)(sprite+0x6C)+0x14) |= 0x40000000`), the tail is the real work.
   - Still queued for child visibility: `func_80025718` (type-2 render callback, `D_8004FD40[2]`, one-shot `[port]` log marks it).
 
+## July 9 — Child-script opcode `0xBC` sub-command `0x24` cleared (multi-command position opcode, bounded port); child #2 advances several opcodes; new frontier = opcode `0x94` (inherit-parent-rotation, 6 instructions)
+
+- **Scope:** exactly the pass contract — bit7-set sub-dispatch recognition, sub-command `0x24`, and the shared tail required by it. Landed in `src/slus_006.64/system/animation_scripts.c` as `dispatchIndex == 0x32`:
+  - Prologue (asm `800202F4`): `op0 = ops[0]`; bit 7 set → sub = `op0 & 0x3F`; camera flag latched from `*(u8*)(sprite+0x3F) & 1` (sub-cases overwrite it).
+  - Sub `0x24` (asm `800203B0`): `*(u32*)(*(u32*)(sprite+0x6C)+0x14) |= 0x40000000` (wrapper task sticky bit — detaches the child from opcode-`0x96` bulk unlink), then shared prologue `.L80020428`: vector = own position halfwords `+0x2/+0x6/+0xA`, camera flag forced 0.
+  - Shared tail `.L80020A20`: camera-relative branch (`ApplyMatrixSV(&D_8004FBB8, ...)` + translation low-halfword adds, asm `80020A24-80020A70`) is **structurally unreachable from sub 0x24** and asserts if ever reached; then op0 **bit 6** picks the destination — set → `sh` the three halfwords to `+0xA0/A2/A4` (target position), clear → `(s16)<<16` into position words `+0x0/+0x4/+0x8` (z via the one-instruction `.L80021AB4` epilogue variant).
+  - **All 38 other sub-commands, the `sub >= 0x27` range (retail joins the tail with an uninitialized stack vector — garbage path), and the bit7-clear anchor path (`.L80020AD0`) assert loudly.** The anchor path is fully decoded for later: `parent = *(u32*)(sprite+0x70)`; gated on parent, parent base, and parent mode 1; direction-table entry `op0*8` gives signed dx/dy bytes (dx negated on parent facing bit `+0x3C` bit 3), each `* (s16)parent[+0x2C] >>12` (neg `+0xFFF`), then child z = parent z, child x/y = parent x/y + terms`<<16`.
+- **Verification:** live probe (`captures/render_diag/map1_opcode_bc_reload_20260709_run1.log`): `0xBC/0x24` clears (live operand `op0=0xA4`: bit7 set, sub 0x24, **bit 6 clear** → position-store branch exercised); child #2 then advanced through **several already-ported opcodes** (script `0x5b3ec4 → 0x5b3ec9`, `func_800248D4` recursion depth 4) before the next unported one. Single-agent adversarial asm-vs-C refutation pass run (see commit). Smokes ent8/ent0/Map0 `RC=124`, baseline stub family, zero new stubs, `LINK OK`.
+- **THE NEW FRONTIER (#14) — child-script opcode `0x94`** (`opcodeIndex=148`, `dispatchIndex=0x0A`, operands=`0x5b3eca`, opcode byte @`0x5b3ec9`, child #2 sprite `0x62e820`, actor 61 / skin 1, frame 116, same tick chain).
+  - **Decoded in full** (asm `8001FDC8-8001FDEC` + shared tail `.L800215A4` @ `800215A4-800215B4`, `jtbl_800183D8[0x0A]`, zero operand bytes, stride 1) — six instructions:
+    ```c
+    if ((*(u32*)(sprite+0x3C) & 3) == 2) {          /* mode-2 sprites only (our child IS mode 2) */
+        u8* parent = *(u32*)(sprite+0x70);
+        u8* base   = *(u32*)(sprite+0x20);
+        *(u16*)(base + 0x2) = *(u16*)(parent + 0x32); /* inherit parent's angle (+0x32, the rsin/rcos angle) as rotation-Y */
+        *(u32*)(sprite+0x3C) |= 0x10000000;           /* .L800215A4: matrix-dirty flag (func_80022038 recomputes) */
+    }
+    ```
+    Everything needed already exists; smallest pass yet.
+  - Still queued for child visibility: `func_80025718` (type-2 render callback, `D_8004FD40[2]`, one-shot `[port]` log marks it).
+
 ## Exact Next Function To Implement
 
 - **No bounded kernel0 field stub blocker remains in the verified path** — latest 45s verification run after `func_8009AD6C` implementation has zero `[stub]` lines.
