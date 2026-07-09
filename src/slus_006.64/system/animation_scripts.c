@@ -83,6 +83,79 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x32) {
+        /* Opcode 0xBC handler (asm 800202F4-80020BAC): multi-command
+         * position opcode. Operand bit 7 set selects a sub-command
+         * (op0 & 0x3F) from jtbl_800185A8 (0x27 entries; >= 0x27 joins the
+         * shared tail with an uninitialized vector in retail); bit 7 clear
+         * takes the attach-to-parent-anchor path (.L80020AD0). Every
+         * sub-command ends in the shared tail .L80020A20: optional
+         * camera-relative transform (ApplyMatrixSV by D_8004FBB8, gated on
+         * a flag the sub-cases set), then operand bit 6 selects the
+         * destination - set stores the vector halfwords to +0xA0/A2/A4
+         * (target position), clear stores (s16)<<16 into the position
+         * words +0x0/+0x4/+0x8.
+         *
+         * Only the live sub-command 0x24 is ported; all other sub-commands,
+         * the bit7-clear anchor path, and the camera-relative branch
+         * (unreachable from 0x24, which forces the flag to 0) assert loudly
+         * so each surfaces with its operand context. */
+        u8* p = pSpriteData;
+        u32 op0 = ((u8*)operands)[0];
+
+        if (op0 & 0x80) {
+            u32 sub = op0 & 0x3F;
+            s32 cameraRelative = *(u8*)(p + 0x3F) & 1;
+            s16 vx;
+            s16 vy;
+            s16 vz;
+
+            if (sub == 0x24) {
+                /* asm 800203B0-800203C8: mark the wrapper task sticky
+                 * (unk14 bit 30 - the bit func_8001CE74 / opcode 0x96 bulk
+                 * unlink skips: detach this child from the parent's
+                 * cleanup), then shared prologue .L80020428: vector = the
+                 * sprite's own position halfwords, camera flag cleared. */
+                u8* pWrapper = (u8*)(uintptr_t)*(u32*)(p + 0x6C);
+
+                *(u32*)(pWrapper + 0x14) |= 0x40000000;
+                vx = *(s16*)(p + 0x2);
+                vy = *(s16*)(p + 0x6);
+                vz = *(s16*)(p + 0xA);
+                cameraRelative = 0;
+            } else {
+                assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
+                return;
+            }
+
+            /* Shared tail .L80020A20. */
+            if (cameraRelative != 0) {
+                /* ApplyMatrixSV(&D_8004FBB8, &vec, &vec) + the matrix
+                 * translation low-halfword adds. Decoded (asm 80020A24-
+                 * 80020A70) but unreachable from sub 0x24; port it when a
+                 * live sub-command needs it. */
+                assert(0 && "func_8001FBE4 opcode 0xBC camera-relative tail is not implemented");
+                return;
+            }
+            if (op0 & 0x40) {
+                *(u16*)(p + 0xA0) = (u16)vx;
+                *(u16*)(p + 0xA2) = (u16)vy;
+                *(u16*)(p + 0xA4) = (u16)vz;
+            } else {
+                *(s32*)(p + 0x0) = (s32)vx << 16;
+                *(s32*)(p + 0x4) = (s32)vy << 16;
+                *(s32*)(p + 0x8) = (s32)vz << 16;
+            }
+            return;
+        }
+
+        /* Operand bit 7 clear: .L80020AD0 positions this child at its
+         * parent's anchor (parent +0x70 back-link, direction-table entry
+         * op0, scaled by parent +0x2C). Decoded but not live yet. */
+        assert(0 && "func_8001FBE4 opcode 0xBC anchor path is not implemented");
+        return;
+    }
+
     if (dispatchIndex == 0x19) {
         /* Opcode 0xA3 handler (asm 800217A4-80021880): set the sprite's
          * gravity at +0x1C (consumed by the func_80022B2C integrator). When
