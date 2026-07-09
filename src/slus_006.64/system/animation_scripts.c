@@ -1,5 +1,6 @@
 #include "common.h"
 #include "field/actor.h"
+#include "system/memory.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
 
@@ -29,6 +30,24 @@ void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
 
 extern s32 D_80059198;
 extern void func_80022974(void* pSpriteData);
+extern void func_8001CE74(void* pTargetEntry);
+
+/* sbss 800592E4-EA ("800592E4 -> EA is bss local", rendering.c): image-blob
+ * pointer + VRAM x/y handoff into func_8001FB30 (asm-only on the matching
+ * build; port implementation in pc_port/src/game_overrides.c). */
+extern u32 D_800592E4;
+extern s16 D_800592E8;
+extern s16 D_800592EA;
+extern void func_8001FB30(void);
+
+/* Child-sprite spawner (temp1.c asm 80023B84; port implementation in
+ * pc_port/src/game_overrides.c). Returns the child SpriteData. */
+extern void* func_80023B84(void* pSpriteData, void* pScript,
+                           void* pAnimPackage);
+
+/* Texture-page latch (temp2.c asm 8002CC10; port implementation in
+ * pc_port/src/game_overrides.c). */
+extern void func_8002CC10(s32 x, s32 y);
 
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
@@ -37,6 +56,17 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     (void)operands;
 
     if (dispatchIndex >= 0x73) {
+        return;
+    }
+
+    if (dispatchIndex == 0x3) {
+        /* Opcode 0x8D handler (asm 8001FC34-8001FC50): latch the sprite
+         * texture page from the anim package's VRAM x/y halfwords (+4/+6);
+         * package pointer at +0x24. Zero operand bytes. */
+        u8* p = pSpriteData;
+        u8* pkg = (u8*)(uintptr_t)*(u32*)(p + 0x24);
+
+        func_8002CC10(*(s16*)(pkg + 0x4), *(s16*)(pkg + 0x6));
         return;
     }
 
@@ -61,6 +91,63 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
 
         *(u32*)(p + 0x18) = (val >> 12) << 8;
         func_80022974(p);
+        return;
+    }
+
+    if (dispatchIndex == 0x0C) {
+        /* Opcode 0x96 handler (asm 8001FEEC-8001FEFC): unlink work-list
+         * entries owned by the sprite's self pointer at +0x6C. Zero operands. */
+        u8* p = pSpriteData;
+        func_8001CE74((void*)(uintptr_t)*(u32*)(p + 0x6C));
+        return;
+    }
+
+    if (dispatchIndex == 0x3C) {
+        /* Opcode 0xC6 handler (asm 8001FC54-8001FC74): if A8 bit0 is set,
+         * store operand byte 0 as a halfword at *(pData+0x7C)+0xC. */
+        u8* p = pSpriteData;
+
+        if ((*(u32*)(p + 0xA8) & 1) == 1) {
+            u8* pState = (u8*)(uintptr_t)*(u32*)(p + 0x7C);
+            *(u16*)(pState + 0xC) = ((u8*)operands)[0];
+        }
+        return;
+    }
+
+    if (dispatchIndex == 0x56) {
+        /* Opcode 0xE0 handler (asm 80021440-80021464): spawn a child sprite
+         * whose animation script sits at a 16-bit sign-extended little-endian
+         * offset from the operand bytes; the anim package pointer at +0x24
+         * rides along. Return value (the child) is dropped, as in retail. */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        s32 rel = ((s32)(s8)ops[1] << 8) + ops[0];
+
+        func_80023B84(p, ops + rel, (void*)(uintptr_t)*(u32*)(p + 0x24));
+        return;
+    }
+
+    if (dispatchIndex == 0x72) {
+        /* Opcode 0xFC handler (asm 8001FE64-8001FEDC): upload image data
+         * embedded in the animation script to VRAM. The operand bytes form a
+         * 24-bit little-endian offset (byte 2 sign-extended) from the operand
+         * pointer to the image blob; VRAM x/y are the anim-package (+0x24)
+         * halfwords +4/+6. All three are handed to func_8001FB30 through the
+         * D_800592E4/E8/EA sbss slots. Retail repoints $sp into the scratch
+         * block around the call (the upload path needs a deeper stack); the
+         * native stack needs no switch, but the alloc/free pair is kept so
+         * heap state stays retail-exact. */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        void* scratch = HeapAlloc(0x2000, 0);
+        u8* pkg = (u8*)(uintptr_t)*(u32*)(p + 0x24);
+        s32 rel = ((s32)(s8)ops[2] << 16) + (ops[1] << 8) + ops[0];
+
+        D_800592E4 = (u32)(uintptr_t)(ops + rel);
+        D_800592E8 = *(s16*)(pkg + 0x4);
+        D_800592EA = *(s16*)(pkg + 0x6);
+        func_8001FB30();
+        HeapFree(scratch);
         return;
     }
 

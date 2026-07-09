@@ -760,6 +760,28 @@ void func_800248D4(void* pSpriteData) {
         return;
     }
 
+    /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
+    if (opcode == 0x85 || opcode == 0x86 || opcode == 0x87 || opcode == 0x8E ||
+        opcode == 0x98 || opcode == 0xA7 || opcode == 0xBE || opcode == 0xC8 ||
+        opcode == 0xD4 || opcode == 0xE1 || opcode == 0xE2 || opcode == 0xE4 ||
+        opcode == 0xFA) {
+        assert(0 && "func_800248D4 dedicated opcode path is not implemented");
+    }
+
+    if (opcode >= 0x80) {
+        /* Shared default .L80024EC8 (jtbl entry or out-of-range >=0xFB):
+         *   func_8001FBE4(pData, opcode, pc+1);
+         *   pData+0x64 += D_8004FC40[opcode];
+         *   re-enter (.L8002490C).
+         * Map15 actor60 skin5 hits 0xC6 then 0x96 through this path. */
+        extern const u8 D_8004FC40[256];
+
+        func_8001FBE4(pData, opcode, pc + 1);
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        func_800248D4(pData);
+        return;
+    }
+
     assert(0 && "func_800248D4 opcode path is not implemented");
 }
 

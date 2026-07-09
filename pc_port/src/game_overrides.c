@@ -929,3 +929,700 @@ void func_80031804(void* ot, void* prim)
     *(u32*)ot = (u32)(uintptr_t)prim & 0xFFFFFF;
     *(u32*)prim = old | 0x03000000;
 }
+
+/* ---------------------------------------------------------------------------
+ * Anim-script opcode 0xFC image-upload chain: func_8001FBE4 (0xFC handler in
+ * animation_scripts.c) -> func_8001FB30 -> func_8002DDE4 -> LoadImage.
+ *
+ * D_800592E4/E8/EA (sbss 0x800592E4-EA; "800592E4 -> EA is bss local" in
+ * rendering.c) carry the image-blob pointer and VRAM base x/y between the
+ * handler and func_8001FB30, which the matching build keeps as INCLUDE_ASM.
+ * --------------------------------------------------------------------------- */
+u32 D_800592E4;
+s16 D_800592E8;
+s16 D_800592EA;
+
+/* func_8002DDE4 (asm/slus_006.64/nonmatchings/system/temp2/func_8002DDE4.s):
+ * multi-block VRAM uploader. pImageData = { s32 count; u32 skipped[count];
+ * blocks... }, each block = { u32 magic; u16 baseX, baseY, offsX, offsY;
+ * u16 w, h; u16 pixels[w*h] }. magic 0x1100 = pixel data (positioned by
+ * texMode), 0x1101 = CLUT (positioned by clutMode); any other magic returns 1.
+ * mode 1: caller xy + block offs; mode 2: block base + caller xy + block offs;
+ * other: block base + block offs. Each block is LoadImage'd into VRAM.
+ * clutX/clutY are read as u16 (retail lhu), the rest stay 32-bit signed. */
+s32 func_8002DDE4(void* pImageData, s32 texMode, s32 texX, s32 texY,
+                  s32 clutMode, s32 clutX, s32 clutY)
+{
+    s32 count = *(s32*)pImageData;
+    u8* pBlock = (u8*)pImageData + count * 4 + 4;
+    s16 texMode16 = (s16)texMode;
+    s16 clutMode16 = (s16)clutMode;
+    u16 cx = (u16)clutX;
+    u16 cy = (u16)clutY;
+    RECT rect;
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        u32 magic = *(u32*)pBlock;
+        pBlock += 4;
+
+        if (magic == 0x1100) {
+            if (texMode16 == 1) {
+                rect.x = texX + *(u16*)(pBlock + 4);
+                rect.y = texY + *(u16*)(pBlock + 6);
+            } else if (texMode16 == 2) {
+                rect.x = *(u16*)(pBlock + 0) + texX + *(u16*)(pBlock + 4);
+                rect.y = *(u16*)(pBlock + 2) + texY + *(u16*)(pBlock + 6);
+            } else {
+                rect.x = *(u16*)(pBlock + 0) + *(u16*)(pBlock + 4);
+                rect.y = *(u16*)(pBlock + 2) + *(u16*)(pBlock + 6);
+            }
+        } else if (magic == 0x1101) {
+            if (clutMode16 == 1) {
+                rect.x = cx + *(u16*)(pBlock + 4);
+                rect.y = cy + *(u16*)(pBlock + 6);
+            } else if (clutMode16 == 2) {
+                rect.x = *(u16*)(pBlock + 0) + cx + *(u16*)(pBlock + 4);
+                rect.y = *(u16*)(pBlock + 2) + cy + *(u16*)(pBlock + 6);
+            } else {
+                rect.x = *(u16*)(pBlock + 0) + *(u16*)(pBlock + 4);
+                rect.y = *(u16*)(pBlock + 2) + *(u16*)(pBlock + 6);
+            }
+        } else {
+            return 1;
+        }
+
+        pBlock += 8;
+        rect.w = *(u16*)pBlock;
+        pBlock += 2;
+        rect.h = *(u16*)pBlock;
+        pBlock += 2;
+        LoadImage(&rect, (u_long*)pBlock);
+        pBlock += (s16)rect.w * (s16)rect.h * 2;
+    }
+    return 0;
+}
+
+/* func_8001FB30 (asm/slus_006.64/nonmatchings/system/rendering/func_8001FB30.s):
+ * trampoline that retail runs on a heap-allocated 0x2000-byte stack (sp is
+ * repointed to scratch+0x1EFC around the call). The native stack needs no
+ * switch; the alloc/free pair is kept so heap state stays retail-exact.
+ * Forwards the D_800592E4/E8/EA handoff into func_8002DDE4 with the CLUT
+ * args zeroed (CLUT blocks then use their raw embedded coordinates). */
+void func_8001FB30(void)
+{
+    void* scratch = HeapAlloc(0x2000, 1);
+    func_8002DDE4((void*)(uintptr_t)D_800592E4, 1, D_800592E8, D_800592EA,
+                  0, 0, 0);
+    HeapFree(scratch);
+}
+
+/* ---------------------------------------------------------------------------
+ * Anim-script opcode 0xE0 child-sprite spawn chain.
+ *
+ * func_8001FBE4's 0xE0 case calls func_80023B84(parentSprite, script, pkg),
+ * which allocates a heap AnimTask { WorkListEntry task1(timer); task2(render);
+ * SpriteData @+0x38 } via func_800233A4, copies a large slice of the parent's
+ * state into the child, binds the child's animation script (func_80023538,
+ * already real in temp1.c), and registers per-type post-init + render
+ * callbacks (func_80024730 / func_80025224). All of these are INCLUDE_ASM in
+ * temp1.c for the matching build; ported here from asm, correct-by-inspection.
+ * Work-list add/remove/setter machinery lives in work_list_port.c.
+ * --------------------------------------------------------------------------- */
+
+extern void AnimScriptTick(void* pSpriteData);
+extern void func_80023804(void* pSpriteData);
+extern void func_80023538(void* pSpriteData, void* pAnimation);
+extern void func_8002393C(void* arg0);
+extern void func_80023950(void* arg0);
+extern int func_8001EE74(void* arg0);
+extern void func_8001CE74(void* pTargetEntry);
+extern void func_8001D034(void* pTargetEntry);
+extern void func_8001D3F4(void* pTargetSprite);
+extern void TimerWorkListAddTask(void* pOwner, void* pEntry);
+extern void WorkListAddTask(void* pOwner, void* pEntry);
+extern void TimerWorkListSetTaskCallback(void* pTask, void (*callback)(void*));
+extern void WorkListSetTaskCallback(void* pTask, void (*callback)(void*));
+extern void WorkListTaskSetOnFreeCallback(void* pTask, void (*callback)(void*));
+extern void TimerWorkListRemoveTask(void* pTargetEntry);
+extern void WorkListRemoveTask(void* pTargetEntry);
+extern u8 D_800591AC;
+extern u8 D_800591AF;
+extern void func_80025710(void);
+extern u8 D_8006BE10[];
+extern u8 D_8005A474[];
+extern u32 g_GfxCurWorkBuffer;
+extern s32 g_GfxCurContext;
+extern u32 D_80059300[];
+
+/* .sbss @0x800592EC: counts func_80022E8C ticks (type-7 timer callback). */
+s32 D_800592EC;
+/* .bss @0x8006F99C / 0x8006F9AC (asm/slus_006.64/data/49AC0.bss.s, 0x10 each,
+ * zero-initialized like retail): default position vectors copied into type
+ * 10-13 child sprites by func_80024730. */
+u32 D_8006F99C[4];
+u32 D_8006F9AC[4];
+
+/* Field-overlay hooks called from the main executable's sprite code. Neither
+ * has decompiled source anywhere in the repo (0x800BAxxx/0x800BCxxx live in
+ * the field overlay's address space); until they are ported, log once and
+ * no-op so the gap is visible instead of silent. */
+void func_800BA8F4(void* pSpriteData)
+{
+    static int logged;
+    (void)pSpriteData;
+    if (!logged) {
+        logged = 1;
+        fprintf(stderr, "[port] func_800BA8F4 (field-overlay hook in sprite "
+                        "gravity path) not ported; no-op\n");
+    }
+}
+
+void func_800BC158(void* pWrapper)
+{
+    static int logged;
+    (void)pWrapper;
+    if (!logged) {
+        logged = 1;
+        fprintf(stderr, "[port] func_800BC158 (field-overlay hook for type "
+                        "10-13 child sprites) not ported; no-op\n");
+    }
+}
+
+/* Retail .data callback table @0x8004FD40 (temp1.c CALLBACK_TABLE comment):
+ * per-type render callbacks WorkListSetTaskCallback'd onto the child's task2.
+ * Retail entries: 0/5/6/14=func_80025258, 1=func_80025710, 2/7=func_80025718,
+ * 8=func_8002541C, 9=func_80025544, 15=func_800257F0, 3/4/10-13=NULL. Only
+ * func_80025710 (dummy) is decompiled so far; the others stay NULL here and
+ * func_80025224 logs when a retail-non-NULL slot is requested — those sprites
+ * exist and animate but do not render until their callback is ported. */
+static void (*const D_8004FD40[16])(void*) = {
+    NULL,                          /* 0: func_80025258 (unported) */
+    (void (*)(void*))func_80025710,/* 1: dummy */
+    NULL,                          /* 2: func_80025718 (unported) */
+    NULL, NULL,                    /* 3,4: NULL in retail */
+    NULL, NULL,                    /* 5,6: func_80025258 (unported) */
+    NULL,                          /* 7: func_80025718 (unported) */
+    NULL,                          /* 8: func_8002541C (unported) */
+    NULL,                          /* 9: func_80025544 (unported) */
+    NULL, NULL, NULL, NULL,        /* 10-13: NULL in retail */
+    NULL,                          /* 14: func_80025258 (unported) */
+    NULL,                          /* 15: func_800257F0 (unported) */
+};
+
+/* asm 80025224: bind the per-type render callback onto the child's render
+ * task. The extra logging below is port-only visibility for the still-NULL
+ * table slots; retail semantics (including setting NULL) are unchanged. */
+void func_80025224(void* pTask, int handlerIndex)
+{
+    static const u16 retailNonNull = 0xC3E7; /* bits 0,1,2,5,6,7,8,9,14,15 */
+    static u16 loggedMask;
+
+    if (D_8004FD40[handlerIndex & 0xF] == NULL &&
+        (retailNonNull >> (handlerIndex & 0xF)) & 1 &&
+        !((loggedMask >> (handlerIndex & 0xF)) & 1)) {
+        loggedMask |= 1 << (handlerIndex & 0xF);
+        fprintf(stderr, "[port] anim render callback D_8004FD40[%d] not "
+                        "ported; child sprite will not render\n",
+                handlerIndex & 0xF);
+    }
+    WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex]);
+}
+
+/* asm 80023440: sprite type from the animation-script header halfword:
+ * bits 8-10, plus 8 if bit 14 is set. */
+s32 func_80023440(void* pScript)
+{
+    u16 header = *(u16*)pScript;
+    s32 type = (header >> 8) & 0x7;
+
+    if ((header >> 14) & 1) {
+        type += 8;
+    }
+    return type;
+}
+
+/* asm 80023468 via jtbl_80018664: sprite type -> transform-block mode.
+ * mode 0 = no transform block, 1 = transform block + per-frame buffer,
+ * 2 = transform block only. Type 3 (and >= 0x10) has no table entry in
+ * retail and returns an uninitialized register — a dead path (the only
+ * caller re-derives type 3 from sprite flags first); -1 here makes
+ * func_80023A48's assert catch it loudly if it ever becomes live. */
+s32 func_80023468(s32 type)
+{
+    static const s8 modes[16] = { 1, 0, 2, -1, 0, 1, 1, 2,
+                                  0, 0, 1, 1, 1, 1, 1, 2 };
+
+    if ((u32)type >= 0x10) {
+        return -1;
+    }
+    return modes[type];
+}
+
+/* asm 800233A4 (matched-C comment in temp1.c): allocate the AnimTask
+ * (0xEC header = two WorkListEntry + SpriteData, plus dataSize of per-mode
+ * trailing buffers), register task1 on the timer list under pOwner and task2
+ * on the render list under task1, init the SpriteData, and bind the tick
+ * (func_80022DF4) and free (func_80022EB8) callbacks. */
+void func_80022DF4(void* pTask);
+void func_80022E8C(void* pTask);
+void func_80022EB8(void* pTask);
+
+void* func_800233A4(void* pOwner, int dataSize)
+{
+    u8* pEntry = HeapAlloc(dataSize + 0xEC, D_800591AF);
+    u8* pTask2 = pEntry + 0x1C;
+    u8* pSprite = pEntry + 0x38;
+
+    TimerWorkListAddTask(pOwner, pEntry);
+    WorkListAddTask(pEntry, pTask2);
+    func_80023804(pSprite);
+    *(u32*)(pEntry + 0x4) = (u32)(uintptr_t)pSprite;
+    *(u32*)(pTask2 + 0x4) = (u32)(uintptr_t)pSprite;
+    TimerWorkListSetTaskCallback(pEntry, func_80022DF4);
+    WorkListTaskSetOnFreeCallback(pEntry, func_80022EB8);
+    return pEntry;
+}
+
+/* asm 80023958 (mode 2): transform block at sprite+0xB4; no per-frame or
+ * direction buffers. */
+void func_80023958(void* pSpriteData)
+{
+    u8* p = pSpriteData;
+    u8* pBase = p + 0xB4;
+
+    *(u32*)(p + 0x20) = (u32)(uintptr_t)pBase;
+    func_8002393C(pBase);
+    *(u32*)(pBase + 0x34) = 0;
+    *(u32*)(pBase + 0x40) = 0;
+}
+
+/* asm 800239F4 (mode 1): transform block at sprite+0xB4 with the per-frame
+ * work buffer at sprite+0xF4 (sized by func_80023A48's frame-count math). */
+void func_800239F4(void* pSpriteData)
+{
+    u8* p = pSpriteData;
+    u8* pBase = p + 0xB4;
+
+    *(u32*)(p + 0x20) = (u32)(uintptr_t)pBase;
+    func_8002393C(pBase);
+    *(u32*)(pBase + 0x30) = (u32)(uintptr_t)(p + 0xF4);
+    *(u32*)(pBase + 0x34) = 0;
+    *(u32*)(pBase + 0x38) = 0;
+}
+
+/* asm 80023A48: allocate + shape the child AnimTask by mode. Mode 1 sizes a
+ * trailing per-frame buffer from the package's frame count ((n-1)*24+0x58)
+ * and types 5/6 swap in the global default packages. Sprite+0x86 records the
+ * sprite-local allocation size (mode extra + 0xEC); +0x6C points back at the
+ * wrapper AnimTask; +0x24 is the (possibly overridden) anim package. */
+void* func_80023A48(s32 type, s32 mode, void* pAnimPackage, s32 dataSize,
+                    void* pOwner)
+{
+    u8* pkg = pAnimPackage;
+    s32 extra;
+    u8* pWrapper;
+    u8* pSprite;
+
+    if (mode == 1) {
+        if (type == 5) {
+            pkg = D_8006BE10;
+        }
+        if (type == 6) {
+            pkg = D_8005A474;
+        }
+        extra = (func_8001EE74((void*)(uintptr_t)*(u32*)pkg) - 1) * 24 + 0x58;
+        pWrapper = func_800233A4(pOwner, extra + dataSize);
+        func_800239F4(pWrapper + 0x38);
+    } else if (mode == 0) {
+        extra = 0;
+        pWrapper = func_800233A4(pOwner, dataSize);
+        func_80023950(pWrapper + 0x38);
+    } else if (mode == 2) {
+        extra = 0x54;
+        pWrapper = func_800233A4(pOwner, dataSize + 0x54);
+        func_80023958(pWrapper + 0x38);
+    } else {
+        /* Retail reaches here only via the type-3/invalid dead path in
+         * func_80023468 and would run on uninitialized registers. */
+        assert(0 && "func_80023A48: invalid sprite transform mode");
+        return NULL;
+    }
+
+    pSprite = pWrapper + 0x38;
+    *(u32*)(pSprite + 0x6C) = (u32)(uintptr_t)pWrapper;
+    *(u16*)(pSprite + 0x86) = (u16)(extra + 0xEC);
+    *(u32*)(pSprite + 0x24) = (u32)(uintptr_t)pkg;
+    return pWrapper;
+}
+
+/* asm 80024730 via jtbl_800186A4: per-type post-init after the spawn copy.
+ * Types 0-6/14 (and >= 0xF) just bind the render callback; 7 swaps the tick
+ * callback for the counting variant; 8/9 preset frame fields; 10/11 zero the
+ * frame and take a default position vector; 12/13 demote themselves to type
+ * 10/11 (type-2) before doing the same. */
+void func_80024730(void* pWrapper)
+{
+    u8* w = pWrapper;
+    u8* sp = w + 0x38;
+    s32 idx = (*(u32*)(sp + 0x40) >> 13) & 0xF;
+    u32* src = NULL;
+
+    if (idx < 0xF) {
+        switch (idx) {
+        case 7:
+            TimerWorkListSetTaskCallback(w, func_80022E8C);
+            break;
+        case 8:
+            *(u8*)(sp + 0x2B) = 0x68;
+            *(u16*)(sp + 0x34) = 1;
+            break;
+        case 9:
+            *(u16*)(sp + 0x36) = 3;
+            *(u8*)(sp + 0x2B) = 0x60;
+            *(u16*)(sp + 0x34) = 1;
+            break;
+        case 10:
+            *(u16*)(sp + 0x34) = 0; /* delay slot: precedes the callee body */
+            func_800BC158(w);
+            src = D_8006F99C;
+            break;
+        case 11:
+            *(u16*)(sp + 0x34) = 0; /* delay slot: precedes the callee body */
+            func_800BC158(w);
+            src = D_8006F9AC;
+            break;
+        case 12:
+        case 13: {
+            u32 v = *(u32*)(sp + 0x40);
+
+            *(u16*)(sp + 0x34) = 1;
+            idx = (idx - 2) & 0xF;
+            *(u32*)(sp + 0x40) = (v & 0xFFFE1FFF) | (idx << 13);
+            func_800BC158(w);
+            src = D_8006F99C;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    if (src) {
+        *(u32*)(sp + 0x0) = src[0];
+        *(u32*)(sp + 0x4) = src[1];
+        *(u32*)(sp + 0x8) = src[2];
+    }
+    func_80025224(w + 0x1C, idx);
+}
+
+/* asm 80022CAC: scale value by the sprite's slow-motion timer (+0x3A,
+ * 10-bit fixed point); passthrough when the timer is zero. */
+s32 func_80022CAC(void* pSpriteData, s32 value)
+{
+    s32 t = *(u16*)((u8*)pSpriteData + 0x3A);
+    s32 v;
+
+    if (t == 0) {
+        return value;
+    }
+    v = value * t;
+    if (v < 0) {
+        v += 0x3FF;
+    }
+    return v >> 10;
+}
+
+/* asm 80022B2C: vertical motion integrator. Bit 26 of +0x3C selects the
+ * simple path (no floor); otherwise position +0x4 advances by scaled
+ * velocity +0x10, clamps to the floor height +0x84, bounces by the
+ * A8-encoded coefficient when falling onto it, and gains gravity +0x1C. */
+void func_80022B2C(void* pSpriteData)
+{
+    u8* p = pSpriteData;
+    s32 vel, dv, pos, floor;
+
+    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
+        vel = *(s32*)(p + 0x10);
+        dv = func_80022CAC(p, vel >> 4) << 4;
+        *(s32*)(p + 0x4) += dv;
+        *(s32*)(p + 0x10) = vel + *(s32*)(p + 0x1C);
+        return;
+    }
+
+    func_800BA8F4(p);
+
+    vel = *(s32*)(p + 0x10);
+    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
+        floor = *(s16*)(p + 0x84);
+        if (*(s16*)(p + 0x6) == (s16)floor) {
+            return;
+        }
+        dv = func_80022CAC(p, vel >> 4) << 4;
+        pos = *(s32*)(p + 0x4) + dv;
+        *(s32*)(p + 0x4) = pos;
+        if ((pos >> 16) < floor) {
+            *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
+            return;
+        }
+
+        /* Landed: snap to the floor and bounce. */
+        *(s32*)(p + 0x4) = floor << 16;
+        pos = -vel * (s32)((*(u32*)(p + 0xA8) >> 1) & 0x3FF);
+        if (pos < 0) {
+            pos += 0xFF;
+        }
+        pos >>= 8;
+        *(s32*)(p + 0x10) = pos;
+        if (pos < 0) {
+            pos = -pos;
+        }
+        dv = *(s32*)(p + 0x1C);
+        if (dv < 0) {
+            dv = -dv;
+        }
+        if (pos < dv) {
+            *(s32*)(p + 0x10) = 0;
+        }
+        return;
+    }
+
+    dv = func_80022CAC(p, vel >> 4) << 4;
+    pos = *(s32*)(p + 0x4) + dv;
+    *(s32*)(p + 0x4) = pos;
+    floor = *(s16*)(p + 0x84);
+    if ((pos >> 16) >= floor) {
+        *(s32*)(p + 0x4) = floor << 16;
+    }
+    *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
+}
+
+/* asm 80022CDC: horizontal motion (x +0x0 by velocity +0xC, z +0x8 by
+ * velocity +0x14, both slow-motion scaled) then the vertical integrator. */
+void func_80022CDC(void* pSpriteData)
+{
+    u8* p = pSpriteData;
+
+    *(s32*)(p + 0x0) += func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4;
+    *(s32*)(p + 0x8) += func_80022CAC(p, *(s32*)(p + 0x14) >> 4) << 4;
+    func_80022B2C(p);
+}
+
+/* asm 80022DF4: AnimTask timer tick. Runs the sprite's script + motion; when
+ * the script terminates (+0x64 == 0) — immediately, or after the double-tick
+ * granted by AC bit 6 — invokes the task's free callback (func_80022EB8). */
+void func_80022DF4(void* pTask)
+{
+    u8* t = pTask;
+    u8* sp = (u8*)(uintptr_t)*(u32*)(t + 0x4);
+
+    AnimScriptTick(sp);
+    func_80022CDC(sp);
+    if (*(u32*)(sp + 0x64) != 0) {
+        if (!((*(u32*)(sp + 0xAC) >> 6) & 1)) {
+            return;
+        }
+        AnimScriptTick(sp);
+        func_80022CDC(sp);
+        if (*(u32*)(sp + 0x64) != 0) {
+            return;
+        }
+    }
+    ((void (*)(void*))(uintptr_t)*(u32*)(t + 0xC))(pTask);
+}
+
+/* asm 80022E8C: type-7 tick variant — counts invocations in D_800592EC. */
+void func_80022E8C(void* pTask)
+{
+    D_800592EC++;
+    func_80022DF4(pTask);
+}
+
+/* asm 80025180: push an 8-byte node onto the current context's deferred
+ * image list (D_80059300[ctx]), allocated from the gfx work buffer. Retail
+ * advances the buffer head by 8 even when it is NULL; kept as-is. */
+void func_80025180(void* pData)
+{
+    u8* node = (u8*)(uintptr_t)g_GfxCurWorkBuffer;
+
+    g_GfxCurWorkBuffer = (u32)(uintptr_t)(node + 8);
+    if (node != NULL) {
+        *(u32*)(node + 0x0) = (u32)(uintptr_t)pData;
+        *(u32*)(node + 0x4) = D_80059300[g_GfxCurContext];
+        D_80059300[g_GfxCurContext] = (u32)(uintptr_t)node;
+    }
+}
+
+/* asm 80022EB8: AnimTask free callback. Queues the transform block's +0x2C
+ * buffer for deferred free, releases the direction table for mode-1 sprites,
+ * unlinks owned tasks (AC bit 5) and parent links (+0xB0 bit 11), drops the
+ * sprite from the pending-frame chain, removes both tasks and frees the
+ * AnimTask allocation. */
+void func_80022EB8(void* pTask)
+{
+    u8* t = pTask;
+    u8* sp = (u8*)(uintptr_t)*(u32*)(t + 0x4);
+    u8* pBase = (u8*)(uintptr_t)*(u32*)(sp + 0x20);
+    u32 v;
+
+    if (pBase != NULL) {
+        v = *(u32*)(pBase + 0x2C);
+        if (v != 0) {
+            func_80025180((void*)(uintptr_t)v);
+        }
+    }
+    if ((*(u32*)(sp + 0x3C) & 0x3) == 1) {
+        pBase = (u8*)(uintptr_t)*(u32*)(sp + 0x20);
+        v = *(u32*)(pBase + 0x34);
+        if (v != 0) {
+            HeapFree((void*)(uintptr_t)v);
+        }
+    }
+    if ((*(u32*)(sp + 0xAC) >> 5) & 1) {
+        func_8001CE74(pTask);
+    }
+    if ((*(u32*)(sp + 0xB0) >> 11) & 1) {
+        func_8001D034(pTask);
+    }
+    if ((*(u32*)(sp + 0x3C) & 0x3) == 1) {
+        func_8001D3F4(sp);
+    }
+    TimerWorkListRemoveTask(pTask);
+    WorkListRemoveTask(t + 0x1C);
+    HeapFree(pTask);
+}
+
+/* asm 80023B84: THE opcode-0xE0 worker — spawn a child sprite driven by the
+ * script at pScript, cloning a large slice of the parent's state. Returns
+ * the child SpriteData. D_800591AC is suppressed across the spawn when the
+ * parent's +0xB0 bit 8 is set (the child then skips the unk14_3 timer flag
+ * in TimerWorkListAddTask). */
+void* func_80023B84(void* pParentSprite, void* pScript, void* pAnimPackage)
+{
+    u8* pSrc = pParentSprite;
+    u8 savedTimerFlag = D_800591AC;
+    s32 type, mode;
+    u8* pWrapper;
+    u8* pDst;
+    u32 v, combo;
+
+    v = *(u32*)(pSrc + 0xB0) | 0x800;
+    *(u32*)(pSrc + 0xB0) = v;
+    if ((v >> 8) & 1) {
+        D_800591AC = 0;
+    }
+
+    type = func_80023440(pScript);
+    if (type == 3) {
+        type = (*(u32*)(pSrc + 0x40) >> 13) & 0xF;
+    }
+    mode = func_80023468(type);
+
+    pWrapper = func_80023A48(type, mode, pAnimPackage, 0,
+                             (void*)(uintptr_t)*(u32*)(pSrc + 0x6C));
+    pDst = pWrapper + 0x38;
+
+    *(u32*)(pWrapper + 0x14) |= 0x20000000; /* task1.unk14_1: child marker */
+
+    /* Type into +0x40 bits 13-16, mode into +0x3C bits 0-1. */
+    *(u32*)(pDst + 0x40) =
+        (*(u32*)(pDst + 0x40) & 0xFFFE1FFF) | ((type & 0xF) << 13);
+    *(u32*)(pDst + 0x3C) = (*(u32*)(pDst + 0x3C) & ~0x3u) | (mode & 0x3);
+
+    /* Inherited flag bits. */
+    *(u32*)(pDst + 0x40) =
+        (*(u32*)(pDst + 0x40) & ~0x1F00u) | (*(u32*)(pSrc + 0x40) & 0x1F00);
+    *(u32*)(pDst + 0x3C) =
+        (*(u32*)(pDst + 0x3C) & ~0x8u) | (*(u32*)(pSrc + 0x3C) & 0x8);
+    *(u32*)(pDst + 0x3C) =
+        (*(u32*)(pDst + 0x3C) & ~0x10u) | (*(u32*)(pSrc + 0x3C) & 0x10);
+    *(u8*)(pDst + 0x3D) = *(u8*)(pSrc + 0x3D);
+    *(u32*)(pDst + 0x40) =
+        (*(u32*)(pDst + 0x40) & 0xFFFBFFFF) | (*(u32*)(pSrc + 0x40) & 0x40000);
+    *(u32*)(pDst + 0x3C) = (*(u32*)(pDst + 0x3C) | 0x4000000) & ~0x4u;
+
+    *(u32*)(pDst + 0x18) = *(u32*)(pSrc + 0x18);
+    *(u16*)(pDst + 0x32) = *(u16*)(pSrc + 0x32);
+    *(u16*)(pDst + 0x2C) = *(u16*)(pSrc + 0x2C);
+    *(u16*)(pDst + 0x34) = *(u16*)(pSrc + 0x34);
+
+    /* +0xB0 bit 9 (scaled mode): copy; when set, also inherit the slow-motion
+     * timer and force +0x40 bits 8-12 to 3. */
+    v = (*(u32*)(pSrc + 0xB0) >> 9) & 1;
+    *(u32*)(pDst + 0xB0) = (*(u32*)(pDst + 0xB0) & ~0x200u) | (v << 9);
+    if (v) {
+        *(u16*)(pDst + 0x3A) = *(u16*)(pSrc + 0x3A);
+        *(u32*)(pDst + 0x40) = (*(u32*)(pDst + 0x40) & 0xFFFFE0FF) | 0x300;
+    }
+
+    /* Parent A8 top 2 bits and AC bits 0-1. */
+    combo = ((*(u32*)(pSrc + 0xAC) & 0x3) << 2) | (*(u32*)(pSrc + 0xA8) >> 30);
+    *(u32*)(pDst + 0xA8) = (*(u32*)(pDst + 0xA8) & 0x3FFFFFFF) | (combo << 30);
+    *(u32*)(pDst + 0xAC) = (*(u32*)(pDst + 0xAC) & ~0x3u) | (combo >> 2);
+
+    /* +0xB0 bit 8; +0xAC bit 6, bits 7-18, bit 2; clear child A8 bit 0. */
+    *(u32*)(pDst + 0xB0) =
+        (*(u32*)(pDst + 0xB0) & ~0x100u) | (*(u32*)(pSrc + 0xB0) & 0x100);
+    *(u32*)(pDst + 0xAC) =
+        (*(u32*)(pDst + 0xAC) & ~0x40u) | (*(u32*)(pSrc + 0xAC) & 0x40);
+    v = (*(u32*)(pDst + 0xAC) & 0xFFF8007F) | (*(u32*)(pSrc + 0xAC) & 0x7FF80);
+    *(u32*)(pDst + 0xAC) = v;
+    *(u32*)(pDst + 0xA8) &= ~0x1u;
+    *(u32*)(pDst + 0xAC) = (v & ~0x4u) | (*(u32*)(pSrc + 0xAC) & 0x4);
+
+    /* Share the parent's +0x7C state block unless the parent owns it
+     * exclusively (A8 bit 0). */
+    if (*(u32*)(pSrc + 0xA8) & 0x1) {
+        *(u32*)(pDst + 0x7C) = 0;
+    } else {
+        *(u32*)(pDst + 0x7C) = *(u32*)(pSrc + 0x7C);
+    }
+
+    *(u32*)(pDst + 0x70) = (u32)(uintptr_t)pSrc; /* parent back-link */
+    *(u32*)(pDst + 0x44) = *(u32*)(pSrc + 0x44);
+    *(u32*)(pDst + 0x48) = *(u32*)(pSrc + 0x48);
+    *(u32*)(pDst + 0x74) = *(u32*)(pSrc + 0x74);
+    *(u16*)(pDst + 0x82) = *(u16*)(pSrc + 0x82);
+    *(u32*)(pDst + 0x50) = *(u32*)(pSrc + 0x50);
+    *(u8*)(pDst + 0x8D) = *(u8*)(pSrc + 0xAF);
+    *(u32*)(pDst + 0x78) = *(u32*)(pSrc + 0x78);
+    *(u32*)(pDst + 0x00) = *(u32*)(pSrc + 0x00);
+    *(u32*)(pDst + 0x04) = *(u32*)(pSrc + 0x04);
+    *(u32*)(pDst + 0x08) = *(u32*)(pSrc + 0x08);
+    *(u32*)(pDst + 0x0C) = *(u32*)(pSrc + 0x0C);
+    *(u32*)(pDst + 0x10) = *(u32*)(pSrc + 0x10);
+    *(u32*)(pDst + 0x14) = *(u32*)(pSrc + 0x14);
+
+    if (mode != 0) {
+        u8* srcBase = (u8*)(uintptr_t)*(u32*)(pSrc + 0x20);
+        u8* dstBase = (u8*)(uintptr_t)*(u32*)(pDst + 0x20);
+
+        *(u16*)(dstBase + 0x0) = *(u16*)(srcBase + 0x0);
+        *(u16*)(dstBase + 0x2) = *(u16*)(srcBase + 0x2);
+        *(u16*)(dstBase + 0x4) = *(u16*)(srcBase + 0x4);
+        *(u16*)(dstBase + 0x6) = *(u16*)(srcBase + 0x6);
+        *(u16*)(dstBase + 0x8) = *(u16*)(srcBase + 0x8);
+        *(u16*)(dstBase + 0xA) = *(u16*)(srcBase + 0xA);
+    }
+
+    func_80023538(pDst, pScript);
+    func_80024730(pWrapper);
+    D_800591AC = savedTimerFlag;
+    return pDst;
+}
+
+/* ---------------------------------------------------------------------------
+ * func_8002CC10 (asm/slus_006.64/nonmatchings/system/temp2/func_8002CC10.s,
+ * INCLUDE_ASM at temp2.c:664): anim-script opcode 0x8D worker. Latches the
+ * sprite texture-page override from the anim package's VRAM x/y and switches
+ * the tpage-latch mode (D_80050108, semantics documented at temp2.c:692:
+ * 0 = raw latch, 1 = mask low bits and merge the D_80059310 override, 2 =
+ * full override) to "merge". GetTPage(0,0,..) = 4-bit CLUT tpage, ABR 0.
+ * --------------------------------------------------------------------------- */
+extern s32 D_80059310;
+extern s32 D_80050108;
+
+void func_8002CC10(s32 x, s32 y)
+{
+    D_80059310 = GetTPage(0, 0, x & 0xFFFF, y & 0xFFFF) & 0x1F;
+    D_80050108 = 1;
+}
