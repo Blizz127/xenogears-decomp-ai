@@ -195,7 +195,47 @@ void func_800931F8(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093200);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800932D0);
+extern s32 D_800ADBDC;
+extern s32 D_800ADBE4;
+extern s32 D_800ADB2C;
+extern s32 D_8004F308;
+extern s32 D_800ADB90;
+extern s32 D_800ADB70;
+extern s32 D_800ADBEC;
+extern s32 g_GameSceneMapNum;
+
+// VM opcode 152, CHANGE_FIELD: request a map transition to arg(1)/entrance
+// arg(3). Gated on six readiness flags (archive/CD-load and camera-cut state);
+// while any is unsatisfied the instruction does not advance and the VM yields
+// to retry it next frame. Once clear, it snapshots the outgoing scene via
+// func_80092F44, clears the pending-load flag, writes the entrance into VM
+// variable slot 2 and the new map number, then kicks off the load
+// (func_800931F8 is a genuine empty function in retail).
+void func_800932D0(void) {
+    s32 entranceArg;
+    s32 mapArg;
+
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0 || D_800ADB70 != 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    g_FieldControl.isRandomEncountersEnabled = -1;
+
+    if (D_800ADBEC != 0) {
+        entranceArg = FieldScriptVMGetArgument(3);
+        mapArg = FieldScriptVMGetArgument(1);
+        func_80092F44();
+        D_800ADBEC = 0;
+        FieldScriptMemoryWriteU16(2, entranceArg);
+        g_GameSceneMapNum = mapArg;
+        func_800931F8();
+    }
+
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800933F8);
 
