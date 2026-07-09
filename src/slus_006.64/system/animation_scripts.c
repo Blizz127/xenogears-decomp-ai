@@ -79,6 +79,25 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0xA) {
+        /* Opcode 0x94 handler (asm 8001FDC8-8001FDEC + shared tail
+         * .L800215A4): mode-2 sprites only - copy the parent's angle
+         * (+0x32, via the +0x70 back-link) into the transform block's
+         * rotation-Y halfword (+0x2), then set the matrix-dirty flag
+         * (+0x3C bit 28, recomputed by func_80022038). Zero operands.
+         * Other modes return without touching anything. */
+        u8* p = pSpriteData;
+
+        if ((*(u32*)(p + 0x3C) & 0x3) == 2) {
+            u8* pParent = (u8*)(uintptr_t)*(u32*)(p + 0x70);
+            u8* pBase = (u8*)(uintptr_t)*(u32*)(p + 0x20);
+
+            *(u16*)(pBase + 0x2) = *(u16*)(pParent + 0x32);
+            *(u32*)(p + 0x3C) |= 0x10000000;
+        }
+        return;
+    }
+
     if (dispatchIndex == 0x28) {
         return;
     }
