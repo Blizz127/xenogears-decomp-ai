@@ -115,10 +115,11 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
          * (target position), clear stores (s16)<<16 into the position
          * words +0x0/+0x4/+0x8.
          *
-         * Only the live sub-command 0x24 is ported; all other sub-commands,
+         * Only the live sub-commands 0x16, 0x24, and 0x25 are ported; all
+         * other sub-commands,
          * the bit7-clear anchor path, and the camera-relative branch
-         * (unreachable from 0x24, which forces the flag to 0) assert loudly
-         * so each surfaces with its operand context. */
+         * (unreachable from the ported sub-commands, which force the flag to
+         * 0) assert loudly so each surfaces with its operand context. */
         u8* p = pSpriteData;
         u32 op0 = ((u8*)operands)[0];
 
@@ -129,7 +130,17 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
             s16 vy;
             s16 vz;
 
-            if (sub == 0x24 || sub == 0x25) {
+            if (sub == 0x16) {
+                /* asm 8002044C-80020478: vector = the parent sprite's
+                 * position halfwords via the +0x70 back-link, camera flag
+                 * cleared, then shared tail .L80020A20. */
+                u8* pParent = (u8*)(uintptr_t)*(u32*)(p + 0x70);
+
+                vx = *(s16*)(pParent + 0x2);
+                vy = *(s16*)(pParent + 0x6);
+                vz = *(s16*)(pParent + 0xA);
+                cameraRelative = 0;
+            } else if (sub == 0x24 || sub == 0x25) {
                 /* asm 800203B0-800203C8 (0x24) / 800203CC-800203E4 (0x25):
                  * set (0x24) or clear (0x25) the wrapper task's sticky bit
                  * (unk14 bit 30 - the bit func_8001CE74 / opcode 0x96 bulk
@@ -156,8 +167,8 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
             if (cameraRelative != 0) {
                 /* ApplyMatrixSV(&D_8004FBB8, &vec, &vec) + the matrix
                  * translation low-halfword adds. Decoded (asm 80020A24-
-                 * 80020A70) but unreachable from sub 0x24; port it when a
-                 * live sub-command needs it. */
+                 * 80020A70) but unreachable from the ported sub-commands;
+                 * port it when a live sub-command needs it. */
                 assert(0 && "func_8001FBE4 opcode 0xBC camera-relative tail is not implemented");
                 return;
             }
