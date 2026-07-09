@@ -2147,7 +2147,30 @@ void func_800864B4(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864F0);
+extern s16 D_800B233C;
+extern void func_8003A20C(s32);
+
+// Field-transition sound-channel teardown: reset the 3-slot channel table
+// (same shape as func_800864B4) and release any of the 4 low D_800B233C
+// channel-mask bits that are still clear, one SPU voice-release call per bit.
+void func_800864F0(void) {
+    s32 i;
+    s16 flags;
+
+    for (i = 0; i < 3; i++) {
+        D_800AFE8A[i * 3] = 0xFFFF;
+        D_800AFE88[i * 3] = 0xFFFF;
+    }
+
+    flags = D_800B233C;
+    for (i = 0; i < 4; i++) {
+        if ((flags & 1) == 0) {
+            func_8003A20C(i * 2);
+        }
+        flags = (u16)flags >> 1;
+    }
+    D_800B233C = flags;
+}
 
 extern s32 D_800ADBFC;
 extern long FieldGetVec3Magnitude(long, long, long);

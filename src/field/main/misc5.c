@@ -245,7 +245,268 @@ void func_800A5924(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A5C40);
+extern s32 D_800B0048;
+extern s32 D_800AFD14;
+extern s32 D_800C2684;
+extern s32 D_800ADB60;
+extern void* D_800ADC14;
+extern s32 D_800AFD04;
+extern s32 D_8004F308;
+extern s32 D_8004F324;
+extern int D_8005A4C0;
+extern void* D_8005A4E0;
+extern void func_800864F0(void);
+extern void func_800A915C(void);
+extern void func_800A4748(void);
+extern void func_800A90B4(s32);
+extern void func_800A5710(int);
+extern void func_800A56A8(int);
+extern void func_80078C5C(void);
+extern void FieldLoad(void);
+extern void func_8007FFE8(void);
+extern void FieldParticlesFreeAll(void);
+extern int ArchiveDataSync(void);
+extern void func_80070488(void);
+extern void func_80070508(void);
+extern void GamePartySyncSkinData(void);
+extern void GamePartySyncStreamedData(void);
+extern void FieldFadeUpdateAndDraw(void* ot, int renderContextIndex);
+
+// FieldMain's seamless map-transition orchestrator (called once from
+// main.c's after_ctx block once func_800932D0/CHANGE_FIELD has cleared
+// D_800ADBEC and the stream loader is idle). Tears down the outgoing field,
+// preserves the one persistent 0x8005A4C0-sized heap block across that
+// teardown, then dispatches on D_800B0048 (the transition-effect selector,
+// jtbl_8006FDAC) to one of 7 fade/zoom variants around the actual
+// FieldLoad() call, and finally normalizes state for the next transition
+// (D_800B0048=2, D_800AFD14=0x20, D_800AFD04=0).
+void func_800A5C40(void) {
+    void* pSaved;
+    s32 savedMapMode;
+    s32 savedFadeDur;
+    s32 transitionMode;
+    s32 runSharedFadeToBlack;
+    s32 color;
+    s32 i;
+    RECT rect;
+
+    FontFree();
+    FieldParticlesFreeAll();
+    func_800864F0();
+    func_8007FFE8();
+
+    if (D_800B0048 != 6) {
+        func_800A915C();
+        if (D_800B0048 != 4) {
+            func_800A4748();
+        }
+    }
+
+    DrawSync(0);
+    FieldClearAndSwapOTag();
+    FieldRenderSync();
+    FieldFree();
+
+    pSaved = HeapAlloc(D_8005A4C0, 0);
+    memcpy(pSaved, D_8005A4E0, D_8005A4C0);
+    HeapUnpinBlock(D_8005A4E0);
+    HeapFree(D_8005A4E0);
+
+    if (D_800B0048 != 6) {
+        func_800A90B4(1);
+    }
+
+    D_8005A4E0 = HeapAlloc(D_8005A4C0, 1);
+    memcpy(D_8005A4E0, pSaved, D_8005A4C0);
+    HeapPinBlock(D_8005A4E0);
+    HeapFree(pSaved);
+
+    transitionMode = D_800B0048;
+    runSharedFadeToBlack = 0;
+
+    if ((u32)transitionMode < 7) {
+        switch (transitionMode) {
+        case 6:
+            FieldFadeToWhite(D_800AFD14);
+            for (i = 0; i < D_800AFD14; i++) {
+                FieldClearAndSwapOTag();
+                FieldFadeUpdateAndDraw((u8*)g_FieldCurRenderContext + 0x80D4, g_FieldCurRenderContextIndex);
+                FieldDisplay();
+            }
+            runSharedFadeToBlack = 1;
+            break;
+
+        case 0:
+            FieldZoomFadeEffectInitialize(0, 0);
+            FieldFadeToWhite(D_800AFD14);
+            for (i = 0; i < D_800AFD14; i++) {
+                FieldClearAndSwapOTag();
+                FieldFadeUpdateAndDraw((u8*)g_FieldCurRenderContext + 0x80D4, g_FieldCurRenderContextIndex);
+                FieldZoomFadeEffectUpdate();
+                FieldDisplay();
+            }
+            runSharedFadeToBlack = 1;
+            break;
+
+        case 1:
+            FieldZoomFadeEffectInitialize(0, 0);
+            func_800A5710(D_800AFD14);
+            for (i = 0; i < D_800AFD14; i++) {
+                FieldClearAndSwapOTag();
+                FieldFadeUpdateAndDraw((u8*)g_FieldCurRenderContext + 0x80D4, g_FieldCurRenderContextIndex);
+                FieldZoomFadeEffectUpdate();
+                FieldDisplay();
+            }
+            FieldRenderSync();
+            GamePartySyncSkinData();
+            GamePartySyncStreamedData();
+            savedMapMode = D_800B0048;
+            savedFadeDur = D_800AFD14;
+            FieldLoad();
+            func_80070488();
+            func_80070508();
+            D_800B0048 = savedMapMode;
+            D_800AFD14 = savedFadeDur;
+            if (D_8004F308 == -1) {
+                func_80085B20(D_8004F324, 0);
+            }
+            func_800A56A8(D_800AFD14);
+            break;
+
+        case 2:
+        case 4:
+            func_800A5884(1, 1);
+            GamePartySyncSkinData();
+            GamePartySyncStreamedData();
+            savedMapMode = D_800B0048;
+            savedFadeDur = D_800AFD14;
+            FieldLoad();
+            func_80070488();
+            if (D_800ADB60 == 1) {
+                while (ArchiveDataSync() != 0) {
+                    FieldClearAndSwapOTag();
+                    FieldZoomFadeEffectUpdate();
+                    FieldDisplay();
+                    if (D_800C2684 < 0x22C0) {
+                        D_800C2684 += 0x20;
+                    }
+                }
+                HeapFree(D_800ADC14);
+                D_800ADB60 = 0;
+                func_80078C5C();
+            }
+            D_800AFD04 = 1;
+            D_800B0048 = savedMapMode;
+            D_800AFD14 = savedFadeDur;
+            if (D_8004F308 == -1) {
+                func_80085B20(D_8004F324, 0);
+            }
+            FieldFadeToBlack(D_800AFD14);
+            if (D_800AFD14 > 0) {
+                color = 0x800000;
+                for (i = 0; i < D_800AFD14; i++) {
+                    func_80077DAC();
+                    FieldZoomFadeEffectUpdate();
+                    func_8007554C();
+                    func_80078B5C();
+                    func_800A5600(color >> 16);
+                    color -= 0x800000 / D_800AFD14;
+                    if (color < 0) {
+                        color = 0;
+                    }
+                    if (D_800C2684 < 0x22C0) {
+                        D_800C2684 += 0x20;
+                    }
+                }
+            }
+            break;
+
+        case 3:
+            FieldZoomFadeEffectInitialize(0, 0);
+            func_80070488();
+            FieldClearAndSwapOTag();
+            FieldZoomFadeEffectUpdate();
+            FieldDisplay();
+            GamePartySyncSkinData();
+            GamePartySyncStreamedData();
+            savedMapMode = D_800B0048;
+            savedFadeDur = D_800AFD14;
+            D_800AFD04 = 1;
+            FieldLoad();
+            func_80070508();
+            D_800B0048 = savedMapMode;
+            D_800AFD14 = savedFadeDur;
+            if (D_8004F308 == -1) {
+                func_80085B20(D_8004F324, 0);
+            }
+            for (i = 0; i < 4; i++) {
+                func_80077DAC();
+                FieldZoomFadeEffectUpdate();
+                func_8007554C();
+                func_80078B5C();
+            }
+            break;
+
+        case 5:
+            FieldZoomFadeEffectInitialize(0, 0);
+            func_80070488();
+            FieldClearAndSwapOTag();
+            FieldZoomFadeEffectUpdate();
+            FieldDisplay();
+            GamePartySyncSkinData();
+            GamePartySyncStreamedData();
+            savedMapMode = D_800B0048;
+            savedFadeDur = D_800AFD14;
+            D_800AFD04 = 1;
+            FieldLoad();
+            func_80070508();
+            rect.x = 0x2C0;
+            rect.y = 0x100;
+            rect.w = 0x140;
+            rect.h = 0xFF;
+            D_800B0048 = savedMapMode;
+            D_800AFD14 = savedFadeDur;
+            MoveImage(&rect, 0x140, 0xFF);
+            if (D_8004F308 == -1) {
+                func_80085B20(D_8004F324, 0);
+            }
+            for (i = 0; i < 4; i++) {
+                func_80077DAC();
+                FieldZoomFadeEffectUpdate();
+                func_8007554C();
+                func_80078B5C();
+            }
+            break;
+        }
+
+        if (runSharedFadeToBlack) {
+            FieldClearAndSwapOTag();
+            FieldDisplay();
+            GamePartySyncSkinData();
+            GamePartySyncStreamedData();
+            savedMapMode = D_800B0048;
+            savedFadeDur = D_800AFD14;
+            FieldLoad();
+            func_80070488();
+            func_80070508();
+            D_800B0048 = savedMapMode;
+            D_800AFD14 = savedFadeDur;
+            if (D_8004F308 == -1) {
+                func_80085B20(D_8004F324, 0);
+            }
+            FieldFadeToBlack(D_800AFD14);
+        }
+    }
+
+    if (D_800B0048 != 6) {
+        func_800A91F0();
+    }
+    D_800B0048 = 2;
+    D_800AFD14 = 0x20;
+    D_800AFD04 = 0;
+    func_80077544();
+    HeapConsolidate();
+}
 
 extern s32 D_800C2684;
 extern SVECTOR D_800B00B8;
@@ -508,7 +769,23 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8BA4);
 // https://decomp.me/scratch/3xYjM
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldInitializeParticlePrimitive);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A90B4);
+extern s32 D_800ADB34;
+extern u32 D_800AFC70;
+
+// Re-pin the 0x8000-byte persistent buffer under a new heap user (only while
+// D_800ADB34 marks it active, e.g. a pause-menu background snapshot): alloc
+// a fresh block under HEAP_USER_YOSI, copy the old contents over, free the old.
+void func_800A90B4(s32 pinFlag) {
+    void* pNew;
+
+    if (D_800ADB34 == 1) {
+        HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
+        pNew = HeapAlloc(0x8000, pinFlag);
+        memcpy(pNew, (void*)(uintptr_t)D_800AFC70, 0x8000);
+        HeapFree((void*)(uintptr_t)D_800AFC70);
+        D_800AFC70 = (u32)(uintptr_t)pNew;
+    }
+}
 
 /* Matches, but g_FieldStoredImageDest seems to be part of some struct which
  * needs recovery first. */

@@ -94,7 +94,109 @@ void FieldLZSSDecompress(void* _unused, void* pCompressed, void* pDecompressed) 
     LZSSDecompress(pCompressed, pDecompressed);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", FieldFree);
+extern void WorkListsFreeAllEntries(void);
+extern void func_80025044(void);
+extern void func_800250E0(int context);
+extern void GfxFreeWorkBuffers(void);
+extern void func_8008083C(int actorIndex);
+extern void FieldDistortionFree(void);
+extern void func_80027D40(void*);
+extern void GfxLineScrollFree(void* pLineScroll);
+extern void func_801E7FD4(void);
+extern void FieldRenderSyncAndFlush(void);
+extern void func_800A83B4(void);
+extern s16 D_800B00B2;
+extern s32 D_800B007C;
+extern s16 D_800AFEA8;
+extern s32 D_800B2264;
+extern void* D_800ADB20;
+extern void* D_800ADBF0;
+extern void* D_800AFB18;
+extern void* D_800AFB14;
+
+// FieldMain teardown counterpart to FieldLoad: frees every heap block the
+// outgoing field allocated (per-actor model/sprite/shadow data, trigger
+// zones, script file, model/sprite section buffers, line-scrolls, font,
+// party-skin overlay) so func_800A5C40's persistent-block re-allocation and
+// FieldLoad's fresh allocations have room. Actors with status&0x40 keep
+// their model data (shared/static model, not owned by this actor slot).
+void FieldFree(void) {
+    s32 i;
+    s32 renderCtxStep;
+
+    ResetGraph(1);
+    WorkListsFreeAllEntries();
+    renderCtxStep = 0;
+    do {
+        func_80025044();
+        DrawSync(0);
+        renderCtxStep++;
+        func_800250E0((g_FieldCurRenderContextIndex + renderCtxStep) & 1);
+        func_80025044();
+        DrawSync(0);
+        GfxFreeWorkBuffers();
+    } while (renderCtxStep < 2);
+
+    for (i = 0; i < g_FieldNumActors; i++) {
+        FieldActor* pActor = &g_FieldActors[i];
+
+        func_8008083C(i);
+        if (!(pActor->status & 0x40) && pActor->pModelData != 0) {
+            /* XENO_PC_PORT gap: retail also frees three fields inside the
+             * model-data block here (+0x4 via func_8002CBBC, +0x8, and when
+             * status&0x2000 +0x14 -- the same pModelData[0x14/4] pAnimInfo
+             * func_80080F44/misc8.c reads, loaded by the model asset itself,
+             * not allocated in this file). On this port those offsets read
+             * garbage for at least one real (non-NULL pModelData) actor and
+             * HeapFree segfaults -- verified via gdb, not a guess -- so
+             * model-loading/building doesn't yet populate this sub-layout
+             * the same way retail's real asset format does. Skipped until
+             * that pipeline is verified; only the top-level model-data
+             * block itself is freed below, which is what actually reclaims
+             * the heap space func_800A5C40's transition needs. */
+            HeapFree((void*)(uintptr_t)pActor->pModelData);
+        }
+    }
+
+    FieldDistortionFree();
+    HeapFree(g_FieldActors);
+    HeapFree(g_pFieldTriggerZones);
+    HeapFree(D_800ADBF0);
+    HeapFree(g_FieldCurScriptFile);
+    HeapFree(D_800AFB18);
+    HeapFree(D_800AFB14);
+    HeapFree(g_FieldSpriteData);
+
+    if (D_800B00B2 != 0) {
+        func_80027D40((void*)(uintptr_t)D_800B007C);
+    }
+
+    /* Same D_800AFEA8 header layout as func_800920D8 (misc11.c): s16 count
+     * at +0, then two parallel u32[] arrays (line-scroll ptr, its heap
+     * buffer) at +4 and +0x84. */
+    if (D_800AFEA8 > 0) {
+        u32* pLineScrolls = (u32*)((u8*)&D_800AFEA8 + 4);
+        u32* pLineScrollBuffers = (u32*)((u8*)&D_800AFEA8 + 0x84);
+
+        for (i = 0; i < D_800AFEA8; i++) {
+            GfxLineScrollFree((void*)(uintptr_t)pLineScrolls[i]);
+            HeapFree((void*)(uintptr_t)pLineScrollBuffers[i]);
+            HeapFree((void*)(uintptr_t)pLineScrolls[i]);
+        }
+    }
+    FontFree();
+    D_800AFEA8 = 0;
+
+    if (D_800B2264 != 0) {
+        func_801E7FD4();
+        HeapFree(D_800ADB20);
+        FieldRenderSyncAndFlush();
+    }
+    D_800B2264 = 0;
+
+    HeapFreeBlocksWithFlag(3);
+    func_800A83B4();
+}
 
 void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short clutY, short clutWidth, short clutHeight) {
     TIM_IMAGE* pTIM;
