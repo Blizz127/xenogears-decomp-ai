@@ -655,7 +655,30 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C334);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C7D8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C84C);
+extern s32 D_8004F36C;
+extern s32 D_8004F324;
+extern void *D_80062528;
+extern void func_8003A89C();
+
+// FE 0E — field music cue: sends a command to the music manager once a song is
+// loaded (D_8004F36C); skips when no music is selected (id 0xFF) or the field is
+// not yet live (D_800ADB1C == 0); otherwise retries until the song load completes.
+void func_8008C84C(void) {
+    s32 arg1;
+
+    if (D_8004F36C != 0) {
+        arg1 = FieldScriptVMGetArgument(1);
+        func_8003A89C(D_80062528, arg1, FieldScriptVMGetArgument(3));
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else if (D_8004F324 == 0xFF) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C938);
 
