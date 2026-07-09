@@ -2044,7 +2044,9 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
     s32 actorIndex;
     u8* pActor;
 
+#ifdef XENO_PC_PORT
     (void)s_ActiveActorSkipCount; /* retained fallback for other unmigrated paths */
+#endif
 
     if (D_8004F37C != 0 || D_800ADBFC <= 0) {
         return;
