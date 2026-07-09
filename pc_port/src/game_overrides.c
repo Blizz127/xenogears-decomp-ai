@@ -1626,3 +1626,52 @@ void func_8002CC10(s32 x, s32 y)
     D_80059310 = GetTPage(0, 0, x & 0xFFFF, y & 0xFFFF) & 0x1F;
     D_80050108 = 1;
 }
+
+/* ---------------------------------------------------------------------------
+ * func_8002C59C (asm/slus_006.64/nonmatchings/system/temp2/func_8002C59C.s,
+ * INCLUDE_ASM at temp2.c:240): in-place pointer relocation of a sprite model
+ * blob, sibling of the already-real func_8002C3E8 (temp2.c:193) with a
+ * different header layout. One-shot (header flag bit 0x20): relocates the
+ * header offset words +0x8/+0x10/+0xC/+0x14 by the blob base, then, when the
+ * +0x1C sub-list offset is non-zero, relocates it and walks its 12-byte-
+ * stride entries (count word first, then entries; count == -1 means none)
+ * from index count down to 0, relocating each entry's +0x4/+0x8. Stores are
+ * truncated u32 (host RAM below 4 GiB), matching the retail `sw` width.
+ * Used by anim-script opcode 0xF5's model-data load.
+ * --------------------------------------------------------------------------- */
+void func_8002C59C(u8* pModel)
+{
+    u16 flags = *(u16*)(pModel + 0x0);
+    u32 base = (u32)(uintptr_t)pModel;
+    u32 off;
+    u8* pEntry;
+    s32 count;
+
+    if (flags & 0x20) {
+        return;
+    }
+    *(u16*)(pModel + 0x0) = flags | 0x20;
+    *(u32*)(pModel + 0x8) += base;
+    *(u32*)(pModel + 0x10) += base;
+    *(u32*)(pModel + 0xC) += base;
+    *(u32*)(pModel + 0x14) += base;
+
+    off = *(u32*)(pModel + 0x1C);
+    if (off == 0) {
+        return;
+    }
+    *(u32*)(pModel + 0x1C) = base + off;
+
+    count = *(s32*)(pModel + off);
+    if (count != -1) {
+        /* Decrement-first walk, entries count down to 0 (count+1 total);
+         * same do-while shape as the matched sibling func_8002C3E8. */
+        pEntry = pModel + off + 0x4 + count * 12;
+        do {
+            count--;
+            *(u32*)(pEntry + 0x4) += base;
+            *(u32*)(pEntry + 0x8) += base;
+            pEntry -= 12;
+        } while (count != -1);
+    }
+}

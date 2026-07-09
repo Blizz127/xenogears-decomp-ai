@@ -49,6 +49,15 @@ extern void* func_80023B84(void* pSpriteData, void* pScript,
  * pc_port/src/game_overrides.c). */
 extern void func_8002CC10(s32 x, s32 y);
 
+/* Model-data load helpers for opcodes 0xF5/0xF6. Relocators live in
+ * temp2.c (func_8002C3E8 real; func_8002C59C asm-only on the matching
+ * build, ported in pc_port/src/game_overrides.c); allocator/fixup pair
+ * per the externs in src/field/main/misc3.c. */
+extern void func_8002C59C(u8* pModel);
+extern int func_8002C3E8(u8* pModel);
+extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
+extern void func_8002C8CC(void* a0, void* a1, int a2);
+
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
 
@@ -124,6 +133,50 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         s32 rel = ((s32)(s8)ops[1] << 8) + ops[0];
 
         func_80023B84(p, ops + rel, (void*)(uintptr_t)*(u32*)(p + 0x24));
+        return;
+    }
+
+    if (dispatchIndex == 0x6B || dispatchIndex == 0x6C) {
+        /* Opcode 0xF5 handler (asm 80021140-800211D8) and its sibling 0xF6
+         * (asm 800211DC-80021270): (re)load the sprite's model data from a
+         * script-embedded blob at a 24-bit sign-extended LE offset from the
+         * operand bytes. 0xF5 relocates via func_8002C59C and uses the blob
+         * directly as the model header; 0xF6 relocates via func_8002C3E8 and
+         * the header sits at blob+0x10. Then, under heap user 5: free the
+         * old model buffer (+0x2C of the transform block), rebuild it with
+         * func_8002CB54 (+0x2C/+0x30 out-params), fix up internal pointers
+         * with func_8002C8CC, mirror the buffer (+0x30 <- +0x2C, header+0x34
+         * bytes), and latch the header into the transform block at +0x34.
+         * Retail does not restore the heap user (shared tail .L8002130C is
+         * only the +0x34 store). */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        s32 rel = ((s32)(s8)ops[2] << 16) + (ops[1] << 8) + ops[0];
+        u8* target = ops + rel;
+        u8* pModelHdr;
+        u8* pBase;
+        u32 oldBuffer;
+
+        HeapChangeCurrentUser(5, 0);
+        if (dispatchIndex == 0x6B) {
+            func_8002C59C(target);
+            pModelHdr = target;
+        } else {
+            func_8002C3E8(target);
+            pModelHdr = target + 0x10;
+        }
+
+        pBase = (u8*)(uintptr_t)*(u32*)(p + 0x20);
+        oldBuffer = *(u32*)(pBase + 0x2C);
+        if (oldBuffer != 0) {
+            HeapFree((void*)(uintptr_t)oldBuffer);
+        }
+        func_8002CB54(pModelHdr, (u32*)(pBase + 0x2C), (u32*)(pBase + 0x30));
+        func_8002C8CC(pModelHdr, (void*)(uintptr_t)*(u32*)(pBase + 0x2C), 0);
+        memcpy((void*)(uintptr_t)*(u32*)(pBase + 0x30),
+               (void*)(uintptr_t)*(u32*)(pBase + 0x2C),
+               *(u32*)(pModelHdr + 0x34));
+        *(u32*)(pBase + 0x34) = (u32)(uintptr_t)pModelHdr;
         return;
     }
 
