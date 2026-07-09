@@ -506,6 +506,7 @@ void func_800248D4(void* pSpriteData) {
         return;
     }
 
+reenter:
     if (*(s16*)(pData + 0x9E) != 0) {
         return;
     }
@@ -760,11 +761,20 @@ void func_800248D4(void* pSpriteData) {
         return;
     }
 
+    if (opcode == 0xE1) {
+        /* asm 80024DEC-80024E0C: signed 16-bit PC-relative jump. The
+         * two-byte operand is little-endian and relative to the opcode
+         * address itself, then execution re-enters at .L8002490C. */
+        s32 offset = (s16)((u16)pc[1] | ((u16)pc[2] << 8));
+
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+        goto reenter;
+    }
+
     /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
     if (opcode == 0x85 || opcode == 0x86 || opcode == 0x87 || opcode == 0x8E ||
         opcode == 0x98 || opcode == 0xA7 || opcode == 0xBE || opcode == 0xC8 ||
-        opcode == 0xD4 || opcode == 0xE1 || opcode == 0xE2 || opcode == 0xE4 ||
-        opcode == 0xFA) {
+        opcode == 0xD4 || opcode == 0xE2 || opcode == 0xE4 || opcode == 0xFA) {
         assert(0 && "func_800248D4 dedicated opcode path is not implemented");
     }
 
