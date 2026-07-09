@@ -99,6 +99,8 @@ extern void func_80025044(void);
 extern void func_800250E0(int context);
 extern void GfxFreeWorkBuffers(void);
 extern void func_8008083C(int actorIndex);
+extern void func_8002CBBC(u8* modelData);
+extern void func_800306D0(u8* pAnimInfo);
 extern void FieldDistortionFree(void);
 extern void func_80027D40(void*);
 extern void GfxLineScrollFree(void* pLineScroll);
@@ -113,6 +115,35 @@ extern void* D_800ADB20;
 extern void* D_800ADBF0;
 extern void* D_800AFB18;
 extern void* D_800AFB14;
+
+extern void* g_Heap;
+
+// XENO_PC_PORT: defensive backstop for the model-data inner-field frees
+// below. Root-caused: an earlier version of this loop read pModel's 4-byte
+// PSX pointer slots (+0x8/+0x14) via a native 8-byte `*(void**)` read, which
+// on a 64-bit host pulls in the *next* 4-byte slot's bytes as garbage upper
+// bits (pModel's slots must be read as `(void*)(uintptr_t)*(u32*)(...)`,
+// exactly as FieldLoad's own actor-init loop and misc8.c:303 already do --
+// see the inline comment at the func_8002CB54 call site above). That bug is
+// now fixed at the source, but this walk of the heap's own free-list is kept
+// as a cheap, always-safe backstop against any other stale/corrupt pointer,
+// since retail's own asm has no equivalent check at all.
+static int IsLiveHeapBlock(void* ptr) {
+    HeapBlock* pCur;
+
+    if (ptr == NULL) {
+        return 0;
+    }
+
+    pCur = (HeapBlock*)g_Heap - 1;
+    while (pCur->userTag != HEAP_USER_END) {
+        if (pCur->userTag != HEAP_USER_NONE && (void*)(pCur + 1) == ptr) {
+            return 1;
+        }
+        pCur = (HeapBlock*)(uintptr_t)pCur->pNext - 1;
+    }
+    return 0;
+}
 
 // FieldMain teardown counterpart to FieldLoad: frees every heap block the
 // outgoing field allocated (per-actor model/sprite/shadow data, trigger
@@ -142,18 +173,22 @@ void FieldFree(void) {
 
         func_8008083C(i);
         if (!(pActor->status & 0x40) && pActor->pModelData != 0) {
-            /* XENO_PC_PORT gap: retail also frees three fields inside the
-             * model-data block here (+0x4 via func_8002CBBC, +0x8, and when
-             * status&0x2000 +0x14 -- the same pModelData[0x14/4] pAnimInfo
-             * func_80080F44/misc8.c reads, loaded by the model asset itself,
-             * not allocated in this file). On this port those offsets read
-             * garbage for at least one real (non-NULL pModelData) actor and
-             * HeapFree segfaults -- verified via gdb, not a guess -- so
-             * model-loading/building doesn't yet populate this sub-layout
-             * the same way retail's real asset format does. Skipped until
-             * that pipeline is verified; only the top-level model-data
-             * block itself is freed below, which is what actually reclaims
-             * the heap space func_800A5C40's transition needs. */
+            u8* pModelData = (u8*)(uintptr_t)pActor->pModelData;
+            /* PSX 4-byte pointer slots -- read via u32 + truncating cast,
+             * never as a native 8-byte pointer (see IsLiveHeapBlock above). */
+            u8* modelData = (u8*)(uintptr_t)*(u32*)(pModelData + 0x4);
+            void* pDoubleBuffer = (void*)(uintptr_t)*(u32*)(pModelData + 0x8);
+            void* pAnimInfo = (void*)(uintptr_t)*(u32*)(pModelData + 0x14);
+
+            /* status&0x2000 gates whether +0x14 (pAnimInfo) was ever written
+             * (func_80080A74/func_80080F44, misc8.c) -- matches retail. */
+            if ((pActor->status & 0x2000) && IsLiveHeapBlock(pAnimInfo)) {
+                func_800306D0(pAnimInfo);
+            }
+            func_8002CBBC(modelData);
+            if (IsLiveHeapBlock(pDoubleBuffer)) {
+                HeapFree(pDoubleBuffer);
+            }
             HeapFree((void*)(uintptr_t)pActor->pModelData);
         }
     }

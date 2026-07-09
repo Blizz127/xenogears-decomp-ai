@@ -648,7 +648,18 @@ void func_8002CB54(u8* modelData, u32* out1, u32* out2) {
     *out2 = (u32)((u8*)buf + *(s32*)(modelData + 0x34));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CBBC);
+// Frees the model's optional secondary buffer at modelData+0x18 iff the
+// model's own flags word (+0x0) has bit 0x1 set, then clears that bit. The
+// flag is self-describing: it is only set when +0x18 was actually populated
+// with a real allocation, so this never frees an unowned/uninitialized field.
+void func_8002CBBC(u8* modelData) {
+    u16 flags = *(u16*)(modelData + 0x0);
+
+    if (flags & 0x1) {
+        HeapFree(*(void**)(modelData + 0x18));
+        *(u16*)(modelData + 0x0) = flags & 0xFFFE;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC10);
 
@@ -1057,7 +1068,29 @@ void* func_800303C8(u8* a0, s32 a1) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800306D0);
+// Hands a model's shared anim-work buffers (pAnimInfo->+0x0, a pointer to a
+// per-model-type shared work block) back before freeing pAnimInfo itself:
+// frees the work block's own +0x8 (and, if its flags bit 0x10 is set, +0xC),
+// then restashes pAnimInfo's +0x4/+0x8 into the work block's +0x8/+0xC so the
+// next actor sharing that model type picks them up, then frees pAnimInfo.
+void func_800306D0(u8* pAnimInfo) {
+    u8* pWork;
+
+    if (pAnimInfo == NULL) {
+        return;
+    }
+
+    pWork = (u8*)(uintptr_t)*(u32*)(pAnimInfo + 0x0);
+    HeapFree((void*)(uintptr_t)*(u32*)(pWork + 0x8));
+
+    if (*(u16*)(pWork + 0x0) & 0x10) {
+        HeapFree((void*)(uintptr_t)*(u32*)(pWork + 0xC));
+    }
+
+    *(u32*)(pWork + 0x8) = *(u32*)(pAnimInfo + 0x4);
+    *(u32*)(pWork + 0xC) = *(u32*)(pAnimInfo + 0x8);
+    HeapFree(pAnimInfo);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
 
