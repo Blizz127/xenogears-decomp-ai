@@ -110,6 +110,22 @@ grep -q "_xeno_ot_pad" "$PSX/include/psx/libgpu.h" || \
 sed -i 's|^} OT_TAG;|\tu_int _xeno_ot_pad; /* XENO_PC_PORT: pad OT slot to host u_long (8B) so ClearOTag(R) stride matches the game'"'"'s u_long[] OTs; see build_port.sh */\n} OT_TAG;|' \
     "$PSX/include/psx/libgpu.h"
 
+# PsyCross bugfix (idempotent, grep-guarded). GR_CopyVRAM (the LoadImage backend)
+# wrote to vram[dst_x + dst_y*VRAM_WIDTH] with no coordinate masking. The PSX GPU
+# masks VRAM-transfer coords to the framebuffer dimensions (X to 10 bits, Y to 9).
+# Field NPC sprite skins upload with texX = (texPageOffset<<4)+0x100 as high as
+# 2368, which the hardware wraps to 2368 & 0x3FF = 320 on the SAME row -- exactly
+# where the NPC prims' clut/tpage fields sample. Unmasked, the copy ran off the
+# row into the wrong VRAM line, so the NPC palette/texel pages stayed empty and
+# every NPC rendered fully transparent (invisible). Mask dst_x/dst_y to VRAM
+# bounds. Legitimate uploads all use x<1024/y<512, so they are unchanged; only
+# the >=1024 sprite-skin uploads move from a wrong line to the correct wrapped
+# one. (A copy that itself straddles x=1024 is not row-wrapped; no field upload
+# does that.)
+grep -q "_xeno_vram_wrap" "$PSX/src/render/PsyX_render.cpp" || \
+sed -i 's|\(\tunsigned short\* dst = vram + dst_x + dst_y \* VRAM_WIDTH;\)|\tdst_x \&= (VRAM_WIDTH - 1); dst_y \&= (VRAM_HEIGHT - 1); /* _xeno_vram_wrap: PSX coord mask; see build_port.sh */\n\1|' \
+    "$PSX/src/render/PsyX_render.cpp"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
