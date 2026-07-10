@@ -1048,6 +1048,10 @@ extern void TimerWorkListRemoveTask(void* pTargetEntry);
 extern void WorkListRemoveTask(void* pTargetEntry);
 extern u8 D_800591AC;
 extern u8 D_800591AF;
+extern void func_80022038(void* pSpriteData);
+extern s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3);
+extern MATRIX D_8004FBB8;
+extern u_long* g_GfxCurOT;
 extern void func_80025710(void);
 extern u8 D_8006BE10[];
 extern u8 D_8005A474[];
@@ -1089,6 +1093,50 @@ void func_800BC158(void* pWrapper)
     }
 }
 
+/* Type-2/7 child render callback (asm 80025718-800257EC): refresh the sprite
+ * transform if dirty, bail when the model header is absent, apply the sprite's
+ * position halfwords through TransMatrix, optionally compose with the camera
+ * matrix at D_8004FBB8 unless +0x3F bit 0 is set, load the composite into the
+ * GTE, then dispatch the model packet through func_8002C700. */
+void func_80025718(void* pTask)
+{
+    u8* task = pTask;
+    u8* sprite = (u8*)(uintptr_t)*(u32*)(task + 0x4);
+    u8* pBase;
+    u32 modelHdr;
+    u32 modelBuf;
+    VECTOR trans;
+    MATRIX composite;
+    MATRIX* pDraw;
+
+    func_80022038(sprite);
+    pBase = (u8*)(uintptr_t)*(u32*)(sprite + 0x20);
+    if (pBase == NULL) {
+        return;
+    }
+    modelHdr = *(u32*)(pBase + 0x34);
+    if (modelHdr == 0) {
+        return;
+    }
+
+    trans.vx = *(s16*)(sprite + 0x2);
+    trans.vy = *(s16*)(sprite + 0x6);
+    trans.vz = *(s16*)(sprite + 0xA);
+    TransMatrix((MATRIX*)(pBase + 0xC), &trans);
+
+    pDraw = (MATRIX*)(pBase + 0xC);
+    if ((*(u8*)(sprite + 0x3F) & 1) == 0) {
+        CompMatrix(&D_8004FBB8, (MATRIX*)(pBase + 0xC), &composite);
+        pDraw = &composite;
+    }
+    SetRotMatrix(pDraw);
+    SetTransMatrix(pDraw);
+
+    modelBuf = *(u32*)(pBase + 0x2C + (u32)g_GfxCurContext * 4);
+    func_8002C700((u8*)(uintptr_t)modelHdr, (u8*)(uintptr_t)modelBuf,
+                  (u32*)g_GfxCurOT, *(u16*)(sprite + 0x42) & 0x4);
+}
+
 /* Retail .data callback table @0x8004FD40 (temp1.c CALLBACK_TABLE comment):
  * per-type render callbacks WorkListSetTaskCallback'd onto the child's task2.
  * Retail entries: 0/5/6/14=func_80025258, 1=func_80025710, 2/7=func_80025718,
@@ -1099,10 +1147,10 @@ void func_800BC158(void* pWrapper)
 static void (*const D_8004FD40[16])(void*) = {
     NULL,                          /* 0: func_80025258 (unported) */
     (void (*)(void*))func_80025710,/* 1: dummy */
-    NULL,                          /* 2: func_80025718 (unported) */
+    func_80025718,                 /* 2: type-2 child model draw */
     NULL, NULL,                    /* 3,4: NULL in retail */
     NULL, NULL,                    /* 5,6: func_80025258 (unported) */
-    NULL,                          /* 7: func_80025718 (unported) */
+    func_80025718,                 /* 7: type-7 child model draw */
     NULL,                          /* 8: func_8002541C (unported) */
     NULL,                          /* 9: func_80025544 (unported) */
     NULL, NULL, NULL, NULL,        /* 10-13: NULL in retail */
