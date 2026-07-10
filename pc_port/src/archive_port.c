@@ -27,7 +27,7 @@
 #include "common.h"
 #include "system/archive.h"
 #include "psyq/libcd.h"
-#include "psyq/libgpu.h"   /* RECT, LoadImage, DrawSync for the opt-in 0xBB VRAM uploader */
+#include "psyq/libgpu.h"   /* RECT, LoadImage, DrawSync for the 0xBB VRAM uploader */
 
 /* Forward-declare the two host-libc calls used for the partial-sector bounce.
  * Pulling in <stdlib.h> here fails to compile: the game headers (via common.h)
@@ -35,7 +35,6 @@
  * is already declared through common.h (psyq/memory.h). */
 extern void* malloc(unsigned long size);
 extern void  free(void* ptr);
-extern char* getenv(const char* name);   /* opt-in XENO_FIELD_0BB_VRAM_UPLOAD gate */
 
 /* Set by ArchiveReadFileToBuffer/ArchiveReadFileFromCdSector (libarchive.c) just
  * before they call us: the absolute CD sector and the byte length to read. */
@@ -244,13 +243,17 @@ int func_80029EB0(s32 archiveIndex, void* pStreamFile, s32 arg2, s32 arg3, s32 a
 
     {
         /* ArchiveReadFile clears g_ArchiveCurFileSize on completion, so capture
-         * the byte length now for the opt-in VRAM uploader. */
+         * the byte length now for the VRAM drain. */
         s32 vramUploadSize = g_ArchiveCurFileSize;
-        const char* vramUploadEnv = getenv("XENO_FIELD_0BB_VRAM_UPLOAD");
 
         result = ArchiveReadFile(archiveIndex, pReadBuffer, arg2, 0);
 
-        if (vramUploadEnv != NULL && vramUploadEnv[0] == '1' && result >= 0 && vramUploadSize > 0) {
+        /* Retail decodes every streamed sector through func_8002BF38 as CD
+         * callbacks land (asm 8002A050-8002A094 arms the decoder state inside
+         * this function); the port reads the file synchronously, so drain the
+         * whole buffer through the same decoder here. This is what uploads the
+         * per-map field textures ((mapNum<<1)+0xB9 archive) to VRAM. */
+        if (result >= 0 && vramUploadSize > 0) {
             printf("[field-0bb] archive 0x%x: %d bytes read, draining to VRAM\n", archiveIndex, vramUploadSize);
             PcPortDrain0xBBToVram(pReadBuffer, vramUploadSize, pStreamFile);
         }
