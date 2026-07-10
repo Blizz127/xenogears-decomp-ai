@@ -126,6 +126,25 @@ grep -q "_xeno_vram_wrap" "$PSX/src/render/PsyX_render.cpp" || \
 sed -i 's|\(\tunsigned short\* dst = vram + dst_x + dst_y \* VRAM_WIDTH;\)|\tdst_x \&= (VRAM_WIDTH - 1); dst_y \&= (VRAM_HEIGHT - 1); /* _xeno_vram_wrap: PSX coord mask; see build_port.sh */\n\1|' \
     "$PSX/src/render/PsyX_render.cpp"
 
+# PsyCross bugfix (idempotent, grep-guarded), two coordinated edits. PsyX defers
+# the GL backbuffer -> vram[] readback and, in stock form, materializes it on
+# EVERY DrawSync. In the field the game presents from a debug-menu second
+# display buffer whose rows (y>=240) also hold the dialog UI palette/tiles it
+# uploads by LoadImage after the frame was latched; the blanket materialize
+# splatted the stale frame snapshot over those newer uploads, erasing the UI
+# CLUTs (flat 0x8004) so dialog boxes drew nothing. Fix: (A) drop the eager
+# DrawSync materialize; (B) do it lazily in GR_CopyVRAM's VRAM-READ path
+# (MoveImage source) and ONLY when the read rect overlaps the snapshot rect, so
+# non-overlapping reads (e.g. the screen-capture MoveImage at x=704) leave the
+# freshly uploaded rows intact. Matches PSX order (frame pixels are written at
+# draw time, before any later LoadImage).
+grep -q "_xeno_read_materialize" "$PSX/src/psx/LIBGPU.C" || \
+perl -0777 -i -pe 's/\tGR_ReadFramebufferDataToVRAM\(\);\n\n\tif \(g_splitIndex/\t\/* _xeno_read_materialize: moved to GR_CopyVRAM read path; the eager\n\t * DrawSync materialize splatted stale frame snapshots over newer\n\t * LoadImage uploads. See build_port.sh. *\/\n\n\tif (g_splitIndex/' \
+    "$PSX/src/psx/LIBGPU.C"
+grep -q "_xeno_read_materialize" "$PSX/src/render/PsyX_render.cpp" || \
+perl -0777 -i -pe 's/\tif \(!src\)\n\t\{\n\t\tframebuffer_need_update = 1;/\tif (!src)\n\t{\n\t\t\/* _xeno_read_materialize: reconcile the pending rendered-frame\n\t\t * snapshot into vram[] only when this VRAM read overlaps the\n\t\t * snapshot rect, so the read sees frame pixels without erasing\n\t\t * non-overlapping rows the game re-used for uploads. See build_port.sh. *\/\n\t\tif (framebuffer_need_update \&\&\n\t\t    x < g_PreviousFramebuffer.x + g_PreviousFramebuffer.w \&\&\n\t\t    x + w > g_PreviousFramebuffer.x \&\&\n\t\t    y < g_PreviousFramebuffer.y + g_PreviousFramebuffer.h \&\&\n\t\t    y + h > g_PreviousFramebuffer.y)\n\t\t{\n\t\t\tGR_ReadFramebufferDataToVRAM();\n\t\t}\n\n\t\tframebuffer_need_update = 1;/' \
+    "$PSX/src/render/PsyX_render.cpp"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
