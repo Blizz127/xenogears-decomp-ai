@@ -278,6 +278,49 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x44) {
+        /* Opcode 0xCE handler (asm 8001FFC0-80020088): packed LE-s16
+         * operand bits 0-8 encode a Y offset in units of 8, bits 9-11
+         * select an 8-byte sub-entry (zero selects the transform block),
+         * and bit 12 selects set rather than add. AC bit 2 mirrors the
+         * offset. Successful writes join .L800215A4 and mark the transform
+         * matrix dirty via +0x3C bit 28. */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        u8* pBase = (u8*)(uintptr_t)*(u32*)(p + 0x20);
+        s32 packed = ops[0] | ((s32)(s8)ops[1] << 8);
+        u32 encoded = (u16)packed;
+        u32 subIndex = (encoded >> 9) & 0x7;
+        s32 value = (encoded & 0x1FF) << 3;
+        u16* pY;
+
+        if (pBase == NULL) {
+            return;
+        }
+        if ((*(u32*)(p + 0xAC) & 0x4) != 0) {
+            value = -value;
+        }
+
+        if (subIndex != 0) {
+            u8* pEntries =
+                (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+            if (pEntries == NULL) {
+                return;
+            }
+            pY = (u16*)(pEntries + subIndex * 8 + 4);
+        } else {
+            pY = (u16*)(pBase + 0x2);
+        }
+
+        if ((encoded & 0x1000) != 0) {
+            *pY = value;
+        } else {
+            *pY = *pY + value;
+        }
+        *(u32*)(p + 0x3C) |= 0x10000000;
+        return;
+    }
+
     if (dispatchIndex == 0x56) {
         /* Opcode 0xE0 handler (asm 80021440-80021464): spawn a child sprite
          * whose animation script sits at a 16-bit sign-extended little-endian
