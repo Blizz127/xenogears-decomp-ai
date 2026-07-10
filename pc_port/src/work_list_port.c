@@ -205,6 +205,20 @@ void func_8001D468(void) {
         if (value34 == 0) {
             *(u32*)(pEntry + 0x40) &= 0xFFFFFF03;
         } else {
+            /* XENO_PC_PORT: NPC skin-palette blocks load as a single variant in
+             * the port (the block header count is 1, only palette[0] is valid).
+             * But func_8001DAE8 (rendering.c:282, retail-faithful) uses
+             * (pEntry+0x3E & 0xF0) -- the skin index that func_8002435C packs
+             * into BOTH nibbles of pEntry+0x3E (temp1.c:394-395, asm-verified) --
+             * as an in-block palette index: offset = idx*32+4. For an NPC whose
+             * script skin index is >0 that reads past the one loaded palette into
+             * adjacent heap, so townsfolk rendered cyan/purple/red garble (and a
+             * red blob). Retail's block holds every variant so idx picks the
+             * right one; until the port loads the full multi-variant block, clear
+             * that in-block index so each NPC uses its own valid palette[0]. This
+             * only touches the palette-offset nibble (bits 20-23); Fei/party and
+             * the upload-trigger bits are unaffected. See ACTIVE_HANDOFF.md. */
+            *(u32*)(pEntry + 0x3C) &= 0xFF0FFFFF;
             func_8001DAE8(pEntry, value34, *(u32*)(pEntry + 0x24));
         }
 
