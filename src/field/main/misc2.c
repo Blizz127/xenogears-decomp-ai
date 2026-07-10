@@ -609,17 +609,21 @@ void func_80073230(void) {
 
         func_80072A38(&camInput, *(s16*)(pActorData + 0x72));
 
-        /* Collision/ceiling check */
+        /* Camera-eye terrain clamp (asm 800733C4-8007340C): probe the top
+         * walkmesh layer at the eye's (x,z); if the surface Y there is above
+         * the eye, snap eye.vy up to it. Retail loads $a0 from
+         * g_CameraEye2+0x2 (vx>>16) and passes two DISTINCT out buffers
+         * (sp+0x38 surface point, sp+0x28 face normal). */
         if (!(g_Scene.unk48 & 0x4000)) {
-            /* func_8007B1C4 is stubbed (returns 0) — ceiling check */
-            VECTOR stackOut;
+            s16 meshPoint[4];
+            s32 meshNormal[4];
             func_8007B1C4(
-                (s16)(g_CameraEye2.vy >> 16),
+                (s16)(g_CameraEye2.vx >> 16),
                 (s16)(g_CameraEye2.vz >> 16),
                 D_800AFB54 - 1,
-                &stackOut, &stackOut);
-            if (*(s16*)((u8*)&stackOut + 0x02) < (s16)(g_CameraEye2.vy >> 16)) {
-                g_CameraEye2.vy = (s32)*(s16*)((u8*)&stackOut + 0x02) << 16;
+                meshPoint, meshNormal);
+            if (meshPoint[1] < (s16)(g_CameraEye2.vy >> 16)) {
+                g_CameraEye2.vy = (s32)meshPoint[1] << 16;
             }
         }
 
