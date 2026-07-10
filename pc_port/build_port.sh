@@ -145,6 +145,185 @@ grep -q "_xeno_read_materialize" "$PSX/src/render/PsyX_render.cpp" || \
 perl -0777 -i -pe 's/\tif \(!src\)\n\t\{\n\t\tframebuffer_need_update = 1;/\tif (!src)\n\t{\n\t\t\/* _xeno_read_materialize: reconcile the pending rendered-frame\n\t\t * snapshot into vram[] only when this VRAM read overlaps the\n\t\t * snapshot rect, so the read sees frame pixels without erasing\n\t\t * non-overlapping rows the game re-used for uploads. See build_port.sh. *\/\n\t\tif (framebuffer_need_update \&\&\n\t\t    x < g_PreviousFramebuffer.x + g_PreviousFramebuffer.w \&\&\n\t\t    x + w > g_PreviousFramebuffer.x \&\&\n\t\t    y < g_PreviousFramebuffer.y + g_PreviousFramebuffer.h \&\&\n\t\t    y + h > g_PreviousFramebuffer.y)\n\t\t{\n\t\t\tGR_ReadFramebufferDataToVRAM();\n\t\t}\n\n\t\tframebuffer_need_update = 1;/' \
     "$PSX/src/render/PsyX_render.cpp"
 
+# PsyCross feature (idempotent, per-edit marker-guarded): PSX texture-window
+# (GP0 E2h) emulation. PsyX parsed DR_TWIN into activeDrawEnv.tw but nothing
+# ever APPLIED it -- primitives sampled raw UVs. Xenogears' dialog UI relies on
+# the window: border/glyph SPRTs carry UVs like (128,192) and expect the E2
+# window to confine/tile them into the small border tile, so without emulation
+# they sampled unrelated VRAM (scattered black dashes). Edits, all general (no
+# game-specific casing):
+#   parse    - normalize raw E2 mask/offset into the same pixel RECT form
+#              PutDrawEnv stores (w/h = window size, 0 = disabled; x/y =
+#              pre-masked origin): one canonical representation, both sources;
+#   split    - an E2 change breaks the draw batch (tw is repurposed as the
+#              override-texture size when overrideTexture is active, so the
+#              comparison is skipped there);
+#   override - only the 32-bit override-texture path may stomp split tw with
+#              the override size (previously stomped EVERY split with zeros);
+#   draw     - DrawSplit forwards tw to the new GR_SetTextureWindow for PSX
+#              texture formats;
+#   render   - GR_SetTextureWindow re-derives the 5-bit hardware mask/offset
+#              (only hardware-representable windows apply) and hands the
+#              fragment shaders u_texWindow = (sizeX, sizeY, ofsX, ofsY);
+#   shader   - samplePSX applies coord' = ofs + mod(coord, size) before every
+#              VRAM tap (exact for all libgpu-encodable windows; identity when
+#              disabled since size=256, ofs=0). Uniform is initialized to the
+#              disabled window at compile so unset state stays a no-op.
+python3 - "$PSX" <<'TEXWINDOW_PY'
+import sys
+
+psx = sys.argv[1]
+GPU = psx + "/src/gpu/PsyX_GPU.cpp"
+REN = psx + "/src/render/PsyX_render.cpp"
+HDR = psx + "/include/PsyX/PsyX_render.h"
+
+def edit(path, marker, pairs):
+    with open(path) as f:
+        s = f.read()
+    if marker in s:
+        return
+    for old, new, count in pairs:
+        n = s.count(old)
+        if n != count:
+            sys.exit("ERROR: texwindow patch anchor mismatch in %s for %s "
+                     "(found %d, expected %d): %r" % (path, marker, n, count, old[:70]))
+        s = s.replace(old, new)
+    with open(path, "w") as f:
+        f.write(s)
+
+edit(GPU, "_xeno_texwindow_parse", [(
+"\t\t\t// DR_TWIN\n"
+"\t\t\tactiveDrawEnv.tw.w = (code & 0x1F);\n"
+"\t\t\tactiveDrawEnv.tw.h = ((code >> 5) & 0x1F);\n"
+"\t\t\tactiveDrawEnv.tw.x = ((code >> 10) & 0x1F);\n"
+"\t\t\tactiveDrawEnv.tw.y = ((code >> 15) & 0x1F);\n",
+"\t\t\t// DR_TWIN\n"
+"\t\t\t/* _xeno_texwindow_parse: normalize raw E2 mask/offset fields into\n"
+"\t\t\t * the pixel RECT form PutDrawEnv stores (w/h = window size, 0 =\n"
+"\t\t\t * disabled; x/y = pre-masked origin) so one canonical form reaches\n"
+"\t\t\t * GR_SetTextureWindow. See build_port.sh. */\n"
+"\t\t\t{\n"
+"\t\t\t\tconst u_int twMaskX = code & 0x1F;\n"
+"\t\t\t\tconst u_int twMaskY = (code >> 5) & 0x1F;\n"
+"\t\t\t\tactiveDrawEnv.tw.w = (256 - twMaskX * 8) & 0xFF;\n"
+"\t\t\t\tactiveDrawEnv.tw.h = (256 - twMaskY * 8) & 0xFF;\n"
+"\t\t\t\tactiveDrawEnv.tw.x = (((code >> 10) & 0x1F) & twMaskX) << 3;\n"
+"\t\t\t\tactiveDrawEnv.tw.y = (((code >> 15) & 0x1F) & twMaskY) << 3;\n"
+"\t\t\t}\n", 1)])
+
+edit(GPU, "_xeno_texwindow_split", [(
+"\t\tcurSplit.drawenv.dfe == activeDrawEnv.dfe &&\n",
+"\t\tcurSplit.drawenv.dfe == activeDrawEnv.dfe &&\n"
+"\t\t/* _xeno_texwindow_split: an E2 texture-window change must break the\n"
+"\t\t * batch (tw is repurposed as the override size when overrideTexture\n"
+"\t\t * is active, so the comparison is skipped there). See build_port.sh. */\n"
+"\t\t(overrideTexture != 0 || (\n"
+"\t\t\tcurSplit.drawenv.tw.x == activeDrawEnv.tw.x &&\n"
+"\t\t\tcurSplit.drawenv.tw.y == activeDrawEnv.tw.y &&\n"
+"\t\t\tcurSplit.drawenv.tw.w == activeDrawEnv.tw.w &&\n"
+"\t\t\tcurSplit.drawenv.tw.h == activeDrawEnv.tw.h)) &&\n", 1)])
+
+edit(GPU, "_xeno_texwindow_override", [(
+"\tsplit.drawenv.tw.w = overrideTextureWidth;\n"
+"\tsplit.drawenv.tw.h = overrideTextureHeight;\n",
+"\tif (textured && overrideTexture != 0)\n"
+"\t{\n"
+"\t\t/* _xeno_texwindow_override: only the 32-bit override-texture path\n"
+"\t\t * repurposes tw as the override size; PSX-format splits keep the\n"
+"\t\t * game's E2 texture window. See build_port.sh. */\n"
+"\t\tsplit.drawenv.tw.w = overrideTextureWidth;\n"
+"\t\tsplit.drawenv.tw.h = overrideTextureHeight;\n"
+"\t}\n", 1)])
+
+edit(GPU, "_xeno_texwindow_draw", [(
+"\tif (split.texFormat == TF_32_BIT_RGBA)\n"
+"\t\tGR_SetOverrideTextureSize(split.drawenv.tw.w, split.drawenv.tw.h);\n",
+"\tif (split.texFormat == TF_32_BIT_RGBA)\n"
+"\t\tGR_SetOverrideTextureSize(split.drawenv.tw.w, split.drawenv.tw.h);\n"
+"\telse\n"
+"\t\tGR_SetTextureWindow(&split.drawenv.tw); /* _xeno_texwindow_draw: see build_port.sh */\n", 1)])
+
+edit(HDR, "_xeno_texwindow_decl", [(
+"extern void\t\t\tGR_SetOverrideTextureSize(int width, int height);\n",
+"extern void\t\t\tGR_SetOverrideTextureSize(int width, int height);\n"
+"extern void\t\t\tGR_SetTextureWindow(const RECT16* tw); /* _xeno_texwindow_decl: see build_port.sh */\n", 1)])
+
+edit(REN, "_xeno_texwindow_loc_struct", [(
+"\tGLint texelSizeLoc;\n",
+"\tGLint texelSizeLoc;\n"
+"\tGLint texWindowLoc; /* _xeno_texwindow_loc_struct */\n", 1)])
+
+edit(REN, "_xeno_texwindow_loc_global", [(
+"GLint u_texelSizeLoc;\n",
+"GLint u_texelSizeLoc;\n"
+"GLint u_texWindowLoc = -1; /* _xeno_texwindow_loc_global */\n", 1)])
+
+edit(REN, "_xeno_texwindow_loc_get", [(
+"\tsh->lutLoc = glGetUniformLocation(sh->shader, \"s_rgLut\");\n",
+"\tsh->lutLoc = glGetUniformLocation(sh->shader, \"s_rgLut\");\n"
+"\t/* _xeno_texwindow_loc_get: fetch the texture-window uniform and default\n"
+"\t * it to the disabled window so unset state is an exact no-op. */\n"
+"\tsh->texWindowLoc = glGetUniformLocation(sh->shader, \"u_texWindow\");\n"
+"\tif (sh->texWindowLoc != -1)\n"
+"\t{\n"
+"\t\tglUseProgram(sh->shader);\n"
+"\t\tglUniform4f(sh->texWindowLoc, 256.0f, 256.0f, 0.0f, 0.0f);\n"
+"\t\tglUseProgram(0);\n"
+"\t}\n", 1)])
+
+edit(REN, "_xeno_texwindow_loc_route", [
+("\t\tlutLoc = g_gpu_shader_4.lutLoc;\n",
+ "\t\tlutLoc = g_gpu_shader_4.lutLoc;\n"
+ "\t\tu_texWindowLoc = g_gpu_shader_4.texWindowLoc; /* _xeno_texwindow_loc_route */\n", 1),
+("\t\tlutLoc = g_gpu_shader_8.lutLoc;\n",
+ "\t\tlutLoc = g_gpu_shader_8.lutLoc;\n"
+ "\t\tu_texWindowLoc = g_gpu_shader_8.texWindowLoc;\n", 1),
+("\t\tlutLoc = g_gpu_shader_16.lutLoc;\n",
+ "\t\tlutLoc = g_gpu_shader_16.lutLoc;\n"
+ "\t\tu_texWindowLoc = g_gpu_shader_16.texWindowLoc;\n", 1),
+("\t\tu_texelSizeLoc = g_gpu_shader_32_rgba.texelSizeLoc;\n",
+ "\t\tu_texelSizeLoc = g_gpu_shader_32_rgba.texelSizeLoc;\n"
+ "\t\tu_texWindowLoc = -1;\n", 1)])
+
+edit(REN, "_xeno_texwindow_func", [(
+"void GR_SetOverrideTextureSize(int width, int height)\n",
+"/* _xeno_texwindow_func: PSX texture window (GP0 E2h). tw is the pixel RECT\n"
+" * form (w/h = window size, 0 = disabled; x/y = origin). Re-derive the 5-bit\n"
+" * hardware mask/offset so only hardware-representable windows apply, then\n"
+" * hand the shader size+origin: coord' = origin + mod(coord, size).\n"
+" * See build_port.sh. */\n"
+"void GR_SetTextureWindow(const RECT16* tw)\n"
+"{\n"
+"#if USE_OPENGL\n"
+"\tconst int maskX = ((256 - (tw->w & 0xFF)) >> 3) & 0x1F;\n"
+"\tconst int maskY = ((256 - (tw->h & 0xFF)) >> 3) & 0x1F;\n"
+"\tconst float sizeX = (float)(256 - maskX * 8);\n"
+"\tconst float sizeY = (float)(256 - maskY * 8);\n"
+"\tconst float ofsX = (float)((((tw->x & 0xFF) >> 3) & maskX) << 3);\n"
+"\tconst float ofsY = (float)((((tw->y & 0xFF) >> 3) & maskY) << 3);\n"
+"\tif (u_texWindowLoc != -1)\n"
+"\t\tglUniform4f(u_texWindowLoc, sizeX, sizeY, ofsX, ofsY);\n"
+"#endif\n"
+"}\n"
+"\n"
+"void GR_SetOverrideTextureSize(int width, int height)\n", 1)])
+
+edit(REN, "_xeno_texwindow_shader_decl", [(
+"\t\t\"\tconst vec2 c_VRAMTexel = vec2(1.0 / 1024.0, 1.0 / 512.0);\\n\"\\\n",
+"\t\t\"\tconst vec2 c_VRAMTexel = vec2(1.0 / 1024.0, 1.0 / 512.0);\\n\"\\\n"
+"\t\t\"\tuniform vec4 u_texWindow; // _xeno_texwindow_shader_decl\\n\"\\\n", 2)])
+
+edit(REN, "_xeno_texwindow_shader_apply", [
+("    \"   vec2 samplePSX(vec2 tc) {\\n\"\\\n",
+ "    \"   vec2 samplePSX(vec2 tc) {\\n\"\\\n"
+ "    \"       tc = u_texWindow.zw + mod(tc, u_texWindow.xy); // _xeno_texwindow_shader_apply\\n\"\\\n", 1),
+("\t\"\tvec2 samplePSX(vec2 tc) {\\n\"\\\n",
+ "\t\"\tvec2 samplePSX(vec2 tc) {\\n\"\\\n"
+ "\t\"\t\ttc = u_texWindow.zw + mod(tc, u_texWindow.xy);\\n\"\\\n", 2)])
+
+print("    texture-window patches OK")
+TEXWINDOW_PY
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
