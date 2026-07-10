@@ -507,7 +507,30 @@ void func_8009A1AC(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1E4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A2A8);
+/* Opcode 0x6F (OP_ROTATE_TO_ACTOR), asm 8009A2A8-8009A348 line-verified.
+ * Turn the current actor to face the target actor named by script byte +1,
+ * then advance the IP by 2. The angle is ratan2(dz, dx) negated with the
+ * 0x8000 "facing changed" latch, stored into both rotation.vx (+0x104) and
+ * rotation.vy (+0x106); when the target id resolves to ACTOR_ID_INVALID the
+ * rotation is left untouched but the IP still advances (retail reaches the
+ * shared .L8009A324 tail either way). The stub previously bound here never
+ * advanced the IP, so talk scripts spun on this opcode forever. */
+void func_8009A2A8(void) {
+    s32 targetIndex = FieldScriptVMGetActorIndex(1);
+
+    if (targetIndex != ACTOR_ID_INVALID) {
+        ActorData* target =
+            (ActorData*)(uintptr_t)g_FieldActors[targetIndex].pActorData;
+        s32 dz = target->position.vz - g_FieldScriptVMCurActor->position.vz;
+        s32 dx = target->position.vx - g_FieldScriptVMCurActor->position.vx;
+        s16 angle = (s16)((-ratan2(dz, dx)) | 0x8000);
+
+        g_FieldScriptVMCurActor->rotation.vx = angle;
+        g_FieldScriptVMCurActor->rotation.vy = angle;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 void func_8009A34C(void) {
     s32 duration;
