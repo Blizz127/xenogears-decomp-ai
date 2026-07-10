@@ -761,6 +761,36 @@ reenter:
         return;
     }
 
+    if (opcode == 0xE4) {
+        /* asm 80024DC8-80024E0C: counted relative branch. Pop a byte;
+         * zero consumes this three-byte instruction, while nonzero pushes
+         * count-1 and joins the same signed-offset tail as opcode 0xE1.
+         * Inline the exact +0x8C/+0x8E stack-helper effects because those
+         * helpers are INCLUDE_ASM and therefore absent from the PC build. */
+        extern const u8 D_8004FC40[256];
+        u8 stackIndex = *(u8*)(pData + 0x8C);
+        s8 signedStackIndex = (s8)stackIndex;
+        u8 count = *(u8*)(pData + 0x8E + signedStackIndex);
+        s32 offset;
+
+        /* AnimScriptStackPopU8. */
+        *(u8*)(pData + 0x8C) = (u8)(stackIndex + 1);
+        if (count == 0) {
+            *(u32*)(pData + 0x64) =
+                (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+            goto reenter;
+        }
+
+        /* AnimScriptStackPushU8(count - 1). */
+        stackIndex = (u8)(*(u8*)(pData + 0x8C) - 1);
+        *(u8*)(pData + 0x8C) = stackIndex;
+        *(u8*)(pData + 0x8E + (s8)stackIndex) = (u8)(count - 1);
+
+        offset = (s16)((u16)pc[1] | ((u16)pc[2] << 8));
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+        goto reenter;
+    }
+
     if (opcode == 0xE1) {
         /* asm 80024DEC-80024E0C: signed 16-bit PC-relative jump. The
          * two-byte operand is little-endian and relative to the opcode
@@ -774,7 +804,7 @@ reenter:
     /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
     if (opcode == 0x85 || opcode == 0x86 || opcode == 0x87 || opcode == 0x8E ||
         opcode == 0x98 || opcode == 0xA7 || opcode == 0xBE || opcode == 0xC8 ||
-        opcode == 0xD4 || opcode == 0xE2 || opcode == 0xE4 || opcode == 0xFA) {
+        opcode == 0xD4 || opcode == 0xE2 || opcode == 0xFA) {
         assert(0 && "func_800248D4 dedicated opcode path is not implemented");
     }
 
