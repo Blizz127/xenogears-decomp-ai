@@ -145,6 +145,19 @@ grep -q "_xeno_read_materialize" "$PSX/src/render/PsyX_render.cpp" || \
 perl -0777 -i -pe 's/\tif \(!src\)\n\t\{\n\t\tframebuffer_need_update = 1;/\tif (!src)\n\t{\n\t\t\/* _xeno_read_materialize: reconcile the pending rendered-frame\n\t\t * snapshot into vram[] only when this VRAM read overlaps the\n\t\t * snapshot rect, so the read sees frame pixels without erasing\n\t\t * non-overlapping rows the game re-used for uploads. See build_port.sh. *\/\n\t\tif (framebuffer_need_update \&\&\n\t\t    x < g_PreviousFramebuffer.x + g_PreviousFramebuffer.w \&\&\n\t\t    x + w > g_PreviousFramebuffer.x \&\&\n\t\t    y < g_PreviousFramebuffer.y + g_PreviousFramebuffer.h \&\&\n\t\t    y + h > g_PreviousFramebuffer.y)\n\t\t{\n\t\t\tGR_ReadFramebufferDataToVRAM();\n\t\t}\n\n\t\tframebuffer_need_update = 1;/' \
     "$PSX/src/render/PsyX_render.cpp"
 
+# PsyCross bugfix (idempotent, grep-guarded): GR_CopyRGBAFramebufferToVRAM read
+# the GL backbuffer (RGBA8, R in the low byte) but extracted R into the RGB555
+# B-field and B into the R-field, swapping red<->blue on every framebuffer->vram
+# readback. VRAM readbacks (and any effect that re-uses the materialized frame,
+# e.g. field water/reflection) therefore came out R/B swapped: the dialog text's
+# blue outline (0xc086) materialized as red (0x1890), which is why VRAM-capture
+# diagnostics kept reporting a "red overlay" even though the live GL display was
+# already correct white/blue. The direct display path (GR_SwapWindow) is
+# unaffected; this only corrects the readback so vram[] matches the screen.
+grep -q "_xeno_fb_rgb" "$PSX/src/render/PsyX_render.cpp" || \
+perl -0777 -i -pe 's/\t\t\tu_char b = \(\(c >> 3\) & 0x1F\);\n\t\t\tu_char g = \(\(c >> 11\) & 0x1F\);\n\t\t\tu_char r = \(\(c >> 19\) & 0x1F\);/\t\t\tu_char r = ((c >> 3) \& 0x1F); \/* _xeno_fb_rgb: RGBA source, R is the low byte; stock code swapped R<->B on readback. See build_port.sh. *\/\n\t\t\tu_char g = ((c >> 11) \& 0x1F);\n\t\t\tu_char b = ((c >> 19) \& 0x1F);/' \
+    "$PSX/src/render/PsyX_render.cpp"
+
 # PsyCross feature (idempotent, per-edit marker-guarded): PSX texture-window
 # (GP0 E2h) emulation. PsyX parsed DR_TWIN into activeDrawEnv.tw but nothing
 # ever APPLIED it -- primitives sampled raw UVs. Xenogears' dialog UI relies on
