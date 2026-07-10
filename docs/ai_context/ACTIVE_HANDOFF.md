@@ -12,6 +12,14 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 10 — 🚪 NORMAL BOOT SKIPS THE DEBUG "KernelMenu" (Field/Battle/Worldmap/…) and lands in playable Lahan; harness/boot-path only, retail logic untouched
+
+- **Scope:** two port-side (harness) edits only — `pc_port/src/psyq_compat.c` + `pc_port/src/port_main.c`. No retail game logic; `kernel_menu.c` and all game code unchanged.
+- **What the "demo flag menu" is:** the port sets the boot state `g_MainGameStates[0].pFnMain = KernelMenuMain` (game_overrides.c:678) — the retail debug/test selector (`"Field\nBattle\nWorldmap\nBattling\nMenu\nMovie"`, data_kernel_menu.c). It stands in for the not-yet-ported title/new-game flow. On a plain play run it just sits there (no synthetic input, real keys don't reach it headless) = the "trap." `XENO_DEMOFLAG` never existed, so setting it did nothing.
+- **Fix (both gated on `XENO_FIELD_TEST`):** (1) `PcPort_ForcedKernelSelect` (psyq_compat.c) now defaults its selection to **0 = Field** on normal boot (was −1 = disabled → menu trapped), reusing the exact synthetic-Circle path the harness already used; explicit `XENO_KERNEL_SEL` still wins, and `XENO_FIELD_TEST=1` (without a sel) still leaves the menu up for interactive/debug use. (2) `port_main.c` now defaults the field target to **Lahan map 1 / entrance 6 / camera octant 7** (the harness-validated spawn) on normal boot, since the cold default is map 0 + axis-aligned camera; any `XENO_FIELD_*` override still wins, and field-test runs are skipped entirely so the smokes keep their own map/entrance.
+- **Validation:** build LINK OK. Normal boot (no env): stdout shows `normal boot -> Lahan default (map=1 ent=6 camoct=7)` + `forcing KernelMenu select 0`, gdb confirms the field render pump (func_8007554C) is reached with `g_GameSceneMapNum=1` (Lahan), 15 s run RC=124 crashmarks=0. `XENO_FIELD_TEST=1` w/o `KERNEL_SEL`: neither message fires, menu stays up (interactive preserved). Smokes ent8/ent0 RC=124 5/5-stub, Map0 RC=124, unchanged. Walk/run/talk unregressed — normal boot enters the identical Lahan ent6 state the harness drives.
+- **Note:** the debug menu still renders for ~`XENO_KERNEL_DELAY` (def 60) frames before the auto-select fires (reuses the proven overlay-load timing); it no longer traps. If a zero-flash boot is wanted later, lower that delay for the normal-boot path — a trivial follow-up, not needed for playability.
+
 ## July 10 — ✅✅ RESOLVED: the "red bottom overlay" was a VRAM-CAPTURE ARTIFACT (R/B channel swap in framebuffer→VRAM readback). The live GL display was ALWAYS white/blue. Fixed the swap so VRAM matches the screen. (commit pending)
 
 - **Scope:** one idempotent PsyCross patch in `pc_port/build_port.sh` (`_xeno_fb_rgb`). No game code, no palette, no texture-window, no CLUT-stomp, no border/strip changes.

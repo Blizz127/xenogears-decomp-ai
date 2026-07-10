@@ -326,7 +326,19 @@ static void PcPort_ForcedKernelSelect(void)
     if (sel == -2) {  /* first call: read config */
         const char* e = getenv("XENO_KERNEL_SEL");
         const char* d = getenv("XENO_KERNEL_DELAY");
-        sel = (e && *e) ? atoi(e) : -1;
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (e && *e) {
+            sel = atoi(e);        /* explicit menu drive (field-test or manual) */
+        } else if (ft && ft[0] == '1') {
+            sel = -1;             /* field-test w/o an explicit choice: leave the
+                                   * debug KernelMenu up for interactive use */
+        } else {
+            sel = 0;              /* NORMAL BOOT: auto-select Field (option 0) so the
+                                   * debug KernelMenu never traps a plain play run --
+                                   * same synthetic-Circle path the harness uses, just
+                                   * defaulted on. port_main defaults the field target
+                                   * to Lahan for this case. */
+        }
         delay = (d && *d) ? atoi(d) : 60;
         frame = 0;
     }

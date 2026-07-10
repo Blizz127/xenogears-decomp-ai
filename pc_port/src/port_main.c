@@ -261,6 +261,28 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            /* Normal-boot stand-in for the not-yet-ported title/new-game flow.
+             * When this is NOT a field-test run (XENO_FIELD_TEST != "1"), default
+             * the field target to Lahan (map 1) entrance 6, camera octant 7 -- the
+             * same spawn the harness validates -- so the auto-skipped KernelMenu
+             * (see PcPort_ForcedKernelSelect) lands in the playable town instead of
+             * the cold-default map 0 / axis-aligned camera. Any explicit XENO_FIELD_*
+             * override set above still wins; a field-test run is left untouched so
+             * the smokes keep their own map/entrance. */
+            {
+                const char* fieldTest = getenv("XENO_FIELD_TEST");
+                if (!(fieldTest && fieldTest[0] == '1')) {
+                    if (getenv("XENO_FIELD_MAP") == NULL)
+                        D_8006F94E = 1;
+                    if (getenv("XENO_FIELD_ENTRANCE") == NULL)
+                        D_8006F954 = 6;
+                    if (getenv("XENO_FIELD_CAMDIR") == NULL)
+                        D_8006F950 = (unsigned short)(7 << 9);
+                    printf("[xeno-port][field] normal boot -> Lahan default "
+                           "(map=%u ent=%u camoct=7)\n",
+                           (unsigned int)D_8006F94E, (unsigned int)D_8006F954);
+                }
+            }
             printf("[xeno-port][field] font + party-skin init done\n");
         } else {
             printf("[xeno-port] WARNING: no disc image found "
