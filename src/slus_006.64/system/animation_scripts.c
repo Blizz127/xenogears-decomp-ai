@@ -238,6 +238,31 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x1C) {
+        /* Opcode 0xA6 handler (asm 800218DC-80021954): mode-A8-bit0 sprites
+         * ignore it. Otherwise scale the signed operand by 16, the frame
+         * factor, and sprite +0x82; round before >>12, convert to 16.16,
+         * divide by the AC speed divisor, and add to sprite +0x10. */
+        u8* p = pSpriteData;
+        s32 value;
+        s32 divisor;
+
+        if ((*(u32*)(p + 0xA8) & 1) == 1) {
+            return;
+        }
+
+        value = (s32)(s8)((u8*)operands)[0] * 16;
+        value *= D_80059198 + 1;
+        value *= *(s16*)(p + 0x82);
+        if (value < 0) {
+            value += 0xFFF;
+        }
+        value = (value >> 12) << 16;
+        divisor = (s32)((*(u32*)(p + 0xAC) >> 7) & 0xFFF);
+        *(s32*)(p + 0x10) += value / divisor;
+        return;
+    }
+
     if (dispatchIndex == 0x16) {
         /* Opcode 0xA0 handler (original asm at 0x80021958): fixed-point value
            from signed operand byte 0, (D_80059198 + 1), and signed pData+0x82,
