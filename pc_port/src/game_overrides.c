@@ -31,6 +31,7 @@ void func_80019548(void) {}
  * in the emulated PSX RAM buffer. Values extracted from the matching ELF.
  * --------------------------------------------------------------------------- */
 #include <stdio.h>
+#include <stdlib.h>
 #include "common.h"
 #include "main/main.h"
 #include "field/actor.h"
@@ -209,11 +210,16 @@ static int ModelPrimQuadOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     return ModelPrimTriOversized(xy1, xy2, xy3);
 }
 
+/* Retail screen cull (e.g. asm 8002E15C-8002E1A0): keep a prim only when at
+ * least one vertex has packed SXY <u D_800500FC (y within [0, screenH-1], so
+ * negative or below-screen y fails) AND at least one vertex has
+ * x <u D_800500F8. An earlier port transcription inverted the first
+ * comparison, culling exactly the on-screen prims. */
 static int ModelPrimTriOverlapsScreen(u32 xy0, u32 xy1, u32 xy2) {
     u32 yMaxPacked = (u32)D_800500FC;
     u32 xMax = (u32)D_800500F8;
 
-    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked)) {
+    if (!(xy0 < yMaxPacked || xy1 < yMaxPacked || xy2 < yMaxPacked)) {
         return 0;
     }
     return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
@@ -224,7 +230,7 @@ static int ModelPrimQuadOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     u32 yMaxPacked = (u32)D_800500FC;
     u32 xMax = (u32)D_800500F8;
 
-    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked || xy3 > yMaxPacked)) {
+    if (!(xy0 < yMaxPacked || xy1 < yMaxPacked || xy2 < yMaxPacked || xy3 < yMaxPacked)) {
         return 0;
     }
     return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
@@ -1133,8 +1139,50 @@ void func_80025718(void* pTask)
     SetTransMatrix(pDraw);
 
     modelBuf = *(u32*)(pBase + 0x2C + (u32)g_GfxCurContext * 4);
-    func_8002C700((u8*)(uintptr_t)modelHdr, (u8*)(uintptr_t)modelBuf,
-                  (u32*)g_GfxCurOT, *(u16*)(sprite + 0x42) & 0x4);
+
+    /* TEMPORARY DIAGNOSTIC (child visibility audit, 2026-07-09): with
+     * XENO_CHILD_DRAW_DIAG=1, log the OT-emit counter (D_80059578) delta
+     * across func_8002C700 for the first child dispatches plus a sparse
+     * tail, and the leading prim group ids. Off by default; remove once
+     * child pixels are confirmed. */
+    {
+        static int s_diag = -1;
+        static int s_calls;
+        s32 emitBefore = 0;
+        int doLog = 0;
+
+        if (s_diag < 0) {
+            const char* env = getenv("XENO_CHILD_DRAW_DIAG");
+            s_diag = (env != NULL && env[0] != '\0' && env[0] != '0');
+        }
+        if (s_diag) {
+            doLog = (s_calls < 12) || (s_calls % 100) == 0;
+            emitBefore = D_80059578;
+        }
+
+        {
+            s32 ret = func_8002C700((u8*)(uintptr_t)modelHdr,
+                                    (u8*)(uintptr_t)modelBuf, (u32*)g_GfxCurOT,
+                                    *(u16*)(sprite + 0x42) & 0x4);
+            if (doLog) {
+                u8* hdr = (u8*)(uintptr_t)modelHdr;
+                u8* grp = (u8*)(uintptr_t)*(u32*)(hdr + 0x10);
+                fprintf(stderr,
+                        "[child-draw] #%d sprite=%p hdr=%p buf=%08x ctx=%d "
+                        "var=%d groups=%u prim0=%u cnt0=%d trans=(%d,%d,%d) "
+                        "drawT=(%d,%d,%d) ret=%d emits=%d->%d\n",
+                        s_calls, (void*)sprite, (void*)hdr, modelBuf,
+                        (int)g_GfxCurContext, (int)(*(u16*)(sprite + 0x42) & 0x4),
+                        *(u16*)(hdr + 0x6), grp[0], (int)*(s16*)(grp + 0x2),
+                        (int)trans.vx, (int)trans.vy, (int)trans.vz,
+                        (int)pDraw->t[0], (int)pDraw->t[1], (int)pDraw->t[2],
+                        ret, emitBefore, D_80059578);
+            }
+            if (s_diag) {
+                s_calls++;
+            }
+        }
+    }
 }
 
 /* Retail .data callback table @0x8004FD40 (temp1.c CALLBACK_TABLE comment):

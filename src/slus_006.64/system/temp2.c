@@ -342,11 +342,16 @@ static u32 ModelPrimVertexIndex1(u32 word) {
     return (word >> 16) & 0xFFFF;
 }
 
+/* Retail screen cull (asm 8002E7CC-8002E818): keep a prim only when at least
+ * one vertex has packed SXY <u D_800500FC (y within [0, screenH-1]; negative
+ * or below-screen y fails the unsigned compare) AND at least one vertex has
+ * x <u D_800500F8. An earlier port transcription inverted the first
+ * comparison, culling exactly the on-screen prims. */
 static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     u32 yMaxPacked = (u32)D_800500FC;
     u32 xMax = (u32)D_800500F8;
 
-    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked || xy3 > yMaxPacked)) {
+    if (!(xy0 < yMaxPacked || xy1 < yMaxPacked || xy2 < yMaxPacked || xy3 < yMaxPacked)) {
         return 0;
     }
     return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
