@@ -337,7 +337,11 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
     sceneScrZ = *(s32*)((u8*)&g_Scene + 0x68);
     scene6E = *(s16*)((u8*)&g_Scene + 0x6E);
 
-    /* Angle calculation: angle*23/8 + 0xC00, then rsin */
+    /* Angle calculation: (91*angle)>>3 + 0xC00, then rsin. The expression below
+     * is the compiler's strength-reduced 91*angle ((3a<<3 - a)<<2 - a); verified
+     * byte-exact against retail asm func_80072A38.s 80072B80-80072BA0 (this is a
+     * matching function). Earlier "angle*23/8" comment was stale (23a is only the
+     * inner (3a<<3 - a) subterm before the final <<2 - a). */
     {
         s32 angleCalc = sceneAngle;
         s32 sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
