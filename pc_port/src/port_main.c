@@ -71,6 +71,7 @@ extern void SystemInitializeFont(void* pSystemFont);
 extern void SystemInitializeData(void* pSystemData);
 extern void func_8001ACA4(void);
 extern unsigned short D_8006F954;    /* field entrance/spawn index (sister of D_8006F94E) */
+extern unsigned short D_8006F950;    /* field transition approach angle (-> var 8 camera octant) */
 extern unsigned char D_80010000[];  /* build/mode flag: -1 in retail ROM        */
 extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  */
 extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
@@ -230,6 +231,33 @@ int main(int argc, char** argv) {
                     } else {
                         printf("[xeno-port][field] ignoring invalid "
                                "XENO_FIELD_ENTRANCE=%s\n", fieldEntrance);
+                    }
+                    /* Camera approach direction. D_8006F950 is the retail
+                     * transition's approach-angle input: FieldMain stores it
+                     * as an octant (>>9) to g_GameState+0x1938 (main.c:409),
+                     * which FieldLoad copies to field-script var 8; spawn
+                     * entries whose camera rotByte is 0xFF (= "inherit from
+                     * the transition") read var 8 in func_8009FA54. A cold
+                     * harness boot leaves it 0, which degenerates to an
+                     * axis-aligned camera yaw (0x800) that the d-pad->walk
+                     * LUT is not authored for (retail field cameras are
+                     * diagonal; Up walks away from the camera only there).
+                     * Default octant 7 = scene yaw 0x600, empirically
+                     * validated: Up walks exactly away from the camera, and
+                     * the Map1 ent6 spawn is unoccluded from that side (the
+                     * other consistent diagonal, octant 3, puts the camera
+                     * behind the spawn-adjacent house). Override with
+                     * XENO_FIELD_CAMDIR=0..7; 0 reproduces the legacy
+                     * axis-aligned probes. */
+                    {
+                        const char* camDir = getenv("XENO_FIELD_CAMDIR");
+                        long octant = 7;
+                        if (camDir != NULL && camDir[0] != '\0') {
+                            octant = strtol(camDir, NULL, 0) & 7;
+                        }
+                        D_8006F950 = (unsigned short)(octant << 9);
+                        printf("[xeno-port][field] camera approach octant=%ld "
+                               "(D_8006F950 -> field-script var 8)\n", octant);
                     }
                 }
             }

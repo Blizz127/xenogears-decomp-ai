@@ -803,15 +803,18 @@ void func_800739C0(void) {
     D_800AFC48 = 0;
     D_800AFC44 = 0;
 
-    /* Yaw from current eye/at */
+    /* Yaw from current eye/at -> +0xA (curAngleY), asm 80073A10-80073A4C:
+     * sh to g_CamInterpolation+0xA. */
     yawCur = ratan2(g_CameraAt.vz - g_CameraEye.vz,
                     g_CameraAt.vx - g_CameraEye.vx);
-    g_CamInterpolation.targetAngleY = (s16)(yawCur - 0x400);
+    g_CamInterpolation.curAngleY = (s16)(yawCur - 0x400);
 
-    /* Yaw from target eye2/at2 */
+    /* Yaw from target eye2/at2 -> +0x8 (targetAngleY), asm 80073A34-80073A80:
+     * sh to g_CamInterpolation+0x8. This is the term OP_UPDATE_CHARACTER
+     * subtracts (Noah: camera2Tan). The port had these two stores swapped. */
     yawTarget = ratan2(g_CameraAt2.vz - g_CameraEye2.vz,
                        g_CameraAt2.vx - g_CameraEye2.vx);
-    g_CamInterpolation.curAngleY = (s16)(yawTarget - 0x400);
+    g_CamInterpolation.targetAngleY = (s16)(yawTarget - 0x400);
 
     /* Horizontal distance */
     camDist = FieldGetVec2Magnitude(
@@ -874,33 +877,43 @@ void func_800739C0(void) {
             }
 
             {
+                /* Facing smoothing toward the commanded angle (+0x106 ->
+                 * +0x108). Retail asm 80073CD8-80073D54: SKIP when
+                 * scriptFlags bit 0x8000 is set (the port had this guard
+                 * inverted, freezing every walking actor's facing).
+                 * - pflags(+0x14) bit 0x200000 set AND scriptFlags 0x1800
+                 *   clear: snap toward the octant packed in pflags bits
+                 *   11-13 at fixed speed 0x200 (asm .L80073D38).
+                 * - otherwise: smooth toward +0x106 at speed D_800B21B4
+                 *   (flags +0x04 bit 0x2000) or the actor's own +0x11E
+                 *   (asm .L80073D08). */
                 s32 dataFlags = *(s32*)(pData + 0x00);
-                if (dataFlags & 0x8000) {
-                    /* Has animation */
+                if (!(dataFlags & 0x8000)) {
                     s32 pflags = *(s32*)(pData + 0x14);
-                    if (!(pflags & 0x200000)) {
-                        if (dataFlags & 0x1800) {
-                            /* Use D_800B21B4 angle */
-                            s16 angle = D_800B21B4;
-                            s16 curAng = *(s16*)(pData + 0x108);
-                            s16 targAng = *(s16*)(pData + 0x106);
-                            *(s16*)(pData + 0x108) =
-                                (s16)FieldMathUpdateAngle(curAng, targAng, angle);
-                        } else {
-                            /* Computed angle */
-                            s16 angle = (s16)((((pflags >> 11) - 2) & 7) << 9);
-                            s16 curAng = *(s16*)(pData + 0x108);
-                            *(s16*)(pData + 0x108) =
-                                (s16)FieldMathUpdateAngle(curAng, 0, angle);
-                        }
+                    if ((pflags & 0x200000) && !(dataFlags & 0x1800)) {
+                        s16 targAng = (s16)((((pflags >> 11) - 2) & 7) << 9);
+                        *(s16*)(pData + 0x108) =
+                            (s16)FieldMathUpdateAngle(
+                                *(s16*)(pData + 0x108), targAng, 0x200);
+                    } else {
+                        s32 flags4 = *(s32*)(pData + 0x04);
+                        s16 speed = (flags4 & 0x2000)
+                                        ? D_800B21B4
+                                        : *(s16*)(pData + 0x11E);
+                        *(s16*)(pData + 0x108) =
+                            (s16)FieldMathUpdateAngle(
+                                *(s16*)(pData + 0x108),
+                                *(s16*)(pData + 0x106), speed);
                     }
                 }
 
-                /* Facing direction update */
+                /* Facing direction push to the sprite. Retail asm 80073D94
+                 * reads the CURRENT camera yaw (lhu g_CamInterpolation+0xA)
+                 * unsigned; the port read +0x8. */
                 if (!D_800ADB05) {
                     s32 flags = *(s32*)(pData + 0x04);
                     if (!(flags & 0x1000000)) {
-                        s32 camAng = g_CamInterpolation.targetAngleY;
+                        s32 camAng = *(u16*)((u8*)&g_CamInterpolation + 0xA);
                         s32 actorAng = *(u16*)(pData + 0x108);
                         func_800223B0(*(s32*)(pActor + 0x04),
                                      (camAng + actorAng) << 16 >> 16);
