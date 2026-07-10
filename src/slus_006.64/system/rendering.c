@@ -311,9 +311,19 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         s32 directionIndex = 4;
         s32 i;
 
+        s32 texUBase4;
+        s32 texUBase8;
+
         if (((*(u32*)(pData + 0x40) >> 13) & 0xF) == 0xE) {
             func_8001F530(&vramX, pFrame[4]);
         }
+
+        /* asm 8001DD0C-8001DD2C: the part U coordinate is based at the
+         * sprite band's texel origin within its 64-word texture page
+         * ((vramX & 0x3F) scaled per bpp); computed after the func_8001F530
+         * vramX rewrite, once for the whole frame. */
+        texUBase4 = (vramX & 0x3F) << 2;
+        texUBase8 = (vramX & 0x3F) << 1;
 
         *(s16*)(pData + 0x36) = ScaleSpriteFrameByte(pFrame[3], *(s16*)(pData + 0x2C));
         *(s16*)(pData + 0x38) = ScaleSpriteFrameByte(pFrame[1], *(s16*)(pData + 0x2C));
@@ -324,6 +334,7 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             u16 descriptor1;
             u16 tileHeader;
             s32 texX;
+            s32 texU;
             s32 texY;
             s32 width;
             s32 abr;
@@ -383,13 +394,19 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             texY = (descriptor1 >> 5) & 0x3F;
             tileHeader = *(u16*)(pTile + 2);
 
+            /* asm 8001DED4-8001DF20: the sampled U is the band-origin base
+             * plus the bpp-scaled tile column; texX itself stays in RAW word
+             * units for the VRAM upload below (sp 0x20 in the asm). An
+             * earlier transcription shifted texX in place and reused it for
+             * the upload x, planting every part's texels up to 3*31 words
+             * right of where the quad samples. */
             if (tileHeader & 0x1) {
                 *(u32*)(pPrim + 0x14) |= 0x8;
-                texX <<= 1;
+                texU = texUBase8 + (texX << 1);
                 width = pTile[0] >> 1;
             } else {
                 *(u32*)(pPrim + 0x14) &= ~0x8;
-                texX <<= 2;
+                texU = texUBase4 + (texX << 2);
                 width = pTile[0] >> 2;
             }
 
@@ -398,7 +415,7 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             flags |= directionIndex;
             *(u32*)(pPrim + 0x14) = flags;
 
-            *(u8*)(pPrim + 0x4) = texX;
+            *(u8*)(pPrim + 0x4) = texU;
             *(u8*)(pPrim + 0x5) = texY + baseClutY;
             *(u8*)(pPrim + 0x6) = pTile[0];
             *(u8*)(pPrim + 0x7) = pTile[1];
