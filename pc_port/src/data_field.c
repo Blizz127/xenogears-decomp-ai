@@ -977,3 +977,9 @@ FIELD_BSS_ALIAS(g_FieldScriptMemory, g_FieldBss_800C38F8, 0x170);
 FIELD_BSS_ALIAS(D_800C4268, g_FieldBss_800C38F8, 0x970);
 
 #undef FIELD_BSS_ALIAS
+
+/* Overlay-region global (retail 0x80285988, PC-HDD debug overlay): set to 1
+ * by func_8008399C when an interaction/talk starts in SYSTEM_MODE_PC_HDD.
+ * The port runs SYSTEM_MODE_CD_ROM so the write is retail-dead here, but the
+ * symbol must exist to link the faithful branch. */
+s32 D_80285988;

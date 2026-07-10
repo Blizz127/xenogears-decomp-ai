@@ -688,7 +688,22 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CB4C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CC74);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CD48);
+/* Extended VM opcode 0x13 (Noah OPX_13): set the actor's pending sound
+ * fields (+0x10A id, +0x10C param, +0x10D state=0) and release any SPU
+ * voice channel still bound to this actor (func_800863E8). Id 0 means
+ * "none" -> state 0xFF. asm nonmatchings/main/misc/func_8008CD48.s. */
+extern void func_800863E8(s32 actorIdx);
+
+void func_8008CD48(void) {
+    g_FieldScriptVMCurActor->unk10A = (s16)FieldScriptVMGetArgument(1);
+    g_FieldScriptVMCurActor->unk10D = 0;
+    g_FieldScriptVMCurActor->unk10C = (u_char)FieldScriptVMGetArgument(3);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    func_800863E8(D_800AFD1C);
+    if ((u16)g_FieldScriptVMCurActor->unk10A == 0) {
+        g_FieldScriptVMCurActor->unk10D = 0xFF;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CDD4);
 

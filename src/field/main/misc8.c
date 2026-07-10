@@ -1384,6 +1384,8 @@ void func_80083994(void) {
 }
 
 extern u16 D_800C2694;
+extern s16 D_800B2174;
+extern s32 D_80285988;
 extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
@@ -1487,11 +1489,44 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
             Square0((VECTOR*)innerLimit, (VECTOR*)innerLimitSq);
 
             if (forceInteraction || dist < innerLimitSq[0]) {
-                if (D_800C2694 & 0x20) {
-                    assert(!"func_8008399C confirm-button branch not migrated");
-                }
+                if ((D_800C2694 & 0x20) && found == 0 &&
+                    !(otherFlags4 & 0x4000000)) {
+                    /* Confirm-button (Circle released) talk: start the
+                     * target's talk script (id 2, routine 3) and turn it
+                     * toward the player; one interaction per poll (asm
+                     * 80083C68-80083D68). Rejects: no-talk target flags
+                     * (0x220000), global lock D_800B2174, and -- for
+                     * targets flagged 0x40000 -- a facing cone requiring
+                     * the player to face the target within ~+-0x2BB. */
+                    s32 angle;
+                    s32 dir;
+                    s32 delta;
 
-                if ((otherFlags0 & 0x00A20000) == 0) {
+                    if (otherFlags0 & 0x220000) {
+                        continue;
+                    }
+                    if (D_800B2174 != 0) {
+                        continue;
+                    }
+
+                    angle = ratan2(dz, dx);
+                    dir = (-angle >> 9) & 7;
+                    delta = (playerRot - ((-angle) & 0xFFF)) & 0xFFF;
+
+                    if ((otherFlags4 & 0x40000) &&
+                        (u32)(delta - 0x2BC) < 0xA89u) {
+                        continue;
+                    }
+
+                    found = 1;
+                    scriptId = 2;
+                    scriptRoutine = 3;
+                    *(u32*)(otherData + 0x12C) =
+                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                    if (g_FieldSystemMode == 0) {
+                        D_80285988 = 1;
+                    }
+                } else if ((otherFlags0 & 0x00A20000) == 0) {
                     s32 angle = ratan2(dz, dx);
                     s32 dir = (-angle >> 9) & 7;
 
@@ -1499,6 +1534,9 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
                     scriptRoutine = 4;
                     *(u32*)(otherData + 0x12C) =
                         (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                    if (g_FieldSystemMode == 0) {
+                        D_80285988 = 1;
+                    }
                 }
             }
         }
@@ -2412,10 +2450,26 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", FieldActorWorldToScreenPosition
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800863E8);
-
 extern u16 D_800AFE88[];
 extern u16 D_800AFE8A[];
+extern void func_8003A20C(s32);
+
+/* Release the SPU voice channel bound to actor `actorIdx` in the 3-slot
+ * actor->channel table (same table as func_80086470/func_800864F0):
+ * on match, stop the voice (func_8003A20C(i*2)) and free the slot.
+ * asm nonmatchings/main/misc8/func_800863E8.s. */
+void func_800863E8(s32 actorIdx) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE88[i * 3] == (u16)actorIdx) {
+            func_8003A20C(i * 2);
+            D_800AFE8A[i * 3] = 0xFFFF;
+            D_800AFE88[i * 3] = 0xFFFF;
+            break;
+        }
+    }
+}
 
 s32 func_80086470(s32 a0, s32 a1) {
     s32 i;
