@@ -201,29 +201,29 @@ static u32 ModelPrimVertexIndex1(u32 word) {
     return (word >> 16) & 0xFFFF;
 }
 
-/* PSX GPU hardware rule: polygons wider than 1023 or taller than 511 in
- * projected screen space are silently rejected by the rasterizer. PsyX does
- * not implement this, so oversized overflow projections (e.g. near/behind
- * geometry from a ground-level camera) would smear giant triangles across
- * the frame. Reject them here, sibling to the screen-overlap checks. */
+/* XENO_PC_PORT: DISABLED (return 0). These helpers previously rejected any field
+ * model primitive whose projected screen bbox exceeded 1023x511 (the PSX GPU's
+ * hardware poly-size limit). Retail's walker func_8002E010 has NO such check, and
+ * it is both unnecessary and harmful on the port:
+ *  - A fully on-screen prim projects within the 320x224 field viewport, always
+ *    < 1023 wide / 511 tall, so this test can ONLY fire on a prim that has a vertex
+ *    far off-screen (a near-plane-straddling vertex clamped into the SXY range).
+ *  - The preceding ModelPrimTriOverlapsScreen guard already drops prims with no
+ *    on-screen vertex, and PsyX/GL clip a partially-off-screen prim to the viewport
+ *    rather than smearing it.
+ * At a low/oblique camera (the Lahan well camera zone) the large ground/building
+ * quads straddle the near plane and were dropped here -> black ground + buildings
+ * with only small polys and the (cull-exempt) actor sprite surviving. Returning 0
+ * draws them, matching retail; it cannot affect normal on-screen rendering, whose
+ * prims never trigger the test. */
 static int ModelPrimTriOversized(u32 xy0, u32 xy1, u32 xy2) {
-    s32 x0 = (s16)(xy0 & 0xFFFF), y0 = (s16)(xy0 >> 16);
-    s32 x1 = (s16)(xy1 & 0xFFFF), y1 = (s16)(xy1 >> 16);
-    s32 x2 = (s16)(xy2 & 0xFFFF), y2 = (s16)(xy2 >> 16);
-    s32 xmin = x0 < x1 ? x0 : x1, xmax = x0 > x1 ? x0 : x1;
-    s32 ymin = y0 < y1 ? y0 : y1, ymax = y0 > y1 ? y0 : y1;
-    if (x2 < xmin) xmin = x2;
-    if (x2 > xmax) xmax = x2;
-    if (y2 < ymin) ymin = y2;
-    if (y2 > ymax) ymax = y2;
-    return (xmax - xmin) > 1023 || (ymax - ymin) > 511;
+    (void)xy0; (void)xy1; (void)xy2;
+    return 0;
 }
 
 static int ModelPrimQuadOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
-    if (ModelPrimTriOversized(xy0, xy1, xy2)) {
-        return 1;
-    }
-    return ModelPrimTriOversized(xy1, xy2, xy3);
+    (void)xy0; (void)xy1; (void)xy2; (void)xy3;
+    return 0;
 }
 
 /* Retail screen cull (e.g. asm 8002E15C-8002E1A0): keep a prim only when at
