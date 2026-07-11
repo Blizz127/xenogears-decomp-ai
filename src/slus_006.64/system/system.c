@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psyq/libgpu.h"
+#include "psyq/memory.h"
 #include "system/memory.h"
 
 
@@ -63,6 +64,7 @@ void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, 
     *(u32*)(pWindow + 0x28) = (u32)(uintptr_t)HeapAlloc(height * 0x60, 2);
     HeapSetCurrentContentType(0x28);
     *(u32*)(pWindow + 0x2C) = (u32)(uintptr_t)HeapAlloc(*(s16*)(pWindow + 0x12) * 0x1C, 2);
+    memset((void*)(uintptr_t)*(u32*)(pWindow + 0x2C), 0, *(s16*)(pWindow + 0x12) * 0x1C);
 
     *(u8*)(pWindow + 0x4B) = 3;
     *(u32*)(pWindow + 0x4C) = 0x60000000;
@@ -336,6 +338,7 @@ void func_80033DF0(void* arg0) {
         s16 row = *(s16*)(pWindow + 0x02) + 1;
         s16 pageCount;
 
+        memset((void*)(uintptr_t)*(u32*)(pWindow + 0x2C), 0, *(s16*)(pWindow + 0x12) * 0x1C);
         *(s16*)(pWindow + 0x00) = 0;
         *(s16*)(pWindow + 0x02) = row;
         *(s16*)(pWindow + 0x18) += 1;
