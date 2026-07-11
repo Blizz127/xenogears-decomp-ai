@@ -14,6 +14,7 @@ extern int rcos(int);
 extern int rsin(int);
 
 extern s32 D_800AFD1C;
+extern void func_80072254(s32);
 
 void FieldSetScreenDimensions(void) {
     g_FieldRenderContexts[0].dispEnv.screen.x = 0;
@@ -753,7 +754,23 @@ void func_8008D078(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D0F4);
+/* Extended field-script opcode EX-0x03 (SET_CURRENT_ACTOR_SCALE), reached via
+ * the 0xFE prefix -> FieldScriptVM2Run. Sets the current actor's sprite scale
+ * (SpriteData+0x2C) and 3D scale (scaleX/Y/Z), then advances the script IP by 3.
+ * Decompiled from func_8008D0F4.s. This was previously INCLUDE_ASM, which on the
+ * native port became a no-op logging stub that never advanced scriptInstructionPointer;
+ * the VM then re-dispatched the operand bytes as a bogus top-level dialog opcode,
+ * opening a garbage text box (the Lahan-intro "garbled dialog"). The IP += 3 here
+ * is the load-bearing fix. */
+void func_8008D0F4(void) {
+    s32 scale = FieldScriptVMGetArgument(1);
+    *(s16*)((u8*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData + 0x2C) = (scale * 3) >> 2;
+    g_FieldScriptVMCurActor->scaleX = scale;
+    g_FieldScriptVMCurActor->scaleY = scale;
+    g_FieldScriptVMCurActor->scaleZ = scale;
+    func_80072254(D_800AFD1C);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D180);
 
