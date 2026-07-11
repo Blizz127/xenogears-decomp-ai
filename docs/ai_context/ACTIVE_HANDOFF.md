@@ -12,6 +12,16 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 💬✅ DIALOG BOX WIDTH FIXED: text window was ~2× the gold border (`width*2+8` passed to `func_80032F54`); pass raw `DialogGetWidth`. Cutoff + excess blacking gone; "exception" line fits.
+
+- **Scope:** one call site in `src/field/dialogue/text_box_render.c` (`func_8007F8DC`). Also corrected tpage slot index `slot` → `textBoxIndex` (asm 8007FCB4 uses box index after reclaiming `$s5`).
+- **Symptom:** NPC lines appeared cut off (e.g. mid-wrap looking like `"t let any men be an exception"`) and a dark/black region spilled past the gold border.
+- **Root cause:** `func_8007F8DC` passed `width * 2 + 8` into `func_80032F54` as the text-window width. Matching asm (8007FCDC: `$fp` = raw width) and Noah `setupWindowSize2(..., width, height)` both pass `DialogGetWidth` as-is; `width*2+8` is only for open-animation `boxOffset`. Result: text + semi-trans TILE ~2× the border (si70: mA=69/pixW=276 vs border 136; correct mA=31/pixW=124).
+- **Fix:** `func_80032F54(..., width, ...)` + `tpageCoords = &D_800ADF54 + textBoxIndex * 2`.
+- **Proof:** Lahan ent6 actor 37 — si70 page1 / si71 "that we don't let any men / But, you can be an exception." fits; row m58 ≤ mA (48/50/56/58 ≤ 59). Artifacts: `scratchpad/dialog_cutoff_{before,after,actually,pagewait}*`.
+- **Validation:** LINK OK. Smokes ent8/ent0/Map0 RC=124. Lahan ent6 RC=124. No crash/assert.
+- **Residual (out of this fix):** some glyph vertical banding / unrelated field black tris — not caused by the width arg; do not conflate with the well-black issue.
+
 ## July 11 — 🚪✅ REAL BOOT FLOW (title → movie skip → new game menu → Field): normal boot no longer jumps via KernelMenu; Lahan still loads. Field-test/smokes keep KernelMenu.
 
 - **Scope:** port harness only — `pc_port/src/game_overrides.c` (+ small comment/wiring in `psyq_compat.c`, `port_main.c`). No retail logic; no movie decoder; no save system.

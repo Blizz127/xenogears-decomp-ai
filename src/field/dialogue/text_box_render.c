@@ -517,9 +517,11 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
         portraitFlags = 0x44;
     }
 
-    tpageCoords = &D_800ADF54 + slot * 2;
+    /* Asm 8007FCB4-8007FCE0: tpage by textBoxIndex; window width is DialogGetWidth
+     * as-is (width*2+8 is only for boxOffset below). */ 
+    tpageCoords = &D_800ADF54 + textBoxIndex * 2;
     func_80032F54(pTextBox + 0x18, tpageCoords[0], tpageCoords[1], x + portraitFlags + 8, y + 8,
-                  width * 2 + 8, mode, height);
+                  width, mode, height);
 
     if (flags & 0x400) {
         g_FieldTextBoxes[textBoxIndex].flags |= 0x20;
