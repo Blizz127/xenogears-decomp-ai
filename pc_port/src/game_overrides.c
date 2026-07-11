@@ -297,7 +297,15 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
+            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
+             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
+             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
+             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
+             * -- visible only when the camera is jammed against geometry (e.g. the
+             * Lahan well pose: near polys vanish, distant ones survive => scattered
+             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
+             * matches retail's unconditional ot[otIndex] write. */
+            if (otIndex < 0) {
                 continue;
             }
             oldTag = ot[otIndex];
@@ -361,7 +369,15 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
+            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
+             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
+             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
+             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
+             * -- visible only when the camera is jammed against geometry (e.g. the
+             * Lahan well pose: near polys vanish, distant ones survive => scattered
+             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
+             * matches retail's unconditional ot[otIndex] write. */
+            if (otIndex < 0) {
                 continue;
             }
             oldTag = ot[otIndex];
@@ -432,7 +448,15 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
+            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
+             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
+             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
+             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
+             * -- visible only when the camera is jammed against geometry (e.g. the
+             * Lahan well pose: near polys vanish, distant ones survive => scattered
+             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
+             * matches retail's unconditional ot[otIndex] write. */
+            if (otIndex < 0) {
                 continue;
             }
             oldTag = ot[otIndex];
@@ -495,7 +519,15 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
+            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
+             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
+             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
+             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
+             * -- visible only when the camera is jammed against geometry (e.g. the
+             * Lahan well pose: near polys vanish, distant ones survive => scattered
+             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
+             * matches retail's unconditional ot[otIndex] write. */
+            if (otIndex < 0) {
                 continue;
             }
             oldTag = ot[otIndex];
@@ -557,7 +589,15 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
+            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
+             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
+             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
+             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
+             * -- visible only when the camera is jammed against geometry (e.g. the
+             * Lahan well pose: near polys vanish, distant ones survive => scattered
+             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
+             * matches retail's unconditional ot[otIndex] write. */
+            if (otIndex < 0) {
                 continue;
             }
             oldTag = ot[otIndex];
