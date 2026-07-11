@@ -32,6 +32,11 @@ extern void PcPort_InitGameStates(void);
 extern void PcPort_HeapBoot(void);
 /* Original boot global-state initializer called by func_80019578 before MainLoop. */
 extern void func_8001AADC(void);
+/* Field dialog-box interior darkening color (subtractive-blend TILE color), set in
+ * .bss at retail boot by func_8001BB50 (also called from func_80019578). */
+extern unsigned char D_800594D4;
+extern unsigned char D_800594D5;
+extern unsigned char D_800594D6;
 /* "Published by Square" splash, decompressed + drawn from the migrated EXE data. */
 extern void GameShowSplashScreen(void);
 
@@ -164,6 +169,19 @@ int main(int argc, char** argv) {
     /* 5a. Original boot state reset normally performed by func_80019578 before
      * entering MainLoop. The native oracle bypasses that raw asm entry point. */
     func_8001AADC();
+
+    /* 5a-bis. func_80019578 also calls func_8001BB50, which writes the field
+     * dialog-box interior darkening color into .bss. That color is applied to a
+     * semi-transparent flat TILE drawn under the text with a *subtractive*
+     * blend (background.drawModes use GetTPage abr=2), so the box interior =
+     * framebuffer - (D4,D5,D6). func_8001BB50 is stubbed on the port and never
+     * runs, leaving the bytes 0 -> the TILE subtracts (0,0,0) and no darkening
+     * shows. Restore the exact retail values (func_8001BB50 asm 8001BB74-8001BB90:
+     * D4=0x88, D5=0x76, D6=0x54). Consumed once by FieldTextBoxInitializePrimitives
+     * (setRGB0 on background.tiles) at field enter, so set before MainLoop. */
+    D_800594D4 = 0x88;
+    D_800594D5 = 0x76;
+    D_800594D6 = 0x54;
 
     /* 5b. Disc / archive init (see notes above). Only when the image is found,
      * so a disc-less run still reaches the menu instead of hanging in
