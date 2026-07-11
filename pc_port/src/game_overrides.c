@@ -37,6 +37,9 @@ void func_80019548(void) {}
 #include "field/actor.h"
 #include "field/camera.h"
 #include "field/effects.h"
+#include "system/controller.h"
+#include "system/font.h"
+#include "system/kernel.h"
 #include "system/math.h"
 #include "system/memory.h"
 #include "system/sound.h"
@@ -49,9 +52,16 @@ extern long DisableEvent(long event);
 extern long EnableEvent(long event);
 
 extern void KernelMenuMain(void);
+extern void KernelMenuInitialize(void);
 extern void FieldMain(void);
 extern void func_8001B6C4(void);
 extern void MenuMain(void);
+extern void ChangeGameState(unsigned int state);
+extern void FontPrintf(char*, ...);
+extern void FontDrawLetters(void*);
+extern void SetDispMask(int mask);
+extern unsigned short g_C1ButtonStatePressedOnce;
+extern unsigned short g_C1ButtonStateReleased;
 
 /* Controller button remap tables (system/controller.h declares these extern; the
  * initialisers are commented out there because the data lives in the game's
@@ -728,13 +738,168 @@ void ClearMemory(u32* pStart, u32* pEnd)
 
 MainGameState g_MainGameStates[7];
 
+/*
+ * Port-side stand-in for the retail shipping boot path.
+ *
+ * Retail (Noah/Ghidra): shipping builds enter movie mode (state 6) with the
+ * intro STR queued, then land on the title/new-game menu overlay. Neither the
+ * movie decoder nor the save/title menu overlay is ported yet, so this harness
+ * approximates the player-facing sequence with KernelMenu-style font UI:
+ *   title screen -> intro movie skip -> new-game menu -> Field (state 1).
+ *
+ * Field-test / smoke runs keep KernelMenuMain as boot state 0 (see
+ * PcPort_InitGameStates) so XENO_KERNEL_SEL continues to drive the debug menu.
+ */
+enum {
+    PORT_BOOT_TITLE = 0,
+    PORT_BOOT_MOVIE = 1,
+    PORT_BOOT_MENU  = 2
+};
+
+static int PcPort_BootPhaseFrames(int phase)
+{
+    const char* e = getenv("XENO_BOOT_DELAY");
+    int base = (e && *e) ? atoi(e) : 60;
+    if (base < 1)
+        base = 1;
+    if (phase == PORT_BOOT_MOVIE)
+        return base / 2 > 0 ? base / 2 : 1; /* brief skip card */
+    return base;
+}
+
+void PcPort_BootMain(void)
+{
+    static char sTitle[] =
+        "\n\n\n\n"
+        "          XENOGEARS\n\n"
+        "       PRESS START BUTTON\n";
+    static char sMovie[] =
+        "\n\n\n\n"
+        "         INTRO MOVIE\n\n"
+        "   (skipped -- decoder not ported)\n\n"
+        "       PRESS START TO CONTINUE\n";
+    static char sMenu[] =
+        "\n\n\n\n"
+        "          NEW GAME\n"
+        "          CONTINUE\n\n"
+        "   (Continue requires save system)\n";
+    void* pOtag;
+    int phase = PORT_BOOT_TITLE;
+    int phaseFrames = 0;
+    int menuChoice = 0; /* 0 = New Game, 1 = Continue (unavailable) */
+    int running = 1;
+    int advance;
+
+    KernelMenuInitialize();
+    SetDispMask(1);
+    g_KernelMenuIsRunning = 0;
+    D_800592C8 = 0;
+    printf("[xeno-port][boot] title screen\n");
+
+    while (running) {
+        D_800592C4++;
+        D_800592C8 = D_800592C4 & 1;
+        g_KernelMenuCurRenderEnvironment =
+            &g_KernelMenuRenderEnvironments[D_800592C8];
+        pOtag = &g_KernelMenuCurRenderEnvironment->ot;
+        TermPrim(pOtag);
+        FontDrawLetters(pOtag);
+
+        advance = 0;
+        phaseFrames++;
+
+        switch (phase) {
+        case PORT_BOOT_TITLE:
+            FontPrintf(sTitle);
+            if ((g_C1ButtonStatePressedOnce & CTRL_BTN_START) ||
+                (g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
+                phaseFrames >= PcPort_BootPhaseFrames(phase))
+                advance = 1;
+            break;
+
+        case PORT_BOOT_MOVIE:
+            FontPrintf(sMovie);
+            if ((g_C1ButtonStatePressedOnce &
+                 (CTRL_BTN_START | CTRL_BTN_CROSS)) ||
+                (g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
+                phaseFrames >= PcPort_BootPhaseFrames(phase))
+                advance = 1;
+            break;
+
+        case PORT_BOOT_MENU:
+            FontPrintf(sMenu);
+            if (g_C1ButtonStatePressedOnce & CTRL_BTN_UP) {
+                menuChoice = 0;
+            } else if (g_C1ButtonStatePressedOnce & CTRL_BTN_DOWN) {
+                menuChoice = 1;
+            }
+            setXY0Fast(&g_KernelMenuCurRenderEnvironment->cursor,
+                       0x38, menuChoice * 8 + 0x38);
+            setXY1Fast(&g_KernelMenuCurRenderEnvironment->cursor,
+                       0x3F, menuChoice * 8 + 0x3C);
+            setXY2Fast(&g_KernelMenuCurRenderEnvironment->cursor,
+                       0x38, menuChoice * 8 + 0x40);
+            AddPrim(pOtag, &g_KernelMenuCurRenderEnvironment->cursor);
+
+            if ((g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
+                phaseFrames >= PcPort_BootPhaseFrames(phase)) {
+                if (menuChoice == 0 ||
+                    phaseFrames >= PcPort_BootPhaseFrames(phase)) {
+                    /* New Game (or auto-advance): stand-in for the unported
+                     * new-game init -- ChangeGameState(1) enters Field with
+                     * the Lahan defaults port_main already applied. */
+                    printf("[xeno-port][boot] New Game -> Field\n");
+                    ChangeGameState(1);
+                    running = 0;
+                } else {
+                    printf("[xeno-port][boot] Continue unavailable "
+                           "(save system not ported)\n");
+                }
+            }
+            break;
+        }
+
+        if (running && advance) {
+            phaseFrames = 0;
+            if (phase == PORT_BOOT_TITLE) {
+                phase = PORT_BOOT_MOVIE;
+                printf("[xeno-port][boot] intro movie (skipped)\n");
+            } else if (phase == PORT_BOOT_MOVIE) {
+                phase = PORT_BOOT_MENU;
+                menuChoice = 0;
+                printf("[xeno-port][boot] new game menu\n");
+            }
+        }
+
+        DrawSync(0);
+        Vsync(0);
+        PutDrawEnv(&g_KernelMenuCurRenderEnvironment->drawEnv);
+        PutDispEnv(&g_KernelMenuCurRenderEnvironment->dispEnv);
+        DrawOTag(pOtag);
+    }
+
+    DrawSync(0);
+    MainLoop(0);
+}
+
 void PcPort_InitGameStates(void)
 {
+    const char* fieldTest = getenv("XENO_FIELD_TEST");
+    int useKernelMenu = (fieldTest && fieldTest[0] == '1');
+
     /* [idx] = { pFnMain, pMemStart, pHeapStart, hasOverlay } */
-    g_MainGameStates[0].pFnMain    = KernelMenuMain;            /* boot state */
+    /* Normal boot: title/movie-skip/new-game stand-in. Field-test/smokes keep
+     * the debug KernelMenu so XENO_KERNEL_SEL can still drive Field/etc. */
+    g_MainGameStates[0].pFnMain    = useKernelMenu ? KernelMenuMain
+                                                   : PcPort_BootMain;
     g_MainGameStates[0].pMemStart  = PSX_ADDR(0x000592b8);
     g_MainGameStates[0].pHeapStart = PSX_ADDR(0x0006faec);
     g_MainGameStates[0].hasOverlay = 0;
+
+    if (useKernelMenu)
+        printf("[xeno-port][boot] field-test: KernelMenu boot state\n");
+    else
+        printf("[xeno-port][boot] normal: title/menu boot state\n");
 
     g_MainGameStates[1].pFnMain    = FieldMain;
     g_MainGameStates[1].pMemStart  = PSX_ADDR(0x000af5e4);

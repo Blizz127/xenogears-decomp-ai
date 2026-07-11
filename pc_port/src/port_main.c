@@ -271,14 +271,14 @@ int main(int argc, char** argv) {
                     }
                 }
             }
-            /* Normal-boot stand-in for the not-yet-ported title/new-game flow.
-             * When this is NOT a field-test run (XENO_FIELD_TEST != "1"), default
-             * the field target to Lahan (map 1) entrance 6, camera octant 7 -- the
-             * same spawn the harness validates -- so the auto-skipped KernelMenu
-             * (see PcPort_ForcedKernelSelect) lands in the playable town instead of
-             * the cold-default map 0 / axis-aligned camera. Any explicit XENO_FIELD_*
-             * override set above still wins; a field-test run is left untouched so
-             * the smokes keep their own map/entrance. */
+            /* Normal-boot field target for the port-side title/new-game flow
+             * (PcPort_BootMain in game_overrides.c). When this is NOT a field-test
+             * run (XENO_FIELD_TEST != "1"), default to Lahan (map 1) entrance 6,
+             * camera octant 7 -- the same spawn the harness validates -- so New
+             * Game lands in the playable town instead of the cold-default map 0 /
+             * axis-aligned camera. Any explicit XENO_FIELD_* override set above
+             * still wins; a field-test run is left untouched so the smokes keep
+             * their own map/entrance. */
             {
                 const char* fieldTest = getenv("XENO_FIELD_TEST");
                 if (!(fieldTest && fieldTest[0] == '1')) {

@@ -12,6 +12,15 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🚪✅ REAL BOOT FLOW (title → movie skip → new game menu → Field): normal boot no longer jumps via KernelMenu; Lahan still loads. Field-test/smokes keep KernelMenu.
+
+- **Scope:** port harness only — `pc_port/src/game_overrides.c` (+ small comment/wiring in `psyq_compat.c`, `port_main.c`). No retail logic; no movie decoder; no save system.
+- **Before:** normal boot used `g_MainGameStates[0] = KernelMenuMain` and `PcPort_ForcedKernelSelect` auto-picked Field (option 0) after ~60 frames → Lahan. Player-facing path was the debug Kernel menu flash, not title/new-game.
+- **After:** `PcPort_InitGameStates` installs `PcPort_BootMain` on normal boot (still `KernelMenuMain` when `XENO_FIELD_TEST=1`). `PcPort_BootMain` is a KernelMenu-style font UI state machine: **title** → **intro movie skip card** (decoder not ported) → **New Game / Continue** (Continue refused) → `ChangeGameState(1)` Field. Auto-advances each phase after `XENO_BOOT_DELAY` frames (def 60; movie half). Start/Circle can advance early. Lahan defaults (map 1 / ent 6 / camoct 7) still set in `port_main.c` for normal boot. `ForcedKernelSelect` no longer defaults to Field on normal boot (idle unless field-test / explicit `XENO_KERNEL_SEL`).
+- **Out of scope (documented, not blocking):** real STR movie playback; save/Continue; real title overlay / new-game party init beyond the existing port_main party-skin stand-in.
+- **Validation:** `./pc_port/build_port.sh` → LINK OK. Normal boot 15s RC=124: log shows `normal: title/menu boot state` → title → movie skipped → new game menu → `New Game -> Field` → `g_GameSceneMapNum=1` FieldLoad (`boot_flow_normal_20260711_153356.log`). Smokes ent8/ent0/Map0 RC=124 with `field-test: KernelMenu boot state` + `forcing KernelMenu select 0`. Lahan ent6 field-test RC=124. Map 1 fixes untouched.
+- **Next:** real movie overlay (state 6) when a decoder exists; title/save menu overlay for Continue; optionally shorten `XENO_BOOT_DELAY` for snappier interactive boot.
+
 ## July 11 — 🕳️❌ WELL BLACK SCREEN — UNRESOLVED (handoff). Two candidate render fixes tried and DISPROVEN by user in-game testing; the exact pose is UNREACHABLE in the field-test harness. This supersedes the "retail-faithful / not reproducible" entry below — the user CAN reproduce it on normal boot; the harness cannot.
 
 - **Symptom (user screenshots, normal boot):** walking to the well on Map1 Lahan flips the field to a mostly-BLACK frame — the GROUND and large buildings are black; only the well structure, a few small wall/roof CHUNKS, and (sometimes) Fei's sprite render, "floating" in black. So **large quads vanish, small prims + the cull-exempt actor sprite survive**.

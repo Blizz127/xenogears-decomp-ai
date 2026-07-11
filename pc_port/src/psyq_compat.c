@@ -314,7 +314,11 @@ int Sprintf(char* dest, char* fmt, ...)
  * Movie=5) this presses Circle on that option once, XENO_KERNEL_DELAY frames (def
  * 60) after the KernelMenu becomes active -- exercising ChangeGameState ->
  * MainLoop's overlay load (LoadGameStateOverlay -> ArchiveReadFileToBuffer ->
- * LZSSDecompress) without a human at the keyboard. No-op unless the env var is set.
+ * LZSSDecompress) without a human at the keyboard.
+ *
+ * Normal (non-field-test) boots no longer use KernelMenu -- PcPort_BootMain owns
+ * title/movie-skip/new-game and enters Field itself -- so this hook stays idle
+ * unless XENO_FIELD_TEST=1 (or an explicit XENO_KERNEL_SEL) is set.
  */
 static void PcPort_ForcedKernelSelect(void)
 {
@@ -333,11 +337,8 @@ static void PcPort_ForcedKernelSelect(void)
             sel = -1;             /* field-test w/o an explicit choice: leave the
                                    * debug KernelMenu up for interactive use */
         } else {
-            sel = 0;              /* NORMAL BOOT: auto-select Field (option 0) so the
-                                   * debug KernelMenu never traps a plain play run --
-                                   * same synthetic-Circle path the harness uses, just
-                                   * defaulted on. port_main defaults the field target
-                                   * to Lahan for this case. */
+            sel = -1;             /* NORMAL BOOT: KernelMenu is not the boot state
+                                   * (PcPort_BootMain handles Field entry). */
         }
         delay = (d && *d) ? atoi(d) : 60;
         frame = 0;
