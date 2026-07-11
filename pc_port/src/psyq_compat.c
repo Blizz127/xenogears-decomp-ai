@@ -255,6 +255,10 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     gte_stflg(flag);
     gte_stdp(p);
     *flag |= flag0;
+    /* XENO_PC_PORT: gte_stflg writes only the low 32 bits of a long*; sign-extend
+     * so `flag < 0` matches retail bltz on GTE FLAG bit 31 (see build_port.sh
+     * _xeno_gte_flag_sx*). */
+    *flag = (long)(int)(unsigned int)*flag;
 
     gte_avsz4();
     gte_stotz(p);

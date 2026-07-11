@@ -158,6 +158,22 @@ grep -q "_xeno_fb_rgb" "$PSX/src/render/PsyX_render.cpp" || \
 perl -0777 -i -pe 's/\t\t\tu_char b = \(\(c >> 3\) & 0x1F\);\n\t\t\tu_char g = \(\(c >> 11\) & 0x1F\);\n\t\t\tu_char r = \(\(c >> 19\) & 0x1F\);/\t\t\tu_char r = ((c >> 3) \& 0x1F); \/* _xeno_fb_rgb: RGBA source, R is the low byte; stock code swapped R<->B on readback. See build_port.sh. *\/\n\t\t\tu_char g = ((c >> 11) \& 0x1F);\n\t\t\tu_char b = ((c >> 19) \& 0x1F);/' \
     "$PSX/src/render/PsyX_render.cpp"
 
+# PsyCross bugfix (idempotent, grep-guarded): gte_stflg writes FLAG as a
+# 32-bit uint into the caller's slot. On LP64 the game stores that into a
+# `long flag` and tests `flag < 0` (bit 63), while retail `bltz` tests bit 31
+# of the 32-bit FLAG (e.g. 0x80021000 = SX/SY saturation). Sign-extend after
+# each RotTransPers* write so matching C keeps working. Do NOT widen gte_stflg
+# itself — RotTransPers4's local `int _flag` is a 32-bit destination.
+grep -q "_xeno_gte_flag_sx" "$PSX/src/psx/LIBGTE.C" || \
+perl -0777 -i -pe 's/(int RotTransPers\(SVECTOR\* v0, int\* sxy, long\* p, long\* flag\)\n\{\n\tint sz;\n\tgte_RotTransPers\(v0, sxy, p, flag, \&sz\);\n\n\treturn sz;\n\})/int RotTransPers(SVECTOR* v0, int* sxy, long* p, long* flag)\n{\n\tint sz;\n\tgte_RotTransPers(v0, sxy, p, flag, \&sz);\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx *\/\n\treturn sz;\n}/s' \
+    "$PSX/src/psx/LIBGTE.C"
+grep -q "_xeno_gte_flag_sx3" "$PSX/src/psx/LIBGTE.C" || \
+perl -0777 -i -pe 's/(int RotTransPers3\(SVECTOR\* v0, SVECTOR\* v1, SVECTOR\* v2, long\* sxy0, long\* sxy1, long\* sxy2, long\* p, long\* flag\)\n\{\n\tint sz;\n\tgte_RotTransPers3\(v0, v1, v2, sxy0, sxy1, sxy2, p, flag, \&sz\);\n\n\treturn sz;\n\})/int RotTransPers3(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, long* sxy0, long* sxy1, long* sxy2, long* p, long* flag)\n{\n\tint sz;\n\tgte_RotTransPers3(v0, v1, v2, sxy0, sxy1, sxy2, p, flag, \&sz);\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx3 *\/\n\treturn sz;\n}/s' \
+    "$PSX/src/psx/LIBGTE.C"
+grep -q "_xeno_gte_flag_sx4" "$PSX/src/psx/LIBGTE.C" || \
+perl -0777 -i -pe 's/(\t\*flag \|= _flag;\n\tgte_stszotz\(&sz\);\n\n\treturn sz;\n\})/\t*flag |= _flag;\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx4 *\/\n\tgte_stszotz(\&sz);\n\n\treturn sz;\n}/s' \
+    "$PSX/src/psx/LIBGTE.C"
+
 # PsyCross feature (idempotent, per-edit marker-guarded): PSX texture-window
 # (GP0 E2h) emulation. PsyX parsed DR_TWIN into activeDrawEnv.tw but nothing
 # ever APPLIED it -- primitives sampled raw UVs. Xenogears' dialog UI relies on
