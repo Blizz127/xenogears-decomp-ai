@@ -158,7 +158,10 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x20,
     },
     [0x08] = {
-        .proc = { ModelPrimTriMediumVariant2, NULL, NULL, NULL, NULL, NULL },
+        /* Retail D_8004FE50[0x08].proc[0] = 0x8002E254: 4-vert F4 walker (RTPT+RTPS,
+         * AVSZ4, screen-overlap over all 4 SXY, writes xy0..xy3). Was wrongly wired
+         * to the 3-vert Medium tri walker — dropped cmd+6 from cull/depth/packet. */
+        .proc = { ModelPrimQuadF4Variant0, NULL, NULL, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002CF58,   /* PSX 0x8002CF58 */
         .cmdStride = 0x08,
         .packetStride = 0x04,

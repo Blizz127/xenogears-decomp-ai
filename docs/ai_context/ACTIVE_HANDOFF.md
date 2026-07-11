@@ -12,6 +12,21 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🔍 FEI/WELL LEADS: GTE flag sign-width + prim-0x08 quad→tri (Lane A)
+
+- **Scope:** port-layer only. Did NOT touch matching `src/field/**` or `src/slus_006.64/**`. stash@{0} untouched. 24-bit OT theory stays REFUTED (not reopened).
+- **Lead 1 — GTE FLAG sign-width — CONFIRMED + FIXED.**
+  - Retail (func_80075B44.s): `cfc2 $t4,$31` → `sw $t4,0xA0($sp)` → `lw $v0,0xA0($sp)` → `bltz $v0,.L80076468` (80075E64–80075EF4). 32-bit bit-31 sign test.
+  - PsyCross `gte_stflg` stores `*(uint*)r0 = CFC2(31)` — low 32 only. On LP64 `long flag`, high bits stay 0 → `flag < 0` tests bit 63, so `0x80021000` (SX/SY sat) is **not** negative.
+  - Synthetic: stock `(flag<0)=0`, `((s32)flag<0)=1`; after sign-extend `(flag<0)=1`. Live Lahan high-cam: 0 bit-31 flags in the sampled walkers (pose-dependent; bug still real).
+  - **Fix:** idempotent `build_port.sh` patches on PsyCross `LIBGTE.C` RotTransPers/3/4 (`_xeno_gte_flag_sx{,3,4}`) + `psyq_compat.c` RotAverage4 — `*flag = (long)(int)(unsigned int)*flag` after the store. Does **not** widen `gte_stflg` itself (RotTransPers4's local `int _flag` is 32-bit). Matching C untouched.
+- **Lead 2 — prim 0x08 quad→tri — CONFIRMED + FIXED.**
+  - Retail `D_8004FE50[0x08].proc[0] = 0x8002E254` (same entry as `[0x0C]`): RTPT 3 verts → RTPS 4th from `lhu -0x2($a0)` (cmd+6) → `bltz` on FLAG → screen-overlap over **all 4** SXY → `AVSZ4` → writes xy0..xy3 (8002E310–8002E444).
+  - Port had `[0x08].proc[0] = ModelPrimTriMediumVariant2` (RotTransPers3 only) — dropped 4th vert from cull, depth, and packet. Live pre-fix: path exercised **183×** at Lahan ent6.
+  - **Fix:** rewire `[0x08].proc[0]` → existing `ModelPrimQuadF4Variant0` (already correct for `[0x0C]` / Bug 6).
+- **Validation:** LINK OK. Smokes ent8/ent0/Map0 **RC=124 crashmarks=0**. Dialog fixes (aa84aca / 303c83c / d51d574) not in the touched paths.
+- **Fei-disappear / well-black — PARTIALLY CLOSED.** Two real port divergences fixed; neither was proven as the sole cause at the unreachable low-oblique well pose (harness still high-cam). Remaining: get the real pose's firing guard (manual logger or camera-zone replication) per the well handoff below. Manual-repro fallback **not** used this pass — both leads were actionable.
+
 ## July 11 — 🌒✅ DIALOG INTERIOR DARKENING FIXED: the semi-transparent subtractive TILE now darkens the box interior. Root cause = zeroed `.bss` darkening color (`D_800594D4/D5/D6`), not a missing primitive or a PsyCross blend gap. Port-only fix in `port_main.c`.
 
 - **Symptom:** field dialog boxes drew the gold border + text but NO interior darkening — the field showed through unchanged (prior pass measured interior lum 92.4 vs 95.9 baseline ≈ glyphs only). Retail darkens the box interior behind the text.
