@@ -73,7 +73,26 @@ void FieldComputeSceneMatrices(void) {
     SetTransMatrix(&g_Scene.worldToScreenMatrix);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072254);
+/* Rebuild an actor's transform matrix from its rotation angles, then apply the
+ * actor's 3D scale (ActorData scaleX/Y/Z; the asm loads them with lh, hence the
+ * signed casts). Called by the EX-0x03 SET_CURRENT_ACTOR_SCALE opcode handler
+ * func_8008D0F4 after it stores the new scale.
+ * asm/field/nonmatchings/main/misc2/func_80072254.s */
+void func_80072254(s32 actorIndex) {
+    VECTOR scale;
+    FieldActor* pActor;
+
+    pActor = &g_FieldActors[actorIndex];
+    scale.vx = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleX;
+    scale.vy = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleY;
+    scale.vz = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleZ;
+
+    pActor = &g_FieldActors[actorIndex];
+    RotMatrix((SVECTOR*)&pActor->rotation, &pActor->transformMatrix);
+
+    pActor = &g_FieldActors[actorIndex];
+    ScaleMatrix(&pActor->transformMatrix, &scale);
+}
 
 void FieldMatrixCreateWorldToScreen(void) {
     FieldComputeSceneMatrices();
