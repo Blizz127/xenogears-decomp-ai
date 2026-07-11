@@ -138,6 +138,16 @@ int main(int argc, char** argv) {
     /* 3. Bring up PsyCross (SDL2 window + OpenGL context). */
     PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
+    /* XENO_PC_PORT: PsyCross's default keyboard map puts Circle (the field
+     * confirm/talk button) on V and Triangle (the menu button) on Z. Players
+     * expect Z to confirm, so swap them: Z = Circle (confirm/talk), V = Triangle
+     * (menu). This runs after PsyX_Initialise, which installs the defaults.
+     * Raw SDL scancodes (Z=29, V=25) avoid pulling an SDL header in here; kc_* are
+     * plain ints. Arrows (d-pad), Enter (Start), Space (Select), C (Cross),
+     * X (Square) are unchanged. */
+    g_cfg_keyboardMapping.kc_circle   = 29; /* SDL_SCANCODE_Z */
+    g_cfg_keyboardMapping.kc_triangle = 25; /* SDL_SCANCODE_V */
+
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
     ResetGraph(0);
