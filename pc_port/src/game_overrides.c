@@ -176,6 +176,22 @@ s32 D_800500FC = 0x00EE0000;
 s32 D_80050100 = 2;
 s32 D_80050104 = 1;
 
+/* Main-exe BSS consumed by the decompiled encounter roll func_80079288
+ * (src/field/main/misc4.c). D_80065ADC = the 16 per-formation encounter WEIGHTS;
+ * it is populated at runtime by a not-yet-ported encounter/map-data load path,
+ * so as a zero-init stub the weighted roll is degenerate (sum==0 -> no encounter
+ * fires). See ACTIVE_HANDOFF.md. D_80059508/D_800594F8 = battle-transition params. */
+u8 D_80065ADC[16];
+u8 D_80059508;
+u8 D_800594F8;
+
+/* Battle-transition entry the encounter roll (func_80079288) calls when a
+ * formation is selected. The field->battle handoff and the battle system are
+ * out of scope; this no-op stub lets the roll link and run so we can validate
+ * it up to the battle boundary (the named next blocker). */
+extern void xeno_port_stub(const char* name);
+void func_80281204(s32 formationIndex) { (void)formationIndex; xeno_port_stub("func_80281204"); }
+
 extern u8* D_80059424;
 extern u32 D_8005953C;
 extern u32 D_80059568;

@@ -1142,10 +1142,48 @@ void func_8008E59C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E718);
+/* func_8008E718 -- step-counter / formation-cooldown REFRESH. Decompiled from
+ * asm/field/nonmatchings/main/misc/func_8008E718.s (was INCLUDE_ASM/stubbed).
+ * Called by func_80079288 (roll, when the step counter hits 0) and by the
+ * encounter-setup opcode func_8008E85C below. Reloads the step counter from the
+ * encounter base and assigns each active formation a unique random cooldown.
+ * See docs/ai_context/ACTIVE_HANDOFF.md. */
+extern s32 D_800B2294, D_800B2298, D_800B229C;
+extern s16 D_800B22A0[];
 
-extern s32 D_800B2298;
-extern s32 D_800B229C;
+void func_8008E718(void) {
+    u16 *timers = (u16 *)D_800B22A0;
+    s32  i, j, roll;
+
+    D_800B2294 = D_800B2298;
+
+    if (D_800B229C == 0) {
+        D_800B2298 = 0;
+        return;
+    }
+
+    for (i = 31; i >= 0; i--) {
+        timers[i] = 0xFFFF;
+    }
+
+    if (D_800B229C > 0) {
+        for (i = 0; i < D_800B229C; i++) {
+            do {
+                roll = ((rand() * (D_800B2298 + 1)) >> 15) & 0xFFFF;
+                for (j = 0; j < 32; j++) {
+                    if (timers[j] == (u16)roll) break;
+                }
+            } while (j < 32);
+            timers[i] = (u16)roll;
+        }
+    }
+
+    if (D_800B229C > 0) {
+        for (i = 0; i < D_800B229C; i++) {
+            timers[i] = (u16)(timers[i] + 1);
+        }
+    }
+}
 
 void func_8008E85C(void) {
     D_800B2298 = FieldScriptVMGetArgument(1);

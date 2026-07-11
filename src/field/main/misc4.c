@@ -255,7 +255,94 @@ void func_80078D44(void) {
     D_800AFD04 = 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80079288);
+/* func_80079288 -- per-step random-encounter roll. Decompiled from
+ * asm/field/nonmatchings/main/misc4/func_80079288.s (was INCLUDE_ASM ->
+ * stubbed, so encounters never rolled). Called each field step a direction is
+ * held (misc6.c:659). Guards -> step-counter decrement (refresh via
+ * func_8008E718 at 0) -> age cooldown timers -> on an expired timer, weighted
+ * roll over the 16 formation weights (D_80065ADC) -> commit + battle handoff.
+ * See docs/ai_context/ACTIVE_HANDOFF.md. */
+extern s32 D_8004F308, D_8004F370;
+extern s32 D_800ADBDC, D_800ADBE4, D_800ADBEC, D_800ADB2C, D_800ADBD0;
+extern u8  D_800ADB04;
+extern s32 D_800B2294, D_800B2298, D_800B229C;
+extern s16 D_800B22A0[];
+extern s16 D_800B2270[];
+extern s16 D_800B2290;
+extern u8  D_80065ADC[16];        /* per-formation encounter weights (main-exe BSS) */
+extern u8  D_80059508, D_800594F8;
+extern void  func_8008E718(void);
+extern void  func_80281204(s32);
+extern void *LoadGameStateOverlay(unsigned int);
+
+void func_80079288(void) {
+    u16 *timers = (u16 *)D_800B22A0;
+    s32  cumulative[16];
+    s32  i, sum, acc, roll, hit, selected;
+
+    if (D_800ADBDC == 0) return;
+    if (D_800ADBE4 == 0) return;
+    if (D_800ADBEC == 0) return;
+    if (D_8004F308 == -1) return;
+    if (D_800B2298 == 0) return;
+    if (*(s16 *)&g_FieldControl == -1) return;
+    if (D_800ADB2C == 1) return;
+    if (D_800ADB04 == 0) return;
+
+    D_800B2294 -= 1;
+    if (D_800B2294 == 0) {
+        func_8008E718();
+    }
+
+    if (D_800B229C > 0) {
+        for (i = 0; i < D_800B229C; i++) {
+            if (timers[i] != 0xFFFF) {
+                timers[i] = (u16)(timers[i] - 1);
+            }
+        }
+    }
+
+    if (D_800B229C <= 0) return;
+    hit = -1;
+    for (i = 0; i < D_800B229C; i++) {
+        if (timers[i] == 0) { hit = i; break; }
+    }
+    if (hit < 0) return;
+    timers[hit] = 0xFFFF;
+
+    sum = 0;
+    for (i = 0; i < 16; i++) {
+        sum += D_80065ADC[i];
+    }
+    acc = 0;
+    for (i = 0; i < 16; i++) {
+        cumulative[i] = acc;
+        acc += D_80065ADC[i];
+    }
+
+    roll = (rand() * (sum + 1)) >> 15;
+
+    selected = -1;
+    for (i = 15; i >= 0; i--) {
+        if (D_80065ADC[i] != 0 && cumulative[i] < roll) {
+            selected = i;
+            break;
+        }
+    }
+    if (selected < 0) return;
+
+    D_80059508 = (u8)selected;
+    D_800594F8 = 0;
+    D_800B2290 = D_800B2270[selected];
+    if (D_8004F370 == 0) {
+        LoadGameStateOverlay(2);
+    }
+    D_800ADBDC = 0;
+    D_800ADBD0 = 1;
+    if (g_FieldSystemMode == 0) {
+        func_80281204(selected);
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007954C);
 
