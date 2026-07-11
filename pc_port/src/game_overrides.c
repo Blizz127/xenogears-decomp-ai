@@ -32,11 +32,14 @@ void func_80019548(void) {}
  * --------------------------------------------------------------------------- */
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <sys/stat.h>
 #include "common.h"
 #include "main/main.h"
 #include "field/actor.h"
 #include "field/camera.h"
 #include "field/effects.h"
+#include "field/main.h"
 #include "system/controller.h"
 #include "system/font.h"
 #include "system/kernel.h"
@@ -266,6 +269,273 @@ static int ModelPrimQuadOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
             ((xy2 & 0xFFFF) < xMax) || ((xy3 & 0xFFFF) < xMax));
 }
 
+/* -------------------------------------------------------------------------
+ * XENO_CULL_CAM_LOG — temporary interactive camera+cull logger (Lane A).
+ * Enable with XENO_CULL_CAM_LOG=1. Writes gated lines to
+ *   captures/render_diag/cullcam_<timestamp>.log
+ * (override with XENO_CULL_CAM_LOG_PATH). Press SELECT to stamp a MARK line
+ * at the moment of a repro. Off by default; remove after the session.
+ *
+ * Log field "nclip_backface" counts GTE NCLIP / NormalClip backface-winding
+ * drops (OPZ < 0 on the three screen-space verts). It is NOT near-plane clip
+ * (that lives in the FLAG / otz guards). Optional NCLIP_SXY sample lines dump
+ * SXY+OPZ(+world verts) for a few of those drops at the known well pose.
+ * ------------------------------------------------------------------------- */
+enum {
+    CC_SEEN = 0,
+    CC_EMIT,
+    CC_FLAG,
+    CC_OTZ,
+    /* CC_NCLIP_BACKFACE: NormalClip/NCLIP OPZ<0 (screen winding), not near-Z. */
+    CC_NCLIP_BACKFACE,
+    CC_OVERLAP,
+    CC_OVERSIZE,
+    CC_GTE31,       /* FLAG bit 31 set (sign-extend path relevant) */
+    CC_QF4_SEEN,    /* ModelPrimQuadF4Variant0 = retail 0x08/0x0C walker */
+    CC_QF4_FLAG,
+    CC_QF4_EMIT,
+    CC_N
+};
+
+/* Keep old enumerator name as alias so call sites stay readable if any remain. */
+#define CC_NCLIP CC_NCLIP_BACKFACE
+
+static int s_ccOn = -1;
+static u32 s_cc[CC_N];
+static u32 s_ccFrame;
+static FILE* s_ccFile;
+static u32 s_ccNclipSamples;
+static u32 s_ccMarkArmFrames; /* after SELECT, allow samples for a few summary frames */
+
+enum { CC_NCLIP_SAMPLE_MAX = 48 };
+
+static int CullCamOn(void) {
+    if (s_ccOn < 0) {
+        const char* e = getenv("XENO_CULL_CAM_LOG");
+        s_ccOn = (e != NULL && e[0] != '\0' && e[0] != '0') ? 1 : 0;
+    }
+    return s_ccOn;
+}
+
+/* Known failing pose from MARK session (cullcam_20260711_184135). */
+static int CullCamAtWellPose(void) {
+    extern VECTOR g_CameraEye2;
+    extern CameraInterpolation g_CamInterpolation;
+    int ex = (int)(g_CameraEye2.vx >> 16);
+    int ey = (int)(g_CameraEye2.vy >> 16);
+    int ez = (int)(g_CameraEye2.vz >> 16);
+    int ay = (int)g_CamInterpolation.curAngleY;
+    if (ay != -1536) {
+        return 0;
+    }
+    if (ex < -564 - 12 || ex > -564 + 12) {
+        return 0;
+    }
+    if (ey < 1491 - 24 || ey > 1491 + 24) {
+        return 0;
+    }
+    if (ez < 512 - 12 || ez > 512 + 12) {
+        return 0;
+    }
+    return 1;
+}
+
+static void CullCamSampleNclipDrop(long xy0, long xy1, long xy2, long opz,
+                                   const SVECTOR* v0, const SVECTOR* v1,
+                                   const SVECTOR* v2, int isQf4) {
+    extern VECTOR g_CameraEye2;
+    extern CameraInterpolation g_CamInterpolation;
+    int sx0, sy0, sx1, sy1, sx2, sy2;
+
+    if (!CullCamOn() || s_ccFile == NULL) {
+        return;
+    }
+    if (s_ccNclipSamples >= CC_NCLIP_SAMPLE_MAX) {
+        return;
+    }
+    if (!CullCamAtWellPose() && s_ccMarkArmFrames == 0) {
+        return;
+    }
+
+    sx0 = (int)(short)(xy0 & 0xFFFF);
+    sy0 = (int)(short)((xy0 >> 16) & 0xFFFF);
+    sx1 = (int)(short)(xy1 & 0xFFFF);
+    sy1 = (int)(short)((xy1 >> 16) & 0xFFFF);
+    sx2 = (int)(short)(xy2 & 0xFFFF);
+    sy2 = (int)(short)((xy2 >> 16) & 0xFFFF);
+
+    fprintf(s_ccFile,
+            "NCLIP_SXY f=%u qf4=%d opz=%ld "
+            "sxy0=%d,%d sxy1=%d,%d sxy2=%d,%d "
+            "w0=%d,%d,%d w1=%d,%d,%d w2=%d,%d,%d "
+            "eye2=%d,%d,%d angY=%d\n",
+            s_ccFrame, isQf4, (long)opz,
+            sx0, sy0, sx1, sy1, sx2, sy2,
+            v0 ? (int)v0->vx : 0, v0 ? (int)v0->vy : 0, v0 ? (int)v0->vz : 0,
+            v1 ? (int)v1->vx : 0, v1 ? (int)v1->vy : 0, v1 ? (int)v1->vz : 0,
+            v2 ? (int)v2->vx : 0, v2 ? (int)v2->vy : 0, v2 ? (int)v2->vz : 0,
+            (int)(g_CameraEye2.vx >> 16), (int)(g_CameraEye2.vy >> 16),
+            (int)(g_CameraEye2.vz >> 16),
+            (int)g_CamInterpolation.curAngleY);
+    s_ccNclipSamples++;
+    if (s_ccNclipSamples == 1 || (s_ccNclipSamples % 8) == 0) {
+        fprintf(stderr, "[cull-cam] NCLIP_SXY sample %u/%u opz=%ld sxy=(%d,%d)(%d,%d)(%d,%d)\n",
+                s_ccNclipSamples, (unsigned)CC_NCLIP_SAMPLE_MAX, (long)opz,
+                sx0, sy0, sx1, sy1, sx2, sy2);
+    }
+}
+
+static void CullCamSeen(int isQf4, long flag) {
+    if (!CullCamOn()) {
+        return;
+    }
+    s_cc[CC_SEEN]++;
+    if (isQf4) {
+        s_cc[CC_QF4_SEEN]++;
+    }
+    if ((u32)flag & 0x80000000u) {
+        s_cc[CC_GTE31]++;
+    }
+}
+
+static void CullCamDrop(int reason, int isQf4) {
+    if (!CullCamOn()) {
+        return;
+    }
+    s_cc[reason]++;
+    if (isQf4 && reason == CC_FLAG) {
+        s_cc[CC_QF4_FLAG]++;
+    }
+}
+
+static void CullCamEmit(int isQf4) {
+    if (!CullCamOn()) {
+        return;
+    }
+    s_cc[CC_EMIT]++;
+    if (isQf4) {
+        s_cc[CC_QF4_EMIT]++;
+    }
+}
+
+void PcPort_CullCamLogOnVsync(void) {
+    extern VECTOR g_CameraEye2;
+    extern VECTOR g_CameraAt2;
+    extern VECTOR g_CameraEye;
+    extern VECTOR g_CameraAt;
+    extern CameraInterpolation g_CamInterpolation;
+    extern FieldActor* volatile g_FieldActors;
+    extern s32 g_PlayerActorIndex;
+    extern u_short g_C1ButtonStateReleased;
+    extern FieldScene g_Scene;
+    static u16 s_prevSelect;
+    u16 selectEdge;
+    s32 feiX = 0, feiY = 0, feiZ = 0;
+    u32 feiStatus = 0, feiFlags4 = 0;
+    int mark;
+
+    if (!CullCamOn()) {
+        return;
+    }
+
+    if (s_ccFile == NULL) {
+        const char* path = getenv("XENO_CULL_CAM_LOG_PATH");
+        char autoPath[256];
+        if (path == NULL || path[0] == '\0') {
+            time_t now = time(NULL);
+            struct tm* t = localtime(&now);
+            snprintf(autoPath, sizeof(autoPath),
+                     "/home/blizz/Projects/xenogears-decomp/captures/render_diag/"
+                     "cullcam_%04d%02d%02d_%02d%02d%02d.log",
+                     t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+                     t->tm_hour, t->tm_min, t->tm_sec);
+            path = autoPath;
+            mkdir("/home/blizz/Projects/xenogears-decomp/captures", 0755);
+            mkdir("/home/blizz/Projects/xenogears-decomp/captures/render_diag", 0755);
+        }
+        s_ccFile = fopen(path, "w");
+        if (s_ccFile == NULL) {
+            fprintf(stderr, "[cull-cam] FAILED to open log path '%s'\n", path);
+            s_ccOn = 0;
+            return;
+        }
+        setvbuf(s_ccFile, NULL, _IOLBF, 0);
+        fprintf(stderr, "[cull-cam] logging to %s (SELECT=MARK)\n", path);
+        fprintf(s_ccFile,
+                "# cull-cam log: f eye2XYZ(>>16) eyeXYZ(>>16) at2XYZ(>>16) angY camRotXYZ "
+                "feiXYZ(>>16) feiStatus feiFlags4 otEmit | "
+                "seen emit flag otz nclip_backface(=NCLIP/OPZ winding, NOT near-Z) "
+                "overlap oversize gte31 qf4seen qf4flag qf4emit\n"
+                "# NCLIP_SXY lines: sample of backface drops at well pose "
+                "(eye2~-564,1491,512 angY=-1536) or after MARK — SXY + OPZ + model-space verts\n");
+    }
+
+    selectEdge = (u16)(g_C1ButtonStateReleased & CTRL_BTN_SELECT);
+    mark = (selectEdge != 0 && s_prevSelect == 0);
+    s_prevSelect = selectEdge;
+
+    /* Field busy-waits on Vsync(-1) and also hits Vsync(1) pre-draw; logging every
+     * call produced multi-GB logs of all-zero cull rows. Only emit when the user
+     * MARKs or the instrumented walkers actually saw prims this frame. */
+    if (!mark && s_cc[CC_SEEN] == 0 && s_cc[CC_QF4_SEEN] == 0) {
+        if (s_ccMarkArmFrames > 0) {
+            s_ccMarkArmFrames--;
+        }
+        return;
+    }
+
+    if (g_FieldActors != NULL && g_PlayerActorIndex >= 0) {
+        FieldActor* fa = &g_FieldActors[g_PlayerActorIndex];
+        feiStatus = (u32)(u16)fa->status;
+        if (fa->pActorData != 0) {
+            u8* ad = (u8*)(uintptr_t)fa->pActorData;
+            feiFlags4 = *(u32*)(ad + 0x04);
+            feiX = *(s32*)(ad + 0x20) >> 16;
+            feiY = *(s32*)(ad + 0x24) >> 16;
+            feiZ = *(s32*)(ad + 0x28) >> 16;
+        }
+    }
+
+    if (mark) {
+        fprintf(s_ccFile, "MARK f=%u <<< user SELECT — repro moment\n", s_ccFrame);
+        fprintf(stderr, "[cull-cam] MARK f=%u\n", s_ccFrame);
+        s_ccMarkArmFrames = 120; /* allow NCLIP_SXY for a short window after MARK */
+    }
+    if (s_ccMarkArmFrames > 0) {
+        s_ccMarkArmFrames--;
+    }
+
+    fprintf(s_ccFile,
+            "f=%u eye2=%d,%d,%d eye=%d,%d,%d at2=%d,%d,%d angY=%d camRot=%d,%d,%d "
+            "fei=%d,%d,%d st=%04x f4=%08x otEmit=%d | "
+            "seen=%u emit=%u flag=%u otz=%u nclip_backface=%u overlap=%u oversize=%u "
+            "gte31=%u qf4seen=%u qf4flag=%u qf4emit=%u\n",
+            s_ccFrame,
+            (int)(g_CameraEye2.vx >> 16), (int)(g_CameraEye2.vy >> 16),
+            (int)(g_CameraEye2.vz >> 16),
+            (int)(g_CameraEye.vx >> 16), (int)(g_CameraEye.vy >> 16),
+            (int)(g_CameraEye.vz >> 16),
+            (int)(g_CameraAt2.vx >> 16), (int)(g_CameraAt2.vy >> 16),
+            (int)(g_CameraAt2.vz >> 16),
+            (int)g_CamInterpolation.curAngleY,
+            (int)g_Scene.camRotation.vx, (int)g_Scene.camRotation.vy,
+            (int)g_Scene.camRotation.vz,
+            feiX, feiY, feiZ, (unsigned)feiStatus, feiFlags4,
+            (int)D_80059578,
+            s_cc[CC_SEEN], s_cc[CC_EMIT], s_cc[CC_FLAG], s_cc[CC_OTZ],
+            s_cc[CC_NCLIP_BACKFACE], s_cc[CC_OVERLAP], s_cc[CC_OVERSIZE],
+            s_cc[CC_GTE31], s_cc[CC_QF4_SEEN], s_cc[CC_QF4_FLAG],
+            s_cc[CC_QF4_EMIT]);
+
+    {
+        int i;
+        for (i = 0; i < CC_N; i++) {
+            s_cc[i] = 0;
+        }
+    }
+    s_ccFrame++;
+}
+
 static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
     const s32 packetStep = 0x14;
     const u32 tagLen = 0x04000000;
@@ -291,16 +561,25 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
-            continue;
+        {
+            long nclipOpz = NormalClip(xy0, xy1, xy2);
+            if (nclipOpz < 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 0);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+                continue;
+            }
         }
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
             continue;
         }
         if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERSIZE, 0);
             continue;
         }
 
@@ -328,6 +607,7 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x0C) = (u32)xy1;
             *(u32*)(out + 0x10) = (u32)xy2;
             emitted++;
+            CullCamEmit(0);
         }
     }
 
@@ -363,16 +643,25 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
-            continue;
+        {
+            long nclipOpz = NormalClip(xy0, xy1, xy2);
+            if (nclipOpz < 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 0);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+                continue;
+            }
         }
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERLAP, 0);
             continue;
         }
         if (ModelPrimQuadOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERSIZE, 0);
             continue;
         }
 
@@ -401,6 +690,7 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x20) = (u32)xy2;
             *(u32*)(out + 0x2C) = (u32)xy3;
             emitted++;
+            CullCamEmit(0);
         }
     }
 
@@ -442,16 +732,25 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        CullCamSeen(1, flag);
         if (flag < 0 || otz <= 0) {
+            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 1);
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
-            continue;
+        {
+            long nclipOpz = NormalClip(xy0, xy1, xy2);
+            if (nclipOpz < 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 1);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 1);
+                continue;
+            }
         }
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERLAP, 1);
             continue;
         }
         if (ModelPrimQuadOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERSIZE, 1);
             continue;
         }
 
@@ -480,6 +779,7 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x10) = (u32)xy2;
             *(u32*)(out + 0x14) = (u32)xy3;
             emitted++;
+            CullCamEmit(1);
         }
     }
 
@@ -513,16 +813,25 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
-            continue;
+        {
+            long nclipOpz = NormalClip(xy0, xy1, xy2);
+            if (nclipOpz < 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 0);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+                continue;
+            }
         }
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
             continue;
         }
         if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERSIZE, 0);
             continue;
         }
 
@@ -550,6 +859,7 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
             *(u32*)(out + 0x0C) = (u32)xy1;
             *(u32*)(out + 0x10) = (u32)xy2;
             emitted++;
+            CullCamEmit(0);
         }
     }
 
@@ -583,16 +893,25 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
-            continue;
+        {
+            long nclipOpz = NormalClip(xy0, xy1, xy2);
+            if (nclipOpz < 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 0);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+                continue;
+            }
         }
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
             continue;
         }
         if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERSIZE, 0);
             continue;
         }
 
@@ -620,6 +939,7 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x10) = (u32)xy1;
             *(u32*)(out + 0x18) = (u32)xy2;
             emitted++;
+            CullCamEmit(0);
         }
     }
 
@@ -844,19 +1164,22 @@ void PcPort_BootMain(void)
                        0x38, menuChoice * 8 + 0x40);
             AddPrim(pOtag, &g_KernelMenuCurRenderEnvironment->cursor);
 
+            /* Confirm = Circle/Start/Cross. Continue is unavailable (no saves),
+             * so refuse it by snapping back to New Game instead of no-op'ing
+             * (which looked like a freeze with the cursor on CONTINUE). */
             if ((g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
+                (g_C1ButtonStatePressedOnce &
+                 (CTRL_BTN_START | CTRL_BTN_CROSS)) ||
                 phaseFrames >= PcPort_BootPhaseFrames(phase)) {
-                if (menuChoice == 0 ||
-                    phaseFrames >= PcPort_BootPhaseFrames(phase)) {
-                    /* New Game (or auto-advance): stand-in for the unported
-                     * new-game init -- ChangeGameState(1) enters Field with
-                     * the Lahan defaults port_main already applied. */
+                if (menuChoice != 0 &&
+                    phaseFrames < PcPort_BootPhaseFrames(phase)) {
+                    printf("[xeno-port][boot] Continue unavailable "
+                           "(save system not ported) — use New Game\n");
+                    menuChoice = 0;
+                } else {
                     printf("[xeno-port][boot] New Game -> Field\n");
                     ChangeGameState(1);
                     running = 0;
-                } else {
-                    printf("[xeno-port][boot] Continue unavailable "
-                           "(save system not ported)\n");
                 }
             }
             break;

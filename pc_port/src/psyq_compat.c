@@ -257,7 +257,8 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     *flag |= flag0;
     /* XENO_PC_PORT: gte_stflg writes only the low 32 bits of a long*; sign-extend
      * so `flag < 0` matches retail bltz on GTE FLAG bit 31 (see build_port.sh
-     * _xeno_gte_flag_sx*). */
+     * _xeno_gte_flag_sx*). Callers must pass a real long* — (long*)&int smashes
+     * the stack on LP64 (see FieldZoomFadeEffectUpdate). */
     *flag = (long)(int)(unsigned int)*flag;
 
     gte_avsz4();
@@ -387,6 +388,9 @@ int Vsync(int mode)
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the
      * synthetic Circle in afterwards so it survives to the next KernelMenuUpdate. */
     PcPort_ForcedKernelSelect();
+
+    /* Temporary interactive camera+cull logger (XENO_CULL_CAM_LOG=1). */
+    { extern void PcPort_CullCamLogOnVsync(void); PcPort_CullCamLogOnVsync(); }
 
     return VSync(mode);   /* then pace to the next vblank */
 }

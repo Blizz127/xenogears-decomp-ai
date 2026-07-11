@@ -12,6 +12,17 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🔬 NCLIP bucket inputs look PLAUSIBLE (backface, not near-Z); look elsewhere
+
+- **Label fix:** cull-cam log field renamed `nclip` → `nclip_backface` with header comment: measures GTE **NCLIP / NormalClip OPZ&lt;0** (screen winding), **not** near-plane clip. Enum `CC_NCLIP_BACKFACE` (+ alias `CC_NCLIP`). Gated `NCLIP_SXY` sample lines (max 48) dump SXY+OPZ+model verts at the known well pose or after MARK.
+- **Capture:** `captures/render_diag/cullcam_nclip_sxy_auto.log` (~10KB) at `eye2≈(-565,1491,511) angY=-1536` (same MARK pose). Summary frame: `seen=1486 emit=66 flag=343 nclip_backface=967`.
+- **Sample verdict — NCLIP inputs look CORRECT:**
+  - 48/48 `opz` in `[-130,-2]` (all negative).
+  - All 144 screen verts on/near 320×240 (`sx` 43..337, `sy` −15..285); **zero** `|sxy|>1024`.
+  - Screen cross 2A all negative (same sign as OPZ).
+  - Model-space verts coherent s16 ranges (X/Y ±228, Z −544..196); no extreme garbage.
+- **Implication:** the ~950 backface drops are **likely retail-accurate NCLIP on sane SXYs**. Do not disable NCLIP. Remaining gap (if any vs retail) is in **FLAG/gte31** and/or non-walker paths — separate scoped pass. No cull-logic change this pass.
+
 ## July 11 — 🧩 LANE B: func_80072254 decompiled (actor rotation+scale matrix rebuild) — behaviorally-equivalent match (75.55% objdiff fuzzy), completes the EX-0x03 scale opcode
 
 - **Scope:** ONE function: `func_80072254` in `src/field/main/misc2.c` (replaced the `INCLUDE_ASM` at former line 76). No other stubs, no pc_port/**, no Lane A files touched (concurrent WIP in game_overrides.c/psyq_compat.c/misc4.c/misc5.c left untouched; staged only misc2.c + this doc).
