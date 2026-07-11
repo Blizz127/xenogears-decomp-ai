@@ -9,6 +9,9 @@
 #include "system/math.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
+#ifdef XENO_PC_PORT
+#include <stdint.h> /* uintptr_t for LP64 pointer widening below */
+#endif
 
 /* Per-frame helper: rand seed, map-load check, angle-step timer. */
 extern s32 D_8004F308, D_8004F324, D_800ADC18;
@@ -595,8 +598,8 @@ void FieldRenderQuad(u_long* ot, Quad* pQuad, MATRIX* pMatTransform, int renderC
 }
 
 void func_8007AC58(u_long* ot, Quad* pQuad, MATRIX* pMatTransform, int renderContext) {
-    int nInterpolation;
-    int nFlag;
+    long nInterpolation;
+    long nFlag;
     int nPosY;
     int nPosX1;
     POLY_FT4* pPoly;

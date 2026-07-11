@@ -515,8 +515,15 @@ extern SVECTOR D_800B00B8;
 void FieldZoomFadeEffectUpdate(void) {
     MATRIX matrix;
     VECTOR scale;
-    int interpolation;
-    int flag;
+    /* PsyQ RotAverage4(long *p, long *flag): retail asm stores FLAG with a 32-bit
+     * `sw` (RotAverage4.s 8004A824) into adjacent sp slots (FieldZoomFadeEffectUpdate.s
+     * passes sp+0x58 / sp+0x5C). On MIPSel int==long so `int flag` was fine. On the
+     * LP64 port, psyq_compat RotAverage4 sign-extends with a full `long` store through
+     * long* — `(long*)&int flag` overwrites the next stack word (loop `i`) and the
+     * for-i never terminates (New Game freezes on the last menu frame). Match the
+     * API / FieldRenderQuad: real long locals. */
+    long interpolation;
+    long flag;
     int i;
 
     RotMatrix(&D_800B00B8, &matrix);
@@ -536,7 +543,7 @@ void FieldZoomFadeEffectUpdate(void) {
             RotAverage4(
                 &vertices[0], &vertices[1], &vertices[2], &vertices[3],
                 (long*)&poly->x0, (long*)&poly->x1, (long*)&poly->x2, (long*)&poly->x3,
-                (long*)&interpolation, (long*)&flag
+                &interpolation, &flag
             );
         }
 

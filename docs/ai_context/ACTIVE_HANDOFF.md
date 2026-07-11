@@ -12,6 +12,13 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🚪✅ ZOOM-FADE LP64 STACK SMASH FIXED: `RotAverage4` `long* flag/p` need real `long` locals (misc5/misc4)
+
+- **Bug (asm-confirmed, LP64-only):** PsyQ `RotAverage4` stores GTE FLAG with MIPS **`sw`** (`asm/.../RotAverage4.s` `8004A824`) into the caller’s `*flag`. Retail `FieldZoomFadeEffectUpdate.s` passes adjacent stack slots `sp+0x58` / `sp+0x5C` as `p`/`flag` (4 bytes apart — MIPSel `int==long`). Port `psyq_compat.c` `RotAverage4` does `*flag = (long)(int)(unsigned int)*flag` (full 8-byte store on LP64). Passing `(long*)&int flag` therefore overwrites the next stack word — the loop `i` — so `for (i = 0; i < 5; i++)` never terminates and New Game freezes on the last menu frame (FieldLoad completes; never reaches `entering main loop`). Same class of width mismatch as bfdae3d’s GTE flag sign-extend, but the failure mode here is **stack smash**, not a missed `flag < 0` test.
+- **Fix:** `long interpolation; long flag;` in `FieldZoomFadeEffectUpdate` (`misc5.c`); same for `func_8007AC58` (`misc4.c`) to match already-correct `FieldRenderQuad`. Drop `(long*)&` casts. `#include <stdint.h>` under `XENO_PC_PORT` in misc4 for existing `uintptr_t` casts.
+- **Draft review:** kept the uncommitted `int`→`long` change; clarified the smash comment; no broader churn.
+- **Validation:** LINK OK. A/B normal boot: `int` locals → FieldLoad then **no** `entering main loop` (20s); `long` locals → main loop at t≈5s. Smokes ent8/ent0/Map0 **RC=124 crashmarks=0** (`zoomfade_longflag_smoke_*_20260711_185551.log`); stubfam 3/5 (72254 pruned). NCLIP/FLAG/dialog/quad-0x08 untouched.
+
 ## July 11 — 🔬 NCLIP bucket inputs look PLAUSIBLE (backface, not near-Z); look elsewhere
 
 - **Label fix:** cull-cam log field renamed `nclip` → `nclip_backface` with header comment: measures GTE **NCLIP / NormalClip OPZ&lt;0** (screen winding), **not** near-plane clip. Enum `CC_NCLIP_BACKFACE` (+ alias `CC_NCLIP`). Gated `NCLIP_SXY` sample lines (max 48) dump SXY+OPZ+model verts at the known well pose or after MARK.
