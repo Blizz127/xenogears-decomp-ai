@@ -26,6 +26,8 @@ extern s32 D_800AF930;
 extern s16 D_800AF936;
 extern s16 D_800AF938;
 extern s16 D_800AF93A[];
+extern s32 D_800B21D8;
+extern s16 g_FieldCameraModes[] asm("g_FieldCameraMode");
 
 
 void FieldScriptWaitForCameraMovement(void) {
@@ -89,7 +91,53 @@ void func_8008FB98(void) {
     D_800AF936 = dip;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FC4C);
+void func_8008FC4C(void) {
+#ifdef XENO_PC_PORT
+    ActorData* actor;
+#else
+    register ActorData* actor asm("$3");
+#endif
+    s16* cameraMode;
+    s16 mode;
+    s32 sceneFlags;
+    s32 value;
+
+    cameraMode = g_FieldCameraModes;
+    mode = *cameraMode;
+    if (mode == 1) {
+        goto mode1;
+    }
+    if (mode >= 2) {
+        return;
+    }
+    if (mode != 0) {
+        return;
+    }
+
+    sceneFlags = *(volatile s32*)&g_Scene.unk48;
+    actor = g_FieldScriptVMCurActor;
+    *(volatile s32*)&g_Scene.unk48 = sceneFlags & 0x7FFF;
+    goto advance;
+
+mode1:
+    value = FieldScriptVMGetArgument(1);
+    if (value == 0) {
+        *cameraMode = 0;
+        sceneFlags = *(volatile s32*)&g_Scene.unk48;
+        actor = g_FieldScriptVMCurActor;
+        *(volatile s32*)&g_Scene.unk48 = sceneFlags & 0x7FFF;
+        actor->scriptInstructionPointer += 3;
+        D_800B21D8 = 2;
+    } else {
+        *cameraMode = 2;
+        g_CamInterpolation.atStepDistance = value;
+        g_CamInterpolation.eyeStepDistance = value;
+    }
+
+    actor = g_FieldScriptVMCurActor;
+advance:
+    actor->scriptInstructionPointer += 3;
+}
 
 void FieldScriptSetCameraInterpolationStep(void) {
     g_CamInterpolation.atStepDistance = FieldScriptVMGetArgument(1);
