@@ -12,14 +12,18 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 📷✅ RETAIL WELL VISUAL: bright high-cam ≠ port black-void — REAL DIVERGENCE
+
+- **Retail capture (user, CRT photo):** `scratchpad/retail_well_ref.png` (+ `retail_well_highcam.png`). Fei at the Lahan well, **normal high angle**, full grass/buildings/NPCs/compass, meanRGB≈(101,118,61), nearblack≈0.05. User confirms this is the retail view at that spot.
+- **Port capture (same logical well):** `scratchpad/port_well_ref_pose.png` — `eye2≈(−565,+1491,511)` with `unk48|=0xC000` (encounter clamp-skip), meanRGB≈(11,10,7), nearblack≈0.88 — floating chunks in black. Matches the earlier free-play MARK black frames.
+- **Conclusion:** at the well during free play, **retail stays on the bright high camera; the port’s near-black low/unclamped pose is NOT what retail shows.** Prior mechanism audits (NCLIP / FLAG / clamp math) remain valid for *that* pose, but the pose itself is the wrong outcome vs retail at this location.
+- **No code fix this pass** (comparison-only). 
+- **Next lead (targeted):** why the port reaches/stays unclamped (`eye2.y≈+1491`, typically `unk48&0x4000`) at the well while retail’s camera stays high/clamped there — e.g. Map1 encounter-enable (`func_80093B10` / `ori 0xC000`) firing or sticking when it shouldn’t for New Game free walk, missing clear (`func_80093AC8`), or another path leaving the clamp gate off. Do **not** re-open NCLIP/FLAG bit checks; chase **when/why bit14 is set** (or clamp skipped) relative to retail free-play at the well.
+- **Fei/well status:** investigation **not closed** — visual divergence confirmed; mechanism leads on cull math closed; camera **state** at the well is the remaining bug-shaped lead.
+
 ## July 11 — 📷 AWAITING RETAIL WELL REF: port pose locked; user emulator capture next
 
-- **Why:** NCLIP / FLAG / camera-clamp all match retail *mechanisms*. Need a retail **visual** at the same moment to decide if ~4% emit / near-black is WAI or a remaining port divergence. **No code fix this pass.**
-- **Port steps to pose:** normal boot → hold Fei at `(57,−1,−110)` + `unk48|=0xC000` (same bits Map1 encounter-enable sets) → wait until live `eye.y≳1400`. Resulting `eye2≈(−565,+1491,511)`.
-- **Port reference (ready):** `scratchpad/port_well_ref_pose.png` — 640×480, meanRGB≈(11,10,7), nearblack≈0.88. Capture via `scratchpad/run_port_well_ref_pose.sh` + `port_well_ref_pose.gdb`.
-- **Retail guide (for user):** `scratchpad/RETAIL_WELL_CAPTURE_GUIDE.md` — New Game → Lahan → walk to the village well → screenshot when camera goes low/oblique and the scene goes sparse/black. Drop result as `scratchpad/retail_well_ref.png`.
-- **Human landmark:** stone well in the Lahan square (west/slightly south of New Game outdoor spawn ≈(405,−72) → well ≈(57,−110)). Confirm: low camera + mostly black ground/buildings, well chunks / Fei may still show.
-- **Status:** waiting on user retail screenshot(s). Comparison + verdict after that.
+- **Superseded** by the retail-vs-port visual conclusion above. First retail photo was the right place; user confirmed it as the retail well view (bright). Port black-void ref remains the contrast artifact.
 
 ## July 11 — 🔬 CAMERA-ZONE / eye2=+1491: RETAIL-ACCURATE (encounter bit skips clamp)
 
