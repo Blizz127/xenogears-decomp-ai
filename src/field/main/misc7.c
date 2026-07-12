@@ -81,7 +81,24 @@ void func_800975C0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800976A8);
+/* Movement-mode variant: capture the current actor position once, retain the
+ * script-supplied duration in its slot, then let func_80097A50 advance it. */
+void func_800976A8(void) {
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x17 == 0) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x17 = 1;
+        g_FieldScriptVMCurActor->unkD0.vx = g_FieldScriptVMCurActor->position.vx >> 16;
+        g_FieldScriptVMCurActor->unkD0.vy = g_FieldScriptVMCurActor->position.vy >> 16;
+        g_FieldScriptVMCurActor->unkD0.vz = g_FieldScriptVMCurActor->position.vz >> 16;
+    }
+
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(8);
+    }
+
+    if (func_80097A50(FieldScriptVMGetArgument(8)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 10;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800977A4);
 
