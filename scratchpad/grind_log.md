@@ -32,3 +32,16 @@ Newest entries at the bottom.
 - **Stop reason (if stopped early):** 
 
 ---
+
+### [2026-07-12 00:10] Commit + push standing rules for cloud mode
+- **Hypothesis:** Cloud agents need the rules/log on a remote they can clone.
+- **Scope:** `.cursor/rules/xenogears-decomp.mdc`, `scratchpad/grind_log.md` only
+- **Change made:** Committed those two files; pushed to `fork` (origin denied).
+- **Build result:** N/A
+- **Runtime result:** N/A
+- **Proven:** `d554474` on `fork/ai-private-main` (`Blizz127/xenogears-decomp-ai`).
+- **Not proven / still open:** Not on `ladysilverberg/xenogears-decomp` (403). Branch now tracks `fork/ai-private-main`.
+- **Committed:** `d554474` (this log entry itself remains local/uncommitted)
+- **Stop reason (if stopped early):** 
+
+---
