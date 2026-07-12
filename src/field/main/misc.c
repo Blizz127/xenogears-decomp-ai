@@ -1300,7 +1300,15 @@ void func_8008F4FC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F558);
+void func_8008F558(void) {
+    s32 soundId = FieldScriptVMGetArgument(1);
+    s32 volume = FieldScriptVMGetArgument(5);
+    s32 pan = FieldScriptVMGetArgument(3);
+    s32 channel = FieldScriptVMGetArgument(7);
+
+    func_800855C8(soundId, volume, pan, channel);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 /* FE 64 — sound-bit gate (asm 8008F5E4-8008F664).
  * FieldScriptVM2Run leaves IP on the 0x64 sub-opcode. Poll
