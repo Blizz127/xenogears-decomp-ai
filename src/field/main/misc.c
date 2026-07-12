@@ -1302,7 +1302,25 @@ void func_8008F4FC(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F558);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F5E4);
+/* FE 64 — sound-bit gate (asm 8008F5E4-8008F664).
+ * FieldScriptVM2Run leaves IP on the 0x64 sub-opcode. Poll
+ * func_8003A5D0(-1) & (arg1<<8): clear → IP+=3 (skip 64+2 args);
+ * set → IP-=1 (back to FE, wait). Always yields (D_800B00C0=1).
+ * A stubbed FE64 left IP on 0x64 and let the primary VM desync
+ * A1 r5 past SHOW (0x22), so Fei stayed hidden after A14 HideById. */
+extern s32 func_8003A5D0(s32);
+
+void func_8008F5E4(void) {
+    s32 soundBits = func_8003A5D0(-1);
+    s32 mask = FieldScriptVMGetArgument(1) << 8;
+
+    if ((soundBits & mask) != 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    }
+    D_800B00C0 = 1;
+}
 
 void func_8008F668(void) {
     func_80085634(FieldScriptVMGetArgument(1), 3);
