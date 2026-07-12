@@ -18,6 +18,7 @@ extern int FieldScriptArgument4(int index, int mask);
 long FieldGetVec3Magnitude(long x, long y, long z);
 long FieldGetVec2Magnitude(long x, long y);
 s32 func_80099AC0(s32 useStoredAngle);
+extern s32 func_80097A50(s32 targetValue);
 extern s32 func_8007B694(s32* arg0);
 
 void func_800972F4(void) {
@@ -58,7 +59,27 @@ int FieldGetPlayerActorDirection(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009749C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800975C0);
+/* VM opcode 0x55: set the current script's movement target to another actor.
+ * The target actor index is the instruction byte at +1; its integer position
+ * becomes the current actor's movement target before func_80097A50 advances
+ * the interpolation. */
+void func_800975C0(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    ActorData* target;
+
+    slot->flags_0x17 = 2;
+
+    target = (ActorData*)(uintptr_t)g_FieldActors[SCRIPT_READ_U8_REL(1)].pActorData;
+    actor->unkD0.vx = target->position.vx >> 16;
+    actor->unkD0.vz = target->position.vz >> 16;
+    actor->unkD0.vy = target->position.vy >> 16;
+
+    slot->flags_0 = 0xFFFF;
+    if (func_80097A50(-1) == 0) {
+        actor->scriptInstructionPointer += 5;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800976A8);
 
