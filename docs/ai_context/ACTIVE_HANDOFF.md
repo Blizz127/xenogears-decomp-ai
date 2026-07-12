@@ -12,6 +12,15 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 📷 AWAITING RETAIL WELL REF: port pose locked; user emulator capture next
+
+- **Why:** NCLIP / FLAG / camera-clamp all match retail *mechanisms*. Need a retail **visual** at the same moment to decide if ~4% emit / near-black is WAI or a remaining port divergence. **No code fix this pass.**
+- **Port steps to pose:** normal boot → hold Fei at `(57,−1,−110)` + `unk48|=0xC000` (same bits Map1 encounter-enable sets) → wait until live `eye.y≳1400`. Resulting `eye2≈(−565,+1491,511)`.
+- **Port reference (ready):** `scratchpad/port_well_ref_pose.png` — 640×480, meanRGB≈(11,10,7), nearblack≈0.88. Capture via `scratchpad/run_port_well_ref_pose.sh` + `port_well_ref_pose.gdb`.
+- **Retail guide (for user):** `scratchpad/RETAIL_WELL_CAPTURE_GUIDE.md` — New Game → Lahan → walk to the village well → screenshot when camera goes low/oblique and the scene goes sparse/black. Drop result as `scratchpad/retail_well_ref.png`.
+- **Human landmark:** stone well in the Lahan square (west/slightly south of New Game outdoor spawn ≈(405,−72) → well ≈(57,−110)). Confirm: low camera + mostly black ground/buildings, well chunks / Fei may still show.
+- **Status:** waiting on user retail screenshot(s). Comparison + verdict after that.
+
 ## July 11 — 🔬 CAMERA-ZONE / eye2=+1491: RETAIL-ACCURATE (encounter bit skips clamp)
 
 - **Question:** is `eye2=(-564,1491,512) angY=-1536` an illegitimate port pose, or retail-reachable?
