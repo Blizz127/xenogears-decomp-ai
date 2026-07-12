@@ -584,6 +584,41 @@ reenter:
         return;
     }
 
+    /* asm .L80024998: opcodes 0x20-0x2F — same wait/subIndex path as
+     * 0x00-0x0F, but func_8001D2B0(frameIndex - 1) instead of +1. */
+    if (opcode >= 0x20 && opcode < 0x30) {
+        s32 delay = (opcode & 0xF) + 1;
+        s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
+        s32 scaledDelay;
+        u32 flags;
+        u32 subIndex;
+
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
+        func_8001D2B0(pData, *(u16*)(pData + 0x34) - 1);
+
+        scaledDelay = delay * speed;
+        if (scaledDelay < 0) {
+            scaledDelay += 0xFF;
+        }
+        delay = scaledDelay >> 8;
+        if (delay == 0) {
+            delay = 1;
+        }
+
+        flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+        subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) + 1) & 0x3F;
+        *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
+        *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+
+        if (subIndex == 0) {
+            flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+            subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
+            *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+            func_800248D4(pData);
+        }
+        return;
+    }
+
     if (opcode >= 0x30 && opcode < 0x40) {
         s32 delay = (opcode & 0xF) + 1;
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
