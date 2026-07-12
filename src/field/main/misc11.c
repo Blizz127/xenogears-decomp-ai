@@ -787,7 +787,7 @@ s32 func_80094E8C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
         if (((u8*)g_pGameState)[0x2026 + i] == a0 && ((u8*)g_pGameState)[0x1F90 + i] != 0) {
-            return 0;
+            return i;
         }
     }
     return -1;
@@ -833,13 +833,73 @@ s32 func_80094FCC(s32 a0) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_8009501C);
+u8* func_8009501C(s32 itemId) {
+    switch (itemId >> 8) {
+    case 0:
+        return (u8*)g_pGameState + 0x2026;
+    case 1:
+        return (u8*)g_pGameState + 0x1D9C;
+    case 2:
+        return (u8*)g_pGameState + 0x1EC8;
+    case 3:
+        return (u8*)g_pGameState + 0x2120;
+    case 4:
+        return (u8*)g_pGameState + 0x221A;
+    default:
+        return NULL;
+    }
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800950A0);
+u8* func_800950A0(s32 itemId) {
+    switch (itemId >> 8) {
+    case 0:
+        return (u8*)g_pGameState + 0x1F90;
+    case 1:
+        return (u8*)g_pGameState + 0x1D38;
+    case 2:
+        return (u8*)g_pGameState + 0x1E00;
+    case 3:
+        return (u8*)g_pGameState + 0x20BC;
+    case 4:
+        return (u8*)g_pGameState + 0x2184;
+    default:
+        return NULL;
+    }
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80095124);
+s32 func_80095124(s32 itemId) {
+    switch (itemId >> 8) {
+    case 0:
+        return func_80094E8C(itemId);
+    case 1:
+        return func_80094F2C(itemId - 0x100);
+    case 2:
+        return func_80094EDC(itemId - 0x200);
+    case 3:
+        return func_80094F7C(itemId - 0x300);
+    case 4:
+        return func_80094FCC(itemId - 0x400);
+    default:
+        return 0;
+    }
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800951B8);
+s32 func_800951B8(s32 itemId) {
+    switch (itemId >> 8) {
+    case 0:
+        return func_80094CFC();
+    case 1:
+        return func_80094D4C();
+    case 2:
+        return func_80094D9C();
+    case 3:
+        return func_80094DEC();
+    case 4:
+        return func_80094E3C();
+    default:
+        return 0;
+    }
+}
 
 void func_8009524C(void) {
     func_80095284();

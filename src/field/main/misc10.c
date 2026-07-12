@@ -3,6 +3,12 @@
 #include "field/actor.h"
 #include "field/script_vm.h"
 
+extern u8* func_8009501C(s32 itemId);
+extern u8* func_800950A0(s32 itemId);
+extern s32 func_80095124(s32 itemId);
+extern s32 func_800951B8(s32 itemId);
+void func_8009635C(s32 itemId);
+
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096214);
 
 void func_800962C0(void) {
@@ -18,7 +24,23 @@ void func_8009631C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009635C);
+void func_8009635C(s32 itemId) {
+    s32 slot = func_80095124(itemId);
+    u8* quantities = func_800950A0(itemId);
+    u8* itemIds = func_8009501C(itemId);
+
+    if (slot != -1) {
+        if (quantities[slot] < MAX_ITEM_QUANTITY) {
+            quantities[slot]++;
+        }
+    } else {
+        slot = func_800951B8(itemId);
+        if (slot != -1) {
+            itemIds[slot] = (u8)itemId;
+            quantities[slot] = 1;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009640C);
 
