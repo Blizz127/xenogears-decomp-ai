@@ -2,6 +2,7 @@
 #include "field/main.h"
 #include "field/actor.h"
 #include "field/camera.h"
+#include "field/text_box.h"
 #include "system/math.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
@@ -1334,6 +1335,25 @@ void FieldPollControllers(void) {
     D_800AFE9C &= D_800ADB00;
     D_800C3900 &= D_800ADB00;
     D_800C2694 &= D_800ADB00;
+
+#ifdef XENO_PC_PORT
+    /* Headless field-test: synthesize Circle-released when a text box is
+     * waiting on confirm (window flags bit 0x8). Real pads still work; this
+     * only ORs the bit so well/dialog scripts can finish without a human. */
+    {
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (ft && ft[0] == '1') {
+            s32 i;
+            for (i = 0; i < 4; i++) {
+                u8* pWin = (u8*)&g_FieldTextBoxes[i] + 0x18;
+                if (g_FieldTextBoxes[i].visibility == 0 && (*(u16*)(pWin + 0x10) & 0x8)) {
+                    D_800C2694 |= 0x20;
+                    break;
+                }
+            }
+        }
+    }
+#endif
 
     ControllerResetState();
     func_8007AE78(1, &D_80065848);
