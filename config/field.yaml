@@ -55,7 +55,7 @@ segments:
     subsegments:
       - [0x0, rodata]
       - [0x1B8, .rodata, main/misc11]
-      - [0x1D0, rodata]
+      - [0x22C, rodata]
       - [0x268, .rodata, scripts/virtual_machine]
       - [0x294, rodata]
       - [0x2FC, c, main/misc3]
