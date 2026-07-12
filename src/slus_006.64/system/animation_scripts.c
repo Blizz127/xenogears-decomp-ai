@@ -494,7 +494,14 @@ void func_80021BCC(void* arg0, u32 arg1) {
 }
 
 void SpriteSetSpecialAnimFile(SpriteData* pSpriteData, void* pAnimFile) {
+#ifdef XENO_PC_PORT
+    /* Field sprites are allocated as raw 0x164-byte PSX records. Host pointer
+     * widening moves the typed member to +0x60, but retail stores a 32-bit
+     * animation pointer at +0x4C. Keep the native boundary PSX-layout exact. */
+    *(u32*)((u8*)pSpriteData + 0x4C) = (u32)(uintptr_t)pAnimFile;
+#else
     pSpriteData->pSpecialAnimFile = pAnimFile;
+#endif
 }
 
 void func_80021BF8(void* arg0, s32 arg1) {
