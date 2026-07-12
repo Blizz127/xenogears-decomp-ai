@@ -67,7 +67,6 @@ extern void* D_800ADBF0;
 void FieldTextBoxInitializePrimitives(int index);
 void* GetStringEntry(void* arg0, s32 arg1);
 s32 FieldScriptVMGetVariableValue(s32 index);
-void func_8007F5AC(s32 index, s32 faceDirection);
 void func_80032F54(void* arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7);
 void func_800345E0(void* arg0);
 void func_80034614(void* arg0);
@@ -396,7 +395,36 @@ void FieldTextBoxInitializePrimitives(int index) {
     *pPoly2 = *pPoly;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F5AC);
+extern u8 D_800ADF34[];
+
+void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
+    FieldTextBoxPortrait* pPortrait;
+    u8* pUv;
+    u8 u;
+    u8 v;
+    u16 clut;
+    s32 i;
+
+    pPortrait = &g_FieldTextBoxes[textBoxIndex].portrait;
+    pUv = &D_800ADF34[faceDirection << 2];
+    u = pUv[0];
+    v = pUv[2];
+    clut = GetClut(0, faceDirection + 0xE0);
+
+    for (i = 0; i < 2; i++) {
+        POLY_FT4* pPoly = &pPortrait->polys[i];
+
+        pPoly->u0 = u;
+        pPoly->v0 = v;
+        pPoly->u1 = u + 0x40;
+        pPoly->v1 = v;
+        pPoly->u2 = u;
+        pPoly->v2 = v + 0x40;
+        pPoly->u3 = u + 0x40;
+        pPoly->v3 = v + 0x40;
+        pPoly->clut = clut;
+    }
+}
 
 void func_8007F6F8(s16 index) {
     u8* pTextBox;

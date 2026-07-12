@@ -4,6 +4,8 @@
 #include "field/actor.h"
 #include "field/script_vm.h"
 #include "field/text_box.h"
+#include "system/memory.h"
+#include "system/archive.h"
 
 extern s32 D_8005A444;
 extern s32 D_8005A448;
@@ -154,8 +156,121 @@ void func_8009C12C(void) {
     func_8009C5A8(D_800AFD1C, 3);
 }
 
+/* Portrait TIM load slots: 3 entries of {faceId, state, dualTim}, stride 6. */
+extern s16 D_800B06A4[];
+extern s16 D_800B06A6[];
+extern s16 D_800B06A8[];
+extern s32 D_800ADB0C;
+extern void* D_800ADB10;
+extern void* D_800ADB14;
+extern s16 D_800AEAE4[];
+extern u8 D_800AE1E0[];
+extern StreamDataQueueEntry D_800B00C8[];
+
+void FieldLoadTIMWithClut(u_long* pTimData, short x, short y, short clutX, short clutY,
+                          short clutWidth, short clutHeight);
+int ArchiveSetIndex(int directoryIndex, int entryIndex);
+int ArchiveDecodeAlignedSize(unsigned int entryIndex);
+int ArchiveDataSync(void);
+int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
+int func_8009C538(int targetId);
+
 // https://decomp.me/scratch/tL6mE
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009C154);
+s32 func_8009C154(s32 faceId) {
+    s32 slot;
+    s32 attempt;
+    s32 found;
+    s32 entryCount;
+    u8* pFacePair;
+    u8 archive0;
+    u8 archive1;
+    s16* pCoords;
+    u32* pFlags12C;
+    void* pTim;
+
+    for (slot = 0; slot < 3; slot++) {
+        s16 state = D_800B06A6[slot * 3];
+
+        if (state == 1) {
+            /* Retail: ArchiveCdDataSync(1); busy => v0 from ArchiveDataSync. */
+            if (ArchiveDataSync() != 0) {
+                return -1;
+            }
+
+            D_800B06A6[slot * 3] = 2;
+            pCoords = &D_800AEAE4[slot * 8];
+            FieldLoadTIMWithClut((u_long*)D_800ADB10, pCoords[0], pCoords[1], pCoords[2], pCoords[3],
+                                0x100, 1);
+            pTim = (D_800B06A8[slot * 3] != 0) ? D_800ADB14 : D_800ADB10;
+            FieldLoadTIMWithClut((u_long*)pTim, pCoords[4], pCoords[5], pCoords[6], pCoords[7], 0x100,
+                                1);
+            return -1;
+        }
+
+        if (state == 2) {
+            D_800B06A6[slot * 3] = 0;
+            HeapFree(D_800ADB10);
+            if (D_800B06A8[slot * 3] == 1) {
+                HeapFree(D_800ADB14);
+            }
+            return -1;
+        }
+    }
+
+    for (slot = 0; slot < 3; slot++) {
+        if (D_800B06A4[slot * 3] == faceId) {
+            pFlags12C = (u32*)((u8*)g_FieldScriptVMCurActor + 0x12C);
+            *pFlags12C = (*pFlags12C & ~0x1Cu) | ((slot & 7) << 2);
+            return 0;
+        }
+    }
+
+    found = 0;
+    for (attempt = 0; attempt < 3; attempt++) {
+        D_800ADB0C++;
+        if (D_800ADB0C >= 3) {
+            D_800ADB0C = 0;
+        }
+        if (func_8009C538(D_800B06A4[D_800ADB0C * 3]) == 0) {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        return -1;
+    }
+
+    pFlags12C = (u32*)((u8*)g_FieldScriptVMCurActor + 0x12C);
+    *pFlags12C = (*pFlags12C & ~0x1Cu) | ((D_800ADB0C & 7) << 2);
+
+    ArchiveSetIndex(4, 0);
+
+    pFacePair = &D_800AE1E0[faceId << 1];
+    D_800B06A4[D_800ADB0C * 3] = (s16)faceId;
+    D_800B06A6[D_800ADB0C * 3] = 1;
+    D_800B06A8[D_800ADB0C * 3] = 0;
+
+    archive0 = pFacePair[0];
+    D_800B00C8[0].archiveIndex = (s16)(archive0 + 0x46);
+    D_800ADB10 = HeapAlloc(ArchiveDecodeAlignedSize(archive0 + 0x46), 0);
+    D_800B00C8[0].pData = D_800ADB10;
+
+    archive1 = pFacePair[1];
+    entryCount = 1;
+    if (archive1 != archive0) {
+        D_800B06A8[D_800ADB0C * 3] = 1;
+        D_800B00C8[1].archiveIndex = (s16)(archive1 + 0x46);
+        D_800ADB14 = HeapAlloc(ArchiveDecodeAlignedSize(archive1 + 0x46), 0);
+        D_800B00C8[1].pData = D_800ADB14;
+        entryCount = 2;
+    }
+
+    D_800B00C8[entryCount].archiveIndex = 0;
+    D_800B00C8[entryCount].pData = NULL;
+    func_80029AFC(D_800B00C8, 0, 0);
+    return -1;
+}
 
 // Check if there is a portrait w/ targetId that's free to use?
 int func_8009C538(int targetId) {
