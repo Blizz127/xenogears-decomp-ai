@@ -102,6 +102,17 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x29) {
+        /* Opcode 0xB3 (asm 800214AC-800214D0): write speed-index bits in
+         * sprite +0xA8 from the signed operand byte (low 6 bits << 11). */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        u32 flags = *(u32*)(p + 0xA8) & 0xFFFE07FF;
+
+        *(u32*)(p + 0xA8) = flags | ((((s8)ops[0]) & 0x3F) << 11);
+        return;
+    }
+
     if (dispatchIndex == 0x32) {
         /* Opcode 0xBC handler (asm 800202F4-80020BAC): multi-command
          * position opcode. Operand bit 7 set selects a sub-command

@@ -776,8 +776,44 @@ reenter:
     }
 
     if (opcode == 0xB3) {
-        func_8001FBE4(pData, opcode - 0x80, pc + 1);
-        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 2);
+        /* jtbl default .L80024EC8 + FBE4 0xB3 (asm 800214AC): set +0xA8
+         * speed-index from operand, advance by D_8004FC40[0xB3]==2, re-enter.
+         * Old special-case passed opcode-0x8A underflow (FBE4 no-op) and
+         * returned with +0x9E==0, freezing AnimScriptTick (well anim-5). */
+        extern const u8 D_8004FC40[256];
+
+        func_8001FBE4(pData, opcode, pc + 1);
+        *(u32*)(pData + 0x64) =
+            (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
+    }
+
+    if (opcode == 0xA7) {
+        /* asm 80024E10-80024EA8 (jtbl[0xA7-0x80]). Advance by
+         * D_8004FC40[0xA7]==2, then delay from operand at pc+1:
+         * bit7 set → +0x9E += 1 and g_WorkListCurTimer = (op&0x7F)+1;
+         * else → +0x9E += max(1, ((op+2)*speed)>>8). */
+        extern const u8 D_8004FC40[256];
+        u8 op1 = pc[1];
+        s32 delay;
+
+        *(u32*)(pData + 0x64) =
+            (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        if (op1 & 0x80) {
+            *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + 1;
+            g_WorkListCurTimer = (op1 & 0x7F) + 1;
+            return;
+        }
+        delay = op1 + 2;
+        delay *= (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
+        if (delay < 0) {
+            delay += 0xFF;
+        }
+        delay >>= 8;
+        if (delay == 0) {
+            delay = 1;
+        }
+        *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
         return;
     }
 
@@ -836,9 +872,41 @@ reenter:
         goto reenter;
     }
 
+    if (opcode == 0x86) {
+        /* asm 80024C68-80024C9C (jtbl[0x86-0x80]).
+         * If *(s32*)(pData+0x10) < 0: set wait timer +0x9E = 1 and return
+         * (PC stays on 0x86; AnimScriptTick retries next frame).
+         * Else: advance by D_8004FC40[0x86]==1 and re-enter. */
+        extern const u8 D_8004FC40[256];
+
+        if ((s32)*(u32*)(pData + 0x10) < 0) {
+            *(s16*)(pData + 0x9E) = 1;
+            return;
+        }
+        *(u32*)(pData + 0x64) =
+            (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
+    }
+
+    if (opcode == 0x87) {
+        /* asm 80024C80-80024C9C (jtbl[0x87-0x80]), shares wait-tail
+         * .L80024C98 with 0x86.
+         * If *(s16*)(pData+0x6) < *(s16*)(pData+0x84): wait (+0x9E=1),
+         * PC unchanged. Else advance by D_8004FC40[0x87]==1 and re-enter. */
+        extern const u8 D_8004FC40[256];
+
+        if (*(s16*)(pData + 0x6) < *(s16*)(pData + 0x84)) {
+            *(s16*)(pData + 0x9E) = 1;
+            return;
+        }
+        *(u32*)(pData + 0x64) =
+            (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
+    }
+
     /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
-    if (opcode == 0x85 || opcode == 0x86 || opcode == 0x87 || opcode == 0x8E ||
-        opcode == 0x98 || opcode == 0xA7 || opcode == 0xBE || opcode == 0xC8 ||
+    if (opcode == 0x85 || opcode == 0x8E ||
+        opcode == 0x98 || opcode == 0xBE || opcode == 0xC8 ||
         opcode == 0xD4 || opcode == 0xE2 || opcode == 0xFA) {
         assert(0 && "func_800248D4 dedicated opcode path is not implemented");
     }
