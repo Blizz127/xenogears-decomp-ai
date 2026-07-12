@@ -17,10 +17,10 @@ FieldScriptSetParticleBankColor = 0x80089880;
 FieldScriptParticlesInitialize = 0x80089A80;
 FieldScriptStopParticleActor = 0x80089AE4;
 
-// Orphaned jump tables in 0.rodata.s: each table's owning function
+// Orphaned jump tables in early field rodata: each table's owning function
 // is now decompiled to C (matching switch statement), so the C compiler
 // emits its own jump table with its own case labels.  The original
-// hand-data .word .L8007Cxxx references point to assembly-local labels
+// hand-data .word .Lxxxxxxxx references point to assembly-local labels
 // that exist only in the consolidated asm (not used for the C build).
 // Declare as plain u32 data so gears emits the original literal word
 // values from the retail binary instead of symbolic label references.
@@ -31,10 +31,16 @@ FieldScriptStopParticleActor = 0x80089AE4;
 // jtbl_8006FBEC (0x20 / 8 entries): func_8007D3D4 (misc4.c)
 //   All four are switch (sideMask) { case 0..6 default } collision
 //   side-mask dispatch tables.
+// jtbl_8006FC88 (0x20 / 8 entries): func_8008E59C (misc.c) — orphaned since 98e2d00
+// jtbl_8006FD30 (0x14 / 5 entries): func_80099AC0 (misc7.c)
+// jtbl_8006FDAC (0x1C / 7 entries): func_800A5C40 (misc5.c)
 jtbl_8006FB8C = 0x8006FB8C; // type:u32 size:0x20
 jtbl_8006FBAC = 0x8006FBAC; // type:u32 size:0x20
 jtbl_8006FBCC = 0x8006FBCC; // type:u32 size:0x20
 jtbl_8006FBEC = 0x8006FBEC; // type:u32 size:0x20
+jtbl_8006FC88 = 0x8006FC88; // type:u32 size:0x20
+jtbl_8006FD30 = 0x8006FD30; // type:u32 size:0x14
+jtbl_8006FDAC = 0x8006FDAC; // type:u32 size:0x1C
 
 FieldLZSSDecompress = 0x8007008C;
 

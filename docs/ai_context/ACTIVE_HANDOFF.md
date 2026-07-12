@@ -12,6 +12,19 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🔧✅ MATCHING LINK RESTORED: orphaned jtbls + g_Heap + slus dual-defs unblocked; sha256 still unmatched
+
+- **Original errors (field.elf):** `undefined reference to .L8008E5F4..` from `jtbl_8006FC88` in `0.rodata.s`; same class for `jtbl_8006FD30` / `jtbl_8006FDAC`; `undefined reference to g_Heap` from misc3 `IsLiveHeapBlock`; missing `func_80075910` (matchings-only, no C/INCLUDE_ASM).
+- **jtbl root cause:** commit **98e2d00** decompiled `func_8008E59C` (and later misc5/misc7 switches) without migrating their jump tables. Rodata still emitted `.word .L…` to labels that only exist in unlinked consolidated asm. **Same class as 442853d** (misc4 side-mask jtbls).
+- **g_Heap:** separate — main-exe symbol at `0x80059320` referenced from field C; splat does not auto-emit it from C refs (duplicate if listed in both symbol_addrs files).
+- **Fix (minimal, established patterns):**
+  1. `config/symbol_addrs.field.txt`: `jtbl_8006FC88/FD30/FDAC` as `type:u32` (literal retail words).
+  2. `Makefile`: append `g_Heap = 0x80059320` to `undefined_syms_auto.field.txt` after gears (ApplyMatrixSV-style); mark `build`/`check` `.PHONY`; **stop `make clean` from deleting `expected/`** (gears clean already wipes `build/`+`asm/`+`linker/`).
+  3. `misc2.c`: restore `INCLUDE_ASM(..., func_80075910)` (gap between 7554C and 75B08).
+  4. **Independent slus blockers** (surfaced once field linked): `D_8004FC40` dual-def (C + sdata) → `#ifdef XENO_PC_PORT` definition / else `extern`; PSYQ gcc `memcpy`→`bcopy` lowering → small `bcopy` loop in `libc.c`.
+- **Result:** `field.elf` / `slus_006.64.elf` / menus **link cleanly**. `sha256sum --check config/checksum.sha`: menus **OK**; `field.bin` + `slus_006.64` **FAIL** — expected, many C functions still not byte-identical. Original undefined-label / g_Heap errors are **gone**.
+- **Port:** `./pc_port/build_port.sh` LINK OK; smokes ent8/ent0/Map0 RC=124 crashmarks=0. No pc_port/** source edits; no new decomp logic.
+
 ## July 11 — 🚪✅ ZOOM-FADE LP64 STACK SMASH FIXED: `RotAverage4` `long* flag/p` need real `long` locals (misc5/misc4)
 
 - **Bug (asm-confirmed, LP64-only):** PsyQ `RotAverage4` stores GTE FLAG with MIPS **`sw`** (`asm/.../RotAverage4.s` `8004A824`) into the caller’s `*flag`. Retail `FieldZoomFadeEffectUpdate.s` passes adjacent stack slots `sp+0x58` / `sp+0x5C` as `p`/`flag` (4 bytes apart — MIPSel `int==long`). Port `psyq_compat.c` `RotAverage4` does `*flag = (long)(int)(unsigned int)*flag` (full 8-byte store on LP64). Passing `(long*)&int flag` therefore overwrites the next stack word — the loop `i` — so `for (i = 0; i < 5; i++)` never terminates and New Game freezes on the last menu frame (FieldLoad completes; never reaches `entering main loop`). Same class of width mismatch as bfdae3d’s GTE flag sign-extend, but the failure mode here is **stack smash**, not a missed `flag < 0` test.
