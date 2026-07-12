@@ -278,8 +278,8 @@ static int ModelPrimQuadOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
  *
  * Log field "nclip_backface" counts GTE NCLIP / NormalClip backface-winding
  * drops (OPZ < 0 on the three screen-space verts). It is NOT near-plane clip
- * (that lives in the FLAG / otz guards). Optional NCLIP_SXY sample lines dump
- * SXY+OPZ(+world verts) for a few of those drops at the known well pose.
+ * (that lives in the FLAG / otz guards). Optional NCLIP_SXY / FLAG_SAMPLE
+ * lines dump a few drops at the known well pose (or after MARK).
  * ------------------------------------------------------------------------- */
 enum {
     CC_SEEN = 0,
@@ -305,9 +305,10 @@ static u32 s_cc[CC_N];
 static u32 s_ccFrame;
 static FILE* s_ccFile;
 static u32 s_ccNclipSamples;
+static u32 s_ccFlagSamples;
 static u32 s_ccMarkArmFrames; /* after SELECT, allow samples for a few summary frames */
 
-enum { CC_NCLIP_SAMPLE_MAX = 48 };
+enum { CC_NCLIP_SAMPLE_MAX = 48, CC_FLAG_SAMPLE_MAX = 48 };
 
 static int CullCamOn(void) {
     if (s_ccOn < 0) {
@@ -382,6 +383,88 @@ static void CullCamSampleNclipDrop(long xy0, long xy1, long xy2, long opz,
         fprintf(stderr, "[cull-cam] NCLIP_SXY sample %u/%u opz=%ld sxy=(%d,%d)(%d,%d)(%d,%d)\n",
                 s_ccNclipSamples, (unsigned)CC_NCLIP_SAMPLE_MAX, (long)opz,
                 sx0, sy0, sx1, sy1, sx2, sy2);
+    }
+}
+
+/* Compact FLAG bit tags (PsyCross / nocash GTE FLAG). Bit31 = retail bltz. */
+static void CullCamFormatFlagBits(u32 flag, char* out, size_t outSz) {
+    static const struct { u32 bit; const char* name; } kBits[] = {
+        { 31, "E" },    { 30, "MAC3" }, { 29, "MAC2" }, { 28, "MAC1" },
+        { 27, "A1lo" }, { 26, "A2lo" }, { 25, "A3lo" },
+        { 24, "IR1" },  { 23, "IR2" },  { 22, "IR3" },
+        { 18, "SZ3" },  { 17, "DIV" },  { 16, "MAC0+" }, { 15, "MAC0-" },
+        { 14, "SX" },   { 13, "SY" },   { 12, "H?" },
+    };
+    size_t n = 0;
+    size_t i;
+    out[0] = '\0';
+    for (i = 0; i < sizeof(kBits) / sizeof(kBits[0]); i++) {
+        if (flag & (1u << kBits[i].bit)) {
+            int wrote = snprintf(out + n, outSz > n ? outSz - n : 0, "%s%s",
+                                 n ? "," : "", kBits[i].name);
+            if (wrote > 0) {
+                n += (size_t)wrote;
+            }
+        }
+    }
+    if (n == 0) {
+        snprintf(out, outSz, "-");
+    }
+}
+
+static void CullCamSampleFlagDrop(long flag, long otz,
+                                  long xy0, long xy1, long xy2, long xy3,
+                                  const SVECTOR* v0, const SVECTOR* v1,
+                                  const SVECTOR* v2, const SVECTOR* v3,
+                                  const char* gteOp, int isQf4, int nVert) {
+    extern VECTOR g_CameraEye2;
+    extern CameraInterpolation g_CamInterpolation;
+    char bits[96];
+    int sx0, sy0, sx1, sy1, sx2, sy2, sx3, sy3;
+    u32 f = (u32)flag;
+
+    if (!CullCamOn() || s_ccFile == NULL) {
+        return;
+    }
+    if (s_ccFlagSamples >= CC_FLAG_SAMPLE_MAX) {
+        return;
+    }
+    if (!CullCamAtWellPose() && s_ccMarkArmFrames == 0) {
+        return;
+    }
+
+    CullCamFormatFlagBits(f, bits, sizeof(bits));
+    sx0 = (int)(short)(xy0 & 0xFFFF);
+    sy0 = (int)(short)((xy0 >> 16) & 0xFFFF);
+    sx1 = (int)(short)(xy1 & 0xFFFF);
+    sy1 = (int)(short)((xy1 >> 16) & 0xFFFF);
+    sx2 = (int)(short)(xy2 & 0xFFFF);
+    sy2 = (int)(short)((xy2 >> 16) & 0xFFFF);
+    sx3 = (int)(short)(xy3 & 0xFFFF);
+    sy3 = (int)(short)((xy3 >> 16) & 0xFFFF);
+
+    fprintf(s_ccFile,
+            "FLAG_SAMPLE f=%u qf4=%d gte=%s flag=0x%08x bits=%s otz=%ld "
+            "sxy0=%d,%d sxy1=%d,%d sxy2=%d,%d sxy3=%d,%d "
+            "w0=%d,%d,%d w1=%d,%d,%d w2=%d,%d,%d w3=%d,%d,%d "
+            "eye2=%d,%d,%d angY=%d\n",
+            s_ccFrame, isQf4, gteOp ? gteOp : "?", f, bits, (long)otz,
+            sx0, sy0, sx1, sy1, sx2, sy2,
+            nVert >= 4 ? sx3 : 0, nVert >= 4 ? sy3 : 0,
+            v0 ? (int)v0->vx : 0, v0 ? (int)v0->vy : 0, v0 ? (int)v0->vz : 0,
+            v1 ? (int)v1->vx : 0, v1 ? (int)v1->vy : 0, v1 ? (int)v1->vz : 0,
+            v2 ? (int)v2->vx : 0, v2 ? (int)v2->vy : 0, v2 ? (int)v2->vz : 0,
+            (nVert >= 4 && v3) ? (int)v3->vx : 0,
+            (nVert >= 4 && v3) ? (int)v3->vy : 0,
+            (nVert >= 4 && v3) ? (int)v3->vz : 0,
+            (int)(g_CameraEye2.vx >> 16), (int)(g_CameraEye2.vy >> 16),
+            (int)(g_CameraEye2.vz >> 16),
+            (int)g_CamInterpolation.curAngleY);
+    s_ccFlagSamples++;
+    if (s_ccFlagSamples == 1 || (s_ccFlagSamples % 8) == 0) {
+        fprintf(stderr, "[cull-cam] FLAG_SAMPLE %u/%u flag=0x%08x bits=%s gte=%s otz=%ld\n",
+                s_ccFlagSamples, (unsigned)CC_FLAG_SAMPLE_MAX, f, bits,
+                gteOp ? gteOp : "?", (long)otz);
     }
 }
 
@@ -467,7 +550,9 @@ void PcPort_CullCamLogOnVsync(void) {
                 "seen emit flag otz nclip_backface(=NCLIP/OPZ winding, NOT near-Z) "
                 "overlap oversize gte31 qf4seen qf4flag qf4emit\n"
                 "# NCLIP_SXY lines: sample of backface drops at well pose "
-                "(eye2~-564,1491,512 angY=-1536) or after MARK — SXY + OPZ + model-space verts\n");
+                "(eye2~-564,1491,512 angY=-1536) or after MARK — SXY + OPZ + model-space verts\n"
+                "# FLAG_SAMPLE lines: sample of flag<0 drops at same pose — raw FLAG bits + "
+                "preceding RotTransPers* (RTPT3/RTPT4) + SXY + model verts\n");
     }
 
     selectEdge = (u16)(g_C1ButtonStateReleased & CTRL_BTN_SELECT);
@@ -563,6 +648,10 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            if (flag < 0) {
+                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
+                                      "RTPT3", 0, 3);
+            }
             CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
@@ -645,6 +734,10 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
         CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            if (flag < 0) {
+                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, xy3, v0, v1, v2, v3,
+                                      "RTPT4", 0, 4);
+            }
             CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
@@ -734,6 +827,10 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
         CullCamSeen(1, flag);
         if (flag < 0 || otz <= 0) {
+            if (flag < 0) {
+                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, xy3, v0, v1, v2, v3,
+                                      "RTPT4", 1, 4);
+            }
             CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 1);
             continue;
         }
@@ -815,6 +912,10 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            if (flag < 0) {
+                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
+                                      "RTPT3", 0, 3);
+            }
             CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }
@@ -895,6 +996,10 @@ static s32 ModelPrimTriVariant0(u8* pCmd, s32 count) {
         otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
         if (flag < 0 || otz <= 0) {
+            if (flag < 0) {
+                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
+                                      "RTPT3", 0, 3);
+            }
             CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
             continue;
         }

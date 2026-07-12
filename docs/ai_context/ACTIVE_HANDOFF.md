@@ -12,6 +12,18 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🔬 FLAG/gte31 bucket looks RETAIL-PLAUSIBLE (SX/SY sat); not a bad bit-check
+
+- **Sites audited (live C FLAG culls):** 5 model walkers in `game_overrides.c` (`flag < 0` after `RotTransPers3/4`), `temp2.c:func_8002E688` (0x0D), `misc2.c:func_80075B44` actor skip after `RotTransPers`. All inherit bfdae3d sign-extend. Retail: `bltz` on FLAG after RTPT/RTPS (~17 temp2 walkers + actor path). No second unfixed sign-extend site found.
+- **Capture:** gated `FLAG_SAMPLE` (max 48) at known pose via one-shot WELL_TP (not committed). Log `captures/render_diag/cullcam_flag_sample_auto.log` (~20KB). Pose frame: `seen=1486 emit=66 flag=343 nclip_backface=967 gte31=343`.
+- **Sample verdict — FLAG inputs look CORRECT / retail-shaped:**
+  - 48/48 `gte=RTPT3`; flags only `0x80007000` (34), `0x80005000` (11), `0x80003000` (3) → bits **E+SX and/or SY** (±1024 screen sat). **Zero** DIV / SZ3 / MAC overflow.
+  - `otz` always in 333..1741 (mean ~685) — valid depth, not degenerate `otz=0`.
+  - SXY sit on sat rails (`sx` −1024..1023, `sy` −1024..438); 123/144 sx and 100/144 sy at `|coord|≥1023`.
+  - Model verts large but coherent (`|w|>2000` on 127/144; e.g. `(-2880,68,-720)`, `(-432,-94,3023)`), not garbage noise — far/large field mesh under extreme oblique projection.
+- **Implication:** the ~340 FLAG drops are **likely retail-accurate SX/SY saturation culls**, same class as NCLIP being retail-accurate. Do **not** weaken `flag < 0`. Remaining well-black / Fei gap is elsewhere: (1) should retail camera even reach this eye2/angY (zone/clamp)?, (2) non-walker / sprite paths uninstrumented, (3) wrong matrix scale inflating verts (less likely given NCLIP samples at same pose use small verts).
+- **Logger:** gated `FLAG_SAMPLE` kept (like `NCLIP_SXY`); WELL_TP removed after capture.
+
 ## July 11 — 🔧✅ MATCHING LINK RESTORED: orphaned jtbls + g_Heap + slus dual-defs unblocked; sha256 still unmatched
 
 - **Original errors (field.elf):** `undefined reference to .L8008E5F4..` from `jtbl_8006FC88` in `0.rodata.s`; same class for `jtbl_8006FD30` / `jtbl_8006FDAC`; `undefined reference to g_Heap` from misc3 `IsLiveHeapBlock`; missing `func_80075910` (matchings-only, no C/INCLUDE_ASM).
@@ -41,7 +53,7 @@
   - All 144 screen verts on/near 320×240 (`sx` 43..337, `sy` −15..285); **zero** `|sxy|>1024`.
   - Screen cross 2A all negative (same sign as OPZ).
   - Model-space verts coherent s16 ranges (X/Y ±228, Z −544..196); no extreme garbage.
-- **Implication:** the ~950 backface drops are **likely retail-accurate NCLIP on sane SXYs**. Do not disable NCLIP. Remaining gap (if any vs retail) is in **FLAG/gte31** and/or non-walker paths — separate scoped pass. No cull-logic change this pass.
+- **Implication:** the ~950 backface drops are **likely retail-accurate NCLIP on sane SXYs**. Do not disable NCLIP. **FLAG/gte31 since closed as retail-plausible SX/SY sat** (see FLAG handoff above). Remaining gap: camera-zone legitimacy at this pose, and/or non-walker / sprite paths.
 
 ## July 11 — 🧩 LANE B: func_80072254 decompiled (actor rotation+scale matrix rebuild) — behaviorally-equivalent match (75.55% objdiff fuzzy), completes the EX-0x03 scale opcode
 
