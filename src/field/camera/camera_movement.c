@@ -21,6 +21,11 @@ extern VECTOR g_CamAtMovementCurrent;
 extern VECTOR g_CamAtMovementDelta;
 extern VECTOR g_CamEyeMovementCurrent;
 extern VECTOR g_CamEyeMovementDelta;
+extern s16 g_FieldCameraMode;
+extern s32 D_800AF930;
+extern s16 D_800AF936;
+extern s16 D_800AF938;
+extern s16 D_800AF93A[];
 
 
 void FieldScriptWaitForCameraMovement(void) {
@@ -60,7 +65,29 @@ void func_8008FABC(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FB28);
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FB98);
+void func_8008FB98(void) {
+#ifdef XENO_PC_PORT
+    u16 angleY;
+    u16 dip;
+#else
+    register u16 angleY asm("$3");
+    register u16 dip asm("$4");
+#endif
+
+    g_FieldCameraMode = 1;
+    g_FieldScriptMaxInstructionCount += 4;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+
+    D_800AF93A[0] = 0x1000;
+    D_800AF930 = ((s32)g_Scene.sceneScrZ * (s16)g_Scene.sceneScale) >> 12;
+    angleY = g_Scene.sceneAngle.vy;
+    dip = g_Scene.sceneDIP;
+    g_CamInterpolation.atStepDistance = 0xC;
+    g_CamInterpolation.eyeStepDistance = 0xC;
+    D_800AF938 = angleY;
+    g_Scene.unk48 |= 0x8000;
+    D_800AF936 = dip;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FC4C);
 
@@ -352,8 +379,6 @@ INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090CB8);
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090D50);
 
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090DEC);
-
-extern s16 D_800AF93A[]; // Part of a struct
 
 void func_80090E70(void) {
     VECTOR camAtDest;
