@@ -16,6 +16,11 @@ extern VECTOR g_CameraEye;
 extern VECTOR g_CameraEye2;
 extern VECTOR g_CameraAt;
 extern VECTOR g_CameraAt2;
+extern u16 g_CamMovementFlags;
+extern VECTOR g_CamAtMovementCurrent;
+extern VECTOR g_CamAtMovementDelta;
+extern VECTOR g_CamEyeMovementCurrent;
+extern VECTOR g_CamEyeMovementDelta;
 
 
 void FieldScriptWaitForCameraMovement(void) {
@@ -163,7 +168,146 @@ void FieldScriptResetCameraMovements(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", FieldScriptStartCameraMovement);
+void FieldScriptStartCameraMovement(void) {
+    s32 duration;
+    s32 speed;
+    s32 distance;
+    s32 deltaX;
+    s32 deltaY;
+    s32 deltaZ;
+    s32 fromX;
+    s32 fromY;
+    s32 fromZ;
+    VECTOR direction;
+    VECTOR normal;
+
+    switch (SCRIPT_READ_U8_REL(1) & 0xF) {
+    // Linearly move the camera target over a fixed number of frames.
+    case 0:
+        deltaZ = FieldScriptVMGetArgument(2);
+        g_CamAtMovementDuration = deltaZ;
+        if ((deltaZ << 16) == 0) {
+            g_CamAtMovementDuration = deltaZ + 1;
+            g_CamInterpolation.atStepDistance = 1;
+        }
+
+        deltaX = (g_CamAtMovementTo.vx - g_CamAtMovementFrom.vx) / g_CamAtMovementDuration;
+        deltaY = (g_CamAtMovementTo.vy - g_CamAtMovementFrom.vy) / g_CamAtMovementDuration;
+        deltaZ = (g_CamAtMovementTo.vz - g_CamAtMovementFrom.vz) / g_CamAtMovementDuration;
+        fromX = g_CamAtMovementFrom.vx;
+        fromY = g_CamAtMovementFrom.vy;
+        fromZ = g_CamAtMovementFrom.vz;
+        g_CamAtMovementCurrent.vx = fromX;
+        g_CamAtMovementCurrent.vy = fromY;
+        g_CamAtMovementCurrent.vz = fromZ;
+        g_CamMovementFlags |= FIELD_CAMERA_AT_MOVEMENT_ACTIVE;
+        g_CamAtMovementDelta.vx = deltaX;
+        g_CamAtMovementDelta.vy = deltaY;
+        g_CamAtMovementDelta.vz = deltaZ;
+
+        if (SCRIPT_READ_U8_REL(1) & 0x80) {
+            g_CameraAt.vx = g_CamAtMovementFrom.vx;
+            g_CameraAt.vy = g_CamAtMovementFrom.vy;
+            g_CameraAt.vz = g_CamAtMovementFrom.vz;
+        }
+        break;
+
+    // Move the camera target toward its destination at a fixed speed.
+    case 2:
+        direction.vx = (g_CamAtMovementFrom.vx - g_CamAtMovementTo.vx) >> 16;
+        direction.vy = (g_CamAtMovementFrom.vy - g_CamAtMovementTo.vy) >> 16;
+        direction.vz = (g_CamAtMovementFrom.vz - g_CamAtMovementTo.vz) >> 16;
+        VectorNormal(&direction, &normal);
+
+        distance = FieldGetVec3Magnitude(
+            (g_CamAtMovementFrom.vx - g_CamAtMovementTo.vx) >> 16,
+            (g_CamAtMovementFrom.vy - g_CamAtMovementTo.vy) >> 16,
+            (g_CamAtMovementFrom.vz - g_CamAtMovementTo.vz) >> 16);
+        speed = FieldScriptVMGetArgument(2);
+
+        duration = distance / speed;
+        deltaX = normal.vx * speed;
+        deltaY = normal.vy * speed;
+        deltaZ = normal.vz * speed;
+        g_CamAtMovementCurrent.vx = g_CamAtMovementFrom.vx;
+        g_CamAtMovementCurrent.vy = g_CamAtMovementFrom.vy;
+        g_CamAtMovementCurrent.vz = g_CamAtMovementFrom.vz;
+        g_CamMovementFlags |= FIELD_CAMERA_AT_MOVEMENT_ACTIVE;
+        g_CamAtMovementDelta.vx = -deltaX << 4;
+        g_CamAtMovementDelta.vy = -deltaY << 4;
+        g_CamAtMovementDelta.vz = -deltaZ << 4;
+        g_CamAtMovementDuration = duration;
+
+        if (SCRIPT_READ_U8_REL(1) & 0x80) {
+            g_CameraAt.vx = g_CamAtMovementFrom.vx;
+            g_CameraAt.vy = g_CamAtMovementFrom.vy;
+            g_CameraAt.vz = g_CamAtMovementFrom.vz;
+        }
+        break;
+
+    // Move the camera eye toward its destination at a fixed speed.
+    case 3:
+        direction.vx = (g_CamEyeMovementFrom.vx - g_CamEyeMovementTo.vx) >> 16;
+        direction.vy = (g_CamEyeMovementFrom.vy - g_CamEyeMovementTo.vy) >> 16;
+        direction.vz = (g_CamEyeMovementFrom.vz - g_CamEyeMovementTo.vz) >> 16;
+        VectorNormal(&direction, &normal);
+
+        distance = FieldGetVec3Magnitude(
+            (g_CamEyeMovementFrom.vx - g_CamEyeMovementTo.vx) >> 16,
+            (g_CamEyeMovementFrom.vy - g_CamEyeMovementTo.vy) >> 16,
+            (g_CamEyeMovementFrom.vz - g_CamEyeMovementTo.vz) >> 16);
+        speed = FieldScriptVMGetArgument(2);
+
+        duration = distance / speed;
+        deltaX = normal.vx * speed;
+        deltaY = normal.vy * speed;
+        deltaZ = normal.vz * speed;
+        g_CamEyeMovementCurrent.vx = g_CamEyeMovementFrom.vx;
+        g_CamEyeMovementCurrent.vy = g_CamEyeMovementFrom.vy;
+        g_CamEyeMovementCurrent.vz = g_CamEyeMovementFrom.vz;
+        g_CamMovementFlags |= FIELD_CAMERA_EYE_MOVEMENT_ACTIVE;
+        g_CamEyeMovementDelta.vx = -deltaX << 4;
+        g_CamEyeMovementDelta.vy = -deltaY << 4;
+        g_CamEyeMovementDelta.vz = -deltaZ << 4;
+        g_CamEyeMovementDuration = duration;
+
+        if (SCRIPT_READ_U8_REL(1) & 0x80) {
+            g_CameraEye.vx = g_CamEyeMovementFrom.vx;
+            g_CameraEye.vy = g_CamEyeMovementFrom.vy;
+            g_CameraEye.vz = g_CamEyeMovementFrom.vz;
+        }
+        break;
+
+    // Linearly move the camera eye over a fixed number of frames.
+    case 1:
+        duration = FieldScriptVMGetArgument(2);
+        g_CamEyeMovementDuration = duration;
+        if ((duration << 16) == 0) {
+            g_CamEyeMovementDuration = duration + 1;
+            g_CamInterpolation.eyeStepDistance = 1;
+        }
+
+        deltaX = (g_CamEyeMovementTo.vx - g_CamEyeMovementFrom.vx) / g_CamEyeMovementDuration;
+        deltaY = (g_CamEyeMovementTo.vy - g_CamEyeMovementFrom.vy) / g_CamEyeMovementDuration;
+        deltaZ = (g_CamEyeMovementTo.vz - g_CamEyeMovementFrom.vz) / g_CamEyeMovementDuration;
+        g_CamEyeMovementCurrent.vx = g_CamEyeMovementFrom.vx;
+        g_CamEyeMovementCurrent.vy = g_CamEyeMovementFrom.vy;
+        g_CamEyeMovementCurrent.vz = g_CamEyeMovementFrom.vz;
+        g_CamMovementFlags |= FIELD_CAMERA_EYE_MOVEMENT_ACTIVE;
+        g_CamEyeMovementDelta.vx = deltaX;
+        g_CamEyeMovementDelta.vy = deltaY;
+        g_CamEyeMovementDelta.vz = deltaZ;
+
+        if (SCRIPT_READ_U8_REL(1) & 0x80) {
+            g_CameraEye.vx = g_CamEyeMovementFrom.vx;
+            g_CameraEye.vy = g_CamEyeMovementFrom.vy;
+            g_CameraEye.vz = g_CamEyeMovementFrom.vz;
+        }
+        break;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 // Write the current interpolated value
 void FieldScriptWriteCurCameraTarget(void) {
