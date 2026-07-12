@@ -732,7 +732,150 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BF38);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C180);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C334);
+extern s32 D_800ADBC4;
+extern s32 g_GamePartyMemberSkins[];
+extern void* g_PartyDataBuffers[];
+extern s32 D_8005A444[];
+extern s32 g_PlayerActorIndex;
+extern s32 FieldCharacterIdToPartyId(s32 characterId);
+extern s32 func_8008CF3C(s32);
+extern void func_8008BF38(s32 partyId);
+extern void func_8008C180(s32 partyId);
+
+typedef struct {
+    u32 words[4];
+} PartyBufferBlock;
+
+void func_8008C334(void) {
+    s32 partyId;
+    PartyBufferBlock* src;
+    PartyBufferBlock* dst;
+    PartyBufferBlock* end;
+    ActorData* player;
+
+    if (D_800ADBC4 != 0xFF) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer--;
+        return;
+    }
+
+    DrawSync(0);
+    partyId = FieldCharacterIdToPartyId(func_8008CF3C(SCRIPT_READ_U8_REL(1)));
+    if (partyId == -1) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+        return;
+    }
+
+    if (D_800ADB1C == 0) {
+        switch (partyId) {
+        case 0:
+            if (g_GamePartyMembers[1] == 0xFF) {
+                g_GamePartyMembers[0] = 0xFF;
+                g_GamePartyMemberSkins[0] = 0xFF;
+                g_pGameState->gearRide[0] = 0;
+                break;
+            }
+
+            src = g_PartyDataBuffers[1];
+            dst = g_PartyDataBuffers[0];
+            end = src + (0x14000 / sizeof(*src));
+            do {
+                *dst++ = *src++;
+            } while (src != end);
+
+            g_GamePartyMembers[0] = g_GamePartyMembers[1];
+            g_GamePartyMemberSkins[0] = g_GamePartyMemberSkins[1];
+            g_GamePartyMembers[1] = 0xFF;
+            g_GamePartyMemberSkins[1] = 0xFF;
+            g_pGameState->gearRide[0] = g_pGameState->gearRide[1];
+
+            if (g_GamePartyMembers[2] == 0xFF) {
+                break;
+            }
+
+            src = g_PartyDataBuffers[2];
+            dst = g_PartyDataBuffers[1];
+            end = src + (0x14000 / sizeof(*src));
+            do {
+                *dst++ = *src++;
+            } while (src != end);
+
+            g_GamePartyMembers[1] = g_GamePartyMembers[2];
+            g_GamePartyMemberSkins[1] = g_GamePartyMemberSkins[2];
+            g_GamePartyMembers[2] = 0xFF;
+            g_GamePartyMemberSkins[2] = 0xFF;
+            g_pGameState->gearRide[1] = g_pGameState->gearRide[2];
+            break;
+
+        case 1:
+            if (g_GamePartyMembers[2] == 0xFF) {
+                g_GamePartyMembers[1] = 0xFF;
+                g_GamePartyMemberSkins[1] = 0xFF;
+                g_pGameState->gearRide[1] = 0;
+                break;
+            }
+
+            src = g_PartyDataBuffers[2];
+            dst = g_PartyDataBuffers[1];
+            end = src + (0x14000 / sizeof(*src));
+            do {
+                *dst++ = *src++;
+            } while (src != end);
+
+            g_GamePartyMembers[1] = g_GamePartyMembers[2];
+            g_GamePartyMemberSkins[1] = g_GamePartyMemberSkins[2];
+            g_GamePartyMembers[2] = 0xFF;
+            g_GamePartyMemberSkins[2] = 0xFF;
+            g_pGameState->gearRide[1] = g_pGameState->gearRide[2];
+            g_pGameState->gearRide[2] = 0;
+            break;
+
+        case 2:
+            g_GamePartyMembers[2] = 0xFF;
+            g_GamePartyMemberSkins[2] = 0xFF;
+            g_pGameState->gearRide[2] = 0;
+            break;
+        default:
+            goto advance;
+        }
+    } else {
+        switch (partyId) {
+        case 0:
+            g_pGameState->gearRide[0] = g_pGameState->gearRide[1];
+            g_pGameState->gearRide[1] = g_pGameState->gearRide[2];
+            g_pGameState->gearRide[2] = 0;
+            func_8008C180(0);
+            func_8008BF38(0);
+            func_8008BF38(1);
+            break;
+        case 1:
+            g_pGameState->gearRide[1] = g_pGameState->gearRide[2];
+            g_pGameState->gearRide[2] = 0;
+            func_8008C180(1);
+            func_8008BF38(1);
+            break;
+        case 2:
+            g_pGameState->gearRide[2] = 0;
+            func_8008C180(2);
+            break;
+        }
+
+        if (g_GamePartyMembers[0] != 0xFF) {
+            if (D_8005A444[0] != 0xFF) {
+                g_PlayerActorIndex = D_8005A444[0];
+                player = (ActorData*)(uintptr_t)g_FieldActors[D_8005A444[0]].pActorData;
+                player->scriptFlags.flags = (player->scriptFlags.flags | 0x4400) & ~0x80;
+            } else {
+                g_PlayerActorIndex = 0;
+            }
+        } else {
+            g_PlayerActorIndex = 0;
+        }
+    }
+
+advance:
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C7D8);
 
