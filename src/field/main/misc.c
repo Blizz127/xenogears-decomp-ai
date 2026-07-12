@@ -15,6 +15,7 @@ extern int rsin(int);
 
 extern s32 D_800AFD1C;
 extern void func_80072254(s32);
+extern void SpriteSetSpecialAnimFile(SpriteData*, void*);
 
 void FieldSetScreenDimensions(void) {
     g_FieldRenderContexts[0].dispEnv.screen.x = 0;
@@ -515,6 +516,8 @@ void func_8008A520(void) {
 }
 
 extern s32 D_800ADB2C;
+extern s32 D_800ADB90;
+extern s32 D_800ADB1C;
 
 s32 func_8008A558(void) {
     if (D_800ADB2C != 0) {
@@ -571,7 +574,18 @@ void func_8008A974(void) {
     g_FieldScriptVMCurActor->flags &= 0xFFFEFFFF;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A9AC);
+void func_8008A9AC(void) {
+    if (func_8008A558() == 0) {
+        D_800ADB90 = 0;
+        SpriteSetSpecialAnimFile(
+            (SpriteData*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData,
+            (void*)(uintptr_t)g_FieldScriptVMCurActor->unk120);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 void func_8008AA60(void) {
     if (g_FieldScriptVMCurActor->unk124 != -1) {
@@ -584,7 +598,47 @@ void func_8008AA60(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AACC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008ACE8);
+void func_8008ACE8(void) {
+    s32 arg;
+    s32 archiveIndex;
+    s32 archiveSize;
+    void* pBuffer;
+
+    if (D_800ADB90 == 0 && D_800ADB2C == 0) {
+        if (func_8008A558() != 0) {
+            D_800B00C0 = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+            return;
+        }
+
+        if (g_FieldScriptVMCurActor->unk124 != -1) {
+            HeapFree((void*)(uintptr_t)g_FieldScriptVMCurActor->unk120);
+            g_FieldScriptVMCurActor->unk124 = -1;
+        }
+
+        arg = FieldScriptVMGetArgument(1);
+        archiveIndex = arg;
+        ArchiveSetIndex(4, 0);
+        archiveIndex += 0x77A;
+        archiveSize = ArchiveDecodeAlignedSize(archiveIndex);
+        g_FieldScriptVMCurActor->unk124 = archiveIndex;
+        pBuffer = HeapAlloc(archiveSize + 8, 0);
+        g_FieldScriptVMCurActor->unk120 = (u32)(uintptr_t)pBuffer;
+        ArchiveReadFileToBuffer(
+            archiveIndex,
+            pBuffer,
+            0,
+            0x80);
+        if (D_800ADB1C == 0) {
+            ArchiveCdDataSync(0);
+        }
+        D_800ADB90 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AE5C);
 
