@@ -380,32 +380,46 @@ void func_8009E83C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E91C);
-/*
-Matches, but awaits being compiled in until unk114 struct has been better recovered.
-
-
+/* Field-script opcode 0x17: preserve eight decoded script arguments in the
+ * actor-owned 16-byte state block.  The block is also included in the field
+ * save/restore image when bit 0x1000 of ActorData+0x12C is set.
+ * asm/field/nonmatchings/main/misc6/func_8009E91C.s */
 typedef struct {
-    u16 f0, f1, f2, f3, f4, f5, f6, f7;
-} Tmp;
+    u16 args[8];
+} FieldScriptArgs;
+
+/* ActorData's recovered bitfields split the original word at +0x12C.  Keep a
+ * tiny overlay for this opcode, which operates on the whole word. */
+typedef struct {
+    u8 pad[0x12C];
+    u32 flags;
+} FieldScriptActorFlags;
 
 void func_8009E91C(void) {
-    if (!(g_FieldScriptVMCurActor->flags12C & 0x1000)) {
-        g_FieldScriptVMCurActor->unk114 = HeapAlloc(0x10, 0x0);
+    if (!(((FieldScriptActorFlags*)g_FieldScriptVMCurActor)->flags & 0x1000)) {
+        g_FieldScriptVMCurActor->unk114 =
+            (u32)(uintptr_t)HeapAlloc(0x10, 0);
     }
-    g_FieldScriptVMCurActor->flags12C |= 0x1000;
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f0 = FieldScriptArgument1(0x1, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f1 = FieldScriptArgument2(0x3, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f2 = FieldScriptArgument3(0x5, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f3 = FieldScriptArgument4(0x7, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f4 = FieldScriptArgument5(0x9, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f5 = FieldScriptArgument6(0xB, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f6 = FieldScriptArgument7(0xD, SCRIPT_READ_U8_REL(0x11));
-    ((Tmp*)g_FieldScriptVMCurActor->unk114)->f7 = FieldScriptArgument8(0xF, SCRIPT_READ_U8_REL(0x11));
-    
+
+    ((FieldScriptActorFlags*)g_FieldScriptVMCurActor)->flags |= 0x1000;
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[0] =
+        FieldScriptArgument1(1, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[1] =
+        FieldScriptArgument2(3, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[2] =
+        FieldScriptArgument3(5, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[3] =
+        FieldScriptArgument4(7, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[4] =
+        FieldScriptArgument5(9, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[5] =
+        FieldScriptArgument6(0xB, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[6] =
+        FieldScriptArgument7(0xD, SCRIPT_READ_U8_REL(0x11));
+    ((FieldScriptArgs*)(uintptr_t)g_FieldScriptVMCurActor->unk114)->args[7] =
+        FieldScriptArgument8(0xF, SCRIPT_READ_U8_REL(0x11));
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x12;
 }
-*/
 
 // -1: Actor has a script slot occupied w/ target ID
 //  0: Actor has no script slot w/ target ID
