@@ -26,6 +26,20 @@ extern void PsyX_EndScene(void);  /* GR_EndScene + GR_StoreFrameBuffer + GR_Swap
 extern int  VSync(int mode);      /* PsyCross frame pacing; returns vblank count. Does NOT present. */
 extern void DrawAllSplits(void);  /* flush queued primitives to the GL framebuffer; no-op when none */
 
+/* build_port.sh excludes src/slus_006.64/psyq, so an unqualified rand() would
+ * otherwise bind to the host libc and produce a different range and sequence.
+ * Retail rand (0x8003FA38) uses this 32-bit LCG and returns bits 16..30.  Keep
+ * the seed explicitly 32-bit: PsyQ u_long is 32-bit, while host unsigned long
+ * is 64-bit on the native port. */
+uint32_t g_RandomSeed;
+
+int rand(void)
+{
+    uint32_t next = g_RandomSeed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
+    g_RandomSeed = next;
+    return (int)((next >> 16) & UINT32_C(0x7FFF));
+}
+
 /*
  * OpenTIM / ReadTIM: PsyCross declares these in libgpu.h but provides NO
  * implementation — they fall through to auto-generated no-op stubs that return
