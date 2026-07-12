@@ -165,6 +165,12 @@ def main():
         for name, size in data:
             f.write(f"unsigned char {name}[{size}] __attribute__((aligned(8)));\n")
 
+        # The helper above is itself an undefined ref during the trial link
+        # (game_overrides calls it before stubs.o exists). Never emit a stub
+        # for it — that would conflict with the real void(const char*) definition.
+        funcs = [(n, s) for n, s in funcs if n != "xeno_port_stub"]
+        unknown = [n for n in unknown if n != "xeno_port_stub"]
+
         f.write(f"\n/* ---- {len(funcs)} function symbols ---- */\n")
         for name, _size in funcs:
             f.write(f"long {name}(void) {{ xeno_port_stub(\"{name}\"); return 0; }}\n")

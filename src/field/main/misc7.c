@@ -11,7 +11,12 @@ extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
 extern s32 D_800B21D8;
+extern s16 D_800AFB54;
+extern s16 func_8007B1C4(s16 x, s16 z, s32 walkmeshId, s16* out, s32* state);
+extern int FieldScriptArgument3(int index, int mask);
+extern int FieldScriptArgument4(int index, int mask);
 long FieldGetVec3Magnitude(long x, long y, long z);
+long FieldGetVec2Magnitude(long x, long y);
 s32 func_80099AC0(s32 useStoredAngle);
 extern s32 func_8007B694(s32* arg0);
 
@@ -287,7 +292,226 @@ void func_80098CAC(s32 arg0) {
     func_80081F80(pSprite, g_FieldScriptVMCurActor->rotation.vx, D_800B06B8);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80099214);
+/*
+ * asm 80099214-8009997C, opcode 0x57. Actor jump/lerp with gravity (not a
+ * camera opcode). Mode from SCRIPT_READ_U8_REL(1) & 3:
+ *   0: init from absolute x/z/y + step count (arg4); bit 0x80 resolves Y via
+ *      walkmesh (func_8007B1C4).
+ *   1: init from absolute x/z + speed (arg4) → step count via XZ magnitude.
+ *   2: arc/jump: derive step count from gravity + Y delta via SquareRoot0.
+ *   3: if byte1==0xF, refresh walkmesh tris and clear 0x10000/0x200000;
+ *      else tick: advance by unkD0 + sprite step.vy/gravity until unk102
+ *      reaches unkE0, then rewind IP by 0xB to re-read init args, snap, and
+ *      skip init+continue (IP += 0xD). Always yields via D_800B00C0=1.
+ */
+void func_80099214(void) {
+    FieldActor* fieldActor;
+    SpriteData* sprite;
+    ActorData* actor;
+    u8 modeByte;
+    u8 mode;
+    u8 argMask;
+    s32 targetX;
+    s32 targetZ;
+    s32 targetY;
+    s32 stepCount;
+    s32 walkmeshId;
+    s32 stepVy;
+    s32 dx;
+    s32 dz;
+    s32 i;
+    s32 state[4][4];
+    s16 out[4][4];
+    s16* outRow;
+    s32 negDuration;
+    s32 yDelta;
+    s32 tmp;
+
+    fieldActor = &g_FieldActors[D_800AFD1C];
+    sprite = (SpriteData*)(uintptr_t)fieldActor->pSpriteData;
+    actor = g_FieldScriptVMCurActor;
+
+    actor->scriptFlags.flags |= 0x10000;
+    modeByte = SCRIPT_READ_U8_REL(1);
+    mode = modeByte & 3;
+
+    if (mode == 1) {
+        /* Absolute X/Z + speed → step count from XZ distance. */
+        argMask = SCRIPT_READ_U8_REL(0xA);
+        targetX = FieldScriptArgument1(2, argMask);
+        argMask = SCRIPT_READ_U8_REL(0xA);
+        targetZ = FieldScriptArgument2(4, argMask);
+        dx = (targetX << 16) - actor->position.vx;
+        dz = (targetZ << 16) - actor->position.vz;
+        argMask = SCRIPT_READ_U8_REL(0xA);
+        stepCount = FieldScriptArgument4(8, argMask);
+        stepCount = FieldGetVec2Magnitude(dx >> 16, dz >> 16) / stepCount;
+        goto shared_init;
+    }
+
+    if (mode >= 2) {
+        if (mode == 2) {
+            /* Gravity arc: step count from SquareRoot0 chain; shared_init
+             * re-reads targets and recomputes step.vy. */
+            argMask = SCRIPT_READ_U8_REL(0xA);
+            FieldScriptArgument1(2, argMask);
+            argMask = SCRIPT_READ_U8_REL(0xA);
+            FieldScriptArgument2(4, argMask);
+            argMask = SCRIPT_READ_U8_REL(0xA);
+            targetY = FieldScriptArgument3(6, argMask);
+            argMask = SCRIPT_READ_U8_REL(0xA);
+            negDuration = -FieldScriptArgument4(8, argMask);
+
+            /* asm: lh gravity@+0x1E (high half), SquareRoot0(hi * -2*arg4),
+             * stash -(sqrt<<16) into step.vy (overwritten by shared_init),
+             * discard SquareRoot0(-arg4), stepCount = SquareRoot0(|-arg4 - dy|). */
+            tmp = (s16)(sprite->gravity >> 16);
+            yDelta = (targetY << 16) - actor->position.vy;
+            tmp = SquareRoot0(tmp * (negDuration << 1));
+            sprite->step.y = -(tmp << 16);
+            SquareRoot0(negDuration);
+
+            tmp = negDuration - (yDelta >> 16);
+            if (tmp < 0) {
+                tmp = -tmp;
+            }
+            stepCount = SquareRoot0(tmp);
+            if (stepCount < 0) {
+                stepCount = -stepCount;
+            }
+            goto shared_init;
+        }
+
+        if (mode == 3) {
+            if (modeByte == 0xF) {
+                /* Cleanup: refresh walkmesh triangle ids, clear jump flags. */
+                for (i = 0; i < D_800AFB54 - 1; i++) {
+                    actor->walkmeshTriIds[i] = func_8007B1C4(
+                        (s16)(actor->position.vx >> 16),
+                        (s16)(actor->position.vz >> 16),
+                        i,
+                        out[i],
+                        state[i]
+                    );
+                }
+                actor->scriptFlags.flags &= ~0x10000;
+                actor->flags &= ~0x200000;
+                actor->scriptInstructionPointer += 2;
+                D_800B00C0 = 1;
+                return;
+            }
+
+            /* Continue / complete tick. */
+            if (actor->unk102 < (s16)actor->unkE0) {
+                actor->position.vx += actor->unkD0.vx;
+                actor->position.vz += actor->unkD0.vz;
+                actor->position.vy += sprite->step.y;
+                sprite->step.y += sprite->gravity;
+
+                if (actor->unkD0.vx != 0 || actor->unkD0.vz != 0) {
+                    if (!(actor->scriptFlags.flags & 0x8000)) {
+                        tmp = func_8007B694((s32*)&actor->unkD0) | 0x8000;
+                        actor->rotation.vx = tmp;
+                        actor->rotation.vy = tmp;
+                    }
+                }
+            } else {
+                /* Rewind to the paired init opcode to re-read snap targets. */
+                actor->scriptInstructionPointer -= 0xB;
+
+                argMask = SCRIPT_READ_U8_REL(0xA);
+                targetX = FieldScriptArgument1(2, argMask);
+                argMask = SCRIPT_READ_U8_REL(0xA);
+                targetZ = FieldScriptArgument2(4, argMask);
+
+                if (SCRIPT_READ_U8_REL(1) & 0x80) {
+                    argMask = SCRIPT_READ_U8_REL(0xA);
+                    walkmeshId = FieldScriptArgument3(6, argMask);
+                    outRow = out[walkmeshId];
+                    actor->walkmeshTriIds[walkmeshId] = func_8007B1C4(
+                        targetX,
+                        targetZ,
+                        walkmeshId,
+                        outRow,
+                        state[walkmeshId]
+                    );
+                    targetY = outRow[1];
+                } else {
+                    argMask = SCRIPT_READ_U8_REL(0xA);
+                    targetY = FieldScriptArgument3(6, argMask);
+                }
+
+                sprite->step.y = 0;
+                actor->position.vx = targetX << 16;
+                actor->position.vy = targetY << 16;
+                actor->position.vz = targetZ << 16;
+                actor->scriptFlags.flags &= ~0x10000;
+                actor->flags &= ~0x200000;
+                actor->scriptInstructionPointer += 0xD;
+            }
+
+            /* Sync field actor transform + sprite position; bump step index. */
+            fieldActor->transformMatrix.t[0] = actor->position.vx >> 16;
+            fieldActor->transformMatrix.t[1] = actor->position.vy >> 16;
+            fieldActor->transformMatrix.t[2] = actor->position.vz >> 16;
+            sprite->position.x = actor->position.vx;
+            sprite->position.y = actor->position.vy;
+            sprite->position.z = actor->position.vz;
+            actor->unk102++;
+            D_800B00C0 = 1;
+            return;
+        }
+
+        D_800B00C0 = 1;
+        return;
+    }
+
+    if (mode != 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    /* Mode 0: step count from arg4. */
+    argMask = SCRIPT_READ_U8_REL(0xA);
+    stepCount = FieldScriptArgument4(8, argMask);
+
+shared_init:
+    if (stepCount == 0) {
+        stepCount = 1;
+    }
+
+    argMask = SCRIPT_READ_U8_REL(0xA);
+    targetX = FieldScriptArgument1(2, argMask);
+    argMask = SCRIPT_READ_U8_REL(0xA);
+    targetZ = FieldScriptArgument2(4, argMask);
+
+    if (SCRIPT_READ_U8_REL(1) & 0x80) {
+        argMask = SCRIPT_READ_U8_REL(0xA);
+        walkmeshId = FieldScriptArgument3(6, argMask);
+        outRow = out[walkmeshId];
+        func_8007B1C4(targetX, targetZ, walkmeshId, outRow, state[walkmeshId]);
+        targetY = outRow[1];
+        actor->walkmeshId = walkmeshId;
+    } else {
+        argMask = SCRIPT_READ_U8_REL(0xA);
+        targetY = FieldScriptArgument3(6, argMask);
+    }
+
+    /* Initial vertical velocity: -gravity*steps/2, then add Y lerp term. */
+    stepVy = (s32)sprite->gravity * stepCount;
+    stepVy = (stepVy + ((u32)stepVy >> 31)) >> 1;
+    stepVy = -stepVy;
+    sprite->step.y = stepVy;
+    sprite->step.y = stepVy + ((targetY << 16) - actor->position.vy) / stepCount;
+
+    actor->unkD0.vy = 0;
+    actor->unkE0 = stepCount;
+    actor->unk102 = 0;
+    actor->scriptInstructionPointer += 0xB;
+    actor->unkD0.vx = ((targetX << 16) - actor->position.vx) / (stepCount + 1);
+    actor->unkD0.vz = ((targetZ << 16) - actor->position.vz) / (stepCount + 1);
+    D_800B00C0 = 1;
+}
 
 void func_80099980(void) {
     g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x17 = 0;
