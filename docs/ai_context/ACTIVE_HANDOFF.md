@@ -12,6 +12,27 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — 🔬 CAMERA-ZONE / eye2=+1491: RETAIL-ACCURATE (encounter bit skips clamp)
+
+- **Question:** is `eye2=(-564,1491,512) angY=-1536` an illegitimate port pose, or retail-reachable?
+- **How eye2/angY are derived (no separate “zone config” table for this path):**
+  - Mode 0/2: `func_80073230` → `func_80072A38(actorPos)` (matching). Follow-Y/Z from `sceneDIP` (`g_Scene+0x6C`), `sceneSCRZ` (`+0x68`), `sceneScale` (`+0x6E`) via rsin/rcos `(91*DIP)>>3 + 0xC00` — Noah `field.cpp:6212-6214`.
+  - Eye-Y mesh clamp: `if (!(unk48 & 0x4000))` probe top walkmesh layer; snap if `meshY < eye2.y` — asm `800733C4-8007340C`, Noah `6315-6321`.
+  - Log `angY` = `g_CamInterpolation.curAngleY` = `ratan2(at−eye) − 0x400` (`func_800739C0`) — **output**, not a zone input. `-1536` is normal Lahan yaw (also at spawn once settled).
+- **CAMZ capture** (`cullcam_camz_auto.log` / `cullcam_camz_spawn.log` / stock+forceclamp A/B):
+  | State | unk48 | enc | eye2.y | meshY | emit | nclip_bf |
+  |---|---|---|---|---|---|---|
+  | Lahan spawn (ent6) | `0` | 0 | **−1009** (clamped) | −1009 | ~32 | ~97 |
+  | Well stock | `0xC000` | −1 | **+1491** | −970 | **66** | **967** |
+  | Well + force clear bit14 only (diag) | `0x8000` | −1 | **−970** | −970 | **99** | **164** |
+  - Same DIP=30, SCRZ=768, scale=4696 at spawn and well — only the clamp gate differs.
+  - Well TP f=0 still clamped; f=1 zone fires → `ori 0xC000` → unclamped +1491.
+- **Asm:** `func_80093B10` (Map1 encounter-enable / Noah `OP_START_CINEMATIC`-class) **`ori 0xC000`** (`asm/.../func_80093B10.s:15`). Bit14 is the intentional clamp-skip packed with that opcode. Map1 zones 0–7 all call this (prior zone-fire handoff). Clearing bit14 would **diverge from retail** — not a faithfulness fix.
+- **Verdict: camera-zone CONFIRMED retail-accurate (dead end as a port bug).** The “extreme” eye Y is the correct unclamped follow-Y after retail encounter-enable disables the height check. `angY=-1536` is not anomalous.
+- **Diag note (not committed):** forcing clamp at the well improves walker emit 66→99 and nclip 967→164 — explains the black void *mechanically*, but the flag state is retail. Do not ship that.
+- **Logger:** gated `CAMZ` kept (first activity frames + well pose); WELL_TP / FORCE_CLAMP removed.
+- **Fei/well status:** NCLIP, FLAG, and camera-pose leads all closed as retail-plausible. Remaining: sprite/non-walker paths, or confirm whether retail visually matches this encounter-on low camera (if retail looks fine, chase a different divergence — e.g. whether encounters should be on at the well for New Game flags).
+
 ## July 11 — 🔬 FLAG/gte31 bucket looks RETAIL-PLAUSIBLE (SX/SY sat); not a bad bit-check
 
 - **Sites audited (live C FLAG culls):** 5 model walkers in `game_overrides.c` (`flag < 0` after `RotTransPers3/4`), `temp2.c:func_8002E688` (0x0D), `misc2.c:func_80075B44` actor skip after `RotTransPers`. All inherit bfdae3d sign-extend. Retail: `bltz` on FLAG after RTPT/RTPS (~17 temp2 walkers + actor path). No second unfixed sign-extend site found.
@@ -21,7 +42,7 @@
   - `otz` always in 333..1741 (mean ~685) — valid depth, not degenerate `otz=0`.
   - SXY sit on sat rails (`sx` −1024..1023, `sy` −1024..438); 123/144 sx and 100/144 sy at `|coord|≥1023`.
   - Model verts large but coherent (`|w|>2000` on 127/144; e.g. `(-2880,68,-720)`, `(-432,-94,3023)`), not garbage noise — far/large field mesh under extreme oblique projection.
-- **Implication:** the ~340 FLAG drops are **likely retail-accurate SX/SY saturation culls**, same class as NCLIP being retail-accurate. Do **not** weaken `flag < 0`. Remaining well-black / Fei gap is elsewhere: (1) should retail camera even reach this eye2/angY (zone/clamp)?, (2) non-walker / sprite paths uninstrumented, (3) wrong matrix scale inflating verts (less likely given NCLIP samples at same pose use small verts).
+- **Implication:** the ~340 FLAG drops are **likely retail-accurate SX/SY saturation culls**, same class as NCLIP being retail-accurate. Do **not** weaken `flag < 0`. Remaining well-black / Fei gap: camera-zone lead **also closed** (encounter bit skips clamp — retail); next is sprite/non-walker paths or retail visual cross-check.
 - **Logger:** gated `FLAG_SAMPLE` kept (like `NCLIP_SXY`); WELL_TP removed after capture.
 
 ## July 11 — 🔧✅ MATCHING LINK RESTORED: orphaned jtbls + g_Heap + slus dual-defs unblocked; sha256 still unmatched
@@ -53,7 +74,7 @@
   - All 144 screen verts on/near 320×240 (`sx` 43..337, `sy` −15..285); **zero** `|sxy|>1024`.
   - Screen cross 2A all negative (same sign as OPZ).
   - Model-space verts coherent s16 ranges (X/Y ±228, Z −544..196); no extreme garbage.
-- **Implication:** the ~950 backface drops are **likely retail-accurate NCLIP on sane SXYs**. Do not disable NCLIP. **FLAG/gte31 since closed as retail-plausible SX/SY sat** (see FLAG handoff above). Remaining gap: camera-zone legitimacy at this pose, and/or non-walker / sprite paths.
+- **Implication:** the ~950 backface drops are **likely retail-accurate NCLIP on sane SXYs**. Do not disable NCLIP. **FLAG/gte31** and **camera-zone** since closed as retail-plausible. Remaining: sprite/non-walker paths, or retail visual cross-check at encounter-on pose.
 
 ## July 11 — 🧩 LANE B: func_80072254 decompiled (actor rotation+scale matrix rebuild) — behaviorally-equivalent match (75.55% objdiff fuzzy), completes the EX-0x03 scale opcode
 

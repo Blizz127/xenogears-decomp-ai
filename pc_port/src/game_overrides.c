@@ -552,7 +552,9 @@ void PcPort_CullCamLogOnVsync(void) {
                 "# NCLIP_SXY lines: sample of backface drops at well pose "
                 "(eye2~-564,1491,512 angY=-1536) or after MARK — SXY + OPZ + model-space verts\n"
                 "# FLAG_SAMPLE lines: sample of flag<0 drops at same pose — raw FLAG bits + "
-                "preceding RotTransPers* (RTPT3/RTPT4) + SXY + model verts\n");
+                "preceding RotTransPers* (RTPT3/RTPT4) + SXY + model verts\n"
+                "# CAMZ lines: camera-zone / clamp gate — unk48, bit4000 (skip eye-Y "
+                "mesh clamp), sceneDIP/SCRZ/scale, camMode, meshY at eye2 XZ, enc\n");
     }
 
     selectEdge = (u16)(g_C1ButtonStateReleased & CTRL_BTN_SELECT);
@@ -588,6 +590,60 @@ void PcPort_CullCamLogOnVsync(void) {
     }
     if (s_ccMarkArmFrames > 0) {
         s_ccMarkArmFrames--;
+    }
+
+    /* CAMZ: once per well-pose (or MARK) — clamp-gate + sceneDIP/SCRZ + mesh probe.
+     * Does NOT modify camera state; re-probes the same path as func_80073230. */
+    {
+        static int s_camzLogged;
+        int atPose = CullCamAtWellPose();
+        /* Also sample the first few activity frames so spawn/approach state is
+         * visible even before the well pose (unk48 / DIP / meshY). */
+        if ((atPose || mark || s_camzLogged < 4) && s_camzLogged < 12) {
+            extern s16 g_FieldCameraMode;
+            extern s16 D_800AFB54;
+            extern FieldControl g_FieldControl;
+            extern s16 func_8007B1C4(s16 a0, s16 a1, s32 a2, void* a3, void* a4);
+            s16 meshPoint[4];
+            s32 meshNormal[4];
+            s32 unk48 = g_Scene.unk48;
+            int bit4000 = (unk48 & 0x4000) != 0;
+            s16 dip = *(s16*)((u8*)&g_Scene + 0x6C);
+            s32 scrz = *(s32*)((u8*)&g_Scene + 0x68);
+            s16 scale = *(s16*)((u8*)&g_Scene + 0x6E);
+            s16 sceneAng56 = *(s16*)((u8*)&g_Scene + 0x56);
+            int e2x = (int)(g_CameraEye2.vx >> 16);
+            int e2y = (int)(g_CameraEye2.vy >> 16);
+            int e2z = (int)(g_CameraEye2.vz >> 16);
+            int meshY = 0x7FFF;
+            int meshRet = -1;
+            int wouldSnap = 0;
+            meshPoint[0] = meshPoint[1] = meshPoint[2] = meshPoint[3] = 0;
+            meshNormal[0] = meshNormal[1] = meshNormal[2] = meshNormal[3] = 0;
+            meshRet = (int)func_8007B1C4((s16)e2x, (s16)e2z, D_800AFB54 - 1,
+                                         meshPoint, meshNormal);
+            meshY = (int)meshPoint[1];
+            wouldSnap = (!bit4000 && meshY < e2y) ? 1 : 0;
+            fprintf(s_ccFile,
+                    "CAMZ f=%u unk48=0x%08x bit4000=%d camMode=%d AFB54=%d "
+                    "DIP=%d SCRZ=%d scale=%d scene56=%d "
+                    "eye2=%d,%d,%d meshY=%d meshRet=%d wouldSnap=%d "
+                    "eye=%d,%d,%d at2=%d,%d,%d angY=%d enc=%d\n",
+                    s_ccFrame, (unsigned)unk48, bit4000, (int)g_FieldCameraMode,
+                    (int)D_800AFB54, (int)dip, (int)scrz, (int)scale,
+                    (int)sceneAng56, e2x, e2y, e2z, meshY, meshRet, wouldSnap,
+                    (int)(g_CameraEye.vx >> 16), (int)(g_CameraEye.vy >> 16),
+                    (int)(g_CameraEye.vz >> 16),
+                    (int)(g_CameraAt2.vx >> 16), (int)(g_CameraAt2.vy >> 16),
+                    (int)(g_CameraAt2.vz >> 16),
+                    (int)g_CamInterpolation.curAngleY,
+                    (int)g_FieldControl.isRandomEncountersEnabled);
+            fprintf(stderr,
+                    "[cull-cam] CAMZ bit4000=%d DIP=%d SCRZ=%d meshY=%d eye2y=%d "
+                    "wouldSnap=%d\n",
+                    bit4000, (int)dip, (int)scrz, meshY, e2y, wouldSnap);
+            s_camzLogged++;
+        }
     }
 
     fprintf(s_ccFile,
