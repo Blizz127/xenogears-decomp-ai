@@ -714,14 +714,35 @@ s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
 }
 
 s32 func_80082494(s32* pVec, u8* actorData) {
-    (void)pVec;
+    s16* clipPoints;
+    s32 x;
+    s32 z;
+    s32 position;
+    s32 point0;
+    s32 point1;
+    s32 point2;
+    s32 point3;
 
     if ((*(u32*)(actorData + 0x12C) & 0x1000) == 0) {
         return 0;
     }
 
-    assert(!"func_80082494 clipping branch not migrated");
-    return 0;
+    x = (*(s32*)(actorData + 0x20) + pVec[0]) >> 16;
+    z = (*(s32*)(actorData + 0x28) + pVec[2]) >> 16;
+    position = (x << 16) + z;
+
+    clipPoints = (s16*)(uintptr_t)*(u32*)(actorData + 0x114);
+    point0 = ((s32)clipPoints[0] << 16) + clipPoints[1];
+    point1 = ((s32)clipPoints[2] << 16) + clipPoints[3];
+    point2 = ((s32)clipPoints[4] << 16) + clipPoints[5];
+    point3 = ((s32)clipPoints[6] << 16) + clipPoints[7];
+
+    if (NormalClip(point0, point1, position) < 0 ||
+        NormalClip(point1, point2, position) < 0 ||
+        NormalClip(point2, point3, position) < 0) {
+        return -1;
+    }
+    return NormalClip(point3, point0, position) >> 31;
 }
 
 extern long FieldGetVec2Magnitude(long x, long y);
