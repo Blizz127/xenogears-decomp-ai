@@ -420,11 +420,48 @@ void FieldScriptWriteCameraTweenPosition(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090C20);
+/* Camera mode 1 exposes its yaw, pitch, and distance through script
+ * variables.  A zero type byte means read the live value into the supplied
+ * variable; any nonzero type byte writes the supplied immediate value back
+ * into the camera-mode state. */
+void func_80090C20(void) {
+    if (SCRIPT_READ_U8_REL(3) == 0) {
+        FieldScriptMemoryWriteU16(
+            FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
+            D_800AF938);
+    } else {
+        D_800AF938 = FieldScriptVMGetInstructionArgument(1);
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090CB8);
+    g_FieldScriptMaxInstructionCount++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090D50);
+void func_80090CB8(void) {
+    if (SCRIPT_READ_U8_REL(3) == 0) {
+        FieldScriptMemoryWriteU16(
+            FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
+            D_800AF936);
+    } else {
+        D_800AF936 = FieldScriptVMGetInstructionArgument(1);
+    }
+
+    g_FieldScriptMaxInstructionCount++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
+
+void func_80090D50(void) {
+    if (SCRIPT_READ_U8_REL(3) == 0) {
+        FieldScriptMemoryWriteU16(
+            FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
+            D_800AF930);
+    } else {
+        D_800AF930 = FieldScriptVMGetInstructionArgument(1) & 0xFFFF;
+    }
+
+    g_FieldScriptMaxInstructionCount++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 void func_80090DEC(void) {
     FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, D_800AF938);
