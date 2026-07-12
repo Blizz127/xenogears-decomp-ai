@@ -286,3 +286,14 @@ Newest entries at the bottom.
 - **Not proven / still open:** The initial painting/distortion composite is absent because `FieldDistortionInitialize` and the active `FieldDistortionDraw` path remain unmigrated and must land together. Synthetic new-game party `(0,0,0)` is still upstream of Map014 and should be fixed in the missing new-game state rather than patched in the field. Normal boot remains Map001 until the complete sequence is safe.
 - **Committed:** yes — 0b1b8ed, 18ff7fa, a181bf2, b171bed. This and the preceding evidence entry pending one log commit.
 - **Stop reason (if stopped early):**
+
+### [2026-07-12 18:35] Lahan opcode sweep and Map014 camera/cull boundary
+- **Hypothesis:** Small, live Map001 script stubs around actor movement and camera state may still affect Lahan sequencing; the Map014 opening's sparse/garbled room might instead be a camera, matrix, or GTE-culling mismatch.
+- **Scope:** Exact field VM handlers in `misc6.c`, `misc7.c`, `misc8.c`, `camera_movement.c`, `text_box.c`; read-only Map014 script/matrix/GTE audit. The in-progress distortion/build-script experiment was not changed.
+- **Change made:** Replaced nine bounded stubs across seven commits with retail-matched C: dialogue readiness; Map001 actor arguments; well camera state; scripted movement clipping; camera yaw/pitch/distance state; movement-to-actor setup; and timed movement origin/interpolation (`func_800976A8`).
+- **Build result:** Targeted matching-object build and exact objdiff for `func_800976A8` report 100%; final native `./pc_port/build_port.sh` completed with `LINK OK`.
+- **Runtime result:** The previously committed movement-to-actor opcode was reached in Map001; the new timed sibling has no direct hit in the bounded entrance-6 trace, so no behavioral improvement is claimed from it alone. A static closure proves camera helper `func_800910C0` (opcode 0xEB) is not reached by the well or early Map001 flow.
+- **Proven:** Map014's raw camera script, retail/Noah matrix order, and PsyCross RTPT values agree with direct fixed-point checks. Representative forward geometry projects exactly; FLAG-bit31 drops are genuine near-plane/behind-camera or winding culls. Do not relax camera/GTE culling. The remaining Map014 visual issue is downstream of emitted packets (texture/raster handling), not a camera/matrix/GTE defect.
+- **Not proven / still open:** No retail-accurate Map014 composite has been restored, and the well's remaining re-entry boundary is separate. Experimental `src/field/effects/distortion.c` and `pc_port/build_port.sh` changes remain uncommitted and were intentionally excluded.
+- **Committed:** `5ecb5d5`, `6ec8301`, `c9c6e1f`, `a6411f7`, `bc6e18e`, `d6e5104`, `1838561`; this log entry pending its own commit.
+- **Stop reason (if stopped early):**
