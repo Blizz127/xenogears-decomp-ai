@@ -260,7 +260,27 @@ void func_80090E70(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80091008);
+void func_80091008(VECTOR* destination, VECTOR* origin, s16 angle) {
+    MATRIX rotationMatrix;
+    VECTOR offset;
+    VECTOR rotatedOffset;
+    SVECTOR rotation;
+
+    rotation.vx = 0;
+    rotation.vy = angle;
+    rotation.vz = 0;
+    PushMatrix();
+    RotMatrix(&rotation, &rotationMatrix);
+
+    offset.vx = origin->vx - destination->vx;
+    offset.vy = origin->vy - destination->vy;
+    offset.vz = origin->vz - destination->vz;
+    ApplyMatrixLV(&rotationMatrix, &offset, &rotatedOffset);
+
+    destination->vx = rotatedOffset.vx + origin->vx;
+    destination->vz = rotatedOffset.vz + origin->vz;
+    PopMatrix();
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_800910C0);
 
