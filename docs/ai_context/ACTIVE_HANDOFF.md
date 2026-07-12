@@ -12,13 +12,91 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## July 11 — ✅ Lane B: `func_800248D4` base ops **0x20–0x2F** (frame−1) — needed once Fei ticks; well still stalls at invisible `0x5e`
+
+- **HEAD base:** `86722cc`. New change: `src/slus_006.64/system/temp1.c` (`func_800248D4`). Prior uncommitted: `misc7.c` (`func_80099214`), `gen_port_stubs.py`, handoff. No `pc_port/**`. Not committed (cam-clear still incomplete).
+- **Finding:** force-visible Fei through anim-5 hits **`opcode 0x27`** → fell off the end of `func_800248D4` (assert line ~825). Retail asm `.L80024998` handles **0x20–0x2F** like 0x00–0x0F but `func_8001D2B0(frameIndex - 1)`.
+- **Impl:** added that range; LINK OK; smokes ent8/ent0/Map0 **RC=124**, 0 crashmarks.
+- **Well without hacks:** still **`op=0x5e` @IP242**, `status=0x261` **inv=1**, latch never sets. A14 `HideActorById(1)` @f≈56 IP587; A1 r5 observed entry **IP≈208** (past early `0x22` SHOW); no SHOW after the hide.
+- **Force-vis after 0x27 fix:** progresses into **dedicated** `248D4` assert path (next gap), then further stubs.
+- **Next:** visibility lifecycle (why A1 never re-SHOW after A14 hide / whether `flags|=0x1000000` should keep hidden actors ticking) + specific dedicated `248D4` opcode(s); then FE64/dialog. Do **not** ship force-visible hacks.
+
+## July 11 — 🛑 Lane B `func_8009A1AC` (op `0x5e`) task: **already matching — STOP** (true blocker is anim latch)
+
+
+- **Premise was stale.** Task assumed `func_8009A1AC` was `INCLUDE_ASM`; it is **not**.
+- **Both handlers already decompiled + matching** (`asm/field/matchings/main/misc7/`):
+  - `func_8009A174` (op `0x5d`, blizz `da2c9da` Jun30): `PlayAnimation()` then `flags &= ~0x10000`
+  - `func_8009A1AC` (op `0x5e`, blizz `20dd948` jun30): if `flags & 0x10000` → `unkAnimationId=0xFF`, `IP+=1`; else spin (no IP advance)
+- **Asm (quoted):** `lw flags@+4; andi 0x10000; beqz → jr`; else `sh 0xFF @+0xEA; lhu IP@+0xCC; addiu 1; sh IP`. Wait = re-poll each VM tick with IP unchanged.
+- **0x5d is NOT the stub blocker** — it correctly *clears* the latch before waiting. The latch must be *set* by sprite callback `func_80076A74` when the anim script completes.
+- **Validation (no code change this pass):** `scratchpad/well_op57_validate.gdb` Map1 ent6 TP well: `PAST_57` → `op=5d` @IP240 → **`op=5e` @IP242 f≈124** → still `5e` at DONE f=421; `unk48=0xC000`; **0×** `func_80093AC8`; never reaches FE64/`func_8008F5E4`.
+- **Smokes:** ent8/ent0/Map0 **RC=124**, 0 crashmarks.
+- **No commit** (nothing new to land for 0x5e/0x5d). Prior uncommitted `func_80099214` + stubgen fix preserved.
+- **True next blocker (scope ceiling — >2 stubs):** anim-complete latch never sets while Fei invisible / no TimerWorkList / `AnimScriptTick` skipped; then `248D4` dedicated opcodes; then FE64→`8F5E4`→`3A5D0`; dialog `9C154`/`7F5AC`. See prior entry.
+
+## July 11 — 🔬 Lane B next: `0x5e` stall = **invisible Fei + no timer list** (not a missing 0x5e handler)
+
+- **Prior:** `func_80099214` (op `0x57`) decompiled; A1 r5 advances to `0x5d`/`0x5e`.
+- **`0x5e` (`func_8009A1AC`) is already correct** — waits for `actor->flags & 0x10000` set by sprite callback `func_80076A74`.
+- **Why the latch never sets:**
+  1. **A14 `HideActorById` @IP 587** targets actor byte `0x01` (Fei) right after well TP → `status |= 0x20` (invisible).
+  2. Field sprites are created via `func_80024524` → bare `HeapAlloc(0x164)` — **never** `func_800233A4` / `TimerWorkListAddTask` (`numTimer=0` always; 64× `24524`, 0× `233A4`).
+  3. `func_800752C8` only `AnimScriptTick`s when `(status&0x60)==0x40` **or** `flags&0x1000000`. Invisible Fei has `(status&0x60)==0x60` and PlayAnimation clears `0x1000000` → **no ticks**.
+  4. Sprite sits at `wait=1` with callback `func_80076A74` armed forever → `0x5e` spins.
+- **A1 r5 bytecode** (IP 189): has `22` SHOW before the jump/`5d`/`5e` sequence — but A14’s hide-by-id still wins on the observed timeline (`inv=1` at `0x5e`).
+- **Force-visible experiment:** clearing `0x20` each frame lets ticks run → hits **`func_800248D4` dedicated opcode assert** (`0x85/86/87/8E/98/A7/BE/C8/D4/E2/FA` still unported) and/or related anim paths. So visibility alone is not enough; anim VM gaps are next.
+- **Remaining dependency chain (STOP — exceeds 2–3 small stubs):**
+  1. Visibility lifecycle vs A14 hide (why SHOW doesn’t stick / whether retail keeps Fei tickable while hidden)
+  2. `func_800248D4` dedicated opcodes (anim script VM)
+  3. Dialog: `FE64`→`func_8008F5E4`→`func_8003A5D0`; `func_8009C154`; `func_8007F5AC`
+  4. Stub `func_8009E91C` (op `0x17`, matched C commented out in `misc6.c`)
+- **Not committed.** Diags: `scratchpad/well_{5e,timer,list,forcevis,badop,a1r5}_*.gdb`.
+- **Next task candidate:** either (a) port the specific `248D4` opcode Fei’s anim-5 script hits, plus ensure Fei remains AnimScriptTick-eligible through the wait, or (b) register field sprites on the timer list (larger, `24524`/`233A4` structural change — prefer asm proof first).
+
+## July 11 — ✅ Lane B: `func_80099214` (op `0x57`) decompiled — prior hard-stall cleared; chain stops next at anim/dialog
+
+
+- **HEAD base:** `86722cc`. Changes: `src/field/main/misc7.c` (`func_80099214`), tiny `tools/scripts/gen_port_stubs.py` fix (skip self-stub of `xeno_port_stub` so LINK OK). No `pc_port/**`. Not committed (full cam-clear validation incomplete).
+- **Semantics (asm-derived, NOT a camera opcode):** actor **jump/lerp with gravity**. Mode = `SCRIPT_READ_U8_REL(1) & 3`:
+  - **0:** init from abs x/z/y + step count (arg4); bit `0x80` resolves Y via `func_8007B1C4`.
+  - **1:** abs x/z + speed → step count via XZ magnitude.
+  - **2:** arc via `SquareRoot0` + gravity halfword @ sprite+0x1E.
+  - **3:** `0xF` = cleanup (refresh walkmesh tris, clear `scriptFlags&~0x10000` + `flags&~0x200000`); else tick `unkD0` + `sprite.step.y`/`gravity` until `unk102>=unkE0`, rewind IP by `0xB` to re-read init args, snap, `IP+=0xD`. Always `D_800B00C0=1`.
+- **Key asm:** `ori scriptFlags,0x10000`; init stores `unkD0.vx/vz`, `unkE0=steps`, `step.y = -(gravity*steps/2) + dy/steps`; continue applies gravity each frame; complete clears jump flags.
+- **Validation (gdb `scratchpad/well_op57_validate.gdb`, field-test Map1 ent6, TP well `(57,-110)`):**
+  - **PASS:** A1 r5 no longer hard-stalls at `ip=211 op=57`. `HIT_99214` mode `0x80` then `0x8f` ticks (~22 frames) → `PAST_57` to `op=26`, then `57`/`74`/`2c`/`5d`/`5e`.
+  - **FAIL (expected next blockers):** `unk48` stays `0xC000`, `eye2y≈1491`, **0×** `func_80093AC8` / `func_8009AE0C`. New stick: **`op=0x5e` (`func_8009A1AC`)** waits for `actor->flags & 0x10000` (anim-complete latch). `0x5d` (`func_8009A174`) clears that bit after `FieldScriptVMHandlerPlayAnimation`.
+- **Scope ceiling — STOP here.** Additional in-path stubs (do **not** open-ended implement in this pass):
+  1. Anim-complete latch feeding `0x5e` (animation path / `flags|=0x10000`)
+  2. `FE 64` → `func_8008F5E4` (~37 insn) → **`func_8003A5D0`** (sound, also stubbed)
+  3. Dialog: `func_8009C154` (~265 insn), `func_8007F5AC` (~85 insn)
+- **Build/smokes:** `LINK OK`; ent8/ent0/Map0 **RC=124**, 0 crashmarks.
+- **Next task:** unblock `0x5e` anim-complete (and/or dialog FE64 path) until A14 reaches `@649 FE 53` and `unk48&0x4000` clears.
+
+## July 11 — 🔬 WELL CAMERA = **jump-in cinematic mid-state** (shape **C**, with B-stick) — NO FIX; do NOT implement full well feature here
+
+- **HEAD:** `86722cc`. Dirty: this handoff + `?? scratchpad/` only. No code change.
+- **Verdict: failure shape C (primary), B as the stick mechanism.** The `eye2.y≈+1491` / `unk48|=0xC000` pose is **not** a free-walk encounter-zone bug and **not** a wrong surface trigger vs retail map logic — it is the **well jump-in interaction’s mid-cinematic camera state**. On the port the cinematic **starts** on AABB entry then **stalls**, so surface approach looks like a permanent black-void camera. Retail surface photo = high cam because that interaction is not mid-flight (outside trigger, or completed).
+- **Well jump-in script EXISTS in Map1 data (retail + port load the same bytes):**
+  - **Actor 14** = invisible well trigger `(−70,−214)`, `flags0=0x21b0` (`0x2000` force-AABB), half 120×120 → covers well `(57,−110)`.
+  - Auto-interact `func_8008399C` `scriptId=3` (matching asm) → **A14 routine 3**.
+  - **A14 lifecycle:** init `@568 FE 53` (clear) → idle `5B` → **r3 `@585 FE 54`** (set C000) → hide/sleep → **`09 01 65` wait actor1 r5** → … → **`@649 FE 53` clear** (and another FE53 `@705`). So C000 is **scoped to the interaction**, not a permanent encounter enable.
+  - **Actor 1 routine 5** (IP 189) = the jump-in body: `0x74` warp-dest (`func_8008F668`), **`FE 64`** dialog gate (`func_8008F5E4`, stub), show/anim/sleep, **`0x57`** actor jump/lerp (`func_80099214` — **now decompiled, see Lane B entry above**), **`0xe6`** writes `g_Scene+0x4C..0x52` camera vectors (`func_80091A08`, ported), more `0x57` / dialog (`0x9c`/`0x5d`/`0x5e`) / `0xaa` cam-facing / `FE 0D` waits.
+- **Port implementation status of that interaction:** **partially unblocked.** Prior hard-stick at `op=0x57` is fixed; chain now sticks at **`op=0x5e` anim wait** (+ stubbed dialog helpers). A14 still never reaches `@649 FE 53` → C000 + unclamped eye stick until that lands.
+- **Encounter-enable lifecycle (still accurate, but secondary here):** set=`func_80093B10`/`FE54` `ori 0xC000`; clear=`func_80093AC8`/`FE53` `andi 0x3FFF`. Map1 zones 0–7 are a *different* FE54 use (true random-encounter regions, far from the well). Well FE54 is the **cinematic** use of the same opcode.
+- **Trace:** inside AABB → C000 in ~2f, eyeY=+1491, A1 r5 stuck `ip=211 op=57`; outside e.g. `(80,−110)` → bit 0, eyeY≈−973. Logs under `scratchpad/enc_*.log`.
+- **No fix this pass** (stop condition: missing well jump-in feature / multi-stub chain — do **not** implement dialog+camera+item+anim here; do **not** clear C000 as a workaround).
+- **Recommendation:** treat **“Lahan well jump-in interaction”** as its **own scoped task** (min: `func_80099214` op `0x57`, then `FE 64` dialog path, then verify A14 reaches FE53@649 and surface cam restores). Until that lands, surface approach into A14’s AABB will keep reproducing the black-void mid-cinematic pose. Well black-screen investigation is **explained**, not closed.
+- **Fei/well status:** root cause identified as **incomplete well jump-in cinematic**; cull/clamp math remain closed.
+
 ## July 11 — 📷✅ RETAIL WELL VISUAL: bright high-cam ≠ port black-void — REAL DIVERGENCE
 
 - **Retail capture (user, CRT photo):** `scratchpad/retail_well_ref.png` (+ `retail_well_highcam.png`). Fei at the Lahan well, **normal high angle**, full grass/buildings/NPCs/compass, meanRGB≈(101,118,61), nearblack≈0.05. User confirms this is the retail view at that spot.
 - **Port capture (same logical well):** `scratchpad/port_well_ref_pose.png` — `eye2≈(−565,+1491,511)` with `unk48|=0xC000` (encounter clamp-skip), meanRGB≈(11,10,7), nearblack≈0.88 — floating chunks in black. Matches the earlier free-play MARK black frames.
 - **Conclusion:** at the well during free play, **retail stays on the bright high camera; the port’s near-black low/unclamped pose is NOT what retail shows.** Prior mechanism audits (NCLIP / FLAG / clamp math) remain valid for *that* pose, but the pose itself is the wrong outcome vs retail at this location.
 - **No code fix this pass** (comparison-only). 
-- **Next lead (targeted):** why the port reaches/stays unclamped (`eye2.y≈+1491`, typically `unk48&0x4000`) at the well while retail’s camera stays high/clamped there — e.g. Map1 encounter-enable (`func_80093B10` / `ori 0xC000`) firing or sticking when it shouldn’t for New Game free walk, missing clear (`func_80093AC8`), or another path leaving the clamp gate off. Do **not** re-open NCLIP/FLAG bit checks; chase **when/why bit14 is set** (or clamp skipped) relative to retail free-play at the well.
+- **Next lead:** superseded by the lifecycle pass above (shape B / `func_80099214` stall).
 - **Fei/well status:** investigation **not closed** — visual divergence confirmed; mechanism leads on cull math closed; camera **state** at the well is the remaining bug-shaped lead.
 
 ## July 11 — 📷 AWAITING RETAIL WELL REF: port pose locked; user emulator capture next
