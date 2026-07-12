@@ -7,6 +7,7 @@
 #include "field/script_vm.h"
 #include "field/text_box.h"
 #include "field/particles.h"
+#include "field/effects.h"
 
 void FieldScriptMemoryWriteU16(int, int);
 
@@ -686,7 +687,32 @@ void func_8008B2F0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xF;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B328);
+void func_8008B328(void) {
+    switch (SCRIPT_READ_U8_REL(1)) {
+        case 0:
+            FieldDistortionSetTarget(0, 0, 0, 0, 0, 0, FieldScriptVMGetArgument(2));
+            g_FieldEffects.distortion.isFinished = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+            break;
+        case 1:
+            if (g_FieldEffects.distortion.isActive == 0) {
+                g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            } else {
+                g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+            }
+            break;
+        case 2:
+            g_FieldEffects.distortion.isActive = 0;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        case 3:
+            FieldDistortionFree();
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+    }
+
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B45C);
 
