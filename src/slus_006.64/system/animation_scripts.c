@@ -767,12 +767,11 @@ void func_800223B0(void* pSpriteData, s16 arg1) {
     *(u32*)(pData + 0x3C) = flags3C;
 }
 
-/* Animation bytecode length table, mechanically copied from the retail
- * sdata blob (asm/slus_006.64/data/3F290.sdata.s, dlabel D_8004FC40).
- * Only entries >= 0x80 are ever consulted (the sub-0x80 opcodes take
- * dedicated paths); the low bytes are kept verbatim for fidelity.
- * A real definition is required: an auto-stubbed zero table would
- * advance the bytecode PC by 0 and hang the interpreter. */
+/* Animation bytecode length table. Retail lives in sdata
+ * (asm/slus_006.64/data/3F290.sdata.s, dlabel D_8004FC40). Matching build
+ * links that blob; the PC port needs a real definition (an auto-stubbed
+ * zero table would advance the bytecode PC by 0 and hang the interpreter). */
+#ifdef XENO_PC_PORT
 const u8 D_8004FC40[256] = {
     16, 231, 46, 112, 80, 16, 60, 112, 255, 127, 80, 144, 160, 16, 88, 16,  /* 0x00 */
     251, 80, 144, 156, 16, 22, 80, 160, 14, 48, 160, 48, 82, 48, 134, 48,  /* 0x10 */
@@ -791,6 +790,9 @@ const u8 D_8004FC40[256] = {
      3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xE0 */
      3,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  /* 0xF0 */
 };
+#else
+extern u8 D_8004FC40[256];
+#endif
 
 // Run Sprite Animation VM
 void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {

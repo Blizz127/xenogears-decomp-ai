@@ -6,6 +6,17 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", bzero);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memchr);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memcpy);
 
+/* PSYQ gcc 2.7 often lowers memcpy() to jal bcopy (BSD arg order: src,dst,n).
+ * Retail has no standalone bcopy; provide a small non-builtin loop so matching
+ * links when decompiled C still goes through that lowering. */
+void bcopy(void* src, void* dst, int n) {
+    u_char* s = (u_char*)src;
+    u_char* d = (u_char*)dst;
+    while (n-- > 0) {
+        *d++ = *s++;
+    }
+}
+
 void* memmove(u_char* pDst, u_char* pSrc, int size) {
     if (pDst >= pSrc) {
         while (size-- > 0) {
