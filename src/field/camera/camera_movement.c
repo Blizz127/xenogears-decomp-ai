@@ -426,7 +426,13 @@ INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090CB8);
 
 INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090D50);
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_80090DEC);
+void func_80090DEC(void) {
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, D_800AF938);
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(3) & 0xFFFF, D_800AF936);
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(5) & 0xFFFF, D_800AF930);
+    g_FieldScriptMaxInstructionCount++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void func_80090E70(void) {
     VECTOR camAtDest;
