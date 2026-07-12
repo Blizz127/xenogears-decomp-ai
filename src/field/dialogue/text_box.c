@@ -24,6 +24,7 @@ s32 func_80080720(void);
 s32 func_80080760(void);
 s32 func_800807B4(void);
 s32 func_8009C154(s32 targetId);
+s32 func_8009C5A8(s32 actorIndex, s32 mode);
 void func_8007F814(s32 actorIndex, s32* screenX, s32* screenY, s32 yOffset);
 void func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s32 height,
                   s32 ownerActorIndex, s32 talkingActorIndex, s32 mode, s32 orientationFlags,
@@ -138,7 +139,23 @@ void func_8009BF8C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009C01C);
+void func_8009C01C(void) {
+    s32 actorIndex;
+
+    if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
+        /* Keep the retail branch-delay slot empty before resolving the target. */
+        asm volatile("" : : : "memory");
+        actorIndex = FieldScriptVMGetActorIndex(1);
+        g_FieldScriptVMCurActor->scriptInstructionPointer++;
+        if (func_8009C5A8(actorIndex, 0) == -1) {
+            /* The retry branch likewise has an empty retail delay slot. */
+            asm volatile("" : : : "memory");
+            g_FieldScriptVMCurActor->scriptInstructionPointer--;
+        }
+        return;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+}
 
 void func_8009C0B4(void) {
     func_8009C5A8(D_800AFD1C, 0);
