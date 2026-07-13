@@ -361,7 +361,8 @@ static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
 /* PSX GPU hardware rule (see game_overrides.c ModelPrimTriOversized):
  * polygons wider than 1023 or taller than 511 in projected screen space are
  * silently rejected by the rasterizer; PsyX does not implement this. */
-static int ModelPrimPackedOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+/* Kept for reference; retail E688 has no oversize cull. */
+static int __attribute__((unused)) ModelPrimPackedOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     s32 xs[4], ys[4], xmin, xmax, ymin, ymax, i;
     u32 v[4];
     v[0] = xy0; v[1] = xy1; v[2] = xy2; v[3] = xy3;
@@ -410,15 +411,16 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         if (flag < 0 || otz <= 0) {
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
+        /* asm 8002E7AC: blez MAC0 after NCLIP — reject backface/degenerate. */
+        if (NormalClip(xy0, xy1, xy2) <= 0) {
             continue;
         }
         if (!ModelPrimPackedOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
-        if (ModelPrimPackedOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
-            continue;
-        }
+        /* No oversize cull in retail 8002E688 (asm 8002E7CC-8002E894 is only the
+         * screen-overlap + min-SZ OT path). A port-only 1023x511 reject would
+         * delete extreme close-up FT4s (Map014 painting hold). */
 
         {
             /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers4 return), matching
@@ -426,9 +428,6 @@ s32 func_8002E688(u8* pCmd, s32 count) {
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
-            if (otIndex <= 0) {
-                continue;
-            }
             oldTag = ot[otIndex];
             ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
             *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
