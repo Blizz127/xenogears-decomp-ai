@@ -1212,31 +1212,49 @@ void FieldScriptSetParentActor(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags1);
-/*
-Matches as long as g_FieldActors is NOT volatile.
-
 void FieldScriptWriteActorFlags1(void) {
-    ActorData* pActorData;
-    int actorIndex;
+    FieldActor* actors = g_FieldActors;
+    int actorIndex = FieldScriptVMGetActorIndex(1);
 
-    actorIndex = FieldScriptVMGetActorIndex(1);
     if (actorIndex != ACTOR_ID_INVALID) {
-        pActorData = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
-        FieldScriptMemoryWriteU16(
-            SCRIPT_IMM_ARG(1), 
-            pActorData->scriptFlags
-        );
+        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)pActorData);
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-*/
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags2);
+void FieldScriptWriteActorFlags2(void) {
+    FieldActor* actors = g_FieldActors;
+    int actorIndex = FieldScriptVMGetActorIndex(1);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags3);
+    if (actorIndex != ACTOR_ID_INVALID) {
+        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 2));
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags4);
+void FieldScriptWriteActorFlags3(void) {
+    FieldActor* actors = g_FieldActors;
+    int actorIndex = FieldScriptVMGetActorIndex(1);
+
+    if (actorIndex != ACTOR_ID_INVALID) {
+        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)(pActorData + 4));
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
+
+void FieldScriptWriteActorFlags4(void) {
+    FieldActor* actors = g_FieldActors;
+    int actorIndex = FieldScriptVMGetActorIndex(1);
+
+    if (actorIndex != ACTOR_ID_INVALID) {
+        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 6));
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 // TODO: These two handlers could use more semantic names since they're likely used
 // in certain situations.
