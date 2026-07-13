@@ -220,75 +220,105 @@ void func_8007254C(void) {
      * the camera update functions run. */
 }
 
-/* ---- func_800726E8: camera mode transition handler --------------------------
- * Called from func_80073230. Checks scene flags and transitions camera modes.
- * With zeroed scene data, most paths are skipped. */
+/* ---- func_800726E8: camera heading transition handler -----------------------
+ * Called from func_80073230. g_Scene+0x56 is the camera heading (0xFFF wrap,
+ * 8 sectors of 0x200); +0x64/+0x65 are per-sector block masks tested against
+ * D_800ADC1C, +0x5C/+0x60/+0x66/+0x7C drive an 8-frame heading interpolation.
+ * Two held-button blocks (D_800AFE9C bits 4/8) start a manual ±0x200 rotate,
+ * each refused while g_Scene+0x48 bit15 is set (script owns the camera) or a
+ * transition is in flight, and refused into a masked sector.
+ * Retail: asm/field/main/misc2.s 800726E8-80072A38. */
 extern u8 D_800ADC1C[];
+extern u16 D_800AFE9C;
 extern s32 func_8007234C(void);
 extern s32 func_80072398(u8 scene65, s32 modeIdx);
 extern void func_80284EA4(void);
 
 void func_800726E8(void) {
     u8 scene64 = *(u8*)((u8*)&g_Scene + 0x64);
-    u8 scene65 = *(u8*)((u8*)&g_Scene + 0x65);
-    s16 scene66 = *(s16*)((u8*)&g_Scene + 0x66);
+    u8 scene65;
+    u16 scene56;
+    s32 modeIdx;
 
-    if (scene64 == 0xFF || scene65 == 0xFF) goto tail;
+    if (scene64 == 0xFF) goto tail;
+    scene65 = *(u8*)((u8*)&g_Scene + 0x65);
+    if (scene65 == 0xFF) goto tail;
 
-    if (scene66 == 0) {
-        /* Check mode flags via D_800ADC1C indexed by scene mode */
-        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-        s32 modeIdx = scene56 >> 9;
-        if (D_800ADC1C[modeIdx] & scene64) {
-            s32 scene5C = *(s32*)((u8*)&g_Scene + 0x5C);
-            if (scene5C == (s32)0xFFC00000) {
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            } else if (scene5C == 0x400000) {
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            } else {
-                *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
-                *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            }
+    /* Both automatic blocks are skipped while a transition is active
+     * (asm 80072728: bnez -> .L80072850, the first pad block). */
+    if (*(s16*)((u8*)&g_Scene + 0x66) != 0) goto pad_rotate;
+
+    /* Automatic block 1: current sector masked against scene64. */
+    scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+    if (D_800ADC1C[scene56 >> 9] & scene64) {
+        s32 scene5C = *(s32*)((u8*)&g_Scene + 0x5C);
+        if (scene5C != (s32)0xFFC00000 && scene5C != 0x400000) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+            *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
+        }
+        *(s16*)((u8*)&g_Scene + 0x66) = 8;
+    }
+
+    /* Automatic block 2: current sector masked against scene65 rotates
+     * toward the nearer side (func_8007234C vs func_80072398). Retail
+     * re-reads g_Scene+0x65 for both uses (address CSE'd into $s0). */
+    scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+    if (D_800ADC1C[scene56 >> 9] & *(u8*)((u8*)&g_Scene + 0x65)) {
+        s32 r1 = func_8007234C();
+        scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+        if (func_80072398(*(u8*)((u8*)&g_Scene + 0x65), scene56 >> 9) < r1) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
+            *(s32*)((u8*)&g_Scene + 0x7C) -= 0x200;
+        } else {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+            *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
+        }
+        *(s16*)((u8*)&g_Scene + 0x66) = 8;
+    }
+
+pad_rotate:
+    /* Manual rotate, negative direction (asm .L80072850). */
+    if ((D_800AFE9C & 4) &&
+        !(*(s32*)((u8*)&g_Scene + 0x48) & 0x8000) &&
+        *(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        modeIdx = ((*(s16*)((u8*)&g_Scene + 0x56) - 0x200) & 0xFFF) >> 9;
+        if (!(D_800ADC1C[modeIdx] & *(u8*)((u8*)&g_Scene + 0x65))) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
+            *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            *(s32*)((u8*)&g_Scene + 0x7C) -= 0x200;
         }
     }
 
-    /* Second mode check using scene65 */
-    {
-        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-        s32 modeIdx = scene56 >> 9;
-        if (D_800ADC1C[modeIdx] & scene65) {
-            s32 r1 = func_8007234C();
-            s32 r2;
-            scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-            r2 = func_80072398(scene65, scene56 >> 9);
-            if (r2 < r1) {
-                *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
-                *(s32*)((u8*)&g_Scene + 0x7C) = *(s32*)((u8*)&g_Scene + 0x7C);
+    /* Manual rotate, positive direction (asm .L800728F4). */
+    if (D_800AFE9C & 8) {
+        if (!(*(s32*)((u8*)&g_Scene + 0x48) & 0x8000)) {
+            /* asm 80072930: bnez -> .L800729AC, straight into the
+             * countdown body. */
+            if (*(s16*)((u8*)&g_Scene + 0x66) != 0) goto countdown;
+            modeIdx = ((*(s16*)((u8*)&g_Scene + 0x56) + 0x200) & 0xFFF) >> 9;
+            if (!(D_800ADC1C[modeIdx] & *(u8*)((u8*)&g_Scene + 0x65))) {
+                *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
                 *(s16*)((u8*)&g_Scene + 0x66) = 8;
+                *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
             }
         }
     }
 
 tail:
-    /* Z-scroll transition countdown */
-    if (*(s16*)((u8*)&g_Scene + 0x66) != 0) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) goto set56;
+countdown:
+    {
         s32 new60 = *(s32*)((u8*)&g_Scene + 0x60) + *(s32*)((u8*)&g_Scene + 0x5C);
         s16 v;
         *(s32*)((u8*)&g_Scene + 0x60) = new60;
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)(new60 >> 16);
-        v = *(u16*)((u8*)&g_Scene + 0x66) - 1;
-        *(u16*)((u8*)&g_Scene + 0x66) = v;
-        if (v == 0) goto set56;
-    } else {
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+        *(s16*)((u8*)&g_Scene + 0x56) = (s16)(new60 >> 16);
+        v = (s16)(*(u16*)((u8*)&g_Scene + 0x66) - 1);
+        *(s16*)((u8*)&g_Scene + 0x66) = v;
+        if (v != 0) goto done;
     }
-
-    if (0) {
-    set56:
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
-    }
-
+set56:
+    *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+done:
     if (g_FieldSystemMode == 0) {
         func_80284EA4();
     }
