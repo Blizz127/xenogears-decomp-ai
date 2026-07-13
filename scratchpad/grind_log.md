@@ -432,3 +432,46 @@ Newest entries at the bottom.
 - **Committed:** source fix + this log entry (separate commits).
 - **Stop reason (if stopped early):**
 
+
+### [2026-07-13 00:15] Map014 opening close-up = skull-cam hold + E688 FLAG starve (vs YouTube 10:17)
+- **Hypothesis:** User screenshot (Fei-from-behind, black bg, yellow/green blocks) is the early Map014 hold, not the retail painting-fill from [Worthy Gamer 10:17](https://youtu.be/PWtGUF2cx3U?t=617).
+- **Retail target:** Opening Scenes (chapter ends 10:23 Lahan). Frames `rf_010`/`rf_015` = fiery canvas fill. Port wide room already OK after fade1 fix.
+- **Runtime evidence:**
+  1. Hold eye2=`(141,-75,-431)` at2=`(23,-50,-548)` from f2→f210; Fei at `(115,-1,-455)` sits *between* eye and at (≈82 units from camera). emit≈5.
+  2. First `ARM_CAM` after hold is f211; authored close-shot `(372,-137,-202)` only around f250. Forcing that eye at f60 → emit≈99 and painting+easel visible (`m14_forcecam_f60.png`).
+  3. Hide Fei (status`|0x20`) at hold → nearly black (lit≈0.01): room is not drawing; garble *is* Fei sprite + scraps.
+  4. Room FT4s use `func_8002C700` **variant 2** → `func_8002E688`. Cull census: **~94% FLAG** (often with otz≤0), then NCLIP/overlap. Ignoring FLAG alone does not restore the painting.
+  5. Distortion is active early but composites a near-empty FB → yellow vertical seam / block noise on Fei's silhouette.
+- **Change made (kept):** `func_8002E688` — remove port-only oversize cull; `otIndex <= 0` → `< 0`; NCLIP `blez` (`<= 0`) to match asm 8002E7AC. Does **not** alone fix the hold (FLAG still dominates).
+- **Build result:** LINK OK.
+- **Not proven / still open:** why camera holds at skull pose until f211 (script wait after distortion ends ~f150); Fei sprite CLUT/tpage when huge; Fei disappear on right cam turn (queued). Next: dump the camera actor script that arms at f211 and find the wait that should end earlier / different initial eye.
+- **Committed:** not yet (E688 cleanup is real but insufficient for the user shot; hold for a close-up that actually matches rf_010).
+
+### [2026-07-13 00:31] Map014 skull-hold delay = Fei authored Sleep+FE27 (not stuck cam wait)
+- **Hypothesis (updated):** FLAG cull is not causal (E688_IGNORE_FLAG byte-identical @ f60/f120 — user probe). Delay to painting ARM is Fei script waits, not camera-actor stall.
+- **Proven:**
+  1. Camera actor A0 arms skull `(141,-75,-431)` at f0, then intentional forever-hold opcode **0x5B** (`func_80095284`) at IP 114. Not a bug.
+  2. Painting ARMs are **Fei (char=0)**-driven: first at f211 IP 2151 (nudge), real close-shot ~f220→f250 `(372,-137,-202)`. f250 capture already shows easel+painting (`m14_early_f250.png`).
+  3. Fei bytecode gate: Sleep `26 3C` (~60f @ IP202) → FE27 mode0/1 wind-down `FE 27 00 46` (~70f) → Sleep `26 46` (70f @ IP225) → FE4D → cam routine. WaitTimers match bytecode (not misread).
+  4. Force-skip Fei Sleep + force FE27 release → first ARM at **f12**, painting eye by ~f40. Proves those waits are the entire ~200f gate.
+  5. Opcode 0x26 is Sleep (live handlers), not HideById.
+- **Not a fix:** shortening authored Sleep/FE27 without retail timing evidence = inventing game logic.
+- **Still open:** whether retail's opening *pace* differs (known prior note); whether skull-hold should look like something other than Fei-garble (distortion composite); Fei CLUT when huge; Fei disappear on right turn.
+- **Build/runtime:** probes only; no source change this cycle. `make check` baseline unchanged claim.
+- **Committed:** not yet.
+
+### [2026-07-13 00:35] Decision: keep authored waits; chase hold presentation + Eye lerp lag
+- **Course chosen (safe / retail-like):**
+  1. **Do not** shorten Fei Sleep/FE27 or relocate skull eye — bytecode + live handlers prove they are authored.
+  2. Treat **f250 painting close-up** as the YT 10:17 stage (already looks right once Eye arrives).
+  3. Hold-window Fei-garble is a **presentation** bug at the real skull pose (Eye==Eye2 from f2–f180), not a stuck wait.
+  4. Secondary fidelity issue: after f211 ARMs, `eyeStepDistance` returns to **12**, so `g_CameraEye` lags `Eye2` (f250 Eye=(337,-126,-237) vs Eye2=(372,-137,-202)) — may delay *perceived* painting fill without changing script IP timing.
+- **Next chase order:** (A) Fei near-camera / special-anim draw during hold; (B) what restores step=12 and whether scripted Start should keep step=1 (asm check before any change).
+- **Rejected:** E688 FLAG bypass as a fix; inventing shorter sleeps; moving camera actor off 0x5B.
+
+### [2026-07-13 00:52] Fix Map014 skull-hold tile garble: clip active-actor FT4 outside raster
+- **Root cause:** `func_800764B4` submits actor 1's active-actor FT4 (the actor shadow) during the skull hold even though all projected points are left of the viewport: f60 `x=(-634,-775,-663,-823)`, `y=(32,32,31,31)`. Retail relies on the PSX GPU's raster clip; PsyCross applied its draw-environment offset and stretched this otherwise invisible FT4 across the image as the green/yellow tile field.
+- **Change made:** Port-only conservative reject in `func_800764B4`: skip only when all four projected points are beyond the same active raster edge. It deliberately does not use a "some vertex visible" test, which would incorrectly cull quads crossing an edge.
+- **Proof:** GDB zero-length isolation of only this actor FT4 produced f60 hash `de6f100d…`; the source fix produces the identical hash. The normal painting/easel f250 is byte-identical before/after (`a6598051…`).
+- **Build/runtime:** `./scratchpad/run_build_port.sh` LINK OK. Map001 ent6 and Map014 ent0 12s smokes both ran to expected timeout (124), with only pre-existing stubs.
+- **Not changed:** authored Fei waits, camera timing, room FT4 E688 path, and the optional E688 FLAG diagnostic.
