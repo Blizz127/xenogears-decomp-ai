@@ -1204,7 +1204,11 @@ void func_80074108(void) {
         s16 actorAngle = *(s16*)(*(u32*)(pActor + 0x4C) + 0x106);
         s32 targetAngle = actorAngle + (*(u16*)((u8*)&g_CamInterpolation + 0xA) + 0x400);
         D_800ADB4A = (s16)targetAngle;
-        newAngle = FieldMathUpdateAngle(curAngle, (s16)(targetAngle >> 16), 0x40);
+        /* Retail 800742F8--80074308 sign-extends the low half of the
+         * actor/camera angle sum (sll 16; sra 16) before interpolation.
+         * Shifting the sum first collapsed almost every positive target to
+         * zero, rotating the room-background camera away from the painting. */
+        newAngle = FieldMathUpdateAngle(curAngle, (s16)targetAngle, 0x40);
     }
     D_800ADB48 = (s16)newAngle;
 
