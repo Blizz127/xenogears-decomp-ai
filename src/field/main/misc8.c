@@ -2463,17 +2463,131 @@ void func_80086024(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086078);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800860F0);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", FieldActorWorldToScreenPosition);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
-
+extern s16 D_800B21AC;
 extern u16 D_800AFE88[];
 extern u16 D_800AFE8A[];
 extern void func_8003A20C(s32);
+extern void func_8003A344(s32, s32);
+extern void func_8003A55C(s32, s32);
+extern void func_80039F9C(s32, s32, s32, s32);
+
+/* Attenuation from distance vs D_800B21AC, scaled by mode. Writes volume to *out. */
+void func_80086078(s32 distance, s32* outVolume, s32 mode) {
+    s32 maxDist = D_800B21AC;
+    s32 scaled;
+    u32 inv;
+    u32 t;
+
+    if (maxDist < distance) {
+        distance = maxDist;
+    }
+
+    scaled = (0x7F0000 / maxDist) * distance;
+    inv = 0x80 - (scaled >> 16);
+    inv <<= 16;
+    /* Unsigned reciprocal multiply by 0x02040811 ≈ 1/127, then >> 6. */
+    t = (u32)(((u64)inv * 0x02040811u) >> 32);
+    inv = inv - t;
+    inv = (inv >> 1) + t;
+    inv >>= 6;
+    *outVolume = (s32)(((u64)inv * (u32)mode) >> 16);
+}
+
+/* Project actor origin through worldToScreen; write screen X/Y.
+ * Retail addresses worldToScreen as &g_FieldActors - 0xAC (= g_Scene + 0xD4). */
+void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
+    FieldActor* actors = g_FieldActors;
+    MATRIX composed;
+    SVECTOR local;
+    long screenXY;
+    long p;
+    long flag;
+
+    (void)FieldScriptVMGetActorIndex(1);
+
+    CompMatrix(&g_Scene.worldToScreenMatrix, &actors[actorIndex].transformMatrix, &composed);
+    local.vx = 0;
+    local.vy = 0;
+    local.vz = 0;
+    SetRotMatrix(&composed);
+    SetTransMatrix(&composed);
+    RotTransPers(&local, &screenXY, &p, &flag);
+    *outY = (s16)(screenXY >> 16);
+    *outX = (s16)screenXY;
+}
+
+/* Asm multiply chain: (((x*3)*17)*257*2)>>16 == (x * 0x6666)>>16. */
+static s32 FieldPositionalSfxScreenPan(s32 screenX) {
+    s32 t = screenX;
+    t = (t << 1) + t;
+    t = t + (t << 4);
+    t = t + (t << 8);
+    t <<= 1;
+    return t >> 16;
+}
+
+/* Update an already-bound positional SFX slot's volume/pan. */
+void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
+    s32 i;
+    s32 volume;
+    s32 screenX;
+    s32 screenY;
+    s32 pan;
+    s32 slot2;
+
+    (void)soundId;
+    (void)deltaX;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE88[i * 3] == (u16)actorIndex) {
+            slot2 = i * 2;
+            func_80086078(distance, &volume, mode);
+            FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
+            if (screenX >= 0x141) {
+                screenX = 0x13F;
+            }
+            if (screenX < 0) {
+                screenX = 0;
+            }
+            pan = FieldPositionalSfxScreenPan(screenX);
+            func_8003A344(slot2, volume);
+            func_8003A55C(slot2, pan);
+            break;
+        }
+    }
+}
+
+/* Allocate a free positional SFX slot and start the voice with distance pan. */
+void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
+    s32 i;
+    s32 volume;
+    s32 screenX;
+    s32 screenY;
+    s32 pan;
+    s32 slot2;
+
+    (void)deltaX;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE8A[i * 3] == 0xFFFF) {
+            slot2 = i * 2;
+            D_800AFE8A[i * 3] = (u16)soundId;
+            D_800AFE88[i * 3] = (u16)actorIndex;
+            func_80086078(distance, &volume, mode);
+            FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
+            if (screenX >= 0x141) {
+                screenX = 0x13F;
+            }
+            if (screenX < 0) {
+                screenX = 0;
+            }
+            pan = FieldPositionalSfxScreenPan(screenX);
+            func_8003A20C(slot2);
+            func_80039F9C(soundId, slot2, volume, pan);
+            break;
+        }
+    }
+}
 
 /* Release the SPU voice channel bound to actor `actorIdx` in the 3-slot
  * actor->channel table (same table as func_80086470/func_800864F0):
