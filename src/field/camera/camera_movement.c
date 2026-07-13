@@ -65,7 +65,14 @@ void func_8008FABC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FB28);
+/* FE6D — snapshot current SCRZ×scale / DIP / yaw into the scripted-cam scratch. */
+void func_8008FB28(void) {
+    D_800AF93A[0] = 0x1000;
+    D_800AF936 = *(u16*)((u8*)&g_Scene + 0x6C);
+    D_800AF938 = *(u16*)((u8*)&g_Scene + 0x56);
+    D_800AF930 = (*(s32*)((u8*)&g_Scene + 0x68) * *(s16*)((u8*)&g_Scene + 0x6E)) >> 12;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 void func_8008FB98(void) {
 #ifdef XENO_PC_PORT
