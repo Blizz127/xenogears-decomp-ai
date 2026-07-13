@@ -378,3 +378,15 @@ Newest entries at the bottom.
 - **Committed:** no — commit not requested; changes remain uncommitted for review/split.
 - **Stop reason (if stopped early):** solid early-opcode batch + green smokes; positional-SFX cluster deferred for layout audit.
 
+
+### [2026-07-12 23:35] Positional SFX cluster + FE26/FE3A
+- **Hypothesis:** Map001's live `func_800862CC` stub was the remaining field helper on the talk/ambient SFX path; FE26/FE3A are tiny EX neighbors still INCLUDE_ASM.
+- **Scope:** `misc8.c` attenuation/project/start/update; `misc.c` FE26/FE3A. Sound leaf calls remain auto-stubs (`39F9C`/`3A20C`/`3A344`/`3A55C`).
+- **Change made:** Decompiled `func_80086078`, `FieldActorWorldToScreenPosition` (CompMatrix vs `g_Scene.worldToScreenMatrix` = retail `&g_FieldActors-0xAC`), `func_800860F0`, `func_800862CC`; FE3A `func_8008D230` (party frame mask); FE26 `func_8008D5C8` (effect flag).
+- **Build result:** LINK OK.
+- **Runtime result:** Map001/Map014 RC=124. Map001 no longer stubs `862CC` — hits sound leaves instead (path now executes). Map014 unchanged benign sound/CD stubs.
+- **Proven:** worldToScreen identity via BSS math; positional slot alloc/pan math runs through to SPU helpers.
+- **Not proven / still open:** actual audio playback (sound.c skipped on port); Map014 red-shift.
+- **Committed:** pending this entry's commit split.
+- **Stop reason (if stopped early):**
+
