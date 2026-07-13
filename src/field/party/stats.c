@@ -58,7 +58,19 @@ void FieldScriptVMHandlerDecreasePartyHp(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/party/stats", func_80096AF4);
+extern s16 D_800B2340;
+extern s16 D_800B2342;
+extern s16 D_800B2344;
+extern s16 D_800B2346;
+
+/* FEAE — arm animation/dolly counters (not CLUT). */
+void func_80096AF4(void) {
+    D_800B2344 = FieldScriptVMGetArgument(1);
+    D_800B2346 = FieldScriptVMGetArgument(3);
+    D_800B2340 = FieldScriptVMGetArgument(5);
+    D_800B2342 = 0;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void FieldScriptVMHandlerWritePartyMemberHp(void) {
     if (g_GamePartyMembers[SCRIPT_READ_U8_REL(ARG(2))] != CHARACTER_ID_NONE) {
