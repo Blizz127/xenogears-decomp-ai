@@ -40,6 +40,15 @@ int rand(void)
     return (int)((next >> 16) & UINT32_C(0x7FFF));
 }
 
+/* Retail func_80048AB0 (asm 80048AB0) is SetFogNearFar: compute DQA/DQB from
+ * near Z, far Z, and projection H. PsyCross exports SetFogNearFar under that
+ * name; the game calls the Xenogears symbol, so forward here. Matching-tree
+ * ownership of 80048AB0 is the pre-InitGeom asm blob (not libgte.yaml yet). */
+void func_80048AB0(long a, long b, long h)
+{
+    SetFogNearFar(a, b, h);
+}
+
 /*
  * OpenTIM / ReadTIM: PsyCross declares these in libgpu.h but provides NO
  * implementation — they fall through to auto-generated no-op stubs that return
