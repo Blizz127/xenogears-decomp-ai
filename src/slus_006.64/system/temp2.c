@@ -406,8 +406,8 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long xy3 = 0;
-        long p = 0;
         long otz = 0;
+        long p = 0;
         long flag = 0;
 
         count--;
@@ -430,9 +430,8 @@ s32 func_8002E688(u8* pCmd, s32 count) {
          * delete extreme close-up FT4s (Map014 painting hold). */
 
         {
-            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers4 return), matching
-             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
-             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
+            /* The PsyQ helper returns SZ3 >> 2, the depth scale used by this
+             * ordering table. */
             s32 otIndex = (s32)otz >> D_80050100;
             u32 oldTag;
             oldTag = ot[otIndex];
