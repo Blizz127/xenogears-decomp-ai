@@ -59,9 +59,31 @@ unsigned short D_800ADC44[54] = {
     0x0380, 0x0100, 0x0000, 0x00E8, 0x0010, 0x0001,
 };
 
+/* 8-way angle LUTs (retail .data @ 800AEA34 / 800AEA44). */
+unsigned short g_FieldAngleToDirectionLUT[8] = {
+    0x8C00, 0x8E00, 0x8000, 0x8200, 0x8400, 0x8600, 0x8800, 0x8A00,
+};
+
+unsigned short D_800AEA44[8] = {
+    0x8C00, 0x8E00, 0x8000, 0x8200, 0x8400, 0x8600, 0x8800, 0x8A00,
+};
+
 unsigned short D_800AEA54[8] = {
     0x8C00, 0x8400, 0x8800, 0x8000,
     0x8A00, 0x8E00, 0x8600, 0x8200,
+};
+
+/* Relative 8-way yaw offsets per camera direction (8 dirs × 8 facings).
+ * Consumed by func_8009B708 as signed steps; each unit → (step<<25)/duration. */
+short D_800AEA64[64] = {
+    0, 1, 2, 3, 4, -3, -2, -1,
+    -1, 0, 1, 2, 3, 4, -3, -2,
+    -2, -1, 0, 1, 2, 3, 4, -3,
+    -3, -2, -1, 0, 1, 2, 3, 4,
+    4, -3, -2, -1, 0, 1, 2, 3,
+    3, 4, -3, -2, -1, 0, 1, 2,
+    2, 3, 4, -3, -2, -1, 0, 1,
+    1, 2, 3, 4, -3, -2, -1, 0,
 };
 
 /* FaceId → archive-pair table (dir 4 entries +0x46). 90 faces × 2 bytes. */
@@ -986,6 +1008,7 @@ FIELD_BSS_ALIAS(D_800B22E0, g_FieldBss_800B2174, 0x16C);
 FIELD_BSS_ALIAS(D_800B22E2, g_FieldBss_800B2174, 0x16E);
 FIELD_BSS_ALIAS(D_800B233C, g_FieldBss_800B2174, 0x1C8);
 FIELD_BSS_ALIAS(D_800B233E, g_FieldBss_800B2174, 0x1CA);
+FIELD_BSS_ALIAS(D_800B2340, g_FieldBss_800B2174, 0x1CC);
 FIELD_BSS_ALIAS(D_800B2342, g_FieldBss_800B2174, 0x1CE);
 FIELD_BSS_ALIAS(D_800B2344, g_FieldBss_800B2174, 0x1D0);
 FIELD_BSS_ALIAS(D_800B2346, g_FieldBss_800B2174, 0x1D2);
