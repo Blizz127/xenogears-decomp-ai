@@ -100,11 +100,60 @@ void func_800976A8(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800977A4);
+/* Capture current integer position into unkD0 once, force duration 0xFFFF,
+ * then wait via func_80097A50 (mode flags_0x17 = 1). */
+void func_800977A4(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097864);
+    if (slot->flags_0x17 == 0) {
+        slot->flags_0x17 = 1;
+        actor->unkD0.vx = actor->position.vx >> 16;
+        actor->unkD0.vy = actor->position.vy >> 16;
+        actor->unkD0.vz = actor->position.vz >> 16;
+    }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097954);
+    slot->flags_0 = 0xFFFF;
+    if (func_80097A50(0xFFFF) == 0) {
+        actor->scriptInstructionPointer += 8;
+    }
+}
+
+/* Map001-reachable walk wait (opcode 0x46): mode flags_0x17 = 3, duration from
+ * arg(5), IP += 8 when func_80097A50 reports done. */
+void func_80097864(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+
+    if (slot->flags_0x17 == 0) {
+        slot->flags_0x17 = 3;
+        actor->unkD0.vx = actor->position.vx >> 16;
+        actor->unkD0.vy = actor->position.vy >> 16;
+        actor->unkD0.vz = actor->position.vz >> 16;
+    }
+
+    if (slot->flags_0 == 0xFFFF) {
+        slot->flags_0 = FieldScriptVMGetArgument(5);
+    }
+
+    if (func_80097A50(FieldScriptVMGetArgument(5)) == 0) {
+        actor->scriptInstructionPointer += 8;
+    }
+}
+
+/* Duration-from-arg(8) wait wrapper; IP += 0xA on completion. */
+void func_80097954(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+
+    if (slot->flags_0 == 0xFFFF) {
+        slot->flags_0 = FieldScriptVMGetArgument(8);
+    }
+
+    if (func_80097A50(FieldScriptVMGetArgument(8)) == 0) {
+        actor->scriptInstructionPointer += 0xA;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800979F0);
 
