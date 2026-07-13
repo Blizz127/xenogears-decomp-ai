@@ -11,6 +11,7 @@ char D_8006FC48[] = "POLYCHECK %d\n";
 /*
  * data_field.c - migrated field overlay initialized data for the Xenogears PC port.
  *
+ * D_800ADC24: scene-palette mask/data table (field overlay .data).
  * D_800ADC44: UI texture descriptor table (field overlay .data).
  * Source: asm/field/data/3DF78.data.s label D_800ADC44 (file offset 0x3E154).
  * Field overlay base = 0x8006FAF0; RAM = 0x800ADC44.
@@ -27,6 +28,15 @@ char D_8006FC48[] = "POLYCHECK %d\n";
  * This does NOT affect the matching/decomp build (which links the asm .data
  * section directly); it only provides real data for the PC port.
  */
+
+/* `func_80074108` uses the first eight halfwords as scene-flag masks while it
+ * builds the 0x80-colour CLUT copied from D_800AFC08.  Keep the complete
+ * 0x20-byte retail symbol contiguous: the trailing palette words are part of
+ * the same data object at 0x800ADC24. */
+unsigned short D_800ADC24[16] = {
+    0x0081, 0x00C0, 0x0060, 0x0030, 0x0018, 0x000C, 0x0006, 0x0003,
+    0x0000, 0x0500, 0x0500, 0x0000, 0x0000, 0xFB00, 0xFB00, 0x0000,
+};
 
 unsigned short D_800ADC44[54] = {
     /* entry 0: 800ADC44 */
@@ -763,6 +773,10 @@ unsigned char g_FieldBss_800AEB60[0x08] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFE9C[0x110] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFB20[0x108] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AF85C[0x2A0] __attribute__((aligned(8)));
+/* Retail keeps D_800B004C..D_800B0052 as one packed RECT.  Host-side
+ * auto-stubs used to allocate each label separately, so StoreImage/LoadImage
+ * read a zero-height rectangle through pointer arithmetic. */
+unsigned char g_FieldBss_800B004C[0x08] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800B007C[0x40] __attribute__((aligned(8)));
 /* Portrait load slots at 0x800B06A4: 3×{faceId,state,dualTim} stride 6. */
 unsigned char g_FieldBss_800B06A4[0x18] __attribute__((aligned(8)));
@@ -801,6 +815,11 @@ FIELD_BSS_ALIAS(D_800AFB34, g_FieldBss_800AFB20, 0x014);
 FIELD_BSS_ALIAS(D_800AFB44, g_FieldBss_800AFB20, 0x024);
 FIELD_BSS_ALIAS(D_800AFB54, g_FieldBss_800AFB20, 0x034);
 FIELD_BSS_ALIAS(D_800AFC08, g_FieldBss_800AFB20, 0x0E8);
+
+FIELD_BSS_ALIAS(D_800B004C, g_FieldBss_800B004C, 0x000);
+FIELD_BSS_ALIAS(D_800B004E, g_FieldBss_800B004C, 0x002);
+FIELD_BSS_ALIAS(D_800B0050, g_FieldBss_800B004C, 0x004);
+FIELD_BSS_ALIAS(D_800B0052, g_FieldBss_800B004C, 0x006);
 
 FIELD_BSS_ALIAS(D_800AF85C, g_FieldBss_800AF85C, 0x000);
 FIELD_BSS_ALIAS(D_800AF87C, g_FieldBss_800AF85C, 0x020);
