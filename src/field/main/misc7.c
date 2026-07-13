@@ -814,9 +814,34 @@ void func_8009A34C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A420);
+extern s16 D_800AEA64[];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A490);
+/* Start DIP (scene+0x6C) lerp to target over `duration` frames. */
+void func_8009A420(s32 targetDip, s32 duration) {
+    s32 curDip;
+    s32 delta;
+
+    if (duration == 0) {
+        D_800B21D8 = 2;
+        duration = 1;
+    }
+
+    curDip = *(s16*)((u8*)&g_Scene + 0x6C);
+    delta = -((curDip - targetDip) << 16) / duration;
+    *(s16*)((u8*)&g_Scene + 0x70) = duration;
+    *(s32*)((u8*)&g_Scene + 0x74) = curDip << 16;
+    g_Scene.unk48 |= 0x8;
+    *(s32*)((u8*)&g_Scene + 0x78) = delta;
+}
+
+/* Opcode 0xA5 — DIP lerp wrapper: arg1 = target, byte3&0x7F = duration. */
+void func_8009A490(void) {
+    s32 target = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(3));
+    s32 duration = SCRIPT_READ_U8_REL(3) & 0x7F;
+
+    func_8009A420(target, duration);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 int FieldGetCameraDirection(void) {
     int halfDirection = PSX_DEGREES(22.5);
@@ -997,7 +1022,13 @@ void FieldScriptSetActorDirection(void) {
     FieldScriptSetActorRotation(g_FieldAngleToDirectionLUT[directionIndex]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AC34);
+/* Opcode 0x69 — set actor rotation from 8-way index, camera-relative. */
+void func_8009AC34(void) {
+    s32 directionIndex = FieldScriptVMGetArgument(2);
+    s32 angle = (g_FieldAngleToDirectionLUT[directionIndex] - (u16)g_CamInterpolation.targetAngleY) & 0xFFF;
+
+    FieldScriptSetActorRotation(angle);
+}
 
 void FieldScriptVMHandlerSetCurActorRotation(void) {
     int directionIndex = FieldScriptVMGetArgument(1);
@@ -1009,7 +1040,20 @@ void func_8009ACB4(void) {
     func_8009AB08(g_FieldAngleToDirectionLUT[directionIndex]);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009ACEC);
+extern u16 D_800AEA44[];
+
+/* Opcode 0xAB — write camera-relative cardinal facing into actor rotation. */
+void func_8009ACEC(void) {
+    s32 directionIndex = SCRIPT_READ_U8_REL(1);
+    s16 rotation = ((D_800AEA44[directionIndex] - (u16)g_CamInterpolation.targetAngleY) & 0xFFF) | 0x8000;
+
+    g_FieldScriptVMCurActor->rotation.vx = rotation;
+    g_FieldScriptVMCurActor->rotation.vy = rotation;
+    if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->rotation.vz = rotation;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 extern u16 D_800AEA54[];
 
@@ -1036,11 +1080,39 @@ void func_8009AE0C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AE3C);
+/* Start SCRZ (scene+0x68) lerp to target over `duration` frames. */
+void func_8009AE3C(s32 targetScrZ, s32 duration) {
+    s32 curScrZ;
+    s32 delta;
+    s32* pFlags;
+
+    if (duration != 0) {
+        curScrZ = *(s32*)((u8*)&g_Scene + 0x68);
+        delta = -((curScrZ - targetScrZ) << 16) / duration;
+        pFlags = (s32*)((u8*)&g_Scene + 0x48);
+        *(s16*)((u8*)&g_Scene + 0x80) = duration;
+        *pFlags |= 0x10;
+        *(s32*)((u8*)&g_Scene + 0x84) = curScrZ << 16;
+        *(s32*)((u8*)&g_Scene + 0x88) = delta;
+    } else {
+        *(s32*)((u8*)&g_Scene + 0x68) = targetScrZ;
+        *(s16*)((u8*)&g_Scene + 0x80) = 0;
+        D_800B21D8 += 2;
+    }
+
+    pFlags = (s32*)((u8*)&g_Scene + 0x48);
+    *pFlags &= ~0x2000;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AEE0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B15C);
+extern u8 D_800B21CF;
+
+/* FE44 — enable player interact gate. */
+void func_8009B15C(void) {
+    D_800B21CF = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B184);
 
@@ -1074,9 +1146,47 @@ void func_8009B6AC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B708);
+/* Start yaw tween toward a relative 8-way facing over `duration` frames. */
+void func_8009B708(s32 facingOffset, s32 duration) {
+    s32 direction;
+    s32 delta;
+    s32 tableIndex;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B7A8);
+    direction = FieldGetCameraDirection() & 0xFFFF;
+    if (duration == 0) {
+        D_800B21D8 += 2;
+        duration = 1;
+    }
+
+    tableIndex = (direction << 3) + facingOffset;
+    delta = ((s32)D_800AEA64[tableIndex] << 25) / duration;
+    *(s16*)((u8*)&g_Scene + 0x66) = duration;
+    *(s32*)((u8*)&g_Scene + 0x7C) = ((facingOffset + 4) & 7) << 9;
+    *(s32*)((u8*)&g_Scene + 0x5C) = delta;
+}
+
+/* Nudge yaw ±0x200 (45°) over `duration` frames. a0==0 → +0x200, else −0x200. */
+void func_8009B7A8(s32 negative, s32 duration) {
+    s32 delta;
+    s32 target;
+
+    if (duration == 0) {
+        D_800B21D8 += 2;
+        duration = 1;
+    }
+
+    if (negative == 0) {
+        delta = 0x2000000 / duration;
+        target = *(s32*)((u8*)&g_Scene + 0x7C) + 0x200;
+    } else {
+        delta = (s32)0xFE000000 / duration;
+        target = *(s32*)((u8*)&g_Scene + 0x7C) - 0x200;
+    }
+
+    *(s32*)((u8*)&g_Scene + 0x7C) = target;
+    *(s32*)((u8*)&g_Scene + 0x5C) = delta;
+    *(s16*)((u8*)&g_Scene + 0x66) = duration;
+}
 
 void func_8009B824(void) {
     if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
@@ -1094,7 +1204,25 @@ void func_8009B884(void) {
     D_800B00C0 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B8E4);
+/* Opcode 0xB6 — scripted camera yaw to 8-way facing (instant if D_800ADB1C==0). */
+void func_8009B8E4(void) {
+    s32 facing = FieldScriptVMGetArgument(1);
+    s32 duration = FieldScriptVMGetArgument(3);
+
+    if (D_800ADB1C == 0) {
+        s32 angle = ((facing + 4) & 7) << 9;
+        *(s16*)((u8*)&g_Scene + 0x56) = angle;
+        *(s32*)((u8*)&g_Scene + 0x7C) = angle;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        D_800B00C0 = 1;
+    } else if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        func_8009B708(facing, duration);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        D_800B00C0 = 1;
+    } else {
+        D_800B00C0 = 1;
+    }
+}
 
 void func_8009B9A0(void) {
     if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
@@ -1105,7 +1233,15 @@ void func_8009B9A0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009BA0C);
+/* Opcode 0xA0 — restore camera yaw/SCRZ/DIP saved by func_8009B9A0 over 0x20 frames. */
+void func_8009BA0C(void) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        func_8009B708(*(s16*)((u8*)&g_Scene + 0xB8), 0x20);
+        func_8009AE3C(*(s32*)((u8*)&g_Scene + 0xBC), 0x20);
+        func_8009A420(*(s16*)((u8*)&g_Scene + 0xC0), 0x20);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+    }
+}
 
 void func_8009BA7C(void) {
     s32 angle;
