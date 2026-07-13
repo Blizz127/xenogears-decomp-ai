@@ -420,3 +420,15 @@ Newest entries at the bottom.
 - **Committed:** log-only this entry.
 - **Stop reason (if stopped early):** root cause isolated with pose-matched proof; no speculative fade hack without the re-entry condition.
 
+### [2026-07-13 00:00] Fix Map014 room red-shift: A2030 gates VM on scriptFlags_0x0
+- **Hypothesis:** After the scripted fade clear (routine 4), ambient actor 18's OP_27 sets `scriptFlags_0x0` (isDisabled). Retail `func_800A2030` skips `FieldScriptVMRun` when that bit is set (asm `lw` from actor+0, `andi 1`, `bnez` skip). Port wrongly tested `flags & 1` (actor+4), so routine-1 auto-restart kept pulsing subtractive fade1 through the wide shot.
+- **Scope:** One-line semantic fix in `src/field/scripts/virtual_machine.c` `func_800A2030`. No yaml/build-config.
+- **Evidence chain:**
+  1. Slot18 routines: r1=1896 pulse, r4=1926 clear. Pulse ENDs at 1924 → A2030 auto-restarts r1.
+  2. Fei OP08 starts r4 at f65; clear's OP27 targets actor 18 and sets scriptFlags_0x0.
+  3. Matching asm 800A2228–800A2250 reads `*(u32*)actor & 1` (scriptFlags), not `flags`.
+  4. After fix: `fades_after_clear=0`, fade1 vis=0 rgb=(0,0,0) at f600, center G/R **0.813** vs retail rf_030 **0.831** (was ~0.24). Proof: `scratchpad/m14_fade_fix.png`.
+- **Build / runtime:** `./pc_port/build_port.sh` LINK OK. Map014/Map001 smokes RC=124 (benign stubs only). `make check` not re-run; last baseline unchanged claim.
+- **Committed:** source fix + this log entry (separate commits).
+- **Stop reason (if stopped early):**
+
