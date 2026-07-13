@@ -141,6 +141,7 @@ extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
+static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriVariant0(u8* pCmd, s32 count);
@@ -171,7 +172,12 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x18,
     },
     [0x0D] = {
-        .proc = { func_8002E688, NULL, func_8002E688, NULL, NULL, NULL },
+        /* Retail table: variant 0/1 enter 0x8002E268 (AVSZ4); variant 2 enters
+         * func_8002E688 (minimum-SZ depth).  They share the FT4 packet layout
+         * but not depth ordering, so routing variant 0 through E688 makes room
+         * surfaces overwrite each other in the wrong OT buckets. */
+        .proc = { ModelPrimQuadFT4Variant0, ModelPrimQuadFT4Variant0,
+                  func_8002E688, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002D0E4,   /* PSX 0x8002D0E4 */
         .cmdStride = 0x08,
         .packetStride = 0x0C,
@@ -933,6 +939,73 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
             *(u32*)(out + 0x14) = (u32)xy3;
             emitted++;
             CullCamEmit(1);
+        }
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Textured-quad variant 0: retail D_8004FE50[0x0D].proc[0/1] points at
+ * 0x8002E268.  Unlike the variant-2 walker at func_8002E688, that entry uses
+ * AVSZ4 and consequently orders the quad by its average depth.  The packet
+ * shape is still a 0x28-byte POLY_FT4 (tag len 9). */
+static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x28;
+    const u32 tagLen = 0x09000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long p = 0;
+        long otz = 0;
+        long flag = 0;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        /* RotAverage4 is RTPT/RTPS followed by AVSZ4, matching E268's GTE
+         * sequence.  Its return is raw OTZ, and 8002E40C shifts that by
+         * D_80050100 with no adjustment -- the +2 belongs only to the
+         * RotTransPers walker family (8002E4F0/8002E6F4). */
+        otz = RotAverage4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        if (flag < 0 || otz <= 0) {
+            continue;
+        }
+        /* 8002E36C branches on the FLAG sampled before NCLIP, but 8002E37C
+         * reads MAC0 and 8002E384 `blez`-culls the quad: retail rejects
+         * backfacing and degenerate (MAC0 <= 0) FT4s here. */
+        if (NormalClip(xy0, xy1, xy2) <= 0) {
+            continue;
+        }
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+
+        {
+            s32 otIndex = (s32)otz >> D_80050100;
+            u32 oldTag = ot[otIndex];
+
+            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            *(u32*)(out + 0x08) = (u32)xy0;
+            *(u32*)(out + 0x10) = (u32)xy1;
+            *(u32*)(out + 0x18) = (u32)xy2;
+            *(u32*)(out + 0x20) = (u32)xy3;
+            emitted++;
         }
     }
 
