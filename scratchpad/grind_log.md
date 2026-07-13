@@ -390,3 +390,15 @@ Newest entries at the bottom.
 - **Committed:** pending this entry's commit split.
 - **Stop reason (if stopped early):**
 
+
+### [2026-07-12 23:40] Map001 walk-wait wrappers (0x46 cluster)
+- **Hypothesis:** Map001-reachable opcode 0x46 and its siblings only arm slot state then call `func_80097A50`; decompiling the wrappers unblocks IP advance once 97A50 exists (currently stub→instant complete, same as prior decompiled 0x55/0x56 path).
+- **Scope:** `misc7.c` `func_800977A4`, `func_80097864` (0x46), `func_80097954` only. Left `func_80097A50` (~399 insn) as the next dedicated pass.
+- **Change made:** Three walk-wait wrappers matching retail slot flags_0x17 modes 1/3 and duration/IP advances.
+- **Build result:** LINK OK.
+- **Runtime result:** Map001/Map014 RC=124; stub set unchanged (sound leaves + CD).
+- **Proven:** Wrappers compile and do not regress boots. Real walk timing still blocked on `func_80097A50`.
+- **Not proven / still open:** `func_80097A50` movement executor; Map014 red-shift.
+- **Committed:** with this entry.
+- **Stop reason (if stopped early):** stop before the large 97A50 body; natural commit boundary.
+
