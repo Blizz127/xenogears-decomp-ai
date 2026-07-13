@@ -402,3 +402,21 @@ Newest entries at the bottom.
 - **Committed:** with this entry.
 - **Stop reason (if stopped early):** stop before the large 97A50 body; natural commit boundary.
 
+### [2026-07-12 23:47] Map014 pose-matched red-shift = subtractive fade1 pulse (not fog/CLUT)
+- **Hypothesis:** Pose-matched wide-shot red-shift is depth-cue/fog or CLUT/upload. Also check distortion wave timing and Fei facing during the opening.
+- **Scope:** Runtime probes only (scratchpad/m14_*.gdb). No game-logic patch landed — root cause is scripted screen tint timing, not a one-line render fix with proven retail parity for the whole opening.
+- **Decisive color evidence:**
+  1. Fog path ruled out again: Map014 `fogEn=0`, far RGB (255,255,255), RFC/GFC/BFC=0 through f600. DQA still −98 but RAW room FT4s ignore GTE depth-cue color.
+  2. Wall CLUT live sample (row 483 / tpage 0x85 8-bit): first entries decode to bright tan e.g. `0x4b1a` → (208,192,144), G/R≈0.92 — matches retail wall hue, not the framebuffer.
+  3. All sampled room FT4s are RAW `code=0x2D` with `rgb=(0,0,0)` (modulation unused; PsyCross `bright=2` identity path OK).
+  4. **fade1 is visible the whole opening** with ABR mode 2 (subtract). Script opcode `0xF1` (`func_8008B248` → `FieldFadeSetParameters(1,…)`) pulses between immediates `(40,80,42)/8f` and `(90,120,180)/5f`, with one clear `(0,0,0)/80f` at f65. Bytecode matches (`f1 02 80 …`).
+  5. Force full-white subtractive fade1 → framebuffer goes black (fade draw path works). One-shot kill of fade1 was insufficient (script re-arms). **Sticky kill every frame from f450:** center G/R **0.813** vs retail rf_030 **0.831** (was ~0.24 with fade). Proof: `scratchpad/m14_nofade_sticky.png` vs `map14_review_f600.png` / `cmp_wide_side.png`.
+  6. Retail oracle agrees the early dream is also red: rf_001–010 G/R≈0.20–0.26; rf_020+ settles tan G/R≈0.83. Port’s bug is **keeping the pulse through the wide establishing shot** (fadeN still climbing at f900; last FADEZERO only at f65, then pulse resumes at f147 after clear sleep).
+- **Wave timing:** distortion `isActive=1` at f60 with large fixed-point `v1…v6`; at f120 still active but values wound down / `isFinished=1`; by f180 fully clear (`active=0`, all v=0). No retail phase capture this cycle — port wave ends before the wide shot.
+- **Fei facing:** slot1 `char=0` at easel pos `(115,-1,-455)` from f60–f600; `rotZ=1536` (0x600) and `dir=0` **unchanged** the whole window; `anim` drifts `0 → -1 → -2` (suspicious). Facing appears locked for the painting pose; not proven wrong vs retail without a retail rot dump. Prior probes that reported `ad=NULL` were wrong (`g_FieldActors` is a pointer, not `&g_FieldActors`).
+- **Ruled out:** missing palette driver (prior), distortion composite (prior nodistort), fog/DQA as the wide-shot red cause, CLUT bank content for walls, PsyCross RAW `/128` identity (bright=2).
+- **Not proven / still open:** why script re-enters the 1896 pulse after the f65 clear/`0x27`/`0x00` end (scheduler re-entry vs missing flag); whether retail keeps a subtler pulse that capture averages out (unlikely given rf_030); Fei `anim` negative ids; `func_80097A50`.
+- **Next fix direction (not landed):** stop or gate fade1 after the scripted clear so wide-shot matches rf_020+, without inventing tint values — find the retail exit condition / script re-entry. Probes: `m14_fade_trace.gdb`, `m14_nofade_sticky.gdb`, `m14_wave_facing.gdb`.
+- **Committed:** log-only this entry.
+- **Stop reason (if stopped early):** root cause isolated with pose-matched proof; no speculative fade hack without the re-entry condition.
+
