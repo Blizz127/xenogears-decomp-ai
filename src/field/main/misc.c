@@ -997,7 +997,13 @@ void func_8008D0F4(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D180);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D230);
+extern s16 D_800B218C;
+
+/* FE3A — write party frame mask. */
+void func_8008D230(void) {
+    D_800B218C = FieldScriptVMGetArgument(1);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void func_8008D26C(void) {
     *(s16*)((u8*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData + 0x82) = FieldScriptVMGetArgument(1) << 1;
@@ -1082,7 +1088,13 @@ void func_8008D570(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D5C8);
+extern u8 D_800B21CD;
+
+/* FE26 — write distortion/effect flag byte. */
+void func_8008D5C8(void) {
+    D_800B21CD = SCRIPT_READ_U8_REL(1);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D604);
 
