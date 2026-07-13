@@ -1,4 +1,5 @@
 #include "common.h"
+#include "psyq/libgte.h"
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InitGeom);
 
@@ -205,7 +206,29 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalClip);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverage4);
+/* PsyQ libgte, retail 0x8004A7BC.  The command order deliberately retains the
+ * two separate FLAG samples: RTPT's result is ORed with RTPS's before AVSZ4. */
+long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
+                 long* sxy0, long* sxy1, long* sxy2, long* sxy3,
+                 long* p, long* flag) {
+    long flag0;
+
+    gte_ldv3(v0, v1, v2);
+    gte_rtpt();
+    gte_stsxy3(sxy0, sxy1, sxy2);
+    gte_stflg(&flag0);
+
+    gte_ldv0(v3);
+    gte_rtps();
+    gte_stsxy(sxy3);
+    gte_stflg(flag);
+    gte_stdp(p);
+    *flag |= flag0;
+
+    gte_avsz4();
+    gte_stotz(p);
+    return *p;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverageNclip4);
 
