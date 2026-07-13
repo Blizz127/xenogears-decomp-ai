@@ -12,7 +12,31 @@ extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
 extern FieldActor* D_800B06B8;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091944);
+extern u8 D_800B2190;
+extern u8 D_800B2191;
+extern u8 D_800B2192;
+extern u8 D_800B2194;
+extern u8 D_800B2195;
+extern u8 D_800B2196;
+extern s16 D_800B2198;
+extern s16 D_800B219A;
+extern s16 D_800B218E;
+extern void func_80073E38(void);
+
+/* Opcode 0xE6 — SETUP_FOG: near RGB, far RGB, near/far Z, enable depth-cue. */
+void func_80091944(void) {
+    D_800B2190 = FieldScriptVMGetArgument(1);
+    D_800B2191 = FieldScriptVMGetArgument(3);
+    D_800B2192 = FieldScriptVMGetArgument(5);
+    D_800B2194 = FieldScriptVMGetArgument(7);
+    D_800B2195 = FieldScriptVMGetArgument(9);
+    D_800B2196 = FieldScriptVMGetArgument(0xB);
+    D_800B2198 = FieldScriptVMGetArgument(0xD);
+    D_800B219A = FieldScriptVMGetArgument(0xF);
+    D_800B218E = 1;
+    func_80073E38();
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
+}
 
 void func_80091A08(void) {
     *(s16*)((u8*)&g_Scene + 0x4C) = FieldScriptVMGetInstructionArgumentS16(1);
