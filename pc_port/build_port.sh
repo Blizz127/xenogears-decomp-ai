@@ -158,6 +158,209 @@ grep -q "_xeno_fb_rgb" "$PSX/src/render/PsyX_render.cpp" || \
 perl -0777 -i -pe 's/\t\t\tu_char b = \(\(c >> 3\) & 0x1F\);\n\t\t\tu_char g = \(\(c >> 11\) & 0x1F\);\n\t\t\tu_char r = \(\(c >> 19\) & 0x1F\);/\t\t\tu_char r = ((c >> 3) \& 0x1F); \/* _xeno_fb_rgb: RGBA source, R is the low byte; stock code swapped R<->B on readback. See build_port.sh. *\/\n\t\t\tu_char g = ((c >> 11) \& 0x1F);\n\t\t\tu_char b = ((c >> 19) \& 0x1F);/' \
     "$PSX/src/render/PsyX_render.cpp"
 
+# PsyCross bugfix (idempotent): a PSX DR_MOVE executes in ordering-table order.
+# PsyCross batches FT3/FT4s until the end of DrawOTag, but executes MoveImage
+# immediately while parsing. Framebuffer-feedback effects (Map014's painting
+# distortion is the first live case) therefore copied stale CPU VRAM instead of
+# the polygons preceding the copy. At a DR_MOVE boundary, flush the completed
+# batch, synchronously materialize the current draw buffer into both GPU/CPU
+# VRAM, then perform the copy. The following textured split uploads the changed
+# VRAM before it captures its texture ID, preserving GPU command order without
+# forcing a readback for every one of the effect's adjacent strip copies.
+# PsyCross is gitignored, so
+# keep this durable source patch in the tracked build driver.
+python3 - "$PSX" <<'DRMOVE_PY'
+import sys
+
+psx = sys.argv[1]
+gpu = psx + "/src/gpu/PsyX_GPU.cpp"
+ren = psx + "/src/render/PsyX_render.cpp"
+hdr = psx + "/include/PsyX/PsyX_render.h"
+
+def edit(path, marker, pairs):
+    with open(path) as f:
+        s = f.read()
+    if marker in s:
+        return
+    for old, new, count in pairs:
+        found = s.count(old)
+        if found != count:
+            sys.exit("ERROR: DR_MOVE patch anchor mismatch in %s for %s "
+                     "(found %d, expected %d): %r" %
+                     (path, marker, found, count, old[:80]))
+        s = s.replace(old, new)
+    with open(path, "w") as f:
+        f.write(s)
+
+edit(hdr, "_xeno_drmove_snapshot_decl", [(
+"extern void\t\t\tGR_StoreFrameBuffer(int x, int y, int w, int h);\n",
+"extern void\t\t\tGR_StoreFrameBuffer(int x, int y, int w, int h);\n"
+"extern void\t\t\tGR_StoreFrameBufferImmediate(int x, int y, int w, int h); /* _xeno_drmove_snapshot_decl */\n",
+1)])
+
+edit(ren, "_xeno_fb_staging_local", [(
+"\t\tglBlitFramebuffer(0, 0, g_windowWidth, g_windowHeight, x, y + h, x + w, y, GL_COLOR_BUFFER_BIT, GL_NEAREST);\n",
+"\t\t/* _xeno_fb_staging_local: g_fbTexture is a w-by-h staging texture,\n"
+"\t\t * not a full VRAM surface. x/y select the final VRAM destination\n"
+"\t\t * below; copying to those nonzero coordinates here clips context 1\n"
+"\t\t * (y=256) completely out of the staging FBO. */\n"
+"\t\tglBlitFramebuffer(0, 0, g_windowWidth, g_windowHeight, 0, h, w, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);\n",
+1)])
+
+edit(ren, "_xeno_drmove_snapshot", [(
+"void GR_CopyVRAM(unsigned short* src, int x, int y, int w, int h, int dst_x, int dst_y)\n",
+"/* _xeno_drmove_snapshot: unlike the normal present path, DR_MOVE must see\n"
+" * polygons submitted earlier in this same ordering table. GR_StoreFrameBuffer\n"
+" * keeps the GPU VRAM texture current; this synchronous read completes the CPU\n"
+" * vram[] mirror that MoveImage reads. The ordinary PBO path intentionally\n"
+" * remains deferred for frame presentation. See build_port.sh. */\n"
+"void GR_StoreFrameBufferImmediate(int x, int y, int w, int h)\n"
+"{\n"
+"\tGR_StoreFrameBuffer(x, y, w, h);\n"
+"\n"
+"#if USE_OPENGL\n"
+"\tif (w <= 0 || h <= 0)\n"
+"\t\treturn;\n"
+"\n"
+"\tu_int* pixels = (u_int*)malloc((size_t)w * h * sizeof(u_int));\n"
+"\tif (!pixels)\n"
+"\t\treturn;\n"
+"\n"
+"\tglActiveTexture(GL_TEXTURE0);\n"
+"\tglBindTexture(GL_TEXTURE_2D, g_fbTexture);\n"
+"\tglGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);\n"
+"\tglBindTexture(GL_TEXTURE_2D, g_lastBoundTexture >= 0 ? g_lastBoundTexture : 0);\n"
+"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n"
+"\tfree(pixels);\n"
+"#endif\n"
+"}\n"
+"\n"
+"void GR_CopyVRAM(unsigned short* src, int x, int y, int w, int h, int dst_x, int dst_y)\n",
+1)])
+
+edit(gpu, "_xeno_drmove_snapshot_dirty", [(
+"int g_splitIndex = 0;\n",
+"int g_splitIndex = 0;\n"
+"/* _xeno_drmove_snapshot_dirty: a completed draw batch changes the GL\n"
+" * framebuffer, so the next VRAM-read DR_MOVE must materialize it once. */\n"
+"static int g_xeno_vram_snapshot_dirty = 1;\n",
+1)])
+
+edit(gpu, "_xeno_drmove_upload", [(
+"\t// next code ideally should be called before EndScene\n"
+"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
+"\t// next code ideally should be called before EndScene\n"
+"\t/* _xeno_drmove_upload: MoveImage changes the CPU VRAM mirror while an\n"
+"\t * OT is being parsed. Upload it at the next actual draw boundary, rather\n"
+"\t * than once per adjacent DR_MOVE packet. See build_port.sh. */\n"
+"\tGR_UpdateVRAM();\n"
+"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
+1), (
+"\tfor (int i = 1; i <= g_splitIndex; i++)\n"
+"\t\tDrawSplit(g_splits[i]);\n"
+"\n"
+"\tClearSplits();\n",
+"\tfor (int i = 1; i <= g_splitIndex; i++)\n"
+"\t\tDrawSplit(g_splits[i]);\n"
+"\n"
+"\tif (g_vertexIndex != 0)\n"
+"\t\tg_xeno_vram_snapshot_dirty = 1;\n"
+"\n"
+"\tClearSplits();\n",
+1)])
+
+# The first version synchronized CPU VRAM in DrawAllSplits. That happened after
+# AddSplit had captured a double-buffered texture ID, so feedback FT4s bound
+# stale VRAM. Migrate that version, then synchronize before textured splits
+# capture g_vramTexture. The v2 marker intentionally contains the v1 marker.
+edit(gpu, "_xeno_drmove_upload_v2", [(
+"\t// next code ideally should be called before EndScene\n"
+"\t/* _xeno_drmove_upload: MoveImage changes the CPU VRAM mirror while an\n"
+"\t * OT is being parsed. Upload it at the next actual draw boundary, rather\n"
+"\t * than once per adjacent DR_MOVE packet. See build_port.sh. */\n"
+"\tGR_UpdateVRAM();\n"
+"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
+"\t// next code ideally should be called before EndScene\n"
+"\t/* _xeno_drmove_upload_v2: textured splits synchronize VRAM before they\n"
+"\t * capture g_vramTexture in AddSplit; doing it here would rotate the\n"
+"\t * double-buffer after that ID was already recorded. */\n"
+"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
+1)])
+
+edit(gpu, "_xeno_drmove_split_upload", [(
+"\tTextureID textureId = textured ? g_vramTexture : g_whiteTexture;\n",
+"\t/* _xeno_drmove_split_upload: MoveImage changes CPU VRAM during OT\n"
+"\t * traversal. Synchronize before this split snapshots g_vramTexture;\n"
+"\t * otherwise the double-buffer flips later in DrawAllSplits and the\n"
+"\t * feedback FT4s sample the pre-MoveImage page. The helper is a no-op\n"
+"\t * when VRAM is already current. */\n"
+"\tif (textured)\n"
+"\t\tGR_UpdateVRAM();\n"
+"\n"
+"\tTextureID textureId = textured ? g_vramTexture : g_whiteTexture;\n",
+1)])
+
+edit(gpu, "_xeno_drmove_order", [(
+"\t\t\tMoveImage(&rect, x, y);\n"
+"\t\t\tprimLength = 5;\n",
+"\t\t\t/* _xeno_drmove_order: PsyCross normally defers polygons until the\n"
+"\t\t\t * end of DrawOTag, but the PSX GPU executes this VRAM copy after\n"
+"\t\t\t * every earlier packet. Finalize the still-open split before the\n"
+"\t\t\t * flush, then materialize the draw target once before the first\n"
+"\t\t\t * following VRAM read. See build_port.sh. */\n"
+"\t\t\tif (g_splitIndex > 0)\n"
+"\t\t\t{\n"
+"\t\t\t\tGPUDrawSplit& lastSplit = g_splits[g_splitIndex];\n"
+"\t\t\t\tlastSplit.numVerts = g_vertexIndex - lastSplit.startVertex;\n"
+"\t\t\t\tDrawAllSplits();\n"
+"\t\t\t}\n"
+"\n"
+"\t\t\tif (g_xeno_vram_snapshot_dirty)\n"
+"\t\t\t{\n"
+"\t\t\t\tGR_StoreFrameBufferImmediate(activeDrawEnv.clip.x, activeDrawEnv.clip.y,\n"
+"\t\t\t\t\tactiveDrawEnv.clip.w, activeDrawEnv.clip.h);\n"
+"\t\t\t\tg_xeno_vram_snapshot_dirty = 0;\n"
+"\t\t\t}\n"
+"\n"
+"\t\t\tMoveImage(&rect, x, y);\n"
+"\t\t\tprimLength = 5;\n",
+1)])
+
+# Adjacent DR_MOVEs (the distortion effect queues 15 in a row) re-arm
+# framebuffer_need_update in GR_CopyVRAM's read path without any new capture,
+# so the second move's entry check splatted a two-downloads-stale PBO frame
+# over the fresh synchronous snapshot and the first move's writes. Track
+# whether vram[] is at least as fresh as any pending deferred capture: the
+# synchronous snapshot sets the flag, and only an actual framebuffer advance
+# (EndScene/Clear) clears it. The PBO's content can never be newer than the
+# synchronous snapshot, so suppressing the splat while the flag is set is
+# strictly lossless.
+edit(ren, "_xeno_drmove_fb_synced", [(
+"int framebuffer_need_update = 0;\n",
+"int framebuffer_need_update = 0;\n"
+"/* _xeno_drmove_fb_synced: 1 while the CPU vram[] framebuffer rect is at\n"
+" * least as fresh as any pending deferred PBO capture. See build_port.sh. */\n"
+"int g_xeno_vram_fb_synced = 0;\n",
+1), (
+"void GR_EndScene()\n{\n\tframebuffer_need_update = 1;\n",
+"void GR_EndScene()\n{\n\tframebuffer_need_update = 1;\n\tg_xeno_vram_fb_synced = 0; /* _xeno_drmove_fb_synced */\n",
+1), (
+"void GR_Clear(int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b)\n{\n\tframebuffer_need_update = 1;\n",
+"void GR_Clear(int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b)\n{\n\tframebuffer_need_update = 1;\n\tg_xeno_vram_fb_synced = 0; /* _xeno_drmove_fb_synced */\n",
+1), (
+"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n\tfree(pixels);\n",
+"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n\tfree(pixels);\n"
+"\tg_xeno_vram_fb_synced = 1; /* _xeno_drmove_fb_synced: vram[] is newest */\n",
+1), (
+"\t\tif (framebuffer_need_update &&\n",
+"\t\t/* _xeno_drmove_fb_synced: skip the deferred splat while the synchronous\n"
+"\t\t * snapshot in vram[] is newer than anything the PBO could hold. */\n"
+"\t\tif (framebuffer_need_update && !g_xeno_vram_fb_synced &&\n",
+1)])
+
+print("    DR_MOVE ordering patches OK")
+DRMOVE_PY
+
 # PsyCross bugfix (idempotent, grep-guarded): gte_stflg writes FLAG as a
 # 32-bit uint into the caller's slot. On LP64 the game stores that into a
 # `long flag` and tests `flag < 0` (bit 63), while retail `bltz` tests bit 31
