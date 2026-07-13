@@ -359,3 +359,22 @@ Newest entries at the bottom.
 - **Surviving hypothesis (specific, code-targeted):** the room's bright-center / dark-red-edge falloff is a DEPTH-CUE (fog) mismatch — distant wall quads blend toward a too-dark/too-red far-color, or the fog Z-range starts too near. Next session: inspect the field's fog/depth-cue setup (GTE DQA/DQB depth-cue regs + far-color; SetFarColor/SetFogNear-equivalent in the field render init) and compare the port's far-color and OT depth range against retail. Candidate files: the field render-context init (misc4 FieldInitializeRenderContexts / func_80078D44 region) and the PsyCross GTE depth-cue path.
 - **Committed:** log-only; no tree change; no speculative fix.
 - **Stop reason (if stopped early):** usage credits exhausted mid-session (workflow verify phase); handing off the fog hypothesis with a clean decisive evidence trail rather than guess a fix.
+
+### [2026-07-12 23:20] Early-game opcode sweep: fog, cam restore, flags, angle LUTs
+- **Hypothesis:** Map014→Lahan still had small INCLUDE_ASM VM handlers and a stubbed `SetFogNearFar` (`func_80048AB0`); filling those unblocks early script/camera/fog without inventing game logic.
+- **Scope:** Matching-tree C for fog 0xE6, FE6D, 0xA0 restore chain + neighbors, FE2C–FE2F actor-flag readers, FEAE, FE44, 0x69/0xA5/0xAB/0xB6; port fog shim + retail angle LUT / AEA44 / AEA64 / B2340 data. No yaml/build-config change. Did **not** land `func_800862CC` (depends on layout-sensitive `FieldActorWorldToScreenPosition`).
+- **Change made:**
+  - `misc11.c`: `func_80091944` (0xE6 SETUP_FOG)
+  - `camera_movement.c`: `func_8008FB28` (FE6D cam snapshot)
+  - `misc7.c`: `func_8009A420`, `9AE3C`, `9B708`, `9B7A8`, `9BA0C` (0xA0), `9A490` (0xA5), `9AC34` (0x69), `9ACEC` (0xAB), `9B8E4` (0xB6), `9B15C` (FE44)
+  - `misc.c`: `FieldScriptWriteActorFlags1–4` (FE2C–FE2F)
+  - `party/stats.c`: `func_80096AF4` (FEAE)
+  - `psyq_compat.c`: `func_80048AB0` → `SetFogNearFar` (port-only; matching ownership still pre-InitGeom asm blob)
+  - `data_field.c`: `g_FieldAngleToDirectionLUT`, `D_800AEA44`, `D_800AEA64`, `D_800B2340` alias; removed colliding zero BSS stub for the LUT from `stubs.c`
+- **Build result:** `./pc_port/build_port.sh` in `xenogears-dev` → LINK OK. Stub count ~649 undefined (was ~655). `make check` not re-run this cycle; last recorded baseline remains SLUS FAILED `229aa9d6…`, field FAILED (pre-existing layout), member/shop OK — **unchanged claim, not re-proven tonight**.
+- **Runtime result:** Map014 ent0 and Map001 ent6, `DISPLAY=:0`, 22s timeout → **RC=124** both. Map014 stubs only benign `func_80028B14` / `3A450` / `3A89C`. Map001 stubs `28B14` + live `func_800862CC` (positional SFX helper; callees still INCLUDE_ASM).
+- **Proven:** New symbols are strong `T`/`D` in `xeno-port` and absent from function stubs. Fog enable writer is 0xE6 (sets `D_800B218E=1`); Map014 opening still reports fog=0 in prior probes so 0xE6 may not fire on that path yet — decomp is still correct for when scripts use it. Angle LUT was previously a zeroed 32-byte stub BSS — now retail 8×u16 values (pre-existing rotation bug for any opcode that indexed the zero table).
+- **Not proven / still open:** Map014 red-shift / depth-cue visual (RAW FT4s may ignore DQA; DQA=0 probe earlier still red-shifted — fog decomp alone does not claim a color fix). `func_800862CC` + `FieldActorWorldToScreenPosition` + `func_80086078`. Matching-tree extraction of `func_80048AB0` out of `35B7C.s` (needs yaml). Sound backend (`3A450`/`3A89C`/`3A5D0`). Synthetic new-game party `(0,0,0)`.
+- **Committed:** no — commit not requested; changes remain uncommitted for review/split.
+- **Stop reason (if stopped early):** solid early-opcode batch + green smokes; positional-SFX cluster deferred for layout audit.
+
