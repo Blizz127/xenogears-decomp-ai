@@ -358,7 +358,10 @@ void func_800A2030(void) {
             D_800AFFEC = 1;
             *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) = ip;
 
-            if ((g_FieldScriptVMCurActor->flags & 1) == 0) {
+            /* asm 800A2228-800A2250: gate is ActorData+0x0 bit0 (scriptFlags_0x0 /
+             * isDisabled), NOT flags+0x4. Clear's OP_27 sets this bit so ambient
+             * routine-1 auto-restart cannot keep running the screen-tint pulse. */
+            if (!g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x0) {
                 FieldScriptVMRun(8);
             }
 
