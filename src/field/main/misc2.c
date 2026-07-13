@@ -2131,9 +2131,31 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 }
 
 extern s32 D_8004F37C;
+extern s32 D_800500F8;
+extern s32 D_800500FC;
 
 #ifdef XENO_PC_PORT
 static s32 s_ActiveActorSkipCount = 0;
+
+/* Retail submits this quad directly and relies on the PSX GPU's raster clip.
+ * PsyCross can still turn a completely off-screen active-actor quad into a
+ * visible, stretched FT4 after its draw-environment offset is applied.  Do
+ * not duplicate a vertex-in-viewport test here: a quad can legitimately cross
+ * an edge with every vertex outside.  Reject only the conservative case where
+ * all four vertices are beyond the same raster edge. */
+static int FieldActiveQuadOutsideRaster(const u8* pPrim) {
+    s32 x0 = *(const s16*)(pPrim + 0x08), y0 = *(const s16*)(pPrim + 0x0A);
+    s32 x1 = *(const s16*)(pPrim + 0x10), y1 = *(const s16*)(pPrim + 0x12);
+    s32 x2 = *(const s16*)(pPrim + 0x18), y2 = *(const s16*)(pPrim + 0x1A);
+    s32 x3 = *(const s16*)(pPrim + 0x20), y3 = *(const s16*)(pPrim + 0x22);
+    s32 maxX = D_800500F8;
+    s32 maxY = D_800500FC >> 16;
+
+    return (x0 < 0 && x1 < 0 && x2 < 0 && x3 < 0) ||
+           (x0 > maxX && x1 > maxX && x2 > maxX && x3 > maxX) ||
+           (y0 < 0 && y1 < 0 && y2 < 0 && y3 < 0) ||
+           (y0 > maxY && y1 > maxY && y2 > maxY && y3 > maxY);
+}
 #endif
 
 void func_800764B4(void* ot, s32 renderContextIndex) {
@@ -2272,6 +2294,13 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
             (long*)(pPrim + 0x18),
             (long*)(pPrim + 0x20),
             &p, &flag);
+
+#ifdef XENO_PC_PORT
+        if (FieldActiveQuadOutsideRaster(pPrim)) {
+            s_ActiveActorSkipCount++;
+            continue;
+        }
+#endif
 
         /* Splice the packet at the head of ot[otz >> D_80050100], preserving the
            top (len/code) byte of both the packet tag and the OT slot. 24-bit link
