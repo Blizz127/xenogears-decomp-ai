@@ -104,6 +104,8 @@ extern int D_801D2228[]; // Sell menu explanation graphics X positions
 extern int D_801D2230[]; // Buy menu explanation graphics Y positions
 extern int D_801D2240[]; // Sell menu explanation graphics Y positions
 
+u_char ShopMenuBuyMenu(void);
+
 
 void func_801C5040(POLY_FT4* pPoly, short x, short y, u_char u, u_char v, short width, short height) {
     setXY4(
@@ -544,7 +546,7 @@ void ShopMenuSetVertices(SVECTOR* pVertices, u_short x, u_short y, u_short width
     pVertices[3].vz = 0;
 }
 
-void ShopMenuSetWindowBorderPrimitive(P_TAG* pPrim) {
+void ShopMenuSetWindowBorderPrimitive(POLY_FT4* pPrim) {
     SetSemiTrans(pPrim, 1);
     SetShadeTex(pPrim, 0);
     setRGB0(pPrim, 128, 128, 128);

@@ -424,7 +424,7 @@ void MemberChangeMenuSetVertices(SVECTOR* pVertices, u_short x, u_short y, u_sho
     pVertices[3].vz = 0;
 }
 
-void MemberChangeMenuSetWindowBorderPrimitive(P_TAG* pPrim) {
+void MemberChangeMenuSetWindowBorderPrimitive(POLY_FT4* pPrim) {
     SetSemiTrans(pPrim, 1);
     SetShadeTex(pPrim, 0);
     setRGB0(pPrim, 128, 128, 128);
