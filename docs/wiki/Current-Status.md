@@ -1,11 +1,27 @@
 # Current Status
 
-> Last aligned to handoff/commits through `3442f3f` (July 9, 2026).
+> Historical detail below is aligned through `3442f3f` (July 9, 2026).
+> Current open work is tracked in [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
 > For live detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/xenogears-decomp-ai/blob/main/docs/ai_context/ACTIVE_HANDOFF.md).
 
 This page answers six questions the project tracks constantly.
 
 ---
+
+## 2026-07-13 update — rendering fidelity recovered; build integrity is the active risk
+
+- **Map014 room/sprite ordering:** `func_8002E688` now derives OT depth from
+  retail `min(SZ0..SZ3) >> D_80050100`. At frame 60 actor 38 uses buckets
+  `74/89/87/73`, behind Fei at `41`; the temporary FLAG guard was discarded.
+- **PsyCross fidelity:** raw-textured dithering and the paletted ABR 1/2/3
+  CLUT-bit-15 gate are durable build patches. The latter has a live Map000
+  frame-33 repro; ABR-0 remains unchanged.
+- **Build warning:** `LINK OK` is not full coverage: the driver currently
+  suppresses and skips four failed TUs, then permits stubs to stand in. See
+  [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
+- **Animation-opcode survey:** a gated fd-3 trace saw no dedicated-unimplemented
+  opcode in passive 10-second Map000/001/014 starts. That is startup coverage,
+  not proof that the opcodes are dead.
 
 ## What currently works
 
@@ -13,7 +29,7 @@ This page answers six questions the project tracks constantly.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Native build/link | **Verified working** | `./pc_port/build_port.sh` → `pc_port/build_native/xeno-port` |
+| Native build/link | **Links, integrity hazard open** | Produces `xeno-port`, but silently skips four failed TUs; do not treat LINK OK alone as full game-code coverage |
 | PsyCross integration | **Verified working** | SDL2/OpenAL/OpenGL; documented patches in `build_port.sh` |
 | Boot-path stub oracle | **Verified working** | Undefined symbols auto-stubbed; live path logs `[stub] <name>` |
 | Kernel0 field route | **Verified working** | `XENO_KERNEL_SEL=0` reaches `FieldMain`, times out cleanly (`RUN_RC=124`) |

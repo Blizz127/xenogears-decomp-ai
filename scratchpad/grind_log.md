@@ -576,3 +576,19 @@ Dedicated UNIMPLEMENTED opcodes in func_800248D4 (per the actual assertion):
 Fixes silently resolve items nobody goes back to check. Revalidate open issues
 against HEAD before investing in them. A stale bug report costs the same rounds
 as a real one — and risks reimplementing working code.
+
+## 2026-07-13 — Build-path integrity and passive animation-opcode survey
+
+- **Build integrity defect:** `pc_port/build_port.sh` suppresses compiler
+  errors for game TUs, marks them skipped, and still links with stale/generated
+  stubs. The normal build currently skips member-change menu misc, shop-menu
+  misc, `system/sound.c`, and `system/work_list.c`; `LINK OK` is not proof all
+  intended game code executed.
+- **Stub convergence defect:** without matching ELFs, the driver reuses
+  `stubs.c` and only prunes collisions. It does not generate stubs for the
+  current undefined set or iterate to a fixed point.
+- **Opcode trace:** `XENO_DIAG_OPCODE_SWEEP` uses launcher-preopened fd 3 and
+  fixed 16-byte records; the launcher writes an `END!` sentinel after its
+  watchdog. Passive 10-second Map000/001/014 starts yielded 16/97/8 dispatches
+  respectively; none were `0x85,0x8E,0x98,0xBE,0xC8,0xD4,0xE2,0xFA`. Target
+  progression remains unswept.

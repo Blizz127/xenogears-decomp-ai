@@ -9,6 +9,31 @@ Practical gdb/logging commands from documented handoff workflows. Logs are store
 - For **any** run that must reach the field, **`XENO_KERNEL_SEL=0` is mandatory** — without it `PcPort_ForcedKernelSelect` is a no-op and the process spins at the kernel menu forever. Documented harness lesson (July 9): this menu-spin was once misread as a host stall, and it still exits `RC=124`, so a timeout alone does not prove the field was reached. With it set, cold-boot `FieldLoad` is ~6 s and the full Map1→Map15 reload ~10 s.
 - `rg` is **not** available in container — use `grep -E`
 
+## Build integrity and compile-time diagnostics
+
+Always inspect the build's `compiled=` / `skipped=` line. The current port
+driver suppresses game-TU compiler errors, skips failed units, and may let
+stubs stand in for their symbols; `LINK OK` alone is therefore insufficient.
+See [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md) before treating a runtime result as
+evidence from full game code.
+
+Compile a gated diagnostic without editing `GFLAGS`:
+
+```bash
+XENO_DIAG_DEFINES=-DXENO_DIAG_OPCODE_SWEEP ./scratchpad/run_build_port.sh
+```
+
+For the passive animation-opcode trace, use the launcher rather than passing
+map variables or mixing binary records into stderr:
+
+```bash
+./scratchpad/run_map001.sh --opcode-sweep /tmp/map001-opcodes.bin 10
+```
+
+The fixed records are 16 bytes. A final little-endian `END!` tag means the
+launcher regained control after the watchdog; an absent tag makes the run
+uninterpretable as a completed survey.
+
 ## Basic harness runs
 
 ### Map0 stability check

@@ -75,6 +75,20 @@ For session-level detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/x
 
 ---
 
+## 2026-07-13 — Map014 fidelity, PsyCross fixes, and build-path audit
+
+| When | Milestone | Commit / evidence |
+|------|-----------|-------------------|
+| Jul 13 | Camera angle, shadow FT4, and retail E688 cull sequence corrections | `1753a6a`, `751a194`, `640f79a` |
+| Jul 13 | E688 OT depth corrected to retail min-SZ; actor-38 buckets match `74/89/87/73` | `fea685a`; frame-60 bucket probe |
+| Jul 13 | RotAverage4, RotTransPers4, and NormalClip exact-matched; four bypassed PsyQ wrappers matched for decomp completeness | direct objdiff `{}` |
+| Jul 13 | PsyCross raw-texture dither and paletted ABR bit-15 fixes made durable patches | Map000 live repro and generated-build validation |
+| Jul 13 | Map-specific launchers, symbol-keyed probes, and liveness conventions added | session infrastructure commits |
+| Jul 13 | Build audit found silent failed-TU skipping and non-iterating stale-stub reuse | open in `OPEN_ISSUES.md` |
+| Jul 13 | Passive animation-opcode survey transport added; Map000/001/014 startup saw no target opcode | sentinel-backed fd-3 records; coverage limited |
+
+---
+
 ## Milestone demo command (field control)
 
 Documented in `b9266c5`:

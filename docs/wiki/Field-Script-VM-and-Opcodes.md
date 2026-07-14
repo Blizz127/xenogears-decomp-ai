@@ -104,6 +104,20 @@ After trigger, bytes at IP 6084: `07 12 24`
 
 **This is NOT the field script VM.** Every field sprite runs its own animation script: dispatcher **`func_800248D4`** (`src/slus_006.64/system/temp1.c`) executes base opcodes and advances the script pc via the per-opcode stride table **`D_8004FC40[256]`**; opcodes `>= 0x8A` go through the extended-opcode handler **`func_8001FBE4`** (`src/slus_006.64/system/animation_scripts.c`) via `jtbl_800183D8[opcode - 0x8A]`. The Map1→Map15 reload hit it when map15's load-time field script started ticking sprites (`FieldScriptVMRun` → `func_800A1624` → `func_80076AC0` → `AnimScriptTick` → `func_800248D4`). Depth: the July 9 entries in `docs/ai_context/ACTIVE_HANDOFF.md`.
 
+### Passive unimplemented-opcode survey (July 13, 2026)
+
+The dedicated unimplemented set is `0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4,
+0xE2, 0xFA`; `0x86` is already implemented and was a stale report. A
+compile-time `XENO_DIAG_OPCODE_SWEEP` hook emits fixed binary records to a
+launcher-supplied fd-3 file. Records carry opcode, sprite-data address,
+animation-script PC, matched field actor index where available, and animation
+index. The launcher appends `END!` after its watchdog returns.
+
+Passive ten-second starts observed 16 dispatches on Map000, 97 on Map001, and
+8 on Map014; none used the unimplemented set. This is **observed startup
+coverage only**, not evidence that the opcodes are unused. Targeted progression
+coverage is required before choosing an implementation order.
+
 ### Cleared anim opcodes (asm-faithful, adversarially verified vs retail asm)
 
 | Opcode (ext idx) | Semantics | Status |

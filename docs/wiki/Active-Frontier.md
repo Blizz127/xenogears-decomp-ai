@@ -1,17 +1,27 @@
 # Active Frontier
 
 > **Keep this page short.** Update when the real next gate changes.
-> Canonical detail: [`ACTIVE_HANDOFF.md` — July 9 map15 reload campaign entries](https://github.com/Blizz127/xenogears-decomp-ai/blob/main/docs/ai_context/ACTIVE_HANDOFF.md)
+> Canonical detail: [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md) and current handoff notes.
 
-## Current real frontier
+## Current real frontier (July 13, 2026)
 
-**Anim-script opcode `0xBC` sub-command `0x16` (move child to parent position) — Blocker.**
+**Build-driver integrity: failed game translation units must not silently become
+stub-backed runtime code.**
 
-On map15's first post-load frame (117), the per-frame child-sprite pump (`func_800752C8` → TimerWorkListUpdate) reaches `0xBC` sub `0x16` and asserts. It is already **Decoded**: `jtbl_800185A8[0x16]` → asm `8002044C` — fetch the parent sprite via the `+0x70` back-link and snap the child's position words (`+0x0/+0x4/+0x8`) to the parent's position halfwords. A trivial add to the existing `dispatchIndex == 0x32` case in `src/slus_006.64/system/animation_scripts.c`; unlike subs `0x24`/`0x25` it reads the parent and must **not** touch the sticky bit, so it gets its own arm.
+`pc_port/build_port.sh` currently suppresses compile errors and continues after
+skipping a game translation unit. The normal build skips four units, while the
+no-matching-ELF fallback reuses stale stubs and cannot iterate to a new fixed
+point. This undermines runtime conclusions drawn from a nominally successful
+link. The exact current inventory and reproducer are in
+[`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
 
-Runtime evidence: `captures/render_diag/map15_bc25_20260709_run1.log` (child #2 hits sub `0x16` on the same frame-117 tick chain after sub `0x25` cleared).
+The animation-opcode frontier is now evidence-backed but not yet prioritized:
+the dedicated unimplemented set (`0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4, 0xE2,
+0xFA`) was not observed during sentinel-backed passive startup runs of
+Maps 000/001/014. Targeted progression coverage must identify a live opcode
+before implementation work begins.
 
-## How we got here (July 8–9)
+## Historical July 8–9 frontier
 
 The Map1 → Map15 reload path is now **Verified working** end-to-end up to mid-frame 117:
 
@@ -24,15 +34,19 @@ See [Field Script VM and Opcodes](Field-Script-VM-and-Opcodes) for the opcode de
 
 ## Next single action
 
-**Add the sub-`0x16` arm to the `dispatchIndex == 0x32` case, rebuild, and rerun the zone-5 reload probe** (`captures/render_diag/map1_opcode_e0_reload_20260709.gdb`) plus the ent8/ent0/Map0 smokes, then adversarial asm-vs-C verification before commit — same loop as every July 9 pass.
+**Make the native build fail loudly on an unexpected game-TU compile failure,
+while preserving only explicitly approved port replacements.** The fix needs a
+separate build-focused pass: retain compiler diagnostics, distinguish intentional
+source exclusions from failed compilation, and do not let stale stubs make the
+result look valid.
 
 Do **not**:
 
-- Let sub `0x16` share the `0x24`/`0x25` sticky-bit prologue/tail blindly
-- Implement the other ~36 `0xBC` subs speculatively — they assert loudly by design and surface one at a time
-- Patch around the assert or fake child positions
+- Treat a green final link as proof that every game unit compiled
+- Hand-add stubs to paper over a changed undefined set
+- Implement an animation opcode merely because it appears in the assertion list
 
-## Queued behind it
+## Queued after build integrity is restored
 
 - Possibly more `0xBC` subs as the child positioning preamble unwinds (each partially mapped via `jtbl_800185A8`) — **Decoded**
 - `func_80025718` — type-2 render callback (`D_8004FD40[2]`) needed for child-sprite visibility — **Queued** (missing slots currently log once)
