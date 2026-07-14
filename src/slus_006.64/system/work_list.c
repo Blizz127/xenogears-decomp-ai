@@ -1,6 +1,10 @@
 #include "common.h"
 #include "system/memory.h"
 
+#ifdef XENO_PC_PORT
+#include <stdint.h>
+#endif
+
 /* A lot of this TU has been matched already, but due to SBSS/SDATA symbols
  * issues it's currently unable to be compiled in. */
 
