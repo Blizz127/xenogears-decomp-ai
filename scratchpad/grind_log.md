@@ -526,3 +526,15 @@ Newest entries at the bottom.
   change, so it is pre-existing and a separate investigation.
 - **Open, separate work:** Map014 post-frame-60 bare-run SIGSEGV; PsyCross ABR
   1/2/3 CLUT bit-15 per-texel semi-transparency gate; floating room geometry.
+
+### [2026-07-13] Closed: reported Map014 bare-run SIGSEGV was an invocation artifact
+- **Correction:** the environment copied into the earlier "Map014" smoke
+  command used `XENO_FIELD_MAP=1`, which selects Map001, not Map014. The
+  reported exit-139 result therefore did not establish a Map014 crash.
+- **Reproduction check:** at `01b432d`, three 20-second bare runs each of
+  Map001 (`XENO_FIELD_MAP=1`) and Map014 (`XENO_FIELD_MAP=14`) completed
+  cleanly: 6/6 with no SIGSEGV. The crash item is closed unless an exact
+  failing invocation and binary can be preserved.
+- **Harness guard:** `run_map001.sh` and `run_map014.sh` pin the intended map,
+  reject conflicting inherited `XENO_FIELD_MAP` values, set `KERNEL_SEL=0`,
+  and print the selected map and entrance before launch.
