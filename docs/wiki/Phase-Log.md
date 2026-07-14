@@ -87,6 +87,14 @@ For session-level detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/x
 | Jul 13 | Build audit found silent failed-TU skipping and non-iterating stale-stub reuse | open in `OPEN_ISSUES.md` |
 | Jul 13 | Passive animation-opcode survey transport added; Map000/001/014 startup saw no target opcode | sentinel-backed fd-3 records; coverage limited |
 
+## 2026-07-14 — Matrix alias correction
+
+| When | Milestone | Commit / evidence |
+|------|-----------|-------------------|
+| Jul 14 | Corrected the earlier incomplete `CompMatrix` alias audit: rotation was safe, but PsyCross overwrote `m0.t` before rereading it when `m0 == m2` | Retail `0x80049440-0x8004946C`; synthetic `[110,220,330]` → pre-fix `[20,40,60]` |
+| Jul 14 | PsyCross `CompMatrix` now preserves retail read-before-store ordering through a durable patch | `af122d1`; four alias/control assertions; fresh-worktree regeneration check |
+| Jul 14 | No current runtime exposure found across five maps | 3,493 calls, zero `m0==m2`; Map014/047/334 tripwires unchanged |
+
 ---
 
 ## Milestone demo command (field control)

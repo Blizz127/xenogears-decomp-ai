@@ -577,6 +577,31 @@ Fixes silently resolve items nobody goes back to check. Revalidate open issues
 against HEAD before investing in them. A stale bug report costs the same rounds
 as a real one — and risks reimplementing working code.
 
+## 2026-07-14 — CompMatrix alias-audit correction and PsyCross ordering fix
+
+- **Correction:** the earlier `CompMatrix` audit declared aliasing safe after
+  checking rotation writes, but stopped before the translation sequence. That
+  conclusion was incomplete. Alias-safety analysis must cover every write to
+  the aliased region, not only the first class of writes encountered.
+- **Retail mechanism:** handwritten `CompMatrix` does not copy either matrix.
+  It consumes all rotation inputs before output rotation stores, reads the
+  transformed GTE translation, then loads original `m0.t` at
+  `0x8004944C-0x80049454` before storing output translation at
+  `0x80049464-0x8004946C`. That read-before-store ordering makes `m0 == m2`
+  safe.
+- **PsyCross defect:** the live implementation stored transformed translation
+  directly into `m2->t`, then added `m0->t`. With `m0 == m2`, it had already
+  destroyed the original translation. Synthetic input expecting
+  `[110,220,330]` produced `[20,40,60]`.
+- **Fix/proof:** durable patch `psycross_compmatrix_alias.patch` buffers the
+  transformed result and original translation before writing `m2`, matching
+  retail ordering. Distinct output, `m0==m2` with zero/nonzero `m1.t`, and
+  `m1==m2` all assert `[110,220,330]`. Fresh-worktree apply/reverse checks pass.
+- **Live exposure:** zero aliases across 3,493 calls in 60 frames each of Maps
+  0, 1, 14, 47, and 334. Existing tripwires remain exact: Map014
+  `74/89/87/73`, Fei `41`; Map47 1,239 parent compositions; Map334 236 mode-1
+  calls.
+
 ## 2026-07-13 — Build-path integrity and passive animation-opcode survey
 
 - **Build integrity defect:** `pc_port/build_port.sh` suppresses compiler

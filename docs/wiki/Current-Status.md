@@ -15,7 +15,9 @@ This page answers six questions the project tracks constantly.
   `74/89/87/73`, behind Fei at `41`; the temporary FLAG guard was discarded.
 - **PsyCross fidelity:** raw-textured dithering and the paletted ABR 1/2/3
   CLUT-bit-15 gate are durable build patches. The latter has a live Map000
-  frame-33 repro; ABR-0 remains unchanged.
+  frame-33 repro; ABR-0 remains unchanged. `CompMatrix` also now preserves
+  retail's translation read-before-store ordering when `m0 == m2`; the prior
+  alias audit had checked rotation only and was incomplete (`af122d1`).
 - **Build integrity:** unexpected game-TU compile errors now abort. The four
   historical skips are understood as three blocked subsystem workstreams:
   sound has 39 unresolved `INCLUDE_ASM` functions, the two menu overlays have
