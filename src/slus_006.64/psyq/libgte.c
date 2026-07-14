@@ -202,7 +202,14 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers3);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTrans);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalClip);
+long NormalClip(long sxy0, long sxy1, long sxy2) {
+    long mac0;
+
+    gte_ldsxy3(sxy0, sxy1, sxy2);
+    gte_nclip();
+    gte_stopz(&mac0);
+    return mac0;
+}
 
 long RotTransPers4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
                    long* sxy0, long* sxy1, long* sxy2, long* sxy3,
