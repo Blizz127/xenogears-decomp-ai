@@ -94,12 +94,29 @@ Evidence: proven (source comments, symbol comparison, and runtime-recovery
 history)
 Last verified @ 37a3022
 
-## Unimplemented opcodes in func_800248D4
+## Unimplemented sprite-animation opcodes in func_800248D4
 
-Opcodes: 0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4, 0xE2, 0xFA
-Evidence: proven (assertion in source, enumerated)
-Repro: unknown which scenes dispatch these — needs a dispatch sweep first
-Last verified @ ed61298
+`func_800248D4` is the **sprite animation-script dispatcher**, not the field
+script VM. Its dedicated unimplemented set remains `0x85, 0x8E, 0x98, 0xBE,
+0xC8, 0xD4, 0xE2, 0xFA`.
+
+The strict static scanner in
+`tools/scripts/psx/scan_field_anim_opcodes.py` decoded all 730 field maps,
+3,234 per-map sprite packages, and 16,382 animation entries with zero aborts.
+Only `0xBE` is reachable from a per-map animation entry: seven distinct sites
+in Map047 package 0 animations 0/1/2, Map048 package 0 animation 2, and Map334
+package 0 animations 0/1/2. Map047 and Map334 tie at three sites each; use
+Map047 as the first runtime actor-binding/repro target.
+
+The other seven are **not reachable in any per-map animation package**. Do not
+call them unused: global party, battle, and special-animation packages were not
+part of this field-map scan and remain a real coverage gap.
+
+Repro: `python3 tools/scripts/psx/scan_field_anim_opcodes.py --json
+scratchpad/field_anim_opcode_scan_all.json`; expect 730 maps, 3,234 packages,
+16,382 fully-decoded entries, zero aborts, and seven reachable `0xBE` sites.
+Evidence: proven for per-map packages; global animation-package coverage open
+Last verified @ 226ba2d
 
 ## CompMatrix PsyQ decomp match
 

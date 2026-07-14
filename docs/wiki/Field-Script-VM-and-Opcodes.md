@@ -113,10 +113,55 @@ launcher-supplied fd-3 file. Records carry opcode, sprite-data address,
 animation-script PC, matched field actor index where available, and animation
 index. The launcher appends `END!` after its watchdog returns.
 
-Passive ten-second starts observed 16 dispatches on Map000, 97 on Map001, and
-8 on Map014; none used the unimplemented set. This is **observed startup
+Passive starts observed 16 dispatches on Map000, 195 on Map001, and 48 on
+Map014; none used the unimplemented set. This is **observed startup
 coverage only**, not evidence that the opcodes are unused. Targeted progression
 coverage is required before choosing an implementation order.
+
+### Static reachable-opcode survey (July 14, 2026)
+
+`tools/scripts/psx/scan_field_anim_opcodes.py` corrects a premise that must stay
+explicit: actor routine offsets in the field-script archive belong to
+`FieldScriptVMRun`; they are **not** entry points for `func_800248D4`. The
+animation dispatcher consumes animation records inside each map's decompressed
+sprite-data section, so the scanner seeds traversal from those real animation
+entries instead.
+
+The scanner derives generic strides from retail `D_8004FC40`, then applies the
+retail dedicated-handler semantics and fixed-size overrides. In particular,
+`D_8004FC40[0xBE]` is 2, but the dedicated handler at
+`0x80024A84-0x80024B9C` consumes three bytes. Blindly treating the table as the
+whole decoder would desynchronize at every `0xBE`. No opcode is variable
+length. Relative jumps, conditional branches, `0xE2` calls, and `0x85` returns
+are followed with a visited `(PC, call stack)` set and strict package-code
+bounds. An invalid fetch/target, zero advance, or truncated instruction aborts
+that animation and excludes all of its partial counts.
+
+Full-disc result: **730 maps, 3,234 sprite packages, 16,382 animation entries,
+zero aborts, zero map/package errors**. Only `0xBE` is reachable among the eight
+dedicated unimplemented opcodes:
+
+| Opcode | Reachable instruction sites | Raw unreachable/operand bytes | Maps |
+|--------|-----------------------------:|------------------------------:|------|
+| `0x85` | 0 | 268 | — |
+| `0x8E` | 0 | 852 | — |
+| `0x98` | 0 | 1,194 | — |
+| `0xBE` | **7** | 261 | 47 (3), 48 (1), 334 (3) |
+| `0xC8` | 0 | 1,157 | — |
+| `0xD4` | 0 | 3,131 | — |
+| `0xE2` | 0 | 2,144 | — |
+| `0xFA` | 0 | 235 | — |
+
+The raw-byte column is deliberately non-authoritative: it includes operands and
+unreachable/trailing bytes. For example, a byte grep would promote `0xD4` based
+on 3,131 matches even though none is a reachable instruction.
+
+Implementation priority therefore collapses to `0xBE`, with Map047 package 0
+as the first runtime binding/repro target (Map334 ties its concentration).
+Package/animation entries are statically known, but actor binding is dynamic
+and must be identified at runtime. The seven zero-count opcodes are deferred,
+not closed: party, battle, and special-animation packages live outside the
+per-map sprite-data coverage of this scan.
 
 ### Cleared anim opcodes (asm-faithful, adversarially verified vs retail asm)
 
