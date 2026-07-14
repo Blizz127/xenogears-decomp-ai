@@ -538,3 +538,14 @@ Newest entries at the bottom.
 - **Harness guard:** `run_map001.sh` and `run_map014.sh` pin the intended map,
   reject conflicting inherited `XENO_FIELD_MAP` values, set `KERNEL_SEL=0`,
   and print the selected map and entrance before launch.
+
+## Floating BG/room geometry — CLOSED (not reproducible at HEAD d102e5f)
+
+Map014 frame 600 wide shot shows a coherent room: connected floor/ceiling/walls,
+furniture, easel, bed, paintings, perspective-consistent throughout.
+
+The "disconnected floating fragments" description predates the DR_MOVE feedback
+ordering fix and the func_8002E688 min-SZ OT derivation fix (fea685a). Either or
+both likely resolved it.
+
+Reopen only with a current frame number + capture showing a reproducible defect.
