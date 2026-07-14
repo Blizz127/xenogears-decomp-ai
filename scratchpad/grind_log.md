@@ -475,3 +475,54 @@ Newest entries at the bottom.
 - **Proof:** GDB zero-length isolation of only this actor FT4 produced f60 hash `de6f100d…`; the source fix produces the identical hash. The normal painting/easel f250 is byte-identical before/after (`a6598051…`).
 - **Build/runtime:** `./scratchpad/run_build_port.sh` LINK OK. Map001 ent6 and Map014 ent0 12s smokes both ran to expected timeout (124), with only pre-existing stubs.
 - **Not changed:** authored Fei waits, camera timing, room FT4 E688 path, and the optional E688 FLAG diagnostic.
+
+### [2026-07-13] Map014 sprite FT4 sampling check (residual assumption recorded)
+- **Result:** CPU decoding of the captured frame-60 source VRAM agrees with the
+  exact 4-bit shader lookup for all 1,128 texels covered by the eight
+  `tpage=0x001a` / `clut=0x3811` packets.  CLUT and texture-window arithmetic
+  are therefore not a lead; default filtering is point sampling.
+- **Residual assumption:** the attempted live GDB re-capture did not reach the
+  frame-60 parser breakpoint.  This evidence is a replay of the captured VRAM
+  through a line-for-line integer mirror of `GPU_SAMPLE_TEXTURE_4BIT_FUNC`, not
+  a readback of the fragment shader's per-pixel output.  The mirror is simple
+  and directly matches the shader's byte/nibble/CLUT operations, but this is
+  deliberately left marked as one degree short of direct GPU observation.
+- **Artifacts:** `m14_ft4_source_vram_f60.bin`,
+  `m14_ft4_sampling_compare.py`, and `m14_ft4_sampling_compare.log`.
+
+### [2026-07-13] Correction: actor-24 GTE trace baseline attribution
+- **Correction:** the 50-record actor-24 GTE trace previously described as
+  `d37a35f` was captured from a source layout at or after `1753a6a`: its GDB
+  breakpoint was `misc2.c:1589`, but at `d37a35f` the dispatch call is line
+  1585.  The probe could not have produced records from the earlier revision.
+- **Impact:** this corrects the baseline label, not the relative validations.
+  `1753a6a` predates the later E688/diagnostic/cosmetic changes, so their
+  before/after trace comparisons remain against a consistent post-angle-fix
+  tree. RotAverage4's exact objdiff result is unaffected.
+- **Probe hygiene:** line-keyed actor dispatch probes are revision-fragile and
+  may fail silently. `m14_actor24_gte_trace.gdb` now keys on the
+  `func_8002C700` dispatch symbol plus actor 24's live model-packet identity,
+  and emits an explicit zero-record failure marker.
+
+### [2026-07-13] Fix Map014 room/sprite OT ordering: E688 uses retail min(SZ0..SZ3)
+- **Root cause:** `func_8002E688` used `RotTransPers4`'s return
+  (`SZ3 >> 2`) as its ordering-table depth. Retail instead reads GTE `SZ0`
+  through `SZ3`, selects the unsigned minimum, then performs `srav` by
+  `D_80050100` (retail `0x8002E82C–0x8002E894`). The PsyQ helper contract was
+  correct; only this walker selected the wrong depth source.
+- **Proof:** at Map014 frame 60, actor 38's four wall quads sorted into port
+  buckets `30/33/33/18` from SZ3, while retail's minima require
+  `74/89/87/73`; Fei is bucket 41. The wall therefore rasterized after and
+  overwrote Fei. With min-SZ, all four buckets exactly match retail and the
+  wall rasterizes first; the fresh frame-60 capture shows Fei in front.
+- **Exonerated:** actor 24 matrix/GTE trace remains byte-identical; E688's
+  retail cull-sequence alignment, CLUT sampling, FT4 construction,
+  triangulation, fragment blending, framebuffer feedback, and subtractive
+  fade were downstream of the already-wrong ordering. The temporary
+  rendering.c FLAG guard merely hid the symptom by dropping Fei packets and
+  was discarded.
+- **Validation:** `run_build_port.sh` LINK OK; frame-60 bucket probe re-run on
+  the rebuilt binary. Map014's later bare-run SIGSEGV also occurs without this
+  change, so it is pre-existing and a separate investigation.
+- **Open, separate work:** Map014 post-frame-60 bare-run SIGSEGV; PsyCross ABR
+  1/2/3 CLUT bit-15 per-texel semi-transparency gate; floating room geometry.
