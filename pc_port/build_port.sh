@@ -557,6 +557,7 @@ print("    texture-window patches OK")
 TEXWINDOW_PY
 
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
+# gitignored. Apply in dependency order: the ABR patch was generated after the
 # raw-texture dither correction.
 apply_psycross_patch() {
     local patch="$1"
@@ -583,6 +584,7 @@ apply_psycross_patch() {
 }
 
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_abr_clut_bit15.patch" "_xeno_clut_bit15_abr"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
