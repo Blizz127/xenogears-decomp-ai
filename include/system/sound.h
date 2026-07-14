@@ -282,6 +282,13 @@ extern SpuVolume g_SoundReverbDepth;
 
 extern CdlATV g_SoundCdRomAttenuation;
 
+// Heap / SPU-memory helpers. Their return and argument widths are established
+// by retail sound.s (0x80038F18, 0x800397C0, and 0x8003F614 respectively).
+void* SoundHeapAllocate(u32 allocSize);
+void SoundHeapClearBlockMemory(void* pMemory, s32 size);
+SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(s32 targetAddress);
+int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, u16 targetValue);
+
 extern s32 SoundCalculateAudioManagerSize(s32 elementCount);
 extern void SoundSetVolumeWithPhase(s32, SpuVolume*, s32);
 

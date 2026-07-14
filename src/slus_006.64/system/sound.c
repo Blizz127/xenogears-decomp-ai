@@ -668,7 +668,7 @@ void SoundHeapInitialize(void* startAddress, unsigned int size) {
     pHeapBlock->pNext = NULL;
 }
 
-void* SoundHeapAllocate(unsigned int allocSize) {
+void* SoundHeapAllocate(u32 allocSize) {
     void* pMemory;
     SoundHeapBlockHeader* pNewBlock;
     unsigned int nTotalSize;
@@ -717,6 +717,8 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800391CC);
 void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
     u32* pCurSrc;
     u32* pCurDst;
+    u8* pCurSrcByte;
+    u8* pCurDstByte;
     u32* pNextSrc;
     u32* pNextDst;
     u32 v0,v1,v2,v3;
@@ -744,12 +746,14 @@ void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
         *pCurDst++ = *pCurSrc++;
     }
 
+    pCurSrcByte = (u8*)pCurSrc;
+    pCurDstByte = (u8*)pCurDst;
     for (nCount = size & 3; nCount != 0; nCount--) {
-        *((u8*)pCurDst)++ = *((u8*)pCurSrc)++;
+        *pCurDstByte++ = *pCurSrcByte++;
     }
 }
 
-void SoundHeapClearBlockMemory(void* pMemory, int size) {
+void SoundHeapClearBlockMemory(void* pMemory, s32 size) {
     unsigned int nCount;
     u32* pDword;
     u8* pByte;
@@ -849,7 +853,7 @@ int SoundSpuMemoryGetFreeBlock() {
 }
 
 // Possibly misleading name
-SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(int targetAddress) {
+SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(s32 targetAddress) {
     SoundSpuMemoryBlock* pCurrent;
     SoundSpuMemoryBlock* pRes;
     
@@ -2042,7 +2046,7 @@ void SoundSetVoiceAdsrSustainLevel(s32 voiceIndex, s32 sustainLevel) {
 // End ADSR functions
 
 //----------------------------------------------------------------------------------------------------------------------
-int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, unsigned short targetValue) {
+int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, u16 targetValue) {
     unsigned char bIsError;
     
     if (pSoundFile->magic != magicBytes) {
