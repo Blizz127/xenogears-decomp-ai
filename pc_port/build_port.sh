@@ -53,6 +53,63 @@ if [ -n "${XENO_DIAG_DEFINES:-}" ]; then
     GFLAGS="$GFLAGS $XENO_DIAG_DEFINES"
 fi
 
+# Build-integrity policy:
+#
+# Every game TU is expected to compile.  The two exclusions below are explicit
+# port design decisions, not compiler failures.  The four entries in
+# KNOWN_BROKEN_GAME_TUS are temporary, visible exceptions: the port can still
+# be built while those decomp TUs are repaired, but their real definitions are
+# absent and unresolved references can resolve through stubs.  Do not add a TU
+# here merely to make a build pass; each entry needs an accompanying issue.
+INTENTIONAL_GAME_TU_EXCLUSIONS=(
+    "src/**/psyq/** — PsyQ originals are replaced at runtime by PsyCross"
+    "src/slus_006.64/system/archive.c — replaced by pc_port/src/archive_port.c"
+)
+KNOWN_BROKEN_GAME_TUS=(
+    "src/member_change_menu/main/misc.c"
+    "src/shop_menu/main/misc.c"
+    "src/slus_006.64/system/sound.c"
+    "src/slus_006.64/system/work_list.c"
+)
+
+known_broken_tu_reason() {
+    case "$1" in
+        src/member_change_menu/main/misc.c)
+            echo "member-change menu overlay is absent; menu dispatch can use stubs" ;;
+        src/shop_menu/main/misc.c)
+            echo "shop menu overlay is absent; menu dispatch can use stubs" ;;
+        src/slus_006.64/system/sound.c)
+            echo "sound/WDS/SPU management definitions are absent; sound symbols can use stubs" ;;
+        src/slus_006.64/system/work_list.c)
+            echo "work-list cleanup/global definitions are absent; port replacement is only partial" ;;
+    esac
+}
+
+is_known_broken_game_tu() {
+    local candidate="$1"
+    local broken
+    for broken in "${KNOWN_BROKEN_GAME_TUS[@]}"; do
+        [ "$candidate" = "$broken" ] && return 0
+    done
+    return 1
+}
+
+is_intentionally_excluded_game_tu() {
+    case "$1" in
+        */psyq/*|src/slus_006.64/system/archive.c) return 0 ;;
+    esac
+    return 1
+}
+
+print_known_broken_game_tus() {
+    echo "    WARNING: building with explicitly allowlisted broken game TUs:"
+    local broken
+    for broken in "${KNOWN_BROKEN_GAME_TUS[@]}"; do
+        echo "      $broken — $(known_broken_tu_reason "$broken")"
+    done
+    echo "    WARNING: these are temporary exceptions; any other game-TU compile failure aborts."
+}
+
 # PsyCross bugfix (idempotent; the vendored tree is gitignored so this patch lives
 # here in the tracked build, not as an untracked source edit). The sprite/tile
 # primitive switch masks the code with 0xFD, which clears the semi-transparency bit
@@ -610,21 +667,44 @@ fi
 echo "    libpsycross.a: $PSYLIB"
 
 echo "==> [2/5] Compiling game translation units in port mode"
+echo "    Intentional source exclusions:"
+for exclusion in "${INTENTIONAL_GAME_TU_EXCLUSIONS[@]}"; do
+    echo "      $exclusion"
+done
+print_known_broken_game_tus
+
 compiled=0; skipped=0; SKIPPED=""
 GAME_OBJS=()
 while IFS= read -r f; do
-    o="$OBJ/$(echo "$f" | tr '/' '_').o"
-    if gcc -c "$f" $GFLAGS $INC -o "$o" 2>/dev/null; then
-        GAME_OBJS+=("$o"); compiled=$((compiled+1))
-    else
-        skipped=$((skipped+1)); SKIPPED="$SKIPPED $f"
+    # PsyQ originals are replaced by PsyCross, and archive.c by archive_port.c.
+    # These are the only intentional game-source exclusions.
+    if is_intentionally_excluded_game_tu "$f"; then
+        continue
     fi
-# src/.../system/archive.c is excluded: the port replaces its async CD state
-# machine with a synchronous PsyCross-libcd read in pc_port/src/archive_port.c
-# (ArchiveReadFile). Its other (async/stream) symbols become no-op stubs.
-done < <(find src -name '*.c' | grep -v '/psyq/' | grep -v '/system/archive\.c$' | sort)
+
+    o="$OBJ/$(echo "$f" | tr '/' '_').o"
+    compile_err="$OUT/$(echo "$f" | tr '/' '_').err"
+    rm -f "$o" "$compile_err"
+    if gcc -c "$f" $GFLAGS $INC -o "$o" 2>"$compile_err"; then
+        GAME_OBJS+=("$o"); compiled=$((compiled+1))
+    elif is_known_broken_game_tu "$f"; then
+        skipped=$((skipped+1)); SKIPPED="$SKIPPED $f"
+        echo "    WARNING: allowlisted broken game TU failed: $f"
+        echo "      $(known_broken_tu_reason "$f")"
+        sed 's/^/      | /' "$compile_err"
+    else
+        echo "ERROR: game TU compilation failed and is not explicitly allowlisted."
+        echo "       TU: $f"
+        sed 's/^/       | /' "$compile_err"
+        echo "ERROR: aborting; fix the TU or add a reviewed temporary allowlist entry."
+        exit 1
+    fi
+done < <(find src -name '*.c' | sort)
 echo "    compiled=$compiled  skipped=$skipped"
-[ -n "$SKIPPED" ] && echo "    skipped (will be stubbed):$SKIPPED"
+if [ -n "$SKIPPED" ]; then
+    echo "    WARNING: skipped only by the explicit temporary allowlist:$SKIPPED"
+    print_known_broken_game_tus
+fi
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
 for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/archive_port.c pc_port/src/work_list_port.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c pc_port/src/data_field.c; do
