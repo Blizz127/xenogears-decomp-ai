@@ -22,4 +22,11 @@ export DISPLAY="${DISPLAY:-:0}"
 
 printf 'Launching Map014 (XENO_FIELD_MAP=%s, entrance=%s)\n' \
     "${XENO_FIELD_MAP}" "${XENO_FIELD_ENTRANCE}"
+
+if [[ "${1:-}" == "--gdb" ]]; then
+    [[ -n "${2:-}" && $# -eq 2 ]] || { echo 'usage: run_map014.sh --gdb <script.gdb>' >&2; exit 64; }
+    exec distrobox enter xenogears-dev -- bash -lc \
+        "cd '$PWD' && env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=${map} XENO_FIELD_ENTRANCE=${entrance} SDL_VIDEODRIVER=x11 DISPLAY='${DISPLAY}' gdb -q -batch -x '$2' '$binary'"
+fi
+
 exec "${binary}" "$@"
