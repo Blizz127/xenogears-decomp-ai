@@ -33,7 +33,51 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix0);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", CompMatrix);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrixLV);
+VECTOR* ApplyMatrixLV(MATRIX* m, VECTOR* v0, VECTOR* v1) {
+    VECTOR hi;
+    VECTOR lo;
+
+    gte_SetRotMatrix(m);
+    hi = *v0;
+
+    if (hi.vx < 0) {
+        lo.vx = -(-hi.vx >> 15);
+        hi.vx = -(-hi.vx & 0x7FFF);
+    } else {
+        lo.vx = hi.vx >> 15;
+        hi.vx &= 0x7FFF;
+    }
+    if (hi.vy < 0) {
+        lo.vy = -(-hi.vy >> 15);
+        hi.vy = -(-hi.vy & 0x7FFF);
+    } else {
+        lo.vy = hi.vy >> 15;
+        hi.vy &= 0x7FFF;
+    }
+    if (hi.vz < 0) {
+        lo.vz = -(-hi.vz >> 15);
+        hi.vz = -(-hi.vz & 0x7FFF);
+    } else {
+        lo.vz = hi.vz >> 15;
+        hi.vz &= 0x7FFF;
+    }
+
+    gte_ldlvl(&lo);
+    gte_rtir_sf0();
+    gte_stlvnl(&lo);
+    gte_ldlvl(&hi);
+    gte_rtir();
+
+    if (lo.vx < 0) lo.vx *= 8; else lo.vx <<= 3;
+    if (lo.vy < 0) lo.vy *= 8; else lo.vy <<= 3;
+    if (lo.vz < 0) lo.vz *= 8; else lo.vz <<= 3;
+    gte_stlvnl(&hi);
+
+    v1->vx = hi.vx + lo.vx;
+    v1->vy = hi.vy + lo.vy;
+    v1->vz = hi.vz + lo.vz;
+    return v1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyRotMatrix);
 
