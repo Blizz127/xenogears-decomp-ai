@@ -59,7 +59,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransMatrix);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ScaleMatrix);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRotMatrix);
+void SetRotMatrix(MATRIX* m) {
+    gte_SetRotMatrix(m);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetLightMatrix);
 
