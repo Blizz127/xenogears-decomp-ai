@@ -53,7 +53,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix2);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrix);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrixSV);
+SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1) {
+    gte_SetRotMatrix(m);
+    gte_ldv0(v0);
+    gte_rtv0();
+    gte_stsv(v1);
+    return v1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransMatrix);
 
