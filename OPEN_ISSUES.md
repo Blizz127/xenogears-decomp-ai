@@ -57,6 +57,32 @@ errors repeat on every run.
 Evidence: proven (build_port.sh trial/stub control flow; diagnostic-build test)
 Last verified @ 3c90cd9
 
+## Work-list runtime routing: decomp source vs. host-safe port override
+
+`src/slus_006.64/system/work_list.c` now compiles, but it cannot be linked
+alongside `pc_port/src/work_list_port.c`: nine definitions overlap. The port
+file is a deliberate, partial host-layout override, not a full replacement.
+It uses PSX-layout 0x1C entries with 32-bit stored pointers because the original
+decomp layout is unsafe for the 64-bit host; it was added to restore the
+runtime-critical work-list paths that were previously stubbed.
+
+Do **not** resolve this by simply adding `work_list.c` to an exclusion list.
+That would discard the exports only present in the decomp TU (including
+`WorkListsFreeAllEntries`, allocation helpers, getters, and other nonmatching
+functions), which are currently stubbed and would need the same layout/routing
+treatment before becoming usable.
+
+Open design question: should the complete work-list subsystem adopt the
+PSX-layout port model, or should the remaining `work_list.c` exports be ported
+individually into the host-safe implementation?
+
+Repro: compile `src/slus_006.64/system/work_list.c` with the port GFLAGS, then
+compare its defined symbols against `pc_port/src/work_list_port.c`; the shared
+definitions produce duplicate-definition link errors if both objects are linked.
+Evidence: proven (source comments, symbol comparison, and runtime-recovery
+history)
+Last verified @ 37a3022
+
 ## Unimplemented opcodes in func_800248D4
 
 Opcodes: 0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4, 0xE2, 0xFA
