@@ -204,7 +204,24 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTrans);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalClip);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers4);
+long RotTransPers4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
+                   long* sxy0, long* sxy1, long* sxy2, long* sxy3,
+                   long* p, long* flag) {
+    long flag0;
+
+    gte_ldv3(v0, v1, v2);
+    gte_rtpt();
+    gte_stsxy3(sxy0, sxy1, sxy2);
+    gte_stflg(&flag0);
+
+    gte_ldv0(v3);
+    gte_rtps();
+    gte_stsxy(sxy3);
+    gte_stdp(p);
+    gte_stflg(flag);
+    *flag |= flag0;
+    return *p >> 2;
+}
 
 /* PsyQ libgte, retail 0x8004A7BC.  The command order deliberately retains the
  * two separate FLAG samples: RTPT's result is ORed with RTPS's before AVSZ4. */
