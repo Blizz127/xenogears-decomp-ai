@@ -46,6 +46,12 @@ INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 #   layout mismatches the game's hardcoded 0x10 strides (font.c). MUST match the
 #   value PsyCross's lib is built with (see pc_port/CMakeLists.txt).
 GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
+# Optional compile-time diagnostics, for example:
+# XENO_DIAG_DEFINES=-DXENO_DIAG_OPCODE_SWEEP ./scratchpad/run_build_port.sh
+# Leave GFLAGS byte-for-byte unchanged when unset.
+if [ -n "${XENO_DIAG_DEFINES:-}" ]; then
+    GFLAGS="$GFLAGS $XENO_DIAG_DEFINES"
+fi
 
 # PsyCross bugfix (idempotent; the vendored tree is gitignored so this patch lives
 # here in the tracked build, not as an untracked source edit). The sprite/tile
