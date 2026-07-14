@@ -2,6 +2,7 @@
 #include "psyq/libgte.h"
 #include "system/memory.h"
 #ifdef XENO_PC_PORT
+#include <psx/gtereg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #endif
@@ -430,9 +431,24 @@ s32 func_8002E688(u8* pCmd, s32 count) {
          * delete extreme close-up FT4s (Map014 painting hold). */
 
         {
-            /* The PsyQ helper returns SZ3 >> 2, the depth scale used by this
-             * ordering table. */
+            /* Retail 8002E82C--8002E894 reads SZ0..SZ3, selects the
+             * smallest unsigned depth, then uses `srav minSZ, D_80050100`
+             * for the OT index. RotTransPers4's return is SZ3 >> 2 and is
+             * correct for the PsyQ helper contract, but is not this walker's
+             * OT-depth source. */
+#ifdef XENO_PC_PORT
+            u16 minSz = (u16)C2_SZ0;
+            u16 sz;
+            sz = (u16)C2_SZ1;
+            if (sz < minSz) minSz = sz;
+            sz = (u16)C2_SZ2;
+            if (sz < minSz) minSz = sz;
+            sz = (u16)C2_SZ3;
+            if (sz < minSz) minSz = sz;
+            s32 otIndex = (s32)minSz >> D_80050100;
+#else
             s32 otIndex = (s32)otz >> D_80050100;
+#endif
             u32 oldTag;
             oldTag = ot[otIndex];
             ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
