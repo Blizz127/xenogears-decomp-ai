@@ -3,16 +3,20 @@
 > **Keep this page short.** Update when the real next gate changes.
 > Canonical detail: [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md) and current handoff notes.
 
-## Current real frontier (July 13, 2026)
+## Current real frontier (July 14, 2026)
 
-**Build-driver integrity: failed game translation units must not silently become
-stub-backed runtime code.**
+**Restore the matching ELF build.**
 
-`pc_port/build_port.sh` currently suppresses compile errors and continues after
-skipping a game translation unit. The normal build skips four units, while the
-no-matching-ELF fallback reuses stale stubs and cannot iterate to a new fixed
-point. This undermines runtime conclusions drawn from a nominally successful
-link. The exact current inventory and reproducer are in
+The native build driver now fails closed for unexpected game-TU compile errors
+and refuses stale typed-stub manifests. The matching MIPS environment is
+installed, but `make -B build` stops at the main SLUS link: `psyq/libgte.c`
+emits unresolved inline `gte_*` helpers (`gte_SetRotMatrix`, `gte_ldlvl`,
+`gte_rtpt`, and related macros). Until that integration defect is repaired,
+`slus_006.64.elf`/overlay ELFs cannot classify new undefined symbols safely.
+
+The old "four skipped TUs" diagnosis is superseded: sound exposes 39 unresolved
+`INCLUDE_ASM` functions, the menu overlays expose 15, and work-list is a
+host-layout routing problem. Details and reproducers are in
 [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
 
 The animation-opcode frontier is now evidence-backed but not yet prioritized:
@@ -34,15 +38,13 @@ See [Field Script VM and Opcodes](Field-Script-VM-and-Opcodes) for the opcode de
 
 ## Next single action
 
-**Make the native build fail loudly on an unexpected game-TU compile failure,
-while preserving only explicitly approved port replacements.** The fix needs a
-separate build-focused pass: retain compiler diagnostics, distinguish intentional
-source exclusions from failed compilation, and do not let stale stubs make the
-result look valid.
+**Repair the matching-build GTE inline-helper integration so `make -B build`
+produces matching ELFs.** Do not substitute untyped stubs or treat a native
+`LINK OK` as a replacement for the missing symbol information.
 
 Do **not**:
 
-- Treat a green final link as proof that every game unit compiled
+- Treat a green native link as proof that every game unit compiled
 - Hand-add stubs to paper over a changed undefined set
 - Implement an animation opcode merely because it appears in the assertion list
 

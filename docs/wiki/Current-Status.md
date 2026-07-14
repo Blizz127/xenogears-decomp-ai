@@ -8,7 +8,7 @@ This page answers six questions the project tracks constantly.
 
 ---
 
-## 2026-07-13 update — rendering fidelity recovered; build integrity is the active risk
+## 2026-07-14 update — build integrity is fail-closed; matching ELFs are blocked
 
 - **Map014 room/sprite ordering:** `func_8002E688` now derives OT depth from
   retail `min(SZ0..SZ3) >> D_80050100`. At frame 60 actor 38 uses buckets
@@ -16,8 +16,14 @@ This page answers six questions the project tracks constantly.
 - **PsyCross fidelity:** raw-textured dithering and the paletted ABR 1/2/3
   CLUT-bit-15 gate are durable build patches. The latter has a live Map000
   frame-33 repro; ABR-0 remains unchanged.
-- **Build warning:** `LINK OK` is not full coverage: the driver currently
-  suppresses and skips four failed TUs, then permits stubs to stand in. See
+- **Build integrity:** unexpected game-TU compile errors now abort. The four
+  historical skips are understood as three blocked subsystem workstreams:
+  sound has 39 unresolved `INCLUDE_ASM` functions, the two menu overlays have
+  15, and work-list needs a host-layout routing decision.
+- **Matching ELFs:** the documented MIPS toolchain is available, but the
+  matching build fails at the main SLUS link because `psyq/libgte.c` emits
+  unresolved inline `gte_*` helpers. No matching ELF can be generated until
+  that build-integration issue is repaired. See
   [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
 - **Animation-opcode survey:** a gated fd-3 trace saw no dedicated-unimplemented
   opcode in passive 10-second Map000/001/014 starts. That is startup coverage,
@@ -29,7 +35,7 @@ This page answers six questions the project tracks constantly.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Native build/link | **Links, integrity hazard open** | Produces `xeno-port`, but silently skips four failed TUs; do not treat LINK OK alone as full game-code coverage |
+| Native build/link | **Fail-closed; subsystem workstreams open** | Unexpected TU failures abort. Sound/menu activation is blocked by unresolved `INCLUDE_ASM` surface; work-list requires routing work |
 | PsyCross integration | **Verified working** | SDL2/OpenAL/OpenGL; documented patches in `build_port.sh` |
 | Boot-path stub oracle | **Verified working** | Undefined symbols auto-stubbed; live path logs `[stub] <name>` |
 | Kernel0 field route | **Verified working** | `XENO_KERNEL_SEL=0` reaches `FieldMain`, times out cleanly (`RUN_RC=124`) |

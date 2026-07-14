@@ -10,52 +10,63 @@ Rules:
 
 ---
 
-## Port build silently omits failed game translation units
+## Missing matching ELFs block typed stubs and full matching
 
-`pc_port/build_port.sh` suppresses each game-TU compiler stderr and treats a
-failure as `skipped`; the final link then permits stale auto-stubs to stand in
-for definitions that would otherwise have come from that TU. This can produce a
-linking, runnable binary with real game code absent.
+`build/out/slus_006.64.elf`, `field.elf`, `member_change_menu.elf`, and
+`shop_menu.elf` are not available to the port build. They are required to
+classify undefined symbols safely as functions or correctly-sized data before
+generating `stubs.c`. The driver now fails explicitly when its typed stub
+manifest differs from the current undefined set; it no longer silently reuses a
+stale manifest.
 
-Current normal-build inventory:
+The supported `xenogears-dev` MIPS toolchain is available and compiles the
+matching graph through 446 of 459 Ninja steps. The main SLUS link then fails in
+`src/slus_006.64/psyq/libgte.c`: calls such as `gte_SetRotMatrix`, `gte_ldlvl`,
+and `gte_rtpt` remain unresolved because the matching dependency set includes
+`psyq/libgte.h` but not the inline GTE macro definitions. Repair that matching
+build integration before expecting ELFs to exist.
 
-- `src/member_change_menu/main/misc.c`: PsyCross `setRGB0` is used on `P_TAG`,
-  which has no `r0/g0/b0` fields.
-- `src/shop_menu/main/misc.c`: same `P_TAG`/`setRGB0` type mismatch.
-- `src/slus_006.64/system/sound.c`: conflicting implicit declarations and
-  invalid post-increment lvalues.
-- `src/slus_006.64/system/work_list.c`: `uintptr_t` is unavailable in the
-  current header setup.
+This blocks safe incremental activation of the sound/menu overlays, full-project
+objdiff (including the missing `fade_render.c.o` path), and automatic typed-stub
+regeneration.
 
-Current field-test trial-link impact:
+Repro: `distrobox enter xenogears-dev -- bash -lc 'cd
+/var/home/blizz/Projects/xenogears-decomp && make -B build'`; the SLUS link
+reports unresolved `gte_*` helpers from `libgte.c` and produces no ELF. Then run
+`./scratchpad/run_build_port.sh` after any configuration changes the undefined
+set; the port driver refuses to link without a matching typed manifest.
+Evidence: proven
+Last verified @ a0c5461 (matching build run locally)
 
-- menu dispatcher entries `func_801C62A8`, `func_801CB0A8`, `func_801CBDBC`,
-  `func_801CCD28`, and `func_801CE024` are unresolved/stubbed;
-- sound functions `SoundEnableAllSpuChannels`, `SoundMuteAllSpuChannels`,
-  `SoundLoadWdsFile`, `SoundFreeWdsEntry`, and `SoundHandleError`, plus five
-  sound globals, are unresolved/stubbed;
-- `WorkListsFreeAllEntries` and the work-list globals are unresolved/stubbed.
-  `pc_port/src/work_list_port.c` does provide the live update/add/remove paths,
-  so this is partial replacement rather than total loss of work-list behavior.
+## Unported sound subsystem behind the compile allowlist
 
-Repro: `./scratchpad/run_build_port.sh` prints `compiled=43 skipped=4`; compile
-each listed file with the build driver's GFLAGS/INC to see its suppressed error.
-Evidence: proven (build-driver control flow and current compiler output)
-Last verified @ 3c90cd9
+`src/slus_006.64/system/sound.c` now compiles after retail-confirmed prototype
+and byte-cursor corrections, but activating it exposes 39 unresolved
+`INCLUDE_ASM` sound-path definitions. It remains intentionally allowlisted as a
+temporary compile-success blocker until those functions can be supplied by real
+ports or typed stubs generated from matching ELFs. This is a sound-subsystem
+porting workstream, not a residual C compile-error task.
 
-## Port stub generation cannot converge without matching ELFs
+Repro: compile `sound.c` with the port GFLAGS/INC, then run
+`./scratchpad/run_build_port.sh`; the driver refuses to let the allowlisted TU
+silently enter the link.
+Evidence: proven
+Last verified @ f849676
 
-When `build/out/*.elf` is absent, `pc_port/build_port.sh` reuses the existing
-`pc_port/build_native/stubs.c`. It only prunes function stubs now supplied by
-compiled objects; it does not generate stubs for the current `undef.txt` and
-does not iterate trial-link generation. Re-running an unresolved configuration
-therefore cannot converge.
+## Unported member-change and shop menu overlays
 
-Repro: build with a configuration that changes undefined symbols while matching
-ELFs are absent; the driver prints `reusing existing stubs.c`, then final-link
-errors repeat on every run.
-Evidence: proven (build_port.sh trial/stub control flow; diagnostic-build test)
-Last verified @ 3c90cd9
+Both menu `misc.c` TUs now compile after the retail-proven `POLY_FT4` window
+border correction and the `ShopMenuBuyMenu` declaration fix. Their compile
+errors had been masking 15 unresolved `INCLUDE_ASM` dependencies: three in the
+member-change overlay and twelve in the shop overlay. They remain on the
+allowlist until those dependencies are ported or matching ELFs can generate
+typed stubs; they must not be made live merely because they compile.
+
+Repro: compile both menu TUs with the port GFLAGS/INC and compare their undefined
+symbols against their `INCLUDE_ASM` declarations. The guarded build then rejects
+the newly compiling allowlisted TU before link.
+Evidence: proven
+Last verified @ a0c5461
 
 ## Work-list runtime routing: decomp source vs. host-safe port override
 
