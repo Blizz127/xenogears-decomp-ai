@@ -29,4 +29,19 @@ if [[ "${1:-}" == "--gdb" ]]; then
         "cd '$PWD' && env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=${map} XENO_FIELD_ENTRANCE=${entrance} SDL_VIDEODRIVER=x11 DISPLAY='${DISPLAY}' gdb -q -batch -x '$2' '$binary'"
 fi
 
+if [[ "${1:-}" == "--opcode-sweep" ]]; then
+    [[ -n "${2:-}" && -n "${3:-}" && $# -eq 3 && "${3}" =~ ^[1-9][0-9]*$ ]] || {
+        echo 'usage: run_map001.sh --opcode-sweep <records.bin> <seconds>' >&2
+        exit 64
+    }
+    printf 'Opcode-sweep records: %s (fd 3, %ss)\n' "$2" "$3"
+    exec 3>"$2"
+    set +e
+    timeout --signal=TERM "${3}s" "${binary}"
+    rc=$?
+    set -e
+    python3 scratchpad/opcode_sweep_records.py finalize "$2"
+    exit "$rc"
+fi
+
 exec "${binary}" "$@"

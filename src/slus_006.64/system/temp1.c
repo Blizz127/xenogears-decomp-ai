@@ -514,6 +514,43 @@ reenter:
     pc = (u8*)(uintptr_t)*(u32*)(pData + 0x64);
     opcode = *pc;
 
+#ifdef XENO_DIAG_OPCODE_SWEEP
+    /* DIAG ONLY: fixed 16-byte records to launcher-preopened fd 3. */
+    struct {
+        u32 tag;
+        u32 spriteData;
+        u32 scriptPc;
+        s16 actorIndex;
+        s8 scriptIndex;
+        u8 opcode;
+    } record;
+    s32 actorIndex = -1;
+    s8 scriptIndex = -1;
+    s32 i;
+    extern long write(int fd, const void* buffer, unsigned long count);
+
+    if (g_FieldActors != NULL && g_FieldNumActors >= 0 && g_FieldNumActors <= 0x100) {
+        for (i = 0; i < g_FieldNumActors; i++) {
+            if (g_FieldActors[i].pSpriteData == (u32)(uintptr_t)pData) {
+                actorIndex = i;
+                if (g_FieldActors[i].pActorData != 0) {
+                    ActorData* actorData = (ActorData*)(uintptr_t)g_FieldActors[i].pActorData;
+                    scriptIndex = (s8)actorData->curScriptIndex;
+                }
+                break;
+            }
+        }
+    }
+
+    record.tag = 0x5753504F; /* "OPSW" in little-endian byte order */
+    record.spriteData = (u32)(uintptr_t)pData;
+    record.scriptPc = (u32)(uintptr_t)pc;
+    record.actorIndex = (s16)actorIndex;
+    record.scriptIndex = scriptIndex;
+    record.opcode = opcode;
+    write(3, &record, sizeof(record));
+#endif
+
     if (opcode < 0x10) {
         s32 delay = (opcode & 0xF) + 1;
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
