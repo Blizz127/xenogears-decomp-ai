@@ -688,7 +688,10 @@ reenter:
         return;
     }
 
-    if (opcode == 0x80) {
+    /* Retail jump-table entries 0x80 and 0xBE share the handler at
+     * 0x80024A84.  In particular, 0xBE advances by 3 bytes here rather than
+     * using D_8004FC40[0xBE] == 2. */
+    if (opcode == 0x80 || opcode == 0xBE) {
         s32 packed = pc[1] | ((s32)(s8)pc[2] << 8);
         s32 delay = (((packed >> 11) & 0xF) + 1);
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
@@ -943,7 +946,7 @@ reenter:
 
     /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
     if (opcode == 0x85 || opcode == 0x8E ||
-        opcode == 0x98 || opcode == 0xBE || opcode == 0xC8 ||
+        opcode == 0x98 || opcode == 0xC8 ||
         opcode == 0xD4 || opcode == 0xE2 || opcode == 0xFA) {
         assert(0 && "func_800248D4 dedicated opcode path is not implemented");
     }
