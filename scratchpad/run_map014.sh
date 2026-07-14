@@ -4,7 +4,10 @@
 set -euo pipefail
 
 readonly map=14
-readonly entrance=6
+# Map014's script spawn table has exactly two records (entrances 0 and 1).
+# Normal incoming CHANGE_FIELD transitions use entrance 0; 6 reads bytecode as
+# a spawn record and is invalid.
+readonly entrance=0
 readonly binary="${XENO_PORT_BINARY:-pc_port/build_native/xeno-port}"
 
 if [[ -n "${XENO_FIELD_MAP:-}" && "${XENO_FIELD_MAP}" != "${map}" ]]; then
