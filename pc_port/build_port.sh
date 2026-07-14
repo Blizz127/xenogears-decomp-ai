@@ -556,6 +556,34 @@ edit(REN, "_xeno_texwindow_shader_apply", [
 print("    texture-window patches OK")
 TEXWINDOW_PY
 
+# PsyCross fidelity fixes kept as tracked patches because the vendored tree is
+# raw-texture dither correction.
+apply_psycross_patch() {
+    local patch="$1"
+    local marker="$2"
+    if grep -Rqs "$marker" "$PSX"; then
+        return
+    fi
+    local git_bin="$(command -v git || true)"
+    if [ -z "$git_bin" ] && [ -x /run/host/usr/bin/git ]; then
+        git_bin=/run/host/usr/bin/git
+    fi
+    if [ -z "$git_bin" ]; then
+        echo "ERROR: git is required to apply PsyCross source patches" >&2
+        exit 1
+    fi
+    if "$git_bin" -C "$PSX" apply --reverse --check "$patch" >/dev/null 2>&1; then
+        return
+    fi
+    "$git_bin" -C "$PSX" apply --check "$patch" || {
+        echo "ERROR: PsyCross patch does not apply: $patch" >&2
+        exit 1
+    }
+    "$git_bin" -C "$PSX" apply "$patch"
+}
+
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
+
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
