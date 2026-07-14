@@ -7,6 +7,10 @@ Rules:
 - Every item carries `Last verified @ <commit>`. Stale verification = suspect claim.
 - Every claim is tagged by evidence class:
   proven | build-verified only | observed | inferred
+- For PSX symbol-width findings, classify the retail storage pattern before
+  proposing a fix: direct data array, packed 32-bit pointer slot loaded/stored
+  with `lw`/`sw`, or embedded array addressed with `lui`/`addiu`. Commit
+  `1229ea1` is the reference implementation for all three forms.
 
 ---
 
@@ -93,35 +97,6 @@ definitions produce duplicate-definition link errors if both objects are linked.
 Evidence: proven (source comments, symbol comparison, and runtime-recovery
 history)
 Last verified @ 37a3022
-
-## Packed field-BSS globals still use native 64-bit pointer declarations
-
-Six field globals remain declared as native pointers even though their backing
-symbols are packed retail BSS slots with 32-bit PSX width:
-
-- `D_800AF87C` (`src/field/main/misc2.c:1755`)
-- `D_800AFC68` (`src/field/main/misc9.c:96`)
-- `D_800B1DF0` (`src/field/main/misc9.c:161`)
-- `D_800C3A3C` (`src/field/main/misc9.c:162`)
-- `g_Field24BitImageData` (`src/field/main/misc5.c:672`)
-- `g_Field15BitImageData` (`src/field/main/misc5.c:673`)
-
-On LP64, loading or storing through these declarations is eight bytes wide and
-can span or clobber the adjacent four-byte retail slot. Audit each against its
-retail `lw`/`sw` sequence and correct it in a dedicated pointer-width pass; do
-not assume every native-pointer declaration has equivalent semantics.
-
-`D_80050240` (`src/slus_006.64/system/font.c:13`) is a related type mismatch:
-it is declared `void*` but defined as the embedded font byte array. Its current
-caller takes `&D_80050240`, matching retail's address formation, so it is not a
-live width fault today, but the declaration is a maintenance landmine.
-
-Repro: compare the declarations above with their `FIELD_BSS_ALIAS` definitions
-in `pc_port/src/data_field.c`, then inspect native loads/stores or run an LP64
-build under GDB/ASan on the corresponding field paths.
-Evidence: proven for declaration/backing-slot width; runtime manifestation not
-yet established per symbol
-Last verified @ 88d15ad
 
 ## Unimplemented sprite-animation opcodes in func_800248D4
 
