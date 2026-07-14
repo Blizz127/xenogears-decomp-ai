@@ -549,3 +549,30 @@ ordering fix and the func_8002E688 min-SZ OT derivation fix (fea685a). Either or
 both likely resolved it.
 
 Reopen only with a current frame number + capture showing a reproducible defect.
+
+## Open-issue list revalidation vs HEAD d102e5f — SIX ITEMS STALE
+
+The following were listed as open and are NOT reproducible / already correct:
+
+- Opcode 0x86 stall (func_800248D4): IMPLEMENTED from retail asm
+  (0x80024C68-0x80024C9C). Not covered by the unimplemented-opcode assertion.
+- func_8009635C: IMPLEMENTED. Finds existing item slot, increments qty up to
+  MAX_ITEM_QUANTITY, else allocates a slot and stores item/qty.
+- func_80095124: IMPLEMENTED. Routes by item category to the inventory lookup helper.
+- func_80094E8C: CORRECT. Returns matching index i, or -1. Does not return
+  constant 0. The "returns 0 instead of i at misc11.c:790" note is wrong.
+- Map014 post-frame-60 SIGSEGV: NOT REPRODUCIBLE. Original report used
+  XENO_FIELD_MAP=1, which loads Map001. 6/6 clean runs across both maps.
+- Floating BG/room geometry: NOT REPRODUCIBLE. Map014 frame 600 shows a
+  coherent room.
+
+## Corrected script-layer decomp queue
+
+Dedicated UNIMPLEMENTED opcodes in func_800248D4 (per the actual assertion):
+  0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4, 0xE2, 0xFA
+
+## Lesson
+
+Fixes silently resolve items nobody goes back to check. Revalidate open issues
+against HEAD before investing in them. A stale bug report costs the same rounds
+as a real one — and risks reimplementing working code.
