@@ -16,6 +16,12 @@ if [[ -n "${XENO_FIELD_MAP:-}" && "${XENO_FIELD_MAP}" != "${map}" ]]; then
     exit 64
 fi
 
+if [[ -n "${XENO_FIELD_ENTRANCE:-}" && "${XENO_FIELD_ENTRANCE}" != "${entrance}" ]]; then
+    printf 'error: run_map014.sh requires XENO_FIELD_ENTRANCE=%s (got %s)\n' \
+        "${entrance}" "${XENO_FIELD_ENTRANCE}" >&2
+    exit 64
+fi
+
 export XENO_FIELD_TEST=1
 export XENO_KERNEL_SEL=0
 export XENO_FIELD_MAP="${map}"
