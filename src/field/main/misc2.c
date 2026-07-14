@@ -1842,7 +1842,7 @@ extern s16 D_800B21D4;
 extern u8 D_800B219C, D_800B219D, D_800B219E;
 extern s32 D_800B0048;
 extern s32 D_800B217C;
-extern void* D_800AF87C;
+extern u32 D_800AF87C;
 extern u8 D_800AFC58[];
 extern void func_800739C0(void);
 extern void func_80086908(void);
@@ -1964,7 +1964,7 @@ void func_8007554C(void) {
 
     /* Conditional VRAM upload */
     if (D_800ADBB4 != 0) {
-        LoadImage((RECT*)D_800AFC58, D_800AF87C);
+        LoadImage((RECT*)D_800AFC58, (void*)(uintptr_t)D_800AF87C);
         D_800ADBB4 = 0;
     }
 

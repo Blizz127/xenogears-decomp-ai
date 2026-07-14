@@ -669,8 +669,8 @@ extern int g_FieldPixelIndex;
  * 0x1C00 times) into adjacent heap blocks. Use u32 so the stride stays 4 bytes;
  * byte-identical to u_long on the MIPS target, so matching is preserved. */
 extern u32 g_FieldCurPixel;
-extern u32* g_Field24BitImageData;
-extern u32* g_Field15BitImageData;
+extern u32 g_Field24BitImageData;
+extern u32 g_Field15BitImageData;
 
 u_int FieldImageConvert24BitColorTo15Bit(void) {
     u32 nPixel;
@@ -678,8 +678,8 @@ u_int FieldImageConvert24BitColorTo15Bit(void) {
 
     // Are we done reading RGB channels?
     if (!(g_FieldPixelIndex & 3)) {
-        nPixel = *g_Field24BitImageData;
-        g_Field24BitImageData += 1;
+        nPixel = *(u32*)(uintptr_t)g_Field24BitImageData;
+        g_Field24BitImageData += sizeof(u32);
         g_FieldCurPixel = nPixel;
     }
     
@@ -715,8 +715,8 @@ void FieldImageConvert24BitTo15Bit(void) {
         rect.h = 0xE0;
         StoreImage(&rect, pImage24Bit);
         DrawSync(0);
-        g_Field24BitImageData = pImage24Bit;
-        g_Field15BitImageData = pImage15Bit;
+        g_Field24BitImageData = (u32)(uintptr_t)pImage24Bit;
+        g_Field15BitImageData = (u32)(uintptr_t)pImage15Bit;
         g_FieldPixelIndex = 0;
         
         for (j = 0; j < 0x1C00; j++) {
@@ -727,8 +727,8 @@ void FieldImageConvert24BitTo15Bit(void) {
             n15BitPixels |= FieldImageConvert24BitColorTo15Bit() << 0x10;
             n15BitPixels |= FieldImageConvert24BitColorTo15Bit() << 0x15;
             n15BitPixels |= FieldImageConvert24BitColorTo15Bit() << 0x1A;
-            *g_Field15BitImageData = n15BitPixels;
-            g_Field15BitImageData += 1;
+            *(u32*)(uintptr_t)g_Field15BitImageData = n15BitPixels;
+            g_Field15BitImageData += sizeof(u32);
         }
         
         rect.x = i << 6;
