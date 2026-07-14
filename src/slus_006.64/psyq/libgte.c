@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psyq/libgte.h"
+#include "psyq/inline_c.h"
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InitGeom);
 
