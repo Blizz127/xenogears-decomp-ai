@@ -121,7 +121,7 @@ void func_80092404(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092424);
 
-extern u32* D_800AFB20;
+extern u32 D_800AFB20[];
 
 void func_800924D4(s32 index, s32 component, s32 value) {
     u32* entry;
