@@ -1845,6 +1845,59 @@ extern u8 D_8005A474[];
 extern u32 g_GfxCurWorkBuffer;
 extern s32 g_GfxCurContext;
 extern u32 D_80059300[];
+extern u32 D_801E8670[];
+
+/* Model-resource overlay archive 0x6B9, retail 0x801E72CC-0x801E7374.
+ *
+ * D_801E8670 is a packed table of 32-bit PSX pointers. selector chooses an
+ * entry, whose +4 word points at the model resource. index zero copies the
+ * resource's base matrix at +0x0C. Nonzero indices compose that base matrix
+ * with the matrix at resource + index*0x7C + 0x2C. Retail never reads its
+ * second argument, which makes the func_800748E8 src==dst call safe.
+ */
+void func_801E72CC(MATRIX* dst, MATRIX* unused, s32 selector, s32 index)
+{
+    u8* entry;
+    u8* resource;
+    u32* srcWords;
+    u32* dstWords;
+    u32 word0;
+    u32 word1;
+    u32 word2;
+    u32 word3;
+
+    (void)unused;
+    entry = (u8*)(uintptr_t)D_801E8670[selector];
+    if (entry == NULL) {
+        return;
+    }
+
+    resource = (u8*)(uintptr_t)*(u32*)(entry + 4);
+    if (index != 0) {
+        CompMatrix((MATRIX*)(resource + 0x0C),
+                   (MATRIX*)(resource + index * 0x7C + 0x2C), dst);
+        return;
+    }
+
+    srcWords = (u32*)(resource + 0x0C);
+    dstWords = (u32*)dst;
+    word0 = srcWords[0];
+    word1 = srcWords[1];
+    word2 = srcWords[2];
+    word3 = srcWords[3];
+    dstWords[0] = word0;
+    dstWords[1] = word1;
+    dstWords[2] = word2;
+    dstWords[3] = word3;
+    word0 = srcWords[4];
+    word1 = srcWords[5];
+    word2 = srcWords[6];
+    word3 = srcWords[7];
+    dstWords[4] = word0;
+    dstWords[5] = word1;
+    dstWords[6] = word2;
+    dstWords[7] = word3;
+}
 
 /* .sbss @0x800592EC: counts func_80022E8C ticks (type-7 timer callback). */
 s32 D_800592EC;

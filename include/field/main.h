@@ -60,6 +60,9 @@ extern FieldTriggerZone* g_pFieldTriggerZones;
 extern FieldScene g_Scene;
 extern int g_WorldScale;
 
+/* Model-resource overlay helper loaded from archive 0x6B9 at 0x801DC000. */
+void func_801E72CC(MATRIX* dst, MATRIX* unused, s32 selector, s32 index);
+
 
 typedef struct {
     DRAWENV drawEnvs[2];
