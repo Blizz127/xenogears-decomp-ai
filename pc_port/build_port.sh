@@ -55,15 +55,16 @@ fi
 
 # Build-integrity policy:
 #
-# Every game TU is expected to compile.  The two exclusions below are explicit
-# port design decisions, not compiler failures.  The four entries in
+# Every game TU is expected to compile and link. The explicit exclusion list
+# below is for port design decisions: those TUs are deliberately not linked.
+# The entries in
 # KNOWN_BROKEN_GAME_TUS are temporary, visible exceptions: the port can still
-# be built while those decomp TUs are repaired, but their real definitions are
-# absent and unresolved references can resolve through stubs.  Do not add a TU
-# here merely to make a build pass; each entry needs an accompanying issue.
-INTENTIONAL_GAME_TU_EXCLUSIONS=(
-    "src/**/psyq/** — PsyQ originals are replaced at runtime by PsyCross"
-    "src/slus_006.64/system/archive.c — replaced by pc_port/src/archive_port.c"
+# be built while those decomp TUs fail to compile, but their real definitions
+# are absent and unresolved references can resolve through stubs. Do not add a
+# TU to either list merely to make a build pass; each entry needs an issue.
+INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
+    "*/psyq/*"
+    "src/slus_006.64/system/archive.c"
 )
 KNOWN_BROKEN_GAME_TUS=(
     "src/member_change_menu/main/misc.c"
@@ -95,10 +96,29 @@ is_known_broken_game_tu() {
 }
 
 is_intentionally_excluded_game_tu() {
-    case "$1" in
-        */psyq/*|src/slus_006.64/system/archive.c) return 0 ;;
-    esac
+    local candidate="$1"
+    local pattern
+    for pattern in "${INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS[@]}"; do
+        [[ "$candidate" == $pattern ]] && return 0
+    done
     return 1
+}
+
+excluded_game_tu_reason() {
+    case "$1" in
+        "*/psyq/*")
+            echo "PsyQ originals are replaced at runtime by PsyCross" ;;
+        src/slus_006.64/system/archive.c)
+            echo "replaced by pc_port/src/archive_port.c" ;;
+    esac
+}
+
+print_intentionally_excluded_game_tus() {
+    echo "    Intentionally excluded game TUs (not compiled or linked):"
+    local pattern
+    for pattern in "${INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS[@]}"; do
+        echo "      $pattern — $(excluded_game_tu_reason "$pattern")"
+    done
 }
 
 print_known_broken_game_tus() {
@@ -667,17 +687,13 @@ fi
 echo "    libpsycross.a: $PSYLIB"
 
 echo "==> [2/5] Compiling game translation units in port mode"
-echo "    Intentional source exclusions:"
-for exclusion in "${INTENTIONAL_GAME_TU_EXCLUSIONS[@]}"; do
-    echo "      $exclusion"
-done
+print_intentionally_excluded_game_tus
 print_known_broken_game_tus
 
 compiled=0; skipped=0; SKIPPED=""
 GAME_OBJS=()
 while IFS= read -r f; do
-    # PsyQ originals are replaced by PsyCross, and archive.c by archive_port.c.
-    # These are the only intentional game-source exclusions.
+    # Explicit exclusions are deliberately absent from both compilation and link.
     if is_intentionally_excluded_game_tu "$f"; then
         continue
     fi
@@ -686,6 +702,12 @@ while IFS= read -r f; do
     compile_err="$OUT/$(echo "$f" | tr '/' '_').err"
     rm -f "$o" "$compile_err"
     if gcc -c "$f" $GFLAGS $INC -o "$o" 2>"$compile_err"; then
+        if is_known_broken_game_tu "$f"; then
+            echo "ERROR: allowlisted broken game TU now compiles: $f"
+            echo "       It may not silently enter the link; classify it as intentionally excluded"
+            echo "       or remove it from the broken list after a reviewed routing decision."
+            exit 1
+        fi
         GAME_OBJS+=("$o"); compiled=$((compiled+1))
     elif is_known_broken_game_tu "$f"; then
         skipped=$((skipped+1)); SKIPPED="$SKIPPED $f"
