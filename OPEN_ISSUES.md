@@ -123,19 +123,39 @@ Evidence: proven for declaration/backing-slot width; runtime manifestation not
 yet established per symbol
 Last verified @ 88d15ad
 
+## func_801E72CC blocks func_800748E8's optional-matrix branch
+
+`func_800748E8`'s retail `actorData+0x128` path (`0x80074BEC-0x80074C70`)
+splits the 16-bit value into a high-nibble selector and low-12-bit argument,
+then calls `func_801E72CC` in place on the actor child matrix before composing
+the render and child transforms. The live port still resolves
+`func_801E72CC` to `xeno_port_stub`, so the existing `modelAnimation ==
+0xFFFF` assertion must remain until this helper is decompiled and validated.
+
+This does not block the independent `actorData+0x12C` axis-rotation modes or
+the `actorData+0x75` parent-relative composition path; those use live PsyCross
+matrix helpers.
+
+Repro: `rg -n 'func_801E72CC' pc_port/build_native/stubs.c
+pc_port/build_native/undef.txt
+asm/field/matchings/main/misc2/func_800748E8.s`; the generated stub calls
+`xeno_port_stub`, while the retail caller is at `0x80074C18`.
+Evidence: proven
+Last verified @ 4d7cb57
+
 ## Unimplemented sprite-animation opcodes in func_800248D4
 
 `func_800248D4` is the **sprite animation-script dispatcher**, not the field
-script VM. Its dedicated unimplemented set remains `0x85, 0x8E, 0x98, 0xBE,
-0xC8, 0xD4, 0xE2, 0xFA`.
+script VM. Its dedicated unimplemented set is now `0x85, 0x8E, 0x98, 0xC8,
+0xD4, 0xE2, 0xFA`. Opcode `0xBE` was implemented from the shared retail
+`0x80` handler at `0x80024A84-0x80024B9C`.
 
 The strict static scanner in
 `tools/scripts/psx/scan_field_anim_opcodes.py` decoded all 730 field maps,
 3,234 per-map sprite packages, and 16,382 animation entries with zero aborts.
-Only `0xBE` is reachable from a per-map animation entry: seven distinct sites
-in Map047 package 0 animations 0/1/2, Map048 package 0 animation 2, and Map334
-package 0 animations 0/1/2. Map047 and Map334 tie at three sites each; use
-Map047 as the first runtime actor-binding/repro target.
+Only the now-implemented `0xBE` is reachable from a per-map animation entry:
+seven distinct sites in Map047 package 0 animations 0/1/2, Map048 package 0
+animation 2, and Map334 package 0 animations 0/1/2.
 
 The other seven are **not reachable in any per-map animation package**. Do not
 call them unused: global party, battle, and special-animation packages were not
@@ -145,7 +165,7 @@ Repro: `python3 tools/scripts/psx/scan_field_anim_opcodes.py --json
 scratchpad/field_anim_opcode_scan_all.json`; expect 730 maps, 3,234 packages,
 16,382 fully-decoded entries, zero aborts, and seven reachable `0xBE` sites.
 Evidence: proven for per-map packages; global animation-package coverage open
-Last verified @ 226ba2d
+Last verified @ 4d7cb57
 
 ## CompMatrix PsyQ decomp match
 

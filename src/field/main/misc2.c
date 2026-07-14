@@ -1477,82 +1477,139 @@ void func_800748E8(void) {
             u8* env = (u8*)&D_800B218E;
             u8 mode;
             MATRIX modelMatrix;
+            MATRIX branchMatrix;
             VECTOR modelPosition;
+            SVECTOR branchRotation;
             SVECTOR row;
+            s32 branchMatrixReady;
             s32 hiddenByModel;
 
             assert(modelData != NULL);
+            branchMatrixReady = 0;
 
             if (actorIndex < D_800ADBFC) {
+                u8 parentActorIndex;
+
                 assert(actorData != NULL);
                 mode = *(u32*)(actorData + 0x12C) & 3;
-                assert(mode == 0);
-                assert(*(u16*)(actorData + 0x128) == 0xFFFF);
-                assert(*(u8*)(actorData + 0x75) == 0xFF);
+
+                /* Retail 80074AFC-80074BE8: modes 1/2/3 apply the angle at
+                 * ActorData+0x70 around X/Y/Z respectively, append that to
+                 * the actor transform, then compose it with world-to-screen.
+                 * Mode 0 continues through the optional-matrix/parent paths. */
+                if (mode != 0) {
+                    branchRotation.vx = 0;
+                    branchRotation.vy = 0;
+                    branchRotation.vz = 0;
+
+                    if (mode == 1) {
+                        branchRotation.vx = *(u16*)(actorData + 0x70);
+                    } else if (mode == 2) {
+                        branchRotation.vy = *(u16*)(actorData + 0x70);
+                    } else {
+                        branchRotation.vz = *(u16*)(actorData + 0x70);
+                    }
+
+                    RotMatrix(&branchRotation, &branchMatrix);
+                    MulMatrix2((MATRIX*)(actor + 0x0C), &branchMatrix);
+                    branchMatrix.t[0] = *(s32*)(actor + 0x20);
+                    branchMatrix.t[1] = *(s32*)(actor + 0x24);
+                    branchMatrix.t[2] = *(s32*)(actor + 0x28);
+                    CompMatrix(&g_Scene.worldToScreenMatrix, &branchMatrix,
+                               &modelMatrix);
+                    branchMatrixReady = 1;
+                } else {
+                    /* Retail 80074BEC-80074C70 handles non-FFFF values via
+                     * func_801E72CC. That helper is still a port stub, so
+                     * keep this assertion loud until the helper is ported. */
+                    assert(*(u16*)(actorData + 0x128) == 0xFFFF);
+
+                    /* Retail 80074C74-80074D2C: 0xFF means no parent;
+                     * otherwise compose through the named parent's child
+                     * matrix and update this actor's child matrix in place. */
+                    parentActorIndex = *(u8*)(actorData + 0x75);
+                    if (parentActorIndex != 0xFF) {
+                        FieldActor* parentActor = &g_FieldActors[parentActorIndex];
+
+                        CompMatrix(&g_Scene.worldToScreenMatrix,
+                                   &parentActor->childMatrix, &branchMatrix);
+                        CompMatrix(&branchMatrix, (MATRIX*)(actor + 0x0C),
+                                   &modelMatrix);
+                        CompMatrix(&parentActor->childMatrix,
+                                   (MATRIX*)(actor + 0x0C),
+                                   (MATRIX*)(actor + 0x2C));
+                        branchMatrixReady = 1;
+                    }
+                }
             }
 
-            if ((env[0x44] & 0x7F) == 0) {
-                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
-                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
-                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+            if (!branchMatrixReady) {
+                if ((env[0x44] & 0x7F) == 0) {
+                    *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                    *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                    *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+                }
+
+                if ((env[0x44] & 0x7F) == 1) {
+                    *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                    *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                    *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+                }
+
+                assert((env[0x44] & 0x80) == 0);
+                assert((status & 3) == 0);
             }
 
-            if ((env[0x44] & 0x7F) == 1) {
-                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
-                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
-                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
-            }
-
-            assert((env[0x44] & 0x80) == 0);
             assert(*(s16*)(modelData + 0x12) != 1);
-            assert((status & 3) == 0);
 
             D_80050104 = 0;
             if (status & 0x20) {
                 continue;
             }
 
-            /*
-             * func_800748E8 is handwritten/nonmatching GTE code. The original
-             * asm (80074E14-80074ED8) builds modelMatrix.R = work.R x actorR
-             * COLUMN by COLUMN: for each j it gathers actor matrix column j
-             * with stride-6 halfword loads (lhu +0x0/+0x6/+0xC from bases
-             * actor+0xC/+0xE/+0x10), transforms it with mvmva cv=3
-             * (= ApplyMatrixSV), and stores the result as modelMatrix column j
-             * (sh +0x0/+0x6/+0xC from dests +0x0/+0x2/+0x4). The previous C
-             * read overlapping SVECTORs and stored rows, producing a
-             * near-degenerate rotation.
-             */
-            {
-                s16* actorR = (s16*)(actor + 0x0C); /* row-major 3x3 */
-                SVECTOR col;
-                s32 j;
+            if (!branchMatrixReady) {
+                /*
+                 * func_800748E8 is handwritten/nonmatching GTE code. The original
+                 * asm (80074E14-80074ED8) builds modelMatrix.R = work.R x actorR
+                 * COLUMN by COLUMN: for each j it gathers actor matrix column j
+                 * with stride-6 halfword loads (lhu +0x0/+0x6/+0xC from bases
+                 * actor+0xC/+0xE/+0x10), transforms it with mvmva cv=3
+                 * (= ApplyMatrixSV), and stores the result as modelMatrix column j
+                 * (sh +0x0/+0x6/+0xC from dests +0x0/+0x2/+0x4). The previous C
+                 * read overlapping SVECTORs and stored rows, producing a
+                 * near-degenerate rotation.
+                 */
+                {
+                    s16* actorR = (s16*)(actor + 0x0C); /* row-major 3x3 */
+                    SVECTOR col;
+                    s32 j;
 
-                for (j = 0; j < 3; j++) {
-                    col.vx = actorR[0 + j];
-                    col.vy = actorR[3 + j];
-                    col.vz = actorR[6 + j];
-                    ApplyMatrixSV(&work, &col, &row);
-                    modelMatrix.m[0][j] = row.vx;
-                    modelMatrix.m[1][j] = row.vy;
-                    modelMatrix.m[2][j] = row.vz;
+                    for (j = 0; j < 3; j++) {
+                        col.vx = actorR[0 + j];
+                        col.vy = actorR[3 + j];
+                        col.vz = actorR[6 + j];
+                        ApplyMatrixSV(&work, &col, &row);
+                        modelMatrix.m[0][j] = row.vx;
+                        modelMatrix.m[1][j] = row.vy;
+                        modelMatrix.m[2][j] = row.vz;
+                    }
                 }
-            }
 
-            modelPosition.vx = *(s16*)(actor + 0x20);
-            modelPosition.vy = *(s16*)(actor + 0x24);
-            modelPosition.vz = *(s16*)(actor + 0x28);
-            ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
-            /*
-             * Original func_800748E8 asm (53EC-542C) loads work.t into the GTE
-             * translation registers (ctc2 $5/$6/$7) and transforms the actor
-             * position with mvmva cv=0, which INCLUDES the translation:
-             * modelMatrix.t = work.R * pos + work.t. ApplyMatrixLV is the
-             * rotation-only (cv=3) library op, so add work.t explicitly here.
-             */
-            modelMatrix.t[0] += work.t[0];
-            modelMatrix.t[1] += work.t[1];
-            modelMatrix.t[2] += work.t[2];
+                modelPosition.vx = *(s16*)(actor + 0x20);
+                modelPosition.vy = *(s16*)(actor + 0x24);
+                modelPosition.vz = *(s16*)(actor + 0x28);
+                ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
+                /*
+                 * Original func_800748E8 asm (53EC-542C) loads work.t into the GTE
+                 * translation registers (ctc2 $5/$6/$7) and transforms the actor
+                 * position with mvmva cv=0, which INCLUDES the translation:
+                 * modelMatrix.t = work.R * pos + work.t. ApplyMatrixLV is the
+                 * rotation-only (cv=3) library op, so add work.t explicitly here.
+                 */
+                modelMatrix.t[0] += work.t[0];
+                modelMatrix.t[1] += work.t[1];
+                modelMatrix.t[2] += work.t[2];
+            }
             SetRotMatrix(&modelMatrix);
             SetTransMatrix(&modelMatrix);
 
