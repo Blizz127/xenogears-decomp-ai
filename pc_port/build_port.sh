@@ -55,22 +55,23 @@ fi
 
 # Build-integrity policy:
 #
-# Every game TU is expected to compile and link. The explicit exclusion list
-# below is for port design decisions: those TUs are deliberately not linked.
-# The entries in
-# KNOWN_BROKEN_GAME_TUS are temporary, visible exceptions: the port can still
-# be built while those decomp TUs fail to compile, but their real definitions
-# are absent and unresolved references can resolve through stubs. Do not add a
-# TU to either list merely to make a build pass; each entry needs an issue.
+# Every game TU is expected to compile and link. Explicit exclusions are
+# deliberately neither compiled nor linked. They include permanent runtime
+# replacements and temporary HOLDs whose source now compiles but cannot safely
+# enter the port link until routing/decomp work is resolved. In contrast,
+# KNOWN_BROKEN_GAME_TUS are compile failures tolerated temporarily. Do not add
+# a TU to either list merely to make a build pass; each entry needs an issue.
 INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
     "*/psyq/*"
-    "src/slus_006.64/system/archive.c"
 )
-KNOWN_BROKEN_GAME_TUS=(
+INTENTIONALLY_EXCLUDED_GAME_TUS=(
+    "src/slus_006.64/system/archive.c"
     "src/member_change_menu/main/misc.c"
     "src/shop_menu/main/misc.c"
     "src/slus_006.64/system/sound.c"
     "src/slus_006.64/system/work_list.c"
+)
+KNOWN_BROKEN_GAME_TUS=(
 )
 
 known_broken_tu_reason() {
@@ -97,7 +98,12 @@ is_known_broken_game_tu() {
 
 is_intentionally_excluded_game_tu() {
     local candidate="$1"
+    local excluded
     local pattern
+
+    for excluded in "${INTENTIONALLY_EXCLUDED_GAME_TUS[@]}"; do
+        [ "$candidate" = "$excluded" ] && return 0
+    done
     for pattern in "${INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS[@]}"; do
         [[ "$candidate" == $pattern ]] && return 0
     done
@@ -110,18 +116,34 @@ excluded_game_tu_reason() {
             echo "PsyQ originals are replaced at runtime by PsyCross" ;;
         src/slus_006.64/system/archive.c)
             echo "replaced by pc_port/src/archive_port.c" ;;
+        src/member_change_menu/main/misc.c)
+            echo "HOLD: menu overlay has unresolved INCLUDE_ASM/crash-exposure work" ;;
+        src/shop_menu/main/misc.c)
+            echo "HOLD: menu overlay has unresolved INCLUDE_ASM/crash-exposure work" ;;
+        src/slus_006.64/system/sound.c)
+            echo "HOLD: sound routing conflicts with pc_port/src/game_overrides.c" ;;
+        src/slus_006.64/system/work_list.c)
+            echo "HOLD: host-layout routing conflicts with work_list_port.c" ;;
     esac
 }
 
 print_intentionally_excluded_game_tus() {
     echo "    Intentionally excluded game TUs (not compiled or linked):"
+    local excluded
     local pattern
+    for excluded in "${INTENTIONALLY_EXCLUDED_GAME_TUS[@]}"; do
+        echo "      $excluded — $(excluded_game_tu_reason "$excluded")"
+    done
     for pattern in "${INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS[@]}"; do
         echo "      $pattern — $(excluded_game_tu_reason "$pattern")"
     done
 }
 
 print_known_broken_game_tus() {
+    if [ "${#KNOWN_BROKEN_GAME_TUS[@]}" -eq 0 ]; then
+        echo "    Allowlisted broken game TUs (compile failures tolerated): none"
+        return
+    fi
     echo "    WARNING: building with explicitly allowlisted broken game TUs:"
     local broken
     for broken in "${KNOWN_BROKEN_GAME_TUS[@]}"; do
