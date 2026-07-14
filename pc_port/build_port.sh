@@ -750,9 +750,50 @@ if [ -s "$OUT/undef.txt" ]; then
     if [ "${#ELFS[@]}" -gt 0 ]; then
         python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
     elif [ -f "$OUT/stubs.c" ]; then
-        echo "    (warning: matching ELFs missing; reusing existing stubs.c)"
+        # Without matching ELFs the generator cannot safely classify a newly
+        # undefined symbol as function vs data, nor size new data storage.
+        # An existing stubs.c is usable only as an exact typed manifest for
+        # this undef set; silently reusing it for a different set would make
+        # the build link against stale or wrongly-shaped placeholders.
+        echo "    matching ELFs missing; validating existing stubs.c against current undef.txt"
+        if ! python3 - "$OUT/undef.txt" "$OUT/stubs.c" <<'PY'
+import re
+import sys
+
+undef_path, stubs_path = sys.argv[1:]
+with open(undef_path) as f:
+    undefined = set(f.read().split())
+
+# xeno_port_stub is defined by stubs.c itself and intentionally appears during
+# the trial link before stubs.o is linked.
+undefined.discard("xeno_port_stub")
+with open(stubs_path) as f:
+    source = f.read()
+
+stubbed = set(re.findall(r"^unsigned char\s+([A-Za-z_]\w*)\[", source, re.M))
+stubbed.update(re.findall(r"^long\s+([A-Za-z_]\w*)\(void\)", source, re.M))
+missing = sorted(undefined - stubbed)
+stale = sorted(stubbed - undefined)
+if missing or stale:
+    print("ERROR: existing stubs.c does not exactly match current undef.txt.", file=sys.stderr)
+    if missing:
+        print("  missing typed stubs: " + ", ".join(missing[:16]) +
+              (" ..." if len(missing) > 16 else ""), file=sys.stderr)
+    if stale:
+        print("  stale stubs: " + ", ".join(stale[:16]) +
+              (" ..." if len(stale) > 16 else ""), file=sys.stderr)
+    print("  Matching ELFs are required to regenerate a safe typed stubs.c.", file=sys.stderr)
+    sys.exit(1)
+print(f"    existing typed stub manifest matches {len(undefined)} current undefined symbols")
+PY
+        then
+            echo "ERROR: matching ELFs are absent and stubs.c is stale."
+            echo "       Provide matching ELFs to regenerate typed stubs; refusing to link."
+            exit 1
+        fi
     else
-        echo "ERROR: matching ELFs missing and no existing $OUT/stubs.c to reuse."
+        echo "ERROR: matching ELFs missing and no typed $OUT/stubs.c manifest exists."
+        echo "       Provide matching ELFs to generate safe function/data stubs."
         exit 1
     fi
     nm -g --defined-only "$OBJ/port_main.o" "${GAME_OBJS[@]}" 2>/dev/null \
