@@ -94,6 +94,8 @@ For session-level detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/x
 | Jul 14 | Corrected the earlier incomplete `CompMatrix` alias audit: rotation was safe, but PsyCross overwrote `m0.t` before rereading it when `m0 == m2` | Retail `0x80049440-0x8004946C`; synthetic `[110,220,330]` → pre-fix `[20,40,60]` |
 | Jul 14 | PsyCross `CompMatrix` now preserves retail read-before-store ordering through a durable patch | `af122d1`; four alias/control assertions; fresh-worktree regeneration check |
 | Jul 14 | No current runtime exposure found across five maps | 3,493 calls, zero `m0==m2`; Map014/047/334 tripwires unchanged |
+| Jul 14 | `func_800748E8`'s four omitted retail cases are fully restored: parent composition and status mode 1 live-validated; axis rotations asm-proven; optional matrix asm + synthetic | `7b15b57`, `b5033a4`, `95ea1c9`, `eb45b66`; Map47 1,239 parent calls, Map334 236 mode-1 calls |
+| Jul 14 | Raw-overlay `func_801E72CC` replaced its generated stub and the complete optional-matrix chain now preserves `[110,220,330]` end to end | `95ea1c9`, `af122d1`, `eb45b66`; stub count 199→198 |
 
 ---
 

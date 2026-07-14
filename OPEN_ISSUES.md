@@ -123,26 +123,6 @@ Evidence: proven for declaration/backing-slot width; runtime manifestation not
 yet established per symbol
 Last verified @ 88d15ad
 
-## func_801E72CC blocks func_800748E8's optional-matrix branch
-
-`func_800748E8`'s retail `actorData+0x128` path (`0x80074BEC-0x80074C70`)
-splits the 16-bit value into a high-nibble selector and low-12-bit argument,
-then calls `func_801E72CC` in place on the actor child matrix before composing
-the render and child transforms. The live port still resolves
-`func_801E72CC` to `xeno_port_stub`, so the existing `modelAnimation ==
-0xFFFF` assertion must remain until this helper is decompiled and validated.
-
-This does not block the independent `actorData+0x12C` axis-rotation modes or
-the `actorData+0x75` parent-relative composition path; those use live PsyCross
-matrix helpers.
-
-Repro: `rg -n 'func_801E72CC' pc_port/build_native/stubs.c
-pc_port/build_native/undef.txt
-asm/field/matchings/main/misc2/func_800748E8.s`; the generated stub calls
-`xeno_port_stub`, while the retail caller is at `0x80074C18`.
-Evidence: proven
-Last verified @ 4d7cb57
-
 ## Unimplemented sprite-animation opcodes in func_800248D4
 
 `func_800248D4` is the **sprite animation-script dispatcher**, not the field
