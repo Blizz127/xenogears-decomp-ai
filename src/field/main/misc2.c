@@ -1557,7 +1557,6 @@ void func_800748E8(void) {
                 }
 
                 assert((env[0x44] & 0x80) == 0);
-                assert((status & 3) == 0);
             }
 
             assert(*(s16*)(modelData + 0x12) != 1);
@@ -1609,6 +1608,23 @@ void func_800748E8(void) {
                 modelMatrix.t[0] += work.t[0];
                 modelMatrix.t[1] += work.t[1];
                 modelMatrix.t[2] += work.t[2];
+
+                /* Retail 80074F3C-80074F94: the low two status bits select
+                 * an alternate model-matrix construction. Mode 0 keeps the
+                 * ordinary matrix above. Mode 1 composes the scaled scene
+                 * matrix with the actor transform. Modes 2/3 copy and scale
+                 * the actor rotation. All nonzero modes then append the
+                 * camera-rotation matrix before rejoining at 80074F98. */
+                if ((status & 3) == 1) {
+                    MulMatrix0(&g_Scene.unkF4, (MATRIX*)(actor + 0x0C),
+                               &modelMatrix);
+                    MulMatrix2(&g_Scene.camRotationMatrix, &modelMatrix);
+                } else if ((status & 3) != 0) {
+                    FieldMatrixCopyTransform(&modelMatrix,
+                                             (MATRIX*)(actor + 0x0C));
+                    ScaleMatrix(&modelMatrix, &scale);
+                    MulMatrix2(&g_Scene.camRotationMatrix, &modelMatrix);
+                }
             }
             SetRotMatrix(&modelMatrix);
             SetTransMatrix(&modelMatrix);
