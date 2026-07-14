@@ -1519,26 +1519,43 @@ void func_800748E8(void) {
                                &modelMatrix);
                     branchMatrixReady = 1;
                 } else {
-                    /* Retail 80074BEC-80074C70 handles non-FFFF values via
-                     * func_801E72CC. That helper is still a port stub, so
-                     * keep this assertion loud until the helper is ported. */
-                    assert(*(u16*)(actorData + 0x128) == 0xFFFF);
+                    u16 additionalMatrix = *(u16*)(actorData + 0x128);
 
-                    /* Retail 80074C74-80074D2C: 0xFF means no parent;
-                     * otherwise compose through the named parent's child
-                     * matrix and update this actor's child matrix in place. */
-                    parentActorIndex = *(u8*)(actorData + 0x75);
-                    if (parentActorIndex != 0xFF) {
-                        FieldActor* parentActor = &g_FieldActors[parentActorIndex];
+                    /* Retail 80074BEC-80074C70: a non-FFFF value selects a
+                     * model-resource matrix by high-nibble table selector and
+                     * low-12-bit index. Adjust childMatrix in place, compose it
+                     * through world-to-screen and the actor transform, then
+                     * retain the adjusted child transform for descendants. */
+                    if (additionalMatrix != 0xFFFF) {
+                        MATRIX* childMatrix = (MATRIX*)(actor + 0x2C);
 
-                        CompMatrix(&g_Scene.worldToScreenMatrix,
-                                   &parentActor->childMatrix, &branchMatrix);
+                        func_801E72CC(childMatrix, childMatrix,
+                                      additionalMatrix >> 12,
+                                      additionalMatrix & 0xFFF);
+                        CompMatrix(&g_Scene.worldToScreenMatrix, childMatrix,
+                                   &branchMatrix);
                         CompMatrix(&branchMatrix, (MATRIX*)(actor + 0x0C),
                                    &modelMatrix);
-                        CompMatrix(&parentActor->childMatrix,
-                                   (MATRIX*)(actor + 0x0C),
-                                   (MATRIX*)(actor + 0x2C));
+                        CompMatrix(childMatrix, (MATRIX*)(actor + 0x0C),
+                                   childMatrix);
                         branchMatrixReady = 1;
+                    } else {
+                        /* Retail 80074C74-80074D2C: 0xFF means no parent;
+                         * otherwise compose through the named parent's child
+                         * matrix and update this actor's child matrix in place. */
+                        parentActorIndex = *(u8*)(actorData + 0x75);
+                        if (parentActorIndex != 0xFF) {
+                            FieldActor* parentActor = &g_FieldActors[parentActorIndex];
+
+                            CompMatrix(&g_Scene.worldToScreenMatrix,
+                                       &parentActor->childMatrix, &branchMatrix);
+                            CompMatrix(&branchMatrix, (MATRIX*)(actor + 0x0C),
+                                       &modelMatrix);
+                            CompMatrix(&parentActor->childMatrix,
+                                       (MATRIX*)(actor + 0x0C),
+                                       (MATRIX*)(actor + 0x2C));
+                            branchMatrixReady = 1;
+                        }
                     }
                 }
             }
