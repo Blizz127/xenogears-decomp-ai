@@ -49,6 +49,7 @@ void func_80019548(void) {}
 #include "psyq/libcd.h"
 #include "psyq/libgte.h"
 #include "psyq/libgpu.h"
+#include <psx/gtereg.h>
 #include "psx_memory.h"
 
 extern long DisableEvent(long event);
@@ -142,7 +143,7 @@ extern s32 func_8002D0E4(u8* pSrc);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
-static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriVariant0(u8* pCmd, s32 count);
 
@@ -184,7 +185,7 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x28,
     },
     [0x0C] = {
-        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimTriMediumVariant2, NULL, NULL, NULL },
+        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimQuadF4Variant2, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002D0C0,   /* PSX 0x8002D0C0 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
@@ -1014,7 +1015,10 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
     return 1;
 }
 
-static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
+/* POLY_F4 variant-2 walker, retail entry 0x8002E674.  This shares retail's
+ * four-vertex/min-SZ path with func_8002E688 but uses the F4 packet layout:
+ * tag length 5, 0x18-byte packets, and packed SXY words at +8/+C/+10/+14. */
+static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
     const s32 packetStep = 0x18;
     const u32 tagLen = 0x05000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -1027,9 +1031,11 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
         SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
         SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
         long xy0 = 0;
         long xy1 = 0;
         long xy2 = 0;
+        long xy3 = 0;
         long p = 0;
         long otz = 0;
         long flag = 0;
@@ -1038,58 +1044,60 @@ static s32 ModelPrimTriMediumVariant2(u8* pCmd, s32 count) {
         pCmd += 8;
         out += packetStep;
 
-        otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
-        CullCamSeen(0, flag);
-        if (flag < 0 || otz <= 0) {
-            if (flag < 0) {
-                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
-                                      "RTPT3", 0, 3);
-            }
-            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
+        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
+        CullCamSeen(1, flag);
+        if (flag < 0) {
+            CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, xy3, v0, v1, v2, v3,
+                                  "RTPT4", 1, 4);
+            CullCamDrop(CC_FLAG, 1);
             continue;
         }
         {
             long nclipOpz = NormalClip(xy0, xy1, xy2);
-            if (nclipOpz < 0) {
-                CullCamDrop(CC_NCLIP_BACKFACE, 0);
-                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+            if (nclipOpz <= 0) {
+                CullCamDrop(CC_NCLIP_BACKFACE, 1);
+                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 1);
                 continue;
             }
         }
-        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
-            CullCamDrop(CC_OVERLAP, 0);
-            continue;
-        }
-        if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
-            CullCamDrop(CC_OVERSIZE, 0);
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERLAP, 1);
             continue;
         }
 
+        /* Retail stores all four projected coordinates before testing the SZ
+         * FIFO.  A zero depth leaves an updated but unlinked packet. */
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x0C) = (u32)xy1;
+        *(u32*)(out + 0x10) = (u32)xy2;
+        *(u32*)(out + 0x14) = (u32)xy3;
+
         {
-            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
-             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
-             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
-            s32 otIndex = (s32)otz >> D_80050100;
+            u16 sz0 = (u16)C2_SZ0;
+            u16 sz1 = (u16)C2_SZ1;
+            u16 sz2 = (u16)C2_SZ2;
+            u16 sz3 = (u16)C2_SZ3;
+            u16 minSz;
+            s32 otIndex;
             u32 oldTag;
-            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
-             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
-             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
-             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
-             * -- visible only when the camera is jammed against geometry (e.g. the
-             * Lahan well pose: near polys vanish, distant ones survive => scattered
-             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
-             * matches retail's unconditional ot[otIndex] write. */
-            if (otIndex < 0) {
+
+            /* Retail 0x8002E82C-0x8002E894 rejects zero SZ values and derives
+             * this variant's bucket from the nearest of all four vertices. */
+            if (sz0 == 0 || sz1 == 0 || sz2 == 0 || sz3 == 0) {
+                CullCamDrop(CC_OTZ, 1);
                 continue;
             }
+            minSz = sz0;
+            if (sz1 < minSz) minSz = sz1;
+            if (sz2 < minSz) minSz = sz2;
+            if (sz3 < minSz) minSz = sz3;
+            otIndex = (s32)minSz >> D_80050100;
+
             oldTag = ot[otIndex];
             ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
             *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
-            *(u32*)(out + 0x08) = (u32)xy0;
-            *(u32*)(out + 0x0C) = (u32)xy1;
-            *(u32*)(out + 0x10) = (u32)xy2;
             emitted++;
-            CullCamEmit(0);
+            CullCamEmit(1);
         }
     }
 
