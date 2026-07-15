@@ -752,18 +752,69 @@ if [ -n "$SKIPPED" ]; then
 fi
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
-for pf in pc_port/src/psx_memory.c pc_port/src/game_overrides.c pc_port/src/psyq_compat.c pc_port/src/archive_port.c pc_port/src/work_list_port.c pc_port/src/data_published_logo.c pc_port/src/data_font.c pc_port/src/data_kernel_menu.c pc_port/src/data_field.c; do
-    o="$OBJ/$(basename "$pf").o"
-    if gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>/tmp/pcerr; then
-        GAME_OBJS+=("$o"); echo "    $(basename "$pf") ok"
-    else
-        echo "    $(basename "$pf") FAILED:"; grep -m4 "error:" /tmp/pcerr | sed "s|^|      |"
+PORT_SOURCES=(
+    pc_port/src/psx_memory.c
+    pc_port/src/game_overrides.c
+    pc_port/src/psyq_compat.c
+    pc_port/src/archive_port.c
+    pc_port/src/work_list_port.c
+    pc_port/src/data_published_logo.c
+    pc_port/src/data_font.c
+    pc_port/src/data_kernel_menu.c
+    pc_port/src/data_field.c
+)
+
+# The list above is the port link's explicit ownership registry. Refuse to
+# silently ignore a new port-side TU: every C source under pc_port/src must be
+# either the separately-built entry point or present in PORT_SOURCES.
+while IFS= read -r pf; do
+    [ "$pf" = "pc_port/src/port_main.c" ] && continue
+    listed=0
+    for listed_pf in "${PORT_SOURCES[@]}"; do
+        if [ "$pf" = "$listed_pf" ]; then
+            listed=1
+            break
+        fi
+    done
+    if [ "$listed" -eq 0 ]; then
+        echo "ERROR: unclassified port source is not in PORT_SOURCES: $pf"
+        echo "ERROR: aborting before trial link and stub generation."
+        exit 1
     fi
+done < <(find pc_port/src -type f -name '*.c' | sort)
+
+for pf in "${PORT_SOURCES[@]}"; do
+    if [ ! -f "$pf" ]; then
+        echo "ERROR: listed port source does not exist: $pf"
+        echo "ERROR: aborting before trial link and stub generation."
+        exit 1
+    fi
+    o="$OBJ/$(basename "$pf").o"
+    compile_err="$OUT/$(echo "$pf" | tr '/' '_').err"
+    rm -f "$o" "$compile_err"
+    if ! gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>"$compile_err"; then
+        echo "ERROR: port source compilation failed."
+        echo "       TU: $pf"
+        sed 's/^/       | /' "$compile_err"
+        echo "ERROR: aborting before trial link and stub generation; port sources may not be stubbed."
+        exit 1
+    fi
+    GAME_OBJS+=("$o")
+    echo "    $(basename "$pf") ok"
 done
 
 echo "==> [3/5] Compiling port entry point"
-gcc -c pc_port/src/port_main.c $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/include/psx" -o "$OBJ/port_main.o" 2>/tmp/pmerr || {
-    echo "    port_main FAILED:"; grep -m6 "error:" /tmp/pmerr | sed "s|^|      |"; }
+PORT_MAIN_SOURCE="pc_port/src/port_main.c"
+PORT_MAIN_OBJECT="$OBJ/port_main.o"
+PORT_MAIN_ERR="$OUT/pc_port_src_port_main.c.err"
+rm -f "$PORT_MAIN_OBJECT" "$PORT_MAIN_ERR"
+if ! gcc -c "$PORT_MAIN_SOURCE" $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/include/psx" -o "$PORT_MAIN_OBJECT" 2>"$PORT_MAIN_ERR"; then
+    echo "ERROR: port entry-point compilation failed."
+    echo "       TU: $PORT_MAIN_SOURCE"
+    sed 's/^/       | /' "$PORT_MAIN_ERR"
+    echo "ERROR: aborting before trial link and stub generation; a stale port_main.o will not be reused."
+    exit 1
+fi
 
 LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
 # -no-pie: link non-PIE so the executable loads at a fixed low base and ALL of
@@ -772,7 +823,7 @@ LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
 # all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
 # low 32-bit address space makes every such truncation a lossless round-trip.
 NOPIE="-no-pie -fno-pie"
-LINK=(gcc -m64 $NOPIE "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
+LINK=(gcc -m64 $NOPIE "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
 "${LINK[@]}" 2> "$OUT/link1.err"
@@ -879,7 +930,7 @@ PY
 fi
 
 echo "==> [5/5] Final link"
-gcc -m64 $NOPIE "$OBJ/port_main.o" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
+gcc -m64 $NOPIE "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     echo "    LINK OK -> $OUT/xeno-port"
 else
