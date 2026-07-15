@@ -24,6 +24,9 @@ typedef struct WorkListEntry {
     u32 pNext;              /* next WorkListEntry* */
 } WorkListEntry;
 
+_Static_assert(sizeof(WorkListEntry) == 0x1C,
+               "WorkListEntry must retain the retail packed 0x1C layout");
+
 /* Host-pointer <-> PSX u32 pointer helpers for the entry fields above. */
 #define WL_PTR(x) ((WorkListEntry*)(uintptr_t)(x))
 #define WL_U32(p) ((u32)(uintptr_t)(p))
@@ -88,6 +91,27 @@ void WorkListUpdate(void) {
         if (pFnCallback) {
             pFnCallback(pEntry);
         }
+    }
+}
+
+/* Retail 0x8001C8DC-0x8001C940: repeatedly invoke the +0x0C free
+ * callback of each list head, reloading the head after every callback. The
+ * callback owns unlinking the entry, so preserving that reload/dispatch order
+ * is required. Both callback slots remain packed 32-bit addresses. */
+void WorkListsFreeAllEntries(void) {
+    WorkListCallback_t pFnCallback;
+    WorkListEntry* pEntry;
+
+    while ((pEntry = g_TimerWorkList) != NULL) {
+        pFnCallback =
+            (WorkListCallback_t)(uintptr_t)pEntry->onFreeCallback;
+        pFnCallback(pEntry);
+    }
+
+    while ((pEntry = g_WorkList) != NULL) {
+        pFnCallback =
+            (WorkListCallback_t)(uintptr_t)pEntry->onFreeCallback;
+        pFnCallback(pEntry);
     }
 }
 

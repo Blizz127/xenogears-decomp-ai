@@ -56,17 +56,21 @@ fi
 # Build-integrity policy:
 #
 # Every game TU is expected to compile and link. Explicit exclusions are
-# deliberately neither compiled nor linked. They include permanent runtime
-# replacements and temporary HOLDs whose source now compiles but cannot safely
-# enter the port link until routing/decomp work is resolved. In contrast,
-# KNOWN_BROKEN_GAME_TUS are compile failures tolerated temporarily. Do not add
-# a TU to either list merely to make a build pass; each entry needs an issue.
+# deliberately neither compiled nor linked. REFERENCE_ONLY_GAME_TUS have a
+# permanent port-side runtime owner while their retail source remains in the
+# matching build. The remaining exclusions are temporary HOLDs whose source
+# now compiles but cannot safely enter the port link until routing/decomp work
+# is resolved. In contrast, KNOWN_BROKEN_GAME_TUS are compile failures tolerated
+# temporarily. Do not add a TU to any list merely to make a build pass; each
+# entry needs a reviewed ownership decision or issue.
 INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
     "*/psyq/*"
 )
 INTENTIONALLY_EXCLUDED_GAME_TUS=(
     "src/slus_006.64/system/archive.c"
     "src/slus_006.64/system/sound.c"
+)
+REFERENCE_ONLY_GAME_TUS=(
     "src/slus_006.64/system/work_list.c"
 )
 KNOWN_BROKEN_GAME_TUS=(
@@ -76,8 +80,6 @@ known_broken_tu_reason() {
     case "$1" in
         src/slus_006.64/system/sound.c)
             echo "sound/WDS/SPU management definitions are absent; sound symbols can use stubs" ;;
-        src/slus_006.64/system/work_list.c)
-            echo "work-list cleanup/global definitions are absent; port replacement is only partial" ;;
     esac
 }
 
@@ -104,6 +106,22 @@ is_intentionally_excluded_game_tu() {
     return 1
 }
 
+is_reference_only_game_tu() {
+    local candidate="$1"
+    local reference
+    for reference in "${REFERENCE_ONLY_GAME_TUS[@]}"; do
+        [ "$candidate" = "$reference" ] && return 0
+    done
+    return 1
+}
+
+reference_only_game_tu_reason() {
+    case "$1" in
+        src/slus_006.64/system/work_list.c)
+            echo "runtime replaced by pc_port/src/work_list_port.c (packed 0x1C entry layout)" ;;
+    esac
+}
+
 excluded_game_tu_reason() {
     case "$1" in
         "*/psyq/*")
@@ -112,9 +130,15 @@ excluded_game_tu_reason() {
             echo "replaced by pc_port/src/archive_port.c" ;;
         src/slus_006.64/system/sound.c)
             echo "HOLD: sound routing conflicts with pc_port/src/game_overrides.c" ;;
-        src/slus_006.64/system/work_list.c)
-            echo "HOLD: host-layout routing conflicts with work_list_port.c" ;;
     esac
+}
+
+print_reference_only_game_tus() {
+    echo "    Reference-only game TUs (matching source; replaced in the port link):"
+    local reference
+    for reference in "${REFERENCE_ONLY_GAME_TUS[@]}"; do
+        echo "      $reference — $(reference_only_game_tu_reason "$reference")"
+    done
 }
 
 print_intentionally_excluded_game_tus() {
@@ -701,12 +725,24 @@ echo "    libpsycross.a: $PSYLIB"
 
 echo "==> [2/5] Compiling game translation units in port mode"
 print_intentionally_excluded_game_tus
+print_reference_only_game_tus
 print_known_broken_game_tus
 
 compiled=0; skipped=0; SKIPPED=""
 GAME_OBJS=()
 while IFS= read -r f; do
-    # Explicit exclusions are deliberately absent from both compilation and link.
+    # Reference-only TUs remain in the matching build but have a deliberate,
+    # complete port-side runtime owner and never enter the native port link.
+    if is_reference_only_game_tu "$f"; then
+        # Do not leave a formerly-compiled object available for accidental
+        # reuse after a TU changes ownership classification.
+        rm -f "$OBJ/$(echo "$f" | tr '/' '_').o" \
+              "$OUT/$(echo "$f" | tr '/' '_').err"
+        continue
+    fi
+
+    # Explicit exclusions are deliberately absent from both port compilation
+    # and link while their routing decision remains held.
     if is_intentionally_excluded_game_tu "$f"; then
         continue
     fi
