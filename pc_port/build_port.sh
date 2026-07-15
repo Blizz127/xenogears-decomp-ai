@@ -784,6 +784,7 @@ PORT_SOURCES=(
     pc_port/src/psyq_compat.c
     pc_port/src/archive_port.c
     pc_port/src/work_list_port.c
+    pc_port/src/sound_transfer_callbacks.c
     pc_port/src/data_published_logo.c
     pc_port/src/data_font.c
     pc_port/src/data_kernel_menu.c

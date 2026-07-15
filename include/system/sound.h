@@ -57,6 +57,7 @@ typedef struct {
 #define FILE_SIGNATURE(a, b, c, d) (d<<24)+(c<<16)+(b<<8)+a
 
 typedef void (*SoundCommandCallback_t)(void);
+typedef u32 SoundTransferCallbackToken;
 
 /*
  * Retail sound structures embed 32-bit PSX addresses.  Keep those slots at
@@ -106,11 +107,45 @@ typedef struct {
 typedef struct {
     /* 0x0  */ u_short commandType;
     /* 0x2  */ short unk2;
+#ifdef XENO_PC_PORT
+    /* 0x4  */ SoundPsxAddress pSpuData;
+    /* 0x8  */ SoundPsxAddress pTransferAddress;
+    /* 0xC  */ u32 dataSize;
+    /* 0x10 */ SoundTransferCallbackToken callbackToken;
+#else
     /* 0x4  */ void* pSpuData;
     /* 0x8  */ mem_addr pTransferAddress;
     /* 0xC  */ u_long dataSize;
     /* 0x10 */ SoundCommandCallback_t pCallbackFn;
+#endif
 } SoundTransferCommand;
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SoundTransferCommand) == 0x14,
+               "SoundTransferCommand must retain its retail size");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, commandType) == 0x0,
+               "SoundTransferCommand commandType must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, unk2) == 0x2,
+               "SoundTransferCommand unk2 must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, pSpuData) == 0x4,
+               "SoundTransferCommand pSpuData must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, pTransferAddress) == 0x8,
+               "SoundTransferCommand pTransferAddress must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, dataSize) == 0xC,
+               "SoundTransferCommand dataSize must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundTransferCommand, callbackToken) == 0x10,
+               "SoundTransferCommand callback token must retain its retail offset");
+
+/*
+ * Retail stores a 32-bit function address in each transfer record.  Host
+ * function pointers cannot be narrowed to that slot, so the port stores a
+ * queue-slot token and keeps the real pointer in an eight-entry sidecar.
+ */
+SoundTransferCallbackToken SoundTransferCallbackStore(
+    u16 queueIndex, SoundCommandCallback_t callback);
+SoundCommandCallback_t SoundTransferCallbackResolve(
+    SoundTransferCallbackToken token);
+#endif
 
 // Possibly a struct which can either be a SMD (Background Music), SED (Sound Effect) or SND entry
 struct SoundFile_t {

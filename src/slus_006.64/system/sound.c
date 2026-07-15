@@ -1224,7 +1224,12 @@ s32 SoundCalculateAudioManagerSize(s32 elementCount) {
 void SoundOnTransferCallback(void) {
     SoundCommandCallback_t pCallback;
 
+#ifdef XENO_PC_PORT
+    pCallback = SoundTransferCallbackResolve(
+        g_SoundTransferQueue[g_SoundTransferQueueReadIndex].callbackToken);
+#else
     pCallback = (&g_SoundTransferQueue[g_SoundTransferQueueReadIndex])->pCallbackFn;
+#endif
     g_SoundControlFlags |= 4;
     if (pCallback) {
         pCallback();
@@ -1272,14 +1277,25 @@ void SoundQueueTransferCommand(u32 transferAddress, void* pData, u_long dataSize
     }
     g_SoundTransferQueueWriteIndex = nNextIndex;
     
+#ifdef XENO_PC_PORT
+    pCmd = &g_SoundTransferQueue[nNextIndex];
+#else
     // TODO: pCmd = &g_SoundTransferQueue[nNextIndex]; doesn't match, but there should be a cleaner line here
     pCmd = nNextIndex * sizeof(SoundTransferCommand) + (u32)g_SoundTransferQueue;
+#endif
     pCmd->commandType = commandType & 0xF;
     pCmd->unk2 = 0;
+#ifdef XENO_PC_PORT
+    pCmd->pSpuData = SOUND_PTR_TO_PSX(pData);
+    pCmd->pTransferAddress = (SoundPsxAddress)(transferAddress & 0x7FFF8);
+    pCmd->dataSize = (u32)dataSize;
+    pCmd->callbackToken = SoundTransferCallbackStore(nNextIndex, pCallback);
+#else
     pCmd->pSpuData = pData;
     pCmd->pTransferAddress = transferAddress & 0x7FFF8;
     pCmd->dataSize = dataSize;
     pCmd->pCallbackFn = pCallback;
+#endif
     
     if (!(g_SoundControlFlags & 0x10)) {
         SoundProcessTransferCommand();
@@ -1316,8 +1332,12 @@ void SoundProcessTransferCommand(void) {
     
     g_SoundControlFlags |= 0x10;
 
+#ifdef XENO_PC_PORT
+    pCmd = &g_SoundTransferQueue[nNextIndex];
+#else
     // TODO: pCmd = &g_SoundTransferQueue[nNextIndex]; doesn't match, but there should be a cleaner line here
     pCmd = nNextIndex * sizeof(SoundTransferCommand) + (u32)g_SoundTransferQueue;
+#endif
     
     pPrevCallback = SpuSetTransferCallback(&SoundOnTransferCallback);
     SpuSetTransferMode(SPU_TRANSFER_BY_DMA);
@@ -1326,16 +1346,34 @@ void SoundProcessTransferCommand(void) {
         case 0:
             break;
         case SOUND_SPU_COMMAND_WRITE:
+#ifdef XENO_PC_PORT
+            SpuWrite(SOUND_PSX_TO_PTR(void, pCmd->pSpuData), pCmd->dataSize);
+#else
             SpuWrite(pCmd->pSpuData, pCmd->dataSize);
+#endif
             break;
         case SOUND_SPU_COMMAND_READ:
+#ifdef XENO_PC_PORT
+            SpuRead(SOUND_PSX_TO_PTR(void, pCmd->pSpuData), pCmd->dataSize);
+#else
             SpuRead(pCmd->pSpuData, pCmd->dataSize);
+#endif
             break;
         case 3:
+#ifdef XENO_PC_PORT
+            D_80059548 = SpuReadDecodedData(
+                SOUND_PSX_TO_PTR(void, pCmd->pSpuData), SPU_ALL);
+#else
             D_80059548 = SpuReadDecodedData(pCmd->pSpuData, SPU_ALL);
+#endif
             break;
         case 4:
+#ifdef XENO_PC_PORT
+            D_80059548 = SpuReadDecodedData(
+                SOUND_PSX_TO_PTR(void, pCmd->pSpuData), SPU_CDONLY);
+#else
             D_80059548 = SpuReadDecodedData(pCmd->pSpuData, SPU_CDONLY);
+#endif
             break;
     }
     
