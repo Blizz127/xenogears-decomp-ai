@@ -158,39 +158,45 @@ Evidence: observed (authentic input and authored actor script; fault occurs
 before menu dispatch)
 Last verified @ e3f4b49
 
-## Menu dispatcher entry symbols resolve to stubs instead of linked real bodies
+## Field-test cold boot does not reach surveyed authored shop branches
 
-The authentic member-change/shop path is now mapped: extended field-script
-opcodes `0x56` and `0x58` select menu modes 1 and 3; `func_800799D4` loads the
-overlay and resources, copies party state, prepares the render buffers, and
-calls `MenuMain`; `MenuExecute` then dispatches mode 1 to `func_801CB0A8` and
-mode 3 to `func_801CCD28` (`src/slus_006.64/system/menu.c:223-245`).
+Menu routing and authentic keyboard input are now working, but the field-test
+harness's default game state does not satisfy the authored conditions leading
+to any shop opcode found in the surveyed maps. Extended field-script opcode
+`0x58` is the authentic shop trigger: `func_800799D4` performs the overlay,
+party-state, and render-buffer setup before `MenuMain` dispatches to the real
+`ShopMenuMain` body. Do not bypass that setup by direct-calling the menu, and do
+not force an individual script PC or branch merely to produce a menu frame.
 
-Both address-named entry symbols currently resolve to generated oracle stubs.
-The real implementations are already compiled and linked under descriptive
-names. Matching overlay ELFs establish their identity rather than merely a
-similar role:
+Map292 is the clearest live reproducer. Its only legal entrance is 0, actor 15
+routine 2 contains an authored `0x58` at script PC `0x3BF`, and real movement
+plus Circle/talk input repeatedly selects `FieldScriptGetBytecodeOffset(15, 2)`.
+The actor nevertheless remains in its idle `0x7FFF` slot and never reaches
+`func_80093824`, `MenuMain`, or `ShopMenuMain`. No story flags or script state
+were forced. The same outcome was observed at statically identified shop sites
+on Maps 209, 593, 301, 282, and 52 across their tested legal entrances: each
+surveyed `0x58` is behind authored state-dependent control flow that cold boot
+does not take. None of the 15 inner menu oracle stubs fired.
 
-- `MemberChangeMenuMain` is the function at retail `0x801CB0A8`;
-- `ShopMenuMain` is the function at retail `0x801CCD28`.
+This is a harness/state reachability gap, not an input or symbol-routing defect.
+The next bounded diagnostic is a whole-archive reachability scan from real
+routine entries, classifying every `0x58` site as cold-reachable or gated by a
+state-dependent branch. If an ungated shop exists, use its legal entrance as
+the authentic live repro. If every site is gated, reaching a menu requires
+either reconstructed playthrough state or an explicit, documented menu-test
+state scaffold—not an ad hoc flag poke.
 
-Consequently, an authentic handoff through `MenuExecute` silently returns from
-an oracle stub before entering either real menu main and before reaching any of
-the 15 inner member-change/shop stubs. This is a symbol naming/routing split,
-not missing menu-main logic. Reconcile each address-named entry with its one
-existing descriptive implementation; do not create a second implementation or
-direct-call it in a way that bypasses `func_800799D4` setup.
-
-Repro: after a normal port build, run
-`rg 'func_801CB0A8|func_801CCD28' pc_port/build_native/stubs.c
-src/slus_006.64/system/menu.c`, then
-`readelf -Ws build/out/member_change_menu.elf | rg MemberChangeMenuMain` and
-`readelf -Ws build/out/shop_menu.elf | rg ShopMenuMain`. The generated bodies
-are stubs while the matching symbols report `0x801CB0A8` and `0x801CCD28` for
-the linked descriptive functions.
-Evidence: proven (dispatcher/source inspection plus matching-ELF symbol
-identity)
-Last verified @ e3f4b49
+Repro: build the normal port, then run
+`env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=292
+XENO_FIELD_ENTRANCE=0 SDL_VIDEODRIVER=x11 DISPLAY=:0
+pc_port/build_native/xeno-port` under GDB with symbol breakpoints on
+`FieldScriptGetBytecodeOffset`, `func_80093824`, `MenuMain`, and
+`ShopMenuMain`; move to actor 15 with real d-pad input and press Z (Circle).
+The `(15, 2)` routine selection fires, while all three downstream menu-path
+breakpoints remain silent.
+Evidence: observed (authentic input/routine selection and surveyed authored
+scripts) + inferred (the missing prerequisite is cold-boot game state)
+Last verified @ 5b68551
 
 ## Unported member-change and shop menu overlays
 
@@ -198,15 +204,16 @@ Both menu `misc.c` TUs now compile after the retail-proven `POLY_FT4` window
 border correction and the `ShopMenuBuyMenu` declaration fix. Their compile
 errors had been masking 15 link-reachable `INCLUDE_ASM` dependencies: three in
 the member-change overlay and twelve in the shop overlay. Matching ELFs now
-exist and there is no port-symbol collision. The architecture decision is to
-compile both TUs normally and use generated oracle stubs, with actual menu-route
-activation and validation as the remaining implementation task.
+exist and there is no port-symbol collision. Both TUs now compile and link
+normally with generated oracle stubs. Port-only routing reaches the real menu
+entry bodies; live coverage of the 15 inner stubs now awaits an authentic shop
+state as tracked above.
 
 Repro: compile both menu TUs with the port GFLAGS/INC and compare their undefined
 symbols against their `INCLUDE_ASM` declarations, or remove the holds locally
 and verify that the typed stub manifest regenerates and links.
 Evidence: proven
-Last verified @ fdd86e7
+Last verified @ 5b68551
 
 ## Work-list runtime routing: decomp source vs. host-safe port override
 
