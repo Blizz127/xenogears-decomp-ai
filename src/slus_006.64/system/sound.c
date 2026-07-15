@@ -664,8 +664,8 @@ void SoundHeapInitialize(void* startAddress, unsigned int size) {
     g_SoundHeapSize = nAlignedSize;
     pHeapBlock->unk2 = 0;
     pHeapBlock->unk4 = 0;
-    pHeapBlock->pPrev = pHeapBlock + 1;
-    pHeapBlock->pNext = NULL;
+    pHeapBlock->pPrev = SOUND_PTR_TO_PSX(pHeapBlock + 1);
+    pHeapBlock->pNext = SOUND_PTR_TO_PSX(NULL);
 }
 
 void* SoundHeapAllocate(u32 allocSize) {
@@ -679,26 +679,30 @@ void* SoundHeapAllocate(u32 allocSize) {
     DisableEvent(g_unk_SoundEvent);
     nTotalSize = ((allocSize + 0xF) & ~0xF) + sizeof(SoundHeapBlockHeader);
     
-    for (pHeapBlock = g_SoundHeapHead; pHeapBlock->pNext != NULL; pHeapBlock = pHeapBlock->pNext) {
-        pNext = pHeapBlock->pNext;
-        nSize = (u32)pHeapBlock->pNext - (u32)pHeapBlock->pPrev;
+    for (pHeapBlock = g_SoundHeapHead;
+         SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext) != NULL;
+         pHeapBlock = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext)) {
+        pNext = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext);
+        nSize = (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext) -
+                (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev);
         if (nSize >= nTotalSize) {
             goto alloc_new_block;
         }
     }
     
     pNext = (SoundHeapBlockHeader*)g_SoundHeapEnd;
-    if ((u32)pNext - (u32)pHeapBlock->pPrev >= nTotalSize) {
+    if ((u32)pNext - (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev) >= nTotalSize) {
     alloc_new_block:
-        pNewBlock = (SoundHeapBlockHeader*)(((u32)pHeapBlock->pPrev + 0xF) & ~0xF);
+        pNewBlock = (SoundHeapBlockHeader*)
+            (((u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev) + 0xF) & ~0xF);
         pMemory = pNewBlock + 1;
-        pNewBlock->pPrev = (SoundHeapBlockHeader*)((u32)pMemory + allocSize);
-        pNewBlock->pNext = NULL;
+        pNewBlock->pPrev = SOUND_PTR_TO_PSX((u8*)pMemory + allocSize);
+        pNewBlock->pNext = SOUND_PTR_TO_PSX(NULL);
         pNewBlock->unk4 = 0;
         pNewBlock->unk0 = 2;
         pNewBlock->unk2 = 0;
         pNewBlock->pNext = pHeapBlock->pNext;
-        pHeapBlock->pNext = pNewBlock;
+        pHeapBlock->pNext = SOUND_PTR_TO_PSX(pNewBlock);
         EnableEvent(g_unk_SoundEvent);
         SoundHeapClearBlockMemory(pMemory, allocSize);
         return pMemory;

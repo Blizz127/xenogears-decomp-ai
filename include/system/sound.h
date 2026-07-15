@@ -4,6 +4,10 @@
 #include "psyq/libspu.h"
 #include "psyq/libcd.h"
 
+#ifdef XENO_PC_PORT
+#include <stdint.h>
+#endif
+
 #define NUM_VOICES 24
 
 #define NUM_NOTES_PER_OCTAVE 12
@@ -54,13 +58,32 @@ typedef struct {
 
 typedef void (*SoundCommandCallback_t)(void);
 
+/*
+ * Retail sound structures embed 32-bit PSX addresses.  Keep those slots at
+ * their ABI width on LP64 hosts and convert explicitly at each use.  This is
+ * the common accessor pattern for heap, file, WDS, element, and manager
+ * structure pointers; native pointer fields must not be used for them.
+ */
+typedef u32 SoundPsxAddress;
+#define SOUND_PSX_TO_PTR(type, address) ((type*)(uintptr_t)(address))
+#define SOUND_PTR_TO_PSX(pointer) ((SoundPsxAddress)(uintptr_t)(pointer))
+
 typedef struct {
     /* 0x0 */ undefined16 unk0; // Flags?
     /* 0x2 */ undefined16 unk2;
     /* 0x4 */ undefined32 unk4;
-    /* 0x8 */ void* pPrev;
-    /* 0xC */ void* pNext;
+    /* 0x8 */ SoundPsxAddress pPrev;
+    /* 0xC */ SoundPsxAddress pNext;
 } SoundHeapBlockHeader;
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SoundHeapBlockHeader) == 0x10,
+               "SoundHeapBlockHeader must retain its retail size");
+_Static_assert(__builtin_offsetof(SoundHeapBlockHeader, pPrev) == 0x8,
+               "SoundHeapBlockHeader pPrev must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundHeapBlockHeader, pNext) == 0xC,
+               "SoundHeapBlockHeader pNext must retain its retail offset");
+#endif
 
 
 #define MAX_SPU_MEMORY_BLOCKS 0xC
