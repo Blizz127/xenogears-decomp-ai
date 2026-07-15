@@ -32,7 +32,107 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageCol);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", CompMatrix);
+MATRIX* CompMatrix(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
+    MATRIX* result;
+
+    /* Handwritten PsyQ routine.  Keep the retail load/store interleave: in
+     * particular, m0->t is read before m2->t is overwritten so m0 == m2 is
+     * safe. */
+    __asm__ volatile(
+        ".set noat\n\t"
+        "lw $8, 0(%1)\n\t"
+        "lw $9, 4(%1)\n\t"
+        "lw $10, 8(%1)\n\t"
+        "lw $11, 12(%1)\n\t"
+        "lw $12, 16(%1)\n\t"
+        "ctc2 $8, $0\n\t"
+        "ctc2 $9, $1\n\t"
+        "ctc2 $10, $2\n\t"
+        "ctc2 $11, $3\n\t"
+        "ctc2 $12, $4\n\t"
+        "lhu $8, 0(%2)\n\t"
+        "lw $9, 4(%2)\n\t"
+        "lw $10, 12(%2)\n\t"
+        "lui $1, 0xffff\n\t"
+        "and $9, $9, $1\n\t"
+        "or $8, $8, $9\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "lhu $8, 2(%2)\n\t"
+        "lw $9, 8(%2)\n\t"
+        "lh $10, 14(%2)\n\t"
+        "sll $9, $9, 16\n\t"
+        "or $8, $8, $9\n\t"
+        "mfc2 $11, $9\n\t"
+        "mfc2 $12, $10\n\t"
+        "mfc2 $13, $11\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "lhu $8, 4(%2)\n\t"
+        "lw $9, 8(%2)\n\t"
+        "lw $10, 16(%2)\n\t"
+        "lui $1, 0xffff\n\t"
+        "and $9, $9, $1\n\t"
+        "or $8, $8, $9\n\t"
+        "mfc2 $14, $9\n\t"
+        "mfc2 $15, $10\n\t"
+        "mfc2 $24, $11\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "andi $11, $11, 0xffff\n\t"
+        "sll $14, $14, 16\n\t"
+        "or $14, $14, $11\n\t"
+        "sw $14, 0(%3)\n\t"
+        "andi $13, $13, 0xffff\n\t"
+        "sll $24, $24, 16\n\t"
+        "or $24, $24, $13\n\t"
+        "sw $24, 12(%3)\n\t"
+        "mfc2 $8, $9\n\t"
+        "mfc2 $9, $10\n\t"
+        "swc2 $11, 16(%3)\n\t"
+        "lhu $13, 20(%2)\n\t"
+        "lw $14, 24(%2)\n\t"
+        "lw $10, 28(%2)\n\t"
+        "sll $14, $14, 16\n\t"
+        "or $13, $13, $14\n\t"
+        "mtc2 $13, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "sll $12, $12, 16\n\t"
+        "andi $8, $8, 0xffff\n\t"
+        "or $8, $8, $12\n\t"
+        "sw $8, 4(%3)\n\t"
+        "andi $15, $15, 0xffff\n\t"
+        "sll $9, $9, 16\n\t"
+        "or $9, $9, $15\n\t"
+        "sw $9, 8(%3)\n\t"
+        "mfc2 $8, $25\n\t"
+        "mfc2 $9, $26\n\t"
+        "mfc2 $10, $27\n\t"
+        "lw $11, 20(%1)\n\t"
+        "lw $12, 24(%1)\n\t"
+        "lw $13, 28(%1)\n\t"
+        "add $8, $8, $11\n\t"
+        "add $9, $9, $12\n\t"
+        "add $10, $10, $13\n\t"
+        "sw $8, 20(%3)\n\t"
+        "sw $9, 24(%3)\n\t"
+        "sw $10, 28(%3)\n\t"
+        "move %0, %3\n\t"
+        ".set at"
+        : "=r"(result)
+        : "r"(m0), "r"(m1), "r"(m2)
+        : "$8", "$9", "$10", "$11", "$12", "$13", "$14", "$15",
+          "$24", "memory");
+    return result;
+}
 
 VECTOR* ApplyMatrixLV(MATRIX* m, VECTOR* v0, VECTOR* v1) {
     VECTOR hi;
