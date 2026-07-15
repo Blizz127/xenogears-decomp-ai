@@ -118,6 +118,80 @@ Restore the oracle stub afterward.
 Evidence: proven
 Last verified @ 609c426
 
+## Map143 dialogue path crashes in the shared tile/sprite renderer
+
+Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
+the player to shop actor 14 and a real Circle/talk input selects that actor's
+authored talk routine. The routine opens dialogue, then remains at
+`WAIT_DIALOG` through at least frame 500 even after authentic close inputs. The
+unmodified renderer SIGSEGVs at frame 358, before the script reaches its shop
+opcode and before any menu entry point or menu oracle stub executes.
+
+The fault stack is:
+
+```text
+GR_UpdateVRAM
+AddSplit
+BeginTexturedSplit
+ProcessTileAndSprt
+ParsePrimitive
+DrawOTag
+func_8007554C
+FieldMain
+```
+
+The frame-340 pre-fault capture at `/tmp/menu143_prefault.png` is a coherent
+field scene with the dialogue box still open; it is not a menu frame. This is
+therefore an independent field renderer/dialogue-path defect, not a menu
+failure. `GR_UpdateVRAM` and the tile/sprite processing path are shared, so the
+same mechanism may affect other maps and needs a separate diagnostic pass.
+
+Repro: build the normal port, then run
+`env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=143
+XENO_FIELD_ENTRANCE=0 SDL_VIDEODRIVER=x11 DISPLAY=:0
+pc_port/build_native/xeno-port`; use the d-pad to move from the entrance to
+actor 14 and press Z (the port's Circle/talk mapping). The authored interaction
+opens the dialogue and reaches `WAIT_DIALOG`; capture under GDB to obtain the
+stack above. Entrance 1 is structurally legal as well, but entrance 0 is the
+verified reproducer.
+Evidence: observed (authentic input and authored actor script; fault occurs
+before menu dispatch)
+Last verified @ e3f4b49
+
+## Menu dispatcher entry symbols resolve to stubs instead of linked real bodies
+
+The authentic member-change/shop path is now mapped: extended field-script
+opcodes `0x56` and `0x58` select menu modes 1 and 3; `func_800799D4` loads the
+overlay and resources, copies party state, prepares the render buffers, and
+calls `MenuMain`; `MenuExecute` then dispatches mode 1 to `func_801CB0A8` and
+mode 3 to `func_801CCD28` (`src/slus_006.64/system/menu.c:223-245`).
+
+Both address-named entry symbols currently resolve to generated oracle stubs.
+The real implementations are already compiled and linked under descriptive
+names. Matching overlay ELFs establish their identity rather than merely a
+similar role:
+
+- `MemberChangeMenuMain` is the function at retail `0x801CB0A8`;
+- `ShopMenuMain` is the function at retail `0x801CCD28`.
+
+Consequently, an authentic handoff through `MenuExecute` silently returns from
+an oracle stub before entering either real menu main and before reaching any of
+the 15 inner member-change/shop stubs. This is a symbol naming/routing split,
+not missing menu-main logic. Reconcile each address-named entry with its one
+existing descriptive implementation; do not create a second implementation or
+direct-call it in a way that bypasses `func_800799D4` setup.
+
+Repro: after a normal port build, run
+`rg 'func_801CB0A8|func_801CCD28' pc_port/build_native/stubs.c
+src/slus_006.64/system/menu.c`, then
+`readelf -Ws build/out/member_change_menu.elf | rg MemberChangeMenuMain` and
+`readelf -Ws build/out/shop_menu.elf | rg ShopMenuMain`. The generated bodies
+are stubs while the matching symbols report `0x801CB0A8` and `0x801CCD28` for
+the linked descriptive functions.
+Evidence: proven (dispatcher/source inspection plus matching-ELF symbol
+identity)
+Last verified @ e3f4b49
+
 ## Unported member-change and shop menu overlays
 
 Both menu `misc.c` TUs now compile after the retail-proven `POLY_FT4` window
