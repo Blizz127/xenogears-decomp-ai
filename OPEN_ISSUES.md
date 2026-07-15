@@ -14,63 +14,38 @@ Rules:
 
 ---
 
-## Missing matching ELFs block typed stubs and full matching
-
-`build/out/slus_006.64.elf`, `field.elf`, `member_change_menu.elf`, and
-`shop_menu.elf` are not available to the port build. They are required to
-classify undefined symbols safely as functions or correctly-sized data before
-generating `stubs.c`. The driver now fails explicitly when its typed stub
-manifest differs from the current undefined set; it no longer silently reuses a
-stale manifest.
-
-The supported `xenogears-dev` MIPS toolchain is available and compiles the
-matching graph through 446 of 459 Ninja steps. The main SLUS link then fails in
-`src/slus_006.64/psyq/libgte.c`: calls such as `gte_SetRotMatrix`, `gte_ldlvl`,
-and `gte_rtpt` remain unresolved because the matching dependency set includes
-`psyq/libgte.h` but not the inline GTE macro definitions. Repair that matching
-build integration before expecting ELFs to exist.
-
-This blocks safe incremental activation of the sound/menu overlays, full-project
-objdiff (including the missing `fade_render.c.o` path), and automatic typed-stub
-regeneration.
-
-Repro: `distrobox enter xenogears-dev -- bash -lc 'cd
-/var/home/blizz/Projects/xenogears-decomp && make -B build'`; the SLUS link
-reports unresolved `gte_*` helpers from `libgte.c` and produces no ELF. Then run
-`./scratchpad/run_build_port.sh` after any configuration changes the undefined
-set; the port driver refuses to link without a matching typed manifest.
-Evidence: proven
-Last verified @ a0c5461 (matching build run locally)
-
-## Unported sound subsystem behind the compile allowlist
+## Sound activation: symbol ownership and LP64 layouts
 
 `src/slus_006.64/system/sound.c` now compiles after retail-confirmed prototype
 and byte-cursor corrections, but activating it exposes 39 unresolved
-`INCLUDE_ASM` sound-path definitions. It remains intentionally allowlisted as a
-temporary compile-success blocker until those functions can be supplied by real
-ports or typed stubs generated from matching ELFs. This is a sound-subsystem
-porting workstream, not a residual C compile-error task.
+`INCLUDE_ASM` sound-path definitions and collides with three historical copies
+in `game_overrides.c`. Matching ELFs now exist, so stub classification is not the
+blocker. Pointer-bearing sound structures also widen away from their documented
+retail offsets on LP64; those structures need a packed-vs-host-owned audit before
+the TU can safely go live. See
+[`Port-Coexistence-Architecture`](docs/wiki/Port-Coexistence-Architecture.md).
 
 Repro: compile `sound.c` with the port GFLAGS/INC, then run
-`./scratchpad/run_build_port.sh`; the driver refuses to let the allowlisted TU
-silently enter the link.
+`./scratchpad/run_build_port.sh` with its hold removed locally; expect collisions
+for `SoundValidateFile`, `SoundFileComputeChecksum`, and `SoundAddSedsEntry`.
 Evidence: proven
-Last verified @ f849676
+Last verified @ fdd86e7
 
 ## Unported member-change and shop menu overlays
 
 Both menu `misc.c` TUs now compile after the retail-proven `POLY_FT4` window
 border correction and the `ShopMenuBuyMenu` declaration fix. Their compile
-errors had been masking 15 unresolved `INCLUDE_ASM` dependencies: three in the
-member-change overlay and twelve in the shop overlay. They remain on the
-allowlist until those dependencies are ported or matching ELFs can generate
-typed stubs; they must not be made live merely because they compile.
+errors had been masking 15 link-reachable `INCLUDE_ASM` dependencies: three in
+the member-change overlay and twelve in the shop overlay. Matching ELFs now
+exist and there is no port-symbol collision. The architecture decision is to
+compile both TUs normally and use generated oracle stubs, with actual menu-route
+activation and validation as the remaining implementation task.
 
 Repro: compile both menu TUs with the port GFLAGS/INC and compare their undefined
-symbols against their `INCLUDE_ASM` declarations. The guarded build then rejects
-the newly compiling allowlisted TU before link.
+symbols against their `INCLUDE_ASM` declarations, or remove the holds locally
+and verify that the typed stub manifest regenerates and links.
 Evidence: proven
-Last verified @ a0c5461
+Last verified @ fdd86e7
 
 ## Work-list runtime routing: decomp source vs. host-safe port override
 
@@ -81,22 +56,34 @@ It uses PSX-layout 0x1C entries with 32-bit stored pointers because the original
 decomp layout is unsafe for the 64-bit host; it was added to restore the
 runtime-critical work-list paths that were previously stubbed.
 
-Do **not** resolve this by simply adding `work_list.c` to an exclusion list.
-That would discard the exports only present in the decomp TU (including
-`WorkListsFreeAllEntries`, allocation helpers, getters, and other nonmatching
-functions), which are currently stubbed and would need the same layout/routing
-treatment before becoming usable.
-
-Open design question: should the complete work-list subsystem adopt the
-PSX-layout port model, or should the remaining `work_list.c` exports be ported
-individually into the host-safe implementation?
+The runtime-layout decision is now made: keep `work_list.c` excluded as
+matching/reference source and make `work_list_port.c` the canonical native
+owner. Exclusion alone is not completion; remaining exports must be ported into
+the packed-u32 implementation as live paths require them. See
+[`Port-Coexistence-Architecture`](docs/wiki/Port-Coexistence-Architecture.md).
 
 Repro: compile `src/slus_006.64/system/work_list.c` with the port GFLAGS, then
 compare its defined symbols against `pc_port/src/work_list_port.c`; the shared
 definitions produce duplicate-definition link errors if both objects are linked.
 Evidence: proven (source comments, symbol comparison, and runtime-recovery
 history)
-Last verified @ 37a3022
+Last verified @ fdd86e7
+
+## Port-only source compilation is not fail-closed
+
+The game-TU compile loop aborts on unexpected failures, but the port-only loop
+only prints `FAILED` and continues. A failed `game_overrides.c`,
+`archive_port.c`, `work_list_port.c`, data source, or other port source is
+omitted from `GAME_OBJS`; the trial link can then satisfy its missing symbols
+with generated stubs. `port_main.c` likewise reports a compile failure without
+aborting or deleting a prior object, allowing a stale entry object to be linked.
+
+Repro: inspect the port-source loop and `port_main.c` compile command in
+`pc_port/build_port.sh`, or induce a temporary compile error in an isolated
+worktree. The driver reaches the trial link instead of exiting at the failed
+compile.
+Evidence: proven (control-flow inspection)
+Last verified @ fdd86e7
 
 ## Unimplemented sprite-animation opcodes in func_800248D4
 

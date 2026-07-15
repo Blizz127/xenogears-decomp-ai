@@ -24,6 +24,7 @@ This wiki is a **human-readable progress map** for the Xenogears matching decomp
 | [Known Addresses and Globals](Known-Addresses-and-Globals) | Important addresses/globals with evidence |
 | [Debugging and Tracing](Debugging-and-Tracing) | Practical gdb/logging repro commands |
 | [Matching and Porting Rules](Matching-and-Porting-Rules) | How we decide what to implement |
+| [Decomp and PC-Port Coexistence Architecture](Port-Coexistence-Architecture) | How matching sources, port replacements, overrides, and stubs coexist |
 | [Useful Commands](Useful-Commands) | Copy-paste command reference |
 
 ## Status legend
