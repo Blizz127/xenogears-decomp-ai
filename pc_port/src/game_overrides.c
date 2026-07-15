@@ -933,12 +933,9 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* POLY_F4 walker for prim 0x0C variant 0 (retail 0x8002E254: 4 vertices,
- * tag len 5, 0x18-byte packets matching buildProc func_8002D0C0's templates —
- * tag +0x0, rgb|code +0x4, xy0..xy3 at +0x8/+0xC/+0x10/+0x14). Replaces the
- * mis-wired 0x34-step GT4 walker that stomped neighbouring packet slots
- * (Bug 6). Cull/bucket convention matches the other walkers: flag<0 or
- * otz<=0 skip, otIndex = otz >> D_80050100. */
+/* Retail 0x8002E254 -> shared 0x8002E274: compact POLY_F4 walker used by
+ * 0x08/0 and 0x0C/0.  Retail transforms three vertices with RTPT, performs
+ * NCLIP, transforms the fourth with RTPS, then uses AVSZ4 for OT ordering. */
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
     const s32 packetStep = 0x18;
     const u32 tagLen = 0x05000000;
@@ -957,68 +954,80 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long xy3 = 0;
-        long p = 0;
-        long otz = 0;
-        long flag = 0;
+        long rtptFlag = 0;
+        long rtpsFlag = 0;
+        long nclipOpz = 0;
+        u16 averageZ;
+        s32 otIndex;
+        u32 oldTag;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        CullCamSeen(1, flag);
-        if (flag < 0 || otz <= 0) {
-            if (flag < 0) {
-                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, xy3, v0, v1, v2, v3,
-                                      "RTPT4", 1, 4);
-            }
-            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 1);
+        gte_ldv3(v0, v1, v2);
+        gte_rtpt();
+        gte_stflg(&rtptFlag);
+        gte_stsxy3(&xy0, &xy1, &xy2);
+
+        /* Retail issues NCLIP before testing RTPT's saved FLAG. */
+        gte_nclip();
+        gte_stopz(&nclipOpz);
+        rtptFlag = (long)(s32)(u32)rtptFlag;
+        nclipOpz = (long)(s32)(u32)nclipOpz;
+        if (rtptFlag < 0) {
+            CullCamSeen(1, rtptFlag);
+            CullCamSampleFlagDrop(rtptFlag, (u16)C2_SZ3 >> 2,
+                                  xy0, xy1, xy2, 0, v0, v1, v2, v3,
+                                  "RTPT4", 1, 4);
+            CullCamDrop(CC_FLAG, 1);
             continue;
         }
-        {
-            long nclipOpz = NormalClip(xy0, xy1, xy2);
-            if (nclipOpz < 0) {
-                CullCamDrop(CC_NCLIP_BACKFACE, 1);
-                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 1);
-                continue;
-            }
+        if (nclipOpz <= 0) {
+            CullCamSeen(1, rtptFlag);
+            CullCamDrop(CC_NCLIP_BACKFACE, 1);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 1);
+            continue;
         }
+
+        gte_ldv0(v3);
+        gte_rtps();
+        gte_stflg(&rtpsFlag);
+        gte_stsxy(&xy3);
+        /* AVSZ4 is retail's branch-delay instruction and therefore executes
+         * even when RTPS's FLAG rejects the primitive. */
+        gte_avsz4();
+        rtpsFlag = (long)(s32)(u32)rtpsFlag;
+        CullCamSeen(1, rtpsFlag);
+        if (rtpsFlag < 0) {
+            CullCamSampleFlagDrop(rtpsFlag, (u16)C2_SZ3 >> 2,
+                                  xy0, xy1, xy2, xy3, v0, v1, v2, v3,
+                                  "RTPT4", 1, 4);
+            CullCamDrop(CC_FLAG, 1);
+            continue;
+        }
+
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             CullCamDrop(CC_OVERLAP, 1);
             continue;
         }
-        if (ModelPrimQuadOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
-            CullCamDrop(CC_OVERSIZE, 1);
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        if (averageZ == 0) {
+            CullCamDrop(CC_OTZ, 1);
             continue;
         }
 
-        {
-            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
-             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
-             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
-            s32 otIndex = (s32)otz >> D_80050100;
-            u32 oldTag;
-            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
-             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
-             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
-             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
-             * -- visible only when the camera is jammed against geometry (e.g. the
-             * Lahan well pose: near polys vanish, distant ones survive => scattered
-             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
-             * matches retail's unconditional ot[otIndex] write. */
-            if (otIndex < 0) {
-                continue;
-            }
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
-            *(u32*)(out + 0x08) = (u32)xy0;
-            *(u32*)(out + 0x0C) = (u32)xy1;
-            *(u32*)(out + 0x10) = (u32)xy2;
-            *(u32*)(out + 0x14) = (u32)xy3;
-            emitted++;
-            CullCamEmit(1);
-        }
+        otIndex = (s32)averageZ >> D_80050100;
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x0C) = (u32)xy1;
+        *(u32*)(out + 0x10) = (u32)xy2;
+        *(u32*)(out + 0x14) = (u32)xy3;
+        CullCamEmit(1);
     }
 
     D_80059578 = emitted;
