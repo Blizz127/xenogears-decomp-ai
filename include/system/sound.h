@@ -123,10 +123,21 @@ struct SoundFile_t {
     /* 0x14 */ u_short sedId;
     /* 0x16 */ u_short sndId;
     /* 0x18 */ undefined32 unk18;
-    /* 0x1C */ struct SoundFile_t* pNext;
-    /* 0x20 */ // starts of 0x2 size offsets to scripts. Pair of scripts for each instrument. 1 script for 1 channel.
+    /* 0x1C */ SoundPsxAddress pNext;
+    /* 0x20 */ // Variable payload: pairs of script offsets per instrument; one script per channel.
 };
 typedef struct SoundFile_t SoundFile;
+
+#define SOUND_FILE_SCRIPT_OFFSETS_OFFSET 0x20
+#define SOUND_FILE_SCRIPT_OFFSETS(soundFile) \
+    ((u16*)((u8*)(soundFile) + SOUND_FILE_SCRIPT_OFFSETS_OFFSET))
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SoundFile) == SOUND_FILE_SCRIPT_OFFSETS_OFFSET,
+               "SoundFile header must end at the retail payload offset");
+_Static_assert(__builtin_offsetof(SoundFile, pNext) == 0x1C,
+               "SoundFile pNext must retain its retail offset");
+#endif
 
 struct SoundWDSEntry_t {
     /* 0x0  */ u_char _unk0[0x10];

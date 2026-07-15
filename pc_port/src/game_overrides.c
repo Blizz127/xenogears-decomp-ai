@@ -1725,10 +1725,11 @@ void SoundAddSedsEntry(SoundFile* pSoundFile)
 {
     SoundFile* pEntry;
     short nSedsStatus;
-    SoundFile** pList;
+    SoundPsxAddress* pList;
 
     if (!(g_SoundControlFlags & 0x80)) {
-        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL; pEntry = pEntry->pNext) {
+        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL;
+             pEntry = SOUND_PSX_TO_PTR(SoundFile, pEntry->pNext)) {
             if (pSoundFile->sedId == pEntry->sedId) {
                 SoundHandleError(SOUND_ERR_ENTRY_ALREADY_EXISTS);
                 return;
@@ -1743,12 +1744,12 @@ void SoundAddSedsEntry(SoundFile* pSoundFile)
     }
 
     DisableEvent(g_unk_SoundEvent);
-    pList = &g_SoundSedsLinkedList;
-    while (*pList != NULL) {
-        pList = &((*pList)->pNext);
+    pList = (SoundPsxAddress*)&g_SoundSedsLinkedList;
+    while (SOUND_PSX_TO_PTR(SoundFile, *pList) != NULL) {
+        pList = &SOUND_PSX_TO_PTR(SoundFile, *pList)->pNext;
     }
-    *pList = pSoundFile;
-    pSoundFile->pNext = NULL;
+    *pList = SOUND_PTR_TO_PSX(pSoundFile);
+    pSoundFile->pNext = SOUND_PTR_TO_PSX(NULL);
     EnableEvent(g_unk_SoundEvent);
 }
 
