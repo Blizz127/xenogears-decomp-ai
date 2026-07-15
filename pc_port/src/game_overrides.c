@@ -1035,10 +1035,9 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* Textured-quad variant 0: retail D_8004FE50[0x0D].proc[0/1] points at
- * 0x8002E268.  Unlike the variant-2 walker at func_8002E688, that entry uses
- * AVSZ4 and consequently orders the quad by its average depth.  The packet
- * shape is still a 0x28-byte POLY_FT4 (tag len 9). */
+/* Retail 0x8002E268 -> shared 0x8002E274: POLY_FT4 variant-0/1 walker.
+ * NCLIP occurs between the first-three RTPT and fourth-vertex RTPS; AVSZ4 is
+ * issued in RTPS's FLAG-branch delay slot. */
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
     const s32 packetStep = 0x28;
     const u32 tagLen = 0x09000000;
@@ -1057,44 +1056,61 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long xy3 = 0;
-        long p = 0;
-        long otz = 0;
-        long flag = 0;
+        long rtptFlag = 0;
+        long rtpsFlag = 0;
+        long nclipOpz = 0;
+        u16 averageZ;
+        s32 otIndex;
+        u32 oldTag;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        /* RotAverage4 is RTPT/RTPS followed by AVSZ4, matching E268's GTE
-         * sequence.  Its return is raw OTZ, and 8002E40C shifts that by
-         * D_80050100 with no adjustment -- the +2 belongs only to the
-         * RotTransPers walker family (8002E4F0/8002E6F4). */
-        otz = RotAverage4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        if (flag < 0 || otz <= 0) {
+        gte_ldv3(v0, v1, v2);
+        gte_rtpt();
+        gte_stflg(&rtptFlag);
+        gte_stsxy3(&xy0, &xy1, &xy2);
+
+        gte_nclip();
+        gte_stopz(&nclipOpz);
+        rtptFlag = (long)(s32)(u32)rtptFlag;
+        nclipOpz = (long)(s32)(u32)nclipOpz;
+        if (rtptFlag < 0) {
             continue;
         }
-        /* 8002E36C branches on the FLAG sampled before NCLIP, but 8002E37C
-         * reads MAC0 and 8002E384 `blez`-culls the quad: retail rejects
-         * backfacing and degenerate (MAC0 <= 0) FT4s here. */
-        if (NormalClip(xy0, xy1, xy2) <= 0) {
+        if (nclipOpz <= 0) {
             continue;
         }
+
+        gte_ldv0(v3);
+        gte_rtps();
+        gte_stflg(&rtpsFlag);
+        gte_stsxy(&xy3);
+        gte_avsz4();
+        rtpsFlag = (long)(s32)(u32)rtpsFlag;
+        if (rtpsFlag < 0) {
+            continue;
+        }
+
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
 
-        {
-            s32 otIndex = (s32)otz >> D_80050100;
-            u32 oldTag = ot[otIndex];
-
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
-            *(u32*)(out + 0x08) = (u32)xy0;
-            *(u32*)(out + 0x10) = (u32)xy1;
-            *(u32*)(out + 0x18) = (u32)xy2;
-            *(u32*)(out + 0x20) = (u32)xy3;
-            emitted++;
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        if (averageZ == 0) {
+            continue;
         }
+
+        otIndex = (s32)averageZ >> D_80050100;
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+        *(u32*)(out + 0x20) = (u32)xy3;
     }
 
     D_80059578 = emitted;
