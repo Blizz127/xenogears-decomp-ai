@@ -30,7 +30,88 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageByte);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageCol);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix0);
+MATRIX* MulMatrix0(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
+    MATRIX* result;
+
+    /* Handwritten PsyQ routine.  Preserve the retail column-load and result
+     * interleave so the packed 3x3 matrix lands at the original offsets. */
+    __asm__ volatile(
+        ".set noat\n\t"
+        "lw $8, 0(%1)\n\t"
+        "lw $9, 4(%1)\n\t"
+        "lw $10, 8(%1)\n\t"
+        "lw $11, 12(%1)\n\t"
+        "lw $12, 16(%1)\n\t"
+        "ctc2 $8, $0\n\t"
+        "ctc2 $9, $1\n\t"
+        "ctc2 $10, $2\n\t"
+        "ctc2 $11, $3\n\t"
+        "ctc2 $12, $4\n\t"
+        "lhu $8, 0(%2)\n\t"
+        "lw $9, 4(%2)\n\t"
+        "lw $10, 12(%2)\n\t"
+        "lui $1, 0xffff\n\t"
+        "and $9, $9, $1\n\t"
+        "or $8, $8, $9\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "lhu $8, 2(%2)\n\t"
+        "lw $9, 8(%2)\n\t"
+        "lh $10, 14(%2)\n\t"
+        "sll $9, $9, 16\n\t"
+        "or $8, $8, $9\n\t"
+        "mfc2 $11, $9\n\t"
+        "mfc2 $12, $10\n\t"
+        "mfc2 $13, $11\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "lhu $8, 4(%2)\n\t"
+        "lw $9, 8(%2)\n\t"
+        "lw $10, 16(%2)\n\t"
+        "lui $1, 0xffff\n\t"
+        "and $9, $9, $1\n\t"
+        "or $8, $8, $9\n\t"
+        "mfc2 $14, $9\n\t"
+        "mfc2 $15, $10\n\t"
+        "mfc2 $24, $11\n\t"
+        "mtc2 $8, $0\n\t"
+        "mtc2 $10, $1\n\t"
+        "nop\n\t"
+        ".word 0x4a486012\n\t"
+        "andi $11, $11, 0xffff\n\t"
+        "sll $14, $14, 16\n\t"
+        "or $14, $14, $11\n\t"
+        "sw $14, 0(%3)\n\t"
+        "andi $13, $13, 0xffff\n\t"
+        "sll $24, $24, 16\n\t"
+        "or $24, $24, $13\n\t"
+        "sw $24, 12(%3)\n\t"
+        "mfc2 $8, $9\n\t"
+        "mfc2 $9, $10\n\t"
+        "andi $8, $8, 0xffff\n\t"
+        "sll $12, $12, 16\n\t"
+        "or $8, $8, $12\n\t"
+        "sw $8, 4(%3)\n\t"
+        "andi $15, $15, 0xffff\n\t"
+        "sll $9, $9, 16\n\t"
+        "or $9, $9, $15\n\t"
+        "sw $9, 8(%3)\n\t"
+        "swc2 $11, 16(%3)\n\t"
+        "move %0, %3\n\t"
+        ".set at"
+        : "=r"(result)
+        : "r"(m0), "r"(m1), "r"(m2)
+        : "$8", "$9", "$10", "$11", "$12", "$13", "$14", "$15",
+          "$24", "memory");
+    return result;
+}
+
+/* Retail padding at 0x80049318, outside MulMatrix0's symbol bounds. */
+__asm__(".word 0");
 
 MATRIX* CompMatrix(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     MATRIX* result;
