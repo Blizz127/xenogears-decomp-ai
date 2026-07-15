@@ -1119,7 +1119,14 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B1FC);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B22C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B32C);
+void func_8003B32C(AudioManager* manager) {
+    manager->unk_Flags = 2;
+    *(u16*)&manager->unk2[0] = 0x7FFF;
+    *(u16*)&manager->unk_0x15[1] = 0;
+    manager->unk_0x18 = 0x7F;
+    manager->elementCount = D_80059478;
+    SoundInitializeAudioManager(manager);
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // TODO(jperos): Boy, we really need some names of this stuff

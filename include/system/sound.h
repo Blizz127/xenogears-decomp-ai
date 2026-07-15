@@ -500,6 +500,7 @@ extern u8 g_SoundReverbFeedback;
 extern s32 g_SoundReverbMemoryHandle;
 
 extern s32 D_80059404;
+extern s32 D_80059478;
 
 // Heap
 extern SoundHeapBlockHeader* g_SoundHeapHead;
