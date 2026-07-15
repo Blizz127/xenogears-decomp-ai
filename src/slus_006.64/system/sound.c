@@ -1412,7 +1412,7 @@ u8* SoundScriptNop4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAud
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD8C);
 
 u8* SoundScriptSaveOctaveAndIP(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    pAudioElements->savedScriptIP = pScript;
+    pAudioElements->savedScriptIP = SOUND_PTR_TO_PSX(pScript);
     pAudioElements->savedOctave = pAudioElements->octave;
     return pScript;
 }

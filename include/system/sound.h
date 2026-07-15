@@ -186,7 +186,7 @@ typedef struct {
     /* 0x4   */ u16 unk_0x04; // Instrument flags?
     /* 0x6   */ s8 unk_0x06[0xE];
     /* 0x14  */ u32 unk14;
-    /* 0x18  */ u8* savedScriptIP;
+    /* 0x18  */ SoundPsxAddress savedScriptIP;
     /* 0x1C  */ s8 unk_0x1C[0x07];
     /* 0x23  */ u8 savedOctave;
     /* 0x24  */ s16 unk_0x24; // loops?
@@ -217,6 +217,81 @@ typedef struct {
     /* 0x136 */ u16 unk_0x136;
     /* 0x138 */ u8 unk_0x138[0x20];
 } AudioElement;
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(AudioElement) == 0x158,
+               "AudioElement must retain its retail size");
+_Static_assert(__builtin_offsetof(AudioElement, active_flag) == 0x0,
+               "AudioElement active_flag must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, status_flags) == 0x2,
+               "AudioElement status_flags must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x04) == 0x4,
+               "AudioElement unk_0x04 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x06) == 0x6,
+               "AudioElement unk_0x06 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk14) == 0x14,
+               "AudioElement unk14 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, savedScriptIP) == 0x18,
+               "AudioElement savedScriptIP must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x1C) == 0x1C,
+               "AudioElement unk_0x1C must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, savedOctave) == 0x23,
+               "AudioElement savedOctave must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x24) == 0x24,
+               "AudioElement unk_0x24 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x26) == 0x26,
+               "AudioElement unk_0x26 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, voice_number) == 0x27,
+               "AudioElement voice_number must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x28) == 0x28,
+               "AudioElement unk_0x28 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk29) == 0x29,
+               "AudioElement unk29 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk2A) == 0x2A,
+               "AudioElement unk2A must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk2C) == 0x2C,
+               "AudioElement unk2C must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, voice_data) == 0x30,
+               "AudioElement voice_data must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, fermataDuration) == 0x5C,
+               "AudioElement fermataDuration must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x5E) == 0x5E,
+               "AudioElement unk_0x5E must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x62) == 0x62,
+               "AudioElement unk_0x62 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x64) == 0x64,
+               "AudioElement unk_0x64 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, octave) == 0x66,
+               "AudioElement octave must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk68) == 0x68,
+               "AudioElement unk68 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x6C) == 0x6C,
+               "AudioElement unk_0x6C must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x6E) == 0x6E,
+               "AudioElement unk_0x6E must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x70) == 0x70,
+               "AudioElement unk_0x70 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x74) == 0x74,
+               "AudioElement unk_0x74 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x76) == 0x76,
+               "AudioElement unk_0x76 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0xCE) == 0xCE,
+               "AudioElement unk_0xCE must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0xD0) == 0xD0,
+               "AudioElement unk_0xD0 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0xF6) == 0xF6,
+               "AudioElement unk_0xF6 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0xF8) == 0xF8,
+               "AudioElement unk_0xF8 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x116) == 0x116,
+               "AudioElement unk_0x116 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x118) == 0x118,
+               "AudioElement unk_0x118 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x136) == 0x136,
+               "AudioElement unk_0x136 must retain its retail offset");
+_Static_assert(__builtin_offsetof(AudioElement, unk_0x138) == 0x138,
+               "AudioElement unk_0x138 must retain its retail offset");
+#endif
 
 typedef struct AudioManager {
     /* 0x0  */ struct AudioManager* next;
