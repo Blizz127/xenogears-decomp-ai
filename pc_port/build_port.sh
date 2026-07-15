@@ -66,8 +66,6 @@ INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
 )
 INTENTIONALLY_EXCLUDED_GAME_TUS=(
     "src/slus_006.64/system/archive.c"
-    "src/member_change_menu/main/misc.c"
-    "src/shop_menu/main/misc.c"
     "src/slus_006.64/system/sound.c"
     "src/slus_006.64/system/work_list.c"
 )
@@ -76,10 +74,6 @@ KNOWN_BROKEN_GAME_TUS=(
 
 known_broken_tu_reason() {
     case "$1" in
-        src/member_change_menu/main/misc.c)
-            echo "member-change menu overlay is absent; menu dispatch can use stubs" ;;
-        src/shop_menu/main/misc.c)
-            echo "shop menu overlay is absent; menu dispatch can use stubs" ;;
         src/slus_006.64/system/sound.c)
             echo "sound/WDS/SPU management definitions are absent; sound symbols can use stubs" ;;
         src/slus_006.64/system/work_list.c)
@@ -116,10 +110,6 @@ excluded_game_tu_reason() {
             echo "PsyQ originals are replaced at runtime by PsyCross" ;;
         src/slus_006.64/system/archive.c)
             echo "replaced by pc_port/src/archive_port.c" ;;
-        src/member_change_menu/main/misc.c)
-            echo "HOLD: menu overlay has unresolved INCLUDE_ASM/crash-exposure work" ;;
-        src/shop_menu/main/misc.c)
-            echo "HOLD: menu overlay has unresolved INCLUDE_ASM/crash-exposure work" ;;
         src/slus_006.64/system/sound.c)
             echo "HOLD: sound routing conflicts with pc_port/src/game_overrides.c" ;;
         src/slus_006.64/system/work_list.c)
