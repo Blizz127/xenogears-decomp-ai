@@ -395,7 +395,360 @@ void FieldRenderSyncAndFlush(void) {
     ExitCriticalSection();
 }
 
+/* VRAM coordinate pairs for the party-sprite save/restore blit tables. */
+typedef struct {
+    u16 x;
+    u16 y;
+} FieldVramCoord;
+
+extern FieldVramCoord D_800ADCB0[]; /* field-side sprite VRAM rects */
+extern FieldVramCoord D_800ADCC8[]; /* menu-backup VRAM rects */
+extern s16 D_8006BE2C[];            /* party-member-present flags snapshot */
+extern TILE D_800AFE64;             /* fade tile, render context 1 */
+extern void* D_8005945C;            /* menu shared-resource buffer */
+extern void* D_800ADB20;            /* saved 0x6B9 archive buffer */
+extern void* D_800ADB30;            /* menu-arg source buffer */
+extern void* D_8005A4AC;            /* &g_FieldRenderContexts + 0xCC */
+extern void* D_8005A4B0;            /* &g_FieldRenderContexts + 0x81C0 */
+extern u8 D_80059460;               /* menuToEnter = request & 0x7F */
+extern u8 D_800B02C8;
+extern u8 D_800ADB05;
+extern s32 D_800AFE84, D_800ADB50, D_800ADB60, D_800ADBEC;
+extern s32 D_80050100, D_8004F320, D_8004F31C, D_8004F350;
+extern s32 D_800ADB64;
+extern s32 g_GameSceneMapNum;
+extern s32 g_GamePartyMemberSkins[];
+extern RenderContext g_FieldRenderContexts[2];
+extern void* g_pGameState;
+extern u8 D_800B21D0[];
+extern u8 g_MenuDebugEnabled;
+extern void* g_PartyDataBuffers[];
+
+extern void func_800798BC(void);
+extern void func_800A2488(void);
+extern void func_80070488(void);
+extern void func_80070508(void);
+extern void func_80077544(void);
+extern void FieldPartyFreeSkinDataBuffers(void);
+extern void FieldPartyAllocateSkinDataBuffers(void);
+extern void GamePartySyncSkinData(void);
+extern void GamePartySyncStreamedData(void);
+extern void FontFree(void);
+extern void FieldSwapRenderContext(void);
+extern void MenuMain(void);
+extern void FieldScriptMemoryWriteU16(int index, int value);
+extern int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
+extern u32 LZSSDecompress(void* src, void* dst);
+
+/* Field-script menu open/close wrapper. Retail asm 0x800799D4-0x8007A448.
+ * Reads the menu request D_800ADB64 (& 0x7F -> D_80059460), fades the field
+ * out, backs up the party-sprite VRAM regions, batch-loads the shared menu
+ * resources plus the request's overlay, runs MenuMain, then restores VRAM,
+ * fades back in, reloads party skin data, and clears the WAIT_MENU counter
+ * D_8004F350 so the field script's FE 87 opcode can advance. */
+#ifdef XENO_PC_PORT
+/* Port-side implementation, transcribed from retail asm 0x800799D4-0x8007A448
+ * and behaviorally validated on the map005 menu repro (MenuMain runs, WAIT_MENU
+ * clears).  The matching build keeps the INCLUDE_ASM below: the C transcription
+ * currently objdiffs at 653/671 (one register-spill cascade short of {}), so it
+ * is not yet claimed as a matched decomp.  When the spill closes, drop this
+ * outer ifdef pair and let the body serve both builds. */
+void func_800799D4(void) {
+    FieldVramCoord* pFieldRects;
+    FieldVramCoord* pBackupRects;
+    void* pMenuArchiveBackup = NULL;
+    void* pOverlayBuf;
+    void* pSaveTop;
+    void* pSaveBottom;
+    StreamDataQueueEntry menuLoadCommands[4];
+    void* savedMenuArgSrc;
+    RECT rect;
+    s32 i;
+    s32 menuId;
+    s16* pPresentFlags;
+
+    if (D_800ADB64 == 0x80 && D_800B21D0[0] != 0) {
+        return;
+    }
+
+    /* Full-screen semi-transparent black fade tile, duplicated per context. */
+    setTile(&D_800AFE54[0]);
+    SetSemiTrans(&D_800AFE54[0], 1);
+    D_800AFE54[0].w = 0x140;
+    D_800AFE54[0].b0 = 0;
+    D_800AFE54[0].g0 = 0;
+    D_800AFE54[0].r0 = 0;
+    D_800AFE54[0].y0 = 0;
+    D_800AFE54[0].x0 = 0;
+    D_800AFE54[0].h = 0xE0;
+    D_800AFE64 = D_800AFE54[0];
+
+    SetDrawMode(&D_800AFE24[0], 0, 0, GetTPage(0, 2, 0, 0), 0);
+    SetDrawMode(&D_800AFE24[1], 0, 0, GetTPage(0, 2, 0, 0), 0);
+    FieldPartyFreeSkinDataBuffers();
+
+    /* Preserve the streamed 0x6B9 field archive across the overlay load. */
+    if (D_800B2264 != 0) {
+        ArchiveSetIndex(0x4, 0);
+        pMenuArchiveBackup = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 0);
+        memcpy(pMenuArchiveBackup, D_800ADB20, ArchiveDecodeAlignedSize(0x6B9));
+        HeapFree(D_800ADB20);
+    }
+
+    savedMenuArgSrc = D_800ADB30;
+    ArchiveSetIndex(0x10, 0);
+#ifdef XENO_PC_PORT
+    /* Retail's else-branch sizes this buffer as the fixed-map gap
+     * [0x801C5008, D_800ADB30): the menu overlay must land at 0x801C5000 on
+     * PSX, and D_800ADB30 is the next allocation above it.  On the host heap
+     * D_800ADB30 is a host pointer, so that subtraction is meaningless (it
+     * produced a ~5MB bogus size -> HeapAlloc failure -> GameHandleError(130)
+     * in the map005 repro).  Size the buffer by what is actually loaded into
+     * it: menuLoadCommands[1] streams archive file (menu id + 5) here, so use
+     * that file's decoded size -- the same derivation retail's own
+     * D_8004F370 branch and func_80077884's TOC branch (main.c:171) use.
+     * (void)savedMenuArgSrc: keep the retail read; only the sizing differs. */
+    (void)savedMenuArgSrc;
+    pOverlayBuf = HeapAlloc(ArchiveDecodeAlignedSize((D_800ADB64 + 5) & 0x7F), 1);
+#else
+    if (D_8004F370 == 1) {
+        pOverlayBuf = HeapAlloc(ArchiveDecodeAlignedSize((D_800ADB64 + 5) & 0x7F), 1);
+    } else {
+        pOverlayBuf = HeapAlloc(
+            ((u32)savedMenuArgSrc & 0xFFFFFF) + 0xFFE3AFF8, 1);
+    }
+#endif
+
+    menuLoadCommands[0].archiveIndex = 1;
+    menuLoadCommands[2].archiveIndex = 0;
+    menuLoadCommands[2].pData = NULL;
+    menuLoadCommands[3].archiveIndex = 0;
+    menuLoadCommands[3].pData = NULL;
+    menuLoadCommands[0].pData = HeapAlloc(ArchiveDecodeAlignedSize(1), 1);
+    D_8005945C = menuLoadCommands[0].pData;
+    menuLoadCommands[1].pData = pOverlayBuf;
+    menuId = D_800ADB64 & 0x7F;
+    menuLoadCommands[1].archiveIndex = menuId + 5;
+    if (menuId == 5 && D_8004F370 == 0) {
+        menuLoadCommands[2].archiveIndex = 0xC;
+        menuLoadCommands[2].pData = (void*)0x1DC000;
+    }
+
+    ArchiveCdDataSync(0);
+    func_80029AFC(menuLoadCommands, 0, 0);
+    ArchiveSetIndex(0x4, 0);
+
+    /* Back up the field party-sprite VRAM rects, then two fixed screen rects. */
+    pFieldRects = D_800ADCB0;
+    pBackupRects = D_800ADCC8;
+    rect.w = 0x40;
+    rect.h = 0x20;
+    for (i = 0; i < 6; i++) {
+        rect.x = pFieldRects->x;
+        rect.y = pFieldRects->y;
+        MoveImage(&rect, pBackupRects->x, pBackupRects->y);
+        DrawSync(0);
+        pFieldRects++;
+        pBackupRects++;
+    }
+    func_8007995C(0x40, 0x100, 0x3C0, 0x100, 0x300, 0);
+    func_8007995C(0x40, 0x100, 0x2C0, 0x100, 0x280, 0);
+
+    D_800AFE4C.x = 0x2C0;
+    D_800AFE4C.y = 0x100;
+    D_800AFE4C.w = 0x140;
+    D_800AFE4C.h = 0xE0;
+    func_800A4748();
+    MoveImage(&D_800AFE4C, 0, 0x100);
+    DrawSync(0);
+
+    for (i = 0; i < 0x20; i++) {
+        func_80079784(i);
+    }
+    FieldRenderSync();
+    D_800AFE4C.x = 0;
+    D_800AFE4C.y = 0;
+    FieldSwapRenderContext();
+    FontFree();
+    MoveImage(&D_800AFE4C, 0, 0xE0);
+    FieldRenderSync();
+    ArchiveCdDataSync(0);
+
+    D_800594D0 = 0;
+    g_MenuDebugEnabled = 0;
+    D_80059460 = D_800ADB64 & 0x7F;
+    pPresentFlags = D_8006BE2C;
+    for (i = 0; i < 3; i++) {
+        pPresentFlags[i] = ((u8*)g_pGameState)[0x22B1 + i];
+    }
+    func_800798BC();
+    D_8005A4AC = (u8*)g_FieldRenderContexts + 0xCC;
+    D_8005A4B0 = (u8*)g_FieldRenderContexts + 0x81C0;
+    FieldRenderSyncAndFlush();
+
+    MenuMain();
+
+    FieldRenderSyncAndFlush();
+    D_80050100 = 2;
+
+    /* Post-menu state fixups keyed on the menu return state D_800594D0. */
+    if (D_800594D0 == 0 && (D_800ADB64 & 0x7F) == 2) {
+        D_800B02C8 = 1;
+        FieldScriptMemoryWriteU16(0x46, 0);
+        FieldScriptMemoryWriteU16(4, 4);
+        g_GameSceneMapNum = 4;
+        *(s16*)((u8*)g_pGameState + 0x2320) = 0;
+        *(s16*)((u8*)g_pGameState + 0x1932) = 0;
+        *(s16*)((u8*)g_pGameState + 0x231A) = 4;
+    }
+    if (D_800594D0 == 2) {
+        D_800B02C8 = 1;
+        FieldScriptMemoryWriteU16(0x46, 2);
+        FieldScriptMemoryWriteU16(4, *(u16*)((u8*)g_pGameState + 0x231A) & 0x3FFF);
+        if ((*(u16*)((u8*)g_pGameState + 0x231A) & 0x3FFF) < 0x400) {
+            *(s16*)((u8*)g_pGameState + 0x2320) =
+                *(u16*)((u8*)g_pGameState + 0x1984);
+        }
+    }
+
+    /* Restore the fade rects and back up the two menu screen halves. */
+    FieldRenderSync();
+    D_800AFE4C.x = 0;
+    D_800AFE4C.y = 0xE0;
+    D_800AFE4C.w = 0x140;
+    D_800AFE4C.h = 0xE0;
+    MoveImage(&D_800AFE4C, 0, 0);
+    FieldRenderSync();
+    D_800AFE4C.x = 0x140;
+    D_800AFE4C.y = 0;
+    MoveImage(&D_800AFE4C, 0, 0);
+    MoveImage(&D_800AFE4C, 0, 0x100);
+    FieldRenderSync();
+
+    PutDispEnv(&g_FieldCurRenderContext->dispEnv);
+    PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
+    D_800AFE4C.x = 0x2C0;
+    D_800AFE4C.y = 0x100;
+    rect.x = 0x300;
+    rect.y = 0;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    pSaveTop = HeapAlloc(0x8000, 1);
+    StoreImage(&rect, (u_long*)pSaveTop);
+    DrawSync(0);
+    rect.x = 0x280;
+    rect.y = 0;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    pSaveBottom = HeapAlloc(0x8000, 1);
+    StoreImage(&rect, (u_long*)pSaveBottom);
+    DrawSync(0);
+
+    pFieldRects = D_800ADCC8;
+    pBackupRects = D_800ADCB0;
+    for (i = 0; i < 6; i++) {
+        rect.w = 0x40;
+        rect.h = 0x20;
+        rect.x = pFieldRects->x;
+        rect.y = pFieldRects->y;
+        MoveImage(&rect, pBackupRects->x, pBackupRects->y);
+        DrawSync(0);
+        pFieldRects++;
+        pBackupRects++;
+    }
+
+    ArchiveSetIndex(0x4, 0);
+    HeapChangeCurrentUser(0x8, NULL);
+    D_800ADB60 = 0;
+    func_80070488();
+
+    if (D_800AFE84 != 0) {
+        for (i = 0x20; i < 0x3F; i++) {
+            func_80079784(i);
+        }
+        D_800ADB50 = 1;
+    } else {
+        for (i = 0x1F; i >= 0; i--) {
+            func_80079784(i);
+        }
+        func_80079784(0);
+        D_800ADB50 = 0;
+    }
+    func_80070508();
+
+    FieldRenderSync();
+    rect.x = 0x2C0;
+    rect.y = 0;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    LoadImage(&rect, (u_long*)pSaveBottom);
+    DrawSync(0);
+    rect.x = 0x3C0;
+    LoadImage(&rect, (u_long*)pSaveTop);
+    DrawSync(0);
+    HeapFree(pSaveBottom);
+    HeapFree(pSaveTop);
+    HeapFree(pOverlayBuf);
+
+    ArchiveSetIndex(0x4, 0);
+    if (D_800B2264 != 0) {
+#ifdef XENO_PC_PORT
+        /* Same fixed-map idiom as the overlay alloc above: retail sizes the
+         * restored 0x6B9 buffer as [0x801DC008, pMenuArchiveBackup), invalid
+         * against a host pointer.  The buffer holds the decoded 0x6B9 archive
+         * (memcpy'd back below), so use its decoded size -- identical to
+         * retail's own D_8004F370 branch and main.c:171. Latent at cold boot
+         * (D_800B2264 == 0 in the repro) but the same crash class once maps
+         * with streamed archives open a menu. */
+        D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
+#else
+        if (D_8004F370 == 0) {
+            D_800ADB20 = HeapAlloc(((u32)pMenuArchiveBackup & 0xFFFFFF) + 0xFFE23FF8, 1);
+        } else {
+            D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
+        }
+#endif
+        memcpy(D_800ADB20, pMenuArchiveBackup, ArchiveDecodeAlignedSize(0x6B9));
+        HeapFree(pMenuArchiveBackup);
+    }
+
+    SetGeomOffset(0xA0, 0x70);
+    SetGeomScreen(g_Scene.sceneScrZ);
+    FieldPartyAllocateSkinDataBuffers();
+
+    if (D_800ADB64 == 1) {
+        g_GamePartyMemberSkins[0] = 0xFF;
+        g_GamePartyMemberSkins[1] = 0xFF;
+        g_GamePartyMemberSkins[2] = 0xFF;
+        D_8004F320 = 0;
+        D_8004F31C = 0;
+        GamePartySyncSkinData();
+        GamePartySyncStreamedData();
+        FieldRenderSync();
+        D_800ADBEC = 0;
+        D_800ADB05 = 1;
+    } else {
+        for (i = 0; i < 3; i++) {
+            s32 skin = g_GamePartyMemberSkins[i];
+            if (skin != 0xFF) {
+                void* pBuf = HeapAlloc(ArchiveDecodeAlignedSize(skin + 5), 1);
+                ArchiveReadFileToBuffer(skin + 5, pBuf, 0, 0x80);
+                ArchiveCdDataSync(0);
+                LZSSDecompress(pBuf, g_PartyDataBuffers[i]);
+                HeapFree(pBuf);
+            }
+        }
+        func_800A2488();
+        FieldRenderSync();
+    }
+
+    D_800ADB64 = 0xFF;
+    func_80077544();
+    D_8004F350 = 0;
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800799D4);
+#endif /* XENO_PC_PORT */
 
 
 // Quad rendering
