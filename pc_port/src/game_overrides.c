@@ -1692,67 +1692,6 @@ void PcPort_HeapBoot(void)
     g_MainGameStateOverlayBuffer = PSX_ADDR(0x8006FAF0);
 }
 
-int SoundFileComputeChecksum(SoundFile* pSoundFile)
-{
-    int nResult = 0;
-    int* pCurrent = (int*)pSoundFile;
-    unsigned int nCount = (pSoundFile->unk8 + 3) / 4;
-
-    do {
-        nResult += *pCurrent++;
-    } while (--nCount);
-
-    return nResult;
-}
-
-int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, unsigned short targetValue)
-{
-    unsigned char bIsError;
-
-    if (pSoundFile->magic != magicBytes) {
-        return SOUND_ERR_INVALID_SIGNATURE;
-    }
-
-    if (SoundFileComputeChecksum(pSoundFile) == 0) {
-        bIsError = (pSoundFile->unkC != targetValue);
-        return bIsError * SOUND_ERR_UNK_0X4;
-    }
-
-    return SOUND_ERR_INVALID_CHECKSUM;
-}
-
-void SoundAddSedsEntry(SoundFile* pSoundFile)
-{
-    SoundFile* pEntry;
-    short nSedsStatus;
-    SoundPsxAddress* pList;
-
-    if (!(g_SoundControlFlags & 0x80)) {
-        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL;
-             pEntry = SOUND_PSX_TO_PTR(SoundFile, pEntry->pNext)) {
-            if (pSoundFile->sedId == pEntry->sedId) {
-                SoundHandleError(SOUND_ERR_ENTRY_ALREADY_EXISTS);
-                return;
-            }
-        }
-    }
-
-    nSedsStatus = SoundValidateFile(pSoundFile, FILE_SIGNATURE('s','e','d','s'), 0x101);
-    if (nSedsStatus != SOUND_STATUS_OK) {
-        SoundHandleError(nSedsStatus);
-        return;
-    }
-
-    DisableEvent(g_unk_SoundEvent);
-    pList = (SoundPsxAddress*)&g_SoundSedsLinkedList;
-    while (SOUND_PSX_TO_PTR(SoundFile, *pList) != NULL) {
-        pList = &SOUND_PSX_TO_PTR(SoundFile, *pList)->pNext;
-    }
-    *pList = SOUND_PTR_TO_PSX(pSoundFile);
-    pSoundFile->pNext = SOUND_PTR_TO_PSX(NULL);
-    EnableEvent(g_unk_SoundEvent);
-}
-
 int func_8003BDFC(int flags)
 {
     if (flags & 0x10) {

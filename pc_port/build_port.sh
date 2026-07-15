@@ -68,7 +68,6 @@ INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
 )
 INTENTIONALLY_EXCLUDED_GAME_TUS=(
     "src/slus_006.64/system/archive.c"
-    "src/slus_006.64/system/sound.c"
 )
 REFERENCE_ONLY_GAME_TUS=(
     "src/slus_006.64/system/work_list.c"
@@ -78,8 +77,6 @@ KNOWN_BROKEN_GAME_TUS=(
 
 known_broken_tu_reason() {
     case "$1" in
-        src/slus_006.64/system/sound.c)
-            echo "sound/WDS/SPU management definitions are absent; sound symbols can use stubs" ;;
     esac
 }
 
@@ -128,8 +125,6 @@ excluded_game_tu_reason() {
             echo "PsyQ originals are replaced at runtime by PsyCross" ;;
         src/slus_006.64/system/archive.c)
             echo "replaced by pc_port/src/archive_port.c" ;;
-        src/slus_006.64/system/sound.c)
-            echo "HOLD: sound routing conflicts with pc_port/src/game_overrides.c" ;;
     esac
 }
 
