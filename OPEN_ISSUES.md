@@ -158,6 +158,51 @@ Evidence: observed (authentic input and authored actor script; fault occurs
 before menu dispatch)
 Last verified @ e3f4b49
 
+## Normal menu is cold-boot reachable but render is blocked by the stubbed func_800799D4 (live repro)
+
+The scan's "normal menu is cold-boot reachable" is now confirmed at runtime, and
+the render block is isolated to a single stub. Live repro (deterministic,
+captured via the nested-X harness below):
+
+- map005, entrance 0. Walk the player to actor 15 (the save actor) and press
+  Circle. Its authentic talk routine (script 15, routine 2) runs
+  `FE 99 00 | FE 55` at script PC `0x68D`: set-menu-open-arg then
+  OP_OPEN_NORMAL_MENU, which sets the menu request `D_800ADB64 = 0x00` (mode 0)
+  and bumps the wait counter `D_8004F350` to 1.
+- `src/field/main/main.c:595` then calls `func_800799D4` — an oracle stub
+  (`pc_port/build_native/stubs.c:610`). It returns without loading the menu
+  overlay, without running `MenuMain`, and without clearing `D_8004F350`.
+- The next opcode `FE 87` (OP_WAIT_MENU, `func_800936E4`) at script PC `0x68F`
+  spins: it advances only when `D_8004F350 == 0`, else decrements the IP by 1.
+  Because the stub never zeroes the counter, actor-15 script slot 0 parks at
+  `currentIP = 0x68F` forever and the player freezes.
+
+Measured at the freeze: `D_800ADB64 = 0xFF` (main.c:599 reset it after the stub
+returned), `D_8004F350 = 1`, `D_80059460 = 0` (mode 0), `g_Menu = NULL`, actor-15
+slot 0 = `(IP 0x68F, scriptId 2)`. Successive framebuffer captures are
+byte-identical — the field is frozen, no menu overlay is drawn. `func_800799D4`
+is hit exactly once. This is the first menu render target with a live
+reproduction: porting `func_800799D4` (retail body at asm `0x80079E40`) is what
+loads the overlay, runs `MenuMain`, and clears `D_8004F350` so WAIT_MENU
+advances. Its dispatch beyond `MenuMain` -> `MenuExecute` mode 0 may be the next
+stub; verify after porting.
+
+Reusable nested-X harness (no Wayland focus fight): `Xvfb :99 -screen 0
+1024x768x24`, launch the port with `DISPLAY=:99`, then drive authentic input
+with `xdotool windowfocus --sync <win>; xdotool keydown/keyup <key>` (plain
+XTEST to the focused window updates SDL's `SDL_GetKeyboardState`; `--window`
+synthetic events do NOT and are silently dropped). `scratchpad/run_map005.sh`,
+`scratchpad/map005_drive.sh` (empirical d-pad calibration + greedy walk to
+actor 15), and `scratchpad/map005_attach_probe.gdb` reproduce the capture.
+
+Repro: `Xvfb :99 -screen 0 1024x768x24 &`; `XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0
+XENO_FIELD_MAP=5 XENO_FIELD_ENTRANCE=0 SDL_VIDEODRIVER=x11 DISPLAY=:99
+pc_port/build_native/xeno-port`; run `scratchpad/map005_drive.sh` to walk+talk;
+attach `scratchpad/map005_attach_probe.gdb` — actor-15 slot 0 sits at IP 0x68F,
+`D_8004F350 == 1`, `[stub] func_800799D4` appears once in the port's stderr.
+Evidence: proven (authentic input, measured freeze state, frozen framebuffer)
+Last verified @ c08aaa1
+
 ## Member-change/shop menus are state-gated on all 730 maps; normal/load menus are cold-boot reachable
 
 The whole-archive field-script reachability scan proposed by the earlier
