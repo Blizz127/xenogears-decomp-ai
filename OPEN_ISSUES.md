@@ -158,45 +158,68 @@ Evidence: observed (authentic input and authored actor script; fault occurs
 before menu dispatch)
 Last verified @ e3f4b49
 
-## Field-test cold boot does not reach surveyed authored shop branches
+## Member-change/shop menus are state-gated on all 730 maps; normal/load menus are cold-boot reachable
 
-Menu routing and authentic keyboard input are now working, but the field-test
-harness's default game state does not satisfy the authored conditions leading
-to any shop opcode found in the surveyed maps. Extended field-script opcode
-`0x58` is the authentic shop trigger: `func_800799D4` performs the overlay,
-party-state, and render-buffer setup before `MenuMain` dispatches to the real
-`ShopMenuMain` body. Do not bypass that setup by direct-calling the menu, and do
-not force an individual script PC or branch merely to produce a menu frame.
+The whole-archive field-script reachability scan proposed by the earlier
+surveyed-shop-branches entry is done and authoritative (730/730 maps decoded,
+102,382/105,830 routines walked, 3.26% abort rate, all degenerate-scan guards
+passed). It corrects two earlier records:
 
-Map292 is the clearest live reproducer. Its only legal entrance is 0, actor 15
-routine 2 contains an authored `0x58` at script PC `0x3BF`, and real movement
-plus Circle/talk input repeatedly selects `FieldScriptGetBytecodeOffset(15, 2)`.
-The actor nevertheless remains in its idle `0x7FFF` slot and never reaches
-`func_80093824`, `MenuMain`, or `ShopMenuMain`. No story flags or script state
-were forced. The same outcome was observed at statically identified shop sites
-on Maps 209, 593, 301, 282, and 52 across their tested legal entrances: each
-surveyed `0x58` is behind authored state-dependent control flow that cold boot
-does not take. None of the 15 inner menu oracle stubs fired.
+**Correction 1 — there are EIGHT menu-request opcodes, not two.** Prior work
+tracked only `FE 56`/`FE 58`. The full set in `g_FieldScriptVMHandlers2`
+(dispatch chain proven from this repo: `g_FieldScriptVMHandlers[0xFE]` →
+`FieldScriptVM2Run` at `src/field/main/misc8.c:2758` →
+`g_FieldScriptVMHandlers2` → handlers at `src/field/main/misc11.c:286-335` set
+request `D_800ADB64` → `src/field/main/main.c:595` → `func_800799D4` (retail
+asm `80079E40`: `D_80059460 = D_800ADB64 & 0x7F`, `jal MenuMain`) →
+`MenuExecute` at `src/slus_006.64/system/menu.c:236`):
 
-This is a harness/state reachability gap, not an input or symbol-routing defect.
-The next bounded diagnostic is a whole-archive reachability scan from real
-routine entries, classifying every `0x58` site as cold-reachable or gated by a
-state-dependent branch. If an ungated shop exists, use its legal entrance as
-the authentic live repro. If every site is gated, reaching a menu requires
-either reconstructed playthrough state or an explicit, documented menu-test
-state scaffold—not an ad hoc flag poke.
+- `FE 55` (2B) mode 0 normal menu; `FE 56 aaaa` (4B) mode 1 member-change;
+  `FE 57` (2B) mode 2 load-game; `FE 58 aaaa` (4B) mode 3 shop;
+  `FE 59 aaaa` (4B) mode 4 normal+`ChangeGameState(1)`; `FE 5A aaaa` (4B)
+  mode 5 overlay; `FE CF aaaa bbbb` (6B) mode 1 member-change + map jump;
+  `FE DA` (2B) mode 6.
+- Noah's `fieldScriptOpcodes_EX` table does NOT register 0x56/0x58/0xCF/0xDA;
+  this repo's asm is the only authority for those. The normal menu also opens
+  by button press (`src/field/main/main.c:601`, pad bit 0x10 → request 0x80),
+  engine-level, gated only by `D_800B21D0` — independent of scripts.
 
-Repro: build the normal port, then run
-`env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=292
-XENO_FIELD_ENTRANCE=0 SDL_VIDEODRIVER=x11 DISPLAY=:0
-pc_port/build_native/xeno-port` under GDB with symbol breakpoints on
-`FieldScriptGetBytecodeOffset`, `func_80093824`, `MenuMain`, and
-`ShopMenuMain`; move to actor 15 with real d-pad input and press Z (Circle).
-The `(15, 2)` routine selection fires, while all three downstream menu-path
-breakpoints remain silent.
-Evidence: observed (authentic input/routine selection and surveyed authored
-scripts) + inferred (the missing prerequisite is cold-boot game state)
-Last verified @ 5b68551
+**Correction 2 — "no menu is cold-boot reachable" was too broad.** The split:
+
+- Member-change (`FE 56`/`FE CF`) and shop (`FE 58`): STATE-GATED on all 730
+  maps, no exceptions. Every site is behind scenario-var-0/map-flag/party
+  checks, a state-gated scheduling chain, or a state-conditional actor-disable
+  in an init/manager routine (map205's member-change NPC and map290's
+  party-select scene both fall to that last class). The earlier 7-map hand
+  audit generalizes. Reaching these authentically requires story state
+  (scenario var 0, map flags, and party composition restored through the
+  `g_pGameState+0x1930` script-memory block) or an explicitly labeled
+  menu-test scaffold — not an ad hoc flag poke.
+- Normal menu (modes 0/4/5) and load-game menu (mode 2): UNGATED at 93 sites.
+  91 are talk routines (walk up, press Circle); 88 of those have no soft
+  condition beyond the talk. Cleanest live target: map005 actor 15 talk
+  routine, byte-verified `FE 99 00 | FE 55 | FE 87 | 00` (set save-arg, open
+  normal menu, wait menu, stop). Alternative: map490 script 0 routine 1 opens
+  the load-game menu from an auto routine behind a pad-input check.
+
+The 12 raw `FE 5x` byte pairs in code no modeled entry reaches (e.g. map247's
+three copy-pasted dialog-menu blocks with only the first referenced) are
+accounted as dead leftover variants; none is a shop opcode, and each is listed
+with hex context in the scan JSON.
+
+Scan artifacts (untracked, session convention): `scratchpad/scan_field_script_menus.py`
+(scanner, evidence citations inline), `scratchpad/build_length_model.py` +
+`scratchpad/length_model.json` (per-opcode length/control-flow model,
+this-repo-first with Noah cross-check), `scratchpad/full_scan.json` +
+`scratchpad/full_scan_stdout.txt` (full site table and health).
+
+Repro: `python3 scratchpad/scan_field_script_menus.py --json /tmp/rescan.json`
+(3s over `disc/disc1.bin`); health line must show 730 maps, abort ≤5%, and the
+site table splits UNGATED 93 / STATE-GATED 342 / PRESENCE-GATED 20 /
+GATED-SCHEDULING 5 / INIT-DISABLED 1.
+Evidence: proven (static scan; dispatch chain and both member-change survivors
+hand-verified at byte level against this repo's asm)
+Last verified @ e402f79
 
 ## Unported member-change and shop menu overlays
 
