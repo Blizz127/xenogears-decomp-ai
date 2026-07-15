@@ -129,11 +129,35 @@ The MATCH is outstanding — handwritten GTE sequence, codegen-focused work.
 Evidence: proven (audit); match not attempted
 Last verified @ ed61298
 
-## func_8002C700 / ModelPrimQuadFT4Variant0
+## Audit remaining populated D_8004FE50 host walkers against retail
 
-Host-specific structural rewrites, no byte-match proof. Hardest remaining.
-Evidence: proven (known port-only, not matched)
-Last verified @ ed61298
+The populated model-primitive routing table still contains host-specific
+walkers whose packet layout, transform count, culls, coordinate writes, and OT
+depth derivation have not all been compared instruction-by-instruction against
+their retail table targets.
+
+Two defects have now demonstrated that correctness-by-inspection is not enough
+for this family:
+
+- `func_8002E688` used the wrong depth source and carried port-only culls before
+  the retail minimum-SZ path was restored (`fea685a`).
+- `D_8004FE50[0x0C].proc[2]` routed a four-vertex F4 packet through a
+  three-vertex walker, leaving `xy3` stale and producing Map334's giant black
+  wedges (`6076cd4`).
+
+Audit each remaining populated entry by reading its target from
+`asm/slus_006.64/data/3F290.sdata.s`, then comparing the complete retail walker
+in `asm/slus_006.64/system/temp2.s` against the host override. Keep
+`func_8002C700` and `ModelPrimQuadFT4Variant0` in this scope; do not treat a
+shared packet shape as proof that transform, cull, or depth behavior is shared.
+
+Repro: enumerate non-null `D_8004FE50[].proc[]` entries in
+`pc_port/src/game_overrides.c`, map each to the retail target table beginning at
+`3F290.sdata.s:2712`, and record per-entry parity for packet stride, vertex
+count, GTE sequence, FLAG/NCLIP/screen checks, SXY writes, and OT derivation.
+Evidence: proven need (two live defects found in the host walker family); the
+remaining entries are unaudited, not known-bad
+Last verified @ 6076cd4
 
 ## Map015 entrance 0 — func_8008399C assertion
 
