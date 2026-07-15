@@ -145,13 +145,15 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count);
-static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count);
 
 ModelPrimDesc D_8004FE50[15] = {
     [0x04] = {
-        .proc = { ModelPrimTriSmallVariant0, NULL, ModelPrimTriSmallVariant0, NULL, NULL, NULL },
+        .proc = { ModelPrimTriSmallAverageVariant0, NULL,
+                  ModelPrimTriSmallMinimumVariant2, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002CF34,   /* PSX 0x8002CF34 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
@@ -687,7 +689,9 @@ void PcPort_CullCamLogOnVsync(void) {
     s_ccFrame++;
 }
 
-static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
+/* Retail 0x8002E038 -> shared 0x8002E058: compact three-vertex packet
+ * walker using AVSZ3 for OT ordering. */
+static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count) {
     const s32 packetStep = 0x14;
     const u32 tagLen = 0x04000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -704,66 +708,137 @@ static s32 ModelPrimTriSmallVariant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long p = 0;
-        long otz = 0;
+        long sz3 = 0;
         long flag = 0;
+        long nclipOpz;
+        u16 averageZ;
+        s32 otIndex;
+        u32 oldTag;
 
         count--;
         pCmd += 8;
         out += packetStep;
 
-        otz = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        sz3 = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        if (flag < 0 || otz <= 0) {
-            if (flag < 0) {
-                CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
-                                      "RTPT3", 0, 3);
-            }
-            CullCamDrop(flag < 0 ? CC_FLAG : CC_OTZ, 0);
+        if (flag < 0) {
+            CullCamSampleFlagDrop(flag, sz3, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
+                                  "RTPT3", 0, 3);
+            CullCamDrop(CC_FLAG, 0);
             continue;
         }
-        {
-            long nclipOpz = NormalClip(xy0, xy1, xy2);
-            if (nclipOpz < 0) {
-                CullCamDrop(CC_NCLIP_BACKFACE, 0);
-                CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
-                continue;
-            }
-        }
+
+        nclipOpz = NormalClip(xy0, xy1, xy2);
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
             CullCamDrop(CC_OVERLAP, 0);
             continue;
         }
-        if (ModelPrimTriOversized((u32)xy0, (u32)xy1, (u32)xy2)) {
-            CullCamDrop(CC_OVERSIZE, 0);
+
+        gte_avsz3();
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
             continue;
         }
 
-        {
-            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers* return), matching
-             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
-             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
-            s32 otIndex = (s32)otz >> D_80050100;
-            u32 oldTag;
-            /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
-             * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
-             * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
-             * bucket (otz 1..3 => otIndex 0), removing the geometry closest to the eye
-             * -- visible only when the camera is jammed against geometry (e.g. the
-             * Lahan well pose: near polys vanish, distant ones survive => scattered
-             * geometry in black). otz>0 is guaranteed above, so `< 0` never fires and
-             * matches retail's unconditional ot[otIndex] write. */
-            if (otIndex < 0) {
-                continue;
-            }
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
-            *(u32*)(out + 0x08) = (u32)xy0;
-            *(u32*)(out + 0x0C) = (u32)xy1;
-            *(u32*)(out + 0x10) = (u32)xy2;
-            emitted++;
-            CullCamEmit(0);
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x0C) = (u32)xy1;
+        *(u32*)(out + 0x10) = (u32)xy2;
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        if (averageZ == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
         }
+
+        otIndex = (s32)averageZ >> D_80050100;
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(0);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Retail 0x8002E470 -> shared 0x8002E490: compact three-vertex packet
+ * walker using the nearest of SZ1/SZ2/SZ3 for OT ordering. */
+static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x14;
+    const u32 tagLen = 0x04000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long sz3Result = 0;
+        long flag = 0;
+        long nclipOpz;
+        u16 sz1;
+        u16 sz2;
+        u16 sz3;
+        u16 minSz;
+        s32 otIndex;
+        u32 oldTag;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        sz3Result = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
+        if (flag < 0) {
+            CullCamSampleFlagDrop(flag, sz3Result, xy0, xy1, xy2, 0,
+                                  v0, v1, v2, NULL, "RTPT3", 0, 3);
+            CullCamDrop(CC_FLAG, 0);
+            continue;
+        }
+
+        nclipOpz = NormalClip(xy0, xy1, xy2);
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+            continue;
+        }
+        *(u32*)(out + 0x0C) = (u32)xy1;
+        *(u32*)(out + 0x10) = (u32)xy2;
+
+        sz1 = (u16)C2_SZ1;
+        sz2 = (u16)C2_SZ2;
+        sz3 = (u16)C2_SZ3;
+        minSz = sz2;
+        if (sz1 < minSz) minSz = sz1;
+        if (sz3 < minSz) minSz = sz3;
+
+        emitted++;
+        if (minSz == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
+        }
+
+        otIndex = (s32)minSz >> (D_80050100 + 2);
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(0);
     }
 
     D_80059578 = emitted;
