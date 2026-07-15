@@ -718,7 +718,26 @@ void* SoundHeapAllocate(u32 allocSize) {
 // SoundHeapAllocate, but slightly different
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039024);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHeapFree);
+void SoundHeapFree(void* pMemory) {
+    SoundHeapBlockHeader* pBlock;
+    SoundHeapBlockHeader* pPrevious;
+    SoundHeapBlockHeader* pTarget;
+
+    pTarget = (SoundHeapBlockHeader*)((u8*)pMemory - sizeof(SoundHeapBlockHeader));
+    pBlock = g_SoundHeapHead;
+    pPrevious = NULL;
+
+    DisableEvent(g_unk_SoundEvent);
+    while (pBlock != pTarget) {
+        pPrevious = pBlock;
+        pBlock = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pPrevious->pNext);
+    }
+
+    if (pPrevious != NULL) {
+        pPrevious->pNext = pTarget->pNext;
+    }
+    EnableEvent(g_unk_SoundEvent);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800391CC);
 
