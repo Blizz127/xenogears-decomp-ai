@@ -182,10 +182,41 @@ returned), `D_8004F350 = 1`, `D_80059460 = 0` (mode 0), `g_Menu = NULL`, actor-1
 slot 0 = `(IP 0x68F, scriptId 2)`. Successive framebuffer captures are
 byte-identical — the field is frozen, no menu overlay is drawn. `func_800799D4`
 is hit exactly once. This is the first menu render target with a live
-reproduction: porting `func_800799D4` (retail body at asm `0x80079E40`) is what
-loads the overlay, runs `MenuMain`, and clears `D_8004F350` so WAIT_MENU
-advances. Its dispatch beyond `MenuMain` -> `MenuExecute` mode 0 may be the next
-stub; verify after porting.
+reproduction: porting `func_800799D4` (retail body at asm `0x800799D4-0x8007A448`)
+is what loads the overlay, runs `MenuMain`, and clears `D_8004F350` so WAIT_MENU
+advances.
+
+UPDATE (validated in working tree, pending commit): func_800799D4 is now
+decompiled (near-match, 653/671, single register-spill residual) with a
+port-side sizing fix, and the stub gate above is CLEARED end-to-end on the
+same repro. Two findings supersede the paragraph above once that lands:
+
+1. Retail sizes the overlay buffer as the fixed-map gap
+   `(D_800ADB30 & 0xFFFFFF) - 0x1C5008` (overlay region 0x801C5000, next
+   allocation above it). Against the port's host-pointer `D_800ADB30` that
+   yields a ~5MB bogus size -> `HeapAlloc` fails -> `GameHandleError(130)`.
+   The host-correct size is what the buffer actually receives — the decoded
+   size of menu overlay file `(menu id + 5)` — the same derivation retail's
+   own `D_8004F370` branch and `func_80077884` (main.c:171) use.  Fixed under
+   `XENO_PC_PORT` at both fixed-map-idiom sites in the function (overlay
+   alloc, and the latent `D_800ADB20` restore at the tail).  Matching form
+   verified byte-identical before/after (the ifdef does not leak into mwcc).
+2. With the sizing fixed, one authentic talk completes the full round trip in
+   ~7s: alloc OK, `MenuMain` RUNS (`g_Menu` non-null, measured `0x5813b0`),
+   `MenuExecute` mode 0 hits stub `func_801C62A8` (no menu visuals — the real
+   render gate), post-menu tail runs (`func_800798BC`/`func_800A2488` stubs
+   log), `D_800ADB64 -> 0xFF`, `D_8004F350 -> 0`, and actor-15's script
+   advances past `0x68F` to its STOP.  The mode-0 body `func_801C62A8` is the
+   next menu porting target, same repro.
+
+New downstream defect, deterministic on the same single-tap repro: after the
+menu round trip, field re-entry asserts in `func_800248D4`
+(`src/slus_006.64/system/temp1.c:968`) — the port's sprite-animation VM
+implements only the >=0x80 opcode dispatch, and post-menu re-entry drives an
+actor animation into the sub-0x80 frame/delay fallthrough.  Observation
+consistent with the stubbed `func_800A2488` party-sprite reload: the
+after-cycle frame restores NPC sprites but the player sprite is missing
+(`scratchpad/map005_aftercycle.png`).  Hypothesis only — trace before porting.
 
 Reusable nested-X harness (no Wayland focus fight): `Xvfb :99 -screen 0
 1024x768x24`, launch the port with `DISPLAY=:99`, then drive authentic input
