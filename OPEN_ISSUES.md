@@ -209,6 +209,42 @@ same repro. Two findings supersede the paragraph above once that lands:
    advances past `0x68F` to its STOP.  The mode-0 body `func_801C62A8` is the
    next menu porting target, same repro.
 
+SCOPE CORRECTION (func_801C62A8 is NOT a one-function port): reading the retail
+asm from `disc/menu.bin` at offset 0x12A8 shows `func_801C62A8` is an
+84-instruction **dispatcher**, not a self-contained render.  It calls setup
+`func_801C5F10`/`func_801C7B0C`, sets `g_Menu->shouldDrawMenu` (+0x327) and
+`unk32A` (+0x32A), then switches on the menu-mode byte `D_80059460` and
+dispatches to overlay-internal sub-functions, always finishing at
+`func_801C5FE4`.  The mode-0 path (`D_80059460 == 0`, the map005 repro) calls
+`func_801C5F10 -> func_801C7B0C -> func_801D2D38 -> func_801C55A0 ->
+func_801C5FE4` — **all five are unported overlay code**, and the actual window
+/ content drawing lives in them, not in `func_801C62A8`.  So porting
+`func_801C62A8` alone renders nothing and exposes those five as the next gates.
+
+Two premises the prior report carried were wrong, corrected by reading the code:
+1. `func_801C62A8` is the ENTRY of the mode-0 render call tree, not "the last
+   gate before pixels."
+2. **The normal-menu overlay has no decomp infrastructure at all.**  It lives
+   in `disc/menu.bin` (archive dir 0x10 / file 5, VRAM base 0x801C5000, 153864
+   bytes, stored uncompressed — byte-identical to `disc/menu.bin`).  Unlike
+   `member_change_menu`/`shop_menu`, `menu.bin` is NOT in `gears.toml`'s overlay
+   list, has no `config/menu.yaml`, no `asm/menu/` split, no `src/menu/`, and no
+   matching target.  There is therefore nothing to `objdiff {}` against and no
+   `asm/menu/func_801C62A8.s` to `INCLUDE_ASM` — neither the matched-decomp path
+   nor the d88f13c coexistence pattern is available until the overlay is brought
+   up.
+
+Rendering the normal menu is thus a two-part project, not a single-function
+pass: (a) bring up the `menu.bin` overlay TU (add to `gears.toml`; write
+`config/menu.yaml` mirroring `config/member_change_menu.yaml` — VRAM 0x801C5000,
+gp 0x80059170; seed symbols; splat-split; linker + gears integration; matching
+baseline), then (b) decompile `func_801C62A8` + its mode-0 callee tree
+(`func_801C5F10`, `func_801C7B0C`, `func_801D2D38`, `func_801C55A0`,
+`func_801C5FE4`, and their transitive callees — the draw code).  The map005
+nested-X repro validates each layer (does the window/contents draw yet?).
+Evidence: proven (retail asm at menu.bin:0x12A8 read in full; overlay identity
+byte-verified against disc/menu.bin; build-config absence confirmed).
+
 New downstream defect, deterministic on the same single-tap repro: after the
 menu round trip, field re-entry asserts in `func_800248D4`
 (`src/slus_006.64/system/temp1.c:968`) — the port's sprite-animation VM
