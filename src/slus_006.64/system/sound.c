@@ -1162,7 +1162,20 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B424);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B930);
+void func_8003B930(AudioManager* manager) {
+    AudioManager* pEntry;
+    AudioManager* pNext;
+
+    pEntry = SOUND_PSX_TO_PTR(AudioManager, manager->unk_Manager_0x4);
+    if (pEntry != NULL) {
+        manager->unk_Manager_0x4 = SOUND_PTR_TO_PSX(NULL);
+        do {
+            pNext = SOUND_PSX_TO_PTR(AudioManager, pEntry->unk_Manager_0x4);
+            SoundHeapFree(pEntry);
+            pEntry = pNext;
+        } while (pEntry != NULL);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundCopyAudioManagerData(AudioManager* pDest, AudioManager* pSrc) {
