@@ -232,6 +232,25 @@ typedef struct {
     /* 0x3C */ AudioInterpolator cdInterpolator;
 } SoundVolumeController;
 
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SoundVolumeController) == 0x48,
+               "SoundVolumeController must retain its retail size");
+_Static_assert(__builtin_offsetof(SoundVolumeController, commonAttr) == 0x0,
+               "SoundVolumeController commonAttr must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, currentMasterVolume) == 0x28,
+               "SoundVolumeController currentMasterVolume must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, currentCdVolume) == 0x2A,
+               "SoundVolumeController currentCdVolume must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, currentReverbDepth) == 0x2C,
+               "SoundVolumeController currentReverbDepth must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, unk_field2) == 0x2E,
+               "SoundVolumeController unk_field2 must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, masterInterpolator) == 0x30,
+               "SoundVolumeController masterInterpolator must retain its retail offset");
+_Static_assert(__builtin_offsetof(SoundVolumeController, cdInterpolator) == 0x3C,
+               "SoundVolumeController cdInterpolator must retain its retail offset");
+#endif
+
 extern SoundVolumeController g_SoundVolumeController;
 
 extern s32 g_ReverbWorkAreaSizes[SPU_REV_MODE_MAX];

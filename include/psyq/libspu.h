@@ -254,12 +254,12 @@ typedef struct {
 } SpuVoiceAttr;
 
 typedef struct {
-    unsigned long	mask;	  /* settings mask */
+    unsigned int	mask;	  /* settings mask */
     
-    long		mode;	  /* reverb mode */
+    int		mode;	  /* reverb mode */
     SpuVolume		depth;	  /* reverb depth */
-    long                delay;	  /* Delay Time  (ECHO, DELAY only)   */
-    long                feedback; /* Feedback    (ECHO only)          */
+    int                 delay;	  /* Delay Time  (ECHO, DELAY only)   */
+    int                 feedback; /* Feedback    (ECHO only)          */
 } SpuReverbAttr;
 
 #define SPU_DECODEDDATA_SIZE 0x200
@@ -274,12 +274,12 @@ typedef SpuDecodedData SpuDecodeData;
 
 typedef struct {
     SpuVolume	volume;		  /* volume       */
-    long	reverb;		  /* reverb on/off */
-    long	mix;		  /* mixing on/off */
+    int		reverb;		  /* reverb on/off */
+    int		mix;		  /* mixing on/off */
 } SpuExtAttr;
 
 typedef struct {
-    unsigned long	mask;	  /* settings mask */
+    unsigned int	mask;	  /* settings mask */
     
     SpuVolume		mvol;	  /* master volume */
     SpuVolume		mvolmode; /* master volume mode */
@@ -287,6 +287,45 @@ typedef struct {
     SpuExtAttr		cd;	  /* CD input attributes */
     SpuExtAttr		ext;	  /* external digital input attributes */
 } SpuCommonAttr;
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SpuReverbAttr) == 0x14,
+               "SpuReverbAttr must retain its retail size");
+_Static_assert(__builtin_offsetof(SpuReverbAttr, mask) == 0x0,
+               "SpuReverbAttr mask must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuReverbAttr, mode) == 0x4,
+               "SpuReverbAttr mode must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuReverbAttr, depth) == 0x8,
+               "SpuReverbAttr depth must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuReverbAttr, delay) == 0xC,
+               "SpuReverbAttr delay must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuReverbAttr, feedback) == 0x10,
+               "SpuReverbAttr feedback must retain its retail offset");
+
+_Static_assert(sizeof(SpuExtAttr) == 0xC,
+               "SpuExtAttr must retain its retail size");
+_Static_assert(__builtin_offsetof(SpuExtAttr, volume) == 0x0,
+               "SpuExtAttr volume must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuExtAttr, reverb) == 0x4,
+               "SpuExtAttr reverb must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuExtAttr, mix) == 0x8,
+               "SpuExtAttr mix must retain its retail offset");
+
+_Static_assert(sizeof(SpuCommonAttr) == 0x28,
+               "SpuCommonAttr must retain its retail size");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, mask) == 0x0,
+               "SpuCommonAttr mask must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, mvol) == 0x4,
+               "SpuCommonAttr mvol must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, mvolmode) == 0x8,
+               "SpuCommonAttr mvolmode must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, mvolx) == 0xC,
+               "SpuCommonAttr mvolx must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, cd) == 0x10,
+               "SpuCommonAttr cd must retain its retail offset");
+_Static_assert(__builtin_offsetof(SpuCommonAttr, ext) == 0x1C,
+               "SpuCommonAttr ext must retain its retail offset");
+#endif
 
 #ifndef __SPU_IRQCALLBACK_PROC
 #define __SPU_IRQCALLBACK_PROC
