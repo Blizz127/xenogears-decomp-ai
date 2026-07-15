@@ -922,7 +922,7 @@ void func_80039CC4(void) {
                 pManager->unk_Flags &= ~(1 << 15);
                 SoundReleaseAllVoices(pManager);
             }
-            pManager = pManager->next;
+            pManager = SOUND_PSX_TO_PTR(AudioManager, pManager->next);
         } while (pManager != NULL);
     }
 }
@@ -1150,11 +1150,11 @@ void SoundCopyAudioManagerData(AudioManager* pDest, AudioManager* pSrc) {
     AudioManager* savedNext;
     AudioManager* savedUnk;
 
-    savedNext = pDest->next;
-    savedUnk = pDest->unk_Manager_0x4;
+    savedNext = SOUND_PSX_TO_PTR(AudioManager, pDest->next);
+    savedUnk = SOUND_PSX_TO_PTR(AudioManager, pDest->unk_Manager_0x4);
     SoundHeapSetBlockMemory(pDest, pSrc, SoundCalculateAudioManagerSize(pDest->elementCount));
-    pDest->next = savedNext;
-    pDest->unk_Manager_0x4 = savedUnk;
+    pDest->next = SOUND_PTR_TO_PSX(savedNext);
+    pDest->unk_Manager_0x4 = SOUND_PTR_TO_PSX(savedUnk);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -1164,7 +1164,7 @@ void SoundAddAudioManagerToList(AudioManager* manager)
 
     DisableEvent(g_unk_SoundEvent);
     temp = manager;
-    manager->next = g_SoundAudioManagerListHead;
+    manager->next = SOUND_PTR_TO_PSX(g_SoundAudioManagerListHead);
     g_SoundAudioManagerListHead = temp;
     EnableEvent(g_unk_SoundEvent);
 }
@@ -1180,7 +1180,7 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
             break;
         }
         previous = current;
-        current = current->next;
+        current = SOUND_PSX_TO_PTR(AudioManager, current->next);
     }
 
     // If not found, return error
@@ -1206,7 +1206,7 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
         previous->next = manager->next;
     } else {
         // Removing middle/end node
-        g_SoundAudioManagerListHead = manager->next;
+        g_SoundAudioManagerListHead = SOUND_PSX_TO_PTR(AudioManager, manager->next);
     }
 
     return 0;
