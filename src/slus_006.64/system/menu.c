@@ -110,9 +110,20 @@ extern GameState g_GameState;
 
 extern void func_8001C074(void);
 extern void func_801C62A8(void);
+#ifdef XENO_PC_PORT
+/* The retail executable names these overlay entry points by address.  In the
+ * matching overlay TUs, the same functions have descriptive C names.  Route
+ * the native all-in-one link to those real bodies instead of generating
+ * address-named oracle stubs; the matching builds remain separate images. */
+extern void MemberChangeMenuMain(void);
+extern void ShopMenuMain(void);
+#define func_801CB0A8 MemberChangeMenuMain
+#define func_801CCD28 ShopMenuMain
+#else
 extern void func_801CB0A8(void);
-extern void func_801CBDBC(void);
 extern void func_801CCD28(void);
+#endif
+extern void func_801CBDBC(void);
 extern void func_801CE024(void);
 
 void MenuExecute(void) {
