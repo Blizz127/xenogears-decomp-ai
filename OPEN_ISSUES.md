@@ -35,7 +35,11 @@ tree has four legs:
   `0x8003B358`; it calls stubbed `func_8003B930` at `0x8003B37C`; and
   `func_8003B930` calls stubbed `SoundHeapFree` at `0x8003B958`.
   Port leaf-up: `SoundHeapFree`, `func_8003B930`, `func_8003B32C`, then
-  `func_8003B148`.
+  `func_8003B148`. The top function's allocation-failure exit also calls
+  stubbed `SoundHandleError` at `0x8003B184`. That handler is not a leaf: when
+  control flags `0x88` are clear, retail `0x8003F6E0-0x8003F724` reaches
+  stubbed `SoundLoadWdsFile` and `func_80039E60` in addition to real
+  `SoundSpuMemoryFreeBlock`, `SoundAddSedsEntry`, and `func_8003BDFC`.
 - **CD mix:** `SoundInitialize` calls unported `func_800386C4` at
   `0x80037D04`; that path reaches unported `SoundSetupCdMix`.
 - **Reverb:** real `SoundSetReverbModeWithAllocation` still reaches stubbed
@@ -63,7 +67,7 @@ and run `timeout 20s ./scratchpad/run_map001.sh`; GDB faults in
 `func_8003A20C(arg0=8)` with the derived element address `0xB54`, proving
 `D_800595D8 == 0`. Restore the oracle stub after the diagnostic.
 Evidence: proven
-Last verified @ 2afb1ff
+Last verified @ b4244a7
 
 ## Unported member-change and shop menu overlays
 
