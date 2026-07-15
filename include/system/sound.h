@@ -150,9 +150,16 @@ struct SoundWDSEntry_t {
     /* 0x22 */ u_short unk22;
     /* 0x24 */ u_int unk24;
     /* 0x28 */ int spuMemoryAddress; // Optional
-    /* 0x2C */ struct SoundWDSEntry_t* pNext;
+    /* 0x2C */ SoundPsxAddress pNext;
 };
 typedef struct SoundWDSEntry_t SoundWDSEntry;
+
+#ifdef XENO_PC_PORT
+_Static_assert(sizeof(SoundWDSEntry) == 0x30,
+               "SoundWDSEntry must retain its retail size");
+_Static_assert(__builtin_offsetof(SoundWDSEntry, pNext) == 0x2C,
+               "SoundWDSEntry pNext must retain its retail offset");
+#endif
 
 typedef struct {
     /* 0x0 */ int currentValue; // Current interpolated value

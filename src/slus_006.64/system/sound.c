@@ -309,7 +309,8 @@ void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
     SoundWDSEntry* pCurrent;
 
     pPrev = NULL;
-    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL; pCurrent = pCurrent->pNext) {
+    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL;
+         pCurrent = SOUND_PSX_TO_PTR(SoundWDSEntry, pCurrent->pNext)) {
         if (pCurrent == pTargetEntry) 
             break;
         
@@ -323,9 +324,10 @@ void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
 
     DisableEvent(g_unk_SoundEvent);
     if (pPrev != NULL)
-        pPrev->pNext = pTargetEntry->pNext;
+        pPrev->pNext = SOUND_PTR_TO_PSX(
+            SOUND_PSX_TO_PTR(SoundWDSEntry, pTargetEntry->pNext));
     else 
-        g_SoundWdsLinkedList = pTargetEntry->pNext;
+        g_SoundWdsLinkedList = SOUND_PSX_TO_PTR(SoundWDSEntry, pTargetEntry->pNext);
     EnableEvent(g_unk_SoundEvent);
     
     if (pTargetEntry->spuMemoryAddress != SoundSpuMemoryFreeBlock(pTargetEntry->spuMemoryAddress)) {
@@ -338,7 +340,8 @@ void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
 SoundWDSEntry* SoundFindWdsEntry(int targetID) {
     SoundWDSEntry* pCurrent;
 
-    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL; pCurrent = pCurrent->pNext) {
+    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL;
+         pCurrent = SOUND_PSX_TO_PTR(SoundWDSEntry, pCurrent->pNext)) {
         if (pCurrent->id == targetID) {
             return pCurrent;
         }
