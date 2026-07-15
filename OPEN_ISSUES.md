@@ -14,22 +14,56 @@ Rules:
 
 ---
 
-## Sound activation: symbol ownership and LP64 layouts
+## Sound is activated but the retail initialization tree is unported
 
-`src/slus_006.64/system/sound.c` now compiles after retail-confirmed prototype
-and byte-cursor corrections, but activating it exposes 39 unresolved
-`INCLUDE_ASM` sound-path definitions and collides with three historical copies
-in `game_overrides.c`. Matching ELFs now exist, so stub classification is not the
-blocker. Pointer-bearing sound structures also widen away from their documented
-retail offsets on LP64; those structures need a packed-vs-host-owned audit before
-the TU can safely go live. See
-[`Port-Coexistence-Architecture`](docs/wiki/Port-Coexistence-Architecture.md).
+`src/slus_006.64/system/sound.c` is linked and all ten audited sound layouts are
+retail-correct, but the port's field-test boot bypasses retail's
+`SoundInitialize(0)` call. Consequently `D_800595D8`, the packed 32-bit current
+audio-manager address, remains zero while field code calls the sound API.
+Replacing the live oracle stubs with their exact-matched bodies therefore faults
+on the first manager-element access. Retail has no null guard; adding one would
+hide the missing initialization rather than restore it.
 
-Repro: compile `sound.c` with the port GFLAGS/INC, then run
-`./scratchpad/run_build_port.sh` with its hold removed locally; expect collisions
-for `SoundValidateFile`, `SoundFileComputeChecksum`, and `SoundAddSedsEntry`.
+Retail calls `SoundInitialize(0)` from `func_80019578` at
+`0x80019668-0x8001966C`. `SoundInitialize` spans
+`0x80037B88-0x80037DBC` and stores `func_8003B148(0x10)` into
+`D_800595D8` at `0x80037D50-0x80037D68`. Its complete known dependency
+tree has four legs:
+
+- **Manager allocation:** `func_8003B148` calls `func_8003B32C` at
+  `0x8003B194`; that calls real `SoundInitializeAudioManager` at
+  `0x8003B358`; it calls stubbed `func_8003B930` at `0x8003B37C`; and
+  `func_8003B930` calls stubbed `SoundHeapFree` at `0x8003B958`.
+  Port leaf-up: `SoundHeapFree`, `func_8003B930`, `func_8003B32C`, then
+  `func_8003B148`.
+- **CD mix:** `SoundInitialize` calls unported `func_800386C4` at
+  `0x80037D04`; that path reaches unported `SoundSetupCdMix`.
+- **Reverb:** real `SoundSetReverbModeWithAllocation` still reaches stubbed
+  `SpuGetReverbModeType`, `SpuSetReverbModeType`,
+  `SpuSetReverbModeDelayTime`, and `SpuSetReverbModeFeedback`.
+- **Timer tick:** `SoundInitialize` registers unported `func_8003C020` as the
+  recurring callback at `0x80037C7C-0x80037C84`. Its sound-tick graph reaches
+  at least `func_8003E900`, `func_8003AE84`, `func_8003A838`,
+  `func_8003EBF0`, and `func_8003EB5C`, all still unported.
+
+`SoundSpuMemoryAllocateBlockAtAddress` (`0x800395B8-0x800396DC`) is an
+independently portable leaf: its only call is the real
+`SoundSpuMemoryGetFreeBlock` at `0x80039678`.
+
+Hard sequencing constraint: route `SoundInitialize(0)` into the port boot
+**only after all four legs are real**. Earlier routing would construct a
+partially initialized manager and register a do-nothing tick callback, turning a
+loud null dereference into quiet wrong state. Four live playback helpers
+(`func_8003A20C`, `func_8003A344`, `func_8003A450`, and `func_8003A55C`)
+already have objdiff-`{}` C transcriptions, but they must remain oracle-stubbed
+until initialization is complete.
+
+Repro: locally replace `func_8003A20C` with its exact-matched C body, rebuild,
+and run `timeout 20s ./scratchpad/run_map001.sh`; GDB faults in
+`func_8003A20C(arg0=8)` with the derived element address `0xB54`, proving
+`D_800595D8 == 0`. Restore the oracle stub after the diagnostic.
 Evidence: proven
-Last verified @ fdd86e7
+Last verified @ 2afb1ff
 
 ## Unported member-change and shop menu overlays
 
