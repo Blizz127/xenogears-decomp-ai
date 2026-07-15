@@ -14,7 +14,7 @@ Rules:
 
 ---
 
-## Sound is activated but the retail initialization tree is unported
+## Sound cold-init is blocked below the decomp by hollow PsyCross SDK primitives
 
 `src/slus_006.64/system/sound.c` is linked and all ten audited sound layouts are
 retail-correct, but the port's field-test boot bypasses retail's
@@ -24,6 +24,40 @@ Replacing the live oracle stubs with their exact-matched bodies therefore faults
 on the first manager-element access. Retail has no null guard; adding one would
 hide the missing initialization rather than restore it.
 
+The current gate is below `SoundInitialize`: several PsyCross SDK symbols on
+the successful cold-init path link cleanly but are implemented only as
+`PSYX_UNIMPLEMENTED()` no-ops. **Symbol-resolved does not mean implemented.**
+In particular, the earlier dependency classification called
+`SpuSetReverbModeType` "real" because it was not in the generated stub manifest;
+that was wrong. Its PsyCross body is a hollow implementation.
+
+Cold-init reaches these hollow SDK primitives without taking an error path:
+
+- `OpenEvent` (`pc_port/extern/PsyCross/src/psx/LIBAPI.C:140`) returns zero and
+  retains no callback. Retail uses it at `SoundInitialize` `0x80037C84` to
+  register `func_8003C020`.
+- `EnableEvent` and `DisableEvent` (`LIBAPI.C:152-161`) are no-ops used by sound
+  heap allocation and audio-manager list insertion.
+- `SpuSetIRQCallback` (`LIBSPU.C:356`) and `SpuSetIRQ` (`LIBSPU.C:344`) are
+  unconditional at `0x80037CCC` and `0x80037CD4`.
+- `SpuSetCommonAttr` (`LIBSPU.C:191`) is reached synchronously through the
+  cold-init `SoundSetCdAttr` call and later by the timer callback.
+- `SpuSetReverbModeDepth` (`LIBSPU.C:236`) is unconditional in
+  `func_800386C4`, and `SpuSetReverbModeType` (`LIBSPU.C:230`) is reached by
+  the normal first reverb-allocation branch. Both are no-ops.
+
+There is also a missing infrastructure layer rather than a single stub:
+PsyCross's `SetRCnt`/`StartRCnt` record counter state, but there is no event pump
+that invokes the counter-2 callback. Fixing `OpenEvent` alone would therefore
+allow registration while `func_8003C020` still never fires.
+
+This also blocks the three already exact-matched PsyQ leaves
+`SpuGetReverbModeType`, `SpuSetReverbModeDelayTime`, and
+`SpuSetReverbModeFeedback`: their retail behavior depends on reverb state that
+the hollow type/depth functions never maintain. Exposing those three symbols
+without the state layer would create a symbol-complete but behaviorally partial
+initialization path—the same partial-init trap in a quieter form.
+
 Retail calls `SoundInitialize(0)` from `func_80019578` at
 `0x80019668-0x8001966C`. `SoundInitialize` spans
 `0x80037B88-0x80037DBC` and stores `func_8003B148(0x10)` into
@@ -32,19 +66,19 @@ tree has four legs:
 
 - **Manager allocation:** `func_8003B148` calls `func_8003B32C` at
   `0x8003B194`; that calls real `SoundInitializeAudioManager` at
-  `0x8003B358`; it calls stubbed `func_8003B930` at `0x8003B37C`; and
-  `func_8003B930` calls stubbed `SoundHeapFree` at `0x8003B958`.
-  Port leaf-up: `SoundHeapFree`, `func_8003B930`, `func_8003B32C`, then
-  `func_8003B148`. The top function's allocation-failure exit also calls
+  `0x8003B358`; the lower chain `SoundHeapFree`, `func_8003B930`, and
+  `func_8003B32C` is now exact-matched. `func_8003B148` remains unported. Its
+  allocation-failure exit also calls
   stubbed `SoundHandleError` at `0x8003B184`. That handler is not a leaf: when
   control flags `0x88` are clear, retail `0x8003F6E0-0x8003F724` reaches
   stubbed `SoundLoadWdsFile` and `func_80039E60` in addition to real
   `SoundSpuMemoryFreeBlock`, `SoundAddSedsEntry`, and `func_8003BDFC`.
 - **CD mix:** `SoundInitialize` calls unported `func_800386C4` at
   `0x80037D04`; that path reaches unported `SoundSetupCdMix`.
-- **Reverb:** real `SoundSetReverbModeWithAllocation` still reaches stubbed
-  `SpuGetReverbModeType`, `SpuSetReverbModeType`,
-  `SpuSetReverbModeDelayTime`, and `SpuSetReverbModeFeedback`.
+- **Reverb:** real `SoundSetReverbModeWithAllocation` still reaches generated
+  stubs for `SpuGetReverbModeType`, `SpuSetReverbModeDelayTime`, and
+  `SpuSetReverbModeFeedback`; its symbol-resolved `SpuSetReverbModeType` and
+  `SpuSetReverbModeDepth` dependencies are PsyCross no-ops, not real backends.
 - **Timer tick:** `SoundInitialize` registers unported `func_8003C020` as the
   recurring callback at `0x80037C7C-0x80037C84`. Its sound-tick graph reaches
   at least `func_8003E900`, `func_8003AE84`, `func_8003A838`,
@@ -54,20 +88,35 @@ tree has four legs:
 independently portable leaf: its only call is the real
 `SoundSpuMemoryGetFreeBlock` at `0x80039678`.
 
-Hard sequencing constraint: route `SoundInitialize(0)` into the port boot
-**only after all four legs are real**. Earlier routing would construct a
-partially initialized manager and register a do-nothing tick callback, turning a
-loud null dereference into quiet wrong state. Four live playback helpers
+The corrected sequencing is:
+
+1. implement and behaviorally validate the PsyCross SDK integration layer
+   (coherent reverb state, `SpuSetCommonAttr`, IRQ state/callbacks, and actual
+   event/timer delivery);
+2. exact-match the ten cold-init decomp functions;
+3. route `SoundInitialize(0)` only as a diagnostic proof, verifying manager
+   allocation, timer delivery, reverb-transfer completion, and zero stub hits;
+4. then restore and extend the live playback path.
+
+The SDK work has no objdiff oracle; validate it as host integration, like
+`game_overrides.c` and the host walkers, using state/behavioral probes. Do not
+resume the ten-function decomp or route boot on top of hollow primitives.
+Earlier routing would construct a partially initialized manager and register a
+non-delivered tick callback, turning a loud null dereference into quiet wrong
+state. Four live playback helpers
 (`func_8003A20C`, `func_8003A344`, `func_8003A450`, and `func_8003A55C`)
 already have objdiff-`{}` C transcriptions, but they must remain oracle-stubbed
 until initialization is complete.
 
-Repro: locally replace `func_8003A20C` with its exact-matched C body, rebuild,
-and run `timeout 20s ./scratchpad/run_map001.sh`; GDB faults in
-`func_8003A20C(arg0=8)` with the derived element address `0xB54`, proving
-`D_800595D8 == 0`. Restore the oracle stub after the diagnostic.
+Repro: `sed -n '140,245p' pc_port/extern/PsyCross/src/psx/LIBSPU.C` and
+`sed -n '135,165p' pc_port/extern/PsyCross/src/psx/LIBAPI.C` show the
+`PSYX_UNIMPLEMENTED()` happy-path bodies. `rg 'func_8003C020' pc_port/extern/PsyCross/src`
+finds no counter/event delivery path. The original runtime repro remains:
+locally replace `func_8003A20C` with its exact-matched C body, rebuild, and run
+`timeout 20s ./scratchpad/run_map001.sh`; GDB faults with `D_800595D8 == 0`.
+Restore the oracle stub afterward.
 Evidence: proven
-Last verified @ b4244a7
+Last verified @ 609c426
 
 ## Unported member-change and shop menu overlays
 
