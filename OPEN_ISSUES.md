@@ -473,6 +473,86 @@ Evidence: proven (2 objdiff `{}` + 2 coexistence logic-verified; init-proof prob
 suite PASS on the built port; tripwires clean; matching build green)
 Last verified @ cfd96fb
 
+### Tick-leg scoping (trace + gating design, NO implementation)
+
+Read-only depth-trace of `func_8003C020`'s subtree + the cross-thread gating
+design that must land before any real tick body runs. Method: BFS over the split
+asm + C-body edges + the `g_SoundScriptHandlers` jalr table.
+
+**(A) The ~20 estimate is a ~3.75x undercount: 75 unported functions.** BFS from
+`func_8003C020` (following the `func_8003C6E8 -> g_SoundScriptHandlers[opcode]`
+jalr table) reaches **75 unported** functions, not ~20. The estimate captured the
+control layer but missed the entire data-dispatched sequence-command layer. Split:
+- **Tick-core control: 12 unported** -- the empty-queue tick. Every-tick:
+  `func_8003E900`, `func_8003EB5C`. Manager-active-conditional: `func_8003C4C4`,
+  `func_8003C6E8`, `func_8003EFE4`, `func_8003EBF0`. Lifecycle-conditional:
+  `func_8003AE84`, `func_8003A838`. Plus transitive `func_8003CC84` (<-C6E8),
+  `func_8003EEA0` (<-EBF0), `func_8003E5BC`, and `func_8003C020` itself.
+- **Sequence-command handlers: 51 unported** (of 97 distinct in the 128-slot
+  `g_SoundScriptHandlers` table; 46 already `{}`, 31 slots are
+  `SoundScriptDefaultHandler`). Statically ENUMERABLE from the table (not
+  "untraceable") but only *invoked* when the tick processes real sequence data
+  (needs WDS/B5) -- with an empty queue the tick hits Default/Nop handlers only.
+- Handler-subtree helpers: ~4 more. Error/WDS leg (`SoundHandleError`,
+  `SoundLoadWdsFile`, `func_80039024/39E60/3A65C/3B644/3BDFC`,
+  `SoundSpuMemoryAllocateBlock`): 8, deferrable (folds into B5).
+- **Runtime-trace-required (NOT statically enumerable):** `func_8003EFE4`'s
+  second jalr is `obj->field0(obj)` -- a per-voice method pointer set at runtime
+  (an ADSR/envelope state handler). Its handler set must be runtime-traced; it
+  may add to the 75 if those handlers aren't otherwise reached.
+
+**(B) Cross-thread gating design (the prerequisite; SPU-IRQ resolved).**
+- *Shared state* the tick body touches: `g_SoundAudioManagerListHead` (manager
+  linked list), `g_SoundVolumeController`, `g_SoundControlFlags`,
+  `g_SoundCdFadeFramesRemaining`, `D_80059504/40/5C/C4`, and via the subtree the
+  voice tables (`g_SoundChannels`), manager fields, and SPU-RAM (SpuSetVoiceAttr/
+  SpuSetKey in handlers). The field/main thread touches the same via the sound
+  API (SoundReset, heap alloc, manager add/remove, volume/reverb, playback ctl).
+- *Retail's primitive:* `func_8003C020` does NOT gate itself -- it runs as the
+  counter-2 IRQ handler (atomic on HW). The MAIN thread brackets every non-atomic
+  shared-state access with `DisableEvent/EnableEvent(g_unk_SoundEvent)`
+  (SoundHeapAllocate, SoundAddAudioManagerToList, etc.).
+- *Port design:* map that discipline onto a **recursive** `g_SoundTickMutex`.
+  `DisableEvent`/`EnableEvent` on the counter-2/EvSpINT event acquire/release it;
+  the pump (`intrThreadMain`) holds it around the `func_8003C020` dispatch (today
+  it dispatches under `g_intrMutex` but the main thread only flips the `enabled`
+  flag -- no exclusion vs an in-flight tick). **Must be recursive**:
+  `func_8003AE84` (on the tick path) re-enters `DisableEvent/EnableEvent`
+  (SoundHeap*/EnterCriticalSection are NOT reached from the tick, so that is the
+  only re-entry vector). SDL_CreateMutex is reentrant -- verify at impl. No
+  deadlock (short critical sections, recursive lock); no stall (tick + sections
+  are us-scale). NOT a showstopper -- the pump is already a dedicated thread and
+  retail already brackets the accesses; no restructuring needed, tick body
+  unchanged.
+- *SPU-IRQ question RESOLVED:* the tick is the RCnt2 240Hz **timer** (already
+  firing via the pump). `SoundSpuIRQHandler` is a SEPARATE SPU-IRQ path
+  (streaming/transfer-completion for WDS/XA). **The tick leg does NOT need an SPU
+  IRQ source -- that gap defers to B5, not here.**
+- *Concurrency validation (the third regime):* (1) TSan build (-fsanitize=thread)
+  over the sound TUs + PsyCross, boot + stress -> reports races directly;
+  (2) stress probe: main thread hammers the sound API while the real tick fires
+  at 240Hz, with invariant assertions (manager list acyclic/terminated, voice
+  indices in [0,24), no manager use-after-free); (3) any un-bracketed multi-word
+  access TSan flags is a pre-existing retail race to review.
+
+**(C) Sequence (gate-first, leaf-up) + pricing.** NOT one pass.
+1. **Gating pass FIRST** (its own bounded pass): recursive `g_SoundTickMutex` +
+   wire DisableEvent/EnableEvent + pump dispatch; validate TSan + stress with the
+   tick still STUBBED. Behavioral + concurrency, no oracle. ~1 pass.
+2. **Tick-core (12)**, leaf-up: `func_8003E900/EB5C` -> conditional legs
+   (`func_8003C4C4/C6E8/EFE4/EBF0`) -> `func_8003AE84/A838` -> `func_8003C020`
+   last. objdiff `{}`. ~1-2 passes. Milestone: empty-queue tick runs safely.
+3. **Script handlers (51)** batched, objdiff `{}`; enables sequence processing.
+   ~2-4 passes. Audible needs B5 (samples) too.
+4. **Error/WDS (8) + B5** (SoundLoadWdsFile, SPU streaming, sample banks): the
+   large separate "audible" project.
+Total tick decomp ~= **63 functions** (12 + 51) to `{}` + the gate-first pass,
+vs the ~20 estimate. Recommend: fund gate-first, then tick-core, then handlers.
+Evidence: proven (BFS over split asm + C-body + g_SoundScriptHandlers table
+edges; gating traced from func_8003C020.s + retail DisableEvent discipline;
+SPU-IRQ role read from SoundSpuIRQHandler)
+Last verified @ 2ffd372
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
