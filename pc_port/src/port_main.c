@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "xeno_pc.h"
 #include "psx_memory.h"
@@ -19,6 +20,59 @@
  * first, etc.). Signatures match PsyCross. */
 extern int ResetCallback(void);
 extern int ResetGraph(int mode);
+extern void SpuInit(void);            /* PsyCross LIBSPU: wakes the OpenAL SPU backend */
+
+/* Phase-1 sound-pump synthetic probe (env XENO_SOUND_PUMP_PROBE=1). Registers a
+ * counter callback via the real OpenEvent on the RCnt2 (counter-2) event,
+ * enables it, measures the dispatch rate, disables it, and confirms dispatch
+ * stops -- validating the pump architecture independent of SoundInitialize. */
+extern int OpenEvent(unsigned int event, int spec, int mode, long(*func)());
+extern int EnableEvent(unsigned int event);
+extern int DisableEvent(unsigned int event);
+extern int CloseEvent(unsigned int event);
+#define PORT_RCntCNT2 0xF2000002u   /* DescRC|0x02 */
+#define PORT_EvSpINT  0x0002
+#define PORT_EvMdINTR 0x1000
+extern int PsyX_SPUAL_IsInit(void);
+static volatile long s_soundPumpProbeCount = 0;
+static long PortSoundPumpProbe(void) { s_soundPumpProbeCount++; return 0; }
+static void PortSleepMs(long ms) {
+    struct timespec ts;
+    ts.tv_sec  = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
+}
+/* Phase-1 sound-pump synthetic probe: proves the counter-2 pump dispatches an
+ * OpenEvent-registered callback at ~240Hz when enabled and stops when disabled,
+ * independent of SoundInitialize (which registers the real func_8003C020 in a
+ * later phase). Env-gated diagnostic; runs before MainLoop. */
+static void PortRunSoundPumpProbe(void) {
+    int handle;
+    long c_enabled, c_disabled_start, c_disabled_end;
+    int rate_ok, stop_ok;
+    printf("[sound-probe] g_spuInit=%d (Phase 0, want 1)\n", PsyX_SPUAL_IsInit());
+    handle = OpenEvent(PORT_RCntCNT2, PORT_EvSpINT, PORT_EvMdINTR, PortSoundPumpProbe);
+    printf("[sound-probe] OpenEvent(RCntCNT2) handle=%d (want >0)\n", handle);
+    s_soundPumpProbeCount = 0;
+    EnableEvent(handle);
+    PortSleepMs(500);
+    c_enabled = s_soundPumpProbeCount;         /* ~120 ticks @ 240Hz over 0.5s */
+    DisableEvent(handle);
+    PortSleepMs(50);                            /* let any in-flight tick settle */
+    c_disabled_start = s_soundPumpProbeCount;
+    PortSleepMs(200);
+    c_disabled_end = s_soundPumpProbeCount;
+    CloseEvent(handle);
+    rate_ok = (c_enabled > 90 && c_enabled < 150);            /* 240Hz, ~25% band */
+    stop_ok = (c_disabled_end == c_disabled_start);
+    printf("[sound-probe] enabled 500ms -> %ld ticks (~%.0f Hz, want ~240)\n",
+           c_enabled, c_enabled / 0.5);
+    printf("[sound-probe] disabled 200ms -> +%ld ticks (want 0)\n",
+           c_disabled_end - c_disabled_start);
+    printf("[sound-probe] RESULT: rate_ok=%d stop_ok=%d handle_ok=%d -> %s\n",
+           rate_ok, stop_ok, (handle > 0),
+           (rate_ok && stop_ok && handle > 0) ? "PASS" : "FAIL");
+}
 
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
@@ -156,6 +210,22 @@ int main(int argc, char** argv) {
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
     ResetGraph(0);
+
+    /* 4a-sound (Phase 0, sound SDK): wake the OpenAL SPU backend. Retail's sound
+     * cold-init reaches SpuInit() -> PsyX_SPUAL_InitSound(), which sets
+     * g_spuInit=1; until then every PsyX_SPUAL_* call early-returns and the SPU
+     * is dormant. Must follow PsyX_Initialise (the OpenAL context). Idempotent
+     * (PsyX_SPUAL_InitSound guards on g_spuInit/g_SpuMutex). This is ONLY the
+     * backend wake; the game-side SoundInitialize(0) routing is a later phase
+     * and is intentionally NOT done here. */
+    SpuInit();
+
+    /* 4a-probe: Phase-1 sound-pump synthetic validation (env XENO_SOUND_PUMP_PROBE).
+     * The PsyX interrupt thread is already running (started by PsyX_Initialise),
+     * so the pump is live here. Diagnostic only; does not run in normal boot. */
+    if (getenv("XENO_SOUND_PUMP_PROBE")) {
+        PortRunSoundPumpProbe();
+    }
 
     /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */
     PsyX_Pad_InitPad(0, &g_C1Buffer[0]);

@@ -700,6 +700,10 @@ apply_psycross_patch() {
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_abr_clut_bit15.patch" "_xeno_clut_bit15_abr"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_xeno_compmatrix_alias"
+# Sound SDK Phase 0+1: SPU backend accessor + the RCnt2 (counter-2) event pump
+# (OpenEvent/EnableEvent/DisableEvent registry + 240Hz dispatch on the interrupt
+# thread). See OPEN_ISSUES.md "Sound cold-init" and pc_port/src/port_main.c.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_pump.patch" "_xeno_sound_pump"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

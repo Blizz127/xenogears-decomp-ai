@@ -218,6 +218,58 @@ Evidence: proven (backend/boot/counter code read; init-absence grep-confirmed;
 retail SoundInitialize call site verified in func_80019578 asm)
 Last verified @ dd0dbfe
 
+### Phase 0 + Phase 1 landed (backend awake + counter-2 event pump)
+
+Implemented Phase 0 (B0) and Phase 1 (B2) of the plan above; the SPU subsystem
+is now awake and the event pump ticks. Behaviorally validated (no objdiff
+oracle for this layer) via a synthetic-callback probe, deliberately independent
+of SoundInitialize (still B1/B4, not touched).
+
+- **Phase 0 (B0):** `port_main.c` now calls `SpuInit()` after `PsyX_Initialise`
+  (idempotent, before pad init). Confirmed `g_spuInit == 1` (GDB read of the
+  real static + the new `PsyX_SPUAL_IsInit()` accessor), OpenAL device opens
+  ("found sound device: OpenAL Soft", "PSX SPU effects ... initialized"). The
+  backend early-return gate is now open; wired primitives no longer no-op.
+- **Phase 1 rate:** derived + cited, NOT assumed. Retail `SoundInitialize`
+  (0x80037C84) does `OpenEvent(RCntCNT2, EvSpINT, EvMdINTR, func_8003C020)` then
+  `SetRCnt(RCntCNT2, 0x44E8, EvMdINTR)` + `StartRCnt`. Mode `0x1000` has no
+  `RCntMdSC`/0x1 bit, so RCnt2 uses its default clock = system clock / 8 =
+  33.8688MHz/8 = 4.2336MHz (the port's own `SetRCnt` confirms via the
+  `spec==2 && !(mode&1)` branch). Target 0x44E8 (17640): 4233600/17640 = **240.0
+  Hz exactly** — 4x the 60Hz vblank, so it runs on its own cadence.
+- **Phase 1 registry + dispatch:** `OpenEvent`/`EnableEvent`/`DisableEvent`/
+  `CloseEvent` in `LIBAPI.C` are now a real lock-free event table (was
+  `PSYX_UNIMPLEMENTED` no-ops). `intrThreadMain` (PsyX_main.cpp) gained a second
+  HPC timer that calls `PsyX_Sys_DispatchCounter2()` at 240Hz, dispatching
+  enabled RCntCNT2/EvSpINT events — extending the existing vblank tick, not a
+  new loop.
+- **Synthetic probe (the pass/fail):** `XENO_SOUND_PUMP_PROBE=1` registers a
+  counting callback via the real `OpenEvent` on the counter-2 event, enables it,
+  and measures dispatch. Result: **PASS** — 120 ticks / 500ms = 240 Hz when
+  enabled, +0 ticks over 200ms after `DisableEvent`, handle > 0. This proves the
+  pump architecture (registry + enable-gating + 240Hz dispatch + disable)
+  independent of SoundInitialize. When Phase 3/4 land the real func_8003C020
+  registration, it flows through this identical, proven path.
+- **NOT this pass (unchanged):** SoundInitialize routing/decomp (B1/B4), the 7
+  hollow primitives (B3), WDS/playback (B5). The real `func_8003C020` does NOT
+  run yet (nothing registers it until Phase 3/4) — the "func_8003C020 fires"
+  probe belongs to that later milestone, not here.
+- **Deferred concern:** cross-thread safety of a callback *body* against the
+  main/field thread (retail used EnterCriticalSection to disable IRQs; the
+  port's is a no-op). The synthetic probe touches no shared state; this must be
+  addressed before the real sound tick runs concurrently (Phase 2+).
+
+Persistence: PsyCross is a gitignored vendored tree, so the LIBAPI.C /
+PsyX_main.* / PsyX_SPUAL.* changes live in `pc_port/patches/psycross_sound_pump.patch`
+(marker `_xeno_sound_pump`), applied idempotently by `build_port.sh`.
+Map014 tripwire boots clean (52 actors, reaches field main loop) with the pump
+active on the interrupt thread.
+Repro: `env XENO_SOUND_PUMP_PROBE=1 XENO_FIELD_TEST=1 XENO_FIELD_MAP=5 ...
+pc_port/build_native/xeno-port` -> `[sound-probe] ... RESULT: ... PASS`.
+Evidence: proven (synthetic probe PASS; g_spuInit confirmed; rate derived from
+retail SetRCnt; tripwire clean)
+Last verified @ 28f12e4
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
