@@ -679,6 +679,33 @@ pipeline (gears matching vs gears report modes).
 Honest state: dispatch table live and routing-proven via synthetic stream;
 20/51 handlers real (12 {} oracle-confirmed + 8 coexistence); 31 handlers
 remain; NOT YET AUDIBLE (WDS/B5).
+
+### Handler layer batch 2 (step 3b, partial): 32/51 real
+
+Group A of the remaining 31 landed: **9 objdiff {} oracle-confirmed
+(fuzzy=100)** -- func_8003DB58/E40C/CFF0/CFA4/DB98/E308/D7FC/DEE4/E4F0 --
+and **3 coexistence** (audited 1:1 + exercised; residual = load-reload
+elision / register-copy / arg-setup scheduling): func_8003CEF0/D1BC/D4E4.
+Oracle 1227/2292 (+9), code 36.05%, fuzzy 51.62%. Matching binary
+byte-exact (d004692f); make build green; TSan clean (pre-existing PsyX
+vblank only); five-map tripwires EXACT.
+
+Synthetic stream extended to 10 opcodes: adds vib-accumulator nudge (0xE1),
+channel fade (0xA7, interp70 counter/target verified), pitch-slide arm
+(0xD4), and a pan FADE (0xEA) that runs to completion through C4C4's fade
+path (retail sets the scaled delta on the final step -- expectation model
+corrected, handlers verified asm-faithful). Routing + operand-length +
+effects PASS; IP advances to stream end.
+
+**19 handlers remain for 3c** (group B: CD8C, CF38, D070, D21C, D3D8, D438,
+DBE4, D53C, DEE4-done, E1F8, E180, E360, E44C, E54C; group C large: DC50,
+DF78, D8B8, DD24, E04C, D9A4 -- see scratchpad/handlers_3b.txt minus group
+A). 0x99 (CF38, loop-continue) will enable a loop-stack test in the stream.
+Honest state: 32/51 handlers real, oracle-confirmed, exercised via
+synthetic stream; audible awaits WDS/B5.
+Evidence: proven (oracle fuzzy=100 x9; extended seq-probe incl. fade
+convergence; A/B binary hash; TSan; five-map tripwires)
+Last verified @ HEAD of this commit
 Evidence: proven (oracle fuzzy=100 x12; seq-probe routing; A/B binary hash;
 TSan; five-map tripwires)
 Last verified @ HEAD of this commit

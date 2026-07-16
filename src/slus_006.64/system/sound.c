@@ -260,6 +260,27 @@ extern u8* (*g_SoundScriptHandlers[])(u8* pScript, AudioManager* pAudioManager,
 extern u16 D_8005955C;
 extern s32 D_800595C4;
 extern s32 D_80059540;
+/* Per-voice envelope object: 4 per element at element+0xD8, 0x20 bytes each.
+ * The first word is the envelope HANDLER METHOD POINTER (retail: function
+ * address; kept at ABI width as a SoundPsxAddress on LP64 -- this is the
+ * runtime-trace-required jalr set from the tick-leg scoping; its setters are
+ * script handlers (step 3), so in the port the active flag stays clear and
+ * the call site is not reached yet). */
+typedef struct {
+    /* 0x00 */ SoundPsxAddress pfnHandler;
+    /* 0x04 */ u8 unk4[0x10];
+    /* 0x14 */ u16 delay;
+    /* 0x16 */ u8 unk16[2];
+    /* 0x18 */ s16 step;
+    /* 0x1A */ u16 stepAdd;
+    /* 0x1C */ u8 state;
+    /* 0x1D */ u8 unk1D;
+    /* 0x1E */ u16 flags;
+} SoundEnvelope;
+
+/* Handler-subtree helpers (unported; port auto-stubs). */
+extern void func_8003A14C();
+extern void func_80039F18();
 //----------------------------------------------------------------------------------------------------------------------
 
 void SoundInitialize(s32 arg0) {
@@ -2351,14 +2372,50 @@ u8* SoundScriptAddManagerUnk1a(u8* pScript, AudioManager* pAudioManager, AudioEl
 }
 
 // Loop start handler?
+// Seq cmd: loop start -- push a loop-stack record (count-1, resume IP,
+// octave) at the element's current selector.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
+ * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
+ * against the split asm and exercised via the synthetic stream. */
+u8* func_8003CEF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec;
+    u16 sel;
+    *(u16*)&pAudioElements->unk_0x70[2] += 1;
+    sel = *(u16*)&pAudioElements->unk_0x70[2];
+    rec = (u8*)pAudioElements + (sel * 12 + 0x9C);
+    rec[0] = *pScript++ + 0xFF;
+    *(u32*)(rec + 4) = SOUND_PTR_TO_PSX(pScript);
+    rec[2] = pAudioElements->octave;
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CEF0);
+#endif
 
 // Loop end handler?
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CF38);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CFA4);
+// Seq cmd: loop end (exhausted) -- when the record's counter hit zero, pop
+// the loop stack: resume IP from the record, restore octave.
+u8* func_8003CFA4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
+    if (rec[0] == 0) {
+        u16 sel;
+        pScript = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 8));
+        sel = *(u16*)&pAudioElements->unk_0x70[2] - 1;
+        pAudioElements->octave = rec[3];
+        *(u16*)&pAudioElements->unk_0x70[2] = sel;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CFF0);
+// Seq cmd: manager event with 16-bit parameter (fixed velocity/flag args).
+u8* func_8003CFF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    func_80039F18(pScript[0] | (pScript[1] << 8), 0x7F, 0x40);
+    return pScript + 3;
+}
 
 // Seq cmd: manager event -- forward a 16-bit parameter to func_8003A14C.
 u8* func_8003D034(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -2432,7 +2489,27 @@ u8* func_8003D17C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
+// Seq cmd: channel level fade -- program the manager's interp70 toward
+// target<<24 over n*32 steps.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
+ * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
+ * against the split asm and exercised via the synthetic stream. */
+u8* func_8003D1BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    s32 steps = p[0] << 5;
+    s32 diff = (p[1] << 24) - pAudioManager->unk_Interpolator_0x70.currentValue;
+    if (steps != 0 && diff != 0) {
+        pAudioManager->unk_Interpolator_0x70.counter = steps;
+        pAudioManager->unk_Interpolator_0x70.targetValue = p[1] << 8;
+        pAudioManager->unk_Interpolator_0x70.stepIncrement = diff / steps;
+    }
+    return p + 2;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D1BC);
+#endif
 
 u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0x62 = *pScript;
@@ -2513,7 +2590,28 @@ u8* SoundScriptSetVoiceFlags2000ClearMode(u8* pScript, AudioManager* pAudioManag
     return pScript;
 }
 
+// Seq cmd: reverb mode + depths -- stash in the manager, then apply via
+// SoundSetReverbModeWithAllocation (auto work-area).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
+ * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
+ * against the split asm and exercised via the synthetic stream. */
+u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 mode = pScript[0];
+    s8 depthL;
+    s8 depthR;
+    *(u16*)&pAudioManager->unk_0x40[4] = mode << 8;
+    depthL = pScript[1];
+    pAudioManager->unk_0x40[2] = depthL;
+    depthR = pScript[2];
+    pAudioManager->unk_0x40[3] = depthR;
+    SoundSetReverbModeWithAllocation(-1, (s8)mode << 8, depthL, depthR);
+    return pScript + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D4E4);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D53C);
 
@@ -2656,7 +2754,21 @@ u8* func_8003D7C8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7C8);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7FC);
+// Seq cmd: pitch slide -- explicit step target over n steps (or disable).
+u8* func_8003D7FC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 step = (s8)pScript[1] << 24;
+    if (n != 0 && step != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x1E] = n;
+        pAudioElements->unk_0x04 = f4 | 0x1;
+        *(s32*)&pAudioElements->unk_0x76[0xE] = step / n;
+    } else {
+        pAudioElements->unk_0x04 &= 0xFFFE;
+    }
+    return pScript + 2;
+}
 
 u8* SoundScriptToggleUnk04Bit2(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0x04 ^= 0x2;
@@ -2729,9 +2841,34 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB2C);
 #endif
 
 // Crescendo?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB58);
+// Seq cmd: nudge the vibrato accumulator by a signed step (clamped positive),
+// mark volume change, drop pitch-env bits.
+u8* func_8003DB58(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 status;
+    u16 f4;
+    *(s32*)&pAudioElements->unk_0x76[2] =
+        (*(s32*)&pAudioElements->unk_0x76[2] + ((s8)pScript[0] << 24)) & 0x7FFFFFFF;
+    status = pAudioElements->status_flags;
+    f4 = pAudioElements->unk_0x04;
+    pAudioElements->status_flags = status | 0x100;
+    pAudioElements->unk_0x04 = f4 & 0xFEF7;
+    return pScript + 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB98);
+// Seq cmd: vibrato depth fade -- step the accumulator toward target<<24
+// over n steps.
+u8* func_8003DB98(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 diff = ((s8)pScript[1] << 24) - *(s32*)&pAudioElements->unk_0x76[2];
+    if (n != 0 && diff != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x20] = n;
+        pAudioElements->unk_0x04 = (f4 | 0x8) & 0xFEFF;
+        *(s32*)&pAudioElements->unk_0x76[0x12] = diff / n;
+    }
+    return pScript + 2;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DBE4);
 
@@ -2776,7 +2913,21 @@ u8* func_8003DEB4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript + 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DEE4);
+// Seq cmd: pan fade -- step pan toward the signed target over n steps.
+u8* func_8003DEE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 diff = (s8)pScript[1] - (((s16)pAudioElements->unk_0x74) >> 8);
+    if (n != 0 && diff != 0) {
+        u16 f4;
+        s32 scaled = diff << 8;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x1C] = scaled;
+        *(u16*)&pAudioElements->unk_0x76[0x22] = n;
+        pAudioElements->unk_0x04 = f4 | 0x10;
+        *(u16*)&pAudioElements->unk_0x76[0x1A] = scaled / n;
+    }
+    return pScript + 2;
+}
 
 // Seq cmd: envelope 2 rate -- step = 0x400 / ((n+1)*4).
 u8* func_8003DF3C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -2811,7 +2962,21 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E1F8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E290);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E308);
+// Seq cmd: envelope-object rate config (selected slot): delay = p0*4,
+// step/stepAdd = 0x400 / ((p1+1)*4).
+u8* func_8003E308(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env;
+    u8 n = pScript[1] + 1;
+    env = (SoundEnvelope*)((u8*)pAudioElements +
+                           ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    if (n != 0) {
+        u16 rate = 0x400 / (n << 2);
+        *(u16*)&env->unk16[0] = pScript[0] << 2;
+        env->stepAdd = rate;
+        env->step = rate;
+    }
+    return pScript + 2;
+}
 
 u8* SoundScriptNop5(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     return pScript;
@@ -2821,7 +2986,14 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E360);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E3E0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E40C);
+// Seq cmd: disarm envelope object N -- clear its run flag + its bit in the
+// element's active-envelope mask.
+u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u32 n = pScript[0];
+    *(u16*)((u8*)pAudioElements + (n << 5) + 0xF6) &= 0xFFFE;
+    pAudioElements->unk_0xCE &= ~(1 << n);
+    return pScript + 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E44C);
 
@@ -2835,7 +3007,20 @@ u8* func_8003E4BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E4F0);
+// Seq cmd: select sample bank -- find the WDS entry by id (fall back to the
+// list head) and point the element's bank pointer at it.
+u8* func_8003E4F0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundWDSEntry* e;
+    u32 id = *pScript;
+    pScript++;
+    ((u8*)&pAudioElements->unk_0x24)[1] = id;
+    e = SoundFindWdsEntry(id);
+    if (e == NULL) {
+        e = g_SoundWdsLinkedList;
+    }
+    pAudioElements->unk2C = SOUND_PTR_TO_PSX(e);
+    return pScript;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E54C);
 
@@ -3295,23 +3480,7 @@ void SoundStopVoiceOnChannel(SoundVoiceData* voiceData, u32 channelIndex) {
     }
 }
 
-/* Per-voice envelope object: 4 per element at element+0xD8, 0x20 bytes each.
- * The first word is the envelope HANDLER METHOD POINTER (retail: function
- * address; kept at ABI width as a SoundPsxAddress on LP64 -- this is the
- * runtime-trace-required jalr set from the tick-leg scoping; its setters are
- * script handlers (step 3), so in the port the active flag stays clear and
- * the call site is not reached yet). */
-typedef struct {
-    /* 0x00 */ SoundPsxAddress pfnHandler;
-    /* 0x04 */ u8 unk4[0x10];
-    /* 0x14 */ u16 delay;
-    /* 0x16 */ u8 unk16[2];
-    /* 0x18 */ s16 step;
-    /* 0x1A */ u16 stepAdd;
-    /* 0x1C */ u8 state;
-    /* 0x1D */ u8 unk1D;
-    /* 0x1E */ u16 flags;
-} SoundEnvelope;
+
 
 // Envelope pass (second tick pass, per element): clear the per-axis envelope
 // accumulators (element+0xD0/D2/D4), then for each of the 4 envelope objects

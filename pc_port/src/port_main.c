@@ -339,12 +339,16 @@ static void PortRunSoundGateStress(void) {
  * SYNTHETIC data, labeled as such: full live exercise with real sequence
  * banks awaits the WDS/B5 leg. Diagnostic only; does not run in normal boot. */
 static const unsigned char s_seqProbeStream[] = {
-    0x97, 0x03, 0x04,
-    0xA0, 0x55,
-    0xE9, 0x10,
-    0xC1, 0x11, 0x22, 0x33,
-    0xA9, 0x44,
-    0x80, 0x7F,
+    0x97, 0x03, 0x04,       /* time signature (func_8003CE68)          */
+    0xA0, 0x55,             /* volume immediate (func_8003D0E8)        */
+    0xE9, 0x10,             /* pan nudge -> 0x1000 (func_8003DEB4)     */
+    0xC1, 0x11, 0x22, 0x33, /* raw ADSR (func_8003D60C)                */
+    0xA9, 0x44,             /* unk62 (SoundScriptSetUnk62)             */
+    0xE1, 0x05,             /* vib accumulator nudge (func_8003DB58)   */
+    0xA7, 0x02, 0x60,       /* channel fade: cnt 0x40, tgt 0x6000 (func_8003D1BC) */
+    0xD4, 0x04, 0x20,       /* pitch slide arm (func_8003D7FC)         */
+    0xEA, 0x08, 0x30,       /* pan fade, completes at scaled 0x2000 (func_8003DEE4 + C4C4 fade path) */
+    0x80, 0x7F,             /* rest (func_8003CD08) -- terminates      */
 };
 static void PortRunSoundSeqProbe(void) {
     unsigned char* mgr = (unsigned char*)(uintptr_t)D_800595D8;
@@ -381,9 +385,12 @@ static void PortRunSoundSeqProbe(void) {
 
     ok_mgr = (*(unsigned short*)(mgr + 0x3A) == 0x30) && (*(unsigned short*)(mgr + 0x3C) == 4) &&
              (*(unsigned short*)(mgr + 0x38) == 3) && (*(int*)(mgr + 0x58) == 0x550000);
-    ok_el = (*(unsigned short*)(el + 0x74) == 0x1000) &&
+    ok_el = (*(unsigned short*)(el + 0x74) == 0x2000) &&   /* pan fade completed (retail sets scaled delta on final step) */
             (*(unsigned char*)(el + 0x54) == 0x11) && (*(unsigned char*)(el + 0x55) == 0x22) &&
-            (*(unsigned char*)(el + 0x56) == 0x33) && (*(unsigned short*)(el + 0x62) == 0x44);
+            (*(unsigned char*)(el + 0x56) == 0x33) && (*(unsigned short*)(el + 0x62) == 0x44) &&
+            (*(int*)(el + 0x78) == 0x05000000) &&               /* vib acc (0xE1) */
+            (*(int*)(el + 0x84) == 0x08000000) &&               /* slide step (0xD4) */
+            (*(unsigned short*)(mgr + 0x7A) == 0x6000);          /* interp70 target (0xA7) */
     ok_ip = (*(unsigned int*)(el + 0x14) ==
              (unsigned int)(uintptr_t)(s_seqProbeStream + sizeof(s_seqProbeStream)));
     {
