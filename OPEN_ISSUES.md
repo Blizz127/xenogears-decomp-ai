@@ -328,6 +328,87 @@ Evidence: proven (BFS over split asm + C-body edges; sizes from asm line counts;
 already-done set cross-checked against sound.c C bodies)
 Last verified @ f79d131
 
+### Phase 2 landed (SDK primitives wired + behaviorally validated) + measurement corrections
+
+Wired the init-reached hollow SDK primitives against the now-awake backend and
+validated them behaviorally (no objdiff oracle for this layer). Shipped as
+`pc_port/patches/psycross_sound_prims.patch` (marker `_xeno_sound_prims`,
+applied idempotently by `build_port.sh`; reverse-and-rebuild verified). Two
+measurement corrections from the Phase-3 BFS fall out of this pass.
+
+- **Correction 1 — init-reached hollow primitives are 5, not 6.**
+  `SpuReadDecodedData` is NOT on the init happy path: its only callers are the
+  SPU-command handler at `sound.c:1403-1414` (`pCmd->pSpuData`, the tick/command
+  leg), not `SoundInitialize`'s tree. It stays hollow, deferred to the tick leg.
+  The 5 that DO touch init (verified by caller-trace): `SpuSetIRQ` +
+  `SpuSetIRQCallback` (direct `SoundInitialize` jals), `SpuSetCommonAttr` (via
+  `SoundSetCdAttr`, unconditional), `SpuSetReverbModeType` (via
+  `SoundSetReverbModeWithAllocation`), `SpuSetReverbModeDepth` (via unconditional
+  `func_800386C4` and `SoundSetReverbModeWithAllocation`).
+- **Correction 2 — `func_800386C4` is UNCONDITIONAL, so the init-proof decomp
+  count is 4, not 3.** The Phase-3 note bucketed `func_800386C4` as the optional
+  CD-mix leg, but `SoundInitialize.s` calls it with a plain `jal` (no guard); it
+  is the volume/reverb-apply leg. The *thing it optionally calls* is
+  `SoundSetupCdMix` (gated on control bit `0x4000`, skipped at cold init).
+  `SoundHandleError` is the allocation-failure error leg (skipped on success).
+  So the init happy-path decomp set is exactly **4**: `SoundInitialize`,
+  `func_8003B148`, `SoundSpuMemoryAllocateBlockAtAddress`, `func_800386C4`.
+
+**What was wired (behavioral, NOT objdiff-matched — claimed as probe results):**
+- Shared `SpuReverbAttr`/`SpuCommonAttr` state in `LIBSPU.C` so `Set` and `Get`
+  round-trip. `SpuSetReverbModeType`/`Depth`/`ModeParam` write it;
+  `SpuGetReverbModeParam` reads it back. A 10-entry PSX-mode → OpenAL-EFX preset
+  table (`SPU_REV_MODE_OFF..PIPE` → gain/decay/gainHF) drives the real reverb
+  effect via a new backend hook `PsyX_SPUAL_ApplyReverbParams` (gated on
+  `g_spuInit` + `g_ALEffectsSupported`, re-commits `g_nAlReverbEffect` into the
+  active aux slot).
+- `SpuSetCommonAttr` merges per-mask into the shared common-attr state and, when
+  `MVOLL/R` is set, drives master output via new backend hook
+  `PsyX_SPUAL_SetMasterVolume` (PSX 14-bit master vol → OpenAL listener gain).
+- `SpuSetIRQ`/`SpuSetIRQCallback` maintain enable state + registered callback and
+  return PsyQ-correct values (IRQ returns arg; Callback returns previous). **No
+  SPU IRQ source exists in the port backend**, so the callback is registered but
+  never fired. **This is the pre-tick-leg gate** (boundary flagged): SPU-IRQ /
+  streaming sync belongs with the tick leg, not init, and cross-thread callback-
+  body safety (retail's EnterCriticalSection IRQ-disable is a port no-op) must be
+  resolved before any real tick body runs concurrently.
+
+**Behavioral probe — the pass/fail (`XENO_SOUND_PRIM_PROBE=1`, `port_main.c`):**
+Exercises the primitives in isolation against the awake backend (as the Phase-1
+pump probe validates the pump, independent of `SoundInitialize`). Result:
+**PASS** — reverb round-trip `mode=HALL, depthL=0x4000, depthR=0x5000` read back
+exactly via `SpuGetReverbModeParam`; `SpuSetCommonAttr` master vol `0x2000` →
+listener gain `0.500`; `SpuSetIRQ(ON)` returns ON and the callback register
+round-trips (`old1==NULL, old2==cb1`). Backend confirmed EFX-capable at run
+("PSX SPU effects are supported and initialized"), so reverb/master calls drove
+real OpenAL, not just state. The Phase-0+1 pump probe still PASSes on the same
+binary (240Hz, +0 after disable) — no regression.
+
+**NOT this pass (the remaining init-proof work, now precisely scoped):**
+- **Phase 3 (4 decomps):** `SoundInitialize`, `func_8003B148`,
+  `SoundSpuMemoryAllocateBlockAtAddress`, `func_800386C4` to objdiff `{}` (or the
+  d88f13c coexistence pattern if codegen resists — behavior first, `{}` as the
+  quality gate). Their lower chains are already `{}`. `func_800386C4` is a
+  mode-switch flag machine + the `D_80059518`-gated `func_80038824` leg;
+  `SoundSpuMemoryAllocateBlockAtAddress` is a block-search allocator loop.
+- **Phase 4:** route `SoundInitialize(0)` into `port_main.c` boot (same shim
+  family as the other `func_80019578` duties), keeping `func_8003C020`'s tick
+  body stubbed.
+- **Phase 5:** init-proof validation — init completes with zero stub hits on the
+  happy path, `D_800595D8` non-zero AND manager fields read back coherent (not
+  the hollow-init trap), real `func_8003C020` registered and firing at 240Hz
+  through the Phase-1 pump (body stubbed).
+
+Persistence: `pc_port/patches/psycross_sound_prims.patch` (LIBSPU.C +
+PsyX_SPUAL.cpp/.h), wired into `build_port.sh` after the pump patch. Idempotent
+(marker-gated apply; verified: applies from a clean baseline, skips on re-run,
+build stays 223 stubs / LINK OK).
+Evidence: proven (behavioral probe PASS on the patch-built binary; all 7 wired
+symbols resolve to real `T` defs, zero stubbed; caller-trace for the 5-vs-6 and
+unconditional-`func_800386C4` corrections from `SoundInitialize.s` +
+`func_800386C4.s` + `sound.c`)
+Last verified @ HEAD (pre-commit)
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

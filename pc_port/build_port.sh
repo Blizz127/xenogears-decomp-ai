@@ -704,6 +704,12 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_x
 # (OpenEvent/EnableEvent/DisableEvent registry + 240Hz dispatch on the interrupt
 # thread). See OPEN_ISSUES.md "Sound cold-init" and pc_port/src/port_main.c.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_pump.patch" "_xeno_sound_pump"
+# Sound SDK Phase 2 (init-proof): wire the 5 init-reached SDK primitives against
+# the awake backend -- SpuSetReverbModeType/Depth + SpuSetReverbModeParam/Get
+# (shared reverb state + EFX preset table -> OpenAL reverb), SpuSetCommonAttr
+# (master volume -> listener gain), SpuSetIRQ/SpuSetIRQCallback (state only; no
+# SPU IRQ source in the port). Behavioral, not objdiff-matched. See OPEN_ISSUES.md.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_prims.patch" "_xeno_sound_prims"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

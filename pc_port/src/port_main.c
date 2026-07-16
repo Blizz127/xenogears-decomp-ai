@@ -10,11 +10,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "xeno_pc.h"
 #include "psx_memory.h"
 #include "PsyX/PsyX_public.h"
+#include "psx/libspu.h"   /* Phase-2 sound-SDK primitive probe: SpuReverbAttr/SpuCommonAttr + prims */
 
 /* Forward-declared to avoid pulling the full PsyQ headers (libgpu needs libgte
  * first, etc.). Signatures match PsyCross. */
@@ -72,6 +74,57 @@ static void PortRunSoundPumpProbe(void) {
     printf("[sound-probe] RESULT: rate_ok=%d stop_ok=%d handle_ok=%d -> %s\n",
            rate_ok, stop_ok, (handle > 0),
            (rate_ok && stop_ok && handle > 0) ? "PASS" : "FAIL");
+}
+
+/* Phase-2 sound-SDK primitive probe (env XENO_SOUND_PRIM_PROBE=1). Behavioral,
+ * NO oracle: exercises the 5 init-reached SDK primitives (SpuSetReverbModeType/
+ * Depth, SpuSetCommonAttr, SpuSetIRQ, SpuSetIRQCallback) plus the reverb-param
+ * round-trip against the awake backend and reads the state back. This validates
+ * the primitives in isolation (as the pump probe validates the pump); it is NOT
+ * the init happy path itself -- SoundInitialize drives them for real. */
+extern float PsyX_SPUAL_GetMasterVolume(void);
+static void PortSoundIrqCb1(void) {}
+static void PortSoundIrqCb2(void) {}
+static void PortRunSoundPrimProbe(void) {
+    SpuReverbAttr rv;
+    SpuCommonAttr cm;
+    int t_mode, t_depthL, t_depthR, t_master, t_irq, t_cb;
+    float mg;
+    SpuIRQCallbackProc old1, old2;
+
+    /* 1. reverb type + depth -> shared state -> read back via SpuGetReverbModeParam */
+    SpuSetReverbModeType(SPU_REV_MODE_HALL);
+    SpuSetReverbModeDepth((short)0x4000, (short)0x5000);
+    memset(&rv, 0, sizeof(rv));
+    SpuGetReverbModeParam(&rv);
+    t_mode   = (rv.mode == SPU_REV_MODE_HALL);
+    t_depthL = (rv.depth.left  == (short)0x4000);
+    t_depthR = (rv.depth.right == (short)0x5000);
+
+    /* 2. common-attr master volume -> backend listener gain (0x2000/16384 = 0.5) */
+    memset(&cm, 0, sizeof(cm));
+    cm.mask = SPU_COMMON_MVOLL | SPU_COMMON_MVOLR;
+    cm.mvol.left  = (short)0x2000;
+    cm.mvol.right = (short)0x2000;
+    SpuSetCommonAttr(&cm);
+    mg = PsyX_SPUAL_GetMasterVolume();
+    t_master = (mg > 0.45f && mg < 0.55f);
+
+    /* 3. IRQ enable state + callback register round-trip (registered, never fired) */
+    t_irq = (SpuSetIRQ(SPU_ON) == SPU_ON);
+    old1 = SpuSetIRQCallback(PortSoundIrqCb1);   /* returns previous (NULL) */
+    old2 = SpuSetIRQCallback(PortSoundIrqCb2);   /* returns PortSoundIrqCb1 */
+    t_cb = (old1 == NULL && old2 == PortSoundIrqCb1);
+    SpuSetIRQCallback(NULL);
+    SpuSetIRQ(SPU_OFF);
+
+    printf("[sound-prim] reverb round-trip: mode=%d(HALL ok=%d) depthL=0x%04x(ok=%d) depthR=0x%04x(ok=%d)\n",
+           rv.mode, t_mode, (unsigned short)rv.depth.left, t_depthL,
+           (unsigned short)rv.depth.right, t_depthR);
+    printf("[sound-prim] mixer master vol -> listener gain=%.3f (want ~0.5, ok=%d)\n", mg, t_master);
+    printf("[sound-prim] IRQ set=%d cb round-trip ok=%d\n", t_irq, t_cb);
+    printf("[sound-prim] RESULT: %s\n",
+           (t_mode && t_depthL && t_depthR && t_master && t_irq && t_cb) ? "PASS" : "FAIL");
 }
 
 #define WINDOW_TITLE  "Xenogears (PC port)"
@@ -225,6 +278,13 @@ int main(int argc, char** argv) {
      * so the pump is live here. Diagnostic only; does not run in normal boot. */
     if (getenv("XENO_SOUND_PUMP_PROBE")) {
         PortRunSoundPumpProbe();
+    }
+
+    /* 4a-probe2: Phase-2 sound-SDK primitive validation (env XENO_SOUND_PRIM_PROBE).
+     * Exercises the wired init-reached primitives + reverb round-trip against the
+     * awake backend. Diagnostic only; does not run in normal boot. */
+    if (getenv("XENO_SOUND_PRIM_PROBE")) {
+        PortRunSoundPrimProbe();
     }
 
     /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */
