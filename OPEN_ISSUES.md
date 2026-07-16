@@ -270,6 +270,64 @@ Evidence: proven (synthetic probe PASS; g_spuInit confirmed; rate derived from
 retail SetRCnt; tripwire clean)
 Last verified @ 28f12e4
 
+### Phase 3 call-tree measurement (diagnostic, no decomp) — f79d131
+
+Measured the real transitive call tree under `SoundInitialize` by BFS over the
+split asm (`asm/slus_006.64/nonmatchings/system/sound/*.s`) PLUS the C-body
+calls of already-decomped functions (so undone functions hidden *below* done
+ones are not missed), tagging every node oracle-decomp / already-done / SDK-real
+/ SDK-hollow. Method + counts: `scratchpad/soundtree/`.
+
+**Headline: NOT a menu-overlay-style surprise. The 20-40 name estimate is
+accurate for the FULL init+tick scope (~23), but it hid a cheap init-proof
+sub-milestone (~3-4 functions).** Most of the sound engine is already
+decompiled (sound.c has ~94 real C bodies; 40 of the ~76 nodes in the
+SoundInitialize tree are DONE), so the remaining work is small and splits
+cleanly:
+
+- **INIT happy-path decomp: 3 functions** (+ `SoundInitialize` itself) —
+  `func_8003B148` (manager alloc, 50 asm lines; its lower chain
+  SoundHeapFree/func_8003B930/func_8003B32C/SoundInitializeAudioManager is
+  already {}), `SoundSpuMemoryAllocateBlockAtAddress` (83 lines, a leaf — only
+  calls the real SoundSpuMemoryGetFreeBlock), `SoundSetupCdMix`. All small,
+  all with an objdiff {} oracle. This is the *near-term* Phase-3 number, far
+  below "20-40".
+- **INIT full decomp (incl error + CD-mix legs): 13** — adds the error leg
+  (`SoundHandleError → SoundLoadWdsFile, func_80039E60, func_8003A65C,
+  func_8003B644, func_8003BDFC, func_8003E5BC, func_80039024`), which fires
+  only on allocation failure (stub-first, deferrable), and CD-mix (`func_800386C4`,
+  gated on control bit 0x4000 — optional at cold init).
+- **TIMER-TICK leg decomp: 20** — `func_8003C020` (the 240Hz callback, run by
+  the Phase-1 pump) reaches `func_8003E900/AE84/A838/EBF0/EB5C/EEA0/EFE4/
+  C4C4/C6E8/CC84` + shared spu-mem/error funcs. This is the real bulk — needed
+  for *ongoing audible* sound, but SEPARABLE: the tick body can stay stubbed
+  while the init proof is validated (the pump already fires the callback).
+- **Union (init-full + tick): 23 oracle-decomp functions** — within the 20-40
+  estimate. So the estimate was right for "fully working sound," just not
+  broken out by milestone.
+- **SDK-HOLLOW (Phase 2, no oracle): 6 touch init** — `SpuSetCommonAttr`,
+  `SpuSetReverbModeType`, `SpuSetReverbModeDepth`, `SpuSetIRQ`,
+  `SpuSetIRQCallback`, `SpuReadDecodedData`. These are Phase-2 primitive-wiring,
+  NOT Phase-3 decomp; do not price them into the decomp count.
+- **Unclassified/minor:** `SoundTransferCallbackStore` (no .s, no C body, no
+  macro — one node, likely a small helper); `FILE_SIGNATURE` is a macro (noise).
+- **No sprawl beyond sound.c** — the tree stays inside the sound engine + the
+  SDK primitives; zero genuine other-TU-undone game functions (the earlier
+  "OTHER-TU" bucket was done C bodies + libc/macro false positives).
+
+**Re-priced recommendation / sequencing:** the near-term *init-proof* milestone
+("SoundInitialize completes, manager coherent, timer fires, reverb state live,
+zero stubs on the init happy path") costs only **~3-4 small decomp functions +
+6 Phase-2 primitives** — much cheaper than the "20-40" implied. Do Phase 2
+(wire the 6 primitives) and the 3-4 init decomp together to reach it; stub the
+error leg and defer the 20-function tick behind it. The tick leg is the real
+bulk and is where the "20-40" mostly lives — deferrable, incremental, oracle'd.
+Net: fund the init-proof milestone next (small, bounded); the full audible-sound
+project is ~23 decomp + 6 primitives + WDS/playback (B5), sequenced after.
+Evidence: proven (BFS over split asm + C-body edges; sizes from asm line counts;
+already-done set cross-checked against sound.c C bodies)
+Last verified @ f79d131
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
