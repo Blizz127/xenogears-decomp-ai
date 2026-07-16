@@ -587,6 +587,60 @@ Next: tick-core decomp (12 fns, leaf-up, func_8003C020 last) under the gate.
 Evidence: proven (gate-stress + TSan runs; five-map smokes; idempotency cycle)
 Last verified @ HEAD of this commit
 
+### Tick-core REAL (tick-leg step 2; dispatching at 240Hz into the proven gate)
+
+The 12 tick-core control-layer functions are decompiled and live, leaf-up,
+func_8003C020 last. Matching split: **6 objdiff {}** (func_8003EEA0/A838/
+EB5C/E900/AE84/CC84 -- E900 via the volatile SPU register-pair cursor + merged
+live-range idioms) and **6 coexistence** (d88f13c pattern: func_8003E5BC/C4C4/
+EFE4/EBF0/C6E8/C020). The coexistence residual is ONE uniform class: this
+pipeline's cc1 strength-reduces the element-cursor giv family onto a different
+anchor register and fills load-latency slack the retail object leaves
+unfilled -- same operations at the same absolute element offsets (verified
+per-diff); INCLUDE_ASM keeps the matching build byte-exact. Matching build
+proven byte-identical: built slus_006.64 hashes EQUAL with and without the
+whole change set (A/B rebuild).
+
+Port integration:
+- g_pSoundSpuRegisters (retail .sdata -> 0x1F801C00) was a NULL auto-stub --
+  safe only while the tick was stubbed. Now backed by a static SpuUnion page
+  in sound.c (port-only); the real tick's register writes (key on/off, ADSR,
+  pitch) land in real memory, faithfully maintained but not yet wired to the
+  OpenAL backend (that is the B5/WDS leg).
+- LANDMINE FOUND + FIXED (the SoundClearVoiceDataPointers class): FieldLoad's
+  walkmesh LZSS decompress writes ~0x220 bytes into D_800658DC, a default
+  32-byte data stub -- every field load silently trampled the neighbouring
+  stubs including the sound heap D_80065B0C. Harmless while nothing read the
+  heap; the real tick crashed on the corrupted manager list (caught by
+  hardware watchpoint). Fixed by sizing D_800658DC to its retail 0x230 in
+  symbol_addrs (stub generator honours size:).
+- func_8003EFE4's per-voice envelope method pointer stays SoundPsxAddress
+  (LP64-safe); its jalr is unreached until the envelope setters land (step 3
+  runtime-trace set). g_SoundScriptHandlers dispatch is compiled but
+  unreached in-port (no sequence data loaded -- elements stay inactive), so
+  the handler table stays a stub until step 3 provides host routing.
+
+Validation (dual regime):
+- Matching: 12/12 snddiff EXACT (6 real, 6 via INCLUDE_ASM); whole-object
+  instruction diff clean modulo reloc-vs-addend encodings that link
+  identically; slus binary A/B hash-identical.
+- Live tick: real func_8003C020 dispatching at 240Hz (120 ticks/500ms),
+  manager coherent after ticks; pump/prim/init/gate-stress probes all PASS
+  with the real body (1.81M bracket pairs vs 462 ticks, zero torn reads,
+  630 re-entrant brackets).
+- TSan (real bodies): probes + Map001 field boot -- ZERO races in sound.c;
+  only the two catalogued pre-existing PsyX infra races (vblank counter,
+  shutdown) remain.
+- Five-map watchdogs (0/1/14/47/334) boot clean with the real tick running
+  during field play; field-diag tripwire lines addr-normalized EXACT.
+Honest state: tick core real, dispatching at 240Hz into the proven gate,
+TSan-clean; script handlers + envelope setters + WDS still stubbed -- the
+tick processes an empty queue, NOT YET AUDIBLE. Next: step 3 (51 script
+handlers + host handler-table routing), then error/WDS + B5 for audible.
+Evidence: proven (snddiff x12 + A/B binary hash; live-tick probes; TSan;
+five-map tripwires; watchpoint root-cause on the stub overrun)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

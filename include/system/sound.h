@@ -238,7 +238,7 @@ typedef struct {
     /* 0x64  */ u8 unk_0x64[0x02];
     /* 0x66  */ u16 octave;
     /* 0x68  */ u32 unk68; // Final note to play?
-    /* 0x6C  */ u16 unk_0x6C;
+    /* 0x6C  */ s16 unk_0x6C;   /* instrument pitch base (read signed by the tick core) */
     /* 0x6E  */ s16 unk_0x6E;
     /* 0x70  */ u8 unk_0x70[0x04];
     /* 0x74  */ u16 unk_0x74; // Pan?
@@ -361,7 +361,7 @@ typedef struct AudioManager {
     /* 0x54 */ s32 unk_0x54;
     /* 0x58 */ s32 unk_0x58;                          
     /* 0x5C */ s32 unk_0x5c;
-    /* 0x60 */ s16 unk_0x60;
+    /* 0x60 */ u16 unk_0x60;
     /* 0x62 */ u8 unk_0x62[2];
     /* 0x64 */ AudioInterpolator unk_Interpolator_0x64;
     /* 0x70 */ AudioInterpolator unk_Interpolator_0x70;
@@ -571,5 +571,19 @@ extern void SoundInitialize(s32 arg0);
 extern AudioManager* func_8003B148(s32 arg0);
 extern u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2);
 extern void func_800386C4(s32 arg0);
+
+// Tick-core functions (240Hz func_8003C020 subtree; called before their
+// definitions in sound.c).
+extern void func_8003A838(AudioManager* manager, s32 target, s32 steps);
+extern void func_8003AE84(AudioManager* manager);
+extern void func_8003C4C4(AudioManager* manager, AudioElement* pAudioElements, s32 count);
+extern void func_8003C6E8(AudioManager* manager, AudioElement* pAudioElements, s32 count);
+extern void func_8003CC84(AudioManager* manager, AudioElement* pAudioElements, s32 note);
+extern void func_8003E5BC(s32 instrument, AudioElement* pAudioElements);
+extern void func_8003E900(void);
+extern void func_8003EB5C(void);
+extern void func_8003EBF0(AudioManager* manager, AudioElement* pAudioElements, s32 count);
+extern s16 func_8003EEA0(u32 note);
+extern void func_8003EFE4(AudioManager* manager, AudioElement* pAudioElements, s32 count);
 
 #endif
