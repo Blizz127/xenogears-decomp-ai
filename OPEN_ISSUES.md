@@ -553,6 +553,40 @@ edges; gating traced from func_8003C020.s + retail DisableEvent discipline;
 SPU-IRQ role read from SoundSpuIRQHandler)
 Last verified @ 2ffd372
 
+### Sound tick gate LANDED (tick-leg step 1; tick body still stubbed)
+
+The gating pass above is implemented: `psycross_sound_gate.patch` adds
+`g_SoundTickMutex` (SDL recursive mutex, created before the interrupt thread
+spawns). `DisableEvent` on the counter-2/EvSpINT tick event acquires AND HOLDS
+it (per-thread `__thread` depth); `EnableEvent` releases one level; unpaired
+enables (func_80037F44 boot toggle) just flip the flag; `CloseEvent` dissolves
+the closing thread's held levels (both port probes Disable -> Close without an
+Enable). The 240Hz pump TRY-locks around dispatch: a held bracket DROPS the
+tick (retail's disabled-event semantics), and TryLock makes pump stall and
+lock-order deadlock structurally impossible. All registry mutations run under
+the mutex. func_8003C020's body REMAINS STUBBED -- the mechanism is validated
+before any real body can race.
+
+Validation (the concurrency regime, XENO_TSAN=1 + XENO_SOUND_GATE_STRESS=1):
+- Gate-stress probe PASS (normal + TSan builds): gated pump 120 ticks/500ms
+  (240Hz exact); held bracket = +0 ticks over 200ms while vblank advances
+  (pump thread alive); 1.82M main-thread bracket pairs vs 464 ticks with ZERO
+  torn multi-word reads on either side; 632 func_8003AE84-style re-entrant
+  brackets on the tick path, no self-deadlock; post-CloseEvent dispatch
+  resumes (no leaked hold).
+- TSan (probe suite + Map001 field boot): ZERO data races on sound shared
+  state. Remaining instrumented-code reports are pre-existing PsyX infra
+  races to review later: g_psxSysCounters vblank counter (PsyX_main.cpp:190
+  vs :165), LIBETC.C:27 ResetCallback registration, PsyX_Shutdown teardown.
+- Regression: pump/prim/init probes PASS; manager coherent; five-map
+  watchdogs (0/1/14/47/334) boot to field main loop, field-diag tripwire
+  lines addr-normalized EXACT vs prior baselines.
+- Patch idempotent: reverse-apply clean, build re-applies, rerun no-op.
+Honest state: GATING VALIDATED, tick body stubbed, no real tick body yet.
+Next: tick-core decomp (12 fns, leaf-up, func_8003C020 last) under the gate.
+Evidence: proven (gate-stress + TSan runs; five-map smokes; idempotency cycle)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

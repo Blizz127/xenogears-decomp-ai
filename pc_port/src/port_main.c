@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include "xeno_pc.h"
 #include "psx_memory.h"
@@ -36,7 +37,9 @@ extern int CloseEvent(unsigned int event);
 #define PORT_EvSpINT  0x0002
 #define PORT_EvMdINTR 0x1000
 extern int PsyX_SPUAL_IsInit(void);
-static volatile long s_soundPumpProbeCount = 0;
+/* _Atomic: incremented on the pump thread, read on main -- keeps the probe
+ * counter itself out of TSan reports (the gate validation regime). */
+static _Atomic long s_soundPumpProbeCount = 0;
 static long PortSoundPumpProbe(void) { s_soundPumpProbeCount++; return 0; }
 static void PortSleepMs(long ms) {
     struct timespec ts;
@@ -173,6 +176,149 @@ static void PortRunSoundInitProbe(void) {
         printf("[sound-init] post-init pump: %ld ticks/500ms (~%.0f Hz, want ~240) -> tick %s\n",
                n, n / 0.5, (n > 90 && n < 150) ? "FIRING" : "NOT firing");
     }
+}
+
+/* Gate-stress probe (env XENO_SOUND_GATE_STRESS=1): the concurrency regime for
+ * the sound tick gate (g_SoundTickMutex). Validates, with the REAL tick event
+ * registered and its stub dispatching at 240Hz:
+ *   1. the gated pump still dispatches at ~240Hz (TryLock does not starve);
+ *   2. an open DisableEvent bracket freezes tick dispatch while the pump
+ *      THREAD stays alive (vblank counter advances -- no pump stall), and
+ *      EnableEvent resumes dispatch (retail toggle func_80037F44/F88 shape);
+ *   3. under main-thread-vs-tick contention, multi-word invariants written
+ *      inside brackets are never observed torn by the tick callback (and vice
+ *      versa), the callback's func_8003AE84-style re-entrant bracket does not
+ *      self-deadlock, and nested main-thread brackets recurse safely.
+ * All shared fields are accessed ONLY under the bracket/mutex -- so a gate
+ * regression shows up BOTH as an invariant violation here and as a TSan data
+ * race in the XENO_TSAN=1 build. Completion of the probe is itself the
+ * no-deadlock proof (a lost lock level or self-deadlock hangs it). */
+extern int PsyX_Sys_GetVBlankCount(void);
+/* Initialised to a tuple SATISFYING the invariants (y=2x+1, z=x^y; q=3p) so
+ * ticks that run before the first main-thread write don't count as torn. */
+static struct { long x, y, z; } s_gateA = { 0, 1, 1 };   /* main writes (bracket), tick reads */
+static struct { long p, q; }    s_gateB = { 0, 0 };      /* tick writes (re-entrant bracket), main reads (bracket) */
+static _Atomic long s_gateTicks       = 0; /* tick callback invocations */
+static _Atomic long s_gateTickTorn    = 0; /* tick saw a torn s_gateA */
+static _Atomic long s_gateReentries   = 0; /* completed re-entrant brackets on the tick path */
+static int s_gateHandle = 0;
+
+static long PortGateStressTick(void) {
+    /* Runs on the pump thread, dispatched under g_SoundTickMutex. */
+    long x = s_gateA.x, y = s_gateA.y, z = s_gateA.z;
+    if (y != 2 * x + 1 || z != (x ^ y))
+        s_gateTickTorn++;
+    /* func_8003AE84 shape: the tick path itself re-enters the
+     * DisableEvent/EnableEvent bracket. Non-recursive would self-deadlock. */
+    DisableEvent(s_gateHandle);
+    s_gateB.p++;
+    s_gateB.q = s_gateB.p * 3;
+    EnableEvent(s_gateHandle);
+    s_gateReentries++;
+    s_gateTicks++;
+    return 0;
+}
+
+static double PortMonotonicSeconds(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static void PortRunSoundGateStress(void) {
+    long rate, frozen0, frozen1, resumed, iters = 0, mainTorn = 0;
+    long ticksBefore, ticksDuring;
+    int vbl0, vbl1;
+    int rate_ok, freeze_ok, alive_ok, resume_ok, torn_ok, reentry_ok, ticked_ok;
+    double t0;
+
+    s_gateHandle = OpenEvent(PORT_RCntCNT2, PORT_EvSpINT, PORT_EvMdINTR,
+                             PortGateStressTick);
+    printf("[gate-stress] OpenEvent handle=%d (want >0)\n", s_gateHandle);
+
+    /* 1. gated pump rate (no contention) */
+    s_gateTicks = 0;
+    EnableEvent(s_gateHandle);          /* unpaired enable: flag flip only */
+    PortSleepMs(500);
+    rate = s_gateTicks;
+    rate_ok = (rate > 90 && rate < 150);
+    printf("[gate-stress] gated pump: %ld ticks/500ms (~%.0f Hz, want ~240, ok=%d)\n",
+           rate, rate / 0.5, rate_ok);
+
+    /* 2. held bracket freezes dispatch but not the pump thread */
+    DisableEvent(s_gateHandle);         /* bracket open: mutex HELD */
+    frozen0 = s_gateTicks;
+    vbl0 = PsyX_Sys_GetVBlankCount();
+    PortSleepMs(200);
+    frozen1 = s_gateTicks;
+    vbl1 = PsyX_Sys_GetVBlankCount();
+    EnableEvent(s_gateHandle);          /* bracket close */
+    PortSleepMs(200);
+    resumed = s_gateTicks;
+    freeze_ok = (frozen1 == frozen0);
+    alive_ok  = (vbl1 > vbl0);
+    resume_ok = (resumed > frozen1 + 20);
+    printf("[gate-stress] bracket held 200ms: +%ld ticks (want 0, ok=%d); "
+           "vblank advanced %d (want >0: pump thread alive, ok=%d); "
+           "resumed +%ld after release (ok=%d)\n",
+           frozen1 - frozen0, freeze_ok, vbl1 - vbl0, alive_ok,
+           resumed - frozen1, resume_ok);
+
+    /* 3. contention: hammer brackets + invariants from main for ~2s */
+    ticksBefore = s_gateTicks;
+    t0 = PortMonotonicSeconds();
+    while (PortMonotonicSeconds() - t0 < 2.0) {
+        long i = ++iters, p, q;
+        DisableEvent(s_gateHandle);     /* bracket open */
+        s_gateA.x = i;                  /* multi-word write the tick must */
+        s_gateA.y = 2 * i + 1;          /* never observe half-done       */
+        s_gateA.z = i ^ (2 * i + 1);
+        DisableEvent(s_gateHandle);     /* nested bracket (recursion) */
+        p = s_gateB.p; q = s_gateB.q;
+        if (q != p * 3)
+            mainTorn++;
+        EnableEvent(s_gateHandle);      /* close nested */
+        EnableEvent(s_gateHandle);      /* close outer */
+        if ((iters & 0x3FF) == 0)
+            PortSleepMs(1);             /* windows for the tick to win the lock */
+    }
+    ticksDuring = s_gateTicks - ticksBefore;
+    torn_ok    = (s_gateTickTorn == 0 && mainTorn == 0);
+    reentry_ok = (s_gateReentries > 0);
+    ticked_ok  = (ticksDuring > 50);
+    printf("[gate-stress] contention 2s: %ld bracket pairs, %ld ticks ran (ok=%d), "
+           "%ld re-entrant brackets (ok=%d)\n",
+           iters, ticksDuring, ticked_ok, (long)s_gateReentries, reentry_ok);
+    printf("[gate-stress] torn reads: tick=%ld main=%ld (want 0/0, ok=%d)\n",
+           (long)s_gateTickTorn, mainTorn, torn_ok);
+
+    DisableEvent(s_gateHandle);
+    CloseEvent(s_gateHandle);           /* dissolves the open bracket (probe shape) */
+
+    /* 4. post-close: the CloseEvent bracket-dissolve must have released the
+     * mutex -- the REAL tick (func_8003C020 stub, enabled by SoundInitialize)
+     * must still be dispatching or every later tick is silenced. */
+    s_soundPumpProbeCount = 0;
+    {
+        int h = OpenEvent(PORT_RCntCNT2, PORT_EvSpINT, PORT_EvMdINTR,
+                          PortSoundPumpProbe);
+        long n;
+        EnableEvent(h);
+        PortSleepMs(300);
+        n = s_soundPumpProbeCount;
+        DisableEvent(h);
+        CloseEvent(h);
+        printf("[gate-stress] post-close pump: %ld ticks/300ms (want >40: close "
+               "released the held bracket, ok=%d)\n", n, n > 40);
+        rate_ok = rate_ok && (n > 40);
+    }
+
+    printf("[gate-stress] RESULT: %s (rate=%d freeze=%d alive=%d resume=%d "
+           "torn=%d reentry=%d ticked=%d)\n",
+           (rate_ok && freeze_ok && alive_ok && resume_ok && torn_ok &&
+            reentry_ok && ticked_ok) ? "PASS" : "FAIL",
+           rate_ok, freeze_ok, alive_ok, resume_ok, torn_ok, reentry_ok,
+           ticked_ok);
 }
 
 #define WINDOW_TITLE  "Xenogears (PC port)"
@@ -346,6 +492,14 @@ int main(int argc, char** argv) {
     SoundInitialize(0);
     if (getenv("XENO_SOUND_INIT_PROBE")) {
         PortRunSoundInitProbe();
+    }
+
+    /* 4d-probe (tick-leg step 1, gate-first): concurrency validation of the
+     * sound tick gate (g_SoundTickMutex; psycross_sound_gate.patch). Runs with
+     * the real func_8003C020 registered + enabled (its stub dispatches under
+     * the gate throughout). Diagnostic only; does not run in normal boot. */
+    if (getenv("XENO_SOUND_GATE_STRESS")) {
+        PortRunSoundGateStress();
     }
 
     /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */

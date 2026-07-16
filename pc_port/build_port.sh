@@ -18,7 +18,29 @@ cd "$ROOT"
 PSX="pc_port/extern/PsyCross"
 OUT="pc_port/build_native"
 OBJ="$OUT/obj"
+
+# Concurrency-validation build (the third regime, alongside objdiff + behavioral):
+# XENO_TSAN=1 rebuilds PsyCross + game TUs + stubs + link with ThreadSanitizer
+# into separate build dirs (pc_port/build_tsan, pc_port/build_native_tsan) so
+# the normal artifacts stay untouched. Used to prove the sound tick gate
+# (g_SoundTickMutex) holds: zero data races on sound shared state under
+# main-thread-vs-240Hz-tick contention.
+TSAN_FLAGS=""
+PSYX_BUILD="pc_port/build"
+if [ "${XENO_TSAN:-0}" = "1" ]; then
+    TSAN_FLAGS="-fsanitize=thread"
+    PSYX_BUILD="pc_port/build_tsan"
+    OUT="pc_port/build_native_tsan"
+    OBJ="$OUT/obj"
+    echo "==> XENO_TSAN=1: ThreadSanitizer build -> $OUT"
+fi
 mkdir -p "$OBJ"
+if [ -n "$TSAN_FLAGS" ] && [ -f pc_port/build_native/stubs.c ] && [ ! -f "$OUT/stubs.c" ]; then
+    # The TSan variant mirrors the normal build: reuse its validated stub
+    # manifest (without matching ELFs the generator cannot create one, and
+    # the undef set is identical by construction).
+    cp pc_port/build_native/stubs.c "$OUT/stubs.c"
+fi
 
 # This must run in an environment with the toolchain + libs (the distrobox on
 # Bazzite, NOT the immutable host). Fail fast with guidance if it's the wrong one.
@@ -51,6 +73,11 @@ GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EX
 # Leave GFLAGS byte-for-byte unchanged when unset.
 if [ -n "${XENO_DIAG_DEFINES:-}" ]; then
     GFLAGS="$GFLAGS $XENO_DIAG_DEFINES"
+fi
+# TSan instrumentation for game TUs (see XENO_TSAN above). GFLAGS stays
+# byte-for-byte unchanged when unset.
+if [ -n "$TSAN_FLAGS" ]; then
+    GFLAGS="$GFLAGS $TSAN_FLAGS"
 fi
 
 # Build-integrity policy:
@@ -710,17 +737,29 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_pump.patch" "_xeno_so
 # (master volume -> listener gain), SpuSetIRQ/SpuSetIRQCallback (state only; no
 # SPU IRQ source in the port). Behavioral, not objdiff-matched. See OPEN_ISSUES.md.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_prims.patch" "_xeno_sound_prims"
+# Sound tick gate (tick-leg step 1, gate-first): g_SoundTickMutex, a recursive
+# mutex mapping retail's DisableEvent/EnableEvent(g_unk_SoundEvent) bracket.
+# DisableEvent on the counter-2 tick event acquires-and-holds, EnableEvent
+# releases, the 240Hz pump TRY-locks around dispatch (a held bracket drops the
+# tick, matching retail's disabled-event semantics; the pump can never stall
+# or deadlock). Prerequisite for every real tick-body decomp. See OPEN_ISSUES.md.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_gate.patch" "_xeno_sound_gate"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
 # different container mount) so it reconfigures cleanly in the current env.
-if [ -f pc_port/build/CMakeCache.txt ] && \
-   ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$ROOT/pc_port" pc_port/build/CMakeCache.txt; then
-    echo "    (removing stale CMake cache)"; rm -rf pc_port/build
+if [ -f "$PSYX_BUILD/CMakeCache.txt" ] && \
+   ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$ROOT/pc_port" "$PSYX_BUILD/CMakeCache.txt"; then
+    echo "    (removing stale CMake cache)"; rm -rf "$PSYX_BUILD"
 fi
-cmake -S pc_port -B pc_port/build -DCMAKE_BUILD_TYPE=Debug >/dev/null
-cmake --build pc_port/build --target psycross -j"$(nproc)" >/dev/null
-PSYLIB="$(find pc_port/build -name 'libpsycross.a' 2>/dev/null | head -1)"
+if [ -n "$TSAN_FLAGS" ]; then
+    cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_C_FLAGS="$TSAN_FLAGS" -DCMAKE_CXX_FLAGS="$TSAN_FLAGS" >/dev/null
+else
+    cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug >/dev/null
+fi
+cmake --build "$PSYX_BUILD" --target psycross -j"$(nproc)" >/dev/null
+PSYLIB="$(find "$PSYX_BUILD" -name 'libpsycross.a' 2>/dev/null | head -1)"
 if [ -z "$PSYLIB" ] || [ ! -s "$PSYLIB" ]; then
     echo "ERROR: libpsycross.a was not built (the CMake step failed above)."
     echo "       Make sure you're in the distrobox with SDL2/OpenAL/OpenGL dev installed."
@@ -849,13 +888,19 @@ if ! gcc -c "$PORT_MAIN_SOURCE" $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/i
 fi
 
 LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
+if [ -n "$TSAN_FLAGS" ]; then
+    # TSan's EH instrumentation of the C++ PsyCross objects references the
+    # C++ personality routine (__gxx_personality_v0); the normal build does
+    # not need libstdc++ at all.
+    LIBS="$LIBS -lstdc++"
+fi
 # -no-pie: link non-PIE so the executable loads at a fixed low base and ALL of
 # its BSS (the emulated PSX RAM g_PsxRam[] plus every auto-stubbed data symbol)
 # lives below 4 GiB. The decompiled game truncates its own pointers to 32 bits
 # all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
 # low 32-bit address space makes every such truncation a lossless round-trip.
 NOPIE="-no-pie -fno-pie"
-LINK=(gcc -m64 $NOPIE "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
+LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
 "${LINK[@]}" 2> "$OUT/link1.err"
@@ -958,11 +1003,11 @@ if removed:
     print(f"    pruned stale function stubs: {', '.join(removed[:8])}"
           f"{'...' if len(removed) > 8 else ''}")
 PY
-    gcc -c "$OUT/stubs.c" -O0 -g -o "$OBJ/stubs.o"
+    gcc -c "$OUT/stubs.c" -O0 -g $TSAN_FLAGS -o "$OBJ/stubs.o"
 fi
 
 echo "==> [5/5] Final link"
-gcc -m64 $NOPIE "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
+gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     echo "    LINK OK -> $OUT/xeno-port"
 else
