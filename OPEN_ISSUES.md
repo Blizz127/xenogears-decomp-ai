@@ -641,6 +641,48 @@ Evidence: proven (snddiff x12 + A/B binary hash; live-tick probes; TSan;
 five-map tripwires; watchpoint root-cause on the stub overrun)
 Last verified @ HEAD of this commit
 
+### Handler layer batch 1 + host dispatch table (tick-leg step 3, partial)
+
+The host g_SoundScriptHandlers table is LIVE: 128 entries in retail slot
+order rebuilt as host-width function pointers (port-only; matching keeps the
+.sdata original). Batch 1 of the 51 unported handlers landed: **12 objdiff {}
+(oracle-confirmed fuzzy=100)** -- func_8003CE9C/CD54/DEB4/D370/D3A4/D884/
+E4BC/D034/DAB0/DE18/DF3C/D17C -- and **8 coexistence** (d88f13c; scheduling
+residual): func_8003CD08/D0E8/D110/DB2C/CE68/D7C8/D13C/D60C. **31 handlers
+remain unported** (mid/large: D8B8, D9A4, DD24, DC50, DF78, E04C, ... --
+scratchpad/handlers_sized.txt) for the next pass; their table slots dispatch
+to stubs until then (unreached without those opcodes in a stream).
+
+BUGS FOUND BY THIS PASS (the live-exercise payoff):
+- func_8003C6E8 (fa91aeb coexistence body) had FOUR active_flag-vs-status
+  transcription bugs (loop exit, post-loop gate, tie set/clear, gate word all
+  read `lhu 0($s2)` = active_flag in retail; the C read status). Matching
+  build was never affected (INCLUDE_ASM); the port's empty-queue tick never
+  reached them. Fixed + exercised.
+- 791f21b's D_800658DC size:0x230 swallowed D_80065ADC (a real symbol at
+  +0x200 referenced by field misc4) and broke the matching FIELD link --
+  latent because report-mode ninja has no link edges. Corrected: 0x200 +
+  D_80065ADC sized 0x30.
+
+Validation: synthetic sequence probe (XENO_SOUND_SEQ_PROBE) feeds a hand-
+built command stream to the live 240Hz interpreter -- five opcodes route to
+five distinct handlers with distinct observable effects; IP advances exactly
+to stream end (routing + operand-length proof); fermata counts down (the
+sequencer steps). SYNTHETIC data, labeled: full live exercise awaits WDS/B5.
+Matching binary byte-identical (d004692f...) with all 20 bodies; make build
+green (slus + field). TSan (probes + seq probe): zero sound races, only the
+two catalogued PsyX infra races. Five-map watchdogs boot clean, tripwire
+lines EXACT. Gotcha recorded: `make report` leaves build.ninja in report-only
+mode (no link edges); run `make build` after to restore the matching
+pipeline (gears matching vs gears report modes).
+
+Honest state: dispatch table live and routing-proven via synthetic stream;
+20/51 handlers real (12 {} oracle-confirmed + 8 coexistence); 31 handlers
+remain; NOT YET AUDIBLE (WDS/B5).
+Evidence: proven (oracle fuzzy=100 x12; seq-probe routing; A/B binary hash;
+TSan; five-map tripwires)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

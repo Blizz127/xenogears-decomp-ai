@@ -321,6 +321,102 @@ static void PortRunSoundGateStress(void) {
            ticked_ok);
 }
 
+/* Synthetic sequence-command probe (env XENO_SOUND_SEQ_PROBE=1): tick-leg
+ * step 3 validation. Real sequence data needs WDS/B5 (deferred), so this
+ * feeds a hand-built command stream to the live 240Hz interpreter instead:
+ * element 0 of the initialized manager is pointed at the stream and activated
+ * under the DisableEvent/EnableEvent bracket, the tick's func_8003C6E8 then
+ * dispatches through the host g_SoundScriptHandlers table. Five opcodes with
+ * five distinct observable effects prove TABLE ROUTING (a mis-routed opcode
+ * writes the wrong field and/or desynchronizes the stream so the final IP
+ * check fails):
+ *   0x97 func_8003CE68  time signature   -> manager unk_0x3a/3c/38
+ *   0xA0 func_8003D0E8  volume immediate -> manager unk_0x58
+ *   0xE9 func_8003DEB4  pan nudge        -> element +0x74
+ *   0xC1 func_8003D60C  raw ADSR         -> element +0x54..56
+ *   0xA9 SoundScriptSetUnk62 (pre-batch {}) -> element +0x62
+ *   0x80 func_8003CD08  rest             -> fermata + REST exit
+ * SYNTHETIC data, labeled as such: full live exercise with real sequence
+ * banks awaits the WDS/B5 leg. Diagnostic only; does not run in normal boot. */
+static const unsigned char s_seqProbeStream[] = {
+    0x97, 0x03, 0x04,
+    0xA0, 0x55,
+    0xE9, 0x10,
+    0xC1, 0x11, 0x22, 0x33,
+    0xA9, 0x44,
+    0x80, 0x7F,
+};
+static void PortRunSoundSeqProbe(void) {
+    unsigned char* mgr = (unsigned char*)(uintptr_t)D_800595D8;
+    unsigned char* el = mgr + 0x94;
+    int save58, save54, save50;
+    unsigned short save3a, save3c, save38, save36;
+        int ok_route, ok_mgr, ok_el, ok_ip, ok_ticked;
+
+    if (mgr == NULL) {
+        printf("[seq-probe] no manager (D_800595D8==0) -> SKIP\n");
+        return;
+    }
+    /* Arm under the bracket: script IP -> stream, element active, manager
+     * sequencing enabled at one step per tick. */
+    DisableEvent(g_unk_SoundEvent);
+    save58 = *(int*)(mgr + 0x58); save54 = *(int*)(mgr + 0x54);
+    save50 = *(int*)(mgr + 0x50);
+    save3a = *(unsigned short*)(mgr + 0x3A); save3c = *(unsigned short*)(mgr + 0x3C);
+    save38 = *(unsigned short*)(mgr + 0x38); save36 = *(unsigned short*)(mgr + 0x36);
+    *(unsigned short*)(mgr + 0x36) = 4;
+    *(int*)(mgr + 0x48) = 1;
+    *(int*)(mgr + 0x50) = 0;
+    *(int*)(mgr + 0x54) = 0x10000;
+    *(unsigned int*)(el + 0x14) = (unsigned int)(uintptr_t)s_seqProbeStream;  /* unk14 script IP */
+    *(unsigned short*)(el + 0x02) = 0;                                  /* status */
+    *(int*)(el + 0x5C) = 0;                                  /* fermata pair */
+    *(unsigned short*)(el + 0x00) = 0x1;                                /* active */
+    *(short*)(mgr + 0x10) |= 0x8000;                           /* manager active */
+    EnableEvent(g_unk_SoundEvent);
+
+    s_soundPumpProbeCount = 0;
+    PortSleepMs(100);   /* ~24 ticks; the stream completes on the first step */
+    DisableEvent(g_unk_SoundEvent);
+
+    ok_mgr = (*(unsigned short*)(mgr + 0x3A) == 0x30) && (*(unsigned short*)(mgr + 0x3C) == 4) &&
+             (*(unsigned short*)(mgr + 0x38) == 3) && (*(int*)(mgr + 0x58) == 0x550000);
+    ok_el = (*(unsigned short*)(el + 0x74) == 0x1000) &&
+            (*(unsigned char*)(el + 0x54) == 0x11) && (*(unsigned char*)(el + 0x55) == 0x22) &&
+            (*(unsigned char*)(el + 0x56) == 0x33) && (*(unsigned short*)(el + 0x62) == 0x44);
+    ok_ip = (*(unsigned int*)(el + 0x14) ==
+             (unsigned int)(uintptr_t)(s_seqProbeStream + sizeof(s_seqProbeStream)));
+    {
+        unsigned short fermata = *(unsigned short*)(el + 0x5C);
+        ok_ticked = (fermata > 0 && fermata <= 0x7F);
+    }
+    ok_route = ok_mgr && ok_el && ok_ip;
+    printf("[seq-probe] mgr: sig=%x/%x beats=%x vol58=%08x (ok=%d)\n",
+           *(unsigned short*)(mgr + 0x3A), *(unsigned short*)(mgr + 0x3C), *(unsigned short*)(mgr + 0x38),
+           *(int*)(mgr + 0x58), ok_mgr);
+    printf("[seq-probe] el: pan=%04x adsr=%02x/%02x/%02x unk62=%04x (ok=%d)\n",
+           *(unsigned short*)(el + 0x74), *(unsigned char*)(el + 0x54), *(unsigned char*)(el + 0x55),
+           *(unsigned char*)(el + 0x56), *(unsigned short*)(el + 0x62), ok_el);
+    printf("[seq-probe] ip advanced to end=%d fermata=0x%x counting=%d\n",
+           ok_ip, *(unsigned short*)(el + 0x5C), ok_ticked);
+    printf("[seq-probe] RESULT: %s (routing=%d, SYNTHETIC stream; real "
+           "sequence data awaits WDS/B5)\n",
+           (ok_route && ok_ticked) ? "PASS" : "FAIL", ok_route);
+
+    /* Teardown: park the element + manager back to the pre-probe state. */
+    *(unsigned short*)(el + 0x00) = 0;
+    *(unsigned short*)(el + 0x02) = 0;
+    *(int*)(el + 0x5C) = 0;
+    *(unsigned int*)(el + 0x14) = 0;
+    *(short*)(mgr + 0x10) &= 0x7FFF;
+    *(int*)(mgr + 0x48) = 0;
+    *(int*)(mgr + 0x58) = save58; *(int*)(mgr + 0x54) = save54;
+    *(int*)(mgr + 0x50) = save50;
+    *(unsigned short*)(mgr + 0x3A) = save3a; *(unsigned short*)(mgr + 0x3C) = save3c;
+    *(unsigned short*)(mgr + 0x38) = save38; *(unsigned short*)(mgr + 0x36) = save36;
+    EnableEvent(g_unk_SoundEvent);
+}
+
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 480
@@ -500,6 +596,12 @@ int main(int argc, char** argv) {
      * the gate throughout). Diagnostic only; does not run in normal boot. */
     if (getenv("XENO_SOUND_GATE_STRESS")) {
         PortRunSoundGateStress();
+    }
+
+    /* 4e-probe (tick-leg step 3): synthetic sequence-command stream through
+     * the live dispatch table. Diagnostic only; does not run in normal boot. */
+    if (getenv("XENO_SOUND_SEQ_PROBE")) {
+        PortRunSoundSeqProbe();
     }
 
     /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */

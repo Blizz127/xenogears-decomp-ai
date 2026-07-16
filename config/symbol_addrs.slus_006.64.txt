@@ -989,7 +989,8 @@ g_SoundTargetCdVolume = 0x8005A406;
 g_SoundChannels = 0x8006252C; // type:SoundVoiceData*[] size:0xC0
 g_SoundSpuMemoryBlocks = 0x8006F9FC; // type:SoundSpuMemoryBlock[] size:0xb0
 g_SoundSpuMemoryTableStart = 0x8006FAC8; // type:u8 size:0x24
-D_800658DC = 0x800658DC; // type:u8 size:0x230 walkmesh decompress scratch -- retail extends to the sound heap base, the default 32-byte stub let FieldLoad's LZSS write trample the neighbouring stubs (incl. the sound heap the 240Hz tick reads)
+D_800658DC = 0x800658DC; // type:u8 size:0x200 walkmesh decompress scratch -- retail-sized, the default 32-byte stub let FieldLoad's LZSS write trample the neighbouring stubs (incl. the sound heap the 240Hz tick reads)
+D_80065ADC = 0x80065ADC; // type:u8 size:0x30 walkmesh scratch tail (referenced by field misc4), sits between the scratch and the sound heap
 D_80065B0C = 0x80065B0C; // type:u8 size:0x6300
 
 // Controller
