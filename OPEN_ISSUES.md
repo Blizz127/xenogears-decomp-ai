@@ -407,7 +407,71 @@ Evidence: proven (behavioral probe PASS on the patch-built binary; all 7 wired
 symbols resolve to real `T` defs, zero stubbed; caller-trace for the 5-vs-6 and
 unconditional-`func_800386C4` corrections from `SoundInitialize.s` +
 `func_800386C4.s` + `sound.c`)
-Last verified @ HEAD (pre-commit)
+Last verified @ 74fe427
+
+### Phase 3-5 landed: cold-init decomped, routed, and behaviorally coherent
+
+The sound subsystem is now **initialized and coherent** in the port: the game's
+own `SoundInitialize(0)` is decompiled, routed into boot, and validated to build
+a coherent audio manager with the 240Hz tick firing (body still stubbed). This
+resolves the top-of-file "sound cold-init blocked" issue for the init milestone
+(playback/WDS remain, below).
+
+**The 4 init happy-path decomps** (corrected count from the Phase-2 note):
+- `func_8003B148` (audio-manager alloc + per-element voice assignment loop) --
+  **objdiff `{}`**.
+- `SoundInitialize` (the ~40-store/call top-level init sequence) -- **objdiff
+  `{}`** (packed manager pointer via `SOUND_PTR_TO_PSX`; 6 previously-undeclared
+  globals + 3 callbacks now declared in sound.h).
+- `SoundSpuMemoryAllocateBlockAtAddress` (block-search allocator) --
+  **coexistence** (d88f13c). Logic traced 1:1; residual is a gcc-2.7.2
+  register-coloring inversion (`addr`->s0 vs retail's s1, driven by `addr` being
+  live across `SoundSpuMemoryGetFreeBlock`) + base-pointer caching. Not `{}`.
+- `func_800386C4` (reverb-mode flag machine) -- **coexistence**. Logic traced
+  1:1; residual is the switch `expand_case` decision tree (retail linear-from-low
+  + tail-merged store vs gcc range-split); no switch/if-else variant reproduces
+  it. Not `{}`. Its `D_80059518` echo-controller leg is dead at cold init.
+
+`SoundSetupCdMix` (0x4000-gated) and the `SoundHandleError` error leg stay
+stubbed/deferred as designed. Matching build green; the 2 `{}` decomps match and
+the 2 coexistence functions stay byte-exact via `INCLUDE_ASM`. Pre-existing
+`func_8003B32C` mismatch (struct `unk_0x18` width) is unrelated and untouched.
+
+**Port integration (the func_80019578 duty port_main did not replicate):**
+`SoundInitialize(0)` routed in `port_main.c` after `SpuInit`, before pad init.
+Data-symbol sizing added to `symbol_addrs` for the new .bss the init path now
+touches: the sound heap `D_80065B0C` (0x6300) and `g_SoundSpuMemoryTableStart`
+(0x24). **Fixed an LP64 landmine:** `SoundClearVoiceDataPointers` strides by
+`sizeof(SoundVoiceData*)` (8 on the port vs 4 retail) to offset 184, but
+`g_SoundChannels` was stub-sized at the 32-byte default -> the clear overflowed
+into the adjacent `g_SoundHeapHead` stub and zeroed it, crashing the second
+`SoundHeapAllocate`. Sized `g_SoundChannels` to 0xC0 (24 x 8-byte pointers).
+
+**Reverb round-trip completed:** the init path reaches `SpuGetReverbModeType` /
+`SpuSetReverbModeDelayTime` / `SpuSetReverbModeFeedback` via
+`SoundSetReverbModeWithAllocation` -- these were absent from PsyCross (stubbed).
+Wired them onto the shared `s_reverbAttr` state (extends the prims patch), so the
+init happy path hits **zero stubs**.
+
+**Init-proof validation (`XENO_SOUND_INIT_PROBE`, all PASS):**
+- Init completes; **zero stub hits on the synchronous happy path** (the
+  `func_8003Axxx`/`func_80098430` stubs seen in a GDB window have no sound-tree
+  callers -- they are async interrupt/field-thread work, not init).
+- Manager coherent (fields read back, not just non-null): `D_800595D8`=0x7e0eb0,
+  `elementCount`=0x10, `unk_Flags`=2, `unk_0x18`=0x7F, `unk_0x32`=1, `unk_0x38`=4.
+- Real `func_8003C020` **registered** (`g_unk_SoundEvent`=1, callback resolved)
+  and **firing at 240Hz** (post-init shadow counter: 120 ticks/500ms), body still
+  stubbed -- the graduated tick probe.
+- Reverb round-trip + pump + prim probes still PASS; Map014/47/334 tripwires
+  boot clean (52/36/40 actors, reach field main loop, no crash) with init routed.
+
+**Gate flagged (not forced):** SPU IRQ has no source in the port and
+`EnterCriticalSection` is a no-op; safe while the tick body is stubbed (dispatched
+stub touches no shared state). Real tick body + cross-thread/IRQ gating are the
+gate before the tick leg. WDS/playback (`SoundLoadWdsFile`) NOT routed.
+Evidence: proven (2 objdiff `{}` + 2 coexistence logic-verified; init-proof probe
+suite PASS on the built port; tripwires clean; matching build green)
+Last verified @ cfd96fb
 
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 

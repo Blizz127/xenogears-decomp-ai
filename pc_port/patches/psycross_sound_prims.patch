@@ -103,7 +103,7 @@
  }
  
  int SpuInitMalloc(int num, char* top)
-@@ -229,13 +299,18 @@
+@@ -229,13 +299,39 @@
  
  int SpuSetReverbModeType(int mode)
  {
@@ -122,10 +122,31 @@
 +	s_reverbAttr.depth.left  = depth_left;
 +	s_reverbAttr.depth.right = depth_right;
 +	PsyX_ApplyReverbState();
++}
++
++/* _xeno_sound_prims: reverb delay/feedback/type-get complete the reverb-attr
++ * round-trip. Reached on the SoundInitialize happy path via
++ * SoundSetReverbModeWithAllocation; wired onto the shared s_reverbAttr state so
++ * the init path hits zero stubs. */
++void SpuSetReverbModeDelayTime(int delay)
++{
++	s_reverbAttr.delay = delay;
++	PsyX_ApplyReverbState();
++}
++
++void SpuSetReverbModeFeedback(int feedback)
++{
++	s_reverbAttr.feedback = feedback;
++	PsyX_ApplyReverbState();
++}
++
++void SpuGetReverbModeType(int* mode)
++{
++	*mode = s_reverbAttr.mode;
  }
  
  void SpuGetVoiceVolume(int vNum, short* volL, short* volR)
-@@ -343,8 +418,11 @@
+@@ -343,8 +439,11 @@
  
  int SpuSetIRQ(int on_off)
  {
@@ -139,7 +160,7 @@
  }
  
  unsigned int SpuSetIRQAddr(unsigned int x)
-@@ -355,8 +433,11 @@
+@@ -355,8 +454,11 @@
  
  SpuIRQCallbackProc SpuSetIRQCallback(SpuIRQCallbackProc x)
  {

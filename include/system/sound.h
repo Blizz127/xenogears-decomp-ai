@@ -542,6 +542,20 @@ extern SpuVolume g_SoundReverbDepth;
 
 extern CdlATV g_SoundCdRomAttenuation;
 
+// SoundInitialize state globals (undeclared until the init decomp).
+extern u8 g_SoundSpuMemoryTableStart[]; // SPU malloc table (SpuInitMalloc top)
+extern u8 D_80065B0C[];                 // sound heap region (SoundHeapInitialize base)
+extern SoundPsxAddress D_800595D8;      // current audio manager (packed 32-bit)
+extern void* D_80059518;                // echo-controller (0 at cold init)
+extern s32 D_800594E4;                  // init sentinel (0x12345678)
+extern s32 D_80059504;
+extern s32 D_80059544;
+
+// Callbacks referenced by SoundInitialize (defined later / asm).
+extern long func_8003C020();            // 240Hz RCnt2 tick callback (body stubbed)
+extern void SoundOnTransferCallback(void);
+extern void SoundSpuIRQHandler(void);
+
 // Heap / SPU-memory helpers. Their return and argument widths are established
 // by retail sound.s (0x80038F18, 0x800397C0, and 0x8003F614 respectively).
 void* SoundHeapAllocate(u32 allocSize);
@@ -551,5 +565,11 @@ int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, u16 targetValue);
 
 extern s32 SoundCalculateAudioManagerSize(s32 elementCount);
 extern void SoundSetVolumeWithPhase(s32, SpuVolume*, s32);
+
+// Init-tree functions (called before their definitions in sound.c).
+extern void SoundInitialize(s32 arg0);
+extern AudioManager* func_8003B148(s32 arg0);
+extern u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2);
+extern void func_800386C4(s32 arg0);
 
 #endif

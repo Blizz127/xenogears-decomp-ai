@@ -127,6 +127,54 @@ static void PortRunSoundPrimProbe(void) {
            (t_mode && t_depthL && t_depthR && t_master && t_irq && t_cb) ? "PASS" : "FAIL");
 }
 
+/* Init-proof milestone: the game's own SoundInitialize(0) routed into boot, plus
+ * a coherence probe. Reads BACK audio-manager fields (not just non-null) to
+ * defeat the hollow-init trap: after init, D_800595D8 must point at a manager
+ * whose func_8003B32C / SoundInitializeAudioManager fields are set. */
+extern void SoundInitialize(int mode);
+extern unsigned int D_800595D8;         /* packed audio-manager address */
+extern unsigned long g_unk_SoundEvent;  /* RCnt2 tick event handle */
+static void PortRunSoundInitProbe(void) {
+    unsigned int mgrAddr = D_800595D8;
+    unsigned char* mgr = (unsigned char*)(uintptr_t)mgrAddr;
+    int ok_addr = (mgrAddr != 0);
+    int ec = -1, flags = -1, f32 = -1, f38 = -1, f18 = -1;
+    int coherent;
+
+    if (ok_addr) {
+        ec    = mgr[0x14];                 /* elementCount u8, want 0x10 */
+        flags = *(short*)(mgr + 0x10);     /* unk_Flags, want 2 (func_8003B32C) */
+        f18   = mgr[0x18];                 /* unk_0x18 u8, want 0x7F (func_8003B32C) */
+        f32   = *(short*)(mgr + 0x32);     /* unk_0x32, want 1 (SoundInitializeAudioManager) */
+        f38   = *(short*)(mgr + 0x38);     /* unk_0x38, want 4 */
+    }
+    printf("[sound-init] D_800595D8=0x%08x (want !=0, ok=%d)\n", mgrAddr, ok_addr);
+    printf("[sound-init] manager fields: elementCount=0x%x(want 0x10) flags=%d(want 2) "
+           "unk18=0x%x(want 0x7F) unk32=%d(want 1) unk38=%d(want 4)\n",
+           ec, flags, f18, f32, f38);
+    printf("[sound-init] tick event g_unk_SoundEvent=0x%lx (want !=0)\n",
+           (unsigned long)g_unk_SoundEvent);
+    coherent = ok_addr && ec == 0x10 && flags == 2 && f18 == 0x7F && f32 == 1 && f38 == 4;
+    printf("[sound-init] RESULT: %s\n", coherent ? "PASS (manager coherent)" : "FAIL");
+
+    /* Post-init pump liveness: the real func_8003C020 is now registered on
+     * counter-2/EvSpINT and enabled (SoundAddAudioManagerToList). Register a
+     * shadow counter on the same event and measure 500ms -- the rate func_8003C020
+     * rides. Confirms the pump still dispatches at 240Hz with the real tick live. */
+    {
+        int h = OpenEvent(PORT_RCntCNT2, PORT_EvSpINT, PORT_EvMdINTR, PortSoundPumpProbe);
+        long n;
+        s_soundPumpProbeCount = 0;
+        EnableEvent(h);
+        PortSleepMs(500);
+        n = s_soundPumpProbeCount;
+        DisableEvent(h);
+        CloseEvent(h);
+        printf("[sound-init] post-init pump: %ld ticks/500ms (~%.0f Hz, want ~240) -> tick %s\n",
+               n, n / 0.5, (n > 90 && n < 150) ? "FIRING" : "NOT firing");
+    }
+}
+
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 480
@@ -285,6 +333,19 @@ int main(int argc, char** argv) {
      * awake backend. Diagnostic only; does not run in normal boot. */
     if (getenv("XENO_SOUND_PRIM_PROBE")) {
         PortRunSoundPrimProbe();
+    }
+
+    /* 4c (init-proof milestone): route the game's own SoundInitialize(0) into
+     * boot -- the func_80019578 duty port_main did not replicate. Wakes the sound
+     * manager: allocates the audio-manager (D_800595D8), sets up its sound heap,
+     * registers the 240Hz tick func_8003C020 on the RCnt2 pump (body still
+     * STUBBED), configures reverb/mixer via the wired Phase-2 primitives.
+     * Cross-thread safe while the tick body is stubbed -- the dispatched stub
+     * touches no shared state; SPU-IRQ / real tick body remain the gate before
+     * the tick leg. WDS/playback (SoundLoadWdsFile) intentionally NOT routed. */
+    SoundInitialize(0);
+    if (getenv("XENO_SOUND_INIT_PROBE")) {
+        PortRunSoundInitProbe();
     }
 
     /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */

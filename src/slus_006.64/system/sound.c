@@ -230,7 +230,56 @@ typedef union {
 extern SpuUnion* g_pSoundSpuRegisters;
 //----------------------------------------------------------------------------------------------------------------------
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundInitialize);
+void SoundInitialize(s32 arg0) {
+    if (g_SoundControlFlags < 0) {
+        SoundHandleError(0x28);
+        return;
+    }
+    g_SoundControlFlags = arg0 | 0xB801;
+    SpuInitMalloc(4, (char*)g_SoundSpuMemoryTableStart);
+    SoundHeapInitialize(D_80065B0C, 0x6300);
+    SoundSpuMemoryInitialize();
+    g_SoundTransferQueue = SoundHeapAllocate(0xA0);
+    SoundClearVoiceDataPointers();
+    D_800594E4 = 0x12345678;
+    g_SoundAudioManagerListHead = NULL;
+    D_800595D8 = 0;
+    g_SoundSedsLinkedList = NULL;
+    g_SoundWdsLinkedList = NULL;
+    D_80059518 = NULL;
+    g_SoundKeyOnFlags = 0;
+    g_SoundKeyOffFlags = 0;
+    g_unk_VoicesNeedingProcessing = 0;
+    g_SoundVolumeController.commonAttr.mvolmode.left = 0;
+    g_SoundVolumeController.commonAttr.mvolmode.right = 0;
+    g_SoundVolumeController.commonAttr.mask = 0xC;
+    EnterCriticalSection();
+    g_unk_SoundEvent = OpenEvent(0xF2000002, 2, 0x1000, func_8003C020);
+    SetRCnt(0xF2000002, 0x44E8, 0x1000);
+    StartRCnt(0xF2000002);
+    SpuSetTransferCallback(SoundOnTransferCallback);
+    SpuSetIRQCallback(SoundSpuIRQHandler);
+    SpuSetIRQ(0);
+    D_80059504 = 0;
+    g_SoundSpuIRQCount = 0;
+    ExitCriticalSection();
+    SoundSpuMemoryAllocateBlockAtAddress(0x2000, 0x10000, 4);
+    func_800386C4(1);
+    SoundSetCdAttr(0, 1);
+    SoundSetMasterVolumeWithFade(0x3FFF, 0);
+    SoundSetCdVolumeWithFade(0x7FFF, 0);
+    if (g_SoundControlFlags & 0x4000) {
+        SoundSetupCdMix(0x80);
+    }
+    D_800595D8 = SOUND_PTR_TO_PSX(func_8003B148(0x10));
+    D_80059544 = 8;
+    g_SoundReverbMemoryHandle = -1;
+    g_SoundUploadDestBuffer = 0;
+    g_SoundReverbType = 0xFF;
+    SoundSetReverbModeWithAllocation(4, 0, 0, 0);
+    SpuSetReverb(1);
+    g_SoundSpuErrorId = 0;
+}
 
 void SoundReset(void) {
     int i;
@@ -402,7 +451,70 @@ void func_8003869C(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
+ * keeps INCLUDE_ASM (byte-exact) below. Semantics traced 1:1 against the asm
+ * (reverb-mode flag machine: clear control bits 8-10, then OR in 0x100/0x300/
+ * 0x500 for arg 1/2/3; re-apply volume; flag active voices; optional CD mix;
+ * the D_80059518 echo-controller leg is dead at cold init -- that global is
+ * only ever set to 0). Residual vs {}: gcc-2.7.2 lowers the mode switch to a
+ * range-split decision tree (slti a0,3) whereas retail emits a linear
+ * beq-to-body chain with a tail-merged store; neither a switch, a flat nor a
+ * nested if-else, nor a shared-store switch reproduces retail's expand_case
+ * shape. Not claimed as {}. */
+void func_800386C4(s32 arg0) {
+    AudioManager* manager;
+    u8* p;
+    s32 value;
+    s16 flags;
+
+    flags = g_SoundControlFlags & 0xF8FF;
+    g_SoundControlFlags = flags;
+    switch (arg0) {
+    case 1:
+        g_SoundControlFlags = flags | 0x100;
+        break;
+    case 2:
+        g_SoundControlFlags = flags | 0x300;
+        break;
+    case 3:
+        g_SoundControlFlags = flags | 0x500;
+        break;
+    }
+    SoundApplyVolumeSettings();
+    SpuSetReverbModeDepth(g_SoundReverbDepth.left, g_SoundReverbDepth.right);
+    manager = g_SoundAudioManagerListHead;
+    if (manager != NULL) {
+        do {
+            unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+            manager = SOUND_PSX_TO_PTR(AudioManager, manager->next);
+        } while (manager != NULL);
+    }
+    if (g_SoundControlFlags & 0x4000) {
+        SoundSetupCdMix(g_SoundVolumeController.unk_field2);
+    }
+    p = (u8*)D_80059518;
+    if (p != NULL && (*(u16*)(p + 0x0) & 1)) {
+        value = *(u16*)(p + 0x12);
+        if (func_80038824() != 0) {
+            value <<= 7;
+            *(u16*)(p + 0x38) = value;
+            *(u16*)(p + 0x3A) = 0;
+            *(u16*)(p + 0x64) = 0;
+        } else {
+            value <<= 6;
+            *(u16*)(p + 0x38) = value;
+            *(u16*)(p + 0x3A) = value;
+            *(u16*)(p + 0x64) = value;
+        }
+        *(u16*)(p + 0x66) = value;
+        *(u16*)(p + 0x36) = 1;
+        *(u16*)(p + 0x62) = 1;
+    }
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800386C4);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 s32 func_80038824(void) {
@@ -824,7 +936,71 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateB
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800394B8);
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
+ * keeps INCLUDE_ASM (byte-exact) below. Semantics traced 1:1 against the asm
+ * (block-search over g_SoundSpuMemoryBlocks for a free gap containing
+ * [addr, addr+size); insert a new in-use block). Residual vs {}: gcc-2.7.2
+ * colors `addr` into s0 and the walking pointer into s1 (retail is the reverse)
+ * and reloads the array base instead of caching it in t0 -- a register-coloring
+ * inversion driven by `addr` being live across the SoundSpuMemoryGetFreeBlock
+ * call; the instruction stream is otherwise identical. Not claimed as {}. */
+u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2) {
+    SoundSpuMemoryBlock* pBlock;
+    SoundSpuMemoryBlock* pNext;
+    s32 freeIdx;
+    s32 gap;
+    s32 regionEnd;
+    s32 blockEnd;
+    s32 nextIdx;
+
+    pBlock = g_SoundSpuMemoryBlocks;
+    gap = 0;
+    regionEnd = addr + size;
+    blockEnd = pBlock->spuAddress + pBlock->size;
+
+    if (pBlock->spuAddress < addr) {
+        for (;;) {
+            nextIdx = pBlock->nextBlockIndex;
+            if (nextIdx == 0) {
+                gap = 0x80000 - blockEnd;
+                break;
+            }
+            pNext = &g_SoundSpuMemoryBlocks[nextIdx];
+            if (pNext->spuAddress >= regionEnd) {
+                gap = pNext->spuAddress - blockEnd;
+                break;
+            }
+            blockEnd = pNext->spuAddress + pNext->size;
+            if (pNext->spuAddress >= addr) {
+                break;
+            }
+            pBlock = pNext;
+        }
+    }
+
+    if (gap < size) {
+        return 0;
+    }
+    if (addr < blockEnd) {
+        return 0;
+    }
+    freeIdx = SoundSpuMemoryGetFreeBlock();
+    if (freeIdx < 0) {
+        return 0;
+    }
+    pNext = &g_SoundSpuMemoryBlocks[freeIdx];
+    pNext->flags = 0x80;
+    pNext->unk1 = 0;
+    pNext->spuAddress = addr;
+    pNext->size = size;
+    pNext->nextBlockIndex = pBlock->nextBlockIndex;
+    pBlock->nextBlockIndex = freeIdx;
+    return addr;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlockAtAddress);
+#endif
 
 int SoundSpuMemoryFreeBlock(int targetAddress) {
     SoundSpuMemoryBlock* pCurBlock;
@@ -1113,7 +1289,37 @@ void SoundReleaseAllVoices(AudioManager* manager) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B0AC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B148);
+AudioManager* func_8003B148(s32 arg0) {
+    s32 count;
+    AudioManager* manager;
+    AudioElement* elem;
+    s32 i;
+    s32 voice;
+    s32 n;
+
+    count = arg0 & ~1;
+    D_80059478 = count;
+    manager = SoundHeapAllocate(SoundCalculateAudioManagerSize(count));
+    if (manager == NULL) {
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    func_8003B32C(manager);
+    elem = manager->elements;
+    voice = 0x18 - count;
+    n = count;
+    i = 0;
+    do {
+        elem->active_flag = 0;
+        elem->unk_0x06[0] = i;
+        elem->voice_number = voice;
+        i++;
+        elem++;
+        voice++;
+    } while (--n);
+    SoundAddAudioManagerToList(manager);
+    return manager;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B1FC);
 
