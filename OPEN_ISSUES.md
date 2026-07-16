@@ -118,6 +118,106 @@ Restore the oracle stub afterward.
 Evidence: proven
 Last verified @ 609c426
 
+### Scoping pass (design + pricing, no implementation) — dd0dbfe
+
+Read-only design pass extending the map above. No showstopper found; the
+project is large and multi-layer. Key facts established this pass:
+
+**Host backend is REAL and can produce audio (not a showstopper).** The SPU
+backend is `pc_port/extern/PsyCross/src/audio/PsyX_SPUAL.cpp` — an OpenAL SPU
+emulation with the full playback path: voice attributes, key on/off, SPU-RAM
+`Write`/`Read`, and reverb via OpenAL EFX effect slots
+(`alAuxiliaryEffectSloti`, `g_nAlReverbEffect`). "No output path exists" is
+false.  BUT it is entirely dormant: `g_spuInit` is 0 because `SpuInit()` /
+`PsyX_SPUAL_InitSound()` is never called in the port boot, and every backend
+function early-returns on `if (!g_spuInit)`. So even the *wired* PSYQ
+primitives (`SpuSetReverb`, `SpuSetVoiceAttr`, `SpuSetKey`) currently no-op.
+
+**Five distinct blockers, do not conflate:**
+- **B0 backend device dormant:** `SpuInit`/`PsyX_SPUAL_InitSound` absent from
+  the port boot (`grep` in `pc_port/src/*.c` finds no call). Prereq for
+  everything below.
+- **B1 cold-init not routed:** retail reaches `SoundInitialize(0)` at
+  `func_80019578:0x80019668` (verified in the asm), followed by 4×
+  `SoundLoadWdsFile`. `port_main.c`'s `main()` re-implements the other
+  `func_80019578` boot duties (HeapInit, state reset, disc) but NOT
+  `SoundInitialize`. **Menu-thread trap confirmed live: a perfect layer behind
+  an uncalled init is silence.** Insertion point is known and bounded (the
+  same `port_main.c` shim), but it is REQUIRED, first-class work.
+- **B2 event pump missing (the core architectural gap):** `counters[3]`
+  (LIBAPI.C) store value/target/cycle but nothing advances them or dispatches
+  on target; `OpenEvent`/`EnableEvent`/`DisableEvent` are hollow (retain no
+  callback). The sound tick `func_8003C020` is registered as a **counter-2**
+  event and never fires. Leverage: `intrThreadMain` (PsyX_main.cpp) already
+  fires `vsync_callback` at the NTSC/PAL timestep on a dedicated SDL thread —
+  the pump is an *extension* (event-table registry in OpenEvent + counter-2
+  advance/dispatch in that thread), not a from-scratch build.
+- **B3 hollow primitives (7):** `SpuSetCommonAttr` (master/mix state),
+  `SpuSetReverbModeType` + `SpuSetReverbModeDepth` + `SpuSetReverbModeParam` +
+  `SpuSetReverbDepth` (reverb), `SpuSetIRQ` + `SpuSetIRQAddr` (SPU IRQ).
+  Reverb is the state-coherence trap the entry above warns of: on/off is wired
+  but type/depth are not, and `SpuGetReverbModeType`/`DelayTime`/`Feedback`
+  read state the no-ops never set. Design: a shared `SpuReverbAttr`-backed
+  state struct + a 10-entry PSX-mode → OpenAL-EFX-param table
+  (`SPU_REV_MODE_OFF..PIPE` → AL_REVERB decay/density/gain). Attr structs are
+  flat scalars / SPU-RAM offsets (not host pointers) → **low LP64 surface** for
+  the primitive layer; the LP64 work already lives in sound.c's 10 audited
+  layouts (done).
+- **B4 cold-init decomp unported:** `SoundInitialize` and its legs
+  (`func_8003B148`, `func_800386C4`, `func_8003C020`, `SoundSetupCdMix`,
+  `func_80039E60`, `func_8003E900/AE84/A838/EBF0/EB5C`, `SoundHandleError`) are
+  all `INCLUDE_ASM` (sound.c has 132 unported functions total). Unlike the SDK
+  layer, these ARE MIPS asm with an objdiff `{}` oracle — normal matched-decomp
+  work, not host design.
+- **B5 sample data:** `SoundLoadWdsFile` is stubbed — no sound banks load, so
+  audible output is gated behind the playback path even after B0-B4.
+
+**Behavioral probe suite (no objdiff oracle for B0-B3; "links != works"):**
+1. `func_8003C020` tick actually FIRES — counter/log in the tick; expect
+   ~counter-2-rate hits, not zero.
+2. Reverb state round-trips — set type/depth then `SpuGetReverbModeType`/etc.
+   return the set values (coherence, not defaults).
+3. Zero stub hits on the `SoundInitialize` happy path — stub-hit log during
+   init must be empty.
+4. `D_800595D8` becomes non-zero AND the manager stays coherent (not the
+   hollow-init trap: re-read manager fields after init).
+5. `g_spuInit == 1` and an actual sample reaches OpenAL — probe backend voice
+   activity / AL source state.
+
+**Pricing (phased):**
+- Phase 0 — route `SpuInit` at PsyX startup, set `g_spuInit`. Small (~1 call +
+  device-init verification).
+- Phase 1 — event pump: OpenEvent/Enable/Disable registry + counter-2 dispatch
+  in `intrThreadMain`. Medium; bounded by existing infra. No oracle → probe 1.
+- Phase 2 — primitive layer: wire 7 hollow primitives + reverb state/EFX table.
+  Medium (~7 funcs + 10-entry table). No oracle → probes 2, 5.
+- Phase 3 — cold-init decomp: `SoundInitialize` + ~12 named legs + transitive
+  deps (est. 20-40 funcs). Large, BUT objdiff `{}` oracle exists.
+- Phase 4 — route `SoundInitialize(0)` into `port_main.c` boot. Small.
+- Phase 5 — behavioral validation (probes 1-5). Small-medium.
+- Phase 6 (separate follow-on) — playback data: `SoundLoadWdsFile` + WDS load +
+  the ~132-function playback engine. Large.
+
+Milestone framing: "cold-init proven coherent, timer fires, zero stub hits"
+(the entry's phase-3 diagnostic goal) = Phases 0-2 + 4-5 + enough of Phase 3 to
+run `SoundInitialize`. "Audible in-game music" = all phases incl. B5/Phase 6.
+
+**Recommendation: FUND, scoped to the SDK-integration milestone (Phases 0-2,
+4-5), not the full engine.** Rationale: (1) no showstopper — backend is real,
+init is routable; (2) B2 (event pump) is the single highest-leverage bounded
+piece — it's reusable infrastructure and the one true "architecture, not a
+stub" gap; (3) the SDK layer (B0-B3) is the no-oracle work that everything
+above it needs and that only this design pass has de-risked; (4) defer B4
+(has an oracle — normal decomp, can proceed independently) and B5/Phase 6
+(playback) as follow-ons. Set expectations: audible sound is several phases
+out; the fundable near-term win is a *behaviorally-proven initialized sound
+subsystem* (manager coherent, timer delivering, reverb state live, zero stubs),
+which converts "silent and uninitialized" into "initialized and ticking" — the
+prerequisite state for all later audio work.
+Evidence: proven (backend/boot/counter code read; init-absence grep-confirmed;
+retail SoundInitialize call site verified in func_80019578 asm)
+Last verified @ dd0dbfe
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
