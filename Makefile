@@ -91,6 +91,7 @@ objdiff-config:
 	ninja -t clean; \
 	ninja -j$(NUMPROC); \
 	mkdir -p $(EXPECTED_DIR); \
+	rm -rf $(EXPECTED_DIR)/asm; \
 	mv build/asm $(EXPECTED_DIR)/asm; \
 	$(PYTHON) $(OBJDIFF_DIR)/objdiff_generate.py $(OBJDIFF_DIR)/config.yaml
 
