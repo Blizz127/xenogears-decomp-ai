@@ -1334,6 +1334,111 @@ Evidence: proven (in-game three-tier vs the M3-era silent-window control;
 deterministic cue; TSan clean; five exact tripwires; A/B binary hash)
 Last verified @ HEAD of this commit
 
+## Audio fidelity: hardware-ADSR scoping map (backend pass, priced, no implementation)
+
+SCOPING PASS (read-only; the audio-fidelity arc's first leg). The user-audible
+gap -- "plays right but sounds like a .wav, not a PS1" -- decomposes with
+hardware ADSR as the biggest lever: today a note keys on at its computed
+volume with NO attack ramp, and key-off is alSourceStop -- a hard cut with NO
+release tail. Every note is a rectangle. The SPU's per-note envelope
+(attack/decay/sustain/release) is what this pass scoped.
+
+(A) GROUND TRUTH -- the SPU ADSR algorithm (psx-spx, "SPU Volume and ADSR
+Generator", https://psx-spx.consoledev.net/soundprocessingunitspu/; the
+chapter is hardware-test-derived). ADSR1 (voice reg +0x8): bit15 attack mode
+(0=linear/1=exp), 14-10 attack shift, 9-8 attack step, 7-4 decay shift, 3-0
+sustain level. ADSR2 (+0xA): bit15 sustain mode, 14 sustain direction, 12-8
+sustain shift, 7-6 sustain step, 5 release mode, 4-0 release shift. Envelope
+level 0..0x7FFF advanced by a 44.1kHz counter machine: AdsrStep =
+(7-step) << max(0,11-shift) (negated for decrease), CounterIncrement =
+0x8000 >> max(0,shift-11), a step applies when the counter carries bit15.
+Exponential increase is fake (step/4 above level 0x6000, shift-dependent);
+exponential decrease scales the step by level/0x8000. Decay is always
+exp-decrease, ends at (SL+1)*0x800; attack always increase, ends at 0x7FFF;
+release always decrease, ends at 0. KON resets the level to ZERO and starts
+attack; KOFF switches to release from any phase. ENVX (+0xC) exposes the
+live level.
+
+(B) PLUMBING VERDICT: the params reach the REGISTER PAGE, not the backend.
+Retail computes everything -- the instrument load (func_8003E5BC leg)
+unpacks per-program ADSR fields from the WDS bank, seq cmds (0xC1 raw ADSR
+family) override them, and func_8003E900's dirty-flag flush (bits
+0x10/0x20/0x40/0x80/0x100) assembles real ADSR1/ADSR2 words into the
+SpuUnion page at +0x8/+0xA per voice, before committing KONs (ordering is
+already attr-before-key). The translator (PcPort_SpuRegFlushTick) forwards
+only VOLL/VOLR/PITCH/WDSA; the backend ignores ADSR mask bits anyway
+(PsyX_SPUAL_SetVoiceAttr's "TODO: ADSR" -- though SPUALVoice already embeds
+the full SpuVoiceAttr with ar/dr/sr/rr/sl/adsr1/adsr2 fields, so storage
+exists unused). PREREQUISITE (cheap, ~30 lines): change-detected raw-word
+forward from the page via the existing SPU_VOICE_ADSR_ADSR1|ADSR2 mask bits.
+
+LATENT BUG FOUND (fixed free by this pass): SpuGetVoiceEnvelopeAttr is an
+auto-stub that never writes its out-params -- seq cmd 0xFF (func_8003E54C,
+"release the voice once the envelope decays") branches on UNINITIALIZED
+stack. The real envelope generator backs this API with true ENVX and makes
+the engine's own voice-release logic correct.
+
+(C) APPLICATION POINT: per-tick AL_GAIN at the existing 240Hz translator
+tick (counter-2 event, g_SoundTickMutex-serialized -- the advance clock
+already fires in the right bracket). No software mix stage exists (PsyX
+decodes ADPCM at key-on into one static AL buffer per voice) and none is
+needed for phase 1. Composition rule: the envelope MULTIPLIES the
+volume-derived gain (effective = baseGain * level/0x7FFF); today
+SetVoiceAttr writes AL_GAIN directly from VOLL/VOLR, so the volume path must
+store baseGain and let the envelope tick own the final AL_GAIN write (two
+writers would fight). GRANULARITY: advance the spec's counter machine at
+44.1kHz in a per-tick batch (~184 cycles/voice/tick, ~1.1M iter/s for 24
+voices -- trivial), quantize the APPLICATION to 240Hz; OpenAL-soft smooths
+gain changes across its mix period, and sub-4ms attacks collapse to
+effectively-instant (audibly identical). The risky band is ~5-50ms ramps;
+phase 1's capture proof doubles as the stepping measurement. If stepping is
+audible, phase 2 is AL_SOFT_callback_buffer streaming (per-sample envelope
+in the mixer callback) -- the only leg that touches architecture, deferred
+until measured, NOT assumed needed.
+
+(D) STATE MACHINE (per SPUALVoice): {phase Off/Attack/Decay/Sustain/Release,
+level, counter}. KON -> level=0, Attack (do not re-latch: rates are read
+LIVE from the last-flushed adsr1/adsr2 each advance -- hardware reads the
+registers continuously, mid-note changes apply). Attack->Decay at 0x7FFF,
+Decay->Sustain at (SL+1)*0x800, KOFF -> Release from any phase; in Release
+the source KEEPS PLAYING (no alSourceStop) until level 0, then stops.
+Key-status semantics follow: GetKeyStatus stays AL_PLAYING-based, which now
+correctly reports SPU_OFF_ENV_ON during tails; mute/pause paths unchanged.
+
+(E) FIDELITY PROOF (curve-match, not "has an envelope"): (1) UNIT -- the
+envelope generator as a pure function, golden-diffed cycle-exact against an
+independent offline Python implementation of the psx-spx pseudocode over an
+AR/DR/SR/RR/SL x mode matrix (phase durations + level trajectories). (2)
+CAPTURE -- prim-probe a single note (constant-amplitude synthetic sample,
+chosen ADSR params), ALSOFT wave capture, extract gain(t) by windowed RMS
+divided by the sample's flat amplitude; assert attack-knee time and release
+slope within +/-1 tick (4.2ms), sustain plateau at (SL+1)*0x800/0x8000 of
+peak, exponential phases compared in the log domain. (3) IN-GAME A/B --
+MAP000 before/after: release tails visible in the waveform where notes now
+decay instead of cutting rectangular; by-ear confirmation. HONEST
+LIMITATION: the proof standard is "matches the psx-spx-documented algorithm"
+(itself derived from hardware tests); a real-console or
+DuckStation-reference A/B is an optional stretch, not the milestone gate.
+
+PRICING: BOUNDED backend pass, M2-sized; ZERO decomp (retail's side is
+complete and already proven byte-exact). Split: (i) translator plumb ~30
+lines (port_main.c); (ii) envelope generator + state machine + gain
+composition + key-off/status rework ~150-200 lines in PsyX_SPUAL.cpp --
+PATCH-MANAGED (extern/ is gitignored; new psycross_sound_adsr.patch beside
+the six existing patches; the C++ linkage trap applies to any new export --
+extern-C decl + nm/stubs.c check); (iii) proof tooling ~100 lines (Python
+SPU-curve model, envelope extractor, probe ADSR-param hook). Phases: 1 =
+plumb + machine + per-tick gain + curve-match proof (THE milestone,
+first-audible-fidelity); 2 = per-sample callback path ONLY if phase 1
+measures audible stepping; 3 = the other fidelity causes (ADPCM decode,
+reverb-vs-EFX, resampling) as separate later passes. SHOWSTOPPERS: none --
+both candidates checked and cleared (no mix-stage needed for phase 1;
+params unplumbed but cheap to plumb). Risk register: OpenAL-soft's
+gain-smoothing behavior is assumed, and phase 1's capture measures it.
+Evidence: scoped (read-only trace, spec + backend + translator + retail
+flush all read; no implementation)
+Last verified @ HEAD of this commit
+
 ## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
 
 User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in
