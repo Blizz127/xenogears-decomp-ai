@@ -1644,8 +1644,64 @@ fea685a mechanism.
 
 Repro: `./scratchpad/run_map014.sh` (or XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0
 XENO_FIELD_MAP=14 XENO_FIELD_ENTRANCE=0) and watch the intro zoom sequence.
-Evidence: observed (user, live gameplay); not yet investigated
-Last verified @ f2d8778
+
+ROOT CAUSE (diagnosed, gdb-only, no code changes; fix is a separate pass):
+the intro closeup is a DEDICATED SCREEN-FILLING PAINTING OBJECT -- actor 24,
+the "fiery painting" static model -- positioned directly in front of the
+scripted closeup camera. Its quads project EXACTLY where retail wants them
+(a grid spanning the full screen; per-quad probe at f60: xy from (-64,-116)
+to (415,247)) but nearly every screen-filling quad carries GTE FLAG
+0x80021000 (bit17 perspective-divide overflow -> bit31) from RTPT on its
+near-plane vertices, and ModelPrimQuadFT4Variant0's `rtptFlag < 0` gate
+(game_overrides.c:1079) rejects them. Only small edge slivers survive --
+the stray fire patches visible at the frame edges early in the scene. With
+the painting gone, the raw 3D scene shows through: the script camera
+(eye=(141,-75,-431) at=(23,-50,-548), held frames 0-211, script-armed and
+faithfully applied) sits 35 units behind the script-placed player at
+(115,-1,-455), whose head therefore fills the shot.
+
+PROOF (runtime experiment): clearing the RTPT/RTPS FLAG verdicts for actor
+24's quads only (gdb, no code change) recovers the retail shot -- the fire
+painting fills the frame through the closeup and the pull-back still works.
+Evidence frames: scratchpad/m14_bug_f120_head.png (defect),
+m14_rootcause_forced_f120/f180_painting.png (forced-accept recovery),
+m14_hidefei_current_f120_wall.png (hide-player intermediate: without the
+billboard the camera sees only a wall corner -- the painting content CANNOT
+come from the room BG/easel from this camera).
+
+ELIMINATED with evidence: harness-entry placement (spawn records are
+(165,-25)/(178,313); the player's (115,-1,-455) is script-placed); camera
+mis-decode (arm values logged at FieldScriptStartCameraMovement match the
+held camera); BG-angle (cur==target mod 0x1000); actor-visibility gate
+(func_800AAA74 passes, dispatch confirmed at f30/f120); stubbed opcode
+handlers (zero field-script stubs fire in the current build);
+XENO_E688_IGNORE_FLAG (no effect -- it bypasses func_8002E688's gate, but
+actor 24 draws through ModelPrimQuadFT4Variant0, a different walker with an
+unbypassed FLAG gate).
+
+FIX-PASS QUESTION (the one fork left): retail hardware demonstrably shows
+this scene, so either (a) real-GTE RTPT does not overflow the divide here
+(port-side SZ3 smaller than hardware's -- a transform/precision divergence
+upstream), or (b) PsyX's GTE divide-overflow semantics set bit17 where
+hardware wouldn't (UNR divide emulation), or (c) retail's variant-0 FT4
+walker asm does not reject on this FLAG pattern (compare the original asm
+behind D_8004FE50's proc entry). Next probe: dump SZ0..SZ3 for the rejected
+quads vs h=0x80 threshold (overflow iff h/2 >= SZ3 per psx-spx), and read
+retail's walker asm gate. The scene's script choreography (extended opcodes
+0x26/0x27 = FieldDistortionInitialize/control -- the painting ripple)
+composes ON TOP of the billboard via framebuffer feedback and needs no
+separate fix.
+
+Related history: the same intro scene previously exposed fea685a (OT-bucket
+min-SZ), the BG-angle sign-extension fix (misc2.c:1207), and the
+"floating geometry" era (m14_cu_* captures: scattered BG fragments --
+resolved by the intervening matrix/CLUT fixes; today's room renders
+coherently). This scene is the port's render torture test: one shot
+exercises the scripted camera, the BG re-projection, actor models, the
+closeup billboard, AND the distortion feedback.
+Evidence: root-caused (per-quad walker probe + forced-accept recovery
+capture); fix not yet implemented
+Last verified @ 4ed19a9
 
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
