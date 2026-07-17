@@ -823,6 +823,33 @@ Recommendation: fund B5.1 (first audible) next -- 2 decomps + 1 wiring pass.
 Evidence: proven (subtree trace over split asm + C-body; transfer/IRQ roles
 read from real C; PsyX_SPUAL API confirmed)
 Last verified @ a7390b0
+
+### B5.1 pass 1 LANDED: WDS load real, samples verified in SPU-RAM
+
+SoundLoadWdsFile + func_80039024 decomped to **objdiff {} (oracle
+fuzzy=100)**; SoundSpuMemoryAllocateWDS's void->u32 signature restored
+retail's v0-passthrough (bare `return;` in a u32 fn -- codegen-identical,
+still {}). Oracle 1232/2292, code 36.21%, fuzzy 51.78%. Binary byte-exact.
+func_80039024 retail quirk (faithful): the heap-full failure path returns
+WITHOUT re-enabling the tick event (bracket leaks; unhit in practice).
+
+BEHAVIORAL PROOF (XENO_SOUND_WDS_PROBE): the REAL WDS bank (archive dir
+0x1C file 3, 155,120 bytes) reads through the working archive path, parses
+(dataOff 0x100, dataSize 0x25CF0), allocates SPU addr 0x12000, links into
+g_SoundWdsLinkedList, transfer queue drains, and **SpuRead-back of the
+backend SPU-RAM image MATCHES the source** at the first non-silent window
+(probe-model fix: ADPCM banks open with silent blocks -- verify at the
+first nonzero 16-byte window). Samples are IN SPU-RAM. NOT AUDIBLE -- pass
+2 wires the register->backend key-on translator.
+
+Validation: all 5 probes PASS (pump/init/gate/seq/wds); tripwire maps
+3/3 EXACT; make build green. TSan: runs blocked by the recurring
+PipeWire/OpenAL boot flake (documented since tick-core); the partial log
+shows only pre-existing races (LIBETC ResetCallback); full TSan re-verify
+deferred to a stable-audio session -- the pass's delta runs entirely under
+the proven gate brackets.
+Evidence: proven (oracle fuzzy=100 x3; SPU-RAM readback match; A/B hash)
+Last verified @ HEAD of this commit
 Evidence: proven (oracle fuzzy=100 x9; extended seq-probe incl. fade
 convergence; A/B binary hash; TSan; five-map tripwires)
 Last verified @ HEAD of this commit

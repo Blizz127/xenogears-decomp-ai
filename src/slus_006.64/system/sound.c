@@ -281,6 +281,8 @@ typedef struct {
 /* Handler-subtree helpers (unported; port auto-stubs). */
 extern void func_8003A14C();
 extern void func_80039F18();
+extern void* func_80039024(s32 size);
+extern u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode);
 extern void func_8003E3E0();
 extern s32 func_8003E290();
 /* Envelope handler methods (unported; bound directly by 0xD8/0xE4/0xEC). */
@@ -387,12 +389,45 @@ void func_80037F88(void) {
 
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundLoadWdsFile);
+// Load a WDS sample-bank file: allocate SPU-RAM for the ADPCM data, queue
+// its upload (transfer queue -> SpuWrite), copy the header into a sound-heap
+// block, and append the entry to the WDS linked list under the tick bracket.
+SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode) {
+    u32 spuAddr;
+    SoundWDSEntry* pEntry;
+
+    spuAddr = SoundSpuMemoryAllocateWDS(pWdsFile, mode);
+    if (spuAddr == 0) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SoundQueueSpuWriteCommand(spuAddr, (u8*)pWdsFile + pWdsFile->adpcmDataOffset,
+                              pWdsFile->adpcmDataSize, NULL);
+    pEntry = func_80039024(pWdsFile->headerSizeMby);
+    if (pEntry == NULL) {
+        SoundSpuMemoryFreeBlock(spuAddr);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pEntry, pWdsFile, pWdsFile->headerSizeMby);
+    pEntry->spuMemoryAddress = spuAddr;
+    DisableEvent(g_unk_SoundEvent);
+    {
+        SoundPsxAddress* pList = (SoundPsxAddress*)&g_SoundWdsLinkedList;
+        while (SOUND_PSX_TO_PTR(SoundWDSEntry, *pList) != NULL) {
+            pList = &SOUND_PSX_TO_PTR(SoundWDSEntry, *pList)->pNext;
+        }
+        *pList = SOUND_PTR_TO_PSX(pEntry);
+    }
+    pEntry->pNext = 0;
+    EnableEvent(g_unk_SoundEvent);
+    return pEntry;
+}
 
 // Loads part of a WDS file, basically a sized SoundLoadWdsFile?
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800380D0);
 
-void SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
+u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
     if (mode == SOUND_WDS_ALLOCATE_AT_ADDRESS) {
         mode = pWdsFile->spuMemoryAddress;
     } else if (mode == SOUND_WDS_ALLOCATE_AUTOMATIC) {
@@ -401,7 +436,7 @@ void SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
     
     if (mode == 0) {
         SoundSpuMemoryAllocateBlock(pWdsFile->adpcmDataSize, pWdsFile->unk1E);
-        return;
+        return;   /* retail: result rides v0 from the allocator (bare return in a u32 fn) */
     }
     
     SoundSpuMemoryAllocateBlockAtAddress(pWdsFile->adpcmDataSize, pWdsFile->spuMemoryAddress, pWdsFile->unk1E);
@@ -889,7 +924,60 @@ void* SoundHeapAllocate(u32 allocSize) {
 }
 
 // SoundHeapAllocate, but slightly different
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039024);
+// Sound-heap allocate-from-top: find the LAST gap that fits (keeping WDS
+// headers away from the low heap), link a block header in, zero the memory.
+// NOTE (retail-faithful): the allocation-failure path returns WITHOUT
+// re-enabling the tick event -- the bracket leaks on heap-full (unhit in
+// practice; the caller error-paths out).
+void* func_80039024(s32 size) {
+    SoundHeapBlockHeader* found;
+    u32 end;
+    s32 aligned;
+    void* pMem;
+
+    DisableEvent(g_unk_SoundEvent);
+    aligned = ((size + 0xF) & -0x10) + 0x10;
+    found = NULL;
+    end = 0;
+    {
+        SoundHeapBlockHeader* blk = g_SoundHeapHead;
+        u32 heapEnd = g_SoundHeapEnd;
+        for (;;) {
+            SoundPsxAddress next = blk->pNext;
+            if (next == 0) {
+                if ((s32)(heapEnd - blk->pPrev) >= aligned) {
+                    found = blk;
+                    end = heapEnd;
+                }
+                break;
+            }
+            if ((s32)(next - blk->pPrev) >= aligned) {
+                found = blk;
+                end = next;
+            }
+            blk = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, next);
+        }
+    }
+    if (found == NULL) {
+        return NULL;
+    }
+    {
+        SoundHeapBlockHeader* hdr;
+        end = end - aligned;
+        hdr = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, (end + 0xF) & -0x10);
+        pMem = (u8*)hdr + 0x10;
+        hdr->pPrev = SOUND_PTR_TO_PSX((u8*)pMem + size);
+        hdr->pNext = 0;
+        hdr->unk4 = 0;
+        hdr->unk0 = 0x2;
+        hdr->unk2 = 0;
+        hdr->pNext = found->pNext;
+        found->pNext = SOUND_PTR_TO_PSX(hdr);
+        EnableEvent(g_unk_SoundEvent);
+        SoundHeapClearBlockMemory(pMem, size);
+        return pMem;
+    }
+}
 
 void SoundHeapFree(void* pMemory) {
     SoundHeapBlockHeader* pBlock;

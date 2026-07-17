@@ -674,6 +674,71 @@ int main(int argc, char** argv) {
             ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
             printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
 
+            /* B5.1 WDS-load probe (env XENO_SOUND_WDS_PROBE=1): replicate the
+             * retail loader pair (func_80085FB8 + func_80085F30 core): read the
+             * REAL WDS sample bank (archive dir 0x1C, file 3) through the
+             * working archive path, SoundLoadWdsFile it, and PROVE the samples
+             * landed in the backend SPU-RAM image by SpuRead-back comparison.
+             * Samples LOAD only -- key-on translation (audible) is B5.1 pass 2. */
+            if (getenv("XENO_SOUND_WDS_PROBE")) {
+                extern int ArchiveDecodeAlignedSize(int fileIndex);
+                extern unsigned int SpuSetTransferStartAddr(unsigned int addr);
+                extern unsigned int SpuRead(unsigned char* addr, unsigned int size);
+                extern int SpuIsTransferCompleted(int flag);
+                extern unsigned short g_SoundTransferQueueReadIndex;
+                extern unsigned short g_SoundTransferQueueWriteIndex;
+                extern void* SoundLoadWdsFile(void* pWdsFile, int mode);
+                void* buf;
+                unsigned char* entry;
+                int size;
+                ArchiveSetIndex(0x1C, 0x0);
+                size = ArchiveDecodeAlignedSize(3);
+                buf = HeapAlloc(size, 1);
+                ArchiveReadFileToBuffer(3, buf, 0, 0x80);
+                {
+                    unsigned int dataOff = *(unsigned int*)((unsigned char*)buf + 0x18);
+                    unsigned int dataSize = *(unsigned int*)((unsigned char*)buf + 0x14);
+                    unsigned char first[16];
+                    unsigned char rb[16];
+                    unsigned int probeOff = 0;
+                    int ok_entry, ok_spuaddr, ok_list, ok_queue, ok_bytes;
+                    /* ADPCM banks open with silent blocks; verify at the first
+                     * nonzero 16-byte window instead of offset 0. */
+                    while (probeOff + 16 < dataSize &&
+                           *(unsigned int*)((unsigned char*)buf + dataOff + probeOff) == 0) {
+                        probeOff += 16;
+                    }
+                    memcpy(first, (unsigned char*)buf + dataOff + probeOff, 16);
+                    entry = (unsigned char*)SoundLoadWdsFile(buf, 0);
+                    ok_entry = (entry != NULL);
+                    ok_spuaddr = ok_entry && (*(int*)(entry + 0x28) != 0);
+                    {
+                        extern void* g_SoundWdsLinkedList;
+                        ok_list = (g_SoundWdsLinkedList == (void*)entry);
+                    }
+                    ok_queue = (g_SoundTransferQueueReadIndex == g_SoundTransferQueueWriteIndex);
+                    memset(rb, 0, 16);
+                    if (ok_spuaddr) {
+                        SpuSetTransferStartAddr(*(int*)(entry + 0x28) + probeOff);
+                        SpuRead(rb, 16);
+                    }
+                    ok_bytes = (memcmp(rb, first, 16) == 0) &&
+                               !(first[0]==0 && first[1]==0 && first[2]==0 && first[3]==0 &&
+                                 first[4]==0 && first[5]==0 && first[6]==0 && first[7]==0);
+                    printf("[wds-probe] file: size=%d dataOff=0x%x dataSize=0x%x\n",
+                           size, dataOff, dataSize);
+                    printf("[wds-probe] entry=%d spuAddr=0x%x list=%d queueDrained=%d\n",
+                           ok_entry, ok_entry ? *(int*)(entry + 0x28) : 0, ok_list, ok_queue);
+                    printf("[wds-probe] SPU-RAM readback vs source @+0x%x: match=%d (src %02x%02x%02x%02x rb %02x%02x%02x%02x)\n",
+                           probeOff, ok_bytes, first[0], first[1], first[2], first[3],
+                           rb[0], rb[1], rb[2], rb[3]);
+                    printf("[wds-probe] RESULT: %s (samples LOADED to SPU-RAM; NOT audible -- pass 2 wires key-on)\n",
+                           (ok_entry && ok_spuaddr && ok_list && ok_queue && ok_bytes) ? "PASS" : "FAIL");
+                }
+                HeapFree(buf);
+                ArchiveSetIndex(4, 0);
+            }
+
             /* The KernelMenu "Field" option jumps straight into the field without
              * the new-game / worldmap setup that normally (a) fills
              * g_GameState.partyMembers and (b) selects the party-skin archive
