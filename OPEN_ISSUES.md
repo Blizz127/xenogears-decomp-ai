@@ -907,6 +907,68 @@ Evidence: proven (three-tier audible incl. silent control; TSan clean run;
 A/B binary hash; six probes; three tripwire maps)
 Last verified @ HEAD of this commit
 
+### Song-start path SCOPED (read-only trace; the map the B5.1 probe stands in for)
+
+TWO start paths, one driver. Sequenced sound starts EITHER as an SFX pair or
+as a music manager; both feed the already-ported tick/handler/translator
+engine (the tick's func_8003C020 port body already walks
+g_SoundAudioManagerListHead -- multi-manager is free).
+
+SFX pairs (menu/field cues): game APIs func_80039DB8(packed sedId<<16|entry)
+/ func_80039F9C(packed, slot, vol, pan) [+E18/EC4 (ported C)/E60/F18] ->
+**func_8003B644** (200 insns, the ONLY 0x409 element-armer): find SED in
+g_SoundSedsLinkedList, bind WDS bank, arm TWO elements (each SED entry = 2
+script-offset halfwords at +0x20, one script per channel), set el+0x14 IP,
+active=0x409/0x40B, el+0x78=0x7F<<24, **el+0x76=(reqVol x entry volume
+byte at sed[+0x18 table])>>7**, el+0x74=pan, mgr+0x10|=0x8000 -- everything
+the B5.1 play probe hand-armed. Handler func_8003CFF0 calls func_80039F18
+(script-spawned starts; currently a silent stub under real sequences).
+
+Music managers (field BGM): retail field func_80085C90 (per-frame poller,
+port SHIMMED; retail asm in matchings/) buffer-reads the SONG FILE --
+ArchiveSetIndex(0x1C,0) + ArchiveReadFileToBuffer(songId*2+0x14, D_80062648,
+0, 0x80), the SAME working path the WDS probe used -- then
+**func_80039850**(file) create-manager (elementCount=file[0x14], binds file
+at mgr+8; B0AC extra block if file[0x15]) -> **func_8003B22C** (copy header
+0x10-0x1D: wdsId+0x16, tempo bytes, reverb depths -> mgr,
+SoundSetReverbModeWithAllocation + ported SoundInitializeAudioManager) ->
+**func_8003B424** (136 insns; music twin of B644's loop: per-element script
+IPs from file payload, 0x7F<<24, SoundFindWdsEntry bank bind, E5BC prime,
+AssignVoiceAndStop) -> **func_8003A89C**(mgr, level, fade) = the
+manager-level (interp70) setter/fader = FE 0E's target (func_8008C84C,
+ported, mgr ptr D_80062528). Variants: func_80039910 rebind-same-manager,
+func_80039A80 restart, func_80039B68 WDS-rebind+level resume, func_800399D4
+free, func_8003AA30 resume-from-mute. interp70 DEFAULT 0x7F<<24 is already
+ported (SoundInitializeAudioManager line ~1895) -- the probe's zeros were
+el+0x76/el+0x78, both B644-armed.
+
+Data: song files = dir 0x1C file songId*2+0x14 (buffer-read, reachable NOW);
+music WDS banks = dir 0x1C file D_800ADFCC[musicIdx*2]*2+0x13 (retail
+STREAMS via func_80085560; port's ArchiveReadFile bails on CdlModeStream --
+substitute buffered read, host-wiring); common SED = dir 4 file 0xA8
+(SoundAddSedsEntry, ported). Field boot already routes: main.c
+func_80085B20(map's D_800B2290) at map load; cue opcodes at misc.c
+1552-1592 -> func_80085634/func_800855C8 (855C8 = no-op shim).
+
+Port traps identified: D_80062648 (song buffer, unmapped BSS at 0x80062648,
+~12.9KB gap to D_800658DC) will auto-stub tiny -- needs size: annotation
+(the D_800658DC LZSS lesson, applied proactively). func_80039F18 stub is
+callable from ported handler CFF0. No showstoppers found.
+
+Phased price (decomp insns via split asm, all oracle-checkable):
+M1 music-side decomp: 10 fns ~574 insns (39850/39910/399D4/39A80/39B68/
+B0AC/B22C/B424/A89C/AA30) -- one tick-core-sized pass. M2 first REAL
+sequence audible: host probe ~80 lines (buffer-read song+bank, 39850+39A80+
+A89C(0x7F)), three-tier audio proof -- rides M1. S1 SFX chain: 11 fns ~606
+insns (B644/A65C/F9C/DB8/E60/F18/A20C/A344/A55C/FF8/A094) -- menu+field
+cues, un-stubs CFF0 spawns. M3 field un-shim: real func_80085C90 body +
+func_800855C8/85678 + CdlModeStream buffered substitute + D_80062648
+sizing -- in-game music in MAP000 smoke. B5.2 envelopes (as scoped): host
+D_800508A4 routing + F240/F2A0 -- note shaping quality.
+Recommended order: M1 -> M2 (proof-of-life) -> S1 -> M3 -> B5.2.
+Evidence: traced (asm-level, both paths end-to-end; no implementation)
+Last verified @ 4dbf1a0
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
