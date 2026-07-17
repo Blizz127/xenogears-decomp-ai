@@ -969,6 +969,58 @@ Recommended order: M1 -> M2 (proof-of-life) -> S1 -> M3 -> B5.2.
 Evidence: traced (asm-level, both paths end-to-end; no implementation)
 Last verified @ 4dbf1a0
 
+### Song-start M1 LANDED: music arming layer decomped, 9/10 {} + 1 audited coexistence
+
+The 10 music-side functions from the scoping map are real. **{} (oracle
+fuzzy=100 x9)**: func_80039850 (create manager from song file; merged
+live-range idiom -- the parameter register is reused for the manager),
+func_80039910 (rebind + 0x4000 not-heap-owned), func_800399D4 (destroy;
+0x4000-guarded free), func_80039A80 (restart: re-init + re-arm + level under
+the bracket), func_80039B68 (WDS-rebind resume; single-cursor loop anchored
+on voice_data.flags -- the flags store sits LAST so the induction family
+anchors there), func_8003A89C (manager level/fade = interp70; FE 0E's
+target), func_8003AA30 (resume: reverb reapply + all-dirty + running),
+func_8003B0AC (5-byte override records -> manager tail block),
+func_8003B22C (song header -> manager + reverb + common init).
+**Coexistence (audited)**: func_8003B424 (the element-arm loop) -- the same
+cc1 anchor-rebase residual as C6E8/EBF0 (retail keeps the field cluster on
+the voice_data cursor; this cc1 rebases the family onto last-use/derived
+anchors, register-permuting the loop; 12 variants tried). Field-by-field
+offset map annotated inline; retail-faithful quirk kept: voice numbers lag
+the element index (element 0 = conductor, voice 0xFF, bounds-checked away).
+
+New matching idioms recorded: dbr fills a branch delay slot with a preceding
+independent copy (place `pF = pFile` BEFORE the error branch); the
+alias-variable (manager=(cast)pFile) blocks that placement; st[k]/named-field
+choice decides induction-family anchoring (byte-casts off a typed cursor
+split families).
+
+D_80062648 (field song buffer) size-annotated 0x3200 (0x62648..0x65848,
+flush to the next referenced symbol) BEFORE anything reads into it -- the
+D_800658DC lesson applied proactively. Validated under make build.
+
+TRIPWIRE CATCH (MAP014 segfault, fixed): Map014's field script issues FE 0E;
+with func_8003A89C now real, the func_80085C90 shim's "song loaded" report
+fed it D_80062528 == NULL (retail writes low kernel RAM silently -- no null
+guard in the asm). Port-boundary guards (XENO_PC_PORT-only, documented,
+remove at M3) added to func_8003A89C and func_800399D4 (misc4.c reaches it
+the same way). Matching binary unaffected.
+
+Validation: oracle 1232 -> 1241/2292 (+9 = the {} count), fuzzy 52.10%;
+slus + field.bin byte-exact (d004692f... / c4200fdb...); port + TSan builds
+green; all 6 probes PASS at 240Hz; TSan 0/38 reports touch sound.c or the
+M1 functions (rest = pre-existing gallium/SDL/PsyX families); five-map
+tripwires clean (MAP000/001/014 exact; 047/334 diffs are CD-path cosmetics
+from the baseline's capture directory).
+
+HONEST STATE: the arming layer is decomped and byte-verified, but NOT yet
+exercised against real data -- M2 (next) probe-drives a real sequence
+through func_80039850 + func_80039A80 + func_8003A89C and proves audibility
+via the three-tier regime. No music-audible claim here.
+Evidence: proven (oracle fuzzy=100 x9; coexistence audit; A/B binary hash;
+six probes; five tripwire maps; TSan build)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

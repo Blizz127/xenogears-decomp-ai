@@ -1048,6 +1048,7 @@ g_GamePartySkinsInitialized = 0x8004F30C;
 
 g_C1Buffer = 0x800625FC;
 g_C2Buffer = 0x8006261E;
+D_80062648 = 0x80062648; // type:u8 size:0x3200 field song-file buffer (func_80085C90 reads dir-0x1C song files here) -- retail BSS span 0x62648..0x65848 flush to the next referenced symbol, sized ahead of M2/M3 so the port stub cannot be overrun (the D_800658DC lesson)
 
 g_pTMR_HRETRACE_MODE = 0x80058964;
 _ctype_ = 0x800567C1;

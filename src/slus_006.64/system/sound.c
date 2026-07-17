@@ -1580,15 +1580,167 @@ SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(s32 targetAddress) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800397FC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039850);
+// Song-start: create an AudioManager from a loaded song file (music twin of
+// func_8003B148). Sized by the file's element count (+0x180 tail block when
+// the file carries override records), bound to the file at mgr+0x8, then
+// header-init + element-arm + list registration.
+AudioManager* func_80039850(SoundFile* pFile) {
+    SoundFile* pF;
+    s16 res;
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039910);
+    res = SoundUnkDebug0(pFile);
+    /* Retail merges live ranges: the parameter register is reused for the
+     * manager while pF keeps the file; the copy schedules into the error
+     * branch's delay slot. */
+    pF = pFile;
+    if (res != 0) {
+        SoundHandleError(res);
+        return NULL;
+    }
+    size = SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]);
+    if (((u8*)pFile)[0x15] != 0) {
+        size += 0x180;
+    }
+    pFile = SoundHeapAllocate(size);
+    if (pFile == NULL) {
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    ((AudioManager*)pFile)->unk_0x8 = SOUND_PTR_TO_PSX(pF);
+    if (((u8*)pF)[0x15] != 0) {
+        func_8003B0AC((AudioManager*)pFile, pF);
+    }
+    func_8003B22C((AudioManager*)pFile);
+    func_8003B424((AudioManager*)pFile);
+    *(u32*)&((AudioManager*)pFile)->unk_0x4c[0] = 0;
+    SoundAddAudioManagerToList((AudioManager*)pFile);
+    return (AudioManager*)pFile;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800399D4);
+// Song-start: rebind an EXISTING manager allocation to a new song file
+// (song switch without realloc) -- clear, rebind, re-init, re-arm,
+// re-register; the 0x4000 flag marks the block as not-heap-owned so
+// func_800399D4 will not free it.
+AudioManager* func_80039910(SoundFile* pFile, AudioManager* manager) {
+    s16 res;
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039A80);
+    res = SoundUnkDebug0(pFile);
+    if (res != 0) {
+        SoundHandleError(res);
+        return NULL;
+    }
+    size = SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]);
+    if (((u8*)pFile)[0x15] != 0) {
+        size += 0x180;
+    }
+    SoundHeapClearBlockMemory(manager, size);
+    manager->unk_0x8 = SOUND_PTR_TO_PSX(pFile);
+    if (((u8*)pFile)[0x15] != 0) {
+        func_8003B0AC(manager, pFile);
+    }
+    func_8003B22C(manager);
+    func_8003B424(manager);
+    *(u32*)&manager->unk_0x4c[0] = 0;
+    SoundAddAudioManagerToList(manager);
+    *(u16*)&manager->unk_Flags |= 0x4000;
+    return manager;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039B68);
+// Song-start: destroy a song manager -- stop if running, unregister from the
+// manager list, release voices, and free the block unless 0x4000 marks it
+// caller-owned (func_80039910 rebinds).
+void func_800399D4(AudioManager* manager) {
+#ifdef XENO_PC_PORT
+    /* Port boundary (remove when M3 creates the field music manager): see
+     * func_8003A89C -- misc4.c reaches this with a NULL music manager. */
+    if (manager == NULL) {
+        return;
+    }
+#endif
+    if (*(s16*)&manager->unk_Flags & 0x8000) {
+        func_80039C4C(manager);
+    }
+    if ((s16)SoundUnkDebug0(SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8)) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    if (SoundRemoveAudioManagerFromList(manager) != 0) {
+        SoundHandleError(5);
+        return;
+    }
+    func_8003B930(manager);
+    if (!(*(u16*)&manager->unk_Flags & 0x4000)) {
+        SoundHeapFree(manager);
+    }
+}
+
+// Song-start: (re)start the bound song from the top -- re-init the manager
+// from its file, re-arm the elements, zero the channel level then set it
+// (func_8003A89C), and raise the running flag; all under the tick bracket.
+void func_80039A80(AudioManager* manager, s32 level, s32 steps) {
+    if (manager == NULL) {
+        SoundHandleError(5);
+        return;
+    }
+    *(u16*)&manager->unk_Flags &= 0x7FFF;
+    if ((s16)SoundUnkDebug0(SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8)) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    if (*(s16*)&manager->unk_Flags & 0x8000) {
+        func_80039C4C(manager);
+    }
+    DisableEvent(g_unk_SoundEvent);
+    func_8003B22C(manager);
+    func_8003B424(manager);
+    manager->unk_Interpolator_0x70.currentValue = 0;
+    func_8003A89C(manager, level, steps);
+    {
+        u16 flags = *(u16*)&manager->unk_Flags;
+        u32 ev = g_unk_SoundEvent;
+        *(u16*)&manager->unk_Flags = flags | 0x8000;
+        EnableEvent(ev);
+    }
+}
+
+// Song-start: WDS-rebind resume -- after a sample-bank swap, re-derive every
+// element's SPU start/loop addresses from its instrument record in the
+// (re)loaded bank, mark all voice registers dirty, then fade the level back
+// in; 0x100 arms the resume path inside func_8003A89C.
+void func_80039B68(AudioManager* manager, s32 level, s32 steps) {
+    AudioElement* el;
+    s32 count;
+
+    if (manager == NULL) {
+        SoundHandleError(5);
+        return;
+    }
+    count = manager->elementCount;
+    el = &manager->elements[0];
+    /* The flags store sits LAST so the loop's induction family anchors on
+     * voice_data.flags (el+0x36), matching retail; the scheduler then hoists
+     * the halfword store into the load-delay slack above it. */
+    do {
+        u8* pBank;
+        u8* pInstr;
+        s32 base;
+
+        pBank = (u8*)SoundFindWdsEntry(((u8*)&el->unk_0x24)[1]);
+        count--;
+        pInstr = pBank + ((el->unk_0x26 << 4) + 0x30);
+        el->unk2C = SOUND_PTR_TO_PSX(pBank);
+        base = *(s32*)pInstr << 3;
+        el->voice_data.startAddress = base + *(u32*)(pBank + 0x28);
+        el->voice_data.loopAddress = base + (*(u16*)(pInstr + 4) << 3);
+        el->voice_data.flags = 0xFFFF;
+        el++;
+    } while (count != 0);
+    manager->unk_Interpolator_0x70.currentValue = 0;
+    *(u16*)&manager->unk_Flags |= 0x100;
+    func_8003A89C(manager, level, steps);
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039C4C(AudioManager* manager) {
@@ -1726,13 +1878,63 @@ void func_8003A838(AudioManager* manager, s32 target, s32 steps) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A89C);
+// Song-start: set the manager channel level (interp70) -- immediate when
+// steps==0 (marks every active element volume-dirty), else programs a fade;
+// a nonzero level while flag 0x100 (bank-rebind resume) is set completes the
+// resume via func_8003AA30. This is field opcode FE 0E's target.
+void func_8003A89C(AudioManager* manager, s32 level, s32 steps) {
+#ifdef XENO_PC_PORT
+    /* Port boundary (remove when M3 creates the field music manager):
+     * ported field code (FE 0E / func_8008C84C, misc4 map-exit) reaches this
+     * with D_80062528 still NULL because the func_80085C90 shim reports the
+     * song bank loaded without creating the manager. Retail has no guard --
+     * on PSX a NULL manager silently writes low kernel RAM. */
+    if (manager == NULL) {
+        return;
+    }
+#endif
+    manager->unk_Interpolator_0x70.targetValue = level << 8;
+    if (steps == 0) {
+        manager->unk_Interpolator_0x70.currentValue = level << 24;
+        manager->unk_Interpolator_0x70.counter = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+    } else {
+        s32 diff = (level << 16) - (manager->unk_Interpolator_0x70.currentValue >> 8);
+        if (diff == 0) {
+            return;
+        }
+        manager->unk_Interpolator_0x70.counter = steps;
+        manager->unk_Interpolator_0x70.stepIncrement = (diff / steps) << 8;
+    }
+    if ((*(u16*)&manager->unk_Flags & 0x100) && level != 0) {
+        func_8003AA30(manager);
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A948);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A9BC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AA30);
+// Song-start: resume a muted/rebound manager -- reapply its reverb program,
+// mark every voice register dirty (full SPU rewrite on the next tick),
+// resync, clear the resume flag and raise running; under the tick bracket.
+void func_8003AA30(AudioManager* manager) {
+    DisableEvent(g_unk_SoundEvent);
+    if (g_SoundControlFlags & 0x1000) {
+        SoundSetReverbModeWithAllocation(manager->unk_0x40[1],
+                                         *(s16*)&manager->unk_0x40[4],
+                                         manager->unk_0x40[2],
+                                         manager->unk_0x40[3]);
+    }
+    SoundSetFlagsOnActiveVoices(manager, 0xFFFF);
+    func_8003AFA0(manager);
+    {
+        u16 flags = *(u16*)&manager->unk_Flags;
+        u32 ev = g_unk_SoundEvent;
+        *(u16*)&manager->unk_Flags = (flags & 0xFEFF) | 0x8000;
+        EnableEvent(ev);
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AAC4);
 
@@ -1828,7 +2030,28 @@ void SoundReleaseAllVoices(AudioManager* manager) {
     } while (cnt);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B0AC);
+// Song-start: load the song file's override records into the manager's tail
+// block (the +0x180 region func_80039850 allocates when file[0x15] != 0):
+// file[0x15] 5-byte records {slot, valueLE32} at file + *(u16*)(file+0x20),
+// stored word-wise at tailBlock[slot].
+void func_8003B0AC(AudioManager* manager, SoundFile* pFile) {
+    u32* block;
+    u8* rec;
+    s32 n;
+
+    block = (u32*)((u8*)manager +
+                   SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]));
+    manager->unk_0xc = SOUND_PTR_TO_PSX(block);
+    n = ((u8*)pFile)[0x15];
+    rec = (u8*)pFile + *(u16*)((u8*)pFile + 0x20);
+    do {
+        u32 val = rec[1] | (rec[2] << 8) | (rec[3] << 16) |
+                  ((u32)rec[4] << 24);
+        *(u32*)((u8*)block + (rec[0] << 2)) = val;
+        rec += 5;
+        n--;
+    } while (n != 0);
+}
 
 AudioManager* func_8003B148(s32 arg0) {
     s32 count;
@@ -1864,7 +2087,35 @@ AudioManager* func_8003B148(s32 arg0) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B1FC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B22C);
+// Song-start: init the manager from its bound song file's header -- copy id/
+// element count/WDS id/tempo base/reverb program (file 0x10-0x1D), flag the
+// manager as a song manager (bit 0), apply reverb when globally enabled,
+// then the common manager init.
+void func_8003B22C(AudioManager* manager) {
+    SoundFile* pFile;
+
+    pFile = SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8);
+    if ((s16)SoundUnkDebug0(pFile) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    *(u16*)&manager->unk_Flags |= 1;
+    *(u16*)&manager->unk2[0] = *(u16*)((u8*)pFile + 0x10);
+    manager->elementCount = ((u8*)pFile)[0x14];
+    *(u16*)&manager->unk_0x15[1] = *(u16*)((u8*)pFile + 0x16);
+    *(u16*)&manager->unk_0x18 = *(u16*)((u8*)pFile + 0x18);
+    manager->unk_0x40[1] = ((u8*)pFile)[0x1A];
+    *(u16*)&manager->unk_0x40[4] = ((u8*)pFile)[0x1B] << 8;
+    manager->unk_0x40[2] = ((u8*)pFile)[0x1C];
+    manager->unk_0x40[3] = ((u8*)pFile)[0x1D];
+    if (g_SoundControlFlags & 0x1000) {
+        SoundSetReverbModeWithAllocation(*(s8*)&manager->unk_0x40[1],
+                                         *(s16*)&manager->unk_0x40[4],
+                                         manager->unk_0x40[2],
+                                         manager->unk_0x40[3]);
+    }
+    SoundInitializeAudioManager(manager);
+}
 
 void func_8003B32C(AudioManager* manager) {
     manager->unk_Flags = 2;
@@ -1912,7 +2163,128 @@ void SoundInitializeAudioManager(AudioManager* manager) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// Song-start: the music element-arm loop (twin of the SFX starter's loop,
+// driven by the manager's bound song file instead of a SED entry). Per
+// channel script offset (file+0x22 halfwords): arm the element -- REST state
+// (0x401; +0x20 if its bit persists in mgr+0x4C, +0x4 under manager flag
+// 0x4), status 0x170, script IP = file + offset (base + current), volume
+// accumulator 0x7F<<24, expression 0x6000, pan 0x4000, envelope run flags
+// cleared, WDS bank bound + instrument 0 primed, voice parked stopped. A
+// zero offset deactivates the slot. NOTE (retail-faithful): voice numbers
+// lag the element index by one -- element 0 (the conductor track) gets
+// voice 0xFF, which every voice-indexed path bounds-checks away.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: the same cc1
+ * anchor-rebase family as C6E8/EBF0 -- retail keeps the element-field
+ * cluster on the voice_data cursor (mgr+0xC4) while this pipeline's cc1
+ * rebases the induction family onto a different anchor (last-use / derived-
+ * giv), register-permuting the loop. Same operations at the same absolute
+ * element offsets; semantics audited field-by-field against the split asm
+ * (offset map in the body comments). Not claimed as {}. */
+void func_8003B424(AudioManager* manager) {
+    AudioElement* el;
+    SoundVoiceData* vd;
+    u16* pOffset;
+    SoundFile* pFile;
+    SoundWDSEntry* pBank;
+    u32 mask;
+    s32 index;
+    s32 voice;
+    s32 count;
+
+    count = manager->elementCount;
+    el = &manager->elements[0];
+    if (count == 0) {
+        return;
+    }
+    index = 0;
+    voice = -1;                         /* element 0 = conductor, no voice */
+    mask = 0;
+    pFile = SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8);
+    pOffset = (u16*)((u8*)pFile + 0x22);
+    pBank = SoundFindWdsEntry(*(s16*)&manager->unk_0x15[1]);
+    if (pBank == NULL) {
+        pBank = g_SoundWdsLinkedList;
+    }
+    do {
+        vd = &el->voice_data;
+        if (*pOffset != 0) {
+            u32 bit = 1 << index;
+            u8* ip;
+
+            mask |= bit;
+            if (bit & *(u32*)&manager->unk_0x4c[0]) {
+                el->active_flag = 0x421;            /* asm: sh 0x421, el+0x00 */
+            } else {
+                el->active_flag = 0x401;            /* asm: sh 0x401, el+0x00 */
+            }
+            if (*(u16*)&manager->unk_Flags & 0x4) {
+                el->active_flag |= 0x4;             /* asm: lhu/ori 4/sh el+0x00 */
+            }
+            el->status_flags = 0x170;               /* asm: sh 0x170, el+0x02 */
+            el->unk_0x04 = 0;                       /* asm: sh 0,     el+0x04 */
+            el->unk_0x06[1] = 0x10;                 /* asm: sb 0x10,  el+0x07 */
+            el->unk_0x06[0] = index;                /* asm: sb s5,    el+0x06 */
+            *(u32*)&el->unk_0x06[2] =               /* asm: sw,       el+0x08 */
+                *(u16*)((u8*)pFile + 0x10);         /*   = song id (file+0x10) */
+            el->octave = 0x3C;                      /* asm: sh 0x3C,  el+0x66 */
+            el->unk_0x62 = 0xF;                     /* asm: sh 0xF,   el+0x62 */
+            *(u16*)&el->unk_0x70[2] = 0xFFFF;       /* asm: sh,       el+0x72 */
+            *(u16*)&el->unk_0x76[0] = 0x6000;       /* asm: sh,       el+0x76 (expression) */
+            *(s32*)&el->unk_0x76[2] = 0x7F000000;   /* asm: sw,       el+0x78 (vol accum) */
+            el->savedScriptIP = 0;                  /* asm: sw 0,     el+0x18 */
+            *(u32*)&el->unk_0x1C[0] = 0;            /* asm: sw 0,     el+0x1C */
+            *(u16*)&el->unk_0x1C[4] = 0;            /* asm: sh 0,     el+0x20 */
+            el->unk_0x1C[6] = 0;                    /* asm: sb 0,     el+0x22 */
+            el->fermataDuration = 0;                /* asm: sh 0,     el+0x5C */
+            el->unk_0x5E[2] = 0;                    /* asm: sb 0,     el+0x60 */
+            el->unk_0x6E = 0;                       /* asm: sh 0,     el+0x6E */
+            el->unk_0x64[0] = 0;                    /* asm: sb 0,     el+0x64 */
+            el->unk_0x74 = 0x4000;                  /* asm: sh 0x4000,el+0x74 (pan) */
+            *(u16*)&el->unk_0x70[0] = 0;            /* asm: sh 0,     el+0x70 */
+            *(u16*)&el->unk_0xD0[0] = 0;            /* asm: sh 0,     el+0xD0 */
+            *(u16*)&el->unk_0xD0[2] = 0;            /* asm: sh 0,     el+0xD2 */
+            *(u16*)&el->unk_0xD0[4] = 0;            /* asm: sh 0,     el+0xD4 */
+            *(u16*)&vd->unkC[0] = 0;                /* asm: sh 0,     el+0x3C */
+            *(u16*)&vd->unkC[2] = 0;                /* asm: sh 0,     el+0x3E */
+            el->unk_0xCE = 0;                       /* asm: sh 0,     el+0xCE */
+            ip = (u8*)pFile + *pOffset;
+            *(SoundPsxAddress*)&el->unk_0x06[0xA] = SOUND_PTR_TO_PSX(ip); /* el+0x10 */
+            el->unk14 = SOUND_PTR_TO_PSX(ip);       /* asm: sw,       el+0x14 (tick IP) */
+            {
+                /* Clear the four envelope run-flag halfwords: el+0x156,
+                 * 0x136, 0x116, 0xF6 (asm walks down from el+0x60+0xF6). */
+                u8* q = (u8*)el + 0x60;
+                s32 i = 3;
+                do {
+                    *(u16*)(q + 0xF6) = 0;
+                    q -= 0x20;
+                } while (--i >= 0);
+            }
+            el->unk2C = SOUND_PTR_TO_PSX(pBank);    /* asm: sw,       el+0x2C */
+            ((u8*)&el->unk_0x24)[1] = manager->unk_0x15[1]; /* sb mgr+0x16 -> el+0x25 */
+            if (pBank != NULL) {
+                func_8003E5BC(0, el);
+            }
+            el->voice_number = voice;               /* asm: sb s4,    el+0x27 */
+            vd->modeFlags = 0;                      /* asm: sh 0,     el+0x32 */
+            vd->priority = 0x100;                   /* asm: sh 0x100, el+0x34 */
+            SoundAssignVoiceToChannelAndStop(vd, voice);
+        } else {
+            el->active_flag = 0;
+        }
+        pOffset++;
+        el++;
+        index++;
+        voice++;
+        count--;
+    } while (count != 0);
+    manager->unk_0x48 = mask;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B424);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
 
