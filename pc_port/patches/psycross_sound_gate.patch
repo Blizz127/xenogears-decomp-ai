@@ -30,7 +30,7 @@ index ad4f8de..1b07a6d 100644
  }
  #endif
 diff --git a/src/psx/LIBAPI.C b/src/psx/LIBAPI.C
-index 1952313..d64d406 100644
+index 1952313..4324d7f 100644
 --- a/src/psx/LIBAPI.C
 +++ b/src/psx/LIBAPI.C
 @@ -1,6 +1,7 @@
@@ -121,15 +121,41 @@ index 1952313..d64d406 100644
  	for (i = 0; i < PSYX_EVENT_MAX; i++)
  	{
  		PsyXEventSlot* e = &s_psyxEvents[i];
-@@ -96,6 +146,7 @@ void PsyX_Sys_DispatchCounter2(void)
+@@ -96,6 +146,33 @@ void PsyX_Sys_DispatchCounter2(void)
  			e->func();
  		}
  	}
 +	SDL_UnlockMutex(g_SoundTickMutex);
++}
++
++/* [_xeno_sound_gate] Enter/ExitCriticalSection mapping. Retail masks
++ * interrupts, whose load-bearing effect for the sound code is that the 240Hz
++ * tick cannot preempt the section (SoundQueueTransferCommand brackets its
++ * transfer-queue index/flag writes this way). Same recursive hold as a
++ * DisableEvent bracket on the tick event; the pump's TryLock drops ticks
++ * while held. Depth rides s_soundTickHold so nesting with Disable/Enable
++ * brackets on the same thread stays balanced. */
++void PsyX_Sys_SoundGateEnterCritical(void)
++{
++	if (!g_SoundTickMutex)   /* single-threaded early boot */
++		return;
++	SDL_LockMutex(g_SoundTickMutex);
++	s_soundTickHold++;
++}
++
++void PsyX_Sys_SoundGateExitCritical(void)
++{
++	if (!g_SoundTickMutex)
++		return;
++	if (s_soundTickHold > 0)
++	{
++		s_soundTickHold--;
++		SDL_UnlockMutex(g_SoundTickMutex);
++	}
  }
  
  int SetRCnt(int spec, unsigned short target, int mode)//(F)
-@@ -182,6 +233,8 @@ int StopRCnt(int spec)//TODO
+@@ -182,6 +259,8 @@ int StopRCnt(int spec)//TODO
  int OpenEvent(unsigned int event, int spec, int mode, long(*func)())
  {
  	int i;
@@ -138,7 +164,7 @@ index 1952313..d64d406 100644
  	for (i = 0; i < PSYX_EVENT_MAX; i++)
  	{
  		if (!s_psyxEvents[i].in_use)
-@@ -193,10 +246,12 @@ int OpenEvent(unsigned int event, int spec, int mode, long(*func)())
+@@ -193,10 +272,12 @@ int OpenEvent(unsigned int event, int spec, int mode, long(*func)())
  			s_psyxEvents[i].enabled = 0;
  			/* publish last: the dispatch thread gates on in_use */
  			s_psyxEvents[i].in_use  = 1;
@@ -153,7 +179,7 @@ index 1952313..d64d406 100644
  }
  
  int CloseEvent(unsigned int event)
-@@ -204,8 +259,24 @@ int CloseEvent(unsigned int event)
+@@ -204,8 +285,24 @@ int CloseEvent(unsigned int event)
  	int idx = (int)event - 1;
  	if (idx >= 0 && idx < PSYX_EVENT_MAX)
  	{
@@ -178,7 +204,7 @@ index 1952313..d64d406 100644
  	}
  	return 1;
  }
-@@ -213,16 +284,60 @@ int CloseEvent(unsigned int event)
+@@ -213,16 +310,60 @@ int CloseEvent(unsigned int event)
  int EnableEvent(unsigned int event)
  {
  	int idx = (int)event - 1;

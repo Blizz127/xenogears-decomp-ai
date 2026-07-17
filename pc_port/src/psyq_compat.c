@@ -290,13 +290,23 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     return *p;
 }
 
+/* Retail Enter/ExitCriticalSection masks interrupts; the effect the sound
+ * code depends on is that the 240Hz tick cannot preempt the section (the
+ * SPU transfer-queue writes in SoundQueueTransferCommand). Map onto the
+ * PsyCross sound-tick gate -- caught as a real TSan race when the field
+ * music path (func_80085F30 -> SoundLoadWdsFile) went live in M3. */
+extern void PsyX_Sys_SoundGateEnterCritical(void);
+extern void PsyX_Sys_SoundGateExitCritical(void);
+
 int EnterCriticalSection(void)
 {
+    PsyX_Sys_SoundGateEnterCritical();
     return 0;
 }
 
 void ExitCriticalSection(void)
 {
+    PsyX_Sys_SoundGateExitCritical();
 }
 
 int CdDataSync(int mode)

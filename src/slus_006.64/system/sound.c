@@ -761,6 +761,51 @@ SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800380D0);
 
 #ifdef XENO_PC_PORT
+/* Port variant of SoundLoadWdsFile for the field music-bank stream
+ * substitute (func_80085C90): identical registration flow -- SPU alloc,
+ * sound-heap header copy, list append under the tick bracket -- but the
+ * ADPCM payload goes to the backend synchronously via SpuWrite instead of
+ * the transfer queue. Retail STREAMS this file (16KB CD windows chunk-pumped
+ * to SPU); it is never resident in main RAM, and the field heap cannot fit
+ * it, so the port stages it in HOST memory -- which the transfer queue
+ * cannot take (SoundQueueTransferCommand narrows source pointers to PSX
+ * addresses). Synchronous SpuWrite from the caller's thread is safe: the
+ * PsyX backend copies into its SPU image under its own mutex, and the tick
+ * only reads SPU regions its voices already point at. */
+SoundWDSEntry* SoundLoadWdsFileHostStaged(SoundWDSEntry* pWdsFile) {
+    u32 spuAddr;
+    SoundWDSEntry* pEntry;
+
+    spuAddr = SoundSpuMemoryAllocateWDS(pWdsFile, 0);
+    if (spuAddr == 0) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SpuSetTransferStartAddr(spuAddr);
+    SpuWrite((u8*)pWdsFile + pWdsFile->adpcmDataOffset, pWdsFile->adpcmDataSize);
+    pEntry = func_80039024(pWdsFile->headerSizeMby);
+    if (pEntry == NULL) {
+        SoundSpuMemoryFreeBlock(spuAddr);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pEntry, pWdsFile, pWdsFile->headerSizeMby);
+    pEntry->spuMemoryAddress = spuAddr;
+    DisableEvent(g_unk_SoundEvent);
+    {
+        SoundPsxAddress* pList = (SoundPsxAddress*)&g_SoundWdsLinkedList;
+        while (SOUND_PSX_TO_PTR(SoundWDSEntry, *pList) != NULL) {
+            pList = &SOUND_PSX_TO_PTR(SoundWDSEntry, *pList)->pNext;
+        }
+        *pList = SOUND_PTR_TO_PSX(pEntry);
+    }
+    pEntry->pNext = 0;
+    EnableEvent(g_unk_SoundEvent);
+    return pEntry;
+}
+#endif
+
+#ifdef XENO_PC_PORT
 /* Port body: explicit returns. Retail's bare-return v0-passthrough (kept
  * below for the matching build) is undefined behavior on the host -- the
  * native x86 build happened to keep the allocator's result in the return
@@ -1652,13 +1697,6 @@ AudioManager* func_80039910(SoundFile* pFile, AudioManager* manager) {
 // manager list, release voices, and free the block unless 0x4000 marks it
 // caller-owned (func_80039910 rebinds).
 void func_800399D4(AudioManager* manager) {
-#ifdef XENO_PC_PORT
-    /* Port boundary (remove when M3 creates the field music manager): see
-     * func_8003A89C -- misc4.c reaches this with a NULL music manager. */
-    if (manager == NULL) {
-        return;
-    }
-#endif
     if (*(s16*)&manager->unk_Flags & 0x8000) {
         func_80039C4C(manager);
     }
@@ -1883,16 +1921,6 @@ void func_8003A838(AudioManager* manager, s32 target, s32 steps) {
 // a nonzero level while flag 0x100 (bank-rebind resume) is set completes the
 // resume via func_8003AA30. This is field opcode FE 0E's target.
 void func_8003A89C(AudioManager* manager, s32 level, s32 steps) {
-#ifdef XENO_PC_PORT
-    /* Port boundary (remove when M3 creates the field music manager):
-     * ported field code (FE 0E / func_8008C84C, misc4 map-exit) reaches this
-     * with D_80062528 still NULL because the func_80085C90 shim reports the
-     * song bank loaded without creating the manager. Retail has no guard --
-     * on PSX a NULL manager silently writes low kernel RAM. */
-    if (manager == NULL) {
-        return;
-    }
-#endif
     manager->unk_Interpolator_0x70.targetValue = level << 8;
     if (steps == 0) {
         manager->unk_Interpolator_0x70.currentValue = level << 24;

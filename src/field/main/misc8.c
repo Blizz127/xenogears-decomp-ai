@@ -6,6 +6,9 @@
 #include "field/script_vm.h"
 #include "system/memory.h"
 #include "system/archive.h"
+#ifdef XENO_PC_PORT
+#include <stdlib.h>
+#endif
 #include "system/sound.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
@@ -2357,52 +2360,126 @@ s32 func_80085C3C(void) {
 extern s32 D_8004F338;
 extern s32 D_8004F36C;
 extern s32 D_8004F354;
+extern s32 D_8004F364;
+extern int func_80085F30(void);
+extern void func_80085FB8(void);
+extern void* SoundLoadWdsFile(void* pWdsFile, s32 mode);
 extern s32 D_8004F33C;
+extern s32 D_8004F340;
+extern s32 D_8004F348;
+extern s32 D_8004F358;
+extern s32 D_8004F35C;
+extern s32 D_800AFC54;
+extern void* D_8004F2FC;
+extern void* D_80062528;
+extern u8 D_80062648[];
 extern s32 g_GameHasLoadedWDS;
 extern u8 D_800ADFCC[];
 extern void* D_800C3A1C;
 extern void func_8003BDFC(s32);
 
-/* XENO_PC_PORT temporary audio boundary:
- * Retail func_80085C90 is the per-frame poller for an in-flight CD music-bank
- * stream started by func_80085B20. If a file swap is queued (D_8004F354==1)
- * it first drives the real archive-completion poll (func_80085C3C, which
- * calls func_800854D0 up to 5x/frame) and the rest of retail's gating/
- * bookkeeping for that branch (func_8003BDFC(0x10) transfer-queue wait,
- * freeing the stream buffer, clearing D_8004F354, recording the now-loaded
- * archive file in D_8004F33C, marking g_GameHasLoadedWDS so the next swap's
- * func_8001B66C frees the previous WDS entry) -- all of that is genuinely
- * ported here, not skipped, and is what clears D_800ADB2C (the gate
- * func_800932D0/CHANGE_FIELD waits on). Note this only faithfully reproduces
- * the *gating* logic: the underlying CD read itself is a pre-existing no-op
- * for streaming reads in pc_port/src/archive_port.c (ArchiveReadFile bails
- * out for CdlModeStream, "not ported yet"), so no real WDS/SEQ data actually
- * lands in the stream buffer -- consistent with the rest of this boundary,
- * since nothing currently compiled reads it back out.
- * Once idle, retail continues into the deeper SPU voice-assignment chain
- * (func_80085F30/func_80085FB8, then SPU voice setup via
- * func_80039850/func_80039A80/func_8003A89C, or the func_80039B68 alternate
- * branch) before marking the requested bank loaded: D_8004F338 = requested
- * id, D_8004F36C = 1. That SPU voice-assignment chain is not ported (same
- * boundary decision as func_800855C8), so field scripts gated on "music
- * ready" (e.g. FE0E, func_8008C84C) would otherwise wait forever behind it.
- * Since the port has no SPU backend, report the requested bank loaded
- * immediately: this is the only externally-observed completion state,
- * without reproducing the internal SPU voice-assignment bookkeeping.
- * Remove this shim when the real audio engine path is implemented. */
+/* Song-start M3: the real per-frame music poller (retail func_80085C90
+ * structure, transcribed from the matchings asm), with ONE documented port
+ * substitution in the bank-swap leg. Retail streams the music WDS bank off
+ * CD in 8-sector windows and pumps each chunk to SPU-RAM via the
+ * func_800859DC callback (func_800380D0 header init + SoundTransferWdsPart);
+ * the port has no section-queue/chunk machinery (func_80028B14 is a stub and
+ * ArchiveReadFile declines CdlModeStream), so the stream completes as an
+ * empty no-op and this poller lands the SAME end state at the completion
+ * boundary with the proven buffered path: whole-file read +
+ * SoundLoadWdsFile. File selection, flags and completion bookkeeping are
+ * retail's own. Remove the substitution when CD streaming is ported. */
 s32 func_80085C90(s32 a0) {
+    extern void* func_80039850(void* pSongFile);
+    extern void func_80039A80(void* manager, s32 level, s32 steps);
+    extern void func_80039B68(void* manager, s32 level, s32 steps);
+    extern void func_8003A89C(void* manager, s32 level, s32 steps);
+
     if (D_8004F354 == 1) {
         if (func_80085C3C() == -1) {
             return -1;
         }
         func_8003BDFC(0x10);
+#ifdef XENO_PC_PORT
+        /* PORT SUBSTITUTION (see header comment): retail's chunk pump has
+         * already landed the bank in SPU-RAM by this point. The staging
+         * buffer is HOST memory: retail never holds this file in main RAM
+         * (it streams), and the field heap cannot fit ~190KB mid-load --
+         * SoundLoadWdsFileHostStaged pushes it to the backend directly. */
+        {
+            extern void* SoundLoadWdsFileHostStaged(void* pWdsFile);
+            s32 bankFile = D_800ADFCC[a0 * 2] * 2 + 0x13;
+            void* pBankBuf;
+            ArchiveSetIndex(0x1C, 0);
+            pBankBuf = malloc(ArchiveDecodeAlignedSize(bankFile));
+            ArchiveReadFileToBuffer(bankFile, pBankBuf, 0, CdlModeSpeed);
+            SoundLoadWdsFileHostStaged(pBankBuf);
+            free(pBankBuf);
+            ArchiveSetIndex(4, 0);
+        }
+#endif
         HeapFree(D_800C3A1C);
         g_GameHasLoadedWDS = 1;
         D_8004F354 = 0;
         D_8004F33C = D_800ADFCC[a0 * 2];
     }
 
-    D_8004F338 = a0;
+    /* Common-bank leg: maps flagged 0 at D_800ADFCC[idx*2+1] use the shared
+     * field bank (dir 0x1C file 3) -- kick its read, then complete it. */
+    if (D_800ADFCC[a0 * 2 + 1] == 0) {
+        s32 state = D_8004F364;
+        if (state == 0) {
+            func_80085FB8();
+            return -1;
+        }
+        if (state & 0x80) {
+            if (func_80085F30() == -1) {
+                return -1;
+            }
+        }
+    }
+
+    /* Song-file leg: on the first frame after a music change, queue the
+     * 'smds' song read into the static song buffer (D_80062648). */
+    if (D_800AFC54 == 1) {
+        if (D_8004F338 != a0) {
+            ArchiveSetIndex(0x1C, 0);
+            ArchiveReadFileToBuffer(a0 * 2 + 0x14, D_80062648, 0, 0x80);
+            D_8004F358 = 1;
+            ArchiveSetIndex(4, 0);
+        }
+        D_800AFC54 = 0;
+        return -1;
+    }
+    if (ArchiveDataSync() != 0) {
+        return -1;
+    }
+
+    /* Song landed: create/start the music manager (the M1 arming chain). */
+    if (D_8004F358 == 1) {
+        if (D_8004F348 == 0) {
+            void* manager = func_80039850(D_80062648);
+            D_80062528 = manager;
+            if (D_8004F340 == -1) {
+                func_80039A80(manager, 0x7F, 0);
+            } else {
+                /* Muted start: a pending scripted fade (FE 0E) raises it. */
+                func_80039A80(manager, 0, 0);
+                func_8003A89C(D_80062528, 0, 0);
+            }
+        } else {
+            /* Same song, bank re-landed: resume the saved manager. */
+            D_80062528 = D_8004F2FC;
+            func_80039B68(D_8004F2FC, 0x7F, 0xF0);
+            D_8004F348 = 0;
+            D_8004F2FC = 0;
+        }
+        D_8004F358 = 0;
+        D_8004F35C = 1;
+        D_8004F338 = a0;
+    }
+
+    D_8004F340 = -1;
     D_8004F36C = 1;
     return 0;
 }

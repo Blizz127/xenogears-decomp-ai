@@ -1076,6 +1076,79 @@ Evidence: proven (three-tier incl. silent control + varying-RMS profile;
 stub-set isolation; TSan clean rerun; A/B binary hash; five tripwires)
 Last verified @ HEAD of this commit
 
+### Song-start M3 LANDED: IN-GAME MUSIC -- maps play their themes on boot, no probe
+
+The field music trigger is real end-to-end. func_80085C90 (per-frame music
+poller, called from func_80078B5C while D_8004F308==-1) is un-shimmed: full
+retail structure from the matchings asm -- bank-swap completion leg,
+common-bank lazy-load leg (func_80085FB8 kick + func_80085F30 complete, dir
+0x1C file 3), song-file read (songId*2+0x14 -> D_80062648, the M1-sized
+buffer), then the M1 chain (func_80039850 create -> func_80039A80 start
+0x7F, plus the muted-start+FE-0E-fade and func_80039B68 bank-rebind resume
+branches, D_8004F340/348 state machine as retail).
+
+STREAM SUBSTITUTION (documented, XENO_PC_PORT block in C90's swap leg):
+retail streams the per-map music bank in 8-sector CD windows chunk-pumped to
+SPU by func_800859DC (func_800380D0 + SoundTransferWdsPart, unported;
+func_80028B14 chunk-poll is a stub) -- never resident in main RAM. NOT
+substitutable in archive_port.c as scoped (the stream buffer is an 8-sector
+window; the chunk consumer is unported); and NOT substitutable by a
+HeapAlloc'd whole-file read either -- the field heap cannot fit ~190KB
+mid-map-load (caught live: MAP001 requests music 0 -> HeapAlloc(195040)
+fails -> GameHandleError(130) spin). The port stages the file in HOST malloc
+memory and lands it via SoundLoadWdsFileHostStaged (new port-only sibling of
+SoundLoadWdsFile in sound.c): identical SPU-alloc/header-copy/list-append
+flow, but the payload goes through synchronous SpuWrite -- the transfer
+queue narrows source pointers to PSX addresses, which host memory doesn't
+have. Same never-in-PSX-RAM property as retail's stream.
+
+M1 NULL GUARDS REMOVED (the tracked exit criterion): func_8003A89C and
+func_800399D4 are guard-free. The real C90 raises D_8004F36C (FE 0E's gate)
+only after the manager exists, and misc4's teardown pair is gated on
+D_8004F304 which nothing ported sets yet -- NULL exposure closed
+structurally; MAP014 (the original guard trigger) now plays music through
+FE 0E on a real manager.
+
+Field-test harness stand-ins (XENO_PC_PORT + XENO_FIELD_TEST, misc3 init):
+(1) direct map entry skips the exit-transition flow that requests music --
+the harness runs FieldMain's own request body (func_8001B66C, D_8004F308=-1,
+D_8004F324=D_800B2290, func_80085B20) with the field default id 0x1D;
+(2) retail boots D_8004F364=1 ("common bank resident", loaded by the
+unported new-game flow) -- the harness clears it so C90's retail leg
+lazy-loads the bank (the lie surfaced as a host SEGV in func_8003E5BC when
+the sequence's instrument-change ran bankless; retail reads PSX low RAM
+harmlessly there).
+
+TSAN CAUGHT A REAL RACE, FIXED AT THE ROOT: SoundQueueTransferCommand's
+queue-index/flag writes (main thread, via the now-live func_80085F30 ->
+SoundLoadWdsFile) raced the tick's g_SoundControlFlags reads. Retail
+protects the section with EnterCriticalSection (interrupt mask); the port's
+Enter/ExitCriticalSection were no-ops. Now mapped onto the tick gate
+(PsyX_Sys_SoundGateEnterCritical/Exit in LIBAPI.C, recursive hold like a
+DisableEvent bracket; psycross_sound_gate.patch regenerated, reverse-check
+verified). TSan rerun: 0/38 reports touch the music path.
+
+IN-GAME PROOF (existing smoke launchers, NO probe): MAP000 -- 4s boot
+silence (pre-trigger control, RMS 0.0000) then 55/59 non-silent seconds
+(1s RMS 0.035-0.074 varying, peak 0.41); key-ons across voices 9-18 with
+per-voice stereo volumes, distinct pitches, six instrument addresses; ZERO
+sound-path stubs (no func_80039F18, no envelope stubs -- complete playback).
+MAP001 (music 0 + bank 0x13 swap): music from t~4s, 85/89 non-silent.
+MAP014 (FE 0E): music from t~17s, 72/89. WAVs: scratchpad/
+map000_ingame_music.wav (music id 0x1D = song file 0x4E -- identify by ear).
+
+Validation: slus byte-exact (d004692f...); all 7 probes PASS at 240Hz;
+five-map tripwires ALL EXACT on the final build (line-buffered captures;
+the old runner's "LOG CLOSED" trailer filtered). Known nit: a map with music
+running may ignore SIGTERM (MAP334 exits via SIGKILL under timeout -k;
+game output exact) -- teardown signal handling, not a field regression.
+Remaining boundaries: menu/normal-boot music start (needs the new-game flow
+or a KernelMenu-path stand-in), SFX cues (S1), envelopes (B5.2), real CD
+streaming (would retire the host-staged substitute).
+Evidence: proven (in-game three-tier on three maps incl. pre-trigger
+control; TSan root-fix + clean rerun; A/B binary hash; five exact tripwires)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

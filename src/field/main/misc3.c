@@ -508,6 +508,36 @@ void func_800705DC(void) {
     }
 
     D_800B2290 = 0x1D;
+    /* Field-test harness: direct map entry skips the exit-transition flow
+     * (FieldMain's D_800ADBD0 block) that requests the next map's music, so
+     * no music request ever lands. Stand in for it with that block's own
+     * body (main.c: func_8001B66C -> D_8004F308 = -1 -> func_80085B20),
+     * using the field's just-initialized default music id -- the same
+     * stand-in role the XENO_FIELD_ENTRANCE spawn write plays for the
+     * missing transition. Everything downstream (the per-frame
+     * func_80085C90 poller, bank+song load, manager create/start) is the
+     * real retail flow. */
+#ifdef XENO_PC_PORT
+    {
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (ft != NULL && ft[0] == '1') {
+            extern s32 D_8004F308, D_8004F324, D_8004F364;
+            extern void func_8001B66C(void);
+            extern void func_80085B20(s32 musicIdx, s32 arg1);
+            /* Retail boots with D_8004F364=1 ("field common WDS bank
+             * resident") because the unported new-game flow loads it before
+             * any field entry; the port never has. Mark it not-resident so
+             * func_80085C90's own retail leg lazy-loads it (func_80085FB8
+             * kick + func_80085F30 complete = dir 0x1C file 3 ->
+             * SoundLoadWdsFile). */
+            D_8004F364 = 0;
+            func_8001B66C();
+            D_8004F308 = -1;
+            D_8004F324 = D_800B2290;
+            func_80085B20(D_800B2290, 1);
+        }
+    }
+#endif
     D_800ADBEC = -1;
     D_800B21D8 = 2;
     g_FieldControl.controllerBtnMask = 0xFFFF;
