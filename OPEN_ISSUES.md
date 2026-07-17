@@ -1021,6 +1021,61 @@ Evidence: proven (oracle fuzzy=100 x9; coexistence audit; A/B binary hash;
 six probes; five tripwire maps; TSan build)
 Last verified @ HEAD of this commit
 
+### Song-start M2 LANDED: A REAL XENOGEARS SEQUENCE PLAYS
+
+First real music through the whole stack: archive dir 0x1C pair (WDS bank
+file 0x13, 'wds ' magic, id 0x21, self-addressed to SPU 0x38000 -- coexists
+with the common bank at 0x12000; song file 0x14, 'smds' magic, 21 elements,
+wdsId 0x21 == the bank id) buffer-read via the proven path and driven
+through the M1 chain exactly as retail field code does: func_80039850
+(create) -> func_80039A80 (start, level 0x7F). The ported tick interprets
+the real sequence at 240Hz; the translator keys voices.
+
+Scan first (XENO_SOUND_SONG_SCAN): dir 0x1C = common bank (3) + repeated
+(bank, song) pairs from 0x13 -- songs are the 'smds' files at even indices
+(elemCnt at +0x14, wdsId at +0x16), banks 'wds ' at the odd ones; several
+slots duplicate the same pair (CD streaming locality).
+
+THREE-TIER PROOF (XENO_SOUND_SONG_PROBE): (1) AL: per-voice
+SpuGetKeyStatus sampling -- 6-8 voices PLAYING in 16/16 half-second
+samples, 22 key-ons / 38 key-offs over 8s of playback (polyphonic,
+sustained, evolving = a SEQUENCE, not a note). (2) Wave-capture RMS
+profile: 8 consecutive non-silent seconds (1s-window RMS 0.048-0.065,
+VARYING), silence lands exactly at the probe's teardown; CONTROL run
+(manager created, never started) is digitally silent (RMS 0.0000, peak
+0.0000, keyons=0). (3) Ear: scratchpad/first_real_sequence_capture.wav
+(untracked) -- which theme file 0x14 is (map->musicIdx mapping lives in
+field data D_800ADFCC) is verifiable by listening.
+
+Boundaries measured clean: func_80039F18 (the flagged CFF0/S1 trap) NOT
+hit; M1 NULL guards never fired (real manager end-to-end -- create ->
+start -> stop -> destroy, teardown verified by post-stop silence);
+playback-caused stubs are EXACTLY the three envelope helpers
+(func_8003E290/E3E0/F2A0 = B5.2), isolated by play-vs-control stub diff
+(the SFX-chain stubs seen in both runs are boot-path, S1).
+
+TSAN CAUGHT ANOTHER PASSTHROUGH BUG (pre-M1 code, first real exercise):
+func_80039C4C called SoundReleaseAllVoices() with NO argument -- retail
+rides the manager in $a0 (the asm has no move before the jal); native x86
+reproduced the luck, TSan clobbered it (SEGV in teardown). Fixed with the
+explicit argument -- gcc emits zero extra instructions ($a0 already holds
+it): func_80039C4C stays {} and the binary stays byte-exact. The
+passthrough family now has two members (v0-return + a0-argument); grep
+argless calls of parameterized functions when TSan crashes what natively
+works.
+
+Validation: slus byte-exact (d004692f...); all 7 probes PASS (incl. the
+new song probe) at 240Hz; TSan rerun clean -- PASS with identical playback
+stats, 0/37 reports touch the song path; five-map tripwires clean.
+
+HONEST STATE: a real sequence plays PROBE-DRIVEN and envelope-less (notes
+key at full computed volume, no ADSR shaping -- B5.2), with sequence-set
+tempo/volume via the 51 real handlers. In-game triggering (field shims,
+CdlModeStream substitute) is M3; SFX chain is S1.
+Evidence: proven (three-tier incl. silent control + varying-RMS profile;
+stub-set isolation; TSan clean rerun; A/B binary hash; five tripwires)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

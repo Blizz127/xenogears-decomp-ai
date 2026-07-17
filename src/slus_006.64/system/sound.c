@@ -1749,7 +1749,7 @@ void func_80039C4C(AudioManager* manager) {
         return;
     }
     manager->unk_Flags &= ~(1 << 15);
-    SoundReleaseAllVoices();
+    SoundReleaseAllVoices(manager);
 }
 
 //----------------------------------------------------------------------------------------------------------------------

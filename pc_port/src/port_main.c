@@ -572,6 +572,126 @@ static void PortRunSoundPlayProbe(void) {
     EnableEvent(g_unk_SoundEvent);
 }
 
+/* Song-start M2 probe (env XENO_SOUND_SONG_PROBE=1): buffer-read a REAL
+ * song pair from archive dir 0x1C -- WDS bank (default file 0x13, 'wds ')
+ * via the proven SoundLoadWdsFile path, then the 'smds' song file (default
+ * 0x14) -- and drive the M1 arming chain exactly as retail field code does:
+ * func_80039850 (create manager from the song file) -> func_80039A80
+ * (start: header init + element arm + level 0x7F + running flag). The
+ * already-ported tick then interprets the real sequence at 240Hz and the
+ * register->backend translator keys voices. Observation: per-second voice/
+ * key-on sampling here; the WAV-capture RMS profile is the runner's proof
+ * tier. Teardown via func_80039C4C + func_800399D4 (the real destroy path).
+ * Env overrides: XENO_SOUND_SONG_FILE / XENO_SOUND_BANK_FILE (hex). */
+static void PortRunSoundSongProbe(void) {
+    extern void* func_80039850(void* pSongFile);
+    extern void func_80039A80(void* manager, int level, int steps);
+    extern void func_80039C4C(void* manager);
+    extern void func_800399D4(void* manager);
+    extern void* SoundLoadWdsFile(void* pWdsFile, int mode);
+    extern int SpuGetKeyStatus(unsigned int voice_bit);
+    extern int ArchiveDecodeAlignedSize(int fileIndex);
+    extern void* HeapAlloc(int size, int flags);
+    extern void HeapFree(void* pMemory);
+    extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
+    extern void ArchiveReadFileToBuffer(int fileIndex, void* pBuffer, int arg2,
+                                        int arg3);
+    int bankFile = 0x13, songFile = 0x14;
+    unsigned char* bankEntry;
+    unsigned char* mgr;
+    void* bankBuf;
+    unsigned char* songBuf;
+    int sz, t;
+    long kons0, koffs0;
+    int ok_mgr, ok_run, ok_played, ok_seq;
+    int maxVoices = 0, samplesWithSound = 0;
+
+    if (getenv("XENO_SOUND_BANK_FILE")) bankFile = (int)strtol(getenv("XENO_SOUND_BANK_FILE"), NULL, 16);
+    if (getenv("XENO_SOUND_SONG_FILE")) songFile = (int)strtol(getenv("XENO_SOUND_SONG_FILE"), NULL, 16);
+
+    ArchiveSetIndex(0x1C, 0);
+    sz = ArchiveDecodeAlignedSize(bankFile);
+    bankBuf = HeapAlloc(sz, 1);
+    ArchiveReadFileToBuffer(bankFile, bankBuf, 0, 0x80);
+    bankEntry = (unsigned char*)SoundLoadWdsFile(bankBuf, 0);
+    printf("[song-probe] bank file 0x%02x: size=%d entry=%d id=0x%x spuAddr=0x%x\n",
+           bankFile, sz, bankEntry != NULL,
+           bankEntry ? *(unsigned short*)(bankEntry + 0x20) : 0,
+           bankEntry ? *(unsigned int*)(bankEntry + 0x28) : 0);
+    HeapFree(bankBuf);
+    if (bankEntry == NULL) {
+        printf("[song-probe] RESULT: FAIL (bank load)\n");
+        return;
+    }
+
+    sz = ArchiveDecodeAlignedSize(songFile);
+    songBuf = HeapAlloc(sz, 1);
+    ArchiveReadFileToBuffer(songFile, songBuf, 0, 0x80);
+    printf("[song-probe] song file 0x%02x: size=%d magic=%.4s elemCnt=%d wdsId=0x%x\n",
+           songFile, sz, (char*)songBuf, songBuf[0x14],
+           *(unsigned short*)(songBuf + 0x16));
+
+    kons0 = s_regFlushKeyOns;
+    koffs0 = s_regFlushKeyOffs;
+    mgr = (unsigned char*)func_80039850(songBuf);
+    ok_mgr = (mgr != NULL);
+    printf("[song-probe] manager=%d elemCnt=%d flags=0x%x (create)\n",
+           ok_mgr, ok_mgr ? mgr[0x14] : 0,
+           ok_mgr ? *(unsigned short*)(mgr + 0x10) : 0);
+    if (!ok_mgr) {
+        printf("[song-probe] RESULT: FAIL (manager create -- M1 guard territory)\n");
+        HeapFree(songBuf);
+        ArchiveSetIndex(4, 0);
+        return;
+    }
+    if (getenv("XENO_SOUND_SONG_CONTROL")) {
+        /* Silent-control tier: manager created, song NEVER started -- the
+         * wave capture must be digitally silent. */
+        printf("[song-probe] CONTROL: created but not started\n");
+        PortSleepMs(8000);
+        printf("[song-probe] CONTROL keyons=%ld (want 0)\n",
+               (long)(s_regFlushKeyOns - kons0));
+        func_800399D4(mgr);
+        HeapFree(songBuf);
+        ArchiveSetIndex(4, 0);
+        return;
+    }
+    func_80039A80(mgr, 0x7F, 0);
+    ok_run = ((*(unsigned short*)(mgr + 0x10) & 0x8000) != 0);
+    printf("[song-probe] started: flags=0x%x run=%d mgr70hi=%d\n",
+           *(unsigned short*)(mgr + 0x10), ok_run, ((short*)(mgr + 0x70))[1]);
+
+    /* 8 seconds of real playback, sampled twice a second. */
+    for (t = 0; t < 16; t++) {
+        int v, playing = 0;
+        PortSleepMs(500);
+        for (v = 0; v < 24; v++) {
+            playing += (SpuGetKeyStatus(1u << v) != 0);
+        }
+        if (playing > maxVoices) maxVoices = playing;
+        if (playing > 0) samplesWithSound++;
+        printf("[song-probe] t=%2d.%ds voices=%2d keyons=%ld keyoffs=%ld\n",
+               (t + 1) / 2, ((t + 1) % 2) * 5, playing,
+               (long)(s_regFlushKeyOns - kons0),
+               (long)(s_regFlushKeyOffs - koffs0));
+    }
+    ok_played = (s_regFlushKeyOns - kons0) > 4 && maxVoices > 0;
+    ok_seq = (s_regFlushKeyOns - kons0) > 16 && samplesWithSound >= 8 && maxVoices >= 2;
+    printf("[song-probe] totals: keyons=%ld keyoffs=%ld maxVoices=%d "
+           "samplesWithSound=%d/16\n",
+           (long)(s_regFlushKeyOns - kons0), (long)(s_regFlushKeyOffs - koffs0),
+           maxVoices, samplesWithSound);
+    printf("[song-probe] RESULT: %s (create=%d run=%d played=%d sequence=%d; "
+           "WAV RMS profile is the output-tier proof -- see runner)\n",
+           (ok_mgr && ok_run && ok_played && ok_seq) ? "PASS" : "FAIL",
+           ok_mgr, ok_run, ok_played, ok_seq);
+
+    func_80039C4C(mgr);
+    func_800399D4(mgr);
+    HeapFree(songBuf);
+    ArchiveSetIndex(4, 0);
+}
+
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 480
@@ -904,6 +1024,43 @@ int main(int argc, char** argv) {
              * heap and the samples to SPU-RAM; the file buffer is free). */
             if (getenv("XENO_SOUND_PLAY_PROBE")) {
                 PortRunSoundPlayProbe();
+            }
+
+            /* Song-start M2 scan (env XENO_SOUND_SONG_SCAN=1): enumerate dir
+             * 0x1C candidates -- header bytes decide which files are songs
+             * (elementCount at +0x14, wdsId at +0x16) vs WDS banks -- and
+             * print the loaded bank's id so the song/bank pairing is chosen
+             * from measured data, not the scoping map alone. Read-only. */
+            if (getenv("XENO_SOUND_SONG_SCAN")) {
+                int fi;
+                ArchiveSetIndex(0x1C, 0);
+                for (fi = 0x0; fi <= 0x24; fi++) {
+                    int sz = ArchiveDecodeAlignedSize(fi);
+                    unsigned char hdr[0x40];
+                    void* b;
+                    if (sz <= 0 || sz > 0x300000) {
+                        printf("[song-scan] file %02x: size=%d (skip)\n", fi, sz);
+                        continue;
+                    }
+                    b = HeapAlloc(sz, 1);
+                    if (b == NULL) { printf("[song-scan] file %02x: alloc fail (%d)\n", fi, sz); continue; }
+                    ArchiveReadFileToBuffer(fi, b, 0, 0x80);
+                    memcpy(hdr, b, 0x40);
+                    printf("[song-scan] file %02x: size=%-7d magic=%02x%02x%02x%02x "
+                           "id10=%04x elemCnt=%02x extra=%02x wdsId=%04x off18=%04x "
+                           "tempo=%02x%02x%02x%02x\n",
+                           fi, sz, hdr[0], hdr[1], hdr[2], hdr[3],
+                           *(unsigned short*)(hdr + 0x10), hdr[0x14], hdr[0x15],
+                           *(unsigned short*)(hdr + 0x16), *(unsigned short*)(hdr + 0x18),
+                           hdr[0x1A], hdr[0x1B], hdr[0x1C], hdr[0x1D]);
+                    HeapFree(b);
+                }
+                ArchiveSetIndex(4, 0);
+            }
+
+            /* Song-start M2: a real sequence through the real arming chain. */
+            if (getenv("XENO_SOUND_SONG_PROBE")) {
+                PortRunSoundSongProbe();
             }
 
             /* The KernelMenu "Field" option jumps straight into the field without
