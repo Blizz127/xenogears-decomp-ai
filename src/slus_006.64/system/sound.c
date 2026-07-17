@@ -618,12 +618,49 @@ extern void* func_80039024(s32 size);
 extern u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode);
 extern void func_8003E3E0();
 extern s32 func_8003E290();
-/* Envelope handler methods (unported; bound directly by 0xD8/0xE4/0xEC). */
+#ifdef XENO_PC_PORT
+extern void PsyX_Sys_SoundGateEnterCritical(void);
+extern void PsyX_Sys_SoundGateExitCritical(void);
+#endif
+/* Envelope handler methods (real as of B5.2; bound directly by 0xD8/0xE4/
+ * 0xEC and via the D_800508A4 table). */
 extern s32 func_8003F240();
 extern s32 func_8003F2A0();
-/* Envelope handler-method table (sdata): retail PSX addresses consumed by
- * func_8003E180; the EFE4 jalr host routing lands with the envelope pass. */
+extern s32 func_8003F43C();
+/* Envelope handler-method table (retail sdata 3F290: 16 function words;
+ * slots 8-15 are the no-op method). Port side: the same functions as host
+ * addresses narrowed to the retail-width u32 slots -- the no-pie build
+ * round-trips them through SoundPsxAddress (pfnHandler stores these,
+ * func_8003EFE4 casts back and calls). Matching build uses the .sdata. */
+#ifdef XENO_PC_PORT
+extern void func_8003F190();
+extern s32 func_8003F1A4();
+extern s32 func_8003F1EC();
+extern s32 func_8003F308();
+extern s32 func_8003F354();
+extern s32 func_8003F3C0();
+SoundPsxAddress D_800508A4[16];
+/* Filled at SoundInitialize (a 32-bit truncating cast of a host function
+ * address is not a valid static initializer). */
+static void PcPort_InitEnvelopeMethodTable(void) {
+    static void* const methods[16] = {
+        (void*)func_8003F1A4, (void*)func_8003F1EC,
+        (void*)func_8003F240, (void*)func_8003F2A0,
+        (void*)func_8003F308, (void*)func_8003F308,
+        (void*)func_8003F354, (void*)func_8003F3C0,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+    };
+    int i;
+    for (i = 0; i < 16; i++) {
+        D_800508A4[i] = SOUND_PTR_TO_PSX(methods[i]);
+    }
+}
+#else
 extern u32 D_800508A4[];
+#endif
 //----------------------------------------------------------------------------------------------------------------------
 
 void SoundInitialize(s32 arg0) {
@@ -631,6 +668,9 @@ void SoundInitialize(s32 arg0) {
         SoundHandleError(0x28);
         return;
     }
+#ifdef XENO_PC_PORT
+    PcPort_InitEnvelopeMethodTable();
+#endif
     g_SoundControlFlags = arg0 | 0xB801;
     SpuInitMalloc(4, (char*)g_SoundSpuMemoryTableStart);
     SoundHeapInitialize(D_80065B0C, 0x6300);
@@ -2455,6 +2495,13 @@ void SoundQueueTransferCommand(u32 transferAddress, void* pData, u_long dataSize
     if (!(nControlFlags & 4)) {
         while (SoundTransferQueueSync());
         EnterCriticalSection();
+#ifdef XENO_PC_PORT
+        /* Retail's interrupt mask kept the 240Hz tick out of the queue-index
+         * writes below; the port's EnterCriticalSection is a global no-op, so
+         * take the tick gate here (caught as a real TSan race when the field
+         * music path went live). */
+        PsyX_Sys_SoundGateEnterCritical();
+#endif
     }
 
     nNextIndex = g_SoundTransferQueueWriteIndex + 1;
@@ -2488,6 +2535,9 @@ void SoundQueueTransferCommand(u32 transferAddress, void* pData, u_long dataSize
     }
     
     if (!(nControlFlags & 4)) {
+#ifdef XENO_PC_PORT
+        PsyX_Sys_SoundGateExitCritical();
+#endif
         ExitCriticalSection();
     }
 }
@@ -4224,7 +4274,7 @@ u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     s32 sq = pScript[0] * pScript[0];
     u16 rate = pScript[0] + sq / 64;
     *(s32*)&env->unk4[0x8] = func_8003E290(((s8)pScript[1] << 24) | (pScript[2] << 16),
-                                           env->unk1D);
+                                           rate, env->unk1D);
     *(u16*)&env->unk4[0xE] = rate;
     return pScript + 3;
 }
@@ -4232,7 +4282,29 @@ u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E1F8);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E290);
+// Envelope target packing: scale the packed target by the step count for
+// ramp-style methods (2/3: per-step delta; 4: ping-pong delta over rate-1
+// steps); methods 0/1 and out-of-range leave the target absolute.
+s32 func_8003E290(s32 target, s32 rate, s32 method) {
+    if (target != 0) {
+        s16 r = rate;
+        if (r != 0) {
+            s16 m = method;
+            switch (m) {
+            case 2:
+            case 3:
+                target = target / r;
+                break;
+            case 4:
+                if (r != 1) {
+                    target = target / (r - 1);
+                }
+                break;
+            }
+        }
+    }
+    return target;
+}
 
 // Seq cmd: envelope-object rate config (selected slot): delay = p0*4,
 // step/stepAdd = 0x400 / ((p1+1)*4).
@@ -4274,7 +4346,23 @@ u8* func_8003E360(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E360);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E3E0);
+// Envelope arm/reset: first tick fires immediately (counter 1), direction/
+// phase flags cleared, delay reloaded from its programmed value, current
+// value zeroed, step reset to the base step.
+void func_8003E3E0(SoundEnvelope* env) {
+    u16 flags;
+    u16 d;
+    u16 add;
+
+    *(u16*)&env->unk4[0xC] = 1;
+    flags = env->flags;
+    d = *(u16*)&env->unk16[0];
+    add = env->stepAdd;
+    *(s32*)&env->unk4[0] = 0;
+    env->flags = flags & 0xFFF3;
+    env->delay = d;
+    env->step = add;
+}
 
 // Seq cmd: disarm envelope object N -- clear its run flag + its bit in the
 // element's active-envelope mask.
@@ -4889,19 +4977,137 @@ void func_8003F190(u16* arg0) {
     arg0[0xF] &= 0xFFFE;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F1A4);
+// Envelope method 1: gate/square -- on each period toggle the value between
+// the target and zero.
+s32 func_8003F1A4(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 v = 0;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (*(s32*)&env->unk4[0] == 0) {
+            v = *(s32*)&env->unk4[8];
+        }
+        *(s32*)&env->unk4[0] = v;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F1EC);
+// Envelope method 2: alternating set -- on each period set the value to the
+// target with alternating sign.
+s32 func_8003F1EC(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 v = *(s32*)&env->unk4[8];
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (env->flags & 0x8) {
+            v = -v;
+        }
+        *(s32*)&env->unk4[0] = v;
+        env->flags ^= 0x8;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F240);
+// Envelope method 3: triangle ramp -- accumulate the per-step delta every
+// tick, flipping the delta's sign at each period boundary.
+s32 func_8003F240(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    s32 v;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F2A0);
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 stp = *(s32*)&env->unk4[8];
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (env->flags & 0x8) {
+            stp = -stp;
+        }
+        *(s32*)&env->unk4[4] = stp;
+        env->flags ^= 0x8;
+    }
+    v = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[4];
+    *(s32*)&env->unk4[0] = v;
+    return v;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F308);
+// Envelope method 4: ping-pong ramp -- like the triangle, but after the
+// first (attack) leg the period doubles (flag 0x4), so the value swings
+// symmetrically about the peak.
+s32 func_8003F2A0(SoundEnvelope* env) {
+    s32 cnt = *(u16*)&env->unk4[0xC];
+    s32 v;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F354);
+    cnt = cnt - 1;
+    if (cnt == 0) {
+        u16 flags = env->flags;
+        s32 stp;
+        /* the reload reuses the counter variable (retail merges the ranges) */
+        cnt = *(u16*)&env->unk4[0xE];
+        if (flags & 0x4) {
+            cnt <<= 1;
+        }
+        stp = *(s32*)&env->unk4[8];
+        *(s32*)&env->unk4[4] = stp;
+        if (flags & 0x8) {
+            *(s32*)&env->unk4[4] = -stp;
+        }
+        flags = (flags | 0x4) ^ 0x8;
+        env->flags = flags;
+    }
+    v = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[4];
+    *(u16*)&env->unk4[0xC] = cnt;
+    *(s32*)&env->unk4[0] = v;
+    return v;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F3C0);
+// Envelope method 5 (slots 4 and 5): sawtooth -- accumulate the per-step
+// delta, snapping back to zero at each period boundary.
+s32 func_8003F308(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        *(s32*)&env->unk4[0] = 0;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+    } else {
+        *(s32*)&env->unk4[0] = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[8];
+    }
+    return *(s32*)&env->unk4[0];
+}
+
+// Envelope method 6: random level -- each period, sample the xorshift RNG
+// and scale the target by it (advancing the RNG every tick keeps the
+// sequence hot, as retail does).
+s32 func_8003F354(SoundEnvelope* env) {
+    u16 cnt;
+
+    func_8003F43C();
+    cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 r;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        r = func_8003F43C();
+        *(s32*)&env->unk4[0] = (*(s32*)&env->unk4[8] >> 15) * r;
+    }
+    return *(s32*)&env->unk4[0];
+}
+
+// Envelope method 7: random bipolar -- each period, a random value scaled
+// by the target and re-centered to swing about zero.
+s32 func_8003F3C0(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 r;
+        s32 t;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        r = func_8003F43C();
+        t = *(s32*)&env->unk4[8];
+        *(s32*)&env->unk4[0] = (t >> 14) * r - t;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
 extern s32 D_800594E4;
 
@@ -4909,7 +5115,15 @@ void func_8003F42C(s32 arg0) {
     D_800594E4 = arg0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F43C);
+// Sound xorshift RNG (seed D_800594E4, set 0x12345678 at SoundInitialize):
+// v ^= v<<17; v ^= v>>15 (arithmetic); 15-bit result.
+s32 func_8003F43C(void) {
+    s32 v = D_800594E4;
+    v ^= v << 17;
+    v ^= v >> 15;
+    D_800594E4 = v;
+    return v & 0x7FFF;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundSetVoiceKeyOn(u32 voiceFlags) {

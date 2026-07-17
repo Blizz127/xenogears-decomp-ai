@@ -488,6 +488,39 @@ static long PcPort_SpuRegFlushTick(void) {
         *(unsigned short*)(spu + 0x18C) = 0;
         *(unsigned short*)(spu + 0x18E) = 0;
     }
+    {
+        /* B5.2 continuous attr flush: envelopes (and fades) modulate
+         * voll/volr/pitch through the register page every tick (func_8003E900
+         * rewrites dirty registers), but real hardware applies page state
+         * continuously while the key-on path above is edge-triggered. Push
+         * ongoing register changes for assigned voices to the backend,
+         * change-detected so OpenAL only hears actual updates. */
+        static unsigned short s_lastAttr[24][3];
+        extern void* g_SoundChannels[24];
+        int v;
+        for (v = 0; v < 24; v++) {
+            unsigned char* pv = spu + v * 0x10;
+            unsigned short voll = *(unsigned short*)(pv + 0x0);
+            unsigned short volr = *(unsigned short*)(pv + 0x2);
+            unsigned short pit = *(unsigned short*)(pv + 0x4);
+            if (g_SoundChannels[v] == NULL)
+                continue;
+            if (voll != s_lastAttr[v][0] || volr != s_lastAttr[v][1] ||
+                pit != s_lastAttr[v][2]) {
+                SpuVoiceAttr attr;
+                memset(&attr, 0, sizeof(attr));
+                attr.voice = 1u << v;
+                attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH;
+                attr.volume.left = voll;
+                attr.volume.right = volr;
+                attr.pitch = pit;
+                SpuSetVoiceAttr(&attr);
+                s_lastAttr[v][0] = voll;
+                s_lastAttr[v][1] = volr;
+                s_lastAttr[v][2] = pit;
+            }
+        }
+    }
     return 0;
 }
 

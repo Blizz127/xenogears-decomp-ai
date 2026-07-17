@@ -14,10 +14,10 @@ index 5042a5e..4346398 100644
  
  	if (NULL == g_intrThread)
 diff --git a/src/PsyX_main.h b/src/PsyX_main.h
-index ad4f8de..1b07a6d 100644
+index ad4f8de..63839d0 100644
 --- a/src/PsyX_main.h
 +++ b/src/PsyX_main.h
-@@ -21,6 +21,11 @@ extern int PsyX_Sys_SetVMode(int mode);
+@@ -21,6 +21,18 @@ extern int PsyX_Sys_SetVMode(int mode);
   * Driven by the interrupt thread at the 240Hz RCnt2 rate. */
  extern void PsyX_Sys_DispatchCounter2(void);
  
@@ -25,6 +25,13 @@ index ad4f8de..1b07a6d 100644
 + * interrupt thread is created (PsyX_Sys_InitialiseCore) so the pump thread
 + * inherits a visible, initialised mutex. */
 +extern void PsyX_Sys_InitSoundGate(void);
++
++/* Enter/ExitCriticalSection mapping (LIBAPI.C): recursive tick-gate hold --
++ * retail masks interrupts; the sound code's load-bearing effect is that the
++ * 240Hz tick cannot preempt the section. Declared here (inside the extern
++ * "C" block) so the definitions keep C linkage against the C callers. */
++extern void PsyX_Sys_SoundGateEnterCritical(void);
++extern void PsyX_Sys_SoundGateExitCritical(void);
 +
  #if defined(_LANGUAGE_C_PLUS_PLUS)||defined(__cplusplus)||defined(c_plusplus)
  }

@@ -2308,6 +2308,11 @@ void func_80085988(void) {
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
 
 extern u8 D_800ADFCC[];
+#ifdef XENO_PC_PORT
+/* Bank file index captured at stream start (func_80085B20) for the C90
+ * staging substitute; see the comments at both sites. */
+static s32 PcPort_PendingBankFile;
+#endif
 extern s32 D_8004F308;
 extern s32 D_8004F33C;
 extern s32 D_8004F354;
@@ -2336,6 +2341,13 @@ void func_80085B20(s32 a0) {
 
     archiveFile = D_800ADFCC[a0 * 2];
     if (archiveFile != 0xFF && D_8004F33C != archiveFile) {
+#ifdef XENO_PC_PORT
+        /* Record the file index this stream was STARTED with: the port's
+         * C90 bank-staging substitute must read the same file at completion
+         * even if the requested music changes mid-stream (retail's chunk
+         * pump doesn't have this problem -- the stream carries its data). */
+        PcPort_PendingBankFile = archiveFile * 2 + 0x13;
+#endif
         func_80085560(archiveFile * 2 + 0x13, 1, (s32)func_800859DC);
         D_8004F354 = 1;
         D_800B2370 = 0;
@@ -2364,6 +2376,7 @@ extern s32 D_8004F364;
 extern int func_80085F30(void);
 extern void func_80085FB8(void);
 extern void* SoundLoadWdsFile(void* pWdsFile, s32 mode);
+
 extern s32 D_8004F33C;
 extern s32 D_8004F340;
 extern s32 D_8004F348;
@@ -2406,15 +2419,24 @@ s32 func_80085C90(s32 a0) {
          * buffer is HOST memory: retail never holds this file in main RAM
          * (it streams), and the field heap cannot fit ~190KB mid-load --
          * SoundLoadWdsFileHostStaged pushes it to the backend directly. */
-        {
+        if (PcPort_PendingBankFile > 0) {
             extern void* SoundLoadWdsFileHostStaged(void* pWdsFile);
-            s32 bankFile = D_800ADFCC[a0 * 2] * 2 + 0x13;
+            s32 bankFile = PcPort_PendingBankFile;
+            s32 bankSize;
             void* pBankBuf;
+            PcPort_PendingBankFile = 0;
             ArchiveSetIndex(0x1C, 0);
-            pBankBuf = malloc(ArchiveDecodeAlignedSize(bankFile));
-            ArchiveReadFileToBuffer(bankFile, pBankBuf, 0, CdlModeSpeed);
-            SoundLoadWdsFileHostStaged(pBankBuf);
-            free(pBankBuf);
+            bankSize = ArchiveDecodeAlignedSize(bankFile);
+            /* Sector-round the staging allocation: the CD layer works in
+             * whole 2048-byte sectors and a tail write past the byte size
+             * faults under allocators without slack (TSan mmap). */
+            pBankBuf = (bankSize > 0)
+                ? malloc(((bankSize + 2047) / 2048 + 1) * 2048) : NULL;
+            if (pBankBuf != NULL) {
+                ArchiveReadFileToBuffer(bankFile, pBankBuf, 0, CdlModeSpeed);
+                SoundLoadWdsFileHostStaged(pBankBuf);
+                free(pBankBuf);
+            }
             ArchiveSetIndex(4, 0);
         }
 #endif

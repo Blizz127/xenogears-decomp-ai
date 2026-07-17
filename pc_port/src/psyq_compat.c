@@ -290,23 +290,20 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     return *p;
 }
 
-/* Retail Enter/ExitCriticalSection masks interrupts; the effect the sound
- * code depends on is that the 240Hz tick cannot preempt the section (the
- * SPU transfer-queue writes in SoundQueueTransferCommand). Map onto the
- * PsyCross sound-tick gate -- caught as a real TSan race when the field
- * music path (func_80085F30 -> SoundLoadWdsFile) went live in M3. */
-extern void PsyX_Sys_SoundGateEnterCritical(void);
-extern void PsyX_Sys_SoundGateExitCritical(void);
-
+/* Retail Enter/ExitCriticalSection masks ALL interrupts, and the game uses
+ * it across many subsystems. The port keeps the GLOBAL mapping a no-op:
+ * coupling every critical section to the sound-tick gate (tried in B5.2)
+ * couples unrelated subsystems to the audio lock and destabilizes the
+ * TSan build. The one load-bearing use for the port -- the SPU
+ * transfer-queue writes racing the 240Hz tick -- is bracketed at its own
+ * call sites in sound.c with PsyX_Sys_SoundGateEnterCritical/Exit. */
 int EnterCriticalSection(void)
 {
-    PsyX_Sys_SoundGateEnterCritical();
     return 0;
 }
 
 void ExitCriticalSection(void)
 {
-    PsyX_Sys_SoundGateExitCritical();
 }
 
 int CdDataSync(int mode)

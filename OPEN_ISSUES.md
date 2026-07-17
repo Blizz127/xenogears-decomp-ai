@@ -1149,6 +1149,77 @@ Evidence: proven (in-game three-tier on three maps incl. pre-trigger
 control; TSan root-fix + clean rerun; A/B binary hash; five exact tripwires)
 Last verified @ HEAD of this commit
 
+### B5.2 LANDED: envelope shaping -- vibrato/tremolo modulation live, comparative-proven
+
+The envelope layer is real: 10 new {} (oracle fuzzy=100; 1241 -> 1251/2292)
+-- func_8003E290 (target packing; switch/expand_case shape), func_8003E3E0
+(arm/reset), and the full method family func_8003F1A4/F1EC/F240/F2A0/F308/
+F354/F3C0 (gate, alternating set, triangle, ping-pong, sawtooth, random
+level, random bipolar) + func_8003F43C (xorshift RNG). F2A0 matched via the
+merged counter/reload live range + unmasked decrement + flags-var-reuse
+idioms. D_800508A4 (16-entry method table) is wired port-side: runtime-
+filled at SoundInitialize with host addresses narrowed through the no-pie
+u32 round-trip (a truncating cast is not a valid static initializer);
+func_8003EFE4's already-ported dispatch consumes them. The translator
+gained a continuous change-detected voll/volr/pitch flush (envelopes
+modulate the register page every tick; key-ons alone are edge-triggered).
+Bonus fix: func_8003E1F8's coexistence body dropped E290's rate argument
+(latent while E290 was a stub).
+
+COMPARATIVE PROOF (same song, M3-baseline binary from a worktree vs B5.2):
+(1) VIBRATO, register domain -- song 0x14 arms pitch envelopes (state 0,
+0xD8/ping-pong): baseline pitch-mod accumulator flat 0 for 7646 ticks;
+shaped run has 133 modulated ticks swinging +/-14 with the SPU pitch
+register tracking (0x1071..0x108C around 0x1080). (2) TREMOLO, audio
+domain -- song 0x1C arms volume envelopes (state 1, alternating): 567/892
+aligned 50ms windows differ >5% with oscillating deltas (+2%..+120%),
+identical note timing (18 keyons both) -- the modulation is the only
+difference. (3) THE TABLE IS LOAD-BEARING -- song 0x20 (method-6 random
+envelope via the table) SEGVs the baseline at pfnHandler=0 inside
+func_8003EFE4's dispatch (exact bt) and plays fully on B5.2. Playback
+stubs are now ZERO (E290/E3E0/F2A0 were the last). Pan-envelope audio
+isolation (song 0x20, state 2) was inconclusive in the full mix -- not
+claimed; the dispatch/accumulator path is shared with the proven cases.
+IN-GAME: MAP001's music is song 0x14 -> its vibrato now shapes in-game
+(85/89 nonsilent seconds on the smoke boot); MAP000's song arms no
+envelopes (engine truth, boot unchanged/exact).
+
+M3 CORRECTION -- the critical-section fix was DEAD CODE as shipped:
+PsyCross compiles LIBAPI.C as C++, so the gate functions got mangled
+linkage and the C callers bound to the auto-stub no-ops (nm shows the
+_Z31... twin). Fixed by declaring them in PsyX_main.h's extern-C block
+(patch regenerated, reverse-check verified). The blanket
+EnterCriticalSection->gate mapping then proved TOO WIDE under TSan
+(couples every subsystem's critical sections to the audio lock; TSan
+MAP000 regressed) -- narrowed to the actual load-bearing site: the SPU
+transfer-queue bracket in SoundQueueTransferCommand takes the gate via
+port-only calls; global Enter/ExitCriticalSection stay no-ops. TSan
+MAP000 back to M3-parity (RUN=124, full boot, 0 sound-path reports).
+Related robustness: the C90 bank staging now records the bank file at
+stream START (func_80085B20) instead of deriving from the CURRENT music
+index at completion (wrong file if the request changes mid-stream), with
+size guard + sector-rounded staging alloc.
+
+KNOWN ISSUE (TSan-only, filed): MAP001 under TSan crashes late in the C90
+bank-staging read (memcpy with a garbage-huge count in ArchiveReadFile's
+bounce path; the same staging passes on TSan MAP000 and everywhere
+native). Suspected archive-global/TSan interaction in the M3-era leg, NOT
+a data race (0 sound-path race reports across every B5.2 TSan run) and
+NOT reproducible natively (all five tripwires exact). Root-cause deferred.
+
+Validation: slus byte-exact (d004692f...); all 7 probes PASS at 240Hz
+(native + song probe under TSan); five-map tripwires ALL EXACT; oracle
+1251/2292 (fuzzy 52.34%).
+
+HONEST STATE: notes are envelope-MODULATED (vibrato/tremolo/pan program
+from the songs' own scripts). Hardware ADSR attack/release per-note remains
+approximated (PsyX has no raw ADSR; key-off is a hard stop) -- the
+envelope OBJECTS are done, ADSR emulation is a backend follow-up. SFX (S1),
+menu/boot music, CD streaming remain.
+Evidence: proven (register + audio comparative A/B against an M3 worktree
+binary; negative-space table proof; oracle fuzzy=100 x10; five tripwires)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
