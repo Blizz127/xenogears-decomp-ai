@@ -435,6 +435,143 @@ static void PortRunSoundSeqProbe(void) {
     EnableEvent(g_unk_SoundEvent);
 }
 
+/* B5.1 pass 2 -- the register->backend translator (FIRST AUDIBLE wiring).
+ * The tick's voice-register flush (func_8003E900/EB5C, objdiff {}) writes
+ * key-on/off + voice params into the static SpuUnion backing page; the real
+ * backend is driven by SpuSetVoiceAttr/SpuSetKey (-> alSourcePlay). This
+ * translator is registered as a second counter-2 event (OpenEvent slot AFTER
+ * the tick's), so the pump dispatches it at 240Hz right after func_8003C020,
+ * under the same g_SoundTickMutex bracket -- gate-serialized by construction.
+ * Edge semantics: real KON/KOFF registers are write-triggered; the translator
+ * consumes (clears) the page words after driving the backend. PsyX SpuVoiceAttr
+ * supports VOLL/VOLR/PITCH/WDSA (no raw ADSR -- envelope shaping is absent
+ * until the backend grows it; volume/pitch/addr suffice for audible). */
+static _Atomic long s_regFlushKeyOns = 0;
+static _Atomic long s_regFlushKeyOffs = 0;
+static long PcPort_SpuRegFlushTick(void) {
+    extern void* g_pSoundSpuRegisters;
+    unsigned char* spu = (unsigned char*)g_pSoundSpuRegisters;
+    unsigned int kon = *(unsigned short*)(spu + 0x188) |
+                       (*(unsigned short*)(spu + 0x18A) << 16);
+    unsigned int koff = *(unsigned short*)(spu + 0x18C) |
+                        (*(unsigned short*)(spu + 0x18E) << 16);
+    if (kon) {
+        int i;
+        for (i = 0; i < 24; i++) {
+            if (kon & (1u << i)) {
+                unsigned char* v = spu + i * 0x10;
+                SpuVoiceAttr attr;
+                memset(&attr, 0, sizeof(attr));
+                attr.voice = 1u << i;
+                attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH |
+                            SPU_VOICE_WDSA;
+                attr.volume.left = *(short*)(v + 0x0);
+                attr.volume.right = *(short*)(v + 0x2);
+                attr.pitch = *(unsigned short*)(v + 0x4);
+                attr.addr = *(unsigned short*)(v + 0x6) << 3;
+                if (s_regFlushKeyOns < 4)
+                    printf("[reg-flush] KON v%d voll=%d volr=%d pitch=0x%x "
+                           "addr=0x%x\n", i, attr.volume.left,
+                           attr.volume.right, (unsigned)attr.pitch,
+                           (unsigned)attr.addr);
+                SpuSetVoiceAttr(&attr);
+            }
+        }
+        SpuSetKey(SPU_ON, kon);
+        s_regFlushKeyOns += 1;
+        *(unsigned short*)(spu + 0x188) = 0;
+        *(unsigned short*)(spu + 0x18A) = 0;
+    }
+    if (koff) {
+        SpuSetKey(SPU_OFF, koff);
+        s_regFlushKeyOffs += 1;
+        *(unsigned short*)(spu + 0x18C) = 0;
+        *(unsigned short*)(spu + 0x18E) = 0;
+    }
+    return 0;
+}
+
+/* B5.1 play probe (env XENO_SOUND_PLAY_PROBE=1): with the real WDS bank
+ * loaded (pass 1), arm element 0 with a note-on stream (bank+instrument via
+ * 0xFC, note 0x30 vel 0x05, long rest). The tick interprets, keys the voice
+ * on, the translator drives the backend -> alSourcePlay. Proof tiers:
+ * translator counters here; the WAV-capture RMS check is the runner's job
+ * (ALSOFT wave backend). SYNTHETIC note; real sequences await field music. */
+static const unsigned char s_playProbeStream[] = {
+    0xFC, 0x00, 0x00,   /* bank (list head fallback) + instrument 0 */
+    0xE0, 0x7F,         /* element volume accumulator = 0x7F<<24 (el+0x78;
+                         * its hi16 feeds the voll chain -- 0 == silence) */
+    0x30, 0x05,         /* note 0x30, velocity 5 (duration table: 64 steps) */
+    0x80, 0xFF,         /* rest outlasting the window */
+    0x00,               /* scan-safe guard */
+};
+static void PortRunSoundPlayProbe(void) {
+    unsigned char* mgr = (unsigned char*)(uintptr_t)D_800595D8;
+    unsigned char* el = mgr + 0x94;
+    long kons0 = s_regFlushKeyOns;
+    int ok_keyed, ok_chan, ok_playing;
+    extern void* g_SoundChannels[24];
+
+    if (mgr == NULL) { printf("[play-probe] no manager -> SKIP\n"); return; }
+    DisableEvent(g_unk_SoundEvent);
+    *(unsigned short*)(mgr + 0x36) = 4;
+    *(int*)(mgr + 0x48) = 1;
+    *(int*)(mgr + 0x50) = 0;
+    *(int*)(mgr + 0x54) = 0x4000;                 /* gentle tempo */
+    *(int*)(mgr + 0x70) = 0x7FFF0000;             /* channel level interp
+                                                   * (hi16 scales every voll/
+                                                   * volr; 0 == silence) */
+    *(unsigned int*)(el + 0x14) = (unsigned int)(uintptr_t)s_playProbeStream;
+    *(unsigned short*)(el + 0x02) = 0;
+    *(int*)(el + 0x5C) = 0;
+    *(unsigned char*)(el + 0x27) = 2;             /* voice_number = 2 */
+    *(short*)(el + 0x76) = 0x7FFF;                /* expression factor (st[0x3A]):
+                                                   * set by the unported song-
+                                                   * start path; the probe stands
+                                                   * in for it (0 == silence) */
+    *(unsigned short*)(el + 0x00) = 0x401;        /* active + RESTING: the note
+                                                   * path keys on via status|=1
+                                                   * only from the rest state */
+    *(short*)(mgr + 0x10) |= 0x8000;
+    EnableEvent(g_unk_SoundEvent);
+    {
+        /* AL source-state tier: poll the backend during the window; the voice
+         * must be observed AL_PLAYING at least once. */
+        extern int SpuGetKeyStatus(unsigned int voice_bit);
+        int t;
+        ok_playing = 0;
+        for (t = 0; t < 30; t++) {
+            PortSleepMs(10);
+            if (SpuGetKeyStatus(1u << 2))
+                ok_playing = 1;
+        }
+    }
+    DisableEvent(g_unk_SoundEvent);
+    ok_keyed = (s_regFlushKeyOns > kons0);
+    ok_chan = (g_SoundChannels[2] != NULL);
+    printf("[play-probe] keyons=%ld (delta ok=%d) chan2=%d vd.start=0x%x pitch=0x%x\n",
+           (long)s_regFlushKeyOns, ok_keyed, ok_chan,
+           *(unsigned int*)(el + 0x4C), *(unsigned short*)(el + 0x44));
+    printf("[play-probe] vol-chain: el76=%d el7A=%d elD2=%d mgr70hi=%d "
+           "vd.voll=%d vd.volr=%d\n",
+           *(short*)(el + 0x76), *(short*)(el + 0x7A), *(short*)(el + 0xD2),
+           ((short*)(mgr + 0x70))[1], *(short*)(el + 0x38), *(short*)(el + 0x3A));
+    printf("[play-probe] al-source-state: observed playing=%d (want 1)\n",
+           ok_playing);
+    printf("[play-probe] RESULT: %s (voice keyed + AL source PLAYING; WAV RMS "
+           "is the output-tier proof -- see runner)\n",
+           (ok_keyed && ok_chan && ok_playing) ? "PASS" : "FAIL");
+    /* teardown */
+    *(unsigned short*)(el + 0x00) = 0;
+    *(unsigned short*)(el + 0x02) = 0;
+    *(int*)(el + 0x5C) = 0;
+    *(unsigned int*)(el + 0x14) = 0;
+    *(short*)(mgr + 0x10) &= 0x7FFF;
+    *(int*)(mgr + 0x48) = 0;
+    *(int*)(mgr + 0x54) = 0;
+    EnableEvent(g_unk_SoundEvent);
+}
+
 #define WINDOW_TITLE  "Xenogears (PC port)"
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 480
@@ -604,6 +741,15 @@ int main(int argc, char** argv) {
      * touches no shared state; SPU-IRQ / real tick body remain the gate before
      * the tick leg. WDS/playback (SoundLoadWdsFile) intentionally NOT routed. */
     SoundInitialize(0);
+
+    /* B5.1: register the register->backend translator on the pump (slot after
+     * the tick's; dispatched at 240Hz under the same gate bracket). Always-on
+     * port wiring -- this is what makes key-ons audible. */
+    {
+        int hFlush = OpenEvent(PORT_RCntCNT2, PORT_EvSpINT, PORT_EvMdINTR,
+                               PcPort_SpuRegFlushTick);
+        EnableEvent(hFlush);
+    }
     if (getenv("XENO_SOUND_INIT_PROBE")) {
         PortRunSoundInitProbe();
     }
@@ -716,9 +862,22 @@ int main(int argc, char** argv) {
                         extern void* g_SoundWdsLinkedList;
                         ok_list = (g_SoundWdsLinkedList == (void*)entry);
                     }
+                    {
+                        /* The transfer queue drains on the 240Hz tick thread;
+                         * poll (TSan slows the pump ~15x -- a fixed-order
+                         * readback races the drain and trips the backend's
+                         * bounds assert on a not-yet-written address). */
+                        int w = 0;
+                        while (g_SoundTransferQueueReadIndex !=
+                                   g_SoundTransferQueueWriteIndex && w < 500) {
+                            PortSleepMs(10);
+                            w++;
+                        }
+                    }
                     ok_queue = (g_SoundTransferQueueReadIndex == g_SoundTransferQueueWriteIndex);
                     memset(rb, 0, 16);
-                    if (ok_spuaddr) {
+                    if (ok_spuaddr && ok_queue &&
+                        (unsigned int)*(int*)(entry + 0x28) + probeOff + 16 < 0x80000) {
                         SpuSetTransferStartAddr(*(int*)(entry + 0x28) + probeOff);
                         SpuRead(rb, 16);
                     }
@@ -732,11 +891,19 @@ int main(int argc, char** argv) {
                     printf("[wds-probe] SPU-RAM readback vs source @+0x%x: match=%d (src %02x%02x%02x%02x rb %02x%02x%02x%02x)\n",
                            probeOff, ok_bytes, first[0], first[1], first[2], first[3],
                            rb[0], rb[1], rb[2], rb[3]);
-                    printf("[wds-probe] RESULT: %s (samples LOADED to SPU-RAM; NOT audible -- pass 2 wires key-on)\n",
+                    printf("[wds-probe] RESULT: %s (samples LOADED to SPU-RAM; audibility = play probe)\n",
                            (ok_entry && ok_spuaddr && ok_list && ok_queue && ok_bytes) ? "PASS" : "FAIL");
                 }
                 HeapFree(buf);
                 ArchiveSetIndex(4, 0);
+            }
+
+            /* B5.1 pass 2: first-audible probe (needs the WDS bank loaded --
+             * run with XENO_SOUND_WDS_PROBE=1 too, and skip its HeapFree side
+             * effects by design: the loader copied the header to the sound
+             * heap and the samples to SPU-RAM; the file buffer is free). */
+            if (getenv("XENO_SOUND_PLAY_PROBE")) {
+                PortRunSoundPlayProbe();
             }
 
             /* The KernelMenu "Field" option jumps straight into the field without

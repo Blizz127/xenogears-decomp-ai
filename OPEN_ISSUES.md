@@ -857,6 +857,56 @@ Evidence: proven (oracle fuzzy=100 x12; seq-probe routing; A/B binary hash;
 TSan; five-map tripwires)
 Last verified @ HEAD of this commit
 
+### B5.1 pass 2 LANDED: FIRST AUDIBLE -- register->backend translator, three-tier proof
+
+The port makes sound. `PcPort_SpuRegFlushTick` (port_main.c) translates the
+SpuUnion backing page into PsyX backend calls: registered as a second
+counter-2 OpenEvent slot after SoundInitialize, it runs at 240Hz right after
+func_8003C020 under the same g_SoundTickMutex bracket. Per pending KON bit it
+builds a SpuVoiceAttr {VOLL|VOLR|PITCH|WDSA} from the voice regs (addr =
+reg<<3), calls SpuSetVoiceAttr + SpuSetKey (-> alSourcePlay), then clears the
+page's KON/KOFF words (write-trigger semantics). No envelopes (B5.2), no
+streaming/IRQ (B5.3).
+
+PLAY PROBE (XENO_SOUND_PLAY_PROBE, needs XENO_SOUND_WDS_PROBE): arms element
+0 with a synthetic stream -- 0xFC bank+instrument 0, 0xE0 volume (el+0x78
+accumulator; 0xA0 is NOT volume), note 0x30, long rest. Probe-model findings
+that were engine truths, not bugs: (1) key-on requires arming from the REST
+state (active=0x401) -- status bit 0x1 is only set on a rest->note edge;
+(2) the voll chain is elVol(el+0x78 hi16) x expression(el+0x76) x manager
+level(interp70 hi16) x pan law -- el+0x76 and interp70 are armed by the
+UNPORTED song-start path, so the probe stands in for it. Result: real WDS
+instrument 0 at SPU 0x12000, pitch 0x1530 from the extracted sdata tables,
+voll/volr 12603/8571 through the full retail chain.
+
+THREE-TIER AUDIBLE PROOF: (1) AL source state: SpuGetKeyStatus polled during
+the window -> AL_PLAYING observed. (2) Wave-capture RMS: ALSOFT wave backend
+(drivers=wave) -> 39.6s float32 capture, max 100ms-window RMS 0.0726
+(FS=1.0), peak 0.31; CONTROL run (WDS load, no play probe) is digitally
+silent (RMS 0.000000, peak 0.0000) -- the energy is the note. (3) Ear:
+capture saved at scratchpad/first_audible_capture.wav (untracked) -- listen.
+
+TSAN RAN CLEAN this pass (flake absent under wave backend) and CAUGHT A REAL
+BUG: SoundSpuMemoryAllocateWDS's retail v0-passthrough (bare `return;` in a
+u32 fn) is UB on host; native x86 happened to keep the allocator's result in
+the return register, TSan's exit instrumentation clobbered it (spuAddr came
+back garbage). Fixed via the d88f13c coexistence split: port body has
+explicit returns, matching build keeps the retail shape -- binary still
+byte-exact (d004692f...). 0/38 TSan reports touch the sound path (rest are
+pre-existing Mesa/gallium/SDL boot noise). WDS probe also gained a
+drain-poll + bounds guard (fixed-order readback raced the pump under TSan's
+~15x slowdown).
+
+Sound sdata tables (D_80050B78/BF0/A94/9B0/824) extracted from
+3F290.sdata.s into guarded port-side C (auto-stubs were zeros -> pitch 0).
+Validation: all 6 probes PASS (pump/prim/init/seq/wds/play); tripwire maps
+3/3 clean (env-noise-only diffs); make build byte-exact. Known limits: notes
+are envelope-less (raw ADSR unsupported by PsyX backend; hard-stop on
+key-off), one synthetic note != real music, song-start arming still probe-side.
+Evidence: proven (three-tier audible incl. silent control; TSan clean run;
+A/B binary hash; six probes; three tripwire maps)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

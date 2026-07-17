@@ -569,6 +569,7 @@ extern void SoundSetVolumeWithPhase(s32, SpuVolume*, s32);
 // Init-tree functions (called before their definitions in sound.c).
 extern void SoundInitialize(s32 arg0);
 extern AudioManager* func_8003B148(s32 arg0);
+extern u32 SoundSpuMemoryAllocateBlock(s32 size, s32 arg1);
 extern u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2);
 extern void func_800386C4(s32 arg0);
 
