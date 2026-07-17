@@ -281,6 +281,11 @@ typedef struct {
 /* Handler-subtree helpers (unported; port auto-stubs). */
 extern void func_8003A14C();
 extern void func_80039F18();
+extern void func_8003E3E0();
+extern s32 func_8003E290();
+/* Envelope handler-method table (sdata): retail PSX addresses consumed by
+ * func_8003E180; the EFE4 jalr host routing lands with the envelope pass. */
+extern u32 D_800508A4[];
 //----------------------------------------------------------------------------------------------------------------------
 
 void SoundInitialize(s32 arg0) {
@@ -2307,7 +2312,22 @@ u8* SoundScriptNop4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAud
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD8C);
+// Seq cmd 0x90: return to the saved IP (dal segno) with octave restore; with
+// no saved IP, release the voice and deactivate the element (track end).
+u8* func_8003CD8C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* ip = pScript;
+    if (pAudioElements->savedScriptIP != 0) {
+        ip = SOUND_PSX_TO_PTR(u8, pAudioElements->savedScriptIP);
+        *(u16*)&pAudioElements->unk_0x1C[4] += 1;
+        pAudioElements->octave = pAudioElements->savedOctave;
+    } else {
+        pAudioElements->status_flags &= 0xFFFC;
+        SoundReleaseVoiceFromChannel(&pAudioElements->voice_data,
+                                     pAudioElements->voice_number);
+        pAudioElements->active_flag = 0;
+    }
+    return ip;
+}
 
 u8* SoundScriptSaveOctaveAndIP(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->savedScriptIP = SOUND_PTR_TO_PSX(pScript);
@@ -2395,7 +2415,23 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CEF0);
 #endif
 
 // Loop end handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CF38);
+// Seq cmd 0x99: loop continue -- decrement the loop-stack counter; while it
+// hasn't wrapped, jump back to the loop start (saving the fall-through IP +
+// octave in the record); when exhausted, pop the selector.
+u8* func_8003CF38(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
+    u8 cnt = rec[0] - 1;
+    rec[0] = cnt;
+    if (cnt != 0xFF) {
+        *(u32*)(rec + 8) = SOUND_PTR_TO_PSX(pScript);
+        rec[3] = pAudioElements->octave;
+        pScript = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 4));
+        pAudioElements->octave = rec[2];
+    } else {
+        *(u16*)&pAudioElements->unk_0x70[2] -= 1;
+    }
+    return pScript;
+}
 
 // Seq cmd: loop end (exhausted) -- when the record's counter hit zero, pop
 // the loop stack: resume IP from the record, restore octave.
@@ -2423,7 +2459,36 @@ u8* func_8003D034(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript + 2;
 }
 
+// Seq cmd 0x9E: external jump into a SED file -- find the SED by the
+// element's id (or take the list head), then jump via its 16-bit offset
+// table. Not-found leaves the IP unadvanced (retail behavior).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundFile* e = g_SoundSedsLinkedList;
+    u32 pair = pScript[0] | (pScript[1] << 8);
+    s16 id = *(s16*)&pAudioElements->unk_0x06[4];
+    u8 q = pScript[2];
+    if (id != 0) {
+        while (*(u16*)((u8*)e + 0x14) != id) {
+            e = SOUND_PSX_TO_PTR(SoundFile, *(u32*)((u8*)e + 0x1C));
+            if (e == NULL) {
+                return pScript;
+            }
+        }
+    }
+    {
+        u16 off = *(u16*)((u8*)e + ((q + ((s16)pair << 1)) << 1) + 0x20);
+        pScript = (u8*)e + off;
+    }
+    return pScript + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D070);
+#endif
 
 // Set tempo handler?
 // Seq cmd: set manager volume (immediate).
@@ -2516,7 +2581,25 @@ u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* 
     return pScript + 1;
 }
 
+// Seq cmd 0xAA: move the element to another voice (release + assign-stopped).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D21C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = *pScript++;
+    if (n < 0x19) {
+        SoundVoiceData* vd = &pAudioElements->voice_data;
+        SoundReleaseVoiceFromChannel(vd, pAudioElements->voice_number);
+        pAudioElements->voice_number = n;
+        SoundAssignVoiceToChannelAndStop(vd, n);
+    }
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D21C);
+#endif
 
 u8* func_8003D298(u8* a0, s32 a1, s32 a2) {
     func_8003E5BC(*a0++, a2);
@@ -2574,9 +2657,44 @@ u8* func_8003D3A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
+// Seq cmd 0xB4: set the noise clock; flag the voice for noise mode.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D3D8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    AudioElement* el = pAudioElements;
+    *(u16*)&pAudioManager->unk_0x1c[0] = pScript[0];
+    SpuSetNoiseClock(*(u16*)&pAudioManager->unk_0x1c[0]);
+    pScript++;
+    el->voice_data.flags |= 0x2000;
+    el->voice_data.modeFlags |= 0x20;
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D3D8);
+#endif
 
+// Seq cmd 0xB5: nudge the noise clock (mod 64); flag the voice for noise.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D438(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    AudioElement* el = pAudioElements;
+    *(u16*)&pAudioManager->unk_0x1c[0] =
+        (pScript[0] + *(u16*)&pAudioManager->unk_0x1c[0]) & 0x3F;
+    SpuSetNoiseClock(*(u16*)&pAudioManager->unk_0x1c[0]);
+    pScript++;
+    el->voice_data.flags |= 0x2000;
+    el->voice_data.modeFlags |= 0x20;
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D438);
+#endif
 
 u8* SoundScriptSetVoiceFlags2000AndMode(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->voice_data.flags |= 0x2000;
@@ -2613,7 +2731,25 @@ u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D4E4);
 #endif
 
+// Seq cmd 0xBA: conditional reverb-voice enable -- always when the manager
+// isn't SFX-class; for SFX only when globally allowed and not flagged off.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D53C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* ip = pScript;
+    if (!(pAudioManager->unk_Flags & 0x6) ||
+        ((g_SoundControlFlags & 0x2000) && !(pAudioElements->active_flag & 0x2))) {
+        pAudioElements->voice_data.flags |= 0x4000;
+        pAudioElements->voice_data.modeFlags |= 0x40;
+    }
+    return ip;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D53C);
+#endif
 
 u8* SoundScriptSetVoiceFlags4000ClearMode(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->voice_data.flags |= 0x4000;
@@ -2870,7 +3006,32 @@ u8* func_8003DB98(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript + 2;
 }
 
+// Seq cmd 0xF8: vibrato ramp -- from/to (signed<<24) over n steps.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    s32 from = p[0] << 24;
+    s32 diff = (p[2] << 24) - from;
+    s32 n = p[1];
+    if (diff != 0 && n != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0xC] = from >> 16;
+        *(u16*)&pAudioElements->unk_0x76[0xA] = n;
+        pAudioElements->unk_0x04 = (f4 | 0x100) & 0xFFF7;
+        *(s32*)&pAudioElements->unk_0x76[0x6] = diff / n;
+    } else {
+        pAudioElements->unk_0x04 &= 0xFEFF;
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DBE4);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DC50);
 
@@ -2956,9 +3117,58 @@ s32 func_8003E160(s32 a0, s32 a1, u16* a2) {
     return a0;
 }
 
+// Seq cmd 0xF0: define envelope object -- select slot, bind the handler
+// method from the D_800508A4 table (retail PSX address; the port's host
+// routing for these lands with the envelope pass), set mode/state.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E180(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env;
+    *(u16*)&pAudioElements->unk_0x76[0x56] = pScript[0];
+    env = (SoundEnvelope*)((u8*)pAudioElements +
+                           ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    {
+        u8 m = pScript[1];
+        env->unk1D = m & 0xF;
+        env->pfnHandler = D_800508A4[env->unk1D];
+        if (!(m & 0x10)) {
+            env->flags = 0x2;
+        } else {
+            env->flags = 0;
+        }
+    }
+    env->stepAdd = 0x400;
+    *(u16*)&env->unk16[0] = 0;
+    env->state = pScript[2];
+    return pScript + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E180);
+#endif
 
+// Seq cmd 0xF1: envelope target/rate -- rate = n + n*n/64; packed target via
+// func_8003E290 keyed by the envelope's method index.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env = (SoundEnvelope*)((u8*)pAudioElements +
+                         ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    s32 sq = pScript[0] * pScript[0];
+    u16 rate = pScript[0] + sq / 64;
+    *(s32*)&env->unk4[0x8] = func_8003E290(((s8)pScript[1] << 24) | (pScript[2] << 16),
+                                           env->unk1D);
+    *(u16*)&env->unk4[0xE] = rate;
+    return pScript + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E1F8);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E290);
 
@@ -2982,7 +3192,25 @@ u8* SoundScriptNop5(u8* pScript, AudioManager* pAudioManager, AudioElement* pAud
     return pScript;
 }
 
+// Seq cmd 0xF6: arm envelope object N (prime via func_8003E3E0, set run flag
+// + the element's active-envelope bit).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E360(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = pScript[0];
+    SoundEnvelope* env = (SoundEnvelope*)((u8*)pAudioElements + ((n << 5) + 0xD8));
+    func_8003E3E0(env);
+    pScript++;
+    env->flags |= 0x1;
+    pAudioElements->unk_0xCE |= 1 << n;
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E360);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E3E0);
 
@@ -2995,7 +3223,29 @@ u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript + 1;
 }
 
+// Seq cmd 0xFC: select sample bank + load instrument in one command.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    AudioElement* el = pAudioElements;
+    SoundWDSEntry* e;
+    u8 inst = p[1];
+    ((u8*)&el->unk_0x24)[1] = p[0];
+    e = SoundFindWdsEntry(p[0]);
+    if (e == NULL) {
+        e = g_SoundWdsLinkedList;
+    }
+    el->unk2C = SOUND_PTR_TO_PSX(e);
+    func_8003E5BC(inst, el);
+    return p + 2;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E44C);
+#endif
 
 // Seq cmd: master level (manager interpolator immediate).
 u8* func_8003E4BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -3022,7 +3272,19 @@ u8* func_8003E4F0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E54C);
+// Seq cmd 0xFF: release the voice if its envelope has fully decayed.
+u8* func_8003E54C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    long keyStat;
+    short envx;
+    SpuGetVoiceEnvelopeAttr(pAudioElements->voice_number, &keyStat, &envx);
+    if (envx == 0) {
+        pAudioElements->status_flags &= 0xFFFC;
+        SoundReleaseVoiceFromChannel(&pAudioElements->voice_data,
+                                     pAudioElements->voice_number);
+        pAudioElements->active_flag = 0;
+    }
+    return pScript;
+}
 
 // Load instrument #instrument from the element's bank (unk2C) into its voice
 // data: sample/loop SPU addresses, unpacked ADSR fields, program number.

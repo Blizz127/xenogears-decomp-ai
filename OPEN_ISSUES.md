@@ -703,6 +703,38 @@ DF78, D8B8, DD24, E04C, D9A4 -- see scratchpad/handlers_3b.txt minus group
 A). 0x99 (CF38, loop-continue) will enable a loop-stack test in the stream.
 Honest state: 32/51 handlers real, oracle-confirmed, exercised via
 synthetic stream; audible awaits WDS/B5.
+
+### Handler layer batch 3 (step 3c, partial): 45/51 real
+
+Group B (13 mid handlers): **3 objdiff {} oracle-confirmed (fuzzy=100)** --
+func_8003CF38 (0x99 loop-continue), CD8C (0x90 dal-segno/track-end), E54C
+(0xFF release-if-silent) -- and **10 coexistence** (audited 1:1 + residuals
+all non-semantic micro-shapes: commutative operand order, delay-slot copy
+placement, register reuse): func_8003D070/D21C/D3D8/D438/DBE4/D53C/E180/
+E1F8/E360/E44C. Oracle 1230/2292, code 36.12%, fuzzy 51.69%. Binary
+byte-exact; TSan clean; five maps EXACT.
+
+FINDINGS:
+- **Envelope method table RESOLVED**: func_8003E180 (0xF0) binds
+  env->pfnHandler from D_800508A4 (sdata word table) -- the "runtime-trace"
+  EFE4 jalr set is statically enumerable after all. The PORT needs host
+  routing for that table (g_SoundScriptHandlers pattern) before envelopes
+  can arm -- lands with the envelope/B5 pass. Until then streams must not
+  arm envelopes (0xF0/0xF6).
+- **Loop-stack live test deferred to 3d**: placing 0x98/0xA1/0x99/0x9A
+  mid-stream parked the IP at the loop body -- C6E8's post-pass TIE-SCAN
+  walks forward from the stored IP and interacts with loop constructs (and
+  reads past stream end after a trailing rest -- synthetic streams need a
+  scan-safe epilogue). Handlers are asm-faithful (objdiff/audit); this is
+  stream-design + interpreter-model work, instrumented in 3d. Stream
+  reverted to the 3b-proven form (PASS).
+
+**6 handlers remain (group C large, 53-67 insns)**: func_8003DC50, DF78,
+D8B8, DD24, E04C, D9A4 -- unhurried in 3d, plus the loop-test redo.
+Honest state: 45/51 handlers real; not yet audible (WDS/B5).
+Evidence: proven (oracle fuzzy=100 x3; probes PASS; A/B hash; TSan; 5/5
+tripwires)
+Last verified @ HEAD of this commit
 Evidence: proven (oracle fuzzy=100 x9; extended seq-probe incl. fade
 convergence; A/B binary hash; TSan; five-map tripwires)
 Last verified @ HEAD of this commit
