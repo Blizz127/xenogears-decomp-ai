@@ -1334,6 +1334,29 @@ Evidence: proven (in-game three-tier vs the M3-era silent-window control;
 deterministic cue; TSan clean; five exact tripwires; A/B binary hash)
 Last verified @ HEAD of this commit
 
+## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
+
+User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in
+on the fire painting, with Fei -- renders the WRONG content. The shot shows
+the back of Fei's head where the fire painting the camera is supposed to
+zoom into should be. Audio on the same scene is correct (the map's music and
+its deterministic boot-script SFX cue were both proven this session); the
+defect is visual only.
+
+DISTINCT from the fea685a fix: that commit resolved the Map014 intro
+"overdraw smear" (func_8002E688 used RotTransPers4's return value instead of
+retail's min(SZ0..SZ3) >> D_80050100 for OT-bucket assignment -- a
+depth/ordering defect). The present bug is wrong CONTENT/geometry, not
+ordering: a different class -- candidate causes include a separate
+render-path defect, wrong model/object selection, or a camera/transform
+issue in the zoom sequence. Needs its own investigation; do not assume the
+fea685a mechanism.
+
+Repro: `./scratchpad/run_map014.sh` (or XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0
+XENO_FIELD_MAP=14 XENO_FIELD_ENTRANCE=0) and watch the intro zoom sequence.
+Evidence: observed (user, live gameplay); not yet investigated
+Last verified @ f2d8778
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
