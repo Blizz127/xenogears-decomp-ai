@@ -768,6 +768,61 @@ handlers real and dispatching at 240Hz. Remaining before AUDIBLE: WDS/B5
 coexistence bodies as desired.
 Evidence: proven (loop-test live run; A/B hash; TSan; 5/5 tripwires)
 Last verified @ HEAD of this commit
+
+### B5 audible-leg scoping (trace + design, NO implementation)
+
+Read-only trace of the last mile between the complete tick engine and sound
+output. B5 is SMALLER than feared -- most of the chain is already real:
+
+(A) WDS LOAD: SoundLoadWdsFile (62 insns, unported) + func_80039024 (72,
+unported) = **2 oracle decomps**; every other callee is already-real C
+(SoundQueueSpuWriteCommand, SoundSpuMemoryAllocateWDS, SoundHeapSetBlock/
+ClearBlockMemory, gate brackets) or the stubbed error leg. Disc access is
+REACHABLE: the caller (field misc8 func_80085F30, real C in the port) reads
+the WDS via the WORKING archive path (ArchiveDataSync + heap buffer) --
+sound reuses the field loader's disc infrastructure, no new I/O needed.
+
+(B) SPU-RAM UPLOAD: **already wired end-to-end** -- SoundQueueSpuWriteCommand
+-> SoundProcessTransferCommand -> SpuSetTransferStartAddr + SpuWrite (real in
+PsyX LIBSPU.C, writes the backend SPU-RAM image) -> SoundOnTransferCallback
+(real, drains the queue). Behavioral verification needed, no construction.
+
+(C) PLAYBACK TRIGGER -- **THE one real gap**: the tick's voice-register
+flush (func_8003E900/EB5C) writes key-on/off, pitch, volume, ADSR, start
+address into the static SpuUnion backing page (state-faithful, unwired).
+The backend is driven via SpuSetKey/SpuSetVoiceAttr (both real; 4x
+alSourcePlay sites in PsyX_SPUAL). Wiring = a register->backend translator
+(port-side: either #ifdef branches in E900/EB5C calling the Spu* API, or a
+post-flush shim reading the backing page). ONE bounded host-wiring pass.
+
+(D) SPU-IRQ -- **DEFINITIVE: NOT needed for audible**. SoundSpuIRQHandler
+(real C) is a thin dispatcher to g_SoundSpuIrqCallbackFn -- clients are the
+XA/CD STREAMING paths. WDS playback = one-shot SPU-RAM upload + key-on; the
+upload uses the transfer-complete callback, not the address-IRQ. The IRQ
+source defers AGAIN, to the streaming/XA leg (design it there).
+
+(E) ENVELOPE ROUTING: func_8003F240 (24) + F2A0 (26) decomps + a 16-entry
+host table for D_800508A4 (dispatch-table pattern). NOT audible-critical --
+hardware ADSR shaping flows through the voice regs in (C); envelope objects
+are modulation on top. Quality layer, defer past first-audible.
+
+MINIMAL FIRST-AUDIBLE (B5.1, ~2 passes): decomp the 2 WDS fns (oracle) ->
+behavioral-verify upload (SPU-RAM image gets sample bytes) -> wire the
+register->backend translator -> drive a real WDS bank + note-on (field map
+or synthetic stream with a real bank). B5.2 (~1 pass): envelope routing +
+F240/F2A0. B5.3 (separate leg): XA/CD streaming + the SPU-IRQ source.
+
+AUDIO-OUTPUT VERIFICATION REGIME (proving audible, not "ran"): (1) backend
+state probe -- AL_SOURCE_STATE==AL_PLAYING + buffers queued (PsyX accessor,
+alGetSourcei already used internally); (2) captured-output proof:
+ALSOFT_DRIVERS=wave renders to a WAV, assert non-silence (RMS threshold) --
+headless/CI-grade evidence; (3) the human ear for the milestone.
+
+No showstoppers: disc access reachable, backend functional, IRQ defers.
+Recommendation: fund B5.1 (first audible) next -- 2 decomps + 1 wiring pass.
+Evidence: proven (subtree trace over split asm + C-body; transfer/IRQ roles
+read from real C; PsyX_SPUAL API confirmed)
+Last verified @ a7390b0
 Evidence: proven (oracle fuzzy=100 x9; extended seq-probe incl. fade
 convergence; A/B binary hash; TSan; five-map tripwires)
 Last verified @ HEAD of this commit
