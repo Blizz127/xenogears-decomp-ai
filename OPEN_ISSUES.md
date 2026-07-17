@@ -1727,6 +1727,38 @@ untested-but-unchanged here.
 Evidence: fixed + proven (pixel-exact vs the proven target; tripwires)
 Last verified @ HEAD of this commit
 
+## Map014 intro ripple (opcodes 0x26/0x27): horizontal banding/doubling while active — fidelity untested
+
+User-observed in live play after the cb57e9d fire-painting fix: during the
+intro closeup the painting shows horizontal "doubling"/banding — content
+appears displaced across two seams (upper third + lower). TRIAGED
+(read-only): the banding exists in the STATIC mid-ripple frames (f60/f120
+row-discontinuity spikes of magnitude ~42-45 at capture y=68 and y=376)
+and is GONE at f180 (profile halves and moves) — it tracks the distortion
+effect's ACTIVE WINDOW (script arms it f0, distA=1 until ~f145) exactly.
+The seam positions map onto the EFFECT'S OWN packet geometry, not the
+billboard's quad rows (110/370 do not spike): y=68 = the warp grid's
+pinned top edge (PSX 0x20, row i==0 fixed while row 1+ wave), y=376 =
+inside the rows-14-16 relocated strip band (PSX 176-224, re-composited
+from the D_800AEB24 capture strips). NOT the cb57e9d fix's doing: the fix
+is bit-identical to the forced-accept target and the target frame ITSELF
+contains the banding (it is a mid-ripple frame).
+
+OPEN QUESTION (why this stays filed): some seam structure is AUTHORED
+(retail's packet layout pins the top edge and recomposites the bottom
+strips; hardware shows displaced copies mid-wave too), but whether retail
+looks this HARD-EDGED is unverified — needs an emulator/console reference
+of the intro. Candidate port-side mechanism if unfaithful: the ripple's
+framebuffer CAPTURE (DR_MOVE packets threaded mid-OT at bucket 1) vs the
+GL pipeline's draw ordering — the prior FT4-feedback arc verified texel
+SAMPLING exact but not capture ORDERING. Repro:
+./scratchpad/run_map014.sh, watch the closeup's first ~5 seconds; compare
+scratchpad/m14_fixed_f120_painting.png (banded, mid-ripple) vs the f180
+equivalent (clean, post-ripple).
+Evidence: triaged (seam profile tracks the effect's window + geometry);
+fidelity vs hardware unverified; no fix attempted
+Last verified @ cb57e9d
+
 ## Inert LZCR "flag gates" across the model-prim walker family (13 unfixed sites)
 
 Found during the Map014 fire-painting fix. EVERY "GTE FLAG check" in the
