@@ -389,13 +389,6 @@ s32 func_8002E688(u8* pCmd, s32 count) {
     u8* out = D_80059424 - packetStep;
     u32* ot = (u32*)(uintptr_t)D_80059568;
     s32 emitted = D_80059578;
-    /* DIAG ONLY: retail uses the FLAG `bltz` at 8002E790.  Permit an opt-in
-     * bypass solely to measure its effect on the Map014 close-up. */
-    static int s_ignoreFlag = -1;
-    if (s_ignoreFlag < 0) {
-        const char* e = getenv("XENO_E688_IGNORE_FLAG");
-        s_ignoreFlag = (e != NULL && e[0] != '\0' && e[0] != '0');
-    }
 
     while (count != 0) {
         u32 cmd = *(u32*)pCmd;
@@ -416,7 +409,14 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        if ((!s_ignoreFlag && flag < 0) || otz <= 0) {
+        /* No FLAG rejection (inert-LZCR sweep): retail's apparent flag gates
+         * at 8002E788/8002E7C0 are `mfc2 $t0, $31` -- MFC2 reads DATA reg 31
+         * (LZCR, always 1..32), not the FLAG control reg (CFC2) -- so the
+         * bltz never takes on hardware; overflowed divides saturate and the
+         * quad draws.  (The former XENO_E688_IGNORE_FLAG diagnostic toggle
+         * modeled a gate that does not exist; deleted.)  The zero/negative
+         * depth check is kept. */
+        if (otz <= 0) {
             continue;
         }
         /* asm 8002E7AC: blez MAC0 after NCLIP — reject backface/degenerate. */

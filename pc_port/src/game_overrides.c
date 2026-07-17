@@ -721,12 +721,14 @@ static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count) {
 
         sz3 = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        if (flag < 0) {
-            CullCamSampleFlagDrop(flag, sz3, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
-                                  "RTPT3", 0, 3);
-            CullCamDrop(CC_FLAG, 0);
-            continue;
-        }
+        /* NO FLAG rejection (inert-LZCR sweep, cb57e9d mechanism): retail's
+         * apparent flag gate in every model-prim walker is `mfc2 $tN, $31`
+         * -- MFC2 reads DATA reg 31 (LZCR, always 1..32, never negative),
+         * not the FLAG control reg (CFC2, absent from these walkers) -- so
+         * the paired bltz never takes on hardware.  Overflowed divides
+         * saturate (0x1FFFF; screen coords clamp +/-0x400) and the prim
+         * draws.  This walker's retail site: 0x8002E150.  The real gates
+         * (NCLIP, screen-overlap, zero-depth) are kept below. */
 
         nclipOpz = NormalClip(xy0, xy1, xy2);
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
@@ -799,12 +801,8 @@ static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count) {
 
         sz3Result = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        if (flag < 0) {
-            CullCamSampleFlagDrop(flag, sz3Result, xy0, xy1, xy2, 0,
-                                  v0, v1, v2, NULL, "RTPT3", 0, 3);
-            CullCamDrop(CC_FLAG, 0);
-            continue;
-        }
+        /* No FLAG rejection -- retail site 0x8002E58C is the inert
+         * mfc2-$31/LZCR pattern (see ModelPrimTriSmallAverageVariant0). */
 
         nclipOpz = NormalClip(xy0, xy1, xy2);
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
@@ -970,21 +968,16 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         gte_stflg(&rtptFlag);
         gte_stsxy3(&xy0, &xy1, &xy2);
 
-        /* Retail issues NCLIP before testing RTPT's saved FLAG. */
         gte_nclip();
         gte_stopz(&nclipOpz);
         rtptFlag = (long)(s32)(u32)rtptFlag;
         nclipOpz = (long)(s32)(u32)nclipOpz;
-        if (rtptFlag < 0) {
-            CullCamSeen(1, rtptFlag);
-            CullCamSampleFlagDrop(rtptFlag, (u16)C2_SZ3 >> 2,
-                                  xy0, xy1, xy2, 0, v0, v1, v2, v3,
-                                  "RTPT4", 1, 4);
-            CullCamDrop(CC_FLAG, 1);
-            continue;
-        }
+        /* No FLAG rejection -- retail sites 0x8002E364/0x8002E3A0 are the
+         * inert mfc2-$31/LZCR pattern (the same shared quad body the FT4
+         * walker enters; see ModelPrimTriSmallAverageVariant0 for the full
+         * mechanism note).  rtptFlag is still read for CullCam telemetry. */
+        CullCamSeen(1, rtptFlag);
         if (nclipOpz <= 0) {
-            CullCamSeen(1, rtptFlag);
             CullCamDrop(CC_NCLIP_BACKFACE, 1);
             CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 1);
             continue;
@@ -994,18 +987,10 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         gte_rtps();
         gte_stflg(&rtpsFlag);
         gte_stsxy(&xy3);
-        /* AVSZ4 is retail's branch-delay instruction and therefore executes
-         * even when RTPS's FLAG rejects the primitive. */
+        /* AVSZ4 is retail's branch-delay instruction and always executes. */
         gte_avsz4();
         rtpsFlag = (long)(s32)(u32)rtpsFlag;
         CullCamSeen(1, rtpsFlag);
-        if (rtpsFlag < 0) {
-            CullCamSampleFlagDrop(rtpsFlag, (u16)C2_SZ3 >> 2,
-                                  xy0, xy1, xy2, xy3, v0, v1, v2, v3,
-                                  "RTPT4", 1, 4);
-            CullCamDrop(CC_FLAG, 1);
-            continue;
-        }
 
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             CullCamDrop(CC_OVERLAP, 1);
@@ -1151,12 +1136,9 @@ static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
 
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
         CullCamSeen(1, flag);
-        if (flag < 0) {
-            CullCamSampleFlagDrop(flag, otz, xy0, xy1, xy2, xy3, v0, v1, v2, v3,
-                                  "RTPT4", 1, 4);
-            CullCamDrop(CC_FLAG, 1);
-            continue;
-        }
+        /* No FLAG rejection -- retail sites 0x8002E788/0x8002E7C0 are the
+         * inert mfc2-$31/LZCR pattern (shared quad min-SZ body; see
+         * ModelPrimTriSmallAverageVariant0). */
         {
             long nclipOpz = NormalClip(xy0, xy1, xy2);
             if (nclipOpz <= 0) {
@@ -1244,12 +1226,9 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
 
         sz3 = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        if (flag < 0) {
-            CullCamSampleFlagDrop(flag, sz3, xy0, xy1, xy2, 0, v0, v1, v2, NULL,
-                                  "RTPT3", 0, 3);
-            CullCamDrop(CC_FLAG, 0);
-            continue;
-        }
+        /* No FLAG rejection -- retail site 0x8002E150 (shared tri body) is
+         * the inert mfc2-$31/LZCR pattern (see
+         * ModelPrimTriSmallAverageVariant0). */
 
         /* Retail issues NCLIP before evaluating the screen-overlap result. */
         nclipOpz = NormalClip(xy0, xy1, xy2);
@@ -1326,12 +1305,9 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
 
         sz3Result = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        if (flag < 0) {
-            CullCamSampleFlagDrop(flag, sz3Result, xy0, xy1, xy2, 0,
-                                  v0, v1, v2, NULL, "RTPT3", 0, 3);
-            CullCamDrop(CC_FLAG, 0);
-            continue;
-        }
+        /* No FLAG rejection -- retail site 0x8002E58C (shared tri min-SZ
+         * body) is the inert mfc2-$31/LZCR pattern (see
+         * ModelPrimTriSmallAverageVariant0). */
 
         nclipOpz = NormalClip(xy0, xy1, xy2);
         if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {

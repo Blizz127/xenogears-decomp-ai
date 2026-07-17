@@ -1759,7 +1759,7 @@ Evidence: triaged (seam profile tracks the effect's window + geometry);
 fidelity vs hardware unverified; no fix attempted
 Last verified @ cb57e9d
 
-## Inert LZCR "flag gates" across the model-prim walker family (13 unfixed sites)
+## Inert LZCR "flag gates" across the model-prim walker family (SWEPT for all ported walkers)
 
 Found during the Map014 fire-painting fix. EVERY "GTE FLAG check" in the
 retail model-prim walker blob (asm/slus_006.64/system/temp2.s) is
@@ -1768,25 +1768,41 @@ always 1..32, never negative), NOT the FLAG control register (CFC2). The
 paired bltz rejects are therefore DEAD CODE on hardware: overflowed
 perspective divides saturate (0x1FFFF) and the primitive still draws. The
 single real `cfc2 $31` in the file is elsewhere (0x80030D20, a different
-subsystem). Sites: 0x8002E150, E364+E3A0 (FT4 variant0 -- FIXED, the
-fire-painting bug), E58C, E788+E7C0 (func_8002E688 -- NOTE: the port's
-E688 FLAG gate and its XENO_E688_IGNORE_FLAG diagnostic toggle model a
-rejection retail never performed), E9F8, EBF4+EC2C, EE20, F01C, F1F8,
-F3E0, F5BC.
+subsystem).
 
-IMPLICATIONS: (1) the port's remaining walker FLAG gates (F4 variant0/2,
-tri walkers, E688) are non-retail behavior -- each can wrongly cull
-near-plane/overflowing geometry that hardware draws saturated; the
-fire-painting was the first proven casualty, and the well-cutscene
-"oversized-primitive cull" saga (1d01da6/0982c01 revert) lives in the same
-territory (hardware relies on GPU-side >1023x511 poly rejection, which the
-port models as ModelPrimQuad/TriOversized, not on GTE-flag culls).
-(2) Fixing them all should be ONE audited pass: remove each gate, keep
-NCLIP/overlap/otz gates (those are real in retail), verify PsyX's
-saturation path per walker, and regression the render-sensitive maps --
-each walker feeds different content classes, so validate individually.
-Do NOT bulk-delete without per-walker capture checks.
-Evidence: retail asm read (all sites enumerated); one site fixed + proven
+FULL ENUMERATION (the original filing's list was grep-truncated at 14):
+24 sites -- E150, E364, E3A0, E58C, E788, E7C0, E9F8, EBF4, EC2C, EE20,
+F01C, F1F8, F3E0, F5BC, F7C8, F9D0, FA0C, FBE8, FC2C, FE04, FE40, 30018,
+30054, 30858. The walkers are shared common bodies with multiple entry
+stubs, so the PORTED walkers cover exactly SIX of these: E150 (shared tri
+body), E58C (tri min-SZ body), E364+E3A0 (shared quad body -- F4 and FT4
+entries), E788+E7C0 (quad min-SZ body -- F4 variant2 and func_8002E688
+entries).
+
+SWEPT (this commit; the fire-painting fix cb57e9d was the template): all
+seven port-side gates removed -- ModelPrimTriSmallAverageVariant0,
+ModelPrimTriSmallMinimumVariant2, ModelPrimQuadF4Variant0 (both gates),
+ModelPrimQuadF4Variant2, ModelPrimTriAverageVariant0,
+ModelPrimTriMinimumVariant2 (game_overrides.c) and func_8002E688's
+(temp2.c port branch; matching build untouched -- the body is inside the
+#else of the #ifndef XENO_PC_PORT guard). Real gates kept everywhere:
+NCLIP, screen-overlap, zero-depth. XENO_E688_IGNORE_FLAG DELETED (it
+modeled a gate that does not exist). ModelPrimQuadVariant0's gate remains
+but the function is UNWIRED dead code (declared/defined, in no table).
+Validation: MAP014 f60 OT buckets identical (walls {73,74,87,89}, actor 31
+at 67, A24 13 quads at 14-17); MAP014 and MAP000 8-frame ladders both
+PIXEL-IDENTICAL pre/post (nothing was being flag-culled on those frames,
+and nothing over-draws -- the fea685a class watched, absent); five-map
+watchdogs (see commit). CullCam telemetry: flag values still read and fed
+to CullCamSeen; the CC_FLAG drop counters are now structurally zero.
+
+REMAINING (not a port defect): 18 sites live in retail walker variants the
+port has NOT implemented (variant-1/3/5 functions -- NULL proc slots, plus
+later bodies F7C8..30858). They matter only as PORTING GUIDANCE: when any
+of those walkers is ported, do NOT translate its mfc2-$31 bltz into a real
+FLAG gate -- port it as inert (no rejection), per this entry.
+Evidence: retail asm read (all 24 sites); all 6 ported-walker sites swept +
+validated (frame-identical captures, tripwires exact)
 Last verified @ HEAD of this commit
 
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
