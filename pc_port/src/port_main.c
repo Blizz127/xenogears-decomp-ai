@@ -341,6 +341,11 @@ static void PortRunSoundGateStress(void) {
 static const unsigned char s_seqProbeStream[] = {
     0x97, 0x03, 0x04,       /* time signature (func_8003CE68)          */
     0xA0, 0x55,             /* volume immediate (func_8003D0E8)        */
+    0x98, 0x02,             /* loop start, 2 iterations (func_8003CEF0) */
+    0xA1, 0x03,             /* volume nudge +3<<16 in-loop (func_8003D110) */
+    0x99,                   /* loop continue (func_8003CF38); exhausts + pops
+                             * after 2 iterations. NOTE: 0x9A is an early-exit-
+                             * INSIDE-loop construct, not a terminator (3d) */
     0xE9, 0x10,             /* pan nudge -> 0x1000 (func_8003DEB4)     */
     0xC1, 0x11, 0x22, 0x33, /* raw ADSR (func_8003D60C)                */
     0xA9, 0x44,             /* unk62 (SoundScriptSetUnk62)             */
@@ -348,7 +353,13 @@ static const unsigned char s_seqProbeStream[] = {
     0xA7, 0x02, 0x60,       /* channel fade: cnt 0x40, tgt 0x6000 (func_8003D1BC) */
     0xD4, 0x04, 0x20,       /* pitch slide arm (func_8003D7FC)         */
     0xEA, 0x08, 0x30,       /* pan fade, completes at scaled 0x2000 (func_8003DEE4 + C4C4 fade path) */
-    0x80, 0x7F,             /* rest (func_8003CD08) -- terminates      */
+    0xFD, 0x02,             /* master level (func_8003E4BC): restores the
+                             * tempo product the in-loop 0xA1 zeroed      */
+    0x80, 0xFF,             /* rest (func_8003CD08) -- terminates; 0xFF
+                             * outlasts the probe window (guard stays unread
+                             * by the interpreter)                        */
+    0x00,                   /* scan-safe epilogue: in-bounds <0x80 byte for
+                             * C6E8's post-pass tie-scan (3c finding)    */
 };
 static void PortRunSoundSeqProbe(void) {
     unsigned char* mgr = (unsigned char*)(uintptr_t)D_800595D8;
@@ -384,7 +395,7 @@ static void PortRunSoundSeqProbe(void) {
     DisableEvent(g_unk_SoundEvent);
 
     ok_mgr = (*(unsigned short*)(mgr + 0x3A) == 0x30) && (*(unsigned short*)(mgr + 0x3C) == 4) &&
-             (*(unsigned short*)(mgr + 0x38) == 3) && (*(int*)(mgr + 0x58) == 0x550000);
+             (*(unsigned short*)(mgr + 0x38) == 3) && (*(int*)(mgr + 0x58) == 0x5B0000)   /* 0xA0 + loop 2x 0xA1 (+3<<16): CEF0/CF38/CFA4 live */;
     ok_el = (*(unsigned short*)(el + 0x74) == 0x2000) &&   /* pan fade completed (retail sets scaled delta on final step) */
             (*(unsigned char*)(el + 0x54) == 0x11) && (*(unsigned char*)(el + 0x55) == 0x22) &&
             (*(unsigned char*)(el + 0x56) == 0x33) && (*(unsigned short*)(el + 0x62) == 0x44) &&
@@ -392,10 +403,10 @@ static void PortRunSoundSeqProbe(void) {
             (*(int*)(el + 0x84) == 0x08000000) &&               /* slide step (0xD4) */
             (*(unsigned short*)(mgr + 0x7A) == 0x6000);          /* interp70 target (0xA7) */
     ok_ip = (*(unsigned int*)(el + 0x14) ==
-             (unsigned int)(uintptr_t)(s_seqProbeStream + sizeof(s_seqProbeStream)));
+             (unsigned int)(uintptr_t)(s_seqProbeStream + sizeof(s_seqProbeStream) - 1));
     {
         unsigned short fermata = *(unsigned short*)(el + 0x5C);
-        ok_ticked = (fermata > 0 && fermata <= 0x7F);
+        ok_ticked = (fermata > 0 && fermata <= 0xFF);
     }
     ok_route = ok_mgr && ok_el && ok_ip;
     printf("[seq-probe] mgr: sig=%x/%x beats=%x vol58=%08x (ok=%d)\n",

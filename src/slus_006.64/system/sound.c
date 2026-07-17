@@ -283,6 +283,9 @@ extern void func_8003A14C();
 extern void func_80039F18();
 extern void func_8003E3E0();
 extern s32 func_8003E290();
+/* Envelope handler methods (unported; bound directly by 0xD8/0xE4/0xEC). */
+extern s32 func_8003F240();
+extern s32 func_8003F2A0();
 /* Envelope handler-method table (sdata): retail PSX addresses consumed by
  * func_8003E180; the EFE4 jalr host routing lands with the envelope pass. */
 extern u32 D_800508A4[];
@@ -2928,9 +2931,94 @@ u8* func_8003D884(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
+// Seq cmd 0xD8: prime envelope object 0 (direct method, signed-square
+// target): arg = sign-preserving target^2 << 14.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003D8B8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xD8);
+        s32 arg;
+        s32 sq;
+        {
+            s32 t = (s8)p[1];
+            if (t < 0) {
+                arg = t * -t;
+            } else {
+                arg = t * t;
+            }
+        }
+        sq = (s16)n * (s16)n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290(arg << 14, (s16)n, 3);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F2A0);
+        env->unk1D = 3;
+        env->flags = 3;
+        env->state = 0;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x1;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D8B8);
+#endif
 
+// Seq cmd 0xD9: prime envelope object 0 (table method, signed-square target).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003D9A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xD8);
+        u16 mode;
+        u8 m;
+        s32 arg;
+        s32 sq;
+        {
+            s32 t = (s8)p[1];
+            if (t < 0) {
+                arg = t * -t;
+            } else {
+                arg = t * t;
+            }
+        }
+        sq = (s16)n * (s16)n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290(arg << 14, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->unk1D = m;
+        env->state = 0;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x1;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D9A4);
+#endif
 
 // Seq cmd: envelope 0 rate -- step = 0x400 / ((n+1)*4).
 u8* func_8003DAB0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -3033,9 +3121,75 @@ u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DBE4);
 #endif
 
+// Seq cmd 0xE4: prime envelope object 1 (direct method) -- rate =
+// n + n*n/64, packed target via func_8003E290, arm + notify func_8003E3E0.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DC50(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xF8);
+        s32 sq = n * n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, 2);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F240);
+        env->unk1D = 2;
+        env->state = 1;
+        env->flags = 3;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x2;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DC50);
+#endif
 
+// Seq cmd 0xE5: prime envelope object 1 (method from the D_800508A4
+// table, low nibble of p2 selects; bit4 of p2 selects one-shot vs looping).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DD24(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xF8);
+        u16 mode;
+        u8 m;
+        s32 sq = n * n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->state = 1;
+        env->unk1D = m;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x2;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DD24);
+#endif
 
 // Seq cmd: envelope 1 rate -- step = 0x400 / ((n+1)*4).
 u8* func_8003DE18(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -3101,9 +3255,75 @@ u8* func_8003DF3C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 
+// Seq cmd 0xEC: prime envelope object 2 (direct method) -- rate =
+// n + n*n/64, packed target via func_8003E290, arm + notify func_8003E3E0.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DF78(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0x118);
+        s32 sq = n * n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, 3);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F2A0);
+        env->unk1D = 3;
+        env->state = 2;
+        env->flags = 3;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x4;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DF78);
+#endif
 
+// Seq cmd 0xED: prime envelope object 2 (method from the D_800508A4
+// table, low nibble of p2 selects; bit4 of p2 selects one-shot vs looping).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003E04C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0x118);
+        u16 mode;
+        u8 m;
+        s32 sq = n * n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->state = 2;
+        env->unk1D = m;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x4;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E04C);
+#endif
 
 u8* SoundScriptSetUnkCEAndUnk136(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0xCE |= 0x4;

@@ -735,6 +735,39 @@ Honest state: 45/51 handlers real; not yet audible (WDS/B5).
 Evidence: proven (oracle fuzzy=100 x3; probes PASS; A/B hash; TSan; 5/5
 tripwires)
 Last verified @ HEAD of this commit
+
+### HANDLER LAYER COMPLETE (step 3d): 51/51 real
+
+The final 6 group-C handlers landed as **coexistence** (audited 1:1;
+residual = register-pressure frame shape, one extra callee-saved reg vs
+retail; {}-upgrade candidates for a fresh matching session):
+func_8003DC50/DF78/D8B8/DD24/E04C/D9A4 -- the envelope-priming family
+(0xD8/0xD9/0xE4/0xE5/0xEC/0xED). They bind env->pfnHandler either directly
+to func_8003F240/F2A0 (host fn addresses survive the u32 round-trip under
+no-pie) or from D_800508A4 (retail addresses -- host routing deferred to
+the envelope/B5 pass; streams must not arm table-bound envelopes).
+
+**LOOP-TEST REDO PASSED**: scan-safe stream (loop-first + guard byte +
+0xFD tempo restore after the in-loop 0xA1 zeroes the tempo product).
+vol58=0x5B0000 proves the 0x98/0x99 loop ran exactly 2 live iterations --
+CEF0 push + CF38 continue/pop LOOP-EXERCISED. Two stream-design findings
+(probe-model class, handlers asm-faithful): (1) **0x9A is an early-exit-
+INSIDE-loop construct, not a loop terminator** -- placing it after an
+exhausted 0x99 pops an empty stack -> NULL ip (crash reproduced + root-
+caused); (2) a drained rest makes the interpreter consume the scan guard
+as a note (retail-faithful) -- rests must outlast the probe window.
+
+Validation: oracle 1230/2292 (unchanged -- all 6 coexistence), binary
+byte-exact (d004692f), make build green, TSan zero non-catalogued races,
+probes PASS, five-map tripwires 5/5 EXACT.
+
+**THE TICK ENGINE IS COMPLETE**: gate + tick core + all 51 sequence-command
+handlers real and dispatching at 240Hz. Remaining before AUDIBLE: WDS/B5
+(sample banks + SPU streaming) + the envelope-method host routing
+(D_800508A4 + func_8003F240/F2A0 decomp) + {}-upgrades for the 19
+coexistence bodies as desired.
+Evidence: proven (loop-test live run; A/B hash; TSan; 5/5 tripwires)
+Last verified @ HEAD of this commit
 Evidence: proven (oracle fuzzy=100 x9; extended seq-probe incl. fade
 convergence; A/B binary hash; TSan; five-map tripwires)
 Last verified @ HEAD of this commit
