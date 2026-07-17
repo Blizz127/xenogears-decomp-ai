@@ -1511,6 +1511,119 @@ Evidence: proven (3-level curve-match: cycle-exact unit diff + capture
 knee/plateau/release-shape + in-game cliff A/B)
 Last verified @ HEAD of this commit
 
+## Audio fidelity: ADPCM-decode + Gaussian-resampling scoping map (cause #2, priced, no implementation)
+
+SCOPING PASS (read-only; fidelity cause #2 after ADSR landed). Verdict up
+front: the ADPCM RECONSTRUCTION is structurally correct and is the SMALL
+part; the audible gap in this cause is (1) the SPU's GAUSSIAN INTERPOLATION
+being absent -- pitch resampling is delegated to OpenAL-soft's cubic
+resampler -- and (2) loop-point defects. And the honest scope-reshaper: the
+Gaussian fix REQUIRES the per-voice streaming pipeline (the mix-stage
+architecture ADSR phase 2 deferred) because mid-note pitch changes rule out
+any key-on-time pre-render.
+
+(A) GROUND TRUTH (psx-spx SPU chapter, "SPU ADPCM Samples"/"SPU ADPCM
+Pitch"): 16-byte blocks -- header byte = shift(0-3)/filter(4-6), flag byte
+bit0 LoopEnd (set ENDX + jump to repeat address), bit1 LoopRepeat (0 WITH
+bit0 = End+Mute: jump + force Release + env 0), bit2 LoopStart (latch
+current addr as repeat addr); codes: 0/2 continue, 1 End+Mute, 3
+End+Repeat. Decode: s = clamp16((nibble<<12 >> shift) + (f0*prev +
+f1*prev2 + 32)>>6), filters {(0,0),(60,0),(115,-52),(98,-55),(122,-60)}/64
+(the "same as CD-XA" cross-reference; the backend's own K0/K1 floats are
+EXACTLY these fractions -- 0.9375=60/64, 1.796875=115/64, 1.53125=98/64,
+1.90625=122/64, -0.8125=-52/64, -0.859375=-55/64, -0.9375=-60/64); shift
+13-15 behaves as shift 9 (XA-note edge, encoders emit 0-12). PITCH: 16-bit
+counter step = VxPitch (1000h = 44100Hz, step clamped to 4000h = 176.4kHz);
+counter bits 12+ select the sample within the block, bits 4-11 are the
+8-bit GAUSSIAN INDEX. Interpolation (the "SPU sound"): out =
+(gauss[FFh-i]*oldest + gauss[1FFh-i]*older + gauss[100h+i]*old +
+gauss[i]*new) each SAR 15, over the 512-entry table (fully transcribed in
+the spec; captured to the session scratchpad psxspx_spu.md).
+
+(B) BACKEND CLASSIFICATION (PsyX_SPUAL.cpp @ e96f4cb):
+- ADPCM reconstruction (vagToPcm, 583-598): APPROXIMATED-CORRECT. Exact
+  coefficient VALUES as floats; structure right (nibble sign-extend, two
+  prev taps). Diverges in numerics only: float accumulation with round()
+  instead of the integer (+32)>>6 path, pow(2,12-shift) with NO shift 13-15
+  clamp, prev-state carried in float. LSB-level -- inaudible alone, but
+  blocks sample-exact proof.
+- Gaussian interpolation: ABSENT -- DELEGATED. Decode-at-keyon renders the
+  whole chain to PCM tagged 44100 (748), AL_PITCH = pitch/4096 does the
+  resampling through OpenAL-soft's explicitly-selected CUBIC resampler
+  (434: AL_SOURCE_RESAMPLER_SOFT=2). Cubic is brighter with different
+  image rejection than the SPU's soft 4-tap Gaussian -- THE character
+  difference, and it touches every pitched note (i.e. essentially all).
+- Loop flags (decodeSound, 635-684 + 752): WRONG-in-general. LoopStart
+  latches at k+26 ("FIXME: is that correct?" in-source) = the END of the
+  flagged block; hardware latches the block START -- loop start lands one
+  block (28 samples) late. The loop_addr adjustment (752: loopStart +=
+  loop_addr - addr) adds a BYTE delta to a SAMPLE index (should be
+  bytes/16*28) -- benign only in the common loop_addr==addr case.
+  End+Mute (code 1) is simplified to play-to-end/no-loop; hardware jumps +
+  forces Release + ENDX (matters more now that ADSR release is real).
+- Pitch-step clamp (4000h): absent (AL_PITCH unclamped). Rare; note only.
+IMPACT ORDER within this cause: Gaussian >> loop defects > decode numerics
+> pitch clamp.
+
+(C)/(D) FIX SHAPE -- two phases, and phase B is the mix-stage question
+answered FOR REAL:
+- Phase A (bounded, no architecture change): rewrite the decoder
+  integer-exact (hardware semantics incl. shift-clamp + (+32)>>6 +
+  int-state + clamp16), fix loop-block semantics (latch at block start,
+  sample-unit loop math), keep OpenAL cubic. ~80-120 backend lines. Gets
+  sample-exact PCM + click-free correct loops; does NOT get the Gaussian
+  character.
+- Phase B (the lever; scope-reshaper): per-voice STREAMING synthesis via
+  AL_SOFT_callback_buffer -- the mixer-thread callback walks the SPU pitch
+  counter (step = live voice pitch, clamped 4000h; bits 4-11 Gaussian
+  index), decodes ADPCM blocks on demand with hardware loop/ENDX/End+Mute
+  semantics, applies the 4-tap Gaussian, outputs fixed-rate 44100 PCM;
+  AL_PITCH pinned 1.0. WHY streaming is REQUIRED: sequence pitch changes
+  mid-note (vibrato/portamento modulate pitch per tick), so any
+  pre-rendered resample at key-on is wrong the moment pitch moves --
+  per-sample generation is the only faithful shape. Composition with ADSR:
+  clean -- the per-tick composed AL_GAIN (envelope x volume) rides on top
+  of whatever the source plays; pan/reverb sends unchanged; KON resets the
+  stream cursor where UpdateVoiceSample sits today. Mid-note pitch actually
+  IMPROVES (read live per callback chunk vs AL_PITCH quantized at device
+  periods). Once the callback pipeline exists, per-sample ADSR (the
+  deferred phase 2) becomes a cheap optional upgrade inside the same loop.
+  Threading: the callback runs on the mixer thread -- per-voice state
+  handoff needs short g_SpuMutex sections or a per-voice seqlock (design
+  gate, not a stopper). Emscripten lacks the extension -- keep the legacy
+  decode-at-keyon path as a compiled fallback.
+
+(E) PROOF (same bar as ADSR -- matches the spec, sample-exact where
+possible): (1) unit decode: hand-built ADPCM vectors (all 5 filters, all
+shifts incl. 13-15, clamp edges) + a real WDS instrument (bytes already
+readback-proven in SPU-RAM) through the production decoder via a debug
+export vs an independent Python integer decoder -- diff EMPTY,
+sample-exact. (2) unit Gaussian: the 512-entry table + interpolation at
+swept counter positions, C vs Python sample-exact; end-to-end fixed-pitch
+resample of known PCM, sample-exact. (3) capture: single-note at
+pitch != 1000h, FFT -- alias/image line positions and levels must match the
+Python-predicted Gaussian spectrum (current cubic capture is the A/B
+baseline); loop-click test on a sustained looped instrument (before:
+loop-rate click harmonics from the off-by-a-block start; after: clean).
+(4) in-game MAP000 spectral tilt A/B (Gaussian rolls off highs vs cubic)
++ ear. Real-hardware/emulator reference optional, not the gate.
+
+PRICING: ZERO decomp (pure spec->backend, ADSR-shaped). Phase A: ~half an
+M2 (decoder rewrite + unit proof + loop capture). Phase B: M3-sized
+(~300-450 backend lines: callback pipeline, Gaussian table+counter,
+threading, fallback; + probe/analysis extensions) -- bigger than ADSR
+phase 1, bounded, not open-ended. RECOMMENDATION: run as one combined pass
+(A then B -- B's proof harness subsumes A's); B is where the audible
+character lives, A alone won't move the user's complaint much.
+SHOWSTOPPERS: none hard. The scope-reshaper is explicit: faithful Gaussian
+NEEDS the streaming mix-stage (AL_SOFT_callback_buffer -- available in
+OpenAL-soft >= 1.22 natively); the one design-risk gate is mixer-thread
+state handoff discipline. After this cause: reverb-vs-EFX and any residual
+resampling polish remain (causes #3/#4, separate passes).
+Evidence: scoped (read-only trace @ e96f4cb, spec captured + backend
+classified line-by-line; no implementation)
+Last verified @ HEAD of this commit
+
 ## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
 
 User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in
