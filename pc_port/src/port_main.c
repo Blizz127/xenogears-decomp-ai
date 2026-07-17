@@ -443,9 +443,12 @@ static void PortRunSoundSeqProbe(void) {
  * the tick's), so the pump dispatches it at 240Hz right after func_8003C020,
  * under the same g_SoundTickMutex bracket -- gate-serialized by construction.
  * Edge semantics: real KON/KOFF registers are write-triggered; the translator
- * consumes (clears) the page words after driving the backend. PsyX SpuVoiceAttr
- * supports VOLL/VOLR/PITCH/WDSA (no raw ADSR -- envelope shaping is absent
- * until the backend grows it; volume/pitch/addr suffice for audible). */
+ * consumes (clears) the page words after driving the backend.
+ * ADSR phase 1: the raw ADSR1/ADSR2 register words (page +0x8/+0xA, written
+ * by func_8003E900's dirty-flag flush) are forwarded too -- at KON and
+ * change-detected -- and the backend's psx-spx envelope machine is advanced
+ * here by this tick's share of the 44100Hz clock (PsyX_SPUAL_EnvelopeTick). */
+extern void PsyX_SPUAL_EnvelopeTick(int cycles);
 static _Atomic long s_regFlushKeyOns = 0;
 static _Atomic long s_regFlushKeyOffs = 0;
 static _Atomic long s_regFlushTicks = 0;
@@ -469,11 +472,14 @@ static long PcPort_SpuRegFlushTick(void) {
                 memset(&attr, 0, sizeof(attr));
                 attr.voice = 1u << i;
                 attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH |
-                            SPU_VOICE_WDSA;
+                            SPU_VOICE_WDSA | SPU_VOICE_ADSR_ADSR1 |
+                            SPU_VOICE_ADSR_ADSR2;
                 attr.volume.left = *(short*)(v + 0x0);
                 attr.volume.right = *(short*)(v + 0x2);
                 attr.pitch = *(unsigned short*)(v + 0x4);
                 attr.addr = *(unsigned short*)(v + 0x6) << 3;
+                attr.adsr1 = *(unsigned short*)(v + 0x8);
+                attr.adsr2 = *(unsigned short*)(v + 0xA);
                 if (s_regFlushKeyOns < 4 || s_konTrace)
                     printf("[reg-flush] KON t=%.1fs v%d voll=%d volr=%d "
                            "pitch=0x%x addr=0x%x\n",
@@ -501,7 +507,7 @@ static long PcPort_SpuRegFlushTick(void) {
          * continuously while the key-on path above is edge-triggered. Push
          * ongoing register changes for assigned voices to the backend,
          * change-detected so OpenAL only hears actual updates. */
-        static unsigned short s_lastAttr[24][3];
+        static unsigned short s_lastAttr[24][5];
         extern void* g_SoundChannels[24];
         int v;
         for (v = 0; v < 24; v++) {
@@ -509,23 +515,43 @@ static long PcPort_SpuRegFlushTick(void) {
             unsigned short voll = *(unsigned short*)(pv + 0x0);
             unsigned short volr = *(unsigned short*)(pv + 0x2);
             unsigned short pit = *(unsigned short*)(pv + 0x4);
+            unsigned short a1 = *(unsigned short*)(pv + 0x8);
+            unsigned short a2 = *(unsigned short*)(pv + 0xA);
             if (g_SoundChannels[v] == NULL)
                 continue;
             if (voll != s_lastAttr[v][0] || volr != s_lastAttr[v][1] ||
-                pit != s_lastAttr[v][2]) {
+                pit != s_lastAttr[v][2] || a1 != s_lastAttr[v][3] ||
+                a2 != s_lastAttr[v][4]) {
                 SpuVoiceAttr attr;
                 memset(&attr, 0, sizeof(attr));
                 attr.voice = 1u << v;
-                attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH;
+                attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH |
+                            SPU_VOICE_ADSR_ADSR1 | SPU_VOICE_ADSR_ADSR2;
                 attr.volume.left = voll;
                 attr.volume.right = volr;
                 attr.pitch = pit;
+                attr.adsr1 = a1;
+                attr.adsr2 = a2;
                 SpuSetVoiceAttr(&attr);
                 s_lastAttr[v][0] = voll;
                 s_lastAttr[v][1] = volr;
                 s_lastAttr[v][2] = pit;
+                s_lastAttr[v][3] = a1;
+                s_lastAttr[v][4] = a2;
             }
         }
+    }
+    {
+        /* ADSR phase 1: advance the backend envelope machine by this tick's
+         * share of the 44100Hz envelope clock. 44100/240 = 183.75 -- the
+         * fractional accumulator keeps the long-run rate exact (184,184,184,
+         * 183 repeating). Runs under the same gate bracket as the tick. */
+        static int s_envCycleAcc = 0;
+        int cycles;
+        s_envCycleAcc += 44100;
+        cycles = s_envCycleAcc / 240;
+        s_envCycleAcc -= cycles * 240;
+        PsyX_SPUAL_EnvelopeTick(cycles);
     }
     return 0;
 }
@@ -876,6 +902,120 @@ extern unsigned char D_80010004[];  /* archive table buffer  (g_ArchiveTable)  *
 extern unsigned char D_80018004[];  /* archive header buffer (g_ArchiveHeader) */
 extern unsigned short D_8006F94E;    /* field map selected by FieldMain         */
 
+/* ADSR phase 1 unit probe (env XENO_SOUND_ADSR_UNIT=1): drive the backend's
+ * PRODUCTION envelope generator (PsyX_SPUAL_AdsrDebugCycle -- the exact code
+ * the runtime uses, one 44100Hz cycle per call) over a rate/mode matrix and
+ * print sampled (cycle, phase, level) trajectories. The golden oracle is an
+ * independent Python transcription of the psx-spx pseudocode
+ * (scratchpad/adsr_model.py); the two outputs must diff EMPTY (cycle-exact).
+ * KON at cycle 0; KOFF at half the window. Pure computation -- runs before
+ * any AL/game init and exits. */
+extern void PsyX_SPUAL_AdsrDebugCycle(unsigned short adsr1, unsigned short adsr2,
+                                      int* phase, int* level, int* counter);
+static void PortRunSoundAdsrUnitDump(void) {
+    /* Matrix: linear attack; exp attack (>0x6000 slowdown, shift<10 and
+     * shift 10/11 legs); zero-ADSR instant paths; never-step attack (7Fh);
+     * slow-shift counter paths; exp sustain-decrease; linear+exp release. */
+    static const struct {
+        unsigned short a1, a2;
+        int kon, koff;
+    } M[] = {
+        { 0x2068, 0x5FCD, 60000, 60000 },   /* lin attack s8, decay s6 SL8, sustain hold, lin release s13 */
+        { 0x9943, 0xCAAA, 60000, 60000 },   /* exp attack s6 st1, decay s4 SL3, exp sus-dec s10 st2, exp release s10 */
+        { 0x0000, 0x0000, 2000, 2000 },     /* all-zero: instant attack/decay, sus-increase, instant release */
+        { 0xFF43, 0x4FCA, 30000, 30000 },   /* exp attack s31 st3 never-step; lin sus-dec s15 st3; lin release s10 */
+        { 0xA843, 0xDFEC, 400000, 200000 }, /* exp attack s10 (half/half leg), sus hold 1Fh/3, exp release s12 */
+        { 0x5C64, 0x467F, 400000, 1 },      /* lin attack s23 (small-inc counter leg), release 1Fh never-step */
+        { 0xB055, 0x5FC8, 20000, 20000 },   /* exp attack s12 (inc/4 leg above 6000h), decay s5 SL5, lin release s8 */
+        { 0x7000, 0x5FC0, 100000, 100 },    /* lin attack s28 (inc==0 -> clamp-to-1 leg), lin release s0 */
+    };
+    int m;
+    printf("[adsr-unit] begin (stride 97)\n");
+    for (m = 0; m < (int)(sizeof(M) / sizeof(M[0])); m++) {
+        int phase = 1, level = 0, counter = 0;  /* KON: attack, level 0 */
+        long c;
+        long total = M[m].kon + M[m].koff;
+        printf("[adsr-unit] set a1=%04x a2=%04x kon=%d koff=%d\n",
+               M[m].a1, M[m].a2, M[m].kon, M[m].koff);
+        for (c = 1; c <= total; c++) {
+            if (c == M[m].kon + 1 && phase != 0) {  /* KOFF edge */
+                phase = 4;
+                counter = 0;
+            }
+            PsyX_SPUAL_AdsrDebugCycle(M[m].a1, M[m].a2, &phase, &level, &counter);
+            if (c % 97 == 0)
+                printf("%ld %d %d\n", c, phase, level);
+        }
+    }
+    printf("[adsr-unit] RESULT: DUMPED (diff vs adsr_model.py decides PASS)\n");
+}
+
+/* ADSR phase 1 capture probe (env XENO_SOUND_ADSR_PROBE=1|2): one note on a
+ * constant-|amplitude| synthetic square (hand-built SPU-ADPCM: filter 0
+ * shift 3, nibble +/-4 -> +/-2048, 4+4 block half-period = 197Hz, seamless
+ * loop flags), with KNOWN ADSR params -- so the wave capture's RMS envelope
+ * IS the ADSR curve times a constant. Mode 1: linear release s12 (186ms
+ * ramp); mode 2: exp release s12 (τ=186ms). Attack lin s10 (53ms -- inside
+ * the 5-50ms stepping-measurement band), decay s7 to SL7 (plateau
+ * 0x4000/0x7FFF = -6.02dB). The envelope advances on the live 240Hz pump
+ * (the real clock); envx sampled every 50ms for the state tier. */
+static void PortRunSoundAdsrProbe(int mode) {
+    extern unsigned int SpuSetTransferStartAddr(unsigned int addr);
+    extern unsigned int SpuWrite(unsigned char* addr, unsigned int size);
+    extern void PsyX_SPUAL_ShutdownSound(void);
+    static unsigned char sq[16 * 64];
+    unsigned short a1 = 0x2877;                       /* lin attack s10, decay s7, SL7 */
+    unsigned short a2 = (mode == 2) ? 0x5FEC : 0x5FCC; /* sus hold 1Fh/3; release s12 exp|lin */
+    int b, i, t;
+    long keyStat = -1;
+    short envx = -1;
+    /* 64 blocks: 8-block (224-sample) period, +2048 half then -2048 half. */
+    for (b = 0; b < 64; b++) {
+        unsigned char nib = ((b % 8) < 4) ? 0x4 : 0xC;
+        sq[b * 16 + 0] = 0x03;                        /* shift 3, filter 0 */
+        sq[b * 16 + 1] = (b == 0) ? 0x04 : (b == 63) ? 0x03 : 0x00; /* LoopStart / LoopEnd|Repeat */
+        for (i = 2; i < 16; i++)
+            sq[b * 16 + i] = (unsigned char)(nib | (nib << 4));
+    }
+    SpuSetTransferStartAddr(0x2000);
+    SpuWrite(sq, sizeof(sq));
+    {
+        SpuVoiceAttr attr;
+        memset(&attr, 0, sizeof(attr));
+        attr.voice = 1u << 0;
+        attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH |
+                    SPU_VOICE_WDSA | SPU_VOICE_LSAX | SPU_VOICE_ADSR_ADSR1 |
+                    SPU_VOICE_ADSR_ADSR2;
+        attr.volume.left = 0x3000;
+        attr.volume.right = 0x3000;
+        attr.pitch = 0x1000;
+        attr.addr = 0x2000;
+        attr.loop_addr = 0x2000;
+        attr.adsr1 = a1;
+        attr.adsr2 = a2;
+        SpuSetVoiceAttr(&attr);
+    }
+    printf("[adsr-probe] mode=%d a1=%04x a2=%04x KON\n", mode, a1, a2);
+    SpuSetKey(SPU_ON, 1u << 0);
+    for (t = 0; t < 24; t++) {                        /* 1200ms keyed */
+        PortSleepMs(50);
+        SpuGetVoiceEnvelopeAttr(0, &keyStat, &envx);
+        printf("[adsr-probe] t=%dms keyStat=%ld envx=%d\n", (t + 1) * 50, keyStat, envx);
+    }
+    printf("[adsr-probe] KOFF\n");
+    SpuSetKey(SPU_OFF, 1u << 0);
+    for (t = 0; t < 20 && envx != 0; t++) {           /* release tail, 1000ms cap */
+        PortSleepMs(50);
+        SpuGetVoiceEnvelopeAttr(0, &keyStat, &envx);
+        printf("[adsr-probe] t=+%dms keyStat=%ld envx=%d srcPlaying=%d\n",
+               (t + 1) * 50, keyStat, envx, SpuGetKeyStatus(1u << 0));
+    }
+    PortSleepMs(200);
+    printf("[adsr-probe] RESULT: %s (envx rose, plateaued, decayed to 0; curve-match = python)\n",
+           (envx == 0 && SpuGetKeyStatus(1u << 0) == 0) ? "PASS" : "FAIL");
+    PsyX_SPUAL_ShutdownSound();                       /* finalize the wave capture */
+}
+
 /* MODE2/2352 image; PsyCross extracts the 2048-byte data payload per sector. */
 #define PORT_CD_SECTOR_SIZE 2352
 
@@ -960,6 +1100,14 @@ int main(int argc, char** argv) {
      * and is intentionally NOT done here. */
     SpuInit();
 
+    /* ADSR phase 1 unit probe: dump production-generator trajectories for the
+     * golden diff vs the independent Python spec model, then exit (pure
+     * computation; no game boot). Diagnostic only. */
+    if (getenv("XENO_SOUND_ADSR_UNIT")) {
+        PortRunSoundAdsrUnitDump();
+        exit(0);
+    }
+
     /* 4a-probe: Phase-1 sound-pump synthetic validation (env XENO_SOUND_PUMP_PROBE).
      * The PsyX interrupt thread is already running (started by PsyX_Initialise),
      * so the pump is live here. Diagnostic only; does not run in normal boot. */
@@ -992,6 +1140,16 @@ int main(int argc, char** argv) {
                                PcPort_SpuRegFlushTick);
         EnableEvent(hFlush);
     }
+
+    /* ADSR phase 1 capture probe: one known-ADSR note on a constant-amplitude
+     * synthetic loop, envelope advanced by the live 240Hz pump; run under
+     * ALSOFT wave capture for the curve-match proof, then exit. Diagnostic
+     * only. */
+    if (getenv("XENO_SOUND_ADSR_PROBE")) {
+        PortRunSoundAdsrProbe(atoi(getenv("XENO_SOUND_ADSR_PROBE")));
+        exit(0);
+    }
+
     if (getenv("XENO_SOUND_INIT_PROBE")) {
         PortRunSoundInitProbe();
     }

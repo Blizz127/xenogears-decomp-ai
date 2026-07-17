@@ -744,6 +744,14 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_prims.patch" "_xeno_s
 # tick, matching retail's disabled-event semantics; the pump can never stall
 # or deadlock). Prerequisite for every real tick-body decomp. See OPEN_ISSUES.md.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_gate.patch" "_xeno_sound_gate"
+# ADSR fidelity phase 1: per-voice hardware ADSR envelope (psx-spx 44100Hz
+# counter machine) in the SPU backend -- KON=attack-from-zero, KOFF=release
+# tail (source kept playing to level 0), composed single-writer AL_GAIN
+# (base volume x envelope), live ENVX readback (SpuGetVoiceEnvelopeAttr, real
+# -- backs seq cmd 0xFF's free-on-decay), ALC_REFRESH=240 render-granularity
+# hint. Generated on top of the sound patches above (apply order matters).
+# See OPEN_ISSUES.md "Audio fidelity: hardware-ADSR".
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adsr.patch" "_xeno_sound_adsr"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

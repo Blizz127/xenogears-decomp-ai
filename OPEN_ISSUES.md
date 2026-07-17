@@ -1439,6 +1439,78 @@ Evidence: scoped (read-only trace, spec + backend + translator + retail
 flush all read; no implementation)
 Last verified @ HEAD of this commit
 
+### ADSR fidelity phase 1 LANDED: hardware ADSR envelope live, release tails in-game
+
+The scoping map above is implemented (psycross_sound_adsr.patch + the
+translator plumb). The backend now runs the psx-spx counter machine
+per voice: {phase, level, counter} advanced at the FULL 44100Hz envelope
+rate in per-tick batches (240Hz translator tick, fractional accumulator --
+long-run rate exact), rates read LIVE from the last-flushed ADSR1/ADSR2
+words (mid-note changes apply). KON = level 0 + Attack (the source starts
+at composed gain 0 and ramps); KOFF = Release with the source KEPT PLAYING
+until level 0, then stopped -- the release tail, replacing the legacy hard
+alSourceStop rectangle. Composed gain has ONE writer
+(ApplyVoiceComposedGain = baseGain * level/7FFFh; the volume path stores
+baseGain and routes through it; last-value suppressed). Raw ADSR words are
+plumbed at KON + change-detected in the continuous flush.
+SpuGetVoiceEnvelopeAttr/SpuGetVoiceEnvelope are REAL (backed by the
+generator) -- fixing the latent bug where seq cmd 0xFF (free-voice-on-
+envelope-decay) branched on uninitialized stack through the auto-stub.
+ALC_REFRESH=240 requested so property updates track the tick cadence.
+
+THREE-LEVEL CURVE-MATCH PROOF:
+(1) UNIT -- the production generator (PsyX_SPUAL_AdsrDebugCycle drives the
+exact runtime code) vs an INDEPENDENT Python transcription of the psx-spx
+pseudocode: 8-entry rate/mode matrix covering linear/exp attack (all three
+>6000h slowdown legs), decay, sustain hold/increase/exp-decrease,
+never-step rates, small-increment and clamp-to-1 counter legs, lin/exp
+release -- ~1.3M cycles, 14,892 sampled points, diff EMPTY (cycle-exact).
+(2) CAPTURE -- one note on a constant-|amplitude| synthetic ADPCM square
+with known params (lin attack s10 = 53.1ms, decay s7 to SL7 = plateau
+0x4000, lin/exp release s12): attack knee 50.6ms vs model 50.4ms (delta
+0.1ms); attack+decay+sustain residual vs the 240Hz-quantized model 1.84% of
+peak; release SHAPE residual vs the model trajectory 0.42% (linear) / 1.25%
+(exp) of plateau; envx state samples matched the closed form exactly
+(30870 @ 50ms = 14 steps x 2205 cycles).
+(3) IN-GAME -- MAP000 60s A/B vs the 76a4108 baseline: hard-cut cliffs
+(>=12dB drop per 5ms window at >5% peak) 54.2/min -> 6.0/min (-89%; the
+remainder are legitimately fast-release instruments); max drop 167dB
+(digital cut) -> 16.8dB. Tails are audible; captures saved (session
+scratchpad adsr_before/after_map000.wav).
+
+STEPPING MEASUREMENT (the phase-2 trigger): at tick-resolution rendering
+the max attack-ramp step is 2.78dB (2ms windows, >10% peak) and OpenAL-soft
+fades linearly within each period -- piecewise-linear envelope, NO
+discontinuities. At DEFAULT backend periods (~20ms) the 240Hz updates
+coalesce (measured: knee 34ms vs 50.4, crest -14%) -- the ALC_REFRESH=240
+hint recovers most of it (knee 45.3ms, release ramp restored). VERDICT:
+phase 2 (per-sample mix stage) NOT warranted by measurement -- remaining
+granularity is a playback-device period property, not an envelope defect.
+
+Documented fidelity decisions: exp-decrease scales the step via
+arithmetic >>15 (floor) -- psx-spx writes /8000h, but truncation would
+stall exp release above zero while floor keeps negative steps <= -1 and
+terminates, matching hardware-verified emulator cores; shifts >26 follow
+the documented formula (psx-spx notes real hardware degrades oddly there;
+games do not use them); the decomposed Psy-Q rate attrs (SPU_VOICE_ADSR_AR
+family) stay unimplemented -- the game programs raw register words only,
+and a half-faithful repack would be silent wrongness; the captured
+plateau/peak reads ~0.53 vs the ideal 0.498 because the 6ms 7FFFh crest
+spans ~1 mix period and under-renders ~5% -- a rendering artifact, the
+envelope state is exact.
+
+Validation: slus byte-exact (d004692f... unchanged; zero src/ changes);
+all 8 sound probes PASS post-change; five-map tripwires EXACT
+(addr-normalized, session before/after logs); TSan MAP000 clean on the
+envelope path (advance runs under the same gate bracket + backend mutex as
+the pre-existing attr writes). Linkage verified (all five new exports
+unmangled T, zero in stubs.c). Remaining fidelity causes: ADPCM decode,
+reverb-vs-EFX, resampling (phase 3, separate passes); per-note ADSR is
+DONE.
+Evidence: proven (3-level curve-match: cycle-exact unit diff + capture
+knee/plateau/release-shape + in-game cliff A/B)
+Last verified @ HEAD of this commit
+
 ## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
 
 User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in
