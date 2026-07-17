@@ -611,9 +611,11 @@ typedef struct {
     /* 0x1E */ u16 flags;
 } SoundEnvelope;
 
-/* Handler-subtree helpers (unported; port auto-stubs). */
+/* SFX chain (real as of S1). */
 extern void func_8003A14C();
 extern void func_80039F18();
+extern s32 func_8003A65C();
+extern void func_8003B644();
 extern void* func_80039024(s32 size);
 extern u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode);
 extern void func_8003E3E0();
@@ -1870,7 +1872,16 @@ void func_80039D2C(s32 bIn) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039D78);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039DB8);
+// SFX API: play a packed (sedId<<16|entry) effect on the fixed top slot
+// (rotator-2) at default volume/pan; priority byte 0x80 (not stealable).
+void func_80039DB8(s32 packedId) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot;
+        D_80059404 = 2;
+        slot = D_80059478 - 2;
+        func_8003B644((s16)(slot | -0x8000), packedId, 0x6000, 0x4000);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // Wowoweewa flag central
@@ -1882,7 +1893,15 @@ void func_80039E18(s32 arg0) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039E60);
+// SFX API: play a packed effect on an allocated slot (func_8003A65C dedupes
+// and picks/steals a pair) at default volume/pan.
+void func_80039E60(s32 packedId) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot = func_8003A65C(packedId, 2);
+        D_80059404 = 2;
+        func_8003B644((s16)(slot | 0x2000), packedId, 0x6000, 0x4000);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039EC4(s32 arg0, s32 arg1) {
@@ -1898,17 +1917,144 @@ void func_80039EC4(s32 arg0, s32 arg1) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039F18);
+// SFX API (also reached from sequence handler CFF0 -- script-spawned
+// effects): play a packed effect on an allocated slot with signed 8-bit
+// volume/pan scaled <<8.
+void func_80039F18(s32 packedId, s32 volume, s32 pan) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot = func_8003A65C(packedId, 2);
+        D_80059404 = 2;
+        func_8003B644((s16)(slot | 0x2000), packedId, (s8)volume << 8,
+                      (s8)pan << 8);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039F9C);
+// SFX API (field cues): play a packed effect on an explicit field slot
+// (mapped onto the element pairs via ^8) with signed 8-bit volume/pan.
+void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan) {
+    if (g_SoundControlFlags & 0x800) {
+        D_80059404 = 2;
+        func_8003B644((s16)(((slot & 0xFE) ^ 8) | 0x2000), packedId,
+                      (s8)volume << 8, (s8)pan << 8);
+    }
+}
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: global-load scheduling (the event-handle load sits two slots earlier); same instruction multiset.
+ * Not claimed as {}. */
+// SFX: stop ALL effect elements (the D_80059478 SFX region of the main
+// manager) under the tick bracket and clear the busy mask.
+void func_80039FF8(void) {
+    s32 count = D_80059478;
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    AudioElement* el;
+    SoundVoiceData* vd;
+
+    DisableEvent(g_unk_SoundEvent);
+    el = &manager->elements[0];
+    vd = &manager->elements[0].voice_data;
+    do {
+        if (el->active_flag & 0x1) {
+            el->active_flag = 0;
+            SoundReleaseVoiceFromChannel(vd, *((u8*)vd - 0x9));
+        }
+        vd = (SoundVoiceData*)((u8*)vd + 0x158);
+        count--;
+        el++;
+    } while (count != 0);
+    manager->unk_0x48 = 0;
+    EnableEvent(g_unk_SoundEvent);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039FF8);
+#endif
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: cc1 re-anchors the element/voice cursor family (role permutation of the two loop cursors); same operations at the same element offsets.
+ * Not claimed as {}. */
+// SFX: stop every active effect belonging to a SED file (element+0x0A holds
+// the sedId half of the packed id) and release its voice.
+void func_8003A094(SoundFile* pFile) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    s16 sedId = *(s16*)((u8*)pFile + 0x14);
+    u8* q = (u8*)manager + 0xBB;
+
+    do {
+        AudioElement* el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s16*)(q - 0x1D) == sedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A094);
+#endif
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: cc1 re-anchors the element/voice cursor family (role permutation); same operations at the same element offsets.
+ * Not claimed as {}. */
+// SFX (also reached from a sequence handler): stop every active effect
+// matching a full packed (sedId<<16|entry) id.
+void func_8003A14C(s32 packedId) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    u8* q = (u8*)manager + 0xBB;
+
+    do {
+        AudioElement* el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A14C);
+#endif
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: two-instruction scheduler placement of the slot masking (andi/xori vs the constant loads); identical instruction multiset.
+ * Not claimed as {}. */
+// SFX: stop the effect pair on a field slot and release its voices.
+void func_8003A20C(s32 slot) {
+    AudioManager* manager;
+    AudioElement* el;
+    u8* q;
+    s32 count = 2;
+
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    el = (AudioElement*)((((slot & 0xFE) ^ 8) * 0x158 + 0x94) + (u8*)manager);
+    q = (u8*)el + 0x27;
+    do {
+        if (el->active_flag & 0x1) {
+            el->active_flag = 0;
+            manager->unk_0x48 &= ~(1 << *(q - 0x21));
+            SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+        }
+        q += 0x158;
+        count--;
+        el = (AudioElement*)((u8*)el + 0x158);
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A20C);
+#endif
 
 void func_8003A2D4(void) {}
 
@@ -1916,7 +2062,34 @@ void func_8003A2DC(void) {}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A2E4);
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: two-instruction scheduler placement of the slot masking; identical instruction multiset.
+ * Not claimed as {}. */
+// SFX: set the expression volume (el+0x76) of an active field-slot pair;
+// status = 0x100 (volume-dirty).
+void func_8003A344(s32 slot, s32 volume) {
+    AudioElement* el;
+    u16* st;
+    s32 count = 2;
+
+    volume <<= 8;
+    el = (AudioElement*)((((slot & 0xFE) ^ 8) * 0x158 + 0x94) +
+                         (u8*)SOUND_PSX_TO_PTR(AudioManager, D_800595D8));
+    st = &el->status_flags;
+    do {
+        if (el->active_flag & 0x1) {
+            st[0x3A] = volume;
+            st[0] = 0x100;
+        }
+        el = (AudioElement*)((u8*)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A344);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A3B8);
 
@@ -1924,11 +2097,115 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A450);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A4FC);
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: two-instruction scheduler placement of the slot masking; identical instruction multiset.
+ * Not claimed as {}. */
+// SFX: set the pan (el+0x74) of an active field-slot pair; status = 0x100.
+void func_8003A55C(s32 slot, s32 pan) {
+    AudioElement* el;
+    u16* st;
+    s32 count = 2;
+
+    pan <<= 8;
+    el = (AudioElement*)((((slot & 0xFE) ^ 8) * 0x158 + 0x94) +
+                         (u8*)SOUND_PSX_TO_PTR(AudioManager, D_800595D8));
+    st = &el->status_flags;
+    do {
+        if (el->active_flag & 0x1) {
+            st[0x39] = pan;
+            st[0] = 0x100;
+        }
+        el = (AudioElement*)((u8*)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A55C);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A5D0);
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: register-allocation permutation across the steal-scan (window/mask/serial temporaries); control flow and offsets verified 1:1.
+ * Not claimed as {}. */
+// SFX slot allocator: first stop any element already playing this packed id
+// (retrigger dedupe), then scan pair-aligned slots downward from the SFX
+// rotator for a free window in the busy mask; if none, steal the OLDEST
+// (smallest start serial) slot whose priority byte is <= 0x20.
+s32 func_8003A65C(s32 packedId, s32 pairSize) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    u8* q = (u8*)manager + 0xBB;
+    AudioElement* el;
+    u32 exclude = 0;
+    s32 bestSerial = -1;
+    s32 best;
+    s32 start;
+    s32 lower;
+    u32 mask;
+    u32 window;
+    u32 busy;
+
+#ifdef XENO_PC_PORT
+    /* Retail leaves `best` uninitialized ($s6) when every candidate has
+     * priority > 0x20 -- on PSX the garbage index wraps harmlessly; on the
+     * host it would index wild. Default to the scan start. */
+    best = D_80059478 - (pairSize + 2);
+#endif
+    do {
+        el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+
+    start = D_80059478 - (pairSize + 2);
+    lower = manager->elementCount - D_80059544;
+    mask = 0xFFFFFFFFu >> (0x20 - pairSize);
+    window = mask << start;
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    el = (AudioElement*)((u8*)manager + start * 0x158 + 0x94);
+    busy = ~exclude & manager->unk_0x48;
+    if ((busy & window) != 0) {
+        s32 stride = pairSize * 0x158;
+        for (;;) {
+            s32 serial = *(s32*)((u8*)el + 0xC);
+            if ((u32)serial < (u32)bestSerial) {
+                if (*((u8*)el + 0x7) < 0x21) {
+                    bestSerial = serial;
+                    best = start;
+                }
+            }
+            window >>= pairSize;
+            if (window < mask) {
+                start = best;
+                break;
+            }
+            if (!((u32)lower < (u32)start)) {
+                start = best;
+                break;
+            }
+            el = (AudioElement*)((u8*)el - stride);
+            start -= pairSize;
+            if ((busy & window) == 0) {
+                break;
+            }
+        }
+    }
+    return start;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A65C);
+#endif
 
 s32 func_8003A82C(u16* arg0) {
     return arg0[8] >> 15;
@@ -2354,7 +2631,125 @@ void func_8003B424(AudioManager* manager) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B424);
 #endif
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: the B424/C6E8/EBF0 cc1 anchor-rebase residual on the element-arm loop (expected: B424 is its twin); every store audited against the split asm offsets.
+ * Not claimed as {}. */
+// SFX element-arm (the twin of the music arm loop func_8003B424, driven by
+// a SED entry instead of a song file): find the SED by id, bind its WDS
+// bank, scale the requested volume by the entry's authored volume byte
+// (clamped 0x7FFF), then arm D_80059404 consecutive elements from the
+// spec's low byte -- each SED entry carries one script offset halfword per
+// element (base sed+0x20). A zero offset releases that element instead.
+// Element fields ride the q (= &voice_number) cursor, matching retail's
+// anchor; el carries active_flag/envelope base/the E5BC argument and vd the
+// voice-call argument.
+void func_8003B644(s32 elementSpec, s32 packedId, s32 volume, s32 pan) {
+    SoundFile* sed;
+    AudioManager* manager;
+    AudioElement* el;
+    SoundVoiceData* vd;
+    u8* q;
+    u8* bank;
+    u16* pOffset;
+    s32 count;
+    s32 vol;
+    u8 prio;
+
+    sed = g_SoundSedsLinkedList;
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    while (sed->sedId != (s16)(packedId >> 16)) {
+        sed = SOUND_PSX_TO_PTR(SoundFile, sed->pNext);
+        if (sed == NULL) {
+            return;
+        }
+    }
+    bank = (u8*)SoundFindWdsEntry(sed->sndId);
+    if (bank == NULL) {
+        bank = (u8*)g_SoundWdsLinkedList;
+    }
+    vol = ((s16)volume *
+           *((u8*)sed + *(u16*)((u8*)sed + 0x18) + (packedId & 0xFFFF))) >> 7;
+    if ((vol >> 15) & 0x1) {
+        vol = 0x7FFF;
+    }
+    prio = (u32)elementSpec >> 8;
+    pOffset = (u16*)((u8*)sed + ((packedId & 0xFFFF) << 2) + 0x20);
+    el = (AudioElement*)((u8*)manager + (elementSpec & 0xFF) * 0x158 + 0x94);
+    q = (u8*)el + 0x27;
+    vd = &el->voice_data;
+    count = D_80059404;
+    DisableEvent(g_unk_SoundEvent);
+    do {
+        *(u32*)(q - 0x1F) = packedId;                 /* el+0x08 id */
+        *(u32*)(q - 0x1B) = D_80059504;               /* el+0x0C start serial */
+        *(q - 0x20) = prio;                           /* el+0x07 priority */
+        if (*pOffset != 0) {
+            u8* ip;
+
+            manager->unk_0x48 |= 1 << *(q - 0x21);
+            el->active_flag = 0x409;
+            if (*(u16*)((u8*)sed + 0x10) & 0x1) {
+                el->active_flag = 0x40B;
+            }
+            *(u16*)(q - 0x25) = 0x170;                /* el+0x02 status */
+            *(u16*)(q - 0x23) = 0;                    /* el+0x04 */
+            *(u16*)(q + 0x3F) = 0x3C;                 /* el+0x66 octave */
+            *(u16*)(q + 0x3B) = 0xF;                  /* el+0x62 */
+            *(u16*)(q + 0x4B) = 0xFFFF;               /* el+0x72 */
+            *(u32*)(q - 0xF) = 0;                     /* el+0x18 */
+            *(u32*)(q - 0xB) = 0;                     /* el+0x1C */
+            *(u16*)(q - 0x7) = 0;                     /* el+0x20 */
+            *(q - 0x5) = 0;                           /* el+0x22 */
+            *(u16*)(q + 0x35) = 0;                    /* el+0x5C */
+            *(q + 0x39) = 0;                          /* el+0x60 */
+            *(u16*)(q + 0x47) = 0;                    /* el+0x6E */
+            *(q + 0x3D) = 0;                          /* el+0x64 */
+            *(u16*)(q + 0x4F) = vol;                  /* el+0x76 expression */
+            *(s32*)(q + 0x51) = 0x7F000000;           /* el+0x78 vol accum */
+            *(u16*)(q + 0x15) = 0;                    /* el+0x3C */
+            *(u16*)(q + 0x17) = 0;                    /* el+0x3E */
+            *(u16*)(q + 0xA9) = 0;                    /* el+0xD0 */
+            *(u16*)(q + 0xAB) = 0;                    /* el+0xD2 */
+            *(u16*)(q + 0xAD) = 0;                    /* el+0xD4 */
+            *(u16*)(q + 0xA7) = 0;                    /* el+0xCE */
+            *(u16*)(q + 0x4D) = pan;                  /* el+0x74 */
+            ip = (u8*)sed + *pOffset;
+            *(u32*)(q - 0x17) = SOUND_PTR_TO_PSX(ip); /* el+0x10 */
+            *(u32*)(q - 0x13) = SOUND_PTR_TO_PSX(ip); /* el+0x14 tick IP */
+            {
+                u8* p = (u8*)el + 0x60;
+                s32 i = 3;
+                do {
+                    *(u16*)(p + 0xF6) = 0;
+                    p -= 0x20;
+                } while (--i >= 0);
+            }
+            *(u32*)(q + 0x5) = SOUND_PTR_TO_PSX(bank);/* el+0x2C */
+            *(q - 0x2) = *((u8*)sed + 0x16);          /* el+0x25 bank id */
+            if (bank != NULL) {
+                func_8003E5BC(0, el);
+            }
+            *(u16*)(q + 0xB) = 0;                     /* vd modeFlags */
+            *(u16*)(q + 0xD) = 0x200;                 /* vd priority */
+            SoundAssignVoiceToChannelAndStop(vd, q[0]);
+        } else {
+            manager->unk_0x48 &= ~(1 << *(q - 0x21));
+            el->active_flag = 0;
+            SoundReleaseVoiceFromChannel(vd, q[0]);
+        }
+        pOffset++;
+        vd = (SoundVoiceData*)((u8*)vd + 0x158);
+        q += 0x158;
+        count--;
+        el = (AudioElement*)((u8*)el + 0x158);
+    } while (count != 0);
+    *(u16*)&manager->unk_Flags |= 0x8000;
+    EnableEvent(g_unk_SoundEvent);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
+#endif
 
 void func_8003B930(AudioManager* manager) {
     AudioManager* pEntry;

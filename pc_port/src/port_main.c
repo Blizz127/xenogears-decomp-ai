@@ -543,6 +543,7 @@ static void PortRunSoundPlayProbe(void) {
     unsigned char* el = mgr + 0x94;
     long kons0 = s_regFlushKeyOns;
     int ok_keyed, ok_chan, ok_playing;
+    int saved54;
     extern void* g_SoundChannels[24];
 
     if (mgr == NULL) { printf("[play-probe] no manager -> SKIP\n"); return; }
@@ -550,6 +551,7 @@ static void PortRunSoundPlayProbe(void) {
     *(unsigned short*)(mgr + 0x36) = 4;
     *(int*)(mgr + 0x48) = 1;
     *(int*)(mgr + 0x50) = 0;
+    saved54 = *(int*)(mgr + 0x54);
     *(int*)(mgr + 0x54) = 0x4000;                 /* gentle tempo */
     *(int*)(mgr + 0x70) = 0x7FFF0000;             /* channel level interp
                                                    * (hi16 scales every voll/
@@ -601,7 +603,9 @@ static void PortRunSoundPlayProbe(void) {
     *(unsigned int*)(el + 0x14) = 0;
     *(short*)(mgr + 0x10) &= 0x7FFF;
     *(int*)(mgr + 0x48) = 0;
-    *(int*)(mgr + 0x54) = 0;
+    /* restore the pre-probe tempo (zeroing it froze the sequencer for any
+     * later sound work in the same run -- caught by the S1 SFX probe) */
+    *(int*)(mgr + 0x54) = saved54;
     EnableEvent(g_unk_SoundEvent);
 }
 
@@ -723,6 +727,85 @@ static void PortRunSoundSongProbe(void) {
     func_800399D4(mgr);
     HeapFree(songBuf);
     ArchiveSetIndex(4, 0);
+}
+
+/* S1 SFX probe (env XENO_SOUND_SFX_PROBE=1): load the field's common SED
+ * (archive dir 4 file 0xA8 -- the same file the ported func_80085890 loads)
+ * with the real SoundAddSedsEntry, then fire an effect through the real SFX
+ * chain: func_80039F18 (the CFF0-spawn/API entry) -> func_8003A65C slot
+ * allocation -> func_8003B644 pair-arm. The already-ported tick interprets
+ * the SED entry scripts; the translator keys voices. SFX are short
+ * one-shots, so the observation window is tight. CONTROL
+ * (XENO_SOUND_SFX_CONTROL=1): SED loaded, nothing fired.
+ * XENO_SOUND_SFX_ENTRY overrides the effect index (decimal). */
+static void PortRunSoundSfxProbe(void) {
+    extern void func_80039F18(int packedId, int volume, int pan);
+    extern void SoundAddSedsEntry(void* pSoundFile);
+    extern int SpuGetKeyStatus(unsigned int voice_bit);
+    extern int ArchiveDecodeAlignedSize(int fileIndex);
+    extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
+    extern void ArchiveReadFileToBuffer(int fileIndex, void* pBuffer, int arg2,
+                                        int arg3);
+    extern void* HeapAlloc(int size, int flags);
+    void* sedBuf;
+    unsigned short sedId;
+    int entry = 1;
+    int entryCount;
+    long kons0;
+    int t, maxVoices = 0, samplesWithSound = 0;
+    int ok_keyed, ok_played;
+
+    if (getenv("XENO_SOUND_SFX_ENTRY")) {
+        entry = atoi(getenv("XENO_SOUND_SFX_ENTRY"));
+    }
+    {
+        /* The effect scripts bind WDS banks (opcode 0xFC); the common bank
+         * must be resident first (engine truth -- same requirement the
+         * field boot satisfies via func_80085FB8/F30). */
+        extern void* SoundLoadWdsFile(void* pWdsFile, int mode);
+        extern void HeapFree(void* pMemory);
+        void* bankBuf;
+        ArchiveSetIndex(0x1C, 0);
+        bankBuf = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
+        ArchiveReadFileToBuffer(3, bankBuf, 0, 0x80);
+        SoundLoadWdsFile(bankBuf, 0);
+        HeapFree(bankBuf);
+    }
+    ArchiveSetIndex(4, 0);
+    sedBuf = HeapAlloc(ArchiveDecodeAlignedSize(0xA8), 1);
+    ArchiveReadFileToBuffer(0xA8, sedBuf, 0, 0x80);
+    SoundAddSedsEntry(sedBuf);   /* buffer stays resident (linked) */
+    sedId = *(unsigned short*)((unsigned char*)sedBuf + 0x14);
+    entryCount = (*(unsigned short*)((unsigned char*)sedBuf + 0x18) - 0x20) / 4;
+    printf("[sfx-probe] common SED: id=0x%x entries=%d probing entry=%d "
+           "(offs=0x%x,0x%x)\n", sedId, entryCount, entry,
+           *(unsigned short*)((unsigned char*)sedBuf + 0x20 + entry * 4),
+           *(unsigned short*)((unsigned char*)sedBuf + 0x22 + entry * 4));
+    if (getenv("XENO_SOUND_SFX_CONTROL")) {
+        printf("[sfx-probe] CONTROL: SED loaded, nothing fired\n");
+        PortSleepMs(2000);
+        printf("[sfx-probe] CONTROL keyons=%ld (want 0)\n",
+               (long)s_regFlushKeyOns);
+        return;
+    }
+    kons0 = s_regFlushKeyOns;
+    func_80039F18((sedId << 16) | entry, 0x7F, 0x40);
+    for (t = 0; t < 20; t++) {
+        int v, playing = 0;
+        PortSleepMs(100);
+        for (v = 0; v < 24; v++) {
+            playing += (SpuGetKeyStatus(1u << v) != 0);
+        }
+        if (playing > maxVoices) maxVoices = playing;
+        if (playing > 0) samplesWithSound++;
+    }
+    ok_keyed = (s_regFlushKeyOns - kons0) > 0;
+    ok_played = maxVoices > 0;
+    printf("[sfx-probe] keyons=%ld maxVoices=%d samplesWithSound=%d/20\n",
+           (long)(s_regFlushKeyOns - kons0), maxVoices, samplesWithSound);
+    printf("[sfx-probe] RESULT: %s (keyed=%d AL-playing=%d; WAV RMS is the "
+           "output-tier proof -- see runner)\n",
+           (ok_keyed && ok_played) ? "PASS" : "FAIL", ok_keyed, ok_played);
 }
 
 #define WINDOW_TITLE  "Xenogears (PC port)"
@@ -1094,6 +1177,11 @@ int main(int argc, char** argv) {
             /* Song-start M2: a real sequence through the real arming chain. */
             if (getenv("XENO_SOUND_SONG_PROBE")) {
                 PortRunSoundSongProbe();
+            }
+
+            /* S1: a real sound effect through the real SFX chain. */
+            if (getenv("XENO_SOUND_SFX_PROBE")) {
+                PortRunSoundSfxProbe();
             }
 
             /* The KernelMenu "Field" option jumps straight into the field without

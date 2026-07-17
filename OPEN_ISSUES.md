@@ -1220,6 +1220,63 @@ Evidence: proven (register + audio comparative A/B against an M3 worktree
 binary; negative-space table proof; oracle fuzzy=100 x10; five tripwires)
 Last verified @ HEAD of this commit
 
+### S1 LANDED: the SFX chain -- sound effects play through the real pipeline
+
+The SFX twin of the music path is real: 12 functions. **{} (oracle
+fuzzy=100 x4; 1251 -> 1255/2292)**: func_80039DB8 (fixed-top-slot API),
+func_80039E60 (allocated-slot API), func_80039F18 (the CFF0-spawn/API entry
+-- the flagged stub, now REAL), func_80039F9C (field-cue API).
+**Coexistence (audited, d88f13c pattern)**: func_8003B644 (the SFX
+element-arm core -- the EXPECTED B424-twin cc1 anchor-rebase residual;
+every store audited against the split asm offsets), func_8003A65C (slot
+allocator: dedupe + downward window scan + oldest-steal; regalloc
+permutation residual), func_80039FF8 (stop-all; load-scheduling),
+func_8003A094/func_8003A14C (stop-by-SED/stop-by-id; cursor-role
+permutation), func_8003A20C/A344/A55C (pair stop/volume/pan; a
+two-instruction scheduler placement of the slot masking).
+
+PASSTHROUGH-UB FAMILY, 4th MEMBER: func_8003A65C's steal-scan leaves its
+`best` slot variable UNINITIALIZED when no candidate has priority <= 0x20
+(retail reads stale $s6 -- PSX wraps harmlessly; the host would index
+wild). Port-guarded default (scan start) under XENO_PC_PORT; matching
+keeps the retail shape. The linkage trap did not apply (no PsyCross-side
+additions this pass).
+
+SFX AUDIO PROVEN (XENO_SOUND_SFX_PROBE): the probe loads the field's
+common SED (dir 4 file 0xA8, real SoundAddSedsEntry -- id 0, 468 entries)
+plus the common WDS bank, then fires entry 1 through the REAL chain
+(func_80039F18 -> A65C slot alloc -> B644 pair-arm -> tick interprets the
+SED scripts). Three tiers: (1) AL -- 1 key-on event, 2 voices PLAYING
+(the SED pair), 3/20 100ms samples (a ~350ms one-shot); (2) wave-capture
+-- a 0.35s attack/decay burst (RMS 0.039->0.078->decay, peak 0.38) with
+the CONTROL (SED loaded, nothing fired) digitally silent through that
+window; (3) WAV: scratchpad/first_sfx_capture.wav. Probe-model catches en
+route: effect scripts bind WDS banks (opcode 0xFC), so the common bank
+must be resident (the probe loads it; the field boot's FB8/F30 leg does
+in-game) -- bankless was a NULL-instrument crash, engine truth. And a
+PROBE-ARTIFACT fix: the B5.1 play probe's teardown zeroed the manager
+TEMPO (mgr+0x54), freezing the sequencer for any later sound work in the
+same run -- it now restores the saved value (caught because the combined
+suite failed only after the play probe).
+
+CFF0-spawn: no measured song uses the CFF0 opcode (M2/M3 test songs
+don't), so the in-sequence spawn path is exercised via the probe's direct
+func_80039F18 call -- the identical entry the handler invokes.
+
+Validation: slus byte-exact (d004692f...); ALL 8 probes PASS in a single
+combined run at 240Hz; TSan SFX run PASS with identical stats, 0/34
+reports touch S1 code (the run's exit is the filed TSan-only late
+normal-boot staging crash, post-probe); five-map tripwires ALL EXACT.
+
+HONEST STATE: sound effects play, probe-proven, on the same pipeline as
+the shaped in-game music. Remaining: in-game SFX triggering (the
+func_800855C8/85634 field-cue un-shim -- the M3-equivalent for effects),
+menu/boot music (new-game flow), hardware-ADSR per-note polish, CD
+streaming, the coexistence {}-upgrade backlog.
+Evidence: proven (three-tier incl. window-silent control; TSan clean on
+the SFX path; A/B binary hash; five exact tripwires; oracle fuzzy=100 x4)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move
