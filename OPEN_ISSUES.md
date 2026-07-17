@@ -1699,9 +1699,63 @@ resolved by the intervening matrix/CLUT fixes; today's room renders
 coherently). This scene is the port's render torture test: one shot
 exercises the scripted camera, the BG re-projection, actor models, the
 closeup billboard, AND the distortion feedback.
-Evidence: root-caused (per-quad walker probe + forced-accept recovery
-capture); fix not yet implemented
-Last verified @ 4ed19a9
+FIXED: the fork resolved one level deeper than any of the three candidates
+as stated. The SZ dump (f60: SZ 227..307 vs h=512 threshold 256, flag
+firing EXACTLY when a pushed SZ < 256) proved the port's transform chain
+EXACT (billboard world-delta ~85 units x worldScale 3.0 = SZ 255 on the
+nose) and PsyX's overflow arithmetic spec-correct -- the scene is AUTHORED
+with the billboard straddling h/2 (the script itself sets scrZ=0x200:
+opcode bytes `a0 05 80 19 80 00 82` at IP 17). Hardware overflows these
+divides too. The resolution is in the retail walker asm: its "FLAG check"
+is `mfc2 $t0, $31` -- MFC2 reads DATA reg 31 (LZCR, a leading-zero COUNT,
+always 1..32), not the FLAG control reg (which needs CFC2) -- so retail's
+bltz reject NEVER TAKES on hardware. The overflowed divide SATURATES
+(quotient clamped 0x1FFFF; PsyX's Lm_E identical; screen coords clamp
++/-0x400) and the quad draws with mild stretch. The port's walker had
+translated the apparent intent (gte_stflg = the real FLAG) instead of the
+actual shipped behavior, creating a rejection gate retail never had.
+Fix: removed both FLAG gates from ModelPrimQuadFT4Variant0
+(pc_port/src/game_overrides.c; port-only, slus untouched). Validation:
+fixed f120 is PIXEL-IDENTICAL (100.0%, max diff 0) to the forced-accept
+target; f60 OT tripwire EXACT post-fix (actor 38 walls {73,74,87,89},
+actor 31 bucket 67 unchanged; actor 24 now emits 13 quads into buckets
+14-17; no other actor uses this walker at f60 -- blast radius structurally
+confined); five-map watchdogs exact (see commit).
+The distortion ripple (opcodes 0x26/0x27) composes over the billboard via
+framebuffer feedback and was NOT part of this defect; its own fidelity is
+untested-but-unchanged here.
+Evidence: fixed + proven (pixel-exact vs the proven target; tripwires)
+Last verified @ HEAD of this commit
+
+## Inert LZCR "flag gates" across the model-prim walker family (13 unfixed sites)
+
+Found during the Map014 fire-painting fix. EVERY "GTE FLAG check" in the
+retail model-prim walker blob (asm/slus_006.64/system/temp2.s) is
+`mfc2 $tN, $31` -- MFC2 reads DATA register 31 (LZCR, a leading-zero count,
+always 1..32, never negative), NOT the FLAG control register (CFC2). The
+paired bltz rejects are therefore DEAD CODE on hardware: overflowed
+perspective divides saturate (0x1FFFF) and the primitive still draws. The
+single real `cfc2 $31` in the file is elsewhere (0x80030D20, a different
+subsystem). Sites: 0x8002E150, E364+E3A0 (FT4 variant0 -- FIXED, the
+fire-painting bug), E58C, E788+E7C0 (func_8002E688 -- NOTE: the port's
+E688 FLAG gate and its XENO_E688_IGNORE_FLAG diagnostic toggle model a
+rejection retail never performed), E9F8, EBF4+EC2C, EE20, F01C, F1F8,
+F3E0, F5BC.
+
+IMPLICATIONS: (1) the port's remaining walker FLAG gates (F4 variant0/2,
+tri walkers, E688) are non-retail behavior -- each can wrongly cull
+near-plane/overflowing geometry that hardware draws saturated; the
+fire-painting was the first proven casualty, and the well-cutscene
+"oversized-primitive cull" saga (1d01da6/0982c01 revert) lives in the same
+territory (hardware relies on GPU-side >1023x511 poly rejection, which the
+port models as ModelPrimQuad/TriOversized, not on GTE-flag culls).
+(2) Fixing them all should be ONE audited pass: remove each gate, keep
+NCLIP/overlap/otz gates (those are real in retail), verify PsyX's
+saturation path per walker, and regression the render-sensitive maps --
+each walker feeds different content classes, so validate individually.
+Do NOT bulk-delete without per-walker capture checks.
+Evidence: retail asm read (all sites enumerated); one site fixed + proven
+Last verified @ HEAD of this commit
 
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 

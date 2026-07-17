@@ -1056,8 +1056,6 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long xy3 = 0;
-        long rtptFlag = 0;
-        long rtpsFlag = 0;
         long nclipOpz = 0;
         u16 averageZ;
         s32 otIndex;
@@ -1069,29 +1067,33 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
 
         gte_ldv3(v0, v1, v2);
         gte_rtpt();
-        gte_stflg(&rtptFlag);
         gte_stsxy3(&xy0, &xy1, &xy2);
 
         gte_nclip();
         gte_stopz(&nclipOpz);
-        rtptFlag = (long)(s32)(u32)rtptFlag;
         nclipOpz = (long)(s32)(u32)nclipOpz;
-        if (rtptFlag < 0) {
-            continue;
-        }
+        /* NO GTE-FLAG rejection here -- retail's apparent flag gates at
+         * 0x8002E364/0x8002E3A0 are `mfc2 $t0, $31`: MFC2 reads DATA reg 31
+         * (LZCR, a leading-zero count, always 1..32), NOT the FLAG control
+         * reg (that needs CFC2), so retail's bltz never takes on hardware.
+         * Near-plane divide overflow instead SATURATES (quotient clamped to
+         * 0x1FFFF; PsyX's Lm_E is identical) and the quad still draws with
+         * mildly stretched screen coords. The Map014 intro fire-painting
+         * billboard (actor 24) is AUTHORED straddling the h/2 threshold
+         * (SZ 227..307 vs h=512) and depends on this: a real FLAG gate here
+         * rejected its screen-filling quads and exposed the 3D scene behind
+         * (the back of Fei's head). Same inert-LZCR pattern exists at 13
+         * other walker sites -- see OPEN_ISSUES "inert LZCR flag gates". */
         if (nclipOpz <= 0) {
             continue;
         }
 
         gte_ldv0(v3);
         gte_rtps();
-        gte_stflg(&rtpsFlag);
         gte_stsxy(&xy3);
+        /* AVSZ4 sits in retail's (never-taken) branch delay slot -- always
+         * executes. */
         gte_avsz4();
-        rtpsFlag = (long)(s32)(u32)rtpsFlag;
-        if (rtpsFlag < 0) {
-            continue;
-        }
 
         if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
