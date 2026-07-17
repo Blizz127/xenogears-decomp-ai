@@ -1277,6 +1277,63 @@ Evidence: proven (three-tier incl. window-silent control; TSan clean on
 the SFX path; A/B binary hash; five exact tripwires; oracle fuzzy=100 x4)
 Last verified @ HEAD of this commit
 
+### IN-GAME SFX LANDED: field cues fire real effects -- M3's twin for the effects domain
+
+The field SFX cue path is un-shimmed. func_800855C8 is the real retail body
+(stop the channel pair via func_8003A20C, fire through func_80039F9C -> the
+S1 chain); func_80085634 now passes its retail FOURTH argument (the channel,
+a1 & 7 -- visible in the matchings asm's $a3 flow, dropped in the old
+transcription and latent while the shim no-op'd everything). Both compile
+into the field build; no slus changes (oracle unchanged at 1255/2292, slus
+byte-exact d004692f...).
+
+REAL IN-GAME CUES FOUND: MAP001 (Lahan) fires villager/scripted cues
+(common-SED entries 0x6/0x7/0x37/0x86) -- but actor-AI-nondeterministically
+(observed 12 cues in one run, zero in six others; gdb instrumentation
+overhead also perturbs script pacing). MAP014 fires a DETERMINISTIC
+boot-script cue: id 0x36 at scripted volume 32, chan 3 -- reproduced in
+every run. MAP334 fires one. The cue path: field script -> misc.c cue
+opcode -> 855C8 -> A20C+F9C -> B644 pair-arm (elements 14/15 -> voices
+22/23, unclaimed by anything else) -> tick -> translator.
+
+RESIDENT-PATH FIX (the no-guards rule): firing MAP014's cue crashed at the
+effect script's bank bind (func_8003E44C -> E5BC, NULL WDS list) -- the cue
+fires BEFORE the per-frame C90 leg lazy-loads the common bank; retail never
+had this window (its new-game flow preloads the bank, the D_8004F364=1 boot
+state). The harness stand-in now loads the common bank EAGERLY at field
+init (func_80085FB8 kick + func_80085F30 completion, bounded retry) --
+restoring retail's residency invariant instead of guarding.
+
+IN-GAME PROOF (MAP014 boot, no probe): (1) register/AL tier -- one cue ->
+KONs on exactly v22+v23 (the pair) at tick-t 4.3s, both from the common
+bank (addr 0x12000), distinct per-channel pitches 0xC7/0x128; (2) audio
+tier -- the capture's first sound starts at 4.25s: a sustained quiet
+ambient (~0.014 RMS, scripted vol 32) filling the 13-second pre-music
+window where the M3-era control capture is DIGITALLY SILENT (0.0000 until
+its music at 17s; both captures then converge on the identical music
+profile); (3) WAV: scratchpad/map014_ingame_sfx.wav. Diagnostics added:
+XENO_SOUND_KON_TRACE (translator key-on trace with tick timestamps) and an
+XENO_FIELD_DIAG cue print.
+
+The AMBIENT-SFX chain was scoped but stays gated: func_80085788 (per-map
+ambient SED loader, dir 0x1C file ambientId+0x115 -> SoundAddSedsEntry +
+the D_800AE060 schedule) and func_80085678 (per-frame scheduled-cue pump ->
+func_80039EC4) are decompilable, but their CALLERS (func_800A7C58 map-load,
+func_800A732C per-frame) are unported field-load machinery -- ambient
+scheduled SFX land when that ports (or with a harness pump stand-in).
+
+Validation: slus byte-exact; all 8 probes PASS; TSan MAP014 full boot with
+the cue path, 0/35 reports in cue/SFX code; five-map tripwires ALL EXACT
+(the new diagnostics are env-gated, default-off).
+
+HONEST STATE: sound effects fire IN-GAME from real field-script cues
+(MAP014 deterministic, MAP001/334 observed). Remaining: ambient scheduled
+SFX (caller porting), menu/boot music, hardware-ADSR polish, CD streaming,
+the coexistence {}-upgrade backlog.
+Evidence: proven (in-game three-tier vs the M3-era silent-window control;
+deterministic cue; TSan clean; five exact tripwires; A/B binary hash)
+Last verified @ HEAD of this commit
+
 ## Map143 dialogue path crashes in the shared tile/sprite renderer
 
 Map143 has legal entrances `{0, 1}`. From entrance 0, real d-pad input can move

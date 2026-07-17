@@ -2227,32 +2227,37 @@ void func_80085560(s32 a0, s32 a1, s32 a2) {
     D_800AFEA4 = a2;
 }
 
-/* XENO_PC_PORT temporary audio boundary:
- * Field transition scripts reach func_800855C8 for a sound cue. Retail then
- * enters the deeper sound voice/SED/WDS assignment path
- * (func_8003A20C/func_80039F9C/func_8003B644). That subsystem is not ported
- * yet, and this sound call does not own field transition state, so the native
- * port intentionally treats it as a no-op while field progression is traced.
- * Remove this shim when the real audio engine path is implemented.
- *
- * The variadic form preserves current native call sites while func_80085634 is
- * still a nonmatching register-style transcription that omits the fourth arg in
- * C but preserves it in the original MIPS register flow. */
-void func_800855C8(s32 soundId, s32 volume, s32 pan, ...)
+extern void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan);
+
+// Field SFX cue (script opcodes, transition sounds): stop whatever is on
+// the channel's element pair, then fire the packed effect through the S1
+// play chain (func_80039F9C -> func_8003B644 arm -> the tick plays it).
+// Un-shimmed: the whole downstream is real as of S1.
+void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
 {
-    (void)soundId;
-    (void)volume;
-    (void)pan;
+    s32 slot = channel & 0x7;
+#ifdef XENO_PC_PORT
+    if (getenv("XENO_FIELD_DIAG") != NULL) {
+        printf("[field-sfx] cue id=0x%x vol=%d pan=%d chan=%d\n",
+               soundId, volume, pan, channel);
+    }
+#endif
+    func_8003A20C(slot << 1);
+    func_80039F9C(soundId, slot << 1, (s16)volume, (s16)pan);
 }
 
 extern s32 D_800B21B8;
 
+// Field SFX cue (simple form): id 0 stops the channel pair; otherwise fire
+// at default volume/pan. The channel is the retail fourth argument
+// (a1 & 7, previously dropped in transcription -- latent while
+// func_800855C8 was a no-op shim).
 void func_80085634(int a0, int a1) {
     if (a0 == 0) {
         func_8003A20C((a1 & 7) * 2);
     } else {
         D_800B21B8 = a0;
-        func_800855C8(a0, 0x7F, 0x40);
+        func_800855C8(a0, 0x7F, 0x40, a1 & 7);
     }
 }
 

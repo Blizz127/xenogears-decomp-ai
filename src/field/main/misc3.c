@@ -526,11 +526,23 @@ void func_800705DC(void) {
             extern void func_80085B20(s32 musicIdx, s32 arg1);
             /* Retail boots with D_8004F364=1 ("field common WDS bank
              * resident") because the unported new-game flow loads it before
-             * any field entry; the port never has. Mark it not-resident so
-             * func_80085C90's own retail leg lazy-loads it (func_80085FB8
-             * kick + func_80085F30 complete = dir 0x1C file 3 ->
-             * SoundLoadWdsFile). */
-            D_8004F364 = 0;
+             * any field entry; the port never has. Load it EAGERLY here with
+             * the same retail pair the lazy C90 leg would use -- effect-cue
+             * scripts can fire before the per-frame poller gets to it, and
+             * their bank binds assume residency (retail's invariant). The
+             * port's archive reads are synchronous, so the completion poll
+             * converges immediately; the bounded retry is a backstop. */
+            {
+                extern int func_80085F30(void);
+                extern void func_80085FB8(void);
+                int tries = 16;
+                func_80085FB8();
+                while (func_80085F30() == -1 && --tries > 0) {}
+                if (tries <= 0) {
+                    printf("[field-sfx] WARNING: common WDS bank load did "
+                           "not complete at init\n");
+                }
+            }
             func_8001B66C();
             D_8004F308 = -1;
             D_8004F324 = D_800B2290;

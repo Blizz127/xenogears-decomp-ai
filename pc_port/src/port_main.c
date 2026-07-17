@@ -448,7 +448,12 @@ static void PortRunSoundSeqProbe(void) {
  * until the backend grows it; volume/pitch/addr suffice for audible). */
 static _Atomic long s_regFlushKeyOns = 0;
 static _Atomic long s_regFlushKeyOffs = 0;
+static _Atomic long s_regFlushTicks = 0;
+static int s_konTrace = -1;
 static long PcPort_SpuRegFlushTick(void) {
+    if (s_konTrace < 0)
+        s_konTrace = (getenv("XENO_SOUND_KON_TRACE") != NULL);
+    s_regFlushTicks += 1;
     extern void* g_pSoundSpuRegisters;
     unsigned char* spu = (unsigned char*)g_pSoundSpuRegisters;
     unsigned int kon = *(unsigned short*)(spu + 0x188) |
@@ -469,11 +474,12 @@ static long PcPort_SpuRegFlushTick(void) {
                 attr.volume.right = *(short*)(v + 0x2);
                 attr.pitch = *(unsigned short*)(v + 0x4);
                 attr.addr = *(unsigned short*)(v + 0x6) << 3;
-                if (s_regFlushKeyOns < 4)
-                    printf("[reg-flush] KON v%d voll=%d volr=%d pitch=0x%x "
-                           "addr=0x%x\n", i, attr.volume.left,
-                           attr.volume.right, (unsigned)attr.pitch,
-                           (unsigned)attr.addr);
+                if (s_regFlushKeyOns < 4 || s_konTrace)
+                    printf("[reg-flush] KON t=%.1fs v%d voll=%d volr=%d "
+                           "pitch=0x%x addr=0x%x\n",
+                           (double)s_regFlushTicks / 240.0, i,
+                           attr.volume.left, attr.volume.right,
+                           (unsigned)attr.pitch, (unsigned)attr.addr);
                 SpuSetVoiceAttr(&attr);
             }
         }
