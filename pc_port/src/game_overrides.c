@@ -246,6 +246,12 @@ u8 D_80065ADC[16];
 u8 D_80059508;
 u8 D_800594F8;
 
+/* 0xBC sub-command 0x26's track table (animation_scripts.c): 16 entries of
+ * 0x1C bytes. Sized properly here so the port build doesn't fall back to a
+ * 32-byte auto-stub (index reaches 15*0x1C+0x10). Zero until its authoring
+ * subsystem is ported; the sub-command then yields a zero vector. */
+u8 D_800C3EB0[0x1C0];
+
 /* Battle-transition entry the encounter roll (func_80079288) calls when a
  * formation is selected. The field->battle handoff and the battle system are
  * out of scope; this no-op stub lets the roll link and run so we can validate

@@ -12,6 +12,10 @@
  * semantics for game translation units.  In particular, the field camera
  * calls retail `rsin` for its vertical component; using mathematical sine
  * puts an unclamped camera below the Lahan well instead of above it. */
+/* PsyCross omits the geom-offset read-back; implemented in
+ * pc_port/src/psyq_compat.c. */
+extern void ReadGeomOffset(long* ofx, long* ofy);
+
 static inline int xeno_retail_rsin(int angle) {
     return rcos(angle);
 }

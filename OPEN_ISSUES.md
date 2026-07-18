@@ -82,11 +82,26 @@ Last verified @ 0a32159.
      unaudited). MAP3's flip therefore needs: the overlay extraction +
      model-instantiation port, the func_800821F4 branch, and the 3-stub
      audit -- a sub-project, not a pass. Flip the define when it lands.
-  6. Cutscene opcode walls (fire when their cutscenes run): func_8001FBE4
-     opcode 0xBC sub-command/anchor/camera-tail (4 asserts), func_80022660
-     bytecode path, func_800248D4 opcode paths (2 asserts; also the
-     post-menu anim landmine). Sizes unknown until hit; each looks
-     branch-scale. LIKELY-BLOCKERS for story cutscenes.
+  6. Cutscene opcode walls: func_8001FBE4's 0xBC family LARGELY RESOLVED --
+     the 3 0xBC-internal asserts became a full implementation of the
+     position opcode: 21 of 27 sub-commands live (target/parent/own/anchor-
+     table/height-offset/screen-center/track-table sources, the anchor
+     machine with its +0xAC-bit-2 mirror, the camera-relative tail with the
+     lhu translation adds, the bit7-clear parent-anchor path with its
+     DISTINCT +0x3C-bit-3 mirror), ReadGeomOffset added to psyq_compat.
+     Synthetic gdb probe verified both store destinations exact. STILL
+     ASSERTED (named): subs 1-4/0x19-0x23 (need the animation system's
+     player global D_800C3E1C + party list D_800D363C, whose writer lives
+     in temp1's unported sprite-spawn region -- THE wall under the player-
+     relative cutscene family), sub 5 (retail divides zeroed accumulators
+     by a stale register -- indeterminate), sub>=0x27 (uninit-stack UB).
+     0xBC fires in NO map's boot window (probed 14/1/0) -- story-triggered
+     only. Also remaining in this class: func_8001FBE4's dispatch-path
+     catch-all (all OTHER unimplemented opcodes -- surfaces per-opcode as
+     cutscenes run), func_80022660 bytecode path, func_800248D4 opcode
+     paths (2 asserts; the post-menu anim landmine). NOTE: slus baseline
+     hash moved to 7a3e773b (animation_scripts.c compiles into matching
+     slus; single-file-revert isolation proved the diff is confined).
   7. Party-change walls (Citan joins): func_800815F0 party-history sync +
      func_800A24C4 party-skin branch. Branch-scale. BLOCKERS at the join
      beat.

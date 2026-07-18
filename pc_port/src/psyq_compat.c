@@ -49,6 +49,16 @@ void func_80048AB0(long a, long b, long h)
     SetFogNearFar(a, b, h);
 }
 
+/* PsyQ ReadGeomOffset: PsyCross implements SetGeomOffset (C2_OFX = ofx<<16)
+ * but not the read-back. Used by the 0xBC sub-command 0x17 (screen-center
+ * delta) in animation_scripts.c. */
+#include <psx/gtereg.h>
+void ReadGeomOffset(long* ofxp, long* ofyp)
+{
+    *ofxp = C2_OFX >> 16;
+    *ofyp = C2_OFY >> 16;
+}
+
 /*
  * OpenTIM / ReadTIM: PsyCross declares these in libgpu.h but provides NO
  * implementation — they fall through to auto-generated no-op stubs that return

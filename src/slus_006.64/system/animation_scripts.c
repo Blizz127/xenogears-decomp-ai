@@ -1,6 +1,7 @@
 #include "common.h"
 #include "field/actor.h"
 #include "system/memory.h"
+#include "psyq/libgte.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
 
@@ -57,6 +58,63 @@ extern void func_8002C59C(u8* pModel);
 extern int func_8002C3E8(u8* pModel);
 extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(void* a0, void* a1, int a2);
+
+/* 0xBC fixed vector blocks + track table + camera matrix (all named in the
+ * retail asm of func_8001FBE4; splat carries their addresses). */
+extern s32 D_8006F99C;
+extern s32 D_8006F9AC;
+extern u8 D_800C3EB0[];
+extern MATRIX D_8004FBB8;
+
+/* .L80020654 (asm 80020650-8002072C): anchor-table position for the 0xBC
+ * sub-commands 8-0xA (target) and 0xB-0x11 (parent; 0x19-0x1F use the
+ * player and stay unported).  Anchor entries are s8 (dx,dy) pairs at
+ * transform(+0x20)->modelHeader(+0x34) + (idx-0xA)*8, X-mirrored by the
+ * reference sprite's +0xAC bit 2 (NOT the +0x3C bit 3 the bit7-clear anchor
+ * path uses - retail keeps them distinct), scaled by +0x2C (12-bit fixed,
+ * round toward zero), added to the reference position.  Missing transform
+ * or non-mode-1 references leave the vector untouched (zeroed by the
+ * caller; uninitialized stack in retail). */
+static void Xeno0xBCAnchorVec(u8* ref, s32 anchorIdx, SVECTOR* vec) {
+    u8* pBase = (u8*)(uintptr_t)*(u32*)(ref + 0x20);
+    u8* table;
+    s32 dx = 0;
+    s32 dy = 0;
+    s32 scale;
+    s32 sx;
+    s32 sy;
+
+    if (pBase == NULL) {
+        return;
+    }
+    if ((*(u32*)(ref + 0x3C) & 0x3) != 1) {
+        return;
+    }
+    table = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+    if (table != NULL) {
+        u8* e = table + (anchorIdx - 0xA) * 8;
+
+        dx = *(s8*)(e + 0x0);
+        dy = *(s8*)(e + 0x1);
+    }
+    if ((*(u32*)(ref + 0xAC) >> 2) & 0x1) {
+        dx = -dx;
+    }
+    scale = *(s16*)(ref + 0x2C);
+    sx = dx * scale;
+    if (sx < 0) {
+        sx += 0xFFF;
+    }
+    sx >>= 12;
+    sy = dy * scale;
+    if (sy < 0) {
+        sy += 0xFFF;
+    }
+    sy >>= 12;
+    vec->vx = (s16)(sx + *(s16*)(ref + 0x2));
+    vec->vy = (s16)(sy + *(s16*)(ref + 0x6));
+    vec->vz = *(s16*)(ref + 0xA);
+}
 
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
@@ -115,49 +173,201 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
 
     if (dispatchIndex == 0x32) {
         /* Opcode 0xBC handler (asm 800202F4-80020BAC): multi-command
-         * position opcode. Operand bit 7 set selects a sub-command
-         * (op0 & 0x3F) from jtbl_800185A8 (0x27 entries; >= 0x27 joins the
-         * shared tail with an uninitialized vector in retail); bit 7 clear
-         * takes the attach-to-parent-anchor path (.L80020AD0). Every
-         * sub-command ends in the shared tail .L80020A20: optional
-         * camera-relative transform (ApplyMatrixSV by D_8004FBB8, gated on
-         * a flag the sub-cases set), then operand bit 6 selects the
-         * destination - set stores the vector halfwords to +0xA0/A2/A4
-         * (target position), clear stores (s16)<<16 into the position
-         * words +0x0/+0x4/+0x8.
+         * position opcode. Operand bit 7 set selects a position SOURCE
+         * (op0 & 0x3F) from jtbl_800185A8 (0x27 entries); bit 7 clear takes
+         * the attach-to-parent-anchor path (.L80020AD0). Every sub-command
+         * ends in the shared tail .L80020A20/.L80020A24: optional
+         * camera-relative transform (ApplyMatrixSV by D_8004FBB8 + the
+         * matrix translation low-halfword adds, gated on sprite flag
+         * +0x3F bit 0 unless the sub-case clears it), then operand bit 6
+         * selects the destination - set stores the vector halfwords to
+         * +0xA0/A2/A4 (target position), clear stores (s16)<<16 into the
+         * position words +0x0/+0x4/+0x8.
          *
-         * Only the live sub-commands 0x16, 0x24, and 0x25 are ported; all
-         * other sub-commands,
-         * the bit7-clear anchor path, and the camera-relative branch
-         * (unreachable from the ported sub-commands, which force the flag to
-         * 0) assert loudly so each surfaces with its operand context. */
+         * Retail reaches the tail with an UNINITIALIZED stack vector on the
+         * degenerate paths (sub >= 0x27, missing transform block, non-mode-1
+         * sprite, NULL parent for subs 0xB-0x11); the port zero-initializes
+         * the vector so those paths are deterministic.
+         *
+         * Player/party-relative sub-commands (1-4, 0x19-0x23) read the
+         * animation system's player-sprite global D_800C3E1C and party list
+         * D_800D363C, which have NO writer in the port yet (their latch
+         * lives in temp1's unported sprite-spawn region) - they stay
+         * fail-loud. Sub 5 divides zeroed accumulators by a stale register
+         * in retail (indeterminate) and stays fail-loud too. */
         u8* p = pSpriteData;
         u32 op0 = ((u8*)operands)[0];
 
         if (op0 & 0x80) {
             u32 sub = op0 & 0x3F;
             s32 cameraRelative = *(u8*)(p + 0x3F) & 1;
-            s16 vx;
-            s16 vy;
-            s16 vz;
+            SVECTOR vec;
 
-            if (sub == 0x16) {
-                /* asm 8002044C-80020478: vector = the parent sprite's
-                 * position halfwords via the +0x70 back-link, camera flag
-                 * cleared, then shared tail .L80020A20. */
+            vec.vx = 0;
+            vec.vy = 0;
+            vec.vz = 0;
+
+            if (sub >= 0x27) {
+                /* Retail joins the tail with an uninitialized vector; no
+                 * authored script should get here. */
+                assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
+                return;
+            }
+
+            switch (sub) {
+            case 0x00: {
+                /* 80020740: target (+0x74) position halfwords. */
+                u8* t = (u8*)(uintptr_t)*(u32*)(p + 0x74);
+
+                vec.vx = *(s16*)(t + 0x2);
+                vec.vy = *(s16*)(t + 0x6);
+                vec.vz = *(s16*)(t + 0xA);
+                break;
+            }
+
+            case 0x01:
+            case 0x02:
+            case 0x03:
+            case 0x04:
+            case 0x19:
+            case 0x1A:
+            case 0x1B:
+            case 0x1C:
+            case 0x1D:
+            case 0x1E:
+            case 0x1F:
+            case 0x20:
+            case 0x21:
+            case 0x22:
+            case 0x23:
+                /* Player (D_800C3E1C) / party list (D_800D363C) relative -
+                 * no port writer for those globals yet (temp1 sprite-spawn
+                 * region); implementing now would deref NULL (or 0/0 in the
+                 * sub-2 centroid). */
+                assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
+                return;
+
+            case 0x05:
+                /* 800209B8: retail zeroes the accumulator block then divides
+                 * it by a STALE register (indeterminate on hardware). */
+                assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
+                return;
+
+            case 0x06:
+            case 0x07: {
+                /* 800205D4/800205E8: fixed vector blocks - word>>16 for X,
+                 * halfwords +0x6/+0xA for Y/Z. */
+                u8* blk = (sub == 0x06) ? (u8*)&D_8006F99C : (u8*)&D_8006F9AC;
+
+                vec.vx = (s16)(*(s32*)blk >> 16);
+                vec.vy = *(s16*)(blk + 0x6);
+                vec.vz = *(s16*)(blk + 0xA);
+                break;
+            }
+
+            case 0x08:
+            case 0x09:
+            case 0x0A: {
+                /* 80020620/28/30 -> .L80020650: target (+0x74) anchor-table
+                 * position; fixed anchor index 0xC/0xB/0xD respectively
+                 * (no static table: the matching linker discards new .sdata
+                 * from this TU). */
+                s32 aidx = (sub == 0x08) ? 0xC : (sub == 0x09) ? 0xB : 0xD;
+                u8* t = (u8*)(uintptr_t)*(u32*)(p + 0x74);
+
+                Xeno0xBCAnchorVec(t, aidx, &vec);
+                break;
+            }
+
+            case 0x0B:
+            case 0x0C:
+            case 0x0D:
+            case 0x0E:
+            case 0x0F:
+            case 0x10:
+            case 0x11: {
+                /* 80020638: parent (+0x70) anchor-table position, anchor
+                 * index = sub; NULL parent joins the tail (zero vector in
+                 * the port, uninitialized in retail). */
                 u8* pParent = (u8*)(uintptr_t)*(u32*)(p + 0x70);
 
-                vx = *(s16*)(pParent + 0x2);
-                vy = *(s16*)(pParent + 0x6);
-                vz = *(s16*)(pParent + 0xA);
+                if (pParent != NULL) {
+                    Xeno0xBCAnchorVec(pParent, (s32)sub, &vec);
+                }
+                break;
+            }
+
+            case 0x12:
+            case 0x13:
+            case 0x14:
+            case 0x15: {
+                /* 800204BC/F4, 8002054C/8C: target (+0x74) position with a
+                 * height offset - full +0x36, mid ((0x36+0x38)/2 blend),
+                 * full +0x38, and half +0x38 (ceil) respectively. */
+                u8* t = (u8*)(uintptr_t)*(u32*)(p + 0x74);
+
+                vec.vx = *(s16*)(t + 0x2);
+                vec.vy = *(s16*)(t + 0x6);
+                vec.vz = *(s16*)(t + 0xA);
+                if (sub == 0x12) {
+                    vec.vy -= *(u16*)(t + 0x36);
+                } else if (sub == 0x13) {
+                    s32 h36 = *(u16*)(t + 0x36);
+                    s32 h38 = *(u16*)(t + 0x38);
+                    s32 half = (h36 - h38) >> 1;
+
+                    if ((h36 - h38) < 0) {
+                        half = (h36 - h38 + 1) >> 1;
+                    }
+                    vec.vy -= (s16)(h36 - half);
+                } else if (sub == 0x14) {
+                    vec.vy -= *(u16*)(t + 0x38);
+                } else {
+                    s32 h38 = *(u16*)(t + 0x38);
+
+                    vec.vy -= (s16)(h38 - (h38 >> 1));
+                }
+                break;
+            }
+
+            case 0x16: {
+                /* 8002044C: parent position, camera flag cleared. */
+                u8* pParent = (u8*)(uintptr_t)*(u32*)(p + 0x70);
+
+                vec.vx = *(s16*)(pParent + 0x2);
+                vec.vy = *(s16*)(pParent + 0x6);
+                vec.vz = *(s16*)(pParent + 0xA);
                 cameraRelative = 0;
-            } else if (sub == 0x24 || sub == 0x25) {
-                /* asm 800203B0-800203C8 (0x24) / 800203CC-800203E4 (0x25):
-                 * set (0x24) or clear (0x25) the wrapper task's sticky bit
-                 * (unk14 bit 30 - the bit func_8001CE74 / opcode 0x96 bulk
-                 * unlink skips: detach from / re-attach to the parent's
-                 * cleanup), then shared prologue .L80020428: vector = the
-                 * sprite's own position halfwords, camera flag cleared. */
+                break;
+            }
+
+            case 0x17: {
+                /* 800203E8: screen-center delta - (0xA0-ofx)<<1,
+                 * (0x70-ofy)<<1, own Z; camera flag cleared. */
+                long ofx;
+                long ofy;
+
+                ReadGeomOffset(&ofx, &ofy);
+                vec.vx = (s16)((0xA0 - ofx) << 1);
+                vec.vy = (s16)((0x70 - ofy) << 1);
+                vec.vz = *(s16*)(p + 0xA);
+                cameraRelative = 0;
+                break;
+            }
+
+            case 0x18:
+                /* .L80020428: own position, camera flag cleared. */
+                vec.vx = *(s16*)(p + 0x2);
+                vec.vy = *(s16*)(p + 0x6);
+                vec.vz = *(s16*)(p + 0xA);
+                cameraRelative = 0;
+                break;
+
+            case 0x24:
+            case 0x25: {
+                /* 800203B0/CC: set (0x24) / clear (0x25) the wrapper task's
+                 * sticky bit (unk14 bit 30), then own position, camera flag
+                 * cleared (.L80020428 shared prologue). */
                 u8* pWrapper = (u8*)(uintptr_t)*(u32*)(p + 0x6C);
 
                 if (sub == 0x24) {
@@ -165,40 +375,103 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
                 } else {
                     *(u32*)(pWrapper + 0x14) &= 0xBFFFFFFF;
                 }
-                vx = *(s16*)(p + 0x2);
-                vy = *(s16*)(p + 0x6);
-                vz = *(s16*)(p + 0xA);
+                vec.vx = *(s16*)(p + 0x2);
+                vec.vy = *(s16*)(p + 0x6);
+                vec.vz = *(s16*)(p + 0xA);
                 cameraRelative = 0;
-            } else {
-                assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
-                return;
+                break;
             }
 
-            /* Shared tail .L80020A20. */
+            case 0x26: {
+                /* 8002033C: track-table vector - index from A8 bits 30-31 |
+                 * (AC bits 0-1)<<2, entry stride 0x1C in D_800C3EB0;
+                 * X = entry+0xE, Y = 0, Z = entry+0x10. Camera flag
+                 * preserved. */
+                u32 idx = (*(u32*)(p + 0xA8) >> 30) |
+                          ((*(u32*)(p + 0xAC) & 0x3) << 2);
+                u8* e = (u8*)D_800C3EB0 + idx * 0x1C;
+
+                vec.vx = (s16)*(u16*)(e + 0xE);
+                vec.vy = 0;
+                vec.vz = (s16)*(u16*)(e + 0x10);
+                break;
+            }
+            }
+
+            /* Shared tail .L80020A20/.L80020A24. */
             if (cameraRelative != 0) {
-                /* ApplyMatrixSV(&D_8004FBB8, &vec, &vec) + the matrix
-                 * translation low-halfword adds. Decoded (asm 80020A24-
-                 * 80020A70) but unreachable from the ported sub-commands;
-                 * port it when a live sub-command needs it. */
-                assert(0 && "func_8001FBE4 opcode 0xBC camera-relative tail is not implemented");
-                return;
+                /* asm 80020A28-80020A70: rotate by the camera matrix and add
+                 * its translation LOW HALFWORDS (retail lhu's the .t words). */
+                ApplyMatrixSV(&D_8004FBB8, &vec, &vec);
+                vec.vx = (s16)((u16)vec.vx +
+                               *(u16*)((u8*)&D_8004FBB8 + 0x14));
+                vec.vy = (s16)((u16)vec.vy +
+                               *(u16*)((u8*)&D_8004FBB8 + 0x18));
+                vec.vz = (s16)((u16)vec.vz +
+                               *(u16*)((u8*)&D_8004FBB8 + 0x1C));
             }
             if (op0 & 0x40) {
-                *(u16*)(p + 0xA0) = (u16)vx;
-                *(u16*)(p + 0xA2) = (u16)vy;
-                *(u16*)(p + 0xA4) = (u16)vz;
+                *(u16*)(p + 0xA0) = (u16)vec.vx;
+                *(u16*)(p + 0xA2) = (u16)vec.vy;
+                *(u16*)(p + 0xA4) = (u16)vec.vz;
             } else {
-                *(s32*)(p + 0x0) = (s32)vx << 16;
-                *(s32*)(p + 0x4) = (s32)vy << 16;
-                *(s32*)(p + 0x8) = (s32)vz << 16;
+                *(s32*)(p + 0x0) = (s32)vec.vx << 16;
+                *(s32*)(p + 0x4) = (s32)vec.vy << 16;
+                *(s32*)(p + 0x8) = (s32)vec.vz << 16;
             }
             return;
         }
 
-        /* Operand bit 7 clear: .L80020AD0 positions this child at its
-         * parent's anchor (parent +0x70 back-link, direction-table entry
-         * op0, scaled by parent +0x2C). Decoded but not live yet. */
-        assert(0 && "func_8001FBE4 opcode 0xBC anchor path is not implemented");
+        /* Operand bit 7 clear: .L80020AD0 - position this child at its
+         * parent's anchor-table entry op0 (full byte), scaled by the
+         * parent's +0x2C factor.  NOTE: this path's mirror flag is the
+         * PARENT's +0x3C bit 3, unlike the sub-command machine's +0xAC
+         * bit 2 - retail keeps them distinct. */
+        {
+            u8* pParent = (u8*)(uintptr_t)*(u32*)(p + 0x70);
+            u8* pBase;
+            u8* table;
+            s32 dx = 0;
+            s32 dy = 0;
+            s32 scale;
+            s32 sx;
+            s32 sy;
+
+            if (pParent == NULL) {
+                return;
+            }
+            pBase = (u8*)(uintptr_t)*(u32*)(pParent + 0x20);
+            if (pBase == NULL) {
+                return;
+            }
+            if ((*(u32*)(pParent + 0x3C) & 0x3) != 1) {
+                return;
+            }
+            table = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+            if (table != NULL) {
+                u8* e = table + op0 * 8;
+
+                dx = *(s8*)(e + 0x0);
+                dy = *(s8*)(e + 0x1);
+            }
+            if ((*(u32*)(pParent + 0x3C) >> 3) & 0x1) {
+                dx = -dx;
+            }
+            scale = *(s16*)(pParent + 0x2C);
+            sy = dy * scale;
+            if (sy < 0) {
+                sy += 0xFFF;
+            }
+            sy >>= 12;
+            sx = dx * scale;
+            if (sx < 0) {
+                sx += 0xFFF;
+            }
+            sx >>= 12;
+            *(s32*)(p + 0x8) = *(s32*)(pParent + 0x8);
+            *(s32*)(p + 0x0) = *(s32*)(pParent + 0x0) + (sx << 16);
+            *(s32*)(p + 0x4) = *(s32*)(pParent + 0x4) + (sy << 16);
+        }
         return;
     }
 
