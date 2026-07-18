@@ -390,17 +390,30 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     as {} is likely impossible -> coexistence (INCLUDE_ASM keeps the
     whole enclosing function; port C provides the functional entries).
     Callees ARE all ported PsyQ prims (subtree bottoms out), so no deeper
-    unported deps -- the ~587 instrs are the whole job. NEXT STEP (Phase-2
-    warm-up): the seeded object entries in symbol_addrs.menu.txt are the
-    mid-function labels causing the +8-byte shift/93.83%; un-seeding them
-    (the field resolves the addrs via its own undefined_funcs_auto, so
-    menu.bin need not export them) makes the 5 real functions whole and
-    menu.bin -> ~100% -- BUT requires regenerating src/menu/main/misc.c in
-    sync (splat re-detected func_801E742C on a partial regen; needs a
-    clean gears clean+matching cycle). VALIDATE (Phase 2 proper):
-    func_801E742C's behavior returns a real model (D_801E8670[i]
-    non-NULL). Estimate: 2-3 passes (not 1-2), given the multi-entry
-    restructuring + coexistence.
+    unported deps -- the ~587 instrs are the whole job.
+    STEP 1 (un-seed) DONE (commit b200bbf): removed the mid-function seeds;
+    the 5/6 real functions are whole; menu.bin 93.83% -> 99.87% (the +8
+    shift GONE, size matches exactly), OBJECT REGION 0x801E7xxx 100% CLEAN
+    (the 204 residual bytes all in the menu tree 0x0-0x84b8, Phase-2b's
+    concern). Required `gears clean` + DELETING src/menu/main/misc.c so
+    splat regenerated it fresh (splat preserves an existing .c, so a
+    partial regen left stale func_801E742C refs -- delete-then-split).
+    STEP 2 (the port) SCOPE CONFIRMED: 6 SELF-CONTAINED menu functions --
+    func_801E71B4, func_801E733C (236i 3-entry core: 738C setup / 742C
+    per-object instantiate), func_801E7C50, func_801E7E68, func_801E8018,
+    func_801E927C (SetPolyFT4 helper). ALL 13 external callees ALREADY
+    PORTED (DrawSync/GetClut/GetStringEntry/GetTPage/HeapAlloc/Free/
+    LoadImage/SetPolyFT4/SemiTrans/ShadeTex/SystemRenderStringEntry/bzero/
+    func_80033B34) -- no deeper deps. func_801E742C writes object render
+    data to the g_Menu object-slot array at +0x2784.. (per-object position/
+    texture params); the model-return D_801E8670 is populated MENU-SIDE
+    (func_801E8474 via func_801C58EC/D2D38, NOT the field render path), so
+    the field render consumes the g_Menu slots. PORT AS COEXISTENCE:
+    INCLUDE_ASM keeps the whole enclosing functions (object region now
+    100%), port C provides the functional field entries. Key remaining
+    analysis: the g_Menu object-slot layout (+0x2784). Estimate: 2-3 passes
+    for the 6-function subsystem. VALIDATE: func_801E742C sets up the
+    object slots -> the field renders objects.
   Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
     unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
     func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
