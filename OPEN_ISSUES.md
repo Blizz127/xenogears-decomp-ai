@@ -356,18 +356,28 @@ unblock. (Wall 3's "member_change_menu overlay" attribution was wrong: MCM
 is 0x801c5000..0x801cb800, too small to reach 0x801E7xxx.)
 
 PHASED PLAN (object-overlay / menu.bin convergence):
-  Phase 1 -- menu.bin BUILD-INFRA (shared, mechanical, bounded-but-large):
-    config/menu.yaml + asm/menu split + symbol_addrs + linker script +
-    matching baseline (none exist). 153864 bytes uncompressed to
-    disassemble; only a subset needs porting. Nothing flips yet, but the
-    overlay is buildable/disassembled -- this EXPOSES the object subtree
-    (its depth is currently UNKNOWN because nothing is split). Unblocks
-    both tracks. VALIDATE: menu.bin builds + baseline matches.
-  Phase 2 -- OBJECT INSTANTIATION (the MAP3/MAP16 track): port the 7
-    field-referenced entries func_801E72CC/7378/738C/742C/7D14/7FD4/8330
-    + their subtree (depth unknown until Phase 1; estimate ~15-25 fns).
-    These build/instantiate the streamed object models. VALIDATE:
-    func_801E742C returns a real model (D_801E8670[i] non-NULL).
+  Phase 1 -- menu.bin BUILD-INFRA: DONE (commit below). config/menu.yaml +
+    config/symbol_addrs.menu.txt + gears.toml overlay entry + generated
+    src/menu/main/misc.c (314 INCLUDE_ASM). menu.bin (VRAM 0x801C5000,
+    0x25908) now splits (319 functions), builds, and is disassembled.
+    Baseline: the MENU RENDER TREE matches 100% (+0 for the 310 tree fns);
+    overall 93.83% -- the residual is an ISOLATED +8-byte shift in the
+    object region from splat's handling of 2 FALL-THROUGH object entries
+    (func_801E7378/7D14 begin mid-flow after a load-delay nop), which is
+    MOOT (Phase 2 rewrites those as C). MAIN SLUS INTACT (a55929a1); both
+    overlays (member_change/shop) unchanged; port build LINK OK, MAP1/14
+    PLAYS+SOUND. THE KEY DELIVERABLE: the object subtree is now visible.
+  Phase 2 -- OBJECT INSTANTIATION: SUBTREE FIRMED UP -> ONLY 9 FUNCTIONS
+    (was estimated ~15-25). The 7 named entries (func_801E72CC 30L /
+    func_801E738C 42L / func_801E742C 178L / func_801E7D14 92L /
+    func_801E7FD4 20L / func_801E8330 87L / func_801E7378 7L) + 2
+    transitive menu callees; func_801E8030 is an 8th field jal-target,
+    an alt-entry into a neighbor (resolve while porting the encloser).
+    ALL external callees (8) are already-ported PsyQ prims (DrawSync,
+    GetTPage, SetPolyFT4, LoadImage, GetClut, SetSemiTrans, SetShadeTex,
+    HeapFree) -- the subtree is self-contained. Port the 9 fns as C in
+    src/menu. VALIDATE: func_801E742C returns a real model
+    (D_801E8670[i] non-NULL). Small/bounded, ~1-2 passes.
   Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
     unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
     func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
