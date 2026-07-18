@@ -752,6 +752,14 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_gate.patch" "_xeno_so
 # hint. Generated on top of the sound patches above (apply order matters).
 # See OPEN_ISSUES.md "Audio fidelity: hardware-ADSR".
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adsr.patch" "_xeno_sound_adsr"
+# ADPCM/Gaussian fidelity (the streaming mix-stage): SPU-faithful per-voice
+# synthesis via AL_SOFT_callback_buffer -- integer-exact ADPCM decode,
+# hardware loop/End+Mute semantics, 4-tap Gaussian resampling at the live
+# pitch counter, AL_PITCH pinned 1.0.  Mixer-thread state handoff under
+# s_StreamMutex (never held across AL calls); legacy cubic path kept
+# (XENO_SOUND_LEGACY_RESAMPLER=1 / emscripten / no-extension fallback).
+# Generated on top of the sound patches above (apply order matters).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adpcm.patch" "_xeno_sound_adpcm"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

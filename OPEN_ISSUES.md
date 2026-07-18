@@ -1624,6 +1624,58 @@ Evidence: scoped (read-only trace @ e96f4cb, spec captured + backend
 classified line-by-line; no implementation)
 Last verified @ HEAD of this commit
 
+### ADPCM/Gaussian LANDED: SPU-faithful streaming synthesis -- the timbre pass
+
+The combined A+B pass is implemented (psycross_sound_adpcm.patch):
+per-voice AL_SOFT_callback_buffer streaming (OpenAL-soft 1.25.1) --
+integer-exact ADPCM block decode (five filters, (+32)>>6 rounding, clamp16,
+shift 13-15 -> 9), hardware loop semantics AT THE BLOCK MACHINE (LoopStart
+latches at decode, LoopEnd jumps after the block, End+Mute crosses to the
+tick via an atomic flag and forces Release + envelope 0 -- the old
+one-block-late latch and byte-vs-sample loop-addr bugs are structurally
+gone), and the SPU resampler: 16-bit pitch counter (step = live VxPitch,
+clamped 4000h), counter bits 4-11 indexing the 512-entry Gaussian table
+(transcribed from psx-spx; parse validated by the 4-tap unity-gain
+invariant, all 256 sums in [32639,32641]), 4-tap interpolation with
+per-product SAR 15.  AL_PITCH pinned 1.0; mid-note pitch reads live per
+fill (better than the old per-period AL_PITCH quantization).  ADSR rides
+on top unchanged (per-tick composed AL_GAIN).  Legacy cubic path kept:
+XENO_SOUND_LEGACY_RESAMPLER=1, emscripten, or no-extension fallback.
+
+THE CONCURRENCY GATE (the pass's load-bearing design, met): all stream
+state + SPU-RAM uploads under a dedicated s_StreamMutex; LOCK ORDER
+g_SpuMutex -> s_StreamMutex, NO OpenAL call ever made while holding it (no
+inversion against alsoft's mixer lock); KON restart addresses staged
+tick-side so the callback never reads voice attrs except the
+mutex-mirrored pitch; g_spuInit atomic; shutdown quiesces the callbacks
+before teardown.  TSan on the FINAL build: MAP000 100s music (per-tick
+vibrato pitch writes racing mixer fills) -- ZERO new-class port races
+(residuals: the pre-existing VBlank/exit-teardown class + external-lib
+noise); the probe run (full pipeline incl. shutdown) -- ZERO port racing
+frames.  Two probe-harness races found and fixed along the way (main-thread
+SpuWrite now gate-bracketed in both capture probes; ShutdownSound ordering).
+
+PROOF: (1) unit -- production decoder + interpolator vs the independent
+Python model (16 crafted blocks x all filters/shifts/clamps + 156 Gaussian
+points): diff EMPTY, sample-exact.  (2) capture FFT (period-set conf per
+the alsoft trap): all 25 reference alias peaks matched at 0.00dB mean/max
+error, log-mag correlation 0.9933 vs the model (cubic A/B: 0.8638), and
+the audible signature quantified -- CUBIC IS +10.4dB HOT in 8-20kHz vs
+the SPU reference while the Gaussian tracks it within 0.1dB; loop floor
+delta -0.4dB (no clicks).  (3) in-game MAP000 A/B: 40s band averages are
+mix-dominated (no clear tilt -- band means sit on content bins, not alias
+floors; honest null), ADSR release tails intact (cliff metric 1.0/min),
+all 8 sound probes PASS, five-map watchdogs byte-exact except the new
+one-line streaming banner, slus d004692f intact.  EAR: scratchpad/
+gauss_before_map000.wav vs gauss_after_map000.wav.
+
+Remaining fidelity causes: reverb-vs-EFX, residual resampling polish
+(separate passes); per-sample ADSR is now a cheap optional upgrade inside
+the callback loop.
+Evidence: proven (sample-exact units + FFT alias-line curve-match + TSan
+gate on the final build)
+Last verified @ HEAD of this commit
+
 ## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
 
 User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in

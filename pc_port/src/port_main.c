@@ -963,6 +963,8 @@ static void PortRunSoundAdsrProbe(int mode) {
     extern unsigned int SpuSetTransferStartAddr(unsigned int addr);
     extern unsigned int SpuWrite(unsigned char* addr, unsigned int size);
     extern void PsyX_SPUAL_ShutdownSound(void);
+    extern void PsyX_Sys_SoundGateEnterCritical(void);
+    extern void PsyX_Sys_SoundGateExitCritical(void);
     static unsigned char sq[16 * 64];
     unsigned short a1 = 0x2877;                       /* lin attack s10, decay s7, SL7 */
     unsigned short a2 = (mode == 2) ? 0x5FEC : 0x5FCC; /* sus hold 1Fh/3; release s12 exp|lin */
@@ -977,8 +979,11 @@ static void PortRunSoundAdsrProbe(int mode) {
         for (i = 2; i < 16; i++)
             sq[b * 16 + i] = (unsigned char)(nib | (nib << 4));
     }
+    /* Gate-bracketed main-thread upload (see the ADPCM probe's note). */
+    PsyX_Sys_SoundGateEnterCritical();
     SpuSetTransferStartAddr(0x2000);
     SpuWrite(sq, sizeof(sq));
+    PsyX_Sys_SoundGateExitCritical();
     {
         SpuVoiceAttr attr;
         memset(&attr, 0, sizeof(attr));
@@ -1014,6 +1019,131 @@ static void PortRunSoundAdsrProbe(int mode) {
     printf("[adsr-probe] RESULT: %s (envx rose, plateaued, decayed to 0; curve-match = python)\n",
            (envx == 0 && SpuGetKeyStatus(1u << 0) == 0) ? "PASS" : "FAIL");
     PsyX_SPUAL_ShutdownSound();                       /* finalize the wave capture */
+}
+
+/* ADPCM/Gaussian unit probe (env XENO_SOUND_ADPCM_UNIT=1): drive the
+ * PRODUCTION integer ADPCM decoder and Gaussian interpolator over crafted
+ * vectors (all 5 filters, shifts incl. the 13-15 -> 9 clamp, extreme
+ * nibbles for clamp16) and print PCM/interp lines; the golden oracle is the
+ * independent Python model (scratchpad/adpcm_gauss_model.py) -- diff EMPTY.
+ * Pure computation; exits before game boot. */
+extern void PsyX_SPUAL_AdpcmDecodeDebug(const unsigned char* data, int nBlocks,
+                                        short* outPcm, short* p1io, short* p2io);
+extern int PsyX_SPUAL_GaussDebug(const short* hist4, int idx);
+extern int PsyX_SPUAL_IsStreaming(void);
+static void PortRunSoundAdpcmUnitDump(void) {
+    static unsigned char blocks[16 * 16];
+    static short pcm[16 * 28];
+    short p1 = 0, p2 = 0;
+    int b, i;
+    /* 16 blocks: filters 0-4 (+5-7 clamp), shifts 0..15 (incl. 13-15),
+     * nibble patterns exercising sign extremes and history feedback. */
+    for (b = 0; b < 16; b++) {
+        unsigned char* blk = &blocks[b * 16];
+        blk[0] = (unsigned char)(((b % 8) << 4) | (b & 0x0F));
+        blk[1] = 0;
+        for (i = 2; i < 16; i++)
+            blk[i] = (unsigned char)(0x87 + i * 7 + b * 13);
+    }
+    printf("[adpcm-unit] begin blocks=16\n");
+    PsyX_SPUAL_AdpcmDecodeDebug(blocks, 16, pcm, &p1, &p2);
+    for (b = 0; b < 16; b++) {
+        printf("B%02d:", b);
+        for (i = 0; i < 28; i++)
+            printf(" %d", pcm[b * 28 + i]);
+        printf("\n");
+    }
+    printf("HIST %d %d\n", p1, p2);
+    {
+        static const short hists[3][4] = {
+            { -32768, 32767, -32768, 32767 },
+            { 1000, -2000, 3000, -4000 },
+            { 2048, 2048, 2048, 2048 },
+        };
+        int h, idx;
+        for (h = 0; h < 3; h++) {
+            printf("G%d:", h);
+            for (idx = 0; idx < 256; idx += 5)
+                printf(" %d", PsyX_SPUAL_GaussDebug(hists[h], idx));
+            printf("\n");
+        }
+    }
+    printf("[adpcm-unit] RESULT: DUMPED (diff vs adpcm_gauss_model.py decides PASS)\n");
+}
+
+/* ADPCM/Gaussian capture probe (env XENO_SOUND_ADPCM_PROBE=1): one long
+ * note on the constant-|amplitude| synthetic square (same fixture as the
+ * ADSR probe) at a NON-1:1 pitch (XENO_SOUND_ADPCM_PITCH, default 0x1200)
+ * so the resampler interpolates every sample; near-instant full-level ADSR
+ * (a1=0x000F: shift0 attack, SL15) for a clean sustain window.  Run under
+ * ALSOFT wave capture; the FFT's alias-line structure is the proof
+ * (Gaussian vs the legacy cubic A/B, vs the Python-rendered reference). */
+static void PortRunSoundAdpcmProbe(void) {
+    extern unsigned int SpuSetTransferStartAddr(unsigned int addr);
+    extern unsigned int SpuWrite(unsigned char* addr, unsigned int size);
+    extern void PsyX_SPUAL_ShutdownSound(void);
+    extern void PsyX_Sys_SoundGateEnterCritical(void);
+    extern void PsyX_Sys_SoundGateExitCritical(void);
+    static unsigned char sq[16 * 64];
+    unsigned short a1 = 0x000F;
+    unsigned short a2 = 0x5FC0;   /* sustain hold; linear release shift 0 */
+    unsigned int pitch = 0x1200;
+    const char* pEnv = getenv("XENO_SOUND_ADPCM_PITCH");
+    int b, i, t;
+    long keyStat = -1;
+    short envx = -1;
+    if (pEnv && pEnv[0])
+        pitch = (unsigned int)strtoul(pEnv, NULL, 0);
+    for (b = 0; b < 64; b++) {
+        unsigned char nib = ((b % 8) < 4) ? 0x4 : 0xC;
+        sq[b * 16 + 0] = 0x03;
+        sq[b * 16 + 1] = (b == 0) ? 0x04 : (b == 63) ? 0x03 : 0x00;
+        for (i = 2; i < 16; i++)
+            sq[b * 16 + i] = (unsigned char)(nib | (nib << 4));
+    }
+    /* Main-thread upload: bracket with the sound gate so the transfer
+     * callback's flag writes serialize against the 240Hz tick (the game's
+     * own transfers drain ON the tick thread; only probes write from
+     * main -- TSan-clean by the same gate the queue path uses). */
+    PsyX_Sys_SoundGateEnterCritical();
+    SpuSetTransferStartAddr(0x2000);
+    SpuWrite(sq, sizeof(sq));
+    PsyX_Sys_SoundGateExitCritical();
+    {
+        SpuVoiceAttr attr;
+        memset(&attr, 0, sizeof(attr));
+        attr.voice = 1u << 0;
+        attr.mask = SPU_VOICE_VOLL | SPU_VOICE_VOLR | SPU_VOICE_PITCH |
+                    SPU_VOICE_WDSA | SPU_VOICE_LSAX | SPU_VOICE_ADSR_ADSR1 |
+                    SPU_VOICE_ADSR_ADSR2;
+        attr.volume.left = 0x3000;
+        attr.volume.right = 0x3000;
+        attr.pitch = (unsigned short)pitch;
+        attr.addr = 0x2000;
+        attr.loop_addr = 0x2000;
+        attr.adsr1 = a1;
+        attr.adsr2 = a2;
+        SpuSetVoiceAttr(&attr);
+    }
+    printf("[adpcm-probe] streaming=%d pitch=0x%x KON\n",
+           PsyX_SPUAL_IsStreaming(), pitch);
+    SpuSetKey(SPU_ON, 1u << 0);
+    for (t = 0; t < 28; t++) {                        /* 1400ms sustain */
+        PortSleepMs(50);
+        if ((t % 7) == 6) {
+            SpuGetVoiceEnvelopeAttr(0, &keyStat, &envx);
+            printf("[adpcm-probe] t=%dms keyStat=%ld envx=%d\n",
+                   (t + 1) * 50, keyStat, envx);
+        }
+    }
+    printf("[adpcm-probe] KOFF\n");
+    SpuSetKey(SPU_OFF, 1u << 0);
+    PortSleepMs(250);
+    SpuGetVoiceEnvelopeAttr(0, &keyStat, &envx);
+    printf("[adpcm-probe] RESULT: %s (streaming=%d envx=%d)\n",
+           (PsyX_SPUAL_IsStreaming() && envx == 0) ? "PASS" : "FAIL",
+           PsyX_SPUAL_IsStreaming(), envx);
+    PsyX_SPUAL_ShutdownSound();
 }
 
 /* MODE2/2352 image; PsyCross extracts the 2048-byte data payload per sector. */
@@ -1108,6 +1238,13 @@ int main(int argc, char** argv) {
         exit(0);
     }
 
+    /* ADPCM/Gaussian unit probe: production decode + interpolator vs the
+     * independent Python model, then exit. Diagnostic only. */
+    if (getenv("XENO_SOUND_ADPCM_UNIT")) {
+        PortRunSoundAdpcmUnitDump();
+        exit(0);
+    }
+
     /* 4a-probe: Phase-1 sound-pump synthetic validation (env XENO_SOUND_PUMP_PROBE).
      * The PsyX interrupt thread is already running (started by PsyX_Initialise),
      * so the pump is live here. Diagnostic only; does not run in normal boot. */
@@ -1147,6 +1284,13 @@ int main(int argc, char** argv) {
      * only. */
     if (getenv("XENO_SOUND_ADSR_PROBE")) {
         PortRunSoundAdsrProbe(atoi(getenv("XENO_SOUND_ADSR_PROBE")));
+        exit(0);
+    }
+
+    /* ADPCM/Gaussian capture probe: one pitched note through the streaming
+     * path under wave capture (FFT alias-line proof), then exit. */
+    if (getenv("XENO_SOUND_ADPCM_PROBE")) {
+        PortRunSoundAdpcmProbe();
         exit(0);
     }
 
