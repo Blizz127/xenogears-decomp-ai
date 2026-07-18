@@ -1,25 +1,12 @@
 // Menu overlay (menu.bin, VRAM 0x801C5000, 0x25908 bytes) symbols.
-// Phase 1 bring-up: splat auto-names the ~310 menu-tree functions and their
-// data; this file seeds the 8 field-referenced object-instantiation entry
-// points at 0x801E7xxx so the field's `jal func_801E7xxx` calls resolve at
-// link and the entries get named .s files for Phase 2.
+// splat auto-names the menu functions and data from their addresses.
 //
-// NOTE: func_801E7378 and func_801E7D14 are FALL-THROUGH / secondary entries
-// (they begin mid-instruction-flow, after a load-delay-slot nop, sharing code
-// with func_801E733C / a neighbor). splat splits them into standalone .s and
-// the assembler re-aligns them, inserting +4 bytes each -> the built overlay
-// is +8 bytes and ~93.8% byte-matched (the shift is ISOLATED to the object
-// region; the menu render tree matches 100%). This is a splat limitation for
-// fall-through entries and is MOOT for the arc: Phase 2 rewrites these exact
-// functions as C. Retail addresses are exact (from the field .s jal targets).
-//
-// func_801E8030 is an 8th field jal-target but an alt-entry INTO a neighbor
-// (splat emits no standalone .s for it); left unseeded here -- Phase 2
-// resolves it while porting the enclosing function.
-func_801E72CC = 0x801E72CC; // type:func
-func_801E7378 = 0x801E7378; // type:func  (fall-through entry)
-func_801E738C = 0x801E738C; // type:func
-func_801E742C = 0x801E742C; // type:func
-func_801E7D14 = 0x801E7D14; // type:func  (fall-through entry)
-func_801E7FD4 = 0x801E7FD4; // type:func
-func_801E8330 = 0x801E8330; // type:func
+// The 8 field-referenced object jal-targets at 0x801E7xxx are MID-FUNCTION
+// entry points (the field jals into the middle of 5 larger functions:
+// func_801E71B4 / func_801E733C [3 entries] / func_801E7C50 / func_801E7E68
+// / func_801E8018, + an 0x801E8330 leaf). They are intentionally NOT seeded
+// here -- seeding them forces splat to mis-split the real functions
+// (+8-byte shift). The field resolves these absolute addresses via its own
+// linker/undefined_funcs_auto.field.txt, so menu.bin need not export them.
+// Phase 2 ports the enclosing functions as coexistence (C entries + the
+// whole INCLUDE_ASM function for matching).
