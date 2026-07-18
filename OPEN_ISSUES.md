@@ -343,6 +343,56 @@ Map143 dialogue SIGSEGV @ e3f4b49 predates the render-fix arc -- MAP143 now
 boots PLAYS+SOUND; that crash needs re-verification under the interaction
 repro, likely stale.)
 
+OBJECT-OVERLAY ARC == MENU.BIN ARC (wall-11 scope, read-only): KEY FINDING
+-- the object-instantiation code that blocks MAP3 (wall 3 SEGV) and MAP16
+(wall 9 black forest) is IN menu.bin. menu.bin spans VRAM 0x801C5000..
+0x801EA908 (0x25908 bytes); the menu render tree lives at 0x801C5xxx and
+the FIELD-OBJECT instantiation functions at 0x801E7xxx -- both in the same
+overlay. The field jal's directly into it (func_80077AB4: jal func_801E738C
+/ func_801E742C), so menu.bin is resident during field play and its high
+region serves field object rendering. => bringing up menu.bin's infra is
+the SHARED prerequisite for the menu system AND the MAP3/MAP16 gameplay
+unblock. (Wall 3's "member_change_menu overlay" attribution was wrong: MCM
+is 0x801c5000..0x801cb800, too small to reach 0x801E7xxx.)
+
+PHASED PLAN (object-overlay / menu.bin convergence):
+  Phase 1 -- menu.bin BUILD-INFRA (shared, mechanical, bounded-but-large):
+    config/menu.yaml + asm/menu split + symbol_addrs + linker script +
+    matching baseline (none exist). 153864 bytes uncompressed to
+    disassemble; only a subset needs porting. Nothing flips yet, but the
+    overlay is buildable/disassembled -- this EXPOSES the object subtree
+    (its depth is currently UNKNOWN because nothing is split). Unblocks
+    both tracks. VALIDATE: menu.bin builds + baseline matches.
+  Phase 2 -- OBJECT INSTANTIATION (the MAP3/MAP16 track): port the 7
+    field-referenced entries func_801E72CC/7378/738C/742C/7D14/7FD4/8330
+    + their subtree (depth unknown until Phase 1; estimate ~15-25 fns).
+    These build/instantiate the streamed object models. VALIDATE:
+    func_801E742C returns a real model (D_801E8670[i] non-NULL).
+  Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
+    unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
+    func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
+    calls func_801E8330 x2 -- ON the overlay path, not independent); port
+    MAP3's 3 stubs (func_800230A8 34L / func_80088198 23L = bounded leaves,
+    NO overlay dep -> can be done ANYTIME; func_8008B180 39L has 1 801E
+    dep -> Phase 2). VALIDATE: MAP3 boots (no SEGV), MAP16 renders (forest
+    objects load, seen>>56).
+  Phase 2b (SEPARATE, menu-system track, NOT needed for MAP3/MAP16): the
+    mode-0 menu render tree (func_801C62A8 dispatcher + draw callees) --
+    the existing menu scope below. Shares Phase 1; independent of Phase 2.
+
+TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
+multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
+DEPENDENCY: all-or-nothing on the loader (wall 3 proved activating
+func_800A1364 without instantiation regresses maps) -- Phases 1->2->3 are
+strictly ordered; only the 2 bounded MAP3 stubs (230A8/88198) and Phase 2b
+are order-independent. FIRST BOUNDED PHASE: Phase 1 (menu.bin infra) -- a
+well-defined mechanical splat bring-up (config + split + baseline), the
+concrete non-blind starting point; optionally warm up with the 2 bounded
+MAP3 stub leaves first. RECOMMENDATION: this is the single highest-leverage
+remaining arc (MAP3 + MAP16 gameplay + the entire menu system on one infra
+bring-up), but it is a multi-pass sub-project gated on Phase 1's overlay
+extraction -- fund it as a dedicated arc, start at Phase 1.
+
 MENU OVERLAY (main menu.bin, mode-0 render): unchanged from the prior
 scoping -- a TWO-PART DEDICATED SUB-PROJECT, not an incremental target.
 (a) build-infra bring-up: menu.bin (archive dir 0x10 file 5, VRAM
