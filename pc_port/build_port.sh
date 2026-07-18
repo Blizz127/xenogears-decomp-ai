@@ -854,6 +854,7 @@ PORT_SOURCES=(
     pc_port/src/data_font.c
     pc_port/src/data_kernel_menu.c
     pc_port/src/data_field.c
+    pc_port/src/data_member_change_menu.c
 )
 
 # The list above is the port link's explicit ownership registry. Refuse to

@@ -580,16 +580,40 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     (E) SCOPE: main-menu render = BIG (~96 menu.bin fns + the 10 shared draw
         stubs), a MULTI-PASS port (an initial window+text render is a ~20-40
         fn subset; full functionality incl. sub-menus/input is the 96).
-    FIRST BOUNDED TARGET (recommended): finish the ~10 SHARED draw stubs
-    (SystemRenderStringEntry text + the 6 func_8002xxxx + 2 sound, all
-    bounded 35-222 instrs) and PROVE member_change_menu renders (force
-    D_80059460=1 under the port + capture). This is bounded (~10 small fns),
-    proves the render architecture works in the port, KNOCKS OUT the shared
-    text/draw deps the main menu also needs, and templates the main-menu
-    port. THEN the main menu (func_801C62A8, 96-fn tree) is the multi-pass
-    follow-on with its draw deps already satisfied. If member_change does NOT
-    render after the shared stubs land, a deeper systemic blocker exists --
-    investigate before committing to the 96-fn main-menu port.
+    ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
+    fired EARLY) + THE FIX (delivered) =====
+    A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
+    overlay's .rodata/.data must ALSO be MIGRATED as C (the data_field.c
+    pattern), because the port auto-generates overlay data symbols as ZEROED
+    stubs and the runtime overlay-load writes g_PsxRam (PSX_ADDR) -- a
+    SEPARATE buffer from the ported functions' x86 data globals. member_change
+    is ~90% ported in CODE but its LAYOUT DATA (D_801CB180 window rect
+    {0,0,180,276}, D_801CB190 {0,0,200,200}, cursor/char slot positions,
+    texcoords -- 16 symbols, 1052 bytes) was ZEROED -> a 0x0 window with
+    everything at position 0 -> renders NOTHING.  Empirically confirmed: the
+    real values live in member_change_menu.bin .data (file 0x6180+) and
+    match the source-comment tables in misc.c. So porting the 10 draw stubs
+    ALONE would NOT have rendered member_change -- the data is the systemic
+    gate (the brief's "deeper blocker", found cheaply before the stubs).
+    DELIVERED: pc_port/src/data_member_change_menu.c migrates all 16 symbols
+    verbatim from the binary (correct-by-construction; matches misc.c
+    comments); registered in build_port.sh PORT_SOURCES; port LINK OK; the
+    symbols are now real .data (nm: D_801CB180 type D), removed from the
+    zeroed stub set. Port-only -- slus a55929a1 + tripwire (map014 D_800B2264=0,
+    clean) untouched.
+    REVISED FIRST TARGET (data now done; render-proof pending): (1) DATA
+    MIGRATION -- member_change DONE; the MAIN menu (menu.bin) will need the
+    SAME (its .rodata/.data migrated, likely larger). (2) DRAW STUBS -- port
+    the ~10 shared (SystemRenderStringEntry text [func_80033DF0, its renderer,
+    is ALREADY ported] + 6 func_8002xxxx + 2 sound; coexistence, slus stays
+    byte-exact). (3) RENDER HARNESS -- the hard part: force D_80059460=1 under
+    the port (extend the map005 menu repro, or a gdb-forced MenuMain with the
+    overlay resources loaded) + capture. (4) PROVE member_change renders
+    (window + text). If it still doesn't render after data+stubs, a FURTHER
+    systemic blocker (e.g. more zeroed .rodata, or a VRAM/CLUT upload stub)
+    -- find it before the 96-fn main-menu commit. Order: 2+3 next pass, then
+    the main-menu tree (96 fns + ITS data migration) as the multi-pass
+    follow-on.
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
