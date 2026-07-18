@@ -878,7 +878,52 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0228);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0524);
 
+extern void func_800A0C94(void);
+
+// Sprite-load script opcode (0x121): bind the current actor's sprite from its
+// character id -> party id, then set up status/flags. Sibling of
+// func_800A08B8; the non-party path uses sprite mode 1 and the party path
+// mode 2 (with the extra func_800A0C94 setup + status 0x20 clears). Stubbed
+// before this -> the actor's pSpriteData stayed NULL and its later
+// boot-script sprite writes crashed the host (MAP2 actor 3).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body binds the sprite
+ * (fixes the MAP2 SEGV cluster); the matching build keeps INCLUDE_ASM below
+ * (byte-exact). Residual vs {}: the transcription is only ~24% fuzzy -- the
+ * flag/status RMW ordering and the two actor-cursor reloads schedule
+ * differently under mwcc; semantics traced 1:1 against the asm
+ * (30BF8-30DC4). Not claimed as {}. */
+void func_800A06E8(void) {
+    FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
+    s32 characterId = func_8008CF3C(FieldScriptVMGetArgument(1));
+    s32 partyId = FieldCharacterIdToPartyId(characterId);
+
+    fieldActor->status = (fieldActor->status & 0xF07F) | 0x200;
+
+    if (partyId == -1) {
+        func_80076AC0(D_800AFD1C, 0, g_PartyDataBuffers[0], 1, 0, 0, 1);
+        g_FieldScriptVMCurActor->scriptFlags.flags |= 0x1;
+        g_FieldScriptVMCurActor->flags |= 0x100000;
+        D_800AFFEC = 1;
+        D_800B00C0 = 1;
+    } else {
+        func_80076AC0(D_800AFD1C, partyId, g_PartyDataBuffers[partyId], 2, 0,
+                      partyId, 1);
+        fieldActor = &g_FieldActors[D_800AFD1C];
+        D_800AFD20 = -0xC0;
+        fieldActor->status &= 0xFFDF;
+        func_800A0C94();
+        g_FieldScriptVMCurActor->scriptFlags.flags =
+            (g_FieldScriptVMCurActor->scriptFlags.flags | 0x100) & ~0x80;
+        fieldActor = &g_FieldActors[D_800AFD1C];
+        fieldActor->status &= 0xFFDF;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A06E8);
+#endif
 
 void func_800A08B8(void) {
     FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];

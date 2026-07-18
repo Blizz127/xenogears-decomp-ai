@@ -25,12 +25,31 @@ STATE OF PLAY (24-map survey, entrance 0, boot-to-~25s):
   five watchdogs). The field engine is broadly working: field overlay is
   80.4% done (878 fns, 172 unported), dialog is COMPLETE.
 - 9/24 fail in exactly FOUR signatures (a small root set, not scattered):
-  1. SEGV cluster -- maps 2,3,160,400 (4/24, the biggest single class).
-     Root: func_80021BCC NULL-deref (animation_scripts.c:493,
-     `*p = ... arg0=0x0`) reached from boot-script anim opcode func_8009E094
-     (misc6.c:188) during FieldLoad's script pass. ONE root, 4 maps ->
-     highest leverage. The [stub] lines on these maps (8008D604/A06E8) are
-     RED HERRINGS -- they fire but the crash is the NULL-deref upstream.
+  1. SEGV cluster -- maps 2,3,160,400 (4/24). CORRECTED ROOT (the initial
+     scoping's "one func_80021BCC root / stubs are red herrings" was WRONG --
+     deeper trace overturned it): the crash is a CLASS of NULL-sprite writes,
+     and the [stub] lines are NOT red herrings -- a STUBBED per-actor
+     sprite-LOAD opcode leaves the actor's pSpriteData NULL, so its later
+     boot-script sprite-write opcodes deref NULL. Retail's loader binds the
+     sprite (calls func_80076AC0, writes actor+0x4), so retail's writes hit a
+     real sprite; the port's stubbed loader -> NULL -> host fault. A null
+     guard at the write site MASKS the missing sprite (NPC renders invisibly)
+     -- rejected. Each map uses a DIFFERENT stubbed loader + crashes at a
+     DIFFERENT sprite-write opcode:
+       - MAP2: loader func_800A06E8 (op 0x121) -> crash func_8009E574 (setpos)
+       - MAP3: loader func_800A1364 (calls binder) -> crash func_8009EB78
+       - MAP160: crash FieldScriptVMHandlerEnableActorVM (loader TBD)
+       - MAP400: crash func_80098A7C (misc7.c:253) (loader TBD)
+     PARTIAL FIX (this pass): func_800A06E8 decompiled (coexistence, d88f13c
+     pattern -- port C body binds the sprite, INCLUDE_ASM kept for matching;
+     only ~24% fuzzy so not {}). MAP2 actor 3's sprite now binds
+     (verified pSpriteData 0x6500a0); its SEGV is GONE -- but MAP2 then hits
+     signature 2 (the prim-table gap, `missing D_8004FE50 prim=5`), so it is
+     not yet PLAYS+SOUND. The SEGV cluster is thus a MULTI-LOADER sub-project
+     LAYERED behind the prim-table gap, not a one-function/4-map flip.
+     Remaining: decomp func_800A1364 (MAP3) + MAP160/400 loaders (identify),
+     then the prim-table gap behind them. slus untouched; matching byte-exact;
+     working maps + tripwires unregressed. Repro: boot map 2/3/160/400.
   2. Model buildProc gap -- maps 4,50 (2/24). "missing D_8004FE50 buildProc
      prim=0": the model-prim descriptor table (game_overrides.c, the LZCR
      sweep's table) has no buildProc for prim type 0; a map using it aborts.
