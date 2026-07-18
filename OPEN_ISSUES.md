@@ -1676,6 +1676,56 @@ Evidence: proven (sample-exact units + FFT alias-line curve-match + TSan
 gate on the final build)
 Last verified @ HEAD of this commit
 
+### KNOWN BUG (diagnosed, unfixed): boot-zombie SFX voice becomes audible under streaming
+
+User-heard after 7d9b969 (live MAP001): a percussive "clapping" loops under
+the music until a song-section change, then stops. ROOT-CAUSED (gdb-only,
+zero code changes), deterministic reproducer on MAP014:
+
+VOICES 22/23 (the S1 SFX pair) are KEYED ON AT FRAME 1 with default page
+state -- addr = 0x12000 (page start-reg default 0x2400 <<3 = the bank
+BASE), pitch 0x203 (0.126x), voll/volr 1785 (audible; baseGain 0.109),
+full-sustain ADSR -- and NOTHING ever terminates them: no sequencer note
+owns them (keyed before any cue), no KOFF ever arrives, and the bytes at
+the bank base happen to carry an in-data LoopStart (0x12890) with a
+Repeat-flagged end, so the stream loops ~87ms of bank-opening data at
+0.126x = ~1.4 repeats/sec -- the "clapping" -- at env sustain 32767 for
+8+ seconds (probe: konf=1, ageTicks 1999+) until something re-keys the
+pair (MAP014's 4.3s cue; on MAP001, whenever the music/section re-keys).
+
+WHY IT'S NEW WITH 7d9b969 (the exact regression semantics): the zombie
+KON predates the pass, but the OLD path decoded the sample ONCE AT KEY-ON
+-- at frame 1 SPU RAM was still EMPTY, so it snapshotted and looped
+SILENCE (inaudible zombie). The NEW path streams LIVE SPU RAM (hardware-
+faithful -- a real SPU reads live memory too), so when the bank loads
+seconds later the zombie starts SOUNDING. The streaming pass didn't create
+the stuck voice; it made a pre-existing silent zombie audible.
+
+EXONERATED by the probes: the loop machinery (in-data LoopStart latch +
+LoopEnd jumps correct on MAP000/001 censuses; sustained instruments
+release THROUGH loops -- v0 observed fading phase=4 across loop jumps);
+the End+Mute atomic (unexercised -- Repeat is set); the KOFF path (1652
+KOFFs flowed; released voices die normally); the mixer gate (not a race).
+
+FIX-PASS TARGET: trace who keys 22/23 at frame 1 (the S1 element-arming
+path -- B148 pre-assignment / B644 arm with an empty spec at init, or the
+field-test harness's eager-load ordering) and stop the ownerless KON.
+NOT a streaming-path change. Next probe: break the page key_on commit
+(func_8003E900 tail) at boot, walk the caller chain for bits 22/23.
+
+ALSO FOUND (dormant, file-for-later): the translator never forwards the
+engine-programmed loop register (page +0xE; no LSAX in the KON mask or
+the continuous flush -- attr.loop_addr is 0 in-game), and func_8003E5BC's
+port body computes loopAddress WITHOUT the bank SPU base
+(startAddress = base + *(pBank+0x28) but loopAddress = base + loopOff<<3
+-- page values run 0x12000 short; verify against retail asm). Harmless
+today: every observed music instrument carries in-data LoopStart flags
+that override the register (psx-spx's register-redirect use case --
+one-shot redirected to a silent loop -- is where these would bite).
+Evidence: root-caused (deterministic MAP014 reproducer; per-voice census,
+loop-jump traces, gain/pitch dump); fix not yet implemented
+Last verified @ 7d9b969
+
 ## Map014 intro scene renders the wrong geometry (back of Fei's head, not the fire painting)
 
 User-confirmed live at f2d8778: MAP014's intro scene -- the camera zoom-in
