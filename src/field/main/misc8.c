@@ -1410,6 +1410,7 @@ void func_80083994(void) {
 extern u16 D_800C2694;
 extern s16 D_800B2174;
 extern s32 D_80285988;
+extern s32 D_800ADF64;
 extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
@@ -1424,8 +1425,6 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
     s32 found = 0;
     s32 defaultScriptId = 7;
     s32 i;
-
-    (void)pFieldActor;
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* otherActor = (u8*)g_FieldActors + i * 0x5C;
@@ -1455,8 +1454,57 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
         otherY = *(s16*)(otherData + 0x26) + *(s16*)(otherData + 0x62);
         otherFlags4 = *(u32*)(otherData + 0x04);
 
+        /* Button/special interactables (asm 80083A98-80083BFC).  0x100-flagged
+         * actors are whole-map "button" targets: no proximity gate -- confirm
+         * (edge 0x20) starts their talk script (2/3) facing the player;
+         * otherwise they arm passively (script 3/4) and, for 0x8000000-flagged
+         * ones, latch D_800ADF64 once and zero the PLAYER's sprite+0x10
+         * (halting its motion state).  0x80-only actors just clear the latch.
+         * Control then falls through to the normal proximity flow below, whose
+         * blocks may re-set scriptId exactly as retail does. */
         if (otherFlags4 & 0x180) {
-            assert(!"func_8008399C button/special interaction branch not migrated");
+            if (otherFlags4 & 0x100) {
+                if ((D_800C2694 & 0x20) && found == 0 &&
+                    !(otherFlags4 & 0x4000000)) {
+                    if (!(otherFlags0 & 0x220000) && D_800B2174 == 0) {
+                        s32 dxw = *(s16*)(otherData + 0x22) - playerX +
+                                  *(s16*)(otherData + 0x60);
+                        s32 dzw = *(s16*)(otherData + 0x2A) - playerZ +
+                                  *(s16*)(otherData + 0x64);
+                        s32 angle = ratan2(dzw, dxw);
+
+                        found = 1;
+                        scriptId = 2;
+                        scriptRoutine = 3;
+                        /* Retail keeps the raw top angle bits in place here
+                         * ((-angle) & 0xE00), unlike the shift-then-negate
+                         * form of the passive path below. */
+                        *(u32*)(otherData + 0x12C) =
+                            (*(u32*)(otherData + 0x12C) & ~0xE00u) |
+                            ((u32)-angle & 0xE00);
+                    }
+                } else if (!(otherFlags0 & 0x00A20000)) {
+                    s32 dxw = *(s16*)(otherData + 0x22) - playerX +
+                              *(s16*)(otherData + 0x60);
+                    s32 dzw = *(s16*)(otherData + 0x2A) - playerZ +
+                              *(s16*)(otherData + 0x64);
+                    s32 angle = ratan2(dzw, dxw);
+                    s32 dir = (-(angle >> 9)) & 7;
+
+                    scriptId = 3;
+                    scriptRoutine = 4;
+                    *(u32*)(otherData + 0x12C) =
+                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+                    if (D_800ADF64 == 0 && (otherFlags0 & 0x8000000)) {
+                        u8* playerSprite = (u8*)(uintptr_t)
+                            *(u32*)((u8*)pFieldActor + 0x4);
+                        D_800ADF64 = 1;
+                        *(u32*)(playerSprite + 0x10) = 0;
+                    }
+                }
+            } else {
+                D_800ADF64 = 0;
+            }
         }
 
         dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);

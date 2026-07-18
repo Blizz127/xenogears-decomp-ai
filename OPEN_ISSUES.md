@@ -38,12 +38,16 @@ Last verified @ 0a32159.
      retail intro scene (MAP14 zoom + intro windows). FLOW-COSMETIC --
      the scene itself plays when booted directly. Small (routing).
   3. MAP14 intro ripple banding -- COSMETIC, already filed below.
-  4. Village interaction walls -- BLOCKER CLASS, runtime-proven:
-     func_8008399C "button/special interaction" (misc8.c:1459, fires for
-     any interact-candidate actor with flags4&0x180 -- crashes MAP15 at
-     BOOT today) + func_80084158 select-target/on-top/target branches
-     (5 sibling asserts, misc8 family). Partial-branch decomps in ported
-     fns (the far-color pattern). Bounded, 1-2 passes.
+  4. Village interaction walls -- func_8008399C "button/special
+     interaction" RESOLVED: implemented from asm 80083A98-80083BFC
+     (0x100 whole-map button targets: confirm-edge talk 2/3 facing the
+     player, else passive arm 3/4 + the D_800ADF64/player-sprite+0x10
+     latch for 0x8000000 actors; 0x80-only clears the latch). MAP15 now
+     PLAYS+SOUND (19/24; probe: its 0x880-flag actor exercises the
+     clear-latch path each poll, latch stays 0 -- retail-faithful).
+     REMAINING in this class: func_80084158 select-target/on-top/target
+     branches (5 sibling asserts, misc8 family) -- fire on interaction
+     TARGETING beats; branch-scale, 1 pass.
   5. MAP3 SEGV -- unported NPC sprite-loader func_800A1364 (sibling of
      the decomped func_800A06E8; template exists; also fires benignly on
      MAP16/80). BLOCKER for night-interior beats. Bounded, 1 pass.
