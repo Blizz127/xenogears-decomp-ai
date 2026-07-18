@@ -65,10 +65,19 @@ STATE OF PLAY (24-map survey, entrance 0, boot-to-~25s):
      alias [0x05].proc[1]). Unported walkers left NULL (loud abort):
      [0x00].proc[1]=0x8002ED20, proc[3]=0x8002E8DC; [0x05].proc[3]=
      0x8002E8F0; [0x0D].proc[3]=0x8002EAF4.
-     MAP2's NEXT wall: `func_80075B44 far-color branch is not implemented`
-     (port stub assert -- the GTE far-color setup DPCS fog depends on;
-     consistent with MAP2 being a fog-mode map). Follow-up: implement the
-     far-color branch, then re-boot MAP2.
+     MAP2's far-color wall: RESOLVED -- MAP2 now PLAYS+SOUND with working
+     distance fog (18 of 24 survey maps play). The branch was the per-actor
+     SPRITE fog tint (retail 0x800760AC: RGBC <- model base color, DPCS by
+     the actor's RotTransPers IR0, SpriteSetColor with the fogged RGB2 --
+     the fog-on counterpart of func_80075B08). The whole fog-state chain was
+     verified already-live before implementing: func_800748E8 refreshes
+     base color + SetFarColor (RFC ctc2 21-23) + func_80048AB0 ->
+     SetFogNearFar (DQA/DQB ctc2 27/28, real PsyX impl) each frame; PsyX
+     RTPS/RTPT compute IR0 = DQB + DQA*h/sz3. Port-side impl only (matching
+     keeps the assert text). Verified visually: MAP2 night scene, near
+     geometry textured/clear, distant structures blending to the authored
+     far color (60,60,80). func_80075B44's OTHER asserts (special actor,
+     double-render, rotated actor) remain fail-loud -- untriggered on MAP2.
   3. Model-walker assert -- map 25 (1/24): `modelData+0x12 != 1` (temp2 model
      walker hits variant 1, unhandled). Map 15: `func_8008399C button/special
      interaction branch not migrated` (filed separately). One decomp gap each.

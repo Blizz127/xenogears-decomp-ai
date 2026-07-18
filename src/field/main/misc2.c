@@ -9,6 +9,13 @@
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdlib.h>
+
+#ifdef XENO_PC_PORT
+/* PsyX GTE register/intrinsic access for the func_80075B44 sprite-fog branch
+ * (gte_ldrgb/gte_dpcs/C2_RGB2). Port build only. */
+#include <psx/inline_c.h>
+#include <psx/gtereg.h>
+#endif
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(...) calls below mark unimplemented/invariant
@@ -2017,6 +2024,13 @@ extern s32 D_80050100;
 extern s32 D_800B2268;
 extern u8 D_800B2357;
 extern void func_8001E298(void* pSpriteData, void* ot);
+#ifdef XENO_PC_PORT
+/* Model base color bytes (set by func_8002C6E0 in the fog prologue); the
+ * sprite-fog branch composes them into the GTE RGBC word. */
+extern u8 D_80059598;
+extern u8 D_80059599;
+extern u8 D_8005959A;
+#endif
 
 void func_80075B44(void* ot, s32 renderContextIndex) {
     MATRIX baseSpriteMatrix;
@@ -2170,7 +2184,28 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         }
 
         if (D_800B2357 == 0 && D_800B218E != 0) {
+#ifdef XENO_PC_PORT
+            /* Retail 0x800760AC: fog the actor's sprite.  RGBC <- the model
+             * base color word (retail lwc2's the u32 at 0x80059598; the port
+             * composes it from the three separate BSS bytes), DPCS depth-cues
+             * it toward the far color using IR0 left by this actor's most
+             * recent RotTransPers (the center transform above, or the
+             * facing-delta re-issue), and the fogged RGB2 tints the sprite.
+             * This is the fog-on counterpart of func_80075B08's fog-off
+             * SpriteSetColor; the DQA/DQB + far-color state is refreshed each
+             * frame by the ported func_800748E8 fog prologue. */
+            u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+                       ((u32)D_8005959A << 16);
+            u32 fogged;
+
+            gte_ldrgb(&rgbc);
+            gte_dpcs();
+            fogged = (u32)C2_RGB2;
+            SpriteSetColor(pSpriteData, (u8)fogged, (u8)(fogged >> 8),
+                           (u8)(fogged >> 16));
+#else
             assert(0 && "func_80075B44 far-color branch is not implemented");
+#endif
         }
 
         if (otIndex >= 2) {
