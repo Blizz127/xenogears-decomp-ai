@@ -14,6 +14,91 @@ Rules:
 
 ---
 
+## Gameplay-completeness worklist (scoped 7774804; ranked, measured, no implementation)
+
+Measurement pass turning "the game isn't complete" into a ranked target list.
+Read-only: 24-map boot survey, opcode/TU enumeration (decomp_status.py),
+dialog-path liveness, menu-overlay re-trace.
+
+STATE OF PLAY (24-map survey, entrance 0, boot-to-~25s):
+- 15/24 (62.5%) PLAY+SOUND clean (7,10,20,30,40,60,80,100,120,143,200 + the
+  five watchdogs). The field engine is broadly working: field overlay is
+  80.4% done (878 fns, 172 unported), dialog is COMPLETE.
+- 9/24 fail in exactly FOUR signatures (a small root set, not scattered):
+  1. SEGV cluster -- maps 2,3,160,400 (4/24, the biggest single class).
+     Root: func_80021BCC NULL-deref (animation_scripts.c:493,
+     `*p = ... arg0=0x0`) reached from boot-script anim opcode func_8009E094
+     (misc6.c:188) during FieldLoad's script pass. ONE root, 4 maps ->
+     highest leverage. The [stub] lines on these maps (8008D604/A06E8) are
+     RED HERRINGS -- they fire but the crash is the NULL-deref upstream.
+  2. Model buildProc gap -- maps 4,50 (2/24). "missing D_8004FE50 buildProc
+     prim=0": the model-prim descriptor table (game_overrides.c, the LZCR
+     sweep's table) has no buildProc for prim type 0; a map using it aborts.
+     Bounded: wire prim-0's buildProc like the existing 0x04/05/08/0C/0D.
+  3. Model-walker assert -- map 25 (1/24): `modelData+0x12 != 1` (temp2 model
+     walker hits variant 1, unhandled). Map 15: `func_8008399C button/special
+     interaction branch not migrated` (filed separately). One decomp gap each.
+  4. Hang -- map 250 (1/24, SIGKILL/timeout): a live stub cluster
+     (func_80088508/8861C/888A4...) spins. Larger (needs those fns ported).
+
+DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
+are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
+(frame captured on MAP001). Memory [[dialog-dismiss-edge-gated-confirm]]
+confirms text boxes advance on edge-gated confirm. NOT a wall. (The filed
+Map143 dialogue SIGSEGV @ e3f4b49 predates the render-fix arc -- MAP143 now
+boots PLAYS+SOUND; that crash needs re-verification under the interaction
+repro, likely stale.)
+
+MENU OVERLAY (main menu.bin, mode-0 render): unchanged from the prior
+scoping -- a TWO-PART DEDICATED SUB-PROJECT, not an incremental target.
+(a) build-infra bring-up: menu.bin (archive dir 0x10 file 5, VRAM
+0x801C5000, 153864 bytes, uncompressed) is NOT in gears.toml, has no
+config/menu.yaml, no asm/menu/ split, no matching baseline -- none of the
+decomp OR coexistence infrastructure exists. (b) the mode-0 render tree:
+func_801C62A8 (84-insn dispatcher) -> func_801C5F10/801C7B0C/801D2D38/
+801C55A0/801C5FE4 + transitive draw callees -- all unported overlay code,
+the window/content drawing lives there. member_change_menu (95.5%, 3
+unported) and shop_menu (84.7%, 18 unported) ARE disassembled and nearly
+done, but are state-gated behind the main menu. No minimal "a menu renders"
+subset exists until the overlay is brought up (unlike sound's first-audible
+subset). Heavy, dedicated -- its own arc.
+
+DRIVE ORDER (what unblocks the most): the FIELD path is the high-yield
+incremental track -- the SEGV cluster (1 root -> 4 maps) then the buildProc
+gap (1 wire -> 2 maps) reclaim 6/9 failing maps with two small bounded
+fixes, and the field-script/animation gaps they expose are the same class
+of "wall" that blocks deeper play on the 15 already-booting maps. The menu
+overlay is orthogonal and heavy -- park it as a separate arc. Dialog needs
+nothing.
+
+RANKED WORKLIST (bounded targets, incremental-field track):
+1. SEGV cluster root (func_80021BCC / func_8009E094 NULL) -- ~1 fn trace +
+   fix; payoff 4 maps; SIZE: one pass. RECOMMENDED FIRST.
+2. Model buildProc prim-0 gap -- 1 table wire; payoff 2 maps; one pass
+   (may share the decomp of the prim-0 build proc).
+3. Map25 modelData-variant-1 + Map15 func_8008399C asserts -- 1 decomp each;
+   1 map each; small.
+4. Map250 hang stub-cluster -- port the spinning fns; medium.
+-- separate heavy arc --
+5. Main menu.bin overlay: build-infra bring-up + mode-0 render tree
+   (~6 overlay fns + draw callees). Multi-pass sub-project; unblocks all
+   menus (main/load/member-change/shop). Do as a dedicated arc.
+
+Field opcode/TU backlog (the steady drip behind deeper play): field 172
+unported -- misc.c 64 (FE-extended script handlers), misc11 25, misc7 19,
+misc5 15, misc9 12, misc6 10, misc8 9. func_800248D4 anim set: 7 opcodes
+unimplemented (0x85/8E/98/C8/D4/E2/FA) but PROVEN unreachable in all 730
+maps' per-map anim packages (global/battle packages an open coverage gap).
+Recommendation: drive the field track (target 1 first); it is the play-
+forward path and each fix is bounded + measurable (a map flips to
+PLAYS+SOUND). Menu overlay is a separate funded arc when menus are the goal.
+Repro (survey): scratchpad/map_survey.sh (24 maps, verdict+stub-cluster
+per map). Evidence: proven (boot survey + SEGV backtraces + decomp_status
+counts + dialog liveness capture + menu-overlay asm re-read)
+Last verified @ 7774804
+
+---
+
 ## Sound cold-init is blocked below the decomp by hollow PsyCross SDK primitives
 
 `src/slus_006.64/system/sound.c` is linked and all ten audited sound layouts are
