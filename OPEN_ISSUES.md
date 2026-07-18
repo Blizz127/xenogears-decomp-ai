@@ -1676,7 +1676,49 @@ Evidence: proven (sample-exact units + FFT alias-line curve-match + TSan
 gate on the final build)
 Last verified @ HEAD of this commit
 
-### RETRACTED-AND-RESOLVED: the "boot-zombie clap" is the scripted ambient, rendered hardware-faithfully
+### SYSTEMIC BUG (diagnosed, unfixed): End+Mute consume leaves the stream feeding at stale gain
+
+The USER's refined report ("every song has an element that repeats") is a
+REAL systemic 7d9b969 regression, DISTINCT from the ambient finding below
+(which stands for the MAP014/Lahan ambients specifically). Mechanism,
+proven code + runtime:
+
+CODE SITE (PsyX_SPUAL.cpp, EnvelopeTick's End+Mute consume): when the
+mixer callback hits an ADPCM code-1 block (LoopEnd without Repeat =
+hardware End+Mute: jump + force Release + envelope 0), it sets the
+endMutePending atomic; the tick consumes it and sets phase=ADSR_OFF,
+level=0 -- and then `continue`s, SKIPPING the two lines that actually
+silence a voice in the streaming path: ApplyVoiceComposedGain (the AL
+gain stays at the STALE SUSTAIN VALUE -- level=0 never reaches OpenAL)
+and stream.active=0 (the callback KEEPS FEEDING the looped-from-
+repeatAddr sample forever). Net: every one-shot/End+Mute-terminated note
+(the percussion family -- claps, slaps, drums, in EVERY song) keeps
+looping audibly at its sustain gain until something re-keys the voice
+(the "stops when the song changes section" the user observed).
+
+RUNTIME PROOF (MAP000, census every 400 ticks): at EVERY instant, 1-4
+voices in exactly the predicted stuck state -- phase=OFF active=1
+lastGain 0.16-0.24 (audible), rep=start+0x10, cur wandering the sample --
+individual stuck notes persisting 800+ ticks (3.3s+: V17 identical
+lastGain 0.194899 at f400 and f1200; V19 across f800-f1600), a rotating
+population as re-keys reclaim voices. The earlier MAP001 lifetime census
+ALREADY showed the signature (V14/15/16 "phase=0 lvl=0" yet active at
+f900) and it was misread as a one-tick transition window.
+
+OLD-PATH CONTRAST (why it regressed): the cubic path gave code-1 samples
+loopLen=0 -> AL_LOOPING FALSE -> the source played out and stopped
+naturally. The streaming rewrite implements the hardware jump (correct)
+but drops the MUTE half on the tick side.
+
+FIX (next pass, surgical): in the endMute consume, do the full
+off-lining the normal release-complete path does -- phase=OFF, level=0,
+ApplyVoiceComposedGain (writes gain 0), and stream.active=0 under
+s_StreamMutex. One small block; no streaming-architecture change.
+Evidence: code-path read + stuck-state census (phase-OFF/active/stale-
+gain, multi-second persistence, rotating population)
+Last verified @ d53b347
+
+### PARTIALLY-RETRACTED (the ambient half stands; the "no defect" conclusion was wrong -- see the systemic entry above): the "boot-zombie clap" is the scripted ambient, rendered hardware-faithfully
 
 The fix pass DISPROVED the entry below (kept for the record). The full
 corrected chain, each link evidenced:
