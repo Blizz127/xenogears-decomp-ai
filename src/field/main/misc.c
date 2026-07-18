@@ -563,7 +563,53 @@ s32 func_8008A790(s32 value, s32* outIndex) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A7DC);
+/* Skin-archive kickoff for a joining member (asm 8008A7DC): stage the
+ * character skin (field maps, archive charId+5) or gear skin (gear maps,
+ * GameCharacterGetGearID+0x10+5; 0xFF -> gear 0x10) into a heap staging
+ * buffer via an async archive read, record slot/charId/buffer in
+ * D_800ADBCC/C8/C0, and mark the load in flight (D_800ADBC4 = 1). */
+extern s32 D_800ADB1C;
+extern s32 D_800ADBC4;
+extern s32 D_800ADBC8;
+extern s32 D_800ADBCC;
+extern void* D_800ADBC0;
+extern s32 g_GameSceneMapNum;
+extern s32 g_GamePartyMemberSkins[];
+extern s32 GameCharacterGetGearID(s32 charId);
+
+void func_8008A7DC(s32 charId, s32 slot) {
+    s32 fileId;
+    void* buf;
+
+    D_800ADBCC = slot;
+    D_800ADBC8 = charId;
+    ArchiveSetIndex(4, 0);
+    if (D_800ADB1C == 0) {
+        ArchiveCdDataSync(0);
+    }
+    if ((g_GameSceneMapNum & 0xC000) == 0) {
+        fileId = charId + 5;
+        g_GamePartyMemberSkins[slot] = charId;
+        buf = HeapAlloc(ArchiveDecodeAlignedSize(fileId), 0);
+        D_800ADBC0 = buf;
+    } else {
+        s32 gearId = GameCharacterGetGearID(charId);
+
+        if (gearId == 0xFF) {
+            gearId = 0;
+        }
+        gearId += 0x10;
+        fileId = gearId + 5;
+        buf = HeapAlloc(ArchiveDecodeAlignedSize(fileId), 0);
+        D_800ADBC0 = buf;
+        g_GamePartyMemberSkins[slot] = gearId;
+    }
+    ArchiveReadFileToBuffer(fileId, buf, 0, 0x80);
+    if (D_800ADB1C == 0) {
+        ArchiveCdDataSync(0);
+    }
+    D_800ADBC4 = 1;
+}
 
 void func_8008A93C(void) {
     g_FieldScriptVMCurActor->unkAnimationId = ~SCRIPT_READ_U8_REL(1);
@@ -720,13 +766,190 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B518);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B5D4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B894);
+/* --- Party-join chain (the Citan-join machinery) ------------------------
+ * add-member opcodes (func_8008BC80 arg-variant / func_8008BDD8 immediate)
+ * -> skin-archive kickoff (func_8008A7DC, D_800ADBC4=1 "loading")
+ * -> wait/complete opcode (func_8008B894: sync, LZSS into the party
+ *    buffer, activate via func_8008B978, D_800ADBC4=0xFF re-arm). */
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B978);
+extern s32 D_800ADB1C;
+extern s32 D_800ADB2C;
+extern s32 D_800ADBC4;
+extern s32 D_800ADBC8;
+extern s32 D_800ADBCC;
+extern void* D_800ADBC0;
+extern s32 D_800ADBFC;
+extern void* D_800B06B8;
+extern s32 D_800AFD1C;
+extern s32 D_800AFFEC;
+extern s32 D_800B00C0;
+extern s32 D_8006F990[];
+extern s32 g_GamePartyMembers[];
+extern void* g_PartyDataBuffers[];
+extern s32 g_PlayerActorIndex;
+extern s32 func_8008A558(void);
+extern s32 func_8008A790(s32 value, s32* outIndex);
+extern void func_8008A7DC(s32 charId, s32 slot);
+extern s32 GameCharacterGetGearID(s32 charId);
+extern void LZSSDecompress(void* src, void* dst);
+extern s32 ArchiveDataSync(void);
+extern void func_80080A74(s32 actorIndex);
+extern void FieldActorCopyPlacement(s32 actorIndex, s32 srcActorIndex);
+extern void func_80077268(void);
+extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
+extern void FieldScriptVMRun(s32 maxInstructionCount);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BC80);
+/* Wait-for-skin-load opcode (asm 8008B894): while the archive read is in
+ * flight, retry (IP-1 + yield); once synced, LZSS-decompress the staged
+ * skin into g_PartyDataBuffers[slot], free the staging buffer, activate the
+ * joined member (func_8008B978), re-arm D_800ADBC4=0xFF, IP+1 + yield. */
+void func_8008B894(void) {
+    if (D_800ADBC4 != 0xFF) {
+        if (ArchiveDataSync() == 0) {
+            ArchiveCdDataSync(0);
+            LZSSDecompress(D_800ADBC0, g_PartyDataBuffers[D_800ADBCC]);
+            HeapFree(D_800ADBC0);
+            func_8008B978(D_800ADBC8);
+            D_800ADBC4 = 0xFF;
+            D_800B00C0 = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+            return;
+        }
+    }
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BDD8);
+/* Activate a joined member (asm 8008B978): set the character's roster bit
+ * (gamestate+0x1D30), and for mid-game joins (D_800ADB1C) find the actor
+ * declaring this character (script-0 starting with `0x16 <charId>`),
+ * re-init it (func_80080A74), place it at the player, run its script 0,
+ * settle (func_80077268), and on gear maps re-run the party slot's gear
+ * actor too.  The VM context is saved/restored around the nested runs. */
+void func_8008B978(s32 charId) {
+    ActorData* savedCur = g_FieldScriptVMCurActor;
+    void* savedB06B8 = D_800B06B8;
+    s32 savedB00C0;
+    s32 savedAFD1C;
+    s32 savedMax;
+    u16 savedIP;
+    s32 i;
+
+    *(u16*)((u8*)g_pGameState + 0x1D30) |= 1 << D_800ADBC8;
+    if (D_800ADB1C == 0) {
+        return;
+    }
+
+    savedIP = savedCur->scriptInstructionPointer;
+    savedB00C0 = D_800B00C0;
+    savedAFD1C = D_800AFD1C;
+    savedMax = g_FieldScriptMaxInstructionCount;
+
+    for (i = 0; i < D_800ADBFC; i++) {
+        u16 off0 = FieldScriptGetBytecodeOffset(i, 0);
+        u8* pc = (u8*)g_FieldScriptVMCurScriptData + off0;
+        u16 off0b;
+
+        if (pc[0] != 0x16 || pc[1] != charId) {
+            continue;
+        }
+
+        D_800B06B8 = (u8*)g_FieldActors + i * 0x5C;
+        g_FieldScriptVMCurActor =
+            (ActorData*)(uintptr_t)g_FieldActors[i].pActorData;
+        func_80080A74(i);
+        ((ActorData*)(uintptr_t)g_FieldActors[i].pActorData)
+            ->scriptInstructionPointer = off0;
+        D_800AFD1C = i;
+        off0b = FieldScriptGetBytecodeOffset(i, 0);
+        g_FieldScriptVMCurActor->scriptInstructionPointer = off0b;
+        D_800AFFEC = 0;
+        FieldActorCopyPlacement(i, g_PlayerActorIndex);
+        FieldScriptVMRun(0xFFFF);
+        func_80077268();
+        *(u16*)((u8*)g_pGameState + 0x1D30) |= 1 << D_800ADBC8;
+
+        if (g_GameSceneMapNum & 0xC000) {
+            s32 gi = D_8006F990[D_800ADBCC];
+
+            D_800B06B8 = (u8*)g_FieldActors + gi * 0x5C;
+            g_FieldScriptVMCurActor =
+                (ActorData*)(uintptr_t)g_FieldActors[gi].pActorData;
+            func_80080A74(gi);
+            ((ActorData*)(uintptr_t)g_FieldActors[i].pActorData)
+                ->scriptInstructionPointer = off0b;
+            D_800AFD1C = gi;
+            g_FieldScriptVMCurActor->scriptInstructionPointer =
+                FieldScriptGetBytecodeOffset(gi, 0);
+            D_800AFFEC = 0;
+            FieldScriptVMRun(0xFFFF);
+        }
+        break;
+    }
+
+    D_800B06B8 = savedB06B8;
+    g_FieldScriptVMCurActor = savedCur;
+    D_800B00C0 = savedB00C0;
+    D_800AFD1C = savedAFD1C;
+    g_FieldScriptMaxInstructionCount = savedMax;
+    savedCur->scriptInstructionPointer = savedIP;
+}
+
+/* Add-party-member opcode, 2-byte-argument variant (asm 8008BC80).
+ * Busy (a load pending / transition / stream): retry (IP-1 + yield).
+ * arg == 0xFF: no-op, IP+5.  Free slot: clear the member's gamestate byte
+ * (+0x22B1+slot), write the roster, kick the skin load, IP+3.  Already a
+ * member / party full: set the roster bit (+0x1D30), IP+5. */
+void func_8008BC80(void) {
+    s32 pending = D_800ADBC4;
+    s32 charId;
+    s32 slot;
+
+    if (pending == 0xFF && D_800ADB2C == 0 && func_8008A558() == 0) {
+        ArchiveCdDataSync(0);
+        charId = FieldScriptVMGetArgument(1);
+        if (charId == pending) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+            return;
+        }
+        if (func_8008A790(charId, &slot) == 0) {
+            *((u8*)g_pGameState + 0x22B1 + slot) = 0;
+            g_GamePartyMembers[slot] = charId;
+            func_8008A7DC(charId, slot);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+        } else {
+            *(u16*)((u8*)g_pGameState + 0x1D30) |= 1 << charId;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        }
+        return;
+    }
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+}
+
+/* Add-party-member opcode, immediate-byte variant (asm 8008BDD8): charId is
+ * the raw byte at IP+1; success IP+2, already-member IP+4, busy retry. */
+void func_8008BDD8(void) {
+    s32 charId;
+    s32 slot;
+
+    if (D_800ADBC4 == 0xFF && D_800ADB2C == 0 && func_8008A558() == 0) {
+        ArchiveCdDataSync(0);
+        charId = SCRIPT_READ_U8_REL(1);
+        if (func_8008A790(charId, &slot) == 0) {
+            *((u8*)g_pGameState + 0x22B1 + slot) = 0;
+            g_GamePartyMembers[slot] = SCRIPT_READ_U8_REL(1);
+            func_8008A7DC(SCRIPT_READ_U8_REL(1), slot);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+        } else {
+            *(u16*)((u8*)g_pGameState + 0x1D30) |= 1 << SCRIPT_READ_U8_REL(1);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+        }
+        return;
+    }
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BF38);
 

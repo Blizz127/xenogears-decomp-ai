@@ -121,6 +121,30 @@ Last verified @ 0a32159.
      so it scans-and-skips exactly as retail; the consume path awaits a
      party-of-2+ story state (the Citan join). A24C4 stays gated until
      g_GamePartySkinsInitialized sets (the join init).
+  7b. Citan-join beat (wall 6, diagnostic pass): the ENTIRE add-member
+     opcode chain was unported and is NOW IMPLEMENTED (5 fns, ~540 asm
+     lines, all callees ported): func_8008BC80/BDD8 (add-member opcodes,
+     arg/immediate variants; busy-retry IP-1+yield, free-slot -> roster
+     write + skin kickoff, already-member -> +0x1D30 roster bit),
+     func_8008A7DC (skin-archive staging, field charId+5 / gear
+     GetGearID+0x10+5, D_800ADBC4=1), func_8008B894 (wait opcode: sync ->
+     LZSS into g_PartyDataBuffers[slot] -> activate -> 0xFF re-arm),
+     func_8008B978 (activation: roster bit, find the actor declaring the
+     char via script-0 `16 <id>`, re-init + place at player + run script 0
+     + settle, gear-map variant, full VM-context save/restore).
+     FOLLOWER SYSTEM PROVEN LIVE (scaffolded diagnostic on MAP1: real
+     party-of-2 preconditions reproduced, Fei walked via pad injection):
+     the follower TRAILS FEI'S PATH with the slot-1 spacing (dist 9-10 =
+     the 0xA gate), walk anim while moving, idle-settle at rest -- the
+     wall-5 machine works.
+     SURFACED WALLS above the chain (the join beat itself cannot run yet):
+     (a) the NEW-GAME GAMESTATE INIT is unported -- the port's NG flow
+     skips retail's template (roster [Fei,FF,FF], gamestate fields);
+     roster stays [0,0,0] so func_8008A790 returns party-full. AADC's
+     zeroing is retail-correct -- the template comes later in retail's NG
+     path. (b) story-flag progression to the join script (no scenario
+     harness; no `16 <id>`-declaring actors on maps 1/5/14/15-19 -- the
+     join script lives deeper in the story flow, canonically post-attack).
   8. MAP16 Blackmoon Forest render-suspect (mostly-black frame) --
      triage after #5 (its loader stub is one suspect). BLOCKER-if-real
      for the post-attack exit.
