@@ -178,9 +178,28 @@ Last verified @ 0a32159.
      REMAINING WALL: (b) story-flag progression to later join scripts (no
      scenario harness; canonically post-attack) + the intro input-lock
      release path for interactive NG play (confirm-edge injection).
-  8. MAP16 Blackmoon Forest render-suspect (mostly-black frame) --
-     triage after #5 (its loader stub is one suspect). BLOCKER-if-real
-     for the post-attack exit.
+  8. MAP16 Blackmoon Forest "mostly black" -- DIAGNOSED (wall 9,
+     read-only): NOT a BG-layer / lighting / palette bug. The forest
+     ENVIRONMENT IS OBJECT-BASED and the object loader is the SAME staged
+     wall-3 subsystem (func_800A1364). Evidence: (a) partially black --
+     one foliage clump draws correctly-textured/lit in the corner, rest
+     black; (b) CullCam: seen=56 emit=1 overlap=54 (vs working MAP17
+     seen=1598 emit=286) -- geometry almost entirely absent, not culled-
+     dark; (c) model builds = 3 (6 groups) vs MAP17's 90 (151) / MAP5's
+     23 -- the terrain/forest models are not building; (d) func_800A1364
+     (object-sprite loader, wall-3 staged -> port auto-stub) is called
+     ~68x/frame (4100 in 60 frames; MAP17 calls it 0x) and D_800B2264
+     object count stays 0; (e) actor 3's script is STUCK spinning on the
+     stubbed opcode -- ip=7fff fixed across all 4100 calls (the no-op stub
+     never advances the IP), so the forest objects never load. The 3
+     models that do build are the base terrain fragment (the drawn clump).
+     CAUSE: the object-overlay sub-project (already scoped at #5/wall-3) --
+     MAP16 black and MAP3 SEGV share this root (func_800A1364 + the
+     member_change_menu overlay func_801E742C/738C + the func_800821F4
+     battle-anim assert). NOT bounded; fixing MAP16 = the object-overlay
+     pass. Diagnostic: all gdb + the existing XENO_CULL_CAM_LOG feature;
+     no code changed. Blackmoon Forest is dark-themed but this is a
+     genuine missing-geometry BUG, not authored-dark.
   9. THE LAHAN-ATTACK SCRIPTED BATTLE -- the battle system is entirely
      unported (field->battle boundary is the no-op func_80281204;
      func_800821F4 "battle animation branch" assert; menu/battle overlay
