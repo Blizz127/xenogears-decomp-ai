@@ -37,6 +37,23 @@ Last verified @ 0a32159.
   2. New Game flow hardcodes map1/ent6 (port_main.c:1587), bypassing the
      retail intro scene (MAP14 zoom + intro windows). FLOW-COSMETIC --
      the scene itself plays when booted directly. Small (routing).
+     WALL-8 DIAGNOSIS (the "intro input-lock", read-only pass): NO IN-FIELD
+     LOCK EXISTS -- the wall-7 "NG movement is input-locked" reading was a
+     HEADLESS-CAPTURE ARTIFACT (no keyboard focus in the GL capture -> the
+     button mask D_800AFE9C reads 0). Live trace under real NG boot: the
+     player-control opcode func_8009F5F4 fires EVERY frame, player IP stable
+     at the control loop (0xa2), g_FieldCameraMode=0 (follow) from frame 1,
+     input mask D_800ADB00=0xFFFF (fully unlocked); the port wires
+     keyboard->pad (arrows->d-pad, X/V/Z/C->buttons, PsyX_main.cpp:257) so a
+     REAL user already has control. PAYOFF PROVEN: real NG boot (real roster
+     [Fei,Citan], real Citan bind, NO party-state scaffold) + injected pad
+     (the keypress stand-in) -> Fei walks (405->666->906) and Citan FOLLOWS
+     with the correct slot-1 spacing (dist 9 = the 0xA gate), keeping the
+     0x1000000 follower flag -- the wall-5/6 walk-follow now REAL under real
+     boot, not scaffolded. The "scripted intro on the windmill" the framing
+     expected is the PRE-Lahan sequence (FMV + Fei's-house scene) the port's
+     boot SKIPS -- i.e. items #1 (movie decoder) + this #2 (NG->intro->Lahan
+     routing), NOT an in-field lock. No code change; nothing to fix here.
   3. MAP14 intro ripple banding -- COSMETIC, already filed below.
   4. Village interaction walls -- func_8008399C "button/special
      interaction" RESOLVED: implemented from asm 80083A98-80083BFC
