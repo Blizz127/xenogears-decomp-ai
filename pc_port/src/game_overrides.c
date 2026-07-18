@@ -252,6 +252,40 @@ u8 D_800594F8;
  * subsystem is ported; the sub-command then yields a zero vector. */
 u8 D_800C3EB0[0x1C0];
 
+/* func_800AD898 (asm/field/3D334.s 3DDA8-3DE84, unsplit region -- port
+ * implementation here like the other asm-only field fns): when the field
+ * flag D_800B2268 is set, walk the three party slots (D_8005A444); for each
+ * live member whose game-state byte at +0x22B1+slot equals 1, set flag
+ * 0x200 and clear 0x500 on the member's actor data.  Called each frame by
+ * func_800A24C4's party-skin branch. */
+extern s32 D_800B2268;
+extern void* g_pGameState;
+extern s32 D_8005A444[3];
+extern FieldActor* volatile g_FieldActors;
+void func_800AD898(void)
+{
+    s32 i;
+
+    if (D_800B2268 == 0) {
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        s32 idx = D_8005A444[i];
+        u8* actorData;
+
+        if (idx == 0xFF) {
+            continue;
+        }
+        if (*((u8*)g_pGameState + 0x22B1 + i) != 1) {
+            continue;
+        }
+        actorData = (u8*)(uintptr_t)
+            *(u32*)((u8*)g_FieldActors + idx * 0x5C + 0x4C);
+        *(u32*)(actorData + 0x00) |= 0x200;
+        *(u32*)(actorData + 0x00) &= ~0x500u;
+    }
+}
+
 /* Battle-transition entry the encounter roll (func_80079288) calls when a
  * formation is selected. The field->battle handoff and the battle system are
  * out of scope; this no-op stub lets the roll link and run so we can validate

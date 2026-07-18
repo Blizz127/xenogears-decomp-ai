@@ -102,9 +102,25 @@ Last verified @ 0a32159.
      paths (2 asserts; the post-menu anim landmine). NOTE: slus baseline
      hash moved to 7a3e773b (animation_scripts.c compiles into matching
      slus; single-file-revert isolation proved the diff is confined).
-  7. Party-change walls (Citan joins): func_800815F0 party-history sync +
-     func_800A24C4 party-skin branch. Branch-scale. BLOCKERS at the join
-     beat.
+  7. Party-change walls RESOLVED: func_800815F0's D_800B234E==0 branch is
+     the follow-the-leader machine, implemented from asm (.L800816F8-
+     80081C04): followers consume the player's movement-history ring
+     (0x48-stride entries the ported func_80081C54 records; head
+     D_800B2360[0] decrements, per-slot cursors at (&D_800B2360)[partyId]),
+     with idle-settle, airborne step-gates (0xA slot 1 / 0x14 else),
+     caught-up hold, and the D_800B21CF==1 snap that SKIPS the caught-up
+     check and consumes with the snapped cursor while keeping the old
+     entry's 0x800 flag. func_800A24C4's initialized branch implemented
+     (func_800A22AC(2) + func_800AD898 -- the 60-line 3D334.s leaf, now
+     ported in game_overrides: per-party-slot gamestate+0x22B1 gate ->
+     flags 0x200 set / 0x500 clear -- object-slot refresh loop via the
+     overlay entry func_801E8330 (auto-stub, fail-visible, EMPTY while
+     D_800B2264==0), player -8 Y nudge while interacting, and the global
+     scroll-drift application). Probe: sync branch is the LIVE path at boot
+     (B234E=0, ring recording, head walking), zero followers on solo maps
+     so it scans-and-skips exactly as retail; the consume path awaits a
+     party-of-2+ story state (the Citan join). A24C4 stays gated until
+     g_GamePartySkinsInitialized sets (the join init).
   8. MAP16 Blackmoon Forest render-suspect (mostly-black frame) --
      triage after #5 (its loader stub is one suspect). BLOCKER-if-real
      for the post-attack exit.

@@ -458,26 +458,47 @@ void func_8008110C(void) {
 }
 
 extern s16 D_800B234E;
+extern u8 D_800B21CF;
+extern s32 FieldCharacterIdToPartyId(s32 characterId);
+void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor);
+/* Movement-history ring labels (0x48-stride entries; the writer
+ * func_80081C54 below uses the same anchors). */
+extern s32 D_800B2360;
+extern s32 D_800C3910;
+extern u8 D_800B14F0;
+extern u8 D_800B14F8;
+extern u8 D_800B14FA;
+extern u8 D_800B14FC;
+extern u8 D_800B1500;
+extern u8 D_800B1502;
+extern u8 D_800B1504;
+extern u8 D_800B1510;
+extern u8 D_800B1514;
+extern u8 D_800B1518;
+extern u8 D_800B1534;
 
 void func_800815F0(void) {
     s32 i;
 
-    for (i = 0; i < D_800ADBFC; i++) {
-        u8* actor = (u8*)g_FieldActors + i * 0x5C;
-        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+    if (D_800B234E != 0) {
+        /* Held-mode: followers only track the scripted anim (asm
+         * 8008164C-800816F0). */
+        for (i = 0; i < D_800ADBFC; i++) {
+            u8* actor = (u8*)g_FieldActors + i * 0x5C;
+            u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            u8* spriteData;
+            s16 anim;
 
-        if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
-            continue;
-        }
+            if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
+                continue;
+            }
+            if (i == g_PlayerActorIndex ||
+                (*(u16*)(actor + 0x58) & 0x20) != 0) {
+                continue;
+            }
 
-        if (i == g_PlayerActorIndex || (*(u16*)(actor + 0x58) & 0x20) != 0) {
-            continue;
-        }
-
-        if (D_800B234E != 0) {
-            u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
-            s16 anim = *(s16*)(actorData + 0xE6);
-
+            spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+            anim = *(s16*)(actorData + 0xE6);
             if (*(s16*)(actorData + 0xE8) != anim) {
                 *(s16*)(actorData + 0xE8) = anim;
                 if (anim < 0) {
@@ -485,9 +506,154 @@ void func_800815F0(void) {
                 }
                 func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
             }
-        } else {
-            assert(!"func_800815F0 party-history sync branch not migrated");
         }
+        return;
+    }
+
+    /* Party-history sync (asm .L800816F8-80081C04): each follower consumes
+     * the player's movement-history ring that func_80081C54 records (0x48-
+     * stride entries anchored at the D_800B14F0.. labels; the ring head
+     * D_800B2360[0] DECREMENTS, so followers trail the head).  Per-party-
+     * slot cursors live at (&D_800B2360)[partyId]. */
+    for (i = 0; i < D_800ADBFC; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+        u8* spriteData;
+        s32 partyId;
+        s32* pCursor;
+        s32 k;
+        s32 off;
+        u32 histFlags;
+        s32 j;
+
+        if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
+            continue;
+        }
+        if (i == g_PlayerActorIndex ||
+            (*(u16*)(actor + 0x58) & 0x20) != 0) {
+            continue;
+        }
+
+        spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+        partyId = FieldCharacterIdToPartyId(*(s16*)(actorData + 0xE4));
+        if (partyId == -1) {
+            continue;
+        }
+
+        pCursor = &D_800B2360 + partyId;
+        k = *pCursor;
+        off = (k * 9) * 8;
+
+        /* Turn toward the history entry's facing. */
+        func_80081F80(spriteData, *(s16*)(&D_800B1504 + off), actor);
+
+        histFlags = *(u32*)(&D_800B14F0 + off);
+
+        if (D_800B21CF == 1) {
+            /* Snap the follower cursor to just behind the head and consume
+             * immediately (asm jumps to .L8008191C, SKIPPING the caught-up
+             * check; the 0x800 flag test keeps the OLD entry's flags while
+             * anim/apply reload the snapped cursor). */
+            *pCursor = (D_800B2360 + 1) & 0x1F;
+            k = *pCursor;
+            off = (k * 9) * 8;
+            goto consume;
+        } else if (!(histFlags & 0x800)) {
+            /* The history frame is an idle frame. */
+            u32 flags4 = *(u32*)(actorData + 0x04) & ~0x1000u;
+
+            *(u32*)(actorData + 0x04) = flags4;
+            if ((*(u32*)(actorData + 0x14) & 0x420000) == 0) {
+                if (D_800C3910 == -1) {
+                    /* Grounded idle: settle back to the scripted anim. */
+                    if (*(s16*)(spriteData + 0x84) !=
+                        *(s16*)(actorData + 0x26)) {
+                        goto apply_gate;
+                    }
+                    if (*(s16*)(actorData + 0xE8) == 6) {
+                        *(u32*)(actorData + 0x04) = flags4 | 0x1000;
+                        continue;
+                    }
+                    if (*(s16*)(actorData + 0xE8) ==
+                        *(s16*)(actorData + 0xE6)) {
+                        continue;
+                    }
+                    *(s16*)(actorData + 0xE8) = *(s16*)(actorData + 0xE6);
+                    if (*(s16*)(actorData + 0xE8) < 0) {
+                        *(s16*)(actorData + 0xE8) = 0;
+                    }
+                    func_800821F4(spriteData, *(s16*)(actorData + 0xE8),
+                                  actor);
+                    continue;
+                }
+                /* Airborne/track mode: hold until this follower's cursor
+                 * sits exactly `step` entries behind the head (asm
+                 * .L80081898; step 0xA for party slot 1, 0x14 otherwise). */
+                {
+                    s32 step = (partyId != 1) ? 0x14 : 0xA;
+
+                    if (((D_800B2360 + step) & 0x1F) != k) {
+                        continue;
+                    }
+                }
+            }
+            goto apply_gate;
+        }
+
+    apply_gate:
+        /* asm .L800818C8: caught up to the head -> hold the scripted anim
+         * and consume nothing. */
+        if (k == D_800B2360) {
+            *(u32*)(actorData + 0x00) &= ~0x800u;
+            *(s16*)(actorData + 0xE8) = *(s16*)(actorData + 0xE6);
+            if (*(s16*)(actorData + 0xE8) < 0) {
+                *(s16*)(actorData + 0xE8) = 0;
+            }
+            func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
+            continue;
+        }
+
+    consume:
+        /* Consume one history entry (asm .L8008191C-80081C04). */
+        if (histFlags & 0x800) {
+            *(u32*)(actorData + 0x00) |= 0x800;
+        } else {
+            *(u32*)(actorData + 0x00) &= ~0x800u;
+        }
+
+        if (*(s16*)(actorData + 0xE8) != *(s16*)(&D_800B1502 + off)) {
+            *(s16*)(actorData + 0xE8) = *(s16*)(&D_800B1502 + off);
+            if (*(s16*)(actorData + 0xE8) < 0) {
+                *(s16*)(actorData + 0xE8) = 0;
+            }
+            func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
+        }
+
+        /* The apply block: the exact inverse of func_80081C54's record. */
+        for (j = 0; j < 4; j++) {
+            *(u16*)(actorData + 0x08 + j * 2) =
+                *(u16*)(&D_800B1510 + off - 0x0A + j * 2);
+        }
+        *(s16*)(actorData + 0x10) = *(&D_800B1534 + off);
+        *(u32*)(spriteData + 0x0C) = *(u32*)(&D_800B1510 + off);
+        *(u32*)(spriteData + 0x10) = *(u32*)(&D_800B1514 + off);
+        *(u32*)(spriteData + 0x14) = *(u32*)(&D_800B1518 + off);
+        *(u32*)(actorData + 0x50) = *(u32*)(&D_800B1510 + off + 0x10);
+        *(u32*)(actorData + 0x54) = *(u32*)(&D_800B1510 + off + 0x14);
+        *(u32*)(actorData + 0x58) = *(u32*)(&D_800B1510 + off + 0x18);
+        *(u32*)(actor + 0x20) = *(s16*)(&D_800B14F8 + off);
+        *(u32*)(actor + 0x24) = *(s16*)(&D_800B14FA + off);
+        *(u32*)(actor + 0x28) = *(s16*)(&D_800B14FC + off);
+        *(u32*)(spriteData + 0x00) = *(s32*)(actor + 0x20) << 16;
+        *(u32*)(actorData + 0x20) = *(s32*)(actor + 0x20) << 16;
+        *(u32*)(spriteData + 0x04) = *(s32*)(actor + 0x24) << 16;
+        *(u32*)(actorData + 0x24) = *(s32*)(actor + 0x24) << 16;
+        *(u32*)(spriteData + 0x08) = *(s32*)(actor + 0x28) << 16;
+        *(u32*)(actorData + 0x28) = *(s32*)(actor + 0x28) << 16;
+        *(u16*)(spriteData + 0x84) = *(u16*)(&D_800B1500 + off);
+        *(u16*)(actorData + 0x106) = *(u16*)(&D_800B1504 + off);
+        *(u16*)(actorData + 0x104) = *(u16*)(&D_800B1504 + off);
+        *pCursor = (k - 1) & 0x1F;
     }
 }
 

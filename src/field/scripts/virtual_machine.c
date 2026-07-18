@@ -426,12 +426,68 @@ extern void func_800A3474(void);
 extern void func_8002303C(void*, s32, s32);
 extern void func_80076AC0(s32, s32, void*, s32, s32, s32, s32);
 
+extern s32 D_800B2264;
+extern u8 D_800B21D2;
+extern s32 D_800B21BC;
+extern s32 D_800B21C0;
+extern s32 D_800B21C4;
+extern s32 g_FieldNumActors;
+extern s32 g_PlayerActorIndex;
+extern void func_800AD898(void);
+extern void func_801E8330(s32 slot, s32 arg1, s32 objId);
+
 void func_800A24C4(void) {
+    u8* playerData;
+    s32 i;
+
     if (g_GamePartySkinsInitialized == 0) {
         return;
     }
 
-    assert(0 && "func_800A24C4 initialized party-skin branch is not implemented");
+    /* asm 800A24E4-800A26F8: the party-skin per-frame update. */
+    func_800A22AC(2);
+    func_800AD898();
+
+    /* Refresh the registered object-slot sprites through the
+     * member_change_menu overlay entry (func_801E8330, unported -- auto-
+     * stubs fail-visible; the loop is empty while the object loader
+     * func_800A1364 stays staged and D_800B2264 is 0). */
+    for (i = 0; i < D_800B2264; i++) {
+        func_801E8330(i & 0xFFFF, 0,
+                      *(s16*)((u8*)&D_800B2264 - 0x80 + i * 2));
+    }
+
+    playerData = (u8*)(uintptr_t)
+        *(u32*)((u8*)g_FieldActors + g_PlayerActorIndex * 0x5C + 0x4C);
+    if (*(u8*)(playerData + 0x74) != 0xFF) {
+        *(s32*)(playerData + 0x24) -= 8;
+    }
+
+    /* Apply the global scroll-drift accumulators (D_800B21BC/C0/C4, the
+     * func_800748E8 counters) to eligible actors: real actors need
+     * (+0x12C & 3) == 0; slots past D_800ADBFC skip that gate.  Mode byte
+     * D_800B21D2 & 0x7F: 0 or 1 applies, else not (retail tests ==0 then
+     * ==1 as two sequential blocks; a 0 never double-applies because the
+     * second test re-reads the unchanged byte). */
+    for (i = 0; i < g_FieldNumActors; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u32 mode;
+
+        if (i < D_800ADBFC) {
+            u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+
+            if (*(u32*)(actorData + 0x12C) & 0x3) {
+                continue;
+            }
+        }
+
+        mode = D_800B21D2 & 0x7F;
+        if (mode == 0 || mode == 1) {
+            *(s32*)(actor + 0x20) += D_800B21BC;
+            *(s32*)(actor + 0x24) += D_800B21C0;
+            *(s32*)(actor + 0x28) += D_800B21C4;
+        }
+    }
 }
 
 void func_800A2714(void) {
