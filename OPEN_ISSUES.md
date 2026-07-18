@@ -1676,7 +1676,55 @@ Evidence: proven (sample-exact units + FFT alias-line curve-match + TSan
 gate on the final build)
 Last verified @ HEAD of this commit
 
-### KNOWN BUG (diagnosed, unfixed): boot-zombie SFX voice becomes audible under streaming
+### RETRACTED-AND-RESOLVED: the "boot-zombie clap" is the scripted ambient, rendered hardware-faithfully
+
+The fix pass DISPROVED the entry below (kept for the record). The full
+corrected chain, each link evidenced:
+- The "zombie" KON is the REAL MAP014 boot-script ambient cue (id 0x36):
+  watchpoint on element 14's active_flag caught the armer red-handed --
+  FieldScriptVMRun -> func_8008F558 (cue opcode) -> func_800855C8(0x36,
+  32, 64, ch3) -> func_80039F9C -> func_8003B644 arm -> func_8003E5BC
+  instrument bind. Script-OWNED, not ownerless. (The diagnosis pass's
+  "frame 1" timing was a gdb-pacing artifact -- real-time onset is 4.40s,
+  the known cue time; its "8s stuck at sustain" is an AMBIENT sustaining,
+  as ambients do, until the script changes it.)
+- addr 0x12000 / pitch 0x203 / voll 1785 are the AUTHORED instrument-0
+  bind of the effect's bank (start = offset 0 + bank base), not defaults.
+- func_80085634's id-0 stop gate is present and correct in the port (the
+  suspected dropped branch does not exist -- retail asm compared).
+- The loop point is the AUTHORED in-data LoopStart latch (0x12890) --
+  identical on hardware: retail's own func_8003E5BC asm (read this pass)
+  computes loopAddress WITHOUT the bank base (addu of raw offsets ->
+  +0x50), so the repeat REGISTER is bank-relative-garbage on hardware too
+  and the in-data latch supersedes it there exactly as in the port. The
+  filed "dormant bank-base bug" is RETAIL-FAITHFUL BEHAVIOR, not a bug;
+  do not "fix" it. LSAX forwarding stays unforwarded-and-documented: the
+  register is vestigial in this engine (in-data latches always win), and
+  forwarding it would only matter in the no-in-data-LoopStart case where
+  hardware jumps to the same garbage value anyway.
+- The audible change vs pre-7d9b969 is the RENDERING, and it is the
+  hardware-faithful one: at pitch 0x203 (0.126x) the old cubic resampler
+  smeared the crackle's transients into the faint ~0.014-RMS wash the
+  earlier passes measured; the SPU's Gaussian renders them as the crisp
+  pops the console produces. The hardware-spec Python model, fed the
+  ACTUAL dumped sample at the actual pitch, produces the same dense
+  crackle texture (scratchpad/amb_model_render.wav vs amb_c_capture.wav);
+  captured ambient loudness matches the authored gain math (~427 vs
+  predicted ~606 envelope units). MAP001's "clapping" is the same class:
+  Lahan's scripted ambient cues (chopping/knocking), inaudible-by-smear
+  under cubic, now rendered as authored -- and they stop at section
+  changes because the SCRIPT stops them.
+VERDICT: no fix applied; the streaming path and the arming path are both
+correct. Remaining honest uncertainty: whether the authored ambients
+sound THIS prominent on real hardware -- needs a console/emulator
+reference of the intro windows (same standing limitation as the ripple
+entry). If a reference shows retail quieter, the delta hunt starts at the
+effect-script modulation (C6E8) fidelity, not the resampler.
+Evidence: watchpoint callchain + retail asm (85634 gate, E5BC loop math)
++ hardware-spec model render vs capture
+Last verified @ 7d9b969
+
+### SUPERSEDED by the entry above (original diagnosis, premise disproven): boot-zombie SFX voice becomes audible under streaming
 
 User-heard after 7d9b969 (live MAP001): a percussive "clapping" loops under
 the music until a song-section change, then stops. ROOT-CAUSED (gdb-only,
