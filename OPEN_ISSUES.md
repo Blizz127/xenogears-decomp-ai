@@ -367,17 +367,40 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     MOOT (Phase 2 rewrites those as C). MAIN SLUS INTACT (a55929a1); both
     overlays (member_change/shop) unchanged; port build LINK OK, MAP1/14
     PLAYS+SOUND. THE KEY DELIVERABLE: the object subtree is now visible.
-  Phase 2 -- OBJECT INSTANTIATION: SUBTREE FIRMED UP -> ONLY 9 FUNCTIONS
-    (was estimated ~15-25). The 7 named entries (func_801E72CC 30L /
-    func_801E738C 42L / func_801E742C 178L / func_801E7D14 92L /
-    func_801E7FD4 20L / func_801E8330 87L / func_801E7378 7L) + 2
-    transitive menu callees; func_801E8030 is an 8th field jal-target,
-    an alt-entry into a neighbor (resolve while porting the encloser).
-    ALL external callees (8) are already-ported PsyQ prims (DrawSync,
-    GetTPage, SetPolyFT4, LoadImage, GetClut, SetSemiTrans, SetShadeTex,
-    HeapFree) -- the subtree is self-contained. Port the 9 fns as C in
-    src/menu. VALIDATE: func_801E742C returns a real model
-    (D_801E8670[i] non-NULL). Small/bounded, ~1-2 passes.
+  Phase 2 -- OBJECT INSTANTIATION: SCOPE CORRECTED (analysis pass, the
+    Phase-1 "9 clean functions" was an artifact of the seeded mid-function
+    labels). The 8 field object jal-targets are ALL MID-FUNCTION ENTRY
+    POINTS -- the field jals into the MIDDLE of 5 larger menu functions at
+    hand-optimized shared-code fragments (they use loop regs like $s0
+    before saving and share the enclosing function's frame/epilogue;
+    verified: func_801E742C's split .s ends with func_801E733C's -0x30
+    epilogue). MAP of target -> enclosing function:
+      0x801E72CC -> func_801E71B4 (98 instrs, +0x118 in)
+      0x801E7378/738C/742C -> func_801E733C (236 instrs; THREE entries)
+      0x801E7D14 -> func_801E7C50 (134 instrs, +0xC4 in)
+      0x801E7FD4 -> func_801E7E68 (108 instrs, +0x16C in)
+      0x801E8030 -> func_801E8018 (11 instrs)
+      0x801E8330 -> a leaf/no-frame fn
+    REAL SCOPE: 5 enclosing functions, ~587 instructions, with 7 of 8
+    entries mid-function. This is a MEDIUM port with a MULTI-ENTRY twist
+    (C can't express jal-into-mid-function): port each enclosing function
+    as C, exposing the field's entry points as separate C funcs that
+    replicate the code path from the entry to the shared return. The
+    PSYQ-compiler tail-merging/cross-jumping means matching those blocks
+    as {} is likely impossible -> coexistence (INCLUDE_ASM keeps the
+    whole enclosing function; port C provides the functional entries).
+    Callees ARE all ported PsyQ prims (subtree bottoms out), so no deeper
+    unported deps -- the ~587 instrs are the whole job. NEXT STEP (Phase-2
+    warm-up): the seeded object entries in symbol_addrs.menu.txt are the
+    mid-function labels causing the +8-byte shift/93.83%; un-seeding them
+    (the field resolves the addrs via its own undefined_funcs_auto, so
+    menu.bin need not export them) makes the 5 real functions whole and
+    menu.bin -> ~100% -- BUT requires regenerating src/menu/main/misc.c in
+    sync (splat re-detected func_801E742C on a partial regen; needs a
+    clean gears clean+matching cycle). VALIDATE (Phase 2 proper):
+    func_801E742C's behavior returns a real model (D_801E8670[i]
+    non-NULL). Estimate: 2-3 passes (not 1-2), given the multi-entry
+    restructuring + coexistence.
   Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
     unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
     func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
