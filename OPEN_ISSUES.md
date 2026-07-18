@@ -1676,7 +1676,26 @@ Evidence: proven (sample-exact units + FFT alias-line curve-match + TSan
 gate on the final build)
 Last verified @ HEAD of this commit
 
-### SYSTEMIC BUG (diagnosed, unfixed): End+Mute consume leaves the stream feeding at stale gain
+### FIXED: End+Mute consume now does the full off-lining (was: streams feeding at stale gain)
+
+Fix applied (see the commit): the endMute consume performs the same
+off-lining as the normal release-complete path -- phase=OFF, level=0,
+ApplyVoiceComposedGain (the zero reaches AL; NOT under the stream mutex,
+per the gate invariant), stream.active=0 under s_StreamMutex. The
+hardware-faithful End+Mute JUMP in the callback is unchanged.
+Validation: the diagnosis's own census flipped 1-4 stuck voices at every
+instant -> stuckOffActive=0 at every instant; background floor -13%
+(the stuck-loop mush gone) while onset density +29% (percussion hits
+PRESENT and more distinct -- not over-silenced); 8/8 sound probes PASS;
+five-map watchdogs byte-exact; TSan zero new-class port frames on the
+changed handoff; slus d004692f intact; psycross_sound_adpcm.patch
+regenerated CUMULATIVELY (742 lines; note for the recipe: when AMENDING
+an existing patch, the index seed must capture the PRE-SERIES state --
+reverse the old patch first -- or the regen clobbers it to fix-only).
+
+Original diagnosis (for the record):
+
+SYSTEMIC BUG (diagnosed): End+Mute consume left the stream feeding at stale gain
 
 The USER's refined report ("every song has an element that repeats") is a
 REAL systemic 7d9b969 regression, DISTINCT from the ambient finding below

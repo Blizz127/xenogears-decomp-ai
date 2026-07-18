@@ -1,5 +1,5 @@
 diff --git a/src/audio/PsyX_SPUAL.cpp b/src/audio/PsyX_SPUAL.cpp
-index eadf09f..5696aa6 100644
+index eadf09f..a3f40f5 100644
 --- a/src/audio/PsyX_SPUAL.cpp
 +++ b/src/audio/PsyX_SPUAL.cpp
 @@ -70,7 +70,9 @@ typedef struct
@@ -666,12 +666,21 @@ index eadf09f..5696aa6 100644
  		return;
  
  	SDL_LockMutex(g_SpuMutex);
-@@ -1127,6 +1557,18 @@ void PsyX_SPUAL_EnvelopeTick(int cycles)
+@@ -1127,6 +1557,31 @@ void PsyX_SPUAL_EnvelopeTick(int cycles)
  	{
  		SPUALVoice* voice = &g_SpuVoices[i];
  
 +		/* _xeno_sound_adpcm: consume a mixer-flagged End+Mute (ADPCM block
-+		 * code 1: jump + force Release + envelope 0 = instant silence). */
++		 * code 1: jump + force Release + envelope 0 = instant silence).
++		 * The JUMP already happened in the callback (hardware-faithful);
++		 * this completes the MUTE half with the SAME full off-lining the
++		 * normal release-complete path below performs -- zero the
++		 * envelope, push the zeroed composed gain to AL (outside the
++		 * stream mutex, per the gate invariant), and stop the callback
++		 * feeding.  The original consume `continue`d past those two
++		 * writes, leaving every code-1 one-shot (the percussion family)
++		 * looping audibly at stale sustain gain until re-key -- the
++		 * systemic every-song repeat (OPEN_ISSUES). */
 +		if (s_streamMode && SDL_AtomicGet(&voice->stream.endMutePending))
 +		{
 +			SDL_AtomicSet(&voice->stream.endMutePending, 0);
@@ -679,13 +688,17 @@ index eadf09f..5696aa6 100644
 +			{
 +				voice->env.phase = ADSR_OFF;
 +				voice->env.level = 0;
++				ApplyVoiceComposedGain(voice);
++				SDL_LockMutex(s_StreamMutex);
++				voice->stream.active = 0;
++				SDL_UnlockMutex(s_StreamMutex);
 +			}
 +		}
 +
  		if (voice->alSource == AL_NONE || voice->env.phase == ADSR_OFF)
  			continue;
  
-@@ -1136,7 +1578,19 @@ void PsyX_SPUAL_EnvelopeTick(int cycles)
+@@ -1136,7 +1591,19 @@ void PsyX_SPUAL_EnvelopeTick(int cycles)
  		ApplyVoiceComposedGain(voice);
  
  		if (voice->env.phase == ADSR_OFF)
