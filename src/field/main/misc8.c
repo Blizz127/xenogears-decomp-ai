@@ -344,7 +344,9 @@ extern void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor);
 extern void func_80084158(s32 actorIndex, void* actor, void* actorData);
 extern void func_8008399C(s32 actorIndex, void* actor, void* actorData);
 extern void func_800815F0(void);
-extern s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData);
+extern s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
+                         s32 targetState);
+extern void* HeapAlloc(u_int size, u_int allocMode);
 
 void func_8008110C(void) {
     s32 i;
@@ -423,7 +425,8 @@ void func_8008110C(void) {
                 (status & 0x0F80) == 0x0200 &&
                 ((*(u32*)(actorData + 0x00) & 0x00010001) == 0) &&
                 i != g_PlayerActorIndex) {
-                func_80084A40(i, 0x7FFFFFFF, actor, actorData);
+                /* Retail 800814B0 passes targetState 0 in the delay slot. */
+                func_80084A40(i, 0x7FFFFFFF, actor, actorData, 0);
 
                 {
                     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
@@ -1738,13 +1741,10 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
                 *(u32*)(actorData + 0x54) = (u32)contact[1];
                 *(u32*)(actorData + 0x58) = (u32)contact[2];
                 *(u32*)(otherData + 0x04) |= 0x4000;
-                /* ...then asm .L800844B8 routes to the select-target
-                 * machinery (.L80084520) unless flags0 has 0x40800 set.
-                 * That machinery (velocity latch + interact-actor commit)
-                 * is not migrated yet - same gap the deliberate assert
-                 * below the loop guards. */
+                /* ...then asm .L800844B8 routes straight to the
+                 * select-target machinery unless flags0 has 0x40800 set. */
                 if ((actorFlags0 & 0x40800) == 0) {
-                    assert(!"func_80084158 select-target branch not migrated");
+                    goto select_target;
                 }
             }
 
@@ -1767,15 +1767,79 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
                 continue;
             }
             if (*(s16*)(actorData + 0x26) < regionY[0] + 0x10) {
-                /* .L80084520 select-target machinery, not migrated. */
-                assert(!"func_80084158 select-target branch not migrated");
+                goto select_target;
             }
             if (*(u32*)(otherData + 0x04) & 0x00800000) {
-                /* Falls into .L80084520 as well. */
-                assert(!"func_80084158 select-target branch not migrated");
+                goto select_target;
             }
-            /* .L80084570 standing-on-top machinery, not migrated. */
-            assert(!"func_80084158 on-top branch not migrated");
+
+            /* .L80084570 standing-on-top machinery: platforms without the
+             * 0x10 no-carry flag ramp a contact counter (+2/frame, cap
+             * 0x30); once it passes 0x20 the player's X/Z velocity bleeds
+             * into the platform (v/4, round toward zero -- retail's
+             * bgez/addiu/sra) and the player's velocity + carried-velocity
+             * latches are zeroed.  Below threshold (or 0x10 flagged) both
+             * sides' velocities and latches reset (asm .L80084628). */
+            if (!(otherFlags4 & 0x10)) {
+                u8 ramp = *(u8*)(otherData + 0xE3);
+
+                if (ramp < 0x30) {
+                    *(u8*)(otherData + 0xE3) = (u8)(ramp + 2);
+                }
+                if (*(u8*)(otherData + 0xE3) >= 0x21) {
+                    s32 v = *(s32*)(actorData + 0x30);
+
+                    if (v < 0) {
+                        v += 3;
+                    }
+                    *(s32*)(otherData + 0x40) += v >> 2;
+                    v = *(s32*)(actorData + 0x38);
+                    if (v < 0) {
+                        v += 3;
+                    }
+                    *(s32*)(otherData + 0x48) += v >> 2;
+                    /* Retail then re-derives v/4 from the just-zeroed
+                     * velocities -- provably zero, so plain zero stores. */
+                    *(s32*)(actorData + 0x30) = 0;
+                    *(s32*)(actorData + 0x34) = 0;
+                    *(s32*)(actorData + 0x38) = 0;
+                    *(s32*)(actorData + 0x40) = 0;
+                    *(s32*)(actorData + 0x44) = 0;
+                    *(s32*)(actorData + 0x48) = 0;
+                    continue;
+                }
+            }
+            *(s32*)(otherData + 0x40) = 0;
+            *(s32*)(otherData + 0x44) = 0;
+            *(s32*)(otherData + 0x48) = 0;
+            *(s32*)(otherData + 0x30) = 0;
+            *(s32*)(otherData + 0x34) = 0;
+            *(s32*)(otherData + 0x38) = 0;
+            *(s32*)(actorData + 0x30) = 0;
+            *(s32*)(actorData + 0x34) = 0;
+            *(s32*)(actorData + 0x38) = 0;
+            *(s32*)(actorData + 0x40) = 0;
+            *(s32*)(actorData + 0x44) = 0;
+            *(s32*)(actorData + 0x48) = 0;
+            continue;
+
+        select_target:
+            /* asm .L80084520: ride/select this region actor.  selectedY
+             * takes the surface Y unconditionally, the region is marked
+             * 0x800000, the platform's velocity (+0x30..0x38) is latched
+             * into the player's carried-velocity block (+0x40..0x48), and
+             * targetState arms (2).  Unless flags0 has 0x40800, the
+             * interact-actor commits and hasTarget latches. */
+            selectedY = regionY[0];
+            *(u32*)(otherData + 0x04) |= 0x00800000;
+            *(u32*)(actorData + 0x40) = *(u32*)(otherData + 0x30);
+            *(u32*)(actorData + 0x44) = *(u32*)(otherData + 0x34);
+            *(u32*)(actorData + 0x48) = *(u32*)(otherData + 0x38);
+            targetState = 2;
+            if ((actorFlags0 & 0x40800) == 0) {
+                *(u8*)(actorData + 0x74) = (u8)i;
+                hasTarget = 1;
+            }
             continue;
         }
 
@@ -1840,12 +1904,38 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     if (hasTarget == 0) {
         *(u8*)(actorData + 0x74) = 0xFF;
     } else {
-        assert(!"func_80084158 interaction target branch not migrated");
+        /* asm .L80084718: commit the selected target -- mark it 0x8000 and,
+         * on a FRESH commit only (previous interact-actor was 0xFF),
+         * snapshot the target FieldActor's +0x50/52/54 trio plus the
+         * func_800825AC pairing value into a one-shot 12-byte record at
+         * actorData+0x110 (allocated once, latched by flags 0x134&0x80). */
+        u8 t = *(u8*)(actorData + 0x74);
+        u8* tData = (u8*)(uintptr_t)
+            *(u32*)((u8*)g_FieldActors + t * 0x5C + 0x4C);
+
+        *(u32*)(tData + 0x04) |= 0x8000;
+        if (oldInteractActor == 0xFF) {
+            u8* tActor;
+            u16* rec;
+
+            if (!(*(u32*)(actorData + 0x134) & 0x80)) {
+                *(u32*)(actorData + 0x110) =
+                    (u32)(uintptr_t)HeapAlloc(0xC, 0);
+                *(u32*)(actorData + 0x134) |= 0x80;
+            }
+            tActor = (u8*)g_FieldActors + *(u8*)(actorData + 0x74) * 0x5C;
+            rec = (u16*)(uintptr_t)*(u32*)(actorData + 0x110);
+            rec[0] = *(u16*)(tActor + 0x50);
+            rec[1] = *(u16*)(tActor + 0x52);
+            rec[2] = *(u16*)(tActor + 0x54);
+            rec[4] = (u16)func_800825AC(actorIndex,
+                                        *(u8*)(actorData + 0x74));
+        }
     }
 
     if ((*(u32*)(actorData + 0x00) & 0x00010000) == 0 &&
         (*(u32*)(actorData + 0x04) & 0x00200000) == 0) {
-        func_80084A40(actorIndex, selectedY, actor, actorData);
+        func_80084A40(actorIndex, selectedY, actor, actorData, targetState);
     }
 
     {
@@ -1955,7 +2045,8 @@ static void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
     *(s32*)(actor + 0x24) = *(s16*)(actorData + 0x26);
 }
 
-s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData) {
+s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
+                  s32 targetState) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
     s32 origX;
@@ -2133,11 +2224,14 @@ run_collision:
 
         VectorNormal(&normals[*(s16*)(actorData + 0x10)], (VECTOR*)(actorData + 0x50));
 
+        /* Retail 80084FD8-8008502C conditions on the FIFTH argument
+         * (targetState, incoming slot 0x110(sp)) -- not on y; the writes
+         * use y (asm $s7 = $a1). */
         if (D_800ADB98 != 0) {
-            if ((u32)y < 2) {
+            if ((u32)targetState < 2) {
                 *(s16*)(spriteData + 0x84) = y;
             }
-        } else if (y != 0) {
+        } else if (targetState != 0) {
             if (*(s16*)(spriteData + 0x84) < y + 10) {
                 *(u8*)(actorData + 0x74) = 0xFF;
             }

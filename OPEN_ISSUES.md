@@ -45,9 +45,19 @@ Last verified @ 0a32159.
      latch for 0x8000000 actors; 0x80-only clears the latch). MAP15 now
      PLAYS+SOUND (19/24; probe: its 0x880-flag actor exercises the
      clear-latch path each poll, latch stays 0 -- retail-faithful).
-     REMAINING in this class: func_80084158 select-target/on-top/target
-     branches (5 sibling asserts, misc8 family) -- fire on interaction
-     TARGETING beats; branch-scale, 1 pass.
+     func_80084158's 5 targeting asserts RESOLVED: the 3 machines behind
+     them implemented from asm (select-target ride latch .L80084520,
+     standing-on-top momentum transfer .L80084570 with the 0xE3 ramp
+     counter, post-loop fresh-commit record snapshot .L80084718 +
+     func_800825AC pairing). Also fixed a pre-existing A40 transcription
+     bug the machines feed: func_80084A40 dropped retail's FIFTH argument
+     (targetState, 0x110(sp)) and conditioned its sprite+0x84 ground
+     writes on y instead -- with y=0x7FFFFFFF (199/200 calls, probe) the
+     old code wrote +0x84=-1 to every actor every frame. Now threaded +
+     conditioned per retail; boot fade pacing shifts (converges to the
+     identical lit scene, brightness 70.0 vs 71.2) -- retail-correct.
+     The deep branches (ride/momentum) await platforming beats to fire;
+     transcription is asm-verified, no spurious firing at boot.
   5. MAP3 SEGV -- unported NPC sprite-loader func_800A1364 (sibling of
      the decomped func_800A06E8; template exists; also fires benignly on
      MAP16/80). BLOCKER for night-interior beats. Bounded, 1 pass.

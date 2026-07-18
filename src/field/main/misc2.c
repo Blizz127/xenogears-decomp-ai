@@ -2617,7 +2617,8 @@ extern s32 D_800B2360;
 extern s32 D_800B2364;
 extern s32 D_800B2368;
 extern s32 FieldCharacterIdToPartyId(s32 characterId);
-extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActorData);
+extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActorData,
+                          s32 targetState);
 extern void func_80081C54(s32 actorIndex);
 
 void func_80077268(void) {
@@ -2627,7 +2628,9 @@ void func_80077268(void) {
 
     playerActor = (u8*)g_FieldActors + g_PlayerActorIndex * 0x5C;
     playerActorData = (u8*)(uintptr_t)*(u32*)(playerActor + 0x4C);
-    func_80084A40(g_PlayerActorIndex, *(s16*)(playerActorData + 0x26), playerActor, playerActorData);
+    /* Retail leaves the targetState stack slot uninitialized at both
+     * func_80077268 call sites; 0 is the defined-behavior equivalent. */
+    func_80084A40(g_PlayerActorIndex, *(s16*)(playerActorData + 0x26), playerActor, playerActorData, 0);
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* actor = (u8*)g_FieldActors + i * 0x5C;
@@ -2639,7 +2642,7 @@ void func_80077268(void) {
             if (partyId != -1 && partyId != 0) {
                 u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
 
-                func_80084A40(i, *(s16*)(actorData + 0x26), actor, actorData);
+                func_80084A40(i, *(s16*)(actorData + 0x26), actor, actorData, 0);
 
                 *(u32*)(spriteData + 0x00) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x00);
                 *(u32*)(spriteData + 0x04) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x04);
