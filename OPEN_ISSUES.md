@@ -37,6 +37,43 @@ Last verified @ 0a32159.
   2. New Game flow hardcodes map1/ent6 (port_main.c:1587), bypassing the
      retail intro scene (MAP14 zoom + intro windows). FLOW-COSMETIC --
      the scene itself plays when booted directly. Small (routing).
+     WALL-10 SCOPE (NG-flow, read-only): the port's NG boot is a DELIBERATE
+     SHORTCUT -- port_main.c:1587 hardcodes D_8006F94E=1 -> drops straight
+     into playable Lahan (Fei+Citan, control immediate; wall 8). It runs NO
+     pre-Lahan scene. The "scene circling Citan's lab" observed in testing
+     was a DIRECT-BOOT to MAP14 (Fei's-room FIRE-PAINTING scene, scripted
+     mode-1 camera panning the painting -- captured, confirmed), NOT the NG
+     boot; "Citan's lab" was a mis-ID of Fei's room.
+     (B) Retail NG: func_8001BB50 -> func_8001B970 (template, wall 7) + state
+     bytes -> FMV -> opening scene chain (fire painting MAP14 -> dream ->
+     Fei wakes -> Lahan), each scene advancing on a scripted trigger.
+     func_8001BB50 sets no map -> the first field is the opening scene via
+     the transition system, not map1 directly.
+     (C) MATCH: PARTIAL / DELIBERATE-SKIP -- not mis-routed (map1 is the
+     correct DESTINATION), the port just omits the whole cinematic opening.
+     (D) OPENING SCENES BOOTABLE: MAP14 renders correctly (the painting +
+     scripted camera; only benign libarchive/sound stubs, NO asserts/stalls,
+     NOT a cutscene-opcode wall). MAP0 = a dark 2-char interior scene, boots,
+     sprites render. Scenes hold on scripted-timer/trigger advance in
+     headless (MAP14 did not auto-transition or confirm-advance in a ~480f
+     window -- timed/event-gated, not stalled).
+     (E) FMV BOUNDARY: SKIPPABLE. The opening FIELD scenes are field maps
+     (field pipeline, no movie decoder -- MAP14 renders with none involved),
+     SEPARATE from the FMV/STR decoder. NG-routing scene->scene does NOT
+     need the deferred decoder.
+     (F) PLAN: plausibly-bounded ROUTING pass, NOT a decomp: route NG entry
+     to MAP14 (not map1), let the scenes chain via their scripted
+     transitions, supply the per-scene advance (timer/confirm). Scenes boot,
+     FMV is skippable, map1 is the right end. RISK/UNKNOWNS (needs live
+     verification): the full chain MAP14->dream->house->Lahan transition
+     triggers are untraced (MAP14's advance mechanism unidentified); the
+     untested scenes (dream, Fei's-house-proper) may surface per-scene
+     cutscene-opcode walls when run live. RECOMMENDATION: the current
+     shortcut already serves "playable Lahan first"; NG-routing adds the
+     cinematic opening (fidelity) as a medium routing pass with
+     live-verification risk -- lower priority than the object-overlay arc
+     (which unblocks MAP3+MAP16 gameplay). Defer unless the opening
+     sequence is the explicit goal.
      WALL-8 DIAGNOSIS (the "intro input-lock", read-only pass): NO IN-FIELD
      LOCK EXISTS -- the wall-7 "NG movement is input-locked" reading was a
      HEADLESS-CAPTURE ARTIFACT (no keyboard focus in the GL capture -> the
