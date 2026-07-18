@@ -436,30 +436,93 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     NOT needed for MAP16's forest.
     NET: Phase 2 makes the object pipeline SAFE; Phase 3 activates the
     loader -> MAP16 forest builds (field models) + MAP3 boots; the menu
-    objects' own render is Phase 2b. STEP 2B (the port, next): port the 6
-    fns as C in a PORT file (pc_port/src) providing the field entries
-    func_801E738C/742C/7D14/7FD4/8030/8330 (the port's field calls resolve
-    to these; src/menu keeps INCLUDE_ASM whole for matching, object region
-    100%). Read full func_801E742C (POLY_FT4 write + texture) + 7C50/7E68.
-    Estimate: 1-2 passes now the layout + architecture are mapped.
-  Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
-    unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
-    func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
-    calls func_801E8330 x2 -- ON the overlay path, not independent); port
-    MAP3's 3 stubs (func_800230A8 34L / func_80088198 23L = bounded leaves,
-    NO overlay dep -> can be done ANYTIME; func_8008B180 39L has 1 801E
-    dep -> Phase 2). VALIDATE: MAP3 boots (no SEGV), MAP16 renders (forest
-    objects load, seen>>56).
+    objects' own render is Phase 2b.
+    STEP 2B (code pass -- proved the port target is the WRONG code, so no
+    faithful/functional C was written; this is a substantiated STOP, not
+    analysis drift):
+    (A) 7 of the 8 field-imported object entries (func_801E72CC / 7378 /
+        738C / 742C / 7D14 / 7FD4 / 8030 / 8330) are MID-FUNCTION entries.
+        Their first instructions consume menu-CONTEXT register/global state
+        the field's plain-argument calls never establish. DISASM PROOF:
+        - func_801E738C: `addu $a0,$a0,$v0` -- consumes uninitialised $v0.
+        - func_801E742C: `addu $v1,$s0,$v1` -- consumes menu-loop $s0
+          (=iter*2) + $v1 (=g_Menu[0x308], loaded by the SKIPPED prior
+          instr). The field's caller (func_80077AB4) leaves $s0 =
+          &D_8005A450[i] (a ~0x8005xxxx pointer) -> garbage slot address.
+        - func_801E7D14: `addu $v0,$s3,$v0` -- consumes menu-loop $s3.
+        - func_801E8330: `lw $v1,0x308($a1)` while the field caller
+          (func_800A24C4) passes $a1 = 0 -> reads absolute addr 0x308.
+        Only func_801E927C is a CLEAN standalone fn (SetPolyFT4 + SemiTrans
+        + ShadeTex + rgb=0x80); the field does not import it directly.
+    (B) The menu.bin code at 0x801E742C is func_801E733C's 16-iteration
+        MENU-sprite loop: it writes FIXED atlas UVs (D_801EA04C/D_801EA050)
+        and FIXED GetTPage(0,0,0,0x140)/GetClut(0,0x1C0) -- it does NOT use
+        any per-object texture/position. So the code's ACTUAL behaviour (a
+        menu's fixed 16-sprite atlas) != the field's NEEDED behaviour
+        (per-object textured sprite from bufTex at x/y). Same bytes cannot
+        do both. Step 2A's "func_801E742C writes one POLY_FT4 per object
+        from the x/y/vec args" described the MENU loop and MIS-ATTRIBUTED it
+        to the field function; the field's object-draw routine is not
+        coherently present at these addresses. A faithful port cannot
+        satisfy the field ABI; a "functional" port would be reconstructing
+        behaviour the asm does not reveal (== guessing, forbidden).
+    (C) THE REDIRECT (what actually unblocks MAP3/MAP16): func_800A1364 (the
+        object-REGISTER opcode, staged) does MORE than register -- it (1)
+        loads the object's sprite via func_80076AC0(g_FieldSpriteData), (2)
+        advances the script IP by +3 (UN-SPINS the stuck script), THEN (3)
+        registers the object (D_800B21DC[D_800B2264]=spriteId; D_800B2264++).
+        Effects (1)+(2) are the real MAP3/MAP16 unblock (sprite loaded +
+        script un-spun -> field models build); effect (3) merely populates
+        the object COUNT that later drives the (incoherent) draw path.
+    NEW PLAN (supersedes "port the 6 fns"): the object-DRAW port is the
+    wrong/blocked target. Do NOT port func_801E742C faithfully (impossible)
+    or functionally (guessing). Instead Phase 3 implements func_800A1364's
+    load + IP-advance; func_801E742C/738C/7D14/8330 become SAFE no-ops
+    (field calls resolve to non-corrupting stubs -- objects simply don't
+    draw, which is a Phase-2b concern and NOT needed for the forest/boot).
+    OPEN EMPIRICAL Q (needs runtime, gated on Phase 3 un-stage): once the
+    script un-spins, does MAP16's forest appear from FIELD MODELS with the
+    object-draw as a no-op? If yes, the func_801E742C port is never needed;
+    if the objects are load-bearing, capture the LIVE g_Menu writes under
+    GDB to recover the real draw behaviour (the only non-guessing source).
+  Phase 3 -- ACTIVATE (now the FIRST real code step, per the Step-2B
+    redirect: it no longer waits on a func_801E742C faithful port):
+    (1) implement func_800A1364's body -- FieldScriptVMGetArgument -> sprite
+        id, func_80076AC0 load, func_800A0C94, actor flag bits, IP += 3
+        (un-spin), and the object-register tail (D_800B21DC[cnt]=id;
+        D_800B2264++). This is a self-contained field-script opcode with NO
+        801E dependency in its own body.
+    (2) provide SAFE no-ops for the field's object entries
+        func_801E742C/738C/7D14/8330 (+72CC/7378/7FD4/8030) so the
+        post-register draw loops (func_80077AB4 / func_8007520C /
+        func_800A24C4) don't jal into incoherent menu code -- objects don't
+        draw (Phase 2b / TBD), but the pipeline is non-corrupting.
+    (3) unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
+        func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
+        calls func_801E8330 x2); port MAP3's 3 stubs (func_800230A8 34L /
+        func_80088198 23L bounded leaves, NO overlay dep -> can be done
+        ANYTIME; func_8008B180 39L).
+    VALIDATE (empirical, the decisive test): MAP3 boots (no SEGV); MAP16
+    forest builds from FIELD MODELS once the script un-spins (seen>>56).
+    If the forest appears with object-draw as a no-op, the func_801E742C
+    port is confirmed UNNEEDED. If not, GDB-capture the live g_Menu object
+    writes to recover the real draw (only non-guessing path).
   Phase 2b (SEPARATE, menu-system track, NOT needed for MAP3/MAP16): the
     mode-0 menu render tree (func_801C62A8 dispatcher + draw callees) --
     the existing menu scope below. Shares Phase 1; independent of Phase 2.
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
-DEPENDENCY: all-or-nothing on the loader (wall 3 proved activating
-func_800A1364 without instantiation regresses maps) -- Phases 1->2->3 are
-strictly ordered; only the 2 bounded MAP3 stubs (230A8/88198) and Phase 2b
-are order-independent. FIRST BOUNDED PHASE: Phase 1 (menu.bin infra) -- a
+DEPENDENCY (REVISED after Step 2B): Phase 2's object-DRAW port is NOT on
+the MAP3/MAP16 critical path -- Step 2B proved its target (func_801E742C et
+al.) is incoherent menu-context code, and func_800A1364's real unblock is
+sprite-load + IP-advance (un-spin), with the draw handled by SAFE no-ops.
+So the order is now Phase 1 -> Phase 3 (activate + no-op the draw); Phase 2
+(recovering the real object-draw) is DEFERRED and only pursued if the MAP16
+empirical test shows the objects are load-bearing (needs runtime capture).
+The 2 bounded MAP3 stubs (230A8/88198) and Phase 2b remain order-independent.
+Wall 3's "activating func_800A1364 regresses maps" is now understood: the
+regression was the incoherent draw path, which the no-op prevents. FIRST BOUNDED PHASE: Phase 1 (menu.bin infra) -- a
 well-defined mechanical splat bring-up (config + split + baseline), the
 concrete non-blind starting point; optionally warm up with the 2 bounded
 MAP3 stub leaves first. RECOMMENDATION: this is the single highest-leverage
