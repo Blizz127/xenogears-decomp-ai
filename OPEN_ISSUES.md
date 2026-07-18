@@ -410,10 +410,38 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     (func_801E8474 via func_801C58EC/D2D38, NOT the field render path), so
     the field render consumes the g_Menu slots. PORT AS COEXISTENCE:
     INCLUDE_ASM keeps the whole enclosing functions (object region now
-    100%), port C provides the functional field entries. Key remaining
-    analysis: the g_Menu object-slot layout (+0x2784). Estimate: 2-3 passes
-    for the 6-function subsystem. VALIDATE: func_801E742C sets up the
-    object slots -> the field renders objects.
+    100%), port C provides the functional field entries.
+    STEP 2A DONE (analysis): the g_Menu object-slot at +0x2784 is a
+    POLY_FT4 SPRITE ARRAY (0x28 stride, standard PSX textured-quad prim:
+    xy0-3 / uv0-3 / clut / tpage / rgb-code -- the sh,sh,sb,sb write
+    pattern at 0x2784/86/88/89, 0x278C.., 0x2794.., 0x279C.. is 4 verts).
+    Addressed as g_Menu[0x34C] + 0x2784 + (i + g_Menu[0x308]) * 0x28.
+    func_801E742C writes one POLY_FT4 per object (position from x/y/vec
+    args, texture from GetTPage/GetClut on the loaded buffers).
+    ARCHITECTURE (Step-2A discoveries -- they reshape the phasing):
+    (1) the POLY_FT4 array is DRAWN by the MENU RENDER (func_801C7BF4
+    DrawOTag), NOT the field -- the menu objects' VISUAL rendering is
+    entangled with Phase 2b. func_801E7C50/7E68 are also called by ~10
+    menu-internal fns (shared menu helpers).
+    (2) func_80077AB4 EARLY-RETURNS if D_800B2264 == 0; on MAP16 the loader
+    stub keeps D_800B2264 = 0, so func_801E742C is NEVER reached until
+    func_800A1364 (Phase 3) activates and registers objects. So the Phase-2
+    port is required to SAFELY activate func_800A1364 (Phase 3) -- without
+    it, activate -> registers objects -> func_801E742C stub -> wall-3
+    regression.
+    (3) MAP16's FOREST is FIELD MODELS, blocked by func_800A1364 SPINNING
+    (ip=7fff, script stuck), NOT by func_801E742C. Activating func_800A1364
+    (Phase 3) un-spins the script -> the forest models build. The menu
+    objects (POLY_FT4s) are a SEPARATE menu-side render (Phase 2b), likely
+    NOT needed for MAP16's forest.
+    NET: Phase 2 makes the object pipeline SAFE; Phase 3 activates the
+    loader -> MAP16 forest builds (field models) + MAP3 boots; the menu
+    objects' own render is Phase 2b. STEP 2B (the port, next): port the 6
+    fns as C in a PORT file (pc_port/src) providing the field entries
+    func_801E738C/742C/7D14/7FD4/8030/8330 (the port's field calls resolve
+    to these; src/menu keeps INCLUDE_ASM whole for matching, object region
+    100%). Read full func_801E742C (POLY_FT4 write + texture) + 7C50/7E68.
+    Estimate: 1-2 passes now the layout + architecture are mapped.
   Phase 3 -- ACTIVATE + branch + stubs (bounded once Phase 2 lands):
     unstage func_800A1364 (XENO_FIELD_OBJECT_OVERLAY on); implement
     func_800821F4's battle-anim branch (asm 800822D8-80082360, ~30 lines,
