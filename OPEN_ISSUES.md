@@ -14,6 +14,78 @@ Rules:
 
 ---
 
+## Lahan-playthrough worklist (scoped 0a32159; story-ordered, read-only, no implementation)
+
+The path to "fully playable Lahan," ordered as a player hits each wall.
+Evidence: normal-boot walk, 21-map Lahan-block boot survey (maps 0-20),
+frame captures (maps 0/2/5/16), fail-loud assert census, stub census.
+Last verified @ 0a32159.
+
+(A) MAP SET (Lahan block 0-20): 19/21 boot to PLAYS+SOUND.
+  0 = dark interior story scene (27 actors); 1 = Lahan village day (walk/
+  dialog/well-camera all previously validated); 2 = Lahan night w/ fog
+  (fixed 0a32159); 5 = house interior (Alice's; verified frame); 6,8,9,
+  11,12,13 = interiors; 14 = Fei's-room intro scene (fire-painting zoom);
+  15 = mountain path -- ASSERT AT BOOT; 16 = Blackmoon Forest --
+  RENDER-SUSPECT (frame mostly black at f150; loader stub fires);
+  17-20 = forest/outskirts, play. Failures: MAP3 (SEGV, unported sprite-
+  loader func_800A1364) and MAP15 (func_8008399C interaction assert).
+
+(B/C) ORDERED WALL-LIST (playthrough order; BLOCKER vs COSMETIC; size):
+  1. Intro FMV skipped -- movie decoder unported. COSMETIC (skippable).
+     Large (a decoder). Defer.
+  2. New Game flow hardcodes map1/ent6 (port_main.c:1587), bypassing the
+     retail intro scene (MAP14 zoom + intro windows). FLOW-COSMETIC --
+     the scene itself plays when booted directly. Small (routing).
+  3. MAP14 intro ripple banding -- COSMETIC, already filed below.
+  4. Village interaction walls -- BLOCKER CLASS, runtime-proven:
+     func_8008399C "button/special interaction" (misc8.c:1459, fires for
+     any interact-candidate actor with flags4&0x180 -- crashes MAP15 at
+     BOOT today) + func_80084158 select-target/on-top/target branches
+     (5 sibling asserts, misc8 family). Partial-branch decomps in ported
+     fns (the far-color pattern). Bounded, 1-2 passes.
+  5. MAP3 SEGV -- unported NPC sprite-loader func_800A1364 (sibling of
+     the decomped func_800A06E8; template exists; also fires benignly on
+     MAP16/80). BLOCKER for night-interior beats. Bounded, 1 pass.
+  6. Cutscene opcode walls (fire when their cutscenes run): func_8001FBE4
+     opcode 0xBC sub-command/anchor/camera-tail (4 asserts), func_80022660
+     bytecode path, func_800248D4 opcode paths (2 asserts; also the
+     post-menu anim landmine). Sizes unknown until hit; each looks
+     branch-scale. LIKELY-BLOCKERS for story cutscenes.
+  7. Party-change walls (Citan joins): func_800815F0 party-history sync +
+     func_800A24C4 party-skin branch. Branch-scale. BLOCKERS at the join
+     beat.
+  8. MAP16 Blackmoon Forest render-suspect (mostly-black frame) --
+     triage after #5 (its loader stub is one suspect). BLOCKER-if-real
+     for the post-attack exit.
+  9. THE LAHAN-ATTACK SCRIPTED BATTLE -- the battle system is entirely
+     unported (field->battle boundary is the no-op func_80281204;
+     func_800821F4 "battle animation branch" assert; menu/battle overlay
+     arc unstarted). THE ARC-ENDING WALL: "playable Lahan" ends at the
+     attack trigger without it. Multi-pass subproject; needs its own
+     scoping.
+  Boot-stub census (benign at boot, unknown in-story): func_80028B14
+  (libarchive, 231L, fires broadly), func_80098430 (misc7, 51L, map1),
+  func_80091BBC (misc11, 149L, maps 7/11/12/13/19/60/143), func_8003A450
+  (sound, 48L), func_80089FD0 (50L)/func_8008F90C (80L, map16).
+  STALE known-state note: func_8009635C (item-give) is IMPLEMENTED.
+
+(D) BLOCKERS: #4, #5, #6, #7, #9 (+#8 if real). COSMETIC: #1, #2, #3.
+
+(E) MENU DEPENDENCY: the Lahan story chain forces NO menu (talk/cutscene/
+  fetch beats only; save points optional). Menu overlay stays DEFERRABLE
+  for story-playability -- but a user-opened menu returns into the
+  func_800248D4 post-menu anim assert (landmine, part of #6).
+
+(F) CRITICAL PATH (ordered): #4 interaction branches -> #5 MAP3 loader ->
+  #6 cutscene opcodes as-hit -> #7 party-join walls -> #8 forest triage
+  -> #2 NG-flow routing -> #9 battle system. Estimate: #4-#8 ~5-7
+  bounded passes (each far-color/loader-sized) = story-walkable Lahan up
+  to the attack; #9 is a separate multi-pass arc gating "fully playable."
+  RECOMMENDED FIRST: #4 func_8008399C interaction branch -- the only
+  blocker runtime-proven TODAY (MAP15 boot), bounded, and it unblocks
+  both the mountain-path map and village interactions.
+
 ## Gameplay-completeness worklist (scoped 7774804; ranked, measured, no implementation)
 
 Measurement pass turning "the game isn't complete" into a ranked target list.
