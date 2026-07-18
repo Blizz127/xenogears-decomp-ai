@@ -67,7 +67,12 @@ INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 #   perspective/offscreen path that doesn't render here, and its 24-byte SPRT
 #   layout mismatches the game's hardcoded 0x10 strides (font.c). MUST match the
 #   value PsyCross's lib is built with (see pc_port/CMakeLists.txt).
-GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
+# XENO_FIELD_OBJECT_OVERLAY (Phase 3): activate func_800A1364's object-register
+# body (sprite-load + script IP-advance/un-spin + object registration).  The
+# object DRAW entries (func_801E742C/738C/7D14/8330) remain safe no-op stubs
+# (Phase-2B proved they are incoherent mid-menu-function targets); this arms the
+# un-spin so stuck field scripts (MAP3/MAP16) advance and field models build.
+GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
 # Optional compile-time diagnostics, for example:
 # XENO_DIAG_DEFINES=-DXENO_DIAG_OPCODE_SWEEP ./scratchpad/run_build_port.sh
 # Leave GFLAGS byte-for-byte unchanged when unset.

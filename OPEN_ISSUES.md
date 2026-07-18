@@ -507,6 +507,39 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     If the forest appears with object-draw as a no-op, the func_801E742C
     port is confirmed UNNEEDED. If not, GDB-capture the live g_Menu object
     writes to recover the real draw (only non-guessing path).
+    ===== PHASE 3 DONE (empirical results, build validated) =====
+    IMPLEMENTED: (1) func_800A1364 activated for the port via
+    -DXENO_FIELD_OBJECT_OVERLAY in pc_port/build_port.sh (its C body already
+    existed, asm-verified; the flag flips it from a stub to the live un-spin).
+    (2) the draw entries func_801E742C/738C/7D14/7FD4/8330 are the port's
+    auto-stubs -- confirmed SAFE no-ops (xeno_port_stub logs once + returns,
+    never aborts). (3) func_800821F4's battle-anim branch WRITTEN (misc8.c,
+    replaces the assert; asm .L800822D8-.L80082360: object-slot anim-state
+    writes into &D_800B2346-0x162 + no-op'd func_801E8330 draw). (4) a NEW
+    blocker surfaced + fixed: func_80075B44 (misc2.c) asserted on the
+    object-actor render branch (actorFlags4 & 0x2000, the flag func_800A1364
+    stamps) -- replaced with `continue` (skip the object-actor draw, Phase
+    2b; field-model actors still render).
+    THE DECISIVE ANSWER -- func_801E742C is NOT needed for MAP16's forest:
+    with the object-draw fully no-op'd, MAP16 boots 200 frames (was blocked),
+    D_800B2264=4 (4 objects registered by the un-spin), and a FOREST TREE
+    RENDERS (green foliage model, top-right, GL glReadPixels ground truth) --
+    a FIELD MODEL, drawn by the field's own system once the script un-spun.
+    The object POLY_FT4 draw is proven off the forest's critical path.
+    (The rest of the MAP16 frame is sparse/black at the spawn camera -- a
+    separate camera/actor-population question, NOT the object overlay.)
+    MAP3: the un-spin WORKS (99 frames, was a boot-SEGV), but a downstream
+    NON-object blocker remains: func_8009EB78 (misc6.c:446) NULL-derefs
+    g_FieldActors[actorIndex].pActorData where the un-spun script passes
+    actorIndex=0x80 (out of range for the ~52-slot actor array; the C is
+    asm-faithful, no dropped mask). This is a MAP3 script/actor-load
+    semantics issue (why does the script reference an unloaded actor 0x80?),
+    separate from the object overlay -- the next MAP3 blocker to investigate.
+    TRIPWIRE/BASELINE INTACT: all five maps 000/001/014/047/334 stay at
+    D_800B2264=0 (they never invoke func_800A1364), so the object code paths
+    provably never execute -> render fingerprints unchanged, no crashes.
+    slus sha256 a55929a1e1ea5563 UNCHANGED (misc2/misc8 are FIELD TUs, not
+    slus); matching build 468/468 OK; port LINK OK.
   Phase 2b (SEPARATE, menu-system track, NOT needed for MAP3/MAP16): the
     mode-0 menu render tree (func_801C62A8 dispatcher + draw callees) --
     the existing menu scope below. Shares Phase 1; independent of Phase 2.

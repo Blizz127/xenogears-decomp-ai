@@ -2090,7 +2090,15 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 
         actorFlags4 = *(u32*)(pActorData + 0x04);
         if (actorFlags4 & 0x2000) {
-            assert(0 && "func_80075B44 special actor branch is not implemented");
+            /* Object-actor render branch: this actor was registered by the
+             * object-overlay opcode func_800A1364 (which stamps flags4 |=
+             * 0x2000).  Its visual is drawn through the menu.bin overlay
+             * entries (func_801E742C et al.), which Phase-2B proved are
+             * incoherent mid-menu-function targets -- safely no-op'd in the
+             * port.  Skip this actor's draw (visual deferred, Phase 2b); the
+             * per-actor transform snapshot above is already applied, and
+             * regular field-model actors still render normally. */
+            continue;
         }
 
         {

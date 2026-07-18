@@ -813,6 +813,13 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
 
 extern s16 D_800B2344;
 extern s16 D_800B2346;
+extern u8 D_800ADFB8[];
+/* Overlay object-anim entry (menu.bin, vram 0x801C5000).  In the PC port this
+ * resolves to a safe no-op stub -- the object's visual isn't drawn, but the
+ * anim-state writes below still update the object slot.  See Phase-2B finding:
+ * the field's func_801E8330 target is a mid-menu-function entry, incoherent to
+ * port faithfully; the draw is deferred, the state management is retail-faithful. */
+extern void func_801E8330(s32 objSlot, s32 unused, s32 animValue);
 
 void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
     u8* actor = pFieldActor;
@@ -846,7 +853,31 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
         return;
     }
 
-    assert(!"func_800821F4 battle animation branch not migrated");
+    /* asm .L800822D8-.L80082360: battle-animation branch (flags4 & 0x2000 set).
+     * The actor carries an object slot in bits 13..15 of its +0x12C word (the
+     * slot func_800A1364 stamped).  Drive that object's anim through the overlay
+     * entry func_801E8330 (no-op in the port -- draw deferred, Phase-2B), then
+     * record the resolved anim index into the per-slot anim-state array at
+     * &D_800B2346 - 0x162, indexed by bits 12..15 (even) of the same word.
+     * animIndex < 0x10 uses the D_800ADFB8[] remap; >= 0x10 subtracts 0x10. */
+    {
+        u8* animState = (u8*)&D_800B2346 - 0x162;
+        u32 objSlot = (*(u32*)(actorData + 0x12C) >> 13) & 7;
+
+        if (nextAnim < 0x10) {
+            u8 mapped = D_800ADFB8[nextAnim];
+            func_801E8330(objSlot, 0, mapped);
+            actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            *(u16*)(animState + ((*(u32*)(actorData + 0x12C) >> 12) & 0xE)) =
+                mapped;
+        } else {
+            s16 anim2 = nextAnim - 0x10;
+            func_801E8330(objSlot, 0, anim2);
+            actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            *(u16*)(animState + ((*(u32*)(actorData + 0x12C) >> 12) & 0xE)) =
+                (u16)anim2;
+        }
+    }
 }
 
 s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
