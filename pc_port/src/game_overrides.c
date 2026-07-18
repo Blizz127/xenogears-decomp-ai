@@ -136,6 +136,7 @@ typedef struct ModelPrimDesc {
 extern s32 func_8002E688(u8* pCmd, s32 count);
 /* Build-pass handlers ported in temp2.c; only the first arg is consumed, so the
  * (ModelPrimBuildProc) casts are ABI-safe truncated-u32 host-pointer calls. */
+extern s32 func_8002CDCC(u8* pSrc, u8* pCmd, s32 shade);
 extern s32 func_8002CF34(s32* a0);
 extern s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade);
 extern s32 func_8002D0C0(s32* a0);
@@ -149,8 +150,29 @@ static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count);
+static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count);
+static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count);
+static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count);
 
 ModelPrimDesc D_8004FE50[15] = {
+    [0x00] = {
+        /* Retail row 0x8004FE50: proc[0]=proc[4]=proc[5]=0x8002E038 (the same
+         * small-tri average walker prim 4 dispatches) and proc[2]=0x8002E470
+         * (small-tri minimum) -- retail literally reuses prim 4's walkers.
+         * proc[1]=0x8002ED20 / proc[3]=0x8002E8DC are unported -> NULL (the
+         * dispatcher aborts loudly if a map ever reaches them). The buildProc
+         * 0x8002CDCC is a byte-identical retail clone of prim 8's 0x8002CF58
+         * (lit flat tri builder, tag len 4), ported in temp2.c. */
+        .proc = { ModelPrimTriSmallAverageVariant0, NULL,
+                  ModelPrimTriSmallMinimumVariant2, NULL,
+                  ModelPrimTriSmallAverageVariant0,
+                  ModelPrimTriSmallAverageVariant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002CDCC,   /* PSX 0x8002CDCC */
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x14,
+    },
     [0x04] = {
         .proc = { ModelPrimTriSmallAverageVariant0, NULL,
                   ModelPrimTriSmallMinimumVariant2, NULL, NULL, NULL },
@@ -160,8 +182,13 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x14,
     },
     [0x05] = {
-        .proc = { ModelPrimTriAverageVariant0, NULL, ModelPrimTriMinimumVariant2,
-                  NULL, NULL, NULL },
+        /* Retail row 0x8004FF18: proc[1]=0x8002E04C is the same entry as
+         * proc[0] (average walker); proc[4]=0x8002EF0C is the depth-cued
+         * (DPCS fog) AVSZ3 walker; proc[5]=func_8002F0E4 is the depth-cued
+         * min-SZ walker.  proc[3]=0x8002E8F0 stays unported -> NULL. */
+        .proc = { ModelPrimTriAverageVariant0, ModelPrimTriAverageVariant0,
+                  ModelPrimTriMinimumVariant2, NULL,
+                  ModelPrimTriDepthCueVariant4, ModelPrimTriDepthCueMinVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D984,   /* PSX 0x8002D984 */
         .cmdStride = 0x08,
         .packetStride = 0x08,
@@ -183,7 +210,13 @@ ModelPrimDesc D_8004FE50[15] = {
          * but not depth ordering, so routing variant 0 through E688 makes room
          * surfaces overwrite each other in the wrong OT buckets. */
         .proc = { ModelPrimQuadFT4Variant0, ModelPrimQuadFT4Variant0,
-                  func_8002E688, NULL, NULL, NULL },
+                  func_8002E688, NULL,
+                  /* Retail row 13 proc[4]=func_8002FCFC (depth-cued AVSZ4
+                   * FT4 walker) and proc[5]=func_8002FF0C (depth-cued
+                   * min-SZ FT4 walker).  proc[3]=0x8002EAF4 stays
+                   * unported -> NULL. */
+                  ModelPrimQuadFT4DepthCueVariant4,
+                  ModelPrimQuadFT4DepthCueMinVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D0E4,   /* PSX 0x8002D0E4 */
         .cmdStride = 0x08,
         .packetStride = 0x0C,
@@ -1347,6 +1380,389 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
         *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
         CullCamEmit(0);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Model base color set by func_8002C6E0; retail's variant-4 walker mtc2-loads
+ * the 32-bit word at 0x80059598 into GTE RGBC.  The port defines the three
+ * bytes as separate BSS symbols, so the word is composed explicitly. */
+extern u8 D_80059598;
+extern u8 D_80059599;
+extern u8 D_8005959A;
+
+/* Retail 0x8002EEF8 entry 0x8002EF0C: three-vertex depth-cued walker
+ * (D_8004FE50 rows 1 and 5, variant 4).  Same transform/cull spine as
+ * variant 0 (AVSZ3 ordering, tag len 7, stride 0x20), plus depth cueing:
+ * RGBC is preloaded once from the model base color, DPCS blends it toward
+ * the GTE far color by IR0 (the depth-cue factor RTPT left from the third
+ * vertex), and the packet rgb|code word at +0x04 is rebuilt per prim as
+ * code<<24 | RGB2.  No FLAG rejection -- retail site 0x8002F01C is the
+ * inert mfc2-$31/LZCR pattern (see ModelPrimTriSmallAverageVariant0). */
+static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x20;
+    const u32 tagLen = 0x07000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+               ((u32)D_8005959A << 16);
+
+    /* Retail mtc2 at 0x8002EFBC: RGBC loaded once for the whole run. */
+    gte_ldrgb(&rgbc);
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long sz3 = 0;
+        long flag = 0;
+        long nclipOpz;
+        u16 averageZ;
+        s32 otIndex;
+        u32 oldTag;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        sz3 = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
+
+        /* Retail issues NCLIP before evaluating the screen-overlap result. */
+        nclipOpz = NormalClip(xy0, xy1, xy2);
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+
+        /* Retail reads NCLIP's MAC0, starts AVSZ3, then tests OPZ. */
+        gte_avsz3();
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        /* Retail's DPCS sits in the zero-OTZ reject's branch delay slot, so
+         * it executes on both the reject and accept paths. */
+        gte_dpcs();
+        if (averageZ == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
+        }
+
+        /* Packet color: preserve the code byte the buildProc wrote at +0x7,
+         * splice in the depth-cued RGB2 below it. */
+        *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
+                              ((u32)C2_RGB2 & 0x00FFFFFF);
+        otIndex = (s32)averageZ >> D_80050100;
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(0);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Retail func_8002F0E4: three-vertex depth-cued min-SZ walker (D_8004FE50
+ * rows 1 and 5, variant 5).  The ModelPrimTriMinimumVariant2 spine (nearest
+ * of SZ1..SZ3 with the +2 raw-FIFO shift) plus DPCS depth cueing.  Retail
+ * issues DPCS in the y-overlap test's branch delay slot, before the x tests
+ * and the backface reject, so it executes once for every prim transformed;
+ * the port keeps that placement.  No FLAG rejection -- retail 0x8002F1F8 is
+ * the inert mfc2-$31/LZCR pattern. */
+static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x20;
+    const u32 tagLen = 0x07000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+               ((u32)D_8005959A << 16);
+
+    /* Retail mtc2 at 0x8002F198: RGBC loaded once for the whole run. */
+    gte_ldrgb(&rgbc);
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long sz3Result = 0;
+        long flag = 0;
+        long nclipOpz;
+        u16 sz1;
+        u16 sz2;
+        u16 sz3;
+        u16 minSz;
+        s32 otIndex;
+        u32 oldTag;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        sz3Result = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
+
+        nclipOpz = NormalClip(xy0, xy1, xy2);
+        /* Retail 0x8002F228: DPCS executes before the overlap/backface
+         * rejects, once per transformed prim. */
+        gte_dpcs();
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+
+        sz1 = (u16)C2_SZ1;
+        sz2 = (u16)C2_SZ2;
+        sz3 = (u16)C2_SZ3;
+        minSz = sz1;
+        if (sz2 < minSz) minSz = sz2;
+        if (sz3 < minSz) minSz = sz3;
+
+        emitted++;
+        if (minSz == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
+        }
+
+        *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
+                              ((u32)C2_RGB2 & 0x00FFFFFF);
+        /* Raw SZ FIFO ordering: retail adds two to the configured shift
+         * (see ModelPrimTriMinimumVariant2). */
+        otIndex = (s32)minSz >> (D_80050100 + 2);
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(0);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Retail func_8002FCFC: POLY_FT4 depth-cued walker (D_8004FE50 rows 9 and 13,
+ * variant 4).  The ModelPrimQuadFT4Variant0 spine (RTPT + fourth-vertex RTPS,
+ * AVSZ4 in the inert gate's delay slot, tag len 9, stride 0x28) plus the same
+ * DPCS depth cueing as ModelPrimTriDepthCueVariant4.  Retail writes the four
+ * xy words before the zero-OTZ test, leaving an updated-but-unlinked packet
+ * on that reject, and issues DPCS in that test's branch delay slot. */
+static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x28;
+    const u32 tagLen = 0x09000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+               ((u32)D_8005959A << 16);
+
+    /* Retail mtc2 at 0x8002FDA4: RGBC loaded once for the whole run. */
+    gte_ldrgb(&rgbc);
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long nclipOpz = 0;
+        u16 averageZ;
+        s32 otIndex;
+        u32 oldTag;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        gte_ldv3(v0, v1, v2);
+        gte_rtpt();
+        gte_stsxy3(&xy0, &xy1, &xy2);
+
+        /* No FLAG rejection -- retail sites 0x8002FE04/0x8002FE40 are the
+         * inert mfc2-$31/LZCR pattern (see ModelPrimQuadFT4Variant0). */
+        gte_nclip();
+        gte_stopz(&nclipOpz);
+        nclipOpz = (long)(s32)(u32)nclipOpz;
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 1);
+            continue;
+        }
+
+        gte_ldv0(v3);
+        gte_rtps();
+        gte_stsxy(&xy3);
+        /* AVSZ4 sits in retail's (never-taken) branch delay slot -- always
+         * executes. */
+        gte_avsz4();
+
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERLAP, 1);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+        *(u32*)(out + 0x20) = (u32)xy3;
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        /* Retail's DPCS sits in the zero-OTZ reject's branch delay slot, so
+         * it executes on both the reject and accept paths. */
+        gte_dpcs();
+        if (averageZ == 0) {
+            CullCamDrop(CC_OTZ, 1);
+            continue;
+        }
+
+        *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
+                              ((u32)C2_RGB2 & 0x00FFFFFF);
+        otIndex = (s32)averageZ >> D_80050100;
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(1);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Retail func_8002FF0C: POLY_FT4 depth-cued min-SZ walker (D_8004FE50 rows
+ * 9 and 13, variant 5).  The FT4 spine ordered by the nearest of all four
+ * SZ FIFO slots (SZ0..SZ3 after RTPT+RTPS) with the +2 raw-FIFO shift, plus
+ * the unconditional per-prim DPCS depth cueing (retail issues it in an
+ * overlap-test delay slot before the rejects).  Inert mfc2-$31/LZCR gates
+ * as in the siblings. */
+static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x28;
+    const u32 tagLen = 0x09000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+               ((u32)D_8005959A << 16);
+
+    /* Retail mtc2 at 0x8002FFB8-region setup: RGBC loaded once. */
+    gte_ldrgb(&rgbc);
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long nclipOpz = 0;
+        u16 sz0;
+        u16 sz1;
+        u16 sz2;
+        u16 sz3;
+        u16 minSz;
+        s32 otIndex;
+        u32 oldTag;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        gte_ldv3(v0, v1, v2);
+        gte_rtpt();
+        gte_stsxy3(&xy0, &xy1, &xy2);
+
+        gte_nclip();
+        gte_stopz(&nclipOpz);
+        nclipOpz = (long)(s32)(u32)nclipOpz;
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 1);
+            continue;
+        }
+
+        gte_ldv0(v3);
+        gte_rtps();
+        gte_stsxy(&xy3);
+
+        /* Retail 0x80030080: DPCS executes before the overlap reject, once
+         * per transformed prim. */
+        gte_dpcs();
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            CullCamDrop(CC_OVERLAP, 1);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+        *(u32*)(out + 0x20) = (u32)xy3;
+
+        sz0 = (u16)C2_SZ0;
+        sz1 = (u16)C2_SZ1;
+        sz2 = (u16)C2_SZ2;
+        sz3 = (u16)C2_SZ3;
+        minSz = sz0;
+        if (sz1 < minSz) minSz = sz1;
+        if (sz2 < minSz) minSz = sz2;
+        if (sz3 < minSz) minSz = sz3;
+
+        emitted++;
+        if (minSz == 0) {
+            CullCamDrop(CC_OTZ, 1);
+            continue;
+        }
+
+        *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
+                              ((u32)C2_RGB2 & 0x00FFFFFF);
+        /* Raw SZ FIFO ordering: +2 shift as in the min-SZ tri variants. */
+        otIndex = (s32)minSz >> (D_80050100 + 2);
+        oldTag = ot[otIndex];
+        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
+        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        CullCamEmit(1);
     }
 
     D_80059578 = emitted;

@@ -50,10 +50,25 @@ STATE OF PLAY (24-map survey, entrance 0, boot-to-~25s):
      Remaining: decomp func_800A1364 (MAP3) + MAP160/400 loaders (identify),
      then the prim-table gap behind them. slus untouched; matching byte-exact;
      working maps + tripwires unregressed. Repro: boot map 2/3/160/400.
-  2. Model buildProc gap -- maps 4,50 (2/24). "missing D_8004FE50 buildProc
-     prim=0": the model-prim descriptor table (game_overrides.c, the LZCR
-     sweep's table) has no buildProc for prim type 0; a map using it aborts.
-     Bounded: wire prim-0's buildProc like the existing 0x04/05/08/0C/0D.
+  2. Model prim-table gap -- RESOLVED for maps 4,50 (FLIPPED to PLAYS+SOUND);
+     MAP2 cleared this signature and advanced to a NEW wall. Corrected scope
+     (the "wire prim-0's buildProc" estimate was 1 of 6 pieces): the gap was
+     (a) the whole [0x00] row absent -- its buildProc func_8002CDCC was
+     UNPORTED (decomped: byte-identical retail clone of prim 8's
+     func_8002CF58; coexistence in temp2.c, matching keeps INCLUDE_ASM), and
+     (b) the depth-cued (DPCS fog) walker family for variants 4/5 entirely
+     unported: retail 0x8002EF0C (tri AVSZ3+DPCS), func_8002F0E4 (tri
+     min-SZ+DPCS), func_8002FCFC (FT4 AVSZ4+DPCS), func_8002FF0C (FT4
+     min-SZ+DPCS) -- all four implemented in game_overrides.c (RGBC from
+     D_80059598/99/9A, per-prim DPCS, packet color = code<<24 | RGB2) and
+     wired at [0x05].proc[4]/[5] and [0x0D].proc[4]/[5] (+ retail-identical
+     alias [0x05].proc[1]). Unported walkers left NULL (loud abort):
+     [0x00].proc[1]=0x8002ED20, proc[3]=0x8002E8DC; [0x05].proc[3]=
+     0x8002E8F0; [0x0D].proc[3]=0x8002EAF4.
+     MAP2's NEXT wall: `func_80075B44 far-color branch is not implemented`
+     (port stub assert -- the GTE far-color setup DPCS fog depends on;
+     consistent with MAP2 being a fog-mode map). Follow-up: implement the
+     far-color branch, then re-boot MAP2.
   3. Model-walker assert -- map 25 (1/24): `modelData+0x12 != 1` (temp2 model
      walker hits variant 1, unhandled). Map 15: `func_8008399C button/special
      interaction branch not migrated` (filed separately). One decomp gap each.

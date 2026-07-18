@@ -773,7 +773,52 @@ s32 func_8002CD64(u8* pSrc) {
     return 1;
 }
 
+/* buildProc for prim 0x00 (lit flat tri template, tag len 4). Byte-identical
+ * retail clone of prim 0x08's builder func_8002CF58 below -- only the three
+ * intra-function jump targets differ in the retail bytes; see that function's
+ * comment for the four shade paths. asm: func_8002CDCC.s. */
+extern void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal);
+extern void NormalLightCol(void* a0, void* a1, void* a2);
+
+#ifdef XENO_PC_PORT
+/* Coexistence: the C transcription compiles ~59% fuzzy under mwcc (same as
+ * the sibling builders), so the matching build keeps the retail bytes via
+ * INCLUDE_ASM below and only the port compiles this body. */
+s32 func_8002CDCC(u8* pSrc, u8* pCmd, s32 shade) {
+    u8* p = D_80059424;
+    SVECTOR tmpNormal; /* asm's sp+0x10 out-normal for the plain-lit path */
+
+    p[0x3] = 0x4;
+    if (shade & 0x1) {
+        u8* vb = (u8*)(uintptr_t)D_8005953C;
+        SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+        SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+        SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+
+        if (shade & 0x2) {
+            *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
+            D_80059498 += 4;
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+            NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+            D_80059498 += 8;
+        } else {
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pSrc, p + 0x4);
+        }
+        p[0x7] = pSrc[0x3];
+    } else if (shade & 0x4) {
+        D_80059498 += 4;
+        NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+        D_80059498 += 8;
+        p[0x7] = pSrc[0x3];
+    } else {
+        *(u32*)(p + 0x4) = *(u32*)pSrc;
+    }
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CDCC);
+#endif
 
 extern u8* D_80059424;
 
