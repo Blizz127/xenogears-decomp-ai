@@ -137,14 +137,30 @@ Last verified @ 0a32159.
      the follower TRAILS FEI'S PATH with the slot-1 spacing (dist 9-10 =
      the 0xA gate), walk anim while moving, idle-settle at rest -- the
      wall-5 machine works.
-     SURFACED WALLS above the chain (the join beat itself cannot run yet):
-     (a) the NEW-GAME GAMESTATE INIT is unported -- the port's NG flow
-     skips retail's template (roster [Fei,FF,FF], gamestate fields);
-     roster stays [0,0,0] so func_8008A790 returns party-full. AADC's
-     zeroing is retail-correct -- the template comes later in retail's NG
-     path. (b) story-flag progression to the join script (no scenario
-     harness; no `16 <id>`-declaring actors on maps 1/5/14/15-19 -- the
-     join script lives deeper in the story flow, canonically post-attack).
+     WALL (a) NEW-GAME GAMESTATE INIT: RESOLVED (wall 7). func_8001B970
+     implemented (temp3.c): loads the new-game save TEMPLATE from archive
+     0x10 file 3 (0x2358 bytes) into g_GameState, decodes the 31 character-
+     name records via func_80033B34 (36-line leaf, now in system.c),
+     resets the sound-volume block (controller half faithful; the 0x20
+     bytes of UNNAMED BSS below it are host-unaddressable and only matter
+     for a return-to-title flow -- documented divergence), sets the two
+     mode bytes. Wired into the NG menu path ONLY (game_overrides
+     PcPort_BootMain; field-test launchers keep the zero-state harness).
+     THE TEMPLATE REVEALED: retail starts with [Fei, Citan, empty] --
+     roster [0,2,FF], rosterBits 0x0005; Citan is in the party FROM NEW
+     GAME (the join opcodes serve later party changes). The already-ported
+     GamePartyCharactersInitializeSkins syncs gamestate->runtime at field
+     entry. Also fixed en route: func_800A08B8's partyId!=0 assert was
+     retail's shared follower-bind tail (bnez .L800A0978 skips only the
+     player-index writes) -- restructured; Citan's field actor (2) now
+     binds with the REAL follower flag 0x1000000 under NG boot, Lahan
+     renders, Fei is player actor 1. NG-boot movement is input-locked by
+     the scripted intro (retail behavior) so the live follow ran under the
+     wall-6 scaffold; A790 proves free-slot(newChar->slot 2)/already-
+     member(Citan) with the real roster.
+     REMAINING WALL: (b) story-flag progression to later join scripts (no
+     scenario harness; canonically post-attack) + the intro input-lock
+     release path for interactive NG play (confirm-edge injection).
   8. MAP16 Blackmoon Forest render-suspect (mostly-black frame) --
      triage after #5 (its loader stub is one suspect). BLOCKER-if-real
      for the post-attack exit.

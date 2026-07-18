@@ -947,12 +947,16 @@ void func_800A08B8(void) {
         return;
     }
 
-    assert(partyId == 0);
-
-    g_PlayerActorIndex = D_800AFD1C;
-    D_800B233E = D_800AFD1C;
-    g_FieldScriptVMCurActor->scriptFlags.flags =
-        (g_FieldScriptVMCurActor->scriptFlags.flags | 0x4400) & ~0x80;
+    /* Retail 800A0944: partyId 0 (the player) additionally latches the
+     * player-actor index and the 0x4400 flags; NON-ZERO party slots
+     * (followers -- Citan is in the party from New Game) skip straight to
+     * the shared bind tail (.L800A0978).  Everything below is shared. */
+    if (partyId == 0) {
+        g_PlayerActorIndex = D_800AFD1C;
+        D_800B233E = D_800AFD1C;
+        g_FieldScriptVMCurActor->scriptFlags.flags =
+            (g_FieldScriptVMCurActor->scriptFlags.flags | 0x4400) & ~0x80;
+    }
     D_8005A444[partyId] = D_800AFD1C;
 
     func_80076AC0(D_800AFD1C, partyId, g_PartyDataBuffers[partyId], 1, 0, partyId, 1);

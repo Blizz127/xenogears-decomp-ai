@@ -310,7 +310,68 @@ void func_8001B94C(DRAWENV* pDrawEnv) {
     pDrawEnv->b0 = 120;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B970);
+/* New Game gamestate init (asm 8001B970): load the new-game save TEMPLATE
+ * from archive index 0x10, file 3 (0x2358 bytes) into g_GameState, then
+ * decode the template's 31 character-name records (0x14-byte blocks over
+ * the first 0x26C; save-format u16 codes -> glyph pairs via func_80033B34,
+ * terminator pair 0x0F,0x00), reset the sound-volume block, and set the
+ * two mode bytes.  Retail's volume reset zeroes 20 halfwords DOWNWARD from
+ * g_SoundVolumeController+6 -- i.e. the controller's first 8 bytes plus
+ * 0x20 bytes of UNNAMED BSS below it (0x8005A3A0-0x8005A3BF, no symbol).
+ * The port zeroes the controller part; the unnamed region has no host
+ * symbol and is only ever nonzero after a return-to-title flow the port
+ * does not have yet (fresh BSS is already zero) -- documented divergence,
+ * revisit with the title-return flow. */
+extern void* g_SystemDataEntries;
+extern void func_80033B34(u16* src, u8* dst, s32 count);
+extern u8 D_800594CC;
+extern u8 D_8005947C;
+
+void func_8001B970(void) {
+    void* buf;
+    u8* block;
+    s32 base;
+
+    ArchiveSetIndex(0x10, 0);
+    HeapChangeCurrentUser(2, 0);
+    buf = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
+    ArchiveReadFileToBuffer(3, buf, 0, 0x80);
+    ArchiveCdDataSync(0);
+    memmove(&g_GameState, buf, 0x2358);
+    HeapFree(buf);
+
+    block = (u8*)&g_GameState;
+    for (base = 0; base < 0x26C; base += 0x14, block += 0x14) {
+        u8 raw[0x18];
+        u8 decoded[0x18];
+        s32 j;
+        s32 k;
+
+        for (k = 0; k < 0x18; k++) {
+            decoded[k] = 0; /* retail copies stack garbage past the NUL;
+                               zeroed for determinism */
+        }
+        for (j = 0; j < 0x14; j += 2) {
+            raw[j] = block[j];
+            raw[j + 1] = block[j + 1];
+            if (block[j] == 0xF && block[j + 1] == 0) {
+                break;
+            }
+        }
+        func_80033B34((u16*)raw, decoded, j >> 1);
+        for (k = 0; k < 0x14; k++) {
+            block[k] = decoded[k];
+        }
+    }
+
+    *(u16*)((u8*)&g_SoundVolumeController + 0x0) = 0;
+    *(u16*)((u8*)&g_SoundVolumeController + 0x2) = 0;
+    *(u16*)((u8*)&g_SoundVolumeController + 0x4) = 0;
+    *(u16*)((u8*)&g_SoundVolumeController + 0x6) = 0;
+
+    D_800594CC = 6;
+    D_8005947C = 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB0C);
 

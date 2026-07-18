@@ -2039,7 +2039,15 @@ void PcPort_BootMain(void)
                            "(save system not ported) — use New Game\n");
                     menuChoice = 0;
                 } else {
+                    /* Retail's New Game runs the gamestate-template init
+                     * (func_8001B970: archive 0x10 file 3 -> g_GameState,
+                     * roster [Fei,FF,FF], names, defaults) before entering
+                     * the field.  Direct-boot field-test launchers keep
+                     * their zero-state harness (this path is NG only). */
+                    extern void func_8001B970(void);
+
                     printf("[xeno-port][boot] New Game -> Field\n");
+                    func_8001B970();
                     ChangeGameState(1);
                     running = 0;
                 }

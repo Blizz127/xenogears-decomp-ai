@@ -307,7 +307,26 @@ void* func_80033A8C(s32 index) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033B34);
+/* Save-format name decode (asm 80033B34): each u16 char code indexes a
+ * 2-byte glyph pair in the table at g_SystemDataEntries+0x6C; byte 0 is
+ * written only when nonzero, byte 1 always; NUL-terminated.  Used by the
+ * new-game init (func_8001B970) to decode the template's character names. */
+void func_80033B34(u16* src, u8* dst, s32 count) {
+    u8* table =
+        (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
+    s32 i;
+
+    for (i = count - 1; i >= 0; i--) {
+        u8* e = table + *src * 2;
+
+        src++;
+        if (e[0] != 0) {
+            *dst++ = e[0];
+        }
+        *dst++ = e[1];
+    }
+    *dst = 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033BAC);
 
