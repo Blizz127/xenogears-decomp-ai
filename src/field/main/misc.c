@@ -1096,7 +1096,22 @@ void func_8008D5C8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D604);
+/* FE07/opcode 0x107 -- set (arg 1) or clear (arg 0) the current actor's
+ * 0x400 flag; any other arg leaves it untouched.  IP += 2.  As a no-op stub
+ * this handler never advanced the IP, so the VM's next dispatch executed the
+ * FE-prefix's extension byte as a BASE opcode -- desyncing the actor's whole
+ * script stream (MAP3's boot SEGV: garbage actor index 128 fed to
+ * func_8009EB78 several bogus opcodes later). */
+void func_8008D604(void) {
+    u8 arg = SCRIPT_READ_U8_REL(1);
+
+    if (arg == 0) {
+        g_FieldScriptVMCurActor->flags &= ~0x400;
+    } else if (arg == 1) {
+        g_FieldScriptVMCurActor->flags |= 0x400;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 void func_8008D684(void) {
     int mask;

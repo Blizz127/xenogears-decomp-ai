@@ -58,9 +58,30 @@ Last verified @ 0a32159.
      identical lit scene, brightness 70.0 vs 71.2) -- retail-correct.
      The deep branches (ride/momentum) await platforming beats to fire;
      transcription is asm-verified, no spurious firing at boot.
-  5. MAP3 SEGV -- unported NPC sprite-loader func_800A1364 (sibling of
-     the decomped func_800A06E8; template exists; also fires benignly on
-     MAP16/80). BLOCKER for night-interior beats. Bounded, 1 pass.
+  5. MAP3 SEGV -- SCOPE CORRECTED (the "1 loader, 1 pass" estimate was 1
+     of at least 4 walls; probed end-to-end this pass):
+     LANDED: (a) opcode 0x107 func_8008D604 implemented -- as a no-op stub
+     it never advanced the IP, so the VM executed the FE-prefix's
+     extension byte as a BASE opcode, desyncing every script stream that
+     used FE07 (MAPs 3/160/200; 200 still plays, now with a CORRECT
+     stream). (b) func_80077884's heap-size host-pointer fix (retail
+     sizes by the PSX gap [0x801DC008, D_800ADB30); port sizes by
+     ArchiveDecodeAlignedSize(0x6B9), the misc4.c precedent) -- was a
+     ~5MB bogus alloc -> GameHandleError(130) spin. (c) the
+     member_change_menu overlay boundary guard in func_80077AB4.
+     STAGED OFF (XENO_FIELD_OBJECT_OVERLAY): func_800A1364 itself --
+     asm-verified, binds the sprite (probe: actor 4 bound) -- but
+     activating it arms the object pipeline: D_800B2264 != 0 ->
+     func_80077884/AB4 stream per-slot model archives (0x6BA/0x6BB+id)
+     and instantiate through the member_change_menu overlay
+     (func_801E738C/func_801E742C at 0x801E7xxx, UNPORTED and
+     UNEXTRACTED -- no asm split exists), and the now-synced streams
+     reach func_800821F4's battle-animation assert on maps 16/80 (which
+     play today only via the FE07 desync) plus a further cross-actor
+     NULL on MAP3 (remaining stubs func_800230A8/80088198/8008B180
+     unaudited). MAP3's flip therefore needs: the overlay extraction +
+     model-instantiation port, the func_800821F4 branch, and the 3-stub
+     audit -- a sub-project, not a pass. Flip the define when it lands.
   6. Cutscene opcode walls (fire when their cutscenes run): func_8001FBE4
      opcode 0xBC sub-command/anchor/camera-tail (4 asserts), func_80022660
      bytecode path, func_800248D4 opcode paths (2 asserts; also the

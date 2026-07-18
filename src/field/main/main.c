@@ -165,11 +165,21 @@ void func_80077884(void) {
     ArchiveSetIndex(4, 0);
     func_800A90B4(0);
 
+#ifdef XENO_PC_PORT
+    /* Retail's D_8004F370==0 branch sizes this buffer as the fixed-map gap
+     * [0x801DC008, D_800ADB30) -- meaningless host-pointer arithmetic in the
+     * port (bogus ~5MB -> HeapAlloc failure -> GameHandleError(130) spin,
+     * MAP3 repro).  Size by the archive's decoded size instead -- the same
+     * derivation retail's own else-branch uses for the same buffer.  Same
+     * pattern as the menu-overlay fix in misc4.c (func_80078E90). */
+    size = ArchiveDecodeAlignedSize(0x6B9);
+#else
     if (D_8004F370 == 0) {
         size = ((u32)(unsigned long)D_800ADB30 & 0xFFFFFF) + (s32)0xFFE23FF8;
     } else {
         size = ArchiveDecodeAlignedSize(0x6B9);
     }
+#endif
     D_800ADB20 = HeapAlloc(size, 1);
 
     func_800A90B4(1);
@@ -221,6 +231,19 @@ void func_80077AB4(void) {
         func_801E742C(i, 0, D_8005A420[i], D_8005A450[i],
                       x, 0x100, 0, top, vec);
         HeapFree(D_8005A450[i]);
+#ifdef XENO_PC_PORT
+        /* Overlay boundary (member_change_menu, vram 0x801C5000):
+         * func_801E742C is the overlay's model-instantiation entry and is
+         * an unported stub, so D_801E8670[i] stays NULL -- retail reads the
+         * instanced model's +0x1C here.  Skip the deref until the overlay
+         * is ported (objects render invisible; archives/slots/scripts all
+         * behave retail-correctly).  Same boundary pattern as the battle
+         * no-op (func_80281204). */
+        if (D_801E8670[i] == NULL) {
+            top += 1;
+            continue;
+        }
+#endif
         *(s32*)(work + 0x20 + i * 4) = *(s16*)((u8*)D_801E8670[i] + 0x1C);
         top += 1;
     }

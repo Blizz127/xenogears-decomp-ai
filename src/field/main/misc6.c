@@ -1041,7 +1041,60 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0EE8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0FD8);
 
+extern s32 D_800B2264;
+extern u16 D_800B21DC[];
+extern u8 D_800B225F[];
+
+// Object-sprite load opcode: bind the current actor's sprite from the map's
+// sprite package (g_FieldSpriteData + offset[1], the same package slot the
+// sibling func_800A0D3C binds), reset its position, then register the
+// argument (<<1) into the D_800B2264-indexed object-slot pair
+// (D_800B21DC[]/D_800B225F[]) and stamp (slot&7)<<13 into the actor's +0x12C
+// word.  Stubbed before this -> the actor's pSpriteData stayed NULL and its
+// later sprite writes crashed the host (MAP3 boot SEGV at func_8009EB78).
+#ifdef XENO_FIELD_OBJECT_OVERLAY
+/* STAGED, OFF BY DEFAULT: this body is asm-verified (31874-319FC) and binds
+ * the sprite correctly (MAP3 actor 4 probe), but ACTIVATING it arms the
+ * whole object pipeline: D_800B2264 != 0 -> func_80077884/func_80077AB4
+ * load the per-slot model archives and instantiate them through the
+ * member_change_menu overlay (func_801E742C, UNPORTED/unextracted), and the
+ * correctly-synced streams then reach func_800821F4's battle-animation
+ * assert on maps 16/80 (which "play" today only via the FE07 desync this
+ * pass fixed).  Flip this on when the object-overlay pass lands; until
+ * then the matching-build INCLUDE_ASM below also serves the port (stub). */
+void func_800A1364(void) {
+    FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
+    s32 arg;
+    s32 slot;
+    u8* cur;
+
+    fieldActor->status = (fieldActor->status & 0xF07F) | 0x200;
+    arg = FieldScriptVMGetArgument(1);
+
+    func_80076AC0(D_800AFD1C, 0,
+                  (void*)((*(s32*)(g_FieldSpriteData + 4)) +
+                          (s32)g_FieldSpriteData),
+                  0, 0, 0x80, 1);
+    func_800A0C94();
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    g_FieldScriptVMCurActor->scriptFlags.flags |= 0x100;
+    fieldActor = &g_FieldActors[D_800AFD1C];
+    fieldActor->status &= 0xFFDF;
+    g_FieldScriptVMCurActor->flags =
+        (g_FieldScriptVMCurActor->flags | 0x2000) & ~0x800;
+
+    slot = D_800B2264;
+    D_800B21DC[slot] = (u16)(arg << 1);
+    D_800B225F[slot] = 0;
+    cur = (u8*)g_FieldScriptVMCurActor;
+    *(u32*)(cur + 0x12C) =
+        (*(u32*)(cur + 0x12C) & 0xFFFF1FFF) | ((u32)(slot & 7) << 13);
+    D_800B2264 = slot + 1;
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A1364);
+#endif
 
 void func_800A14F0(void) {
     u8* actorData;
