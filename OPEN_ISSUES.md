@@ -540,9 +540,56 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     provably never execute -> render fingerprints unchanged, no crashes.
     slus sha256 a55929a1e1ea5563 UNCHANGED (misc2/misc8 are FIELD TUs, not
     slus); matching build 468/468 OK; port LINK OK.
-  Phase 2b (SEPARATE, menu-system track, NOT needed for MAP3/MAP16): the
-    mode-0 menu render tree (func_801C62A8 dispatcher + draw callees) --
-    the existing menu scope below. Shares Phase 1; independent of Phase 2.
+  Phase 2b (SEPARATE, menu-system track, NOT needed for MAP3/MAP16): get
+    the matched menu tree to RENDER in-game. SCOPED (diagnostic pass, HEAD
+    c083879) across the 3 layers -- invocation / execution / draw:
+    (A) INVOCATION -- WIRED + PORTED (not the blocker). func_800799D4 (field
+        menu-opener, DEFINED in the port) is called from the field main loop
+        (main.c:621) when D_800ADB64 is set (menu button) -> MenuMain ->
+        MenuExecute (menu.c:129) -> switch(D_80059460): case 0 = func_801C62A8
+        (MAIN menu), case 1 = MemberChangeMenuMain, etc. Menus CAN be invoked;
+        the path runs. (g_MenuDebugEnabled=0 on the field path skips the
+        overlay DATA-load -- irrelevant for the port's compiled C.)
+    (B) EXECUTION -- THE BLOCKER for the main menu. func_801C62A8 (case 0) is
+        a NO-OP STUB in the port (menu.bin's misc.c is INCLUDE_ASM -> nothing
+        defined). Its transitive tree = 96 menu.bin functions, all unported.
+        So the main menu is invoked but returns immediately (nothing draws).
+        NB the old "~6 fns" estimate was WRONG -- it counted only the top
+        dispatcher, not the 96-fn transitive closure.
+    (B') PROOF-OF-CONCEPT ALREADY EXISTS: member_change_menu (case 1,
+        MemberChangeMenuMain) is a PORTED menu overlay -- 68-fn tree, ~90%
+        ported, only 12 stubs. So a ported menu overlay is nearly executable;
+        the render architecture is not fundamentally broken.
+    (C) DRAW DEPS -- mostly satisfied. Of 316 external callees in the
+        func_801C62A8 tree, only 10 are STUBBED. GPU prims (DrawOTag/AddPrim/
+        ClearOTagR) are PORTED. The 10 stubs (SHARED with member_change):
+        SystemRenderStringEntry (the TEXT renderer, 59 instrs -- blocks text
+        in ALL menus), func_80026338/263E4/2675C/2DD20/36410/3852C (43-222
+        instrs, bounded), 2 sound (SoundMute/EnableAllSpuChannels).
+    (D) MENU-SIDE OBJECT DRAWS -- part of the tree, COHERENT menu-side, NO
+        Phase-3 conflict. The main-menu tree includes ~18 object fns
+        (func_801E733C the 16-sprite POLY_FT4 loop, func_801C7BF4 DrawOTag,
+        func_801E8xxx). Menu-side these are WHOLE self-contained functions
+        (the menu provides the loop registers) -- and they are DIFFERENT
+        SYMBOLS from the field's no-op'd mid-entry stubs (func_801E742C/738C).
+        In the static port they coexist: porting func_801E733C (menu, whole)
+        does NOT un-no-op func_801E742C (field, mid-entry). So the Phase-3
+        field no-ops stay; the menu ports the whole functions. (These 18 are
+        within the 96-fn count; likely DEFERRABLE for an initial window+text
+        render -- they draw character/item sprites, not the window frame.)
+    (E) SCOPE: main-menu render = BIG (~96 menu.bin fns + the 10 shared draw
+        stubs), a MULTI-PASS port (an initial window+text render is a ~20-40
+        fn subset; full functionality incl. sub-menus/input is the 96).
+    FIRST BOUNDED TARGET (recommended): finish the ~10 SHARED draw stubs
+    (SystemRenderStringEntry text + the 6 func_8002xxxx + 2 sound, all
+    bounded 35-222 instrs) and PROVE member_change_menu renders (force
+    D_80059460=1 under the port + capture). This is bounded (~10 small fns),
+    proves the render architecture works in the port, KNOCKS OUT the shared
+    text/draw deps the main menu also needs, and templates the main-menu
+    port. THEN the main menu (func_801C62A8, 96-fn tree) is the multi-pass
+    follow-on with its draw deps already satisfied. If member_change does NOT
+    render after the shared stubs land, a deeper systemic blocker exists --
+    investigate before committing to the 96-fn main-menu port.
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
