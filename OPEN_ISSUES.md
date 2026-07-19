@@ -147,6 +147,22 @@ Last verified @ 0a32159.
      the overlay extraction + model-instantiation port and the
      func_800821F4 branch -- a sub-project, not a pass. Flip the define
      when it lands.
+     (e) 2026-07-19 diagnostic (current-blocker pass, no code): re-booted MAP3
+     on the current binary to find its CURRENT blocker (post-FE07-fix). RESULT:
+     MAP3 has NO crash blocker left -- it boots 220 frames, NO SEGV, NO assert,
+     PAST func_8009EB78. Its remaining gap is RENDER COMPLETENESS: renders only
+     16.7% nonblack (a dark-red region on black) vs ~74% for a playing map
+     (MAP7). Characterized (asm-confirmed, ruling classes out): NOT a crash/
+     assert/stall (not the FE07/prim-table/opcode bounded classes); NOT the
+     object-overlay DRAW (func_801E742C/738C = 0 calls/frame -- not the gap);
+     the model-build path func_800748E8/func_8002C700 is a one-time build, 0
+     per-frame calls on ALL maps incl. playing ones (the per-frame field render
+     is OT/DrawOTag-based, not func_8002C700). So MAP3's gap is a RENDER-PATH
+     completeness issue (the object/model-heavy scene doesn't fully draw),
+     shared with the object-overlay convergence + the menu render -- the DEEP
+     piece, NOT a bounded flip. MAP3 has advanced boot-SEGV -> un-SEGV'd ->
+     func_8009EB78 crash -> FIXED -> now boots clean, render-partial; the
+     remaining gap is the render/object-overlay sub-project. Bank at 21/24.
   6. Cutscene opcode walls: func_8001FBE4's 0xBC family LARGELY RESOLVED --
      the 3 0xBC-internal asserts became a full implementation of the
      position opcode: 21 of 27 sub-commands live (target/parent/own/anchor-
