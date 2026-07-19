@@ -47,6 +47,9 @@ extern void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage,
                           s32* pClutX, s32* pClutY, s32* pTexX, s32* pTexY);
 extern char D_801C5028[];   /* "BASLUS-00664" (migrated menu rodata) */
 extern char D_801C5038[];   /* "BASLUS-01160" */
+extern u8 D_801EA524[];     /* string-render descriptor (migrated) */
+extern void func_801E7E68(void* dst, void* src, s32 a2, s32 a3);  /* stub (overlay) */
+extern void func_801C6D90(void);                                  /* stub */
 extern void* D_8006259C;    /* SEDS file pointer */
 extern void* D_8005945C;    /* menu resource-pointer table (pResources) */
 extern u16 D_801E96A8[];    /* migrated bit-select table {1,2,4,...} */
@@ -371,9 +374,40 @@ void func_801C6D5C(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D90);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6E0C);
+/* B1b: upload the menu palette to VRAM, allocate the first string's work
+ * buffer, and pre-render its content.  Twin of member_change's func_801C5B90.
+ * func_801E7E68 (content) + func_801C6D90 (image) are still INCLUDE_ASM stubs. */
+void func_801C6E0C(void) {
+    SystemTransferPaletteToVRAM(0, 0x1D1);
+    g_Menu->unk4E0[0].pVramBuffer = HeapAlloc(0x38E, 0);
+    func_801E7E68(&g_Menu->unk4E0[0], D_801EA524, 0, 4);
+    func_801C6D90();
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6E68);
+/* B1b: unpack the 4 window-frame border textures (top/bottom/left/right) from
+ * the atlas (unk2DC) into g_Menu's border texPage/clut/UV fields -- the coords
+ * the border POLY builder + B2 render read.  Verbatim twin of member_change's
+ * MemberChangeMenuInitializeWindowBorders (identical atlas indices). */
+void func_801C6E68(void) {
+    POLY_FT4 _unused;
+
+    func_80026338(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_TOP,
+                  &g_Menu->unk46C, &g_Menu->texPage0,
+                  &g_Menu->clutX0, &g_Menu->clutY0,
+                  &g_Menu->texPageX0, &g_Menu->texPageY0);
+    func_80026338(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_BOTTOM,
+                  &g_Menu->unk484, &g_Menu->texPage1,
+                  &g_Menu->clutX1, &g_Menu->clutY1,
+                  &g_Menu->texPageX1, &g_Menu->texPageY1);
+    func_80026338(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_LEFT,
+                  &g_Menu->unk49C, &g_Menu->texPage2,
+                  &g_Menu->clutX2, &g_Menu->clutY2,
+                  &g_Menu->texPageX2, &g_Menu->texPageY2);
+    func_80026338(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_RIGHT,
+                  &g_Menu->unk4B4, &g_Menu->texPage3,
+                  &g_Menu->clutX3, &g_Menu->clutY3,
+                  &g_Menu->texPageX3, &g_Menu->texPageY3);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6F70);
 
