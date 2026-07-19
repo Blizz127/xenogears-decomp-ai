@@ -398,6 +398,43 @@ static void PcPort_ForcedKernelSelect(void)
     }
 }
 
+/*
+ * Headless RESOURCED main-menu driver (no-op unless XENO_MENU_FORCE=1).
+ * XENO_KERNEL_SEL=4 dispatches the menu but never loads its resources
+ * (g_MenuDebugEnabled=0, D_8005945C=NULL), so no textured content can build.
+ * This instead forces the FIELD menu-opener path: once the field is up and
+ * idle, set D_800ADB64=0x80 (main menu; 0x80 & 0x7F -> D_80059460=0), mimicking
+ * the menu button (field main.c:624). The field loop's trigger (main.c:618)
+ * then calls func_800799D4, which streams the menu resources (D_8005945C =
+ * archive file 1) and runs MenuMain -- the same resourced path member_change
+ * was validated on (the map005 repro). A code-side write of the real global is
+ * reliable, unlike gdb symbol-writes (which hit a native-layout phantom view).
+ */
+static void PcPort_ForcedFieldMenu(void)
+{
+    extern int D_800ADB64;   /* menu request (0xFF = none); s32 in-game */
+    extern int D_800ADB68;   /* playerCanRun -- field is up + idle; s32 in-game */
+    static int armed = -2, fired = 0, frame = 0, delay = 0;
+
+    if (armed == -2) {  /* first call: read config */
+        const char* e = getenv("XENO_MENU_FORCE");
+        const char* d = getenv("XENO_MENU_FORCE_DELAY");
+        armed = (e && e[0] == '1') ? 1 : 0;
+        delay = (d && *d) ? atoi(d) : 90;
+        frame = 0;
+    }
+    if (!armed || fired)
+        return;
+    if (++frame < delay)
+        return;
+    if (D_800ADB64 == 0xFF && D_800ADB68 == 1) {
+        D_800ADB64 = 0x80;   /* request the main menu via the field opener */
+        fired = 1;
+        printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
+               "(D_800ADB64=0x80) at frame %d\n", frame);
+    }
+}
+
 int Vsync(int mode)
 {
     /* Flush any primitives queued this frame before presenting. DrawOTag flushes
@@ -428,6 +465,9 @@ int Vsync(int mode)
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the
      * synthetic Circle in afterwards so it survives to the next KernelMenuUpdate. */
     PcPort_ForcedKernelSelect();
+
+    /* Headless resourced main-menu driver (no-op unless XENO_MENU_FORCE=1). */
+    PcPort_ForcedFieldMenu();
 
     /* Temporary interactive camera+cull logger (XENO_CULL_CAM_LOG=1). */
     { extern void PcPort_CullCamLogOnVsync(void); PcPort_CullCamLogOnVsync(); }
