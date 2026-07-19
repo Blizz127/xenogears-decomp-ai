@@ -409,6 +409,30 @@ the ~5 non-playing maps are now 3, 25, 160, 250, 400. Blockers + rank:
      Remaining non-playing: 3 (object-overlay, deep), 25 (GTE lighting, delicate),
      250 (hang cluster), 400 (sprite-loader). Next cheapest is likely MAP400's
      loader (proven pattern) or MAP250's hang cluster.
+  MAP400 RE-CHARACTERIZED AGAIN (2026-07-19, survey-signature-is-hypothesis
+     fired a THIRD time -- no code): confirmed NOT a desync (D_800AFD1C=19 valid,
+     < g_FieldNumActors=62), so genuinely the sprite-loader class -- but NOT the
+     clean MAP2 stubbed-opcode pattern the survey implied. The real mechanism: in
+     func_800A28D4 (the field-script boot fn, hand-ported) with
+     g_GamePartySkinsInitialized=0 (the correct first-load PATH 2 -- path 1
+     early-binds + returns, gated on a party-skin-init flow not met on a cold
+     boot), the boot loop (D_800ADBFC=20 actors) runs each actor's boot script
+     THEN late-binds its sprite (func_80076AC0, line 658). Actor 19 (the LAST
+     boot actor) runs setpos func_80098A7C (0xFE-prefixed, its script's 1st op at
+     IP=680) which writes pSpriteData->position -- BEFORE its late bind, and
+     retail's func_80098A7C has NO NULL guard, so retail's actor 19 genuinely has
+     a sprite by then. HOW retail binds actor 19 before its setpos on path 2 is
+     UNRESOLVED (no stubbed load opcode in actor 19's script; candidates:
+     FieldScriptVMRun yield handling runs too far in the port, the boot-loop
+     structure dropped a pre-bind, or the script offset differs). This needs
+     deep func_800A28D4/FieldScriptVMRun flow analysis -- NOT a bounded flip.
+  META (cheap map-flips exhausted): MAP15 (already flipped) + MAP160 (FE07
+     one-function fix) were the cheap ones. The remaining 4 non-playing are ALL
+     genuinely involved: 400 (deep VM boot-flow, above), 250 (hang cluster --
+     port func_80088508/8861C/888A4), 25 (delicate GTE lighting branch), 3
+     (object-overlay convergence, shared with the menu render). So 21/24 is the
+     natural bank point for BOUNDED flips; further gameplay progress is the
+     deeper sub-projects (VM boot-flow, object-overlay, or the menu render).
 
 DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
 are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
