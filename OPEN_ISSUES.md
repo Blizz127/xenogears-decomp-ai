@@ -613,6 +613,36 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     ones 6400/6AA0/6F70/65F4 (134-321 instrs, read Phase-A data) -- these build
     the actual window/text POLYs. Then B2 (render subtree func_801C8694, 86
     fns) wires AddPrim so content reaches the screen.
+    B1b step 2b BLOCKER (2026-07-19, investigation -- no code landed): the
+    "cheap frame-first" plan is invalidated by a resource-load dependency,
+    and the current harness cannot verify textured content. Chain:
+      func_801C6E68 (frame, a verbatim twin of MemberChangeMenuInitialize-
+      WindowBorders) reads g_Menu->unk2DC (the texture-UV atlas) ->
+      unk2DC is populated ONLY by func_801C65F4 (the 321-instr resource-load,
+      the twin of MemberChangeMenuLoadResources -- the HEAVIEST builder, not a
+      cheap one) -> func_801C65F4 reads pResources = D_8005945C ->
+      D_8005945C is set ONLY by (a) the field menu-opener func_800799D4
+      (misc4.c:528, D_8005945C = menuLoadCommands[0].pData) or (b) the debug
+      path (menu.c:213, gated on g_MenuDebugEnabled).
+    PROBED at the coordinator in the XENO_KERNEL_SEL=4 run: g_MenuDebugEnabled
+    = 0 AND D_8005945C = NULL. So the KERNEL_SEL=4 force drives dispatch/init/
+    coordinator CONTROL FLOW only -- it never loads the menu resources. With
+    unk2DC NULL, porting func_801C6E68 would turn a safe no-op stub into a
+    NULL deref in func_80026338 (a regression), and there is no resourced
+    harness to see a frame against. func_801C65F4 itself is BOUNDED (all
+    callees available: LZSSHeapDecompress/OpenTIM/ReadTIM/func_8002DD20/
+    LoadImage/ResolveArchiveEntryPointers/...) and closely mirrors the ported
+    MemberChangeMenuLoadResources -- but it needs D_8005945C != NULL to run
+    (else ResolveArchiveEntryPointers(NULL) crashes).
+    => The REAL next unit is a RESOURCED headless harness (code-side force of
+    the field menu path func_800799D4, or g_MenuDebugEnabled=1 with the port's
+    overlay/resource load verified), NOT more builder porting. member_change's
+    border was validated via the map005 field/normal-menu repro (interactive
+    xdotool key injection) -- that IS the resourced main-menu path (FE55
+    opcode func_80093740 -> func_800799D4 -> D_8005945C), but it is not
+    headless. Once a resourced harness exists: port func_801C65F4 (resource-
+    load, mirror MemberChangeMenuLoadResources) + func_801C6AA0 (its caller) +
+    func_801C6E68 (frame), and the window frame becomes verifiable on-screen.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
