@@ -601,19 +601,46 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     symbols are now real .data (nm: D_801CB180 type D), removed from the
     zeroed stub set. Port-only -- slus a55929a1 + tripwire (map014 D_800B2264=0,
     clean) untouched.
-    REVISED FIRST TARGET (data now done; render-proof pending): (1) DATA
-    MIGRATION -- member_change DONE; the MAIN menu (menu.bin) will need the
-    SAME (its .rodata/.data migrated, likely larger). (2) DRAW STUBS -- port
-    the ~10 shared (SystemRenderStringEntry text [func_80033DF0, its renderer,
-    is ALREADY ported] + 6 func_8002xxxx + 2 sound; coexistence, slus stays
-    byte-exact). (3) RENDER HARNESS -- the hard part: force D_80059460=1 under
-    the port (extend the map005 menu repro, or a gdb-forced MenuMain with the
-    overlay resources loaded) + capture. (4) PROVE member_change renders
-    (window + text). If it still doesn't render after data+stubs, a FURTHER
-    systemic blocker (e.g. more zeroed .rodata, or a VRAM/CLUT upload stub)
-    -- find it before the 96-fn main-menu commit. Order: 2+3 next pass, then
-    the main-menu tree (96 fns + ITS data migration) as the multi-pass
-    follow-on.
+    ===== RENDER HARNESS BUILT + THE WINDOW RENDERS (architecture +
+    data-sufficiency for LAYOUT proven empirically) =====
+    HARNESS (captures/render_diag/member_change_menu_harness.gdb, reusable):
+    boot a field map, force D_800ADB64=1 at a stable frame -> the field
+    menu-open trigger (main.c:618) fires func_800799D4 -> loads the overlay
+    -> MenuMain -> MenuExecute case 1 -> MemberChangeMenuMain; glReadPixels
+    capture. VERIFIED on map005: MemberChangeMenuMain ENTERED (D_80059460=1),
+    the menu RUNS.
+    RESULT (glReadPixels ground truth): the member_change WINDOW RENDERS --
+    a large window rect at a REAL position/size (frame ~95 after open, 51%
+    non-black), NOT the 0x0 collapse the zeroed data would give. So the data
+    migration is proven SUFFICIENT FOR THE WINDOW LAYOUT, and the menu render
+    architecture works end-to-end (invoke -> overlay-load -> MenuMain ->
+    dispatch -> MemberChangeMenuMain -> window draw).
+    THE EMPTY CONTENT IS DRAW STUBS, NOT MORE DATA (sufficiency answered):
+    the window is empty (no border/text/sprites) because member_change's
+    content-draw path is stubbed -- func_801C59E0 (108i) + func_801C95A0
+    (63i) [member_change draw helpers, INCLUDE_ASM, they call
+    SystemRenderStringEntry + LoadImage + GetStringEntry] and the shared
+    func_8002xxxx (func_80026338 43i leaf, func_8002675C 172i POLY_FT4,
+    func_8002DD20 49i TIM loader). This is the STUB layer, not a data gap.
+    THE TEXT-RENDER PORT IS INTRICATE (next-pass scope, not a quick stub):
+    SystemRenderStringEntry (59i) sets up a CONTIGUOUS ~0xF0-byte descriptor
+    struct based at D_80059FD8 (fields at +0x00/02/08/0A/0C/10/12/1C/28/2C/
+    68/69/.., verified against the writes) and calls func_80033DF0(&D_80059FD8);
+    func_80033DF0 (ALREADY ported, system.c:350) reads it via arg0+OFFSET, so
+    the port must make D_80059FD8 one contiguous buffer (NOT 18 separate
+    zeroed symbols -- the same alias trap as the overlay data). Port
+    SystemRenderStringEntry writing via offsets into that buffer + the
+    func_801C59E0/95A0 callers, then the harness proves TEXT.
+    REVISED NEXT TARGET (data DONE, architecture PROVEN, harness BUILT):
+    (1) DRAW STUBS -- port the text path (SystemRenderStringEntry w/ the
+    contiguous descriptor + func_801C59E0/95A0) then func_8002xxxx (images);
+    coexistence, slus byte-exact. (2) RE-RUN the harness -> member_change
+    renders window+TEXT+content (full proof). If content still missing after
+    the stubs -> a further gap (more data? a VRAM/CLUT upload?) -- find before
+    the main-menu commit. (3) THEN the main menu (func_801C62A8, 96 fns + ITS
+    data migration -- the systemic data lesson applies) as the multi-pass
+    follow-on. The member_change proof-of-concept has now validated: overlay
+    port = CODE + DATA migration + draw-stub port; the window-layer works.
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
