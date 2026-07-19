@@ -131,11 +131,22 @@ Last verified @ 0a32159.
      (func_801E738C/func_801E742C at 0x801E7xxx, UNPORTED and
      UNEXTRACTED -- no asm split exists), and the now-synced streams
      reach func_800821F4's battle-animation assert on maps 16/80 (which
-     play today only via the FE07 desync) plus a further cross-actor
-     NULL on MAP3 (remaining stubs func_800230A8/80088198/8008B180
-     unaudited). MAP3's flip therefore needs: the overlay extraction +
-     model-instantiation port, the func_800821F4 branch, and the 3-stub
-     audit -- a sub-project, not a pass. Flip the define when it lands.
+     play today only via the FE07 desync).
+     (d) 2026-07-19 -- the cross-actor NULL on MAP3 (func_8009EB78 SEGV,
+     garbage actor index 128, ~99 frames) is FIXED (1c48ed4). Same FE07
+     IP-desync class: func_80088198 (IP += 1, snapshots 20 GameState
+     per-slot entries) and func_8008B180 (IP += 5, gated obj-anim drive
+     via func_801E8330) were no-op stubs that never advanced the IP,
+     desyncing MAP3's script until a garbage index reached func_8009EB78.
+     Ported both to plain C (func_8008D604/FE07 convention). MAP3 now
+     boots 200 frames + renders 16.7% nonblack. Dispatch probe confirms
+     the tripwire maps (000/001/014/047/334) hit neither handler (0/0 vs
+     MAP3's 1/1) -> change provably inert there, watchdogs EXACT. Only
+     func_800230A8 of the 3 stubs remains unaudited (not on MAP3's boot
+     path -- MAP3 boots without hitting it). MAP3's full flip still needs
+     the overlay extraction + model-instantiation port and the
+     func_800821F4 branch -- a sub-project, not a pass. Flip the define
+     when it lands.
   6. Cutscene opcode walls: func_8001FBE4's 0xBC family LARGELY RESOLVED --
      the 3 0xBC-internal asserts became a full implementation of the
      position opcode: 21 of 27 sub-commands live (target/parent/own/anchor-
