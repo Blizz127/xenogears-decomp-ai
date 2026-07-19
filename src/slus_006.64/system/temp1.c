@@ -1361,11 +1361,123 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025D4C);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025FA8);
 
+#ifdef XENO_PC_PORT
+/* Unpack a texture-atlas entry (indexed by `index` into `table`) into the
+ * caller's tpage / CLUT / texcoord output fields. `table[index*2+4]` is the
+ * byte offset of the entry within `table`; entry[0]=item count, entry+4 is the
+ * first item's descriptor. Stubbed, the window-border sprites get zeroed
+ * tpage/clut. All outputs are s32/u32 fields, matching the asm sw width. */
+void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage, s32* pClutX,
+                   s32* pClutY, s32* pTexX, s32* pTexY) {
+    u8* pEntry = table + *(u16*)(table + index * 2 + 4);
+    u8* item = pEntry + 4;
+    u16 packed = *(u16*)(pEntry + 4);
+    s16 tpage = *(s16*)(item + 0x10);
+    s32 shift;
+
+    *pOut0 = (u32)(s32)*(s16*)(pEntry);
+    if (tpage == 0) {
+        shift = ((s32)((u32)packed << 16)) >> 20;
+    } else {
+        shift = ((s32)((u32)packed << 16)) >> 18;
+    }
+    *pTPage = *(s16*)(item + 0x10);
+    *pClutX = *(s16*)(item + 0x12);
+    *pClutY = *(s16*)(item + 0x14);
+    *pTexX = (s32)(s16)(*(u16*)(item + 0x16) & 0xFFC0) + shift;
+    *pTexY = (s32)(s16)(*(u16*)(item + 0x18) & 0xFF00) + *(s16*)(item + 2);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026338);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800263E4);
 
+#ifdef XENO_PC_PORT
+/* Build a run of POLY_FT4 sprites for atlas entry `index` (window borders,
+ * scroll-bar ornaments, etc.). pEntry[0] = item count; each 0x1C-byte item
+ * holds signed position/size (scaled by `scale`>>12) + raw UV/wh + per-axis
+ * flip flags at +0x1A/+0x1B. Writes one 0x28-byte POLY_FT4 per item into
+ * `polys` at the current renderCtx slot (+0x50 stride, two contexts). Returns
+ * the item count. Stubbed, the border sprites never build (empty frame). */
+s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx, s32 x, s32 y,
+                  s32 scale) {
+    u8* pEntry = table + *(u16*)(table + index * 2 + 4);
+    u32 s4 = (u32)scale & 0xFFFF;
+    s32 fp = 4;
+    u8* poly = (u8*)polys;
+    s32 slot;
+
+    if (*(s16*)(pEntry) == 0) {
+        return 0;
+    }
+    slot = 0;
+    do {
+        u8* item = pEntry + fp;
+        u8* s0 = poly + renderCtx * 0x28;
+        s32 t, s3, s6, s2, s5;
+        s32 u0, v0r, uw, vh, u1, v1;
+        s32 px0, px1, py0, py1;
+
+        t = *(s16*)(item + 0x8) * (s32)s4; if (t < 0) t += 0xFFF; s3 = t >> 12;
+        t = *(s16*)(item + 0xA) * (s32)s4; if (t < 0) t += 0xFFF; s6 = (s32)((u32)t >> 12);
+        t = *(s16*)(item + 0x4) * (s32)s4; if (t < 0) t += 0xFFF; s2 = t >> 12;
+        t = *(s16*)(item + 0x6) * (s32)s4; if (t < 0) t += 0xFFF; s5 = (s32)((u32)t >> 12);
+
+        SetPolyFT4((POLY_FT4*)s0);
+        SetSemiTrans((POLY_FT4*)s0, 0);
+        SetShadeTex((POLY_FT4*)s0, 1);
+        *(s16*)(s0 + 0x16) = GetTPage(*(s16*)(item + 0x10), 0,
+                                      *(s16*)(item + 0x16), *(s16*)(item + 0x18));
+        *(s16*)(s0 + 0xE) = GetClut(*(s16*)(item + 0x12), *(s16*)(item + 0x14));
+
+        u0 = *(u16*)(item + 0x0);
+        v0r = *(u16*)(item + 0x2);
+        uw = *(u16*)(item + 0x4);
+        vh = *(u16*)(item + 0x6);
+
+        if (*(u8*)(item + 0x1A) == 0) {          /* no horizontal flip */
+            px0 = x + s3;
+            px1 = s2 + px0;
+        } else {                                  /* horizontal flip: swap L/R x */
+            u0 -= 1;
+            px1 = x + s3;
+            px0 = s2 + px1;
+            if ((s16)u0 < 0) { u0 = 0; uw -= 1; }
+        }
+        *(s16*)(s0 + 0x8) = px0; *(s16*)(s0 + 0x10) = px1;
+        *(s16*)(s0 + 0x18) = px0; *(s16*)(s0 + 0x20) = px1;
+
+        if (*(u8*)(item + 0x1B) == 0) {          /* no vertical flip */
+            py0 = y + s6;
+            py1 = s5 + py0;
+            *(s16*)(s0 + 0xA) = py0; *(s16*)(s0 + 0x12) = py0;
+            *(s16*)(s0 + 0x1A) = py1; *(s16*)(s0 + 0x22) = py1;
+        } else {                                  /* vertical flip: swap T/B y */
+            v0r -= 1;
+            py0 = y + s6;
+            py1 = s5 + py0;
+            *(s16*)(s0 + 0xA) = py1; *(s16*)(s0 + 0x12) = py1;
+            *(s16*)(s0 + 0x1A) = py0; *(s16*)(s0 + 0x22) = py0;
+            if ((s16)v0r < 0) { v0r = 0; vh -= 1; }
+        }
+
+        u1 = u0 + uw;
+        v1 = v0r + vh;
+        *(u8*)(s0 + 0xC) = u0;  *(u8*)(s0 + 0xD) = v0r;
+        *(u8*)(s0 + 0x14) = u1; *(u8*)(s0 + 0x15) = v0r;
+        *(u8*)(s0 + 0x1C) = u0; *(u8*)(s0 + 0x1D) = v1;
+        *(u8*)(s0 + 0x24) = u1; *(u8*)(s0 + 0x25) = v1;
+
+        fp += 0x1C;
+        poly += 0x50;
+        slot++;
+    } while (slot != *(s16*)(pEntry));
+    return *(s16*)(pEntry);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002675C);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026A0C);
 

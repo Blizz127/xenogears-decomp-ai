@@ -657,13 +657,37 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     slus a55929a1 UNCHANGED (system.c/temp2.c coexistence); tripwire maps 1/14
     boot clean (200 frames) -- SystemRenderStringEntry going live didn't
     regress the field.
-    NEXT: (1) port func_80026338 + func_8002675C (window-border POLY_FT4) +
-    func_801C95A0 (portraits) -> re-run harness -> clean glyphs?  If clean:
-    member_change render FULLY proven. If still banded: a font-rasterisation
-    gap (does func_80033DF0 emit glyph pixels, or is a font blitter missing?)
-    -- diagnose. (2) THEN the main menu (func_801C62A8, 96 fns + ITS data
-    migration) as the multi-pass follow-on. Validated recipe so far: overlay
-    port = CODE + DATA migration + draw-stub port (text pipeline included).
+    ===== BORDER PORTED -- BANDS RESOLVED (they were the border) + WINDOW
+    FRAME RENDERS CLEAN =====
+    The bands ambiguity is RESOLVED on BOTH forks:
+    (1) GLYPHS RASTERISE (proven directly, not guessed): dumped the text work
+    buffer (g_Menu[0x558]) mid-member_change under GDB -- 88% nonzero, and
+    rendered as a 4bpp image shows CLEAN GLYPH SHAPES. func_80034FFC (the glyph
+    blitter, already ported) works. So the bands were NEVER a rasterisation
+    failure.
+    (2) THE BANDS WERE THE BORDER: func_8002675C (the window-border POLY_FT4
+    builder) was stubbed, so the border poly slots held GARBAGE and drew as the
+    colour bands once func_801C59E0 triggered the full menu render. Porting the
+    border pair CLEARED them.
+    DONE: func_80026338 (temp1.c, coexistence) -- atlas-entry -> tpage/CLUT/
+    texcoord unpacker; func_8002675C (temp1.c, coexistence) -- the 172-instr
+    POLY_FT4 border builder (per-item scale>>12, H/V flip via +0x1A/0x1B,
+    4-vertex + UV emit, returns item count).
+    RESULT (glReadPixels): 55.4% -> 58.8% -- member_change now renders a CLEAN
+    WINDOW FRAME (light border + corner ornaments + cursor). A recognisable
+    menu window. The glyphs rasterise (work-buffer proof). HONEST: the window
+    FRAME is the clear proven win; the in-window text-LABEL display isn't
+    clearly visible in the harness capture (empty interior -- likely no party
+    data in the forced-open harness state, or a draw-order detail) -- the text
+    PIPELINE is proven at the work-buffer level but its on-screen label render
+    in this state is not yet visually confirmed.
+    slus a55929a1 UNCHANGED (system.c/temp1.c/temp2.c coexistence); matching
+    468/468; tripwire map14 boots clean (200 frames).
+    NEXT: (1) confirm the in-window label display (check func_801C57A0 draw
+    order / whether the harness state has data; port func_801C95A0 portraits).
+    (2) THEN the main menu (func_801C62A8, 96 fns + ITS data migration) as the
+    multi-pass follow-on. VALIDATED RECIPE: overlay port = CODE + DATA
+    migration + draw-stub port (text pipeline + border, both now proven).
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
