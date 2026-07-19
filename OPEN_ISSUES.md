@@ -433,6 +433,26 @@ the ~5 non-playing maps are now 3, 25, 160, 250, 400. Blockers + rank:
      (object-overlay convergence, shared with the menu render). So 21/24 is the
      natural bank point for BOUNDED flips; further gameplay progress is the
      deeper sub-projects (VM boot-flow, object-overlay, or the menu render).
+  MAP400 ROOT CAUSE (2026-07-19, pushed deeper -- no code, not a bounded flip):
+     traced actor 19's full boot script. Each boot actor (D_800ADBFC=20, so 0-19)
+     runs a 4-opcode boot script [first],42,27,0 then gets late-bound (658).
+     CONFIRMED it is actor 19's OWN script (curActor==g_FieldActors[19].pActorData)
+     and its first opcode is 0xFE->func_80098A7C (setpos), which writes actor 19's
+     pSpriteData->position -- BEFORE its late bind. Actors 15/16/18 also start
+     0xFE but a DIFFERENT extended opcode (non-sprite), so only actor 19 crashes.
+     The FE dispatch is CORRECT (FieldScriptVM2Run u8 cast, a past bug already
+     fixed). KEY: actor 19's skinId(0x126)=0x0 -- NORMAL, identical to actor 0
+     (which binds fine) -- so actor 19 is NOT a special-sprite/stubbed-loader
+     actor. It is a pure ORDERING/CONTEXT issue: actor 19's setpos-first script
+     assumes its sprite is ALREADY bound, which only happens via the PATH-1
+     early-bind (func_800A28D4's g_GamePartySkinsInitialized!=0 branch). The
+     harness cold-boots (path 2, party skins NOT initialized) so the early bind
+     never runs. MAP400 is a late-game map whose scripts assume the party-skin-
+     initialized context; the cold harness boot is unrepresentative. => NOT a
+     stubbed loader, NOT a bounded code fix -- most likely a HARNESS/CONTEXT
+     limitation (MAP400 would plausibly play when reached in real gameplay with
+     party skins initialized -- UNTESTED). The survey "sprite-loader/MAP2 pattern"
+     label was wrong (signature-is-hypothesis, 4th time). Bank at 21/24.
 
 DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
 are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
