@@ -741,19 +741,58 @@ remaining arc (MAP3 + MAP16 gameplay + the entire menu system on one infra
 bring-up), but it is a multi-pass sub-project gated on Phase 1's overlay
 extraction -- fund it as a dedicated arc, start at Phase 1.
 
-MENU OVERLAY (main menu.bin, mode-0 render): unchanged from the prior
-scoping -- a TWO-PART DEDICATED SUB-PROJECT, not an incremental target.
-(a) build-infra bring-up: menu.bin (archive dir 0x10 file 5, VRAM
-0x801C5000, 153864 bytes, uncompressed) is NOT in gears.toml, has no
-config/menu.yaml, no asm/menu/ split, no matching baseline -- none of the
-decomp OR coexistence infrastructure exists. (b) the mode-0 render tree:
-func_801C62A8 (84-insn dispatcher) -> func_801C5F10/801C7B0C/801D2D38/
-801C55A0/801C5FE4 + transitive draw callees -- all unported overlay code,
-the window/content drawing lives there. member_change_menu (95.5%, 3
-unported) and shop_menu (84.7%, 18 unported) ARE disassembled and nearly
-done, but are state-gated behind the main menu. No minimal "a menu renders"
-subset exists until the overlay is brought up (unlike sound's first-audible
-subset). Heavy, dedicated -- its own arc.
+MAIN-MENU PORT (func_801C62A8) -- PHASED PLAN (scoped read-only; the
+member_change recipe is validated, but the SCALE is ~5x and the render is
+MONOLITHIC, not incrementally sliceable):
+(A) TREE = 301 menu.bin functions / 37,192 instrs -- NOT 96 (the earlier
+    estimate undercounted; the under-estimate pattern again). func_801C62A8
+    (86i dispatcher) -> init (func_801C5F10 10fns + func_801C7B0C 16fns = 26
+    fns, but init does NOT render -- reaches neither the border draw nor
+    DrawOTag) -> a MONOLITHIC render/loop core (func_801C55A0 268 / func_-
+    801C58EC 269 / func_801C57A4 271 fns -- heavily overlapping, ALL reach
+    DrawOTag + border + text). Smallest subtree that reaches the render:
+    func_801C8694 (86 fns) / func_801D2D38 (96 fns). So there is NO small
+    "frame-only" slice -- the render infra is shared across everything.
+(B) DATA MIGRATION = 208 symbols (15 .rodata @0x801C50xx + 193 .data
+    @0x801E96A4-0x801EA904, ~0x1260 bytes) -- 13x member_change's 16. Large
+    but MECHANICAL (the data_field.c / data_member_change pattern: scripted
+    verbatim extraction from menu.bin). Required for any render (the port
+    auto-zeros overlay data). Self-contained, no code dependency.
+(C) SHARED DEPS mostly DONE (member_change paid this off): of 111 external
+    callees, only 6 are STUBBED -- SoundEnable/MuteAllSpuChannels (2 sound),
+    func_800263E4 / func_8002A498 / func_80036410 / func_8003852C (4 draw/
+    system). The text pipeline (SystemRenderStringEntry + descriptor), border
+    (func_80026338/8002675C), TIM (func_8002DD20), glyph blitter (func_-
+    80034FFC) are all ALREADY ported.
+(D) FIRST BOUNDED SLICE: no small testable render exists (the render is
+    monolithic). Two viable first steps: (i) the DATA migration (208 symbols,
+    mechanical, required, but INVISIBLE alone -- 0% code ported here, unlike
+    member_change which was 90% pre-ported), or (ii) dispatcher + init +
+    smallest render subtree (func_801C8694, 86 fns) + stub the rest + the
+    data -> the first TESTABLE render (~110 fns). Testable via the harness
+    (force D_800ADB64 -> D_80059460=0 = the main-menu case, glReadPixels).
+(E) member_change NAV RESOLUTION -- CORRECTED: the main-menu port does NOT
+    resolve member_change's on-screen labels. The main menu and member_change
+    are MUTUALLY-EXCLUSIVE overlays (both VRAM 0x801C5000); the main menu
+    never calls member_change (no D_80059460=1 setter in menu.bin -- it is
+    entered via the field's MenuMain dispatch, separate overlay load).
+    member_change's label-visibility (pManager->unk34) + poly positioning are
+    set by member_change's OWN input-driven navigation, which the forced-open
+    harness bypasses. So member_change's labels are resolved by DRIVING
+    member_change (harness input / navigation), NOT by this port.
+(F) PHASED PLAN: Phase A = DATA migration (208 symbols, mechanical, first --
+    no code dep). Phase B = dispatcher + init + smallest render subtree
+    (func_801C8694, 86 fns) + stub the option branches -> first TESTABLE
+    main-menu window render. Phase C = fill in the render core (55A0/58EC/
+    57A4) + the option/nav/submenu branches (~180 remaining fns), multi-pass.
+    RECOMMENDATION: Phase A (data migration) first -- bounded, mechanical,
+    required, de-risks everything. But BE HONEST about scale: this is ~301
+    fns + 208 data symbols, a LARGE multi-pass arc (~5x member_change), and
+    unlike member_change (90% pre-ported + self-contained) it is 0% ported +
+    monolithic-render, so the first VISIBLE render needs ~110 fns, not a small
+    slice. The recipe is de-risked; the effort is not small.
+Prior overlay state: member_change_menu (95.5% matched) and shop_menu (84.7%)
+ARE disassembled; member_change is the ported proof-of-concept.
 
 DRIVE ORDER (what unblocks the most): the FIELD path is the high-yield
 incremental track -- the SEGV cluster (1 root -> 4 maps) then the buildProc
