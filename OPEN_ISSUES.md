@@ -899,6 +899,29 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     (Arc B) is a separate field-render diagnosis, not a byproduct of the menu
     port. Pick Arc A for a mapped port with a visible payoff, or Arc B0 to
     diagnose MAP3's field gap first -- but they are two efforts, not one.
+    ===== ARC A EXECUTION (chosen; menu window render) =====
+    CONFIRMED chain (2026-07-19): de-risked by member_change func_801C7EC8
+    (RotTransPers4 project + AddPrim, renders on-screen). func_801D1B20 is a
+    LINEAR sequence of 22 void sub-renderers -- the window is ONE branch
+    (func_801D0C78); the other 21 stay no-op stubs, so only the window draws.
+    Port order (bottom-up, ~10 fns):
+      1. func_801D0954 (41i) -- DONE + compiles (project 1 window quad + AddPrim
+         to g_Menu->pGfxEnv->ot[otIdx]).
+      2. func_801D09F0 (167i) -- loops func_801D0954 x11.
+      3. func_801D0C78 (76i) -- Push/Rot/TransMatrix + SetRot/Trans (window 3D
+         matrix) then func_801D09F0 x2; reads windows[] (0x364).
+      4. func_801D1B20 (52i) -- 22 void calls (21 stubs + func_801D0C78).
+      5. func_801D1CA0 (47i) -- func_801D1B20 + 3 stubbable.
+      6. func_801C7BF4 (102i) -- ClearOTagR + func_801C7F34/1D40 + func_801D1CA0
+         + DrawOTag + Vsync/PutDrawEnv/PutDispEnv present.
+      7. func_801C55A0 (142i) -- the input loop (drives func_801C7BF4/frame).
+      8. func_801C7F34 (99i)+func_801D1D40 (88i) -- global view matrix (verify if
+         needed vs func_801D0C78's local matrix).
+      9. func_801D2D38 (106i) setup + the window-BUILD (a func_8002675C caller)
+         -- builds the border POLY_FT4s the chain AddPrims, else nothing to draw.
+    Shared GTE/GPU core (RotTransPers4/AddPrim/DrawOTag/matrices) all PORTED
+    (PsyX). glReadPixels VERIFY only once the whole chain lands. Harness:
+    XENO_FIELD_MAP=5 XENO_MENU_FORCE=1. Multi-turn port; leaf done + compiles.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each

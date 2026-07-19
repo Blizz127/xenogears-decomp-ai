@@ -616,7 +616,20 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D01D0);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D02D8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0954);
+/* Arc A (menu window render): project one window quad's 4 vertices via
+ * RotTransPers4 into its POLY_FT4 xy coords, then AddPrim it to the gfxEnv OT.
+ * The RotTransPers4+AddPrim window-draw pattern (member_change func_801C7EC8
+ * precedent). Leaf of the window-draw chain -- func_801D09F0 loops this. */
+void func_801D0954(SVECTOR* vertices, POLY_FT4* polys, s32 polyIndex, s32 otIndex) {
+    long padA;
+    long padB;
+
+    RotTransPers4(&vertices[0], &vertices[1], &vertices[2], &vertices[3],
+                  (long*)&polys[polyIndex].x0, (long*)&polys[polyIndex].x1,
+                  (long*)&polys[polyIndex].x2, (long*)&polys[polyIndex].x3,
+                  &padA, &padB);
+    AddPrim(&g_Menu->pGfxEnv->ot[otIndex], &polys[polyIndex]);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D09F0);
 
