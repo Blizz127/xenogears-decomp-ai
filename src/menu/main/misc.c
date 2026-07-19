@@ -36,7 +36,23 @@ extern void func_801C6D5C(void);
 extern void func_801C6E0C(void);
 extern void func_801C6E68(void);
 extern void func_801C6F70(void);
+extern u16 func_801C865C(u16 mask, u8 index);  /* defined below */
+/* B1b resource-load (func_801C65F4) callees + data.  LZSSHeapDecompress MUST
+ * have a void* prototype -- the port builds with -w, so a missing decl would
+ * default it to int and truncate the 64-bit host pointer. */
+extern void* LZSSHeapDecompress(void* pCompressed, int flags);
+extern unsigned int ResolveArchiveEntryPointers(u32* pFile);
+extern void func_8002DD20(u32* pList);
+extern void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage,
+                          s32* pClutX, s32* pClutY, s32* pTexX, s32* pTexY);
+extern char D_801C5028[];   /* "BASLUS-00664" (migrated menu rodata) */
+extern char D_801C5038[];   /* "BASLUS-01160" */
+extern void* D_8006259C;    /* SEDS file pointer */
+extern void* D_8005945C;    /* menu resource-pointer table (pResources) */
+extern u16 D_801E96A8[];    /* migrated bit-select table {1,2,4,...} */
 extern u8 D_80059460;
+extern u8 D_80059171;
+extern u8 D_800594CC;
 extern u8 D_800594D0;
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
@@ -195,9 +211,148 @@ void func_801C62A8(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6400);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C65F4);
+/* B1b: the main-menu resource-load (twin of MemberChangeMenuLoadResources).
+ * Decompresses the menu resources -- the Xenogears icon TIM, the menu TIM
+ * textures (func_8002DD20), the texture-UV atlas -> unk2DC (what the window/text
+ * builders read), a second atlas -> unk2E0, and the 3 party-portrait TIMs
+ * (uploaded to VRAM via LoadImage at positions from func_80026338).  Also stores
+ * the two memory-card save-file names.  Called by func_801C6AA0. */
+void func_801C65F4(void) {
+    u32* pResources = (u32*)D_8005945C;
+    void* pTim;
+    void* pCharTims;
+    TIM_IMAGE charTim;
+    /* func_80026338 output slots for the 3 portrait positions (stride 0x18);
+     * only clutX/clutY/texX/texY are consumed (the VRAM CLUT/texture coords). */
+    struct { u32 uv; s32 tpage, clutX, clutY, texX, texY; } pos[3];
+    s32 i;
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6AA0);
+    ResolveArchiveEntryPointers(pResources);
+
+    /* Xenogears icon TIM (pResources[1]). */
+    pTim = LZSSHeapDecompress((void*)pResources[1], 1);
+    OpenTIM(pTim);
+    ReadTIM(&g_Menu->unk32C->tim);
+
+    /* Two memory-card save-file names (BASLUS-00664 @ 0x4FCE, -01160 @ 0x501C). */
+    memcpy(&g_Menu->unk32C->unk4F80[0x4E], D_801C5028, 13);
+    memcpy(&g_Menu->unk32C->unk4F80[0x9C], D_801C5038, 13);
+
+    g_Menu->unk32C->unk4B94 = 0x53;
+    g_Menu->unk32C->unk4B95 = 0x43;
+    g_Menu->unk32C->unk4B96 = 0x11;
+    g_Menu->unk32C->unk4B97 = 1;
+    bzero(g_Menu->unk32C->unk4B98, 0x5C);
+    memmove(g_Menu->unk32C->unk4BF4, g_Menu->unk32C->tim.caddr, 0x20);
+    memmove(g_Menu->unk32C->unk4C14, g_Menu->unk32C->tim.paddr, 0x80);
+    HeapFree(pTim);
+
+    /* Menu TIM textures (pResources[2]). */
+    pTim = LZSSHeapDecompress((void*)pResources[2], 1);
+    func_8002DD20(pTim);
+    HeapFree(pTim);
+
+    /* Texture-UV atlases: unk2DC is read by the window/text builders. */
+    g_Menu->unk2DC = LZSSHeapDecompress((void*)pResources[3], 0);
+    g_Menu->unk2E0 = LZSSHeapDecompress((void*)pResources[4], 0);
+
+    /* VRAM CLUT/texture positions for the 3 portrait slots.  (The 0xE0 call is
+     * immediately overwritten by the 0x14B call in retail -- kept for fidelity.) */
+    func_80026338(g_Menu->unk2DC, 0xE0,  &pos[0].uv, &pos[0].tpage, &pos[0].clutX, &pos[0].clutY, &pos[0].texX, &pos[0].texY);
+    func_80026338(g_Menu->unk2DC, 0x14B, &pos[0].uv, &pos[0].tpage, &pos[0].clutX, &pos[0].clutY, &pos[0].texX, &pos[0].texY);
+    func_80026338(g_Menu->unk2DC, 0x14C, &pos[1].uv, &pos[1].tpage, &pos[1].clutX, &pos[1].clutY, &pos[1].texX, &pos[1].texY);
+    func_80026338(g_Menu->unk2DC, 0x14D, &pos[2].uv, &pos[2].tpage, &pos[2].clutX, &pos[2].clutY, &pos[2].texX, &pos[2].texY);
+    pos[1].texX += 0xC;
+
+    /* Party portraits (pResources[5]): upload each character's TIM to VRAM. */
+    pCharTims = LZSSHeapDecompress((void*)pResources[5], 1);
+    for (i = 0; i < 3; i++) {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[i];
+        if (charId == 0xFF) {
+            continue;
+        }
+        OpenTIM((u_long*)((u8*)pCharTims + charId * 0xB20));
+        ReadTIM(&charTim);
+        charTim.crect->x = (s16)pos[i].clutX;
+        charTim.crect->y = (s16)pos[i].clutY;
+        charTim.prect->x = (s16)pos[i].texX;
+        charTim.prect->y = (s16)pos[i].texY;
+        LoadImage(charTim.crect, charTim.caddr);
+        LoadImage(charTim.prect, charTim.paddr);
+    }
+    DrawSync(0);
+    HeapFree(pCharTims);
+
+    if (g_MenuDebugEnabled) {
+        ArchiveSetIndex(0x10, 2);
+        D_8006259C = HeapAlloc(ArchiveDecodeAlignedSize(5), 0);
+        ArchiveReadFileToBuffer(5, D_8006259C, 0, 0x80);
+        ArchiveCdDataSync(0);
+        ArchiveSetIndex(0x10, 0);
+        SoundAddSedsEntry(D_8006259C);
+    }
+    g_Menu->unk2E4 = (SoundFile*)D_8006259C;
+    HeapFree(pResources);
+}
+
+/* B1b: party/character setup for the main menu, then the resource-load.
+ * Computes availableCharacters[] from the party flag mask, resolves the 3
+ * active party slots (currentCharacterIDs / gear flags), records the first
+ * active slot, then calls func_801C65F4 to stream the menu resources. */
+void func_801C6AA0(void) {
+    s32 i;
+    u16 frMask;
+
+    /* menu1Choice: restore the saved choice for a plain main-menu open,
+     * else start at entry 1. */
+    if (D_80059460 == 0 && D_80059171 == 0) {
+        g_Menu->menu1Choice = D_800594CC;
+    } else {
+        g_Menu->menu1Choice = 1;
+    }
+    g_Menu->unk337 = 0xFF;
+    g_Menu->unk326 = 0x3C;
+    g_Menu->unk334 = 0;
+    g_Menu->unk335 = 0;
+    g_Menu->unk32B = 0;
+
+    /* availableCharacters[i] = character i present in the party flag mask. */
+    frMask = (g_GameState.unk1D30 & g_GameState.FrMask) & 0x7FF;
+    for (i = 0; i < 0x10; i++) {
+        if (func_801C865C(frMask, (u8)i) != 0) {
+            g_Menu->availableCharacters[i] = 1;
+        } else {
+            g_Menu->availableCharacters[i] = 0;
+        }
+    }
+
+    /* Resolve the 3 active party slots: present + available members become
+     * currentCharacterIDs; a member with a gear also sets the unk5C flag. */
+    for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
+        u8 member = g_GameState.partyMembers[i];
+        g_Menu->pManager->unk5C[4 + i] = 0;
+        if (member == 0xFF || g_Menu->availableCharacters[member] == 0) {
+            g_Menu->pManager->currentCharacterIDs[i] = 0xFF;
+        } else {
+            g_Menu->pManager->currentCharacterIDs[i] = member;
+            g_Menu->unk32B++;
+            if (g_GameState.characters[member].gearId != 0xFF) {
+                g_Menu->pManager->unk5C[4 + i] = 1;
+                g_Menu->unk33B++;
+            }
+        }
+    }
+
+    /* Record the first active party slot (leave unset if none). */
+    for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
+        if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
+            g_Menu->unk4CC[0x10] = (u8)i;
+            break;
+        }
+    }
+
+    func_801C65F4();
+}
 
 /* B1b: reset the menu's active render context. */
 void func_801C6D4C(void) {
@@ -289,7 +444,11 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C861C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8640);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C865C);
+/* Bit-select: is character `index` present in party mask `mask`?
+ * (D_801E96A8 is the {1,2,4,8,...} table.) */
+u16 func_801C865C(u16 mask, u8 index) {
+    return D_801E96A8[index & 0xFF] & mask;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8678);
 
