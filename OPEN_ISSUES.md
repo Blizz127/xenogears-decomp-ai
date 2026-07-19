@@ -591,6 +591,28 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     (E) SCOPE: main-menu render = BIG (~96 menu.bin fns + the 10 shared draw
         stubs), a MULTI-PASS port (an initial window+text render is a ~20-40
         fn subset; full functionality incl. sub-menus/input is the 96).
+    ===== PROGRESS (main-menu arc) =====
+    Phase A (94e24bc): 208 menu.bin data symbols migrated as contiguous C
+    .data (blob-per-section + .set aliases). Phase B1a (07fa23c): dispatcher
+    func_801C62A8 + init slice func_801C5F10 + 9 alloc toggles ported
+    (native-struct convention -- struct FIELDS, not raw PSX offsets, since the
+    port's SystemMenu uses 8-byte pointers). B1b step 1 (2026-07-19): B1a
+    runtime milestone CONFIRMED via code-side force XENO_KERNEL_SEL=4 (the
+    KernelMenu "Menu" option) -> MenuExecute case 0 -> func_801C62A8 ->
+    func_801C5F10 (init) -> func_801D2D38/55A0 render entry, no crash 240
+    frames, backtrace-proven. (gdb symbol/struct reads of g_Menu/D_80059460
+    are unreliable here -- a native-layout view artifact; trust control flow.
+    This is WHY the earlier gdb symbol-WRITE force failed.) B1b step 2a
+    (dd56cab): content-build coordinator func_801C7B0C + zero-dep helpers
+    6D4C (renderContext=0) / 6D5C (zero unk4CC scratch) ported; coordinator
+    sets pSelectionMenu->unk1180 (RECT 320x224 @ 704,256) + unk348->unk15B and
+    drives the builder sequence, reaches the render entry, no crash; matching
+    compiles; tripwire inert (0 dispatch hits). REMAINING (B1b step 2b): the
+    POLY-setup builders func_801C6E68 (4x func_80026338 border-texture unpack),
+    func_801C6E0C (needs func_801C6D90 + overlay func_801E7E68), then the big
+    ones 6400/6AA0/6F70/65F4 (134-321 instrs, read Phase-A data) -- these build
+    the actual window/text POLYs. Then B2 (render subtree func_801C8694, 86
+    fns) wires AddPrim so content reaches the screen.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
