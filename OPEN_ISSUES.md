@@ -393,6 +393,22 @@ the ~5 non-playing maps are now 3, 25, 160, 250, 400. Blockers + rank:
      UNDER-ESTIMATE pattern, NOT a cheap flip. Re-ranked: MAP160/400 (the
      sprite-loader class, the PROVEN bounded MAP2 func_800A06E8 decomp pattern)
      is likely the cheaper actual flip; MAP25's GTE lighting branch is delicate.
+  OUTCOME (2026-07-19, a923c1c): pivoted to MAP160/400 and MAP160 FLIPPED. It
+     was NOT the sprite-loader class after all -- it was the FE07-class IP-desync
+     (garbage actor index 128, same as MAP3's boot-SEGV): func_8008F1C8, a
+     field-script opcode handler that copies two operand triples into the actor's
+     color fields + advances the IP by 8, was a no-op stub -> desync -> garbage
+     0x80 to FieldScriptVMHandlerEnableActorVM. Ported (func_80088198 pattern) ->
+     MAP160 boots 220 frames + renders 75.4%, tripwire 0-hit inert. 21/24 play.
+     MAP400 RE-CHARACTERIZED: genuinely the sprite-loader class (NOT a desync) --
+     g_FieldActors[D_800AFD1C].pSpriteData is NULL (valid actor, IP=680 sane), so
+     actor D_800AFD1C's sprite-loader is stubbed. func_80023290 (misc.c:1804) is
+     a red-herring CONSUMER of pSpriteData, not the loader. MAP400's real fix is
+     tracing + decomping the loader that should bind D_800AFD1C's sprite (the
+     multi-step MAP2 pattern) -- more involved than MAP160's clean desync fix.
+     Remaining non-playing: 3 (object-overlay, deep), 25 (GTE lighting, delicate),
+     250 (hang cluster), 400 (sprite-loader). Next cheapest is likely MAP400's
+     loader (proven pattern) or MAP250's hang cluster.
 
 DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
 are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
