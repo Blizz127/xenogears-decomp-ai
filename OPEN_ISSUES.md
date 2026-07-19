@@ -667,6 +667,18 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     B2 subtree func_801C8694), still stubbed. So the pipeline to a VISIBLE frame
     is: resource-load (unk2DC) -> builders (border coords) -> B2 render (draw).
     B1b gets the first two; B2 draws. Don't expect pixels until B2.
+    RESOURCE-LOAD PORTED + VERIFIED (d748fee, 2026-07-19): func_801C865C
+    (party bit-select) + func_801C6AA0 (party/character setup: availableCharacters
+    from the party flag mask, the 3 currentCharacterIDs slots + gear flags, first
+    active slot) + func_801C65F4 (the resource-load -- icon TIM, menu textures,
+    unk2DC=pResources[3] atlas, unk2E0, 3 party-portrait TIMs to VRAM, 2 save-file
+    names). Native-struct convention; explicit void* proto for LZSSHeapDecompress
+    (port -w would truncate the 64-bit ptr). VERIFIED in the resourced harness:
+    func_801C6AA0->65F4 run to completion no crash; unk2DC = 0x5a9818 (NON-NULL --
+    atlas loaded), read via func_80026338's arg (indices 0xE0/0x14B/0x14C/0x14D as
+    transcribed). slus untouched; matching clean; tripwire 0-hit inert.
+    NEXT: the builders (func_801C6E68 frame-border coords -- now safe, unk2DC is
+    populated; func_801C6E0C; the big 6400/6F70) then B2 (func_801C8694/55A0 draw).
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
