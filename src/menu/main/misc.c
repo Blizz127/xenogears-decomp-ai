@@ -26,6 +26,16 @@ extern void func_801C5D48(u8 init);
 extern void func_801C5DAC(u8 init);
 extern void func_801C5E10(u8 init);
 extern void func_801C5E74(u8 init);
+/* B1b: content-build subtree.  6D4C/6D5C ported below; the POLY-setup builders
+ * (6400/6AA0/6E0C/6E68/6F70) remain INCLUDE_ASM (auto-stub no-ops) until their
+ * own pass -- the coordinator calls them by prototype so it links either way. */
+extern void func_801C6400(void);
+extern void func_801C6AA0(void);
+extern void func_801C6D4C(void);
+extern void func_801C6D5C(void);
+extern void func_801C6E0C(void);
+extern void func_801C6E68(void);
+extern void func_801C6F70(void);
 extern u8 D_80059460;
 extern u8 D_800594D0;
 
@@ -189,9 +199,20 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C65F4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6AA0);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D4C);
+/* B1b: reset the menu's active render context. */
+void func_801C6D4C(void) {
+    g_Menu->renderContext = 0;
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D5C);
+/* B1b: zero the 14-byte scratch block at unk4CC (three words + two bytes,
+ * transcribed in asm order). */
+void func_801C6D5C(void) {
+    g_Menu->unk4CC[0xC] = 0;
+    *(u32*)&g_Menu->unk4CC[0] = 0;
+    *(u32*)&g_Menu->unk4CC[4] = 0;
+    g_Menu->unk4CC[0xD] = 0;
+    *(u32*)&g_Menu->unk4CC[8] = 0;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D90);
 
@@ -203,7 +224,42 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6F70);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C72BC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7B0C);
+/* B1b: content-build coordinator.  Sets the selection menu's VRAM rect
+ * (320x224 @ 704,256) and a per-menu context byte, then drives the builder
+ * sequence.  For the main menu (D_80059460 == 0) the trailing 6400/6D5C pair
+ * runs; sel 2/6 also run it (sel 2 bumps the context byte to 0x4C); sel 1 and
+ * sel >= 3 (!= 6) skip it.  Preconditions (pSelectionMenu, unk348) are both
+ * allocated by func_801C5F10's init slice. */
+void func_801C7B0C(void) {
+    u8 sel;
+
+    g_Menu->pSelectionMenu->unk1180.x = 0x2C0;
+    g_Menu->pSelectionMenu->unk1180.y = 0x100;
+    g_Menu->pSelectionMenu->unk1180.w = 0x140;
+    g_Menu->pSelectionMenu->unk1180.h = 0xE0;
+    g_Menu->unk348->unk15B = 0x40;
+
+    func_801C6AA0();
+    func_801C6D4C();
+    func_801C6E0C();
+    func_801C6F70();
+    func_801C6E68();
+
+    sel = D_80059460;
+    if (sel == 2) {
+        g_Menu->unk348->unk15B = 0x4C;
+        func_801C6400();
+        func_801C6D5C();
+    } else if (sel < 3) {
+        if (sel == 0) {
+            func_801C6400();
+            func_801C6D5C();
+        }
+    } else if (sel == 6) {
+        func_801C6400();
+        func_801C6D5C();
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7BF4);
 
