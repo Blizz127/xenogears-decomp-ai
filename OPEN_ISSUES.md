@@ -715,6 +715,26 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     DRAW path is the monolith. NB the render entangles the 0x801E object-overlay
     region -- so the menu render and the MAP3/MAP16 object-overlay convergence
     share this subtree.
+    MINIMAL-FRAME EXTRACTION MAPPED (2026-07-19, analysis -- no code): the
+    smallest window-frame draw path was traced. Draw chain (the loop draws
+    each iteration via func_801C7BF4):
+      func_801C55A0 (142, the input LOOP; input branches -> stubs, harness has
+        no input) -> func_801C7BF4 (102, per-frame draw: ClearOTagR + 3D setup
+        + sub-draws + DrawOTag + Vsync/PutDrawEnv/PutDispEnv present)
+        -> func_801D1CA0 (47) -> func_801D1B20 (52) -> func_801D0C78 (76)
+        -> func_801D09F0 (167, the window AddPrim) -> func_801D0954 (leaf prim).
+    KEY CONSTRAINT: the window is drawn via 3D PROJECTION -- func_801D09F0/0954
+    call RotTransPers4 to project the window vertices, so the 3D matrix setup
+    (func_801C7F34 99i + func_801D1D40 88i, RotMatrix/TransMatrix/SetRotMatrix)
+    CANNOT be stubbed -- the window won't position without a valid MATRIX. Plus
+    the window-BUILD (one of 12 func_8002675C callers reachable from the
+    func_801D2D38 106i setup) + func_801D2D38 itself. So the minimal frame is
+    ~10-12 funcs (~800-1000 instrs) INCLUDING the 3D projection pipeline
+    (matrices + RotTransPers4 + OT mgmt) -- a real focused render port, not a
+    2D border blit. Feasible + bounded + mapped; the RotTransPers4 dependency is
+    what makes it non-trivial (the window frame isn't 2D screen-space).
+    REMAINING to start the port: identify which of the 12 func_8002675C setup
+    callers builds the MAIN window frame (the one at the frame rect 320x224).
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
