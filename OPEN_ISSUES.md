@@ -859,6 +859,46 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     what makes it non-trivial (the window frame isn't 2D screen-space).
     REMAINING to start the port: identify which of the 12 func_8002675C setup
     callers builds the MAIN window frame (the one at the frame rect 320x224).
+    RENDER-CONVERGENCE SCOPING (2026-07-19, read-only -- the KEY verdict):
+    the claim was "MAP3 render gap + menu B2 render + MAP16 share a root -> one
+    arc, three payoffs." VERDICT: FALSE -- it is TWO INDEPENDENT ARCS, not one.
+    (C) The menu B2 chain (func_801C55A0/C7BF4/D1CA0/D1B20/D0C78/D09F0/D0954)
+    lives in the menu.bin OVERLAY (0x801C5000+), which is NOT loaded during a
+    field map's render (menu closed) -- so MAP3's field render CANNOT use it
+    (different overlay). MAP3's field render is func_800xxxxx (func_800748E8 /
+    FieldAddPrimitives in misc2.c) -- ALREADY PORTED C, a distinct path. They
+    share ONLY the base GTE/GPU core, and (E) that core -- RotTransPers4,
+    AddPrim, DrawOTag, SetRotMatrix -- is ALREADY PORTED (PsyCross/PsyX), so it
+    is not even a shared bottleneck to fix. Porting the menu chain does NOT flip
+    MAP3, and vice versa. => the "highest-leverage, three payoffs" framing was
+    OPTIMISTIC; the two arcs are independent.
+    (A) ARC A = MENU B2 (the mapped ~10-12-fn / ~800-1000-instr chain above):
+    SINGLE payoff = the menu window. Bounded, mapped, ready. The stubbed menu-
+    overlay draw functions route through the already-ported RotTransPers4/AddPrim.
+    (B/D) ARC B = the FIELD render-completeness gap (MAP3 16.7%, MAP16 2% vs ~74%
+    playing): a SEPARATE, un-pinned gap. NB the port's per-frame field render
+    does NOT go through game-level DrawOTag/AddPrim/func_8002C700/FieldAdd-
+    Primitives (all ~0/frame on MAP3 AND playing MAP7 -- PsyX intercepts the
+    submission). So MAP3/MAP16's low render is in HOW their object/model scenes'
+    primitives get built/submitted through the ported field render + PsyX layer
+    -- needs its OWN diagnostic pass (this scoping did not pin the exact
+    mechanism; it is confirmed NOT the menu chain). MAP16 is likely the same
+    field-render arc as MAP3 (possibly + a spawn/population question on top).
+    (F) PHASED PLAN (two arcs, independent):
+      Arc A (menu window): Phase A1 = pick the window-frame func_8002675C caller
+      + port func_801D2D38 setup slice; Phase A2 = the draw chain func_801C55A0
+      -> func_801D09F0 + the 3D matrix setup (func_801C7F34/1D40); Phase A3 =
+      wire func_801C7BF4 present. Payoff: the first visible main-menu window.
+      ~1000 instrs, mapped, SINGLE payoff.
+      Arc B (MAP3/MAP16 flip): Phase B0 = a DIAGNOSTIC pass to pin the field-
+      render-completeness gap (what primitive build/submit MAP3's scene needs
+      that a playing map has) -- NOT yet scoped into a port. Payoff: MAP3 (+maybe
+      MAP16) flip. Depends on B0's finding.
+    RECOMMENDATION: the arcs are INDEPENDENT -- the menu B2 (Arc A) is the
+    DEFINED, bounded, ready slice (single payoff: the menu window). MAP3's flip
+    (Arc B) is a separate field-render diagnosis, not a byproduct of the menu
+    port. Pick Arc A for a mapped port with a visible payoff, or Arc B0 to
+    diagnose MAP3's field gap first -- but they are two efforts, not one.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
