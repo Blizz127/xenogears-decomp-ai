@@ -1,4 +1,33 @@
 #include "common.h"
+#include "system/menu.h"
+#include "main/game.h"
+
+/* Main-menu (menu.bin) Phase B1a: dispatcher + init allocation slice, ported.
+ * NB the port's SystemMenu/MenuManager/etc are NATIVE layout (8-byte pointers
+ * inflate the offsets), so these follow member_change's convention -- struct
+ * FIELDS + sizeof(native type), NOT raw PSX offsets/sizes. Byte-array fields
+ * that hold PSX 4-byte pointers (unk340[0]/[4], unk39C[i*4]) use 4-byte
+ * truncated storage (port heap < 4GB), since native 8-byte pointers would
+ * overflow the u8[] field. */
+extern void func_801C5F10(void);
+extern void func_801C7B0C(void);
+extern void func_801C58EC(void);
+extern void func_801C8694(s32 arg0);
+extern void func_801D2D38(void);
+extern void func_801C55A0(void);
+extern void func_801C57A4(void);
+extern void func_801C5FE4(void);
+extern void func_801C5B54(u8 init);
+extern void func_801C5BB8(u8 init);
+extern void func_801C5C1C(u8 init);
+extern void func_801C5C80(u8 init);
+extern void func_801C5CE4(u8 init);
+extern void func_801C5D48(u8 init);
+extern void func_801C5DAC(u8 init);
+extern void func_801C5E10(u8 init);
+extern void func_801C5E74(u8 init);
+extern u8 D_80059460;
+extern u8 D_800594D0;
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
 
@@ -8,29 +37,151 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C57A4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C58EC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5B54);
+void func_801C5B54(u8 init) {
+    if (init) {
+        g_Menu->unk32C = HeapAlloc(sizeof(MenuUnk2), 0);
+        bzero(g_Menu->unk32C, sizeof(MenuUnk2));
+        return;
+    }
+    HeapFree(g_Menu->unk32C);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5BB8);
+void func_801C5BB8(u8 init) {
+    if (init) {
+        g_Menu->pManager = HeapAlloc(sizeof(MenuManager), 0);
+        bzero(g_Menu->pManager, sizeof(MenuManager));
+        return;
+    }
+    HeapFree(g_Menu->pManager);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5C1C);
+void func_801C5C1C(u8 init) {
+    if (init) {
+        g_Menu->pSelectionMenu = HeapAlloc(sizeof(MenuSelectionMenu), 0);
+        bzero(g_Menu->pSelectionMenu, sizeof(MenuSelectionMenu));
+        return;
+    }
+    HeapFree(g_Menu->pSelectionMenu);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5C80);
+void func_801C5C80(u8 init) {
+    if (init) {
+        g_Menu->unk354 = HeapAlloc(sizeof(MenuUnk5), 0);
+        bzero(g_Menu->unk354, sizeof(MenuUnk5));
+        return;
+    }
+    HeapFree(g_Menu->unk354);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5CE4);
+void func_801C5CE4(u8 init) {
+    if (init) {
+        g_Menu->unk330 = HeapAlloc(sizeof(MenuUnk6), 0);
+        bzero(g_Menu->unk330, sizeof(MenuUnk6));
+        return;
+    }
+    HeapFree(g_Menu->unk330);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5D48);
+void func_801C5D48(u8 init) {
+    if (init) {
+        void* p = HeapAlloc(0x328, 0);
+        *(u32*)&g_Menu->unk340[0] = (u32)(uintptr_t)p;
+        bzero(p, 0x328);
+        return;
+    }
+    HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk340[0]);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5DAC);
+void func_801C5DAC(u8 init) {
+    if (init) {
+        void* p = HeapAlloc(0x374, 0);
+        *(u32*)&g_Menu->unk340[4] = (u32)(uintptr_t)p;
+        bzero(p, 0x374);
+        return;
+    }
+    HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk340[4]);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5E10);
+void func_801C5E10(u8 init) {
+    if (init) {
+        g_Menu->unk348 = HeapAlloc(sizeof(MenuUnk1), 0);
+        bzero(g_Menu->unk348, sizeof(MenuUnk1));
+        return;
+    }
+    HeapFree(g_Menu->unk348);
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5E74);
+void func_801C5E74(u8 init) {
+    int i;
+    if (init) {
+        for (i = 0; i < 3; i++) {
+            void* p = HeapAlloc(0x127C, 0);
+            *(u32*)&g_Menu->unk39C[i * 4] = (u32)(uintptr_t)p;
+            bzero(p, 0x127C);
+        }
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk39C[i * 4]);
+    }
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5F10);
+void func_801C5F10(void) {
+    u8 v1;
+    func_801C5BB8(1);
+    func_801C5C1C(1);
+    func_801C5C80(1);
+    func_801C5CE4(1);
+    func_801C5E10(1);
+    g_Menu->pCursors = HeapAlloc(sizeof(MenuPointerCursors), 0);
+    bzero(g_Menu->pCursors, sizeof(MenuPointerCursors));
+    v1 = D_80059460;
+    if (v1 == 2) {
+        func_801C5B54(1);
+    } else if (v1 < 3) {
+        if (v1 == 0) {
+            func_801C5B54(1);
+            func_801C5D48(1);
+            func_801C5DAC(1);
+            func_801C5E74(1);
+        }
+    } else if (v1 == 6) {
+        func_801C5B54(1);
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5FE4);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C62A8);
+void func_801C62A8(void) {
+    u8 s0;
+    func_801C5F10();
+    func_801C7B0C();
+    g_Menu->shouldDrawMenu = 1;
+    g_Menu->unk32A = 1;
+    s0 = D_80059460;
+    if (s0 == 2) {
+        u8 v0;
+        D_800594D0 = 0;
+        func_801C58EC();
+        g_Menu->pManager->shouldRenderSelectionMenu = 0;
+        ((u8*)g_Menu->pManager)[0x4] = 0;
+        ((u8*)g_Menu->pManager)[0x3] = 0;
+        v0 = D_800594D0;
+        if (v0 == 0) {
+            func_801C8694(0);
+        } else if (v0 == s0) {
+            func_801C8694(((u8*)&g_GameState)[0x19D4]);
+        }
+    } else if (s0 < 3) {
+        if (s0 == 0) {
+            func_801D2D38();
+            func_801C55A0();
+        }
+    } else if (s0 == 6) {
+        func_801C57A4();
+    }
+    func_801C5FE4();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6400);
 

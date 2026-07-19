@@ -819,11 +819,37 @@ MONOLITHIC, not incrementally sliceable):
     0 remaining in the zeroed stub set; CONTIGUITY guaranteed via a per-section
     blob + .set aliases at exact offsets (relative layout matches PSX exactly
     -- the alias-trap is handled for any struct read by arg+offset); slus
-    a55929a1 untouched, tripwire map14 clean]. Phase B = dispatcher + init +
-    smallest render subtree
+    a55929a1 untouched, tripwire map14 clean].
+    Phase B1a [CODE DONE, runtime-proof PENDING] -- dispatcher + init
+    allocation slice (11 fns: func_801C62A8 + func_801C5F10 + the 9 alloc
+    toggles) ported to C in src/menu/main/misc.c. KEY FINDING that reshapes
+    the port: the port's SystemMenu/MenuManager/etc are NATIVE layout (8-byte
+    pointers inflate offsets -- unk2E0 is at C-offset 0x428, not PSX 0x2E0),
+    so the port is NOT a raw-offset transcription of the asm -- it MUST use
+    struct FIELDS + sizeof(native type) (member_change's convention, which
+    de-risks the type mapping). Byte-array fields that hold PSX 4-byte pointers
+    (unk340[0]/[4], unk39C[i*4]) need 4-byte truncated storage (native 8-byte
+    pointers overflow the u8[]). VERIFIED: port LINK OK, functions correctly
+    placed (nm/breakpoints -> misc.c), matching build 468/468 + slus a55929a1
+    UNCHANGED (the C compiles under gcc-2.7.2 too), tripwire map14 clean,
+    member_change harness un-regressed. NOT verified: the runtime milestone
+    (force main-menu case -> dispatcher runs -> reaches render entry) -- the
+    gdb probe to force D_80059460=0 / D_800ADB64=0x80 hit a persistent batch
+    "Invalid cast" quirk (the symbol writes work INTERACTIVELY but not inside a
+    gdb command-block), so the run never reached the main-menu path. This is a
+    PROBE limitation, NOT a known crash. NEXT (B1b): (i) confirm the runtime
+    milestone via a working force (a code-side env override, or a fixed gdb
+    harness), (ii) port func_801C7B0C (needs nested MenuSelectionMenu field
+    mapping) + the 4 big window/POLY setup fns (func_801C6400 125i / 65F4 302i
+    / 6AA0 171i / 6F70 211i, which READ the migrated Phase-A data) + the
+    remaining ~10 init fns + the 3 sprite helpers.
+    Phase B2 = smallest render subtree
     (func_801C8694, 86 fns) + stub the option branches -> first TESTABLE
     main-menu window render. Phase C = fill in the render core (55A0/58EC/
     57A4) + the option/nav/submenu branches (~180 remaining fns), multi-pass.
+    NB the native-struct finding means EVERY main-menu fn needs struct-field
+    mapping (member_change provides the types/patterns), so it is more intricate
+    than "transcribe the asm" -- but tractable and de-risked.
     RECOMMENDATION: Phase A (data migration) first -- bounded, mechanical,
     required, de-risks everything. But BE HONEST about scale: this is ~301
     fns + 208 data symbols, a LARGE multi-pass arc (~5x member_change), and
