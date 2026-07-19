@@ -683,11 +683,44 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     in this state is not yet visually confirmed.
     slus a55929a1 UNCHANGED (system.c/temp1.c/temp2.c coexistence); matching
     468/468; tripwire map14 boots clean (200 frames).
-    NEXT: (1) confirm the in-window label display (check func_801C57A0 draw
-    order / whether the harness state has data; port func_801C95A0 portraits).
-    (2) THEN the main menu (func_801C62A8, 96 fns + ITS data migration) as the
-    multi-pass follow-on. VALIDATED RECIPE: overlay port = CODE + DATA
-    migration + draw-stub port (text pipeline + border, both now proven).
+    ===== IN-WINDOW LABEL DISPLAY: DIAGNOSED AS A HARNESS-STATE LIMIT (not
+    party data, not a render bug, not a port gap) =====
+    Traced the empty interior end-to-end under GDB. The label PIPELINE is
+    complete and correct; the labels don't show because the forced-open
+    harness never reproduces the menu's navigation/layout STATE:
+    - func_801C59E0 IS called (count=4, valid work buffer) and builds the
+      FIXED labels (string idx 9-12 from D_801CB400) -- so it is NOT a
+      "no party data" issue (those labels are party-independent). Brief's
+      hypothesis corrected.
+    - func_801C57A0 (faithfully ported -- its asm sets UV/tpage but NOT
+      screen XY, confirmed) leaves the poly screen position to a separate
+      transform/layout pass.
+    - func_801C7DA8 AddPrim's the label polys to ot[4] ONLY if
+      g_Menu->pManager->unk34[i] != 0 -- and in the forced-open harness those
+      flags are ALL ZERO, and the poly XY is 0 (unpositioned).
+    - Forcing unk34[i]=1 AND setting the poly XY by hand STILL did not show
+      the labels (58.8% unchanged) -> there is a further per-frame dependency
+      (a transform pass overwriting the forced XY, a text-VRAM/UV mismatch, or
+      a draw-order/OT detail) that manual state-forcing did not reproduce.
+    CONCLUSION: the in-window LABELS cannot be visually proven from the
+    D_800ADB64=1 forced-open harness -- they need the real menu-navigation
+    state (item visibility flags + the layout/transform pass), which only the
+    proper menu flow sets up. That flow is reached by ENTERING member_change
+    from the main menu -> so the on-screen label proof is gated on the
+    main-menu port (func_801C62A8), the next arc. Porting func_801C95A0
+    (portraits) was NOT done: it is party-dependent and gated by the same
+    state, so it would be equally invisible in this harness.
+    HONEST NET for member_change: PROVEN = window frame (border/corners/cursor)
+    + glyph rasterisation (work-buffer) + a complete label build/AddPrim
+    pipeline. NOT PROVEN = the labels/portraits ON-SCREEN (needs the real menu
+    flow). No code this pass (func_801C57A0 is faithful, no port gap; the gap
+    is harness state). HEAD stays fc9b18d.
+    NEXT: the main menu (func_801C62A8, 96 fns + ITS data migration) -- which
+    both (a) is the big convergence payoff and (b) provides the real menu-nav
+    state that will finally display member_change's labels/portraits on-screen.
+    VALIDATED RECIPE: overlay port = CODE + DATA migration + draw-stub port
+    (text pipeline + border proven); on-screen CONTENT additionally needs the
+    menu's navigation-state flow.
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).
