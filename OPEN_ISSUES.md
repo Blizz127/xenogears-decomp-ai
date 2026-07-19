@@ -677,8 +677,26 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     func_801C6AA0->65F4 run to completion no crash; unk2DC = 0x5a9818 (NON-NULL --
     atlas loaded), read via func_80026338's arg (indices 0xE0/0x14B/0x14C/0x14D as
     transcribed). slus untouched; matching clean; tripwire 0-hit inert.
-    NEXT: the builders (func_801C6E68 frame-border coords -- now safe, unk2DC is
-    populated; func_801C6E0C; the big 6400/6F70) then B2 (func_801C8694/55A0 draw).
+    FRAME BUILDERS PORTED (d86f409, 2026-07-19): func_801C6E68 (window-border
+    coords -- 4x func_80026338 unpacking top/bottom/left/right from unk2DC into
+    g_Menu's border texPage/clut fields; verbatim twin of member_change) +
+    func_801C6E0C (palette upload + string work-buffer + content stub). Both
+    verified in the harness (border calls fire 0xFE/0x103/0x100/0x101 as
+    transcribed, texPage fields written at correct native offsets, no NULL-crash).
+    CONFIRMED: SystemMenu is INFLATED in the port (sizeof 0x2098 vs PSX 0x1E98;
+    unk4E0 at C-offset 0x610, texPage0 at 0x59C) -- field-name access is
+    mandatory (member_change's raw offsets work only by self-consistency at a
+    wrong-but-valid location). The window frame's DATA path (coords + palette) is
+    complete.
+    REMAINING BUILDERS (substantial -- the "thin wrapper" lesson): func_801C6400
+    (134 instrs -- memory-card save-file archive loader, reads saves via the
+    BASLUS filenames + MenuUnk2 0x501A/0x501B) and func_801C6F70 (214 instrs --
+    GPU POLY builder: SetPolyF4/SetLineF3/SetDrawMode; deps func_801C8164 +
+    func_801D22C4 already ported). Both build OTHER content (save UI, menu-item
+    POLYs), not the window frame -- deferred as their own units.
+    NEXT: B2 render subtree (func_801C8694/func_801C55A0) -- builds the border
+    POLY_FT4s from the coords + AddPrims them = FIRST VISIBLE main-menu window.
+    The frame's data path is ready; B2 is the pixels gate.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
