@@ -346,6 +346,38 @@ STATE OF PLAY (24-map survey, entrance 0, boot-to-~25s):
   4. Hang -- map 250 (1/24, SIGKILL/timeout): a live stub cluster
      (func_80088508/8861C/888A4...) spins. Larger (needs those fns ported).
 
+## Non-playing map re-survey (2026-07-19, read-only, HEAD 3c0ad64, ranked)
+Re-booted the non-playing candidates on the current binary to find the CHEAPEST
+flip (19->20). MAP15 has FLIPPED to playing since the 7774804 roster: it boots
+220 frames, renders 99.9% nonblack, and func_8008399C (its "not migrated"
+interaction gap) is now a real ported C fn (misc8.c:1616) -- roster stale. So
+the ~5 non-playing maps are now 3, 25, 160, 250, 400. Blockers + rank:
+  #1 CHEAPEST -- MAP25: stops at frame 99 on assert(*(s16*)(modelData+0x12)!=1)
+     in func_800748E8 (misc2.c:1586). modelData+0x12 is the MODEL PRIM-TYPE that
+     flows to func_8002C700(...,type) at misc2.c:1686 -- i.e. this is the
+     PRIM-TABLE family (signature 2), type 1 unhandled. BOUNDED + KNOWN pattern:
+     the roster already extended the prim-table for types 0/5/D + the variant 4/5
+     DPCS walkers (game_overrides.c). Fix = wire the type-1 buildProc/walker +
+     drop the fail-loud assert. Localized, no known layered wall behind it.
+  #2 MEDIUM -- MAP160 + MAP400: the NULL-sprite-loader class (signature 1).
+     MAP160 SIGSEGVs in FieldScriptVMHandlerEnableActorVM (misc6.c:80) -- VALID
+     actor index but g_FieldActors[idx].pActorData == NULL. MAP400 SIGSEGVs in
+     func_80098A7C (misc7.c:253, pSpriteData->position NULL). Both: the actor
+     exists but a stubbed per-actor sprite-LOADER left its data NULL. Fix =
+     identify + decomp the stubbed loader per map (bounded, ~1 fn each, the
+     MAP2 func_800A06E8 pattern) BUT a layered prim-table gap likely behind
+     (MAP2 needed both). Two maps, same class.
+  #3 LARGER -- MAP250: hang, the func_80088508/8861C/888A4 stub cluster spins
+     (reaches 40 frames but never progresses). Needs the cluster ported.
+  #4 DEEP -- MAP3: boots 220 frames + renders PARTIAL, but its full gameplay
+     flip needs the object-overlay convergence (stubs func_801E738C/742C/8330 --
+     the menu.bin/forest sub-project, SHARED with the menu 3D-render core). Not
+     a bounded flip.
+  RECOMMENDATION: MAP25 is the nearest bounded win -- a single model prim-type-1
+     gap, a known bounded prim-table pattern (localized to misc2.c:1586 + the
+     func_8002C700 prim-table). Runner-up: MAP160/400 (bounded loader-decomp,
+     but layered). MAP3/250 are the deep/larger tail.
+
 DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
 are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
 (frame captured on MAP001). Memory [[dialog-dismiss-edge-gated-confirm]]
