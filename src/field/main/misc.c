@@ -1780,7 +1780,25 @@ void func_8008F070(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F0B4);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F1C8);
+/* Field-script opcode: conditionally (per the opcode's flag byte at IP+1) copy
+ * two operand triples into the actor's color fields (unkFC..FE / unkFF..101),
+ * then IP += 8. As a no-op stub it never advanced the IP -> MAP160's VM
+ * desynced and fed a garbage actor index (128) to
+ * FieldScriptVMHandlerEnableActorVM (misc6.c:80) -- the same FE07-class desync
+ * fixed for MAP3 (func_80088198/func_8008B180). */
+void func_8008F1C8(void) {
+    if (SCRIPT_READ_U8_REL(1) & 0x1) {
+        g_FieldScriptVMCurActor->unkFC = (u8)FieldScriptVMGetArgument(2);
+        g_FieldScriptVMCurActor->unkFD = (u8)FieldScriptVMGetArgument(4);
+        g_FieldScriptVMCurActor->unkFE = (u8)FieldScriptVMGetArgument(6);
+    }
+    if (SCRIPT_READ_U8_REL(1) & 0x2) {
+        g_FieldScriptVMCurActor->unkFF = (u8)FieldScriptVMGetArgument(2);
+        g_FieldScriptVMCurActor->unk100 = (u8)FieldScriptVMGetArgument(4);
+        g_FieldScriptVMCurActor->unk101 = (u8)FieldScriptVMGetArgument(6);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+}
 
 void func_8008F2D8(void) {
     func_80023290((void*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData, FieldScriptVMGetArgument(1));
