@@ -772,7 +772,46 @@ void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
 }
 
 // Render string entry to a buffer
+#ifdef XENO_PC_PORT
+/* Text-render descriptor: retail lays D_80059FD8..D_8005A0C2 out as ONE
+ * contiguous ~0xF0-byte region (the row buffer D_8005A068 sits at +0x90).
+ * func_80033DF0 (already ported) reads it via arg0+offset, so it MUST be one
+ * contiguous buffer, not 18 separate zeroed symbols (the overlay-data alias
+ * trap).  Nothing else references these symbols (verified), so a single static
+ * buffer is safe.  The +0x28 field holds a HOST pointer to the row buffer
+ * (+0x90); port data lives below 4GB so the u32 field func_80033DF0 casts back
+ * holds it without truncation (the port's standard pointer-in-u32 convention). */
+static unsigned char s_StringRenderDescriptor[0x100];
+
+s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
+    u8* d = s_StringRenderDescriptor;
+
+    *(u16*)(d + 0x0A) = (u16)height;
+    *(u16*)(d + 0x0C) = 1;
+    height |= 1;
+    *(u16*)(d + 0x08) = (u16)(((s32)((u32)height << 16)) >> 14);
+    *(u16*)(d + 0x0A) = (u16)height;
+    height += 3;
+    *(u32*)(d + 0x1C) = (u32)(uintptr_t)pString;
+    *(u8*)(d + 0x68) = 1;
+    *(u16*)(d + 0x12) = (u16)height;
+    *(u16*)(d + 0x84) = 0;
+    *(u8*)(d + 0x6C) = 0;
+    *(u8*)(d + 0x6A) = 0;
+    *(u32*)(d + 0x2C) = (u32)(uintptr_t)pWork;
+    *(u16*)(d + 0x10) = 0;
+    *(u16*)(d + 0x02) = 0;
+    *(u16*)(d + 0x00) = 0;
+    *(u8*)(d + 0x69) = 0x64;
+    *(u32*)(d + 0x28) = (u32)(uintptr_t)(d + 0x90);
+    *(u16*)(d + 0xE8) = 0;
+    *(u8*)(d + 0xEA) = (u8)(flag & 1);
+    func_80033DF0(d);
+    return (s32)(*(s16*)(d + 0xE8)) << 2;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemRenderStringEntry);
+#endif
 
 s32 func_80034F98(s32 arg0, s32 arg1) {
     u16 lead = arg0;

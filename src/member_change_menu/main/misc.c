@@ -308,9 +308,53 @@ void func_801C57A0(MenuString* pString, int index, s32 arg2, u32 attributes) {
     pString->unk7F = 0;
 }
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C59E0);
+extern void* GetStringEntry(void* table, s32 index);
+extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
 
-extern void func_801C59E0(void* a0, void* a1, s32 a2, s32 a3);
+/* member_change content-label drawer (asm 801C59E0): for each of `count`
+ * items (step 2), rasterise two strings via SystemRenderStringEntry into the
+ * g_Menu[0x558] work buffer, build a 0x1C x 0xD textured sprite header at
+ * item+0x70 (copied to item+0xF0), draw both via func_801C57A0, then upload
+ * the rasterised text to VRAM (LoadImage). Positions come from the item index. */
+void func_801C59E0(void* base, void* strIndices, s32 arg2, s32 count) {
+    u8* item = (u8*)base;
+    u8* pIdx = (u8*)strIndices;
+    s32 i;
+
+    for (i = 0; i < count; i += 2) {
+        s32 s3 = i << 7;
+        /* asm loads g_Menu[0x558] with lw (a 32-bit PSX pointer); read 4 bytes,
+         * not 8 -- port heap pointers live below 4GB so the low word is the whole
+         * host pointer, and an 8-byte read would pull in the adjacent +0x55C field. */
+        void* work = (void*)(uintptr_t)*(u32*)((u8*)g_Menu + 0x558);
+        s32 v1;
+
+        *(u8*)(item + 0x7E) = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, pIdx[0]), work, 0x18, 0);
+        *(u8*)(item + 0xFE) = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, pIdx[1]), work, 0x18, 1);
+
+        *(u16*)(item + 0x70) = (u16)(((i << 4) & 0x20) + 0x140);
+        v1 = i + arg2;
+        if (v1 < 0) {
+            v1 += 3;
+        }
+        v1 >>= 2;
+        *(u16*)(item + 0x72) = (u16)(v1 * 13);
+        *(u16*)(item + 0x74) = 0x1C;
+        *(u16*)(item + 0x76) = 0xD;
+        *(u32*)(item + 0xF0) = *(u32*)(item + 0x70);
+        *(u32*)(item + 0xF4) = *(u32*)(item + 0x74);
+
+        func_801C57A0((MenuString*)item, i, arg2, 0);
+        func_801C57A0((MenuString*)((u8*)base + s3 + 0x80), i + 1, arg2, 0);
+        LoadImage((RECT*)(item + 0x70), (u_long*)work);
+        DrawSync(0);
+
+        item += 0x100;
+        pIdx += 2;
+    }
+}
 extern u8 D_801CB400[];
 
 void func_801C5B90(void) {

@@ -631,16 +631,39 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     zeroed symbols -- the same alias trap as the overlay data). Port
     SystemRenderStringEntry writing via offsets into that buffer + the
     func_801C59E0/95A0 callers, then the harness proves TEXT.
-    REVISED NEXT TARGET (data DONE, architecture PROVEN, harness BUILT):
-    (1) DRAW STUBS -- port the text path (SystemRenderStringEntry w/ the
-    contiguous descriptor + func_801C59E0/95A0) then func_8002xxxx (images);
-    coexistence, slus byte-exact. (2) RE-RUN the harness -> member_change
-    renders window+TEXT+content (full proof). If content still missing after
-    the stubs -> a further gap (more data? a VRAM/CLUT upload?) -- find before
-    the main-menu commit. (3) THEN the main menu (func_801C62A8, 96 fns + ITS
-    data migration -- the systemic data lesson applies) as the multi-pass
-    follow-on. The member_change proof-of-concept has now validated: overlay
-    port = CODE + DATA migration + draw-stub port; the window-layer works.
+    ===== TEXT PATH PORTED (renders content, not-yet-clean glyphs) =====
+    DONE: (a) SystemRenderStringEntry (system.c, coexistence) -- the
+    CONTIGUOUS descriptor handled correctly: ONE static 0x100-byte buffer
+    (s_StringRenderDescriptor), fields written by offset (+0x00..0xEA), +0x28
+    holds a host pointer to the row buffer at +0x90; func_80033DF0 (ported)
+    reads it via arg+offset. The alias trap the scope flagged -- solved by the
+    single buffer, not 18 symbols. (b) func_801C59E0 (member_change misc.c) --
+    the content-label drawer (INCLUDE_ASM -> C). (c) func_8002DD20 (temp2.c,
+    coexistence) -- the TIM texture/CLUT loader.
+    A REAL BUG FIXED en route: func_801C59E0 read g_Menu[0x558] as *(void**)
+    (8 bytes) but the asm uses lw (4 bytes, a 32-bit PSX pointer); the 8-byte
+    read pulled in the adjacent +0x55C field (0x30000000) -> a garbage pointer
+    -> SIGSEGV in LoadImage. Fixed to a 4-byte read (port heap < 4GB so the low
+    word is the whole host pointer). LESSON: raw g_Menu pointer reads must match
+    the asm's lw width (4 bytes), never *(void**).
+    RESULT (glReadPixels): render advanced 51.3% -> 55.4% -- the window now has
+    CONTENT at the text/border positions, but it renders as vertical COLOUR
+    BANDS, NOT clean glyphs. Palette is NOT the cause (SystemTransferPaletteTo-
+    VRAM is ported). The remaining gap is the window-BORDER / content draws
+    func_80026338 + func_8002675C (POLY_FT4 setup) -- STILL STUBBED. So the
+    text PIPELINE runs (no crash, positions correct, TIM loaded) but clean
+    glyphs need those border-draw stubs. HONEST: partial -- pipeline ported +
+    running, clean text NOT yet proven.
+    slus a55929a1 UNCHANGED (system.c/temp2.c coexistence); tripwire maps 1/14
+    boot clean (200 frames) -- SystemRenderStringEntry going live didn't
+    regress the field.
+    NEXT: (1) port func_80026338 + func_8002675C (window-border POLY_FT4) +
+    func_801C95A0 (portraits) -> re-run harness -> clean glyphs?  If clean:
+    member_change render FULLY proven. If still banded: a font-rasterisation
+    gap (does func_80033DF0 emit glyph pixels, or is a font blitter missing?)
+    -- diagnose. (2) THEN the main menu (func_801C62A8, 96 fns + ITS data
+    migration) as the multi-pass follow-on. Validated recipe so far: overlay
+    port = CODE + DATA migration + draw-stub port (text pipeline included).
 
 TOTAL SCOPE: Phase 1 (infra, 1 big mechanical pass) + Phase 2 (~15-25 fns,
 multi-pass, size firms up after Phase 1) + Phase 3 (~4-5 bounded fns).

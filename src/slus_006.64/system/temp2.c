@@ -1003,7 +1003,39 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z) {
     return z;
 }
 
+#ifdef XENO_PC_PORT
+/* TIM resource loader: pList[0] = entry count + 1; pList[1..count] is an offset
+ * table; each offset points at a TIM blob within pList. Walk it high->low,
+ * OpenTIM/ReadTIM each, upload the CLUT (if present) then the pixels to VRAM via
+ * LoadImage. This uploads the member-change menu's textures + font CLUT --
+ * stubbed, the font renders with the wrong palette (colour bands, not glyphs). */
+void func_8002DD20(u32* pList) {
+    s32 count = (s32)pList[0] - 1;
+    u32* pEntry;
+
+    if (count == -1) {
+        return;
+    }
+    pEntry = pList + count;
+    do {
+        u32 offset = (pEntry[1] >> 2) << 2;
+        TIM_IMAGE tim;
+
+        OpenTIM((u_long*)((u8*)pList + offset));
+        ReadTIM(&tim);
+        if (tim.caddr != NULL) {
+            DrawSync(0);
+            LoadImage(tim.crect, tim.caddr);
+        }
+        DrawSync(0);
+        pEntry -= 1;
+        LoadImage(tim.prect, tim.paddr);
+        count -= 1;
+    } while (count != -1);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DD20);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
 
