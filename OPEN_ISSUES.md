@@ -694,9 +694,27 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     GPU POLY builder: SetPolyF4/SetLineF3/SetDrawMode; deps func_801C8164 +
     func_801D22C4 already ported). Both build OTHER content (save UI, menu-item
     POLYs), not the window frame -- deferred as their own units.
-    NEXT: B2 render subtree (func_801C8694/func_801C55A0) -- builds the border
-    POLY_FT4s from the coords + AddPrims them = FIRST VISIBLE main-menu window.
-    The frame's data path is ready; B2 is the pixels gate.
+    B2 RENDER-CORE WALL (2026-07-19, investigation -- no code landed): the
+    "pixels gate" is a MONOLITH, not a small subtree. The main-menu render entry
+    (func_801C62A8 case 0 -> func_801D2D38 + func_801C55A0, run once via
+    MenuMain -> MenuExecute) has a transitive closure of 272 menu funcs, 269 of
+    them UNPORTED. The ~86 estimate was for func_801C8694 (MENU 2's render), NOT
+    the main menu. There is NO clean frame-only entry: the render setup
+    (func_801D2D38 allocs + inits via 0x801E functions), the OT/GfxEnv/context,
+    and the object-overlay sprite draws (func_801C55A0 calls func_801E8044/8070/
+    8978 -- the 0x801E object-overlay region, same as the MAP3/MAP16 convergence)
+    are all shared/entangled with the frame draw. member_change renders because
+    ITS render subtree is small + mostly ported (simple AddPrim loops, e.g.
+    func_801C7DA8/E38/EC8); the main menu's render is genuinely a larger, unported
+    monolith. So the first main-menu pixel is NOT a single pass -- it needs either
+    a multi-pass render-core port (269 fns) or a careful minimal-frame extraction
+    (smallest OT-setup + border-build func_8002675C-caller + border-AddPrim +
+    DrawOTag func_801C7BF4, stubbing the string/cursor/item/sprite branches -- a
+    dedicated analysis, risky because the render setup is shared). The frame's
+    DATA path (atlas -> coords -> palette) is complete + verified and READY; the
+    DRAW path is the monolith. NB the render entangles the 0x801E object-overlay
+    region -- so the menu render and the MAP3/MAP16 object-overlay convergence
+    share this subtree.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
