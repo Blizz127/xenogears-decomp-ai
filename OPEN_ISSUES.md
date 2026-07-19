@@ -813,8 +813,14 @@ MONOLITHIC, not incrementally sliceable):
     set by member_change's OWN input-driven navigation, which the forced-open
     harness bypasses. So member_change's labels are resolved by DRIVING
     member_change (harness input / navigation), NOT by this port.
-(F) PHASED PLAN: Phase A = DATA migration (208 symbols, mechanical, first --
-    no code dep). Phase B = dispatcher + init + smallest render subtree
+(F) PHASED PLAN: Phase A = DATA migration [DONE -- pc_port/src/data_main_menu.c,
+    all 208 symbols VERBATIM from menu.bin, verified in the linked binary
+    (D_801C5028="BASLUS-00664", D_801E96A8={1,2,4,8,16,32}); nm: all type D,
+    0 remaining in the zeroed stub set; CONTIGUITY guaranteed via a per-section
+    blob + .set aliases at exact offsets (relative layout matches PSX exactly
+    -- the alias-trap is handled for any struct read by arg+offset); slus
+    a55929a1 untouched, tripwire map14 clean]. Phase B = dispatcher + init +
+    smallest render subtree
     (func_801C8694, 86 fns) + stub the option branches -> first TESTABLE
     main-menu window render. Phase C = fill in the render core (55A0/58EC/
     57A4) + the option/nav/submenu branches (~180 remaining fns), multi-pass.
