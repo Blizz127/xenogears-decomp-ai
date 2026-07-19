@@ -377,6 +377,22 @@ the ~5 non-playing maps are now 3, 25, 160, 250, 400. Blockers + rank:
      gap, a known bounded prim-table pattern (localized to misc2.c:1586 + the
      func_8002C700 prim-table). Runner-up: MAP160/400 (bounded loader-decomp,
      but layered). MAP3/250 are the deep/larger tail.
+  CORRECTION (2026-07-19, on attempting MAP25): the survey MIS-characterized
+     MAP25 as a cheap "prim-table entry." Deeper read of the retail asm
+     (func_800748E8.s, matched) shows modelData+0x12==1 triggers a TYPE-1
+     LIGHTING BRANCH the port's hand-written (nonmatching) func_800748E8 stubbed
+     with the misc2.c:1586 assert: after the normal matrix build it copies a
+     matrix into s3 (sp+0x78), ScaleMatrix(s3, scale), func_80030B14(s3) (ported
+     -> light matrix = D_80059F64 x s3, SetLightMatrix), then func_80030C40(
+     D_800AFB04/06/08) -- the light-COLOR GTE regs, and func_80030C40 is UNPORTED
+     (17-instr ctc2). AND func_8002C700 with a3=1 hard-aborts if any prim's
+     proc[1] is NULL ([0x00].proc[1]=0x8002ED20 etc. are unported). So MAP25 =
+     a delicate GTE lighting-branch port (mapping retail sp-local matrix buffers
+     to the C's restructured vars -- error-prone, could render garbage) + the
+     unported func_80030C40 + prim-table proc[1] walkers. This is the
+     UNDER-ESTIMATE pattern, NOT a cheap flip. Re-ranked: MAP160/400 (the
+     sprite-loader class, the PROVEN bounded MAP2 func_800A06E8 decomp pattern)
+     is likely the cheaper actual flip; MAP25's GTE lighting branch is delicate.
 
 DIALOG: COMPLETE. Both TUs (field/dialogue/text_box.c, text_box_render.c)
 are 100% matched {} -- ZERO INCLUDE_ASM. The render path executes live
