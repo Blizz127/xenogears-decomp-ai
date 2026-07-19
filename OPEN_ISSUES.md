@@ -643,6 +643,30 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     headless. Once a resourced harness exists: port func_801C65F4 (resource-
     load, mirror MemberChangeMenuLoadResources) + func_801C6AA0 (its caller) +
     func_801C6E68 (frame), and the window frame becomes verifiable on-screen.
+    RESOURCED HARNESS BUILT (41d4c9f, 2026-07-19): PcPort_ForcedFieldMenu
+    (psyq_compat.c Vsync hook, XENO_MENU_FORCE=1) forces the FIELD menu-opener
+    path -- once the field is up it sets D_800ADB64=0x80 (main menu), the field
+    loop calls func_800799D4, which streams the menu resources and runs
+    MenuMain. Verified on map005: func_800799D4 fires, func_801C62A8 (main
+    menu) dispatches, D_8005945C=0x68e930 (NON-NULL, resources loaded), no
+    crash 260 frames. Inert unless the env is set (tripwire clean). Harness:
+      XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=5 XENO_MENU_FORCE=1
+    This UNBLOCKS the resource-load port. Next unit (~500 instrs): func_801C6AA0
+    (184, a thin wrapper: calls func_801C865C + func_801C65F4) + func_801C65F4
+    (321, the resource-load -- core mirrors MemberChangeMenuLoadResources:
+    ResolveArchiveEntryPointers -> icon TIM (pResources[1]) -> func_8002DD20
+    (pResources[2]) -> unk2DC = LZSSHeapDecompress(pResources[3]) -> unk2E0
+    (pResources[4]); ADDITIONS: two BASLUS save-name strings at MenuUnk2 0x4FCE/
+    0x501C, 4x stack-local func_80026338, a 3-iter character-portrait loop over
+    pResources[5] w/ 0xB20 stride + LoadImage). Verifiable milestone: unk2DC
+    populated (non-NULL) in the harness.
+    IMPORTANT (frame visibility): porting the resource-load + func_801C6E68
+    does NOT put the window frame on-screen -- func_801C6E68 only unpacks border
+    texture COORDS (texPage/clut/UV) into g_Menu fields; the border POLY_FT4s
+    are built (func_8002675C) and DRAWN by the render path (func_801C55A0 / the
+    B2 subtree func_801C8694), still stubbed. So the pipeline to a VISIBLE frame
+    is: resource-load (unk2DC) -> builders (border coords) -> B2 render (draw).
+    B1b gets the first two; B2 draws. Don't expect pixels until B2.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
