@@ -715,9 +715,42 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     pipeline. NOT PROVEN = the labels/portraits ON-SCREEN (needs the real menu
     flow). No code this pass (func_801C57A0 is faithful, no port gap; the gap
     is harness state). HEAD stays fc9b18d.
-    NEXT: the main menu (func_801C62A8, 96 fns + ITS data migration) -- which
-    both (a) is the big convergence payoff and (b) provides the real menu-nav
-    state that will finally display member_change's labels/portraits on-screen.
+    ===== UPDATE: tried to DRIVE member_change; the content display is a
+    LAYOUT-STATE-MACHINE limit, deeper than "send input" =====
+    Ported func_801C95A0 (portraits/char-name pre-render) -- member_change is
+    now down to 1 remaining INCLUDE_ASM (nearly code-complete). Then traced
+    the content-display gate at frame 380 (loop running):
+    - The menu RUNS (windowParams[2]->unk11=1 open; shouldRenderWindow[2]=1;
+      unk46 "render characters"=1; shouldRenderCursors=1 -> window + cursor
+      render). But the CONTENT polys (labels unk4E0, characters) sit at screen
+      XY (0,0) -- unpositioned.
+    - The content is positioned by RotTransPers4 (ported) projecting each
+      MenuString's vertices[4] (0x50) -> poly XY. But those vertices[] are 0,
+      so the projection is (0,0). The vertices are set by an item-LAYOUT pass
+      that only runs in the real menu-navigation state.
+    - Forcing pManager->unk34[i]=1 EARLY (before the transform) STILL left the
+      poly XY (0,0) -- proving unk34 is not the gate; the missing piece is the
+      vertices[]/layout pass, not a flag. Porting func_801C95A0 (the char
+      content) also didn't display -- SAME layout gap.
+    CONCLUSION: member_change's on-screen CONTENT (labels + characters) is
+    gated by the menu's item-LAYOUT state machine (sets each item's vertices[]
+    + render flags), which the forced-open (D_800ADB64=1) harness does NOT
+    reproduce. This is significantly MORE than "send input" -- it needs the
+    real menu-navigation flow. And per (E) that flow is NOT the main-menu port
+    (separate overlays) -- it is member_change's OWN entry+nav, which needs the
+    specific field/game state to enter member_change normally.
+    HONEST NET for member_change: CODE ~complete (1 INCLUDE_ASM left); PROVEN
+    on-screen = window frame + cursor; PROVEN buffer-level = glyph raster;
+    NOT PROVEN on-screen = labels/characters (gated on the real menu-nav/layout
+    flow, a non-trivial state reproduction -- NOT cheaply reachable via the
+    forced-open harness, contra the earlier "small task" hope).
+    RECOMMENDATION: stop chasing member_change's on-screen content via the
+    harness (dead end without the layout state). member_change is a validated
+    proof-of-concept (recipe proven; code ~complete; frame on-screen). Decide
+    the next arc on its own merits: the MAIN MENU (func_801C62A8, 301 fns + 208
+    data -- big, the menu-system payoff, and it self-drives its own layout so
+    ITS content would display), or other tracks (MAP3 func_8009EB78, battle,
+    general decomp). The main menu does NOT resolve member_change (decoupled).
     VALIDATED RECIPE: overlay port = CODE + DATA migration + draw-stub port
     (text pipeline + border proven); on-screen CONTENT additionally needs the
     menu's navigation-state flow.

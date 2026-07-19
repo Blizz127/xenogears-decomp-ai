@@ -1545,7 +1545,29 @@ void MemberChangeMenuUpdateAndRender(void) {
     DrawOTag(&g_Menu->pGfxEnv->ot[0xF]);
 }
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C95A0);
+/* Pre-render a character's two name strings (from g_GameState +
+ * (charByte>>1)*0x28, +0 and +0x14) into a temp buffer via SystemRenderString-
+ * Entry, then LoadImage the result to the character's VRAM texture slot (u/v
+ * from g_MemberChangeMenuCharTexcoords[slot], u offset by 0x180; 0x28 x 0xD). */
+void func_801C95A0(s32 charByte, s32 slot) {
+    u8* buf = (u8*)HeapAlloc(0x3F6, 0);
+    s32 off = ((charByte & 0xFF) >> 1) * 0x28;
+    s32 s2 = (slot << 1) & 0x1FC;
+    RECT rect;
+
+    bzero(buf, 0x3F6);
+    SystemRenderStringEntry((u8*)&g_GameState + off, buf, 0x24, 0);
+    SystemRenderStringEntry((u8*)&g_GameState + off + 0x14, buf, 0x24, 1);
+    /* CharTexcoords are .short data; read as u16 at the byte offset s2
+     * (the migrated int[] is byte-faithful -- see data_member_change_menu.c). */
+    rect.x = *(u16*)((u8*)g_MemberChangeMenuCharTexcoordsU + s2) + 0x180;
+    rect.y = *(u16*)((u8*)g_MemberChangeMenuCharTexcoordsV + s2);
+    rect.w = 0x28;
+    rect.h = 0xD;
+    LoadImage(&rect, (u_long*)buf);
+    DrawSync(0);
+    HeapFree(buf);
+}
 
 void MemberChangeMenuParseNumberToString(unsigned int number) {
     int i;
