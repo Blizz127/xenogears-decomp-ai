@@ -266,7 +266,21 @@ void func_80087FD4(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008800C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088198);
+/* Field-script opcode: snapshot 20 GameState per-slot entries (+0x9DC->+0x9D8
+ * word, +0x9B2->+0x9B0 half, 0xA4 stride), then IP += 1. As a no-op stub this
+ * never advanced the IP -> the VM desynced MAP3's script and fed garbage actor
+ * index 128 to func_8009EB78 (the boot SEGV) -- same class as the FE07 fix. */
+void func_80088198(void) {
+    u8* p = (u8*)g_pGameState;
+    int i;
+
+    for (i = 0; i < 0x14; i++) {
+        *(u32*)(p + 0x9D8) = *(u32*)(p + 0x9DC);
+        *(u16*)(p + 0x9B0) = *(u16*)(p + 0x9B2);
+        p += 0xA4;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800881E8);
 
@@ -711,7 +725,25 @@ void func_8008B144(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B180);
+extern s32 D_800ADB1C;
+extern u16 D_800B21E4[];
+extern void func_801E8330(s32 slot, s32 unused, s32 anim);
+
+/* Field-script opcode: when D_800ADB1C is set, drive an object's anim via the
+ * overlay entry func_801E8330 (no-op'd in the port -- Phase-2B) and record the
+ * anim into D_800B21E4[arg1]. Always IP += 5. Stubbed, it never advanced the IP
+ * -> another MAP3 script desync feeding func_8009EB78 (same class as FE07). */
+void func_8008B180(void) {
+    if (D_800ADB1C != 0) {
+        s32 arg1 = FieldScriptVMGetArgument(1);
+        s32 arg3 = FieldScriptVMGetArgument(3);
+        func_801E8330(arg1 & 0xFFFF, 0, arg3);
+        arg1 = FieldScriptVMGetArgument(1);
+        arg3 = FieldScriptVMGetArgument(3);
+        D_800B21E4[arg1] = (u16)arg3;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 void func_8008B210(void) {
     g_FieldScriptVMCurActor->unk11E = FieldScriptVMGetArgument(1);
