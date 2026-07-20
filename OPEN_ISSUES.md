@@ -961,6 +961,26 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     its 6 geometry fns (+837). FULL build (frame+content+portraits+animation+
     post) ~= 2260 instrs / ~19 fns. All fan-out fns currently INCLUDE_ASM
     stubs; none mid-entry.
+    ===== PIXELS SLICE LANDED (5d866b8) -- window draw FIRES; verts are the
+    LAST gap. Ported: func_801E53CC (frame-primitive init) + func_801C81E0/
+    func_801C8324 (anim slot init/stepper -- REAL, not stubbed: the wait loop
+    exits via the stepper's done flags; two hazards found + fixed: (1) stubbed
+    steppers = infinite loop; (2) the cold harness has an EMPTY party (mask 0)
+    so nothing steps the anim -- retail-unreachable state; fixed with an
+    env-gated party seed (Fei) in PcPort_ForcedFieldMenu) + func_801D29A8
+    (open/close animation, tail arms shouldRenderWindow[1]) + func_801D2D38
+    (setup/allocs). RUNTIME: the full chain runs -- open animation (~40 real
+    interpolated frames) -> flag armed -> func_801D09F0 fires EVERY frame (116
+    draws/1392 quad AddPrims probed) -> DrawOTag, no crash. PIXELS: black
+    (0.0%) -- the degenerate risk landed: the window VERTS are never written
+    (windows[] bzero'd -> zero-size quads). THE LAST SLICE (fully mapped, no
+    unknowns): func_801D28FC(29) -> func_801D397C(102, writes windowParameters
+    x/y/w/h; window 1 = 0xCC/0xC6/0x50/0xD0-ish args) -> func_801D4D1C(100,
+    dispatcher) -> 7 per-piece verts writers (func_801D3C4C 91, func_801D3DB0
+    149, func_801D3FF8 212, func_801D433C 214, func_801D4688 213, func_801D49D0
+    214, func_801C851C 24) + func_801D5CF8(124, border UVs via 5x func_8002675C)
+    = 1472 instrs / 11 fns. Port that family -> the verts/UVs become real ->
+    the ALREADY-FIRING draw rasterizes the frame -> pixels.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
