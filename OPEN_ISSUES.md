@@ -1062,6 +1062,21 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     the VRAM fb rect as the frame's base layer when it has been dirtied.
     Survey-signature note: the "isbg gap" label for the trails was itself a
     mislabel -- the isbg TODO was real but was NOT the menu's clear mechanism.
+    TRAILS FIXED (6cc102d, 2026-07-20): the MoveImage->GL materialize landed
+    (_xeno_fb_materialize patch pair: GR_MaterializeFramebufferRect in
+    PsyX_render.cpp -- GR_UpdateVRAM + glBlitFramebuffer of the restored vram
+    rect over the backbuffer as the frame's base layer; MoveImage in LIBGPU.C
+    triggers it only when the dest overlaps the active draw env clip). The
+    menu renders CRISP: 40.6% -> 15.1% (the trails were ~25% of the screen);
+    three portraits with legible LV/HP/EP/Next-LV panels, sharp option list,
+    clean window. Capture: captures/render_diag/menu_clean_20260720.png.
+    FIELD verified: MAP7 75.4% vs 74.3% baseline, eyeballed PRISTINE (the
+    +1.1% = a field MoveImage now correctly composited); 5 tripwires boot.
+    Known harness-only residue: stale KernelMenu debug text in the backdrop
+    VRAM (XENO_FIELD_TEST boot path) now faithfully composites -- absent on a
+    normal boot. THE MENU IS VISUALLY COMPLETE for its current content: frame
+    + portraits + stats + options, clean. Remaining: the big selection window
+    (window 0), the icon-strip draw, nav/input (cursor movement).
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
