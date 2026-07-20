@@ -938,7 +938,57 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEB5C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEBB4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEC40);
+#else
+/* Arc A content: THE selection-menu sub-renderer (func_801D1B20's list).
+ * Gated on pManager->shouldRenderSelectionMenu.  When the dim state (unk1192,
+ * set by the confirm) differs from the applied state (unk1193), restyles both
+ * label sets -- dim: semi-trans + RGB 0x20; undim: opaque + RGB 0x80 (both OR
+ * the tpage blend bits) -- then syncs 1193.  Always batch-AddPrims the normal
+ * set (polysTexts) + the highlight set (polysCursors) to ot[4].
+ * NB retail reads g_Menu from $a0 register residue at entry; the port uses
+ * g_Menu directly. */
+void func_801CEC40(void) {
+    MenuSelectionMenu* pSel;
+    s32 i;
+
+    if (!g_Menu->pManager->shouldRenderSelectionMenu) {
+        return;
+    }
+    pSel = g_Menu->pSelectionMenu;
+
+    if (pSel->unk1192 != pSel->unk1193) {
+        u8 rgb = pSel->unk1192 ? 0x20 : 0x80;
+        s32 semi = pSel->unk1192 ? 1 : 0;
+
+        for (i = 0; i < pSel->numTexts; i++) {
+            POLY_FT4* p = &pSel->polysTexts[pSel->textsRenderCtx + i * 2];
+
+            SetSemiTrans(p, semi);
+            SetShadeTex(p, 0);
+            p->tpage |= 0x20;
+            p->r0 = rgb;
+            p->g0 = rgb;
+            p->b0 = rgb;
+        }
+        for (i = 0; i < pSel->numCursors; i++) {
+            POLY_FT4* p = &pSel->polysCursors[pSel->cursorsRenderCtx + i * 2];
+
+            SetSemiTrans(p, semi);
+            SetShadeTex(p, 0);
+            p->tpage |= 0x20;
+            p->r0 = rgb;
+            p->g0 = rgb;
+            p->b0 = rgb;
+        }
+        pSel->unk1193 = pSel->unk1192;
+    }
+
+    func_801CE2B4(pSel->numTexts, (u8*)pSel + 0x8C0, pSel->textsRenderCtx);
+    func_801CE2B4(pSel->numCursors, (u8*)pSel, pSel->cursorsRenderCtx);
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF308);
 
@@ -2256,7 +2306,62 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8044);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8474);
+#else
+/* Arc A content: the OPTION-LABEL REVEAL.  Staged open animation: each stage
+ * rebuilds the highlight set (polysCursors, pTable[i*2]) and the normal set
+ * (polysTexts, pTable[i*2+1]) from the atlas id pairs (D_801EA19C), arms
+ * pManager->shouldRenderSelectionMenu, and draws two frames -- the options
+ * appear one by one.  The label glyphs land at a fixed 0xA0,0x96 base (the
+ * per-option offsets come from the atlas entries themselves). */
+void func_801E8474(s32 count, void* pTable) {
+    u32* pIds = (u32*)pTable;
+    s32 stage;
+    s32 prev;
+    s32 i;
+
+    g_Menu->pSelectionMenu->unk1192 = 0;
+    g_Menu->pSelectionMenu->unk1193 = 0;
+    g_Menu->pManager->shouldRenderSelectionMenu = 1;
+
+    if (count <= 0) {
+        return;
+    }
+    prev = 0;
+    for (stage = 1; stage <= count; stage++, prev++) {
+        if (stage != count) {
+            g_Menu->pSelectionMenu->numCursors = 0;
+            for (i = 0; i < stage; i++) {
+                g_Menu->pSelectionMenu->numCursors += func_8002675C(
+                    g_Menu->unk2DC, pIds[i * 2],
+                    (u8*)g_Menu->pSelectionMenu +
+                        g_Menu->pSelectionMenu->numCursors * 0x50,
+                    g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+            }
+            g_Menu->pSelectionMenu->cursorsRenderCtx = (u8)g_Menu->renderContext;
+        }
+
+        g_Menu->pSelectionMenu->numTexts = 0;
+        if (stage != 1 && prev > 0) {
+            for (i = 0; i < prev; i++) {
+                g_Menu->pSelectionMenu->numTexts += func_8002675C(
+                    g_Menu->unk2DC, pIds[i * 2 + 1],
+                    (u8*)g_Menu->pSelectionMenu + 0x8C0 +
+                        g_Menu->pSelectionMenu->numTexts * 0x50,
+                    g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+            }
+            g_Menu->pSelectionMenu->textsRenderCtx = (u8)g_Menu->renderContext;
+        } else if (stage != 1) {
+            g_Menu->pSelectionMenu->textsRenderCtx = (u8)g_Menu->renderContext;
+        }
+
+        for (i = 0; i < 2; i++) {
+            func_801C7BF4();
+        }
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E86C8);
 
