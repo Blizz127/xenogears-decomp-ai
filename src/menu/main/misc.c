@@ -896,7 +896,30 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE338);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE3C8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE464);
+#else
+/* Arc A content: the GOLD-window + ICON-STRIP sub-renderer (func_801D1B20's
+ * list).  unk5[0] gates the gold digits (unk340[0] buffer, count at +0x320,
+ * rc at +0x324) + the "G" unit glyph at +0x2D0; unk5[1] gates the icon strip
+ * (unk340[4] buffer: 7 icons + the two separators at +0x230). */
+void func_801CE464(void) {
+    if (g_Menu->pManager->unk5[0]) {
+        u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[0];
+        s32 rc = buf[0x324];
+
+        func_801CE2B4(*(s32*)(buf + 0x320), buf, rc);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], buf + 0x2D0 + rc * sizeof(POLY_FT4));
+    }
+    if (g_Menu->pManager->unk5[1]) {
+        u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[4];
+        s32 rc = buf[0x370];
+
+        func_801CE2B4(7, buf, rc);
+        func_801CE2B4(4, buf + 0x230, rc);
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE540);
@@ -1238,7 +1261,19 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D25E4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28A8);
+#else
+extern void func_801D5BA4(s32 x, s32 y);
+
+/* Arc A content: the open-settle -- build WINDOW 0 (the GOLD window, a 96x16
+ * bar at 0xD4,0xB2; the same geometry path as window 1, which also arms its
+ * shouldRenderWindow[0]) + the gold digit quads. */
+void func_801D28A8(void) {
+    func_801D397C(0, 0xD4, 0xB2, 0x60, 0x10, 0, 0, 4, 0);
+    func_801D5BA4(0xD8, 0xB6);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28FC);
@@ -1962,7 +1997,34 @@ void func_801D5A50(u8 slot, u8 charId) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5BA4);
+#else
+/* Arc A content: the GOLD readout -- parse g_GameState.gold into digits
+ * (leading zeros 0xFF-blanked), build up to 9 digit quads into the unk340[0]
+ * buffer (count at +0x320) at x+i*8, plus the "G" unit glyph (atlas 0x10) at
+ * +0x2D0, x+0x50.  Arms the gold-window content flag unk5[0]; rc at +0x324. */
+void func_801D5BA4(s32 x, s32 y) {
+    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[0];
+    s32 i;
+
+    func_801C80B8(g_GameState.gold);
+    *(s32*)(buf + 0x320) = 0;
+    for (i = 0; i < 9; i++) {
+        u8 d = g_Menu->digits[i];
+
+        if (d != 0xFF) {
+            *(s32*)(buf + 0x320) += func_8002675C(
+                g_Menu->unk2DC, d, buf + *(s32*)(buf + 0x320) * 0x50,
+                g_Menu->renderContext, x + i * 8, y, 0x1000);
+        }
+    }
+    func_8002675C(g_Menu->unk2DC, 0x10, buf + 0x2D0, g_Menu->renderContext,
+                  x + 0x50, y, 0x1000);
+    g_Menu->pManager->unk5[0] = 1;
+    buf[0x324] = (u8)g_Menu->renderContext;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5CF8);
