@@ -155,6 +155,12 @@ void func_801C5E74(u8 init) {
     }
 }
 
+/* These earlier menu ports are functional native C but are not yet MIPS
+ * matches.  Keep retail assembly in the matching build so their accumulated
+ * size drift cannot move the field-visible object region at 0x801E71B4. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5F10);
+#else
 void func_801C5F10(void) {
     u8 v1;
     func_801C5BB8(1);
@@ -178,9 +184,13 @@ void func_801C5F10(void) {
         func_801C5B54(1);
     }
 }
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5FE4);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C62A8);
+#else
 void func_801C62A8(void) {
     u8 s0;
     func_801C5F10();
@@ -211,6 +221,7 @@ void func_801C62A8(void) {
     }
     func_801C5FE4();
 }
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6400);
 
@@ -220,6 +231,9 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6400);
  * builders read), a second atlas -> unk2E0, and the 3 party-portrait TIMs
  * (uploaded to VRAM via LoadImage at positions from func_80026338).  Also stores
  * the two memory-card save-file names.  Called by func_801C6AA0. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C65F4);
+#else
 void func_801C65F4(void) {
     u32* pResources = (u32*)D_8005945C;
     void* pTim;
@@ -297,11 +311,15 @@ void func_801C65F4(void) {
     g_Menu->unk2E4 = (SoundFile*)D_8006259C;
     HeapFree(pResources);
 }
+#endif
 
 /* B1b: party/character setup for the main menu, then the resource-load.
  * Computes availableCharacters[] from the party flag mask, resolves the 3
  * active party slots (currentCharacterIDs / gear flags), records the first
  * active slot, then calls func_801C65F4 to stream the menu resources. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6AA0);
+#else
 void func_801C6AA0(void) {
     s32 i;
     u16 frMask;
@@ -356,6 +374,7 @@ void func_801C6AA0(void) {
 
     func_801C65F4();
 }
+#endif
 
 /* B1b: reset the menu's active render context. */
 void func_801C6D4C(void) {
@@ -364,6 +383,9 @@ void func_801C6D4C(void) {
 
 /* B1b: zero the 14-byte scratch block at unk4CC (three words + two bytes,
  * transcribed in asm order). */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D5C);
+#else
 void func_801C6D5C(void) {
     g_Menu->unk4CC[0xC] = 0;
     *(u32*)&g_Menu->unk4CC[0] = 0;
@@ -371,6 +393,7 @@ void func_801C6D5C(void) {
     g_Menu->unk4CC[0xD] = 0;
     *(u32*)&g_Menu->unk4CC[8] = 0;
 }
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D90);
 
@@ -419,6 +442,9 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C72BC);
  * runs; sel 2/6 also run it (sel 2 bumps the context byte to 0x4C); sel 1 and
  * sel >= 3 (!= 6) skip it.  Preconditions (pSelectionMenu, unk348) are both
  * allocated by func_801C5F10's init slice. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7B0C);
+#else
 void func_801C7B0C(void) {
     u8 sel;
 
@@ -449,6 +475,7 @@ void func_801C7B0C(void) {
         func_801C6D5C();
     }
 }
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7BF4);
 
@@ -631,9 +658,108 @@ void func_801D0954(SVECTOR* vertices, POLY_FT4* polys, s32 polyIndex, s32 otInde
     AddPrim(&g_Menu->pGfxEnv->ot[otIndex], &polys[polyIndex]);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D09F0);
+/* Project and queue every primitive that makes up one menu window.  The
+ * textured border pieces share func_801D0954; the untextured background needs
+ * its own RotTransPers4 because it is a POLY_G4 rather than a POLY_FT4. */
+void func_801D09F0(s32 windowIndex, u8 hasScrollBar) {
+    long interpolated;
+    long flag;
+    MenuWindow* pWindow;
+    s32 i;
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0C78);
+    pWindow = g_Menu->windows[windowIndex];
+
+    for (i = 0; i < 4; i++) {
+        func_801D0954(&pWindow->vertsWindowBorderCorners[i * 4],
+                      &pWindow->polysWindowBorderCorners[i * 2],
+                      pWindow->renderContext, pWindow->zIndex);
+    }
+
+    if (hasScrollBar) {
+        for (i = 0; i < 2; i++) {
+            func_801D0954(&pWindow->vertsScrollBarEnds[i * 4],
+                          &pWindow->polysScrollBarEnds[i * 2],
+                          pWindow->renderContext, pWindow->zIndex);
+        }
+        func_801D0954(pWindow->vertsScrollBarEmpty,
+                      pWindow->polysScrollBarEmpty,
+                      pWindow->renderContext, pWindow->zIndex);
+    }
+
+    func_801D0954(pWindow->vertsWindowBorderTop1,
+                  pWindow->polysWindowBorderTop,
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderTop2,
+                  &pWindow->polysWindowBorderTop[2],
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderBottom1,
+                  pWindow->polysWindowBorderBottom,
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderBottom2,
+                  &pWindow->polysWindowBorderBottom[2],
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderLeft1,
+                  pWindow->polysWindowBorderLeft,
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderLeft2,
+                  &pWindow->polysWindowBorderLeft[2],
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderRight1,
+                  pWindow->polysWindowBorderRight,
+                  pWindow->renderContext, pWindow->zIndex);
+    func_801D0954(pWindow->vertsWindowBorderRight2,
+                  &pWindow->polysWindowBorderRight[2],
+                  pWindow->renderContext, pWindow->zIndex);
+
+    RotTransPers4(&pWindow->vertsBackground[0],
+                  &pWindow->vertsBackground[1],
+                  &pWindow->vertsBackground[2],
+                  &pWindow->vertsBackground[3],
+                  (long*)&pWindow->polysBackground[pWindow->renderContext].x0,
+                  (long*)&pWindow->polysBackground[pWindow->renderContext].x1,
+                  (long*)&pWindow->polysBackground[pWindow->renderContext].x2,
+                  (long*)&pWindow->polysBackground[pWindow->renderContext].x3,
+                  &interpolated, &flag);
+    /* Keep the native OT stride while preserving retail's address-add order. */
+    AddPrim((void*)((pWindow->zIndex * sizeof(g_Menu->pGfxEnv->ot[0])) +
+                    (uintptr_t)g_Menu->pGfxEnv->ot),
+            &pWindow->polysBackground[pWindow->renderContext]);
+    AddPrim((void*)((pWindow->zIndex * sizeof(g_Menu->pGfxEnv->ot[0])) +
+                    (uintptr_t)g_Menu->pGfxEnv->ot),
+            &pWindow->drawModes[pWindow->renderContext]);
+}
+
+/* Render each active window under either its caller-provided transform or the
+ * retail default: no rotation and a +512 Z translation. */
+void func_801D0C78(void) {
+    SVECTOR rotation;
+    VECTOR translation;
+    MATRIX matTransform;
+    SVECTOR _unused;
+    s32 i;
+
+    for (i = 0; i < MENU_MAX_NUM_WINDOWS; i++) {
+        if (g_Menu->pManager->shouldRenderWindow[i]) {
+            if (g_Menu->windows[i]->unk714 == 0) {
+                PushMatrix();
+                rotation.vz = 0;
+                rotation.vy = 0;
+                rotation.vx = 0;
+                translation.vy = 0;
+                translation.vx = 0;
+                translation.vz = 512;
+                RotMatrix(&rotation, &matTransform);
+                TransMatrix(&matTransform, &translation);
+                SetRotMatrix(&matTransform);
+                SetTransMatrix(&matTransform);
+                func_801D09F0(i, g_Menu->windows[i]->hasScrollBar);
+                PopMatrix();
+            } else {
+                func_801D09F0(i, g_Menu->windows[i]->hasScrollBar);
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0D90);
 
