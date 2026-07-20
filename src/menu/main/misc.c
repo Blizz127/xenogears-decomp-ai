@@ -1912,7 +1912,41 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8978);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8B4C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8DA8);
+#else
+extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
+extern u8 D_801EA578[];   /* per-slot name-plate VRAM x coords (u16, migrated) */
+extern u8 D_801EA5C4[];   /* per-slot name-plate VRAM y coords (u16, migrated) */
+
+/* Arc A content: the party NAME-PLATE renderer.  Rasterizes the character's
+ * name (two SystemRenderStringEntry rows) into a work buffer and uploads it
+ * as a 0x28x0xD VRAM rect at the slot's plate coords (+0x180 x).  charArg
+ * 0xFF uploads a blank plate.  The FACE TIMs are uploaded separately by the
+ * resource-load (func_801C65F4); the quads that sample plate+face are the
+ * portrait-frame geometry (func_801D5A50 family). */
+void func_801E8DA8(s32 charArg, s32 slot) {
+    u8* pWork = HeapAlloc(0x3F6, 0);
+    RECT rect;
+    s32 byteOff;
+
+    bzero(pWork, 0x3F6);
+    if ((charArg & 0xFF) != 0xFF) {
+        u8* pName = (u8*)&g_GameState + ((charArg & 0xFF) >> 1) * 0x28;
+
+        SystemRenderStringEntry(pName, pWork, 0x24, 0);
+        SystemRenderStringEntry(pName + 0x14, pWork, 0x24, 1);
+    }
+    byteOff = (slot << 1) & 0x1FC;
+    rect.x = (s16)(*(u16*)(D_801EA578 + byteOff) + 0x180);
+    rect.y = (s16)*(u16*)(D_801EA5C4 + byteOff);
+    rect.w = 0x28;
+    rect.h = 0xD;
+    LoadImage(&rect, (u_long*)pWork);
+    DrawSync(0);
+    HeapFree(pWork);
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8EAC);
 
