@@ -1016,6 +1016,18 @@ PHASED PLAN (object-overlay / menu.bin convergence):
       22-list, currently stubbed) -- reads unk39C + RotTransPers + AddPrim.
       TEXTURES: complete (faces = resource-load; plates = f9cfd41).
       Port build+draw -> Fei's portrait frame renders (the anim slides it in).
+    PORTRAITS RENDER (c77df61, 2026-07-20): the 12-fn slice PORTED. glReadPixels
+    4.2% -> 38.9%: FEI'S ACTUAL PORTRAIT ART on-screen (x3 slots, cold party)
+    with live LV/HP/EP/Next-LV stat panels + digit rendering (zeros, faithful).
+    Capture: captures/render_diag/menu_portraits_20260720.png. Transcription
+    catches: charId as $a1 register residue (func_801D5A50); maxHP/maxMP digit
+    loops position by BUILD count (delay-slot index bump). KNOWN ARTIFACT:
+    slide-in trails -- PsyX DRAWENV isbg background-clear UNIMPLEMENTED
+    (LIBGPU.C TODO at ~436/458); the menu relies on isbg to clear each frame.
+    Fix = implement isbg clear in PsyX (the build_port.sh _xeno patch
+    mechanism) -- the next polish item. Remaining content: labels/cursors
+    (func_801E8474), the big selection window (window 0 trace), icon-strip
+    draw sub-renderer.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
