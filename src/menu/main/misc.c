@@ -606,7 +606,32 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7D78);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7F34);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
+#else
+/* Arc A portraits: parse a value into g_Menu->digits[9] (decimal, MSD first),
+ * blanking leading zeros to 0xFF (the quad builders skip 0xFF; digit glyphs
+ * are atlas entries 0-9). */
+void func_801C80B8(u32 value) {
+    u32 divisor = 100000000;
+    s32 i;
+
+    for (i = 0; i < 9; i++) {
+        g_Menu->digits[i] = (u8)(value / divisor);
+        value %= divisor;
+        divisor /= 10;
+    }
+    for (i = 1; i < 9; i++) {
+        if (g_Menu->digits[i] != 0) {
+            if (g_Menu->digits[i - 1] == 0) {
+                g_Menu->digits[i - 1] = 0xFF;
+            }
+            break;
+        }
+        g_Menu->digits[i - 1] = 0xFF;
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8164);
 
@@ -852,7 +877,20 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE0CC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE198);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE2B4);
+#else
+/* Arc A portraits: AddPrim `count` double-buffered polys from a portrait list
+ * (each entry is a pair; draw the renderCtx half). */
+void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                pList + (renderCtx + i * 2) * sizeof(POLY_FT4));
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE338);
 
@@ -860,7 +898,37 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE3C8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE464);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE540);
+#else
+extern void func_801CE2B4(s32 count, u8* pList, s32 renderCtx);
+
+/* Arc A portraits: THE portrait sub-renderer (one of func_801D1B20's 22).
+ * For each visible party slot (pManager->unk0[i], set by func_801D5A50):
+ * AddPrim the frame + face quads, then the counted lists (icons, level,
+ * HP/MP/EXP digits) -- all to ot[4] via the proven pipeline. */
+void func_801CE540(void) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[i * 4];
+
+        if (g_Menu->pManager->unk0[i]) {
+            s32 rc = ((u8*)buf)[0x1270];
+
+            AddPrim(&g_Menu->pGfxEnv->ot[4], buf + rc * sizeof(POLY_FT4));
+            AddPrim(&g_Menu->pGfxEnv->ot[4], buf + 0x50 + rc * sizeof(POLY_FT4));
+            func_801CE2B4(buf[0x1279], buf + 0xA0, rc);
+            func_801CE2B4(buf[0x1273], buf + 0xAF0, rc);
+            func_801CE2B4(buf[0x1274], buf + 0xBE0, rc);
+            func_801CE2B4(buf[0x1275], buf + 0xCD0, rc);
+            func_801CE2B4(buf[0x1276], buf + 0xD70, rc);
+            func_801CE2B4(buf[0x1277], buf + 0xE10, rc);
+            func_801CE2B4(buf[0x1271], buf + 0x910, rc);
+        }
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE660);
 
@@ -1147,7 +1215,9 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
 #else
 extern void func_801E8018(s32, void*, void*, void*);  /* stub (overlay) */
 extern void func_801E53CC(u8 windowIndex);            /* frame-primitive init (below) */
-extern void func_801D5A50(u8 slot);                   /* window/portrait geometry (stub for now) */
+/* NB retail passes charId in $a1 as register residue from the caller's lbu of
+ * currentCharacterIDs[i] -- the port passes it explicitly. */
+extern void func_801D5A50(u8 slot, u8 charId);        /* portrait panel rebuild (below) */
 extern void func_801D28A8(void);                      /* stub */
 extern u8 D_801EA528[];
 extern u8 D_801EA19C[];
@@ -1180,7 +1250,7 @@ void func_801D29A8(u8 open, u8 noSettle) {
            MENU_OPEN_ANIM(2)->done == 0) {
         for (i = 0; i < 3; i++) {
             if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
-                func_801D5A50((u8)i);
+                func_801D5A50((u8)i, g_Menu->pManager->currentCharacterIDs[i]);
             }
         }
         func_801C7BF4();
@@ -1207,7 +1277,7 @@ void func_801D29A8(u8 open, u8 noSettle) {
         MENU_OPEN_ANIM(2)->accY = 0;
         for (i = 0; i < 3; i++) {
             if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
-                func_801D5A50((u8)i);
+                func_801D5A50((u8)i, g_Menu->pManager->currentCharacterIDs[i]);
             }
         }
         func_801C8574(0x5D);
@@ -1546,19 +1616,301 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4EA0);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4F2C);
+#else
+extern void func_801E927C(POLY_FT4* p);
+extern void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h);
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+extern s32 D_801E9B58;
+extern s32 D_801E9B5C;
+extern u8 D_801EA578[];   /* per-slot portrait VRAM x table (also used by func_801E8DA8) */
+extern u8 D_801EA5C4[];   /* per-slot portrait VRAM y table */
 
+#define PORTRAIT_BUF(slot) ((u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[(slot) * 4])
+#define PORTRAIT_POLY(buf, base, idx) ((POLY_FT4*)((buf) + (base) + (idx) * sizeof(POLY_FT4)))
+
+/* Arc A portraits: the frame + face quads for party slot `slot` at animated
+ * (x,y).  The frame comes from the atlas (0x14B + slot -- the same ids whose
+ * VRAM rects the resource-load filled); the face quad samples the portrait
+ * VRAM directly (tpage x=0x180, clut by charId parity, rect from the
+ * D_801EA578/D_801EA5C4 slot tables, 0x48x0xD). */
+void func_801D4F2C(u8 slot, u8 charId, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    s32 rc = g_Menu->renderContext;
+    POLY_FT4* pFace;
+
+    func_8002675C(g_Menu->unk2DC, 0x14B + slot, buf, rc, x, y, 0x1000);
+    pFace = PORTRAIT_POLY(buf, 0x50, rc);
+    func_801E927C(pFace);
+    pFace->tpage = GetTPage(0, 0, 0x180, 0);
+    if (g_Menu->pManager->currentCharacterIDs[slot] & 1) {
+        pFace->clut = g_SystemPalette2;
+    } else {
+        pFace->clut = g_SystemPalette1;
+    }
+    func_801E920C(pFace,
+                  (u16)((u16)D_801E9B58 + x), (u16)((u16)D_801E9B5C + y),
+                  (*(u32*)(D_801EA578 + slot * 4) << 2) & 0xFC,
+                  *(u8*)(D_801EA5C4 + slot * 4), 0x48, 0xD);
+    (void)charId;
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D50EC);
+#else
+extern u8 D_801EA34C[];   /* 20 status-icon atlas ids (u32 each; 0xFFFF = empty) */
+extern u8 D_801E9A78[];   /* 20 per-icon x offsets (u32 each) */
+extern u8 D_801E9AC8[];   /* 20 per-icon y offsets (u32 each) */
 
+/* Arc A portraits: the status-icon row -- up to 20 icons at per-icon offsets,
+ * built into the buf+0xA0 list (count at 0x1279). */
+void func_801D50EC(u8 slot, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    s32 i;
+
+    buf[0x1279] = 0;
+    for (i = 0; i < 0x14; i++) {
+        s32 id = *(s32*)(D_801EA34C + i * 4);
+
+        if (id != 0xFFFF) {
+            buf[0x1279] += (u8)func_8002675C(
+                g_Menu->unk2DC, id, buf + 0xA0 + buf[0x1279] * 0x50,
+                g_Menu->renderContext,
+                x + *(s32*)(D_801E9A78 + i * 4),
+                y + *(s32*)(D_801E9AC8 + i * 4), 0x1000);
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D51EC);
+#else
+extern void func_801C80B8(u32 value);
+extern s32 D_801E9B28;
+extern s32 D_801E9B2C;
+extern s32 D_801E9B30;
+extern s32 D_801E9B34;
 
+/* Arc A portraits: the HP / maxHP digit quads (3 digits each, digits[6..8],
+ * 0xFF = blank).  Lists buf+0xAF0 (count 0x1273) and buf+0xBE0 (0x1274). */
+void func_801D51EC(u8 slot, u8 charId, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    s32 i;
+
+    func_801C80B8(g_GameState.characters[charId].hp);
+    buf[0x1273] = 0;
+    for (i = 0; i < 3; i++) {
+        u8 d = g_Menu->digits[6 + i];
+
+        if (d != 0xFF) {
+            buf[0x1273] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xAF0 + buf[0x1273] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B28 + i * 8, y + D_801E9B2C, 0x1000);
+        }
+    }
+
+    func_801C80B8(g_GameState.characters[charId].maxHp);
+    buf[0x1274] = 0;
+    for (i = 0; i < 3; i++) {
+        u8 d = g_Menu->digits[6 + i];
+
+        /* NB: retail positions max-value digits by BUILD count (left-packed),
+         * not by digit index -- the index bump lives in a branch delay slot. */
+        if (d != 0xFF) {
+            buf[0x1274] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xBE0 + buf[0x1274] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B30 + buf[0x1274] * 8, y + D_801E9B34, 0x1000);
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D53D0);
+#else
+extern s32 D_801E9B38;
+extern s32 D_801E9B3C;
+extern s32 D_801E9B40;
+extern s32 D_801E9B44;
 
+/* Arc A portraits: the MP / maxMP digit quads (2 digits each, digits[7..8]).
+ * Lists buf+0xCD0 (count 0x1275) and buf+0xD70 (0x1276; left-packed). */
+void func_801D53D0(u8 slot, u8 charId, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    s32 i;
+
+    func_801C80B8(g_GameState.characters[charId].mp);
+    buf[0x1275] = 0;
+    for (i = 0; i < 2; i++) {
+        u8 d = g_Menu->digits[7 + i];
+
+        if (d != 0xFF) {
+            buf[0x1275] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xCD0 + buf[0x1275] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B38 + i * 8, y + D_801E9B3C, 0x1000);
+        }
+    }
+
+    func_801C80B8(g_GameState.characters[charId].maxMp);
+    buf[0x1276] = 0;
+    for (i = 0; i < 2; i++) {
+        u8 d = g_Menu->digits[7 + i];
+
+        if (d != 0xFF) {
+            buf[0x1276] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xD70 + buf[0x1276] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B40 + buf[0x1276] * 8, y + D_801E9B44, 0x1000);
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D55B4);
+#else
+extern s32 D_801E9B48;
+extern s32 D_801E9B4C;
+extern s32 D_801E9B50;
+extern s32 D_801E9B54;
 
+/* Arc A portraits: the EXP / next-EXP digit quads (7 digits each,
+ * digits[2..8]).  Lists buf+0xE10 (count 0x1277) and buf+0x1040 (0x1278).
+ * The exp values live in the GameCharacter head blob (+0x44 / +0x48). */
+void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    u8* pChar = (u8*)&g_GameState.characters[charId];
+    s32 i;
+
+    func_801C80B8(*(u32*)(pChar + 0x44));
+    buf[0x1277] = 0;
+    for (i = 0; i < 7; i++) {
+        u8 d = g_Menu->digits[2 + i];
+
+        if (d != 0xFF) {
+            buf[0x1277] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xE10 + buf[0x1277] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B48 + i * 8, y + D_801E9B4C, 0x1000);
+        }
+    }
+
+    func_801C80B8(*(u32*)(pChar + 0x48));
+    buf[0x1278] = 0;
+    for (i = 0; i < 7; i++) {
+        u8 d = g_Menu->digits[2 + i];
+
+        if (d != 0xFF) {
+            buf[0x1278] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0x1040 + buf[0x1278] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B50 + i * 8, y + D_801E9B54, 0x1000);
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5794);
+#else
+extern s32 D_801E9B18;
+extern s32 D_801E9B1C;
+extern s32 D_801E9B20;
+extern s32 D_801E9B24;
 
+/* Arc A portraits: the LEVEL digit quads (3 digits, digits[6..8]) into
+ * buf+0x910 (count 0x1271), and the second level number (char+0x63) into
+ * buf+0xA00 (count 0x1272) -- tinted green in a post-pass. */
+void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
+    u8* buf = PORTRAIT_BUF(slot);
+    u8* pChar = (u8*)&g_GameState.characters[charId];
+    s32 i;
+
+    func_801C80B8(g_GameState.characters[charId].level);
+    buf[0x1271] = 0;
+    for (i = 0; i < 3; i++) {
+        u8 d = g_Menu->digits[6 + i];
+
+        if (d != 0xFF) {
+            buf[0x1271] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0x910 + buf[0x1271] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B18 + i * 8, y + D_801E9B1C, 0x1000);
+        }
+    }
+
+    func_801C80B8(pChar[0x63]);
+    buf[0x1272] = 0;
+    for (i = 0; i < 3; i++) {
+        u8 d = g_Menu->digits[6 + i];
+
+        if (d != 0xFF) {
+            buf[0x1272] += (u8)func_8002675C(
+                g_Menu->unk2DC, d, buf + 0xA00 + buf[0x1272] * 0x50,
+                g_Menu->renderContext,
+                x + D_801E9B20 + i * 8, y + D_801E9B24, 0x1000);
+        }
+    }
+
+    for (i = 0; i < buf[0x1272]; i++) {
+        POLY_FT4* p = PORTRAIT_POLY(buf, 0xA00, i * 2 + g_Menu->renderContext);
+
+        SetShadeTex(p, 0);
+        p->r0 = 0;
+        p->g0 = 0x80;
+        p->b0 = 0;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5A50);
+#else
+extern void func_801D4F2C(u8 slot, u8 charId, s32 x, s32 y);
+extern void func_801D50EC(u8 slot, s32 x, s32 y);
+extern void func_801D51EC(u8 slot, u8 charId, s32 x, s32 y);
+extern void func_801D53D0(u8 slot, u8 charId, s32 x, s32 y);
+extern void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y);
+extern void func_801D5794(u8 slot, u8 charId, s32 x, s32 y);
+
+/* Arc A portraits: rebuild party slot `slot`'s portrait panel at its CURRENT
+ * animated position (anim slot cur + acc>>8) -- frame+face, status icons,
+ * HP/MP/EXP/level digits -- and mark it visible (pManager->unk0[slot], which
+ * the portrait sub-renderer func_801CE540 checks and the close-anim clears).
+ * NB retail passes charId as $a1 register residue from the caller's lbu. */
+void func_801D5A50(u8 slot, u8 charId) {
+    MenuOpenAnim* pAnim;
+    u8* buf;
+    s32 x;
+    s32 y;
+
+    if (slot == 0xFF) {
+        return;
+    }
+    pAnim = MENU_OPEN_ANIM(slot);
+    buf = PORTRAIT_BUF(slot);
+    /* retail rounds the 8.8 acc toward zero (adds 0xFF before asr on negatives) */
+    x = pAnim->curX + ((pAnim->accX < 0 ? pAnim->accX + 0xFF : pAnim->accX) >> 8);
+    y = pAnim->curY + ((pAnim->accY < 0 ? pAnim->accY + 0xFF : pAnim->accY) >> 8);
+
+    func_801D4F2C(slot, charId, x, y);
+    func_801D50EC(slot, x, y);
+    func_801D51EC(slot, charId, x, y);
+    func_801D53D0(slot, charId, x, y);
+    func_801D55B4(slot, charId, x, y);
+    func_801D5794(slot, charId, x, y);
+
+    g_Menu->pManager->unk0[slot] = 1;
+    buf[0x1270] = (u8)g_Menu->renderContext;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5BA4);
 
@@ -1966,9 +2318,45 @@ void func_801E91C4(POLY_FT4* p) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E920C);
+#else
+/* Arc A portraits: set an FT4's screen quad + UV rect directly (absolute
+ * screen coords -- no projection). */
+void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h) {
+    p->x0 = (s16)x;
+    p->y0 = (s16)y;
+    p->y1 = (s16)y;
+    p->x2 = (s16)x;
+    p->u0 = (u8)u;
+    p->u2 = (u8)u;
+    p->x1 = (s16)(x + w);
+    p->y2 = (s16)(y + h);
+    p->x3 = (s16)(x + w);
+    p->y3 = (s16)(y + h);
+    p->v0 = (u8)v;
+    p->u1 = (u8)(u + w);
+    p->v1 = (u8)v;
+    p->v2 = (u8)(v + h);
+    p->u3 = (u8)(u + w);
+    p->v3 = (u8)(v + h);
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E927C);
+#else
+/* Arc A portraits: init the face quad -- opaque, shading enabled, neutral
+ * 0x80 modulate. */
+void func_801E927C(POLY_FT4* p) {
+    SetPolyFT4(p);
+    SetSemiTrans(p, 0);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E92CC);
 
