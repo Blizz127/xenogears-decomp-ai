@@ -60,7 +60,76 @@ extern u8 D_800594D0;
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C55A0);
+#else
+extern void func_801C8574(s32);
+extern void func_801D22C4(void);
+extern void func_801E8044(s32, void*);
+extern s32 func_801C531C(s32);
+extern void func_801E8978(s32, s32, void*);
+extern s32 func_801E8070(s32, void*, void*, void*, void*, s32, s32, s32);
+extern u8 D_801EA19C[];
+extern u8 D_801EA528[];
+extern u8 D_801E9E64[];
+
+/* Arc A: the top-level menu input/render loop.  Draws each frame via
+ * func_801C7BF4, reads the nav input, updates menu1Choice (wrap 0..6), and
+ * loops until cancel (s1 == 0).  The nav/confirm/choice-change branches call
+ * the object-overlay stubs (func_801C8574/D22C4/E8044/C531C/E8978/E8070 --
+ * no-op in the port, never reached in the headless render harness with no
+ * input, so the loop just draws each frame). */
+void func_801C55A0(void) {
+    s32 s1 = 1;
+
+    while (1) {
+        u8 input;
+
+        func_801C7BF4();
+        input = g_Menu->input;
+
+        if (input == 3) {
+            g_Menu->menu1Choice++;
+            if ((u8)g_Menu->menu1Choice >= 7) {
+                g_Menu->menu1Choice = 0;
+            }
+        } else if (input < 4) {
+            if (input == 1) {
+                if (g_Menu->menu1Choice == 0) {
+                    g_Menu->menu1Choice = 6;
+                } else {
+                    g_Menu->menu1Choice--;
+                }
+            }
+        } else if (input == 4) {
+            u8 ok = 1;
+            if (g_Menu->menu1Choice == 2 && g_Menu->unk33B == 0) {
+                ok = 0;
+                func_801C8574(4);
+            }
+            if (ok) {
+                g_Menu->pSelectionMenu->unk1192 = 1;
+                func_801D22C4();
+                func_801E8044(8, (u8*)g_Menu->pManager + 0xC);
+                s1 = func_801C531C(0);
+            }
+        } else if (input == 5) {
+            s1 = 0;
+        }
+
+        if (g_Menu->menu1Choice != g_Menu->unk337) {
+            func_801E8978(7, 0, D_801EA19C);
+            func_801E8070(8, (u8*)g_Menu + 0x6E0, D_801EA528, D_801E9E64,
+                          (u8*)g_Menu->pManager + 0xC, g_Menu->menu1Choice, 0, 0);
+            g_Menu->unk337 = g_Menu->menu1Choice;
+        }
+
+        if (s1 == 0) {
+            break;
+        }
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C57A4);
 
@@ -477,7 +546,61 @@ void func_801C7B0C(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7BF4);
+#else
+extern s32* D_8005917C;
+extern u8 D_801E9784;
+extern s32 D_80059488;
+extern void func_801C7D78(void);      /* input (stub) */
+extern void func_8001BD40(s32, s32);
+extern void func_801C7F34(s32);       /* view matrix (stub for now) */
+extern void func_801D1D40(void);      /* view matrix (stub for now) */
+extern void func_801D2968(void);      /* sub-draw (stub) */
+extern void func_801D1CA0(void);      /* the render -> window (ported) */
+extern void func_801C8BEC(void);
+extern void func_801C8EE8(void);
+extern void GameCheckAndHandleSoftReset(void);
+
+/* Arc A: the per-frame menu draw. Flips the double-buffered gfx env, clears the
+ * OT, runs the render (func_801D1CA0 -> ... -> the ported window-draw core),
+ * then DrawOTag + present + MoveImage the selection-menu VRAM rect. The window
+ * draws when func_801D1CA0's chain has built window POLYs (needs the setup/
+ * window-build func_801D2D38 -> func_801E8474, not yet ported). */
+void func_801C7BF4(void) {
+    s32 s0;
+
+    if (*D_8005917C != -1) {
+        /* retail `break 1`: menu-active sentinel guard -- no-op in the port. */
+    }
+    func_801C7D78();
+    if (D_801E9784 != 0) {
+        GameCheckAndHandleSoftReset();
+    }
+    if (g_Menu->pGfxEnv == &g_Menu->gfxEnvs[0]) {
+        g_Menu->pGfxEnv = &g_Menu->gfxEnvs[1];
+    } else {
+        g_Menu->pGfxEnv = &g_Menu->gfxEnvs[0];
+    }
+    g_Menu->renderContext = (g_Menu->renderContext == 0);
+    ClearOTagR(g_Menu->pGfxEnv->ot, 0x10);
+    func_8001BD40(0, 0xFF);
+    func_801D1D40();
+    g_Menu->unk2D8 += 1;
+    func_801C7F34(D_80059488);
+    func_801D2968();
+    func_801D1CA0();
+    s0 = (g_Menu->renderContext == 0);
+    DrawSync(0);
+    Vsync(0);
+    PutDrawEnv(&g_Menu->pGfxEnv->drawEnv);
+    PutDispEnv(&g_Menu->pGfxEnv->dispEnv);
+    MoveImage(&g_Menu->pSelectionMenu->unk1180, 0, s0 * 224);
+    DrawOTag(&g_Menu->pGfxEnv->ot[15]);
+    func_801C8BEC();
+    func_801C8EE8();
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7D78);
 
