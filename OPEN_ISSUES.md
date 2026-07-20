@@ -1093,6 +1093,119 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     the cold-state main menu: portraits + stats + options + gold + time, all
     clean. Remaining: nav/input (cursor movement + option select -> the
     sub-menu screens), byte-match refinement of the coexistence fns.
+
+    ================================================================
+    ===== ARC A RENDER CHAPTER: COMPLETE (capstone, 2026-07-20) =====
+    ================================================================
+    The cold-state Xenogears main menu renders fully and cleanly in the port:
+    Fei's portraits + LV/HP/EP/Next-LV stat panels + the option cascade
+    (Status/Equip/Items/Abilities/Gear/File/Exit) + the gold window ("0 G") +
+    the time window ("000:00:00") -- no trails, 18.5% glReadPixels. Captures:
+    menu_clean_20260720.png, menu_gold_time_20260720.png (render ground truth,
+    real GL-backbuffer glReadPixels).
+
+    (1) THE COMPLETE RENDER CHAIN (all in src/menu/main/misc.c unless noted):
+      dispatch func_801C62A8 -> init func_801C5F10 (B1a allocs: pManager,
+      pSelectionMenu, unk32C/330/348/354, unk340[0]=0x328 gold buf,
+      unk340[4]=0x374 time buf, unk39C[0..2]=3x0x127C portrait bufs)
+      -> coordinator func_801C7B0C (selection rect + builder sequence)
+      -> resource-load func_801C6AA0 (party setup) + func_801C65F4 (icon TIM,
+         menu textures, unk2DC ATLAS, unk2E0, portrait TIMs -> VRAM)
+      -> frame builders func_801C6E68 (border tpage/clut from atlas) +
+         func_801C6E0C (palette)
+      -> the draw pipeline: func_801C55A0 (input loop) -> func_801C7BF4
+         (per-frame draw: gfx-env flip, ClearOTagR, render, DrawOTag,
+         present, MoveImage backdrop restore) -> func_801D1CA0 ->
+         func_801D1B20 (the 22 sub-renderers) -> func_801D0C78 (window
+         matrix, shouldRenderWindow gate) -> func_801D09F0 (window AddPrim
+         loop) -> func_801D0954 (RotTransPers4+AddPrim leaf)
+      -> the window build: func_801D2D38 (windows[0..1] allocs + portraits +
+         content + animation) -> func_801E53CC (frame primitives) ->
+         func_801D29A8 (open animation; func_801C81E0/func_801C8324 anim
+         slots; tail arms window 1) -> func_801D28FC (window 1 = TIME window
+         geometry via func_801D397C -> func_801D4D1C -> the piece writers
+         func_801D3DB0/3FF8/433C/4688/49D0 + func_801C851C verts leaf) ->
+         func_801D28A8 (open-settle: window 0 = GOLD window + func_801D5BA4
+         gold digits) -> func_801D5CF8 (time digits)
+      -> content: func_801E8DA8 (name-plates -> VRAM) + func_801D5A50 family
+         (portrait panels: func_801D4F2C face/frame, func_801D50EC icons,
+         func_801D51EC HP, func_801D53D0 MP, func_801D55B4 EXP,
+         func_801D5794 level; func_801C80B8 digit parser) + func_801E8474
+         (option-label reveal)
+      -> content draws (in the 22-list): func_801CE540 (portraits),
+         func_801CEC40 (options/selection), func_801CE464 (gold + time).
+
+    (2) PsyX-LAYER FIXES (2 upstream gaps closed, tracked in build_port.sh):
+      (a) _xeno_isbg: DRAWENV.isbg background-clear implemented in PutDrawEnv
+          (real libgpu semantics; NOT DrawPrim -- immediate-mode would over-
+          clear). The FIELD sets isbg=1 unconditionally; verified byte-flat
+          (MAP7 74.3% == baseline at the time).
+      (b) _xeno_fb_materialize: MoveImage dests overlapping the active draw
+          env clip blit the restored vram rect over the GL backbuffer as the
+          frame's base layer (GR_MaterializeFramebufferRect). THE trails fix
+          (the menu's per-frame clear is its MoveImage backdrop restore).
+          Also closed a latent field compositing gap (MAP7 74.3->75.4%,
+          eyeballed pristine = added fidelity).
+
+    (3) CORRECTED ROLE LABELS (survey-signature-is-hypothesis fired
+        REPEATEDLY -- these are the TRUE roles, do not re-mislabel):
+      - func_801E8DA8 = party NAME-PLATE renderer (NOT "portrait builder")
+      - func_801D5CF8 = play-TIME readout (NOT "icon strip")
+      - window 0 = the GOLD window; window 1 = the TIME window (there IS no
+        "big window" -- submenu windows 2+ are created on demand)
+      - the isbg TODO was real but NOT the trails cause (a root cause is
+        only proven when the fix removes the symptom)
+      - func_801E8474 = option-label reveal (the one label that was right)
+
+    (4) BYTE-MATCH STATE / REFINEMENT CANDIDATES (menu/main/misc.c):
+      BYTE-MATCHED (asm retired): func_801D0954, func_801D09F0,
+        func_801D0C78. (func_801D1B20/func_801D1CA0 have C bodies but their
+        nonmatching asm remains -- functional, not yet matched.)
+      COEXISTENCE (matching keeps retail asm; port C is behavioral --
+        the byte-match refinement pool, ~40 fns): the render chain +
+        content fns listed in (1) carrying #ifndef XENO_PC_PORT blocks
+        (func_801C55A0/5F10/62A8/65F4/6AA0/6D5C/7B0C/7BF4/80B8/81E0/851C,
+        func_801CE2B4/E464/E540/EC40, func_801D28A8/28FC/29A8/2D38/397C/
+        3DB0/3FF8/433C/4688/49D0/4D1C/4F2C/50EC/51EC/53D0/55B4/5794/5A50/
+        5BA4/5CF8, func_801E53CC/8474/8DA8/91C4/920C/927C).
+      PLAIN-C in both builds (functional, objdiff-counted): the B1a/B1b
+        alloc toggles + frame builders (func_801C5B54..5E74, 6D4C, 6E0C,
+        6E68, 8324, 865C).
+
+    (5) THE NEXT ARC -- NAV/SUBMENUS (scoped, NOT started): cursor movement +
+      option select -> the submenu screens (the 801DB/DD/DE/E0/E1xxx
+      families) which create windows 2+ on demand via func_801D397C.
+      NAV-GATED: needs input reaching the menu loop (func_801C55A0 reads
+      g_Menu->input). CAVEAT: the cold harness cannot drive nav (the same
+      ceiling member_change's labels hit -- harness-context-artifact).
+      The nav arc needs a SCOPING pass first: how does g_Menu->input get
+      fed (ControllerPoll -> ?), can the harness inject edges (the
+      dialog-confirm precedent: edge-gated, memory
+      dialog-dismiss-edge-gated-confirm), and what do the confirm branches
+      pull in (func_801C531C, the 0x801E nav callees, the submenu families).
+
+    (6) THE HARNESS (the working recipe): XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0
+      XENO_FIELD_MAP=5 XENO_FIELD_ENTRANCE=0 XENO_MENU_FORCE=1
+      [XENO_MENU_FORCE_DELAY=60..240]. The hook (psyq_compat.c
+      PcPort_ForcedFieldMenu) presses the menu button once the field idles
+      and seeds a 1-member party (Fei) iff the party mask is empty.
+      KNOWN RESIDUE (harness-only): stale KernelMenu debug text composites
+      from the backdrop VRAM (the XENO_FIELD_TEST boot drew it); absent on
+      a normal boot.
+
+    (7) LESSONS (banked to memory where durable):
+      - survey-signature-is-hypothesis: role labels are leads; open the asm.
+      - A ROOT CAUSE IS ALSO A HYPOTHESIS until the fix removes the symptom
+        (the isbg episode).
+      - PSX idioms to watch: register-residue args ($a0/$a1 at entry --
+        func_801D5A50's charId, func_801CEC40's g_Menu), delay-slot loop
+        counters (the maxHP/maxMP build-count positioning).
+      - Native-struct FIELD NAMES throughout (SystemMenu inflated 0x2098 vs
+        0x1E98); pure-data structs (GameState, MenuWindow, MenuSelectionMenu)
+        are safe at PSX offsets.
+      - The B1a buffers (unk340[0]/[4], unk39C[0..2]) are load-bearing
+        across the whole content chain -- allocations from the FIRST menu
+        pass feed the LAST content renderers.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
