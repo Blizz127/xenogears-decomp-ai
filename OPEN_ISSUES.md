@@ -1077,6 +1077,22 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     normal boot. THE MENU IS VISUALLY COMPLETE for its current content: frame
     + portraits + stats + options, clean. Remaining: the big selection window
     (window 0), the icon-strip draw, nav/input (cursor movement).
+    GOLD + TIME WINDOWS RENDER (a9653f3, 2026-07-20): window 0 traced asm-
+    first -- NOT "the big window" (survey-signature again): it is the GOLD
+    window (96x16 at 0xD4,0xB2), built by func_801D28A8 (the open-settle) via
+    the proven func_801D397C path + func_801D5BA4 (gold digits from
+    g_GameState.gold + the "G" glyph into the B1a unk340[0] buffer). Their
+    drawer func_801CE464 was a two-for-one: its unk5[1] branch draws the
+    unk340[4] buffer, revealing func_801D5CF8's true role -- the PLAY-TIME
+    readout (the "icons" are time digits, the 0xEE "separators" are colons):
+    window 1 = the TIME window, now showing 000:00:00. glReadPixels 15.1% ->
+    18.5%; capture menu_gold_time_20260720.png. BOTH allocated windows render;
+    there is no unrendered "big window" (the sub-menu screens 801DB/DD/DE/E0/
+    E1xxx create windows 2+ on demand via func_801D397C when an option is
+    selected -- nav-gated, future arc). ARC A RENDER CONTENT IS COMPLETE for
+    the cold-state main menu: portraits + stats + options + gold + time, all
+    clean. Remaining: nav/input (cursor movement + option select -> the
+    sub-menu screens), byte-match refinement of the coexistence fns.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
