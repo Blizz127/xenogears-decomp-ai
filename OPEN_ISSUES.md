@@ -1001,6 +1001,21 @@ PHASED PLAN (object-overlay / menu.bin convergence):
         sub-renderer in the func_801D1B20 22-list is stubbed);
     (c) the portrait-frame geometry (func_801D5A50 family, +837i) for the
         open animation's sliding frames.
+    CONTENT PASS 1 (f9cfd41, 2026-07-20): func_801E8DA8 PORTED -- it is the
+    party NAME-PLATE renderer (SystemRenderStringEntry x2 -> 0x28x0xD VRAM
+    upload at D_801EA578/D_801EA5C4 slot coords), NOT the portrait-quad
+    builder (the scoping label was wrong). Runtime-verified: 6 calls fire
+    (3 slots x char+gear), uploads complete; glReadPixels unchanged 4.2% as
+    expected (texture-side write; blank names on cold state).
+    THE PORTRAIT-QUAD SLICE (fully traced, the next content unit, ~913i):
+      BUILD: func_801D5A50 (90i) -> func_801D4F2C 116 / func_801D50EC 68 /
+      func_801D51EC 127 / func_801D53D0 127 / func_801D55B4 126 /
+      func_801D5794 183 -- write the portrait-frame geometry into the B1a
+      unk39C buffers (3 x 0x127C), positioned by the open-anim slots.
+      DRAW: func_801CE540 (76i, the portrait sub-renderer in func_801D1B20's
+      22-list, currently stubbed) -- reads unk39C + RotTransPers + AddPrim.
+      TEXTURES: complete (faces = resource-load; plates = f9cfd41).
+      Port build+draw -> Fei's portrait frame renders (the anim slides it in).
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
