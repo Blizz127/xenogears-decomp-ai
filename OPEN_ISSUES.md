@@ -1028,6 +1028,21 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     mechanism) -- the next polish item. Remaining content: labels/cursors
     (func_801E8474), the big selection window (window 0 trace), icon-strip
     draw sub-renderer.
+    OPTIONS RENDER (477d789, 2026-07-20): func_801E8474 CONFIRMED (asm-first)
+    as the option-label reveal (staged: polysCursors highlight set +
+    polysTexts normal set from D_801EA19C pairs into pSelectionMenu, 2 drawn
+    frames/stage) + its draw func_801CEC40 (the selection sub-renderer:
+    shouldRenderSelectionMenu gate, dim/undim restyle on unk1192!=unk1193,
+    batch-AddPrims both sets to ot[4]). glReadPixels 38.9% -> 40.6%: the REAL
+    option list renders -- Status/Equip/Items/Abilities/Gear/File/Exit in the
+    diagonal cascade with sphere bullets. Capture:
+    captures/render_diag/menu_options_20260720.png. PSX idiom #3: g_Menu via
+    $a0 register residue at func_801CEC40 entry.
+    THE MENU NOW SHOWS: window frame + name-plates(VRAM) + portraits + stat
+    panels + digits + THE OPTION LIST. Remaining: the isbg clear (PsyX polish,
+    kills the trails), the big selection window (window 0), the icon-strip
+    draw, nav/input (cursor movement -- needs input, the member_change
+    harness-nav question).
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
