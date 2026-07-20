@@ -922,6 +922,45 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     Shared GTE/GPU core (RotTransPers4/AddPrim/DrawOTag/matrices) all PORTED
     (PsyX). glReadPixels VERIFY only once the whole chain lands. Harness:
     XENO_FIELD_MAP=5 XENO_MENU_FORCE=1. Multi-turn port; leaf done + compiles.
+    ===== func_801D2D38 FAN-OUT SCOPED (2026-07-19, read-only; the pixels gate)
+    The draw pipeline is PROVEN running (891a448: dispatch->loop->draw->window
+    matrix every frame, no crash); func_801D0C78 skips the AddPrim because (1)
+    windows[] is empty and (2) the draw guard pManager->shouldRenderWindow[i]
+    (MenuManager+0x20) is never set. func_801D2D38 decoded in full:
+      for i in 0..1 (main menu only): windows[i]=HeapAlloc(0x720)+bzero;
+        windowParameters[i]=HeapAlloc(0x18)+bzero; func_801E53CC(i)  <- FRAME
+      func_801C8574(0x5E)                                            <- sound
+      per party slot (x3): func_801E8DA8(charId, slot*2) + gear      <- portraits
+      func_801E8474(8, D_801EA19C)                                   <- content
+      func_801D29A8(1, 0)                     <- OPEN-ANIMATION + THE FLAG SET
+      func_801D28FC()                                                <- post
+    ROLES/SIZES: func_801E53CC (203i) = THE window-frame builder -- SetPolyFT4
+    x4 borders + SetPolyG4 background + GetTPage/GetClut/SetSemiTrans/
+    SetShadeTex; SELF-CONTAINED (only PsyX-ported GPU setters, zero other
+    calls); a WHOLE menu-coherent function (real arg-taking entry -- distinct
+    from the field's no-op'd 801E mid-entries). Its output is exactly what the
+    ported func_801D09F0 draws (border corners/top/bottom/left/right pairs +
+    background G4) -- the build and draw halves match.
+    func_801E8DA8 (68i) = portrait build (name-string render + LoadImage) --
+    CONTENT, separable. func_801E8474 (160i) = selection-menu content build --
+    CONTENT, separable. func_801D29A8 (243i) = the open ANIMATION; its tail
+    sets shouldRenderWindow[1]=1 / [0]=0 (sb 0x21/0x20) -- NOT separable (it is
+    the flag setter). Its fan-out: func_801C81E0 (89, leaf) + func_801C8324
+    (144, leaf) + func_801D5A50 (90 -> 6 geometry fns totaling 747:
+    func_801D4F2C/50EC/51EC/53D0/55B4/5794) + func_801E8018 (13) +
+    func_801E8044 (15) + func_801D28A8 (23 -> func_801D397C 102). func_801D28FC
+    (29 -> func_801D397C + func_801D5CF8 124) = post-setup.
+    THE MINIMAL-FRAME SLICE (recommended): func_801D2D38 (106, content/portrait
+    calls stay stubs) + func_801E53CC (203, self-contained) + func_801D29A8
+    (243, its animation callees func_801C81E0/C8324/D5A50 initially stubbed --
+    the anim loops degrade to instant-complete, the tail still sets the flag)
+    ~= 550 instrs / 3 functions -> windows[] built + frame geometry + flag set
+    -> the PROVEN chain draws it -> glReadPixels. RISK: if func_801E53CC builds
+    start-of-animation geometry and the func_801D5A50 family computes the FINAL
+    geometry, the frame may draw degenerate -- fallback: port func_801D5A50 +
+    its 6 geometry fns (+837). FULL build (frame+content+portraits+animation+
+    post) ~= 2260 instrs / ~19 fns. All fan-out fns currently INCLUDE_ASM
+    stubs; none mid-entry.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
