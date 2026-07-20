@@ -1206,6 +1206,61 @@ PHASED PLAN (object-overlay / menu.bin convergence):
       - The B1a buffers (unk340[0]/[4], unk39C[0..2]) are load-bearing
         across the whole content chain -- allocations from the FIRST menu
         pass feed the LAST content renderers.
+
+    ===== NAV/INPUT ARC -- SCOPED (2026-07-20, read-only) =====
+    (A) INPUT PATH: g_Menu->input (0x325) is written by func_801C7D78 (the
+      main-menu per-frame reader, called inside func_801C7BF4) and the general
+      MenuProcessControllerInput -- both read g_C1ButtonStatePressedOnce /
+      g_C1ButtonStateReleased (the edge state) and map buttons -> the
+      MENU_INPUT_* code (RIGHT0/DOWN1/LEFT2/UP3/CONFIRM4/IDLE8). func_801C55A0
+      then reads 0x325 and acts.
+    (B) HARNESS VERDICT: **YES -- the cold harness CAN drive menu nav.** The
+      real input pipeline is ALREADY wired in the Vsync hook (psyq_compat.c):
+      PsyX_UpdateInput (SDL keyboard/gamepad) -> ControllerPoll (recompute
+      g_C1ButtonState* edges) -> ControllerPushState (the queue func_801C7D78
+      drains via ControllerPopState). So keyboard/pad -> the exact edge state
+      the menu reads. The ONLY gap: func_801C7D78 (the menu input reader) is a
+      STUBbed INCLUDE_ASM (no-op'd in the render port because "no input in the
+      render harness") -> g_Menu->input stays 0. Port it -> LIVE keyboard nav
+      works, no harness change. For AUTOMATED glReadPixels proof: add an
+      env-gated synthetic nav-edge inject -- the PROVEN PcPort_ForcedKernelSelect
+      pattern (it already ORs g_C1ButtonStateReleased |= 0x20 Circle) -- OR the
+      DOWN bit into g_C1ButtonStatePressedOnce. This is NOT the member_change
+      ceiling: there the nav STATE MACHINE was bypassed; here the input is fully
+      wired and only the reader is stubbed. (harness-context-artifact does NOT
+      apply.)
+    (C) NAV CONSUMER: func_801C55A0's cursor move (menu1Choice++/-- on UP/DOWN,
+      wrap 0..6) is ALREADY PORTED. On a menu1Choice change it fires
+      func_801E8978 (123i) + func_801E8070 (285i) -- the cursor/highlight
+      rebuild -- both currently STUBS. CONFIRM (input 4) fires func_801C531C
+      (195i, the submenu dispatcher, stub).
+    (D) FIRST MILESTONE -- CURSOR MOVE (~827i, fully traced, separable):
+      func_801C7D78 (130, reader -> g_Menu->input; deps Controller*/Sound*/
+      func_80036410 ported, func_801C8574 22i stub) + func_801E8978 (123 ->
+      func_801D1EE0 252i cursor-sprite build via func_8002675C) + func_801E8070
+      (285 -> func_801C851C[ported] + func_801E8044 15i) + a synthetic DOWN-edge
+      inject. Result: UP/DOWN moves the cursor highlight between options.
+      Verify: inject DOWN -> glReadPixels shows the highlight/pointer on the
+      next option. Separable from confirm/submenus.
+    (E) SUBMENU SCOPE (context, later phases): CONFIRM -> func_801C531C
+      dispatches by menu1Choice to ~11 submenu-screen entries (func_801D3674/
+      D9808/D9F98/DBE54/DE29C/E0F78/E23CC/E2BE4/E3088/E8018 ...). Each is a
+      FULL screen (Status/Equip/Items/Abilities/Gear/File) = its own big
+      multi-function slice (each creates windows 2+ via func_801D397C). The
+      first submenu (Status) is a dedicated later arc.
+    (F) PHASED NAV PLAN:
+      N1 CURSOR-MOVE (~827i, first slice): the (D) functions + the nav-edge
+         inject -> the cursor moves. On-screen-verifiable, the first INTERACTIVE
+         milestone (static render -> responds to input).
+      N2 CONFIRM/CANCEL PLUMBING: func_801C531C dispatcher structure + cancel
+         (input 5 -> exit) with the submenu entries STUBBED -> the menu responds
+         to Circle (dispatches; the selected submenu is blank until N3+).
+      N3+ SUBMENU SCREENS (one at a time, big): Status first, then the rest --
+         each a full screen slice.
+    RECOMMENDATION: N1 (cursor-move). Verdict is YES (harness drives it); the
+    slice is ~827i fully-traced, separable, on-screen-verifiable. It turns the
+    menu from a static render into one that responds to input -- the first
+    interactive milestone of the nav arc.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
