@@ -610,9 +610,110 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8164);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C81E0);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8324);
+#else
+/* Arc A: the menu-open animation state -- three 0x24-byte slots living in
+ * g_Menu->unk0[0x6C] (3 x 0x24), one per party-member portrait frame. */
+typedef struct {
+    /* 0x00 */ s32 curX;
+    /* 0x04 */ s32 toX;
+    /* 0x08 */ s32 curY;
+    /* 0x0C */ s32 toY;
+    /* 0x10 */ s32 stepX;   /* 8.8 fixed-point per-tick step */
+    /* 0x14 */ s32 stepY;
+    /* 0x18 */ s32 accX;    /* 8.8 accumulated delta from curX/curY */
+    /* 0x1C */ s32 accY;
+    /* 0x20 */ u8 dirX;     /* 1 = moving toward smaller X */
+    /* 0x21 */ u8 dirY;
+    /* 0x22 */ u8 speed;    /* ticks applied per step call */
+    /* 0x23 */ u8 done;     /* set when the dominant axis passes its target */
+} MenuOpenAnim;
+#define MENU_OPEN_ANIM(slot) (&((MenuOpenAnim*)g_Menu->unk0)[slot])
+
+/* Initialize anim slot: from (fromX,fromY) toward (toX,toY); the dominant axis
+ * steps 1.0/tick (0x100), the other axis proportionally. */
+void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, s32 speed, u8 slot) {
+    MenuOpenAnim* s = MENU_OPEN_ANIM(slot);
+    s32 dx, dy;
+
+    s->curX = fromX;
+    s->curY = fromY;
+    s->toX = toX;
+    s->toY = toY;
+    if (toX < fromX) {
+        dx = fromX - toX;
+        s->dirX = 1;
+    } else {
+        dx = toX - fromX;
+        s->dirX = 0;
+    }
+    if (toY < fromY) {
+        dy = fromY - toY;
+        s->dirY = 1;
+    } else {
+        dy = toY - fromY;
+        s->dirY = 0;
+    }
+    if (dy < dx || dy == dx) {
+        s->stepX = 0x100;
+        /* retail divides unconditionally; dx==0 implies dy==0 (from==to),
+         * which the menu never requests -- guard the host SIGFPE anyway. */
+        s->stepY = (dx != 0) ? ((dy << 8) / dx) : 0x100;
+    } else {
+        s->stepY = 0x100;
+        s->stepX = (dx << 8) / dy;
+    }
+    s->speed = (u8)speed;
+    s->accX = 0;
+    s->accY = 0;
+    s->done = 0;
+}
+
+/* Step anim slot by `speed` ticks and mark done once the dominant axis has
+ * passed its target. */
+void func_801C8324(u8 slot) {
+    MenuOpenAnim* s = MENU_OPEN_ANIM(slot);
+    s32 i;
+
+    for (i = 0; i < s->speed; i++) {
+        if (s->dirX) {
+            s->accX -= s->stepX;
+        } else {
+            s->accX += s->stepX;
+        }
+        if (s->dirY) {
+            s->accY -= s->stepY;
+        } else {
+            s->accY += s->stepY;
+        }
+    }
+
+    if (s->stepX == 0x100) {
+        if (s->dirX) {
+            if (s->curX + (s->accX >> 8) < s->toX) {
+                s->done = 1;
+            }
+        } else {
+            if (s->toX < s->curX + (s->accX >> 8)) {
+                s->done = 1;
+            }
+        }
+    } else {
+        if (s->dirY) {
+            if (s->curY + (s->accY >> 8) < s->toY) {
+                s->done = 1;
+            }
+        } else {
+            if (s->toY < s->curY + (s->accY >> 8)) {
+                s->done = 1;
+            }
+        }
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C851C);
 
@@ -1004,9 +1105,131 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28FC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2968);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
+#else
+extern void func_801E8018(s32, void*, void*, void*);  /* stub (overlay) */
+extern void func_801D5A50(u8 slot);                   /* window/portrait geometry (stub for now) */
+extern void func_801D28A8(void);                      /* stub */
+extern u8 D_801EA528[];
+extern u8 D_801EA19C[];
+extern void func_801E8474(s32, void*);                /* content build (stub for now) */
+extern void func_801E8DA8(s32, s32);                  /* portrait build (stub for now) */
+extern void func_801D28FC(void);                      /* post-setup (stub for now) */
+
+/* Arc A: the menu open/close animation.  Slides the three portrait frames
+ * between off-screen and their final positions (anim slots 0..2), drawing each
+ * frame via func_801C7BF4, then arms the draw guards: open sets
+ * shouldRenderWindow[1] (the main window) + unk5[1]; close clears the window
+ * flags.  THIS is what makes func_801D0C78 actually draw the window. */
+void func_801D29A8(u8 open, u8 noSettle) {
+    s32 i;
+
+    if (open) {
+        func_801E8018(8, (u8*)g_Menu + 0x6E0, D_801EA528,
+                      (u8*)g_Menu->pManager + 0xC);
+        func_801C81E0(0x100, 0x86, 0x60, 0x06, 8, 0);
+        func_801C81E0(0x108, 0x3E, 0x68, 0x3E, 8, 1);
+        func_801C81E0(0x110, -0xA, 0x70, 0x76, 8, 2);
+    } else {
+        func_801E8044(8, (u8*)g_Menu->pManager + 0xC);
+        func_801C81E0(0x60, 0x06, 0x100, 0x86, 8, 0);
+        func_801C81E0(0x68, 0x3E, 0x108, 0x3E, 8, 1);
+        func_801C81E0(0x70, 0x76, 0x110, -0xA, 8, 2);
+    }
+
+    while (MENU_OPEN_ANIM(0)->done == 0 && MENU_OPEN_ANIM(1)->done == 0 &&
+           MENU_OPEN_ANIM(2)->done == 0) {
+        for (i = 0; i < 3; i++) {
+            if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
+                func_801D5A50((u8)i);
+            }
+        }
+        func_801C7BF4();
+        for (i = 0; i < 3; i++) {
+            if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
+                func_801C8324((u8)i);
+            }
+        }
+    }
+
+    if (open) {
+        /* Settle the slots exactly on their final positions. */
+        MENU_OPEN_ANIM(0)->curX = 0x60;
+        MENU_OPEN_ANIM(0)->curY = 0x06;
+        MENU_OPEN_ANIM(1)->curX = 0x68;
+        MENU_OPEN_ANIM(1)->curY = 0x3E;
+        MENU_OPEN_ANIM(2)->curX = 0x70;
+        MENU_OPEN_ANIM(2)->curY = 0x76;
+        MENU_OPEN_ANIM(0)->accX = 0;
+        MENU_OPEN_ANIM(0)->accY = 0;
+        MENU_OPEN_ANIM(1)->accX = 0;
+        MENU_OPEN_ANIM(1)->accY = 0;
+        MENU_OPEN_ANIM(2)->accX = 0;
+        MENU_OPEN_ANIM(2)->accY = 0;
+        for (i = 0; i < 3; i++) {
+            if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
+                func_801D5A50((u8)i);
+            }
+        }
+        func_801C8574(0x5D);
+        if (noSettle == 0) {
+            func_801D28A8();
+        }
+        g_Menu->pManager->shouldRenderWindow[1] = 1;
+        g_Menu->pManager->unk5[1] = 1;
+    } else {
+        g_Menu->pManager->unk0[2] = 0;
+        g_Menu->pManager->unk0[1] = 0;
+        g_Menu->pManager->unk0[0] = 0;
+        if (noSettle == 0) {
+            g_Menu->pManager->shouldRenderWindow[0] = 0;
+            g_Menu->pManager->unk5[0] = 0;
+        }
+    }
+    func_801C7BF4();
+}
+
+/* Arc A: the main-menu render setup.  Allocates + initializes the two menu
+ * windows (frame primitives via func_801E53CC), builds the portrait/content
+ * pieces, then runs the open animation (which arms the window draw guard). */
+void func_801D2D38(void) {
+    s32 i;
+
+    if (D_80059460 == 0) {
+        for (i = 0; i < 2; i++) {
+            g_Menu->windows[i] = HeapAlloc(sizeof(MenuWindow), 0);
+            bzero(g_Menu->windows[i], sizeof(MenuWindow));
+            g_Menu->windowParameters[i] = HeapAlloc(sizeof(MenuWindowParameters), 0);
+            bzero(g_Menu->windowParameters[i], sizeof(MenuWindowParameters));
+            func_801E53CC((u8)i);
+        }
+        func_801C8574(0x5E);
+    }
+
+    for (i = 0; i < 3; i++) {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[i];
+
+        if (charId != 0xFF) {
+            u8 gearArg;
+
+            func_801E8DA8(charId, (i * 2) & 0xFE);
+            if (g_GameState.characters[charId].gearId != 0xFF) {
+                gearArg = (u8)(g_GameState.characters[charId].gearId + 0xB);
+            } else {
+                gearArg = 0xFF;
+            }
+            func_801E8DA8(gearArg, 6 + i * 2);
+        }
+    }
+
+    func_801E8474(8, D_801EA19C);
+    func_801D29A8(1, 0);
+    func_801D28FC();
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2EC0);
 
@@ -1246,7 +1469,77 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5058);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5178);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E53CC);
+#else
+/* Arc A pixels slice: initialize window `windowIndex`'s frame primitives.
+ * Sets up the double-buffered background G4 pair (semi-trans, RGB 0x68) +
+ * their draw modes, and the 4x4 border POLY_FT4s (top/bottom/left/right,
+ * shade-tex, white) with tpage/clut from the border-texture fields that the
+ * B1b builder func_801C6E68 unpacked from the atlas.  Poly TYPES + colors +
+ * tpage/clut only -- the vertex geometry is computed by the window-size
+ * family (func_801D5A50 et al.) during the open animation.  Also clears this
+ * window's shouldRenderWindow flag (the open animation re-arms it). */
+void func_801E53CC(u8 windowIndex) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+    RECT texWindow;
+    s32 i;
+
+    texWindow.x = 0;
+    texWindow.y = 0;
+    texWindow.w = 0x100;
+    texWindow.h = 0x100;
+
+    g_Menu->pManager->shouldRenderWindow[windowIndex] = 0;
+    g_Menu->pManager->unk27[windowIndex] = 0;
+
+    for (i = 0; i < 2; i++) {
+        POLY_G4* pBg = &pWindow->polysBackground[i];
+
+        SetPolyG4(pBg);
+        pBg->r0 = 0x68; pBg->g0 = 0x68; pBg->b0 = 0x68;
+        pBg->r1 = 0x68; pBg->g1 = 0x68; pBg->b1 = 0x68;
+        pBg->r2 = 0x68; pBg->g2 = 0x68; pBg->b2 = 0x68;
+        pBg->r3 = 0x68; pBg->g3 = 0x68; pBg->b3 = 0x68;
+        SetSemiTrans(pBg, 1);
+        SetDrawMode(&pWindow->drawModes[i], 0, 0,
+                    GetTPage(0, 0, g_Menu->texPageX0, g_Menu->texPageY0),
+                    &texWindow);
+    }
+
+    for (i = 0; i < 4; i++) {
+        POLY_FT4* p;
+
+        p = &pWindow->polysWindowBorderTop[i];
+        SetPolyFT4(p);
+        SetShadeTex(p, 1);
+        p->r0 = 0xFF; p->g0 = 0xFF; p->b0 = 0xFF;
+        p->tpage = GetTPage(g_Menu->texPage0, 0, g_Menu->texPageX0, g_Menu->texPageY0);
+        p->clut = GetClut(g_Menu->clutX0, g_Menu->clutY0);
+
+        p = &pWindow->polysWindowBorderBottom[i];
+        SetPolyFT4(p);
+        SetShadeTex(p, 1);
+        p->r0 = 0xFF; p->g0 = 0xFF; p->b0 = 0xFF;
+        p->tpage = GetTPage(g_Menu->texPage1, 0, g_Menu->texPageX1, g_Menu->texPageY1);
+        p->clut = GetClut(g_Menu->clutX1, g_Menu->clutY1);
+
+        p = &pWindow->polysWindowBorderLeft[i];
+        SetPolyFT4(p);
+        SetShadeTex(p, 1);
+        p->r0 = 0xFF; p->g0 = 0xFF; p->b0 = 0xFF;
+        p->tpage = GetTPage(g_Menu->texPage2, 0, g_Menu->texPageX2, g_Menu->texPageY2);
+        p->clut = GetClut(g_Menu->clutX2, g_Menu->clutY2);
+
+        p = &pWindow->polysWindowBorderRight[i];
+        SetPolyFT4(p);
+        SetShadeTex(p, 1);
+        p->r0 = 0xFF; p->g0 = 0xFF; p->b0 = 0xFF;
+        p->tpage = GetTPage(g_Menu->texPage3, 0, g_Menu->texPageX3, g_Menu->texPageY3);
+        p->clut = GetClut(g_Menu->clutX3, g_Menu->clutY3);
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E56E8);
 

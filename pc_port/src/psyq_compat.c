@@ -428,6 +428,31 @@ static void PcPort_ForcedFieldMenu(void)
     if (++frame < delay)
         return;
     if (D_800ADB64 == 0xFF && D_800ADB68 == 1) {
+        /* HARNESS-ONLY party seed: retail NEVER opens the menu with an empty
+         * party (the roster is set by the intro/save before a menu is
+         * reachable), and the menu-open animation's step/exit logic is driven
+         * by the party slots -- with zero members it would spin forever (in
+         * retail too; the state is unreachable there). The cold field-test
+         * boot skips the intro, so seed the retail-guaranteed minimum: Fei
+         * (char 0) in slot 0 + his bit in the party-available mask.
+         * g_GameState offsets: 0x1D30 mask, 0x1D32 FrMask, 0x1D34 members[3]. */
+        {
+            extern unsigned char g_GameState[];  /* PSX-layout data blob */
+            unsigned short* pMask = (unsigned short*)&g_GameState[0x1D30];
+            unsigned short* pFrMask = (unsigned short*)&g_GameState[0x1D32];
+            unsigned char* pMembers = &g_GameState[0x1D34];
+
+            if ((*pMask & *pFrMask & 0x7FF) == 0) {
+                pMembers[0] = 0;      /* Fei */
+                pMembers[1] = 0xFF;   /* slots 1/2 empty (cold BSS zeros would
+                                       * otherwise read as three Feis) */
+                pMembers[2] = 0xFF;
+                *pMask |= 0x1;
+                *pFrMask |= 0x1;
+                printf("[xeno-port][test] XENO_MENU_FORCE: seeded harness party "
+                       "(Fei slot 0) -- cold boot had an empty roster\n");
+            }
+        }
         D_800ADB64 = 0x80;   /* request the main menu via the field opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
