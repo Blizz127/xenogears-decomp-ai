@@ -715,7 +715,28 @@ void func_801C8324(u8 slot) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C851C);
+#else
+/* Arc A verts: write one screen-space quad into a 4-SVECTOR strip.
+ * (x,y) is the top-left in 320x224 screen coords; the GTE projection origin
+ * is the screen center, hence the -0xA0/-0x70 (160/112) rebase.  w/h may be
+ * negative (the corner pieces mirror by flipping extent signs). */
+void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h) {
+    verts[0].vx = (s16)(x - 0xA0);
+    verts[0].vy = (s16)(y - 0x70);
+    verts[0].vz = 0;
+    verts[1].vx = (s16)(x + w - 0xA0);
+    verts[1].vy = (s16)(y - 0x70);
+    verts[1].vz = 0;
+    verts[2].vx = (s16)(x - 0xA0);
+    verts[2].vy = (s16)(y + h - 0x70);
+    verts[2].vz = 0;
+    verts[3].vx = (s16)(x + w - 0xA0);
+    verts[3].vy = (s16)(y + h - 0x70);
+    verts[3].vz = 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8574);
 
@@ -1101,7 +1122,21 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28A8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28FC);
+#else
+extern void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                          u8 directParams, u8 unk714, s32 zIndex, u8 hasScrollBar);
+extern void func_801D5CF8(s32 x, s32 y);
+
+/* Arc A verts: post-setup for the main menu -- build window 1's geometry
+ * (rect 0xCC,0xC6 80x16, zIndex 4) + the icon strip, and arm unk5[1]. */
+void func_801D28FC(void) {
+    func_801D397C(1, 0xCC, 0xC6, 0x50, 0x10, 0, 0, 4, 0);
+    func_801D5CF8(0xD0, 0xCA);
+    g_Menu->pManager->unk5[1] = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2968);
 
@@ -1111,6 +1146,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
 #else
 extern void func_801E8018(s32, void*, void*, void*);  /* stub (overlay) */
+extern void func_801E53CC(u8 windowIndex);            /* frame-primitive init (below) */
 extern void func_801D5A50(u8 slot);                   /* window/portrait geometry (stub for now) */
 extern void func_801D28A8(void);                      /* stub */
 extern u8 D_801EA528[];
@@ -1247,23 +1283,266 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3674);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D36E0);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D397C);
+#else
+extern void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                          u8 unk714, s32 zIndex, u8 hasScrollBar);
+
+/* Arc A verts: (re)create window `windowIndex` -- windows 2+ get allocated on
+ * demand (0/1 come from func_801D2D38).  directParams != 0 stores the raw rect
+ * into windowParameters (deferred build); 0 runs the geometry build now
+ * (func_801D4D1C). */
+void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                   u8 directParams, u8 unk714, s32 zIndex, u8 hasScrollBar) {
+    MenuWindowParameters* pParams;
+
+    if (windowIndex >= 2) {
+        g_Menu->windows[windowIndex] = HeapAlloc(sizeof(MenuWindow), 0);
+        bzero(g_Menu->windows[windowIndex], sizeof(MenuWindow));
+        g_Menu->windowParameters[windowIndex] =
+            HeapAlloc(sizeof(MenuWindowParameters), 0);
+        bzero(g_Menu->windowParameters[windowIndex],
+              sizeof(MenuWindowParameters));
+        func_801E53CC(windowIndex);
+    }
+
+    pParams = g_Menu->windowParameters[windowIndex];
+    if (directParams != 0) {
+        ((u8*)pParams)[0x10] = windowIndex;
+        ((u8*)pParams)[0x11] = 0;
+        *(s16*)((u8*)pParams + 0x0) = (s16)x;
+        *(s16*)((u8*)pParams + 0x2) = (s16)y;
+        *(s16*)((u8*)pParams + 0x4) = (s16)w;
+        *(s16*)((u8*)pParams + 0x6) = (s16)h;
+        *(s16*)((u8*)pParams + 0x8) = 0;
+        *(s16*)((u8*)pParams + 0xA) = 0;
+        g_Menu->pManager->unk27[windowIndex] = 1;
+        ((u8*)pParams)[0x12] = unk714;
+        *(s32*)((u8*)pParams + 0xC) = zIndex;
+    } else {
+        func_801D4D1C(windowIndex, x & 0xFFFF, y & 0xFFFF, w & 0xFFFF,
+                      h, unk714, zIndex, hasScrollBar);
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3B00);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3C4C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3DB0);
+#else
+extern s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx,
+                         s32 x, s32 y, s32 scale);
+extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
+extern void func_801E91C4(POLY_FT4* p);
 
+/* Arc A verts: the four window-corner pieces.  Builds the corner POLY_FT4
+ * pairs from the atlas (TL/TR/BL/BR border-corner texture ids) and writes the
+ * corner vert quads (16x16, extents mirrored via sign). */
+void func_801D3DB0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+
+    pWindow->unk710 = 0;
+    pWindow->unk710 += func_8002675C(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_TOP_LEFT,
+                                     &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
+                                     g_Menu->renderContext, 0, 0, 0x1000);
+    pWindow->unk710 += func_8002675C(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_TOP_RIGHT,
+                                     &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
+                                     g_Menu->renderContext, 0, 0, 0x1000);
+    pWindow->unk710 += func_8002675C(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_BOTTOM_LEFT,
+                                     &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
+                                     g_Menu->renderContext, 0, 0, 0x1000);
+    pWindow->unk710 += func_8002675C(g_Menu->unk2DC, MENU_TEX_WINDOW_BORDER_BOTTOM_RIGHT,
+                                     &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
+                                     g_Menu->renderContext, 0, 0, 0x1000);
+
+    func_801C851C(&pWindow->vertsWindowBorderCorners[0],  (u16)(x - 8),     (u16)(y + 8),  0x10, -0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[4],  (u16)(x + w + 8), (u16)(y + 8), -0x10, -0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[8],  (u16)(x - 8),     (u16)(y + h - 8), 0x10, 0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[12], (u16)(x + w + 8), (u16)(y + h - 8), -0x10, 0x10);
+
+    {
+        s32 i;
+        for (i = 0; i < 4; i++) {
+            func_801E91C4(&pWindow->polysWindowBorderCorners[i * 2 + g_Menu->renderContext]);
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3FF8);
+#else
+/* Arc A verts: the TOP border -- two halves of (w-16)/2 each, 16 tall, at
+ * y-8, with the 8px corner caps on either side.  UV strip u=0..7, v=0x84..0x94. */
+void func_801D3FF8(u8 windowIndex, s32 x, s32 y, s32 w) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+    s32 rc = g_Menu->renderContext;
+    POLY_FT4* p1 = &pWindow->polysWindowBorderTop[rc];
+    POLY_FT4* p2 = &pWindow->polysWindowBorderTop[2 + rc];
+    s32 halfW;
+    s32 i;
 
+    p1->u0 = 0;    p1->v0 = 0x84;
+    p1->u1 = 7;    p1->v1 = 0x84;
+    p1->u2 = 0;    p1->v2 = 0x94;
+    p1->u3 = 7;    p1->v3 = 0x94;
+    p2->u0 = 0;    p2->v0 = 0x84;
+    p2->u1 = 7;    p2->v1 = 0x84;
+    p2->u2 = 0;    p2->v2 = 0x94;
+    p2->u3 = 7;    p2->v3 = 0x94;
+
+    halfW = ((w & 0xFFFF) - 0x10) / 2;
+    func_801C851C(pWindow->vertsWindowBorderTop1, (u16)(x + 8), (u16)(y - 8),
+                  (u16)halfW, 0x10);
+    func_801C851C(pWindow->vertsWindowBorderTop2, (u16)(x + halfW + 8),
+                  (u16)(y - 8), (u16)halfW, 0x10);
+
+    for (i = 0; i < 2; i++) {
+        func_801E91C4(&pWindow->polysWindowBorderTop[i * 2 + rc]);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D433C);
+#else
+/* Arc A verts: the BOTTOM border -- two halves at y+h-8.  UV u=8..0xF,
+ * v=0x84..0x94. */
+void func_801D433C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+    s32 rc = g_Menu->renderContext;
+    POLY_FT4* p1 = &pWindow->polysWindowBorderBottom[rc];
+    POLY_FT4* p2 = &pWindow->polysWindowBorderBottom[2 + rc];
+    s32 halfW;
+    s32 i;
 
+    p1->u0 = 0x8;  p1->v0 = 0x84;
+    p1->u1 = 0xF;  p1->v1 = 0x84;
+    p1->u2 = 0x8;  p1->v2 = 0x94;
+    p1->u3 = 0xF;  p1->v3 = 0x94;
+    p2->u0 = 0x8;  p2->v0 = 0x84;
+    p2->u1 = 0xF;  p2->v1 = 0x84;
+    p2->u2 = 0x8;  p2->v2 = 0x94;
+    p2->u3 = 0xF;  p2->v3 = 0x94;
+
+    halfW = ((w & 0xFFFF) - 0x10) / 2;
+    func_801C851C(pWindow->vertsWindowBorderBottom1, (u16)(x + 8),
+                  (u16)(y + h - 8), (u16)halfW, 0x10);
+    func_801C851C(pWindow->vertsWindowBorderBottom2, (u16)(x + halfW + 8),
+                  (u16)(y + h - 8), (u16)halfW, 0x10);
+
+    for (i = 0; i < 2; i++) {
+        func_801E91C4(&pWindow->polysWindowBorderBottom[i * 2 + rc]);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4688);
+#else
+/* Arc A verts: the LEFT border -- two vertical halves of (h-16)/2 each,
+ * 16 wide, at x-8.  UV u=0x10..0x20, v=0x84..0x8B. */
+void func_801D4688(u8 windowIndex, s32 x, s32 y, s32 h) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+    s32 rc = g_Menu->renderContext;
+    POLY_FT4* p1 = &pWindow->polysWindowBorderLeft[rc];
+    POLY_FT4* p2 = &pWindow->polysWindowBorderLeft[2 + rc];
+    s32 halfH;
+    s32 i;
 
+    p1->u0 = 0x10; p1->v0 = 0x84;
+    p1->u1 = 0x20; p1->v1 = 0x84;
+    p1->u2 = 0x10; p1->v2 = 0x8B;
+    p1->u3 = 0x20; p1->v3 = 0x8B;
+    p2->u0 = 0x10; p2->v0 = 0x84;
+    p2->u1 = 0x20; p2->v1 = 0x84;
+    p2->u2 = 0x10; p2->v2 = 0x8B;
+    p2->u3 = 0x20; p2->v3 = 0x8B;
+
+    halfH = ((h & 0xFFFF) - 0x10) / 2;
+    func_801C851C(pWindow->vertsWindowBorderLeft1, (u16)(x - 8), (u16)(y + 8),
+                  0x10, (u16)halfH);
+    func_801C851C(pWindow->vertsWindowBorderLeft2, (u16)(x - 8),
+                  (u16)(y + halfH + 8), 0x10, (u16)halfH);
+
+    for (i = 0; i < 2; i++) {
+        func_801E91C4(&pWindow->polysWindowBorderLeft[i * 2 + rc]);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D49D0);
+#else
+/* Arc A verts: the RIGHT border -- two vertical halves at x+w-8.
+ * UV u=0x10..0x20, v=0x8C..0x93. */
+void func_801D49D0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+    s32 rc = g_Menu->renderContext;
+    POLY_FT4* p1 = &pWindow->polysWindowBorderRight[rc];
+    POLY_FT4* p2 = &pWindow->polysWindowBorderRight[2 + rc];
+    s32 halfH;
+    s32 i;
 
+    p1->u0 = 0x10; p1->v0 = 0x8C;
+    p1->u1 = 0x20; p1->v1 = 0x8C;
+    p1->u2 = 0x10; p1->v2 = 0x93;
+    p1->u3 = 0x20; p1->v3 = 0x93;
+    p2->u0 = 0x10; p2->v0 = 0x8C;
+    p2->u1 = 0x20; p2->v1 = 0x8C;
+    p2->u2 = 0x10; p2->v2 = 0x93;
+    p2->u3 = 0x20; p2->v3 = 0x93;
+
+    halfH = ((h & 0xFFFF) - 0x10) / 2;
+    func_801C851C(pWindow->vertsWindowBorderRight1, (u16)(x + w - 8),
+                  (u16)(y + 8), 0x10, (u16)halfH);
+    func_801C851C(pWindow->vertsWindowBorderRight2, (u16)(x + w - 8),
+                  (u16)(y + halfH + 8), 0x10, (u16)halfH);
+
+    for (i = 0; i < 2; i++) {
+        func_801E91C4(&pWindow->polysWindowBorderRight[i * 2 + rc]);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4D1C);
+#else
+extern void func_801D3C4C(u8, s32, s32, s32, s32);  /* scrollbar verts (stub) */
+
+/* Arc A verts: build window `windowIndex`'s full frame geometry from its rect
+ * -- the background quad, the four corner pieces, the four split borders, and
+ * (optionally) the scrollbar -- then set the window props and ARM the draw
+ * guard.  THIS is what turns the zero-size quads into a real window. */
+void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                   u8 unk714, s32 zIndex, u8 hasScrollBar) {
+    MenuWindow* pWindow = g_Menu->windows[windowIndex];
+
+    x &= 0xFFFF;
+    y &= 0xFFFF;
+    w &= 0xFFFF;
+
+    g_Menu->pManager->shouldRenderWindow[windowIndex] = 0;
+    func_801C851C(pWindow->vertsBackground, x, y, w, h);
+    func_801D3DB0(windowIndex, x, y, w, h);
+    func_801D3FF8(windowIndex, x, y, w);
+    func_801D433C(windowIndex, x, y, w, h);
+    func_801D4688(windowIndex, x, y, h);
+    func_801D49D0(windowIndex, x, y, w, h);
+    if (hasScrollBar) {
+        func_801D3C4C(windowIndex, x, y, w, h);
+    }
+    pWindow->hasScrollBar = hasScrollBar;
+    pWindow->unk714 = unk714;
+    pWindow->zIndex = zIndex;
+    pWindow->renderContext = (u8)g_Menu->renderContext;
+    g_Menu->pManager->shouldRenderWindow[windowIndex] = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4EA0);
 
@@ -1283,7 +1562,35 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5A50);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5BA4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5CF8);
+#else
+/* Arc A verts: build the menu icon strip into the unk340[4] side buffer
+ * (7 atlas ids from unk2EC + two 0xEE separators), rows of 8px steps. */
+void func_801D5CF8(s32 x, s32 y) {
+    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[4];
+    s32 i;
+    s32 xa;
+
+    for (i = 0, xa = x; i < 3; i++, xa += 8) {
+        func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
+                      buf + i * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+    }
+    for (i = 3, xa = x + 0x20; i < 5; i++, xa += 8) {
+        func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
+                      buf + 0xF0 + (i - 3) * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+    }
+    for (i = 5, xa = x + 0x38; i < 7; i++, xa += 8) {
+        func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
+                      buf + 0x190 + (i - 5) * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+    }
+    func_8002675C(g_Menu->unk2DC, 0xEE, buf + 0x230, g_Menu->renderContext,
+                  x + 0x18, y, 0x1000);
+    func_8002675C(g_Menu->unk2DC, 0xEE, buf + 0x2D0, g_Menu->renderContext,
+                  x + 0x30, y, 0x1000);
+    buf[0x370] = (u8)g_Menu->renderContext;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5ED4);
 
@@ -1611,7 +1918,19 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8EAC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8F60);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E91C4);
+#else
+/* Arc A verts: border-poly display fixup -- semi-transparent, shading ENABLED
+ * (SetShadeTex 0) with the neutral 0x80 modulate color. */
+void func_801E91C4(POLY_FT4* p) {
+    SetSemiTrans(p, 1);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E920C);
 
