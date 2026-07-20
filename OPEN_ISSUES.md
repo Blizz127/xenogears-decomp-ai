@@ -981,6 +981,26 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     214, func_801C851C 24) + func_801D5CF8(124, border UVs via 5x func_8002675C)
     = 1472 instrs / 11 fns. Port that family -> the verts/UVs become real ->
     the ALREADY-FIRING draw rasterizes the frame -> pixels.
+    ===== ARC A PAYOFF (b340077, 2026-07-19): THE WINDOW FRAME RENDERS =====
+    The verts family is PORTED (all 11, coexistence). glReadPixels flipped
+    0.0% -> 4.2%: a REAL Xenogears menu window at the window-1 rect (screen
+    ~[392..583]x[407..475]) -- grey semi-trans 0x68 G4 background, blue border
+    lines, rounded atlas corner pieces, gold outer glow. Capture archived:
+    captures/render_diag/menu_window_frame_20260719.png. This is the first
+    visible main-menu content -- the payoff of the whole arc (data migration ->
+    dispatch -> coordinator -> resource-load -> builders -> draw pipeline ->
+    animation -> geometry). Recipe: XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0
+    XENO_FIELD_MAP=5 XENO_MENU_FORCE=1 (the hook seeds a 1-member party on the
+    cold boot -- retail always has one when a menu opens).
+    FOLLOW-ONS (the menu arc continues, all now verifiable on-screen):
+    (a) the MAIN window (window 0? -- window 1 is the small bottom bar; the
+        big selection window presumably comes from func_801E8474's content
+        path or another func_801D397C caller -- trace which builds window 0);
+    (b) CONTENT: labels/cursors (func_801E8474 + the D_801EA19C string
+        descriptors), portraits (func_801E8DA8), the icon strip's DRAW (its
+        sub-renderer in the func_801D1B20 22-list is stubbed);
+    (c) the portrait-frame geometry (func_801D5A50 family, +837i) for the
+        open animation's sliding frames.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
