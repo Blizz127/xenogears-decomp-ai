@@ -702,6 +702,48 @@ edit(REN, "_xeno_texwindow_shader_apply", [
 print("    texture-window patches OK")
 TEXWINDOW_PY
 
+# PsyCross DRAWENV.isbg background-clear (upstream TODO): real libgpu's
+# PutDrawEnv issues a fill of the clip rect when isbg is set -- the menu AND
+# the field both set isbg=1 and rely on the per-frame clear (without it the
+# menu's open/reveal animations leave trails). Implemented at env-apply
+# (PutDrawEnv), NOT in DrawPrim: immediate-mode callers (the splash fades)
+# would over-clear between prims. ClearImage = GR_ClearVRAM (rect-accurate)
+# + GR_Clear (full-backbuffer glClear -- correct: it runs post-present,
+# pre-DrawOTag in both the menu and field frame flows).
+python3 - "$PSX" <<'ISBG_PY'
+import sys
+
+psx = sys.argv[1]
+libgpu = psx + "/src/psx/LIBGPU.C"
+
+def edit(path, marker, pairs):
+    with open(path) as f:
+        s = f.read()
+    if marker in s:
+        return
+    for old, new, count in pairs:
+        found = s.count(old)
+        if found != count:
+            sys.exit("ERROR: isbg patch anchor mismatch in %s for %s "
+                     "(found %d, expected %d): %r" %
+                     (path, marker, found, count, old[:80]))
+        s = s.replace(old, new)
+    with open(path, "w") as f:
+        f.write(s)
+
+edit(libgpu, "_xeno_isbg", [
+("\tmemcpy((char*)&activeDrawEnv, env, sizeof(DRAWENV));\n\treturn 0;\n",
+ "\tmemcpy((char*)&activeDrawEnv, env, sizeof(DRAWENV));\n"
+ "\t/* _xeno_isbg: honor the DRAWENV background-clear flag (upstream TODO).\n"
+ "\t * Real libgpu fills the clip rect on env-apply when isbg is set; the\n"
+ "\t * menu and field both rely on the per-frame clear. */\n"
+ "\tif (env->isbg)\n"
+ "\t\tClearImage(&env->clip, env->r0, env->g0, env->b0);\n"
+ "\treturn 0;\n", 1)])
+
+print("    isbg background-clear patch OK")
+ISBG_PY
+
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
 # gitignored. Apply in dependency order: the ABR patch was generated after the
 # raw-texture dither correction.
