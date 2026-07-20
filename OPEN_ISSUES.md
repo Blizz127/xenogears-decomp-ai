@@ -1043,6 +1043,25 @@ PHASED PLAN (object-overlay / menu.bin convergence):
     kills the trails), the big selection window (window 0), the icon-strip
     draw, nav/input (cursor movement -- needs input, the member_change
     harness-nav question).
+    ISBG IMPLEMENTED + TRAILS RE-DIAGNOSED (ac3b676, 2026-07-20): the PsyX
+    DRAWENV isbg TODO is closed (_xeno_isbg build_port.sh patch: PutDrawEnv
+    fills the clip via ClearImage on env-apply -- NOT DrawPrim, which would
+    over-clear immediate-mode callers). FIELD verified unregressed (the field
+    sets isbg=1 unconditionally -- MAP7 renders byte-flat 74.3% == baseline,
+    5 tripwires boot). BUT the menu trails PERSIST -- root cause corrected:
+    the retail menu sets isbg ONLY in the debug path (menu.c 285-288,
+    g_MenuDebugEnabled); normal-path menu envs have isbg=0. The menu's real
+    per-frame clear is the MoveImage BACKDROP RESTORE in func_801C7BF4
+    (VRAM (704,256) 320x224 -> the draw fb half, then DrawOTag on top).
+    PsyX does NOT composite VRAM-blit content into the GL backbuffer as a
+    base layer (see the _xeno_read_materialize note in LIBGPU.C DrawSync), so
+    the menu's GL quads accumulate across frames = the trails. THE TRAILS FIX
+    (own unit): materialize MoveImage/GR_CopyVRAM writes whose DEST overlaps
+    the active draw framebuffer into the GL backbuffer before the frame's
+    prims (the _xeno_drmove patch family territory) -- OR equivalently blit
+    the VRAM fb rect as the frame's base layer when it has been dirtied.
+    Survey-signature note: the "isbg gap" label for the trails was itself a
+    mislabel -- the isbg TODO was real but was NOT the menu's clear mechanism.
     ===== THE SYSTEMIC BLOCKER (found before porting stubs -- the guard
     fired EARLY) + THE FIX (delivered) =====
     A menu overlay's PORTED FUNCTIONS are NOT sufficient to render: each
