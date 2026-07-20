@@ -744,6 +744,81 @@ edit(libgpu, "_xeno_isbg", [
 print("    isbg background-clear patch OK")
 ISBG_PY
 
+# PsyCross MoveImage->GL materialize (the menu-trails fix): the menu's
+# per-frame clear is a MoveImage restoring its backdrop VRAM rect over the
+# draw framebuffer, then prims draw on top. PsyX renders prims into the GL
+# backbuffer only -- the restored backdrop never reaches GL, so the menu's
+# quads accumulate across frames (trails). Fix: when a MoveImage dest overlaps
+# the active draw env clip, blit the freshly-restored vram rect over the
+# backbuffer as the frame's base layer (vram-texture FBO -> default fb,
+# y-flipped, full-window -- prims then composite on a clean base). Both files
+# compile as C++ (PsyCross .C convention), so plain C++ linkage.
+python3 - "$PSX" <<'FBMAT_PY'
+import sys
+
+psx = sys.argv[1]
+libgpu = psx + "/src/psx/LIBGPU.C"
+ren = psx + "/src/render/PsyX_render.cpp"
+
+def edit(path, marker, pairs):
+    with open(path) as f:
+        s = f.read()
+    if marker in s:
+        return
+    for old, new, count in pairs:
+        found = s.count(old)
+        if found != count:
+            sys.exit("ERROR: fb-materialize patch anchor mismatch in %s for %s "
+                     "(found %d, expected %d): %r" %
+                     (path, marker, found, count, old[:80]))
+        s = s.replace(old, new)
+    with open(path, "w") as f:
+        f.write(s)
+
+edit(ren, "_xeno_fb_materialize_impl", [
+("void GR_SwapWindow()\n",
+ "/* _xeno_fb_materialize_impl: composite a freshly MoveImage-restored draw-\n"
+ " * framebuffer rect into the GL backbuffer as the frame's base layer (the\n"
+ " * menu's per-frame backdrop restore; prims composite on top). */\n"
+ "void GR_MaterializeFramebufferRect(int x, int y, int w, int h)\n"
+ "{\n"
+ "#if USE_OPENGL\n"
+ "\tGR_UpdateVRAM();\n"
+ "\tglBindFramebuffer(GL_READ_FRAMEBUFFER, g_glBlitFramebuffer);\n"
+ "\tglFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_vramTexture, 0);\n"
+ "\tglBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);\n"
+ "\tglBlitFramebuffer(x, y, x + w, y + h,\n"
+ "\t                  0, g_windowHeight, g_windowWidth, 0,\n"
+ "\t                  GL_COLOR_BUFFER_BIT, GL_NEAREST);\n"
+ "\tglBindFramebuffer(GL_FRAMEBUFFER, 0);\n"
+ "#endif\n"
+ "}\n"
+ "\n"
+ "void GR_SwapWindow()\n", 1)])
+
+edit(libgpu, "_xeno_fb_materialize", [
+("int MoveImage(RECT16* rect, int x, int y)\n{\n"
+ "\tGR_CopyVRAM(NULL, rect->x, rect->y, rect->w, rect->h, x, y);\n"
+ "\treturn 0;\n}",
+ "int MoveImage(RECT16* rect, int x, int y)\n{\n"
+ "\tGR_CopyVRAM(NULL, rect->x, rect->y, rect->w, rect->h, x, y);\n"
+ "\t/* _xeno_fb_materialize: a MoveImage restoring the ACTIVE draw\n"
+ "\t * framebuffer is the game's per-frame backdrop (the menu); composite it\n"
+ "\t * into the GL backbuffer as the frame's base layer. Dests outside the\n"
+ "\t * draw clip (texture/backup moves) are untouched. */\n"
+ "\tif (x < activeDrawEnv.clip.x + activeDrawEnv.clip.w &&\n"
+ "\t    x + rect->w > activeDrawEnv.clip.x &&\n"
+ "\t    y < activeDrawEnv.clip.y + activeDrawEnv.clip.h &&\n"
+ "\t    y + rect->h > activeDrawEnv.clip.y)\n"
+ "\t{\n"
+ "\t\textern void GR_MaterializeFramebufferRect(int x, int y, int w, int h);\n"
+ "\t\tGR_MaterializeFramebufferRect(x, y, rect->w, rect->h);\n"
+ "\t}\n"
+ "\treturn 0;\n}", 1)])
+
+print("    MoveImage fb-materialize patch OK")
+FBMAT_PY
+
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
 # gitignored. Apply in dependency order: the ABR patch was generated after the
 # raw-texture dither correction.
