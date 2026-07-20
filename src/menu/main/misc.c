@@ -803,13 +803,57 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1914);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1AAC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1B20);
+/* Run the per-frame menu draw passes in retail order.  The native port only
+ * has the window pass (func_801D0C78) live at this point in Arc A; the other
+ * INCLUDE_ASM passes still resolve to generated no-op stubs there. */
+void func_801D1B20(void) {
+    func_801D3B00();
+    func_801D11F0();
+    func_801CE3C8();
+    func_801CE338();
+    func_801D02D8();
+    func_801D01D0();
+    func_801CE540();
+    func_801CE660();
+    func_801CEB5C();
+    func_801CEBB4();
+    func_801CE464();
+    func_801D13F8();
+    func_801D1AAC();
+    func_801D14FC();
+    func_801D1640();
+    func_801D17C4();
+    func_801D1914();
+    func_801D1464();
+    func_801D14B0();
+    func_801D0C78();
+    func_801CEC40();
+    func_801CF308();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1BE8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1C48);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1CA0);
+/* Gate the draw dispatcher on the menu's render flag, then select the active
+ * menu-mode pass.  The common trailing pass runs even when drawing is
+ * disabled, matching retail. */
+void func_801D1CA0(void) {
+    if (g_Menu->shouldDrawMenu) {
+        switch (D_80059460) {
+        case 0:
+            func_801D1B20();
+            break;
+        case 2:
+            func_801D1BE8();
+            break;
+        case 6:
+            func_801D1C48();
+            break;
+        }
+    }
+    func_801D1258();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1D40);
 
