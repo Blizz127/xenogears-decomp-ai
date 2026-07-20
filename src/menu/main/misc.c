@@ -68,7 +68,7 @@ extern void func_801D22C4(void);
 extern void func_801E8044(s32, void*);
 extern s32 func_801C531C(s32);
 extern void func_801E8978(s32, s32, void*);
-extern s32 func_801E8070(s32, void*, void*, void*, void*, s32, s32, s32);
+extern void func_801E8070(s32, void*, void*, void*, void*, s32, s32, s32);
 extern u8 D_801EA19C[];
 extern u8 D_801EA528[];
 extern u8 D_801E9E64[];
@@ -118,8 +118,10 @@ void func_801C55A0(void) {
         }
 
         if (g_Menu->menu1Choice != g_Menu->unk337) {
-            func_801E8978(7, 0, D_801EA19C);
-            func_801E8070(8, (u8*)g_Menu + 0x6E0, D_801EA528, D_801E9E64,
+            /* NB retail passes menu1Choice to func_801E8978 via $a1 register
+             * residue (the lbu above) -- PSX idiom; pass it explicitly. */
+            func_801E8978(7, g_Menu->menu1Choice, D_801EA19C);
+            func_801E8070(8, g_Menu->unk6E0, D_801EA528, D_801E9E64,
                           (u8*)g_Menu->pManager + 0xC, g_Menu->menu1Choice, 0, 0);
             g_Menu->unk337 = g_Menu->menu1Choice;
         }
@@ -602,7 +604,92 @@ void func_801C7BF4(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7D78);
+#else
+extern int ControllerGetType(int controllerIndex);
+extern int ControllerPopState(void);
+extern void ControllerResetState(void);
+extern void SoundMuteAllSpuChannels(void);
+extern void SoundEnableAllSpuChannels(void);
+extern s32 func_80036410(void);
+extern u16 g_C1ButtonStatePressedOnce;
+extern u16 g_C1ButtonStateReleased;
+extern s32 D_80059488;
+
+/* Nav N1: the main-menu input reader (per frame, from func_801C7BF4).
+ * Spins while the controller is absent (muting the SPU, saving/restoring
+ * D_80059488), then drains the pad-state queue and maps button edges to the
+ * MENU_INPUT_* code in g_Menu->input.  Directional inputs play nav blip 1;
+ * confirm/cancel play 2/3 via func_801C8574. */
+/* Port-only harness instrumentation: bumped once per reader execution so the
+ * headless nav test (psyq_compat.c, XENO_MENU_NAV_TEST) can gate its synthetic
+ * input on the menu actually reaching its interactive loop, independent of
+ * Vsync frame count (the field's open/close phases run at a different cadence
+ * and reset the pad queue).  Inert unless that env harness is armed. */
+int g_XenoMenuNavReaderTicks = 0;
+
+void func_801C7D78(void) {
+    s32 input = 0;
+    s32 present = 1;
+    s32 savedD59488 = 0;
+
+    g_XenoMenuNavReaderTicks++;
+
+    for (;;) {
+        if (ControllerGetType(0) != 0) {
+            if ((input & 0xFF) != 0) {
+                SoundEnableAllSpuChannels();
+                D_80059488 = savedD59488;
+            }
+            present -= 1;
+        } else if ((input & 0xFF) == 0) {
+            SoundMuteAllSpuChannels();
+            input += 1;
+            savedD59488 = D_80059488;
+        }
+        if ((present & 0xFF) == 0) {
+            break;
+        }
+    }
+
+    input = 8;  /* MENU_INPUT_IDLE */
+    if (func_80036410() != 0) {
+        ControllerResetState();
+    } else {
+        while (ControllerPopState()) {
+            u16 pressed = g_C1ButtonStatePressedOnce;
+            u16 released;
+
+            if (pressed & 0x2000) { input = 0; goto blip; }   /* RIGHT */
+            if (pressed & 0x4000) { input = 1; goto blip; }   /* DOWN */
+            if (pressed & 0x8000) { input = 2; goto blip; }   /* LEFT */
+            if (pressed & 0x1000) { input = 3; goto blip; }   /* UP */
+            released = g_C1ButtonStateReleased;
+            if (released & 0x20) {                            /* CIRCLE */
+                input = 4;
+                func_801C8574(2);
+                goto store;
+            }
+            if (released & 0x40) {                            /* CROSS */
+                input = 5;
+                func_801C8574(3);
+                goto store;
+            }
+            if (released & 0x80) { input = 6; goto store; }
+            if (released & 0x10) { input = 7; goto store; }
+            if (pressed & 0x4)  { input = 0xA; goto blip; }
+            if (pressed & 0x8)  { input = 9; goto blip; }
+            if (released & 0x100) { input = 0xC; goto store; }
+        }
+        goto store;
+    blip:
+        func_801C8574(1);
+    }
+store:
+    g_Menu->input = (u8)input;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7F34);
 
@@ -763,7 +850,20 @@ void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8574);
+#else
+extern void func_80039DB8(s32 packedId);
+
+/* Nav N1: the menu SFX player -- gated on unk32A (menu sounds enabled),
+ * packs the resource SoundFile's bank id (unk2E4->unk14) with the effect id. */
+void func_801C8574(s32 soundId) {
+    if (g_Menu->unk32A) {
+        func_80039DB8(((s32)*(u16*)((u8*)g_Menu->unk2E4 + 0x14) << 16) |
+                      (soundId & 0xFF));
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85C0);
 
@@ -892,7 +992,21 @@ void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE338);
+#else
+/* Nav N1: the pointer-cursor sub-renderer (func_801D1B20's list).  Always
+ * AddPrims the cursor draw-mode; the pointer sprite itself is gated on
+ * pManager->unk4 (armed by func_801E8978). */
+void func_801CE338(void) {
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &g_Menu->unk348->drModes1[g_Menu->unk348->unk159]);
+    if (g_Menu->pManager->unk4) {
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                &g_Menu->unk348->polysPointerCursor[g_Menu->unk348->cursorRenderContext]);
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE3C8);
 
@@ -1247,7 +1361,61 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1E80);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EB0);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EE0);
+#else
+extern u8 D_801E9A00[];   /* per-option cursor x table (u32 each, migrated) */
+extern u8 D_801E9A2C[];   /* per-option cursor y table */
+
+/* Nav N1: build the pointer cursor at option `selected` -- the pointer glyph
+ * (atlas 0x108) into unk348, and (when buildBar) the highlight bar: a G4 quad
+ * plus its two LINE_F3 outlines, width unk15B (set by the coordinator), at
+ * the option's table position.  Arms pManager->unk3 (the bar flag). */
+void func_801D1EE0(s32 selected, s32 buildBar) {
+    u16 x = *(u16*)(D_801E9A00 + selected * 4);
+    u16 y = *(u16*)(D_801E9A2C + selected * 4);
+    MenuUnk1* pCur = g_Menu->unk348;
+    s32 rc = g_Menu->renderContext;
+
+    func_8002675C(g_Menu->unk2DC, 0x108, pCur, rc,
+                  *(s32*)(D_801E9A00 + selected * 4),
+                  *(s32*)(D_801E9A2C + selected * 4), 0x1000);
+    pCur->cursorRenderContext = (u8)rc;
+
+    if (buildBar & 0xFF) {
+        POLY_G4* pBar = &pCur->polyG4s[rc];
+        LINE_F3* pLine1 = &pCur->lines1[rc];
+        LINE_F3* pLine2 = &pCur->lines2[rc];
+        s32 w = pCur->unk15B;
+
+        pBar->x0 = (s16)(x + 0x14);
+        pBar->y0 = (s16)(y - 0x24);
+        pBar->x1 = (s16)(x + w + 0x14);
+        pBar->y1 = (s16)(y - 0x24);
+        pBar->x2 = (s16)(x + 0x14);
+        pBar->y2 = (s16)(y - 0x14);
+        pBar->x3 = (s16)(x + w + 0x14);
+        pBar->y3 = (s16)(y - 0x14);
+
+        pLine1->x0 = (s16)(x + 0x14);
+        pLine1->y0 = (s16)(y - 0x24);
+        pLine1->x1 = (s16)(x + w + 0x14);
+        pLine1->y1 = (s16)(y - 0x24);
+        pLine1->x2 = (s16)(x + w + 0x14);
+        pLine1->y2 = (s16)(y - 0x14);
+
+        pLine2->x0 = (s16)(x + 0x14);
+        pLine2->y0 = (s16)(y - 0x24);
+        pLine2->x1 = (s16)(x + 0x14);
+        pLine2->y1 = (s16)(y - 0x14);
+        pLine2->x2 = (s16)(x + w + 0x14);
+        pLine2->y2 = (s16)(y - 0x14);
+
+        pCur->unk159 = (u8)rc;
+        g_Menu->pManager->unk3 = 1;
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22C4);
 
@@ -1319,7 +1487,7 @@ void func_801D29A8(u8 open, u8 noSettle) {
     s32 i;
 
     if (open) {
-        func_801E8018(8, (u8*)g_Menu + 0x6E0, D_801EA528,
+        func_801E8018(8, g_Menu->unk6E0, D_801EA528,
                       (u8*)g_Menu->pManager + 0xC);
         func_801C81E0(0x100, 0x86, 0x60, 0x06, 8, 0);
         func_801C81E0(0x108, 0x3E, 0x68, 0x3E, 8, 1);
@@ -2364,9 +2532,72 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8018);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8044);
+#else
+/* Nav N1: zero `count` visibility flags (the pManager->unkC string flags). */
+void func_801E8044(s32 count, void* pFlags) {
+    u8* p = (u8*)pFlags;
+    s32 i;
 
+    for (i = 0; i < (count & 0xFF); i++) {
+        p[i] = 0;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
+#else
+extern u8 D_801E9E64[];   /* per-option string x-offset table (u16 at *4) */
+
+/* Nav N1: position the selected option's MenuString quad (the rendered text
+ * strip) at the cursor's table position, mark it visible.  Retail is a 7-case
+ * jump table; the main menu always calls mode 0 -- the other modes belong to
+ * other menus whose callers are still stubs (loud marker if ever reached). */
+void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
+                   void* pFlags, s32 selected, s32 arg6, s32 mode) {
+    MenuString* pStr;
+    POLY_FT4* p;
+    u16 x;
+    u16 y;
+    u16 xo;
+    s32 rc = g_Menu->renderContext;
+    s32 sel = selected & 0xFF;
+
+    (void)pIdTable;
+    if ((mode & 0xFF) != 0) {
+        static int warned;
+        if (!warned) {
+            warned = 1;
+            printf("[xeno-port][stub-path] func_801E8070 mode %d not ported "
+                   "(only mode 0, the main menu)\n", mode & 0xFF);
+        }
+        return;
+    }
+
+    func_801E8044(count, pFlags);
+
+    pStr = &((MenuString*)pStrings)[sel];
+    p = &pStr->polys[rc];
+    x = *(u16*)(D_801E9A00 + sel * 4);
+    y = *(u16*)(D_801E9A2C + sel * 4);
+    xo = *(u16*)((u8*)pOffTable + sel * 4);
+    (void)arg6;
+
+    p->x0 = (s16)(x + xo + 0x16);
+    p->y0 = (s16)(y - 0x22);
+    p->x1 = (s16)(x + xo + 0x16 + pStr->width);
+    p->y1 = (s16)(y - 0x22);
+    p->x2 = (s16)(x + xo + 0x16);
+    p->y2 = (s16)(y - 0x15);
+    p->x3 = (s16)(x + xo + 0x16 + pStr->width);
+    p->y3 = (s16)(y - 0x15);
+
+    pStr->renderContext = (u8)rc;
+    ((u8*)pFlags)[sel] = 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8474);
@@ -2427,7 +2658,42 @@ void func_801E8474(s32 count, void* pTable) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E86C8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8978);
+#else
+extern void func_801D1EE0(s32 selected, s32 buildBar);
+
+/* Nav N1: the selection-aware option-label rebuild.  Rebuilds both label sets
+ * from the id pairs -- the SELECTED option's highlight glyph uses id+0xD (the
+ * bright variant) -- then rebuilds the pointer cursor at the selection and
+ * arms pManager->unk4 (the pointer-visible flag).  Called on every
+ * menu1Choice change (and once at open). */
+void func_801E8978(s32 count, s32 selected, void* pTable) {
+    u32* pIds = (u32*)pTable;
+    s32 i;
+
+    g_Menu->pSelectionMenu->numCursors = 0;
+    g_Menu->pSelectionMenu->numTexts = 0;
+    for (i = 0; i < (count & 0xFF); i++, pIds += 2) {
+        s32 id0 = (i == (selected & 0xFF)) ? (s32)pIds[0] + 0xD : (s32)pIds[0];
+
+        g_Menu->pSelectionMenu->numCursors += func_8002675C(
+            g_Menu->unk2DC, id0,
+            (u8*)g_Menu->pSelectionMenu +
+                g_Menu->pSelectionMenu->numCursors * 0x50,
+            g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+        g_Menu->pSelectionMenu->numTexts += func_8002675C(
+            g_Menu->unk2DC, pIds[1],
+            (u8*)g_Menu->pSelectionMenu + 0x8C0 +
+                g_Menu->pSelectionMenu->numTexts * 0x50,
+            g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+    }
+    g_Menu->pSelectionMenu->cursorsRenderCtx = (u8)g_Menu->renderContext;
+    g_Menu->pSelectionMenu->textsRenderCtx = (u8)g_Menu->renderContext;
+    func_801D1EE0(selected & 0xFF, 1);
+    g_Menu->pManager->unk4 = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8B4C);
 

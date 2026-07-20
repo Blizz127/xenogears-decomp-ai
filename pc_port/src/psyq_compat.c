@@ -410,11 +410,14 @@ static void PcPort_ForcedKernelSelect(void)
  * was validated on (the map005 repro). A code-side write of the real global is
  * reliable, unlike gdb symbol-writes (which hit a native-layout phantom view).
  */
+static int s_xenoMenuForceFired = 0;
+
 static void PcPort_ForcedFieldMenu(void)
 {
     extern int D_800ADB64;   /* menu request (0xFF = none); s32 in-game */
     extern int D_800ADB68;   /* playerCanRun -- field is up + idle; s32 in-game */
-    static int armed = -2, fired = 0, frame = 0, delay = 0;
+    static int armed = -2, frame = 0, delay = 0;
+#define fired s_xenoMenuForceFired
 
     if (armed == -2) {  /* first call: read config */
         const char* e = getenv("XENO_MENU_FORCE");
@@ -453,10 +456,64 @@ static void PcPort_ForcedFieldMenu(void)
                        "(Fei slot 0) -- cold boot had an empty roster\n");
             }
         }
-        D_800ADB64 = 0x80;   /* request the main menu via the field opener */
+        D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
                "(D_800ADB64=0x80) at frame %d\n", frame);
+    }
+#undef fired
+}
+
+/* Synthetic menu-nav edges (XENO_MENU_NAV_TEST=N): once the forced menu has
+ * had time to open, hold DPAD-DOWN for a single frame, N times, ~30 hook-calls
+ * apart, so an automated capture can verify the cursor moves.
+ *
+ * The inject is at the RAW BIOS pad buffer (g_C1Buffer), exactly where a real
+ * keypress lands: PsyX_UpdateInput() refreshes the buffer from SDL each frame
+ * (idle = 0xFF, active-low), then ControllerPoll() derives the pressed/edge/
+ * repeat state the menu reads.  DPAD-DOWN is bit 0x40 of buttons byte
+ * g_C1Buffer[CONTROLLER_BUTTONS_1] (== PsyX pad->buttons[0], `ret &= ~0x40`).
+ * So we MUST run after PsyX_UpdateInput and before ControllerPoll; clearing the
+ * bit for one frame makes ControllerPoll compute a genuine rising edge that
+ * flows through ControllerPushState → the queue → the menu reader, identical to
+ * a physical DOWN tap.  (An earlier attempt OR-ing the derived edge var after
+ * ControllerPoll failed: the reader drains the queue, not the live var.) */
+static void PcPort_ForcedMenuNav(void)
+{
+    extern unsigned char g_C1Buffer[];
+    extern int g_XenoMenuNavReaderTicks;   /* menu reader executions (misc.c) */
+    static int armed = -2, injected = 0;
+
+    if (armed == -2) {
+        const char* e = getenv("XENO_MENU_NAV_TEST");
+        armed = (e && *e) ? atoi(e) : 0;
+    }
+    if (armed <= 0)
+        return;
+    /* Clock the injection off READER TICKS, not Vsync frames: the field's
+     * open/close phases reset the pad queue at a different cadence, so frame
+     * counting races it.  A tick == one execution of the menu's interactive
+     * input reader, so a hold spanning >=4 ticks is guaranteed to be polled,
+     * edged, queued, and drained while the menu is actually listening.
+     * Schedule: settle 40 ticks, then press k = hold 4 ticks / release 10. */
+    {
+        int t = g_XenoMenuNavReaderTicks;
+        int k, ph;
+        if (t < 40)
+            return;
+        k = (t - 40) / 14;
+        ph = (t - 40) % 14;
+        if (k >= armed)
+            return;
+        if (ph < 4) {
+            g_C1Buffer[0x2] &= (unsigned char)~0x40;  /* hold DPAD-DOWN */
+            if (k + 1 > injected) {
+                injected = k + 1;
+                printf("[xeno-port][test] XENO_MENU_NAV_TEST: press DOWN %d/%d "
+                       "(reader tick %d)\n", injected, armed, t);
+                fflush(stdout);
+            }
+        }
     }
 }
 
@@ -479,6 +536,12 @@ int Vsync(int mode)
      * keyboard/gamepad; ControllerPoll() then folds that buffer into the game's
      * g_C1ButtonState* edge/repeat state that the menus/field read. */
     { extern void PsyX_UpdateInput(void); PsyX_UpdateInput(); }
+
+    /* Synthetic menu-nav edges (no-op unless XENO_MENU_NAV_TEST=N). MUST run
+     * after the pad buffer is refreshed and before ControllerPoll derives edges
+     * from it -- it pokes DPAD-DOWN into g_C1Buffer for one frame. */
+    PcPort_ForcedMenuNav();
+
     { extern void ControllerPoll(void);   ControllerPoll();   }
     /* Retail's per-vblank handler func_8003634C pairs ControllerPoll with
      * ControllerPushState (asm 80036368/80036370). FieldPollControllers reads
