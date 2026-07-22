@@ -44,7 +44,9 @@
 typedef struct {
     /* 0x0 */ u16 unk0;
     /* 0x2 */ u_short price;
-    /* 0x4 */ u8 unk4[0xC];
+    /* 0x4 */ u8 unk4[0x2];
+    /* 0x6 */ u8 flags;
+    /* 0x7 */ u8 unk7[0x9];
 } MenuShopItem; // Size: 0x10
 
 typedef struct {
@@ -208,6 +210,22 @@ typedef struct {
     /* 0x7E */ u8 width;
     /* 0x7F */ u8 unk7F;
 } MenuString; // Size: 0x80
+
+/* Items submenu content.  The offsets describe the retail 32-bit layout;
+ * embedded MenuStrings naturally expand in the native 64-bit port.  The
+ * description bundle remains a four-byte PSX pointer slot (lw semantics),
+ * matching SystemMenu.unk42C and the port's below-4GB heap convention. */
+typedef struct {
+    /* 0x0000 */ MenuString itemNames[16];
+    /* 0x0800 */ MenuString itemCounts[16];
+    /* 0x1000 */ MenuString selectedItemName;
+    /* 0x1080 */ MenuString selectedItemCount;
+    /* 0x1100 */ MenuString selectedItemDescription;
+    /* 0x1180 */ u32 descriptionBundle;
+    /* 0x1184 */ u8 rowVisible[16];
+    /* 0x1194 */ u8 descriptionVisible;
+    /* 0x1195 */ u8 _pad1195[3];
+} ItemMenuWork; // Retail size: 0x1198
 
 typedef struct {
     /* 0x0   */ POLY_FT4 polysWindowBorderCorners[8];

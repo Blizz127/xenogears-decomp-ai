@@ -456,6 +456,35 @@ static void PcPort_ForcedFieldMenu(void)
                        "(Fei slot 0) -- cold boot had an empty roster\n");
             }
         }
+        /* The same cold boot also bypasses the intro/save inventory setup.
+         * Seed a single scrollable, retail-valid Items list only when every
+         * item slot is empty.  IDs still resolve through the loaded game name
+         * bank and quantities still use the real two-glyph renderer; this only
+         * supplies the state a reachable retail menu would already have.
+         * g_GameState offsets: 0x1F90 quantities[150], 0x2026 IDs[150]. */
+        {
+            extern unsigned char g_GameState[];  /* PSX-layout data blob */
+            unsigned char* pQuantities = &g_GameState[0x1F90];
+            unsigned char* pItemIds = &g_GameState[0x2026];
+            int hasItem = 0;
+            int i;
+
+            for (i = 0; i < 150; i++) {
+                if (pItemIds[i] != 0) {
+                    hasItem = 1;
+                    break;
+                }
+            }
+            if (!hasItem) {
+                for (i = 0; i < 18; i++) {
+                    pItemIds[i] = (unsigned char)(i + 1);
+                    pQuantities[i] = (unsigned char)(i + 11);
+                }
+                printf("[xeno-port][test] XENO_MENU_FORCE: seeded harness "
+                       "inventory (18 real item IDs, quantities 11..28) -- "
+                       "cold boot had no save inventory\n");
+            }
+        }
         D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "

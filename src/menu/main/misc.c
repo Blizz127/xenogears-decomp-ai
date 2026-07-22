@@ -75,6 +75,7 @@ extern void func_801D29A8(u8, u8);
 extern void func_801E3088(s32);
 extern void func_801D3674(void);
 extern void func_801E8018(s32, void*, void*); /* optional content stub */
+extern void func_801E7C50(MenuString*, s32, s32, s32);
 extern u8 D_801E96A4;
 extern u8 D_801E977A;
 extern u8 D_801E9784;
@@ -83,11 +84,11 @@ extern u8 D_801EA530[];
 /* The retail fields at 0x42C and 0x440 are four-byte pointer slots.  Keep
  * their PSX width in the native-inflated SystemMenu and explicitly truncate
  * the port heap address, matching the established unk340 convention. */
-static void* MenuItemWork(void) {
-    return (void*)(uintptr_t)g_Menu->unk42C[0];
+static ItemMenuWork* MenuItemWork(void) {
+    return (ItemMenuWork*)(uintptr_t)g_Menu->unk42C[0];
 }
 
-static void MenuSetItemWork(void* p) {
+static void MenuSetItemWork(ItemMenuWork* p) {
     g_Menu->unk42C[0] = (u32)(uintptr_t)p;
 }
 
@@ -648,15 +649,15 @@ void func_801C72BC(s32 mode) {
     }
 
     if (resourceMode == 0) {
-        u8* work = MenuItemWork();
+        ItemMenuWork* work = MenuItemWork();
         g_Menu->unk330->pItemsData =
             LZSSHeapDecompress((void*)(uintptr_t)archive[1], 0);
-        *(u32*)(work + 0x1180) = (u32)(uintptr_t)
+        work->descriptionBundle = (u32)(uintptr_t)
             LZSSHeapDecompress((void*)(uintptr_t)archive[0xF], 0);
     } else if (resourceMode == 0x10) {
-        u8* work = MenuItemWork();
+        ItemMenuWork* work = MenuItemWork();
         HeapFree(g_Menu->unk330->pItemsData);
-        HeapFree((void*)(uintptr_t)*(u32*)(work + 0x1180));
+        HeapFree((void*)(uintptr_t)work->descriptionBundle);
     } else {
         static u32 warnedModes;
         u32 bit = (resourceMode < 32) ? (1u << resourceMode) : 0;
@@ -1142,7 +1143,30 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDC6C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE0CC);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE198);
+#else
+/* Project and queue `count` double-buffered textured quads.  Retail advances
+ * the render-context index by two per logical string, selecting the same half
+ * of each MenuString's POLY_FT4 pair. */
+void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
+                   s32 renderContext) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        POLY_FT4* poly = &polys[renderContext + i * 2];
+        SVECTOR* quad = &vertices[i * 4];
+        long interpolated;
+        long flag;
+
+        RotTransPers4(&quad[0], &quad[1], &quad[2], &quad[3],
+                      (long*)&poly->x0, (long*)&poly->x1,
+                      (long*)&poly->x2, (long*)&poly->x3,
+                      &interpolated, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], poly);
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE2B4);
@@ -1460,7 +1484,46 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1464);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14B0);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14FC);
+#else
+extern void func_801CE198(s32, SVECTOR*, POLY_FT4*, s32);
+
+/* Items content draw pass.  N2b-1 activates the sixteen name/count pairs;
+ * the three named description fields stay dormant until N2b-2 arms them. */
+void func_801D14FC(void) {
+    ItemMenuWork* work;
+    s32 i;
+
+    if (!g_Menu->pManager->unk48) {
+        return;
+    }
+    work = MenuItemWork();
+    for (i = 0; i < 16; i++) {
+        if (work->rowVisible[i]) {
+            MenuString* name = &work->itemNames[i];
+            MenuString* count = &work->itemCounts[i];
+
+            func_801CE198(1, name->vertices, name->polys,
+                          name->renderContext);
+            func_801CE198(1, count->vertices, count->polys,
+                          count->renderContext);
+        }
+    }
+    if (work->descriptionVisible) {
+        MenuString* name = &work->selectedItemName;
+        MenuString* count = &work->selectedItemCount;
+        MenuString* description = &work->selectedItemDescription;
+
+        func_801CE198(1, name->vertices, name->polys,
+                      name->renderContext);
+        func_801CE198(1, count->vertices, count->polys,
+                      count->renderContext);
+        func_801CE198(1, description->vertices, description->polys,
+                      description->renderContext);
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1640);
 
@@ -2598,13 +2661,13 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA4A8);
 extern u8 D_801EA548[];
 
 void func_801DA4A8(void) {
-    void* work;
+    ItemMenuWork* work;
 
     func_801D22F4(2);
     func_801E8018(8, g_Menu->itemMenuStrings, D_801EA548);
-    work = HeapAlloc(0x1198, 0);
+    work = HeapAlloc(sizeof(ItemMenuWork), 0);
     MenuSetItemWork(work);
-    bzero(work, 0x1198);
+    bzero(work, sizeof(ItemMenuWork));
     func_801C72BC(0);
 }
 #endif
@@ -2613,7 +2676,7 @@ void func_801DA4A8(void) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA518);
 #else
 void func_801DA518(void) {
-    u8* work = MenuItemWork();
+    ItemMenuWork* work = MenuItemWork();
 
     func_801D3444();
     func_801D4EA0(3);
@@ -2623,13 +2686,98 @@ void func_801DA518(void) {
 
     /* Retail repeats the two payload frees after the resource-engine cleanup;
      * the Xenogears heap free operation is idempotent for an unpinned block. */
-    HeapFree((void*)(uintptr_t)*(u32*)(work + 0x1180));
+    HeapFree((void*)(uintptr_t)work->descriptionBundle);
     HeapFree(work);
     HeapFree(g_Menu->unk330->pItemsData);
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA5BC);
+#else
+extern void* GetItemName(s32);
+extern s32 SystemRenderStringEntry(void*, void*, s32, s32);
+extern void func_80033B34(u16*, u8*, s32);
+
+/* Build one retail Items page: sixteen interleaved inventory slots, each with
+ * its item name and two-digit quantity.  The page stride is two because the
+ * visible list is laid out as two columns of eight rows. */
+void func_801DA5BC(s32 page) {
+    ItemMenuWork* work = MenuItemWork();
+    u8* renderBuffer = HeapAlloc(0x3F6, 0);
+    /* Retail's quantity source lives on the 32-bit PSX stack.  Keep the
+     * native equivalent in the port's below-4GB heap because the shared text
+     * descriptor intentionally preserves its four-byte pointer slot. */
+    u8* quantityString = HeapAlloc(8, 0);
+    s32 row;
+
+    for (row = 0; row < 16; row++) {
+        s32 inventoryIndex = page * 2 + row;
+        u8 itemId = g_GameState.itemIDs[inventoryIndex];
+        u8* quantity = &g_GameState.itemQuantities[inventoryIndex];
+
+        if (itemId == 0) {
+            *quantity = 0;
+            work->rowVisible[row] = 0;
+            continue;
+        }
+        if (*quantity == 0) {
+            g_GameState.itemIDs[inventoryIndex] = 0;
+            work->rowVisible[row] = 0;
+            continue;
+        }
+        if (*quantity >= 100) {
+            *quantity = 99;
+        }
+
+        work->itemNames[row].width = (u8)SystemRenderStringEntry(
+            GetItemName(itemId), renderBuffer, 0x24, 0);
+        {
+            u16 quantityCodes[2];
+            s32 tens = *quantity / 10;
+            s32 ones = *quantity - tens * 10;
+
+            quantityCodes[0] = (u16)(tens == 0 ? 0xC3 : tens + 0x10);
+            quantityCodes[1] = (u16)(ones + 0x10);
+            func_80033B34(quantityCodes, quantityString, 2);
+            work->itemCounts[row].width = (u8)SystemRenderStringEntry(
+                quantityString, renderBuffer, 0x24, 1);
+        }
+        {
+            RECT upload;
+            s32 halfRow = row / 2;
+            s32 column = row - halfRow * 2;
+            u8 itemFlags = g_Menu->unk330->pItemsData[itemId].flags;
+            s32 style = ((itemFlags & 0x20) && D_80059171 == 0)
+                            ? 0 : (itemFlags & 0x80);
+            s32 xBase = column * 0x88;
+            s32 y = halfRow * 0x10 + 0xE;
+
+            upload.x = (s16)(0x180 + column * 0x18);
+            upload.y = (s16)(0x80 + halfRow * 0xD);
+            upload.w = 0x28;
+            upload.h = 0xD;
+            LoadImage(&upload, (u_long*)renderBuffer);
+            DrawSync(0);
+
+            func_801E7C50(&work->itemNames[row], row, 0x80, style | 1);
+            func_801E7C50(&work->itemCounts[row], row, 0x80, style | 2);
+            func_801C851C(work->itemNames[row].vertices,
+                          (xBase + 0x28) & ~7, y,
+                          work->itemNames[row].width, 0xD);
+            func_801C851C(work->itemCounts[row].vertices,
+                          (xBase + 0x90) & ~7, y,
+                          work->itemCounts[row].width, 0xD);
+        }
+        work->itemNames[row].renderContext = (u8)g_Menu->renderContext;
+        work->itemCounts[row].renderContext = (u8)g_Menu->renderContext;
+        work->rowVisible[row] = 1;
+    }
+    HeapFree(quantityString);
+    HeapFree(renderBuffer);
+    g_Menu->pManager->unk48 = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA9A8);
 
@@ -3119,7 +3267,57 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E781C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E78C8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7C50);
+#else
+/* Initialize both buffered textured quads for a MenuString.  `style` selects
+ * the text atlas/palette and disabled-state treatment; `index` selects the
+ * atlas cell while preserving retail's pair-wise loop progression. */
+void func_801E7C50(MenuString* string, s32 index, s32 yOffset, s32 style) {
+    s32 parity = index & 1;
+    s32 pair = index / 2;
+    s32 atlasX = (pair & 1) * 0x80;
+    s32 bufferIndex;
+
+    for (bufferIndex = 0; bufferIndex < 2; bufferIndex++) {
+        POLY_FT4* poly = &string->polys[bufferIndex];
+        s32 colorMask = 0;
+        s32 u;
+        s32 v;
+
+        func_801E927C(poly);
+        if ((u8)style == 0) {
+            string->unk7C = (u8)parity;
+            poly->tpage = GetTPage(0, 0, 0x140, 0);
+            u = atlasX;
+            v = ((index + yOffset) / 4) * 0xD;
+        } else {
+            if (((u8)style & 0x80) == 0) {
+                colorMask = 0x20;
+                SetSemiTrans(poly, 1);
+                poly->r0 = 0x20;
+                poly->g0 = 0x20;
+                poly->b0 = 0x20;
+            }
+            string->unk7C = (u8)(((u8)style & 0x7F) - 1);
+            poly->tpage = (u16)(colorMask | GetTPage(0, 0, 0x180, 0x80));
+            u = parity * 0x60;
+            v = pair * 0xD + yOffset;
+        }
+
+        poly->u0 = (u8)u;
+        poly->v0 = (u8)v;
+        poly->u1 = (u8)(u + string->width);
+        poly->v1 = (u8)v;
+        poly->u2 = (u8)u;
+        poly->v2 = (u8)(v + 0xD);
+        poly->u3 = (u8)(u + string->width);
+        poly->v3 = (u8)(v + 0xD);
+        poly->clut = string->unk7C ? g_SystemPalette2 : g_SystemPalette1;
+    }
+    string->unk7F = 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
 

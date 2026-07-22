@@ -250,7 +250,10 @@ void* GetAccessoryName(s32 index) {
 }
 
 void* GetItemName(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x58), index);
+    /* The system archive table contains PSX-width pointer slots.  Keep the
+     * retail lw read on the 64-bit port instead of consuming two entries. */
+    return GetStringEntry(
+        (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x58), index);
 }
 
 void* GetWeaponName(s32 index) {
