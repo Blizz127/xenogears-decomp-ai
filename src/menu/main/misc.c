@@ -51,7 +51,8 @@ extern void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage,
 extern char D_801C5028[];   /* "BASLUS-00664" (migrated menu rodata) */
 extern char D_801C5038[];   /* "BASLUS-01160" */
 extern u8 D_801EA524[];     /* string-render descriptor (migrated) */
-extern void func_801E7E68(void* dst, void* src, s32 a2, s32 a3);  /* stub (overlay) */
+extern void func_801E7E68(MenuString* strings, u8* descriptorIds,
+                          s32 yOffset, s32 count);
 extern void func_801C6D90(void);                                  /* stub */
 extern void* D_8006259C;    /* SEDS file pointer */
 extern void* D_8005945C;    /* menu resource-pointer table (pResources) */
@@ -74,7 +75,7 @@ extern void func_801D1EB0(void);
 extern void func_801D29A8(u8, u8);
 extern void func_801E3088(s32);
 extern void func_801D3674(void);
-extern void func_801E8018(s32, void*, void*); /* optional content stub */
+extern void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds);
 extern void func_801E7C50(MenuString*, s32, s32, s32);
 extern u8 D_801E96A4;
 extern u8 D_801E977A;
@@ -1531,7 +1532,24 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D17C4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1914);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1AAC);
+#else
+/* Draw the two animated arrow cursors after their per-frame builders have
+ * selected a frame and positioned their primitive vertices. */
+void func_801D1AAC(void) {
+    s32 i;
+
+    for (i = 0; i < MENU_MAX_NUM_ARROW_CURSORS; i++) {
+        if (g_Menu->pManager->shouldRenderArrowCursor[i]) {
+            MenuArrowCursor* cursor = g_Menu->arrowCursors[i];
+
+            func_801CE198(1, cursor->vertices, cursor->polys,
+                          cursor->renderContext);
+        }
+    }
+}
+#endif
 
 /* Run the per-frame menu draw passes in retail order.  The native port only
  * has the window pass (func_801D0C78) live at this point in Arc A; the other
@@ -1804,7 +1822,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
 #else
-extern void func_801E8018(s32, void*, void*);  /* stub (overlay) */
+extern void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds);
 extern void func_801E53CC(u8 windowIndex);            /* frame-primitive init (below) */
 /* NB retail passes charId in $a1 as register residue from the caller's lbu of
  * currentCharacterIDs[i] -- the port passes it explicitly. */
@@ -2779,7 +2797,113 @@ void func_801DA5BC(s32 page) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA9A8);
+#else
+extern void* GetStringEntry(void* bundle, s32 index);
+extern u8 D_801EA550[];
+extern u8 D_801E9EA0[];
+
+static void ItemMenuSetOpaqueWhite(POLY_FT4* poly) {
+    poly->r0 = 0x80;
+    poly->g0 = 0x80;
+    poly->b0 = 0x80;
+    SetSemiTrans(poly, 0);
+}
+
+/* Build the selected row's description panel and its conditional category
+ * labels.  descriptionBundle is intentionally converted from a four-byte
+ * retail pointer slot instead of being read through a native void**. */
+void func_801DA9A8(s32 row, s32 page) {
+    ItemMenuWork* work = MenuItemWork();
+    s32 inventoryIndex = page * 2 + row;
+    u8 itemId = g_GameState.itemIDs[inventoryIndex];
+    s32 rc = g_Menu->renderContext;
+
+    if (itemId == 0) {
+        func_801E8044(8, g_Menu->pManager->unk38);
+        work->descriptionVisible = 0;
+        return;
+    }
+
+    {
+        void* renderBuffer = HeapAlloc(0x618, 0);
+        RECT upload;
+
+        bzero(renderBuffer, 0x618);
+        work->selectedItemDescription.width = (u8)SystemRenderStringEntry(
+            GetStringEntry((void*)(uintptr_t)work->descriptionBundle, itemId),
+            renderBuffer, 0x39, 0);
+
+        upload.x = 0x140;
+        upload.y = 0x4E;
+        upload.w = 0x3C;
+        upload.h = 0xD;
+        LoadImage(&upload, (u_long*)renderBuffer);
+        DrawSync(0);
+
+        func_801E7C50(&work->selectedItemDescription, 0, 0, 0);
+        func_801E920C(
+            &work->selectedItemDescription.polys[rc],
+            0x1C, 0xA1, 0, 0x4E,
+            work->selectedItemDescription.width, 0xD);
+        func_801C851C(
+            work->selectedItemDescription.vertices,
+            0x1C, 0xA1, work->selectedItemDescription.width, 0xD);
+        HeapFree(renderBuffer);
+    }
+
+    memmove(&work->selectedItemName, &work->itemNames[row],
+            sizeof(MenuString));
+    memmove(&work->selectedItemCount, &work->itemCounts[row],
+            sizeof(MenuString));
+
+    func_801C851C(work->selectedItemName.vertices,
+                  0x10, 0x93, work->selectedItemName.width, 0xD);
+    func_801C851C(work->selectedItemCount.vertices,
+                  (work->itemCounts[row].width == 0x10 ? 4 : 0) | 0x78,
+                  0x93, work->selectedItemCount.width, 0xD);
+
+    ItemMenuSetOpaqueWhite(&work->selectedItemName.polys[rc]);
+    ItemMenuSetOpaqueWhite(&work->selectedItemCount.polys[rc]);
+    func_801E8044(8, g_Menu->pManager->unk38);
+
+    {
+        MenuShopItem* item = &g_Menu->unk330->pItemsData[itemId];
+
+        if (item->flags & 0xC0) {
+            u16 categoryFlags = item->categoryFlags;
+            s32 firstLabel;
+            s32 secondLabel = ((u8)categoryFlags & 3) + 3;
+            MenuString* first;
+            MenuString* second;
+
+            if (categoryFlags & 0x4000) {
+                firstLabel = 2;
+            } else {
+                firstLabel = (categoryFlags & 0x1000) ? 0 : 1;
+            }
+
+            func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550,
+                          D_801E9EA0, g_Menu->pManager->unk38,
+                          firstLabel, 0, 1);
+            func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550,
+                          D_801E9EA0, g_Menu->pManager->unk38,
+                          secondLabel, 0, 1);
+
+            first = &g_Menu->itemMenuStrings[firstLabel];
+            second = &g_Menu->itemMenuStrings[secondLabel];
+            ItemMenuSetOpaqueWhite(&first->polys[rc]);
+            ItemMenuSetOpaqueWhite(&second->polys[rc]);
+        }
+    }
+
+    work->selectedItemName.renderContext = (u8)rc;
+    work->selectedItemCount.renderContext = (u8)rc;
+    work->selectedItemDescription.renderContext = (u8)rc;
+    work->descriptionVisible = 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB02C);
@@ -2793,7 +2917,90 @@ void func_801DB02C(s32 cursorIndex) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB0A8);
+#else
+/* Animate, position, and arm one of the two Items arrow cursors.  Visibility
+ * starts true before the mode dispatch, matching the retail branch delay
+ * slot; mode 1 can then suppress an off-page selection cursor. */
+void func_801DB0A8(s32 row, s32 page, s32 mode, s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    MenuArrowCursor* cursor = g_Menu->arrowCursors[index];
+    s32 visible = 1;
+    s32 x = 0;
+    s32 y = 0;
+
+    cursor->animFrameDuration++;
+    if (cursor->animFrameDuration >= 6) {
+        cursor->curAnimFrame--;
+        if (cursor->curAnimFrame < 0) {
+            cursor->curAnimFrame = 4;
+        }
+        cursor->animFrameDuration = 0;
+    }
+
+    switch ((u8)mode) {
+    case 0: {
+        s32 half = row / 2;
+        s32 column = row - half * 2;
+        x = column * 0x88 + 0x1C;
+        y = half * 0x10 + 0x11;
+        break;
+    }
+    case 1: {
+        s32 pageStart = page * 2;
+        if (row < pageStart || row >= pageStart + 0x10) {
+            visible = 0;
+        } else {
+            s32 half = row / 2;
+            s32 column = row - half * 2;
+            x = column * 0x88 + 0x18;
+            y = ((row - pageStart) / 2) * 0x10 + 0x11;
+        }
+        break;
+    }
+    case 2: {
+        s32 half = row / 2;
+        s32 column = row - half * 2;
+        x = column * 0x88 + 0x18;
+        y = half * 0x10 + 0x14;
+        break;
+    }
+    case 3:
+        x = 0xA0;
+        y = row * 0xD + 0x14;
+        visible = 2;
+        break;
+    default:
+        /* Retail has no valid caller outside modes 0..3.  Keep an unexpected
+         * mode from projecting the cursor through undefined coordinates. */
+        visible = 0;
+        break;
+    }
+
+    if (visible) {
+        POLY_FT4* poly;
+        u16 polyX;
+        u16 polyY;
+        u16 width;
+        u16 height;
+
+        func_8002675C(g_Menu->unk2DC, cursor->curAnimFrame + 0x15B,
+                      cursor, g_Menu->renderContext, 0, 0, 0x1000);
+        poly = &cursor->polys[g_Menu->renderContext];
+        polyX = (u16)poly->x0;
+        polyY = (u16)poly->y0;
+        width = (u16)(poly->x1 - poly->x0);
+        height = (u16)(poly->y3 - poly->y0);
+        func_801C851C(cursor->vertices,
+                      (u16)(polyX + x), (u16)(polyY + y), width, height);
+        cursor->renderContext = (u8)g_Menu->renderContext;
+        g_Menu->pManager->shouldRenderArrowCursor[index] = 1;
+    } else {
+        g_Menu->pManager->shouldRenderArrowCursor[index] = 0;
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB340);
@@ -3319,9 +3526,50 @@ void func_801E7C50(MenuString* string, s32 index, s32 yOffset, s32 style) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8018);
+#else
+/* Render descriptor pairs into their two buffered MenuString quads.  The
+ * index and descriptor pointer advance before DrawSync, preserving the retail
+ * delay-slot update order used by the loop test. */
+void func_801E7E68(MenuString* strings, u8* descriptorIds,
+                   s32 yOffset, s32 count) {
+    s32 index = 0;
+
+    while (index < count) {
+        MenuString* first = &strings[index];
+        MenuString* second = &strings[index + 1];
+        s32 row = (index + yOffset) / 4;
+
+        first->width = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, descriptorIds[0]),
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 0);
+        second->width = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, descriptorIds[1]),
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 1);
+
+        first->vramDest.x = (s16)(0x140 + ((index << 4) & 0x20));
+        first->vramDest.y = (s16)(row * 0xD);
+        first->vramDest.w = 0x1C;
+        first->vramDest.h = 0xD;
+        second->vramDest = first->vramDest;
+
+        func_801E7C50(first, index, yOffset, 0);
+        func_801E7C50(second, index + 1, yOffset, 0);
+        LoadImage(&first->vramDest,
+                  (u_long*)g_Menu->unk4E0[0].pVramBuffer);
+
+        descriptorIds += 2;
+        index += 2;
+        DrawSync(0);
+    }
+}
+
+void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds) {
+    func_801E7E68(strings, descriptorIds, 4, count & 0xFF);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8044);
@@ -3341,11 +3589,13 @@ void func_801E8044(s32 count, void* pFlags) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
 #else
 extern u8 D_801E9E64[];   /* per-option string x-offset table (u16 at *4) */
+extern u8 D_801E9EC4[];   /* Items description label x positions */
+extern u8 D_801E9EE4[];   /* Items description label y position */
 
 /* Nav N1: position the selected option's MenuString quad (the rendered text
  * strip) at the cursor's table position, mark it visible.  Retail is a 7-case
- * jump table; the main menu always calls mode 0 -- the other modes belong to
- * other menus whose callers are still stubs (loud marker if ever reached). */
+ * jump table.  Mode 0 serves the main menu and mode 1 serves the Items
+ * description labels; all remaining modes stay deliberately unported. */
 void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
                    void* pFlags, s32 selected, s32 arg6, s32 mode) {
     MenuString* pStr;
@@ -3357,12 +3607,22 @@ void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
     s32 sel = selected & 0xFF;
 
     (void)pIdTable;
+    if ((mode & 0xFF) == 1) {
+        pStr = &((MenuString*)pStrings)[sel];
+        x = *(u16*)(D_801E9EC4 + sel * 4);
+        y = *(u16*)D_801E9EE4;
+        func_801C851C(pStr->vertices, x, y, pStr->width, 0xD);
+        pStr->renderContext = (u8)rc;
+        ((u8*)pFlags)[sel] = 1;
+        return;
+    }
+
     if ((mode & 0xFF) != 0) {
         static int warned;
         if (!warned) {
             warned = 1;
             printf("[xeno-port][stub-path] func_801E8070 mode %d not ported "
-                   "(only mode 0, the main menu)\n", mode & 0xFF);
+                   "(only modes 0 and 1)\n", mode & 0xFF);
         }
         return;
     }
