@@ -392,7 +392,7 @@ typedef struct {
     /* 0x380  */ MenuWindowParameters* windowParameters[MENU_MAX_NUM_WINDOWS];
     /* 0x39C  */ u8 unk39C[0x8C];
     /* 0x428  */ MenuPointerCursors* pCursors;
-    /* 0x42C  */ u8 unk42C[0x10];
+    /* 0x42C  */ u32 unk42C[4]; // Truncated PSX-pointer slots (native heap is <4GB)
     /* 0x43C  */ MenuScrollBarHandle* pScrollHandle;
     /* 0x440  */ u8 unk440[0x4];
     /* 0x444  */ MenuArrowCursor* arrowCursors[MENU_MAX_NUM_ARROW_CURSORS];
@@ -430,7 +430,9 @@ typedef struct {
     /* 0x4E0  */ MenuString unk4E0[4];
     /* 0x6E0  */ MenuString unk6E0[8];
     /* 0xAE0  */ MenuString unkAE0[6];
-    /* 0xDE0  */ u8 unk8D0[0x1000];
+    /* 0xDE0  */ u8 unkDE0[0x300];
+    /* 0x10E0 */ MenuString itemMenuStrings[8];
+    /* 0x14E0 */ u8 unk14E0[0x900];
     /* 0x1DE0 */ MenuString* unk1DE0[4];
     /* 0x1DF0 */ MenuCharacter* benchedCharacters[MAX_BENCHED_PARTY_MEMBERS];
     /* 0x1E08 */ MenuCharacter* currentCharacters[MAX_PARTY_MEMBERS];

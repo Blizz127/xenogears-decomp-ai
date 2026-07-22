@@ -1,6 +1,9 @@
 #include "common.h"
 #include "system/menu.h"
 #include "main/game.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#endif
 
 /* Main-menu (menu.bin) Phase B1a: dispatcher + init allocation slice, ported.
  * NB the port's SystemMenu/MenuManager/etc are NATIVE layout (8-byte pointers
@@ -58,7 +61,128 @@ extern u8 D_80059171;
 extern u8 D_800594CC;
 extern u8 D_800594D0;
 
+#ifdef XENO_PC_PORT
+extern s32 func_801D9808(void);
+extern s32 func_801D9F98(s32, s32);
+extern s32 func_801E23CC(void);
+extern s32 func_801DE29C(s32, s32);
+extern s32 func_801DBE54(void);
+extern s32 func_801E0F78(s32, s32);
+extern s32 func_801E2BE4(void);
+extern void func_8001B970(void);
+extern void func_801D1EB0(void);
+extern void func_801D29A8(u8, u8);
+extern void func_801E3088(s32);
+extern void func_801D3674(void);
+extern void func_801E8018(s32, void*, void*); /* optional content stub */
+extern u8 D_801E96A4;
+extern u8 D_801E977A;
+extern u8 D_801E9784;
+extern u8 D_801EA530[];
+
+/* The retail fields at 0x42C and 0x440 are four-byte pointer slots.  Keep
+ * their PSX width in the native-inflated SystemMenu and explicitly truncate
+ * the port heap address, matching the established unk340 convention. */
+static void* MenuItemWork(void) {
+    return (void*)(uintptr_t)g_Menu->unk42C[0];
+}
+
+static void MenuSetItemWork(void* p) {
+    g_Menu->unk42C[0] = (u32)(uintptr_t)p;
+}
+
+static void* MenuUnk440Pointer(void) {
+    return (void*)(uintptr_t)*(u32*)&g_Menu->unk440[0];
+}
+
+/* Live N2a capture marker: 1 = Items windows settled open, 2 = common-exit
+ * teardown finished.  Port-only and inert outside the explicit harness. */
+int g_XenoMenuN2Phase = 0;
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
+#else
+/* Nav N2a: dispatch the ten retail menu entries, then run the shared close /
+ * cleanup / main-menu-rebuild tail.  Only Items (entry 4) has a real native
+ * screen in this slice; the remaining entry points retain their overlay stubs. */
+s32 func_801C531C(s32 arg0) {
+    s32 keepMainMenu = 1;
+    s32 screenResult = 1;
+    s32 entry = (u8)g_Menu->menu1Choice + (arg0 & 0xFF);
+
+    D_801E977A = 1;
+
+    switch (entry) {
+    case 0:
+        screenResult = 0;
+        keepMainMenu = 0;
+        break;
+    case 1:
+        screenResult = func_801D9F98(0, D_801E96A4);
+        break;
+    case 2:
+        screenResult = func_801E23CC();
+        break;
+    case 3:
+        screenResult = func_801DE29C(g_Menu->unk4CC[0x10], 1);
+        break;
+    case 4:
+        screenResult = func_801DBE54();
+        break;
+    case 5:
+        screenResult = func_801E0F78(g_Menu->unk4CC[0x10], 1);
+        break;
+    case 6:
+        screenResult = func_801E2BE4();
+        break;
+    case 7:
+        screenResult = func_801D9808();
+        break;
+    case 8:
+        screenResult = func_801D9F98(1, 0);
+        if ((screenResult & 0xFF) != 0) {
+            D_800594D0 = 2;
+            keepMainMenu = 0;
+        }
+        break;
+    case 9:
+        func_8001B970();
+        screenResult = 0;
+        keepMainMenu = 0;
+        break;
+    default:
+        break;
+    }
+
+    g_Menu->unk32C->unk4F80[0x66] = 0;
+    if ((screenResult & 0xFF) != 0) {
+        func_801D1EB0();
+        if (D_80059460 == 0) {
+            func_801D29A8(1, 0);
+        } else if (D_80059460 == 2) {
+            func_801E8018(8, g_Menu->unk6E0, D_801EA530);
+            g_Menu->unk348->unk15B = 0x4C;
+        }
+    }
+
+    func_801E3088(arg0 & 0xFF);
+    func_801D3674();
+    g_Menu->pSelectionMenu->unk1192 = 0;
+    g_Menu->pSelectionMenu->unk1193 = 1;
+    g_Menu->pManager->unk4 = 1;
+    g_Menu->pManager->unk3 = 1;
+    g_Menu->unk337 = 0xFF;
+    g_Menu->pManager->unkA = 0;
+    D_801E9784 = 1;
+    if (entry == 4) {
+        g_XenoMenuN2Phase = 2;
+        printf("[xeno-port][test] Nav N2a: Items teardown complete; main nav rebuilt\n");
+        fflush(stdout);
+    }
+    return keepMainMenu;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C55A0);
@@ -505,7 +629,50 @@ void func_801C6E68(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6F70);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C72BC);
+#else
+/* Nav N2a resource engine slice.  Retail has 24 modes; Items reaches only
+ * mode 0 (archive file 2 -> item data + description bundle) and mode 0x10
+ * (their matching frees).  Every other mode is deliberately fail-visible. */
+void func_801C72BC(s32 mode) {
+    u32* archive = NULL;
+    u8 resourceMode = (u8)mode;
+
+    if (resourceMode < 0x10) {
+        ArchiveSetIndex(0x10, 0);
+        archive = HeapAlloc(ArchiveDecodeAlignedSize(2), 1);
+        ArchiveReadFileToBuffer(2, archive, 0, 0x80);
+        ArchiveCdDataSync(0);
+        ResolveArchiveEntryPointers(archive);
+    }
+
+    if (resourceMode == 0) {
+        u8* work = MenuItemWork();
+        g_Menu->unk330->pItemsData =
+            LZSSHeapDecompress((void*)(uintptr_t)archive[1], 0);
+        *(u32*)(work + 0x1180) = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0xF], 0);
+    } else if (resourceMode == 0x10) {
+        u8* work = MenuItemWork();
+        HeapFree(g_Menu->unk330->pItemsData);
+        HeapFree((void*)(uintptr_t)*(u32*)(work + 0x1180));
+    } else {
+        static u32 warnedModes;
+        u32 bit = (resourceMode < 32) ? (1u << resourceMode) : 0;
+        if (bit == 0 || (warnedModes & bit) == 0) {
+            warnedModes |= bit;
+            printf("[xeno-port][stub-path] func_801C72BC mode %u not ported "
+                   "(N2a supports only 0 and 0x10)\n", resourceMode);
+            fflush(stdout);
+        }
+    }
+
+    if (resourceMode < 0x10) {
+        HeapFree(archive);
+    }
+}
+#endif
 
 /* B1b: content-build coordinator.  Sets the selection menu's VRAM rect
  * (320x224 @ 704,256) and a per-menu context byte, then drives the builder
@@ -1355,11 +1522,75 @@ void func_801D1CA0(void) {
     func_801D1258();
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1D40);
+#else
+/* Advance the shared open/close transform, then publish it to the GTE.  Items
+ * windows request this caller-owned transform (unk714 == 1), so leaving this
+ * as an overlay stub arms their draw flags but projects their geometry with a
+ * stale matrix. */
+void func_801D1D40(void) {
+    switch (g_Menu->transitionEffectState) {
+    case 1:
+        g_Menu->rotation.vx = (s16)(g_Menu->rotation.vx + 0x7C);
+        g_Menu->translation.vz -= 0x30;
+        if (g_Menu->translation.vz < 0x200) {
+            g_Menu->translation.vz = 0x200;
+            g_Menu->rotation.vx = 0;
+            g_Menu->rotation.vy = 0;
+            g_Menu->rotation.vz = 0;
+            g_Menu->transitionEffectState = 0;
+        }
+        break;
+    case 2:
+        g_Menu->rotation.vy = (s16)(g_Menu->rotation.vy - 0x60);
+        g_Menu->translation.vz += 0x40;
+        if (g_Menu->translation.vz >= 0xE00) {
+            g_Menu->transitionEffectState = 0;
+        }
+        break;
+    case 3:
+        g_Menu->translation.vz = 0x800;
+        g_Menu->rotation.vx = 0;
+        g_Menu->rotation.vy = 0;
+        g_Menu->rotation.vz = 0;
+        g_Menu->transitionEffectState = 1;
+        break;
+    case 4:
+        g_Menu->translation.vz = 0x200;
+        g_Menu->rotation.vx = 0;
+        g_Menu->rotation.vy = 0;
+        g_Menu->rotation.vz = 0;
+        g_Menu->transitionEffectState = 2;
+        break;
+    default:
+        break;
+    }
 
+    RotMatrix(&g_Menu->rotation, &g_Menu->matTransform);
+    TransMatrix(&g_Menu->matTransform, &g_Menu->translation);
+    SetRotMatrix(&g_Menu->matTransform);
+    SetTransMatrix(&g_Menu->matTransform);
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1E80);
+#else
+void func_801D1E80(void) {
+    g_Menu->transitionEffectState = MENU_OPEN_ANIMATION_START;
+    func_801C8574(0x5B);
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EB0);
+#else
+void func_801D1EB0(void) {
+    g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
+    func_801C8574(0x5C);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EE0);
@@ -1419,9 +1650,53 @@ void func_801D1EE0(s32 selected, s32 buildBar) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22C4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22F4);
+#else
+extern u8 D_801E9A58[];
+extern u8 D_801E9A68[];
 
+/* Configure the shared pointer-cursor bank.  Items uses mode 2, which rebuilds
+ * all four cursor sprites without arming their live-position flags. */
+void func_801D22F4(s32 mode) {
+    s32 i;
+    s32 offset;
+    u8 m = (u8)mode;
+
+    g_Menu->pManager->shouldRenderCursors = 0;
+    if (m == 1) {
+        return;
+    }
+    if (m == 0) {
+        g_Menu->pManager->shouldRenderCursors = 1;
+        g_Menu->pCursors->unk144[0] = 1;
+        g_Menu->pCursors->unk144[1] = 1;
+    }
+    if (m == 0 || m == 2) {
+        offset = 0;
+        for (i = 0; i < MENU_MAX_NUM_CURSORS; i++, offset += 0x50) {
+            func_8002675C(g_Menu->unk2DC, 0x108,
+                          (u8*)g_Menu->pCursors + offset,
+                          g_Menu->renderContext,
+                          *(s32*)(D_801E9A58 + i * 4),
+                          *(s32*)(D_801E9A68 + i * 4), 0x800);
+            g_Menu->pCursors->renderContexts[i] = (u8)g_Menu->renderContext;
+        }
+    } else if (m == 3) {
+        func_8002675C(g_Menu->unk2DC, 0x108, g_Menu->pCursors,
+                      g_Menu->renderContext, 0, 0, 0x800);
+        g_Menu->pCursors->renderContexts[0] = (u8)g_Menu->renderContext;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2484);
+#else
+void func_801D2484(void) {
+    g_Menu->pManager->shouldRenderCursors = 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D249C);
 
@@ -1466,7 +1741,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
 #else
-extern void func_801E8018(s32, void*, void*, void*);  /* stub (overlay) */
+extern void func_801E8018(s32, void*, void*);  /* stub (overlay) */
 extern void func_801E53CC(u8 windowIndex);            /* frame-primitive init (below) */
 /* NB retail passes charId in $a1 as register residue from the caller's lbu of
  * currentCharacterIDs[i] -- the port passes it explicitly. */
@@ -1487,8 +1762,7 @@ void func_801D29A8(u8 open, u8 noSettle) {
     s32 i;
 
     if (open) {
-        func_801E8018(8, g_Menu->unk6E0, D_801EA528,
-                      (u8*)g_Menu->pManager + 0xC);
+        func_801E8018(8, g_Menu->unk6E0, D_801EA528);
         func_801C81E0(0x100, 0x86, 0x60, 0x06, 8, 0);
         func_801C81E0(0x108, 0x3E, 0x68, 0x3E, 8, 1);
         func_801C81E0(0x110, -0xA, 0x70, 0x76, 8, 2);
@@ -1596,13 +1870,46 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2F4C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D32B4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3344);
+#else
+void func_801D3344(s32 x, s32 y, s32 width) {
+    if (g_Menu->pManager->scrollHandleActive == 0) {
+        g_Menu->pScrollHandle = HeapAlloc(sizeof(MenuScrollBarHandle), 0);
+        bzero(g_Menu->pScrollHandle, sizeof(MenuScrollBarHandle));
+    }
+    func_8002675C(g_Menu->unk2DC, 0x107, g_Menu->pScrollHandle,
+                  g_Menu->renderContext, x, y, 0x1000);
+    func_801C851C(g_Menu->pScrollHandle->vertices,
+                  x & 0xFFFF, y & 0xFFFF, 8, width & 0xFFFF);
+    g_Menu->pScrollHandle->renderContext = (u8)g_Menu->renderContext;
+    g_Menu->pManager->scrollHandleActive = 1;
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3444);
+#else
+void func_801D3444(void) {
+    g_Menu->pManager->scrollHandleActive = 0;
+    HeapFree(g_Menu->pScrollHandle);
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3488);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3674);
+#else
+void func_801D3674(void) {
+    /* manager+0x67 is the owner flag; +0x53 is its render guard. */
+    if (g_Menu->pManager->unk5C[0xB] != 0) {
+        g_Menu->pManager->unk52[1] = 0;
+        g_Menu->pManager->unk5C[0xB] = 0;
+        HeapFree(MenuUnk440Pointer());
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D36E0);
 
@@ -1867,7 +2174,18 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4EA0);
+#else
+/* Window destruction belongs to the dispatcher cleanup, not the Items screen. */
+void func_801D4EA0(s32 windowIndex) {
+    u8 index = (u8)windowIndex;
+    g_Menu->pManager->shouldRenderWindow[index] = 0;
+    g_Menu->pManager->unk27[index] = 0;
+    HeapFree(g_Menu->windows[index]);
+    HeapFree(g_Menu->windowParameters[index]);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4F2C);
@@ -2274,19 +2592,70 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F34);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA4A8);
+#else
+extern u8 D_801EA548[];
 
+void func_801DA4A8(void) {
+    void* work;
+
+    func_801D22F4(2);
+    func_801E8018(8, g_Menu->itemMenuStrings, D_801EA548);
+    work = HeapAlloc(0x1198, 0);
+    MenuSetItemWork(work);
+    bzero(work, 0x1198);
+    func_801C72BC(0);
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA518);
+#else
+void func_801DA518(void) {
+    u8* work = MenuItemWork();
+
+    func_801D3444();
+    func_801D4EA0(3);
+    func_801D4EA0(4);
+    g_Menu->pManager->unk48 = 0;
+    func_801C72BC(0x10);
+
+    /* Retail repeats the two payload frees after the resource-engine cleanup;
+     * the Xenogears heap free operation is idempotent for an unpinned block. */
+    HeapFree((void*)(uintptr_t)*(u32*)(work + 0x1180));
+    HeapFree(work);
+    HeapFree(g_Menu->unk330->pItemsData);
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA5BC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA9A8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB02C);
+#else
+void func_801DB02C(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    g_Menu->arrowCursors[index] = HeapAlloc(sizeof(MenuArrowCursor), 0);
+    bzero(g_Menu->arrowCursors[index], sizeof(MenuArrowCursor));
+    g_Menu->arrowCursors[index]->curAnimFrame = 4;
+    g_Menu->arrowCursors[index]->animFrameDuration = 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB0A8);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB340);
+#else
+void func_801DB340(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    HeapFree(g_Menu->arrowCursors[index]);
+    g_Menu->pManager->shouldRenderArrowCursor[index] = 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB39C);
 
@@ -2296,9 +2665,187 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB920);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBD4C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBDB4);
+#else
+extern u16 D_801EA724;
+extern s32 D_801EA728;
+extern u16 D_801EA72C;
 
+void func_801DBDB4(void) {
+    s32 i;
+    s32 lastOccupied = 0;
+
+    for (i = 0; i < MAX_INVENTORY_ITEMS; i++) {
+        if (g_GameState.itemIDs[i] != 0) {
+            lastOccupied = i;
+        }
+    }
+
+    if (lastOccupied < 0x10) {
+        D_801EA724 = 0x74;
+        D_801EA728 = 0;
+        D_801EA72C = 0;
+    } else {
+        s32 pages = ((lastOccupied - 0x10) / 2) + 1;
+        D_801EA724 = 0x4A;
+        D_801EA728 = pages;
+        D_801EA72C = 0x1068 / pages;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBE54);
+#else
+extern void func_801DA5BC(s32);
+extern void func_801DB0A8(s32, s32, s32, s32);
+extern void func_801DA9A8(s32, s32);
+extern s32 func_801DB920(s32, s32);
+extern void func_801DBD4C(s32, s32);
+
+/* Nav N2a Items screen.  The resource/content builders remain overlay stubs;
+ * this ports the real lifecycle: init, two windows, open SFX, panel-out,
+ * per-frame input loop, and the in-screen cursor teardown. */
+s32 func_801DBE54(void) {
+    s32 running = 1;
+    s32 firstFrame = 1;
+    s32 page = 0;
+    s32 row = 0;
+    s32 lastPage = -1;
+    s32 lastRow = -1;
+    s32 selected = -1;
+
+    g_XenoMenuN2Phase = 0;
+    func_801DA4A8();
+    func_801DBDB4();
+    func_801DB02C(0);
+    func_801DB02C(1);
+
+    while (running) {
+        s32 newRow;
+
+        func_801C7BF4();
+        if (!firstFrame && g_XenoMenuN2Phase == 0 &&
+            g_Menu->transitionEffectState == 0) {
+            g_XenoMenuN2Phase = 1;
+            printf("[xeno-port][test] Nav N2a: Items windows 3/4 settled open\n");
+            fflush(stdout);
+        }
+
+        if (page != lastPage) {
+            func_801DA5BC(page);
+            func_801D3344(0xC, ((D_801EA72C * page) / 100) + 0x12,
+                          D_801EA724);
+            lastPage = page;
+        }
+
+        func_801DB0A8(row, page, 0, 0);
+        if (row != lastRow) {
+            func_801DA9A8(row, page);
+            lastRow = row;
+        }
+
+        if (firstFrame) {
+            func_801D397C(3, 0xC, 0xA, 0x124, 0x84, 0, 1, 4, 1);
+            func_801D397C(4, 0x8, 0x8F, 0x130, 0x22, 0, 1, 4, 0);
+            firstFrame = 0;
+            func_801D1E80();
+            func_801D29A8(0, 0);
+        }
+
+        func_801DB0A8(selected, page, 1, 1);
+
+        switch (g_Menu->input) {
+        case MENU_INPUT_RIGHT:
+            newRow = row + 1;
+            if (newRow < 0x10) {
+                row = newRow;
+            } else if (++page > D_801EA728) {
+                page--;
+            } else {
+                row = 0xE;
+            }
+            lastRow = -1;
+            break;
+        case MENU_INPUT_DOWN:
+            newRow = row + 2;
+            if (newRow < 0x10) {
+                row = newRow;
+            } else if (++page > D_801EA728) {
+                page--;
+            }
+            lastRow = -1;
+            break;
+        case MENU_INPUT_LEFT:
+            newRow = row - 1;
+            if (newRow >= 0) {
+                row = newRow;
+            } else if (--page < 0) {
+                page++;
+            } else {
+                row = 1;
+            }
+            lastRow = -1;
+            break;
+        case MENU_INPUT_UP:
+            newRow = row - 2;
+            if (newRow >= 0) {
+                row = newRow;
+            } else if (--page < 0) {
+                page++;
+            }
+            lastRow = -1;
+            break;
+        case MENU_INPUT_CONFIRM: {
+            s32 current = page * 2 + row;
+            if (selected == -1) {
+                selected = current;
+            } else {
+                if (current == selected) {
+                    (void)func_801DB920(page, row);
+                } else {
+                    func_801DBD4C(current, selected);
+                }
+                selected = -1;
+                lastPage = -1;
+                lastRow = -1;
+            }
+            break;
+        }
+        case MENU_INPUT_BACK:
+            if (selected == -1) {
+                running = 0;
+            } else {
+                selected = -1;
+            }
+            break;
+        case 9:
+            page += 8;
+            if (page > D_801EA728) {
+                page = D_801EA728;
+            }
+            lastRow = -1;
+            break;
+        case 0xA:
+            page -= 8;
+            if (page < 0) {
+                page = 0;
+            }
+            lastRow = -1;
+            break;
+        default:
+            break;
+        }
+    }
+
+    func_801D2484();
+    func_801DB340(0);
+    func_801DB340(1);
+    func_801E8044(8, (u8*)g_Menu->pManager + 0x38);
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC1D4);
 
@@ -2370,7 +2917,53 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2B80);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2BE4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3088);
+#else
+extern void func_801D9E3C(void);
+extern void func_801E2368(void);
+extern void func_801DC2CC(s32);
+extern void func_801DE36C(void);
+extern void func_801DE400(void);
+extern void func_801D25E4(void);
+extern void func_801E2B80(void);
+
+/* Shared post-screen cleanup dispatcher.  Case 4 owns Items window/resource
+ * destruction; the other cases preserve their existing overlay entry points. */
+void func_801E3088(s32 arg0) {
+    switch ((u8)g_Menu->menu1Choice + (arg0 & 0xFF)) {
+    case 1:
+    case 8:
+        func_801D9E3C();
+        break;
+    case 2:
+        g_Menu->pManager->unk5[2] = 0; /* offsets 7 and 8 */
+        g_Menu->pManager->unk5[3] = 0;
+        g_Menu->pManager->unk4A[1] = 0;
+        func_801E2368();
+        break;
+    case 3:
+        func_801DC2CC(0);
+        break;
+    case 4:
+        func_801DA518();
+        break;
+    case 5:
+        func_801DE36C();
+        func_801DE400();
+        break;
+    case 6:
+        g_Menu->pManager->unk5[2] = 0;
+        g_Menu->pManager->unk5[3] = 0;
+        g_Menu->pManager->unk4A[1] = 0;
+        func_801D25E4();
+        func_801E2B80();
+        break;
+    default:
+        break;
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E31C0);
 

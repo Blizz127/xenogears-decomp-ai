@@ -1050,7 +1050,7 @@ echo "    undefined symbols to stub: $(wc -l < "$OUT/undef.txt")"
 
 if [ -s "$OUT/undef.txt" ]; then
     ELFS=()
-    for e in build/out/slus_006.64.elf build/out/field.elf build/out/member_change_menu.elf build/out/shop_menu.elf; do
+    for e in build/out/slus_006.64.elf build/out/field.elf build/out/member_change_menu.elf build/out/shop_menu.elf build/out/menu.elf; do
         [ -f "$e" ] && ELFS+=(--elf "$e")
     done
     # symbol_addrs files carry the real struct sizes (size:) the ELF omits, so data

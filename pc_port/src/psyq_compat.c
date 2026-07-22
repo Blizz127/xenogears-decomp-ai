@@ -464,9 +464,14 @@ static void PcPort_ForcedFieldMenu(void)
 #undef fired
 }
 
+static int s_xenoMenuNavActions = 0;
+static int s_xenoMenuNavDowns = 0;
+
 /* Synthetic menu-nav edges (XENO_MENU_NAV_TEST=N): once the forced menu has
  * had time to open, hold DPAD-DOWN for a single frame, N times, ~30 hook-calls
- * apart, so an automated capture can verify the cursor moves.
+ * apart, so an automated capture can verify the cursor moves.  The special
+ * value XENO_MENU_NAV_TEST=items performs three DOWN taps (Exit -> Items), then
+ * injects Circle/Cross release edges around a stable open-window interval.
  *
  * The inject is at the RAW BIOS pad buffer (g_C1Buffer), exactly where a real
  * keypress lands: PsyX_UpdateInput() refreshes the buffer from SDL each frame
@@ -486,7 +491,13 @@ static void PcPort_ForcedMenuNav(void)
 
     if (armed == -2) {
         const char* e = getenv("XENO_MENU_NAV_TEST");
-        armed = (e && *e) ? atoi(e) : 0;
+        if (e && strcmp(e, "items") == 0) {
+            armed = 3;
+            s_xenoMenuNavActions = 1;
+        } else {
+            armed = (e && *e) ? atoi(e) : 0;
+        }
+        s_xenoMenuNavDowns = armed;
     }
     if (armed <= 0)
         return;
@@ -503,9 +514,7 @@ static void PcPort_ForcedMenuNav(void)
             return;
         k = (t - 40) / 14;
         ph = (t - 40) % 14;
-        if (k >= armed)
-            return;
-        if (ph < 4) {
+        if (k < armed && ph < 4) {
             g_C1Buffer[0x2] &= (unsigned char)~0x40;  /* hold DPAD-DOWN */
             if (k + 1 > injected) {
                 injected = k + 1;
@@ -514,6 +523,60 @@ static void PcPort_ForcedMenuNav(void)
                 fflush(stdout);
             }
         }
+
+        /* After the Items common-exit tail has rebuilt the main highlight,
+         * issue one more genuine DOWN tap.  This is the nav-alive proof. */
+        if (s_xenoMenuNavActions) {
+            extern int g_XenoMenuN2Phase;
+            static int closedTick = -1, finalLogged = 0;
+            if (g_XenoMenuN2Phase >= 2 && closedTick < 0)
+                closedTick = t;
+            if (closedTick >= 0 && t >= closedTick + 20 && t < closedTick + 24) {
+                g_C1Buffer[0x2] &= (unsigned char)~0x40;
+                if (!finalLogged) {
+                    finalLogged = 1;
+                    printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: "
+                           "post-close DOWN (nav-alive) at reader tick %d\n", t);
+                    fflush(stdout);
+                }
+            }
+        }
+    }
+}
+
+/* Circle/Cross must be inserted after ControllerPoll recomputes the derived
+ * edge globals but before ControllerPushState snapshots them for the queue
+ * drained by func_801C7D78. */
+static void PcPort_ForcedMenuActionEdges(void)
+{
+    extern unsigned short g_C1ButtonStateReleased;
+    extern int g_XenoMenuNavReaderTicks;
+    extern int g_XenoMenuN2Phase;
+    static int confirmInjected = 0, cancelInjected = 0, openTick = -1;
+    int confirmTick;
+    int t;
+
+    if (!s_xenoMenuNavActions)
+        return;
+
+    t = g_XenoMenuNavReaderTicks;
+    confirmTick = 40 + 14 * s_xenoMenuNavDowns + 14;
+    if (!confirmInjected && t >= confirmTick) {
+        confirmInjected = 1;
+        g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
+        printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: Circle confirm "
+               "at reader tick %d\n", t);
+        fflush(stdout);
+    }
+
+    if (g_XenoMenuN2Phase == 1 && openTick < 0)
+        openTick = t;
+    if (!cancelInjected && openTick >= 0 && t >= openTick + 45) {
+        cancelInjected = 1;
+        g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
+        printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: Cross cancel "
+               "at reader tick %d\n", t);
+        fflush(stdout);
     }
 }
 
@@ -543,6 +606,7 @@ int Vsync(int mode)
     PcPort_ForcedMenuNav();
 
     { extern void ControllerPoll(void);   ControllerPoll();   }
+    PcPort_ForcedMenuActionEdges();
     /* Retail's per-vblank handler func_8003634C pairs ControllerPoll with
      * ControllerPushState (asm 80036368/80036370). FieldPollControllers reads
      * input only by draining that queue via ControllerPopState, so without the
