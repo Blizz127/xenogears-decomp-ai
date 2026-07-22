@@ -495,12 +495,16 @@ static void PcPort_ForcedFieldMenu(void)
 
 static int s_xenoMenuNavActions = 0;
 static int s_xenoMenuNavDowns = 0;
+static int s_xenoMenuReorderActions = 0;
+static int s_xenoMenuItemsOpenTick = -1;
 
 /* Synthetic menu-nav edges (XENO_MENU_NAV_TEST=N): once the forced menu has
  * had time to open, hold DPAD-DOWN for a single frame, N times, ~30 hook-calls
  * apart, so an automated capture can verify the cursor moves.  The special
  * value XENO_MENU_NAV_TEST=items performs three DOWN taps (Exit -> Items), then
  * injects Circle/Cross release edges around a stable open-window interval.
+ * XENO_MENU_NAV_TEST=items-reorder follows the same path, then selects row 0,
+ * moves right to row 1, confirms the reorder, and closes the screen.
  *
  * The inject is at the RAW BIOS pad buffer (g_C1Buffer), exactly where a real
  * keypress lands: PsyX_UpdateInput() refreshes the buffer from SDL each frame
@@ -520,9 +524,11 @@ static void PcPort_ForcedMenuNav(void)
 
     if (armed == -2) {
         const char* e = getenv("XENO_MENU_NAV_TEST");
-        if (e && strcmp(e, "items") == 0) {
+        if (e && (strcmp(e, "items") == 0 ||
+                  strcmp(e, "items-reorder") == 0)) {
             armed = 3;
             s_xenoMenuNavActions = 1;
+            s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
         } else {
             armed = (e && *e) ? atoi(e) : 0;
         }
@@ -549,6 +555,20 @@ static void PcPort_ForcedMenuNav(void)
                 injected = k + 1;
                 printf("[xeno-port][test] XENO_MENU_NAV_TEST: press DOWN %d/%d "
                        "(reader tick %d)\n", injected, armed, t);
+                fflush(stdout);
+            }
+        }
+
+        /* N2c-1 proof: after Circle selects the first item, inject a genuine
+         * RIGHT pad hold so the retail Items reader advances from row 0 to
+         * row 1 before the second Circle confirms the exchange. */
+        if (s_xenoMenuReorderActions && s_xenoMenuItemsOpenTick >= 0 &&
+            t >= s_xenoMenuItemsOpenTick + 18 &&
+            t < s_xenoMenuItemsOpenTick + 22) {
+            g_C1Buffer[0x2] &= (unsigned char)~0x20;  /* hold DPAD-RIGHT */
+            if (t == s_xenoMenuItemsOpenTick + 18) {
+                printf("[xeno-port][test] N2C1 REORDER: press RIGHT "
+                       "row 0 -> row 1 at reader tick %d\n", t);
                 fflush(stdout);
             }
         }
@@ -581,7 +601,11 @@ static void PcPort_ForcedMenuActionEdges(void)
     extern unsigned short g_C1ButtonStateReleased;
     extern int g_XenoMenuNavReaderTicks;
     extern int g_XenoMenuN2Phase;
-    static int confirmInjected = 0, cancelInjected = 0, openTick = -1;
+    extern unsigned int PcPort_N2c1ReadItemPair(void);
+    static int confirmInjected = 0, selectInjected = 0;
+    static int reorderInjected = 0, cancelInjected = 0;
+    static int reorderObserved = 0;
+    unsigned int itemPair;
     int confirmTick;
     int t;
 
@@ -598,13 +622,56 @@ static void PcPort_ForcedMenuActionEdges(void)
         fflush(stdout);
     }
 
-    if (g_XenoMenuN2Phase == 1 && openTick < 0)
-        openTick = t;
-    if (!cancelInjected && openTick >= 0 && t >= openTick + 45) {
+    if (g_XenoMenuN2Phase == 1 && s_xenoMenuItemsOpenTick < 0) {
+        s_xenoMenuItemsOpenTick = t;
+        if (s_xenoMenuReorderActions) {
+            itemPair = PcPort_N2c1ReadItemPair();
+            printf("[xeno-port][test] N2C1 STATE-BEFORE: "
+                   "row0=(ID%u,qty%u) row1=(ID%u,qty%u)\n",
+                   itemPair & 0xFF, (itemPair >> 8) & 0xFF,
+                   (itemPair >> 16) & 0xFF, (itemPair >> 24) & 0xFF);
+            fflush(stdout);
+        }
+    }
+
+    if (s_xenoMenuReorderActions && s_xenoMenuItemsOpenTick >= 0) {
+        if (!selectInjected && t >= s_xenoMenuItemsOpenTick + 8) {
+            selectInjected = 1;
+            g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
+            printf("[xeno-port][test] N2C1 REORDER: Circle select row 0 "
+                   "at reader tick %d\n", t);
+            fflush(stdout);
+        }
+        if (!reorderInjected && t >= s_xenoMenuItemsOpenTick + 32) {
+            reorderInjected = 1;
+            g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
+            printf("[xeno-port][test] N2C1 REORDER: Circle confirm row 1 "
+                   "at reader tick %d\n", t);
+            fflush(stdout);
+        }
+        if (reorderInjected && !reorderObserved) {
+            itemPair = PcPort_N2c1ReadItemPair();
+            if (itemPair == 0x0B010C02U) {
+                reorderObserved = 1;
+                printf("[xeno-port][test] N2C1 STATE-AFTER: "
+                       "row0=(ID%u,qty%u) row1=(ID%u,qty%u)\n",
+                       itemPair & 0xFF, (itemPair >> 8) & 0xFF,
+                       (itemPair >> 16) & 0xFF,
+                       (itemPair >> 24) & 0xFF);
+                fflush(stdout);
+            }
+        }
+    }
+
+    if (!cancelInjected && s_xenoMenuItemsOpenTick >= 0 &&
+        ((!s_xenoMenuReorderActions && t >= s_xenoMenuItemsOpenTick + 45) ||
+         (s_xenoMenuReorderActions && reorderObserved &&
+          t >= s_xenoMenuItemsOpenTick + 60))) {
         cancelInjected = 1;
         g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
-        printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: Cross cancel "
-               "at reader tick %d\n", t);
+        printf("[xeno-port][test] XENO_MENU_NAV_TEST=%s: Cross cancel "
+               "at reader tick %d\n",
+               s_xenoMenuReorderActions ? "items-reorder" : "items", t);
         fflush(stdout);
     }
 }

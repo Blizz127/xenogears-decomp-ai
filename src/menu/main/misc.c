@@ -3018,7 +3018,33 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB5E4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB920);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBD4C);
+#else
+void func_801DBD4C(s32 inventoryIndexA, s32 inventoryIndexB) {
+    u8 temp;
+
+    temp = g_GameState.itemIDs[inventoryIndexA];
+    g_GameState.itemIDs[inventoryIndexA] =
+        g_GameState.itemIDs[inventoryIndexB];
+    g_GameState.itemIDs[inventoryIndexB] = temp;
+
+    temp = g_GameState.itemQuantities[inventoryIndexA];
+    g_GameState.itemQuantities[inventoryIndexA] =
+        g_GameState.itemQuantities[inventoryIndexB];
+    g_GameState.itemQuantities[inventoryIndexB] = temp;
+}
+
+/* Harness-only N2c-1 readback.  Packing the first pair keeps the diagnostic
+ * boundary scalar while all save-state access remains through GameState's
+ * named native fields: id0, qty0, id1, qty1 from low to high byte. */
+u32 PcPort_N2c1ReadItemPair(void) {
+    return (u32)g_GameState.itemIDs[0] |
+           ((u32)g_GameState.itemQuantities[0] << 8) |
+           ((u32)g_GameState.itemIDs[1] << 16) |
+           ((u32)g_GameState.itemQuantities[1] << 24);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBDB4);
