@@ -2864,7 +2864,89 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8DE4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8EA4);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9704);
+#else
+/* Nav N2c-2b: the target-slot navigator.  Advances `current` with wrap
+ * (forward >=3 -> 0, backward <0 -> 2), skipping ineligible slots; any
+ * direction other than 0 (forward) / 1 (backward) returns `current`
+ * unchanged.  Eligibility is MODE-SPLIT: gearMode == 0 accepts a present
+ * member (currentCharacterIDs[slot] != 0xFF); gearMode != 0 accepts a slot
+ * whose has-gear byte unk5C[4+slot] (pManager+0x60, written by
+ * func_801C6AA0) is nonzero.
+ *
+ * NO TERMINATION GUARD, by retail design: zero eligible slots would loop
+ * forever.  Callers guarantee >= 1 eligible; do not "fix" this.
+ *
+ * Callsite catalogue (seven; only DB920 is ported as of N2c-2b):
+ *   func_801DB920  (Items use-prompt: (target, 0, 0) DOWN / (target, 1, 0) UP)
+ *   func_801DD790, func_801DDF24 (Abilities family)
+ *   func_801E05D0  (Equip core)
+ *   func_801E20C8, func_801E2BE4 (Status family)
+ *   func_801E23CC  (Gear) -- KNOWN RESIDUE CASE: passes caller-$s2 (the
+ *     dispatcher's saved arg0) as `current`, and a2 = 1 (GEAR mode) -- the
+ *     mode whose compensation below is unexercisable from Items.  Flagged
+ *     for N3-Gear; catalogue only. */
+u8 func_801D9704(u8 current, s32 backward, s32 gearMode) {
+    s32 slot = current;
+    s32 mode;
+
+    backward &= 0xFF;
+    if (backward == 0) {
+        mode = gearMode & 0xFF;
+        slot += 1;
+        for (;;) {
+            if (slot >= 3) {
+                slot = 0;
+            }
+            if (mode == 0) {
+                if (g_Menu->pManager->currentCharacterIDs[slot] !=
+                    CHARACTER_ID_NONE) {
+                    return (u8)slot;
+                }
+                slot += 1;
+            } else {
+                u8 hasGear = g_Menu->pManager->unk5C[4 + slot];
+
+                /* Retail's skip-increment sits in the branch DELAY SLOT and
+                 * executes on BOTH outcomes; the accept path compensates
+                 * with -1 (mirrored +1 on the backward side).  A linear
+                 * reading returns candidate+1 -- an off-by-one that still
+                 * navigates plausibly and only misbehaves in gear mode. */
+                slot += 1;
+                if (hasGear != 0) {
+                    return (u8)(slot - 1);
+                }
+            }
+        }
+    }
+    if (backward == 1) {
+        mode = gearMode & 0xFF;
+        slot -= 1;
+        for (;;) {
+            if (slot < 0) {
+                slot = 2;
+            }
+            if (mode == 0) {
+                if (g_Menu->pManager->currentCharacterIDs[slot] !=
+                    CHARACTER_ID_NONE) {
+                    return (u8)slot;
+                }
+                slot -= 1;
+            } else {
+                u8 hasGear = g_Menu->pManager->unk5C[4 + slot];
+
+                /* Same delay-slot compensation, mirrored. */
+                slot -= 1;
+                if (hasGear != 0) {
+                    return (u8)(slot + 1);
+                }
+            }
+        }
+    }
+    return current;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9808);
 

@@ -412,6 +412,12 @@ static void PcPort_ForcedKernelSelect(void)
  */
 static int s_xenoMenuForceFired = 0;
 
+/* N2c-2b target-navigation flavors of the prompt test: 0 = plain prompt,
+ * 1 = wraparound (DOWN x3 / UP x3 on the standard party), 2 = ineligible-skip
+ * (DOWN x2 on the 2b-test-only two-member party).  Declared ahead of
+ * PcPort_ForcedFieldMenu, whose seed consults it. */
+static int s_xenoMenuPromptNavKind = 0;
+
 static void PcPort_ForcedFieldMenu(void)
 {
     extern int D_800ADB64;   /* menu request (0xFF = none); s32 in-game */
@@ -485,6 +491,34 @@ static void PcPort_ForcedFieldMenu(void)
                        "cold boot had no save inventory\n");
             }
         }
+        /* N2c-2b ONLY (XENO_MENU_NAV_TEST=prompt-nav-skip): reshape the
+         * harness party to TWO members so the target navigator's
+         * ineligible-skip path is drivable (slot 2 absent).  The seed
+         * targets the FIELD-side source array g_GamePartyMembers: the field
+         * script VM tick (func_800A31E8) copies it over
+         * g_GameState.partyMembers every frame, so direct partyMembers
+         * writes are stomped before the menu reads them -- that same
+         * cold-zero sync is the true origin of the established three-Fei
+         * harness party (N2c-2b finding, correcting N2c-2a's stride
+         * hypothesis: undefined8 is u8 in include/types.h).  Isolated to
+         * this mode: items / items-prompt / items-reorder keep the
+         * established party state and their byte-identity baselines. */
+        if (s_xenoMenuPromptNavKind == 2) {
+            extern unsigned char g_GameState[];
+            extern int g_GamePartyMembers[];
+            unsigned short* pMask = (unsigned short*)&g_GameState[0x1D30];
+            unsigned short* pFrMask = (unsigned short*)&g_GameState[0x1D32];
+
+            g_GamePartyMembers[0] = 0;      /* slot 0: Fei */
+            g_GamePartyMembers[1] = 1;      /* slot 1: char 1 (present) */
+            g_GamePartyMembers[2] = 0xFF;   /* slot 2: absent */
+            *pMask |= 0x3;                  /* chars 0 + 1 available */
+            *pFrMask |= 0x3;
+            printf("[xeno-port][test] N2C2B SEED: two-member party for the "
+                   "skip proof (slot 2 absent, seeded at the field-side "
+                   "source g_GamePartyMembers)\n");
+            fflush(stdout);
+        }
         D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
@@ -529,11 +563,19 @@ static void PcPort_ForcedMenuNav(void)
         const char* e = getenv("XENO_MENU_NAV_TEST");
         if (e && (strcmp(e, "items") == 0 ||
                   strcmp(e, "items-reorder") == 0 ||
-                  strcmp(e, "items-prompt") == 0)) {
+                  strcmp(e, "items-prompt") == 0 ||
+                  strcmp(e, "prompt-nav") == 0 ||
+                  strcmp(e, "prompt-nav-skip") == 0)) {
             armed = 3;
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
-            s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0;
+            s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0 ||
+                                      strncmp(e, "prompt-nav", 10) == 0;
+            if (strcmp(e, "prompt-nav") == 0) {
+                s_xenoMenuPromptNavKind = 1;
+            } else if (strcmp(e, "prompt-nav-skip") == 0) {
+                s_xenoMenuPromptNavKind = 2;
+            }
         } else {
             armed = (e && *e) ? atoi(e) : 0;
         }
@@ -575,6 +617,36 @@ static void PcPort_ForcedMenuNav(void)
                 printf("[xeno-port][test] N2C1 REORDER: press RIGHT "
                        "row 0 -> row 1 at reader tick %d\n", t);
                 fflush(stdout);
+            }
+        }
+
+        /* N2c-2b proof: while the target prompt is open (phase 1), drive the
+         * navigator with genuine pad holds on the established 4-tick-hold /
+         * 14-tick-spacing cadence.  wrap (kind 1): DOWN x3 then UP x3
+         * (0->1->2->0 forward, then 0->2->1->0 backward).  skip (kind 2, on
+         * the 2b-test-only two-member party): DOWN x2 (0->1, then
+         * 1 -> skip absent 2 -> wrap -> 0). */
+        if (s_xenoMenuPromptNavKind != 0) {
+            extern int g_XenoMenuN2c2Phase;
+            static int navTick = -1, navLogged = 0;
+            if (g_XenoMenuN2c2Phase == 1 && navTick < 0)
+                navTick = t;
+            if (navTick >= 0 && g_XenoMenuN2c2Phase == 1 && t - navTick >= 8) {
+                int rel = t - navTick - 8;
+                int presses = (s_xenoMenuPromptNavKind == 1) ? 6 : 2;
+                int idx = rel / 14;
+                int phn = rel % 14;
+                if (idx < presses && phn < 4) {
+                    int isUp = (s_xenoMenuPromptNavKind == 1) && (idx >= 3);
+                    g_C1Buffer[0x2] &= (unsigned char)~(isUp ? 0x10 : 0x40);
+                    if (idx + 1 > navLogged) {
+                        navLogged = idx + 1;
+                        printf("[xeno-port][test] N2C2B NAV: press %s %d/%d "
+                               "at reader tick %d\n", isUp ? "UP" : "DOWN",
+                               idx + 1, presses, t);
+                        fflush(stdout);
+                    }
+                }
             }
         }
 
@@ -717,7 +789,9 @@ static void PcPort_ForcedMenuActionEdges(void)
         fflush(stdout);
     }
     if (s_xenoMenuPromptActions && promptTick >= 0 &&
-        !promptCancelInjected && t >= promptTick + 45) {
+        !promptCancelInjected &&
+        t >= promptTick + (s_xenoMenuPromptNavKind == 1 ? 115 :
+                           (s_xenoMenuPromptNavKind == 2 ? 55 : 45))) {
         promptCancelInjected = 1;
         g_C1ButtonStateReleased |= 0x40;
         printf("[xeno-port][test] N2C2A PROMPT: Cross cancel "
@@ -745,7 +819,8 @@ static void PcPort_ForcedMenuActionEdges(void)
          (s_xenoMenuReorderActions && reorderObserved &&
           t >= s_xenoMenuItemsOpenTick + 60) ||
          (s_xenoMenuPromptActions && promptObserved &&
-          t >= promptTick + 75))) {
+          t >= promptTick + (s_xenoMenuPromptNavKind == 1 ? 145 :
+                             (s_xenoMenuPromptNavKind == 2 ? 85 : 75))))) {
         cancelInjected = 1;
         g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
         printf("[xeno-port][test] XENO_MENU_NAV_TEST=%s: Cross cancel "
