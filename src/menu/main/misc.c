@@ -100,6 +100,9 @@ static void* MenuUnk440Pointer(void) {
 /* Live N2a capture marker: 1 = Items windows settled open, 2 = common-exit
  * teardown finished.  Port-only and inert outside the explicit harness. */
 int g_XenoMenuN2Phase = 0;
+/* Nav N2c-2a capture marker: 1 = initial/default target prompt built,
+ * 2 = prompt cancel teardown complete. */
+int g_XenoMenuN2c2Phase = 0;
 #endif
 
 #ifndef XENO_PC_PORT
@@ -127,13 +130,13 @@ s32 func_801C531C(s32 arg0) {
         screenResult = func_801E23CC();
         break;
     case 3:
-        screenResult = func_801DE29C(g_Menu->unk4CC[0x10], 1);
+        screenResult = func_801DE29C(g_Menu->selectedPartySlot, 1);
         break;
     case 4:
         screenResult = func_801DBE54();
         break;
     case 5:
-        screenResult = func_801E0F78(g_Menu->unk4CC[0x10], 1);
+        screenResult = func_801E0F78(g_Menu->selectedPartySlot, 1);
         break;
     case 6:
         screenResult = func_801E2BE4();
@@ -564,7 +567,7 @@ void func_801C6AA0(void) {
     /* Record the first active party slot (leave unset if none). */
     for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
         if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
-            g_Menu->unk4CC[0x10] = (u8)i;
+            g_Menu->selectedPartySlot = (u8)i;
             break;
         }
     }
@@ -1136,13 +1139,156 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD2AC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD710);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD81C);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDB1C);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDC6C);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE0CC);
+#else
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+extern void func_801C80B8(u32);
+extern void func_801E920C(POLY_FT4*, s32, s32, s32, s32, s32, s32);
+extern void func_801E927C(POLY_FT4*);
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+extern s32 D_801EA054[];
+extern s32 D_801EA098[];
+extern s32 D_801EA0DC[];
+extern s32 D_801EA120[];
+extern s32 D_801EA4DC[];
+extern u8 D_801EA578[];
+extern u8 D_801EA5C4[];
+
+static void MenuBuildPanelDigits(MenuCharacter* panel, POLY_FT4* polys,
+                                 u8* count, u32 value, s32 firstDigit,
+                                 s32 digitCount, s32 x, s32 y,
+                                 s32 compact) {
+    s32 i = 0;
+    s32 built = 0;
+
+    func_801C80B8(value);
+    *count = 0;
+    while (i < digitCount) {
+        s32 digitIndex = i;
+        u8 digit = g_Menu->digits[firstDigit + digitIndex];
+
+        if (compact) {
+            i++;
+        }
+
+        if (digit != 0xFF) {
+            s32 column = compact ? built : digitIndex;
+            *count += (u8)func_8002675C(
+                g_Menu->unk2DC, digit, &polys[(*count) * 2],
+                g_Menu->renderContext, x + column * 8, y, 0x1000);
+            built++;
+        }
+        if (!compact) {
+            i++;
+        }
+    }
+    (void)panel;
+}
+
+void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable, u8 mode) {
+    s32 i = 0;
+    s32 rowOffset = slot * 0x38;
+    POLY_FT4* face;
+
+    panel->descriptionStringsLength = 0;
+    while (i < 9) {
+        s32 glyphIndex = i;
+        s32 glyph = D_801EA4DC[mode * 9 + glyphIndex];
+
+        i++;
+
+        if (glyph != 0xFFFF) {
+            panel->descriptionStringsLength += (u8)func_8002675C(
+                g_Menu->unk2DC, glyph,
+                &panel->polysDescriptionStrings[panel->descriptionStringsLength * 2],
+                g_Menu->renderContext, xTable[glyphIndex],
+                yTable[glyphIndex] + rowOffset,
+                0x1000);
+        }
+    }
+
+    func_8002675C(g_Menu->unk2DC, 0x14B + slot,
+                  panel->polysPortraitSmall, g_Menu->renderContext,
+                  xTable[9], yTable[9] + rowOffset, 0x1000);
+    face = &panel->polys4B0[g_Menu->renderContext];
+    func_801E927C(face);
+    face->tpage = GetTPage(0, 0, 0x180, 0);
+    if ((mode == 0 && !(charId & 1)) ||
+        (mode != 0 && (g_GameState.characters[charId].gearId & 1))) {
+        face->clut = g_SystemPalette1;
+    } else {
+        face->clut = g_SystemPalette2;
+    }
+    func_801E920C(face, xTable[16], yTable[16] + rowOffset,
+                  (*(s32*)(D_801EA578 + (mode * 3 + slot) * 4) << 2) & 0xFC,
+                  D_801EA5C4[mode * 12 + slot * 4], mode * 0x18 + 0x48,
+                  0xD);
+}
+
+void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable) {
+    MenuBuildPanelDigits(panel, panel->polysLevelString,
+                         &panel->levelStringLength,
+                         g_GameState.characters[charId].level, 6, 3,
+                         xTable[10], yTable[10] + slot * 0x38, 0);
+    func_801C80B8(g_GameState.characters[charId].unk63);
+    panel->unkBE1 = 0;
+}
+
+void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable, u8 mode) {
+    u32 hp;
+    u32 maxHp;
+    s32 firstDigit;
+    s32 digitCount;
+
+    if (mode == 0) {
+        hp = g_GameState.characters[charId].hp;
+        maxHp = g_GameState.characters[charId].maxHp;
+        firstDigit = 6;
+        digitCount = 3;
+    } else {
+        u8 gearId = g_GameState.characters[charId].gearId;
+        hp = g_GameState.gears[gearId].hp;
+        maxHp = g_GameState.gears[gearId].maxHp;
+        firstDigit = 4;
+        digitCount = 5;
+    }
+
+    MenuBuildPanelDigits(panel, panel->polysHpString, &panel->hpStringLength,
+                         hp, firstDigit, digitCount, xTable[12],
+                         yTable[12] + slot * 0x38, 0);
+    MenuBuildPanelDigits(panel, panel->polysMaxHpString,
+                         &panel->maxHpStringLength, maxHp, firstDigit,
+                         digitCount, xTable[13], yTable[13] + slot * 0x38, 1);
+
+    if (mode == 0) {
+        MenuBuildPanelDigits(panel, panel->polysMpString,
+                             &panel->mpStringLength,
+                             g_GameState.characters[charId].mp, 7, 2,
+                             xTable[14], yTable[14] + slot * 0x38, 0);
+        MenuBuildPanelDigits(panel, panel->polysMaxMpString,
+                             &panel->maxMpStringLength,
+                             g_GameState.characters[charId].maxMp, 7, 2,
+                             xTable[15], yTable[15] + slot * 0x38, 1);
+    }
+}
+
+void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable, u8 mode) {
+    func_801CD81C(panel, charId, slot, xTable, yTable, mode);
+    func_801CDB1C(panel, charId, slot, xTable, yTable);
+    func_801CDC6C(panel, charId, slot, xTable, yTable, mode);
+    panel->unkBE7 = 1;
+    panel->renderContext = (u8)g_Menu->renderContext;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE198);
@@ -1200,7 +1346,23 @@ void func_801CE338(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE3C8);
+#else
+void func_801CE3C8(void) {
+    s32 i;
+
+    if (g_Menu->pManager->shouldRenderPointerCursors) {
+        for (i = 0; i < MENU_MAX_NUM_CURSORS; i++) {
+            if (g_Menu->pCursors->shouldRender[i]) {
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        &g_Menu->pCursors->polysCursor[
+                            i * 2 + g_Menu->pCursors->renderContexts[i]]);
+            }
+        }
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE464);
@@ -1477,9 +1639,52 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D11F0);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1258);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D12D4);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D13F8);
+#else
+void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
+    if (!panel->unkBE7) {
+        return;
+    }
+
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polysPortraitSmall[panel->renderContext]);
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polys4B0[panel->renderContext]);
+    func_801CE2B4(panel->descriptionStringsLength,
+                  (u8*)panel->polysDescriptionStrings, panel->renderContext);
+    func_801CE2B4(panel->levelStringLength,
+                  (u8*)panel->polysLevelString, panel->renderContext);
+    func_801CE2B4(panel->unkBE1, (u8*)panel->polys5F0,
+                  panel->renderContext);
+    func_801CE2B4(panel->hpStringLength, (u8*)panel->polysHpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxHpStringLength,
+                  (u8*)panel->polysMaxHpString, panel->renderContext);
+    func_801CE2B4(panel->mpStringLength, (u8*)panel->polysMpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxMpStringLength,
+                  (u8*)panel->polysMaxMpString, panel->renderContext);
+    if (drawFixedLabels & 0xFF) {
+        func_801CE2B4(5, (u8*)panel->polys2D0,
+                      panel->renderContext);
+    }
+}
+
+void func_801D13F8(void) {
+    s32 i;
+
+    if (g_Menu->pManager->unk46) {
+        i = 0;
+        do {
+            MenuCharacter* panel = g_Menu->currentCharacters[i];
+            i++;
+            func_801D12D4(panel, 1);
+        } while (i < MAX_PARTY_MEMBERS);
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1464);
 
@@ -1744,12 +1949,12 @@ void func_801D22F4(s32 mode) {
     s32 offset;
     u8 m = (u8)mode;
 
-    g_Menu->pManager->shouldRenderCursors = 0;
+    g_Menu->pManager->shouldRenderPointerCursors = 0;
     if (m == 1) {
         return;
     }
     if (m == 0) {
-        g_Menu->pManager->shouldRenderCursors = 1;
+        g_Menu->pManager->shouldRenderPointerCursors = 1;
         g_Menu->pCursors->unk144[0] = 1;
         g_Menu->pCursors->unk144[1] = 1;
     }
@@ -1775,7 +1980,7 @@ void func_801D22F4(s32 mode) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2484);
 #else
 void func_801D2484(void) {
-    g_Menu->pManager->shouldRenderCursors = 0;
+    g_Menu->pManager->shouldRenderPointerCursors = 0;
 }
 #endif
 
@@ -3012,11 +3217,290 @@ void func_801DB340(s32 cursorIndex) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB39C);
+#else
+extern void func_801E8EAC(POLY_FT4*, s32);
+extern void func_801E8F60(s32, s32);
 
+static void MenuTintString(MenuString* string, s32 mode) {
+    func_801E8EAC(&string->polys[string->renderContext], mode);
+}
+
+void func_801DB39C(s32 mode) {
+    ItemMenuWork* work = MenuItemWork();
+    s32 tint = mode & 0xFF;
+    s32 i;
+
+    func_801E8F60(3, tint);
+    func_801E8F60(4, tint);
+    func_801E8EAC(&g_Menu->pScrollHandle->polys[
+                      g_Menu->pScrollHandle->renderContext], tint);
+
+    i = 0;
+    while (i < 16) {
+        POLY_FT4* name = &work->itemNames[i].polys[
+            work->itemNames[i].renderContext];
+        s32 row = i;
+
+        i++;
+
+        /* Retail advances the row on this skip as well.  A blank string's
+         * neutral first colour byte is the sentinel used by the original. */
+        if (name->r0 != 0x20) {
+            func_801E8EAC(name, tint);
+            MenuTintString(&work->itemCounts[row], tint);
+        }
+    }
+    i = 0;
+    while (i < MENU_MAX_NUM_ARROW_CURSORS) {
+        MenuArrowCursor* cursor = g_Menu->arrowCursors[i];
+        i++;
+        func_801E8EAC(&cursor->polys[cursor->renderContext], tint);
+    }
+    MenuTintString(&work->selectedItemName, tint);
+    MenuTintString(&work->selectedItemCount, tint);
+    MenuTintString(&work->selectedItemDescription, tint);
+    i = 0;
+    do {
+        MenuString* string = &g_Menu->itemMenuStrings[i];
+        i++;
+        MenuTintString(string, tint);
+    } while (i < 8);
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB5E4);
+#else
+extern u8 D_801E9785;
+extern s32 D_801EA054[];
+extern s32 D_801EA098[];
+extern s32 D_801EA0DC[];
+extern s32 D_801EA120[];
+extern void func_801CE0CC(MenuCharacter*, u8, u8, s32*, s32*, u8);
 
+void func_801DB5E4(s32 mode) {
+    s32* xTable;
+    s32* yTable;
+    u8 gearMode = 0;
+    s32 i;
+
+    if (!D_801E9785) {
+        i = 0;
+        do {
+            s32 slot = i;
+            MenuCharacter* panel = HeapAlloc(sizeof(MenuCharacter), 0);
+            i++;
+            g_Menu->currentCharacters[slot] = panel;
+            bzero(panel, sizeof(MenuCharacter));
+        } while (i < MAX_PARTY_MEMBERS);
+        D_801E9785 = 1;
+    }
+    i = 0;
+    do {
+        MenuCharacter* panel = g_Menu->currentCharacters[i];
+        i++;
+        bzero(panel, sizeof(MenuCharacter));
+    } while (i < MAX_PARTY_MEMBERS);
+
+    if ((mode & 0xFF) == 2) {
+        xTable = D_801EA098;
+        yTable = D_801EA120;
+        gearMode = 1;
+    } else {
+        xTable = D_801EA054;
+        yTable = D_801EA0DC;
+    }
+
+    i = 0;
+    while (i < MAX_PARTY_MEMBERS) {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[i];
+        MenuCharacter* panel = g_Menu->currentCharacters[i];
+        u8 eligible = 1;
+
+        if (charId == CHARACTER_ID_NONE) {
+            panel->unkBE7 = 0;
+            i++;
+            continue;
+        }
+        if (gearMode) {
+            eligible = g_GameState.characters[charId].gearId != 0xFF;
+        }
+        if (eligible) {
+            func_801CE0CC(panel, charId, (u8)i, xTable, yTable, gearMode);
+        }
+        i++;
+    }
+
+    g_Menu->pManager->unk46 = 1;
+    i = 0;
+    {
+        s16 top = 0x30;
+        s16 bottom = 0x40;
+        do {
+            POLY_FT4* cursor = &g_Menu->pCursors->polysCursor[
+                i * 2 + g_Menu->pCursors->renderContexts[i]];
+
+            cursor->x0 = cursor->x2 = 0x90;
+            cursor->x1 = cursor->x3 = 0xA0;
+            cursor->y0 = cursor->y1 = top;
+            cursor->y2 = bottom;
+            top += 0x38;
+            i++;
+            cursor->y3 = bottom;
+            bottom += 0x38;
+        } while (i < MAX_PARTY_MEMBERS);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB920);
+#else
+extern u8 D_80059171;
+extern u8 D_801E9785;
+extern void func_801C7BF4(void);
+extern void func_801C8574(s32);
+extern void func_801D397C(u8, s32, s32, s32, s32, u8, u8, s32, u8);
+extern void func_801D4EA0(s32);
+extern u8 func_801D9704(u8, s32, s32);
+extern void func_801DA5BC(s32);
+extern void func_801DA9A8(s32, s32);
+extern void func_801DB39C(s32);
+extern void func_801DB5E4(s32);
+extern s32 func_801E31C0(MenuUnk6*, u8, u8);
+
+s32 func_801DB920(s32 page, s32 row) {
+    s32 inventoryIndex = page * 2 + row;
+    u8 selectedTarget = g_Menu->selectedPartySlot;
+    MenuShopItem* item = &g_Menu->unk330->pItemsData[
+        g_GameState.itemIDs[inventoryIndex]];
+    u8* quantity = &g_GameState.itemQuantities[inventoryIndex];
+    s32 targetMask = 0;
+    s32 running = 1;
+    s32 rebuild = 1;
+    s32 multiTarget;
+    s32 usable = 0;
+    s32 i;
+
+    D_801E9785 = 0;
+    g_XenoMenuN2c2Phase = 0;
+    if (item->flags & 0x80) {
+        usable = 1;
+        if (item->flags & 0x20) {
+            usable = D_80059171 != 0;
+        }
+    }
+    multiTarget = item->categoryFlags & 1;
+    if (!usable) {
+        return 0;
+    }
+
+    func_801D397C(2, 0x10, 0xE, 0x90, 0xB0, 0, 0, 4, 0);
+    while (running) {
+        func_801C7BF4();
+        targetMask = 0;
+
+        if (rebuild) {
+            rebuild = 0;
+            func_801DA5BC(page);
+            func_801DA9A8(row, page);
+            func_801DB39C(1);
+            func_801DB5E4(0);
+            if (!g_XenoMenuN2c2Phase) {
+                g_XenoMenuN2c2Phase = 1;
+                printf("[xeno-port][test] N2C2A PROMPT: window 2, tint, "
+                       "party panels, and default target cursor built\n");
+                fflush(stdout);
+            }
+        }
+
+        g_Menu->pCursors->shouldRender[2] = 0;
+        g_Menu->pCursors->shouldRender[1] = 0;
+        g_Menu->pCursors->shouldRender[0] = 0;
+        if (multiTarget) {
+            for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
+                if (g_Menu->pManager->currentCharacterIDs[i] !=
+                    CHARACTER_ID_NONE) {
+                    targetMask |= 1 << i;
+                    g_Menu->pCursors->shouldRender[i] = 1;
+                }
+            }
+        } else {
+            targetMask = 1 << selectedTarget;
+            g_Menu->pCursors->shouldRender[selectedTarget] = 1;
+        }
+        g_Menu->pManager->shouldRenderPointerCursors = 1;
+
+        if (*quantity == 0) {
+            running = 0;
+        }
+        if (!running) {
+            break;
+        }
+
+        switch (g_Menu->input) {
+        case MENU_INPUT_DOWN:
+            selectedTarget = func_801D9704(selectedTarget, 0, 0);
+            break;
+        case MENU_INPUT_UP:
+            selectedTarget = func_801D9704(selectedTarget, 1, 0);
+            break;
+        case MENU_INPUT_CONFIRM: {
+            /* Retail accumulates func_801E31C0's ZERO returns: 0 = the item
+             * effect applied to that target.  Any application consumes one
+             * unit (chime 0x37); no application at all is the buzzer path. */
+            s32 anyEffectApplied = 0;
+
+            for (i = 0; i < MAX_PARTY_MEMBERS; i++) {
+                if (func_801C865C((u16)targetMask, (u8)i) &&
+                    func_801E31C0(g_Menu->unk330,
+                                  g_Menu->pManager->currentCharacterIDs[i],
+                                  g_GameState.itemIDs[inventoryIndex]) == 0) {
+                    anyEffectApplied |= 1;
+                }
+            }
+            if (anyEffectApplied) {
+                func_801C8574(0x37);
+                (*quantity)--;
+                rebuild = 1;
+                if (*quantity == 0) {
+                    g_GameState.itemIDs[inventoryIndex] = 0;
+                }
+            } else {
+                func_801C8574(4);
+                rebuild = 1;
+            }
+            break;
+        }
+        case MENU_INPUT_BACK:
+            running = 0;
+            targetMask = 0;
+            break;
+        }
+    }
+
+    g_Menu->pCursors->shouldRender[2] = 0;
+    g_Menu->pCursors->shouldRender[1] = 0;
+    g_Menu->pCursors->shouldRender[0] = 0;
+    func_801DB39C(0);
+    g_Menu->pManager->unk46 = 0;
+    func_801C7BF4();
+    i = 0;
+    do {
+        MenuCharacter* panel = g_Menu->currentCharacters[i];
+        i++;
+        HeapFree(panel);
+    } while (i < MAX_PARTY_MEMBERS);
+    D_801E9785 = 0;
+    func_801D4EA0(2);
+    g_XenoMenuN2c2Phase = 2;
+    printf("[xeno-port][test] N2C2A PROMPT: cancel teardown complete\n");
+    fflush(stdout);
+    return targetMask & 0xFF;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBD4C);
@@ -3183,14 +3667,20 @@ s32 func_801DBE54(void) {
             if (selected == -1) {
                 selected = current;
             } else {
+                /* Retail refreshes the page/selection content only when the
+                 * prompt reports a change (nonzero return: an item was used
+                 * or depleted).  A cancelled prompt drops the pick alone. */
                 if (current == selected) {
-                    (void)func_801DB920(page, row);
+                    if (func_801DB920(page, row) != 0) {
+                        lastPage = -1;
+                        lastRow = -1;
+                    }
                 } else {
                     func_801DBD4C(current, selected);
+                    lastPage = -1;
+                    lastRow = -1;
                 }
                 selected = -1;
-                lastPage = -1;
-                lastRow = -1;
             }
             break;
         }
@@ -3810,9 +4300,81 @@ void func_801E8DA8(s32 charArg, s32 slot) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8EAC);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8F60);
+#else
+void func_801E8EAC(POLY_FT4* poly, s32 mode) {
+    SetShadeTex(poly, 0);
+    switch (mode & 0xFF) {
+    case 0:
+        SetSemiTrans(poly, 0);
+        poly->r0 = poly->g0 = poly->b0 = 0x80;
+        break;
+    case 1:
+        poly->tpage |= 0x20;
+        SetSemiTrans(poly, 1);
+        poly->r0 = poly->g0 = poly->b0 = 0x21;
+        break;
+    case 2:
+        poly->r0 = poly->g0 = poly->b0 = 0x80;
+        break;
+    case 3:
+        poly->r0 = poly->g0 = poly->b0 = 0x21;
+        break;
+    }
+}
+
+void func_801E8F60(s32 windowIndex, s32 dim) {
+    MenuWindow* window = g_Menu->windows[windowIndex & 0xFF];
+    s32 mode = (dim & 0xFF) ? 3 : 2;
+    s32 i;
+
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysWindowBorderCorners[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 4);
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysWindowBorderTop[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 4);
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysWindowBorderBottom[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 4);
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysWindowBorderLeft[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 4);
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysWindowBorderRight[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 4);
+    i = 0;
+    do {
+        POLY_FT4* poly = &window->polysScrollBarEnds[
+            i * 2 + window->renderContext];
+        i++;
+        func_801E8EAC(poly, mode);
+    } while (i < 2);
+    func_801E8EAC(&window->polysScrollBarEmpty[window->renderContext], mode);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E91C4);

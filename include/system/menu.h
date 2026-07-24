@@ -112,8 +112,8 @@ typedef struct {
     /* 0x1A */ u8 unk1A[0x6];
     /* 0x20 */ u8 shouldRenderWindow[MENU_MAX_NUM_WINDOWS];
     /* 0x27 */ u8 unk27[MENU_MAX_NUM_WINDOWS];
-    /* 0x2B */ u8 unk2B;
-    /* 0x2C */ u_char shouldRenderCursors;
+    /* 0x2E */ u8 unk2E;
+    /* 0x2F */ u_char shouldRenderPointerCursors;
     /* 0x30 */ u8 currentCharacterIDs[0x3];
     /* 0x33 */ u8 _pad33;
     /* 0x34 */ u8 unk34[0x4];
@@ -173,20 +173,16 @@ typedef struct {
 // Character Info
 typedef struct {
     /* 0x0   */ POLY_FT4 polysDescriptionStrings[18];
-    /* 0x2D0 */ POLY_FT4 polys2D0[2]; // Unknown if bigger or not
-    /* 0x320 */ u8 unk320[0x140];
+    /* 0x2D0 */ POLY_FT4 polys2D0[2];
+    /* 0x320 */ POLY_FT4 polysFixedLabelTail[8];
     /* 0x460 */ POLY_FT4 polysPortraitSmall[2];
     /* 0x4B0 */ POLY_FT4 polys4B0[2];
     /* 0x500 */ POLY_FT4 polysLevelString[6];
     /* 0x5F0 */ POLY_FT4 polys5F0[6];
-    /* 0x6E0 */ POLY_FT4 polysHpString[6];
-    /* 0x7D0 */ u8 unk7D0[0xA0];
-    /* 0x870 */ POLY_FT4 polysMaxHpString[6];
-    /* 0x960 */ u8 unk960[0xA0];
-    /* 0xA00 */ POLY_FT4 polysMpString[4];
-    /* 0xAA0 */ u8 unkAA0[0x50];
-    /* 0xAF0 */ POLY_FT4 polysMaxMpString[4];
-    /* 0xB90 */ u8 unkB90[0x50];
+    /* 0x6E0 */ POLY_FT4 polysHpString[10];
+    /* 0x870 */ POLY_FT4 polysMaxHpString[10];
+    /* 0xA00 */ POLY_FT4 polysMpString[6];
+    /* 0xAF0 */ POLY_FT4 polysMaxMpString[6];
     /* 0xBE0 */ u_char levelStringLength;
     /* 0xBE1 */ u8 unkBE1; // Num polys5F0
     /* 0xBE2 */ u_char hpStringLength;
@@ -444,7 +440,9 @@ typedef struct {
     /* 0x4C4  */ s32 texPageX3;
     /* 0x4C8  */ s32 texPageY3;
 
-    /* 0x4CC  */ u8 unk4CC[0x14];
+    /* 0x4CC  */ u8 unk4CC[0x10];
+    /* 0x4DC  */ u8 selectedPartySlot;
+    /* 0x4DD  */ u8 _pad4DD[0x3];
     /* 0x4E0  */ MenuString unk4E0[4];
     /* 0x6E0  */ MenuString unk6E0[8];
     /* 0xAE0  */ MenuString unkAE0[6];

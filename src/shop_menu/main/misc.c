@@ -1474,7 +1474,7 @@ void ShopMenuRenderWindows(void) {
 void ShopMenuRenderPointerCursors(void) {
     int i;
 
-    if (g_Menu->pManager->shouldRenderCursors) {
+    if (g_Menu->pManager->shouldRenderPointerCursors) {
         for (i = 0; i < MENU_MAX_NUM_CURSORS; i++) {
             if (g_Menu->pCursors->shouldRender[i]) {
                 if (g_Menu->pCursors->unk144[i]) {
@@ -1574,7 +1574,7 @@ void func_801CA22C(void) {
     MenuString* pString;
     int i;
 
-    if (g_Menu->pManager->unk2B) {
+    if (g_Menu->pManager->unk2E) {
         for (i = 0 ; i < 3; i++) {
             pString = g_Menu->unk1DE0[i];
             if (pString->unk7F) {
@@ -1890,7 +1890,7 @@ void ShopMenuInitializePointerCursors(u_char mode) {
     
     switch (mode) {
         case 0:
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             g_Menu->pCursors->unk144[0] = TRUE;
             g_Menu->pCursors->unk144[1] = TRUE;
             /* fallthrough */
@@ -1913,7 +1913,7 @@ void ShopMenuInitializePointerCursors(u_char mode) {
                 0x800
             );
             g_Menu->pCursors->renderContexts[0] = g_Menu->renderContext;
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             return;
         case 1:
             return;
@@ -1921,7 +1921,7 @@ void ShopMenuInitializePointerCursors(u_char mode) {
 }
 
 void ShopMenuFreePointerCursors(void) {
-    g_Menu->pManager->shouldRenderCursors = FALSE;
+    g_Menu->pManager->shouldRenderPointerCursors = FALSE;
     ShopMenuUpdateAndRender();
     HeapFree(g_Menu->pCursors);
 }
@@ -1993,7 +1993,7 @@ void ShopMenuConfirmationWindowInitialize(u_char stringIndex) {
     LoadImage(&g_Menu->unk1DE0[2]->vramDest, g_Menu->unk1DE0[2]->pVramBuffer);
     DrawSync(0);
     
-    g_Menu->pManager->unk2B = 1;
+    g_Menu->pManager->unk2E = 1;
     HeapFree(g_Menu->unk1DE0[0]->pVramBuffer);
     HeapFree(g_Menu->unk1DE0[2]->pVramBuffer);
     if (g_Menu->pManager->unk5B == 2) {
@@ -2008,7 +2008,7 @@ void ShopMenuConfirmationWindowFree(void) {
 
     if (g_Menu->pManager->shouldRenderWindow[4]) {
         ShopMenuFreeWindow(4);
-        g_Menu->pManager->unk2B = 0;
+        g_Menu->pManager->unk2E = 0;
         for (i = 0; i < 4; i++) {
             HeapFree(g_Menu->unk1DE0[i]);
         }

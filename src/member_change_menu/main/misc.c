@@ -922,7 +922,7 @@ void MemberChangeMenuUpdateWindows(void) {
 void MemberChangeMenuDrawCursors(void) {
     int i;
 
-    if (g_Menu->pManager->shouldRenderCursors) {
+    if (g_Menu->pManager->shouldRenderPointerCursors) {
         for (i = 0; i < MENU_MAX_NUM_CURSORS; i++) {
             if (g_Menu->pCursors->shouldRender[i]) {
                 if (g_Menu->pCursors->unk144[i]) {
@@ -1932,7 +1932,7 @@ void MemberChangeMenuSetCursorToCharacter(u_char isBenchedCharWindowActive, int 
         
     g_Menu->pCursors->shouldRender[cursorIndex] = TRUE;
     g_Menu->pCursors->renderContexts[cursorIndex] = g_Menu->renderContext;
-    g_Menu->pManager->shouldRenderCursors = TRUE;
+    g_Menu->pManager->shouldRenderPointerCursors = TRUE;
 }
 
 void MemberChangeMenuInitializeCursors(unsigned char mode) {
@@ -1943,7 +1943,7 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
     
     switch (mode) {
         case 0:
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             g_Menu->pCursors->unk144[0] = 1;
             g_Menu->pCursors->unk144[1] = 1;
             /* fallthrough */
@@ -1966,7 +1966,7 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
                 0x800
             );
             g_Menu->pCursors->renderContexts[0] = g_Menu->renderContext;
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             return;
         case 1:
             return;
@@ -1974,7 +1974,7 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
 }
 
 void MemberChangeMenuFreeCursors(void) {
-    g_Menu->pManager->shouldRenderCursors = FALSE;
+    g_Menu->pManager->shouldRenderPointerCursors = FALSE;
     MemberChangeMenuUpdateAndRender();
     HeapFree(g_Menu->pCursors);
 }

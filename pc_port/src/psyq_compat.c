@@ -496,6 +496,7 @@ static void PcPort_ForcedFieldMenu(void)
 static int s_xenoMenuNavActions = 0;
 static int s_xenoMenuNavDowns = 0;
 static int s_xenoMenuReorderActions = 0;
+static int s_xenoMenuPromptActions = 0;
 static int s_xenoMenuItemsOpenTick = -1;
 
 /* Synthetic menu-nav edges (XENO_MENU_NAV_TEST=N): once the forced menu has
@@ -505,6 +506,8 @@ static int s_xenoMenuItemsOpenTick = -1;
  * injects Circle/Cross release edges around a stable open-window interval.
  * XENO_MENU_NAV_TEST=items-reorder follows the same path, then selects row 0,
  * moves right to row 1, confirms the reorder, and closes the screen.
+ * XENO_MENU_NAV_TEST=items-prompt confirms row 0 twice, holds the initial
+ * target prompt without any direction input, then cancels prompt and Items.
  *
  * The inject is at the RAW BIOS pad buffer (g_C1Buffer), exactly where a real
  * keypress lands: PsyX_UpdateInput() refreshes the buffer from SDL each frame
@@ -525,10 +528,12 @@ static void PcPort_ForcedMenuNav(void)
     if (armed == -2) {
         const char* e = getenv("XENO_MENU_NAV_TEST");
         if (e && (strcmp(e, "items") == 0 ||
-                  strcmp(e, "items-reorder") == 0)) {
+                  strcmp(e, "items-reorder") == 0 ||
+                  strcmp(e, "items-prompt") == 0)) {
             armed = 3;
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
+            s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0;
         } else {
             armed = (e && *e) ? atoi(e) : 0;
         }
@@ -601,13 +606,30 @@ static void PcPort_ForcedMenuActionEdges(void)
     extern unsigned short g_C1ButtonStateReleased;
     extern int g_XenoMenuNavReaderTicks;
     extern int g_XenoMenuN2Phase;
+    extern int g_XenoMenuN2c2Phase;
     extern unsigned int PcPort_N2c1ReadItemPair(void);
     static int confirmInjected = 0, selectInjected = 0;
     static int reorderInjected = 0, cancelInjected = 0;
+    static int promptInjected = 0, promptCancelInjected = 0;
+    static int promptObserved = 0, promptTick = -1;
     static int reorderObserved = 0;
+    static unsigned int inventoryHashBefore = 0;
+    static unsigned int characterHashBefore = 0;
     unsigned int itemPair;
     int confirmTick;
     int t;
+
+    /* FNV-1a over the actual save-backed regions touched by item effects. */
+    #define HASH_REGION(dst, start, length) do { \
+        extern unsigned char g_GameState[]; \
+        unsigned int _h = 2166136261U; \
+        int _i; \
+        for (_i = 0; _i < (length); _i++) { \
+            _h ^= g_GameState[(start) + _i]; \
+            _h *= 16777619U; \
+        } \
+        (dst) = _h; \
+    } while (0)
 
     if (!s_xenoMenuNavActions)
         return;
@@ -630,6 +652,14 @@ static void PcPort_ForcedMenuActionEdges(void)
                    "row0=(ID%u,qty%u) row1=(ID%u,qty%u)\n",
                    itemPair & 0xFF, (itemPair >> 8) & 0xFF,
                    (itemPair >> 16) & 0xFF, (itemPair >> 24) & 0xFF);
+            fflush(stdout);
+        }
+        if (s_xenoMenuPromptActions) {
+            HASH_REGION(characterHashBefore, 0x26C, 0x70C);
+            HASH_REGION(inventoryHashBefore, 0x1F90, 0x12C);
+            printf("[xeno-port][test] N2C2A STATE-BEFORE: "
+                   "inventory=%08x characters=%08x\n",
+                   inventoryHashBefore, characterHashBefore);
             fflush(stdout);
         }
     }
@@ -663,17 +693,68 @@ static void PcPort_ForcedMenuActionEdges(void)
         }
     }
 
+    if (s_xenoMenuPromptActions && s_xenoMenuItemsOpenTick >= 0 &&
+        !selectInjected && t >= s_xenoMenuItemsOpenTick + 8) {
+        selectInjected = 1;
+        g_C1ButtonStateReleased |= 0x20;
+        printf("[xeno-port][test] N2C2A PROMPT: Circle select row 0 "
+               "at reader tick %d\n", t);
+        fflush(stdout);
+    }
+    if (s_xenoMenuPromptActions && selectInjected && !promptInjected &&
+        t >= s_xenoMenuItemsOpenTick + 24) {
+        promptInjected = 1;
+        g_C1ButtonStateReleased |= 0x20;
+        printf("[xeno-port][test] N2C2A PROMPT: Circle confirm same row "
+               "at reader tick %d\n", t);
+        fflush(stdout);
+    }
+    if (s_xenoMenuPromptActions && g_XenoMenuN2c2Phase == 1 &&
+        promptTick < 0) {
+        promptTick = t;
+        printf("[xeno-port][test] N2C2A PROMPT-OPEN: default target stable "
+               "at reader tick %d\n", t);
+        fflush(stdout);
+    }
+    if (s_xenoMenuPromptActions && promptTick >= 0 &&
+        !promptCancelInjected && t >= promptTick + 45) {
+        promptCancelInjected = 1;
+        g_C1ButtonStateReleased |= 0x40;
+        printf("[xeno-port][test] N2C2A PROMPT: Cross cancel "
+               "at reader tick %d\n", t);
+        fflush(stdout);
+    }
+    if (s_xenoMenuPromptActions && g_XenoMenuN2c2Phase == 2 &&
+        !promptObserved) {
+        unsigned int inventoryHashAfter;
+        unsigned int characterHashAfter;
+        HASH_REGION(characterHashAfter, 0x26C, 0x70C);
+        HASH_REGION(inventoryHashAfter, 0x1F90, 0x12C);
+        promptObserved = 1;
+        printf("[xeno-port][test] N2C2A STATE-AFTER: "
+               "inventory=%08x characters=%08x unchanged=%s\n",
+               inventoryHashAfter, characterHashAfter,
+               (inventoryHashAfter == inventoryHashBefore &&
+                characterHashAfter == characterHashBefore) ? "yes" : "NO");
+        fflush(stdout);
+    }
+
     if (!cancelInjected && s_xenoMenuItemsOpenTick >= 0 &&
-        ((!s_xenoMenuReorderActions && t >= s_xenoMenuItemsOpenTick + 45) ||
+        ((!s_xenoMenuReorderActions && !s_xenoMenuPromptActions &&
+          t >= s_xenoMenuItemsOpenTick + 45) ||
          (s_xenoMenuReorderActions && reorderObserved &&
-          t >= s_xenoMenuItemsOpenTick + 60))) {
+          t >= s_xenoMenuItemsOpenTick + 60) ||
+         (s_xenoMenuPromptActions && promptObserved &&
+          t >= promptTick + 75))) {
         cancelInjected = 1;
         g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
         printf("[xeno-port][test] XENO_MENU_NAV_TEST=%s: Cross cancel "
                "at reader tick %d\n",
-               s_xenoMenuReorderActions ? "items-reorder" : "items", t);
+               s_xenoMenuReorderActions ? "items-reorder" :
+               (s_xenoMenuPromptActions ? "items-prompt" : "items"), t);
         fflush(stdout);
     }
+    #undef HASH_REGION
 }
 
 int Vsync(int mode)
