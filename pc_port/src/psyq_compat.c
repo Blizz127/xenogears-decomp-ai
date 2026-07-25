@@ -519,6 +519,24 @@ static void PcPort_ForcedFieldMenu(void)
                    "source g_GamePartyMembers)\n");
             fflush(stdout);
         }
+        /* N2c-3 ONLY (XENO_MENU_NAV_TEST=item-use): give the effect proof an
+         * observable target and a depletion case.  Fei is damaged (hp 20 of
+         * maxHp 50) so the seeded row-0 item (ID 1, an ordinary HP restore,
+         * +mag*50 clamped to maxHp) produces a visible 20 -> 50 delta AND
+         * exercises the clamp; quantity is forced to 1 so one use depletes
+         * the slot (DB920 decrements, clears the ID at zero, and the prompt
+         * auto-closes on the depletion exit).  GameCharacter offsets: char 0
+         * hp @ 0x26C+0x4C = 0x2B8, maxHp @ 0x2BA.  Isolated to this mode. */
+        if (s_xenoMenuPromptNavKind == 3) {
+            extern unsigned char g_GameState[];
+
+            *(unsigned short*)&g_GameState[0x2B8] = 20;  /* Fei hp */
+            *(unsigned short*)&g_GameState[0x2BA] = 50;  /* Fei maxHp */
+            g_GameState[0x1F90] = 1;                     /* quantity[0] = 1 */
+            printf("[xeno-port][test] N2C3 SEED: Fei hp=20/50, row-0 item "
+                   "(ID %d) quantity=1\n", (int)g_GameState[0x2026]);
+            fflush(stdout);
+        }
         D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
@@ -565,16 +583,20 @@ static void PcPort_ForcedMenuNav(void)
                   strcmp(e, "items-reorder") == 0 ||
                   strcmp(e, "items-prompt") == 0 ||
                   strcmp(e, "prompt-nav") == 0 ||
-                  strcmp(e, "prompt-nav-skip") == 0)) {
+                  strcmp(e, "prompt-nav-skip") == 0 ||
+                  strcmp(e, "item-use") == 0)) {
             armed = 3;
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
             s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0 ||
-                                      strncmp(e, "prompt-nav", 10) == 0;
+                                      strncmp(e, "prompt-nav", 10) == 0 ||
+                                      strcmp(e, "item-use") == 0;
             if (strcmp(e, "prompt-nav") == 0) {
                 s_xenoMenuPromptNavKind = 1;
             } else if (strcmp(e, "prompt-nav-skip") == 0) {
                 s_xenoMenuPromptNavKind = 2;
+            } else if (strcmp(e, "item-use") == 0) {
+                s_xenoMenuPromptNavKind = 3;
             }
         } else {
             armed = (e && *e) ? atoi(e) : 0;
@@ -626,7 +648,7 @@ static void PcPort_ForcedMenuNav(void)
          * (0->1->2->0 forward, then 0->2->1->0 backward).  skip (kind 2, on
          * the 2b-test-only two-member party): DOWN x2 (0->1, then
          * 1 -> skip absent 2 -> wrap -> 0). */
-        if (s_xenoMenuPromptNavKind != 0) {
+        if (s_xenoMenuPromptNavKind == 1 || s_xenoMenuPromptNavKind == 2) {
             extern int g_XenoMenuN2c2Phase;
             static int navTick = -1, navLogged = 0;
             if (g_XenoMenuN2c2Phase == 1 && navTick < 0)
@@ -788,8 +810,24 @@ static void PcPort_ForcedMenuActionEdges(void)
                "at reader tick %d\n", t);
         fflush(stdout);
     }
-    if (s_xenoMenuPromptActions && promptTick >= 0 &&
-        !promptCancelInjected &&
+    /* N2c-3 (kind 3): confirm the default target once; the effect applies,
+     * the quantity hits zero, and DB920's depletion exit auto-closes the
+     * prompt -- no Cross needed at prompt level. */
+    if (s_xenoMenuPromptNavKind == 3 && promptTick >= 0 &&
+        !promptCancelInjected && t >= promptTick + 10) {
+        extern unsigned char g_GameState[];
+
+        promptCancelInjected = 1;   /* reuse: one prompt-level action only */
+        g_C1ButtonStateReleased |= 0x20;
+        printf("[xeno-port][test] N2C3 USE: Circle target-confirm at reader "
+               "tick %d (before: hp=%d/%d qty=%d id=%d)\n", t,
+               (int)*(unsigned short*)&g_GameState[0x2B8],
+               (int)*(unsigned short*)&g_GameState[0x2BA],
+               (int)g_GameState[0x1F90], (int)g_GameState[0x2026]);
+        fflush(stdout);
+    }
+    if (s_xenoMenuPromptActions && s_xenoMenuPromptNavKind != 3 &&
+        promptTick >= 0 && !promptCancelInjected &&
         t >= promptTick + (s_xenoMenuPromptNavKind == 1 ? 115 :
                            (s_xenoMenuPromptNavKind == 2 ? 55 : 45))) {
         promptCancelInjected = 1;
@@ -811,6 +849,20 @@ static void PcPort_ForcedMenuActionEdges(void)
                (inventoryHashAfter == inventoryHashBefore &&
                 characterHashAfter == characterHashBefore) ? "yes" : "NO");
         fflush(stdout);
+        /* N2c-3: for the item-use mode the hashes are EXPECTED to change --
+         * print the explicit save-state values the proof asserts on. */
+        if (s_xenoMenuPromptNavKind == 3) {
+            extern unsigned char g_GameState[];
+            extern int g_XenoMenuN2c3SpecialHits;
+
+            printf("[xeno-port][test] N2C3 AFTER: hp=%d/%d qty=%d id=%d "
+                   "specialDispatchHits=%d\n",
+                   (int)*(unsigned short*)&g_GameState[0x2B8],
+                   (int)*(unsigned short*)&g_GameState[0x2BA],
+                   (int)g_GameState[0x1F90], (int)g_GameState[0x2026],
+                   g_XenoMenuN2c3SpecialHits);
+            fflush(stdout);
+        }
     }
 
     if (!cancelInjected && s_xenoMenuItemsOpenTick >= 0 &&

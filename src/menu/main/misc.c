@@ -3918,7 +3918,136 @@ void func_801E3088(s32 arg0) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E31C0);
+#else
+/* Nav N2c-3 fail-visible marker: counts entries into the guarded special
+ * dispatch (effectFlags bit 0, magnitude 1 -> func_801E5058, magnitude 2 ->
+ * func_801E5178 -- neither ported; N2c-4 / parked).  Must stay 0 for every
+ * ordinary item; the stubs are NOT called so their break-counters stay 0. */
+int g_XenoMenuN2c3SpecialHits = 0;
+
+/* Nav N2c-3: the item-effect engine.  Applies pItemsData[itemId]'s effect to
+ * g_GameState.characters[charId] (SAVE-BACKED writes, retail-clamped) and
+ * returns 0 iff anything applied -- the polarity DB920's anyEffectApplied
+ * accumulator documents (0 = applied -> chime 0x37 + consume one; nonzero =
+ * a restore item whose target was already full -> buzzer 4).
+ *
+ * Retail seeds both restore multiplicands in DELAY SLOTS: the HP x50
+ * (`ori $v0,0x32` in the full-HP compare's shadow, riding into the mult) and
+ * the MP x10 (`ori $a1,0xA` in the HP-section entry beqz's shadow).  The
+ * return tree likewise assigns v0 in branch shadows; the C below reproduces
+ * the resulting values, not the register dance. */
+s32 func_801E31C0(MenuUnk6* pItemBank, u8 charId, u8 itemId) {
+    GameCharacter* target = &g_GameState.characters[charId];
+    MenuShopItem* item = &pItemBank->pItemsData[itemId];
+    s32 hpWasFull = 0;
+    s32 mpWasFull = 0;
+
+    if (item->effectFlags & 0x8000) {
+        if (target->hp == target->maxHp) {
+            hpWasFull = 1;
+        } else {
+            target->hp += item->effectMagnitude * 50;
+        }
+    }
+    if (item->effectFlags & 0x4000) {
+        if (target->mp == target->maxMp) {
+            mpWasFull = 1;
+        } else {
+            target->mp += 10 * item->effectMagnitude;
+        }
+    }
+    if (target->maxHp < target->hp) {
+        target->hp = target->maxHp;
+    }
+    if (target->maxMp < target->mp) {
+        target->mp = target->maxMp;
+    }
+
+    if (item->effectFlags & 0x4) {
+        if (item->statEffectFlags & 0x8000) {
+            target->attack += item->effectMagnitude;
+        }
+        if (item->statEffectFlags & 0x4000) {
+            target->defense += item->effectMagnitude;
+        }
+        if (item->statEffectFlags & 0x2000) {
+            target->ether += item->effectMagnitude;
+        }
+        if (item->statEffectFlags & 0x1000) {
+            target->etherDefence += item->effectMagnitude;
+        }
+        if (item->statEffectFlags & 0x800) {
+            target->maxHp += item->effectMagnitude;
+        }
+        if (item->statEffectFlags & 0x400) {
+            target->maxMp += item->effectMagnitude;
+        }
+        /* The clamp block runs only inside the stat branch (retail). */
+        if (target->attack > 0xC8) {
+            target->attack = 0xC8;
+        }
+        if (target->defense > 0xC8) {
+            target->defense = 0xC8;
+        }
+        if (target->ether > 0xC8) {
+            target->ether = 0xC8;
+        }
+        if (target->etherDefence > 0xC8) {
+            target->etherDefence = 0xC8;
+        }
+        if (target->maxHp > 999) {
+            target->maxHp = 999;
+        }
+        if (target->maxMp > 99) {
+            target->maxMp = 99;
+        }
+    }
+
+    if (item->effectFlags & 0x2) {
+        u8 amount = (u8)item->statEffectFlags;   /* lbu of the low byte */
+
+        if (item->statEffectFlags & 0x8000) {
+            target->unk78 += amount;
+            if (target->unk78 > 0xC8) {
+                target->unk78 = 0xC8;
+            }
+        } else if (target->unk78 < amount) {
+            target->unk78 = 0;
+        } else {
+            target->unk78 -= amount;
+        }
+    }
+
+    if (item->effectFlags & 0x1) {
+        /* GUARDED, fail-visible: the special dispatch is N2c-4 / parked.
+         * Retail: magnitude 1 -> func_801E5058, 2 -> func_801E5178. */
+        if (item->effectMagnitude == 1 || item->effectMagnitude == 2) {
+            g_XenoMenuN2c3SpecialHits++;
+            printf("[xeno-port][stub-path] func_801E31C0 special dispatch "
+                   "mag=%d (func_801E50%s) NOT PORTED\n",
+                   (int)item->effectMagnitude,
+                   item->effectMagnitude == 1 ? "58" : "178 -> E5178");
+            fflush(stdout);
+        }
+    }
+
+    if (item->effectFlags & 0x8000) {
+        if (item->effectFlags & 0x4000) {
+            if (hpWasFull == 0) {
+                return 0;
+            }
+            return mpWasFull;
+        }
+        return hpWasFull;
+    }
+    if (item->effectFlags & 0x4000) {
+        return mpWasFull;
+    }
+    return 0;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E35BC);
 

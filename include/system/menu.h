@@ -46,7 +46,18 @@ typedef struct {
     /* 0x2 */ u_short price;
     /* 0x4 */ u16 categoryFlags;
     /* 0x6 */ u8 flags;
-    /* 0x7 */ u8 unk7[0x9];
+    /* 0x7 */ u8 unk7;
+    /* 0x8 */ u8 effectMagnitude;  // func_801E31C0: HP +mag*50, MP +mag*10,
+                                   // stat boosts +mag; 1/2 select the special
+                                   // dispatch when effectFlags bit 0 is set
+    /* 0x9 */ u8 unk9;
+    /* 0xA */ s16 effectFlags;     // bit15 HP restore, bit14 MP restore,
+                                   // bit2 stat block, bit1 unk78 gauge,
+                                   // bit0 special dispatch (E5058/E5178)
+    /* 0xC */ s16 statEffectFlags; // bit15 attack, bit14 defense, bit13 ether,
+                                   // bit12 etherDefence, bit11 maxHp,
+                                   // bit10 maxMp; low byte = unk78 amount
+    /* 0xE */ u8 unkE[0x2];
 } MenuShopItem; // Size: 0x10
 
 typedef struct {

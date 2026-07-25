@@ -37,8 +37,12 @@ typedef struct {
     /* 0x6A */ undefined8 unk6A[0x5]; // Equipped weapons?
     /* 0x6F */ undefined8 unk6F[0x5]; // Equipped weapons?    
     /* 0x74 */ undefined8 unk74[0x3]; // Equipped accessories?
-    /* 0x77 */ undefined8 unk77;    
-    /* 0x78 */ undefined8 unk78[0x28];
+    /* 0x77 */ undefined8 unk77;
+    /* 0x78 */ u_char unk78; // PROVISIONAL: 0..200 gauge; ordinary items raise/
+                             // lower it via func_801E31C0 (effectFlags bit 1,
+                             // amount = statEffectFlags low byte, sign = bit 15;
+                             // clamped 0..0xC8). Exact game meaning undetermined.
+    /* 0x79 */ undefined8 unk79[0x27];
     /* 0xA0 */ u_char gearId;
     /* 0xA1 */ undefined8 field_0xA1[0x3];
 } GameCharacter; // size: 0xA4
