@@ -81,6 +81,14 @@ endif
 check: clean build
 	@sha256sum --check $(CONFIG_DIR)/checksum.sha
 
+# The full-ROM checksum gate: from-clean rebuild of the pinned matching
+# artifacts + per-overlay PASS/FAIL against config/checksum.sha (retail
+# hashes), with the known-red ledger for legible failures. Never re-pins.
+# See tools/scripts/check_rom_hashes.sh. Matching-side only; does not touch
+# the port workflow.
+rom-check:
+	@bash tools/scripts/check_rom_hashes.sh
+
 objdiff-config:
 	$(MAKE) clean; \
 	$(GEARS) report; \
@@ -107,5 +115,5 @@ clean:
 .SECONDARY:
 # `build` and `check` must be phony: a `build/` output directory would otherwise
 # make Make treat the build target as already up-to-date (no-op).
-.PHONY: all clean default build check objdiff-config report
+.PHONY: all clean default build check rom-check objdiff-config report
 SHELL = /bin/bash -e -o pipefail
