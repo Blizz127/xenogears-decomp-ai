@@ -100,6 +100,54 @@ make -B build
 
 See root [`README.md`](https://github.com/Blizz127/xenogears-decomp-ai/blob/main/README.md) for decomp progress on [decomp.dev](https://decomp.dev/ladysilverberg/xenogears-decomp).
 
+## Full-ROM checksum gate — `make rom-check`
+
+Added in `57db1d9`. Runs `tools/scripts/check_rom_hashes.sh`.
+
+```bash
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && make rom-check'
+```
+
+What it does, and why each part matters:
+
+- **Always clean by design.** It runs `rm -rf build linker` then `make build` — the
+  documented flow, which includes the Makefile's `ApplyMatrixSV` sed at
+  `Makefile:73-74`. A dirty tree is exactly how false greens happen.
+- **Protects the objdiff baseline.** `make build` begins with `make clean`, which would
+  delete `expected/`. The script moves it aside and restores it under an `EXIT` trap.
+- **Reports per-overlay PASS/FAIL** against `config/checksum.sha`, printing built-vs-pin
+  hashes and sizes, plus a known-red ledger line under each expected failure. Exits
+  nonzero when anything fails.
+- **Never writes `config/checksum.sha`.** The pins are retail ground truth. A FAIL means
+  the *build* drifted from retail — never that the pin is wrong. **Do not re-pin.**
+- **`menu.bin` is informational only** — a WIP overlay, deliberately not pinned.
+
+> **Four FAILs is the correct result today.** `slus_006.64`, `field.bin`,
+> `member_change_menu.bin`, and `shop_menu.bin` are known-red source regressions with
+> named causes — see the nav-arc entry in [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md). This
+> is not a green build and must not be reported as one.
+
+**False-green resistance is a tested property:** planting byte-perfect retail files as
+`build/out/*` passes a naive `sha256sum --check`; `make rom-check` wipes, rebuilds, and
+still reports the same four honest FAILs. If a fast advisory mode is ever added it MUST
+be a separate flag that refuses to print PASS.
+
+Cost is a few minutes per invocation. That is accepted — it is a deliberate
+before/after-matching-changes check, not a per-edit gate.
+
+## Environment traps
+
+Each of these has cost real debugging time. They are cheap to avoid and expensive to
+rediscover.
+
+| Trap | Symptom | Rule |
+|------|---------|------|
+| `gears` locates the project by the **literal** directory name `xenogears-decomp` | Tooling silently fails or targets the wrong tree | Keep clones/worktrees named `xenogears-decomp` |
+| A bare `build/` **directory** shadows make's `build` **target** | `make build` appears to do nothing | Never leave a stray `build/` in a state where the target is needed |
+| The main flow applies an `ApplyMatrixSV` sed (`Makefile:73-74`) that raw `ninja` lacks | Raw-ninja builds diverge from `make build` output | Build via `make build`, not bare `ninja`, when hashes matter |
+| Checkout-hopping without `rm -rf build linker` | **Convincing false greens** — bit the pin bisect twice | Always wipe `build linker` after changing checkout |
+| `git` is not on PATH in the container | git commands fail inside distrobox | Run git on the **host** |
+
 ## Success signals
 
 | Signal | Meaning |

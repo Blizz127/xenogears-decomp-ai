@@ -1576,6 +1576,257 @@ Last verified @ 7774804
 
 ---
 
+## Nav arc — N2a through N2c-4 (Items functionally complete; the toolchain diagnostic, the rom-check gate, and what is still parked)
+
+Catch-up entry written at HEAD `b3bd4a2` (2026-07-26). Everything below N1 had
+existed only in commit messages and session memory; this records it. The
+preceding chapter (`===== NAV/INPUT ARC -- SCOPED =====`, above) is where this
+picks up -- note that the N2 scoping report itself was held read-only at the
+time and was never pasted in, so its conclusions appear here rather than as
+their own chapter.
+
+    ===== (1) THE NAV LADDER (commits, and what each one PROVED) =====
+    Each slice is on-screen- or readback-verified; "proved" below means an
+    artifact exists, not that it was reasoned about.
+    - N1 CURSOR-MOVE -- 7dd8459 (2026-07-20). Ported func_801C7D78 (the
+      per-frame input reader) + func_801E8978 / func_801E8070 (mode 0) /
+      func_801D1EE0 / func_801C8574 / func_801CE338. The cursor MOVES on
+      UP/DOWN and is live arrow-key drivable. Also fixed two LATENT bugs in
+      already-shipped render code: func_801C55A0 was passing 0 instead of
+      menu1Choice (an $a1 register-residue read), and a raw `(u8*)g_Menu+0x6E0`
+      access that ignored native-struct inflation.
+    - N2a CONFIRM/CANCEL -- c3a9275 (2026-07-21). Dispatcher func_801C531C +
+      the Items lifecycle func_801DBE54 + deps + the common-exit teardown +
+      func_801C72BC modes 0 and 0x10. Circle opens Items windows 3/4 (SFX
+      0x5B), Cross closes (SFX 0x5C), nav stays alive afterwards. KEY
+      STRUCTURAL FINDING: window DESTRUCTION ownership lives in the cleanup
+      dispatcher, NOT in the screen that created the windows.
+    - N2b-1 NAMES + COUNTS -- d82c428 (2026-07-21). func_801E7C50 /
+      func_801DA5BC / func_801D14FC / func_801CE198 + a native ItemMenuWork.
+      Real item names and two-digit quantities render in window 3, paged.
+      Also corrected GetItemName (slus TU) to retain PSX-width `lw` pointer
+      semantics.
+    - N2b-2 DESCRIPTION + CURSORS -- 4aa01c7 (2026-07-21). func_801E7E68 /
+      the 3-arg func_801E8018 / func_801DA9A8 / func_801DB0A8 / func_801D1AAC
+      + func_801E8070 mode 1 ONLY. Description text in window 4; animated
+      cursors (36 px localized to a 14x19 region).
+    - N2c-1 REORDER -- 48ea933 (2026-07-22). func_801DBD4C, 26/26 BYTE-MATCH.
+      The FIRST save-backed mutation in the arc; proven by BOTH framebuffer
+      and g_GameState readback (see the method note on readback below).
+    - N2c-2a PROMPT UI -- e4bb5c5 (2026-07-23). Twelve functions: func_801DB920
+      / DB39C / E8F60 / E8EAC / DB5E4 / CE0CC / CD81C / CDB1C / CDC6C / D13F8 /
+      D12D4 / CE3C8. The target prompt opens with a default target; cancel is
+      clean; state verified unchanged. Fixed the func_801DBE54 confirm callsite
+      (retail rebuilds only on a NONZERO return) and renamed
+      `effectFailed` -> `anyEffectApplied` (the polarity was inverted).
+    - N2c-2b NAVIGATION -- 062f22c (2026-07-24). func_801D9704 (65i, 7
+      callers). Wraparound in both directions + ineligible-target skip.
+      Byte-match ATTEMPTED and NOT ACHIEVED (entry-dispatch canonicalization;
+      $v1-vs-$a0 homing) -> lives in the coexistence pool.
+    - N2c-3 ORDINARY EFFECTS -- 8cbb3c8 (2026-07-24). func_801E31C0, 246 of
+      255 instructions matched (coexistence, not a byte-match). HP/MP restore,
+      stat boosts, the unk78 gauge, retail clamping, and the two
+      branch-shadow multiplicand constants (HP x50, MP x10). Proof: hp 20/50
+      -> 50/50 (restore AND clamp in a single delta), qty 1 -> 0, ID cleared,
+      chime 0x37.
+    - N2c-4 MAGNITUDE-1 BULK -- b3bd4a2 (2026-07-26). func_801E5058, 72/72
+      BYTE-MATCH. Five inventory families populated with sequential IDs at the
+      retail quantity 10 -- 940 writes, 0 stray bytes, 0 mismatches measured
+      over a FULL 0x22B8 g_GameState dump, with the expected image PARSED FROM
+      THE RETAIL .s rather than hand-transcribed.
+    NET: ITEMS IS FUNCTIONALLY COMPLETE for every reachable path. Special item
+    use is complete for MAGNITUDE 1 ONLY -- magnitude 2 routes to
+    func_801E5178, which is parked (see debts).
+
+    ===== (2) THE TOOLCHAIN DIAGNOSTIC (this changed the project's
+    verification story; recorded in full) =====
+    (A) THE LINK FIX -- ONE WORD. include/labels.inc defined `jlabel` with
+      `visibility=local` where include/macro.inc globalizes it. Every
+      jump-table label in every INCLUDE_ASM'd function therefore assembled
+      UNEXPORTED, leaving dangling cross-object `.word .L...` references
+      (slus jtbl_80018664 -> .L80023490; field -> .L800AB7DC -- ONE cause,
+      both symptoms). Fixed local -> global. It stayed LATENT because the
+      migration chmod invalidated every ninja edge, so the first full
+      reassembly surfaced it three days after be7f358 wired the file in.
+      NOW TRACKED: cdc8dd1 commits include/labels.inc + include/gte_macros.inc
+      (previously untracked, which is why the defect could not be bisected).
+    (B) THE TOOLCHAIN IS EXONERATED BY CONSTRUCTION. At green-era commits,
+      today's container binutils 2.42 + the vendored cc1 + maspsx reproduce
+      the pins BYTE-EXACT on this machine (slus dc0b2dd7... at f27c076 ->
+      dbb08e3; member_change + shop at 01c8c92). So drift is not the
+      environment.
+    (C) THE PINS ARE RETAIL GROUND TRUTH. config/checksum.sha holds the RETAIL
+      overlay hashes and the disc/ overlay files match them exactly (verified
+      2026-07-26: disc/SLUS_006.64, disc/field.bin,
+      disc/member_change_menu.bin, disc/shop_menu.bin all hash to their pins).
+      NEVER RE-PIN, under any circumstance. A FAIL means the BUILD drifted
+      from retail, never that the pin is wrong.
+    (D) THE FOUR RED PINS ARE SOURCE REGRESSIONS, NOT ENVIRONMENT:
+      - slus_006.64 -- last-green dbb08e3, first-red c55fd03 (2026-06-30,
+        "slus: fix full-link broken by MenuExecute decompile"): MenuExecute was
+        decompiled NONMATCHING and its orphaned jump tables were declared
+        literal u32. The built slus is 7,032 bytes SHORT (296,072 built vs
+        303,104 retail -- the arithmetic checks out exactly) and the layout is
+        scrambled from 0x80018084 onward. That commit's OWN message records
+        that "only per-object make report (objdiff) kept passing."
+      - member_change_menu.bin -- first-red 310c391 EXACTLY (its parent is
+        clean-green): the Phase-2b text-path port changed plain-C
+        MATCHING-SIDE code; a 32-byte section delta shifts every pointer by
+        -0x20.
+      - shop_menu.bin -- first-red somewhere in (310c391..48ea933]; shop's own
+        source was untouched, so the mechanism is the shared
+        include/system/menu.h evolution during N1/N2a. The EXACT commit is
+        UNSCANNED (~4 clean builds remain in the kept bisect clone).
+      - field.bin -- red at HEAD (built bccb333d... vs pin 38a1ce82...).
+        First-red UNSCANNED.
+    (E) THE STRUCTURAL HOLE THAT LET IT SHIP: nothing gated the full-ROM
+      hashes. validate.yaml fires only on PRs to main, and per-object objdiff
+      passes while LAYOUT drifts. That combination is exactly how c55fd03
+      shipped. The gate in (3) closes it.
+    (F) The bisect clone is kept at `Projects/f27pin/xenogears-decomp` for the
+      follow-up scans.
+
+    ===== (3) THE ROM-CHECK GATE (57db1d9) =====
+    tools/scripts/check_rom_hashes.sh, invoked as `make rom-check` (a new
+    .PHONY target; the bare `make check` target is left as-is).
+    - ALWAYS-CLEAN BY DESIGN: `rm -rf build linker` then `make build` -- the
+      documented flow, which includes the Makefile's ApplyMatrixSV sed at
+      Makefile:73-74. It sets aside expected/ under an EXIT trap (because
+      `make clean` would delete the objdiff baseline) and this was
+      canary-verified.
+    - Reports per-overlay PASS/FAIL against config/checksum.sha with
+      built-vs-pin hashes and sizes, prints a KNOWN-RED LEDGER under each
+      expected failure, prints an INFORMATIONAL menu.bin line (menu.bin is a
+      WIP overlay and is deliberately NOT pinned), and exits nonzero on FAIL.
+      It NEVER writes checksum.sha.
+    - PROVEN FALSE-GREEN-RESISTANT: byte-perfect retail files planted as
+      build/out/* will pass a naive `sha256sum --check`; `make rom-check`
+      wipes, rebuilds, and reports the same four honest FAILs.
+    - COST: a few minutes per invocation. This is ACCEPTED -- it is a
+      deliberate before/after-matching-changes check, not a per-edit gate. IF
+      a fast advisory mode is ever added it MUST be a separate flag that
+      REFUSES TO PRINT PASS.
+    - Current expected output at HEAD: the FOUR reds in (2)(D), plus the
+      informational menu.bin line. Four reds is the CORRECT result today; it
+      is not a green build and must not be reported as one.
+
+    ===== (4) CORRECTED FINDINGS (recorded as corrections so the superseded
+    versions cannot be re-derived) =====
+    (A) THE THREE-FEI HARNESS PARTY IS NOT A STRIDE BUG.
+      SUPERSEDED CLAIM (N2c-2a era): `partyMembers` is declared
+      `undefined8[3]`, so an 8-byte stride collides with byte writes.
+      WHY IT IS WRONG: include/types.h:39 defines `undefined8` as
+      `unsigned char` -- the name is BIT-WIDTH naming, not byte-width. There
+      is no stride mismatch.
+      ACTUAL CAUSE: func_800A31E8 (the field script-VM tick,
+      src/field/scripts/virtual_machine.c:736) copies g_GamePartyMembers[3]
+      over g_GameState.partyMembers EVERY FRAME (the loop at :745-747 writes
+      `((u8*)g_pGameState)[0x1D34 + i]`), and g_GamePartyMembers is a
+      cold-zero port stub. Confirmed by a HARDWARE WATCHPOINT on the writer.
+      CONSEQUENCE: the fix is a ONE-LINE SEED at g_GamePartyMembers (the
+      retail dataflow), NOT a struct change -- but it still needs its own
+      slice with a baseline re-bless, because every visual baseline since
+      Arc A embeds the current three-Fei state.
+    (B) THE member_change / shop DRIFT IS NOT FROM THE MIGRATION.
+      SUPERSEDED CLAIM: it is pre-existing environment drift.
+      WHY IT IS WRONG: the nav arc's OWN commits introduced it -- 310c391 for
+      member_change, and the shared menu.h evolution for shop. It is a source
+      regression this arc caused, not inherited noise.
+      WHAT SURVIVES: the e4bb5c5 struct-reshape BYTE-NEUTRALITY claim still
+      holds (48ea933's red values equal HEAD's).
+    (C) "SHARED TEXT ENGINES" WAS WRONG TWICE.
+      - func_801E8F60 is a window-primitive TINT engine (callers func_801DB39C
+        and func_801DD5E8 -- verified, exactly two), NOT a text engine.
+      - func_801E5178 writes FIXED g_GameState values with NO rendering
+        (exactly one caller, func_801E31C0).
+      - The "shared 801C9x-CD prompt engines" family (func_801C9BCC through
+        func_801CD710) is NOT REACHABLE from func_801DB920 and contributes
+        ZERO credit. What N2c actually reaches is the
+        func_801CD81C / CDB1C / CDC6C trio via func_801CE0CC, which are
+        party-target STATUS-PANEL builders.
+
+    ===== (5) PARKED DEBTS (each with its constraint) =====
+    - func_801E5178 (magnitude-2 special, 149i) -- PARKED, fail-visible, and
+      structurally ABSENT from the port binary (no symbol, not stubbed). Needs
+      its own audit slice. NOTE for any test seed: item ID 33 is magnitude-1;
+      ID 34 is magnitude-2 and would route here.
+    - THE MATCHING REPAIR -- the four red pins. Follow-ups in value order:
+      (a) shop's exact first-red + field's scan (SMALL; the bisect clone is
+          ready), then
+      (b) the slus repair -- either re-match MenuExecute OR restore its asm
+          coexistence (the direct undo of c55fd03's class of change).
+      OPEN PROJECT-DIRECTION QUESTION, to be decided DELIBERATELY rather than
+      by drift: decompiled-but-nonmatching in the tree at the cost of a RED
+      ROM, versus matched-via-asm with a GREEN ROM. This is a values call
+      about what the repo is for, not a technical unknown.
+    - THE THREE-FEI SEED FIX -- one line at g_GamePartyMembers, but it
+      requires a BASELINE RE-BLESS (every capture since Arc A embeds the
+      current state). Own slice.
+    - PRE-EXISTING RENDERER DEBT: func_801D1464 (19i, scrollbar-handle draw)
+      is stubbed; the category-label bank goes via the stubbed func_801D11F0
+      -> func_801D0ED4. Neither is produced by any N2c builder and neither is
+      required to prove the prompt or the tint.
+    - PRE-EXISTING GUARDS OUTSIDE ITEMS: func_801C72BC's other 22 modes and
+      func_801E8070's non-0/1 modes are all fail-visible stubs BY DESIGN.
+    - THE OLD PARKED MATCHING BREAKAGE (distinct from the labels.inc fix):
+      jtbl_8006FC88 / FD30 / FDAC + g_Heap + ApplyMatrixSV. A prior session
+      made these LINKABLE (literal-u32 in symbol_addrs + a sed in the main
+      flow) but did NOT fix them in the BYTE sense; they are part of field's
+      drift story.
+
+    ===== (6) HARNESS + ENVIRONMENT REFERENCE =====
+    Moved to the wiki rather than duplicated here -- it is operational
+    reference, not an open issue:
+    - Harness modes, seeds, and the one-mode-per-seed rule:
+      docs/wiki/Useful-Commands.md ("Menu nav harness").
+    - Environment traps (the literal-directory-name requirement, the `build/`
+      shadowing trap, the ApplyMatrixSV sed divergence, the
+      checkout-hopping false green, distrobox): docs/wiki/Build-and-Run.md
+      ("Environment traps").
+    - gdb traps (the g_Menu cast, the inferior-call crash):
+      docs/wiki/Debugging-and-Tracing.md ("Menu-arc gdb traps").
+
+    ===== (7) METHOD NOTES =====
+    Recorded as durable porting guidance in
+    docs/wiki/Matching-and-Porting-Rules.md ("Method notes from the menu
+    arc"): BUILDER-NEEDS-A-DRAW-PASS, ROLE-LABELS-ARE-HYPOTHESES,
+    ROOT-CAUSE-IS-A-HYPOTHESIS, DECOMPOSE-FIRST, STATE-MUTATION-NEEDS-READBACK,
+    and INHERITED-UNCOMMITTED-WORK-IS-UNVERIFIED-WORK. Each carries the
+    evidence that produced it.
+
+    ===== (8) N3 READINESS =====
+    (A) REMAINING SCREENS, with N2-era sizes -- **RE-VERIFY BEFORE USE**. This
+      arc has repeatedly shown that inherited sizes AND inherited role labels
+      need re-measuring, and the banked shared credit in (B) should reduce
+      these numbers: Abilities 4,674i / Equip 7,056i / File 10,028i /
+      Gear 13,230i / Status 14,497i. These are NOT re-measured at HEAD.
+    (B) BANKED SHARED CREDIT (measured caller counts, not asserted):
+      - func_801D9704 -> 7 callers (Items/func_801DB920 plus func_801DD790,
+        DDF24, E05D0, E20C8, E23CC, E2BE4). Verified at HEAD.
+      - func_801DB5E4 -> 2 (Items + func_801DD790), which pulls func_801CE0CC,
+        the CD81C/CDB1C/CDC6C trio, and D13F8/D12D4 into the later
+        equipment/gear target flow.
+      - func_801E8F60 / func_801E8EAC -> 2 coordinators (func_801DB39C +
+        func_801DD5E8).
+      - Plus the N2b text path (func_801E7C50 / E7E68 / E8018) and the N2a
+        lifecycle/teardown pattern.
+    (C) OUTSTANDING HAZARD FOR N3-GEAR: func_801E23CC consumes the CALLER's
+      $s2 -- at 0x801E23D8 it does `addu $a0, $s2, $zero` BEFORE $s2 is ever
+      initialized (the caller's value is saved at 0x801E23FC). This is an
+      idiom-#5 residue case, caught PRE-PORT during the N2 audit. It calls
+      func_801D9704 with a2=1 (gear mode) -- the one mode whose delay-slot
+      compensation is UNEXERCISABLE from Items. Port it with an EXPLICIT
+      parameter, never by reading a register.
+    (D) OUTSTANDING HAZARD, UNAUDITED: func_801D9808 (the sel-2 app) --
+      possible $s0-before-init. AUDIT BEFORE the sel-2 app is ever ported.
+
+Evidence: commit messages + per-slice runtime artifacts (framebuffer captures,
+gdb counter/readback logs) referenced in each slice's commit; the four pin
+values and the disc/-vs-pin equality re-verified at HEAD on 2026-07-26.
+Last verified @ b3bd4a2
+
+---
+
 ## Sound cold-init is blocked below the decomp by hollow PsyCross SDK primitives
 
 `src/slus_006.64/system/sound.c` is linked and all ten audited sound layouts are

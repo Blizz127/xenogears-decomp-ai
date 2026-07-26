@@ -99,6 +99,32 @@ For session-level detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/x
 
 ---
 
+## 2026-07-20 → 2026-07-26 — Menu nav arc (N1 → N2c-4): Items becomes usable
+
+Full detail, including the parked debts and the four red pins, is in the nav-arc entry in
+[`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
+
+| When | Milestone | Commit / evidence |
+|------|-----------|-------------------|
+| Jul 20 | **N1 cursor-move** — input reader `func_801C7D78` + cursor rebuild; cursor moves, live keyboard drivable. Fixed two latent bugs in shipped render code (`func_801C55A0` `$a1` residue; raw `g_Menu+0x6E0` vs native inflation) | `7dd8459` |
+| Jul 21 | **N2a confirm/cancel** — dispatcher `func_801C531C` + Items lifecycle `func_801DBE54`. Circle opens Items (SFX `0x5B`), Cross closes (`0x5C`). Window destruction is owned by the cleanup dispatcher, not the screen | `c3a9275` |
+| Jul 21 | **N2b-1 names + counts** — real item names and two-digit quantities in window 3, paged; `GetItemName` corrected to keep PSX-width `lw` pointer semantics | `d82c428` |
+| Jul 21 | **N2b-2 description + cursors** — description text in window 4; animated cursors (36 px in a 14×19 region) | `4aa01c7` |
+| Jul 22 | **N2c-1 reorder** — `func_801DBD4C`, **26/26 byte-match**. First save-backed mutation; proven by framebuffer *and* `g_GameState` readback | `48ea933` |
+| Jul 23 | **N2c-2a prompt UI** — twelve functions; target prompt with default target, clean cancel. Fixed the `func_801DBE54` confirm callsite; renamed `effectFailed` → `anyEffectApplied` (polarity was inverted) | `e4bb5c5` |
+| Jul 24 | **N2c-2b navigation** — `func_801D9704` (65i, 7 callers); wraparound + ineligible-skip. Byte-match attempted, **not** achieved → coexistence pool | `062f22c` |
+| Jul 24 | **N2c-3 ordinary effects** — `func_801E31C0`, 246/255 matched. HP/MP restore, stat boosts, clamping. `hp 20/50 → 50/50`, qty `1→0`, ID cleared, chime `0x37` | `8cbb3c8` |
+| Jul 24 | **Toolchain diagnostic + build gate** — `jlabel` visibility `local → global` (one word) unbroke every jump-table label; `labels.inc`/`gte_macros.inc` now tracked. `make rom-check` added | `cdc8dd1`, `57db1d9` |
+| Jul 26 | **N2c-4 magnitude-1 bulk** — `func_801E5058`, **72/72 byte-match**. Five inventory families at qty 10; 940 writes / 0 stray over a full `0x22B8` `g_GameState` dump, expected image parsed from the retail `.s` | `b3bd4a2` |
+
+**Net:** Items is functionally complete for every reachable path. Special item use is
+complete for **magnitude 1 only** — magnitude 2 (`func_801E5178`) is parked and
+structurally absent from the port binary.
+
+**Not green:** four pinned overlays (`slus_006.64`, `field.bin`,
+`member_change_menu.bin`, `shop_menu.bin`) are known-red source regressions with named
+causes. `make rom-check` reports them honestly; they are not fixed.
+
 ## Milestone demo command (field control)
 
 Documented in `b9266c5`:

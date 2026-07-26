@@ -75,6 +75,57 @@ XENO_FIELD_DIAG=1 ...
 ... 2>&1 | grep "\[stub\]"
 ```
 
+## Menu nav harness (`XENO_MENU_NAV_TEST`)
+
+The menu/nav arc's regression suite. Every mode boots the field, forces the main menu
+open, and drives synthetic pad edges at the **raw BIOS pad buffer** (`g_C1Buffer`) —
+exactly where a real keypress lands — so `ControllerPoll` derives genuine rising edges.
+
+Injection is clocked off **menu reader ticks**, not Vsync frames: the field's open/close
+phases reset the pad queue at a different cadence, so frame counting races it.
+
+```bash
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && \
+  env XENO_FIELD_TEST=1 XENO_KERNEL_SEL=0 XENO_FIELD_MAP=5 XENO_FIELD_ENTRANCE=0 \
+      XENO_MENU_FORCE=1 XENO_MENU_NAV_TEST=items \
+      timeout -s KILL 200 pc_port/build_native/xeno-port'
+```
+
+| Mode | Drives | Asserts on |
+|------|--------|-----------|
+| `items` | Open Items, cancel, close | Windows 3/4 settle open; teardown; nav alive after close |
+| `items-reorder` | Select row 0, RIGHT to row 1, confirm | `row0/row1` swap via `g_GameState` readback |
+| `items-prompt` | Confirm row 0 twice, hold, cancel | Prompt opens with a default target; state `unchanged=yes` |
+| `prompt-nav` | DOWN x3 then UP x3 in the prompt | Wraparound both directions; state `unchanged=yes` |
+| `prompt-nav-skip` | DOWN x2 on a **two-member** party | Ineligible-target skip; state `unchanged=yes` |
+| `item-use` | Confirm an ordinary item on the default target | `hp 20/50 → 50/50`, `qty 1→0`, ID cleared, chime `0x37` |
+| `item-special` | Confirm a **magnitude-1** special (item ID 33) | Five inventory families populated, IDs sequential at qty 10 |
+
+**Locked-schedule modes are the binding regression gate:** `items`, `items-reorder`,
+`items-prompt`, `item-use` and `item-special` run on a fixed tick schedule and their
+markers must reproduce exactly. The longer prompt-nav runs have more animation phase in
+them, so their *closed-frame counts* can legitimately differ between runs — compare the
+state markers, not the frame numbers.
+
+> **One seed per mode.** Each mode owns its own diagnostic seed (`prompt-nav-skip`
+> reshapes the party; `item-use` sets Fei to 20/50 and forces quantity 1; `item-special`
+> plants the magnitude-1 special at row 0). A new test seed gets a **new mode** — never
+> add a seed to an existing one, or every baseline captured under it becomes invalid.
+
+> **Magnitude matters for `item-special`:** item ID 33 is magnitude-1 and routes to the
+> ported `func_801E5058`. **ID 34 is magnitude-2** and would route into the parked
+> `func_801E5178`.
+
+## Matching ROM checksum gate
+
+```bash
+distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-decomp && make rom-check'
+```
+
+Four FAILs (`slus_006.64`, `field.bin`, `member_change_menu.bin`, `shop_menu.bin`) is the
+correct result today. See [Build and Run](Build-and-Run) for what the gate guarantees and
+why the pins must never be re-pinned.
+
 ## Kernel routing probes
 
 ```bash

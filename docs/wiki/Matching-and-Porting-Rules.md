@@ -120,6 +120,57 @@ Before and after any Map1 experiment, verify **Map0 guard**:
 - If a rare branch assert is not hit on the current route, it is **not** the current blocker.
 - Unmigrated branches and sub-commands assert **individually and loudly** — never silent no-ops. Each surfaces with its own id, so the live path names the next bounded pass by itself (e.g. opcode `0xBC`'s unported sub-commands assert per sub-command; `0xF7` and the misc8 select-target/on-top machinery assert by design).
 
+## Method notes from the menu arc
+
+Six patterns that kept paying off across N1 → N2c-4. Each is stated with the evidence
+that produced it, so it can be re-judged rather than taken on faith.
+
+### Builder-needs-a-draw-pass
+
+A builder's milestone is **unprovable without its per-frame renderer**. Fired three
+times in one arc: `func_801DA5BC` needed `func_801D14FC`/`func_801CE198`;
+`func_801DB0A8` needed `func_801D1AAC`; `func_801DB5E4`/`func_801DB920` needed
+`func_801CE3C8`. **Ask "what draws this?" for every builder before sizing a slice** — the
+draw pass is part of the slice, not a follow-up.
+
+### Role-labels-are-hypotheses
+
+Inherited function labels have been wrong in *consecutive* scopings. `func_801E8F60` was
+labelled a text engine and is a window-primitive tint engine; `func_801E5178` was
+labelled shared-text and writes fixed state with no rendering; a whole "shared prompt
+engine" family turned out unreachable from the caller that supposedly used it. **Verify
+the role from asm before pricing anything on it.**
+
+### Root-cause-is-a-hypothesis
+
+Three plausible causes failed under test this arc (`isbg`, the `partyMembers` stride,
+`temp1.c`). A cause is confirmed when **the fix removes the symptom** — not when the
+story is coherent.
+
+### Decompose-first
+
+N2b's Step 1 found a separable 537-instruction unit inside a "1,540i" lump; N2c-2's found
+a clean 1,564/65 split. It is cheap, and it has **never not paid**.
+
+### State-mutation-needs-readback
+
+`glReadPixels` can show a correct-looking result while the underlying state is wrong —
+the "rendering-only reorder" failure mode. Any state mutation must be proven by **reading
+the state back**, not by looking at pixels.
+
+For **bulk** writers, also prove **containment**: snapshot the full region before and
+after, and derive the expected image **from the asm** rather than hand-transcribing it.
+N2c-4 did this over the whole `0x22B8` `g_GameState` — 940 expected writes, 940 actual,
+0 stray bytes — which is what makes "nothing else was touched" a measurement instead of
+an assurance.
+
+### Inherited-uncommitted-work-is-unverified-work
+
+Found twice (N2c-2a, N2c-4): a prior session left completed-looking work in the tree,
+with proof artifacts that predated the last source edit. **Rebuild and re-run every
+proof; treat no prior artifact as evidence.** Check artifact mtimes against source
+mtimes before believing a log.
+
 ## GTE / matrix audit note
 
 Handwritten GTE sequences may hide `cv=0` vs `cv=3` mis-transcriptions. When projection looks wrong, check asm GTE `mvmva` control bits before experimenting with matrix hacks.

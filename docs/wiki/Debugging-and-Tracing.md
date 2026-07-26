@@ -219,6 +219,37 @@ distrobox enter xenogears-dev -- bash -lc 'cd /home/blizz/Projects/xenogears-dec
 
 Current generated stub count: **697**, unchanged across the entire July 9 opcode chain (handoff, July 9 entries). Soft stubs newly *reached* on the map15 path (log-once, non-blocking): load path `func_8001B5E8`, `SoundFreeWdsEntry`, `func_8008E718`; frame 117 `func_80097954`, `func_8003A450`, `func_8008FB98`.
 
+## Menu-arc gdb traps
+
+Two environment-specific gotchas from the nav arc. Both cost real time to rediscover.
+
+**`g_Menu` must be read through an explicit cast.** In the port `g_Menu` is a
+`u8[15664]` stub symbol, so the type gdb picks for a bare `g_Menu->...` expression is
+**build-dependent** and can silently resolve wrong. Always go through the pointer type:
+
+```gdb
+set $menu = *(SystemMenu**)&g_Menu
+printf "choice=%d input=%d\n", (int)$menu->menu1Choice, (int)$menu->input
+```
+
+**Inferior-call machinery crashes here.** Calling into the process from breakpoint
+command lists — `glReadPixels` in particular — crashes under this environment. Use the
+lean counter/readback pattern instead: break, increment a convenience variable, print
+scalars or `dump binary memory`, `continue`. No inferior function calls.
+
+```gdb
+break func_801E5058
+commands
+  silent
+  set $hits = $hits + 1
+  eval "dump binary memory /tmp/gs_before.bin (char*)&g_GameState (char*)&g_GameState + 0x22B8"
+  continue
+end
+```
+
+**`finish` does not resume inside a `commands` block.** To capture state *after* a call
+returns, set a second breakpoint on the post-call source line rather than using `finish`.
+
 ## What NOT to treat as signal
 
 | Run config | Why invalid |

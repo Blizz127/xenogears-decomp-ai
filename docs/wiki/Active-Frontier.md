@@ -3,21 +3,41 @@
 > **Keep this page short.** Update when the real next gate changes.
 > Canonical detail: [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md) and current handoff notes.
 
-## Current real frontier (July 14, 2026)
+## Current real frontier (July 26, 2026)
 
-**Restore the matching ELF build.**
+**Decide the matching-vs-decompiled direction, then repair the four red pins.**
 
-The native build driver now fails closed for unexpected game-TU compile errors
-and refuses stale typed-stub manifests. The matching MIPS environment is
-installed, but `make -B build` stops at the main SLUS link: `psyq/libgte.c`
-emits unresolved inline `gte_*` helpers (`gte_SetRotMatrix`, `gte_ldlvl`,
-`gte_rtpt`, and related macros). Until that integration defect is repaired,
-`slus_006.64.elf`/overlay ELFs cannot classify new undefined symbols safely.
+The menu nav arc is complete through N2c-4 (`b3bd4a2`) — Items is functionally
+complete for every reachable path, with special item use done for magnitude 1
+only. The next porting step is N3 (the remaining submenu screens), but the
+higher-priority open question is not a porting task at all:
 
-The old "four skipped TUs" diagnosis is superseded: sound exposes 39 unresolved
-`INCLUDE_ASM` functions, the menu overlays expose 15, and work-list is a
-host-layout routing problem. Details and reproducers are in
+Four pinned overlays currently **fail** `make rom-check` — `slus_006.64`,
+`field.bin`, `member_change_menu.bin`, `shop_menu.bin`. These are **source
+regressions with named causes**, not environment drift, and the toolchain is
+exonerated by construction (green-era commits still reproduce their pins
+byte-exact on this machine). The `slus` red traces to `c55fd03`, which
+decompiled `MenuExecute` nonmatching and declared its orphaned jump tables as
+literal `u32` — the built image is 7,032 bytes short.
+
+**The decision to make deliberately:** decompiled-but-nonmatching source in the
+tree at the cost of a red ROM, versus matched-via-asm coexistence with a green
+ROM. This is a values call about what the repo is for. Drifting into it by
+accident is how the current state arose.
+
+Ordered follow-ups once decided: (a) scan shop's exact first-red and field's
+first-red (small; a bisect clone is kept at `Projects/f27pin/xenogears-decomp`),
+then (b) the `slus` repair. Full detail — including the `labels.inc` link fix,
+the gate's guarantees, and every parked debt — is in the nav-arc entry in
 [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
+
+> **Superseded (July 14 frontier):** "Restore the matching ELF build" —
+> `make -B build` stopping at the SLUS link on unresolved inline `gte_*`
+> helpers. The matching build now completes from clean and emits all overlays
+> (re-verified 2026-07-26 via a full `make rom-check` clean rebuild).
+> `include/gte_macros.inc` and `include/labels.inc` became tracked files in
+> `cdc8dd1`. The build **completes**; what it produces is four drifted overlays,
+> which is a different and narrower problem.
 
 The animation-opcode frontier is now evidence-backed but not yet prioritized:
 the dedicated unimplemented set (`0x85, 0x8E, 0x98, 0xBE, 0xC8, 0xD4, 0xE2,
