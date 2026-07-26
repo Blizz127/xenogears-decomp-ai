@@ -85,7 +85,17 @@ typedef struct {
     /* 0x1F90 */ u_char itemQuantities[MAX_INVENTORY_ITEMS];
     /* 0x2026 */ u_char itemIDs[MAX_INVENTORY_ITEMS];
 
-    /* 0x20BC */ undefined8 unk20BC[0x1F5];
+    /* PROVISIONAL fourth/fifth inventory families (the unk20BC split).
+     * Same {quantities[N], ids[N]} tiling as weapons/accessories/items;
+     * bulk-populated by func_801E5058 (IDs 1..bound-1, quantity 10) and
+     * scanned by the field misc11 count-empty/find-by-id loops at these
+     * offsets.  Likely the gear-side inventories; exact categories
+     * undetermined -- rename when a reader proves them. */
+    /* 0x20BC */ u_char unk20BCQuantities[0x64];
+    /* 0x2120 */ u_char unk2120IDs[0x64];
+    /* 0x2184 */ u_char unk2184Quantities[0x96];
+    /* 0x221A */ u_char unk221AIDs[0x96];
+    /* 0x22B0 */ undefined8 unk22B0;
     /* 0x22B1 */ undefined8 gearRide[MAX_PARTY_MEMBERS];
     /* 0x22B4 */ undefined8 unk22B4[0x2];
     /* 0x22B6 */ undefined16 unk22B6;

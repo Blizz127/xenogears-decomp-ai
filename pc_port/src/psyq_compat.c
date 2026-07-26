@@ -537,6 +537,20 @@ static void PcPort_ForcedFieldMenu(void)
                    "(ID %d) quantity=1\n", (int)g_GameState[0x2026]);
             fflush(stdout);
         }
+        /* N2c-4 ONLY (XENO_MENU_NAV_TEST=item-special): row 0 becomes the
+         * MAGNITUDE-1 bulk special (item ID 33, verified mag=1 via the DB
+         * probe -- ID 34 is mag=2 and would route to the PARKED E5178) at
+         * quantity 1.  The run is a disposable cold boot; nothing persists.
+         * Isolated to this mode. */
+        if (s_xenoMenuPromptNavKind == 4) {
+            extern unsigned char g_GameState[];
+
+            g_GameState[0x2026] = 33;   /* itemIDs[0] = the bulk special */
+            g_GameState[0x1F90] = 1;    /* quantity 1 -> depletion path */
+            printf("[xeno-port][test] N2C4 SEED: row-0 item = ID 33 "
+                   "(magnitude-1 special), quantity 1\n");
+            fflush(stdout);
+        }
         D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
@@ -584,19 +598,23 @@ static void PcPort_ForcedMenuNav(void)
                   strcmp(e, "items-prompt") == 0 ||
                   strcmp(e, "prompt-nav") == 0 ||
                   strcmp(e, "prompt-nav-skip") == 0 ||
-                  strcmp(e, "item-use") == 0)) {
+                  strcmp(e, "item-use") == 0 ||
+                  strcmp(e, "item-special") == 0)) {
             armed = 3;
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
             s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0 ||
                                       strncmp(e, "prompt-nav", 10) == 0 ||
-                                      strcmp(e, "item-use") == 0;
+                                      strcmp(e, "item-use") == 0 ||
+                                      strcmp(e, "item-special") == 0;
             if (strcmp(e, "prompt-nav") == 0) {
                 s_xenoMenuPromptNavKind = 1;
             } else if (strcmp(e, "prompt-nav-skip") == 0) {
                 s_xenoMenuPromptNavKind = 2;
             } else if (strcmp(e, "item-use") == 0) {
                 s_xenoMenuPromptNavKind = 3;
+            } else if (strcmp(e, "item-special") == 0) {
+                s_xenoMenuPromptNavKind = 4;
             }
         } else {
             armed = (e && *e) ? atoi(e) : 0;
@@ -695,6 +713,55 @@ static void PcPort_ForcedMenuNav(void)
 /* Circle/Cross must be inserted after ControllerPoll recomputes the derived
  * edge globals but before ControllerPushState snapshots them for the queue
  * drained by func_801C7D78. */
+
+/* N2c-4: per-family inventory digests for the bulk-special proof.  One FNV
+ * per family region plus slot spot-checks and bound-edge pairs, with
+ * containment sentinels on both neighbors of the inventory block.  The item
+ * family's writes are slot-shifted by +2 (func_801E5058 preserves slots
+ * 0-2), hence the per-family shift column. */
+static void PcPort_N2c4PrintFamilies(const char* tag)
+{
+    extern unsigned char g_GameState[];
+    static const struct {
+        const char* name;
+        unsigned qty, ids, size, bound, shift;
+    } fam[5] = {
+        { "weapon",    0x1D38, 0x1D9C, 0x64, 0x48, 0 },
+        { "accessory", 0x1E00, 0x1EC8, 0xC8, 0x96, 0 },
+        { "item",      0x1F90, 0x2026, 0x96, 0x4C, 2 },
+        { "unk20BC",   0x20BC, 0x2120, 0x64, 0x48, 0 },
+        { "unk2184",   0x2184, 0x221A, 0x96, 0x69, 0 },
+    };
+    int f;
+
+    for (f = 0; f < 5; f++) {
+        unsigned int h = 2166136261u;
+        unsigned int i;
+        unsigned int lastw = fam[f].shift + fam[f].bound - 1;
+
+        for (i = 0; i < fam[f].size; i++) {
+            h ^= g_GameState[fam[f].qty + i]; h *= 16777619u;
+            h ^= g_GameState[fam[f].ids + i]; h *= 16777619u;
+        }
+        printf("[xeno-port][test] N2C4 %s %-9s fnv=%08x slot0=(id%u,q%u) "
+               "slot1=(id%u,q%u) lastw=(id%u,q%u) beyond=(id%u,q%u)\n",
+               tag, fam[f].name, h,
+               g_GameState[fam[f].ids], g_GameState[fam[f].qty],
+               g_GameState[fam[f].ids + 1], g_GameState[fam[f].qty + 1],
+               g_GameState[fam[f].ids + lastw], g_GameState[fam[f].qty + lastw],
+               g_GameState[fam[f].ids + lastw + 1],
+               g_GameState[fam[f].qty + lastw + 1]);
+    }
+    printf("[xeno-port][test] N2C4 %s sentinels party=%02x%02x%02x%02x "
+           "post-block=%02x%02x%02x itemSlot2=(id%u,q%u)\n",
+           tag,
+           g_GameState[0x1D34], g_GameState[0x1D35],
+           g_GameState[0x1D36], g_GameState[0x1D37],
+           g_GameState[0x22B0], g_GameState[0x22B1], g_GameState[0x22B2],
+           g_GameState[0x2028], g_GameState[0x1F92]);
+    fflush(stdout);
+}
+
 static void PcPort_ForcedMenuActionEdges(void)
 {
     extern unsigned short g_C1ButtonStateReleased;
@@ -749,6 +816,9 @@ static void PcPort_ForcedMenuActionEdges(void)
             fflush(stdout);
         }
         if (s_xenoMenuPromptActions) {
+            if (s_xenoMenuPromptNavKind == 4) {
+                PcPort_N2c4PrintFamilies("BEFORE");
+            }
             HASH_REGION(characterHashBefore, 0x26C, 0x70C);
             HASH_REGION(inventoryHashBefore, 0x1F90, 0x12C);
             printf("[xeno-port][test] N2C2A STATE-BEFORE: "
@@ -813,20 +883,22 @@ static void PcPort_ForcedMenuActionEdges(void)
     /* N2c-3 (kind 3): confirm the default target once; the effect applies,
      * the quantity hits zero, and DB920's depletion exit auto-closes the
      * prompt -- no Cross needed at prompt level. */
-    if (s_xenoMenuPromptNavKind == 3 && promptTick >= 0 &&
+    if ((s_xenoMenuPromptNavKind == 3 || s_xenoMenuPromptNavKind == 4) &&
+        promptTick >= 0 &&
         !promptCancelInjected && t >= promptTick + 10) {
         extern unsigned char g_GameState[];
 
         promptCancelInjected = 1;   /* reuse: one prompt-level action only */
         g_C1ButtonStateReleased |= 0x20;
-        printf("[xeno-port][test] N2C3 USE: Circle target-confirm at reader "
-               "tick %d (before: hp=%d/%d qty=%d id=%d)\n", t,
+        printf("[xeno-port][test] N2C%d USE: Circle target-confirm at reader "
+               "tick %d (before: hp=%d/%d qty=%d id=%d)\n",
+               s_xenoMenuPromptNavKind == 4 ? 4 : 3, t,
                (int)*(unsigned short*)&g_GameState[0x2B8],
                (int)*(unsigned short*)&g_GameState[0x2BA],
                (int)g_GameState[0x1F90], (int)g_GameState[0x2026]);
         fflush(stdout);
     }
-    if (s_xenoMenuPromptActions && s_xenoMenuPromptNavKind != 3 &&
+    if (s_xenoMenuPromptActions && s_xenoMenuPromptNavKind < 3 &&
         promptTick >= 0 && !promptCancelInjected &&
         t >= promptTick + (s_xenoMenuPromptNavKind == 1 ? 115 :
                            (s_xenoMenuPromptNavKind == 2 ? 55 : 45))) {
@@ -851,6 +923,14 @@ static void PcPort_ForcedMenuActionEdges(void)
         fflush(stdout);
         /* N2c-3: for the item-use mode the hashes are EXPECTED to change --
          * print the explicit save-state values the proof asserts on. */
+        if (s_xenoMenuPromptNavKind == 4) {
+            extern int g_XenoMenuN2c3SpecialHits;
+
+            PcPort_N2c4PrintFamilies("AFTER");
+            printf("[xeno-port][test] N2C4 AFTER: mag2SpecialHits=%d\n",
+                   g_XenoMenuN2c3SpecialHits);
+            fflush(stdout);
+        }
         if (s_xenoMenuPromptNavKind == 3) {
             extern unsigned char g_GameState[];
             extern int g_XenoMenuN2c3SpecialHits;

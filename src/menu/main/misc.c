@@ -3927,6 +3927,8 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E31C0);
  * ordinary item; the stubs are NOT called so their break-counters stay 0. */
 int g_XenoMenuN2c3SpecialHits = 0;
 
+void func_801E5058(void);   /* the mag-1 bulk special, defined below (N2c-4) */
+
 /* Nav N2c-3: the item-effect engine.  Applies pItemsData[itemId]'s effect to
  * g_GameState.characters[charId] (SAVE-BACKED writes, retail-clamped) and
  * returns 0 iff anything applied -- the polarity DB920's anyEffectApplied
@@ -4021,14 +4023,15 @@ s32 func_801E31C0(MenuUnk6* pItemBank, u8 charId, u8 itemId) {
     }
 
     if (item->effectFlags & 0x1) {
-        /* GUARDED, fail-visible: the special dispatch is N2c-4 / parked.
-         * Retail: magnitude 1 -> func_801E5058, 2 -> func_801E5178. */
-        if (item->effectMagnitude == 1 || item->effectMagnitude == 2) {
+        if (item->effectMagnitude == 1) {
+            /* N2c-4: the bulk special is real. */
+            func_801E5058();
+        } else if (item->effectMagnitude == 2) {
+            /* GUARDED, fail-visible: magnitude 2 (func_801E5178) stays
+             * parked and structurally absent. */
             g_XenoMenuN2c3SpecialHits++;
             printf("[xeno-port][stub-path] func_801E31C0 special dispatch "
-                   "mag=%d (func_801E50%s) NOT PORTED\n",
-                   (int)item->effectMagnitude,
-                   item->effectMagnitude == 1 ? "58" : "178 -> E5178");
+                   "mag=2 (func_801E5178) NOT PORTED\n");
             fflush(stdout);
         }
     }
@@ -4079,7 +4082,50 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4D10);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5058);
+#else
+/* Nav N2c-4: the magnitude-1 bulk special (func_801E31C0's effectFlags&0x1
+ * dispatch).  Populates all five inventory families with sequential IDs at
+ * quantity 10 -- a bulk inventory initializer/unlocker.  SAVE-BACKED, the
+ * widest single mutation in the menu arc.
+ *
+ * Retail loop shape (identical x5): the ID store uses the pre-increment
+ * index, the increment sits BETWEEN the two stores, and the next
+ * iteration's index is recomputed in the loop-back DELAY SLOT
+ * (`andi $v0,$v1,0xFF`).  In C that collapses to ids[i]=i; qty[i]=10 --
+ * the scheduling is register dance, the slot coverage is what matters:
+ * every loop starts at i=1, so SLOT 0 of every family is untouched, and
+ * the items loop additionally writes at [i+2] (slots 3..0x4D get IDs
+ * 1..0x4B), leaving item slots 0-2 -- where the special item itself
+ * lives -- intact. */
+void func_801E5058(void) {
+    u8 i;   /* the u8 index IS the byte-match shape: retail masks it to
+             * 0xFF at every use (andi), which a u8 var reproduces exactly
+             * (72/72 opcodes vs retail via the codegen-scratch flow). */
+
+    for (i = 1; i < 0x48; i++) {
+        g_GameState.weaponIDs[i] = i;
+        g_GameState.weaponQuantities[i] = 10;
+    }
+    for (i = 1; i < 0x96; i++) {
+        g_GameState.accessoryIDs[i] = i;
+        g_GameState.accessoryQuantities[i] = 10;
+    }
+    for (i = 1; i < 0x4C; i++) {
+        g_GameState.itemIDs[i + 2] = i;
+        g_GameState.itemQuantities[i + 2] = 10;
+    }
+    for (i = 1; i < 0x48; i++) {
+        g_GameState.unk2120IDs[i] = i;
+        g_GameState.unk20BCQuantities[i] = 10;
+    }
+    for (i = 1; i < 0x69; i++) {
+        g_GameState.unk221AIDs[i] = i;
+        g_GameState.unk2184Quantities[i] = 10;
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5178);
 
