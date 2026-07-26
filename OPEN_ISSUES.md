@@ -1827,6 +1827,63 @@ Last verified @ b3bd4a2
 
 ---
 
+## File/save is blocked below the decomp by hollow PsyCross memory-card primitives
+
+Found during the Nav N3 scoping (read-only, 2026-07-26). This is a BACKEND
+PREREQUISITE, not a menu slice -- the sibling of the sound cold-init entry
+below, and it must be treated the same way.
+
+**The screen.** Dispatch case 1 is the File screen, `func_801D9F98(0,
+D_801E96A4)`. Dispatch case 8 is the SAME function as the LOAD variant,
+`func_801D9F98(1, 0)`; on a nonzero return it sets `D_800594D0 = 2` and exits
+the menu. So File is save AND load, and the load path deserializes INTO
+`g_GameState`.
+
+**What it needs.** File's external surface is the full PSX BIOS memory-card +
+file API, plus event and critical-section machinery (so it is also
+asynchronous): `InitCARD`, `StartCARD`, `_bu_init`, `_card_info`,
+`firstfile`/`nextfile`, `open`/`close`/`read`/`write`/`erase`/`format`/
+`rename`, `OpenEvent`/`CloseEvent`/`EnableEvent`/`TestEvent`,
+`EnterCriticalSection`/`ExitCriticalSection`.
+
+**Every one of them is hollow.** In `pc_port/extern/PsyCross/src/psx/LIBAPI.C`
+each of these is a `PSYX_UNIMPLEMENTED()` body that `return 0`s -- and the
+macro is a NO-OP in release builds (`pc_port/extern/PsyCross/src/platform.h:49`
+defines it empty unless `_DEBUG`).
+
+**WHY THIS IS WORSE THAN MISSING.** The symbols LINK, so a stub-manifest check
+reports nothing missing -- the port's generated `stubs.c` does not contain them
+and the usual "what is stubbed?" sweep comes back clean. At runtime `open()`
+returns 0 (a plausible fd, not an error), `read()` returns 0 bytes, and
+`firstfile()` returns NULL -- SILENTLY, with no diagnostic in a release build.
+A load would run deserialization over whatever the destination buffer already
+holds and write that into `g_GameState`. That is FAIL-SILENT ON A SAVE PATH:
+the exact inverse of this project's fail-visible discipline, and the one place
+where silence produces a corrupted save rather than a visible stub line.
+
+**CONSEQUENCE -- do not attempt File opportunistically.** File is NOT a menu
+slice. Its 9,054i NET (N3 scoping) is downstream of the card layer; the card
+layer is the actual project. Any attempt to "just port the screen" would
+produce a File UI that appears to work and silently does nothing, or worse,
+silently corrupts. If save/load is wanted, implement and validate the PsyCross
+memory-card layer FIRST, with the same fail-visible posture used elsewhere
+(a loud unimplemented path, never a `return 0`).
+
+**Related correction, now fully explained.** The N2 scoping labelled the
+`func_801C9BCC`-`func_801CD710` family "shared prompt engines" and credited it
+to the Items arc; N2c then found it UNREACHABLE from `func_801DB920` and
+removed the credit. The N3 tree walk resolves the rest: that family is FILE's
+OWN UI SUBTREE. File is essentially disjoint from the other four screens
+(intersection <= 625i), which is why nothing in the Items/Equip/Gear/Status
+work ever touches it.
+
+Evidence: N3 scoping tree walk from `func_801D9F98`; `LIBAPI.C` +
+`platform.h:49` read directly; dispatch cases 1 and 8 read from the ported
+`func_801C531C` body.
+Last verified @ b3bd4a2
+
+---
+
 ## Sound cold-init is blocked below the decomp by hollow PsyCross SDK primitives
 
 `src/slus_006.64/system/sound.c` is linked and all ten audited sound layouts are
