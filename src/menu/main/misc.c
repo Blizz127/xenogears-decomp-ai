@@ -2290,7 +2290,74 @@ void func_801D3674(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D36E0);
+#else
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+extern u8 D_801EA17C[];    /* per-style base x (lw, stride 4) */
+extern u8 D_801EA18C[];    /* per-style y (lhu, stride 4) */
+extern u8 D_801EA578[];    /* variant-0 u (lw, stride 4) */
+extern u8 D_801EA584[];    /* variant-1 u (lw, stride 4) */
+extern u8 D_801EA5C4[];    /* variant-0 v (lbu, stride 4) */
+extern u8 D_801EA5D0[];    /* variant-1 v (lbu, stride 4) */
+extern void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h);
+extern void func_801E927C(POLY_FT4* p);
+
+/* Nav N3a-A1b-1: sprite/tpage setup for one Abilities row string.  Resets the
+ * row's double-buffered poly, gives it the shared 0x180 tpage, picks the CLUT
+ * from a parity bit, then sizes the quad and its vertex group from the
+ * per-style / per-slot tables.
+ *
+ * Two variants selected by `variant`:
+ *   0 -> width 0x48, parity from MenuManager.currentCharacterIDs[slot] bit 0,
+ *        u/v from D_801EA578 / D_801EA5C4, x bias -0x24
+ *   1 -> width 0x60, parity from (characters[charId].gearId + 0xB) bit 0,
+ *        u/v from D_801EA584 / D_801EA5D0, x bias -0x30
+ * The charId->GameCharacter index uses retail's *0xA4 strength-reduced chain
+ * (x*5 <<3 +x <<2); expressed here as the natural struct index. */
+void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
+    POLY_FT4* pPoly;
+    s32 rc = g_Menu->renderContext;
+    s32 sl = slot & 0xFF;
+    s32 st = style & 0xFF;
+    s32 width;
+    s32 x;
+    s32 u;
+    s32 v;
+    u8 parity;
+
+    func_801E927C(&pStr->polys[rc]);
+
+    pPoly = &pStr->polys[rc];
+    pPoly->tpage = GetTPage(0, 0, 0x180, 0);
+
+    if ((variant & 0xFF) != 0) {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[sl];
+
+        width = 0x60;
+        parity = (u8)((g_GameState.characters[charId].gearId + 0xB) & 1);
+        pPoly = &pStr->polys[g_Menu->renderContext];
+        pPoly->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
+        u = (*(s32*)(D_801EA584 + sl * 4) << 2) & 0xFC;
+        v = D_801EA5D0[sl * 4];
+        x = (u16)(*(s32*)(D_801EA17C + st * 4) - 0x30);
+    } else {
+        width = 0x48;
+        parity = (u8)(g_Menu->pManager->currentCharacterIDs[sl] & 1);
+        pPoly = &pStr->polys[g_Menu->renderContext];
+        pPoly->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
+        u = (*(s32*)(D_801EA578 + sl * 4) << 2) & 0xFC;
+        v = D_801EA5C4[sl * 4];
+        x = (u16)(*(s32*)(D_801EA17C + st * 4) - 0x24);
+    }
+
+    func_801E920C(&pStr->polys[g_Menu->renderContext], x,
+                  *(u16*)(D_801EA18C + st * 4), u, v, width, 0xD);
+    func_801C851C(pStr->vertices, x, *(u16*)(D_801EA18C + st * 4), width, 0xD);
+    pStr->renderContext = (u8)g_Menu->renderContext;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D397C);
@@ -4668,6 +4735,8 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
 extern u8 D_801E9E64[];   /* per-option string x-offset table (u16 at *4) */
 extern u8 D_801E9EC4[];   /* Items description label x positions */
 extern u8 D_801E9EE4[];   /* Items description label y position */
+extern u8 D_801E9EE8[];   /* Abilities row x positions (E8070 mode 2/5) */
+extern u8 D_801E9F28[];   /* Abilities row y positions, indexed by arg6 */
 
 /* Nav N1: position the selected option's MenuString quad (the rendered text
  * strip) at the cursor's table position, mark it visible.  Retail is a 7-case
@@ -4694,12 +4763,31 @@ void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
         return;
     }
 
+    /* Nav N3a-A1b-1: the Abilities row draw.  Structurally identical to mode 1
+     * -- same func_801C851C call and the same shared tail at .L801E8428 -- and
+     * differs only in where x and y come from.
+     *
+     * Retail's mode 5 is a ONE-INSTRUCTION arm (`ori $a1,$zero,8`) that falls
+     * through into this body, biasing the x table by 8; it is the category-2
+     * variant used by func_801DC3D8's deferred arm.  It is deliberately NOT
+     * folded in here -- mode 5 stays in the guard below and lands with
+     * Gear/Status, so this port cannot silently absorb its entry. */
+    if ((mode & 0xFF) == 2) {
+        pStr = &((MenuString*)pStrings)[sel];
+        x = *(u16*)(D_801E9EE8 + sel * 4);
+        y = *(u16*)(D_801E9F28 + (arg6 & 0xFF) * 4);
+        func_801C851C(pStr->vertices, x, y, pStr->width, 0xD);
+        pStr->renderContext = (u8)rc;
+        ((u8*)pFlags)[sel] = 1;
+        return;
+    }
+
     if ((mode & 0xFF) != 0) {
         static int warned;
         if (!warned) {
             warned = 1;
             printf("[xeno-port][stub-path] func_801E8070 mode %d not ported "
-                   "(only modes 0 and 1)\n", mode & 0xFF);
+                   "(ported: 0, 1, 2)\n", mode & 0xFF);
         }
         return;
     }
