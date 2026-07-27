@@ -171,6 +171,38 @@ with proof artifacts that predated the last source edit. **Rebuild and re-run ev
 proof; treat no prior artifact as evidence.** Check artifact mtimes against source
 mtimes before believing a log.
 
+### Read-the-two-instructions-before-an-access
+
+When mapping a work-buffer field from access patterns, **capture the two
+instructions before the load/store, not just the access itself.** An
+`addu <base>, <index>` one instruction earlier turns what reads as a scalar
+field into an array indexed by a cursor.
+
+Bitten twice in the same direction. Most recently `AbilityMenuWork`: three sites
+(`func_801DDF24` `$s1`, `func_801DC3D8` `$s6`, `func_801DCE60` `$s3`) all do
+`addu` then `lbu`/`sb` at `+0x1084`, so the approved struct's scalar `unk1084`
+plus a "no observed access" filler span was wrong — it is `rowFlags[0xC]`,
+indexed by the row cursor. It only surfaced because the port would not compile
+against the scalar declaration; a field that *did* compile would have shipped.
+
+Note the contrast that makes the lesson precise: `MenuUnk440Work`, derived in
+the same pass, was correct first time — because it was derived from **consumer
+signatures** (`func_8002675C`'s `void* polys`, `func_801C851C`'s `SVECTOR*`)
+rather than from access patterns. Deriving a type from what a typed consumer
+demands does not have this blind spot; deriving it from raw accesses does.
+
+### The meta-lesson these three share
+
+`builder-needs-a-draw-pass`, `role-labels-are-hypotheses`, and the rule above
+are the same kind of finding: **a systematic blind spot in a method, discovered
+by the method failing twice in the same direction.** The specific checks matter
+less than the habit — when a method produces a wrong answer twice with the same
+shape of error, the fix belongs in the method, not in a list of things to
+remember. Two other measurement methods currently sit in this state and are
+flagged for repair before the next screen is priced: the "ported" classifier
+that matched `extern` declarations, and the stop-at-ported call-graph walk that
+misses edges originating inside ported C bodies.
+
 ## GTE / matrix audit note
 
 Handwritten GTE sequences may hide `cv=0` vs `cv=3` mis-transcriptions. When projection looks wrong, check asm GTE `mvmva` control bits before experimenting with matrix hacks.
