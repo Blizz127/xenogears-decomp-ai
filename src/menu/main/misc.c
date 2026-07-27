@@ -103,6 +103,10 @@ int g_XenoMenuN2Phase = 0;
 /* Nav N2c-2a capture marker: 1 = initial/default target prompt built,
  * 2 = prompt cancel teardown complete. */
 int g_XenoMenuN2c2Phase = 0;
+
+/* Nav N3a-A1a capture marker: 1 = Abilities windows built + open animation
+ * done, 2 = screen loop exited (teardown runs in func_801DC2CC via E3088). */
+int g_XenoMenuN3aPhase = 0;
 #endif
 
 #ifndef XENO_PC_PORT
@@ -662,13 +666,42 @@ void func_801C72BC(s32 mode) {
         ItemMenuWork* work = MenuItemWork();
         HeapFree(g_Menu->unk330->pItemsData);
         HeapFree((void*)(uintptr_t)work->descriptionBundle);
+    } else if (resourceMode == 2 || resourceMode == 0x12) {
+        /* Nav N3a-A1a: the Abilities bank.  Mode 2 decompresses one per-record
+         * blob for every PRESENT party slot (0xFF = absent) plus the shared
+         * ability bank; 0x12 is the exact mirror and takes no archive, since
+         * the archive is only opened for modes < 0x10. */
+        AbilityMenuWork* work =
+            (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+        s32 i;
+
+        for (i = 0; i < 3; i++) {
+            u8 id = g_Menu->pManager->currentCharacterIDs[i];
+
+            if (id != 0xFF) {
+                u32* pSlot = (u32*)&g_Menu->unk330->unk20[id * 4];
+
+                if (resourceMode == 2) {
+                    *pSlot = (u32)(uintptr_t)LZSSHeapDecompress(
+                        (void*)(uintptr_t)archive[4 + id], 0);
+                } else {
+                    HeapFree((void*)(uintptr_t)*pSlot);
+                }
+            }
+        }
+        if (resourceMode == 2) {
+            work->abilityBank = (u32)(uintptr_t)LZSSHeapDecompress(
+                (void*)(uintptr_t)archive[0x10], 0);
+        } else {
+            HeapFree((void*)(uintptr_t)work->abilityBank);
+        }
     } else {
         static u32 warnedModes;
         u32 bit = (resourceMode < 32) ? (1u << resourceMode) : 0;
         if (bit == 0 || (warnedModes & bit) == 0) {
             warnedModes |= bit;
             printf("[xeno-port][stub-path] func_801C72BC mode %u not ported "
-                   "(N2a supports only 0 and 0x10)\n", resourceMode);
+                   "(ported: 0, 2, 0x10, 0x12)\n", resourceMode);
             fflush(stdout);
         }
     }
@@ -1045,7 +1078,17 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85F8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C861C);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8640);
+#else
+
+extern u16 D_801E96C8[];
+
+/* Nav N3a-A1a: mask lookup -- D_801E96C8[index] & mask.  Leaf, no frame. */
+s32 func_801C8640(s32 mask, s32 index) {
+    return D_801E96C8[index & 0xFF] & mask;
+}
+#endif
 
 /* Bit-select: is character `index` present in party mask `mask`?
  * (D_801E96A8 is the {1,2,4,8,...} table.) */
@@ -2182,7 +2225,57 @@ void func_801D3444(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3488);
+#else
+
+extern s32 D_801EA164[];
+extern s32 D_801EA16C[];
+
+/* Nav N3a-A1a: build the shared four-quad panel set into SystemMenu.unk440.
+ * Allocated once (guarded by MenuManager.unk5C[0xB], retail +0x67) and reused
+ * by all four screens; `bank` selects the sprite bank via D_801EA16C, and the
+ * category picks which readiness byte gates the build.  Retail reads the quad
+ * geometry back out of polys[i*2 + renderContext] -- the double-buffered pair
+ * selection -- and derives each vertex group's w/h from x1-x0 / y3-y0. */
+void func_801D3488(s32 bank, u8 category) {
+    MenuUnk440Work* work;
+    s32 i;
+    u8 gate;
+
+    if ((category & 0xFF) != 0) {
+        gate = g_Menu->unk33B;
+    } else {
+        gate = g_Menu->unk32B;
+    }
+    if (gate == 1) {
+        return;
+    }
+
+    if (g_Menu->pManager->unk5C[0xB] == 0) {
+        work = HeapAlloc(sizeof(MenuUnk440Work), 0);
+        *(u32*)&g_Menu->unk440[0] = (u32)(uintptr_t)work;
+        bzero(work, sizeof(MenuUnk440Work));
+        g_Menu->pManager->unk5C[0xB] = 1;
+    }
+
+    work = (MenuUnk440Work*)(uintptr_t)*(u32*)&g_Menu->unk440[0];
+    for (i = 0; i < 2; i++) {
+        func_8002675C(g_Menu->unk2DC, 0x164 + i, &work->polys[i * 4],
+                      g_Menu->renderContext, D_801EA164[i],
+                      D_801EA16C[bank & 0xFF], 0x1000);
+    }
+    for (i = 0; i < 4; i++) {
+        POLY_FT4* pPoly = &work->polys[i * 2 + g_Menu->renderContext];
+
+        func_801C851C(&work->vertices[i * 4], pPoly->x0, pPoly->y0,
+                      (u16)(pPoly->x1 - pPoly->x0),
+                      (u16)(pPoly->y3 - pPoly->y0));
+    }
+    work->renderContext = (u8)g_Menu->renderContext;
+    g_Menu->pManager->unk52[1] = 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3674);
@@ -3800,9 +3893,80 @@ s32 func_801DBE54(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC1D4);
+#else
 
+/* Nav N3a-A1a: Abilities resource + text setup.  Allocates AbilityMenuWork
+ * into the PSX-width slot unk42C[1], seeds the eight menu strings from the
+ * bank-selected descriptor table, then loads the category's resource bank.
+ * The category switch {0,1,2} -> mode {2,5,6} has a provably-dead default arm
+ * (every caller passes 0/1/2), so only the reached arms are expressed. */
+void func_801DC1D4(u8 category) {
+    AbilityMenuWork* work;
+    s32 mode;
+    s32 bank = 0;
+    u8 cat = category & 0xFF;
+
+    work = HeapAlloc(sizeof(AbilityMenuWork), 0);
+    g_Menu->unk42C[1] = (u32)(uintptr_t)work;
+    bzero(work, sizeof(AbilityMenuWork));
+
+    if (cat == 1) {
+        mode = 5;
+    } else if (cat == 2) {
+        mode = 6;
+        bank = 1;
+    } else {
+        mode = 2;
+    }
+
+    func_801E8018(8, g_Menu->itemMenuStrings, &D_801EA548[bank * 8]);
+    func_801C72BC(mode & 0xFF);
+    func_801D22F4(2);
+    func_801D3488(2, category & 0xFF);
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC2CC);
+#else
+
+/* Nav N3a-A1a: Abilities teardown, reached from the ported common-exit
+ * dispatcher func_801E3088 case 3.  Destroys the four windows, drops the
+ * cursor state, frees the category's resource bank (mode | 0x10) and the
+ * AbilityMenuWork allocation, then re-arms the main-menu window.
+ * Same category switch as func_801DC1D4; the unwritten-$s1 default arm is
+ * unreachable (E3088 passes 0, Status 0, Gear 1 and 2). */
+void func_801DC2CC(s32 category) {
+    AbilityMenuWork* work;
+    s32 mode;
+    u8 cat;
+
+    func_801D4EA0(3);
+    func_801D4EA0(4);
+    func_801D4EA0(5);
+    func_801D4EA0(6);
+    func_801D2484();
+    cat = category & 0xFF;
+    g_Menu->pManager->unk4A[0] = 0;
+    func_801C7BF4();
+
+    if (cat == 1) {
+        mode = 5;
+    } else if (cat == 2) {
+        mode = 6;
+    } else {
+        mode = 2;
+    }
+
+    func_801C72BC((mode | 0x10) & 0xFF);
+    work = (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+    HeapFree(work);
+    g_Menu->pManager->unk5[1] = 1;
+    g_Menu->pManager->shouldRenderWindow[1] = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC3D8);
 
@@ -3812,9 +3976,149 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD5E8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD790);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DDF24);
+#else
 
+extern u16 D_801E9788[];
+extern u16 D_801E9794[];
+extern u16 D_801E97A0[];
+
+/* Nav N3a-A1a: the Abilities screen core.  Resource setup, then a frame loop
+ * that rebuilds content only when the selected character or cursor changed
+ * (the 0xFF sentinels), builds its four windows once (the buildWindows latch)
+ * and optionally runs the open animation, then dispatches input through the
+ * eleven-entry table.
+ *
+ * A1a scope: the two content builders (func_801DC3D8, func_801DCE60) and the
+ * interaction writer (func_801DD790) are A1b/A2 and remain unported; the
+ * harness cancels without interacting so none is reached.  The confirm arm's
+ * guard -- work->rowFlags[cursor] & 0x80 -- is ported faithfully because it is
+ * exactly what keeps func_801DD790 unreached. */
+void func_801DDF24(u8 charSel, u8 openAnim, u8 category) {
+    AbilityMenuWork* work;
+    s32 running = 1;
+    s32 buildWindows = 1;
+    s32 cursor = 0;
+    s32 lastCursor = 0xFF;
+    s32 curChar = charSel;
+    s32 lastChar = 0xFF;
+    u8 cat = category & 0xFF;
+    s32 ch;
+
+    func_801DC1D4(cat);
+    func_801DB02C(0);
+
+    do {
+        func_801C7BF4();
+        ch = curChar & 0xFF;
+        if (ch != (lastChar & 0xFF)) {
+            func_801DC3D8(ch, category & 0xFF);
+            lastChar = curChar;
+            lastCursor = 0xFF;
+        }
+        func_801DB0A8(cursor, 0, 2, 0);
+        if (cursor != lastCursor) {
+            func_801DCE60(ch, cursor & 0xFF, category & 0xFF);
+            lastCursor = cursor;
+        }
+
+        if ((buildWindows & 0xFF) != 0) {
+            func_801D397C(6, 0x10, 0xA, D_801E9788[cat * 2], 0x70, 0, 1, 4, 0);
+            func_801D397C(5, 0xC, 0x86, 0xAC, 0x38, 0, 1, 4, 0);
+            func_801D397C(4, D_801E9794[cat * 2], 0xA6, D_801E97A0[cat * 2],
+                          0x18, 0, 1, 4, 0);
+            func_801D397C(3, 0xC8, 0x86, 0x50, 0x18, 0, 1, 4, 0);
+            /* retail clears the latch in the branch shadow -- unconditional */
+            buildWindows = 0;
+            if (openAnim != 0) {
+                func_801D1E80();
+                func_801D29A8(0, 0);
+                func_801C7BF4();
+            }
+            g_Menu->pManager->unk5[1] = 0;
+            g_Menu->pManager->shouldRenderWindow[1] = 0;
+            {
+                extern int g_XenoMenuN3aPhase;
+                g_XenoMenuN3aPhase = 1;
+                printf("[xeno-port][test] Nav N3a: Abilities windows built + "
+                       "open animation done (content is A1b, window empty)\n");
+                fflush(stdout);
+            }
+        }
+
+        switch (g_Menu->input) {
+        case 0:                                     /* RIGHT: cursor + 1 */
+            if (cat != 2) {
+                cursor++;
+                if (cursor >= 0xC) {
+                    cursor = 0xB;
+                }
+            }
+            break;
+        case 2:                                     /* LEFT: cursor - 1 */
+            if (cat != 2) {
+                cursor--;
+                if (cursor < 0) {
+                    cursor = 0;
+                }
+            }
+            break;
+        case 1:                                     /* DOWN: cursor + 2 */
+            if (cursor + 2 < 0xC) {
+                cursor = cursor + 2;
+            }
+            break;
+        case 3:                                     /* UP: cursor - 2 */
+            if (cursor - 2 >= 0) {
+                cursor = cursor - 2;
+            }
+            break;
+        case 4:                                     /* CONFIRM */
+            work = (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+            if (work->rowFlags[cursor] & 0x80) {
+                func_801DD790(curChar & 0xFF, cursor, category & 0xFF);
+                lastChar = 0xFF;
+                lastCursor = 0xFF;
+            }
+            break;
+        case 5:                                     /* BACK: leave the screen */
+            running = 0;
+            break;
+        case 9:
+            curChar = func_801D9704(curChar & 0xFF, 0, category & 0xFF);
+            break;
+        case 0xA:
+            curChar = func_801D9704(curChar & 0xFF, 1, category & 0xFF);
+            break;
+        default:
+            break;
+        }
+    } while (running != 0);
+
+    func_801E8044(8, &g_Menu->pManager->unk38[0]);
+    func_801DB340(0);
+    {
+        extern int g_XenoMenuN3aPhase;
+        g_XenoMenuN3aPhase = 2;
+        printf("[xeno-port][test] Nav N3a: Abilities loop exited; teardown "
+               "next via func_801E3088 case 3 -> func_801DC2CC\n");
+        fflush(stdout);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE29C);
+#else
+
+/* Nav N3a-A1a: Abilities dispatch entry (dispatch case 3).  Retail masks both
+ * bytes, runs the screen with category 0, and always reports "keep the menu". */
+s32 func_801DE29C(s32 charSel, s32 openAnim) {
+    func_801DDF24(charSel & 0xFF, openAnim & 0xFF, 0);
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE2C8);
 

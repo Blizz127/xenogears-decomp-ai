@@ -234,6 +234,55 @@ typedef struct {
     /* 0x1195 */ u8 _pad1195[3];
 } ItemMenuWork; // Retail size: 0x1198
 
+/* Abilities submenu content, allocated by func_801DC1D4 and stored in the
+ * truncated PSX-pointer slot SystemMenu.unk42C[1] (retail g_Menu + 0x430) --
+ * the same convention Items established at unk42C[0].  Retail size 0x1094;
+ * the embedded MenuStrings expand naturally in the native 64-bit port.
+ *
+ * NOT ItemMenuWork: that struct's 0x1080 is a MenuString, this one's is a
+ * four-byte pointer slot.  Reusing the Items type would compile and look
+ * right while writing a pointer into a MenuString's vertex data.
+ *
+ * Unnamed spans are sized filler with no observed access. */
+typedef struct {
+    /* 0x0000 */ MenuString strings[32];
+    /* 0x1000 */ u8 unk1000[0x80];   /* no observed access */
+    /* 0x1080 */ u32 abilityBank;    /* LZSSHeapDecompress result, C72BC
+                                      * mode 2; freed by 0x12. PSX-width. */
+    /* 0x1084 */ u8 rowFlags[0xC];   /* per-row flags, indexed by the 0..0xB
+                                      * cursor (bound proven by func_801DDF24's
+                                      * cursor arithmetic: slti 0xC / bgez, and
+                                      * the +-2 paged variants).  func_801DC3D8
+                                      * writes, func_801DDF24 tests bit 0x80 to
+                                      * gate the confirm dispatch into
+                                      * func_801DD790, func_801DCE60 reads.
+                                      * Each site does `addu <base>,<cursor>`
+                                      * one instruction before the access. */
+    /* 0x1090 */ u8 unk1090[0x2];    /* no observed access */
+    /* 0x1092 */ u8 unk1092;         /* scalar -- NOT indexed (accessed direct
+                                      * off the work pointer in func_801DCE60) */
+    /* 0x1093 */ u8 unk1093;         /* tail pad to 0x1094 */
+} AbilityMenuWork; // Retail size: 0x1094
+
+/* Built by func_801D3488 into SystemMenu.unk440 (retail g_Menu + 0x440),
+ * HeapAlloc'd once and guarded by MenuManager.unk5C[0xB] (retail +0x67).
+ * SHARED BY SEVEN CALLERS across Abilities / Equip / Gear / Status, so the
+ * layout is load-bearing well beyond the slice that first defines it.
+ *
+ * NAME IS DELIBERATELY STRUCTURAL.  The shape is unambiguous -- func_8002675C
+ * takes the polys (2 calls x 4 POLY_FT4) and func_801C851C takes the vertex
+ * groups (4 calls x 4 SVECTOR), with the geometry read from
+ * polys[i*2 + renderContext] at the exact POLY_FT4 vertex offsets -- but what
+ * the four quads DEPICT is not: sprite-table indices 0x164 + i out of
+ * SystemMenu.unk2DC, bank selected by D_801EA16C[arg0], and arg0 differs per
+ * caller.  Rename when the atlas proves what they are. */
+typedef struct {
+    /* 0x000 */ POLY_FT4 polys[8];      /* 4 quads as double-buffered pairs */
+    /* 0x140 */ SVECTOR vertices[16];   /* 4 groups of 4, one group per quad */
+    /* 0x1C0 */ u_char renderContext;
+    /* 0x1C1 */ u8 unk1C1[0x3];         /* pad to 0x1C4; no observed access */
+} MenuUnk440Work; // Size: 0x1C4
+
 typedef struct {
     /* 0x0   */ POLY_FT4 polysWindowBorderCorners[8];
     /* 0x140 */ POLY_FT4 polysWindowBorderTop[4]; // First 2 = 1st half, Second 2 = 2nd half

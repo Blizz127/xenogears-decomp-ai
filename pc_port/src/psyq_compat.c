@@ -593,20 +593,26 @@ static void PcPort_ForcedMenuNav(void)
 
     if (armed == -2) {
         const char* e = getenv("XENO_MENU_NAV_TEST");
-        if (e && (strcmp(e, "items") == 0 ||
+        if (e && (strcmp(e, "abilities") == 0 ||
+                  strcmp(e, "items") == 0 ||
                   strcmp(e, "items-reorder") == 0 ||
                   strcmp(e, "items-prompt") == 0 ||
                   strcmp(e, "prompt-nav") == 0 ||
                   strcmp(e, "prompt-nav-skip") == 0 ||
                   strcmp(e, "item-use") == 0 ||
                   strcmp(e, "item-special") == 0)) {
-            armed = 3;
+            /* N3a-A1a: DOWN DECREMENTS menu1Choice (wrapping 0..6), so the
+             * established 3 taps land on Items (entry 4); Abilities is entry 3,
+             * one further along the same direction -> 4 taps.  Measured, not
+             * assumed: 2 taps routed to func_801E0F78 (Equip, entry 5). */
+            armed = (strcmp(e, "abilities") == 0) ? 4 : 3;
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
-            s_xenoMenuPromptActions = strcmp(e, "items-prompt") == 0 ||
+            s_xenoMenuPromptActions = strcmp(e, "abilities") != 0 &&
+                                      (strcmp(e, "items-prompt") == 0 ||
                                       strncmp(e, "prompt-nav", 10) == 0 ||
                                       strcmp(e, "item-use") == 0 ||
-                                      strcmp(e, "item-special") == 0;
+                                      strcmp(e, "item-special") == 0);
             if (strcmp(e, "prompt-nav") == 0) {
                 s_xenoMenuPromptNavKind = 1;
             } else if (strcmp(e, "prompt-nav-skip") == 0) {
@@ -615,6 +621,8 @@ static void PcPort_ForcedMenuNav(void)
                 s_xenoMenuPromptNavKind = 3;
             } else if (strcmp(e, "item-special") == 0) {
                 s_xenoMenuPromptNavKind = 4;
+            } else if (strcmp(e, "abilities") == 0) {
+                s_xenoMenuPromptNavKind = 5;
             }
         } else {
             armed = (e && *e) ? atoi(e) : 0;
@@ -803,6 +811,52 @@ static void PcPort_ForcedMenuActionEdges(void)
         printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: Circle confirm "
                "at reader tick %d\n", t);
         fflush(stdout);
+    }
+
+    /* N3a-A1a (kind 5): Abilities lifecycle.  Snapshot state at the confirm
+     * that opens the screen, wait for the windows + open animation, cancel,
+     * then re-hash.  A1a is READ-ONLY by construction: the character-stat
+     * writes live in func_801DD790 (A2), which the guard keeps unreached, so
+     * both hashes must come back identical. */
+    if (s_xenoMenuPromptNavKind == 5) {
+        extern int g_XenoMenuN3aPhase;
+        static int n3aOpenTick = -1, n3aCancel = 0, n3aDone = 0;
+        static unsigned int n3aCharBefore, n3aInvBefore;
+        static int n3aHashed = 0;
+
+        if (confirmInjected && !n3aHashed) {
+            n3aHashed = 1;
+            HASH_REGION(n3aCharBefore, 0x26C, 0x70C);
+            HASH_REGION(n3aInvBefore, 0x1D38, 0x578);
+            printf("[xeno-port][test] N3A STATE-BEFORE: characters=%08x "
+                   "inventory=%08x\n", n3aCharBefore, n3aInvBefore);
+            fflush(stdout);
+        }
+        if (g_XenoMenuN3aPhase == 1 && n3aOpenTick < 0) {
+            n3aOpenTick = t;
+            printf("[xeno-port][test] N3A OPEN: Abilities settled open at "
+                   "reader tick %d\n", t);
+            fflush(stdout);
+        }
+        if (n3aOpenTick >= 0 && !n3aCancel && t >= n3aOpenTick + 30) {
+            n3aCancel = 1;
+            g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
+            printf("[xeno-port][test] N3A CANCEL: Cross at reader tick %d\n", t);
+            fflush(stdout);
+        }
+        if (g_XenoMenuN3aPhase == 2 && !n3aDone) {
+            unsigned int charAfter, invAfter;
+
+            n3aDone = 1;
+            HASH_REGION(charAfter, 0x26C, 0x70C);
+            HASH_REGION(invAfter, 0x1D38, 0x578);
+            printf("[xeno-port][test] N3A STATE-AFTER: characters=%08x "
+                   "inventory=%08x unchanged=%s\n",
+                   charAfter, invAfter,
+                   (charAfter == n3aCharBefore && invAfter == n3aInvBefore)
+                       ? "yes" : "NO");
+            fflush(stdout);
+        }
     }
 
     if (g_XenoMenuN2Phase == 1 && s_xenoMenuItemsOpenTick < 0) {
