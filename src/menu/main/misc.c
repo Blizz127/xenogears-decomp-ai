@@ -107,6 +107,12 @@ int g_XenoMenuN2c2Phase = 0;
 /* Nav N3a-A1a capture marker: 1 = Abilities windows built + open animation
  * done, 2 = screen loop exited (teardown runs in func_801DC2CC via E3088). */
 int g_XenoMenuN3aPhase = 0;
+
+/* Nav N3a-A1b-1: the 14 per-row flag bytes from the latest func_801DC3D8
+ * build (rowFlags[0..0xB] + the unk1090[0..1] spill rows 12/13), exported so
+ * the headless harness can dump them and pick a boundary row without
+ * including menu.h. */
+unsigned char g_XenoMenuN3aRowFlags[0xE];
 #endif
 
 #ifndef XENO_PC_PORT
@@ -1774,7 +1780,49 @@ void func_801D14FC(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1640);
+#else
+/* Nav N3a-A1b-1: the Abilities content draw pass -- the analogue of the
+ * Items pass above, gated on pManager->unk4A[0], the content-ready latch
+ * func_801DC3D8's epilogue sets.  (This latch connection is why it escaped
+ * the A1b-1 callee walk: it is a renderer armed by the builder, not a
+ * callee of it.)  Rows whose rowFlags byte is nonzero draw BOTH their name
+ * and value strings; absent rows skip both.  The description block
+ * (strings[28..31]) is gated on work->unk1092, func_801DCE60's flag, and
+ * stays dark while DCE60 is stubbed.  The 33rd string draws unconditionally
+ * under the latch -- it is unk1000String's observed reader. */
+void func_801D1640(void) {
+    AbilityMenuWork* work;
+    s32 i;
+
+    if (g_Menu->pManager->unk4A[0] == 0) {
+        return;
+    }
+    work = (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+    for (i = 0; i < 0xE; i++) {
+        /* Retail reads 0x1084+i for i in 0..0xD, so rows 12/13 read the
+         * unk1090[0..1] spill -- same indexing as the builder. */
+        if (work->rowFlags[i] != 0) {
+            MenuString* name = &work->strings[i];
+            MenuString* value = &work->strings[14 + i];
+
+            func_801CE198(1, name->vertices, name->polys,
+                          name->renderContext);
+            func_801CE198(1, value->vertices, value->polys,
+                          value->renderContext);
+        }
+    }
+    if (work->unk1092 != 0) {
+        for (i = 28; i < 32; i++) {
+            func_801CE198(1, work->strings[i].vertices, work->strings[i].polys,
+                          work->strings[i].renderContext);
+        }
+    }
+    func_801CE198(1, work->unk1000String.vertices, work->unk1000String.polys,
+                  work->unk1000String.renderContext);
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D17C4);
 
@@ -4035,7 +4083,256 @@ void func_801DC2CC(s32 category) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC3D8);
+#else
+extern void* func_80033908(s32 index);
+extern u8 D_801E97F0[];    /* per-character cat-0 confirm masks (lhu, stride 2) */
+extern u8 D_801E9DDC[];    /* value-string x per row (lhu, stride 4) */
+extern u8 D_801E9E14[];    /* value-string y per row (lhu, stride 4) */
+
+/* A1b-1 stub guard for the deferred category arms. */
+static void MenuAbilityStubArm(const char* what, s32 category) {
+    static u32 warned;
+    u32 bit = (category >= 0 && category < 32) ? (1u << category) : 0;
+
+    if (bit != 0 && (warned & bit) == 0) {
+        warned |= bit;
+        printf("[xeno-port][stub-path] func_801DC3D8 %s (category %d) not "
+               "ported (ported: category 0)\n", what, category);
+        fflush(stdout);
+    }
+}
+
+/* Nav N3a-A1b-1: the Abilities content builder, category-0 path (the other
+ * two arms are Gear/Status credit and stay fail-visible stubs).
+ *
+ * Builds 14 rows (0..0xD): rows 0-0xB are the ability list (name + MP-cost
+ * value), rows 0xC/0xD are the character's MP / maxMP stat rows (value only;
+ * their labels are func_801DCE60's, still stubbed).
+ *
+ * Facts established by the A1b-1 frame map that are invisible in a linear
+ * read of the retail asm:
+ *
+ *  - PRESENCE PREDICATE (delay-slot trap at 0x175C4-0x175D0): the `andi
+ *    $v0,$s0,0xFF` in the branch shadow ALWAYS overwrites the slti result,
+ *    so populated = (func_801C8640(word, i) != 0) || (i >= 0xC).  Rows
+ *    12/13 are unconditionally populated.
+ *  - CONFIRM THRESHOLD (delay-slot write at 0x17458): the character's
+ *    current MP is saved across HeapAlloc in the call's branch shadow and
+ *    compared against each row's stat value 1.5KB later (0x17BB4) -- a row
+ *    is confirmable iff known AND cost <= current MP.
+ *  - $s2 RECYCLING (0x17A5C): $s2 is the digit count (2 for cat-0) entering
+ *    the tail and is REUSED as the confirmable flag 0x80 after the digit
+ *    loop.  Same register, two unrelated meanings; they are two variables
+ *    here (digitCount / confirmable).
+ *  - sp+0x78 E8070 MODE BIAS: zeroed at entry, rewritten to 3 only on the
+ *    category-2 row-12 arm (stubbed), so cat-0 provably calls func_801E8070
+ *    with mode 2 at both sites.  The mode is logged below as
+ *    belt-and-braces.
+ *  - rowFlags WRITE: retail writes 0x1084+i for i in 0..0xD, so rows 12/13
+ *    spill into unk1090[0..1]; the struct field is indexed past 0xB here
+ *    deliberately (see AbilityMenuWork).
+ *
+ * Register cursors that retail threads through the dispatch ($s6 name-entry
+ * cursor i*0x80, sp+0x90 value-entry cursor 0x700+i*0x80, $fp blob cursor
+ * i*0x28) become native array indices / the explicit blobCursor below; the
+ * geometry cursor (sp+0x88, stride 4 into D_801E9DDC/D_801E9E14) stays a
+ * byte offset because those tables are untyped blobs. */
+void func_801DC3D8(u8 ch, u8 category) {
+    AbilityMenuWork* work = (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+    u8 charId = g_Menu->pManager->currentCharacterIDs[ch & 0xFF];
+    u8 cat = category & 0xFF;
+    /* Retail: delay slot of the HeapAlloc below (0x17458). */
+    u32 mpThreshold = g_GameState.characters[charId].mp;
+    u8* renderBuffer = (u8*)HeapAlloc(0x3F6, 0);
+    /* Retail's number string lives on the 32-bit PSX stack (sp+0x30).  Keep
+     * the native equivalent in the port's below-4GB heap: the shared text
+     * descriptor intentionally preserves its four-byte pointer slot, so a
+     * native stack address would truncate (the item-menu precedent). */
+    u8* numString = (u8*)HeapAlloc(16, 0);
+    static const s32 divisors[5] = { 1, 10, 100, 1000, 10000 };
+    u16 digitCodes[5] = { 0, 0, 0, 0, 0 };
+    RECT upload;
+    s32 row;
+    s32 blobCursor = 0;    /* $fp: stat-blob row cursor, row * 0x28 */
+    s32 geomCursor = 0;    /* sp+0x88: byte cursor into D_801E9DDC/D_801E9E14 */
+    u8 modeBias = 0;       /* sp+0x78: E8070 mode = (modeBias + 2) & 0xFF */
+
+    for (row = 0; row < 0xE; row++) {
+        s32 populated;
+        s32 digitCount = 2;  /* $s2 on entry to the arm dispatch (0x175E8) */
+        s32 statValue = 0;   /* $s5 */
+        s32 confirmable;     /* $s2 recycled at 0x17A5C */
+        MenuString* nameStr = &work->strings[row];
+        MenuString* valueStr = &work->strings[14 + row];
+
+        /* Presence dispatch (0x174D4-0x175D8).  The per-category words live
+         * in the unmapped GameState span unk1648: +0x7A cat 0, +0x7E cat 1,
+         * +0x92 cat 2, each charId * 0x20. */
+        if (cat == 0) {
+            u16 word = *(u16*)&g_GameState.unk1648[0x7A + charId * 0x20];
+            populated = ((u16)func_801C8640(word, row & 0xFF) != 0) ||
+                        (row >= 0xC);
+        } else if (cat == 1) {
+            u16 word = *(u16*)&g_GameState.unk1648[0x7E + charId * 0x20];
+            populated = ((u16)func_801C8640(word, row & 0xFF) != 0) ||
+                        (row >= 0xC);
+        } else if (cat == 2) {
+            if (row & 1) {
+                populated = 0;      /* odd rows absent (0x1757C) */
+            } else {
+                u16 word = *(u16*)&g_GameState.unk1648[0x92 + charId * 0x20];
+                populated = ((u16)func_801C8640(word, (row >> 1) & 0xFF) != 0) ||
+                            (row >= 0xC);
+            }
+        } else {
+            populated = 0;          /* category >= 3: absent (0x174F8) */
+        }
+
+        if (!populated) {
+            work->rowFlags[row] = 0;    /* 0x17D2C; spills for rows 12/13 */
+            goto nextRow;
+        }
+
+        if (row < 0xC) {
+            if (cat == 0) {
+                /* Category-0 arm (0x17620-0x176B8): ability name from the
+                 * string bundle, MP cost from the C72BC mode-2 per-character
+                 * blob at +0x383. */
+                u8* bank;
+                nameStr->width = (u8)SystemRenderStringEntry(
+                    func_80033908(((s32)charId << 4) + row),
+                    renderBuffer, 0x24, 0);
+                bank = (u8*)(uintptr_t)
+                    *(u32*)&g_Menu->unk330->unk20[charId * 4];
+                statValue = *(u8*)(bank + blobCursor + 0x383);
+            } else {
+                MenuAbilityStubArm("category arm", cat);
+                work->rowFlags[row] = 0;
+                goto nextRow;
+            }
+        } else {
+            /* Rows 12/13 (0x178B0-0x179B4): the character's MP / maxMP.
+             * The category-2 row-12 arm (fuel, 5 digits, modeBias = 3) is
+             * Gear/Status credit and stays stubbed. */
+            if (row == 0xC) {
+                if (cat == 2) {
+                    MenuAbilityStubArm("row-12 arm", cat);
+                    work->rowFlags[row] = 0;
+                    goto nextRow;
+                }
+                statValue = g_GameState.characters[charId].mp;
+            } else {
+                statValue = g_GameState.characters[charId].maxMp;
+            }
+        }
+
+        /* Shared digit/render tail (0x179C0-0x17D10).  Digit extraction:
+         * leading positions suppressed as glyph 0xC3 until the first nonzero
+         * digit ($t1 flag), ones digit always emitted.  Retail stores the
+         * ones digit in the delay slot of the func_80033B34 call, i.e.
+         * before the conversion runs -- same order here. */
+        {
+            s32 value = statValue;
+            s32 written = 0;
+            s32 started = 0;
+            s32 d;
+
+            for (d = digitCount - 1; d > 0; d--) {
+                s32 digit = value / divisors[d];
+                if (digit != 0 || started != 0) {
+                    digitCodes[written] = (u16)(digit + 0x10);
+                    value -= digit * divisors[d];
+                    started = 1;
+                } else {
+                    digitCodes[written] = 0xC3;
+                }
+                written++;
+            }
+            digitCodes[written] = (u16)(value % 10 + 0x10);
+            func_80033B34(digitCodes, numString, digitCount);
+        }
+
+        confirmable = 0x80;     /* $s2 recycled (0x17A5C) -- see header */
+
+        valueStr->width = (u8)SystemRenderStringEntry(numString, renderBuffer,
+                                                      0x24, 1);
+
+        upload.x = (s16)(0x180 + (row & 1) * 0x18);
+        upload.y = (s16)(0x80 + (row >> 1) * 0xD);
+        upload.w = 0x28;
+        upload.h = 0xD;
+        LoadImage(&upload, (u_long*)renderBuffer);
+        DrawSync(0);
+
+        /* Name-side setup + confirm test: rows 0-0xB only (0x17B20). */
+        if (row < 0xC) {
+            if (cat == 0) {
+                if (func_801C865C(*(u16*)(D_801E97F0 + charId * 2),
+                                  row & 0xFF) == 0) {
+                    confirmable = 0;
+                } else if ((s32)mpThreshold < statValue) {
+                    confirmable = 0;
+                }
+            } else if (cat == 1) {
+                confirmable = 0;                    /* 0x17BC8 */
+            } else if (cat == 2) {
+                if (row != 0 || (s32)mpThreshold < statValue) {
+                    confirmable = 0;                /* 0x17BAC-0x17BC8 */
+                }
+            }
+            func_801E7C50(nameStr, row, 0x80, confirmable | 1);
+            func_801C851C(nameStr->vertices,
+                          ((row & 1) * 0x88 + 0x24) & 0xFFFC,
+                          ((row >> 1) * 0x10 + 0x12) & 0xFFFE,
+                          nameStr->width, 0xD);
+        }
+
+        /* Value-side setup: all populated rows (0x17C4C-0x17CB8). */
+        func_801E7C50(valueStr, row, 0x80, confirmable | 2);
+        func_801C851C(valueStr->vertices,
+                      *(u16*)(D_801E9DDC + geomCursor),
+                      *(u16*)(D_801E9E14 + geomCursor),
+                      valueStr->width, 0xD);
+
+        nameStr->renderContext = (u8)g_Menu->renderContext;
+        valueStr->renderContext = (u8)g_Menu->renderContext;
+        work->rowFlags[row] = (u8)(confirmable | 1);    /* 0x17D0C */
+
+    nextRow:
+        blobCursor += 0x28;
+        geomCursor += 4;
+    }
+
+    /* A1b-1 harness snapshot: the 14 flag bytes this build produced. */
+    memcpy(g_XenoMenuN3aRowFlags, work->rowFlags, 0xC);
+    g_XenoMenuN3aRowFlags[0xC] = work->unk1090[0];
+    g_XenoMenuN3aRowFlags[0xD] = work->unk1090[1];
+
+    HeapFree(numString);
+    HeapFree(renderBuffer);
+
+    /* Epilogue (0x17D64-0x17E28): two label draws, the 33rd-string sprite
+     * setup, and the content-ready latch. */
+    {
+        s32 mode = (modeBias + 2) & 0xFF;
+
+        printf("[xeno-port][test] A1B1 DC3D8 E8070 mode at call site 1 "
+               "(retail 0x17DB4): %d\n", mode);
+        fflush(stdout);
+        func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550, D_801E9EA0,
+                      g_Menu->pManager->unk38, 6, 1, mode);
+        printf("[xeno-port][test] A1B1 DC3D8 E8070 mode at call site 2 "
+               "(retail 0x17DEC): %d\n", mode);
+        fflush(stdout);
+        func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550, D_801E9EA0,
+                      g_Menu->pManager->unk38, 7, 1, mode);
+    }
+    func_801D36E0(&work->unk1000String, ch & 0xFF, cat, 1);
+    g_Menu->pManager->unk4A[0] = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DCE60);
 

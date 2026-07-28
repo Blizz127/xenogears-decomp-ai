@@ -551,6 +551,27 @@ static void PcPort_ForcedFieldMenu(void)
                    "(magnitude-1 special), quantity 1\n");
             fflush(stdout);
         }
+        /* N3a-A1b-1 ONLY (XENO_MENU_NAV_TEST=abilities): the cold-boot
+         * harness state has Fei with NO known Ether abilities and zeroed MP
+         * (new-game init never runs on this boot), which would leave the
+         * func_801DC3D8 category-0 arm unexercised -- every row absent.
+         * Seed the per-character ability-known bitfield (GameState+0x16C2,
+         * charId * 0x20) and Fei's MP so six rows build for real.  The row
+         * strings and MP costs remain genuine game data (string bundle +
+         * C72BC mode-2 blob); only the known-mask and MP are harness
+         * conveniences.  Fires before the STATE-BEFORE hash, so the
+         * read-only assertion is unaffected.  Isolated to this mode. */
+        if (s_xenoMenuPromptNavKind == 5) {
+            extern unsigned char g_GameState[];
+
+            *(unsigned short*)&g_GameState[0x16C2] = 0xFC00; /* rows 0..5 */
+            *(unsigned short*)&g_GameState[0x2BC] = 8;       /* Fei mp */
+            *(unsigned short*)&g_GameState[0x2BE] = 12;      /* Fei maxMp */
+            printf("[xeno-port][test] N3A SEED: Fei ability-known mask "
+                   "0xFC00 (D_801E96C8[i] = 0x8000>>i, so bits 15..10 = "
+                   "rows 0..5), mp=8, maxMp=12 (cold boot has none/zero)\n");
+            fflush(stdout);
+        }
         D_800ADB64 = 0x80;   /* request the field main menu via the opener */
         fired = 1;
         printf("[xeno-port][test] XENO_MENU_FORCE: requesting field main menu "
@@ -702,7 +723,9 @@ static void PcPort_ForcedMenuNav(void)
          * issue one more genuine DOWN tap.  This is the nav-alive proof. */
         if (s_xenoMenuNavActions) {
             extern int g_XenoMenuN2Phase;
+            extern int g_XenoMenuN3aPhase;
             static int closedTick = -1, finalLogged = 0;
+            static int n3aClosedTick = -1, n3aFinalLogged = 0;
             if (g_XenoMenuN2Phase >= 2 && closedTick < 0)
                 closedTick = t;
             if (closedTick >= 0 && t >= closedTick + 20 && t < closedTick + 24) {
@@ -710,6 +733,20 @@ static void PcPort_ForcedMenuNav(void)
                 if (!finalLogged) {
                     finalLogged = 1;
                     printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: "
+                           "post-close DOWN (nav-alive) at reader tick %d\n", t);
+                    fflush(stdout);
+                }
+            }
+            /* N3a-A1b-1: the same nav-alive proof after the Abilities close. */
+            if (s_xenoMenuPromptNavKind == 5 && g_XenoMenuN3aPhase == 2 &&
+                n3aClosedTick < 0)
+                n3aClosedTick = t;
+            if (n3aClosedTick >= 0 && t >= n3aClosedTick + 20 &&
+                t < n3aClosedTick + 24) {
+                g_C1Buffer[0x2] &= (unsigned char)~0x40;
+                if (!n3aFinalLogged) {
+                    n3aFinalLogged = 1;
+                    printf("[xeno-port][test] XENO_MENU_NAV_TEST=abilities: "
                            "post-close DOWN (nav-alive) at reader tick %d\n", t);
                     fflush(stdout);
                 }
@@ -817,12 +854,22 @@ static void PcPort_ForcedMenuActionEdges(void)
      * that opens the screen, wait for the windows + open animation, cancel,
      * then re-hash.  A1a is READ-ONLY by construction: the character-stat
      * writes live in func_801DD790 (A2), which the guard keeps unreached, so
-     * both hashes must come back identical. */
+     * both hashes must come back identical.
+     *
+     * A1b-1 extension: func_801DC3D8 is now real, so rows are flagged for
+     * the first time (0x81 confirmable, 0x01 populated-not-confirmable,
+     * 0x00 absent) and the boundary is BEHAVIOURAL, not structural.  Dump
+     * the flags at open, drive the cursor to the first rejecting row,
+     * confirm there, and show the guard rejects (func_801DD790 must stay at
+     * zero hits -- checked via the absence of its [stub] line in the log). */
     if (s_xenoMenuPromptNavKind == 5) {
         extern int g_XenoMenuN3aPhase;
+        extern unsigned char g_XenoMenuN3aRowFlags[];
+        extern unsigned char g_C1Buffer[];
         static int n3aOpenTick = -1, n3aCancel = 0, n3aDone = 0;
         static unsigned int n3aCharBefore, n3aInvBefore;
         static int n3aHashed = 0;
+        static int n3aTarget = -2, n3aNavPressed = 0, n3aRowConfirm = 0;
 
         if (confirmInjected && !n3aHashed) {
             n3aHashed = 1;
@@ -833,12 +880,76 @@ static void PcPort_ForcedMenuActionEdges(void)
             fflush(stdout);
         }
         if (g_XenoMenuN3aPhase == 1 && n3aOpenTick < 0) {
+            int i;
+
             n3aOpenTick = t;
             printf("[xeno-port][test] N3A OPEN: Abilities settled open at "
                    "reader tick %d\n", t);
+            printf("[xeno-port][test] N3A ROWFLAGS:");
+            for (i = 0; i < 0xE; i++) {
+                printf(" %02x", g_XenoMenuN3aRowFlags[i]);
+            }
+            printf("\n");
+            /* The boundary row: first cursor-reachable row (0..0xB) that is
+             * not 0x81 -- 0x00 (empty slot) or 0x01 (cost > MP). */
+            n3aTarget = -1;
+            for (i = 0; i < 0xC; i++) {
+                if (g_XenoMenuN3aRowFlags[i] != 0x81) {
+                    n3aTarget = i;
+                    break;
+                }
+            }
+            if (n3aTarget >= 0) {
+                printf("[xeno-port][test] N3A BOUNDARY: rejecting row %d "
+                       "(flags %02x) chosen; driving cursor there\n",
+                       n3aTarget, g_XenoMenuN3aRowFlags[n3aTarget]);
+            } else {
+                /* No rejecting row: prove the guard arithmetically rather
+                 * than reporting a zero that was never exercised. */
+                printf("[xeno-port][test] N3A BOUNDARY: every row is 0x81, "
+                       "no rejecting row exists; asserting the guard "
+                       "condition directly: 0x00&0x80=%d 0x01&0x80=%d "
+                       "(both reject, func_801DD790 gated)\n",
+                       0x00 & 0x80, 0x01 & 0x80);
+            }
             fflush(stdout);
         }
-        if (n3aOpenTick >= 0 && !n3aCancel && t >= n3aOpenTick + 30) {
+        /* Drive the cursor 0 -> n3aTarget with genuine RIGHT holds (cursor+1
+         * per press, DDF24 case 0), on the 4-tick-hold / 14-tick cadence. */
+        if (n3aOpenTick >= 0 && n3aTarget > 0 && n3aNavPressed < n3aTarget) {
+            int rel = t - (n3aOpenTick + 8) - n3aNavPressed * 14;
+
+            if (rel >= 0 && rel < 4) {
+                g_C1Buffer[0x2] &= (unsigned char)~0x20;  /* DPAD-RIGHT */
+                if (rel == 0) {
+                    printf("[xeno-port][test] N3A BOUNDARY: press RIGHT %d/%d "
+                           "at reader tick %d\n",
+                           n3aNavPressed + 1, n3aTarget, t);
+                    fflush(stdout);
+                }
+            }
+            if (rel == 4) {
+                n3aNavPressed++;
+            }
+        }
+        /* Confirm on the rejecting row: the rowFlags bit-7 guard in DDF24
+         * case 4 must reject, so func_801DD790 must NOT fire. */
+        if (n3aOpenTick >= 0 && n3aTarget >= 0 && !n3aRowConfirm &&
+            n3aNavPressed >= n3aTarget &&
+            t >= n3aOpenTick + 8 + n3aTarget * 14 + 10) {
+            n3aRowConfirm = 1;
+            g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
+            printf("[xeno-port][test] N3A BOUNDARY: Circle confirm on row %d "
+                   "(flags %02x, bit7=%d) at reader tick %d -- guard must "
+                   "reject, func_801DD790 must NOT fire\n",
+                   n3aTarget, g_XenoMenuN3aRowFlags[n3aTarget],
+                   (g_XenoMenuN3aRowFlags[n3aTarget] & 0x80) ? 1 : 0, t);
+            fflush(stdout);
+        }
+        if (n3aOpenTick >= 0 && !n3aCancel &&
+            ((n3aRowConfirm &&
+              t >= n3aOpenTick + 8 + n3aTarget * 14 + 40) ||
+             (n3aTarget < 0 && t >= n3aOpenTick + 30))) {
             n3aCancel = 1;
             g_C1ButtonStateReleased |= 0x40;  /* CTRL_BTN_CROSS */
             printf("[xeno-port][test] N3A CANCEL: Cross at reader tick %d\n", t);

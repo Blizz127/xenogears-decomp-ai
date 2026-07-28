@@ -246,7 +246,21 @@ typedef struct {
  * Unnamed spans are sized filler with no observed access. */
 typedef struct {
     /* 0x0000 */ MenuString strings[32];
-    /* 0x1000 */ u8 unk1000[0x80];   /* no observed access */
+    /* 0x1000 */ MenuString unk1000String; /* 33rd string slot, immediately
+                                      * past strings[32].  Single observed
+                                      * writer: func_801DC3D8's epilogue
+                                      * (func_801D36E0 sprite setup, once per
+                                      * build).  Observed reader: func_801D1640,
+                                      * which draws it every frame while the
+                                      * pManager->unk4A[0] content latch is
+                                      * set.
+                                      * Declared, NOT filler: native MenuString
+                                      * is 0x98 (POLY_FT4's 8-byte u_long tag
+                                      * inflates it from PSX 0x80), so writing
+                                      * one through a u8[0x80] span would put
+                                      * renderContext (native +0x91) on
+                                      * unk1090[1] -- the row-13 rowFlags
+                                      * spill -- silently corrupting it. */
     /* 0x1080 */ u32 abilityBank;    /* LZSSHeapDecompress result, C72BC
                                       * mode 2; freed by 0x12. PSX-width. */
     /* 0x1084 */ u8 rowFlags[0xC];   /* per-row flags, indexed by the 0..0xB
@@ -258,7 +272,12 @@ typedef struct {
                                       * func_801DD790, func_801DCE60 reads.
                                       * Each site does `addu <base>,<cursor>`
                                       * one instruction before the access. */
-    /* 0x1090 */ u8 unk1090[0x2];    /* no observed access */
+    /* 0x1090 */ u8 unk1090[0x2];    /* rowFlags spill: func_801DC3D8 builds
+                                      * rows 0..0xD and writes 0x1084+i for all
+                                      * of them, so rows 12/13 land here.  The
+                                      * cursor is bounded at 0xC (func_801DDF24),
+                                      * so these two entries are built but
+                                      * unreachable by cursor. */
     /* 0x1092 */ u8 unk1092;         /* scalar -- NOT indexed (accessed direct
                                       * off the work pointer in func_801DCE60) */
     /* 0x1093 */ u8 unk1093;         /* tail pad to 0x1094 */

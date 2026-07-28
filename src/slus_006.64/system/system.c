@@ -273,7 +273,11 @@ void* func_800338D8(s32 index) {
 }
 
 void* func_80033908(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x50), index);
+    /* The entries table holds four-byte PSX pointer slots: read the slot as
+     * u32 (the func_80033B34 idiom), not as a native void**.  Latent until
+     * func_801DC3D8 (A1b-1) became the first real caller. */
+    return GetStringEntry(
+        (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x50), index);
 }
 
 void* func_80033938(s32 index) {
