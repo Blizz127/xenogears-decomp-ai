@@ -1672,7 +1672,26 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E38);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0EBC);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0ED4);
+#else
+/* Nav N3a-A1b-2: draw the eight shared label strings whose visibility
+ * latches live at MenuManager+0x38.  DCE60 arms category/target labels plus
+ * slots 6/7 (the MP/max-MP labels); this renderer is reached through the
+ * retail D11F0 draw-pass aggregator rather than through DCE60's call tree. */
+void func_801D0ED4(void) {
+    s32 i;
+
+    for (i = 0; i < 8; i++) {
+        if (g_Menu->pManager->unk38[i] != 0) {
+            MenuString* string = &g_Menu->itemMenuStrings[i];
+
+            func_801CE198(1, string->vertices, string->polys,
+                          string->renderContext);
+        }
+    }
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0F54);
 
@@ -1684,7 +1703,25 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D10DC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1160);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D11F0);
+#else
+/* Retail draw-pass aggregator, kept in its exact call order.  A1b-2 ports
+ * only func_801D0ED4; the other nine existing PC stubs stay fail-visible
+ * until their own screens reach them. */
+void func_801D11F0(void) {
+    func_801D0D90();
+    func_801D0E20();
+    func_801D0E38();
+    func_801D0EBC();
+    func_801D10DC();
+    func_801D1160();
+    func_801D0ED4();
+    func_801D0F54();
+    func_801D0FD4();
+    func_801D1030();
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1258);
 
@@ -4334,7 +4371,140 @@ void func_801DC3D8(u8 ch, u8 category) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DCE60);
+#else
+static void MenuAbilityDescriptionStubArm(s32 category) {
+    static u32 warned;
+    u32 bit = (category >= 0 && category < 32) ? (1u << category) : 0;
+
+    if (bit != 0 && (warned & bit) == 0) {
+        warned |= bit;
+        printf("[xeno-port][stub-path] func_801DCE60 category %d not ported "
+               "(ported: category 0)\n", category);
+        fflush(stdout);
+    }
+}
+
+/* Nav N3a-A1b-2: build the selected category-0 ability's description panel
+ * and shared labels.
+ *
+ * The retail work-buffer roles are:
+ *   strings[28]    selected ability name (copied from strings[cursor])
+ *   strings[29]    intentionally blank/reserved; only renderContext is set
+ *   strings[30/31] the two description lines from abilityBank entries n/n+1
+ *
+ * D1640 draws all four slots while unk1092 is set.  The label strings are a
+ * separate bank at SystemMenu.itemMenuStrings: E8070 positions them and arms
+ * MenuManager.unk38[], then D0ED4 draws the armed entries through D11F0.
+ * All MenuString access is by native array index; no retail 0x80 byte-stride
+ * arithmetic crosses the native 0x98 MenuString layout. */
+void func_801DCE60(u8 ch, u8 cursorArg, u8 category) {
+    AbilityMenuWork* work =
+        (AbilityMenuWork*)(uintptr_t)g_Menu->unk42C[1];
+    s32 slot = ch & 0xFF;
+    s32 cursor = cursorArg & 0xFF;
+    s32 cat = category & 0xFF;
+    s32 charId;
+    s32 entryIndex;
+    u8* abilityData;
+    u16 flags;
+    s32 firstLabel;
+    s32 secondLabel;
+    s32 rc;
+
+    if (cat != 0) {
+        MenuAbilityDescriptionStubArm(cat);
+        return;
+    }
+
+    charId = g_Menu->pManager->currentCharacterIDs[slot];
+    entryIndex = charId * 0x20 + cursor * 2;
+
+    if (work->rowFlags[cursor] == 0) {
+        work->unk1092 = 0;
+        /* Retail clears only labels 0..5 here.  DC3D8's persistent MP/max-MP
+         * labels are slots 6/7 and deliberately survive an empty cursor. */
+        func_801E8044(6, g_Menu->pManager->unk38);
+        return;
+    }
+
+    {
+        u8* renderBuffer = HeapAlloc(0x618, 0);
+        MenuString* line0 = &work->strings[30];
+        MenuString* line1 = &work->strings[31];
+        RECT upload;
+
+        bzero(renderBuffer, 0x618);
+        line0->width = (u8)SystemRenderStringEntry(
+            GetStringEntry((void*)(uintptr_t)work->abilityBank, entryIndex),
+            renderBuffer, 0x39, 0);
+        line1->width = (u8)SystemRenderStringEntry(
+            GetStringEntry((void*)(uintptr_t)work->abilityBank, entryIndex + 1),
+            renderBuffer, 0x39, 1);
+
+        upload.x = 0x140;
+        upload.y = 0x4E;
+        upload.w = 0x3C;
+        upload.h = 0xD;
+        LoadImage(&upload, (u_long*)renderBuffer);
+        DrawSync(0);
+
+        rc = g_Menu->renderContext;
+        func_801E7C50(line0, 0, 0, 0);
+        func_801E920C(&line0->polys[rc], 0x1C, 0x9E, 0, 0x4E,
+                      line0->width, 0xD);
+        func_801C851C(line0->vertices, 0x1C, 0x9E, line0->width, 0xD);
+
+        func_801E7C50(line1, 1, 0, 0);
+        func_801E920C(&line1->polys[rc], 0x1C, 0xAE, 0, 0x4E,
+                      line1->width, 0xD);
+        func_801C851C(line1->vertices, 0x1C, 0xAE, line1->width, 0xD);
+        HeapFree(renderBuffer);
+    }
+
+    /* Retail memmoves one complete 0x80 PSX MenuString.  The native
+     * equivalent must copy the complete expanded MenuString, including its
+     * eight-byte host pointer, rather than copying a retail-sized prefix. */
+    memmove(&work->strings[28], &work->strings[cursor],
+            sizeof(MenuString));
+    func_801C851C(work->strings[28].vertices, 0x12, 0x8E,
+                  work->strings[28].width, 0xD);
+
+    rc = g_Menu->renderContext;
+    work->strings[28].polys[rc].r0 = 0x80;
+    work->strings[28].polys[rc].g0 = 0x80;
+    work->strings[28].polys[rc].b0 = 0x80;
+    SetSemiTrans(&work->strings[28].polys[rc], 0);
+
+    func_801E8044(8, g_Menu->pManager->unk38);
+
+    abilityData = (u8*)(uintptr_t)
+        *(u32*)&g_Menu->unk330->unk20[charId * 4];
+    abilityData += cursor * 0x28 + 0x370;
+    flags = *(u16*)abilityData;
+
+    if (flags & 0x4000) {
+        firstLabel = 2;
+    } else {
+        firstLabel = (flags & 0x1000) ? 0 : 1;
+    }
+    secondLabel = (abilityData[0] & 3) + 3;
+
+    func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550, D_801E9EA0,
+                  g_Menu->pManager->unk38, firstLabel, 0, 2);
+    func_801E8070(8, g_Menu->itemMenuStrings, D_801EA550, D_801E9EA0,
+                  g_Menu->pManager->unk38, secondLabel, 0, 2);
+
+    work->strings[28].renderContext = (u8)rc;
+    work->strings[29].renderContext = (u8)rc;
+    work->strings[30].renderContext = (u8)rc;
+    work->strings[31].renderContext = (u8)rc;
+    work->unk1092 = 1;
+    g_Menu->pManager->unk38[6] = 1;
+    g_Menu->pManager->unk38[7] = 1;
+}
+#endif
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD5E8);
 
