@@ -2125,6 +2125,11 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
             actorPosition.vy = *(s16*)(pActor + 0x24);
             actorPosition.vz = *(s16*)(pActor + 0x28);
             ApplyMatrixLV(&g_Scene.worldToScreenMatrix, &actorPosition, &actorTranslation);
+#ifdef XENO_PC_PORT
+            actorTranslation.vx += g_Scene.worldToScreenMatrix.t[0];
+            actorTranslation.vy += g_Scene.worldToScreenMatrix.t[1];
+            actorTranslation.vz += g_Scene.worldToScreenMatrix.t[2];
+#endif
         }
 
         actorMatrix.t[0] = actorTranslation.vx;
