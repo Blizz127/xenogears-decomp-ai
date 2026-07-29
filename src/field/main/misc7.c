@@ -199,7 +199,26 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098274);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098370);
 
+#ifdef XENO_PC_PORT
+/* asm 80098430-800984E8, opcode 0x4B. Run the mode-0 movement operation
+ * across frames, yielding through func_80099AC0 until it reports completion. */
+void func_80098430(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+
+    slot->flags_0x17 = 0;
+
+    if (slot->flags_0 == 0xFFFF) {
+        slot->flags_0 = FieldScriptVMGetArgument(6);
+    }
+
+    if (func_80099AC0(FieldScriptVMGetArgument(6)) == 0) {
+        actor->scriptInstructionPointer += 8;
+    }
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098430);
+#endif
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800984EC);
 
