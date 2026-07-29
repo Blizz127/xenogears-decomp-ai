@@ -1825,6 +1825,18 @@ gdb counter/readback logs) referenced in each slice's commit; the four pin
 values and the disc/-vs-pin equality re-verified at HEAD on 2026-07-26.
 Last verified @ b3bd4a2
 
+### Nav arc banked after N3a; direction moved to field/Lahan
+
+Items and Abilities category 0 are complete.  Equip, Gear, and Status were
+re-measured and parked at 11,549i unique remaining; the `func_801E05D0`
+pre-port gate is defined.  Also parked: the nine `system.c` pointer-slot
+siblings (108i), `func_801E5178`, and the four-pin matching repair.  Navigation
+work resumes from this bank when deliberately selected; current direction is
+Tier-1 field gameplay in Lahan (MAP1).
+
+Evidence: N3 re-measurement at `98b4815`; no port work in the banking pass.
+Last verified @ 98b4815
+
 ---
 
 ## File/save is blocked below the decomp by hollow PsyCross memory-card primitives
