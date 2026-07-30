@@ -437,13 +437,11 @@ static void PcPort_ForcedFieldMenu(void)
     if (++frame < delay)
         return;
     if (D_800ADB64 == 0xFF && D_800ADB68 == 1) {
-        /* HARNESS-ONLY party seed: retail NEVER opens the menu with an empty
-         * party (the roster is set by the intro/save before a menu is
-         * reachable), and the menu-open animation's step/exit logic is driven
-         * by the party slots -- with zero members it would spin forever (in
-         * retail too; the state is unreachable there). The cold field-test
-         * boot skips the intro, so seed the retail-guaranteed minimum: Fei
-         * (char 0) in slot 0 + his bit in the party-available mask.
+        /* HARNESS-ONLY availability setup.  Retail at the established Map1
+         * party-init anchor has roster {0,2,FF}, mask 0x0005, FrMask 0xFFFF:
+         * derive the mask from valid roster IDs so XENO_MENU_FORCE preserves
+         * the bootstrap stand-in instead of replacing it.  The Fei-only
+         * fallback remains solely for genuinely cold all-zero/all-FF rosters.
          * g_GameState offsets: 0x1D30 mask, 0x1D32 FrMask, 0x1D34 members[3]. */
         {
             extern unsigned char g_GameState[];  /* PSX-layout data blob */
@@ -451,16 +449,28 @@ static void PcPort_ForcedFieldMenu(void)
             unsigned short* pFrMask = (unsigned short*)&g_GameState[0x1D32];
             unsigned char* pMembers = &g_GameState[0x1D34];
 
-            if ((*pMask & *pFrMask & 0x7FF) == 0) {
+            unsigned short rosterMask = 0;
+            int coldRoster =
+                ((pMembers[0] == 0 && pMembers[1] == 0 && pMembers[2] == 0) ||
+                 (pMembers[0] == 0xFF && pMembers[1] == 0xFF &&
+                  pMembers[2] == 0xFF));
+            int i;
+
+            if (coldRoster) {
                 pMembers[0] = 0;      /* Fei */
-                pMembers[1] = 0xFF;   /* slots 1/2 empty (cold BSS zeros would
-                                       * otherwise read as three Feis) */
+                pMembers[1] = 0xFF;
                 pMembers[2] = 0xFF;
-                *pMask |= 0x1;
-                *pFrMask |= 0x1;
-                printf("[xeno-port][test] XENO_MENU_FORCE: seeded harness party "
-                       "(Fei slot 0) -- cold boot had an empty roster\n");
             }
+            for (i = 0; i < 3; i++) {
+                if (pMembers[i] < 11)
+                    rosterMask |= (unsigned short)(1U << pMembers[i]);
+            }
+            *pMask |= rosterMask;
+            *pFrMask = 0xFFFF;
+            printf("[xeno-port][test] XENO_MENU_FORCE: roster=%u/%u/%u "
+                   "availability=%04x FrMask=%04x fallback=%s\n",
+                   pMembers[0], pMembers[1], pMembers[2], *pMask, *pFrMask,
+                   coldRoster ? "Fei-only" : "preserved");
         }
         /* The same cold boot also bypasses the intro/save inventory setup.
          * Seed a single scrollable, retail-valid Items list only when every
@@ -490,34 +500,6 @@ static void PcPort_ForcedFieldMenu(void)
                        "inventory (18 real item IDs, quantities 11..28) -- "
                        "cold boot had no save inventory\n");
             }
-        }
-        /* N2c-2b ONLY (XENO_MENU_NAV_TEST=prompt-nav-skip): reshape the
-         * harness party to TWO members so the target navigator's
-         * ineligible-skip path is drivable (slot 2 absent).  The seed
-         * targets the FIELD-side source array g_GamePartyMembers: the field
-         * script VM tick (func_800A31E8) copies it over
-         * g_GameState.partyMembers every frame, so direct partyMembers
-         * writes are stomped before the menu reads them -- that same
-         * cold-zero sync is the true origin of the established three-Fei
-         * harness party (N2c-2b finding, correcting N2c-2a's stride
-         * hypothesis: undefined8 is u8 in include/types.h).  Isolated to
-         * this mode: items / items-prompt / items-reorder keep the
-         * established party state and their byte-identity baselines. */
-        if (s_xenoMenuPromptNavKind == 2) {
-            extern unsigned char g_GameState[];
-            extern int g_GamePartyMembers[];
-            unsigned short* pMask = (unsigned short*)&g_GameState[0x1D30];
-            unsigned short* pFrMask = (unsigned short*)&g_GameState[0x1D32];
-
-            g_GamePartyMembers[0] = 0;      /* slot 0: Fei */
-            g_GamePartyMembers[1] = 1;      /* slot 1: char 1 (present) */
-            g_GamePartyMembers[2] = 0xFF;   /* slot 2: absent */
-            *pMask |= 0x3;                  /* chars 0 + 1 available */
-            *pFrMask |= 0x3;
-            printf("[xeno-port][test] N2C2B SEED: two-member party for the "
-                   "skip proof (slot 2 absent, seeded at the field-side "
-                   "source g_GamePartyMembers)\n");
-            fflush(stdout);
         }
         /* N2c-3 ONLY (XENO_MENU_NAV_TEST=item-use): give the effect proof an
          * observable target and a depletion case.  Fei is damaged (hp 20 of
@@ -691,10 +673,10 @@ static void PcPort_ForcedMenuNav(void)
 
         /* N2c-2b proof: while the target prompt is open (phase 1), drive the
          * navigator with genuine pad holds on the established 4-tick-hold /
-         * 14-tick-spacing cadence.  wrap (kind 1): DOWN x3 then UP x3
-         * (0->1->2->0 forward, then 0->2->1->0 backward).  skip (kind 2, on
-         * the 2b-test-only two-member party): DOWN x2 (0->1, then
-         * 1 -> skip absent 2 -> wrap -> 0). */
+         * 14-tick-spacing cadence.  The retail {0,2,FF} roster has two
+         * eligible slots.  wrap (kind 1): DOWN x2 then UP x2
+         * (0->1->0 forward, then 0->1->0 backward).  skip (kind 2):
+         * DOWN x2 (0->1, then 1 -> skip absent 2 -> wrap -> 0). */
         if (s_xenoMenuPromptNavKind == 1 || s_xenoMenuPromptNavKind == 2) {
             extern int g_XenoMenuN2c2Phase;
             static int navTick = -1, navLogged = 0;
@@ -702,11 +684,11 @@ static void PcPort_ForcedMenuNav(void)
                 navTick = t;
             if (navTick >= 0 && g_XenoMenuN2c2Phase == 1 && t - navTick >= 8) {
                 int rel = t - navTick - 8;
-                int presses = (s_xenoMenuPromptNavKind == 1) ? 6 : 2;
+                int presses = (s_xenoMenuPromptNavKind == 1) ? 4 : 2;
                 int idx = rel / 14;
                 int phn = rel % 14;
                 if (idx < presses && phn < 4) {
-                    int isUp = (s_xenoMenuPromptNavKind == 1) && (idx >= 3);
+                    int isUp = (s_xenoMenuPromptNavKind == 1) && (idx >= 2);
                     g_C1Buffer[0x2] &= (unsigned char)~(isUp ? 0x10 : 0x40);
                     if (idx + 1 > navLogged) {
                         navLogged = idx + 1;

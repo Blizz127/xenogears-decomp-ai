@@ -1507,6 +1507,13 @@ int main(int argc, char** argv) {
              * harness AND the normal KernelMenu path, so they run unconditionally
              * once the archive is available. */
             PcPort_LoadSystemTextData();
+            {
+                extern unsigned char g_GameState[];
+                /* Retail roster stand-in; remove when new-game setup is ported. */
+                g_GameState[0x1D34] = 0x00; /* Fei */
+                g_GameState[0x1D35] = 0x02; /* character ID 2 */
+                g_GameState[0x1D36] = 0xFF; /* empty */
+            }
             func_8001ACA4();
             {
                 const char* fieldMap = getenv("XENO_FIELD_MAP");
