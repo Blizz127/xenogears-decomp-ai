@@ -2102,6 +2102,37 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         }
 
         {
+#ifdef XENO_PC_PORT
+            SVECTOR column;
+            SVECTOR transformed;
+
+            /* Retail 80075CB4-80075D94 gathers the three actor-matrix
+             * columns at halfword offsets 0/6/12, 2/8/14, and 4/10/16,
+             * transforms each column, then stores the result as a column. */
+            column.vx = *(s16*)(pActor + 0x0C);
+            column.vy = *(s16*)(pActor + 0x12);
+            column.vz = *(s16*)(pActor + 0x18);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][0] = transformed.vx;
+            actorMatrix.m[1][0] = transformed.vy;
+            actorMatrix.m[2][0] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x0E);
+            column.vy = *(s16*)(pActor + 0x14);
+            column.vz = *(s16*)(pActor + 0x1A);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][1] = transformed.vx;
+            actorMatrix.m[1][1] = transformed.vy;
+            actorMatrix.m[2][1] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x10);
+            column.vy = *(s16*)(pActor + 0x16);
+            column.vz = *(s16*)(pActor + 0x1C);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][2] = transformed.vx;
+            actorMatrix.m[1][2] = transformed.vy;
+            actorMatrix.m[2][2] = transformed.vz;
+#else
             SVECTOR row;
 
             ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x0C), &row);
@@ -2116,6 +2147,7 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
             actorMatrix.m[2][0] = row.vx;
             actorMatrix.m[2][1] = row.vy;
             actorMatrix.m[2][2] = row.vz;
+#endif
         }
 
         {
