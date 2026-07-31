@@ -145,11 +145,11 @@ extern s32 func_8002D0E4(u8* pSrc);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
-static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count);
+static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count);
-static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
-static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count);
@@ -159,13 +159,13 @@ ModelPrimDesc D_8004FE50[15] = {
     [0x00] = {
         /* Retail row 0x8004FE50: proc[0]=proc[4]=proc[5]=0x8002E038 (the same
          * small-tri average walker prim 4 dispatches) and proc[2]=0x8002E470
-         * (small-tri minimum) -- retail literally reuses prim 4's walkers.
+         * (small-tri max-SZ) -- retail literally reuses prim 4's walkers.
          * proc[1]=0x8002ED20 / proc[3]=0x8002E8DC are unported -> NULL (the
          * dispatcher aborts loudly if a map ever reaches them). The buildProc
          * 0x8002CDCC is a byte-identical retail clone of prim 8's 0x8002CF58
          * (lit flat tri builder, tag len 4), ported in temp2.c. */
         .proc = { ModelPrimTriSmallAverageVariant0, NULL,
-                  ModelPrimTriSmallMinimumVariant2, NULL,
+                  ModelPrimTriSmallMaxSZVariant2, NULL,
                   ModelPrimTriSmallAverageVariant0,
                   ModelPrimTriSmallAverageVariant0 },
         .buildProc = (ModelPrimBuildProc)func_8002CDCC,   /* PSX 0x8002CDCC */
@@ -175,7 +175,7 @@ ModelPrimDesc D_8004FE50[15] = {
     },
     [0x04] = {
         .proc = { ModelPrimTriSmallAverageVariant0, NULL,
-                  ModelPrimTriSmallMinimumVariant2, NULL, NULL, NULL },
+                  ModelPrimTriSmallMaxSZVariant2, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002CF34,   /* PSX 0x8002CF34 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
@@ -187,7 +187,7 @@ ModelPrimDesc D_8004FE50[15] = {
          * (DPCS fog) AVSZ3 walker; proc[5]=func_8002F0E4 is the depth-cued
          * min-SZ walker.  proc[3]=0x8002E8F0 stays unported -> NULL. */
         .proc = { ModelPrimTriAverageVariant0, ModelPrimTriAverageVariant0,
-                  ModelPrimTriMinimumVariant2, NULL,
+                  ModelPrimTriMaxSZVariant2, NULL,
                   ModelPrimTriDepthCueVariant4, ModelPrimTriDepthCueMinVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D984,   /* PSX 0x8002D984 */
         .cmdStride = 0x08,
@@ -206,7 +206,7 @@ ModelPrimDesc D_8004FE50[15] = {
     },
     [0x0D] = {
         /* Retail table: variant 0/1 enter 0x8002E268 (AVSZ4); variant 2 enters
-         * func_8002E688 (minimum-SZ depth).  They share the FT4 packet layout
+         * func_8002E688 (max-SZ depth).  They share the FT4 packet layout
          * but not depth ordering, so routing variant 0 through E688 makes room
          * surfaces overwrite each other in the wrong OT buckets. */
         .proc = { ModelPrimQuadFT4Variant0, ModelPrimQuadFT4Variant0,
@@ -223,7 +223,7 @@ ModelPrimDesc D_8004FE50[15] = {
         .outputStride = 0x28,
     },
     [0x0C] = {
-        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimQuadF4Variant2, NULL, NULL, NULL },
+        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimQuadF4MaxSZVariant2, NULL, NULL, NULL },
         .buildProc = (ModelPrimBuildProc)func_8002D0C0,   /* PSX 0x8002D0C0 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
@@ -840,8 +840,8 @@ static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count) {
 }
 
 /* Retail 0x8002E470 -> shared 0x8002E490: compact three-vertex packet
- * walker using the nearest of SZ1/SZ2/SZ3 for OT ordering. */
-static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count) {
+ * walker selecting max(SZ1,SZ2,SZ3) at 0x8002E600-0x8002E62C. */
+static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count) {
     const s32 packetStep = 0x14;
     const u32 tagLen = 0x04000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -864,7 +864,7 @@ static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count) {
         u16 sz1;
         u16 sz2;
         u16 sz3;
-        u16 minSz;
+        u16 maxSz;
         s32 otIndex;
         u32 oldTag;
 
@@ -895,17 +895,19 @@ static s32 ModelPrimTriSmallMinimumVariant2(u8* pCmd, s32 count) {
         sz1 = (u16)C2_SZ1;
         sz2 = (u16)C2_SZ2;
         sz3 = (u16)C2_SZ3;
-        minSz = sz2;
-        if (sz1 < minSz) minSz = sz1;
-        if (sz3 < minSz) minSz = sz3;
+        maxSz = sz1;
+        if (sz2 > maxSz) maxSz = sz2;
+        if (sz3 > maxSz) maxSz = sz3;
 
         emitted++;
-        if (minSz == 0) {
+        /* Retail tests only the selected maximum, so non-maximum zero FIFO
+         * entries remain valid; only (0,0,0) is rejected. */
+        if (maxSz == 0) {
             CullCamDrop(CC_OTZ, 0);
             continue;
         }
 
-        otIndex = (s32)minSz >> (D_80050100 + 2);
+        otIndex = (s32)maxSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
         *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
@@ -1179,9 +1181,9 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
 }
 
 /* POLY_F4 variant-2 walker, retail entry 0x8002E674.  This shares retail's
- * four-vertex/min-SZ path with func_8002E688 but uses the F4 packet layout:
+ * four-vertex max-SZ path at 0x8002E82C-0x8002E894 with func_8002E688:
  * tag length 5, 0x18-byte packets, and packed SXY words at +8/+C/+10/+14. */
-static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
+static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count) {
     const s32 packetStep = 0x18;
     const u32 tagLen = 0x05000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -1210,7 +1212,7 @@ static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
         CullCamSeen(1, flag);
         /* No FLAG rejection -- retail sites 0x8002E788/0x8002E7C0 are the
-         * inert mfc2-$31/LZCR pattern (shared quad min-SZ body; see
+         * inert mfc2-$31/LZCR pattern (shared quad max-SZ body; see
          * ModelPrimTriSmallAverageVariant0). */
         {
             long nclipOpz = NormalClip(xy0, xy1, xy2);
@@ -1237,21 +1239,21 @@ static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
             u16 sz1 = (u16)C2_SZ1;
             u16 sz2 = (u16)C2_SZ2;
             u16 sz3 = (u16)C2_SZ3;
-            u16 minSz;
+            u16 maxSz;
             s32 otIndex;
             u32 oldTag;
 
-            /* Retail 0x8002E82C-0x8002E894 rejects zero SZ values and derives
-             * this variant's bucket from the nearest of all four vertices. */
+            /* Retail 0x8002E82C-0x8002E894 rejects any zero SZ and selects
+             * max(SZ0,SZ1,SZ2,SZ3), then shifts by D_80050100 + 2. */
             if (sz0 == 0 || sz1 == 0 || sz2 == 0 || sz3 == 0) {
                 CullCamDrop(CC_OTZ, 1);
                 continue;
             }
-            minSz = sz0;
-            if (sz1 < minSz) minSz = sz1;
-            if (sz2 < minSz) minSz = sz2;
-            if (sz3 < minSz) minSz = sz3;
-            otIndex = (s32)minSz >> D_80050100;
+            maxSz = sz0;
+            if (sz1 > maxSz) maxSz = sz1;
+            if (sz2 > maxSz) maxSz = sz2;
+            if (sz3 > maxSz) maxSz = sz3;
+            otIndex = (s32)maxSz >> (D_80050100 + 2);
 
             oldTag = ot[otIndex];
             ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
@@ -1268,7 +1270,8 @@ static s32 ModelPrimQuadF4Variant2(u8* pCmd, s32 count) {
 
 /* Retail 0x8002E04C -> shared 0x8002E058: three-vertex packet walker using
  * AVSZ3 for OT ordering.  This is deliberately separate from proc 2: retail's
- * 0x8002E484 path orders the same packet format by the minimum SZ instead. */
+ * 0x8002E484 path orders the same packet format by max(SZ1,SZ2,SZ3)
+ * shifted by D_80050100 + 2 instead. */
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
     const s32 packetStep = 0x20;
     const u32 tagLen = 0x07000000;
@@ -1343,9 +1346,9 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* Retail 0x8002E484 -> shared 0x8002E490: three-vertex packet walker using
- * the nearest of SZ1/SZ2/SZ3 for OT ordering. */
-static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
+/* Retail 0x8002E484 -> shared 0x8002E490: three-vertex packet walker
+ * selecting max(SZ1,SZ2,SZ3) at 0x8002E600-0x8002E62C. */
+static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count) {
     const s32 packetStep = 0x20;
     const u32 tagLen = 0x07000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -1368,7 +1371,7 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
         u16 sz1;
         u16 sz2;
         u16 sz3;
-        u16 minSz;
+        u16 maxSz;
         s32 otIndex;
         u32 oldTag;
 
@@ -1378,7 +1381,7 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
 
         sz3Result = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
         CullCamSeen(0, flag);
-        /* No FLAG rejection -- retail site 0x8002E58C (shared tri min-SZ
+        /* No FLAG rejection -- retail site 0x8002E58C (shared tri max-SZ
          * body) is the inert mfc2-$31/LZCR pattern (see
          * ModelPrimTriSmallAverageVariant0). */
 
@@ -1402,12 +1405,14 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
         sz1 = (u16)C2_SZ1;
         sz2 = (u16)C2_SZ2;
         sz3 = (u16)C2_SZ3;
-        minSz = sz2;
-        if (sz1 < minSz) minSz = sz1;
-        if (sz3 < minSz) minSz = sz3;
+        maxSz = sz1;
+        if (sz2 > maxSz) maxSz = sz2;
+        if (sz3 > maxSz) maxSz = sz3;
 
         emitted++;
-        if (minSz == 0) {
+        /* Retail tests only the selected maximum, so non-maximum zero FIFO
+         * entries remain valid; only (0,0,0) is rejected. */
+        if (maxSz == 0) {
             CullCamDrop(CC_OTZ, 0);
             continue;
         }
@@ -1415,7 +1420,7 @@ static s32 ModelPrimTriMinimumVariant2(u8* pCmd, s32 count) {
         /* Retail 0x8002E4F0 adds two to the configured shift before using the
          * raw SZ FIFO.  RotTransPers3's return and AVSZ3's OTZ are already
          * quarter-scale, but C2_SZ1..3 are not, so the +2 is required here. */
-        otIndex = (s32)minSz >> (D_80050100 + 2);
+        otIndex = (s32)maxSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
         *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
@@ -1524,8 +1529,8 @@ static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count) {
 }
 
 /* Retail func_8002F0E4: three-vertex depth-cued min-SZ walker (D_8004FE50
- * rows 1 and 5, variant 5).  The ModelPrimTriMinimumVariant2 spine (nearest
- * of SZ1..SZ3 with the +2 raw-FIFO shift) plus DPCS depth cueing.  Retail
+ * rows 1 and 5, variant 5). It has a separate raw-SZ reducer and adds DPCS
+ * depth cueing; this variant-2 slice deliberately leaves it unchanged. Retail
  * issues DPCS in the y-overlap test's branch delay slot, before the x tests
  * and the backface reject, so it executes once for every prim transformed;
  * the port keeps that placement.  No FLAG rejection -- retail 0x8002F1F8 is
@@ -1602,8 +1607,8 @@ static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
 
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
-        /* Raw SZ FIFO ordering: retail adds two to the configured shift
-         * (see ModelPrimTriMinimumVariant2). */
+        /* Raw SZ FIFO ordering: retail 0x8002F150 adds two to the configured
+         * shift in this separate variant-5 reducer. */
         otIndex = (s32)minSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
@@ -1797,7 +1802,8 @@ static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
 
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
-        /* Raw SZ FIFO ordering: +2 shift as in the min-SZ tri variants. */
+        /* This separate variant-5 reducer uses the same +2 raw-FIFO shift as
+         * its min-SZ triangle sibling. */
         otIndex = (s32)minSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;

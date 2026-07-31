@@ -427,25 +427,30 @@ s32 func_8002E688(u8* pCmd, s32 count) {
             continue;
         }
         /* No oversize cull in retail 8002E688 (asm 8002E7CC-8002E894 is only the
-         * screen-overlap + min-SZ OT path). A port-only 1023x511 reject would
+         * screen-overlap + max-SZ OT path). A port-only 1023x511 reject would
          * delete extreme close-up FT4s (Map014 painting hold). */
 
         {
-            /* Retail 8002E82C--8002E894 reads SZ0..SZ3, selects the
-             * smallest unsigned depth, then uses `srav minSZ, D_80050100`
-             * for the OT index. RotTransPers4's return is SZ3 >> 2 and is
-             * correct for the PsyQ helper contract, but is not this walker's
-             * OT-depth source. */
+            /* Retail 0x8002E82C-0x8002E894 rejects any zero SZ, selects
+             * max(SZ0,SZ1,SZ2,SZ3), and shifts it by D_80050100 + 2.
+             * RotTransPers4's return is SZ3 >> 2 and is correct for the PsyQ
+             * helper contract, but is not this walker's OT-depth source. */
 #ifdef XENO_PC_PORT
-            u16 minSz = (u16)C2_SZ0;
-            u16 sz;
-            sz = (u16)C2_SZ1;
-            if (sz < minSz) minSz = sz;
-            sz = (u16)C2_SZ2;
-            if (sz < minSz) minSz = sz;
-            sz = (u16)C2_SZ3;
-            if (sz < minSz) minSz = sz;
-            s32 otIndex = (s32)minSz >> D_80050100;
+            u16 sz0 = (u16)C2_SZ0;
+            u16 sz1 = (u16)C2_SZ1;
+            u16 sz2 = (u16)C2_SZ2;
+            u16 sz3 = (u16)C2_SZ3;
+            u16 maxSz;
+            s32 otIndex;
+
+            if (sz0 == 0 || sz1 == 0 || sz2 == 0 || sz3 == 0) {
+                continue;
+            }
+            maxSz = sz0;
+            if (sz1 > maxSz) maxSz = sz1;
+            if (sz2 > maxSz) maxSz = sz2;
+            if (sz3 > maxSz) maxSz = sz3;
+            otIndex = (s32)maxSz >> (D_80050100 + 2);
 #else
             s32 otIndex = (s32)otz >> D_80050100;
 #endif
