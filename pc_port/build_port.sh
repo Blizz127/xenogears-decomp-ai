@@ -849,6 +849,16 @@ apply_psycross_patch() {
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_abr_clut_bit15.patch" "_xeno_clut_bit15_abr"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_xeno_compmatrix_alias"
+# Texture-cache format key (F10): GR_SetTexture's cache early-returned on
+# texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
+# BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
+# A same-ID 4-bit -> 8-bit transition (observed on texture ID 5 in Lahan)
+# left the 8-bit shader's LUT sampler at its GL default 0, so it decoded
+# VRAM as its own palette (yellow/black model corruption). The cache key is
+# now (texture ID, texture format); both cached fields reset together in
+# GR_BeginScene and update only AFTER the sampler uniforms are set, so a
+# failure between bind and uniform-set cannot poison the cache.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_texcache_format_key.patch" "_xeno_texcache_format_key"
 # Sound SDK Phase 0+1: SPU backend accessor + the RCnt2 (counter-2) event pump
 # (OpenEvent/EnableEvent/DisableEvent registry + 240Hz dispatch on the interrupt
 # thread). See OPEN_ISSUES.md "Sound cold-init" and pc_port/src/port_main.c.
