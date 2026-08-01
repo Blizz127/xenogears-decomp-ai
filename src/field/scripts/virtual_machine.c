@@ -707,6 +707,9 @@ extern u16 D_800AFC6C, D_800AFE9C;
 extern int FieldGetPlayerActorDirection(void);
 extern int FieldGetCameraDirection(void);
 extern void func_8009FEE4(s32 arg0);
+#ifdef XENO_PC_PORT
+extern u32 g_PcPortOpcode56Func8009FEE4ConditionCount;
+#endif
 
 void func_800A30FC(void) {
     s32 i;
@@ -753,6 +756,12 @@ void func_800A31E8(void) {
 
     for (i = 0; i < 3; i++) {
         if (((u8*)g_pGameState)[0x22B1 + i] == 1) {
+#ifdef XENO_PC_PORT
+            /* F14 instrumentation: opcode 0x56 samples this counter around its
+             * outgoing-state snapshot so the conditional stub path is never
+             * silently mistaken for a complete snapshot. */
+            g_PcPortOpcode56Func8009FEE4ConditionCount += 1;
+#endif
             func_8009FEE4(i);
         }
     }

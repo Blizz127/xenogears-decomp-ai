@@ -212,18 +212,102 @@ void func_80092FB4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
+extern s32 D_800ADBDC;
+extern s32 D_800ADBE4;
+extern s32 D_800ADB2C;
+extern s32 D_8004F308;
+extern s32 D_800ADB90;
+extern u8 D_800B02C8;
+extern void func_800A31E8(void);
+extern int FieldScriptArgument1(int index, int mask);
+extern int FieldScriptArgument2(int index, int mask);
+extern int FieldScriptArgument3(int index, int mask);
+extern int FieldScriptArgument4(int index, int mask);
+void func_800931F8(void);
+
+#ifdef XENO_PC_PORT
+extern u32 g_PcPortOpcode56Func8009FEE4ConditionCount;
+extern void PcPort_FieldOpcode56TransitionIntercept(
+    s32 readinessBefore, u32 refreshConditionCountBefore,
+    s32 opcodeActor, u16 opcodeIp);
+extern void PcPort_FieldOpcode56RecordControlLock(
+    s16 controlBefore, s32 actor, u16 lockIp);
+
+/* VM opcode 0x56 -- snapshot the outgoing field and arm the four-halfword
+ * field/world-map transition tuple.  Retail 0x80093014-0x800931F4.
+ *
+ * This is deliberately separate from the port harness's transition hold. The
+ * body below performs every retail write, including clearing D_800ADBE4. The
+ * port harness observes retail's complete FE54 -> 0x56 departure sequence:
+ * FE54 records the pre-lock control value, and this body's final hook logs the
+ * fully armed state before restoring anything. With
+ * XENO_FIELD_HOLD_TRANSITION=1, the hook restores D_800ADBE4 to prevent
+ * FieldMain teardown into the still-stubbed func_8007954C exit-1 arm and, only
+ * after an actor/IP-adjacent FE54 snapshot, restores the pre-lock control value
+ * so the artificially held field remains playable. A real F15 departure keeps
+ * retail's deliberate lock -> arm -> teardown choreography. */
+void func_80093014(void) {
+    s32 readinessBefore;
+    u32 refreshConditionCountBefore;
+    s32 opcodeActor;
+    u16 opcodeIp;
+    s32 arg3;
+    s32 heading;
+    s32 mask;
+
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    readinessBefore = D_800ADBE4;
+    opcodeActor = D_800AFD1C;
+    opcodeIp = g_FieldScriptVMCurActor->scriptInstructionPointer;
+    refreshConditionCountBefore =
+        g_PcPortOpcode56Func8009FEE4ConditionCount;
+
+    func_800A31E8();
+    g_FieldControl.isRandomEncountersEnabled = -1;
+    D_800ADBE4 = 0;
+
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)((u8*)g_pGameState + 0x231A) =
+        (s16)FieldScriptArgument1(1, mask);
+
+    /* Retail stores this halfword but no reader is currently identified. */
+    *(s16*)((u8*)g_pGameState + 0x231E) =
+        (s16)FieldScriptArgument2(3, mask);
+
+    arg3 = FieldScriptArgument3(5, mask);
+    if (arg3 == -1 || (u16)arg3 == 0xFFFF) {
+        heading = *(u16*)((u8*)&g_Scene + 0x56) + 0x800;
+    } else {
+        heading = arg3 + 0x800;
+    }
+    *(s16*)((u8*)g_pGameState + 0x231C) = (s16)(heading & 0xFFF);
+
+    /* This store is the retail jal func_800931F8 delay-slot side effect. */
+    *(s16*)((u8*)g_pGameState + 0x2320) =
+        (s16)FieldScriptArgument4(7, mask);
+    func_800931F8();
+
+    D_800B02C8 = 1;
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
+
+    PcPort_FieldOpcode56TransitionIntercept(
+        readinessBefore, refreshConditionCountBefore, opcodeActor, opcodeIp);
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093014);
+#endif
 
 void func_800931F8(void) {
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093200);
 
-extern s32 D_800ADBDC;
-extern s32 D_800ADBE4;
-extern s32 D_800ADB2C;
-extern s32 D_8004F308;
-extern s32 D_800ADB90;
 extern s32 D_800ADB70;
 extern s32 D_800ADBEC;
 extern s32 g_GameSceneMapNum;
@@ -364,6 +448,15 @@ void func_80093AC8(void) {
 }
 
 void func_80093B10(void) {
+#ifdef XENO_PC_PORT
+    /* FE54 is retail's departure input lock. Record its prior value without
+     * predicting what follows; opcode 0x56 consumes it only when actor and IP
+     * prove this was the immediately preceding instruction. */
+    PcPort_FieldOpcode56RecordControlLock(
+        g_FieldControl.isRandomEncountersEnabled,
+        D_800AFD1C,
+        g_FieldScriptVMCurActor->scriptInstructionPointer);
+#endif
     g_FieldControl.isRandomEncountersEnabled = -1;
     D_800B21D0[0] = 1;
     D_800B21D1[0] = 1;

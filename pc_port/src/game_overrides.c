@@ -102,6 +102,98 @@ s32 D_8004F338 = -1;
 s32 D_8004F340 = -1;
 s32 g_GameSceneMapNum = -1;
 
+/* F14 transition capture instrumentation. Opcode 0x56 itself remains a
+ * retail-faithful state writer in src/field/main/misc11.c. Retail scripts the
+ * departure as FE54 lock -> 0x56 arm -> FieldMain teardown. The first hook
+ * records FE54's pre-lock value; the second logs the complete armed state, then
+ * restores D_800ADBE4 and (only for an actor/IP-adjacent snapshot) that pre-lock
+ * value. Both restores exist solely because the harness suppresses the
+ * departure those retail writes assume. F15 removes this hold only after
+ * func_8007954C's exit-1 arm and the field->world-map path are scoped. */
+u32 g_PcPortOpcode56Func8009FEE4ConditionCount;
+
+static struct {
+    s16 controlBefore;
+    u16 lockIp;
+    s32 actor;
+    u8 pending;
+} s_Opcode56ControlLockSnapshot;
+
+extern s32 D_800ADBE4;
+extern u8 D_800B02C8;
+extern void* g_pGameState;
+
+void PcPort_FieldOpcode56RecordControlLock(
+    s16 controlBefore, s32 actor, u16 lockIp) {
+    s_Opcode56ControlLockSnapshot.controlBefore = controlBefore;
+    s_Opcode56ControlLockSnapshot.lockIp = lockIp;
+    s_Opcode56ControlLockSnapshot.actor = actor;
+    s_Opcode56ControlLockSnapshot.pending = 1;
+
+    fprintf(stderr,
+            "[xeno-port][opcode56] FE54 snapshot actor=%d lock_ip=0x%04x "
+            "pre_lock_control=%d pending=1\n",
+            actor, lockIp, controlBefore);
+}
+
+void PcPort_FieldOpcode56TransitionIntercept(
+    s32 readinessBefore, u32 refreshConditionCountBefore,
+    s32 opcodeActor, u16 opcodeIp) {
+    const char* hold = getenv("XENO_FIELD_HOLD_TRANSITION");
+    u32 refreshConditionDelta =
+        g_PcPortOpcode56Func8009FEE4ConditionCount -
+        refreshConditionCountBefore;
+    s32 snapshotMatches =
+        s_Opcode56ControlLockSnapshot.pending != 0 &&
+        s_Opcode56ControlLockSnapshot.actor == opcodeActor &&
+        (u16)(s_Opcode56ControlLockSnapshot.lockIp + 1) == opcodeIp;
+
+    fprintf(stderr,
+            "[xeno-port][opcode56] at-arm actor=%d opcode_ip=0x%04x "
+            "selector=0x%04x heading=0x%04x "
+            "unknown231e=0x%04x entrance=0x%04x "
+            "D_800B02C8=%u field_control=%d D_800ADBE4=%d "
+            "func_8009FEE4_condition=%s count_delta=%u "
+            "lock_snapshot=%s\n",
+            opcodeActor,
+            opcodeIp,
+            *(u16*)((u8*)g_pGameState + 0x231A),
+            *(u16*)((u8*)g_pGameState + 0x231C),
+            *(u16*)((u8*)g_pGameState + 0x231E),
+            *(u16*)((u8*)g_pGameState + 0x2320),
+            D_800B02C8,
+            g_FieldControl.isRandomEncountersEnabled,
+            D_800ADBE4,
+            refreshConditionDelta != 0 ? "FIRED" : "not-fired",
+            refreshConditionDelta,
+            snapshotMatches ? "adjacent" : "missing-or-stale");
+
+    if (hold != NULL && hold[0] == '1') {
+        D_800ADBE4 = readinessBefore;
+        if (snapshotMatches) {
+            g_FieldControl.isRandomEncountersEnabled =
+                s_Opcode56ControlLockSnapshot.controlBefore;
+            fprintf(stderr,
+                    "[xeno-port][opcode56] post-restore D_800ADBE4=%d "
+                    "field_control=%d snapshot_actor=%d lock_ip=0x%04x; "
+                    "held-field teardown and input lock vetoed\n",
+                    D_800ADBE4,
+                    g_FieldControl.isRandomEncountersEnabled,
+                    s_Opcode56ControlLockSnapshot.actor,
+                    s_Opcode56ControlLockSnapshot.lockIp);
+        } else {
+            fprintf(stderr,
+                    "[xeno-port][opcode56] post-restore D_800ADBE4=%d; "
+                    "control unchanged=%d because FE54 snapshot was "
+                    "missing or stale\n",
+                    D_800ADBE4,
+                    g_FieldControl.isRandomEncountersEnabled);
+        }
+    }
+
+    s_Opcode56ControlLockSnapshot.pending = 0;
+}
+
 /* Main executable .sdata @0x8005917C. Retail stores a pointer to D_80010000;
  * func_8001B6C4/shop setup test *D_8005917C for the boot/media sentinel. */
 extern s32 D_80010000;
