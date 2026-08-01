@@ -151,9 +151,26 @@ static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count);
-static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count);
+static s32 ModelPrimTriDepthCueMaxSZVariant5(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count);
-static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count);
+static s32 ModelPrimQuadFT4DepthCueMaxSZVariant5(u8* pCmd, s32 count);
+
+/* F13 dormant-path tripwires.  Retail did not enter either variant-5 body in
+ * the current Map001/014/047 probes; retain live counters and first-N entry
+ * reports so the first real encounter announces that the deferred FIFO gate
+ * must resume.  These are port-only state and do not alter packet payloads. */
+u32 g_ModelPrimTriDepthCueMaxSZVariant5EntryCount;
+u32 g_ModelPrimQuadFT4DepthCueMaxSZVariant5EntryCount;
+
+static void ModelPrimVariant5Tripwire(const char* name, u32* entryCount,
+                                      u8* pCmd, s32 count) {
+    *entryCount += 1;
+    if (*entryCount <= 4) {
+        fprintf(stderr, "[xeno-port][variant5] %s entry=%u cmd=%p count=%d; "
+                        "resume F13 retail FIFO/culling gate\n",
+                name, *entryCount, (void*)pCmd, count);
+    }
+}
 
 ModelPrimDesc D_8004FE50[15] = {
     [0x00] = {
@@ -185,10 +202,10 @@ ModelPrimDesc D_8004FE50[15] = {
         /* Retail row 0x8004FF18: proc[1]=0x8002E04C is the same entry as
          * proc[0] (average walker); proc[4]=0x8002EF0C is the depth-cued
          * (DPCS fog) AVSZ3 walker; proc[5]=func_8002F0E4 is the depth-cued
-         * min-SZ walker.  proc[3]=0x8002E8F0 stays unported -> NULL. */
+         * max-SZ walker.  proc[3]=0x8002E8F0 stays unported -> NULL. */
         .proc = { ModelPrimTriAverageVariant0, ModelPrimTriAverageVariant0,
                   ModelPrimTriMaxSZVariant2, NULL,
-                  ModelPrimTriDepthCueVariant4, ModelPrimTriDepthCueMinVariant5 },
+                  ModelPrimTriDepthCueVariant4, ModelPrimTriDepthCueMaxSZVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D984,   /* PSX 0x8002D984 */
         .cmdStride = 0x08,
         .packetStride = 0x08,
@@ -213,10 +230,10 @@ ModelPrimDesc D_8004FE50[15] = {
                   func_8002E688, NULL,
                   /* Retail row 13 proc[4]=func_8002FCFC (depth-cued AVSZ4
                    * FT4 walker) and proc[5]=func_8002FF0C (depth-cued
-                   * min-SZ FT4 walker).  proc[3]=0x8002EAF4 stays
+                   * max-SZ FT4 walker).  proc[3]=0x8002EAF4 stays
                    * unported -> NULL. */
                   ModelPrimQuadFT4DepthCueVariant4,
-                  ModelPrimQuadFT4DepthCueMinVariant5 },
+                  ModelPrimQuadFT4DepthCueMaxSZVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D0E4,   /* PSX 0x8002D0E4 */
         .cmdStride = 0x08,
         .packetStride = 0x0C,
@@ -1528,14 +1545,14 @@ static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* Retail func_8002F0E4: three-vertex depth-cued min-SZ walker (D_8004FE50
+/* Retail func_8002F0E4: three-vertex depth-cued max-SZ walker (D_8004FE50
  * rows 1 and 5, variant 5). It has a separate raw-SZ reducer and adds DPCS
- * depth cueing; this variant-2 slice deliberately leaves it unchanged. Retail
+ * depth cueing. Retail
  * issues DPCS in the y-overlap test's branch delay slot, before the x tests
  * and the backface reject, so it executes once for every prim transformed;
  * the port keeps that placement.  No FLAG rejection -- retail 0x8002F1F8 is
  * the inert mfc2-$31/LZCR pattern. */
-static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
+static s32 ModelPrimTriDepthCueMaxSZVariant5(u8* pCmd, s32 count) {
     const s32 packetStep = 0x20;
     const u32 tagLen = 0x07000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -1544,6 +1561,9 @@ static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
     s32 emitted = D_80059578;
     u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
                ((u32)D_8005959A << 16);
+
+    ModelPrimVariant5Tripwire("tri", &g_ModelPrimTriDepthCueMaxSZVariant5EntryCount,
+                               pCmd, count);
 
     /* Retail mtc2 at 0x8002F198: RGBC loaded once for the whole run. */
     gte_ldrgb(&rgbc);
@@ -1563,7 +1583,7 @@ static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
         u16 sz1;
         u16 sz2;
         u16 sz3;
-        u16 minSz;
+        u16 maxSz;
         s32 otIndex;
         u32 oldTag;
 
@@ -1595,21 +1615,24 @@ static s32 ModelPrimTriDepthCueMinVariant5(u8* pCmd, s32 count) {
         sz1 = (u16)C2_SZ1;
         sz2 = (u16)C2_SZ2;
         sz3 = (u16)C2_SZ3;
-        minSz = sz1;
-        if (sz2 < minSz) minSz = sz2;
-        if (sz3 < minSz) minSz = sz3;
+        /* Retail 0x8002F278-0x8002F29C selects max(SZ1,SZ2,SZ3).  Unlike the
+         * variant-2 quad's any-zero test, variant 5 rejects only if this final
+         * selected maximum is zero (beqz t0 at 0x8002F2A4). */
+        maxSz = sz1;
+        if (sz2 > maxSz) maxSz = sz2;
+        if (sz3 > maxSz) maxSz = sz3;
 
         emitted++;
-        if (minSz == 0) {
+        if (maxSz == 0) {
             CullCamDrop(CC_OTZ, 0);
             continue;
         }
 
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
-        /* Raw SZ FIFO ordering: retail 0x8002F150 adds two to the configured
-         * shift in this separate variant-5 reducer. */
-        otIndex = (s32)minSz >> (D_80050100 + 2);
+        /* Retail 0x8002F2A8 (the final-max branch delay slot) shifts the
+         * selected maximum by the configured shift plus two. */
+        otIndex = (s32)maxSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
         *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
@@ -1714,13 +1737,13 @@ static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* Retail func_8002FF0C: POLY_FT4 depth-cued min-SZ walker (D_8004FE50 rows
- * 9 and 13, variant 5).  The FT4 spine ordered by the nearest of all four
+/* Retail func_8002FF0C: POLY_FT4 depth-cued max-SZ walker (D_8004FE50 rows
+ * 9 and 13, variant 5).  The FT4 spine ordered by the maximum of all four
  * SZ FIFO slots (SZ0..SZ3 after RTPT+RTPS) with the +2 raw-FIFO shift, plus
  * the unconditional per-prim DPCS depth cueing (retail issues it in an
  * overlap-test delay slot before the rejects).  Inert mfc2-$31/LZCR gates
  * as in the siblings. */
-static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
+static s32 ModelPrimQuadFT4DepthCueMaxSZVariant5(u8* pCmd, s32 count) {
     const s32 packetStep = 0x28;
     const u32 tagLen = 0x09000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
@@ -1729,6 +1752,9 @@ static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
     s32 emitted = D_80059578;
     u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
                ((u32)D_8005959A << 16);
+
+    ModelPrimVariant5Tripwire("quad", &g_ModelPrimQuadFT4DepthCueMaxSZVariant5EntryCount,
+                               pCmd, count);
 
     /* Retail mtc2 at 0x8002FFB8-region setup: RGBC loaded once. */
     gte_ldrgb(&rgbc);
@@ -1748,7 +1774,7 @@ static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
         u16 sz1;
         u16 sz2;
         u16 sz3;
-        u16 minSz;
+        u16 maxSz;
         s32 otIndex;
         u32 oldTag;
 
@@ -1789,22 +1815,25 @@ static s32 ModelPrimQuadFT4DepthCueMinVariant5(u8* pCmd, s32 count) {
         sz1 = (u16)C2_SZ1;
         sz2 = (u16)C2_SZ2;
         sz3 = (u16)C2_SZ3;
-        minSz = sz0;
-        if (sz1 < minSz) minSz = sz1;
-        if (sz2 < minSz) minSz = sz2;
-        if (sz3 < minSz) minSz = sz3;
+        /* Retail 0x800300C4-0x80030110 selects max(SZ0,SZ1,SZ2,SZ3), then
+         * checks only that final maximum at 0x8003011C.  Variant-2 quad's
+         * any-zero rejection is intentionally not shared by variant 5. */
+        maxSz = sz0;
+        if (sz1 > maxSz) maxSz = sz1;
+        if (sz2 > maxSz) maxSz = sz2;
+        if (sz3 > maxSz) maxSz = sz3;
 
         emitted++;
-        if (minSz == 0) {
+        if (maxSz == 0) {
             CullCamDrop(CC_OTZ, 1);
             continue;
         }
 
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
-        /* This separate variant-5 reducer uses the same +2 raw-FIFO shift as
-         * its min-SZ triangle sibling. */
-        otIndex = (s32)minSz >> (D_80050100 + 2);
+        /* Retail 0x80030120 (the final-max branch delay slot) uses the same
+         * configured-plus-two shift as its max-SZ triangle sibling. */
+        otIndex = (s32)maxSz >> (D_80050100 + 2);
         oldTag = ot[otIndex];
         ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
         *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
