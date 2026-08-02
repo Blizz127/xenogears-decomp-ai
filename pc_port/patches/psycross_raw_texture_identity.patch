@@ -1,0 +1,72 @@
+--- a/src/gpu/PsyX_GPU.cpp
++++ b/src/gpu/PsyX_GPU.cpp
+@@ -345,0 +346 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = vertex[3]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -393,0 +395 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -449,0 +452 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = vertex[3]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -497,0 +501 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = vertex[3]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -523,0 +528 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -556,0 +562 @@
++	vertex[0]._p1 = vertex[1]._p1 = vertex[2]._p1 = vertex[3]._p1 = 0; /* _xeno_raw_identity_marker_clear */
+@@ -1203,0 +1210,2 @@
++			if (!shadeTexOn)
++				firstVertex[0]._p1 = firstVertex[1]._p1 = firstVertex[2]._p1 = 0x28; /* _xeno_raw_identity_polygon */
+@@ -1242,0 +1251,2 @@
++		if (!shadeTexOn)
++			firstVertex[0]._p1 = firstVertex[1]._p1 = firstVertex[2]._p1 = firstVertex[3]._p1 = 0x28; /* _xeno_raw_identity_polygon */
+--- a/src/render/PsyX_render.cpp
++++ b/src/render/PsyX_render.cpp
+@@ -134,0 +135,15 @@
++/* _xeno_raw_identity_option: opt-in exact raw-texture color identity. The
++ * uniform is enabled only for on-screen non-PGXP PS1-textured draws, while a
++ * dedicated per-vertex marker restricts the bypass to raw FT3/FT4 polygons. */
++static bool XenoPs1RawTextureIdentityEnabled()
++{
++	static int enabled = -1;
++	if (enabled < 0)
++	{
++		const char* value = getenv("XENO_PS1_RAW_TEXTURE_IDENTITY");
++		enabled = value != NULL && strcmp(value, "1") == 0;
++		if (enabled)
++			fprintf(stderr, "[PsyCross] PS1 raw-texture identity modulation enabled\n");
++	}
++	return enabled != 0;
++}
+@@ -558,0 +574 @@
++	GLint rawTextureIdentityLoc; /* _xeno_raw_identity_uniform */
+@@ -578,0 +595 @@
++GLint u_rawTextureIdentityLoc = -1; /* _xeno_raw_identity_uniform_global */
+@@ -718 +735,2 @@
+-	"		fragColor = dither(color * v_color);\n"\
++	"		vec4 shaded = (ps1RawTextureIdentity > 0 && v_raw_texture > 0.5) ? color : color * v_color;\n"\
++	"		fragColor = dither(shaded);\n"\
+@@ -725,0 +744 @@
++	uniform int ps1RawTextureIdentity;
+@@ -729,0 +749 @@
++	varying float v_raw_texture;
+@@ -772,0 +793 @@
++	"		v_raw_texture = a_extra.w;\n"\
+@@ -1048,0 +1070 @@
++	sh->rawTextureIdentityLoc = glGetUniformLocation(sh->shader, "ps1RawTextureIdentity");
+@@ -1050 +1072 @@
+-	if (sh->texWindowLoc != -1 || sh->fixedUvLoc != -1)
++	if (sh->texWindowLoc != -1 || sh->fixedUvLoc != -1 || sh->rawTextureIdentityLoc != -1)
+@@ -1058,0 +1081,2 @@
++		if (sh->rawTextureIdentityLoc != -1)
++			glUniform1i(sh->rawTextureIdentityLoc, 0);
+@@ -1387,0 +1412 @@
++		u_rawTextureIdentityLoc = g_gpu_shader_4.rawTextureIdentityLoc;
+@@ -1401,0 +1427 @@
++		u_rawTextureIdentityLoc = g_gpu_shader_8.rawTextureIdentityLoc;
+@@ -1415,0 +1442 @@
++		u_rawTextureIdentityLoc = g_gpu_shader_16.rawTextureIdentityLoc;
+@@ -1430,0 +1458 @@
++		u_rawTextureIdentityLoc = -1;
+@@ -1675,0 +1704,3 @@
++	if (u_rawTextureIdentityLoc != -1)
++		glUniform1i(u_rawTextureIdentityLoc, (!enable && !USE_PGXP && g_xeno_ps1_textured_sampling
++			&& XenoPs1RawTextureIdentityEnabled()) ? 1 : 0);

@@ -870,6 +870,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_texel_center.patch" "_xeno_
 # glyphs, placeholders, PGXP, offscreen VRAM, and the disabled path stay on
 # their existing routes.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_fixed_uv.patch" "_xeno_fixed_uv_option" "unidiff-zero"
+# Optional F28 exact raw-texture modulation identity. A dedicated vertex
+# marker selects raw FT3/FT4 polygons only; the uniform is restricted to
+# on-screen non-PGXP PS1-textured draws and is disabled by default.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_identity.patch" "_xeno_raw_identity_option" "unidiff-zero"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
