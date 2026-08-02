@@ -1214,7 +1214,28 @@ void FieldScriptCheckTriggerZone(void) {
     g_FieldScriptMaxInstructionCount += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", FieldProjectActorOriginToScreen);
+void FieldProjectActorOriginToScreen(int* screenX, int* screenY) {
+    MATRIX matrix;
+    SVECTOR origin;
+    int screenXY;
+    long depth;
+    long flag;
+    u32 actorIndex;
+
+    actorIndex = func_8009CD7C(1);
+    CompMatrix(&g_Scene.worldToScreenMatrix,
+               &g_FieldActors[actorIndex].childMatrix, &matrix);
+
+    origin.vx = 0;
+    origin.vy = 0;
+    origin.vz = 0;
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+    RotTransPers(&origin, &screenXY, &depth, &flag);
+
+    *screenY = (s16)(screenXY >> 16);
+    *screenX = (s16)screenXY;
+}
 
 extern s32 D_800ADC18;
 
