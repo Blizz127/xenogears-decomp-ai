@@ -849,6 +849,11 @@ apply_psycross_patch() {
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_abr_clut_bit15.patch" "_xeno_clut_bit15_abr"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_xeno_compmatrix_alias"
+# Optional F22 logical-origin correction. This is intentionally applied only
+# by the on-screen non-PGXP branch in GR_SetOffscreenState; unset/0 retains the
+# original GR_Ortho2D call byte-for-byte, while offscreen VRAM and PGXP paths
+# remain untouched.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_halfpixel_origin.patch" "_xeno_half_pixel_origin"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
