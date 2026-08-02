@@ -347,7 +347,81 @@ void func_80079288(void) {
     }
 }
 
+/* Field-state exit dispatcher. The matching build retains the authoritative
+ * retail assembly; native cannot link INCLUDE_ASM and uses this instruction-
+ * faithful transcription of the four retail exit cases instead. */
+#ifdef XENO_PC_PORT
+extern s16 D_8004F384;
+extern s32 D_800AFC78, D_800B0064;
+extern void* g_pGameState;
+extern void func_80085FB8(void);
+extern int func_80085F30(void);
+extern void func_8001BB50(void);
+extern void ChangeGameState(unsigned int state);
+extern void MainLoop(int errorCode) __attribute__((noreturn));
+
+void func_8007954C(s32 exitCode) {
+    D_8005942C = 0;
+
+    switch (exitCode) {
+    case 0:
+        func_800A30FC();
+        D_8004F324 = D_800AFC78;
+        *(u16*)((u8*)g_pGameState + 0x2322) = (u16)D_800AFC78;
+        *(u16*)((u8*)g_pGameState + 0x2320) =
+            *(u16*)((u8*)g_pGameState + 0x1932);
+        if (D_8004F370 != 0) {
+            return;
+        }
+        ChangeGameState(2);
+        break;
+
+    case 1:
+        if (D_8004F384 == 1) {
+            func_8001B66C();
+            func_80085FB8();
+            ArchiveCdDataSync(0);
+            func_80085F30();
+            func_8001B66C();
+        }
+        if (D_8004F370 != 0) {
+            return;
+        }
+        ChangeGameState(3);
+        break;
+
+    case 2:
+        *(u16*)((u8*)g_pGameState + 0x2322) = (u16)D_8004F324;
+        *(u16*)((u8*)g_pGameState + 0x2320) =
+            *(u16*)((u8*)g_pGameState + 0x1932);
+        if (D_8004F370 != 0) {
+            return;
+        }
+        ChangeGameState(4);
+        g_GamePartySkinsInitialized++;
+        break;
+
+    case 3:
+        D_8004F310 = 0;
+        g_GamePartySkinsInitialized = 0;
+        if (D_8004F370 != 0) {
+            return;
+        }
+        if (D_800B0064 & 0x80) {
+            func_8001BB50();
+        }
+        ChangeGameState(D_800B0064 & 0x7F);
+        break;
+
+    default:
+        break;
+    }
+
+    MainLoop(0);
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007954C);
+#endif
 
 void func_800796F4(void) {}
 
@@ -375,7 +449,30 @@ void func_80079784(int color) {
 }
 
 
+/* Resolve the field movement gate from the active player actor's +0x14 flags,
+ * then apply the signed-halfword script override when it is not 0x00FF. */
+#ifdef XENO_PC_PORT
+extern s32 D_800B2268;
+extern s16 D_800B234C;
+extern u8 D_80059179;
+extern s32 g_PlayerActorIndex;
+
+void func_800798BC(void) {
+    if (D_800B2268 != 0) {
+        ActorData* pActorData =
+            (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
+        D_80059179 = ((*(u32*)((u8*)pActorData + 0x14) & 0xC0) != 0);
+    } else {
+        D_80059179 = 1;
+    }
+
+    if (D_800B234C != 0xFF) {
+        D_80059179 = (u8)D_800B234C;
+    }
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800798BC);
+#endif
 
 void func_8007995C(short w, short h, short x, short y, int destX, int destY) {
     RECT rect;

@@ -8,6 +8,24 @@ This page answers six questions the project tracks constantly.
 
 ---
 
+## 2026-08-01 update — F16 field-to-world boundary is complete; world map remains hollow
+
+- `func_800798BC`, the complete four-case `func_8007954C` dispatcher, and its
+  small exit-3 dependency `func_8001BB50` are real native symbols; their
+  generated stubs are gone. Retail builds retain byte-identical assembly.
+- The Lahan exit-1 route now completes the documented 12-call FieldMain
+  teardown, selects state 3 directly, and arrives at a compiled native
+  `WORLD MAP NOT YET PORTED` mode. State 3 uses the retail memory/heap offsets
+  but `hasOverlay=0`, so archive `0x0F` and raw entry `0x80070CFC` are not
+  executed on the host.
+- The arrival consumes tuple `(0x0400,0x0E00,1,1)` and logs derived world index
+  `0`, entrance `1`, retained arg2 `1`, and heading `0x0E00`. The hold-off
+  regression remains stable for 120 Vsyncs; the hold-enabled F14 route still
+  restores field readiness/control and stays live through frame 1020.
+- This does **not** port the world map. It also does not fix the premature
+  frame-814 trigger: `FieldProjectActorOriginToScreen` is still a generated
+  stub and is the next bounded field task; retail triggers later near frame 916.
+
 ## 2026-07-14 update — build integrity is fail-closed; matching ELFs are blocked
 
 - **Map014 room/sprite ordering:** `func_8002E688` now derives OT depth from

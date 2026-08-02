@@ -1329,9 +1329,9 @@ int main(int argc, char** argv) {
      * dialog-box interior darkening color into .bss. That color is applied to a
      * semi-transparent flat TILE drawn under the text with a *subtractive*
      * blend (background.drawModes use GetTPage abr=2), so the box interior =
-     * framebuffer - (D4,D5,D6). func_8001BB50 is stubbed on the port and never
-     * runs, leaving the bytes 0 -> the TILE subtracts (0,0,0) and no darkening
-     * shows. Restore the exact retail values (func_8001BB50 asm 8001BB74-8001BB90:
+     * framebuffer - (D4,D5,D6). The native boot oracle bypasses func_80019578,
+     * so its now-ported func_8001BB50 call still does not run on this path.
+     * Restore the exact retail values (func_8001BB50 asm 8001BB74-8001BB90:
      * D4=0x88, D5=0x76, D6=0x54). Consumed once by FieldTextBoxInitializePrimitives
      * (setRGB0 on background.tiles) at field enter, so set before MainLoop. */
     D_800594D4 = 0x88;

@@ -375,7 +375,27 @@ void func_8001B970(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB0C);
 
+/* Retail boot/reset helper used by func_8007954C exit 3 when D_800B0064 bit 7
+ * is set. Keep the assembly in the matching build and provide its complete,
+ * bounded 23-instruction behavior to the native port. */
+#ifdef XENO_PC_PORT
+extern u8 D_800594F8, D_8005946C;
+extern u8 D_800594D4, D_800594D5, D_800594D6;
+extern s32 D_800595A0;
+
+void func_8001BB50(void) {
+    D_800594F8 = 1;
+    D_8005946C = 0;
+    func_8001B970();
+    ArchiveCdDataSync(0);
+    D_800594D4 = 0x88;
+    D_800594D5 = 0x76;
+    D_800594D6 = 0x54;
+    D_800595A0 = 2;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB50);
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BBAC);
 

@@ -2205,6 +2205,52 @@ void PcPort_BootMain(void)
     MainLoop(0);
 }
 
+/* F16 hollow arrival for retail game state 3. This deliberately consumes the
+ * field-authored tuple without pretending to implement the world-map overlay.
+ * Vsync keeps SDL event processing responsive while the explicit placeholder
+ * remains stable; a future world-map port replaces this state-table entry. */
+static void PcPort_WorldMapPlaceholderMain(void)
+{
+    static char sMessage[] =
+        "\n\n\n\n"
+        "       WORLD MAP NOT YET PORTED\n\n"
+        "       FIELD ARRIVAL CAPTURED\n";
+    u16 selector = *(u16*)((u8*)g_pGameState + 0x231A);
+    u16 heading = *(u16*)((u8*)g_pGameState + 0x231C);
+    u16 transitionArg2 = *(u16*)((u8*)g_pGameState + 0x231E);
+    u16 rawEntrance = *(u16*)((u8*)g_pGameState + 0x2320);
+    s32 worldIndex = (selector & 0x3FFF) - 0x0400;
+    u16 entrance = rawEntrance & 0x7FFF;
+    void* pOtag;
+
+    fprintf(stderr,
+            "[xeno-port][worldmap-placeholder] enter "
+            "selector=0x%04x world_index=%d entrance=0x%04x "
+            "transition_arg2=0x%04x heading=0x%04x\n",
+            selector, worldIndex, entrance, transitionArg2, heading);
+
+    KernelMenuInitialize();
+    SetDispMask(1);
+    g_KernelMenuIsRunning = 0;
+    D_800592C8 = 0;
+
+    for (;;) {
+        D_800592C4++;
+        D_800592C8 = D_800592C4 & 1;
+        g_KernelMenuCurRenderEnvironment =
+            &g_KernelMenuRenderEnvironments[D_800592C8];
+        pOtag = &g_KernelMenuCurRenderEnvironment->ot;
+        TermPrim(pOtag);
+        FontDrawLetters(pOtag);
+        FontPrintf(sMessage);
+        DrawSync(0);
+        Vsync(0);
+        PutDrawEnv(&g_KernelMenuCurRenderEnvironment->drawEnv);
+        PutDispEnv(&g_KernelMenuCurRenderEnvironment->dispEnv);
+        DrawOTag(pOtag);
+    }
+}
+
 void PcPort_InitGameStates(void)
 {
     const char* fieldTest = getenv("XENO_FIELD_TEST");
@@ -2234,7 +2280,15 @@ void PcPort_InitGameStates(void)
     g_MainGameStates[2].pHeapStart = PSX_ADDR(0x000d39f0);
     g_MainGameStates[2].hasOverlay = 1;
 
-    /* states 3, 4, 6 are field/battle overlay mains not yet symbol-named;
+    /* Retail state 3: main 0x80070CFC, archive 0x0F, state/BSS 0x8009BBB0,
+     * heap 0x8009D80C. Never install that raw PSX entry as a host pointer and
+     * do not load the unported retail overlay; use the compiled hollow state. */
+    g_MainGameStates[3].pFnMain    = PcPort_WorldMapPlaceholderMain;
+    g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
+    g_MainGameStates[3].pHeapStart = PSX_ADDR(0x0009d80c);
+    g_MainGameStates[3].hasOverlay = 0;
+
+    /* states 4 and 6 are field/battle overlay mains not yet symbol-named;
      * left NULL until the oracle reaches them. */
 
     g_MainGameStates[5].pFnMain    = MenuMain;

@@ -12,6 +12,73 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 1 — F16 field teardown reaches a native hollow world-map arrival
+
+- **Scope:** bounded field-to-world plumbing only. `func_800798BC` and the full
+  `func_8007954C` dispatcher now have native, retail-faithful implementations;
+  the tiny exit-3 dependency `func_8001BB50` is also complete. Native game state
+  3 uses a compiled placeholder, retail state/BSS `0x8009BBB0`, heap
+  `0x8009D80C`, and `hasOverlay=0`. No world-map overlay, projection, GTE,
+  collision, route, actor-script, tuple, or trigger-timing code was added.
+- **`func_800798BC` decode (40 instructions / 160 bytes):** when
+  `D_800B2268 != 0`, read the active player's `FieldActor` at the retail `0x5C`
+  stride, dereference `pActorData` at `+0x4C`, test word `+0x14 & 0xC0`, and
+  write byte `D_80059179 = 0/1`; otherwise write 1. Signed halfword
+  `D_800B234C` overrides the byte unless it equals positive `0x00FF`. No guard
+  or approximation was introduced.
+- **`func_8007954C` complete branch matrix (106 instructions / 424 bytes):**
+  every call clears `D_8005942C`. Exit 0 performs `func_800A30FC`, copies
+  `D_800AFC78`/the two field tuple halfwords, and selects state 2. Exit 1 keeps
+  the conditional `D_8004F384 == 1` WDS sequence and selects state 3 directly.
+  Exit 2 copies the two halfwords, selects state 4, then increments party-skin
+  state. Exit 3 clears `D_8004F310` and party-skin state, conditionally runs
+  `func_8001BB50` for `D_800B0064 & 0x80`, and selects the low-seven-bit state.
+  Every valid case preserves the `D_8004F370` early return; valid fallthrough
+  and unsupported exit codes preserve `MainLoop(0)` behavior.
+- **Exit-3 dependency:** `func_8001BB50` is the complete 23-instruction / 92-byte
+  helper: it writes `D_800594F8=1`, clears `D_8005946C`, calls
+  `func_8001B970` and `ArchiveCdDataSync(0)`, restores dialog colors
+  `(0x88,0x76,0x54)`, and writes `D_800595A0=2`. There is no silent optional
+  call or generated native stub left on this branch.
+- **Hollow arrival:** the state-3 function reads the four raw halfwords once,
+  derives `worldIndex = (selector & 0x3FFF) - 0x0400` and
+  `entrance = rawEntrance & 0x7FFF`, retains neutral `transitionArg2` and
+  heading, emits one exact entry log, and renders a stable
+  `WORLD MAP NOT YET PORTED` screen in a `DrawSync`/`Vsync` loop. The Lahan
+  tuple derives `(worldIndex, entrance, transitionArg2, heading) =
+  (0, 1, 1, 0x0E00)`. Retail entry `0x80070CFC` is documented but never used as
+  a host pointer; archive `0x0F` is deliberately not loaded.
+- **Native build/stub proof:** `./pc_port/build_port.sh` completed with
+  `compiled=47`, `skipped=0`, `239` generated function stubs, and `LINK OK`.
+  `nm` resolves all three functions as real text symbols and
+  `pc_port/build_native/stubs.c` contains none of them.
+- **Hold enabled (pre-edit baseline and post-edit regression):** unchanged
+  `scratchpad/f14_runtime_proof.gdb` arms opcode `0x56` at frame 814 with tuple
+  `(0x0400,0x0E00,1,1)`, restores `D_800ADBE4=-1` and control `0`, stays in the
+  field through frame 1020, and reports `F14_DONE` with one opcode advance and
+  32 post-ops.
+- **Hold disabled:** new `scratchpad/f16_runtime_proof.gdb` proves the exact
+  top-level teardown order (`func_800798BC`, `func_800A91F0`,
+  `func_800A31E8`, particles, sound, render, `DrawSync`, `Vsync`, `FieldFree`,
+  party skins, `func_80085988`, `HeapFree(D_800ADB30)`), dispatcher exit 1,
+  state-3 selection, tuple persistence, memory offset `0x9BBB0`, heap offset
+  `0x9D80C`, `hasOverlay=0`, no state-3 `LoadGameStateOverlay`, and 120 stable
+  placeholder Vsyncs with no signal or targeted stub.
+- **Matching preservation:** native bodies are `#ifdef XENO_PC_PORT`; retail
+  keeps the authoritative `INCLUDE_ASM`. An isolated matching build compiled
+  both affected TUs. The available GNU linker then stopped on pre-existing
+  local-label references in unrelated SLUS/field rodata, so the full checksum
+  gate could not reach hashing. Direct comparison to the pre-F16 objects is
+  byte-identical for all `424`, `160`, and `92` function bytes respectively
+  (100% retained retail bodies).
+- **Known timing caveat / next bounded task:** this is a boundary proof, not
+  retail trigger parity. The unchanged generated stub
+  `FieldProjectActorOriginToScreen` still makes the port arm early at frame 814
+  near `(1645,-66,439)`; retail arms around frame 916 near
+  `(1976,-222,105)`. Port `FieldProjectActorOriginToScreen` next. Do not use the
+  hollow arrival to claim that the approximately 180 KB world-map mode is
+  ported.
+
 ## July 11 — ✅ Lane B: `func_800248D4` base ops **0x20–0x2F** (frame−1) — needed once Fei ticks; well still stalls at invisible `0x5e`
 
 - **HEAD base:** `86722cc`. New change: `src/slus_006.64/system/temp1.c` (`func_800248D4`). Prior uncommitted: `misc7.c` (`func_80099214`), `gen_port_stubs.py`, handoff. No `pc_port/**`. Not committed (cam-clear still incomplete).
