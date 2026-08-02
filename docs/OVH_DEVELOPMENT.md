@@ -6,7 +6,11 @@ The tracked container is `dev/xenogears/`. Build it with
 
 Commands are fixed wrappers: `container-up`, `container-down`,
 `matching-build`, `rom-check`, `native-build`, `native-smoke`, and
-`retail-validation`. They accept no arbitrary emulator or shell arguments.
+`retail-validation`. The native wrapper invokes the repository's complete
+`pc_port/build_port.sh` driver, including game translation units, port-only
+sources, and typed generated stubs; the standalone CMake target is only the
+PsyCross scaffold and is not the native validation route. They accept no
+arbitrary emulator or shell arguments.
 
 Retail validation uses the OpenBIOS-compatible retail BIOS at
 `disc/scph5500.bin`, `disc/disc1.bin`, and the PCSX-Redux build 293 AppImage at
@@ -16,3 +20,17 @@ Retail validation uses the OpenBIOS-compatible retail BIOS at
 Disc images, BIOS, the AppImage, PsyCross, scratchpad files, captures, and
 other research artifacts are local assets and are not committed. Rebuild
 from source with `container-up`, then run the matching and native wrappers.
+
+## Native-link validation
+
+`tools/ovh/native-build` uses `pc_port/build_port.sh`, the complete native
+driver. The standalone `cmake -S pc_port` target is only a PsyCross scaffold
+and omits the game translation units. The driver compiles 47 game units and
+the port-only sources, generates typed stubs in the disposable native build
+directory, and links `pc_port/build_native/xeno-port`.
+
+The recovery validation produced `LINK OK` on clean and incremental runs.
+The bounded native smoke and existing F14/F16 GDB proofs pass. Matching build
+passes; ROM-check continues to report the four documented known-red retail
+mismatches. Those are matching/decompilation drift, separate from the native
+host link.
