@@ -825,6 +825,11 @@ FBMAT_PY
 apply_psycross_patch() {
     local patch="$1"
     local marker="$2"
+    local patch_mode="${3:-}"
+    local apply_args=()
+    if [ "$patch_mode" = "unidiff-zero" ]; then
+        apply_args+=(--unidiff-zero)
+    fi
     if grep -Rqs "$marker" "$PSX"; then
         return
     fi
@@ -836,14 +841,14 @@ apply_psycross_patch() {
         echo "ERROR: git is required to apply PsyCross source patches" >&2
         exit 1
     fi
-    if "$git_bin" -C "$PSX" apply --reverse --check "$patch" >/dev/null 2>&1; then
+    if "$git_bin" -C "$PSX" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
         return
     fi
-    "$git_bin" -C "$PSX" apply --check "$patch" || {
+    "$git_bin" -C "$PSX" apply "${apply_args[@]}" --check "$patch" || {
         echo "ERROR: PsyCross patch does not apply: $patch" >&2
         exit 1
     }
-    "$git_bin" -C "$PSX" apply "$patch"
+    "$git_bin" -C "$PSX" apply "${apply_args[@]}" "$patch"
 }
 
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
@@ -854,6 +859,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_x
 # original GR_Ortho2D call byte-for-byte, while offscreen VRAM and PGXP paths
 # remain untouched.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_halfpixel_origin.patch" "_xeno_half_pixel_origin"
+# Optional F24 texel-center correction. This is independent of the F22
+# coverage-origin correction and is enabled only for on-screen non-PGXP
+# textured draws; offscreen VRAM and PGXP paths force the shader uniform off.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_texel_center.patch" "_xeno_texel_center" "unidiff-zero"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
