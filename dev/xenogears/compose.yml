@@ -1,0 +1,15 @@
+services:
+  xenogears-dev:
+    build:
+      context: ../..
+      dockerfile: dev/xenogears/Dockerfile
+      args:
+        UID: "${XENO_UID:-1000}"
+        GID: "${XENO_GID:-1000}"
+    image: xenogears-dev:24.04
+    container_name: xenogears-dev
+    working_dir: /home/blizz/Projects/xenogears-decomp
+    volumes:
+      - ../..:/home/blizz/Projects/xenogears-decomp
+    stdin_open: true
+    tty: true
