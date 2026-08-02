@@ -863,6 +863,13 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_halfpixel_origin.patch" "_x
 # coverage-origin correction and is enabled only for on-screen non-PGXP
 # textured draws; offscreen VRAM and PGXP paths force the shader uniform off.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_texel_center.patch" "_xeno_texel_center" "unidiff-zero"
+# Optional F26 exact fixed-point UV interpolation. Polygon producers mark only
+# FT3/FT4/GT3/GT4 vertices; the renderer then uses the PCSX-Redux edge/span
+# arithmetic for on-screen non-PGXP genuine-PS1 textured triangles. Its
+# internal +0x8000 replaces F24's shader offset while active. Sprites, tiles,
+# glyphs, placeholders, PGXP, offscreen VRAM, and the disabled path stay on
+# their existing routes.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_fixed_uv.patch" "_xeno_fixed_uv_option" "unidiff-zero"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
