@@ -18,5 +18,6 @@ pc_port/logs/
 pc_port/screenshots/
 pc_port/.clinerules
 captures/
+.env.local
 Xenogears (PC port).log
 xenogears-decomp-ai

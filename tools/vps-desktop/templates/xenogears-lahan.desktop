@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — Lahan Regression
+Comment=GDB-automated Lahan field walk with GL captures
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/run-xeno-lahan
+Icon=applications-games
+Terminal=true
+Type=Application
+Categories=Game;Development;

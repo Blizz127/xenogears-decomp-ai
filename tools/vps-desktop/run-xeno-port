@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Launch the Xenogears native PC port in the current graphical session.
+# Usage: run-xeno-port [extra-args...]
+# Environment switches (all default off):
+#   XENO_PS1_HALF_PIXEL_ORIGIN=1
+#   XENO_PS1_TEXEL_CENTER=1
+#   XENO_PS1_FIXED_UV_INTERPOLATION=1
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Load local environment if present
+if [ -f "$REPO_ROOT/.env.local" ]; then
+  set -a
+  . "$REPO_ROOT/.env.local"
+  set +a
+fi
+
+EXE="${XENO_BUILD_NATIVE:-$REPO_ROOT/pc_port/build_native/xeno-port}"
+LIB="${XENO_LIB_ROOT:-/home/blizz/dev/xenogears-assets/lib}"
+LOG_DIR="${XENO_LOG_ROOT:-/home/blizz/dev/xenogears-assets/logs}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+
+# Pre-flight checks
+if [ ! -x "$EXE" ]; then
+  echo "ERROR: xeno-port binary not found or not executable: $EXE" >&2
+  echo "Run the build first:  docker exec xenogears-dev bash -c 'cd /home/blizz/Projects/xenogears-decomp && bash pc_port/build_port.sh'" >&2
+  exit 1
+fi
+
+if [ ! -f "$REPO_ROOT/disc/disc1.bin" ]; then
+  echo "ERROR: disc image not found: $REPO_ROOT/disc/disc1.bin" >&2
+  exit 1
+fi
+
+# Verify DISPLAY is set (graphical session required, no Xvfb)
+if [ -z "${DISPLAY:-}" ]; then
+  echo "ERROR: DISPLAY is not set. Launch from the graphical desktop session." >&2
+  exit 1
+fi
+
+mkdir -p "$LOG_DIR"
+
+# Build LD_LIBRARY_PATH with extracted runtime libs
+export LD_LIBRARY_PATH="${LIB:+$LIB:}${LD_LIBRARY_PATH:-}"
+
+# Log active accuracy switches
+echo "[run-xeno-port] exe=$EXE"
+echo "[run-xeno-port] display=$DISPLAY"
+echo "[run-xeno-port] PS1_HALF_PIXEL_ORIGIN=${XENO_PS1_HALF_PIXEL_ORIGIN:-off}"
+echo "[run-xeno-port] PS1_TEXEL_CENTER=${XENO_PS1_TEXEL_CENTER:-off}"
+echo "[run-xeno-port] PS1_FIXED_UV_INTERPOLATION=${XENO_PS1_FIXED_UV_INTERPOLATION:-off}"
+
+cd "$REPO_ROOT"
+exec "$EXE" "$@" 2>&1 | tee "$LOG_DIR/xeno-port-$STAMP.log"

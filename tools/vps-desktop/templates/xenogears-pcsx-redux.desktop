@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — PCSX-Redux Retail
+Comment=Launch PCSX-Redux with Xenogears disc for retail comparison
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/run-pcsx-redux
+Icon=applications-games
+Terminal=false
+Type=Application
+Categories=Game;Development;

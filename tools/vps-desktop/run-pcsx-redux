@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Launch PCSX-Redux with the Xenogears disc image in the current graphical session.
+# Loads local paths from .env.local.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+if [ -f "$REPO_ROOT/.env.local" ]; then
+  set -a; . "$REPO_ROOT/.env.local"; set +a
+fi
+
+APP="${XENO_PCSX_REDUX:-/home/blizz/apps/pcsx-redux/build293-3e10093a/PCSX-Redux-build293-3e10093a.AppImage}"
+DISC="$REPO_ROOT/disc/disc1.bin"
+BIOS="$REPO_ROOT/disc/scph5500.bin"
+LOG_DIR="${XENO_LOG_ROOT:-/home/blizz/dev/xenogears-assets/logs}"
+
+EXPECTED_SHA="b27a564e6c32333453433c950ac26e652f40af32d5e236441f36e8123c9c651b"
+
+if [ ! -f "$APP" ]; then
+  echo "ERROR: PCSX-Redux AppImage not found: $APP" >&2; exit 1
+fi
+if [ ! -f "$DISC" ]; then
+  echo "ERROR: disc image not found: $DISC" >&2; exit 1
+fi
+
+# Verify AppImage integrity
+ACTUAL_SHA="$(sha256sum "$APP" | cut -d' ' -f1)"
+if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+  echo "ERROR: PCSX-Redux SHA-256 mismatch" >&2
+  echo "  expected: $EXPECTED_SHA" >&2
+  echo "  actual:   $ACTUAL_SHA" >&2
+  exit 2
+fi
+
+if [ -z "${DISPLAY:-}" ]; then
+  echo "ERROR: DISPLAY not set. Launch from graphical session." >&2; exit 1
+fi
+
+mkdir -p "$LOG_DIR"
+
+ARGS=("$DISC")
+if [ -f "$BIOS" ]; then
+  ARGS=(--bios "$BIOS" "${ARGS[@]}")
+  echo "[run-pcsx-redux] BIOS: $BIOS"
+fi
+
+echo "[run-pcsx-redux] app=$APP"
+echo "[run-pcsx-redux] disc=$DISC"
+echo "[run-pcsx-redux] display=$DISPLAY"
+
+cd "$REPO_ROOT"
+exec "$APP" "${ARGS[@]}" "$@"
