@@ -1,0 +1,13 @@
+{
+  "name": "Xenogears",
+  "description": "Reproducible Xenogears OVH development environment.",
+  "tmuxSession": "xenogears",
+  "predefinedCommands": [
+    { "id": "xenogears-container-up", "label": "Xenogears: container up", "command": "tools/ovh/container-up" },
+    { "id": "xenogears-matching-build", "label": "Xenogears: matching build", "command": "tools/ovh/matching-build" },
+    { "id": "xenogears-rom-check", "label": "Xenogears: ROM check", "command": "tools/ovh/rom-check" },
+    { "id": "xenogears-native-build", "label": "Xenogears: native build", "command": "tools/ovh/native-build" },
+    { "id": "xenogears-native-smoke", "label": "Xenogears: native smoke", "command": "tools/ovh/native-smoke" },
+    { "id": "xenogears-retail-validation", "label": "Xenogears: retail validation", "command": "tools/ovh/retail-validation" }
+  ]
+}
