@@ -1,18 +1,20 @@
 /*
- * W2 / W3B / W4C — Native world-map initialization ladder.
+ * W2 / W3B / W4C / W5B — Native world-map initialization ladder.
  *
  * Retail WorldMapMain @ 0x80070CFC (overlay world_map.bin loaded at 0x8006FAF0).
  *
  * W2: pre-loop init through jal wm_80071B9C @ 0x80070FF4; cut before 0x80071000.
  * W3B: one-shot mode initializer 0x80071CDC (first-wave archive queue).
  * W4C: second-wave 0x80071EF0 → ArchiveDataSync poll → 0x80073530; cut before
- *      retail PC 0x800722BC (jal 0x8009766C). Does not enter full 0x80072238,
- *      wm_800712D0, or any frame path.
+ *      retail PC 0x800722BC.
+ * W5B: object-pool 0x8009766C / 0x800976C8; cut before 0x800722C4
+ *      (A180→BE4C copy). Does not enter full 0x80072238, wm_800712D0, or frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
  *   XENO_WORLD_SECOND_WAVE=1
+ *   XENO_WORLD_OBJECT_POOL=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -123,9 +125,17 @@
 #define WM_FIX_D73C              0x8009D73Cu
 #define WM_FIX_D3F4              0x8009D3F4u
 #define WM_FIX_BD00              0x8009BD00u
-/* Hard cut: first insn of broad mode-enter after second-wave */
-#define WM_CUT_BEFORE_BROAD      0x800722BCu
+/* Hard cuts */
+#define WM_CUT_BEFORE_BROAD      0x800722BCu /* after W4C: jal 0x8009766C */
+#define WM_CUT_BEFORE_A180_COPY  0x800722C4u /* after W5B: A180→BE4C */
 #define WM_BROAD_9766C           0x8009766Cu
+#define WM_POOL_BE24             0x8009BE24u
+#define WM_POOL_ALLOC_SIZE       8192u
+#define WM_POOL_SLOT_COUNT       64
+#define WM_POOL_SLOT_STRIDE      0x80u
+#define WM_POOL_OFF_18           0x18u
+#define WM_POOL_OFF_1C           0x1Cu
+#define WM_POOL_OFF_4C           0x4Cu
 
 /* Channel ID tables live in host g_GameState (retail abs inside GS span). */
 #define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
@@ -241,20 +251,26 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_object_pool_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_OBJECT_POOL");
+}
+
 static int world_second_wave_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_SECOND_WAVE");
+    /* Object-pool implies second-wave. */
+    return env_flag_is_one("XENO_WORLD_SECOND_WAVE") || world_object_pool_enabled();
 }
 
 static int world_mode_init_enabled(void)
 {
-    /* Second-wave implies mode-init. */
+    /* Second-wave / object-pool imply mode-init. */
     return env_flag_is_one("XENO_WORLD_MODE_INIT") || world_second_wave_enabled();
 }
 
 static int world_init_enabled(void)
 {
-    /* Mode-init / second-wave imply W2 overlay/init path. */
+    /* Mode-init ladder implies W2 overlay/init path. */
     return env_flag_is_one("XENO_WORLD_INIT") || world_mode_init_enabled();
 }
 
@@ -268,8 +284,9 @@ static void log_enabled_slices(void)
     int w2 = world_init_enabled();
     int w3 = world_mode_init_enabled();
     int w4 = world_second_wave_enabled();
+    int w5 = world_object_pool_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4) {
+    if (!w2 && !w3 && !w4 && !w5) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -279,6 +296,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W3B");
     if (w4)
         fprintf(stderr, ",W4C");
+    if (w5)
+        fprintf(stderr, ",W5B");
     fprintf(stderr, "\n");
 }
 
@@ -949,6 +968,125 @@ static int world_map_second_wave_once(void)
 }
 
 /*
+ * W5B — native transcription of retail 0x800976C8.
+ * Store widths are all sw (u32): +0x4C, +0x18, +0x1C per 0x80-byte slot.
+ * Iteration: a0=0..63, base advances by 0x80 in the bne delay slot.
+ */
+static void wm_800976C8_clear_pool_slots(void)
+{
+    u32 pool_psx = WM_U32(WM_POOL_BE24);
+    u8* base;
+    int i;
+
+    base = (u8*)psx_u32_to_host(pool_psx);
+    if (base == NULL)
+        return;
+
+    for (i = 0; i < WM_POOL_SLOT_COUNT; i++) {
+        u8* slot = base + (u32)i * WM_POOL_SLOT_STRIDE;
+        /* Retail order: +0x4C, then +0x18, then +0x1C (all word stores). */
+        *(u32*)(slot + WM_POOL_OFF_4C) = 0;
+        *(u32*)(slot + WM_POOL_OFF_18) = 0;
+        *(u32*)(slot + WM_POOL_OFF_1C) = 0;
+    }
+}
+
+/*
+ * W5B — native transcription of retail 0x8009766C.
+ * HeapAlloc(8192, 0) → BE24 (KUSEG) → clear slots via 976C8.
+ */
+static int wm_8009766C_object_pool(void)
+{
+    void* pool_host;
+    u32 pool_psx;
+    u32 prior;
+    int i;
+    int ok = 0;
+    u8* base;
+
+    fprintf(stderr, "[worldmap-object-pool] entry\n");
+
+    prior = WM_U32(WM_POOL_BE24);
+    if (prior != 0) {
+        /* Repeat invocation in one process would leak without free (976A0).
+         * Fail loud rather than silent double-alloc. */
+        fprintf(stderr,
+                "[worldmap-object-pool] ERROR: BE24 already set "
+                "psx=0x%08x (refuse re-init; retail free is 0x800976A0)\n",
+                prior);
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-object-pool] alloc_size=%u\n", WM_POOL_ALLOC_SIZE);
+    pool_host = HeapAlloc(WM_POOL_ALLOC_SIZE, 0);
+    pool_psx = host_ptr_to_psx_u32(pool_host);
+    /* Retail stores v0 then always calls clear (NULL would fault on PSX). */
+    WM_U32(WM_POOL_BE24) = pool_psx;
+
+    fprintf(stderr,
+            "[worldmap-object-pool] pool_host=%p\n"
+            "[worldmap-object-pool] pool_psx=0x%08x\n"
+            "[worldmap-object-pool] slot_count=%d\n"
+            "[worldmap-object-pool] slot_stride=0x%02x\n"
+            "[worldmap-object-pool] zero_offsets=0x%02x,0x%02x,0x%02x\n",
+            pool_host, pool_psx, WM_POOL_SLOT_COUNT, WM_POOL_SLOT_STRIDE,
+            WM_POOL_OFF_18, WM_POOL_OFF_1C, WM_POOL_OFF_4C);
+
+    if (pool_host == NULL || pool_psx == 0) {
+        fprintf(stderr, "[worldmap-object-pool] ERROR: HeapAlloc failed\n");
+        return -1;
+    }
+
+    /* Bounds: KUSEG pool must lie fully inside emulated 2 MiB RAM. */
+    if (pool_psx < 0x80000000u ||
+        pool_psx > 0x80200000u - WM_POOL_ALLOC_SIZE) {
+        fprintf(stderr,
+                "[worldmap-object-pool] ERROR: pool_psx 0x%08x out of RAM\n",
+                pool_psx);
+        return -1;
+    }
+
+    wm_800976C8_clear_pool_slots();
+
+    /* Validate all 64 slots. */
+    base = (u8*)psx_u32_to_host(WM_U32(WM_POOL_BE24));
+    for (i = 0; i < WM_POOL_SLOT_COUNT; i++) {
+        u8* slot = base + (u32)i * WM_POOL_SLOT_STRIDE;
+        if (*(u32*)(slot + WM_POOL_OFF_18) == 0 &&
+            *(u32*)(slot + WM_POOL_OFF_1C) == 0 &&
+            *(u32*)(slot + WM_POOL_OFF_4C) == 0)
+            ok++;
+    }
+
+    fprintf(stderr,
+            "[worldmap-object-pool] slot_check=%d/%d\n"
+            "[worldmap-object-pool] slot0 +0x18=0x%08x +0x1C=0x%08x +0x4C=0x%08x\n"
+            "[worldmap-object-pool] slot1 +0x18=0x%08x +0x1C=0x%08x +0x4C=0x%08x\n"
+            "[worldmap-object-pool] slot63 +0x18=0x%08x +0x1C=0x%08x +0x4C=0x%08x\n",
+            ok, WM_POOL_SLOT_COUNT,
+            *(u32*)(base + 0 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_18),
+            *(u32*)(base + 0 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_1C),
+            *(u32*)(base + 0 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_4C),
+            *(u32*)(base + 1 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_18),
+            *(u32*)(base + 1 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_1C),
+            *(u32*)(base + 1 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_4C),
+            *(u32*)(base + 63 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_18),
+            *(u32*)(base + 63 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_1C),
+            *(u32*)(base + 63 * WM_POOL_SLOT_STRIDE + WM_POOL_OFF_4C));
+
+    if (ok != WM_POOL_SLOT_COUNT) {
+        fprintf(stderr, "[worldmap-object-pool] ERROR: slot zero-check failed\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-object-pool] exit\n");
+    fprintf(stderr,
+            "[worldmap-object-pool] cut-before-next-step retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_A180_COPY);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -1063,17 +1201,33 @@ void PcPort_WorldMapInitMain(void)
                     "[worldmap-mode-init] failed; still entering placeholder\n");
         } else if (world_second_wave_enabled()) {
             fprintf(stderr,
-                    "[worldmap-init] XENO_WORLD_SECOND_WAVE=1: second-wave "
-                    "0x80071EF0 → poll → 0x80073530\n");
+                    "[worldmap-init] second-wave: 0x80071EF0 → poll → "
+                    "0x80073530\n");
             if (world_map_second_wave_once() != 0) {
                 fprintf(stderr,
                         "[worldmap-second-wave] failed; still entering "
                         "placeholder\n");
+            } else if (world_object_pool_enabled()) {
+                fprintf(stderr,
+                        "[worldmap-init] XENO_WORLD_OBJECT_POOL=1: "
+                        "0x8009766C pool init\n");
+                if (wm_8009766C_object_pool() != 0) {
+                    fprintf(stderr,
+                            "[worldmap-object-pool] failed; still entering "
+                            "placeholder\n");
+                }
             }
         }
-        fprintf(stderr,
-                "[worldmap-init] cut-before-main-loop retail_pc=0x%08x\n",
-                world_second_wave_enabled() ? WM_CUT_BEFORE_BROAD : WM_MAIN_LOOP);
+        {
+            u32 cut_pc = WM_MAIN_LOOP;
+            if (world_object_pool_enabled())
+                cut_pc = WM_CUT_BEFORE_A180_COPY;
+            else if (world_second_wave_enabled())
+                cut_pc = WM_CUT_BEFORE_BROAD;
+            fprintf(stderr,
+                    "[worldmap-init] cut-before-main-loop retail_pc=0x%08x\n",
+                    cut_pc);
+        }
     } else {
         fprintf(stderr,
                 "[worldmap-init] cut-before-loop retail_pc=0x%08x "
@@ -1081,16 +1235,18 @@ void PcPort_WorldMapInitMain(void)
                 WM_POST_INIT_RESUME, WM_MAIN_LOOP);
     }
 
+    /* s_wm9766c_hits only counts accidental entry into the forbidden stub
+     * symbol; the real W5B body is wm_8009766C_object_pool. */
     if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0 || s_wm9766c_hits != 0 ||
         s_wm72238_hits != 0 || s_wm7299c_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
-                "wm712d0=%d drawotag=%d f9766c=%d f72238=%d f7299c=%d\n",
+                "wm712d0=%d drawotag=%d f9766c_stub=%d f72238=%d f7299c=%d\n",
                 s_wm712d0_hits, s_wm_drawotag_hits, s_wm9766c_hits,
                 s_wm72238_hits, s_wm7299c_hits);
     }
 
-    /* Known-safe hollow UI — W2/W3B/W4C intentionally still show NOT YET PORTED. */
+    /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");
     PcPort_WorldMapPlaceholderMain();
 }
