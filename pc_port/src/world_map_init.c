@@ -25,6 +25,9 @@
  * W14B: wm_80073E30 primitive-template packer (DR_TPAGE + POLY_FT4×2 +
  *       POLY_G3×8 + TILE×64); cut before 0x8007246C (jal 0x80085F58).
  *       No VRAM upload, DrawOTag, 85F58, GfxAllocate, or third-wave poll.
+ * W15B: wm_80085F58 relocate 256×8 records via C7EC + 16× GetClut → D478;
+ *       cut before 0x80072478 (GfxAllocateWorkBuffers). Non-idempotent
+ *       relocation: strict process-local one-shot guard.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -40,6 +43,7 @@
  *   XENO_WORLD_THIRD_WAVE=1
  *   XENO_WORLD_BSS_CONSTANTS=1
  *   XENO_WORLD_PRIMITIVE_TEMPLATES=1
+ *   XENO_WORLD_RECORD_CLUT_INIT=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -162,6 +166,15 @@
 #define WM_CUT_BEFORE_736DC      0x8007245Cu /* after W12B: jal 0x800736DC */
 #define WM_CUT_BEFORE_73E30      0x80072464u /* after W13B: jal 0x80073E30 */
 #define WM_CUT_BEFORE_85F58      0x8007246Cu /* after W14B: jal 0x80085F58 */
+#define WM_CUT_BEFORE_GFX_WORK   0x80072478u /* after W15B: jal GfxAllocate */
+
+/* W15B record table + CLUT destinations (retail 0x80085F58). */
+#define WM_REC_COUNT             256u
+#define WM_REC_STRIDE            8u
+#define WM_REC_BYTES             (WM_REC_COUNT * WM_REC_STRIDE) /* 2048 */
+#define WM_CLUT_D478             0x8009D478u
+#define WM_CLUT_COUNT            16u
+#define WM_CLUT_BYTES            (WM_CLUT_COUNT * 2u) /* 32 */
 
 /* W14B primitive-template BSS destinations (retail 0x80073E30). */
 #define WM_PRIM_DR_TPAGE         0x8009C5A0u
@@ -388,9 +401,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_record_clut_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_RECORD_CLUT_INIT");
+}
+
 static int world_primitive_templates_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_PRIMITIVE_TEMPLATES");
+    /* Record/CLUT init implies primitive-templates. */
+    return env_flag_is_one("XENO_WORLD_PRIMITIVE_TEMPLATES") ||
+           world_record_clut_enabled();
 }
 
 static int world_bss_constants_enabled(void)
@@ -493,9 +513,10 @@ static void log_enabled_slices(void)
     int w12 = world_third_wave_enabled();
     int w13 = world_bss_constants_enabled();
     int w14 = world_primitive_templates_enabled();
+    int w15 = world_record_clut_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14) {
+        !w11 && !w12 && !w13 && !w14 && !w15) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -525,6 +546,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W13B");
     if (w14)
         fprintf(stderr, ",W14B");
+    if (w15)
+        fprintf(stderr, ",W15B");
     fprintf(stderr, "\n");
 }
 
@@ -3243,6 +3266,365 @@ static int wm_80073E30_primitive_templates(void)
     return 0;
 }
 
+static int s_wm85f58_ran;
+
+/*
+ * Retail 0x80085F58 — one-shot record-table relocation + CLUT id paint.
+ * Non-idempotent on field_00: process-local s_wm85f58_ran is the only
+ * ownership (reset only on process restart, same as prior world rungs).
+ * Cut residual before 0x80072478 (jal GfxAllocateWorkBuffers).
+ */
+static int wm_80085F58_relocate_records_and_init_cluts(void)
+{
+    u32 table_psx;
+    void* table_host;
+    u32 c180_psx;
+    u8* table;
+    u8 pre_recs[WM_REC_BYTES];
+    u8 pre_clut[WM_CLUT_BYTES];
+    u8 expect_recs[WM_REC_BYTES];
+    u8 expect_clut[WM_CLUT_BYTES];
+    u32 pre_rec_h;
+    u32 post_rec_h;
+    u32 exp_rec_h;
+    u32 pre_clut_h;
+    u32 post_clut_h;
+    u32 exp_clut_h;
+    u32 max_rel;
+    u32 first_nz_idx;
+    u32 last_nz_idx;
+    int nonzero;
+    int relocated;
+    int field04_nz;
+    int i;
+    int unexpected;
+    int match_rec;
+    int match_clut;
+    u32 guard_c7ec_lo[2];
+    u32 guard_c7ec_hi[2];
+    u32 guard_d478_lo[2];
+    u32 guard_d478_hi[2];
+    u32 ft4_code_snap;
+    u32 dr_mode_snap;
+    u32 c88c_snap;
+    u32 bss_d198_snap;
+    u16 first_clut;
+    u16 last_clut;
+
+    fprintf(stderr, "[worldmap-record-clut] entry\n");
+
+    if (s_wm85f58_ran) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: already ran this process "
+                "(non-idempotent relocation; blocked)\n");
+        fprintf(stderr,
+                "[worldmap-record-clut] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (!s_wm73e30_ran) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: W14B did not run (required)\n");
+        return -1;
+    }
+
+    table_psx = WM_U32(WM_FIX_C7EC);
+    c180_psx = WM_U32(WM_DST_C180);
+    table_host = psx_u32_to_host(table_psx);
+
+    fprintf(stderr,
+            "[worldmap-record-clut] table_psx=0x%08x table_host=%p "
+            "record_count=%u c180_psx=0x%08x\n",
+            table_psx, table_host, WM_REC_COUNT, c180_psx);
+
+    if (table_psx == 0 || table_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: C7EC null or unresolvable\n");
+        return -1;
+    }
+    if (table_psx < 0x80000000u || table_psx >= 0x80200000u) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: C7EC not KUSEG "
+                "0x%08x\n",
+                table_psx);
+        return -1;
+    }
+    if ((table_psx & 3u) != 0) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: table not 4-byte aligned\n");
+        return -1;
+    }
+    /* Full 2048-byte table must stay inside emulated PSX RAM. */
+    if (table_psx + WM_REC_BYTES > 0x80200000u ||
+        table_psx + WM_REC_BYTES < table_psx) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: table span out of PSX RAM\n");
+        return -1;
+    }
+    /* Table should live at/after the W4C decompressed blob base. */
+    if (c180_psx != 0 &&
+        (c180_psx < 0x80000000u || table_psx < c180_psx)) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: table not inside W4C blob "
+                "bounds (c180=0x%08x table=0x%08x)\n",
+                c180_psx, table_psx);
+        return -1;
+    }
+
+    table = (u8*)table_host;
+
+    /* Snapshots. */
+    wm_memcpy(pre_recs, table, WM_REC_BYTES);
+    wm_memcpy(pre_clut, PSX_ADDR(WM_CLUT_D478), WM_CLUT_BYTES);
+    guard_c7ec_lo[0] = WM_U32(WM_FIX_C7EC - 8u);
+    guard_c7ec_lo[1] = WM_U32(WM_FIX_C7EC - 4u);
+    guard_c7ec_hi[0] = WM_U32(WM_FIX_C7EC + 4u);
+    guard_c7ec_hi[1] = WM_U32(WM_FIX_C7EC + 8u);
+    guard_d478_lo[0] = WM_U32(WM_CLUT_D478 - 8u);
+    guard_d478_lo[1] = WM_U32(WM_CLUT_D478 - 4u);
+    guard_d478_hi[0] = WM_U32(WM_CLUT_D478 + WM_CLUT_BYTES);
+    guard_d478_hi[1] = WM_U32(WM_CLUT_D478 + WM_CLUT_BYTES + 4u);
+    ft4_code_snap = WM_U8(WM_PRIM_FT4_0 + 7u);
+    dr_mode_snap = WM_U32(WM_PRIM_DR_TPAGE + 4u);
+    c88c_snap = WM_U32(WM_TW_MIRROR_C88C);
+    bss_d198_snap = WM_U32(0x8009D198u);
+
+    pre_rec_h = wm_prim_fnv1a(pre_recs, WM_REC_BYTES);
+    pre_clut_h = wm_prim_fnv1a(pre_clut, WM_CLUT_BYTES);
+
+    nonzero = 0;
+    field04_nz = 0;
+    max_rel = 0;
+    first_nz_idx = 0xFFFFFFFFu;
+    last_nz_idx = 0xFFFFFFFFu;
+    for (i = 0; i < (int)WM_REC_COUNT; i++) {
+        u32 f0 = *(u32*)(pre_recs + (u32)i * WM_REC_STRIDE);
+        u32 f4 = *(u32*)(pre_recs + (u32)i * WM_REC_STRIDE + 4u);
+        if (f0 != 0) {
+            nonzero++;
+            if (f0 > max_rel)
+                max_rel = f0;
+            if (first_nz_idx == 0xFFFFFFFFu)
+                first_nz_idx = (u32)i;
+            last_nz_idx = (u32)i;
+            /* Diagnostic: relative should not already be KUSEG (W4C leaves
+             * relatives). Fail if high bit set — not a range heuristic for
+             * "skip", only preflight consistency. */
+            if (f0 >= 0x80000000u) {
+                fprintf(stderr,
+                        "[worldmap-record-clut] ERROR: field_00[%d]=0x%08x "
+                        "looks already absolute (expected relative)\n",
+                        i, f0);
+                return -1;
+            }
+            if (table_psx + f0 < table_psx ||
+                table_psx + f0 >= 0x80200000u) {
+                fprintf(stderr,
+                        "[worldmap-record-clut] ERROR: reloc[%d] out of "
+                        "PSX RAM (base=0x%08x rel=0x%08x)\n",
+                        i, table_psx, f0);
+                return -1;
+            }
+        }
+        if (f4 != 0)
+            field04_nz++;
+    }
+
+    fprintf(stderr,
+            "[worldmap-record-clut] nonzero_records=%d field04_nz=%d "
+            "max_rel=0x%08x first_nz=%u last_nz=%u table_span=0x%08x..0x%08x\n",
+            nonzero, field04_nz, max_rel, first_nz_idx, last_nz_idx, table_psx,
+            table_psx + WM_REC_BYTES - 1u);
+
+    /* ---- Retail Phase A: relocate field_00 only ---- */
+    relocated = 0;
+    for (i = 0; i < (int)WM_REC_COUNT; i++) {
+        u32 off = (u32)i * WM_REC_STRIDE;
+        u32 relative = WM_U32(table_psx + off);
+        if (relative != 0) {
+            /* Store 32-bit KUSEG absolute; never host pointer. */
+            WM_U32(table_psx + off) = table_psx + relative;
+            relocated++;
+        }
+    }
+
+    /* ---- Retail Phase B: CLUT table ---- */
+    for (i = 0; i < (int)WM_CLUT_COUNT; i++) {
+        u16 clut = GetClut(240, 496 + i);
+        WM_U16(WM_CLUT_D478 + (u32)i * 2u) = clut;
+    }
+    first_clut = WM_U16(WM_CLUT_D478);
+    last_clut = WM_U16(WM_CLUT_D478 + (WM_CLUT_COUNT - 1u) * 2u);
+
+    /* Build expected oracle from pre-snap. */
+    wm_memcpy(expect_recs, pre_recs, WM_REC_BYTES);
+    for (i = 0; i < (int)WM_REC_COUNT; i++) {
+        u32* f0 = (u32*)(expect_recs + (u32)i * WM_REC_STRIDE);
+        if (*f0 != 0)
+            *f0 = table_psx + *f0;
+        /* field_04 already from pre */
+    }
+    for (i = 0; i < (int)WM_CLUT_COUNT; i++) {
+        u16 c = GetClut(240, 496 + i);
+        expect_clut[i * 2] = (u8)(c & 0xFFu);
+        expect_clut[i * 2 + 1] = (u8)((c >> 8) & 0xFFu);
+    }
+
+    post_rec_h = wm_prim_fnv1a(table, WM_REC_BYTES);
+    post_clut_h = wm_prim_fnv1a((const u8*)PSX_ADDR(WM_CLUT_D478), WM_CLUT_BYTES);
+    exp_rec_h = wm_prim_fnv1a(expect_recs, WM_REC_BYTES);
+    exp_clut_h = wm_prim_fnv1a(expect_clut, WM_CLUT_BYTES);
+
+    match_rec = 0;
+    for (i = 0; i < (int)WM_REC_BYTES; i++) {
+        if (table[i] == expect_recs[i])
+            match_rec++;
+    }
+    match_clut = 0;
+    for (i = 0; i < (int)WM_CLUT_BYTES; i++) {
+        if (((const u8*)PSX_ADDR(WM_CLUT_D478))[i] == expect_clut[i])
+            match_clut++;
+    }
+
+    unexpected = 0;
+    for (i = 0; i < (int)WM_REC_BYTES; i++) {
+        if (table[i] != expect_recs[i])
+            unexpected++;
+    }
+    for (i = 0; i < (int)WM_CLUT_BYTES; i++) {
+        if (((const u8*)PSX_ADDR(WM_CLUT_D478))[i] != expect_clut[i])
+            unexpected++;
+    }
+    /* field_04 must equal pre for every record */
+    for (i = 0; i < (int)WM_REC_COUNT; i++) {
+        u32 off = (u32)i * WM_REC_STRIDE + 4u;
+        if (*(u32*)(table + off) != *(u32*)(pre_recs + off))
+            unexpected++;
+    }
+
+    fprintf(stderr,
+            "[worldmap-record-clut] relocated_records=%d clut_count=%u "
+            "first_clut=0x%04x last_clut=0x%04x\n",
+            relocated, WM_CLUT_COUNT, (unsigned)first_clut,
+            (unsigned)last_clut);
+    fprintf(stderr,
+            "[worldmap-record-clut] hashes rec pre=0x%08x post=0x%08x "
+            "exp=0x%08x | clut pre=0x%08x post=0x%08x exp=0x%08x\n",
+            pre_rec_h, post_rec_h, exp_rec_h, pre_clut_h, post_clut_h,
+            exp_clut_h);
+    fprintf(stderr,
+            "[worldmap-record-clut] match rec=%d/%u clut=%d/%u "
+            "unexpected=%d\n",
+            match_rec, WM_REC_BYTES, match_clut, WM_CLUT_BYTES, unexpected);
+
+    /* Representative entries */
+    {
+        u32 idx40 = 40;
+        u32 pre0 = *(u32*)(pre_recs + 0);
+        u32 post0 = WM_U32(table_psx + 0);
+        u32 pre40 = *(u32*)(pre_recs + idx40 * WM_REC_STRIDE);
+        u32 post40 = WM_U32(table_psx + idx40 * WM_REC_STRIDE);
+        u32 f4_40 = WM_U32(table_psx + idx40 * WM_REC_STRIDE + 4u);
+        u32 pre255 = *(u32*)(pre_recs + 255u * WM_REC_STRIDE);
+        u32 post255 = WM_U32(table_psx + 255u * WM_REC_STRIDE);
+        fprintf(stderr,
+                "[worldmap-record-clut] rep idx0 pre=0x%08x post=0x%08x | "
+                "idx40 pre=0x%08x post=0x%08x f4=0x%08x | "
+                "idx255 pre=0x%08x post=0x%08x\n",
+                pre0, post0, pre40, post40, f4_40, pre255, post255);
+        if (first_nz_idx != 0xFFFFFFFFu) {
+            u32 p =
+                *(u32*)(pre_recs + first_nz_idx * WM_REC_STRIDE);
+            u32 q = WM_U32(table_psx + first_nz_idx * WM_REC_STRIDE);
+            fprintf(stderr,
+                    "[worldmap-record-clut] first_nz idx=%u pre=0x%08x "
+                    "post=0x%08x\n",
+                    first_nz_idx, p, q);
+        }
+    }
+
+    if (relocated != nonzero || match_rec != (int)WM_REC_BYTES ||
+        match_clut != (int)WM_CLUT_BYTES || unexpected != 0 ||
+        post_rec_h != exp_rec_h || post_clut_h != exp_clut_h) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: oracle mismatch "
+                "relocated=%d nonzero=%d unexpected=%d\n",
+                relocated, nonzero, unexpected);
+        return -1;
+    }
+    if (first_clut != 0x7C0Fu || last_clut != 0x7FCFu) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: CLUT endpoints "
+                "first=0x%04x last=0x%04x\n",
+                (unsigned)first_clut, (unsigned)last_clut);
+        return -1;
+    }
+
+    /* Guards + prior rungs / W14B preservation. */
+    if (WM_U32(WM_FIX_C7EC - 8u) != guard_c7ec_lo[0] ||
+        WM_U32(WM_FIX_C7EC - 4u) != guard_c7ec_lo[1] ||
+        WM_U32(WM_FIX_C7EC + 4u) != guard_c7ec_hi[0] ||
+        WM_U32(WM_FIX_C7EC + 8u) != guard_c7ec_hi[1] ||
+        WM_U32(WM_CLUT_D478 - 8u) != guard_d478_lo[0] ||
+        WM_U32(WM_CLUT_D478 - 4u) != guard_d478_lo[1] ||
+        WM_U32(WM_CLUT_D478 + WM_CLUT_BYTES) != guard_d478_hi[0] ||
+        WM_U32(WM_CLUT_D478 + WM_CLUT_BYTES + 4u) != guard_d478_hi[1]) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: neighbor guards changed\n");
+        return -1;
+    }
+    if (WM_U32(WM_FIX_C7EC) != table_psx) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: C7EC slot mutated\n");
+        return -1;
+    }
+    if (WM_U8(WM_PRIM_FT4_0 + 7u) != (u8)ft4_code_snap ||
+        WM_U32(WM_PRIM_DR_TPAGE + 4u) != dr_mode_snap ||
+        WM_U32(WM_TW_MIRROR_C88C) != c88c_snap ||
+        WM_U32(0x8009D198u) != bss_d198_snap) {
+        fprintf(stderr,
+                "[worldmap-record-clut] ERROR: W14B/prior-rung corrupted\n");
+        return -1;
+    }
+
+    s_wm85f58_ran = 1;
+    fprintf(stderr, "[worldmap-record-clut] exit\n");
+    fprintf(stderr,
+            "[worldmap-record-clut] cut-before-gfx-work-buffers "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_GFX_WORK);
+
+    /* Optional diagnostic: prove second call is blocked without writes. */
+    if (env_flag_is_one("XENO_WORLD_RECORD_CLUT_DOUBLE_TEST")) {
+        u8 snap_after[WM_REC_BYTES];
+        u8 snap_clut_after[WM_CLUT_BYTES];
+        int rc2;
+        int changed = 0;
+        wm_memcpy(snap_after, table, WM_REC_BYTES);
+        wm_memcpy(snap_clut_after, PSX_ADDR(WM_CLUT_D478), WM_CLUT_BYTES);
+        rc2 = wm_80085F58_relocate_records_and_init_cluts();
+        for (i = 0; i < (int)WM_REC_BYTES; i++) {
+            if (table[i] != snap_after[i])
+                changed++;
+        }
+        for (i = 0; i < (int)WM_CLUT_BYTES; i++) {
+            if (((const u8*)PSX_ADDR(WM_CLUT_D478))[i] != snap_clut_after[i])
+                changed++;
+        }
+        fprintf(stderr,
+                "[worldmap-record-clut] double_test rc2=%d "
+                "changed_bytes_after_blocked_call=%d\n",
+                rc2, changed);
+        if (rc2 == 0 || changed != 0) {
+            fprintf(stderr,
+                    "[worldmap-record-clut] ERROR: double-run guard failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 /*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
@@ -3474,6 +3856,26 @@ void PcPort_WorldMapInitMain(void)
                                                                 "failed; still "
                                                                 "entering "
                                                                 "placeholder\n");
+                                                    } else if (
+                                                        world_record_clut_enabled()) {
+                                                        fprintf(stderr,
+                                                                "[worldmap-init] "
+                                                                "XENO_WORLD_"
+                                                                "RECORD_CLUT_"
+                                                                "INIT=1: "
+                                                                "0x80085F58 "
+                                                                "relocate+CLUT\n");
+                                                        if (wm_80085F58_relocate_records_and_init_cluts() !=
+                                                            0) {
+                                                            fprintf(stderr,
+                                                                    "[worldmap-"
+                                                                    "record-"
+                                                                    "clut] "
+                                                                    "failed; "
+                                                                    "still "
+                                                                    "entering "
+                                                                    "placeholder\n");
+                                                        }
                                                     }
                                                 }
                                             }
@@ -3488,7 +3890,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_primitive_templates_enabled())
+            if (world_record_clut_enabled())
+                cut_pc = WM_CUT_BEFORE_GFX_WORK;
+            else if (world_primitive_templates_enabled())
                 cut_pc = WM_CUT_BEFORE_85F58;
             else if (world_bss_constants_enabled())
                 cut_pc = WM_CUT_BEFORE_73E30;
