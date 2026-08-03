@@ -19,6 +19,9 @@
  * W12B: wm_80072090 third-wave archive submit (5×Decode/Alloc → D3F8 +
  *       func_80029AFC); cut before 0x8007245C (jal 0x800736DC). Submit only —
  *       no poll/fixup, no residual fan-out, no full 0x80072238 / frames.
+ * W13B: wm_800736DC unrolled BSS constant paint (0x110); cut before
+ *       0x80072464 (jal 0x80073E30). No third-wave consumption, no poll,
+ *       no GPU/sprite setup.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -32,6 +35,7 @@
  *   XENO_WORLD_GPU_ASSET_B=1
  *   XENO_WORLD_OBJECT_MATRIX=1
  *   XENO_WORLD_THIRD_WAVE=1
+ *   XENO_WORLD_BSS_CONSTANTS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -152,6 +156,7 @@
 #define WM_CUT_BEFORE_84580      0x8007244Cu /* after W10B: jal 0x80084580 */
 #define WM_CUT_BEFORE_72090      0x80072454u /* after W11B: jal 0x80072090 */
 #define WM_CUT_BEFORE_736DC      0x8007245Cu /* after W12B: jal 0x800736DC */
+#define WM_CUT_BEFORE_73E30      0x80072464u /* after W13B: jal 0x80073E30 */
 #define WM_TW_ID_CC98            0x8009CC98u
 #define WM_TW_ID_D3D0            0x8009D3D0u
 #define WM_TW_ID_D3C8            0x8009D3C8u
@@ -362,9 +367,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_bss_constants_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_BSS_CONSTANTS");
+}
+
 static int world_third_wave_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_THIRD_WAVE");
+    /* BSS-constants imply third-wave. */
+    return env_flag_is_one("XENO_WORLD_THIRD_WAVE") ||
+           world_bss_constants_enabled();
 }
 
 static int world_object_matrix_enabled(void)
@@ -451,9 +463,10 @@ static void log_enabled_slices(void)
     int w10b = world_gpu_asset_b_enabled();
     int w11 = world_object_matrix_enabled();
     int w12 = world_third_wave_enabled();
+    int w13 = world_bss_constants_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12) {
+        !w11 && !w12 && !w13) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -479,6 +492,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W11B");
     if (w12)
         fprintf(stderr, ",W12B");
+    if (w13)
+        fprintf(stderr, ",W13B");
     fprintf(stderr, "\n");
 }
 
@@ -2525,6 +2540,219 @@ static int wm_80072090_third_wave(void)
 }
 
 /*
+ * W13B — retail 0x800736DC–0x800737E8 (0x110 / 272 B): unrolled BSS constant
+ * paint. Leaf, no loads, no callees. Caller delay at 0x80072460 is nop.
+ * 48 stores (32×sw + 16×sb); unique 136 bytes 0x8009D197–0x8009D2AF with
+ * intentional later-sb overlays on earlier word stores. Neutral names only.
+ */
+#define WM_BSS_CONST_A           0x00FF7A70u
+#define WM_BSS_CONST_B           0x00FFF5E0u
+#define WM_BSS_CONST_C           0x00C03745u
+#define WM_BSS_CONST_K8          0x08u
+#define WM_BSS_CONST_K56         0x38u
+#define WM_BSS_STORE_COUNT       48
+#define WM_BSS_UNIQUE_BYTES      136
+#define WM_BSS_LOWEST            0x8009D197u
+#define WM_BSS_HIGHEST           0x8009D2AFu
+
+/* Expected final bytes at unique addresses (ascending) after all 48 stores. */
+static const u32 k_bss_const_addrs[WM_BSS_UNIQUE_BYTES] = {
+    0x8009D197u, 0x8009D198u, 0x8009D199u, 0x8009D19Au, 0x8009D19Bu,
+    0x8009D1A0u, 0x8009D1A1u, 0x8009D1A2u, 0x8009D1A3u, 0x8009D1A8u,
+    0x8009D1A9u, 0x8009D1AAu, 0x8009D1ABu, 0x8009D1B0u, 0x8009D1B1u,
+    0x8009D1B2u, 0x8009D1B3u, 0x8009D1BBu, 0x8009D1BCu, 0x8009D1BDu,
+    0x8009D1BEu, 0x8009D1BFu, 0x8009D1C4u, 0x8009D1C5u, 0x8009D1C6u,
+    0x8009D1C7u, 0x8009D1CCu, 0x8009D1CDu, 0x8009D1CEu, 0x8009D1CFu,
+    0x8009D1D4u, 0x8009D1D5u, 0x8009D1D6u, 0x8009D1D7u, 0x8009D1DFu,
+    0x8009D1E0u, 0x8009D1E1u, 0x8009D1E2u, 0x8009D1E3u, 0x8009D1E8u,
+    0x8009D1E9u, 0x8009D1EAu, 0x8009D1EBu, 0x8009D1F0u, 0x8009D1F1u,
+    0x8009D1F2u, 0x8009D1F3u, 0x8009D1F8u, 0x8009D1F9u, 0x8009D1FAu,
+    0x8009D1FBu, 0x8009D203u, 0x8009D204u, 0x8009D205u, 0x8009D206u,
+    0x8009D207u, 0x8009D20Cu, 0x8009D20Du, 0x8009D20Eu, 0x8009D20Fu,
+    0x8009D214u, 0x8009D215u, 0x8009D216u, 0x8009D217u, 0x8009D21Cu,
+    0x8009D21Du, 0x8009D21Eu, 0x8009D21Fu, 0x8009D227u, 0x8009D228u,
+    0x8009D229u, 0x8009D22Au, 0x8009D22Bu, 0x8009D230u, 0x8009D231u,
+    0x8009D232u, 0x8009D233u, 0x8009D238u, 0x8009D239u, 0x8009D23Au,
+    0x8009D23Bu, 0x8009D240u, 0x8009D241u, 0x8009D242u, 0x8009D243u,
+    0x8009D24Bu, 0x8009D24Cu, 0x8009D24Du, 0x8009D24Eu, 0x8009D24Fu,
+    0x8009D254u, 0x8009D255u, 0x8009D256u, 0x8009D257u, 0x8009D25Cu,
+    0x8009D25Du, 0x8009D25Eu, 0x8009D25Fu, 0x8009D264u, 0x8009D265u,
+    0x8009D266u, 0x8009D267u, 0x8009D26Fu, 0x8009D270u, 0x8009D271u,
+    0x8009D272u, 0x8009D273u, 0x8009D278u, 0x8009D279u, 0x8009D27Au,
+    0x8009D27Bu, 0x8009D280u, 0x8009D281u, 0x8009D282u, 0x8009D283u,
+    0x8009D288u, 0x8009D289u, 0x8009D28Au, 0x8009D28Bu, 0x8009D293u,
+    0x8009D294u, 0x8009D295u, 0x8009D296u, 0x8009D297u, 0x8009D29Cu,
+    0x8009D29Du, 0x8009D29Eu, 0x8009D29Fu, 0x8009D2A4u, 0x8009D2A5u,
+    0x8009D2A6u, 0x8009D2A7u, 0x8009D2ACu, 0x8009D2ADu, 0x8009D2AEu,
+    0x8009D2AFu,
+};
+static const u8 k_bss_const_expect[WM_BSS_UNIQUE_BYTES] = {
+    0x08u, 0x70u, 0x7Au, 0xFFu, 0x38u, 0x70u, 0x7Au, 0xFFu, 0x00u, 0xE0u, 0xF5u,
+    0xFFu, 0x00u, 0xE0u, 0xF5u, 0xFFu, 0x00u, 0x08u, 0x70u, 0x7Au, 0xFFu, 0x38u,
+    0x70u, 0x7Au, 0xFFu, 0x00u, 0xE0u, 0xF5u, 0xFFu, 0x00u, 0xE0u, 0xF5u, 0xFFu,
+    0x00u, 0x08u, 0x45u, 0x37u, 0xC0u, 0x38u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x70u,
+    0x7Au, 0xFFu, 0x00u, 0x70u, 0x7Au, 0xFFu, 0x00u, 0x08u, 0x45u, 0x37u, 0xC0u,
+    0x38u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x70u, 0x7Au, 0xFFu, 0x00u, 0x70u, 0x7Au,
+    0xFFu, 0x00u, 0x08u, 0x45u, 0x37u, 0xC0u, 0x38u, 0x45u, 0x37u, 0xC0u, 0x00u,
+    0x45u, 0x37u, 0xC0u, 0x00u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x08u, 0x45u, 0x37u,
+    0xC0u, 0x38u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x45u,
+    0x37u, 0xC0u, 0x00u, 0x08u, 0x45u, 0x37u, 0xC0u, 0x38u, 0x45u, 0x37u, 0xC0u,
+    0x00u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x08u, 0x45u,
+    0x37u, 0xC0u, 0x38u, 0x45u, 0x37u, 0xC0u, 0x00u, 0x45u, 0x37u, 0xC0u, 0x00u,
+    0x45u, 0x37u, 0xC0u, 0x00u,
+};
+#define WM_BSS_EXPECT_FNV 0x4323F4C5u
+
+static int s_wm736dc_ran;
+
+static u32 wm_bss_footprint_hash(void)
+{
+    /* FNV-1a 32-bit over unique footprint bytes in ascending address order. */
+    u32 h = 2166136261u;
+    int i;
+    for (i = 0; i < WM_BSS_UNIQUE_BYTES; i++) {
+        h ^= (u32)WM_U8(k_bss_const_addrs[i]);
+        h *= 16777619u;
+    }
+    return h;
+}
+
+static int wm_800736DC_init_constants(void)
+{
+    u32 pre_hash;
+    u32 post_hash;
+    u32 guard_lo[4];
+    u32 guard_hi[4];
+    u32 c88c_snap;
+    u32 c620_snap;
+    u32 pool_snap;
+    u32 be4c0_snap;
+    int match;
+    int i;
+
+    fprintf(stderr, "[worldmap-bss-constants] entry\n");
+
+    if (s_wm736dc_ran) {
+        fprintf(stderr,
+                "[worldmap-bss-constants] ERROR: already ran this process\n");
+        return -1;
+    }
+    if (!s_wm72090_ran) {
+        fprintf(stderr,
+                "[worldmap-bss-constants] ERROR: W12B did not run (required)\n");
+        return -1;
+    }
+
+    /* Guards + prior-rung snaps. */
+    for (i = 0; i < 4; i++) {
+        guard_lo[i] = WM_U32(WM_BSS_LOWEST - 16u + (u32)i * 4u);
+        guard_hi[i] = WM_U32(WM_BSS_HIGHEST + 1u + (u32)i * 4u);
+    }
+    c88c_snap = WM_U32(WM_TW_MIRROR_C88C);
+    c620_snap = WM_U32(WM_OBJ_C620);
+    pool_snap = WM_U32(WM_POOL_BE24);
+    be4c0_snap = WM_U32(WM_TMPL_DST_BE4C);
+    pre_hash = wm_bss_footprint_hash();
+
+    /* Retail store order — unrolled; later sb overlays word tails. */
+    WM_U32(0x8009D1C4u) = WM_BSS_CONST_A;
+    WM_U32(0x8009D1BCu) = WM_BSS_CONST_A;
+    WM_U32(0x8009D1A0u) = WM_BSS_CONST_A;
+    WM_U32(0x8009D198u) = WM_BSS_CONST_A;
+    WM_U32(0x8009D1D4u) = WM_BSS_CONST_B;
+    WM_U32(0x8009D1CCu) = WM_BSS_CONST_B;
+    WM_U32(0x8009D1B0u) = WM_BSS_CONST_B;
+    WM_U32(0x8009D1A8u) = WM_BSS_CONST_B;
+    WM_U8(0x8009D197u) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D19Bu) = WM_BSS_CONST_K56;
+    WM_U8(0x8009D1BBu) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D1BFu) = WM_BSS_CONST_K56;
+    WM_U32(0x8009D20Cu) = WM_BSS_CONST_C;
+    WM_U32(0x8009D204u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D1E8u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D1E0u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D21Cu) = WM_BSS_CONST_A;
+    WM_U32(0x8009D214u) = WM_BSS_CONST_A;
+    WM_U32(0x8009D1F8u) = WM_BSS_CONST_A;
+    WM_U32(0x8009D1F0u) = WM_BSS_CONST_A;
+    WM_U8(0x8009D1DFu) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D1E3u) = WM_BSS_CONST_K56;
+    WM_U8(0x8009D203u) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D207u) = WM_BSS_CONST_K56;
+    WM_U32(0x8009D264u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D25Cu) = WM_BSS_CONST_C;
+    WM_U32(0x8009D254u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D24Cu) = WM_BSS_CONST_C;
+    WM_U32(0x8009D240u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D238u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D230u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D228u) = WM_BSS_CONST_C;
+    WM_U8(0x8009D227u) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D22Bu) = WM_BSS_CONST_K56;
+    WM_U8(0x8009D24Bu) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D24Fu) = WM_BSS_CONST_K56;
+    WM_U32(0x8009D2ACu) = WM_BSS_CONST_C;
+    WM_U32(0x8009D2A4u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D29Cu) = WM_BSS_CONST_C;
+    WM_U32(0x8009D294u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D288u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D280u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D278u) = WM_BSS_CONST_C;
+    WM_U32(0x8009D270u) = WM_BSS_CONST_C;
+    WM_U8(0x8009D26Fu) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D273u) = WM_BSS_CONST_K56;
+    WM_U8(0x8009D293u) = WM_BSS_CONST_K8;
+    WM_U8(0x8009D297u) = WM_BSS_CONST_K56; /* jr delay slot */
+
+    post_hash = wm_bss_footprint_hash();
+    match = 0;
+    for (i = 0; i < WM_BSS_UNIQUE_BYTES; i++) {
+        if (WM_U8(k_bss_const_addrs[i]) == k_bss_const_expect[i])
+            match++;
+    }
+
+    fprintf(stderr,
+            "[worldmap-bss-constants] store_count=%d unique_bytes=%d "
+            "lowest_address=0x%08x highest_address=0x%08x\n",
+            WM_BSS_STORE_COUNT, WM_BSS_UNIQUE_BYTES, WM_BSS_LOWEST,
+            WM_BSS_HIGHEST);
+    fprintf(stderr,
+            "[worldmap-bss-constants] pre_hash=0x%08x post_hash=0x%08x "
+            "expected_fnv=0x%08x expected_bytes=%d/%d\n",
+            pre_hash, post_hash, WM_BSS_EXPECT_FNV, match, WM_BSS_UNIQUE_BYTES);
+
+    if (match != WM_BSS_UNIQUE_BYTES || post_hash != WM_BSS_EXPECT_FNV) {
+        fprintf(stderr,
+                "[worldmap-bss-constants] ERROR: expected constant mismatch\n");
+        return -1;
+    }
+
+    for (i = 0; i < 4; i++) {
+        if (WM_U32(WM_BSS_LOWEST - 16u + (u32)i * 4u) != guard_lo[i] ||
+            WM_U32(WM_BSS_HIGHEST + 1u + (u32)i * 4u) != guard_hi[i]) {
+            fprintf(stderr,
+                    "[worldmap-bss-constants] ERROR: neighbor guard changed\n");
+            return -1;
+        }
+    }
+    if (WM_U32(WM_TW_MIRROR_C88C) != c88c_snap ||
+        WM_U32(WM_OBJ_C620) != c620_snap ||
+        WM_U32(WM_POOL_BE24) != pool_snap ||
+        WM_U32(WM_TMPL_DST_BE4C) != be4c0_snap) {
+        fprintf(stderr,
+                "[worldmap-bss-constants] ERROR: prior rung state corrupted\n");
+        return -1;
+    }
+
+    s_wm736dc_ran = 1;
+    fprintf(stderr, "[worldmap-bss-constants] exit\n");
+    fprintf(stderr,
+            "[worldmap-bss-constants] cut-before-next-step retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_73E30);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -2721,6 +2949,23 @@ void PcPort_WorldMapInitMain(void)
                                                         "failed; still "
                                                         "entering "
                                                         "placeholder\n");
+                                            } else if (
+                                                world_bss_constants_enabled()) {
+                                                fprintf(stderr,
+                                                        "[worldmap-init] "
+                                                        "XENO_WORLD_BSS_"
+                                                        "CONSTANTS=1: "
+                                                        "0x800736DC constant "
+                                                        "paint\n");
+                                                if (wm_800736DC_init_constants()
+                                                    != 0) {
+                                                    fprintf(stderr,
+                                                            "[worldmap-bss-"
+                                                            "constants] "
+                                                            "failed; still "
+                                                            "entering "
+                                                            "placeholder\n");
+                                                }
                                             }
                                         }
                                     }
@@ -2733,7 +2978,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_third_wave_enabled())
+            if (world_bss_constants_enabled())
+                cut_pc = WM_CUT_BEFORE_73E30;
+            else if (world_third_wave_enabled())
                 cut_pc = WM_CUT_BEFORE_736DC;
             else if (world_object_matrix_enabled())
                 cut_pc = WM_CUT_BEFORE_72090;
