@@ -4,12 +4,14 @@
 #   XENO_PS1_HALF_PIXEL_ORIGIN=1
 #   XENO_PS1_TEXEL_CENTER=1
 #   XENO_PS1_FIXED_UV_INTERPOLATION=1
+#   XENO_PS1_RAW_TEXTURE_IDENTITY=1
 # These are experimental — not the default launcher.
 set -euo pipefail
 
 export XENO_PS1_HALF_PIXEL_ORIGIN=1
 export XENO_PS1_TEXEL_CENTER=1
 export XENO_PS1_FIXED_UV_INTERPOLATION=1
+export XENO_PS1_RAW_TEXTURE_IDENTITY=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -17,5 +19,6 @@ echo "[run-xeno-ps1-accurate] PS1 accuracy mode enabled"
 echo "[run-xeno-ps1-accurate]   XENO_PS1_HALF_PIXEL_ORIGIN=1"
 echo "[run-xeno-ps1-accurate]   XENO_PS1_TEXEL_CENTER=1"
 echo "[run-xeno-ps1-accurate]   XENO_PS1_FIXED_UV_INTERPOLATION=1"
+echo "[run-xeno-ps1-accurate]   XENO_PS1_RAW_TEXTURE_IDENTITY=1"
 
 exec "$SCRIPT_DIR/run-xeno-port" "$@"

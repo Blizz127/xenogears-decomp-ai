@@ -314,9 +314,14 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 @@ -1601,0 +1674,2 @@
 +	if (u_fixedUvLoc != -1 && enable)
 +		glUniform1i(u_fixedUvLoc, 0);
-@@ -2046,0 +2121 @@
+@@
+ 	//assert(num_vertices <= MAX_VERTEX_BUFFER_SIZE);
 +	g_xenoUploadedVertices = vertices;
-@@ -2065,0 +2141,43 @@
+ 	GR_BindVertexBuffer();
+@@
+ void GR_DrawTriangles(int start_vertex, int triangles)
+ {
+ #if USE_OPENGL
 +	/* _xeno_fixed_uv_draw: keep the legacy one-call batch byte-for-byte when
 +	 * disabled. When enabled, only polygon-marked triangles get exact rows;
 +	 * all other primitive classes retain the ordinary shader/F24 path. */
@@ -360,3 +365,8 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 +		return;
 +	}
 +#endif
+ 	glDrawArrays(GL_TRIANGLES, start_vertex, triangles * 3);
+ #else
+ #error
+ #endif
+ }

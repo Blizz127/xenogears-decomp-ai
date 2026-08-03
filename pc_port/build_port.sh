@@ -822,6 +822,32 @@ FBMAT_PY
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
 # gitignored. Apply in dependency order: the ABR patch was generated after the
 # raw-texture dither correction.
+#
+# PsyCross is an untracked vendor tree. `git -C $PSX apply` only works correctly
+# when $PSX is its own git worktree. Without a local .git, git walks up to the
+# monorepo, reverse --check can false-positive, and optional F22/F24/F26/F28
+# patches are silently skipped. Ensure a local vendor repo before applying.
+ensure_psycross_git_worktree() {
+    local git_bin="$1"
+    local psx_abs
+    psx_abs="$(cd "$PSX" && pwd)"
+    local toplevel
+    toplevel="$("$git_bin" -C "$PSX" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ -n "$toplevel" ] && [ "$toplevel" = "$psx_abs" ]; then
+        return 0
+    fi
+    echo "    initializing local PsyCross git worktree for patch apply"
+    "$git_bin" -C "$PSX" init -q
+    "$git_bin" -C "$PSX" -c user.email=xeno@local -c user.name=xeno add -A
+    "$git_bin" -C "$PSX" -c user.email=xeno@local -c user.name=xeno \
+        commit -q -m "vendor baseline for patch apply" || true
+    toplevel="$("$git_bin" -C "$PSX" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ "$toplevel" != "$psx_abs" ]; then
+        echo "ERROR: PsyCross git toplevel is '$toplevel', expected '$psx_abs'" >&2
+        exit 1
+    fi
+}
+
 apply_psycross_patch() {
     local patch="$1"
     local marker="$2"
@@ -841,6 +867,7 @@ apply_psycross_patch() {
         echo "ERROR: git is required to apply PsyCross source patches" >&2
         exit 1
     fi
+    ensure_psycross_git_worktree "$git_bin"
     if "$git_bin" -C "$PSX" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
         return
     fi

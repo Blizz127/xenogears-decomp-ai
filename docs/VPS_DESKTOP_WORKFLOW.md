@@ -94,6 +94,7 @@ tools/vps-desktop/run-xeno-ps1-accurate
 XENO_PS1_HALF_PIXEL_ORIGIN=1 tools/vps-desktop/run-xeno-port
 XENO_PS1_TEXEL_CENTER=1 tools/vps-desktop/run-xeno-port
 XENO_PS1_FIXED_UV_INTERPOLATION=1 tools/vps-desktop/run-xeno-port
+XENO_PS1_RAW_TEXTURE_IDENTITY=1 tools/vps-desktop/run-xeno-port
 ```
 
 ## GDB Test Routes
