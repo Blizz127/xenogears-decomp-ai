@@ -2296,8 +2296,10 @@ void PcPort_InitGameStates(void)
      * 0x800979C8 (larger TIM→CLUT/TPage). XENO_WORLD_OBJECT_MATRIX=1: also
      * runs 0x80084580 (object/matrix table). XENO_WORLD_THIRD_WAVE=1: also
      * runs 0x80072090 (third-wave submit). XENO_WORLD_BSS_CONSTANTS=1: also
-     * runs 0x800736DC (BSS constant paint), cut before 0x80072464 (still no
-     * 73E30 / poll / main loop / wm_800712D0 / broad residual). */
+     * runs 0x800736DC (BSS constant paint), cut before 0x80072464.
+     * XENO_WORLD_PRIMITIVE_TEMPLATES=1: also runs 0x80073E30 (packet
+     * templates), cut before 0x8007246C (still no 85F58 / poll / main loop /
+     * wm_800712D0 / broad residual). */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
@@ -2313,6 +2315,7 @@ void PcPort_InitGameStates(void)
         const char* objMatrix = getenv("XENO_WORLD_OBJECT_MATRIX");
         const char* thirdWave = getenv("XENO_WORLD_THIRD_WAVE");
         const char* bssConst = getenv("XENO_WORLD_BSS_CONSTANTS");
+        const char* primTmpl = getenv("XENO_WORLD_PRIMITIVE_TEMPLATES");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
@@ -2323,7 +2326,7 @@ void PcPort_InitGameStates(void)
                    "MODE_INIT=%s SECOND_WAVE=%s OBJECT_POOL=%s "
                    "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s CROSS_PRODUCTS=%s "
                    "GPU_ASSET_A=%s GPU_ASSET_B=%s OBJECT_MATRIX=%s "
-                   "THIRD_WAVE=%s BSS_CONSTANTS=%s\n",
+                   "THIRD_WAVE=%s BSS_CONSTANTS=%s PRIMITIVE_TEMPLATES=%s\n",
                    (modeInit && modeInit[0]) ? modeInit : "off",
                    (secondWave && secondWave[0]) ? secondWave : "off",
                    (objectPool && objectPool[0]) ? objectPool : "off",
@@ -2334,7 +2337,8 @@ void PcPort_InitGameStates(void)
                    (gpuAssetB && gpuAssetB[0]) ? gpuAssetB : "off",
                    (objMatrix && objMatrix[0]) ? objMatrix : "off",
                    (thirdWave && thirdWave[0]) ? thirdWave : "off",
-                   (bssConst && bssConst[0]) ? bssConst : "off");
+                   (bssConst && bssConst[0]) ? bssConst : "off",
+                   (primTmpl && primTmpl[0]) ? primTmpl : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;

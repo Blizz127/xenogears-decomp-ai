@@ -22,6 +22,9 @@
  * W13B: wm_800736DC unrolled BSS constant paint (0x110); cut before
  *       0x80072464 (jal 0x80073E30). No third-wave consumption, no poll,
  *       no GPU/sprite setup.
+ * W14B: wm_80073E30 primitive-template packer (DR_TPAGE + POLY_FT4×2 +
+ *       POLY_G3×8 + TILE×64); cut before 0x8007246C (jal 0x80085F58).
+ *       No VRAM upload, DrawOTag, 85F58, GfxAllocate, or third-wave poll.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -36,6 +39,7 @@
  *   XENO_WORLD_OBJECT_MATRIX=1
  *   XENO_WORLD_THIRD_WAVE=1
  *   XENO_WORLD_BSS_CONSTANTS=1
+ *   XENO_WORLD_PRIMITIVE_TEMPLATES=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -157,6 +161,21 @@
 #define WM_CUT_BEFORE_72090      0x80072454u /* after W11B: jal 0x80072090 */
 #define WM_CUT_BEFORE_736DC      0x8007245Cu /* after W12B: jal 0x800736DC */
 #define WM_CUT_BEFORE_73E30      0x80072464u /* after W13B: jal 0x80073E30 */
+#define WM_CUT_BEFORE_85F58      0x8007246Cu /* after W14B: jal 0x80085F58 */
+
+/* W14B primitive-template BSS destinations (retail 0x80073E30). */
+#define WM_PRIM_DR_TPAGE         0x8009C5A0u
+#define WM_PRIM_FT4_0            0x8009C5C0u
+#define WM_PRIM_FT4_1            0x8009C5E8u
+#define WM_PRIM_G3_BASE          0x8009C664u
+#define WM_PRIM_TILE_BASE        0x8009C898u
+#define WM_PRIM_FT4_BYTES        40u
+#define WM_PRIM_G3_STRIDE        28u
+#define WM_PRIM_G3_COUNT         8u
+#define WM_PRIM_TILE_STRIDE      16u
+#define WM_PRIM_TILE_COUNT       64u
+#define WM_PRIM_G3_BYTES         (WM_PRIM_G3_COUNT * WM_PRIM_G3_STRIDE)
+#define WM_PRIM_TILE_BYTES       (WM_PRIM_TILE_COUNT * WM_PRIM_TILE_STRIDE)
 #define WM_TW_ID_CC98            0x8009CC98u
 #define WM_TW_ID_D3D0            0x8009D3D0u
 #define WM_TW_ID_D3C8            0x8009D3C8u
@@ -256,6 +275,8 @@ extern int StoreImage(RECT* rect, u_long* p);
 extern int LoadImage(RECT* rect, u_long* p);
 extern u_short GetClut(int x, int y);
 extern u_short GetTPage(int tp, int abr, int x, int y);
+extern void SetSemiTrans(void* p, int abe);
+extern void SetDrawTPage(DR_TPAGE* p, int dfe, int dtd, int tpage);
 extern int func_8002C3E8(u8* pModel);
 extern void func_8002CB54(u8* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(u8* a0, void* a1, s32 a2);
@@ -367,9 +388,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_primitive_templates_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_PRIMITIVE_TEMPLATES");
+}
+
 static int world_bss_constants_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_BSS_CONSTANTS");
+    /* Primitive-templates imply BSS-constants. */
+    return env_flag_is_one("XENO_WORLD_BSS_CONSTANTS") ||
+           world_primitive_templates_enabled();
 }
 
 static int world_third_wave_enabled(void)
@@ -464,9 +492,10 @@ static void log_enabled_slices(void)
     int w11 = world_object_matrix_enabled();
     int w12 = world_third_wave_enabled();
     int w13 = world_bss_constants_enabled();
+    int w14 = world_primitive_templates_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13) {
+        !w11 && !w12 && !w13 && !w14) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -494,6 +523,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W12B");
     if (w13)
         fprintf(stderr, ",W13B");
+    if (w14)
+        fprintf(stderr, ",W14B");
     fprintf(stderr, "\n");
 }
 
@@ -2752,6 +2783,466 @@ static int wm_800736DC_init_constants(void)
     return 0;
 }
 
+/* Compile-time layout locks for PsyQ packet structs used by 0x80073E30. */
+typedef char wm_assert_dr_tpage_8[(sizeof(DR_TPAGE) == 8) ? 1 : -1];
+typedef char wm_assert_poly_ft4_40[(sizeof(POLY_FT4) == 40) ? 1 : -1];
+typedef char wm_assert_poly_g3_28[(sizeof(POLY_G3) == 28) ? 1 : -1];
+typedef char wm_assert_tile_16[(sizeof(TILE) == 16) ? 1 : -1];
+
+static int s_wm73e30_ran;
+
+static u32 wm_prim_fnv1a(const u8* p, unsigned n)
+{
+    u32 h = 2166136261u;
+    unsigned i;
+    for (i = 0; i < n; i++) {
+        h ^= (u32)p[i];
+        h *= 16777619u;
+    }
+    return h;
+}
+
+/*
+ * Retail 0x80073E30 — one-shot world BSS GPU packet-template initializer.
+ * Leaf: GetTPage / GetClut / SetSemiTrans / SetDrawTPage only.
+ * Cut residual before 0x8007246C (jal 0x80085F58).
+ */
+static int wm_80073E30_primitive_templates(void)
+{
+    POLY_FT4* ft4_0;
+    POLY_FT4* ft4_1;
+    DR_TPAGE* dr;
+    u16 tpage0;
+    u16 tpage1;
+    u16 clut;
+    u32 dr_mode;
+    int i;
+    int j;
+    int match_ft4;
+    int match_g3;
+    int match_tile;
+    int unexpected;
+    u32 pre_dr_h;
+    u32 pre_ft4_0_h;
+    u32 pre_ft4_1_h;
+    u32 pre_g3_h;
+    u32 pre_tile_h;
+    u32 post_dr_h;
+    u32 post_ft4_0_h;
+    u32 post_ft4_1_h;
+    u32 post_g3_h;
+    u32 post_tile_h;
+    u8 snap_dr[8];
+    u8 snap_ft4_0[40];
+    u8 snap_ft4_1[40];
+    u8 snap_g3[WM_PRIM_G3_BYTES];
+    u8 snap_tile[WM_PRIM_TILE_BYTES];
+    u8 expect_dr[8];
+    u8 expect_ft4[40];
+    u8 expect_g3[WM_PRIM_G3_BYTES];
+    u8 expect_tile[WM_PRIM_TILE_BYTES];
+    /* Guard / gap / prior-rung snaps */
+    u32 guard_before_dr[4];
+    u32 gap_c5a8;
+    u32 gap_c614;
+    u32 gap_c620;
+    u32 gap_c660;
+    u32 gap_c7ec;
+    u32 gap_c88c;
+    u32 gap_c894;
+    u32 bss_d198;
+    u32 pool_snap;
+    u32 be4c0_snap;
+    u32 c620_snap;
+
+    fprintf(stderr, "[worldmap-primitive-templates] entry\n");
+
+    if (s_wm73e30_ran) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: already ran this "
+                "process\n");
+        return -1;
+    }
+    if (!s_wm736dc_ran) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: W13B did not run "
+                "(required)\n");
+        return -1;
+    }
+
+    ft4_0 = (POLY_FT4*)PSX_ADDR(WM_PRIM_FT4_0);
+    ft4_1 = (POLY_FT4*)PSX_ADDR(WM_PRIM_FT4_1);
+    dr = (DR_TPAGE*)PSX_ADDR(WM_PRIM_DR_TPAGE);
+
+    /* Snapshots (full regions + sensitive gaps + prior rungs). */
+    wm_memcpy(snap_dr, PSX_ADDR(WM_PRIM_DR_TPAGE), 8);
+    wm_memcpy(snap_ft4_0, PSX_ADDR(WM_PRIM_FT4_0), 40);
+    wm_memcpy(snap_ft4_1, PSX_ADDR(WM_PRIM_FT4_1), 40);
+    wm_memcpy(snap_g3, PSX_ADDR(WM_PRIM_G3_BASE), WM_PRIM_G3_BYTES);
+    wm_memcpy(snap_tile, PSX_ADDR(WM_PRIM_TILE_BASE), WM_PRIM_TILE_BYTES);
+    for (i = 0; i < 4; i++)
+        guard_before_dr[i] =
+            WM_U32(WM_PRIM_DR_TPAGE - 16u + (u32)i * 4u);
+    gap_c5a8 = WM_U32(0x8009C5A8u);
+    gap_c614 = WM_U32(0x8009C614u);
+    gap_c620 = WM_U32(0x8009C620u);
+    gap_c660 = WM_U32(0x8009C660u);
+    gap_c7ec = WM_U32(WM_FIX_C7EC);
+    gap_c88c = WM_U32(WM_TW_MIRROR_C88C);
+    gap_c894 = WM_U32(WM_FLAG_C894_ABS);
+    bss_d198 = WM_U32(0x8009D198u);
+    pool_snap = WM_U32(WM_POOL_BE24);
+    be4c0_snap = WM_U32(WM_TMPL_DST_BE4C);
+    c620_snap = WM_U32(WM_OBJ_C620);
+
+    pre_dr_h = wm_prim_fnv1a(snap_dr, 8);
+    pre_ft4_0_h = wm_prim_fnv1a(snap_ft4_0, 40);
+    pre_ft4_1_h = wm_prim_fnv1a(snap_ft4_1, 40);
+    pre_g3_h = wm_prim_fnv1a(snap_g3, WM_PRIM_G3_BYTES);
+    pre_tile_h = wm_prim_fnv1a(snap_tile, WM_PRIM_TILE_BYTES);
+
+    /* ---- Retail store order (0x80073E30) ---- */
+
+    /* POLY_FT4[0] header + geometry + UV + RGB (before helpers). */
+    WM_U8(WM_PRIM_FT4_0 + 3u) = 9;       /* len */
+    WM_U8(WM_PRIM_FT4_0 + 7u) = 0x2C;    /* code POLY_FT4 */
+    WM_U16(WM_PRIM_FT4_0 + 0x0Au) = 120; /* y0 */
+    WM_U16(WM_PRIM_FT4_0 + 0x12u) = 120; /* y1 */
+    WM_U16(WM_PRIM_FT4_0 + 0x1Au) = 215; /* y2 */
+    WM_U16(WM_PRIM_FT4_0 + 0x22u) = 215; /* y3 */
+    WM_U16(WM_PRIM_FT4_0 + 0x08u) = 208; /* x0 */
+    WM_U16(WM_PRIM_FT4_0 + 0x18u) = 208; /* x2 */
+    WM_U16(WM_PRIM_FT4_0 + 0x10u) = 311; /* x1 */
+    WM_U16(WM_PRIM_FT4_0 + 0x20u) = 311; /* x3 */
+    WM_U8(WM_PRIM_FT4_0 + 0x0Cu) = 0;    /* u0 */
+    WM_U8(WM_PRIM_FT4_0 + 0x0Du) = 128;  /* v0 */
+    WM_U8(WM_PRIM_FT4_0 + 0x14u) = 127;  /* u1 */
+    WM_U8(WM_PRIM_FT4_0 + 0x15u) = 128;  /* v1 */
+    WM_U8(WM_PRIM_FT4_0 + 0x1Cu) = 0;    /* u2 */
+    WM_U8(WM_PRIM_FT4_0 + 0x1Du) = 255;  /* v2 */
+    WM_U8(WM_PRIM_FT4_0 + 0x24u) = 127;  /* u3 */
+    WM_U8(WM_PRIM_FT4_0 + 0x25u) = 255;  /* v3 */
+    WM_U8(WM_PRIM_FT4_0 + 4u) = 128;     /* r0 */
+    WM_U8(WM_PRIM_FT4_0 + 5u) = 128;     /* g0 */
+    WM_U8(WM_PRIM_FT4_0 + 6u) = 128;     /* b0 */
+
+    tpage0 = GetTPage(0, 0, 896, 256);
+    WM_U16(WM_PRIM_FT4_0 + 0x16u) = tpage0; /* tpage */
+
+    clut = GetClut(256, 510);
+    WM_U16(WM_PRIM_FT4_0 + 0x0Eu) = clut; /* clut */
+
+    SetSemiTrans(ft4_0, 1);
+
+    /* Retail 40-byte copy: 16 + 16 + 8 words from C5C0 → C5E8. */
+    {
+        u32* src = (u32*)PSX_ADDR(WM_PRIM_FT4_0);
+        u32* dst = (u32*)PSX_ADDR(WM_PRIM_FT4_1);
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+        dst[3] = src[3];
+        dst[4] = src[4];
+        dst[5] = src[5];
+        dst[6] = src[6];
+        dst[7] = src[7];
+        dst[8] = src[8];
+        dst[9] = src[9];
+    }
+
+    tpage1 = GetTPage(0, 1, 896, 256);
+    SetDrawTPage(dr, 1, 0, (int)(tpage1 & 0xFFFFu));
+    dr_mode = ((u32*)dr)[1];
+
+    /* POLY_G3 × 8 — identical entries; SetSemiTrans each. */
+    for (i = 0; i < (int)WM_PRIM_G3_COUNT; i++) {
+        u32 base = WM_PRIM_G3_BASE + (u32)i * WM_PRIM_G3_STRIDE;
+        POLY_G3* g3 = (POLY_G3*)PSX_ADDR(base);
+        WM_U8(base + 3u) = 6;    /* len */
+        WM_U8(base + 7u) = 0x30; /* code POLY_G3 */
+        WM_U8(base + 4u) = 255;  /* r0 */
+        WM_U8(base + 5u) = 64;   /* g0 */
+        WM_U8(base + 6u) = 64;   /* b0 */
+        WM_U8(base + 12u) = 0;   /* r1 */
+        WM_U8(base + 13u) = 0;   /* g1 */
+        WM_U8(base + 14u) = 0;   /* b1 */
+        WM_U8(base + 20u) = 0;   /* r2 */
+        WM_U8(base + 21u) = 0;   /* g2 */
+        WM_U8(base + 22u) = 0;   /* b2 */
+        SetSemiTrans(g3, 1);
+    }
+
+    /* TILE × 64 */
+    for (i = 0; i < (int)WM_PRIM_TILE_COUNT; i++) {
+        u32 base = WM_PRIM_TILE_BASE + (u32)i * WM_PRIM_TILE_STRIDE;
+        WM_U8(base + 3u) = 3;    /* len */
+        WM_U8(base + 7u) = 0x60; /* code TILE */
+        WM_U8(base + 4u) = 128;  /* r0 */
+        WM_U8(base + 5u) = 128;  /* g0 */
+        WM_U8(base + 6u) = 16;   /* b0 */
+        WM_U16(base + 12u) = 2;  /* w */
+        WM_U16(base + 14u) = 2;  /* h */
+    }
+
+    /* ---- Build expected image from pre-snap + retail writes ---- */
+    wm_memcpy(expect_dr, snap_dr, 8);
+    expect_dr[3] = 1;
+    {
+        u32 mode = 0xE1000000u | 0x0400u | (0x003Eu & 0x9FFu);
+        expect_dr[4] = (u8)(mode);
+        expect_dr[5] = (u8)(mode >> 8);
+        expect_dr[6] = (u8)(mode >> 16);
+        expect_dr[7] = (u8)(mode >> 24);
+    }
+
+    wm_memcpy(expect_ft4, snap_ft4_0, 40);
+    expect_ft4[3] = 9;
+    expect_ft4[4] = 128;
+    expect_ft4[5] = 128;
+    expect_ft4[6] = 128;
+    expect_ft4[7] = 0x2E;
+    expect_ft4[8] = (u8)(208);
+    expect_ft4[9] = (u8)(208 >> 8);
+    expect_ft4[10] = (u8)(120);
+    expect_ft4[11] = (u8)(120 >> 8);
+    expect_ft4[12] = 0;
+    expect_ft4[13] = 128;
+    expect_ft4[14] = (u8)(0x7F90);
+    expect_ft4[15] = (u8)(0x7F90 >> 8);
+    expect_ft4[16] = (u8)(311);
+    expect_ft4[17] = (u8)(311 >> 8);
+    expect_ft4[18] = (u8)(120);
+    expect_ft4[19] = (u8)(120 >> 8);
+    expect_ft4[20] = 127;
+    expect_ft4[21] = 128;
+    expect_ft4[22] = (u8)(0x001E);
+    expect_ft4[23] = (u8)(0x001E >> 8);
+    expect_ft4[24] = (u8)(208);
+    expect_ft4[25] = (u8)(208 >> 8);
+    expect_ft4[26] = (u8)(215);
+    expect_ft4[27] = (u8)(215 >> 8);
+    expect_ft4[28] = 0;
+    expect_ft4[29] = 255;
+    /* +30,+31 pad1 untouched (from snap) */
+    expect_ft4[32] = (u8)(311);
+    expect_ft4[33] = (u8)(311 >> 8);
+    expect_ft4[34] = (u8)(215);
+    expect_ft4[35] = (u8)(215 >> 8);
+    expect_ft4[36] = 127;
+    expect_ft4[37] = 255;
+    /* +38,+39 pad2 untouched */
+
+    wm_memcpy(expect_g3, snap_g3, WM_PRIM_G3_BYTES);
+    for (i = 0; i < (int)WM_PRIM_G3_COUNT; i++) {
+        u8* e = expect_g3 + i * (int)WM_PRIM_G3_STRIDE;
+        e[3] = 6;
+        e[4] = 255;
+        e[5] = 64;
+        e[6] = 64;
+        e[7] = 0x32;
+        e[12] = 0;
+        e[13] = 0;
+        e[14] = 0;
+        e[20] = 0;
+        e[21] = 0;
+        e[22] = 0;
+    }
+
+    wm_memcpy(expect_tile, snap_tile, WM_PRIM_TILE_BYTES);
+    for (i = 0; i < (int)WM_PRIM_TILE_COUNT; i++) {
+        u8* e = expect_tile + i * (int)WM_PRIM_TILE_STRIDE;
+        e[3] = 3;
+        e[4] = 128;
+        e[5] = 128;
+        e[6] = 16;
+        e[7] = 0x60;
+        e[12] = 2;
+        e[13] = 0;
+        e[14] = 2;
+        e[15] = 0;
+    }
+
+    post_dr_h = wm_prim_fnv1a((const u8*)PSX_ADDR(WM_PRIM_DR_TPAGE), 8);
+    post_ft4_0_h = wm_prim_fnv1a((const u8*)PSX_ADDR(WM_PRIM_FT4_0), 40);
+    post_ft4_1_h = wm_prim_fnv1a((const u8*)PSX_ADDR(WM_PRIM_FT4_1), 40);
+    post_g3_h =
+        wm_prim_fnv1a((const u8*)PSX_ADDR(WM_PRIM_G3_BASE), WM_PRIM_G3_BYTES);
+    post_tile_h = wm_prim_fnv1a((const u8*)PSX_ADDR(WM_PRIM_TILE_BASE),
+                                WM_PRIM_TILE_BYTES);
+
+    match_ft4 = 0;
+    for (j = 0; j < 40; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_FT4_0))[j] == expect_ft4[j])
+            match_ft4++;
+    }
+    match_g3 = 0;
+    for (j = 0; j < (int)WM_PRIM_G3_BYTES; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_G3_BASE))[j] == expect_g3[j])
+            match_g3++;
+    }
+    match_tile = 0;
+    for (j = 0; j < (int)WM_PRIM_TILE_BYTES; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_TILE_BASE))[j] == expect_tile[j])
+            match_tile++;
+    }
+
+    unexpected = 0;
+    for (j = 0; j < 8; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_DR_TPAGE))[j] != expect_dr[j])
+            unexpected++;
+    }
+    for (j = 0; j < 40; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_FT4_0))[j] != expect_ft4[j])
+            unexpected++;
+        if (((const u8*)PSX_ADDR(WM_PRIM_FT4_1))[j] !=
+            ((const u8*)PSX_ADDR(WM_PRIM_FT4_0))[j])
+            unexpected++;
+    }
+    for (j = 0; j < (int)WM_PRIM_G3_BYTES; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_G3_BASE))[j] != expect_g3[j])
+            unexpected++;
+    }
+    for (j = 0; j < (int)WM_PRIM_TILE_BYTES; j++) {
+        if (((const u8*)PSX_ADDR(WM_PRIM_TILE_BASE))[j] != expect_tile[j])
+            unexpected++;
+    }
+
+    fprintf(stderr,
+            "[worldmap-primitive-templates] helpers GetTPage(0,0,896,256)="
+            "0x%04x GetClut(256,510)=0x%04x GetTPage(0,1,896,256)=0x%04x "
+            "DR_mode=0x%08x\n",
+            (unsigned)tpage0, (unsigned)clut, (unsigned)tpage1,
+            (unsigned)dr_mode);
+    fprintf(stderr,
+            "[worldmap-primitive-templates] FT4[0] code=0x%02x clut=0x%04x "
+            "tpage=0x%04x rgb=(%u,%u,%u) xy0=(%d,%d) xy3=(%d,%d) "
+            "uv0=(%u,%u) uv3=(%u,%u)\n",
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 7u),
+            (unsigned)WM_U16(WM_PRIM_FT4_0 + 0x0Eu),
+            (unsigned)WM_U16(WM_PRIM_FT4_0 + 0x16u),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 4u),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 5u),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 6u),
+            (int)WM_S16(WM_PRIM_FT4_0 + 0x08u),
+            (int)WM_S16(WM_PRIM_FT4_0 + 0x0Au),
+            (int)WM_S16(WM_PRIM_FT4_0 + 0x20u),
+            (int)WM_S16(WM_PRIM_FT4_0 + 0x22u),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 0x0Cu),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 0x0Du),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 0x24u),
+            (unsigned)WM_U8(WM_PRIM_FT4_0 + 0x25u));
+    fprintf(stderr,
+            "[worldmap-primitive-templates] FT4 equal=%d G3[0] code=0x%02x "
+            "TILE[0] code=0x%02x w=%u h=%u\n",
+            wm_memeq(PSX_ADDR(WM_PRIM_FT4_0), PSX_ADDR(WM_PRIM_FT4_1), 40),
+            (unsigned)WM_U8(WM_PRIM_G3_BASE + 7u),
+            (unsigned)WM_U8(WM_PRIM_TILE_BASE + 7u),
+            (unsigned)WM_U16(WM_PRIM_TILE_BASE + 12u),
+            (unsigned)WM_U16(WM_PRIM_TILE_BASE + 14u));
+    fprintf(stderr,
+            "[worldmap-primitive-templates] hashes "
+            "DR pre=0x%08x post=0x%08x exp=0x%08x | "
+            "FT4 pre=0x%08x post=0x%08x exp=0x%08x | "
+            "G3 pre=0x%08x post=0x%08x exp=0x%08x | "
+            "TILE pre=0x%08x post=0x%08x exp=0x%08x\n",
+            pre_dr_h, post_dr_h, wm_prim_fnv1a(expect_dr, 8), pre_ft4_0_h,
+            post_ft4_0_h, wm_prim_fnv1a(expect_ft4, 40), pre_g3_h, post_g3_h,
+            wm_prim_fnv1a(expect_g3, WM_PRIM_G3_BYTES), pre_tile_h, post_tile_h,
+            wm_prim_fnv1a(expect_tile, WM_PRIM_TILE_BYTES));
+    fprintf(stderr,
+            "[worldmap-primitive-templates] match FT4=%d/40 G3=%d/%u "
+            "TILE=%d/%u unexpected=%d ft4_1_hash=0x%08x\n",
+            match_ft4, match_g3, WM_PRIM_G3_BYTES, match_tile,
+            WM_PRIM_TILE_BYTES, unexpected, post_ft4_1_h);
+
+    if (tpage0 != 0x001Eu || clut != 0x7F90u || tpage1 != 0x003Eu ||
+        dr_mode != 0xE100043Eu) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: helper/result mismatch "
+                "tpage0=0x%04x clut=0x%04x tpage1=0x%04x mode=0x%08x\n",
+                (unsigned)tpage0, (unsigned)clut, (unsigned)tpage1,
+                (unsigned)dr_mode);
+        return -1;
+    }
+    if (WM_U8(WM_PRIM_FT4_0 + 7u) != 0x2Eu ||
+        WM_U16(WM_PRIM_FT4_0 + 0x0Eu) != 0x7F90u ||
+        WM_U16(WM_PRIM_FT4_0 + 0x16u) != 0x001Eu) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: FT4 field checks "
+                "failed\n");
+        return -1;
+    }
+    if (!wm_memeq(PSX_ADDR(WM_PRIM_FT4_0), PSX_ADDR(WM_PRIM_FT4_1), 40)) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: FT4[1] != FT4[0]\n");
+        return -1;
+    }
+    for (i = 0; i < (int)WM_PRIM_G3_COUNT; i++) {
+        if (WM_U8(WM_PRIM_G3_BASE + (u32)i * WM_PRIM_G3_STRIDE + 7u) !=
+            0x32u) {
+            fprintf(stderr,
+                    "[worldmap-primitive-templates] ERROR: G3[%d] code\n", i);
+            return -1;
+        }
+    }
+    for (i = 0; i < (int)WM_PRIM_TILE_COUNT; i++) {
+        u32 base = WM_PRIM_TILE_BASE + (u32)i * WM_PRIM_TILE_STRIDE;
+        if (WM_U8(base + 7u) != 0x60u || WM_U16(base + 12u) != 2u ||
+            WM_U16(base + 14u) != 2u) {
+            fprintf(stderr,
+                    "[worldmap-primitive-templates] ERROR: TILE[%d] fields\n",
+                    i);
+            return -1;
+        }
+    }
+    if (match_ft4 != 40 || match_g3 != (int)WM_PRIM_G3_BYTES ||
+        match_tile != (int)WM_PRIM_TILE_BYTES || unexpected != 0 ||
+        post_dr_h != wm_prim_fnv1a(expect_dr, 8) ||
+        post_ft4_0_h != wm_prim_fnv1a(expect_ft4, 40) ||
+        post_g3_h != wm_prim_fnv1a(expect_g3, WM_PRIM_G3_BYTES) ||
+        post_tile_h != wm_prim_fnv1a(expect_tile, WM_PRIM_TILE_BYTES)) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: oracle mismatch "
+                "unexpected=%d\n",
+                unexpected);
+        return -1;
+    }
+
+    /* Gaps + prior rungs unchanged. */
+    for (i = 0; i < 4; i++) {
+        if (WM_U32(WM_PRIM_DR_TPAGE - 16u + (u32)i * 4u) != guard_before_dr[i]) {
+            fprintf(stderr,
+                    "[worldmap-primitive-templates] ERROR: pre-DR guard "
+                    "changed\n");
+            return -1;
+        }
+    }
+    if (WM_U32(0x8009C5A8u) != gap_c5a8 || WM_U32(0x8009C614u) != gap_c614 ||
+        WM_U32(0x8009C620u) != gap_c620 || WM_U32(0x8009C660u) != gap_c660 ||
+        WM_U32(WM_FIX_C7EC) != gap_c7ec ||
+        WM_U32(WM_TW_MIRROR_C88C) != gap_c88c ||
+        WM_U32(WM_FLAG_C894_ABS) != gap_c894 ||
+        WM_U32(0x8009D198u) != bss_d198 ||
+        WM_U32(WM_POOL_BE24) != pool_snap ||
+        WM_U32(WM_TMPL_DST_BE4C) != be4c0_snap ||
+        WM_U32(WM_OBJ_C620) != c620_snap) {
+        fprintf(stderr,
+                "[worldmap-primitive-templates] ERROR: gap/prior-rung "
+                "corruption\n");
+        return -1;
+    }
+
+    (void)ft4_1;
+    (void)pre_ft4_1_h;
+    s_wm73e30_ran = 1;
+    fprintf(stderr, "[worldmap-primitive-templates] exit\n");
+    fprintf(stderr,
+            "[worldmap-primitive-templates] cut-before-next-step "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_85F58);
+    return 0;
+}
+
 /*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
@@ -2965,6 +3456,25 @@ void PcPort_WorldMapInitMain(void)
                                                             "failed; still "
                                                             "entering "
                                                             "placeholder\n");
+                                                } else if (
+                                                    world_primitive_templates_enabled()) {
+                                                    fprintf(stderr,
+                                                            "[worldmap-init] "
+                                                            "XENO_WORLD_"
+                                                            "PRIMITIVE_"
+                                                            "TEMPLATES=1: "
+                                                            "0x80073E30 "
+                                                            "packet templates\n");
+                                                    if (wm_80073E30_primitive_templates() !=
+                                                        0) {
+                                                        fprintf(stderr,
+                                                                "[worldmap-"
+                                                                "primitive-"
+                                                                "templates] "
+                                                                "failed; still "
+                                                                "entering "
+                                                                "placeholder\n");
+                                                    }
                                                 }
                                             }
                                         }
@@ -2978,7 +3488,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_bss_constants_enabled())
+            if (world_primitive_templates_enabled())
+                cut_pc = WM_CUT_BEFORE_85F58;
+            else if (world_bss_constants_enabled())
                 cut_pc = WM_CUT_BEFORE_73E30;
             else if (world_third_wave_enabled())
                 cut_pc = WM_CUT_BEFORE_736DC;
