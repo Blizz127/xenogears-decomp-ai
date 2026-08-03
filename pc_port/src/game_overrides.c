@@ -2290,8 +2290,9 @@ void PcPort_InitGameStates(void)
      * 0x80071EF0 → poll → 0x80073530. XENO_WORLD_OBJECT_POOL=1: also runs
      * 0x8009766C pool init. XENO_WORLD_STATE_TEMPLATE=1: also copies
      * 0x8009A180→0x8009BE4C (8 words). XENO_WORLD_MODE_ENTER_STATE=1: also
-     * writes the ten mode-enter u32s, cut before 0x80072378 (still no
-     * 0x80098044 / main loop / wm_800712D0 / broad 0x80072238). */
+     * writes the ten mode-enter u32s. XENO_WORLD_CROSS_PRODUCTS=1: also runs
+     * 0x80098044 (four OuterProduct0), cut before 0x80072380 (still no main
+     * loop / wm_800712D0 / broad 0x80072238). */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
@@ -2301,6 +2302,7 @@ void PcPort_InitGameStates(void)
         const char* objectPool = getenv("XENO_WORLD_OBJECT_POOL");
         const char* stateTmpl = getenv("XENO_WORLD_STATE_TEMPLATE");
         const char* modeEnter = getenv("XENO_WORLD_MODE_ENTER_STATE");
+        const char* crossProd = getenv("XENO_WORLD_CROSS_PRODUCTS");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
@@ -2309,12 +2311,13 @@ void PcPort_InitGameStates(void)
         if (worldInit)
             printf("[xeno-port][boot] world-init gate on (hasOverlay=1) "
                    "MODE_INIT=%s SECOND_WAVE=%s OBJECT_POOL=%s "
-                   "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s\n",
+                   "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s CROSS_PRODUCTS=%s\n",
                    (modeInit && modeInit[0]) ? modeInit : "off",
                    (secondWave && secondWave[0]) ? secondWave : "off",
                    (objectPool && objectPool[0]) ? objectPool : "off",
                    (stateTmpl && stateTmpl[0]) ? stateTmpl : "off",
-                   (modeEnter && modeEnter[0]) ? modeEnter : "off");
+                   (modeEnter && modeEnter[0]) ? modeEnter : "off",
+                   (crossProd && crossProd[0]) ? crossProd : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;

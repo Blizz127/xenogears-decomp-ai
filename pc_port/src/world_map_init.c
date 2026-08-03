@@ -1,5 +1,5 @@
 /*
- * W2 / W3B / W4C / W5B / W6B / W7B — Native world-map initialization ladder.
+ * W2 / W3B / W4C / W5B / W6B / W7B / W8B — Native world-map initialization ladder.
  *
  * Retail WorldMapMain @ 0x80070CFC (overlay world_map.bin loaded at 0x8006FAF0).
  *
@@ -9,9 +9,9 @@
  *      retail PC 0x800722BC.
  * W5B: object-pool 0x8009766C / 0x800976C8; cut before 0x800722C4.
  * W6B: identity copy 8×u32 0x8009A180 → 0x8009BE4C; cut before 0x80072314.
- * W7B: ten mode-enter u32 stores 0x80072314–0x80072374; cut before 0x80072378
- *      (jal 0x80098044). Does not enter OuterProduct0, full 0x80072238,
- *      wm_800712D0, or frames.
+ * W7B: ten mode-enter u32 stores 0x80072314–0x80072374; cut before 0x80072378.
+ * W8B: four OuterProduct0 via 0x80098044; cut before 0x80072380.
+ *      Does not enter full 0x80072238, wm_800712D0, or frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -20,6 +20,7 @@
  *   XENO_WORLD_OBJECT_POOL=1
  *   XENO_WORLD_STATE_TEMPLATE=1
  *   XENO_WORLD_MODE_ENTER_STATE=1
+ *   XENO_WORLD_CROSS_PRODUCTS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -135,7 +136,19 @@
 #define WM_CUT_BEFORE_A180_COPY  0x800722C4u /* after W5B: A180→BE4C */
 #define WM_CUT_BEFORE_CONST_BLK  0x80072314u /* after W6B: mode-enter consts */
 #define WM_CUT_BEFORE_98044      0x80072378u /* after W7B: jal OuterProduct setup */
+#define WM_CUT_AFTER_98044       0x80072380u /* after W8B return */
 #define WM_BROAD_9766C           0x8009766Cu
+/* W8B OuterProduct0 inputs (overlay image) / outputs (world BSS). */
+#define WM_XP_BB4C               0x8009BB4Cu
+#define WM_XP_BB5C               0x8009BB5Cu
+#define WM_XP_BB6C               0x8009BB6Cu
+#define WM_XP_BB7C               0x8009BB7Cu
+#define WM_XP_BB8C               0x8009BB8Cu
+#define WM_XP_BB9C               0x8009BB9Cu
+#define WM_XP_C828               0x8009C828u
+#define WM_XP_C844               0x8009C844u
+#define WM_XP_C874               0x8009C874u
+#define WM_XP_C7F0               0x8009C7F0u
 #define WM_POOL_BE24             0x8009BE24u
 #define WM_POOL_ALLOC_SIZE       8192u
 #define WM_POOL_SLOT_COUNT       64
@@ -190,6 +203,7 @@ extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void* g_pGameState;
 /* Main-executable global written by retail 0x80072364 (field init also sets 1). */
 extern s32 D_80059198;
+extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
 
 #define GS_U8(off)  (*(u8*)((u8*)g_pGameState + (off)))
 #define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
@@ -202,13 +216,24 @@ void func_8004B7D0(void (*fn)(void))
     (void)fn;
 }
 
-/* Local memcpy — avoid string.h vs game strlen conflict. */
+/* Local memcpy / memeq — avoid string.h vs game strlen conflict. */
 static void wm_memcpy(void* dst, const void* src, unsigned n)
 {
     u8* d = (u8*)dst;
     const u8* s = (const u8*)src;
     while (n--)
         *d++ = *s++;
+}
+
+static int wm_memeq(const void* a, const void* b, unsigned n)
+{
+    const u8* x = (const u8*)a;
+    const u8* y = (const u8*)b;
+    while (n--) {
+        if (*x++ != *y++)
+            return 0;
+    }
+    return 1;
 }
 
 /* HeapAlloc returns a host pointer into g_PsxRam; store retail-style KUSEG. */
@@ -277,14 +302,21 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_cross_products_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_CROSS_PRODUCTS");
+}
+
 static int world_mode_enter_state_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_MODE_ENTER_STATE");
+    /* Cross-products implies mode-enter-state. */
+    return env_flag_is_one("XENO_WORLD_MODE_ENTER_STATE") ||
+           world_cross_products_enabled();
 }
 
 static int world_state_template_enabled(void)
 {
-    /* Mode-enter-state implies state-template. */
+    /* Mode-enter-state / cross-products imply state-template. */
     return env_flag_is_one("XENO_WORLD_STATE_TEMPLATE") ||
            world_mode_enter_state_enabled();
 }
@@ -326,8 +358,9 @@ static void log_enabled_slices(void)
     int w5 = world_object_pool_enabled();
     int w6 = world_state_template_enabled();
     int w7 = world_mode_enter_state_enabled();
+    int w8 = world_cross_products_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7) {
+    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -343,6 +376,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W6B");
     if (w7)
         fprintf(stderr, ",W7B");
+    if (w8)
+        fprintf(stderr, ",W8B");
     fprintf(stderr, "\n");
 }
 
@@ -1314,6 +1349,249 @@ static int PcPort_WorldMapInitializeModeEnterState(void)
     return 0;
 }
 
+/* Compile-time layout check: retail VECTOR is 4×s32 (vx,vy,vz,pad). */
+typedef char wm_assert_vector_16[(sizeof(VECTOR) == 16) ? 1 : -1];
+
+/*
+ * W8B — native transcription of retail 0x80098044–0x800980D4.
+ * Exactly four OuterProduct0 calls; inputs overlay image, outputs world BSS.
+ *
+ * Instruction audit (retail world_map.bin @ 0x80098044–0x800980D4):
+ *   98044  addiu sp,sp,-24          prologue
+ *   98048  lui a0,0x800a / addiu a0,-17556  → a0 = 0x8009BB6C
+ *   98050  sw s0,16(sp)
+ *   98054  lui s0,0x800a / addiu s0,-17588  → s0 = 0x8009BB4C
+ *   9805c  lui a2,0x800a / addiu a2,-14296  → a2 = 0x8009C828
+ *   98064  sw ra,20(sp)
+ *   98068  jal OuterProduct0 @ 0x8004A4D8
+ *   9806c  addu a1,s0,zero                 delay: a1 = 0x8009BB4C
+ *   98070  lui a1,0x800a / addiu a1,-17540  → a1 = 0x8009BB7C
+ *   98078  lui a2,0x800a / addiu a2,-14268  → a2 = 0x8009C844
+ *   98080  jal OuterProduct0
+ *   98084  addu a0,s0,zero                 delay: a0 = 0x8009BB4C
+ *   98088  lui a0,0x800a / addiu a0,-17524  → a0 = 0x8009BB8C
+ *   98090  lui s0,0x800a / addiu s0,-17572  → s0 = 0x8009BB5C
+ *   98098  lui a2,0x800a / addiu a2,-14220  → a2 = 0x8009C874
+ *   980a0  jal OuterProduct0
+ *   980a4  addu a1,s0,zero                 delay: a1 = 0x8009BB5C
+ *   980a8  lui a1,0x800a / addiu a1,-17508  → a1 = 0x8009BB9C
+ *   980b0  lui a2,0x800a / addiu a2,-14352  → a2 = 0x8009C7F0
+ *   980b8  jal OuterProduct0
+ *   980bc  addu a0,s0,zero                 delay: a0 = 0x8009BB5C
+ *   980c0  lw ra,20(sp) / lw s0,16(sp)     epilogue
+ *   980c8  addiu sp,sp,24
+ *   980cc  jr ra / nop
+ * Exactly four calls; no other stores or side effects.
+ */
+static int wm_80098044_cross_product_init(void)
+{
+    VECTOR* in_bb4c = (VECTOR*)PSX_ADDR(WM_XP_BB4C);
+    VECTOR* in_bb5c = (VECTOR*)PSX_ADDR(WM_XP_BB5C);
+    VECTOR* in_bb6c = (VECTOR*)PSX_ADDR(WM_XP_BB6C);
+    VECTOR* in_bb7c = (VECTOR*)PSX_ADDR(WM_XP_BB7C);
+    VECTOR* in_bb8c = (VECTOR*)PSX_ADDR(WM_XP_BB8C);
+    VECTOR* in_bb9c = (VECTOR*)PSX_ADDR(WM_XP_BB9C);
+    VECTOR* out0 = (VECTOR*)PSX_ADDR(WM_XP_C828);
+    VECTOR* out1 = (VECTOR*)PSX_ADDR(WM_XP_C844);
+    VECTOR* out2 = (VECTOR*)PSX_ADDR(WM_XP_C874);
+    VECTOR* out3 = (VECTOR*)PSX_ADDR(WM_XP_C7F0);
+    /* Oracle: integer cross product matching OuterProduct0 (writes vx,vy,vz only). */
+    long exp0[3], exp1[3], exp2[3], exp3[3];
+    u32 be24_before = WM_U32(WM_POOL_BE24);
+    u32 tmpl_words[WM_TMPL_WORD_COUNT];
+    u32 mes_before[WM_MES_STORE_COUNT];
+    u8 in_snap[6][16];
+    /* 4-byte canaries immediately before/after each 16-byte output VECTOR. */
+    u32 canary_pre[4];
+    u32 canary_post[4];
+    long pad_before[4];
+    const u32 out_addrs[4] = {
+        WM_XP_C828, WM_XP_C844, WM_XP_C874, WM_XP_C7F0
+    };
+    int i;
+    int vec_ok = 0;
+    int comp_ok = 0;
+    int boundary_ok = 1;
+    int inputs_ok = 1;
+    int lower_ok = 1;
+
+    fprintf(stderr, "[worldmap-cross-products] entry\n");
+    fprintf(stderr,
+            "[worldmap-cross-products] call0 srcA=0x%08x srcB=0x%08x dst=0x%08x\n"
+            "[worldmap-cross-products] call1 srcA=0x%08x srcB=0x%08x dst=0x%08x\n"
+            "[worldmap-cross-products] call2 srcA=0x%08x srcB=0x%08x dst=0x%08x\n"
+            "[worldmap-cross-products] call3 srcA=0x%08x srcB=0x%08x dst=0x%08x\n",
+            WM_XP_BB6C, WM_XP_BB4C, WM_XP_C828,
+            WM_XP_BB4C, WM_XP_BB7C, WM_XP_C844,
+            WM_XP_BB8C, WM_XP_BB5C, WM_XP_C874,
+            WM_XP_BB5C, WM_XP_BB9C, WM_XP_C7F0);
+
+    /* Inputs must sit in overlay image (before BSS start). */
+    if (WM_XP_BB4C < WM_OVERLAY_BASE || WM_XP_BB9C + 16u > WM_MEM_START) {
+        fprintf(stderr, "[worldmap-cross-products] ERROR: inputs not in image\n");
+        return -1;
+    }
+    if (WM_XP_C7F0 < WM_MEM_START || WM_XP_C874 + 16u <= WM_MEM_START) {
+        fprintf(stderr, "[worldmap-cross-products] ERROR: outputs not in BSS\n");
+        return -1;
+    }
+
+    fprintf(stderr,
+            "[worldmap-cross-products] in BB4C=(%d,%d,%d) BB5C=(%d,%d,%d) "
+            "BB6C=(%d,%d,%d)\n",
+            (int)in_bb4c->vx, (int)in_bb4c->vy, (int)in_bb4c->vz,
+            (int)in_bb5c->vx, (int)in_bb5c->vy, (int)in_bb5c->vz,
+            (int)in_bb6c->vx, (int)in_bb6c->vy, (int)in_bb6c->vz);
+    fprintf(stderr,
+            "[worldmap-cross-products] in BB7C=(%d,%d,%d) BB8C=(%d,%d,%d) "
+            "BB9C=(%d,%d,%d)\n",
+            (int)in_bb7c->vx, (int)in_bb7c->vy, (int)in_bb7c->vz,
+            (int)in_bb8c->vx, (int)in_bb8c->vy, (int)in_bb8c->vz,
+            (int)in_bb9c->vx, (int)in_bb9c->vy, (int)in_bb9c->vz);
+
+    /* Snapshot inputs, lower-slice state, and output neighborhoods. */
+    wm_memcpy(in_snap[0], in_bb4c, 16);
+    wm_memcpy(in_snap[1], in_bb5c, 16);
+    wm_memcpy(in_snap[2], in_bb6c, 16);
+    wm_memcpy(in_snap[3], in_bb7c, 16);
+    wm_memcpy(in_snap[4], in_bb8c, 16);
+    wm_memcpy(in_snap[5], in_bb9c, 16);
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++)
+        tmpl_words[i] = ((u32*)PSX_ADDR(WM_TMPL_DST_BE4C))[i];
+    /* W7B ten-store snapshot (same order as mode-enter-state). */
+    mes_before[0] = WM_U32(WM_MES_CCA4);
+    mes_before[1] = WM_U32(WM_MES_D3CC);
+    mes_before[2] = WM_U32(WM_MES_D804);
+    mes_before[3] = WM_U32(WM_MES_CEC0);
+    mes_before[4] = WM_U32(WM_MES_C7E8);
+    mes_before[5] = WM_U32(WM_MES_BD34);
+    mes_before[6] = WM_U32(WM_MES_D144);
+    mes_before[7] = (u32)D_80059198;
+    mes_before[8] = WM_U32(WM_MES_C178);
+    mes_before[9] = WM_U32(WM_MES_CD40);
+
+    /* Capture pad + canaries around each 16-byte output record. */
+    pad_before[0] = out0->pad;
+    pad_before[1] = out1->pad;
+    pad_before[2] = out2->pad;
+    pad_before[3] = out3->pad;
+    for (i = 0; i < 4; i++) {
+        canary_pre[i] = WM_U32(out_addrs[i] - 4u);
+        canary_post[i] = WM_U32(out_addrs[i] + 16u);
+    }
+
+    exp0[0] = in_bb6c->vy * in_bb4c->vz - in_bb6c->vz * in_bb4c->vy;
+    exp0[1] = in_bb6c->vz * in_bb4c->vx - in_bb6c->vx * in_bb4c->vz;
+    exp0[2] = in_bb6c->vx * in_bb4c->vy - in_bb6c->vy * in_bb4c->vx;
+    exp1[0] = in_bb4c->vy * in_bb7c->vz - in_bb4c->vz * in_bb7c->vy;
+    exp1[1] = in_bb4c->vz * in_bb7c->vx - in_bb4c->vx * in_bb7c->vz;
+    exp1[2] = in_bb4c->vx * in_bb7c->vy - in_bb4c->vy * in_bb7c->vx;
+    exp2[0] = in_bb8c->vy * in_bb5c->vz - in_bb8c->vz * in_bb5c->vy;
+    exp2[1] = in_bb8c->vz * in_bb5c->vx - in_bb8c->vx * in_bb5c->vz;
+    exp2[2] = in_bb8c->vx * in_bb5c->vy - in_bb8c->vy * in_bb5c->vx;
+    exp3[0] = in_bb5c->vy * in_bb9c->vz - in_bb5c->vz * in_bb9c->vy;
+    exp3[1] = in_bb5c->vz * in_bb9c->vx - in_bb5c->vx * in_bb9c->vz;
+    exp3[2] = in_bb5c->vx * in_bb9c->vy - in_bb5c->vy * in_bb9c->vx;
+
+    /* Retail order — four OuterProduct0 only. Do not reorder or precompute. */
+    OuterProduct0(in_bb6c, in_bb4c, out0);
+    OuterProduct0(in_bb4c, in_bb7c, out1);
+    OuterProduct0(in_bb8c, in_bb5c, out2);
+    OuterProduct0(in_bb5c, in_bb9c, out3);
+
+    fprintf(stderr,
+            "[worldmap-cross-products] out0=(%d,%d,%d) exp=(%d,%d,%d)\n"
+            "[worldmap-cross-products] out1=(%d,%d,%d) exp=(%d,%d,%d)\n"
+            "[worldmap-cross-products] out2=(%d,%d,%d) exp=(%d,%d,%d)\n"
+            "[worldmap-cross-products] out3=(%d,%d,%d) exp=(%d,%d,%d)\n",
+            (int)out0->vx, (int)out0->vy, (int)out0->vz,
+            (int)exp0[0], (int)exp0[1], (int)exp0[2],
+            (int)out1->vx, (int)out1->vy, (int)out1->vz,
+            (int)exp1[0], (int)exp1[1], (int)exp1[2],
+            (int)out2->vx, (int)out2->vy, (int)out2->vz,
+            (int)exp2[0], (int)exp2[1], (int)exp2[2],
+            (int)out3->vx, (int)out3->vy, (int)out3->vz,
+            (int)exp3[0], (int)exp3[1], (int)exp3[2]);
+
+    if (out0->vx == exp0[0] && out0->vy == exp0[1] && out0->vz == exp0[2]) {
+        vec_ok++;
+        comp_ok += 3;
+    }
+    if (out1->vx == exp1[0] && out1->vy == exp1[1] && out1->vz == exp1[2]) {
+        vec_ok++;
+        comp_ok += 3;
+    }
+    if (out2->vx == exp2[0] && out2->vy == exp2[1] && out2->vz == exp2[2]) {
+        vec_ok++;
+        comp_ok += 3;
+    }
+    if (out3->vx == exp3[0] && out3->vy == exp3[1] && out3->vz == exp3[2]) {
+        vec_ok++;
+        comp_ok += 3;
+    }
+
+    /* Inputs unchanged. */
+    if (!wm_memeq(in_snap[0], in_bb4c, 16) ||
+        !wm_memeq(in_snap[1], in_bb5c, 16) ||
+        !wm_memeq(in_snap[2], in_bb6c, 16) ||
+        !wm_memeq(in_snap[3], in_bb7c, 16) ||
+        !wm_memeq(in_snap[4], in_bb8c, 16) ||
+        !wm_memeq(in_snap[5], in_bb9c, 16)) {
+        inputs_ok = 0;
+    }
+
+    /* OuterProduct0 writes only vx/vy/vz; pad + neighbor canaries must hold. */
+    if (out0->pad != pad_before[0] || out1->pad != pad_before[1] ||
+        out2->pad != pad_before[2] || out3->pad != pad_before[3]) {
+        boundary_ok = 0;
+    }
+    for (i = 0; i < 4; i++) {
+        if (WM_U32(out_addrs[i] - 4u) != canary_pre[i] ||
+            WM_U32(out_addrs[i] + 16u) != canary_post[i]) {
+            boundary_ok = 0;
+        }
+    }
+
+    /* W5B / W6B / W7B preservation. */
+    if (WM_U32(WM_POOL_BE24) != be24_before)
+        lower_ok = 0;
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++) {
+        if (((u32*)PSX_ADDR(WM_TMPL_DST_BE4C))[i] != tmpl_words[i])
+            lower_ok = 0;
+    }
+    if (WM_U32(WM_MES_CCA4) != mes_before[0] ||
+        WM_U32(WM_MES_D3CC) != mes_before[1] ||
+        WM_U32(WM_MES_D804) != mes_before[2] ||
+        WM_U32(WM_MES_CEC0) != mes_before[3] ||
+        WM_U32(WM_MES_C7E8) != mes_before[4] ||
+        WM_U32(WM_MES_BD34) != mes_before[5] ||
+        WM_U32(WM_MES_D144) != mes_before[6] ||
+        (u32)D_80059198 != mes_before[7] ||
+        WM_U32(WM_MES_C178) != mes_before[8] ||
+        WM_U32(WM_MES_CD40) != mes_before[9]) {
+        lower_ok = 0;
+    }
+
+    fprintf(stderr,
+            "[worldmap-cross-products] output_match=%d/4 component_match=%d/12 "
+            "inputs_ok=%d boundary_ok=%d lower_ok=%d "
+            "pool_BE24=0x%08x template0=0x%08x mes_CCA4=0x%08x\n",
+            vec_ok, comp_ok, inputs_ok, boundary_ok, lower_ok,
+            WM_U32(WM_POOL_BE24),
+            ((u32*)PSX_ADDR(WM_TMPL_DST_BE4C))[0], WM_U32(WM_MES_CCA4));
+
+    if (vec_ok != 4 || !inputs_ok || !boundary_ok || !lower_ok) {
+        fprintf(stderr, "[worldmap-cross-products] ERROR: validation failed\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-cross-products] exit\n");
+    fprintf(stderr,
+            "[worldmap-cross-products] cut-before-next-step retail_pc=0x%08x\n",
+            WM_CUT_AFTER_98044);
+    return 0;
+}
+
 /*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
@@ -1452,13 +1730,22 @@ void PcPort_WorldMapInitMain(void)
                                 "entering placeholder\n");
                     } else if (world_mode_enter_state_enabled()) {
                         fprintf(stderr,
-                                "[worldmap-init] "
-                                "XENO_WORLD_MODE_ENTER_STATE=1: ten mode-enter "
-                                "u32 stores\n");
+                                "[worldmap-init] mode-enter-state: ten u32 "
+                                "stores\n");
                         if (PcPort_WorldMapInitializeModeEnterState() != 0) {
                             fprintf(stderr,
                                     "[worldmap-mode-enter-state] failed; still "
                                     "entering placeholder\n");
+                        } else if (world_cross_products_enabled()) {
+                            fprintf(stderr,
+                                    "[worldmap-init] "
+                                    "XENO_WORLD_CROSS_PRODUCTS=1: "
+                                    "0x80098044 four OuterProduct0\n");
+                            if (wm_80098044_cross_product_init() != 0) {
+                                fprintf(stderr,
+                                        "[worldmap-cross-products] failed; "
+                                        "still entering placeholder\n");
+                            }
                         }
                     }
                 }
@@ -1466,7 +1753,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_mode_enter_state_enabled())
+            if (world_cross_products_enabled())
+                cut_pc = WM_CUT_AFTER_98044;
+            else if (world_mode_enter_state_enabled())
                 cut_pc = WM_CUT_BEFORE_98044;
             else if (world_state_template_enabled())
                 cut_pc = WM_CUT_BEFORE_CONST_BLK;

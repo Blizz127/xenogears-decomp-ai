@@ -168,6 +168,20 @@ static int32_t GteClampS32(int64_t value)
     return (int32_t)value;
 }
 
+/*
+ * OuterProduct0 — retail Psy-Q GTE OP with sf=0 (no 12-bit shift).
+ * PsyCross does not export this; without a real body, build_port.sh stubs it
+ * as a no-op that returns 0 and leaves *out untouched. Integer cross product
+ * of two VECTOR records; pad is not written. Matches the XENO_PC_PORT body in
+ * src/slus_006.64/psyq/libgte.c (excluded from the port compile).
+ */
+void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out)
+{
+    out->vx = v0->vy * v1->vz - v0->vz * v1->vy;
+    out->vy = v0->vz * v1->vx - v0->vx * v1->vz;
+    out->vz = v0->vx * v1->vy - v0->vy * v1->vx;
+}
+
 void OuterProduct12(VECTOR* v0, VECTOR* v1, VECTOR* v2)
 {
     int32_t x0 = (int16_t)v0->vx;
