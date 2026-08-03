@@ -15,7 +15,10 @@
  *       0x80072444 (jal 0x800979C8).
  * W10B: wm_800979C8 GPU/CLUT/TPage from W4C C59C; cut before 0x8007244C.
  * W11B: wm_80084580 object/matrix table from W4C fixups; cut before
- *       0x80072454 (jal 0x80072090). Does not enter full 0x80072238 / frames.
+ *       0x80072454 (jal 0x80072090).
+ * W12B: wm_80072090 third-wave archive submit (5×Decode/Alloc → D3F8 +
+ *       func_80029AFC); cut before 0x8007245C (jal 0x800736DC). Submit only —
+ *       no poll/fixup, no residual fan-out, no full 0x80072238 / frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -28,6 +31,7 @@
  *   XENO_WORLD_GPU_ASSET_A=1
  *   XENO_WORLD_GPU_ASSET_B=1
  *   XENO_WORLD_OBJECT_MATRIX=1
+ *   XENO_WORLD_THIRD_WAVE=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -147,6 +151,20 @@
 #define WM_CUT_BEFORE_979C8      0x80072444u /* after W10A: jal 0x800979C8 */
 #define WM_CUT_BEFORE_84580      0x8007244Cu /* after W10B: jal 0x80084580 */
 #define WM_CUT_BEFORE_72090      0x80072454u /* after W11B: jal 0x80072090 */
+#define WM_CUT_BEFORE_736DC      0x8007245Cu /* after W12B: jal 0x800736DC */
+#define WM_TW_ID_CC98            0x8009CC98u
+#define WM_TW_ID_D3D0            0x8009D3D0u
+#define WM_TW_ID_D3C8            0x8009D3C8u
+#define WM_TW_ID_D800            0x8009D800u
+#define WM_TW_ID_BCC8            0x8009BCC8u
+#define WM_TW_MIRROR_C88C        0x8009C88Cu
+#define WM_TW_MIRROR_C884        0x8009C884u
+#define WM_TW_MIRROR_C888        0x8009C888u
+#define WM_TW_MIRROR_C614        0x8009C614u
+#define WM_REQ_D418              0x8009D418u
+#define WM_REQ_D41C              0x8009D41Cu
+#define WM_REQ_D420              0x8009D420u
+#define WM_REQ_D424              0x8009D424u
 #define WM_BROAD_9766C           0x8009766Cu
 #define WM_OBJ_C620              0x8009C620u
 #define WM_OBJ_BD28              0x8009BD28u
@@ -240,6 +258,8 @@ extern VECTOR* ApplyMatrix(MATRIX* m, SVECTOR* v0, VECTOR* v1);
 extern SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1);
 extern MATRIX* RotMatrix(SVECTOR* r, MATRIX* m);
 extern s32 D_80050100;
+extern s32 D_8004F304; /* main BSS counter; retail 0x8004F304 — host authority */
+extern void* D_8006259C; /* main SEDS-style host pointer; retail 0x8006259C */
 extern void* g_pGameState;
 /* Main-executable global written by retail 0x80072364 (field init also sets 1). */
 extern s32 D_80059198;
@@ -342,9 +362,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_third_wave_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_THIRD_WAVE");
+}
+
 static int world_object_matrix_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_OBJECT_MATRIX");
+    /* Third-wave submit implies object-matrix. */
+    return env_flag_is_one("XENO_WORLD_OBJECT_MATRIX") ||
+           world_third_wave_enabled();
 }
 
 static int world_gpu_asset_b_enabled(void)
@@ -423,9 +450,10 @@ static void log_enabled_slices(void)
     int w10a = world_gpu_asset_a_enabled();
     int w10b = world_gpu_asset_b_enabled();
     int w11 = world_object_matrix_enabled();
+    int w12 = world_third_wave_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11) {
+        !w11 && !w12) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -449,6 +477,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W10B");
     if (w11)
         fprintf(stderr, ",W11B");
+    if (w12)
+        fprintf(stderr, ",W12B");
     fprintf(stderr, "\n");
 }
 
@@ -2333,6 +2363,168 @@ static int wm_80084580_object_matrix(void)
 }
 
 /*
+ * W12B — retail 0x80072090–0x800721E0 (0x154 / 340 B): third-wave archive
+ * submit. Five IDs from W2 BSS seed → DecodeAlignedSize → HeapAlloc → D3F8
+ * queue + mirrors → func_80029AFC. No poll, no decompress, no residual after
+ * return. HeapAlloc flags: first a1=1, remaining a1=0 (retail exact).
+ */
+static int s_wm72090_ran;
+
+static int wm_80072090_third_wave(void)
+{
+    u32 ids[5];
+    u32 sizes[5];
+    void* hosts[5];
+    u32 psx[5];
+    s32 f304_before;
+    s32 f304_after;
+    int queue_result;
+    int i;
+    u32 c620_snap;
+    u16 d7e0_snap;
+    u32 pool_snap;
+    u32 be4c0_snap;
+    u16 bce0_0;
+
+    fprintf(stderr, "[worldmap-third-wave] entry\n");
+
+    if (s_wm72090_ran) {
+        fprintf(stderr,
+                "[worldmap-third-wave] ERROR: already ran this process "
+                "(non-idempotent queue rebuild)\n");
+        return -1;
+    }
+    if (!s_wm84580_ran) {
+        fprintf(stderr,
+                "[worldmap-third-wave] ERROR: W11B did not run (required)\n");
+        return -1;
+    }
+
+    /* Preservation snapshots (W11B / earlier must not change). */
+    c620_snap = WM_U32(WM_OBJ_C620);
+    d7e0_snap = WM_U16(WM_OBJ_D7E0);
+    pool_snap = WM_U32(WM_POOL_BE24);
+    be4c0_snap = WM_U32(WM_TMPL_DST_BE4C);
+    bce0_0 = *(u16*)PSX_ADDR(WM_CLUT_BCE0);
+
+    /* 1. Counter ++ (host main BSS). */
+    f304_before = D_8004F304;
+    D_8004F304 = f304_before + 1;
+    f304_after = D_8004F304;
+    fprintf(stderr,
+            "[worldmap-third-wave] D_8004F304_before=%d D_8004F304_after=%d\n",
+            (int)f304_before, (int)f304_after);
+
+    /* 2. Read five source IDs from world BSS (W2 seed) — not hard-coded. */
+    ids[0] = WM_U32(WM_TW_ID_CC98);
+    ids[1] = WM_U32(WM_TW_ID_D3D0);
+    ids[2] = WM_U32(WM_TW_ID_D3C8);
+    ids[3] = WM_U32(WM_TW_ID_D800);
+    ids[4] = WM_U32(WM_TW_ID_BCC8);
+
+    for (i = 0; i < 5; i++) {
+        fprintf(stderr, "[worldmap-third-wave] source_id[%d]=0x%08x (%u)\n", i,
+                ids[i], ids[i]);
+    }
+
+    /* 3–6. Decode / alloc / store in retail interleave order.
+     * Queue pData always KUSEG. World-BSS mirrors KUSEG. D_8006259C is host
+     * void* (SEDS-style main global), matching menu/field writers. */
+    sizes[0] = (u32)ArchiveDecodeAlignedSize(ids[0]);
+    hosts[0] = HeapAlloc(sizes[0], 1);
+    psx[0] = host_ptr_to_psx_u32(hosts[0]);
+    WM_U16(WM_REQ_D3F8) = (u16)ids[0];
+    WM_U32(WM_TW_MIRROR_C88C) = psx[0];
+    WM_U32(WM_REQ_D3FC) = psx[0];
+
+    sizes[1] = (u32)ArchiveDecodeAlignedSize(ids[1]);
+    hosts[1] = HeapAlloc(sizes[1], 0);
+    psx[1] = host_ptr_to_psx_u32(hosts[1]);
+    WM_U16(WM_REQ_D400) = (u16)ids[1];
+    WM_U32(WM_TW_MIRROR_C884) = psx[1];
+    WM_U32(WM_REQ_D404) = psx[1];
+
+    sizes[2] = (u32)ArchiveDecodeAlignedSize(ids[2]);
+    hosts[2] = HeapAlloc(sizes[2], 0);
+    psx[2] = host_ptr_to_psx_u32(hosts[2]);
+    WM_U16(WM_REQ_D408) = (u16)ids[2];
+    D_8006259C = hosts[2]; /* host pointer authority */
+    WM_U32(WM_REQ_D40C) = psx[2];
+
+    sizes[3] = (u32)ArchiveDecodeAlignedSize(ids[3]);
+    hosts[3] = HeapAlloc(sizes[3], 0);
+    psx[3] = host_ptr_to_psx_u32(hosts[3]);
+    WM_U16(WM_REQ_D410) = (u16)ids[3];
+    WM_U32(WM_TW_MIRROR_C888) = psx[3];
+    WM_U32(WM_REQ_D414) = psx[3];
+
+    sizes[4] = (u32)ArchiveDecodeAlignedSize(ids[4]);
+    hosts[4] = HeapAlloc(sizes[4], 0);
+    psx[4] = host_ptr_to_psx_u32(hosts[4]);
+    WM_U16(WM_REQ_D418) = (u16)ids[4];
+    WM_U32(WM_TW_MIRROR_C614) = psx[4];
+    WM_U32(WM_REQ_D41C) = psx[4];
+
+    /* Terminator */
+    WM_U16(WM_REQ_D420) = 0;
+    WM_U32(WM_REQ_D424) = 0;
+
+    for (i = 0; i < 5; i++) {
+        fprintf(stderr,
+                "[worldmap-third-wave] archive_id[%d]=%u aligned_size[%d]=%u "
+                "destination_psx[%d]=0x%08x host=%p\n",
+                i, ids[i], i, sizes[i], i, psx[i], hosts[i]);
+    }
+
+    for (i = 0; i < 5; i++) {
+        if (hosts[i] == NULL && sizes[i] != 0) {
+            fprintf(stderr,
+                    "[worldmap-third-wave] ERROR: HeapAlloc failed entry=%d "
+                    "size=%u\n",
+                    i, sizes[i]);
+            return -1;
+        }
+    }
+
+    fprintf(stderr, "[worldmap-third-wave] request_count=5\n");
+    for (i = 0; i < 5; i++) {
+        fprintf(stderr,
+                "[worldmap-third-wave] request[%d] archive=%u pData_psx=0x%08x\n",
+                i, (unsigned)(u16)ids[i], psx[i]);
+    }
+    fprintf(stderr,
+            "[worldmap-third-wave] mirrors C88C=0x%08x C884=0x%08x "
+            "D_8006259C_host=%p C888=0x%08x C614=0x%08x\n",
+            WM_U32(WM_TW_MIRROR_C88C), WM_U32(WM_TW_MIRROR_C884), D_8006259C,
+            WM_U32(WM_TW_MIRROR_C888), WM_U32(WM_TW_MIRROR_C614));
+
+    /* 7. Submit — same PSX-layout queue as W3B/W4C. */
+    queue_result = func_80029AFC(PSX_ADDR(WM_REQ_D3F8), 0, 0);
+    fprintf(stderr, "[worldmap-third-wave] queue_submit=%d\n", queue_result);
+
+    /* Preserve prior rungs. */
+    if (WM_U32(WM_OBJ_C620) != c620_snap || WM_U16(WM_OBJ_D7E0) != d7e0_snap ||
+        WM_U32(WM_POOL_BE24) != pool_snap ||
+        WM_U32(WM_TMPL_DST_BE4C) != be4c0_snap ||
+        *(u16*)PSX_ADDR(WM_CLUT_BCE0) != bce0_0) {
+        fprintf(stderr,
+                "[worldmap-third-wave] ERROR: prior rung state corrupted\n");
+        return -1;
+    }
+    if (f304_after != f304_before + 1) {
+        fprintf(stderr, "[worldmap-third-wave] ERROR: D_8004F304 not +1\n");
+        return -1;
+    }
+
+    s_wm72090_ran = 1;
+    fprintf(stderr, "[worldmap-third-wave] exit\n");
+    fprintf(stderr,
+            "[worldmap-third-wave] cut-before-next-step retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_736DC);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -2516,6 +2708,20 @@ void PcPort_WorldMapInitMain(void)
                                                     "[worldmap-object-matrix] "
                                                     "failed; still entering "
                                                     "placeholder\n");
+                                        } else if (world_third_wave_enabled()) {
+                                            fprintf(stderr,
+                                                    "[worldmap-init] "
+                                                    "XENO_WORLD_THIRD_WAVE=1: "
+                                                    "0x80072090 third-wave "
+                                                    "submit\n");
+                                            if (wm_80072090_third_wave() !=
+                                                0) {
+                                                fprintf(stderr,
+                                                        "[worldmap-third-wave] "
+                                                        "failed; still "
+                                                        "entering "
+                                                        "placeholder\n");
+                                            }
                                         }
                                     }
                                 }
@@ -2527,7 +2733,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_object_matrix_enabled())
+            if (world_third_wave_enabled())
+                cut_pc = WM_CUT_BEFORE_736DC;
+            else if (world_object_matrix_enabled())
                 cut_pc = WM_CUT_BEFORE_72090;
             else if (world_gpu_asset_b_enabled())
                 cut_pc = WM_CUT_BEFORE_84580;

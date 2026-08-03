@@ -2294,8 +2294,9 @@ void PcPort_InitGameStates(void)
      * 0x80098044 (four OuterProduct0). XENO_WORLD_GPU_ASSET_A=1: also runs
      * 0x8008440C (TIM→VRAM/CLUT). XENO_WORLD_GPU_ASSET_B=1: also runs
      * 0x800979C8 (larger TIM→CLUT/TPage). XENO_WORLD_OBJECT_MATRIX=1: also
-     * runs 0x80084580 (object/matrix table), cut before 0x80072454 (still no
-     * 72090 / main loop / wm_800712D0 / broad residual). */
+     * runs 0x80084580 (object/matrix table). XENO_WORLD_THIRD_WAVE=1: also
+     * runs 0x80072090 (third-wave submit), cut before 0x8007245C (still no
+     * 736DC / poll / main loop / wm_800712D0 / broad residual). */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
@@ -2309,6 +2310,7 @@ void PcPort_InitGameStates(void)
         const char* gpuAssetA = getenv("XENO_WORLD_GPU_ASSET_A");
         const char* gpuAssetB = getenv("XENO_WORLD_GPU_ASSET_B");
         const char* objMatrix = getenv("XENO_WORLD_OBJECT_MATRIX");
+        const char* thirdWave = getenv("XENO_WORLD_THIRD_WAVE");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
@@ -2318,7 +2320,8 @@ void PcPort_InitGameStates(void)
             printf("[xeno-port][boot] world-init gate on (hasOverlay=1) "
                    "MODE_INIT=%s SECOND_WAVE=%s OBJECT_POOL=%s "
                    "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s CROSS_PRODUCTS=%s "
-                   "GPU_ASSET_A=%s GPU_ASSET_B=%s OBJECT_MATRIX=%s\n",
+                   "GPU_ASSET_A=%s GPU_ASSET_B=%s OBJECT_MATRIX=%s "
+                   "THIRD_WAVE=%s\n",
                    (modeInit && modeInit[0]) ? modeInit : "off",
                    (secondWave && secondWave[0]) ? secondWave : "off",
                    (objectPool && objectPool[0]) ? objectPool : "off",
@@ -2327,7 +2330,8 @@ void PcPort_InitGameStates(void)
                    (crossProd && crossProd[0]) ? crossProd : "off",
                    (gpuAssetA && gpuAssetA[0]) ? gpuAssetA : "off",
                    (gpuAssetB && gpuAssetB[0]) ? gpuAssetB : "off",
-                   (objMatrix && objMatrix[0]) ? objMatrix : "off");
+                   (objMatrix && objMatrix[0]) ? objMatrix : "off",
+                   (thirdWave && thirdWave[0]) ? thirdWave : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;
