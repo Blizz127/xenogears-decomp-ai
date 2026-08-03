@@ -1,5 +1,5 @@
 /*
- * W2 / W3B / W4C / W5B / W6B — Native world-map initialization ladder.
+ * W2 / W3B / W4C / W5B / W6B / W7B — Native world-map initialization ladder.
  *
  * Retail WorldMapMain @ 0x80070CFC (overlay world_map.bin loaded at 0x8006FAF0).
  *
@@ -9,7 +9,9 @@
  *      retail PC 0x800722BC.
  * W5B: object-pool 0x8009766C / 0x800976C8; cut before 0x800722C4.
  * W6B: identity copy 8×u32 0x8009A180 → 0x8009BE4C; cut before 0x80072314.
- *      Does not enter 0x80098044, full 0x80072238, wm_800712D0, or frames.
+ * W7B: ten mode-enter u32 stores 0x80072314–0x80072374; cut before 0x80072378
+ *      (jal 0x80098044). Does not enter OuterProduct0, full 0x80072238,
+ *      wm_800712D0, or frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -17,6 +19,7 @@
  *   XENO_WORLD_SECOND_WAVE=1
  *   XENO_WORLD_OBJECT_POOL=1
  *   XENO_WORLD_STATE_TEMPLATE=1
+ *   XENO_WORLD_MODE_ENTER_STATE=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -131,6 +134,7 @@
 #define WM_CUT_BEFORE_BROAD      0x800722BCu /* after W4C: jal 0x8009766C */
 #define WM_CUT_BEFORE_A180_COPY  0x800722C4u /* after W5B: A180→BE4C */
 #define WM_CUT_BEFORE_CONST_BLK  0x80072314u /* after W6B: mode-enter consts */
+#define WM_CUT_BEFORE_98044      0x80072378u /* after W7B: jal OuterProduct setup */
 #define WM_BROAD_9766C           0x8009766Cu
 #define WM_POOL_BE24             0x8009BE24u
 #define WM_POOL_ALLOC_SIZE       8192u
@@ -144,6 +148,18 @@
 #define WM_TMPL_DST_BE4C         0x8009BE4Cu
 #define WM_TMPL_WORD_COUNT       8
 #define WM_TMPL_BYTE_COUNT       (WM_TMPL_WORD_COUNT * 4u)
+/* W7B mode-enter destinations (retail 0x80072314–0x80072374). */
+#define WM_MES_CCA4              0x8009CCA4u
+#define WM_MES_D3CC              0x8009D3CCu
+#define WM_MES_D804              0x8009D804u
+#define WM_MES_CEC0              0x8009CEC0u
+#define WM_MES_C7E8              0x8009C7E8u
+#define WM_MES_BD34              0x8009BD34u
+#define WM_MES_D144              0x8009D144u
+#define WM_MES_C178              0x8009C178u
+#define WM_MES_CD40              0x8009CD40u
+#define WM_MES_FN_86700          0x80086700u
+#define WM_MES_STORE_COUNT       10
 
 /* Channel ID tables live in host g_GameState (retail abs inside GS span). */
 #define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
@@ -172,6 +188,8 @@ extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
 extern u_int HeapFree(void* pMem);
 extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void* g_pGameState;
+/* Main-executable global written by retail 0x80072364 (field init also sets 1). */
+extern s32 D_80059198;
 
 #define GS_U8(off)  (*(u8*)((u8*)g_pGameState + (off)))
 #define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
@@ -259,14 +277,21 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_mode_enter_state_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_MODE_ENTER_STATE");
+}
+
 static int world_state_template_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_STATE_TEMPLATE");
+    /* Mode-enter-state implies state-template. */
+    return env_flag_is_one("XENO_WORLD_STATE_TEMPLATE") ||
+           world_mode_enter_state_enabled();
 }
 
 static int world_object_pool_enabled(void)
 {
-    /* State-template implies object-pool. */
+    /* State-template / mode-enter imply object-pool. */
     return env_flag_is_one("XENO_WORLD_OBJECT_POOL") || world_state_template_enabled();
 }
 
@@ -300,8 +325,9 @@ static void log_enabled_slices(void)
     int w4 = world_second_wave_enabled();
     int w5 = world_object_pool_enabled();
     int w6 = world_state_template_enabled();
+    int w7 = world_mode_enter_state_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4 && !w5 && !w6) {
+    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -315,6 +341,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W5B");
     if (w6)
         fprintf(stderr, ",W6B");
+    if (w7)
+        fprintf(stderr, ",W7B");
     fprintf(stderr, "\n");
 }
 
@@ -1185,6 +1213,108 @@ static int wm_state_template_copy(void)
 }
 
 /*
+ * W7B — retail 0x80072314–0x80072374: ten immediate u32 mode-enter stores.
+ * Order matches assembly. D_80059198 is the host main-exe global (not g_PsxRam
+ * alone). Independent of 0x80098044 / OuterProduct0.
+ */
+static int PcPort_WorldMapInitializeModeEnterState(void)
+{
+    u32 before[WM_MES_STORE_COUNT];
+    u32 after[WM_MES_STORE_COUNT];
+    u32 expected[WM_MES_STORE_COUNT] = {
+        2u, 4u, 0u, 0u, 0u, 0u, 0u, 1u, 1u, WM_MES_FN_86700
+    };
+    u32 dsts[WM_MES_STORE_COUNT] = {
+        WM_MES_CCA4, WM_MES_D3CC, WM_MES_D804, WM_MES_CEC0, WM_MES_C7E8,
+        WM_MES_BD34, WM_MES_D144, 0x80059198u, WM_MES_C178, WM_MES_CD40
+    };
+    int i;
+    int match = 0;
+    u32 be24_before;
+    u32 tmpl_before[WM_TMPL_WORD_COUNT];
+    u32 be24_after;
+    int tmpl_ok = 1;
+    int pool_ok = 1;
+
+    fprintf(stderr, "[worldmap-mode-enter-state] entry\n");
+    fprintf(stderr, "[worldmap-mode-enter-state] store_count=%d\n",
+            WM_MES_STORE_COUNT);
+
+    be24_before = WM_U32(WM_POOL_BE24);
+    for (i = 0; i < (int)WM_TMPL_WORD_COUNT; i++)
+        tmpl_before[i] = ((u32*)PSX_ADDR(WM_TMPL_DST_BE4C))[i];
+
+    /* Snapshot before (retail order destinations). */
+    before[0] = WM_U32(WM_MES_CCA4);
+    before[1] = WM_U32(WM_MES_D3CC);
+    before[2] = WM_U32(WM_MES_D804);
+    before[3] = WM_U32(WM_MES_CEC0);
+    before[4] = WM_U32(WM_MES_C7E8);
+    before[5] = WM_U32(WM_MES_BD34);
+    before[6] = WM_U32(WM_MES_D144);
+    before[7] = (u32)D_80059198;
+    before[8] = WM_U32(WM_MES_C178);
+    before[9] = WM_U32(WM_MES_CD40);
+
+    /* Retail store order (immediates / constructed fn VA). Idempotent. */
+    WM_U32(WM_MES_CCA4) = 2u;                 /* 0x80072320 */
+    WM_U32(WM_MES_D3CC) = 4u;                 /* 0x8007232C */
+    WM_U32(WM_MES_D804) = 0u;                 /* 0x8007233C */
+    WM_U32(WM_MES_CEC0) = 0u;                 /* 0x80072344 */
+    WM_U32(WM_MES_C7E8) = 0u;                 /* 0x8007234C */
+    WM_U32(WM_MES_BD34) = 0u;                 /* 0x80072354 */
+    WM_U32(WM_MES_D144) = 0u;                 /* 0x8007235C */
+    D_80059198 = 1;                           /* 0x80072364 main global */
+    WM_U32(WM_MES_C178) = 1u;                 /* 0x8007236C */
+    WM_U32(WM_MES_CD40) = WM_MES_FN_86700;    /* 0x80072374 */
+
+    after[0] = WM_U32(WM_MES_CCA4);
+    after[1] = WM_U32(WM_MES_D3CC);
+    after[2] = WM_U32(WM_MES_D804);
+    after[3] = WM_U32(WM_MES_CEC0);
+    after[4] = WM_U32(WM_MES_C7E8);
+    after[5] = WM_U32(WM_MES_BD34);
+    after[6] = WM_U32(WM_MES_D144);
+    after[7] = (u32)D_80059198;
+    after[8] = WM_U32(WM_MES_C178);
+    after[9] = WM_U32(WM_MES_CD40);
+
+    for (i = 0; i < WM_MES_STORE_COUNT; i++) {
+        fprintf(stderr,
+                "[worldmap-mode-enter-state] store[%d] dst=0x%08x "
+                "before=0x%08x value=0x%08x expected=0x%08x\n",
+                i, dsts[i], before[i], after[i], expected[i]);
+        if (after[i] == expected[i])
+            match++;
+    }
+
+    be24_after = WM_U32(WM_POOL_BE24);
+    if (be24_after != be24_before)
+        pool_ok = 0;
+    for (i = 0; i < (int)WM_TMPL_WORD_COUNT; i++) {
+        if (((u32*)PSX_ADDR(WM_TMPL_DST_BE4C))[i] != tmpl_before[i])
+            tmpl_ok = 0;
+    }
+
+    fprintf(stderr,
+            "[worldmap-mode-enter-state] match=%d/%d pool_preserved=%d "
+            "template_preserved=%d\n",
+            match, WM_MES_STORE_COUNT, pool_ok, tmpl_ok);
+
+    if (match != WM_MES_STORE_COUNT || !pool_ok || !tmpl_ok) {
+        fprintf(stderr, "[worldmap-mode-enter-state] ERROR: validation failed\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-mode-enter-state] exit\n");
+    fprintf(stderr,
+            "[worldmap-mode-enter-state] cut-before-0x80098044 "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_98044);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -1314,19 +1444,31 @@ void PcPort_WorldMapInitMain(void)
                             "placeholder\n");
                 } else if (world_state_template_enabled()) {
                     fprintf(stderr,
-                            "[worldmap-init] XENO_WORLD_STATE_TEMPLATE=1: "
-                            "A180→BE4C 8-word copy\n");
+                            "[worldmap-init] state-template: A180→BE4C "
+                            "8-word copy\n");
                     if (wm_state_template_copy() != 0) {
                         fprintf(stderr,
                                 "[worldmap-state-template] failed; still "
                                 "entering placeholder\n");
+                    } else if (world_mode_enter_state_enabled()) {
+                        fprintf(stderr,
+                                "[worldmap-init] "
+                                "XENO_WORLD_MODE_ENTER_STATE=1: ten mode-enter "
+                                "u32 stores\n");
+                        if (PcPort_WorldMapInitializeModeEnterState() != 0) {
+                            fprintf(stderr,
+                                    "[worldmap-mode-enter-state] failed; still "
+                                    "entering placeholder\n");
+                        }
                     }
                 }
             }
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_state_template_enabled())
+            if (world_mode_enter_state_enabled())
+                cut_pc = WM_CUT_BEFORE_98044;
+            else if (world_state_template_enabled())
                 cut_pc = WM_CUT_BEFORE_CONST_BLK;
             else if (world_object_pool_enabled())
                 cut_pc = WM_CUT_BEFORE_A180_COPY;
