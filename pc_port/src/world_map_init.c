@@ -75,6 +75,24 @@
 
 /* Cut-line proof: first instruction of loop ownership (must never execute). */
 #define WM_LOOP_JAL_712D0        0x80071094u
+#define WM_MAIN_LOOP             0x80071034u
+#define WM_POST_INIT_RESUME      0x80070FFCu
+#define WM_MODE_INIT_RETAIL      0x80071CDCu
+#define WM_MODE_UPDATE_RETAIL    0x80072238u
+#define WM_MODE_POST_RETAIL      0x8007299Cu
+#define WM_DISPATCH_TABLE        0x8009A058u
+#define WM_PHASE_D7CC            0x8009D7CCu
+
+/* Mode-init BSS / request list (overlay) */
+#define WM_PTR_CD34              0x8009CD34u
+#define WM_PTR_BDF8              0x8009BDF8u
+#define WM_REQ_D3F8              0x8009D3F8u
+#define WM_REQ_D3FC              0x8009D3FCu
+#define WM_CNT_C170              0x8009C170u
+
+/* Channel ID tables live in host g_GameState (retail abs inside GS span). */
+#define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
+#define GS_OFF_SEC_BASE          0x030Cu /* retail 0x8006D940; stride 164 per id */
 
 #define WM_U8(a)  (*(u8*)PSX_ADDR(a))
 #define WM_U16(a) (*(u16*)PSX_ADDR(a))
@@ -89,8 +107,11 @@ extern void FlushCache(void);
 extern int VSync(int mode);
 extern u32 g_ArchiveDebugTable;
 extern int ArchiveDecodeSize(int entryIndex);
+extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
+extern int func_80029AFC(void* pEntries, int arg1, int arg2);
 extern void* g_pGameState;
 
+#define GS_U8(off)  (*(u8*)((u8*)g_pGameState + (off)))
 #define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
 #define GS_S16(off) (*(s16*)((u8*)g_pGameState + (off)))
 
@@ -110,6 +131,21 @@ static void wm_memcpy(void* dst, const void* src, unsigned n)
         *d++ = *s++;
 }
 
+/* HeapAlloc returns a host pointer into g_PsxRam; store retail-style KUSEG. */
+static u32 host_ptr_to_psx_u32(void* p)
+{
+    uintptr_t host;
+    uintptr_t base;
+    if (p == NULL)
+        return 0;
+    host = (uintptr_t)p;
+    base = (uintptr_t)g_PsxRam;
+    if (host >= base && host < base + (uintptr_t)PSX_RAM_SIZE)
+        return 0x80000000u | (u32)(host - base);
+    /* Truncate host pointer (legacy path); still usable if in low 4G. */
+    return (u32)host;
+}
+
 static int s_wm712d0_hits;
 static int s_wm_drawotag_hits;
 
@@ -121,10 +157,21 @@ void wm_800712D0_should_not_run(void)
             s_wm712d0_hits);
 }
 
+static int env_flag_is_one(const char* name)
+{
+    const char* v = getenv(name);
+    return v != NULL && v[0] == '1' && v[1] == '\0';
+}
+
 static int world_init_enabled(void)
 {
-    const char* v = getenv("XENO_WORLD_INIT");
-    return v != NULL && v[0] == '1' && v[1] == '\0';
+    /* Mode-init implies W2 overlay/init path. */
+    return env_flag_is_one("XENO_WORLD_INIT") || env_flag_is_one("XENO_WORLD_MODE_INIT");
+}
+
+static int world_mode_init_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_MODE_INIT");
 }
 
 int PcPort_WorldMapInitEnabled(void)
@@ -391,10 +438,162 @@ static int world_map_main_init_lahan(void)
     wm_80071B9C(entrance, seed_1930);
 
     fprintf(stderr,
-            "[worldmap-init] cut-before-loop retail_pc=0x%08x "
-            "(next would be loop ownership; wm_800712D0 retail=0x%08x)\n",
-            WM_CUT_BEFORE_LOOP, WM_LOOP_JAL_712D0);
+            "[worldmap-init] w2-complete retail_resume=0x%08x "
+            "(W2 cut docs 0x%08x; main loop 0x%08x)\n",
+            WM_POST_INIT_RESUME, WM_CUT_BEFORE_LOOP, WM_MAIN_LOOP);
     return 0;
+}
+
+/*
+ * W3B — native transcription of retail mode initializer 0x80071CDC–0x80071EE8.
+ * One-shot only; does not enter 0x80071034.
+ */
+static int wm_80071CDC_mode_init(void)
+{
+    int ch;
+    u8 channel_id[3];
+    u8 secondary_id[3];
+    u32 aligned_size[3];
+    u32 aligned_size_sec[3];
+    void* allocation[3];
+    void* allocation_sec[3];
+    int request_count = 0;
+    int queue_result;
+    u8* pReq;
+    u32* pCd34;
+    u32* pBdf8;
+
+    fprintf(stderr, "[worldmap-mode-init] entry\n");
+
+    if (g_pGameState == NULL) {
+        fprintf(stderr, "[worldmap-mode-init] ERROR: g_pGameState NULL\n");
+        return -1;
+    }
+
+    pCd34 = (u32*)PSX_ADDR(WM_PTR_CD34);
+    pBdf8 = (u32*)PSX_ADDR(WM_PTR_BDF8);
+
+    for (ch = 0; ch < 3; ch++) {
+        channel_id[ch] = GS_U8(GS_OFF_CH_ID0 + ch);
+        secondary_id[ch] = 0xFF;
+        aligned_size[ch] = 0;
+        aligned_size_sec[ch] = 0;
+        allocation[ch] = NULL;
+        allocation_sec[ch] = NULL;
+
+        if (channel_id[ch] != 0xFF) {
+            aligned_size[ch] = (u32)ArchiveDecodeAlignedSize((u32)channel_id[ch] + 2u);
+            allocation[ch] = HeapAlloc(aligned_size[ch], 0);
+            pCd34[ch] = host_ptr_to_psx_u32(allocation[ch]);
+
+            secondary_id[ch] = GS_U8(GS_OFF_SEC_BASE + (u32)channel_id[ch] * 164u);
+            if (secondary_id[ch] != 0xFF) {
+                aligned_size_sec[ch] =
+                    (u32)ArchiveDecodeAlignedSize((u32)secondary_id[ch] + 0x13u);
+                allocation_sec[ch] = HeapAlloc(aligned_size_sec[ch], 0);
+                pBdf8[ch] = host_ptr_to_psx_u32(allocation_sec[ch]);
+            } else {
+                pBdf8[ch] = 0;
+            }
+        } else {
+            pCd34[ch] = 0;
+            pBdf8[ch] = 0;
+        }
+
+        fprintf(stderr,
+                "[worldmap-mode-init] channel_id[%d]=0x%02x aligned_size[%d]=%u "
+                "allocation[%d]=host:%p psx_u32=0x%08x "
+                "secondary_id=0x%02x sec_size=%u sec_alloc=host:%p sec_psx=0x%08x\n",
+                ch, channel_id[ch], ch, aligned_size[ch], ch, allocation[ch],
+                pCd34[ch], secondary_id[ch], aligned_size_sec[ch],
+                allocation_sec[ch], pBdf8[ch]);
+    }
+
+    /* Build retail 8-byte-stride request list at 0x8009D3F8. */
+    WM_U32(WM_CNT_C170) = 0;
+    pReq = (u8*)PSX_ADDR(WM_REQ_D3F8);
+    request_count = 0;
+
+    for (ch = 0; ch < 3; ch++) {
+        if (channel_id[ch] == 0xFF)
+            continue;
+
+        *(u16*)(pReq + request_count * 8) = (u16)(channel_id[ch] + 2);
+        *(u32*)(pReq + request_count * 8 + 4) = pCd34[ch];
+        request_count++;
+        /* Retail C170 increments only for primary channel entries. */
+        WM_U32(WM_CNT_C170) = WM_U32(WM_CNT_C170) + 1u;
+
+        if (secondary_id[ch] != 0xFF) {
+            *(u16*)(pReq + request_count * 8) = (u16)(secondary_id[ch] + 0x13);
+            *(u32*)(pReq + request_count * 8 + 4) = pBdf8[ch];
+            request_count++;
+        }
+    }
+
+    /* Terminator entry */
+    *(u16*)(pReq + request_count * 8) = 0;
+    *(u32*)(pReq + request_count * 8 + 4) = 0;
+
+    fprintf(stderr, "[worldmap-mode-init] request_count=%d (primary_counter C170=%u)\n",
+            request_count, WM_U32(WM_CNT_C170));
+    {
+        int r;
+        for (r = 0; r < request_count; r++) {
+            u16 idx = *(u16*)(pReq + r * 8);
+            u32 dat = *(u32*)(pReq + r * 8 + 4);
+            fprintf(stderr,
+                    "[worldmap-mode-init] request[%d] archive_index=%u "
+                    "pData_u32=0x%08x host=%p\n",
+                    r, idx, dat, (void*)(uintptr_t)dat);
+        }
+    }
+
+    queue_result = func_80029AFC(PSX_ADDR(WM_REQ_D3F8), 0, 0);
+    fprintf(stderr, "[worldmap-mode-init] queue_submit=%d\n", queue_result);
+    fprintf(stderr, "[worldmap-mode-init] exit\n");
+    return queue_result;
+}
+
+/*
+ * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
+ * Does not enter 0x80071034.
+ */
+static int world_map_dispatch_mode_init_once(void)
+{
+    u32 entrance;
+    u32 slot0;
+    u32* pTable;
+
+    entrance = WM_U32(WM_ENTRANCE_STATE_ABS);
+    pTable = (u32*)PSX_ADDR(WM_DISPATCH_TABLE);
+    slot0 = pTable[entrance * 3 + 0];
+
+    fprintf(stderr,
+            "[worldmap-mode-init] dispatch entrance=%u slot0_retail=0x%08x "
+            "phase_D7CC=%u\n",
+            entrance, slot0, WM_U32(WM_PHASE_D7CC));
+
+    if (entrance > 7) {
+        fprintf(stderr,
+                "[worldmap-mode-init] ERROR: unsupported entrance row %u "
+                "(W3B is Lahan 0..7 only)\n",
+                entrance);
+        return -1;
+    }
+    if (slot0 == 0) {
+        fprintf(stderr, "[worldmap-mode-init] ERROR: slot0 is NULL\n");
+        return -1;
+    }
+    if (slot0 != WM_MODE_INIT_RETAIL) {
+        fprintf(stderr,
+                "[worldmap-mode-init] ERROR: slot0 0x%08x != expected 0x%08x\n",
+                slot0, WM_MODE_INIT_RETAIL);
+        return -1;
+    }
+
+    /* Never call loaded MIPS; resolve known retail address to native body. */
+    return wm_80071CDC_mode_init();
 }
 
 void PcPort_WorldMapInitMain(void)
@@ -459,6 +658,23 @@ void PcPort_WorldMapInitMain(void)
         return;
     }
 
+    if (world_mode_init_enabled()) {
+        fprintf(stderr,
+                "[worldmap-init] XENO_WORLD_MODE_INIT=1: one-shot slot0 dispatch\n");
+        if (world_map_dispatch_mode_init_once() != 0) {
+            fprintf(stderr,
+                    "[worldmap-mode-init] failed; still entering placeholder\n");
+        }
+        fprintf(stderr,
+                "[worldmap-init] cut-before-main-loop retail_pc=0x%08x\n",
+                WM_MAIN_LOOP);
+    } else {
+        fprintf(stderr,
+                "[worldmap-init] cut-before-loop retail_pc=0x%08x "
+                "(mode-init gate off; next retail would be 0x%08x)\n",
+                WM_POST_INIT_RESUME, WM_MAIN_LOOP);
+    }
+
     if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
@@ -466,6 +682,6 @@ void PcPort_WorldMapInitMain(void)
                 s_wm712d0_hits, s_wm_drawotag_hits);
     }
 
-    /* Known-safe hollow UI — W2 intentionally still shows NOT YET PORTED. */
+    /* Known-safe hollow UI — W2/W3B intentionally still show NOT YET PORTED. */
     PcPort_WorldMapPlaceholderMain();
 }

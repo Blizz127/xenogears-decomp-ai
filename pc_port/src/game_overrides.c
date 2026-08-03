@@ -2284,20 +2284,23 @@ void PcPort_InitGameStates(void)
     /* Retail state 3: main 0x80070CFC, archive 0x0F, state/BSS 0x8009BBB0,
      * heap 0x8009D80C. Never install that raw PSX entry as a host pointer.
      * Default: hollow placeholder, hasOverlay=0 (F16).
-     * XENO_WORLD_INIT=1: load archive 0x0F, native WorldMapMain pre-loop init
-     * (cut before 0x80071000 / wm_800712D0), then the same placeholder. */
+     * XENO_WORLD_INIT=1: load archive 0x0F, native WorldMapMain pre-loop init,
+     * then placeholder. XENO_WORLD_MODE_INIT=1: also runs Lahan mode
+     * initializer 0x80071CDC once (still no main loop / wm_800712D0). */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
         int worldInit = PcPort_WorldMapInitEnabled();
+        const char* modeInit = getenv("XENO_WORLD_MODE_INIT");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
         g_MainGameStates[3].pHeapStart = PSX_ADDR(0x0009d80c);
         g_MainGameStates[3].hasOverlay = worldInit ? 1 : 0;
         if (worldInit)
-            printf("[xeno-port][boot] XENO_WORLD_INIT=1: state-3 native init "
-                   "slice enabled (hasOverlay=1)\n");
+            printf("[xeno-port][boot] world-init gate on (hasOverlay=1) "
+                   "XENO_WORLD_MODE_INIT=%s\n",
+                   (modeInit && modeInit[0]) ? modeInit : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;

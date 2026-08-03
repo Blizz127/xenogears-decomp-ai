@@ -28,6 +28,8 @@
 #include "system/archive.h"
 #include "psyq/libcd.h"
 #include "psyq/libgpu.h"   /* RECT, LoadImage, DrawSync for the 0xBB VRAM uploader */
+#include "psx_memory.h"
+#include <stdint.h>    /* g_PsxRam / PSX_RAM_SIZE for PSX-layout queue detect */
 
 /* Forward-declare the two host-libc calls used for the partial-sector bounce.
  * Pulling in <stdlib.h> here fails to compile: the game headers (via common.h)
@@ -101,8 +103,15 @@ static int ArchiveReadPsxStreamQueue(u8* pEntries, int arg1) {
     for (i = 0; i < count; i += 1) {
         u32 pData = ArchivePsxQueueGetData(pEntries, i);
         if (pData != 0) {
+            void* host;
+            /* Prefer emulated PSX virtual addresses; also accept truncated host
+             * pointers that already land inside g_PsxRam (HeapAlloc). */
+            if (pData >= 0x80000000u && pData < 0x80200000u)
+                host = PSX_ADDR(pData);
+            else
+                host = (void*)(uintptr_t)pData;
             ArchiveReadFileToBuffer(ArchivePsxQueueGetIndex(pEntries, i),
-                                    (void*)(unsigned long)pData,
+                                    host,
                                     arg1,
                                     CdlModeSpeed);
             ArchiveCdDataSync(0);
@@ -265,10 +274,20 @@ int func_80029EB0(s32 archiveIndex, void* pStreamFile, s32 arg2, s32 arg3, s32 a
 int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
     int count;
     int i;
+    uintptr_t entries_u;
 
     (void)arg2;
 
     if ((void*)pEntries == (void*)&D_800B2394) {
+        return ArchiveReadPsxStreamQueue((u8*)pEntries, arg1);
+    }
+
+    /* World-map mode init (0x80071CDC) builds a retail 8-byte-stride queue in
+     * emulated PSX RAM at 0x8009D3F8. Host sizeof(StreamDataQueueEntry) is not
+     * 8, so walk that buffer with the PSX layout helper. */
+    entries_u = (uintptr_t)pEntries;
+    if (entries_u >= (uintptr_t)g_PsxRam &&
+        entries_u < (uintptr_t)g_PsxRam + (uintptr_t)PSX_RAM_SIZE) {
         return ArchiveReadPsxStreamQueue((u8*)pEntries, arg1);
     }
 
