@@ -12,7 +12,9 @@
  * W7B: ten mode-enter u32 stores 0x80072314–0x80072374; cut before 0x80072378.
  * W8B: four OuterProduct0 via 0x80098044; cut before 0x80072380.
  * W10A: wm_8008440C (+ wm_800931D8) GPU/CLUT from W4C BD20; cut before
- *       0x80072444 (jal 0x800979C8). Does not enter full 0x80072238 / frames.
+ *       0x80072444 (jal 0x800979C8).
+ * W10B: wm_800979C8 GPU/CLUT/TPage from W4C C59C; cut before 0x8007244C
+ *       (jal 0x80084580). Does not enter full 0x80072238 / frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -23,6 +25,7 @@
  *   XENO_WORLD_MODE_ENTER_STATE=1
  *   XENO_WORLD_CROSS_PRODUCTS=1
  *   XENO_WORLD_GPU_ASSET_A=1
+ *   XENO_WORLD_GPU_ASSET_B=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -140,13 +143,18 @@
 #define WM_CUT_BEFORE_98044      0x80072378u /* after W7B: jal OuterProduct setup */
 #define WM_CUT_AFTER_98044       0x80072380u /* after W8B return */
 #define WM_CUT_BEFORE_979C8      0x80072444u /* after W10A: jal 0x800979C8 */
+#define WM_CUT_BEFORE_84580      0x8007244Cu /* after W10B: jal 0x80084580 */
 #define WM_BROAD_9766C           0x8009766Cu
 #define WM_GPU_8440C             0x8008440Cu
 #define WM_GPU_979C8             0x800979C8u
 #define WM_GPU_931D8             0x800931D8u
-/* W10A: CLUT table + scale constants (BD20 slot already WM_DST_BD20). */
+/* W10A/B: CLUT/TPage tables + scale constants (BD20/C59C already defined). */
 #define WM_CLUT_BCE0             0x8009BCE0u
-#define WM_SCALE_IMG_704DC       0x800704DCu /* 4-byte RGB scale constants in image */
+#define WM_CLUT_CCB4             0x8009CCB4u
+#define WM_TPAGE_CD54            0x8009CD54u
+#define WM_TPAGE_CD5C            0x8009CD5Cu
+#define WM_SCALE_IMG_704DC       0x800704DCu /* 4-byte RGB scale (W10A) */
+#define WM_SCALE_IMG_BB48        0x8009BB48u /* 4-byte RGB scale (W10B) */
 /* W8B OuterProduct0 inputs (overlay image) / outputs (world BSS). */
 #define WM_XP_BB4C               0x8009BB4Cu
 #define WM_XP_BB5C               0x8009BB5Cu
@@ -213,6 +221,7 @@ extern void func_8002DD20(u32* pList);
 extern int StoreImage(RECT* rect, u_long* p);
 extern int LoadImage(RECT* rect, u_long* p);
 extern u_short GetClut(int x, int y);
+extern u_short GetTPage(int tp, int abr, int x, int y);
 extern void* g_pGameState;
 /* Main-executable global written by retail 0x80072364 (field init also sets 1). */
 extern s32 D_80059198;
@@ -315,9 +324,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_gpu_asset_b_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_GPU_ASSET_B");
+}
+
 static int world_gpu_asset_a_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_GPU_ASSET_A");
+    /* GPU-asset-B implies GPU-asset-A. */
+    return env_flag_is_one("XENO_WORLD_GPU_ASSET_A") ||
+           world_gpu_asset_b_enabled();
 }
 
 static int world_cross_products_enabled(void)
@@ -379,9 +395,10 @@ static void log_enabled_slices(void)
     int w6 = world_state_template_enabled();
     int w7 = world_mode_enter_state_enabled();
     int w8 = world_cross_products_enabled();
-    int w10 = world_gpu_asset_a_enabled();
+    int w10a = world_gpu_asset_a_enabled();
+    int w10b = world_gpu_asset_b_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10) {
+    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -399,8 +416,10 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W7B");
     if (w8)
         fprintf(stderr, ",W8B");
-    if (w10)
+    if (w10a)
         fprintf(stderr, ",W10A");
+    if (w10b)
+        fprintf(stderr, ",W10B");
     fprintf(stderr, "\n");
 }
 
@@ -1830,6 +1849,200 @@ static int wm_8008440c_gpu_asset_a(void)
 }
 
 /*
+ * W10B — native transcription of retail 0x800979C8–0x80097BBC (0x1F8 / 504 B).
+ * Consumes W4C first-wave buffer at 0x8009C59C; larger VRAM path; two expand
+ * passes (rows=32 each); 64 GetClut → CCB4; GetTPage → CD54 (×4) + CD5C (×3).
+ */
+static int s_wm979c8_ran;
+
+static int wm_800979c8_gpu_asset_b(void)
+{
+    u32 compressed_psx;
+    void* compressed_host;
+    void* decomp_host;
+    void* img_host;
+    void* exp_host;
+    const u8* scales;
+    RECT rect;
+    u16* clut_tbl;
+    u16* tpage_cd54;
+    u16* tpage_cd5c;
+    int i;
+    int clut_ok = 0;
+    int tpage_ok = 0;
+    u16 bce0_snap[16];
+    u32 pool_be24;
+    u32 mes_cca4;
+    int tpage_x;
+    int tpage_y;
+
+    fprintf(stderr, "[worldmap-gpu-asset-b] entry\n");
+    fprintf(stderr, "[worldmap-gpu-asset-b] source_slot=0x%08x\n",
+            WM_DST_C59C);
+
+    if (s_wm979c8_ran) {
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] ERROR: already ran this process "
+                "(C59C is one-shot; reload lower ladder)\n");
+        return -1;
+    }
+    if (!s_wm8440c_ran) {
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] ERROR: W10A did not run (required)\n");
+        return -1;
+    }
+
+    compressed_psx = WM_U32(WM_DST_C59C);
+    compressed_host = psx_u32_to_host(compressed_psx);
+    if (compressed_psx == 0 || compressed_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] ERROR: C59C empty/null psx=0x%08x\n",
+                compressed_psx);
+        return -1;
+    }
+
+    /* Snapshot W10A CLUT table — must remain unchanged. */
+    wm_memcpy(bce0_snap, PSX_ADDR(WM_CLUT_BCE0), sizeof(bce0_snap));
+    pool_be24 = WM_U32(WM_POOL_BE24);
+    mes_cca4 = WM_U32(WM_MES_CCA4);
+
+    scales = (const u8*)PSX_ADDR(WM_SCALE_IMG_BB48);
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] compressed_psx=0x%08x host=%p "
+            "scales=(0x%02x,0x%02x,0x%02x) expand_passes=2\n",
+            compressed_psx, compressed_host, scales[0], scales[1], scales[2]);
+
+    decomp_host = LZSSHeapDecompress(compressed_host, 1);
+    if (decomp_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] ERROR: LZSSHeapDecompress failed\n");
+        return -1;
+    }
+    fprintf(stderr, "[worldmap-gpu-asset-b] decompressed_host=%p\n",
+            decomp_host);
+
+    func_8002DD20((u32*)decomp_host);
+    DrawSync(0);
+    HeapFree(decomp_host);
+
+    compressed_host = psx_u32_to_host(WM_U32(WM_DST_C59C));
+    if (compressed_host != NULL)
+        HeapFree(compressed_host);
+
+    /* 1024 B store (2 rows × 256 × u16); 0x8000 B expand (64 rows × 256 × u16). */
+    img_host = HeapAlloc(1024, 1);
+    exp_host = HeapAlloc(0x8000, 1);
+    if (img_host == NULL || exp_host == NULL) {
+        fprintf(stderr, "[worldmap-gpu-asset-b] ERROR: HeapAlloc failed\n");
+        return -1;
+    }
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] work_img=%p work_exp=%p\n",
+            img_host, exp_host);
+
+    /* StoreImage (0,480,256,2). */
+    rect.x = 0;
+    rect.y = 480;
+    rect.w = 256;
+    rect.h = 2;
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] store_rect=(%d,%d,%d,%d)\n",
+            rect.x, rect.y, rect.w, rect.h);
+    StoreImage(&rect, (u_long*)img_host);
+    DrawSync(0);
+
+    /* Two expand passes: rows 0–31 from first store row; 32–63 from second. */
+    wm_800931d8_expand((u16*)img_host, (u16*)exp_host, 32, scales);
+    wm_800931d8_expand((u16*)((u8*)img_host + 512),
+                       (u16*)((u8*)exp_host + 16384), 32, scales);
+
+    /* LoadImage (0,432,256,64). */
+    rect.x = 0;
+    rect.y = 432;
+    rect.w = 256;
+    rect.h = 64;
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] load_rect=(%d,%d,%d,%d)\n",
+            rect.x, rect.y, rect.w, rect.h);
+    LoadImage(&rect, (u_long*)exp_host);
+    DrawSync(0);
+
+    /* GetClut(0, 432+i) × 64 → 0x8009CCB4. */
+    clut_tbl = (u16*)PSX_ADDR(WM_CLUT_CCB4);
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] clut_count=64 clut_table=0x%08x\n",
+            WM_CLUT_CCB4);
+    for (i = 0; i < 64; i++) {
+        int gx = 0;
+        int gy = 432 + i;
+        u16 formula = (u16)(((u32)gy << 6) | (((u32)gx >> 4) & 0x3fu));
+        u16 got = GetClut(gx, gy);
+        clut_tbl[i] = got;
+        if (got == formula)
+            clut_ok++;
+    }
+    fprintf(stderr, "[worldmap-gpu-asset-b] clut_match=%d/64\n", clut_ok);
+
+    /* GetTPage(1,0,x,y): first 4 → CD54 (x=512..896 step 128, y=0). */
+    tpage_cd54 = (u16*)PSX_ADDR(WM_TPAGE_CD54);
+    tpage_x = 512;
+    tpage_y = 0;
+    for (i = 0; i < 4; i++) {
+        u16 tp = GetTPage(1, 0, tpage_x, tpage_y);
+        tpage_cd54[i] = tp;
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] tpage_cd54[%d] GetTPage(1,0,%d,%d)="
+                "0x%04x\n",
+                i, tpage_x, tpage_y, tp);
+        tpage_ok++;
+        tpage_x += 128;
+    }
+
+    /* Next 3 → CD5C (x=384..640 step 128, y=256). */
+    tpage_cd5c = (u16*)PSX_ADDR(WM_TPAGE_CD5C);
+    tpage_x = 384;
+    tpage_y = 256;
+    for (i = 0; i < 3; i++) {
+        u16 tp = GetTPage(1, 0, tpage_x, tpage_y);
+        tpage_cd5c[i] = tp;
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] tpage_cd5c[%d] GetTPage(1,0,%d,%d)="
+                "0x%04x\n",
+                i, tpage_x, tpage_y, tp);
+        tpage_ok++;
+        tpage_x += 128;
+    }
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] tpage_writes=%d/7 "
+            "persistent_store_cd54=0x%04x persistent_store_cd5c=0x%04x\n",
+            tpage_ok, tpage_cd54[0], tpage_cd5c[0]);
+
+    /* Free expand then store buffer (retail order). */
+    HeapFree(exp_host);
+    HeapFree(img_host);
+
+    s_wm979c8_ran = 1;
+
+    if (clut_ok != 64 || tpage_ok != 7 ||
+        !wm_memeq(bce0_snap, PSX_ADDR(WM_CLUT_BCE0), sizeof(bce0_snap)) ||
+        WM_U32(WM_POOL_BE24) != pool_be24 ||
+        WM_U32(WM_MES_CCA4) != mes_cca4) {
+        fprintf(stderr,
+                "[worldmap-gpu-asset-b] ERROR: validation failed "
+                "clut=%d/64 tpage=%d/7 w10a_preserved=%d\n",
+                clut_ok, tpage_ok,
+                wm_memeq(bce0_snap, PSX_ADDR(WM_CLUT_BCE0), sizeof(bce0_snap)));
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-gpu-asset-b] exit\n");
+    fprintf(stderr,
+            "[worldmap-gpu-asset-b] cut-before-next-head retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_84580);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -1991,6 +2204,18 @@ void PcPort_WorldMapInitMain(void)
                                     fprintf(stderr,
                                             "[worldmap-gpu-asset-a] failed; "
                                             "still entering placeholder\n");
+                                } else if (world_gpu_asset_b_enabled()) {
+                                    fprintf(stderr,
+                                            "[worldmap-init] "
+                                            "XENO_WORLD_GPU_ASSET_B=1: "
+                                            "0x800979C8 TIM→CLUT/TPage "
+                                            "GPU asset B\n");
+                                    if (wm_800979c8_gpu_asset_b() != 0) {
+                                        fprintf(stderr,
+                                                "[worldmap-gpu-asset-b] "
+                                                "failed; still entering "
+                                                "placeholder\n");
+                                    }
                                 }
                             }
                         }
@@ -2000,7 +2225,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_gpu_asset_a_enabled())
+            if (world_gpu_asset_b_enabled())
+                cut_pc = WM_CUT_BEFORE_84580;
+            else if (world_gpu_asset_a_enabled())
                 cut_pc = WM_CUT_BEFORE_979C8;
             else if (world_cross_products_enabled())
                 cut_pc = WM_CUT_AFTER_98044;
