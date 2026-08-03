@@ -30,6 +30,8 @@
  *       relocation: strict process-local one-shot guard.
  * W16B: route exact matching GfxAllocateWorkBuffers(5120,0); cut before
  *       0x80072480 (jal 0x80074594). No free fix, no post helpers, no poll.
+ * W17B: wm_80074594 heap FT4 dual-pool init (128 + 640 + 640); cut before
+ *       0x80072488 (jal 0x800863E0). One-shot; no later pre-poll helpers.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -47,6 +49,7 @@
  *   XENO_WORLD_PRIMITIVE_TEMPLATES=1
  *   XENO_WORLD_RECORD_CLUT_INIT=1
  *   XENO_WORLD_GFX_WORK_BUFFERS=1
+ *   XENO_WORLD_FT4_POOLS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -171,8 +174,21 @@
 #define WM_CUT_BEFORE_85F58      0x8007246Cu /* after W14B: jal 0x80085F58 */
 #define WM_CUT_BEFORE_GFX_WORK   0x80072478u /* after W15B: jal GfxAllocate */
 #define WM_CUT_BEFORE_74594      0x80072480u /* after W16B: jal 0x80074594 */
+#define WM_CUT_BEFORE_863E0      0x80072488u /* after W17B: jal 0x800863E0 */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
+
+/* W17B wm_80074594 destinations */
+#define WM_FT4_REC_PTR           0x8009D30Cu
+#define WM_FT4_POOL_A_PTR        0x8009BE14u
+#define WM_FT4_POOL_B_PTR        0x8009BE18u
+#define WM_FT4_FLAG_BE38         0x8009BE38u
+#define WM_FT4_REC_BYTES         128u
+#define WM_FT4_REC_COUNT         16u
+#define WM_FT4_REC_STRIDE        8u
+#define WM_FT4_POOL_BYTES        640u
+#define WM_FT4_POOL_COUNT        16u
+#define WM_FT4_POOL_STRIDE       40u
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -416,9 +432,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_ft4_pools_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_FT4_POOLS");
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_GFX_WORK_BUFFERS");
+    /* FT4 pools imply gfx work-buffer routing. */
+    return env_flag_is_one("XENO_WORLD_GFX_WORK_BUFFERS") ||
+           world_ft4_pools_enabled();
 }
 
 static int world_record_clut_enabled(void)
@@ -537,9 +560,10 @@ static void log_enabled_slices(void)
     int w14 = world_primitive_templates_enabled();
     int w15 = world_record_clut_enabled();
     int w16 = world_gfx_work_buffers_enabled();
+    int w17 = world_ft4_pools_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14 && !w15 && !w16) {
+        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -573,6 +597,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W15B");
     if (w16)
         fprintf(stderr, ",W16B");
+    if (w17)
+        fprintf(stderr, ",W17B");
     fprintf(stderr, "\n");
 }
 
@@ -3800,6 +3826,344 @@ static int wm_route_gfx_allocate_work_buffers(void)
     return 0;
 }
 
+static int s_wm74594_ran;
+static int s_wm74594_hits;
+
+/*
+ * Retail 0x80074594 — heap dual POLY_FT4 pools (16×40) + 16×8 clear table.
+ * One-shot: re-entry would leak another 1408 B without free.
+ * Cut residual before 0x80072488.
+ */
+static int wm_80074594_init_ft4_pools(void)
+{
+    void* host_rec;
+    void* host_a;
+    void* host_b;
+    u32 psx_rec;
+    u32 psx_a;
+    u32 psx_b;
+    u8* rec;
+    u8* pool_a;
+    u8* pool_b;
+    u8 expect_rec[WM_FT4_REC_BYTES];
+    u8 expect_pool[WM_FT4_POOL_BYTES];
+    u8 snap_rec[WM_FT4_REC_BYTES];
+    int i;
+    int j;
+    int match_rec;
+    int match_a;
+    int match_b;
+    int unexpected;
+    u16 clut;
+    u16 tpage;
+    u32 pre_be14;
+    u32 pre_be18;
+    u32 pre_be38;
+    u32 pre_be24;
+    u32 pre_be4c;
+    u32 pre_d30c;
+    s32 gfx_size_snap;
+    void* gfx_buf0_snap;
+    void* gfx_buf1_snap;
+    u32 c7ec_snap;
+    u32 d4780_snap;
+    u32 ft4_code_snap;
+    u32 c88c_snap;
+    u32 bss_d198_snap;
+    u32 post_a_h;
+    u32 post_b_h;
+    u32 exp_pool_h;
+    u32 post_rec_h;
+    u32 exp_rec_h;
+
+    s_wm74594_hits++;
+    fprintf(stderr, "[worldmap-ft4-pools] entry\n");
+
+    if (s_wm74594_ran) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: already ran this process "
+                "(non-idempotent alloc; blocked)\n");
+        fprintf(stderr,
+                "[worldmap-ft4-pools] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (s_wm_gfx_work_world_hits == 0) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: W16B did not run (required)\n");
+        return -1;
+    }
+
+    pre_d30c = WM_U32(WM_FT4_REC_PTR);
+    pre_be14 = WM_U32(WM_FT4_POOL_A_PTR);
+    pre_be18 = WM_U32(WM_FT4_POOL_B_PTR);
+    pre_be38 = WM_U32(WM_FT4_FLAG_BE38);
+    pre_be24 = WM_U32(WM_POOL_BE24);
+    pre_be4c = WM_U32(WM_TMPL_DST_BE4C);
+    gfx_size_snap = g_GfxWorkBufferSize;
+    gfx_buf0_snap = g_GfxWorkBuffers;
+    gfx_buf1_snap = g_GfxWorkBuffer2;
+    c7ec_snap = WM_U32(WM_FIX_C7EC);
+    d4780_snap = WM_U16(WM_CLUT_D478);
+    ft4_code_snap = WM_U8(WM_PRIM_FT4_0 + 7u);
+    c88c_snap = WM_U32(WM_TW_MIRROR_C88C);
+    bss_d198_snap = WM_U32(0x8009D198u);
+
+    /* ---- Retail allocation order ---- */
+    host_rec = HeapAlloc(WM_FT4_REC_BYTES, 0);
+    if (host_rec == NULL) {
+        fprintf(stderr, "[worldmap-ft4-pools] ERROR: HeapAlloc(128) failed\n");
+        return -1;
+    }
+    psx_rec = host_ptr_to_psx_u32(host_rec);
+    if (psx_rec < 0x80000000u || psx_u32_to_host(psx_rec) != host_rec) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: rec KUSEG conversion failed "
+                "host=%p psx=0x%08x\n",
+                host_rec, psx_rec);
+        return -1;
+    }
+    WM_U32(WM_FT4_REC_PTR) = psx_rec;
+
+    host_a = HeapAlloc(WM_FT4_POOL_BYTES, 0);
+    if (host_a == NULL) {
+        fprintf(stderr, "[worldmap-ft4-pools] ERROR: HeapAlloc(640) A failed\n");
+        return -1;
+    }
+    psx_a = host_ptr_to_psx_u32(host_a);
+    if (psx_a < 0x80000000u || psx_u32_to_host(psx_a) != host_a) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: pool A KUSEG conversion failed\n");
+        return -1;
+    }
+    WM_U32(WM_FT4_POOL_A_PTR) = psx_a;
+
+    host_b = HeapAlloc(WM_FT4_POOL_BYTES, 0);
+    if (host_b == NULL) {
+        fprintf(stderr, "[worldmap-ft4-pools] ERROR: HeapAlloc(640) B failed\n");
+        return -1;
+    }
+    psx_b = host_ptr_to_psx_u32(host_b);
+    if (psx_b < 0x80000000u || psx_u32_to_host(psx_b) != host_b) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: pool B KUSEG conversion failed\n");
+        return -1;
+    }
+    WM_U32(WM_FT4_POOL_B_PTR) = psx_b;
+
+    if (host_rec == host_a || host_rec == host_b || host_a == host_b) {
+        fprintf(stderr, "[worldmap-ft4-pools] ERROR: overlapping allocations\n");
+        return -1;
+    }
+
+    rec = (u8*)host_rec;
+    pool_a = (u8*)host_a;
+    pool_b = (u8*)host_b;
+
+    /* Snapshot post-alloc contents for oracle of unwritten record bytes. */
+    wm_memcpy(snap_rec, rec, WM_FT4_REC_BYTES);
+
+    /* Clear loop: 16× stride 8 — sh 0 at +0, +2, +4 only. */
+    for (i = 0; i < (int)WM_FT4_REC_COUNT; i++) {
+        u32 off = (u32)i * WM_FT4_REC_STRIDE;
+        *(u16*)(rec + off + 0u) = 0;
+        *(u16*)(rec + off + 2u) = 0;
+        *(u16*)(rec + off + 4u) = 0;
+    }
+
+    /* FT4 seed loop — identical packets; XY/tag low left as heap residual. */
+    for (i = 0; i < (int)WM_FT4_POOL_COUNT; i++) {
+        u8* p = pool_a + (u32)i * WM_FT4_POOL_STRIDE;
+        p[3] = 9;    /* len */
+        p[7] = 0x2C; /* code POLY_FT4 */
+        p[4] = 64;   /* r */
+        p[5] = 64;   /* g */
+        p[6] = 72;   /* b */
+        p[12] = 128; /* u0 */
+        p[13] = 240; /* v0 */
+        p[20] = 143; /* u1 */
+        p[21] = 240; /* v1 */
+        p[28] = 128; /* u2 */
+        p[29] = 255; /* v2 */
+        p[36] = 143; /* u3 */
+        p[37] = 255; /* v3 */
+        clut = GetClut(288, 510);
+        *(u16*)(p + 14) = clut;
+        tpage = GetTPage(0, 0, 896, 256);
+        *(u16*)(p + 22) = tpage;
+        SetSemiTrans(p, 1);
+    }
+
+    /* Word copy 640 B pool A → pool B. */
+    {
+        u32* src = (u32*)pool_a;
+        u32* dst = (u32*)pool_b;
+        for (i = 0; i < (int)(WM_FT4_POOL_BYTES / 4u); i++)
+            dst[i] = src[i];
+    }
+
+    WM_U32(WM_FT4_FLAG_BE38) = 0;
+
+    /* ---- Oracle ---- */
+    wm_memcpy(expect_rec, snap_rec, WM_FT4_REC_BYTES);
+    for (i = 0; i < (int)WM_FT4_REC_COUNT; i++) {
+        u32 off = (u32)i * WM_FT4_REC_STRIDE;
+        expect_rec[off + 0] = 0;
+        expect_rec[off + 1] = 0;
+        expect_rec[off + 2] = 0;
+        expect_rec[off + 3] = 0;
+        expect_rec[off + 4] = 0;
+        expect_rec[off + 5] = 0;
+        /* +6,+7 preserved from snap */
+    }
+    /* Pool expect: start from post-seed pool_a (includes residual XY/tag). */
+    wm_memcpy(expect_pool, pool_a, WM_FT4_POOL_BYTES);
+
+    match_rec = 0;
+    for (j = 0; j < (int)WM_FT4_REC_BYTES; j++) {
+        if (rec[j] == expect_rec[j])
+            match_rec++;
+    }
+    match_a = 0;
+    match_b = 0;
+    for (j = 0; j < (int)WM_FT4_POOL_BYTES; j++) {
+        if (pool_a[j] == expect_pool[j])
+            match_a++;
+        if (pool_b[j] == expect_pool[j])
+            match_b++;
+    }
+    unexpected = 0;
+    for (j = 0; j < (int)WM_FT4_REC_BYTES; j++) {
+        if (rec[j] != expect_rec[j])
+            unexpected++;
+    }
+    for (j = 0; j < (int)WM_FT4_POOL_BYTES; j++) {
+        if (pool_a[j] != expect_pool[j] || pool_b[j] != pool_a[j])
+            unexpected++;
+    }
+    if (WM_U32(WM_FT4_FLAG_BE38) != 0)
+        unexpected++;
+
+    post_rec_h = wm_prim_fnv1a(rec, WM_FT4_REC_BYTES);
+    exp_rec_h = wm_prim_fnv1a(expect_rec, WM_FT4_REC_BYTES);
+    post_a_h = wm_prim_fnv1a(pool_a, WM_FT4_POOL_BYTES);
+    post_b_h = wm_prim_fnv1a(pool_b, WM_FT4_POOL_BYTES);
+    exp_pool_h = wm_prim_fnv1a(expect_pool, WM_FT4_POOL_BYTES);
+
+    clut = *(u16*)(pool_a + 14);
+    tpage = *(u16*)(pool_a + 22);
+
+    fprintf(stderr,
+            "[worldmap-ft4-pools] records_psx=0x%08x pool_a_psx=0x%08x "
+            "pool_b_psx=0x%08x record_bytes=%u pool_bytes=%u ft4_count=%u "
+            "pools_equal=%d be38=%u\n",
+            psx_rec, psx_a, psx_b, WM_FT4_REC_BYTES, WM_FT4_POOL_BYTES,
+            WM_FT4_POOL_COUNT, wm_memeq(pool_a, pool_b, WM_FT4_POOL_BYTES),
+            WM_U32(WM_FT4_FLAG_BE38));
+    fprintf(stderr,
+            "[worldmap-ft4-pools] host_rec=%p host_a=%p host_b=%p "
+            "clut=0x%04x tpage=0x%04x code0=0x%02x\n",
+            host_rec, host_a, host_b, (unsigned)clut, (unsigned)tpage,
+            (unsigned)pool_a[7]);
+    fprintf(stderr,
+            "[worldmap-ft4-pools] match rec=%d/%u poolA=%d/%u poolB=%d/%u "
+            "unexpected=%d hashes rec=0x%08x/0x%08x pool=0x%08x/0x%08x/"
+            "0x%08x\n",
+            match_rec, WM_FT4_REC_BYTES, match_a, WM_FT4_POOL_BYTES, match_b,
+            WM_FT4_POOL_BYTES, unexpected, post_rec_h, exp_rec_h, post_a_h,
+            post_b_h, exp_pool_h);
+
+    if (clut != 0x7F92u || tpage != 0x001Eu || pool_a[7] != 0x2Eu) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: FT4 helper/code mismatch "
+                "clut=0x%04x tpage=0x%04x code=0x%02x\n",
+                (unsigned)clut, (unsigned)tpage, (unsigned)pool_a[7]);
+        return -1;
+    }
+    if (match_rec != (int)WM_FT4_REC_BYTES ||
+        match_a != (int)WM_FT4_POOL_BYTES ||
+        match_b != (int)WM_FT4_POOL_BYTES || unexpected != 0 ||
+        !wm_memeq(pool_a, pool_b, WM_FT4_POOL_BYTES) ||
+        WM_U32(WM_FT4_REC_PTR) != psx_rec ||
+        WM_U32(WM_FT4_POOL_A_PTR) != psx_a ||
+        WM_U32(WM_FT4_POOL_B_PTR) != psx_b ||
+        WM_U32(WM_FT4_FLAG_BE38) != 0) {
+        fprintf(stderr, "[worldmap-ft4-pools] ERROR: oracle mismatch\n");
+        return -1;
+    }
+    for (i = 0; i < (int)WM_FT4_POOL_COUNT; i++) {
+        if (pool_a[(u32)i * WM_FT4_POOL_STRIDE + 7u] != 0x2Eu) {
+            fprintf(stderr,
+                    "[worldmap-ft4-pools] ERROR: FT4[%d] code\n", i);
+            return -1;
+        }
+    }
+
+    /* Neighbors + prior rungs. */
+    if (WM_U32(WM_POOL_BE24) != pre_be24 ||
+        WM_U32(WM_TMPL_DST_BE4C) != pre_be4c ||
+        g_GfxWorkBufferSize != gfx_size_snap ||
+        g_GfxWorkBuffers != gfx_buf0_snap ||
+        g_GfxWorkBuffer2 != gfx_buf1_snap ||
+        WM_U32(WM_FIX_C7EC) != c7ec_snap ||
+        WM_U16(WM_CLUT_D478) != (u16)d4780_snap ||
+        WM_U8(WM_PRIM_FT4_0 + 7u) != (u8)ft4_code_snap ||
+        WM_U32(WM_TW_MIRROR_C88C) != c88c_snap ||
+        WM_U32(0x8009D198u) != bss_d198_snap) {
+        fprintf(stderr,
+                "[worldmap-ft4-pools] ERROR: neighbor/prior-rung corrupted\n");
+        return -1;
+    }
+    (void)pre_d30c;
+    (void)pre_be14;
+    (void)pre_be18;
+    (void)pre_be38;
+
+    s_wm74594_ran = 1;
+    fprintf(stderr, "[worldmap-ft4-pools] exit\n");
+    fprintf(stderr,
+            "[worldmap-ft4-pools] cut-before-next-helper retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_863E0);
+
+    if (env_flag_is_one("XENO_WORLD_FT4_POOLS_DOUBLE_TEST")) {
+        u32 d30c_s = WM_U32(WM_FT4_REC_PTR);
+        u32 be14_s = WM_U32(WM_FT4_POOL_A_PTR);
+        u32 be18_s = WM_U32(WM_FT4_POOL_B_PTR);
+        u8 snap_a[WM_FT4_POOL_BYTES];
+        u8 snap_b[WM_FT4_POOL_BYTES];
+        u8 snap_r[WM_FT4_REC_BYTES];
+        int rc2;
+        int changed = 0;
+        wm_memcpy(snap_a, pool_a, WM_FT4_POOL_BYTES);
+        wm_memcpy(snap_b, pool_b, WM_FT4_POOL_BYTES);
+        wm_memcpy(snap_r, rec, WM_FT4_REC_BYTES);
+        rc2 = wm_80074594_init_ft4_pools();
+        for (j = 0; j < (int)WM_FT4_POOL_BYTES; j++) {
+            if (pool_a[j] != snap_a[j] || pool_b[j] != snap_b[j])
+                changed++;
+        }
+        for (j = 0; j < (int)WM_FT4_REC_BYTES; j++) {
+            if (rec[j] != snap_r[j])
+                changed++;
+        }
+        if (WM_U32(WM_FT4_REC_PTR) != d30c_s ||
+            WM_U32(WM_FT4_POOL_A_PTR) != be14_s ||
+            WM_U32(WM_FT4_POOL_B_PTR) != be18_s)
+            changed++;
+        fprintf(stderr,
+                "[worldmap-ft4-pools] double_test rc2=%d changed_bytes=%d "
+                "new_allocations=0\n",
+                rc2, changed);
+        if (rc2 == 0 || changed != 0) {
+            fprintf(stderr,
+                    "[worldmap-ft4-pools] ERROR: double-run guard failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 /*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
@@ -4070,6 +4434,24 @@ void PcPort_WorldMapInitMain(void)
                                                                         "still "
                                                                         "entering "
                                                                         "placeholder\n");
+                                                            } else if (
+                                                                world_ft4_pools_enabled()) {
+                                                                fprintf(stderr,
+                                                                        "[worldmap-init] "
+                                                                        "XENO_WORLD_"
+                                                                        "FT4_POOLS=1: "
+                                                                        "0x80074594 "
+                                                                        "FT4 pools\n");
+                                                                if (wm_80074594_init_ft4_pools() !=
+                                                                    0) {
+                                                                    fprintf(stderr,
+                                                                            "[worldmap-"
+                                                                            "ft4-pools] "
+                                                                            "failed; "
+                                                                            "still "
+                                                                            "entering "
+                                                                            "placeholder\n");
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -4086,7 +4468,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_gfx_work_buffers_enabled())
+            if (world_ft4_pools_enabled())
+                cut_pc = WM_CUT_BEFORE_863E0;
+            else if (world_gfx_work_buffers_enabled())
                 cut_pc = WM_CUT_BEFORE_74594;
             else if (world_record_clut_enabled())
                 cut_pc = WM_CUT_BEFORE_GFX_WORK;
