@@ -1,5 +1,5 @@
 /*
- * W2 / W3B / W4C / W5B — Native world-map initialization ladder.
+ * W2 / W3B / W4C / W5B / W6B — Native world-map initialization ladder.
  *
  * Retail WorldMapMain @ 0x80070CFC (overlay world_map.bin loaded at 0x8006FAF0).
  *
@@ -7,14 +7,16 @@
  * W3B: one-shot mode initializer 0x80071CDC (first-wave archive queue).
  * W4C: second-wave 0x80071EF0 → ArchiveDataSync poll → 0x80073530; cut before
  *      retail PC 0x800722BC.
- * W5B: object-pool 0x8009766C / 0x800976C8; cut before 0x800722C4
- *      (A180→BE4C copy). Does not enter full 0x80072238, wm_800712D0, or frames.
+ * W5B: object-pool 0x8009766C / 0x800976C8; cut before 0x800722C4.
+ * W6B: identity copy 8×u32 0x8009A180 → 0x8009BE4C; cut before 0x80072314.
+ *      Does not enter 0x80098044, full 0x80072238, wm_800712D0, or frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
  *   XENO_WORLD_SECOND_WAVE=1
  *   XENO_WORLD_OBJECT_POOL=1
+ *   XENO_WORLD_STATE_TEMPLATE=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -128,6 +130,7 @@
 /* Hard cuts */
 #define WM_CUT_BEFORE_BROAD      0x800722BCu /* after W4C: jal 0x8009766C */
 #define WM_CUT_BEFORE_A180_COPY  0x800722C4u /* after W5B: A180→BE4C */
+#define WM_CUT_BEFORE_CONST_BLK  0x80072314u /* after W6B: mode-enter consts */
 #define WM_BROAD_9766C           0x8009766Cu
 #define WM_POOL_BE24             0x8009BE24u
 #define WM_POOL_ALLOC_SIZE       8192u
@@ -136,6 +139,11 @@
 #define WM_POOL_OFF_18           0x18u
 #define WM_POOL_OFF_1C           0x1Cu
 #define WM_POOL_OFF_4C           0x4Cu
+/* W6B template: overlay image src → world BSS dest (8 words, identity). */
+#define WM_TMPL_SRC_A180         0x8009A180u
+#define WM_TMPL_DST_BE4C         0x8009BE4Cu
+#define WM_TMPL_WORD_COUNT       8
+#define WM_TMPL_BYTE_COUNT       (WM_TMPL_WORD_COUNT * 4u)
 
 /* Channel ID tables live in host g_GameState (retail abs inside GS span). */
 #define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
@@ -251,20 +259,26 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_state_template_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_STATE_TEMPLATE");
+}
+
 static int world_object_pool_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_OBJECT_POOL");
+    /* State-template implies object-pool. */
+    return env_flag_is_one("XENO_WORLD_OBJECT_POOL") || world_state_template_enabled();
 }
 
 static int world_second_wave_enabled(void)
 {
-    /* Object-pool implies second-wave. */
+    /* Object-pool / template imply second-wave. */
     return env_flag_is_one("XENO_WORLD_SECOND_WAVE") || world_object_pool_enabled();
 }
 
 static int world_mode_init_enabled(void)
 {
-    /* Second-wave / object-pool imply mode-init. */
+    /* Second-wave ladder implies mode-init. */
     return env_flag_is_one("XENO_WORLD_MODE_INIT") || world_second_wave_enabled();
 }
 
@@ -285,8 +299,9 @@ static void log_enabled_slices(void)
     int w3 = world_mode_init_enabled();
     int w4 = world_second_wave_enabled();
     int w5 = world_object_pool_enabled();
+    int w6 = world_state_template_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4 && !w5) {
+    if (!w2 && !w3 && !w4 && !w5 && !w6) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -298,6 +313,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W4C");
     if (w5)
         fprintf(stderr, ",W5B");
+    if (w6)
+        fprintf(stderr, ",W6B");
     fprintf(stderr, "\n");
 }
 
@@ -1087,6 +1104,87 @@ static int wm_8009766C_object_pool(void)
 }
 
 /*
+ * W6B — retail 0x800722C4–0x80072310: unrolled identity copy of 8 u32 words
+ * from overlay image 0x8009A180 → world BSS 0x8009BE4C. No transforms.
+ * Does not hard-code source values; does not touch the object pool at *BE24.
+ */
+static int wm_state_template_copy(void)
+{
+    u32* src;
+    u32* dst;
+    u32 i;
+    int match;
+
+    fprintf(stderr, "[worldmap-state-template] entry\n");
+    fprintf(stderr,
+            "[worldmap-state-template] src_psx=0x%08x dst_psx=0x%08x "
+            "words=%u bytes=%u\n",
+            WM_TMPL_SRC_A180, WM_TMPL_DST_BE4C, WM_TMPL_WORD_COUNT,
+            WM_TMPL_BYTE_COUNT);
+
+    /* Source must sit in the planted overlay image (below BSS start). */
+    if (WM_TMPL_SRC_A180 < WM_OVERLAY_BASE ||
+        WM_TMPL_SRC_A180 + WM_TMPL_BYTE_COUNT > WM_MEM_START) {
+        fprintf(stderr,
+                "[worldmap-state-template] ERROR: source not in overlay image\n");
+        return -1;
+    }
+    if (WM_TMPL_DST_BE4C < WM_MEM_START) {
+        fprintf(stderr,
+                "[worldmap-state-template] ERROR: dest not in world BSS\n");
+        return -1;
+    }
+    /* Dest must not overlap the pool pointer slot or be confused with heap. */
+    if (WM_TMPL_DST_BE4C == WM_POOL_BE24) {
+        fprintf(stderr,
+                "[worldmap-state-template] ERROR: dest is pool pointer slot\n");
+        return -1;
+    }
+
+    src = (u32*)PSX_ADDR(WM_TMPL_SRC_A180);
+    dst = (u32*)PSX_ADDR(WM_TMPL_DST_BE4C);
+
+    fprintf(stderr, "[worldmap-state-template] src_host=%p dst_host=%p\n",
+            (void*)src, (void*)dst);
+    fprintf(stderr, "[worldmap-state-template] src_words:");
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++)
+        fprintf(stderr, " 0x%08x", src[i]);
+    fprintf(stderr, "\n");
+
+    /* Retail unrolled lw/sw pairs — identity word copy. */
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++)
+        dst[i] = src[i];
+
+    match = 0;
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++) {
+        if (dst[i] == src[i])
+            match++;
+    }
+
+    fprintf(stderr, "[worldmap-state-template] dst_words:");
+    for (i = 0; i < WM_TMPL_WORD_COUNT; i++)
+        fprintf(stderr, " 0x%08x", dst[i]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "[worldmap-state-template] word_match=%d/%u\n",
+            match, WM_TMPL_WORD_COUNT);
+    fprintf(stderr,
+            "[worldmap-state-template] pool_BE24_unchanged=0x%08x "
+            "(not written by this step)\n",
+            WM_U32(WM_POOL_BE24));
+
+    if (match != (int)WM_TMPL_WORD_COUNT) {
+        fprintf(stderr, "[worldmap-state-template] ERROR: copy verify failed\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-state-template] exit\n");
+    fprintf(stderr,
+            "[worldmap-state-template] cut-before-const-block retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_CONST_BLK);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -1209,18 +1307,28 @@ void PcPort_WorldMapInitMain(void)
                         "placeholder\n");
             } else if (world_object_pool_enabled()) {
                 fprintf(stderr,
-                        "[worldmap-init] XENO_WORLD_OBJECT_POOL=1: "
-                        "0x8009766C pool init\n");
+                        "[worldmap-init] object-pool: 0x8009766C pool init\n");
                 if (wm_8009766C_object_pool() != 0) {
                     fprintf(stderr,
                             "[worldmap-object-pool] failed; still entering "
                             "placeholder\n");
+                } else if (world_state_template_enabled()) {
+                    fprintf(stderr,
+                            "[worldmap-init] XENO_WORLD_STATE_TEMPLATE=1: "
+                            "A180→BE4C 8-word copy\n");
+                    if (wm_state_template_copy() != 0) {
+                        fprintf(stderr,
+                                "[worldmap-state-template] failed; still "
+                                "entering placeholder\n");
+                    }
                 }
             }
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_object_pool_enabled())
+            if (world_state_template_enabled())
+                cut_pc = WM_CUT_BEFORE_CONST_BLK;
+            else if (world_object_pool_enabled())
                 cut_pc = WM_CUT_BEFORE_A180_COPY;
             else if (world_second_wave_enabled())
                 cut_pc = WM_CUT_BEFORE_BROAD;
