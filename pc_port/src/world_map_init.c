@@ -31,12 +31,15 @@
 #define WM_NOMINAL_BSS_SPAN      (WM_MEM_START - WM_OVERLAY_BASE) /* 180416 */
 #define WM_BSS_OVERLAP_BYTES     (WM_OVERLAY_IMAGE_SIZE - WM_NOMINAL_BSS_SPAN) /* 6 */
 
-/* GameState transition tuple (in-place; g_GameState @ 0x8006D634) */
-#define GS_SELECTOR_ABS          0x8006F94Eu /* +0x231A */
-#define GS_HEADING_ABS           0x8006F950u /* +0x231C */
-#define GS_ARG2_ABS              0x8006F952u /* +0x231E */
-#define GS_ENTRANCE_ABS          0x8006F954u /* +0x2320 */
-#define GS_SEED_1930_ABS         0x8006EF64u /* +0x1930, a1 for entrance table */
+/* GameState transition tuple offsets. Retail absolute addresses
+ * (0x8006F94E..) equal g_GameState+off when g_GameState lives at 0x8006D634
+ * in PSX RAM. The port's g_pGameState points at the host g_GameState blob
+ * that field already wrote; consume that pointer in place (no shadow copy). */
+#define GS_OFF_SELECTOR          0x231Au
+#define GS_OFF_HEADING           0x231Cu
+#define GS_OFF_ARG2              0x231Eu
+#define GS_OFF_ENTRANCE          0x2320u
+#define GS_OFF_SEED_1930         0x1930u
 
 /* World-map state written by init (exact retail destinations) */
 #define WM_WORLD_INDEX_ABS       0x8009BD0Cu
@@ -86,6 +89,10 @@ extern void FlushCache(void);
 extern int VSync(int mode);
 extern u32 g_ArchiveDebugTable;
 extern int ArchiveDecodeSize(int entryIndex);
+extern void* g_pGameState;
+
+#define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
+#define GS_S16(off) (*(s16*)((u8*)g_pGameState + (off)))
 
 /* Retail registers a vsync IRQ callback (libetc). Host has no PSX IRQ table;
  * accepting the function pointer is enough for init ordering. */
@@ -316,10 +323,17 @@ static int ensure_world_overlay_image(u32* out_final_write)
  */
 static int world_map_main_init_lahan(void)
 {
-    u16 entrance_hw = WM_U16(GS_ENTRANCE_ABS);
+    u16 entrance_hw;
     u16 selector, heading, arg2, entrance;
     s32 world_index;
     s32 seed_1930;
+
+    if (g_pGameState == NULL) {
+        fprintf(stderr, "[worldmap-init] ERROR: g_pGameState is NULL\n");
+        return -1;
+    }
+
+    entrance_hw = GS_U16(GS_OFF_ENTRANCE);
 
     /* Always: flag byte @ 0x800691AE = 1 (retail before cold branch). */
     WM_U8(WM_FLAG_91AE_ABS) = 1;
@@ -344,12 +358,12 @@ static int world_map_main_init_lahan(void)
     else
         WM_U32(WM_FLAG_C894_ABS) = 0;
 
-    /* Tuple normalize @ 0x80070F90+ — read GS in place, no shadow copy. */
-    seed_1930 = (s32)(s16)WM_U16(GS_SEED_1930_ABS);
-    entrance = WM_U16(GS_ENTRANCE_ABS);
-    selector = WM_U16(GS_SELECTOR_ABS);
-    arg2 = WM_U16(GS_ARG2_ABS);
-    heading = WM_U16(GS_HEADING_ABS);
+    /* Tuple normalize @ 0x80070F90+ — read host g_pGameState in place. */
+    seed_1930 = (s32)GS_S16(GS_OFF_SEED_1930);
+    entrance = GS_U16(GS_OFF_ENTRANCE);
+    selector = GS_U16(GS_OFF_SELECTOR);
+    arg2 = GS_U16(GS_OFF_ARG2);
+    heading = GS_U16(GS_OFF_HEADING);
 
     WM_U32(WM_ZERO_BBC4_ABS) = 0;
     entrance &= 0x7FFF;
@@ -359,7 +373,7 @@ static int world_map_main_init_lahan(void)
     WM_U32(WM_ARG2_STATE_ABS) = (u32)arg2;
     WM_U32(WM_HEADING_STATE_ABS) = (u32)heading;
     WM_U32(WM_ENTRANCE_STATE_ABS) = (u32)entrance;
-    WM_U16(GS_ENTRANCE_ABS) = entrance;
+    GS_U16(GS_OFF_ENTRANCE) = entrance;
 
     fprintf(stderr,
             "[worldmap-init] selector=0x%04x world_index=%d entrance=%d "
