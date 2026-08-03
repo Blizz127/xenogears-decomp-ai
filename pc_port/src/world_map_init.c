@@ -175,6 +175,7 @@
 #define WM_CUT_BEFORE_GFX_WORK   0x80072478u /* after W15B: jal GfxAllocate */
 #define WM_CUT_BEFORE_74594      0x80072480u /* after W16B: jal 0x80074594 */
 #define WM_CUT_BEFORE_863E0      0x80072488u /* after W17B: jal 0x800863E0 */
+#define WM_CUT_AFTER_863E0       0x80072490u /* after W18B return; before jal 0x80074E58 */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -189,6 +190,18 @@
 #define WM_FT4_POOL_BYTES        640u
 #define WM_FT4_POOL_COUNT        16u
 #define WM_FT4_POOL_STRIDE       40u
+
+/* W18B wm_800863E0 destinations */
+#define WM_HEAP_TABLE_A_PTR      0x8009D150u
+#define WM_HEAP_TABLE_B_PTR      0x8009CEB4u
+#define WM_SRC_AF30              0x8009AF30u
+#define WM_SRC_AF38              0x8009AF38u
+#define WM_TABLE_A_RECORDS       80u
+#define WM_TABLE_A_STRIDE        16u
+#define WM_TABLE_A_BYTES         1280u
+#define WM_TABLE_B_RECORDS       80u
+#define WM_TABLE_B_STRIDE        8u
+#define WM_TABLE_B_BYTES         640u
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -298,6 +311,8 @@ extern void ExitCriticalSection(void);
 extern void FlushCache(void);
 extern int VSync(int mode);
 extern u32 g_ArchiveDebugTable;
+extern uint32_t g_RandomSeed;
+extern int rand(void);
 extern int ArchiveDecodeSize(int entryIndex);
 extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
 extern int func_80029AFC(void* pEntries, int arg1, int arg2);
@@ -434,14 +449,23 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_FT4_POOLS");
+    /* W17B runs when requested or as a prerequisite of W18B. */
+    return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
+           env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND");
+}
+
+static int world_heap_table_rand_enabled(void)
+{
+    /* Narrow W18B gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND");
 }
 
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
     return env_flag_is_one("XENO_WORLD_GFX_WORK_BUFFERS") ||
-           world_ft4_pools_enabled();
+           world_ft4_pools_enabled() ||
+           world_heap_table_rand_enabled();
 }
 
 static int world_record_clut_enabled(void)
@@ -561,9 +585,10 @@ static void log_enabled_slices(void)
     int w15 = world_record_clut_enabled();
     int w16 = world_gfx_work_buffers_enabled();
     int w17 = world_ft4_pools_enabled();
+    int w18 = world_heap_table_rand_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17) {
+        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -599,6 +624,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W16B");
     if (w17)
         fprintf(stderr, ",W17B");
+    if (w18)
+        fprintf(stderr, ",W18B");
     fprintf(stderr, "\n");
 }
 
@@ -3827,7 +3854,9 @@ static int wm_route_gfx_allocate_work_buffers(void)
 }
 
 static int s_wm74594_ran;
+static int s_wm863E0_ran;
 static int s_wm74594_hits;
+static int s_wm863E0_hits;
 
 /*
  * Retail 0x80074594 — heap dual POLY_FT4 pools (16×40) + 16×8 clear table.
@@ -4165,6 +4194,352 @@ static int wm_80074594_init_ft4_pools(void)
 }
 
 /*
+ * W18B — wm_800863E0: heap-table and RNG initialization.
+ * Allocates 1280+640 bytes, fills 80 records in each with source-table +
+ * pseudo-random data via rand() (240 calls total). Non-idempotent.
+ *
+ * AUDIT CORRECTION (documented, not silently inlined): an independent
+ * re-disassembly of the retail bytes in disc/world_map.bin shows the W18A
+ * audit's Table A +4/+8 and Table B +2/+4 field labels are swapped. The two
+ * MIPS delay-slot stores actually land at:
+ *   Table A +4 = rand() transform (sw in rand() delay slot pair), +8 = AF38
+ *   Table B +2 = rand() & 1, +4 = -(s2 * 2048)
+ * This implementation follows the actual retail bytes, not the audit labels.
+ */
+static int wm_800863E0_init_heap_table_rand(void)
+{
+    void* host_a;
+    void* host_b;
+    u32 psx_a;
+    u32 psx_b;
+    u8* table_a;
+    u8* table_b;
+    u8 orig_a[WM_TABLE_A_BYTES];
+    u8 orig_b[WM_TABLE_B_BYTES];
+    u8 exp_a[WM_TABLE_A_BYTES];
+    u8 exp_b[WM_TABLE_B_BYTES];
+    uint32_t pre_seed;
+    uint32_t post_seed;
+    uint32_t oseed;
+    u32 src;
+    int s4, s2, s0, i, j;
+    int r;
+    int s2_val;
+    int mismatch_a;
+    int mismatch_b;
+    u32 pre_d150;
+    u32 pre_ceb4;
+    u32 pre_be14;
+    u32 pre_be18;
+    u32 pre_be38;
+    u32 pre_d30c;
+    s32 gfx_size_snap;
+    void* gfx_buf0_snap;
+    void* gfx_buf1_snap;
+    u32 c7ec_snap;
+    u32 d4780_snap;
+    u32 ft4_code_snap;
+    u32 c88c_snap;
+    u32 bss_d198_snap;
+    u32 post_a_h;
+    u32 post_b_h;
+    u32 exp_a_h;
+    u32 exp_b_h;
+
+    s_wm863E0_hits++;
+    fprintf(stderr, "[worldmap-heap-table-rand] entry\n");
+
+    if (s_wm863E0_ran) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: already ran "
+                "(non-idempotent alloc; blocked)\n");
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (s_wm74594_ran == 0) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: W17B did not run "
+                "(required)\n");
+        return -1;
+    }
+
+    pre_d150 = WM_U32(WM_HEAP_TABLE_A_PTR);
+    pre_ceb4 = WM_U32(WM_HEAP_TABLE_B_PTR);
+    pre_d30c = WM_U32(WM_FT4_REC_PTR);
+    pre_be14 = WM_U32(WM_FT4_POOL_A_PTR);
+    pre_be18 = WM_U32(WM_FT4_POOL_B_PTR);
+    pre_be38 = WM_U32(WM_FT4_FLAG_BE38);
+    gfx_size_snap = g_GfxWorkBufferSize;
+    gfx_buf0_snap = g_GfxWorkBuffers;
+    gfx_buf1_snap = g_GfxWorkBuffer2;
+    c7ec_snap = WM_U32(WM_FIX_C7EC);
+    d4780_snap = WM_U16(WM_CLUT_D478);
+    ft4_code_snap = WM_U8(WM_PRIM_FT4_0 + 7u);
+    c88c_snap = WM_U32(WM_TW_MIRROR_C88C);
+    bss_d198_snap = WM_U32(0x8009D198u);
+
+    /* Snapshot production RNG state before the body. */
+    pre_seed = g_RandomSeed;
+
+    /* --- Allocate Table A: 1280 bytes --- */
+    host_a = HeapAlloc(WM_TABLE_A_BYTES, 0);
+    if (host_a == NULL) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: HeapAlloc(1280) failed\n");
+        return -1;
+    }
+    psx_a = host_ptr_to_psx_u32(host_a);
+    if (psx_a < 0x80000000u || psx_u32_to_host(psx_a) != host_a) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: table_A KUSEG conversion "
+                "failed\n");
+        return -1;
+    }
+    WM_U32(WM_HEAP_TABLE_A_PTR) = psx_a;
+
+    /* --- Allocate Table B: 640 bytes --- */
+    host_b = HeapAlloc(WM_TABLE_B_BYTES, 0);
+    if (host_b == NULL) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: HeapAlloc(640) failed\n");
+        return -1;
+    }
+    psx_b = host_ptr_to_psx_u32(host_b);
+    if (psx_b < 0x80000000u || psx_u32_to_host(psx_b) != host_b) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: table_B KUSEG conversion "
+                "failed\n");
+        return -1;
+    }
+    WM_U32(WM_HEAP_TABLE_B_PTR) = psx_b;
+
+    if (host_a == host_b) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: overlapping allocations\n");
+        return -1;
+    }
+
+    table_a = (u8*)host_a;
+    table_b = (u8*)host_b;
+
+    /* Snapshot the full post-alloc contents: every retail-unwritten byte must
+     * retain its heap garbage (flag=0 does not zero). */
+    wm_memcpy(orig_a, table_a, WM_TABLE_A_BYTES);
+    wm_memcpy(orig_b, table_b, WM_TABLE_B_BYTES);
+
+    /* --- Phase 1: Fill Table A (80 records × 16 bytes) --- */
+    /* Nested loops: s4=0..3, s2=0..3, s0=0..80 step 16. One rand() per record. */
+    for (s4 = 0; s4 < 4; s4++) {
+        for (s2 = 0; s2 < 4; s2++) {
+            for (s0 = 0; s0 < 80; s0 += 16) {
+                u32 off = (u32)((s4 * 4 + s2) * 5 + (s0 >> 4)) * WM_TABLE_A_STRIDE;
+                u8* rec = table_a + off;
+
+                /* +0: (AF30[s0] + s2*2048) << 12  (u32 wrap) */
+                src = WM_U32(WM_SRC_AF30 + (u32)s0);
+                *(u32*)(rec + 0) = (src + (u32)s2 * 2048u) << 12;
+
+                /* +4: rand() transform, pure u32 wrap matching MIPS:
+                 *   sra r,10 -> negu -> sll 3 -> addiu -512 -> sll 12 */
+                r = rand();
+                {
+                    u32 a = (u32)r >> 10;
+                    u32 b = 0u - a;
+                    u32 c = b << 3;
+                    u32 d = c - 512u;
+                    *(u32*)(rec + 4) = d << 12;
+                }
+
+                /* +8: (AF38[s0] + s4*2048) << 12  (u32 wrap) */
+                src = WM_U32(WM_SRC_AF38 + (u32)s0);
+                *(u32*)(rec + 8) = (src + (u32)s4 * 2048u) << 12;
+
+                /* +12: unwritten (heap garbage) */
+            }
+        }
+    }
+
+    /* --- Phase 2: Fill Table B (80 records × 8 bytes) --- */
+    for (i = 0; i < (int)WM_TABLE_B_RECORDS; i++) {
+        u8* rec = table_b + (u32)i * WM_TABLE_B_STRIDE;
+
+        /* +0/+4 share one rand(): s2 = (rand() & 3) + 1 */
+        s2_val = (rand() & 3) + 1;
+        *(u16*)(rec + 0) = (u16)(3547u * (u32)s2_val);
+        *(u16*)(rec + 4) = (u16)(0u - (u32)((u32)s2_val * 2048u));
+
+        /* +2: rand() & 1 */
+        *(u16*)(rec + 2) = (u16)((u32)rand() & 1u);
+
+        /* +6: unwritten (heap garbage) */
+    }
+
+    post_seed = g_RandomSeed;
+
+    /* ---- Standalone oracle ----
+     * Pure LCG on a private seed; consumes no production RNG. Replays the
+     * audited loop order, starting from the snapshot pre_seed, and builds
+     * expected tables seeded with the pre-write heap contents so that the
+     * whole-table byte comparison also proves unwritten bytes are untouched. */
+    oseed = pre_seed;
+    wm_memcpy(exp_a, orig_a, WM_TABLE_A_BYTES);
+    for (s4 = 0; s4 < 4; s4++) {
+        for (s2 = 0; s2 < 4; s2++) {
+            for (s0 = 0; s0 < 80; s0 += 16) {
+                u32 off = (u32)((s4 * 4 + s2) * 5 + (s0 >> 4)) * WM_TABLE_A_STRIDE;
+                u8* rec = exp_a + off;
+                uint32_t rr;
+
+                oseed = oseed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
+                rr = (oseed >> 16) & UINT32_C(0x7FFF);
+                *(u32*)(rec + 0) =
+                    (WM_U32(WM_SRC_AF30 + (u32)s0) + (u32)s2 * 2048u) << 12;
+                {
+                    u32 a = rr >> 10;
+                    u32 b = 0u - a;
+                    u32 c = b << 3;
+                    u32 d = c - 512u;
+                    *(u32*)(rec + 4) = d << 12;
+                }
+                *(u32*)(rec + 8) =
+                    (WM_U32(WM_SRC_AF38 + (u32)s0) + (u32)s4 * 2048u) << 12;
+            }
+        }
+    }
+    wm_memcpy(exp_b, orig_b, WM_TABLE_B_BYTES);
+    for (i = 0; i < (int)WM_TABLE_B_RECORDS; i++) {
+        u8* rec = exp_b + (u32)i * WM_TABLE_B_STRIDE;
+        uint32_t rr;
+        int s2o;
+
+        oseed = oseed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
+        rr = (oseed >> 16) & UINT32_C(0x7FFF);
+        s2o = (int)((rr & 3u) + 1u);
+        *(u16*)(rec + 0) = (u16)(3547u * (u32)s2o);
+        *(u16*)(rec + 4) = (u16)(0u - (u32)((u32)s2o * 2048u));
+
+        oseed = oseed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
+        rr = (oseed >> 16) & UINT32_C(0x7FFF);
+        *(u16*)(rec + 2) = (u16)(rr & 1u);
+    }
+
+    mismatch_a = 0;
+    for (j = 0; j < (int)WM_TABLE_A_BYTES; j++) {
+        if (table_a[j] != exp_a[j])
+            mismatch_a++;
+    }
+    mismatch_b = 0;
+    for (j = 0; j < (int)WM_TABLE_B_BYTES; j++) {
+        if (table_b[j] != exp_b[j])
+            mismatch_b++;
+    }
+
+    post_a_h = wm_prim_fnv1a(table_a, WM_TABLE_A_BYTES);
+    exp_a_h = wm_prim_fnv1a(exp_a, WM_TABLE_A_BYTES);
+    post_b_h = wm_prim_fnv1a(table_b, WM_TABLE_B_BYTES);
+    exp_b_h = wm_prim_fnv1a(exp_b, WM_TABLE_B_BYTES);
+
+    fprintf(stderr,
+            "[worldmap-heap-table-rand] table_a_psx=0x%08x "
+            "table_b_psx=0x%08x pre_seed=0x%08x post_seed=0x%08x "
+            "oracle_seed=0x%08x rand_calls=240\n",
+            psx_a, psx_b, pre_seed, post_seed, oseed);
+    fprintf(stderr,
+            "[worldmap-heap-table-rand] mismatch_a=%d/%u mismatch_b=%d/%u "
+            "hashes a=0x%08x/0x%08x b=0x%08x/0x%08x\n",
+            mismatch_a, WM_TABLE_A_BYTES, mismatch_b, WM_TABLE_B_BYTES,
+            post_a_h, exp_a_h, post_b_h, exp_b_h);
+
+    if (mismatch_a != 0 || mismatch_b != 0) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: oracle mismatch\n");
+        return -1;
+    }
+    if (oseed != post_seed) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: RNG final-seed mismatch "
+                "oracle=0x%08x production=0x%08x\n",
+                oseed, post_seed);
+        return -1;
+    }
+    if (WM_U32(WM_HEAP_TABLE_A_PTR) != psx_a ||
+        WM_U32(WM_HEAP_TABLE_B_PTR) != psx_b) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: BSS pointer mismatch\n");
+        return -1;
+    }
+
+    /* Verify prior-rung neighbor state unchanged */
+    if (WM_U32(WM_FT4_REC_PTR) != pre_d30c ||
+        WM_U32(WM_FT4_POOL_A_PTR) != pre_be14 ||
+        WM_U32(WM_FT4_POOL_B_PTR) != pre_be18 ||
+        WM_U32(WM_FT4_FLAG_BE38) != pre_be38 ||
+        g_GfxWorkBufferSize != gfx_size_snap ||
+        g_GfxWorkBuffers != gfx_buf0_snap ||
+        g_GfxWorkBuffer2 != gfx_buf1_snap ||
+        WM_U32(WM_FIX_C7EC) != c7ec_snap ||
+        WM_U16(WM_CLUT_D478) != (u16)d4780_snap ||
+        WM_U8(WM_PRIM_FT4_0 + 7u) != (u8)ft4_code_snap ||
+        WM_U32(WM_TW_MIRROR_C88C) != c88c_snap ||
+        WM_U32(0x8009D198u) != bss_d198_snap) {
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] ERROR: neighbor/prior-rung "
+                "corrupted\n");
+        return -1;
+    }
+    (void)pre_d150;
+    (void)pre_ceb4;
+
+    s_wm863E0_ran = 1;
+    fprintf(stderr, "[worldmap-heap-table-rand] exit\n");
+    fprintf(stderr,
+            "[worldmap-heap-table-rand] cut-before-next-helper "
+            "retail_pc=0x%08x\n",
+            WM_CUT_AFTER_863E0);
+
+    if (env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND_DOUBLE_TEST")) {
+        u32 d150_s = WM_U32(WM_HEAP_TABLE_A_PTR);
+        u32 ceb4_s = WM_U32(WM_HEAP_TABLE_B_PTR);
+        uint32_t seed_s = g_RandomSeed;
+        u8 snap_a[WM_TABLE_A_BYTES];
+        u8 snap_b[WM_TABLE_B_BYTES];
+        int rc2;
+        int changed = 0;
+
+        wm_memcpy(snap_a, table_a, WM_TABLE_A_BYTES);
+        wm_memcpy(snap_b, table_b, WM_TABLE_B_BYTES);
+        rc2 = wm_800863E0_init_heap_table_rand();
+        for (j = 0; j < (int)WM_TABLE_A_BYTES; j++) {
+            if (table_a[j] != snap_a[j])
+                changed++;
+        }
+        for (j = 0; j < (int)WM_TABLE_B_BYTES; j++) {
+            if (table_b[j] != snap_b[j])
+                changed++;
+        }
+        if (WM_U32(WM_HEAP_TABLE_A_PTR) != d150_s ||
+            WM_U32(WM_HEAP_TABLE_B_PTR) != ceb4_s)
+            changed++;
+        if (g_RandomSeed != seed_s)
+            changed++;
+        fprintf(stderr,
+                "[worldmap-heap-table-rand] double_test rc2=%d "
+                "changed_bytes=%d new_allocations=0 rng_advance=0\n",
+                rc2, changed);
+        if (rc2 == 0 || changed != 0) {
+            fprintf(stderr,
+                    "[worldmap-heap-table-rand] ERROR: double-run guard "
+                    "failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -4451,6 +4826,27 @@ void PcPort_WorldMapInitMain(void)
                                                                             "still "
                                                                             "entering "
                                                                             "placeholder\n");
+                                                                } else if (
+                                                                    world_heap_table_rand_enabled()) {
+                                                                    fprintf(stderr,
+                                                                            "[worldmap-init] "
+                                                                            "XENO_WORLD_"
+                                                                            "HEAP_TABLE_"
+                                                                            "RAND=1: "
+                                                                            "0x800863E0 "
+                                                                            "heap-table "
+                                                                            "rand init\n");
+                                                                    if (wm_800863E0_init_heap_table_rand() !=
+                                                                        0) {
+                                                                        fprintf(stderr,
+                                                                                "[worldmap-"
+                                                                                "heap-table-"
+                                                                                "rand] "
+                                                                                "failed; "
+                                                                                "still "
+                                                                                "entering "
+                                                                                "placeholder\n");
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -4468,7 +4864,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_ft4_pools_enabled())
+            if (world_heap_table_rand_enabled())
+                cut_pc = WM_CUT_AFTER_863E0;
+            else if (world_ft4_pools_enabled())
                 cut_pc = WM_CUT_BEFORE_863E0;
             else if (world_gfx_work_buffers_enabled())
                 cut_pc = WM_CUT_BEFORE_74594;

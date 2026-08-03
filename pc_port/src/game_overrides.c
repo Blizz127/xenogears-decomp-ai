@@ -2304,8 +2304,10 @@ void PcPort_InitGameStates(void)
      * XENO_WORLD_GFX_WORK_BUFFERS=1: also routes
      * GfxAllocateWorkBuffers(5120,0), cut before 0x80072480.
      * XENO_WORLD_FT4_POOLS=1: also runs 0x80074594 (heap FT4 pools), cut
-     * before 0x80072488 (still no 0x800863E0 / poll / main loop /
-     * wm_800712D0 / broad residual). */
+     * before 0x80072488.
+     * XENO_WORLD_HEAP_TABLE_RAND=1: also runs 0x800863E0 (heap tables A/B
+     * + 240 rand()), cut before 0x80072490 (still no 0x80074E58 / poll /
+     * main loop / wm_800712D0 / broad residual). Implies FT4_POOLS. */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
@@ -2325,6 +2327,7 @@ void PcPort_InitGameStates(void)
         const char* recClut = getenv("XENO_WORLD_RECORD_CLUT_INIT");
         const char* gfxWork = getenv("XENO_WORLD_GFX_WORK_BUFFERS");
         const char* ft4Pools = getenv("XENO_WORLD_FT4_POOLS");
+        const char* heapRand = getenv("XENO_WORLD_HEAP_TABLE_RAND");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
@@ -2336,7 +2339,8 @@ void PcPort_InitGameStates(void)
                    "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s CROSS_PRODUCTS=%s "
                    "GPU_ASSET_A=%s GPU_ASSET_B=%s OBJECT_MATRIX=%s "
                    "THIRD_WAVE=%s BSS_CONSTANTS=%s PRIMITIVE_TEMPLATES=%s "
-                   "RECORD_CLUT_INIT=%s GFX_WORK_BUFFERS=%s FT4_POOLS=%s\n",
+                   "RECORD_CLUT_INIT=%s GFX_WORK_BUFFERS=%s FT4_POOLS=%s "
+                   "HEAP_TABLE_RAND=%s\n",
                    (modeInit && modeInit[0]) ? modeInit : "off",
                    (secondWave && secondWave[0]) ? secondWave : "off",
                    (objectPool && objectPool[0]) ? objectPool : "off",
@@ -2351,7 +2355,8 @@ void PcPort_InitGameStates(void)
                    (primTmpl && primTmpl[0]) ? primTmpl : "off",
                    (recClut && recClut[0]) ? recClut : "off",
                    (gfxWork && gfxWork[0]) ? gfxWork : "off",
-                   (ft4Pools && ft4Pools[0]) ? ft4Pools : "off");
+                   (ft4Pools && ft4Pools[0]) ? ft4Pools : "off",
+                   (heapRand && heapRand[0]) ? heapRand : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;
