@@ -2286,12 +2286,15 @@ void PcPort_InitGameStates(void)
      * Default: hollow placeholder, hasOverlay=0 (F16).
      * XENO_WORLD_INIT=1: load archive 0x0F, native WorldMapMain pre-loop init,
      * then placeholder. XENO_WORLD_MODE_INIT=1: also runs Lahan mode
-     * initializer 0x80071CDC once (still no main loop / wm_800712D0). */
+     * initializer 0x80071CDC once. XENO_WORLD_SECOND_WAVE=1: also runs
+     * 0x80071EF0 → ArchiveDataSync poll → 0x80073530 once, then cuts before
+     * 0x800722BC (still no main loop / wm_800712D0 / 0x8009766C). */
     {
         extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
         int worldInit = PcPort_WorldMapInitEnabled();
         const char* modeInit = getenv("XENO_WORLD_MODE_INIT");
+        const char* secondWave = getenv("XENO_WORLD_SECOND_WAVE");
         g_MainGameStates[3].pFnMain =
             worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
@@ -2299,8 +2302,9 @@ void PcPort_InitGameStates(void)
         g_MainGameStates[3].hasOverlay = worldInit ? 1 : 0;
         if (worldInit)
             printf("[xeno-port][boot] world-init gate on (hasOverlay=1) "
-                   "XENO_WORLD_MODE_INIT=%s\n",
-                   (modeInit && modeInit[0]) ? modeInit : "off");
+                   "XENO_WORLD_MODE_INIT=%s XENO_WORLD_SECOND_WAVE=%s\n",
+                   (modeInit && modeInit[0]) ? modeInit : "off",
+                   (secondWave && secondWave[0]) ? secondWave : "off");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;

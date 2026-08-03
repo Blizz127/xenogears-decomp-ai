@@ -1,13 +1,19 @@
 /*
- * W2 — Native WorldMapMain pre-loop initialization slice.
+ * W2 / W3B / W4C — Native world-map initialization ladder.
  *
  * Retail WorldMapMain @ 0x80070CFC (overlay world_map.bin loaded at 0x8006FAF0).
- * This file implements only the proven Lahan path through the last init call
- * (jal wm_80071B9C @ 0x80070FF4) and stops before retail PC 0x80071000, which is
- * the first instruction of outer-loop / dispatch ownership (first path to
- * wm_800712D0 @ 0x80071094).
  *
- * Gated by XENO_WORLD_INIT=1. Default remains pure placeholder (hasOverlay=0).
+ * W2: pre-loop init through jal wm_80071B9C @ 0x80070FF4; cut before 0x80071000.
+ * W3B: one-shot mode initializer 0x80071CDC (first-wave archive queue).
+ * W4C: second-wave 0x80071EF0 → ArchiveDataSync poll → 0x80073530; cut before
+ *      retail PC 0x800722BC (jal 0x8009766C). Does not enter full 0x80072238,
+ *      wm_800712D0, or any frame path.
+ *
+ * Gates (deepest implies lower):
+ *   XENO_WORLD_INIT=1
+ *   XENO_WORLD_MODE_INIT=1
+ *   XENO_WORLD_SECOND_WAVE=1
+ * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,6 +96,37 @@
 #define WM_REQ_D3FC              0x8009D3FCu
 #define WM_CNT_C170              0x8009C170u
 
+/* W4C second-wave source IDs (written by wm_80071B9C / W2) */
+#define WM_ID_C17C               0x8009C17Cu
+#define WM_ID_C174               0x8009C174u
+#define WM_ID_D3C4               0x8009D3C4u
+/* Destination pointer slots */
+#define WM_DST_C59C              0x8009C59Cu
+#define WM_DST_BD20              0x8009BD20u
+#define WM_DST_C180              0x8009C180u
+/* Queue entries (8-byte stride) after D3F8 */
+#define WM_REQ_D400              0x8009D400u
+#define WM_REQ_D404              0x8009D404u
+#define WM_REQ_D408              0x8009D408u
+#define WM_REQ_D40C              0x8009D40Cu
+#define WM_REQ_D410              0x8009D410u
+#define WM_REQ_D414              0x8009D414u
+/* 73530 fixup outputs */
+#define WM_FIX_D308              0x8009D308u
+#define WM_FIX_CD48              0x8009CD48u
+#define WM_FIX_C7EC              0x8009C7ECu
+#define WM_FIX_BD30              0x8009BD30u
+#define WM_FIX_D784              0x8009D784u
+#define WM_FIX_BCC0              0x8009BCC0u
+#define WM_FIX_D7C8              0x8009D7C8u
+#define WM_FIX_D77C              0x8009D77Cu
+#define WM_FIX_D73C              0x8009D73Cu
+#define WM_FIX_D3F4              0x8009D3F4u
+#define WM_FIX_BD00              0x8009BD00u
+/* Hard cut: first insn of broad mode-enter after second-wave */
+#define WM_CUT_BEFORE_BROAD      0x800722BCu
+#define WM_BROAD_9766C           0x8009766Cu
+
 /* Channel ID tables live in host g_GameState (retail abs inside GS span). */
 #define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
 #define GS_OFF_SEC_BASE          0x030Cu /* retail 0x8006D940; stride 164 per id */
@@ -98,6 +135,9 @@
 #define WM_U16(a) (*(u16*)PSX_ADDR(a))
 #define WM_S16(a) (*(s16*)PSX_ADDR(a))
 #define WM_U32(a) (*(u32*)PSX_ADDR(a))
+
+/* Safety ceiling for ArchiveDataSync poll (never silent hang). */
+#define WM_SECOND_WAVE_POLL_MAX  100000
 
 extern void PcPort_WorldMapPlaceholderMain(void);
 extern void func_8003634C(void);
@@ -109,6 +149,10 @@ extern u32 g_ArchiveDebugTable;
 extern int ArchiveDecodeSize(int entryIndex);
 extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
 extern int func_80029AFC(void* pEntries, int arg1, int arg2);
+extern int ArchiveDataSync(void);
+extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
+extern u_int HeapFree(void* pMem);
+extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void* g_pGameState;
 
 #define GS_U8(off)  (*(u8*)((u8*)g_pGameState + (off)))
@@ -146,8 +190,21 @@ static u32 host_ptr_to_psx_u32(void* p)
     return (u32)host;
 }
 
+/* Resolve a 32-bit guest/host value to a host pointer for Heap/LZSS APIs. */
+static void* psx_u32_to_host(u32 p)
+{
+    if (p == 0)
+        return NULL;
+    if (p >= 0x80000000u && p < 0x80200000u)
+        return PSX_ADDR(p);
+    return (void*)(uintptr_t)p;
+}
+
 static int s_wm712d0_hits;
 static int s_wm_drawotag_hits;
+static int s_wm9766c_hits;
+static int s_wm72238_hits;
+static int s_wm7299c_hits;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -157,26 +214,72 @@ void wm_800712D0_should_not_run(void)
             s_wm712d0_hits);
 }
 
+void wm_8009766C_should_not_run(void)
+{
+    s_wm9766c_hits++;
+    fprintf(stderr, "[worldmap-second-wave] ERROR: 0x8009766C reached (hit=%d)\n",
+            s_wm9766c_hits);
+}
+
+void wm_80072238_should_not_run(void)
+{
+    s_wm72238_hits++;
+    fprintf(stderr, "[worldmap-second-wave] ERROR: full 0x80072238 reached (hit=%d)\n",
+            s_wm72238_hits);
+}
+
+void wm_8007299C_should_not_run(void)
+{
+    s_wm7299c_hits++;
+    fprintf(stderr, "[worldmap-second-wave] ERROR: 0x8007299C reached (hit=%d)\n",
+            s_wm7299c_hits);
+}
+
 static int env_flag_is_one(const char* name)
 {
     const char* v = getenv(name);
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
-static int world_init_enabled(void)
+static int world_second_wave_enabled(void)
 {
-    /* Mode-init implies W2 overlay/init path. */
-    return env_flag_is_one("XENO_WORLD_INIT") || env_flag_is_one("XENO_WORLD_MODE_INIT");
+    return env_flag_is_one("XENO_WORLD_SECOND_WAVE");
 }
 
 static int world_mode_init_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_MODE_INIT");
+    /* Second-wave implies mode-init. */
+    return env_flag_is_one("XENO_WORLD_MODE_INIT") || world_second_wave_enabled();
+}
+
+static int world_init_enabled(void)
+{
+    /* Mode-init / second-wave imply W2 overlay/init path. */
+    return env_flag_is_one("XENO_WORLD_INIT") || world_mode_init_enabled();
 }
 
 int PcPort_WorldMapInitEnabled(void)
 {
     return world_init_enabled();
+}
+
+static void log_enabled_slices(void)
+{
+    int w2 = world_init_enabled();
+    int w3 = world_mode_init_enabled();
+    int w4 = world_second_wave_enabled();
+    fprintf(stderr, "[worldmap] enabled slices:");
+    if (!w2 && !w3 && !w4) {
+        fprintf(stderr, " (none — placeholder only)\n");
+        return;
+    }
+    if (w2)
+        fprintf(stderr, " W2");
+    if (w3)
+        fprintf(stderr, ",W3B");
+    if (w4)
+        fprintf(stderr, ",W4C");
+    fprintf(stderr, "\n");
 }
 
 /* Retail: DrawSync/Vsync around critical + FlushCache. */
@@ -556,6 +659,296 @@ static int wm_80071CDC_mode_init(void)
 }
 
 /*
+ * W4C — native transcription of retail second-wave setup 0x80071EF0–0x80071FE8.
+ * Reads IDs from W2 wm_80071B9C stores; builds three-entry queue; submits via
+ * func_80029AFC. Does not hard-code Lahan archive indices.
+ */
+static int wm_80071EF0_second_wave(void)
+{
+    u32 id0, id1, id2;
+    u32 size0, size1, size2;
+    void* alloc0;
+    void* alloc1;
+    void* alloc2;
+    u32 psx0, psx1, psx2;
+    int queue_result;
+    u8* pReq;
+
+    fprintf(stderr, "[worldmap-second-wave] entry\n");
+
+    id0 = WM_U32(WM_ID_C17C);
+    id1 = WM_U32(WM_ID_C174);
+    id2 = WM_U32(WM_ID_D3C4);
+
+    fprintf(stderr,
+            "[worldmap-second-wave] source_id[0]=0x%08x (%u)\n"
+            "[worldmap-second-wave] source_id[1]=0x%08x (%u)\n"
+            "[worldmap-second-wave] source_id[2]=0x%08x (%u)\n",
+            id0, id0, id1, id1, id2, id2);
+
+    /* Retail: ArchiveDecodeAlignedSize(id) then HeapAlloc(size, 1). Order: C17C,
+     * C174, D3C4. Archive indices are the stored IDs themselves (base0+N). */
+    size0 = (u32)ArchiveDecodeAlignedSize(id0);
+    alloc0 = HeapAlloc(size0, 1);
+    psx0 = host_ptr_to_psx_u32(alloc0);
+    WM_U32(WM_DST_C59C) = psx0;
+
+    size1 = (u32)ArchiveDecodeAlignedSize(id1);
+    alloc1 = HeapAlloc(size1, 1);
+    psx1 = host_ptr_to_psx_u32(alloc1);
+    WM_U32(WM_DST_BD20) = psx1;
+
+    size2 = (u32)ArchiveDecodeAlignedSize(id2);
+    alloc2 = HeapAlloc(size2, 1);
+    psx2 = host_ptr_to_psx_u32(alloc2);
+    WM_U32(WM_DST_C180) = psx2;
+
+    fprintf(stderr,
+            "[worldmap-second-wave] archive_id[0]=%u aligned_size[0]=%u "
+            "destination_psx[0]=0x%08x host=%p\n"
+            "[worldmap-second-wave] archive_id[1]=%u aligned_size[1]=%u "
+            "destination_psx[1]=0x%08x host=%p\n"
+            "[worldmap-second-wave] archive_id[2]=%u aligned_size[2]=%u "
+            "destination_psx[2]=0x%08x host=%p\n",
+            id0, size0, psx0, alloc0,
+            id1, size1, psx1, alloc1,
+            id2, size2, psx2, alloc2);
+
+    if (alloc0 == NULL || alloc1 == NULL || alloc2 == NULL) {
+        fprintf(stderr, "[worldmap-second-wave] ERROR: HeapAlloc failed\n");
+        return -1;
+    }
+
+    /* Retail queue layout at 0x8009D3F8 (8-byte stride):
+     *   [0] index=D3C4  pData=C180
+     *   [1] index=C17C  pData=C59C
+     *   [2] index=C174  pData=BD20
+     *   [3] index=0     pData=0
+     */
+    pReq = (u8*)PSX_ADDR(WM_REQ_D3F8);
+    WM_U16(WM_REQ_D410) = 0;
+    WM_U32(WM_REQ_D3FC) = psx2;
+    WM_U32(WM_REQ_D414) = 0;
+    *(u16*)(pReq + 0) = (u16)id2;
+    WM_U16(WM_REQ_D400) = (u16)id0;
+    WM_U16(WM_REQ_D408) = (u16)id1;
+    WM_U32(WM_REQ_D404) = psx0;
+    WM_U32(WM_REQ_D40C) = psx1;
+
+    fprintf(stderr,
+            "[worldmap-second-wave] request_count=3\n"
+            "[worldmap-second-wave] request[0] archive=%u pData_psx=0x%08x\n"
+            "[worldmap-second-wave] request[1] archive=%u pData_psx=0x%08x\n"
+            "[worldmap-second-wave] request[2] archive=%u pData_psx=0x%08x\n",
+            (unsigned)id2, psx2,
+            (unsigned)id0, psx0,
+            (unsigned)id1, psx1);
+
+    queue_result = func_80029AFC(PSX_ADDR(WM_REQ_D3F8), 0, 0);
+    fprintf(stderr, "[worldmap-second-wave] queue_submit=%d\n", queue_result);
+    fprintf(stderr, "[worldmap-second-wave] submitted\n");
+    return queue_result;
+}
+
+/*
+ * Retail glue 0x800722A0–0x800722B0:
+ *   do { v = ArchiveDataSync(); } while (v >= 3);
+ * Native sync archive typically exits on first poll (v==0).
+ */
+static int wm_second_wave_poll(void)
+{
+    int first = -1;
+    int last = -1;
+    int count = 0;
+    int v;
+
+    for (;;) {
+        v = ArchiveDataSync();
+        if (first < 0)
+            first = v;
+        last = v;
+        count++;
+        if (v < 3)
+            break;
+        if (count >= WM_SECOND_WAVE_POLL_MAX) {
+            fprintf(stderr,
+                    "[worldmap-second-wave] ERROR: poll safety ceiling "
+                    "(%d) hit last=%d\n",
+                    WM_SECOND_WAVE_POLL_MAX, last);
+            return -1;
+        }
+        /* Yield so a pathological non-zero path cannot hard-lock the host. */
+        if ((count & 0x3FF) == 0)
+            VSync(0);
+    }
+
+    fprintf(stderr, "[worldmap-second-wave] poll_first=%d\n", first);
+    fprintf(stderr, "[worldmap-second-wave] poll_count=%d\n", count);
+    fprintf(stderr, "[worldmap-second-wave] poll_final=%d\n", last);
+    return 0;
+}
+
+/*
+ * W4C — native transcription of retail 0x80073530–0x80073698.
+ * LZSSHeapDecompress(*C180), HeapFree(compressed), relative→KUSEG fixups.
+ */
+static int wm_80073530_fixup(void)
+{
+    u32 compressed_psx;
+    u32 decompressed_psx;
+    void* compressed_host;
+    void* decompressed_host;
+    u32 base;
+    u32 rel;
+    u32 abs;
+    u32 s0_psx;
+    u32 a0_slot;
+    int i;
+    int relocated = 0;
+    u32 decomp_hdr_size = 0;
+
+    fprintf(stderr, "[worldmap-second-wave] fixup_entry\n");
+
+    compressed_psx = WM_U32(WM_DST_C180);
+    compressed_host = psx_u32_to_host(compressed_psx);
+    if (compressed_host == NULL) {
+        fprintf(stderr, "[worldmap-second-wave] ERROR: C180 compressed NULL\n");
+        return -1;
+    }
+
+    /* LZSS stream begins with u32 decompressed size (retail / port API). */
+    decomp_hdr_size = *(u32*)compressed_host;
+
+    fprintf(stderr,
+            "[worldmap-second-wave] compressed_psx=0x%08x host=%p "
+            "lzss_hdr_size=%u\n",
+            compressed_psx, compressed_host, decomp_hdr_size);
+
+    /* Retail: a1=0, a0=compressed; LZSSHeapDecompress(p, flags=0). */
+    decompressed_host = LZSSHeapDecompress(compressed_host, 0);
+    decompressed_psx = host_ptr_to_psx_u32(decompressed_host);
+    WM_U32(WM_DST_C180) = decompressed_psx;
+
+    fprintf(stderr,
+            "[worldmap-second-wave] decompressed_psx=0x%08x host=%p\n",
+            decompressed_psx, decompressed_host);
+
+    /* Free compressed allocation (retail order: store new C180, then free old). */
+    HeapFree(compressed_host);
+
+    if (decompressed_host == NULL || decompressed_psx == 0) {
+        fprintf(stderr, "[worldmap-second-wave] ERROR: LZSSHeapDecompress failed\n");
+        return -1;
+    }
+
+    /* All further arithmetic is in KUSEG space; memory ops via PSX_ADDR. */
+    base = decompressed_psx;
+
+    /* Header slots: base + *(base+off) → named BSS. Retail order. */
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 4);
+    s0_psx = base + rel; /* used later */
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 12);
+    WM_U32(WM_FIX_D308) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 8);
+    WM_U32(WM_FIX_CD48) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 20);
+    WM_U32(WM_FIX_C7EC) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 16);
+    WM_U32(WM_FIX_BD30) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 28);
+    WM_U32(WM_FIX_D784) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 24);
+    WM_U32(WM_FIX_BCC0) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 36);
+    WM_U32(WM_FIX_D7C8) = base + rel;
+    relocated++;
+
+    rel = *(u32*)((u8*)PSX_ADDR(base) + 32);
+    WM_U32(WM_FIX_D77C) = base + rel;
+    relocated++;
+
+    /* 16-entry table at D73C: for i in 0..15: D73C[i] = base + *(base+0x2C+4*i) */
+    for (i = 0; i < 16; i++) {
+        rel = *(u32*)((u8*)PSX_ADDR(base) + 0x2C + (u32)i * 4u);
+        abs = base + rel;
+        WM_U32(WM_FIX_D73C + (u32)i * 4u) = abs;
+        relocated++;
+    }
+
+    /* s0 = base + *(base+4); D3F4 = s0 + *s0; BD00 = s0 + *(s0+4); then
+     * rewrite four relative words at the BD00 structure in place. */
+    {
+        u32* p_s0 = (u32*)PSX_ADDR(s0_psx);
+        u32 d3f4 = s0_psx + p_s0[0];
+        u32 bd00 = s0_psx + p_s0[1];
+        u32* p_v1;
+        u32* p_a0;
+        u32 w0, w1, w2, w3;
+
+        WM_U32(WM_FIX_D3F4) = d3f4;
+        WM_U32(WM_FIX_BD00) = bd00;
+        relocated += 2;
+
+        /* Snapshot relative words before any write (retail loads from $v1). */
+        p_v1 = (u32*)PSX_ADDR(bd00);
+        w0 = p_v1[0];
+        w1 = p_v1[1];
+        w2 = p_v1[2];
+        w3 = p_v1[3];
+
+        p_v1[0] = s0_psx + w0;
+        a0_slot = WM_U32(WM_FIX_BD00);
+        p_a0 = (u32*)PSX_ADDR(a0_slot);
+        p_a0[1] = s0_psx + w1;
+        p_a0[2] = s0_psx + w2;
+        p_a0[3] = s0_psx + w3;
+        relocated += 4;
+    }
+
+    fprintf(stderr,
+            "[worldmap-second-wave] decompressed_size=%u (lzss header)\n"
+            "[worldmap-second-wave] pointer_table_count=16\n"
+            "[worldmap-second-wave] relocated_entries=%d\n"
+            "[worldmap-second-wave] D73C[0]=0x%08x D73C[1]=0x%08x "
+            "D308=0x%08x BD00=0x%08x\n",
+            decomp_hdr_size, relocated,
+            WM_U32(WM_FIX_D73C), WM_U32(WM_FIX_D73C + 4),
+            WM_U32(WM_FIX_D308), WM_U32(WM_FIX_BD00));
+    fprintf(stderr, "[worldmap-second-wave] fixup_exit\n");
+    return 0;
+}
+
+/* One-shot W4C ladder after W3B. */
+static int world_map_second_wave_once(void)
+{
+    if (wm_80071EF0_second_wave() != 0) {
+        fprintf(stderr, "[worldmap-second-wave] submit failed\n");
+        return -1;
+    }
+    if (wm_second_wave_poll() != 0)
+        return -1;
+    if (wm_80073530_fixup() != 0)
+        return -1;
+    fprintf(stderr,
+            "[worldmap-second-wave] cut-before-broad-update retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_BROAD);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -605,8 +998,12 @@ void PcPort_WorldMapInitMain(void)
 
     s_wm712d0_hits = 0;
     s_wm_drawotag_hits = 0;
+    s_wm9766c_hits = 0;
+    s_wm72238_hits = 0;
+    s_wm7299c_hits = 0;
 
     fprintf(stderr, "[worldmap-init] entry\n");
+    log_enabled_slices();
 
     /* ArchiveDecodeSize = compressed CD payload size (alloc for LoadGameStateOverlay).
      * LZSS header / disc extract decompressed size is WM_OVERLAY_IMAGE_SIZE (180422). */
@@ -660,14 +1057,23 @@ void PcPort_WorldMapInitMain(void)
 
     if (world_mode_init_enabled()) {
         fprintf(stderr,
-                "[worldmap-init] XENO_WORLD_MODE_INIT=1: one-shot slot0 dispatch\n");
+                "[worldmap-init] mode-init: one-shot slot0 dispatch\n");
         if (world_map_dispatch_mode_init_once() != 0) {
             fprintf(stderr,
                     "[worldmap-mode-init] failed; still entering placeholder\n");
+        } else if (world_second_wave_enabled()) {
+            fprintf(stderr,
+                    "[worldmap-init] XENO_WORLD_SECOND_WAVE=1: second-wave "
+                    "0x80071EF0 → poll → 0x80073530\n");
+            if (world_map_second_wave_once() != 0) {
+                fprintf(stderr,
+                        "[worldmap-second-wave] failed; still entering "
+                        "placeholder\n");
+            }
         }
         fprintf(stderr,
                 "[worldmap-init] cut-before-main-loop retail_pc=0x%08x\n",
-                WM_MAIN_LOOP);
+                world_second_wave_enabled() ? WM_CUT_BEFORE_BROAD : WM_MAIN_LOOP);
     } else {
         fprintf(stderr,
                 "[worldmap-init] cut-before-loop retail_pc=0x%08x "
@@ -675,13 +1081,16 @@ void PcPort_WorldMapInitMain(void)
                 WM_POST_INIT_RESUME, WM_MAIN_LOOP);
     }
 
-    if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0) {
+    if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0 || s_wm9766c_hits != 0 ||
+        s_wm72238_hits != 0 || s_wm7299c_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
-                "wm712d0=%d drawotag=%d\n",
-                s_wm712d0_hits, s_wm_drawotag_hits);
+                "wm712d0=%d drawotag=%d f9766c=%d f72238=%d f7299c=%d\n",
+                s_wm712d0_hits, s_wm_drawotag_hits, s_wm9766c_hits,
+                s_wm72238_hits, s_wm7299c_hits);
     }
 
-    /* Known-safe hollow UI — W2/W3B intentionally still show NOT YET PORTED. */
+    /* Known-safe hollow UI — W2/W3B/W4C intentionally still show NOT YET PORTED. */
+    fprintf(stderr, "[worldmap-placeholder] enter\n");
     PcPort_WorldMapPlaceholderMain();
 }
