@@ -28,6 +28,8 @@
  * W15B: wm_80085F58 relocate 256×8 records via C7EC + 16× GetClut → D478;
  *       cut before 0x80072478 (GfxAllocateWorkBuffers). Non-idempotent
  *       relocation: strict process-local one-shot guard.
+ * W16B: route exact matching GfxAllocateWorkBuffers(5120,0); cut before
+ *       0x80072480 (jal 0x80074594). No free fix, no post helpers, no poll.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -44,6 +46,7 @@
  *   XENO_WORLD_BSS_CONSTANTS=1
  *   XENO_WORLD_PRIMITIVE_TEMPLATES=1
  *   XENO_WORLD_RECORD_CLUT_INIT=1
+ *   XENO_WORLD_GFX_WORK_BUFFERS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -167,6 +170,9 @@
 #define WM_CUT_BEFORE_73E30      0x80072464u /* after W13B: jal 0x80073E30 */
 #define WM_CUT_BEFORE_85F58      0x8007246Cu /* after W14B: jal 0x80085F58 */
 #define WM_CUT_BEFORE_GFX_WORK   0x80072478u /* after W15B: jal GfxAllocate */
+#define WM_CUT_BEFORE_74594      0x80072480u /* after W16B: jal 0x80074594 */
+#define WM_GFX_WORK_SIZE         5120
+#define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -303,6 +309,15 @@ extern void* g_pGameState;
 /* Main-executable global written by retail 0x80072364 (field init also sets 1). */
 extern s32 D_80059198;
 extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
+/* Matching main-exe graphics work-buffer allocator (temp1.c). */
+extern void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag);
+extern s32 g_GfxWorkBufferSize;
+extern void* g_GfxWorkBuffers;
+extern void* g_GfxWorkBuffer2;
+extern u32 D_80059300;
+extern u32 D_80059304;
+extern void* g_GfxImageList;
+extern s32 D_80059190;
 
 #define GS_U8(off)  (*(u8*)((u8*)g_pGameState + (off)))
 #define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
@@ -401,9 +416,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_gfx_work_buffers_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_GFX_WORK_BUFFERS");
+}
+
 static int world_record_clut_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_RECORD_CLUT_INIT");
+    /* Gfx work-buffer routing implies record/CLUT init. */
+    return env_flag_is_one("XENO_WORLD_RECORD_CLUT_INIT") ||
+           world_gfx_work_buffers_enabled();
 }
 
 static int world_primitive_templates_enabled(void)
@@ -514,9 +536,10 @@ static void log_enabled_slices(void)
     int w13 = world_bss_constants_enabled();
     int w14 = world_primitive_templates_enabled();
     int w15 = world_record_clut_enabled();
+    int w16 = world_gfx_work_buffers_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14 && !w15) {
+        !w11 && !w12 && !w13 && !w14 && !w15 && !w16) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -548,6 +571,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W14B");
     if (w15)
         fprintf(stderr, ",W15B");
+    if (w16)
+        fprintf(stderr, ",W16B");
     fprintf(stderr, "\n");
 }
 
@@ -3625,6 +3650,156 @@ static int wm_80085F58_relocate_records_and_init_cluts(void)
     return 0;
 }
 
+/* World residual callsite accounting (not global field allocates). */
+static int s_wm_gfx_work_world_hits;
+static int s_wm_gfx_work_rung_dispatches;
+
+/*
+ * W16B — residual routing only: exact matching GfxAllocateWorkBuffers(5120,0).
+ * Does not reimplement allocate/free. Cut before 0x80072480.
+ */
+static int wm_route_gfx_allocate_work_buffers(void)
+{
+    s32 pre_size;
+    void* pre_buf0;
+    void* pre_buf1;
+    u32 pre_59300;
+    u32 pre_59304;
+    void* pre_img_list;
+    s32 pre_59190;
+    void* post_buf0;
+    void* post_buf1;
+    uintptr_t dist;
+    u32 ft4_code_snap;
+    u32 dr_mode_snap;
+    u32 c7ec_snap;
+    u32 d4780_snap;
+    u32 c88c_snap;
+    u32 bss_d198_snap;
+    u8 rec_head_snap[16];
+    int field_leak_present;
+
+    s_wm_gfx_work_rung_dispatches++;
+    if (s_wm_gfx_work_rung_dispatches != 1) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: accidental repeated W16B "
+                "rung dispatch count=%d (expected 1 per world entry)\n",
+                s_wm_gfx_work_rung_dispatches);
+        return -1;
+    }
+    if (!s_wm85f58_ran) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: W15B did not run "
+                "(required)\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-gfx-work-buffers] entry\n");
+    fprintf(stderr,
+            "[worldmap-gfx-work-buffers] size=%d alloc_flag=0\n",
+            WM_GFX_WORK_SIZE);
+
+    /* Pre-call snapshot (field allocation may still be live — free is stub). */
+    pre_size = g_GfxWorkBufferSize;
+    pre_buf0 = g_GfxWorkBuffers;
+    pre_buf1 = g_GfxWorkBuffer2;
+    pre_59300 = D_80059300;
+    pre_59304 = D_80059304;
+    pre_img_list = g_GfxImageList;
+    pre_59190 = D_80059190;
+    ft4_code_snap = WM_U8(WM_PRIM_FT4_0 + 7u);
+    dr_mode_snap = WM_U32(WM_PRIM_DR_TPAGE + 4u);
+    c7ec_snap = WM_U32(WM_FIX_C7EC);
+    d4780_snap = WM_U16(WM_CLUT_D478);
+    c88c_snap = WM_U32(WM_TW_MIRROR_C88C);
+    bss_d198_snap = WM_U32(0x8009D198u);
+    wm_memcpy(rec_head_snap, psx_u32_to_host(c7ec_snap), 16);
+
+    fprintf(stderr,
+            "[worldmap-gfx-work-buffers] pre size=%d buf0=%p buf1=%p "
+            "D59300=0x%08x D59304=0x%08x img=%p D59190=%d\n",
+            (int)pre_size, pre_buf0, pre_buf1, pre_59300, pre_59304,
+            pre_img_list, (int)pre_59190);
+
+    field_leak_present = 0;
+    if (pre_buf0 != NULL) {
+        /* Field teardown logs [stub] GfxFreeWorkBuffers; prior block remains. */
+        field_leak_present = 1;
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] pre-existing field free leak: "
+                "PRESENT (pre_buf0=%p still non-null before world allocate; "
+                "GfxFreeWorkBuffers is stubbed — not introduced by W16B)\n",
+                pre_buf0);
+    } else {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] pre-existing field free leak: "
+                "NOT OBSERVED (pre_buf0 is null)\n");
+    }
+
+    /* Exact residual: GfxAllocateWorkBuffers(5120, 0). */
+    s_wm_gfx_work_world_hits++;
+    GfxAllocateWorkBuffers(WM_GFX_WORK_SIZE, 0);
+
+    post_buf0 = g_GfxWorkBuffers;
+    post_buf1 = g_GfxWorkBuffer2;
+    if (post_buf0 == NULL || post_buf1 == NULL) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: null allocation "
+                "buf0=%p buf1=%p\n",
+                post_buf0, post_buf1);
+        return -1;
+    }
+    dist = (uintptr_t)post_buf1 - (uintptr_t)post_buf0;
+    if (g_GfxWorkBufferSize != WM_GFX_WORK_SIZE || dist != (uintptr_t)WM_GFX_WORK_SIZE) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: size/split mismatch "
+                "size=%d dist=%zu expected=%d\n",
+                (int)g_GfxWorkBufferSize, (size_t)dist, WM_GFX_WORK_SIZE);
+        return -1;
+    }
+    if (D_80059300 != 0 || D_80059304 != 0 || g_GfxImageList != NULL ||
+        D_80059190 != 0) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: roots not cleared "
+                "D59300=0x%08x D59304=0x%08x img=%p D59190=%d\n",
+                D_80059300, D_80059304, g_GfxImageList, (int)D_80059190);
+        return -1;
+    }
+
+    fprintf(stderr,
+            "[worldmap-gfx-work-buffers] allocation_base=%p buffer0=%p "
+            "buffer1=%p buffer_distance=%d total_bytes=%d roots_cleared=1\n",
+            post_buf0, post_buf0, post_buf1, WM_GFX_WORK_SIZE,
+            WM_GFX_WORK_TOTAL);
+    fprintf(stderr,
+            "[worldmap-gfx-work-buffers] world_gfx_allocate_hits=%d "
+            "rung_dispatches=%d field_leak=%s new_block=%s\n",
+            s_wm_gfx_work_world_hits, s_wm_gfx_work_rung_dispatches,
+            field_leak_present ? "PRESENT" : "NOT_OBSERVED",
+            (post_buf0 != pre_buf0) ? "yes" : "same_ptr");
+
+    /* Prior-rung preservation. */
+    if (WM_U8(WM_PRIM_FT4_0 + 7u) != (u8)ft4_code_snap ||
+        WM_U32(WM_PRIM_DR_TPAGE + 4u) != dr_mode_snap ||
+        WM_U32(WM_FIX_C7EC) != c7ec_snap ||
+        WM_U16(WM_CLUT_D478) != (u16)d4780_snap ||
+        WM_U32(WM_TW_MIRROR_C88C) != c88c_snap ||
+        WM_U32(0x8009D198u) != bss_d198_snap ||
+        !wm_memeq(rec_head_snap, psx_u32_to_host(c7ec_snap), 16)) {
+        fprintf(stderr,
+                "[worldmap-gfx-work-buffers] ERROR: prior-rung state "
+                "corrupted\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-gfx-work-buffers] exit\n");
+    fprintf(stderr,
+            "[worldmap-gfx-work-buffers] cut-before-next-helper "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_74594);
+    return 0;
+}
+
 /*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
@@ -3875,6 +4050,27 @@ void PcPort_WorldMapInitMain(void)
                                                                     "still "
                                                                     "entering "
                                                                     "placeholder\n");
+                                                        } else if (
+                                                            world_gfx_work_buffers_enabled()) {
+                                                            fprintf(stderr,
+                                                                    "[worldmap-init] "
+                                                                    "XENO_WORLD_"
+                                                                    "GFX_WORK_"
+                                                                    "BUFFERS=1: "
+                                                                    "GfxAllocate"
+                                                                    "WorkBuffers"
+                                                                    "(5120,0)\n");
+                                                            if (wm_route_gfx_allocate_work_buffers() !=
+                                                                0) {
+                                                                fprintf(stderr,
+                                                                        "[worldmap-"
+                                                                        "gfx-work-"
+                                                                        "buffers] "
+                                                                        "failed; "
+                                                                        "still "
+                                                                        "entering "
+                                                                        "placeholder\n");
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -3890,7 +4086,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_record_clut_enabled())
+            if (world_gfx_work_buffers_enabled())
+                cut_pc = WM_CUT_BEFORE_74594;
+            else if (world_record_clut_enabled())
                 cut_pc = WM_CUT_BEFORE_GFX_WORK;
             else if (world_primitive_templates_enabled())
                 cut_pc = WM_CUT_BEFORE_85F58;
