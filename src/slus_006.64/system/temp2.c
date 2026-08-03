@@ -603,8 +603,22 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
                 u32 prim = *(u8*)(pCur + 0x0);
                 desc = &D_8004FE50[prim];
                 if (desc->buildProc == NULL) {
-                    fprintf(stderr, "[xeno-port] missing D_8004FE50 buildProc prim=%u\n", prim);
-                    abort();
+                    /* Retail table has a full 15-row set; the port wires a
+                     * sparse subset. World object-matrix setup (0x80084580)
+                     * hits prim=1 (retail buildProc 0x8002D814, not yet
+                     * ported). Skip the group instead of aborting so one-shot
+                     * table construction can complete; packet fill for that
+                     * prim remains incomplete until the builder is ported. */
+                    static int s_missing_prim_logs;
+                    if (s_missing_prim_logs < 8) {
+                        fprintf(stderr,
+                                "[xeno-port] missing D_8004FE50 buildProc "
+                                "prim=%u; skip group\n",
+                                prim);
+                        s_missing_prim_logs++;
+                    }
+                    s2 = s2 - 1;
+                    continue;
                 }
             }
             fn = desc->buildProc;

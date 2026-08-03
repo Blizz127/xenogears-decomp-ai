@@ -13,8 +13,9 @@
  * W8B: four OuterProduct0 via 0x80098044; cut before 0x80072380.
  * W10A: wm_8008440C (+ wm_800931D8) GPU/CLUT from W4C BD20; cut before
  *       0x80072444 (jal 0x800979C8).
- * W10B: wm_800979C8 GPU/CLUT/TPage from W4C C59C; cut before 0x8007244C
- *       (jal 0x80084580). Does not enter full 0x80072238 / frames.
+ * W10B: wm_800979C8 GPU/CLUT/TPage from W4C C59C; cut before 0x8007244C.
+ * W11B: wm_80084580 object/matrix table from W4C fixups; cut before
+ *       0x80072454 (jal 0x80072090). Does not enter full 0x80072238 / frames.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -26,6 +27,7 @@
  *   XENO_WORLD_CROSS_PRODUCTS=1
  *   XENO_WORLD_GPU_ASSET_A=1
  *   XENO_WORLD_GPU_ASSET_B=1
+ *   XENO_WORLD_OBJECT_MATRIX=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -144,7 +146,16 @@
 #define WM_CUT_AFTER_98044       0x80072380u /* after W8B return */
 #define WM_CUT_BEFORE_979C8      0x80072444u /* after W10A: jal 0x800979C8 */
 #define WM_CUT_BEFORE_84580      0x8007244Cu /* after W10B: jal 0x80084580 */
+#define WM_CUT_BEFORE_72090      0x80072454u /* after W11B: jal 0x80072090 */
 #define WM_BROAD_9766C           0x8009766Cu
+#define WM_OBJ_C620              0x8009C620u
+#define WM_OBJ_BD28              0x8009BD28u
+#define WM_OBJ_D7E0              0x8009D7E0u
+#define WM_OBJ_C16C              0x8009C16Cu
+#define WM_OBJ_C840              0x8009C840u
+#define WM_OBJ_MAT_A140          0x8009A140u
+#define WM_OBJ_MAT_A160          0x8009A160u
+#define WM_OBJ_RECORD_STRIDE     84u
 #define WM_GPU_8440C             0x8008440Cu
 #define WM_GPU_979C8             0x800979C8u
 #define WM_GPU_931D8             0x800931D8u
@@ -222,6 +233,13 @@ extern int StoreImage(RECT* rect, u_long* p);
 extern int LoadImage(RECT* rect, u_long* p);
 extern u_short GetClut(int x, int y);
 extern u_short GetTPage(int tp, int abr, int x, int y);
+extern int func_8002C3E8(u8* pModel);
+extern void func_8002CB54(u8* modelData, u32* out1, u32* out2);
+extern void func_8002C8CC(u8* a0, void* a1, s32 a2);
+extern VECTOR* ApplyMatrix(MATRIX* m, SVECTOR* v0, VECTOR* v1);
+extern SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1);
+extern MATRIX* RotMatrix(SVECTOR* r, MATRIX* m);
+extern s32 D_80050100;
 extern void* g_pGameState;
 /* Main-executable global written by retail 0x80072364 (field init also sets 1). */
 extern s32 D_80059198;
@@ -324,9 +342,16 @@ static int env_flag_is_one(const char* name)
     return v != NULL && v[0] == '1' && v[1] == '\0';
 }
 
+static int world_object_matrix_enabled(void)
+{
+    return env_flag_is_one("XENO_WORLD_OBJECT_MATRIX");
+}
+
 static int world_gpu_asset_b_enabled(void)
 {
-    return env_flag_is_one("XENO_WORLD_GPU_ASSET_B");
+    /* Object-matrix implies GPU-asset-B. */
+    return env_flag_is_one("XENO_WORLD_GPU_ASSET_B") ||
+           world_object_matrix_enabled();
 }
 
 static int world_gpu_asset_a_enabled(void)
@@ -397,8 +422,10 @@ static void log_enabled_slices(void)
     int w8 = world_cross_products_enabled();
     int w10a = world_gpu_asset_a_enabled();
     int w10b = world_gpu_asset_b_enabled();
+    int w11 = world_object_matrix_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
-    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b) {
+    if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
+        !w11) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -420,6 +447,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W10A");
     if (w10b)
         fprintf(stderr, ",W10B");
+    if (w11)
+        fprintf(stderr, ",W11B");
     fprintf(stderr, "\n");
 }
 
@@ -2043,6 +2072,267 @@ static int wm_800979c8_gpu_asset_b(void)
 }
 
 /*
+ * W11B — native transcription of retail 0x80084580–0x80084814 (0x298 / 664 B).
+ * Builds n×84 object/matrix records from W4C fixup streams into heap @ C620.
+ */
+static int s_wm84580_ran;
+
+static int wm_80084580_object_matrix(void)
+{
+    u32 cd48_psx;
+    u32 d308_psx;
+    u32 d308_final;
+    u32 bd30_psx;
+    u8* cd48_host;
+    u8* bd30_host;
+    u32* reloc;
+    s32 reloc_count;
+    s32 i;
+    u16 entry_count;
+    u32 alloc_size;
+    void* table_host;
+    u32 table_psx;
+    VECTOR apply_out;
+    SVECTOR apply_sv_out;
+    u16 bce0_snap[16];
+    u16 ccb4_0;
+    u16 cd54_0;
+    u32 pool_be24;
+    u32 mes_cca4;
+    u32 xp0;
+    int final_ok = 1;
+
+    fprintf(stderr, "[worldmap-object-matrix] entry\n");
+
+    if (s_wm84580_ran) {
+        fprintf(stderr,
+                "[worldmap-object-matrix] ERROR: already ran this process "
+                "(non-idempotent relocate/alloc)\n");
+        return -1;
+    }
+    if (!s_wm979c8_ran) {
+        fprintf(stderr,
+                "[worldmap-object-matrix] ERROR: W10B did not run (required)\n");
+        return -1;
+    }
+
+    cd48_psx = WM_U32(WM_FIX_CD48);
+    d308_psx = WM_U32(WM_FIX_D308);
+    bd30_psx = WM_U32(WM_FIX_BD30);
+    cd48_host = (u8*)psx_u32_to_host(cd48_psx);
+    bd30_host = (u8*)psx_u32_to_host(bd30_psx);
+
+    if (cd48_psx == 0 || d308_psx == 0 || bd30_psx == 0 || cd48_host == NULL ||
+        bd30_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-object-matrix] ERROR: invalid W4C inputs "
+                "CD48=0x%08x D308=0x%08x BD30=0x%08x\n",
+                cd48_psx, d308_psx, bd30_psx);
+        return -1;
+    }
+
+    wm_memcpy(bce0_snap, PSX_ADDR(WM_CLUT_BCE0), sizeof(bce0_snap));
+    ccb4_0 = *(u16*)PSX_ADDR(WM_CLUT_CCB4);
+    cd54_0 = *(u16*)PSX_ADDR(WM_TPAGE_CD54);
+    pool_be24 = WM_U32(WM_POOL_BE24);
+    mes_cca4 = WM_U32(WM_MES_CCA4);
+    xp0 = WM_U32(WM_XP_C828);
+
+    fprintf(stderr,
+            "[worldmap-object-matrix] relocate_entry asset_base_psx=0x%08x "
+            "relocation_table_psx=0x%08x\n",
+            cd48_psx, d308_psx);
+
+    /* 1: model graph relocate in-place. */
+    reloc_count = func_8002C3E8(cd48_host);
+    WM_S16(WM_OBJ_BD28) = (s16)reloc_count;
+
+    /* 2: relocate `reloc_count` words at *D308+4; advance D308 by 4. */
+    {
+        u32 base = d308_psx;
+        WM_U32(WM_FIX_D308) = base + 4u;
+        d308_final = base + 4u;
+        if (reloc_count > 0) {
+            reloc = (u32*)psx_u32_to_host(base + 4u);
+            if (reloc == NULL) {
+                fprintf(stderr,
+                        "[worldmap-object-matrix] ERROR: bad reloc table\n");
+                return -1;
+            }
+            for (i = 0; i < reloc_count; i++)
+                reloc[i] = base + reloc[i];
+        }
+    }
+
+    fprintf(stderr,
+            "[worldmap-object-matrix] relocate_exit relocation_count=%d "
+            "relocation_table_final_psx=0x%08x bd28=%d\n",
+            reloc_count, d308_final, (int)WM_S16(WM_OBJ_BD28));
+
+    /* 3–4: entry count and allocation. */
+    entry_count = *(u16*)bd30_host;
+    if ((u32)entry_count > 0x10000u / WM_OBJ_RECORD_STRIDE) {
+        fprintf(stderr,
+                "[worldmap-object-matrix] ERROR: entry_count %u overflow\n",
+                entry_count);
+        return -1;
+    }
+    alloc_size = (u32)entry_count * WM_OBJ_RECORD_STRIDE;
+    WM_U16(WM_OBJ_D7E0) = entry_count;
+
+    table_host = HeapAlloc(alloc_size, 0);
+    if (table_host == NULL && alloc_size != 0) {
+        fprintf(stderr, "[worldmap-object-matrix] ERROR: HeapAlloc failed\n");
+        return -1;
+    }
+    table_psx = host_ptr_to_psx_u32(table_host);
+    WM_U32(WM_OBJ_C620) = table_psx;
+
+    fprintf(stderr,
+            "[worldmap-object-matrix] entry_count=%u record_stride=84 "
+            "allocation_size=%u table_host=%p table_psx=0x%08x\n",
+            entry_count, alloc_size, table_host, table_psx);
+
+    /* 5: ApplyMatrix / ApplyMatrixSV with image matrices (GTE side effects;
+     * retail leaves a1/a2 mostly unset — use BD30+2 as SVECTOR input and
+     * stack outputs to avoid NULL deref on host). */
+    {
+        SVECTOR* vin = (SVECTOR*)(bd30_host + 2);
+        ApplyMatrix((MATRIX*)PSX_ADDR(WM_OBJ_MAT_A140), vin, &apply_out);
+        ApplyMatrixSV((MATRIX*)PSX_ADDR(WM_OBJ_MAT_A160), vin, &apply_sv_out);
+    }
+
+    /* 6: per-entry loop. */
+    if (entry_count > 0 && table_host != NULL) {
+        u8* s0 = bd30_host + 16; /* first 16-byte source record end */
+        u16* s3 = (u16*)(bd30_host + 2);
+        u32 s1 = 0; /* byte offset into table */
+
+        for (i = 0; i < (int)entry_count; i++) {
+            u8* e = (u8*)table_host + s1;
+            s16 idx;
+            u32 model_psx;
+            u8* model_host;
+            s32 copy_sz;
+
+            *(u16*)(e + 0) = 0;
+            *(u16*)(e + 2) = *s3;
+            *(u16*)(e + 4) = *(u16*)(s0 - 12);
+            *(s32*)(e + 8) = (s32) * (s16*)(s0 - 10);
+            *(s32*)(e + 12) = (s32) * (s16*)(s0 - 8);
+            *(s32*)(e + 16) = -(s32) * (s16*)(s0 - 6);
+            *(u16*)(e + 24) = *(u16*)(s0 - 4);
+            *(u16*)(e + 26) = *(u16*)(s0 - 2);
+            *(u16*)(e + 28) = *(u16*)(s0 + 0);
+
+            RotMatrix((SVECTOR*)(e + 24), (MATRIX*)(e + 32));
+
+            idx = *(s16*)(e + 2);
+            model_psx = cd48_psx + (u32)((s32)idx * 56) + 16u;
+            *(u32*)(e + 64) = model_psx;
+            model_host = (u8*)psx_u32_to_host(model_psx);
+            if (model_host == NULL) {
+                fprintf(stderr,
+                        "[worldmap-object-matrix] ERROR: model null entry=%d "
+                        "idx=%d\n",
+                        i, (int)idx);
+                return -1;
+            }
+
+            func_8002CB54(model_host, (u32*)(e + 72), (u32*)(e + 76));
+            {
+                void* out1 = (void*)(uintptr_t)(*(u32*)(e + 72));
+                func_8002C8CC(model_host, out1, 1);
+            }
+            {
+                void* out1 = (void*)(uintptr_t)(*(u32*)(e + 72));
+                void* out2 = (void*)(uintptr_t)(*(u32*)(e + 76));
+                copy_sz = *(s32*)(model_host + 0x34);
+                if (copy_sz > 0 && out1 != NULL && out2 != NULL)
+                    wm_memcpy(out2, out1, (unsigned)copy_sz);
+            }
+
+            /* Reloc table lookup: D308 + index*4 → ptr → entry+68; bump +4. */
+            {
+                u32 d308_cur = WM_U32(WM_FIX_D308);
+                u32* slot =
+                    (u32*)psx_u32_to_host(d308_cur + (u32)((s32)idx << 2));
+                u32 p_psx;
+                u8* p_host;
+                u32 off;
+
+                if (slot == NULL) {
+                    fprintf(stderr,
+                            "[worldmap-object-matrix] ERROR: reloc slot "
+                            "entry=%d\n",
+                            i);
+                    return -1;
+                }
+                p_psx = *slot;
+                *(u32*)(e + 68) = p_psx;
+                p_host = (u8*)psx_u32_to_host(p_psx);
+                if (p_host != NULL) {
+                    off = *(u32*)(p_host + 4);
+                    *(u32*)(p_host + 4) = p_psx + off;
+                }
+            }
+
+            *(u32*)(e + 80) = 0;
+
+            if (i == 0 || i == 1 || i == (int)entry_count - 1) {
+                fprintf(stderr,
+                        "[worldmap-object-matrix] entry[%d] src_off=%d "
+                        "dst_off=%u idx=%d model_psx=0x%08x copy_sz=%d\n",
+                        i, (int)((u8*)s3 - bd30_host), s1, (int)idx, model_psx,
+                        copy_sz);
+            }
+
+            s3 = (u16*)((u8*)s3 + 16);
+            s0 += 16;
+            s1 += WM_OBJ_RECORD_STRIDE;
+        }
+    }
+
+    /* 7: final persistent state. */
+    D_80050100 = 2;
+    WM_U32(WM_OBJ_C16C) = 0xFFFFFFFFu;
+    WM_U32(WM_OBJ_C840) = 0xFFFFFFFFu;
+    if (table_host != NULL)
+        *(u16*)((u8*)table_host + 336) = 1;
+
+    s_wm84580_ran = 1;
+
+    if (WM_U16(WM_OBJ_D7E0) != entry_count || WM_U32(WM_OBJ_C620) != table_psx ||
+        D_80050100 != 2 || WM_U32(WM_OBJ_C16C) != 0xFFFFFFFFu ||
+        WM_U32(WM_OBJ_C840) != 0xFFFFFFFFu)
+        final_ok = 0;
+    if (table_host != NULL && *(u16*)((u8*)table_host + 336) != 1)
+        final_ok = 0;
+    if (!wm_memeq(bce0_snap, PSX_ADDR(WM_CLUT_BCE0), sizeof(bce0_snap)) ||
+        *(u16*)PSX_ADDR(WM_CLUT_CCB4) != ccb4_0 ||
+        *(u16*)PSX_ADDR(WM_TPAGE_CD54) != cd54_0 ||
+        WM_U32(WM_POOL_BE24) != pool_be24 || WM_U32(WM_MES_CCA4) != mes_cca4 ||
+        WM_U32(WM_XP_C828) != xp0)
+        final_ok = 0;
+
+    fprintf(stderr,
+            "[worldmap-object-matrix] entry_count=%u table_psx=0x%08x "
+            "final_flags_ok=%d\n",
+            entry_count, table_psx, final_ok);
+
+    if (!final_ok) {
+        fprintf(stderr, "[worldmap-object-matrix] ERROR: validation failed\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[worldmap-object-matrix] exit\n");
+    fprintf(stderr,
+            "[worldmap-object-matrix] cut-before-third-wave retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_72090);
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -2215,6 +2505,18 @@ void PcPort_WorldMapInitMain(void)
                                                 "[worldmap-gpu-asset-b] "
                                                 "failed; still entering "
                                                 "placeholder\n");
+                                    } else if (world_object_matrix_enabled()) {
+                                        fprintf(stderr,
+                                                "[worldmap-init] "
+                                                "XENO_WORLD_OBJECT_MATRIX=1: "
+                                                "0x80084580 object/matrix "
+                                                "table\n");
+                                        if (wm_80084580_object_matrix() != 0) {
+                                            fprintf(stderr,
+                                                    "[worldmap-object-matrix] "
+                                                    "failed; still entering "
+                                                    "placeholder\n");
+                                        }
                                     }
                                 }
                             }
@@ -2225,7 +2527,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_gpu_asset_b_enabled())
+            if (world_object_matrix_enabled())
+                cut_pc = WM_CUT_BEFORE_72090;
+            else if (world_gpu_asset_b_enabled())
                 cut_pc = WM_CUT_BEFORE_84580;
             else if (world_gpu_asset_a_enabled())
                 cut_pc = WM_CUT_BEFORE_979C8;
