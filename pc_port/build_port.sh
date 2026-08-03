@@ -1025,6 +1025,7 @@ echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch ta
 PORT_SOURCES=(
     pc_port/src/psx_memory.c
     pc_port/src/game_overrides.c
+    pc_port/src/world_map_init.c
     pc_port/src/psyq_compat.c
     pc_port/src/archive_port.c
     pc_port/src/work_list_port.c

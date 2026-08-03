@@ -7,6 +7,10 @@
 #include "psyq/libgpu.h"
 #include "psyq/pc.h"
 
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#endif
+
 extern unsigned int g_CurGameState;
 extern unsigned int g_CurGameStateOverlayID;
 extern void* g_CurGameStateOverlayBuffer;
@@ -107,8 +111,22 @@ void MainLoop(int errorCode) {
     HeapResetUser();
     
     if (pGameState->hasOverlay) {
+#ifdef XENO_PC_PORT
+        if (g_CurGameState == 3) {
+            fprintf(stderr,
+                    "[xeno-port] ChangeGameState(3) → MainLoop overlay load "
+                    "archive=0x0F hasOverlay=1\n");
+        }
+#endif
         ClearMemory(pGameState->pMemStart, pGameState->pHeapStart);
         pOverlayData = LoadGameStateOverlay(g_CurGameState);
+#ifdef XENO_PC_PORT
+        if (g_CurGameState == 3) {
+            fprintf(stderr,
+                    "[xeno-port] LoadGameStateOverlay(3) returned %p\n",
+                    pOverlayData);
+        }
+#endif
         ArchiveCdDataSync(0);
 
         // Decompress overlay into global overlay buffer

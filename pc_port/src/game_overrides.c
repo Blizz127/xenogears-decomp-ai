@@ -2208,8 +2208,9 @@ void PcPort_BootMain(void)
 /* F16 hollow arrival for retail game state 3. This deliberately consumes the
  * field-authored tuple without pretending to implement the world-map overlay.
  * Vsync keeps SDL event processing responsive while the explicit placeholder
- * remains stable; a future world-map port replaces this state-table entry. */
-static void PcPort_WorldMapPlaceholderMain(void)
+ * remains stable; W2 (XENO_WORLD_INIT=1) runs native pre-loop init then lands
+ * here. */
+void PcPort_WorldMapPlaceholderMain(void)
 {
     static char sMessage[] =
         "\n\n\n\n"
@@ -2281,12 +2282,23 @@ void PcPort_InitGameStates(void)
     g_MainGameStates[2].hasOverlay = 1;
 
     /* Retail state 3: main 0x80070CFC, archive 0x0F, state/BSS 0x8009BBB0,
-     * heap 0x8009D80C. Never install that raw PSX entry as a host pointer and
-     * do not load the unported retail overlay; use the compiled hollow state. */
-    g_MainGameStates[3].pFnMain    = PcPort_WorldMapPlaceholderMain;
-    g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
-    g_MainGameStates[3].pHeapStart = PSX_ADDR(0x0009d80c);
-    g_MainGameStates[3].hasOverlay = 0;
+     * heap 0x8009D80C. Never install that raw PSX entry as a host pointer.
+     * Default: hollow placeholder, hasOverlay=0 (F16).
+     * XENO_WORLD_INIT=1: load archive 0x0F, native WorldMapMain pre-loop init
+     * (cut before 0x80071000 / wm_800712D0), then the same placeholder. */
+    {
+        extern int PcPort_WorldMapInitEnabled(void);
+        extern void PcPort_WorldMapInitMain(void);
+        int worldInit = PcPort_WorldMapInitEnabled();
+        g_MainGameStates[3].pFnMain =
+            worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
+        g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
+        g_MainGameStates[3].pHeapStart = PSX_ADDR(0x0009d80c);
+        g_MainGameStates[3].hasOverlay = worldInit ? 1 : 0;
+        if (worldInit)
+            printf("[xeno-port][boot] XENO_WORLD_INIT=1: state-3 native init "
+                   "slice enabled (hasOverlay=1)\n");
+    }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;
      * left NULL until the oracle reaches them. */
