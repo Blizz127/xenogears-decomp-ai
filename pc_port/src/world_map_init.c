@@ -40,8 +40,12 @@
  * W20B: wm_80075030 upload-record builder-b (43/43 structural clone of
  *       W19A per the W20A audit; slots D7C8/CD64/D7D0, value base
  *       0x8009A250); cut before 0x800724A0 (jal 0x800739B8). One-shot.
- *       0x800739B8 is not ported. Shared implementation:
- *       wm_upload_records_build(cfg).
+ *       Shared implementation: wm_upload_records_build(cfg).
+ * W21B: wm_800739B8 draw-packet builder (first pre-poll draw step; four
+ *       40-byte packet records at 0x8009C744 + two DR_TPAGE-shaped E2h
+ *       carriers at 0x8009D3D8/D3E4; pure BSS writer, no heap, no GPU
+ *       submission); cut before 0x800724A8 (jal 0x80088F64). One-shot.
+ *       0x80088F64 is not ported. Retail byte-7 ABE bit hand-applied.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -63,6 +67,7 @@
  *   XENO_WORLD_HEAP_TABLE_RAND=1
  *   XENO_WORLD_UPLOAD_RECORDS=1
  *   XENO_WORLD_UPLOAD_RECORDS_B=1
+ *   XENO_WORLD_DRAW_PACKETS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -191,6 +196,7 @@
 #define WM_CUT_AFTER_863E0       0x80072490u /* after W18B return; before jal 0x80074E58 */
 #define WM_CUT_BEFORE_75030      0x80072498u /* after W19A return; before jal 0x80075030 */
 #define WM_CUT_BEFORE_739B8      0x800724A0u /* after W20B return; before jal 0x800739B8 */
+#define WM_CUT_BEFORE_88F64      0x800724A8u /* after W21B return; before jal 0x80088F64 */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -232,6 +238,19 @@
 #define WM_UPLOAD_COUNT_B        0x8009CD64u
 #define WM_UPLOAD_REC_ARRAY_B    0x8009D7D0u
 #define WM_UPLOAD_VALUE_BASE_B   0x8009A250u
+
+/* W21B wm_800739B8 draw-packet builder destinations (first pre-poll
+ * draw-env/packet step; pure BSS writer, no allocation, no GPU submission).
+ * Four 40-byte packet records at WM_DRAW_PKTS_BASE and two 12-byte
+ * DR_TPAGE-shaped E2h texwindow carriers at WM_DR_TPAGE_A/B. */
+#define WM_DRAW_PKTS_BASE        0x8009C744u
+#define WM_DRAW_PKTS_COUNT       4u
+#define WM_DRAW_PKTS_STRIDE      40u
+#define WM_DRAW_PKTS_BYTES       (WM_DRAW_PKTS_COUNT * WM_DRAW_PKTS_STRIDE) /* 160 */
+#define WM_DR_TPAGE_A            0x8009D3D8u
+#define WM_DR_TPAGE_B            0x8009D3E4u
+#define WM_DR_TPAGE_BYTES        12u
+#define WM_DR_TPAGE_TOTAL        (WM_DR_TPAGE_BYTES * 2) /* 24 */
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -411,6 +430,13 @@ static int wm_memeq(const void* a, const void* b, unsigned n)
     return 1;
 }
 
+static void wm_memset(void* dst, u8 value, unsigned n)
+{
+    u8* d = (u8*)dst;
+    while (n--)
+        *d++ = value;
+}
+
 /* HeapAlloc returns a host pointer into g_PsxRam; store retail-style KUSEG. */
 static u32 host_ptr_to_psx_u32(void* p)
 {
@@ -481,16 +507,9 @@ void wm_8007299C_should_not_run(void)
 /* W18I: diagnostic wrappers for retail steps that have no native body.
  * Any future native routing of these steps must dispatch through the world
  * route tail, where these wrappers are the registered diagnostics; hitting
- * one means a forbidden retail step was dispatched. (0x80074E58 and
- * 0x80075030 were ported as W19A/W20B; their residual counters now count
- * blocked re-runs of the real rungs, not stub entry.) */
-void wm_800739B8_should_not_run(void)
-{
-    s_wm739b8_hits++;
-    fprintf(stderr, "[worldmap-init] ERROR: 0x800739B8 dispatch reached (hit=%d)\n",
-            s_wm739b8_hits);
-}
-
+ * one means a forbidden retail step was dispatched. (0x80074E58, 0x80075030
+ * and 0x800739B8 were ported as W19A/W20B/W21B; their residual counters now
+ * count blocked re-runs of the real rungs, not stub entry.) */
 void wm_80088F64_should_not_run(void)
 {
     s_wm88f64_hits++;
@@ -562,32 +581,42 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B/W19A/W20B. */
+    /* W17B runs when requested or as a prerequisite of W18B/W19A/W20B/W21B. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
            env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
-           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B");
+           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* W18B runs when requested or as a prerequisite of W19A/W20B. */
+    /* W18B runs when requested or as a prerequisite of W19A/W20B/W21B. */
     return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
-           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B");
+           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
 }
 
 static int world_upload_records_enabled(void)
 {
-    /* W19A runs when requested or as a prerequisite of W20B. */
+    /* W19A runs when requested or as a prerequisite of W20B/W21B. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
-           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B");
+           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
 }
 
 static int world_upload_records_b_enabled(void)
 {
-    /* Narrow W20B gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B");
+    /* W20B runs when requested or as a prerequisite of W21B. */
+    return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+}
+
+static int world_draw_packets_enabled(void)
+{
+    /* Narrow W21B gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -718,10 +747,11 @@ static void log_enabled_slices(void)
     int w18 = world_heap_table_rand_enabled();
     int w19 = world_upload_records_enabled();
     int w20 = world_upload_records_b_enabled();
+    int w21 = world_draw_packets_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20) {
+        !w19 && !w20 && !w21) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -763,6 +793,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W19A");
     if (w20)
         fprintf(stderr, ",W20B");
+    if (w21)
+        fprintf(stderr, ",W21B");
     fprintf(stderr, "\n");
 }
 
@@ -3994,6 +4026,7 @@ static int s_wm74594_ran;
 static int s_wm863E0_ran;
 static int s_wm74e58_ran;
 static int s_wm75030_ran;
+static int s_wm739b8_ran;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -4921,6 +4954,197 @@ static int wm_80075030_build_upload_records_b(void)
 }
 
 /*
+ * W21B — native wm_800739B8: world draw-env/packet builder (first pre-poll
+ * draw step). Per the W21A audit (scratchpad/w21a_739b8_audit/):
+ *   - Pure BSS writer: no heap, no RNG, no GPU submission, no inputs.
+ *   - Seeds four identical 40-byte packet records at 0x8009C744 (FT4-style
+ *     tag r=g=b=0x30 code 0x2C, then the retail ABE bit OR'd into byte +7 →
+ *     0x2E; clut 0x7F91; tpage 0x003E; u16 fields fC/f14/f1C/f24).
+ *   - Packs two 12-byte DR_TPAGE-shaped carriers at 0x8009D3D8/D3E4 holding
+ *     E2h texture-window command words.
+ * The byte oracle below is the W21A software oracle; the rung re-derives the
+ * bytes through the retail code path and then verifies the entire 184-byte
+ * footprint against it.
+ */
+static const u8 wm_draw_pkt_record_oracle[40] = {
+    0x00, 0x00, 0x00, 0x09, 0x30, 0x30, 0x30, 0x2E,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x91, 0x7F,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x3E, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0x3F, 0x00, 0x00,
+};
+static const u8 wm_dr_tpage_a_oracle[12] = {
+    0x00, 0x00, 0x00, 0x02, 0x10, 0x00, 0x00, 0xE2,
+    0x00, 0x00, 0x00, 0x00,
+};
+static const u8 wm_dr_tpage_b_oracle[12] = {
+    0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0xE2,
+    0x00, 0x00, 0x00, 0x00,
+};
+
+/* Retail fn_80045C10: E2h texture-window command word from {x, y, w, h}. */
+static u32 wm_e2_texwindow_word(u32 x, u32 y, int w, int h)
+{
+    u32 v = 0xE2000000u;
+    v |= ((y & 0xFFu) >> 3) << 15;
+    v |= ((x & 0xFFu) >> 3) << 10;
+    v |= (u32)(((-h) & 0xFF) >> 3) << 5;
+    v |= (u32)(((-w) & 0xFF) >> 3);
+    return v;
+}
+
+/* Compare the live 184-byte footprint against the W21A byte oracle. Returns
+ * the number of mismatched bytes (0 = exact). */
+static int wm_draw_packets_verify_mismatch(void)
+{
+    const u8* base = (const u8*)PSX_ADDR(WM_DRAW_PKTS_BASE);
+    int mismatch = 0;
+    u32 i;
+
+    for (i = 0; i < WM_DRAW_PKTS_COUNT; i++) {
+        const u8* rec = base + i * WM_DRAW_PKTS_STRIDE;
+        unsigned b;
+        for (b = 0; b < WM_DRAW_PKTS_STRIDE; b++) {
+            if (rec[b] != wm_draw_pkt_record_oracle[b])
+                mismatch++;
+        }
+    }
+    {
+        const u8* ta = (const u8*)PSX_ADDR(WM_DR_TPAGE_A);
+        const u8* tb = (const u8*)PSX_ADDR(WM_DR_TPAGE_B);
+        unsigned b;
+        for (b = 0; b < WM_DR_TPAGE_BYTES; b++) {
+            if (ta[b] != wm_dr_tpage_a_oracle[b])
+                mismatch++;
+            if (tb[b] != wm_dr_tpage_b_oracle[b])
+                mismatch++;
+        }
+    }
+    return mismatch;
+}
+
+static int wm_800739B8_build_draw_packets(void)
+{
+    u16 tpage;
+    u16 clut;
+    u8* base;
+    u8* tpage_a;
+    u8* tpage_b;
+    u32 i;
+    int mismatch;
+
+    fprintf(stderr, "[worldmap-draw-packets] entry\n");
+
+    if (s_wm739b8_ran) {
+        s_wm739b8_hits++;
+        fprintf(stderr,
+                "[worldmap-draw-packets] ERROR: already ran "
+                "(blocked re-run) (hit=%d)\n",
+                s_wm739b8_hits);
+        fprintf(stderr,
+                "[worldmap-draw-packets] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (s_wm75030_ran == 0) {
+        fprintf(stderr,
+                "[worldmap-draw-packets] ERROR: W20B did not run "
+                "(required ordering)\n");
+        return -1;
+    }
+
+    /* Retail 0x800739F0 / 0x80073A00: tpage + clut attribute words. */
+    tpage = GetTPage(0, 1, 0x380, 0x100);
+    clut = GetClut(0x110, 0x1FE);
+
+    base = (u8*)PSX_ADDR(WM_DRAW_PKTS_BASE);
+    /* Retail seeds BSS that is already zero; replicate by clearing the full
+     * footprint before writing fields (byte-identical result). */
+    wm_memset(base, 0, WM_DRAW_PKTS_BYTES);
+
+    for (i = 0; i < WM_DRAW_PKTS_COUNT; i++) {
+        u8* rec = base + i * WM_DRAW_PKTS_STRIDE;
+
+        rec[3] = 0x09;             /* header word-count (len = 9) */
+        rec[4] = 0x30;             /* FT4 r0 */
+        rec[5] = 0x30;             /* FT4 g0 */
+        rec[6] = 0x30;             /* FT4 b0 */
+        /* FT4 code byte, then the retail ABE bit applied at byte +7.
+         * NOTE: the native SetSemiTrans writes byte +3 (P_TAG) — the retail
+         * Xenogears variant writes byte +7 — so the bit is hand-applied here
+         * and the native helper is deliberately NOT called (W21A trap). */
+        rec[7] = (u8)(0x2C | 0x02);
+        *(u16*)(rec + 0x0C) = 0x0000;
+        *(u16*)(rec + 0x0E) = clut;
+        *(u16*)(rec + 0x14) = 0x00FF;
+        *(u16*)(rec + 0x16) = tpage;
+        *(u16*)(rec + 0x1C) = 0x3F00;
+        *(u16*)(rec + 0x24) = 0x3FFF;
+    }
+
+    /* Retail fn_800453AC x2: DR_TPAGE-shaped carriers {code=2, E2h, 0}. */
+    tpage_a = (u8*)PSX_ADDR(WM_DR_TPAGE_A);
+    tpage_b = (u8*)PSX_ADDR(WM_DR_TPAGE_B);
+    wm_memset(tpage_a, 0, WM_DR_TPAGE_BYTES);
+    wm_memset(tpage_b, 0, WM_DR_TPAGE_BYTES);
+    tpage_a[3] = 0x02;
+    *(u32*)(tpage_a + 4) = wm_e2_texwindow_word(0, 0, 128, 0);
+    *(u32*)(tpage_a + 8) = 0;
+    tpage_b[3] = 0x02;
+    *(u32*)(tpage_b + 4) = wm_e2_texwindow_word(0, 0, 0, 0);
+    *(u32*)(tpage_b + 8) = 0;
+
+    fprintf(stderr,
+            "[worldmap-draw-packets] base=0x%08x records=%u stride=%u "
+            "tpage=0x%04x clut=0x%04x dr_tpage_a=0x%08x dr_tpage_b=0x%08x\n",
+            WM_DRAW_PKTS_BASE, WM_DRAW_PKTS_COUNT, WM_DRAW_PKTS_STRIDE,
+            tpage, clut, WM_DR_TPAGE_A, WM_DR_TPAGE_B);
+
+    /* Structural verification: full 184-byte footprint vs the W21A oracle. */
+    mismatch = wm_draw_packets_verify_mismatch();
+    if (mismatch != 0) {
+        fprintf(stderr,
+                "[worldmap-draw-packets] ERROR: byte-oracle mismatch=%d\n",
+                mismatch);
+        return -1;
+    }
+
+    s_wm739b8_ran = 1;
+    fprintf(stderr, "[worldmap-draw-packets] exit\n");
+    fprintf(stderr,
+            "[worldmap-draw-packets] cut-before-next-helper "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_88F64);
+
+    if (env_flag_is_one("XENO_WORLD_DRAW_PACKETS_DOUBLE_TEST")) {
+        int hits_s = s_wm739b8_hits;
+        int rc2;
+        int delta;
+        int changed;
+
+        rc2 = wm_800739B8_build_draw_packets();
+        delta = s_wm739b8_hits - hits_s;
+        changed = wm_draw_packets_verify_mismatch();
+        fprintf(stderr,
+                "[worldmap-draw-packets] double_test rc2=%d changed=%d "
+                "counter_delta=%d new_allocations=0\n",
+                rc2, changed, delta);
+        /* The blocked second call intentionally trips the residual counter;
+         * restore it so the diagnostic rerun does not poison the forbidden
+         * proof. */
+        s_wm739b8_hits = hits_s;
+        if (rc2 == 0 || changed != 0 || delta != 1) {
+            fprintf(stderr,
+                    "[worldmap-draw-packets] ERROR: double-run guard "
+                    "failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -5273,7 +5497,28 @@ void PcPort_WorldMapInitMain(void)
                                                                                 "still "
                                                                                 "entering "
                                                                                 "placeholder\n");
+                                                                    } else if (
+                                                                        world_draw_packets_enabled()) {
+                                                                    fprintf(stderr,
+                                                                            "[worldmap-init] "
+                                                                            "XENO_WORLD_"
+                                                                            "DRAW_"
+                                                                            "PACKETS=1: "
+                                                                            "0x800739B8 "
+                                                                            "draw-packet "
+                                                                            "builder\n");
+                                                                    if (wm_800739B8_build_draw_packets() !=
+                                                                        0) {
+                                                                        fprintf(stderr,
+                                                                                "[worldmap-"
+                                                                                "draw-"
+                                                                                "packets] "
+                                                                                "failed; "
+                                                                                "still "
+                                                                                "entering "
+                                                                                "placeholder\n");
                                                                     }
+                                                                }
                                                                 }
                                                                 }
                                                                 }
@@ -5293,7 +5538,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_upload_records_b_enabled())
+            if (world_draw_packets_enabled())
+                cut_pc = WM_CUT_BEFORE_88F64;
+            else if (world_upload_records_b_enabled())
                 cut_pc = WM_CUT_BEFORE_739B8;
             else if (world_upload_records_enabled())
                 cut_pc = WM_CUT_BEFORE_75030;

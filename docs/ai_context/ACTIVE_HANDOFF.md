@@ -12,6 +12,70 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 4 — 🗺️ W21B PORTED 0x800739B8: the first draw-packet builder is native; ladder cuts at 0x800724A8
+
+**Scope.** Exactly one retail step, ported per the W21A audit
+(`scratchpad/w21a_739b8_audit/` — a pure packet-construction initializer:
+zero inputs, no heap, no RNG, **no GPU submission**). `0x80088F64` and the
+rest of the pre-poll chain remain unported stubs; no field-overlay symbols
+used. This is the first real draw-environment/packet initialization rung,
+but it still submits nothing to the GPU — it only writes BSS.
+
+- **The rung:** `wm_800739B8_build_draw_packets` in
+  `pc_port/src/world_map_init.c` — computes `tpage = GetTPage(0,1,0x380,0x100)
+  = 0x003E` and `clut = GetClut(0x110,0x1FE) = 0x7F91` once, seeds **four
+  identical 40-byte records** at `0x8009C744` (stride 40, i.e.
+  `{u32 header; FT4-style 36-byte primitive}` — *not* the bare POLY_FT4 36),
+  then packs **two 12-byte DR_TPAGE-shaped carriers** at `0x8009D3D8` /
+  `0x8009D3E4` holding E2h texture-window command words (`0xE2000010` for
+  tw {0,0,128,0}, `0xE2000000` for tw {0,0,0,0}). Total footprint 184 bytes.
+  One-shot guard with `XENO_WORLD_DRAW_PACKETS_DOUBLE_TEST` sibling of the
+  W19A/W20B tests.
+- **The byte-7 trap (the reason this rung was delicate).** Retail Xenogears
+  `SetSemiTrans` reads/writes **`p[7]`** (`lbu/sb 7($a0)` at
+  `0x80043C04/20`) — the FT4 code byte when passed a record base. The native
+  PsyCross `setSemiTrans` operates on **byte 3** (`P_TAG`). Calling the
+  native helper would have flipped the header byte (record+3: 9 → 11) and
+  left the code byte at `0x2C`. The rung therefore **hand-applies the retail
+  ABE bit** (`rec[7] = 0x2C | 0x02` → `0x2E`) and deliberately never calls
+  native `SetSemiTrans`. Runtime proof at the cut: `code_byte7=0x2e`,
+  `header_byte3=0x09`. The sibling helpers are **not** subject to the same
+  trap — `GetTPage`/`GetClut` resolve to the decompiled retail
+  `src/slus_006.64/psyq/libgpu.c`, not PsyCross, and reproduce the audited
+  `0x003E` / `0x7F91` exactly, so they are called natively.
+- **Gate + cut:** new deepest gate `XENO_WORLD_DRAW_PACKETS=1` (implies the
+  whole chain); cut advanced `0x800724A0` → **`0x800724A8`** (immediately
+  before `jal 0x80088F64`).
+- **Instrumentation (W18I framework):** the `wm_800739B8_should_not_run`
+  stub was replaced by the real rung; registry counter `739b8` now counts
+  blocked residual re-dispatches (required ZERO VERIFIED); the rung is a
+  `hit_exact:1` positive control (`739b8_dispatch`) on the natural route,
+  whose gate advanced to `XENO_WORLD_DRAW_PACKETS=1`, and a required
+  `expect="zero"` forbidden target on the hold-enabled route (gate likewise
+  advanced) and the gate-off route, where the world is never entered.
+
+**Verified** (W21B binary, canonical build `LINK OK` `compiled=47
+skipped=0`; evidence in `scratchpad/w21b_739b8/`): acceptance probe at the
+new cut (`w21b_accept.log`, `VERDICT ok=1`) — footprint proven **all-zero
+before** the rung (`c744` sha `b3939788…56c2e4`, `d3d8` sha `9d908ecf…20aa0`,
+matching the W21A capture), then the **entire 184-byte footprint** validated
+against the W21A byte oracle, not just packet codes:
+`total_mismatch=0 exact=1`, all four records byte-identical,
+`tpage=0x003e clut=0x7f91`, E2h words `0xe2000010` / `0xe2000000`, and all 11
+registry counters zero. **W19B and W20B byte oracles preserved** —
+`w19b_regress.log` and `w20b_regress.log` are line-for-line identical to the
+stored `w19b_oracle_post.log` / `w20b_accept.log` (W19B records sha
+`063d8567…f6f74de3`, W20B sha `a7835f58…449084`, `STRUCTURE_OK=1`), and under
+both older gates W21B correctly does not fire
+(`W21B_ABSENT c744_zero=1 d3d8_zero=1`). Double-run guard
+`rc2=-1 changed=0 counter_delta=1 new_allocations=0`. Full suite
+**`W18I SUITE: PASS`**: natural **13/13 required ZERO VERIFIED** (checker
+PASS, `hit=5` positive controls incl. `739b8_dispatch` hits=1),
+hold-enabled **19/19** and gate-off **17/17** ZERO VERIFIED with
+`739b8_dispatch` proven never dispatched on either, all 6 negative controls
+exit nonzero.
+Diagnostics-only change — no gameplay/renderer behavior beyond the new rung.
+
 ## August 4 — 🗺️ W20B PORTED 0x80075030: the upload-record clone is native; ladder cuts at 0x800724A0
 
 **Scope.** Exactly one retail step, ported per the W20A audit
