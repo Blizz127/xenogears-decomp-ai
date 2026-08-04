@@ -12,6 +12,59 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 4 — 🔁 PSYCROSS PATCH DURABILITY: a vendor hunk that only existed in the working tree is back under the committed patch series, and a replay checker now enforces the rule
+
+**The rule.** An intentional change to the vendored PsyCross tree
+(`pc_port/extern/PsyCross`, gitignored) is **not durable** until it is
+represented in the committed patch workflow — a `pc_port/patches/*.patch` file
+applied by `pc_port/build_port.sh`, or one of that script's own idempotent
+inline edits — and verified by a pristine-baseline replay. A vendor working
+tree that is merely correct on this machine is one clone away from losing the
+change silently.
+
+**Operational commands**
+
+| Purpose | Command |
+| --- | --- |
+| Vendor baseline commit | `git -C pc_port/extern/PsyCross rev-list --max-parents=0 HEAD` (currently `eb56c9b`, created by `build_port.sh`'s `ensure_psycross_git_worktree`) |
+| Strict patch replay | `pc_port/tools/psycross_patch_replay.sh` (exit 0 = the committed series reproduces the live vendor tree byte for byte; `--keep DIR` retains the replay tree) |
+| Clean rebuild | `docker run --rm -u "$(id -u):$(id -g)" -v <worktree>:/home/blizz/Projects/xenogears-decomp -w /home/blizz/Projects/xenogears-decomp xenogears-dev:24.04 bash -lc 'bash pc_port/build_port.sh'` |
+| Replay evidence | `scratchpad/r18p_psycross_patch_replay/` |
+
+Run the replay checker after any PsyCross-touching pass, and before trusting a
+"clean checkout" build.
+
+- **What was broken:** `psycross_fixed_uv.patch`'s last two hunks — the
+  `g_xenoUploadedVertices = vertices;` upload capture and the whole
+  `_xeno_fixed_uv_draw` per-triangle block in `GR_DrawTriangles` — carried bare
+  `@@` headers with no line ranges after commit `169f4cb` ("anchor F26 UV
+  draw/upload hunks to GR_DrawTriangles/GR_UpdateVertexBuffer context so they
+  land correctly"). `git apply` stops reading a file section at the first
+  unparseable hunk header **and still exits 0**, so both hunks were silently
+  dropped on every replay while the long-lived vendor tree — patched back when
+  the hunks were well-formed under `8a553e0` — kept working. A clean checkout
+  therefore built a port whose optional
+  `XENO_PS1_FIXED_UV_INTERPOLATION=1` path was compiled but never reachable.
+- **Fix:** `psycross_fixed_uv.patch` regenerated as a proper `git diff` with
+  three lines of context (22 well-formed hunks, no bare `@@`), so the hunks are
+  anchored by context *and* parseable. It still applies under the script's
+  `--unidiff-zero` invocation. No renderer semantics changed — the replayed
+  tree is byte-identical to the known-working vendor tree.
+- **`PsyX_pad.cpp` resolved:** the July-10 housekeeping note below is now
+  discharged. `#include <stdlib.h>` is present in the recorded baseline commit,
+  so the replay reproduces it (identical SHA-256 across baseline, replay and
+  vendor tree), and it is **vestigial for compilation** — `src/pad/PsyX_pad.cpp`
+  syntax-checks clean with the include removed (its only candidate user,
+  `abs(value)` in the inverse-axis mapping, resolves transitively). No patch was
+  added for it; adding one would have been an unprovable change.
+- **Verified:** strict replay 4 applied / 9 already-in-baseline, zero rejects,
+  zero fuzz (one pre-existing `offset -1` note in `psycross_halfpixel_origin`);
+  clean container build from a fresh worktree with a pristine PsyCross
+  `LINK OK`, `compiled=47 skipped=0`; second build idempotent (vendor tree
+  unchanged); `GR_DrawTriangles` now calls `XenoPs1FixedUvEnabled` in the linked
+  binary (the pre-fix binary did not); default-off world route byte-identical to
+  the prior evidence, and identical again with the fixed-UV gate enabled.
+
 ## August 1 — F16 field teardown reaches a native hollow world-map arrival
 
 - **Scope:** bounded field-to-world plumbing only. `func_800798BC` and the full
@@ -433,7 +486,7 @@
 - **Validation — the A/B is decisive (same frame 100, ent6 intro box):** with `GR_SetTextureWindow` temporarily neutered to always upload the disabled window, the intro box renders as the exact prior symptom — scattered black dashes (`introbox_neutered_20260710.png`); with the real uniform, a **clean rounded-border dialog window** (`introbox_texwin_20260710.png`). The NPC-22 talk box renders the same clean border (`talkbox_texwin_20260710.png`, full open→wait→dismiss chain still green; the talk script now even progresses to a later box owned by actor 1 that tears down cleanly, f=652). A blue column near the door appears in BOTH A/B frames — pre-existing (post NPC-visibility fix), NOT a texture-window effect; separate item.
 - **Next text/UI blockers exposed (bounded probes, out of this pass's scope by design):** the box interior is still empty because (1) **the system font CLUT `g_SystemPalette1` = 0x3C10 → VRAM (256,240) is ALL ZEROS** at f=100 — every glyph texel maps to transparent (this row is NOT in the 242-247 range FieldLoadUITextures uploads; find who uploads the system font palette on the field path); and (2) **the glyph strip VRAM at (768,256,156,13)** (row rect from the window row table, tpage 0x8C area) **holds high-entropy field-texture data, not glyph bitmaps** (`glyphstrip_texwin_20260710.png` = noise; 1779 unique halfwords) — either the per-row `LoadImage` upload from the window glyph buffer never ran or the 0xBB-streamed field textures own/overwrote that region. Both are game/text-pipeline items, independent of the texture window.
 - **Regressions:** ent6 4-dir walk **byte-identical** to the previous-pass baseline (`texwin_regress_4dir_20260710.log` diffed clean against `talk6f_regress_4dir_20260710.log`); world/field textures, Fei, NPC sprites all render unchanged in the enabled captures (window state is disabled-by-default everywhere except the dialog prims that set it); UI border palette (rows 242-247) intact — the border draws colored, which consumes those CLUTs. Smokes ent8/ent0/Map0 `RC=124`, exact baseline five-stub family (`texwin_smoke_*_20260710.log`). Build `LINK OK`, patches idempotent (verified by immediate re-run).
-- **Housekeeping note:** the vendored PsyCross tree carries one modification NOT covered by any build_port.sh patch — `src/pad/PsyX_pad.cpp` gained `#include <stdlib.h>` at some earlier pass. A fresh PsyCross clone would lose it; fold it into a patch (or verify it's vestigial) on some future pass.
+- **Housekeeping note:** the vendored PsyCross tree carries one modification NOT covered by any build_port.sh patch — `src/pad/PsyX_pad.cpp` gained `#include <stdlib.h>` at some earlier pass. A fresh PsyCross clone would lose it; fold it into a patch (or verify it's vestigial) on some future pass. **RESOLVED 2026-08-04 (see the August 4 entry): verified vestigial — the file syntax-checks clean without the include, and the recorded vendor baseline carries it, so the patch replay reproduces it exactly.**
 - **What remains for readable dialog text:** (1) system font palette upload to (256,240) on the field path; (2) glyph strip upload/placement vs the field texture pages. After those, Map1 talk should be fully readable.
 
 ## July 10 — 🎨 DIALOG UI PALETTE STOMP FIXED (real root cause ≠ the documented hypothesis); field UI CLUTs survive now — but visible border/glyphs are STILL blocked by a separate PsyX gap: the DR_MODE texture window is never applied

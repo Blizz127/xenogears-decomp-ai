@@ -73,6 +73,20 @@ docker exec xenogears-dev bash -c \
 tools/ovh/native-build
 ```
 
+### PsyCross patch durability
+
+`pc_port/extern/PsyCross` is gitignored, so an intentional change there is only
+durable once it lives in the committed patch workflow (`pc_port/patches/*.patch`
+applied by `pc_port/build_port.sh`, or one of that script's inline edits).
+Prove it after any PsyCross-touching change:
+
+```bash
+pc_port/tools/psycross_patch_replay.sh
+```
+
+It replays the committed series onto a pristine clone of the vendor baseline
+commit and fails if the result differs from the live vendor tree.
+
 The build produces `pc_port/build_native/xeno-port` (ELF 64-bit, dynamically
 linked). Verify with:
 ```bash

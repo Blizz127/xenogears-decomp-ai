@@ -1,48 +1,28 @@
 diff --git a/src/gpu/PsyX_GPU.cpp b/src/gpu/PsyX_GPU.cpp
+index 96648c7..e981a7e 100755
 --- a/src/gpu/PsyX_GPU.cpp
 +++ b/src/gpu/PsyX_GPU.cpp
-@@ -345,0 +346,3 @@
+@@ -343,6 +343,9 @@ void MakeTexcoordQuad(GrVertex* vertex, unsigned char* uv0, unsigned char* uv1,
+ 	vertex[3].dither = dither;
+ 	vertex[3].page = page;
+ 	vertex[3].clut = clut;
 +	/* _xeno_fixed_uv_polygon: metadata consumed only by the optional exact
 +	 * textured-polygon path. Rectangles/sprites never receive this marker. */
 +	vertex[0]._p0 = vertex[1]._p0 = vertex[2]._p0 = vertex[3]._p0 = 0x26;
-@@ -390,0 +394 @@
+ 	/*
+ 	if (g_cfg_bilinearFiltering)
+ 	{
+@@ -388,6 +391,7 @@ void MakeTexcoordTriangle(GrVertex* vertex, unsigned char* uv0, unsigned char* u
+ 	vertex[2].dither = dither;
+ 	vertex[2].page = page;
+ 	vertex[2].clut = clut;
 +	vertex[0]._p0 = vertex[1]._p0 = vertex[2]._p0 = 0x26; /* _xeno_fixed_uv_polygon */
-diff --git a/src/render/PsyX_fixed_uv.h b/src/render/PsyX_fixed_uv.h
-new file mode 100644
---- /dev/null
-+++ b/src/render/PsyX_fixed_uv.h
-@@ -0,0 +1,29 @@
-+#pragma once
-+
-+#include <stdint.h>
-+
-+/* _xeno_fixed_uv: CPU-side transcription of the PCSX-Redux software GPU's
-+ * textured-triangle edge/span interpolation.  Rows are uploaded as two
-+ * RGBA32I texels: seed/step, then first-X/valid plus padding. */
-+struct XenoFixedUvVertex
-+{
-+	int16_t x;
-+	int16_t y;
-+	uint8_t u;
-+	uint8_t v;
-+};
-+
-+struct XenoFixedUvRow
-+{
-+	int32_t seedU;
-+	int32_t seedV;
-+	int32_t stepU;
-+	int32_t stepV;
-+	int32_t firstX;
-+	int32_t valid;
-+	int32_t reserved0;
-+	int32_t reserved1;
-+};
-+
-+bool XenoBuildFixedUvRows(const XenoFixedUvVertex vertices[3], int width,
-+	int height, XenoFixedUvRow* rows);
+ 	/*
+ 	if (g_cfg_bilinearFiltering)
+ 	{
 diff --git a/src/render/PsyX_fixed_uv.cpp b/src/render/PsyX_fixed_uv.cpp
 new file mode 100644
+index 0000000..68051e5
 --- /dev/null
 +++ b/src/render/PsyX_fixed_uv.cpp
 @@ -0,0 +1,164 @@
@@ -210,14 +190,65 @@ new file mode 100644
 +
 +	return true;
 +}
+diff --git a/src/render/PsyX_fixed_uv.h b/src/render/PsyX_fixed_uv.h
+new file mode 100644
+index 0000000..ebffd8b
+--- /dev/null
++++ b/src/render/PsyX_fixed_uv.h
+@@ -0,0 +1,29 @@
++#pragma once
++
++#include <stdint.h>
++
++/* _xeno_fixed_uv: CPU-side transcription of the PCSX-Redux software GPU's
++ * textured-triangle edge/span interpolation.  Rows are uploaded as two
++ * RGBA32I texels: seed/step, then first-X/valid plus padding. */
++struct XenoFixedUvVertex
++{
++	int16_t x;
++	int16_t y;
++	uint8_t u;
++	uint8_t v;
++};
++
++struct XenoFixedUvRow
++{
++	int32_t seedU;
++	int32_t seedV;
++	int32_t stepU;
++	int32_t stepV;
++	int32_t firstX;
++	int32_t valid;
++	int32_t reserved0;
++	int32_t reserved1;
++};
++
++bool XenoBuildFixedUvRows(const XenoFixedUvVertex vertices[3], int width,
++	int height, XenoFixedUvRow* rows);
 diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
+index 1e5c2ca..ae00917 100755
 --- a/src/render/PsyX_render.cpp
 +++ b/src/render/PsyX_render.cpp
-@@ -4,0 +5 @@
+@@ -2,6 +2,7 @@
+ 
+ #include "../platform.h"
+ #include "../gpu/PsyX_GPU.h"
 +#include "PsyX_fixed_uv.h"
-@@ -65,0 +67 @@
+ 
+ #include "PsyX/PsyX_render.h"
+ #include "PsyX/PsyX_globals.h"
+@@ -63,6 +64,7 @@ ShaderID g_PreviousShader = -1;
+ TextureID g_vramTexturesDouble[2];
+ TextureID g_vramTexture;
+ TextureID g_rgLutTexture;
 +TextureID g_xenoFixedUvRowsTexture = -1; /* _xeno_fixed_uv_rows_texture */
-@@ -117,0 +120,15 @@
+ int g_vramTextureIdx = 0;
+ 
+ TextureID g_fbTexture = -1;
+@@ -115,6 +117,21 @@ static bool XenoPs1TexelCenterEnabled()
+ 	}
+ 	return enabled != 0;
+ }
 +/* _xeno_fixed_uv_option: exact PCSX-Redux 16.16 edge/span interpolation is
 + * opt-in and restricted again at draw time to marked on-screen, non-PGXP,
 + * genuine-PS1 textured polygon triangles. */
@@ -233,19 +264,43 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 +	}
 +	return enabled != 0;
 +}
-@@ -461,0 +479 @@
+ int vram_need_update = 1;
+ int framebuffer_need_update = 0;
+ /* _xeno_drmove_fb_synced: 1 while the CPU vram[] framebuffer rect is at
+@@ -459,6 +476,7 @@ void GR_Shutdown()
+ 
+ 	GR_DestroyTexture(g_whiteTexture);
+ 	GR_DestroyTexture(g_rgLutTexture);
 +	GR_DestroyTexture(g_xenoFixedUvRowsTexture);
-@@ -537,0 +556,3 @@
+ 	GR_DestroyTexture(g_fbTexture);
+ 	GR_DestroyTexture(g_offscreenRTTexture);
+ #endif
+@@ -535,6 +553,9 @@ typedef struct
+ 	GLint texelSizeLoc;
+ 	GLint texWindowLoc; /* _xeno_texwindow_loc_struct */
+ 	GLint texelCenterLoc; /* _xeno_texel_center_uniform */
 +	GLint fixedUvLoc; /* _xeno_fixed_uv_uniforms */
 +	GLint fixedUvRowsLoc;
 +	GLint fixedUvViewportLoc;
-@@ -555,0 +577,2 @@
+ 	GLint clutSemiModeLoc;
+ 	GLint texLoc;
+ 	GLint lutLoc;
+@@ -553,7 +574,11 @@ GLint u_projection3DLoc;
+ GLint u_texelSizeLoc;
+ GLint u_texWindowLoc = -1; /* _xeno_texwindow_loc_global */
+ GLint u_texelCenterLoc = -1; /* _xeno_texel_center_loc_global */
 +GLint u_fixedUvLoc = -1; /* _xeno_fixed_uv_uniform_globals */
 +GLint u_fixedUvViewportLoc = -1;
-@@ -556,0 +580,2 @@
+ bool g_xeno_ps1_textured_sampling = false;
 +static const GrVertex* g_xenoUploadedVertices = NULL;
 +static XenoFixedUvRow g_xenoFixedUvRows[VRAM_HEIGHT];
-@@ -663 +688,17 @@
+ GLint u_clutSemiModeLoc = -1;
+ 
+ #define GPU_SAMPLE_TEXTURE_4BIT_FUNC\
+@@ -660,7 +685,23 @@ GLint u_clutSemiModeLoc = -1;
+ 	"		return t;\n"\
+ 	"	}\n"\
+ 	"	vec4 nearestTextureSample(vec2 P) {\n"\
 -	"		P += (ps1TexelCenter > 0) ? vec2(0.5, 0.5) : vec2(0.0, 0.0);\n"\
 +	"		if (ps1FixedUv > 0) {\n"\
 +	"			int logicalX = int(floor(gl_FragCoord.x * float(fixedUvViewport.x) / float(fixedUvViewport.z)));\n"\
@@ -264,14 +319,32 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 +	"		} else {\n"\
 +	"			P += (ps1TexelCenter > 0) ? vec2(0.5, 0.5) : vec2(0.0, 0.0);\n"\
 +	"		}\n"\
-@@ -674 +715 @@
+ 	"		vec2 rg = samplePSX(P);\n"\
+ 	"		float rgm = rg.x + rg.y;\n"\
+ 	"		if (rgm == 0.0) { discard; }\n"\
+@@ -671,7 +712,7 @@ GLint u_clutSemiModeLoc = -1;
+ 	"	uniform int bilinearFilter;\n"\
+ 	"	uniform int clutSemiMode;\n"\
+ 	"	void main() {\n"\
 -	"		vec4 color = (bilinearFilter > 0) ? bilinearTextureSample(v_texcoord.xy) : nearestTextureSample(v_texcoord.xy);\n"\
 +	"		vec4 color = (bilinearFilter > 0 && ps1FixedUv == 0) ? bilinearTextureSample(v_texcoord.xy) : nearestTextureSample(v_texcoord.xy);\n"\
-@@ -681,0 +723,3 @@
+ 	"		if (clutSemiMode == 1 && color.w < 0.5) { discard; }\n"\
+ 	"		if (clutSemiMode == 2 && color.w >= 0.5) { discard; }\n"\
+ 	"		fragColor = dither(color * v_color);\n"\
+@@ -679,6 +720,9 @@ GLint u_clutSemiModeLoc = -1;
+ 	
+ static const char* gpu_shader_common = R"(
+ 	uniform int ps1TexelCenter;
 +	uniform int ps1FixedUv;
 +	uniform isampler2D s_fixedUvRows;
 +	uniform ivec4 fixedUvViewport;
-@@ -953,0 +998,12 @@
+ 	varying vec4 v_texcoord;
+ 	varying vec4 v_color;
+ 	varying vec4 v_page_clut;
+@@ -951,6 +995,18 @@ void GR_GenerateCommonTextures()
+ 
+ 		glBindTexture(GL_TEXTURE_2D, 0);
+ 	}
 +
 +	glGenTextures(1, &g_xenoFixedUvRowsTexture);
 +	{
@@ -284,14 +357,21 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 +			GL_RGBA_INTEGER, GL_INT, NULL);
 +		glBindTexture(GL_TEXTURE_2D, 0);
 +	}
-@@ -989,0 +1046,3 @@
+ #endif
+ }
+ 
+@@ -987,11 +1043,19 @@ void GR_CompilePSXShader(PSXGPU_Shader* sh, const char* source)
+ 	 * it to the disabled window so unset state is an exact no-op. */
+ 	sh->texWindowLoc = glGetUniformLocation(sh->shader, "u_texWindow");
+ 	sh->texelCenterLoc = glGetUniformLocation(sh->shader, "ps1TexelCenter");
 +	sh->fixedUvLoc = glGetUniformLocation(sh->shader, "ps1FixedUv");
 +	sh->fixedUvRowsLoc = glGetUniformLocation(sh->shader, "s_fixedUvRows");
 +	sh->fixedUvViewportLoc = glGetUniformLocation(sh->shader, "fixedUvViewport");
-@@ -991 +1050 @@
+ 	sh->clutSemiModeLoc = glGetUniformLocation(sh->shader, "clutSemiMode");
 -	if (sh->texWindowLoc != -1)
 +	if (sh->texWindowLoc != -1 || sh->fixedUvLoc != -1)
-@@ -994 +1053,6 @@
+ 	{
+ 		glUseProgram(sh->shader);
 -		glUniform4f(sh->texWindowLoc, 256.0f, 256.0f, 0.0f, 0.0f);
 +		if (sh->texWindowLoc != -1)
 +			glUniform4f(sh->texWindowLoc, 256.0f, 256.0f, 0.0f, 0.0f);
@@ -299,26 +379,63 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 +			glUniform1i(sh->fixedUvLoc, 0);
 +		if (sh->fixedUvRowsLoc != -1)
 +			glUniform1i(sh->fixedUvRowsLoc, 2);
-@@ -1321,0 +1386,2 @@
+ 		glUseProgram(0);
+ 	}
+ #if USE_PGXP
+@@ -1319,6 +1383,8 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
+ 		lutLoc = g_gpu_shader_4.lutLoc;
+ 		u_texWindowLoc = g_gpu_shader_4.texWindowLoc; /* _xeno_texwindow_loc_route */
+ 		u_texelCenterLoc = g_gpu_shader_4.texelCenterLoc;
 +		u_fixedUvLoc = g_gpu_shader_4.fixedUvLoc;
 +		u_fixedUvViewportLoc = g_gpu_shader_4.fixedUvViewportLoc;
-@@ -1333,0 +1400,2 @@
+ 		u_clutSemiModeLoc = g_gpu_shader_4.clutSemiModeLoc;
+ 		u_texelSizeLoc = -1;
+ 		break;
+@@ -1331,6 +1397,8 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
+ 		lutLoc = g_gpu_shader_8.lutLoc;
+ 		u_texWindowLoc = g_gpu_shader_8.texWindowLoc;
+ 		u_texelCenterLoc = g_gpu_shader_8.texelCenterLoc;
 +		u_fixedUvLoc = g_gpu_shader_8.fixedUvLoc;
 +		u_fixedUvViewportLoc = g_gpu_shader_8.fixedUvViewportLoc;
-@@ -1345,0 +1414,2 @@
+ 		u_clutSemiModeLoc = g_gpu_shader_8.clutSemiModeLoc;
+ 		u_texelSizeLoc = -1;
+ 		break;
+@@ -1343,6 +1411,8 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
+ 		lutLoc = g_gpu_shader_16.lutLoc;
+ 		u_texWindowLoc = g_gpu_shader_16.texWindowLoc;
+ 		u_texelCenterLoc = g_gpu_shader_16.texelCenterLoc;
 +		u_fixedUvLoc = g_gpu_shader_16.fixedUvLoc;
 +		u_fixedUvViewportLoc = g_gpu_shader_16.fixedUvViewportLoc;
-@@ -1358,0 +1429,2 @@
+ 		u_clutSemiModeLoc = g_gpu_shader_16.clutSemiModeLoc;
+ 		u_texelSizeLoc = -1;
+ 		break;
+@@ -1356,6 +1426,8 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
+ 		u_texelSizeLoc = g_gpu_shader_32_rgba.texelSizeLoc;
+ 		u_texWindowLoc = -1;
+ 		u_texelCenterLoc = -1;
 +		u_fixedUvLoc = -1;
 +		u_fixedUvViewportLoc = -1;
-@@ -1601,0 +1674,2 @@
+ 		u_clutSemiModeLoc = -1;
+ 		break;
+ 	}
+@@ -1599,6 +1671,8 @@ void GR_SetScissorState(int enable)
+ 
+ void GR_SetOffscreenState(const RECT16* offscreenRect, int enable)
+ {
 +	if (u_fixedUvLoc != -1 && enable)
 +		glUniform1i(u_fixedUvLoc, 0);
-@@
+ 	if (u_texelCenterLoc != -1)
+ 		glUniform1i(u_texelCenterLoc, (!enable && !USE_PGXP && g_xeno_ps1_textured_sampling && XenoPs1TexelCenterEnabled()) ? 1 : 0);
+ 	if (enable)
+@@ -2098,6 +2172,7 @@ void GR_UpdateVertexBuffer(const GrVertex* vertices, int num_vertices)
+ 	}
+ 
  	//assert(num_vertices <= MAX_VERTEX_BUFFER_SIZE);
 +	g_xenoUploadedVertices = vertices;
  	GR_BindVertexBuffer();
-@@
+ 
+ #if USE_OPENGL
+@@ -2110,6 +2185,49 @@ void GR_UpdateVertexBuffer(const GrVertex* vertices, int num_vertices)
  void GR_DrawTriangles(int start_vertex, int triangles)
  {
  #if USE_OPENGL
@@ -368,5 +485,3 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
  	glDrawArrays(GL_TRIANGLES, start_vertex, triangles * 3);
  #else
  #error
- #endif
- }
