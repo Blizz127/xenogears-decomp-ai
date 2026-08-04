@@ -12,6 +12,44 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 4 — 🗺️ W19A PORTED 0x80074E58: the first pre-poll helper is native; ladder cuts at 0x80072498
+
+**Scope.** Exactly one retail step, ported per the W19A audit
+(`scratchpad/w19a_74e58_audit/` — authoritative: `REPORT.md`,
+`INSTRUCTION_AUDIT.md`, runtime capture `d77c_capture.log`). `0x80075030`
+and the rest of the pre-poll chain remain unported stubs; no field-overlay
+symbols used.
+
+- **The rung:** `wm_80074E58_build_upload_records` in
+  `pc_port/src/world_map_init.c` — converts the W4C fixup slot `0x8009D77C`
+  (runtime `0x800CB88C`, block inside the decompressed second-wave archive;
+  word 0 = count N, words 1..N = block-relative offsets) into N×12 upload
+  records: `{ptr = block + offset, value = 0x8009A1E8 + i*16, counter = 0,
+  flag = 1}`, count → `0x8009CC9C`, array → `0x8009D780` via one
+  `HeapAlloc(N*12, 0)`. No RNG, no GPU writes; structural re-derivation
+  verification replaces an RNG oracle; one-shot guard (non-idempotent alloc)
+  with `XENO_WORLD_UPLOAD_RECORDS_DOUBLE_TEST` sibling of the W18B test.
+- **Gate + cut:** new deepest gate `XENO_WORLD_UPLOAD_RECORDS=1` (implies
+  `XENO_WORLD_HEAP_TABLE_RAND` and the rest of the chain); cut advanced
+  `0x80072490` → **`0x80072498`** (immediately before `jal 0x80075030`).
+- **Instrumentation semantics (W18I framework):** the `wm_80074E58_should_not_run`
+  stub was replaced by the real rung; registry counter `74e58` now counts
+  **blocked residual re-dispatches** and must stay ZERO VERIFIED; the rung
+  itself is a `hit_exact:1` positive control (`74e58_dispatch`) on the
+  natural route and a required-zero target on hold/gate-off routes. The
+  hit-scenario controls now double-dispatch the rung (first run real, second
+  blocked → counter trips).
+
+**Verified** (full suite `run_w18i.sh`, W19A binary): canonical build
+`LINK OK` (`compiled=47 skipped=0`); natural route executes W19A exactly as
+audited (`count=2 bytes=24 array_psx=0x800f2c58`), W18B RNG oracle still
+exact (`0xd7017da1→0xc0913d31`, mismatch 0/1280 + 0/640), placeholder stable
+120 Vsyncs, **all 11 forbidden targets + both attribution catch-alls ZERO
+VERIFIED** (checker PASS); hold-enabled **17/17 ZERO VERIFIED** (W18B and
+W19A dispatches both vetoed); gate-off 15/15; all 6 negative controls exit
+nonzero; `counter_hit` reports HIT count=1. Diagnostics-only change — no
+gameplay/renderer behavior beyond the new rung.
+
 ## August 4 — 🛡️ W18I WORLD FORBIDDEN-HIT INSTRUMENTATION HARDENED: a forbidden target is proven absent only when its instrumentation was registered and its measured hit count is zero
 
 **The rule.** A forbidden target is proven absent only when its

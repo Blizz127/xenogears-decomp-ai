@@ -31,7 +31,12 @@
  * W16B: route exact matching GfxAllocateWorkBuffers(5120,0); cut before
  *       0x80072480 (jal 0x80074594). No free fix, no post helpers, no poll.
  * W17B: wm_80074594 heap FT4 dual-pool init (128 + 640 + 640); cut before
- *       0x80072488 (jal 0x800863E0). One-shot; no later pre-poll helpers.
+ *       0x80072488 (jal 0x800863E0). One-shot.
+ * W18B: wm_800863E0 heap-table rand init (1280 + 640 bytes, 240 rand calls);
+ *       cut before 0x80072490 (jal 0x80074E58). One-shot.
+ * W19A: wm_80074E58 upload-record builder (N×12 records from the W4C D77C
+ *       fixup block; one HeapAlloc, no RNG); cut before 0x80072498
+ *       (jal 0x80075030). One-shot. 0x80075030 is not ported.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -50,6 +55,8 @@
  *   XENO_WORLD_RECORD_CLUT_INIT=1
  *   XENO_WORLD_GFX_WORK_BUFFERS=1
  *   XENO_WORLD_FT4_POOLS=1
+ *   XENO_WORLD_HEAP_TABLE_RAND=1
+ *   XENO_WORLD_UPLOAD_RECORDS=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -176,6 +183,7 @@
 #define WM_CUT_BEFORE_74594      0x80072480u /* after W16B: jal 0x80074594 */
 #define WM_CUT_BEFORE_863E0      0x80072488u /* after W17B: jal 0x800863E0 */
 #define WM_CUT_AFTER_863E0       0x80072490u /* after W18B return; before jal 0x80074E58 */
+#define WM_CUT_BEFORE_75030      0x80072498u /* after W19A return; before jal 0x80075030 */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -202,6 +210,14 @@
 #define WM_TABLE_B_RECORDS       80u
 #define WM_TABLE_B_STRIDE        8u
 #define WM_TABLE_B_BYTES         640u
+
+/* W19A wm_80074E58 upload-record builder destinations (first pre-poll
+ * helper; consumes the W4C fixup slot WM_FIX_D77C). */
+#define WM_UPLOAD_COUNT          0x8009CC9Cu
+#define WM_UPLOAD_REC_ARRAY      0x8009D780u
+#define WM_UPLOAD_VALUE_BASE     0x8009A1E8u
+#define WM_UPLOAD_REC_STRIDE     12u
+#define WM_UPLOAD_VALUE_STRIDE   16u
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -451,14 +467,9 @@ void wm_8007299C_should_not_run(void)
 /* W18I: diagnostic wrappers for retail steps that have no native body.
  * Any future native routing of these steps must dispatch through the world
  * route tail, where these wrappers are the registered diagnostics; hitting
- * one means a forbidden retail step was dispatched. */
-void wm_80074E58_should_not_run(void)
-{
-    s_wm74e58_hits++;
-    fprintf(stderr, "[worldmap-init] ERROR: 0x80074E58 dispatch reached (hit=%d)\n",
-            s_wm74e58_hits);
-}
-
+ * one means a forbidden retail step was dispatched. (0x80074E58 was ported
+ * as W19A; its residual counter s_wm74e58_hits now counts blocked re-runs
+ * of the real rung, not stub entry.) */
 void wm_80075030_should_not_run(void)
 {
     s_wm75030_hits++;
@@ -544,15 +555,23 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B. */
+    /* W17B runs when requested or as a prerequisite of W18B/W19A. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
-           env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND");
+           env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
+           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* Narrow W18B gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND");
+    /* W18B runs when requested or as a prerequisite of W19A. */
+    return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
+           env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS");
+}
+
+static int world_upload_records_enabled(void)
+{
+    /* Narrow W19A gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -681,9 +700,10 @@ static void log_enabled_slices(void)
     int w16 = world_gfx_work_buffers_enabled();
     int w17 = world_ft4_pools_enabled();
     int w18 = world_heap_table_rand_enabled();
+    int w19 = world_upload_records_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18) {
+        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 && !w19) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -721,6 +741,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W17B");
     if (w18)
         fprintf(stderr, ",W18B");
+    if (w19)
+        fprintf(stderr, ",W19A");
     fprintf(stderr, "\n");
 }
 
@@ -3950,6 +3972,7 @@ static int wm_route_gfx_allocate_work_buffers(void)
 
 static int s_wm74594_ran;
 static int s_wm863E0_ran;
+static int s_wm74e58_ran;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -4635,6 +4658,180 @@ static int wm_800863E0_init_heap_table_rand(void)
 }
 
 /*
+ * W19A — native wm_80074E58: upload-record builder (first pre-poll helper).
+ *
+ * Retail (W19A audit; scratchpad/w19a_74e58_audit/INSTRUCTION_AUDIT.md):
+ *
+ *   src   = [0x8009D77C]      W4C fixup slot; block inside the decompressed
+ *                             second-wave archive (word 0 = count N,
+ *                             words 1..N = offsets relative to the block)
+ *   [0x8009CC9C] = N
+ *   alloc = HeapAlloc(N * 12, 0)
+ *   [0x8009D780] = alloc
+ *   for i in 0..N-1:
+ *       rec[i].ptr     = src_block + block[1 + i]   (u32 @ +0)
+ *       rec[i].value   = 0x8009A1E8 + i * 16        (u32 @ +4)
+ *       rec[i].counter = 0                          (u16 @ +8)
+ *       rec[i].flag    = 1                          (u16 @ +A)
+ *
+ * One HeapAlloc, no RNG, no GPU writes. One-shot like W15B/W17B/W18B
+ * (non-idempotent alloc): a second dispatch is a forbidden residual and
+ * trips s_wm74e58_hits. Cut before jal 0x80075030 @ retail 0x80072498;
+ * 0x80075030 itself is NOT part of this rung.
+ */
+static int wm_74e58_verify_records(u32 d77c, u32 count, const u8* recs)
+{
+    u32 i;
+    int mismatch = 0;
+    u32 value = WM_UPLOAD_VALUE_BASE;
+
+    for (i = 0; i < count; i++) {
+        const u8* rec = recs + i * WM_UPLOAD_REC_STRIDE;
+        u32 rel = WM_U32(d77c + 4u + i * 4u);
+
+        if (*(const u32*)(rec + 0) != d77c + rel)
+            mismatch++;
+        if (*(const u32*)(rec + 4) != value)
+            mismatch++;
+        if (*(const u16*)(rec + 8) != 0)
+            mismatch++;
+        if (*(const u16*)(rec + 10) != 1)
+            mismatch++;
+        value += WM_UPLOAD_VALUE_STRIDE;
+    }
+    return mismatch;
+}
+
+static int wm_80074E58_build_upload_records(void)
+{
+    u32 d77c;
+    u32 count;
+    void* host;
+    u32 psx;
+    u8* recs;
+    int mismatch;
+
+    fprintf(stderr, "[worldmap-upload-records] entry\n");
+
+    if (s_wm74e58_ran) {
+        s_wm74e58_hits++;
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: already ran "
+                "(non-idempotent alloc; blocked) (hit=%d)\n",
+                s_wm74e58_hits);
+        fprintf(stderr,
+                "[worldmap-upload-records] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (s_wm863E0_ran == 0) {
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: W18B did not run "
+                "(required)\n");
+        return -1;
+    }
+
+    d77c = WM_U32(WM_FIX_D77C);
+    if (d77c == 0) {
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: 0x8009D77C slot is NULL\n");
+        return -1;
+    }
+    count = WM_U32(d77c);
+    WM_U32(WM_UPLOAD_COUNT) = count;
+
+    /* Retail order: count slot, alloc, array slot, per-record fill. */
+    host = HeapAlloc(count * WM_UPLOAD_REC_STRIDE, 0);
+    if (host == NULL) {
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: HeapAlloc(%u) failed\n",
+                count * WM_UPLOAD_REC_STRIDE);
+        return -1;
+    }
+    psx = host_ptr_to_psx_u32(host);
+    if (psx < 0x80000000u || psx_u32_to_host(psx) != host) {
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: record array KUSEG "
+                "conversion failed\n");
+        return -1;
+    }
+    WM_U32(WM_UPLOAD_REC_ARRAY) = psx;
+    recs = (u8*)host;
+
+    {
+        u32 i;
+        u32 value = WM_UPLOAD_VALUE_BASE;
+
+        for (i = 0; i < count; i++) {
+            u8* rec = recs + i * WM_UPLOAD_REC_STRIDE;
+            u32 rel = WM_U32(d77c + 4u + i * 4u);
+
+            *(u32*)(rec + 0) = d77c + rel;
+            *(u32*)(rec + 4) = value;
+            *(u16*)(rec + 8) = 0;
+            *(u16*)(rec + 10) = 1;
+            value += WM_UPLOAD_VALUE_STRIDE;
+        }
+    }
+
+    fprintf(stderr,
+            "[worldmap-upload-records] d77c=0x%08x count=%u array_psx=0x%08x "
+            "bytes=%u value_base=0x%08x\n",
+            d77c, count, psx, count * WM_UPLOAD_REC_STRIDE,
+            WM_UPLOAD_VALUE_BASE);
+
+    /* Structural verification: re-derive every record from the source block
+     * (deterministic body — no RNG oracle needed). */
+    mismatch = wm_74e58_verify_records(d77c, count, recs);
+    if (mismatch != 0) {
+        fprintf(stderr,
+                "[worldmap-upload-records] ERROR: record verification "
+                "mismatch=%d\n",
+                mismatch);
+        return -1;
+    }
+
+    s_wm74e58_ran = 1;
+    fprintf(stderr, "[worldmap-upload-records] exit\n");
+    fprintf(stderr,
+            "[worldmap-upload-records] cut-before-next-helper "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_75030);
+
+    if (env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_DOUBLE_TEST")) {
+        u32 cc9c_s = WM_U32(WM_UPLOAD_COUNT);
+        u32 d780_s = WM_U32(WM_UPLOAD_REC_ARRAY);
+        int hits_s = s_wm74e58_hits;
+        int rc2;
+        int delta;
+        int changed;
+
+        rc2 = wm_80074E58_build_upload_records();
+        delta = s_wm74e58_hits - hits_s;
+        changed = wm_74e58_verify_records(d77c, count, recs);
+        if (WM_U32(WM_UPLOAD_COUNT) != cc9c_s ||
+            WM_U32(WM_UPLOAD_REC_ARRAY) != d780_s)
+            changed++;
+        fprintf(stderr,
+                "[worldmap-upload-records] double_test rc2=%d changed=%d "
+                "counter_delta=%d new_allocations=0\n",
+                rc2, changed, delta);
+        /* The blocked second call intentionally trips the residual counter;
+         * restore it so the diagnostic rerun does not poison the forbidden
+         * proof. */
+        s_wm74e58_hits = hits_s;
+        if (rc2 == 0 || changed != 0 || delta != 1) {
+            fprintf(stderr,
+                    "[worldmap-upload-records] ERROR: double-run guard "
+                    "failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -4947,7 +5144,28 @@ void PcPort_WorldMapInitMain(void)
                                                                                 "still "
                                                                                 "entering "
                                                                                 "placeholder\n");
+                                                                    } else if (
+                                                                        world_upload_records_enabled()) {
+                                                                    fprintf(stderr,
+                                                                            "[worldmap-init] "
+                                                                            "XENO_WORLD_"
+                                                                            "UPLOAD_"
+                                                                            "RECORDS=1: "
+                                                                            "0x80074E58 "
+                                                                            "upload-record "
+                                                                            "builder\n");
+                                                                    if (wm_80074E58_build_upload_records() !=
+                                                                        0) {
+                                                                        fprintf(stderr,
+                                                                                "[worldmap-"
+                                                                                "upload-"
+                                                                                "records] "
+                                                                                "failed; "
+                                                                                "still "
+                                                                                "entering "
+                                                                                "placeholder\n");
                                                                     }
+                                                                }
                                                                 }
                                                             }
                                                         }
@@ -4965,7 +5183,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_heap_table_rand_enabled())
+            if (world_upload_records_enabled())
+                cut_pc = WM_CUT_BEFORE_75030;
+            else if (world_heap_table_rand_enabled())
                 cut_pc = WM_CUT_AFTER_863E0;
             else if (world_ft4_pools_enabled())
                 cut_pc = WM_CUT_BEFORE_863E0;

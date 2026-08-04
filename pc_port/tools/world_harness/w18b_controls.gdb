@@ -16,10 +16,11 @@
 #                          -> NOT_INSTRUMENTED, exit nonzero
 #   deleted_bp             required breakpoint deleted during the interval
 #                          -> INSTRUMENTATION_ERROR, exit nonzero
-#   hit_required           native 74e58 counter incremented by a controlled
-#                          dispatch while the target is required-zero
-#                          -> HIT, exit nonzero
-#   counter_hit            same increment, target declared optional with
+#   hit_required           the ported 0x80074E58 rung is dispatched under
+#                          harness control: first call runs the real body,
+#                          the blocked second call trips the residual counter
+#                          while 74e58 is required-zero -> HIT, exit nonzero
+#   counter_hit            same double dispatch, 74e58 declared optional with
 #                          expect hit_exact:1 -> HIT count=1, exit 0
 #
 # Invocation (repo root, host display :10), e.g.:
@@ -269,11 +270,16 @@ run
 
 python
 # Post-run (hit scenarios only): the inferior is stopped at the placeholder
-# breakpoint, so the wrapper dispatch is a plain top-level inferior call.
+# breakpoint, so the controlled dispatches are plain top-level inferior calls.
+# The route ran W18B but not W19A (no XENO_WORLD_UPLOAD_RECORDS here), so the
+# first call executes the real W19A body once and the second call is blocked
+# by the one-shot guard, tripping the residual counter s_wm74e58_hits.
 if SCENARIO in ("hit_required", "counter_hit"):
     try:
-        gdb.execute("print wm_80074E58_should_not_run()", to_string=True)
-        print("W18ICTRL_FAULT 74e58 wrapper dispatched once")
+        gdb.execute("print wm_80074E58_build_upload_records()", to_string=True)
+        gdb.execute("print wm_80074E58_build_upload_records()", to_string=True)
+        print("W18ICTRL_FAULT 74e58 rung dispatched twice "
+              "(first run, second blocked)")
     except Exception as exc:
         print("W18ICTRL_FAULT_ERR inferior call failed: %s" % exc)
         gdb.execute("quit 3")

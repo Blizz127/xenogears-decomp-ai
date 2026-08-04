@@ -1,11 +1,13 @@
-# W18I hardened W18B hold-enabled harness.
+# W18I hardened W18B hold-enabled harness (deepest gate).
 #
 # Same input route as the natural harness but with
-# XENO_FIELD_HOLD_TRANSITION=1: the held-field transition vetoes world entry,
-# so state3 is never reached and no world rung executes. Every required world
-# forbidden target must still be instrumented and end ZERO VERIFIED; field
-# calls of shared functions (DrawOTag/ArchiveCdDataSync) are classified
-# allowed by backtrace attribution and never counted against world targets.
+# XENO_FIELD_HOLD_TRANSITION=1 and the deepest world gate
+# XENO_WORLD_UPLOAD_RECORDS=1 (implies W18B): the held-field transition vetoes
+# world entry, so state3 is never reached and no world rung executes. Every
+# required world forbidden target must still be instrumented and end ZERO
+# VERIFIED; field calls of shared functions (DrawOTag/ArchiveCdDataSync) are
+# classified allowed by backtrace attribution and never counted against world
+# targets.
 #
 # Invocation (repo root, host display :10, never Docker):
 #   DISPLAY=:10 timeout -s KILL 300 gdb -batch \
@@ -20,8 +22,9 @@ set environment XENO_FIELD_TEST 1
 set environment XENO_KERNEL_SEL 0
 set environment XENO_FIELD_MAP 1
 set environment XENO_FIELD_ENTRANCE 0
-set environment XENO_WORLD_HEAP_TABLE_RAND 1
+set environment XENO_WORLD_UPLOAD_RECORDS 1
 set environment XENO_FIELD_HOLD_TRANSITION 1
+unset environment XENO_WORLD_HEAP_TABLE_RAND
 unset environment XENO_WORLD_FT4_POOLS
 set environment SDL_AUDIODRIVER dummy
 set environment LD_LIBRARY_PATH /home/blizz/dev/xenogears-assets/lib
@@ -192,9 +195,11 @@ instr.attribution_target("cdsync_attr", "ArchiveCdDataSync",
 instr.attribution_target("drawotag_attr", "DrawOTag",
                          bp_factory=AttributionBreakpoint)
 
-# Hold-route specific forbidden targets: W18B dispatch and world RNG stay
-# zero; world state is never entered.
+# Hold-route specific forbidden targets: W18B dispatch, W19A dispatch and
+# world RNG stay zero; world state is never entered.
 instr.symbol_target("863e0_dispatch", "wm_800863E0_init_heap_table_rand",
+                    expect="zero", bp_factory=ForbidSymbolBreakpoint)
+instr.symbol_target("74e58_dispatch", "wm_80074E58_build_upload_records",
                     expect="zero", bp_factory=ForbidSymbolBreakpoint)
 instr.window_target("rand_in_w18b")
 instr.window_target("state3_entries")
