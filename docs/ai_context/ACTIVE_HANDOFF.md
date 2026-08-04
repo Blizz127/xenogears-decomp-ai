@@ -12,6 +12,73 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 4 — 🛡️ W18I WORLD FORBIDDEN-HIT INSTRUMENTATION HARDENED: a forbidden target is proven absent only when its instrumentation was registered and its measured hit count is zero
+
+**The rule.** A forbidden target is proven absent only when its
+instrumentation was successfully registered and remained active for the
+entire measured interval, **and** its measured hit count is zero. An
+unregistered, unresolved, missing, or failed breakpoint must report
+**NOT INSTRUMENTED** and must fail any test where that target is required
+to be forbidden. Initializing a label to numeric zero before registration
+is proven — the pre-W18I `forbid = {"74e58": 0, ...}` pattern, which let
+`w18b_natural.gdb` print zeros for five targets it never breakpointed — is
+**forbidden**.
+
+**Result model (exactly one state per target).**
+
+| Status | Meaning |
+| --- | --- |
+| `ZERO VERIFIED` | registered + active throughout + hits == 0 — the only passing state for a required forbidden target |
+| `HIT` | registered, hits > 0 (or a positive-control expectation matched) |
+| `NOT INSTRUMENTED` | registration failed / symbol absent / no method — never printed as numeric zero |
+| `INSTRUMENTATION ERROR` | breakpoint disabled/deleted mid-interval, counter inconsistent, summary unreliable |
+
+**Mechanisms.**
+- *GDB symbol breakpoints* on native stubs (`wm_800712D0_should_not_run`
+  family) with registration proof: `set breakpoint pending off`, breakpoint
+  number/enabled/location verified at interval start, liveness re-checked
+  every Vsync.
+- *Native route-boundary counters* for retail steps with no native code
+  (`0x80074E58`, `0x80075030`, `0x800739B8`, `0x80088F64`, third-wave
+  consumer `0x80037FD8`, world `DrawOTag`, world `ArchiveCdDataSync`
+  callsite): exported `g_wm_forbidden_targets` registry in
+  `pc_port/src/world_map_init.c` + `wm_*_should_not_run` diagnostic
+  wrappers; harnesses read baseline/delta directly from memory (no inferior
+  calls). A raw PSX retail address is never used as a native breakpoint.
+- *Attribution breakpoints* on shared functions (`ArchiveCdDataSync`,
+  `DrawOTag`): backtrace classifies world-route callers (forbidden) vs
+  field/overlay/placeholder callers (allowed, reported separately — W18E3R
+  evidence: 29 legitimate overlay-load CD syncs, ~1100 placeholder
+  DrawOTag calls per natural run).
+- *Required vs optional:* required forbidden targets pass only as
+  `ZERO VERIFIED` and fail the run (gdb exit code propagates) otherwise.
+  Optional targets may report NOT INSTRUMENTED without failing, stay
+  visibly marked, and are never counted as passing.
+
+**Operational commands**
+
+| Purpose | Command |
+| --- | --- |
+| Full W18I suite (harnesses + controls + checker) | `bash pc_port/tools/world_harness/run_w18i.sh` |
+| Hardened natural / hold / gate-off harnesses | `DISPLAY=:10 timeout -s KILL 290 gdb -batch -x pc_port/tools/world_harness/w18b_natural.gdb --args pc_port/build_native/xeno-port` (same for `w18b_hold_enabled.gdb`, `w18b_gate_off.gdb`) |
+| Fault-injection controls | `XENO_W18I_CTRL=<scenario> gdb -batch -x pc_port/tools/world_harness/w18b_controls.gdb --args ...` — see `scratchpad/w18i_forbidden_instrumentation/NEGATIVE_CONTROLS.md` |
+| Check a harness log | `python3 pc_port/tools/check_forbidden_instrumentation.py <log>` |
+| Checker unit fixtures | `python3 pc_port/tools/test_check_forbidden_instrumentation.py` |
+
+- **Verified:** canonical container build `LINK OK` (`compiled=47
+  skipped=0`); W18B natural rerun cut at retail `0x80072490`, placeholder
+  stable 120 Vsyncs, **13/13 required targets ZERO VERIFIED**, checker
+  PASS; hold-enabled rerun **16/16 ZERO VERIFIED** (state3=0, W18B
+  dispatch 0, world RNG 0); all 6 negative fault scenarios exit nonzero
+  for the intended reason; counter-hit positive controls report
+  HIT count=1. No gameplay or renderer changes (diagnostic-only native
+  additions).
+- **Evidence:** `scratchpad/w18i_forbidden_instrumentation/`
+  (`HARNESS_INVENTORY.csv`, `natural.log`, `hold_enabled.log`,
+  `gate_off.log`, `ctrl_*.log`, control docs). The legacy
+  `scratchpad/w18a_863e0/w18b_natural.gdb` and W12B–W17B harnesses are
+  superseded, not deleted.
+
 ## August 4 — 🔁 PSYCROSS PATCH DURABILITY: a vendor hunk that only existed in the working tree is back under the committed patch series, and a replay checker now enforces the rule
 
 **The rule.** An intentional change to the vendored PsyCross tree

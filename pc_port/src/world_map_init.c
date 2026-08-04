@@ -411,6 +411,13 @@ static int s_wm_drawotag_hits;
 static int s_wm9766c_hits;
 static int s_wm72238_hits;
 static int s_wm7299c_hits;
+/* W18I route-boundary counters for retail steps with no native code. */
+static int s_wm74e58_hits;
+static int s_wm75030_hits;
+static int s_wm739b8_hits;
+static int s_wm88f64_hits;
+static int s_wm37fd8_hits;
+static int s_wm_cd_sync_world_hits;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -440,6 +447,94 @@ void wm_8007299C_should_not_run(void)
     fprintf(stderr, "[worldmap-second-wave] ERROR: 0x8007299C reached (hit=%d)\n",
             s_wm7299c_hits);
 }
+
+/* W18I: diagnostic wrappers for retail steps that have no native body.
+ * Any future native routing of these steps must dispatch through the world
+ * route tail, where these wrappers are the registered diagnostics; hitting
+ * one means a forbidden retail step was dispatched. */
+void wm_80074E58_should_not_run(void)
+{
+    s_wm74e58_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: 0x80074E58 dispatch reached (hit=%d)\n",
+            s_wm74e58_hits);
+}
+
+void wm_80075030_should_not_run(void)
+{
+    s_wm75030_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: 0x80075030 dispatch reached (hit=%d)\n",
+            s_wm75030_hits);
+}
+
+void wm_800739B8_should_not_run(void)
+{
+    s_wm739b8_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: 0x800739B8 dispatch reached (hit=%d)\n",
+            s_wm739b8_hits);
+}
+
+void wm_80088F64_should_not_run(void)
+{
+    s_wm88f64_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: 0x80088F64 dispatch reached (hit=%d)\n",
+            s_wm88f64_hits);
+}
+
+/* First third-wave consumer (retail 0x80037FD8). */
+void wm_80037FD8_should_not_run(void)
+{
+    s_wm37fd8_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: 0x80037FD8 third-wave consumer reached (hit=%d)\n",
+            s_wm37fd8_hits);
+}
+
+/* World-route DrawOTag callsite class. Feeds s_wm_drawotag_hits, which the
+ * end-of-init check consumes; placeholder/field DrawOTag calls are routed
+ * through normal presenter code and never through this wrapper. */
+void wm_world_DrawOTag_should_not_run(void)
+{
+    s_wm_drawotag_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: world DrawOTag callsite reached (hit=%d)\n",
+            s_wm_drawotag_hits);
+}
+
+/* World-route ArchiveCdDataSync callsite class (retail world CD poll).
+ * Field/overlay-load ArchiveCdDataSync calls are legitimate and do not go
+ * through this wrapper. */
+void wm_world_ArchiveCdDataSync_should_not_run(void)
+{
+    s_wm_cd_sync_world_hits++;
+    fprintf(stderr, "[worldmap-init] ERROR: world ArchiveCdDataSync callsite reached (hit=%d)\n",
+            s_wm_cd_sync_world_hits);
+}
+
+/* W18I forbidden-target registry: stable exported ABI for runtime harnesses.
+ * Harnesses prove counter registration by reading these globals directly
+ * (no inferior calls); a read failure is reported as NOT INSTRUMENTED. */
+typedef struct wm_forbidden_target_entry
+{
+    const char* label;
+    u32 retail_pc; /* 0 = callsite-class target, no single retail PC */
+    int* hits;
+} wm_forbidden_target_entry;
+
+#define WM_FORBIDDEN_TARGET_COUNT 11
+
+const int g_wm_forbidden_target_count = WM_FORBIDDEN_TARGET_COUNT;
+
+const wm_forbidden_target_entry g_wm_forbidden_targets[WM_FORBIDDEN_TARGET_COUNT] = {
+    { "712d0", 0x800712D0u, &s_wm712d0_hits },
+    { "72238", 0x80072238u, &s_wm72238_hits },
+    { "7299c", 0x8007299Cu, &s_wm7299c_hits },
+    { "9766c", 0x8009766Cu, &s_wm9766c_hits },
+    { "74e58", 0x80074E58u, &s_wm74e58_hits },
+    { "75030", 0x80075030u, &s_wm75030_hits },
+    { "739b8", 0x800739B8u, &s_wm739b8_hits },
+    { "88f64", 0x80088F64u, &s_wm88f64_hits },
+    { "37fd8", 0x80037FD8u, &s_wm37fd8_hits },
+    { "drawotag_world", 0u, &s_wm_drawotag_hits },
+    { "cdsync_world", 0u, &s_wm_cd_sync_world_hits },
+};
 
 static int env_flag_is_one(const char* name)
 {
@@ -4592,6 +4687,12 @@ void PcPort_WorldMapInitMain(void)
     s_wm9766c_hits = 0;
     s_wm72238_hits = 0;
     s_wm7299c_hits = 0;
+    s_wm74e58_hits = 0;
+    s_wm75030_hits = 0;
+    s_wm739b8_hits = 0;
+    s_wm88f64_hits = 0;
+    s_wm37fd8_hits = 0;
+    s_wm_cd_sync_world_hits = 0;
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -4908,12 +5009,18 @@ void PcPort_WorldMapInitMain(void)
     /* s_wm9766c_hits only counts accidental entry into the forbidden stub
      * symbol; the real W5B body is wm_8009766C_object_pool. */
     if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0 || s_wm9766c_hits != 0 ||
-        s_wm72238_hits != 0 || s_wm7299c_hits != 0) {
+        s_wm72238_hits != 0 || s_wm7299c_hits != 0 || s_wm74e58_hits != 0 ||
+        s_wm75030_hits != 0 || s_wm739b8_hits != 0 || s_wm88f64_hits != 0 ||
+        s_wm37fd8_hits != 0 || s_wm_cd_sync_world_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
-                "wm712d0=%d drawotag=%d f9766c_stub=%d f72238=%d f7299c=%d\n",
+                "wm712d0=%d drawotag=%d f9766c_stub=%d f72238=%d f7299c=%d "
+                "f74e58=%d f75030=%d f739b8=%d f88f64=%d f37fd8=%d "
+                "cdsync_world=%d\n",
                 s_wm712d0_hits, s_wm_drawotag_hits, s_wm9766c_hits,
-                s_wm72238_hits, s_wm7299c_hits);
+                s_wm72238_hits, s_wm7299c_hits, s_wm74e58_hits,
+                s_wm75030_hits, s_wm739b8_hits, s_wm88f64_hits,
+                s_wm37fd8_hits, s_wm_cd_sync_world_hits);
     }
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
