@@ -1,19 +1,21 @@
-# W18I hardened W18B natural Lahan harness, extended by the W19A rung.
+# W18I hardened natural Lahan harness, extended by the W19A + W20B rungs.
 #
 # Route is the accepted W18B natural route with the deepest gate advanced to
-# XENO_WORLD_UPLOAD_RECORDS=1 (implies XENO_WORLD_HEAP_TABLE_RAND):
-# XENO_FIELD_TEST=1, XENO_KERNEL_SEL=0, XENO_FIELD_MAP=1,
-# XENO_FIELD_ENTRANCE=0, FT4_POOLS unset, hold unset; input
-# D_800AFE9C = 0x2000 (frame<600), 0x4000 (600..916), 0 afterwards; cut at
-# retail 0x80072498 (before jal 0x80075030); placeholder stable 120 Vsyncs.
+# XENO_WORLD_UPLOAD_RECORDS_B=1 (implies XENO_WORLD_UPLOAD_RECORDS and
+# XENO_WORLD_HEAP_TABLE_RAND): XENO_FIELD_TEST=1, XENO_KERNEL_SEL=0,
+# XENO_FIELD_MAP=1, XENO_FIELD_ENTRANCE=0, FT4_POOLS unset, hold unset;
+# input D_800AFE9C = 0x2000 (frame<600), 0x4000 (600..916), 0 afterwards;
+# cut at retail 0x800724A0 (before jal 0x800739B8); placeholder stable 120
+# Vsyncs.
 #
 # Hardening: every required forbidden target has proven registration and the
 # run ends in the strict machine-readable summary. A target is ZERO VERIFIED
 # only when its instrumentation was registered and stayed active for the whole
 # measured interval (process start -> 120th placeholder Vsync). Unregistered
-# targets are NOT INSTRUMENTED, never numeric zero. The ported 0x80074E58 rung
-# (W19A) is a hit_exact:1 positive control; its registry counter now counts
-# blocked residual re-dispatches and must stay zero.
+# targets are NOT INSTRUMENTED, never numeric zero. The ported 0x80074E58 /
+# 0x80075030 rungs (W19A/W20B) are hit_exact:1 positive controls; their
+# registry counters now count blocked residual re-dispatches and must stay
+# zero.
 #
 # Invocation (repo root, host display :10, never Docker):
 #   DISPLAY=:10 timeout -s KILL 300 gdb -batch \
@@ -29,7 +31,8 @@ set environment XENO_FIELD_TEST 1
 set environment XENO_KERNEL_SEL 0
 set environment XENO_FIELD_MAP 1
 set environment XENO_FIELD_ENTRANCE 0
-set environment XENO_WORLD_UPLOAD_RECORDS 1
+set environment XENO_WORLD_UPLOAD_RECORDS_B 1
+unset environment XENO_WORLD_UPLOAD_RECORDS
 unset environment XENO_WORLD_HEAP_TABLE_RAND
 unset environment XENO_WORLD_FT4_POOLS
 set environment SDL_AUDIODRIVER dummy
@@ -259,9 +262,10 @@ instr.symbol_target("9766c", "wm_8009766C_should_not_run",
 
 # Required forbidden targets: native route-boundary counters for retail steps
 # with no native code (absent from the linked image). Counters live in the
-# exported g_wm_forbidden_targets registry in world_map_init.c. The 74e58
-# counter survives the W19A port as the residual re-dispatch counter: the
-# ported rung only increments it when a blocked second dispatch is attempted.
+# exported g_wm_forbidden_targets registry in world_map_init.c. The 74e58 and
+# 75030 counters survive the W19A/W20B ports as residual re-dispatch
+# counters: the ported rungs only increment them when a blocked second
+# dispatch is attempted.
 instr.counter_target("74e58")
 instr.counter_target("75030")
 instr.counter_target("739b8")
@@ -280,16 +284,20 @@ instr.attribution_target("cdsync_attr", "ArchiveCdDataSync",
 instr.attribution_target("drawotag_attr", "DrawOTag",
                          bp_factory=AttributionBreakpoint)
 
-# Positive controls: known-hit targets — W18B executes exactly once and the
-# ported W19A rung (0x80074E58) executes exactly once on this route — and
-# multi-hit (Vsync fires at least 120 times). Positive controls are not
-# forbidden targets, so they are declared optional; the verdict still enforces
-# the expectation (a mismatch classifies as INSTRUMENTATION_ERROR and fails
-# the run).
+# Positive controls: known-hit targets — W18B executes exactly once, the
+# ported W19A rung (0x80074E58) executes exactly once, and the ported W20B
+# rung (0x80075030) executes exactly once on this route — plus multi-hit
+# (Vsync fires at least 120 times). Positive controls are not forbidden
+# targets, so they are declared optional; the verdict still enforces the
+# expectation (a mismatch classifies as INSTRUMENTATION_ERROR and fails the
+# run).
 instr.symbol_target("863e0_dispatch", "wm_800863E0_init_heap_table_rand",
                     required=False, expect="hit_exact:1",
                     bp_factory=HeapTableRandBreakpoint)
 instr.symbol_target("74e58_dispatch", "wm_80074E58_build_upload_records",
+                    required=False, expect="hit_exact:1",
+                    bp_factory=CountingBreakpoint)
+instr.symbol_target("75030_dispatch", "wm_80075030_build_upload_records_b",
                     required=False, expect="hit_exact:1",
                     bp_factory=CountingBreakpoint)
 instr.symbol_target("vsync_multihit", "Vsync", required=False,

@@ -191,6 +191,8 @@ instr.symbol_target("863e0_dispatch", "wm_800863E0_init_heap_table_rand",
                     expect="zero", bp_factory=ForbidSymbolBreakpoint)
 instr.symbol_target("74e58_dispatch", "wm_80074E58_build_upload_records",
                     expect="zero", bp_factory=ForbidSymbolBreakpoint)
+instr.symbol_target("75030_dispatch", "wm_80075030_build_upload_records_b",
+                    expect="zero", bp_factory=ForbidSymbolBreakpoint)
 
 FrameBreakpoint("func_8007554C", internal=True)
 InputBreakpoint("func_8009F5F4", internal=True)

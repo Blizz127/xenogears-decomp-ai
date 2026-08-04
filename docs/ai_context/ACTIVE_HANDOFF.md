@@ -12,6 +12,43 @@
 > without deliberate review. Project goal remains accurate SLUS_006.64 decomp +
 > PC-port correctness.
 
+## August 4 — 🗺️ W20B PORTED 0x80075030: the upload-record clone is native; ladder cuts at 0x800724A0
+
+**Scope.** Exactly one retail step, ported per the W20A audit
+(`scratchpad/w20a_75030_audit/` — classification A: 43/43 instruction
+structural clone of W19A's 0x80074E58). `0x800739B8` and the rest of the
+pre-poll chain remain unported stubs; no field-overlay symbols used.
+
+- **Shared helper (the refactor risk was the main gate):** W19A and W20B now
+  share `wm_upload_records_build(cfg)` + `wm_upload_records_verify(cfg, …)`
+  driven by `wm_upload_rung_cfg` (tag, src/count/array slots, value base,
+  cut PC, double-test env, one-shot flag, residual counter). W20B uses the
+  proven four-slot differences only: `D7C8 → CD64 / D7D0`, value base
+  `0x8009A250`. **W19B preservation proven by byte oracle**
+  (`scratchpad/w20b_75030/w19b_oracle_pre.log` vs `_post.log`): identical
+  stderr diagnostics, identical record bytes
+  (SHA-256 `063d8567…f6f74de3`), same alloc address, and W20B outputs
+  untouched under the old gate.
+- **Gate + cut:** new deepest gate `XENO_WORLD_UPLOAD_RECORDS_B=1` (implies
+  the whole chain); cut advanced `0x80072498` → **`0x800724A0`**
+  (immediately before `jal 0x800739B8`).
+- **Instrumentation (W18I framework):** the `wm_80075030_should_not_run`
+  stub was replaced by the real rung
+  `wm_80075030_build_upload_records_b`; registry counter `75030` now counts
+  blocked residual re-dispatches (required ZERO VERIFIED); the rung is a
+  `hit_exact:1` positive control on the natural route and required-zero on
+  hold/gate-off routes.
+
+**Verified** (W20B binary, canonical build `LINK OK` `compiled=47
+skipped=0`): W20B acceptance probe at the new cut — W20B ran exactly as
+audited (`d7c8=0x800cb99c count=3 array_psx=0x800f2c78 bytes=36
+value_base=0x8009a250`, all 3 records structurally verified against the
+W20A capture, cut `0x800724a0`), W19A oracle unchanged, all 11 forbidden
+counters zero; full suite: natural 13/13 required ZERO VERIFIED (checker
+PASS), hold-enabled all dispatches vetoed, gate-off green, all 6 negative
+controls exit nonzero, `counter_hit` HIT count=1. Diagnostics-only change —
+no gameplay/renderer behavior beyond the new rung.
+
 ## August 4 — 🗺️ W19A PORTED 0x80074E58: the first pre-poll helper is native; ladder cuts at 0x80072498
 
 **Scope.** Exactly one retail step, ported per the W19A audit
