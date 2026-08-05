@@ -516,6 +516,12 @@ static int s_wm739b8_hits;
 static int s_wm88f64_hits;
 static int s_wm37fd8_hits;
 static int s_wm_cd_sync_world_hits;
+/* W25B: loop-path forbidden counters (not yet ported; must not execute). */
+static int s_wm96668_hits;
+static int s_wm_loop_dispatch_hits;
+static int s_wm967e4_hits;
+static int s_wm_loop_backedge_hits;
+static int s_wm_loop_exit_hits;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -597,7 +603,7 @@ typedef struct wm_forbidden_target_entry
     int* hits;
 } wm_forbidden_target_entry;
 
-#define WM_FORBIDDEN_TARGET_COUNT 11
+#define WM_FORBIDDEN_TARGET_COUNT 15
 
 const int g_wm_forbidden_target_count = WM_FORBIDDEN_TARGET_COUNT;
 
@@ -613,6 +619,10 @@ const wm_forbidden_target_entry g_wm_forbidden_targets[WM_FORBIDDEN_TARGET_COUNT
     { "37fd8", 0x80037FD8u, &s_wm37fd8_hits },
     { "drawotag_world", 0u, &s_wm_drawotag_hits },
     { "cdsync_world", 0u, &s_wm_cd_sync_world_hits },
+    { "loop_dispatch", 0x80072514u, &s_wm_loop_dispatch_hits },
+    { "967e4", 0x800967E4u, &s_wm967e4_hits },
+    { "loop_backedge", 0x80072530u, &s_wm_loop_backedge_hits },
+    { "loop_exit", 0x80072538u, &s_wm_loop_exit_hits },
 };
 
 static int env_flag_is_one(const char* name)
@@ -953,6 +963,66 @@ static void wm_80095F78(void)
         for (i = 0; i < 8; i++)
             pB[-i] = 0;
     }
+}
+
+/* W25B: exact native equivalent of retail 0x80096668.
+ *
+ * Reads the circular-buffer head (BE44) and tail (BCB8) indices, computes
+ * their modulo-16 forward distance.  Retail MIPS:
+ *   lui  $v1, 0x800A / lw $v1, BE44($v1)     ← head = *(0x8009BE44)
+ *   lui  $v0, 0x800A / lw $v0, BCB8($v0)     ← tail = *(0x8009BCB8)
+ *   subu $v0, $v1, $v0                        ← d = head − tail
+ *   bgez $v0, .ret                            ← if d >= 0: return d
+ *   nop
+ *   addiu $v0, $v0, 16                        ← d += 16  (wrap correction)
+ *   jr $ra / nop
+ *
+ * Caller repeats its loop while result >= 2 (slti $v0, $v0, 2 / beq).
+ * Return domain: [0, 15].  Read-only: no stores, no callees. */
+u32 wm_80096668_circular_distance(void)
+{
+    u32 head = WM_U32(WM_CLR_BE44_ABS);
+    u32 tail = WM_U32(WM_CLR_BCB8_ABS);
+    s32 d    = (s32)(head - tail);
+    if (d < 0)
+        d += 16;
+    return (u32)d;
+}
+
+/* W25B instrumented wrapper: counts calls and returns the real result. */
+u32 wm_80096668_instrumented(void)
+{
+    s_wm96668_hits++;
+    return wm_80096668_circular_distance();
+}
+
+/* W25B loop-related forbidden targets (not yet ported; must not execute). */
+void wm_loop_dispatch_should_not_run(void)
+{
+    s_wm_loop_dispatch_hits++;
+    fprintf(stderr, "[worldmap-w25b] ERROR: world loop dispatch reached (hit=%d)\n",
+            s_wm_loop_dispatch_hits);
+}
+
+void wm_800967E4_should_not_run(void)
+{
+    s_wm967e4_hits++;
+    fprintf(stderr, "[worldmap-w25b] ERROR: 0x800967E4 reached (hit=%d)\n",
+            s_wm967e4_hits);
+}
+
+void wm_loop_backedge_should_not_run(void)
+{
+    s_wm_loop_backedge_hits++;
+    fprintf(stderr, "[worldmap-w25b] ERROR: world loop back-edge reached (hit=%d)\n",
+            s_wm_loop_backedge_hits);
+}
+
+void wm_loop_exit_should_not_run(void)
+{
+    s_wm_loop_exit_hits++;
+    fprintf(stderr, "[worldmap-w25b] ERROR: world loop exit reached (hit=%d)\n",
+            s_wm_loop_exit_hits);
 }
 
 static void wm_8007369C(void)
@@ -6092,16 +6162,21 @@ void PcPort_WorldMapInitMain(void)
     if (s_wm712d0_hits != 0 || s_wm_drawotag_hits != 0 || s_wm9766c_hits != 0 ||
         s_wm72238_hits != 0 || s_wm7299c_hits != 0 || s_wm74e58_hits != 0 ||
         s_wm75030_hits != 0 || s_wm739b8_hits != 0 || s_wm88f64_hits != 0 ||
-        s_wm37fd8_hits != 0 || s_wm_cd_sync_world_hits != 0) {
+        s_wm37fd8_hits != 0 || s_wm_cd_sync_world_hits != 0 ||
+        s_wm_loop_dispatch_hits != 0 || s_wm967e4_hits != 0 ||
+        s_wm_loop_backedge_hits != 0 || s_wm_loop_exit_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
                 "wm712d0=%d drawotag=%d f9766c_stub=%d f72238=%d f7299c=%d "
                 "f74e58=%d f75030=%d f739b8=%d f88f64=%d f37fd8=%d "
-                "cdsync_world=%d\n",
+                "cdsync_world=%d loop_dispatch=%d f967e4=%d "
+                "loop_backedge=%d loop_exit=%d\n",
                 s_wm712d0_hits, s_wm_drawotag_hits, s_wm9766c_hits,
                 s_wm72238_hits, s_wm7299c_hits, s_wm74e58_hits,
                 s_wm75030_hits, s_wm739b8_hits, s_wm88f64_hits,
-                s_wm37fd8_hits, s_wm_cd_sync_world_hits);
+                s_wm37fd8_hits, s_wm_cd_sync_world_hits,
+                s_wm_loop_dispatch_hits, s_wm967e4_hits,
+                s_wm_loop_backedge_hits, s_wm_loop_exit_hits);
     }
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
