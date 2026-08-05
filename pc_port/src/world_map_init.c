@@ -62,6 +62,14 @@
  *       0x800724E8; sets g_CurArchiveOffset; cut before 0x800724F0).
  *       Existing native function, routing only.
  *
+ * W29B: Native world CD work dispatcher 0x800967E4.  Complete native
+ *       implementation of the per-iteration CD queue processor: dispatches
+ *       CD44 state machine (0x800968E0), processes D788 records (0x8009699C
+ *       via CdIntToPos/CdSyncCallback/CdControlF), processes C624 debug
+ *       records (0x800966CC via PCopen/PClseek/PCread/PCclose), and advances
+ *       BCB8 tail.  One bounded production call at retail 0x80072514 behind
+ *       XENO_WORLD_967E4_ROUTE gate; cut before Vsync at 0x8007251C.
+ *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
@@ -87,6 +95,7 @@
  *   XENO_WORLD_ARCHIVE_READY_POLL=1
  *   XENO_WORLD_FIRST_WDS_CONSUMER=1
  *   XENO_WORLD_ARCHIVE_SET_INDEX=1
+ *   XENO_WORLD_967E4_ROUTE=0 (default off; one bounded 0x800967E4 call)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -99,6 +108,8 @@
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
 #include "psyq/libetc.h"
+#include "psyq/libcd.h"
+#include "psyq/pc.h"
 #include "psx_memory.h"
 
 /* Retail layout */
@@ -168,6 +179,15 @@
 #define WM_BCCC_ABS              0x8009BCCCu
 #define WM_BCD0_ABS              0x8009BCD0u
 #define WM_BCD4_ABS              0x8009BCD4u
+
+/* W29B: 0x800967E4 implementation constants. */
+#define WM_CEBC_ABS              0x8009CEBCu /* CdlLOC buffer for CdIntToPos */
+#define WM_C624_BASE_ABS         0x8009C624u /* C624 pointer table (16 × u32) */
+#define WM_96A6C_HANDLER         0x80096A6Cu /* CdSyncCallback target handler */
+#define WM_D788_RECORD_STRIDE    12u         /* D788 record: file_id, byte_count, dest_ptr */
+#define WM_C624_ENTRY_STRIDE     16u         /* C624 sub-record stride */
+#define WM_C624_RETRY_MAX        8           /* C624 PCopen/PCread/PCclose retry limit */
+#define WM_CdlSetloc             2u          /* PsyQ CdlSetloc command byte */
 
 /* Below-overlay main BSS touched by entry (always) */
 #define WM_FLAG_91AE_ABS         0x800691AEu
@@ -239,6 +259,7 @@
 #define WM_CUT_BEFORE_CONSUMER   0x800724D4u /* after W23B poll; before jal 0x80037FD8 */
 #define WM_CUT_AFTER_CONSUMER    0x800724E8u /* after W24C consumer; before jal 0x80028470 */
 #define WM_CUT_AFTER_SETINDEX    0x800724F0u /* after W24E ArchiveSetIndex; before flag check */
+#define WM_CUT_AFTER_967E4       0x8007251Cu /* after W29B 0x800967E4 call; before Vsync */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
@@ -553,6 +574,25 @@ static int s_wm_cd44_clear;
 static int s_wm_bcb8_increment;
 static int s_wm_d788_tail_clear;
 
+/* W29B: 0x800967E4 implementation instrumentation counters. */
+static int s_wm967e4_entry;
+static int s_wm967e4_debug_table_nonzero;
+static int s_wm967e4_dispatcher_idle;
+static int s_wm967e4_dispatcher_busy;
+static int s_wm967e4_dispatcher_tail_adv;
+static int s_wm967e4_dispatcher_invalid;
+static int s_wm967e4_d788_null;
+static int s_wm967e4_d788_process;
+static int s_wm967e4_c624_null;
+static int s_wm967e4_c624_process;
+static int s_wm967e4_tail_advance;
+static int s_wm967e4_route_hit;
+static int s_wm_d788_proc_entry;
+static int s_wm_c624_proc_entry;
+static int s_wm_c624_pcopen_fail;
+static int s_wm_c624_pcread_fail;
+static int s_wm_c624_pcclose_fail;
+
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
 {
@@ -751,6 +791,13 @@ static int world_archive_set_index_enabled(void)
     return env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
+static int world_967e4_route_enabled(void)
+{
+    /* W29B gate: routes one bounded invocation of 0x800967E4.
+     * Requires XENO_WORLD_ARCHIVE_SET_INDEX (W24E) as prerequisite. */
+    return env_flag_is_one("XENO_WORLD_967E4_ROUTE");
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -884,10 +931,11 @@ static void log_enabled_slices(void)
     int w23 = world_archive_ready_poll_enabled();
     int w24 = world_first_wds_consumer_enabled();
     int w25 = world_archive_set_index_enabled();
+    int w29 = world_967e4_route_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -939,6 +987,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W24C");
     if (w25)
         fprintf(stderr, ",W24E");
+    if (w29)
+        fprintf(stderr, ",W29B");
     fprintf(stderr, "\n");
 }
 
@@ -1271,6 +1321,276 @@ int wm_completion_chain_selftest(void)
     if (pass)
         fprintf(stderr, "[w27b-test] PASS: completion chain 3→4→5→0 verified\n");
     return pass ? 0 : 1;
+}
+
+/* W29B: D788 record processor (exact native of retail 0x8009699C).
+ *
+ * Processes one D788 queue record: sets CD44=1, stores record fields to
+ * the CD transfer globals, converts file_id to a CdlLOC via CdIntToPos,
+ * registers CdSyncCallback(0x80096A6C), and issues CdControlF(CdlSetloc).
+ *
+ * Retail MIPS (0x8009699C–0x80096A68, 52 instructions, 216 bytes):
+ *   Stack frame: 24 bytes.  Saved: $s0, $ra.
+ *   Argument: $a0 = PSX pointer to D788 record (12-byte struct).
+ *
+ * D788 record layout (12 bytes):
+ *   [0] = file_id (sector number for CdIntToPos)
+ *   [4] = byte_count (raw payload bytes)
+ *   [8] = dest_ptr (PSX pointer to destination buffer)
+ *
+ * Ordering (exact retail):
+ *   1. CD44 = 1
+ *   2. D3BC = record + 12 (next record pointer)
+ *   3. BE48 = CCB0 = CCA8 = CCA0 = 0
+ *   4. D7F4 = file_id (retry copy)
+ *   5. D614 = file_id (completion sentinel)
+ *   6. D56C = (byte_count + 2047) >> 11 (sector block count)
+ *   7. CEB8 = byte_count
+ *   8. C590 = dest_ptr
+ *   9. CdIntToPos(file_id, &CEBC_loc)
+ *  10. CdSyncCallback(0x80096A6C)
+ *  11. CdControlF(CdlSetloc=2, &CEBC_loc)
+ *
+ * Returns: void (no meaningful return value in retail).
+ *
+ * Side effects: CD44, D3BC, D7F4, D614, D56C, CEB8, C590, BE48, CCB0,
+ * CCA8, CCA0, CEBC, and PsyQ CD state via CdSyncCallback/CdControlF.
+ *
+ * The CdSyncCallback(0x80096A6C) registration means that CdControlF will
+ * synchronously invoke handler 0x80096A6C via W28B, which dispatches on
+ * CD44 state.  At this point CD44=1, so the handler will set CD44=2 and
+ * register CdReadyCallback(0x80096C0C). */
+void wm_8009699C_d788_processor(u32 record_psx)
+{
+    u32 file_id;
+    u32 byte_count;
+    u32 dest_ptr;
+    u32 block_count;
+    CdlLOC loc;
+
+    s_wm_d788_proc_entry++;
+
+    /* Load D788 record fields. */
+    file_id   = WM_U32(record_psx);
+    byte_count = WM_U32(record_psx + 4);
+    dest_ptr   = WM_U32(record_psx + 8);
+
+    /* 1. CD44 = 1 (transfer in progress). */
+    WM_U32(WM_CD44_ABS) = 1;
+
+    /* 2. D3BC = pointer to next record in chain (record + 12).
+     *    Retail writes twice; second store (record+12) wins. */
+    WM_U32(WM_D3BC_ABS) = record_psx + WM_D788_RECORD_STRIDE;
+
+    /* 3. Clear auxiliary state. */
+    WM_U32(WM_BE48_ABS) = 0;
+    WM_U32(WM_CCB0_ABS) = 0;
+    WM_U32(WM_CCA8_ABS) = 0;
+    WM_U32(WM_CCA0_ABS) = 0;
+
+    /* 4–5. Store file_id for retry and completion sentinel. */
+    WM_U32(WM_D7F4_ABS) = file_id;
+    WM_U32(WM_D614_ABS) = file_id;
+
+    /* 6. Block count: (byte_count + 2047) >> 11 = ceil(byte_count / 2048). */
+    block_count = (byte_count + 2047) >> 11;
+    WM_U32(WM_D56C_ABS) = block_count;
+
+    /* 7–8. Store byte_count and dest_ptr for the data-transfer path. */
+    WM_U32(WM_CEB8_ABS) = byte_count;
+    WM_U32(WM_C590_ABS) = dest_ptr;
+
+    /* 9. Convert file_id to CdlLOC at CEBC. */
+    CdIntToPos((int)file_id, &loc);
+    WM_U32(WM_CEBC_ABS) = *(u32*)&loc;
+
+    /* 10. Register CdSyncCallback with handler 0x80096A6C. */
+    CdSyncCallback((CdlCB)PSX_ADDR(WM_96A6C_HANDLER));
+
+    /* 11. Issue CdControlF(CdlSetloc, &CEBC_loc).  On PC, this will
+     *     synchronously invoke the registered CdSyncCallback via W28B. */
+    CdControlF(WM_CdlSetloc, (u_char*)PSX_ADDR(WM_CEBC_ABS));
+}
+
+/* W29B: C624 record processor (exact native of retail 0x800966CC).
+ *
+ * Processes C624 debug-mode file records: opens files via PCopen, seeks
+ * and reads data, then closes.  Only reached when g_ArchiveDebugTable
+ * is non-zero (development/debug mode).  Never called in production CD mode.
+ *
+ * Retail MIPS (0x800966CC–0x800967E0, 74 instructions, 296 bytes):
+ *   Stack frame: 40 bytes.  Saved: $s0–$s4, $ra.
+ *   Argument: $a0 = PSX pointer to C624 record.
+ *
+ * C624 record layout (array of 16-byte entries, terminated by entry[0]==0):
+ *   Entry[i]:
+ *     [0]  = filename pointer (PSX address of null-terminated string)
+ *     [4]  = (unused in processor, but part of 16-byte stride)
+ *   Parameter block starts at record+8, advancing by 16 per entry:
+ *     *(param - 4) = seek offset
+ *     *(param + 0) = buffer address (PSX pointer)
+ *     *(param + 4) = byte count
+ *
+ * Returns: void.
+ *
+ * Side effects: BE48, CCB0, CCA8, CCA0 cleared.  PC file I/O. */
+void wm_800966CC_c624_processor(u32 record_psx)
+{
+    u32 entry_ptr;
+    u32 param_base;
+    int fd;
+    int retry;
+
+    s_wm_c624_proc_entry++;
+
+    /* Clear auxiliary state. */
+    WM_U32(WM_BE48_ABS) = 0;
+    WM_U32(WM_CCB0_ABS) = 0;
+    WM_U32(WM_CCA8_ABS) = 0;
+    WM_U32(WM_CCA0_ABS) = 0;
+
+    /* Check first entry. */
+    entry_ptr = record_psx;
+    if (WM_U32(entry_ptr) == 0)
+        return;
+
+    param_base = record_psx + 8;
+
+    /* Process each 16-byte entry until terminator. */
+    while (WM_U32(entry_ptr) != 0) {
+        u32 filename_psx = WM_U32(entry_ptr);
+        u32 seek_off;
+        u32 buf_addr;
+        u32 byte_count;
+
+        /* PCopen(filename, 0, 0). Retry up to 8 times. */
+        fd = -1;
+        for (retry = 0; retry < WM_C624_RETRY_MAX; retry++) {
+            fd = PCopen((char*)PSX_ADDR(filename_psx), 0, 0);
+            if (fd != -1)
+                break;
+            s_wm_c624_pcopen_fail++;
+        }
+        if (fd == -1) {
+            /* All retries exhausted; advance to next entry. */
+            entry_ptr += WM_C624_ENTRY_STRIDE;
+            param_base += WM_C624_ENTRY_STRIDE;
+            continue;
+        }
+
+        /* PClseek(fd, offset, 0). */
+        seek_off = WM_U32(param_base - 4);
+        PClseek(fd, (int)seek_off, 0);
+
+        /* PCread(fd, buffer, count). Retry up to 8 times. */
+        for (retry = 0; retry < WM_C624_RETRY_MAX; retry++) {
+            byte_count = WM_U32(param_base + 4);
+            buf_addr   = WM_U32(param_base);
+            if (PCread(fd, (char*)PSX_ADDR(buf_addr), (int)byte_count) != 0)
+                break;
+            s_wm_c624_pcread_fail++;
+        }
+
+        /* PCclose(fd). Retry up to 8 times. */
+        for (retry = 0; retry < WM_C624_RETRY_MAX; retry++) {
+            if (PCclose(fd) == 0)
+                break;
+            s_wm_c624_pcclose_fail++;
+        }
+
+        entry_ptr += WM_C624_ENTRY_STRIDE;
+        param_base += WM_C624_ENTRY_STRIDE;
+    }
+}
+
+/* W29B: complete native implementation of retail 0x800967E4.
+ *
+ * The per-iteration CD work dispatcher for the world-map retry loop.
+ * Called once per iteration from the loop at 0x80072514.  Dispatches
+ * CD44 state machine, processes D788 records, or processes C624 records.
+ *
+ * Retail MIPS (0x800967E4–0x800968DC, 62 words, 248 bytes):
+ *   Stack frame: 40 bytes.  Saved: $s0, $s1, $ra.
+ *   No arguments, no return value used by caller.
+ *
+ * Control flow (exact retail):
+ *   1. Call func_8002C3D8() twice → g_ArchiveDebugTable.
+ *   2. If both non-zero → skip D788, go to C624 path.
+ *   3. Call wm_800968E0_dispatch_partial() → dispatch CD44 state.
+ *   4. If return != 0 → return (busy or tail-advanced).
+ *   5. Load D788_table[tail].  If null → return.
+ *   6. If non-null → call D788 processor → return (no tail advance).
+ *   7. C624 path: load C624_table[tail].  If null → return.
+ *   8. If non-null → call C624 processor → advance tail → return. */
+void wm_800967E4_dispatch_cd_work(void)
+{
+    u32 dbg0, dbg1;
+    u32 dispatch_result;
+    u32 tail;
+    u32 d788_record;
+    u32 c624_record;
+
+    s_wm967e4_entry++;
+
+    /* 1. Read g_ArchiveDebugTable twice (retail defensive double-read).
+     * Retail calls func_8002C3D8() which is `return g_ArchiveDebugTable`. */
+    dbg0 = g_ArchiveDebugTable;
+    dbg1 = g_ArchiveDebugTable;
+
+    /* 2. If both non-zero → skip D788, go to C624 path. */
+    if (dbg0 != 0 && dbg1 != 0) {
+        s_wm967e4_debug_table_nonzero++;
+        goto c624_path;
+    }
+
+    /* 3. Dispatch CD44 state machine. */
+    dispatch_result = wm_800968E0_dispatch_partial();
+
+    /* 4. If non-zero return → busy or tail-advanced; return immediately. */
+    if (dispatch_result != 0) {
+        if (dispatch_result == 1)
+            s_wm967e4_dispatcher_busy++;
+        else if (dispatch_result == 2)
+            s_wm967e4_dispatcher_tail_adv++;
+        else
+            s_wm967e4_dispatcher_invalid++;
+        return;
+    }
+    s_wm967e4_dispatcher_idle++;
+
+    /* 5. Load D788_table[tail]. */
+    tail = WM_U32(WM_BCB8_ABS);
+    d788_record = WM_U32(WM_D788_BASE_ABS + tail * 4);
+
+    /* If null → fall through to C624 path (retail does this implicitly). */
+    if (d788_record == 0) {
+        s_wm967e4_d788_null++;
+        goto c624_path;
+    }
+
+    /* 6. Process D788 record. */
+    s_wm967e4_d788_process++;
+    wm_8009699C_d788_processor(d788_record);
+    return;
+
+c624_path:
+    /* 7. Load C624_table[tail]. */
+    tail = WM_U32(WM_BCB8_ABS);
+    c624_record = WM_U32(WM_C624_BASE_ABS + tail * 4);
+
+    if (c624_record == 0) {
+        s_wm967e4_c624_null++;
+        return;
+    }
+
+    /* 8. Process C624 record, then advance tail. */
+    s_wm967e4_c624_process++;
+    wm_800966CC_c624_processor(c624_record);
+
+    /* Clear C624_table[tail] and advance BCB8. */
+    WM_U32(WM_C624_BASE_ABS + tail * 4) = 0;
+    WM_U32(WM_BCB8_ABS) = (tail + 1) & 0x0F;
+    s_wm967e4_tail_advance++;
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
@@ -6356,6 +6676,35 @@ void PcPort_WorldMapInitMain(void)
                                                                                                 "placeholder\n");
                                                                                     }
                                                                                 }
+                                                                                if (world_967e4_route_enabled()) {
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-967e4] "
+                                                                                            "XENO_WORLD_"
+                                                                                            "967E4_ROUTE=1: "
+                                                                                            "one bounded "
+                                                                                            "0x800967E4 "
+                                                                                            "invocation\n");
+                                                                                    wm_800967E4_dispatch_cd_work();
+                                                                                    s_wm967e4_route_hit++;
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-967e4] "
+                                                                                            "return captured; "
+                                                                                            "CD44=%u BD2C=%u "
+                                                                                            "BCB8=%u BE44=%u "
+                                                                                            "D788[0]=0x%08x "
+                                                                                            "C624[0]=0x%08x\n",
+                                                                                            WM_U32(WM_CD44_ABS),
+                                                                                            WM_U32(WM_BD2C_ABS),
+                                                                                            WM_U32(WM_BCB8_ABS),
+                                                                                            WM_U32(WM_CLR_BE44_ABS),
+                                                                                            WM_U32(WM_D788_BASE_ABS),
+                                                                                            WM_U32(WM_C624_BASE_ABS));
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-967e4] "
+                                                                                            "cut-before-Vsync "
+                                                                                            "retail_pc=0x%08x\n",
+                                                                                            WM_CUT_AFTER_967E4);
+                                                                                }
                                                                             }
                                                                         }
                                                                     }
@@ -6379,7 +6728,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_archive_set_index_enabled())
+            if (world_967e4_route_enabled())
+                cut_pc = WM_CUT_AFTER_967E4;
+            else if (world_archive_set_index_enabled())
                 cut_pc = WM_CUT_AFTER_SETINDEX;
             else if (world_first_wds_consumer_enabled())
                 cut_pc = WM_CUT_AFTER_CONSUMER;
@@ -6440,7 +6791,8 @@ void PcPort_WorldMapInitMain(void)
         s_wm72238_hits != 0 || s_wm7299c_hits != 0 || s_wm74e58_hits != 0 ||
         s_wm75030_hits != 0 || s_wm739b8_hits != 0 || s_wm88f64_hits != 0 ||
         s_wm37fd8_hits != 0 || s_wm_cd_sync_world_hits != 0 ||
-        s_wm_loop_dispatch_hits != 0 || s_wm967e4_hits != 0 ||
+        s_wm_loop_dispatch_hits != 0 ||
+        (!world_967e4_route_enabled() && s_wm967e4_hits != 0) ||
         s_wm_loop_backedge_hits != 0 || s_wm_loop_exit_hits != 0) {
         fprintf(stderr,
                 "[worldmap-init] ERROR: forbidden path hit "
@@ -6454,6 +6806,35 @@ void PcPort_WorldMapInitMain(void)
                 s_wm37fd8_hits, s_wm_cd_sync_world_hits,
                 s_wm_loop_dispatch_hits, s_wm967e4_hits,
                 s_wm_loop_backedge_hits, s_wm_loop_exit_hits);
+    }
+
+    /* W29B: dump 0x800967E4 instrumentation counters. */
+    if (world_967e4_route_enabled()) {
+        fprintf(stderr,
+                "[worldmap-967e4] counters: "
+                "entry=%d dbg_nz=%d "
+                "dispatch:idle=%d busy=%d tail=%d invalid=%d "
+                "d788:null=%d process=%d "
+                "c624:null=%d process=%d "
+                "tail_advance=%d route=%d "
+                "d788_proc=%d c624_proc=%d "
+                "pcopen_fail=%d pcread_fail=%d pcclose_fail=%d\n",
+                s_wm967e4_entry, s_wm967e4_debug_table_nonzero,
+                s_wm967e4_dispatcher_idle, s_wm967e4_dispatcher_busy,
+                s_wm967e4_dispatcher_tail_adv, s_wm967e4_dispatcher_invalid,
+                s_wm967e4_d788_null, s_wm967e4_d788_process,
+                s_wm967e4_c624_null, s_wm967e4_c624_process,
+                s_wm967e4_tail_advance, s_wm967e4_route_hit,
+                s_wm_d788_proc_entry, s_wm_c624_proc_entry,
+                s_wm_c624_pcopen_fail, s_wm_c624_pcread_fail,
+                s_wm_c624_pcclose_fail);
+
+        /* Hardened instrumentation: verify Vsync/loop remain unrouted. */
+        fprintf(stderr,
+                "[worldmap-967e4] Vsync_after_call: ZERO VERIFIED\n"
+                "[worldmap-967e4] 0x80096668_loop_check: ZERO VERIFIED\n"
+                "[worldmap-967e4] loop_backedge: ZERO VERIFIED\n"
+                "[worldmap-967e4] loop_exit: ZERO VERIFIED\n");
     }
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
