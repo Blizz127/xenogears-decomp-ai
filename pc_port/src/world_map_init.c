@@ -150,6 +150,25 @@
 #define WM_CLR_C660_ABS          0x8009C660u
 #define WM_BYTE_C58F_ABS         0x8009C58Fu
 
+/* W27B: CD completion state-chain fields (retail absolute addresses). */
+#define WM_CD44_ABS              0x8009CD44u
+#define WM_BD2C_ABS              0x8009BD2Cu
+#define WM_BCB8_ABS              0x8009BCB8u
+#define WM_D788_BASE_ABS         0x8009D788u
+#define WM_D614_ABS              0x8009D614u
+#define WM_D7F4_ABS              0x8009D7F4u
+#define WM_D56C_ABS              0x8009D56Cu
+#define WM_D3BC_ABS              0x8009D3BCu
+#define WM_CEB8_ABS              0x8009CEB8u
+#define WM_C590_ABS              0x8009C590u
+#define WM_BE48_ABS              0x8009BE48u
+#define WM_CCB0_ABS              0x8009CCB0u
+#define WM_CCA8_ABS              0x8009CCA8u
+#define WM_CCA0_ABS              0x8009CCA0u
+#define WM_BCCC_ABS              0x8009BCCCu
+#define WM_BCD0_ABS              0x8009BCD0u
+#define WM_BCD4_ABS              0x8009BCD4u
+
 /* Below-overlay main BSS touched by entry (always) */
 #define WM_FLAG_91AE_ABS         0x800691AEu
 
@@ -522,6 +541,17 @@ static int s_wm_loop_dispatch_hits;
 static int s_wm967e4_hits;
 static int s_wm_loop_backedge_hits;
 static int s_wm_loop_exit_hits;
+
+/* W27B: CD completion state-chain instrumentation counters. */
+static int s_wm_completion_cb_entry;
+static int s_wm_completion_3to4;
+static int s_wm_cb_unregister;
+static int s_wm_dispatcher_state4;
+static int s_wm_bd2c_decrement;
+static int s_wm_dispatcher_state5;
+static int s_wm_cd44_clear;
+static int s_wm_bcb8_increment;
+static int s_wm_d788_tail_clear;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -994,6 +1024,253 @@ u32 wm_80096668_instrumented(void)
 {
     s_wm96668_hits++;
     return wm_80096668_circular_distance();
+}
+
+/* W27B: CD44=3→4 completion callback (exact native of retail 0x80096AF0).
+ *
+ * Retail CdSyncCallback handler for CD44=3.  When CdlPause completes after
+ * all D788 records are exhausted, this transitions CD44 from 3 to 4 and
+ * sets BD2C=1 as a one-frame delay counter.  Also unregisters the
+ * CdSyncCallback.
+ *
+ * Retail MIPS (0x80096AF0–0x80096B24):
+ *   lw   $v0, D614($v0)          ← load last-file-id sentinel
+ *   bne  $v0, $zero, exit        ← if nonzero: not all done, bail
+ *   addiu $v0, $zero, 4          ← delay slot: $v0 = 4
+ *   sw   $v0, CD44($at)          ← CD44 = 4
+ *   addiu $v0, $zero, 1
+ *   sw   $v0, BD2C($at)          ← BD2C = 1
+ *   jal  CdSyncCallback(NULL)    ← unregister
+ *   addu $a0, $zero, $zero
+ *   j    exit
+ *   nop
+ *
+ * Preconditions: CD44 == 3.  D614 == 0 (terminator was encountered).
+ * Postconditions: CD44 = 4, BD2C = 1, CdSyncCallback unregistered.
+ * Returns: none (void callback path). */
+void wm_80096AF0_completion_3to4(void)
+{
+    u32 d614;
+    s_wm_completion_cb_entry++;
+    d614 = WM_U32(WM_D614_ABS);
+    if (d614 != 0)
+        return;
+    WM_U32(WM_CD44_ABS) = 4;
+    WM_U32(WM_BD2C_ABS) = 1;
+    s_wm_completion_3to4++;
+    /* Retail calls CdSyncCallback(NULL) to unregister.  In the PC port
+     * the callback is not registered via PsyQ; record the unregister. */
+    s_wm_cb_unregister++;
+}
+
+/* W27B: exact dispatcher state 4 (retail 0x80096918–0x80096954).
+ *
+ * Retail MIPS:
+ *   lw   $v0, BD2C($v0)          ← load countdown
+ *   addiu $v0, $v0, -1           ← decrement
+ *   sw   $v0, BD2C($at)          ← store back
+ *   bne  $v0, $zero, ret1        ← if nonzero: still counting, return 1
+ *   nop
+ *   lw   $v0, CD44($v0)          ← re-read CD44
+ *   addiu $v0, $v0, 1            ← CD44++
+ *   sw   $v0, CD44($at)          ← store CD44 = 5
+ * ret1:
+ *   j    common_exit
+ *   addiu $v0, $zero, 1          ← return 1
+ *
+ * Preconditions: CD44 == 4, BD2C > 0.
+ * Postconditions: BD2C decremented.  If BD2C reaches 0: CD44 = 5.
+ * Returns: 1 (busy). */
+static u32 wm_dispatcher_state4(void)
+{
+    u32 bd2c;
+    s_wm_dispatcher_state4++;
+    bd2c = WM_U32(WM_BD2C_ABS);
+    bd2c = bd2c - 1;
+    WM_U32(WM_BD2C_ABS) = bd2c;
+    s_wm_bd2c_decrement++;
+    if (bd2c == 0) {
+        u32 cd44 = WM_U32(WM_CD44_ABS);
+        WM_U32(WM_CD44_ABS) = cd44 + 1;
+    }
+    return 1;
+}
+
+/* W27B: exact dispatcher state 5 (retail 0x80096958–0x80096994).
+ *
+ * Retail MIPS:
+ *   lw   $v1, BCB8($v1)          ← load tail
+ *   sw   $zero, CD44($at)        ← CD44 = 0
+ *   sll  $a0, $v1, 2             ← tail*4 for D788 index
+ *   addiu $v1, $v1, 1            ← tail + 1
+ *   andi $v1, $v1, 0x0F          ← wrap to [0,15]
+ *   sw   $zero, D788[$a0]        ← clear D788_table[tail]
+ *   sw   $v1, BCB8($at)          ← store new tail
+ *   j    common_exit
+ *   addiu $v0, $zero, 2          ← return 2
+ *
+ * Ordering (exact retail):
+ *   1. CD44 = 0
+ *   2. D788_table[tail] = 0
+ *   3. BCB8 = (BCB8 + 1) & 0x0F
+ *
+ * Preconditions: CD44 == 5.
+ * Postconditions: CD44 = 0, D788[tail] cleared, BCB8 advanced.
+ * Returns: 2 (tail advanced). */
+static u32 wm_dispatcher_state5(void)
+{
+    u32 tail = WM_U32(WM_BCB8_ABS);
+    u32 new_tail;
+    s_wm_dispatcher_state5++;
+    WM_U32(WM_CD44_ABS) = 0;
+    s_wm_cd44_clear++;
+    /* D788 table at 0x8009D788, 16 entries × 4 bytes. */
+    WM_U32(WM_D788_BASE_ABS + tail * 4) = 0;
+    s_wm_d788_tail_clear++;
+    new_tail = (tail + 1) & 0x0F;
+    WM_U32(WM_BCB8_ABS) = new_tail;
+    s_wm_bcb8_increment++;
+    return 2;
+}
+
+/* W27B: exact dispatcher for states 4 and 5 (retail 0x800968E0 partial).
+ *
+ * This implements only the dispatcher states required for the CD44=4→5→0
+ * completion chain.  States 0–3 and ≥6 are handled by existing code or
+ * are out of scope for W27B.
+ *
+ * Retail MIPS dispatch:
+ *   lw   $v1, CD44($v1)          ← load state
+ *   sltiu $v0, $v1, 6            ← bounds check [0,5]
+ *   beq  $v0, $zero, ret3        ← out of range → return 3
+ *   sll  $v0, $v1, 2             ← index * 4
+ *   lw   $v0, jump_table[$at]    ← load handler
+ *   jr   $v0                     ← dispatch
+ *
+ * Returns: 0 (idle), 1 (busy), 2 (tail advanced), 3 (invalid). */
+u32 wm_800968E0_dispatch_partial(void)
+{
+    u32 cd44 = WM_U32(WM_CD44_ABS);
+    if (cd44 >= 6)
+        return 3;
+    switch (cd44) {
+    case 4:
+        return wm_dispatcher_state4();
+    case 5:
+        return wm_dispatcher_state5();
+    default:
+        /* States 0–3: not handled here.  Return 1 (busy) for states 1–3,
+         * 0 for state 0.  This is sufficient for the completion chain
+         * since the caller only needs to see states 4→5→0 progress. */
+        return (cd44 == 0) ? 0 : 1;
+    }
+}
+
+/* W27B: full completion-chain test entry point.
+ *
+ * Exercises the exact retail state sequence:
+ *   CD44=3 → callback → CD44=4
+ *   CD44=4 → dispatch → BD2C dec → CD44=5
+ *   CD44=5 → dispatch → CD44=0, BCB8++, D788 clear
+ *
+ * Returns: 0 on success, nonzero on failure. */
+int wm_completion_chain_selftest(void)
+{
+    u32 bcb8_before, bcb8_after;
+    u32 dist_before, dist_after;
+    u32 result;
+    int pass = 1;
+
+    /* Setup: CD44=3, BD2C=1, BCB8=0, D614=0, D788[0]=0xDEAD */
+    WM_U32(WM_CD44_ABS) = 3;
+    WM_U32(WM_BD2C_ABS) = 1;
+    WM_U32(WM_BCB8_ABS) = 0;
+    WM_U32(WM_D614_ABS) = 0;
+    WM_U32(WM_D788_BASE_ABS) = 0xDEADu;
+    WM_U32(WM_CLR_BE44_ABS) = 2; /* head=2, tail=0 → distance=2 */
+
+    bcb8_before = WM_U32(WM_BCB8_ABS);
+    dist_before = wm_80096668_circular_distance();
+
+    /* Step 1: completion callback CD44=3→4 */
+    wm_80096AF0_completion_3to4();
+    if (WM_U32(WM_CD44_ABS) != 4) {
+        fprintf(stderr, "[w27b-test] FAIL: after callback CD44=%u expected 4\n",
+                WM_U32(WM_CD44_ABS));
+        pass = 0;
+    }
+    if (WM_U32(WM_BD2C_ABS) != 1) {
+        fprintf(stderr, "[w27b-test] FAIL: after callback BD2C=%u expected 1\n",
+                WM_U32(WM_BD2C_ABS));
+        pass = 0;
+    }
+    if (WM_U32(WM_BCB8_ABS) != bcb8_before) {
+        fprintf(stderr, "[w27b-test] FAIL: callback changed BCB8\n");
+        pass = 0;
+    }
+    if (WM_U32(WM_D788_BASE_ABS) != 0xDEADu) {
+        fprintf(stderr, "[w27b-test] FAIL: callback cleared D788\n");
+        pass = 0;
+    }
+
+    /* Step 2: dispatcher state 4 → CD44=5 */
+    result = wm_800968E0_dispatch_partial();
+    if (result != 1) {
+        fprintf(stderr, "[w27b-test] FAIL: state4 returned %u expected 1\n", result);
+        pass = 0;
+    }
+    if (WM_U32(WM_CD44_ABS) != 5) {
+        fprintf(stderr, "[w27b-test] FAIL: after state4 CD44=%u expected 5\n",
+                WM_U32(WM_CD44_ABS));
+        pass = 0;
+    }
+    if (WM_U32(WM_BD2C_ABS) != 0) {
+        fprintf(stderr, "[w27b-test] FAIL: after state4 BD2C=%u expected 0\n",
+                WM_U32(WM_BD2C_ABS));
+        pass = 0;
+    }
+
+    /* Step 3: dispatcher state 5 → CD44=0, BCB8++, D788 clear */
+    result = wm_800968E0_dispatch_partial();
+    if (result != 2) {
+        fprintf(stderr, "[w27b-test] FAIL: state5 returned %u expected 2\n", result);
+        pass = 0;
+    }
+    if (WM_U32(WM_CD44_ABS) != 0) {
+        fprintf(stderr, "[w27b-test] FAIL: after state5 CD44=%u expected 0\n",
+                WM_U32(WM_CD44_ABS));
+        pass = 0;
+    }
+    bcb8_after = WM_U32(WM_BCB8_ABS);
+    if (bcb8_after != (bcb8_before + 1) % 16) {
+        fprintf(stderr, "[w27b-test] FAIL: BCB8=%u expected %u\n",
+                bcb8_after, (bcb8_before + 1) % 16);
+        pass = 0;
+    }
+    if (WM_U32(WM_D788_BASE_ABS) != 0) {
+        fprintf(stderr, "[w27b-test] FAIL: D788[0]=%u expected 0\n",
+                WM_U32(WM_D788_BASE_ABS));
+        pass = 0;
+    }
+
+    /* Step 4: verify circular distance decreased */
+    dist_after = wm_80096668_circular_distance();
+    if (dist_after != dist_before - 1) {
+        fprintf(stderr, "[w27b-test] FAIL: distance %u→%u expected %u\n",
+                dist_before, dist_after, dist_before - 1);
+        pass = 0;
+    }
+
+    /* Step 5: dispatcher returns 0 (idle) */
+    result = wm_800968E0_dispatch_partial();
+    if (result != 0) {
+        fprintf(stderr, "[w27b-test] FAIL: idle returned %u expected 0\n", result);
+        pass = 0;
+    }
+
+    if (pass)
+        fprintf(stderr, "[w27b-test] PASS: completion chain 3→4→5→0 verified\n");
+    return pass ? 0 : 1;
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
