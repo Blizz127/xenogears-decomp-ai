@@ -58,6 +58,9 @@
  *       0x80037FD8; buffer from 0x8009C88C, mode=0; result at 0x8006258C;
  *       one-shot guard; cut before 0x800724E8). Existing native function,
  *       routing only.
+ * W24E: ArchiveSetIndex transition (ArchiveSetIndex(36, 0) at retail
+ *       0x800724E8; sets g_CurArchiveOffset; cut before 0x800724F0).
+ *       Existing native function, routing only.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -83,6 +86,7 @@
  *   XENO_WORLD_88F64=1
  *   XENO_WORLD_ARCHIVE_READY_POLL=1
  *   XENO_WORLD_FIRST_WDS_CONSUMER=1
+ *   XENO_WORLD_ARCHIVE_SET_INDEX=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -215,6 +219,7 @@
 #define WM_CUT_BEFORE_ARCHIVE    0x800724B0u /* after W22B return; before ArchiveCdDataSync */
 #define WM_CUT_BEFORE_CONSUMER   0x800724D4u /* after W23B poll; before jal 0x80037FD8 */
 #define WM_CUT_AFTER_CONSUMER    0x800724E8u /* after W24C consumer; before jal 0x80028470 */
+#define WM_CUT_AFTER_SETINDEX    0x800724F0u /* after W24E ArchiveSetIndex; before flag check */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
@@ -618,7 +623,7 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B–W24C. */
+    /* W17B runs when requested or as a prerequisite of W18B–W24E. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
            env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
@@ -626,70 +631,84 @@ static int world_ft4_pools_enabled(void)
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* W18B runs when requested or as a prerequisite of W19A–W24C. */
+    /* W18B runs when requested or as a prerequisite of W19A–W24E. */
     return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_upload_records_enabled(void)
 {
-    /* W19A runs when requested or as a prerequisite of W20B–W24C. */
+    /* W19A runs when requested or as a prerequisite of W20B–W24E. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_upload_records_b_enabled(void)
 {
-    /* W20B runs when requested or as a prerequisite of W21B–W24C. */
+    /* W20B runs when requested or as a prerequisite of W21B–W24E. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_draw_packets_enabled(void)
 {
-    /* W21B runs when requested or as a prerequisite of W22B–W24C. */
+    /* W21B runs when requested or as a prerequisite of W22B–W24E. */
     return env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_88f64_enabled(void)
 {
-    /* W22B runs when requested or as a prerequisite of W23B/W24C. */
+    /* W22B runs when requested or as a prerequisite of W23B–W24E. */
     return env_flag_is_one("XENO_WORLD_88F64") ||
            env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_archive_ready_poll_enabled(void)
 {
-    /* W23B runs when requested or as a prerequisite of W24C. */
+    /* W23B runs when requested or as a prerequisite of W24C/W24E. */
     return env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
-           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_first_wds_consumer_enabled(void)
 {
-    /* Narrow W24C gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+    /* W24C runs when requested or as a prerequisite of W24E. */
+    return env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
+}
+
+static int world_archive_set_index_enabled(void)
+{
+    /* Narrow W24E gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_ARCHIVE_SET_INDEX");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -824,10 +843,11 @@ static void log_enabled_slices(void)
     int w22 = world_88f64_enabled();
     int w23 = world_archive_ready_poll_enabled();
     int w24 = world_first_wds_consumer_enabled();
+    int w25 = world_archive_set_index_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -877,6 +897,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W23B");
     if (w24)
         fprintf(stderr, ",W24C");
+    if (w25)
+        fprintf(stderr, ",W24E");
     fprintf(stderr, "\n");
 }
 
@@ -4113,6 +4135,7 @@ static int s_wm88f64_ran;
 static int s_wm_archive_poll_count;
 static int s_wm_first_wds_ran;
 static int s_wm_first_wds_hits;
+static int s_wm_archive_set_index_ran;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -5500,6 +5523,40 @@ static int wm_first_wds_consumer(void)
 }
 
 /*
+ * W24E — route ArchiveSetIndex transition at retail 0x800724E8.
+ * Per the W24D audit (scratchpad/w24d_724e8_audit/):
+ *   - ArchiveSetIndex is already decompiled and compiled.
+ *   - Called with $a0 = 36, $a1 = 0.
+ *   - Sets g_CurArchiveOffset from g_ArchiveHeader[36].
+ *   - Does NOT depend on SoundLoadWdsFile return value.
+ *   - Does NOT read 0x8006258C.
+ *   - Cut before 0x800724F0 (flag check).
+ */
+static int wm_archive_set_index_transition(void)
+{
+    int result;
+
+    fprintf(stderr, "[worldmap-archive-set-index] entry\n");
+    fprintf(stderr, "[worldmap-archive-set-index] arguments=(36, 0)\n");
+
+    /* Call existing native ArchiveSetIndex(36, 0). */
+    result = ArchiveSetIndex(36, 0);
+
+    fprintf(stderr,
+            "[worldmap-archive-set-index] result=%d\n",
+            result);
+
+    s_wm_archive_set_index_ran = 1;
+    fprintf(stderr, "[worldmap-archive-set-index] exit\n");
+    fprintf(stderr,
+            "[worldmap-archive-set-index] cut-before-flag-check "
+            "retail_pc=0x%08x\n",
+            WM_CUT_AFTER_SETINDEX);
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -5930,6 +5987,27 @@ void PcPort_WorldMapInitMain(void)
                                                                                             "still "
                                                                                             "entering "
                                                                                             "placeholder\n");
+                                                                                } else if (
+                                                                                    world_archive_set_index_enabled()) {
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-init] "
+                                                                                            "XENO_WORLD_"
+                                                                                            "ARCHIVE_SET_"
+                                                                                            "INDEX=1: "
+                                                                                            "ArchiveSetIndex"
+                                                                                            "\n");
+                                                                                    if (wm_archive_set_index_transition() !=
+                                                                                        0) {
+                                                                                        fprintf(stderr,
+                                                                                                "[worldmap-"
+                                                                                                "archive-"
+                                                                                                "set-"
+                                                                                                "index] "
+                                                                                                "failed; "
+                                                                                                "still "
+                                                                                                "entering "
+                                                                                                "placeholder\n");
+                                                                                    }
                                                                                 }
                                                                             }
                                                                         }
@@ -5954,7 +6032,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_first_wds_consumer_enabled())
+            if (world_archive_set_index_enabled())
+                cut_pc = WM_CUT_AFTER_SETINDEX;
+            else if (world_first_wds_consumer_enabled())
                 cut_pc = WM_CUT_AFTER_CONSUMER;
             else if (world_archive_ready_poll_enabled())
                 cut_pc = WM_CUT_BEFORE_CONSUMER;
