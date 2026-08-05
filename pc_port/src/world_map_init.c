@@ -50,6 +50,10 @@
  *       selective clear + 19456-byte HeapAlloc for 256×76 table_B +
  *       selective clear; no GPU, no archive poll, no third-wave consumption);
  *       cut before 0x800724B0 (ArchiveCdDataSync). One-shot.
+ * W23B: archive readiness poll routing (ArchiveCdDataSync(0) + ready flag
+ *       check at 0x8009C894 + exact branch reproduction; cut before first
+ *       third-wave consumer 0x80037FD8). No one-shot guard — single call
+ *       per init frame. No consumer execution.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -73,6 +77,7 @@
  *   XENO_WORLD_UPLOAD_RECORDS_B=1
  *   XENO_WORLD_DRAW_PACKETS=1
  *   XENO_WORLD_88F64=1
+ *   XENO_WORLD_ARCHIVE_READY_POLL=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -203,6 +208,10 @@
 #define WM_CUT_BEFORE_739B8      0x800724A0u /* after W20B return; before jal 0x800739B8 */
 #define WM_CUT_BEFORE_88F64      0x800724A8u /* after W21B return; before jal 0x80088F64 */
 #define WM_CUT_BEFORE_ARCHIVE    0x800724B0u /* after W22B return; before ArchiveCdDataSync */
+#define WM_CUT_BEFORE_CONSUMER   0x800724D4u /* after W23B poll; before jal 0x80037FD8 */
+#define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
+#define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
+#define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* first third-wave consumer */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -599,53 +608,65 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B–W22B. */
+    /* W17B runs when requested or as a prerequisite of W18B–W23B. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
            env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
-           env_flag_is_one("XENO_WORLD_88F64");
+           env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* W18B runs when requested or as a prerequisite of W19A–W22B. */
+    /* W18B runs when requested or as a prerequisite of W19A–W23B. */
     return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
-           env_flag_is_one("XENO_WORLD_88F64");
+           env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_upload_records_enabled(void)
 {
-    /* W19A runs when requested or as a prerequisite of W20B–W22B. */
+    /* W19A runs when requested or as a prerequisite of W20B–W23B. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
-           env_flag_is_one("XENO_WORLD_88F64");
+           env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_upload_records_b_enabled(void)
 {
-    /* W20B runs when requested or as a prerequisite of W21B/W22B. */
+    /* W20B runs when requested or as a prerequisite of W21B–W23B. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
-           env_flag_is_one("XENO_WORLD_88F64");
+           env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_draw_packets_enabled(void)
 {
-    /* W21B runs when requested or as a prerequisite of W22B. */
+    /* W21B runs when requested or as a prerequisite of W22B/W23B. */
     return env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
-           env_flag_is_one("XENO_WORLD_88F64");
+           env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_88f64_enabled(void)
 {
-    /* Narrow W22B gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_88F64");
+    /* W22B runs when requested or as a prerequisite of W23B. */
+    return env_flag_is_one("XENO_WORLD_88F64") ||
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+}
+
+static int world_archive_ready_poll_enabled(void)
+{
+    /* Narrow W23B gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -778,10 +799,11 @@ static void log_enabled_slices(void)
     int w20 = world_upload_records_b_enabled();
     int w21 = world_draw_packets_enabled();
     int w22 = world_88f64_enabled();
+    int w23 = world_archive_ready_poll_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22) {
+        !w19 && !w20 && !w21 && !w22 && !w23) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -827,6 +849,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W21B");
     if (w22)
         fprintf(stderr, ",W22B");
+    if (w23)
+        fprintf(stderr, ",W23B");
     fprintf(stderr, "\n");
 }
 
@@ -4060,6 +4084,7 @@ static int s_wm74e58_ran;
 static int s_wm75030_ran;
 static int s_wm739b8_ran;
 static int s_wm88f64_ran;
+static int s_wm_archive_poll_count;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -5312,6 +5337,64 @@ static int wm_80088F64_init_tables(void)
 }
 
 /*
+ * W23B — route world archive readiness polling at retail 0x800724B0.
+ * Per the W23A audit (scratchpad/w23a_archive_poll/):
+ *   - Calls ArchiveCdDataSync(0) — blocking poll (no-op in PC port).
+ *   - Reads ready flag from 0x8009C894 (set during init from entrance bit 0x8000).
+ *   - Flag == 0: consumer would be called (normal Lahan path).
+ *   - Flag != 0: consumer is skipped.
+ *   - Cut before first third-wave consumer 0x80037FD8.
+ *   - No one-shot guard — poll cadence is single call per init frame.
+ *   - The native archive system completes synchronously, so the poll
+ *     returns immediately with the drive in IDLE state.
+ */
+static int wm_archive_ready_poll(void)
+{
+    u32 flag;
+    int branch;
+
+    fprintf(stderr, "[worldmap-archive-poll] entry\n");
+    fprintf(stderr, "[worldmap-archive-poll] argument=0\n");
+
+    /* Execute the exact native poll: ArchiveCdDataSync(0). */
+    ArchiveCdDataSync(0);
+
+    /* Read the ready flag. */
+    flag = WM_U32(WM_FLAG_C894_ABS);
+
+    /* Reproduce the exact caller branch:
+     * bne $v0, $zero, 0x800724E8
+     * If flag != 0 → branch taken → consumer skipped (READY path)
+     * If flag == 0 → fall through → consumer would be called (NOT READY) */
+    if (flag != 0) {
+        branch = 1; /* READY: consumer skipped */
+        fprintf(stderr,
+                "[worldmap-archive-poll] result=0 flag=0x%08x "
+                "branch=READY (consumer skipped)\n",
+                flag);
+    } else {
+        branch = 0; /* NOT READY: consumer would be called */
+        fprintf(stderr,
+                "[worldmap-archive-poll] result=0 flag=0x%08x "
+                "branch=NOT_READY (consumer would be called)\n",
+                flag);
+    }
+
+    s_wm_archive_poll_count++;
+    fprintf(stderr,
+            "[worldmap-archive-poll] poll_count=%d\n",
+            s_wm_archive_poll_count);
+
+    /* Cut before first third-wave consumer at 0x80037FD8. */
+    fprintf(stderr,
+            "[worldmap-archive-poll] cut-before-first-consumer "
+            "retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_CONSUMER);
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -5702,6 +5785,27 @@ void PcPort_WorldMapInitMain(void)
                                                                                     "still "
                                                                                     "entering "
                                                                                     "placeholder\n");
+                                                                        } else if (
+                                                                            world_archive_ready_poll_enabled()) {
+                                                                            fprintf(stderr,
+                                                                                    "[worldmap-init] "
+                                                                                    "XENO_WORLD_"
+                                                                                    "ARCHIVE_READY_"
+                                                                                    "POLL=1: "
+                                                                                    "archive "
+                                                                                    "readiness "
+                                                                                    "poll\n");
+                                                                            if (wm_archive_ready_poll() !=
+                                                                                0) {
+                                                                                fprintf(stderr,
+                                                                                        "[worldmap-"
+                                                                                        "archive-"
+                                                                                        "poll] "
+                                                                                        "failed; "
+                                                                                        "still "
+                                                                                        "entering "
+                                                                                        "placeholder\n");
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
@@ -5724,7 +5828,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_88f64_enabled())
+            if (world_archive_ready_poll_enabled())
+                cut_pc = WM_CUT_BEFORE_CONSUMER;
+            else if (world_88f64_enabled())
                 cut_pc = WM_CUT_BEFORE_ARCHIVE;
             else if (world_draw_packets_enabled())
                 cut_pc = WM_CUT_BEFORE_88F64;
