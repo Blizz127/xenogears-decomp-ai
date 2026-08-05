@@ -45,7 +45,11 @@
  *       40-byte packet records at 0x8009C744 + two DR_TPAGE-shaped E2h
  *       carriers at 0x8009D3D8/D3E4; pure BSS writer, no heap, no GPU
  *       submission); cut before 0x800724A8 (jal 0x80088F64). One-shot.
- *       0x80088F64 is not ported. Retail byte-7 ABE bit hand-applied.
+ *       Retail byte-7 ABE bit hand-applied.
+ * W22B: wm_80088F64 final pre-poll table initializer (512×84 table_A
+ *       selective clear + 19456-byte HeapAlloc for 256×76 table_B +
+ *       selective clear; no GPU, no archive poll, no third-wave consumption);
+ *       cut before 0x800724B0 (ArchiveCdDataSync). One-shot.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -68,6 +72,7 @@
  *   XENO_WORLD_UPLOAD_RECORDS=1
  *   XENO_WORLD_UPLOAD_RECORDS_B=1
  *   XENO_WORLD_DRAW_PACKETS=1
+ *   XENO_WORLD_88F64=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -197,6 +202,7 @@
 #define WM_CUT_BEFORE_75030      0x80072498u /* after W19A return; before jal 0x80075030 */
 #define WM_CUT_BEFORE_739B8      0x800724A0u /* after W20B return; before jal 0x800739B8 */
 #define WM_CUT_BEFORE_88F64      0x800724A8u /* after W21B return; before jal 0x80088F64 */
+#define WM_CUT_BEFORE_ARCHIVE    0x800724B0u /* after W22B return; before ArchiveCdDataSync */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -251,6 +257,18 @@
 #define WM_DR_TPAGE_B            0x8009D3E4u
 #define WM_DR_TPAGE_BYTES        12u
 #define WM_DR_TPAGE_TOTAL        (WM_DR_TPAGE_BYTES * 2) /* 24 */
+
+/* W22B wm_80088F64 table-init destinations (final pre-poll helper).
+ * Table A base pointer at WM_FIX_BCC0 (from W4C fixup).
+ * Table B heap pointer stored at WM_88F64_TABLE_B_PTR. */
+#define WM_88F64_TABLE_B_PTR     0x8009BDF4u
+#define WM_88F64_TABLE_A_COUNT   512u
+#define WM_88F64_TABLE_A_STRIDE  84u
+#define WM_88F64_TABLE_A_BYTES   (WM_88F64_TABLE_A_COUNT * WM_88F64_TABLE_A_STRIDE) /* 43008 */
+#define WM_88F64_TABLE_B_COUNT   256u
+#define WM_88F64_TABLE_B_STRIDE  76u
+#define WM_88F64_TABLE_B_BYTES   (WM_88F64_TABLE_B_COUNT * WM_88F64_TABLE_B_STRIDE) /* 19456 */
+#define WM_88F64_ALLOC_SIZE      0x4C00u /* 19456 */
 
 /* W15B record table + CLUT destinations (retail 0x80085F58). */
 #define WM_REC_COUNT             256u
@@ -581,42 +599,53 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B/W19A/W20B/W21B. */
+    /* W17B runs when requested or as a prerequisite of W18B–W22B. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
            env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
-           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
+           env_flag_is_one("XENO_WORLD_88F64");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* W18B runs when requested or as a prerequisite of W19A/W20B/W21B. */
+    /* W18B runs when requested or as a prerequisite of W19A–W22B. */
     return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
-           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
+           env_flag_is_one("XENO_WORLD_88F64");
 }
 
 static int world_upload_records_enabled(void)
 {
-    /* W19A runs when requested or as a prerequisite of W20B/W21B. */
+    /* W19A runs when requested or as a prerequisite of W20B–W22B. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
-           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
+           env_flag_is_one("XENO_WORLD_88F64");
 }
 
 static int world_upload_records_b_enabled(void)
 {
-    /* W20B runs when requested or as a prerequisite of W21B. */
+    /* W20B runs when requested or as a prerequisite of W21B/W22B. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
-           env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+           env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
+           env_flag_is_one("XENO_WORLD_88F64");
 }
 
 static int world_draw_packets_enabled(void)
 {
-    /* Narrow W21B gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_DRAW_PACKETS");
+    /* W21B runs when requested or as a prerequisite of W22B. */
+    return env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
+           env_flag_is_one("XENO_WORLD_88F64");
+}
+
+static int world_88f64_enabled(void)
+{
+    /* Narrow W22B gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_88F64");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -748,10 +777,11 @@ static void log_enabled_slices(void)
     int w19 = world_upload_records_enabled();
     int w20 = world_upload_records_b_enabled();
     int w21 = world_draw_packets_enabled();
+    int w22 = world_88f64_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21) {
+        !w19 && !w20 && !w21 && !w22) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -795,6 +825,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W20B");
     if (w21)
         fprintf(stderr, ",W21B");
+    if (w22)
+        fprintf(stderr, ",W22B");
     fprintf(stderr, "\n");
 }
 
@@ -4027,6 +4059,7 @@ static int s_wm863E0_ran;
 static int s_wm74e58_ran;
 static int s_wm75030_ran;
 static int s_wm739b8_ran;
+static int s_wm88f64_ran;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -5145,6 +5178,140 @@ static int wm_800739B8_build_draw_packets(void)
 }
 
 /*
+ * W22B — native wm_80088F64: world final pre-poll table initializer.
+ * Per the W22A audit (scratchpad/w22a_88f64_audit/):
+ *   - Reads table_A base pointer from 0x8009BCC0 (WM_FIX_BCC0, from W4C).
+ *   - Clears selective fields in 512 records × 84 bytes (table_A).
+ *   - HeapAlloc(19456, 0) for table_B.
+ *   - Stores heap pointer at 0x8009BDF4 (WM_88F64_TABLE_B_PTR).
+ *   - Clears selective fields in 256 records × 76 bytes (table_B).
+ *   - No GPU work, no archive poll, no third-wave consumption.
+ *   - Non-idempotent: one-shot guard required.
+ *   - Cut before ArchiveCdDataSync at 0x800724B0.
+ */
+static int wm_80088F64_init_tables(void)
+{
+    u32 table_a_psx;
+    u8* table_a_host;
+    void* table_b_host;
+    u32 table_b_psx;
+    u32 i;
+
+    fprintf(stderr, "[worldmap-88f64] entry\n");
+
+    if (s_wm88f64_ran) {
+        s_wm88f64_hits++;
+        fprintf(stderr,
+                "[worldmap-88f64] ERROR: already ran "
+                "(non-idempotent alloc; blocked) (hit=%d)\n",
+                s_wm88f64_hits);
+        fprintf(stderr,
+                "[worldmap-88f64] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+    if (s_wm739b8_ran == 0) {
+        fprintf(stderr,
+                "[worldmap-88f64] ERROR: W21B did not run "
+                "(required ordering)\n");
+        return -1;
+    }
+
+    /* Load table_A base pointer from W4C fixup. */
+    table_a_psx = WM_U32(WM_FIX_BCC0);
+    table_a_host = (u8*)psx_u32_to_host(table_a_psx);
+    if (table_a_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-88f64] ERROR: table_A pointer NULL "
+                "(BCC0=0x%08x)\n",
+                table_a_psx);
+        return -1;
+    }
+
+    fprintf(stderr,
+            "[worldmap-88f64] table_a_psx=0x%08x host=%p "
+            "count=%u stride=%u\n",
+            table_a_psx, table_a_host,
+            WM_88F64_TABLE_A_COUNT, WM_88F64_TABLE_A_STRIDE);
+
+    /* Loop 1: Clear selective fields in 512 records of 84 bytes.
+     * Retail offsets cleared: +4(32b), +10(16b), +18(16b), +20(16b),
+     * +22(16b), +24(16b), +28(16b), +30(16b), +32(16b). */
+    for (i = 0; i < WM_88F64_TABLE_A_COUNT; i++) {
+        u8* rec = table_a_host + (i * WM_88F64_TABLE_A_STRIDE);
+        *(u32*)(rec + 4)  = 0;
+        *(u16*)(rec + 10) = 0;
+        *(u16*)(rec + 18) = 0;
+        *(u16*)(rec + 20) = 0;
+        *(u16*)(rec + 22) = 0;
+        *(u16*)(rec + 24) = 0;
+        *(u16*)(rec + 28) = 0;
+        *(u16*)(rec + 30) = 0;
+        *(u16*)(rec + 32) = 0;
+    }
+
+    /* HeapAlloc for table_B. */
+    table_b_host = HeapAlloc(WM_88F64_ALLOC_SIZE, 0);
+    if (table_b_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-88f64] ERROR: HeapAlloc(%u) failed\n",
+                WM_88F64_ALLOC_SIZE);
+        return -1;
+    }
+    table_b_psx = host_ptr_to_psx_u32(table_b_host);
+    if (table_b_psx < 0x80000000u ||
+        psx_u32_to_host(table_b_psx) != table_b_host) {
+        fprintf(stderr,
+                "[worldmap-88f64] ERROR: table_B KUSEG conversion failed\n");
+        return -1;
+    }
+    WM_U32(WM_88F64_TABLE_B_PTR) = table_b_psx;
+
+    fprintf(stderr,
+            "[worldmap-88f64] table_b_psx=0x%08x host=%p "
+            "count=%u stride=%u alloc=%u\n",
+            table_b_psx, table_b_host,
+            WM_88F64_TABLE_B_COUNT, WM_88F64_TABLE_B_STRIDE,
+            WM_88F64_ALLOC_SIZE);
+
+    /* Loop 2: Clear selective fields in 256 records of 76 bytes.
+     * Retail offsets cleared: +4(16b), +6(16b). */
+    for (i = 0; i < WM_88F64_TABLE_B_COUNT; i++) {
+        u8* rec = (u8*)table_b_host + (i * WM_88F64_TABLE_B_STRIDE);
+        *(u16*)(rec + 4) = 0;
+        *(u16*)(rec + 6) = 0;
+    }
+
+    s_wm88f64_ran = 1;
+    fprintf(stderr, "[worldmap-88f64] exit\n");
+    fprintf(stderr,
+            "[worldmap-88f64] cut-before-archive-poll retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_ARCHIVE);
+
+    if (env_flag_is_one("XENO_WORLD_88F64_DOUBLE_TEST")) {
+        int hits_s = s_wm88f64_hits;
+        int rc2;
+        int delta;
+
+        rc2 = wm_80088F64_init_tables();
+        delta = s_wm88f64_hits - hits_s;
+        fprintf(stderr,
+                "[worldmap-88f64] double_test rc2=%d "
+                "counter_delta=%d new_allocations=0\n",
+                rc2, delta);
+        /* Restore counter so diagnostic rerun does not poison forbidden proof. */
+        s_wm88f64_hits = hits_s;
+        if (rc2 == 0 || delta != 1) {
+            fprintf(stderr,
+                    "[worldmap-88f64] ERROR: double-run guard failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -5517,6 +5684,25 @@ void PcPort_WorldMapInitMain(void)
                                                                                 "still "
                                                                                 "entering "
                                                                                 "placeholder\n");
+                                                                    } else if (
+                                                                        world_88f64_enabled()) {
+                                                                        fprintf(stderr,
+                                                                                "[worldmap-init] "
+                                                                                "XENO_WORLD_"
+                                                                                "88F64=1: "
+                                                                                "0x80088F64 "
+                                                                                "table "
+                                                                                "init\n");
+                                                                        if (wm_80088F64_init_tables() !=
+                                                                            0) {
+                                                                            fprintf(stderr,
+                                                                                    "[worldmap-"
+                                                                                    "88f64] "
+                                                                                    "failed; "
+                                                                                    "still "
+                                                                                    "entering "
+                                                                                    "placeholder\n");
+                                                                        }
                                                                     }
                                                                 }
                                                                 }
@@ -5538,7 +5724,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_draw_packets_enabled())
+            if (world_88f64_enabled())
+                cut_pc = WM_CUT_BEFORE_ARCHIVE;
+            else if (world_draw_packets_enabled())
                 cut_pc = WM_CUT_BEFORE_88F64;
             else if (world_upload_records_b_enabled())
                 cut_pc = WM_CUT_BEFORE_739B8;
