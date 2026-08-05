@@ -54,6 +54,10 @@
  *       check at 0x8009C894 + exact branch reproduction; cut before first
  *       third-wave consumer 0x80037FD8). No one-shot guard — single call
  *       per init frame. No consumer execution.
+ * W24C: first third-wave WDS consumer routing (SoundLoadWdsFile at retail
+ *       0x80037FD8; buffer from 0x8009C88C, mode=0; result at 0x8006258C;
+ *       one-shot guard; cut before 0x800724E8). Existing native function,
+ *       routing only.
  *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
@@ -78,6 +82,7 @@
  *   XENO_WORLD_DRAW_PACKETS=1
  *   XENO_WORLD_88F64=1
  *   XENO_WORLD_ARCHIVE_READY_POLL=1
+ *   XENO_WORLD_FIRST_WDS_CONSUMER=1
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -209,9 +214,11 @@
 #define WM_CUT_BEFORE_88F64      0x800724A8u /* after W21B return; before jal 0x80088F64 */
 #define WM_CUT_BEFORE_ARCHIVE    0x800724B0u /* after W22B return; before ArchiveCdDataSync */
 #define WM_CUT_BEFORE_CONSUMER   0x800724D4u /* after W23B poll; before jal 0x80037FD8 */
+#define WM_CUT_AFTER_CONSUMER    0x800724E8u /* after W24C consumer; before jal 0x80028470 */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
-#define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* first third-wave consumer */
+#define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
+#define WM_CONSUMER_RESULT       0x8006258Cu /* SoundLoadWdsFile return storage */
 #define WM_GFX_WORK_SIZE         5120
 #define WM_GFX_WORK_TOTAL        (WM_GFX_WORK_SIZE * 2) /* 10240 */
 
@@ -420,6 +427,9 @@ extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
 extern void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag);
 extern s32 g_GfxWorkBufferSize;
 extern void* g_GfxWorkBuffers;
+/* SoundLoadWdsFile: main-executable WDS sample-bank loader (sound.c:770). */
+typedef struct SoundWDSEntry SoundWDSEntry;
+extern SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode);
 extern void* g_GfxWorkBuffer2;
 extern u32 D_80059300;
 extern u32 D_80059304;
@@ -608,65 +618,78 @@ static int env_flag_is_one(const char* name)
 
 static int world_ft4_pools_enabled(void)
 {
-    /* W17B runs when requested or as a prerequisite of W18B–W23B. */
+    /* W17B runs when requested or as a prerequisite of W18B–W24C. */
     return env_flag_is_one("XENO_WORLD_FT4_POOLS") ||
            env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_heap_table_rand_enabled(void)
 {
-    /* W18B runs when requested or as a prerequisite of W19A–W23B. */
+    /* W18B runs when requested or as a prerequisite of W19A–W24C. */
     return env_flag_is_one("XENO_WORLD_HEAP_TABLE_RAND") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_upload_records_enabled(void)
 {
-    /* W19A runs when requested or as a prerequisite of W20B–W23B. */
+    /* W19A runs when requested or as a prerequisite of W20B–W24C. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS") ||
            env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_upload_records_b_enabled(void)
 {
-    /* W20B runs when requested or as a prerequisite of W21B–W23B. */
+    /* W20B runs when requested or as a prerequisite of W21B–W24C. */
     return env_flag_is_one("XENO_WORLD_UPLOAD_RECORDS_B") ||
            env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_draw_packets_enabled(void)
 {
-    /* W21B runs when requested or as a prerequisite of W22B/W23B. */
+    /* W21B runs when requested or as a prerequisite of W22B–W24C. */
     return env_flag_is_one("XENO_WORLD_DRAW_PACKETS") ||
            env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_88f64_enabled(void)
 {
-    /* W22B runs when requested or as a prerequisite of W23B. */
+    /* W22B runs when requested or as a prerequisite of W23B/W24C. */
     return env_flag_is_one("XENO_WORLD_88F64") ||
-           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+           env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_archive_ready_poll_enabled(void)
 {
-    /* Narrow W23B gate: only when explicitly requested. */
-    return env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL");
+    /* W23B runs when requested or as a prerequisite of W24C. */
+    return env_flag_is_one("XENO_WORLD_ARCHIVE_READY_POLL") ||
+           env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
+}
+
+static int world_first_wds_consumer_enabled(void)
+{
+    /* Narrow W24C gate: only when explicitly requested. */
+    return env_flag_is_one("XENO_WORLD_FIRST_WDS_CONSUMER");
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -800,10 +823,11 @@ static void log_enabled_slices(void)
     int w21 = world_draw_packets_enabled();
     int w22 = world_88f64_enabled();
     int w23 = world_archive_ready_poll_enabled();
+    int w24 = world_first_wds_consumer_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -851,6 +875,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W22B");
     if (w23)
         fprintf(stderr, ",W23B");
+    if (w24)
+        fprintf(stderr, ",W24C");
     fprintf(stderr, "\n");
 }
 
@@ -4085,6 +4111,8 @@ static int s_wm75030_ran;
 static int s_wm739b8_ran;
 static int s_wm88f64_ran;
 static int s_wm_archive_poll_count;
+static int s_wm_first_wds_ran;
+static int s_wm_first_wds_hits;
 static int s_wm74594_hits;
 static int s_wm863E0_hits;
 
@@ -5395,6 +5423,83 @@ static int wm_archive_ready_poll(void)
 }
 
 /*
+ * W24C — route first third-wave WDS asset consumer at retail 0x80037FD8.
+ * Per the W24B audit (scratchpad/w24b_53da8_audit/):
+ *   - The retail function is SoundLoadWdsFile, already decompiled and compiled.
+ *   - Called with $a0 = buffer pointer from 0x8009C88C (third-wave WDS file),
+ *     $a1 = 0 (mode).
+ *   - Returns SoundWDSEntry* stored at 0x8006258C.
+ *   - All eight dependencies are compiled.
+ *   - One-shot guard needed: SoundLoadWdsFile allocates SPU memory and appends
+ *     to linked list; repeated calls would duplicate allocations.
+ *   - Cut before 0x800724E8 (next consumer/helper).
+ */
+static int wm_first_wds_consumer(void)
+{
+    u32 source_psx;
+    void* source_host;
+    SoundWDSEntry* result;
+
+    fprintf(stderr, "[worldmap-first-wds-consumer] entry\n");
+
+    if (s_wm_first_wds_ran) {
+        s_wm_first_wds_hits++;
+        fprintf(stderr,
+                "[worldmap-first-wds-consumer] ERROR: already ran "
+                "(non-idempotent alloc; blocked) (hit=%d)\n",
+                s_wm_first_wds_hits);
+        fprintf(stderr,
+                "[worldmap-first-wds-consumer] second_call_detected=1 "
+                "second_call_blocked=1\n");
+        return -1;
+    }
+
+    /* Load source buffer pointer from third-wave mirror C88C. */
+    source_psx = WM_U32(WM_TW_MIRROR_C88C);
+    if (source_psx == 0 || source_psx < 0x80000000u) {
+        fprintf(stderr,
+                "[worldmap-first-wds-consumer] ERROR: C88C pointer "
+                "invalid (0x%08x)\n",
+                source_psx);
+        return -1;
+    }
+
+    source_host = psx_u32_to_host(source_psx);
+    if (source_host == NULL) {
+        fprintf(stderr,
+                "[worldmap-first-wds-consumer] ERROR: C88C host "
+                "resolution failed (psx=0x%08x)\n",
+                source_psx);
+        return -1;
+    }
+
+    fprintf(stderr,
+            "[worldmap-first-wds-consumer] source_psx=0x%08x "
+            "source_host=%p\n",
+            source_psx, source_host);
+
+    /* Call existing native SoundLoadWdsFile(buffer, 0). */
+    result = SoundLoadWdsFile((SoundWDSEntry*)source_host, 0);
+
+    /* Store result at 0x8006258C (retail behavior). */
+    WM_U32(WM_CONSUMER_RESULT) = (u32)(uintptr_t)result;
+
+    fprintf(stderr,
+            "[worldmap-first-wds-consumer] result=%p "
+            "stored_at=0x%08x\n",
+            (void*)result, WM_CONSUMER_RESULT);
+
+    s_wm_first_wds_ran = 1;
+    fprintf(stderr, "[worldmap-first-wds-consumer] exit\n");
+    fprintf(stderr,
+            "[worldmap-first-wds-consumer] cut-before-next-consumer "
+            "retail_pc=0x%08x\n",
+            WM_CUT_AFTER_CONSUMER);
+
+    return 0;
+}
+
+/*
  * One-shot outer dispatch glue: entrance*12 → table slot0 → mode init.
  * Does not enter 0x80071034.
  */
@@ -5805,6 +5910,27 @@ void PcPort_WorldMapInitMain(void)
                                                                                         "still "
                                                                                         "entering "
                                                                                         "placeholder\n");
+                                                                            } else if (
+                                                                                world_first_wds_consumer_enabled()) {
+                                                                                fprintf(stderr,
+                                                                                        "[worldmap-init] "
+                                                                                        "XENO_WORLD_"
+                                                                                        "FIRST_WDS_"
+                                                                                        "CONSUMER=1: "
+                                                                                        "SoundLoadWds"
+                                                                                        "File\n");
+                                                                                if (wm_first_wds_consumer() !=
+                                                                                    0) {
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-"
+                                                                                            "first-"
+                                                                                            "wds-"
+                                                                                            "consumer] "
+                                                                                            "failed; "
+                                                                                            "still "
+                                                                                            "entering "
+                                                                                            "placeholder\n");
+                                                                                }
                                                                             }
                                                                         }
                                                                     }
@@ -5828,7 +5954,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_archive_ready_poll_enabled())
+            if (world_first_wds_consumer_enabled())
+                cut_pc = WM_CUT_AFTER_CONSUMER;
+            else if (world_archive_ready_poll_enabled())
                 cut_pc = WM_CUT_BEFORE_CONSUMER;
             else if (world_88f64_enabled())
                 cut_pc = WM_CUT_BEFORE_ARCHIVE;
