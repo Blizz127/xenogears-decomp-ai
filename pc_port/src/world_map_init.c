@@ -126,6 +126,7 @@
  *   XENO_WORLD_READY_BUFFER_CONSUME=0 (default off; ready-check + buffer consume)
  *   XENO_WORLD_MODE_AUDIO_SETUP=0 (default off; mode-dependent audio setup)
  *   XENO_WORLD_CONVERGENCE_P1=0 (default off; first convergence table pass; requires MODE_AUDIO_SETUP)
+ *   XENO_WORLD_FRAMEBUFFER_GTE_INIT=0 (default off; framebuffer/GTE initializer; requires MODE_AUDIO_SETUP)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -143,6 +144,7 @@
 #include "psx_memory.h"
 #include "world_map_convergence.h"
 #include "world_map_selector.h"
+#include "world_map_framebuffer_init.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -292,6 +294,7 @@
 #define WM_CUT_AFTER_967E4       0x8007251Cu /* after W29B 0x800967E4 call; before Vsync */
 #define WM_CUT_BEFORE_MODE_AUDIO 0x800725ACu /* after W32B buffer consume; before mode audio */
 #define WM_CUT_BEFORE_CONVERGENCE 0x800726C0u /* after W33B audio setup; before convergence */
+#define WM_BCDC_ABS              0x8009BCDCu /* GTE screen distance (set by W34B4B) */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_CONV_TABLE_A_BASE     0x80099E8Cu /* pool-register table A (8-byte records); sign-extended from lui 0x800A + imm16 0x9E8C */
 #define WM_CONV_TABLE_B_BASE     0x8009A034u /* pool-register second-loop ptr table; sign-extended from lui 0x800A + imm16 0xA034 */
@@ -898,6 +901,17 @@ static int world_convergence_p2_enabled(void)
            world_convergence_p1_enabled();
 }
 
+static int world_framebuffer_gte_init_enabled(void)
+{
+    /* W34B4B gate: framebuffer/GTE initializer 0x80072BB0–0x80072DB0.
+     * Default OFF, requires XENO_WORLD_MODE_AUDIO_SETUP. Initializes
+     * two complementary 320×216 draw/display environments, GTE screen
+     * distance (256), back/far color, and fog parameters.
+     * Called at retail 0x80072244, before convergence P1. */
+    return env_flag_is_one("XENO_WORLD_FRAMEBUFFER_GTE_INIT") &&
+           world_mode_audio_setup_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1035,10 +1049,11 @@ static void log_enabled_slices(void)
     int w32 = world_ready_buffer_consume_enabled();
     int w33 = world_mode_audio_setup_enabled();
     int w34b1 = world_convergence_p1_enabled();
+    int w34b4b = world_framebuffer_gte_init_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1098,6 +1113,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W33B");
     if (w34b1)
         fprintf(stderr, ",W34B1");
+    if (w34b4b)
+        fprintf(stderr, ",W34B4B");
     fprintf(stderr, "\n");
 }
 
@@ -7032,6 +7049,14 @@ void PcPort_WorldMapInitMain(void)
                                                                                                 "mode-dependent audio "
                                                                                                 "setup\n");
                                                                                         wm_mode_audio_setup();
+                                                                                        if (world_framebuffer_gte_init_enabled()) {
+                                                                                            fprintf(stderr,
+                                                                                                    "[worldmap-fbi] "
+                                                                                                    "XENO_WORLD_FRAMEBUFFER_"
+                                                                                                    "GTE_INIT=1: "
+                                                                                                    "framebuffer/GTE init\n");
+                                                                                            wm_80072BB0();
+                                                                                        }
                                                                                         if (world_convergence_p1_enabled()) {
                                                                                             fprintf(stderr,
                                                                                                     "[worldmap-convergence-p1] "
@@ -7080,6 +7105,8 @@ void PcPort_WorldMapInitMain(void)
                 cut_pc = WM_CONV_P1_CUT_COMMON_TAIL;
             else if (world_convergence_p1_enabled())
                 cut_pc = wm_conv_p1_get_last_next();
+            else if (world_framebuffer_gte_init_enabled())
+                cut_pc = WM_CUT_BEFORE_CONVERGENCE;
             else if (world_mode_audio_setup_enabled() &&
                 world_ready_buffer_consume_enabled() &&
                 world_967e4_route_enabled())
@@ -7306,13 +7333,28 @@ void PcPort_WorldMapInitMain(void)
                 "[worldmap-convergence-p2] convergence_p2_entry: ZERO VERIFIED\n");
     }
 
+    /* W34B4B: dump framebuffer/GTE init instrumentation. */
+    if (world_framebuffer_gte_init_enabled() && wm_fbi_get_calls() > 0) {
+        fprintf(stderr,
+                "[worldmap-fbi] counters: calls=%d\n",
+                wm_fbi_get_calls());
+        fprintf(stderr,
+                "[worldmap-fbi] BCDC=%u (expected 256)\n",
+                WM_U32(WM_BCDC_ABS));
+    } else {
+        fprintf(stderr,
+                "[worldmap-fbi] framebuffer_gte_init: ZERO VERIFIED\n");
+    }
+
     /* Forbidden caller verification. */
     fprintf(stderr,
             "[worldmap-pool-register] convergence_entry_800726C0: ZERO VERIFIED\n"
             "[worldmap-pool-register] convergence_80072714: ZERO VERIFIED\n"
             "[worldmap-pool-register] convergence_80072764: ZERO VERIFIED\n"
             "[worldmap-convergence-p2] FIRST EXCLUDED 0x80072784: ZERO VERIFIED\n"
-            "[worldmap-convergence-p2] COMMON TAIL 0x8007290C: ZERO VERIFIED\n");
+            "[worldmap-convergence-p2] COMMON TAIL 0x8007290C: ZERO VERIFIED\n"
+            "[worldmap-fbi] COMMON TAIL 0x8007290C: ZERO VERIFIED\n"
+            "[worldmap-fbi] 0x80089160: ZERO VERIFIED\n");
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");
