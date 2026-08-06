@@ -127,6 +127,7 @@
  *   XENO_WORLD_MODE_AUDIO_SETUP=0 (default off; mode-dependent audio setup)
  *   XENO_WORLD_CONVERGENCE_P1=0 (default off; first convergence table pass; requires MODE_AUDIO_SETUP)
  *   XENO_WORLD_FRAMEBUFFER_GTE_INIT=0 (default off; framebuffer/GTE initializer; requires MODE_AUDIO_SETUP)
+ *   XENO_WORLD_TERRAIN_POSITION_INIT=0 (default off; terrain/position initializer; requires FRAMEBUFFER_GTE_INIT)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -145,6 +146,7 @@
 #include "world_map_convergence.h"
 #include "world_map_selector.h"
 #include "world_map_framebuffer_init.h"
+#include "world_map_terrain_init.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -910,6 +912,17 @@ static int world_framebuffer_gte_init_enabled(void)
      * Called at retail 0x80072244, before convergence P1. */
     return env_flag_is_one("XENO_WORLD_FRAMEBUFFER_GTE_INIT") &&
            world_mode_audio_setup_enabled();
+}
+
+static int world_terrain_position_init_enabled(void)
+{
+    /* W34B4C gate: terrain/position initializer 0x80097BC0–0x80097CB4.
+     * Default OFF, requires XENO_WORLD_FRAMEBUFFER_GTE_INIT. Initializes
+     * terrain matrix (D534), cell table (C580), terrain period (C618=1024),
+     * and masked position. Called at retail 0x8007250C, after framebuffer
+     * init and before convergence P1. */
+    return env_flag_is_one("XENO_WORLD_TERRAIN_POSITION_INIT") &&
+           world_framebuffer_gte_init_enabled();
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -7056,6 +7069,15 @@ void PcPort_WorldMapInitMain(void)
                                                                                                     "GTE_INIT=1: "
                                                                                                     "framebuffer/GTE init\n");
                                                                                             wm_80072BB0();
+                                                                                        }
+                                                                                        if (world_terrain_position_init_enabled()) {
+                                                                                            fprintf(stderr,
+                                                                                                    "[worldmap-tpi] "
+                                                                                                    "XENO_WORLD_TERRAIN_"
+                                                                                                    "POSITION_INIT=1: "
+                                                                                                    "terrain/position "
+                                                                                                    "init\n");
+                                                                                            wm_80097BC0(0x8009C5ACu);
                                                                                         }
                                                                                         if (world_convergence_p1_enabled()) {
                                                                                             fprintf(stderr,
