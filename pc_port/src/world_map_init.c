@@ -142,6 +142,7 @@
 #include "psyq/pc.h"
 #include "psx_memory.h"
 #include "world_map_convergence.h"
+#include "world_map_selector.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -171,11 +172,9 @@
 #define WM_FLAG_C894_ABS         0x8009C894u
 #define WM_ZERO_BBC4_ABS         0x8009BBC4u
 
-/* wm_80071B9C tables / outputs (in overlay image / BSS) */
-#define WM_THRESH_TABLE_ABS      0x8009B564u
-#define WM_RECORD_TABLE_ABS      0x8009B57Cu
-#define WM_RECORD_GE8_ABS        0x8009B58Cu
-#define WM_SLOT_C610_ABS         0x8009C610u
+/* wm_80071B9C tables / outputs (in overlay image / BSS).
+ * WM_THRESH_TABLE_ABS, WM_RECORD_TABLE_ABS, WM_RECORD_GE8_ABS,
+ * WM_SLOT_C610_ABS now provided by world_map_selector.h. */
 
 /* wm_8007369C / wm_80095F78 / wm_80073300 stores */
 #define WM_ALLOC_BC38_ABS        0x8009BC38u
@@ -1976,34 +1975,17 @@ static void wm_80073300(void)
     WM_U32(WM_MODE_BE10_ABS) = mode;
 }
 
-/* Retail wm_80071B9C(entrance, seed_from_gs_1930). Instruction-faithful. */
-static void wm_80071B9C(u32 entrance, s32 seed_a1)
+
+/* Record reading / world-state writes (remainder of retail wm_80071B9C
+ * after selector binning). Uses the index returned by wm_selector_producer
+ * for the record-table address computation. */
+static void wm_read_and_write_record(u32 entrance, u32 index)
 {
     s16* pRec;
     s16 base0, y, z, w;
-    u32 a0;
-    u8* pV1;
 
     if ((s32)entrance < 8) {
-        /* v1 = 0x8009B564; first threshold load from +2 */
-        pV1 = (u8*)PSX_ADDR(WM_THRESH_TABLE_ABS);
-        {
-            u16 thr = *(u16*)(pV1 + 2);
-            a0 = 1;
-            if (!((s32)seed_a1 < (s32)(s16)thr)) {
-                /* fallthrough: v1 += 2; then loop v1 += 2, a0++ */
-                pV1 += 2;
-                for (;;) {
-                    pV1 += 2;
-                    thr = *(u16*)pV1;
-                    if ((s32)seed_a1 < (s32)(s16)thr)
-                        break;
-                    a0++;
-                }
-            }
-        }
-        pRec = (s16*)((u8*)PSX_ADDR(WM_RECORD_TABLE_ABS) + (a0 << 3));
-        WM_U32(WM_SLOT_C610_ABS) = a0 - 1;
+        pRec = (s16*)((u8*)PSX_ADDR(WM_RECORD_TABLE_ABS) + (index << 3));
     } else {
         pRec = (s16*)((u8*)PSX_ADDR(WM_RECORD_GE8_ABS) + (entrance << 3));
     }
@@ -2079,7 +2061,7 @@ static int world_map_main_init_lahan(void)
     u16 entrance_hw;
     u16 selector, heading, arg2, entrance;
     s32 world_index;
-    s32 seed_1930;
+    u32 seed_1930;
 
     if (g_pGameState == NULL) {
         fprintf(stderr, "[worldmap-init] ERROR: g_pGameState is NULL\n");
@@ -2112,7 +2094,7 @@ static int world_map_main_init_lahan(void)
         WM_U32(WM_FLAG_C894_ABS) = 0;
 
     /* Tuple normalize @ 0x80070F90+ — read host g_pGameState in place. */
-    seed_1930 = (s32)GS_S16(GS_OFF_SEED_1930);
+    seed_1930 = (u32)GS_U16(GS_OFF_SEED_1930);
     entrance = GS_U16(GS_OFF_ENTRANCE);
     selector = GS_U16(GS_OFF_SELECTOR);
     arg2 = GS_U16(GS_OFF_ARG2);
@@ -2141,7 +2123,10 @@ static int world_map_main_init_lahan(void)
                 "(continuing with natural decode)\n");
     }
 
-    wm_80071B9C(entrance, seed_1930);
+    {
+        u32 idx = wm_selector_producer(entrance, seed_1930);
+        wm_read_and_write_record(entrance, idx);
+    }
 
     fprintf(stderr,
             "[worldmap-init] w2-complete retail_resume=0x%08x "
