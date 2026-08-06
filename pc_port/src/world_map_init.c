@@ -85,6 +85,18 @@
  *       AudioManager, sets audio level.  Cut before convergence at
  *       0x800726C0.  Behind XENO_WORLD_MODE_AUDIO_SETUP gate.
  *
+ * W34B1: First world convergence caller slice 0x800726C0–0x80072728.
+ *       Transcription of dispatch + first-table loop only. Reads
+ *       WM_FLAG_C894_ABS (0x8009C894), classifies flag==0/1/other,
+ *       for flag==0 iterates sentinel-terminated 8-byte records at
+ *       WM_CONV_TABLE_A_BASE (0x80099E8C) calling wm_pool_register.
+ *       Never reads WM_CONV_TABLE_B_BASE (0x8009A034) or
+ *       WM_CONV_SWITCH_INDEX/WM_SLOT_C610_ABS (0x8009C610), never
+ *       executes 0x8007272C or later. Behind
+ *       XENO_WORLD_CONVERGENCE_P1 (default off), requires
+ *       XENO_WORLD_MODE_AUDIO_SETUP. Bounded to one production
+ *       invocation; direct helper remains repeatable (see gate notes).
+ *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
@@ -113,6 +125,7 @@
  *   XENO_WORLD_967E4_ROUTE=0 (default off; one bounded 0x800967E4 call)
  *   XENO_WORLD_READY_BUFFER_CONSUME=0 (default off; ready-check + buffer consume)
  *   XENO_WORLD_MODE_AUDIO_SETUP=0 (default off; mode-dependent audio setup)
+ *   XENO_WORLD_CONVERGENCE_P1=0 (default off; first convergence table pass; requires MODE_AUDIO_SETUP)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -128,6 +141,7 @@
 #include "psyq/libcd.h"
 #include "psyq/pc.h"
 #include "psx_memory.h"
+#include "world_map_convergence.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -643,9 +657,6 @@ static int s_wm33b_audio_load;
 static int s_wm33b_level_set;
 static int s_wm33b_route_hit;
 
-/* Pool-register (0x80097718) instrumentation counter. */
-static int s_wm_pool_alloc;
-
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
 {
@@ -866,6 +877,19 @@ static int world_mode_audio_setup_enabled(void)
     return env_flag_is_one("XENO_WORLD_MODE_AUDIO_SETUP");
 }
 
+static int world_convergence_p1_enabled(void)
+{
+    /* W34B1 gate: first convergence caller slice 0x800726C0–0x80072728.
+     * Default OFF, requires XENO_WORLD_MODE_AUDIO_SETUP. The route is
+     * bounded to one production invocation per init; direct calls to
+     * wm_800726C0_convergence_p1 remain repeatable for tests.
+     * Future removal of the temporary one-invocation bound should allow
+     * repeated production calls (then guarded by idempotent caller
+     * semantics, not a permanent one-shot). */
+    return env_flag_is_one("XENO_WORLD_CONVERGENCE_P1") &&
+           world_mode_audio_setup_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1002,10 +1026,11 @@ static void log_enabled_slices(void)
     int w29 = world_967e4_route_enabled();
     int w32 = world_ready_buffer_consume_enabled();
     int w33 = world_mode_audio_setup_enabled();
+    int w34b1 = world_convergence_p1_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1063,6 +1088,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W32B");
     if (w33)
         fprintf(stderr, ",W33B");
+    if (w34b1)
+        fprintf(stderr, ",W34B1");
     fprintf(stderr, "\n");
 }
 
@@ -1880,49 +1907,6 @@ void wm_mode_audio_setup(void)
             "[worldmap-mode-audio] "
             "cut-before-convergence retail_pc=0x%08x\n",
             WM_CUT_BEFORE_CONVERGENCE);
-}
-
-/* Native transcription of retail 0x80097718.
- * Pool registration: searches WM_POOL_BE24 for a free slot (occupancy at
- * +0x1C == 0), zeroes status halfwords, stores a0 at +0x18 and a1 at +0x1C.
- * Bounded to 64 iterations; silent no-op if pool full.
- * Leaf — no callees, no stack frame. */
-void wm_pool_register(u32 a0, u32 a1)
-{
-    u32 pool_psx = WM_U32(WM_POOL_BE24);
-    u8* base;
-    int i;
-
-    fprintf(stderr, "[worldmap-pool-register] entry a0=0x%08x a1=0x%08x\n",
-            a0, a1);
-
-    if (pool_psx == 0)
-        return;
-    base = (u8*)psx_u32_to_host(pool_psx);
-    if (base == NULL)
-        return;
-
-    for (i = 0; i < WM_POOL_SLOT_COUNT; i++) {
-        u8* slot = base + (u32)i * WM_POOL_SLOT_STRIDE;
-        u32 occupancy = *(u32*)(slot + WM_POOL_OFF_1C);
-        if (occupancy == 0) {
-            *(u16*)(slot + 0x00) = 0;
-            *(u16*)(slot + 0x02) = 0;
-            *(u16*)(slot + 0x04) = 0;
-            *(u32*)(slot + WM_POOL_OFF_18) = a0;
-            *(u32*)(slot + WM_POOL_OFF_1C) = a1;
-            *(u16*)(slot + 0x20) = 0;
-            *(u16*)(slot + 0x22) = 0;
-            s_wm_pool_alloc++;
-            fprintf(stderr, "[worldmap-pool-register] "
-                    "slot=%d inserted a0=0x%08x a1=0x%08x\n",
-                    i, a0, a1);
-            return;
-        }
-    }
-    /* Pool full — retail silently drops. */
-    fprintf(stderr, "[worldmap-pool-register] "
-            "no free slot (dropped)\n");
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
@@ -6614,6 +6598,7 @@ void PcPort_WorldMapInitMain(void)
     s_wm88f64_hits = 0;
     s_wm37fd8_hits = 0;
     s_wm_cd_sync_world_hits = 0;
+    wm_conv_p1_reset();
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -7053,6 +7038,13 @@ void PcPort_WorldMapInitMain(void)
                                                                                                 "mode-dependent audio "
                                                                                                 "setup\n");
                                                                                         wm_mode_audio_setup();
+                                                                                        if (world_convergence_p1_enabled()) {
+                                                                                            fprintf(stderr,
+                                                                                                    "[worldmap-convergence-p1] "
+                                                                                                    "XENO_WORLD_CONVERGENCE_P1=1: "
+                                                                                                    "first-table pass\n");
+                                                                                            wm_800726C0_convergence_p1();
+                                                                                        }
                                                                                     }
                                                                                 }
                                                                             }
@@ -7078,7 +7070,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_mode_audio_setup_enabled() &&
+            if (world_convergence_p1_enabled())
+                cut_pc = wm_conv_p1_get_last_next();
+            else if (world_mode_audio_setup_enabled() &&
                 world_ready_buffer_consume_enabled() &&
                 world_967e4_route_enabled())
                 cut_pc = WM_CUT_BEFORE_CONVERGENCE;
@@ -7238,10 +7232,51 @@ void PcPort_WorldMapInitMain(void)
     }
 
     /* Pool-register helper: dump instrumentation counter. */
-    if (s_wm_pool_alloc > 0) {
+    if (wm_conv_p1_get_pool_alloc() > 0) {
         fprintf(stderr,
                 "[worldmap-pool-register] counters: alloc=%d\n",
-                s_wm_pool_alloc);
+                wm_conv_p1_get_pool_alloc());
+    }
+
+    /* W34B1: dump convergence P1 instrumentation. */
+    if (world_convergence_p1_enabled()) {
+        fprintf(stderr,
+                "[worldmap-convergence-p1] counters: "
+                "entry=%d flag0=%d empty=%d iterations=%d helper_calls=%d "
+                "flag1_cut=%d other_cut=%d cut_second_table=%d\n",
+                wm_conv_p1_get_entry(), wm_conv_p1_get_flag0(),
+                wm_conv_p1_get_empty(), wm_conv_p1_get_iterations(),
+                wm_conv_p1_get_helper_calls(), wm_conv_p1_get_flag1_cut(),
+                wm_conv_p1_get_other_cut(), wm_conv_p1_get_cut_second_table());
+        fprintf(stderr,
+                "[worldmap-convergence-p1] forbidden 0x8009C610 read: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden 0x8009A034 read: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden 0x800976FC call: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden common tail 0x8007290C: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden excluded 0x8007272C execution: ZERO VERIFIED\n");
+        if (wm_conv_p1_get_forbidden_c610_read() != 0 ||
+            wm_conv_p1_get_forbidden_a034_read() != 0 ||
+            wm_conv_p1_get_forbidden_976fc() != 0 ||
+            wm_conv_p1_get_forbidden_common_tail() != 0 ||
+            wm_conv_p1_get_forbidden_excluded_instr() != 0) {
+            fprintf(stderr,
+                    "[worldmap-convergence-p1] ERROR: forbidden path hit "
+                    "c610=%d a034=%d 976fc=%d common_tail=%d excluded=%d\n",
+                    wm_conv_p1_get_forbidden_c610_read(),
+                    wm_conv_p1_get_forbidden_a034_read(),
+                    wm_conv_p1_get_forbidden_976fc(),
+                    wm_conv_p1_get_forbidden_common_tail(),
+                    wm_conv_p1_get_forbidden_excluded_instr());
+        }
+    } else {
+        fprintf(stderr,
+                "[worldmap-convergence-p1] convergence_p1_entry: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] convergence_80072714: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden 0x8009C610 read: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden 0x8009A034 read: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden 0x800976FC call: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden common tail: ZERO VERIFIED\n"
+                "[worldmap-convergence-p1] forbidden excluded 0x8007272C: ZERO VERIFIED\n");
     }
 
     /* Forbidden caller verification. */

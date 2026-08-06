@@ -1036,6 +1036,7 @@ PORT_SOURCES=(
     pc_port/src/data_field.c
     pc_port/src/data_member_change_menu.c
     pc_port/src/data_main_menu.c
+    pc_port/src/world_map_convergence.c
 )
 
 # The list above is the port link's explicit ownership registry. Refuse to
