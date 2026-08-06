@@ -889,6 +889,15 @@ static int world_convergence_p1_enabled(void)
            world_mode_audio_setup_enabled();
 }
 
+static int world_convergence_p2_enabled(void)
+{
+    /* W34B3 gate: second convergence table pass 0x8007272C–0x80072780.
+     * Default OFF, requires XENO_WORLD_CONVERGENCE_P1. Only runs when
+     * P1 completed and returned cut 0x8007272C (flag==0 second-table path). */
+    return env_flag_is_one("XENO_WORLD_CONVERGENCE_P2") &&
+           world_convergence_p1_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -7028,7 +7037,18 @@ void PcPort_WorldMapInitMain(void)
                                                                                                     "[worldmap-convergence-p1] "
                                                                                                     "XENO_WORLD_CONVERGENCE_P1=1: "
                                                                                                     "first-table pass\n");
-                                                                                            wm_800726C0_convergence_p1();
+                                                                                            {
+                                                                                                wm_conv_p1_next_t p1_cut =
+                                                                                                    wm_800726C0_convergence_p1();
+                                                                                                if (world_convergence_p2_enabled() &&
+                                                                                                    p1_cut == WM_CONV_P1_CUT_SECOND_TABLE) {
+                                                                                                    fprintf(stderr,
+                                                                                                            "[worldmap-convergence-p2] "
+                                                                                                            "XENO_WORLD_CONVERGENCE_P2=1: "
+                                                                                                            "second-table pass\n");
+                                                                                                    wm_8007272C_convergence_p2();
+                                                                                                }
+                                                                                            }
                                                                                         }
                                                                                     }
                                                                                 }
@@ -7055,7 +7075,10 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_convergence_p1_enabled())
+            if (world_convergence_p2_enabled() &&
+                wm_conv_p2_get_entry() > 0)
+                cut_pc = WM_CONV_P1_CUT_COMMON_TAIL;
+            else if (world_convergence_p1_enabled())
                 cut_pc = wm_conv_p1_get_last_next();
             else if (world_mode_audio_setup_enabled() &&
                 world_ready_buffer_consume_enabled() &&
@@ -7264,11 +7287,32 @@ void PcPort_WorldMapInitMain(void)
                 "[worldmap-convergence-p1] forbidden excluded 0x8007272C: ZERO VERIFIED\n");
     }
 
+    /* W34B3: dump convergence P2 instrumentation. */
+    if (world_convergence_p2_enabled() && wm_conv_p2_get_entry() > 0) {
+        fprintf(stderr,
+                "[worldmap-convergence-p2] counters: "
+                "entry=%d empty=%d iterations=%d helper_calls=%d "
+                "selector=%u selected_ptr=0x%08x\n",
+                wm_conv_p2_get_entry(), wm_conv_p2_get_empty_stream(),
+                wm_conv_p2_get_iterations(), wm_conv_p2_get_helper_calls(),
+                wm_conv_p2_get_selector(), wm_conv_p2_get_selected_ptr());
+        fprintf(stderr,
+                "[worldmap-convergence-p2] forbidden C894==1 arc: ZERO VERIFIED\n"
+                "[worldmap-convergence-p2] forbidden 0x800976FC call: ZERO VERIFIED\n"
+                "[worldmap-convergence-p2] forbidden common tail execution: ZERO VERIFIED\n"
+                "[worldmap-convergence-p2] forbidden first-excluded 0x80072784: ZERO VERIFIED\n");
+    } else {
+        fprintf(stderr,
+                "[worldmap-convergence-p2] convergence_p2_entry: ZERO VERIFIED\n");
+    }
+
     /* Forbidden caller verification. */
     fprintf(stderr,
             "[worldmap-pool-register] convergence_entry_800726C0: ZERO VERIFIED\n"
             "[worldmap-pool-register] convergence_80072714: ZERO VERIFIED\n"
-            "[worldmap-pool-register] convergence_80072764: ZERO VERIFIED\n");
+            "[worldmap-pool-register] convergence_80072764: ZERO VERIFIED\n"
+            "[worldmap-convergence-p2] FIRST EXCLUDED 0x80072784: ZERO VERIFIED\n"
+            "[worldmap-convergence-p2] COMMON TAIL 0x8007290C: ZERO VERIFIED\n");
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");

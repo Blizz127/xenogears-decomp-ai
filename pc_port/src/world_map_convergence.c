@@ -1,15 +1,16 @@
 /*
- * World-map convergence P1 module (W34B1).
+ * World-map convergence P1/P2 module (W34B1 + W34B3).
  *
  * Extracted from world_map_init.c — the one authoritative implementation
- * of wm_800726C0_convergence_p1 and wm_pool_register.
+ * of wm_800726C0_convergence_p1, wm_8007272C_convergence_p2, and
+ * wm_pool_register.
  *
  * Both the production game build and the production-linked test link
  * this same object.  Do NOT duplicate these functions elsewhere.
  *
- * Retail slice: 0x800726C0–0x80072728.
- * Provenance: exact transcription of retail dispatch + first-table loop.
- * Never reads 0x8009C610 / 0x8009A034, never executes 0x8007272C+.
+ * P1 retail slice: 0x800726C0–0x80072728.
+ * P2 retail slice: 0x8007272C–0x80072780.
+ * Provenance: exact transcription of retail dispatch + table loops.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,15 +22,13 @@
 /* Retail layout constants (absolute PSX addresses). */
 #define WM_FLAG_C894_ABS         0x8009C894u
 #define WM_CONV_TABLE_A_BASE     0x80099E8Cu
+#define WM_CONV_TABLE_B_BASE     0x8009A034u
+#define WM_SLOT_C610_ABS         0x8009C610u
 #define WM_POOL_BE24             0x8009BE24u
 #define WM_POOL_SLOT_COUNT       64
 #define WM_POOL_SLOT_STRIDE      0x80u
 #define WM_POOL_OFF_18           0x18u
 #define WM_POOL_OFF_1C           0x1Cu
-
-#define WM_CONV_P1_CUT_SECOND_TABLE 0x8007272Cu
-#define WM_CONV_P1_CUT_FLAG1_ARC    0x80072784u
-#define WM_CONV_P1_CUT_COMMON_TAIL 0x8007290Cu
 
 #define WM_U32(a) (*(u32*)PSX_ADDR(a))
 
@@ -61,6 +60,18 @@ static int s_wm_conv_p1_forbidden_excluded_instr;
 static u32  s_wm_conv_p1_last_next;
 static int s_wm_pool_alloc;
 
+/* P2 instrumentation counters. */
+static int s_wm_conv_p2_entry;
+static int s_wm_conv_p2_empty_stream;
+static int s_wm_conv_p2_iterations;
+static int s_wm_conv_p2_helper_calls;
+static int s_wm_conv_p2_forbidden_c894;
+static int s_wm_conv_p2_forbidden_976fc;
+static int s_wm_conv_p2_forbidden_common_tail;
+static int s_wm_conv_p2_forbidden_excluded_instr;
+static u32  s_wm_conv_p2_selector;
+static u32  s_wm_conv_p2_selected_ptr;
+
 /* ---- Counter accessors ---- */
 
 int  wm_conv_p1_get_entry(void)                 { return s_wm_conv_p1_entry; }
@@ -78,6 +89,18 @@ int  wm_conv_p1_get_forbidden_976fc(void)        { return s_wm_conv_p1_forbidden
 int  wm_conv_p1_get_forbidden_common_tail(void)  { return s_wm_conv_p1_forbidden_common_tail; }
 int  wm_conv_p1_get_forbidden_excluded_instr(void) { return s_wm_conv_p1_forbidden_excluded_instr; }
 int  wm_conv_p1_get_pool_alloc(void)             { return s_wm_pool_alloc; }
+
+/* P2 counter accessors. */
+int  wm_conv_p2_get_entry(void)                    { return s_wm_conv_p2_entry; }
+int  wm_conv_p2_get_empty_stream(void)             { return s_wm_conv_p2_empty_stream; }
+int  wm_conv_p2_get_iterations(void)               { return s_wm_conv_p2_iterations; }
+int  wm_conv_p2_get_helper_calls(void)             { return s_wm_conv_p2_helper_calls; }
+int  wm_conv_p2_get_forbidden_c894(void)           { return s_wm_conv_p2_forbidden_c894; }
+int  wm_conv_p2_get_forbidden_976fc(void)          { return s_wm_conv_p2_forbidden_976fc; }
+int  wm_conv_p2_get_forbidden_common_tail(void)    { return s_wm_conv_p2_forbidden_common_tail; }
+int  wm_conv_p2_get_forbidden_excluded_instr(void) { return s_wm_conv_p2_forbidden_excluded_instr; }
+u32  wm_conv_p2_get_selector(void)                 { return s_wm_conv_p2_selector; }
+u32  wm_conv_p2_get_selected_ptr(void)             { return s_wm_conv_p2_selected_ptr; }
 
 /* ---- Counter reset ---- */
 
@@ -98,6 +121,17 @@ void wm_conv_p1_reset(void)
     s_wm_conv_p1_forbidden_excluded_instr = 0;
     s_wm_conv_p1_last_next = 0;
     s_wm_pool_alloc = 0;
+
+    s_wm_conv_p2_entry = 0;
+    s_wm_conv_p2_empty_stream = 0;
+    s_wm_conv_p2_iterations = 0;
+    s_wm_conv_p2_helper_calls = 0;
+    s_wm_conv_p2_forbidden_c894 = 0;
+    s_wm_conv_p2_forbidden_976fc = 0;
+    s_wm_conv_p2_forbidden_common_tail = 0;
+    s_wm_conv_p2_forbidden_excluded_instr = 0;
+    s_wm_conv_p2_selector = 0;
+    s_wm_conv_p2_selected_ptr = 0;
 }
 
 /* ---- Pool registration helper ---- */
@@ -216,4 +250,67 @@ wm_conv_p1_next_t wm_800726C0_convergence_p1(void)
                 WM_CONV_P1_CUT_SECOND_TABLE, s_wm_conv_p1_iterations);
         return WM_CONV_P1_CUT_SECOND_TABLE;
     }
+}
+
+/* ---- Convergence P2 (production) ---- */
+
+/* W34B3: second convergence caller slice 0x8007272C–0x80072780.
+ * Reads selector 0x8009C610, indexes the nine-pointer table at
+ * 0x8009A034, walks the selected {u32 a0, u32 a1} record stream,
+ * and calls wm_pool_register for each record.
+ * Returns 0x8007290C for both empty and completed streams.
+ * Never executes 0x80072784, 0x800976FC, or the common tail. */
+u32 wm_8007272C_convergence_p2(void)
+{
+    u32 selector;
+    u32 selected_psx;
+    u32 *record;
+
+    s_wm_conv_p2_entry++;
+    fprintf(stderr, "[worldmap-convergence-p2] entry\n");
+
+    /* Read selector. */
+    selector = WM_U32(WM_SLOT_C610_ABS);
+    s_wm_conv_p2_selector = selector;
+    fprintf(stderr, "[worldmap-convergence-p2] selector=%u\n", selector);
+
+    /* Index top-level table: selected = *(u32*)(0x8009A034 + (selector << 2)). */
+    selected_psx = WM_U32(WM_CONV_TABLE_B_BASE + (selector << 2));
+    s_wm_conv_p2_selected_ptr = selected_psx;
+    fprintf(stderr, "[worldmap-convergence-p2] selected_psx=0x%08x\n",
+            selected_psx);
+
+    /* Resolve to host pointer. */
+    record = (u32*)PSX_ADDR(selected_psx);
+
+    /* Pre-test first record a0 for zero (empty stream). */
+    if (record[0] == 0) {
+        s_wm_conv_p2_empty_stream++;
+        fprintf(stderr,
+                "[worldmap-convergence-p2] empty stream, cut retail_pc=0x%08x\n",
+                WM_CONV_P1_CUT_COMMON_TAIL);
+        return WM_CONV_P1_CUT_COMMON_TAIL;
+    }
+
+    /* Walk record stream: {u32 a0, u32 a1}, stride 8.
+     * jal delay-slot pointer increment preserved. */
+    do {
+        u32 a0 = record[0];
+        u32 a1 = record[1];
+
+        s_wm_conv_p2_iterations++;
+        s_wm_conv_p2_helper_calls++;
+        fprintf(stderr,
+                "[worldmap-convergence-p2] iter a0=0x%08x a1=0x%08x (helper)\n",
+                a0, a1);
+
+        wm_pool_register(a0, a1);
+
+        record += 2; /* 8-byte stride = 2×u32, jal delay slot */
+    } while (record[0] != 0);
+
+    fprintf(stderr,
+            "[worldmap-convergence-p2] done iterations=%d cut retail_pc=0x%08x\n",
+            s_wm_conv_p2_iterations, WM_CONV_P1_CUT_COMMON_TAIL);
+    return WM_CONV_P1_CUT_COMMON_TAIL;
 }
