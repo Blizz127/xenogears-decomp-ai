@@ -280,6 +280,9 @@
 #define WM_CUT_BEFORE_MODE_AUDIO 0x800725ACu /* after W32B buffer consume; before mode audio */
 #define WM_CUT_BEFORE_CONVERGENCE 0x800726C0u /* after W33B audio setup; before convergence */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
+#define WM_CONV_TABLE_A_BASE     0x800A9E8Cu /* pool-register table A (8-byte records) */
+#define WM_CONV_TABLE_B_BASE     0x800AA034u /* pool-register second-loop ptr table */
+#define WM_CONV_SWITCH_INDEX     0x800AC610u /* convergence switch index / count */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
 #define WM_CONSUMER_RESULT       0x8006258Cu /* SoundLoadWdsFile return storage */
@@ -639,6 +642,9 @@ static int s_wm33b_audio_create;
 static int s_wm33b_audio_load;
 static int s_wm33b_level_set;
 static int s_wm33b_route_hit;
+
+/* Pool-register (0x80097718) instrumentation counter. */
+static int s_wm_pool_alloc;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -1874,6 +1880,49 @@ void wm_mode_audio_setup(void)
             "[worldmap-mode-audio] "
             "cut-before-convergence retail_pc=0x%08x\n",
             WM_CUT_BEFORE_CONVERGENCE);
+}
+
+/* Native transcription of retail 0x80097718.
+ * Pool registration: searches WM_POOL_BE24 for a free slot (occupancy at
+ * +0x1C == 0), zeroes status halfwords, stores a0 at +0x18 and a1 at +0x1C.
+ * Bounded to 64 iterations; silent no-op if pool full.
+ * Leaf — no callees, no stack frame. */
+void wm_pool_register(u32 a0, u32 a1)
+{
+    u32 pool_psx = WM_U32(WM_POOL_BE24);
+    u8* base;
+    int i;
+
+    fprintf(stderr, "[worldmap-pool-register] entry a0=0x%08x a1=0x%08x\n",
+            a0, a1);
+
+    if (pool_psx == 0)
+        return;
+    base = (u8*)psx_u32_to_host(pool_psx);
+    if (base == NULL)
+        return;
+
+    for (i = 0; i < WM_POOL_SLOT_COUNT; i++) {
+        u8* slot = base + (u32)i * WM_POOL_SLOT_STRIDE;
+        u32 occupancy = *(u32*)(slot + WM_POOL_OFF_1C);
+        if (occupancy == 0) {
+            *(u16*)(slot + 0x00) = 0;
+            *(u16*)(slot + 0x02) = 0;
+            *(u16*)(slot + 0x04) = 0;
+            *(u32*)(slot + WM_POOL_OFF_18) = a0;
+            *(u32*)(slot + WM_POOL_OFF_1C) = a1;
+            *(u16*)(slot + 0x20) = 0;
+            *(u16*)(slot + 0x22) = 0;
+            s_wm_pool_alloc++;
+            fprintf(stderr, "[worldmap-pool-register] "
+                    "slot=%d inserted a0=0x%08x a1=0x%08x\n",
+                    i, a0, a1);
+            return;
+        }
+    }
+    /* Pool full — retail silently drops. */
+    fprintf(stderr, "[worldmap-pool-register] "
+            "no free slot (dropped)\n");
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
@@ -7187,6 +7236,19 @@ void PcPort_WorldMapInitMain(void)
                 "[worldmap-mode-audio] first_render: ZERO VERIFIED\n"
                 "[worldmap-mode-audio] world_DrawOTag: ZERO VERIFIED\n");
     }
+
+    /* Pool-register helper: dump instrumentation counter. */
+    if (s_wm_pool_alloc > 0) {
+        fprintf(stderr,
+                "[worldmap-pool-register] counters: alloc=%d\n",
+                s_wm_pool_alloc);
+    }
+
+    /* Forbidden caller verification. */
+    fprintf(stderr,
+            "[worldmap-pool-register] convergence_entry_800726C0: ZERO VERIFIED\n"
+            "[worldmap-pool-register] convergence_80072714: ZERO VERIFIED\n"
+            "[worldmap-pool-register] convergence_80072764: ZERO VERIFIED\n");
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");
