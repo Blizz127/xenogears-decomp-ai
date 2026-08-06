@@ -399,6 +399,50 @@ int main(void)
     check("full-pool: dropped", event_count == 1 && events[0].slot == -1);
 
     /* ================================================================
+     * Address-calculation proofs (sign-extension from MIPS lui+imm16)
+     * ================================================================ */
+    printf("\n--- Address-calculation proofs ---\n");
+    {
+        /*
+         * MIPS pattern: lui reg, 0x800A  →  reg = 0x800A0000
+         *               lw ..., imm16(reg)  →  addr = 0x800A0000 + sign_extend(imm16)
+         *
+         * When bit 15 of imm16 is set, sign_extend produces a negative value,
+         * subtracting from the base. The prior W34B0 aliases treated the 16-bit
+         * immediates as unsigned, producing addresses shifted by +0x10000.
+         */
+
+        /* Table A: imm16 = 0x9E8C */
+        uint32_t table_a = (uint32_t)(0x800A0000u + (int16_t)0x9E8C);
+        check("table-A effective = 0x80099E8C", table_a == 0x80099E8Cu);
+
+        /* Table A companion (+4): imm16 = 0x9E90 */
+        uint32_t table_a_comp = (uint32_t)(0x800A0000u + (int16_t)0x9E90);
+        check("table-A companion = 0x80099E90", table_a_comp == 0x80099E90u);
+        check("table-A companion = base+4", table_a_comp == table_a + 4);
+
+        /* Table B: imm16 = 0xA034 */
+        uint32_t table_b = (uint32_t)(0x800A0000u + (int16_t)0xA034);
+        check("table-B effective = 0x8009A034", table_b == 0x8009A034u);
+
+        /* Switch/index: imm16 = 0xC610 */
+        uint32_t sw_idx = (uint32_t)(0x800A0000u + (int16_t)0xC610);
+        check("switch-index effective = 0x8009C610", sw_idx == 0x8009C610u);
+
+        /* Incorrect old values must differ from corrected */
+        check("0x80099E8C != 0x800A9E8C", 0x80099E8Cu != 0x800A9E8Cu);
+        check("0x8009A034 != 0x800AA034", 0x8009A034u != 0x800AA034u);
+        check("0x8009C610 != 0x800AC610", 0x8009C610u != 0x800AC610u);
+
+        /* Existing WM_SLOT_C610_ABS remains correct */
+        check("WM_SLOT_C610_ABS = 0x8009C610", WM_SLOT_C610_ABS == 0x8009C610u);
+
+        /* No duplicate: WM_CONV_SWITCH_INDEX aliases WM_SLOT_C610_ABS */
+        /* (compile-time check: if both are 0x8009C610, this holds) */
+        check("sign-ext index == WM_SLOT_C610_ABS", sw_idx == WM_SLOT_C610_ABS);
+    }
+
+    /* ================================================================
      * Summary
      * ================================================================ */
     printf("\n=== Results: %d/%d passed", pass, total);

@@ -280,9 +280,9 @@
 #define WM_CUT_BEFORE_MODE_AUDIO 0x800725ACu /* after W32B buffer consume; before mode audio */
 #define WM_CUT_BEFORE_CONVERGENCE 0x800726C0u /* after W33B audio setup; before convergence */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
-#define WM_CONV_TABLE_A_BASE     0x800A9E8Cu /* pool-register table A (8-byte records) */
-#define WM_CONV_TABLE_B_BASE     0x800AA034u /* pool-register second-loop ptr table */
-#define WM_CONV_SWITCH_INDEX     0x800AC610u /* convergence switch index / count */
+#define WM_CONV_TABLE_A_BASE     0x80099E8Cu /* pool-register table A (8-byte records); sign-extended from lui 0x800A + imm16 0x9E8C */
+#define WM_CONV_TABLE_B_BASE     0x8009A034u /* pool-register second-loop ptr table; sign-extended from lui 0x800A + imm16 0xA034 */
+#define WM_CONV_SWITCH_INDEX     WM_SLOT_C610_ABS /* convergence switch index; aliases exact 0x8009C610 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
 #define WM_CONSUMER_RESULT       0x8006258Cu /* SoundLoadWdsFile return storage */
