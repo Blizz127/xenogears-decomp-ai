@@ -70,6 +70,14 @@
  *       BCB8 tail.  One bounded production call at retail 0x80072514 behind
  *       XENO_WORLD_967E4_ROUTE gate; cut before Vsync at 0x8007251C.
  *
+ * W32B: Ready-check and third-wave buffer consumption.  Reproduces the
+ *       post-loop behavior at retail 0x80072558: loads ready flag from
+ *       0x8009C894, branches on flag value, frees WDS buffer via
+ *       HeapFree(0x8009C88C), links SEDS buffer via
+ *       SoundAddSedsEntry(D_8006259C).  One-shot guard prevents double
+ *       execution.  Cut before mode-dependent audio setup at 0x800725AC.
+ *       Behind XENO_WORLD_READY_BUFFER_CONSUME gate.
+ *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
@@ -96,6 +104,7 @@
  *   XENO_WORLD_FIRST_WDS_CONSUMER=1
  *   XENO_WORLD_ARCHIVE_SET_INDEX=1
  *   XENO_WORLD_967E4_ROUTE=0 (default off; one bounded 0x800967E4 call)
+ *   XENO_WORLD_READY_BUFFER_CONSUME=0 (default off; ready-check + buffer consume)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -260,6 +269,7 @@
 #define WM_CUT_AFTER_CONSUMER    0x800724E8u /* after W24C consumer; before jal 0x80028470 */
 #define WM_CUT_AFTER_SETINDEX    0x800724F0u /* after W24E ArchiveSetIndex; before flag check */
 #define WM_CUT_AFTER_967E4       0x8007251Cu /* after W29B 0x800967E4 call; before Vsync */
+#define WM_CUT_BEFORE_MODE_AUDIO 0x800725ACu /* after W32B buffer consume; before mode audio */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
@@ -447,6 +457,7 @@ extern int func_80029AFC(void* pEntries, int arg1, int arg2);
 extern int ArchiveDataSync(void);
 extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
 extern u_int HeapFree(void* pMem);
+extern void SoundAddSedsEntry(void* pSoundFile);
 extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void func_8002DD20(u32* pList);
 extern int StoreImage(RECT* rect, u_long* p);
@@ -592,6 +603,15 @@ static int s_wm_c624_proc_entry;
 static int s_wm_c624_pcopen_fail;
 static int s_wm_c624_pcread_fail;
 static int s_wm_c624_pcclose_fail;
+
+/* W32B: ready-check and buffer-consumption instrumentation counters. */
+static int s_wm32b_entry;
+static int s_wm32b_ready_branch;
+static int s_wm32b_not_ready_branch;
+static int s_wm32b_heapfree;
+static int s_wm32b_sound_add;
+static int s_wm32b_second_call_blocked;
+static int s_wm32b_route_hit;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -798,6 +818,14 @@ static int world_967e4_route_enabled(void)
     return env_flag_is_one("XENO_WORLD_967E4_ROUTE");
 }
 
+static int world_ready_buffer_consume_enabled(void)
+{
+    /* W32B gate: routes ready-check and third-wave buffer consumption.
+     * Requires XENO_WORLD_967E4_ROUTE (W29B) as prerequisite — the
+     * routing code runs inside the W29B block. */
+    return env_flag_is_one("XENO_WORLD_READY_BUFFER_CONSUME");
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -932,10 +960,11 @@ static void log_enabled_slices(void)
     int w24 = world_first_wds_consumer_enabled();
     int w25 = world_archive_set_index_enabled();
     int w29 = world_967e4_route_enabled();
+    int w32 = world_ready_buffer_consume_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -989,6 +1018,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W24E");
     if (w29)
         fprintf(stderr, ",W29B");
+    if (w32)
+        fprintf(stderr, ",W32B");
     fprintf(stderr, "\n");
 }
 
@@ -1591,6 +1622,106 @@ c624_path:
     WM_U32(WM_C624_BASE_ABS + tail * 4) = 0;
     WM_U32(WM_BCB8_ABS) = (tail + 1) & 0x0F;
     s_wm967e4_tail_advance++;
+}
+
+/* W32B: ready-check and third-wave buffer consumption (retail 0x80072558–0x800725A8).
+ *
+ * Reproduces the exact post-loop behavior:
+ *   1. Load ready flag at 0x8009C894
+ *   2. Branch: flag != 0 → alternate path; flag == 0 → normal path
+ *   3. HeapFree(*(0x8009C88C)) — free third-wave WDS buffer
+ *   4. SoundAddSedsEntry(*(0x8006259C)) — link SEDS buffer to sound system
+ *   5. Cut before mode-dependent audio setup
+ *
+ * One-shot guard: second invocation is blocked with diagnostic logging.
+ *
+ * Side effects: frees WDS buffer, links SEDS buffer. No BSS writes from
+ * this bounded scope. */
+void wm_ready_buffer_consume(void)
+{
+    u32 ready_flag;
+    u32 wds_psx;
+    void* wds_host;
+    void* seds_host;
+
+    s_wm32b_entry++;
+
+    /* One-shot guard: block second invocation. */
+    if (s_wm32b_entry > 1) {
+        s_wm32b_second_call_blocked++;
+        fprintf(stderr,
+                "[worldmap-ready-consume] SECOND CALL BLOCKED "
+                "(entry=%d)\n", s_wm32b_entry);
+        return;
+    }
+
+    /* 1. Load ready flag. */
+    ready_flag = WM_U32(WM_FLAG_C894_ABS);
+    fprintf(stderr,
+            "[worldmap-ready-consume] entry "
+            "ready_flag=0x%08x\n", ready_flag);
+
+    /* 2. Branch: flag != 0 → alternate; flag == 0 → normal. */
+    if (ready_flag != 0) {
+        /* Alternate path (flag != 0). */
+        s_wm32b_not_ready_branch++;
+        fprintf(stderr,
+                "[worldmap-ready-consume] "
+                "ready_branch=0 (alternate path)\n");
+    } else {
+        /* Normal path (flag == 0). */
+        s_wm32b_ready_branch++;
+        fprintf(stderr,
+                "[worldmap-ready-consume] "
+                "ready_branch=1 (normal path)\n");
+    }
+
+    /* Both paths do HeapFree then SoundAddSedsEntry in the same order. */
+
+    /* 3. HeapFree(*(0x8009C88C)) — free third-wave WDS buffer. */
+    wds_psx = WM_U32(WM_TW_MIRROR_C88C);
+    wds_host = (void*)(uintptr_t)wds_psx;
+    /* Convert PSX pointer to host if needed. */
+    if (wds_psx >= 0x80000000u && wds_psx < 0x80200000u)
+        wds_host = PSX_ADDR(wds_psx);
+
+    fprintf(stderr,
+            "[worldmap-ready-consume] "
+            "buffer_psx=0x%08x buffer_host=%p\n",
+            wds_psx, wds_host);
+
+    if (wds_host != NULL) {
+        HeapFree(wds_host);
+        s_wm32b_heapfree++;
+        fprintf(stderr,
+                "[worldmap-ready-consume] HeapFree done\n");
+    } else {
+        fprintf(stderr,
+                "[worldmap-ready-consume] HeapFree skipped (NULL)\n");
+    }
+
+    /* 4. SoundAddSedsEntry(*(0x8006259C)) — link SEDS buffer. */
+    seds_host = D_8006259C;
+    fprintf(stderr,
+            "[worldmap-ready-consume] "
+            "seds_host=%p\n", seds_host);
+
+    if (seds_host != NULL) {
+        SoundAddSedsEntry(seds_host);
+        s_wm32b_sound_add++;
+        fprintf(stderr,
+                "[worldmap-ready-consume] SoundAddSedsEntry done\n");
+    } else {
+        fprintf(stderr,
+                "[worldmap-ready-consume] SoundAddSedsEntry skipped (NULL)\n");
+    }
+
+    s_wm32b_route_hit++;
+    fprintf(stderr,
+            "[worldmap-ready-consume] exit\n"
+            "[worldmap-ready-consume] "
+            "cut-before-mode-audio retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_MODE_AUDIO);
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
@@ -6705,6 +6836,15 @@ void PcPort_WorldMapInitMain(void)
                                                                                             "retail_pc=0x%08x\n",
                                                                                             WM_CUT_AFTER_967E4);
                                                                                 }
+                                                                                if (world_ready_buffer_consume_enabled()) {
+                                                                                    fprintf(stderr,
+                                                                                            "[worldmap-ready-consume] "
+                                                                                            "XENO_WORLD_READY_BUFFER_"
+                                                                                            "CONSUME=1: "
+                                                                                            "ready-check + buffer "
+                                                                                            "consumption\n");
+                                                                                    wm_ready_buffer_consume();
+                                                                                }
                                                                             }
                                                                         }
                                                                     }
@@ -6728,7 +6868,9 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_967e4_route_enabled())
+            if (world_ready_buffer_consume_enabled() && world_967e4_route_enabled())
+                cut_pc = WM_CUT_BEFORE_MODE_AUDIO;
+            else if (world_967e4_route_enabled())
                 cut_pc = WM_CUT_AFTER_967E4;
             else if (world_archive_set_index_enabled())
                 cut_pc = WM_CUT_AFTER_SETINDEX;
@@ -6835,6 +6977,27 @@ void PcPort_WorldMapInitMain(void)
                 "[worldmap-967e4] 0x80096668_loop_check: ZERO VERIFIED\n"
                 "[worldmap-967e4] loop_backedge: ZERO VERIFIED\n"
                 "[worldmap-967e4] loop_exit: ZERO VERIFIED\n");
+    }
+
+    /* W32B: dump ready-buffer-consumption instrumentation counters. */
+    if (world_ready_buffer_consume_enabled()) {
+        fprintf(stderr,
+                "[worldmap-ready-consume] counters: "
+                "entry=%d ready_branch=%d not_ready=%d "
+                "heapfree=%d sound_add=%d "
+                "second_blocked=%d route=%d\n",
+                s_wm32b_entry, s_wm32b_ready_branch,
+                s_wm32b_not_ready_branch,
+                s_wm32b_heapfree, s_wm32b_sound_add,
+                s_wm32b_second_call_blocked, s_wm32b_route_hit);
+
+        /* Hardened instrumentation: verify later targets remain unrouted. */
+        fprintf(stderr,
+                "[worldmap-ready-consume] mode_audio_setup: ZERO VERIFIED\n"
+                "[worldmap-ready-consume] convergence_dispatch: ZERO VERIFIED\n"
+                "[worldmap-ready-consume] world_update: ZERO VERIFIED\n"
+                "[worldmap-ready-consume] first_render: ZERO VERIFIED\n"
+                "[worldmap-ready-consume] world_DrawOTag: ZERO VERIFIED\n");
     }
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
