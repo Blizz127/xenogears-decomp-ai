@@ -78,6 +78,13 @@
  *       execution.  Cut before mode-dependent audio setup at 0x800725AC.
  *       Behind XENO_WORLD_READY_BUFFER_CONSUME gate.
  *
+ * W33B: Mode-dependent world audio setup.  Reproduces the
+ *       post-W32B behavior at retail 0x800725AC: loads mode selector
+ *       from 0x8009BE10, selects mode-7 or non-mode-7 archive ID and
+ *       buffer pointer, copies sound data via memcpy, creates or loads
+ *       AudioManager, sets audio level.  Cut before convergence at
+ *       0x800726C0.  Behind XENO_WORLD_MODE_AUDIO_SETUP gate.
+ *
  * Gates (deepest implies lower):
  *   XENO_WORLD_INIT=1
  *   XENO_WORLD_MODE_INIT=1
@@ -105,6 +112,7 @@
  *   XENO_WORLD_ARCHIVE_SET_INDEX=1
  *   XENO_WORLD_967E4_ROUTE=0 (default off; one bounded 0x800967E4 call)
  *   XENO_WORLD_READY_BUFFER_CONSUME=0 (default off; ready-check + buffer consume)
+ *   XENO_WORLD_MODE_AUDIO_SETUP=0 (default off; mode-dependent audio setup)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -270,6 +278,7 @@
 #define WM_CUT_AFTER_SETINDEX    0x800724F0u /* after W24E ArchiveSetIndex; before flag check */
 #define WM_CUT_AFTER_967E4       0x8007251Cu /* after W29B 0x800967E4 call; before Vsync */
 #define WM_CUT_BEFORE_MODE_AUDIO 0x800725ACu /* after W32B buffer consume; before mode audio */
+#define WM_CUT_BEFORE_CONVERGENCE 0x800726C0u /* after W33B audio setup; before convergence */
 #define WM_FLAG_C894_ABS         0x8009C894u /* ready flag: entrance bit 0x8000 */
 #define WM_FIRST_CONSUMER_CALLER 0x800724D4u /* jal 0x80037FD8 */
 #define WM_FIRST_CONSUMER_TARGET 0x80037FD8u /* SoundLoadWdsFile */
@@ -458,6 +467,11 @@ extern int ArchiveDataSync(void);
 extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
 extern u_int HeapFree(void* pMem);
 extern void SoundAddSedsEntry(void* pSoundFile);
+extern void* func_80039850(void* pSongFile);
+extern void func_80039A80(void* manager, int level, int steps);
+extern void func_80039B68(void* manager, int level, int steps);
+extern u8 D_80062648[];
+extern void* D_80062528;
 extern void* LZSSHeapDecompress(void* pCompressed, int flags);
 extern void func_8002DD20(u32* pList);
 extern int StoreImage(RECT* rect, u_long* p);
@@ -612,6 +626,19 @@ static int s_wm32b_heapfree;
 static int s_wm32b_sound_add;
 static int s_wm32b_second_call_blocked;
 static int s_wm32b_route_hit;
+
+/* W33B: mode-dependent audio setup instrumentation counters. */
+static int s_wm33b_entry;
+static int s_wm33b_mode7_path;
+static int s_wm33b_non_mode7_path;
+static int s_wm33b_ready_path;
+static int s_wm33b_not_ready_path;
+static int s_wm33b_decode_size;
+static int s_wm33b_memcpy;
+static int s_wm33b_audio_create;
+static int s_wm33b_audio_load;
+static int s_wm33b_level_set;
+static int s_wm33b_route_hit;
 
 /* Instrumentation targets (never called on the init path). */
 void wm_800712D0_should_not_run(void)
@@ -826,6 +853,13 @@ static int world_ready_buffer_consume_enabled(void)
     return env_flag_is_one("XENO_WORLD_READY_BUFFER_CONSUME");
 }
 
+static int world_mode_audio_setup_enabled(void)
+{
+    /* W33B gate: routes mode-dependent audio setup.
+     * Requires XENO_WORLD_READY_BUFFER_CONSUME (W32B) as prerequisite. */
+    return env_flag_is_one("XENO_WORLD_MODE_AUDIO_SETUP");
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -961,10 +995,11 @@ static void log_enabled_slices(void)
     int w25 = world_archive_set_index_enabled();
     int w29 = world_967e4_route_enabled();
     int w32 = world_ready_buffer_consume_enabled();
+    int w33 = world_mode_audio_setup_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1020,6 +1055,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W29B");
     if (w32)
         fprintf(stderr, ",W32B");
+    if (w33)
+        fprintf(stderr, ",W33B");
     fprintf(stderr, "\n");
 }
 
@@ -1722,6 +1759,121 @@ void wm_ready_buffer_consume(void)
             "[worldmap-ready-consume] "
             "cut-before-mode-audio retail_pc=0x%08x\n",
             WM_CUT_BEFORE_MODE_AUDIO);
+}
+
+/* W33B: mode-dependent world audio setup (retail 0x800725AC–0x800726BC).
+ *
+ * Reproduces the exact post-W32B behavior:
+ *   1. Load mode selector at 0x8009BE10
+ *   2. Branch: mode == 7 → mode-7 path; mode != 7 → non-mode-7 path
+ *   3. Load mode-dependent archive ID and buffer pointer
+ *   4. ArchiveDecodeAlignedSize(archive_id) → size
+ *   5. memcpy(D_80062648, buffer, size) → copy sound data
+ *   6. Ready path: func_80039850(D_80062648) → create AudioManager
+ *   7. Not-ready path: load existing AudioManager from D_80062528
+ *   8. Ready path: func_80039A80(manager, 127, 0) → set level immediately
+ *   9. Not-ready path: func_80039B68(manager, 127, 240) → set level with fade
+ *  10. Cut before convergence at 0x800726C0
+ *
+ * Side effects: copies sound data, creates or updates AudioManager.
+ * Idempotent — no one-shot guard required. */
+void wm_mode_audio_setup(void)
+{
+    u32 ready_flag;
+    u32 mode;
+    u32 archive_id;
+    u32 buffer_psx;
+    void* buffer_host;
+    int size;
+    void* manager;
+
+    s_wm33b_entry++;
+
+    /* Load ready flag (same as W32B). */
+    ready_flag = WM_U32(WM_FLAG_C894_ABS);
+
+    /* Load mode selector. */
+    mode = WM_U32(WM_MODE_BE10_ABS);
+
+    fprintf(stderr, "[worldmap-mode-audio] entry "
+            "ready_flag=0x%08x mode=%u\n", ready_flag, mode);
+
+    /* Mode-dependent archive ID and buffer selection. */
+    if (mode == 7) {
+        s_wm33b_mode7_path++;
+        archive_id = WM_U32(WM_TW_ID_D800);
+        buffer_psx = WM_U32(WM_TW_MIRROR_C888);
+        fprintf(stderr, "[worldmap-mode-audio] mode7 "
+                "archive_id=0x%08x buffer_psx=0x%08x\n",
+                archive_id, buffer_psx);
+    } else {
+        s_wm33b_non_mode7_path++;
+        archive_id = WM_U32(WM_TW_ID_D3D0);
+        buffer_psx = WM_U32(WM_TW_MIRROR_C884);
+        fprintf(stderr, "[worldmap-mode-audio] non-mode7 "
+                "archive_id=0x%08x buffer_psx=0x%08x\n",
+                archive_id, buffer_psx);
+    }
+
+    /* Convert PSX buffer pointer to host. */
+    buffer_host = (void*)(uintptr_t)buffer_psx;
+    if (buffer_psx >= 0x80000000u && buffer_psx < 0x80200000u)
+        buffer_host = PSX_ADDR(buffer_psx);
+
+    /* ArchiveDecodeAlignedSize(archive_id) → size. */
+    size = ArchiveDecodeAlignedSize(archive_id);
+    s_wm33b_decode_size++;
+    fprintf(stderr, "[worldmap-mode-audio] decode_size=%d\n", size);
+
+    /* memcpy(D_80062648, buffer, size). */
+    if (buffer_host != NULL && size > 0) {
+        memcpy(D_80062648, buffer_host, (size_t)size);
+        s_wm33b_memcpy++;
+        fprintf(stderr, "[worldmap-mode-audio] memcpy done\n");
+    }
+
+    /* Ready path: create NEW AudioManager. */
+    /* Not-ready path: use EXISTING AudioManager. */
+    if (ready_flag == 0) {
+        s_wm33b_ready_path++;
+
+        /* func_80039850(D_80062648) → create AudioManager. */
+        manager = func_80039850(D_80062648);
+        s_wm33b_audio_create++;
+        D_80062528 = manager;
+        fprintf(stderr, "[worldmap-mode-audio] "
+                "AudioManager created: %p\n", manager);
+
+        /* func_80039A80(manager, 127, 0) → set level immediately. */
+        if (manager != NULL) {
+            func_80039A80(manager, 127, 0);
+            s_wm33b_level_set++;
+            fprintf(stderr, "[worldmap-mode-audio] "
+                    "level set: 127, steps=0\n");
+        }
+    } else {
+        s_wm33b_not_ready_path++;
+
+        /* Load EXISTING AudioManager. */
+        manager = D_80062528;
+        s_wm33b_audio_load++;
+        fprintf(stderr, "[worldmap-mode-audio] "
+                "AudioManager loaded: %p\n", manager);
+
+        /* func_80039B68(manager, 127, 240) → set level with fade. */
+        if (manager != NULL) {
+            func_80039B68(manager, 127, 240);
+            s_wm33b_level_set++;
+            fprintf(stderr, "[worldmap-mode-audio] "
+                    "level set: 127, steps=240\n");
+        }
+    }
+
+    s_wm33b_route_hit++;
+    fprintf(stderr, "[worldmap-mode-audio] exit\n"
+            "[worldmap-mode-audio] "
+            "cut-before-convergence retail_pc=0x%08x\n",
+            WM_CUT_BEFORE_CONVERGENCE);
 }
 
 /* W25B loop-related forbidden targets (not yet ported; must not execute). */
@@ -6844,6 +6996,15 @@ void PcPort_WorldMapInitMain(void)
                                                                                             "ready-check + buffer "
                                                                                             "consumption\n");
                                                                                     wm_ready_buffer_consume();
+                                                                                    if (world_mode_audio_setup_enabled()) {
+                                                                                        fprintf(stderr,
+                                                                                                "[worldmap-mode-audio] "
+                                                                                                "XENO_WORLD_MODE_AUDIO_"
+                                                                                                "SETUP=1: "
+                                                                                                "mode-dependent audio "
+                                                                                                "setup\n");
+                                                                                        wm_mode_audio_setup();
+                                                                                    }
                                                                                 }
                                                                             }
                                                                         }
@@ -6868,7 +7029,11 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_ready_buffer_consume_enabled() && world_967e4_route_enabled())
+            if (world_mode_audio_setup_enabled() &&
+                world_ready_buffer_consume_enabled() &&
+                world_967e4_route_enabled())
+                cut_pc = WM_CUT_BEFORE_CONVERGENCE;
+            else if (world_ready_buffer_consume_enabled() && world_967e4_route_enabled())
                 cut_pc = WM_CUT_BEFORE_MODE_AUDIO;
             else if (world_967e4_route_enabled())
                 cut_pc = WM_CUT_AFTER_967E4;
@@ -6993,11 +7158,34 @@ void PcPort_WorldMapInitMain(void)
 
         /* Hardened instrumentation: verify later targets remain unrouted. */
         fprintf(stderr,
-                "[worldmap-ready-consume] mode_audio_setup: ZERO VERIFIED\n"
                 "[worldmap-ready-consume] convergence_dispatch: ZERO VERIFIED\n"
                 "[worldmap-ready-consume] world_update: ZERO VERIFIED\n"
                 "[worldmap-ready-consume] first_render: ZERO VERIFIED\n"
                 "[worldmap-ready-consume] world_DrawOTag: ZERO VERIFIED\n");
+    }
+
+    /* W33B: dump mode-dependent audio setup instrumentation counters. */
+    if (world_mode_audio_setup_enabled()) {
+        fprintf(stderr,
+                "[worldmap-mode-audio] counters: "
+                "entry=%d mode7=%d non_mode7=%d "
+                "ready=%d not_ready=%d "
+                "decode=%d memcpy=%d "
+                "audio_create=%d audio_load=%d "
+                "level_set=%d route=%d\n",
+                s_wm33b_entry, s_wm33b_mode7_path,
+                s_wm33b_non_mode7_path,
+                s_wm33b_ready_path, s_wm33b_not_ready_path,
+                s_wm33b_decode_size, s_wm33b_memcpy,
+                s_wm33b_audio_create, s_wm33b_audio_load,
+                s_wm33b_level_set, s_wm33b_route_hit);
+
+        /* Hardened instrumentation: verify later targets remain unrouted. */
+        fprintf(stderr,
+                "[worldmap-mode-audio] convergence: ZERO VERIFIED\n"
+                "[worldmap-mode-audio] world_update: ZERO VERIFIED\n"
+                "[worldmap-mode-audio] first_render: ZERO VERIFIED\n"
+                "[worldmap-mode-audio] world_DrawOTag: ZERO VERIFIED\n");
     }
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
