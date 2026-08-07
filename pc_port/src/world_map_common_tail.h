@@ -20,6 +20,10 @@
 #define WM_COMMON_TAIL_P1_CUT        0x80072944u  /* first excluded after wm_800978FC */
 #define WM_COMMON_TAIL_P2_START      0x80072944u
 #define WM_COMMON_TAIL_P2_CUT        0x8007294Cu  /* first excluded after wm_8008901C */
+#define WM_COMMON_TAIL_P3_START      0x8007294Cu
+#define WM_COMMON_TAIL_P3_CUT        0x80072954u  /* first excluded after wm_800865A0 */
+#define WM_800865A0_START            0x800865A0u
+#define WM_800865A0_END_EXCLUSIVE    0x800866C8u
 #define WM_8008901C_START            0x8008901Cu
 #define WM_8008901C_END_EXCLUSIVE    0x80089128u
 #define WM_80089160_START            0x80089160u
@@ -113,6 +117,18 @@ void wm_89160_reset(void);
 #define WM_D_8009BE1C_ABS            0x8009BE1Cu
 #define WM_D_8009BE20_ABS            0x8009BE20u
 
+/* 0x800865A0 constants. */
+#define WM_865A0_ALLOC_SIZE          0x2D00u   /* 11520 bytes */
+#define WM_865A0_ALLOC_COUNT         2
+#define WM_865A0_RECORD_COUNT        288
+#define WM_865A0_RECORD_STRIDE       40u       /* 0x28 */
+#define WM_865A0_RECORD_BASE_OFFSET  14        /* ptr + 14 */
+#define WM_865A0_COPY_CHUNK          16
+
+/* Global addresses written by wm_800865A0. */
+#define WM_D_8009D7F8_ABS            0x8009D7F8u
+#define WM_D_8009D7FC_ABS            0x8009D7FCu
+
 /* wm_8008901C: world-map secondary buffer allocator (retail 0x8008901C).
  * Allocates two 10240-byte buffers, initializes 256 × 40-byte records
  * in the first (with GetTPage/GetClut halfwords), copies to second.
@@ -137,5 +153,43 @@ int  wm_ctp2_get_forbidden_865a0(void);
 int  wm_ctp2_get_forbidden_85fe0(void);
 int  wm_ctp2_get_forbidden_scheduler(void);
 int  wm_ctp2_get_forbidden_world_loop(void);
+
+/* wm_800865A0: world-map tertiary buffer allocator (retail 0x800865A0).
+ * Allocates two 11520-byte (0x2D00) buffers via HeapAlloc.
+ * Stores pointers at D_8009D7F8 and D_8009D7FC.
+ *
+ * Initializes 288 records (40 bytes each) in the first buffer.
+ * Record base = alloc_ptr + 14.  Per-record writes:
+ *   byte[+3]  = 9    (type marker)
+ *   byte[+4]  = 38 (0x26)
+ *   byte[+5]  = 38 (0x26)
+ *   byte[+6]  = 38 (0x26)
+ *   byte[+7]  = 44 (0x2C), then OR'd with 0x02 → 0x2E (SetSemiTrans)
+ *   hw[+14]   = GetTPage(0, 1, 960, 256)
+ *   hw[+22]   = GetClut(304, 510)
+ *
+ * Then copies first buffer → second buffer (11520 bytes, 16-byte chunks).
+ *
+ * Calls: HeapAlloc, PsyQ GetTPage, PsyQ GetClut, PsyQ SetSemiTrans. */
+void wm_800865A0(void);
+
+/* wm_8007294C_common_tail_p3: caller slice from accepted P2 frontier.
+ * Calls wm_800865A0 exactly once.
+ * Returns exact new cut PC (0x80072954).
+ * Requires P2 to have executed and returned 0x8007294C. */
+u32 wm_8007294C_common_tail_p3(void);
+
+/* P3 per-world-init reset. */
+void wm_common_tail_p3_reset(void);
+
+/* P3 counter accessors. */
+int  wm_ctp3_get_entry(void);
+int  wm_ctp3_get_865a0_calls(void);
+u32  wm_ctp3_get_last_cut(void);
+int  wm_ctp3_get_alloc_calls(void);
+int  wm_ctp3_get_forbidden_85fe0(void);
+int  wm_ctp3_get_forbidden_scheduler(void);
+int  wm_ctp3_get_forbidden_world_loop(void);
+int  wm_ctp3_get_forbidden_75228(void);
 
 #endif /* WORLD_MAP_COMMON_TAIL_H */

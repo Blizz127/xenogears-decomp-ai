@@ -811,3 +811,187 @@ u32 wm_80072944_common_tail_p2(void)
             "[worldmap-common-tail-p2] exit cut=0x%08x\n", cut);
     return cut;
 }
+
+
+/* ---- Common-tail P3 instrumentation ---- */
+
+static int  s_wm_ctp3_entry;
+static int  s_wm_ctp3_865a0_calls;
+static u32  s_wm_ctp3_last_cut;
+static int  s_wm_ctp3_alloc_calls;
+static int  s_wm_ctp3_forbidden_85fe0;
+static int  s_wm_ctp3_forbidden_scheduler;
+static int  s_wm_ctp3_forbidden_world_loop;
+static int  s_wm_ctp3_forbidden_75228;
+
+int  wm_ctp3_get_entry(void)              { return s_wm_ctp3_entry; }
+int  wm_ctp3_get_865a0_calls(void)        { return s_wm_ctp3_865a0_calls; }
+u32  wm_ctp3_get_last_cut(void)           { return s_wm_ctp3_last_cut; }
+int  wm_ctp3_get_alloc_calls(void)        { return s_wm_ctp3_alloc_calls; }
+int  wm_ctp3_get_forbidden_85fe0(void)    { return s_wm_ctp3_forbidden_85fe0; }
+int  wm_ctp3_get_forbidden_scheduler(void){ return s_wm_ctp3_forbidden_scheduler; }
+int  wm_ctp3_get_forbidden_world_loop(void){ return s_wm_ctp3_forbidden_world_loop; }
+int  wm_ctp3_get_forbidden_75228(void)    { return s_wm_ctp3_forbidden_75228; }
+
+void wm_common_tail_p3_reset(void)
+{
+    s_wm_ctp3_entry = 0;
+    s_wm_ctp3_865a0_calls = 0;
+    s_wm_ctp3_last_cut = 0;
+    s_wm_ctp3_alloc_calls = 0;
+    s_wm_ctp3_forbidden_85fe0 = 0;
+    s_wm_ctp3_forbidden_scheduler = 0;
+    s_wm_ctp3_forbidden_world_loop = 0;
+    s_wm_ctp3_forbidden_75228 = 0;
+}
+
+/* ---- P3 forbidden-path stubs ---- */
+
+void wm_p3_80085fe0_should_not_run(void) { s_wm_ctp3_forbidden_85fe0++; }
+void wm_p3_80097800_should_not_run(void) { s_wm_ctp3_forbidden_scheduler++; }
+void wm_p3_800712D0_should_not_run(void) { s_wm_ctp3_forbidden_world_loop++; }
+void wm_p3_80075228_should_not_run(void) { s_wm_ctp3_forbidden_75228++; }
+
+
+/* ---- 0x800865A0 production implementation ---- */
+
+/* Exact native transcription of retail 0x800865A0–0x800866C8.
+ *
+ * Allocates two 11520-byte (0x2D00) buffers via HeapAlloc.
+ * Stores pointers at D_8009D7F8 and D_8009D7FC.
+ *
+ * Initializes 288 records (40 bytes each) in the first buffer.
+ * Record base = alloc_ptr + 14.  Per-record writes:
+ *   byte[+3]  = 9    (type marker)
+ *   byte[+4]  = 38 (0x26)
+ *   byte[+5]  = 38 (0x26)
+ *   byte[+6]  = 38 (0x26)
+ *   byte[+7]  = 44 (0x2C), then OR'd with 0x02 → 0x2E (SetSemiTrans)
+ *   hw[+14]   = GetTPage(0, 1, 960, 256)
+ *   hw[+22]   = GetClut(304, 510)
+ *
+ * Then copies first buffer → second buffer (11520 bytes, 16-byte chunks).
+ *
+ * Calls: HeapAlloc, PsyQ GetTPage, PsyQ GetClut, PsyQ SetSemiTrans. */
+void wm_800865A0(void)
+{
+    void *p1_host, *p2_host;
+    u32 ptr1, ptr2;
+    u16 tpage_val, clut_val;
+    u32 base;
+    int i;
+
+    /* 0x800865A4–0x800865C4: first HeapAlloc(0x2D00, 1) */
+    p1_host = HeapAlloc(WM_865A0_ALLOC_SIZE, 1);
+    ptr1 = wm_host_to_psx(p1_host);
+    s_wm_ctp3_alloc_calls++;
+
+    /* 0x800865CC–0x800865DC: second HeapAlloc(0x2D00, 1)
+     * Delay slot stores ptr1 at D_8009D7F8 before the call. */
+    WM_U32(WM_D_8009D7F8_ABS) = ptr1;
+
+    p2_host = HeapAlloc(WM_865A0_ALLOC_SIZE, 1);
+    ptr2 = wm_host_to_psx(p2_host);
+    s_wm_ctp3_alloc_calls++;
+
+    /* 0x800865F8–0x800865FC: store ptr2 at D_8009D7FC. */
+    WM_U32(WM_D_8009D7FC_ABS) = ptr2;
+
+    fprintf(stderr,
+            "[wm-800865A0] alloc ptr1=0x%08x ptr2=0x%08x\n",
+            ptr1, ptr2);
+
+    /* 0x80086624: GetTPage(0, 1, 960, 256) */
+    tpage_val = GetTPage(0, 1, 960, 256);
+
+    /* 0x80086634: GetClut(304, 510) */
+    clut_val = GetClut(304, 510);
+
+    fprintf(stderr,
+            "[wm-800865A0] tpage=0x%04x clut=0x%04x\n",
+            tpage_val, clut_val);
+
+    /* 0x80086600–0x8008665C: initialize 288 records.
+     * Base = ptr1 + 14.  Stride = 40.  Count = 288. */
+    base = ptr1 + WM_865A0_RECORD_BASE_OFFSET;
+    for (i = 0; i < WM_865A0_RECORD_COUNT; i++) {
+        /* 0x80086614: sb $s5, -11($s0) → byte[3] = 9 */
+        WM_U8(base + 3) = 9;
+
+        /* 0x8008661C: sb $s3, -10($s0) → byte[4] = 38 */
+        WM_U8(base + 4) = 38;
+
+        /* 0x80086620: sb $s3, -9($s0) → byte[5] = 38 */
+        WM_U8(base + 5) = 38;
+
+        /* 0x80086628 (delay of jal GetTPage): sb $s3, -8($s0) → byte[6] = 38 */
+        WM_U8(base + 6) = 38;
+
+        /* 0x80086618: sb $s4, -7($s0) → byte[7] = 44 (code byte) */
+        WM_U8(base + 7) = 44;
+
+        /* 0x80086638 (delay of jal GetClut): sh $v0, 8($s0) → hw[8] = tpage
+         * $v0 still holds GetTPage result at this point;
+         * hw[8] = GetTPage, then GetClut overwrites $v0.
+         * 0x80086648 (delay of jal SetSemiTrans): sh $v0, 0($s0) → hw[0] = clut
+         * Note: retail stores tpage at base+8, clut at base+0.
+         * This is NOT base+14/base+22; the stores are relative to s0 = base. */
+        WM_U16(base + 8) = tpage_val;
+        WM_U16(base + 0) = clut_val;
+
+        /* 0x80086644: SetSemiTrans(ptr1 + i*40, 1) → byte[7] |= 0x02
+         * Retail SetSemiTrans with abe=1 sets bit 1 of the code byte.
+         * Inline: code byte at base+7, OR with 0x02. */
+        WM_U8(base + 7) = WM_U8(base + 7) | 0x02;
+
+        base += WM_865A0_RECORD_STRIDE;
+    }
+
+    /* 0x80086660–0x8008669C: copy ptr1 → ptr2 (11520 bytes, 16-byte chunks). */
+    {
+        u32 src = ptr1;
+        u32 dst = ptr2;
+        u32 end = ptr1 + WM_865A0_ALLOC_SIZE;
+        while (src != end) {
+            WM_U32(dst + 0)  = WM_U32(src + 0);
+            WM_U32(dst + 4)  = WM_U32(src + 4);
+            WM_U32(dst + 8)  = WM_U32(src + 8);
+            WM_U32(dst + 12) = WM_U32(src + 12);
+            src += WM_865A0_COPY_CHUNK;
+            dst += WM_865A0_COPY_CHUNK;
+        }
+    }
+
+    fprintf(stderr,
+            "[wm-800865A0] init+copy done\n");
+}
+
+
+/* ---- Common-tail P3: caller slice ---- */
+
+u32 wm_8007294C_common_tail_p3(void)
+{
+    /* P3 slice: 0x8007294C..0x80072950
+     * jal 0x800865A0 + delay slot (nop).
+     * First excluded: 0x80072954 (jal 0x80085FE0).
+     *
+     * Requires P2 to have executed and returned 0x8007294C. */
+    u32 cut;
+
+    s_wm_ctp3_entry++;
+
+    /* 0x8007294C: jal 0x800865A0 */
+    fprintf(stderr,
+            "[worldmap-common-tail-p3] calling wm_800865A0\n");
+    wm_800865A0();
+    s_wm_ctp3_865a0_calls++;
+
+    /* 0x80072950: nop (delay slot — no effect)
+     * Return cut at 0x80072954 (first excluded = next helper 0x80085FE0). */
+    cut = WM_COMMON_TAIL_P3_CUT;
+    s_wm_ctp3_last_cut = cut;
+
+    fprintf(stderr,
+            "[worldmap-common-tail-p3] exit cut=0x%08x\n", cut);
+    return cut;
+}

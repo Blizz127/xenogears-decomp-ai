@@ -39,6 +39,23 @@
 /* Provide g_PsxRam for the production module. */
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 
+/* Stubs for helpers used by wm_800865A0 (not exercised by unaligned tests). */
+void* HeapAlloc(u_int allocSize, u_int allocFlags)
+{
+    (void)allocSize; (void)allocFlags;
+    return NULL;
+}
+u_short GetTPage(int tp, int abr, int x, int y)
+{
+    (void)tp; (void)abr; (void)x; (void)y;
+    return 0;
+}
+u_short GetClut(int x, int y)
+{
+    (void)x; (void)y;
+    return 0;
+}
+
 static int total = 0, pass = 0, fail = 0;
 
 static void check(const char* name, int cond)

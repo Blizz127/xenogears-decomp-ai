@@ -22,6 +22,23 @@
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 
+/* Stubs for helpers used by wm_800865A0 (not exercised by 89160 tests). */
+void* HeapAlloc(u_int allocSize, u_int allocFlags)
+{
+    (void)allocSize; (void)allocFlags;
+    return NULL;
+}
+u_short GetTPage(int tp, int abr, int x, int y)
+{
+    (void)tp; (void)abr; (void)x; (void)y;
+    return 0;
+}
+u_short GetClut(int x, int y)
+{
+    (void)x; (void)y;
+    return 0;
+}
+
 #define WM_U8(a)  (*(u8*)PSX_ADDR(a))
 #define WM_U16(a) (*(u16*)PSX_ADDR(a))
 #define WM_U32(a) (*(u32*)PSX_ADDR(a))
