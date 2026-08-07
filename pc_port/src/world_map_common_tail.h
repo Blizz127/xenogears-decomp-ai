@@ -18,6 +18,10 @@
 #define WM_COMMON_TAIL_P0_CUT        0x8007293Cu  /* reconvergence / first excluded */
 #define WM_COMMON_TAIL_P1_START      0x8007293Cu
 #define WM_COMMON_TAIL_P1_CUT        0x80072944u  /* first excluded after wm_800978FC */
+#define WM_COMMON_TAIL_P2_START      0x80072944u
+#define WM_COMMON_TAIL_P2_CUT        0x8007294Cu  /* first excluded after wm_8008901C */
+#define WM_8008901C_START            0x8008901Cu
+#define WM_8008901C_END_EXCLUSIVE    0x80089128u
 #define WM_80089160_START            0x80089160u
 #define WM_80089160_END_EXCLUSIVE    0x800893D8u
 #define WM_800978FC_START            0x800978FCu
@@ -96,5 +100,42 @@ u32  wm_ctp1_get_last_cut(void);
 int  wm_89160_get_calls(void);
 int  wm_89160_get_iterations(void);
 void wm_89160_reset(void);
+
+/* 0x8008901C constants. */
+#define WM_8901C_ALLOC_SIZE          0x2800u   /* 10240 bytes */
+#define WM_8901C_ALLOC_COUNT         2
+#define WM_8901C_RECORD_COUNT        256
+#define WM_8901C_RECORD_STRIDE       40u       /* 0x28 */
+#define WM_8901C_RECORD_BASE_OFFSET  7         /* ptr + 7 */
+#define WM_8901C_COPY_CHUNK          16
+
+/* Global addresses written by wm_8008901C. */
+#define WM_D_8009BE1C_ABS            0x8009BE1Cu
+#define WM_D_8009BE20_ABS            0x8009BE20u
+
+/* wm_8008901C: world-map secondary buffer allocator (retail 0x8008901C).
+ * Allocates two 10240-byte buffers, initializes 256 × 40-byte records
+ * in the first (with GetTPage/GetClut halfwords), copies to second.
+ * Self-contained — only calls HeapAlloc + PsyQ GetTPage/GetClut. */
+void wm_8008901C(void);
+
+/* wm_80072944_common_tail_p2: caller slice from accepted P1 frontier.
+ * Calls wm_8008901C exactly once.
+ * Returns exact new cut PC (0x8007294C).
+ * Requires P1 to have executed and returned 0x80072944. */
+u32 wm_80072944_common_tail_p2(void);
+
+/* P2 per-world-init reset. */
+void wm_common_tail_p2_reset(void);
+
+/* P2 counter accessors. */
+int  wm_ctp2_get_entry(void);
+int  wm_ctp2_get_8901c_calls(void);
+u32  wm_ctp2_get_last_cut(void);
+int  wm_ctp2_get_alloc_calls(void);
+int  wm_ctp2_get_forbidden_865a0(void);
+int  wm_ctp2_get_forbidden_85fe0(void);
+int  wm_ctp2_get_forbidden_scheduler(void);
+int  wm_ctp2_get_forbidden_world_loop(void);
 
 #endif /* WORLD_MAP_COMMON_TAIL_H */
