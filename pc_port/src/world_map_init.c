@@ -132,6 +132,7 @@
  *   XENO_WORLD_COMMON_TAIL_P1=0 (default off; wm_800978FC caller slice; requires P0)
  *   XENO_WORLD_COMMON_TAIL_P2=0 (default off; wm_8008901C caller slice; requires P1)
  *   XENO_WORLD_COMMON_TAIL_P3=0 (default off; wm_800865A0 caller slice; requires P2)
+ *   XENO_WORLD_COMMON_TAIL_P4=0 (default off; wm_80085FE0 caller slice; requires P3)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -971,6 +972,16 @@ static int world_common_tail_p3_enabled(void)
            world_common_tail_p2_enabled();
 }
 
+static int world_common_tail_p4_enabled(void)
+{
+    /* W34B5E gate: common-tail P4 slice 0x80072954–0x80072958.
+     * Default OFF, requires P3.
+     * Calls wm_80085FE0 once.
+     * Cut at 0x8007295C (before next instruction). */
+    return env_flag_is_one("XENO_WORLD_COMMON_TAIL_P4") &&
+           world_common_tail_p3_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1113,10 +1124,11 @@ static void log_enabled_slices(void)
     int w34b5b = world_common_tail_p1_enabled();
     int w34b5c = world_common_tail_p2_enabled();
     int w34b5d = world_common_tail_p3_enabled();
+    int w34b5e = world_common_tail_p4_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1186,6 +1198,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W34B5C");
     if (w34b5d)
         fprintf(stderr, ",W34B5D");
+    if (w34b5e)
+        fprintf(stderr, ",W34B5E");
     fprintf(stderr, "\n");
 }
 
@@ -7185,6 +7199,13 @@ void PcPort_WorldMapInitMain(void)
                                                                                                             "wm_800865A0 caller slice\n");
                                                                                                     wm_8007294C_common_tail_p3();
                                                                                                 }
+                                                                                                if (world_common_tail_p4_enabled()) {
+                                                                                                    fprintf(stderr,
+                                                                                                            "[worldmap-common-tail-p4] "
+                                                                                                            "XENO_WORLD_COMMON_TAIL_P4=1: "
+                                                                                                            "wm_80085FE0 caller slice\n");
+                                                                                                    wm_80072954_common_tail_p4();
+                                                                                                }
                                                                                         }
                                                                                             }
                                                                                     }
@@ -7212,7 +7233,10 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_common_tail_p3_enabled() &&
+            if (world_common_tail_p4_enabled() &&
+                wm_ctp4_get_entry() > 0)
+                cut_pc = WM_COMMON_TAIL_P4_CUT;
+            else if (world_common_tail_p3_enabled() &&
                 wm_ctp3_get_entry() > 0)
                 cut_pc = WM_COMMON_TAIL_P3_CUT;
             else if (world_common_tail_p2_enabled() &&
@@ -7568,6 +7592,34 @@ void PcPort_WorldMapInitMain(void)
         fprintf(stderr,
                 "[worldmap-common-tail-p3] common_tail_p3_entry: ZERO VERIFIED\n"
                 "[worldmap-common-tail-p3] 865a0_calls: ZERO VERIFIED\n");
+    }
+
+    /* W34B5E: dump common-tail P4 instrumentation. */
+    if (world_common_tail_p4_enabled() && wm_ctp4_get_entry() > 0) {
+        fprintf(stderr,
+                "[worldmap-common-tail-p4] counters: "
+                "entry=%d 85fe0_calls=%d alloc_calls=%d last_cut=0x%08x\n",
+                wm_ctp4_get_entry(), wm_ctp4_get_85fe0_calls(),
+                wm_ctp4_get_alloc_calls(), wm_ctp4_get_last_cut());
+        fprintf(stderr,
+                "[worldmap-common-tail-p4] FIRST EXCLUDED 0x8007295C: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p4] 0x80075228: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p4] SCHEDULER: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p4] WORLD LOOP: ZERO VERIFIED\n");
+        if (wm_ctp4_get_forbidden_75228() != 0 ||
+            wm_ctp4_get_forbidden_scheduler() != 0 ||
+            wm_ctp4_get_forbidden_world_loop() != 0) {
+            fprintf(stderr,
+                    "[worldmap-common-tail-p4] ERROR: forbidden path hit "
+                    "75228=%d scheduler=%d world_loop=%d\n",
+                    wm_ctp4_get_forbidden_75228(),
+                    wm_ctp4_get_forbidden_scheduler(),
+                    wm_ctp4_get_forbidden_world_loop());
+        }
+    } else {
+        fprintf(stderr,
+                "[worldmap-common-tail-p4] common_tail_p4_entry: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p4] 85fe0_calls: ZERO VERIFIED\n");
     }
 
     /* W34B4B: dump framebuffer/GTE init instrumentation. */

@@ -192,4 +192,65 @@ int  wm_ctp3_get_forbidden_scheduler(void);
 int  wm_ctp3_get_forbidden_world_loop(void);
 int  wm_ctp3_get_forbidden_75228(void);
 
+/* 0x80085FE0 constants. */
+#define WM_85FE0_ALLOC_SIZE          0x5000u   /* 20480 bytes */
+#define WM_85FE0_ALLOC_COUNT         2
+#define WM_85FE0_RECORD_COUNT        512
+#define WM_85FE0_RECORD_STRIDE       40u       /* 0x28 */
+#define WM_85FE0_RECORD_BASE_OFFSET  22        /* ptr + 22 */
+#define WM_85FE0_COPY_CHUNK          16
+
+/* Global addresses written by wm_80085FE0. */
+#define WM_D_8009D7E8_ABS            0x8009D7E8u
+#define WM_D_8009D7EC_ABS            0x8009D7ECu
+
+/* Common-tail P4 constants. */
+#define WM_COMMON_TAIL_P4_START      0x80072954u
+#define WM_COMMON_TAIL_P4_CUT        0x8007295Cu  /* first excluded after wm_80085FE0 */
+
+/* wm_80085FE0: world-map quaternary buffer allocator (retail 0x80085FE0).
+ * Allocates two 20480-byte (0x5000) buffers via HeapAlloc.
+ * Stores pointers at D_8009D7E8 and D_8009D7EC.
+ *
+ * Initializes 512 records (40 bytes each) in the first buffer.
+ * Record base = alloc_ptr + 22.  Per-record writes:
+ *   byte[-19] = 9    (type marker)
+ *   byte[-18] = 128  (R)
+ *   byte[-17] = 128  (G)
+ *   byte[-16] = 128  (B)
+ *   byte[-15] = 44   (code byte)
+ *   byte[-10] = 0
+ *   byte[-9]  = 64   (0x40)
+ *   byte[-2]  = 31   (0x1F)
+ *   byte[-1]  = 64   (0x40)
+ *   byte[+6]  = 0
+ *   byte[+7]  = 111  (0x6F)
+ *   byte[+14] = 31   (0x1F)
+ *   byte[+15] = 111  (0x6F)
+ *   hw[-8]    = GetClut(240, 511)
+ *   hw[+0]    = GetTPage(0, 1, 240, 511)
+ *
+ * Then copies first buffer → second buffer (20480 bytes, 16-byte chunks).
+ *
+ * Calls: HeapAlloc, PsyQ GetTPage, PsyQ GetClut. */
+void wm_80085FE0(void);
+
+/* wm_80072954_common_tail_p4: caller slice from accepted P3 frontier.
+ * Calls wm_80085FE0 exactly once.
+ * Returns exact new cut PC (0x8007295C).
+ * Requires P3 to have executed and returned 0x80072954. */
+u32 wm_80072954_common_tail_p4(void);
+
+/* P4 per-world-init reset. */
+void wm_common_tail_p4_reset(void);
+
+/* P4 counter accessors. */
+int  wm_ctp4_get_entry(void);
+int  wm_ctp4_get_85fe0_calls(void);
+u32  wm_ctp4_get_last_cut(void);
+int  wm_ctp4_get_alloc_calls(void);
+int  wm_ctp4_get_forbidden_75228(void);
+int  wm_ctp4_get_forbidden_scheduler(void);
+int  wm_ctp4_get_forbidden_world_loop(void);
+
 #endif /* WORLD_MAP_COMMON_TAIL_H */

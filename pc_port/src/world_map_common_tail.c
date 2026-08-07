@@ -995,3 +995,205 @@ u32 wm_8007294C_common_tail_p3(void)
             "[worldmap-common-tail-p3] exit cut=0x%08x\n", cut);
     return cut;
 }
+
+
+/* ---- Common-tail P4 instrumentation ---- */
+
+static int  s_wm_ctp4_entry;
+static int  s_wm_ctp4_85fe0_calls;
+static u32  s_wm_ctp4_last_cut;
+static int  s_wm_ctp4_alloc_calls;
+static int  s_wm_ctp4_forbidden_75228;
+static int  s_wm_ctp4_forbidden_scheduler;
+static int  s_wm_ctp4_forbidden_world_loop;
+
+int  wm_ctp4_get_entry(void)              { return s_wm_ctp4_entry; }
+int  wm_ctp4_get_85fe0_calls(void)        { return s_wm_ctp4_85fe0_calls; }
+u32  wm_ctp4_get_last_cut(void)           { return s_wm_ctp4_last_cut; }
+int  wm_ctp4_get_alloc_calls(void)        { return s_wm_ctp4_alloc_calls; }
+int  wm_ctp4_get_forbidden_75228(void)    { return s_wm_ctp4_forbidden_75228; }
+int  wm_ctp4_get_forbidden_scheduler(void){ return s_wm_ctp4_forbidden_scheduler; }
+int  wm_ctp4_get_forbidden_world_loop(void){ return s_wm_ctp4_forbidden_world_loop; }
+
+void wm_common_tail_p4_reset(void)
+{
+    s_wm_ctp4_entry = 0;
+    s_wm_ctp4_85fe0_calls = 0;
+    s_wm_ctp4_last_cut = 0;
+    s_wm_ctp4_alloc_calls = 0;
+    s_wm_ctp4_forbidden_75228 = 0;
+    s_wm_ctp4_forbidden_scheduler = 0;
+    s_wm_ctp4_forbidden_world_loop = 0;
+}
+
+/* ---- P4 forbidden-path stubs ---- */
+
+void wm_p4_80075228_should_not_run(void)  { s_wm_ctp4_forbidden_75228++; }
+void wm_p4_80097800_should_not_run(void)  { s_wm_ctp4_forbidden_scheduler++; }
+void wm_p4_800712D0_should_not_run(void)  { s_wm_ctp4_forbidden_world_loop++; }
+
+
+/* ---- 0x80085FE0 production implementation ---- */
+
+/* Exact native transcription of retail 0x80085FE0–0x80086124.
+ *
+ * Allocates two 20480-byte (0x5000) buffers via HeapAlloc.
+ * Stores pointers at D_8009D7E8 and D_8009D7EC.
+ *
+ * Initializes 512 records (40 bytes each) in the first buffer.
+ * Record base = alloc_ptr + 22.  Per-record writes:
+ *   byte[-19] = 9    (type marker)
+ *   byte[-18] = 128  (R)
+ *   byte[-17] = 128  (G)
+ *   byte[-16] = 128  (B)
+ *   byte[-15] = 44   (code byte)
+ *   byte[-10] = 0
+ *   byte[-9]  = 64   (0x40)
+ *   byte[-2]  = 31   (0x1F)
+ *   byte[-1]  = 64   (0x40)
+ *   byte[+6]  = 0
+ *   byte[+7]  = 111  (0x6F)
+ *   byte[+14] = 31   (0x1F)
+ *   byte[+15] = 111  (0x6F)
+ *   hw[-8]    = GetClut(240, 511)
+ *   hw[+0]    = GetTPage(0, 1, 240, 511)
+ *
+ * Then copies first buffer → second buffer (20480 bytes, 16-byte chunks).
+ *
+ * Calls: HeapAlloc, PsyQ GetTPage, PsyQ GetClut. */
+void wm_80085FE0(void)
+{
+    void *p1_host, *p2_host;
+    u32 ptr1, ptr2;
+    u16 tpage_val, clut_val;
+    u32 base;
+    int i;
+
+    /* 0x80085FE4–0x8008600C: first HeapAlloc(0x5000, 1) */
+    p1_host = HeapAlloc(WM_85FE0_ALLOC_SIZE, 1);
+    ptr1 = wm_host_to_psx(p1_host);
+    s_wm_ctp4_alloc_calls++;
+
+    /* 0x8008600C–0x80086020: second HeapAlloc(0x5000, 1)
+     * Delay slot stores ptr1 at D_8009D7E8 before the call. */
+    WM_U32(WM_D_8009D7E8_ABS) = ptr1;
+
+    p2_host = HeapAlloc(WM_85FE0_ALLOC_SIZE, 1);
+    ptr2 = wm_host_to_psx(p2_host);
+    s_wm_ctp4_alloc_calls++;
+
+    /* 0x80086040: store ptr2 at D_8009D7EC. */
+    WM_U32(WM_D_8009D7EC_ABS) = ptr2;
+
+    fprintf(stderr,
+            "[wm-80085FE0] alloc ptr1=0x%08x ptr2=0x%08x\n",
+            ptr1, ptr2);
+
+    /* 0x80086048–0x800860B8: initialize 512 records.
+     * Base = ptr1 + 22.  Stride = 40.  Count = 512. */
+    base = ptr1 + WM_85FE0_RECORD_BASE_OFFSET;
+    for (i = 0; i < WM_85FE0_RECORD_COUNT; i++) {
+        /* 0x80086054: sb $s2, -19($s0) → byte[-19] = 9 */
+        WM_U8(base - 19) = 9;
+
+        /* 0x80086060: sb $s2, -18($s0) → byte[-18] = 128 */
+        WM_U8(base - 18) = 128;
+
+        /* 0x80086064: sb $s2, -17($s0) → byte[-17] = 128 */
+        WM_U8(base - 17) = 128;
+
+        /* 0x80086068: sb $s2, -16($s0) → byte[-16] = 128 */
+        WM_U8(base - 16) = 128;
+
+        /* 0x8008605C: sb $s2, -15($s0) → byte[-15] = 44 */
+        WM_U8(base - 15) = 44;
+
+        /* 0x8008606C: sb $zero, -10($s0) → byte[-10] = 0 */
+        WM_U8(base - 10) = 0;
+
+        /* 0x80086070: sb $s5, -9($s0) → byte[-9] = 64 */
+        WM_U8(base - 9) = 64;
+
+        /* 0x80086074: sb $s4, -2($s0) → byte[-2] = 31 */
+        WM_U8(base - 2) = 31;
+
+        /* 0x80086078: sb $s5, -1($s0) → byte[-1] = 64 */
+        WM_U8(base - 1) = 64;
+
+        /* 0x8008607C: sb $zero, 6($s0) → byte[6] = 0 */
+        WM_U8(base + 6) = 0;
+
+        /* 0x80086080: sb $s3, 7($s0) → byte[7] = 111 */
+        WM_U8(base + 7) = 111;
+
+        /* 0x80086084: sb $s4, 14($s0) → byte[14] = 31 */
+        WM_U8(base + 14) = 31;
+
+        /* 0x8008608C: sb $s3, 15($s0) → byte[15] = 111 */
+        WM_U8(base + 15) = 111;
+
+        /* 0x80086088: jal GetClut(240, 511) */
+        clut_val = GetClut(240, 511);
+
+        /* 0x800860A4 (delay of jal GetClut): sh $v0, -8($s0)
+         * $v0 = GetClut result.  Store at hw[-8]. */
+        *(u16*)PSX_ADDR(base - 8) = clut_val;
+
+        /* 0x800860A0: jal GetTPage(0, 1, 240, 511) */
+        tpage_val = GetTPage(0, 1, 240, 511);
+
+        /* 0x800860AC (delay of jal GetTPage): sh $v0, 0($s0)
+         * $v0 = GetTPage result.  Store at hw[0]. */
+        *(u16*)PSX_ADDR(base + 0) = tpage_val;
+
+        base += WM_85FE0_RECORD_STRIDE;
+    }
+
+    /* 0x800860BC–0x800860F8: copy ptr1 → ptr2 (20480 bytes, 16-byte chunks). */
+    {
+        u32 src = ptr1;
+        u32 dst = ptr2;
+        u32 end = ptr1 + WM_85FE0_ALLOC_SIZE;
+        while (src != end) {
+            WM_U32(dst + 0)  = WM_U32(src + 0);
+            WM_U32(dst + 4)  = WM_U32(src + 4);
+            WM_U32(dst + 8)  = WM_U32(src + 8);
+            WM_U32(dst + 12) = WM_U32(src + 12);
+            src += WM_85FE0_COPY_CHUNK;
+            dst += WM_85FE0_COPY_CHUNK;
+        }
+    }
+
+    fprintf(stderr,
+            "[wm-80085FE0] init+copy done\n");
+}
+
+
+/* ---- Common-tail P4: caller slice ---- */
+
+u32 wm_80072954_common_tail_p4(void)
+{
+    /* P4 slice: 0x80072954..0x80072958
+     * jal 0x80085FE0 + delay slot (nop).
+     * First excluded: 0x8007295C (next instruction in caller).
+     *
+     * Requires P3 to have executed and returned 0x80072954. */
+    u32 cut;
+
+    s_wm_ctp4_entry++;
+
+    /* 0x80072954: jal 0x80085FE0 */
+    fprintf(stderr,
+            "[worldmap-common-tail-p4] calling wm_80085FE0\n");
+    wm_80085FE0();
+    s_wm_ctp4_85fe0_calls++;
+
+    /* 0x80072958: nop (delay slot — no effect)
+     * Return cut at 0x8007295C (first excluded = next instruction). */
+    cut = WM_COMMON_TAIL_P4_CUT;
+    s_wm_ctp4_last_cut = cut;
+
+    fprintf(stderr,
+            "[worldmap-common-tail-p4] exit cut=0x%08x\n", cut);
+    return cut;
+}
