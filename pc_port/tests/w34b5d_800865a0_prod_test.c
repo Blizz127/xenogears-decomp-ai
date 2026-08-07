@@ -46,6 +46,11 @@ u_short GetClut(int x, int y)
     return (u_short)((y << 6) | ((x >> 4) & 0x3F));
 }
 
+
+void SystemTransferPaletteToVRAM(short xDest, short yDest)
+{
+    (void)xDest; (void)yDest;
+}
 void SetSemiTrans(void *p, int abe)
 {
     /* PS1 semantics: set or clear bit 1 of the code byte (offset +7). */

@@ -46,6 +46,11 @@ u_short GetClut(int x, int y)
     return (u_short)((y << 6) | ((x >> 4) & 0x3F));
 }
 
+
+void SystemTransferPaletteToVRAM(short xDest, short yDest)
+{
+    (void)xDest; (void)yDest;
+}
 void SetSemiTrans(void *p, int abe)
 {
     u8 *base = (u8*)p;

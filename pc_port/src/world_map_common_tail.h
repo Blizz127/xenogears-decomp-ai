@@ -253,4 +253,71 @@ int  wm_ctp4_get_forbidden_75228(void);
 int  wm_ctp4_get_forbidden_scheduler(void);
 int  wm_ctp4_get_forbidden_world_loop(void);
 
+/* 0x80075228 constants. */
+#define WM_80075228_START            0x80075228u
+#define WM_80075228_END_EXCLUSIVE    0x8007528Cu
+#define WM_75228_HALFWORD_COUNT      16
+#define WM_75228_FLAG_CROSS          0x4000u
+#define WM_75228_VALUE_CROSS         0x0300u   /* 768 */
+#define WM_75228_VALUE_NO_CROSS      0x0180u   /* 384 */
+
+/* Global addresses read/written by P5. */
+#define WM_FLAG_C894_ABS             0x8009C894u  /* ready flag: entrance bit 0x8000 */
+#define WM_D_8009C872_ABS            0x8009C872u
+#define WM_D_8009D64C_ABS            0x8009D64Cu
+#define WM_D_8009BE40_ABS            0x8009BE40u
+#define WM_D_8009BCC4_ABS            0x8009BCC4u
+#define WM_D_8009D80C_ABS            0x8009D80Cu
+#define WM_BUTTONS_ABS               0x8006EE68u
+
+/* SystemTransferPaletteToVRAM constants (0x80033698). */
+#define WM_PALETTE_33698             0x80033698u
+#define WM_PALETTE_ARCHIVE_IDX       0x130u    /* 304 */
+#define WM_PALETTE_Y_POS             0x1E0u    /* 480 */
+
+/* Common-tail P5 constants.
+ *
+ * P5 is the final overlay-local slice. After P5 completes, slot-1 returns
+ * to its caller (WorldMapMain dispatch at 0x8007105C→0x80071064).
+ *
+ * WM_COMMON_TAIL_P5_SLOT1_END_SENTINEL: overlay-local first excluded /
+ * slot-2 callback entry. NOT the actual execution frontier.
+ * WM_COMMON_TAIL_P5_REAL_RETURN_PC: actual retail post-slot-1 return
+ * point where WorldMapMain resumes (before scheduler call). */
+#define WM_COMMON_TAIL_P5_START               0x8007295Cu
+#define WM_COMMON_TAIL_P5_SLOT1_END_SENTINEL  0x8007299Cu  /* slot-2 entry, overlay-local boundary */
+#define WM_COMMON_TAIL_P5_REAL_RETURN_PC      0x80071064u  /* actual post-slot-1 return to caller */
+#define WM_COMMON_TAIL_P5_CUT                 WM_COMMON_TAIL_P5_SLOT1_END_SENTINEL
+
+/* wm_80075228: world-map palette state initializer (retail 0x80075228).
+ * Zeroes 16 halfwords at D_8009C872, sets D_8009D64C=1,
+ * writes 768/384 to D_8009BE40 based on button 0x4000,
+ * sets D_8009BCC4=1 and D_8009D80C=0.
+ * Leaf function — no external calls. */
+void wm_80075228(void);
+
+/* wm_8007295C_common_tail_p5: caller slice from accepted P4 frontier.
+ * Reads C894 ready flag. Two paths:
+ *   C894 == 0: calls wm_80075228 (natural Lahan), then falls through.
+ *   C894 != 0: skips wm_80075228, falls through.
+ * Both paths call SystemTransferPaletteToVRAM(0x130, 0x1E0) then epilogue.
+ * Returns overlay-local sentinel (0x8007299C = slot-2 entry).
+ * Actual post-slot-1 return PC is 0x80071064 (WorldMapMain resumes before scheduler).
+ * Requires P4 to have executed and returned 0x8007295C. */
+u32 wm_8007295C_common_tail_p5(void);
+
+/* P5 per-world-init reset. */
+void wm_common_tail_p5_reset(void);
+
+/* P5 counter accessors. */
+int  wm_ctp5_get_entry(void);
+int  wm_ctp5_get_c894_zero(void);
+int  wm_ctp5_get_c894_nonzero(void);
+int  wm_ctp5_get_75228_calls(void);
+int  wm_ctp5_get_palette_calls(void);
+u32  wm_ctp5_get_last_cut(void);
+int  wm_ctp5_get_forbidden_scheduler(void);
+int  wm_ctp5_get_forbidden_world_loop(void);
+int  wm_ctp5_get_forbidden_drawotag(void);
+
 #endif /* WORLD_MAP_COMMON_TAIL_H */

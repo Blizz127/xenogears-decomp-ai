@@ -1197,3 +1197,159 @@ u32 wm_80072954_common_tail_p4(void)
             "[worldmap-common-tail-p4] exit cut=0x%08x\n", cut);
     return cut;
 }
+
+
+/* ---- Common-tail P5 instrumentation ---- */
+
+static int  s_wm_ctp5_entry;
+static int  s_wm_ctp5_c894_zero;
+static int  s_wm_ctp5_c894_nonzero;
+static int  s_wm_ctp5_75228_calls;
+static int  s_wm_ctp5_palette_calls;
+static u32  s_wm_ctp5_last_cut;
+static int  s_wm_ctp5_forbidden_scheduler;
+static int  s_wm_ctp5_forbidden_world_loop;
+static int  s_wm_ctp5_forbidden_drawotag;
+
+int  wm_ctp5_get_entry(void)              { return s_wm_ctp5_entry; }
+int  wm_ctp5_get_c894_zero(void)          { return s_wm_ctp5_c894_zero; }
+int  wm_ctp5_get_c894_nonzero(void)       { return s_wm_ctp5_c894_nonzero; }
+int  wm_ctp5_get_75228_calls(void)        { return s_wm_ctp5_75228_calls; }
+int  wm_ctp5_get_palette_calls(void)      { return s_wm_ctp5_palette_calls; }
+u32  wm_ctp5_get_last_cut(void)           { return s_wm_ctp5_last_cut; }
+int  wm_ctp5_get_forbidden_scheduler(void){ return s_wm_ctp5_forbidden_scheduler; }
+int  wm_ctp5_get_forbidden_world_loop(void){ return s_wm_ctp5_forbidden_world_loop; }
+int  wm_ctp5_get_forbidden_drawotag(void) { return s_wm_ctp5_forbidden_drawotag; }
+
+void wm_common_tail_p5_reset(void)
+{
+    s_wm_ctp5_entry = 0;
+    s_wm_ctp5_c894_zero = 0;
+    s_wm_ctp5_c894_nonzero = 0;
+    s_wm_ctp5_75228_calls = 0;
+    s_wm_ctp5_palette_calls = 0;
+    s_wm_ctp5_last_cut = 0;
+    s_wm_ctp5_forbidden_scheduler = 0;
+    s_wm_ctp5_forbidden_world_loop = 0;
+    s_wm_ctp5_forbidden_drawotag = 0;
+}
+
+/* ---- P5 forbidden-path stubs ---- */
+
+void wm_p5_80097800_should_not_run(void)  { s_wm_ctp5_forbidden_scheduler++; }
+void wm_p5_800712D0_should_not_run(void)  { s_wm_ctp5_forbidden_world_loop++; }
+void wm_p5_DrawOTag_should_not_run(void)  { s_wm_ctp5_forbidden_drawotag++; }
+
+
+/* ---- 0x80075228 production implementation ---- */
+
+/* Exact native transcription of retail 0x80075228–0x80075288.
+ *
+ * Zeroes 16 halfwords at D_8009C872 (loop: 16 iterations, stride -2).
+ * Reads button state at 0x8006EE68.
+ * Sets D_8009D64C = 1.
+ * Sets D_8009BE40 = 768 (if button 0x4000 set) or 384 (if clear).
+ * Sets D_8009BCC4 = 1.
+ * Sets D_8009D80C = 0.
+ *
+ * Leaf function — no external calls. */
+void wm_80075228(void)
+{
+    int i;
+    u32 addr;
+    u16 buttons;
+
+    /* 0x80075228–0x80075240: zero 16 halfwords at D_8009C872.
+     * Loop: v1=15 down to 0, v0 starts at D_8009C872, decrements by 2. */
+    addr = WM_D_8009C872_ABS;
+    for (i = 0; i < WM_75228_HALFWORD_COUNT; i++) {
+        WM_U16(addr) = 0;
+        addr -= 2;
+    }
+
+    /* 0x80075244–0x80075248: load button state. */
+    buttons = WM_U16(WM_BUTTONS_ABS);
+
+    /* 0x8007524C–0x80075254: D_8009D64C = 1. */
+    WM_U32(WM_D_8009D64C_ABS) = 1;
+
+    /* 0x80075258–0x80075264: check button 0x4000, set D_8009BE40. */
+    if (buttons & WM_75228_FLAG_CROSS) {
+        WM_U32(WM_D_8009BE40_ABS) = WM_75228_VALUE_CROSS;   /* 768 */
+    } else {
+        WM_U32(WM_D_8009BE40_ABS) = WM_75228_VALUE_NO_CROSS; /* 384 */
+    }
+
+    /* 0x80075270–0x80075278: D_8009BCC4 = 1. */
+    WM_U32(WM_D_8009BCC4_ABS) = 1;
+
+    /* 0x8007527C–0x80075280: D_8009D80C = 0. */
+    WM_U32(WM_D_8009D80C_ABS) = 0;
+
+    /* 0x80075284: jr $ra / 0x80075288: nop (return). */
+}
+
+
+/* ---- Common-tail P5: caller slice ---- */
+
+/* SystemTransferPaletteToVRAM: declared in src/slus_006.64/system/system.c. */
+extern void SystemTransferPaletteToVRAM(short xDest, short yDest);
+
+u32 wm_8007295C_common_tail_p5(void)
+{
+    /* P5 slice: 0x8007295C..0x80072998
+     * Reads C894 ready flag, branches:
+     *   C894 == 0: calls wm_80075228, then falls through.
+     *   C894 != 0: skips wm_80075228, falls through.
+     * Both paths: call SystemTransferPaletteToVRAM(0x130, 0x1E0), epilogue.
+     * Slot-1 callback completes at 0x80072998 (jr $ra).
+     * Returns overlay-local sentinel 0x8007299C (slot-2 entry).
+     * Actual post-slot-1 return PC: 0x80071064 (WorldMapMain resumes).
+     *
+     * Requires P4 to have executed and returned 0x8007295C. */
+    u32 c894;
+    u32 cut;
+
+    s_wm_ctp5_entry++;
+
+    /* 0x8007295C–0x80072960: load C894 ready flag. */
+    c894 = WM_U32(WM_FLAG_C894_ABS);
+    fprintf(stderr,
+            "[worldmap-common-tail-p5] entry C894=%u\n", c894);
+
+    /* 0x80072968: bne $v0, $zero, 0x8007297C */
+    if (c894 != 0) {
+        /* C894 != 0: skip wm_80075228, go directly to convergence. */
+        s_wm_ctp5_c894_nonzero++;
+        fprintf(stderr,
+                "[worldmap-common-tail-p5] C894!=0 → skip wm_80075228\n");
+    } else {
+        /* C894 == 0: natural Lahan path. Call wm_80075228. */
+        s_wm_ctp5_c894_zero++;
+        fprintf(stderr,
+                "[worldmap-common-tail-p5] C894=0 → calling wm_80075228\n");
+        wm_80075228();
+        s_wm_ctp5_75228_calls++;
+    }
+
+    /* Convergence: both paths call SystemTransferPaletteToVRAM.
+     * 0x8007297C: jal 0x80033698
+     * 0x80072980: addiu $a1, $zero, 0x1E0 (delay slot) */
+    fprintf(stderr,
+            "[worldmap-common-tail-p5] calling SystemTransferPaletteToVRAM"
+            "(0x%x, 0x%x)\n",
+            WM_PALETTE_ARCHIVE_IDX, WM_PALETTE_Y_POS);
+    SystemTransferPaletteToVRAM((short)WM_PALETTE_ARCHIVE_IDX,
+                                (short)WM_PALETTE_Y_POS);
+    s_wm_ctp5_palette_calls++;
+
+    /* 0x80072984–0x80072998: epilogue (restore $ra/$s1/$s0, deallocate, return).
+     * Return overlay-local sentinel at 0x8007299C (slot-2 entry / first excluded).
+     * Actual retail return PC is 0x80071064. */
+    cut = WM_COMMON_TAIL_P5_CUT;
+    s_wm_ctp5_last_cut = cut;
+
+    fprintf(stderr,
+            "[worldmap-common-tail-p5] exit cut=0x%08x\n", cut);
+    return cut;
+}

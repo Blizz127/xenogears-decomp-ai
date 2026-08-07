@@ -46,6 +46,11 @@ u_short GetClut(int x, int y)
     return (u_short)((y << 6) | ((x >> 4) & 0x3F));
 }
 
+
+void SystemTransferPaletteToVRAM(short xDest, short yDest)
+{
+    (void)xDest; (void)yDest;
+}
 static int total = 0, pass = 0, fail = 0;
 
 static void check(const char* name, int cond)

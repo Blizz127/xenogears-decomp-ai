@@ -39,6 +39,11 @@ u_short GetClut(int x, int y)
     return 0;
 }
 
+
+void SystemTransferPaletteToVRAM(short xDest, short yDest)
+{
+    (void)xDest; (void)yDest;
+}
 #define WM_U8(a)  (*(u8*)PSX_ADDR(a))
 #define WM_U16(a) (*(u16*)PSX_ADDR(a))
 #define WM_U32(a) (*(u32*)PSX_ADDR(a))

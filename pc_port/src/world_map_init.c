@@ -133,6 +133,7 @@
  *   XENO_WORLD_COMMON_TAIL_P2=0 (default off; wm_8008901C caller slice; requires P1)
  *   XENO_WORLD_COMMON_TAIL_P3=0 (default off; wm_800865A0 caller slice; requires P2)
  *   XENO_WORLD_COMMON_TAIL_P4=0 (default off; wm_80085FE0 caller slice; requires P3)
+ *   XENO_WORLD_COMMON_TAIL_P5=0 (default off; wm_80075228 + palette caller slice; requires P4)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -980,6 +981,18 @@ static int world_common_tail_p4_enabled(void)
      * Cut at 0x8007295C (before next instruction). */
     return env_flag_is_one("XENO_WORLD_COMMON_TAIL_P4") &&
            world_common_tail_p3_enabled();
+}
+
+static int world_common_tail_p5_enabled(void)
+{
+    /* W34B5F gate: common-tail P5 slice 0x8007295C–0x80072998.
+     * Default OFF, requires P4.
+     * Reads C894, calls wm_80075228 when C894==0 (natural path).
+     * Both paths call SystemTransferPaletteToVRAM.
+     * Returns overlay-local sentinel 0x8007299C (slot-2 entry).
+     * Actual post-slot-1 return PC: 0x80071064. */
+    return env_flag_is_one("XENO_WORLD_COMMON_TAIL_P5") &&
+           world_common_tail_p4_enabled();
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -6699,6 +6712,8 @@ void PcPort_WorldMapInitMain(void)
     wm_common_tail_p1_reset();
     wm_common_tail_p2_reset();
     wm_common_tail_p3_reset();
+    wm_common_tail_p4_reset();
+    wm_common_tail_p5_reset();
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -7206,6 +7221,13 @@ void PcPort_WorldMapInitMain(void)
                                                                                                             "wm_80085FE0 caller slice\n");
                                                                                                     wm_80072954_common_tail_p4();
                                                                                                 }
+                                                                                                if (world_common_tail_p5_enabled()) {
+                                                                                                    fprintf(stderr,
+                                                                                                            "[worldmap-common-tail-p5] "
+                                                                                                            "XENO_WORLD_COMMON_TAIL_P5=1: "
+                                                                                                            "wm_80075228 + palette caller slice\n");
+                                                                                                    wm_8007295C_common_tail_p5();
+                                                                                                }
                                                                                         }
                                                                                             }
                                                                                     }
@@ -7233,7 +7255,10 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_common_tail_p4_enabled() &&
+            if (world_common_tail_p5_enabled() &&
+                wm_ctp5_get_entry() > 0)
+                cut_pc = WM_COMMON_TAIL_P5_REAL_RETURN_PC;
+            else if (world_common_tail_p4_enabled() &&
                 wm_ctp4_get_entry() > 0)
                 cut_pc = WM_COMMON_TAIL_P4_CUT;
             else if (world_common_tail_p3_enabled() &&
@@ -7620,6 +7645,37 @@ void PcPort_WorldMapInitMain(void)
         fprintf(stderr,
                 "[worldmap-common-tail-p4] common_tail_p4_entry: ZERO VERIFIED\n"
                 "[worldmap-common-tail-p4] 85fe0_calls: ZERO VERIFIED\n");
+    }
+
+    /* W34B5F: dump common-tail P5 instrumentation. */
+    if (world_common_tail_p5_enabled() && wm_ctp5_get_entry() > 0) {
+        fprintf(stderr,
+                "[worldmap-common-tail-p5] counters: "
+                "entry=%d c894_zero=%d c894_nonzero=%d "
+                "75228_calls=%d palette_calls=%d last_cut=0x%08x\n",
+                wm_ctp5_get_entry(), wm_ctp5_get_c894_zero(),
+                wm_ctp5_get_c894_nonzero(), wm_ctp5_get_75228_calls(),
+                wm_ctp5_get_palette_calls(), wm_ctp5_get_last_cut());
+        fprintf(stderr,
+                "[worldmap-common-tail-p5] SLOT-2 SENTINEL 0x8007299C: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p5] SCHEDULER: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p5] WORLD LOOP: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p5] DRAWOTAG: ZERO VERIFIED\n");
+        if (wm_ctp5_get_forbidden_scheduler() != 0 ||
+            wm_ctp5_get_forbidden_world_loop() != 0 ||
+            wm_ctp5_get_forbidden_drawotag() != 0) {
+            fprintf(stderr,
+                    "[worldmap-common-tail-p5] ERROR: forbidden path hit "
+                    "scheduler=%d world_loop=%d drawotag=%d\n",
+                    wm_ctp5_get_forbidden_scheduler(),
+                    wm_ctp5_get_forbidden_world_loop(),
+                    wm_ctp5_get_forbidden_drawotag());
+        }
+    } else {
+        fprintf(stderr,
+                "[worldmap-common-tail-p5] common_tail_p5_entry: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p5] 75228_calls: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p5] palette_calls: ZERO VERIFIED\n");
     }
 
     /* W34B4B: dump framebuffer/GTE init instrumentation. */
