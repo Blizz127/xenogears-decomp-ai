@@ -16,8 +16,12 @@
 /* Retail cut PC constants. */
 #define WM_COMMON_TAIL_P0_START      0x8007290Cu
 #define WM_COMMON_TAIL_P0_CUT        0x8007293Cu  /* reconvergence / first excluded */
+#define WM_COMMON_TAIL_P1_START      0x8007293Cu
+#define WM_COMMON_TAIL_P1_CUT        0x80072944u  /* first excluded after wm_800978FC */
 #define WM_80089160_START            0x80089160u
 #define WM_80089160_END_EXCLUSIVE    0x800893D8u
+#define WM_800978FC_START            0x800978FCu
+#define WM_800978FC_END_EXCLUSIVE    0x800979C8u
 
 /* Next-phase forbidden targets. */
 #define WM_NEXT_HELPER_978FC         0x800978FCu
@@ -67,6 +71,26 @@ int  wm_ctp0_get_forbidden_8901c(void);
 int  wm_ctp0_get_forbidden_865a0(void);
 int  wm_ctp0_get_forbidden_85fe0(void);
 int  wm_ctp0_get_forbidden_75228(void);
+
+/* wm_800978FC: world-map graphics buffer allocator.
+ * Allocates two 64 KB buffers, initializes first with repeating
+ * byte pattern (2048 records × 32 bytes), copies to second.
+ * Self-contained leaf — only calls HeapAlloc. */
+void wm_800978FC(void);
+
+/* wm_8007293C_common_tail_p1: caller slice from accepted P0 frontier.
+ * Calls wm_800978FC exactly once.
+ * Returns exact new cut PC (0x80072944).
+ * Requires P0 to have executed and returned 0x8007293C. */
+u32 wm_8007293C_common_tail_p1(void);
+
+/* P1 per-world-init reset. */
+void wm_common_tail_p1_reset(void);
+
+/* P1 counter accessors. */
+int  wm_ctp1_get_entry(void);
+int  wm_ctp1_get_978fc_calls(void);
+u32  wm_ctp1_get_last_cut(void);
 
 /* 0x80089160 instrumentation. */
 int  wm_89160_get_calls(void);

@@ -938,6 +938,16 @@ static int world_common_tail_p0_enabled(void)
            world_terrain_position_init_enabled();
 }
 
+static int world_common_tail_p1_enabled(void)
+{
+    /* W34B5B gate: common-tail P1 slice 0x8007293C–0x80072940.
+     * Default OFF, requires P0.
+     * Calls wm_800978FC once.
+     * Cut at 0x80072944 (before next helper 0x8008901C). */
+    return env_flag_is_one("XENO_WORLD_COMMON_TAIL_P1") &&
+           world_common_tail_p0_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1077,10 +1087,11 @@ static void log_enabled_slices(void)
     int w34b1 = world_convergence_p1_enabled();
     int w34b4b = world_framebuffer_gte_init_enabled();
     int w34b5a = world_common_tail_p0_enabled();
+    int w34b5b = world_common_tail_p1_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1144,6 +1155,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W34B4B");
     if (w34b5a)
         fprintf(stderr, ",W34B5A");
+    if (w34b5b)
+        fprintf(stderr, ",W34B5B");
     fprintf(stderr, "\n");
 }
 
@@ -6640,6 +6653,7 @@ void PcPort_WorldMapInitMain(void)
     s_wm_cd_sync_world_hits = 0;
     wm_conv_p1_reset();
     wm_common_tail_p0_reset();
+    wm_common_tail_p1_reset();
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -7119,6 +7133,13 @@ void PcPort_WorldMapInitMain(void)
                                                                                                             "common-tail prefix\n");
                                                                                                     wm_8007290C_common_tail_p0();
                                                                                                 }
+                                                                                                if (world_common_tail_p1_enabled()) {
+                                                                                                    fprintf(stderr,
+                                                                                                            "[worldmap-common-tail-p1] "
+                                                                                                            "XENO_WORLD_COMMON_TAIL_P1=1: "
+                                                                                                            "wm_800978FC caller slice\n");
+                                                                                                    wm_8007293C_common_tail_p1();
+                                                                                                }
                                                                                         }
                                                                                             }
                                                                                     }
@@ -7146,7 +7167,10 @@ void PcPort_WorldMapInitMain(void)
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_common_tail_p0_enabled() &&
+            if (world_common_tail_p1_enabled() &&
+                wm_ctp1_get_entry() > 0)
+                cut_pc = WM_COMMON_TAIL_P1_CUT;
+            else if (world_common_tail_p0_enabled() &&
                 wm_ctp0_get_entry() > 0)
                 cut_pc = WM_COMMON_TAIL_P0_CUT;
             else if (world_convergence_p2_enabled() &&
@@ -7413,6 +7437,24 @@ void PcPort_WorldMapInitMain(void)
         fprintf(stderr,
                 "[worldmap-common-tail-p0] common_tail_p0_entry: ZERO VERIFIED\n"
                 "[worldmap-common-tail-p0] 80089160_calls: ZERO VERIFIED\n");
+    }
+
+    /* W34B5B: dump common-tail P1 instrumentation. */
+    if (world_common_tail_p1_enabled() && wm_ctp1_get_entry() > 0) {
+        fprintf(stderr,
+                "[worldmap-common-tail-p1] counters: "
+                "entry=%d 978fc_calls=%d last_cut=0x%08x\n",
+                wm_ctp1_get_entry(), wm_ctp1_get_978fc_calls(),
+                wm_ctp1_get_last_cut());
+        fprintf(stderr,
+                "[worldmap-common-tail-p1] FIRST EXCLUDED 0x80072944: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p1] NEXT HELPER 0x8008901C: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p1] SCHEDULER: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p1] WORLD LOOP: ZERO VERIFIED\n");
+    } else {
+        fprintf(stderr,
+                "[worldmap-common-tail-p1] common_tail_p1_entry: ZERO VERIFIED\n"
+                "[worldmap-common-tail-p1] 978fc_calls: ZERO VERIFIED\n");
     }
 
     /* W34B4B: dump framebuffer/GTE init instrumentation. */

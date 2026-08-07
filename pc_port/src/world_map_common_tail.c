@@ -495,3 +495,147 @@ u32 wm_8007290C_common_tail_p0(void)
             "[worldmap-common-tail-p0] exit cut=0x%08x\n", cut);
     return cut;
 }
+
+
+/* ---- 0x800978FC: world-map graphics buffer allocator ---- */
+
+/* HeapAlloc declared in port_main.c / world_map_init.c */
+extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
+
+/* Constants from retail decode. */
+#define WM_978FC_ALLOC_SIZE     0x10000u   /* 64 KB */
+#define WM_978FC_RECORD_COUNT   2048
+#define WM_978FC_RECORD_STRIDE  32
+#define WM_978FC_COPY_CHUNK     16
+
+/* Global addresses written by this helper. */
+#define WM_D_8009BC3C_ABS       0x8009BC3Cu
+#define WM_D_8009BCB4_ABS       0x8009BCB4u
+
+/* Convert host pointer (from HeapAlloc) to PSX KUSEG address. */
+static u32 wm_host_to_psx(void *p)
+{
+    if (!p) return 0;
+    uintptr_t host = (uintptr_t)p;
+    uintptr_t base = (uintptr_t)g_PsxRam;
+    if (host >= base && host < base + PSX_RAM_SIZE)
+        return 0x80000000u | (u32)(host - base);
+    return (u32)host;
+}
+
+void wm_800978FC(void)
+{
+    /* Retail 0x800978FC–0x800979C4.
+     * Allocates two 64 KB buffers, initializes the first with a
+     * repeating byte pattern (2048 records × 32 bytes), then copies
+     * the first buffer to the second.
+     *
+     * Record initialization (per 32-byte record):
+     *   byte[-3] = 7
+     *   byte[-2] = 0x80
+     *   byte[-1] = 0x80
+     *   byte[+0] = 0x80
+     *   byte[+1] = 0x24
+     *   (remaining 27 bytes left as HeapAlloc zero-fill) */
+
+    void *p1_host, *p2_host;
+    u32 ptr1, ptr2;
+    u32 v1;
+    int i;
+
+    /* 0x80097900–0x80097910: first HeapAlloc(0x10000, 1) */
+    p1_host = HeapAlloc(WM_978FC_ALLOC_SIZE, 1);
+    ptr1 = wm_host_to_psx(p1_host);
+
+    /* 0x80097914–0x80097928: second HeapAlloc(0x10000, 1)
+     * Delay slot stores ptr1 before the second call. */
+    WM_U32(WM_D_8009BC3C_ABS) = ptr1;
+
+    p2_host = HeapAlloc(WM_978FC_ALLOC_SIZE, 1);
+    ptr2 = wm_host_to_psx(p2_host);
+    WM_U32(WM_D_8009BCB4_ABS) = ptr2;
+
+    fprintf(stderr,
+            "[wm-800978FC] alloc ptr1=0x%08x ptr2=0x%08x\n",
+            ptr1, ptr2);
+
+    /* 0x8009792C–0x8009796C: initialize ptr1 records.
+     * v1 starts at ptr1 + 6, increments by 32 each iteration.
+     * 2048 iterations. */
+    v1 = ptr1 + 6;
+    for (i = 0; i < WM_978FC_RECORD_COUNT; i++) {
+        WM_U8(v1 - 3) = 7;
+        WM_U8(v1 - 2) = 0x80;
+        WM_U8(v1 - 1) = 0x80;
+        WM_U8(v1 + 0) = 0x80;
+        WM_U8(v1 + 1) = 0x24;
+        v1 += WM_978FC_RECORD_STRIDE;
+    }
+
+    /* 0x80097970–0x800979B0: copy ptr1 → ptr2.
+     * 65536 / 16 = 4096 iterations, 16 bytes per iteration. */
+    {
+        u32 src = ptr1;
+        u32 dst = ptr2;
+        u32 end = ptr1 + WM_978FC_ALLOC_SIZE;
+        while (src != end) {
+            WM_U32(dst + 0)  = WM_U32(src + 0);
+            WM_U32(dst + 4)  = WM_U32(src + 4);
+            WM_U32(dst + 8)  = WM_U32(src + 8);
+            WM_U32(dst + 12) = WM_U32(src + 12);
+            src += WM_978FC_COPY_CHUNK;
+            dst += WM_978FC_COPY_CHUNK;
+        }
+    }
+
+    fprintf(stderr,
+            "[wm-800978FC] init+copy done\n");
+}
+
+
+/* ---- Common-tail P1 instrumentation ---- */
+
+static int  s_wm_ctp1_entry;
+static int  s_wm_ctp1_978fc_calls;
+static u32  s_wm_ctp1_last_cut;
+
+int  wm_ctp1_get_entry(void)        { return s_wm_ctp1_entry; }
+int  wm_ctp1_get_978fc_calls(void)  { return s_wm_ctp1_978fc_calls; }
+u32  wm_ctp1_get_last_cut(void)     { return s_wm_ctp1_last_cut; }
+
+void wm_common_tail_p1_reset(void)
+{
+    s_wm_ctp1_entry = 0;
+    s_wm_ctp1_978fc_calls = 0;
+    s_wm_ctp1_last_cut = 0;
+}
+
+
+/* ---- Common-tail P1: caller slice ---- */
+
+u32 wm_8007293C_common_tail_p1(void)
+{
+    /* P1 slice: 0x8007293C..0x80072940
+     * jal 0x800978FC + delay slot (nop).
+     * First excluded: 0x80072944 (jal 0x8008901C).
+     *
+     * Requires P0 to have executed and returned 0x8007293C. */
+    u32 cut;
+
+    s_wm_ctp1_entry++;
+
+    /* 0x8007293C: jal 0x800978FC */
+    fprintf(stderr,
+            "[worldmap-common-tail-p1] calling wm_800978FC\n");
+    wm_800978FC();
+    s_wm_ctp1_978fc_calls++;
+
+    /* 0x80072940: nop (delay slot — no effect)
+     * Return cut at 0x80072944 (first excluded = next helper). */
+    cut = WM_COMMON_TAIL_P1_CUT;
+    s_wm_ctp1_last_cut = cut;
+
+    fprintf(stderr,
+            "[worldmap-common-tail-p1] exit cut=0x%08x\n", cut);
+    return cut;
+}
