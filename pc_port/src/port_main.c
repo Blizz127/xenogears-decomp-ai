@@ -659,7 +659,7 @@ static void PortRunSoundSongProbe(void) {
     extern void func_800399D4(void* manager);
     extern void* SoundLoadWdsFile(void* pWdsFile, int mode);
     extern int SpuGetKeyStatus(unsigned int voice_bit);
-    extern int ArchiveDecodeAlignedSize(int fileIndex);
+    extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
     extern void* HeapAlloc(int size, int flags);
     extern void HeapFree(void* pMemory);
     extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
@@ -774,7 +774,7 @@ static void PortRunSoundSfxProbe(void) {
     extern void func_80039F18(int packedId, int volume, int pan);
     extern void SoundAddSedsEntry(void* pSoundFile);
     extern int SpuGetKeyStatus(unsigned int voice_bit);
-    extern int ArchiveDecodeAlignedSize(int fileIndex);
+    extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
     extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
     extern void ArchiveReadFileToBuffer(int fileIndex, void* pBuffer, int arg2,
                                         int arg3);
@@ -1371,7 +1371,7 @@ int main(int argc, char** argv) {
              * landed in the backend SPU-RAM image by SpuRead-back comparison.
              * Samples LOAD only -- key-on translation (audible) is B5.1 pass 2. */
             if (getenv("XENO_SOUND_WDS_PROBE")) {
-                extern int ArchiveDecodeAlignedSize(int fileIndex);
+                extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
                 extern unsigned int SpuSetTransferStartAddr(unsigned int addr);
                 extern unsigned int SpuRead(unsigned char* addr, unsigned int size);
                 extern int SpuIsTransferCompleted(int flag);
@@ -1456,6 +1456,7 @@ int main(int argc, char** argv) {
              * print the loaded bank's id so the song/bank pairing is chosen
              * from measured data, not the scoping map alone. Read-only. */
             if (getenv("XENO_SOUND_SONG_SCAN")) {
+                extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
                 int fi;
                 ArchiveSetIndex(0x1C, 0);
                 for (fi = 0x0; fi <= 0x24; fi++) {
