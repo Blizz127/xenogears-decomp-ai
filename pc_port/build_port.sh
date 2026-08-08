@@ -1042,6 +1042,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_terrain_init.c
     pc_port/src/world_map_terrain_cell.c
     pc_port/src/world_map_plane_solver.c
+    pc_port/src/world_map_terrain_normal.c
     pc_port/src/world_map_common_tail.c
     pc_port/src/world_map_scheduler.c
     pc_port/src/world_map_callback_923a8.c
