@@ -124,11 +124,12 @@ u32 wm_80093660(s32 x, s32 z)
      * sll a1, a2, 16; sra a1, a1, 16  →  sign_extend16(tile_idx) */
     tile_idx_s16 = (s32)(s16)(u16)(u32)tile_idx;
 
-    /* 8009371C-80093724: load base from table.
-     * table_addr = 0x8009C184 + tile_idx_s16 * 4
-     * quadrant_base = *(u32*)table_addr */
+    /* 8009370C-80093714: load base from table.
+     * sll v0, a1, 2  →  tile_idx_s16 * 4 (byte offset).
+     * MIPS sll operates on register bit pattern; cast to u32 before
+     * shifting to avoid C UB when tile_idx_s16 is negative. */
     quadrant_base = *(u32*)PSX_ADDR(WM_TERRAIN_TABLE_ABS +
-                                    (u32)(tile_idx_s16 << 2));
+                                    (u32)((u32)tile_idx_s16 << 2));
 
     /* ---- Compute final cell guest address ---- */
 
