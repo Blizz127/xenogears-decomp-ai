@@ -134,6 +134,8 @@
  *   XENO_WORLD_COMMON_TAIL_P3=0 (default off; wm_800865A0 caller slice; requires P2)
  *   XENO_WORLD_COMMON_TAIL_P4=0 (default off; wm_80085FE0 caller slice; requires P3)
  *   XENO_WORLD_COMMON_TAIL_P5=0 (default off; wm_80075228 + palette caller slice; requires P4)
+ *   XENO_WORLD_SCHEDULER_97800=0 (default off; bounded scheduler 0x80097800; requires P5;
+ *        stops before first missing callback body; DrawSync at 0x8007106C not executed)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -154,6 +156,7 @@
 #include "world_map_framebuffer_init.h"
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
+#include "world_map_scheduler.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -993,6 +996,18 @@ static int world_common_tail_p5_enabled(void)
      * Actual post-slot-1 return PC: 0x80071064. */
     return env_flag_is_one("XENO_WORLD_COMMON_TAIL_P5") &&
            world_common_tail_p4_enabled();
+}
+
+static int world_scheduler_97800_enabled(void)
+{
+    /* W34B5H gate: bounded scheduler 0x80097800 execution.
+     * Default OFF, requires P5 (accepted slot-1 one-shot init complete).
+     * Runs once at the actual caller frontier 0x80071064 (post-slot-1,
+     * pre-DrawSync) — never from the 0x8007299C overlay-local sentinel.
+     * Stops before the first missing callback body; DrawSync at
+     * 0x8007106C is not executed. */
+    return env_flag_is_one("XENO_WORLD_SCHEDULER_97800") &&
+           world_common_tail_p5_enabled();
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -6714,6 +6729,7 @@ void PcPort_WorldMapInitMain(void)
     wm_common_tail_p3_reset();
     wm_common_tail_p4_reset();
     wm_common_tail_p5_reset();
+    wm_sched_reset();
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -7253,9 +7269,24 @@ void PcPort_WorldMapInitMain(void)
                 }
             }
         }
+        /* W34B5H: bounded scheduler execution at the actual post-slot-1
+         * frontier 0x80071064. Requires P5 to have executed. Stops before
+         * the first missing callback body; the cut below becomes the
+         * missing-callback execution frontier (e.g. 0x800923A8), not a
+         * scheduler return PC. DrawSync at 0x8007106C is not executed. */
+        if (world_scheduler_97800_enabled() &&
+            wm_ctp5_get_entry() > 0) {
+            fprintf(stderr,
+                    "[worldmap-scheduler] XENO_WORLD_SCHEDULER_97800=1: "
+                    "bounded scheduler execution at 0x80071064\n");
+            wm_80097800();
+        }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_common_tail_p5_enabled() &&
+            if (world_scheduler_97800_enabled() &&
+                wm_sched_get_entry() > 0)
+                cut_pc = wm_sched_get_frontier_pc();
+            else if (world_common_tail_p5_enabled() &&
                 wm_ctp5_get_entry() > 0)
                 cut_pc = WM_COMMON_TAIL_P5_REAL_RETURN_PC;
             else if (world_common_tail_p4_enabled() &&
@@ -7676,6 +7707,62 @@ void PcPort_WorldMapInitMain(void)
                 "[worldmap-common-tail-p5] common_tail_p5_entry: ZERO VERIFIED\n"
                 "[worldmap-common-tail-p5] 75228_calls: ZERO VERIFIED\n"
                 "[worldmap-common-tail-p5] palette_calls: ZERO VERIFIED\n");
+    }
+
+    /* W34B5H: dump scheduler instrumentation. */
+    if (world_scheduler_97800_enabled() && wm_sched_get_entry() > 0) {
+        fprintf(stderr,
+                "[worldmap-scheduler] counters: entry=%d slots=%d occupied=%d "
+                "state0=%d state1=%d state2=%d state3=%d state4=%d "
+                "state_invalid=%d dispatch=%d executed=%d missing=%d "
+                "invalid=%d destructor_calls=%d destructor_boundary=%d "
+                "completed=%d last_slot=%d last_cb=0x%08x last_cb_state=%d "
+                "outcome=%d frontier=0x%08x\n",
+                wm_sched_get_entry(), wm_sched_get_slots_inspected(),
+                wm_sched_get_occupied_inspected(),
+                wm_sched_get_state_seen(0), wm_sched_get_state_seen(1),
+                wm_sched_get_state_seen(2), wm_sched_get_state_seen(3),
+                wm_sched_get_state_seen(4),
+                wm_sched_get_state_invalid_seen(),
+                wm_sched_get_dispatch_attempts(),
+                wm_sched_get_callbacks_executed(),
+                wm_sched_get_missing_hits(), wm_sched_get_invalid_hits(),
+                wm_sched_get_destructor_calls(),
+                wm_sched_get_destructor_boundary_hits(),
+                wm_sched_get_completed_passes(), wm_sched_get_last_slot(),
+                wm_sched_get_last_callback(),
+                wm_sched_get_last_callback_state(), wm_sched_get_outcome(),
+                wm_sched_get_frontier_pc());
+        if (wm_sched_get_outcome() == WM_SCHED_STOP_MISSING_CALLBACK) {
+            fprintf(stderr,
+                    "[worldmap-scheduler] FRONTIER 0x%08x = MISSING CALLBACK "
+                    "EXECUTION FRONTIER (slot=%d state=%d), not a return PC\n",
+                    wm_sched_get_frontier_pc(), wm_sched_get_last_slot(),
+                    wm_sched_get_last_callback_state());
+        }
+        /* Forbidden post-scheduler caller path: 0x800712D0 / 0x8007299C /
+         * world DrawOTag have real guard counters; DrawSync / Vsync /
+         * ControllerResetState have no world-callsite code at all (the
+         * caller body after the cut does not exist in the port), so their
+         * world-route count is structurally zero. */
+        if (s_wm712d0_hits == 0 && s_wm7299c_hits == 0 &&
+            s_wm_drawotag_hits == 0) {
+            fprintf(stderr,
+                    "[worldmap-scheduler] DrawSync_after_scheduler: ZERO VERIFIED\n"
+                    "[worldmap-scheduler] Vsync_after_scheduler: ZERO VERIFIED\n"
+                    "[worldmap-scheduler] ControllerResetState_after_scheduler: ZERO VERIFIED\n"
+                    "[worldmap-scheduler] world_driver_800712D0: ZERO VERIFIED\n"
+                    "[worldmap-scheduler] slot2_8007299C: ZERO VERIFIED\n"
+                    "[worldmap-scheduler] world_DrawOTag: ZERO VERIFIED\n");
+        } else {
+            fprintf(stderr,
+                    "[worldmap-scheduler] ERROR: forbidden post-scheduler path "
+                    "712d0=%d 7299c=%d drawotag=%d\n",
+                    s_wm712d0_hits, s_wm7299c_hits, s_wm_drawotag_hits);
+        }
+    } else {
+        fprintf(stderr,
+                "[worldmap-scheduler] scheduler_entry: ZERO VERIFIED\n");
     }
 
     /* W34B4B: dump framebuffer/GTE init instrumentation. */

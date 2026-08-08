@@ -1,0 +1,316 @@
+/*
+ * World-map callback scheduler (W34B5H) — production implementation.
+ *
+ * Exact bounded transcription of retail 0x80097800..0x800978FB (63
+ * instructions), decoded fresh in W34B5G from disc/world_map.bin
+ * (sha256 4c15fd32…ac70) and mechanically re-verified in W34B5H.
+ *
+ * Retail shape:
+ *   s1 = *(0x8009BE24); s0 = s1 + 0x4C; s2 = 0;
+ *   loop @0x80097830:
+ *     if (slot.+0x1C == 0) -> next                       (occupancy)
+ *     state = (s16)slot.+0x00
+ *     if ((u32)(s32)state >= 5) -> next                  (sltiu after lh)
+ *     switch (jt_0x80070CE8[state]):
+ *       0: cb = slot.+0x18; goto call
+ *       1: cb = slot.+0x1C; goto call
+ *       call @0x8009787C: jalr cb, a0 = slot index;
+ *            slot.+0x00 = callback return               (delay-slot sh)
+ *       2: if ((s16)(--slot.+0x02) <= 0) slot.+0x00 = 1
+ *       3: (dormant)
+ *       4: if (slot.+0x4C) func_800230A8(slot.+0x4C)
+ *   next @0x800978C8: s2++; s0 += 0x80; s1 += 0x80 (delay); while s2 < 64
+ *
+ * Bounded dispatch frontier: guest callback addresses are NEVER cast to
+ * native pointers. Resolution classes:
+ *   IMPLEMENTED — registered body (none in production yet; tests register
+ *                 synthetic bodies through the same registry);
+ *   MISSING     — recognized guest callback with no body (the 30 distinct
+ *                 callback pointers registered by the accepted Table A/B
+ *                 initialization); the scheduler stops BEFORE writing the
+ *                 slot state, BEFORE advancing, and the caller cuts before
+ *                 DrawSync;
+ *   INVALID     — any other address; bounded failure, no host call.
+ */
+#include <stdio.h>
+#include <string.h>
+
+#include "common.h"
+#include "psx_memory.h"
+#include "world_map_scheduler.h"
+
+#define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
+
+/* Recognized missing guest callbacks (W34B5G natural pool capture:
+ * 16 occupied slots x {+0x18, +0x1C}; duplicates 0x8008B644/0x8008D678
+ * collapsed — 30 distinct addresses). */
+static const u32 s_wm_sched_known_missing[] = {
+    0x800923A8u, 0x800925A0u, /* slot 0  (Table A record 0)  */
+    0x8008A2C8u, 0x8008A72Cu, /* slot 1  */
+    0x8008B2BCu, 0x8008B644u, /* slot 2  */
+    0x8008BB40u,              /* slot 3 cb0 (cb1 = 0x8008B644) */
+    0x8008C530u, 0x8008C844u, /* slot 4  */
+    0x8008D3F0u, 0x8008D678u, /* slot 5  */
+    0x8008DD6Cu,              /* slot 6 cb0 (cb1 = 0x8008D678) */
+    0x8008E190u, 0x8008E76Cu, /* slot 7  */
+    0x800906E0u, 0x800907F4u, /* slot 8  */
+    0x80091430u, 0x800914D0u, /* slot 9  */
+    0x80091B54u, 0x80091C18u, /* slot 10 */
+    0x80092234u, 0x800922ACu, /* slot 11 */
+    0x80092BE4u, 0x80092C70u, /* slot 12 */
+    0x80092DF8u, 0x80092FD8u, /* slot 13 */
+    0x80071A50u, 0x80071A58u, /* slot 14 */
+    0x80087710u, 0x80087734u, /* slot 15 (Table B, selector 0) */
+};
+#define WM_SCHED_KNOWN_MISSING_COUNT \
+    (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
+
+/* Guest-callback registry (production: empty; tests/world bodies register). */
+#define WM_SCHED_REGISTRY_MAX 32
+static struct {
+    u32 guest_addr;
+    wm_sched_callback_fn fn;
+} s_wm_sched_registry[WM_SCHED_REGISTRY_MAX];
+static int s_wm_sched_registry_count;
+
+static wm_sched_destructor_fn s_wm_sched_test_destructor;
+
+/* Instrumentation (per world-init lifecycle; see wm_sched_reset). */
+static int s_entry;
+static int s_slots_inspected;
+static int s_occupied_inspected;
+static int s_state_seen[5];
+static int s_state_invalid_seen;
+static int s_dispatch_attempts;
+static int s_callbacks_executed;
+static int s_missing_hits;
+static int s_invalid_hits;
+static int s_destructor_calls;
+static int s_destructor_boundary_hits;
+static int s_completed_passes;
+static int s_last_slot;
+static u32 s_last_callback;
+static int s_last_callback_state;
+static int s_outcome = WM_SCHED_PASS_COMPLETE;
+static u32 s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
+
+void wm_sched_reset(void)
+{
+    s_entry = 0;
+    s_slots_inspected = 0;
+    s_occupied_inspected = 0;
+    memset(s_state_seen, 0, sizeof(s_state_seen));
+    s_state_invalid_seen = 0;
+    s_dispatch_attempts = 0;
+    s_callbacks_executed = 0;
+    s_missing_hits = 0;
+    s_invalid_hits = 0;
+    s_destructor_calls = 0;
+    s_destructor_boundary_hits = 0;
+    s_completed_passes = 0;
+    s_last_slot = -1;
+    s_last_callback = 0;
+    s_last_callback_state = -1;
+    s_outcome = WM_SCHED_PASS_COMPLETE;
+    s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
+}
+
+void wm_sched_callback_register(u32 guest_addr, wm_sched_callback_fn fn)
+{
+    if (s_wm_sched_registry_count >= WM_SCHED_REGISTRY_MAX)
+        return;
+    s_wm_sched_registry[s_wm_sched_registry_count].guest_addr = guest_addr;
+    s_wm_sched_registry[s_wm_sched_registry_count].fn = fn;
+    s_wm_sched_registry_count++;
+}
+
+void wm_sched_callback_registry_clear(void)
+{
+    s_wm_sched_registry_count = 0;
+    s_wm_sched_test_destructor = 0;
+}
+
+void wm_sched_test_set_destructor(wm_sched_destructor_fn fn)
+{
+    s_wm_sched_test_destructor = fn;
+}
+
+static wm_sched_callback_fn wm_sched_lookup(u32 guest_addr)
+{
+    int i;
+    for (i = 0; i < s_wm_sched_registry_count; i++)
+        if (s_wm_sched_registry[i].guest_addr == guest_addr)
+            return s_wm_sched_registry[i].fn;
+    return 0;
+}
+
+static int wm_sched_is_known_missing(u32 guest_addr)
+{
+    unsigned i;
+    for (i = 0; i < WM_SCHED_KNOWN_MISSING_COUNT; i++)
+        if (s_wm_sched_known_missing[i] == guest_addr)
+            return 1;
+    return 0;
+}
+
+/* Bounded guest-callback resolver. No guest address is ever called through
+ * a native pointer. */
+static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
+                                              wm_sched_callback_fn* out_fn)
+{
+    wm_sched_callback_fn fn = wm_sched_lookup(guest_addr);
+    if (fn != 0) {
+        *out_fn = fn;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (wm_sched_is_known_missing(guest_addr))
+        return WM_SCHED_CB_MISSING;
+    return WM_SCHED_CB_INVALID;
+}
+
+void wm_80097800(void)
+{
+    u32 pool_psx = *(u32*)WM_SCHED_RAM(WM_SCHED_POOL_PTR);
+    u8* base;
+    int i;
+
+    s_entry++;
+    fprintf(stderr, "[worldmap-scheduler] entry pool=0x%08x\n", pool_psx);
+
+    if (pool_psx == 0) {
+        /* Unnatural: retail would dereference near-null. Bounded stop. */
+        s_outcome = WM_SCHED_STOP_NO_POOL;
+        s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
+        fprintf(stderr, "[worldmap-scheduler] ERROR: pool base null\n");
+        return;
+    }
+    base = WM_SCHED_RAM(pool_psx);
+
+    for (i = 0; i < WM_SCHED_SLOT_COUNT; i++) {
+        u8* slot = base + (u32)i * WM_SCHED_SLOT_STRIDE;
+        u32 occupancy = *(u32*)(slot + WM_SCHED_OFF_CB1);
+        s16 state;
+
+        s_slots_inspected++;
+        if (occupancy == 0)
+            continue;                               /* 0x80097838 -> next */
+        s_occupied_inspected++;
+
+        state = *(s16*)(slot + WM_SCHED_OFF_STATE); /* lh sign-extends */
+        if ((u32)(s32)state >= 5) {                 /* sltiu v0,v1,5 */
+            s_state_invalid_seen++;
+            continue;                               /* 0x8009784C -> next */
+        }
+        s_state_seen[state]++;
+
+        switch (state) {                            /* jr via 0x80070CE8 */
+        case 0:
+        case 1: {
+            u32 target = (state == 0)
+                ? *(u32*)(slot + WM_SCHED_OFF_CB0)  /* 0x80097868 */
+                : occupancy;                        /* 0x80097874 */
+            wm_sched_callback_fn fn = 0;
+            wm_sched_cb_resolve_t r;
+
+            s_dispatch_attempts++;
+            s_last_slot = i;
+            s_last_callback = target;
+            s_last_callback_state = state;
+            r = wm_sched_resolve(target, &fn);
+            if (r == WM_SCHED_CB_IMPLEMENTED) {
+                /* jalr target, a0 = slot index (0x8009787C/0x80097880);
+                 * return value becomes the slot state (0x80097888). */
+                s16 ret = fn(i);
+                *(s16*)(slot + WM_SCHED_OFF_STATE) = ret;
+                s_callbacks_executed++;
+                fprintf(stderr, "[worldmap-scheduler] slot=%d state=%d "
+                        "cb=0x%08x executed ret=%d\n", i, state, target, ret);
+            } else if (r == WM_SCHED_CB_MISSING) {
+                /* Bounded frontier: do NOT write slot state from a
+                 * fabricated return, do NOT advance to the next slot. */
+                s_missing_hits++;
+                s_outcome = WM_SCHED_STOP_MISSING_CALLBACK;
+                s_frontier_pc = target;
+                fprintf(stderr, "[worldmap-scheduler] MISSING CALLBACK "
+                        "FRONTIER slot=%d state=%d cb=0x%08x (a0=%d); "
+                        "stop before body\n", i, state, target, i);
+                return;
+            } else {
+                s_invalid_hits++;
+                s_outcome = WM_SCHED_STOP_INVALID_CALLBACK;
+                s_frontier_pc = target;
+                fprintf(stderr, "[worldmap-scheduler] ERROR: INVALID "
+                        "CALLBACK slot=%d state=%d cb=0x%08x; bounded stop\n",
+                        i, state, target);
+                return;
+            }
+            break;
+        }
+        case 2: {
+            /* 0x8009788C: decrement timer; expiry (<=0) -> state 1. */
+            u16 t = *(u16*)(slot + WM_SCHED_OFF_TIMER);
+            t = (u16)(t - 1);
+            *(u16*)(slot + WM_SCHED_OFF_TIMER) = t;
+            if ((s16)t <= 0)
+                *(s16*)(slot + WM_SCHED_OFF_STATE) = 1;
+            break;
+        }
+        case 3:
+            break;                                  /* dormant: 0x800978C8 */
+        case 4: {
+            /* 0x800978B0: payload non-null -> func_800230A8(payload). */
+            u32 payload = *(u32*)(slot + WM_SCHED_OFF_PAYLOAD);
+            if (payload != 0) {
+                if (s_wm_sched_test_destructor != 0) {
+                    s_wm_sched_test_destructor(payload);
+                    s_destructor_calls++;
+                } else {
+                    /* Destructor body not ported: bounded stop, no
+                     * fabricated free behavior. */
+                    s_destructor_boundary_hits++;
+                    s_outcome = WM_SCHED_STOP_DESTRUCTOR_BOUNDARY;
+                    s_frontier_pc = WM_SCHED_DESTRUCTOR;
+                    s_last_slot = i;
+                    s_last_callback = WM_SCHED_DESTRUCTOR;
+                    s_last_callback_state = state;
+                    fprintf(stderr, "[worldmap-scheduler] DESTRUCTOR "
+                            "BOUNDARY slot=%d payload=0x%08x -> 0x%08x; "
+                            "bounded stop\n", i, payload, WM_SCHED_DESTRUCTOR);
+                    return;
+                }
+            }
+            break;
+        }
+        }
+    }
+
+    s_completed_passes++;
+    s_outcome = WM_SCHED_PASS_COMPLETE;
+    s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
+    fprintf(stderr, "[worldmap-scheduler] pass complete slots=%d occupied=%d "
+            "dispatched=%d executed=%d\n",
+            s_slots_inspected, s_occupied_inspected,
+            s_dispatch_attempts, s_callbacks_executed);
+}
+
+int  wm_sched_get_entry(void)                   { return s_entry; }
+int  wm_sched_get_slots_inspected(void)         { return s_slots_inspected; }
+int  wm_sched_get_occupied_inspected(void)      { return s_occupied_inspected; }
+int  wm_sched_get_state_seen(int state)
+{
+    if (state < 0 || state > 4) return 0;
+    return s_state_seen[state];
+}
+int  wm_sched_get_state_invalid_seen(void)      { return s_state_invalid_seen; }
+int  wm_sched_get_dispatch_attempts(void)       { return s_dispatch_attempts; }
+int  wm_sched_get_callbacks_executed(void)      { return s_callbacks_executed; }
+int  wm_sched_get_missing_hits(void)            { return s_missing_hits; }
+int  wm_sched_get_invalid_hits(void)            { return s_invalid_hits; }
+int  wm_sched_get_destructor_calls(void)        { return s_destructor_calls; }
+int  wm_sched_get_destructor_boundary_hits(void){ return s_destructor_boundary_hits; }
+int  wm_sched_get_completed_passes(void)        { return s_completed_passes; }
+int  wm_sched_get_last_slot(void)               { return s_last_slot; }
+u32  wm_sched_get_last_callback(void)           { return s_last_callback; }
+int  wm_sched_get_last_callback_state(void)     { return s_last_callback_state; }
+int  wm_sched_get_outcome(void)                 { return s_outcome; }
+u32  wm_sched_get_frontier_pc(void)             { return s_frontier_pc; }

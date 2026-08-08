@@ -1041,6 +1041,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_framebuffer_init.c
     pc_port/src/world_map_terrain_init.c
     pc_port/src/world_map_common_tail.c
+    pc_port/src/world_map_scheduler.c
 )
 
 # The list above is the port link's explicit ownership registry. Refuse to
