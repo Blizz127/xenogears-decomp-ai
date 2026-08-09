@@ -1047,6 +1047,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_common_tail.c
     pc_port/src/world_map_scheduler.c
     pc_port/src/world_map_callback_923a8.c
+    pc_port/src/world_map_callback_8a2c8.c
 )
 
 # The list above is the port link's explicit ownership registry. Refuse to

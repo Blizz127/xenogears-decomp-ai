@@ -23,8 +23,8 @@
  *
  * Bounded dispatch frontier: guest callback addresses are NEVER cast to
  * native pointers. Resolution classes:
- *   IMPLEMENTED — registered body (none in production yet; tests register
- *                 synthetic bodies through the same registry);
+ *   IMPLEMENTED — a registered test body or an explicitly linked,
+ *                 independently accepted production body;
  *   MISSING     — recognized guest callback with no body (the 30 distinct
  *                 callback pointers registered by the accepted Table A/B
  *                 initialization); the scheduler stops BEFORE writing the
@@ -37,11 +37,21 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_callback_923a8.h"
+#include "world_map_callback_8a2c8.h"
 #include "world_map_scheduler.h"
+
+/* Focused legacy scheduler tests intentionally link the scheduler without
+ * production callback bodies.  Weak references preserve their bounded-
+ * missing behavior, while the canonical link resolves these two accepted
+ * bodies without any guest-function-pointer cast. */
+extern s16 wm_800923A8(int slot_index) __attribute__((weak));
+extern s32 wm_8008A2C8(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
-/* Recognized missing guest callbacks (W34B5G natural pool capture:
+/* Recognized callback addresses from the W34B5G natural pool capture.
+ * Linked accepted bodies are resolved before this missing fallback:
  * 16 occupied slots x {+0x18, +0x1C}; duplicates 0x8008B644/0x8008D678
  * collapsed — 30 distinct addresses). */
 static const u32 s_wm_sched_known_missing[] = {
@@ -65,7 +75,8 @@ static const u32 s_wm_sched_known_missing[] = {
 #define WM_SCHED_KNOWN_MISSING_COUNT \
     (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
 
-/* Guest-callback registry (production: empty; tests/world bodies register). */
+/* Test-only/synthetic callback registry. Production bodies use the explicit
+ * built-in resolution below. */
 #define WM_SCHED_REGISTRY_MAX 32
 static struct {
     u32 guest_addr;
@@ -144,6 +155,11 @@ static wm_sched_callback_fn wm_sched_lookup(u32 guest_addr)
     return 0;
 }
 
+static s16 wm_sched_builtin_8008A2C8(int slot_index)
+{
+    return (s16)wm_8008A2C8((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -161,6 +177,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     wm_sched_callback_fn fn = wm_sched_lookup(guest_addr);
     if (fn != 0) {
         *out_fn = fn;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800923A8u && wm_800923A8 != 0) {
+        *out_fn = wm_800923A8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008A2C8u && wm_8008A2C8 != 0) {
+        *out_fn = wm_sched_builtin_8008A2C8;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
