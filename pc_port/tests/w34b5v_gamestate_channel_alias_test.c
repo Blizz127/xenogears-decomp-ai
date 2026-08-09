@@ -37,8 +37,9 @@
 #define WM_GUEST_MASK      0x001FFFFFu
 #define HOST_GUARD_BYTES   2u
 #define GUEST_GUARD_BYTES  2u
-#define HOST_BUFFER_BYTES  (WM_GAMESTATE_CHANNEL_HOST_OFFSET + \
-                            WM_GAMESTATE_CHANNEL_COUNT + 5u)
+/* Buffer must cover host offsets for any u8 character ID (0..0xFE) gear field. */
+#define HOST_BUFFER_BYTES  (WM_GAMESTATE_GEAR_HOST_BASE + \
+                            0xFFu * WM_GAMESTATE_CHARACTER_STRIDE + 16u)
 
 _Static_assert(WM_GAMESTATE_CHANNEL_HOST_OFFSET == 0x1D34u,
                "host channel offset changed");
@@ -183,15 +184,43 @@ static void run_case(const ChannelAliasCase* test_case, u32 case_index)
     for (i = 0u; i < (size_t)PSX_RAM_SIZE; i++) {
         if (g_PsxRam[i] != s_ram_before[i]) {
             changed_count++;
-            if (i < (size_t)guest_index ||
-                i >= (size_t)(guest_index + WM_GAMESTATE_CHANNEL_COUNT)) {
-                unauthorized_count++;
+            /* Authorized writes: channel triplet + gear bytes for valid IDs */
+            if (i >= (size_t)guest_index &&
+                i < (size_t)(guest_index + WM_GAMESTATE_CHANNEL_COUNT)) {
+                continue; /* channel byte */
+            }
+            {
+                int is_gear = 0;
+                u32 ch;
+                for (ch = 0u; ch < WM_GAMESTATE_CHANNEL_COUNT; ch++) {
+                    u8 pid = test_case->channel[ch];
+                    if (pid != 0xFFu) {
+                        u32 gear_addr = WM_GAMESTATE_GEAR_GUEST_BASE +
+                                        (u32)pid * WM_GAMESTATE_CHARACTER_STRIDE;
+                        if (i == (size_t)(gear_addr & WM_GUEST_MASK)) {
+                            is_gear = 1;
+                            break;
+                        }
+                    }
+                }
+                if (!is_gear) {
+                    unauthorized_count++;
+                }
             }
         }
     }
-    check_result(test_case->name, "exactly three guest bytes changed",
-                 changed_count == (size_t)WM_GAMESTATE_CHANNEL_COUNT);
-    check_result(test_case->name, "no guest write outside channel triplet",
+    {
+        size_t expected = (size_t)WM_GAMESTATE_CHANNEL_COUNT;
+        u32 ch;
+        for (ch = 0u; ch < WM_GAMESTATE_CHANNEL_COUNT; ch++) {
+            if (test_case->channel[ch] != 0xFFu) {
+                expected++;
+            }
+        }
+        check_result(test_case->name, "correct number of guest bytes changed",
+                     changed_count == expected);
+    }
+    check_result(test_case->name, "no unauthorized guest writes",
                  unauthorized_count == 0u);
     check_result(test_case->name, "guest leading adjacent canaries",
                  memcmp(g_PsxRam + guest_index - GUEST_GUARD_BYTES,
