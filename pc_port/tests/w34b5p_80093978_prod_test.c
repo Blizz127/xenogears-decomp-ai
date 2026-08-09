@@ -11,15 +11,12 @@
  *
  * Build:
  *   gcc -std=gnu17 -O0 -g -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
- *     -Ipc_port/include_shim -Iinclude \
- *     -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx \
- *     -Ipc_port/src \
+ *     -Ipc_port/tests/include -Ipc_port/include_shim -Iinclude -Ipc_port/src \
  *     pc_port/tests/w34b5p_80093978_prod_test.c \
  *     pc_port/src/world_map_terrain_sampler.c \
  *     pc_port/src/world_map_terrain_normal.c \
  *     pc_port/src/world_map_terrain_cell.c \
  *     pc_port/src/world_map_plane_solver.c \
- *     pc_port/src/vector_stubs.c \
  *     -o pc_port/build_native/w34b5p_80093978_prod_test
  */
 #include <limits.h>
@@ -27,8 +24,79 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <libgte.h>
 #include "psx_memory.h"
 #include "world_map_terrain_sampler.h"
+
+/* =====================================================================
+ * GTE STUBS — satisfy world_map_terrain_normal.c's OuterProduct0 and
+ * VectorNormal dependencies without linking a separate stub file.
+ * These are the minimal correct implementations; the oracle below
+ * reimplements the same math independently.
+ * ===================================================================== */
+static int32_t stub_clamp_s32(int64_t v)
+{
+    if (v > INT64_C(0x7FFFFFFF))  return INT32_MAX;
+    if (v < INT64_C(-0x80000000)) return INT32_MIN;
+    return (int32_t)v;
+}
+
+static const int16_t s_stub_InvSqrtTable[] = {
+    0x1000, 0x0FE0, 0x0FC1, 0x0FA3, 0x0F85, 0x0F68, 0x0F4C, 0x0F30,
+    0x0F15, 0x0EFB, 0x0EE1, 0x0EC7, 0x0EAE, 0x0E96, 0x0E7E, 0x0E66,
+    0x0E4F, 0x0E38, 0x0E22, 0x0E0C, 0x0DF7, 0x0DE2, 0x0DCD, 0x0DB9,
+    0x0DA5, 0x0D91, 0x0D7E, 0x0D6B, 0x0D58, 0x0D45, 0x0D33, 0x0D21,
+    0x0D10, 0x0CFF, 0x0CEE, 0x0CDD, 0x0CCC, 0x0CBC, 0x0CAC, 0x0C9C,
+    0x0C8D, 0x0C7D, 0x0C6E, 0x0C5F, 0x0C51, 0x0C42, 0x0C34, 0x0C26,
+    0x0C18, 0x0C0A, 0x0BFD, 0x0BEF, 0x0BE2, 0x0BD5, 0x0BC8, 0x0BBB,
+    0x0BAF, 0x0BA2, 0x0B96, 0x0B8A, 0x0B7E, 0x0B72, 0x0B67, 0x0B5B,
+    0x0B50, 0x0B45, 0x0B39, 0x0B2E, 0x0B24, 0x0B19, 0x0B0E, 0x0B04,
+    0x0AF9, 0x0AEF, 0x0AE5, 0x0ADB, 0x0AD1, 0x0AC7, 0x0ABD, 0x0AB4,
+    0x0AAA, 0x0AA1, 0x0A97, 0x0A8E, 0x0A85, 0x0A7C, 0x0A73, 0x0A6A,
+    0x0A61, 0x0A59, 0x0A50, 0x0A47, 0x0A3F, 0x0A37, 0x0A2E, 0x0A26,
+    0x0A1E, 0x0A16, 0x0A0E, 0x0A06, 0x09FE, 0x09F6, 0x09EF, 0x09E7,
+    0x09E0, 0x09D8, 0x09D1, 0x09C9, 0x09C2, 0x09BB, 0x09B4, 0x09AD,
+    0x09A5, 0x099E, 0x0998, 0x0991, 0x098A, 0x0983, 0x097C, 0x0976,
+    0x096F, 0x0969, 0x0962, 0x095C, 0x0955, 0x094F, 0x0949, 0x0943,
+    0x093C, 0x0936, 0x0930, 0x092A, 0x0924, 0x091E, 0x0918, 0x0912,
+    0x090D, 0x0907, 0x0901, 0x08FB, 0x08F6, 0x08F0, 0x08EB, 0x08E5,
+    0x08E0, 0x08DA, 0x08D5, 0x08CF, 0x08CA, 0x08C5, 0x08BF, 0x08BA,
+    0x08B5, 0x08B0, 0x08AB, 0x08A6, 0x08A1, 0x089C, 0x0897, 0x0892,
+    0x088D, 0x0888, 0x0883, 0x087E, 0x087A, 0x0875, 0x0870, 0x086B,
+    0x0867, 0x0862, 0x085E, 0x0859, 0x0855, 0x0850, 0x084C, 0x0847,
+    0x0843, 0x083E, 0x083A, 0x0836, 0x0831, 0x082D, 0x0829, 0x0824,
+    0x0820, 0x081C, 0x0818, 0x0814, 0x0810, 0x080C, 0x0808, 0x0804,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
+};
+
+void OuterProduct0(VECTOR *v0, VECTOR *v1, VECTOR *out)
+{
+    out->vx = v0->vy * v1->vz - v0->vz * v1->vy;
+    out->vy = v0->vz * v1->vx - v0->vx * v1->vz;
+    out->vz = v0->vx * v1->vy - v0->vy * v1->vx;
+}
+
+long VectorNormal(VECTOR *v0, VECTOR *v1)
+{
+    int32_t sx = (int16_t)v0->vx, sy = (int16_t)v0->vy, sz = (int16_t)v0->vz;
+    uint32_t sq = (uint32_t)(sx * sx + sy * sy + sz * sz);
+    int32_t ox = 0, oy = 0, oz = 0;
+    if (sq) {
+        int lzc = __builtin_clz(sq), lze = lzc & ~1, sh = (31 - lze) >> 1, idx;
+        if (lze >= 24) idx = (int)(sq << (lze - 24));
+        else           idx = (int)(sq >> (24 - lze));
+        idx -= 0x40;
+        if (idx < 0) idx = 0;
+        if (idx >= (int)(sizeof(s_stub_InvSqrtTable) / sizeof(s_stub_InvSqrtTable[0])))
+            idx = (int)(sizeof(s_stub_InvSqrtTable) / sizeof(s_stub_InvSqrtTable[0])) - 1;
+        int32_t sc = s_stub_InvSqrtTable[idx];
+        ox = stub_clamp_s32(((int64_t)sc * sx) >> sh);
+        oy = stub_clamp_s32(((int64_t)sc * sy) >> sh);
+        oz = stub_clamp_s32(((int64_t)sc * sz) >> sh);
+    }
+    v1->vx = ox; v1->vy = oy; v1->vz = oz;
+    return (long)sq;
+}
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 _Alignas(16) uint8_t g_PsxScratchpad[4096];
@@ -50,6 +118,9 @@ void PsxMemory_Init(void)
 #define WM_COEFF_2_ABS        0x8009B254u
 #define WM_COEFF_3_ABS        0x8009B25Cu
 #define TEST_GRID_BASE        0x80120000u
+#define WM93978_QUERY_ADDR    0x801C0200u
+#define WM93978_BASE_ADDR     0x801C0210u
+#define WM93978_NORMAL_ADDR   0x801C0220u
 
 /* =====================================================================
  * HELPERS (s32/u32/s64/u64 from common.h)
@@ -170,6 +241,11 @@ typedef struct {
     u8 flag;               /* cell flag byte */
     s32 base_y_raw;        /* height byte before <<12 */
     u32 norm_ret;          /* VectorNormal return (squared magnitude) */
+    u32 local_x;           /* sampler x/8 low word */
+    u32 local_z;           /* sampler z/8 low word */
+    u32 selection_bits;    /* wrapped triangle-selection sum */
+    u32 solved_y_bits;     /* plane-solver store bits */
+    u32 final_bits;        /* final SLL3 result bits */
 } oracle_result_t;
 
 /*
@@ -236,6 +312,8 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
     u32 local_x = (u32)(x / 8) & 0xFFFFu;
     u32 local_z = (u32)(z / 8) & 0xFFFFu;
     u32 neg_local_z = 0u - local_z;
+    r.local_x = local_x;
+    r.local_z = local_z;
 
     /* Step 3: Height samples */
     s32 h00 = (s32)*(int8_t *)PSX_ADDR(r.cell_addr + 0u);
@@ -253,7 +331,7 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
         base_y_raw = h10;
     }
     r.base_y_raw = base_y_raw;
-    s32 base_y = (s32)((u32)base_y_raw << 12);
+    s32 base_y = bits_to_s32(s32_to_bits(base_y_raw) << 12);
 
     /* Step 5: Triangle selection and edge computation.
      * Edges use SMALL vertex coordinates (0, ±16), NOT the wm_800935DC
@@ -267,7 +345,7 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
         p1 = mul_low32(neg_local_z, bits_to_s32(coeff3));
         sel_bits = p0 + p1;
 
-        if ((s32)sel_bits < 0) {
+        if (bits_to_s32(sel_bits) < 0) {
             r.leaf = TRI_FLAG1_NEG;
             /* base=(0,h00,0), p_a=(16,h11,-16), p_b=(0,h01,-16) */
             r.edge0[0] = 16;  r.edge0[1] = h11 - h00; r.edge0[2] = -16;
@@ -286,7 +364,7 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
         p1 = mul_low32(neg_local_z, bits_to_s32(coeff1));
         sel_bits = p0 + p1;
 
-        if ((s32)sel_bits < 0) {
+        if (bits_to_s32(sel_bits) < 0) {
             r.leaf = TRI_FLAG0_NEG;
             /* base=(16,h10,0), p_a=(0,h01,-16), p_b=(0,h00,0) */
             r.edge0[0] = -16; r.edge0[1] = h01 - h10; r.edge0[2] = -16;
@@ -298,6 +376,7 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
             r.edge1[0] = -16; r.edge1[1] = h01 - h10; r.edge1[2] = -16;
         }
     }
+    r.selection_bits = sel_bits;
 
     /* Step 6: Cross product (edge1 × edge0) */
     r.cross[0] = cross_component((s64)r.edge1[1] * r.edge0[2] -
@@ -313,17 +392,12 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
 
     /* Step 8: Plane-height solve (independent, finite-width) */
     /* Query point: (local_x, ?, neg_local_z) in fixed-point */
-    s32 q_x = (s32)local_x;
-    s32 q_z = (s32)neg_local_z;
+    s32 q_x = bits_to_s32(local_x);
+    s32 q_z = bits_to_s32(neg_local_z);
     s32 dx = q_x - base_x;
     s32 dz = q_z - base_z;
 
-    /* SUBU-wrap-safe products */
-    u32 dx_bits = s32_to_bits(dx);
-    u32 dz_bits = s32_to_bits(dz);
-    u32 n0_bits = s32_to_bits(r.normal[0]);
-    u32 n2_bits = s32_to_bits(r.normal[2]);
-
+    /* SUBU-wrap-safe products (low-word extraction via u32 cast) */
     s64 prod_x = (s64)r.normal[0] * (s64)dx;
     u32 p0_lo = (u32)(u64)prod_x;
     s64 prod_z = (s64)r.normal[2] * (s64)dz;
@@ -336,22 +410,28 @@ static oracle_result_t oracle_terrain_height(s32 x, s32 z)
     /* DIV guards */
     if (ny == 0) {
         r.solved_y = base_y;
-        r.final_return = (s32)((u32)base_y << 3);
+        r.solved_y_bits = s32_to_bits(base_y);
+        r.final_bits = r.solved_y_bits << 3;
+        r.final_return = bits_to_s32(r.final_bits);
         return r;
     }
     if (ny == -1 && numerator == INT32_MIN) {
         r.solved_y = base_y;
-        r.final_return = (s32)((u32)base_y << 3);
+        r.solved_y_bits = s32_to_bits(base_y);
+        r.final_bits = r.solved_y_bits << 3;
+        r.final_return = bits_to_s32(r.final_bits);
         return r;
     }
 
     s32 quotient = numerator / ny;
     u32 quotient_bits = s32_to_bits(quotient);
     u32 result_bits = quotient_bits + s32_to_bits(base_y);
+    r.solved_y_bits = result_bits;
     r.solved_y = bits_to_s32(result_bits);
 
     /* Step 9: Final SLL by 3 */
     u32 scaled_bits = result_bits << 3;
+    r.final_bits = scaled_bits;
     r.final_return = bits_to_s32(scaled_bits);
 
     return r;
@@ -370,8 +450,8 @@ static s32 mutant_wrong_normal(s32 x, s32 z)
     r.normal[0] = r.normal[2];
     r.normal[2] = nx_save;
 
-    s32 q_x = (s32)((u32)(x / 8) & 0xFFFFu);
-    s32 q_z = (s32)(0u - ((u32)(z / 8) & 0xFFFFu));
+    s32 q_x = bits_to_s32((u32)(x / 8) & 0xFFFFu);
+    s32 q_z = bits_to_s32(0u - ((u32)(z / 8) & 0xFFFFu));
     s32 base_x = (r.flag & 0x80u) ? 0 : (s32)0x10000;
     s32 dx = q_x - base_x;
     s32 dz = q_z;
@@ -385,7 +465,8 @@ static s32 mutant_wrong_normal(s32 x, s32 z)
     s32 ny = r.normal[1];
     if (ny == 0 || (ny == -1 && num == INT32_MIN)) return r.final_return;
     s32 q = num / ny;
-    u32 res = s32_to_bits(q) + s32_to_bits((s32)((u32)r.base_y_raw << 12));
+    u32 base_y_bits = s32_to_bits(r.base_y_raw) << 12;
+    u32 res = s32_to_bits(q) + base_y_bits;
     return bits_to_s32(res << 3);
 }
 
@@ -396,8 +477,8 @@ static s32 mutant_wrong_base(s32 x, s32 z)
     s32 base_y_raw = (s32)*(int8_t *)PSX_ADDR(r.cell_addr); /* always h00 */
     s32 base_x = (r.flag & 0x80u) ? 0 : (s32)0x10000;
 
-    s32 q_x = (s32)((u32)(x / 8) & 0xFFFFu);
-    s32 q_z = (s32)(0u - ((u32)(z / 8) & 0xFFFFu));
+    s32 q_x = bits_to_s32((u32)(x / 8) & 0xFFFFu);
+    s32 q_z = bits_to_s32(0u - ((u32)(z / 8) & 0xFFFFu));
     s32 dx = q_x - base_x;
     s32 dz = q_z;
 
@@ -410,7 +491,7 @@ static s32 mutant_wrong_base(s32 x, s32 z)
     s32 ny = r.normal[1];
     if (ny == 0 || (ny == -1 && num == INT32_MIN)) return r.final_return;
     s32 q = num / ny;
-    u32 base_y_bits = s32_to_bits((s32)((u32)base_y_raw << 12));
+    u32 base_y_bits = s32_to_bits(base_y_raw) << 12;
     u32 res = s32_to_bits(q) + base_y_bits;
     return bits_to_s32(res << 3);
 }
@@ -470,6 +551,47 @@ static void setup_fixture(s32 stride, u8 flag,
     memcpy(PSX_ADDR(cell + 0x28), &h11, 1);
 }
 
+/*
+ * Set up a full packed terrain grid (4 quadrants of 9x9 entries).
+ *
+ * The terrain grid is a PACKED height map, not an array of cell structs.
+ * Each 4-byte entry at grid offset stores:
+ *   +0: h00 (byte), flag (byte), pad, pad
+ *   +4: h10 (byte) = h00 of the entry one column to the right
+ * Heights h01 and h11 are h00/h10 of the entry one row down:
+ *   +0x24 = +36: entry (row+1, col)'s h00
+ *   +0x28 = +40: entry (row+1, col+1)'s h00
+ *
+ * quadrant_base = table[tile_idx]
+ * cell_addr = quadrant_base + cell_idx*4 + quadrant*324
+ * cell_idx = cell_z*9 + cell_x
+ */
+static void setup_packed_grid(const int8_t heights[9][9], u8 flag,
+                              s32 c0, s32 c1, s32 c2, s32 c3)
+{
+    memset(g_PsxRam, 0, PSX_RAM_SIZE);
+    memset(g_PsxScratchpad, 0xA5, 4096);
+
+    s32 stride = 1;
+    store_s32(PSX_ADDR(WM_TERRAIN_STRIDE_ABS), stride);
+    store_u32(PSX_ADDR(WM_TERRAIN_TABLE_ABS), TEST_GRID_BASE);
+    store_s32(PSX_ADDR(WM_COEFF_0_ABS), c0);
+    store_s32(PSX_ADDR(WM_COEFF_1_ABS), c1);
+    store_s32(PSX_ADDR(WM_COEFF_2_ABS), c2);
+    store_s32(PSX_ADDR(WM_COEFF_3_ABS), c3);
+
+    /* Fill all4 quadrants with the same height grid. */
+    for (int q = 0; q < 4; q++) {
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                u32 off = (u32)((r * 9 + c) * 4 + q * 324);
+                memcpy(PSX_ADDR(TEST_GRID_BASE + off), &heights[r][c], 1);
+                memcpy(PSX_ADDR(TEST_GRID_BASE + off + 1), &flag, 1);
+            }
+        }
+    }
+}
+
 /* Run a complete end-to-end golden test.
  * expected_final = INT32_MIN means "skip expected-value check" (oracle is authority). */
 static void run_golden(const char *name,
@@ -505,6 +627,75 @@ static void run_golden(const char *name,
     check_eq(desc, s32_to_bits(orc.final_return), s32_to_bits(prod_result));
 }
 
+/* Assert independently derived intermediate facts, then compare the real
+ * production path and its guest stack records with those literal facts. */
+static oracle_result_t run_diagnostic_case(
+    const char *name, s32 x, s32 z,
+    u32 expected_cell, u32 expected_local_x, u32 expected_local_z,
+    u32 expected_selection, int expected_selection_negative,
+    tri_leaf_t expected_leaf,
+    s32 expected_nx, s32 expected_ny, s32 expected_nz,
+    u32 expected_solved_y, u32 expected_final)
+{
+    char desc[200];
+    oracle_result_t orc = oracle_terrain_height(x, z);
+
+#define CHECK_DIAG_BITS(label, expected, actual) do { \
+        snprintf(desc, sizeof(desc), "%s: %s", name, label); \
+        check_eq(desc, (expected), (actual)); \
+    } while (0)
+
+    CHECK_DIAG_BITS("oracle cell", expected_cell, orc.cell_addr);
+    CHECK_DIAG_BITS("oracle local x", expected_local_x, orc.local_x);
+    CHECK_DIAG_BITS("oracle local z", expected_local_z, orc.local_z);
+    CHECK_DIAG_BITS("oracle selection", expected_selection, orc.selection_bits);
+    snprintf(desc, sizeof(desc), "%s: oracle selection sign", name);
+    check(desc, (bits_to_s32(orc.selection_bits) < 0) ==
+                (expected_selection_negative != 0));
+    snprintf(desc, sizeof(desc), "%s: oracle leaf", name);
+    check(desc, orc.leaf == expected_leaf);
+    CHECK_DIAG_BITS("oracle normal x", s32_to_bits(expected_nx),
+                    s32_to_bits(orc.normal[0]));
+    CHECK_DIAG_BITS("oracle normal y", s32_to_bits(expected_ny),
+                    s32_to_bits(orc.normal[1]));
+    CHECK_DIAG_BITS("oracle normal z", s32_to_bits(expected_nz),
+                    s32_to_bits(orc.normal[2]));
+    CHECK_DIAG_BITS("oracle solved y", expected_solved_y, orc.solved_y_bits);
+    CHECK_DIAG_BITS("oracle final", expected_final, orc.final_bits);
+
+    s32 production_result = wm_80093978(x, z);
+    CHECK_DIAG_BITS("production query x", expected_local_x,
+                    load_u32(PSX_ADDR(WM93978_QUERY_ADDR + 0u)));
+    CHECK_DIAG_BITS("production query -z", 0u - expected_local_z,
+                    load_u32(PSX_ADDR(WM93978_QUERY_ADDR + 8u)));
+    CHECK_DIAG_BITS("production normal x", s32_to_bits(expected_nx),
+                    load_u32(PSX_ADDR(WM93978_NORMAL_ADDR + 0u)));
+    CHECK_DIAG_BITS("production normal y", s32_to_bits(expected_ny),
+                    load_u32(PSX_ADDR(WM93978_NORMAL_ADDR + 4u)));
+    CHECK_DIAG_BITS("production normal z", s32_to_bits(expected_nz),
+                    load_u32(PSX_ADDR(WM93978_NORMAL_ADDR + 8u)));
+    CHECK_DIAG_BITS("production solved y", expected_solved_y,
+                    load_u32(PSX_ADDR(WM93978_QUERY_ADDR + 4u)));
+    CHECK_DIAG_BITS("production final", expected_final,
+                    s32_to_bits(production_result));
+
+#undef CHECK_DIAG_BITS
+    return orc;
+}
+
+static void run_height_shift_case(const char *name, int8_t height,
+                                  u32 expected_shifted,
+                                  s32 c0, s32 c1, s32 c2, s32 c3)
+{
+    char desc[200];
+    setup_fixture(1, 0x80, height, height, height, height,
+                  c0, c1, c2, c3);
+    (void)wm_80093978(8, 16);
+    snprintf(desc, sizeof(desc), "%s: production LB/SLL12 bits", name);
+    check_eq(desc, expected_shifted,
+             load_u32(PSX_ADDR(WM93978_BASE_ADDR + 4u)));
+}
+
 /* =====================================================================
  * GOLDEN TESTS
  * ===================================================================== */
@@ -515,6 +706,18 @@ int main(void)
 
     /* Coefficients matching the standard terrain setup */
     s32 c0 = 2896, c1 = -2896, c2 = 2896, c3 = 2896;
+
+    /* Retail LB followed by SLL 12: literal finite-width bit authority. */
+    run_height_shift_case("height -128", -128, 0xFFF80000u,
+                          c0, c1, c2, c3);
+    run_height_shift_case("height -1", -1, 0xFFFFF000u,
+                          c0, c1, c2, c3);
+    run_height_shift_case("height 0", 0, 0x00000000u,
+                          c0, c1, c2, c3);
+    run_height_shift_case("height +1", 1, 0x00001000u,
+                          c0, c1, c2, c3);
+    run_height_shift_case("height +127", 127, 0x0007F000u,
+                          c0, c1, c2, c3);
 
     /* ---- Golden A: Flat terrain ---- */
     /* h00=h10=h01=h11=10, flag=0x80, query at (8,16).
@@ -633,44 +836,44 @@ int main(void)
      * sq = 0. normalize → (0,0,0), return 0.
      * This means the normal is zero and the plane equation degenerates.
      * This doesn't seem right. Let me reconsider.
-     * 
+     *
      * Actually, looking at wm_80093740, the edges use raw height differences
      * (not shifted). The base point in wm_800935DC uses shifted heights.
      * But the edges in wm_80093740 use:
      * edge0.vy = h11 - h00 (raw bytes)
      * Not: edge0.vy = (h11<<12) - (h00<<12)
-     * 
+     *
      * So the edge heights are small (max ±255). The cross product components
      * are also small (max ~8160). The normalization works on these small values.
-     * 
+     *
      * But the query/base records passed to wm_800935DC use shifted heights.
      * The plane equation operates on shifted values.
-     * 
+     *
      * So the edges are: (±16, height_diff, ±16) where height_diff is ±255 max.
      * The cross product is: (±8160, -256, ±8160) max.
      * The normal is: (±4096, ±4096, ±4096) approximately.
-     * 
+     *
      * The plane equation uses:
      * query = (local_x, ?, neg_local_z) where local_x/local_z are 0..65535.
      * base = (0 or 65536, height<<12, 0).
      * normal = (±4096, ±4096, ±4096).
-     * 
+     *
      * dx = local_x - base_x. For flag0: dx = local_x - 65536. If local_x=1000,
      * dx = 1000 - 65536 = -64536.
      * dz = neg_local_z - 0 = -local_z. If local_z=2000, dz = -2000.
-     * 
+     *
      * The products: N[0]*dx and N[2]*dz. With N[0]≈4096 and dx≈-64536:
      * product ≈ 4096 * (-64536) ≈ -264,000,000. This fits in s32.
-     * 
+     *
      * So the plane equation should work fine. The issue was that I was computing
      * edges with the shifted base height, but the edges use raw height differences.
-     * 
+     *
      * Let me redo the flag0 golden with correct understanding.
-     * 
+     *
      * Actually, I realize the issue. The edges are computed in wm_80093740 using
      * raw height bytes. The base point for wm_800935DC uses shifted heights.
      * These are separate computations. The oracle must model both correctly.
-     * 
+     *
      * Let me just use simpler test cases and let the oracle compute the expected
      * values. I'll verify that production matches oracle.
      */
@@ -713,17 +916,17 @@ int main(void)
      * edge0=(16-65536,20-5,-16-0)=(-65520,15,-16).
      * edge1=(0-65536,9-5,-16-0)=(-65536,4,-16).
      * Hmm, huge X components again. But wm_80093740 uses raw height diffs.
-     * 
+     *
      * Wait, I need to re-read wm_80093740 more carefully.
      * In wm_80093740, the edges are:
      * edge0.vx = 16 (or 0 or -16)
      * edge0.vy = h11 - h00 (or similar height diff)
      * edge0.vz = -16 (or 0)
-     * 
+     *
      * The base vertex is (0, h00, 0) for flag1, or (16, h10, 0) for flag0.
      * The other vertices are at offsets (0,0,0), (16,0,0), (0,0,-16), (16,0,-16)
      * relative to the cell origin.
-     * 
+     *
      * So for flag0 NONNEG:
      * base = (16, h10, 0) = (16, 5, 0)
      * p_a = (16, h11, -16) = (16, 20, -16)
@@ -738,7 +941,7 @@ int main(void)
      * normalize: sq=30976+65536+57600=154112.
      * lzc=17, lze=16, shift=7.
      * index = 154112 >> 8 = 602. 602-64=538. Hmm, that's out of range (table has 186 entries).
-     * 
+     *
      * Wait, that can't be right. Let me recalculate.
      * sq=154112. __builtin_clz(154112): 154112 = 0x25A00. That's 18 bits. CLZ=32-18=14.
      * lze=14, shift=(31-14)/2=8.
@@ -746,113 +949,167 @@ int main(void)
      * index = 154112 >> (24-14) = 154112 >> 10 = 150.
      * index -= 64 = 86.
      * scale = s_InvSqrtTable[86] = 0x0AAA = 2730.
-     * 
+     *
      * nx = clamp((2730 * 176) >> 8) = clamp(480480 >> 8) = clamp(1877) = 1877.
      * ny = clamp((2730 * (-256)) >> 8) = clamp(-698880 >> 8) = clamp(-2730) = -2730.
      * nz = clamp((2730 * (-240)) >> 8) = clamp(-655200 >> 8) = clamp(-2559) = -2559.
-     * 
+     *
      * Now the plane equation:
      * query = (40000, ?, -30000).
      * base = (65536, 5<<12, 0) = (65536, 20480, 0).
      * dx = 40000 - 65536 = -25536.
      * dz = -30000 - 0 = -30000.
-     * 
+     *
      * p0_lo = LOW32(1877 * (-25536)) = LOW32(-479311... let me compute:
      * 1877 * 25536 = 47931072. So product = -47931072.
      * p0_lo = (u32)(-47931072) = 0xFD280800.
-     * 
+     *
      * p1_lo = LOW32((-2559) * (-30000)) = LOW32(76770000) = 0x0493D070.
-     * 
+     *
      * num_bits = 0 - 0xFD280800 - 0x0493D070 = 0x02D7F800 - 0x0493D070 = 0xFE442790.
      * Hmm, let me compute more carefully.
      * 0 - 0xFD280800 = 0x02D7F800.
      * 0x02D7F800 - 0x0493D070 = 0xFE442790.
      * numerator = bits_to_s32(0xFE442790) = -29218928.
-     * 
+     *
      * quotient = -29218928 / (-2730) = 10702 (truncation: -29218928/-2730 = 10702.9...→10702).
-     * 
+     *
      * base_y = 20480.
      * result = 10702 + 20480 = 31182.
      * final = 31182 << 3 = 249456.
-     * 
+     *
      * Let me just use the oracle as authority and set expected to 0 (placeholder).
      */
     run_golden("I flag0 nonneg", 320000, 240000, 1, 0x00,
                -3, 5, 9, 20, c0, c1, c2, c3,
                TRI_FLAG0_NONNEG, INT32_MIN);
 
-    /* ---- Golden J: Negative coordinates ---- */
-    /* Use x=-9, z=-7. These cross cell boundaries.
-     * floor_div8(-9) = -2 (since -9/8=-1, rem=-1, so -1-1=-2).
-     * floor_div8(-7) = -1 (since -7/8=0, rem=-7, so 0-1=-1).
-     * local_x = (-2) & 0x7FF = 0x7FE = 2046.
-     * local_z = (-1) & 0x7FF = 0x7FF = 2047.
-     * With flag=0x80:
-     * p0 = 2046 * 2896 = 5925216.
-     * p1 = (0u-2047) * 2896 = -2047 * 2896 = -5928112. Wait, neg_local_z = 0u - 2047 = 0xFFFFF801.
-     * Actually in the oracle, neg_local_z = 0u - local_z = 0u - 2047.
-     * But in the mul_low32, we use the signed interpretation.
-     * bits_to_s32(0xFFFFF801) = -2047.
-     * p1 = mul_low32(neg_local_z_bits, coeff3) = (-2047) * 2896 = -5928112.
-     * sum = 5925216 + (u32)(-5928112) = 5925216 + 0xFFA58CB0 = ...
-     * Actually sum_bits = p0 + p1 where p0 and p1 are u32.
-     * p0 = (u32)5925216 = 0x005A6DA0.
-     * p1 = (u32)(-5928112) = 0xFFA59290.
-     * sum = 0x005A6DA0 + 0xFFA59290 = 0x00000030.
-     * bits_to_s32(0x30) = 48 > 0 → NONNEG.
-     * 
-     * This gets complex. Let me just use the oracle as authority.
-     */
-    /* Changed: use positive coordinates that map to fixture cell (cell_idx=0).
-     * x=800, z=800: local_x=100, local_z=100, sum=0 → NONNEG boundary. */
-    run_golden("J boundary sum=0", 800, 800, 1, 0x80,
-               0, 4, 7, 12, c0, c1, c2, c3,
-               TRI_FLAG1_NONNEG, INT32_MIN);
-
-    /* ---- Cell boundary continuity ---- */
-    /* Sample at x=8 (boundary) and x=9 (just past).
-     * With flat terrain (all heights=10), both should give same result. */
+    /* ---- Signed divide-by-8 / low16 transition (not a cell boundary) ----
+     * All four inputs select the same negative-X/Z terrain cell.  The useful
+     * transition is sampler-local X: -9/-8 -> FFFF, -7/-1 -> 0000. */
     {
-        setup_fixture(1, 0x80, 10, 10, 10, 10, c0, c1, c2, c3);
-        s32 r1 = wm_80093978(8, 16);
-        setup_fixture(1, 0x80, 10, 10, 10, 10, c0, c1, c2, c3);
-        s32 r2 = wm_80093978(9, 16);
-        check("cell boundary: flat continuity", r1 == r2);
+        int8_t hflat[9][9];
+        memset(hflat, 10, sizeof(hflat));
+
+        setup_packed_grid(hflat, 0x80, c0, c1, c2, c3);
+        (void)run_diagnostic_case(
+            "negative -9", -9, -1,
+            0x801204E4u, 0x0000FFFFu, 0x00000000u,
+            0x0B4FF4B0u, 0, TRI_FLAG1_NONNEG,
+            0, -4096, 0, 0x0000A000u, 0x00050000u);
+
+        setup_packed_grid(hflat, 0x80, c0, c1, c2, c3);
+        (void)run_diagnostic_case(
+            "negative -8", -8, -1,
+            0x801204E4u, 0x0000FFFFu, 0x00000000u,
+            0x0B4FF4B0u, 0, TRI_FLAG1_NONNEG,
+            0, -4096, 0, 0x0000A000u, 0x00050000u);
+
+        setup_packed_grid(hflat, 0x80, c0, c1, c2, c3);
+        (void)run_diagnostic_case(
+            "negative -7", -7, -1,
+            0x801204E4u, 0x00000000u, 0x00000000u,
+            0x00000000u, 0, TRI_FLAG1_NONNEG,
+            0, -4096, 0, 0x0000A000u, 0x00050000u);
+
+        setup_packed_grid(hflat, 0x80, c0, c1, c2, c3);
+        (void)run_diagnostic_case(
+            "negative -1", -1, -1,
+            0x801204E4u, 0x00000000u, 0x00000000u,
+            0x00000000u, 0, TRI_FLAG1_NONNEG,
+            0, -4096, 0, 0x0000A000u, 0x00050000u);
     }
 
-    /* ---- Diagonal boundary ---- */
-    /* At the diagonal, the selection sign changes.
-     * With flag=0x80, the boundary is where p0+p1 = 0.
-     * p0 = local_x * 2896, p1 = -local_z * 2896.
-     * p0 + p1 = 0 when local_x = local_z.
-     * So at local_x == local_z, the boundary is reached.
-     * Query at x=8, z=8: local_x=1, local_z=1.
-     * p0 = 2896, p1 = -2896, sum = 0 → NONNEG (≥ 0).
-     * Query at x=8, z=16: local_x=1, local_z=2.
-     * p0 = 2896, p1 = -5792, sum = -2896 → NEG.
-     * With different heights, the two triangles give different normals.
-     * But at the boundary (local_x == local_z), both triangles should give
-     * the same height if they share the same plane.
-     * 
-     * For a non-flat case: h00=0, h10=10, h01=5, h11=15.
-     * The two triangles form different planes. At the diagonal boundary,
-     * the heights should match (the shared edge).
-     */
+    /* ---- True positive and negative cell boundaries ----
+     * The accepted cell lookup changes X cells when (x >> 12) crosses a
+     * 128-unit sub-tile boundary: 128 * 4096 = 524288 world units. */
     {
-        setup_fixture(1, 0x80, 0, 10, 5, 15, c0, c1, c2, c3);
-        s32 r_neg = wm_80093978(8, 16); /* local_x=1, local_z=2 → NEG */
-        setup_fixture(1, 0x80, 0, 10, 5, 15, c0, c1, c2, c3);
-        s32 r_nonneg = wm_80093978(16, 8); /* local_x=2, local_z=1 → NONNEG */
-        /* These are different points on different triangles, so heights differ.
-         * But at the exact diagonal (local_x == local_z):
-         * x=8, z=8: local_x=1, local_z=1. sum=2896-2896=0 → NONNEG.
-         * The diagonal connects h00 to h11. Both triangles share this edge.
-         * Heights along this edge should be consistent. */
-        setup_fixture(1, 0x80, 0, 10, 5, 15, c0, c1, c2, c3);
-        s32 r_diag = wm_80093978(8, 8); /* on diagonal */
-        /* Just verify it runs without error */
-        check("diagonal boundary: no crash", 1);
-        (void)r_neg; (void)r_nonneg; (void)r_diag;
+        int8_t hbnd[9][9];
+        memset(hbnd, 0, sizeof(hbnd));
+        hbnd[0][0] = 10; hbnd[0][1] = 15; hbnd[0][2] = 20;
+        hbnd[1][0] = 10; hbnd[1][1] = 15; hbnd[1][2] = 20;
+        hbnd[0][6] = 10; hbnd[0][7] = 15; hbnd[0][8] = 20;
+        hbnd[1][6] = 10; hbnd[1][7] = 15; hbnd[1][8] = 20;
+
+        setup_packed_grid(hbnd, 0x80, c0, c1, c2, c3);
+        oracle_result_t pos_left = run_diagnostic_case(
+            "positive cell left", 524280, 0,
+            0x80120000u, 0x0000FFFFu, 0x00000000u,
+            0x0B4FF4B0u, 0, TRI_FLAG1_NONNEG,
+            1223, -3916, 0, 0x0000EFF3u, 0x00077F98u);
+        setup_packed_grid(hbnd, 0x80, c0, c1, c2, c3);
+        oracle_result_t pos_right = run_diagnostic_case(
+            "positive cell right", 524288, 0,
+            0x80120004u, 0x00000000u, 0x00000000u,
+            0x00000000u, 0, TRI_FLAG1_NONNEG,
+            1223, -3916, 0, 0x0000F000u, 0x00078000u);
+        check("positive boundary: cell changes",
+              pos_left.cell_addr != pos_right.cell_addr);
+        check_eq("positive boundary: solved quantized delta", 13u,
+                 pos_right.solved_y_bits - pos_left.solved_y_bits);
+        check_eq("positive boundary: final quantized delta", 104u,
+                 pos_right.final_bits - pos_left.final_bits);
+
+        setup_packed_grid(hbnd, 0x80, c0, c1, c2, c3);
+        oracle_result_t neg_left = run_diagnostic_case(
+            "negative cell left", -524296, 0,
+            0x8012015Cu, 0x0000FFFFu, 0x00000000u,
+            0x0B4FF4B0u, 0, TRI_FLAG1_NONNEG,
+            1223, -3916, 0, 0x0000EFF3u, 0x00077F98u);
+        setup_packed_grid(hbnd, 0x80, c0, c1, c2, c3);
+        oracle_result_t neg_right = run_diagnostic_case(
+            "negative cell right", -524288, 0,
+            0x80120160u, 0x00000000u, 0x00000000u,
+            0x00000000u, 0, TRI_FLAG1_NONNEG,
+            1223, -3916, 0, 0x0000F000u, 0x00078000u);
+        check("negative boundary: cell changes",
+              neg_left.cell_addr != neg_right.cell_addr);
+        check_eq("negative boundary: solved quantized delta", 13u,
+                 neg_right.solved_y_bits - neg_left.solved_y_bits);
+        check_eq("negative boundary: final quantized delta", 104u,
+                 neg_right.final_bits - neg_left.final_bits);
+    }
+
+    /* ---- Diagonal below/exact/above on one shared mathematical plane ----
+     * h11 = h10 + h01 - h00, so both triangles have the same normal.
+     * Each point still has its own independently rounded plane result. */
+    {
+        int8_t hdiag[9][9];
+        memset(hdiag, 0, sizeof(hdiag));
+        hdiag[0][0] = 0; hdiag[0][1] = 10;
+        hdiag[1][0] = 5; hdiag[1][1] = 15;
+
+        setup_packed_grid(hdiag, 0x80, c0, c1, c2, c3);
+        oracle_result_t below = run_diagnostic_case(
+            "diagonal below", 8, 16,
+            0x80120000u, 0x00000001u, 0x00000002u,
+            0xFFFFF4B0u, 1, TRI_FLAG1_NEG,
+            2100, -3361, -1051, 0x00000001u, 0x00000008u);
+        setup_packed_grid(hdiag, 0x80, c0, c1, c2, c3);
+        oracle_result_t exact = run_diagnostic_case(
+            "diagonal exact", 8, 8,
+            0x80120000u, 0x00000001u, 0x00000001u,
+            0x00000000u, 0, TRI_FLAG1_NONNEG,
+            2100, -3361, -1051, 0x00000000u, 0x00000000u);
+        setup_packed_grid(hdiag, 0x80, c0, c1, c2, c3);
+        oracle_result_t above = run_diagnostic_case(
+            "diagonal above", 16, 8,
+            0x80120000u, 0x00000002u, 0x00000001u,
+            0x00000B50u, 0, TRI_FLAG1_NONNEG,
+            2100, -3361, -1051, 0x00000001u, 0x00000008u);
+        check("diagonal: below leaf differs from exact",
+              below.leaf != exact.leaf);
+        check("diagonal: exact and above share leaf",
+              exact.leaf == above.leaf);
+        check("shared plane: normal x equal",
+              below.normal[0] == exact.normal[0] &&
+              exact.normal[0] == above.normal[0]);
+        check("shared plane: normal y equal",
+              below.normal[1] == exact.normal[1] &&
+              exact.normal[1] == above.normal[1]);
+        check("shared plane: normal z equal",
+              below.normal[2] == exact.normal[2] &&
+              exact.normal[2] == above.normal[2]);
     }
 
     /* ---- Negative final height ---- */
@@ -927,15 +1184,53 @@ int main(void)
         /* Protect neighboring guest memory with canaries */
         u32 guard_before = TEST_GRID_BASE + 0xFC;
         u32 guard_after  = TEST_GRID_BASE + 0x12C;
-        *(u32 *)PSX_ADDR(guard_before) = 0xDEADBEEF;
-        *(u32 *)PSX_ADDR(guard_after)  = 0xDEADBEEF;
+        u32 canary = 0xDEADBEEFu;
+        u32 cell = TEST_GRID_BASE + 0x100u;
+        uint8_t cell_before[44];
+        uint8_t table_before[4];
+        uint8_t coeff_before[4][4];
+        memcpy(PSX_ADDR(guard_before), &canary, sizeof(canary));
+        memcpy(PSX_ADDR(guard_after), &canary, sizeof(canary));
+        memcpy(cell_before, PSX_ADDR(cell), sizeof(cell_before));
+        memcpy(table_before, PSX_ADDR(WM_TERRAIN_TABLE_ABS),
+               sizeof(table_before));
+        memcpy(coeff_before[0], PSX_ADDR(WM_COEFF_0_ABS), 4);
+        memcpy(coeff_before[1], PSX_ADDR(WM_COEFF_1_ABS), 4);
+        memcpy(coeff_before[2], PSX_ADDR(WM_COEFF_2_ABS), 4);
+        memcpy(coeff_before[3], PSX_ADDR(WM_COEFF_3_ABS), 4);
 
         s32 ret = wm_80093978(2400, 800);
 
         check("canary: guard before preserved",
-              *(u32 *)PSX_ADDR(guard_before) == 0xDEADBEEF);
+              load_u32(PSX_ADDR(guard_before)) == canary);
         check("canary: guard after preserved",
-              *(u32 *)PSX_ADDR(guard_after) == 0xDEADBEEF);
+              load_u32(PSX_ADDR(guard_after)) == canary);
+        check("memory: terrain cell unchanged",
+              memcmp(cell_before, PSX_ADDR(cell), sizeof(cell_before)) == 0);
+        check("memory: terrain table unchanged",
+              memcmp(table_before, PSX_ADDR(WM_TERRAIN_TABLE_ABS),
+                     sizeof(table_before)) == 0);
+        check("memory: coefficient 0 unchanged",
+              memcmp(coeff_before[0], PSX_ADDR(WM_COEFF_0_ABS), 4) == 0);
+        check("memory: coefficient 1 unchanged",
+              memcmp(coeff_before[1], PSX_ADDR(WM_COEFF_1_ABS), 4) == 0);
+        check("memory: coefficient 2 unchanged",
+              memcmp(coeff_before[2], PSX_ADDR(WM_COEFF_2_ABS), 4) == 0);
+        check("memory: coefficient 3 unchanged",
+              memcmp(coeff_before[3], PSX_ADDR(WM_COEFF_3_ABS), 4) == 0);
+
+        int scratch_ok = 1;
+        for (u32 offset = 0; offset < 4096u; offset++) {
+            int authorized =
+                (offset < 0x0Cu) ||
+                (offset >= 0x10u && offset < 0x1Cu) ||
+                (offset >= 0x20u && offset < 0x2Cu);
+            if (!authorized && g_PsxScratchpad[offset] != 0xA5u) {
+                scratch_ok = 0;
+                break;
+            }
+        }
+        check("scratchpad: only 00..0B/10..1B/20..2B changed", scratch_ok);
         (void)ret;
     }
 

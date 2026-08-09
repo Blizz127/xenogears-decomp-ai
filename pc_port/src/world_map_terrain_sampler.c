@@ -48,6 +48,14 @@ static s32 wm_load_s8(u32 addr)
     return value;
 }
 
+/* Retail LB followed by SLL 12, expressed entirely as bit operations. */
+static s32 wm_height_sll12(s32 height)
+{
+    u32 height_bits;
+    memcpy(&height_bits, &height, sizeof(height_bits));
+    return wm_bits_to_s32(height_bits << 12);
+}
+
 static u8 wm_load_u8(u32 addr)
 {
     u8 value;
@@ -69,9 +77,9 @@ s32 wm_80093978(s32 x, s32 z)
     u32 neg_local_z = 0u - local_z;   /* SUBU: 0 - local_z */
 
     /* Write query record: {local_x, ?, -local_z} */
-    wm_store_s32(WM93978_QUERY_ADDR + 0, (s32)local_x);
+    wm_store_s32(WM93978_QUERY_ADDR + 0, wm_bits_to_s32(local_x));
     /* sp+20 (result slot) will be written by wm_800935DC */
-    wm_store_s32(WM93978_QUERY_ADDR + 8, (s32)neg_local_z);
+    wm_store_s32(WM93978_QUERY_ADDR + 8, wm_bits_to_s32(neg_local_z));
 
     /* ---- Flag-based base-point construction ---- */
     u8 flag = wm_load_u8(cell_addr + 1u);
@@ -80,14 +88,14 @@ s32 wm_80093978(s32 x, s32 z)
         /* flag1: base at h00 corner */
         wm_store_s32(WM93978_BASE_ADDR + 0, 0);           /* base_x = 0 */
         wm_store_s32(WM93978_BASE_ADDR + 4,
-                     (s32)((u32)wm_load_s8(cell_addr) << 12)); /* base_y = h00 << 12 */
+                     wm_height_sll12(wm_load_s8(cell_addr))); /* base_y = h00 << 12 */
         wm_store_s32(WM93978_BASE_ADDR + 8, 0);           /* base_z = 0 */
     } else {
         /* flag0: base at h10 corner */
         wm_store_s32(WM93978_BASE_ADDR + 0,
                      (s32)UINT32_C(0x10000));               /* base_x = 0x10000 */
         wm_store_s32(WM93978_BASE_ADDR + 4,
-                     (s32)((u32)wm_load_s8(cell_addr + 4u) << 12)); /* base_y = h10 << 12 */
+                     wm_height_sll12(wm_load_s8(cell_addr + 4u))); /* base_y = h10 << 12 */
         wm_store_s32(WM93978_BASE_ADDR + 8, 0);           /* base_z = 0 */
     }
 
