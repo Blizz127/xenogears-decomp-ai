@@ -154,6 +154,7 @@
 #include "world_map_convergence.h"
 #include "world_map_selector.h"
 #include "world_map_framebuffer_init.h"
+#include "world_map_gamestate_alias.h"
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
 #include "world_map_scheduler.h"
@@ -470,8 +471,6 @@
 #define WM_MES_FN_86700          0x80086700u
 #define WM_MES_STORE_COUNT       10
 
-/* Channel ID tables live in host g_GameState (retail abs inside GS span). */
-#define GS_OFF_CH_ID0            0x1D34u /* retail 0x8006F368 */
 #define GS_OFF_SEC_BASE          0x030Cu /* retail 0x8006D940; stride 164 per id */
 
 #define WM_U8(a)  (*(u8*)PSX_ADDR(a))
@@ -2300,11 +2299,17 @@ static int wm_80071CDC_mode_init(void)
         return -1;
     }
 
+    /* Retail GameState offset 0x1D34 is the same backing storage as absolute
+     * F368.  Restore that exact three-byte alias before either package gates
+     * or later world callbacks can observe the channel state. */
+    wm_sync_gamestate_channel_aliases((const u8*)g_pGameState);
+
     pCd34 = (u32*)PSX_ADDR(WM_PTR_CD34);
     pBdf8 = (u32*)PSX_ADDR(WM_PTR_BDF8);
 
     for (ch = 0; ch < 3; ch++) {
-        channel_id[ch] = GS_U8(GS_OFF_CH_ID0 + ch);
+        channel_id[ch] =
+            WM_U8(WM_GAMESTATE_CHANNEL_GUEST_BASE + (u32)ch);
         secondary_id[ch] = 0xFF;
         aligned_size[ch] = 0;
         aligned_size_sec[ch] = 0;
