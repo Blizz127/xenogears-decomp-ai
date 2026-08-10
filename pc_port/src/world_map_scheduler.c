@@ -44,6 +44,7 @@
 #include "world_map_callback_8c530.h"
 #include "world_map_callback_8d3f0.h"
 #include "world_map_callback_8dd6c.h"
+#include "world_map_callback_8e190.h"
 #include "world_map_scheduler.h"
 
 /* Focused legacy scheduler tests intentionally link the scheduler without
@@ -57,6 +58,7 @@ extern s32 wm_8008BB40(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008C530(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008D3F0(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008DD6C(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008E190(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -195,6 +197,11 @@ static s16 wm_sched_builtin_8008DD6C(int slot_index)
     return (s16)wm_8008DD6C((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_8008E190(int slot_index)
+{
+    return (s16)wm_8008E190((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -240,6 +247,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x8008DD6Cu && wm_8008DD6C != 0) {
         *out_fn = wm_sched_builtin_8008DD6C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008E190u && wm_8008E190 != 0) {
+        *out_fn = wm_sched_builtin_8008E190;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
