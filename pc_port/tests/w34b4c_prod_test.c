@@ -56,12 +56,11 @@ static void reset_stubs(void) {
 /* Terrain matrix destination (D534). */
 #define WM_D534_ABS             0x8009D534u
 
-/* Cell lookup table (C580, 1024 bytes).
- * NOTE: this range (C580–C980) contains embedded globals:
- *   BBB8 at +8, C5BC at +56, C610 at +144, C618 at +152,
- *   C838 at +184, C83A at +186, C83C at +188. */
+/* Retail clear is 256 descending words C580,C57C,...,C184. Its byte extent
+ * is the half-open interval [C184,C584). */
 #define WM_C580_ABS             0x8009C580u
-#define WM_CELL_TABLE_SIZE      1024
+#define WM_CLEAR_LOW_ABS        0x8009C184u
+#define WM_CLEAR_BYTE_COUNT     1024
 
 /* Terrain period (C618). */
 #define WM_C618_ABS             0x8009C618u
@@ -72,7 +71,7 @@ static void reset_stubs(void) {
 /* Terrain sub-flag (C5BC). */
 #define WM_C5BC_ABS             0x8009C5BCu
 
-/* Masked position destinations (outside cell table). */
+/* Masked position destinations (outside the retail clear extent). */
 #define WM_BBB4_ABS             0x8009BBB4u
 #define WM_BBBC_ABS             0x8009BBBCu
 
@@ -81,21 +80,18 @@ static void reset_stubs(void) {
 #define WM_C83A_ABS             0x8009C83Au
 #define WM_C83C_ABS             0x8009C83Cu
 
-/* Retail input position pointer (caller passes 0x8009C5AC).
- * NOTE: C5AC falls INSIDE the cell table range (C580–C980).
- * The memset zeroes C5AC, so the function always reads zero from it
- * in the natural retail state.  For non-zero position tests, use
- * WM_TEST_INPUT which is outside the cell table. */
+/* Retail input position pointer (caller passes 0x8009C5AC). C5AC is above
+ * the highest cleared word C580 and is preserved by the retail loop. */
 #define WM_C5AC_ABS             0x8009C5ACu
 
-/* Test input address — outside cell table range for non-zero tests. */
+/* Test input address — outside the retail clear extent for non-zero tests. */
 #define WM_TEST_INPUT           0x8009C000u
 
 /* Position mask. */
 #define WM_POS_MASK             0x007FFFFFu
 
 /* Neighboring globals — must NOT be touched.
- * These are all OUTSIDE the cell table range. */
+ * These are all outside the retail clear extent. */
 #define WM_BCDC_ABS             0x8009BCDCu
 #define WM_D7CC_ABS             0x8009D7CCu
 #define WM_OT_PTR0              0x8009BC38u
@@ -138,8 +134,7 @@ static void write_identity_matrix(void) {
     memcpy(PSX_ADDR(WM_IDENTITY_MATRIX_SRC), identity, WM_MATRIX_SIZE);
 }
 
-/* Write a test position vector at a given guest address.
- * addr must be outside the cell table range (C580–C980). */
+/* Write a test position vector at a guest address outside [C184,C584). */
 static void write_test_position(u32 addr, u32 x, u32 y, u32 z) {
     WM_U32(addr + 0) = x;
     WM_U32(addr + 4) = y;
@@ -196,21 +191,12 @@ int main(void)
     check("D534[12] == 0",
           WM_U16(WM_D534_ABS + 24) == 0);
 
-    /* Cell table verification: the table is memset to zero, then several
-     * globals within the range are written.  Embedded globals and their
-     * non-zero bytes (little-endian):
-     *   BBB8 at +8:  zero (u32=0)
-     *   C5BC at +56: zero (u32=0)
-     *   C610 at +144: zero (u32=0)
-     *   C618 at +152: 1024=0x400 → byte at +153 = 0x04
-     *   C838 at +696: 2 → byte at +696 = 0x02
-     *   C83C at +700: 2 → byte at +700 = 0x02
-     * Verify zero at representative offsets well away from all globals. */
-    check("cell table[0] == 0", WM_U8(WM_C580_ABS + 0) == 0);
-    check("cell table[100] == 0", WM_U8(WM_C580_ABS + 100) == 0);
-    check("cell table[200] == 0", WM_U8(WM_C580_ABS + 200) == 0);
-    check("cell table[500] == 0", WM_U8(WM_C580_ABS + 500) == 0);
-    check("cell table[1023] == 0", WM_U8(WM_C580_ABS + 1023) == 0);
+    /* Representative words from the retail descending clear extent. */
+    check("clear C580 == 0", WM_U32(0x8009C580u) == 0);
+    check("clear C500 == 0", WM_U32(0x8009C500u) == 0);
+    check("clear C400 == 0", WM_U32(0x8009C400u) == 0);
+    check("clear C280 == 0", WM_U32(0x8009C280u) == 0);
+    check("clear C184 == 0", WM_U32(0x8009C184u) == 0);
 
     /* Helpers must have been called. */
     check("wm_800981C8 called once", s_stub_800981C8_calls == 1);
@@ -226,7 +212,7 @@ int main(void)
     write_identity_matrix();
 
     memset(PSX_ADDR(WM_D534_ABS), 0xCC, WM_MATRIX_SIZE);
-    memset(PSX_ADDR(WM_C580_ABS), 0xDD, WM_CELL_TABLE_SIZE);
+    memset(PSX_ADDR(WM_CLEAR_LOW_ABS), 0xDD, WM_CLEAR_BYTE_COUNT);
     WM_U32(WM_C618_ABS) = 0xDEADBEEF;
     WM_U32(WM_BBB8_ABS) = 0x11111111;
     WM_U32(WM_C5BC_ABS) = 0x22222222;
@@ -248,12 +234,13 @@ int main(void)
     check("dirty C83C overwritten to 2", WM_U16(WM_C83C_ABS) == 2);
     check("dirty D534[0] overwritten to 0x1000",
           WM_U16(WM_D534_ABS) == 0x1000);
-    check("dirty cell table overwritten to zero",
-          WM_U8(WM_C580_ABS + 1) == 0 && WM_U8(WM_C580_ABS + 200) == 0);
+    check("dirty retail clear extent overwritten to zero",
+          WM_U32(WM_C580_ABS) == 0 && WM_U32(WM_CLEAR_LOW_ABS) == 0 &&
+          WM_U32(0x8009C400u) == 0);
 
     /* ================================================================
      * 3. Natural Lahan-like inputs (positive position)
-     *    Uses WM_TEST_INPUT outside cell table range.
+     *    Uses WM_TEST_INPUT outside the retail clear extent.
      * ================================================================ */
     printf("--- Natural Lahan-like inputs ---\n");
     reset_state();
@@ -371,7 +358,7 @@ int main(void)
     check("C83C == 2 (cell index Z)", WM_U16(WM_C83C_ABS) == 2);
 
     /* ================================================================
-     * 10. Neighboring memory guards (all outside cell table range)
+     * 10. Neighboring memory guards (all outside retail clear extent)
      * ================================================================ */
     printf("--- Memory guards ---\n");
     reset_state();
@@ -457,23 +444,19 @@ int main(void)
     check("Table B preserved", WM_U32(WM_CONV_TABLE_B_BASE) == 0x2222);
 
     /* ================================================================
-     * 16. Store-width guards — verify exact halfword widths
-     * Use guard addresses OUTSIDE cell table range.
+     * 16. Clear-boundary and store-width guards
      * ================================================================ */
     printf("--- Store-width guards ---\n");
     reset_state();
     write_identity_matrix();
 
-    /* Guard addresses outside cell table (C580–C980):
-     * C570 = cell_table_start - 0x10 (before table)
-     * C990 = cell_table_end + 0x10 (after table). */
-    WM_U8(0x8009C570u) = 0xAA;  /* before table — must not change */
-    WM_U8(0x8009C990u) = 0xCC;  /* after table — must not change */
+    WM_U32(0x8009C180u) = 0xA1B2C3D4u;
+    WM_U32(0x8009C584u) = 0x55667788u;
 
     wm_80097BC0(WM_C5AC_ABS);
 
-    check("C570 (before table) unchanged", WM_U8(0x8009C570u) == 0xAA);
-    check("C990 (after table) unchanged", WM_U8(0x8009C990u) == 0xCC);
+    check("C180 below clear unchanged", WM_U32(0x8009C180u) == 0xA1B2C3D4u);
+    check("C584 above clear unchanged", WM_U32(0x8009C584u) == 0x55667788u);
     check("C838 is u16==2", WM_U16(WM_C838_ABS) == 2);
     check("C83A is u16==0", WM_U16(WM_C83A_ABS) == 0);
     check("C83C is u16==2", WM_U16(WM_C83C_ABS) == 2);

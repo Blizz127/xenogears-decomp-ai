@@ -3,7 +3,8 @@
  *
  * Exact transcription of retail 0x80097BC0–0x80097CB4.
  * Copies identity-like matrix from 0x8009A180 to terrain matrix at D534,
- * clears 1024-byte cell table at C580, initializes terrain period (C618=1024),
+ * clears 256 words descending from C580 through C184, initializes terrain
+ * period (C618=1024),
  * masks initial world position, and calls terrain helpers 0x800981C8 and
  * 0x80097DC0.
  *
@@ -31,11 +32,12 @@
  * lui 0x800A + addiu -10956 = 0x8009D534. */
 #define WM_D534_ABS             0x8009D534u
 
-/* Cell lookup table (1024 bytes at 0x8009C580).
+/* Retail descending clear starts at 0x8009C580.
  * lui 0x800A + addiu -14976 = 0x8009C580.
- * Cleared to zero by 256-word loop in retail. */
+ * The 256-word loop covers C580,C57C,...,C184. */
 #define WM_C580_ABS             0x8009C580u
-#define WM_CELL_TABLE_SIZE      1024
+#define WM_CLEAR_WORD_COUNT     256
+#define WM_CLEAR_STRIDE         4u
 
 /* Terrain period (word at 0x8009C618).
  * lui 0x800A + addiu -14824 = 0x8009C618. */
@@ -80,6 +82,12 @@
 extern void wm_800981C8(u32 pos_ptr);
 extern void wm_80097DC0(void);
 
+#if defined(WM_97BC0_CLEAR_TRACE)
+/* Focused production-linked tests provide this observer. It is absent from
+ * ordinary production builds and records the completed retail store order. */
+extern void wm_97bc0_trace_store(u32 guest_addr);
+#endif
+
 /* Instrumentation. */
 static int s_wm_tpi_calls;
 
@@ -95,6 +103,7 @@ void wm_80097BC0(u32 pos_ptr)
 {
     u32 *src, *dst;
     u32 pos_x, pos_z;
+    u32 clear_addr;
     int i;
 
     s_wm_tpi_calls++;
@@ -116,10 +125,17 @@ void wm_80097BC0(u32 pos_ptr)
         dst[i + 1] = w1;
     }
 
-    /* 0x80097C1C–0x80097C34: clear 1024-byte cell table at C580.
-     * Retail: v1=255, v0=C580+0x3FC, loop stores zero and decrements.
-     * 256 iterations × 4 bytes = 1024 bytes cleared. */
-    memset(PSX_ADDR(WM_C580_ABS), 0, WM_CELL_TABLE_SIZE);
+    /* 0x80097C1C–0x80097C34: v1=255, v0=C580, SW zero,0(v0),
+     * decrement v1, branch while v1>=0, and decrement v0 by four in the
+     * branch delay slot. Exactly 256 stores: C580,C57C,...,C184. */
+    clear_addr = WM_C580_ABS;
+    for (i = 0; i < WM_CLEAR_WORD_COUNT; i++) {
+        *(volatile u32 *)PSX_ADDR(clear_addr) = 0;
+#if defined(WM_97BC0_CLEAR_TRACE)
+        wm_97bc0_trace_store(clear_addr);
+#endif
+        clear_addr -= WM_CLEAR_STRIDE;
+    }
 
     /* 0x80097C38–0x80097C3C: load mask 0x007FFFFF into a0. */
 
