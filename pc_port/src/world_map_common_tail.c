@@ -5,7 +5,7 @@
  * Selector-dependent logic: C610=0 calls wm_80089160(14,0,0).
  * Reconvergence at 0x8007293C (first excluded = next-phase helper).
  *
- * 0x80089160: bounded table/state initializer 0x80089160–0x800893D4.
+ * 0x80089160: bounded table/state initializer [0x80089160,0x800893E0).
  * Leaf function, no direct calls. Record stride 672 bytes.
  * Sets bit 0x80 at record+0x4F, initializes 8 sub-records (stride 0x54).
  */
@@ -87,6 +87,90 @@ static inline void psx_swr(u32 addr, u32 val)
         base[j] = (u8)(val >> ((j - off) * 8));
 }
 
+/* Exact-access observer used only by the W34B9-B production-linked test.
+ * Ordinary builds retain the original direct guest accesses. */
+#if defined(WM_89160_TEST_TRACE)
+static inline u8 wm_89160_lbu(u32 pc, u32 addr)
+{
+    u8 value = WM_U8(addr);
+    wm_89160_test_trace(pc, WM_89160_TRACE_LBU, addr, 1u, (u32)value);
+    return value;
+}
+
+static inline u16 wm_89160_lhu(u32 pc, u32 addr)
+{
+    u16 value = WM_U16(addr);
+    wm_89160_test_trace(pc, WM_89160_TRACE_LHU, addr, 2u, (u32)value);
+    return value;
+}
+
+static inline u32 wm_89160_lw(u32 pc, u32 addr)
+{
+    u32 value = WM_U32(addr);
+    wm_89160_test_trace(pc, WM_89160_TRACE_LW, addr, 4u, value);
+    return value;
+}
+
+static inline void wm_89160_sb(u32 pc, u32 addr, u8 value)
+{
+    WM_U8(addr) = value;
+    wm_89160_test_trace(pc, WM_89160_TRACE_SB, addr, 1u, (u32)value);
+}
+
+static inline void wm_89160_sh(u32 pc, u32 addr, u16 value)
+{
+    WM_U16(addr) = value;
+    wm_89160_test_trace(pc, WM_89160_TRACE_SH, addr, 2u, (u32)value);
+}
+
+static inline void wm_89160_sw(u32 pc, u32 addr, u32 value)
+{
+    WM_U32(addr) = value;
+    wm_89160_test_trace(pc, WM_89160_TRACE_SW, addr, 4u, value);
+}
+
+static inline u32 wm_89160_lwl(u32 pc, u32 addr)
+{
+    u32 value = psx_lwl(addr);
+    wm_89160_test_trace(pc, WM_89160_TRACE_LWL, addr,
+                        (addr & 3u) + 1u, value);
+    return value;
+}
+
+static inline u32 wm_89160_lwr(u32 pc, u32 addr)
+{
+    u32 value = psx_lwr(addr);
+    wm_89160_test_trace(pc, WM_89160_TRACE_LWR, addr,
+                        4u - (addr & 3u), value);
+    return value;
+}
+
+static inline void wm_89160_swl(u32 pc, u32 addr, u32 value)
+{
+    psx_swl(addr, value);
+    wm_89160_test_trace(pc, WM_89160_TRACE_SWL, addr,
+                        (addr & 3u) + 1u, value);
+}
+
+static inline void wm_89160_swr(u32 pc, u32 addr, u32 value)
+{
+    psx_swr(addr, value);
+    wm_89160_test_trace(pc, WM_89160_TRACE_SWR, addr,
+                        4u - (addr & 3u), value);
+}
+#else
+#define wm_89160_lbu(pc, addr)       WM_U8(addr)
+#define wm_89160_lhu(pc, addr)       WM_U16(addr)
+#define wm_89160_lw(pc, addr)        WM_U32(addr)
+#define wm_89160_sb(pc, addr, value) (WM_U8(addr) = (u8)(value))
+#define wm_89160_sh(pc, addr, value) (WM_U16(addr) = (u16)(value))
+#define wm_89160_sw(pc, addr, value) (WM_U32(addr) = (u32)(value))
+#define wm_89160_lwl(pc, addr)       psx_lwl(addr)
+#define wm_89160_lwr(pc, addr)       psx_lwr(addr)
+#define wm_89160_swl(pc, addr, value) psx_swl((addr), (value))
+#define wm_89160_swr(pc, addr, value) psx_swr((addr), (value))
+#endif
+
 /* C610 selector address (same as in convergence module). */
 #define WM_SLOT_C610_ABS  0x8009C610u
 
@@ -156,7 +240,7 @@ void wm_80075228_should_not_run(void)  { s_wm_ctp0_forbidden_75228++; }
 
 /* ---- 0x80089160 production implementation ---- */
 
-/* Exact native transcription of retail 0x80089160–0x800893D8.
+/* Exact native transcription of retail [0x80089160,0x800893E0).
  *
  * Leaf function: no direct calls, no stack frame.
  * Record stride: 672 bytes (0x2A0).
@@ -181,14 +265,12 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
     u32 table_base;
     u32 record_addr;
     u32 flag_byte;
-    u32 a0_ptr;     /* record-derived pointer for each path */
     u32 a3;         /* record + 0x20 pointer (Path D) */
     u32 src_word0, src_word1;
     u16 hw0, hw1, hw2;
     int t0, i;
     int t2;         /* dirty-flag: 0 = clean, 1 = pre-existing 0x80 found */
     int t6, v1_cond;
-    u32 a2_cur;
     u32 t3;         /* saved a1 (source pointer) */
 
     s_wm_89160_calls++;
@@ -200,7 +282,7 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
         v0 = (v0 << 2) + a0;   /* a0*5 */
         v0 = (v0 << 2) + a0;   /* a0*21 */
         v0 = v0 << 5;           /* a0*672 */
-        table_base = WM_U32(WM_89160_TABLE_BASE_PTR);
+        table_base = wm_89160_lw(0x80089180u, WM_89160_TABLE_BASE_PTR);
         record_addr = table_base + v0;
     }
 
@@ -215,7 +297,8 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
      * If bit clear: decrement t0, loop until t0==-1.
      * Key: retail NEVER returns here — it always continues to dispatch. */
     t2 = 0;
-    flag_byte = WM_U8(record_addr + WM_89160_FLAG_BYTE_OFFSET);
+    flag_byte = wm_89160_lbu(0x8008918Cu,
+                             record_addr + WM_89160_FLAG_BYTE_OFFSET);
     for (t0 = 7; t0 >= 0; t0--) {
         if (flag_byte & WM_89160_FLAG_BIT) {
             /* 0x80089198: bnez → 0x80089238: t2++, j 0x800891A8 */
@@ -234,7 +317,7 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
         v0 = (v0 << 2) + a0;
         v0 = (v0 << 2) + a0;
         v0 = v0 << 5;
-        table_base = WM_U32(WM_89160_TABLE_BASE_PTR);
+        table_base = wm_89160_lw(0x800891BCu, WM_89160_TABLE_BASE_PTR);
         record_addr = table_base + v0;
     }
 
@@ -257,8 +340,6 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
      * Flag block + 4 unconditional aligned stores per iteration. */
     {
         u32 a0_loop = record_addr + 0x18;  /* addiu $a0, $t1, 0x18 */
-        int sentinel = -1;                   /* addiu $a1, $zero, -1 */
-
         fprintf(stderr,
                 "[wm-80089160] Path A t2=%d\n", t2);
 
@@ -269,20 +350,25 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
                 /* Flag block (0x800891EC–0x8008920C):
                  * Flag byte at a0+0x37, hw from a0-8, word from (t1),
                  * zero hw at a0-0x0E, hw at a0-0x06, word at a0-0x14 */
-                u8 byte_4f = WM_U8(a0_loop + 0x37);
+                u8 byte_4f = wm_89160_lbu(0x800891ECu,
+                                           a0_loop + 0x37u);
                 byte_4f |= WM_89160_FLAG_BIT;
-                WM_U8(a0_loop + 0x37) = byte_4f;
+                wm_89160_sb(0x800891F8u, a0_loop + 0x37u, byte_4f);
 
-                WM_U16(a0_loop - 0x06) = WM_U16(a0_loop - 0x08);
-                WM_U32(a0_loop - 0x14) = WM_U32(record_addr);
-                WM_U16(a0_loop - 0x0E) = 0;
+                /* 0x800891FC/0x80089200: retail completes both loads
+                 * before the 0x80089204/08/0C store sequence. */
+                hw0 = wm_89160_lhu(0x800891FCu, a0_loop - 0x08u);
+                src_word0 = wm_89160_lw(0x80089200u, record_addr);
+                wm_89160_sh(0x80089204u, a0_loop - 0x0Eu, 0u);
+                wm_89160_sh(0x80089208u, a0_loop - 0x06u, hw0);
+                wm_89160_sw(0x8008920Cu, a0_loop - 0x14u, src_word0);
             }
 
             /* Unconditional stores (0x80089210–0x8008921C) */
-            WM_U32(a0_loop + 4) = 0;    /* sw zero, 4($a0) */
-            WM_U32(a0_loop - 4) = 0;    /* sw zero, -4($a0) */
-            WM_U16(a0_loop + 8) = 0;    /* sh zero, 8($a0) */
-            WM_U16(a0_loop + 0) = 0;    /* sh zero, ($a0) */
+            wm_89160_sw(0x80089210u, a0_loop + 4u, 0u);
+            wm_89160_sw(0x80089214u, a0_loop - 4u, 0u);
+            wm_89160_sh(0x80089218u, a0_loop + 8u, 0u);
+            wm_89160_sh(0x8008921Cu, a0_loop, 0u);
 
             a0_loop += WM_89160_SUBRECORD_STRIDE;
             record_addr += WM_89160_SUBRECORD_STRIDE;
@@ -307,26 +393,33 @@ dispatch_check_2:
             s_wm_89160_iterations++;
 
             if (t2 == 0) {
-                u8 byte_4f = WM_U8(a2_loop + 0x2F);
+                u8 byte_4f = wm_89160_lbu(0x8008925Cu,
+                                           a2_loop + 0x2Fu);
                 byte_4f |= WM_89160_FLAG_BIT;
-                WM_U8(a2_loop + 0x2F) = byte_4f;
+                wm_89160_sb(0x80089268u, a2_loop + 0x2Fu, byte_4f);
 
-                WM_U16(a2_loop - 0x0E) = WM_U16(a2_loop - 0x10);
-                WM_U32(a2_loop - 0x1C) = WM_U32(record_addr);
-                WM_U16(a2_loop - 0x16) = 0;
+                /* 0x8008926C/70 loads precede the retail
+                 * 0x80089274/78/7C store sequence. */
+                hw0 = wm_89160_lhu(0x8008926Cu, a2_loop - 0x10u);
+                src_word0 = wm_89160_lw(0x80089270u, record_addr);
+                wm_89160_sh(0x80089274u, a2_loop - 0x16u, 0u);
+                wm_89160_sh(0x80089278u, a2_loop - 0x0Eu, hw0);
+                wm_89160_sw(0x8008927Cu, a2_loop - 0x1Cu, src_word0);
             }
 
             /* lwl/lwr from t3, swl/swr to a2_loop.
              * MIPS retail convention: lwl at addr+3, lwr at addr+0. */
-            src_word0 = psx_lwl_lwr(t3 + 3, t3);
-            src_word1 = psx_lwl_lwr(t3 + 7, t3 + 4);
-            psx_swl(a2_loop - 9, src_word0);
-            psx_swr(a2_loop - 12, src_word0);
-            psx_swl(a2_loop - 5, src_word1);
-            psx_swr(a2_loop - 8, src_word1);
+            src_word0 = wm_89160_lwl(0x80089280u, t3 + 3u);
+            src_word0 |= wm_89160_lwr(0x80089284u, t3);
+            src_word1 = wm_89160_lwl(0x80089288u, t3 + 7u);
+            src_word1 |= wm_89160_lwr(0x8008928Cu, t3 + 4u);
+            wm_89160_swl(0x80089290u, a2_loop - 9u, src_word0);
+            wm_89160_swr(0x80089294u, a2_loop - 12u, src_word0);
+            wm_89160_swl(0x80089298u, a2_loop - 5u, src_word1);
+            wm_89160_swr(0x8008929Cu, a2_loop - 8u, src_word1);
 
-            WM_U32(a2_loop - 4) = 0;
-            WM_U16(a2_loop + 0) = 0;
+            wm_89160_sw(0x800892A0u, a2_loop - 4u, 0u);
+            wm_89160_sh(0x800892A4u, a2_loop, 0u);
 
             a2_loop += WM_89160_SUBRECORD_STRIDE;
             record_addr += WM_89160_SUBRECORD_STRIDE;
@@ -338,14 +431,11 @@ dispatch_check_2:
         return;
     }
 
-dispatch_check_3:
     /* 0x800892C0: sltu $v0, $zero, $a2; and $v0, $a0, $v0; beqz → 0x8008934C
      * $a0 at this point = t6 (the sltiu result from 0x800891C4). */
     if ((t6 & ((0 < a2) ? 1 : 0)) != 0) {
         /* ---- Path C (0x800892D0–0x80089344) ---- */
         u32 a0_loop = record_addr + 0x20;
-        int sentinel = -1;
-
         fprintf(stderr,
                 "[wm-80089160] Path C t2=%d\n", t2);
 
@@ -353,25 +443,33 @@ dispatch_check_3:
             s_wm_89160_iterations++;
 
             if (t2 == 0) {
-                u8 byte_4f = WM_U8(a0_loop + 0x2F);
+                u8 byte_4f = wm_89160_lbu(0x800892E0u,
+                                           a0_loop + 0x2Fu);
                 byte_4f |= WM_89160_FLAG_BIT;
-                WM_U8(a0_loop + 0x2F) = byte_4f;
+                wm_89160_sb(0x800892ECu, a0_loop + 0x2Fu, byte_4f);
 
-                WM_U16(a0_loop - 0x0E) = WM_U16(a0_loop - 0x10);
-                WM_U32(a0_loop - 0x1C) = WM_U32(record_addr);
-                WM_U16(a0_loop - 0x16) = 0;
+                /* 0x800892F0/F4 loads precede the retail
+                 * 0x800892F8/FC/0x80089300 store sequence. */
+                hw0 = wm_89160_lhu(0x800892F0u, a0_loop - 0x10u);
+                src_word0 = wm_89160_lw(0x800892F4u, record_addr);
+                wm_89160_sh(0x800892F8u, a0_loop - 0x16u, 0u);
+                wm_89160_sh(0x800892FCu, a0_loop - 0x0Eu, hw0);
+                wm_89160_sw(0x80089300u, a0_loop - 0x1Cu, src_word0);
             }
 
             /* Unconditional stores */
-            WM_U32(a0_loop - 0x0C) = 0;
-            WM_U16(a0_loop - 0x08) = 0;
+            wm_89160_sw(0x80089304u, a0_loop - 0x0Cu, 0u);
+            wm_89160_sh(0x80089308u, a0_loop - 0x08u, 0u);
 
-            hw0 = WM_U16(a2);
-            WM_S16(a0_loop - 4) = (s16)(-((s16)hw0));
-            hw1 = WM_U16(a2 + 2);
-            WM_S16(a0_loop - 2) = (s16)(-((s16)hw1));
-            hw2 = WM_U16(a2 + 4);
-            WM_S16(a0_loop + 0) = (s16)(-((s16)hw2));
+            hw0 = wm_89160_lhu(0x8008930Cu, a2);
+            wm_89160_sh(0x80089318u, a0_loop - 4u,
+                        (u16)(-((s16)hw0)));
+            hw1 = wm_89160_lhu(0x8008931Cu, a2 + 2u);
+            wm_89160_sh(0x80089328u, a0_loop - 2u,
+                        (u16)(-((s16)hw1)));
+            hw2 = wm_89160_lhu(0x8008932Cu, a2 + 4u);
+            wm_89160_sh(0x80089338u, a0_loop,
+                        (u16)(-((s16)hw2)));
 
             record_addr += WM_89160_SUBRECORD_STRIDE;
             a0_loop += WM_89160_SUBRECORD_STRIDE;
@@ -387,10 +485,7 @@ dispatch_check_3:
      * Uses $a3 = record+0x20 as loop pointer.
      * Flag block + lwl/lwr/swl/swr + lhu/negu/sh per iteration. */
     {
-        u32 t4 = (u32)-1;  /* sentinel */
         a3 = record_addr + 0x20;
-        a2_cur = a2;
-
         fprintf(stderr,
                 "[wm-80089160] Path D t2=%d\n", t2);
 
@@ -399,38 +494,50 @@ dispatch_check_3:
 
             if (t2 == 0) {
                 /* Flag block (0x8008935C–0x8008937C) */
-                u8 byte_4f = WM_U8(a3 + 0x2F);
+                u8 byte_4f = wm_89160_lbu(0x8008935Cu,
+                                           a3 + 0x2Fu);
                 byte_4f |= WM_89160_FLAG_BIT;
-                WM_U8(a3 + 0x2F) = byte_4f;
+                wm_89160_sb(0x80089368u, a3 + 0x2Fu, byte_4f);
 
-                WM_U16(a3 - 0x0E) = WM_U16(record_addr + 0x10);
-                WM_U32(a3 - 0x1C) = WM_U32(record_addr);
-                WM_U16(a3 - 0x16) = 0;
+                /* 0x8008936C/70 loads precede the retail
+                 * 0x80089374/78/7C store sequence. */
+                hw0 = wm_89160_lhu(0x8008936Cu,
+                                    record_addr + 0x10u);
+                src_word0 = wm_89160_lw(0x80089370u, record_addr);
+                wm_89160_sh(0x80089374u, a3 - 0x16u, 0u);
+                wm_89160_sh(0x80089378u, a3 - 0x0Eu, hw0);
+                wm_89160_sw(0x8008937Cu, a3 - 0x1Cu, src_word0);
             }
 
             /* Unconditional: lwl/lwr from t3, swl/swr to a3.
              * MIPS retail convention: lwl at addr+3, lwr at addr+0. */
-            src_word0 = psx_lwl_lwr(t3 + 3, t3);
-            src_word1 = psx_lwl_lwr(t3 + 7, t3 + 4);
-            psx_swl(a3 - 9, src_word0);
-            psx_swr(a3 - 12, src_word0);
-            psx_swl(a3 - 5, src_word1);
-            psx_swr(a3 - 8, src_word1);
+            src_word0 = wm_89160_lwl(0x80089380u, t3 + 3u);
+            src_word0 |= wm_89160_lwr(0x80089384u, t3);
+            src_word1 = wm_89160_lwl(0x80089388u, t3 + 7u);
+            src_word1 |= wm_89160_lwr(0x8008938Cu, t3 + 4u);
+            wm_89160_swl(0x80089390u, a3 - 9u, src_word0);
+            wm_89160_swr(0x80089394u, a3 - 12u, src_word0);
+            wm_89160_swl(0x80089398u, a3 - 5u, src_word1);
+            wm_89160_swr(0x8008939Cu, a3 - 8u, src_word1);
 
-            /* sw zero at a3-4 */
-            WM_U32(a3 - 4) = 0;
+            /* 0x800893A0 is LHU, not SW: retail has no zero-word store
+             * at a3-4 between the unaligned copy and these halfwords. */
+            /* 0x800893A0/B0/C0: a2 is the fixed incoming source on every
+             * iteration; retail never advances it. */
+            hw0 = wm_89160_lhu(0x800893A0u, a2);
+            wm_89160_sh(0x800893ACu, a3 - 4u,
+                        (u16)(-((s16)hw0)));
+            hw1 = wm_89160_lhu(0x800893B0u, a2 + 2u);
+            wm_89160_sh(0x800893BCu, a3 - 2u,
+                        (u16)(-((s16)hw1)));
+            hw2 = wm_89160_lhu(0x800893C0u, a2 + 4u);
+            wm_89160_sh(0x800893CCu, a3,
+                        (u16)(-((s16)hw2)));
 
-            /* lhu from a2, negu, sh */
-            hw0 = WM_U16(a2_cur);
-            WM_S16(a3 - 4) = (s16)(-((s16)hw0));
-            hw1 = WM_U16(a2_cur + 2);
-            WM_S16(a3 - 2) = (s16)(-((s16)hw1));
-            hw2 = WM_U16(a2_cur + 4);
-            WM_S16(a3 + 0) = (s16)(-((s16)hw2));
-
+            /* 0x800893D4: only a3 advances by the 0x54 subrecord stride,
+             * in the 0x800893D0 loop-branch delay slot. */
             a3 += WM_89160_SUBRECORD_STRIDE;
             record_addr += WM_89160_SUBRECORD_STRIDE;
-            a2_cur += WM_89160_SUBRECORD_STRIDE;
         }
     }
 

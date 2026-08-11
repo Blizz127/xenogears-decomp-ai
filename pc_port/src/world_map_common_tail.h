@@ -5,7 +5,7 @@
  * Selector-dependent logic: C610=0 calls wm_80089160(14,0,0).
  * Reconvergence at 0x8007293C (first excluded = next-phase helper).
  *
- * 0x80089160: bounded table/state initializer 0x80089160–0x800893D4.
+ * 0x80089160: bounded table/state initializer [0x80089160,0x800893E0).
  * Leaf function, no direct calls. Record stride 672 bytes.
  */
 #ifndef WORLD_MAP_COMMON_TAIL_H
@@ -27,7 +27,9 @@
 #define WM_8008901C_START            0x8008901Cu
 #define WM_8008901C_END_EXCLUSIVE    0x80089128u
 #define WM_80089160_START            0x80089160u
-#define WM_80089160_END_EXCLUSIVE    0x800893D8u
+/* 0x280 bytes / 160 instructions.  Retail slice SHA-256:
+ * 497f19a8b36ee1df78b5bfb66301a0a5efd97a1ed54c906285cd2b2053521f77 */
+#define WM_80089160_END_EXCLUSIVE    0x800893E0u
 #define WM_800978FC_START            0x800978FCu
 #define WM_800978FC_END_EXCLUSIVE    0x800979C8u
 
@@ -50,6 +52,24 @@
 #define WM_89160_SUBRECORD_COUNT     8
 #define WM_89160_FLAG_BYTE_OFFSET    0x4Fu
 #define WM_89160_FLAG_BIT            0x80u
+
+/* Test-only exact retail access trace kinds.  The production build does not
+ * define WM_89160_TEST_TRACE, so the observer and every call compile away. */
+#define WM_89160_TRACE_LBU           1u
+#define WM_89160_TRACE_LHU           2u
+#define WM_89160_TRACE_LW            3u
+#define WM_89160_TRACE_SB            4u
+#define WM_89160_TRACE_SH            5u
+#define WM_89160_TRACE_SW            6u
+#define WM_89160_TRACE_LWL           7u
+#define WM_89160_TRACE_LWR           8u
+#define WM_89160_TRACE_SWL           9u
+#define WM_89160_TRACE_SWR           10u
+
+#if defined(WM_89160_TEST_TRACE)
+void wm_89160_test_trace(u32 pc, u32 kind, u32 address,
+                         u32 width, u32 value);
+#endif
 
 /* Production functions. */
 
