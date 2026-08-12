@@ -28,8 +28,8 @@ build_and_run w34b_r4world_73b04_O2 -O2
 build_and_run w34b_r4world_73b04_ubsan -O2 -g -fsanitize=undefined \
     -fno-sanitize-recover=all
 
-echo "== copied-source mutants M1-M17 (each must fail named oracle assertion) =="
-for mutant in $(seq 1 17); do
+echo "== copied-source mutants M1-M23 (each must fail named oracle assertion) =="
+for mutant in $(seq 1 23); do
     trace=()
     if [ "$mutant" -eq 17 ]; then
         trace=(-DWM_73B04_TRACE)

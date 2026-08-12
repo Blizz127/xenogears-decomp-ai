@@ -31,7 +31,7 @@ The four pushes are `twinB → prim0 → prim1 → twinA`, yielding head-first d
 ## Gates
 
 - Focused oracle: O0, O2, and nonrecovering UBSan O2 all pass 6/6 asymmetric cases with identical normalized logical output and zero UBSan diagnostics.
-- Mutants: M1–M17 all compile and fail nonzero with named assertions; see `MUTANTS.csv`. M17 is caught by the explicit link-publication trace despite equal final memory post-image.
+- Mutants: M1–M23 all compile and fail nonzero with named assertions; see `MUTANTS.csv`. M17 is caught by the explicit link-publication trace despite equal final memory post-image. M18–M23 independently cover wrong camera source, vertex-0/1 swap, projected-destination corruption, bucket clamping, logical-vs-arithmetic shift, and primitive pointer/stride advance.
 - Strict focused warnings: `-Wall -Wextra -Wconversion -Wsign-conversion -Werror`, clean for the helper and harness.
 - Canonical build: `LINK OK` twice; exactly one real `T wm_80073B04`; no generated stub and no scheduler resolver ownership.
 - Regression: exact 15-row matrix, all PASS, zero waivers; see `REGRESSION_MATRIX.md`.

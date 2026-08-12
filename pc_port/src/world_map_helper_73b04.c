@@ -107,6 +107,16 @@ static s32 wm_73b04_srav(s32 value, u32 shift)
     return wm_73b04_bits_as_s32(result);
 }
 
+#if defined(WM_73B04_MUTANT_M22)
+static s32 wm_73b04_srlv(s32 value, u32 shift)
+{
+    u32 amount = shift & 31u;
+    u32 bits = wm_73b04_s32_as_bits(value);
+
+    return wm_73b04_bits_as_s32(bits >> amount);
+}
+#endif
+
 static u32 wm_73b04_link(u32 packet_address, u32 old_ot)
 {
     u32 packet_tag = wm_73b04_load_u32(packet_address);
@@ -181,10 +191,14 @@ static void wm_73b04_insert_four(u32 ot_address, u32 packet0, u32 packet1)
     u32 i;
 
     for (i = 0u; i < 4u; i++) {
+        u32 packet_address = order[i];
+#if defined(WM_73B04_MUTANT_M23)
+        packet_address += 4u;
+#endif
 #if defined(WM_73B04_MUTANT_M11)
-        old_ot = wm_73b04_push(ot_address + i * 4u, order[i], old_ot);
+        old_ot = wm_73b04_push(ot_address + i * 4u, packet_address, old_ot);
 #else
-        old_ot = wm_73b04_push(ot_address, order[i], old_ot);
+        old_ot = wm_73b04_push(ot_address, packet_address, old_ot);
 #endif
     }
 }
@@ -234,6 +248,9 @@ void wm_80073B04(void)
 #endif
 #if defined(WM_73B04_MUTANT_M1)
     (void)CompMatrix(rotation, camera, composite);
+#elif defined(WM_73B04_MUTANT_M18)
+    (void)camera;
+    (void)CompMatrix(rotation, rotation, composite);
 #else
     (void)CompMatrix(camera, rotation, composite);
 #endif
@@ -255,13 +272,29 @@ void wm_80073B04(void)
         v2 = v3;
         v3 = swapped;
 #endif
+#if defined(WM_73B04_MUTANT_M19)
+        {
+            SVECTOR* swapped = v0;
+            v0 = v1;
+            v1 = swapped;
+        }
+#endif
+
+        long* output0 = (long*)PSX_ADDR(packet + 0x08u);
+        long* output1 = (long*)PSX_ADDR(packet + 0x10u);
+        long* output2 = (long*)PSX_ADDR(packet + 0x18u);
+        long* output3 = (long*)PSX_ADDR(packet + 0x20u);
+#if defined(WM_73B04_MUTANT_M20)
+        {
+            long* swapped = output0;
+            output0 = output1;
+            output1 = swapped;
+        }
+#endif
 
         otz = (s32)RotTransPers4(
             v0, v1, v2, v3,
-            (long*)PSX_ADDR(packet + 0x08u),
-            (long*)PSX_ADDR(packet + 0x10u),
-            (long*)PSX_ADDR(packet + 0x18u),
-            (long*)PSX_ADDR(packet + 0x20u),
+            output0, output1, output2, output3,
             (long*)PSX_ADDR(WM_73B04_SCRATCH_P),
             (long*)PSX_ADDR(WM_73B04_SCRATCH_FLAG));
 #if defined(WM_73B04_MUTANT_M4)
@@ -295,6 +328,15 @@ void wm_80073B04(void)
         bucket = wm_73b04_srav(otz, 2u);
 #else
         bucket = wm_73b04_srav(otz, (u32)shift);
+#endif
+#if defined(WM_73B04_MUTANT_M21)
+        if (bucket < 0)
+            bucket = 0;
+        else if (bucket > 0xFF)
+            bucket = 0xFF;
+#endif
+#if defined(WM_73B04_MUTANT_M22)
+        bucket = wm_73b04_srlv(-1, (u32)shift);
 #endif
         u32 ot_address = ot_base + ((u32)bucket << 2);
 
