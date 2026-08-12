@@ -1,0 +1,58 @@
+ENTRY      0x80073B04
+END        0x80073E30 (exclusive)
+prev jr $ra 0x80073AFC  (preceding function ends at 0x80073B04)
+bytes      812
+insns      203
+slice sha  87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197
+
+--- CALLS (5) ---
+  0x80073C30 JAL 0x8004A92C RotMatrixYXZ     outside image (SLUS)
+  0x80073C64 JAL 0x8004931C CompMatrix       outside image (SLUS)
+  0x80073C70 JAL 0x80049EFC SetRotMatrix     outside image (SLUS)
+  0x80073C7C JAL 0x80049F8C SetTransMatrix   outside image (SLUS)
+  0x80073CEC JAL 0x8004A73C RotTransPers4    outside image (SLUS)
+
+--- BRANCHES (2) ---
+  0x80073CFC bnez   $v0, 0x80073c84              -> 0x80073C84  backward (LOOP)  internal
+  0x80073D0C bltz   $v0, 0x80073e0c              -> 0x80073E0C  forward  internal
+
+--- COP2/GTE direct insns: 0 ---
+
+--- STORES (34) ---
+  0x80073B14 sw   w=4  $s0, 0x28($sp)
+  0x80073B20 sw   w=4  $s3, 0x34($sp)
+  0x80073B30 sw   w=4  $s1, 0x2c($sp)
+  0x80073B3C sw   w=4  $ra, 0x3c($sp)
+  0x80073B40 sw   w=4  $s4, 0x38($sp)
+  0x80073B44 sw   w=4  $s2, 0x30($sp)
+  0x80073B7C sh   w=2  $a2, ($v1)
+  0x80073B80 sh   w=2  $a2, ($v0)
+  0x80073BA4 sh   w=2  $a2, ($v1)
+  0x80073BB0 sh   w=2  $a2, ($v0)
+  0x80073BD4 sh   w=2  $a3, ($v0)
+  0x80073BE0 sh   w=2  $a3, ($v1)
+  0x80073C0C sh   w=2  $t1, ($v0)
+  0x80073C10 sh   w=2  $t1, ($v1)
+  0x80073C18 sh   w=2  $zero, 4($at)
+  0x80073C24 sh   w=2  $zero, ($s2)
+  0x80073C2C sh   w=2  $v0, 2($at)
+  0x80073C50 sw   w=4  $zero, 0x54($at)
+  0x80073C58 sw   w=4  $zero, 0x50($at)
+  0x80073C60 sw   w=4  $zero, 0x4c($at)
+  0x80073CA0 sw   w=4  $v0, 0x20($sp)
+  0x80073CB8 sw   w=4  $v0, 0x24($sp)
+  0x80073CD4 sw   w=4  $v1, 0x10($sp)
+  0x80073CDC sw   w=4  $v1, 0x14($sp)
+  0x80073CE8 sw   w=4  $v1, 0x18($sp)
+  0x80073CF0 sw   w=4  $v0, 0x1c($sp)
+  0x80073D70 sw   w=4  $v1, ($t1)
+  0x80073D84 sw   w=4  $v1, ($a2)
+  0x80073D98 sw   w=4  $v0, ($a1)
+  0x80073DB4 sw   w=4  $v1, ($a2)
+  0x80073DC8 sw   w=4  $v0, ($a0)
+  0x80073DDC sw   w=4  $v0, ($a2)
+  0x80073DF0 sw   w=4  $v1, -0xc($t1)
+  0x80073E08 sw   w=4  $v0, ($a2)
+
+--- RETURN PATHS ---
+  0x80073E28 jr $ra   (delay slot 0x80073E2C = 00000000)

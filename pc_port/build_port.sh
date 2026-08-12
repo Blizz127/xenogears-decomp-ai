@@ -1066,6 +1066,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_c364.c
     pc_port/src/world_map_helper_8dff4.c
     pc_port/src/world_map_helper_8e034.c
+    pc_port/src/world_map_helper_73b04.c
 )
 
 # The list above is the port link's explicit ownership registry. Refuse to

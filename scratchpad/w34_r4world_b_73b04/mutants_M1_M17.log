@@ -1,0 +1,17 @@
+M1 compile=PASS run_rc=1 ASSERTION packet_bytes[quarter_depth_a]
+M2 compile=PASS run_rc=1 ASSERTION packet_bytes[quarter_depth_a]
+M3 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M4 compile=PASS run_rc=1 ASSERTION dr_twin_bytes[zero_depth_a]
+M5 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M6 compile=PASS run_rc=1 ASSERTION dr_twin_bytes[negative_asym_depth_a]
+M7 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M8 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M9 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M10 compile=PASS run_rc=1 ASSERTION dr_twin_bytes[zero_depth_a]
+M11 compile=PASS run_rc=1 ASSERTION ot_head[zero_depth_a] got=0xA509D3E4 expected=0xA509D3D8
+M12 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M13 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M14 compile=PASS run_rc=1 ASSERTION packet_bytes[near_wrap_depth_a]
+M15 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M16 compile=PASS run_rc=1 ASSERTION packet_bytes[zero_depth_a]
+M17 RUN_UNEXPECTED_PASS

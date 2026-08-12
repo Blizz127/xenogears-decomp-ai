@@ -1,0 +1,14 @@
+pc_or_range,address_or_expression,access,width,authority
+0x80073B08/0x80073B10,0x1F800000 / 0x1F800000+0x38,address,word,scratchpad angle and matrix arguments
+0x80073B18,0x8009A300,address,byte,"static source SVECTOR[8], +0x20 per quad"
+0x80073B28,0x8009BD3A,read,halfword,heading/scroll theta
+0x80073B50/0x80073B88/0x80073BB8/0x80073BE8,0x8009D7F0,read,word,double-buffer index
+0x80073C1C,0x8009BD3A,read,halfword,heading/scroll theta
+0x80073C3C,0x8009C808,read,MATRIX,world camera source
+0x80073C70..0x80073CF0,0x8009C744 + quad*0x50 + idx*0x28,write,160 bytes,two POLY_FT4 packet slots and projected XY
+0x80073D1C,0x8009D3E4 / 0x8009D3D8,read/write,word,DR_TWIN B/A tags
+0x80073D34,0x8009BE3C -> +0x70,read,word/word,current DB then OT base
+0x80073D2C,0x80050100,read,word,runtime arithmetic OT shift
+0x80073D04..0x80073D0C,0x1F80005C,read,word,last-quad GTE flag
+0x80073C18..0x80073C60,0x1F800000..0x1F80005C,write,scratchpad,"angles, R translation, p and flag out-parameters"
+0x80073D60..0x80073E08,OT[(otz >> *(0x80050100))],read/write,word,"single fixed OT bucket, four head-pushes"

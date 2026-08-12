@@ -1,0 +1,183 @@
+==============================================================================
+=== INTERPRETATION with *(0x8009D7F0) [double-buffer idx] = 0 ===
+==============================================================================
+  0x80073B14 STORE.sw -> add@80073B04+40        value=IN_s0
+  0x80073B20 STORE.sw -> add@80073B04+52        value=IN_s3
+  0x80073B30 STORE.sw -> add@80073B04+44        value=IN_s1
+  0x80073B3C STORE.sw -> add@80073B04+60        value=IN_ra
+  0x80073B40 STORE.sw -> add@80073B04+56        value=IN_s4
+  0x80073B44 STORE.sw -> add@80073B04+48        value=IN_s2
+  0x80073B48 LOAD .lhu <- 0x8009BD3A   theta
+  0x80073B50 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073B7C STORE.sh -> 0x8009C7A0   value=and@80073B58
+  0x80073B80 STORE.sh -> 0x8009C750   value=and@80073B58
+  0x80073B88 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073BA4 STORE.sh -> 0x8009C7A8   value=or@80073B78
+  0x80073BB0 STORE.sh -> 0x8009C758   value=or@80073B78
+  0x80073BB8 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073BD4 STORE.sh -> 0x8009C7B0   value=or@80073BBC
+  0x80073BE0 STORE.sh -> 0x8009C760   value=or@80073BBC
+  0x80073BE8 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073C0C STORE.sh -> 0x8009C7B8   value=or@80073BEC
+  0x80073C10 STORE.sh -> 0x8009C768   value=or@80073BEC
+  0x80073C18 STORE.sh -> 0x1F800004   value=0x00000000
+  0x80073C1C LOAD .lhu <- 0x8009BD3A   theta
+  0x80073C24 STORE.sh -> 0x1F800000   value=0x00000000
+  0x80073C2C STORE.sh -> 0x1F800002   value=theta
+  0x80073C30 CALL RotMatrixYXZ (0x8004A92C)
+           a0 = 0x1F800000
+           a1 = 0x1F800038
+           a2 = or@80073B78
+           a3 = or@80073BBC
+  0x80073C50 STORE.sw -> 0x1F800054   value=0x00000000
+  0x80073C58 STORE.sw -> 0x1F800050   value=0x00000000
+  0x80073C60 STORE.sw -> 0x1F80004C   value=0x00000000
+  0x80073C64 CALL CompMatrix (0x8004931C)
+           a0 = 0x8009C808
+           a1 = 0x1F800038
+           a2 = 0x1F800018
+           a3 = clob@80073C30_a3
+  0x80073C70 CALL SetRotMatrix (0x80049EFC)
+           a0 = 0x1F800018
+           a1 = clob@80073C64_a1
+           a2 = clob@80073C64_a2
+           a3 = clob@80073C64_a3
+  0x80073C7C CALL SetTransMatrix (0x80049F8C)
+           a0 = 0x1F800018
+           a1 = clob@80073C70_a1
+           a2 = clob@80073C70_a2
+           a3 = clob@80073C70_a3
+  0x80073CA0 STORE.sw -> add@80073B04+32        value=0x1F800058
+  0x80073CAC LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073CB8 STORE.sw -> add@80073B04+36        value=0x1F80005C
+  0x80073CD4 STORE.sw -> add@80073B04+16        value=0x8009C74C
+  0x80073CDC STORE.sw -> add@80073B04+20        value=0x8009C754
+  0x80073CE8 STORE.sw -> add@80073B04+24        value=0x8009C75C
+  0x80073CF0 STORE.sw -> add@80073B04+28        value=0x8009C764
+  0x80073CEC CALL RotTransPers4 (0x8004A73C)
+           a0 = 0x8009A300
+           a1 = 0x8009A308
+           a2 = 0x8009A310
+           a3 = 0x8009A318
+  0x80073CA0 STORE.sw -> add@80073B04+32        value=0x1F800058
+  0x80073CAC LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073CB8 STORE.sw -> add@80073B04+36        value=0x1F80005C
+  0x80073CD4 STORE.sw -> add@80073B04+16        value=0x8009C79C
+  0x80073CDC STORE.sw -> add@80073B04+20        value=0x8009C7A4
+  0x80073CE8 STORE.sw -> add@80073B04+24        value=0x8009C7AC
+  0x80073CF0 STORE.sw -> add@80073B04+28        value=0x8009C7B4
+  0x80073CEC CALL RotTransPers4 (0x8004A73C)
+           a0 = 0x8009A320
+           a1 = 0x8009A328
+           a2 = 0x8009A330
+           a3 = 0x8009A338
+  0x80073D04 LOAD .lw <- 0x1F80005C
+  0x80073D0C BRANCH bltz -> 0x80073E0C  [data-dependent]
+  0x80073D24 LOAD .lw <- 0x8009D3E4
+  0x80073D2C LOAD .lw <- 0x80050100   ot_shift
+  0x80073D34 LOAD .lw <- 0x8009BE3C   db_ptr
+  0x80073D4C LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073D70 STORE.sw -> 0x8009D3E4   value=or@80073D6C
+  0x80073D84 STORE.sw -> add@80073D50+0         value=or@80073D80
+  0x80073D88 LOAD .lw <- 0x8009C744
+  0x80073D98 STORE.sw -> 0x8009C744   value=or@80073D94
+  0x80073DB4 STORE.sw -> add@80073D50+0         value=or@80073DB0
+  0x80073DB8 LOAD .lw <- 0x8009C794
+  0x80073DC8 STORE.sw -> 0x8009C794   value=or@80073DC4
+  0x80073DDC STORE.sw -> add@80073D50+0         value=or@80073DD8
+  0x80073DE0 LOAD .lw <- 0x8009D3D8
+  0x80073DF0 STORE.sw -> 0x8009D3D8   value=or@80073DEC
+  0x80073E08 STORE.sw -> add@80073D50+0         value=or@80073E04
+  0x80073E28 RETURN
+
+==============================================================================
+=== INTERPRETATION with *(0x8009D7F0) [double-buffer idx] = 1 ===
+==============================================================================
+  0x80073B14 STORE.sw -> add@80073B04+40        value=IN_s0
+  0x80073B20 STORE.sw -> add@80073B04+52        value=IN_s3
+  0x80073B30 STORE.sw -> add@80073B04+44        value=IN_s1
+  0x80073B3C STORE.sw -> add@80073B04+60        value=IN_ra
+  0x80073B40 STORE.sw -> add@80073B04+56        value=IN_s4
+  0x80073B44 STORE.sw -> add@80073B04+48        value=IN_s2
+  0x80073B48 LOAD .lhu <- 0x8009BD3A   theta
+  0x80073B50 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073B7C STORE.sh -> 0x8009C7C8   value=and@80073B58
+  0x80073B80 STORE.sh -> 0x8009C778   value=and@80073B58
+  0x80073B88 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073BA4 STORE.sh -> 0x8009C7D0   value=or@80073B78
+  0x80073BB0 STORE.sh -> 0x8009C780   value=or@80073B78
+  0x80073BB8 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073BD4 STORE.sh -> 0x8009C7D8   value=or@80073BBC
+  0x80073BE0 STORE.sh -> 0x8009C788   value=or@80073BBC
+  0x80073BE8 LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073C0C STORE.sh -> 0x8009C7E0   value=or@80073BEC
+  0x80073C10 STORE.sh -> 0x8009C790   value=or@80073BEC
+  0x80073C18 STORE.sh -> 0x1F800004   value=0x00000000
+  0x80073C1C LOAD .lhu <- 0x8009BD3A   theta
+  0x80073C24 STORE.sh -> 0x1F800000   value=0x00000000
+  0x80073C2C STORE.sh -> 0x1F800002   value=theta
+  0x80073C30 CALL RotMatrixYXZ (0x8004A92C)
+           a0 = 0x1F800000
+           a1 = 0x1F800038
+           a2 = or@80073B78
+           a3 = or@80073BBC
+  0x80073C50 STORE.sw -> 0x1F800054   value=0x00000000
+  0x80073C58 STORE.sw -> 0x1F800050   value=0x00000000
+  0x80073C60 STORE.sw -> 0x1F80004C   value=0x00000000
+  0x80073C64 CALL CompMatrix (0x8004931C)
+           a0 = 0x8009C808
+           a1 = 0x1F800038
+           a2 = 0x1F800018
+           a3 = clob@80073C30_a3
+  0x80073C70 CALL SetRotMatrix (0x80049EFC)
+           a0 = 0x1F800018
+           a1 = clob@80073C64_a1
+           a2 = clob@80073C64_a2
+           a3 = clob@80073C64_a3
+  0x80073C7C CALL SetTransMatrix (0x80049F8C)
+           a0 = 0x1F800018
+           a1 = clob@80073C70_a1
+           a2 = clob@80073C70_a2
+           a3 = clob@80073C70_a3
+  0x80073CA0 STORE.sw -> add@80073B04+32        value=0x1F800058
+  0x80073CAC LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073CB8 STORE.sw -> add@80073B04+36        value=0x1F80005C
+  0x80073CD4 STORE.sw -> add@80073B04+16        value=0x8009C774
+  0x80073CDC STORE.sw -> add@80073B04+20        value=0x8009C77C
+  0x80073CE8 STORE.sw -> add@80073B04+24        value=0x8009C784
+  0x80073CF0 STORE.sw -> add@80073B04+28        value=0x8009C78C
+  0x80073CEC CALL RotTransPers4 (0x8004A73C)
+           a0 = 0x8009A300
+           a1 = 0x8009A308
+           a2 = 0x8009A310
+           a3 = 0x8009A318
+  0x80073CA0 STORE.sw -> add@80073B04+32        value=0x1F800058
+  0x80073CAC LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073CB8 STORE.sw -> add@80073B04+36        value=0x1F80005C
+  0x80073CD4 STORE.sw -> add@80073B04+16        value=0x8009C7C4
+  0x80073CDC STORE.sw -> add@80073B04+20        value=0x8009C7CC
+  0x80073CE8 STORE.sw -> add@80073B04+24        value=0x8009C7D4
+  0x80073CF0 STORE.sw -> add@80073B04+28        value=0x8009C7DC
+  0x80073CEC CALL RotTransPers4 (0x8004A73C)
+           a0 = 0x8009A320
+           a1 = 0x8009A328
+           a2 = 0x8009A330
+           a3 = 0x8009A338
+  0x80073D04 LOAD .lw <- 0x1F80005C
+  0x80073D0C BRANCH bltz -> 0x80073E0C  [data-dependent]
+  0x80073D24 LOAD .lw <- 0x8009D3E4
+  0x80073D2C LOAD .lw <- 0x80050100   ot_shift
+  0x80073D34 LOAD .lw <- 0x8009BE3C   db_ptr
+  0x80073D4C LOAD .lw <- 0x8009D7F0   dbidx
+  0x80073D70 STORE.sw -> 0x8009D3E4   value=or@80073D6C
+  0x80073D84 STORE.sw -> add@80073D50+0         value=or@80073D80
+  0x80073D88 LOAD .lw <- 0x8009C76C
+  0x80073D98 STORE.sw -> 0x8009C76C   value=or@80073D94
+  0x80073DB4 STORE.sw -> add@80073D50+0         value=or@80073DB0
+  0x80073DB8 LOAD .lw <- 0x8009C7BC
+  0x80073DC8 STORE.sw -> 0x8009C7BC   value=or@80073DC4
+  0x80073DDC STORE.sw -> add@80073D50+0         value=or@80073DD8
+  0x80073DE0 LOAD .lw <- 0x8009D3D8
+  0x80073DF0 STORE.sw -> 0x8009D3D8   value=or@80073DEC
+  0x80073E08 STORE.sw -> add@80073D50+0         value=or@80073E04
+  0x80073E28 RETURN

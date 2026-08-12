@@ -1,0 +1,18 @@
+id,mutation,compile,run,detector
+M1,CompMatrix operands swapped,PASS,FAIL rc=1,packet_bytes
+M2,theta put on wrong rotation axis,PASS,FAIL rc=1,packet_bytes
+M3,R.t zeroing removed,PASS,FAIL rc=1,packet_bytes
+M4,first quad OTZ used instead of last,PASS,FAIL rc=1,dr_twin_bytes
+M5,any flag bit treated as cull,PASS,FAIL rc=1,packet_bytes
+M6,fixed OT shift 2,PASS,FAIL rc=1,dr_twin_bytes
+M7,wrong 16-bit pointer mask,PASS,FAIL rc=1,packet_bytes
+M8,tag high bytes discarded,PASS,FAIL rc=1,packet_bytes
+M9,wrong primitive insertion order,PASS,FAIL rc=1,packet_bytes
+M10,DR_TWIN bracket order changed,PASS,FAIL rc=1,dr_twin_bytes
+M11,OT base advanced between pushes,PASS,FAIL rc=1,ot_head
+M12,packet buffer indexing transposed,PASS,FAIL rc=1,packet_bytes
+M13,UV halfword byte/role mutation,PASS,FAIL rc=1,packet_bytes
+M14,theta scroll derived without >>2,PASS,FAIL rc=1,packet_bytes
+M15,vertex winding reversed,PASS,FAIL rc=1,packet_bytes
+M16,wrong source stride,PASS,FAIL rc=1,packet_bytes
+M17,OT head published before packet link, PASS,FAIL rc=1,ot_link_publication_order trace

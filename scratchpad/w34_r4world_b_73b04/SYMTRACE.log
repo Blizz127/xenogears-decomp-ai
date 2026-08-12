@@ -1,0 +1,77 @@
+=== ABI: def-before-use ===
+  0x80073B04 reads sp before any definition
+  0x80073B24 reads zero before any definition
+
+=== CONCRETE GLOBAL ACCESSES ===
+  0x80073B48 load   lhu  0x8009BD3A   (base t2+0)
+  0x80073B50 load   lw   0x8009D7F0   (base v1-10256)
+  0x80073B88 load   lw   0x8009D7F0   (base v1-10256)
+  0x80073BB8 load   lw   0x8009D7F0   (base v0-10256)
+  0x80073BE8 load   lw   0x8009D7F0   (base v0-10256)
+  0x80073C18 store  sh   0x1F800004   (base at+4)
+  0x80073C1C load   lhu  0x8009BD3A   (base t2+0)
+  0x80073C24 store  sh   0x1F800000   (base s2+0)
+  0x80073C2C store  sh   0x1F800002   (base at+2)
+  0x80073C50 store  sw   0x1F800054   (base at+84)
+  0x80073C58 store  sw   0x1F800050   (base at+80)
+  0x80073C60 store  sw   0x1F80004C   (base at+76)
+  0x80073CAC load   lw   0x8009D7F0   (base v1-10256)
+  0x80073D04 load   lw   0x1F80005C   (base s2+92)
+  0x80073D24 load   lw   0x8009D3E4   (base t1+0)
+  0x80073D2C load   lw   0x80050100   (base v0+256)
+  0x80073D34 load   lw   0x8009BE3C   (base a0-16836)
+  0x80073D4C load   lw   0x8009D7F0   (base a1-10256)
+  0x80073D70 store  sw   0x8009D3E4   (base t1+0)
+  0x80073DE0 load   lw   0x8009D3D8   (base t1-12)
+  0x80073DF0 store  sw   0x8009D3D8   (base t1-12)
+
+=== SYMBOLIC (computed-pointer) ACCESSES ===
+  0x80073B14 store  sw   base=sp disp=+40
+  0x80073B20 store  sw   base=sp disp=+52
+  0x80073B30 store  sw   base=sp disp=+44
+  0x80073B3C store  sw   base=sp disp=+60
+  0x80073B40 store  sw   base=sp disp=+56
+  0x80073B44 store  sw   base=sp disp=+48
+  0x80073B7C store  sh   base=v1 disp=+0
+  0x80073B80 store  sh   base=v0 disp=+0
+  0x80073BA4 store  sh   base=v1 disp=+0
+  0x80073BB0 store  sh   base=v0 disp=+0
+  0x80073BD4 store  sh   base=v0 disp=+0
+  0x80073BE0 store  sh   base=v1 disp=+0
+  0x80073C0C store  sh   base=v0 disp=+0
+  0x80073C10 store  sh   base=v1 disp=+0
+  0x80073CA0 store  sw   base=sp disp=+32
+  0x80073CB8 store  sw   base=sp disp=+36
+  0x80073CD4 store  sw   base=sp disp=+16
+  0x80073CDC store  sw   base=sp disp=+20
+  0x80073CE8 store  sw   base=sp disp=+24
+  0x80073CF0 store  sw   base=sp disp=+28
+  0x80073D44 load   lw   base=a0 disp=+112
+  0x80073D60 load   lw   base=a2 disp=+0
+  0x80073D74 load   lw   base=a2 disp=+0
+  0x80073D84 store  sw   base=a2 disp=+0
+  0x80073D88 load   lw   base=a1 disp=+0
+  0x80073D98 store  sw   base=a1 disp=+0
+  0x80073DA4 load   lw   base=a2 disp=+0
+  0x80073DB4 store  sw   base=a2 disp=+0
+  0x80073DB8 load   lw   base=a0 disp=+0
+  0x80073DC8 store  sw   base=a0 disp=+0
+  0x80073DCC load   lw   base=a2 disp=+0
+  0x80073DDC store  sw   base=a2 disp=+0
+  0x80073DF8 load   lw   base=a2 disp=+0
+  0x80073E08 store  sw   base=a2 disp=+0
+  0x80073E0C load   lw   base=sp disp=+60
+  0x80073E10 load   lw   base=sp disp=+56
+  0x80073E14 load   lw   base=sp disp=+52
+  0x80073E18 load   lw   base=sp disp=+48
+  0x80073E1C load   lw   base=sp disp=+44
+  0x80073E20 load   lw   base=sp disp=+40
+
+=== CALL ARGUMENTS (register a0-a3 at call site) ===
+  0x80073C30 RotMatrixYXZ     $a0=UNDEF $a1=UNDEF $a2=UNDEF $a3=UNDEF
+  0x80073C64 CompMatrix       $a0=clobber@80073C30_$a0 $a1=clobber@80073C30_$a1 $a2=clobber@80073C30_$a2 $a3=clobber@80073C30_$a3
+  0x80073C70 SetRotMatrix     $a0=clobber@80073C64_$a0 $a1=clobber@80073C64_$a1 $a2=clobber@80073C64_$a2 $a3=clobber@80073C64_$a3
+  0x80073C7C SetTransMatrix   $a0=clobber@80073C70_$a0 $a1=clobber@80073C70_$a1 $a2=clobber@80073C70_$a2 $a3=clobber@80073C70_$a3
+  0x80073CEC RotTransPers4    $a0=clobber@80073C7C_$a0 $a1=clobber@80073C7C_$a1 $a2=clobber@80073C7C_$a2 $a3=clobber@80073C7C_$a3
+
+wrote GLOBAL_ADDRESS_AUDIT.csv

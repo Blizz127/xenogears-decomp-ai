@@ -1,0 +1,59 @@
+== focused production regimes ==
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS zero_depth_a ot=0x800F0614 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS quarter_depth_a ot=0x800F0304 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS negative_asym_depth_a ot=0x800F04A8 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS near_wrap_depth_a ot=0x800F07FC head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS quarter_depth_b ot=0x800F0704 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x63a093913a00
+PASS negative_asym_depth_b ot=0x800F06A8 head=0xA509D3D8
+PASS 73B04 memory-state oracle cases=6; packet_bytes=160; twins=24; ot_word=1
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS zero_depth_a ot=0x800F0614 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS quarter_depth_a ot=0x800F0304 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS negative_asym_depth_a ot=0x800F04A8 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS near_wrap_depth_a ot=0x800F07FC head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS quarter_depth_b ot=0x800F0704 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x62d447d97a00
+PASS negative_asym_depth_b ot=0x800F06A8 head=0xA509D3D8
+PASS 73B04 memory-state oracle cases=6; packet_bytes=160; twins=24; ot_word=1
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS zero_depth_a ot=0x800F0614 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS quarter_depth_a ot=0x800F0304 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS negative_asym_depth_a ot=0x800F04A8 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS near_wrap_depth_a ot=0x800F07FC head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS quarter_depth_b ot=0x800F0704 head=0xA509D3D8
+[xeno-port] PSX RAM emulation: 3072 KB at 0x644114a58bc0
+PASS negative_asym_depth_b ot=0x800F06A8 head=0xA509D3D8
+PASS 73B04 memory-state oracle cases=6; packet_bytes=160; twins=24; ot_word=1
+== copied-source mutants M1-M17 (each must fail named oracle assertion) ==
+M1: compile PASS, run rc=1, named assertion PASS
+M2: compile PASS, run rc=1, named assertion PASS
+M3: compile PASS, run rc=1, named assertion PASS
+M4: compile PASS, run rc=1, named assertion PASS
+M5: compile PASS, run rc=1, named assertion PASS
+M6: compile PASS, run rc=1, named assertion PASS
+M7: compile PASS, run rc=1, named assertion PASS
+M8: compile PASS, run rc=1, named assertion PASS
+M9: compile PASS, run rc=1, named assertion PASS
+M10: compile PASS, run rc=1, named assertion PASS
+M11: compile PASS, run rc=1, named assertion PASS
+M12: compile PASS, run rc=1, named assertion PASS
+M13: compile PASS, run rc=1, named assertion PASS
+M14: compile PASS, run rc=1, named assertion PASS
+M15: compile PASS, run rc=1, named assertion PASS
+M16: compile PASS, run rc=1, named assertion PASS
+M17: compile PASS, run rc=1, named assertion PASS
+W34-R4WORLD-B 0x80073B04 focused certificate PASS

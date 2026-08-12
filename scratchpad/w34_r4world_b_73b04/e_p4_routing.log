@@ -1,0 +1,139 @@
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802fb000 ptr2=0x802f6000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802fb000 ptr2=0x802f6000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802f1000 ptr2=0x802ec000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802e7000 ptr2=0x802e2000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p0] entry C610=0
+[worldmap-common-tail-p0] C610=0 → calling wm_80089160(14,0,0)
+[wm-80089160] entry a0=14 a1=0x00000000 a2=0x00000000 table_base=0x00000000 record=0x000024c0
+[wm-80089160] Path A t2=0
+[wm-80089160] exit t2=0 iterations=8
+[worldmap-common-tail-p0] exit cut=0x8007293c
+[worldmap-common-tail-p1] calling wm_800978FC
+[wm-800978FC] alloc ptr1=0x802f0000 ptr2=0x802e0000
+[wm-800978FC] init+copy done
+[worldmap-common-tail-p1] exit cut=0x80072944
+[worldmap-common-tail-p2] calling wm_8008901C
+[wm-8008901C] alloc ptr1=0x802dd800 ptr2=0x802db000
+[wm-8008901C] tpage=0x00bd clut=0x7fd0
+[wm-8008901C] init+copy done
+[worldmap-common-tail-p2] exit cut=0x8007294c
+[worldmap-common-tail-p3] calling wm_800865A0
+[wm-800865A0] alloc ptr1=0x802d8300 ptr2=0x802d5600
+[wm-800865A0] tpage=0x003f clut=0x7f93
+[wm-800865A0] init+copy done
+[worldmap-common-tail-p3] exit cut=0x80072954
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802d0600 ptr2=0x802cb600
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802fb000 ptr2=0x802f6000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802fb000 ptr2=0x802f6000
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p0] entry C610=0
+[worldmap-common-tail-p0] C610=0 → calling wm_80089160(14,0,0)
+[wm-80089160] entry a0=14 a1=0x00000000 a2=0x00000000 table_base=0x00000000 record=0x000024c0
+[wm-80089160] Path A t2=0
+[wm-80089160] exit t2=0 iterations=8
+[worldmap-common-tail-p0] exit cut=0x8007293c
+[worldmap-common-tail-p1] calling wm_800978FC
+[wm-800978FC] alloc ptr1=0x802f0000 ptr2=0x802e0000
+[wm-800978FC] init+copy done
+[worldmap-common-tail-p1] exit cut=0x80072944
+[worldmap-common-tail-p2] calling wm_8008901C
+[wm-8008901C] alloc ptr1=0x802dd800 ptr2=0x802db000
+[wm-8008901C] tpage=0x00bd clut=0x7fd0
+[wm-8008901C] init+copy done
+[worldmap-common-tail-p2] exit cut=0x8007294c
+[worldmap-common-tail-p3] calling wm_800865A0
+[wm-800865A0] alloc ptr1=0x802d8300 ptr2=0x802d5600
+[wm-800865A0] tpage=0x003f clut=0x7f93
+[wm-800865A0] init+copy done
+[worldmap-common-tail-p3] exit cut=0x80072954
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x802d0600 ptr2=0x802cb600
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+=== W34B5E P4 routing test ===
+
+Test 1: P4 gate OFF
+  PASS: P4 entry == 0 (gate OFF)
+  PASS: P4 85fe0_calls == 0
+  PASS: P4 alloc_calls == 0
+  PASS: D_8009D7E8 == 0 (no alloc)
+  PASS: D_8009D7EC == 0 (no alloc)
+
+Test 2: P4 gate ON, exact route
+  PASS: P4 entry == 1
+  PASS: P4 85fe0_calls == 1
+  PASS: P4 alloc_calls == 2
+  PASS: P4 cut == 0x8007295C
+  PASS: D_8009D7E8 != 0
+  PASS: D_8009D7EC != 0
+
+Test 3: Repeated entry count
+  PASS: P4 entry == 3 after three calls
+  PASS: P4 85fe0_calls == 3
+  PASS: P4 alloc_calls == 6
+
+Test 4: Reset clears counters
+  PASS: entry == 0 after reset
+  PASS: 85fe0_calls == 0 after reset
+  PASS: alloc_calls == 0 after reset
+  PASS: last_cut == 0 after reset
+
+Test 5: Full chain returns exact cuts
+  PASS: P0 cut == 0x8007293C
+  PASS: P1 cut == 0x80072944
+  PASS: P2 cut == 0x8007294C
+  PASS: P3 cut == 0x80072954
+  PASS: P4 cut == 0x8007295C
+
+Test 6: Forbidden path guards
+  PASS: forbidden 75228 == 0
+  PASS: forbidden scheduler == 0
+  PASS: forbidden world_loop == 0
+
+Test 7: First excluded / next helper ZERO
+  PASS: first excluded = 0x8007295C
+  PASS: 75228 ZERO
+  PASS: scheduler ZERO
+  PASS: world_loop ZERO
+
+Test 8: Prior state preservation
+  PASS: C610 preserved
+  PASS: C618 preserved
+  PASS: BCDC preserved
+  PASS: P1 ptr1 still valid
+  PASS: P1 ptr2 still valid
+  PASS: P2 ptr1 still valid
+  PASS: P2 ptr2 still valid
+  PASS: P3 ptr1 valid
+  PASS: P3 ptr2 valid
+  PASS: P4 ptr1 valid
+  PASS: P4 ptr2 valid
+  PASS: P4 ptr1 != P1 ptr1
+  PASS: P4 ptr2 != P1 ptr2
+  PASS: P4 ptr1 != P2 ptr1
+  PASS: P4 ptr2 != P2 ptr2
+  PASS: P4 ptr1 != P3 ptr1
+  PASS: P4 ptr2 != P3 ptr2
+  PASS: P4 ptr1 != P4 ptr2
+
+=== Results: 48/48 PASS ===
