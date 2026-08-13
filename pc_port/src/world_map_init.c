@@ -136,6 +136,8 @@
  *   XENO_WORLD_COMMON_TAIL_P5=0 (default off; wm_80075228 + palette caller slice; requires P4)
  *   XENO_WORLD_SCHEDULER_97800=0 (default off; bounded scheduler 0x80097800; requires P5;
  *        stops before first missing callback body; DrawSync at 0x8007106C not executed)
+ *   XENO_WORLD_FRAME_PROLOGUE=0 (default off; 0x8007106C continuation +
+ *        0x800712D0 .. 0x80071484; requires SCHEDULER; hard-cut before 0x80071488)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -158,6 +160,7 @@
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
 #include "world_map_scheduler.h"
+#include "world_map_frame_driver.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -487,6 +490,7 @@ extern void EnterCriticalSection(void);
 extern void ExitCriticalSection(void);
 extern void FlushCache(void);
 extern int VSync(int mode);
+extern void ControllerResetState(void);
 extern u32 g_ArchiveDebugTable;
 extern uint32_t g_RandomSeed;
 extern int rand(void);
@@ -1009,6 +1013,15 @@ static int world_scheduler_97800_enabled(void)
            world_common_tail_p5_enabled();
 }
 
+static int world_frame_prologue_enabled(void)
+{
+    /* W34B18-B gate: retail 0x8007106C continuation plus bounded
+     * 0x800712D0 .. 0x80071484. Default OFF, requires scheduler.
+     * Hard-cut before 0x80071488 (second scheduler jal). */
+    return env_flag_is_one("XENO_WORLD_FRAME_PROLOGUE") &&
+           world_scheduler_97800_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1152,10 +1165,11 @@ static void log_enabled_slices(void)
     int w34b5c = world_common_tail_p2_enabled();
     int w34b5d = world_common_tail_p3_enabled();
     int w34b5e = world_common_tail_p4_enabled();
+    int w34b18b = world_frame_prologue_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e && !w34b18b) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1227,6 +1241,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W34B5D");
     if (w34b5e)
         fprintf(stderr, ",W34B5E");
+    if (w34b18b)
+        fprintf(stderr, ",W34B18B");
     fprintf(stderr, "\n");
 }
 
@@ -1741,26 +1757,26 @@ void wm_800966CC_c624_processor(u32 record_psx)
     }
 }
 
-/* W29B: complete native implementation of retail 0x800967E4.
+/* W29B / W34B18-B: native implementation of retail 0x800967E4.
  *
- * The per-iteration CD work dispatcher for the world-map retry loop.
- * Called once per iteration from the loop at 0x80072514.  Dispatches
- * CD44 state machine, processes D788 records, or processes C624 records.
+ * Per-iteration CD work dispatcher. The 0x80072514 init caller ignores the
+ * return; the 0x800713FC frame-prologue caller compares it to 3.
  *
- * Retail MIPS (0x800967E4–0x800968DC, 62 words, 248 bytes):
+ * Retail MIPS (0x800967E4–0x800968DC inclusive, 63 words, 252 bytes):
  *   Stack frame: 40 bytes.  Saved: $s0, $s1, $ra.
- *   No arguments, no return value used by caller.
+ *   No arguments. Return is $v0 = $s1 on every epilogue.
  *
- * Control flow (exact retail):
+ * Control flow (exact retail, W34B18-B re-proof):
  *   1. Call func_8002C3D8() twice → g_ArchiveDebugTable.
- *   2. If both non-zero → skip D788, go to C624 path.
+ *   2. C624 iff dbg0 != 0 AND dbg1 != 0xFFFFFFFF
+ *      (sltiu/nor/sltiu/or/beqz; not "both nonzero").
  *   3. Call wm_800968E0_dispatch_partial() → dispatch CD44 state.
- *   4. If return != 0 → return (busy or tail-advanced).
- *   5. Load D788_table[tail].  If null → return.
- *   6. If non-null → call D788 processor → return (no tail advance).
- *   7. C624 path: load C624_table[tail].  If null → return.
- *   8. If non-null → call C624 processor → advance tail → return. */
-void wm_800967E4_dispatch_cd_work(void)
+ *   4. If return != 0 → return that value.
+ *   5. Load D788_table[tail]. If null → return 0 (do not fall into C624).
+ *   6. If non-null → call D788 processor → return 0 (no tail advance).
+ *   7. C624 path: load C624_table[tail]. If null → return 0.
+ *   8. If non-null → call C624 processor → advance tail → return 0. */
+u32 wm_800967E4_dispatch_cd_work(void)
 {
     u32 dbg0, dbg1;
     u32 dispatch_result;
@@ -1775,8 +1791,8 @@ void wm_800967E4_dispatch_cd_work(void)
     dbg0 = g_ArchiveDebugTable;
     dbg1 = g_ArchiveDebugTable;
 
-    /* 2. If both non-zero → skip D788, go to C624 path. */
-    if (dbg0 != 0 && dbg1 != 0) {
+    /* 2. C624 iff dbg0 != 0 AND dbg1 != 0xFFFFFFFF. */
+    if (dbg0 != 0 && dbg1 != 0xFFFFFFFFu) {
         s_wm967e4_debug_table_nonzero++;
         goto c624_path;
     }
@@ -1784,7 +1800,7 @@ void wm_800967E4_dispatch_cd_work(void)
     /* 3. Dispatch CD44 state machine. */
     dispatch_result = wm_800968E0_dispatch_partial();
 
-    /* 4. If non-zero return → busy or tail-advanced; return immediately. */
+    /* 4. If non-zero return → busy, tail-advanced, or invalid; propagate. */
     if (dispatch_result != 0) {
         if (dispatch_result == 1)
             s_wm967e4_dispatcher_busy++;
@@ -1792,7 +1808,7 @@ void wm_800967E4_dispatch_cd_work(void)
             s_wm967e4_dispatcher_tail_adv++;
         else
             s_wm967e4_dispatcher_invalid++;
-        return;
+        return dispatch_result;
     }
     s_wm967e4_dispatcher_idle++;
 
@@ -1800,16 +1816,16 @@ void wm_800967E4_dispatch_cd_work(void)
     tail = WM_U32(WM_BCB8_ABS);
     d788_record = WM_U32(WM_D788_BASE_ABS + tail * 4);
 
-    /* If null → fall through to C624 path (retail does this implicitly). */
+    /* If null → return 0. Retail beqz + move v0,s1 to the epilogue. */
     if (d788_record == 0) {
         s_wm967e4_d788_null++;
-        goto c624_path;
+        return 0;
     }
 
     /* 6. Process D788 record. */
     s_wm967e4_d788_process++;
     wm_8009699C_d788_processor(d788_record);
-    return;
+    return 0;
 
 c624_path:
     /* 7. Load C624_table[tail]. */
@@ -1818,7 +1834,7 @@ c624_path:
 
     if (c624_record == 0) {
         s_wm967e4_c624_null++;
-        return;
+        return 0;
     }
 
     /* 8. Process C624 record, then advance tail. */
@@ -1829,6 +1845,7 @@ c624_path:
     WM_U32(WM_C624_BASE_ABS + tail * 4) = 0;
     WM_U32(WM_BCB8_ABS) = (tail + 1) & 0x0F;
     s_wm967e4_tail_advance++;
+    return 0;
 }
 
 /* W32B: ready-check and third-wave buffer consumption (retail 0x80072558–0x800725A8).
@@ -6735,6 +6752,7 @@ void PcPort_WorldMapInitMain(void)
     wm_common_tail_p4_reset();
     wm_common_tail_p5_reset();
     wm_sched_reset();
+    wm_fp_reset();
 
     fprintf(stderr, "[worldmap-init] entry\n");
     log_enabled_slices();
@@ -7286,9 +7304,24 @@ void PcPort_WorldMapInitMain(void)
                     "bounded scheduler execution at 0x80071064\n");
             wm_80097800();
         }
+        if (world_frame_prologue_enabled() &&
+            wm_sched_get_entry() > 0) {
+            fprintf(stderr,
+                    "[worldmap-frame-prologue] XENO_WORLD_FRAME_PROLOGUE=1: "
+                    "retail 0x8007106C continuation + 0x800712D0 "
+                    "through 0x80071484\n");
+            DrawSync(0);
+            VSync(0);
+            ControllerResetState();
+            WM_U32(WM_FLAG_C894_ABS) = WM_U32(WM_PHASE_D7CC);
+            wm_800712D0_frame_prologue();
+        }
         {
             u32 cut_pc = WM_MAIN_LOOP;
-            if (world_scheduler_97800_enabled() &&
+            if (world_frame_prologue_enabled() &&
+                wm_fp_get_entry() > 0)
+                cut_pc = WM_FRAME_PROLOGUE_CUT;
+            else if (world_scheduler_97800_enabled() &&
                 wm_sched_get_entry() > 0)
                 cut_pc = wm_sched_get_frontier_pc();
             else if (world_common_tail_p5_enabled() &&
@@ -7745,12 +7778,30 @@ void PcPort_WorldMapInitMain(void)
                     wm_sched_get_frontier_pc(), wm_sched_get_last_slot(),
                     wm_sched_get_last_callback_state());
         }
-        /* Forbidden post-scheduler caller path: 0x800712D0 / 0x8007299C /
-         * world DrawOTag have real guard counters; DrawSync / Vsync /
-         * ControllerResetState have no world-callsite code at all (the
-         * caller body after the cut does not exist in the port), so their
-         * world-route count is structurally zero. */
-        if (s_wm712d0_hits == 0 && s_wm7299c_hits == 0 &&
+        /* Forbidden post-scheduler caller path: 0x8007299C / world DrawOTag
+         * remain unported. When the frame-prologue gate is on, DrawSync /
+         * VSync / ControllerResetState / 0x800712D0 are the intended
+         * 0x8007106C continuation and must not be reported as ZERO. */
+        if (world_frame_prologue_enabled() && wm_fp_get_entry() > 0) {
+            fprintf(stderr,
+                    "[worldmap-frame-prologue] DrawSync_after_scheduler: EXECUTED\n"
+                    "[worldmap-frame-prologue] Vsync_after_scheduler: EXECUTED\n"
+                    "[worldmap-frame-prologue] ControllerResetState_after_scheduler: EXECUTED\n"
+                    "[worldmap-frame-prologue] world_driver_800712D0: EXECUTED "
+                    "entry=%d cut=0x%08x scheduler_entry=%d\n",
+                    wm_fp_get_entry(), wm_fp_get_cut_pc(),
+                    wm_sched_get_entry());
+            if (s_wm7299c_hits == 0 && s_wm_drawotag_hits == 0) {
+                fprintf(stderr,
+                        "[worldmap-scheduler] slot2_8007299C: ZERO VERIFIED\n"
+                        "[worldmap-scheduler] world_DrawOTag: ZERO VERIFIED\n");
+            } else {
+                fprintf(stderr,
+                        "[worldmap-scheduler] ERROR: forbidden post-prologue path "
+                        "7299c=%d drawotag=%d\n",
+                        s_wm7299c_hits, s_wm_drawotag_hits);
+            }
+        } else if (s_wm712d0_hits == 0 && s_wm7299c_hits == 0 &&
             s_wm_drawotag_hits == 0) {
             fprintf(stderr,
                     "[worldmap-scheduler] DrawSync_after_scheduler: ZERO VERIFIED\n"
