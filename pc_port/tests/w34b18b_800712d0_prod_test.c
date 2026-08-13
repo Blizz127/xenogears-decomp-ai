@@ -1,5 +1,5 @@
 /*
- * W34B18-B production-linked certificate for the world frame-driver prologue
+ * W34B18-C production-linked certificate for the world frame-driver prologue
  * 0x800712D0 .. 0x80071484 inclusive, plus the return-bearing 0x800967E4
  * helper that the prologue consumes.
  *
@@ -9,13 +9,11 @@
  *   [0x800712D0, 0x80071488)  110 insns  440 bytes
  *   SHA-256 fccdf4bb24527fca3e26a8d91f368886ea127344a0c59c8f5d0b1ca595f0805d
  *
- * Focused build (from the repository root):
+ * The test object intentionally leaves wm_800967E4_dispatch_cd_work undefined.
+ * The focused runner links that symbol from pc_port/src/world_map_init.c and
+ * links the frame prologue from pc_port/src/world_map_frame_driver.c.
  *
- *   gcc -std=gnu17 -O0 -g -Wall -Wextra -Wconversion -Wsign-conversion -Werror \
- *     -DXENO_PC_PORT -DWM_712D0_TEST_TRACE -fno-pie -no-pie \
- *     -Ipc_port/include_shim -Iinclude -Ipc_port/src \
- *     pc_port/tests/w34b18b_800712d0_prod_test.c \
- *     -o pc_port/build_native/w34b18b_800712d0_prod_test
+ *   pc_port/tests/run_w34b18c_800712d0_prod_test.sh
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -23,6 +21,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_frame_driver.h"
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
@@ -34,6 +33,8 @@ u16 g_C2ButtonStateReleased;
 u16 g_C1ButtonStatePressedOnce;
 u16 g_C2ButtonStatePressedOnce;
 u32 g_ArchiveDebugTable;
+
+extern u32 wm_800967E4_dispatch_cd_work(void);
 
 /* Retail-derived addresses (lui/addiu and lui/load-store from world_map.bin). */
 #define OR_ENVREC1     (0x800A0000u + (u32)(s32)(s16)0xBC40) /* -0x43C0 */
@@ -115,8 +116,6 @@ static int s_pop_i;
 
 static u32 s_cd_script[8];
 static int s_cd_n;
-static int s_cd_i;
-static int s_use_prod_967e4;
 
 static u32 s_disp_script[8];
 static int s_disp_n;
@@ -259,69 +258,6 @@ void wm_800966CC_c624_processor(u32 record)
     s_c624_last = record;
 }
 
-static u32 wm_967e4_production(void)
-{
-    u32 dbg0 = g_ArchiveDebugTable;
-    u32 dbg1 = g_ArchiveDebugTable;
-    u32 dispatch_result;
-    u32 tail;
-    u32 d788_record;
-    u32 c624_record;
-
-#if defined(WM_967E4_MUTANT_A)
-    if (dbg0 != 0 && dbg1 != 0)
-        goto c624_path;
-#else
-    if (dbg0 != 0 && dbg1 != 0xFFFFFFFFu)
-        goto c624_path;
-#endif
-
-    dispatch_result = wm_800968E0_dispatch_partial();
-    if (dispatch_result != 0) {
-#if defined(WM_967E4_MUTANT_C)
-        return 0;
-#else
-        return dispatch_result;
-#endif
-    }
-
-    tail = load_u32(OR_BCB8);
-    d788_record = load_u32(OR_D788 + tail * 4u);
-    if (d788_record == 0) {
-#if defined(WM_967E4_MUTANT_B)
-        goto c624_path;
-#else
-        return 0;
-#endif
-    }
-    wm_8009699C_d788_processor(d788_record);
-    return 0;
-
-c624_path:
-    tail = load_u32(OR_BCB8);
-    c624_record = load_u32(OR_C624 + tail * 4u);
-    if (c624_record == 0)
-        return 0;
-    wm_800966CC_c624_processor(c624_record);
-    store_u32(OR_C624 + tail * 4u, 0);
-    store_u32(OR_BCB8, (tail + 1u) & 0x0Fu);
-    return 0;
-}
-
-u32 wm_800967E4_dispatch_cd_work(void)
-{
-    if (s_use_prod_967e4)
-        return wm_967e4_production();
-    if (s_cd_i >= s_cd_n)
-        return 0;
-    return s_cd_script[s_cd_i++];
-}
-
-#ifndef WM_712D0_PRODUCTION_SOURCE
-#define WM_712D0_PRODUCTION_SOURCE "../src/world_map_frame_driver.c"
-#endif
-#include WM_712D0_PRODUCTION_SOURCE
-
 static void check_case(const char* fixture, const char* assertion, int ok)
 {
     s_total++;
@@ -347,7 +283,7 @@ static void seed_ram(u32 seed)
 
 static void reset_helpers(void)
 {
-    s_pop_i = s_cd_i = s_disp_i = 0;
+    s_pop_i = s_disp_i = 0;
     s_d788_calls = s_c624_calls = 0;
     s_d788_last = s_c624_last = 0;
     s_vsync_calls = s_cdsync_calls = 0;
@@ -361,7 +297,6 @@ static void reset_helpers(void)
     s_1d468_calls = 0;
     s_97800_calls = 0;
     s_got_n = s_exp_n = 0;
-    s_use_prod_967e4 = 0;
     g_ArchiveDebugTable = 0;
     g_C1ButtonState = g_C2ButtonState = 0;
     g_C1ButtonStateReleased = g_C2ButtonStateReleased = 0;
@@ -535,6 +470,9 @@ static void run_frame_fixture(const char* name, u32 seed,
     store_u16(OR_BD14, 0xDDDDu);
     store_u16(OR_BD18, 0xEEEEu);
     store_u16(OR_BD1C, 0xFFFFu);
+    store_u32(OR_BCB8, 0u);
+    store_u32(OR_D788, 0u);
+    store_u32(OR_C624, 0u);
 
     reset_helpers();
     s_pop_n = pop_n;
@@ -548,8 +486,10 @@ static void run_frame_fixture(const char* name, u32 seed,
         s_pop_c2o[i] = c2o[i];
     }
     s_cd_n = cd_n;
+    s_disp_n = cd_n;
     for (i = 0; i < cd_n; i++) {
         s_cd_script[i] = cds[i];
+        s_disp_script[i] = cds[i];
         if (cds[i] == 3u)
             vsync_exp++;
         else
@@ -571,7 +511,10 @@ static void run_frame_fixture(const char* name, u32 seed,
     store_u16(OR_BD14, 0xDDDDu);
     store_u16(OR_BD18, 0xEEEEu);
     store_u16(OR_BD1C, 0xFFFFu);
-    s_pop_i = s_cd_i = 0;
+    store_u32(OR_BCB8, 0u);
+    store_u32(OR_D788, 0u);
+    store_u32(OR_C624, 0u);
+    s_pop_i = s_disp_i = 0;
     s_got_n = 0;
     s_vsync_calls = s_cdsync_calls = s_clear_calls = 0;
     s_250e0_calls = s_1d468_calls = s_97800_calls = 0;
@@ -593,7 +536,8 @@ static void run_frame_fixture(const char* name, u32 seed,
     check_case(name, "clearotag-n-0x400",
                s_clear_calls == 1 && s_clear_n == 0x400);
     check_case(name, "func_8001D468-once", s_1d468_calls == 1);
-    check_case(name, "vsync-retries-exact", s_vsync_calls == vsync_exp);
+    check_case(name, "M967-C-dispatch-return-controls-frame-retry",
+               s_vsync_calls == vsync_exp);
     check_case(name, "index-toggled-from-1-to-0",
                load_u32(OR_INDEX) == 0u);
     check_case(name, "db-ptr-switched-to-envrec0",
@@ -642,7 +586,6 @@ static void run_967e4_case(const char* name, u32 dbg, u32 tail, u32 d788,
 
     seed_ram(0x967E4001u);
     reset_helpers();
-    s_use_prod_967e4 = 1;
     g_ArchiveDebugTable = dbg;
     store_u32(OR_BCB8, tail);
     store_u32(OR_D788 + tail * 4u, d788);
@@ -669,7 +612,6 @@ static void run_967e4_case(const char* name, u32 dbg, u32 tail, u32 d788,
     s_disp_script[0] = disp;
     s_disp_i = 0;
     s_d788_calls = s_c624_calls = 0;
-    s_use_prod_967e4 = 1;
     got = wm_800967E4_dispatch_cd_work();
 
     check_case(name, "production-return-matches-retail", got == expect_ret);
@@ -701,7 +643,9 @@ int main(void)
     static const u16 c1o_two[] = {0x0010u, 0x0100u, 0};
     static const u16 c2o_two[] = {0x0020u, 0x0200u, 0};
 
-    printf("=== W34B18-B 0x800712D0 frame-prologue + 0x800967E4 ===\n");
+    printf("=== W34B18-C real production 0x800967E4 certificate ===\n");
+    printf("SUBJECT_967E4 pc_port/src/world_map_init.c::wm_800967E4_dispatch_cd_work\n");
+    printf("SUBJECT_712D0 pc_port/src/world_map_frame_driver.c::wm_800712D0_frame_prologue\n");
 
     run_frame_fixture("natural-empty-pad-idle-cd", 0x712D0001u,
                       1, pop_empty, z16, z16, z16, z16, z16, z16,
@@ -730,8 +674,16 @@ int main(void)
                    2u, 4u, 0x80090000u, 0x80092000u, 0u, 0u, 0, 1);
     run_967e4_case("B-dbg-FFFFFFFF-D788-path",
                    0xFFFFFFFFu, 2u, 0x80093000u, 0x80094000u, 0u, 0u, 1, 0);
+    check_case("B-dbg-FFFFFFFF-D788-path",
+               "M967-A-FFFFFFFF-sentinel-selects-D788",
+               s_d788_calls == 1 && s_c624_calls == 0);
     run_967e4_case("D-D788-tail-zero-returns",
                    0u, 5u, 0u, 0x80095000u, 0u, 0u, 0, 0);
+    check_case("D-D788-tail-zero-returns",
+               "M967-B-D788-null-returns-without-C624",
+               s_d788_calls == 0 && s_c624_calls == 0 &&
+                   load_u32(OR_BCB8) == 5u &&
+                   load_u32(OR_C624 + 5u * 4u) == 0x80095000u);
     run_967e4_case("E-D788-tail-nonzero-processes",
                    0u, 6u, 0x80096000u, 0x80097000u, 0u, 0u, 1, 0);
     run_967e4_case("disp-return-3-propagates",
@@ -746,6 +698,8 @@ int main(void)
 
     printf("RETAIL_BOUNDARY [0x800712D0,0x80071488) bytes=440 insns=110\n");
     printf("RETAIL_SLICE_SHA256 fccdf4bb24527fca3e26a8d91f368886ea127344a0c59c8f5d0b1ca595f0805d\n");
+    printf("RETAIL_967E4_BOUNDARY [0x800967E4,0x800968E0) bytes=252 insns=63\n");
+    printf("RETAIL_967E4_SHA256 0d16c4f020e76808390b2ad94cdff89aa6c28b60bcd4beb2bd0890af938b1530\n");
     printf("HARD_CUT 0x80071488 jal 0x80097800 not executed\n");
     printf("=== Results: %d/%d PASS ===\n", s_pass, s_total);
     return s_fail == 0 ? 0 : 1;
