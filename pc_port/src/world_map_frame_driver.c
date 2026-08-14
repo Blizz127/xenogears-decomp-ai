@@ -1,10 +1,14 @@
 /*
- * W34B18-B: world frame-driver prologue 0x800712D0 .. 0x80071484 inclusive.
+ * W34B18-B prologue plus W34B19-B second scheduler call.
  *
  * Fresh world_map.bin listing (load base 0x8006FAF0):
  *   [0x800712D0, 0x80071488) = 110 instructions, 440 bytes,
  *   SHA-256 fccdf4bb24527fca3e26a8d91f368886ea127344a0c59c8f5d0b1ca595f0805d
- *   no JALR. Hard-cut before jal 0x80097800 at 0x80071488.
+ *   [0x80071488, 0x80071490) = 2 instructions, 8 bytes,
+ *   SHA-256 f082c48aadb535cf17202501b97d36df5f30688c9ecdaac5f5fc41f66b197893
+ *     80071488  jal 0x80097800
+ *     8007148C  nop
+ *   Hard-cut before DrawSync at 0x80071490.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -59,8 +63,9 @@ extern u32* ClearOTagR(u32* ot, int n);
 extern void func_800250E0(int context);
 extern void func_8001D468(void);
 extern u32 wm_800967E4_dispatch_cd_work(void);
-#if defined(WM_712D0_MUTANT_M9) || defined(WM_712D0_MUTANT_M10)
 extern void wm_80097800(void);
+#if defined(WM_71488_MUTANT_M5)
+extern int DrawSync(int mode);
 #endif
 
 enum {
@@ -379,26 +384,43 @@ void wm_800712D0_frame_prologue(void)
     func_800250E0((int)index);
     WM_FP_TRACE(0x80071478u, WM_FP_TRACE_CALL, WM_FP_CALL_250E0, 0u, index);
 
-    func_8001D468();
-    WM_FP_TRACE(0x80071480u, WM_FP_TRACE_CALL, WM_FP_CALL_1D468, 0u, 0u);
-
-#if defined(WM_712D0_MUTANT_M9)
+#if defined(WM_71488_MUTANT_M3)
     wm_80097800();
     s_fp_scheduler_calls++;
     WM_FP_TRACE(0x80071488u, WM_FP_TRACE_CALL, WM_FP_CALL_97800, 0u, 1u);
 #endif
-#if defined(WM_712D0_MUTANT_M10)
+
+    func_8001D468();
+    WM_FP_TRACE(0x80071480u, WM_FP_TRACE_CALL, WM_FP_CALL_1D468, 0u, 0u);
+
+#if defined(WM_712D0_MUTANT_M9) || defined(WM_71488_MUTANT_M1)
+    /* Omit the second scheduler jal at 0x80071488. */
+#elif defined(WM_712D0_MUTANT_M10) || defined(WM_71488_MUTANT_M2)
     wm_80097800();
     wm_80097800();
     s_fp_scheduler_calls += 2;
     WM_FP_TRACE(0x80071488u, WM_FP_TRACE_CALL, WM_FP_CALL_97800, 0u, 2u);
+#elif defined(WM_71488_MUTANT_M3)
+    /* Already invoked before func_8001D468. */
+#else
+    /* Retail 0x80071488: jal 0x80097800 / 0x8007148C: nop. */
+    wm_80097800();
+    s_fp_scheduler_calls++;
+    WM_FP_TRACE(0x80071488u, WM_FP_TRACE_CALL, WM_FP_CALL_97800, 0u, 1u);
 #endif
 
+#if defined(WM_71488_MUTANT_M5)
+    s_fp_cut_pc = 0x80071498u;
+    (void)DrawSync(0);
+#elif defined(WM_71488_MUTANT_M4)
+    s_fp_cut_pc = 0x80071488u;
+#else
     s_fp_cut_pc = WM_FRAME_PROLOGUE_CUT;
+#endif
     fprintf(stderr,
             "[worldmap-frame-prologue] HARD CUT before 0x%08x "
             "cd_work_calls=%d vsync_retries=%d pad_iters=%d "
             "scheduler_calls=%d\n",
-            WM_FRAME_PROLOGUE_CUT, s_fp_cd_work_calls, s_fp_vsync_retries,
+            s_fp_cut_pc, s_fp_cd_work_calls, s_fp_vsync_retries,
             s_fp_pad_iters, s_fp_scheduler_calls);
 }

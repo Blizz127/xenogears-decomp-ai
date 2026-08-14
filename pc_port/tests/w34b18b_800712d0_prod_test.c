@@ -428,6 +428,7 @@ static void oracle_frame(void)
     exp_event(0x80071474u, TR_LW, OR_INDEX, 4u, index);
     exp_event(0x80071478u, TR_CALL, CALL_250E0, 0u, index);
     exp_event(0x80071480u, TR_CALL, CALL_1D468, 0u, 0u);
+    exp_event(0x80071488u, TR_CALL, CALL_97800, 0u, 1u);
 }
 
 static int traces_equal(void)
@@ -526,10 +527,10 @@ static void run_frame_fixture(const char* name, u32 seed,
     check_case(name, "event-order-matches-retail-oracle", traces_equal());
     check_case(name, "independent-oracle-final-ram-image",
                memcmp(expected, g_PsxRam, sizeof(expected)) == 0);
-    check_case(name, "hard-cut-pc-0x80071488",
-               wm_fp_get_cut_pc() == 0x80071488u);
-    check_case(name, "no-second-scheduler-call",
-               s_97800_calls == 0 && wm_fp_get_scheduler_calls() == 0);
+    check_case(name, "hard-cut-pc-0x80071490",
+               wm_fp_get_cut_pc() == 0x80071490u);
+    check_case(name, "second-scheduler-once-after-1D468",
+               s_97800_calls == 1 && wm_fp_get_scheduler_calls() == 1);
     check_case(name, "cdsync-mode-1-buf-C588",
                s_cdsync_calls == 1 && s_cdsync_mode == 1u &&
                s_cdsync_buf == (u8*)PSX_ADDR(OR_CDSYNC));
@@ -700,7 +701,7 @@ int main(void)
     printf("RETAIL_SLICE_SHA256 fccdf4bb24527fca3e26a8d91f368886ea127344a0c59c8f5d0b1ca595f0805d\n");
     printf("RETAIL_967E4_BOUNDARY [0x800967E4,0x800968E0) bytes=252 insns=63\n");
     printf("RETAIL_967E4_SHA256 0d16c4f020e76808390b2ad94cdff89aa6c28b60bcd4beb2bd0890af938b1530\n");
-    printf("HARD_CUT 0x80071488 jal 0x80097800 not executed\n");
+    printf("HARD_CUT 0x80071490 jal 0x80097800 executed once\n");
     printf("=== Results: %d/%d PASS ===\n", s_pass, s_total);
     return s_fail == 0 ? 0 : 1;
 }

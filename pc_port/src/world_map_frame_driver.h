@@ -1,8 +1,9 @@
 /*
- * World-map frame-driver prologue (W34B18-B).
+ * World-map frame-driver (W34B18-B prologue + W34B19-B second scheduler).
  *
- * Bounded retail slice 0x800712D0 .. 0x80071484 inclusive.
- * Hard-cut before 0x80071488 (jal 0x80097800, second scheduler pass).
+ * Bounded retail slice 0x800712D0 .. 0x8007148C inclusive.
+ * Executes jal 0x80097800 / nop at 0x80071488 / 0x8007148C.
+ * Hard-cut before 0x80071490 (DrawSync after the second scheduler pass).
  */
 #ifndef WORLD_MAP_FRAME_DRIVER_H
 #define WORLD_MAP_FRAME_DRIVER_H
@@ -10,8 +11,8 @@
 #include "common.h"
 
 #define WM_FRAME_PROLOGUE_ENTRY 0x800712D0u
-#define WM_FRAME_PROLOGUE_LAST  0x80071484u
-#define WM_FRAME_PROLOGUE_CUT   0x80071488u
+#define WM_FRAME_PROLOGUE_LAST  0x8007148Cu
+#define WM_FRAME_PROLOGUE_CUT   0x80071490u
 
 void wm_800712D0_frame_prologue(void);
 
