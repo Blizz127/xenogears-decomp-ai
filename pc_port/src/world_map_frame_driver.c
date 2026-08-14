@@ -409,6 +409,14 @@ void wm_800712D0_frame_prologue(void)
     WM_FP_TRACE(0x80071488u, WM_FP_TRACE_CALL, WM_FP_CALL_97800, 0u, 1u);
 #endif
 
+#if defined(WM_71488_MUTANT_M10)
+    /* Copied-source cheat: invent a 925A0 body the retail jal never calls. */
+    {
+        extern void wm_71488_mutant_fake_925a0(void);
+        wm_71488_mutant_fake_925a0();
+    }
+#endif
+
 #if defined(WM_71488_MUTANT_M5)
     s_fp_cut_pc = 0x80071498u;
     (void)DrawSync(0);
