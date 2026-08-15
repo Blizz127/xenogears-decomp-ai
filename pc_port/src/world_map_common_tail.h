@@ -30,6 +30,11 @@
 /* 0x280 bytes / 160 instructions.  Retail slice SHA-256:
  * 497f19a8b36ee1df78b5bfb66301a0a5efd97a1ed54c906285cd2b2053521f77 */
 #define WM_80089160_END_EXCLUSIVE    0x800893E0u
+/* Retail [0x800894C8, 0x80089514): 76 bytes / 19 instructions.
+ * Slice SHA-256:
+ * 3cd5b7a87503c92b5647e9eb2ff784fe6298fc80acc8e955bd935fc43f80e77b */
+#define WM_800894C8_START            0x800894C8u
+#define WM_800894C8_END_EXCLUSIVE    0x80089514u
 #define WM_800978FC_START            0x800978FCu
 #define WM_800978FC_END_EXCLUSIVE    0x800979C8u
 
@@ -77,6 +82,11 @@ void wm_89160_test_trace(u32 pc, u32 kind, u32 address,
  * Leaf function. Arguments: a0=record index, a1=src ptr, a2=src ptr.
  * For natural C610=0 path: (14, 0, 0). */
 void wm_80089160(u32 a0, u32 a1, u32 a2);
+
+/* wm_800894C8: clear bit 0x80 on all 8 subrecord flag bytes of record a0.
+ * Leaf. Void. No bounds check. Uses the same table/stride/flag constants
+ * as wm_80089160. */
+void wm_800894C8(u32 record_index);
 
 /* wm_8007290C_common_tail_p0: bounded common-tail prefix.
  * Reads C610, dispatches to wm_80089160 for C610=0.

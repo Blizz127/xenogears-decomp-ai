@@ -546,6 +546,67 @@ dispatch_check_2:
             t2, s_wm_89160_iterations);
 }
 
+/* Retail [0x800894C8, 0x80089514). Leaf, void, no calls, no bounds check.
+ * Access widths/order match the listing: one lw of the table base, then
+ * eight lbu/andi/sb pairs at +0x4F + k*0x54. */
+void wm_800894C8(u32 record_index)
+{
+    u32 table_base;
+    u32 cursor;
+    u32 i;
+    u32 count;
+    u32 record_stride;
+    u32 sub_stride;
+    u32 flag_off;
+
+#if defined(WM_894C8_MUTANT_BOUNDS_CHECK)
+    if (record_index > 0x3Fu)
+        return;
+#endif
+
+#if defined(WM_894C8_MUTANT_WRONG_RECORD_STRIDE)
+    record_stride = 668u;
+#else
+    record_stride = WM_89160_RECORD_STRIDE;
+#endif
+
+#if defined(WM_894C8_MUTANT_WRONG_SUBRECORD_STRIDE)
+    sub_stride = 0x50u;
+#else
+    sub_stride = WM_89160_SUBRECORD_STRIDE;
+#endif
+
+#if defined(WM_894C8_MUTANT_WRONG_FLAG_OFFSET)
+    flag_off = 0x4Eu;
+#else
+    flag_off = WM_89160_FLAG_BYTE_OFFSET;
+#endif
+
+#if defined(WM_894C8_MUTANT_COUNT_7)
+    count = 7u;
+#elif defined(WM_894C8_MUTANT_COUNT_9)
+    count = 9u;
+#else
+    count = (u32)WM_89160_SUBRECORD_COUNT;
+#endif
+
+    table_base = wm_89160_lw(0x800894E4u, WM_89160_TABLE_BASE_PTR);
+    cursor = table_base + record_index * record_stride + flag_off;
+
+    for (i = 0; i < count; i++) {
+        u8 flag = wm_89160_lbu(0x800894F4u, cursor);
+#if defined(WM_894C8_MUTANT_CLEAR_WHOLE_BYTE)
+        flag = 0u;
+#elif defined(WM_894C8_MUTANT_CLEAR_WRONG_BIT)
+        flag = (u8)(flag & (u8)~0x40u);
+#else
+        flag = (u8)(flag & (u8)~WM_89160_FLAG_BIT);
+#endif
+        wm_89160_sb(0x80089500u, cursor, flag);
+        cursor += sub_stride;
+    }
+}
+
 /* ---- Common-tail P0 production implementation ---- */
 
 /* Bounded common-tail prefix starting at 0x8007290C.
