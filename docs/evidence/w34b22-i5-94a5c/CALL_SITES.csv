@@ -1,0 +1,30 @@
+va,callee,context,note
+0x80094BA0,wm_8009443C,case1 single helper,a3=sign16(mode)
+0x80095118,wm_800945C8,"case2 / case6 v==0 / case6 v<0 A / case10 v==0 / case10 v>0 A",shared tail-prolog block at 0x80095104/0x80095118
+0x80094BB0,wm_80094750,case4 single helper,a3=sign16(mode)
+0x80094BD0,wm_800948D8,case8 single helper,a3=sign16(mode)
+0x80094CA4,func_8004A70C,case5 probe,a0=s1[0x40],a1=0,a2=s1[0x48],a3=mode
+0x80094CC4,wm_8009443C,case5 v<0 first (A),
+0x80094CE0,wm_80094750,case5 v<0 second (B),
+0x80094D04,wm_80094750,case5 v>0 first (B),
+0x80094D20,wm_8009443C,case5 v>0 second (A),
+0x80094D30,wm_8009443C,case5 v==0 only (A),
+0x80094DFC,func_8004A70C,case6 probe,a0=s1[0x40],a1=0,a2=s1[0x48],a3=mode
+0x80094E1C,wm_800945C8,case6 v>0 first (A),
+0x80094E38,wm_80094750,case6 v>0 second (B),
+0x80094E60,wm_80094750,case6 v<0 first (B),
+0x80094E7C,wm_800945C8,case6 v<0 second (A) (j 0x80095118),
+0x80094F30,func_8004A70C,case9 probe,a0=s1[0x40],a1=0,a2=s1[0x48],a3=mode
+0x80094F50,wm_8009443C,case9 v>0 first (A),
+0x80094F6C,wm_800948D8,case9 v>0 second (B),
+0x80094F94,wm_800948D8,case9 v<0 first (B),
+0x80094FB0,wm_8009443C,case9 v<0 second (A),
+0x80094FC8,wm_8009443C,case9 v==0 only (A),
+0x80095080,func_8004A70C,case10 probe,a0=s1[0x40],a1=0,a2=s1[0x48],a3=mode
+0x800950A0,wm_800945C8,case10 v<0 first (A),
+0x800950BC,wm_800948D8,case10 v<0 second (B),
+0x800950E0,wm_800948D8,case10 v>0 first (B),
+0x800950FC,wm_800945C8,case10 v>0 second (A) (j 0x80095118),
+0x80095130,wm_80093354,tail,s1+0x10
+0x80095138,wm_80093F18,tail,s1+0x10
+0x8009514C,wm_80094060,tail,sign16(mode), sign16(c)
