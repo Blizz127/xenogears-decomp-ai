@@ -1,0 +1,15 @@
+mutant,fault_class,killed_by,detail
+WM_93FE4_MUTANT_WRONG_MASK,wrong mask,B.mask[3],andi 0x7 instead of 0xF (forced 8 -> 0)
+WM_93FE4_MUTANT_MISSING_MASK,missing mask,B.mask[5],result not masked (forced 16 -> 16)
+WM_94088_MUTANT_WRONG_TABLE_BASE,wrong table base,C.neg_dot_n0.dx,X/Z table displaced +8 (reads Z as X)
+WM_94088_MUTANT_WRONG_SHIFT,wrong shift,C.pos_dot_n11.dx,sra 13 instead of 12 (stride 8 not 16)
+WM_94088_MUTANT_SWAPPED_AXES,swapped operands,C.neg_dot_n0.ret,src.X read from +8 (dot collapses to 0)
+WM_94088_MUTANT_WRONG_BRANCH_POLARITY,wrong branch polarity,C.neg_dot_n0.dx,dot<0 and dot>0 paths exchanged
+WM_94088_MUTANT_MISSING_Z_NEGATE,missed operation,C.neg_dot_n0.dz,negative path stores +tabZ
+WM_94088_MUTANT_ZERO_PATH_RETURN,wrong return,C.zero_dot_n10.ret,dot==0 path returns 1 instead of 0
+WM_951A8_MUTANT_WRONG_WORKSPACE,wrong workspace address,D.v1r1.attr,94088 called with 0x1F800010
+WM_951A8_MUTANT_MODE_ZERO_EXT,wrong signedness,D.mode.signext,lhu instead of lh for stacked mode
+WM_951A8_MUTANT_WRONG_88_BRANCH,wrong branch polarity,D.v1r1.out0,zeroing on r!=0 instead of r==0
+WM_951A8_MUTANT_SUCCESS_RETURN,booleanized return,D.v0.ret,v==0 path returns 0 instead of 1
+WM_951A8_MUTANT_SIGN_POLARITY,wrong branch polarity,D.v2[0].out0,bgez sign selection inverted (x=0 -> -0x1000)
+WM_951A8_MUTANT_CASE3_READS_X,wrong offset,D.v3[0].out8,case 3 reads dir.X instead of dir.Z
