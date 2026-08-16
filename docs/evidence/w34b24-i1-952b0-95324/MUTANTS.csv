@@ -1,0 +1,15 @@
+mutant,fault_class,killed_by,detail
+WM_952B0_MUTANT_WRONG_BRANCH_POLARITY,wrong branch polarity,A.pos.x,dot<0 and dot>0 paths exchanged
+WM_952B0_MUTANT_MISSING_NEGATE,missed operation,A.neg.z,negative path stores +ref.Z
+WM_952B0_MUTANT_ZERO_PATH_COPY,wrong path behavior,A.zero.x,dot==0 copies ref instead of zeroing (94088-style confusion)
+WM_952B0_MUTANT_SKIPPED_Y_STORE,skipped store,A.pos.y,out.Y (jr delay slot store) omitted
+WM_952B0_MUTANT_SWAPPED_OPERANDS,swapped operands,A.pos.x,mov.X/mov.Z loads exchanged (dot collapses to 0)
+WM_952B0_MUTANT_WRONG_WIDTH,wrong width,A.wrap_zero.x,64-bit dot instead of low-word wrap (65536*65536 case)
+WM_95324_MUTANT_WRONG_DOWN_SIGN,wrong sign,B.pos.down_y,down vector +0x1000 instead of -0x1000
+WM_95324_MUTANT_WRONG_DOWN_SLOT,wrong offset,B.pos.down_x,-0x1000 written to vx (+0x10) instead of vy (+0x14)
+WM_95324_MUTANT_SWAPPED_GTE_ORDER,wrong call order,B.pos.op12_first,VectorNormal before OuterProduct12 (reads unwritten raw tangent)
+WM_95324_MUTANT_WRONG_OP12_ARGS,swapped arguments,B.pos.op12_v0,OuterProduct12(down normal ...) instead of (normal down ...)
+WM_95324_MUTANT_WRONG_TAN_OFFSET,wrong offset,B.zero.x,dot reads tangent +4 (vy) instead of +8 (vz)
+WM_95324_MUTANT_WRONG_BRANCH_POLARITY,wrong branch polarity,B.pos.x,sign paths exchanged
+WM_95324_MUTANT_MISSING_NEGATE,missed operation,B.neg.z,negative path stores +tan.Z
+WM_95324_MUTANT_SKIPPED_Y_STORE,skipped store,B.pos.y,common-tail out.Y store omitted
