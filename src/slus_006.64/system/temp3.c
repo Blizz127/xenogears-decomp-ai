@@ -344,7 +344,26 @@ void func_8001B6BC(void) {}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B6C4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B844);
+extern u8 D_800C4A7C[];
+extern void func_800379D0(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f);
+extern void func_8001B94C(DRAWENV* pDrawEnv);
+
+void func_8001B844(void) {
+    u8* pBase = D_800C4A7C;
+    ResetGraph(1);
+    func_800379D0(0x300, 0, 0, 0, 0, 0);
+    func_800379D0(8, 0x10, 0x140, 0xF0, 0, 0x1000);
+    func_800379D0(0, 0, 0, 0, 0, 0);
+    InitGeom();
+    SetGeomOffset(0xA0, 0xB4);
+    SetGeomScreen(0x200);
+    SetDefDispEnv((DISPENV*)pBase, 0, 0xE0, 0x140, 0xE0);
+    SetDefDrawEnv((DRAWENV*)(pBase - 0x5C), 0, 0, 0x140, 0xE0);
+    SetDefDispEnv((DISPENV*)(pBase + 0x4070), 0, 0xE0, 0x140, 0xE0);
+    SetDefDrawEnv((DRAWENV*)(pBase + 0x4014), 0, 0xE0, 0x140, 0xE0);
+    func_8001B94C((DRAWENV*)(pBase - 0x5C));
+    func_8001B94C((DRAWENV*)(pBase + 0x4014));
+}
 
 void func_8001B94C(DRAWENV* pDrawEnv) {
     pDrawEnv->isbg = 1;
