@@ -2754,7 +2754,43 @@ void func_80085988(void) {
     D_8004F32C = -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
+extern s32 D_800B2370;
+extern void* D_800C3A1C;
+extern s32 g_GameCurLoadedWDS;
+extern s32 func_800380D0(u8* data, s32 size, s32 a2);
+extern void SoundTransferWdsPart(u8* data, s32 size);
+extern void func_8002945C(s32 idx);
+
+void func_800859DC(u8* pSrc) {
+    if (D_800B2370 < 0) return;
+    if (D_800B2370 < 4) {
+        u8* pDst = D_800C3A1C + D_800B2370 * 0x800;
+        s32 i;
+        for (i = 0; i < 0x800; i += 16) {
+            *(s32*)(pDst + i) = *(s32*)(pSrc + i);
+            *(s32*)(pDst + i + 4) = *(s32*)(pSrc + i + 4);
+            *(s32*)(pDst + i + 8) = *(s32*)(pSrc + i + 8);
+            *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
+        }
+        D_800B2370++;
+        func_8002945C(D_800B2370);
+        if (D_800B2370 == 4) {
+            g_GameCurLoadedWDS = func_800380D0(D_800C3A1C, 0x2000, 0);
+        }
+    } else if (D_800B2370 == 4) {
+        u8* pDst = D_800C3A1C;
+        s32 i;
+        func_8003BDFC(0x10);
+        for (i = 0; i < 0x800; i += 16) {
+            *(s32*)(pDst + i) = *(s32*)(pSrc + i);
+            *(s32*)(pDst + i + 4) = *(s32*)(pSrc + i + 4);
+            *(s32*)(pDst + i + 8) = *(s32*)(pSrc + i + 8);
+            *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
+        }
+        SoundTransferWdsPart(D_800C3A1C, 0x800);
+        func_8002945C(D_800B2370);
+    }
+}
 
 extern u8 D_800ADFCC[];
 #ifdef XENO_PC_PORT
@@ -2769,7 +2805,7 @@ extern s32 D_800AFC54;
 extern s32 D_800B2370;
 extern void* D_800C3A1C;
 extern void func_8001B66C(void);
-extern void func_800859DC(void);
+extern void func_800859DC(u8* pSrc);
 
 void func_80085B20(s32 a0) {
     u8 archiveFile;
