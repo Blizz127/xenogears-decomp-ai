@@ -65,7 +65,7 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 8 | `0x800848F4` | `[0x800848F4, 0x80084D00)` | 1036 / 259 | `670f809b7d9c0bcbd32463495e24c057bda8469220f12f3d6de19b893830e93b` | `0x14E04` | **ACCEPTED** (I27) | `0x80093534` ACCEPTED | bounded; COP2 words |
 | 9 | `0x800980D4` | `[0x800980D4, 0x800981C8)` | 244 / 61 | `b2ad8897db6a2b556897d0e5c726d049e252e78907dedac61642d121d7d90b12` | `0x285E4` | **ACCEPTED** (I23) | none | ACCEPTED |
 | 10 | `0x800981C8` | `[0x800981C8, 0x800983A0)` | 472 / 118 | `90e483f10929f9022a21582a9d8046cb978c9cf09927d848580f8a427905a6fe` | `0x286D8` | **ACCEPTED** (I24) | none | ACCEPTED |
-| 11 | `0x80096130` | `[0x80096130, 0x8009623C)` | 268 / 67 | `92c4c23f0e129166ce0c21cca5431851a5b3c6662ce293682e2b947c24562bc0` | `0x26640` | MISSING | `0x800967E4` ACCEPTED (I41) | bounded; PsyQ Vsync |
+| 11 | `0x80096130` | `[0x80096130, 0x8009623C)` | 268 / 67 | `92c4c23f0e129166ce0c21cca5431851a5b3c6662ce293682e2b947c24562bc0` | `0x26640` | **ACCEPTED** (I42) | `0x800967E4` ACCEPTED (I41) | PsyQ Vsync |
 | 12 | `0x80098CC0` | `[0x80098CC0, 0x8009932C)` | 1644 / 411 | `5a5d9b8f7fcee4651a39633c852c1415a8de66356140702c9eb9d85bd0fd62a4` | `0x291D0` | MISSING | `9623C`/`962B0`/`96328`/`965A4` all ACCEPTED (I32–I37) | overlay closed; SLUS JALs remain |
 | 13 | `0x800983A0` | start clear; first frame-0x70 return `0x800987A4`; later code to `98CC0` | UNRESOLVED | — | `0x288B0` | MISSING | `0x800987AC` | BLOCKED |
 | 14 | `0x8009932C` | start clear; first frame-0x38 return `0x80099700` | UNRESOLVED | — | `0x2983C` | MISSING | `0x80099708` | BLOCKED |
@@ -74,10 +74,8 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074594)` | 1244 / 311 | `a0b5afc3d5b4efc5970d5e730d4b466eaa6d5f94705830732bda346c2d3119ad` | `0x45C8` | **ACCEPTED** (I29) | none (PsyQ RotMatrix + COP2 RTPT) | PRE4 end `74794` swallowed init `74594` and free `7474C` |
 
-`71A58_MISSING_CALLEES=7` after I21–I35 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC` / `85CDC` / `848F4` / `89C78` / `740B8` / `89580` /
-`89748`) plus accepted `73B04`. I32–I35 are 98CC0 prerequisites, not
-71A58 callees.
+`71A58_MISSING_CALLEES=6` after I21–I42. I42 accepted `96130`.
+I32–I41 are 98CC0 / 96130 prerequisites.
 
 ## 4. Next implementable missing prerequisite
 
@@ -88,18 +86,16 @@ ACCEPTED. Independently re-derived: `[98CC0,9932C)` 1644/411; one
 `0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
 `HeapAlloc` `0x80031BDC`, plus `0x800320E8`.
 
-**`0x80096130`** — 71A58 callee; overlay jal `967E4` ACCEPTED I41.
-Independently re-derived: `[96130,9623C)` 268/67; PsyQ `Vsync`
-`0x8004B54C`; SLUS `func_8002C3D8` ×2. Polls `D788[*0x8009BE44]`
-or `C624[*0x8009BE44]` until that slot is 0.
-
-**`0x80098CC0`** remains a bounded 71A58 callee (overlay closed;
-SLUS archive/heap identified).
+**`0x80098CC0`** — remaining bounded 71A58 callee. Overlay callees
+I32–I37 are ACCEPTED. Independently re-derived: `[98CC0,9932C)`
+1644/411; one `jr $ra`; no JALR/COP2. SLUS: `ArchiveGetFilePath`
+`0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
+`HeapAlloc` `0x80031BDC`, `HeapFree` `0x800320E8`.
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
+`86798` remains jalr-unbounded.
 
-I31–I41 are landed. Do not invent a `86798` jalr set. `968E0`'s
-`jr $v0` is a closed 6-entry overlay table at `0x80070CA0`.
+I31–I42 are landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 
