@@ -3351,7 +3351,42 @@ void FieldScriptVM2Run(void) {
     (*handler)();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086A1C);
+extern s16 D_800B22E8[];
+extern s16 D_800B22EA[];
+extern s16 D_800B22EC[];
+extern s16 D_800B2300[];
+extern s16 D_800B2302[];
+extern s16 D_800B2304[];
+extern s32 D_800B2318[];
+extern s16 D_800B2324[];
+extern s16 D_800B2326[];
+extern s16 D_800B2328[];
+
+void func_80086A1C(s32 idx, u8* pSub) {
+    s32 step = D_800B2318[idx];
+    s32 dx, dy, dz, mag;
+    s32 remainder;
+    s16* pOutX = &D_800B2324[idx];
+    s16* pOutY = &D_800B2326[idx];
+    s16* pOutZ = &D_800B2328[idx];
+
+    dx = (D_800B22E8[idx * 4] - D_800B2300[idx * 4]) << 16;
+    dy = (D_800B22EA[idx * 4] - D_800B2302[idx * 4]) << 16;
+    dz = (D_800B22EC[idx * 4] - D_800B2304[idx * 4]) << 16;
+
+    /* Compute vector from sub-structure position delta */
+    {
+        s32 subDx = D_800B2324[idx * 4] - *(s16*)(pSub + 0x02);
+        s32 subDy = D_800B2326[idx * 4] - *(s16*)(pSub + 0x06);
+        s32 subDz = D_800B2328[idx * 4] - *(s16*)(pSub + 0x0A);
+        mag = FieldGetVec3Magnitude(dx, dy, dz);
+    }
+
+    remainder = step - mag;
+    *pOutX = (s16)((dx * remainder) >> 16);
+    *pOutY = (s16)((dy * remainder) >> 16);
+    *pOutZ = (s16)((dz * remainder) >> 16);
+}
 
 extern s16 D_800B22E2[];
 extern void func_80086A1C(s32 idx, u8* pSub);
