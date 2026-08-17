@@ -29,6 +29,6 @@ caller,wm_80097800 (scheduler),slot-14 cb1,CANONICAL,natural a0=14 after 92FD8 r
 prereq,wm_80089580,0x80089C3C,ACCEPTED,"I30; [0x80089580,0x80089748) 456B/114i; no JAL/JALR; unlocks 89748"
 prereq,wm_8009623C,0x80098CC0,ACCEPTED,"I32; [0x8009623C,0x800962B0) 116B/29i; no JAL/JALR; 12-byte enqueue cap 88"
 prereq,wm_800962B0,0x80098CC0,ACCEPTED,"I33; [0x800962B0,0x80096328) 120B/30i; no JAL/JALR; 16-byte enqueue cap 88"
-prereq,wm_800963E4,0x80096328,MISSING,"[0x800963E4,0x800964B0) 204B/51i; no JAL/JALR; unlocks 96328"
-prereq,wm_800964B0,0x800965A4,MISSING,"[0x800964B0,0x800965A4) 244B/61i; no JAL/JALR; unlocks 965A4"
-closure_verdict,-,-,MISSING=7,I21-I33 plus 73B04 accepted; next bounded=0x800963E4
+prereq,wm_800963E4,0x80096328,ACCEPTED,"I34; [0x800963E4,0x800964B0) 204B/51i; no JAL/JALR; 12-byte key insertion; unlocks 96328"
+prereq,wm_800964B0,0x800965A4,ACCEPTED,"I35; [0x800964B0,0x800965A4) 244B/61i; no JAL/JALR; 16-byte key insertion; unlocks 965A4"
+closure_verdict,-,-,MISSING=7,I21-I35 plus 73B04 accepted; next bounded=0x80096328

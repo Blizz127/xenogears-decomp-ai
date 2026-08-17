@@ -74,24 +74,26 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074594)` | 1244 / 311 | `a0b5afc3d5b4efc5970d5e730d4b466eaa6d5f94705830732bda346c2d3119ad` | `0x45C8` | **ACCEPTED** (I29) | none (PsyQ RotMatrix + COP2 RTPT) | PRE4 end `74794` swallowed init `74594` and free `7474C` |
 
-`71A58_MISSING_CALLEES=7` after I21–I31 (`97440` / `97244` / `980D4` /
+`71A58_MISSING_CALLEES=7` after I21–I35 (`97440` / `97244` / `980D4` /
 `981C8` / `737EC` / `85CDC` / `848F4` / `89C78` / `740B8` / `89580` /
-`89748`) plus accepted `73B04`.
+`89748`) plus accepted `73B04`. I32–I35 are 98CC0 prerequisites, not
+71A58 callees.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x800963E4`** then **`0x800964B0`** — bounded no-JAL leaves that
-unlock `96328` / `965A4` (remaining 98CC0 overlay callees).
-Independently re-derived: `[963E4,964B0)` 204/51; `[964B0,965A4)`
-244/61. `966CC` is also bounded (PsyQ `0x8004Cxxx` only) and is a
-`967E4` overlay callee.
+**`0x80096328`** then **`0x800965A4`** — remaining 98CC0 overlay
+callees. Independently re-derived: `[96328,963E4)` 188/47 (overlay
+jal `963E4` ACCEPTED I34); `[965A4,96668)` 196/49 (overlay jal
+`964B0` ACCEPTED I35). `966CC` is also bounded (PsyQ `0x8004Cxxx`
+only) and is a `967E4` overlay callee.
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
 Blocked: `96130` (needs `967E4`; `967E4` jals overlay `968E0` /
 `9699C` / `966CC`), `98CC0` still needs `96328` / `965A4`.
 
-**`0x80089748`** (I31), **`0x8009623C`** (I32), and **`0x800962B0`**
-(I33) are landed. Do not invent a `86798` jalr set.
+**`0x80089748`** (I31), **`0x8009623C`** (I32), **`0x800962B0`**
+(I33), **`0x800963E4`** (I34), and **`0x800964B0`** (I35) are
+landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 
