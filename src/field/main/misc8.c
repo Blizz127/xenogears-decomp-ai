@@ -3284,7 +3284,20 @@ void FieldScriptVM2Run(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086A1C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086BA8);
+extern s16 D_800B22E2[];
+extern void func_80086A1C(s32 idx, u8* pSub);
+
+void func_80086BA8(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        s16 actorIdx = D_800B22E2[i];
+        if (actorIdx != -1) {
+            u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+            u32 pSub = *(u32*)(pFieldActor + 0x4C);
+            func_80086A1C(i, (u8*)(pSub + 0x20));
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086C34);
 
