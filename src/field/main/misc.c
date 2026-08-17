@@ -1383,7 +1383,24 @@ void func_8008D0F4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D180);
+extern s32 D_800AFD1C;
+
+void func_8008D180(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 arg3 = FieldScriptVMGetArgument(3);
+    s32 arg5 = FieldScriptVMGetArgument(5);
+    u32 actorIdx = (u32)D_800AFD1C;
+    u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+    u32 pActorData = *(u32*)(pFieldActor + 0x04);
+    u8* pActor = (u8*)g_FieldScriptVMCurActor;
+
+    *(s16*)(pActorData + 0x2C) = 0xC00;
+    *(s16*)(pActor + 0xF4) = (s16)arg1;
+    *(s16*)(pActor + 0xF6) = (s16)arg3;
+    *(s16*)(pActor + 0xF8) = (s16)arg5;
+    func_80072254(actorIdx);
+    *(u16*)(pActor + 0xCC) += 7;
+}
 
 extern s16 D_800B218C;
 
