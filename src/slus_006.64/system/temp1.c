@@ -1542,7 +1542,46 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025544);
 
 void func_80025710(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025718);
+extern MATRIX D_8004FBB8;
+extern void func_8002C700(void* a, void* b, u_long* ot, s32 flags);
+
+void func_80025718(u8* pEntry) {
+    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u8* pSub;
+    u8* pMatrix;
+    SVECTOR trans;
+
+    func_80022038(pSprite);
+    pSub = *(u8**)(pSprite + 0x20);
+    if (*(u32*)(pSub + 0x34) == 0) return;
+
+    pMatrix = pSub + 0x0C;
+    trans.vx = *(s16*)(pSprite + 0x02);
+    trans.vy = *(s16*)(pSprite + 0x06);
+    trans.vz = *(s16*)(pSprite + 0x0A);
+    TransMatrix((MATRIX*)pMatrix, &trans);
+
+    if (!(*(u8*)(pSprite + 0x3F) & 1)) {
+        MATRIX result;
+        CompMatrix(&D_8004FBB8, (MATRIX*)(pSub + 0x0C), &result);
+        SetRotMatrix(&result);
+        SetTransMatrix(&result);
+    } else {
+        SetRotMatrix((MATRIX*)(pSub + 0x0C));
+        SetTransMatrix((MATRIX*)(pSub + 0x0C));
+    }
+
+    {
+        s32 ctxIdx = g_GfxCurContext;
+        u32 flags = *(u16*)(pSprite + 0x42) & 4;
+        func_8002C700(
+            *(void**)(pSub + 0x34),
+            *(void**)(pSub + 0x2C + ctxIdx * 4),
+            g_GfxCurOT,
+            flags
+        );
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800257F0);
 
