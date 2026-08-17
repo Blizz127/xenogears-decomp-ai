@@ -377,7 +377,28 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC3AC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC99C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACB90);
+void func_800ACB90(void) {
+    RECT rect;
+    s32 i;
+    u8* pBuf;
+
+    FieldLoadTIMWithClut(D_800AF784, 0x380, 0, 0, 0x1FF, 0, 0);
+    DrawSync(0);
+    HeapFree(D_800AF784);
+
+    pBuf = HeapAlloc(0x200, 1);
+    for (i = 0x7F; i >= 0; i--) {
+        *(s32*)(pBuf + i * 4 + 0x1FC) = -1;
+    }
+
+    rect.x = 0x3C0;
+    rect.y = 0x100;
+    rect.w = 0x40;
+    rect.h = 0x4;
+    LoadImage(&rect, pBuf);
+    DrawSync(0);
+    HeapFree(pBuf);
+}
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;
