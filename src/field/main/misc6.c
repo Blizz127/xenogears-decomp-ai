@@ -1059,7 +1059,35 @@ void func_800A0EB0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0EE8);
+extern s32 D_800B2264;
+extern s32 D_801E8670[];
+extern void func_801E8030(s32 idx);
+
+void func_800A0EE8(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    u32 flags12C = *(u32*)((u8*)pActor + 0x12C);
+    u32 motionIdx = (flags12C >> 13) & 7;
+    u8 subOp = SCRIPT_READ_U8_REL(1);
+
+    *(u32*)((u8*)pActor + 0x04) &= 0xFFFFDFFF;
+
+    switch (subOp) {
+        case 0: {
+            u32* pTable = (u32*)(uintptr_t)D_801E8670;
+            u32 pEntry = pTable[motionIdx];
+            *(u8*)(pEntry + 0x34) = 0;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        }
+        case 1: {
+            func_801E8030((*(u32*)((u8*)pActor + 0x12C) >> 13) & 7);
+            D_800B2264--;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        }
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0FD8);
 
