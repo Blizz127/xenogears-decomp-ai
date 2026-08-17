@@ -1,0 +1,14 @@
+mutant,fault_class,killed_by,detail
+WM_85418_MUTANT_MISSING_ATTR_MASK,missing mask,mask.m0,attr not masked to u16 (attr|0x10000 case reads wrong record)
+WM_85418_MUTANT_WRONG_MATRIX_SRC_OFFSET,wrong offset,pp.m[0],matrix copied from rec+0x1C instead of rec+0x20
+WM_85418_MUTANT_WRONG_TRANS_SLOT,wrong offset,pp.t0,rec[0xC] written to t[0] instead of t[1]
+WM_85418_MUTANT_WRONG_SCALE_VALUE,wrong constant,pp.scalevec,scale 0x1000 instead of 0x800
+WM_85418_MUTANT_SWAPPED_GTE_ORDER,wrong call order,pp.order,SetTransMatrix before SetRotMatrix
+WM_85418_MUTANT_WRONG_VTX_INDEX_WIDTH,wrong signedness,pp.rt1_in,lhu instead of lh (negative index -2 breaks address)
+WM_85418_MUTANT_WRONG_NODE_STRIDE,wrong stride,pp.rt0_in,node stride 12 instead of 14
+WM_85418_MUTANT_WRONG_Z_SIGN,wrong sign,pp.row0,dz computed with X-like polarity (pos-rec instead of rec-pos)
+WM_85418_MUTANT_WRONG_SRA_NORMAL,wrong shift,pp.vn_in,normal components sra 1 instead of sra 2
+WM_85418_MUTANT_BOOLEAN_RETURN,booleanized return,ret.pn,{0 1} instead of arithmetic {0 -1}
+WM_85418_MUTANT_SKIPPED_PROBE_STORE,skipped store,pp.row1,dx not duplicated into row1.x (0x116)
+WM_85418_MUTANT_WRONG_OP0_ARGS,swapped arguments,pp.op0_ptrs,OuterProduct0 edge operands exchanged
+WM_85418_MUTANT_Y_OFFSET_AS_POINTER,wrong interpretation,pp.row1,y_offset dereferenced as guest pointer instead of used as integer
