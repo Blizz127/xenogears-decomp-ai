@@ -2222,7 +2222,27 @@ void func_8008F070(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F0B4);
+void func_8008F0B4(void) {
+    s32 actorIdx = FieldScriptVMGetActorIndex(2);
+    if (actorIdx != 0xFF) {
+        u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+        u8* pScript = g_FieldScriptVMCurScriptData;
+        u8 flags = pScript[g_FieldScriptVMCurActor->scriptInstructionPointer + 1];
+        u32 pSub = *(u32*)(pFieldActor + 0x4C);
+
+        if (flags & 1) {
+            *(u8*)(pSub + 0xFC) = (u8)FieldScriptVMGetArgument(3);
+            *(u8*)(pSub + 0xFD) = (u8)FieldScriptVMGetArgument(5);
+            *(u8*)(pSub + 0xFE) = (u8)FieldScriptVMGetArgument(7);
+        }
+        if (flags & 2) {
+            *(u8*)(pSub + 0xFF) = (u8)FieldScriptVMGetArgument(3);
+            *(u8*)(pSub + 0x100) = (u8)FieldScriptVMGetArgument(5);
+            *(u8*)(pSub + 0x101) = (u8)FieldScriptVMGetArgument(7);
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 /* Field-script opcode: conditionally (per the opcode's flag byte at IP+1) copy
  * two operand triples into the actor's color fields (unkFC..FE / unkFF..101),
