@@ -1,0 +1,10 @@
+mutant,fault_class,killed_by,detail
+WM_922AC_MUTANT_SUB9_STATE,wrong immediate,sub9.50,sub 9 arms state 2
+WM_922AC_MUTANT_STATE1_STEP,wrong immediate,s1.50,state 1 subtracts 0x800
+WM_922AC_MUTANT_STATE1_THRESH,gate threshold,s1c.50,clamp uses <0x70
+WM_922AC_MUTANT_STATE2_THRESH,gate threshold,s2.50,early-return uses <0x80
+WM_922AC_MUTANT_SKIP_PUBLISH,missing store,s1.be0c,BE0C not published
+WM_922AC_MUTANT_STATE0_RETURN,wrong return,s0.ret,state 0 returns 1
+WM_922AC_MUTANT_SKIP_CLEAR_STATE,missing store,s1c.state,clamp does not clear +20
+WM_922AC_MUTANT_WRONG_CLAMP_LO,wrong immediate,s1c.50,low clamp 0x70000/0x70
+WM_922AC_MUTANT_WRONG_GLOBAL,wrong address,s2.be0c,state 2 publishes BE10
