@@ -2177,4 +2177,14 @@ void func_8007D818(s32* pVec, VECTOR* pOut) {
     VectorNormal((VECTOR*)pVec, pOut);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
+s32 func_8007D8B4(s32 x, s32 y, s32 z) {
+    s32 ax = x < 0 ? -x : x;
+    s32 ay = y < 0 ? -y : y;
+    s32 az = z < 0 ? -z : z;
+    if (ax >= ay) {
+        if (ax >= az) return x;
+    } else if (ay >= az) {
+        return y;
+    }
+    return z;
+}
