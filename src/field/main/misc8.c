@@ -2648,7 +2648,31 @@ void func_80085634(int a0, int a1) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
+extern s16 D_800C3A38;
+extern u16 D_800AE060[];
+extern s32 D_800C3A64;
+extern u16 D_800C3A2C;
+extern s32 D_800B06A0;
+extern void* D_800B235C;
+extern void func_80039EC4(s32 a0);
+
+void func_80085678(void) {
+    u16* pTable = D_800AE060;
+    if (D_800C3A38 == 0xFF) return;
+    while (1) {
+        s32 idx = D_800C3A64;
+        u16 val = pTable[idx * 2];
+        if ((s32)(val + D_800C3A2C) > D_800B06A0) break;
+        {
+            u16 data = pTable[idx * 2 + 1];
+            u32 lo = data & 0xFF;
+            u32 hi = (data >> 7) & 0xE;
+            u32 param = lo | (*(u16*)(*(u32*)((u8*)D_800B235C + 0x14)) << 16);
+            func_80039EC4(param);
+            *(u32*)(&D_800C3A64) = D_800C3A64 + 1;
+        }
+    }
+}
 
 extern s16 D_800C3A38;
 extern void* D_800B235C;
