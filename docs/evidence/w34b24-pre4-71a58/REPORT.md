@@ -60,42 +60,43 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | **ACCEPTED** (I31) | `0x80089580` ACCEPTED (I30) | PsyQ RotMatrixYXZ/ApplyMatrix/rand/VectorNormal/ratan2 |
 | 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | **ACCEPTED** (I28) | `0x80093534` ACCEPTED | ACCEPTED |
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
-| 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
-| 7 | `0x800747DC` | starts after accepted `74794`; several returns before accepted `75228` | UNRESOLVED exact end | — | `0x4CEC` | MISSING | `0x80093740`, `0x80093978` ACCEPTED | identity not locked |
+| 6 | `0x8008615C` | `[0x8008615C, 0x800863E0)` | 644 / 161 | `576ed6052cea98877bad87f6e57519d0183e52cab9f5cbbc8b0b6ac1a3c88f43` | `0x1666C` | MISSING | `0x80099BFC` | end locked; 99BFC truncated / no `jr $ra` |
+| 7 | `0x800747DC` | `[0x800747DC, 0x80074E58)` | 1660 / 415 | `ca255b493d7948e43c2bea3ff15f14bd714f3729adbbaf821884b5195bd959d4` | `0x4CEC` | MISSING | `0x80093740`, `0x80093978` ACCEPTED | end locked; COP2 words; overlay closed |
 | 8 | `0x800848F4` | `[0x800848F4, 0x80084D00)` | 1036 / 259 | `670f809b7d9c0bcbd32463495e24c057bda8469220f12f3d6de19b893830e93b` | `0x14E04` | **ACCEPTED** (I27) | `0x80093534` ACCEPTED | bounded; COP2 words |
 | 9 | `0x800980D4` | `[0x800980D4, 0x800981C8)` | 244 / 61 | `b2ad8897db6a2b556897d0e5c726d049e252e78907dedac61642d121d7d90b12` | `0x285E4` | **ACCEPTED** (I23) | none | ACCEPTED |
 | 10 | `0x800981C8` | `[0x800981C8, 0x800983A0)` | 472 / 118 | `90e483f10929f9022a21582a9d8046cb978c9cf09927d848580f8a427905a6fe` | `0x286D8` | **ACCEPTED** (I24) | none | ACCEPTED |
 | 11 | `0x80096130` | `[0x80096130, 0x8009623C)` | 268 / 67 | `92c4c23f0e129166ce0c21cca5431851a5b3c6662ce293682e2b947c24562bc0` | `0x26640` | **ACCEPTED** (I42) | `0x800967E4` ACCEPTED (I41) | PsyQ Vsync |
-| 12 | `0x80098CC0` | `[0x80098CC0, 0x8009932C)` | 1644 / 411 | `5a5d9b8f7fcee4651a39633c852c1415a8de66356140702c9eb9d85bd0fd62a4` | `0x291D0` | MISSING | `9623C`/`962B0`/`96328`/`965A4` all ACCEPTED (I32–I37) | overlay closed; SLUS JALs remain |
-| 13 | `0x800983A0` | start clear; first frame-0x70 return `0x800987A4`; later code to `98CC0` | UNRESOLVED | — | `0x288B0` | MISSING | `0x800987AC` | BLOCKED |
-| 14 | `0x8009932C` | start clear; first frame-0x38 return `0x80099700` | UNRESOLVED | — | `0x2983C` | MISSING | `0x80099708` | BLOCKED |
+| 12 | `0x80098CC0` | `[0x80098CC0, 0x8009932C)` | 1644 / 411 | `5a5d9b8f7fcee4651a39633c852c1415a8de66356140702c9eb9d85bd0fd62a4` | `0x291D0` | **ACCEPTED** (I43) | `9623C`/`962B0`/`96328`/`965A4` all ACCEPTED (I32–I37) | SLUS ArchiveGetFilePath/DecodeSector/func_8002C3D8/HeapAlloc/HeapFree |
+| 13 | `0x800983A0` | `[0x800983A0, 0x800987AC)` | 1036 / 259 | `8c012fd4c47caf2141eddc8ce4e35e047cc224218be8f968579966489ca3eb40` | `0x288B0` | MISSING | `0x800987AC` | end locked; 987AC end not locked |
+| 14 | `0x8009932C` | `[0x8009932C, 0x80099708)` | 988 / 247 | `f48d22e707597c0d8898df5b0332da1264e18f3c164782198d95b741e16d67bd` | `0x2983C` | MISSING | `0x80099708` | end locked; 99708 needs unbounded `9980C` |
 | 15 | `0x80073B04` | `[0x80073B04, 0x80073E30)` | 812 / 203 | `87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197` | `0x4014` | **ACCEPTED** | none (PsyQ) | ACCEPTED |
 | 16 | `0x800737EC` | `[0x800737EC, 0x800739B8)` | 460 / 115 | `e967f7509aa004e89b3876a53b9673a0bac961055e2f298012d8abf01be9d621` | `0x3CFC` | **ACCEPTED** (I25) | none (PsyQ: RotMatrixYXZ, CompMatrix, SetRot/Trans, RotTransPers4) | ACCEPTED |
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074594)` | 1244 / 311 | `a0b5afc3d5b4efc5970d5e730d4b466eaa6d5f94705830732bda346c2d3119ad` | `0x45C8` | **ACCEPTED** (I29) | none (PsyQ RotMatrix + COP2 RTPT) | PRE4 end `74794` swallowed init `74594` and free `7474C` |
 
-`71A58_MISSING_CALLEES=6` after I21–I42. I42 accepted `96130`.
-I32–I41 are 98CC0 / 96130 prerequisites.
+`71A58_MISSING_CALLEES=5` after I21–I43. I43 accepted `98CC0`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x80098CC0`** — 71A58 callee; overlay callees I32–I37 are all
-ACCEPTED. Independently re-derived: `[98CC0,9932C)` 1644/411; one
-`jr $ra` at `0x80099324`; no JALR/COP2. Overlay JALs: `9623C` /
-`962B0` / `96328` / `965A4`. SLUS JALs: `ArchiveGetFilePath`
-`0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
-`HeapAlloc` `0x80031BDC`, plus `0x800320E8`.
+**`0x800747DC`** — 71A58 callee; overlay callees `93740` / `93978`
+are ACCEPTED. Independently locked: `[747DC,74E58)` 1660/415;
+frame `-0x68` / restore `+0x68`; one `jr $ra` at `0x80074E50`;
+next body at `0x80074E58`. No escape branches. COP2 words from
+`0x80074B50` (same class as accepted `848F4`). PsyQ JALs only
+besides the two accepted overlay callees. Overlay set is closed.
 
-**`0x80098CC0`** — remaining bounded 71A58 callee. Overlay callees
-I32–I37 are ACCEPTED. Independently re-derived: `[98CC0,9932C)`
-1644/411; one `jr $ra`; no JALR/COP2. SLUS: `ArchiveGetFilePath`
-`0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
-`HeapAlloc` `0x80031BDC`, `HeapFree` `0x800320E8`.
+Ends independently locked this turn (not implemented — each still
+has a missing overlay callee, except `747DC`):
 
-Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
-`86798` remains jalr-unbounded.
+| VA | Locked boundary | Blocker |
+|---|---|---|
+| `0x8008615C` | `[8615C, 863E0)` | `0x80099BFC` has no `jr $ra` before overlay EOF `0x8009BBB6` |
+| `0x800983A0` | `[983A0, 987AC)` | `0x800987AC` end not locked (COP2 body, only later `jr` is `98CB8`) |
+| `0x8009932C` | `[9932C, 99708)` | `99708` is locked `[99708,9980C)` but `9980C` end is not |
 
-I31–I42 are landed. Do not invent a `86798` jalr set.
+`86798` remains jalr-unbounded. Do not invent a `86798` jalr set.
+
+I31–I43 are landed.
 
 ## 5. 71A58 is not started
 
