@@ -1,0 +1,5 @@
+site,callee,notes
+0x80096F80,RotMatrixYXZ,a0=0x1F8000A0 a1=0x1F8000F0 SVECTOR {angles.vx, angles.vy, 0}
+0x80096FB8,ApplyMatrixLV,a0=0x1F8000F0 a1=0x1F800000 a2=0x1F800010 vin={0,0,-(scale>>12)}
+0x80097018,RotMatrixYXZ,a0=0x1F8000A0 a1=0x1F8000F0 SVECTOR {0, angles.vy, angles.vz}
+0x80097048,ApplyMatrix,a0=0x1F8000F0 a1=0x1F8000A0 a2=dest+0x10 SVECTOR {0,-0x1000,0}

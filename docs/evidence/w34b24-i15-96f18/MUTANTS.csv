@@ -1,0 +1,16 @@
+mutant,fault_class,killed_by,detail
+WM_96F18_MUTANT_SKIP_PAD,missing store,pos.dest8,dest+8/+0xC not zeroed
+WM_96F18_MUTANT_POSE_SRA11,wrong immediate,pos.dest2,pose+4 uses >>11 instead of >>12
+WM_96F18_MUTANT_WRONG_POSE_OFF,wrong address,pos.dest2,reads pose+0 instead of pose+4
+WM_96F18_MUTANT_FIRST_VZ,wrong immediate,pos.rot0.vz,first RotMatrix vz taken from angles.vz
+WM_96F18_MUTANT_SKIP_ROT1,missing call,pos.nrot,first RotMatrixYXZ omitted
+WM_96F18_MUTANT_SCALE_SRA11,wrong immediate,pos.vin.z,scale uses >>11 instead of >>12
+WM_96F18_MUTANT_SKIP_NEGU,missing negate,pos.vin.z,ApplyMatrixLV Z is +(scale>>12)
+WM_96F18_MUTANT_SKIP_AMLV,missing call,pos.namlv,ApplyMatrixLV omitted
+WM_96F18_MUTANT_SKIP_DEST_XZ,missing store,pos.dest0,dest vx/vz not published
+WM_96F18_MUTANT_SKIP_DEST_Y,missing store,pos.dest2,dest vy (lhu dest+0xA + out.y) omitted
+WM_96F18_MUTANT_SECOND_VX,wrong immediate,pos.rot1.vx,second RotMatrix vx taken from angles.vx
+WM_96F18_MUTANT_SKIP_ROT2,missing call,pos.nrot,second RotMatrixYXZ omitted
+WM_96F18_MUTANT_APPLY_VY,wrong immediate,pos.apply.vy,ApplyMatrix vy is +0x1000 not -0x1000
+WM_96F18_MUTANT_SKIP_APPLY,missing call,pos.napply,ApplyMatrix omitted
+WM_96F18_MUTANT_WRONG_OUT_OFF,wrong address,pos.dest8,ApplyMatrix dest is dest+8 not dest+0x10
