@@ -1,0 +1,13 @@
+mutant,fault_class,killed_by,detail
+WM_85158_MUTANT_WRONG_ATTR_STRIDE,wrong stride,basic.coef0,record stride 80 instead of 84
+WM_85158_MUTANT_MISSING_ATTR_MASK,missing mask,mask_negidx.coef0,attr not masked to u16 (0x30003 case)
+WM_85158_MUTANT_WRONG_XZ_ASYMMETRY,wrong operand direction,basic.coef8,coef Z computed pos-rec instead of rec-pos
+WM_85158_MUTANT_WRONG_SRA,wrong shift,basic.coef0,pos sra 11 instead of 12
+WM_85158_MUTANT_NODE_ID_SIGN,wrong signedness,hi_node.rt0_v,node id sign-extended instead of lhu (0x8001 case)
+WM_85158_MUTANT_VTX_INDEX_UNSIGNED,wrong signedness,mask_negidx.rt0_v,vertex index lhu instead of lh (negative index case)
+WM_85158_MUTANT_WRONG_TRANS_SLOT,wrong offset,basic.trans,y-trans written to t[0] instead of t[1]
+WM_85158_MUTANT_WRONG_SCALE_VALUE,wrong constant,basic.scale_vec,scale 0x1000 instead of 0x800
+WM_85158_MUTANT_WRONG_CALL_ORDER,wrong call order,basic.order,SetTransMatrix before SetRotMatrix
+WM_85158_MUTANT_SWAPPED_OP0_ARGS,swapped arguments,basic.op0_ptrs,OuterProduct0 inputs exchanged
+WM_85158_MUTANT_MISSING_SRA2,missed operation,basic.vn_in,cross product not sra 2 before VectorNormal
+WM_85158_MUTANT_WRONG_935DC_ARGS,swapped arguments,basic.height,plane-solver base point and normal exchanged
