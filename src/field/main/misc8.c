@@ -3299,7 +3299,40 @@ void func_80086BA8(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086C34);
+extern s32 D_800AFD1C;
+extern u8 g_FieldDefaultParticleBanks[];
+extern void FieldInitializeDefaultParticleBanks(s32 idx);
+extern void FieldInitializeParticleBanks(s32 idx);
+
+void func_80086C34(void) {
+    u8 subOp = SCRIPT_READ_U8_REL(1);
+    switch (subOp) {
+        case 0:
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        case 1: {
+            s32 arg2 = FieldScriptVMGetArgument(2);
+            s32 arg4 = FieldScriptVMGetArgument(4);
+            s32 arg6 = FieldScriptVMGetArgument(6);
+            u16 v;
+            FieldInitializeDefaultParticleBanks(D_800AFD1C);
+            *(u16*)(g_FieldDefaultParticleBanks + 0x2A) = 0x14;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x52) = 1;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x06) = 0x10;
+            *(s16*)(g_FieldDefaultParticleBanks + 0x72) = 0;
+            if (arg6 == 0x27) {
+                v = 0x22;
+            } else {
+                v = 0x20;
+            }
+            *(u16*)(g_FieldDefaultParticleBanks + 0x74) = v;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x04) = 0x1000;
+            FieldInitializeParticleBanks(D_800AFD1C);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+            break;
+        }
+    }
+}
 
 void func_80086D4C(void) {
     GameSoftReset();
