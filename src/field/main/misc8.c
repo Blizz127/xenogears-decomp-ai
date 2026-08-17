@@ -1388,7 +1388,19 @@ update_animation:
     *(s32*)(actorData + 0x48) = 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80083178);
+s32 func_80083178(s32 current, s32 target) {
+    if (current < 0) {
+        current += 0x4000;
+        target = -target;
+        if (current < target) current = target;
+        if (current > 0) current = 0;
+    } else {
+        current -= 0x4000;
+        if (current > target) current = target;
+        if (current < 0) current = 0;
+    }
+    return current;
+}
 
 void func_800831D0(SVECTOR* out, s16* in) {
     out->vx = in[1];
