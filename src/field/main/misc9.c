@@ -222,7 +222,18 @@ void func_800AAF80(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB328);
+extern void* g_pGameState;
+
+s32 func_800AB328(u8 characterId) {
+    u8* pGS = (u8*)g_pGameState;
+    s32 i;
+    for (i = 0; i < 0x96; i++) {
+        if (pGS[0x2026 + i] == characterId && pGS[0x1F90 + i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 extern s32 D_800AFE78;
 extern s32 D_800AFE7C;
