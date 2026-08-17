@@ -484,7 +484,25 @@ void FieldScriptStopParticleActor(void) {
 }
 // End of particle handlers
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089B54);
+extern s32 D_8005A444[];
+extern s32 D_800AFD1C;
+
+void func_80089B54(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        if (D_8005A444[i] == D_800AFD1C) {
+            u16 arg = (u16)FieldScriptVMGetInstructionArgument(1);
+            FieldScriptMemoryWriteU16(arg, i);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+            return;
+        }
+    }
+    {
+        u16 arg = (u16)FieldScriptVMGetInstructionArgument(1);
+        FieldScriptMemoryWriteU16(arg, 0xFF);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089BF0);
 
