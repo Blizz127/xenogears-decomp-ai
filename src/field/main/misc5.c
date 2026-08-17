@@ -642,7 +642,23 @@ void func_800A7064(void) {
     HeapFree(D_800B00C4);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A708C);
+extern s32 D_800ADB6C;
+extern s32 D_800ADB74;
+extern s32 D_801D68B4;
+extern s16 D_800C3A36;
+extern void func_801D3538(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g);
+
+void func_800A708C(void) {
+    HeapChangeCurrentUser(4, NULL);
+    if (D_800ADB74 == 2) {
+        D_801D68B4 = 1;
+    } else {
+        D_801D68B4 = 0;
+    }
+    func_801D3538(0x140, 0xE0, 0x80, 0x10, 0x20, 0x800, (s32)D_800C3A36);
+    D_800ADB6C = 0;
+    HeapChangeCurrentUser(8, NULL);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7120);
 
