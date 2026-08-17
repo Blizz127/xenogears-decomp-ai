@@ -113,7 +113,57 @@ void func_80087148(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800871B0);
+extern s32 D_800C3A48;
+extern s32 D_800AF87C;
+extern s16 D_800AFC58;
+extern s16 D_800AFC5A;
+extern s16 D_800AFC5C;
+extern s16 D_800AFC5E;
+extern s32 D_800ADBB4;
+
+void func_800871B0(void) {
+    u8 subOp = SCRIPT_READ_U8_REL(1);
+    g_FieldScriptMaxInstructionCount += 0x20;
+
+    switch (subOp) {
+        case 0: {
+            s32 arg2 = FieldScriptVMGetArgument(2);
+            s32 arg4 = FieldScriptVMGetArgument(4);
+            s32 size = arg4 << 9;
+            D_800C3A48 = (s32)HeapAlloc(size, 0);
+            D_800AF87C = (s32)HeapAlloc(size, 0);
+            D_800AFC58 = 0;
+            D_800AFC5A = (s16)arg2;
+            D_800AFC5C = 0x100;
+            D_800AFC5E = (s16)arg4;
+            StoreImage(&D_800AFC58, (void*)(uintptr_t)D_800C3A48);
+            D_800B00C0 = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+            break;
+        }
+        case 1: {
+            s32 arg2 = FieldScriptVMGetArgument(2);
+            s32 arg4 = FieldScriptVMGetArgument(4);
+            s32 ofs = arg4 << 9;
+            func_80026F44(0x100, arg4,
+                (void*)(uintptr_t)(D_800AF87C + ofs),
+                (void*)(uintptr_t)(D_800C3A48 + ofs));
+            D_800ADBB4 = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+            break;
+        }
+        case 2:
+            HeapFree((void*)(uintptr_t)D_800C3A48);
+            HeapFree((void*)(uintptr_t)D_800AF87C);
+            D_800B00C0 = 1;
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        case 3:
+            g_FieldScriptVMCurActor->scriptInstructionPointer = *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC);
+            D_800B00C0 = 1;
+            break;
+    }
+}
 
 extern u8 D_800B225F[];
 
