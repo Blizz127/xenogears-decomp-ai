@@ -49,15 +49,15 @@ Eighteen overlay `jal` sites; eighteen unique targets. No `jalr` / jump table in
 PsyQ / SLUS `0x8001xxxx–0x8006xxxx` residents are not overlay missing-callees.
 
 Prior note that `737EC` / `86798` / `740B8` were already accepted on
-canonical `822b402` is **false**. Worktree I21–I25 later accepted
-`97440` / `97244` / `980D4` / `981C8` / `737EC`. `86798` / `740B8`
-remain missing.
+canonical `822b402` is **false**. Worktree I21–I29 later accepted
+`97440` / `97244` / `980D4` / `981C8` / `737EC` / `85CDC` / `848F4` /
+`89C78` / `740B8`. `86798` remains missing.
 
 | # | VA | Boundary | B / I | SHA-256 | File off | Canonical | Overlay callees | Verdict |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `0x80097440` | `[0x80097440, 0x8009766C)` | 556 / 139 | `6bce51ba8bb3a013e923fcc2b66b1bc59646522ac76aad21923171cb89ddfd4b` | `0x27950` | **ACCEPTED** (I21) | none (PsyQ: RotMatrixX/Y/Z, MulMatrix0×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | **ACCEPTED** (I22) | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | ACCEPTED |
-| 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` | BLOCKED on 89580 |
+| 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` **ACCEPTED** (I30) | bounded; PsyQ only |
 | 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | **ACCEPTED** (I28) | `0x80093534` ACCEPTED | ACCEPTED |
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
 | 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
@@ -72,22 +72,23 @@ remain missing.
 | 15 | `0x80073B04` | `[0x80073B04, 0x80073E30)` | 812 / 203 | `87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197` | `0x4014` | **ACCEPTED** | none (PsyQ) | ACCEPTED |
 | 16 | `0x800737EC` | `[0x800737EC, 0x800739B8)` | 460 / 115 | `e967f7509aa004e89b3876a53b9673a0bac961055e2f298012d8abf01be9d621` | `0x3CFC` | **ACCEPTED** (I25) | none (PsyQ: RotMatrixYXZ, CompMatrix, SetRot/Trans, RotTransPers4) | ACCEPTED |
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
-| 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
+| 18 | `0x800740B8` | `[0x800740B8, 0x80074594)` | 1244 / 311 | `a0b5afc3d5b4efc5970d5e730d4b466eaa6d5f94705830732bda346c2d3119ad` | `0x45C8` | **ACCEPTED** (I29) | none (PsyQ RotMatrix + COP2 RTPT) | PRE4 end `74794` swallowed init `74594` and free `7474C` |
 
-`71A58_MISSING_CALLEES=9` after I21–I28 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC` / `85CDC` / `848F4` / `89C78`) plus accepted `73B04`.
+`71A58_MISSING_CALLEES=8` after I21–I29 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC` / `85CDC` / `848F4` / `89C78` / `740B8`) plus
+accepted `73B04`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x800740B8`** — remaining bounded callee (`[740B8,74794)` 1756/439;
-SLUS/PsyQ + COP2; no overlay missing-callees). Large; implement only
-when time allows.
+**`0x80089748`** — remaining bounded 71A58 callee (`[89748,89C78)`
+1328/332; overlay `89580` ACCEPTED I30; remaining JALs are PsyQ).
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
-Blocked on other missing callees: `89748` (needs `89580`), `96130`
-(needs `967E4`), `98CC0` (needs `9623C`/`962B0`/`96328`/`965A4`).
+Blocked on other missing callees: `96130` (needs `967E4`), `98CC0`
+(needs `9623C`/`962B0`/`96328`/`965A4`).
 
-**`0x80089C78`** (I28) is landed. Do not invent a `86798` jalr set.
+**`0x800740B8`** (I29) and **`0x80089580`** (I30) are landed. Do not
+invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 

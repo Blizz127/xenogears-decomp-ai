@@ -1,7 +1,7 @@
 direction,function,sites,status,notes
 callee,wm_80097440,0x80071A78,ACCEPTED,"I21; [0x80097440,0x8009766C) 556B/139i; PsyQ RotMatrixX/Y/Z MulMatrix0x2 ApplyMatrix TransMatrix; a0=0x8009BD40; gated on *0x8009D144==0"
 callee,wm_80097244,0x80071A90,ACCEPTED,"I22; [0x80097244,0x80097440) 508B/127i; PsyQ VectorNormalx3 OuterProduct12x2 ApplyMatrix TransMatrix; a0=0x8009BD40; gated on *0x8009D144!=0"
-callee,wm_80089748,0x80071A98,MISSING,"[0x80089748,0x80089C78) 1328B/332i; overlay jal 0x80089580"
+callee,wm_80089748,0x80071A98,MISSING,"[0x80089748,0x80089C78) 1328B/332i; overlay jal 0x80089580 ACCEPTED I30; now bounded"
 callee,wm_80089C78,0x80071AA0,ACCEPTED,"I28; [0x80089C78,0x8008A2C8) 1616B/404i; overlay jal 0x80093534; COP2 RTPT/RTPS POLY_FT4"
 callee,wm_80085CDC,0x80071AA8,ACCEPTED,"I26; [0x80085CDC,0x80085F58) 636B/159i; PRE4 85FE0 end was wrong; overlay jal 0x80093484; COP2 RTPS SZ3"
 callee,wm_8008615C,0x80071AB0,MISSING,"start after [0x80086124,0x8008615C); overlay jal 0x80099BFC; end UNRESOLVED"
@@ -16,7 +16,7 @@ callee,wm_8009932C,0x80071B30,MISSING,"a0/a1 from *(*0x8009BE3C)+0x70/0x74 a2=0x
 callee,wm_80073B04,0x80071B50,ACCEPTED,"[0x80073B04,0x80073E30) 812B/203i; world_map_helper_73b04.c"
 callee,wm_800737EC,0x80071B58,ACCEPTED,"I25; [0x800737EC,0x800739B8) 460B/115i; PsyQ only"
 callee,wm_80086798,0x80071B60,MISSING,"jalr $v0 at 0x800867CC via lw 0x8009CD40; overlay sw sites all store 0x80086700; SLUS has no 9CD40 traffic; not implemented"
-callee,wm_800740B8,0x80071B7C,MISSING,"[0x800740B8,0x80074794) 1756B/439i; gated on lhu 0x8006EE76==0; SLUS/PsyQ+COP2; NOT accepted"
+callee,wm_800740B8,0x80071B7C,ACCEPTED,"I29; [0x800740B8,0x80074594) 1244B/311i; PRE4 74794 end swallowed 74594/7474C; PsyQ RotMatrix + COP2 RTPT; gated on lhu 0x8006EE76==0"
 data_ref,flag 0x8009D144,0x80071A5C,-,lw; zero selects 97440 else 97244
 data_ref,eye 0x8009BD40,0x80071A74,-,a0 to 97440/97244
 data_ref,pos 0x8009BBB4,0x80071ACC,-,a0 to 980D4
@@ -26,4 +26,5 @@ data_ref,db 0x8009BE3C,0x80071B20,-,lw then +0x70/+0x74 for 9932C a0/a1
 data_ref,counter 0x8009C5BC,0x80071B3C,-,lw; +=0x40; sw
 data_ref,gate 0x8006EE76,0x80071B6C,-,lhu; zero runs 740B8
 caller,wm_80097800 (scheduler),slot-14 cb1,CANONICAL,natural a0=14 after 92FD8 ret=1; return always 1
-closure_verdict,-,-,MISSING=9,I21-I28 plus 73B04 accepted; next bounded=0x800740B8
+prereq,wm_80089580,0x80089C3C,ACCEPTED,"I30; [0x80089580,0x80089748) 456B/114i; no JAL/JALR; unlocks 89748"
+closure_verdict,-,-,MISSING=8,I21-I30 plus 73B04 accepted; next bounded=0x80089748
