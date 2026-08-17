@@ -57,7 +57,15 @@ void FieldScriptCheckPartyMember(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(2);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096534);
+void func_80096534(void) {
+    u16 flags = *(u16*)((u8*)g_pGameState + 0x1D30);
+    u8 bit = SCRIPT_READ_U8_REL(1);
+    if ((flags >> bit) & 1) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer = (u16)FieldScriptVMGetInstructionArgument(2);
+    }
+}
 
 void func_800965A8(void) {
     g_pGameState->unk1D30 |= 1 << SCRIPT_READ_U8_REL(1);
