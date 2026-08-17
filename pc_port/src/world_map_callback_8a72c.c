@@ -184,11 +184,26 @@ static void wm_fill_pose_ring(u32 src_xyz, u16 state_bits)
 
 static s32 wm_8a72c_epilogue(u32 slot_addr)
 {
+#if defined(WM_8A72C_MUTANT_WRONG_SRA12)
+    WM_U16(WM_EE54) =
+        (u16)(WM_U32(slot_addr + WM_SLOT_OFF_X) >> 11);
+    WM_U16(WM_EE56) =
+        (u16)(WM_U32(slot_addr + WM_SLOT_OFF_Z) >> 11);
+#elif defined(WM_8A72C_MUTANT_WRONG_SLOT_OFFSET)
+    WM_U16(WM_EE54) =
+        (u16)wm_sra12_u32(WM_U32(slot_addr + WM_SLOT_OFF_Y));
+    WM_U16(WM_EE56) =
+        (u16)wm_sra12_u32(WM_U32(slot_addr + WM_SLOT_OFF_Z));
+#else
     WM_U16(WM_EE54) =
         (u16)wm_sra12_u32(WM_U32(slot_addr + WM_SLOT_OFF_X));
     WM_U16(WM_EE56) =
         (u16)wm_sra12_u32(WM_U32(slot_addr + WM_SLOT_OFF_Z));
+#endif
     WM_U16(WM_EE58) = WM_U16(slot_addr + WM_SLOT_OFF_STATE);
+#if defined(WM_8A72C_MUTANT_EPILOGUE_IGNORE_FLAG)
+    CALL_74794(0, slot_addr + WM_SLOT_OFF_X);
+#else
     if (wm_sign16(WM_U16(slot_addr + WM_SLOT_OFF_FLAG)) == 0) {
 #if defined(WM_8A72C_MUTANT_SKIP_74794)
         /* mutant: skip pose publish */
@@ -196,7 +211,12 @@ static s32 wm_8a72c_epilogue(u32 slot_addr)
         CALL_74794(0, slot_addr + WM_SLOT_OFF_X);
 #endif
     }
+#endif
+#if defined(WM_8A72C_MUTANT_WRONG_RETURN)
+    return 0;
+#else
     return 1;
+#endif
 }
 
 static s32 wm_8a72c_set_control(u32 slot_addr, u16 control)
@@ -302,8 +322,16 @@ static s32 wm_8a72c_state_01(u32 slot_addr)
     out = WM_SCRATCH + 0x90u;
     scale = (s32)((u32)wm_sign16(WM_U16(slot_addr + WM_SLOT_OFF_CONST)) << 12);
     mode = (s32)WM_U32(WM_MODE);
+#if defined(WM_8A72C_MUTANT_NO_FIRST_95414)
+    ret = 1;
+#else
     ret = CALL_95414(pos, dir, out, scale, mode);
+#endif
+#if defined(WM_8A72C_MUTANT_LOW16_ALWAYS_TAKEN)
+    if (0) {
+#else
     if (((u32)ret << 16) == 0u) {
+#endif
         wm_copy4(slot_addr + WM_SLOT_OFF_VX, WM_SCRATCH + 0x90u);
 #if defined(WM_8A72C_MUTANT_NO_SECOND_95414)
         ret = 0;
@@ -320,7 +348,11 @@ static s32 wm_8a72c_state_01(u32 slot_addr)
         u32 lookup_idx;
         u16 hit;
 
+#if defined(WM_8A72C_MUTANT_WRONG_8C040_VEC)
+        CALL_8C040(slot_addr + WM_SLOT_OFF_X, 16, 32, WM_D738, WM_BD60);
+#else
         CALL_8C040(WM_SCRATCH + 0x90u, 16, 32, WM_D738, WM_BD60);
+#endif
         if (WM_U8(WM_BD60) == 7u)
             lookup_idx = (u32)WM_U8(WM_D738) + 3u;
         else
@@ -343,7 +375,10 @@ static s32 wm_8a72c_state_01(u32 slot_addr)
         CALL_8C040(slot_addr + WM_SLOT_OFF_X, 16, 32, WM_D738, WM_BD60);
     }
 
+#if defined(WM_8A72C_MUTANT_SKIP_94238)
+#else
     CALL_94238(slot_addr + WM_SLOT_OFF_X, 0u);
+#endif
     WM_U32(slot_addr + WM_SLOT_OFF_VZ) = 0u;
     WM_U32(slot_addr + WM_SLOT_OFF_VY) = 0u;
     WM_U32(slot_addr + WM_SLOT_OFF_VX) = 0u;
@@ -601,9 +636,22 @@ s32 wm_8008A72C(s32 slot_index)
     if ((u32)control >= 65u)
         return wm_8a72c_epilogue(slot_addr);
 #endif
+#if defined(WM_8A72C_MUTANT_DEFAULT_AS_STATE01)
+    if (control != 0 && control != 1 && control != 2 && control != 3 &&
+        control != 8 && control != 9 && control != 10 && control != 13 &&
+        control != 14 && control != 15 && control != 16 && control != 17 &&
+        control != 18 && control != 40 && control != 41 && control != 42 &&
+        control != 43 && control != 44 && control != 45)
+        return wm_8a72c_state_01(slot_addr);
+#endif
 
     switch (control) {
     case 0:
+#if defined(WM_8A72C_MUTANT_WRONG_STATE_ARM)
+        return wm_8a72c_state_23(slot_addr);
+#else
+        return wm_8a72c_state_01(slot_addr);
+#endif
     case 1:
         return wm_8a72c_state_01(slot_addr);
     case 2:

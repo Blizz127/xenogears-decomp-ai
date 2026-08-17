@@ -41,6 +41,29 @@ require_retail() {
     fi
     # 0x8008A72C slice (VA - 0x8006FAF0 = 0x1AC3C).
     check_slice 0x1AC3C 2960 "1d58efac94432cb6892462260a1d7679dfcfddc9d0568b08244b1fd7cf1b4b3f" "0x8008A72C"
+    python3 - <<'PY'
+from pathlib import Path
+data = Path("disc/world_map.bin").read_bytes()
+base = 0x8006FAF0
+off = 0x80070518 - base
+want = [
+    0x8008A810, 0x8008A810, 0x8008ABB4, 0x8008ABB4, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008ABF0, 0x8008AC70, 0x8008ACF0, 0x8008B240,
+    0x8008B240, 0x8008AD24, 0x8008AD9C, 0x8008AE10, 0x8008AE44, 0x8008AE84,
+    0x8008AEC4, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008AF5C, 0x8008B034,
+    0x8008B0AC, 0x8008B14C, 0x8008B1D8, 0x8008B214, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+    0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240, 0x8008B240,
+]
+got = [int.from_bytes(data[off+i*4:off+i*4+4], "little") for i in range(65)]
+if got != want:
+    raise SystemExit(f"ERROR: 0x80070518 jump table mismatch at {[i for i,(a,b) in enumerate(zip(got,want)) if a!=b]}")
+print("RETAIL_JT 0x80070518 65-entry destinations verified")
+PY
 }
 
 compile() {
@@ -84,8 +107,18 @@ echo "FOCUSED O0/O2/UBSAN PASS; normalized output identical"
 mutants=(
     WM_8A72C_MUTANT_PLUS4_CASE2
     WM_8A72C_MUTANT_90A84_RET1_CONTROL
+    WM_8A72C_MUTANT_WRONG_STATE_ARM
+    WM_8A72C_MUTANT_NO_FIRST_95414
     WM_8A72C_MUTANT_NO_SECOND_95414
+    WM_8A72C_MUTANT_LOW16_ALWAYS_TAKEN
+    WM_8A72C_MUTANT_WRONG_8C040_VEC
+    WM_8A72C_MUTANT_SKIP_94238
     WM_8A72C_MUTANT_SKIP_74794
+    WM_8A72C_MUTANT_WRONG_SRA12
+    WM_8A72C_MUTANT_WRONG_SLOT_OFFSET
+    WM_8A72C_MUTANT_WRONG_RETURN
+    WM_8A72C_MUTANT_EPILOGUE_IGNORE_FLAG
+    WM_8A72C_MUTANT_DEFAULT_AS_STATE01
 )
 
 killed=0
@@ -107,4 +140,16 @@ for mutant in "${mutants[@]}"; do
 done
 
 echo "MUTANTS ${killed}/${#mutants[@]} KILLED"
+
+echo "== controller-natural measurement =="
+gcc "${BASE[@]}" "${WARN[@]}" "${INC[@]}" -O0 -g \
+    pc_port/tests/w34_gp1_8008a72c_natural_test.c \
+    pc_port/src/psx_memory.c \
+    pc_port/src/world_map_callback_8a72c.c \
+    pc_port/src/world_map_scheduler.c \
+    -o "$BUILD_DIR/natural"
+"$BUILD_DIR/natural" | tee "$BUILD_DIR/natural.stdout"
+rg -q '^8A72C_BODY_EXECUTED=YES$' "$BUILD_DIR/natural.stdout"
+rg -q '^8A72C_RETURN=1$' "$BUILD_DIR/natural.stdout"
+
 echo "W34-GP1 0x8008A72C focused certificate PASS"

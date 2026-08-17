@@ -470,6 +470,48 @@ static void test_always_one(void)
     prep_slot(4, 0);
     check("def.ret", (u32)wm_8008A72C(1), 1u);
     check("def.control", rd16(SLOT1 + OFF_CONTROL), 4u);
+    expect_ev("def.74794", 0, "74794", 0, SLOT1 + OFF_X, 0, 0, 0);
+    check("def.nlog", s_nlog, 1u);
+}
+
+static void test_negative_sra12(void)
+{
+    reset_world();
+    prep_slot(4, 0);
+    wr(SLOT1 + OFF_X, 0xFFFFF000u);
+    wr(SLOT1 + OFF_Z, 0xFFFFE000u);
+    check("sra.ret", (u32)wm_8008A72C(1), 1u);
+    check("sra.ee54", rd16(EE54), 0xFFFFu);
+    check("sra.ee56", rd16(EE56), 0xFFFEu);
+}
+
+static void test_95414_nonzero_first(void)
+{
+    reset_world();
+    prep_slot(0, 0);
+    s_object[0xAF] = 1;
+    s_90a84_ret = 0;
+    s_95414_script[0] = 2;
+    s_95414_n = 1;
+    wr(SLOT1 + OFF_VX, 0x10u);
+    wr(SLOT1 + OFF_VZ, 0x20u);
+    check("nz.ret", (u32)wm_8008A72C(1), 1u);
+    expect_ev("nz.95414", 2, "95414", SLOT1 + OFF_X, SLOT1 + OFF_VX,
+              SCRATCH + 0x90u, 0x8000u, 0);
+    expect_ev("nz.8c040", 3, "8c040", SLOT1 + OFF_X, 0x10u, 0x20u,
+              D738, BD60);
+    expect_ev("nz.94238", 4, "94238", SLOT1 + OFF_X, 0, 0, 0, 0);
+    check("nz.nlog", s_nlog, 6u);
+}
+
+static void test_flag_skips_74794(void)
+{
+    reset_world();
+    prep_slot(4, 0);
+    wr16(SLOT1 + OFF_FLAG, 1u);
+    check("flag.ret", (u32)wm_8008A72C(1), 1u);
+    check("flag.nlog", s_nlog, 0u);
+    check("flag.ee54", rd16(EE54), 0x100u);
 }
 
 int main(void)
@@ -487,6 +529,9 @@ int main(void)
     test_state2_copy();
     test_state10_ff();
     test_always_one();
+    test_negative_sra12();
+    test_95414_nonzero_first();
+    test_flag_skips_74794();
     if (s_failures != 0) {
         fprintf(stderr, "RESULT: FAIL (%d)\n", s_failures);
         return 1;
