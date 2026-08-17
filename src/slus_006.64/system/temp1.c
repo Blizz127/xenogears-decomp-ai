@@ -1588,7 +1588,82 @@ void func_80025224(WorkListEntry* pTask, int handlerIndex) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025258);
+extern s32 D_80050100;
+extern u8 D_800C3664;
+extern void func_8001E3D8(void* pSpriteData, void* ot);
+extern void func_8001E298(void* pSpriteData, void* ot);
+
+void func_80025258(u8* pEntry) {
+    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u32 flagsB0 = *(u32*)(pSprite + 0xB0);
+    s32 otz;
+    s32 depth;
+    long pxy[2];
+    long flg;
+
+    if ((flagsB0 >> 8) & 1) {
+        if (D_800C3664 != 0) return;
+    }
+
+    /* Set up GTE with global matrix */
+    SetRotMatrix(&D_8004FBB8);
+    SetTransMatrix(&D_8004FBB8);
+
+    {
+        SVECTOR pos;
+        pos.vx = *(s16*)(pSprite + 0x02);
+        pos.vy = *(s16*)(pSprite + 0x06);
+        pos.vz = *(s16*)(pSprite + 0x0A);
+        otz = RotTransPers(&pos, pxy, &flg, &flg);
+        otz >>= D_80050100;
+    }
+
+    depth = *(s16*)(pSprite + 0x30);
+    if (flg & 0x8000) {
+        depth = otz + depth;
+    } else {
+        depth = 0;
+    }
+
+    {
+        u32 flags3C = *(u32*)(pSprite + 0x3C);
+        u32 flag24 = (flags3C >> 24) & 1;
+        u32 flag29 = (flags3C >> 29) & 1;
+
+        *(u16*)(pSprite + 0x2E) = (u16)depth;
+
+        if (flag24) {
+            /* Path 1: full rendering with matrix setup */
+            s32 depthLimit;
+            func_80022038(pSprite);
+            {
+                VECTOR trans;
+                trans.vx = *(s16*)(pSprite + 0x02);
+                trans.vy = *(s16*)(pSprite + 0x06);
+                trans.vz = *(s16*)(pSprite + 0x0A);
+                TransMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC), &trans);
+            }
+            SetRotMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC));
+            SetTransMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC));
+
+            if ((flags3C >> 25) & 1) {
+                depthLimit = *(s16*)(pSprite + 0x30);
+            } else {
+                depthLimit = 0xFFF;
+            }
+            if ((u32)(depthLimit - 1) < 0xFFF) {
+                func_8001E3D8(pSprite, g_GfxCurOT + depthLimit * 4);
+            }
+        } else if (flag29) {
+            /* Path 2: use depth from +0x70 sub-structure */
+            u32 pSub = *(u32*)(pSprite + 0x70);
+            depth = *(s16*)(pSub + 0x2E);
+            if ((u32)(depth - 1) < 0xFFF) {
+                func_8001E298(pSprite, g_GfxCurOT + depth * 4);
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002541C);
 /*
