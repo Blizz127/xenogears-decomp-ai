@@ -764,7 +764,27 @@ void func_80089B54(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089BF0);
+extern s16 D_800B22E8[];
+extern s16 D_800B22EA[];
+extern s16 D_800B22EC[];
+extern s16 D_800B2300[];
+extern s16 D_800B2302[];
+extern s16 D_800B2304[];
+extern s32 D_800B2318[];
+
+void func_80089BF0(void) {
+    s32 idx;
+    s32 arg1 = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(0x11));
+    idx = arg1 * 4;
+    D_800B22E8[idx] = (s16)FieldScriptArgument2(3, SCRIPT_READ_U8_REL(0x11));
+    D_800B22EA[idx] = (s16)FieldScriptArgument3(5, SCRIPT_READ_U8_REL(0x11));
+    D_800B22EC[idx] = (s16)FieldScriptArgument4(7, SCRIPT_READ_U8_REL(0x11));
+    D_800B2300[idx] = (s16)FieldScriptArgument5(9, SCRIPT_READ_U8_REL(0x11));
+    D_800B2302[idx] = (s16)FieldScriptArgument6(0xB, SCRIPT_READ_U8_REL(0x11));
+    D_800B2304[idx] = (s16)FieldScriptArgument7(0xD, SCRIPT_READ_U8_REL(0x11));
+    D_800B2318[arg1] = FieldScriptArgument8(0xF, SCRIPT_READ_U8_REL(0x11));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0x12;
+}
 
 extern s16 D_800B2324[];
 extern s16 D_800B2326[];
