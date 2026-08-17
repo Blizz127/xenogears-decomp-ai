@@ -1074,7 +1074,43 @@ s32 func_8002D420(u8* pColor, s16* pIndices) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
+s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags) {
+    u8* pPoly;
+    s16* normals;
+
+    if (func_8002CD64(pColor) == 0) return 0;
+    pPoly = D_80059424;
+    normals = (s16*)D_8005953C;
+    pPoly[3] = 0xC; /* POLY_GT4 tag */
+
+    /* Vertex color tpage/clut merge */
+    *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+    *(u32*)(pPoly + 0x14) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);
+    *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
+
+    if (flags & 1) {
+        SVECTOR* n0 = (SVECTOR*)&normals[pIndices[0] * 4];
+        SVECTOR* n1 = (SVECTOR*)&normals[pIndices[1] * 4];
+        SVECTOR* n2 = (SVECTOR*)&normals[pIndices[2] * 4];
+        if (flags & 2) {
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+            NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+        } else {
+            SVECTOR tmpNormal;
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pColor, pPoly + 4);
+        }
+        D_80059498 += 8;
+    } else if (flags & 4) {
+        NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+        D_80059498 += 4;
+    }
+
+    *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+    pPoly[7] = pColor[3];
+    return 1;
+}
 
 extern u32 D_80059498;
 
