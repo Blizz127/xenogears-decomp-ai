@@ -367,7 +367,14 @@ void func_800ACCB0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACCF4);
+void func_800ACCF4(void) {
+    if (D_8004F300 == 0) return;
+    if ((D_800AF77C & 0xF) == 0) {
+        D_800AF774 = (void*)func_800AC0F0(D_800AF774, 0x300, D_800AF778 & 0xF);
+        D_800AF778++;
+    }
+    D_800AF77C++;
+}
 
 short FieldScriptVMGetInstructionArgumentS16(int offset) {
     u_char* pData;
