@@ -710,7 +710,17 @@ void func_8008ACE8(void) {
     D_800B00C0 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AE5C);
+void func_8008AE5C(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    void* pScript = g_FieldScriptVMCurScriptData;
+    u8 val = *(u8*)(pScript + pActor->scriptInstructionPointer + 1);
+    if (val == 0) {
+        pActor->flags |= 0x20000;
+    } else {
+        pActor->flags &= ~0x20000;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AEC8);
 
