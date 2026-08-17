@@ -2009,7 +2009,38 @@ s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx, s32 x, s32 y
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002675C);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026A0C);
+s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 ofsX, s16 ofsY) {
+    u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
+    s32 count = *(s16*)(pDesc);
+    s32 i;
+    u8* pEntry = pDesc + 4;
+    s32 stride = primStride * 20; /* primStride * 0x28 per SPRT */
+    u8* pPrim = pPrimBuffer + stride;
+
+    for (i = 0; i < count; i++) {
+        s32 clut = GetClut(*(s16*)(pEntry + 0x12), *(s16*)(pEntry + 0x14));
+        SetSprt((void*)pPrim);
+        SetSemiTrans((void*)pPrim, 0);
+        SetShadeTex((void*)pPrim, 1);
+        *(u16*)(pPrim + 0x0E) = (u16)clut;
+        *(u16*)(pPrim + 0x08) = *(u16*)(pEntry + 0x08) + ofsX;
+        *(u16*)(pPrim + 0x0A) = *(u16*)(pEntry + 0x0A) + ofsY;
+        *(u8*)(pPrim + 0x0C) = *(u8*)(pEntry + 0x00);
+        *(u8*)(pPrim + 0x0D) = *(u8*)(pEntry + 0x02);
+        *(u16*)(pPrim + 0x10) = *(u16*)(pEntry + 0x04);
+        *(u16*)(pPrim + 0x12) = *(u16*)(pEntry + 0x06);
+        pEntry += 0x1C;
+        pPrim += 0x28;
+    }
+
+    /* Add DR_MODE */
+    {
+        s32 tpage = GetTPage(0, 0, *(s16*)(pDesc + 4 + 0x10), *(s16*)(pDesc + 4 + 0x16));
+        u8* pMode = pPrimBuffer + count * 20 + stride;
+        SetDrawMode((void*)pMode, 0, 0, tpage & 0xFFFF, NULL);
+    }
+    return count + 1;
+}
 
 void func_80026B9C(void) {
 }
