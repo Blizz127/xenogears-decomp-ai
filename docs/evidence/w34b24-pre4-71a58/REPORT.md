@@ -80,16 +80,18 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 
 ## 4. Next implementable missing prerequisite
 
-**`0x8009623C`** then **`0x800962B0`** — bounded 98CC0 callees with
-overlay `MISSING_CALLEES=0` (no JAL / JALR / COP2). Independently
-re-derived: `[9623C,962B0)` 116/29; `[962B0,96328)` 120/30.
+**`0x800963E4`** then **`0x800964B0`** — bounded no-JAL leaves that
+unlock `96328` / `965A4` (remaining 98CC0 overlay callees).
+Independently re-derived: `[963E4,964B0)` 204/51; `[964B0,965A4)`
+244/61. `966CC` is also bounded (PsyQ `0x8004Cxxx` only) and is a
+`967E4` overlay callee.
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
-Blocked on other missing callees: `96130` (needs `967E4`; `967E4`
-first return `968D8` / next `968E0` but overlay jals `968E0` /
-`9699C` / `966CC`), `98CC0` still also needs `96328` / `965A4`.
+Blocked: `96130` (needs `967E4`; `967E4` jals overlay `968E0` /
+`9699C` / `966CC`), `98CC0` still needs `96328` / `965A4`.
 
-**`0x80089748`** (I31) is landed. Do not invent a `86798` jalr set.
+**`0x80089748`** (I31), **`0x8009623C`** (I32), and **`0x800962B0`**
+(I33) are landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 
