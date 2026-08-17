@@ -23,7 +23,24 @@ extern int g_PartyIsWaitingForStreamData;
 extern void* g_PartyDataBuffers[];
 extern void* g_PartyStreamDataPointers[];
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A5CC);
+extern u8* D_800592DC;
+extern u8* D_800592E0;
+extern u8* D_800592D4;
+extern u8* D_800592D8;
+
+void func_8001A5CC(void) {
+    s32 row, col;
+    D_800592DC = HeapAlloc(0x3480, 1);
+    D_800592E0 = HeapAlloc(0x460, 1);
+    D_800592D4 = HeapAlloc(0x460, 1);
+    D_800592D8 = HeapAlloc(0x460, 1);
+    for (row = 0; row < 0x1C; row++) {
+        for (col = 0; col < 0x28; col++) {
+            D_800592D4[row * 0x28 + col] = 0;
+            D_800592D8[row * 0x28 + col] = 0;
+        }
+    }
+}
 
 extern u8* D_800592D8;
 
