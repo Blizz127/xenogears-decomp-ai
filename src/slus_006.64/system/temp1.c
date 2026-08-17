@@ -223,7 +223,29 @@ void AnimScriptTick(void* pSpriteData) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023290);
+void func_80023290(u8* pSprite, s32 animType) {
+    u32 flags3C;
+    animType &= 7;
+    flags3C = *(u32*)(pSprite + 0x3C);
+    flags3C = (flags3C & 0xFFFFFF1F) | (animType << 5);
+    *(u32*)(pSprite + 0x3C) = flags3C;
+    if (animType != 0) {
+        pSprite[0x2B] |= 0x2;
+    } else {
+        pSprite[0x2B] &= ~0x2;
+    }
+    {
+        u32 type = (*(u32*)(pSprite + 0x40) >> 13) & 0xF;
+        if (type == 8 || type == 9) {
+            u32 val = (*(u32*)(pSprite + 0x3C) >> 5) & 7;
+            if (val != 0) {
+                *(u32*)(pSprite + 0x3C) = (*(u32*)(pSprite + 0x3C) & 0xFFFFFF1F) | ((val - 1) << 5);
+            }
+        } else {
+            func_8001F6B0(pSprite);
+        }
+    }
+}
 
 void func_80023340(void* pSpriteData, s32 count) {
     u8* pData = pSpriteData;
