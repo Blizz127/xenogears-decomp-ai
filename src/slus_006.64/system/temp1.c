@@ -1651,7 +1651,70 @@ void func_8002541C(WorkListEntry* pTask) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025544);
+extern s32 D_80050100;
+
+void func_80025544(u8* pEntry) {
+    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u16 size;
+    s32 otz;
+    u8* pTile;
+    s32 halfSize;
+    u8* pMode;
+    SVECTOR v0, v1, v2;
+    long pxy0[2], pxy1[2], pxy2[2];
+    long flg0, flg1, flg2;
+
+    if (*(u16*)(pSprite + 0x34) != 0) return;
+    size = *(u16*)(pSprite + 0x36);
+
+    /* Allocate TILE primitive */
+    pTile = (u8*)g_GfxCurWorkBuffer;
+    if (pTile + 0x10 >= (u8*)g_GfxCurWorkBufferEnd) return;
+    g_GfxCurWorkBuffer = pTile + 0x10;
+
+    /* Set up GTE */
+    SetRotMatrix(&D_8004FBB8);
+    SetTransMatrix(&D_8004FBB8);
+
+    /* Transform 3 vertices */
+    v0.vx = *(s16*)(pSprite + 0x02);
+    v0.vy = *(s16*)(pSprite + 0x06);
+    v0.vz = *(s16*)(pSprite + 0x0A);
+    v1.vx = v0.vx + size;
+    v1.vy = v0.vy;
+    v1.vz = v0.vz;
+    v2.vx = v0.vx;
+    v2.vy = v0.vy + size;
+    v2.vz = v0.vz;
+
+    otz = RotTransPers3(&v0, &v1, &v2, pxy0, pxy1, pxy2, &flg0, &flg1);
+    otz >>= D_80050100;
+    *(u16*)(pSprite + 0x2E) = (u16)otz;
+
+    /* Compute tile size from transformed coords */
+    halfSize = (s32)(s16)pxy1[0] - (s32)(s16)pxy0[0];
+    if (halfSize == 0) halfSize = 1;
+    if (halfSize < 0) halfSize = -halfSize;
+    halfSize = (halfSize + 1) / 2;
+
+    /* Build TILE primitive */
+    pTile[3] = 3; /* TILE tag */
+    *(u32*)(pTile + 4) = *(u32*)(pSprite + 0x28);
+    *(u16*)(pTile + 8) = (u16)((s16)pxy0[0] - halfSize);
+    *(u16*)(pTile + 0xA) = (u16)((s16)pxy0[1] - halfSize);
+    *(u16*)(pTile + 0xC) = (u16)size;
+    *(u16*)(pTile + 0xE) = (u16)size;
+    AddPrim(g_GfxCurOT + otz * 4, pTile);
+
+    /* Allocate DR_MODE primitive */
+    pMode = (u8*)g_GfxCurWorkBuffer;
+    if (pMode + 8 >= (u8*)g_GfxCurWorkBufferEnd) return;
+    g_GfxCurWorkBuffer = pMode + 8;
+
+    pMode[3] = 1; /* DR_MODE tag */
+    *(u32*)(pMode + 4) = 0xE1000000 | (*(u32*)(pSprite + 0x3C) & 0x60);
+    AddPrim(g_GfxCurOT + otz * 4, pMode);
+}
 
 void func_80025710(void) {}
 
