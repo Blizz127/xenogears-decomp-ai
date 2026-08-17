@@ -766,7 +766,32 @@ void func_80089B54(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089BF0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089DCC);
+extern s16 D_800B2324[];
+extern s16 D_800B2326[];
+extern s16 D_800B2328[];
+extern s16 D_800B22E2[];
+
+void func_80089DCC(void) {
+    u8 mask;
+    s32 arg1, arg2, idx, actorIdx;
+    mask = SCRIPT_READ_U8_REL(9);
+    arg1 = FieldScriptArgument1(1, mask);
+    mask = SCRIPT_READ_U8_REL(9);
+    arg2 = FieldScriptArgument2(3, mask);
+    idx = arg1 * 4;
+    D_800B2324[idx] = (s16)arg2;
+    mask = SCRIPT_READ_U8_REL(9);
+    D_800B2328[idx] = (s16)FieldScriptArgument3(5, mask);
+    mask = SCRIPT_READ_U8_REL(9);
+    D_800B2326[idx] = (s16)FieldScriptArgument4(7, mask);
+    actorIdx = FieldScriptVMGetActorIndex(0xA);
+    if (actorIdx == 0xFF) {
+        D_800B22E2[arg1] = -1;
+    } else {
+        D_800B22E2[arg1] = (s16)actorIdx;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xB;
+}
 
 extern s16 D_800B22E0;
 
