@@ -1275,33 +1275,29 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030EE8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003101C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315A0);
+/* GPU primitive link functions: set next pointer and tag with type code */
+#define GPU_LINK_FUNC(name, tag) \
+    void name(u32* pPrim, u32 nextAddr) { \
+        u32 old = *pPrim; \
+        *pPrim = nextAddr & 0xFFFFFF; \
+        *(u32*)(uintptr_t)nextAddr = old | tag; \
+    }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315C4);
+GPU_LINK_FUNC(func_800315A0, 0x04000000)
+GPU_LINK_FUNC(func_800315C4, 0x07000000)
+GPU_LINK_FUNC(func_800315E8, 0x06000000)
+GPU_LINK_FUNC(func_8003160C, 0x09000000)
+GPU_LINK_FUNC(func_80031630, 0x05000000)
+GPU_LINK_FUNC(func_80031654, 0x08000000)
+GPU_LINK_FUNC(func_80031678, 0x0B000000)
+GPU_LINK_FUNC(func_8003169C, 0x0A000000)
+GPU_LINK_FUNC(func_800316C0, 0x0D000000)
+GPU_LINK_FUNC(func_800316E4, 0x0C000000)
+GPU_LINK_FUNC(func_80031708, 0x0E000000)
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315E8);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003160C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031630);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031654);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031678);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003169C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316C0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316E4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031708);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003172C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031750);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031774);
+GPU_LINK_FUNC(func_8003172C, 0x07000000)
+GPU_LINK_FUNC(func_80031750, 0x06000000)
+GPU_LINK_FUNC(func_80031774, 0x09000000)
 
 void func_80031798(void* ot, void* prim) {
     u32 primAddr = (u32)(uintptr_t)prim & 0x00FFFFFF;
@@ -1311,11 +1307,9 @@ void func_80031798(void* ot, void* prim) {
     *(u32*)(uintptr_t)primAddr = old | 0x04000000;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317BC);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317E0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031804);
+GPU_LINK_FUNC(func_800317BC, 0x03000000)
+GPU_LINK_FUNC(func_800317E0, 0x03000000)
+GPU_LINK_FUNC(func_80031804, 0x03000000)
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031828);
 
