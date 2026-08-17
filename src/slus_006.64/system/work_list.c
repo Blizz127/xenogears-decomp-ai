@@ -232,7 +232,17 @@ void WorkListDeleteTask(WorkListEntry* pTask) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAddTask);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAllocateTask);
+extern u8 D_800591AF;
+void TimerWorkListDeleteTask(WorkListEntry* pTask);
+
+WorkListEntry* TimerWorkListAllocateTask(void* data, int dataSize) {
+    WorkListEntry* pEntry;
+    pEntry = HeapAlloc(dataSize + sizeof(WorkListEntry), D_800591AF);
+    TimerWorkListAddTask(data, pEntry);
+    pEntry->onFreeCallback = &TimerWorkListDeleteTask;
+    pEntry->unk4 = 0;
+    return pEntry;
+}
 
 void WorkListSetTaskCallback(WorkListEntry* pTask, WorkListCallback_t callback) {
     pTask->onTriggerCallback = callback;
