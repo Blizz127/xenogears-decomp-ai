@@ -981,7 +981,23 @@ void func_8002D180(u8* pColor, s16* pIndices, u8* pLightSrc) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D244);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D354);
+void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 8; /* POLY_G4 tag */
+    *(s32*)(pPoly + 4) = *(s32*)(pColor);
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x1C)
+    );
+    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
+    pPoly[7] = pColor[3];
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
 
