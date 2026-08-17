@@ -112,9 +112,26 @@ void FieldMatrixCreateWorldToScreen(void) {
     }
 }
 
+extern u8 D_800ADC1C[];
+
 INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007234C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072398);
+extern u8 D_800ADC1C[];
+
+s32 func_80072398(u32 mask, u32 index) {
+    s32 i;
+    s32 found = 0;
+    for (i = 0; i < 8; i++) {
+        u8 bit = D_800ADC1C[index & 7];
+        if (!(mask & bit)) {
+            index--;
+            return found;
+        }
+        index++;
+        found++;
+    }
+    return 0;
+}
 
 void func_800723E4(void* arg0, void* arg1, void* arg2) {
     VECTOR delta;
@@ -238,7 +255,7 @@ void func_8007254C(void) {
 extern u8 D_800ADC1C[];
 extern u16 D_800AFE9C;
 extern s32 func_8007234C(void);
-extern s32 func_80072398(u8 scene65, s32 modeIdx);
+extern s32 func_80072398(u32 mask, u32 index);
 extern void func_80284EA4(void);
 
 void func_800726E8(void) {
