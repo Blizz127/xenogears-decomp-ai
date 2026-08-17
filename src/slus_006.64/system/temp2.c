@@ -238,7 +238,31 @@ int func_8002C3E8(u8* pModel) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C59C);
+void func_8002C59C(u8* pBlock) {
+    u16 flags = *(u16*)(pBlock);
+    s32 count;
+    s32 i;
+    u8* pTable;
+    if (flags & 0x20) return;
+    *(u16*)(pBlock) = flags | 0x20;
+    *(u32*)(pBlock + 0x08) += (u32)pBlock;
+    *(u32*)(pBlock + 0x0C) += (u32)pBlock;
+    *(u32*)(pBlock + 0x10) += (u32)pBlock;
+    *(u32*)(pBlock + 0x14) += (u32)pBlock;
+    {
+        u32 rel = *(u32*)(pBlock + 0x1C);
+        if (rel == 0) return;
+        pTable = pBlock + rel;
+        *(u32*)(pBlock + 0x1C) = (u32)pTable;
+    }
+    count = *(s32*)(pTable);
+    if (count == -1) return;
+    pTable += 4;
+    for (i = count; i >= 0; i--) {
+        *(u32*)(pTable + i * 12 + 4) += (u32)pBlock;
+        *(u32*)(pTable + i * 12 + 8) += (u32)pBlock;
+    }
+}
 
 /* Finalizes a model control block: pins its backing buffer into the heap so it
  * won't move. Reads a flags word at +0x4; if bit 0x2 is already set the block is
