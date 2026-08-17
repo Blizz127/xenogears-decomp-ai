@@ -1,0 +1,15 @@
+mutant,fault_class,killed_by,detail
+WM_91C18_MUTANT_SUB9_TABLE,wrong address,s9.64,sub 9 installs 0xA tables
+WM_91C18_MUTANT_SUB11_D3F0,wrong immediate,s11.d3f0,D3F0 gets 0x40 not 0x00400000
+WM_91C18_MUTANT_SKIP_91FF8,missing call,s9.50,91FF8 omitted
+WM_91C18_MUTANT_SKIP_96F18,missing call,s9.n96,96F18 omitted
+WM_91C18_MUTANT_STATE1_SRA,wrong immediate,s1.d3f0,approach uses >>2 not >>3
+WM_91C18_MUTANT_STATE1_NEG_STEP,wrong immediate,neg.d3f0,negative step -0x1000 not -0x2000
+WM_91C18_MUTANT_STATE3_STEP,wrong immediate,s11.bd38,state 3 adds 1 not 2
+WM_91C18_MUTANT_SKIP_COUNTER,missing store,se.22,+22 not incremented
+WM_91C18_MUTANT_WRONG_RETURN,wrong return,s9.ret,returns 0
+WM_91C18_MUTANT_STATE2_SKIP,missing store,s2.bd48,state 2 dest pad copy omitted
+WM_91C18_MUTANT_ARRIVE_SKIP_CLEAR,missing store,s1b.state,arrival does not clear +20
+WM_91C18_MUTANT_HEADING_POS_CONST,wrong immediate,hd.60,0xF32/0x799 swapped
+WM_91C18_MUTANT_SKIP_WORD_TABLE,missing store,s0.54,B214[+50] not published to +54
+WM_91C18_MUTANT_COUNTER_GE4,wrong immediate,s1b.nff8,refresh at +22>=4 not >=5
