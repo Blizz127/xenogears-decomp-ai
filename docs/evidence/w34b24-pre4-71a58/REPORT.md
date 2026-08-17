@@ -58,7 +58,7 @@ remain missing.
 | 1 | `0x80097440` | `[0x80097440, 0x8009766C)` | 556 / 139 | `6bce51ba8bb3a013e923fcc2b66b1bc59646522ac76aad21923171cb89ddfd4b` | `0x27950` | **ACCEPTED** (I21) | none (PsyQ: RotMatrixX/Y/Z, MulMatrix0×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | **ACCEPTED** (I22) | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` | BLOCKED on 89580 |
-| 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | MISSING | `0x80093534` ACCEPTED | bounded; COP2 words |
+| 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | **ACCEPTED** (I28) | `0x80093534` ACCEPTED | ACCEPTED |
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
 | 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
 | 7 | `0x800747DC` | starts after accepted `74794`; several returns before accepted `75228` | UNRESOLVED exact end | — | `0x4CEC` | MISSING | `0x80093740`, `0x80093978` ACCEPTED | identity not locked |
@@ -71,22 +71,60 @@ remain missing.
 | 14 | `0x8009932C` | start clear; first frame-0x38 return `0x80099700` | UNRESOLVED | — | `0x2983C` | MISSING | `0x80099708` | BLOCKED |
 | 15 | `0x80073B04` | `[0x80073B04, 0x80073E30)` | 812 / 203 | `87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197` | `0x4014` | **ACCEPTED** | none (PsyQ) | ACCEPTED |
 | 16 | `0x800737EC` | `[0x800737EC, 0x800739B8)` | 460 / 115 | `e967f7509aa004e89b3876a53b9673a0bac961055e2f298012d8abf01be9d621` | `0x3CFC` | **ACCEPTED** (I25) | none (PsyQ: RotMatrixYXZ, CompMatrix, SetRot/Trans, RotTransPers4) | ACCEPTED |
-| 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | UNBOUNDED | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | **genuine blocker** (indirect) |
+| 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
 
-`71A58_MISSING_CALLEES=10` after I21–I27 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC` / `85CDC` / `848F4`) plus accepted `73B04`.
+`71A58_MISSING_CALLEES=9` after I21–I28 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC` / `85CDC` / `848F4` / `89C78`) plus accepted `73B04`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x80089C78`** — remaining bounded COP2 callee (`93534` ACCEPTED).
-`0x800740B8` is bounded but large (SLUS/PsyQ + COP2).
+**`0x800740B8`** — remaining bounded callee (`[740B8,74794)` 1756/439;
+SLUS/PsyQ + COP2; no overlay missing-callees). Large; implement only
+when time allows.
 
-**`0x80085CDC`** (I26) and **`0x800848F4`** (I27) are landed.
-`86798`'s `jalr` remains the genuine tail blocker; it does not block
-the remaining bounded COP2 leaves.
+Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
+Blocked on other missing callees: `89748` (needs `89580`), `96130`
+(needs `967E4`), `98CC0` (needs `9623C`/`962B0`/`96328`/`965A4`).
+
+**`0x80089C78`** (I28) is landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 
 Do not implement `0x80071A58` until the overlay missing set is empty.
 No forced PC / callback / slot / state / scheduler / resolver work.
+
+## 6. Measured `0x80086798` jalr writers (not an implementation)
+
+`0x80086798` loads `$v0` from `0x8009CD40` and `jalr $v0` at
+`0x800867CC` (delay `sw $s0, 0x28($sp)`).
+
+Retail overlay `sw` sites whose 16-bit offset is `0xCD40` under
+`lui $at, 0x800a` (guest `0x8009CD40`), independently scanned in
+`disc/world_map.bin`:
+
+| Store VA | `$v0` formation immediately before the `sw` |
+|---|---|
+| `0x80072374` | `lui $v0, 0x8008` / `addiu $v0, $v0, 0x6700` |
+| `0x80077310` | same |
+| `0x80077B60` | same |
+| `0x80078B5C` | same |
+| `0x8007A6D8` | same |
+| `0x8007C04C` | same |
+| `0x8007DA18` | same |
+| `0x8008006C` | same |
+| `0x80080E00` | same |
+| `0x80082424` | same |
+| `0x80083658` | same |
+
+Eleven overlay `lui 0x8008` / `addiu 0x6700` pairs exist; they match
+the eleven store sites. Formed constant is **`0x80086700`** (the wrap
+leaf that ends immediately before `86798`).
+
+SLUS_006.64 (load `0x80010000`) has **no** `sw`/`lw` with offset
+`0xCD40` and **no** `lui 0x8008`+`addiu 0x6700` pair.
+
+No runtime capture of the live `jalr` target was found under
+`docs/evidence` or `captures`. DMA / other-overlay writers were not
+observed. This is a measured overlay-store set, not a guessed
+scheduler table. `86798` is still **not implemented**.
