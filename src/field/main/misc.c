@@ -1640,7 +1640,66 @@ void func_8008BDD8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BF38);
+extern s32 D_8005A448[];
+extern void* D_8005A418[];
+extern void* g_FieldSpriteData;
+
+void func_8008BF38(s32 partyId) {
+    s32 idx = partyId * 4;
+    s32 slot = D_8005A448[partyId];
+
+    if (slot == 0xFF) {
+        /* Shift party arrays right */
+        g_GamePartyMemberSkins[partyId] = g_GamePartyMemberSkins[partyId + 1];
+        g_GamePartyMembers[partyId] = g_GamePartyMembers[partyId + 1];
+        D_8005A448[partyId] = D_8005A448[partyId + 1];
+        g_GamePartyMemberSkins[partyId + 1] = 0xFF;
+        g_GamePartyMembers[partyId + 1] = 0xFF;
+        D_8005A448[partyId + 1] = 0xFF;
+    } else {
+        /* Copy 0x14000 bytes from D_8005A418 to g_PartyDataBuffers */
+        u8* pSrc = (u8*)D_8005A418[partyId];
+        u8* pDst = (u8*)g_PartyDataBuffers[partyId];
+        s32 i;
+        u32 end = (u32)pSrc + 0x14000;
+        for (i = 0; pSrc + i * 16 < (u8*)end; i++) {
+            *(s32*)(pDst + i * 16) = *(s32*)(pSrc + i * 16);
+            *(s32*)(pDst + i * 16 + 4) = *(s32*)(pSrc + i * 16 + 4);
+            *(s32*)(pDst + i * 16 + 8) = *(s32*)(pSrc + i * 16 + 8);
+            *(s32*)(pDst + i * 16 + 0xC) = *(s32*)(pSrc + i * 16 + 0xC);
+        }
+        /* Shift party arrays */
+        g_GamePartyMemberSkins[partyId] = g_GamePartyMemberSkins[partyId + 1];
+        g_GamePartyMembers[partyId] = g_GamePartyMembers[partyId + 1];
+        D_8005A448[partyId] = D_8005A448[partyId + 1];
+        /* Get actor data and call func_80076AC0 */
+        {
+            u8* pFieldActor = (u8*)g_FieldActors + slot * 92;
+            u32 pActorData = *(u32*)(pFieldActor + 0x4C);
+            u8* pSub = (u8*)pActorData;
+            s32 skinId = (pSub[0x126] & 0x7F);
+            s32 motionFlags;
+            u8* pSprite;
+            u8* pPartyBuf;
+            if (!(pSub[0x126] & 0x80)) {
+                motionFlags = 1;
+                pPartyBuf = (u8*)g_PartyDataBuffers[partyId];
+                func_80076AC0(slot, partyId, pPartyBuf, 1, 0, partyId, 1);
+            } else {
+                pSprite = (u8*)g_FieldSpriteData + skinId * 4;
+                motionFlags = *(u32*)(pSub + 0x134) >> 28 & 3;
+                pPartyBuf = (u8*)*(u32*)(pSprite + 4) + (u32)g_FieldSpriteData;
+                func_80076AC0(slot, partyId, pPartyBuf, 1,
+                    *(u32*)(pSub + 0x134) & 0xF,
+                    *(u32*)((u8*)g_FieldActors + slot * 92 + 0x4C) + 0x126,
+                    motionFlags);
+            }
+        }
+        g_GamePartyMembers[partyId + 1] = 0xFF;
+        g_GamePartyMemberSkins[partyId + 1] = 0xFF;
+        D_8005A448[partyId + 1] = 0xFF;
+    }
+}
 
 extern void* D_800B06B8;
 extern void func_80080A74(s32 actorIndex);
