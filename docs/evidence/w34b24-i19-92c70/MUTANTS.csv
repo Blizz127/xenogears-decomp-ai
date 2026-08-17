@@ -1,0 +1,17 @@
+mutant,fault_class,killed_by,detail
+WM_92C70_MUTANT_STATE0_SKIP_SEL,missing gate,s0idle.34614,state 0 enqueues when selection is -1
+WM_92C70_MUTANT_SKIP_34614,missing call,s0enq.34614,omits func_80034614
+WM_92C70_MUTANT_SKIP_STRING,missing call,s0enq.33728,omits GetStringEntry/34714
+WM_92C70_MUTANT_SKIP_STATE_ARM,missing store,s0enq.state,state 0 does not arm +20=1
+WM_92C70_MUTANT_SKIP_CACHE,missing store,s0enq.cache,+50 not published
+WM_92C70_MUTANT_STALE_INDEX,stale load,s0enq.33728.idx,GetStringEntry uses pre-34614 selection
+WM_92C70_MUTANT_STALE_CACHE,stale store,s0enq.cache,+50 uses pre-helper selection
+WM_92C70_MUTANT_STATE1_CLEAR_SKIP,missing store,s1neg.state,selection -1 does not clear +20
+WM_92C70_MUTANT_SKIP_CHANGED,missing branch,s1chg.34614,changed selection does not re-enqueue
+WM_92C70_MUTANT_HALF_COMPARE,wrong compare,s1chg.34614,compares only low 16 bits of +50
+WM_92C70_MUTANT_SKIP_34888,missing call,s0idle.34888,omits common func_80034888
+WM_92C70_MUTANT_WRONG_RETURN,wrong return,s0idle.ret,returns 3
+WM_92C70_MUTANT_WRONG_OBJECT,wrong address,s0idle.34888.a0,34888 uses 0x8009BD64
+WM_92C70_MUTANT_WRONG_TABLE,wrong address,s0enq.33728.tbl,GetStringEntry table from 0x8009D780
+WM_92C70_MUTANT_WRONG_OT_OFF,wrong address,s0idle.34888.ot,OT loaded from db+0x6C
+WM_92C70_MUTANT_IGNORE_SLOT,wrong address,s0enq.34614,ignores $a0 slot index (reads slot 0 +20)
