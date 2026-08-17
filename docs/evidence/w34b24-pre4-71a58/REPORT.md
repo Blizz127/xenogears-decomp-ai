@@ -62,7 +62,7 @@ remain missing.
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
 | 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
 | 7 | `0x800747DC` | starts after accepted `74794`; several returns before accepted `75228` | UNRESOLVED exact end | — | `0x4CEC` | MISSING | `0x80093740`, `0x80093978` ACCEPTED | identity not locked |
-| 8 | `0x800848F4` | `[0x800848F4, 0x80084D00)` | 1036 / 259 | `670f809b7d9c0bcbd32463495e24c057bda8469220f12f3d6de19b893830e93b` | `0x14E04` | MISSING | `0x80093534` ACCEPTED | bounded; COP2 words |
+| 8 | `0x800848F4` | `[0x800848F4, 0x80084D00)` | 1036 / 259 | `670f809b7d9c0bcbd32463495e24c057bda8469220f12f3d6de19b893830e93b` | `0x14E04` | **ACCEPTED** (I27) | `0x80093534` ACCEPTED | bounded; COP2 words |
 | 9 | `0x800980D4` | `[0x800980D4, 0x800981C8)` | 244 / 61 | `b2ad8897db6a2b556897d0e5c726d049e252e78907dedac61642d121d7d90b12` | `0x285E4` | **ACCEPTED** (I23) | none | ACCEPTED |
 | 10 | `0x800981C8` | `[0x800981C8, 0x800983A0)` | 472 / 118 | `90e483f10929f9022a21582a9d8046cb978c9cf09927d848580f8a427905a6fe` | `0x286D8` | **ACCEPTED** (I24) | none | ACCEPTED |
 | 11 | `0x80096130` | `[0x80096130, 0x8009623C)` | 268 / 67 | `92c4c23f0e129166ce0c21cca5431851a5b3c6662ce293682e2b947c24562bc0` | `0x26640` | MISSING | `0x800967E4` | BLOCKED on 967E4 |
@@ -74,18 +74,17 @@ remain missing.
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | UNBOUNDED | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | **genuine blocker** (indirect) |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
 
-`71A58_MISSING_CALLEES=11` after I21–I26 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC` / `85CDC`) plus accepted `73B04`.
+`71A58_MISSING_CALLEES=10` after I21–I27 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC` / `85CDC` / `848F4`) plus accepted `73B04`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x800848F4`** — next remaining bounded COP2 callee (`93534` ACCEPTED).
-`0x80089C78` is the sibling (`93534` ACCEPTED). `0x800740B8` is bounded
-but large (SLUS/PsyQ + COP2).
+**`0x80089C78`** — remaining bounded COP2 callee (`93534` ACCEPTED).
+`0x800740B8` is bounded but large (SLUS/PsyQ + COP2).
 
-**`0x80085CDC`** is landed (I26). Retail end is `0x80085F58`, not
-`0x80085FE0`. `86798`'s `jalr` remains the genuine tail blocker; it
-does not block the remaining bounded COP2 leaves.
+**`0x80085CDC`** (I26) and **`0x800848F4`** (I27) are landed.
+`86798`'s `jalr` remains the genuine tail blocker; it does not block
+the remaining bounded COP2 leaves.
 
 ## 5. 71A58 is not started
 
