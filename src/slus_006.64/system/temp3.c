@@ -524,7 +524,51 @@ void func_8001BB50(void) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB50);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BBAC);
+extern u8* D_800595D0;
+extern u8* D_800595A8;
+extern u8* D_80059480;
+extern u8* D_800594AC;
+extern u8 D_8005954C;
+extern s16 D_8006F9BC;
+extern s16 D_8006F9C0;
+extern s16 D_8006F9C4;
+extern s16 D_8006F9CC;
+extern u8* D_8006F9C8;
+extern u32 D_8006F9D0;
+extern s16 D_8006F9D4;
+extern s32 D_8006F9D8;
+extern u8 D_8004F388[];
+extern void SoundAddSedsEntry(void* pData);
+extern void func_80039DB8(s32 a0);
+
+void func_8001BBAC(void) {
+    s32 i;
+    HeapChangeCurrentUser(2, NULL);
+    ArchiveSetIndex(0xC, 0);
+    D_80059480 = HeapAlloc(4, 1);
+    D_800594AC = HeapAlloc((u32)D_80059480 + 0x7FE1C000, 1);
+    D_800595D0 = HeapAlloc(ArchiveDecodeAlignedSize(2), 1);
+    D_800595A8 = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
+    D_8006F9BC = 2;
+    D_8006F9C4 = 3;
+    D_8006F9CC = 4;
+    D_8006F9D0 = 0x801E4000;
+    D_8006F9D4 = 0;
+    D_8006F9D8 = 0;
+    D_8006F9C0 = (s16)(s32)D_800595D0;
+    D_8006F9C8 = D_800595D0;
+    func_80029AFC((u8*)&D_8006F9BC, 0, 0x80);
+    while (ArchiveDataSync() == 3) {}
+    SoundAddSedsEntry(D_800595D0);
+    if (D_8005954C != 4) {
+        for (i = 0; i < 3; i++) {
+            u8 val = D_8004F388[D_8005954C * 3 + i];
+            if (val != 0xFF) {
+                func_80039DB8((s32)D_800595D0[0x14] << 16 | val);
+            }
+        }
+    }
+}
 
 u8 func_8001BD40(u8 min, u8 max) {
     u8 range;
