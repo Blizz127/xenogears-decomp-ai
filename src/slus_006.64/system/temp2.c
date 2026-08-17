@@ -1021,7 +1021,29 @@ void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
     pPoly[7] = pColor[3];
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
+s32 func_8002D420(u8* pColor, s16* pIndices) {
+    if (func_8002CD64(pColor) == 0) return 0;
+    {
+        u8* pPoly = D_80059424;
+        s16* normals = (s16*)D_8005952C;
+        pPoly[3] = 0xC; /* POLY_GT4 tag */
+        NormalColor3(
+            (SVECTOR*)&normals[pIndices[0] * 4],
+            (SVECTOR*)&normals[pIndices[1] * 4],
+            (SVECTOR*)&normals[pIndices[2] * 4],
+            (CVECTOR*)(pPoly + 4),
+            (CVECTOR*)(pPoly + 0x10),
+            (CVECTOR*)(pPoly + 0x1C)
+        );
+        NormalColor((SVECTOR*)&normals[pIndices[3] * 4], (CVECTOR*)(pPoly + 0x28));
+        *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+        *(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+        *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
+        *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+        pPoly[7] = pColor[3];
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
 
