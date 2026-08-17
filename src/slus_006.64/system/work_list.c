@@ -371,7 +371,20 @@ void func_8001D034(WorkListEntry* pTargetEntry) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D0A4);
+void* func_8001D0A4(void* pTask, void* pCallback) {
+    void* pCur = g_TimerWorkList;
+    while (pCur != NULL) {
+        if (*(void**)pCur == pTask) {
+            u32 curFlags = *(u32*)((u8*)pCur + 0x14) & 0x1FFFFFFF;
+            u32 taskFlags = *(u32*)((u8*)pTask + 0x10) & 0x1FFFFFFF;
+            if (curFlags == taskFlags) {
+                if (*(void**)((u8*)pCur + 0x08) == pCallback) return pCur;
+            }
+        }
+        pCur = *(void**)((u8*)pCur + 0x18);
+    }
+    return NULL;
+}
 
 void* func_8001D10C(void* pTask) {
     void* pCur = g_TimerWorkList;
