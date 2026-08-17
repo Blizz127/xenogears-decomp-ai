@@ -1282,7 +1282,24 @@ void func_800306D0(u8* pAnimInfo) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030988);
+extern s16 D_800308D0[];
+
+void func_80030988(u16 u, u16 v, s16 texX, s16 texY) {
+    u16 uVal = u << 6;
+    u16 vVal = v << 6;
+    D_800308D0[0x18] = (D_800308D0[0x18] & 0xF83F) | uVal;
+    D_800308D0[0x2E] = (D_800308D0[0x2E] & 0xF83F) | uVal;
+    D_800308D0[0x3E] = (D_800308D0[0x3E] & 0xF83F) | uVal;
+    D_800308D0[0x1E] = (D_800308D0[0x1E] & 0xF83F) | vVal;
+    D_800308D0[0x34] = (D_800308D0[0x34] & 0xF83F) | vVal;
+    D_800308D0[0x44] = (D_800308D0[0x44] & 0xF83F) | vVal;
+    D_800308D0[0x1A] = texX;
+    D_800308D0[0x30] = texX;
+    D_800308D0[0x40] = texX;
+    D_800308D0[0x20] = texY;
+    D_800308D0[0x36] = texY;
+    D_800308D0[0x46] = texY;
+}
 
 MATRIX D_80059F64;
 MATRIX D_80059F84;
