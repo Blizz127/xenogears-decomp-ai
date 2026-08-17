@@ -23,16 +23,8 @@ void wm_800963E4(u32 record_addr);
 void wm_800964B0(u32 src, u32 dst);
 
 /* GTE-related queue setup */
-void wm_800966CC(u32 addr);
-
-/* Queue submitter */
-void wm_800967E4(u32 addr, u32 count);
-
 /* Queue record zero-fill */
 void wm_800968E0(u32 addr, u32 count);
-
-/* Queue record writer with GTE ops */
-void wm_8009699C(u32 addr, u32 val1, u32 val2);
 
 /* Queue counter reset */
 void wm_800980D4(void);
