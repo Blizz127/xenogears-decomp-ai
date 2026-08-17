@@ -1,0 +1,13 @@
+mutant,fault_class,killed_by,detail
+WM_93484_MUTANT_WRONG_SHIFT,wrong immediate,xlo.x,period uses <<11 instead of <<23
+WM_93484_MUTANT_LO_THRESHOLD,gate threshold,xeq.x,low wrap uses 0xFE000000 instead of 0xFC000000
+WM_93484_MUTANT_HI_THRESHOLD,gate threshold,xhi_eq.x,high wrap uses 0x02000000 instead of 0x04000000
+WM_93484_MUTANT_ADD_SUB_SWAP,swapped arithmetic,xlo.x,low wrap subtracts and high wrap adds
+WM_93484_MUTANT_SKIP_X,missing store,xlo.x,X word is not wrapped
+WM_93484_MUTANT_SKIP_Z,missing store,zlo.z,Z word is not wrapped
+WM_93484_MUTANT_WRONG_X_GLOBAL,wrong address,xlo.x,X period loaded from D2B4 instead of D160
+WM_93484_MUTANT_WRONG_Z_GLOBAL,wrong address,zlo.z,Z period loaded from D160 instead of D2B4
+WM_93484_MUTANT_WRONG_Z_OFFSET,wrong address,xlo.y,Z wrap writes +4 (Y) instead of +8
+WM_93484_MUTANT_TOUCH_Y,extra store,xlo.y,Y is zeroed (retail never touches Y)
+WM_93484_MUTANT_UNSIGNED_LO,signedness,xlo.z,low compare is unsigned (wraps Z=0)
+WM_93484_MUTANT_SKIP_HI,missing store,xhi.x,high wrap omitted
