@@ -779,7 +779,29 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001EE88);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F1D4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F530);
+extern s16 D_80059194;
+extern s16 D_80059196;
+
+void func_8001F530(void* pOut, s32 advance) {
+    u16* p = (u16*)pOut;
+    s16 y = D_80059196;
+    if (y + advance >= 0x41) {
+        D_80059196 = 0;
+        D_80059194++;
+        if (D_80059194 >= 3) {
+            D_80059194 = 0;
+        }
+    }
+    {
+        u16 curY = D_80059196;
+        s16 curX = D_80059194;
+        s16 outY = curY + 0x300;
+        s16 outX = curX * 64 + 0x140;
+        p[0] = outY;
+        p[1] = outX;
+    }
+    D_80059196 += advance;
+}
 
 static s32 ScaleFrameExtent(s32 value, s16 scale) {
     s32 result = value * scale;
