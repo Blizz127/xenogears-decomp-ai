@@ -257,7 +257,42 @@ void WorkListDeleteTask(WorkListEntry* pTask) {
     HeapFree(pTask);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAddTask);
+extern void TimerWorkListRemoveTask(WorkListEntry* pEntry);
+extern u8 D_800591AC;
+extern s32 D_80059464;
+
+void TimerWorkListAddTask(void* data, WorkListEntry* pEntry) {
+    u32 old14, old10, taskFlags;
+    s32 timer;
+    u32* pTimerList;
+    u8 isMainList;
+
+    pEntry->unk0 = (WorkListEntry*)data;
+    taskFlags = *(u32*)((u8*)data + 0x10);
+    pTimerList = (u32*)g_TimerWorkList;
+    pEntry->onFreeCallback = TimerWorkListRemoveTask;
+    pEntry->onTriggerCallback = NULL;
+    g_TimerWorkList = pEntry;
+
+    old14 = *(u32*)((u8*)pEntry + 0x14);
+    old10 = *(u32*)((u8*)pEntry + 0x10);
+    timer = D_80059184;
+
+    *(u32*)((u8*)pEntry + 0x14) = (old14 & 0xE0000000) | (taskFlags & 0x1FFFFFFF);
+    old10 = (old10 & 0xE0000000) | (timer & 0x1FFFFFFF);
+    *(u32*)((u8*)pEntry + 0x10) = old10;
+    *(u32*)((u8*)pEntry + 0x18) = (u32)pTimerList;
+    D_80059184 = timer + 1;
+
+    isMainList = D_800591AC;
+    if (isMainList) {
+        D_80059464++;
+        *(u32*)((u8*)pEntry + 0x14) |= 0x80000000;
+    } else {
+        *(u32*)((u8*)pEntry + 0x14) &= 0x7FFFFFFF;
+    }
+    g_NumTimerWorkListEntries++;
+}
 
 extern u8 D_800591AF;
 void TimerWorkListDeleteTask(WorkListEntry* pTask);
