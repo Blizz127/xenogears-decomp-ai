@@ -1267,7 +1267,38 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
+s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
+    VECTOR edge1, edge2, cross;
+    /* Edge1 = p1 - p0, Edge2 = p2 - p0 */
+    edge1.vx = p1->vx - p0->vx;
+    edge1.vy = p1->vy - p0->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - p0->vx;
+    edge2.vy = p2->vy - p0->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    if (cross.vz < 0) return -1;
+
+    /* Edge1 = pTest - p0, Edge2 = p2 - p0 */
+    edge1.vx = pTest->vx - p0->vx;
+    edge1.vy = pTest->vy - p0->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - p0->vx;
+    edge2.vy = p2->vy - p0->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    if (cross.vz < 0) return -1;
+
+    /* Edge1 = p1 - pTest, Edge2 = p2 - pTest */
+    edge1.vx = p1->vx - pTest->vx;
+    edge1.vy = p1->vy - pTest->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - pTest->vx;
+    edge2.vy = p2->vy - pTest->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    return cross.vz >> 31;
+}
 
 extern s16 D_800B218C;
 
