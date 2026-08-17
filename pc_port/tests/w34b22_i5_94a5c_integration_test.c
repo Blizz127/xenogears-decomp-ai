@@ -11,6 +11,7 @@
  *   - the common tail (return 1 + copy when 94060 passes, return 0 when blocked).
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
@@ -152,6 +153,27 @@ static u32 exp_mask2(int case_id, u32 baseZ)
     u32 hi = baseZ & 0xFFF80000u;
     if (case_id == 5 || case_id == 6) return hi | 0x00080000u;
     return hi;
+}
+
+/* Since the W34B24-I4 NormalClip rebinding, the production TU's default
+ * probe references the real native NormalClip; this focused build links
+ * without PsyCross, so provide the retail NCLIP reference (s64 cross-sum
+ * of the packed s16 screen points truncated to the low word — the same
+ * formula PsyCross's integer path implements).  Every test case installs
+ * probe_mock, so this body also serves as a canary: it must never run. */
+long NormalClip(long sxy0, long sxy1, long sxy2)
+{
+    s32 x0 = (s32)(s16)((u32)sxy0 & 0xFFFFu), y0 = (s32)((u32)sxy0) >> 16;
+    s32 x1 = (s32)(s16)((u32)sxy1 & 0xFFFFu), y1 = (s32)((u32)sxy1) >> 16;
+    s32 x2 = (s32)(s16)((u32)sxy2 & 0xFFFFu), y2 = (s32)((u32)sxy2) >> 16;
+    long long sum = (long long)x0 * y1 + (long long)x1 * y2 +
+                    (long long)x2 * y0 - (long long)x0 * y2 -
+                    (long long)x1 * y0 - (long long)x2 * y1;
+
+    fprintf(stderr, "ASSERTION default_probe_reached: NormalClip called "
+                    "despite probe_mock installation\n");
+    exit(1);
+    return (long)(s32)(u32)(sum & 0xFFFFFFFFll);
 }
 
 int main(void)

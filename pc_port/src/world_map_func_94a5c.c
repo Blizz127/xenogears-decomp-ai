@@ -14,16 +14,27 @@
 #include "world_map_private_collision.h"
 #include "world_map_func_94a5c.h"
 
-/* GTE / SLUS math probe at 0x8004A70C.  Real, linked in the canonical
- * build (provided by the system_temp2 / libgte linkage).  Declared extern;
- * the native harness provides a controllable shim for branch-coverage
- * testing via the WM_94A5C_TEST_HOOK seam.  ABI (from retail call sites):
- *   $a0 = (Z_boundary<<16) | (X_boundary & 0xFFFF)
- *   $a1 = 0
- *   $a2 = (Z_new<<16) | (X_new & 0xFFFF)
- *   $a3 = mode
- *   $v0 = signed result; its sign selects the X-probe vs Z-probe order. */
-extern s32 func_8004A70C(s32 a0, s32 a1, s32 a2, s32 a3);
+/* Retail probe 0x8004A70C IS PsyQ NormalClip (named at that address in
+ * config/symbol_addrs.slus_006.64.txt; SLUS body = mtc2 SXY0/SXY2/SXY1,
+ * NCLIP, mfc2 MAC0 — see docs/evidence/w34b24-pre2-84d00-84db8/
+ * A70C_CONTRACT.md).  ABI at the retail call sites here:
+ *   $a0 = (Z_boundary<<16) | (X_boundary & 0xFFFF)   -> sxy0
+ *   $a1 = 0                                          -> sxy1
+ *   $a2 = (Z_new<<16) | (X_new & 0xFFFF)             -> sxy2
+ *   $a3 = mode; NormalClip never reads $a3 (provably unused)
+ *   $v0 = MAC0 = low 32 bits of the 2x signed 2D triangle area; its
+ *         sign selects the X-probe vs Z-probe order.
+ * The port binds the real native NormalClip (PsyCross GTE: integer
+ * path, s64 cross-sum truncated to the low word by F() — verified
+ * wrap, not saturate).  The 4-arg probe shape is kept so the
+ * WM_94A5C_TEST_HOOK seam stays stable. */
+extern long NormalClip(long sxy0, long sxy1, long sxy2);
+
+static s32 wm_94a5c_normal_clip_probe(s32 a0, s32 a1, s32 a2, s32 a3)
+{
+    (void)a3; /* retail $a3 is dead in NormalClip */
+    return (s32)NormalClip(a0, a1, a2);
+}
 
 /* ------------------------------------------------------------------ */
 /* Test seam: when WM_94A5C_TEST_TRACE is defined, route every helper   */
@@ -126,7 +137,7 @@ static s32 sign16(s32 v)
 #define HID_948D8 4
 
 #if defined(WM_94A5C_TEST_HOOK)
-static wm_94a5c_probe_fn wm_94a5c_probe = func_8004A70C;
+static wm_94a5c_probe_fn wm_94a5c_probe = wm_94a5c_normal_clip_probe;
 static wm_94a5c_trace_fn wm_94a5c_trace = 0;
 
 #define WM_94A5C_PROBE(v40, a1, v48, mode) \
@@ -136,7 +147,7 @@ static wm_94a5c_trace_fn wm_94a5c_trace = 0;
 
 void wm_80094A5C_set_probe(wm_94a5c_probe_fn fn)
 {
-    wm_94a5c_probe = fn ? fn : func_8004A70C;
+    wm_94a5c_probe = fn ? fn : wm_94a5c_normal_clip_probe;
 }
 
 void wm_80094A5C_set_trace(wm_94a5c_trace_fn fn)
@@ -144,7 +155,8 @@ void wm_80094A5C_set_trace(wm_94a5c_trace_fn fn)
     wm_94a5c_trace = fn;
 }
 #else
-#define WM_94A5C_PROBE(v40, a1, v48, mode) func_8004A70C((v40), (a1), (v48), (mode))
+#define WM_94A5C_PROBE(v40, a1, v48, mode) \
+    wm_94a5c_normal_clip_probe((v40), (a1), (v48), (mode))
 #define WM_94A5C_TRACE(stage, hid, v) ((void)0)
 #endif
 
