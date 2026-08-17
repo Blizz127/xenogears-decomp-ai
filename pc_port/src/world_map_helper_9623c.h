@@ -16,17 +16,11 @@ s32 wm_8009623C(u32 word0, u32 word1, u32 word2);
 /* Queue writer variant with different record layout */
 s32 wm_800962B0(u32 word0, u32 word1, u32 word2, u32 word3);
 
-/* Queue writer with 4 words */
-s32 wm_80096328(u32 word0, u32 word1, u32 word2, u32 word3);
-
 /* Queue record initializer */
 void wm_800963E4(u32 record_addr);
 
 /* Queue record copier */
 void wm_800964B0(u32 src, u32 dst);
-
-/* Queue record copier with offset */
-void wm_800965A4(u32 src, u32 dst, u32 offset);
 
 /* GTE-related queue setup */
 void wm_800966CC(u32 addr);

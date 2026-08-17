@@ -55,25 +55,6 @@ s32 wm_800962B0(u32 word0, u32 word1, u32 word2, u32 word3)
     return 0;
 }
 
-/* wm_80096328: 4-word record writer with GTE flags */
-s32 wm_80096328(u32 word0, u32 word1, u32 word2, u32 word3)
-{
-    u32 counter = q_lw(D_8009D808);
-    if (counter >= QUEUE_MAX) return -1;
-
-    u32 stride_mul = q_lw(D_8009BE44);
-    u32 base = q_lw(D_8009BE08);
-    u32 record_idx = (stride_mul * 33) << 5;
-    u32 addr = base + record_idx + counter * 16;
-
-    q_sw(D_8009D808, counter + 1);
-    q_sw(addr + 0, word0);
-    q_sw(addr + 4, word1);
-    q_sw(addr + 8, word2);
-    q_sw(addr + 12, word3);
-    return 0;
-}
-
 /* wm_800963E4: record initializer (zero-fill pattern) */
 void wm_800963E4(u32 record_addr)
 {
@@ -98,17 +79,6 @@ void wm_800964B0(u32 src, u32 dst)
     s32 i;
     for (i = 0; i < 10; i++) {
         q_sw(dst + i * 4, q_lw(src + i * 4));
-    }
-}
-
-/* wm_800965A4: record copier with offset */
-void wm_800965A4(u32 src, u32 dst, u32 offset)
-{
-    u32 s = src + offset;
-    u32 d = dst + offset;
-    s32 i;
-    for (i = 0; i < 10; i++) {
-        q_sw(d + i * 4, q_lw(s + i * 4));
     }
 }
 
