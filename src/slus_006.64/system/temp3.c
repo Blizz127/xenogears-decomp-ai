@@ -342,7 +342,63 @@ void func_8001B66C(void) {
 
 void func_8001B6BC(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B6C4);
+extern s32* D_8005917C;
+extern u8 D_800C48EA;
+extern u8 D_800D3338;
+extern u8 D_8005947C;
+extern u8 D_800594F8;
+extern u16 D_8006F94E;
+extern u16 D_8006F950;
+extern u16 D_8006F952;
+extern u16 D_8006F954;
+extern u8 D_8005959C;
+extern void func_8003747C(void*);
+extern void* FontLoadFont(int sx, int sy, int w, int h, s32 f1, s32 f2, s32 f3, s32 f4, s32 f5, s32 f6);
+extern void func_80070F40(void);
+extern void ChangeGameState(unsigned int state);
+extern void MainLoop(int errorCode);
+
+void func_8001B6C4(void) {
+    s32 state;
+    D_8005959C = 1;
+    ArchiveCdDataSync(0);
+    ArchiveSetIndex(0xC, 0);
+    if (D_8005917C[0] != -1) {
+        func_8003747C(0x80200000);
+        FontLoadFont(0x10, 0x10, 0x140, 0x100, 0x3E8, 0, 0x340, 0x340, 0x20, 0);
+    }
+    func_8001B844();
+    func_80070F40();
+
+    state = D_800C48EA;
+    if (state == 1 || state == 0x40 || state == 0x21) {
+        if (D_800D3338 == 0) {
+            if (D_8005947C == 0) {
+                u16 tmp = D_8006F94E & 0x7FF;
+                if (tmp < 0x400) {
+                    state = 1;
+                } else {
+                    state = 3;
+                }
+            } else {
+                state = 2;
+            }
+        }
+    } else if (state == 0x81) {
+        GamePartySignalReinitialize();
+        D_8006F94E = 0x1EA;
+        D_8006F950 = 0;
+        D_8006F952 = 0;
+        D_8006F954 = 0;
+        state = 1;
+    }
+    ChangeGameState(state);
+
+    if (D_8005947C == 0) {
+        D_800594F8 = 1;
+    }
+    MainLoop(0);
+}
 
 extern u8 D_800C4A7C[];
 extern void func_800379D0(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f);
