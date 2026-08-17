@@ -53,8 +53,8 @@ Only `73B04` is present on canonical.
 
 | # | VA | Boundary | B / I | SHA-256 | File off | Canonical | Overlay callees | Verdict |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `0x80097440` | `[0x80097440, 0x8009766C)` | 556 / 139 | `6bce51ba8bb3a013e923fcc2b66b1bc59646522ac76aad21923171cb89ddfd4b` | `0x27950` | MISSING | none (PsyQ: RotMatrixX/Y/Z, MulMatrix0×2, ApplyMatrix, TransMatrix) | **IMPLEMENTABLE** |
-| 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | MISSING | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | **IMPLEMENTABLE** |
+| 1 | `0x80097440` | `[0x80097440, 0x8009766C)` | 556 / 139 | `6bce51ba8bb3a013e923fcc2b66b1bc59646522ac76aad21923171cb89ddfd4b` | `0x27950` | **ACCEPTED** (I21) | none (PsyQ: RotMatrixX/Y/Z, MulMatrix0×2, ApplyMatrix, TransMatrix) | ACCEPTED |
+| 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | **ACCEPTED** (I22) | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` | BLOCKED on 89580 |
 | 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | MISSING | `0x80093534` ACCEPTED | bounded; COP2 words |
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085FE0)` | 772 / 193 | `352a8af52541f4373599db52b1b57263ebeee5942f9ac1e11bdf691169e59d54` | `0x161EC` | MISSING | `0x80093484` ACCEPTED | bounded; COP2 words |
@@ -72,7 +72,8 @@ Only `73B04` is present on canonical.
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | UNBOUNDED | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | **genuine blocker** (indirect) |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
 
-`71A58_MISSING_CALLEES=17` (every overlay target except accepted `73B04`).
+`71A58_MISSING_CALLEES=15` after I21 `97440` and I22 `97244` (every overlay
+target except accepted `73B04` / `97440` / `97244`).
 
 ## 4. First implementable missing prerequisite
 
