@@ -321,7 +321,16 @@ void func_800884CC(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088508);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008861C);
+void func_8008861C(void)
+{
+    s32 i;
+    u8* pBanks = (u8*)g_FieldDefaultParticleBanks;
+    for (i = 0; i < 8; i++) {
+        u8* pEntry = pBanks + i * 112;
+        *(u16*)(pEntry + 0x32) = 0;
+        *(u16*)(pEntry + 0x30) = 0;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088674);
 
