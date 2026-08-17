@@ -1,0 +1,14 @@
+mutant,fault_class,killed_by,detail
+WM_84DB8_MUTANT_GATE_OFF_BY_ONE,off-by-one boundary,A.dx_800.setup,gate accepts |d|==0x800
+WM_84DB8_MUTANT_DELTA_DIR,wrong operand order,A.in_range.dx,dx/dz delta directions symmetrized
+WM_84DB8_MUTANT_MATRIX_OFFSET,wrong offset,B.mtx0,matrix copied from rec+0x24
+WM_84DB8_MUTANT_SCALE_VALUE,wrong constant,B.sc0,scale vector 0x1000 instead of 0x800
+WM_84DB8_MUTANT_PACK_ORDER,swapped pack halves,C.e1.p,point packed (dx<<16)|dz
+WM_84DB8_MUTANT_NCLIP_ARG_ORDER,swapped arguments,C.e1.a,edge-1 NormalClip args exchanged
+WM_84DB8_MUTANT_ACCEPT_GEZ,wrong branch polarity,C.ret,skip on >=0 instead of >0 (zero-area edge rejected)
+WM_84DB8_MUTANT_APPEND_STRIDE,wrong stride,C.cand0.ty,candidate records appended at stride 2
+WM_84DB8_MUTANT_IDX_UNSIGNED,wrong signedness,rt.unknown_vertex,vertex index lhu instead of lh (negative index breaks addressing)
+WM_84D00_MUTANT_FLAG_BIT,wrong mask,D.ret,region gate tests bit 1 instead of bit 0
+WM_84D00_MUTANT_COUNT_NO_RELOAD,missing reload,E.ret,region count cached across iterations
+WM_84D00_MUTANT_STORE_WIDTH,wrong store width,D.attr_width,region index stored with sw instead of sh
+WM_84D00_MUTANT_RET_UNTRUNC,missing truncation,D.ret,probe result returned without sign16
