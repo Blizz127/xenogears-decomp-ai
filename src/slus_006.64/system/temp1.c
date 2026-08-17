@@ -513,7 +513,55 @@ void func_800239F4(u8* pSprite) {
     *(u32*)(pSub + 0x38) = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023A48);
+extern u8* D_8006BE10;
+extern u8* D_8005A474;
+extern s32 func_8001EE74(void* arg0);
+extern void func_80023950(void* arg0);
+extern void func_80023958(void* pSpriteData);
+
+void* func_80023A48(s32 type, s32 mode, u8* pAnimData, s32 extraSize, u8* pCallback) {
+    u8* pResult;
+    s32 allocSize;
+    u8* pSource = NULL;
+
+    switch (mode) {
+        case 0:
+            pResult = func_800233A4(pAnimData, extraSize);
+            func_80023950(pResult + 0x38);
+            allocSize = 0;
+            break;
+        case 1: {
+            s32 frameCount;
+            if (type == 5) {
+                pSource = D_8006BE10;
+            }
+            if (type == 6) {
+                pSource = D_8005A474;
+            }
+            frameCount = func_8001EE74(*(void**)pSource) - 1;
+            allocSize = frameCount * 24 + 0x58;
+            pResult = func_800233A4(pAnimData, allocSize + extraSize);
+            func_800239F4(pResult + 0x38);
+            break;
+        }
+        case 2:
+            allocSize = 0x54;
+            pResult = func_800233A4(pAnimData, 0x54 + extraSize);
+            func_80023958(pResult + 0x38);
+            break;
+        default:
+            pResult = NULL;
+            allocSize = 0;
+            break;
+    }
+    {
+        u8* pSub = pResult + 0x38;
+        *(u32*)(pSub + 0x6C) = (u32)pResult;
+        *(u16*)(pSub + 0x86) = (u16)(allocSize + 0xEC);
+        *(u32*)(pSub + 0x24) = (u32)pSource;
+    }
+    return pResult;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023B84);
 
