@@ -660,7 +660,30 @@ void func_800A708C(void) {
     HeapChangeCurrentUser(8, NULL);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7120);
+extern s32 D_800B06A0;
+extern s32 D_800B00E4;
+extern s32 D_800ADB78;
+extern s32 D_800ADB74;
+extern s32 D_800AFE74;
+extern s16 D_800C3A36;
+
+void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
+    D_800B06A0 = arg0;
+    D_800B00E4 = 0;
+    if (arg2 == 0) {
+        D_800ADB78 = 1;
+    } else {
+        D_800ADB78 = 0;
+    }
+    if (D_800ADB74 == 0 && D_800AFE74 == 0) {
+        DrawSync(0);
+        g_FieldCurRenderContext = &g_FieldRenderContexts[D_800ADB78];
+        if (D_800C3A36 == 1) {
+            u8* pCtx = (u8*)&g_FieldRenderContexts[g_FieldCurRenderContextIndex];
+            pCtx[0xC9] = 1;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
 
