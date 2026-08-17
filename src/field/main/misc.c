@@ -421,7 +421,24 @@ typedef struct {
 extern ParticleBankHandle D_800B2384;
 extern s32 g_FieldScriptMaxInstructionCount;
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088B68);
+void func_80088B68(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    u32 flagBit = 0;
+    if (arg1 == 1) {
+        flagBit = 0x80;
+    } else if (arg1 == 2) {
+        flagBit = 0x40;
+    }
+    {
+        u32 bankIdx = D_800B2384.bankIndex;
+        u32 stride = (bankIdx * 16 - bankIdx) * 8;
+        u8* pBank = (u8*)g_FieldDefaultParticleBanks + stride;
+        u16 flags = *(u16*)(pBank + 0x2A);
+        *(u16*)(pBank + 0x2A) = (u16)(flags | flagBit);
+    }
+    g_FieldScriptMaxInstructionCount += 4;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088C1C);
 
