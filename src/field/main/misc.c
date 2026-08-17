@@ -1638,7 +1638,24 @@ void func_8008CA60(void) {
     D_800B00C0 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CB4C);
+extern void func_8003A9BC(void* soundHandle, s32 a1, s32 a2);
+
+void func_8008CB4C(void) {
+    if (D_8004F36C != 0) {
+        s32 arg1, arg2;
+        arg1 = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(5));
+        arg2 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL(5));
+        func_8003A9BC(D_80062528, arg1, arg2);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+    } else if (D_8004F324 == 0xFF) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+    } else if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 extern void func_8003AAC4(void* soundHandle, s32 soundId);
 
