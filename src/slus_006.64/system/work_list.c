@@ -177,7 +177,34 @@ void WorkListUpdate(void) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAddTask);
+extern s32 D_80059184;
+extern void WorkListRemoveTask(WorkListEntry* pEntry);
+
+void WorkListAddTask(void* data, WorkListEntry* pEntry) {
+    u32 old14 = *(u32*)((u8*)pEntry + 0x14);
+    u32 old10 = *(u32*)((u8*)pEntry + 0x10);
+    s32 timer = D_80059184;
+    u32 taskFlags = *(u32*)((u8*)data + 0x10);
+
+    pEntry->unk0 = (WorkListEntry*)data;
+    pEntry->pNext = g_WorkList;
+    g_WorkList = pEntry;
+
+    /* Set entry+0x10: merge timer counter into low 29 bits */
+    *(u32*)((u8*)pEntry + 0x10) = (old10 & 0xE0000000) | (timer & 0x1FFFFFFF);
+
+    /* Set entry+0x14: merge data task flags, clear bits 29-31 */
+    old14 = (old14 & 0xE0000000) | (taskFlags & 0x1FFFFFFF);
+    old14 &= 0xDFFFFFFF;
+    old14 &= 0xBFFFFFFF;
+    old14 &= 0x7FFFFFFF;
+    *(u32*)((u8*)pEntry + 0x14) = old14;
+
+    pEntry->onTriggerCallback = NULL;
+    pEntry->onFreeCallback = WorkListRemoveTask;
+    D_80059184 = timer + 1;
+    g_NumWorkListEntries++;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAllocateTask);
 /*
