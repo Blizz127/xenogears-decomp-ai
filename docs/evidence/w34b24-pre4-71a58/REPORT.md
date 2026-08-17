@@ -48,8 +48,10 @@ Eighteen overlay `jal` sites; eighteen unique targets. No `jalr` / jump table in
 `ACCEPTED` = strong production `wm_*` definition in `pc_port/src` and listed in `build_port.sh`.
 PsyQ / SLUS `0x8001xxxx–0x8006xxxx` residents are not overlay missing-callees.
 
-Prior note that `737EC` / `86798` / `740B8` were already accepted is **false**.
-Only `73B04` is present on canonical.
+Prior note that `737EC` / `86798` / `740B8` were already accepted on
+canonical `822b402` is **false**. Worktree I21–I25 later accepted
+`97440` / `97244` / `980D4` / `981C8` / `737EC`. `86798` / `740B8`
+remain missing.
 
 | # | VA | Boundary | B / I | SHA-256 | File off | Canonical | Overlay callees | Verdict |
 |---|---|---|---|---|---|---|---|---|
@@ -75,9 +77,13 @@ Only `73B04` is present on canonical.
 `71A58_MISSING_CALLEES=12` after I21–I25 (`97440` / `97244` / `980D4` /
 `981C8` / `737EC`) plus accepted `73B04`.
 
-## 4. First implementable missing prerequisite
+## 4. Next implementable missing prerequisite
 
-**`0x80097440`** — first 71A58 `jal` (cold arm when `*0x8009D144 == 0`).
+**`0x80085CDC`** — smallest remaining bounded COP2 callee (`93484` ACCEPTED).
+Earlier PsyQ/leaf prerequisites `97440` / `97244` / `980D4` / `981C8` /
+`737EC` are landed on this worktree.
+
+**`0x80097440`** was the first 71A58 `jal` (cold arm when `*0x8009D144 == 0`).
 
 - Missing on canonical (no `wm_80097440`).
 - Retail-bounded: previous function `97244` ends `jr $ra; nop`; this body restores frame `0x20` and `jr $ra; nop`; next function starts `addiu $sp, $sp, -0x18` at `0x8009766C`.
