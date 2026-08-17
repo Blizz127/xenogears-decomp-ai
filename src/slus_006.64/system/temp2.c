@@ -1117,7 +1117,21 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FCFC);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003014C);
+s32 func_8003014C(s32* pData) {
+    s32 cur = pData[2];
+    s32 target = pData[1];
+    s32 step = pData[3];
+    if (cur > target) {
+        cur -= step;
+        if (cur < target) cur = target;
+        pData[2] = cur;
+    } else if (cur < target) {
+        cur += step;
+        if (cur > target) cur = target;
+        pData[2] = cur;
+    }
+    return pData[2];
+}
 
 void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
     s32 i;
@@ -1137,8 +1151,6 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
-
-extern void func_8003014C();
 
 /* Allocates and populates the "animation/joint" work block for a model that has
  * the 0x2000 (skeletal) status bit. a0=modelData, a1=heap flags (0).
