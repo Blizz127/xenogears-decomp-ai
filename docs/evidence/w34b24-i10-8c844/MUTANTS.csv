@@ -1,0 +1,23 @@
+mutant,fault_class,killed_by,detail
+WM_8C844_MUTANT_SUBSTATE_POLARITY,state-arm selection,sub4.state,substates 4 and 3 target states swapped (0x30 <-> 0x10)
+WM_8C844_MUTANT_LAP_GATE,gate polarity,sub7c.state,substate 7 commits when mode != lap
+WM_8C844_MUTANT_JT1_GUARD,dispatch guard,sub3.state,guard 0x2D severs live state 0x30 (0x41->0x40 is unobservable: slot 0x40 parks either way)
+WM_8C844_MUTANT_RESYNC_POLARITY,dispatch polarity,rs0.n90c68,resync==0 takes the 90C68 class tree
+WM_8C844_MUTANT_CLASS1_AS_MOVE,class dispatch,c1.d554,90C68 class 1 falls into movement instead of zeroing D554/D7CC
+WM_8C844_MUTANT_SKIP_90C68,missing call,c1.n90c68,init path omits wm_80090C68
+WM_8C844_MUTANT_8C040_SCALE,wrong immediate,mv1.8c040.a1,8C040 uses 0x10/0x20 (player) instead of 0x18/0x30
+WM_8C844_MUTANT_94238_IDX,wrong immediate,mv1.94238.i,94238 list index 0 instead of 1
+WM_8C844_MUTANT_WRONG_RECORD,wrong immediate,rs0.rec,894C8/8C1DC record 0x2F instead of 0x2C
+WM_8C844_MUTANT_74794_TAG,wrong immediate,sub4.74794.tag,74794 tag 0 (player/companion) instead of 1
+WM_8C844_MUTANT_74794_GATE,gate polarity,sub4.n74794,74794 only when state==2 (inverted skip)
+WM_8C844_MUTANT_WRONG_RETURN,return variation,sub4.ret,returns current state instead of constant 1
+WM_8C844_MUTANT_SKIP_SRA12_PUBLISH,missing store,sub4.pubx,common tail omits sra12 publish to 0x8006EF90/92 / 0x8006EE5A
+WM_8C844_MUTANT_PUBLISH_MIRROR,wrong address,sub4.pubx,publishes to player mirrors 0x8006EE54/56/58 instead of warp 0x8006EF90/92 / 0x8006EE5A
+WM_8C844_MUTANT_STATE2_COPY_Y,extra store,s2.y,state 2 also copies slot-7 Y (retail copies X/Z/heading only)
+WM_8C844_MUTANT_RING_MASK,wrong mask,wrap.ring,ring index & 0x3F instead of & 0x1F
+WM_8C844_MUTANT_R_TEST_WIDTH,width,r16.n95414,treats 95414 result as u16 (0x10000 retries) instead of full word
+WM_8C844_MUTANT_MODE3_BUSY_OR,gate polarity,m3h.state,mode 3 advances on (busy2|busy3) instead of (busy2&busy3)
+WM_8C844_MUTANT_STATE20_NO_FALLTHROUGH,fallthrough,s20.state,state 0x20 does not fall into 0x21
+WM_8C844_MUTANT_SKIP_8BEC8_ADVANCE,state advance,sa.state,8BEC8==3 does not increment +0x20
+WM_8C844_MUTANT_WRONG_97770_ARGS,swapped arguments,s8b.a0,state 8 busy==1 calls (2,1) instead of (5,1)
+WM_8C844_MUTANT_WRONG_HANDOFF_STATE,state target,sc.state,state 0x0C success writes 1 instead of 2
