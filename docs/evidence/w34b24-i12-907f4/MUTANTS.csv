@@ -1,0 +1,16 @@
+mutant,fault_class,killed_by,detail
+WM_907F4_MUTANT_SUBSTATE_POLARITY,state-arm selection,sub9.state,substates 9 and 0xA target states swapped
+WM_907F4_MUTANT_STATE1_STEP,wrong immediate,sub9.58,state 1 adds 8 instead of 4
+WM_907F4_MUTANT_STATE1_GATE,gate threshold,s1a.5c,5C increments when 58>=0x10 instead of >=0x11
+WM_907F4_MUTANT_STATE1_CLAMP,wrong immediate,s1c.58,clamps 58 to 0x7F instead of 0x80
+WM_907F4_MUTANT_STATE1_ADVANCE,missing store,s1c.state,both-max does not write state 3
+WM_907F4_MUTANT_STATE2_STEP,wrong immediate,suba.58,state 2 subtracts 8 instead of 4
+WM_907F4_MUTANT_STATE2_GATE,gate threshold,s2e.5c,5C decrements when 58<0x6F instead of <0x70
+WM_907F4_MUTANT_STATE2_CLAMP,missing store,s2d.58,negative 58 is not floored to 0
+WM_907F4_MUTANT_STATE2_ADVANCE,missing store,s2c.state,both-zero does not write state 0
+WM_907F4_MUTANT_SKIP_50_UPDATE,missing store,sub9.50,common tail omits +50 += +58
+WM_907F4_MUTANT_SKIP_54_SUB,missing store,s1c.54,common tail omits +54 -= +5C
+WM_907F4_MUTANT_ROTMATRIX_SWAP,swapped arguments,sub9.rot0.mat,RotMatrixZYX destinations rec2/rec3 swapped
+WM_907F4_MUTANT_SKIP_VECTOR_Y,missing store,sub9.vy0,scratch+0xA2 not loaded from +50
+WM_907F4_MUTANT_STATE0_SKIP_CLEAR,missing store,s0.58,state 0 leaves +58/+5C
+WM_907F4_MUTANT_WRONG_RETURN,return variation,s0.ret,returns current state instead of constant 1

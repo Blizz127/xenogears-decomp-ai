@@ -1,0 +1,3 @@
+site,callee,notes
+0x800909E8,RotMatrixZYX,a0=scratch+0xA0 (x=0 y=low16(+50) z=lhu rec2+0x1C) a1=context+0xA8+0x20
+0x800909F4,RotMatrixZYX,a0=scratch+0xA8 (x=0 y=low16(+54) z=lhu rec3+0x1C) a1=context+0xFC+0x20
