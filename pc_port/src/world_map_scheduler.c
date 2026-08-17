@@ -56,6 +56,7 @@
 #include "world_map_callback_92be4.h"
 #include "world_map_callback_92c70.h"
 #include "world_map_callback_92df8.h"
+#include "world_map_callback_92fd8.h"
 #include "world_map_callback_71a50.h"
 #include "world_map_callback_87710.h"
 #include "world_map_scheduler.h"
@@ -88,6 +89,7 @@ extern s32 wm_800922AC(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092BE4(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092C70(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092DF8(s32 slot_index) __attribute__((weak));
+extern s32 wm_80092FD8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80071A50(s32 slot_index) __attribute__((weak));
 extern s32 wm_80087710(s32 slot_index) __attribute__((weak));
 
@@ -314,6 +316,11 @@ static s16 wm_sched_builtin_80092DF8(int slot_index)
     return (s16)wm_80092DF8((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_80092FD8(int slot_index)
+{
+    return (s16)wm_80092FD8((s32)slot_index);
+}
+
 /* Slot 14 Table-A cb0. Retail 0x80071A50 is a two-instruction return-1 leaf;
  * its cb1 partner 0x80071A58 remains unresolved by design. */
 static s16 wm_sched_builtin_80071A50(int slot_index)
@@ -441,6 +448,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80092DF8u && wm_80092DF8 != 0) {
         *out_fn = wm_sched_builtin_80092DF8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80092FD8u && wm_80092FD8 != 0) {
+        *out_fn = wm_sched_builtin_80092FD8;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x80071A50u && wm_80071A50 != 0) {

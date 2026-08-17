@@ -1,0 +1,10 @@
+site,callee,notes
+0x80093034,0x80034614,state0 enqueue; a0=0x8009BD64
+0x8009304C,0x80033728,GetStringEntry; a0=*(0x8009D784) a1=lh 0x8009CE68
+0x80093058,0x80034714,state0 enqueue; a0=0x8009BD64 a1=$v0
+0x80093094,0x80034614,state1 selection==-1; a0=0x8009BD64
+0x800930BC,0x80034614,state1 selection changed; a0=0x8009BD64
+0x800930D4,0x80033728,GetStringEntry; a0=*(0x8009D784) a1=lh 0x8009CE68
+0x800930E0,0x80034714,state1 changed; a0=0x8009BD64 a1=$v0
+0x80093114,0x80034888,common tail; a0=0x8009BD64 a1=*(*(0x8009BE3C)+0x70) a2=*(0x8009D7F0)
+(inline),none,when +20==1 AddPrim 0x8009D2B8+ctx*0x28 into OT
