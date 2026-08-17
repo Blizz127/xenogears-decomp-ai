@@ -2162,6 +2162,19 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D818);
+extern s32 func_8007D8B4(s32 a, s32 b, s32 c);
+
+void func_8007D818(s32* pVec, VECTOR* pOut) {
+    s32 result = func_8007D8B4(pVec[0], pVec[1], pVec[2]);
+    pVec[0] >>= 12;
+    pVec[1] >>= 12;
+    pVec[2] >>= 12;
+    if (result < 0) {
+        pVec[0] = -pVec[0];
+        pVec[1] = -pVec[1];
+        pVec[2] = -pVec[2];
+    }
+    VectorNormal((VECTOR*)pVec, pOut);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
