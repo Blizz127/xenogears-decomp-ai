@@ -56,7 +56,106 @@ void func_8001A684(s32 row, s32 col) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A6E8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001AADC);
+extern s32 D_8005A444[];
+extern s32 D_8004F364;
+extern s32 D_8004F328;
+extern s32 D_8004F324;
+extern s32 D_8004F2FC;
+extern s32 D_8004F36C;
+extern s32 D_8004F2F8;
+extern s32 D_8004F31C;
+extern s32 D_8004F320;
+extern s32 D_8004F314;
+extern s32 D_8004F310;
+extern s32 D_8004F370;
+extern s32 D_8004F35C;
+extern s32 D_8004F358;
+extern s32 D_8004F354;
+extern s32 D_8004F350;
+extern s32 D_8004F2F4;
+extern s32 D_8004F344;
+extern s32 D_8004F348;
+extern s32 D_8004F304;
+extern s32 D_8004F368;
+extern s32 D_8004F300;
+extern s32 D_8004F380;
+extern s32 D_8004F37C;
+extern s32 D_8004F378;
+extern u8 D_8005942C;
+extern u8 D_800594D0;
+extern s16 D_8004F384;
+extern s32 D_8004F318;
+extern s32 D_8004F334;
+extern s32 D_8004F33C;
+extern s32 D_8004F338;
+extern s32 D_8004F330;
+extern s32 D_8004F32C;
+extern s32 D_8004F340;
+extern s32 D_8004F308;
+extern s32 D_80062524[];
+extern s32 D_8006F990[];
+extern s32 g_GamePartySkinsInitialized;
+extern s32 g_GameHasLoadedWDS;
+extern s32 g_PartyIsWaitingForStreamData;
+
+void func_8001AADC(void) {
+    s32 i;
+    s32* pSkins = (s32*)g_GamePartyMemberSkins;
+    s32* pSlots = D_8005A444;
+    s32* pD8006F990 = D_8006F990;
+    s32* pMembers = (s32*)g_GamePartyMembers;
+
+    D_8004F364 = 1;
+    D_8004F328 = 0xFF;
+    D_8004F324 = 0xFF;
+    D_8004F2FC = 0;
+    D_8004F36C = 0;
+    D_8004F2F8 = 0;
+    D_8004F31C = 0;
+    D_8004F320 = 0;
+    D_8004F314 = 0;
+    D_8004F310 = 0;
+    g_GamePartySkinsInitialized = 0;
+    D_8004F370 = 0;
+    D_8004F35C = 0;
+    g_GameHasLoadedWDS = 0;
+    g_PartyIsWaitingForStreamData = 0;
+    D_8004F358 = 0;
+    D_8004F354 = 0;
+    D_8004F350 = 0;
+    D_8004F2F4 = 0;
+    D_8004F344 = 0;
+    D_8004F348 = 0;
+    D_8004F304 = 0;
+    D_8004F368 = 0;
+    D_8004F300 = 0;
+    D_8004F380 = 0;
+    D_8004F37C = 0;
+    D_8004F378 = 0;
+    D_8005942C = 0;
+    D_800594D0 = 0;
+    D_8004F384 = 0;
+    D_8004F318 = 0;
+    D_8004F334 = -1;
+    D_8004F33C = -1;
+    D_8004F338 = -1;
+    D_8004F330 = -1;
+    D_8004F32C = -1;
+    D_8004F340 = -1;
+    D_8004F308 = -1;
+    D_8004F380 = -1;
+    D_8004F37C = -1;
+    D_8004F378 = -1;
+    for (i = 0; i < 3; i++) {
+        pSkins[i] = 0;
+        pD8006F990[i] = 0;
+        pSlots[i] = 0;
+        pMembers[i] = 0;
+    }
+    for (i = 3; i >= 0; i--) {
+        D_80062524[i] = 0;
+    }
+}
 
 void GamePartySignalReinitialize(void) {
     g_GamePartySkinsInitialized = 0;
