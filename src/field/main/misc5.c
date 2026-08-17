@@ -644,8 +644,14 @@ void func_800A7064(void) {
 
 extern s32 D_800ADB6C;
 extern s32 D_800ADB74;
+extern s32 D_800ADB78;
+extern s32 D_800ADB80;
+extern s32 D_800AFE74;
+extern s32 D_800B00E4;
+extern s32 D_800B06A0;
 extern s32 D_801D68B4;
-extern s16 D_800C3A36;
+extern s16 D_800C3A20, D_800C3A22, D_800C3A24, D_800C3A26, D_800C3A28, D_800C3A2A, D_800C3A2C, D_800C3A2E;
+extern s16 D_800C3A30, D_800C3A32, D_800C3A34, D_800C3A36, D_800C3A38, D_800C3A3A;
 extern void func_801D3538(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g);
 
 void func_800A708C(void) {
@@ -685,7 +691,30 @@ void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
+void func_800A7218(void) {
+    D_800B06A0 = 0;
+    HeapChangeCurrentUser(4, NULL);
+    if (D_800ADB6C == 0) {
+        s32 fadeType;
+        ArchiveSetIndex(0x18, 1);
+        if (D_800C3A38 == 0xFF) {
+            fadeType = 1;
+            if (D_800ADB80 & 0x40) {
+                fadeType = 3;
+            }
+        } else {
+            fadeType = 3;
+        }
+        func_801D37CC(
+            D_800C3A20 + 2, D_800C3A2A, D_800C3A24,
+            D_800C3A3A, D_800C3A22, D_800C3A26,
+            D_800C3A28, D_800C3A2C, D_800C3A2E,
+            fadeType, 1, 0xE0, (void*)func_800A7120
+        );
+        ArchiveSetIndex(4, 0);
+    }
+    HeapChangeCurrentUser(8, NULL);
+}
 
 extern s32 D_800ADB6C;
 
