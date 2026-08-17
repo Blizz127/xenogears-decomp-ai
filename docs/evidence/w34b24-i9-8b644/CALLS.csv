@@ -1,0 +1,11 @@
+callee,sites,status,notes
+func_800245D8,4,CANONICAL,anim setter; object = raw-low-32 native ptr at slot+0x4C (accepted 8A2C8 convention)
+wm_800894C8,3,CANONICAL,record slot_idx+0x2E flag clear (follow-flag copy / ring-hit idle / handoff)
+wm_8008C1DC,2,CANONICAL,ctx = slot_idx+0x2E; only follow-miss and state 9 (incl. state-8 fallthrough)
+wm_800941C4,3,CANONICAL,approach vector: state 8 vs neighbor; state 0x28 vs scratch facing; state 0x30 vs pool+0xA8
+wm_8008BEC8,2,CANONICAL,approach stepper; ==3 advances. Sites: state 9 and shared 0x29/0x31 (0x28/0x30 join this tail)
+wm_80097770,2,CANONICAL,state 0xA: (lh+6, 4); state 0x32: (1, 6)
+wm_80093978,1,CANONICAL,terrain Y on warp-in; result -> slot[+0x2C]
+rcos,1,CANONICAL,facing-point x offset (JT1 0x28)
+rsin,1,CANONICAL,facing-point z offset negated (JT1 0x28)
+wm_80074794,1,CANONICAL,common tail while slot[+0x24]==0; no sra12 publish

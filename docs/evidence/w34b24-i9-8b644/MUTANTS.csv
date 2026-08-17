@@ -1,0 +1,18 @@
+mutant,fault_class,killed_by,detail
+WM_8B644_MUTANT_SUBSTATE_POLARITY,state-arm selection,sub1.state,substates 1 and 2 target states swapped (8 <-> 0x28)
+WM_8B644_MUTANT_JT1_GUARD,dispatch guard,s30.state,guard 0x2D severs live state 0x30 (0x41->0x40 is unobservable: slot 0x40 parks either way)
+WM_8B644_MUTANT_WRONG_FOLLOW_FLAG,wrong address,ff.x,reads 0x8006F8E5 instead of 0x8006F8E4+slot
+WM_8B644_MUTANT_WRONG_RING_MASK,wrong mask,ring.x,ring index & 0x3F instead of & 0x1F
+WM_8B644_MUTANT_WRONG_SLOT_OFFSET,slot stride,sub3.state,slot = pool+idx*64 instead of *128
+WM_8B644_MUTANT_SKIP_941C4,missing call,sub1.n941c4,state 8 omits wm_800941C4
+WM_8B644_MUTANT_SKIP_8BEC8_ADVANCE,state advance,sub1a.state,8BEC8==3 does not increment +0x20
+WM_8B644_MUTANT_WRONG_97770_ARGS,swapped arguments,s32h.97770.a0,state 0x32 calls (6,1) instead of (1,6)
+WM_8B644_MUTANT_74794_GATE,gate polarity,park.calls,74794 called when +0x24 != 0
+WM_8B644_MUTANT_WRONG_RETURN,return variation,park.ret,returns current state instead of constant 1
+WM_8B644_MUTANT_WRONG_WARP_SHIFT,wrong shift,sub2.posx,warp xz shifted 8 instead of 12
+WM_8B644_MUTANT_SKIP_RSIN_NEG,sign polarity,sub2.fz,facing Z uses +rsin*48 instead of -rsin*48
+WM_8B644_MUTANT_DEFAULT_AS_STATE01,dispatch polarity,park.calls,parked/OOR runs the live follow arm
+WM_8B644_MUTANT_WRONG_HANDOFF_STATE,state target,sag.state,state 0xA success writes 1 instead of 2
+WM_8B644_MUTANT_WRONG_WARP_STRIDE,wrong stride,sub2.posx,warp xz table uses slot*4 instead of slot*6
+WM_8B644_MUTANT_STATE2A_TARGET,state target,s2a.state,clear-follow writes 0x41 instead of 0x40
+WM_8B644_MUTANT_SRA12_PUBLISH,forbidden store,sub3.mirx,common tail publishes sra12 to 0x8006EE54/56/58 (player-only)
