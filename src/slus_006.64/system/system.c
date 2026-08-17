@@ -363,7 +363,24 @@ s16 func_80033BAC(u8 a, u8 b) {
     return 0x8000;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
+s32 func_80033C20(u8* pString, u16* pOutIndices) {
+    u8 c = *pString++;
+    while (c != 0) {
+        u8 next;
+        u16 idx;
+        if (c < D_8005934C) {
+            next = c;
+            c = 0;
+        } else {
+            next = *pString++;
+        }
+        idx = func_80033BAC(c, next);
+        *pOutIndices++ = idx;
+        if (idx == 0x8000) return -1;
+        c = *pString++;
+    }
+    return 0;
+}
 
 s32 func_80033CD0(void* arg0) {
     if (*(u16*)((u8*)arg0 + 0x10) & 0x8) {
