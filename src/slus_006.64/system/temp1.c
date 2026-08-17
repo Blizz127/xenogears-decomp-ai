@@ -1633,7 +1633,54 @@ void func_80025718(u8* pEntry) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800257F0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025A88);
+extern s32 D_80050100;
+extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32 f);
+
+void func_80025A88(u8* pEntry) {
+    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u8* pSub;
+    SVECTOR pos;
+    VECTOR result;
+
+    func_80022038(pSprite);
+    pSub = *(u8**)(pSprite + 0x20);
+    if (*(u32*)(pSub + 0x34) == 0) return;
+
+    pos.vx = *(s16*)(pSprite + 0x02);
+    pos.vy = *(s16*)(pSprite + 0x06);
+    pos.vz = *(s16*)(pSprite + 0x0A);
+    ApplyMatrix(&D_8004FBB8, &pos, &result);
+
+    pSub = *(u8**)(pSprite + 0x20);
+    *(s32*)(pSub + 0x20) = D_8004FBB8.t[0] + result.vx;
+    *(s32*)(pSub + 0x24) = D_8004FBB8.t[1] + result.vy;
+    *(s32*)(pSub + 0x28) = D_8004FBB8.t[2] + result.vz;
+
+    SetRotMatrix((MATRIX*)(pSub + 0x0C));
+    SetTransMatrix((MATRIX*)(pSub + 0x0C));
+
+    {
+        s32 ctxIdx = g_GfxCurContext;
+        u32 flags3C = *(u32*)(pSprite + 0x3C);
+        s32 arg7;
+        s32 oldShift;
+        if ((flags3C >> 25) & 1) {
+            oldShift = D_80050100;
+            D_80050100 = 0x10;
+            arg7 = 0xFEC;
+        } else {
+            arg7 = *(s16*)(pSprite + 0x30);
+        }
+        func_800B1F6C(
+            *(void**)(pSub + 0x34),
+            *(void**)(pSub + 0x2C + ctxIdx * 4),
+            g_GfxCurOT, 0, arg7, (flags3C >> 5) & 1, 0
+        );
+        if ((flags3C >> 25) & 1) {
+            D_80050100 = oldShift;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025C04);
 
