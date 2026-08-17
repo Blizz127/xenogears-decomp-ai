@@ -2446,7 +2446,58 @@ void func_8008EA58(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xC;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008EC30);
+void func_8008EC30(void) {
+    s32 arg7, type;
+
+    if (D_800ADBDC == 0) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+        return;
+    }
+    D_800C3A20 = (s16)FieldScriptVMGetArgument(1);
+    D_800C3A2A = (s16)FieldScriptVMGetArgument(3);
+    D_800C3A2E = (s16)FieldScriptVMGetArgument(5);
+    arg7 = FieldScriptVMGetArgument(7);
+    type = arg7 & 0xF;
+    D_800C3A30 = (s16)arg7;
+    D_800ADB80 = arg7 & 0xC0;
+    D_800C3A32 = 0x140;
+    D_800C3A34 = 0x100;
+    D_800C3A30 = (s16)type;
+    D_800C3A2C = 1;
+
+    switch (type) {
+        case 0:
+            D_800C3A22 = 0x140;
+            D_800C3A24 = 0;
+            D_800C3A26 = 0x140;
+            D_800C3A28 = 0x100;
+            D_800ADB74 = 1;
+            D_800C3A36 = 0;
+            break;
+        case 1:
+            D_800C3A26 = 0;
+            D_800C3A24 = 0;
+            D_800C3A22 = 0;
+            D_800C3A28 = 0x100;
+            D_800ADB74 = 0;
+            D_800C3A36 = 0;
+            break;
+        case 2:
+            D_800C3A26 = 0;
+            D_800C3A24 = 0;
+            D_800C3A22 = 0;
+            D_800C3A28 = 0x100;
+            D_800ADB74 = 0;
+            D_800C3A36 = 1;
+            break;
+    }
+    D_800C3A38 = 0xFF;
+    D_800C3A3A = 0;
+    D_800ADB70 = 1;
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 extern s16 D_800C3A20, D_800C3A22, D_800C3A24, D_800C3A26, D_800C3A28, D_800C3A2A, D_800C3A2C, D_800C3A2E;
 extern s16 D_800C3A30, D_800C3A32, D_800C3A34, D_800C3A36, D_800C3A38, D_800C3A3A;
