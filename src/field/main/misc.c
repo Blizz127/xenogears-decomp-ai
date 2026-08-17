@@ -884,7 +884,15 @@ void func_8008B328(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B45C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B518);
+void func_8008B518(void) {
+    u8 mask = SCRIPT_READ_U8_REL(7);
+    g_Scene.camRotation.vx = (s16)FieldScriptArgument1(1, mask);
+    mask = SCRIPT_READ_U8_REL(7);
+    g_Scene.camRotation.vz = (s16)FieldScriptArgument2(3, mask);
+    mask = SCRIPT_READ_U8_REL(7);
+    g_Scene.camRotation.vy = (s16)FieldScriptArgument3(5, mask);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B5D4);
 
