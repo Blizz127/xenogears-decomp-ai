@@ -1090,6 +1090,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_9623c.c
     pc_port/src/world_map_helper_96328.c
     pc_port/src/world_map_helper_966cc.c
+    pc_port/src/world_map_helper_97244.c
     pc_port/src/world_map_helper_965a4.c
     pc_port/src/world_map_helper_89580.c
     pc_port/src/world_map_helper_981c8.c
