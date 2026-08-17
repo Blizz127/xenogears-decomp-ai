@@ -88,14 +88,20 @@ ACCEPTED. Independently re-derived: `[98CC0,9932C)` 1644/411; one
 `0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
 `HeapAlloc` `0x80031BDC`, plus `0x800320E8`.
 
-**`0x800966CC`** is also bounded (PsyQ `0x8004Cxxx` only) and is a
-`967E4` overlay callee that unlocks `96130`.
+**`0x8009699C`** — last remaining `967E4` overlay callee. Independently
+re-derived: `[9699C,96A6C)` 208/52; PsyQ `CdIntToPos` `0x80041430`,
+`CdSyncCallback` `0x80040FB4`, `CdControlF` `0x8004111C`. Then
+`967E4` itself is implementable and unlocks `96130`.
+
+**`0x80098CC0`** remains a bounded 71A58 callee (overlay closed;
+SLUS archive/heap identified).
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
-Blocked: `96130` (needs `967E4`; `967E4` jals overlay `968E0` /
-`9699C` / `966CC`).
+Blocked: `96130` (needs `967E4`; `967E4` still needs `9699C`).
 
-I31–I37 are landed. Do not invent a `86798` jalr set.
+I31–I39 are landed (`966CC` I38, `968E0` I39). Do not invent a
+`86798` jalr set. `968E0`'s `jr $v0` is a closed 6-entry overlay
+table at `0x80070CA0`.
 
 ## 5. 71A58 is not started
 

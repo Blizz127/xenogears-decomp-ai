@@ -33,4 +33,7 @@ prereq,wm_800963E4,0x80096328,ACCEPTED,"I34; [0x800963E4,0x800964B0) 204B/51i; n
 prereq,wm_800964B0,0x800965A4,ACCEPTED,"I35; [0x800964B0,0x800965A4) 244B/61i; no JAL/JALR; 16-byte key insertion; unlocks 965A4"
 prereq,wm_80096328,0x80098CC0,ACCEPTED,"I36; [0x80096328,0x800963E4) 188B/47i; overlay jal 963E4; 12-byte bank publish"
 prereq,wm_800965A4,0x80098CC0,ACCEPTED,"I37; [0x800965A4,0x80096668) 196B/49i; overlay jal 964B0; 16-byte bank publish"
-closure_verdict,-,-,MISSING=7,I21-I37 plus 73B04 accepted; next bounded 71A58 callee=0x80098CC0; next 96130 prereq=0x800966CC
+prereq,wm_800966CC,0x800967E4,ACCEPTED,"I38; [0x800966CC,0x800967E4) 280B/70i; PsyQ PCopen/PClseek/PCread/PCclose; PCread dest=+12 count=+8"
+prereq,wm_800968E0,0x800967E4,ACCEPTED,"I39; [0x800968E0,0x8009699C) 188B/47i; closed switch at 0x80070CA0; no JAL"
+prereq,wm_8009699C,0x800967E4,MISSING,"[0x8009699C,0x80096A6C) 208B/52i; PsyQ CdIntToPos/CdSyncCallback/CdControlF"
+closure_verdict,-,-,MISSING=7,I21-I39 plus 73B04 accepted; next bounded 967E4 callee=0x8009699C; next 71A58 callee=0x80098CC0
