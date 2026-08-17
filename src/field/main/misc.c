@@ -1820,7 +1820,14 @@ void func_8008EFA0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008EFE4);
+void func_8008EFE4(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 arg3 = FieldScriptVMGetArgument(3);
+    s32 arg5 = FieldScriptVMGetArgument(5);
+    s32 arg7 = FieldScriptVMGetArgument(7);
+    FieldSetClipDimensions((short)arg1, (short)arg3, (short)arg5, (short)arg7);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 void func_8008F070(void) {
     D_800ADB3C = FieldScriptVMGetArgument(1);
