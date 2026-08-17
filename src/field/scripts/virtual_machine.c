@@ -688,7 +688,9 @@ int FieldScriptVMGetVariableValue(int index) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryWriteU16);
+void FieldScriptMemoryWriteU16(u16 address, u16 value) {
+    ((u16*)&g_FieldScriptMemory)[address >> 1] = value;
+}
 
 // scriptIndex here refers to the index of the script, which will (always?) correspond to an entity index
 // routineIndex is an index into the offset table, which points to a bytecode routine in that script.
