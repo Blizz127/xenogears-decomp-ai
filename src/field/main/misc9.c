@@ -328,7 +328,33 @@ s32 func_800ABFDC(u8* pChar, s32* pOutIndex) {
     return (s32)(u16)(code - 0x8540);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC03C);
+void func_800AC03C(u8* pOut, u16* pData, s32 count) {
+    s32 i;
+    if (count == -1) {
+        /* Clear all pixels */
+        for (i = 0x11F; i >= 0; i--) {
+            *pOut++ = 0xFF;
+        }
+        return;
+    }
+    for (i = 0; i < 0xF; i++) {
+        u16 val = *pData;
+        s32 bit;
+        u8* pCur = pOut;
+        /* High byte bits 7..0 */
+        for (bit = 7; bit >= 0; bit--) {
+            *pCur++ = (u8)(0 - ((val >> bit) & 1));
+        }
+        /* Low byte bits 15..8 */
+        for (bit = 15; bit >= 8; bit--) {
+            *pCur++ = (u8)(0 - ((val >> bit) & 1));
+        }
+        *pCur++ = 0;
+        *pCur++ = 0;
+        pOut = pCur;
+        pData++;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC0F0);
 
