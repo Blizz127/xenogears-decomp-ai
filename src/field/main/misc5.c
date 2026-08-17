@@ -648,7 +648,18 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7120);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A732C);
+extern s32 D_800ADB6C;
+
+void func_800A732C(s32 count) {
+    s32 i;
+    GameCheckAndHandleSoftReset();
+    if (D_800ADB6C == 0 && count > 0) {
+        for (i = 0; i < count; i++) {
+            func_801D3F7C();
+            func_80085678();
+        }
+    }
+}
 
 void func_800A7394(void) {
     do {
