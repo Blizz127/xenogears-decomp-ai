@@ -244,7 +244,19 @@ void func_80087C0C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087C34);
+void func_80087C34(void) {
+    u8* pGS = (u8*)g_pGameState;
+    u8 mask;
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)(pGS + 0x182C) = (s16)FieldScriptArgument1(1, mask);
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)(pGS + 0x182E) = (s16)FieldScriptArgument2(3, mask);
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)(pGS + 0x1830) = (s16)FieldScriptArgument3(5, mask);
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)(pGS + 0x1832) = (s16)FieldScriptArgument4(7, mask);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 10;
+}
 
 void func_80087D30(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)((u8*)g_pGameState + 0x1834));
