@@ -68,12 +68,12 @@ Only `73B04` is present on canonical.
 | 13 | `0x800983A0` | start clear; first frame-0x70 return `0x800987A4`; later code to `98CC0` | UNRESOLVED | — | `0x288B0` | MISSING | `0x800987AC` | BLOCKED |
 | 14 | `0x8009932C` | start clear; first frame-0x38 return `0x80099700` | UNRESOLVED | — | `0x2983C` | MISSING | `0x80099708` | BLOCKED |
 | 15 | `0x80073B04` | `[0x80073B04, 0x80073E30)` | 812 / 203 | `87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197` | `0x4014` | **ACCEPTED** | none (PsyQ) | ACCEPTED |
-| 16 | `0x800737EC` | `[0x800737EC, 0x800739B8)` | 460 / 115 | `e967f7509aa004e89b3876a53b9673a0bac961055e2f298012d8abf01be9d621` | `0x3CFC` | MISSING | none (PsyQ: RotMatrixYXZ, CompMatrix, SetRot/Trans, RotTransPers4) | **IMPLEMENTABLE** |
+| 16 | `0x800737EC` | `[0x800737EC, 0x800739B8)` | 460 / 115 | `e967f7509aa004e89b3876a53b9673a0bac961055e2f298012d8abf01be9d621` | `0x3CFC` | **ACCEPTED** (I25) | none (PsyQ: RotMatrixYXZ, CompMatrix, SetRot/Trans, RotTransPers4) | ACCEPTED |
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | UNBOUNDED | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | **genuine blocker** (indirect) |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
 
-`71A58_MISSING_CALLEES=13` after I21–I24 (`97440` / `97244` / `980D4` /
-`981C8`) plus accepted `73B04`.
+`71A58_MISSING_CALLEES=12` after I21–I25 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC`) plus accepted `73B04`.
 
 ## 4. First implementable missing prerequisite
 
