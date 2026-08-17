@@ -440,7 +440,26 @@ void func_80088B68(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088C1C);
+void func_80088C1C(void) {
+    u32 bankIdx = D_800B2384.bankIndex;
+    u32 stride = (bankIdx * 16 - bankIdx) * 8;
+    u8* pBank = (u8*)g_FieldDefaultParticleBanks + stride;
+
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    *(s16*)(pBank + 0x24) = (s16)arg1;
+
+    arg1 = FieldScriptVMGetArgument(3);
+    {
+        u16 flags = *(u16*)(pBank + 0x2A);
+        *(u16*)(pBank + 0x2A) = (u16)(flags | (arg1 << 8));
+    }
+
+    arg1 = FieldScriptVMGetArgument(5);
+    *(s16*)(pBank + 0x76) = (s16)arg1;
+
+    g_FieldScriptMaxInstructionCount += 4;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void func_80088CF8() {
     FieldScriptSetParticleBankDirections(0);
