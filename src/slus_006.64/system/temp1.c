@@ -461,7 +461,16 @@ void func_800239A0(void* pSpriteData) {
     *(u32*)(pBase + 0x38) = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800239F4);
+void func_800239F4(u8* pSprite) {
+    u32 pSub;
+    pSub = (u32)(pSprite + 0xB4);
+    *(u32*)(pSprite + 0x20) = pSub;
+    func_8002393C((void*)pSub);
+    pSub = *(u32*)(pSprite + 0x20);
+    *(u32*)(pSub + 0x30) = (u32)(pSprite + 0xF4);
+    *(u32*)(pSub + 0x34) = 0;
+    *(u32*)(pSub + 0x38) = 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023A48);
 
