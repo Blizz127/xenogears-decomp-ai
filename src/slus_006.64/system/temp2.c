@@ -1265,7 +1265,14 @@ void func_80030B14(MATRIX* pMatrix) {
     SetLightMatrix(&matrix);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C40);
+void func_80030C40(u16 a, u16 b, u16 c) {
+    u32 ra = ((u32)a >> 4) << 4;
+    u32 rb = ((u32)b >> 4) << 4;
+    u32 rc = ((u32)c >> 4) << 4;
+    __asm__ volatile("ctc2 %0, $13" : : "r"(ra));
+    __asm__ volatile("ctc2 %0, $14" : : "r"(rb));
+    __asm__ volatile("ctc2 %0, $15" : : "r"(rc));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C78);
 
