@@ -634,7 +634,69 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A6998);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A6C40);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A6E70);
+extern void* D_800B00C4;
+
+void func_800A6E70(void) {
+    u8* pBuf;
+    s32 row, col;
+    D_800B00C4 = HeapAlloc(0x7A80, 1);
+    pBuf = (u8*)D_800B00C4;
+    for (row = 0; row < 0xE; row++) {
+        for (col = 0; col < 0x14; col++) {
+            u8* pPrim = pBuf + (row * 0x14 + col) * 0x34;
+            u8* pDest = pBuf + (row * 0x14 + col) * 0x34 + 0x38E0;
+            s16 uOfs = col * 0x10;
+            s16 vOfs = row * 0x10;
+            s32 tpageX;
+            s32 i;
+
+            /* Set vertex positions */
+            *(s16*)(pPrim + 0x08) = uOfs;
+            *(s16*)(pPrim + 0x0A) = vOfs;
+            *(s16*)(pPrim + 0x20) = uOfs;
+            *(s16*)(pPrim + 0x22) = vOfs + 0x10;
+            *(s16*)(pPrim + 0x14) = uOfs + 0x10;
+            *(s16*)(pPrim + 0x16) = vOfs;
+            *(s16*)(pPrim + 0x2C) = uOfs + 0x10;
+            *(s16*)(pPrim + 0x2E) = vOfs + 0x10;
+
+            SetPolyGT4(pPrim);
+
+            /* Set vertex colors (0x80 per component) */
+            pPrim[0x04] = pPrim[0x05] = pPrim[0x06] = 0x80;
+            pPrim[0x10] = pPrim[0x11] = pPrim[0x12] = 0x80;
+            pPrim[0x1C] = pPrim[0x1D] = pPrim[0x1E] = 0x80;
+            pPrim[0x28] = pPrim[0x29] = pPrim[0x2A] = 0x80;
+
+            /* Set UVs */
+            {
+                s32 uBase = uOfs & 0x3F;
+                pPrim[0x0C] = (u8)uBase;
+                pPrim[0x0D] = (u8)vOfs;
+                pPrim[0x18] = (u8)(uBase + 0x10);
+                pPrim[0x19] = (u8)vOfs;
+                pPrim[0x24] = (u8)uBase;
+                pPrim[0x25] = (u8)(vOfs + 0x10);
+                pPrim[0x30] = (u8)(uBase + 0x10);
+                pPrim[0x31] = (u8)(vOfs + 0x10);
+            }
+
+            /* Tpage */
+            tpageX = (col < 0 ? col + 3 : col) >> 2;
+            *(u16*)(pPrim + 0x1A) = GetTPage(2, 1, tpageX * 0x40 + 0x2C0, 0x100);
+            SetSemiTrans(pPrim, 1);
+
+            /* Copy to destination */
+            for (i = 0; i < 48; i += 16) {
+                *(s32*)(pDest + i) = *(s32*)(pPrim + i);
+                *(s32*)(pDest + i + 4) = *(s32*)(pPrim + i + 4);
+                *(s32*)(pDest + i + 8) = *(s32*)(pPrim + i + 8);
+                *(s32*)(pDest + i + 12) = *(s32*)(pPrim + i + 12);
+            }
+            *(s32*)(pDest + 48) = *(s32*)(pPrim + 48);
+        }
+    }
+}
 
 extern void* D_800B00C4;
 
