@@ -288,7 +288,24 @@ void func_8001B5A8(void) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B5E8);
+extern s32 D_8004F35C;
+extern s32 D_8004F348;
+extern s32 D_8004F2FC;
+extern void* D_80062528;
+extern void func_80039C4C(void* handle);
+extern void func_800399D4(void* handle);
+
+void func_8001B5E8(void) {
+    if (D_8004F35C != 1) return;
+    func_80039C4C(D_80062528);
+    if (D_8004F348 == 0) {
+        func_800399D4(D_80062528);
+    } else {
+        D_8004F2FC = (s32)D_80062528;
+    }
+    D_8004F35C = 0;
+    D_8004F348 = 0;
+}
 
 extern s32 D_8004F338;
 extern s32 D_8004F33C;
