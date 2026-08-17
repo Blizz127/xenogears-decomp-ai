@@ -207,7 +207,22 @@ void func_80087A7C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087AB8);
+void func_80087AB8(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    void* pScript = g_FieldScriptVMCurScriptData;
+    u8 scriptByte = *(u8*)(pScript + pActor->scriptInstructionPointer + 9);
+    u8* pGS = (u8*)g_pGameState;
+    s32 arg1 = FieldScriptArgument1(1, scriptByte);
+    *(s16*)(pGS + 0x184E) = (s16)arg1;
+    {
+        s32 arg3 = FieldScriptArgument2(3, scriptByte);
+        *(s16*)(pGS + 0x1852) = (s16)arg3;
+    }
+    *(s16*)(pGS + 0x1854) = 0;
+    *(s16*)(pGS + 0x1850) = 0;
+    *(s16*)(pGS + 0x1856) = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087B5C);
 
