@@ -15,7 +15,17 @@
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022B2C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022CAC);
+s32 func_80022CAC(void* pSpriteData, s32 value)
+{
+    u16 factor = *(u16*)((u8*)pSpriteData + 0x3A);
+    if (factor == 0) return value;
+    {
+        s32 product = value * factor;
+        s32 adj = product;
+        if (product < 0) adj = product + 0x3FF;
+        return adj >> 10;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022CDC);
 
@@ -47,9 +57,53 @@ void func_80022D44(void* pSpriteData) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022DF4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022E8C);
+extern s32 D_800592EC;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022EB8);
+void func_80022E8C(void)
+{
+    D_800592EC++;
+    func_80022DF4();
+}
+
+void func_80022EB8(void* pWork)
+{
+    u8* pWorkData = (u8*)pWork;
+    u32* pSprite = (u32*)(uintptr_t)*(u32*)(pWorkData + 0x04);
+    u32* pSub;
+    void* pTask;
+
+    pSub = (u32*)(uintptr_t)pSprite[0x20/4];
+    if (pSub != NULL) {
+        pTask = (void*)(uintptr_t)pSub[0x2C/4];
+        if (pTask != NULL) {
+            func_80025180(pTask);
+        }
+    }
+
+    if ((pSprite[0x3C/4] & 3) == 1) {
+        u32* pParent = (u32*)(uintptr_t)pSprite[0x20/4];
+        void* pFree = (void*)(uintptr_t)pParent[0x34/4];
+        if (pFree != NULL) {
+            HeapFree(pFree);
+        }
+    }
+
+    if ((pSprite[0xAC/4] >> 5) & 1) {
+        func_8001CE74(pWorkData);
+    }
+
+    if ((pSprite[0xB0/4] >> 11) & 1) {
+        func_8001D034(pWorkData);
+    }
+
+    if ((pSprite[0x3C/4] & 3) == 1) {
+        func_8001D3F4(pSprite);
+    }
+
+    TimerWorkListRemoveTask(pWorkData);
+    WorkListRemoveTask(pWorkData + 0x1C);
+    HeapFree(pWork);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022FC4);
 
@@ -162,7 +216,15 @@ AnimTask* func_800233A4(void* pData, int dataSize) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023440);
+s32 func_80023440(void* pData)
+{
+    u16 val = *(u16*)pData;
+    s32 result = (val >> 8) & 0x7;
+    if ((val >> 14) & 1) {
+        result += 8;
+    }
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023468);
 
