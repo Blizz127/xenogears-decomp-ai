@@ -1119,7 +1119,20 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003014C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
+void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
+    s32 i;
+    if (count == 0) return;
+    pIndices += count - 1;
+    for (i = count - 1; i >= 0; i--) {
+        s32 idx = pIndices[0] * 8;
+        u8* s = pSrc + idx;
+        u8* d = pDst + idx;
+        *(u16*)(d + 0) = *(u16*)(s + 0);
+        *(u16*)(d + 2) = *(u16*)(s + 2);
+        *(u16*)(d + 4) = *(u16*)(s + 4);
+        pIndices--;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
 
