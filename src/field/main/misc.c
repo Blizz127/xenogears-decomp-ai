@@ -617,7 +617,25 @@ void func_80089F94(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089FD0);
+extern s16 D_800B0080, D_800B0082, D_800B0084, D_800B0086, D_800B0088, D_800B008A, D_800B008C, D_800B008E;
+
+void func_80089FD0(void) {
+    D_800B0080 = (s16)FieldScriptVMGetInstructionArgument(1);
+    D_800B0082 = (s16)FieldScriptVMGetInstructionArgument(3);
+    {
+        s16 arg5 = (s16)FieldScriptVMGetInstructionArgument(5);
+        D_800B0084 = arg5;
+        if ((s16)arg5 == 0) {
+            D_800B0084 = arg5 + 1;
+        }
+    }
+    D_800B0086 = (s16)FieldScriptVMGetInstructionArgument(7);
+    D_800B0088 = 0;
+    D_800B008A = (s16)FieldScriptVMGetInstructionArgument(9);
+    D_800B008C = (s16)FieldScriptVMGetInstructionArgument(11);
+    D_800B008E = (s16)FieldScriptVMGetInstructionArgument(13);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 15;
+}
 
 extern s32 D_800B0090, D_800B0094, D_800B0098;
 
