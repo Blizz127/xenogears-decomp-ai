@@ -1151,7 +1151,15 @@ advance:
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C7D8);
+void func_8008C7D8(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    u32 flags12C = *(u32*)((u8*)pActor + 0x12C);
+    if (flags12C & 0x1000) {
+        HeapFree((void*)(uintptr_t)*(u32*)((u8*)pActor + 0x114));
+        *(u32*)((u8*)g_FieldScriptVMCurActor + 0x12C) &= ~0x1000u;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 extern s32 D_8004F36C;
 extern s32 D_8004F324;
