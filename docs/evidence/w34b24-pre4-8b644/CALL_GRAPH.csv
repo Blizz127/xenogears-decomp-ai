@@ -1,0 +1,18 @@
+direction,function,sites,status,notes
+callee,func_800245D8,"0x8008B7B4, 0x8008B7E4, 0x8008B8EC, 0x8008BAA4",CANONICAL,"delay: a1=0; a1=1; sw v0,0x54(s1); sw v0,0x54(s1). actor = slot[+0x4C]"
+callee,wm_800894C8,"0x8008B7BC, 0x8008B870, 0x8008B95C",CANONICAL,"delay: a0=slot_idx+0x2E; sh v1,0x48(s1); sh v0,0x20(s1). object-id notifier"
+callee,wm_8008C1DC,"0x8008B7F4, 0x8008B92C",CANONICAL,"delay: a2=s3 (0x1F800000). a0=slot_idx+0x2E, a1=slot"
+callee,wm_800941C4,"0x8008B8C8, 0x8008BA20, 0x8008BA74",CANONICAL,"delay: a3=slot+0x48; sw v0,8(s3); a1=pool+0xA8. heading/approach vector"
+callee,wm_8008BEC8,"0x8008B904, 0x8008BABC",CANONICAL,"delay: a0=slot. ==3 advances state"
+callee,wm_80097770,"0x8008B940, 0x8008BAE8",CANONICAL,"delay: a1=4 (a0=lh+6); a1=6 (a0=1). pool-slot claim"
+callee,wm_80093978,0x8008B9A4,CANONICAL,"delay: sw a1,0x30(s1). terrain Y; result -> slot[+0x2C]"
+callee,rcos,0x8008B9CC,CANONICAL,"delay: sh v0,0x48(s1). PsyCross/SLUS 0x8003F8B0"
+callee,rsin,0x8008B9F0,CANONICAL,"delay: nop. PsyCross/SLUS 0x8003F8CC; result negated for Z facing"
+callee,wm_80074794,0x8008BB10,CANONICAL,"delay: a1=slot+0x28; a0=0. gated on lh slot[+0x24]==0"
+data_ref,JT1 0x80070670,0x8008B708,-,65-entry main state table (jr *table[idx]; sltiu 0x41)
+data_ref,follow flag 0x8006F8E4,0x8008B720,-,lbu/sb [base+slot_idx]; states 0/1 and 0x2A
+data_ref,ring 0x8009CEC4 / idx 0x8009D154,0x8008B734,-,32x0x14 breadcrumb; follow uses (idx-slot[+0x58])&0x1F
+data_ref,warp xz 0x8006EF8A/EF8C,0x8008B980,-,lhu [base+slot*6]<<12
+data_ref,warp heading 0x8006EE58,0x8008B9B8,-,lhu [base+slot*2]
+caller,wm_80097800 (scheduler),"slot-2 cb1 and slot-3 cb1",CANONICAL,a0 = slot index (observed a0=2 on the natural route after 8A72C); return always 1
+closure_verdict,-,-,MISSING=0,all 10 unique JAL targets already strong T on 88c3b22; 0x80071A58 is not a callee

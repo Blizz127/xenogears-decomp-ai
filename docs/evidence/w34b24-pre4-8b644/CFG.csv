@@ -1,0 +1,15 @@
+block,va_range,role,in_edges,out_edges,calls,notes
+entry,0x8008B644-0x8008B674,prologue + slot record fetch,scheduler cb1 dispatch (a0=slot idx),substate_switch,-,"frame 0x38, saves s0-s4+ra; s2=a0; s4=1; s1=*(D_8009BE24)+a0*128; s3=0x1F800000"
+substate_switch,0x8008B678-0x8008B6E8,transient substate lh slot[+4],entry,jt1_dispatch,-,"+4==1: +4=0 state=8 s0=pool+(lh+6)<<7; +4==2: state=0x28; +4==3: state=1; +4==5: state=0x30"
+jt1_dispatch,0x8008B6EC-0x8008B714,main state dispatch,substate_switch,JT1 slots (see JUMP_TABLES.csv),-,"idx=lh slot[+0x20]; sltiu 0x41; jr *(0x80070670+idx*4); OOR -> common_tail"
+follow_or_copy,0x8008B718-0x8008B87C,states 0/1,JT1 0/1,common_tail,"245D8, 894C8, 8C1DC","flag[0x8006F8E4+slot]==0: compare slot pos to ring[(D154-slot+0x58)&0x1F]; match copies ring pose +0x24=0; miss walks toward ring. flag!=0: copy pool+0x180+(slot<<7) +0x24=1 +894C8"
+state_2,0x8008B880-0x8008B8B8,follow slot-7 copy,JT1 2,common_tail,-,pool[+0x3A8..3C8] -> slot pos/heading
+state_8,0x8008B8BC-0x8008B900,approach setup,JT1 8,state_9_fallthrough,"941C4, 245D8(1)","neighbor s0 from substate 1; +0x50/54; state++ then falls into 0x9"
+state_9,0x8008B904-0x8008B938,approach step,JT1 9 / state_8,common_tail,"8BEC8, 8C1DC",8BEC8==3 -> state++
+state_A,0x8008B93C-0x8008B968,handoff,JT1 0xA,common_tail,"97770(lh+6,4), 894C8",ok -> +0x24=1 state=2
+state_28,0x8008B96C-0x8008BA44,warp-in,JT1 0x28,state_30_anim,"93978, rcos, rsin, 941C4","slot-indexed u16 tables; +0x24=0; falls into 245D8/8BEC8"
+state_2A,0x8008BA48-0x8008BA5C,clear follow flag,JT1 0x2A,common_tail,-,sb 0->[0x8006F8E4+slot]; state=0x40
+state_30,0x8008BA60-0x8008BABC,approach vs player,JT1 0x30 / state_28,state_29,"941C4(pool+0xA8), 245D8(1)",state++ then 8BEC8
+state_29_31,0x8008BABC-0x8008BAE0,shared approach step,JT1 0x29/0x31 / state_30,common_tail,8BEC8,==3 -> state++
+state_32,0x8008BAE4-0x8008BAF8,release claim,JT1 0x32,common_tail,97770(1,6),ok -> state=0
+common_tail,0x8008BAFC-0x8008BB3C,epilogue,all arms / OOR / park,return 1,wm_80074794(0,slot+0x28),"74794 iff lh +0x24==0; v0=s4=1 always. NO sra12 publish to 0x8006EE54"

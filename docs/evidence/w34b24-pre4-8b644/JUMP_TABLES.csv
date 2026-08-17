@@ -1,0 +1,15 @@
+table,slot_index,table_word_va,retail_target,meaning,conditions,direct_calls,exit
+JT1,0x0,0x80070670,0x8008B718,follow/copy,lbu[0x8006F8E4+slot]==0 -> ring match else copy pool+0x180+(slot<<7),"ring hit: 245D8(0)+894C8(slot+0x2E) if actor[0xAF]; miss: 245D8(1)+8C1DC; flag set: 894C8",common tail
+JT1,0x1,0x80070674,0x8008B718,same as 0x0 (shared),same,same,same
+JT1,0x2,0x80070678,0x8008B880,follow-slot7 copy,unconditional,none,"pool[+0x3A8/3AC/3B0]->slot[+0x28/2C/30], pool[+0x3C8]->slot[+0x48]; -> common tail"
+JT1,0x8,0x80070690,0x8008B8BC,approach setup vs neighbor s0,unconditional,"wm_800941C4(slot+0x28, s0+0x28, slot+0x38, slot+0x48); func_800245D8(slot[+0x4C],1)","slot[+0x50/54]=neighbor xz>>12; state++"
+JT1,0x9,0x80070694,0x8008B904,approach step,wm_8008BEC8(slot)==3 -> state++,"wm_8008BEC8; wm_8008C1DC(slot_idx+0x2E, slot, 0x1F800000)",common tail
+JT1,0xA,0x80070698,0x8008B93C,handoff,wm_80097770(lh slot[+6], 4) nonzero -> +0x24=1 state=2 wm_800894C8(slot+0x2E) else hold,"wm_80097770, wm_800894C8",state=2 or hold
+JT1,0x28,0x80070710,0x8008B96C,warp-in,unconditional,"wm_80093978; rcos; rsin; wm_800941C4(slot+0x28, 0x1F800000, slot+0x38, slot+0x48); func_800245D8(slot[+0x4C],1)","pos from [0x8006EF8A/EF8C+slot*6]<<12; heading [0x8006EE58+slot*2]; facing = pos+(rcos*48,-rsin*48); +0x24=0; fall into 0x30-style 245D8/8BEC8"
+JT1,0x29,0x80070714,0x8008BABC,warp/approach step,wm_8008BEC8(slot)==3 -> state++,wm_8008BEC8,state++ or hold; common tail
+JT1,0x2A,0x80070718,0x8008BA48,clear follow flag,unconditional,none,"sb 0->[0x8006F8E4+slot]; state=0x40; -> common tail"
+JT1,0x30,0x80070730,0x8008BA60,approach vs player pose,unconditional,"wm_800941C4(slot+0x28, pool+0xA8, slot+0x38, slot+0x48); func_800245D8(slot[+0x4C],1); wm_8008BEC8","slot[+0x50/54] from pool+0xA8/0xB0 >>12; state++; 8BEC8==3 -> state++"
+JT1,0x31,0x80070734,0x8008BABC,same as 0x29 (shared),same,wm_8008BEC8,same
+JT1,0x32,0x80070738,0x8008BAE4,release player claim,wm_80097770(1,6) nonzero -> state=0 else hold,wm_80097770,state=0 or hold
+JT1,others,-,0x8008BAFC,parked no-op,"indices 0x3-0x7, 0xB-0x27, 0x2B-0x2F, 0x33-0x40 (53 of 65 slots)",none,common tail only
+JT1,OOR,-,0x8008BAFC,guard sltiu 0x41 fails,index >= 0x41,none,common tail (table never read)
