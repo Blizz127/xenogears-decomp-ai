@@ -59,7 +59,7 @@ remain missing.
 | 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | **ACCEPTED** (I22) | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` | BLOCKED on 89580 |
 | 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | MISSING | `0x80093534` ACCEPTED | bounded; COP2 words |
-| 5 | `0x80085CDC` | `[0x80085CDC, 0x80085FE0)` | 772 / 193 | `352a8af52541f4373599db52b1b57263ebeee5942f9ac1e11bdf691169e59d54` | `0x161EC` | MISSING | `0x80093484` ACCEPTED | bounded; COP2 words |
+| 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
 | 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
 | 7 | `0x800747DC` | starts after accepted `74794`; several returns before accepted `75228` | UNRESOLVED exact end | — | `0x4CEC` | MISSING | `0x80093740`, `0x80093978` ACCEPTED | identity not locked |
 | 8 | `0x800848F4` | `[0x800848F4, 0x80084D00)` | 1036 / 259 | `670f809b7d9c0bcbd32463495e24c057bda8469220f12f3d6de19b893830e93b` | `0x14E04` | MISSING | `0x80093534` ACCEPTED | bounded; COP2 words |
@@ -74,25 +74,18 @@ remain missing.
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | UNBOUNDED | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | **genuine blocker** (indirect) |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074794)` | 1756 / 439 | `5ce110d0b87852c819c51394eee5c53b6fd4a37b6c4576a8e33f524eefe0fcf2` | `0x45C8` | MISSING | none (SLUS/PsyQ + COP2 `mtc2`) | bounded but large |
 
-`71A58_MISSING_CALLEES=12` after I21–I25 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC`) plus accepted `73B04`.
+`71A58_MISSING_CALLEES=11` after I21–I26 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC` / `85CDC`) plus accepted `73B04`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x80085CDC`** — smallest remaining bounded COP2 callee (`93484` ACCEPTED).
-Earlier PsyQ/leaf prerequisites `97440` / `97244` / `980D4` / `981C8` /
-`737EC` are landed on this worktree.
+**`0x800848F4`** — next remaining bounded COP2 callee (`93534` ACCEPTED).
+`0x80089C78` is the sibling (`93534` ACCEPTED). `0x800740B8` is bounded
+but large (SLUS/PsyQ + COP2).
 
-**`0x80097440`** was the first 71A58 `jal` (cold arm when `*0x8009D144 == 0`).
-
-- Missing on canonical (no `wm_80097440`).
-- Retail-bounded: previous function `97244` ends `jr $ra; nop`; this body restores frame `0x20` and `jr $ra; nop`; next function starts `addiu $sp, $sp, -0x18` at `0x8009766C`.
-- `MISSING_CALLEES=0` (PsyQ only).
-- Required directly by 71A58.
-
-`0x80097244` is the sibling warm arm and is also MISSING=0. `980D4` / `981C8` / `737EC` are later implementable leaves. `86798`'s `jalr` is the first genuine semantic blocker on the tail; it does not block implementing the PsyQ/leaf prerequisites.
-
-Nearby `0x800976C8` is a separate 12-insn pool-clear leaf (not a 97440 callee).
+**`0x80085CDC`** is landed (I26). Retail end is `0x80085F58`, not
+`0x80085FE0`. `86798`'s `jalr` remains the genuine tail blocker; it
+does not block the remaining bounded COP2 leaves.
 
 ## 5. 71A58 is not started
 
