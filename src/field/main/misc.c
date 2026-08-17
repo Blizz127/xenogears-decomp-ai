@@ -352,7 +352,23 @@ void FieldScriptSetCharacterGear(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800883D4);
+void func_800883D4(void) {
+    s32 charId = func_8008CF3C(FieldScriptVMGetArgument(2));
+    if (charId != 0xFF) {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        void* pScript = g_FieldScriptVMCurScriptData;
+        u8 scriptByte = *(u8*)(pScript + pActor->scriptInstructionPointer + 1);
+        u8* pGS = (u8*)g_pGameState;
+        u16 flags = *(u16*)(pGS + 0x2318);
+        u32 mask = 1u << charId;
+        if (scriptByte == 0) {
+            *(u16*)(pGS + 0x2318) = (u16)(flags | mask);
+        } else {
+            *(u16*)(pGS + 0x2318) = (u16)(flags & ~mask);
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 extern s16 D_800B236C;
 
