@@ -140,7 +140,23 @@ s32 func_80023124(s32 pointA, s32 pointB) {
     return (-ratan2(ay - by, ax - bx)) & 0xFFF;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023170);
+void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
+    u8* pData = (u8*)pSpriteData;
+    u32 flags3C = *(u32*)(pData + 0x3C);
+    u32 flagsA8 = *(u32*)(pData + 0xA8);
+    s32 bitB = (flagB & 1) << 4;
+    s32 bitA = (flagA & 1) << 3;
+
+    *(u16*)(pData + 0x9E) = 0;
+    flags3C = (flags3C & ~0x30) | bitB;
+    flags3C = (flags3C & ~0x08) | bitA;
+    *(u32*)(pData + 0x3C) = flags3C;
+
+    flagsA8 = (flagsA8 & 0xFFCFFFFF) & 0xFFF1FFFF;
+    *(u32*)(pData + 0xA8) = flagsA8;
+
+    func_8001D2B0(pSpriteData, animFrame);
+}
 
 s32 func_800231E0(u8* a0) {
     s32 p = *(s32*)(a0 + 0xC);
