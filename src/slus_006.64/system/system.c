@@ -335,7 +335,15 @@ void func_80033B34(u16* src, u8* dst, s32 count) {
     *dst = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033BAC);
+s16 func_80033BAC(u8 a, u8 b) {
+    u8* pTable = *(u8**)((u8*)g_SystemDataEntries + 0x6C);
+    s16 i;
+    for (i = 0; i < 0x144; i++) {
+        u8* pEntry = pTable + i * 2;
+        if (pEntry[0] == a && pEntry[1] == b) return i;
+    }
+    return 0x8000;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
 
