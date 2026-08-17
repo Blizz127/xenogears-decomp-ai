@@ -2639,7 +2639,14 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
     D_800AFC74++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800771B0);
+void func_800771B0(u32* pBuf, s32 count) {
+    s32 i;
+    s32 n = (count + 1) / 2 - 1;
+    if (n == -1) return;
+    for (i = n; i >= 0; i--) {
+        *pBuf++ |= 0x80008000;
+    }
+}
 
 void FieldLoadTIM(u_long* pTimData) {
     TIM_IMAGE timImage;
