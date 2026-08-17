@@ -2538,4 +2538,32 @@ void func_8008F7B8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F90C);
+void func_8008F90C(void) {
+    u8* pScene = (u8*)&g_Scene;
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 arg3 = FieldScriptVMGetArgument(3);
+    s32 arg5 = FieldScriptVMGetArgument(5);
+    s32 steps = FieldScriptVMGetArgument(7);
+    s32 dx, dy, dz;
+
+    if (steps == 0) { steps = 1; }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+
+    dx = ((arg1 << 16) - *(s32*)(pScene + 0xA0)) / steps;
+    dz = ((arg5 << 16) - *(s32*)(pScene + 0xA4)) / steps;
+    dy = ((arg3 << 16) - *(s32*)(pScene + 0xA4)) / steps;
+
+    *(s16*)(pScene + 0x9A) = (s16)steps;
+    *(s16*)(pScene + 0x98) = 1;
+    *(s32*)(pScene + 0xAC) = dx;
+    *(s32*)(pScene + 0xB0) = dz;
+    *(s32*)(pScene + 0xB4) = dy;
+
+    if (arg1 == 0 && arg5 == 0 && arg3 == 0) {
+        *(s16*)(pScene + 0x9A) = (s16)(steps + 2);
+        *(s16*)(pScene + 0x9C) = 1;
+    } else {
+        *(s16*)(pScene + 0x9C) = 0;
+    }
+}
