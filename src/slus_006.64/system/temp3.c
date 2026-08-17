@@ -434,4 +434,14 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB50);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BBAC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BD40);
+u8 func_8001BD40(u8 min, u8 max) {
+    u8 range;
+    if (min == 0xFF) return 0xFF;
+    if (max == 0) return 0;
+    if (min == max) return min;
+    range = max - min;
+    if (range < 0xFF) {
+        return (u8)(min + (rand() & 0xFF) % (range + 1));
+    }
+    return (u8)(rand() & 0xFF);
+}
