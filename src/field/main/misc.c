@@ -604,7 +604,63 @@ void func_800888A4(void) {
     *(u16*)(pActor + 0xCC) += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800889BC);
+void func_800889BC(void) {
+    u32 actorIdx = (u32)D_800AFD1C;
+    u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+    u32 pActorData = *(u32*)(pFieldActor + 0x04);
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 dirBits = arg1 & 0xF;
+    s32 arg1b = FieldScriptVMGetArgument(1);
+    s32 speed = ((s32)arg1b >> 4 << 8) | (arg1b & 0xF);
+    s32 arg5 = FieldScriptVMGetArgument(5);
+    s32 dirBits2 = arg5 & 0xF;
+    s32 arg7 = FieldScriptVMGetArgument(7);
+    s32 speed2 = ((s32)arg7 >> 4 << 8) | (arg7 & 0xF);
+    u8* pActor = (u8*)g_FieldScriptVMCurActor;
+    u32 pSub;
+
+    func_8002303C((void*)pActorData, 3, 0);
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x04) = (s16)(dirBits << 6);
+
+    {
+        u32 flags12C = *(u32*)(pActor + 0x12C);
+        *(u32*)(pActor + 0x12C) = (flags12C & 0xF003FFFF) | (dirBits << 24);
+    }
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x06) = (s16)speed;
+
+    {
+        u32 flags130 = *(u32*)(pActor + 0x130);
+        *(u32*)(pActor + 0x130) = (flags130 & 0xFFFFFE00) | (speed & 0x1FF);
+    }
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x08) = (s16)(dirBits2 << 6);
+
+    {
+        u32 flags130 = *(u32*)(pActor + 0x130);
+        *(u32*)(pActor + 0x130) = (flags130 & 0xFFF801FF) | (dirBits2 << 15);
+    }
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x0A) = (s16)speed2;
+
+    {
+        u32 flags130 = *(u32*)(pActor + 0x130);
+        u32 flags12C = *(u32*)(pActor + 0x12C);
+        *(u32*)(pActor + 0x130) = (flags130 & 0xF007FFFF) | ((speed2 & 0x1FF) << 19);
+        *(u32*)(pActor + 0x12C) = (flags12C & 0xFFFCFFFF) | 0x20000;
+    }
+
+    *(u16*)(pActor + 0xCC) += 9;
+}
 
 // Start of particle handlers
 extern s32 D_800ADB40;
