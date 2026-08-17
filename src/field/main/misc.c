@@ -435,7 +435,48 @@ void func_80087FD4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008800C);
+void func_8008800C(void) {
+    MATRIX mtx;
+    SVECTOR rot;
+    SVECTOR vec;
+    SVECTOR out;
+    u8 mask;
+    s32 arg1, arg2, arg3, arg4, arg5;
+
+    mask = SCRIPT_READ_U8_REL(0xB);
+    arg1 = FieldScriptArgument1(1, mask);
+    mask = SCRIPT_READ_U8_REL(0xB);
+    arg2 = FieldScriptArgument2(3, mask);
+    mask = SCRIPT_READ_U8_REL(0xB);
+    arg3 = FieldScriptArgument3(5, mask);
+    mask = SCRIPT_READ_U8_REL(0xB);
+    arg4 = FieldScriptArgument4(7, mask);
+    mask = SCRIPT_READ_U8_REL(0xB);
+    arg5 = FieldScriptArgument5(9, mask);
+
+    rot.vx = (s16)arg3;
+    rot.vy = (s16)arg4;
+    rot.vz = (s16)arg5;
+    vec.vx = 0;
+    vec.vy = 0;
+    vec.vz = 0;
+
+    func_801E72CC(&mtx, NULL, arg2, arg1);
+    SetRotMatrix(&mtx);
+    SetTransMatrix(&mtx);
+    RotTransSV(&vec, &out, (long*)&out);
+
+    {
+        u16 addr;
+        addr = (u16)FieldScriptVMGetInstructionArgument(0xC);
+        FieldScriptMemoryWriteU16(addr, out.vx);
+        addr = (u16)FieldScriptVMGetInstructionArgument(0xE);
+        FieldScriptMemoryWriteU16(addr, out.vy);
+        addr = (u16)FieldScriptVMGetInstructionArgument(0x10);
+        FieldScriptMemoryWriteU16(addr, out.vz);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0x12;
+}
 
 /* Field-script opcode: snapshot 20 GameState per-slot entries (+0x9DC->+0x9D8
  * word, +0x9B2->+0x9B0 half, 0xA4 stride), then IP += 1. As a no-op stub this
