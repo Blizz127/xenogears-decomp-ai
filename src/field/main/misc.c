@@ -1642,7 +1642,41 @@ void func_8008BDD8(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BF38);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C180);
+extern void* D_800B06B8;
+extern void func_80080A74(s32 actorIndex);
+
+void func_8008C180(s32 partyId) {
+    s32 slot = D_8005A444[partyId];
+    if (slot != 0xFF) {
+        u8* pFieldActor = (u8*)g_FieldActors + slot * 92;
+        u32 pActorData = *(u32*)(pFieldActor + 0x4C);
+        u32 savedIP;
+        void* savedB06B8 = D_800B06B8;
+        s32 savedAFD1C = D_800AFD1C;
+        u16 savedCC = g_FieldScriptVMCurActor->scriptInstructionPointer;
+
+        D_800AFD1C = slot;
+        *(u16*)(pFieldActor + 0x58) = (*(u16*)(pFieldActor + 0x58) & 0xF07F) | 0x200;
+
+        func_80076AC0(slot, 0, g_PartyDataBuffers[0], 1, 0, 0, 1);
+
+        {
+            u32 flags0 = *(u32*)(g_FieldScriptVMCurActor);
+            u32 flags4 = *(u32*)((u8*)g_FieldScriptVMCurActor + 4);
+            *(u32*)(g_FieldScriptVMCurActor) = flags0 | 0x1;
+            *(u32*)((u8*)g_FieldScriptVMCurActor + 4) = (flags4 | 0x100000) | 0x400;
+            *(u32*)(g_FieldScriptVMCurActor) |= 0x20000;
+        }
+
+        D_800B00C0 = 0;
+        g_FieldScriptVMCurActor = (void*)savedB06B8;
+        D_800B06B8 = savedB06B8;
+        D_800AFD1C = savedAFD1C;
+        g_FieldScriptVMCurActor->scriptInstructionPointer = savedCC;
+    }
+    g_GamePartyMembers[partyId] = 0xFF;
+    g_GamePartyMemberSkins[partyId] = 0xFF;
+}
 
 extern s32 D_800ADBC4;
 extern s32 g_GamePartyMemberSkins[];
