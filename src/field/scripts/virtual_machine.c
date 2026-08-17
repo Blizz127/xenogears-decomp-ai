@@ -413,7 +413,16 @@ void func_800A22AC(int scriptRoutineIndex) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A2488);
+extern s32 D_800ADB8C;
+extern void func_800A22AC(int scriptRoutineIndex);
+extern void func_800ACE24(void);
+
+void func_800A2488(void) {
+    D_800ADB8C = 1;
+    func_800A22AC(3);
+    func_800ACE24();
+    D_800ADB8C = 0;
+}
 
 extern s32 g_GamePartySkinsInitialized;
 extern s32 D_800ADBFC;
