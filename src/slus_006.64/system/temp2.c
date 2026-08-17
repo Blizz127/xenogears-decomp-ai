@@ -1114,7 +1114,42 @@ void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
     pPoly[7] = pColor[3];
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
+s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
+    u8* pPoly;
+    s16* normals;
+    SVECTOR* n0;
+    SVECTOR* n1;
+    SVECTOR* n2;
+
+    if (func_8002CD64(pColor) == 0) return 0;
+    pPoly = D_80059424;
+    normals = (s16*)D_8005953C;
+    pPoly[3] = 7; /* POLY_GT3 tag */
+    n0 = (SVECTOR*)&normals[pIndices[0] * 4];
+    n1 = (SVECTOR*)&normals[pIndices[1] * 4];
+    n2 = (SVECTOR*)&normals[pIndices[2] * 4];
+
+    /* Vertex color tpage/clut merge */
+    *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+    *(u32*)(pPoly + 0x14) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);
+
+    if (flags & 1) {
+        if (flags & 2) {
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+        } else {
+            SVECTOR tmpNormal;
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalColor(&tmpNormal, (CVECTOR*)(pPoly + 4));
+        }
+    } else if (flags & 4) {
+        NormalColor((SVECTOR*)(uintptr_t)D_80059498, (CVECTOR*)(pPoly + 4));
+    }
+
+    D_80059498 += 8;
+    pPoly[7] = pColor[3];
+    return 1;
+}
 
 /* buildProc for prim 0x05 (textured tri, POLY_FT3 template, tag len 7).
  * Reads one 0x08-byte packet-source record and writes the static packet fields;
