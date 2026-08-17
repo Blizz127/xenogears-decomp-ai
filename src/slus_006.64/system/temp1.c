@@ -55,7 +55,28 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022FC4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002303C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800230A8);
+void func_800230A8(void* pSpriteData)
+{
+    u32* sprite = (u32*)pSpriteData;
+
+    if ((sprite[0xA8 / 4] & 1) != 0) {
+        u32* pSub = (u32*)(uintptr_t)sprite[0x7C / 4];
+        if (pSub != NULL && pSub[0x18 / 4] != 0) {
+            HeapFree((void*)(uintptr_t)pSub[0x18 / 4]);
+        }
+    }
+
+    func_8001D3F4(pSpriteData);
+
+    {
+        u32* pParent = (u32*)(uintptr_t)sprite[0x20 / 4];
+        if (pParent != NULL) {
+            HeapFree((void*)(uintptr_t)pParent[0x2C / 4]);
+        }
+    }
+
+    HeapFree(pSpriteData);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023124);
 
