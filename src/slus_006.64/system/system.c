@@ -389,7 +389,53 @@ s32 func_80033CD0(void* arg0) {
     return 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033CF0);
+extern u16 D_8005A0CA[];
+extern u16 D_8005A0DE;
+
+void func_80033CF0(u8* pOut, u16 fontOffset, s32 value, s32 signed_mode) {
+    u32 divisor = 1000000000;
+    s32 signChar = 0;
+    u16* pIndices = D_8005A0CA;
+    s32 i;
+    u16* pEnd;
+
+    fontOffset <<= 4;
+    if (signed_mode && value < 0) {
+        value = -value;
+        signChar = 0xB; /* '-' character */
+    } else {
+        signChar = 0xA; /* '+' or space */
+    }
+
+    for (i = 0; i < 10; i++) {
+        u32 digit = value / divisor;
+        value %= divisor;
+        divisor /= 10;
+        *pIndices++ = digit + fontOffset;
+    }
+
+    D_8005A0DE = 0xFFFF;
+    pEnd = &D_8005A0DE;
+    pIndices = pEnd - 0xB; /* back to D_8005A0CA */
+
+    /* Skip leading zeros */
+    {
+        u16* pScan = pIndices;
+        u16* pLimit = pIndices + 10;
+        while (pScan < pLimit) {
+            if (*pScan != fontOffset) break;
+            pScan++;
+        }
+        pIndices = pScan;
+    }
+
+    if (signChar != 0) {
+        pIndices--;
+        *pIndices = signChar + fontOffset;
+    }
+
+    func_80033ABC(pIndices);
+}
 
 void func_80033DD4(void* arg0, s32 arg1) {
     *(s32*)((u8*)arg0 + 0x20) = *(s32*)((u8*)arg0 + 0x1C);
