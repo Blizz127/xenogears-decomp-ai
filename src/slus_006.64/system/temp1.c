@@ -112,7 +112,19 @@ void func_80022EB8(void* pWork)
     HeapFree(pWork);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022FC4);
+void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
+    u32 pSub = *(u32*)(pSprite + 0x20);
+    void* pExisting = *(void**)(pSub + 0x2C);
+    if (pExisting) {
+        HeapFree(pExisting);
+    }
+    {
+        void* pNew = HeapAlloc(count * 24, tag);
+        u32 pSub2 = *(u32*)(pSprite + 0x20);
+        *(void**)(pSub2 + 0x2C) = pNew;
+        *(void**)(pSub2 + 0x30) = pNew;
+    }
+}
 
 void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
     u8* pData = (u8*)pSpriteData;
