@@ -1080,7 +1080,56 @@ void func_8008A2A0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A2E8);
+extern s32 D_800B1F74;
+extern s32 func_8008A558(void);
+extern void func_800A915C(void);
+extern s32 FieldLoadTIMWithClut(void* data, s32 ofsX, s32 ofsY, s32 width, s32 height, s32 clutX, s32 clutY);
+
+void func_8008A2E8(void) {
+    u8 subOp;
+    if (func_8008A558() == -1) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+        return;
+    }
+    subOp = SCRIPT_READ_U8_REL(1);
+    if (subOp == 0) {
+        /* Load from archive */
+        s32 fileId = FieldScriptArgument1(5, SCRIPT_READ_U8_REL(0xD));
+        ArchiveSetIndex(4, 0);
+        fileId += 0x7FB;
+        D_800B1F74 = (s32)HeapAlloc(ArchiveDecodeAlignedSize(fileId), 0);
+        ArchiveReadFileToBuffer(fileId, (void*)D_800B1F74, 0, 0x80);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+    } else if (subOp == 1) {
+        /* Load TIM with clut */
+        s32 arg4 = FieldScriptArgument4(8, SCRIPT_READ_U8_REL(0xA));
+        s32 clutY;
+        s32 arg2, arg3;
+        s32 width;
+        if (arg4 == 0xFF) {
+            clutY = -1;
+        } else {
+            clutY = arg4 + 0xE8;
+        }
+        arg2 = FieldScriptArgument2(4, SCRIPT_READ_U8_REL(0xA));
+        arg3 = FieldScriptArgument3(6, SCRIPT_READ_U8_REL(0xA));
+        width = arg3;
+        if (width >= 0x100) {
+            if (arg2 >= 0x2C0) {
+                func_800A915C();
+            }
+            width = arg3;
+        }
+        FieldLoadTIMWithClut((void*)D_800B1F74, 0, 0, width, arg2, 0, clutY);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 0xB;
+    } else {
+        /* Free and skip */
+        HeapFree((void*)D_800B1F74);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+    }
+    D_800B00C0 = 1;
+}
 
 void func_8008A4E0(void) {}
 void func_8008A4E8(void) {}
