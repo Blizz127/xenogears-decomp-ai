@@ -288,7 +288,37 @@ void func_80087E5C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087E98);
+extern s32 D_8005A444[];
+extern s32 D_800ADBFC;
+extern s32 g_PlayerActorIndex;
+extern s16 D_800B233E;
+extern s16 D_800B234E;
+
+void func_80087E98(void) {
+    s32 actorIdx = FieldScriptVMGetActorIndex(1);
+    if (actorIdx != 0xFF) {
+        s32 i;
+        u32 mask = 0xFEFFBFFF;
+        if (actorIdx == D_8005A444[0]) {
+            D_800B234E = 0;
+        } else {
+            D_800B234E = 1;
+        }
+        g_PlayerActorIndex = actorIdx;
+        D_800B233E = (s16)actorIdx;
+        for (i = 0; i < D_800ADBFC; i++) {
+            u8* pFieldActor = (u8*)g_FieldActors + i * 92;
+            u32 pSub = *(u32*)(pFieldActor + 0x4C);
+            *(u32*)(pSub) &= mask;
+        }
+        {
+            u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+            u32 pSub = *(u32*)(pFieldActor + 0x4C);
+            *(u32*)(pSub) |= 0x4000;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 extern u16 D_800B2348;
 
