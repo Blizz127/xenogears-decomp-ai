@@ -399,7 +399,9 @@ void func_8001D298(void) {
     D_80059190 = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D2A4);
+void func_8001D2A4(void) {
+    D_80059190 = 0;
+}
 
 // Change Sprite Animation Frame maybe?
 void func_8001D2B0(void* pSpriteData, s16 frameIndex) {
