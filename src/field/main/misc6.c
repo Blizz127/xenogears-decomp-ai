@@ -859,7 +859,16 @@ void func_8009FDD4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FE4C);
+void func_8009FE4C(void) {
+    u8 slot = SCRIPT_READ_U8_REL(1);
+    if (g_GamePartyMembers[slot] != 0xFF) {
+        u8* pGS = (u8*)g_pGameState;
+        if (pGS[slot + 0x22B1] != 0) {
+            func_800ACFD0();
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FEE4);
 
