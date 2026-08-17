@@ -334,7 +334,17 @@ void func_8008825C(void) {
     D_800B00C0 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800882B8);
+void func_800882B8(void) {
+    s32 charId = func_8008CF3C(FieldScriptVMGetArgument(1));
+    u16 dest = (u16)FieldScriptVMGetInstructionArgument(3);
+    if (charId != 0xFF) {
+        u8* pChar = (u8*)g_pGameState + charId * 164;
+        FieldScriptMemoryWriteU16(dest, pChar[0x30C]);
+    } else {
+        FieldScriptMemoryWriteU16(dest, 0xFF);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 void FieldScriptSetCharacterGear(void) {
     int characterId = FieldScriptVMGetArgument(1);
