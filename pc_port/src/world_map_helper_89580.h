@@ -4,8 +4,8 @@
  * Retail boundary: [0x80089580, 0x80089748), 456 bytes / 114
  * instructions. Previous body ends jr $ra; nop at 0x80089578.
  * This body restores frame 0x10 and jr $ra; nop at 0x80089740.
- * Next is wm_80089748 (blocked 71A58 callee; this is its only
- * overlay prerequisite).
+ * Next is accepted wm_80089748 (I31; this is its only overlay
+ * prerequisite).
  *
  * Overlay callees: none. No JAL / JALR. No COP2 / GPU / OT.
  *
