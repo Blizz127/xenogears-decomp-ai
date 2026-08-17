@@ -1288,7 +1288,22 @@ void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
+void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
+    s32 i;
+    if (scale == 0 || count == 0) return;
+    for (i = count - 1; i >= 0; i--) {
+        s32 idx = pDeltas[i * 4 + 1] * 8;
+        SVECTOR* pNorm = (SVECTOR*)(pNormals + idx);
+        s32 d;
+        d = (pDeltas[i * 4 + 0] * scale) >> 12;
+        pNorm->vx += d;
+        d = (pDeltas[i * 4 + 3] * scale) >> 12;
+        pNorm->vy += d;
+        d = (pDeltas[i * 4 + 2] * scale) >> 12;
+        pNorm->vz += d;
+        VectorNormalSS(pNorm, pNorm);
+    }
+}
 
 /* Allocates and populates the "animation/joint" work block for a model that has
  * the 0x2000 (skeletal) status bit. a0=modelData, a1=heap flags (0).
