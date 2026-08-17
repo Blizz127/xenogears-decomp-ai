@@ -1381,7 +1381,52 @@ void* func_800303C8(u8* a0, s32 a1) {
     return s1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
+void func_800305D8(u8* pAnimData) {
+    u8* pModel;
+    u8* pDeltas;
+    u32 count;
+    u8* pChannels;
+    u8* pJoint;
+    u32 i;
+    s32 scale;
+    u32 hasNormals;
+
+    if (pAnimData == NULL) return;
+    pModel = *(u8**)(pAnimData + 0x00);
+    pDeltas = *(u8**)(pAnimData + 0x04);
+    count = *(u32*)(pAnimData + 0x0C);
+    pChannels = *(u8**)(pAnimData + 0x10);
+    pJoint = *(u8**)(pModel + 0x1C) + 4;
+    hasNormals = *(u16*)(pModel) & 0x10;
+
+    func_800301C8(
+        *(u8**)(pModel + 0x08),
+        pJoint,
+        count,
+        *(s16**)((u32)(pJoint + count * 12))
+    );
+
+    for (i = 0; i < count; i++) {
+        s32 (*cb)(u8*) = *(s32 (**)(u8*))(pChannels);
+        scale = cb(pChannels);
+        func_80030228(
+            *(u8**)(pModel + 0x08),
+            *(s16**)(pJoint + 4),
+            *(s32*)(pJoint),
+            scale
+        );
+        if (hasNormals) {
+            func_800302D4(
+                *(u8**)(pModel + 0x0C),
+                *(s16**)(pJoint + 8),
+                *(s32*)(pJoint),
+                scale
+            );
+        }
+        pChannels += 0x20;
+        pJoint += 0xC;
+    }
+}
 
 // Hands a model's shared anim-work buffers (pAnimInfo->+0x0, a pointer to a
 // per-model-type shared work block) back before freeing pAnimInfo itself:
