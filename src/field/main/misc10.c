@@ -9,7 +9,21 @@ extern s32 func_80095124(s32 itemId);
 extern s32 func_800951B8(s32 itemId);
 void func_8009635C(s32 itemId);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_80096214);
+void func_80096214(void) {
+    s32 itemId = FieldScriptVMGetArgument(1);
+    s32 idx = func_80095124(itemId);
+    u8* pTable = func_800950A0(itemId);
+    u8* pData = func_8009501C(itemId);
+    u16 addr = (u16)FieldScriptVMGetInstructionArgument(3);
+    s32 value;
+    if (idx != -1) {
+        value = pTable[idx];
+    } else {
+        value = 0;
+    }
+    FieldScriptMemoryWriteU16(addr, value);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 void func_800962C0(void) {
     if (func_80095124(FieldScriptVMGetArgument(1)) != -1) {
