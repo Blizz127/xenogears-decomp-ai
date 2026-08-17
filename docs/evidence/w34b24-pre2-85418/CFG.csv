@@ -1,0 +1,7 @@
+block,va_range,role,branches,calls,notes
+entry,0x80085418-0x80085504,prologue + attr-record fetch + matrix copy,none (straight-line),-,"frame 0x38, saves s0-s6+ra; rec=*(0x8009C620)+84*(attr&0xFFFF); copy rec+0x20..0x3F -> scratch MATRIX 0xF0 (8 words, retail order); t2=0 @0x10C, t0=0 @0x104; scale vec (0x800,0x800,0x800) stored 0x18,0x14,0x10; t1=rec[0xC] @0x108"
+gte_setup,0x80085508-0x80085524,matrix load,none,"ScaleMatrix(0xF0,0x10); SetRotMatrix(0xF0); SetTransMatrix(0xF0)","delay slot of first jal: s0=a3 (node id); GTE rot/trans state loaded here feeds RotTrans"
+vertices,0x80085528-0x80085594,node vertex transforms,none,"RotTrans(vtx[node+0]*8+base, 0x1F800000, sp+0x10); RotTrans(vtx[node+2], 0x1F800010, sp+0x10); RotTrans(vtx[node+4], 0x1F800020, sp+0x10)","node = rec[0x44]+8+14*(id&0xFFFF); vtxbase = *(rec[0x44]+4); indices are s16 lh at node +0/+2/+4, each <<3"
+edges_normal,0x80085598-0x8008567C,edge build + normal,none,"OuterProduct0(0x20,0x10,0x20); VectorNormal(0x20,0x30)","in-place [0x10]-=[0x00] and [0x20]-=[0x00] per component (interleaved retail order); normal components sra 2 before VectorNormal"
+probes,0x80085680-0x80085714,packed probe SVECTORs + dots,none,"ApplyMatrixLV(0x110, 0x30, 0x40)","dx=(pos.X>>12)-rec[8]-v0.x sh@0x110+0x116; dy1=(pos.Y>>12)-v0.y sh@0x112; dy2=dy1-y_offset sh@0x118; dz=rec[0x10]-(pos.Z>>12)-v0.z sh@0x114+0x11A; row2 @0x11C uninitialized (dead)"
+epilogue,0x80085718-0x8008575C,sign compare + return,none,-,"v0 = (lw[0x40] ^ lw[0x44]) sra 31 -> {0,-1}; restore s0-s6/ra; sp+=0x38"
