@@ -50,6 +50,8 @@
 #include "world_map_callback_906e0.h"
 #include "world_map_callback_91430.h"
 #include "world_map_callback_91b54.h"
+#include "world_map_callback_914d0.h"
+#include "world_map_callback_91c18.h"
 #include "world_map_callback_92234.h"
 #include "world_map_callback_922ac.h"
 #include "world_map_callback_92be4.h"
@@ -83,7 +85,9 @@ extern s32 wm_8008E190(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008E76C(s32 slot_index) __attribute__((weak));
 extern s32 wm_800906E0(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091430(s32 slot_index) __attribute__((weak));
+extern s32 wm_800914D0(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091B54(s32 slot_index) __attribute__((weak));
+extern s32 wm_80091C18(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092234(s32 slot_index) __attribute__((weak));
 extern s32 wm_800922AC(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092BE4(s32 slot_index) __attribute__((weak));
@@ -276,9 +280,19 @@ static s16 wm_sched_builtin_80091430(int slot_index)
     return (s16)wm_80091430((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_800914D0(int slot_index)
+{
+    return (s16)wm_800914D0((s32)slot_index);
+}
+
 static s16 wm_sched_builtin_80091B54(int slot_index)
 {
     return (s16)wm_80091B54((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80091C18(int slot_index)
+{
+    return (s16)wm_80091C18((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_80092234(int slot_index)
@@ -408,8 +422,16 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_80091430;
         return WM_SCHED_CB_IMPLEMENTED;
     }
+    if (guest_addr == 0x800914D0u && wm_800914D0 != 0) {
+        *out_fn = wm_sched_builtin_800914D0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
     if (guest_addr == 0x80091B54u && wm_80091B54 != 0) {
         *out_fn = wm_sched_builtin_80091B54;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80091C18u && wm_80091C18 != 0) {
+        *out_fn = wm_sched_builtin_80091C18;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x80092234u && wm_80092234 != 0) {
