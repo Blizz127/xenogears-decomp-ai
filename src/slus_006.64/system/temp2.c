@@ -706,7 +706,13 @@ void func_8002CBBC(u8* modelData) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC10);
+extern s32 D_80059310;
+extern s32 D_80050108;
+
+void func_8002CC10(u16 x, u16 y) {
+    D_80059310 = GetTPage(0, 0, x, y) & 0x1F;
+    D_80050108 = 1;
+}
 
 extern s32 D_80059310;
 extern s32 D_80050108;
