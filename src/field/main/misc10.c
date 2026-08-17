@@ -42,7 +42,24 @@ void func_8009635C(s32 itemId) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009640C);
+extern u8* func_8009501C(s32 itemId);
+extern u8* func_800950A0(s32 itemId);
+extern s32 func_80095124(s32 itemId);
+
+void func_8009640C(void) {
+    s32 itemId = FieldScriptVMGetArgument(1);
+    s32 idx = func_80095124(itemId);
+    if (idx != -1) {
+        u8* pTable = func_800950A0(itemId);
+        u8* pEntry = pTable + idx;
+        u8 count = pEntry[0] - 1;
+        pEntry[0] = count;
+        if (count == 0) {
+            pTable[idx] = 0xFF;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 // Check if certain member is in current party
 void FieldScriptCheckPartyMember(void) {
