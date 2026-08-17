@@ -510,7 +510,13 @@ void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
     return pSpriteData;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800242F4);
+void* func_800242F4(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
+    void* pSpriteData;
+    D_800591B8 = arg6;
+    pSpriteData = func_8002435C(pAnimPackage, texX, texY, clutX, clutY, arg5);
+    D_800591B8 = 0;
+    return pSpriteData;
+}
 
 extern u8 D_800591AD;
 extern s32 func_8001EE74(void* arg0);
