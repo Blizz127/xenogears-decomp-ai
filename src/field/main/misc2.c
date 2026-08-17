@@ -2028,7 +2028,28 @@ void func_8007554C(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
+extern s32 D_800ADB78;
+extern void func_800A2030(void);
+extern void func_800805F4(void);
+extern void func_8008004C(void* pCtx, s32 idx);
+
+void func_80075910(void) {
+    RECT rect;
+    FieldPollControllers();
+    func_800A2030();
+    func_800805F4();
+    func_8008004C((u8*)g_FieldCurRenderContext + 0x80D4, g_FieldCurRenderContextIndex);
+    DrawSync(0);
+    Vsync(0);
+    rect.w = 0x140;
+    rect.h = 0xE0;
+    rect.x = 0;
+    rect.y = (D_800ADB78 + 1 & 1) << 8;
+    MoveImage(&rect, g_FieldCurRenderContextIndex << 8, 0);
+    PutDispEnv((DISPENV*)((u8*)g_FieldCurRenderContext + 0xB8));
+    PutDrawEnv((DRAWENV*)g_FieldCurRenderContext);
+    DrawOTag(g_FieldCurRenderContext->ot3 + 7);
+}
 
 void func_80075B08(void* sprite, u8* color) {
     if (D_800B218E == 0) {
