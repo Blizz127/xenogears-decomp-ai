@@ -798,7 +798,25 @@ void func_800A83B4(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8408);
+extern u16 D_800AEF14[];
+extern u16 D_800AEB68[];
+extern u16 D_800AEB6A[];
+extern u16 D_800AEB6C[];
+extern u16 D_800AEB6E[];
+
+void func_800A8408(s32 index, s32 xOfs, s32 yOfs) {
+    s32 texIdx = D_800AEF14[index * 4];
+    s32 x = D_800AEB68[texIdx * 4] + xOfs;
+    s32 y = D_800AEB6A[texIdx * 4] + yOfs;
+    s32 w = D_800AEB6C[texIdx * 4];
+    s32 h = D_800AEB6E[texIdx * 4];
+    u8* pPoly = (u8*)D_800AFC60 + index * 40;
+    s32 x2 = x + w - 1;
+    s32 y2 = y + h - 1;
+    x -= 1;
+    y -= 1;
+    FieldClampPolyFT4UVs(pPoly, x, y, x2, y, x, y2, x2, y2);
+}
 
 void func_800A84C0(void) {
     if (D_800AF278 == 0) {
