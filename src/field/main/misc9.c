@@ -358,7 +358,20 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC0F0);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC308);
+extern s32 D_800AF780;
+extern void* D_800AF76C;
+extern void* D_800AF784;
+
+void func_800AC308(void) {
+    ArchiveSetIndex(4, 0);
+    D_800AF780 = ArchiveDecodeSize(0xAB);
+    D_800AF76C = (void*)HeapAlloc(ArchiveDecodeAlignedSize(0xAB), 1);
+    ArchiveReadFileToBuffer(0xAB, D_800AF76C, 0, 0x80);
+    ArchiveCdDataSync(0);
+    D_800AF784 = (void*)HeapAlloc(ArchiveDecodeAlignedSize(0xAC), 1);
+    ArchiveReadFileToBuffer(0xAC, D_800AF784, 0, 0x80);
+    ArchiveCdDataSync(0);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC3AC);
 
