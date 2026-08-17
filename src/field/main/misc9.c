@@ -317,7 +317,16 @@ void func_800ABEC8(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABFDC);
+s32 func_800ABFDC(u8* pChar, s32* pOutIndex) {
+    u16 code = (u16)((u16)pChar[0] << 8) | pChar[1];
+    u16 range = (code + 0x7AC0) & 0xFFFF;
+    if (range >= 0x340) {
+        *pOutIndex = 0;
+        return Krom2RawAdd(code, 1, NULL, 0);
+    }
+    *pOutIndex = (s32)code;
+    return (s32)(u16)(code - 0x8540);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC03C);
 
