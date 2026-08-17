@@ -894,7 +894,38 @@ void func_800A0158(s32 arg0, s32* arg1, s32* arg2, s32* arg3) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0228);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0524);
+void func_800A0524(s32 srcIdx, s32 dstIdx) {
+    u8* pSrcField = (u8*)g_FieldActors + srcIdx * 92;
+    u8* pDstField = (u8*)g_FieldActors + dstIdx * 92;
+    u8* pSrcData = *(u8**)(pSrcField + 0x4C);
+    u8* pDstData = *(u8**)(pDstField + 0x4C);
+    s32 i;
+    u16* ps = (u16*)(pSrcData + 0x08);
+    u16* pd = (u16*)(pDstData + 0x08);
+    for (i = 0; i < 4; i++) {
+        *pd++ = *ps++;
+    }
+    *(u16*)(pDstData + 0x10) = *(u16*)(pSrcData + 0x10);
+    *(u16*)(pDstData + 0xEC) = *(u16*)(pSrcData + 0xEC);
+    *(u16*)(pDstData + 0x72) = *(u16*)(pSrcData + 0x72);
+    *(u32*)(pDstData + 0x50) = *(u32*)(pSrcData + 0x50);
+    *(u32*)(pDstData + 0x54) = *(u32*)(pSrcData + 0x54);
+    *(u32*)(pDstData + 0x58) = *(u32*)(pSrcData + 0x58);
+    *(u32*)(pDstData + 0x20) = *(u32*)(pSrcData + 0x20);
+    *(u32*)(pDstData + 0x24) = *(u32*)(pSrcData + 0x24);
+    *(u32*)(pDstData + 0x28) = *(u32*)(pSrcData + 0x28);
+    FieldMatrixCopyTransform((u8*)g_FieldActors + srcIdx * 92 + 0xC,
+                              (u8*)g_FieldActors + dstIdx * 92 + 0xC);
+    FieldMatrixCopyTranslation((u8*)g_FieldActors + srcIdx * 92 + 0xC,
+                                (u8*)g_FieldActors + dstIdx * 92 + 0xC);
+    {
+        u8* pSrcSub = *(u8**)(pSrcField + 0x4C);
+        u8* pDstSprite = *(u8**)(pDstField + 0x04);
+        *(u32*)(pDstSprite + 0x00) = *(u32*)(pSrcSub + 0x20);
+        *(u32*)(pDstSprite + 0x04) = *(u32*)(pSrcSub + 0x24);
+        *(u32*)(pDstSprite + 0x08) = *(u32*)(pSrcSub + 0x28);
+    }
+}
 
 extern void func_800A0C94(void);
 
