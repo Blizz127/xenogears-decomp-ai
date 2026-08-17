@@ -132,7 +132,13 @@ void func_800230A8(void* pSpriteData)
     HeapFree(pSpriteData);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023124);
+s32 func_80023124(s32 pointA, s32 pointB) {
+    s16 ax = (s16)(pointA & 0xFFFF);
+    s16 ay = (s16)((pointA >> 16) & 0xFFFF);
+    s16 bx = (s16)(pointB & 0xFFFF);
+    s16 by = (s16)((pointB >> 16) & 0xFFFF);
+    return (-ratan2(ay - by, ax - bx)) & 0xFFF;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023170);
 
