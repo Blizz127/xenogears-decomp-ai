@@ -402,7 +402,17 @@ void func_80023950(void* arg0) {
     *(s32*)((u8*)arg0 + 0x20) = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023958);
+void func_80023958(void* pSpriteData) {
+    u8* pData = (u8*)pSpriteData;
+    void* pSub = pData + 0xB4;
+    *(void**)(pData + 0x20) = pSub;
+    func_8002393C(pSub);
+    {
+        u32* pParent = (u32*)(uintptr_t)*(u32*)(pData + 0x20);
+        pParent[0x34/4] = 0;
+        pParent[0x40/4] = 0;
+    }
+}
 
 void func_800239A0(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -1581,4 +1591,8 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800273C4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800278F8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80027D40);
+void func_80027D40(void* ptr) {
+    if (ptr != NULL) {
+        HeapFree(ptr);
+    }
+}
