@@ -1008,5 +1008,17 @@ void GraphicsDrawPauseLetters(int x, int y) {
 }
 */
 
-// 800592E4 -> EA is bss local
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001FB30);
+extern void* D_800592E4;
+extern s16 D_800592E8;
+extern s16 D_800592EA;
+
+void func_8001FB30(void) {
+    u8* pStack = HeapAlloc(0x2000, 1);
+    u8* pOldSp;
+    __asm__ volatile("move %0, $sp" : "=r"(pOldSp));
+    __asm__ volatile("move $sp, %0" : : "r"(pStack + 0x1F00 - 4));
+    *(u32*)(pStack + 0x1F00 - 4) = (u32)pOldSp;
+    func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
+    __asm__ volatile("lw $sp, 0($sp)");
+    HeapFree(pStack);
+}
