@@ -282,7 +282,20 @@ void func_80088198(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800881E8);
+extern void func_800A915C(void);
+extern void func_800A91F0(void);
+
+void func_800881E8(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    void* pScript = g_FieldScriptVMCurScriptData;
+    u8 val = *(u8*)(pScript + pActor->scriptInstructionPointer + 1);
+    if (val == 0) {
+        func_800A915C();
+    } else {
+        func_800A91F0();
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 extern s32 D_8004F308;
 
