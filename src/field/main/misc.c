@@ -224,7 +224,18 @@ void func_80087AB8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087B5C);
+void func_80087B5C(void) {
+    u8* pGS = (u8*)g_pGameState;
+    u16 arg1 = (u16)FieldScriptVMGetInstructionArgument(1);
+    FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x182C));
+    arg1 = (u16)FieldScriptVMGetInstructionArgument(3);
+    FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x182E));
+    arg1 = (u16)FieldScriptVMGetInstructionArgument(5);
+    FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x1830));
+    arg1 = (u16)FieldScriptVMGetInstructionArgument(7);
+    FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x1832));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 extern s32 D_8004F300;
 
