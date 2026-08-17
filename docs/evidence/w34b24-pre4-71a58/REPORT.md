@@ -57,7 +57,7 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 |---|---|---|---|---|---|---|---|---|
 | 1 | `0x80097440` | `[0x80097440, 0x8009766C)` | 556 / 139 | `6bce51ba8bb3a013e923fcc2b66b1bc59646522ac76aad21923171cb89ddfd4b` | `0x27950` | **ACCEPTED** (I21) | none (PsyQ: RotMatrixX/Y/Z, MulMatrix0×2, ApplyMatrix, TransMatrix) | ACCEPTED |
 | 2 | `0x80097244` | `[0x80097244, 0x80097440)` | 508 / 127 | `2d0e27a454a833ee8c31bc741150c0ec4a6491fd932046bbed8646628fb341f5` | `0x27754` | **ACCEPTED** (I22) | none (PsyQ: VectorNormal×3, OuterProduct12×2, ApplyMatrix, TransMatrix) | ACCEPTED |
-| 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | MISSING | `0x80089580` **ACCEPTED** (I30) | bounded; PsyQ only |
+| 3 | `0x80089748` | `[0x80089748, 0x80089C78)` | 1328 / 332 | `bfa19d4b844d7814bedb336f1e9837944f935d5dad029a681557b5a65891da73` | `0x19C58` | **ACCEPTED** (I31) | `0x80089580` ACCEPTED (I30) | PsyQ RotMatrixYXZ/ApplyMatrix/rand/VectorNormal/ratan2 |
 | 4 | `0x80089C78` | `[0x80089C78, 0x8008A2C8)` | 1616 / 404 | `693edc23d4e33a80b08c68767a9984fe3ebfc274e980a10693aead42ad5944a2` | `0x1A188` | **ACCEPTED** (I28) | `0x80093534` ACCEPTED | ACCEPTED |
 | 5 | `0x80085CDC` | `[0x80085CDC, 0x80085F58)` | 636 / 159 | `fc6f4405d1bd956051519f3db3ed6477e7c0c09ee09739aef2ceb5176ffa6ab6` | `0x161EC` | **ACCEPTED** (I26) | `0x80093484` ACCEPTED | PRE4 end `85FE0` was wrong (swallowed init `85F58`) |
 | 6 | `0x8008615C` | start clear (after `[86124,8615C)` free); first frame-0x28 return `0x800863D8` | UNRESOLVED end vs `0x800865A0` | — | `0x1666C` | MISSING | `0x80099BFC` | BLOCKED (99BFC + end) |
@@ -74,21 +74,22 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 17 | `0x80086798` | start clear (after wrap leaf `86700`); `jalr $v0` at `0x800867CC` | MEASURED overlay stores; still not implemented | — | `0x16CA8` | MISSING | JALR through `lw` `0x8009CD40` | overlay writers all store `0x80086700`; see §6 |
 | 18 | `0x800740B8` | `[0x800740B8, 0x80074594)` | 1244 / 311 | `a0b5afc3d5b4efc5970d5e730d4b466eaa6d5f94705830732bda346c2d3119ad` | `0x45C8` | **ACCEPTED** (I29) | none (PsyQ RotMatrix + COP2 RTPT) | PRE4 end `74794` swallowed init `74594` and free `7474C` |
 
-`71A58_MISSING_CALLEES=8` after I21–I29 (`97440` / `97244` / `980D4` /
-`981C8` / `737EC` / `85CDC` / `848F4` / `89C78` / `740B8`) plus
-accepted `73B04`.
+`71A58_MISSING_CALLEES=7` after I21–I31 (`97440` / `97244` / `980D4` /
+`981C8` / `737EC` / `85CDC` / `848F4` / `89C78` / `740B8` / `89580` /
+`89748`) plus accepted `73B04`.
 
 ## 4. Next implementable missing prerequisite
 
-**`0x80089748`** — remaining bounded 71A58 callee (`[89748,89C78)`
-1328/332; overlay `89580` ACCEPTED I30; remaining JALs are PsyQ).
+**`0x8009623C`** then **`0x800962B0`** — bounded 98CC0 callees with
+overlay `MISSING_CALLEES=0` (no JAL / JALR / COP2). Independently
+re-derived: `[9623C,962B0)` 116/29; `[962B0,96328)` 120/30.
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
-Blocked on other missing callees: `96130` (needs `967E4`), `98CC0`
-(needs `9623C`/`962B0`/`96328`/`965A4`).
+Blocked on other missing callees: `96130` (needs `967E4`; `967E4`
+first return `968D8` / next `968E0` but overlay jals `968E0` /
+`9699C` / `966CC`), `98CC0` still also needs `96328` / `965A4`.
 
-**`0x800740B8`** (I29) and **`0x80089580`** (I30) are landed. Do not
-invent a `86798` jalr set.
+**`0x80089748`** (I31) is landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 

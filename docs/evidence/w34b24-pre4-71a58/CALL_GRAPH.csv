@@ -1,7 +1,7 @@
 direction,function,sites,status,notes
 callee,wm_80097440,0x80071A78,ACCEPTED,"I21; [0x80097440,0x8009766C) 556B/139i; PsyQ RotMatrixX/Y/Z MulMatrix0x2 ApplyMatrix TransMatrix; a0=0x8009BD40; gated on *0x8009D144==0"
 callee,wm_80097244,0x80071A90,ACCEPTED,"I22; [0x80097244,0x80097440) 508B/127i; PsyQ VectorNormalx3 OuterProduct12x2 ApplyMatrix TransMatrix; a0=0x8009BD40; gated on *0x8009D144!=0"
-callee,wm_80089748,0x80071A98,MISSING,"[0x80089748,0x80089C78) 1328B/332i; overlay jal 0x80089580 ACCEPTED I30; now bounded"
+callee,wm_80089748,0x80071A98,ACCEPTED,"I31; [0x80089748,0x80089C78) 1328B/332i; overlay jal 0x80089580; PsyQ RotMatrixYXZ ApplyMatrix rand VectorNormal ratan2"
 callee,wm_80089C78,0x80071AA0,ACCEPTED,"I28; [0x80089C78,0x8008A2C8) 1616B/404i; overlay jal 0x80093534; COP2 RTPT/RTPS POLY_FT4"
 callee,wm_80085CDC,0x80071AA8,ACCEPTED,"I26; [0x80085CDC,0x80085F58) 636B/159i; PRE4 85FE0 end was wrong; overlay jal 0x80093484; COP2 RTPS SZ3"
 callee,wm_8008615C,0x80071AB0,MISSING,"start after [0x80086124,0x8008615C); overlay jal 0x80099BFC; end UNRESOLVED"
@@ -27,4 +27,6 @@ data_ref,counter 0x8009C5BC,0x80071B3C,-,lw; +=0x40; sw
 data_ref,gate 0x8006EE76,0x80071B6C,-,lhu; zero runs 740B8
 caller,wm_80097800 (scheduler),slot-14 cb1,CANONICAL,natural a0=14 after 92FD8 ret=1; return always 1
 prereq,wm_80089580,0x80089C3C,ACCEPTED,"I30; [0x80089580,0x80089748) 456B/114i; no JAL/JALR; unlocks 89748"
-closure_verdict,-,-,MISSING=8,I21-I30 plus 73B04 accepted; next bounded=0x80089748
+prereq,wm_8009623C,0x80098CC0,MISSING,"[0x8009623C,0x800962B0) 116B/29i; no JAL/JALR; 98CC0 enqueue leaf"
+prereq,wm_800962B0,0x80098CC0,MISSING,"[0x800962B0,0x80096328) 120B/30i; no JAL/JALR; 98CC0 enqueue leaf"
+closure_verdict,-,-,MISSING=7,I21-I31 plus 73B04 accepted; next bounded=0x8009623C
