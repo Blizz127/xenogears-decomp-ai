@@ -1298,7 +1298,62 @@ void func_8008AA60(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AACC);
+extern void* D_800AFD08;
+extern s32 D_800AFD0C;
+extern s32 D_800AFD18;
+extern s32 D_80062518[];
+extern s32 D_80062524[];
+extern s32 D_800595AC;
+extern s32 D_8004F370;
+extern void SoundLoadWdsFile(void* pData, s32 a1);
+extern void SoundFreeWdsEntry(s32 handle);
+extern void func_8003BDFC(s32 a0);
+
+void func_8008AACC(void) {
+    u8 subOp;
+    if (func_8008A558() != 0) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+        return;
+    }
+    subOp = SCRIPT_READ_U8_REL(1);
+    if (subOp == 1) {
+        /* Load WDS file */
+        SoundLoadWdsFile(D_800AFD08, 0);
+        D_80062518[D_800AFD18] = (s32)D_800AFD08;
+        func_8003BDFC(0x10);
+        HeapFree(D_800AFD08);
+        if (D_800AFD18 == 3) {
+            D_800595AC = D_80062524[0];
+        }
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+    } else {
+        /* Free existing + load new */
+        s32 slot = FieldScriptVMGetArgument(2);
+        D_800AFD18 = slot;
+        SoundFreeWdsEntry(D_80062518[slot]);
+        {
+            s32 arg4 = FieldScriptVMGetArgument(4);
+            D_800AFD0C = arg4;
+            if (!(arg4 & 0x80)) {
+                ArchiveSetIndex(0x1C, 0);
+                D_800AFD0C += 2;
+            } else {
+                if (D_8004F370 == 1) {
+                    D_800AFD0C = 4;
+                } else {
+                    D_800AFD0C += 0x1F;
+                }
+                ArchiveSetIndex(0x2C, 1);
+            }
+        }
+        D_800AFD08 = HeapAlloc(ArchiveDecodeAlignedSize(D_800AFD0C), 0);
+        ArchiveReadFileToBuffer(D_800AFD0C, D_800AFD08, 0, 0x80);
+        ArchiveSetIndex(4, 0);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+    }
+}
 
 void func_8008ACE8(void) {
     s32 arg;
