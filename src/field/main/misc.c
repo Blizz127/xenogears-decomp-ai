@@ -2000,7 +2000,28 @@ void func_8008D780(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D808);
+void func_8008D808(s32 arg0, s32 arg1, s32 arg2) {
+    u8* pScript = g_FieldScriptVMCurScriptData;
+    u16 ip = g_FieldScriptVMCurActor->scriptInstructionPointer;
+    u8* pIP = pScript + ip;
+    pIP[0x00] = 0x57;
+    pIP[0x01] = 0x81;
+    func_8008D2E0(arg0, ip + 2);
+    func_8008D2E0(arg1, ip + 4);
+    func_8008D2E0(arg2, ip + 6);
+    func_8008D2E0(0xC, ip + 8);
+    pScript = g_FieldScriptVMCurScriptData;
+    ip = g_FieldScriptVMCurActor->scriptInstructionPointer;
+    pIP = pScript + ip;
+    pIP[0x0A] = 0xFF;
+    pIP[0x0B] = 0x57;
+    pIP[0x0C] = 0x8F;
+    pIP[0x0D] = 0x26;
+    pIP[0x0E] = 0x01;
+    pIP[0x0F] = 0x80;
+    pIP[0x10] = 0x57;
+    pIP[0x11] = 0x0F;
+}
 
 void func_8008DA04(s32 arg0, s32 arg1) {
     u8* pScript = g_FieldScriptVMCurScriptData;
