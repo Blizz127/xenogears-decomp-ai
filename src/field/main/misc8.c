@@ -88,7 +88,20 @@ s32 func_80080968(u8* pActorData) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800809D0);
+extern s16 D_800B14AC;
+
+s32 func_800809D0(u8* pData) {
+    s32 step = *(s32*)(pData + 0x1C);
+    s32 acc = (s32)0xFFEB3000;
+    s32 count = 0;
+    D_800B14AC = 0;
+    while (acc <= 0) {
+        D_800B14AC += 2;
+        acc += step;
+        count += acc;
+    }
+    return count >> 16;
+}
 
 extern s32 D_800ADB58;
 extern s32 D_800ADB5C;
