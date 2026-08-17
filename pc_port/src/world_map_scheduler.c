@@ -59,6 +59,7 @@
 #include "world_map_callback_92fd8.h"
 #include "world_map_callback_92df8.h"
 #include "world_map_callback_71a50.h"
+#include "world_map_frame_driver_712d0.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_callback_87710.h"
 #include "world_map_callback_8b644.h"
