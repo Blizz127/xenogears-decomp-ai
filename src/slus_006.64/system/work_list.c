@@ -481,7 +481,26 @@ void func_8001D2B0(void* pSpriteData, s16 frameIndex) {
 }
 
 // Unlink SpriteData entry from list
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D3F4);
+void func_8001D3F4(u8* pTarget) {
+    u8* pPrev = NULL;
+    u8* pCur = (u8*)(uintptr_t)D_80059190;
+    while (pCur != NULL) {
+        u32 pNext;
+        if (pCur == pTarget) {
+            u32 pTargetSub = *(u32*)(pCur + 0x20);
+            if (pPrev != NULL) {
+                u32 pPrevSub = *(u32*)(pPrev + 0x20);
+                *(u32*)(pPrevSub + 0x38) = *(u32*)(pTargetSub + 0x38);
+            } else {
+                D_80059190 = *(u32*)(pTargetSub + 0x38);
+            }
+        } else {
+            pPrev = pCur;
+        }
+        pNext = *(u32*)(*(u32*)(pCur + 0x20) + 0x38);
+        pCur = (u8*)(uintptr_t)pNext;
+    }
+}
 
 void func_8001D468(void) {
     u8* pEntry = (u8*)(uintptr_t)D_80059190;
