@@ -2045,7 +2045,76 @@ s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 of
 void func_80026B9C(void) {
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026BA4);
+void func_80026BA4(u8* pTable, s32 index, s16 ofsX, s16 ofsY, s16 ofsZ, u8* pPrimBuffer) {
+    u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
+    s32 count = *(s16*)(pDesc);
+    s32 i;
+    s32 stride = 0;
+    u8* pEntry = pDesc + 4;
+    u8* pCur = pPrimBuffer;
+
+    if (count == 0) return;
+
+    for (i = 0; i < count; i++) {
+        u16 packed = *(u16*)(pEntry);
+        s16 tpageFlag = *(s16*)(pEntry + 0x10);
+        s32 shift;
+        s16 texX, texY;
+        s32 clut, tpage;
+        s16 u0, v0, u1, v1;
+        s16 x0, y0, x1, y1;
+
+        if (tpageFlag == 0) {
+            shift = ((s32)((u32)packed << 16)) >> 20;
+        } else {
+            shift = ((s32)((u32)packed << 16)) >> 18;
+        }
+
+        texX = *(s16*)(pEntry + 0x12);
+        texY = *(s16*)(pEntry + 0x14);
+        u0 = (s16)((s32)((u16)*(u16*)(pEntry + 0x16) & 0xFFC0) << 16 >> 16) + shift;
+        v0 = (s16)((s32)((u16)*(u16*)(pEntry + 0x18) & 0xFF00) << 16 >> 16) + *(s16*)(pEntry + 0x02);
+        u1 = *(s16*)(pEntry + 0x04);
+        v1 = *(s16*)(pEntry + 0x06);
+        x0 = *(s16*)(pEntry + 0x08);
+        y0 = *(s16*)(pEntry + 0x0A);
+
+        clut = GetClut(texX, texY);
+        tpage = GetTPage(tpageFlag, 0, texX, texY);
+
+        /* Build POLY_GT4 */
+        pCur[3] = 0x09; /* GT4 tag len */
+        pCur[7] = 0x2D; /* POLY_GT4 code */
+        *(u16*)(pCur + 0x0E) = (u16)clut;
+        *(u16*)(pCur + 0x16) = (u16)tpage;
+
+        x0 += ofsX;
+        y0 += ofsY;
+        x1 = x0 + u1;
+        y1 = y0 + v1;
+
+        *(s16*)(pCur + 0x08) = x0;
+        *(s16*)(pCur + 0x0A) = y0;
+        *(u8*)(pCur + 0x0C) = (u8)u0;
+        *(u8*)(pCur + 0x0D) = (u8)v0;
+        *(s16*)(pCur + 0x10) = x1;
+        *(s16*)(pCur + 0x12) = y0;
+        *(u8*)(pCur + 0x14) = (u8)(u0 + u1);
+        *(u8*)(pCur + 0x15) = (u8)v0;
+        *(s16*)(pCur + 0x18) = x0;
+        *(s16*)(pCur + 0x1A) = y1;
+        *(u8*)(pCur + 0x1C) = (u8)u0;
+        *(u8*)(pCur + 0x1D) = (u8)(v0 + v1);
+        *(s16*)(pCur + 0x20) = x1;
+        *(s16*)(pCur + 0x22) = y1;
+        *(u8*)(pCur + 0x24) = (u8)(u0 + u1);
+        *(u8*)(pCur + 0x25) = (u8)(v0 + v1);
+
+        AddPrim(g_GfxCurOT + ofsZ * 4, pCur);
+        pEntry += 0x1C;
+        pCur += 0x28;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026DCC);
 
