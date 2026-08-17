@@ -107,7 +107,20 @@ void func_80022EB8(void* pWork)
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022FC4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002303C);
+void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
+    u8* pData = (u8*)pSpriteData;
+    void* pAlloc = HeapAlloc(size * 4, flags);
+    u32* pSub = (u32*)(uintptr_t)*(u32*)(pData + 0x7C);
+    u32* pSrc;
+    pSub[0x18/4] = (u32)(uintptr_t)pAlloc;
+    pSrc = (u32*)(uintptr_t)*(u32*)(pData + 0x7C);
+    {
+        u32* pSrcData = (u32*)(uintptr_t)*(u32*)(pData + 0x24);
+        u16* pAllocH = (u16*)(uintptr_t)pSrc[0x18/4];
+        pAllocH[1] = *(u16*)(pData + 0x24 + 6);
+        pAllocH[0] = *(u16*)(pData + 0x24 + 4);
+    }
+}
 
 void func_800230A8(void* pSpriteData)
 {
