@@ -427,7 +427,24 @@ void WorkListsDeleteTasks(WorkListEntry* pTasks) {
     HeapFree(pTasks);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsAddTasks);
+WorkListEntry* WorkListsAddTasks(void* timerData, void* timerCb, void* workCb, void* onFreeCb) {
+    WorkListEntry* pEntry;
+    WorkListEntry* pWorkEntry;
+    pEntry = HeapAlloc(sizeof(WorkListEntry) * 2, D_800591AF);
+    TimerWorkListAddTask(timerData, pEntry);
+    pWorkEntry = (WorkListEntry*)((u8*)pEntry + sizeof(WorkListEntry));
+    WorkListAddTask(pEntry, pWorkEntry);
+    TimerWorkListSetTaskCallback(pEntry, timerCb);
+    WorkListSetTaskCallback(pWorkEntry, workCb);
+    if (onFreeCb != NULL) {
+        WorkListTaskSetOnFreeCallback(pEntry, onFreeCb);
+    } else {
+        WorkListTaskSetOnFreeCallback(pEntry, &WorkListsDeleteTasks);
+    }
+    pEntry->unk4 = pEntry;
+    pWorkEntry->unk4 = pEntry;
+    return pEntry;
+}
 
 
 
