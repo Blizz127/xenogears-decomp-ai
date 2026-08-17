@@ -396,7 +396,38 @@ void func_800884CC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088508);
+extern s32 D_8005A444[];
+
+void func_80088508(void) {
+    s32 arg5 = FieldScriptVMGetArgument(5);
+    s32 slot = D_8005A444[arg5];
+    u16 arg1, arg3;
+    g_FieldScriptMaxInstructionCount += 4;
+
+    if (slot == 0xFF) {
+        arg1 = (u16)FieldScriptVMGetInstructionArgument(1);
+        FieldScriptMemoryWriteU16(arg1, 0);
+        arg3 = (u16)FieldScriptVMGetInstructionArgument(3);
+        FieldScriptMemoryWriteU16(arg3, 0);
+    } else {
+        u32 pFieldActor = (u32)((u8*)g_FieldActors + slot * 92);
+        u32 pActorData = *(u32*)(pFieldActor + 0x04);
+        u32 pSub;
+        u16 val;
+        arg1 = (u16)FieldScriptVMGetInstructionArgument(1);
+        pSub = *(u32*)(pActorData + 0x7C);
+        val = *(u16*)(pSub + 0x0C);
+        FieldScriptMemoryWriteU16(arg1, val);
+        arg3 = (u16)FieldScriptVMGetInstructionArgument(3);
+        FieldScriptMemoryWriteU16(arg3, (u16)slot);
+        pSub = *(u32*)(pActorData + 0x7C);
+        val = *(u16*)(pSub + 0x0C);
+        if (val != 1) {
+            *(u16*)(pSub + 0x0C) = 0;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 void func_8008861C(void)
 {
