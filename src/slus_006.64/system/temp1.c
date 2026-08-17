@@ -13,7 +13,72 @@
 
 // Sprite / Animation functions
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022B2C);
+extern void func_800BA8F4(void);
+
+void func_80022B2C(u8* pSprite) {
+    u32 flags = *(u32*)(pSprite + 0x3C);
+    s32 vel, accel, curPos, target;
+
+    if ((flags >> 26) & 1) {
+        /* Path 3: steady movement with acceleration */
+        vel = *(s32*)(pSprite + 0x10);
+        accel = *(s32*)(pSprite + 0x1C);
+        curPos = *(s32*)(pSprite + 0x04);
+        curPos += func_80022CAC(pSprite, vel >> 4) << 4;
+        *(s32*)(pSprite + 0x04) = curPos;
+        *(s32*)(pSprite + 0x10) = vel + accel;
+        return;
+    }
+
+    func_800BA8F4();
+    vel = *(s32*)(pSprite + 0x10);
+    accel = *(s32*)(pSprite + 0x1C);
+    target = *(s16*)(pSprite + 0x84);
+
+    if (vel <= 0 || accel <= 0) {
+        /* Path 2: simple forward movement */
+        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
+        curPos = *(s32*)(pSprite + 0x04) + scaled;
+        *(s32*)(pSprite + 0x04) = curPos;
+        if ((curPos >> 16) >= target) {
+            *(s32*)(pSprite + 0x04) = target << 16;
+        }
+        *(s32*)(pSprite + 0x10) += accel;
+        return;
+    }
+
+    /* Path 1: deceleration with bounce */
+    {
+        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
+        s16 y = *(s16*)(pSprite + 0x06);
+        curPos = *(s32*)(pSprite + 0x04) + scaled;
+        *(s32*)(pSprite + 0x04) = curPos;
+        if ((curPos >> 16) < target) {
+            /* Not yet at target, add acceleration */
+            *(s32*)(pSprite + 0x10) += accel;
+            return;
+        }
+        /* Reached target, bounce */
+        *(s32*)(pSprite + 0x04) = target << 16;
+        {
+            s32 bounceVel = -vel;
+            s32 bounceFactor = (*(u32*)(pSprite + 0xA8) >> 1) & 0x3FF;
+            s32 newVel = bounceVel * bounceFactor;
+            if (newVel < 0) {
+                *(s32*)(pSprite + 0x04) = target << 16;
+                newVel += 0xFF;
+            }
+            *(s32*)(pSprite + 0x10) = newVel >> 8;
+        }
+        vel = *(s32*)(pSprite + 0x10);
+        accel = *(s32*)(pSprite + 0x1C);
+        if (vel < 0) vel = -vel;
+        if (accel < 0) accel = -accel;
+        if (vel < accel) {
+            *(s32*)(pSprite + 0x10) = 0;
+        }
+    }
+}
 
 s32 func_80022CAC(void* pSpriteData, s32 value)
 {
