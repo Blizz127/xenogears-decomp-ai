@@ -2116,7 +2116,48 @@ void func_80026BA4(u8* pTable, s32 index, s16 ofsX, s16 ofsY, s16 ofsZ, u8* pPri
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026DCC);
+s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
+    u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
+    s32 count = *(s16*)(pDesc);
+    s32 i;
+    u8* pEntry = pDesc + 4;
+    u8* pPrim = pPrimBuffer;
+
+    if (count == 0) return 0;
+
+    for (i = 0; i < count; i++) {
+        u16 packed = *(u16*)(pEntry);
+        s16 tpageFlag = *(s16*)(pEntry + 0x6);
+        s32 shift;
+        s16 texX, texY;
+        s32 clut, tpage;
+
+        if (tpageFlag == 0) {
+            shift = ((s32)((u32)packed << 16)) >> 20;
+        } else {
+            shift = ((s32)((u32)packed << 16)) >> 18;
+        }
+
+        texX = (s16)((s32)((u16)*(u16*)(pEntry + 0xC) & 0xFFC0) << 16 >> 16) + shift;
+        texY = (s16)((s32)((u16)*(u16*)(pEntry + 0xE) & 0xFF00) << 16 >> 16) + *(s16*)(pEntry - 0x8);
+
+        clut = GetClut(*(s16*)(pEntry + 0x8), *(s16*)(pEntry + 0xA));
+        tpage = GetTPage(tpageFlag, 1, texX, texY);
+
+        *(u16*)(pPrim + 0x08) = (u16)tpage;
+        *(u16*)(pPrim + 0x0A) = (u16)tpage;
+        *(u8*)(pPrim + 0x02) = *(u8*)(pEntry);
+        *(u8*)(pPrim + 0x03) = *(u8*)(pEntry - 0x8);
+        *(u8*)(pPrim + 0x04) = *(u8*)(pEntry - 0x6);
+        *(u8*)(pPrim + 0x05) = *(u8*)(pEntry - 0x4);
+        *(u16*)(pPrim + 0x00) = *(u16*)(pEntry - 0x2) + ofsX;
+        *(u16*)(pPrim + 0x00) |= (*(u16*)(pEntry) + ofsY) << 16;
+
+        pEntry += 0x1C;
+        pPrim += 0x18;
+    }
+    return count;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026F44);
 
