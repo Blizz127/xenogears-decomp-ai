@@ -1,0 +1,15 @@
+mutant,fault_class,killed_by,detail
+WM_91FF8_MUTANT_SKIP_96F18,missing call,w3.n96,96F18 omitted
+WM_91FF8_MUTANT_WRONG_96F18_DEST,wrong address,w3.dest0,96F18 dest is BE28 not BD40
+WM_91FF8_MUTANT_SKIP_93354,missing call,w3.n54,93354 omitted
+WM_91FF8_MUTANT_SKIP_93660,missing call,w3.n60,93660 omitted
+WM_91FF8_MUTANT_GRID_5,wrong immediate,w3.n54,grid is 5x5 not 6x6
+WM_91FF8_MUTANT_OUTER_2,wrong immediate,w3.ret,outer walk stops at 2 not 3
+WM_91FF8_MUTANT_MIN_START_NEG,wrong immediate,snap.ret,s4 starts at -1 not 0
+WM_91FF8_MUTANT_SKIP_MASK,missing mask,w3.x0,0xFFF80000 origin mask omitted
+WM_91FF8_MUTANT_WRONG_STEP,wrong immediate,w3.x1,grid step 0x40000 not 0x80000
+WM_91FF8_MUTANT_SKIP_SNAP,missing store,snap.ret,close-abs does not snap to a0
+WM_91FF8_MUTANT_WRONG_ABS_THRESH,gate threshold,snap.ret,snap uses <0x40 not <0x41
+WM_91FF8_MUTANT_SKIP_TOWARD_ZERO,wrong arithmetic,w3.scale0,BCDC uses arithmetic >>1
+WM_91FF8_MUTANT_WRONG_RETURN,wrong return,w3.ret,returns 0
+WM_91FF8_MUTANT_SKIP_HEADING,missing store,w3.vy,BD3A/BD3C not copied to scratch SVECTOR

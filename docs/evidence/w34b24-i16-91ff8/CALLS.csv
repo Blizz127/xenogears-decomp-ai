@@ -1,0 +1,4 @@
+site,callee,notes
+0x800920AC,0x80096F18,once per outer; dest=0x8009BD40 pose=0x8009BE28 angles=0x1F8000A8
+0x80092108,0x80093354,6x6 wrap of scratch VECTOR 0x1F800000
+0x80092118,0x80093660,6x6 terrain cell; lb *(v0) is signed height
