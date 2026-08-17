@@ -27,7 +27,14 @@ s32 func_80022CAC(void* pSpriteData, s32 value)
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022CDC);
+void func_80022CDC(u8* pSprite) {
+    s32 val;
+    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x0C) >> 4);
+    *(s32*)(pSprite + 0x00) += val << 4;
+    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x14) >> 4);
+    *(s32*)(pSprite + 0x08) += val << 4;
+    func_80022B2C(pSprite);
+}
 
 extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 
