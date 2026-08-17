@@ -1390,7 +1390,21 @@ void func_8008C84C(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008C938);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CA60);
+void func_8008CA60(void) {
+    if (D_8004F36C != 0) {
+        s32 arg1 = FieldScriptVMGetArgument(1);
+        s32 arg3 = FieldScriptVMGetArgument(3);
+        func_8003A838(D_80062528, arg1, arg3);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else if (D_8004F324 == 0xFF) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CB4C);
 
