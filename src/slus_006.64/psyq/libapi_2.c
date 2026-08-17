@@ -4,7 +4,7 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", setjmp);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", longjmp);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BEC0);
+void func_8004BEC0(void) {}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BED0);
 
