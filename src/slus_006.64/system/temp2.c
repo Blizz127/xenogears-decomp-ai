@@ -1645,7 +1645,27 @@ void func_80030C78(u32 a, u32 b, u32 c) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030EE8);
+s32 func_80030EE8(void) {
+    u32 sxy0, sxy1, sxy2;
+    u16 sz0;
+    __asm__ volatile("RTPT" ::: "memory");
+    __asm__ volatile("mfc2 %0, $14" : "=r"(sxy0));
+    __asm__ volatile("mfc2 %0, $15" : "=r"(sxy1));
+    __asm__ volatile("mfc2 %0, $16" : "=r"(sxy2));
+    __asm__ volatile("mfc2 %0, $7" : "=r"(sz0));
+    (void)sz0;
+    /* Check each vertex's screen coords */
+    if ((u16)(sxy0 + 1) >= 2) {
+        if (sxy0 < (u32)D_800500FC && (u16)sxy0 < (u16)D_800500F8) return 1;
+    }
+    if ((u16)(sxy1 + 1) >= 2) {
+        if (sxy1 < (u32)D_800500FC && (u16)sxy1 < (u16)D_800500F8) return 1;
+    }
+    if ((u16)(sxy2 + 1) >= 2) {
+        if (sxy2 < (u32)D_800500FC && (u16)sxy2 < (u16)D_800500F8) return 1;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003101C);
 
