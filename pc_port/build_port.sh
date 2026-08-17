@@ -1095,6 +1095,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_96130.c
     pc_port/src/world_map_helper_966cc.c
     pc_port/src/world_map_helper_737ec.c
+    pc_port/src/world_map_helper_747dc.c
     pc_port/src/world_map_helper_740b8.c
     pc_port/src/world_map_helper_97244.c
     pc_port/src/world_map_helper_965a4.c
@@ -1109,6 +1110,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_85cdc.c
     pc_port/src/world_map_helper_89c78.c
     pc_port/src/world_map_helper_8615c.c
+    pc_port/src/world_map_helper_86798.c
     pc_port/src/world_map_helper_c28c.c
     pc_port/src/world_map_helper_c364.c
     pc_port/src/world_map_helper_8dff4.c
