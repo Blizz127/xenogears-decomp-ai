@@ -1,0 +1,5 @@
+site,callee,notes
+0x800917AC,wm_80097770,"a0=7 a1=0xB (delay-slot); state-2 arrival only; $v0 ignored"
+0x80091914,wm_80093484,"approach path; a0=$sp+0x10; delay sw Z at +0x18"
+0x80091A9C,wm_80093484,"state-3 snap path; a0=$sp+0x10; delay sw Z at +0x18"
+0x80091B04,wm_80093354,"common tail; a0=slot+0x28 in delay slot"

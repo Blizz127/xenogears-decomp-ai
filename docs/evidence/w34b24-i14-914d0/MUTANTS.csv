@@ -1,0 +1,19 @@
+mutant,fault_class,killed_by,detail
+WM_914D0_MUTANT_SUBSTATE_POLARITY,state-arm selection,sub9.state,substates 9 and 0xA target states swapped
+WM_914D0_MUTANT_SUB_HEADING,wrong immediate,subf.50,sub 0xF writes +50=0x400 instead of 0x800
+WM_914D0_MUTANT_PAD_SHIFT,wrong shift,pad1.state,CD4C >>4 instead of >>2 so pad bits miss
+WM_914D0_MUTANT_PAD_POLARITY,state-arm selection,pad1.54,pad 1/3 turn direction swapped with pad 2
+WM_914D0_MUTANT_SYNC_THRESHOLD,gate threshold,wrap.58,state-0 wrap uses 0x801 instead of 0xC01
+WM_914D0_MUTANT_STATE1_SKIP_CLEAR,missing store,s1b.state,state 1 arrival does not write state 0
+WM_914D0_MUTANT_CHASE_SRA,wrong shift,s2.58,state 2 heading acc uses sra 5 instead of 3
+WM_914D0_MUTANT_SLOW_SRA,wrong shift,s10.58,state 0x10 heading acc uses sra 3 instead of 5
+WM_914D0_MUTANT_SKIP_97770,missing call,s2arr.97770.slot,state-2 arrival omits wm_80097770
+WM_914D0_MUTANT_WRONG_97770_ARGS,wrong immediate,s2arr.97770.slot,97770(8,0xB) instead of (7,0xB)
+WM_914D0_MUTANT_CLOSE_THRESHOLD,gate threshold,close.60,approach close uses 0x20 instead of 0x40
+WM_914D0_MUTANT_SNAP_Y_SHIFT,wrong shift,s2arr.y,state-3 Y step uses sra 3 instead of 4
+WM_914D0_MUTANT_SKIP_93354,missing call,idle.n93354,common tail omits wm_80093354
+WM_914D0_MUTANT_SKIP_PUBLISH,missing store,tail.be28x,common tail omits BE28 publish
+WM_914D0_MUTANT_WRONG_RETURN,return variation,idle.ret,returns current state instead of constant 1
+WM_914D0_MUTANT_SKIP_60,missing store,close.60,approach omits +60 close/far flag
+WM_914D0_MUTANT_APPROACH_SKIP_Y,missing store,far.y,approach omits Y += dy>>3
+WM_914D0_MUTANT_JT1_GUARD,jt guard,s10.58,sltiu 0x10 skips live state 0x10 chase
