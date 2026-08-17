@@ -25,7 +25,17 @@ extern void* g_PartyStreamDataPointers[];
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A5CC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A684);
+extern u8* D_800592D8;
+
+void func_8001A684(s32 row, s32 col) {
+    u8* pTable;
+    if (row < 0) row = 0x1C;
+    if (row >= 0x1D) row = 0;
+    if (col < 0) col = 0x28;
+    if (col >= 0x29) col = 0;
+    pTable = D_800592D8 + (row * 5 + row) * 8 + col;
+    pTable[0]++;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A6E8);
 
