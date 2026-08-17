@@ -773,7 +773,17 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7948);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7C58);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8314);
+void func_800A8314(void) {
+    u8* pBuf;
+    HeapChangeCurrentUser(8, NULL);
+    ArchiveSetIndex(4, 0);
+    pBuf = HeapAlloc(ArchiveDecodeAlignedSize(0xAA), 1);
+    ArchiveReadFileToBuffer(0xAA, pBuf, 0, 0x80);
+    ArchiveCdDataSync(0);
+    FieldLoadTIMWithClut(pBuf, 0x380, 0, 0, 0xE8, 0, 0);
+    DrawSync(0);
+    HeapFree(pBuf);
+}
 
 extern s32 D_800AF278;
 extern void* D_800AFC60;
