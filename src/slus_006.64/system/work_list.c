@@ -375,7 +375,17 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D0A4);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D10C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D164);
+void* func_8001D164(void* pCallback) {
+    void* pPrev = NULL;
+    void* pCur = g_TimerWorkList;
+    while (pCur != NULL) {
+        void* pNext = *(void**)((u8*)pCur + 0x08);
+        if (pNext == pCallback) return pCur;
+        pPrev = pCur;
+        pCur = *(void**)((u8*)pCur + 0x18);
+    }
+    return pPrev;
+}
 
 void WorkListsDeleteTasks(WorkListEntry* pTasks) {
     WorkListRemoveTask(pTasks + 1);
