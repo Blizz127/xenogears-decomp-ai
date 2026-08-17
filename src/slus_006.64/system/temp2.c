@@ -1174,7 +1174,21 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
+void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
+    s32 i;
+    if (scale == 0 || count == 0) return;
+    for (i = 0; i < count; i++) {
+        s32 idx = pDeltas[i * 4 + 1] * 8;
+        u16* pVert = (u16*)(pVertices + idx);
+        s32 d;
+        d = (pDeltas[i * 4 + 0] * scale) >> 12;
+        pVert[0] += d;
+        d = (pDeltas[i * 4 + 3] * scale) >> 12;
+        pVert[1] += d;
+        d = (pDeltas[i * 4 + 2] * scale) >> 12;
+        pVert[2] += d;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
 
