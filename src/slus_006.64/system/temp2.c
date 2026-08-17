@@ -1274,7 +1274,11 @@ void func_80030C40(u16 a, u16 b, u16 c) {
     __asm__ volatile("ctc2 %0, $15" : : "r"(rc));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C78);
+void func_80030C78(u32 a, u32 b, u32 c) {
+    __asm__ volatile("ctc2 %0, $13" : : "r"(a << 4));
+    __asm__ volatile("ctc2 %0, $14" : : "r"(b << 4));
+    __asm__ volatile("ctc2 %0, $15" : : "r"(c << 4));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
 
