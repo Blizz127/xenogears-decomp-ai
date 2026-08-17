@@ -2685,7 +2685,40 @@ void func_80085738(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085788);
+extern void func_80039FF8(void);
+extern void func_8003BDFC(s32);
+extern void SoundAddSedsEntry(void* pData);
+
+void func_80085788(void) {
+    s32 musicId = D_800C3A38;
+    if (musicId == 0xFF) return;
+    func_80039FF8();
+    ArchiveSetIndex(0x1C, 0);
+    {
+        s32 fileId = musicId + 0x115;
+        D_800B235C = HeapAlloc(ArchiveDecodeAlignedSize(fileId), 1);
+        ArchiveReadFileToBuffer(fileId, D_800B235C, 0, 0x80);
+        ArchiveCdDataSync(0);
+        SoundAddSedsEntry(D_800B235C);
+        func_8003BDFC(0x10);
+    }
+    ArchiveSetIndex(4, 0);
+    {
+        s32 i;
+        s32 idx = 0;
+        s32 count = musicId + 1;
+        if (count > 0) {
+            u16* pTable = D_800AE060;
+            for (i = 0; i < count; i++) {
+                while (pTable[idx * 2] != 0xFFFF) {
+                    idx++;
+                }
+                idx++;
+                D_800C3A64 = idx;
+            }
+        }
+    }
+}
 
 extern void* D_8006259C;
 extern s32 D_8004F32C;
