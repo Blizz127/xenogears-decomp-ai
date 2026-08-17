@@ -1,0 +1,31 @@
+site,callee,notes
+0x8008D814,func_800245D8,follow==1 xyz match AF!=0; a1=0
+0x8008D81C,wm_800894C8,follow==1 match; a0=slot+0x28
+0x8008D844,func_800245D8,follow==1 mismatch AF!=1; a1=1
+0x8008D854,wm_8008C1DC,follow==1 mismatch; a0=slot+0x28 a1=slot a2=scratch
+0x8008D8A4,func_800245D8,follow!=1 AF!=3; a1=3
+0x8008D8AC,wm_800894C8,follow!=1; a0=slot+0x28
+0x8008D8F8,wm_800941C4,state 8; a0=slot+0x28 a1=neighbor+0x28; falls into 9
+0x8008D91C,func_800245D8,state 8; a1=1
+0x8008D934,wm_8008BEC8,state 8/9; ==3 advances +0x20
+0x8008D95C,wm_8008C1DC,state 8/9; a0=slot+0x28
+0x8008D970,wm_80097770,state 0x0A; (lh+6,4)
+0x8008D98C,wm_800894C8,state 0x0A success; a0=slot+0x28
+0x8008D9E0,ratan2,state 0x10; a0=dz a1=dx; (v0+0x400)&0xFFF
+0x8008D9F0,rcos,state 0x10; delay-slot stores heading; result -> +0x38
+0x8008D9FC,rsin,state 0x10; negated -> +0x40
+0x8008DA28,func_800245D8,state 0x10; a1=1; falls into 0x11
+0x8008DA40,wm_8008BEC8,state 0x11; ==3 advances
+0x8008DA64,wm_80097770,state 0x12; (4,7) -> state 1
+0x8008DAD0,wm_80089160,state 0x18 byte!=7; a0=slot+1 a1=scratch+0xA0 a2=0
+0x8008DB40,func_800245D8,state 0x1A expire; a1=3
+0x8008DB5C,func_800245D8,state 0x20; a1=0; does not fall into 0x21
+0x8008DB80,wm_80097770,state 0x21; (slot-3,2); sh slot at pool+(slot<<7)-0x17A
+0x8008DBBC,wm_8008DFF4,state 0x30; a0=slot+0x28
+0x8008DBE0,rcos,state 0x30; facing *96
+0x8008DC04,rsin,state 0x30; -rsin *96
+0x8008DC34,wm_800941C4,state 0x30; a0=slot+0x28 a1=scratch
+0x8008DC58,func_800245D8,state 0x30; a1=1; jumps to set-state (no 0x31 fallthrough)
+0x8008DC6C,wm_8008BEC8,state 0x31
+0x8008DC84,func_800245D8,state 0x31 ==3; a1=0
+0x8008DCEC,wm_80074794,common tail; a0=1 a1=slot+0x28 unless state==2 or (MODE_FLAG!=2 && lbu[0x8006F364+slot]==7)
