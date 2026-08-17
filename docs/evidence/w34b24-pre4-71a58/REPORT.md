@@ -66,7 +66,7 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 | 9 | `0x800980D4` | `[0x800980D4, 0x800981C8)` | 244 / 61 | `b2ad8897db6a2b556897d0e5c726d049e252e78907dedac61642d121d7d90b12` | `0x285E4` | **ACCEPTED** (I23) | none | ACCEPTED |
 | 10 | `0x800981C8` | `[0x800981C8, 0x800983A0)` | 472 / 118 | `90e483f10929f9022a21582a9d8046cb978c9cf09927d848580f8a427905a6fe` | `0x286D8` | **ACCEPTED** (I24) | none | ACCEPTED |
 | 11 | `0x80096130` | `[0x80096130, 0x8009623C)` | 268 / 67 | `92c4c23f0e129166ce0c21cca5431851a5b3c6662ce293682e2b947c24562bc0` | `0x26640` | MISSING | `0x800967E4` | BLOCKED on 967E4 |
-| 12 | `0x80098CC0` | `[0x80098CC0, 0x8009932C)` | 1644 / 411 | `5a5d9b8f7fcee4651a39633c852c1415a8de66356140702c9eb9d85bd0fd62a4` | `0x291D0` | MISSING | `9623C`, `962B0`, `96328`, `965A4` | BLOCKED |
+| 12 | `0x80098CC0` | `[0x80098CC0, 0x8009932C)` | 1644 / 411 | `5a5d9b8f7fcee4651a39633c852c1415a8de66356140702c9eb9d85bd0fd62a4` | `0x291D0` | MISSING | `9623C`/`962B0`/`96328`/`965A4` all ACCEPTED (I32–I37) | overlay closed; SLUS JALs remain |
 | 13 | `0x800983A0` | start clear; first frame-0x70 return `0x800987A4`; later code to `98CC0` | UNRESOLVED | — | `0x288B0` | MISSING | `0x800987AC` | BLOCKED |
 | 14 | `0x8009932C` | start clear; first frame-0x38 return `0x80099700` | UNRESOLVED | — | `0x2983C` | MISSING | `0x80099708` | BLOCKED |
 | 15 | `0x80073B04` | `[0x80073B04, 0x80073E30)` | 812 / 203 | `87f9ff21fffad640d8fb7ec9a96da4f5d29a71275c4b15452d49677b6ad23197` | `0x4014` | **ACCEPTED** | none (PsyQ) | ACCEPTED |
@@ -81,19 +81,21 @@ canonical `822b402` is **false**. Worktree I21–I29 later accepted
 
 ## 4. Next implementable missing prerequisite
 
-**`0x80096328`** then **`0x800965A4`** — remaining 98CC0 overlay
-callees. Independently re-derived: `[96328,963E4)` 188/47 (overlay
-jal `963E4` ACCEPTED I34); `[965A4,96668)` 196/49 (overlay jal
-`964B0` ACCEPTED I35). `966CC` is also bounded (PsyQ `0x8004Cxxx`
-only) and is a `967E4` overlay callee.
+**`0x80098CC0`** — 71A58 callee; overlay callees I32–I37 are all
+ACCEPTED. Independently re-derived: `[98CC0,9932C)` 1644/411; one
+`jr $ra` at `0x80099324`; no JALR/COP2. Overlay JALs: `9623C` /
+`962B0` / `96328` / `965A4`. SLUS JALs: `ArchiveGetFilePath`
+`0x80028998`, `ArchiveDecodeSector` `0x800289D0`, `func_8002C3D8`,
+`HeapAlloc` `0x80031BDC`, plus `0x800320E8`.
+
+**`0x800966CC`** is also bounded (PsyQ `0x8004Cxxx` only) and is a
+`967E4` overlay callee that unlocks `96130`.
 
 Identity-UNRESOLVED: `747DC`, `8615C`, `983A0`, `9932C`.
 Blocked: `96130` (needs `967E4`; `967E4` jals overlay `968E0` /
-`9699C` / `966CC`), `98CC0` still needs `96328` / `965A4`.
+`9699C` / `966CC`).
 
-**`0x80089748`** (I31), **`0x8009623C`** (I32), **`0x800962B0`**
-(I33), **`0x800963E4`** (I34), and **`0x800964B0`** (I35) are
-landed. Do not invent a `86798` jalr set.
+I31–I37 are landed. Do not invent a `86798` jalr set.
 
 ## 5. 71A58 is not started
 
