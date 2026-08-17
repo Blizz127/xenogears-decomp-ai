@@ -976,7 +976,19 @@ s32 func_8002D984(u8* pSrc) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DAFC);
+void func_8002DAFC(void) {
+    u8* pPoly = D_80059424;
+    SetPolyFT3(pPoly);
+    SetShadeTex(pPoly, 1);
+    {
+        s32 tpage = GetTPage(1, 0, 0x280, 0);
+        *(u16*)(pPoly + 0x16) = (tpage & 0xFFE0) | D_80059310;
+    }
+    {
+        s32 clut = GetClut(0, 0x1E0);
+        *(u16*)(pPoly + 0x0E) = (clut & 0xF) | D_80059314;
+    }
+}
 
 /* Computes the normalized face normal of the triangle (v0,v1,v2) into
  * outNormal (SVECTOR, 4096-scale via VectorNormalS). asm: edge diffs ->
