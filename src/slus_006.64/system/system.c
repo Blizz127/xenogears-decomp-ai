@@ -312,7 +312,25 @@ void* func_80033A8C(s32 index) {
     return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xD0), index);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
+extern u8 D_8005A0E4[];
+
+void func_80033ABC(u16* pIndices) {
+    u8* pTable = *(u8**)((u8*)g_SystemDataEntries + 0x6C);
+    u8* pOut = D_8005A0E4;
+    u16 idx = pIndices[0];
+    while (idx != 0xFFFF) {
+        u8* pEntry = pTable + idx * 2;
+        u8 first = pEntry[0];
+        u8 second = pEntry[1];
+        if (first != 0) {
+            pIndices++;
+            *pOut++ = first;
+        }
+        *pOut++ = second;
+        idx = pIndices[0];
+    }
+    *pOut = 0;
+}
 
 /* Save-format name decode (asm 80033B34): each u16 char code indexes a
  * 2-byte glyph pair in the table at g_SystemDataEntries+0x6C; byte 0 is
