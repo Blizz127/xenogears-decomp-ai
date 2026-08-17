@@ -45,6 +45,7 @@
 #include "world_map_callback_8c530.h"
 #include "world_map_callback_8d3f0.h"
 #include "world_map_callback_8dd6c.h"
+#include "world_map_callback_8e76c.h"
 #include "world_map_callback_8e190.h"
 #include "world_map_callback_906e0.h"
 #include "world_map_callback_91430.h"
@@ -76,6 +77,7 @@ extern s32 wm_8008D3F0(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008D678(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008DD6C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008E190(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008E76C(s32 slot_index) __attribute__((weak));
 extern s32 wm_800906E0(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091430(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091B54(s32 slot_index) __attribute__((weak));
@@ -248,6 +250,11 @@ static s16 wm_sched_builtin_8008DD6C(int slot_index)
     return (s16)wm_8008DD6C((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_8008E76C(int slot_index)
+{
+    return (s16)wm_8008E76C((s32)slot_index);
+}
+
 static s16 wm_sched_builtin_8008E190(int slot_index)
 {
     return (s16)wm_8008E190((s32)slot_index);
@@ -366,6 +373,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x8008E190u && wm_8008E190 != 0) {
         *out_fn = wm_sched_builtin_8008E190;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008E76Cu && wm_8008E76C != 0) {
+        *out_fn = wm_sched_builtin_8008E76C;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x800906E0u && wm_800906E0 != 0) {
