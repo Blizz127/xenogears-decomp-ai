@@ -1382,7 +1382,23 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CA60);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CB4C);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CC74);
+extern void func_8003AAC4(void* soundHandle, s32 soundId);
+
+void func_8008CC74(void) {
+    ActorData* pActor;
+    if (D_8004F36C != 0) {
+        s32 arg1 = FieldScriptVMGetArgument(1);
+        func_8003AAC4(D_80062528, arg1);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    } else if (D_8004F324 == 0xFF) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    } else if (D_800ADB1C == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+    D_800B00C0 = 1;
+}
 
 /* Extended VM opcode 0x13 (Noah OPX_13): set the actor's pending sound
  * fields (+0x10A id, +0x10C param, +0x10D state=0) and release any SPU
