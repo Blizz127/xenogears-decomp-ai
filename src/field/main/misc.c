@@ -413,7 +413,44 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088674);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088790);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800888A4);
+void func_800888A4(void) {
+    u32 actorIdx = (u32)D_800AFD1C;
+    u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+    u32 pActorData = *(u32*)(pFieldActor + 0x04);
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 dirBits = arg1 & 0xF;
+    s32 arg3 = FieldScriptVMGetArgument(3);
+    s32 speed = (arg3 >> 4 << 8) | (arg3 & 0xF);
+    u8* pActor = (u8*)g_FieldScriptVMCurActor;
+    u32 pSub;
+
+    func_8002303C(pActorData, 2, 0);
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x04) = (s16)(dirBits << 6);
+
+    {
+        u32 flags12C = *(u32*)(pActor + 0x12C);
+        flags12C = (flags12C & 0xF003FFFF) | (dirBits << 24);
+        *(u32*)(pActor + 0x12C) = flags12C;
+    }
+
+    pSub = *(u32*)(pActorData + 0x7C);
+    pSub = *(u32*)(pSub + 0x18);
+    *(s16*)(pSub + 0x06) = (s16)speed;
+
+    {
+        u32 flags130 = *(u32*)(pActor + 0x130);
+        u32 flags12C = *(u32*)(pActor + 0x12C);
+        flags130 = (flags130 & 0xFFFFFE00) | (speed & 0x1FF);
+        flags12C = (flags12C & 0xFFFCFFFF) | 0x10000;
+        *(u32*)(pActor + 0x130) = flags130;
+        *(u32*)(pActor + 0x12C) = flags12C;
+    }
+
+    *(u16*)(pActor + 0xCC) += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800889BC);
 
