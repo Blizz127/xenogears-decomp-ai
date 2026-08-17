@@ -59,6 +59,7 @@
 #include "world_map_callback_92fd8.h"
 #include "world_map_callback_92df8.h"
 #include "world_map_callback_71a50.h"
+#include "world_map_r4world_71a58.h"
 #include "world_map_callback_87710.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
@@ -95,6 +96,7 @@ extern s32 wm_80092C70(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092DF8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092FD8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80071A50(s32 slot_index) __attribute__((weak));
+extern s32 wm_80071A58(s32 slot_index) __attribute__((weak));
 extern s32 wm_80087710(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
@@ -332,6 +334,11 @@ static s16 wm_sched_builtin_80071A50(int slot_index)
     return (s16)wm_80071A50((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_80071A58(int slot_index)
+{
+    return (s16)wm_80071A58((s32)slot_index);
+}
+
 /* Slot 15 Table-B cb0. Its cb1 partner 0x80087734 and the byte-identical,
  * independently owned callback 0x800877E0 remain unresolved. */
 static s16 wm_sched_builtin_80087710(int slot_index)
@@ -460,6 +467,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80071A50u && wm_80071A50 != 0) {
         *out_fn = wm_sched_builtin_80071A50;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80071A58u && wm_80071A58 != 0) {
+        *out_fn = wm_sched_builtin_80071A58;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x80087710u && wm_80087710 != 0) {
