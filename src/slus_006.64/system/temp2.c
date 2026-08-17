@@ -289,7 +289,16 @@ s32 func_8002C644(u8* a0) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C68C);
+s32 func_8002C68C(u8* pBlock) {
+    u16 flags = *(u16*)(pBlock);
+    if (flags & 0x40) {
+        return 1;
+    }
+    *(u16*)(pBlock) = flags | 0x40;
+    HeapInsertAlloc((void*)pBlock, *(u32*)(pBlock + 0x14) - (u32)pBlock);
+    *(u32*)(pBlock + 0x14) = 0;
+    return 0;
+}
 
 extern u8 D_80059598;
 extern u8 D_80059599;
