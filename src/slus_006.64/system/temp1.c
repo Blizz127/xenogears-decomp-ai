@@ -1096,7 +1096,16 @@ reenter:
     assert(0 && "func_800248D4 opcode path is not implemented");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024F20);
+extern u8 D_800591AD, D_800591AE;
+extern s32 D_800591A8;
+
+void func_80024F20(void) {
+    D_800591AD = 0;
+    D_800591AE = 0;
+    D_800591A8 = 0x2000;
+    WorkListsReset();
+    func_8001D298();
+}
 
 
 
