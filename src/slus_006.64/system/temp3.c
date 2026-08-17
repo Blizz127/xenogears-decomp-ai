@@ -373,7 +373,15 @@ void func_8001B970(void) {
     D_8005947C = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB0C);
+extern u8 D_8006F9DE;
+extern s32 D_80059470;
+extern s32 D_8005949C;
+extern s32 D_80059520;
+extern void func_800379D8(s32 a, s32 b, s32 c, s32 d, s32 e);
+
+void func_8001BB0C(void) {
+    func_800379D8((s32)&D_8005949C, 0, (s32)&D_80059470, (s32)&D_80059520, (s32)D_8006F9DE);
+}
 
 /* Retail boot/reset helper used by func_8007954C exit 3 when D_800B0064 bit 7
  * is set. Keep the assembly in the matching build and provide its complete,
