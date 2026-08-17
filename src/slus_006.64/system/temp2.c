@@ -1322,8 +1322,6 @@ GPU_LINK_FUNC(func_800317BC, 0x03000000)
 GPU_LINK_FUNC(func_800317E0, 0x03000000)
 GPU_LINK_FUNC(func_80031804, 0x03000000)
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031828);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003184C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031870);
+GPU_LINK_FUNC(func_80031828, 0x02000000)
+GPU_LINK_FUNC(func_8003184C, 0x02000000)
+GPU_LINK_FUNC(func_80031870, 0x02000000)
