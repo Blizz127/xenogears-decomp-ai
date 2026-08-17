@@ -581,7 +581,18 @@ void func_8008A604(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A640);
+void func_8008A640(void) {
+    s32 charId = func_8008CF3C(FieldScriptVMGetArgument(3));
+    if (charId != 0xFF) {
+        s32 arg1 = FieldScriptVMGetArgument(1);
+        u8* pChar = (u8*)g_pGameState + charId * 164;
+        u8 currentVal = *(pChar + 0x2E3);
+        s32 newVal = arg1 - currentVal;
+        if (newVal < 0) newVal = 0;
+        *(pChar + 0x2E4) = (u8)newVal;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A6E0);
 
