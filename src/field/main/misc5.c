@@ -737,7 +737,28 @@ void func_800A7394(void) {
     CdDataSync(0);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A73E8);
+extern void* D_8005A418;
+extern void* D_8005A41C;
+
+void func_800A73E8(void) {
+    if (D_800ADB74 == 2) {
+        HeapUnpinBlock(D_8005A418);
+        HeapUnpinBlock(D_8005A41C);
+    } else {
+        RECT rect;
+        rect.x = 0x200; rect.y = 0;
+        rect.w = 0x140; rect.h = 0x80;
+        LoadImage(&rect, D_8005A418);
+        DrawSync(0);
+        rect.y = 0x80;
+        LoadImage(&rect, D_8005A41C);
+        DrawSync(0);
+        HeapUnpinBlock(D_8005A418);
+        HeapUnpinBlock(D_8005A41C);
+    }
+    HeapFree(D_8005A418);
+    HeapFree(D_8005A41C);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A74F8);
 
