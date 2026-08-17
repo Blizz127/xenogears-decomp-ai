@@ -236,7 +236,36 @@ int func_8002C3E8(u8* pModel) {
     return count;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
+s32 func_8002C4BC(u8* pBlock) {
+    u32 flags = *(u32*)(pBlock + 4);
+    s32 count = *(s32*)(pBlock);
+    s32 i;
+    if (!(flags & 1)) return count;
+    *(u32*)(pBlock + 4) = flags & ~1;
+    for (i = 0; i < count; i++) {
+        u8* pEntry = pBlock + 0x18 + i * 0x38;
+        *(u32*)(pEntry + 0x00) -= (u32)pBlock;
+        *(u32*)(pEntry + 0x04) -= (u32)pBlock;
+        *(u32*)(pEntry + 0x08) -= (u32)pBlock;
+        {
+            u32 rel = *(u32*)(pEntry + 0x14);
+            if (rel != 0) {
+                u8* pTable = pBlock + rel;
+                s32 cnt = *(s32*)(pTable);
+                s32 j;
+                if (cnt != -1) {
+                    pTable += 4;
+                    for (j = cnt; j >= 0; j--) {
+                        *(u32*)(pTable + j * 12 + 4) -= (u32)pBlock;
+                        *(u32*)(pTable + j * 12 + 8) -= (u32)pBlock;
+                    }
+                }
+                *(u32*)(pEntry + 0x14) -= (u32)pBlock;
+            }
+        }
+    }
+    return count;
+}
 
 void func_8002C59C(u8* pBlock) {
     u16 flags = *(u16*)(pBlock);
