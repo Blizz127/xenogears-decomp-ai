@@ -950,7 +950,21 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D6AC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D77C);
+void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 6; /* POLY_G3 tag */
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x14)
+    );
+    pPoly[7] = pColor[3];
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
 
