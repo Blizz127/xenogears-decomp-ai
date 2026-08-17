@@ -167,7 +167,36 @@ void FieldScriptCopyGear(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008764C);
+void func_8008764C(void) {
+    s32 srcIdx = FieldScriptVMGetArgument(1);
+    s32 dstIdx = FieldScriptVMGetArgument(3);
+    u8* pGS = (u8*)g_pGameState;
+    u8* pSrc = pGS + srcIdx * 164 + 0x26C;
+    u8* pDst = pGS + dstIdx * 164 + 0x26C;
+    s32 i;
+    /* Copy 164 bytes (10*16 + 4) in 16-byte chunks */
+    for (i = 0; i < 160; i += 16) {
+        *(s32*)(pDst + i)      = *(s32*)(pSrc + i);
+        *(s32*)(pDst + i + 4)  = *(s32*)(pSrc + i + 4);
+        *(s32*)(pDst + i + 8)  = *(s32*)(pSrc + i + 8);
+        *(s32*)(pDst + i + 12) = *(s32*)(pSrc + i + 12);
+    }
+    *(s32*)(pDst + 160) = *(s32*)(pSrc + 160);
+    /* Copy 32 bytes at offset 0x16C0 using unaligned access */
+    pSrc = pGS + srcIdx * 32 + 0x16C0;
+    pDst = pGS + dstIdx * 32 + 0x16C0;
+    for (i = 0; i < 32; i += 4) {
+        *(s32*)(pDst + i) = *(s32*)(pSrc + i);
+    }
+    /* Set party flags */
+    if (srcIdx == 9) {
+        *(u16*)(pGS + 0x22B6) |= 0x2000;
+    }
+    if (srcIdx == 10) {
+        *(u16*)(pGS + 0x22B6) |= 0x1000;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 extern u8 D_80050622;
 
