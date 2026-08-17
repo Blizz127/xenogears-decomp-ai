@@ -1,0 +1,16 @@
+callee,sites,status,notes
+wm_80090A84,1,CANONICAL,JT2 class source (JT1 slot 0/1)
+func_800245D8,5,CANONICAL,anim setter; object = raw-low-32 native ptr at slot+0x4C (accepted 8A2C8 convention)
+wm_800894C8,3,CANONICAL,record 0x2F flag clear (resync / idle / handoff)
+wm_8008C1DC,2,CANONICAL,ctx 0x2F constant at the movement site; slot_idx+0x2E at JT1 slot 0xE (both transcribed as-is)
+wm_80095414,2,CANONICAL,movement resolve + retry; scale = lh slot[+0x4A]<<12; mode = lw D_8009BE10 verbatim
+wm_8008C040,2,CANONICAL,boundary probe: scratch+0x90 vec on r==1; slot pos on r!=1
+wm_8007528C,1,CANONICAL,after breadcrumb ring append
+wm_80094238,1,CANONICAL,trigger check (pos 0)
+wm_80097770,10,CANONICAL,slot claims/releases; returns checked at slots 0xA/0xF/0x10/0x11/0x2C/0x2D and ignored at slots 8/9
+wm_800941C4,2,CANONICAL,approach vector setup (JT1 0xD and 0x28)
+wm_8008BEC8,2,CANONICAL,approach stepper; ==3 advances (JT1 0xE / 0x29)
+wm_80093978,2,CANONICAL,heading recompute (JT1 0x12 / 0x28)
+rcos,1,CANONICAL,facing-point x offset (JT1 0x28)
+rsin,1,CANONICAL,facing-point z offset negated (JT1 0x28)
+wm_80074794,1,CANONICAL,common tail while slot[+0x24]==0

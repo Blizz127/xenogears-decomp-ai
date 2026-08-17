@@ -1,0 +1,21 @@
+direction,function,sites,status,notes
+callee,wm_80090A84,0x8008A824,CANONICAL,record classifier; its result drives JT2 (1..5) and the movement block (0 or >=6)
+callee,func_800245D8,"0x8008A8E8, 0x8008A918, 0x8008AD84, 0x8008B020, 0x8008B04C",CANONICAL,resident actor-anim toggle (ptr = slot[+0x4C], a1 = 0/1)
+callee,wm_800894C8,"0x8008A8F0, 0x8008ABA4, 0x8008AE34",CANONICAL,object-id 0x2F notifier (accepted W34B21-C4B)
+callee,wm_8008C1DC,"0x8008A928, 0x8008AE00",CANONICAL,W34B24-I6; sprite/vec pair emit; NOTE second site passes a0 = slot_idx+0x2E (s1 preserved from entry)
+callee,wm_80095414,"0x8008A958, 0x8008A9AC",CANONICAL-PENDING,keystone (candidate/w34b24-i7-95414); called TWICE with velocity-rewrite retry protocol; result consumed as (s16)
+callee,wm_8008C040,"0x8008A9F8, 0x8008AB04",CANONICAL,overlay boundary checker (accepted W34B23-I1); 5-arg form with out ptrs 0x8009D738 + 0x8009BD60
+callee,wm_8007528C,0x8008AADC,CANONICAL,accepted; called after ring append with slot+0x28
+callee,wm_80094238,0x8008AB10,CANONICAL,W34B24-I6; rect-trigger lookup on committed position (a1=0)
+callee,wm_80097770,"0x8008AC1C, 0x8008AC34, 0x8008AC44, 0x8008AC9C, 0x8008ACB4, 0x8008ACC4, 0x8008AD04, 0x8008AE18, 0x8008AE58, 0x8008AE98, 0x8008B1EC, 0x8008B228",CANONICAL,W34B24-I6 pool-slot claim; (slot#, value) pairs: (2|3|4|5|6,1|4|5|8)
+callee,wm_800941C4,"0x8008AD48, 0x8008AFF8",CANONICAL,W34B24-I6 heading/approach vector helper
+callee,wm_80093978,"0x8008AEF4, 0x8008AF80",CANONICAL,terrain-sampler angle helper
+callee,rcos,0x8008AFA4,CANONICAL,PsyCross/SLUS
+callee,rsin,0x8008AFC8,CANONICAL,PsyCross/SLUS
+callee,wm_8008BEC8,"0x8008AD9C, 0x8008B034",CANONICAL,W34B24-I6 two-axis approach stepper; ==3 advances state
+callee,wm_80074794,0x8008B288,CANONICAL,accepted; conditional tail registration (slot[+0x24]==0)
+data_ref,JT1 0x80070518,0x8008A800,-,65-entry main state table (kind JUMP_TABLE_JR; the callgraph scan's "table_x65")
+data_ref,JT2 0x80070620,0x8008A844,-,5-entry 90A84-class table ("table_x5")
+data_ref,crumb table 0x8009B180,0x8008AA40,-,lhu with SIGN-EXTENDED byte index<<1; initialized overlay data
+caller,wm_80097800 (scheduler),slot-1 cb1 dispatch,CANONICAL,a0 = slot index (observed a0=1); return (s16) stored to slot+0x00 -> always 1 (persistent per-frame handler)
+closure_verdict,-,-,MISSING=0,"14/15 callees strong T in canonical build (tree ea03c4c); wm_80095414 CANONICAL-PENDING in lane I7"
