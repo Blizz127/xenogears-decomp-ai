@@ -2298,7 +2298,43 @@ void func_8008E85C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008E8C8);
+void func_8008E8C8(void) {
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    u8 subOp = SCRIPT_READ_U8_REL(1);
+
+    switch (subOp) {
+        case 0: {
+            u32 flags0 = *(u32*)(pActor);
+            if (flags0 & 0x8000) {
+                *(u32*)(pActor) = flags0 & 0xFFFF7FFF;
+            }
+            pActor = g_FieldScriptVMCurActor;
+            if (*(u32*)((u8*)pActor + 0x04) & 0x80000) {
+                s32 idx = D_800AFD1C;
+                u8* pFieldActor = (u8*)g_FieldActors + idx * 92;
+                u32 pSub = *(u32*)(pFieldActor + 0x04);
+                *(u32*)(pSub + 0x18) = 0;
+                *(u32*)(pSub + 0x14) = 0;
+                *(u32*)(pSub + 0x0C) = 0;
+                *(u32*)((u8*)pActor + 0x04) &= 0xFFF7FFFF;
+            }
+            break;
+        }
+        case 1: {
+            u32 flags0 = *(u32*)(pActor);
+            u16 val = *(u16*)((u8*)pActor + 0x106);
+            *(u32*)(pActor) = flags0 | 0x8000;
+            *(u16*)((u8*)pActor + 0x11C) = val;
+            break;
+        }
+        case 2: {
+            u32 flags4 = *(u32*)((u8*)pActor + 0x04);
+            *(u32*)((u8*)pActor + 0x04) = flags4 | 0x80000;
+            break;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 extern s32 D_800ADB7C;
 
