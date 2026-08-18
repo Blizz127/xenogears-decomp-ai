@@ -202,7 +202,32 @@ void func_800980FC(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098184);
+void func_80098184(void) {
+    void* pActor = g_FieldScriptVMCurActor;
+    u8 idx = *(u8*)((u8*)pActor + 0xCE);
+    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
+    u32 val = *pSlot;
+    if (((val >> 23) & 3) == 0) {
+        *pSlot = val | 0x1800000;
+        *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pActor + 0x22);
+        *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pActor + 0x26);
+        *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pActor + 0x2A);
+    }
+    {
+        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
+        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
+        if (pSlot2[0] == 0xFFFF) {
+            s32 arg = FieldScriptVMGetArgument(3);
+            pSlot2[0] = (u16)arg;
+        }
+    }
+    {
+        s32 arg = FieldScriptVMGetArgument(3);
+        if (func_80099AC0(arg) == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098274);
 
