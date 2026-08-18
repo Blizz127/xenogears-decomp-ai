@@ -2845,7 +2845,16 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003BB08);
+void func_8003BB08(u16 mask, void* pData) {
+    u16* pEntry = (u16*)((u8*)pData + 0x94);
+    s32 count = *(u8*)((u8*)pData + 0x14);
+    while (count-- != 0) {
+        if (*pEntry != 0) {
+            *pEntry |= mask;
+        }
+        pEntry += 0xAC; /* stride 0x158 / 2 */
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 s32 SoundCalculateAudioManagerSize(s32 elementCount) {
