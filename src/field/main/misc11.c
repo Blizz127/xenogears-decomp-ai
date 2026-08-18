@@ -151,9 +151,17 @@ void func_80092404(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092424);
+extern u32* D_800AFB20;
 
-extern u32 D_800AFB20[];
+u32 func_80092424(s32 index, s32 component) {
+    switch (component) {
+        case 0: return ((u8*)D_800AFB20)[index * 4];
+        case 1: return ((u8*)D_800AFB20)[index * 4 + 1];
+        case 2: return ((u8*)D_800AFB20)[index * 4 + 2];
+        case 3: return ((u8*)D_800AFB20)[index * 4 + 3];
+    }
+    return 0;
+}
 
 void func_800924D4(s32 index, s32 component, s32 value) {
     u32* entry;
@@ -165,17 +173,17 @@ void func_800924D4(s32 index, s32 component, s32 value) {
             *entry = (*entry & ~0xFFu) | (value & 0xFF);
             break;
         case 1:
-            entry = &D_800AFB20[index];
+            entry = (u32*)((u8*)D_800AFB20 + index * 4);
             mask = 0xFFFF00FF;
             *entry = (*entry & mask) | ((value & 0xFF) << 8);
             break;
         case 2:
-            entry = &D_800AFB20[index];
+            entry = (u32*)((u8*)D_800AFB20 + index * 4);
             mask = 0xFF00FFFF;
             *entry = (*entry & mask) | ((value & 0xFF) << 16);
             break;
         case 3:
-            entry = &D_800AFB20[index];
+            entry = (u32*)((u8*)D_800AFB20 + index * 4);
             mask = 0x00FFFFFF;
             *entry = (*entry & mask) | ((value & 0xFF) << 24);
             break;
@@ -206,7 +214,12 @@ void func_80092664(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800926C8);
+void func_800926C8(void) {
+    u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
+    u32 arg = FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur | arg);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092768);
 
@@ -392,8 +405,6 @@ void func_800932D0(void) {
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800933F8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093568);
-
-extern s32 func_80092424(u8 a, u8 b);
 
 void func_80093664(void) {
     u8 b1 = SCRIPT_READ_U8_REL(1);
