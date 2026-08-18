@@ -1201,7 +1201,28 @@ void func_8009B15C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B184);
+extern u8 D_800B21CF;
+extern u8 D_800B21CC;
+extern s32 D_800B2368;
+extern s32 D_800B2364;
+extern s32 D_800B2360;
+extern u8 D_800B21CE;
+extern s32 g_PlayerActorIndex;
+extern void func_80081C54(s32);
+
+void func_8009B184(void) {
+    s32 i;
+    D_800B21CF = 0;
+    D_800B21CC = 0;
+    D_800B2368 = 0;
+    D_800B2364 = 0;
+    D_800B2360 = 0;
+    D_800B21CE = 0;
+    for (i = 0; i < 0x20; i++) {
+        func_80081C54(g_PlayerActorIndex);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B210);
 
