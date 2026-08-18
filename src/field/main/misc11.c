@@ -400,7 +400,20 @@ void func_80093824(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093888);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093930);
+extern s32 D_800ADB64;
+extern s32 D_800C3A6A;
+extern s32 D_8004F350;
+
+void func_80093930(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    D_800ADB64 = 1;
+    D_800B00C0 = 1;
+    *(s16*)((u8*)g_pGameState + 0x1932) = (s16)arg1;
+    *(s16*)((u8*)g_pGameState + 0x2320) = (s16)arg1;
+    D_800C3A6A = (s16)arg1;
+    D_8004F350++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void func_800939A0(void) {
     D_80059171 = FieldScriptVMGetArgument(1);
