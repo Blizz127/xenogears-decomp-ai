@@ -2553,7 +2553,44 @@ void func_8003AA30(AudioManager* manager) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AAC4);
+void func_8003AAC4(void* pManager, u32 mask) {
+    u8* pFlags;
+    u8* pVoiceData;
+    u8* pChannelData;
+    s32 count;
+    if (pManager == NULL) return;
+    pFlags = (u8*)pManager + 0x94;
+    pVoiceData = (u8*)pManager + 0xBB;
+    count = *(u8*)((u8*)pManager + 0x14);
+    pChannelData = (u8*)pManager + 0xC4;
+    *(u32*)((u8*)pManager + 0x4C) = mask;
+    while (count-- != 0) {
+        u16 flags = *(u16*)pFlags;
+        if (flags != 0) {
+            if (mask & 1) {
+                if (!(flags & 0x20)) {
+                    *(u16*)pFlags = flags | 0x20;
+                    if (*(s16*)((u8*)pManager + 0x10) & 0x8000) {
+                        SoundStopVoiceOnChannel(pChannelData, *pVoiceData);
+                    }
+                }
+            } else {
+                if (flags & 0x20) {
+                    *(u16*)pFlags = flags & 0xFFDF;
+                    if ((*(u32*)pFlags & 0x110) == 0x100) {
+                        if (*(s16*)((u8*)pManager + 0x10) & 0x8000) {
+                            SoundAssignVoiceToChannelAndPlay(pChannelData, *pVoiceData);
+                        }
+                    }
+                }
+            }
+        }
+        pVoiceData += 0x158;
+        pChannelData += 0x158;
+        pFlags += 0x158;
+        mask >>= 1;
+    }
+}
 
 void func_8003ABE8(u8* arg0, u8 arg1) {
     arg0[0x1B] = arg1;
