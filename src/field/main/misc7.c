@@ -1224,7 +1224,36 @@ void func_8009B184(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B210);
+extern s32 D_8005A444[];
+extern s32 func_8009AEE0(s32, s32, s32, s32);
+extern u8 D_800B21CC;
+extern s16 D_800B2348;
+extern void func_8009B338(void);
+
+void func_8009B210(void) {
+    u8* pActor = (u8*)g_FieldActors + D_8005A444[0] * 0x7C;
+    void* pModel = *(void**)(pActor + 0x4C);
+    s16 posX = *(s16*)((u8*)pModel + 0x22);
+    s16 posZ = *(s16*)((u8*)pModel + 0x2A);
+    s32 mask = 0;
+    s32 r;
+    r = func_8009AEE0(0, posX, posZ, 0xFF);
+    mask |= (r == 0) ? 1 : 0;
+    r = func_8009AEE0(1, posX, posZ, 0xFF);
+    if (r == 0) mask |= 2;
+    r = func_8009AEE0(2, posX, posZ, 0xFF);
+    if (r == 0) mask |= 4;
+    D_800B00C0 = (r != 0) ? 1 : 0;  /* last r's non-zero sets D_800B00C0 */
+    if (mask == 7) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
+        D_800B21CC = 0;
+        D_800B2348 = 0;
+        func_8009B338();
+    } else {
+        D_800B21CC = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    }
+}
 
 extern s32 D_800B2360;
 extern s32 D_800B2364;
