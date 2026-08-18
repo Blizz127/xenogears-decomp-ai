@@ -64,7 +64,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091ADC);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091BBC);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E00);
+void func_80091E00(void) {
+    u8 mask = SCRIPT_READ_U8_REL(5);
+    s32 arg1 = FieldScriptArgument1(1, mask);
+    s32 motionType = arg1 & 3;
+    u32 flags = *(u32*)((u8*)g_FieldScriptVMCurActor + 0x134);
+    *(u32*)((u8*)g_FieldScriptVMCurActor + 0x134) = (flags & 0xFFFFFF9F) | (motionType << 5);
+    mask = SCRIPT_READ_U8_REL(5);
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xEE) = (u16)FieldScriptArgument2(3, mask);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E98);
 
