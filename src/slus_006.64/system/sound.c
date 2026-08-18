@@ -1449,7 +1449,23 @@ void SoundHeapFree(void* pMemory) {
     EnableEvent(g_unk_SoundEvent);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800391CC);
+s32 func_800391CC(void) {
+    void* pBlock = g_SoundHeapHead;
+    s32 maxFree = 0;
+    void* pLast;
+    while (*(void**)((u8*)pBlock + 0xC) != NULL) {
+        void* pNext = *(void**)((u8*)pBlock + 0xC);
+        s32 free = (u8*)pNext - *(u8**)((u8*)pBlock + 8);
+        if (free > maxFree) maxFree = free;
+        pLast = pNext;
+        pBlock = pNext;
+    }
+    {
+        s32 tailFree = (u8*)g_SoundHeapEnd - *(u8**)((u8*)pBlock + 8);
+        if (tailFree > maxFree) maxFree = tailFree;
+    }
+    return maxFree & ~0xF;
+}
 
 void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
     u32* pCurSrc;
