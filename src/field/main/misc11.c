@@ -291,7 +291,7 @@ extern s32 D_800B0064;
 
 void func_80092FB4(void) {
     if (D_800ADBD8 != 0) {
-        g_FieldControl.controllerBtnMask = -1;
+        g_FieldControl.isRandomEncountersEnabled = -1;
         D_800ADBD8 = 0;
         D_800B0064 = FieldScriptVMGetArgument(1);
     }
@@ -486,7 +486,20 @@ void func_80093824(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093888);
+void func_80093888(void) {
+    s32 arg3, arg1;
+    g_FieldControl.isRandomEncountersEnabled = -1;
+    arg3 = FieldScriptVMGetArgument(3);
+    arg1 = FieldScriptVMGetArgument(1);
+    func_80092F44();
+    FieldScriptMemoryWriteU16(2, arg3);
+    g_GameSceneMapNum = arg1;
+    func_800931F8();
+    D_800ADB64 = 1;
+    D_800B00C0 = 1;
+    D_8004F350++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 extern s32 D_800ADB64;
 extern s32 D_800C3A6A;
