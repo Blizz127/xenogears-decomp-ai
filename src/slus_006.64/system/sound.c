@@ -2295,7 +2295,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ACC8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD20);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD98);
+void func_8003AD98(void* pManager) {
+    u16 flags = *(u16*)((u8*)pManager + 0x10);
+    if (flags & 0x10) {
+        *(u16*)((u8*)pManager + 0x10) = flags & 0xFFEF;
+        func_8003B930(pManager);
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ADCC);
 
