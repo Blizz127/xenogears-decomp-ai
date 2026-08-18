@@ -221,7 +221,12 @@ void func_800926C8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092768);
+void func_80092768(void) {
+    u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
+    u32 arg = FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur & arg);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 void func_80092808(void) {
     u8* actorData = (u8*)g_FieldScriptVMCurActor;
@@ -244,9 +249,33 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092C20);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092DFC);
+extern s32 D_800ADBDC;
+extern s32 D_800ADBE4;
+extern s32 D_800ADB2C;
+extern s32 D_8004F308;
+extern s32 D_800ADB90;
+extern void func_800A0C4C(void);
+extern void func_80092894(s32, s32, s32, s32);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092EA0);
+void func_80092DFC(void) {
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+    } else {
+        func_800A0C4C();
+        func_80092894(0, 0, 0, 0);
+    }
+}
+
+void func_80092EA0(void) {
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+    } else {
+        func_800A0C4C();
+        func_80092894(0x3E0, 0, 0, 0);
+    }
+}
 
 extern s32 g_GameSceneMapNum;
 
@@ -269,11 +298,6 @@ void func_80092FB4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-extern s32 D_800ADBDC;
-extern s32 D_800ADBE4;
-extern s32 D_800ADB2C;
-extern s32 D_8004F308;
-extern s32 D_800ADB90;
 extern u8 D_800B02C8;
 extern void func_800A31E8(void);
 extern int FieldScriptArgument1(int index, int mask);
@@ -501,10 +525,6 @@ void func_80093A04(void) {
 // These are likely part of a struct
 extern s8 D_800B21D0[];
 extern s8 D_800B21D1[];
-
-extern s32 D_800ADBDC;
-extern s32 D_800ADBE4;
-extern s32 D_800B00C0;
 
 void func_80093A68(void) {
     g_Scene.unk48 &= 0x7FFF;
