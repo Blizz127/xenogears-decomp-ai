@@ -1870,7 +1870,18 @@ void func_80039D2C(s32 bIn) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039D78);
+extern s32 D_80059544;
+
+s32 func_80039D78(s32 numVoices) {
+    if (numVoices != 0) {
+        s32 val;
+        if (numVoices >= 0x11) numVoices = 0x10;
+        if (numVoices < 4) numVoices = 4;
+        val = numVoices & 0xFE;
+        D_80059544 = val;
+    }
+    return D_80059544;
+}
 
 // SFX API: play a packed (sedId<<16|entry) effect on the fixed top slot
 // (rotator-2) at default volume/pan; priority byte 0x80 (not stealable).
