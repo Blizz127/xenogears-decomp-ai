@@ -82,7 +82,41 @@ void func_80091ADC(s16 x, s16 y, s16 w, s16 h, s16 extra, s16 mode, s32 doMove) 
     D_800AF768++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091BBC);
+extern int FieldScriptArgument5(int index, int mask);
+extern int FieldScriptArgument6(int index, int mask);
+
+void func_80091BBC(void) {
+    u8 mask;
+    s32 arg1, arg2, arg3, arg4, arg5, arg6;
+
+    mask = SCRIPT_READ_U8_REL(0xD);
+    arg1 = FieldScriptArgument1(1, mask);
+    mask = SCRIPT_READ_U8_REL(0xD);
+    arg2 = FieldScriptArgument2(3, mask);
+
+    if (arg1 == 0 && arg2 == 0) {
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg3 = FieldScriptArgument3(5, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg4 = FieldScriptArgument4(7, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg5 = FieldScriptArgument5(9, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg6 = FieldScriptArgument6(0xB, mask);
+        func_80091ADC(arg3, arg4, arg5, arg6, 0, 0, 1);
+    } else {
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg3 = FieldScriptArgument3(5, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg4 = FieldScriptArgument4(7, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg5 = FieldScriptArgument5(9, mask);
+        mask = SCRIPT_READ_U8_REL(0xD);
+        arg6 = FieldScriptArgument6(0xB, mask);
+        func_80091ADC(arg1, arg2, arg3, arg4, arg5, arg6, 0);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xE;
+}
 
 void func_80091E00(void) {
     u8 mask = SCRIPT_READ_U8_REL(5);
