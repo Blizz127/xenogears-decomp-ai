@@ -250,7 +250,21 @@ void func_80098430(void) {
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098430);
 #endif
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800984EC);
+extern s16 D_800B21AE;
+extern s16 D_800B21B0;
+extern s16 D_800B21B2;
+extern u8 D_800B21D2;
+
+void func_800984EC(void) {
+    u8 mask1 = SCRIPT_READ_U8_REL(7);
+    D_800B21AE = (s16)FieldScriptArgument1(1, mask1);
+    mask1 = SCRIPT_READ_U8_REL(7);
+    D_800B21B0 = (s16)FieldScriptArgument2(3, mask1);
+    mask1 = SCRIPT_READ_U8_REL(7);
+    D_800B21B2 = (s16)FieldScriptArgument3(5, mask1);
+    D_800B21D2 |= 0x80;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+}
 
 extern u8 D_8006FD1C[];
 
