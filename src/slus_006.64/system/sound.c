@@ -2214,7 +2214,29 @@ void func_8003A55C(s32 slot, s32 pan) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A55C);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A5D0);
+u32 func_8003A5D0(s32 pData) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x94;
+    s32 count = D_80059478;
+    u32 mask = 0;
+    u32 bit = 1;
+    if (pData == -1) {
+        while (count-- != 0) {
+            if (*(u16*)pEntry & 1) mask |= bit;
+            pEntry += 0x158;
+            bit <<= 1;
+        }
+    } else {
+        while (count-- != 0) {
+            if ((*(u16*)pEntry & 1) && *(s32*)(pEntry + 8) == pData) {
+                mask |= bit;
+            }
+            pEntry += 0x158;
+            bit <<= 1;
+        }
+    }
+    return mask;
+}
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching
