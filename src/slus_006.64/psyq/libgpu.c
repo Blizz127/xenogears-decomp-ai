@@ -261,7 +261,24 @@ int SetGraphDebug(int level) {
 */
 
 // SetGrapQue ?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_8004440C);
+extern u8 D_800568D1;
+extern void* D_800568C8;
+extern char D_80019104[];
+extern void DMACallback(s32, void*);
+
+u8 func_8004440C(u8 arg0) {
+    u8 old = D_800568D1;
+    if (g_GraphDebugLevel >= 2) {
+        g_GpuPrintf(D_80019104, arg0);
+    }
+    if (arg0 != D_800568D1) {
+        void (*pFunc)(s32) = *(void (**)(s32))((u8*)D_800568C8 + 0x34);
+        pFunc(1);
+        DMACallback(2, NULL);
+        D_800568D1 = arg0;
+    }
+    return old;
+}
 
 extern u8 D_800568D0;
 
