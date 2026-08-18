@@ -158,7 +158,24 @@ void FieldScriptVMHandlerDecreasePartyMp(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/party/stats", func_80097108);
+extern s32 g_GamePartyMembers[];
+extern s16 g_FieldNumPartyMembersMasks[];
+extern void FieldPartyMemberIncreaseMp(s32, s32);
+
+void func_80097108(void) {
+    u8 mask1 = SCRIPT_READ_U8_REL(3);
+    s32 mpAmount = FieldScriptArgument1(1, mask1);
+    u8 partyMask = SCRIPT_READ_U8_REL(3) & 3;
+    s16 memberMask = g_FieldNumPartyMembersMasks[partyMask];
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        if (g_GamePartyMembers[i] != 0xFF && (memberMask & 1)) {
+            FieldPartyMemberIncreaseMp(i, mpAmount);
+        }
+        memberMask >>= 1;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+}
 
 void FieldScriptVMHandlerRestoreCharacterHpAndMp(void) {
     int id = FieldScriptVMGetArgument(1);
