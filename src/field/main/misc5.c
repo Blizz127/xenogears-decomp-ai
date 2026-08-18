@@ -963,8 +963,90 @@ void func_800A84C0(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8BA4);
 
-// https://decomp.me/scratch/3xYjM
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldInitializeParticlePrimitive);
+extern u16 D_800AF27C[];
+extern u16 D_800AF27E[];
+extern u16 D_800AF280[];
+extern u16 D_800AF282[];
+extern u16 D_800AF284[];
+extern u16 D_800AF286[];
+extern u16 D_800AF288[];
+extern u16 D_800AF28A[];
+extern u16 D_800AF28C[];
+extern u16 D_800AF28E[];
+extern u16 D_800AF290[];
+extern u16 D_800AF292[];
+
+void FieldInitializeParticlePrimitive(void* pParticle, s32 index, s32 abr) {
+    POLY_FT4* poly = (POLY_FT4*)((u8*)pParticle + 0x50);
+    s32 stride = index * 24;
+    s32 u0, v0, u1, v1;
+    s32 tu0, tv0, tu1, tv1;
+    s32 a, b, c, d;
+    void* dst;
+
+    SetPolyFT4(poly);
+
+    u0 = *(u16*)((u8*)D_800AF27C + stride);
+    v0 = *(u16*)((u8*)D_800AF27E + stride);
+    u1 = *(u16*)((u8*)D_800AF280 + stride);
+    v1 = *(u16*)((u8*)D_800AF282 + stride);
+
+    *(s16*)((u8*)pParticle + 0xA4) = 0;
+    *(s16*)((u8*)pParticle + 0xAC) = 0;
+    *(s16*)((u8*)pParticle + 0xB4) = 0;
+    *(s16*)((u8*)pParticle + 0xBC) = 0;
+    ((u8*)pParticle)[0x54] = 0x80;
+    ((u8*)pParticle)[0x55] = 0x80;
+    ((u8*)pParticle)[0x56] = 0x80;
+
+    a = (u1 - u0) << 4;
+    b = (v1 - v0) << 4;
+    c = (u0 + u1) << 4;
+    d = (v0 + v1) << 4;
+
+    *(s16*)((u8*)pParticle + 0xA0) = a;
+    *(s16*)((u8*)pParticle + 0xA2) = b;
+    *(s16*)((u8*)pParticle + 0xA8) = c;
+    *(s16*)((u8*)pParticle + 0xAA) = b;
+    *(s16*)((u8*)pParticle + 0xB0) = a;
+    *(s16*)((u8*)pParticle + 0xB2) = d;
+    *(s16*)((u8*)pParticle + 0xB8) = c;
+    *(s16*)((u8*)pParticle + 0xBA) = d;
+
+    tu0 = *(u16*)((u8*)D_800AF284 + stride);
+    tv0 = *(u16*)((u8*)D_800AF286 + stride);
+    tu1 = *(u16*)((u8*)D_800AF288 + stride);
+    tv1 = *(u16*)((u8*)D_800AF28A + stride);
+
+    {
+        s32 s0 = *(u16*)((u8*)D_800AF28C + stride);
+        s32 s1 = *(u16*)((u8*)D_800AF28E + stride) + 0x3F;
+        s32 s2 = *(u16*)((u8*)D_800AF290 + stride) - 1;
+        s32 s3 = *(u16*)((u8*)D_800AF292 + stride) + 0x3F;
+
+        FieldClampPolyFT4UVs(poly, tu0, tv0 + 0x40, tu1 - 1, tv0, tu0, tv1 + 0x40, tu1 - 1);
+    }
+
+    SetSemiTrans(poly, 1);
+    *(u16*)((u8*)pParticle + 0x66) = GetTPage(0, abr, 0x3C0, 0x140);
+    *(u16*)((u8*)pParticle + 0x5E) = GetClut(0x100, 0xF7);
+
+    /* Copy FT4 primitive data to particle buffer */
+    dst = (u8*)pParticle + 0x78;
+    {
+        u32* src = (u32*)poly;
+        u32* d = (u32*)dst;
+        s32 i;
+        for (i = 0; i < 4; i++) {
+            d[i * 4 + 0] = src[i * 4 + 0];
+            d[i * 4 + 1] = src[i * 4 + 1];
+            d[i * 4 + 2] = src[i * 4 + 2];
+            d[i * 4 + 3] = src[i * 4 + 3];
+        }
+        d[16] = src[16];
+        d[17] = src[17];
+    }
+}
 
 extern s32 D_800ADB34;
 extern u32 D_800AFC70;
