@@ -2133,7 +2133,20 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A3B8);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A450);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A4FC);
+void func_8003A4FC(s32 pData, s32 pan) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x96;
+    s32 count = D_80059478;
+    u16 panWord = (u16)(pan << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 2);
+        if ((flags & 1) && *(s32*)(pEntry + 6) == pData) {
+            *(u16*)(pEntry + 0x72) = panWord;
+            *(u16*)(pEntry + 0) = 0x100;
+        }
+        pEntry += 0x158;
+    }
+}
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching
