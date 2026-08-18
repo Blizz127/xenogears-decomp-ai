@@ -183,7 +183,55 @@ void func_80092148(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
+extern s32 D_800ADB8C;
+extern s16 D_800AFEA8;
+
+void func_800921E8(void) {
+    s16 count;
+    u16 initVal;
+    s16 x, y, modulus, width, destX, destY;
+    s16* pSizes;
+    void** pPtrs;
+    void** pLineScrollPtrs;
+
+    if (D_800ADB8C != 0 || D_800AFEA8 >= 0x20) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
+        return;
+    }
+
+    count = FieldScriptVMGetInstructionArgument(9);
+    pSizes = (s16*)((u8*)&D_800AFEA8 + 0x104);
+    pSizes[D_800AFEA8] = count;
+
+    pPtrs = (void**)((u8*)&D_800AFEA8 + 0x84);
+    pPtrs[D_800AFEA8] = HeapAlloc(count + 1, 0);
+
+    pLineScrollPtrs = (void**)((u8*)&D_800AFEA8 + 0x4);
+    pLineScrollPtrs[D_800AFEA8] = HeapAlloc(0x18, 0);
+
+    initVal = FieldScriptVMGetInstructionArgument(0xF);
+    if (count != 0) {
+        s32 i;
+        for (i = 0; i < count; i++) {
+            ((u8*)pPtrs[D_800AFEA8])[i] = (u8)initVal;
+        }
+    }
+
+    x = FieldScriptVMGetInstructionArgument(1);
+    y = FieldScriptVMGetInstructionArgument(3);
+    modulus = FieldScriptVMGetInstructionArgument(5);
+    width = FieldScriptVMGetInstructionArgument(7);
+    destX = FieldScriptVMGetInstructionArgument(0xB);
+    destY = FieldScriptVMGetInstructionArgument(0xD);
+
+    GfxLineScrollInitialize(
+        pLineScrollPtrs[D_800AFEA8],
+        x, y, modulus, width, count, destX, destY,
+        (s8*)pPtrs[D_800AFEA8]);
+
+    D_800AFEA8++;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
+}
 
 void func_800923E4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
