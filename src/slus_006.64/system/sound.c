@@ -1665,7 +1665,11 @@ SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(s32 targetAddress) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800397FC);
+void* func_800397FC(s32 arg0, s32 arg1, s32 arg2) {
+    void* result = func_80039850(arg0);
+    func_80039A80(result, arg1, arg2);
+    return result;
+}
 
 // Song-start: create an AudioManager from a loaded song file (music twin of
 // func_8003B148). Sized by the file's element count (+0x180 tail block when
