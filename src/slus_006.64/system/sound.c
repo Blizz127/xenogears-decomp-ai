@@ -2145,7 +2145,29 @@ void func_8003A344(s32 slot, s32 volume) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A344);
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A3B8);
+void func_8003A3B8(s32 pData, s32 pitch, s32 steps) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x98;
+    s32 count = D_80059478;
+    u16 pitchWord = (u16)(pitch << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 4);
+        if ((flags & 1) && *(s32*)(pEntry + 4) == pData) {
+            s16 curPitch = *(s16*)(pEntry + 0x72);
+            s32 delta = pitchWord - curPitch;
+            if (delta != 0) {
+                s32 step;
+                if (steps == 0) steps = 1;
+                step = delta / steps;
+                *(u16*)(pEntry + 0x8A) = pitchWord;
+                *(u16*)(pEntry + 0x96) = (u16)steps;
+                *(u16*)(pEntry + 0) |= 0x20;
+                *(u16*)(pEntry + 0x88) = (u16)step;
+            }
+        }
+        pEntry += 0x158;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A450);
 
