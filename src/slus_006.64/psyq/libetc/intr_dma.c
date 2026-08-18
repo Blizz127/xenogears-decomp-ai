@@ -4,7 +4,7 @@
 // Adapted from https://github.com/sozud/psy-q-decomp
 
 void trapIntrDMA(void);
-void setIntrDMA(unsigned int index, VoidCallback_t callback);
+VoidCallback_t setIntrDMA(unsigned int index, VoidCallback_t callback);
 static void memclrIntrDMA(void(**callbacks)(void), unsigned int numCallbacks);
 
 void* startIntrDMA(void) {
@@ -16,7 +16,20 @@ void* startIntrDMA(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libetc/intr_dma", trapIntrDMA);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libetc/intr_dma", setIntrDMA);
+VoidCallback_t setIntrDMA(unsigned int index, VoidCallback_t callback) {
+    VoidCallback_t old = g_DmaInterruptCallbacks[index];
+    if (callback != old) {
+        if (callback != NULL) {
+            g_DmaInterruptCallbacks[index] = callback;
+            *g_pDMA_DICR = (*g_pDMA_DICR & 0xFFFFFF) | (1 << (index + 0x10)) | 0x800000;
+        } else {
+            g_DmaInterruptCallbacks[index] = NULL;
+            *g_pDMA_DICR = (*g_pDMA_DICR & 0xFFFFFF) | 0x800000;
+            *g_pDMA_DICR &= ~(1 << (index + 0x10));
+        }
+    }
+    return old;
+}
 
 static void memclrIntrDMA(void(**callbacks)(void), unsigned int numCallbacks) {
     while (numCallbacks--) {
