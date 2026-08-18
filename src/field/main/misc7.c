@@ -875,7 +875,25 @@ void func_8009A1AC(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1E4);
+extern s32 D_8005A444[];
+
+void func_8009A1E4(void) {
+    void* pActor = g_FieldScriptVMCurActor;
+    u8* pScriptData = (u8*)g_FieldScriptVMCurScriptData;
+    u8 arg = *(u8*)(pScriptData + *(u16*)((u8*)pActor + 0xCC) + 1);
+    s32 targetIdx = D_8005A444[arg];
+    if (targetIdx != 0xFF) {
+        u8* pTarget = (u8*)g_FieldActors + targetIdx * 0x7C;
+        void* pTargetModel = *(void**)(pTarget + 0x4C);
+        s32 dx = *(s32*)((u8*)pTargetModel + 0x28) - *(s32*)((u8*)pActor + 0x28);
+        s32 dz = *(s32*)((u8*)pTargetModel + 0x20) - *(s32*)((u8*)pActor + 0x20);
+        s32 angle = -ratan2(dx, dz);
+        angle |= 0x8000;
+        *(u16*)((u8*)pActor + 0x104) = (u16)angle;
+        *(u16*)((u8*)pActor + 0x106) = (u16)angle;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+}
 
 /* Opcode 0x6F (OP_ROTATE_TO_ACTOR), asm 8009A2A8-8009A348 line-verified.
  * Turn the current actor to face the target actor named by script byte +1,
