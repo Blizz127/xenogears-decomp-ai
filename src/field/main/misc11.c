@@ -369,7 +369,120 @@ void func_80092808(void) {
     *(u16*)(actorData + 0xCC) += 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
+extern FieldActor* D_800B06B8;
+extern long FieldGetVec1Magnitude(long x);
+extern long FieldGetVec2Magnitude(long x, long y);
+extern s32 func_8007B694(s32* arg0);
+extern void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor);
+extern s32 g_GameSceneMapNum;
+extern s32 D_800ADBDC;
+extern s32 D_800ADBE4;
+extern s32 D_800ADBEC;
+
+s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
+    s32 dx, dy, dz;
+    s32 targetX, targetZ;
+    s32 heading;
+    s32 dist;
+    s32 threshold;
+    s16 savedX, savedZ;
+    u8* pActorData;
+    u8* pModelData;
+    s32 angle;
+
+    g_FieldControl.isRandomEncountersEnabled = -1;
+
+    pActorData = (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
+    pModelData = (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pModelData;
+
+    *(u32*)(pActorData + 0x4) |= 0x38;
+    *(u32*)(pModelData + 0x18) = 0x80000;
+
+    threshold = FieldGetVec1Magnitude(8) * 2;
+    savedX = *(s16*)(pActorData + 0x22);
+    savedZ = *(s16*)(pActorData + 0x2A);
+
+    if (arg2 == 0) {
+        if (D_800ADBDC == 0 || D_800ADBE4 == 0) {
+            D_800B00C0 = 1;
+        }
+        if (D_800ADBEC != 0) {
+            s32 entrance = FieldScriptVMGetArgument(4);
+            s32 mapNum = FieldScriptVMGetArgument(2);
+            func_80092F44();
+            D_800ADBEC = 0;
+            FieldScriptMemoryWriteU16(2, entrance);
+            g_GameSceneMapNum = mapNum;
+        }
+    }
+
+    angle = (s16)(*(s16*)((u8*)D_800B06B8 + 0x52) + arg1) - 0x400;
+    {
+        s32 sinVal = rsin(angle);
+        s32 actorX = *(s16*)(pActorData + 0x60) + *(s16*)(pActorData + 0x22);
+        targetX = actorX + (sinVal * 40 >> 12);
+    }
+    {
+        s32 cosVal = rcos(angle);
+        s32 actorZ = *(s16*)(pActorData + 0x64) + *(s16*)(pActorData + 0x2A);
+        targetZ = actorZ + (-cosVal * 40 >> 12);
+    }
+
+    if (arg2 != 0) {
+        targetZ = arg4;
+    }
+
+    dx = targetX - savedX;
+    dy = 0;
+    dz = targetZ - savedZ;
+    dist = FieldGetVec2Magnitude(dx, dz);
+
+    if (dist > threshold) {
+        /* Player hasn't reached target yet */
+        if (*(s16*)(pActorData + 0x68) == *(s16*)(pActorData + 0x22) &&
+            *(s16*)(pActorData + 0x6A) == *(s16*)(pActorData + 0x26) &&
+            *(s16*)(pActorData + 0x6C) == *(s16*)(pActorData + 0x2A)) {
+            (*(u16*)(pActorData + 0x6E))++;
+        } else {
+            *(u16*)(pActorData + 0x6E) = 0;
+        }
+        if (*(s16*)(pActorData + 0x6E) >= 0x41) {
+            goto finalize;
+        }
+        heading = func_8007B694((s32*)&dx);
+        *(u16*)(pActorData + 0x104) = (u16)heading;
+        *(u16*)(pActorData + 0x106) = (u16)heading;
+        D_800B00C0 = 1;
+        if (arg2 != 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer--;
+        }
+        return -1;
+    }
+
+finalize:
+    /* Player reached target — finalize transition */
+    {
+        u16 flags = *(u16*)(pActorData + 0x106) | 0x8000;
+        *(u16*)(pActorData + 0x104) = flags;
+        *(u16*)(pActorData + 0x106) = flags;
+    }
+    *(u32*)(pModelData + 0x18) = 0;
+    *(s16*)(pActorData + 0xE8) = 0;
+    func_800821F4(pModelData, 0, &g_FieldActors[g_PlayerActorIndex]);
+    D_800B00C0 = 1;
+    {
+        u32 tblIdx = *(u8*)(pActorData + 0xCE);
+        *(s16*)(pActorData + 0x90 + tblIdx * 8) = -1;
+        *(u32*)(pActorData + 0x90 + tblIdx * 8) &= 0xFE7FFFFF;
+    }
+    *(u32*)(pActorData + 0x0) &= 0xFFDFFFFF;
+    if (arg2 == 1) {
+        *(u32*)(pActorData + 0x4) &= ~0x38u;
+    }
+    *(s16*)(pActorData + 0x6E) = 0;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+    return 0;
+}
 
 extern s32 D_800B2350;
 extern s32 D_800ADBDC;
@@ -417,7 +530,7 @@ extern s32 D_800ADB2C;
 extern s32 D_8004F308;
 extern s32 D_800ADB90;
 extern void func_800A0C4C(void);
-extern void func_80092894(s32, s32, s32, s32);
+extern s32 func_80092894(s32, s32, s32, s32);
 
 void func_80092DFC(void) {
     if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
