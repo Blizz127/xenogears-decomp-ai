@@ -2083,7 +2083,22 @@ void func_8003A2D4(void) {}
 
 void func_8003A2DC(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A2E4);
+extern s32 D_80059478;
+
+void func_8003A2E4(s32 pData, s32 volume) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x96;
+    s32 count = D_80059478;
+    u16 volWord = (u16)(volume << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 2);
+        if ((flags & 1) && *(s32*)(pEntry + 6) == pData) {
+            *(u16*)(pEntry + 0x74) = volWord;
+            *(u16*)(pEntry + 0) = 0x100;
+        }
+        pEntry += 0x158;
+    }
+}
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching
