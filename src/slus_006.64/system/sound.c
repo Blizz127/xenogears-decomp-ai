@@ -2342,7 +2342,20 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABF0);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AC58);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ACC8);
+void* func_8003ACC8(void* pTarget) {
+    void* pEntry;
+    if (pTarget == NULL) return NULL;
+    pEntry = g_SoundAudioManagerListHead;
+    while (pEntry != NULL && pEntry != pTarget) {
+        pEntry = *(void**)((u8*)pEntry + 0);
+    }
+    if (pEntry == NULL) return NULL;
+    {
+        void* pData = *(void**)((u8*)pEntry + 8);
+        u16 offset = *(u16*)((u8*)pData + 0x1E);
+        return (u8*)pData + offset;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD20);
 
