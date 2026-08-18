@@ -1,6 +1,7 @@
 #include "common.h"
 #include "psyq/libgte.h"
 #include "system/memory.h"
+#include "system/archive.h"
 #ifdef XENO_PC_PORT
 #include <psx/gtereg.h>
 #include <stdio.h>
@@ -24,7 +25,42 @@ void func_8002BA40(void) {
     D_8004FDFC = D_8004FE00;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
+extern s32 D_8004FE40;
+extern s16 D_8004FE28;
+extern s32 D_8004FE38;
+extern s32 g_ArchiveCurFileSize;
+
+void func_8002BA58(void) {
+    s32 slotCount = D_8004FE40;
+    u8* slot = (u8*)D_8004FE2C;
+    s16 i = 0;
+    u8* sector;
+
+    if (slotCount > 0) {
+        u16 seq = (u16)D_8004FE28;
+        for (i = 0; i < slotCount; i++, slot += 8) {
+            if (*(u16*)(slot + 0) == 1 && *(u16*)(slot + 2) == seq) {
+                break;
+            }
+        }
+    }
+    if (i == slotCount) {
+        return;
+    }
+
+    /* Found matching slot — mark as processed */
+    *(u16*)(slot + 0) = 3;
+    D_8004FE28++;
+
+    if (g_ArchiveCurFileSize > 0) return;
+
+    if (D_8004FDFC < 2) {
+        g_ArchiveCurFileSize = 0;
+        CdDataCallback(0);
+        ArchiveCdSeekToFile((void*)(uintptr_t)D_8004FE38);
+        D_8004FDFC = 0;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BB50);
 
