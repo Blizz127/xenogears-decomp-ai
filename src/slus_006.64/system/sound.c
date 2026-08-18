@@ -2404,7 +2404,13 @@ void* func_8003ACC8(void* pTarget) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD20);
+void func_8003AD20(void* pManager, s32 mode) {
+    switch (mode) {
+        case 0: func_8003AD98(pManager); break;
+        case 1: func_8003ADCC(pManager); break;
+        case 2: func_8003AE84(pManager); break;
+    }
+}
 
 void func_8003AD98(void* pManager) {
     u16 flags = *(u16*)((u8*)pManager + 0x10);
