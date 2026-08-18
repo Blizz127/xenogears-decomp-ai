@@ -280,7 +280,20 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009861C);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098738);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800988B8);
+extern s32 FieldMathInterpolateAngle(s32, s32, s32);
+
+void func_800988B8(void) {
+    u8 mask2 = SCRIPT_READ_U8_REL(9);
+    s32 arg2 = FieldScriptArgument2(3, mask2);
+    u8 mask3 = SCRIPT_READ_U8_REL(9);
+    s32 arg3 = FieldScriptArgument3(5, mask3);
+    u8 mask4 = SCRIPT_READ_U8_REL(9);
+    s32 arg4 = FieldScriptArgument4(7, mask4);
+    s32 result = FieldMathInterpolateAngle(arg2, arg3, arg4);
+    u16 addr = (u16)FieldScriptVMGetInstructionArgument(1);
+    FieldScriptMemoryWriteU16(addr, (u16)result);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
+}
 
 void func_8009899C(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), g_FieldScriptVMCurActor->rotation.vy & 0xFFF);
