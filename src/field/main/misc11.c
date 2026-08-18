@@ -171,7 +171,19 @@ void func_800924D4(s32 index, s32 component, s32 value) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800925A0);
+extern s32 D_800B217C;
+extern s16 D_800B21D6;
+
+void func_800925A0(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    D_800B217C = arg1;
+    switch (arg1) {
+        case 0: D_800B21D6 = 8; break;
+        case 1: D_800B21D6 = 6; break;
+        case 2: D_800B21D6 = 4; break;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void FieldScriptVMHandlerSetControllerBtnMask(void) {
     g_FieldControl.controllerBtnMask = FieldScriptVMGetInstructionArgument(1);
