@@ -483,7 +483,40 @@ void func_800932D0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800933F8);
+extern s32 D_800ADB18;
+extern s32 D_800ADBE0;
+extern s32 D_800ADB88;
+extern u8 D_8005954C;
+extern u8 D_80059508;
+extern u8 D_800594F8;
+extern u8 D_800B2356;
+
+void func_800933F8(void) {
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADBEC == 0 ||
+        D_800ADB2C != 0 || D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer--;
+        return;
+    }
+    D_8005954C = D_800B2356;
+    D_80059508 = (u8)FieldScriptVMGetArgument(1);
+    D_800594F8 = 0;
+    D_800ADBDC = 0;
+    D_800ADBE0 = 0;
+    D_800ADB88 = 1;
+    {
+        s32 mapNum = FieldScriptVMGetArgument(5);
+        if (mapNum != 0x7FFF) {
+            s32 entrance = FieldScriptVMGetArgument(7);
+            func_80092F44();
+            FieldScriptMemoryWriteU16(2, entrance);
+            g_GameSceneMapNum = mapNum;
+            D_800ADB18 = 1;
+        }
+    }
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+}
 
 extern u8 D_800B2356;
 extern u8 D_8005954C;
