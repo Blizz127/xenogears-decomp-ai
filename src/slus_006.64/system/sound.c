@@ -2307,7 +2307,22 @@ void func_8003A89C(AudioManager* manager, s32 level, s32 steps) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A948);
+void func_8003A948(void* pManager, s32 target, s32 steps) {
+    *(u16*)((u8*)pManager + 0x86) = (u16)(target << 8);
+    if (steps == 0) {
+        *(s32*)((u8*)pManager + 0x7C) = target << 24;
+        *(u16*)((u8*)pManager + 0x84) = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x200, pManager);
+    } else {
+        s32 current = *(s32*)((u8*)pManager + 0x7C) >> 8;
+        s32 delta = (target << 16) - current;
+        if (delta != 0) {
+            s32 step = delta / steps;
+            *(u16*)((u8*)pManager + 0x84) = (u16)steps;
+            *(s32*)((u8*)pManager + 0x80) = step << 8;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A9BC);
 
