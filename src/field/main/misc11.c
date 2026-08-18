@@ -128,7 +128,18 @@ void func_800920D8(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
+extern s16 D_800AFFAC[];
+
+void func_80092148(void) {
+    s32 arg1 = FieldScriptVMGetArgument(1);
+    s32 arg3 = FieldScriptVMGetArgument(3);
+    u16 val = FieldScriptVMGetInstructionArgument(5);
+    if (arg3 < D_800AFFAC[arg1]) {
+        u8* base = *(u8**)((u8*)D_800AFFAC + arg1 * 4 - 0x80);
+        base[arg3] = (u8)val;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
 
