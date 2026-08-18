@@ -800,7 +800,41 @@ SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode) {
 }
 
 // Loads part of a WDS file, basically a sized SoundLoadWdsFile?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800380D0);
+void* func_800380D0(void* pWds, s32 arg1, s32 arg2) {
+    void* pEntry;
+    void* pSpu;
+    void* pManager;
+    if (SoundFindWdsEntry(*(u16*)((u8*)pWds + 0x20)) != NULL) {
+        SoundHandleError(0x16);
+        return NULL;
+    }
+    pSpu = SoundSpuMemoryAllocateWDS(pWds, arg2);
+    if (pSpu == NULL) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SoundWdsSetTransferParamters(pSpu, *(s32*)((u8*)pWds + 0x14), 0x1F);
+    SoundTransferWdsPart((u8*)pWds + *(s32*)((u8*)pWds + 0x18), arg1 - *(s32*)((u8*)pWds + 0x10));
+    pManager = func_80039024(*(s32*)((u8*)pWds + 0x10));
+    if (pManager == NULL) {
+        SoundSpuMemoryFreeBlock(pSpu);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pManager, pWds, *(s32*)((u8*)pWds + 0x10));
+    DisableEvent(g_unk_SoundEvent);
+    *(void**)((u8*)pManager + 0x28) = pSpu;
+    {
+        void** ppList = &g_SoundWdsLinkedList;
+        while (*ppList != NULL) {
+            ppList = (void**)((u8*)*ppList + 0x2C);
+        }
+        *ppList = pManager;
+    }
+    EnableEvent(g_unk_SoundEvent);
+    *(u32*)((u8*)pManager + 0x2C) = 0;
+    return pManager;
+}
 
 #ifdef XENO_PC_PORT
 /* Port variant of SoundLoadWdsFile for the field music-bank stream
