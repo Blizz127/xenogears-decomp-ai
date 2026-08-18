@@ -2324,7 +2324,22 @@ void func_8003A948(void* pManager, s32 target, s32 steps) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A9BC);
+void func_8003A9BC(void* pManager, s32 target, s32 steps) {
+    *(u16*)((u8*)pManager + 0x92) = (u16)(target << 8);
+    if (steps == 0) {
+        *(s32*)((u8*)pManager + 0x88) = target << 24;
+        *(u16*)((u8*)pManager + 0x90) = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x100, pManager);
+    } else {
+        s32 current = *(s32*)((u8*)pManager + 0x88) >> 8;
+        s32 delta = (target << 16) - current;
+        if (delta != 0) {
+            s32 step = delta / steps;
+            *(u16*)((u8*)pManager + 0x90) = (u16)steps;
+            *(s32*)((u8*)pManager + 0x8C) = step << 8;
+        }
+    }
+}
 
 // Song-start: resume a muted/rebound manager -- reapply its reverb program,
 // mark every voice register dirty (full SPU rewrite on the next tick),
