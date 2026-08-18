@@ -75,7 +75,29 @@ void func_80091E00(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E98);
+extern int FieldScriptVMGetActorIndex(int);
+extern int FieldScriptArgument1(int index, int mask);
+extern int FieldScriptArgument2(int index, int mask);
+
+void func_80091E98(void) {
+    u8 mask;
+    FieldActor* pActor;
+    void* pActorData;
+    s32 motionType;
+
+    if (FieldScriptVMGetActorIndex(1) == ACTOR_ID_INVALID) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+        return;
+    }
+    pActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
+    pActorData = (void*)(uintptr_t)pActor->pActorData;
+    mask = SCRIPT_READ_U8_REL(6);
+    motionType = FieldScriptArgument1(2, mask) & 3;
+    *(u32*)((u8*)pActorData + 0x134) = (*(u32*)((u8*)pActorData + 0x134) & 0xFFFFFF9F) | (motionType << 5);
+    mask = SCRIPT_READ_U8_REL(6);
+    *(s16*)((u8*)pActorData + 0xEE) = (s16)FieldScriptArgument2(4, mask);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+}
 
 /* ---- func_80091F84: VM opcode 0xDB — write clamped value into the actor's
  * animation dispatch table.
