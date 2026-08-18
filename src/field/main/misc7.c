@@ -1174,8 +1174,33 @@ void FieldScriptSetActorRotation(int angle) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AA00);
+void func_8009AA00(void) {
+    s32 idx1 = FieldScriptVMGetActorIndex(1);
+    if (idx1 == 0xFF) goto advance;
+    {
+        s32 idx2 = FieldScriptVMGetActorIndex(2);
+        if (idx2 == 0xFF) goto advance;
+    }
+    {
+        u8* pActor2 = (u8*)g_FieldActors + FieldScriptVMGetActorIndex(2) * 0x7C;
+        void* pModel2 = *(void**)(pActor2 + 0x4C);
+        u8* pActor1 = (u8*)g_FieldActors + FieldScriptVMGetActorIndex(1) * 0x7C;
+        void* pModel1 = *(void**)(pActor1 + 0x4C);
+        s32 dx = *(s32*)((u8*)pModel2 + 0x28) - *(s32*)((u8*)pModel1 + 0x28);
+        s32 dz = *(s32*)((u8*)pModel2 + 0x20) - *(s32*)((u8*)pModel1 + 0x20);
+        s32 angle = -ratan2(dx, dz);
+        angle |= 0x8000;
+        if (D_800ADB1C == 0) {
+            *(u16*)((u8*)pModel1 + 0x104) = (u16)angle;
+            *(u16*)((u8*)pModel1 + 0x106) = (u16)angle;
+            *(u16*)((u8*)pModel1 + 0x108) = (u16)angle;
+        }
+        *(u16*)((u8*)pModel1 + 0x104) = (u16)angle;
+        *(u16*)((u8*)pModel1 + 0x106) = (u16)angle;
+    }
+advance:
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+}
 
 void func_8009AB08(int rotation) {
     short rotationValue;
