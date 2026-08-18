@@ -349,7 +349,16 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800933F8);
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093568);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093664);
+extern s32 func_80092424(u8 a, u8 b);
+
+void func_80093664(void) {
+    u8 b1 = SCRIPT_READ_U8_REL(1);
+    u8 b2 = SCRIPT_READ_U8_REL(2);
+    s32 result = func_80092424(b1, b2);
+    u16 addr = (u16)FieldScriptVMGetInstructionArgument(3);
+    FieldScriptMemoryWriteU16(addr, (u16)result);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 extern s32 D_8004F350;
 
