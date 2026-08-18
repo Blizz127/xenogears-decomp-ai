@@ -509,7 +509,43 @@ void func_80093014(void) {
         readinessBefore, refreshConditionCountBefore, opcodeActor, opcodeIp);
 }
 #else
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093014);
+void func_80093014(void) {
+    u8 mask;
+    s32 arg3, heading;
+
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+        return;
+    }
+
+    func_800A31E8();
+    g_FieldControl.isRandomEncountersEnabled = -1;
+    D_800ADBE4 = 0;
+
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)((u8*)g_pGameState + 0x231A) = (s16)FieldScriptArgument1(1, mask);
+
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)((u8*)g_pGameState + 0x231E) = (s16)FieldScriptArgument2(3, mask);
+
+    mask = SCRIPT_READ_U8_REL(9);
+    arg3 = FieldScriptArgument3(5, mask);
+    if (arg3 == -1 || (u16)arg3 == 0xFFFF) {
+        heading = *(u16*)((u8*)&g_Scene + 0x56) + 0x800;
+    } else {
+        heading = arg3 + 0x800;
+    }
+    *(s16*)((u8*)g_pGameState + 0x231C) = (s16)(heading & 0xFFF);
+
+    mask = SCRIPT_READ_U8_REL(9);
+    *(s16*)((u8*)g_pGameState + 0x2320) = (s16)FieldScriptArgument4(7, mask);
+    func_800931F8();
+
+    D_800B02C8 = 1;
+    D_800B00C0 = 1;
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
+}
 #endif
 
 void func_800931F8(void) {
