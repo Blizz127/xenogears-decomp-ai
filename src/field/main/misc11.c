@@ -443,7 +443,28 @@ void func_800932D0(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800933F8);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093568);
+extern u8 D_800B2356;
+extern u8 D_8005954C;
+extern u8 D_80059508;
+extern u8 D_800594F8;
+extern s32 D_800ADBE0;
+extern s32 D_800ADB88;
+
+void func_80093568(void) {
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADBEC == 0 ||
+        D_800ADB2C != 0 || D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+    } else {
+        D_8005954C = D_800B2356;
+        D_80059508 = (u8)FieldScriptVMGetArgument(1);
+        D_800594F8 = 0;
+        D_800ADBDC = 0;
+        D_800ADBE0 = 0;
+        D_800ADB88 = 1;
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    }
+}
 
 void func_80093664(void) {
     u8 b1 = SCRIPT_READ_U8_REL(1);
