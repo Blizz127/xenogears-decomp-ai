@@ -3031,7 +3031,17 @@ int SoundTransferQueueSync() {
 
 void func_8003BDF4(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003BDFC);
+s16 func_8003BDFC(s32 flags) {
+    if (flags & 0x10) {
+        while (g_SoundControlFlags & 0x10) {}
+    }
+    if (g_SoundControlFlags & 0x10) {
+        u8* queue = (u8*)g_SoundTransferQueue;
+        s32 idx = g_SoundTransferQueueReadIndex;
+        return *(s16*)(queue + idx * 20);
+    }
+    return 0;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundProcessTransferCommand(void) {
