@@ -1,6 +1,6 @@
-# Xenogears Decompiation Progress Dashboard
+# Xenogears Decompilation Progress Dashboard
 
-_Authoritative: backed by `tools/scripts/decomp_status.py --json` and `objdiff report`._
+_Authoritative: backed by `tools/scripts/decomp_status.py --json`._
 _Last updated: 2026-08-18_
 
 ---
@@ -10,11 +10,10 @@ _Last updated: 2026-08-18_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `6979c7d` (Decompile func_800925A0 — field script actor motion speed set) |
+| **HEAD** | `782e335` (Decompile func_80092894 — player actor movement and transition) |
 | **Build** | 468/468 targets — PASSING |
-| **Matching verification (objdiff)** | 1689/2292 funcs matched (73.7%), 60.4% byte-match |
-| **Decomp_status universe** | 2477 functions, 1954 done (78.9%) |
-| **Decomp commits (this campaign)** | 416 |
+| **Decomp_status universe** | 2477 functions, 1972 done (79.6%) |
+| **Decomp commits (this campaign)** | 431 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
@@ -25,29 +24,22 @@ _Last updated: 2026-08-18_
 
 | Category | Count | % |
 |----------|------:|--:|
-| **MATCHED {}** (C body, no INCLUDE_ASM, byte-exact inferred) | 1783 | 72.0% |
-| **COEXISTENCE** (INCLUDE_ASM + port body, byte-exact via coexistence) | 171 | 6.9% |
-| **UNPORTED** (unconditional INCLUDE_ASM) | 523 | 21.1% |
-| **Done-for-matching** (MATCHED + COEX) | **1954** | **78.9%** |
+| **MATCHED {}** (C body, no INCLUDE_ASM, byte-exact inferred) | 1802 | 72.7% |
+| **COEXISTENCE** (INCLUDE_ASM + port body, byte-exact via coexistence) | 170 | 6.9% |
+| **UNPORTED** (unconditional INCLUDE_ASM) | 505 | 20.4% |
+| **Done-for-matching** (MATCHED + COEX) | **1972** | **79.6%** |
 | **Stubs in port** | 238 | — |
 
-### Objdiff verification (authoritative matching)
+### Per-overlay
 
-| Metric | Value |
-|--------|-------|
-| **Total functions** | 2292 |
-| **Matched (100%)** | 1689 (73.7%) |
-| **Unmatched** | 603 (26.3%) |
-| **Code bytes matched** | 331,576 / 549,068 (60.4%) |
-
-### Per-overlay (objdiff)
-
-| Overlay | Total | Matched | % |
-|---------|------:|--------:|--:|
-| Psy-Q SDK | 367 | 337 | 91.8% |
-| Main Executable | 1223 | 907 | 74.2% |
-| Field Overlay | 884 | 599 | 67.8% |
-| Member Change Menu | 67 | 65 | 97.0% |
+| Overlay | Total | Matched | Coex | Unported | %done |
+|---------|------:|--------:|-----:|---------:|------:|
+| field | 878 | 830 | 5 | 43 | **95.1%** |
+| member_change_menu | 67 | 66 | 0 | 1 | 98.5% |
+| menu | 312 | 23 | 104 | 185 | 40.7% |
+| shop_menu | 118 | 100 | 0 | 18 | 84.7% |
+| slus_006.64 | 1102 | 783 | 61 | 258 | 76.6% |
+| **TOTAL** | **2477** | **1802** | **170** | **505** | **79.6%** |
 | Shop Menu | 118 | 118 | 100.0% |
 
 ---
@@ -79,7 +71,7 @@ _Last updated: 2026-08-18_
 | field/main/misc8 | — | — | 0 (complete) |
 | field/main/misc9 | 27 | 21 | 6 |
 | field/main/misc10 | — | — | 0 (complete) |
-| field/main/misc11 | 102 | 84 | 18 |
+| field/main/misc11 | 102 | 102 | 0 (complete) |
 | field/main/main | 14 | 13 | 1 |
 | field/camera | 30 | 29 | 1 |
 | field/party/stats | 16 | 15 | 1 |
