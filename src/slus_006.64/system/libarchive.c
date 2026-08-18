@@ -427,7 +427,20 @@ void ArchiveConsolidateStreamFileEntry(int sectionIndex) {
 }
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_80028F30);
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_8002945C);
+
+s32 func_8002945C(u8* pSlot) {
+    u8* pStreamFile = g_ArchiveCurStreamFile;
+    if (pStreamFile == NULL) return 0xFFFF;
+    if (pSlot == NULL) return 0;
+    {
+        s32 count = *(s32*)(pStreamFile);
+        u8* pTable = pStreamFile + 4;
+        u8* pEntry = pTable + ((pSlot - pStreamFile - count * 8 - 0x24) >> 11) * 8;
+        u16 val = *(u16*)(pEntry);
+        *(u16*)(pEntry) = 0;
+        return val;
+    }
+}
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_800294B4);
 
 s32 ArchiveReadFileFromCdSector(s32 sector, void* pDestBuffer, s32 fileSize, s32 arg3, u32 flags) {
