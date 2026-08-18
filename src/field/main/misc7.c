@@ -57,7 +57,35 @@ int FieldGetPlayerActorDirection(void) {
         & MASK_8DIR_MOVEMENT_NUM_DIRECTIONS;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009749C);
+void func_8009749C(void) {
+    void* pActor = g_FieldScriptVMCurActor;
+    u8 idx = *(u8*)((u8*)pActor + 0xCE);
+    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
+    u8 scriptByte;
+    u8* pTarget;
+    void* pTargetModel;
+    *pSlot = (*pSlot & 0xFE7FFFFF) | 0x1000000;
+    scriptByte = SCRIPT_READ_U8_REL(1);
+    pTarget = (u8*)g_FieldActors + scriptByte * 0x7C;
+    pTargetModel = *(void**)(pTarget + 0x4C);
+    *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pTargetModel + 0x22);
+    *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pTargetModel + 0x2A);
+    *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pTargetModel + 0x26);
+    {
+        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
+        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
+        if (pSlot2[0] == 0xFFFF) {
+            s32 arg = FieldScriptVMGetArgument(5);
+            pSlot2[0] = (u16)arg;
+        }
+    }
+    {
+        s32 arg = FieldScriptVMGetArgument(5);
+        if (func_80097A50(arg) == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+        }
+    }
+}
 
 /* VM opcode 0x55: set the current script's movement target to another actor.
  * The target actor index is the instruction byte at +1; its integer position
