@@ -297,7 +297,20 @@ void func_80077DAC(void) {
     func_800A31E8();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077E10);
+extern void* g_FieldActors;
+extern s32 D_800ADBD0;
+extern s16 D_800B2344;
+extern s32 g_PlayerActorIndex;
+
+s32 func_80077E10(void) {
+    if (D_800ADBD0 == 1 && D_800B2344 == 0) {
+        u8* pActor = (u8*)g_FieldActors + g_PlayerActorIndex * 0x7C;
+        void* pModel = *(void**)(pActor + 0x4C);
+        u32 flags = *(u32*)pModel;
+        return -(s32)((flags & 0x800) != 0);
+    }
+    return 0;
+}
 
 /* ---- FieldMain: field game-state driver (Phase C gateway) -------------------
  * Functional decompile (port-first; not yet byte-matched). Control flow mirrors
