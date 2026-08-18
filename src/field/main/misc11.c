@@ -88,7 +88,19 @@ void func_80091F84(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092044);
+void func_80092044(void) {
+    u16 addr1, addr2, addr3, addr4;
+    s32 val1, val2;
+    addr1 = (u16)FieldScriptVMGetInstructionArgument(1);
+    val1 = FieldScriptVMGetVariableValue(addr1);
+    addr2 = (u16)FieldScriptVMGetInstructionArgument(3);
+    val2 = FieldScriptVMGetVariableValue(addr2);
+    addr3 = (u16)FieldScriptVMGetInstructionArgument(3);
+    FieldScriptMemoryWriteU16(addr3, (u16)val1);
+    addr4 = (u16)FieldScriptVMGetInstructionArgument(1);
+    FieldScriptMemoryWriteU16(addr4, (u16)val2);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 extern s16 D_800AFEA8;
 extern void GfxLineScrollUpdate(void* pLineScroll);
