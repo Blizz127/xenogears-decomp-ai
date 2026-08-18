@@ -2406,7 +2406,21 @@ void func_8003AE84(AudioManager* manager) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AF24);
+void func_8003AF24(void* pManager, s32 arg1) {
+    u16 flags;
+    s16 vol;
+    DisableEvent(g_unk_SoundEvent);
+    *(u16*)((u8*)pManager + 0x1E) = (u16)arg1;
+    flags = *(u16*)((u8*)pManager + 0x10);
+    *(u16*)((u8*)pManager + 0x10) = flags | 0x20;
+    SoundReleaseAllVoices(pManager);
+    EnableEvent(g_unk_SoundEvent);
+    vol = *(s16*)((u8*)pManager + 0x5A);
+    *(u16*)((u8*)pManager + 0x6E) = 0x7F00;
+    *(u16*)((u8*)pManager + 0x6C) = 0;
+    *(s32*)((u8*)pManager + 0x64) = 0x7F000000;
+    *(s32*)((u8*)pManager + 0x54) = vol * 0x7F00;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003AFA0(AudioManager* manager) {
