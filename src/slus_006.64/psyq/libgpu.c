@@ -224,7 +224,15 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetDrawMove);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_80043EAC);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_80043F18);
+s32 func_80043F18(void* pOt1, void* pOt2) {
+    s32 total = *(u8*)((u8*)pOt1 + 3) + *(u8*)((u8*)pOt2 + 3) + 1;
+    if (total < 0x11) {
+        *(u8*)((u8*)pOt1 + 3) = (u8)total;
+        *(u32*)pOt2 = 0;
+        return 0;
+    }
+    return -1;
+}
 
 void DumpDrawEnv(DRAWENV *env) {
     g_GpuPrintf("clip (%3d,%3d)-(%d,%d)\n", env->clip.x, env->clip.y, env->clip.w, env->clip.h);
