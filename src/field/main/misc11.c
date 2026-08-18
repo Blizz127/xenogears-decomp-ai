@@ -60,7 +60,27 @@ void func_80091A78(void) {
 void func_80091AD4(void) {
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091ADC);
+extern s16 D_800AF5E8[];
+extern s16 D_800AF6E8[];
+extern s16 D_800AF728[];
+extern u16 D_800AF768;
+
+void func_80091ADC(s16 x, s16 y, s16 w, s16 h, s16 extra, s16 mode, s32 doMove) {
+    u16 idx = D_800AF768 & 0x1F;
+    s16* rect = (s16*)((u8*)D_800AF5E8 + idx * 8);
+    rect[0] = x;
+    rect[1] = y;
+    rect[2] = w;
+    rect[3] = h;
+    D_800AF6E8[idx] = extra;
+    D_800AF728[idx] = mode;
+    if (doMove) {
+        ClearImage((RECT*)rect, 0, 0, 0);
+    } else {
+        MoveImage((RECT*)rect, D_800AF6E8[idx], (s16)mode);
+    }
+    D_800AF768++;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091BBC);
 
