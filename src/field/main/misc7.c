@@ -155,7 +155,16 @@ void func_80097954(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800979F0);
+void func_800979F0(void) {
+    void* pActor = g_FieldScriptVMCurActor;
+    u8 idx = *(u8*)((u8*)pActor + 0xCE);
+    s32 result;
+    *(u16*)((u8*)pActor + 0x90 + idx * 8) = 0xFFFF;
+    result = func_80097A50(0xFFFF);
+    if (result == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097A50);
 
