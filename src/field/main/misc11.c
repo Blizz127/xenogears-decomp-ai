@@ -289,7 +289,45 @@ void func_80092808(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092C20);
+extern s32 D_800B2350;
+extern s32 D_800ADBDC;
+extern s32 D_800ADBE4;
+extern s32 D_800ADB2C;
+extern s32 D_8004F308;
+extern s32 D_800ADB90;
+
+void func_80092C20(void) {
+    s32 arg1, arg2;
+    s32 result;
+
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+        g_FieldScriptVMCurActor->scriptInstructionPointer--;
+        return;
+    }
+
+    arg1 = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(5));
+    arg2 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL(5));
+
+    if (D_800B2350 == 0) {
+        FieldActor* pPlayer = &g_FieldActors[g_PlayerActorIndex];
+        D_800B2350 = *(s32*)(void*)(uintptr_t)pPlayer->pActorData;
+    }
+
+    func_800A0C4C();
+    result = func_80092894(0, 1, arg1, arg2);
+    if (result != 0) {
+        return;
+    }
+
+    if (!(D_800B2350 & 0x80)) {
+        FieldActor* pPlayer = &g_FieldActors[g_PlayerActorIndex];
+        u32* pData = (u32*)(void*)(uintptr_t)pPlayer->pActorData;
+        *pData = *pData & ~0x80u;
+    }
+    D_800B2350 = 0;
+}
 
 extern s32 D_800ADBDC;
 extern s32 D_800ADBE4;
