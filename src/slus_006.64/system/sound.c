@@ -979,7 +979,15 @@ void func_80038624(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003864C);
+void* func_8003864C(void* pData) {
+    s16 targetId = pData ? *(u16*)((u8*)pData + 0x14) : 0;
+    void* pEntry = g_SoundSedsLinkedList;
+    while (pEntry != NULL) {
+        if (*(s16*)((u8*)pEntry + 0x14) == targetId) break;
+        pEntry = *(void**)((u8*)pEntry + 0x1C);
+    }
+    return pEntry;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003869C(void) {
