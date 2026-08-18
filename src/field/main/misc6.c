@@ -780,19 +780,16 @@ void func_8009FA54(s32 scriptEntryIndex) {
     g_FieldScriptVMCurActor->rotation.vz = angle;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FB98);
-/*
-Matches, but the struct D_800B2268 is part of needs recovery first.
+extern int g_GameSceneMapNum;
 
 void func_8009FB98(void) {
     g_GameSceneMapNum |= 0xC000;
     GameWaitForCdData();
     GamePartySyncSkinData();
     GamePartySyncStreamedData();
-    D_800B2268[0] = SCRIPT_READ_U8_REL(1);
+    D_800B2268 = SCRIPT_READ_U8_REL(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-*/
 
 extern s32 D_8006F990[];
 int func_8009FC10(int actorIndex) {
