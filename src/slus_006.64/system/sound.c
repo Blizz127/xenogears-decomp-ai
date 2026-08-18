@@ -2340,7 +2340,24 @@ void func_8003ABE8(u8* arg0, u8 arg1) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABF0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AC58);
+u16* func_8003AC58(void* pManager) {
+    u8* pFlags = (u8*)pManager + 0x94;
+    u16 count = *(u8*)((u8*)pManager + 0x14);
+    u16* pOutput = (u16*)((u8*)pManager + 0x30);
+    u16 minVal = 0xFFFF;
+    u8* pVal = (u8*)pManager + 0xB4;
+    while (count-- != 0) {
+        if (*(u16*)pFlags != 0) {
+            u16 val = *(u16*)pVal;
+            if (val < minVal) minVal = val;
+        }
+        pFlags += 0x158;
+        pVal += 0x158;
+    }
+    if (minVal == 0xFFFF) minVal = 0;
+    *pOutput = minVal;
+    return pOutput;
+}
 
 void* func_8003ACC8(void* pTarget) {
     void* pEntry;
