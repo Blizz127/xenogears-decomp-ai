@@ -1575,7 +1575,53 @@ void SoundSpuMemoryInitialize(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlock);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800394B8);
+extern s32 SoundSpuMemoryGetFreeBlock(void);
+
+void* func_800394B8(s32 size) {
+    u8* pEntry = g_SoundSpuMemoryBlocks;
+    u8* pBest = NULL;
+    s32 bestSpace = 0;
+    u8* pBase = g_SoundSpuMemoryBlocks;
+    while (1) {
+        s16 type = *(s16*)(pEntry + 2);
+        u8* pEnd = *(u32*)(pEntry + 4) + *(u32*)(pEntry + 8);
+        if (type == 0) {
+            s32 space = 0x80000 - (s32)(uintptr_t)pEnd;
+            if (space >= size) {
+                pBest = pEntry;
+                bestSpace = 0x80000 - size;
+            }
+        } else {
+            s16 nextIdx = *(s16*)(pEntry + 2);
+            u8* pNext = pBase + nextIdx * 16;
+            s32 gap = *(u32*)(pNext + 4) - (s32)(uintptr_t)pEnd;
+            if (gap >= size) {
+                pBest = pEntry;
+                bestSpace = *(u32*)(pNext + 4) - size;
+            }
+            pEntry = pNext;
+            if (*(s32*)(pEntry + 4) != 0) continue;
+        }
+        if (type == 0) break;
+        if (*(s32*)(pEntry + 4) == 0) break;
+    }
+    if (pBest == NULL) return NULL;
+    {
+        s32 blockIdx = SoundSpuMemoryGetFreeBlock();
+        if (blockIdx < 0) return NULL;
+        {
+            u8* pNew = pBase + blockIdx * 16;
+            s16 prevNext = *(s16*)(pBest + 2);
+            *(u8*)(pNew + 0) = 0x80;
+            *(u8*)(pNew + 1) = 0;
+            *(s16*)(pNew + 2) = prevNext;
+            *(u32*)(pNew + 4) = bestSpace;
+            *(u32*)(pNew + 8) = size;
+            *(s16*)(pBest + 2) = (s16)blockIdx;
+            return (void*)(uintptr_t)bestSpace;
+        }
+    }
+}
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
