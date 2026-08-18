@@ -2430,7 +2430,12 @@ AudioManager* func_8003B148(s32 arg0) {
     return manager;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B1FC);
+extern void SoundHeapFree(void*);
+
+void func_8003B1FC(void* pManager) {
+    SoundRemoveAudioManagerFromList(pManager);
+    SoundHeapFree(pManager);
+}
 
 // Song-start: init the manager from its bound song file's header -- copy id/
 // element count/WDS id/tempo base/reverb program (file 0x10-0x1D), flag the
