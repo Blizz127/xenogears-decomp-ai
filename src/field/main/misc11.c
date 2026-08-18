@@ -1445,9 +1445,39 @@ void FieldScriptCheckActorOnScreen(void) {
     D_800B00C0 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80095CC4);
+void func_80095CC4(void) {
+    s32 actorIdx = FieldScriptVMGetActorIndex(1);
+    if (actorIdx != ACTOR_ID_INVALID) {
+        FieldActor* pActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
+        void* pActorData = (void*)(uintptr_t)pActor->pActorData;
+        s32 arg2 = FieldScriptVMGetArgument(2);
+        if (arg2 == *(s16*)((u8*)pActorData + 0x10)) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+            return;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(4);
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80095D6C);
+extern u32 D_800AFB24[];
+
+void func_80095D6C(void) {
+    s32 actorIdx = FieldScriptVMGetActorIndex(1);
+    if (actorIdx != ACTOR_ID_INVALID) {
+        FieldActor* pActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
+        u8* pActorData = (u8*)(uintptr_t)pActor->pActorData;
+        s16 idx1 = *(s16*)(pActorData + 0x10);
+        s16 idx2 = *(s16*)(pActorData + idx1 * 2 + 0x8);
+        u8* tableBase = (u8*)(uintptr_t)D_800AFB24[idx1];
+        u8 matchVal = tableBase[idx2 * 14 + 0xC];
+        s32 arg2 = FieldScriptVMGetArgument(2);
+        if (arg2 == matchVal) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+            return;
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(4);
+}
 
 extern FieldActor* D_800B06B8;
 
