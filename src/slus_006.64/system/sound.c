@@ -970,7 +970,34 @@ void SoundAddSedsEntry(SoundFile* pSoundFile) {
     EnableEvent(g_unk_SoundEvent);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003852C);
+extern void func_8003A094(void*);
+extern void SoundHandleError(s32);
+
+void func_8003852C(void* pSed) {
+    void* pPrev = NULL;
+    void* pCur = g_SoundSedsLinkedList;
+    while (pCur != NULL && pCur != pSed) {
+        pPrev = pCur;
+        pCur = *(void**)((u8*)pCur + 0x1C);
+    }
+    if (pCur == NULL) {
+        SoundHandleError(0x10);
+        return;
+    }
+    func_8003A094(pSed);
+    DisableEvent(g_unk_SoundEvent);
+    if (pPrev != NULL) {
+        *(void**)((u8*)pPrev + 0x1C) = *(void**)((u8*)pSed + 0x1C);
+    } else {
+        g_SoundSedsLinkedList = *(void**)((u8*)pSed + 0x1C);
+    }
+    *(void**)((u8*)pSed + 0x1C) = NULL;
+    if (SoundValidateFile(pSed, 0x73646573, 0x101) != 0) {
+        SoundHandleError(0xB);
+    } else {
+        EnableEvent(g_unk_SoundEvent);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80038624(void) {
