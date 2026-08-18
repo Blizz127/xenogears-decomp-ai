@@ -815,7 +815,47 @@ void func_80021D3C(void* arg0, s32 arg1, s32 arg2) {
     *(s32*)((u8*)arg0 + 0x0) = arg1 << 16;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021D50);
+extern s32 D_80059198;
+extern void func_800245D8(void*, s32);
+extern void AnimScriptTick(void*);
+
+void func_80021D50(void* arg0, void* arg1) {
+    s32 savedD80059198 = D_80059198;
+    void* pData;
+    D_80059198 = 0;
+    *(u16*)((u8*)arg0 + 0x80) = *(u16*)((u8*)arg1 + 0x10);
+    *(u8*)((u8*)arg0 + 0xAF) = *(u8*)((u8*)arg1 + 0x14);
+    *(u8*)((u8*)arg0 + 0xB0) = *(u8*)((u8*)arg1 + 0x16);
+    pData = *(void**)((u8*)arg0 + 0x20);
+    *(u16*)((u8*)pData + 6) = *(u16*)((u8*)arg1 + 0x24);
+    pData = *(void**)((u8*)arg0 + 0x20);
+    *(u16*)((u8*)pData + 8) = *(u16*)((u8*)arg1 + 0x26);
+    pData = *(void**)((u8*)arg0 + 0x20);
+    *(u16*)((u8*)pData + 0xA) = *(u16*)((u8*)arg1 + 0x28);
+    *(u16*)((u8*)arg0 + 0x82) = *(u16*)((u8*)arg1 + 0x2C);
+    *(u16*)((u8*)arg0 + 0x2C) = *(u16*)((u8*)arg1 + 0x2A);
+    func_800245D8(arg0, *(s8*)((u8*)arg0 + 0xAF));
+    {
+        s16 target = *(s16*)((u8*)arg1 + 0x18);
+        while (((*(u32*)((u8*)arg0 + 0xA8) >> 22) & 0x3F) != target) {
+            AnimScriptTick(arg0);
+            *(u32*)((u8*)arg0 + 0x00) += *(u32*)((u8*)arg0 + 0x0C);
+            *(u32*)((u8*)arg0 + 0x08) += *(u32*)((u8*)arg0 + 0x14);
+            *(u32*)((u8*)arg0 + 0x04) += *(u32*)((u8*)arg0 + 0x10);
+            *(u32*)((u8*)arg0 + 0x10) += *(u32*)((u8*)arg0 + 0x1C);
+        }
+    }
+    *(u32*)((u8*)arg0 + 0x00) = *(u32*)((u8*)arg1 + 0x00);
+    *(u32*)((u8*)arg0 + 0x04) = *(u32*)((u8*)arg1 + 0x04);
+    *(u32*)((u8*)arg0 + 0x08) = *(u32*)((u8*)arg1 + 0x08);
+    {
+        void* pTable = *(void**)((u8*)arg0 + 0x7C);
+        *(u32*)pTable = *(u32*)((u8*)arg1 + 0x1C);
+        pTable = *(void**)((u8*)arg0 + 0x7C);
+        *(u32*)((u8*)pTable + 4) = *(u32*)((u8*)arg1 + 0x20);
+    }
+    D_80059198 = savedD80059198;
+}
 
 void func_80021EBC(void* arg0, void* arg1) {
     u8* src = arg0;
