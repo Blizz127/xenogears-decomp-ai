@@ -387,7 +387,22 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093014);
 void func_800931F8(void) {
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093200);
+extern s32 D_800B0048;
+extern s32 D_800AFD14;
+void func_800932D0(void);
+
+void func_80093200(void) {
+    if (D_800ADBDC == 0 || D_800ADBE4 == 0 || D_800ADB2C != 0 ||
+        D_8004F308 == -1 || D_800ADB90 != 0) {
+        D_800B00C0 = 1;
+    } else {
+        func_800932D0();
+        func_800931F8();
+        D_800B0048 = FieldScriptVMGetArgument(0);
+        D_800AFD14 = FieldScriptVMGetArgument(2);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+    }
+}
 
 extern s32 D_800ADB70;
 extern s32 D_800ADBEC;
