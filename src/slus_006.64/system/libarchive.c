@@ -441,7 +441,26 @@ s32 func_8002945C(u8* pSlot) {
         return val;
     }
 }
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_800294B4);
+
+extern void* g_ArchiveCurStreamFile;
+
+s32 func_800294B4(void* pSlot) {
+    void* pStreamFile = g_ArchiveCurStreamFile;
+    u8* pTable;
+    s32 slotIdx, count, i;
+    u16 result;
+    if (pStreamFile == NULL) return 0xFFFF;
+    if (pSlot == NULL) return 0;
+    pTable = (u8*)pStreamFile + 4;
+    slotIdx = ((u8*)pSlot - ((u8*)pStreamFile + *(s32*)pStreamFile * 8 + 0x24)) >> 11;
+    result = *(u16*)(pTable + slotIdx * 8);
+    count = *(u16*)((u8*)pSlot + 6);
+    for (i = count; i > 0; i--) {
+        *(u16*)(pTable + (slotIdx + i) * 8 - 8) = 0;
+    }
+    ArchiveConsolidateStreamFileEntry(pSlot);
+    return result;
+}
 
 s32 ArchiveReadFileFromCdSector(s32 sector, void* pDestBuffer, s32 fileSize, s32 arg3, u32 flags) {
     if (g_ArchiveDebugTable) {
