@@ -2420,7 +2420,31 @@ void func_8003AD98(void* pManager) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ADCC);
+extern s32 SoundCalculateAudioManagerSize(s32);
+extern void SoundHeapSetBlockMemory(void*, void*, s32);
+
+void func_8003ADCC(void* pManager) {
+    void* pAlloc;
+    s32 size;
+    DisableEvent(g_unk_SoundEvent);
+    size = SoundCalculateAudioManagerSize(*(u8*)((u8*)pManager + 0x14));
+    if (*(void**)((u8*)pManager + 4) == NULL) {
+        pAlloc = SoundHeapAllocate(size);
+    } else {
+        pAlloc = *(void**)((u8*)pManager + 4);
+    }
+    if (pAlloc == NULL) {
+        EnableEvent(g_unk_SoundEvent);
+        return;
+    }
+    *(void**)((u8*)pManager + 4) = pAlloc;
+    *(u16*)((u8*)pManager + 0x10) |= 0x10;
+    SoundHeapSetBlockMemory(pAlloc, pManager, size);
+    *(u32*)pAlloc = 0;
+    *(u32*)((u8*)pAlloc + 4) = 0;
+    *(u32*)((u8*)pManager + 0x2C) = 0;
+    EnableEvent(g_unk_SoundEvent);
+}
 
 // Manager lifecycle restart: when the manager has a source image (unk_0x4)
 // and the restart flag (0x10), re-seed the manager from it. Runs ON the tick
