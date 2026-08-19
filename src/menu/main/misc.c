@@ -2007,7 +2007,16 @@ void func_801D13F8(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1464);
+extern void func_801CE198(s32, void*, u8);
+
+void func_801D1464(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x49) != 0) {
+        void* pData = *(void**)((u8*)pMenu + 0x43C);
+        func_801CE198(1, (u8*)pData + 0x50, *(u8*)((u8*)pData + 0x70));
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14B0);
 
