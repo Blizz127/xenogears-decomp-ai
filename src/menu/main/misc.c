@@ -3734,7 +3734,22 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D827C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D83AC);
+void func_801D83AC(void* pPrims, u8 mode, u8 count, u8 startIdx) {
+    u8 r = 0x40, g = 0x40, b = 0x40;
+    s32 i;
+    switch (mode) {
+        case 0: g = 0x80; b = 0x10; break;
+        case 1: r = 0x40; g = 0x80; break;
+        case 2: r = 0x40; g = 0x40; b = 0x40; break;
+    }
+    for (i = 0; i < count; i++) {
+        u8* pPrim = (u8*)pPrims + (startIdx + i * 2) * 0x28;
+        SetShadeTex(pPrim, 0);
+        pPrim[4] = r;
+        pPrim[5] = g;
+        pPrim[6] = b;
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D84B4);
 
