@@ -2781,7 +2781,20 @@ void func_801D2D38(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2EC0);
+extern void func_801D7CFC(s32, s32, s32);
+extern void func_801D8EA4(s32, s32, s32, s32);
+
+void func_801D2EC0(u8 arg0, u8 arg1) {
+    func_801D7C3C(arg0, arg1);
+    {
+        s32 gameStateByte = *(u8*)((u8*)&g_GameState + 0x22B1 + arg0);
+        func_801D7CFC(arg0, arg1, gameStateByte);
+    }
+    func_801C7BF4();
+    func_801D8DE4(arg0, 0, 0, arg1);
+    func_801C7BF4();
+    func_801D8EA4(arg0, 0, 0, arg1);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2F4C);
 
