@@ -128,7 +128,14 @@ s32 func_800409AC(void) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_800409E4);
+extern void* D_80056418;
+
+void func_800409E4(void) {
+    s32 i;
+    void* pPad = D_80056418;
+    *(u16*)((u8*)pPad + 0xA) = 0;
+    for (i = 9; i != -1; i--) {}
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040A4C);
 
