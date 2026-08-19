@@ -1120,7 +1120,49 @@ u32 func_801C8678(u32 mask, u8 idx) {
     return mask & D_801E96E8[idx];
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8694);
+extern void func_801D1E80(void);
+extern void func_801D22F4(s32);
+extern s32 ArchiveGetDiscNumber(void);
+extern void func_801E92CC(void);
+extern s32 func_801E93A0(s32);
+
+void func_801C8694(s32 discNum) {
+    u8 waiting = 0;
+    func_801D1E80();
+    if (*(u8*)((u8*)g_Menu + 0x329) != 0) {
+        waiting = 1;
+        while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
+            func_801C7BF4();
+        }
+    }
+    func_801D22F4(0);
+    if (waiting) {
+        u8 targetDisc = discNum + 1;
+        u8 param = (u8)(discNum * 3 - 0x7D);
+        while (waiting) {
+            if (ArchiveGetDiscNumber() == targetDisc) {
+                waiting = 0;
+            } else {
+                func_801E92CC();
+                func_801D2F4C(param);
+                if (func_801E93A0(targetDisc)) {
+                    u8 delay;
+                    func_801D32B4(0);
+                    func_801D2F4C(0x89);
+                    for (delay = 0x1D; (delay & 0xFF) != 0; delay--) {
+                        func_801C7BF4();
+                    }
+                    func_801D32B4(0);
+                    func_801C7BF4();
+                } else {
+                    func_801D32B4(0);
+                    waiting = 0;
+                }
+            }
+        }
+    }
+    func_801D2484();
+}
 
 void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x4);
