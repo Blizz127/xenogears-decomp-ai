@@ -3767,7 +3767,24 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7CFC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D827C);
+void func_801D827C(void* pPrims, u8 mode) {
+    u8 r = 0, g = 0, b = 0;
+    s32 i;
+    switch (mode) {
+        case 0: r = 1; g = 0x80; b = 0xFF; break;
+        case 1: r = 0x80; g = 0xFF; b = 0x80; break;
+        case 2: r = 0xFF; g = 0; b = 0; break;
+        case 3: r = 0; g = 0; b = 0; break;
+    }
+    for (i = 0; i < 2; i++) {
+        u8* pPrim = (u8*)pPrims + i * 0x24;
+        SetPolyG4(pPrim);
+        pPrim[4] = r; pPrim[5] = g; pPrim[6] = b;
+        pPrim[0xC] = r; pPrim[0xD] = g; pPrim[0xE] = b;
+        pPrim[0x14] = 0; pPrim[0x15] = 0; pPrim[0x16] = 0;
+        pPrim[0x1C] = 0; pPrim[0x1D] = 0; pPrim[0x1E] = 0;
+    }
+}
 
 void func_801D83AC(void* pPrims, u8 mode, u8 count, u8 startIdx) {
     u8 r = 0x40, g = 0x40, b = 0x40;
