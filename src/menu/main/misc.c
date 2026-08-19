@@ -3490,7 +3490,18 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D83AC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D84B4);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D85DC);
+s32 func_801D85DC(s32 arg0, u16* pArr1, u16* pArr2) {
+    u32 maxVal = 0;
+    s32 i, count;
+    for (count = 0; count < 7; count++) {
+        if (pArr1[count] > maxVal) maxVal = pArr1[count];
+    }
+    pArr1 += 7;
+    for (count = 0; count < 7; count++) {
+        if (pArr2[count] > maxVal) maxVal = pArr2[count];
+    }
+    return (s32)maxVal;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8644);
 
