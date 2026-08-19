@@ -5558,7 +5558,18 @@ void func_801E649C(void) {
     *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0xB) = 0;
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E64E0);
+void func_801E64E0(void) {
+    RECT rect;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x140;
+    rect.h = 0xE0;
+    ClearImage(&rect, 0x40, 0x20, 0x20);
+    {
+        void* pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0xB) = 0;
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6544);
 
