@@ -10,14 +10,14 @@ _Last updated: 2026-08-19_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `c0c97472` (Decompile func_801DD5E8 — menu character setup with table lookups) |
+| **HEAD** | `b66c4ce1` (Decompile func_801C8A10 — menu memory card port status check) |
 | **Build** | 468/468 targets — PASSING |
 | **Decomp_status universe** | 2477 functions |
-| **Matched {}** | 1964 (79.3%) |
+| **Matched {}** | 1967 (79.4%) |
 | **Coexistence** | 170 (6.9%) |
-| **Unported** | 343 (13.9%) |
-| **Total done** | 2134 (86.2%) |
-| **Decomp commits (this campaign)** | 596 |
+| **Unported** | 340 (13.7%) |
+| **Total done** | 2137 (86.3%) |
+| **Decomp commits (this campaign)** | 599 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
