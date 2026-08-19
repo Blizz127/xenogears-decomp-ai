@@ -2242,7 +2242,14 @@ void func_801D1EE0(s32 selected, s32 buildBar) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22C4);
+void func_801D22C4(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    *(u8*)((u8*)pManager + 4) = 0;
+    pMenu = g_Menu;
+    pManager = *(void**)((u8*)pMenu + 0x33C);
+    *(u8*)((u8*)pManager + 3) = 0;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22F4);
