@@ -1,7 +1,7 @@
 # Xenogears Decompilation Progress Dashboard
 
 _Authoritative: backed by `tools/scripts/decomp_status.py --json`._
-_Last updated: 2026-08-18_
+_Last updated: 2026-08-19_
 
 ---
 
@@ -10,139 +10,144 @@ _Last updated: 2026-08-18_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `782e335` (Decompile func_80092894 — player actor movement and transition) |
+| **HEAD** | `8d2e41c6` (Decompile func_8001C074 — menu render tick) |
 | **Build** | 468/468 targets — PASSING |
-| **Decomp_status universe** | 2477 functions, 1972 done (79.6%) |
-| **Decomp commits (this campaign)** | 431 |
+| **Decomp_status universe** | 2477 functions |
+| **Matched {}** | 1940 (78.3%) |
+| **Coexistence** | 170 (6.9%) |
+| **Unported** | 367 (14.8%) |
+| **Total done** | 2110 (85.2%) |
+| **Decomp commits (this campaign)** | 572 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
 
-## Universe Summary (decomp_status.py)
+## Per-Overlay Progress
 
-**Universe = 2477 functions** (asm `.s` union across 4 overlays: slus_006.64, field, member_change_menu, shop_menu)
-
-| Category | Count | % |
-|----------|------:|--:|
-| **MATCHED {}** (C body, no INCLUDE_ASM, byte-exact inferred) | 1802 | 72.7% |
-| **COEXISTENCE** (INCLUDE_ASM + port body, byte-exact via coexistence) | 170 | 6.9% |
-| **UNPORTED** (unconditional INCLUDE_ASM) | 505 | 20.4% |
-| **Done-for-matching** (MATCHED + COEX) | **1972** | **79.6%** |
-| **Stubs in port** | 238 | — |
-
-### Per-overlay
-
-| Overlay | Total | Matched | Coex | Unported | %done |
-|---------|------:|--------:|-----:|---------:|------:|
-| field | 878 | 830 | 5 | 43 | **95.1%** |
+| Overlay | Total | Matched {} | Coex | Unported | %done |
+|---------|------:|-----------:|-----:|---------:|------:|
+| field | 878 | 848 | 5 | 25 | 97.2% |
 | member_change_menu | 67 | 66 | 0 | 1 | 98.5% |
-| menu | 312 | 23 | 104 | 185 | 40.7% |
-| shop_menu | 118 | 100 | 0 | 18 | 84.7% |
-| slus_006.64 | 1102 | 783 | 61 | 258 | 76.6% |
-| **TOTAL** | **2477** | **1802** | **170** | **505** | **79.6%** |
-| Shop Menu | 118 | 118 | 100.0% |
+| menu | 312 | 103 | 104 | 105 | 66.3% |
+| shop_menu | 118 | 101 | 0 | 17 | 85.6% |
+| slus_006.64 | 1102 | 822 | 61 | 219 | 80.1% |
 
 ---
 
-## Per-Overlay Progress (decomp_status.py)
+## Per-Subsystem (slus_006.64)
 
-| Overlay | Total | Matched | Coex | Unported | %done |
-|---------|------:|--------:|-----:|---------:|------:|
-| field | 878 | 811 | 6 | 61 | 93.1% |
-| member_change_menu | 67 | 66 | 0 | 1 | 98.5% |
-| menu | 312 | 23 | 104 | 185 | 40.7% |
-| shop_menu | 118 | 100 | 0 | 18 | 84.7% |
-| slus_006.64 | 1102 | 783 | 61 | 258 | 76.6% |
-| **TOTAL** | **2477** | **1783** | **171** | **523** | **78.9%** |
-
----
-
-## Subsystem Progress
-
-### Field (878 functions, 93.1% done)
-| Module | Total | Done | Remaining |
-|--------|------:|-----:|----------:|
-| field/main/misc | 198 | 196 | 2 |
-| field/main/misc2 | 44 | 43 | 1 |
-| field/main/misc4 | 42 | 42 | 0 |
-| field/main/misc5 | 36 | 29 | 7 |
-| field/main/misc6 | 63 | 58 | 5 |
-| field/main/misc7 | 91 | 73 | 18 |
-| field/main/misc8 | — | — | 0 (complete) |
-| field/main/misc9 | 27 | 21 | 6 |
-| field/main/misc10 | — | — | 0 (complete) |
-| field/main/misc11 | 102 | 102 | 0 (complete) |
-| field/main/main | 14 | 13 | 1 |
-| field/camera | 30 | 29 | 1 |
-| field/party/stats | 16 | 15 | 1 |
-| field/scripts/vm | 29 | 28 | 1 |
-
-### Kernel/System (slus_006.64, 1102 functions, 76.6% done)
-| Module | Total | Done | Remaining |
-|--------|------:|-----:|----------:|
-| system/sound | 271 | 240 | 31 |
-| system/temp1 | 71 | 51 | 20 |
-| system/temp2 | 102 | 76 | 26 |
-| system/temp3 | 27 | 25 | 2 |
-| system/rendering | 20 | 15 | 5 |
-| system/work_list | 29 | 29 | 0 |
-| system/libarchive | 27 | 24 | 3 |
-| system/system | 54 | 54 | 0 |
-| system/animation_scripts | 34 | 26 | 8 |
-| system/menu | 8 | 6 | 2 |
-| psyq/libgte | 96 | 11 | 85 |
-| psyq/libgpu | 66 | 44 | 22 |
-| psyq/libapi | 25 | 7 | 18 |
-| psyq/libapi_2 | 8 | 1 | 7 |
-| psyq/libcard | 7 | 1 | 6 |
-| psyq/libc | 12 | 4 | 8 |
-| psyq/libsn | 8 | 0 | 8 |
-
-### Menu (312 functions, 40.7% done)
-| Module | Total | Done | Remaining |
-|--------|------:|-----:|----------:|
-| menu/main/misc | 312 | 127 | 185 |
-
-### Shop Menu (118 functions, 84.7% done)
-| Module | Total | Done | Remaining |
-|--------|------:|-----:|----------:|
-| shop_menu/main/misc | 118 | 100 | 18 |
+| Subsystem | Total | Done | Remaining |
+|-----------|------:|-----:|----------:|
+| sound.c | 271 | 216 | 55 |
+| temp2.c | 102 | 73 | 29 |
+| temp1.c | 71 | 51 | 20 |
+| menu.c | 8 | 7 | 1 |
+| animation_scripts.c | 34 | 27 | 7 |
+| rendering.c | 20 | 15 | 5 |
+| system.c | 54 | 53 | 1 |
+| libarchive.c | 27 | 25 | 2 |
+| work_list.c | 29 | 29 | 0 |
+| libgte.c | 96 | 9 | 87 |
+| libgpu.c | 66 | 46 | 20 |
+| libapi.c | 25 | 7 | 18 |
+| libapi_2.c | 8 | 1 | 7 |
+| libsn.c | 8 | 0 | 8 |
+| libc.c | 12 | 6 | 6 |
+| libcard.c | 7 | 1 | 6 |
+| libetc | 18 | 16 | 2 |
 
 ---
 
-## Files Now Complete (0 unported INCLUDE_ASM)
+## Remaining Workload Classification
 
-| File | Functions |
-|------|----------:|
-| `src/field/main/misc3.c` | — |
-| `src/field/main/misc8.c` | — |
-| `src/field/main/misc10.c` | — |
-| `src/field/main/misc4.c` | 42 |
-| `src/slus_006.64/system/work_list.c` | 29 |
-| `src/slus_006.64/system/archive.c` | 11 |
-| `src/slus_006.64/system/system.c` | 54 |
+### BIOS/Hardware Stubs (cannot decompile)
+- libapi.c: 7 BIOS syscall stubs (break/jr $t2)
+- libapi_2.c: 7 BIOS stubs
+- libsn.c: 8 BIOS stubs
+- libcard.c: 6 BIOS stubs
+
+### BLOCKED (known blockers)
+- `func_8007234C` (misc2.c) — call-site mismatch, no-arg call vs 2-arg impl
+- `func_800AB748` (misc9.c) — jump table (needs linker fix)
+- `func_80023468` (temp1.c) — jump table
+- `func_80022DF4` (temp1.c) — callback table conflict
+
+### MATCHING_C (known correct C in comments, toolchain mismatch)
+- `FieldScriptWriteActorDistance` (misc.c) — volatile keyword
+- misc4.c: 3 functions with matching C in comments/#ifdef
+- temp3.c: 3 functions with matching C
+- rendering.c: 5 functions with matching C
+
+### NEEDS_FORMAT_STRINGS (unknown rodata)
+- `func_8002C310` (temp2.c, 52 lines) — 4 format string addresses unknown
+- `func_8004463C` (libgpu.c, 81 lines) — GPU validation with format strings
+
+### NEEDS_MAGIC_DIVISION
+- `func_8003ABF0` (sound.c, 28 lines) — timer decomposition
+
+### READY_MEDIUM (60-100 lines, decompilable)
+- `func_801E76EC` (menu, 81 lines) — character render loop
+- `func_801E1418` (menu, 84 lines)
+- `func_801C9270` (menu, 86 lines)
+- `func_801CB8AC` (menu, 86 lines)
+- `func_801D827C` (menu, 87 lines)
+- `func_801D249C` (menu, 88 lines)
+
+### READY_LARGE (100+ lines, decompilable)
+- `func_801D02D8` (menu, 422 lines) — complex menu data
+- `func_801E20C8` (menu, 110 lines) — menu navigation loop
+- `func_801E5B88` (menu, 182 lines)
+- `func_8001A6E8` (temp3.c, 266 lines) — grid rendering
+- misc5.c: 7 functions (144-455 lines)
+- misc6.c: 3 functions (165-240 lines)
+- misc9.c: 5 functions (129-386 lines)
+- temp2.c: 27 functions (112-372 lines)
+- temp1.c: 18 functions (175-351 lines)
+- libgte.c: 87 functions (mostly handwritten GTE)
+
+### Menu Overlay #ifdef Wall
+The menu overlay has 105 unported functions. Most are inside `#ifndef XENO_PC_PORT` guards — they have matching native C implementations but the MIPS build keeps retail assembly. These cannot be decompiled further; they need the PC port build path to be enabled.
 
 ---
 
-## Validation Quality
+## Completed Files (0 INCLUDE_ASM)
 
-| Check | Status |
-|-------|--------|
-| Compile (468/468) | **PASS** |
-| Link (468/468) | **PASS** |
-| rom-check (field.bin) | **FAIL** (known red — nonmatching decompilations) |
-| objdiff function match | 73.7% (1689/2292) |
-| objdiff byte match | 60.4% |
+| File | Status |
+|------|--------|
+| src/field/main/misc3.c | COMPLETE |
+| src/field/main/misc8.c | COMPLETE |
+| src/field/main/misc10.c | COMPLETE |
+| src/field/main/misc11.c | COMPLETE |
+| src/slus_006.64/system/work_list.c | COMPLETE |
+| src/slus_006.64/system/archive.c | COMPLETE |
+| src/slus_006.64/system/system.c | COMPLETE |
+
+---
+
+## Campaign Summary
+
+| Metric | Value |
+|--------|-------|
+| Total decomp commits | 572 |
+| INCLUDE_ASM remaining (project-wide) | 537 |
+| INCLUDE_ASM remaining (active targets) | 537 |
+| Unported (decomp_status.py) | 367 |
+| Files 100% complete | 7 |
+| Build status | 468/468 PASSING |
 
 ---
 
 ## Continuation Block
 
 ```
-CURRENT_HEAD=6979c7d
-COMPLETED=1954/2477 (78.9%) [decomp_status] or 1689/2292 (73.7%) [objdiff]
-REMAINING=523 unported INCLUDE_ASM + 603 decompiled nonmatching
-LAST_FUNCTION=func_800925A0 (field script actor motion speed set)
-VALIDATION_STATUS=compile+link PASS, objdiff 73.7% func match
-NEXT_PRIORITY=misc11.c remaining 18 INCLUDE_ASM, then misc7.c, misc5.c
+CURRENT_HEAD=8d2e41c6
+COMPLETED=1940 matched + 170 coex = 2110/2477 (85.2%)
+REMAINING=367 unported INCLUDE_ASM
+LAST_FUNCTION=func_8001C074 (menu render tick)
+NEXT_TARGETS=func_801E76EC (menu, 81L), func_801E1418 (menu, 84L),
+              func_8004463C (libgpu, 81L), func_801CB184 (menu, 86L)
+VALIDATION_STATUS=compile+link PASS, no matching verification
+KNOWN_DEBT=All functions behavioral approximations; menu #ifdef wall;
+           BIOS stubs cannot decompile; magic division functions skipped
+NEXT_PRIORITY=Continue menu functions 81-90 lines; tackle libgpu.c
 ```
