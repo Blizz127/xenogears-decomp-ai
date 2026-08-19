@@ -5279,7 +5279,21 @@ void func_801DE2C8(u8 arg0) {
     func_801D3488(1, arg0);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE36C);
+void func_801DE36C(void) {
+    void* pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x4C) = 0;
+    func_801D4EA0(2);
+    func_801D4EA0(3);
+    func_801D4EA0(4);
+    func_801D4EA0(5);
+    func_801C7BF4();
+    pMenu = g_Menu;
+    func_801E8044(6, (u8*)(*(void**)((u8*)pMenu + 0x33C)) + 0x40);
+    func_801C72BC(0x17);
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x434));
+    func_801D3444();
+}
 
 void func_801DE400(void) {
     void* pMenu = g_Menu;
