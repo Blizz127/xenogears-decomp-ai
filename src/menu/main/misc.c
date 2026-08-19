@@ -5951,7 +5951,55 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1544);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1AC8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E20C8);
+extern void func_801E1014(void);
+extern void func_801E1AC8(u8);
+extern void func_801E1398(void);
+
+s32 func_801E20C8(u8 slotIdx) {
+    u8 lastSlot = 0xFF;
+    u8 result = 1;
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    u8 slotType = *(u8*)((u8*)pManager + 0x30 + slotIdx);
+    if (slotType - 7 < 2) {
+        func_801C8574(4);
+        return 1;
+    }
+    func_801E1014();
+    while (result) {
+        func_801C7BF4();
+        if ((u8)slotIdx != (u8)lastSlot) {
+            func_801E1AC8(slotIdx);
+            lastSlot = slotIdx;
+        }
+        {
+            u8 menuState = *(u8*)((u8*)g_Menu + 0x325);
+            if (menuState == 9) {
+                slotIdx = (u8)func_801D9704(0, 0);
+                pMenu = g_Menu;
+                pManager = *(void**)((u8*)pMenu + 0x33C);
+                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
+                    slotIdx = (u8)func_801D9704(0, 0);
+                    pMenu = g_Menu;
+                    pManager = *(void**)((u8*)pMenu + 0x33C);
+                }
+            } else if (menuState == 10) {
+                slotIdx = (u8)func_801D9704(1, 0);
+                pMenu = g_Menu;
+                pManager = *(void**)((u8*)pMenu + 0x33C);
+                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
+                    slotIdx = (u8)func_801D9704(1, 0);
+                    pMenu = g_Menu;
+                    pManager = *(void**)((u8*)pMenu + 0x33C);
+                }
+            } else if (menuState == 5) {
+                result = 0;
+            }
+        }
+    }
+    func_801E1398();
+    return 1;
+}
 
 extern void func_801C72BC(s32);
 extern void func_801D3488(s32, s32);
