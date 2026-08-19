@@ -10,8 +10,19 @@ void bzero(void* dst, int n) {
     }
 }
 
+void* memcpy(void* dst, const void* src, int n) {
+    u8* d = (u8*)dst;
+    const u8* s = (const u8*)src;
+    if (dst == NULL) return NULL;
+    if (n > 0) {
+        while (n-- > 0) {
+            *d++ = *s++;
+        }
+    }
+    return dst;
+}
+
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memchr);
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memcpy);
 
 /* PSYQ gcc 2.7 often lowers memcpy() to jal bcopy (BSD arg order: src,dst,n).
  * Retail has no standalone bcopy; provide a small non-builtin loop so matching
