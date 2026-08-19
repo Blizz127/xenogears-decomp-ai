@@ -1829,7 +1829,11 @@ void func_801D0C78(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0D90);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E20);
+s32 func_801D0E20(void) {
+    s32 i;
+    for (i = 6; i >= 0; i--) {}
+    return i + 1;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E38);
 
