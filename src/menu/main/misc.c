@@ -1987,7 +1987,16 @@ void func_801D1B20(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1BE8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1C48);
+void func_801D1C48(void) {
+    func_801D3B00();
+    func_801CE3C8();
+    func_801D11F0();
+    func_801CE338();
+    func_801D02D8();
+    func_801D01D0();
+    func_801D0C78();
+    func_801CF308();
+}
 
 /* Gate the draw dispatcher on the menu's render flag, then select the active
  * menu-mode pass.  The common trailing pass runs even when drawing is
