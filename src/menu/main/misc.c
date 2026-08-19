@@ -5621,7 +5621,24 @@ void func_801E4170(s32 arg0, u8 arg1) {
     func_801E4258(arg0, arg1);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
+void func_801E41C0(s32 arg0, u8 idx) {
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0x28;
+    u8 tableIdx = pEntry[2];
+    u8* pTable = *(u8**)((u8*)arg0 + 8) + tableIdx * 0x18;
+    u32 val = *(u32*)(pTable + 4);
+    *(u32*)(pEntry + 0x60) = val;
+    *(u32*)(pEntry + 0x64) = val;
+    pEntry[0x98] = pTable[0x14];
+    pEntry[0x9E] = pTable[0x15];
+    pEntry[0x9D] = pTable[0x16];
+    {
+        u32 prev = *(u32*)(pEntry + 0x64);
+        if (prev < *(u32*)(pEntry + 0x60)) {
+            pEntry[0x9F] = pTable[0x17];
+            *(u32*)(pEntry + 0x60) = prev;
+        }
+    }
+}
 
 void func_801E4258(void* pCtx, u8 idx) {
     s32 i = idx;
