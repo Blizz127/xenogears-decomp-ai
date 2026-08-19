@@ -80,7 +80,24 @@ s32 func_8004077C(void) {
     return D_80056414;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004078C);
+extern void func_80040C5C(void);
+extern void _patch_pad(void);
+extern void ChangeClearPAD(s32);
+extern void func_80040ABC(s32, s32, s32, s32);
+extern void func_80040BA4(void);
+
+s32 func_8004078C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    func_80040C5C();
+    EnterCriticalSection();
+    _patch_pad();
+    ExitCriticalSection();
+    ChangeClearPAD(0);
+    func_8004092C();
+    func_80040ABC(arg0, arg1, arg2, arg3);
+    func_80040BA4();
+    D_80056414 = 1;
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD);
 
