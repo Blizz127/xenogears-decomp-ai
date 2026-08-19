@@ -1492,7 +1492,52 @@ void func_801CA480(s32 direction, s32 startIdx, s32 limit) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA5F0);
+extern u32 D_801E9818[];
+
+void func_801CA5F0(s32 direction, s32 startIdx, s32 limit) {
+    void* pMenu;
+    void* pData;
+    s32 idx;
+    if (direction == 0) {
+        if (limit < 0) return;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        for (idx = startIdx - 1; idx >= 0; idx--) {
+            u32 offset = D_801E9818[idx];
+            if (*(u8*)(pData + offset + 0x4FAE) != 0xFF) {
+                *(s32*)(pData + 0x4F7C) = limit;
+                return;
+            }
+        }
+    } else if (direction == 1) {
+        idx = startIdx - 1;
+        if (idx < 0) return;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        for (; idx >= 0; idx--) {
+            u32 offset = D_801E9818[idx];
+            if (*(u8*)(pData + offset + 0x4FAE) != 0xFF) {
+                if (*(u8*)(pData + offset + 0x4F8E) != 0) {
+                    *(s32*)(pData + 0x4F7C) = idx;
+                    return;
+                }
+            }
+            idx--;
+            if (idx < 0) return;
+        }
+    } else if (direction == 2) {
+        idx = startIdx - 1;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        {
+            s32 group = idx / 15;
+            u32 offset = D_801E9818[group];
+            if (*(u8*)(pData + offset + 0x4FE4) != 0 && idx >= 0) {
+                *(s32*)(pData + 0x4F7C) = idx;
+            }
+        }
+    }
+}
 
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50A8);
 
