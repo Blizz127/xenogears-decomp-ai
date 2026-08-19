@@ -475,7 +475,81 @@ void func_801C62A8(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6400);
+void func_801C6400(void) {
+    void* pMenu;
+    void* pData;
+    s32 i;
+    s32 j;
+    s32 pos;
+    u8* buffer;
+    u16 nameIndex;
+
+    for (i = 0; i < 2; i++) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + i + 0x4F88) = 0;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + i + 0x4F8A) = 0;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + i + 0x4F8C) = 0xFF;
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4FE6) = 0;
+
+    j = 0;
+    for (i = 0; i < 0x20; i++) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + j + 0x58) = 0;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + i + 0x4FAE) = 0xFF;
+        j += 0x5C;
+    }
+
+    nameIndex = *(u16*)((u8*)&g_GameState + 0x1930);
+    ArchiveSetIndex(0x10, 1);
+    buffer = (u8*)HeapAlloc(ArchiveDecodeAlignedSize(1), 1);
+    ArchiveReadFileToBuffer(1, buffer, 0, 0x80);
+    ArchiveCdDataSync(0);
+
+    pos = 0;
+    if (nameIndex != 0) {
+        u16 count = nameIndex;
+        while (1) {
+            u8 val = buffer[pos];
+            if (val >= 0x80) {
+                pos += 2;
+                continue;
+            }
+            if (val == 0x0A) {
+                count--;
+                if ((count & 0xFFFF) == 0) {
+                    pos++;
+                    break;
+                }
+            }
+            pos++;
+        }
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    for (i = 0; i < 0x1E; i++) {
+        *(u8*)(pData + i + 0x4FFC) = buffer[pos + i];
+    }
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x501A) = 0;
+    *(u8*)(pData + 0x501B) = 0;
+
+    ArchiveSetIndex(0x10, 0);
+    HeapFree(buffer);
+}
 
 /* B1b: the main-menu resource-load (twin of MemberChangeMenuLoadResources).
  * Decompresses the menu resources -- the Xenogears icon TIM, the menu TIM
