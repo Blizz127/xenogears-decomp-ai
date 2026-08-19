@@ -1930,7 +1930,16 @@ void func_801D0ED4(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0F54);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0FD4);
+void func_801D0FD4(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x4E) != 0) {
+        u8 idx = *(u8*)((u8*)pMenu + 0x185D);
+        u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
+        u8* pPrim = (u8*)pMenu + 0x17E0 + idx * 0x28;
+        AddPrim(pOT, pPrim);
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1030);
 
