@@ -6018,7 +6018,24 @@ void func_801E927C(POLY_FT4* p) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E92CC);
+extern s32 func_8002C3D8(void);
+extern void func_8002A498(s32);
+extern void ArchiveCdDataSync(s32);
+extern void ArchiveCdSetMode(s32);
+extern u8 D_801EA8F4[];
+
+void func_801E92CC(void) {
+    if (func_8002C3D8() == 0) {
+        func_8002A498(0);
+        ArchiveCdDataSync(0);
+        ArchiveCdSetMode(0);
+        ArchiveCdDataSync(0);
+        Vsync(3);
+        do {
+            Vsync(3);
+        } while (CdControlB(8, NULL, D_801EA8F4) == 0);
+    }
+}
 
 void func_801E9340(char* path, void* pBuf, s32 size) {
     s32 fd = PCopen(path, 0, 0);
