@@ -2465,7 +2465,44 @@ void func_801D1640(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D17C4);
+void func_801D17C4(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x4C) != 0) {
+        s32 i;
+        u32 offset = 0x400;
+        for (i = 0; i < 8; i++) {
+            pMenu = g_Menu;
+            {
+                u8* pData = *(u8**)((u8*)pMenu + 0x434);
+                if (*(u8*)(pData + 0xA10 + i) != 0) {
+                    u8* pSlot = pData + i * 0x80;
+                    func_801CE198(1, pSlot + 0x50, *(u8*)(pSlot + 0x7D));
+                    pMenu = g_Menu;
+                    pData = *(u8**)((u8*)pMenu + 0x434);
+                    func_801CE198(1, pData + offset + 0x50, *(u8*)(pSlot + 0x47D));
+                }
+            }
+            offset += 0x80;
+        }
+        pMenu = g_Menu;
+        {
+            u8* pData = *(u8**)((u8*)pMenu + 0x434);
+            func_801CE198(1, pData + 0x850, *(u8*)(pData + 0x87D));
+            pMenu = g_Menu;
+            pData = *(u8**)((u8*)pMenu + 0x434);
+            if (*(u8*)(pData + 0xA18) != 0) {
+                u32 off2 = 0x880;
+                for (i = 0; i < 3; i++) {
+                    pMenu = g_Menu;
+                    pData = *(u8**)((u8*)pMenu + 0x434);
+                    func_801CE198(1, pData + off2 + 0x50, *(u8*)(pData + i * 0x80 + 0x8FD));
+                    off2 += 0x80;
+                }
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1914);
 
