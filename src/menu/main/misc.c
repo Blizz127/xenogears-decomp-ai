@@ -1742,7 +1742,22 @@ void func_801CEB5C(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEBB4);
+void func_801CEBB4(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x4B) != 0) {
+        s32 i;
+        for (i = 0; i < 5; i++) {
+            pMenu = g_Menu;
+            {
+                void* pData = *(void**)((u8*)pMenu + 0x360);
+                if (*(u8*)((u8*)pData + 0x294 + i) != 0) {
+                    func_801CE198(1, (u8*)pData + i * 0x80 + 0x50, *(u8*)((u8*)pData + 0x299));
+                }
+            }
+        }
+    }
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEC40);
