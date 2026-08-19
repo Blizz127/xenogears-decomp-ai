@@ -6627,7 +6627,44 @@ void func_801E6AE8(u8 slotIdx, s32 arg1) {
     func_8002675C(*(u32*)((u8*)pMenu + 0x2DC), charIdx + 0x14E, pSlot, arg3, stackArgs[0], stackArgs[1], stackArgs[2]);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6B70);
+extern void func_801C80B8(u8);
+extern u32 D_801EA01C;
+extern u32 D_801EA020;
+
+void func_801E6B70(u8 slotIdx, u8* pTable) {
+    s32 i;
+    u8* pMenu;
+    u8* pData;
+    u32 dataOff;
+    u8* pSlotBase;
+    u8 val;
+    val = pTable[slotIdx + 0x16];
+    func_801C80B8(val);
+    pMenu = (u8*)g_Menu;
+    pData = *(u8**)(pMenu + 0x34C);
+    dataOff = slotIdx * 0x7C;
+    pSlotBase = pData + dataOff;
+    pSlotBase[0x1308] = 0;
+    for (i = 0; i < 3; i++) {
+        pMenu = (u8*)g_Menu;
+        if (*(u8*)(pMenu + 0x322 + i) != 0xFF) {
+            u8* pBuf = *(u8**)(pMenu + 0x34C);
+            u8 tblVal = *(u8*)(pBuf + dataOff + 0x1308);
+            u32 tableEntry = D_801EA01C + slotIdx * 0x30 + i * 8;
+            u8* pRender = pBuf + dataOff + 0xA98 + tblVal * 0x320;
+            func_8002675C(*(s32*)(pMenu + 0x2DC), *(u8*)(pMenu + 0x322 + i), pRender, *(s32*)(pMenu + 0x308), tableEntry, D_801EA020, 0x1000);
+            pMenu = (u8*)g_Menu;
+            pData = *(u8**)(pMenu + 0x34C);
+            *(u8*)(pData + dataOff + 0x1308) += 1;
+        }
+    }
+    pMenu = (u8*)g_Menu;
+    val = pTable[slotIdx + 0x19];
+    func_801C80B8(val);
+    pMenu = (u8*)g_Menu;
+    pData = *(u8**)(pMenu + 0x34C);
+    *(u8*)(pData + slotIdx * 0x7C + 0x1309) = 0;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6CFC);
 
