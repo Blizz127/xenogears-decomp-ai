@@ -3942,7 +3942,20 @@ void func_801D9E3C(void) {
     ExitCriticalSection();
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F34);
+extern u8 D_801EA53C[];
+extern u8 D_801EA542[];
+
+void func_801D9F34(void) {
+    void* pMenu;
+    u8* pTable;
+    if (D_80059460 == 2) {
+        pTable = D_801EA542;
+    } else {
+        pTable = D_801EA53C;
+    }
+    pMenu = g_Menu;
+    func_801E8018(6, (u8*)pMenu + 0xDE0, pTable, (u8*)(*(void**)((u8*)pMenu + 0x33C)) + 0x1A);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
 
