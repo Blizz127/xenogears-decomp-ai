@@ -1837,7 +1837,11 @@ s32 func_801D0E20(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E38);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0EBC);
+s32 func_801D0EBC(void) {
+    s32 i;
+    for (i = 4; i >= 0; i--) {}
+    return i + 1;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0ED4);
