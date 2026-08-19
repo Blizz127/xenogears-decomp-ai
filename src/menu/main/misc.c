@@ -1143,7 +1143,27 @@ s32 func_801C891C(s32 port) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8960);
+extern void func_801C7BF4(void);
+
+void func_801C8960(void) {
+    void* pMenu;
+    void* pData;
+    func_801C7BF4();
+    EnterCriticalSection();
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    CloseEvent(*(void**)((u8*)pData + 0x4FEC));
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    CloseEvent(*(void**)((u8*)pData + 0x4FF0));
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    CloseEvent(*(void**)((u8*)pData + 0x4FF4));
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    CloseEvent(*(void**)((u8*)pData + 0x4FF8));
+    ExitCriticalSection();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8A10);
 
