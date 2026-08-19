@@ -6201,7 +6201,31 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E71B4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E733C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E76EC);
+void func_801E76EC(s32 screenIdx) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    void* pTable = func_801E61B0((u8*)pData + (screenIdx << 9));
+    u8* pEntry = (u8*)pTable + 0xC94;
+    s32 i;
+    u32 slotOff = 0;
+    for (i = 0; i < 3; i++) {
+        if (*(u8*)(pEntry + i + 0x1C) != 0xFF) {
+            u8 idx = (u8)i;
+            *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x1310) = 1;
+            func_801E6AE8(idx, pEntry);
+            func_801E6B70(idx, pEntry);
+            func_801E6CFC(idx, pEntry);
+            func_801E6F5C(idx, pEntry);
+            func_801E71B4(idx, pEntry, screenIdx);
+        } else {
+            *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x1310) = 0;
+        }
+        *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x130F) = *(u8*)((u8*)g_Menu + 0x308);
+        slotOff += 0x87C;
+    }
+    func_801E68AC(pEntry);
+    func_801E733C(pEntry);
+}
 
 extern void func_801E76EC(s32);
 extern void func_801E6668(s32);
