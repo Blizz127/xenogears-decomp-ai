@@ -1333,7 +1333,21 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB184);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB28C);
+extern u16 D_8006F958[];
+extern u16 D_8005A3A0[];
+extern s32 D_80059488;
+extern void* func_801E4D10(s32, s32);
+
+void func_801CB28C(s32 arg0) {
+    void* pMenu = g_Menu;
+    void* pData = func_801E4D10(arg0, *(s32*)((u8*)pMenu + 0x330));
+    s32 i;
+    D_80059488 = *(s32*)pData;
+    for (i = 0; i < 0x10; i++) {
+        D_8005A3A0[i] = D_8006F958[i];
+    }
+    func_801CB184();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
 
