@@ -1309,7 +1309,76 @@ void func_801C8960(void) {
     ExitCriticalSection();
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8A10);
+extern s32 D_801EA900;
+
+s32 func_801C8A10(u8 port) {
+    void* pMenu;
+    void* pData;
+    s32 result;
+    s32 ret = 1;
+    u8 portIdx = port;
+    s32 off1;
+    s32 i;
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + portIdx + 0x4FE4) = 1;
+
+    result = func_801C891C((portIdx != 0) << 4);
+
+    if (result == 0) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (*(s32*)(pData + portIdx * 4 + 0x4F74) == -1) {
+            result = 1;
+            *(s32*)(pData + portIdx * 4 + 0x4F74) = 0;
+        }
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(s32*)(pData + portIdx * 4 + 0x4F74) = result;
+
+    if (result == -1) {
+        off1 = portIdx << 4;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + portIdx + 0x4F8A) = 0;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + portIdx + 0x4FE4) = 0;
+        D_801EA900 = 0;
+        for (i = 0; i < 0x10; i++) {
+            pMenu = g_Menu;
+            pData = *(void**)((u8*)pMenu + 0x32C);
+            *(u8*)(pData + off1 + i + 0x4FAE) = 0xFF;
+            pMenu = g_Menu;
+            pData = *(void**)((u8*)pMenu + 0x32C);
+            *(u8*)(pData + off1 + i + 0x4F8E) = 0;
+            pMenu = g_Menu;
+            pData = *(void**)((u8*)pMenu + 0x32C);
+            off1 += 0x3C;
+            *(u8*)(pData + off1 + 0x58) = 0;
+        }
+    }
+
+    if (result == -2) {
+        ret = 0;
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    if (*(u8*)(pData + portIdx + 0x4FE8) != *(u8*)(pData + portIdx + 0x4FE4)) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + portIdx + 0x4F88) = 0;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + portIdx + 0x4FE8) = *(u8*)(pData + portIdx + 0x4FE4);
+    }
+
+    return ret;
+}
 
 extern u8 D_801E9779;
 
