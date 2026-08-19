@@ -1076,7 +1076,11 @@ void func_801C8574(s32 soundId) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85C0);
+extern u16 D_801E96C8[];
+
+u16 func_801C85C0(u8 idx) {
+    return D_801E96C8[idx];
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85DC);
 
