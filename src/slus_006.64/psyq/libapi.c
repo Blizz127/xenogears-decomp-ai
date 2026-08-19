@@ -102,7 +102,7 @@ extern void* D_8005A208;
 extern void* D_8005A200;
 extern void* D_8005A20C;
 extern void func_800409E4(void);
-extern void func_80040A4C(void);
+extern s32 func_80040A4C(void);
 extern void SysEnqIntRP(s32, void*);
 
 s32 func_8004092C(void) {
@@ -137,7 +137,14 @@ void func_800409E4(void) {
     for (i = 9; i != -1; i--) {}
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040A4C);
+extern void* D_8005641C;
+
+s32 func_80040A4C(void) {
+    void* pPad = D_8005641C;
+    if (!(*(u32*)((u8*)pPad + 4) & 1)) return 0;
+    if (*(u32*)pPad & 1) return 0;
+    return 1;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD2);
 
