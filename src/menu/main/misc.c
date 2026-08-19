@@ -1279,7 +1279,20 @@ void func_801C8BEC(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8CA4);
+void func_801C8CA4(u8 idx) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    s32 val = *(s32*)((u8*)pData + 0x4F74 + idx * 4);
+    if (val != -2) {
+        s32 i;
+        *(u8*)((u8*)pData + 0x4FE6) = 2;
+        for (i = 0x3B; i != 0; i--) {
+            func_801C7BF4();
+        }
+        pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4FE6) = 0;
+    }
+}
 
 void func_801C8D1C(u8 idx) {
     void* pMenu = g_Menu;
