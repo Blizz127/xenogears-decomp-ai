@@ -6986,7 +6986,47 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6CFC);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6F5C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E71B4);
+extern u16 D_801EA590[];
+extern u16 D_801EA5DC[];
+
+void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
+    u8* pSrc = (u8*)pData + charIdx;
+    void* pMenu = g_Menu;
+    void* pMgrData = *(void**)((u8*)pMenu + 0x32C);
+    u8* pEntry = (u8*)pMgrData + (screenIdx << 9) + 0xC94;
+    u8 buf[0x18];
+    u8 outBuf[0x18];
+    s32 i = 0;
+    u8* pDst = buf;
+    u8* pDst2 = buf + 1;
+    RECT rect;
+    void* pRender;
+    void* pAlloc;
+
+    while (i < 0x14) {
+        u8 charVal = pSrc[0x1C];
+        u8 val0 = pEntry[charVal * 0x14 + i * 2 + 0x24];
+        u8 val1 = pEntry[charVal * 0x14 + i * 2 + 0x25];
+        *pDst = val0;
+        *pDst2 = val1;
+        if (val0 == 0 && val1 == 0) break;
+        pDst += 2;
+        pDst2 += 2;
+        i += 2;
+    }
+
+    func_80033B34(buf, outBuf, i >> 1);
+    pAlloc = HeapAlloc(0x3F6, 0);
+    bzero(pAlloc, 0x3F6);
+    SystemRenderStringEntry(outBuf, pAlloc, 0x24, 0);
+    rect.x = D_801EA590[charIdx] + 0x180;
+    rect.y = D_801EA5DC[charIdx];
+    rect.w = 0x28;
+    rect.h = 0xD;
+    LoadImage(&rect, pAlloc);
+    DrawSync(0);
+    HeapFree(pAlloc);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E733C);
 
