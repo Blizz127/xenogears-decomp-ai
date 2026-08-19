@@ -6471,7 +6471,36 @@ void func_801E53CC(u8 windowIndex) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E56E8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5924);
+extern u16 D_801E9894[];
+extern u16 D_801E9914[];
+
+void func_801E5924(s32 slotIdx) {
+    u16* pX = &D_801E9894[slotIdx];
+    u16* pY = &D_801E9914[slotIdx];
+    void* pMenu = g_Menu;
+    u8* pBuf = *(u8**)((u8*)pMenu + 0x3A8 + slotIdx * 4);
+    u8* pBase = pBuf;
+    s32 i;
+    u32 off1 = 0x50;
+    u32 off2 = 0x80;
+    for (i = 0; i < 2; i++) {
+        SetLineF3(pBuf + off1);
+        pBase[0x54] = 0; pBase[0x55] = 0xFF; pBase[0x56] = 0;
+        pBase[0x58] = (u8)*pX; pBase[0x5A] = (u8)*pY;
+        pBase[0x5C] = (u8)(*pX + 0x10); pBase[0x5E] = (u8)*pY;
+        pBase[0x60] = (u8)(*pX + 0x10); pBase[0x62] = (u8)(*pY + 0x10);
+        func_801C851C(pBuf + 0x100, *pX, *pY, 0x10, 0x10);
+        SetLineF3(pBuf + off2);
+        pBase[0x84] = 0; pBase[0x85] = 0xFF; pBase[0x86] = 0;
+        pBase[0x88] = (u8)*pX; pBase[0x8A] = (u8)*pY;
+        pBase[0x8C] = (u8)(*pX + 0x10); pBase[0x8E] = (u8)(*pY + 0x10);
+        pBase[0x90] = (u8)(*pX + 0x10); pBase[0x92] = (u8)(*pY + 0x10);
+        func_801C851C(pBuf + 0x120, *pX, *pY, 0x10, 0x10);
+        off1 += 0x18;
+        off2 += 0x18;
+        pBase += 0x18;
+    }
+}
 
 extern void func_801E56E8(s32);
 
