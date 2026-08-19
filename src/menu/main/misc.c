@@ -5075,7 +5075,19 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE2C8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE36C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE400);
+void func_801DE400(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    *(u8*)((u8*)pManager + 8) = 0;
+    pMenu = g_Menu;
+    pManager = *(void**)((u8*)pMenu + 0x33C);
+    *(u8*)((u8*)pManager + 0x4B) = 0;
+    func_801C7BF4();
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x35C));
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x360));
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE474);
 
