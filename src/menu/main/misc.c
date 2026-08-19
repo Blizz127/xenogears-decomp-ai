@@ -2172,7 +2172,27 @@ void func_801D1B20(void) {
     func_801CF308();
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1BE8);
+extern void func_801D3B00(void);
+extern void func_801D11F0(void);
+extern void func_801CE3C8(void);
+extern void func_801CE338(void);
+extern void func_801D02D8(void);
+extern void func_801D01D0(void);
+extern void func_801CEC40(void);
+extern void func_801CF308(void);
+extern void func_801D0C78(void);
+
+void func_801D1BE8(void) {
+    func_801D3B00();
+    func_801D11F0();
+    func_801CE3C8();
+    func_801CE338();
+    func_801D02D8();
+    func_801D01D0();
+    func_801CEC40();
+    func_801CF308();
+    func_801D0C78();
+}
 
 void func_801D1C48(void) {
     func_801D3B00();
