@@ -931,7 +931,13 @@ void func_801C80B8(u32 value) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8164);
+void func_801C8164(POLY_G4* p, u8 r, u8 g, u8 b) {
+    SetPolyG4(p);
+    p->r0 = r; p->g0 = g; p->b0 = b;
+    p->r1 = r; p->g1 = g; p->b1 = b;
+    p->r2 = 0; p->g2 = 0; p->b2 = 0;
+    p->r3 = 0; p->g3 = 0; p->b3 = 0;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C81E0);
