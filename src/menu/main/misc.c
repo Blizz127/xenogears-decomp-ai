@@ -5067,7 +5067,14 @@ u8 func_801E2250(void) {
     return (u8)(i & 0xFF);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2324);
+extern u8 D_801EA568[];
+extern void func_801E8018(s32, u8*, s32, void*);
+
+void func_801E2324(u8 arg0) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    func_801E8018(6, (u8*)pMenu + 0x18E0, D_801EA568[arg0], (u8*)pManager + 0x54);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2368);
 
