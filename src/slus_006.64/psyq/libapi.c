@@ -97,7 +97,26 @@ void func_800408F4(void) {
     D_80056414 = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004092C);
+extern void* D_8005A204;
+extern void* D_8005A208;
+extern void* D_8005A200;
+extern void* D_8005A20C;
+extern void func_800409E4(void);
+extern void func_80040A4C(void);
+extern void SysEnqIntRP(s32, void*);
+
+s32 func_8004092C(void) {
+    void* pHandler = (u8*)&D_8005A204 - 4;
+    EnterCriticalSection();
+    D_8005A204 = func_800409E4;
+    D_8005A208 = func_80040A4C;
+    D_8005A200 = NULL;
+    D_8005A20C = NULL;
+    SysDeqIntRP(1, pHandler);
+    SysEnqIntRP(1, pHandler);
+    ExitCriticalSection();
+    return 1;
+}
 
 extern void* D_8005A200;
 extern void SysDeqIntRP(s32, void*);
