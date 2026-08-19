@@ -1391,7 +1391,38 @@ void func_801CADB0(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB184);
+extern void func_80033B34(u8*, u8*, s32);
+
+void func_801CB184(void) {
+    u8* pState = (u8*)&g_GameState;
+    s32 entry;
+    for (entry = 0; entry < 0x26C; entry += 0x14) {
+        u8 srcBuf[0x18];
+        u8 dstBuf[0x28];
+        u8* pSrc = srcBuf;
+        u8* pDst = dstBuf;
+        u8* pEntry = pState + entry;
+        s32 i;
+        s32 count = 0;
+        for (i = 0; i < 0x14; i += 2) {
+            u8 v1 = pEntry[i];
+            u8 v2 = pEntry[i + 1];
+            *pSrc++ = v1;
+            *pDst++ = v2;
+            if (v1 == 0 && v2 == 0) break;
+            count += 2;
+        }
+        func_80033B34(srcBuf, dstBuf, (count + (count >> 31)) >> 1);
+        {
+            u8* pOut = dstBuf;
+            u8* pDest = pState + entry;
+            s32 j;
+            for (j = 0; j < 0x14; j++) {
+                *pDest++ = *pOut++;
+            }
+        }
+    }
+}
 
 extern u16 D_8006F958[];
 extern u16 D_8005A3A0[];
