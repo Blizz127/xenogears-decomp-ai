@@ -3141,7 +3141,54 @@ void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3B00);
+extern void func_801D4D1C(s32, s32, s32, u16, u8, u16, s32, u8);
+
+void func_801D3B00(void) {
+    s32 i;
+    for (i = 0; i < 7; i++) {
+        void* pMenu = g_Menu;
+        void* pManager = *(void**)((u8*)pMenu + 0x33C);
+        void* pData = *(void**)((u8*)pMenu + 0x380 + i * 4);
+        u32 scrollX = 0, scrollY = 0;
+        if (*(u8*)((u8*)pManager + 0x27 + i) != 0 && *(u8*)((u8*)pData + 0x11) == 0) {
+            u16 curW = *(u16*)((u8*)pData + 8);
+            u16 maxW = *(u16*)((u8*)pData + 4);
+            u16 curH, maxH;
+            if (curW + 0x20 >= maxW) {
+                *(u16*)((u8*)pData + 8) = maxW;
+                scrollX = 1;
+            } else {
+                *(u16*)((u8*)pData + 8) = curW + 0x20;
+            }
+            curH = *(u16*)((u8*)pData + 0xA);
+            maxH = *(u16*)((u8*)pData + 6);
+            if (curH + 0x20 >= maxH) {
+                *(u16*)((u8*)pData + 0xA) = maxH;
+                scrollY = 1;
+            } else {
+                *(u16*)((u8*)pData + 0xA) = curH + 0x20;
+            }
+            if ((scrollX | scrollY) == 2) {
+                *(u8*)((u8*)pData + 0x11) = 1;
+            }
+            {
+                u16 h = *(u16*)((u8*)pData + 0xA);
+                u8 flags = *(u8*)((u8*)pData + 0x10);
+                u16 w = *(u16*)((u8*)pData + 4);
+                u16 x0 = *(u16*)((u8*)pData + 0);
+                u16 y0 = *(u16*)((u8*)pData + 2);
+                u16 curW2 = *(u16*)((u8*)pData + 8);
+                u16 curH2 = *(u16*)((u8*)pData + 6);
+                s32 x = (s32)(x0 + w/2 - curW2/2) & 0xFFFF;
+                s32 y = (s32)(y0 + curH2/2 - h/2) & 0xFFFF;
+                u8 fade = *(u8*)((u8*)pData + 0x12);
+                s32 pad = *(s32*)((u8*)pData + 0xC);
+                u8 pad2 = *(u8*)((u8*)pData + 0x13);
+                func_801D4D1C(x, y, curW2 | (curH2 << 16), h, flags, w, pad, pad2);
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3C4C);
 
