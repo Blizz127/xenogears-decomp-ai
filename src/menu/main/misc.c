@@ -1122,7 +1122,12 @@ u32 func_801C8678(u32 mask, u8 idx) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8694);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C87C4);
+void func_801C87C4(void) {
+    UnDeliverEvent(0xF4000001, 0x4);
+    UnDeliverEvent(0xF4000001, 0x8000);
+    UnDeliverEvent(0xF4000001, 0x100);
+    UnDeliverEvent(0xF4000001, 0x2000);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C881C);
 
