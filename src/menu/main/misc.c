@@ -1263,7 +1263,17 @@ void func_801C8BEC(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8CA4);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D1C);
+void func_801C8D1C(u8 idx) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    s32 val = *(s32*)((u8*)pData + 0x4F74 + idx * 4);
+    if (val != -2) {
+        s32 i;
+        for (i = 0x3B; i != 0; i--) {
+            Vsync(0);
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D78);
 
