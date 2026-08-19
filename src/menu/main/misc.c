@@ -5761,7 +5761,19 @@ u8 func_801E4928(u8 idx) {
     return (u8)(result & 0xFF);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4998);
+void func_801E4998(s32 arg0, u8 idx) {
+    u8* pEntry = (u8*)&g_GameState + 0x9DC + (s32)idx * 0xA4;
+    u32 val = *(u32*)pEntry;
+    u32 temp1 = (u32)(((unsigned long long)val * 0xCCCCCCCDULL) >> 32) >> 3;
+    u32 temp2 = (u32)(((unsigned long long)(temp1 * 2) * 0x38E38E39ULL) >> 32) >> 1;
+    u8* pModel = *(u8**)((u8*)arg0 + idx * 4 + 0x4C) + 0x5C8;
+    *(u16*)(pModel + 0x24) = (u16)(temp2 / 2);
+    {
+        u16 result = *(u16*)(pModel + 0x24);
+        u32 rounded = (u32)(((unsigned long long)result * 0xCCCCCCCDULL) >> 32) >> 3;
+        *(u16*)(pModel + 0x24) = (u16)(rounded * 10);
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
 
