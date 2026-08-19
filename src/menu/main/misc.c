@@ -605,7 +605,19 @@ void func_801C6D5C(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D90);
+void func_801C6D90(void) {
+    RECT rect;
+    u16* pBuf = HeapAlloc(0x20, NULL);
+    bzero(pBuf, 0x20);
+    pBuf[1] = 0x7FFF;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x1C0;
+    rect.h = 1;
+    LoadImage(&rect, (u8*)pBuf);
+    DrawSync(0);
+    HeapFree(pBuf);
+}
 
 /* B1b: upload the menu palette to VRAM, allocate the first string's work
  * buffer, and pre-render its content.  Twin of member_change's func_801C5B90.
