@@ -1990,7 +1990,21 @@ void func_801D0C78(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0D90);
+void func_801D0D90(void) {
+    s32 i;
+    u32 offset = 0x4E0;
+    for (i = 0; i < 4; i++) {
+        void* pMenu = g_Menu;
+        void* pManager = *(void**)((u8*)pMenu + 0x33C);
+        if (*(u8*)((u8*)pManager + 0x34 + i) != 0) {
+            u8 idx = *(u8*)((u8*)pMenu + i * 0x80 + 0x55D);
+            u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
+            u8* pPrim = (u8*)pMenu + offset + idx * 0x28;
+            AddPrim(pOT, pPrim);
+        }
+        offset += 0x80;
+    }
+}
 
 s32 func_801D0E20(void) {
     s32 i;
