@@ -5942,7 +5942,28 @@ void func_801E64E0(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6544);
+void func_801E6544(u8* pEntries) {
+    s32 i;
+    for (i = 0; i < 0x10; i++) {
+        u8* p = pEntries + i * 0x10;
+        u8 b1 = p[1], b2 = p[2], b3 = p[3], b4 = p[4];
+        u8 b5 = p[5], b6 = p[6], b7 = p[7], b8 = p[8];
+        u8 b9 = p[9], bA = p[0xA], bB = p[0xB], bC = p[0xC];
+        u8 bD = p[0xD], bE = p[0xE], bF = p[0xF];
+        p[0] = p[0];
+        p[1] = b1 | b2;
+        p[2] = b3;
+        p[3] = b4;
+        p[4] = b5 | b6;
+        p[5] = b7;
+        p[6] = b8;
+        p[7] = b9 | bA;
+        p[8] = bB;
+        p[9] = bC;
+        p[0xA] = bD | bE;
+        p[0xB] = bF;
+    }
+}
 
 extern u8 D_801EA8C0;
 extern u16 D_801EA5D0[];
