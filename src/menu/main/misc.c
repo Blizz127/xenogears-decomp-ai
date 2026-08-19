@@ -1442,7 +1442,42 @@ void func_801CB28C(s32 arg0) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB8AC);
+u8 func_801CB8AC(u8 arg0) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    u8 savedE4 = *(u8*)((u8*)pData + 0x4FE4);
+    u8 savedE5 = *(u8*)((u8*)pData + 0x4FE5);
+    u8 param = (u8)((arg0 & 0xFF) * 3 + 0x29);
+    u8 result = 0;
+    func_801D2F4C(param);
+    pMenu = g_Menu;
+    *(u8*)((u8*)pMenu + 0x325) = 8;
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4FE6) = 2;
+    pMenu = g_Menu;
+    {
+        void* pManager = *(void**)((u8*)pMenu + 0x32C);
+        if (*(u8*)((u8*)pMenu + 0x325) == 8) {
+            s32 i;
+            for (i = 0; i < 0x80; i++) {
+                func_801C7BF4();
+                pMenu = g_Menu;
+                pData = *(void**)((u8*)pMenu + 0x32C);
+                if (savedE4 != *(u8*)((u8*)pData + 0x4FE4) ||
+                    savedE5 != *(u8*)((u8*)pData + 0x4FE5)) {
+                    result = 1;
+                    break;
+                }
+                if (*(u8*)((u8*)pMenu + 0x325) != 8) break;
+            }
+        }
+    }
+    func_801D32B4(0);
+    if (result == 0) {
+        result = func_801CACF8(0x2F, 0xFF, 1);
+    }
+    return result;
+}
 
 extern u8 D_801EA6D0[];
 
