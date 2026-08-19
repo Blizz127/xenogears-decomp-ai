@@ -3751,7 +3751,31 @@ void func_801D83AC(void* pPrims, u8 mode, u8 count, u8 startIdx) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D84B4);
+extern s32 D_801EA6FC;
+extern s32 D_801EA700;
+extern s32 D_801EA704;
+extern s32 D_801EA708;
+extern s32 D_801EA70C;
+extern u8 D_801EA710;
+extern u8 D_801EA714;
+
+void func_801D84B4(u16 start, u16 target, s32 frames) {
+    s32 delta;
+    D_801EA6FC = start;
+    D_801EA700 = target;
+    delta = (s32)target - (s32)start;
+    D_801EA704 = delta;
+    D_801EA708 = (delta * 25600 / frames * 1000) >> 12;
+    if (delta >= 0) {
+        D_801EA710 = 2;
+        D_801EA714 = 0xE3;
+    } else {
+        D_801EA710 = 3;
+        D_801EA714 = 0xE5;
+        D_801EA704 = (s32)start - (s32)target;
+    }
+    D_801EA70C = (D_801EA704 * 25600 / frames * 1000) >> 12;
+}
 
 s32 func_801D85DC(s32 arg0, u16* pArr1, u16* pArr2) {
     u32 maxVal = 0;
