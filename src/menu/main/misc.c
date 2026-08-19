@@ -1308,7 +1308,37 @@ void func_801C8D1C(u8 idx) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D78);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8EE8);
+void func_801C8EE8(void) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    u8 state = *(u8*)((u8*)pData + 0x4FE6);
+    if (state == 1) {
+        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
+            if (func_801C8D78(0) != 0) {
+                *(u8*)((u8*)g_Menu + 0x334) = 1;
+            }
+            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
+            func_801C8D78(1);
+            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
+            *(u8*)((u8*)g_Menu + 0x334) = 1;
+        }
+    } else if (state == 2) {
+        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
+            func_801C8D78(0);
+            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
+            func_801C8D78(1);
+            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
+        }
+    }
+}
 
 s32 func_801C9038(char* path, void* pBuf) {
     s32 fd = open(path, 3);
