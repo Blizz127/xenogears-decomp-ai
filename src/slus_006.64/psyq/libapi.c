@@ -86,7 +86,17 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StartPAD);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_800408F4);
+extern void func_80040B00(void);
+extern void StopPAD2(void);
+extern void func_800409AC(void);
+extern s32 D_80056414;
+
+void func_800408F4(void) {
+    func_80040B00();
+    StopPAD2();
+    func_800409AC();
+    D_80056414 = 0;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004092C);
 
