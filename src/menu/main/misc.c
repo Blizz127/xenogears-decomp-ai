@@ -1082,7 +1082,11 @@ u16 func_801C85C0(u8 idx) {
     return D_801E96C8[idx];
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85DC);
+extern u16 D_801E96A8[];
+
+u16 func_801C85DC(u8 idx) {
+    return D_801E96A8[idx];
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85F8);
 
