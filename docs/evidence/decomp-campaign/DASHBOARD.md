@@ -10,14 +10,14 @@ _Last updated: 2026-08-19_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `00ca5566` (Decompile func_801C6400 — menu memory card data init + archive load) |
+| **HEAD** | `714bff5d` (Decompile func_801C9D34 — menu memory card entry search by mode) |
 | **Build** | 468/468 targets — PASSING |
 | **Decomp_status universe** | 2477 functions |
-| **Matched {}** | 1969 (79.5%) |
+| **Matched {}** | 1970 (79.5%) |
 | **Coexistence** | 170 (6.9%) |
-| **Unported** | 338 (13.6%) |
-| **Total done** | 2139 (86.4%) |
-| **Decomp commits (this campaign)** | 601 |
+| **Unported** | 337 (13.6%) |
+| **Total done** | 2140 (86.4%) |
+| **Decomp commits (this campaign)** | 602 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
