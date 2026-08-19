@@ -3493,7 +3493,38 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9B08);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9C84);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9E3C);
+extern s32 D_801EA904;
+extern s32 D_801EA900;
+extern void* D_801EA718;
+extern void* D_801EA71C;
+extern void* D_801EA720;
+
+void func_801D9E3C(void) {
+    void* pMenu;
+    s32 i;
+    pMenu = g_Menu;
+    *(u8*)((u8*)pMenu + 0x4D8) = 0;
+    func_801E64E0();
+    func_801E5B3C();
+    func_801E649C();
+    for (i = 0; i < 0x20; i++) {
+        void* pData = *(void**)((u8*)g_Menu + 0x32C);
+        *(u8*)((u8*)pData + i * 0x5C + 0x58) = 0;
+    }
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4F8C) = 0xFF;
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4F8D) = 0xFF;
+    D_801EA904 = 0;
+    D_801EA900 = 0;
+    DrawSync(0);
+    Vsync(0);
+    EnterCriticalSection();
+    CdSyncCallback(D_801EA718);
+    CdReadyCallback(D_801EA71C);
+    CdReadCallback(D_801EA720);
+    ExitCriticalSection();
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F34);
 
