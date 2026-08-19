@@ -1703,7 +1703,60 @@ s32 func_801C9BCC(s32 mode) {
     return result;
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9D34);
+s32 func_801C9D34(s32 mode) {
+    void* pMenu;
+    void* pData;
+    s32 result = 0xFF;
+    s32 found = 1;
+    s32 limit = 0x1E;
+    s32 start;
+    s32 i;
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    start = (*(u8*)(pData + 0x4FE4) == 0) ? 0xF : 0;
+    if (*(u8*)(pData + 0x4FE5) == 0) {
+        limit = 0xF;
+    }
+
+    for (i = start; i < limit && found; i++) {
+        s32 offset = D_801E981C[i];
+        s32 group = (offset < 0) ? (offset + 0xF) : offset;
+        group >>= 4;
+
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+
+        if (mode == 0) {
+            if (!(*(u32*)((u8*)pData + 0x4F88) & 0xFFFF0000)) {
+                found = 0;
+                break;
+            }
+            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
+            if (*(u8*)(pData + offset + 0x4FAE) == 0xFF) continue;
+            result = i;
+            found = 0;
+        } else if (mode == 1) {
+            if (!(*(u32*)((u8*)pData + 0x4F88) & 0xFFFF0000)) {
+                found = 0;
+                break;
+            }
+            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
+            if (*(u8*)(pData + offset + 0x4FAE) == 0xFF) continue;
+            if (*(u8*)(pData + offset + 0x4F8E) == 0) continue;
+            result = i;
+            found = 0;
+        } else if (mode == 2) {
+            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
+            result = i;
+            found = 0;
+        }
+    }
+
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x4D8) = 2;
+    return result;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9EF4);
 
