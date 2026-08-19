@@ -2351,7 +2351,14 @@ void func_801D2484(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D249C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D25E4);
+void func_801D25E4(void) {
+    void* pManager;
+    s32 i;
+    pManager = *(void**)((u8*)g_Menu + 0x33C);
+    for (i = 0; i < 6; i++) {
+        *(u8*)((u8*)pManager + i + 0x14) = 0;
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 
