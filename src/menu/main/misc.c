@@ -5919,7 +5919,26 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E733C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E76EC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E781C);
+extern void func_801E76EC(s32);
+extern void func_801E6668(s32);
+
+void func_801E781C(s32 screenId, u8 animFlag) {
+    void* pMenu;
+    func_801E64E0();
+    if (screenId == 0xFF) return;
+    if ((animFlag & 0xFF) != 0) {
+        func_801E76EC(screenId);
+        func_801E6668(screenId);
+        pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x34C) + 0x2DBC) = 1;
+    } else {
+        func_801E6668(screenId);
+        pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x34C) + 0x2DBC) = 0;
+    }
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0xB) = 1;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E78C8);
 
