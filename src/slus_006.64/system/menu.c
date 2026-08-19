@@ -91,7 +91,51 @@ void MenuProcessControllerInput(void) {
     g_Menu->input = input;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", func_8001C074);
+extern s32* D_8005917C;
+
+void func_8001C074(void) {
+    void* pMenu;
+    MenuProcessControllerInput();
+    pMenu = g_Menu;
+    {
+        void* pOT = *(void**)((u8*)pMenu + 0x1D4);
+        if (pOT == (u8*)pMenu + 0x6C) {
+            pOT = (u8*)pMenu + 0x120;
+        }
+        *(void**)((u8*)pMenu + 0x1D4) = pOT;
+    }
+    pMenu = g_Menu;
+    {
+        u32 page = *(u32*)((u8*)pMenu + 0x308);
+        void* pOT = *(void**)((u8*)pMenu + 0x1D4);
+        *(u32*)((u8*)pMenu + 0x308) = (page < 1) ? 1 : 0;
+        ClearOTagR((u8*)pOT + 0x70, 0x10);
+    }
+    {
+        void* pDebug = D_8005917C;
+        if (*(s32*)pDebug != -1) {
+            pMenu = g_Menu;
+            if (*(u8*)((u8*)pMenu + 0x1E94) != 0) {
+                HeapDebugDump(3, *(u8*)((u8*)pMenu + 0x1E95), 0xF, 0x80AC);
+            }
+        }
+    }
+    {
+        void* pDebug = D_8005917C;
+        if (*(s32*)pDebug != -1) {
+            pMenu = g_Menu;
+            FontDrawLetters((u8*)*(void**)((u8*)pMenu + 0x1D4) + 0x70);
+        }
+    }
+    DrawSync(0);
+    Vsync(0);
+    pMenu = g_Menu;
+    PutDrawEnv(*(void**)((u8*)pMenu + 0x1D4));
+    pMenu = g_Menu;
+    PutDispEnv((u8*)*(void**)((u8*)pMenu + 0x1D4) + 0x5C);
+    pMenu = g_Menu;
+    DrawOTag((u8*)*(void**)((u8*)pMenu + 0x1D4) + 0xAC);
+}
 
 extern char D_8001833C[];
 extern char D_80018350[];
