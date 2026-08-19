@@ -956,7 +956,21 @@ store:
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7F34);
+void func_801C7F34(s32 frames, u8* pOut) {
+    s32 total = frames;
+    s32 mins, secs, frac;
+    mins = total / 14400;
+    total -= mins * 14400;
+    secs = total / 240;
+    total -= secs * 240;
+    frac = total;
+    pOut[0] = (u8)(mins / 10);
+    pOut[1] = (u8)(mins % 10);
+    pOut[2] = (u8)(secs / 10);
+    pOut[3] = (u8)(secs % 10);
+    pOut[4] = (u8)(frac / 10);
+    pOut[5] = (u8)(frac % 10);
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
