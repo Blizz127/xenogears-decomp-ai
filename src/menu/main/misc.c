@@ -5925,7 +5925,27 @@ void func_801E64E0(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6544);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E65E4);
+extern u8 D_801EA8C0;
+extern u16 D_801EA5D0[];
+
+void* func_801E65E4(u8* pChar) {
+    u8 lo = pChar[0];
+    u8 hi = pChar[1];
+    u16 code;
+    D_801EA8C0 = 1;
+    if (lo < 0x80) {
+        if (lo < 0x20) {
+            hi = 0x40;
+            D_801EA8C0 = 0;
+        } else {
+            code = D_801EA5D0[lo];
+            hi = (u8)(code >> 8);
+            lo = (u8)code;
+            D_801EA8C0 = 0;
+        }
+    }
+    return Krom2RawAdd((lo << 8) | hi);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6668);
 
