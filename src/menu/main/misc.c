@@ -5751,7 +5751,15 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E433C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4754);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4928);
+u8 func_801E4928(u8 idx) {
+    u8* pEntry = (u8*)&g_GameState + 0x978 + (s32)idx * 0xA4;
+    u16 val = *(u16*)(pEntry + 0x44);
+    u8 base = pEntry[0x75];
+    s32 result = (s32)(val / 15) - base;
+    result /= 2;
+    if (result < 0) result = 0;
+    return (u8)(result & 0xFF);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4998);
 
