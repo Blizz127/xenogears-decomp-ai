@@ -5256,7 +5256,28 @@ s32 func_801DE29C(s32 charSel, s32 openAnim) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE2C8);
+extern u8 D_801EA558[];
+extern void func_801D22F4(s32);
+extern void func_801DB02C(s32);
+
+void func_801DE2C8(u8 arg0) {
+    void* pBuf = HeapAlloc(0xA1C, NULL);
+    void* pMenu = g_Menu;
+    *(void**)((u8*)pMenu + 0x434) = pBuf;
+    bzero(pBuf, 0xA1C);
+    {
+        u8* pTable = D_801EA558 + arg0 * 6;
+        pMenu = g_Menu;
+        {
+            void* pManager = *(void**)((u8*)pMenu + 0x33C);
+            func_801E8018(6, (u8*)pMenu + 0x14E0, pTable, (u8*)pManager + 0x40);
+        }
+    }
+    func_801C72BC(7);
+    func_801D22F4(3);
+    func_801DB02C(0);
+    func_801D3488(1, arg0);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE36C);
 
