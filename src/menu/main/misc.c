@@ -1171,11 +1171,39 @@ void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x2000);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C881C);
+s32 func_801C881C(s32 port) {
+    void* pMenu;
+    void* pData;
+    while (1) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (TestEvent(*(void**)((u8*)pData + 0x4FF8)) == 1) {
+            func_801C87C4();
+            return 3;
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (TestEvent(*(void**)((u8*)pData + 0x4FF0)) == 1) {
+            func_801C87C4();
+            return 1;
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (TestEvent(*(void**)((u8*)pData + 0x4FEC)) == 1) {
+            func_801C87C4();
+            return 0;
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        if (TestEvent(*(void**)((u8*)pData + 0x4FF4)) == 1) {
+            func_801C87C4();
+            return 2;
+        }
+    }
+}
 
 extern u32 D_801E9768[];
 extern s32 _card_info(s32);
-extern u32 func_801C881C(s32);
 
 s32 func_801C891C(s32 port) {
     if (_card_info(port) == 0) return -1;
