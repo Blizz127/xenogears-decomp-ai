@@ -1395,7 +1395,49 @@ s32 func_801C9038(char* path, void* pBuf) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C90B0);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9270);
+extern u8 D_801EA6D0[];
+extern s32 D_801EA6F4;
+
+void func_801C9270(u8 port) {
+    void* pMenu;
+    void* pData;
+    s32 i, j;
+    u8* pTable;
+    for (i = 0; i < 0x10; i++) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + port * 0x10 + i + 0x4F8E) = 0;
+    }
+    pTable = D_801EA6D0 + port * 0x10;
+    for (i = 0; i < 0xF; i++) {
+        u8 charIdx;
+        u8* pSlot;
+        u8 match;
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        charIdx = *(u8*)(pData + port * 0x10 + i + 0x4FAE);
+        pSlot = pData + charIdx * 0x28;
+        match = 1;
+        for (j = 0; j < 0xC; j++) {
+            if (*(u8*)(pSlot + 0x18 + j) != *(u8*)(pData + port * 0x10 + i + 0x4FCE)) {
+                match = 0;
+                break;
+            }
+        }
+        if (match) {
+            pMenu = g_Menu;
+            *(u8*)(*(void**)((u8*)pMenu + 0x32C) + port * 0x10 + i + 0x4F8E) = 1;
+            pMenu = g_Menu;
+            pData = *(void**)((u8*)pMenu + 0x32C);
+            {
+                u8 idx = *(u8*)(pData + port * 0x10 + i + 0x4FAE);
+                s32 offset = idx * 0x200 + 0xB94;
+                D_801EA6F4 = (s32)(pData + offset + 0x100);
+                *(u8*)(pTable + *(u8*)(pData + offset + 0x123)) = 1;
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C93A8);
 
