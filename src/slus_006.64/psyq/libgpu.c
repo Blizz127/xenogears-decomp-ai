@@ -222,7 +222,22 @@ void SetDrawTPage(DR_TPAGE *p, int dfe, int dtd, int tpage) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetDrawMove);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_80043EAC);
+void func_80043EAC(void* pPrim, void* pRect) {
+    s32 w = *(s16*)((u8*)pRect + 4);
+    s32 h = *(s16*)((u8*)pRect + 6);
+    s32 area = (w * h + 1) / 2;
+    u8 tagCount;
+    if (area < 13) {
+        tagCount = (u8)(area + 4);
+    } else {
+        tagCount = 0;
+    }
+    *(u8*)((u8*)pPrim + 3) = tagCount;
+    *(u32*)((u8*)pPrim + 4) = (area < 13) ? (u32)area : 0xA0000000;
+    *(u32*)((u8*)pPrim + 8) = *(u32*)pRect;
+    *(u32*)((u8*)pPrim + 0xC) = *(u32*)((u8*)pRect + 4);
+    *(u32*)((u8*)pPrim + tagCount * 4) = 0x1000000;
+}
 
 s32 func_80043F18(void* pOt1, void* pOt2) {
     s32 total = *(u8*)((u8*)pOt1 + 3) + *(u8*)((u8*)pOt2 + 3) + 1;
