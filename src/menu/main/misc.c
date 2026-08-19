@@ -1373,7 +1373,23 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB8AC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB9E8);
+extern u8 D_801EA6D0[];
+
+u8 func_801CB9E8(u8 idx, u8 startIdx) {
+    s32 result = 0;
+    s32 i = 0;
+    if (startIdx == 0xFF) {
+        u8* pEntry = &D_801EA6D0[idx * 16];
+        for (i = 0; i < 0xF; i++, pEntry++) {
+            if (*pEntry == 0) {
+                result = i;
+                break;
+            }
+        }
+        return (u8)result;
+    }
+    return startIdx;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBA4C);
 
