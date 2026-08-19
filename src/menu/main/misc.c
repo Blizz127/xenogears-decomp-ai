@@ -5338,7 +5338,6 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3ECC);
 
 extern void func_801E41C0(s32, u8);
 extern void func_801E42AC(s32, u8);
-extern void func_801E4258(s32, u8);
 
 void func_801E4170(s32 arg0, u8 arg1) {
     func_801E41C0(arg0, arg1);
@@ -5348,7 +5347,15 @@ void func_801E4170(s32 arg0, u8 arg1) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4258);
+void func_801E4258(void* pCtx, u8 idx) {
+    s32 i = idx;
+    u8* pBase = (u8*)&g_GameState;
+    u8* pEntry = pBase + 0x978 + i * 0x28;
+    s32 tableIdx = pEntry[8];
+    u8* pTbl = *(u8**)((u8*)pCtx + 0x10);
+    *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + tableIdx * 0x14 + 8);
+    *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + tableIdx * 0x14 + 0xA);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E42AC);
 
