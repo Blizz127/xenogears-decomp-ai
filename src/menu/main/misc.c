@@ -1470,7 +1470,44 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CC6D8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD2AC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD710);
+extern void func_801CC6D8(void);
+extern void func_801CD2AC(void);
+extern void func_801CBD90(u8);
+extern void func_801CB304(void);
+extern void func_801D2484(void);
+
+s32 func_801CD710(u8 arg0) {
+    void* pMenu;
+    s32 result = 1;
+    func_801D22F4(0);
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x2F) = 0;
+    {
+        u8 state = *(u8*)((u8*)g_Menu + 0x338);
+        u8* pData = (u8*)g_Menu;
+        switch (state) {
+            case 0:
+                *(u8*)(pData + 0x334) = 1;
+                func_801CD2AC();
+                break;
+            case 1:
+                *(u8*)(pData + 0x334) = 6;
+                func_801CC6D8();
+                break;
+            case 2:
+                if (D_80059460 == 2) {
+                    *(u8*)(pData + 0x334) = 2;
+                    func_801CB304();
+                } else {
+                    *(u8*)(pData + 0x334) = 3;
+                    func_801CBD90(arg0);
+                }
+                break;
+        }
+    }
+    func_801D2484();
+    return result;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD81C);
