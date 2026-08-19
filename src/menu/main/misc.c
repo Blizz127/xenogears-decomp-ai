@@ -5577,7 +5577,38 @@ void func_801DE400(void) {
     HeapFree(*(void**)((u8*)pMenu + 0x360));
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE474);
+extern u8 D_801EA558[];
+extern u8 D_801E9EA0[];
+extern void func_801E8070(void*, void*, void*, void*, s32, s32, s32, s32);
+extern void func_801D397C(s32, s32, s32, s32, s32, s32);
+
+void func_801DE474(u8 arg0, u8 arg1) {
+    s32 i;
+    s32 start, end;
+    s32 yOff;
+    void* pMenu;
+    for (i = 0; i < 6; i++) {
+        pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x40 + i) = 0;
+    }
+    if (arg0) {
+        start = 2; end = 6; yOff = 0x72;
+    } else {
+        start = 0; end = 2; yOff = 0x5A;
+    }
+    for (i = start; i < end; i++) {
+        u8* pTable = D_801EA558 + arg1 * 6;
+        void* pManager;
+        pMenu = g_Menu;
+        pManager = *(void**)((u8*)pMenu + 0x33C);
+        func_801E8070((u8*)pMenu + 0x14E0, pTable, D_801E9EA0, (u8*)pManager + 0x40, i, i, 3, (u8*)pManager + 0x40);
+    }
+    pMenu = g_Menu;
+    if (*(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x24) != 0) {
+        func_801D4EA0(4);
+    }
+    func_801D397C(yOff, 0x10, 0xC, 0x80, 1, 0);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE5CC);
 
