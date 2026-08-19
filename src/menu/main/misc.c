@@ -6532,7 +6532,22 @@ void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, s32 isReverse
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E36D4);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3A80);
+void func_801E3A80(void* pCtx, u8 charIdx) {
+    u8* pEntry = (u8*)&g_GameState + 0x26C + charIdx * 0x28;
+    s32 val;
+    if (pEntry[0x56] == 4) {
+        val = (s32)(pEntry[4] + pEntry[0x1C]) * 6 / 5;
+        *(u16*)(pEntry + 0xB8) = (u16)val;
+    } else {
+        val = pEntry[0x58] + pEntry[0x28] + pEntry[4];
+        *(u16*)(pEntry + 0xB8) = (u16)val;
+    }
+    *(u16*)(pEntry + 0xBA) = (u16)(pEntry[0x5E] + pEntry[0x2E]);
+    *(u16*)(pEntry + 0xBC) = (u16)(pEntry[0x59] + pEntry[0x29] + pEntry[0x2D]);
+    *(u16*)(pEntry + 0xBE) = (u16)(pEntry[0x5F] + pEntry[0x2F]);
+    *(u16*)(pEntry + 0xC0) = (u16)(pEntry[0x5B] + pEntry[0x2B]);
+    *(u16*)(pEntry + 0xC2) = (u16)(pEntry[0x5C] + pEntry[0x2C]);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
 
