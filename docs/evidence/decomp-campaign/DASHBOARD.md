@@ -10,7 +10,7 @@ _Last updated: 2026-08-19_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `83ecd4fb` (Decompile func_801E3A80 — menu character stat computation) |
+| **HEAD** | `49a67871` (Update decomp dashboard: 86.1% done, 595 decomp commits) |
 | **Build** | 468/468 targets — PASSING |
 | **Decomp_status universe** | 2477 functions |
 | **Matched {}** | 1963 (79.2%) |
