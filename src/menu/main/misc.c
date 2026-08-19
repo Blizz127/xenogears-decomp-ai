@@ -2018,7 +2018,14 @@ void func_801D1464(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14B0);
+void func_801D14B0(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x53) != 0) {
+        void* pData = *(void**)((u8*)pMenu + 0x440);
+        func_801CE198(4, (u8*)pData + 0x140, *(u8*)((u8*)pData + 0x1C0));
+    }
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14FC);
