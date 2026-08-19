@@ -5076,7 +5076,15 @@ void func_801E2324(u8 arg0) {
     func_801E8018(6, (u8*)pMenu + 0x18E0, D_801EA568[arg0], (u8*)pManager + 0x54);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2368);
+void func_801E2368(void) {
+    void* pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x358));
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x35C));
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x360));
+    func_801C72BC(0x13);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E23CC);
 
