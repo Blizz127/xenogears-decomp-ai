@@ -4778,7 +4778,39 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1AC8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E20C8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2250);
+extern void func_801C72BC(s32);
+extern void func_801D3488(s32, s32);
+
+u8 func_801E2250(void) {
+    void* pMenu;
+    void* pManager;
+    s32 i;
+    void* p1 = HeapAlloc(0x2AF0, NULL);
+    pMenu = g_Menu;
+    *(void**)((u8*)pMenu + 0x358) = p1;
+    bzero(p1, 0x2AF0);
+    {
+        void* p2 = HeapAlloc(0x32F4, NULL);
+        pMenu = g_Menu;
+        *(void**)((u8*)pMenu + 0x35C) = p2;
+        bzero(p2, 0x32F4);
+    }
+    {
+        void* p3 = HeapAlloc(0x2AC, NULL);
+        pMenu = g_Menu;
+        *(void**)((u8*)pMenu + 0x360) = p3;
+        bzero(p3, 0x2AC);
+    }
+    func_801C72BC(3);
+    pMenu = g_Menu;
+    pManager = *(void**)((u8*)pMenu + 0x33C);
+    i = 0;
+    while (*(u8*)((u8*)pManager + 0x60 + i) == 0) {
+        i++;
+    }
+    func_801D3488(0, 1);
+    return (u8)(i & 0xFF);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2324);
 
