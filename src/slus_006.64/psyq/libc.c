@@ -2,7 +2,14 @@
 
 extern u_long g_RandomSeed;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", bzero);
+void bzero(void* dst, int n) {
+    u8* d = (u8*)dst;
+    if (dst == NULL || n <= 0) return;
+    while (n-- > 0) {
+        *d++ = 0;
+    }
+}
+
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memchr);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memcpy);
 
