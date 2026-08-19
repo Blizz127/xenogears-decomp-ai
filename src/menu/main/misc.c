@@ -5823,7 +5823,32 @@ s32 func_801E31C0(MenuUnk6* pItemBank, u8 charId, u8 itemId) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E35BC);
+void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, s32 isReverse) {
+    u8* pChar = (u8*)&g_GameState + 0x26C + charIdx * 0x28;
+    u8* pStat = (u8*)&g_GameState + 0x26C + statIdx * 0x28;
+    u8 entryByte = *(u8*)((u8*)&g_GameState + 0x30C + charIdx * 0x28);
+    u8* pBase = (u8*)&g_GameState + 0x30C + entryByte * 0x28;
+    if (isReverse == 0) {
+        u8* pSlot = *(u8**)((u8*)pCtx + slotIdx * 4 + 0x20);
+        u8* pSlotData = pSlot + slotIdx * 0x28;
+        u8 val = pChar[0x5B];
+        u8 rate = pSlotData[0x11];
+        u16 cur = *(u16*)(pStat + 0x4C);
+        cur += val * rate;
+        *(u16*)(pStat + 0x4C) = cur;
+        if (*(u16*)(pStat + 0x4E) < cur) {
+            *(u16*)(pStat + 0x4C) = *(u16*)(pStat + 0x4E);
+        }
+    } else {
+        u32 val = *(u32*)(pBase + 0x64);
+        u32 step = val / 10;
+        u32 cur = *(u32*)(pBase + 0x60) + step;
+        *(u32*)(pBase + 0x60) = cur;
+        if (val < cur) {
+            *(u32*)(pBase + 0x60) = val;
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E36D4);
 
