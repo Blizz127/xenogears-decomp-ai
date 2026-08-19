@@ -2554,7 +2554,19 @@ INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CDD14);
 
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CE480);
 
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CE8D8);
+u8 func_801CE8D8(u8* pKeys, u8* pValues, s32 count, u8 target) {
+    s32 result = 0;
+    u8* pEnd = pValues + count;
+    while (pValues < pEnd) {
+        if (*pKeys == target) {
+            result = *pValues;
+            break;
+        }
+        pValues++;
+        pKeys++;
+    }
+    return (u8)result;
+}
 
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CE91C);
 
