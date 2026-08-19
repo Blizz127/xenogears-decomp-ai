@@ -5473,7 +5473,17 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5E4C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E61B0);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6450);
+extern void func_801E5B88(void);
+extern void func_801E5E4C(void);
+
+void func_801E6450(void) {
+    void* pBuf = HeapAlloc(0x2DC0, NULL);
+    void* pMenu = g_Menu;
+    *(void**)((u8*)pMenu + 0x34C) = pBuf;
+    bzero(pBuf, 0x2DC0);
+    func_801E5B88();
+    func_801E5E4C();
+}
 
 void func_801E649C(void) {
     void* pMenu = g_Menu;
