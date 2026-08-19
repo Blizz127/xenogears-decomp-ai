@@ -2044,7 +2044,18 @@ void func_801D11F0(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1258);
+void func_801D1258(void) {
+    void* pMenu = g_Menu;
+    u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x90;
+    s32 idx = *(s32*)((u8*)pMenu + 0x308);
+    u8* pData = *(u8**)((u8*)pMenu + 0x348);
+    AddPrim(pOT, pData + idx * 0x18 + 0x98);
+    pMenu = g_Menu;
+    pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x90;
+    idx = *(s32*)((u8*)pMenu + 0x308);
+    pData = *(u8**)((u8*)pMenu + 0x348);
+    AddPrim(pOT, pData + idx * 0xC + 0x140);
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D12D4);
