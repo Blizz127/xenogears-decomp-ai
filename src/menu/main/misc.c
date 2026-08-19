@@ -1092,7 +1092,9 @@ u16 func_801C85F8(u8 idx) {
     return (u16)(~D_801E96C8[idx]);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C861C);
+u16 func_801C861C(u8 idx) {
+    return (u16)(~D_801E96A8[idx]);
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8640);
