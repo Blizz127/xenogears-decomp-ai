@@ -1327,7 +1327,17 @@ u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
     return (u8)(result & 0xFF);
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CADB0);
+void func_801CADB0(void) {
+    void* pMenu = g_Menu;
+    void* pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u32*)((u8*)pData + 0x4F80) = 0xFF;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u32*)((u8*)pData + 0x4F7C) = 0;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    if (*(u8*)((u8*)pData + 0x4FE4) == 0 && *(u8*)((u8*)pData + 0x4FE5) != 0) {
+        *(u32*)((u8*)pData + 0x4F7C) = 0xF;
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
 
