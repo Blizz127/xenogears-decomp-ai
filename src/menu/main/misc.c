@@ -5336,7 +5336,15 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3ECC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4170);
+extern void func_801E41C0(s32, u8);
+extern void func_801E42AC(s32, u8);
+extern void func_801E4258(s32, u8);
+
+void func_801E4170(s32 arg0, u8 arg1) {
+    func_801E41C0(arg0, arg1);
+    func_801E42AC(arg0, arg1);
+    func_801E4258(arg0, arg1);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
 
