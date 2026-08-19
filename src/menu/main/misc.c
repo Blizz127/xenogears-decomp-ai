@@ -6020,6 +6020,10 @@ void func_801E927C(POLY_FT4* p) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E92CC);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E9340);
+void func_801E9340(char* path, void* pBuf, s32 size) {
+    s32 fd = PCopen(path, 0, 0);
+    PCread(fd, pBuf, size);
+    PCclose(fd);
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E93A0);
