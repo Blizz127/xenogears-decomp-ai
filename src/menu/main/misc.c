@@ -1998,7 +1998,20 @@ s32 func_801D0E20(void) {
     return i + 1;
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E38);
+void func_801D0E38(void) {
+    s32 i;
+    for (i = 0; i < 6; i++) {
+        void* pMenu = g_Menu;
+        void* pManager = *(void**)((u8*)pMenu + 0x33C);
+        if (*(u8*)((u8*)pManager + 0x14 + i) != 0) {
+            u8* pSlot = (u8*)pMenu + i * 0x80;
+            if (*(u8*)(pSlot + 0xB5F) != 0) {
+                u8* pData = (u8*)pMenu + i * 0x80 + 0xAE0;
+                func_801CE198(1, pData + 0x50, *(u8*)(pSlot + 0xB5D));
+            }
+        }
+    }
+}
 
 s32 func_801D0EBC(void) {
     s32 i;
