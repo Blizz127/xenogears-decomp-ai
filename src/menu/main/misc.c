@@ -1756,7 +1756,17 @@ void func_801CEC40(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF308);
+void func_801CF308(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0xA) != 0) {
+        void* pData = *(void**)((u8*)pMenu + 0x354);
+        func_801CE2B4(*(s32*)((u8*)pData + 0x1404), (u8*)pData + 0x500, *(u8*)((u8*)pData + 0x1409));
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x354);
+        func_801CE2B4(*(s32*)((u8*)pData + 0x1400), (u8*)pData, *(u8*)((u8*)pData + 0x1408));
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF37C);
 
