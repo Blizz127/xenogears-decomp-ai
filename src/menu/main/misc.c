@@ -1110,7 +1110,11 @@ u16 func_801C865C(u16 mask, u8 index) {
     return D_801E96A8[index & 0xFF] & mask;
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8678);
+extern u32 D_801E96E8[];
+
+u32 func_801C8678(u32 mask, u8 idx) {
+    return mask & D_801E96E8[idx];
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8694);
 
