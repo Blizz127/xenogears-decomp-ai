@@ -5475,7 +5475,12 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E61B0);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6450);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E649C);
+void func_801E649C(void) {
+    void* pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x34C));
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0xB) = 0;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E64E0);
 
