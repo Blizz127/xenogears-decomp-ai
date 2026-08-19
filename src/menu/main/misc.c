@@ -1357,7 +1357,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAA38);
 
 extern void func_801D2F4C(u8);
 extern u32 func_801CAA38(u8);
-extern u32 func_801D32B4(u32);
+extern s32 func_801D32B4(s32);
 
 u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
     u32 result;
@@ -2742,7 +2742,22 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2EC0);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2F4C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D32B4);
+s32 func_801D32B4(s32 arg0) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x22) != 0) {
+        s32 i;
+        func_801D4EA0(2);
+        pMenu = g_Menu;
+        *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x2E) = 0;
+        for (i = 0; i < 4; i++) {
+            pMenu = g_Menu;
+            HeapFree(*(void**)((u8*)pMenu + 0x1DE0 + i * 4));
+        }
+    }
+    func_801C7BF4();
+    return 0;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3344);
