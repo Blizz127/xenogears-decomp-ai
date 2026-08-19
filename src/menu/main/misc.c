@@ -2095,7 +2095,26 @@ void func_801D0FD4(void) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1030);
+void func_801D1030(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 0x2E) != 0) {
+        s32 i;
+        for (i = 0; i < 3; i++) {
+            pMenu = g_Menu;
+            {
+                u8* pData = *(u8**)((u8*)pMenu + 0x1DE0 + i * 4);
+                if (*(u8*)(pData + 0x7F) != 0) {
+                    func_801CE198(1, pData + 0x50, *(u8*)(pData + 0x7D));
+                } else {
+                    u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
+                    u8 idx = *(u8*)(pData + 0x7D);
+                    AddPrim(pOT, pData + idx * 0x28);
+                }
+            }
+        }
+    }
+}
 
 void func_801D10DC(void) {
     s32 i;
