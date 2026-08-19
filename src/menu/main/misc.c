@@ -1126,7 +1126,17 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C87C4);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C881C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C891C);
+extern u32 D_801E9768[];
+extern s32 _card_info(s32);
+extern u32 func_801C881C(s32);
+
+s32 func_801C891C(s32 port) {
+    if (_card_info(port) == 0) return -1;
+    {
+        u8 result = (u8)func_801C881C(port);
+        return (s32)D_801E9768[result];
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8960);
 
