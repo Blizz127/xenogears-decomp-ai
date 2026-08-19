@@ -10,14 +10,14 @@ _Last updated: 2026-08-19_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `49d0139d` (Decompile func_801C9BCC — menu save availability check) |
+| **HEAD** | `83ecd4fb` (Decompile func_801E3A80 — menu character stat computation) |
 | **Build** | 468/468 targets — PASSING |
 | **Decomp_status universe** | 2477 functions |
-| **Matched {}** | 1962 (79.2%) |
+| **Matched {}** | 1963 (79.2%) |
 | **Coexistence** | 170 (6.9%) |
-| **Unported** | 345 (14.0%) |
-| **Total done** | 2132 (86.1%) |
-| **Decomp commits (this campaign)** | 594 |
+| **Unported** | 344 (13.9%) |
+| **Total done** | 2133 (86.1%) |
+| **Decomp commits (this campaign)** | 595 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
