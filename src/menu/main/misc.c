@@ -2392,7 +2392,15 @@ void func_801D28FC(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2968);
+extern void func_801D5CF8(s32, s32);
+
+void func_801D2968(void) {
+    void* pMenu = g_Menu;
+    void* pManager = *(void**)((u8*)pMenu + 0x33C);
+    if (*(u8*)((u8*)pManager + 6) != 0) {
+        func_801D5CF8(0xD0, 0xCA);
+    }
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
