@@ -5538,7 +5538,56 @@ void func_801E1398(void) {
     HeapFree(*(void**)((u8*)pMenu + 0x438));
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1418);
+s32 func_801E1418(s32 slotIdx, u8 arg1) {
+    s32 total = 0;
+    s32 count = 0;
+    s32 i;
+    void* pMenu;
+    void* pManager;
+    u8 charIdx;
+    u8* pGameData;
+    u8* pEquip;
+    void* pEquipData;
+    u16* pEquipTable;
+    if (arg1 >= 7) {
+        if (!(*(u16*)((u8*)&g_GameState + 0x22B6) & 0x4000)) {
+            return 0;
+        }
+    }
+    pMenu = g_Menu;
+    pManager = *(void**)((u8*)pMenu + 0x33C);
+    charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
+    pEquipData = *(void**)((u8*)pMenu + 0x438);
+    pGameData = (u8*)&g_GameState + 0x2FC + charIdx * 0x28;
+    pEquip = (u8*)pEquipData + 0x2578;
+    for (i = 0; i < 7; i++) {
+        u16 val = *(u16*)(pGameData + i * 2);
+        u8* pTableEntry = pEquip + charIdx * 0x280 + arg1 * 0xE;
+        u16 equipVal = *(u16*)(pTableEntry + i * 2);
+        if (val != 0) {
+            if (equipVal == 0) goto next;
+            if (equipVal == 0xFFFF) goto next;
+            {
+                s32 ratio = val * 100 / equipVal;
+                if (ratio >= 100) {
+                    total += 100;
+                } else {
+                    total += ratio;
+                }
+            }
+            count++;
+        } else {
+            if (equipVal == 0) goto next;
+            count++;
+        }
+next:
+        ;
+    }
+    if (count != 0) {
+        return total / count;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1544);
 
