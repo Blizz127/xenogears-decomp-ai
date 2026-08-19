@@ -1310,7 +1310,16 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D78);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8EE8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9038);
+s32 func_801C9038(char* path, void* pBuf) {
+    s32 fd = open(path, 3);
+    if (fd == -1) return -1;
+    if (read(fd, pBuf, 0x200) == 0x200) {
+        close(fd);
+        return 0;
+    }
+    close(fd);
+    return -1;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C90B0);
 
