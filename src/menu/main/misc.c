@@ -5799,7 +5799,35 @@ void func_801DCE60(u8 ch, u8 cursorArg, u8 category) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD5E8);
+extern void func_801E8F60(s32, u8);
+
+void func_801DD5E8(u8 charIdx) {
+    void* pMenu;
+    u8* pData;
+    s32 i;
+    func_801E8F60(5, charIdx);
+    func_801E8F60(6, charIdx);
+    pMenu = g_Menu;
+    pData = *(u8**)((u8*)pMenu + 0x444);
+    {
+        u8 tableIdx = pData[0x75];
+        func_801E8EAC(pData + tableIdx * 0x28, charIdx);
+    }
+    pMenu = g_Menu;
+    pData = *(u8**)((u8*)pMenu + 0x430);
+    {
+        u8 tableIdx = pData[0xE7D];
+        func_801E8EAC(pData + 0xE00 + tableIdx * 0x28, charIdx);
+    }
+    for (i = 0; i < 2; i++) {
+        pMenu = g_Menu;
+        pData = *(u8**)((u8*)pMenu + 0x430);
+        {
+            u8 tableIdx = pData[i * 0x80 + 0xF7D];
+            func_801E8EAC(pData + 0xF00 + i * 0x80 + tableIdx * 0x28, charIdx);
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD790);
 
