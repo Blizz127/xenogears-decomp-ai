@@ -49,7 +49,15 @@ void* memmove(u_char* pDst, u_char* pSrc, int size) {
     return pDst;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memset);
+void* memset(void* dst, int val, int n) {
+    u8* d = (u8*)dst;
+    if (dst == NULL) return NULL;
+    if (n <= 0) return NULL;
+    while (n-- > 0) {
+        *d++ = (u8)val;
+    }
+    return dst;
+}
 
 int rand(void) {
     u_long nNext;
