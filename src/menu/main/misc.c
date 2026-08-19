@@ -2027,7 +2027,20 @@ void func_801D0ED4(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0F54);
+void func_801D0F54(void) {
+    s32 i;
+    u32 offset = 0x14E0;
+    for (i = 0; i < 6; i++) {
+        void* pMenu = g_Menu;
+        void* pManager = *(void**)((u8*)pMenu + 0x33C);
+        if (*(u8*)((u8*)pManager + 0x40 + i) != 0) {
+            u8* pData = (u8*)pMenu + offset + 0x50;
+            u8 val = *(u8*)((u8*)pMenu + i * 0x80 + 0x155D);
+            func_801CE198(1, pData, val);
+        }
+        offset += 0x80;
+    }
+}
 
 void func_801D0FD4(void) {
     void* pMenu = g_Menu;
