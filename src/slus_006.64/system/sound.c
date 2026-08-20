@@ -3988,23 +3988,12 @@ u8* SoundScriptDefaultHandler(u8* pScript, AudioManager* pAudioManager, AudioEle
 
 // Rest note handler?
 // Seq cmd: rest -- set duration, flag REST status + active bit.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003CD08(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    u16 status;
-    u16 active;
-    status = pAudioElements->status_flags;
     pAudioElements->fermataDuration = pScript[0];
-    active = pAudioElements->active_flag;
-    pAudioElements->status_flags = status | 0x2;
-    pAudioElements->active_flag = active | 0x400;
+    pAudioElements->active_flag |= 0x400;
+    pAudioElements->status_flags |= 0x2;
     return pScript + 1;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD08);
-#endif
 
 // Fermata / Hold note
 u8* SoundScriptFermata(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
