@@ -415,7 +415,51 @@ VECTOR* ApplyRotMatrix(SVECTOR* input, VECTOR* output) {
     return result;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PushMatrix);
+void PushMatrix(void) {
+    __asm__ volatile(
+        ".set noat\n\t"
+        "lui $14, %%hi(D_80056D2C)\n\t"
+        "lw $14, %%lo(D_80056D2C)($14)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x29c10280\n\t"
+        ".word 0x1420000a\n\t"
+        "lui $1, %%hi(D_80056D20)\n\t"
+        "sw $31, %%lo(D_80056D20)($1)\n\t"
+        "lui $4, %%hi(D_80056FB0)\n\t"
+        ".reloc ., R_MIPS_26, printf\n\t"
+        ".word 0x0c000000\n\t"
+        "addiu $4, $4, %%lo(D_80056FB0)\n\t"
+        "lui $31, %%hi(D_80056D20)\n\t"
+        "lw $31, %%lo(D_80056D20)($31)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        "lui $15, %%hi(D_80056D30)\n\t"
+        ".word 0x01ee7821\n\t"
+        "addiu $15, $15, %%lo(D_80056D30)\n\t"
+        ".word 0x48480000\n\t"
+        ".word 0x48490800\n\t"
+        ".word 0xade80000\n\t"
+        ".word 0xade90004\n\t"
+        ".word 0x48481000\n\t"
+        ".word 0x48491800\n\t"
+        ".word 0xade80008\n\t"
+        ".word 0xade9000c\n\t"
+        ".word 0x48482000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0xade80010\n\t"
+        ".word 0x48482800\n\t"
+        ".word 0x48493000\n\t"
+        ".word 0x484a3800\n\t"
+        ".word 0xade80014\n\t"
+        ".word 0xade90018\n\t"
+        ".word 0xadea001c\n\t"
+        ".word 0x21ce0020\n\t"
+        "lui $1, %%hi(D_80056D2C)\n\t"
+        "sw $14, %%lo(D_80056D2C)($1)\n\t"
+        ".set at"
+        : : : "$4", "$8", "$9", "$10", "$14", "$15", "memory");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PopMatrix);
 
