@@ -4307,24 +4307,15 @@ u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* 
 }
 
 // Seq cmd 0xAA: move the element to another voice (release + assign-stopped).
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
- * (commutative operand order / delay-slot copy placement / register reuse);
- * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003D21C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    u8 n = *pScript++;
+    s32 n = *pScript++;
     if (n < 0x19) {
         SoundVoiceData* vd = &pAudioElements->voice_data;
         SoundReleaseVoiceFromChannel(vd, pAudioElements->voice_number);
-        pAudioElements->voice_number = n;
-        SoundAssignVoiceToChannelAndStop(vd, n);
+        SoundAssignVoiceToChannelAndStop(vd, pAudioElements->voice_number = n);
     }
     return pScript;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D21C);
-#endif
 
 u8* func_8003D298(u8* a0, s32 a1, s32 a2) {
     func_8003E5BC(*a0++, a2);
