@@ -804,7 +804,22 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers3);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTrans);
+void RotTrans(SVECTOR* input, VECTOR* output, long* flag) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a480012\n\t"
+        ".word 0xe8b90000\n\t"
+        ".word 0xe8ba0004\n\t"
+        ".word 0xe8bb0008\n\t"
+        ".word 0x4842f800"
+        : "=r"(result)
+        : "r"(input), "r"(output), "r"(flag)
+        : "memory");
+    *flag = result;
+}
 
 long NormalClip(long sxy0, long sxy1, long sxy2) {
     long mac0;
