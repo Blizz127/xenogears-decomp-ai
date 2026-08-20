@@ -4737,23 +4737,16 @@ u8* SoundScriptClearUnkCEAndF6(u8* pScript, AudioManager* pAudioManager, AudioEl
 // Set volume handler / Dynamic?
 // Seq cmd: set vibrato accumulator (byte << 24), drop pitch-env bits, mark
 // volume change.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003DB2C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u16 f4;
     u16 status;
     f4 = pAudioElements->unk_0x04;
     *(s32*)&pAudioElements->unk_0x76[2] = pScript[0] << 24;
     status = pAudioElements->status_flags;
-    pAudioElements->unk_0x04 = f4 & 0xFEF7;
     pAudioElements->status_flags = status | 0x100;
+    pAudioElements->unk_0x04 = f4 & 0xFEF7;
     return pScript + 1;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB2C);
-#endif
 
 // Crescendo?
 // Seq cmd: nudge the vibrato accumulator by a signed step (clamped positive),
