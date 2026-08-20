@@ -5306,7 +5306,13 @@ void func_801DA9A8(s32 row, s32 page) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB02C);
+void func_801DB02C(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    g_Menu->arrowCursors[index] = HeapAlloc(sizeof(MenuArrowCursor), 0);
+    bzero(g_Menu->arrowCursors[index], sizeof(MenuArrowCursor));
+    g_Menu->arrowCursors[index]->curAnimFrame = 4;
+    g_Menu->arrowCursors[index]->animFrameDuration = 0;
+}
 #else
 void func_801DB02C(s32 cursorIndex) {
     u8 index = (u8)cursorIndex;
