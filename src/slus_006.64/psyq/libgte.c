@@ -377,7 +377,45 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end func_8004901C");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_800490A4);
+__asm__(
+        ".globl func_800490A4\n\t"
+        ".ent func_800490A4\n\t"
+        "func_800490A4:\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c8a0004\n\t"
+        ".word 0x00084c03\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x314affff\n\t"
+        ".word 0x48864000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x488a5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b90003d\n\t"
+        ".word 0x8ca80000\n\t"
+        ".word 0x8caa0004\n\t"
+        ".word 0x00084c03\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x314affff\n\t"
+        ".word 0x4802f800\n\t"
+        ".word 0x48874000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x488a5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4ba0003e\n\t"
+        ".word 0x48084800\n\t"
+        ".word 0x48095000\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x00094c00\n\t"
+        ".word 0x01094025\n\t"
+        ".word 0x8fad0010\n\t"
+        ".word 0x480a5800\n\t"
+        ".word 0xada80000\n\t"
+        ".word 0xadaa0004\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end func_800490A4");
 
 void LoadAverageByte(u_char* v0, u_char* v1, long p0, long p1,
         u_char* output) {
