@@ -5062,13 +5062,13 @@ s32 func_8003E160(s32 a0, s32 a1, u16* a2) {
 // Seq cmd 0xF0: define envelope object -- select slot, bind the handler
 // method from the D_800508A4 table (retail PSX address; the port's host
 // routing for these lands with the envelope pass), set mode/state.
-#ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; matching build
  * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
  * (commutative operand order / delay-slot copy placement / register reuse);
  * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003E180(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     SoundEnvelope* env;
+    u8 state;
     *(u16*)&pAudioElements->unk_0x76[0x56] = pScript[0];
     env = (SoundEnvelope*)((u8*)pAudioElements +
                            ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
@@ -5082,14 +5082,12 @@ u8* func_8003E180(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
             env->flags = 0;
         }
     }
+    state = pScript[2];
     env->stepAdd = 0x400;
     *(u16*)&env->unk16[0] = 0;
-    env->state = pScript[2];
+    env->state = state;
     return pScript + 3;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E180);
-#endif
 
 // Seq cmd 0xF1: envelope target/rate -- rate = n + n*n/64; packed target via
 // func_8003E290 keyed by the envelope's method index.
