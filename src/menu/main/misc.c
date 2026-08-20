@@ -1220,7 +1220,14 @@ void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8574);
+extern void func_80039DB8(s32 packedId);
+
+void func_801C8574(s32 soundId) {
+    if (g_Menu->unk32A) {
+        func_80039DB8(((s32)*(u16*)((u8*)g_Menu->unk2E4 + 0x14) << 16) |
+                      (soundId & 0xFF));
+    }
+}
 #else
 extern void func_80039DB8(s32 packedId);
 
