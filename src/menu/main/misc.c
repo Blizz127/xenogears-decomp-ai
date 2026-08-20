@@ -2132,7 +2132,22 @@ s32 func_801CD710(u8 arg0) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD81C);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDB1C);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDC6C);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE0CC);
+
+extern void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
+                          s32* xTable, s32* yTable, u8 mode);
+extern void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
+                          s32* xTable, s32* yTable);
+extern void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
+                          s32* xTable, s32* yTable, u8 mode);
+
+void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable, u8 mode) {
+    func_801CD81C(panel, charId, slot, xTable, yTable, mode);
+    func_801CDB1C(panel, charId, slot, xTable, yTable);
+    func_801CDC6C(panel, charId, slot, xTable, yTable, mode);
+    panel->unkBE7 = 1;
+    panel->renderContext = *(u8*)&g_Menu->renderContext;
+}
 #else
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern void func_801C80B8(u32);

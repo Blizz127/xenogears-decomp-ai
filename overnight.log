@@ -86,3 +86,5 @@
 2026-08-20T10:28:14Z func_8003CEF0 skip (3 attempts): register allocation differs (counter in  vs , val in  vs )
 2026-08-20T10:33:05Z func_801D28FC skip (2 attempts): epilogue sb/lw ra scheduling differs
 2026-08-20T14:29:12Z func_801E8018 matched + committed
+2026-08-20T14:33:39Z func_801CE540 skip (3 attempts): load-scheduling differs (pManager/flag vs i*4/buf v0/v1 swapped); i++ in beqz delay slot in expected vs nop or later increment in built
+2026-08-20T14:35:45Z func_801CE0CC matched + committed
