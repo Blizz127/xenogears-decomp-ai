@@ -111,7 +111,11 @@ s32 func_8004078C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StartPAD);
+void StartPAD(void) {
+    StartPAD2();
+    ChangeClearPAD(0);
+    EnablePAD();
+}
 
 extern void func_80040B00(void);
 extern void StopPAD2(void);
