@@ -26,7 +26,19 @@ __asm__(
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PClseek);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCcreate);
+__asm__(
+        ".globl PCcreate\n\t"
+        ".ent PCcreate\n\t"
+        "PCcreate:\n\t"
+        ".word 0x00802821\n\t"
+        ".word 0x00003021\n\t"
+        ".word 0x0000408d\n\t"
+        ".word 0x10400002\n\t"
+        ".word 0x00601021\n\t"
+        ".word 0x2402ffff\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end PCcreate");
 
 __asm__(
         ".globl PCinit\n\t"
