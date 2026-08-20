@@ -3457,7 +3457,12 @@ void func_801D25E4(void) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28A8);
+extern void func_801D5BA4(s32 x, s32 y);
+
+void func_801D28A8(void) {
+    func_801D397C(0, 0xD4, 0xB2, 0x60, 0x10, 0, 0, 4, 0);
+    func_801D5BA4(0xD8, 0xB6);
+}
 #else
 extern void func_801D5BA4(s32 x, s32 y);
 
