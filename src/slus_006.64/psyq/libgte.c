@@ -329,7 +329,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetMAC123);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetData32);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetDQA);
+void SetDQA(s32 value) {
+    __asm__ volatile("ctc2 %0, $27" : : "r"(value));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetDQB);
 
