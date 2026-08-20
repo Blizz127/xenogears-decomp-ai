@@ -7232,7 +7232,78 @@ void func_801E5058(void) {
 }
 #endif
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5178);
+void func_801E5178(void) {
+    u8* gs = (u8*)&g_GameState;
+
+    *(u16*)(gs + 0x1D30) = 0x7FF;
+
+    *(u16*)(gs + 0x16C0) = 0xFFF8;
+    *(u16*)(gs + 0x16C2) = 0xFF00;
+    *(u16*)(gs + 0x16C4) = 0xFFF0;
+    *(u16*)(gs + 0x16C6) = 0xFE00;
+    *(u8*)(gs + 0x16D7) = 0x7;
+    *(u16*)(gs + 0x16DA) = 0xE000;
+    *(u16*)(gs + 0x16E0) = 0xFFE0;
+    *(u16*)(gs + 0x16E2) = 0xFFF0;
+    *(u16*)(gs + 0x16E4) = 0xFFF0;
+    *(u16*)(gs + 0x16E6) = 0xFFF0;
+    *(u8*)(gs + 0x16F7) = 0x7;
+    *(u16*)(gs + 0x16FA) = 0xC000;
+    *(u16*)(gs + 0x1700) = 0xFFE0;
+    *(u16*)(gs + 0x1702) = 0xFFE0;
+    *(u16*)(gs + 0x1704) = 0xFFF0;
+    *(u16*)(gs + 0x1706) = 0xFF00;
+    *(u8*)(gs + 0x1717) = 0x7;
+    *(u16*)(gs + 0x171A) = 0x8000;
+    *(u16*)(gs + 0x1720) = 0xFFE0;
+    *(u16*)(gs + 0x1722) = 0xFFC0;
+    *(u16*)(gs + 0x1724) = 0xFFF0;
+    *(u16*)(gs + 0x1726) = 0xFF00;
+    *(u8*)(gs + 0x1737) = 0x7;
+    *(u16*)(gs + 0x173A) = 0xFE00;
+    *(u16*)(gs + 0x1740) = 0xFFC0;
+    *(u16*)(gs + 0x1742) = 0xFFC0;
+    *(u16*)(gs + 0x1744) = 0xFFF0;
+    *(u16*)(gs + 0x1746) = 0xFFC0;
+    *(u8*)(gs + 0x1757) = 0x7;
+    *(u16*)(gs + 0x175A) = 0xE000;
+    *(u16*)(gs + 0x1760) = 0xFFC0;
+    *(u16*)(gs + 0x1762) = 0xFE00;
+    *(u16*)(gs + 0x1764) = 0xFFF0;
+    *(u16*)(gs + 0x1766) = 0xFE00;
+    *(u8*)(gs + 0x1777) = 0x7;
+    *(u16*)(gs + 0x177A) = 0x8000;
+    *(u16*)(gs + 0x1780) = 0xFFC0;
+    *(u16*)(gs + 0x1782) = 0xFF00;
+    *(u16*)(gs + 0x1784) = 0xFFF0;
+    *(u16*)(gs + 0x1786) = 0xFF00;
+    *(u8*)(gs + 0x1797) = 0x7;
+    *(u16*)(gs + 0x179A) = 0x8000;
+    *(u16*)(gs + 0x17A0) = 0;
+    *(u16*)(gs + 0x17A2) = 0xFF00;
+    *(u16*)(gs + 0x17A4) = 0;
+    *(u16*)(gs + 0x17A6) = 0xFF00;
+    *(u8*)(gs + 0x17B7) = 0x7;
+    *(u16*)(gs + 0x17BA) = 0;
+    *(u16*)(gs + 0x17C0) = 0;
+    *(u16*)(gs + 0x17C2) = 0xF800;
+    *(u16*)(gs + 0x17C4) = 0xFFF0;
+    *(u16*)(gs + 0x17C6) = 0;
+    *(u8*)(gs + 0x17D7) = 0x7;
+    *(u16*)(gs + 0x17DA) = 0xE000;
+    *(u16*)(gs + 0x17E0) = 0xFFE0;
+    *(u16*)(gs + 0x17E2) = 0xFFE0;
+    *(u16*)(gs + 0x17E4) = 0xFFF0;
+    *(u16*)(gs + 0x17E6) = 0xFFE0;
+    *(u8*)(gs + 0x17F7) = 0x7;
+    *(u16*)(gs + 0x17FA) = 0x8000;
+    *(u16*)(gs + 0x1800) = 0xFFC0;
+    *(u16*)(gs + 0x1802) = 0xFF00;
+    *(u16*)(gs + 0x1804) = 0xFFF0;
+    *(u16*)(gs + 0x1806) = 0xFF00;
+    *(u8*)(gs + 0x1817) = 0x7;
+    *(u16*)(gs + 0x181A) = 0x8000;
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E53CC);
