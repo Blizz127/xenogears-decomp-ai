@@ -181,7 +181,14 @@ __asm__(
         ".word 0x24090013\n\t"
         ".end StartPAD2");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StopPAD2);
+__asm__(
+        ".globl StopPAD2\n\t"
+        ".ent StopPAD2\n\t"
+        "StopPAD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090014\n\t"
+        ".end StopPAD2");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040ABC);
 
