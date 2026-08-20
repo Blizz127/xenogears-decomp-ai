@@ -1080,7 +1080,33 @@ long RotTransPers(SVECTOR* input, long* sxy, long* p, long* flag) {
     return result >> 2;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers3);
+long RotTransPers3(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2,
+        long* sxy0, long* sxy1, long* sxy2, long* p, long* flag) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a280030\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0x8fab001c\n\t"
+        ".word 0xe8ec0000\n\t"
+        ".word 0xe90d0000\n\t"
+        ".word 0xe92e0000\n\t"
+        ".word 0xe9480000\n\t"
+        ".word 0x4843f800\n\t"
+        ".word 0x48029800\n\t"
+        ".word 0xad630000"
+        : "=r"(result)
+        : : "$3", "$8", "$9", "$10", "$11", "memory");
+    return result >> 2;
+}
 
 void RotTrans(SVECTOR* input, VECTOR* output, long* flag) {
     register long result asm("$2");
