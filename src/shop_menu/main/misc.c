@@ -2353,9 +2353,36 @@ void ShopMenuMain(void) {
     ShopMenuFree();
 }
 
-// tmp 
-void func_801CCE1C(void*, u8);
-INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CCE1C);
+void func_801CCE1C(void* output, u8 characterId) {
+    u8* out = output;
+    u8* stats = (u8*)&g_GameState + 0x26C + characterId * 0xA4;
+
+    if (stats[0x56] == 4) {
+        *(u16*)(out + 0xB8) = stats[0x04] + stats[0x1C];
+    } else {
+        *(u16*)(out + 0xB8) = stats[0x58] + stats[0x28] + stats[0x04];
+    }
+
+    *(u16*)(out + 0xB8) = stats[0x58] + stats[0x28] + stats[0x04];
+    *(u16*)(out + 0xBA) = stats[0x5E] + stats[0x2E];
+    *(u16*)(out + 0xBC) = stats[0x59] + stats[0x29] + stats[0x2D];
+    *(u16*)(out + 0xBE) = stats[0x5F] + stats[0x2F];
+    *(u16*)(out + 0xC0) = stats[0x5B] + stats[0x2B];
+    *(u16*)(out + 0xC2) = 99;
+    *(u16*)(out + 0xC4) = stats[0x5C] + stats[0x2C];
+    *(u16*)(out + 0xC6) = 10;
+    *(u16*)(out + 0xC8) = stats[0x5A] + stats[0x2A];
+
+    if (*(u16*)(out + 0xB8) >= 1000) *(u16*)(out + 0xB8) = 999;
+    if (*(u16*)(out + 0xBA) >= 100) *(u16*)(out + 0xBA) = 99;
+    if (*(u16*)(out + 0xBC) >= 1000) *(u16*)(out + 0xBC) = 999;
+    if (*(u16*)(out + 0xBE) >= 100) *(u16*)(out + 0xBE) = 99;
+    if (*(u16*)(out + 0xC0) >= 1000) *(u16*)(out + 0xC0) = 999;
+    if (*(u16*)(out + 0xC2) >= 100) *(u16*)(out + 0xC2) = 99;
+    if (*(u16*)(out + 0xC4) >= 1000) *(u16*)(out + 0xC4) = 999;
+    if (*(u16*)(out + 0xC6) >= 100) *(u16*)(out + 0xC6) = 99;
+    if (*(u16*)(out + 0xC8) >= 100) *(u16*)(out + 0xC8) = 99;
+}
 
 // Render Shop Stuff
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc", func_801CCFF4);
