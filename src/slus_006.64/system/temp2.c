@@ -212,7 +212,26 @@ void func_8002BF38(void) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C310);
+extern void func_800379C8(char*, ...);
+extern char D_80018944[];
+extern char D_80018954[];
+extern char D_80018964[];
+extern char D_80018974[];
+extern s32 D_8004FE10;
+extern s16 temp2_D_80059F40 asm("D_80059F40");
+extern s16 temp2_D_80059F44 asm("D_80059F44");
+extern s16 temp2_D_80059F48 asm("D_80059F48");
+
+void func_8002C310(void)
+{
+    func_800379C8(D_80018944, g_ArchiveTable, D_8004FE08, D_8004FE2C);
+    func_800379C8(D_80018954, D_8004FE40, D_8004FE10, D_80059F3C,
+                  D_80059F50);
+    func_800379C8(D_80018964, temp2_D_80059F40, temp2_D_80059F44,
+                  temp2_D_80059F48, D_80059F4C);
+    func_800379C8(D_80018974, D_80059F4C[0], D_80059F4C[1],
+                  D_80059F4C[2]);
+}
 
 extern u32 g_ArchiveDebugTable;
 
