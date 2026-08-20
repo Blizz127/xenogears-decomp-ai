@@ -68,7 +68,33 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_8004901C);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_800490A4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageByte);
+void LoadAverageByte(u_char* v0, u_char* v1, long p0, long p1,
+        u_char* output) {
+    __asm__ volatile(
+        ".word 0x90880000\n\t"
+        ".word 0x90890001\n\t"
+        ".word 0x48864000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b90003d\n\t"
+        ".word 0x90a80000\n\t"
+        ".word 0x90a90001\n\t"
+        ".word 0x4802f800\n\t"
+        ".word 0x48874000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x240b000c\n\t"
+        ".word 0x4ba0003e\n\t"
+        ".word 0x8fad0010\n\t"
+        ".word 0x4808c800\n\t"
+        ".word 0x4809d000\n\t"
+        ".word 0x01684007\n\t"
+        ".word 0x01694807\n\t"
+        ".word 0xa1a80000\n\t"
+        ".word 0xa1a90001"
+        : : : "$2", "$8", "$9", "$11", "$13", "memory");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageCol);
 
