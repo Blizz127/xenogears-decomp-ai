@@ -638,7 +638,19 @@ void Intpl(VECTOR* input, long p, CVECTOR* output) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square12);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square0);
+VECTOR* Square0(VECTOR* input, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8890000\n\t"
+        ".word 0xc88a0004\n\t"
+        ".word 0xc88b0008\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4aa00428\n\t"
+        ".word 0xe8b90000\n\t"
+        ".word 0xe8ba0004\n\t"
+        ".word 0xe8bb0008"
+        : : "r"(input), "r"(output) : "$2", "memory");
+    return output;
+}
 
 long AverageZ3(long sz1, long sz2, long sz3) {
     register long result asm("$2");
