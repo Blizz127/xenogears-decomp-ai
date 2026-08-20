@@ -23,7 +23,14 @@ __asm__(
         ".word 0x24090072\n\t"
         ".end func_8004BED8");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ReturnFromException);
+__asm__(
+        ".globl ReturnFromException\n\t"
+        ".ent ReturnFromException\n\t"
+        "ReturnFromException:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090017\n\t"
+        ".end ReturnFromException");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ResetEntryInt);
 
