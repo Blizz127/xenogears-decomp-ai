@@ -308,6 +308,7 @@ extern char D_80019104[];
 extern char D_80019134[];
 extern char D_80019148[];
 extern char D_8001918C[];
+extern char D_80019198[];
 extern char D_800191C8[];
 extern char D_800191E0[];
 extern char D_8005698C[];
@@ -402,7 +403,15 @@ int LoadImage(RECT* rect, u_long* data) {
     return load(*(void**)((u8*)dispatch + 0x20), rect, 8, data);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", StoreImage);
+int StoreImage(RECT* rect, u_long* data) {
+    void* dispatch;
+    int (*store)(void*, RECT*, s32, u_long*);
+
+    func_8004463C(D_80019198, rect);
+    dispatch = D_800568C8;
+    store = *(int (**)(void*, RECT*, s32, u_long*))((u8*)dispatch + 8);
+    return store(*(void**)((u8*)dispatch + 0x1C), rect, 8, data);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", MoveImage);
 
