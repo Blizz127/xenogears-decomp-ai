@@ -227,7 +227,16 @@ __asm__(
         ".word 0x24090003\n\t"
         ".end SysDeqIntRP");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", EnablePAD);
+__asm__(
+        ".globl EnablePAD\n\t"
+        ".ent EnablePAD\n\t"
+        "EnablePAD:\n\t"
+        "lui $9, %hi(jtbl_800593AC)\n\t"
+        "lw $9, %lo(jtbl_800593AC)($9)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x01200008\n\t"
+        ".word 0x00000000\n\t"
+        ".end EnablePAD");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040B00);
 
