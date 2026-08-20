@@ -3756,7 +3756,13 @@ void func_801D3488(s32 bank, u8 category) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3674);
+void func_801D3674(void) {
+    if (g_Menu->pManager->unk5C[0xB] != 0) {
+        g_Menu->pManager->unk52[1] = 0;
+        g_Menu->pManager->unk5C[0xB] = 0;
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk440[0]);
+    }
+}
 #else
 void func_801D3674(void) {
     /* manager+0x67 is the owner flag; +0x53 is its render guard. */
