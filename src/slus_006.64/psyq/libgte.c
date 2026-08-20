@@ -436,7 +436,14 @@ void SetFarColor(long red, long green, long blue) {
         : : "r"(red), "r"(green), "r"(blue));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomOffset);
+void SetGeomOffset(long x, long y) {
+    x <<= 16;
+    y <<= 16;
+    __asm__ volatile(
+        "ctc2 %0, $24\n\t"
+        "ctc2 %1, $25"
+        : : "r"(x), "r"(y));
+}
 
 void SetGeomScreen(long value) {
     __asm__ volatile("ctc2 %0, $26" : : "r"(value));
