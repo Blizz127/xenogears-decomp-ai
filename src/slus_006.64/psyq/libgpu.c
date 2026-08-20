@@ -287,6 +287,7 @@ int SetGraphDebug(int level) {
 extern u8 D_800568D1;
 extern void* D_800568C8;
 extern char D_80019104[];
+extern char D_800191E0[];
 extern void DMACallback(s32, void*);
 
 u8 func_8004440C(u8 arg0) {
@@ -365,7 +366,18 @@ void DrawPrim(void* prim) {
     send((u8*)prim + 4, length);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawOTag);
+void DrawOTag(u_long* ot) {
+    void* dispatch;
+    void (*draw)(void*, u_long*, s32, s32);
+
+    if ((u8)g_GraphDebugLevel >= 2) {
+        g_GpuPrintf(D_800191E0, ot);
+    }
+
+    dispatch = D_800568C8;
+    draw = *(void (**)(void*, u_long*, s32, s32))((u8*)dispatch + 8);
+    draw(*(void**)((u8*)dispatch + 0x18), ot, 0, 0);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", PutDrawEnv);
 
