@@ -796,7 +796,13 @@ u_char AnimScriptStackPopU8(SpriteData* pSpriteData) {
 }
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU16);
+s16 AnimScriptStackPopU16(SpriteData* pSpriteData) {
+    s8 idx = pSpriteData->stackIndex;
+    u16 lo = pSpriteData->stack[idx];
+    u16 hi = pSpriteData->stack[idx + 1];
+    pSpriteData->stackIndex += 2;
+    return (s16)(lo + hi * 256);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU24);
 
