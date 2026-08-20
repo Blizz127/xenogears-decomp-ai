@@ -284,19 +284,22 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ResetGraph);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetGraphReverse);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetGraphDebug);
-/*
 int SetGraphDebug(int level) {
-    int nPrev = g_GraphDebugLevel;
+    register u8* state asm("$2") = (u8*)&g_GraphDebugLevel;
+    register int previous asm("$16");
+    u8 newLevel = level;
 
-    g_GraphDebugLevel = level;
-    if (level) {
-        g_GpuPrintf("SetGraphDebug:level:%d,type:%d reverse:%d\n", level, DAT_800568d0, DAT_800568d3);
+    previous = state[0];
+    state[0] = level;
+    if (newLevel != 0) {
+        extern u8 D_800568D0;
+        extern u8 D_800568D3;
+        extern char D_800190D8[];
+        g_GpuPrintf(D_800190D8, newLevel, D_800568D0, D_800568D3);
     }
 
-    return nPrev;
+    return previous;
 }
-*/
 
 // SetGrapQue ?
 extern u8 D_800568D1;
