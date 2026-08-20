@@ -14,20 +14,14 @@ extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 #define assert(x) ((void)0)
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_8001FBA4);
-/*
-Matches on GCC 2.7.2-970404, ASPSX 2.67
-Co-Authored-By: eagleflo <eagleflo@users.noreply.github.com>
-
 void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
     u8 index = *pIndex;
     if (!(index & 0x80)) {
         s32 signedIndex = (s8)index;
-        return &pSpriteData->stack[pSpriteData->stackIndex + signedIndex];
+        return &pSpriteData->stack[(s8)pSpriteData->stackIndex + signedIndex];
     }
     return &pSpriteData->field_0x88[index & 0x7F];
 }
-*/
 
 extern s32 D_80059198;
 extern void func_80022974(void* pSpriteData);
