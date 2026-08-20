@@ -3669,7 +3669,10 @@ void func_801D3344(s32 x, s32 y, s32 width) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3444);
+void func_801D3444(void) {
+    g_Menu->pManager->scrollHandleActive = 0;
+    HeapFree(g_Menu->pScrollHandle);
+}
 #else
 void func_801D3444(void) {
     g_Menu->pManager->scrollHandleActive = 0;
