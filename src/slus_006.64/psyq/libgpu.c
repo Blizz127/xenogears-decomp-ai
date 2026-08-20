@@ -307,6 +307,7 @@ extern void* D_800568C8;
 extern char D_80019104[];
 extern char D_80019134[];
 extern char D_80019148[];
+extern char D_80019180[];
 extern char D_8001918C[];
 extern char D_80019198[];
 extern char D_800191C8[];
@@ -389,7 +390,17 @@ int DrawSync(int mode) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_8004463C);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearImage);
+int ClearImage(RECT* rect, u_char r, u_char g, u_char b) {
+    void* dispatch;
+    int (*clear)(void*, RECT*, s32, u32);
+    u32 color;
+
+    func_8004463C(D_80019180, rect);
+    color = ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF);
+    dispatch = D_800568C8;
+    clear = *(int (**)(void*, RECT*, s32, u32))((u8*)dispatch + 8);
+    return clear(*(void**)((u8*)dispatch + 0x0C), rect, 8, color);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearImage2);
 
