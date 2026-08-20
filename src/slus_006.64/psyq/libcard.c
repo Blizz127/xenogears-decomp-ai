@@ -11,7 +11,17 @@ __asm__(
         ".word 0x240900ab\n\t"
         ".end _card_info");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD);
+void InitCARD(long val) {
+    extern void func_8004E8D8(void);
+    extern void func_8004E990(void);
+
+    ChangeClearPAD(0);
+    EnterCriticalSection();
+    InitCARD2(val);
+    func_8004E8D8();
+    func_8004E990();
+    ExitCriticalSection();
+}
 
 void StartCARD(void) {
     EnterCriticalSection();
