@@ -562,7 +562,18 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square12);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ3);
+long AverageZ3(long sz1, long sz2, long sz3) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0x48848800\n\t"
+        ".word 0x48859000\n\t"
+        ".word 0x48869800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b58002d\n\t"
+        ".word 0x48023800"
+        : "=r"(result));
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ4);
 
