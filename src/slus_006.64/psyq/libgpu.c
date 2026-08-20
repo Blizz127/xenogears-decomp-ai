@@ -280,7 +280,49 @@ void DumpDispEnv(DISPENV *env) {
     g_GpuPrintf("isrgb24 %d\n", env->isrgb24);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ResetGraph);
+int ResetGraph(int mode) {
+    extern char D_8001908C[];
+    extern char D_800190AC[];
+    extern char D_80056888[];
+    extern u8 D_800568D0;
+    extern u8 D_800568D1;
+    extern s16 D_800568D4;
+    extern s16 D_800568D6;
+    extern void* D_800568C8;
+    extern s32 D_80056950[];
+    extern s32 D_80056964[];
+    extern void func_80047178(void*, s32, s32);
+    extern void func_800471A4(u32);
+    extern int func_80046C58(int);
+    register int arg asm("$17") = mode;
+    register u8* state asm("$16");
+    int index;
+
+    switch (arg & 7) {
+    case 0:
+    case 3:
+        printf(D_8001908C, D_80056888, &D_800568D0);
+    case 5:
+        state = &D_800568D0;
+        func_80047178(state, 0, 0x80);
+        ResetCallback();
+        func_800471A4((u32)D_800568C8 & 0xFFFFFF);
+        index = func_80046C58(arg);
+        state[0] = index;
+        D_800568D1 = 1;
+        index = (u8)index * 4;
+        D_800568D4 = *(s32*)((u8*)D_80056950 + index);
+        D_800568D6 = *(s32*)((u8*)D_80056964 + index);
+        func_80047178(state + 0x10, -1, 0x5C);
+        func_80047178(state + 0x6C, -1, 0x14);
+        return state[0];
+    default:
+        if ((u8)g_GraphDebugLevel >= 2) {
+            g_GpuPrintf(D_800190AC, arg);
+        }
+        return (*(int (**)(int))((u8*)D_800568C8 + 0x34))(1);
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetGraphReverse);
 
