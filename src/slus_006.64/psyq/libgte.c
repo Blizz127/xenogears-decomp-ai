@@ -358,7 +358,13 @@ void SetSXSYfifo(long sxy0, long sxy1, long sxy2) {
         : : "r"(sxy0), "r"(sxy1), "r"(sxy2));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRii);
+void SetRii(long r11r12, long r22r23, long r33) {
+    __asm__ volatile(
+        "ctc2 %0, $0\n\t"
+        "ctc2 %1, $2\n\t"
+        "ctc2 %2, $4"
+        : : "r"(r11r12), "r"(r22r23), "r"(r33));
+}
 
 void SetMAC123(long mac1, long mac2, long mac3) {
     __asm__ volatile(
