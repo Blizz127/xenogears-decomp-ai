@@ -607,7 +607,16 @@ void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out) {
 }
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Lzc);
+long Lzc(long value) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0x4884f000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4802f800"
+        : "=r"(result));
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransSV);
 
