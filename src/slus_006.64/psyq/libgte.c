@@ -497,7 +497,14 @@ void SetGeomScreen(long value) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LocalLight);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColor);
+void DpqColor(CVECTOR* input, long p, CVECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8860000\n\t"
+        ".word 0x48854000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a780010\n\t"
+        ".word 0xe8d60000");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColor);
 
