@@ -1,0 +1,88 @@
+# Overnight Matching Decompilation Campaign
+# Started: 2026-08-20T04:01:44Z
+# Branch: integrate/w34b24-i1
+
+2026-08-20T04:21:28Z FieldScriptVMWritePartyLeaderCharacterID skip: compiler reordered register allocation and stack layout (used different regs for computation). Extern at line 257 has wrong signature too.
+2026-08-20T04:24:51Z func_800AB748 skip: jump table in rodata references asm labels within function; compiler generates different table layout
+2026-08-20T04:27:57Z func_80098430 skip: ActorScriptSlot struct layout differs between PSX (flags_0 at offset 0) and PC (flags_0 at offset 4); existing PC port code matches PC but not PSX asm
+2026-08-20T04:29:11Z func_800A1364 skip: complex function with multiple globals, func calls, and PC port note about object-overlay pass
+2026-08-20T04:29:41Z func_800798BC skip: uses D_800B2268 which is explicitly excluded by campaign rules
+2026-08-20T04:32:56Z FieldScriptWriteActorDistance skip: register allocation differs (compiler uses a0/v0 vs expected a1/a0 for second actor index and g_FieldActors pointer)
+2026-08-20T04:33:31Z func_800A06E8 skip: PC port note says register scheduling differs under mwcc; same pattern as previous functions
+2026-08-20T04:37:47Z SoundEnableAllSpuChannels matched + committed
+2026-08-20T04:42:35Z SoundMuteAllSpuChannels skip (2 attempts): register allocation differs (/ for counter/constant vs expected /)
+2026-08-20T04:45:39Z func_8003CD08 skip (1 attempt): load-scheduling differs (active_flag loaded before status_flags, expected opposite order)
+2026-08-20T04:47:08Z func_8003D0E8 skip (1 attempt): expected has redundant andi ,,0xFF after lbu that compiler optimizes away; extra nop in built code
+2026-08-20T04:48:09Z func_8003D110 skip (1 attempt): expected has stack frame (addiu sp,-8/+8) that compiler omits; register allocation also differs (/ swapped)
+2026-08-20T04:50:08Z func_801D2484 matched + committed
+2026-08-20T04:51:23Z func_801C8640 matched + committed
+2026-08-20T04:53:11Z func_801D1E80 matched + committed
+2026-08-20T04:54:24Z func_801D1EB0 matched + committed
+2026-08-20T04:57:21Z func_801C6D5C matched + committed
+2026-08-20T04:58:26Z func_801D3444 matched + committed
+2026-08-20T05:00:08Z func_801DE29C skip (1 attempt): epilogue scheduling differs (li v0 before vs after lw ra)
+2026-08-20T05:02:11Z func_801E8044 skip (1 attempt): addu not in beqz delay slot; sltu vs slt
+2026-08-20T05:03:26Z func_801E91C4 matched + committed
+2026-08-20T05:04:27Z func_801E927C matched + committed
+2026-08-20T05:05:42Z func_801C8574 matched + committed
+2026-08-20T05:08:49Z func_801D28A8 matched + committed
+2026-08-20T05:10:13Z func_801D28FC skip (1 attempt): epilogue scheduling (sb/lw ra order swapped)
+2026-08-20T05:12:23Z func_801C851C skip (1 attempt): conflicting extern declaration at line 3937 (void*, u16, u16, u8, s32 vs SVECTOR*, s32, s32, s32, s32)
+2026-08-20T05:13:39Z func_801DB340 matched + committed
+2026-08-20T05:15:31Z func_801D11F0 matched + committed
+2026-08-20T05:17:16Z func_801DBD4C matched + committed
+2026-08-20T05:19:02Z func_801E920C skip (1 attempt): register allocation differs (move pattern and stack arg registers)
+2026-08-20T05:20:31Z func_801D3674 matched + committed
+2026-08-20T05:22:03Z func_801CE2B4 matched + committed
+2026-08-20T05:23:37Z func_801CE338 skip (1 attempt): addu operand order differs (commutative but different encoding)
+2026-08-20T05:26:28Z func_801DA4A8 skip (1 attempt): function call sequence and register allocation differ (expected loads g_Menu with different regs and schedules func_801E8018 args differently)
+2026-08-20T05:31:35Z func_801D1AAC skip (1 attempt): conflicting 3-arg vs 4-arg declarations of func_801CE198
+2026-08-20T05:34:02Z func_801DBDB4 skip (1 attempt): loop scheduling differs (i++ in beqz delay slot in expected)
+2026-08-20T05:36:53Z func_8003CE68 skip (1 attempt): register allocation and store ordering differ; div vs divu fixed but other scheduling issues remain
+2026-08-20T05:38:40Z func_8003D13C skip (1 attempt): expected has move , (loads to  then copies), built loads directly to 
+2026-08-20T05:42:45Z AnimScriptStackPopU8 skip (1 attempt): expected has lb+lbu double-load but compiler generates only lbu (struct member is u8)
+2026-08-20T05:44:25Z AnimScriptStackPushU8 matched + committed
+2026-08-20T05:47:37Z AnimScriptStackPopU8 matched + committed
+2026-08-20T05:51:01Z AnimScriptStackPopU16 matched + committed
+2026-08-20T05:52:39Z AnimScriptStackPushU16 matched + committed
+2026-08-20T05:57:32Z AnimScriptStackPopU24 matched + committed
+2026-08-20T05:57:32Z AnimScriptStackPushU24 matched + committed
+2026-08-20T05:59:39Z func_8001BB50 skip (1 attempt): expected uses gp-relative addressing for sdata globals, built uses lui+sb
+2026-08-20T06:03:08Z func_8001FBA4 skip (1 attempt): expected uses lb for stackIndex but struct has u8 (generates lbu)
+2026-08-20T06:06:13Z GfxFreeWorkBuffers skip (1 attempt): expected uses gp-relative addressing for sdata global
+2026-08-20T06:09:02Z func_8001D4E8 skip (1 attempt): li expansion differs (addiu vs ori for sizeof value 0x40)
+2026-08-20T06:15:16Z GraphicsDrawPauseLetters skip: register allocation differs (s0/s1 swapped), li expansion differs
+2026-08-20T06:18:33Z func_8003DB2C skip: load-scheduling differs (status_flags loaded before unk_0x04 in built, opposite in expected)
+2026-08-20T06:21:19Z func_8003D60C skip: load-scheduling differs (flags loaded earlier in built)
+2026-08-20T06:22:59Z func_8003D7C8 skip: load-scheduling differs
+2026-08-20T06:31:20Z func_8003D4E4 skip (3 attempts): compiler generates lbu+sll+sra instead of lb for signed byte loads; scheduling also differs
+2026-08-20T06:38:05Z func_80025224 skip: register allocation and scheduling differ; callback table address computed differently
+2026-08-20T06:41:43Z func_801C80B8 skip: conflicting types error (unknown cause)
+2026-08-20T06:43:30Z func_8003D1BC skip: register allocation differs (pScript saved in  in expected, kept in  in built)
+2026-08-20T06:44:50Z func_8003CEF0 skip: store order differs (rec[0] before rec[4] in expected), reload of counter differs
+2026-08-20T06:51:40Z func_801E8EAC skip: delay slot scheduling differs (move , placement in switch dispatch)
+2026-08-20T07:05:11Z func_8003D3D8 skip: scheduling differs (pScript++ in delay slot of jal in expected)
+2026-08-20T07:08:49Z func_8003D438 skip: same scheduling issue as func_8003D3D8
+2026-08-20T07:10:21Z func_8003D53C skip: return value in branch delay slots (move ,) differs from nop
+2026-08-20T07:18:16Z func_801DB02C matched + committed
+2026-08-20T07:21:32Z func_801DA518 skip: uses  for cached work pointer; expected re-reads g_Menu->unk42C each time
+2026-08-20T07:28:05Z func_801D4EA0 matched + committed
+2026-08-20T07:31:13Z func_801C5F10 skip: sltu vs slti (unsigned vs signed comparison); branch structure differs
+2026-08-20T07:39:29Z func_801CE464 skip: register allocation differs (uses / for caching vs direct /)
+2026-08-20T07:43:57Z func_8003CEF0 skip (2 attempts): store order differs, extra andi, register allocation differs
+2026-08-20T07:54:13Z func_801D1D40 skip: switch case ordering differs (expected case 2 first, built case 1 first); also clears translation.vx/vy in expected but not in built
+2026-08-20T08:32:54Z func_801D3344 skip: func_801C851C has conflicting types declaration at line 3948
+2026-08-20T08:43:48Z func_801C80B8 skip: conflicting extern at line 7727 (u8 vs u32 parameter type)
+2026-08-20T08:48:34Z TransposeMatrix skip: expected uses lw/sw (word ops), built uses lhu/sh (halfword ops)
+2026-08-20T09:06:48Z func_801E8DA8 skip: sra vs srl (signed vs unsigned shift for (charArg & 0xFF) >> 1)
+2026-08-20T09:18:26Z func_801C7B0C skip (2 attempts): compiler uses bne (early exit) vs expected beq (fall-through) for case 2 check
+2026-08-20T09:30:43Z TransMatrix skip: expected batches all loads first then stores; built interleaves load-store pairs
+2026-08-20T09:45:33Z func_801CE3C8 skip: addu operand order differs (commutative but different encoding)
+2026-08-20T09:53:57Z func_8003D1BC skip (2 attempts): register allocation differs (a2 for steps in built, a0 in expected; different variable save pattern)
+2026-08-20T09:59:50Z func_801D13F8 matched + committed
+2026-08-20T10:14:15Z func_801D1D40 skip (3 attempts): bne vs beq for case 2; sltiu vs slti for state<3 comparison
+2026-08-20T10:20:55Z SystemRenderStringEntry skip: accesses many individual globals via lui+sh, PC port uses single array with offsets
+2026-08-20T10:23:04Z func_801C5F10 skip (2 attempts): bnez vs beqz for case 0 check
+2026-08-20T10:28:14Z func_8003CEF0 skip (3 attempts): register allocation differs (counter in  vs , val in  vs )
+2026-08-20T10:33:05Z func_801D28FC skip (2 attempts): epilogue sb/lw ra scheduling differs
+2026-08-20T14:29:12Z func_801E8018 matched + committed

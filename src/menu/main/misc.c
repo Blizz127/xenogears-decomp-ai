@@ -7908,7 +7908,10 @@ void func_801E7C50(MenuString* string, s32 index, s32 yOffset, s32 style) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8018);
+
+void func_801E8018(s32 count, u8* strings, s32 descriptorIds, void* unused) {
+    func_801E7E68((MenuString*)strings, (u8*)descriptorIds, 4, count & 0xFF);
+}
 #else
 /* Render descriptor pairs into their two buffered MenuString quads.  The
  * index and descriptor pointer advance before DrawSync, preserving the retail
