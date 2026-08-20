@@ -811,7 +811,12 @@ void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value) {
     pSpriteData->stack[idx] = value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU16);
+void AnimScriptStackPushU16(SpriteData* pSpriteData, u16 value) {
+    s8 idx = (s8)(pSpriteData->stackIndex -= 2);
+    pSpriteData->stack[idx] = (u8)value;
+    idx = (s8)pSpriteData->stackIndex;
+    pSpriteData->stack[idx + 1] = (u8)(value >> 8);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU24);
 
