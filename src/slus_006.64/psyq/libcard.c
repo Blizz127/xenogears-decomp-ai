@@ -30,7 +30,14 @@ void StartCARD(void) {
     ExitCriticalSection();
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD);
+long StopCARD(void) {
+    extern void func_8004E990(void);
+    extern long func_8004EA20(void);
+
+    StopCARD2();
+    func_8004E990();
+    return func_8004EA20();
+}
 
 __asm__(
         ".globl InitCARD2\n\t"
