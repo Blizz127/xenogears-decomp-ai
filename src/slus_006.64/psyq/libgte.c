@@ -540,7 +540,15 @@ void NormalColorDpq(SVECTOR* normal, CVECTOR* color, long p, CVECTOR* output) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq3);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalLightCol);
+void NormalLightCol(SVECTOR* normal, CVECTOR* color, CVECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a60000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b08041b\n\t"
+        ".word 0xe8d60000");
+}
 #else
 /* asm: lwc2 $0/$1 <- normal (V0), lwc2 $6 <- rgb|code (RGBC), nccs,
  * swc2 $22 -> out (RGB2). Consumes the GTE light state (LLM/LCM/BK) set by
