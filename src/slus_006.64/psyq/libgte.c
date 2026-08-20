@@ -636,7 +636,19 @@ void Intpl(VECTOR* input, long p, CVECTOR* output) {
         ".word 0xe8d60000");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square12);
+VECTOR* Square12(VECTOR* input, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8890000\n\t"
+        ".word 0xc88a0004\n\t"
+        ".word 0xc88b0008\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4aa80428\n\t"
+        ".word 0xe8b90000\n\t"
+        ".word 0xe8ba0004\n\t"
+        ".word 0xe8bb0008"
+        : : "r"(input), "r"(output) : "$2", "memory");
+    return output;
+}
 
 VECTOR* Square0(VECTOR* input, VECTOR* output) {
     __asm__ volatile(
