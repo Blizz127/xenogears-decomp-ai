@@ -169,7 +169,7 @@ void func_8001ACA4(void) {
     GamePartyStreamLoadSkinData(1);
 }
 
-u8 GameCharacterGetGearID(int characterIndex) {
+s32 GameCharacterGetGearID(int characterIndex) {
     return g_pGameState->characters[characterIndex].gearId;
 }
 
@@ -214,10 +214,6 @@ void GamePartyCharactersInitializeSkins(void) {
 
 // Set GameState pointer to g_GameState, set party members accordingly 
 // to it and stream load gear skins for them.
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", GamePartyGearsInitializeSkins);
-/*
-Matches on https://decomp.me/scratch/AmSUB, but not when compiled in, need to find reason for the diff
-
 void GamePartyGearsInitializeSkins(void) {
     int i;
     int curPartyMemberIndex;
@@ -255,7 +251,6 @@ void GamePartyGearsInitializeSkins(void) {
     func_80029AFC(g_PartyStreamDataQueue, 0, 0);
     D_8004F31C = 2;
 }
-*/
 
 void GamePartySyncSkinData(void) {
     GameWaitForCdData();
