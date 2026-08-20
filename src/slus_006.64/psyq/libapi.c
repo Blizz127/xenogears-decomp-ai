@@ -109,7 +109,20 @@ s32 func_8004078C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD);
+long InitPAD(char* buffer1, long len1, char* buffer2, long len2) {
+    extern void InitPAD2(char*, long, char*, long);
+
+    func_80040C5C();
+    EnterCriticalSection();
+    _patch_pad();
+    ExitCriticalSection();
+    ChangeClearPAD(0);
+    func_8004092C();
+    InitPAD2(buffer1, len1, buffer2, len2);
+    func_80040BA4();
+    D_80056414 = 1;
+    return 1;
+}
 
 void StartPAD(void) {
     StartPAD2();
