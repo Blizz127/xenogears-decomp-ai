@@ -344,7 +344,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo3);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSXSYfifo);
+void SetSXSYfifo(long sxy0, long sxy1, long sxy2) {
+    __asm__ volatile(
+        "mtc2 %0, $12\n\t"
+        "mtc2 %1, $13\n\t"
+        "mtc2 %2, $14"
+        : : "r"(sxy0), "r"(sxy1), "r"(sxy2));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRii);
 
