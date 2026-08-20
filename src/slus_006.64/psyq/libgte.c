@@ -366,7 +366,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetFarColor);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomOffset);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomScreen);
+void SetGeomScreen(long value) {
+    __asm__ volatile("ctc2 %0, $26" : : "r"(value));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LocalLight);
 
