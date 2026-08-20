@@ -3199,7 +3199,20 @@ void func_801D1914(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1AAC);
+void func_801D1AAC(void) {
+    s32 i;
+
+    i = 0;
+    do {
+        if (g_Menu->pManager->shouldRenderArrowCursor[i]) {
+            MenuArrowCursor* cursor = g_Menu->arrowCursors[i];
+
+            func_801CE198(1, cursor->vertices, cursor->polys,
+                          cursor->renderContext);
+        }
+        i++;
+    } while (i < MENU_MAX_NUM_ARROW_CURSORS);
+}
 #else
 /* Draw the two animated arrow cursors after their per-frame builders have
  * selected a frame and positioned their primitive vertices. */
