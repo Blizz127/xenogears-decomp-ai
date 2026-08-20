@@ -122,7 +122,16 @@ __asm__(
         ".set at\n\t"
         ".end InvSquareRoot");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormalS);
+__asm__(
+        ".globl VectorNormalS\n\t"
+        ".ent VectorNormalS\n\t"
+        "VectorNormalS:\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x10000011\n\t"
+        ".word 0x03e03821\n\t"
+        ".end VectorNormalS");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormal);
 
