@@ -4391,26 +4391,18 @@ u8* SoundScriptSetVoiceFlags2000ClearMode(u8* pScript, AudioManager* pAudioManag
 
 // Seq cmd: reverb mode + depths -- stash in the manager, then apply via
 // SoundSetReverbModeWithAllocation (auto work-area).
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
- * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
- * against the split asm and exercised via the synthetic stream. */
 u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8 mode = pScript[0];
-    s8 depthL;
-    s8 depthR;
+    register s32 depthL asm("$6");
+    register s32 depthR asm("$7");
     *(u16*)&pAudioManager->unk_0x40[4] = mode << 8;
-    depthL = pScript[1];
+    depthL = ((s8*)pScript)[1];
     pAudioManager->unk_0x40[2] = depthL;
-    depthR = pScript[2];
+    depthR = ((s8*)pScript)[2];
     pAudioManager->unk_0x40[3] = depthR;
     SoundSetReverbModeWithAllocation(-1, (s8)mode << 8, depthL, depthR);
     return pScript + 3;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D4E4);
-#endif
 
 // Seq cmd 0xBA: conditional reverb-voice enable -- always when the manager
 // isn't SFX-class; for SFX only when globally allowed and not flagged off.
