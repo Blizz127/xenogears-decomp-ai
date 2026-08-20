@@ -220,7 +220,22 @@ void SetDrawTPage(DR_TPAGE *p, int dfe, int dtd, int tpage) {
     ((u_long *)(p))[1] = _get_mode(dfe, dtd, tpage);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetDrawMove);
+void SetDrawMove(DR_MOVE* move, RECT* rect, int x, int y) {
+    register u8* out asm("$8") = (u8*)move;
+    register s32 code asm("$4") = 5;
+    u32 rectPos;
+
+    if (rect->w == 0 || rect->h == 0) {
+        code = 0;
+    }
+    *(u32*)(out + 4) = 0x01000000;
+    *(u32*)(out + 8) = 0x80000000;
+    out[3] = code;
+    rectPos = *(u32*)((u8*)rect + 0);
+    *(u32*)(out + 0x10) = (y << 16) | (x & 0xFFFF);
+    *(u32*)(out + 0x0C) = rectPos;
+    *(u32*)(out + 0x14) = *(u32*)((u8*)rect + 4);
+}
 
 void func_80043EAC(void* pPrim, void* pRect) {
     s32 w = *(s16*)((u8*)pRect + 4);
