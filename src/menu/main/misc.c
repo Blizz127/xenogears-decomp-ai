@@ -710,7 +710,17 @@ void func_801C6D4C(void) {
 /* B1b: zero the 14-byte scratch block at unk4CC (three words + two bytes,
  * transcribed in asm order). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D5C);
+void func_801C6D5C(void) {
+    SystemMenu* menu = g_Menu;
+    menu->unk4CC[0xC] = 0;
+    {
+        SystemMenu* menu2 = g_Menu;
+        *(u32*)&menu->unk4CC[0] = 0;
+        *(u32*)&menu->unk4CC[4] = 0;
+        menu2->unk4CC[0xD] = 0;
+    }
+    *(u32*)&g_Menu->unk4CC[8] = 0;
+}
 #else
 void func_801C6D5C(void) {
     g_Menu->unk4CC[0xC] = 0;
