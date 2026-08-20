@@ -8232,7 +8232,14 @@ void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E927C);
+void func_801E927C(POLY_FT4* p) {
+    SetPolyFT4(p);
+    SetSemiTrans(p, 0);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
 #else
 /* Arc A portraits: init the face quad -- opaque, shading enabled, neutral
  * 0x80 modulate. */
