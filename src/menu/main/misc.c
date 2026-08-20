@@ -2835,7 +2835,18 @@ void func_801D1160(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D11F0);
+void func_801D11F0(void) {
+    func_801D0D90();
+    func_801D0E20();
+    func_801D0E38();
+    func_801D0EBC();
+    func_801D10DC();
+    func_801D1160();
+    func_801D0ED4();
+    func_801D0F54();
+    func_801D0FD4();
+    func_801D1030();
+}
 #else
 /* Retail draw-pass aggregator, kept in its exact call order.  A1b-2 ports
  * only func_801D0ED4; the other nine existing PC stubs stay fail-visible
