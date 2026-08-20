@@ -414,7 +414,16 @@ long ReadGeomScreen(void) {
     return value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetBackColor);
+void SetBackColor(long red, long green, long blue) {
+    red <<= 4;
+    green <<= 4;
+    blue <<= 4;
+    __asm__ volatile(
+        "ctc2 %0, $13\n\t"
+        "ctc2 %1, $14\n\t"
+        "ctc2 %2, $15"
+        : : "r"(red), "r"(green), "r"(blue));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetFarColor);
 
