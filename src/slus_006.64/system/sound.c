@@ -2314,18 +2314,17 @@ void func_8003A4FC(s32 pData, s32 pan) {
     }
 }
 
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
- * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: two-instruction scheduler placement of the slot masking; identical instruction multiset.
- * Not claimed as {}. */
 // SFX: set the pan (el+0x74) of an active field-slot pair; status = 0x100.
 void func_8003A55C(s32 slot, s32 pan) {
     AudioElement* el;
     u16* st;
-    s32 count = 2;
+    s32 count;
 
+    slot &= 0xFE;
+    slot ^= 8;
+    count = 2;
     pan <<= 8;
-    el = (AudioElement*)((((slot & 0xFE) ^ 8) * 0x158 + 0x94) +
+    el = (AudioElement*)((slot * 0x158 + 0x94) +
                          (u8*)SOUND_PSX_TO_PTR(AudioManager, D_800595D8));
     st = &el->status_flags;
     do {
@@ -2338,9 +2337,6 @@ void func_8003A55C(s32 slot, s32 pan) {
         st += 0xAC;
     } while (count != 0);
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A55C);
-#endif
 
 u32 func_8003A5D0(s32 pData) {
     u8* pBase = (u8*)(uintptr_t)D_800595D8;
