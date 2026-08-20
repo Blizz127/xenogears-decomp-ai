@@ -1245,7 +1245,12 @@ u16 func_801C861C(u8 idx) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8640);
+
+extern u16 D_801E96C8[];
+
+s32 func_801C8640(s32 mask, s32 index) {
+    return D_801E96C8[index & 0xFF] & mask;
+}
 #else
 
 extern u16 D_801E96C8[];
