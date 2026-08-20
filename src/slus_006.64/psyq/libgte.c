@@ -287,7 +287,19 @@ SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1) {
     return v1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransMatrix);
+MATRIX* TransMatrix(MATRIX* matrix, VECTOR* translation) {
+    register MATRIX* result asm("$2");
+    __asm__ volatile(
+        ".word 0x8ca80000\n\t"
+        ".word 0x8ca90004\n\t"
+        ".word 0x8caa0008\n\t"
+        ".word 0xac880014\n\t"
+        ".word 0xac890018\n\t"
+        ".word 0xac8a001c\n\t"
+        ".word 0x00801021"
+        : "=r"(result) : : "$8", "$9", "$10", "memory");
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ScaleMatrix);
 
