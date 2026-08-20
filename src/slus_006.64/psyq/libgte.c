@@ -526,7 +526,16 @@ void NormalColor(SVECTOR* normal, CVECTOR* output) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColor3);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq);
+void NormalColorDpq(SVECTOR* normal, CVECTOR* color, long p, CVECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a60000\n\t"
+        ".word 0x48864000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4ae80413\n\t"
+        ".word 0xe8f60000");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq3);
 
