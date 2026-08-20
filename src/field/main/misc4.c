@@ -347,10 +347,7 @@ void func_80079288(void) {
     }
 }
 
-/* Field-state exit dispatcher. The matching build retains the authoritative
- * retail assembly; native cannot link INCLUDE_ASM and uses this instruction-
- * faithful transcription of the four retail exit cases instead. */
-#ifdef XENO_PC_PORT
+/* Field-state exit dispatcher. */
 extern s16 D_8004F384;
 extern s32 D_800AFC78, D_800B0064;
 extern void* g_pGameState;
@@ -364,17 +361,26 @@ void func_8007954C(s32 exitCode) {
     D_8005942C = 0;
 
     switch (exitCode) {
-    case 0:
+    case 0: {
+        void* gameState;
+        s32 skin;
+        s32 pending;
+        u16 priorSkin;
+
         func_800A30FC();
-        D_8004F324 = D_800AFC78;
-        *(u16*)((u8*)g_pGameState + 0x2322) = (u16)D_800AFC78;
-        *(u16*)((u8*)g_pGameState + 0x2320) =
-            *(u16*)((u8*)g_pGameState + 0x1932);
-        if (D_8004F370 != 0) {
+        gameState = g_pGameState;
+        skin = D_800AFC78;
+        pending = D_8004F370;
+        priorSkin = *(u16*)((u8*)gameState + 0x1932);
+        D_8004F324 = skin;
+        *(u16*)((u8*)gameState + 0x2322) = (u16)skin;
+        *(u16*)((u8*)gameState + 0x2320) = priorSkin;
+        if (pending != 0) {
             return;
         }
         ChangeGameState(2);
         break;
+    }
 
     case 1:
         if (D_8004F384 == 1) {
@@ -390,16 +396,21 @@ void func_8007954C(s32 exitCode) {
         ChangeGameState(3);
         break;
 
-    case 2:
-        *(u16*)((u8*)g_pGameState + 0x2322) = (u16)D_8004F324;
-        *(u16*)((u8*)g_pGameState + 0x2320) =
-            *(u16*)((u8*)g_pGameState + 0x1932);
-        if (D_8004F370 != 0) {
+    case 2: {
+        void* gameState = g_pGameState;
+        register s32 skin __asm__("$3") = D_8004F324;
+        s32 pending = D_8004F370;
+        u16 priorSkin = *(u16*)((u8*)gameState + 0x1932);
+
+        *(u16*)((u8*)gameState + 0x2322) = (u16)skin;
+        *(u16*)((u8*)gameState + 0x2320) = priorSkin;
+        if (pending != 0) {
             return;
         }
         ChangeGameState(4);
         g_GamePartySkinsInitialized++;
         break;
+    }
 
     case 3:
         D_8004F310 = 0;
@@ -419,10 +430,6 @@ void func_8007954C(s32 exitCode) {
 
     MainLoop(0);
 }
-#else
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007954C);
-#endif
-
 void func_800796F4(void) {}
 
 void FieldSwapRenderContext(void) {
