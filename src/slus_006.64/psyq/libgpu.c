@@ -287,7 +287,9 @@ int SetGraphDebug(int level) {
 extern u8 D_800568D1;
 extern void* D_800568C8;
 extern char D_80019104[];
+extern char D_800191C8[];
 extern char D_800191E0[];
+extern char D_8005698C[];
 extern void DMACallback(s32, void*);
 
 u8 func_8004440C(u8 arg0) {
@@ -352,7 +354,18 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", MoveImage);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearOTag);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearOTagR);
+u_long* ClearOTagR(u_long* ot, int count) {
+    void (*clear)(u_long*, int);
+
+    if ((u8)g_GraphDebugLevel >= 2) {
+        g_GpuPrintf(D_800191C8, ot, count);
+    }
+
+    clear = *(void (**)(u_long*, int))((u8*)D_800568C8 + 0x2C);
+    clear(ot, count);
+    *ot = (u_long)D_8005698C & 0xFFFFFF;
+    return ot;
+}
 
 void DrawPrim(void* prim) {
     void (*sync)(s32);
