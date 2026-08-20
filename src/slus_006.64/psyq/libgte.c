@@ -554,7 +554,27 @@ void NormalColorDpq(SVECTOR* normal, CVECTOR* color, long p, CVECTOR* output) {
         ".word 0xe8f60000");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq3);
+void NormalColorDpq3(SVECTOR* n0, SVECTOR* n1, SVECTOR* n2, CVECTOR* color,
+        long p, CVECTOR* out0, CVECTOR* out1, CVECTOR* out2) {
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0xc8e60000\n\t"
+        ".word 0xcba80010\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4af80416\n\t"
+        ".word 0x8fa80014\n\t"
+        ".word 0x8fa90018\n\t"
+        ".word 0x8faa001c\n\t"
+        ".word 0xe9140000\n\t"
+        ".word 0xe9350000\n\t"
+        ".word 0xe9560000"
+        : : : "$8", "$9", "$10", "memory");
+}
 
 #ifndef XENO_PC_PORT
 void NormalLightCol(SVECTOR* normal, CVECTOR* color, CVECTOR* output) {
