@@ -4357,23 +4357,14 @@ u8* func_8003D3A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 }
 
 // Seq cmd 0xB4: set the noise clock; flag the voice for noise mode.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
- * (commutative operand order / delay-slot copy placement / register reuse);
- * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003D3D8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     AudioElement* el = pAudioElements;
     *(u16*)&pAudioManager->unk_0x1c[0] = pScript[0];
-    SpuSetNoiseClock(*(u16*)&pAudioManager->unk_0x1c[0]);
-    pScript++;
+    SpuSetNoiseClock((pScript++, *(u16*)&pAudioManager->unk_0x1c[0]));
     el->voice_data.flags |= 0x2000;
     el->voice_data.modeFlags |= 0x20;
     return pScript;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D3D8);
-#endif
 
 // Seq cmd 0xB5: nudge the noise clock (mod 64); flag the voice for noise.
 #ifdef XENO_PC_PORT
