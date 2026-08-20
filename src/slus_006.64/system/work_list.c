@@ -206,17 +206,17 @@ void WorkListAddTask(void* data, WorkListEntry* pEntry) {
     g_NumWorkListEntries++;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAllocateTask);
-/*
+extern u8 D_800591AF;
+void WorkListDeleteTask(WorkListEntry* pTask);
+
 WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     WorkListEntry* pEntry;
 
     pEntry = HeapAlloc(dataSize + sizeof(WorkListEntry), D_800591AF);
-    func_8001CA58(data, pEntry);
-    pEntry->onFreeCallback = &TimerWorkListDeleteTask;
+    WorkListAddTask(data, pEntry);
+    pEntry->onFreeCallback = WorkListDeleteTask;
     return pEntry;
 }
-*/
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListRemoveTask);
 /*
