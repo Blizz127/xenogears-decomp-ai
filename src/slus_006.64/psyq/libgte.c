@@ -411,7 +411,14 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorDpq);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorCol);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageSZ3);
+long AverageSZ3(void) {
+    long value;
+    __asm__ volatile(
+        ".word 0x4b58002d\n\t"
+        "mfc2 %0, $7"
+        : "=r"(value));
+    return value;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageSZ4);
 
