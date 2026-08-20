@@ -326,7 +326,12 @@ void SetVertex2(SVECTOR* vertex) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertexTri);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRGBfifo);
+void SetRGBfifo(CVECTOR* rgb0, CVECTOR* rgb1, CVECTOR* rgb2) {
+    __asm__ volatile(
+        ".word 0xc8940000\n\t"
+        ".word 0xc8b50000\n\t"
+        ".word 0xc8d60000");
+}
 
 void SetIR123(long ir1, long ir2, long ir3) {
     __asm__ volatile(
