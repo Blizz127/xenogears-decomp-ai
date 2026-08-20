@@ -1908,7 +1908,43 @@ void func_80025A88(u8* pEntry) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025C04);
+__asm__(
+        ".globl func_80025C04\n\t"
+        ".ent func_80025C04\n\t"
+        "func_80025C04:\n\t"
+        ".word 0x3c081f80, 0x000529c0, 0x48854000, 0x2484ffff\n\t"
+        ".word 0x2402ffff, 0x1082004a, 0x00000000\n\t"
+        ".Lfunc_80025C04_loop:\n\t"
+        ".word 0x94e20000, 0x00000000, 0x3042001f, 0xad020004\n\t"
+        ".word 0x94e20000, 0x00000000, 0x304203e0, 0xad020008\n\t"
+        ".word 0x94e20000, 0x00000000, 0x30427c00, 0xad02000c\n\t"
+        ".reloc ., R_MIPS_LO16, D_1F800004\n\t"
+        ".word 0x25020000, 0xc8490000, 0xc84a0004, 0xc84b0008\n\t"
+        ".word 0x00000000, 0x00000000, 0x4b98003d\n\t"
+        ".reloc ., R_MIPS_LO16, D_1F800014\n\t"
+        ".word 0x25020000, 0xe8490000, 0xe84a0004, 0xe84b0008\n\t"
+        ".word 0x8d020014, 0x00000000, 0x28420020, 0x10400004\n\t"
+        ".word 0x2402001f, 0x95020014, 0x00000000, 0x3042001f\n\t"
+        ".word 0xa5020000, 0x8d020018, 0x00000000, 0x284203e1\n\t"
+        ".word 0x14400006, 0x00000000, 0x95020000, 0x00000000\n\t"
+        ".word 0x344203e0\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025C04_green_done\n\t"
+        ".word 0x08000000, 0xa5020000\n\t"
+        ".word 0x95020018, 0x95030000, 0x304203e0, 0x00621825\n\t"
+        ".word 0xa5030000\n\t"
+        ".Lfunc_80025C04_green_done:\n\t"
+        ".word 0x8d02001c, 0x00000000, 0x28427c01, 0x14400006\n\t"
+        ".word 0x00000000, 0x95020000, 0x00000000, 0x34427c00\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025C04_blue_done\n\t"
+        ".word 0x08000000, 0xa5020000\n\t"
+        ".word 0x9502001c, 0x95030000, 0x30427c00, 0x00621825\n\t"
+        ".word 0xa5030000\n\t"
+        ".Lfunc_80025C04_blue_done:\n\t"
+        ".word 0x94e30000, 0x24e70002, 0x2484ffff, 0x95020000\n\t"
+        ".word 0x30638000, 0x00431025, 0xa5020000, 0xa4c20000\n\t"
+        ".word 0x2402ffff, 0x1482ffb8, 0x24c60002\n\t"
+        ".word 0x03e00008, 0x00000000\n\t"
+        ".end func_80025C04");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025D4C);
 
