@@ -2319,6 +2319,9 @@ void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
 }
 #endif
 
+extern void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
+                          s32 renderContext);
+
 #ifndef XENO_PC_PORT
 void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
     s32 i;
@@ -2436,7 +2439,6 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE660);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE860);
 
-extern void func_801CE198(s32, void*, u8);
 extern void func_801CE860(void);
 
 void func_801CEB5C(void) {
@@ -2446,7 +2448,7 @@ void func_801CEB5C(void) {
         void* pData = *(void**)((u8*)pMenu + 0x35C);
         u8 val1 = *(u8*)((u8*)pData + 0x32F3);
         u8 val2 = *(u8*)((u8*)pData + 0x32F1);
-        func_801CE198(val1, (u8*)pData + 0x2420, val2);
+        func_801CE198(val1, (u8*)pData + 0x2420, pData, val2);
         func_801CE860();
     }
 }
@@ -2461,7 +2463,9 @@ void func_801CEBB4(void) {
             {
                 void* pData = *(void**)((u8*)pMenu + 0x360);
                 if (*(u8*)((u8*)pData + 0x294 + i) != 0) {
-                    func_801CE198(1, (u8*)pData + i * 0x80 + 0x50, *(u8*)((u8*)pData + 0x299));
+                    func_801CE198(1, (u8*)pData + i * 0x80 + 0x50,
+                                  (u8*)pData + i * 0x80,
+                                  *(u8*)((u8*)pData + 0x299));
                 }
             }
         }
@@ -2745,7 +2749,7 @@ void func_801D0E38(void) {
             u8* pSlot = (u8*)pMenu + i * 0x80;
             if (*(u8*)(pSlot + 0xB5F) != 0) {
                 u8* pData = (u8*)pMenu + i * 0x80 + 0xAE0;
-                func_801CE198(1, pData + 0x50, *(u8*)(pSlot + 0xB5D));
+                func_801CE198(1, pData + 0x50, pData, *(u8*)(pSlot + 0xB5D));
             }
         }
     }
@@ -2785,9 +2789,9 @@ void func_801D0F54(void) {
         void* pMenu = g_Menu;
         void* pManager = *(void**)((u8*)pMenu + 0x33C);
         if (*(u8*)((u8*)pManager + 0x40 + i) != 0) {
-            u8* pData = (u8*)pMenu + offset + 0x50;
+            u8* pData = (u8*)pMenu + offset;
             u8 val = *(u8*)((u8*)pMenu + i * 0x80 + 0x155D);
-            func_801CE198(1, pData, val);
+            func_801CE198(1, pData + 0x50, pData, val);
         }
         offset += 0x80;
     }
@@ -2814,7 +2818,7 @@ void func_801D1030(void) {
             {
                 u8* pData = *(u8**)((u8*)pMenu + 0x1DE0 + i * 4);
                 if (*(u8*)(pData + 0x7F) != 0) {
-                    func_801CE198(1, pData + 0x50, *(u8*)(pData + 0x7D));
+                    func_801CE198(1, pData + 0x50, pData, *(u8*)(pData + 0x7D));
                 } else {
                     u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
                     u8 idx = *(u8*)(pData + 0x7D);
@@ -2834,7 +2838,7 @@ void func_801D10DC(void) {
             u8* pSlot = (u8*)pMenu + i * 0x80;
             if (*(u8*)(pSlot + 0x195F) != 0) {
                 u8* pData = (u8*)pMenu + i * 0x80 + 0x18E0;
-                func_801CE198(1, pData + 0x50, *(u8*)(pSlot + 0x195D));
+                func_801CE198(1, pData + 0x50, pData, *(u8*)(pSlot + 0x195D));
             }
         }
     }
@@ -2985,14 +2989,12 @@ void func_801D13F8(void) {
 }
 #endif
 
-extern void func_801CE198(s32, void*, u8);
-
 void func_801D1464(void) {
     void* pMenu = g_Menu;
     void* pManager = *(void**)((u8*)pMenu + 0x33C);
     if (*(u8*)((u8*)pManager + 0x49) != 0) {
         void* pData = *(void**)((u8*)pMenu + 0x43C);
-        func_801CE198(1, (u8*)pData + 0x50, *(u8*)((u8*)pData + 0x70));
+        func_801CE198(1, (u8*)pData + 0x50, pData, *(u8*)((u8*)pData + 0x70));
     }
 }
 
@@ -3001,7 +3003,7 @@ void func_801D14B0(void) {
     void* pManager = *(void**)((u8*)pMenu + 0x33C);
     if (*(u8*)((u8*)pManager + 0x53) != 0) {
         void* pData = *(void**)((u8*)pMenu + 0x440);
-        func_801CE198(4, (u8*)pData + 0x140, *(u8*)((u8*)pData + 0x1C0));
+        func_801CE198(4, (u8*)pData + 0x140, pData, *(u8*)((u8*)pData + 0x1C0));
     }
 }
 
@@ -3102,10 +3104,11 @@ void func_801D17C4(void) {
                 u8* pData = *(u8**)((u8*)pMenu + 0x434);
                 if (*(u8*)(pData + 0xA10 + i) != 0) {
                     u8* pSlot = pData + i * 0x80;
-                    func_801CE198(1, pSlot + 0x50, *(u8*)(pSlot + 0x7D));
+                    func_801CE198(1, pSlot + 0x50, pSlot, *(u8*)(pSlot + 0x7D));
                     pMenu = g_Menu;
                     pData = *(u8**)((u8*)pMenu + 0x434);
-                    func_801CE198(1, pData + offset + 0x50, *(u8*)(pSlot + 0x47D));
+                    func_801CE198(1, pData + offset + 0x50, pData + offset,
+                                  *(u8*)(pSlot + 0x47D));
                 }
             }
             offset += 0x80;
@@ -3113,7 +3116,7 @@ void func_801D17C4(void) {
         pMenu = g_Menu;
         {
             u8* pData = *(u8**)((u8*)pMenu + 0x434);
-            func_801CE198(1, pData + 0x850, *(u8*)(pData + 0x87D));
+            func_801CE198(1, pData + 0x850, pData + 0x800, *(u8*)(pData + 0x87D));
             pMenu = g_Menu;
             pData = *(u8**)((u8*)pMenu + 0x434);
             if (*(u8*)(pData + 0xA18) != 0) {
@@ -3121,7 +3124,8 @@ void func_801D17C4(void) {
                 for (i = 0; i < 3; i++) {
                     pMenu = g_Menu;
                     pData = *(u8**)((u8*)pMenu + 0x434);
-                    func_801CE198(1, pData + off2 + 0x50, *(u8*)(pData + i * 0x80 + 0x8FD));
+                    func_801CE198(1, pData + off2 + 0x50, pData + off2,
+                                  *(u8*)(pData + i * 0x80 + 0x8FD));
                     off2 += 0x80;
                 }
             }
@@ -3157,7 +3161,7 @@ void func_801D1914(void) {
         pMenu = g_Menu;
         {
             u8* pData = *(u8**)((u8*)pMenu + 0x438);
-            func_801CE198(1, pData + 0xD50, *(u8*)(pData + 0xD7D));
+            func_801CE198(1, pData + 0xD50, pData + 0xD00, *(u8*)(pData + 0xD7D));
             pMenu = g_Menu;
             pData = *(u8**)((u8*)pMenu + 0x438);
             {

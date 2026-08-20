@@ -89,3 +89,4 @@
 2026-08-20T14:33:39Z func_801CE540 skip (3 attempts): load-scheduling differs (pManager/flag vs i*4/buf v0/v1 swapped); i++ in beqz delay slot in expected vs nop or later increment in built
 2026-08-20T14:35:45Z func_801CE0CC matched + committed
 2026-08-20T14:36:59Z func_801D12D4 matched + committed
+2026-08-20T15:13:10Z func_801CE198 prototype unified to 4-arg: void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys, s32 renderContext). Retail callee 801CE198 saves a0=count, a1=vertices, a2=polys, a3=renderContext. Callers 801D1464/801D14B0/801CEB5C jal with object base in a2 and lbu renderContext in a3 (vertices = a2+offset in delay slot). Removed 3-arg externs; 3-arg call sites now pass polys. Recent matches D12D4/CE0CC/E8018/D13F8 still byte+reloc match. Edited CEB5C/D1464/D14B0 now match; other edited callers still have pre-existing g_Menu regalloc/scheduling residuals (jal symbols unchanged).
