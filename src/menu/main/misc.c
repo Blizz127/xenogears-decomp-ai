@@ -6469,7 +6469,51 @@ void func_801DFE2C(u8 slotIdx) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFF5C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E0434);
+void func_801E0434(u8 slotIdx, u8 mode) {
+    u8* pTable;
+    u8* pCounter;
+    u8 val;
+    u8 found = 1;
+    s32 limit = 100;
+    s32 i;
+
+    if (mode == 0) {
+        u8* pGS = (u8*)&g_GameState;
+        u8 charIdx = *(u8*)(*(void**)((u8*)g_Menu + 0x33C) + slotIdx + 0x30);
+        pTable = pGS + 0x1D9C;
+        pCounter = pGS + 0x1D38;
+        val = pGS[0x2DB + charIdx * 0xA4];
+        pGS[0x2DB + charIdx * 0xA4] = 0;
+    } else {
+        u8* pGS = (u8*)&g_GameState;
+        u8 charIdx = *(u8*)(*(void**)((u8*)g_Menu + 0x33C) + slotIdx + 0x30);
+        u8 intermediate = pGS[0x30C + charIdx * 0xA4];
+        pTable = pGS + 0x2120;
+        pCounter = pGS + 0x20BC;
+        val = pGS[0x97C + intermediate * 0xA4];
+        pGS[0x97C + intermediate * 0xA4] = 0;
+    }
+
+    for (i = 0; i < limit; i++) {
+        if (pTable[i] == val) {
+            pCounter[i]++;
+            if (pCounter[i] >= 100) {
+                pCounter[i] = 99;
+                found = 0;
+            }
+        }
+    }
+
+    if (found && limit > 0) {
+        for (i = 0; i < limit; i++) {
+            if (pTable[i] == 0) {
+                pTable[i] = val;
+                pCounter[i] = 1;
+                break;
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E05D0);
 
