@@ -2,7 +2,41 @@
 #include "psyq/libgte.h"
 #include "psyq/inline_c.h"
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InitGeom);
+void InitGeom(void) {
+    __asm__ volatile(
+        ".set noat\n\t"
+        "lui $1, %%hi(D_800569F0)\n\t"
+        "sw $31, %%lo(D_800569F0)($1)\n\t"
+        "jal func_8004B4AC\n\t"
+        "lui $31, %%hi(D_800569F0)\n\t"
+        "lw $31, %%lo(D_800569F0)($31)\n\t"
+        "nop\n\t"
+        ".word 0x40026000\n\t"
+        "lui $3, 0x4000\n\t"
+        "or $2, $2, $3\n\t"
+        ".word 0x40826000\n\t"
+        "nop\n\t"
+        "addiu $8, $0, 0x155\n\t"
+        ".word 0x48c8e800\n\t"
+        "nop\n\t"
+        "addiu $8, $0, 0x100\n\t"
+        ".word 0x48c8f000\n\t"
+        "nop\n\t"
+        "addiu $8, $0, 0x3e8\n\t"
+        ".word 0x48c8d000\n\t"
+        "nop\n\t"
+        "addiu $8, $0, -0x1062\n\t"
+        ".word 0x48c8d800\n\t"
+        "nop\n\t"
+        "lui $8, 0x140\n\t"
+        ".word 0x48c8e000\n\t"
+        "nop\n\t"
+        ".word 0x48c0c000\n\t"
+        ".word 0x48c0c800\n\t"
+        "nop\n\t"
+        ".set at"
+        : : : "$2", "$3", "$8", "memory");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareRoot0);
 
