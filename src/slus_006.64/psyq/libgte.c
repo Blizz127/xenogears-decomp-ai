@@ -461,7 +461,51 @@ void PushMatrix(void) {
         : : : "$4", "$8", "$9", "$10", "$14", "$15", "memory");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PopMatrix);
+void PopMatrix(void) {
+    __asm__ volatile(
+        ".set noat\n\t"
+        "lui $14, %%hi(D_80056D2C)\n\t"
+        "lw $14, %%lo(D_80056D2C)($14)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x1dc0000a\n\t"
+        "lui $1, %%hi(D_80056D20)\n\t"
+        "sw $31, %%lo(D_80056D20)($1)\n\t"
+        "lui $4, %%hi(D_80056FE1)\n\t"
+        ".reloc ., R_MIPS_26, printf\n\t"
+        ".word 0x0c000000\n\t"
+        "addiu $4, $4, %%lo(D_80056FE1)\n\t"
+        "lui $31, %%hi(D_80056D20)\n\t"
+        "lw $31, %%lo(D_80056D20)($31)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x21ceffe0\n\t"
+        "lui $1, %%hi(D_80056D2C)\n\t"
+        "sw $14, %%lo(D_80056D2C)($1)\n\t"
+        "lui $15, %%hi(D_80056D30)\n\t"
+        ".word 0x01ee7821\n\t"
+        "addiu $15, $15, %%lo(D_80056D30)\n\t"
+        ".word 0x8de80000\n\t"
+        ".word 0x8de90004\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c90800\n\t"
+        ".word 0x8de80008\n\t"
+        ".word 0x8de9000c\n\t"
+        ".word 0x48c81000\n\t"
+        ".word 0x48c91800\n\t"
+        ".word 0x8de80010\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x48c82000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x8de80014\n\t"
+        ".word 0x8de90018\n\t"
+        ".word 0x8dea001c\n\t"
+        ".word 0x48c82800\n\t"
+        ".word 0x48c93000\n\t"
+        ".word 0x48ca3800\n\t"
+        ".set at"
+        : : : "$4", "$8", "$9", "$10", "$14", "$15", "memory");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ScaleMatrixL);
 
