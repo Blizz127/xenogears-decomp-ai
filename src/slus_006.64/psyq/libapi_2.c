@@ -1,6 +1,14 @@
 #include "common.h"
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", setjmp);
+__asm__(
+        ".globl setjmp\n\t"
+        ".ent setjmp\n\t"
+        "setjmp:\n\t"
+        ".word 0xac9f0000, 0xac9c002c, 0xac9d0004, 0xac9e0008\n\t"
+        ".word 0xac90000c, 0xac910010, 0xac920014, 0xac930018\n\t"
+        ".word 0xac94001c, 0xac950020, 0xac960024, 0xac970028\n\t"
+        ".word 0x00001021, 0x03e00008, 0x00000000\n\t"
+        ".end setjmp");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", longjmp);
 
