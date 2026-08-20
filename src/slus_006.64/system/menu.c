@@ -344,4 +344,31 @@ void MenuMain() {
     g_MenuDebugEnabled = 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", func_8001C76C);
+__asm__(
+        ".globl func_8001C76C\n\t"
+        ".ent func_8001C76C\n\t"
+        "func_8001C76C:\n\t"
+        ".word 0x00000041, 0x00000000, 0x00000001, 0x000000cc\n\t"
+        ".word 0x00000006, 0x000000fc, 0x0000000d, 0x0000001c\n\t"
+        ".word 0x00000008, 0x00000003, 0x21010304, 0x210000ff\n\t"
+        ".word 0x00010000, 0x00000002, 0x21010304, 0x210000ff\n\t"
+        ".word 0x00010003, 0x00000000, 0x31010506, 0x3162b6c1\n\t"
+        ".word 0x0062b6c1, 0x002954e4, 0x00050004, 0x00000000\n\t"
+        ".word 0x31010506, 0x312954e4, 0x0062b6c1, 0x002954e4\n\t"
+        ".word 0x00050000, 0x00000003, 0x31010506, 0x31445bdf\n\t"
+        ".word 0x0048bde3, 0x004bb4d6, 0x00050002, 0x00000004\n\t"
+        ".word 0x31010506, 0x31445bdf, 0x0048bde3, 0x00445bdf\n\t"
+        ".word 0x00050001, 0x00000002, 0x31010506, 0x31439eab\n\t"
+        ".word 0x000000ff, 0x002954e4, 0x00010005, 0x00000003\n\t"
+        ".word 0x31010506, 0x31273aeb, 0x003cc5cc, 0x002954e4\n\t"
+        ".word 0x00040002, 0x00000000, 0xfff10011, 0x00000002\n\t"
+        ".word 0xfff1ffef, 0x0000fffe, 0xfff1ffef, 0x00000002\n\t"
+        ".word 0xfff10011, 0x0000fffe, 0x00130000, 0x00000002\n\t"
+        ".word 0x00130000, 0x0000fffe, 0xf1d70000, 0x00000774\n\t"
+        ".word 0xf0010000, 0x0000006b, 0xf4d60000, 0x00000b76\n\t"
+        ".word 0xf0010000, 0x0000006b, 0x04eb0a22, 0x00000b5d\n\t"
+        ".word 0x06f80e67, 0x0000fffb, 0x06f80e67, 0x0000fffb\n\t"
+        ".word 0x04e30a22, 0x0000f49f, 0x06f8f199, 0x0000fffb\n\t"
+        ".word 0x06f8f199, 0x0000fffb, 0x06fcf19b, 0x00000024\n\t"
+        ".word 0x04e3f5de, 0x0000f49f, 0x00000000, 0x0000f000\n\t"
+        ".end func_8001C76C");
