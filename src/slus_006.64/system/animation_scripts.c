@@ -804,7 +804,10 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptS
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU24);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU8);
+void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value) {
+    s8 idx = --pSpriteData->stackIndex;
+    pSpriteData->stack[idx] = value;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU16);
 
