@@ -354,10 +354,12 @@ extern char D_8001918C[];
 extern char D_80019198[];
 extern char D_800191C8[];
 extern char D_800191E0[];
+extern char D_8001920C[];
 extern char D_8005698C[];
 extern void DMACallback(s32, void*);
 extern void func_80047178(void*, s32, s32);
 extern void func_8004463C(char*, RECT*);
+extern void func_8004574C(void*, DRAWENV*);
 
 u8 func_8004440C(u8 arg0) {
     u8 old = D_800568D1;
@@ -521,7 +523,35 @@ void DrawOTag(u_long* ot) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", PutDrawEnv);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawOTagEnv);
+void DrawOTagEnv(u_long* otInput, DRAWENV* envInput) {
+    register u_long* ot asm("$18") = otInput;
+    register u8* state asm("$19") = (u8*)&g_GraphDebugLevel;
+    register DRAWENV* env asm("$17") = envInput;
+    register void* packet asm("$16");
+    void* dispatch;
+    void (*submit)(void*, void*, s32, s32);
+
+    if (state[0] >= 2) {
+        g_GpuPrintf(D_8001920C, ot, env);
+    }
+    packet = (u8*)env + 0x1C;
+    func_8004574C(packet, env);
+    {
+        register u32 mask asm("$4") = 0xFFFFFF;
+        register void* packetArg asm("$5") = packet;
+        register s32 size asm("$6") = 0x40;
+        register u32 highMask asm("$3") = 0xFF000000;
+        u32 word = *(u32*)((u8*)env + 0x1C);
+        u32 link = (u32)ot & mask;
+        word &= highMask;
+        dispatch = D_800568C8;
+        *(u32*)((u8*)env + 0x1C) = word | link;
+        submit = *(void (**)(void*, void*, s32, s32))((u8*)dispatch + 8);
+        submit(*(void**)((u8*)dispatch + 0x18), packetArg, size, 0);
+    }
+    *(DRAWENV*)(state + 0x0E) = *env;
+    __asm__("" : : "r"(state), "r"(env));
+}
 
 DRAWENV* GetDrawEnv(DRAWENV* env) {
     memcpy(env, &g_GpuDrawEnv, sizeof(DRAWENV));
