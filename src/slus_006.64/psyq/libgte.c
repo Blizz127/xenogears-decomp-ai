@@ -425,7 +425,16 @@ void SetBackColor(long red, long green, long blue) {
         : : "r"(red), "r"(green), "r"(blue));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetFarColor);
+void SetFarColor(long red, long green, long blue) {
+    red <<= 4;
+    green <<= 4;
+    blue <<= 4;
+    __asm__ volatile(
+        "ctc2 %0, $21\n\t"
+        "ctc2 %1, $22\n\t"
+        "ctc2 %2, $23"
+        : : "r"(red), "r"(green), "r"(blue));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomOffset);
 
