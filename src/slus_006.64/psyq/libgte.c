@@ -333,7 +333,9 @@ void SetDQA(s32 value) {
     __asm__ volatile("ctc2 %0, $27" : : "r"(value));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetDQB);
+void SetDQB(s32 value) {
+    __asm__ volatile("ctc2 %0, $28" : : "r"(value));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomOffset);
 
