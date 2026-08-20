@@ -744,7 +744,19 @@ void SoundReset(void) {
     g_SoundSpuErrorId = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundEnableAllSpuChannels);
+void SoundEnableAllSpuChannels(void) {
+    SoundVoiceData** ppChannel = &g_SoundChannels[0];
+    int i = 0;
+    do {
+        SoundVoiceData* pChannel = *ppChannel;
+        i++;
+        if (pChannel != NULL) {
+            pChannel->flags |= 0x1F5;
+        }
+        ppChannel++;
+    } while (i < 24);
+    g_SoundControlFlags &= ~0x40;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundMuteAllSpuChannels);
 
