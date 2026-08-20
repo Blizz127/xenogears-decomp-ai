@@ -2178,19 +2178,18 @@ void func_8003A14C(s32 packedId) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A14C);
 #endif
 
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
- * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: two-instruction scheduler placement of the slot masking (andi/xori vs the constant loads); identical instruction multiset.
- * Not claimed as {}. */
 // SFX: stop the effect pair on a field slot and release its voices.
 void func_8003A20C(s32 slot) {
     AudioManager* manager;
     AudioElement* el;
     u8* q;
-    s32 count = 2;
+    s32 count;
 
+    slot &= 0xFE;
+    slot ^= 8;
+    count = 2;
     manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
-    el = (AudioElement*)((((slot & 0xFE) ^ 8) * 0x158 + 0x94) + (u8*)manager);
+    el = (AudioElement*)((slot * 0x158 + 0x94) + (u8*)manager);
     q = (u8*)el + 0x27;
     do {
         if (el->active_flag & 0x1) {
@@ -2203,9 +2202,6 @@ void func_8003A20C(s32 slot) {
         el = (AudioElement*)((u8*)el + 0x158);
     } while (count != 0);
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A20C);
-#endif
 
 void func_8003A2D4(void) {}
 
