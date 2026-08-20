@@ -287,10 +287,12 @@ int SetGraphDebug(int level) {
 extern u8 D_800568D1;
 extern void* D_800568C8;
 extern char D_80019104[];
+extern char D_80019134[];
 extern char D_800191C8[];
 extern char D_800191E0[];
 extern char D_8005698C[];
 extern void DMACallback(s32, void*);
+extern void func_80047178(void*, s32, s32);
 
 u8 func_8004440C(u8 arg0) {
     u8 old = D_800568D1;
@@ -328,7 +330,29 @@ u_long DrawSyncCallback(void (*pCallbackFn)()) {
     return (u_long) pPrevCallbackFn;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", SetDispMask);
+void SetDispMask(int mask) {
+    u8* state = (u8*)&g_GraphDebugLevel;
+    void* dispEnv;
+    void* dispatch;
+    void (*setMask)(u32);
+    u32 command;
+
+    if (state[0] >= 2) {
+        g_GpuPrintf(D_80019134, mask);
+    }
+    dispEnv = state + 0x6A;
+    if (mask == 0) {
+        func_80047178(dispEnv, -1, 0x14);
+    }
+
+    command = 0x03000001;
+    dispatch = D_800568C8;
+    if (mask != 0) {
+        command = 0x03000000;
+    }
+    setMask = *(void (**)(u32))((u8*)dispatch + 0x10);
+    setMask(command);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawSync);
 /*
