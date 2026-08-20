@@ -337,7 +337,45 @@ void LoadAverage0(VECTOR* v0, VECTOR* v1, long p0, long p1, VECTOR* output) {
         : : : "$2", "$8", "memory");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_8004901C);
+__asm__(
+        ".globl func_8004901C\n\t"
+        ".ent func_8004901C\n\t"
+        "func_8004901C:\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c8a0004\n\t"
+        ".word 0x00084c03\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x314affff\n\t"
+        ".word 0x48864000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x488a5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b98003d\n\t"
+        ".word 0x8ca80000\n\t"
+        ".word 0x8caa0004\n\t"
+        ".word 0x00084c03\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x314affff\n\t"
+        ".word 0x4802f800\n\t"
+        ".word 0x48874000\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x488a5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4ba8003e\n\t"
+        ".word 0x48084800\n\t"
+        ".word 0x48095000\n\t"
+        ".word 0x3108ffff\n\t"
+        ".word 0x00094c00\n\t"
+        ".word 0x01094025\n\t"
+        ".word 0x8fad0010\n\t"
+        ".word 0x480a5800\n\t"
+        ".word 0xada80000\n\t"
+        ".word 0xadaa0004\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end func_8004901C");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_800490A4);
 
