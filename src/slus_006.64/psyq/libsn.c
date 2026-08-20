@@ -1,6 +1,18 @@
 #include "common.h"
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCopen);
+__asm__(
+        ".globl PCopen\n\t"
+        ".ent PCopen\n\t"
+        "PCopen:\n\t"
+        ".word 0x00a03021\n\t"
+        ".word 0x00802821\n\t"
+        ".word 0x000040cd\n\t"
+        ".word 0x10400002\n\t"
+        ".word 0x00601021\n\t"
+        ".word 0x2402ffff\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end PCopen");
 
 __asm__(
         ".globl PCclose\n\t"
