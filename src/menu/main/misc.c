@@ -4744,7 +4744,71 @@ void func_801D9B08(void) {
     ExitCriticalSection();
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9C84);
+extern void* D_801EA718;
+extern void* D_801EA71C;
+extern void* D_801EA720;
+
+s32 func_801D9C84(void) {
+    void* pMenu;
+    void* pData;
+    s32 result = 1;
+
+    func_801D2F4C(0x20);
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x33) = 1;
+
+    while (1) {
+        pMenu = g_Menu;
+        if (*(u8*)((u8*)pMenu + 0x329) == 0) break;
+        func_801C7BF4();
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4FE7) = 1;
+    func_801C7BF4();
+    func_801D9B08();
+    DrawSync(0);
+    Vsync(0);
+
+    EnterCriticalSection();
+    D_801EA718 = CdSyncCallback(0);
+    D_801EA71C = CdReadyCallback(0);
+    D_801EA720 = CdReadCallback(0);
+    ExitCriticalSection();
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4FE9) = 0xFF;
+    *(u8*)(pData + 0x4FE8) = 0xFF;
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4F88) = 0;
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4F89) = 0;
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x32C);
+    *(u8*)(pData + 0x4FE6) = 2;
+    pMenu = g_Menu;
+    *(u8*)((u8*)pMenu + 0x326) = 0x3C;
+
+    func_801C7BF4();
+    func_801C7BF4();
+
+    if ((u8)func_801C93A8() == 0) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x33C);
+        if (*(u8*)(pData + 0x33) != 0) {
+            result = 0;
+            func_801D32B4(0);
+            pMenu = g_Menu;
+            *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x33) = 0;
+        }
+    }
+
+    return result;
+}
 
 extern s32 D_801EA904;
 extern s32 D_801EA900;
