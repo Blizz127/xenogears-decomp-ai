@@ -2272,7 +2272,44 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixX");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixY);
+__asm__(
+        ".globl RotMatrixY\n\t"
+        ".ent RotMatrixY\n\t"
+        "RotMatrixY:\n\t"
+        ".word 0x00807821, 0x00a01021, 0x05e1000d, 0x31f90fff\n\t"
+        ".word 0x000f7823, 0x05e10001, 0x31ef0fff, 0x000fc080\n\t"
+        "lui $25, %hi(D_800523F0)\n\t"
+        ".word 0x0338c821\n\t"
+        "lw $25, %lo(D_800523F0)($25)\n\t"
+        ".word 0x00000000, 0x00197400, 0x000e4c03\n\t"
+        ".reloc ., R_MIPS_26, .LRotMatrixYReady\n\t"
+        ".word 0x08000000, 0x00194403, 0x0019c080\n\t"
+        "lui $25, %hi(D_800523F0)\n\t"
+        ".word 0x0338c821\n\t"
+        "lw $25, %lo(D_800523F0)($25)\n\t"
+        ".word 0x00000000, 0x0019c400, 0x00187c03, 0x000f4823, 0x00194403\n\t"
+        ".LRotMatrixYReady:\n\t"
+        ".word 0x84aa0000, 0x84ad000c, 0x010a0019, 0x84ab0002\n\t"
+        ".word 0x84ae000e, 0x0000c012, 0x84ac0004, 0x84af0010\n\t"
+        ".word 0x012d0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c823, 0x0019c303, 0x010b0019, 0xa4b80000\n\t"
+        ".word 0x00000000, 0x0000c012, 0x00000000, 0x00000000\n\t"
+        ".word 0x012e0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c823, 0x0019c303, 0x010c0019, 0xa4b80002\n\t"
+        ".word 0x00000000, 0x0000c012, 0x00000000, 0x00000000\n\t"
+        ".word 0x012f0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c823, 0x0019c303, 0x012a0019, 0xa4b80004\n\t"
+        ".word 0x00000000, 0x0000c012, 0x00000000, 0x00000000\n\t"
+        ".word 0x010d0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c821, 0x0019c303, 0x012b0019, 0xa4b8000c\n\t"
+        ".word 0x00000000, 0x0000c012, 0x00000000, 0x00000000\n\t"
+        ".word 0x010e0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c821, 0x0019c303, 0x012c0019, 0xa4b8000e\n\t"
+        ".word 0x00000000, 0x0000c012, 0x00000000, 0x00000000\n\t"
+        ".word 0x010f0019, 0x00000000, 0x00000000, 0x0000c812\n\t"
+        ".word 0x0319c821, 0x0019c303, 0xa4b80010, 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end RotMatrixY");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixZ);
 
