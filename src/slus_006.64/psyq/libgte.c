@@ -495,7 +495,16 @@ void SetGeomScreen(long value) {
     __asm__ volatile("ctc2 %0, $26" : : "r"(value));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LocalLight);
+void LocalLight(SVECTOR* input, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a4a6412\n\t"
+        ".word 0xe8a90000\n\t"
+        ".word 0xe8aa0004\n\t"
+        ".word 0xe8ab0008");
+}
 
 void DpqColor(CVECTOR* input, long p, CVECTOR* output) {
     __asm__ volatile(
