@@ -8187,7 +8187,13 @@ void func_801E8F60(s32 windowIndex, s32 dim) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E91C4);
+void func_801E91C4(POLY_FT4* p) {
+    SetSemiTrans(p, 1);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
 #else
 /* Arc A verts: border-poly display fixup -- semi-transparent, shading ENABLED
  * (SetShadeTex 0) with the neutral 0x80 modulate color. */
