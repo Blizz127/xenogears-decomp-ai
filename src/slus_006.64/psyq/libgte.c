@@ -1027,7 +1027,30 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverageNclip4);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransposeMatrix);
+MATRIX* TransposeMatrix(MATRIX* input, MATRIX* output) {
+    register MATRIX* result asm("$2");
+    register long last asm("$10");
+    __asm__ volatile(
+        ".word 0x00a01021\n\t"
+        ".word 0x8c890000\n\t"
+        ".word 0x8c8a0004\n\t"
+        ".word 0xaca90004\n\t"
+        ".word 0xacaa0000\n\t"
+        ".word 0xa4a90000\n\t"
+        ".word 0x8c8b0008\n\t"
+        ".word 0x8c89000c\n\t"
+        ".word 0xacab000c\n\t"
+        ".word 0xaca90008\n\t"
+        ".word 0xa4aa000c\n\t"
+        ".word 0xa4ab0008\n\t"
+        ".word 0x848a0010\n\t"
+        ".word 0xa4a90004"
+        : "=r"(result), "=r"(last)
+        : "r"(input), "r"(output)
+        : "$9", "$11", "memory");
+    *(s16*)((u8*)output + 0x10) = last;
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixYXZ);
 
