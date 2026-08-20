@@ -133,7 +133,23 @@ __asm__(
         ".word 0x03e03821\n\t"
         ".end VectorNormalS");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormal);
+__asm__(
+        ".globl VectorNormal\n\t"
+        ".ent VectorNormal\n\t"
+        "VectorNormal:\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x03e03821\n\t"
+        ".reloc ., R_MIPS_26, func_80048DD8\n\t"
+        ".word 0x0c000000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x00e0f821\n\t"
+        ".word 0xaca80000\n\t"
+        ".word 0xaca90004\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0xacaa0008\n\t"
+        ".end VectorNormal");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormalSS);
 
