@@ -3267,7 +3267,10 @@ void func_801D1E80(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EB0);
+void func_801D1EB0(void) {
+    g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
+    func_801C8574(0x5C);
+}
 #else
 void func_801D1EB0(void) {
     g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
