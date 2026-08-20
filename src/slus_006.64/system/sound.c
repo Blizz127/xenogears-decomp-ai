@@ -6002,7 +6002,24 @@ int SoundFileComputeChecksum(SoundFile* pSoundFile) {
 }
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHandleError);
+#ifndef XENO_PC_PORT
+extern SoundFile D_80050910;
+extern u16 D_80050924[];
+extern SoundWDSEntry D_80050940;
+
+void SoundHandleError(s32 errorId)
+{
+    if ((g_SoundControlFlags & 0x88) == 0) {
+        g_SoundControlFlags |= 8;
+        g_SoundSpuErrorId = errorId;
+        SoundSpuMemoryFreeBlock(0x10000);
+        SoundLoadWdsFile(&D_80050940, 0);
+        SoundAddSedsEntry(&D_80050910);
+        func_8003BDFC(0x10);
+        func_80039E60((D_80050924[0] << 16) | 1);
+    }
+}
+#endif
 
 #ifdef XENO_PC_PORT
 /* Host sequence-command dispatch table (tick-leg step 3). Retail's
