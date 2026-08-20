@@ -4587,7 +4587,89 @@ void func_801D7C3C(u8 arg0, u8 arg1) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7CFC);
+extern s32 D_801E977C[];
+
+void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
+    void* pMenu;
+    void* pData;
+    s32 inverted = (arg2 == 0);
+    s32 count = 0;
+    s32 primOff = 0x78;
+    s32 renderOff = 0x1E00;
+    s32 i;
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x358);
+    *(u8*)(pData + 0x2AED) = 0;
+
+    if (arg1 == 0) return;
+
+    for (i = 0; i < arg1; i++) {
+        s32 entryOff;
+        pMenu = g_Menu;
+        {
+            void* pM = g_Menu;
+            func_8002675C(
+                *(u8**)((u8*)pM + 0x2DC),
+                D_801E977C[i],
+                *(void**)((u8*)pM + 0x358),
+                *(s32*)((u8*)pM + 0x308),
+                0x78,
+                0x5A,
+                0x1000
+            );
+        }
+        renderOff += 0x50;
+
+        pMenu = g_Menu;
+        {
+            s32 rc = *(s32*)((u8*)pMenu + 0x308);
+            s32 tmp = (rc + i * 2);
+            entryOff = tmp * 0x28 + 0x1E00;
+        }
+        pData = *(void**)((u8*)pMenu + 0x358);
+        {
+            u16 x0 = *(u16*)(pData + entryOff + 0x08);
+            u16 y0 = *(u16*)(pData + entryOff + 0x0A);
+            u16 x1 = *(u16*)(pData + entryOff + 0x10);
+            u16 y1 = *(u16*)(pData + entryOff + 0x22);
+            s32 w = (u16)(x1 - x0);
+            s32 h = (u16)(y1 - y0);
+            func_801C851C((SVECTOR*)((u8*)g_Menu + primOff), x0, y0, w, h);
+        }
+        primOff += 0x20;
+    }
+
+    if (arg1 >= 2) {
+        s32 entryOff;
+        pMenu = g_Menu;
+        {
+            s32 rc = *(s32*)((u8*)pMenu + 0x308);
+            s32 tmp = (rc + inverted * 2);
+            entryOff = tmp * 0x28 + 0x1E00;
+        }
+        func_801E91C4((POLY_FT4*)(*(void**)((u8*)pMenu + 0x358) + entryOff));
+
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x358);
+        {
+            s32 rc = *(s32*)((u8*)pMenu + 0x308);
+            s32 tmp = (rc + inverted * 2);
+            s32 off = tmp * 0x28;
+            *(u16*)(pData + off + 0x1E16) |= 0x20;
+            *(u8*)(pData + off + 0x1E04) = 0x20;
+            *(u8*)(pData + off + 0x1E05) = 0x20;
+            *(u8*)(pData + off + 0x1E06) = 0x20;
+        }
+
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x358);
+        *(u8*)(pData + 0x2AEE) = *(u8*)((u8*)pMenu + 0x308);
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x358);
+        *(u8*)(pData + 0x2AED) = 2;
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
 
