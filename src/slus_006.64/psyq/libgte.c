@@ -583,7 +583,26 @@ void NormalLightCol(void* pNormal, void* pInColor, void* pOutColor) {
 }
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorCol3);
+void NormalColorCol3(SVECTOR* n0, SVECTOR* n1, SVECTOR* n2, CVECTOR* color,
+        CVECTOR* out0, CVECTOR* out1, CVECTOR* out2) {
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0xc8e60000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b18043f\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0xe9140000\n\t"
+        ".word 0xe9350000\n\t"
+        ".word 0xe9560000"
+        : : : "$8", "$9", "$10", "memory");
+}
 
 void ColorDpq(VECTOR* light, CVECTOR* color, long p, CVECTOR* output) {
     __asm__ volatile(
