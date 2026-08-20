@@ -2175,7 +2175,26 @@ void func_8003A14C(s32 packedId) {
     } while (count != 0);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A14C);
+void func_8003A14C(s32 packedId) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    register AudioElement* el asm("$17") = (AudioElement*)((u8*)manager + 0x94);
+    register u8* q asm("$16") = (u8*)manager + 0xBB;
+
+    do {
+        __asm__("" : : "r"(el), "r"(q));
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        el++;
+        count--;
+    } while (count != 0);
+}
 #endif
 
 // SFX: stop the effect pair on a field slot and release its voices.
