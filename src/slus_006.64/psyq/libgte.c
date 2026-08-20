@@ -1194,7 +1194,57 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     return *p;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverageNclip4);
+long RotAverageNclip4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
+        long* sxy0, long* sxy1, long* sxy2, long* sxy3,
+        long* p, long* otz, long* flag) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a280030\n\t"
+        ".word 0x8fa80028\n\t"
+        ".word 0x4843f800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0xad030000\n\t"
+        ".word 0x4b400006\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0x4802c000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x1c400003\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x10000015\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0xe90c0000\n\t"
+        ".word 0xe92d0000\n\t"
+        ".word 0xe94e0000\n\t"
+        ".word 0xc8e00000\n\t"
+        ".word 0xc8e10004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a180001\n\t"
+        ".word 0x8fa8001c\n\t"
+        ".word 0x8fa90020\n\t"
+        ".word 0x8faa0028\n\t"
+        ".word 0xe90e0000\n\t"
+        ".word 0x484bf800\n\t"
+        ".word 0xe9280000\n\t"
+        ".word 0x01635825\n\t"
+        ".word 0xad4b0000\n\t"
+        ".word 0x4b68002e\n\t"
+        ".word 0x8fa90024\n\t"
+        ".word 0x48083800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0xad280000"
+        : "=r"(result)
+        : : "$3", "$8", "$9", "$10", "$11", "memory");
+    return result;
+}
 
 MATRIX* TransposeMatrix(MATRIX* input, MATRIX* output) {
     register MATRIX* result asm("$2");
