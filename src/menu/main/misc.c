@@ -4483,7 +4483,76 @@ void func_801D5CF8(s32 x, s32 y) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5ED4);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D6194);
+extern s32 D_801EA39C[];
+extern s32 D_801E9B60[];
+extern s32 D_801E9C20[];
+
+void func_801D6194(u8 slotType) {
+    void* pMenu;
+    void* pData;
+    s32 base = slotType * 24;
+    s32 i;
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x358);
+    *(u8*)(pData + 0x2AEC) = 0;
+
+    for (i = 0; i < 0x18; i++) {
+        s32 tblIdx = base + i;
+        s32 val = D_801EA39C[tblIdx];
+        if (val == 0xFFFF) continue;
+
+        pMenu = g_Menu;
+        {
+            void* pRender = *(void**)((u8*)pMenu + 0x358);
+            u8 count = *(u8*)(pRender + 0x2AEC);
+            s32 off = count * 0xA0 + 0xA0;
+            s32 stackArg;
+            pMenu = g_Menu;
+            {
+                void* pM2 = g_Menu;
+                func_8002675C(
+                    *(u8**)((u8*)pM2 + 0x2DC),
+                    val,
+                    pRender,
+                    *(s32*)((u8*)pM2 + 0x308),
+                    D_801E9B60[tblIdx],
+                    D_801E9C20[tblIdx],
+                    0x1000
+                );
+            }
+            pMenu = g_Menu;
+            pData = *(void**)((u8*)pMenu + 0x358);
+            *(u8*)(pData + 0x2AEC) = *(u8*)(pData + 0x2AEC) + (u8)val;
+        }
+    }
+
+    pMenu = g_Menu;
+    pData = *(void**)((u8*)pMenu + 0x358);
+    if (*(u8*)(pData + 0x2AEC) > 0) {
+        s32 primOff = 0x1EE0;
+        for (i = 0; i < *(u8*)(pData + 0x2AEC); i++) {
+            s32 entryOff;
+            pMenu = g_Menu;
+            {
+                s32 tmp = *(s32*)((u8*)g_Menu + 0x308);
+                tmp = (tmp + i * 2);
+                entryOff = tmp * 0x28;
+            }
+            pData = *(void**)((u8*)pMenu + 0x358);
+            {
+                u16 x0 = *(u16*)(pData + entryOff + 0xA8);
+                u16 y0 = *(u16*)(pData + entryOff + 0xAA);
+                u16 x1 = *(u16*)(pData + entryOff + 0xB0);
+                u16 y1 = *(u16*)(pData + entryOff + 0xC2);
+                s32 w = (u16)(x1 - x0);
+                s32 h = (u16)(y1 - y0);
+                func_801C851C((SVECTOR*)((u8*)g_Menu + primOff), x0, y0, w, h);
+            }
+            primOff += 0x20;
+        }
+    }
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D6338);
 
