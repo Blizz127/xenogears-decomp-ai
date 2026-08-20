@@ -553,7 +553,16 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorCol3);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorDpq);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorCol);
+void ColorCol(VECTOR* light, CVECTOR* color, CVECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8890000\n\t"
+        ".word 0xc88a0004\n\t"
+        ".word 0xc88b0008\n\t"
+        ".word 0xc8a60000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b38041c\n\t"
+        ".word 0xe8d60000");
+}
 
 long AverageSZ3(void) {
     long value;
