@@ -170,7 +170,20 @@ void GameCheckAndHandleSoftReset(void) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/main/main_loop", GameSoftReset);
+void GameSoftReset(void) {
+    SwExitCriticalSection();
+    ResetGraph(0);
+    ArchiveReset();
+    SoundReset();
+    SpuQuit();
+    func_800363F0(0);
+    DrawSyncCallback(0);
+    func_8004B7D0(0);
+    CdFlush();
+    func_800408F4();
+    SwEnterCriticalSection();
+    start();
+}
 
 void GameShowSplashScreen(void) {
     DRAWENV drawEnv;
