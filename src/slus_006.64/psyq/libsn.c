@@ -27,6 +27,16 @@ __asm__(
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCread);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", func_8004C458);
+__asm__(
+        ".globl func_8004C458\n\t"
+        ".ent func_8004C458\n\t"
+        "func_8004C458:\n\t"
+        ".word 0x0000414d\n\t"
+        ".word 0x10400002\n\t"
+        ".word 0x00601021\n\t"
+        ".word 0x2402ffff\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end func_8004C458");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCwrite);
