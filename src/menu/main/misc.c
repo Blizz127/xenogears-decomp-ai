@@ -7449,9 +7449,6 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4D10);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5058);
-#else
 /* Nav N2c-4: the magnitude-1 bulk special (func_801E31C0's effectFlags&0x1
  * dispatch).  Populates all five inventory families with sequential IDs at
  * quantity 10 -- a bulk inventory initializer/unlocker.  SAVE-BACKED, the
@@ -7492,7 +7489,6 @@ void func_801E5058(void) {
         g_GameState.unk2184Quantities[i] = 10;
     }
 }
-#endif
 
 void func_801E5178(void) {
     u8* gs = (u8*)&g_GameState;
