@@ -328,7 +328,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertexTri);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRGBfifo);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetIR123);
+void SetIR123(long ir1, long ir2, long ir3) {
+    __asm__ volatile(
+        "mtc2 %0, $9\n\t"
+        "mtc2 %1, $10\n\t"
+        "mtc2 %2, $11"
+        : : "r"(ir1), "r"(ir2), "r"(ir3));
+}
 
 void SetIR0(s32 value) {
     __asm__ volatile("mtc2 %0, $8" : : "r"(value));
