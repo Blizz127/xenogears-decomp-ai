@@ -22,7 +22,14 @@ void StartCARD(void) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD2);
+__asm__(
+        ".globl InitCARD2\n\t"
+        ".ent InitCARD2\n\t"
+        "InitCARD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x2409004a\n\t"
+        ".end InitCARD2");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StartCARD2);
 
