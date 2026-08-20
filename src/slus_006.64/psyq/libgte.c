@@ -362,7 +362,24 @@ VECTOR* ApplyMatrixLV(MATRIX* m, VECTOR* v0, VECTOR* v1) {
     return v1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyRotMatrix);
+VECTOR* ApplyRotMatrix(SVECTOR* input, VECTOR* output) {
+    register VECTOR* result asm("$2");
+    __asm__ volatile(
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x48880000\n\t"
+        ".word 0x48890800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a486012\n\t"
+        ".word 0xe8a90000\n\t"
+        ".word 0xe8aa0004\n\t"
+        ".word 0xe8ab0008\n\t"
+        ".word 0x00c01021"
+        : "=r"(result)
+        : "r"(input), "r"(output)
+        : "$8", "$9", "memory");
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PushMatrix);
 
