@@ -730,7 +730,24 @@ long Lzc(long value) {
     return result;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransSV);
+void RotTransSV(SVECTOR* input, SVECTOR* output, long* flag) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a480012\n\t"
+        ".word 0x48024800\n\t"
+        ".word 0x48035000\n\t"
+        ".word 0xe8ab0004\n\t"
+        ".word 0xa4a20000\n\t"
+        ".word 0xa4a30002\n\t"
+        ".word 0x4842f800"
+        : "=r"(result)
+        : "r"(input), "r"(output), "r"(flag)
+        : "$3", "memory");
+    *flag = result;
+}
 
 SVECTOR* SquareSS12(SVECTOR* input, SVECTOR* output) {
     __asm__ volatile(
