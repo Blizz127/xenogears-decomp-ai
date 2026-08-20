@@ -2299,7 +2299,24 @@ void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE198);
+void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
+                   s32 renderContext) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        long interpolated;
+        long flag;
+
+        RotTransPers4(&vertices[i * 4], &vertices[i * 4 + 1],
+                      &vertices[i * 4 + 2], &vertices[i * 4 + 3],
+                      (long*)&polys[renderContext + i * 2].x0,
+                      (long*)&polys[renderContext + i * 2].x1,
+                      (long*)&polys[renderContext + i * 2].x2,
+                      (long*)&polys[renderContext + i * 2].x3,
+                      &interpolated, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], &polys[renderContext + i * 2]);
+    }
+}
 #else
 /* Project and queue `count` double-buffered textured quads.  Retail advances
  * the render-context index by two per logical string, selecting the same half
