@@ -315,7 +315,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRGBfifo);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetIR123);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetIR0);
+void SetIR0(s32 value) {
+    __asm__ volatile("mtc2 %0, $8" : : "r"(value));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo3);
 
