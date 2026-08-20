@@ -420,7 +420,14 @@ long AverageSZ3(void) {
     return value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageSZ4);
+long AverageSZ4(void) {
+    long value;
+    __asm__ volatile(
+        ".word 0x4b68002e\n\t"
+        "mfc2 %0, $7"
+        : "=r"(value));
+    return value;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LightColor);
 
