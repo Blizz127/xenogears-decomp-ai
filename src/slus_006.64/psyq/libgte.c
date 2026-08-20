@@ -317,7 +317,12 @@ void SetVertex1(SVECTOR* vertex) {
         : : "r"(vertex));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex2);
+void SetVertex2(SVECTOR* vertex) {
+    __asm__ volatile(
+        ".word 0xc8840000\n\t"
+        ".word 0xc8850004"
+        : : "r"(vertex));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertexTri);
 
