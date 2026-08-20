@@ -340,7 +340,13 @@ void SetIR0(s32 value) {
     __asm__ volatile("mtc2 %0, $8" : : "r"(value));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo3);
+void SetSZfifo3(long sz1, long sz2, long sz3) {
+    __asm__ volatile(
+        "mtc2 %0, $17\n\t"
+        "mtc2 %1, $18\n\t"
+        "mtc2 %2, $19"
+        : : "r"(sz1), "r"(sz2), "r"(sz3));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo4);
 
