@@ -4066,22 +4066,16 @@ u8* SoundScriptLowerOctave(u8* pScript, AudioManager* pAudioManager, AudioElemen
 
 // Time signature handler?
 // Seq cmd: time signature -- beats/measure + beat length (0xC0/denominator).
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003CE68(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    u32 denom = pScript[1];
+    register s32 denom asm("$6") = pScript[1];
+    s32 beats = pScript[0];
     pAudioManager->unk_0x3a = 0xC0 / denom;
     pAudioManager->unk_0x3c = denom;
-    pAudioManager->unk_0x38 = pScript[0];
-    pAudioManager->unk_0x3e = pScript[0];
+    pAudioManager->unk_0x38 = beats;
+    pAudioManager->unk_0x3e = beats;
     pAudioManager->unk_0x36 = pAudioManager->unk_0x3a;
     return pScript + 2;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CE68);
-#endif
 
 // Seq cmd: jump-count / measure sync -- latch measure number + beat.
 u8* func_8003CE9C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
