@@ -2182,7 +2182,25 @@ s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
     return count;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026F44);
+__asm__(
+        ".globl func_80026F44\n\t"
+        ".ent func_80026F44\n\t"
+        "func_80026F44:\n\t"
+        ".word 0x28aa0020, 0x140a0002, 0x00000000, 0x20050020\n\t"
+        ".word 0x000529c0, 0x48854000, 0x240affff\n\t"
+        ".Lfunc_80026F44_loop:\n\t"
+        ".word 0x2484ffff, 0x108a001e, 0x94ee0000, 0x24e70002\n\t"
+        ".word 0x31cd001f, 0x31cc03e0, 0x31cb7c00\n\t"
+        ".word 0x488d4800, 0x488c5000, 0x488b5800\n\t"
+        ".word 0x00000000, 0x00000000, 0x4b98003d\n\t"
+        ".word 0x480d4800, 0x480c5000, 0x480b5800\n\t"
+        ".word 0x31ad001f, 0x318c03e0, 0x316b7c00\n\t"
+        ".word 0x01ac6825, 0x016d6825, 0x100e0004, 0x00000000\n\t"
+        ".word 0x140d0002, 0x00000000, 0x35ad0001\n\t"
+        ".word 0x31ce8000, 0x01cd7025, 0xa4ce0000, 0x24c60002\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80026F44_loop\n\t"
+        ".word 0x08000000, 0x00000000, 0x03e00008, 0x00000000\n\t"
+        ".end func_80026F44");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026FE8);
 
