@@ -1083,6 +1083,8 @@ void func_801C80B8(u32 value) {
 }
 #endif
 
+extern void func_801C80B8(u32 value);
+
 void func_801C8164(POLY_G4* p, u8 r, u8 g, u8 b) {
     SetPolyG4(p);
     p->r0 = r; p->g0 = g; p->b0 = b;
@@ -1218,6 +1220,8 @@ void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h) {
     verts[3].vz = 0;
 }
 #endif
+
+extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
 
 #ifndef XENO_PC_PORT
 extern void func_80039DB8(s32 packedId);
@@ -3500,7 +3504,8 @@ void func_801D249C(s32 enable) {
         for (i = 0; i < 3; i++) {
             u16 tblVal = D_801E9E58[i];
             pMenu = g_Menu;
-            func_801C851C((u8*)pMenu + primOff + 0x50, *pSrc, tblVal, 0xD);
+            func_801C851C((u8*)pMenu + primOff + 0x50, *pSrc, tblVal,
+                          *(u8*)((u8*)pMenu + slotOff + 0xB5E), 0xD);
             pMenu = g_Menu;
             *(u8*)((u8*)pMenu + slotOff + 0xB5D) = *(u8*)((u8*)pMenu + 0x308);
             pMenu = g_Menu;
@@ -4002,7 +4007,6 @@ void func_801D3B00(void) {
 
 extern void func_8002675C(s32, s32, void*, s32, s32, s32, s32);
 extern void func_800263E4(s32, s32, void*, s32, s32, s32, s32, s32);
-extern void func_801C851C(void*, u16, u16, u8, s32);
 
 void func_801D3C4C(u8 slotIdx, u16 x, u16 y, u16 h) {
     void* pMenu = g_Menu;
@@ -7764,7 +7768,6 @@ void func_801E6AE8(u8 slotIdx, s32 arg1) {
     func_8002675C(*(u32*)((u8*)pMenu + 0x2DC), charIdx + 0x14E, pSlot, arg3, stackArgs[0], stackArgs[1], stackArgs[2]);
 }
 
-extern void func_801C80B8(u8);
 extern u32 D_801EA01C;
 extern u32 D_801EA020;
 
