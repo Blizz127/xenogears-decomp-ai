@@ -2901,7 +2901,34 @@ void func_801D1258(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D12D4);
+void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
+    if (!panel->unkBE7) {
+        return;
+    }
+
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polysPortraitSmall[panel->renderContext]);
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polys4B0[panel->renderContext]);
+    func_801CE2B4(panel->descriptionStringsLength,
+                  (u8*)panel->polysDescriptionStrings, panel->renderContext);
+    func_801CE2B4(panel->levelStringLength,
+                  (u8*)panel->polysLevelString, panel->renderContext);
+    func_801CE2B4(panel->unkBE1, (u8*)panel->polys5F0,
+                  panel->renderContext);
+    func_801CE2B4(panel->hpStringLength, (u8*)panel->polysHpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxHpStringLength,
+                  (u8*)panel->polysMaxHpString, panel->renderContext);
+    func_801CE2B4(panel->mpStringLength, (u8*)panel->polysMpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxMpStringLength,
+                  (u8*)panel->polysMaxMpString, panel->renderContext);
+    if (drawFixedLabels & 0xFF) {
+        func_801CE2B4(5, (u8*)panel->polys2D0,
+                      panel->renderContext);
+    }
+}
 
 void func_801D13F8(void) {
     s32 i;
