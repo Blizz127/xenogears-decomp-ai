@@ -804,7 +804,14 @@ s16 AnimScriptStackPopU16(SpriteData* pSpriteData) {
     return (s16)(lo + hi * 256);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU24);
+s32 AnimScriptStackPopU24(SpriteData* pSpriteData) {
+    s8 idx = pSpriteData->stackIndex;
+    u32 b0 = pSpriteData->stack[idx];
+    u32 b1 = pSpriteData->stack[idx + 1];
+    u32 b2 = pSpriteData->stack[idx + 2];
+    pSpriteData->stackIndex += 3;
+    return b0 + b1 * 256 + b2 * 65536;
+}
 
 void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value) {
     s8 idx = --pSpriteData->stackIndex;
@@ -818,7 +825,14 @@ void AnimScriptStackPushU16(SpriteData* pSpriteData, u16 value) {
     pSpriteData->stack[idx + 1] = (u8)(value >> 8);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPushU24);
+void AnimScriptStackPushU24(SpriteData* pSpriteData, s32 value) {
+    s8 idx = (s8)(pSpriteData->stackIndex -= 3);
+    pSpriteData->stack[idx] = (u8)value;
+    idx = (s8)pSpriteData->stackIndex;
+    pSpriteData->stack[idx + 1] = (u8)(value >> 8);
+    idx = (s8)pSpriteData->stackIndex;
+    pSpriteData->stack[idx + 2] = (u8)(value >> 16);
+}
 
 void func_80021D3C(void* arg0, s32 arg1, s32 arg2) {
     *(s32*)((u8*)arg0 + 0x8) = arg2 << 16;
