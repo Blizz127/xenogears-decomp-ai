@@ -277,7 +277,32 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix2);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrix);
+VECTOR* ApplyMatrix(MATRIX* matrix, SVECTOR* input, VECTOR* output) {
+    register VECTOR* result asm("$2");
+    __asm__ volatile(
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x8c8b000c\n\t"
+        ".word 0x8c8c0010\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c90800\n\t"
+        ".word 0x48ca1000\n\t"
+        ".word 0x48cb1800\n\t"
+        ".word 0x48cc2000\n\t"
+        ".word 0xc8a00000\n\t"
+        ".word 0xc8a10004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a486012\n\t"
+        ".word 0xe8d90000\n\t"
+        ".word 0xe8da0004\n\t"
+        ".word 0xe8db0008\n\t"
+        ".word 0x00c01021"
+        : "=r"(result)
+        : "r"(matrix), "r"(input), "r"(output)
+        : "$8", "$9", "$10", "$11", "$12", "memory");
+    return result;
+}
 
 SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1) {
     gte_SetRotMatrix(m);
