@@ -2,7 +2,14 @@
 
 #include "psyq/libapi.h"
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", _card_info);
+__asm__(
+        ".globl _card_info\n\t"
+        ".ent _card_info\n\t"
+        "_card_info:\n\t"
+        ".word 0x240a00a0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x240900ab\n\t"
+        ".end _card_info");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD);
 
