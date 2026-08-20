@@ -353,7 +353,17 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearOTag);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearOTagR);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawPrim);
+void DrawPrim(void* prim) {
+    void (*sync)(s32);
+    void (*send)(void*, s32);
+    s32 length;
+
+    sync = *(void (**)(s32))((u8*)D_800568C8 + 0x3C);
+    length = *((u8*)prim + 3);
+    sync(0);
+    send = *(void (**)(void*, s32))((u8*)D_800568C8 + 0x14);
+    send((u8*)prim + 4, length);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawOTag);
 
