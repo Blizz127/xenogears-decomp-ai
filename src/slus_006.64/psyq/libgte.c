@@ -575,7 +575,19 @@ long AverageZ3(long sz1, long sz2, long sz3) {
     return result;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ4);
+long AverageZ4(long sz0, long sz1, long sz2, long sz3) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0x48848000\n\t"
+        ".word 0x48858800\n\t"
+        ".word 0x48869000\n\t"
+        ".word 0x48879800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b68002e\n\t"
+        ".word 0x48023800"
+        : "=r"(result));
+    return result;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct12);
 
