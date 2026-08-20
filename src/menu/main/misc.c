@@ -5689,7 +5689,19 @@ s32 func_801DB920(s32 page, s32 row) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBD4C);
+void func_801DBD4C(s32 inventoryIndexA, s32 inventoryIndexB) {
+    u8 temp;
+
+    temp = g_GameState.itemIDs[inventoryIndexA];
+    g_GameState.itemIDs[inventoryIndexA] =
+        g_GameState.itemIDs[inventoryIndexB];
+    g_GameState.itemIDs[inventoryIndexB] = temp;
+
+    temp = g_GameState.itemQuantities[inventoryIndexA];
+    g_GameState.itemQuantities[inventoryIndexA] =
+        g_GameState.itemQuantities[inventoryIndexB];
+    g_GameState.itemQuantities[inventoryIndexB] = temp;
+}
 #else
 void func_801DBD4C(s32 inventoryIndexA, s32 inventoryIndexB) {
     u8 temp;
