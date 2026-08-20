@@ -402,7 +402,18 @@ int ClearImage(RECT* rect, u_char r, u_char g, u_char b) {
     return clear(*(void**)((u8*)dispatch + 0x0C), rect, 8, color);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearImage2);
+int ClearImage2(RECT* rect, u_char r, u_char g, u_char b) {
+    void* dispatch;
+    int (*clear)(void*, RECT*, s32, u32);
+    u32 color;
+
+    func_8004463C(D_80019180, rect);
+    color = 0x80000000 | ((b & 0xFF) << 16) | ((g & 0xFF) << 8) |
+            (r & 0xFF);
+    dispatch = D_800568C8;
+    clear = *(int (**)(void*, RECT*, s32, u32))((u8*)dispatch + 8);
+    return clear(*(void**)((u8*)dispatch + 0x0C), rect, 8, color);
+}
 
 int LoadImage(RECT* rect, u_long* data) {
     void* dispatch;
