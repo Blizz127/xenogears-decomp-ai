@@ -4475,20 +4475,15 @@ u8* SoundScriptCallE5BC(u8* pScript, AudioManager* pAudioManager, AudioElement* 
 }
 
 // Seq cmd: set raw ADSR attack/decay/sustain fields.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003D60C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 adsr3;
     pAudioElements->voice_data.unkAdsr1 = pScript[0];
     pAudioElements->voice_data.unkAdsr2 = pScript[1];
+    adsr3 = pScript[2];
     pAudioElements->voice_data.flags |= 0x1F0;
-    pAudioElements->voice_data.unkAdsr3 = pScript[2];
+    pAudioElements->voice_data.unkAdsr3 = adsr3;
     return pScript + 3;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D60C);
-#endif
 
 u8* SoundScriptSetAttackTime(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8 attackTime = *pScript;
