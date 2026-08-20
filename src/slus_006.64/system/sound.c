@@ -4170,11 +4170,6 @@ u8* func_8003D034(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 // Seq cmd 0x9E: external jump into a SED file -- find the SED by the
 // element's id (or take the list head), then jump via its 16-bit offset
 // table. Not-found leaves the IP unadvanced (retail behavior).
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
- * (commutative operand order / delay-slot copy placement / register reuse);
- * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     SoundFile* e = g_SoundSedsLinkedList;
     u32 pair = pScript[0] | (pScript[1] << 8);
@@ -4189,14 +4184,11 @@ u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
         }
     }
     {
-        u16 off = *(u16*)((u8*)e + ((q + ((s16)pair << 1)) << 1) + 0x20);
+        u16 off = *(u16*)(((q + ((s16)pair << 1)) << 1) + (u32)e + 0x20);
         pScript = (u8*)e + off;
     }
     return pScript + 3;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D070);
-#endif
 
 // Set tempo handler?
 // Seq cmd: set manager volume (immediate).
