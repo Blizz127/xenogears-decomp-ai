@@ -307,7 +307,20 @@ void SetRotMatrix(MATRIX* m) {
     gte_SetRotMatrix(m);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetLightMatrix);
+void SetLightMatrix(MATRIX* matrix) {
+    __asm__ volatile(
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x8c8b000c\n\t"
+        ".word 0x8c8c0010\n\t"
+        ".word 0x48c84000\n\t"
+        ".word 0x48c94800\n\t"
+        ".word 0x48ca5000\n\t"
+        ".word 0x48cb5800\n\t"
+        ".word 0x48cc6000"
+        : : : "$8", "$9", "$10", "$11", "$12");
+}
 
 void SetColorMatrix(MATRIX* matrix) {
     __asm__ volatile(
