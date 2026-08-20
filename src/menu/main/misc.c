@@ -2887,7 +2887,18 @@ void func_801D1258(void) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D12D4);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D13F8);
+
+void func_801D13F8(void) {
+    s32 i;
+    if (g_Menu->pManager->unk46) {
+        i = 0;
+        do {
+            MenuCharacter* panel = g_Menu->currentCharacters[i];
+            i++;
+            func_801D12D4(panel, 1);
+        } while (i < MAX_PARTY_MEMBERS);
+    }
+}
 #else
 void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
     if (!panel->unkBE7) {
