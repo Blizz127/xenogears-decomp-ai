@@ -786,19 +786,15 @@ void func_80021C00(void* arg0, u32 arg1) {
     *p = (*p & ~0x1F00) | ((arg1 & 0x1F) << 8);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU8);
-/*
-Matches on GCC 2.7.2-970404, ASPSX 2.67
-Co-Authored-By: Mc-muffin <Mc-muffin@users.noreply.github.com>
-
 u_char AnimScriptStackPopU8(SpriteData* pSpriteData) {
     u_char nStackValue;
+    s8 idx = pSpriteData->stackIndex;
 
-    nStackValue = pSpriteData->stack[pSpriteData->stackIndex];
+    nStackValue = pSpriteData->stack[idx];
     pSpriteData->stackIndex++;
     return nStackValue;
 }
-*/
+
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", AnimScriptStackPopU16);
 
