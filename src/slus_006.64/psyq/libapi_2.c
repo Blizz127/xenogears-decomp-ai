@@ -10,7 +10,15 @@ __asm__(
         ".word 0x00001021, 0x03e00008, 0x00000000\n\t"
         ".end setjmp");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", longjmp);
+__asm__(
+        ".globl longjmp\n\t"
+        ".ent longjmp\n\t"
+        "longjmp:\n\t"
+        ".word 0x8c9f0000, 0x8c9c002c, 0x8c9d0004, 0x8c9e0008\n\t"
+        ".word 0x8c90000c, 0x8c910010, 0x8c920014, 0x8c930018\n\t"
+        ".word 0x8c94001c, 0x8c950020, 0x8c960024, 0x8c970028\n\t"
+        ".word 0x00a01021\n\t"
+        ".end longjmp");
 
 void func_8004BEC0(void) {}
 
