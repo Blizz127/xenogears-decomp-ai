@@ -31,6 +31,13 @@ __asm__(
         ".word 0x2409004a\n\t"
         ".end InitCARD2");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StartCARD2);
+__asm__(
+        ".globl StartCARD2\n\t"
+        ".ent StartCARD2\n\t"
+        "StartCARD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x2409004b\n\t"
+        ".end StartCARD2");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD2);
