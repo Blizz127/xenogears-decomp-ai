@@ -238,6 +238,15 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end EnablePAD");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040B00);
+__asm__(
+        ".globl func_80040B00\n\t"
+        ".ent func_80040B00\n\t"
+        "func_80040B00:\n\t"
+        "lui $9, %hi(jtbl_800593B0)\n\t"
+        "lw $9, %lo(jtbl_800593B0)($9)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x01200008\n\t"
+        ".word 0x00000000\n\t"
+        ".end func_80040B00");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", _patch_pad);
