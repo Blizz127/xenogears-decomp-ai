@@ -4176,7 +4176,13 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4EA0);
+void func_801D4EA0(s32 windowIndex) {
+    u8 index = (u8)windowIndex;
+    g_Menu->pManager->shouldRenderWindow[index] = 0;
+    g_Menu->pManager->unk27[index] = 0;
+    HeapFree(g_Menu->windows[index]);
+    HeapFree(g_Menu->windowParameters[index]);
+}
 #else
 /* Window destruction belongs to the dispatcher cleanup, not the Items screen. */
 void func_801D4EA0(s32 windowIndex) {
