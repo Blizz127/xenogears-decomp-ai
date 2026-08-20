@@ -307,11 +307,13 @@ extern void* D_800568C8;
 extern char D_80019104[];
 extern char D_80019134[];
 extern char D_80019148[];
+extern char D_8001918C[];
 extern char D_800191C8[];
 extern char D_800191E0[];
 extern char D_8005698C[];
 extern void DMACallback(s32, void*);
 extern void func_80047178(void*, s32, s32);
+extern void func_8004463C(char*, RECT*);
 
 u8 func_8004440C(u8 arg0) {
     u8 old = D_800568D1;
@@ -390,7 +392,15 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearImage);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", ClearImage2);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", LoadImage);
+int LoadImage(RECT* rect, u_long* data) {
+    void* dispatch;
+    int (*load)(void*, RECT*, s32, u_long*);
+
+    func_8004463C(D_8001918C, rect);
+    dispatch = D_800568C8;
+    load = *(int (**)(void*, RECT*, s32, u_long*))((u8*)dispatch + 8);
+    return load(*(void**)((u8*)dispatch + 0x20), rect, 8, data);
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", StoreImage);
 
