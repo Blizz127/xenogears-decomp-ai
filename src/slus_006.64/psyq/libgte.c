@@ -38,7 +38,46 @@ void InitGeom(void) {
         : : : "$2", "$3", "$8", "memory");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareRoot0);
+__asm__(
+        ".globl SquareRoot0\n\t"
+        ".ent SquareRoot0\n\t"
+        "SquareRoot0:\n\t"
+        ".set noat\n\t"
+        ".word 0x4884f000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4802f800\n\t"
+        ".word 0x24010020\n\t"
+        ".word 0x10410019\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x30480001\n\t"
+        ".word 0x240afffe\n\t"
+        ".word 0x004a5024\n\t"
+        ".word 0x2409001f\n\t"
+        ".word 0x012a4822\n\t"
+        ".word 0x00094843\n\t"
+        ".word 0x214bffe8\n\t"
+        ".word 0x05600003\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x01646004\n\t"
+        ".word 0x10000003\n\t"
+        ".word 0x240b0018\n\t"
+        ".word 0x016a5822\n\t"
+        ".word 0x01646007\n\t"
+        ".word 0x218cffc0\n\t"
+        ".word 0x000c6040\n\t"
+        "lui $13, %hi(D_80056A00)\n\t"
+        ".word 0x01ac6821\n\t"
+        "lh $13, %lo(D_80056A00)($13)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x012d6804\n\t"
+        ".word 0x000d1302\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x24020000\n\t"
+        ".set at\n\t"
+        ".end SquareRoot0");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InvSquareRoot);
 
