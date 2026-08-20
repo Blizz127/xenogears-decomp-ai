@@ -1505,8 +1505,6 @@ void func_801C8D1C(u8 idx) {
     }
 }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D78);
-
 void func_801C8EE8(void) {
     void* pMenu = g_Menu;
     void* pData = *(void**)((u8*)pMenu + 0x32C);
@@ -1607,6 +1605,57 @@ void func_801C90B0(u8 port, u8 slot) {
 
 extern u8 D_801EA6D0[];
 extern s32 D_801EA6F4;
+extern s32 D_801EA900;
+
+void func_801C8D78(u8 port) {
+    char pathBuf[0x38];
+    char entryBuf[0x28];
+    void* pMenu;
+    void* pData;
+    u8 portU = port;
+    s32 port16 = portU << 4;
+    u8* pTable = D_801EA6D0 + port16;
+    s32 retries = 5;
+    u8 count = 0;
+    s32 i;
+    void* pResult;
+
+    D_801EA900 = 0;
+
+    for (i = 0; i < 0x10; i++) {
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + port16 + i + 0x4FAE) = 0xFF;
+        pTable[i] = 0;
+    }
+
+    if (portU == 0) {
+        *(s32*)(pathBuf) = *(s32*)D_801C50A8;
+        *(s16*)(pathBuf + 4) = *(s16*)D_801C50AC;
+        retries--;
+    } else {
+        *(s32*)(pathBuf) = *(s32*)D_801C50B0;
+        *(s16*)(pathBuf + 4) = *(s16*)D_801C50B4;
+        retries--;
+    }
+
+    if (retries != 0) {
+        pResult = firstfile(pathBuf, entryBuf);
+        if (pResult == (void*)entryBuf) {
+            do {
+                s32 idx = port16 + count;
+                s32 off = idx * 0x5C;
+                pMenu = g_Menu;
+                strcpy((char*)(*(void**)((u8*)pMenu + 0x32C) + off + 0x18), entryBuf);
+                count++;
+                pResult = nextfile(entryBuf);
+            } while (pResult == (void*)entryBuf);
+        }
+        pMenu = g_Menu;
+        pData = *(void**)((u8*)pMenu + 0x32C);
+        *(u8*)(pData + portU + 0x4F8A) = count;
+    }
+}
 
 void func_801C9270(u8 port) {
     void* pMenu;
