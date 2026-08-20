@@ -3373,7 +3373,9 @@ void func_801D22F4(s32 mode) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2484);
+void func_801D2484(void) {
+    g_Menu->pManager->shouldRenderPointerCursors = 0;
+}
 #else
 void func_801D2484(void) {
     g_Menu->pManager->shouldRenderPointerCursors = 0;
