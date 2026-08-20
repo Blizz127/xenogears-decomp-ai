@@ -288,6 +288,7 @@ extern u8 D_800568D1;
 extern void* D_800568C8;
 extern char D_80019104[];
 extern char D_80019134[];
+extern char D_80019148[];
 extern char D_800191C8[];
 extern char D_800191E0[];
 extern char D_8005698C[];
@@ -354,15 +355,16 @@ void SetDispMask(int mask) {
     setMask(command);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", DrawSync);
-/*
 int DrawSync(int mode) {
-    if (g_GraphDebugLevel >= 2)
-        g_GpuPrintf("DrawSync(%d)...\n", mode);
+    int (*sync)(int);
 
-    return func_80046DB4(mode);
+    if ((u8)g_GraphDebugLevel >= 2) {
+        g_GpuPrintf(D_80019148, mode);
+    }
+
+    sync = *(int (**)(int))((u8*)D_800568C8 + 0x3C);
+    return sync(mode);
 }
-*/
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgpu", func_8004463C);
 
