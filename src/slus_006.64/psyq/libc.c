@@ -22,7 +22,21 @@ void* memcpy(void* dst, const void* src, int n) {
     return dst;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libc", memchr);
+void* memchr(unsigned char* ptr, unsigned char value, int count) {
+    if (ptr == NULL || count <= 0) {
+        return NULL;
+    }
+
+    count--;
+    while (count >= 0) {
+        if (*ptr++ == value) {
+            return ptr - 1;
+        }
+        count--;
+    }
+
+    return NULL;
+}
 
 /* PSYQ gcc 2.7 often lowers memcpy() to jal bcopy (BSD arg order: src,dst,n).
  * Retail has no standalone bcopy; provide a small non-builtin loop so matching
