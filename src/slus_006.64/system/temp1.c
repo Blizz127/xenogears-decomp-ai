@@ -127,7 +127,30 @@ void func_80022D44(void* pSpriteData) {
     func_8001D2B0(pData, tileIndex);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022DF4);
+#ifndef XENO_PC_PORT
+void func_80022DF4(pWork)
+void* pWork;
+{
+    u8* pWorkData = pWork;
+    u8* pSprite = *(u8**)(pWorkData + 4);
+    void (*onFreeCallback)(void*);
+
+    AnimScriptTick(pSprite);
+    func_80022CDC(pSprite);
+    if (*(u32*)(pSprite + 0x64) != 0) {
+        if (((*(u32*)(pSprite + 0xAC) >> 6) & 1) == 0) {
+            return;
+        }
+        AnimScriptTick(pSprite);
+        func_80022CDC(pSprite);
+        if (*(u32*)(pSprite + 0x64) != 0) {
+            return;
+        }
+    }
+    onFreeCallback = *(void (**)(void*))(pWorkData + 0xC);
+    onFreeCallback(pWork);
+}
+#endif
 
 extern s32 D_800592EC;
 
