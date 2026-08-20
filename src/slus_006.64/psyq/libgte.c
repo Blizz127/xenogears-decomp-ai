@@ -669,7 +669,24 @@ void DpqColorLight(VECTOR* light, CVECTOR* color, long p, CVECTOR* output) {
         ".word 0xe8f60000");
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColor3);
+void DpqColor3(CVECTOR* c0, CVECTOR* c1, CVECTOR* c2, long p,
+        CVECTOR* out0, CVECTOR* out1, CVECTOR* out2) {
+    __asm__ volatile(
+        ".word 0xc8940000\n\t"
+        ".word 0xc8b50000\n\t"
+        ".word 0xc8d60000\n\t"
+        ".word 0xc8c60000\n\t"
+        ".word 0x48874000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4af8002a\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0xe9140000\n\t"
+        ".word 0xe9350000\n\t"
+        ".word 0xe9560000"
+        : : : "$8", "$9", "$10", "memory");
+}
 
 void Intpl(VECTOR* input, long p, CVECTOR* output) {
     __asm__ volatile(
