@@ -2608,7 +2608,17 @@ void func_8003ABE8(u8* arg0, u8 arg1) {
     arg0[0x1B] = arg1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABF0);
+void func_8003ABF0(void* source, void* output) {
+    u32 value = *(u32*)((u8*)source + 0x28) >> 8;
+    u32 units = value / 240;
+    u32 largeUnits;
+
+    *(u32*)output = *(u32*)((u8*)source + 0x24);
+    *(u16*)((u8*)output + 4) = value - units * 240;
+    largeUnits = units / 60;
+    *(u16*)((u8*)output + 6) = units - largeUnits * 60;
+    *(u16*)((u8*)output + 8) = largeUnits;
+}
 
 u16* func_8003AC58(void* pManager) {
     u8* pFlags = (u8*)pManager + 0x94;
