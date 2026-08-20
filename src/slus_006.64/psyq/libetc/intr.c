@@ -101,12 +101,11 @@ void* startIntr() {
     return &g_InterruptEnvironment;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libetc/intr", trapIntr);
-
 extern char D_80019408; // "unexpected interrupt(%04x)\n"
 extern char D_80019424; // "intr timeout(%04x:%04x)\n"
+extern u_short D_800578A6;
+extern u_short D_800578D4;
 
-/*
 void trapIntr() {
     int i;
     u_short mask;
@@ -116,9 +115,8 @@ void trapIntr() {
         ReturnFromException();
     }
 
-    g_InterruptEnvironment.inInterrupt = 1;
-    mask = (g_InterruptEnvironment.enabledInterruptsMask & *g_pI_STAT) & *g_pI_MASK;
-    while (mask) {
+    D_800578A6 = 1;
+    while (mask = (D_800578D4 & *g_pI_STAT) & *g_pI_MASK) {
         for (i = 0; mask && i < 11; ++i, mask >>= 1) {
             if (mask & 1) {
                 *g_pI_STAT = ~(1 << i);
@@ -127,7 +125,6 @@ void trapIntr() {
                 }
             }
         }
-        mask = (g_InterruptEnvironment.enabledInterruptsMask & *g_pI_STAT) & *g_pI_MASK;
     }
 
     if (*g_pI_STAT & *g_pI_MASK) {
@@ -140,10 +137,9 @@ void trapIntr() {
         D_8005893C = 0;
     }
 
-    g_InterruptEnvironment.inInterrupt = 0;
+    D_800578A6 = 0;
     ReturnFromException();
 }
-*/
 
 VoidCallback_t setIntr(int index, VoidCallback_t fn) {
     VoidCallback_t pHandlerFn;
