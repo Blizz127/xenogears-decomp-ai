@@ -358,7 +358,11 @@ void SetDQB(s32 value) {
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomOffset);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomScreen);
+long ReadGeomScreen(void) {
+    long value;
+    __asm__ volatile("cfc2 %0, $26" : "=r"(value));
+    return value;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetBackColor);
 
