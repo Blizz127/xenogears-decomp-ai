@@ -348,7 +348,14 @@ void SetSZfifo3(long sz1, long sz2, long sz3) {
         : : "r"(sz1), "r"(sz2), "r"(sz3));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo4);
+void SetSZfifo4(long sz0, long sz1, long sz2, long sz3) {
+    __asm__ volatile(
+        "mtc2 %0, $16\n\t"
+        "mtc2 %1, $17\n\t"
+        "mtc2 %2, $18\n\t"
+        "mtc2 %3, $19"
+        : : "r"(sz0), "r"(sz1), "r"(sz2), "r"(sz3));
+}
 
 void SetSXSYfifo(long sxy0, long sxy1, long sxy2) {
     __asm__ volatile(
