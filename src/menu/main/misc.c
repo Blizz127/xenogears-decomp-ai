@@ -5379,7 +5379,11 @@ void func_801DB0A8(s32 row, s32 page, s32 mode, s32 cursorIndex) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB340);
+void func_801DB340(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    HeapFree(g_Menu->arrowCursors[index]);
+    g_Menu->pManager->shouldRenderArrowCursor[index] = 0;
+}
 #else
 void func_801DB340(s32 cursorIndex) {
     u8 index = (u8)cursorIndex;
