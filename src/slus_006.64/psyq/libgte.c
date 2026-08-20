@@ -406,7 +406,15 @@ void SetDQB(s32 value) {
     __asm__ volatile("ctc2 %0, $28" : : "r"(value));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomOffset);
+void ReadGeomOffset(long* x, long* y) {
+    __asm__ volatile(
+        ".word 0x4848c000\n\t"
+        ".word 0x4849c800\n\t"
+        ".word 0x00084403\n\t"
+        ".word 0x00094c03\n\t"
+        ".word 0xac880000\n\t"
+        ".word 0xaca90000");
+}
 
 long ReadGeomScreen(void) {
     long value;
