@@ -208,7 +208,14 @@ __asm__(
         ".word 0x24090002\n\t"
         ".end SysEnqIntRP");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", SysDeqIntRP);
+__asm__(
+        ".globl SysDeqIntRP\n\t"
+        ".ent SysDeqIntRP\n\t"
+        "SysDeqIntRP:\n\t"
+        ".word 0x240a00c0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090003\n\t"
+        ".end SysDeqIntRP");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", EnablePAD);
 
