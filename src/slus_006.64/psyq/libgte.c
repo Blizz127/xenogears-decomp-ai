@@ -726,7 +726,21 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSS12);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSS0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSL12);
+VECTOR* SquareSL12(SVECTOR* input, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0x84820000\n\t"
+        ".word 0x84830002\n\t"
+        ".word 0x48824800\n\t"
+        ".word 0x48835000\n\t"
+        ".word 0xc88b0004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4aa80428\n\t"
+        ".word 0xe8a90000\n\t"
+        ".word 0xe8aa0004\n\t"
+        ".word 0xe8ab0008"
+        : : "r"(input), "r"(output) : "$2", "$3", "memory");
+    return output;
+}
 
 VECTOR* SquareSL0(SVECTOR* input, VECTOR* output) {
     __asm__ volatile(
