@@ -163,7 +163,14 @@ s32 func_80040A4C(void) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD2);
+__asm__(
+        ".globl InitPAD2\n\t"
+        ".ent InitPAD2\n\t"
+        "InitPAD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090012\n\t"
+        ".end InitPAD2");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StartPAD2);
 
