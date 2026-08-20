@@ -303,7 +303,12 @@ void SetTransMatrix(MATRIX* m) {
     gte_SetTransMatrix(m);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex0);
+void SetVertex0(SVECTOR* vertex) {
+    __asm__ volatile(
+        "lwc2 $0, 0(%0)\n\t"
+        "lwc2 $1, 4(%0)"
+        : : "r"(vertex));
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex1);
 
