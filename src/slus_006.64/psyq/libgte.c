@@ -329,7 +329,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRii);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetMAC123);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetData32);
+void SetData32(s32 value) {
+    __asm__ volatile("mtc2 %0, $30" : : "r"(value));
+}
 
 void SetDQA(s32 value) {
     __asm__ volatile("ctc2 %0, $27" : : "r"(value));
