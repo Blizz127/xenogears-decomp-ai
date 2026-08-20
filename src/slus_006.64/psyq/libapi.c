@@ -14,7 +14,17 @@ extern volatile long* g_pInterruptStatusRegister;
 extern volatile Counter* g_pRCounters;
 extern volatile long g_InterruptStatusMasks[4];
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", ChangeClearPAD);
+__asm__(
+        ".globl ChangeClearPAD\n\t"
+        ".ent ChangeClearPAD\n\t"
+        "ChangeClearPAD:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x2409005b\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x03801021\n\t"
+        ".end ChangeClearPAD");
 
 long SetRCnt(long spec, short target, long mode) {
     int i = spec & 0xFFFF;
