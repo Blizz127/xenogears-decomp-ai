@@ -348,7 +348,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSXSYfifo);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRii);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetMAC123);
+void SetMAC123(long mac1, long mac2, long mac3) {
+    __asm__ volatile(
+        "mtc2 %0, $25\n\t"
+        "mtc2 %1, $26\n\t"
+        "mtc2 %2, $27"
+        : : "r"(mac1), "r"(mac2), "r"(mac3));
+}
 
 void SetData32(s32 value) {
     __asm__ volatile("mtc2 %0, $30" : : "r"(value));
