@@ -2,7 +2,15 @@
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCopen);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PCclose);
+__asm__(
+        ".globl PCclose\n\t"
+        ".ent PCclose\n\t"
+        "PCclose:\n\t"
+        ".word 0x00802821\n\t"
+        ".word 0x0000410d\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end PCclose");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libsn", PClseek);
 
