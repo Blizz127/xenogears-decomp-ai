@@ -6067,10 +6067,6 @@ void func_801DC1D4(u8 category) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC2CC);
-#else
-
 /* Nav N3a-A1a: Abilities teardown, reached from the ported common-exit
  * dispatcher func_801E3088 case 3.  Destroys the four windows, drops the
  * cursor state, frees the category's resource bank (mode | 0x10) and the
@@ -6091,12 +6087,16 @@ void func_801DC2CC(s32 category) {
     g_Menu->pManager->unk4A[0] = 0;
     func_801C7BF4();
 
-    if (cat == 1) {
-        mode = 5;
-    } else if (cat == 2) {
-        mode = 6;
-    } else {
+    switch (cat) {
+    case 0:
         mode = 2;
+        break;
+    case 1:
+        mode = 5;
+        break;
+    case 2:
+        mode = 6;
+        break;
     }
 
     func_801C72BC((mode | 0x10) & 0xFF);
@@ -6105,7 +6105,6 @@ void func_801DC2CC(s32 category) {
     g_Menu->pManager->unk5[1] = 1;
     g_Menu->pManager->shouldRenderWindow[1] = 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC3D8);
