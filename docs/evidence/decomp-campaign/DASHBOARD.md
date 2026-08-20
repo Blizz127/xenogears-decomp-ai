@@ -10,14 +10,14 @@ _Last updated: 2026-08-19_
 | Metric | Value |
 |--------|-------|
 | **Branch** | `integrate/w34b24-i1` |
-| **HEAD** | `c438d055` (Decompile func_801D9C84 — menu CD callback init + memory card setup) |
+| **HEAD** | `b357c6d2` (Decompile func_801E0434 — menu item scatter to inventory table) |
 | **Build** | 468/468 targets — PASSING |
 | **Decomp_status universe** | 2477 functions |
-| **Matched {}** | 1972 (79.6%) |
+| **Matched {}** | 1973 (79.7%) |
 | **Coexistence** | 170 (6.9%) |
-| **Unported** | 335 (13.5%) |
-| **Total done** | 2142 (86.5%) |
-| **Decomp commits (this campaign)** | 604 |
+| **Unported** | 334 (13.5%) |
+| **Total done** | 2143 (86.5%) |
+| **Decomp commits (this campaign)** | 605 |
 | **First campaign commit** | `c55830a` (Decompile ArchiveDataSync) |
 
 ---
