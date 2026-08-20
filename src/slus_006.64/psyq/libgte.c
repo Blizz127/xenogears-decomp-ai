@@ -573,7 +573,17 @@ long AverageSZ4(void) {
     return value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LightColor);
+void LightColor(VECTOR* input, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0xc8890000\n\t"
+        ".word 0xc88a0004\n\t"
+        ".word 0xc88b0008\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a4da412\n\t"
+        ".word 0xe8a90000\n\t"
+        ".word 0xe8aa0004\n\t"
+        ".word 0xe8ab0008");
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColorLight);
 
