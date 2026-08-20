@@ -2097,10 +2097,6 @@ void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan) {
     }
 }
 
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
- * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: global-load scheduling (the event-handle load sits two slots earlier); same instruction multiset.
- * Not claimed as {}. */
 // SFX: stop ALL effect elements (the D_80059478 SFX region of the main
 // manager) under the tick bracket and clear the busy mask.
 void func_80039FF8(void) {
@@ -2109,8 +2105,8 @@ void func_80039FF8(void) {
     AudioElement* el;
     SoundVoiceData* vd;
 
-    DisableEvent(g_unk_SoundEvent);
     el = &manager->elements[0];
+    DisableEvent(g_unk_SoundEvent);
     vd = &manager->elements[0].voice_data;
     do {
         if (el->active_flag & 0x1) {
@@ -2124,9 +2120,6 @@ void func_80039FF8(void) {
     manager->unk_0x48 = 0;
     EnableEvent(g_unk_SoundEvent);
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039FF8);
-#endif
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching
