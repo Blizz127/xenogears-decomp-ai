@@ -817,7 +817,23 @@ VECTOR* SquareSL0(SVECTOR* input, VECTOR* output) {
     return output;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers);
+long RotTransPers(SVECTOR* input, long* sxy, long* p, long* flag) {
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a180001\n\t"
+        ".word 0xe8ae0000\n\t"
+        ".word 0xe8c80000\n\t"
+        ".word 0x4843f800\n\t"
+        ".word 0x48029800\n\t"
+        ".word 0xace30000"
+        : "=r"(result)
+        : "r"(input), "r"(sxy), "r"(p), "r"(flag)
+        : "$3", "memory");
+    return result >> 2;
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers3);
 
