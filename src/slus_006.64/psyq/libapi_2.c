@@ -32,6 +32,13 @@ __asm__(
         ".word 0x24090017\n\t"
         ".end ReturnFromException");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ResetEntryInt);
+__asm__(
+        ".globl ResetEntryInt\n\t"
+        ".ent ResetEntryInt\n\t"
+        "ResetEntryInt:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090018\n\t"
+        ".end ResetEntryInt");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", HookEntryInt);
