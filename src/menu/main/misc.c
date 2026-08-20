@@ -2305,7 +2305,14 @@ void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE2B4);
+void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                pList + (renderCtx + i * 2) * sizeof(POLY_FT4));
+    }
+}
 #else
 /* Arc A portraits: AddPrim `count` double-buffered polys from a portrait list
  * (each entry is a pair; draw the renderCtx half). */
