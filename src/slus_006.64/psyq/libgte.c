@@ -800,7 +800,30 @@ void OuterProduct12(VECTOR* left, VECTOR* right, VECTOR* output) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct0);
+void OuterProduct0(VECTOR* left, VECTOR* right, VECTOR* output) {
+    __asm__ volatile(
+        ".word 0x484d0000\n\t"
+        ".word 0x484e1000\n\t"
+        ".word 0x484f2000\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c91000\n\t"
+        ".word 0x48ca2000\n\t"
+        ".word 0xc8ab0008\n\t"
+        ".word 0xc8a90000\n\t"
+        ".word 0xc8aa0004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4b70000c\n\t"
+        ".word 0xe8d90000\n\t"
+        ".word 0xe8da0004\n\t"
+        ".word 0xe8db0008\n\t"
+        ".word 0x48cd0000\n\t"
+        ".word 0x48ce1000\n\t"
+        ".word 0x48cf2000"
+        : : : "$8", "$9", "$10", "$13", "$14", "$15", "memory");
+}
 #else
 #include "psyq/libgte.h" /* shim -> PsyX libgte.h: VECTOR/SVECTOR types */
 /* asm: loads v0 into the GTE rotation diagonal (D1/D2/D3), v1 into IR1/2/3,
