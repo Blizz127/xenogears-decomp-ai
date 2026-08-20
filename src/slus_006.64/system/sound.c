@@ -5204,18 +5204,18 @@ u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 }
 
 // Seq cmd 0xFC: select sample bank + load instrument in one command.
-#ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; matching build
  * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
  * (commutative operand order / delay-slot copy placement / register reuse);
  * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    u8* p = pScript;
-    AudioElement* el = pAudioElements;
+    register AudioElement* el asm("$16") = pAudioElements;
+    register u8* p asm("$17") = pScript;
     SoundWDSEntry* e;
-    u8 inst = p[1];
-    ((u8*)&el->unk_0x24)[1] = p[0];
-    e = SoundFindWdsEntry(p[0]);
+    u8 bank = p[0];
+    register u8 inst asm("$18") = p[1];
+    ((u8*)&el->unk_0x24)[1] = bank;
+    e = SoundFindWdsEntry(bank);
     if (e == NULL) {
         e = g_SoundWdsLinkedList;
     }
@@ -5223,9 +5223,6 @@ u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     func_8003E5BC(inst, el);
     return p + 2;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E44C);
-#endif
 
 // Seq cmd: master level (manager interpolator immediate).
 u8* func_8003E4BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
