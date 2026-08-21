@@ -15,6 +15,7 @@ extern s16 D_800AFB54;
 extern s16 func_8007B1C4(s16 x, s16 z, s32 walkmeshId, s16* out, s32* state);
 extern int FieldScriptArgument3(int index, int mask);
 extern int FieldScriptArgument4(int index, int mask);
+extern u32 FieldScriptVMGetActorIndex(int bytecodeOffset);
 long FieldGetVec3Magnitude(long x, long y, long z);
 long FieldGetVec2Magnitude(long x, long y);
 s32 func_80099AC0(s32 useStoredAngle);
@@ -841,7 +842,6 @@ long FieldGetVec1Magnitude(long x) {
     return SquareRoot0(vecSquared.vx);
 }
 
-extern u32 FieldScriptVMGetActorIndex(int bytecodeOffset);
 extern int FieldScriptArgument1(int index, int mask);
 extern int FieldScriptArgument2(int index, int mask);
 
