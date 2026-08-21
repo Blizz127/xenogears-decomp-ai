@@ -1965,6 +1965,9 @@ __asm__(
 #endif
 
 /* Handwritten GTE color-processing routine retained as assembly. */
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
+ * assembler (same guard as func_80025C04 above). */
 __asm__(
         ".globl func_80025D4C\n\t"
         ".ent func_80025D4C\n\t"
@@ -2005,6 +2008,7 @@ __asm__(
         ".word 0x25adffff, 0x2402ffff\n\t"
         ".word 0x15a2ff81, 0x24020001, 0x8fb10014, 0x8fb00010, 0x27bd0018, 0x03e00008, 0x00000000\n\t"
         ".end func_80025D4C");
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025FA8);
 
