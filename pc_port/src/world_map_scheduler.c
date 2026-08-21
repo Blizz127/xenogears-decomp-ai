@@ -48,6 +48,7 @@
 #include "world_map_callback_8e76c.h"
 #include "world_map_callback_8e190.h"
 #include "world_map_callback_906e0.h"
+#include "world_map_helper_907f4.h"
 #include "world_map_callback_91430.h"
 #include "world_map_callback_91b54.h"
 #include "world_map_callback_914d0.h"
@@ -86,6 +87,7 @@ extern s32 wm_8008DD6C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008E190(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008E76C(s32 slot_index) __attribute__((weak));
 extern s32 wm_800906E0(s32 slot_index) __attribute__((weak));
+extern s32 wm_800907F4(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091430(s32 slot_index) __attribute__((weak));
 extern s32 wm_800914D0(s32 slot_index) __attribute__((weak));
 extern s32 wm_80091B54(s32 slot_index) __attribute__((weak));
@@ -278,6 +280,12 @@ static s16 wm_sched_builtin_800906E0(int slot_index)
     return (s16)wm_800906E0((s32)slot_index);
 }
 
+/* Slot 8 Table-A cb1. */
+static s16 wm_sched_builtin_800907F4(int slot_index)
+{
+    return (s16)wm_800907F4((s32)slot_index);
+}
+
 static s16 wm_sched_builtin_80091430(int slot_index)
 {
     return (s16)wm_80091430((s32)slot_index);
@@ -424,6 +432,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x800906E0u && wm_800906E0 != 0) {
         *out_fn = wm_sched_builtin_800906E0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800907F4u && wm_800907F4 != 0) {
+        *out_fn = wm_sched_builtin_800907F4;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x80091430u && wm_80091430 != 0) {
