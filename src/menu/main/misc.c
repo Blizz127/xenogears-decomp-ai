@@ -5212,25 +5212,24 @@ void func_801DA4A8(void) {
     func_801C72BC(0);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA518);
-#else
 void func_801DA518(void) {
-    ItemMenuWork* work = MenuItemWork();
+    void* pMenu;
+    void* pWork;
 
     func_801D3444();
     func_801D4EA0(3);
     func_801D4EA0(4);
-    g_Menu->pManager->unk48 = 0;
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x33C) + 0x48) = 0;
     func_801C72BC(0x10);
-
-    /* Retail repeats the two payload frees after the resource-engine cleanup;
-     * the Xenogears heap free operation is idempotent for an unpinned block. */
-    HeapFree((void*)(uintptr_t)work->descriptionBundle);
-    HeapFree(work);
-    HeapFree(g_Menu->unk330->pItemsData);
+    pMenu = g_Menu;
+    pWork = *(void**)((u8*)pMenu + 0x42C);
+    HeapFree(*(void**)((u8*)pWork + 0x1180));
+    pMenu = g_Menu;
+    HeapFree(*(void**)((u8*)pMenu + 0x42C));
+    pMenu = g_Menu;
+    HeapFree(*(void**)(*(void**)((u8*)pMenu + 0x330) + 0x1C));
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA5BC);
