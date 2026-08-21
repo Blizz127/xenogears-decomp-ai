@@ -6789,7 +6789,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF890);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFB68);
 
-extern void func_801E3ECC(s32, u8);
+extern void func_801E3ECC(void*, u8);
 extern void func_801E3C2C(s32, u8);
 
 void func_801DFE2C(u8 slotIdx) {
@@ -7341,7 +7341,53 @@ void func_801E3A80(void* pCtx, u8 charIdx) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3ECC);
+extern void func_801E433C(s32, u8);
+extern void func_801E4754(void*, u8);
+
+void func_801E3ECC(void* arg0, u8 idx) {
+    u8 i;
+
+    func_801E433C(arg0, idx);
+    func_801E4754(arg0, idx);
+
+    switch (idx) {
+    case 0:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0xA25 + i] = ((u8*)&g_GameState)[0x981 + i];
+        func_801E433C(arg0, 1);
+        break;
+    case 1:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0x131D + i] = ((u8*)&g_GameState)[0xA25 + i];
+        func_801E433C(arg0, 0xF);
+        break;
+    case 2:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0xFE9 + i] = ((u8*)&g_GameState)[0xAC9 + i];
+        func_801E433C(arg0, 0xA);
+        break;
+    case 3:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0x108D + i] = ((u8*)&g_GameState)[0xB6D + i];
+        func_801E433C(arg0, 0xB);
+        break;
+    case 4:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0x1131 + i] = ((u8*)&g_GameState)[0xC11 + i];
+        func_801E433C(arg0, 0xC);
+        ((u8*)&g_GameState)[0x1134] = ((u8*)&g_GameState)[0xC14];
+        func_801E4754(arg0, 0xC);
+        break;
+    case 5:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0x11D5 + i] = ((u8*)&g_GameState)[0xCB5 + i];
+        func_801E433C(arg0, 0xD);
+        ((u8*)&g_GameState)[0x11D8] = ((u8*)&g_GameState)[0xCB8];
+        ((u8*)&g_GameState)[0x11DB] = ((u8*)&g_GameState)[0xCBB];
+        ((u8*)&g_GameState)[0x11D0] = ((u8*)&g_GameState)[0xCB0];
+        ((u8*)&g_GameState)[0x11D3] = ((u8*)&g_GameState)[0xCB3];
+        func_801E4754(arg0, 0xD);
+        break;
+    case 6:
+        for (i = 0; i < 3; i++) ((u8*)&g_GameState)[0x1279 + i] = ((u8*)&g_GameState)[0xD59 + i];
+        func_801E433C(arg0, 0xE);
+        break;
+    }
+}
 
 extern void func_801E41C0(s32, u8);
 extern void func_801E42AC(s32, u8);
