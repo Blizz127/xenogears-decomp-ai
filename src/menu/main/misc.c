@@ -5048,8 +5048,6 @@ u8 func_801D9704(u8 current, s32 backward, s32 gearMode) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9808);
 
 void func_801D9B08(void) {
-    void* pMenu;
-    void* pData;
     func_801C8960();
     Vsync(0);
     InitCARD(1);
@@ -5058,24 +5056,14 @@ void func_801D9B08(void) {
     DrawSync(0);
     Vsync(0);
     EnterCriticalSection();
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(void**)((u8*)pData + 0x4FEC) = OpenEvent(0xF4000001, 0x4, 0x2000, NULL);
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(void**)((u8*)pData + 0x4FF0) = OpenEvent(0xF4000001, 0x8000, 0x2000, NULL);
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(void**)((u8*)pData + 0x4FF4) = OpenEvent(0xF4000001, 0x100, 0x2000, NULL);
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(void**)((u8*)pData + 0x4FF8) = OpenEvent(0xF4000001, 0x2000, 0x2000, NULL);
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    EnableEvent(*(void**)((u8*)pData + 0x4FEC));
-    EnableEvent(*(void**)((u8*)pData + 0x4FF0));
-    EnableEvent(*(void**)((u8*)pData + 0x4FF4));
-    EnableEvent(*(void**)((u8*)pData + 0x4FF8));
+    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FEC) = OpenEvent(0xF4000001, 0x4, 0x2000, NULL);
+    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF0) = OpenEvent(0xF4000001, 0x8000, 0x2000, NULL);
+    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF4) = OpenEvent(0xF4000001, 0x100, 0x2000, NULL);
+    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF8) = OpenEvent(0xF4000001, 0x2000, 0x2000, NULL);
+    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FEC));
+    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF0));
+    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF4));
+    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF8));
     ExitCriticalSection();
 }
 
