@@ -1937,7 +1937,46 @@ INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50B4);
 
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50B8);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA750);
+extern void func_801C9EF4(s32 direction, s32 selection);
+extern void func_801CA1D4(s32 direction, s32 selection);
+
+s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
+    s32 result = 0;
+    u8* data;
+    s32 selection;
+
+    switch (*((u8*)g_Menu + 0x325)) {
+    case 4:
+        result = 1;
+        break;
+    case 5:
+        result = 2;
+        break;
+    case 0:
+        func_801C9EF4(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C));
+        break;
+    case 2:
+        func_801CA1D4(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C));
+        break;
+    case 1:
+        func_801CA480(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C), limit);
+        break;
+    case 3:
+        func_801CA5F0(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C), limit);
+        break;
+    }
+
+    data = (u8*)g_Menu->unk32C;
+    selection = *(s32*)(data + 0x4F7C);
+    if (selection != *(s32*)(data + 0x4F80)) {
+        u8* entry = data + D_801E981C[selection];
+
+        func_801E781C(entry[0x4FAE], entry[0x4F8E]);
+        data = (u8*)g_Menu->unk32C;
+        *(s32*)(data + 0x4F80) = *(s32*)(data + 0x4F7C);
+    }
+    return result;
+}
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA8C0);
 
