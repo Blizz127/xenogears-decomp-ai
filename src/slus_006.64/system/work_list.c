@@ -313,8 +313,6 @@ WorkListCallback_t WorkListTaskGetOnFreeCallback(WorkListEntry* pTask) {
     return pTask->onFreeCallback;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListRemoveTask);
-/*
 void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
     WorkListEntry* pCurEntry;
@@ -344,7 +342,6 @@ void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     
     g_NumTimerWorkListEntries--;
 }
-*/
 
 void TimerWorkListDeleteTask(WorkListEntry* pTask) {
     TimerWorkListRemoveTask(pTask);
