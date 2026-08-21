@@ -398,7 +398,11 @@ void func_8007954C(s32 exitCode) {
 
     case 2: {
         void* gameState = g_pGameState;
+#ifdef XENO_PC_PORT
+        s32 skin = D_8004F324;
+#else
         register s32 skin __asm__("$3") = D_8004F324;
+#endif
         s32 pending = D_8004F370;
         u16 priorSkin = *(u16*)((u8*)gameState + 0x1932);
 
