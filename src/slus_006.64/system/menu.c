@@ -344,6 +344,10 @@ void MenuMain() {
     g_MenuDebugEnabled = 1;
 }
 
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and 4-byte .word are rejected/misread by the host
+ * assembler.  Nothing in the port references this table; the stub generator
+ * covers the symbol if a reference ever appears. */
 __asm__(
         ".globl func_8001C76C\n\t"
         ".ent func_8001C76C\n\t"
@@ -372,3 +376,4 @@ __asm__(
         ".word 0x06f8f199, 0x0000fffb, 0x06fcf19b, 0x00000024\n\t"
         ".word 0x04e3f5de, 0x0000f49f, 0x00000000, 0x0000f000\n\t"
         ".end func_8001C76C");
+#endif
