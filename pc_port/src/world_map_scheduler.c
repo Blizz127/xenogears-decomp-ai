@@ -63,6 +63,7 @@
 #include "world_map_frame_driver_712d0.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_callback_87710.h"
+#include "world_map_callback_87734.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
 #include "world_map_callback_8d678.h"
@@ -101,6 +102,7 @@ extern s32 wm_80092FD8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80071A50(s32 slot_index) __attribute__((weak));
 extern s32 wm_80071A58(s32 slot_index) __attribute__((weak));
 extern s32 wm_80087710(s32 slot_index) __attribute__((weak));
+extern s32 wm_80087734(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -348,11 +350,16 @@ static s16 wm_sched_builtin_80071A58(int slot_index)
     return (s16)wm_80071A58((s32)slot_index);
 }
 
-/* Slot 15 Table-B cb0. Its cb1 partner 0x80087734 and the byte-identical,
- * independently owned callback 0x800877E0 remain unresolved. */
+/* Slot 15 Table-B cb0. Twin 0x800877E0 remains a distinct unresolved
+ * Table-B stream and is not aliased to this cb1. */
 static s16 wm_sched_builtin_80087710(int slot_index)
 {
     return (s16)wm_80087710((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80087734(int slot_index)
+{
+    return (s16)wm_80087734((s32)slot_index);
 }
 
 static int wm_sched_is_known_missing(u32 guest_addr)
@@ -488,6 +495,10 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80087710u && wm_80087710 != 0) {
         *out_fn = wm_sched_builtin_80087710;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80087734u && wm_80087734 != 0) {
+        *out_fn = wm_sched_builtin_80087734;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
