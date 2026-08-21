@@ -1946,7 +1946,47 @@ __asm__(
         ".word 0x03e00008, 0x00000000\n\t"
         ".end func_80025C04");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025D4C);
+/* Handwritten GTE color-processing routine retained as assembly. */
+__asm__(
+        ".globl func_80025D4C\n\t"
+        ".ent func_80025D4C\n\t"
+        "func_80025D4C:\n\t"
+        ".word 0x27bdffe8, 0x8fb9002c, 0x8fa30038, 0x8fb80030, 0x00806821, 0xafb00010, 0x8fb00028, 0x8fae0034\n\t"
+        ".word 0x00a07821, 0x28620021, 0x14400002, 0xafb10014, 0x24030020, 0x000311c0, 0x48824000, 0x0018c280\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_loop_test\n\t"
+        ".word 0x08000000, 0x0019c940, 0x95e80000, 0x11c20011, 0x29c20002, 0x10400005, 0x24020002, 0x11c00009\n\t"
+        ".word 0x01901021\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_apply\n\t"
+        ".word 0x08000000, 0x00402021, 0x11c20010, 0x24020003, 0x11c20015, 0x01901021\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_apply\n\t"
+        ".word 0x08000000, 0x00402021, 0x310c001f, 0x310b03e0\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
+        ".word 0x08000000, 0x310a7c00, 0x3102001e, 0x00026042, 0x310203c0\n\t"
+        ".word 0x00025842, 0x31027800\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
+        ".word 0x08000000, 0x00025042, 0x3102001c, 0x00026082, 0x31020380, 0x00025882\n\t"
+        ".word 0x31027000\n\t"
+        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
+        ".word 0x08000000, 0x00025082, 0x3c055555, 0x34a55556, 0x310303e0, 0x31047c00, 0x3102001f\n\t"
+        ".word 0x00031942, 0x00431021, 0x00042282, 0x00441021, 0x00450018, 0x000217c3, 0x00008810, 0x02221023\n\t"
+        ".word 0x00406021, 0x00025940, 0x00025280\n\t"
+        ".Lfunc_80025D4C_components_done:\n\t"
+        ".word 0x01901021, 0x00402021\n\t"
+        ".Lfunc_80025D4C_apply:\n\t"
+        ".word 0x00021400, 0x04410002, 0x01791021\n\t"
+        ".word 0x00002021, 0x00404821, 0x00021400, 0x04410002, 0x01581021, 0x00004821, 0x00402821, 0x00021400\n\t"
+        ".word 0x04410002, 0x00041400, 0x00002821, 0x00021403, 0x28420020, 0x14400002, 0x00091400, 0x2404001f\n\t"
+        ".word 0x00021403, 0x284203e1, 0x14400002, 0x00051400, 0x240903e0, 0x00021403, 0x28427c01, 0x14400002\n\t"
+        ".word 0x00041400, 0x24057c00, 0x94c30000, 0x00021403, 0x3063001f, 0x00621823, 0x00091400, 0xafa30000\n\t"
+        ".word 0x94c30000, 0x00021403, 0x306303e0, 0x00621823, 0x00051400, 0xafa30004, 0x94c30000, 0x00021403\n\t"
+        ".word 0x30637c00, 0x00621823, 0xafa30008, 0xcba90000, 0xcbaa0004, 0xcbab0008, 0x00000000, 0x00000000\n\t"
+        ".word 0x4b98003d, 0xeba90000, 0xebaa0004, 0xebab0008, 0x1100000e, 0x00000000, 0x97a20000, 0x97a30008\n\t"
+        ".word 0x3042001f, 0x00821021, 0x34428000, 0x30637c00, 0x97a40004, 0x00a31821, 0x308403e0, 0x01242021\n\t"
+        ".word 0x00441025, 0x00431025, 0xa4e20000, 0x25ef0002, 0x24c60002, 0x24e70002\n\t"
+        ".Lfunc_80025D4C_loop_test:\n\t"
+        ".word 0x25adffff, 0x2402ffff\n\t"
+        ".word 0x15a2ff81, 0x24020001, 0x8fb10014, 0x8fb00010, 0x27bd0018, 0x03e00008, 0x00000000\n\t"
+        ".end func_80025D4C");
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025FA8);
 
