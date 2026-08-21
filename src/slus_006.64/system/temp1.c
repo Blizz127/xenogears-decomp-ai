@@ -2280,6 +2280,9 @@ s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
     return count;
 }
 
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
+ * assembler (same guard as func_80025C04 / func_80025D4C above). */
 __asm__(
         ".globl func_80026F44\n\t"
         ".ent func_80026F44\n\t"
@@ -2299,6 +2302,7 @@ __asm__(
         ".reloc ., R_MIPS_26, .Lfunc_80026F44_loop\n\t"
         ".word 0x08000000, 0x00000000, 0x03e00008, 0x00000000\n\t"
         ".end func_80026F44");
+#endif
 
 __asm__(
         ".globl func_80026FE8\n\t"
