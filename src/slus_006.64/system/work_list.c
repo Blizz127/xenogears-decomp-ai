@@ -409,8 +409,6 @@ void func_8001CE74(WorkListEntry* pTargetEntry) {
 */
 
 // Set pCurEntry->unk4->unk70 of target entry if unk14_1 flag is set
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D034);
-/*
 void func_8001D034(WorkListEntry* pTargetEntry) {
     WorkListEntry* pCurEntry;
 
@@ -425,7 +423,6 @@ void func_8001D034(WorkListEntry* pTargetEntry) {
         }   
     }
 }
-*/
 
 void* func_8001D0A4(void* pTask, void* pCallback) {
     void* pCur = g_TimerWorkList;
