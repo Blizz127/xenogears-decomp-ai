@@ -8099,19 +8099,18 @@ void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8044);
-#else
-/* Nav N1: zero `count` visibility flags (the pManager->unkC string flags). */
 void func_801E8044(s32 count, void* pFlags) {
-    u8* p = (u8*)pFlags;
-    s32 i;
+    u8* end;
 
-    for (i = 0; i < (count & 0xFF); i++) {
-        p[i] = 0;
+    count &= 0xFF;
+    if (count != 0) {
+        end = (u8*)(count + (s32)pFlags);
+        do {
+            *(u8*)pFlags = 0;
+            pFlags = (u8*)pFlags + 1;
+        } while ((s32)pFlags < (s32)end);
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
