@@ -3,6 +3,13 @@
 #include "psyq/kernel.h"
 #include "psyq/libspu.h"
 
+#ifdef XENO_PC_PORT
+/* Host GNU C has no implicit int(): prototypes must precede first use.
+ * Matching build keeps the original implicit-decl order (gcc 2.7.2). */
+SoundWDSEntry* SoundFindWdsEntry(int targetID);
+AudioManager* func_80039850(SoundFile* pFile);
+#endif
+
 //----------------------------------------------------------------------------------------------------------------------
 // SPU DECLARATIONS
 //----------------------------------------------------------------------------------------------------------------------
@@ -1016,7 +1023,11 @@ void SoundAddSedsEntry(SoundFile* pSoundFile) {
     EnableEvent(g_unk_SoundEvent);
 }
 
+#ifdef XENO_PC_PORT
+extern void func_8003A094(SoundFile*);
+#else
 extern void func_8003A094(void*);
+#endif
 extern void SoundHandleError(s32);
 
 void func_8003852C(void* pSed) {
@@ -4067,7 +4078,11 @@ u8* SoundScriptLowerOctave(u8* pScript, AudioManager* pAudioManager, AudioElemen
 // Time signature handler?
 // Seq cmd: time signature -- beats/measure + beat length (0xC0/denominator).
 u8* func_8003CE68(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+#ifdef XENO_PC_PORT
+    s32 denom = pScript[1];
+#else
     register s32 denom asm("$6") = pScript[1];
+#endif
     s32 beats = pScript[0];
     pAudioManager->unk_0x3a = 0xC0 / denom;
     pAudioManager->unk_0x3c = denom;
@@ -4385,8 +4400,13 @@ u8* SoundScriptSetVoiceFlags2000ClearMode(u8* pScript, AudioManager* pAudioManag
 // SoundSetReverbModeWithAllocation (auto work-area).
 u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8 mode = pScript[0];
+#ifdef XENO_PC_PORT
+    s32 depthL;
+    s32 depthR;
+#else
     register s32 depthL asm("$6");
     register s32 depthR asm("$7");
+#endif
     *(u16*)&pAudioManager->unk_0x40[4] = mode << 8;
     depthL = ((s8*)pScript)[1];
     pAudioManager->unk_0x40[2] = depthL;
@@ -5135,11 +5155,19 @@ u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
  * (commutative operand order / delay-slot copy placement / register reuse);
  * ops+offsets audited 1:1 against the split asm. */
 u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+#ifdef XENO_PC_PORT
+    AudioElement* el = pAudioElements;
+    u8* p = pScript;
+    SoundWDSEntry* e;
+    u8 bank = p[0];
+    u8 inst = p[1];
+#else
     register AudioElement* el asm("$16") = pAudioElements;
     register u8* p asm("$17") = pScript;
     SoundWDSEntry* e;
     u8 bank = p[0];
     register u8 inst asm("$18") = p[1];
+#endif
     ((u8*)&el->unk_0x24)[1] = bank;
     e = SoundFindWdsEntry(bank);
     if (e == NULL) {
