@@ -1036,11 +1036,18 @@ extern s16 D_800592EA;
 
 void func_8001FB30(void) {
     u8* pStack = HeapAlloc(0x2000, 1);
+#ifdef XENO_PC_PORT
+    /* Host cannot emit R3000 $sp move/lw. Alloc/free stay so heap state
+     * matches retail; the native stack needs no switch (same as the
+     * game_overrides trampoline). Matching build keeps the three asms. */
+    func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
+#else
     u8* pOldSp;
     __asm__ volatile("move %0, $sp" : "=r"(pOldSp));
     __asm__ volatile("move $sp, %0" : : "r"(pStack + 0x1F00 - 4));
     *(u32*)(pStack + 0x1F00 - 4) = (u32)pOldSp;
     func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
     __asm__ volatile("lw $sp, 0($sp)");
+#endif
     HeapFree(pStack);
 }
