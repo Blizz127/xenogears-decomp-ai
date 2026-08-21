@@ -349,8 +349,6 @@ void TimerWorkListDeleteTask(WorkListEntry* pTask) {
 }
 
 // Unlink target entry from lists if certain flags are met
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001CE74);
-/*
 void func_8001CE74(WorkListEntry* pTargetEntry) {
     WorkListCallback_t pFnOnDeleteCallback;
     WorkListEntry* pCurEntry;
@@ -406,7 +404,6 @@ void func_8001CE74(WorkListEntry* pTargetEntry) {
         }
     }
 }
-*/
 
 // Set pCurEntry->unk4->unk70 of target entry if unk14_1 flag is set
 void func_8001D034(WorkListEntry* pTargetEntry) {
