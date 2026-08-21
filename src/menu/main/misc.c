@@ -68,14 +68,17 @@ extern s32 func_801D9F98(s32, s32);
 extern s32 func_801E23CC(void);
 extern s32 func_801DE29C(s32, s32);
 extern s32 func_801DBE54(void);
-extern s32 func_801E0F78(s32, s32);
+extern s32 func_801E0F78(u8, u8);
 extern s32 func_801E2BE4(void);
 extern void func_8001B970(void);
 extern void func_801D1EB0(void);
 extern void func_801D29A8(u8, u8);
 extern void func_801E3088(s32);
 extern void func_801D3674(void);
-extern void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds);
+/* unprototyped: retail call sites use both the 3-arg shape and a 4-arg shape
+ * whose trailing arg the retail definition ignores (see func_801E8018 below) */
+extern void func_801E8018();
+extern u8 func_801CACF8(u8, u8, u8);
 extern void func_801E7C50(MenuString*, s32, s32, s32);
 extern u8 D_801E96A4;
 extern u8 D_801E977A;
@@ -905,7 +908,7 @@ extern u8 D_801E9784;
 extern s32 D_80059488;
 extern void func_801C7D78(void);      /* input (stub) */
 extern void func_8001BD40(s32, s32);
-extern void func_801C7F34(s32);       /* view matrix (stub for now) */
+extern void func_801C7F34(s32 frames, u8* pOut);  /* play-time digit format */
 extern void func_801D1D40(void);      /* view matrix (stub for now) */
 extern void func_801D2968(void);      /* sub-draw (stub) */
 extern void func_801D1CA0(void);      /* the render -> window (ported) */
@@ -938,7 +941,13 @@ void func_801C7BF4(void) {
     func_8001BD40(0, 0xFF);
     func_801D1D40();
     g_Menu->unk2D8 += 1;
-    func_801C7F34(D_80059488);
+    {
+        /* retail passes $a1 register residue as the digit sink (asm 801C7CAC);
+         * the port passes an explicit scratch sink, per the residue convention
+         * (cf. the func_801D5A50 charId note). */
+        u8 playTimeDigits[6];
+        func_801C7F34(D_80059488, playTimeDigits);
+    }
     func_801D2968();
     func_801D1CA0();
     s0 = (g_Menu->renderContext == 0);
@@ -2016,7 +2025,11 @@ void func_801CADB0(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
 
+#ifndef XENO_PC_PORT
 extern void func_80033B34(u8*, u8*, s32);
+#else
+extern void func_80033B34(u16*, u8*, s32);  /* true sig: system/system.c */
+#endif
 
 void func_801CB184(void) {
     u8* pState = (u8*)&g_GameState;
@@ -3625,8 +3638,7 @@ void func_801D28A8(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28FC);
 #else
-extern void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
-                          u8 directParams, u8 unk714, s32 zIndex, u8 hasScrollBar);
+extern void func_801D397C();  /* unprototyped: see the K&R def below */
 extern void func_801D5CF8(s32 x, s32 y);
 
 /* Arc A verts: post-setup for the main menu -- build window 1's geometry
@@ -3653,7 +3665,7 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2D38);
 #else
-extern void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds);
+extern void func_801E8018();  /* unprototyped: 3- and 4-arg retail call shapes */
 extern void func_801E53CC(u8 windowIndex);            /* frame-primitive init (below) */
 /* NB retail passes charId in $a1 as register residue from the caller's lbu of
  * currentCharacterIDs[i] -- the port passes it explicitly. */
@@ -3916,7 +3928,8 @@ extern u8 D_801EA18C[];    /* per-style y (lhu, stride 4) */
 extern u8 D_801EA578[];    /* variant-0 u (lw, stride 4) */
 extern u8 D_801EA584[];    /* variant-1 u (lw, stride 4) */
 extern u8 D_801EA5C4[];    /* variant-0 v (lbu, stride 4) */
-extern u8 D_801EA5D0[];    /* variant-1 v (lbu, stride 4) */
+extern u16 D_801EA5D0[];   /* variant-1 v reads bytes (lbu, stride 4); u16 to
+                            * agree with the lhu-width extern later in the TU */
 extern void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h);
 extern void func_801E927C(POLY_FT4* p);
 
@@ -3956,7 +3969,7 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
         pPoly = &pStr->polys[g_Menu->renderContext];
         pPoly->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
         u = (*(s32*)(D_801EA584 + sl * 4) << 2) & 0xFC;
-        v = D_801EA5D0[sl * 4];
+        v = ((u8*)D_801EA5D0)[sl * 4];  /* retail lbu, stride 4 */
         x = (u16)(*(s32*)(D_801EA17C + st * 4) - 0x30);
     } else {
         width = 0x48;
@@ -3985,8 +3998,17 @@ extern void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
  * demand (0/1 come from func_801D2D38).  directParams != 0 stores the raw rect
  * into windowParameters (deferred build); 0 runs the geometry build now
  * (func_801D4D1C). */
-void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
-                   u8 directParams, u8 unk714, s32 zIndex, u8 hasScrollBar) {
+/* K&R-style (unprototyped) on purpose: one retail caller (func_801DE474)
+ * passes only 6 args, reading stack residue for the rest — a prototyped def
+ * would reject that call at compile time. */
+void func_801D397C(windowIndex, x, y, w, h, directParams, unk714, zIndex,
+                   hasScrollBar)
+u8 windowIndex;
+s32 x, y, w, h;
+u8 directParams, unk714;
+s32 zIndex;
+u8 hasScrollBar;
+{
     MenuWindowParameters* pParams;
 
     if (windowIndex >= 2) {
@@ -4019,7 +4041,9 @@ void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 }
 #endif
 
+#ifndef XENO_PC_PORT
 extern void func_801D4D1C(s32, s32, s32, u16, u8, u16, s32, u8);
+#endif
 
 void func_801D3B00(void) {
     s32 i;
@@ -4267,8 +4291,6 @@ void func_801D49D0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4D1C);
 #else
-extern void func_801D3C4C(u8, s32, s32, s32, s32);  /* scrollbar verts (stub) */
-
 /* Arc A verts: build window `windowIndex`'s full frame geometry from its rect
  * -- the background quad, the four corner pieces, the four split borders, and
  * (optionally) the scrollbar -- then set the window props and ARM the draw
@@ -4289,7 +4311,9 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
     func_801D4688(windowIndex, x, y, h);
     func_801D49D0(windowIndex, x, y, w, h);
     if (hasScrollBar) {
-        func_801D3C4C(windowIndex, x, y, w, h);
+        /* retail passes h as a 5th stack arg the 4-param callee never reads
+         * (asm 801D4E1C-801D4E2C); the port drops it. */
+        func_801D3C4C(windowIndex, x, y, w);
     }
     pWindow->hasScrollBar = hasScrollBar;
     pWindow->unk714 = unk714;
@@ -4984,7 +5008,13 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9704);
  *     dispatcher's saved arg0) as `current`, and a2 = 1 (GEAR mode) -- the
  *     mode whose compensation below is unexercisable from Items.  Flagged
  *     for N3-Gear; catalogue only. */
-u8 func_801D9704(u8 current, s32 backward, s32 gearMode) {
+/* K&R-style (unprototyped) on purpose: the Status-family retail callers in
+ * func_801E20C8 pass only 2 args, with gearMode as $a2 residue (the KNOWN
+ * RESIDUE CASE catalogue above) — a prototyped def would reject those calls. */
+u8 func_801D9704(current, backward, gearMode)
+u8 current;
+s32 backward, gearMode;
+{
     s32 slot = current;
     s32 mode;
 
@@ -5676,9 +5706,9 @@ extern u8 D_80059171;
 extern u8 D_801E9785;
 extern void func_801C7BF4(void);
 extern void func_801C8574(s32);
-extern void func_801D397C(u8, s32, s32, s32, s32, u8, u8, s32, u8);
+extern void func_801D397C();  /* unprototyped: see the K&R def above */
 extern void func_801D4EA0(s32);
-extern u8 func_801D9704(u8, s32, s32);
+extern u8 func_801D9704();  /* unprototyped: see the K&R def above */
 extern void func_801DA5BC(s32);
 extern void func_801DA9A8(s32, s32);
 extern void func_801DB39C(s32);
@@ -6504,7 +6534,9 @@ void func_801DCE60(u8 ch, u8 cursorArg, u8 category) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 extern void func_801E8F60(s32, u8);
+#endif
 
 void func_801DD5E8(u8 charIdx) {
     void* pMenu;
@@ -6735,8 +6767,10 @@ void func_801DE400(void) {
 
 extern u8 D_801EA558[];
 extern u8 D_801E9EA0[];
+#ifndef XENO_PC_PORT
 extern void func_801E8070(void*, void*, void*, void*, s32, s32, s32, s32);
 extern void func_801D397C(s32, s32, s32, s32, s32, s32);
+#endif
 
 void func_801DE474(u8 arg0, u8 arg1) {
     s32 i;
@@ -7004,7 +7038,9 @@ s32 func_801E20C8(u8 slotIdx) {
 }
 
 extern void func_801C72BC(s32);
+#ifndef XENO_PC_PORT
 extern void func_801D3488(s32, s32);
+#endif
 
 u8 func_801E2250(void) {
     void* pMenu;
@@ -7038,7 +7074,9 @@ u8 func_801E2250(void) {
 }
 
 extern u8 D_801EA568[];
+#ifndef XENO_PC_PORT
 extern void func_801E8018(s32, u8*, s32, void*);
+#endif
 
 void func_801E2324(u8 arg0) {
     void* pMenu = g_Menu;
@@ -7059,7 +7097,9 @@ void func_801E2368(void) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E23CC);
 
 extern void func_801D249C(s32);
+#ifndef XENO_PC_PORT
 extern void func_801D3488(s32, s32);
+#endif
 
 void func_801E2AE0(void) {
     void* pMenu;
