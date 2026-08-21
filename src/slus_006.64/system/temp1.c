@@ -1922,6 +1922,9 @@ void func_80025A88(u8* pEntry) {
     }
 }
 
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
+ * assembler (same guard as menu.c func_8001C76C). */
 __asm__(
         ".globl func_80025C04\n\t"
         ".ent func_80025C04\n\t"
@@ -1959,6 +1962,7 @@ __asm__(
         ".word 0x2402ffff, 0x1482ffb8, 0x24c60002\n\t"
         ".word 0x03e00008, 0x00000000\n\t"
         ".end func_80025C04");
+#endif
 
 /* Handwritten GTE color-processing routine retained as assembly. */
 __asm__(
