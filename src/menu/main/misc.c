@@ -7771,6 +7771,7 @@ extern void func_801E5B88(void);
 extern void func_801E5E4C(void);
 
 void func_801E6450(void) {
+    volatile u64 reserve;
     void* pBuf = HeapAlloc(0x2DC0, NULL);
     void* pMenu = g_Menu;
     *(void**)((u8*)pMenu + 0x34C) = pBuf;
