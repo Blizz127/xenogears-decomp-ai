@@ -31,7 +31,7 @@ extern u8* D_800592D8;
 void func_8001A5CC(void) {
     s32 row, col;
     D_800592DC = HeapAlloc(0x3480, 1);
-    D_800592E0 = HeapAlloc(0x460, 1);
+    D_800592E0 = HeapAlloc(0x3480, 1);
     D_800592D4 = HeapAlloc(0x460, 1);
     D_800592D8 = HeapAlloc(0x460, 1);
     for (row = 0; row < 0x1C; row++) {
