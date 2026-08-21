@@ -208,8 +208,6 @@ WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     return pEntry;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListRemoveTask);
-/*
 void WorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
     WorkListEntry* pCurEntry;
@@ -240,7 +238,6 @@ void WorkListRemoveTask(WorkListEntry* pTargetEntry) {
     
     g_NumWorkListEntries--;
 }
-*/
 
 void WorkListDeleteTask(WorkListEntry* pTask) {
     WorkListRemoveTask(pTask);
