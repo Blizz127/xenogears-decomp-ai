@@ -45,9 +45,7 @@ WorkListEntry* D_80059590;
 WorkListEntry* g_WorkList;
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsFreeAllEntries);
-/*
-void WorkListFreeAllEntries(void) {
+void WorkListsFreeAllEntries(void) {
     WorkListEntry* pList;
 
     for (pList = g_TimerWorkList; g_TimerWorkList != NULL; pList = g_TimerWorkList) {
@@ -58,7 +56,6 @@ void WorkListFreeAllEntries(void) {
         pList->onFreeCallback(pList);
     }
 }
-*/
 
 extern s32 g_NumTimerWorkListEntries;
 extern s32 g_NumWorkListEntries;
