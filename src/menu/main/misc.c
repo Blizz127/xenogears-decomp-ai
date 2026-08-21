@@ -953,9 +953,6 @@ void func_801C7BF4(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7D78);
-#else
 extern int ControllerGetType(int controllerIndex);
 extern int ControllerPopState(void);
 extern void ControllerResetState(void);
@@ -976,26 +973,32 @@ extern s32 D_80059488;
  * input on the menu actually reaching its interactive loop, independent of
  * Vsync frame count (the field's open/close phases run at a different cadence
  * and reset the pad queue).  Inert unless that env harness is armed. */
+#ifdef XENO_PC_PORT
 int g_XenoMenuNavReaderTicks = 0;
+#endif
 
 void func_801C7D78(void) {
-    s32 input = 0;
     s32 present = 1;
-    s32 savedD59488 = 0;
+    s32 input = 0;
+    s32 savedD59488;
 
+#ifdef XENO_PC_PORT
     g_XenoMenuNavReaderTicks++;
+#endif
 
     for (;;) {
-        if (ControllerGetType(0) != 0) {
+        if (ControllerGetType(0) == 0) {
+            if ((input & 0xFF) == 0) {
+                SoundMuteAllSpuChannels();
+                input += 1;
+                savedD59488 = D_80059488;
+            }
+        } else {
+            present -= 1;
             if ((input & 0xFF) != 0) {
                 SoundEnableAllSpuChannels();
                 D_80059488 = savedD59488;
             }
-            present -= 1;
-        } else if ((input & 0xFF) == 0) {
-            SoundMuteAllSpuChannels();
-            input += 1;
-            savedD59488 = D_80059488;
         }
         if ((present & 0xFF) == 0) {
             break;
@@ -1010,35 +1013,30 @@ void func_801C7D78(void) {
             u16 pressed = g_C1ButtonStatePressedOnce;
             u16 released;
 
-            if (pressed & 0x2000) { input = 0; goto blip; }   /* RIGHT */
-            if (pressed & 0x4000) { input = 1; goto blip; }   /* DOWN */
-            if (pressed & 0x8000) { input = 2; goto blip; }   /* LEFT */
-            if (pressed & 0x1000) { input = 3; goto blip; }   /* UP */
+            if (pressed & 0x2000) { input = 0; func_801C8574(1); break; }
+            if (pressed & 0x4000) { input = 1; func_801C8574(1); break; }
+            if (pressed & 0x8000) { input = 2; func_801C8574(1); break; }
+            if (pressed & 0x1000) { input = 3; func_801C8574(1); break; }
             released = g_C1ButtonStateReleased;
             if (released & 0x20) {                            /* CIRCLE */
                 input = 4;
                 func_801C8574(2);
-                goto store;
+                break;
             }
             if (released & 0x40) {                            /* CROSS */
                 input = 5;
                 func_801C8574(3);
-                goto store;
+                break;
             }
-            if (released & 0x80) { input = 6; goto store; }
-            if (released & 0x10) { input = 7; goto store; }
-            if (pressed & 0x4)  { input = 0xA; goto blip; }
-            if (pressed & 0x8)  { input = 9; goto blip; }
-            if (released & 0x100) { input = 0xC; goto store; }
+            if (released & 0x80) { input = 6; break; }
+            if (released & 0x10) { input = 7; break; }
+            if (pressed & 0x4)  { input = 0xA; func_801C8574(1); break; }
+            if (pressed & 0x8)  { input = 9; func_801C8574(1); break; }
+            if (released & 0x100) { input = 0xC; break; }
         }
-        goto store;
-    blip:
-        func_801C8574(1);
     }
-store:
     g_Menu->input = (u8)input;
 }
-#endif
 
 void func_801C7F34(s32 frames, u8* pOut) {
     s32 total = frames;
