@@ -678,11 +678,11 @@ void* func_800242F4(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
     void* pSpriteData;
     D_800591B8 = arg6;
 #ifdef XENO_PC_PORT
-    /* Seven-arg retail signature (definition + func_80024524). Host cannot
-     * keep the six-arg implicit call; route through the existing allocator
-     * wrapper rather than inventing HeapAlloc here. Matching build keeps
-     * the original six-arg call. */
-    pSpriteData = func_80024524(pAnimPackage, texX, texY, clutX, clutY, arg5);
+    /* Seven-arg retail signature. First slot is filled with pAnimPackage
+     * (the only initialized void* already in this function). No HeapAlloc
+     * and no func_80024524. Matching build keeps the original six-arg call. */
+    pSpriteData = func_8002435C(pAnimPackage, pAnimPackage, texX, texY, clutX,
+                               clutY, arg5);
 #else
     pSpriteData = func_8002435C(pAnimPackage, texX, texY, clutX, clutY, arg5);
 #endif
