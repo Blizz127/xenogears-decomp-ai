@@ -657,6 +657,12 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023FD8);
 
 extern s32 D_800591B8;
 extern void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5);
+#ifdef XENO_PC_PORT
+/* Host GNU C has no implicit int(): prototype must precede the call at
+ * func_800242F4. Matching build keeps the original implicit-decl order. */
+void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY,
+                    s16 clutX, s16 clutY, s16 arg6);
+#endif
 
 void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
     void* pSpriteData;
@@ -671,7 +677,15 @@ void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
 void* func_800242F4(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
     void* pSpriteData;
     D_800591B8 = arg6;
+#ifdef XENO_PC_PORT
+    /* Seven-arg retail signature (definition + func_80024524). Host cannot
+     * keep the six-arg implicit call; route through the existing allocator
+     * wrapper rather than inventing HeapAlloc here. Matching build keeps
+     * the original six-arg call. */
+    pSpriteData = func_80024524(pAnimPackage, texX, texY, clutX, clutY, arg5);
+#else
     pSpriteData = func_8002435C(pAnimPackage, texX, texY, clutX, clutY, arg5);
+#endif
     D_800591B8 = 0;
     return pSpriteData;
 }
