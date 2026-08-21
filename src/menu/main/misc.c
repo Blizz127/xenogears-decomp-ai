@@ -3812,9 +3812,6 @@ s32 func_801D32B4(s32 arg0) {
     return 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3344);
-#else
 void func_801D3344(s32 x, s32 y, s32 width) {
     if (g_Menu->pManager->scrollHandleActive == 0) {
         g_Menu->pScrollHandle = HeapAlloc(sizeof(MenuScrollBarHandle), 0);
@@ -3824,10 +3821,9 @@ void func_801D3344(s32 x, s32 y, s32 width) {
                   g_Menu->renderContext, x, y, 0x1000);
     func_801C851C(g_Menu->pScrollHandle->vertices,
                   x & 0xFFFF, y & 0xFFFF, 8, width & 0xFFFF);
-    g_Menu->pScrollHandle->renderContext = (u8)g_Menu->renderContext;
+    g_Menu->pScrollHandle->renderContext = *(u8*)&g_Menu->renderContext;
     g_Menu->pManager->scrollHandleActive = 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 void func_801D3444(void) {
