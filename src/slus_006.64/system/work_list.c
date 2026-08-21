@@ -33,23 +33,16 @@ typedef struct {
 } WorkListEntry;
 
 
-/*
-// .sbss
+/* Retail SBSS globals.  Their definitions are kept in the extracted BSS
+ * segment; declaring the corresponding commons here lets the -G8 compiler
+ * emit the retail gp-relative accesses. */
 s32 D_80059184;
 int g_NumTimerWorkListEntries;
 int g_NumWorkListEntries;
-WorkListEntry* D_800594C0; // Last processed entry?
+WorkListEntry* D_800594C0;
 WorkListEntry* g_TimerWorkList;
-WorkListEntry* D_80059590; // Next entry?
+WorkListEntry* D_80059590;
 WorkListEntry* g_WorkList;
-
-// other
-extern u8 D_800591AF; // Heap alloc flag
-extern int g_WorkListCurTimer; // Timer?
-extern s32 D_80059464;
-extern short D_80059494; // Set to 0 when timer above reaches 0
-
-*/
 
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsFreeAllEntries);
