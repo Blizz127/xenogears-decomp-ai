@@ -867,7 +867,45 @@ void func_8009FE4C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FEE4);
+extern s32 D_8005A448;
+extern s32 D_8005A44C;
+
+void func_8009FEE4(s32 partyMemberIndex) {
+    s32* pPartyActors = D_8005A444;
+    s32 actorIndex = pPartyActors[partyMemberIndex];
+    s32 rotation;
+    u8* pActorData;
+
+    if (actorIndex != 0xFF) {
+        __asm__ volatile("" : : : "memory");
+        pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
+        rotation = *(s16*)(pActorData + 0x10) << 14;
+
+        switch (partyMemberIndex) {
+        case 0:
+            FieldScriptMemoryWriteU16(0x2A, (g_GameSceneMapNum & 0xFFF) | rotation);
+            pActorData = (u8*)(uintptr_t)g_FieldActors[pPartyActors[0]].pActorData;
+            FieldScriptMemoryWriteU16(0x2C, *(s16*)(pActorData + 0x22));
+            pActorData = (u8*)(uintptr_t)g_FieldActors[pPartyActors[0]].pActorData;
+            FieldScriptMemoryWriteU16(0x2E, *(s16*)(pActorData + 0x2A));
+            break;
+        case 1:
+            FieldScriptMemoryWriteU16(0x30, (g_GameSceneMapNum & 0xFFF) | rotation);
+            pActorData = (u8*)(uintptr_t)g_FieldActors[D_8005A448].pActorData;
+            FieldScriptMemoryWriteU16(0x32, *(s16*)(pActorData + 0x22));
+            pActorData = (u8*)(uintptr_t)g_FieldActors[D_8005A448].pActorData;
+            FieldScriptMemoryWriteU16(0x34, *(s16*)(pActorData + 0x2A));
+            break;
+        case 2:
+            FieldScriptMemoryWriteU16(0x36, (g_GameSceneMapNum & 0xFFF) | rotation);
+            pActorData = (u8*)(uintptr_t)g_FieldActors[D_8005A44C].pActorData;
+            FieldScriptMemoryWriteU16(0x38, *(s16*)(pActorData + 0x22));
+            pActorData = (u8*)(uintptr_t)g_FieldActors[D_8005A44C].pActorData;
+            FieldScriptMemoryWriteU16(0x3A, *(s16*)(pActorData + 0x2A));
+            break;
+        }
+    }
+}
 
 void func_800A0158(s32 arg0, s32* arg1, s32* arg2, s32* arg3) {
     switch (arg0) {
