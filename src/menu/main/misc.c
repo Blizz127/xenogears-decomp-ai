@@ -4520,9 +4520,6 @@ void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5794);
-#else
 extern s32 D_801E9B18;
 extern s32 D_801E9B1C;
 extern s32 D_801E9B20;
@@ -4532,11 +4529,10 @@ extern s32 D_801E9B24;
  * buf+0x910 (count 0x1271), and the second level number (char+0x63) into
  * buf+0xA00 (count 0x1272) -- tinted green in a post-pass. */
 void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
-    u8* buf = PORTRAIT_BUF(slot);
-    u8* pChar = (u8*)&g_GameState.characters[charId];
+    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[slot * 4];
     s32 i;
 
-    func_801C80B8(g_GameState.characters[charId].level);
+    func_801C80B8(*(u8*)((u8*)&g_GameState + 0x2CE + charId * sizeof(GameCharacter)));
     buf[0x1271] = 0;
     for (i = 0; i < 3; i++) {
         u8 d = g_Menu->digits[6 + i];
@@ -4549,7 +4545,7 @@ void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
         }
     }
 
-    func_801C80B8(pChar[0x63]);
+    func_801C80B8(*(u8*)((u8*)&g_GameState + 0x2CF + charId * sizeof(GameCharacter)));
     buf[0x1272] = 0;
     for (i = 0; i < 3; i++) {
         u8 d = g_Menu->digits[6 + i];
@@ -4563,15 +4559,16 @@ void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
     }
 
     for (i = 0; i < buf[0x1272]; i++) {
-        POLY_FT4* p = PORTRAIT_POLY(buf, 0xA00, i * 2 + g_Menu->renderContext);
-
-        SetShadeTex(p, 0);
-        p->r0 = 0;
-        p->g0 = 0x80;
-        p->b0 = 0;
+        SetShadeTex((POLY_FT4*)(buf + 0xA00 +
+            (i * 2 + g_Menu->renderContext) * sizeof(POLY_FT4)), 0);
+        ((POLY_FT4*)(buf + 0xA00 +
+            (i * 2 + g_Menu->renderContext) * sizeof(POLY_FT4)))->r0 = 0;
+        ((POLY_FT4*)(buf + 0xA00 +
+            (i * 2 + g_Menu->renderContext) * sizeof(POLY_FT4)))->g0 = 0x80;
+        ((POLY_FT4*)(buf + 0xA00 +
+            (i * 2 + g_Menu->renderContext) * sizeof(POLY_FT4)))->b0 = 0;
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5A50);
