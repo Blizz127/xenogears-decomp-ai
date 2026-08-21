@@ -4074,7 +4074,7 @@ void func_801D3B00(void) {
     }
 }
 
-extern void func_8002675C(s32, s32, void*, s32, s32, s32, s32);
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern void func_800263E4(s32, s32, void*, s32, s32, s32, s32, s32);
 
 void func_801D3C4C(u8 slotIdx, u16 x, u16 y, u16 h) {
@@ -4481,9 +4481,6 @@ void func_801D53D0(u8 slot, u8 charId, s32 x, s32 y) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D55B4);
-#else
 extern s32 D_801E9B48;
 extern s32 D_801E9B4C;
 extern s32 D_801E9B50;
@@ -4493,11 +4490,10 @@ extern s32 D_801E9B54;
  * digits[2..8]).  Lists buf+0xE10 (count 0x1277) and buf+0x1040 (0x1278).
  * The exp values live in the GameCharacter head blob (+0x44 / +0x48). */
 void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
-    u8* buf = PORTRAIT_BUF(slot);
-    u8* pChar = (u8*)&g_GameState.characters[charId];
+    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[slot * 4];
     s32 i;
 
-    func_801C80B8(*(u32*)(pChar + 0x44));
+    func_801C80B8(*(u32*)((u8*)&g_GameState + 0x2B0 + charId * sizeof(GameCharacter)));
     buf[0x1277] = 0;
     for (i = 0; i < 7; i++) {
         u8 d = g_Menu->digits[2 + i];
@@ -4510,7 +4506,7 @@ void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
         }
     }
 
-    func_801C80B8(*(u32*)(pChar + 0x48));
+    func_801C80B8(*(u32*)((u8*)&g_GameState + 0x2B4 + charId * sizeof(GameCharacter)));
     buf[0x1278] = 0;
     for (i = 0; i < 7; i++) {
         u8 d = g_Menu->digits[2 + i];
@@ -4523,7 +4519,6 @@ void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5794);
