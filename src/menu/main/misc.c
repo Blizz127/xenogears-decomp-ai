@@ -5195,22 +5195,22 @@ void func_801D9F34(void) {
 
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA4A8);
-#else
 extern u8 D_801EA548[];
 
 void func_801DA4A8(void) {
-    ItemMenuWork* work;
+    void* pMenu;
+    void* work;
 
     func_801D22F4(2);
-    func_801E8018(8, g_Menu->itemMenuStrings, D_801EA548);
-    work = HeapAlloc(sizeof(ItemMenuWork), 0);
-    MenuSetItemWork(work);
-    bzero(work, sizeof(ItemMenuWork));
+    pMenu = g_Menu;
+    func_801E8018(8, (u8*)pMenu + 0x10E0, D_801EA548,
+                   (u8*)(*(void**)((u8*)pMenu + 0x33C)) + 0x38);
+    work = HeapAlloc(0x1198, 0);
+    pMenu = g_Menu;
+    *(void**)((u8*)pMenu + 0x42C) = work;
+    bzero(work, 0x1198);
     func_801C72BC(0);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA518);
