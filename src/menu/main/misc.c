@@ -4858,19 +4858,19 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
 
 void func_801D827C(void* pPrims, u8 mode) {
-    u8 r = 0, g = 0, b = 0;
+    u8 color[3];
     s32 i;
     switch (mode) {
-        case 0: r = 1; g = 0x80; b = 0xFF; break;
-        case 1: r = 0x80; g = 0xFF; b = 0x80; break;
-        case 2: r = 0xFF; g = 0; b = 0; break;
-        case 3: r = 0; g = 0; b = 0; break;
+        case 0: color[0] = 0xFF; color[1] = 0x80; color[2] = 0x80; break;
+        case 1: color[0] = 0x80; color[1] = 0xFF; color[2] = 0x80; break;
+        case 2: color[0] = 0xFF; color[1] = 0; color[2] = 0; break;
+        case 3: color[0] = 0; color[1] = 0; color[2] = 0xFF; break;
     }
     for (i = 0; i < 2; i++) {
         u8* pPrim = (u8*)pPrims + i * 0x24;
         SetPolyG4(pPrim);
-        pPrim[4] = r; pPrim[5] = g; pPrim[6] = b;
-        pPrim[0xC] = r; pPrim[0xD] = g; pPrim[0xE] = b;
+        pPrim[4] = color[0]; pPrim[5] = color[1]; pPrim[6] = color[2];
+        pPrim[0xC] = color[0]; pPrim[0xD] = color[1]; pPrim[0xE] = color[2];
         pPrim[0x14] = 0; pPrim[0x15] = 0; pPrim[0x16] = 0;
         pPrim[0x1C] = 0; pPrim[0x1D] = 0; pPrim[0x1E] = 0;
     }
