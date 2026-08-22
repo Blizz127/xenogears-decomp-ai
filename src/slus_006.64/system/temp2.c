@@ -1723,7 +1723,9 @@ void func_80030C40(u16 a, u16 b, u16 c) {
     u32 ra = ((u32)a >> 4) << 4;
     u32 rb = ((u32)b >> 4) << 4;
     u32 rc = ((u32)c >> 4) << 4;
+#ifndef XENO_PC_PORT
     __asm__ volatile("ctc2 %0, $13" : : "r"(ra));
+#endif
     __asm__ volatile("ctc2 %0, $14" : : "r"(rb));
     __asm__ volatile("ctc2 %0, $15" : : "r"(rc));
 }
