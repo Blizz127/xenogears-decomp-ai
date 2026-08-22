@@ -1392,7 +1392,31 @@ void func_8002DD20(u32* pList) {
     } while (count != -1);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DD20);
+/* retail 0x8002DD20: upload the TIM images referenced by a strip table */
+void func_8002DD20(u_long* table) {
+    TIM_IMAGE tim;
+    u_long* entry;
+    s32 i;
+    s32 end;
+
+    i = table[0];
+    if (--i == -1) return;
+    end = -1;
+    entry = (u_long*)((u32)i * 4 + (u32)table);
+
+    while (1) {
+        OpenTIM((u_long*)((u8*)table + ((entry[1] >> 2) << 2)));
+        ReadTIM(&tim);
+        if (tim.caddr != 0) {
+            DrawSync(0);
+            LoadImage(tim.crect, tim.caddr);
+        }
+        DrawSync(0);
+        entry--;
+        LoadImage(tim.prect, tim.paddr);
+        if (--i == end) break;
+    }
+}
 #endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
