@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psyq/libgte.h"
+#include "psyq/inline_c.h"
 #include "system/memory.h"
 #include "system/archive.h"
 #ifdef XENO_PC_PORT
@@ -1720,42 +1721,36 @@ void func_80030B14(MATRIX* pMatrix) {
 }
 
 void func_80030C40(u16 a, u16 b, u16 c) {
-    u32 ra = ((u32)a >> 4) << 4;
-    u32 rb = ((u32)b >> 4) << 4;
-    u32 rc = ((u32)c >> 4) << 4;
-#ifndef XENO_PC_PORT
-    __asm__ volatile("ctc2 %0, $13" : : "r"(ra));
-#endif
-    __asm__ volatile("ctc2 %0, $14" : : "r"(rb));
-    __asm__ volatile("ctc2 %0, $15" : : "r"(rc));
+    gte_SetBackColor((u32)a >> 4, (u32)b >> 4, (u32)c >> 4);
 }
 
 void func_80030C78(u32 a, u32 b, u32 c) {
-    __asm__ volatile("ctc2 %0, $13" : : "r"(a << 4));
-    __asm__ volatile("ctc2 %0, $14" : : "r"(b << 4));
-    __asm__ volatile("ctc2 %0, $15" : : "r"(c << 4));
+    gte_SetBackColor(a, b, c);
 }
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
 
 s32 func_80030EE8(void) {
-    u32 sxy0, sxy1, sxy2;
-    u16 sz0;
-    __asm__ volatile("RTPT" ::: "memory");
-    __asm__ volatile("mfc2 %0, $14" : "=r"(sxy0));
-    __asm__ volatile("mfc2 %0, $15" : "=r"(sxy1));
-    __asm__ volatile("mfc2 %0, $16" : "=r"(sxy2));
-    __asm__ volatile("mfc2 %0, $7" : "=r"(sz0));
-    (void)sz0;
+    u32 sz0;
+    u32 sz1;
+    u32 sz2;
+    u32 sxy;
+    /* nop;nop;RTPT -- aspsx assembled inline_c.h gte_rtpt()'s placeholder
+     * word 0x000000bf as the real encoding 0x4A280030; emit it directly. */
+    __asm__ volatile("nop\n\tnop\n\t.word 0x4a280030" ::: "memory");
+    gte_stsz3(&sz0, &sz1, &sz2);
+    gte_stsxy0(&sxy);
     /* Check each vertex's screen coords */
-    if ((u16)(sxy0 + 1) >= 2) {
-        if (sxy0 < (u32)D_800500FC && (u16)sxy0 < (u16)D_800500F8) return 1;
+    if ((u16)(sz0 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
     }
-    if ((u16)(sxy1 + 1) >= 2) {
-        if (sxy1 < (u32)D_800500FC && (u16)sxy1 < (u16)D_800500F8) return 1;
+    gte_stsxy1(&sxy);
+    if ((u16)(sz1 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
     }
-    if ((u16)(sxy2 + 1) >= 2) {
-        if (sxy2 < (u32)D_800500FC && (u16)sxy2 < (u16)D_800500F8) return 1;
+    gte_stsxy2(&sxy);
+    if ((u16)(sz2 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
     }
     return 0;
 }
