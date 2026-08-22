@@ -2304,6 +2304,9 @@ __asm__(
         ".end func_80026F44");
 #endif
 
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
+ * assembler (same guard as func_80025C04 / func_80025D4C / func_80026F44). */
 __asm__(
         ".globl func_80026FE8\n\t"
         ".ent func_80026FE8\n\t"
@@ -2323,6 +2326,7 @@ __asm__(
         ".reloc ., R_MIPS_26, .Lfunc_80026FE8_loop\n\t"
         ".word 0x08000000, 0x20c60002, 0x03e00008, 0x00000000\n\t"
         ".end func_80026FE8");
+#endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002709C);
 
