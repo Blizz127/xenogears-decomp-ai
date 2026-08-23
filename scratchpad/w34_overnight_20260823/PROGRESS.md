@@ -1,5 +1,19 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B48 — D3 tripwire hygiene
+
+- Frontier remains `0x800719C8`; no production change.
+- All 15 forbidden-target registry entries and `should_not_run` bodies are
+  present. Mode `0x80072238`, renderer `0x8007299C`, world DrawOTag, loop,
+  and excluded convergence guards remain intact and zero-hit naturally.
+- Scheduler guest callback resolution still maps known values and logs/stops
+  on missing or invalid values; CD40 remains map-known `0x80086700` with a
+  counted unknown fallback. No second CD40-style function-pointer slot was
+  found.
+- Evidence: `AUDIT_W34B48_TRIPWIRE_HYGIENE.md`,
+  `slice_21_tripwire_hygiene.log`.
+- Decision: no implementation, no guard bypass, no push.
+
 ## W34B47 — D2 audit-ahead
 
 - Frontier remains `0x800719C8`; no production change.

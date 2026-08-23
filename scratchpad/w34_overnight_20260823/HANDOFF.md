@@ -52,10 +52,11 @@ the bounded control frontier is still `0x800719C8`.
 | `77ea585c` | W34B44 finite two-reentry bound | two additional clean frames |
 | `aa4b71d2` | W34B45 third-tail callback census | no production delta |
 | `90c9ce77` | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
-| pending | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
+| `67a22478` | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
+| pending | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40, W34B41, W34B43, W34B45, W34B46, and W34B47 contain evidence/audit only. W34B42 adds one
+W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, and W34B48 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
 
@@ -73,7 +74,7 @@ restriction.
 `AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
 `AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`,
 `AUDIT_W34B44_TWO_REENTRY.md`, `AUDIT_W34B46_D554_CLEAR_WRITERS.md`, and
-`AUDIT_W34B47_AUDIT_AHEAD.md`
+`AUDIT_W34B47_AUDIT_AHEAD.md`, and `AUDIT_W34B48_TRIPWIRE_HYGIENE.md`
 record the current boundaries. Three frame passes are clean and
 callback-covered, but D554 remains 1. The mode
 initializer `0x80072238`
@@ -95,7 +96,9 @@ unresolved callees and that 13 other retail clear sites have no current
 body/mapping. W34B47 then audited the three next regions: the unreachable
 frame-exit continuation, the 472-instruction mode initializer, and the
 132-instruction teardown. D4 was not used to alter unrelated worktree
-contents.
+contents. W34B48 rechecked the 15-entry tripwire registry, scheduler
+resolver boundary, and sole CD40-style indirect slot; all remain safe and
+intact.
 
 ## 7. Tripwire status
 
