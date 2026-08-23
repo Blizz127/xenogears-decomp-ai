@@ -45,7 +45,8 @@ the bounded control frontier is still `0x800719C8`.
 | `80d1f0b8` | W34B39 slot-table base at `0x8009BCC0` | bucket abort -> terminator, 2 packets |
 | `215786b4` | W34B40 audit held backedge and post-convergence boundaries | audit only |
 | `d17fb03d` | W34B41 fresh callback census | no production delta |
-| pending | W34B42 reviewed one-frame re-entry | one extra clean frame |
+| `a3f20290` | W34B42 reviewed one-frame re-entry | one extra clean frame |
+| pending | W34B43 post-second-frame census | no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
 W34B40 and W34B41 contain evidence/audit only. W34B42 adds exactly one
@@ -62,10 +63,11 @@ restriction.
 
 ## 5. BLOCKED-NEEDS-REVIEW
 
-`AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`, and
-`AUDIT_W34B42_SECOND_FRAME.md` record the current boundaries. The reviewed
-second frame is clean, but D554 remains 1 and the new post-second-frame slot
-state has not yet received a full census. The mode initializer `0x80072238`
+`AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
+`AUDIT_W34B42_SECOND_FRAME.md`, and `AUDIT_W34B43_POST_SECOND_CENSUS.md`
+record the current boundaries. The reviewed second frame is clean, D554
+remains 1, and the post-second-frame full census is identical and
+callback-covered. The mode initializer `0x80072238`
 is approximately 472 instructions with unresolved/gated setup calls, and
 `0x8007299C` is an approximately 0x214-byte, 26-call post-loop teardown.
 Neither is a bounded first-render slice. The convergence lane has no
@@ -77,8 +79,8 @@ D1 convergence and D3 tripwire audits remain banked. The W34B39 detour fixed
 the slot-table base and completed the first guest-native OT walk. W34B40
 audited the held frame re-entry, mode initializer, and post-loop teardown;
 W34B41 freshly recaptured the full slot table and resolver coverage; W34B42
-executed one reviewed additional frame. D4 was not used to alter unrelated
-worktree contents.
+executed one reviewed additional frame; W34B43 recaptured the identical
+second-tail table. D4 was not used to alter unrelated worktree contents.
 
 ## 7. Tripwire status
 
@@ -96,10 +98,10 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a fresh full 16-slot census at the
-post-W34B42 second-tail state, before extending the loop beyond one re-entry.
-Do not implement the mode initializer or teardown merely to force either
-milestone.
+The single recommended next task is to extend the reviewed re-entry to a
+finite two-additional-frame diagnostic bound and observe whether D554 clears,
+while retaining the same callback/OT and tripwire checks. Do not implement
+the mode initializer or teardown merely to force either milestone.
 
 ## 9. Confirmation
 

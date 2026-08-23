@@ -384,3 +384,15 @@ smallest bounded host-sync/display-environment continuation.
 - Evidence: `AUDIT_W34B42_SECOND_FRAME.md`, `slice_15_tests.log`,
   `slice_15_build.log`, `slice_15_natural.log`.
 - Commit: pending local implementation/evidence commit; no push.
+
+## W34B43 — post-second-frame callback census
+
+- Frontier: remains `0x800719C8`; no production code changed.
+- Fresh second-tail census: scheduler entry 3, full table in
+  `slice_16_census.log`. The final table is byte-for-byte identical to
+  W34B41: 12 state-1 cb1 candidates, 4 state-3 dormant slots, unchanged
+  callback addresses/payloads, no newly eligible callback.
+- Natural state: D554 remains 1; scheduler `41/41`, missing 0, invalid 0;
+  CD dispatcher entry 3 with one busy dispatch and no I/O failures; rc=0.
+- Audit: `AUDIT_W34B43_POST_SECOND_CENSUS.md`.
+- Commit: pending evidence-only commit; no push.
