@@ -7421,7 +7421,7 @@ void PcPort_WorldMapInitMain(void)
             u32 cut_pc = WM_MAIN_LOOP;
             if (world_frame_prologue_enabled() &&
                 wm_fp_get_entry() > 0)
-                cut_pc = WM_FRAME_PROLOGUE_CUT;
+                cut_pc = wm_fp_get_cut_pc();
             else if (world_scheduler_97800_enabled() &&
                 wm_sched_get_entry() > 0)
                 cut_pc = wm_sched_get_frontier_pc();

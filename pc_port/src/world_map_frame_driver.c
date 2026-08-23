@@ -32,6 +32,13 @@
 #define WM_FP_BD10          0x8009BD10u
 #define WM_FP_CD4C          0x8009CD4Cu
 #define WM_FP_CDSYNC_BUF    0x8009C588u
+#define WM_FP_69179         0x80069179u
+#define WM_FP_BD34          0x8009BD34u
+#define WM_FP_C178          0x8009C178u
+#define WM_FP_D804          0x8009D804u
+#define WM_FP_BD24          0x8009BD24u
+#define WM_FP_CE68          0x8009CE68u
+#define WM_FP_D80C          0x8009D80Cu
 #define WM_FP_OT_OFF        0x70u
 #define WM_FP_ENV_STRIDE    0x78u
 
@@ -144,6 +151,12 @@ static void wm_fp_store_u16(u32 address, u16 value)
 static u32 wm_fp_load_u32(u32 address)
 {
     return *(volatile u32*)PSX_ADDR(address);
+}
+
+static u8 wm_fp_load_u8(u32 address) __attribute__((unused));
+static u8 wm_fp_load_u8(u32 address)
+{
+    return *(volatile u8*)PSX_ADDR(address);
 }
 
 static void wm_fp_store_u32(u32 address, u32 value)
@@ -448,7 +461,37 @@ void wm_800712D0_frame_prologue(void)
                 env + 0x5Cu);
     PutDrawEnv(PSX_ADDR(env));
     WM_FP_TRACE(0x800714C0u, WM_FP_TRACE_CALL, WM_FP_CALL_PUT_DRAW, 4u, env);
+#if defined(WM_7169C_CONTINUATION_DISABLED)
+    s_fp_cut_pc = 0x800714D4u;
+#else
     s_fp_cut_pc = WM_FRAME_PROLOGUE_CUT;
+#endif
+
+    /* Retail 0x800714D4..0x80071698: fresh state gates converge on the
+     * 0x80071694 BD34=0 store.  Keep the next 0x80093F18 call outside this
+     * bounded slice; when every gate passes, report its exact call PC. */
+ #if !defined(WM_7169C_CONTINUATION_DISABLED)
+    {
+        int reaches_93f18 = 0;
+        if (wm_fp_load_u8(WM_FP_69179) == 0u &&
+            wm_fp_load_u32(WM_FP_BD34) != 0u &&
+            wm_fp_load_u32(WM_FP_C178) == 0u &&
+            wm_fp_load_u32(WM_FP_D804) == 0u &&
+            (s16)wm_fp_load_u16(WM_FP_BD24) == (s16)-1 &&
+            (s16)wm_fp_load_u16(WM_FP_CE68) ==
+                (s16)wm_fp_load_u16(WM_FP_BD24) &&
+            wm_fp_load_u32(WM_FP_D554) != 0u &&
+            wm_fp_load_u32(WM_FP_D80C) == 0u) {
+            reaches_93f18 = 1;
+        }
+        wm_fp_store_u32(WM_FP_BD34, 0u);
+        WM_FP_TRACE(0x80071698u, WM_FP_TRACE_SW, WM_FP_BD34, 4u, 0u);
+        if (reaches_93f18)
+            s_fp_cut_pc = 0x80071578u;
+        else
+            s_fp_cut_pc = 0x8007169Cu;
+    }
+ #endif
 #endif
     fprintf(stderr,
             "[worldmap-frame-prologue] HARD CUT before 0x%08x "

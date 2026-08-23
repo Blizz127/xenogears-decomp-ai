@@ -42,4 +42,28 @@ smallest bounded host-sync/display-environment continuation.
   remained zero, placeholder entered cleanly.
 - Evidence: `slice_01_natural.log`, `slice_01_natural_reanchored.log`,
   and `slice_01_prologue_results.txt` in this directory.
-- Commit: pending final local commit after this evidence update.
+- Commit: `286c4c10` (`W34B26 extend frame driver 0x80071490-0x800714C4 sync/display tail`).
+
+## Slice 02 audit
+
+- New frontier: `0x800714D4`.
+- Audit: `AUDIT_800714D4.md`.
+- Classification: class (a), bounded branch/state region through the common
+  `BD34=0` store at `0x80071698`; natural next frontier `0x8007169C`.
+
+## Slice 02 — frame state gates through 0x80071698
+
+- Implemented the fresh-load state gates at `0x800714D4..0x80071698`,
+  including the signed `BD24/CE68` comparison and the common `BD34=0`
+  store. The all-gates-pass case records the exact next call frontier
+  `0x80071578`; the natural fixture takes the `0x8007169C` frontier.
+- Focused production-linked certificate:
+  `pc_port/tests/run_w34b27_800714d4_prod_test.sh`, O0/O2/UBSan-O2 all
+  `8/8`; natural, all-gates, and first-gate-fail cases are covered.
+- Production rebuild: `LINK OK`.
+- Natural prologue diagnostic: `rc=0`; pass 1 `16/16`, pass 2 `29/29`,
+  missing `0`, `fp_cut_pc=0x8007169c`, placeholder entered cleanly.
+  Mode-loop `0x80072238` and renderer `0x8007299C` remain zero-hit.
+- Evidence: `slice_02_natural.log` and `slice_02_prologue_results.txt`.
+- Commit: pending; intended message `W34B27 advance frame state gates
+  0x800714D4-0x80071698`.

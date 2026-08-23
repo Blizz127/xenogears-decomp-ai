@@ -1,0 +1,23 @@
+W34B26 TEST PASS O0=12/12 O2=12/12 UBSan_O2=12/12
+W34B27 TEST PASS O0=8/8 O2=8/8 UBSan_O2=8/8
+M967_A KILLED: M967-A-FFFFFFFF-sentinel-selects-D788
+M967_B KILLED: M967-B-D788-null-returns-without-C624
+M967_C KILLED: M967-C-dispatch-return-controls-frame-retry
+FRAME_M1 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M2 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M3 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M4 KILLED: FAIL [one-pad-event-or-accumulate]: ASSERTION event-order-matches-retail-oracle
+FRAME_M5 KILLED: FAIL [cd-work-retry-on-return-3]: ASSERTION event-order-matches-retail-oracle
+FRAME_M6 KILLED: FAIL [cd-work-retry-on-return-3]: ASSERTION event-order-matches-retail-oracle
+FRAME_M7 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M8 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M9 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M10 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M11 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M12 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FRAME_M13 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION clearotag-n-0x400
+FRAME_M14 KILLED: FAIL [natural-empty-pad-idle-cd]: ASSERTION event-order-matches-retail-oracle
+FOCUSED_REGIMES O0=97/97 O2=97/97 UBSan_O2=97/97
+REAL_967E4_MUTANTS 3/3 KILLED
+FRAME_DRIVER_MUTANTS 14/14 KILLED
+NORMALIZED_STDOUT IDENTICAL

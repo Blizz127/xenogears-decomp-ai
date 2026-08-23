@@ -82,8 +82,9 @@ break wm_800712D0_frame_prologue
   end
 
 # ---- DIAG: hard cut inside the 0x800712D0 driver ----
-# Re-anchored after W34B26 continuation: capture after s_fp_cut_pc is set.
-break world_map_frame_driver.c:453
+# Re-anchored after W34B27 continuation: capture after the 0x800714D4..
+# 0x80071698 gate slice has set s_fp_cut_pc.
+break world_map_frame_driver.c:496
   commands
     silent
     printf "W34B5HS_DIAG_712D0_CUT cut_pc=0x%08x cd_work=%d vsync_retries=%d pad_iters=%d sched_calls=%d\n", wm_fp_get_cut_pc(), wm_fp_get_cd_work_calls(), wm_fp_get_vsync_retries(), wm_fp_get_pad_iters(), wm_fp_get_scheduler_calls()
