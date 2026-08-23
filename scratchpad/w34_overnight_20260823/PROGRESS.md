@@ -218,3 +218,24 @@ smallest bounded host-sync/display-environment continuation.
   not encountered.
 - Commit: pending; intended message `W34B35 implement world image-timer
   sibling 0x80075104 boundary 0x80075104-0x80071994`.
+
+## W34B36 morning review — frame tail and first backedge hold
+
+- Fresh Part 0 re-verification is banked in `AUDIT_REVERIFY_W34B36.md`.
+  The retail tail was confirmed through `0x800719C8`; `D554` is an
+  unbounded frame-run flag, so the first natural backedge is LOG-AND-HOLD.
+- Implemented the bounded tail `0x80071994..0x800719D0`: exact
+  `SetGeomOffset`, PSX/KSEG1 map-or-log `DrawOTag` handoff, and a logged
+  first-backedge hold. No raw guest pointer is called and no backedge is
+  re-entered.
+- Focused certificate: `slice_08_tests.log`, O0/O2/UBSan `4/4`; the
+  unknown-pointer mutant was detected. Production rebuild: `slice_08_build.log`,
+  `LINK OK`, 47 compiled / 0 skipped.
+- Natural diagnostic: `slice_08_natural.log`, `rc=0`. At frame 916 the
+  environment was known, OT `0x005f1068` was unknown and counted, so
+  `DrawOTag` was safely skipped; `D554=1` then fired naturally at
+  `0x800719C8` and was held. Scheduler pass 2 remained 29 executed / 0
+  missing; placeholder entered cleanly. Mode-loop and renderer remain
+  zero-hit.
+- Commit: `b314d2ec` (`W34B36 route SetGeomOffset DrawOTag and hold first
+  0x800719C8 backedge`).

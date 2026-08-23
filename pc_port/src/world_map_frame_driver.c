@@ -28,6 +28,7 @@
 #include "world_map_frame_driver.h"
 #include "world_map_upload_pump_74f2c.h"
 #include "world_map_upload_pump_75104.h"
+#include "world_map_frame_tail_71984.h"
 
 typedef struct {
     s16 x;
@@ -645,7 +646,10 @@ void wm_800712D0_frame_prologue(void)
     WM_FP_TRACE(0x80071984u, WM_FP_TRACE_CALL, WM_FP_CALL_74F2C, 0u, 0u);
     (void)wm_80075104();
     WM_FP_TRACE(0x8007198Cu, WM_FP_TRACE_CALL, WM_FP_CALL_75104, 0u, 0u);
-    s_fp_cut_pc = 0x80071994u;
+    if (wm_80071984_tail() != 0)
+        s_fp_cut_pc = 0x800719C8u;
+    else
+        s_fp_cut_pc = 0x800719D0u;
  #endif
 #endif
     fprintf(stderr,
