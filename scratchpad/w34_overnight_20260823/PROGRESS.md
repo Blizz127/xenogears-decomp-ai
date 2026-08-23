@@ -1,5 +1,22 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B54 — actual DrawOTag ABI architecture audit
+
+- The BE3C+0x70 writer correction is complete, but the strict actual
+  PsyCross DrawOTag requirement reaches a class-(b) host ABI boundary.
+- Retail uses four-byte guest OT entries with 24-bit links. The production
+  PsyCross build uses padded OT_TAG entries and interprets those 24-bit
+  links as host pointers; the banked direct call consequently crashed in
+  ParsePrimitivesLinkedList.
+- The W34B38 guest-native adapter is the safe bounded boundary and remains
+  clean: guest walk, PSX_ADDR packet mapping, DrawPrim, DrawAllSplits,
+  rc=0 and zero adapter aborts.
+- No direct DrawOTag, low-address allocation, global ABI change, or second
+  frame was attempted. Human review is required before claiming actual
+  DrawOTag execution.
+- Evidence: AUDIT_W34B54_DRAWOTAG_ARCHITECTURE.md and
+  slice_25_drawotag_architecture.log.
+
 ## W34B53 — 0x80094238 BD00 data-plane audit
 
 - Frontier remains 0x800719C8; no production source changed.

@@ -1,4 +1,4 @@
-# W34-OVERNIGHT handoff — W34B53 BD00 data-plane audit complete
+# W34-OVERNIGHT handoff — W34B54 DrawOTag architecture boundary complete
 
 ## 1. Frontier and final evidence
 
@@ -38,6 +38,16 @@ valid rectangles and a terminator, while the natural position
 stale/uninitialized pointer or missing fixup. Evidence is in
 AUDIT_W34B53_94238_DATA_PLANE.md and slice_24_94238_data_plane.log.
 
+W34B54 completed the strict actual-DrawOTag completion audit. The writer
+correction is valid, but direct PsyCross DrawOTag is class (b): the retail
+four-byte guest OT and 24-bit links are incompatible with the current
+64-bit/simple-primitive PsyCross host-link traversal. The banked direct call
+entered PsyCross and crashed while decoding the guest link. The W34B38
+guest-native adapter is the safe equivalent path and remains rc=0 with zero
+adapter aborts; actual PsyCross DrawOTag remains intentionally zero-hit.
+Evidence is in AUDIT_W34B54_DRAWOTAG_ARCHITECTURE.md and
+slice_25_drawotag_architecture.log.
+
 ## 2. Milestones
 
 - Milestone 1 (`0x80072238` mode loop): not reached; entry state is zero-hit,
@@ -70,6 +80,7 @@ AUDIT_W34B53_94238_DATA_PLANE.md and slice_24_94238_data_plane.log.
 | `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
 | `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
 | `d7b13c4e` | W34B50 live D554 callback census | no production delta |
+| `c4a63ca3` | W34B53/W34B54 data-plane and DrawOTag ABI audits | no production delta |
 
 W34B53 commit is c8e68ac0 (BD00/0x80094238 data-plane audit; no production
 delta). All production slices above have clean LINK OK and rc=0 natural evidence.
@@ -125,7 +136,8 @@ helper return across three clean bounded re-entries; no clear arm fired.
 
 W34B53 inspected the live trigger table and established that the natural
 0x80094238 miss is correct for the captured position; no data-plane fix was
-attempted. Its evidence-only commit is the next local commit after W34B52.
+attempted. Its evidence-only commit is c4a63ca3. W34B54 is the current
+evidence-only architecture audit.
 
 ## 7. Tripwire status
 
@@ -144,11 +156,11 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a retail audit of the unresolved
-frame-local 0x8007169C..0x80071978 D554 closure region and its callees,
-followed only by a bounded implementation if it classifies as (a) or (b).
-Do not clear D554 by hand or enable the legacy driver; preserve the natural
-tripwires.
+The single recommended next task is human review and approval of one
+guest-aware PsyCross DrawOTag architecture (or formal acceptance of the
+world-only adapter milestone), before any second-frame implementation.
+Do not clear D554 by hand, enable the legacy driver, or claim actual
+DrawOTag execution from the adapter path.
 
 ## 9. Confirmation
 
