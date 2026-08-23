@@ -385,6 +385,23 @@ smallest bounded host-sync/display-environment continuation.
   `slice_15_build.log`, `slice_15_natural.log`.
 - Commit: pending local implementation/evidence commit; no push.
 
+## W34B46 — D554 clear-writer census
+
+- Frontier remains `0x800719C8`; no production change.
+- Retail inventory: frame seed `0x80071308`, frame-local clear lanes
+  `0x80071830` and `0x80071954`, plus the 15 external clear sites listed in
+  `AUDIT_W34B46_D554_CLEAR_WRITERS.md`.
+- Current direct writers: live callback bodies `0x8008A72C` and `0x8008C844`,
+  frame seed, and an unused legacy driver copy. No other current source
+  store exists; `0x8008E76C` only defines the address.
+- Classification: `BLOCKED-NEEDS-REVIEW` class (e). The frame-local region is
+  183 instructions with unresolved callees, and the other retail writers
+  need separate callback/helper audits. The two live callback predicates
+  remained inactive over three clean tails.
+- Evidence: `AUDIT_W34B46_D554_CLEAR_WRITERS.md`,
+  `slice_19_d554_audit.log`; W34B45 natural/census evidence remains rc=0.
+- Decision: no implementation, no D554 clear, no tripwire change, no push.
+
 ## W34B45 — third-tail callback census
 
 - Frontier remains `0x800719C8`; no production change.
@@ -395,7 +412,7 @@ smallest bounded host-sync/display-environment continuation.
   dispatcher entry 4 with no I/O failures; rc=0.
 - Audit: `AUDIT_W34B45_THIRD_CENSUS.md`; next subject is the D554 clear-writer
   census, not another blind frame extension.
-- Commit: pending evidence-only commit; no push.
+- Commit: `aa4b71d2` evidence-only commit; no push.
 
 ## W34B43 — post-second-frame callback census
 

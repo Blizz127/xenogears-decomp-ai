@@ -1,4 +1,4 @@
-# W34-OVERNIGHT handoff — W34B42 one-frame re-entry complete
+# W34-OVERNIGHT handoff — W34B46 D554 clear-writer audit complete
 
 ## 1. Frontier and final evidence
 
@@ -8,12 +8,14 @@ guest-native OT adapter, and W34B39 corrected the retail slot-table global
 used by particle cleanup. The first-frame natural route is now clean through
 the OT walk, but the D554 frame backedge remains intentionally held.
 
-Final natural evidence (`slice_13_natural.log`): frame 916; scheduler pass 2
+Final baseline evidence (`slice_13_natural.log`): frame 916; scheduler pass 2
 `29 executed / 0 missing`; guest OT root `0x800A3224`; two packets submitted;
 1025 walk steps; zero range/alignment/length/step aborts; D554 backedge
 `0x800719C8`, `d554=1`, `held=1`, `hit=1`; rc=0. The control frontier is
 therefore still `0x800719C8`, with the OT sub-frontier advanced to the guest
-terminator at `0x8009CE6C`.
+terminator at `0x8009CE6C`. The latest clean bounded route is
+W34B44/TWICE: three tails, three OT submissions, six packets, scheduler
+entry 4 with `53/53`, and `D554=1`, recorded in `slice_17_natural.log`.
 
 Fresh W34B41 census evidence (`slice_14_census.log`) reproduced frame 916
 and rc=0 against the current binary. W34B42 then executed one reviewed
@@ -48,10 +50,11 @@ the bounded control frontier is still `0x800719C8`.
 | `a3f20290` | W34B42 reviewed one-frame re-entry | one extra clean frame |
 | `5a79d5b0` | W34B43 post-second-frame census | no production delta |
 | `77ea585c` | W34B44 finite two-reentry bound | two additional clean frames |
-| pending | W34B45 third-tail callback census | no production delta |
+| `aa4b71d2` | W34B45 third-tail callback census | no production delta |
+| pending | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40, W34B41, and W34B43 contain evidence/audit only. W34B42 adds one
+W34B40, W34B41, W34B43, W34B45, and W34B46 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
 
@@ -67,9 +70,10 @@ restriction.
 ## 5. BLOCKED-NEEDS-REVIEW
 
 `AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
-`AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`, and
-`AUDIT_W34B44_TWO_REENTRY.md` record the current boundaries. Three frame
-passes are clean and callback-covered, but D554 remains 1. The mode
+`AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`,
+`AUDIT_W34B44_TWO_REENTRY.md`, and `AUDIT_W34B46_D554_CLEAR_WRITERS.md`
+record the current boundaries. Three frame passes are clean and
+callback-covered, but D554 remains 1. The mode
 initializer `0x80072238`
 is approximately 472 instructions with unresolved/gated setup calls, and
 `0x8007299C` is an approximately 0x214-byte, 26-call post-loop teardown.
@@ -83,8 +87,10 @@ the slot-table base and completed the first guest-native OT walk. W34B40
 audited the held frame re-entry, mode initializer, and post-loop teardown;
 W34B41 freshly recaptured the full slot table and resolver coverage; W34B42
 executed one reviewed additional frame; W34B43 recaptured the identical
-second-tail table; W34B44 executed two additional bounded frames. D4 was not
-used to alter unrelated worktree contents.
+second-tail table; W34B44 executed two additional bounded frames. W34B46
+established that the frame-local D554 clear region is 183 instructions with
+unresolved callees and that 13 other retail clear sites have no current
+body/mapping. D4 was not used to alter unrelated worktree contents.
 
 ## 7. Tripwire status
 
@@ -102,10 +108,11 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a retail/current-port D554 clear-writer
-census, especially callback paths capable of clearing the frame-run flag,
-before any further loop extension. Do not implement the mode initializer or
-teardown merely to force either milestone.
+The single recommended next task is audit-ahead of the three post-frontier
+regions (`0x80072238` mode initializer, `0x8007299C` post-loop/renderer entry,
+and the next bounded continuation) while preserving the D554 class-(e)
+boundary. Do not clear D554 or enable the legacy driver merely to force a
+milestone.
 
 ## 9. Confirmation
 
