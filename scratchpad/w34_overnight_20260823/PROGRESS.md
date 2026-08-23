@@ -346,3 +346,23 @@ smallest bounded host-sync/display-environment continuation.
 - Natural state: mode entry `0x80072238` and `0x8007299C` remain zero-hit;
   first backedge is held; no second frame, renderer entry, or framebuffer PNG.
 - Commit: no commit; audit-only handoff update. No push.
+
+## W34B41 — fresh held-edge callback census
+
+- Frontier before -> after: control frontier remains `0x800719C8` held;
+  no production frontier change.
+- Fresh capture: frame 916, scheduler entry 2, pool `0x800D7538`, full final
+  16-slot state table in `slice_14_census.log`; natural placeholder reached
+  with rc=0.
+- Retail proof: `0x800719C8` branches to frame head `0x8007130C`; the next
+  scheduler call is the unconditional per-frame site `0x80071488` after the
+  frame-head/input/CD synchronization path.
+- Prediction: final held state has 12 state-1 cb1 candidates (slots 0, 1, 2,
+  4, 5, 8, 9, 10, 12, 13, 14, 15), four state-3 dormant slots (3, 6, 7,
+  11). All 12 cb1 addresses are explicitly resolved and linked in
+  `world_map_scheduler.c`; no callback gap found.
+- Counter note: scheduler `state1=13/state3=3` is pre-callback accounting;
+  slot 11 returned 3, yielding the final held-tail table's 12/4 split.
+- Audit: `AUDIT_W34B41_CALLBACK_CENSUS.md`. No second frame or callback
+  implementation attempted.
+- Commit: pending evidence commit; no push.
