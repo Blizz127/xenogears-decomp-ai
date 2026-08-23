@@ -62,7 +62,7 @@ records. The complete capture is in `slice_23_d554_callback_census.log`.
 | `67a22478` | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
 | `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
 | `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
-| pending | W34B50 live D554 callback census | no production delta |
+| `d7b13c4e` | W34B50 live D554 callback census | no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
 W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, W34B49, and W34B50 contain evidence/audit only. W34B42 adds one
