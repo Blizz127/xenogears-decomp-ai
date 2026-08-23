@@ -17,11 +17,11 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_frame_tail_71984.h"
+#include "world_map_ot_adapter.h"
 
 typedef unsigned long WmTailULong;
 
 extern void SetGeomOffset(int ofx, int ofy);
-extern void DrawOTag(WmTailULong *ot);
 
 #define WMTAIL_GEOM_OFFSET 0x8009BE0Cu
 #define WMTAIL_ENV_PTR     0x8009BE3Cu
@@ -90,7 +90,8 @@ static int wm_tail_draw_otag(void)
     }
 
     s_wmtail_last_ot = submit;
-    DrawOTag((WmTailULong *)PSX_ADDR(submit));
+    /* W34B38: guest-native OT walk; host boundary is DrawPrim inside. */
+    (void)wm_ot_draw_otag_guest(submit);
     s_wmtail_draw_calls++;
     return 1;
 }

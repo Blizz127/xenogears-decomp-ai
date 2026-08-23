@@ -29,6 +29,7 @@
 #include "world_map_upload_pump_74f2c.h"
 #include "world_map_upload_pump_75104.h"
 #include "world_map_frame_tail_71984.h"
+#include "world_map_ot_adapter.h"
 
 typedef struct {
     s16 x;
@@ -478,7 +479,7 @@ void wm_800712D0_frame_prologue(void)
 #endif
 
 #if defined(WM_712D0_MUTANT_M7)
-    (void)ClearOTagR((u32*)(uintptr_t)ot, WM_FP_OT_COUNT);
+    wm_ot_clear_r_guest(ot, (u32)WM_FP_OT_COUNT); /* W34B38 guest-native clear */
     WM_FP_TRACE(0x80071468u, WM_FP_TRACE_CALL, WM_FP_CALL_CLEAROTAG, 4u, ot);
     wm_fp_store_u32(WM_FP_DB_PTR, env);
     WM_FP_TRACE(0x80071458u, WM_FP_TRACE_SW, WM_FP_DB_PTR, 4u, env);
@@ -489,7 +490,7 @@ void wm_800712D0_frame_prologue(void)
     WM_FP_TRACE(0x80071458u, WM_FP_TRACE_SW, WM_FP_DB_PTR, 4u, env);
     wm_fp_store_u32(WM_FP_INDEX, flipped);
     WM_FP_TRACE(0x80071464u, WM_FP_TRACE_SW, WM_FP_INDEX, 4u, flipped);
-    (void)ClearOTagR((u32*)(uintptr_t)ot, WM_FP_OT_COUNT);
+    wm_ot_clear_r_guest(ot, (u32)WM_FP_OT_COUNT); /* W34B38 guest-native clear */
     WM_FP_TRACE(0x80071468u, WM_FP_TRACE_CALL, WM_FP_CALL_CLEAROTAG, 4u, ot);
 #endif
 

@@ -58,7 +58,7 @@ break func_8007554C
 
 
 # ---- DIAG: scheduler dump site (line 7751) -- light print only ----
-break world_map_init.c:7852
+break world_map_init.c:7861
   commands
     silent
     printf "W34B5HS_DIAG_SCHED_DUMP frame=%d entry=%d executed=%d missing=%d frontier=0x%08x\n", $frame, wm_sched_get_entry(), wm_sched_get_callbacks_executed(), wm_sched_get_missing_hits(), wm_sched_get_frontier_pc()
@@ -66,7 +66,7 @@ break world_map_init.c:7852
   end
 
 # ---- DIAG: post-scheduler continuation entered (DrawSync(0) at 0x8007106C site) ----
-break world_map_init.c:7414
+break world_map_init.c:7423
   commands
     silent
     printf "W34B5HS_DIAG_PROLOGUE_ENTER frame=%d sched_entry=%d (retail 0x8007106C continuation)\n", $frame, wm_sched_get_entry()
@@ -92,7 +92,7 @@ break world_map_frame_driver.c:651
   end
 
 # ---- DIAG: prologue instrumentation dump site (line 7785) -- record results ----
-break world_map_init.c:7886
+break world_map_init.c:7895
   commands
     silent
     printf "W34B5HS_DIAG_PROLOGUE_DUMP frame=%d\n", $frame
