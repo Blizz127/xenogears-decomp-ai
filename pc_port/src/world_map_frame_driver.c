@@ -15,7 +15,8 @@
  *   [0x8007185C,0x8007197C) = natural flag/update lane; alternate BE10
  *   call-bearing state stops before unresolved helper 0x800758C0.
  *   [0x8007197C,0x80071980) = mapped 0x80025044 image-list transfer;
- *   stop before unresolved overlay helper 0x80074F2C.
+ *   [0x80071984,0x8007502C) = native 0x80074F2C upload pump;
+ *   stop before sibling helper 0x80075104.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -25,6 +26,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_frame_driver.h"
+#include "world_map_upload_pump_74f2c.h"
 
 typedef struct {
     s16 x;
@@ -126,7 +128,8 @@ enum {
     WM_FP_CALL_SOFT_RESET = 11,
     WM_FP_CALL_PUT_DISP = 12,
     WM_FP_CALL_PUT_DRAW = 13,
-    WM_FP_CALL_25044 = 14
+    WM_FP_CALL_25044 = 14,
+    WM_FP_CALL_74F2C = 15
 };
 
 #if defined(WM_712D0_TEST_TRACE)
@@ -163,6 +166,7 @@ void wm_fp_reset(void)
     s_fp_scheduler_calls = 0;
     s_fp_image_unknowns = 0;
     s_fp_cut_pc = 0;
+    wm_74f2c_reset();
 }
 
 #if !defined(WM_7169C_CONTINUATION_DISABLED) && \
@@ -631,11 +635,13 @@ void wm_800712D0_frame_prologue(void)
  #if !defined(WM_7169C_CONTINUATION_DISABLED) && \
      !defined(WM_7197C_CONTINUATION_DISABLED) && \
      !defined(WM_71984_CONTINUATION_DISABLED)
-    /* Retail 0x8007197C calls the image-list transfer; stop before the
-     * unresolved 0x80074F2C overlay helper. */
+    /* Retail 0x8007197C calls the image-list transfer, then retail
+     * 0x80071984 enters the native 0x80074F2C pump. */
     wm_fp_transfer_image_list();
     WM_FP_TRACE(0x8007197Cu, WM_FP_TRACE_CALL, WM_FP_CALL_25044, 0u, 0u);
-    s_fp_cut_pc = 0x80071984u;
+    (void)wm_80074F2C();
+    WM_FP_TRACE(0x80071984u, WM_FP_TRACE_CALL, WM_FP_CALL_74F2C, 0u, 0u);
+    s_fp_cut_pc = 0x80075104u;
  #endif
 #endif
     fprintf(stderr,

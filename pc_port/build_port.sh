@@ -1027,6 +1027,7 @@ PORT_SOURCES=(
     pc_port/src/game_overrides.c
     pc_port/src/world_map_init.c
     pc_port/src/world_map_frame_driver.c
+    pc_port/src/world_map_upload_pump_74f2c.c
     pc_port/src/world_map_frame_driver_712d0.c
     pc_port/src/world_map_main_loop_71034.c
     pc_port/src/world_map_gamestate_alias.c

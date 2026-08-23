@@ -180,3 +180,23 @@ smallest bounded host-sync/display-environment continuation.
   deleted.
 - Detour commit: pending; this audit and progress update are the final
   overnight slice.
+
+## W34B34 morning review — 0x80074F2C upload pump
+
+- Fresh retail re-decode and Part 0/1 policy are banked in
+  `AUDIT_REVERIFY_W34B34.md`; all four audit items were confirmed. The
+  first D554 backedge policy is LOG-AND-HOLD and the backedge itself remains
+  unimplemented in this slice.
+- Implemented native `0x80074F2C` (`[0x80074F2C,0x8007502C)`, 64
+  instructions) with exact signed count, u16 timer/index progression, and
+  map-or-log LoadImage pointer handling. Added the production call at
+  `0x80071984`, with the new cut before `0x80075104`.
+- Focused certificate: `slice_06_tests.log`, O0/O2/UBSan `7/7`, four
+  executed mutants all detected. Production build: `slice_06_build.log`,
+  `LINK OK`.
+- Natural diagnostic: `slice_06_natural.log`, `rc=0`, natural count `2`,
+  transfers `2`, unknowns `0`, scheduler entry `2`, callbacks `29`, missing
+  `0`, frontier `0x80075104`, placeholder clean. The D554 backedge was not
+  encountered because the slice stops before its tail.
+- Commit: pending; intended message `W34B34 implement world image-timer
+  helper 0x80074F2C boundary 0x80071984-0x80075104`.
