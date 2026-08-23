@@ -83,7 +83,7 @@ slice_25_drawotag_architecture.log.
 | `c4a63ca3` | W34B53 BD00/0x80094238 data-plane audit | no production delta |
 | `fd19d698` | W34B54 DrawOTag host ABI architecture audit | no production delta |
 
-W34B53 commit is c8e68ac0 (BD00/0x80094238 data-plane audit; no production
+W34B53 commit is c4a63ca3 (BD00/0x80094238 data-plane audit; no production
 delta). All production slices above have clean LINK OK and rc=0 natural evidence.
 W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, W34B49, and W34B50 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
