@@ -9,7 +9,9 @@
  *     80071488  jal 0x80097800
  *     8007148C  nop
  *   [0x80071490, 0x800714D4) = post-pass sync/display setup, 17 instructions.
- *   Hard-cut before the gated update branch at 0x800714D4.
+ *   [0x800714D4,0x8007169C) = bounded state gates and BD34 convergence.
+ *   [0x8007169C,0x800716AC) = natural C178 branch; alternate state stops
+ *   before unresolved helper 0x8007634C.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -490,6 +492,20 @@ void wm_800712D0_frame_prologue(void)
             s_fp_cut_pc = 0x80071578u;
         else
             s_fp_cut_pc = 0x8007169Cu;
+    }
+ #endif
+ #if !defined(WM_7185C_CONTINUATION_DISABLED)
+    /* Retail 0x8007169C..0x800716A8: the natural C178!=0 branch reaches
+     * the next bounded region. The alternate lane is held at its first
+     * unresolved helper call rather than speculating across it. */
+    {
+        u32 c178 = wm_fp_load_u32(WM_FP_C178);
+        WM_FP_TRACE(0x800716A8u, WM_FP_TRACE_BR, WM_FP_C178, 4u,
+                    c178 != 0u ? 1u : 0u);
+        if (c178 != 0u)
+            s_fp_cut_pc = 0x8007185Cu;
+        else
+            s_fp_cut_pc = 0x80071704u;
     }
  #endif
 #endif

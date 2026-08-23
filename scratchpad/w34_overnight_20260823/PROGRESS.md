@@ -65,5 +65,34 @@ smallest bounded host-sync/display-environment continuation.
   missing `0`, `fp_cut_pc=0x8007169c`, placeholder entered cleanly.
   Mode-loop `0x80072238` and renderer `0x8007299C` remain zero-hit.
 - Evidence: `slice_02_natural.log` and `slice_02_prologue_results.txt`.
-- Commit: pending; intended message `W34B27 advance frame state gates
-  0x800714D4-0x80071698`.
+- Commit: `99fbd14f` (`W34B27 advance frame state gates
+  0x800714D4-0x80071698`).
+
+## Slice 03 audit
+
+- New frontier: `0x8007169C`; audit: `AUDIT_8007169C.md`.
+- The captured natural mode-entry state has `C178=1`, so the direct
+  `0x800716A8` branch reaches `0x8007185C` without a call. Alternate lanes
+  contain absent helpers and remain held at their first unresolved call.
+- Classification: class (a) for the natural branch; implement only the
+  fresh `C178` load/branch and then audit `0x8007185C` separately.
+
+## Slice 03 — natural C178 branch
+
+- Frontier: `0x8007169C -> 0x8007185C` on the captured natural state.
+- Implemented the retail `lw C178` / `bnez` at `0x8007169C..0x800716A8`.
+  `C178 != 0` advances to the next bounded region; `C178 == 0` is held at
+  the first unresolved helper frontier `0x80071704`.
+- Focused production-linked certificate:
+  `pc_port/tests/run_w34b28_8007169c_prod_test.sh`, O0/O2/UBSan-O2 all
+  `6/6`; offset, width, and sign canaries are included. The W34B27
+  certificate remains `8/8` in its continuation-disabled mode.
+- Production rebuild: `LINK OK`.
+- Natural prologue diagnostic: `rc=0`; pass 1 `16/16`, pass 2 `29/29`,
+  missing `0`, `fp_cut_pc=0x8007185c`, placeholder entered cleanly.
+  Mode-loop `0x80072238` and renderer `0x8007299C` remain zero-hit;
+  the existing renderer sentinel also reports zero.
+- Evidence: `AUDIT_8007169C.md`, `slice_03_natural.log`,
+  `slice_03_prologue_results.txt`, and `slice_03_tests.log`.
+- Commit: pending; intended message `W34B28 advance natural C178 branch
+  0x8007169C-0x8007185C`.
