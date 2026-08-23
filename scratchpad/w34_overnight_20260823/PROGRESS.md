@@ -239,3 +239,25 @@ smallest bounded host-sync/display-environment continuation.
   zero-hit.
 - Commit: `b314d2ec` (`W34B36 route SetGeomOffset DrawOTag and hold first
   0x800719C8 backedge`).
+
+## W34B37 — BE3C+0x70 leak and held-backedge census
+
+- Starting proof reproduced at HEAD `0cfeaaeb`: frame 916, D554=1 held at
+  `0x800719C8`, and the pre-fix OT leak `0x005f1068`.
+- Retail re-audit proved `BE3C+0x70` is the selected 0x1000-byte OT root in
+  one of two fixed draw-buffer records. Current-port `wm_8007369C` was the
+  sole relevant writer and stored raw truncated HeapAlloc host pointers;
+  BE3C itself was correctly guest-valued. Full audit: `AUDIT_W34B37_BE3C_OT.md`.
+- Applied a minimal uncommitted writer conversion to `host_ptr_to_psx_u32`,
+  plus the newly exposed `0x80071468` ClearOTagR `PSX_ADDR` boundary. Focused
+  production-linked conversion test passed O0/O2/UBSan; production build
+  passed `LINK OK`.
+- Natural progression reached DrawOTag with mapped `p=0x5f2064` and then
+  SIGSEGVed in PsyCross `ParsePrimitivesLinkedList` at `LIBGPU.C:456`.
+  The W34B37 implementation is not committed because natural rc was not
+  clean; do not paper over this crash.
+- Full 16-slot census is banked in `slice_09_census.log`: twelve state-1
+  slots predict implemented cb1 callbacks; slots 3, 6, 7, and 11 are state 3
+  dormant. Retail backedge target re-derived as `0x8007130C`.
+- Final report: `W34B37_REPORT.md`. No callback gap and no backedge loop were
+  implemented. The next task is OT linked-list representation review.
