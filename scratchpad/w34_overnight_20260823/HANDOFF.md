@@ -53,10 +53,11 @@ the bounded control frontier is still `0x800719C8`.
 | `aa4b71d2` | W34B45 third-tail callback census | no production delta |
 | `90c9ce77` | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
 | `67a22478` | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
-| pending | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
+| `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
+| pending | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, and W34B48 contain evidence/audit only. W34B42 adds one
+W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, and W34B49 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
 
@@ -98,7 +99,8 @@ frame-exit continuation, the 472-instruction mode initializer, and the
 132-instruction teardown. D4 was not used to alter unrelated worktree
 contents. W34B48 rechecked the 15-entry tripwire registry, scheduler
 resolver boundary, and sole CD40-style indirect slot; all remain safe and
-intact.
+intact. W34B49 validated both banked proof manifests and found no stale
+worktree metadata or missing registered worktree directory.
 
 ## 7. Tripwire status
 

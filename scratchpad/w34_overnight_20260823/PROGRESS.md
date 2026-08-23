@@ -1,5 +1,17 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B49 — D4 evidence hygiene
+
+- Frontier remains `0x800719C8`; no production change.
+- `git worktree prune -v` removed no metadata; all 49 registered worktree
+  directories exist.
+- Both banked scheduler proof manifests validate with exit 0: 6/6 and 8/8
+  files `OK` when run from their recorded path contexts. An initial
+  path-context failure was corrected; no hash mismatch or file mutation.
+- Evidence: `AUDIT_W34B49_D4_EVIDENCE_HYGIENE.md`,
+  `slice_22_d4_hygiene.log`.
+- Decision: no deletion, no re-baseline, no implementation, no push.
+
 ## W34B48 — D3 tripwire hygiene
 
 - Frontier remains `0x800719C8`; no production change.
