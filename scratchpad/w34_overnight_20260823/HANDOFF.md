@@ -80,7 +80,8 @@ slice_25_drawotag_architecture.log.
 | `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
 | `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
 | `d7b13c4e` | W34B50 live D554 callback census | no production delta |
-| `c4a63ca3` | W34B53/W34B54 data-plane and DrawOTag ABI audits | no production delta |
+| `c4a63ca3` | W34B53 BD00/0x80094238 data-plane audit | no production delta |
+| `fd19d698` | W34B54 DrawOTag host ABI architecture audit | no production delta |
 
 W34B53 commit is c8e68ac0 (BD00/0x80094238 data-plane audit; no production
 delta). All production slices above have clean LINK OK and rc=0 natural evidence.
