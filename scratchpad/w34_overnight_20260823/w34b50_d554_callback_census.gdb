@@ -29,6 +29,7 @@ set environment SDL_AUDIODRIVER dummy
 set environment LD_LIBRARY_PATH /home/blizz/dev/xenogears-assets/lib
 
 set $frame = 0
+set $w34b53_dumped = 0
 break func_8007554C
 commands
   silent
@@ -50,14 +51,43 @@ end
 break wm_8008A72C
 commands
   silent
-  printf "W34B50_A72_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
+  printf "W34B50_A72_ENTRY frame=%d slot=%d resync=%u d554=0x%08x flags=0x%04x sel=%d byte=%u obj=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), *(unsigned short*)((unsigned char*)g_PsxRam + 0x9bd10), *(short*)((unsigned char*)g_PsxRam + 0x9bd24), *(unsigned char*)((unsigned char*)g_PsxRam + 0x9d738), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d7d8)
   continue
 end
 
 break wm_8008C844
 commands
   silent
-  printf "W34B50_C844_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
+  printf "W34B50_C844_ENTRY frame=%d slot=%d resync=%u d554=0x%08x flags=0x%04x area=%d boundary=%u\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), *(unsigned short*)((unsigned char*)g_PsxRam + 0x9bd10), *(short*)((unsigned char*)g_PsxRam + 0x9bd24), *(unsigned char*)((unsigned char*)g_PsxRam + 0x9d738)
+  continue
+end
+
+break wm_80094238
+commands
+  silent
+  printf "W34B50_94238_ENTRY frame=%d pos=0x%08x idx=%u table=0x%08x\n", $frame, pos_vec, list_index, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9bd00)
+  if $frame == 916 && $w34b53_dumped == 0
+    set $w34b53_dumped = 1
+    printf "W34B53_94238_POS x=%d y=%d z=%d list0_r0=(x=%d z=%d w=%d h=%d sentinel=%d id=%u type=%d) list0_r1=(x=%d z=%d w=%d h=%d sentinel=%d id=%u type=%d)\n", *(int*)((unsigned char*)g_PsxRam + 0xd75e0), *(int*)((unsigned char*)g_PsxRam + 0xd75e4), *(int*)((unsigned char*)g_PsxRam + 0xd75e8), *(short*)((unsigned char*)g_PsxRam + 0xb670c), *(short*)((unsigned char*)g_PsxRam + 0xb670e), *(short*)((unsigned char*)g_PsxRam + 0xb6710), *(short*)((unsigned char*)g_PsxRam + 0xb6712), *(short*)((unsigned char*)g_PsxRam + 0xb6714), *(unsigned short*)((unsigned char*)g_PsxRam + 0xb6718), *(short*)((unsigned char*)g_PsxRam + 0xb671a), *(short*)((unsigned char*)g_PsxRam + 0xb671c), *(short*)((unsigned char*)g_PsxRam + 0xb671e), *(short*)((unsigned char*)g_PsxRam + 0xb6720), *(short*)((unsigned char*)g_PsxRam + 0xb6722), *(short*)((unsigned char*)g_PsxRam + 0xb6724), *(unsigned short*)((unsigned char*)g_PsxRam + 0xb6728), *(short*)((unsigned char*)g_PsxRam + 0xb672a)
+    printf "W34B53_94238_TABLE guest=0x%08x entries:", *(unsigned int*)((unsigned char*)g_PsxRam + 0x9bd00)
+    x/16wx (unsigned char*)g_PsxRam + 0xb66fc
+    printf "W34B53_94238_DATA words_at_table_plus_0x40:\n"
+    x/16wx (unsigned char*)g_PsxRam + 0xb673c
+  end
+  continue
+end
+
+break pc_port/src/world_map_helper_94238.c:143
+commands
+  silent
+  printf "W34B50_94238_HIT frame=%d rec=0x%08x idA=%d idB=%d\n", $frame, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d7d8), *(short*)((unsigned char*)g_PsxRam + 0x9bd24), *(short*)((unsigned char*)g_PsxRam + 0x9ce68)
+  continue
+end
+
+break pc_port/src/world_map_helper_94238.c:154
+commands
+  silent
+  printf "W34B50_94238_MISS frame=%d rec=0x%08x idA=%d idB=%d\n", $frame, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d7d8), *(short*)((unsigned char*)g_PsxRam + 0x9bd24), *(short*)((unsigned char*)g_PsxRam + 0x9ce68)
   continue
 end
 
@@ -66,7 +96,7 @@ end
 break pc_port/src/world_map_helper_90a84.c:373
 commands
   silent
-  printf "W34B50_A72_HELPER_RETURN result=%d d554=0x%08x\n", result, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
+  printf "W34B50_A72_HELPER_RETURN result=%d d554=0x%08x flags=0x%04x sel=%d byte=%u\n", result, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), *(unsigned short*)((unsigned char*)g_PsxRam + 0x9bd10), *(short*)((unsigned char*)g_PsxRam + 0x9bd24), *(unsigned char*)((unsigned char*)g_PsxRam + 0x9d738)
   continue
 end
 

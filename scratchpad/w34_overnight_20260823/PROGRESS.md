@@ -1,5 +1,20 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B53 — 0x80094238 BD00 data-plane audit
+
+- Frontier remains 0x800719C8; no production source changed.
+- Read-only GDB inspection confirmed the relocated root
+  0x8009BD00 -> 0x800B66FC and valid list pointers
+  0x800B670C/0x800B673C/0x800B674C/0x800B675C.
+- List 0 contains two valid records and a field+8=-1 terminator. The
+  natural position is (x=0,y=-16384,z=0), outside both list-0 rectangles,
+  so wm_80094238 miss and recptr=FFFFFFFF/idA=-1/idB=-1 are expected.
+- Natural run: rc=0; three held tails; final scheduler pass 53/53,
+  missing 0; mode-loop, renderer, and DrawOTag guards remain zero-hit.
+- Classification: no relocation/data-plane fix; no seed/position/D554 forcing.
+- Evidence: AUDIT_W34B53_94238_DATA_PLANE.md and
+  slice_24_94238_data_plane.log.
+
 ## W34B50 — live D554 callback branch census
 
 - Frontier remains `0x800719C8`; no production source changed.

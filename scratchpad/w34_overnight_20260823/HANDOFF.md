@@ -1,4 +1,4 @@
-# W34-OVERNIGHT handoff — W34B50 D554 callback census complete
+# W34-OVERNIGHT handoff — W34B53 BD00 data-plane audit complete
 
 ## 1. Frontier and final evidence
 
@@ -30,6 +30,13 @@ resync `0`, and `wm_80090A84` returned `0` each time; slot 4 callback
 `0x8008C844` entered with resync `0`, which gates its `wm_80090C68` clear
 path off. D554 consequently remained `1` at all three production tail
 records. The complete capture is in `slice_23_d554_callback_census.log`.
+
+W34B53 audited the live wm_80094238 miss rather than forcing a trigger. The
+root 0x8009BD00 -> 0x800B66FC is correctly relocated; list 0 contains two
+valid rectangles and a terminator, while the natural position
+(0,-16384,0) is outside them. The miss is expected data behavior, not a
+stale/uninitialized pointer or missing fixup. Evidence is in
+AUDIT_W34B53_94238_DATA_PLANE.md and slice_24_94238_data_plane.log.
 
 ## 2. Milestones
 
@@ -64,7 +71,8 @@ records. The complete capture is in `slice_23_d554_callback_census.log`.
 | `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
 | `d7b13c4e` | W34B50 live D554 callback census | no production delta |
 
-All production slices above have clean LINK OK and rc=0 natural evidence.
+W34B53 commit is c8e68ac0 (BD00/0x80094238 data-plane audit; no production
+delta). All production slices above have clean LINK OK and rc=0 natural evidence.
 W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, W34B49, and W34B50 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
@@ -115,6 +123,10 @@ worktree metadata or missing registered worktree directory.
 W34B50 then captured the two live callback entry/gate states and the A72C
 helper return across three clean bounded re-entries; no clear arm fired.
 
+W34B53 inspected the live trigger table and established that the natural
+0x80094238 miss is correct for the captured position; no data-plane fix was
+attempted. Its evidence-only commit is the next local commit after W34B52.
+
 ## 7. Tripwire status
 
 | tripwire/guard | status |
@@ -132,10 +144,11 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a reviewed implementation of the full
-second-frame/D554 closure state machine, beginning with the unresolved
-frame-local `0x8007169C..0x80071978` region and its callees. Do not clear
-D554 by hand or enable the legacy driver; preserve the natural tripwires.
+The single recommended next task is a retail audit of the unresolved
+frame-local 0x8007169C..0x80071978 D554 closure region and its callees,
+followed only by a bounded implementation if it classifies as (a) or (b).
+Do not clear D554 by hand or enable the legacy driver; preserve the natural
+tripwires.
 
 ## 9. Confirmation
 
