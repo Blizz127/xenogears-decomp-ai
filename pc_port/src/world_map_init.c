@@ -2196,10 +2196,19 @@ void wm_loop_exit_should_not_run(void)
 static void wm_8007369C(void)
 {
     void* p = HeapAlloc(0x1000, 0);
-    WM_U32(WM_ALLOC_BC38_ABS) = (u32)(uintptr_t)p;
+    /* Retail writes a KUSEG OT pointer. HeapAlloc returns the host view of
+     * emulated RAM in the port, so publish its guest address at the writer. */
+    WM_U32(WM_ALLOC_BC38_ABS) = host_ptr_to_psx_u32(p);
     p = HeapAlloc(0x1000, 0);
-    WM_U32(WM_ALLOC_BCB0_ABS) = (u32)(uintptr_t)p;
+    WM_U32(WM_ALLOC_BCB0_ABS) = host_ptr_to_psx_u32(p);
 }
+
+#if defined(WM_7369C_PROD_TEST)
+u32 wm_8007369C_test_host_to_psx(void* p)
+{
+    return host_ptr_to_psx_u32(p);
+}
+#endif
 
 /* Lahan: halfword @ 0x8006EE68 is not cold-defaulted; path selects mode 1/2. */
 static void wm_80073300(void)
