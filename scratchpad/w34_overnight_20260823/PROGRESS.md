@@ -94,5 +94,32 @@ smallest bounded host-sync/display-environment continuation.
   the existing renderer sentinel also reports zero.
 - Evidence: `AUDIT_8007169C.md`, `slice_03_natural.log`,
   `slice_03_prologue_results.txt`, and `slice_03_tests.log`.
-- Commit: pending; intended message `W34B28 advance natural C178 branch
-  0x8007169C-0x8007185C`.
+- Commit: `4a19846a` (`W34B28 advance natural C178 branch
+  0x8007169C-0x8007185C`).
+
+## Slice 04 audit
+
+- New frontier: `0x8007185C`; audit: `AUDIT_8007185C.md`.
+- Classification: class (a) for the captured natural lane; implement the
+  BD10/D80C/EE76 flag operations, fresh C178 branch, and D804 clear. Hold
+  the alternate call-bearing lane before `0x800758C0`.
+
+## Slice 04 — natural flag/update lane
+
+- Frontier: `0x8007185C -> 0x8007197C` on the captured natural state.
+- Implemented the retail D80C clear, BD10 bit-0x100 EE76 halfword toggle,
+  fresh C178/D804/D554/BE10 gates, and D804 clear at `0x80071978`.
+  The alternate helper-bearing state stops at `0x800718E8`.
+- Focused production-linked certificates: B29 O0/O2/UBSan-O2 all
+  `10/10`; B28 `6/6`, B27 `8/8`, and B26 `12/12` compatibility suites
+  all pass after their continuation guards.
+- Production rebuild: `LINK OK` (`slice_04_build.log`).
+- Natural prologue diagnostic: `rc=0`; pass 1 `16/16`, pass 2 `29/29`,
+  missing `0`, `fp_cut_pc=0x8007197c`, placeholder entered cleanly.
+  Mode-loop `0x80072238` and renderer `0x8007299C` remain zero-hit;
+  the renderer sentinel remains zero.
+- Evidence: `AUDIT_8007185C.md`, `slice_04_natural.log`,
+  `slice_04_prologue_results.txt`, `slice_04_tests.log`, and
+  `slice_04_build.log`.
+- Commit: pending; intended message `W34B29 advance flag/update lane
+  0x8007185C-0x8007197C`.

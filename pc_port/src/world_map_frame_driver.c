@@ -12,6 +12,8 @@
  *   [0x800714D4,0x8007169C) = bounded state gates and BD34 convergence.
  *   [0x8007169C,0x800716AC) = natural C178 branch; alternate state stops
  *   before unresolved helper 0x8007634C.
+ *   [0x8007185C,0x8007197C) = natural flag/update lane; alternate BE10
+ *   call-bearing state stops before unresolved helper 0x800758C0.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -41,6 +43,8 @@
 #define WM_FP_BD24          0x8009BD24u
 #define WM_FP_CE68          0x8009CE68u
 #define WM_FP_D80C          0x8009D80Cu
+#define WM_FP_BE10          0x8009BE10u
+#define WM_FP_EE76          0x8007EE76u
 #define WM_FP_OT_OFF        0x70u
 #define WM_FP_ENV_STRIDE    0x78u
 
@@ -494,7 +498,8 @@ void wm_800712D0_frame_prologue(void)
             s_fp_cut_pc = 0x8007169Cu;
     }
  #endif
- #if !defined(WM_7185C_CONTINUATION_DISABLED)
+ #if !defined(WM_7169C_CONTINUATION_DISABLED) && \
+     !defined(WM_7185C_CONTINUATION_DISABLED)
     /* Retail 0x8007169C..0x800716A8: the natural C178!=0 branch reaches
      * the next bounded region. The alternate lane is held at its first
      * unresolved helper call rather than speculating across it. */
@@ -506,6 +511,40 @@ void wm_800712D0_frame_prologue(void)
             s_fp_cut_pc = 0x8007185Cu;
         else
             s_fp_cut_pc = 0x80071704u;
+    }
+ #endif
+ #if !defined(WM_7169C_CONTINUATION_DISABLED) && \
+     !defined(WM_7197C_CONTINUATION_DISABLED)
+    /* Retail 0x8007185C..0x80071978: clear D80C, toggle EE76 for the
+     * BD10 bit, then take the natural C178!=0 lane through D804=0. The
+     * alternate call-bearing BE10 lane stops before 0x800758C0. */
+    {
+        u16 bd10 = wm_fp_load_u16(WM_FP_BD10);
+        wm_fp_store_u32(WM_FP_D80C, 0u);
+        WM_FP_TRACE(0x80071868u, WM_FP_TRACE_SW, WM_FP_D80C, 4u, 0u);
+        if ((bd10 & 0x0100u) != 0u) {
+            u16 ee76 = wm_fp_load_u16(WM_FP_EE76);
+            ee76 ^= 1u;
+            wm_fp_store_u16(WM_FP_EE76, ee76);
+            WM_FP_TRACE(0x8007188Cu, WM_FP_TRACE_SH, WM_FP_EE76, 2u,
+                        ee76);
+        }
+        u32 c178 = wm_fp_load_u32(WM_FP_C178);
+        int reaches_758c0 = 0;
+        if (c178 == 0u) {
+            u32 d804 = wm_fp_load_u32(WM_FP_D804);
+            u32 d554 = wm_fp_load_u32(WM_FP_D554);
+            s32 be10 = (s32)wm_fp_load_u32(WM_FP_BE10);
+            reaches_758c0 = d804 != 0u && d554 != 0u &&
+                            be10 > 0 && be10 < 4;
+        }
+        if (!reaches_758c0) {
+            wm_fp_store_u32(WM_FP_D804, 0u);
+            WM_FP_TRACE(0x80071978u, WM_FP_TRACE_SW, WM_FP_D804, 4u, 0u);
+            s_fp_cut_pc = 0x8007197Cu;
+        } else {
+            s_fp_cut_pc = 0x800718E8u;
+        }
     }
  #endif
 #endif

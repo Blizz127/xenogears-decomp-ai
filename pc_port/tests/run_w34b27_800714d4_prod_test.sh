@@ -17,7 +17,8 @@ build_run() {
     local label="$1" opt="$2" san="${3:-}"
     gcc -c "$TEST" "${FLAGS[@]}" "$opt" $san -o "$OUT/$label.test.o"
     gcc -c "$FRAME" "${FLAGS[@]}" "$opt" -DWM_712D0_TEST_TRACE \
-        -DWM_7185C_CONTINUATION_DISABLED $san \
+        -DWM_7185C_CONTINUATION_DISABLED \
+        -DWM_7197C_CONTINUATION_DISABLED $san \
         -o "$OUT/$label.frame.o"
     gcc -no-pie -Wl,--gc-sections $san "$OUT/$label.test.o" \
         "$OUT/$label.frame.o" -o "$OUT/$label"
