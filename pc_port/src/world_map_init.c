@@ -1367,6 +1367,105 @@ void wm_80096AF0_completion_3to4(void)
     s_wm_cb_unregister++;
 }
 
+/* W34B25: CdSyncCallback handler 0x80096A6C (exact native of the retail
+ * CD44 status dispatcher, world_map.bin 0x80096A6C-0x80096C08; jump table
+ * 0x80070CB8, 12 entries indexed by CD44-1).
+ *
+ * Retail MIPS (status in $a0, result in $a1):
+ *   0x80096A78  bne  $a0, 2, 0x80096BA0        <- not CdlComplete: error path
+ *   0x80096A84  lw   $v0, CD44 ; addiu $v1,$v0,-1 ; sltiu $v0,$v1,12
+ *   0x80096A94  beqz $v0, 0x80096BF8            <- out of range: return
+ *   0x80096AAC  jr   table[CD44-1]
+ *     idx0 (CD44=1)  0x80096AB4: CdReadyCallback(0x80096C0C); CD44=2;
+ *                    BCD4=BCD0=BCCC=0; a0=27 -> 0x80096BEC
+ *     idx1 (CD44=2)  0x80096BF8: return
+ *     idx2 (CD44=3)  0x80096AF0: completion 3->4 (wm_80096AF0_completion_3to4)
+ *     idx3..8        0x80096BF8: return
+ *     idx9..11       0x80096B28 / 0x80096B5C / 0x80096B70: NOT PORTED here
+ *   0x80096BA0  lbu $v0,0($a1); andi 0x10; beqz -> 0x80096BDC
+ *               CD44=10; CCA8++; a0=CdlNop(1)  -> 0x80096BF0
+ *   0x80096BDC  CD44=11; a0=CdlGetTN(0x13)
+ *   0x80096BEC  a1=0 ; jal CdControlF(a0, 0) ; return
+ *
+ * Port notes (no game logic invented):
+ *  - Registered as a HOST function at the 0x8009699C registration site;
+ *    the W28B CdControlF hook calls the stored CdlCB directly, so it must
+ *    never be a PSX address.
+ *  - CdReadyCallback target 0x80096C0C is not ported; a counting boundary
+ *    stub (host function) is registered instead so the ready path can
+ *    never jump into g_PsxRam.  It fires on the PsyCross CDSpooler thread.
+ *  - Retail issues CdControlF(CdlReadS, NULL) = "read from the last Setloc
+ *    position".  Host CdControlF dereferences param, so the port passes
+ *    the CEBC CdlLOC that step 11 of 0x8009699C just Setloc'd -- the same
+ *    position retail's NULL resolves to.
+ *  - CD44 states 10..12 arms are a bounded boundary (counted, no state
+ *    change); they are not reachable from the CD44=1 entry in this slice. */
+static int s_wm_96a6c_entry;
+static int s_wm_96a6c_state1;
+static int s_wm_96a6c_error_path;
+static int s_wm_96a6c_unported_state;
+static volatile int s_wm_96c0c_ready_boundary_hits;
+
+static void wm_80096C0C_cd_ready_boundary(u_char status, u_char* result)
+{
+    (void)status;
+    (void)result;
+    s_wm_96c0c_ready_boundary_hits++;
+}
+
+void wm_80096A6C_cd_sync(u_char status, u_char* result)
+{
+    u32 cd44;
+
+    s_wm_96a6c_entry++;
+    if (status != 2) {
+        /* 0x80096BA0: CdlDiskError / non-complete status path. */
+        s_wm_96a6c_error_path++;
+        if (result[0] & 0x10) {
+            WM_U32(WM_CD44_ABS) = 10;
+            WM_U32(WM_CCA8_ABS) = WM_U32(WM_CCA8_ABS) + 1;
+            CdControlF(CdlNop, NULL);
+        } else {
+            WM_U32(WM_CD44_ABS) = 11;
+            CdControlF(CdlGetTN, NULL);
+        }
+        return;
+    }
+
+    cd44 = WM_U32(WM_CD44_ABS);
+    if (cd44 - 1u >= 12u)
+        return;
+
+    switch (cd44) {
+    case 1:
+        /* 0x80096AB4..0x80096AEC (exact order). */
+        CdReadyCallback(wm_80096C0C_cd_ready_boundary);
+        WM_U32(WM_CD44_ABS) = 2;
+        WM_U32(WM_BCD4_ABS) = 0;
+        WM_U32(WM_BCD0_ABS) = 0;
+        WM_U32(WM_BCCC_ABS) = 0;
+        s_wm_96a6c_state1++;
+        fprintf(stderr,
+                "[worldmap-cd-sync-96a6c] CD44 1->2, ready boundary registered, "
+                "CdlReadS at CEBC loc\n");
+        CdControlF(CdlReadS, (u_char*)PSX_ADDR(WM_CEBC_ABS));
+        return;
+    case 3:
+        wm_80096AF0_completion_3to4();
+        return;
+    case 10:
+    case 11:
+    case 12:
+        s_wm_96a6c_unported_state++;
+        fprintf(stderr,
+                "[worldmap-cd-sync-96a6c] BOUNDARY: CD44=%u arm not ported\n",
+                cd44);
+        return;
+    default:
+        return;
+    }
+}
+
 /* W27B: exact dispatcher state 4 (retail 0x80096918–0x80096954).
  *
  * Retail MIPS:
@@ -1658,8 +1757,10 @@ void wm_8009699C_d788_processor(u32 record_psx)
     CdIntToPos((int)file_id, &loc);
     WM_U32(WM_CEBC_ABS) = *(u32*)&loc;
 
-    /* 10. Register CdSyncCallback with handler 0x80096A6C. */
-    CdSyncCallback((CdlCB)PSX_ADDR(WM_96A6C_HANDLER));
+    /* 10. Register CdSyncCallback with handler 0x80096A6C (W34B25: host
+     *     native wm_80096A6C_cd_sync -- W28B calls the stored CdlCB directly,
+     *     so a PSX address here jumps into g_PsxRam). */
+    CdSyncCallback(wm_80096A6C_cd_sync);
 
     /* 11. Issue CdControlF(CdlSetloc, &CEBC_loc).  On PC, this will
      *     synchronously invoke the registered CdSyncCallback via W28B. */

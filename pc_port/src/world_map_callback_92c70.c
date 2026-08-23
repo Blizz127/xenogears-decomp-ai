@@ -42,13 +42,13 @@ s32 wm_80092C70(s32 slot_idx)
         }
 
         /* Clear UI object */
-        func_80034614((void*)(uintptr_t)UI_OBJECT);
+        func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
 
         /* String lookup: GetStringEntry(D_8009D784, area) */
         {
             s32 table = c70_lw(D_8009D784);
             s32 entry = func_80033728(table, (s32)area);
-            func_80034714((void*)(uintptr_t)UI_OBJECT, entry);
+            func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
         }
 
         /* Store area, advance to state 1 */
@@ -62,15 +62,15 @@ s32 wm_80092C70(s32 slot_idx)
 
         if (area == -1) {
             /* Area cleared: close and return to state 0 */
-            func_80034614((void*)(uintptr_t)UI_OBJECT);
+            func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
             c70_sh(slot + 0x20, 0);
         } else if ((s32)area != stored_area) {
             /* Area changed: update string */
-            func_80034614((void*)(uintptr_t)UI_OBJECT);
+            func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
             {
                 s32 table = c70_lw(D_8009D784);
                 s32 entry = func_80033728(table, (s32)area);
-                func_80034714((void*)(uintptr_t)UI_OBJECT, entry);
+                func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
             }
             c70_sw(slot + 0x50, (s32)area);
         }
@@ -81,7 +81,7 @@ s32 wm_80092C70(s32 slot_idx)
         u32 palette_source = (u32)c70_lw(/* D_8009BE3C */ 0x8009BE3Cu);
         s32 pal_data = c70_lw(palette_source + 0x70);
         s32 pal_table = c70_lw(D_8009D7F0);
-        func_80034888((void*)(uintptr_t)UI_OBJECT, pal_data, pal_table);
+        func_80034888(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, pal_data, pal_table);
     }
 
     return 1;

@@ -3,6 +3,7 @@
  * Main world-map ordering-table dispatcher.
  */
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "common.h"
@@ -24,17 +25,50 @@ static s32 o_lw(u32 a) { s32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void o_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static void o_sw(u32 a, s32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 
+#define D_8009D150   0x8009D150u  /* -> table A: 80 records x 16 bytes */
+#define D_8009CEB4   0x8009CEB4u  /* -> table B: 80 records x 8 bytes */
+
+/* W34B25: exact native of retail 0x80086700-0x80086794 (world_map.bin,
+ * 38 insns, leaf).  CD40 callback installed by world_map_init.c
+ * (WM_MES_FN_86700).  For 80 records: A[i].w0 += (s16)B[i].h0,
+ * A[i].w2 += (s16)B[i].h2, each wrapped into [0, 0x2000000):
+ *   if (0x1FFFFFF < v) v += 0xFE000000;  if (v < 0) v += 0x2000000; */
+static void wm_80086700_cd40_init(void)
+{
+    u32 a = (u32)o_lw(D_8009D150);
+    u32 b = (u32)o_lw(D_8009CEB4);
+    s32 i;
+    for (i = 0; i < 80; i++) {
+        s32 v1 = o_lw(a + 0) + o_lh(b + 0);
+        s32 v0 = o_lw(a + 8) + o_lh(b + 4);
+        if (0x1FFFFFF < v1) v1 += (s32)0xFE000000;
+        if (v1 < 0) v1 += 0x2000000;
+        if (0x1FFFFFF < v0) v0 += (s32)0xFE000000;
+        if (v0 < 0) v0 += 0x2000000;
+        o_sw(a + 0, v1);
+        o_sw(a + 8, v0);
+        a += 16;
+        b += 8;
+    }
+}
+
+static int s_wm_86798_cd40_boundary_hits;
+
 void wm_80086798(void)
 {
     s32 i;
     u32 callback;
 
-    /* Indirect call via function pointer */
+    /* Indirect call via function pointer (retail jalr [CD40]).  The slot
+     * holds a GUEST address; never jump to it on the host.  W34B25: map the
+     * only known value to its native, anything else is a counted boundary. */
     callback = (u32)o_lw(D_8009CD40);
-    if (callback != 0) {
-        /* jalr: call the initialization callback */
-        void (*init_fn)(void) = (void(*)(void))(uintptr_t)callback;
-        init_fn();
+    if (callback == 0x80086700u) {
+        wm_80086700_cd40_init();
+    } else if (callback != 0) {
+        s_wm_86798_cd40_boundary_hits++;
+        fprintf(stderr, "[worldmap-86798] BOUNDARY: CD40 callback 0x%08x "
+                "has no native; skipped\n", callback);
     }
 
     /* Copy 48 blocks of 8 bytes from D_8009ADB0 to scratchpad+0x60 */

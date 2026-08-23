@@ -41,11 +41,11 @@ s32 wm_80092FD8(s32 slot_idx)
         if (ce68 == -1) {
             goto palette_update;
         }
-        func_80034614((void*)(uintptr_t)UI_OBJECT);
+        func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
         {
             s32 table = fd_lw(D_8009D784);
             s32 entry = func_80033728(table, (s32)ce68);
-            func_80034714((void*)(uintptr_t)UI_OBJECT, entry);
+            func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
         }
         fd_sw(slot + 0x50, (s32)ce68);
         fd_sh(slot + 0x20, 1);
@@ -56,14 +56,14 @@ s32 wm_80092FD8(s32 slot_idx)
         s32 stored = fd_lw(slot + 0x50);
 
         if (ce68 == -1) {
-            func_80034614((void*)(uintptr_t)UI_OBJECT);
+            func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
             fd_sh(slot + 0x20, 0);
         } else if ((s32)ce68 != stored) {
-            func_80034614((void*)(uintptr_t)UI_OBJECT);
+            func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
             {
                 s32 table = fd_lw(D_8009D784);
                 s32 entry = func_80033728(table, (s32)ce68);
-                func_80034714((void*)(uintptr_t)UI_OBJECT, entry);
+                func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
             }
             fd_sw(slot + 0x50, (s32)ce68);
         }
@@ -75,7 +75,7 @@ palette_update:
         u32 src = (u32)fd_lw(D_8009BE3C);
         s32 pal_data = fd_lw(src + 0x70);
         s32 pal_table = fd_lw(D_8009D7F0);
-        func_80034888((void*)(uintptr_t)UI_OBJECT, pal_data, pal_table);
+        func_80034888(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, pal_data, pal_table);
     }
 
     /* Palette color blending (state==1 only) */
