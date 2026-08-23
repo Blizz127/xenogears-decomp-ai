@@ -98,6 +98,7 @@ extern s32 g_GamePartySkinsInitialized;
 extern s32 g_GameHasLoadedWDS;
 extern s32 g_PartyIsWaitingForStreamData;
 
+#ifndef XENO_PC_PORT
 void func_8001AADC(void) {
     s32 i;
     s32* pSkins = (s32*)g_GamePartyMemberSkins;
@@ -156,6 +157,7 @@ void func_8001AADC(void) {
         D_80062524[i] = 0;
     }
 }
+#endif
 
 void GamePartySignalReinitialize(void) {
     g_GamePartySkinsInitialized = 0;
