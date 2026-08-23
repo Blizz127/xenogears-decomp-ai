@@ -154,3 +154,16 @@ smallest bounded host-sync/display-environment continuation.
   `slice_05_build.log`.
 - Commit: pending; intended message `W34B30 map 0x80025044 image-list
   boundary 0x8007197C-0x80071984`.
+
+## Slice 05 detours and blocked frontier
+
+- D1 convergence audit: `DETOUR_D1_CONVERGENCE_AUDIT.md`. No bounded gap
+  exists between the built convergence/common-tail pieces and the guarded
+  mode-loop entry; no tripwire was weakened or retired.
+- D2 audit-ahead packets:
+  `AUDIT_AHEAD_80071984.md`, `AUDIT_AHEAD_80074F2C.md`, and
+  `AUDIT_AHEAD_80075104.md`.
+- Blocked frontier: `0x80071984`, class (e). Crossing it requires the two
+  absent overlay helpers, a guest-pointer DrawOTag handoff, and a live
+  frame backedge with unresolved callback-pass policy. No overnight code
+  crossed this boundary.
