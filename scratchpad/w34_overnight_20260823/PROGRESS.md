@@ -121,8 +121,8 @@ smallest bounded host-sync/display-environment continuation.
 - Evidence: `AUDIT_8007185C.md`, `slice_04_natural.log`,
   `slice_04_prologue_results.txt`, `slice_04_tests.log`, and
   `slice_04_build.log`.
-- Commit: pending; intended message `W34B29 advance flag/update lane
-  0x8007185C-0x8007197C`.
+- Commit: `0c46ba17` (`W34B29 advance flag/update lane
+  0x8007185C-0x8007197C`).
 
 ## Slice 05 audit
 
@@ -152,8 +152,8 @@ smallest bounded host-sync/display-environment continuation.
 - Evidence: `AUDIT_8007197C.md`, `slice_05_natural.log`,
   `slice_05_prologue_results.txt`, `slice_05_tests.log`, and
   `slice_05_build.log`.
-- Commit: pending; intended message `W34B30 map 0x80025044 image-list
-  boundary 0x8007197C-0x80071984`.
+- Commit: `14a7119c` (`W34B30 map 0x80025044 image-list boundary
+  0x8007197C-0x80071984`).
 
 ## Slice 05 detours and blocked frontier
 
@@ -167,3 +167,16 @@ smallest bounded host-sync/display-environment continuation.
   absent overlay helpers, a guest-pointer DrawOTag handoff, and a live
   frame backedge with unresolved callback-pass policy. No overnight code
   crossed this boundary.
+
+## D3/D4 detours
+
+- D3 tripwire audit: `DETOUR_D3_TRIPWIRE_AUDIT.md`. All 15 registry entries
+  remain intact; natural mode-loop, renderer, DrawOTag, backedge, and
+  excluded-arc guards remain zero-hit. W34B30’s unknown-pointer negative
+  path is covered by its focused certificate and did not fire naturally.
+- D4 evidence hygiene: `DETOUR_D4_EVIDENCE_HYGIENE.md`. The banked proof
+  tree validates fully with `sha256sum -c SHA256SUMS`. `git worktree prune`
+  removed no registered worktree metadata; no worktree directories were
+  deleted.
+- Detour commit: pending; this audit and progress update are the final
+  overnight slice.
