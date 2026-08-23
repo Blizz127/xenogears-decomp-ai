@@ -8,7 +8,8 @@
  *   SHA-256 f082c48aadb535cf17202501b97d36df5f30688c9ecdaac5f5fc41f66b197893
  *     80071488  jal 0x80097800
  *     8007148C  nop
- *   Hard-cut before DrawSync at 0x80071490.
+ *   [0x80071490, 0x800714D4) = post-pass sync/display setup, 17 instructions.
+ *   Hard-cut before the gated update branch at 0x800714D4.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -64,9 +65,10 @@ extern void func_800250E0(int context);
 extern void func_8001D468(void);
 extern u32 wm_800967E4_dispatch_cd_work(void);
 extern void wm_80097800(void);
-#if defined(WM_71488_MUTANT_M5)
 extern int DrawSync(int mode);
-#endif
+extern void GameCheckAndHandleSoftReset(void);
+extern void PutDispEnv(void *env);
+extern void PutDrawEnv(void *env);
 
 enum {
     WM_FP_TRACE_LW = 1,
@@ -86,7 +88,12 @@ enum {
     WM_FP_CALL_CLEAROTAG = 5,
     WM_FP_CALL_250E0 = 6,
     WM_FP_CALL_1D468 = 7,
-    WM_FP_CALL_97800 = 8
+    WM_FP_CALL_97800 = 8,
+    WM_FP_CALL_DRAWSYNC_2 = 9,
+    WM_FP_CALL_VSYNC_2 = 10,
+    WM_FP_CALL_SOFT_RESET = 11,
+    WM_FP_CALL_PUT_DISP = 12,
+    WM_FP_CALL_PUT_DRAW = 13
 };
 
 #if defined(WM_712D0_TEST_TRACE)
@@ -417,12 +424,30 @@ void wm_800712D0_frame_prologue(void)
     }
 #endif
 
-#if defined(WM_71488_MUTANT_M5)
+#if defined(WM_71490_CONTINUATION_DISABLED)
+    /* The W34B18-C certificate intentionally stops at the old frontier. */
+    s_fp_cut_pc = 0x80071490u;
+#elif defined(WM_71488_MUTANT_M5)
     s_fp_cut_pc = 0x80071498u;
     (void)DrawSync(0);
 #elif defined(WM_71488_MUTANT_M4)
     s_fp_cut_pc = 0x80071488u;
 #else
+    /* Retail 0x80071490..0x800714C4. Environment words in BE3C are guest
+     * addresses; host PsyCross receives mapped pointers. */
+    (void)DrawSync(0);
+    WM_FP_TRACE(0x80071490u, WM_FP_TRACE_CALL, WM_FP_CALL_DRAWSYNC_2, 0u, 0u);
+    (void)VSync(2);
+    WM_FP_TRACE(0x80071498u, WM_FP_TRACE_CALL, WM_FP_CALL_VSYNC_2, 0u, 2u);
+    GameCheckAndHandleSoftReset();
+    WM_FP_TRACE(0x800714A0u, WM_FP_TRACE_CALL, WM_FP_CALL_SOFT_RESET, 0u, 0u);
+    env = wm_fp_load_u32(WM_FP_DB_PTR);
+    WM_FP_TRACE(0x800714ACu, WM_FP_TRACE_LW, WM_FP_DB_PTR, 4u, env);
+    PutDispEnv(PSX_ADDR(env + 0x5Cu));
+    WM_FP_TRACE(0x800714B0u, WM_FP_TRACE_CALL, WM_FP_CALL_PUT_DISP, 4u,
+                env + 0x5Cu);
+    PutDrawEnv(PSX_ADDR(env));
+    WM_FP_TRACE(0x800714C0u, WM_FP_TRACE_CALL, WM_FP_CALL_PUT_DRAW, 4u, env);
     s_fp_cut_pc = WM_FRAME_PROLOGUE_CUT;
 #endif
     fprintf(stderr,

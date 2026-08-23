@@ -113,7 +113,7 @@ compile_certificate() {
     gcc -c "$TEST_SOURCE" "${STRICT_FLAGS[@]}" "$optimization" \
         "${sanitize_flags[@]}" -o "$test_object"
     gcc -c "$FRAME_SOURCE" "${STRICT_FLAGS[@]}" "$optimization" \
-        -DWM_712D0_TEST_TRACE "${frame_def[@]}" \
+        -DWM_712D0_TEST_TRACE -DWM_71490_CONTINUATION_DISABLED "${frame_def[@]}" \
         "${sanitize_flags[@]}" -o "$frame_object"
     gcc -c "$production_source" "${PROD_FLAGS[@]}" "$optimization" \
         "${sanitize_flags[@]}" -o "$production_object"
