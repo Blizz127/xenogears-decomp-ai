@@ -123,3 +123,34 @@ smallest bounded host-sync/display-environment continuation.
   `slice_04_build.log`.
 - Commit: pending; intended message `W34B29 advance flag/update lane
   0x8007185C-0x8007197C`.
+
+## Slice 05 audit
+
+- New frontier: `0x8007197C`; audit: `AUDIT_8007197C.md`.
+- Classification: class (c) host-boundary defect at the already-linked
+  `0x80025044` image-list transfer. The next `0x80074F2C` helper is absent
+  and larger than a leaf, with a later DrawOTag/backedge sequence.
+
+## Slice 05 — mapped image-list transfer
+
+- Frontier: `0x8007197C -> 0x80071984`.
+- Added a production-linked mapped wrapper for the retail image-list call:
+  known PSX/KSEG1 record/data pointers use `PSX_ADDR`; unknown context,
+  head, or data values log and increment `wm_fp_get_image_unknowns()`.
+  The wrapper clears the consumed list and never dereferences an unknown
+  guest value as a host pointer.
+- Focused production-linked certificate:
+  `pc_port/tests/run_w34b30_8007197c_image_transfer_prod_test.sh`,
+  O0/O2/UBSan-O2 all `7/7`; empty, known load/clear, chain, unknown
+  pointer, and invalid-context cases are covered. Prior B26-B29 suites
+  remain green.
+- Production rebuild: `LINK OK` (`slice_05_build.log`).
+- Natural prologue diagnostic: `rc=0`; pass 1 `16/16`, pass 2 `29/29`,
+  missing `0`, `fp_cut_pc=0x80071984`, placeholder entered cleanly.
+  No unknown image-list value occurred naturally. Mode-loop
+  `0x80072238` and renderer `0x8007299C` remain zero-hit.
+- Evidence: `AUDIT_8007197C.md`, `slice_05_natural.log`,
+  `slice_05_prologue_results.txt`, `slice_05_tests.log`, and
+  `slice_05_build.log`.
+- Commit: pending; intended message `W34B30 map 0x80025044 image-list
+  boundary 0x8007197C-0x80071984`.

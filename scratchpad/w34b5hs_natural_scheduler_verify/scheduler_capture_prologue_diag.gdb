@@ -82,9 +82,9 @@ break wm_800712D0_frame_prologue
   end
 
 # ---- DIAG: hard cut inside the 0x800712D0 driver ----
-# Re-anchored after W34B29 continuation: capture after the 0x8007185C..
-# 0x80071978 natural flag/update lane has set s_fp_cut_pc.
-break world_map_frame_driver.c:549
+# Re-anchored after W34B30 continuation: capture after the mapped
+# 0x80025044 image-list transfer has set s_fp_cut_pc.
+break world_map_frame_driver.c:641
   commands
     silent
     printf "W34B5HS_DIAG_712D0_CUT cut_pc=0x%08x cd_work=%d vsync_retries=%d pad_iters=%d sched_calls=%d\n", wm_fp_get_cut_pc(), wm_fp_get_cd_work_calls(), wm_fp_get_vsync_retries(), wm_fp_get_pad_iters(), wm_fp_get_scheduler_calls()

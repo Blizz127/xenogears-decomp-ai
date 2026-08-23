@@ -1,0 +1,13 @@
+fp_cd_work_calls=1
+fp_cut_pc=0x80071984
+fp_entry=1
+fp_pad_iters=1
+fp_scheduler_calls=1
+fp_vsync_retries=0
+sched_callbacks_executed=29
+sched_entry=2
+sched_frontier_pc=0x8007106c
+sched_last_callback=0x80087734
+sched_last_slot=15
+sched_missing_hits=0
+sched_outcome=0

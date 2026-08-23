@@ -3,21 +3,26 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
-OUT="${W34B29_OUT:-pc_port/build_native/w34b29-cert}"
+OUT="${W34B30_OUT:-pc_port/build_native/w34b30-cert}"
 mkdir -p "$OUT"
 FLAGS=(
     -std=gnu17 -g -Wall -Wextra -Wconversion -Wsign-conversion -Werror
     -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections
     -Ipc_port/include_shim -Iinclude -Ipc_port/src
 )
-TEST="pc_port/tests/w34b29_8007185c_prod_test.c"
+TEST="pc_port/tests/w34b30_8007197c_image_transfer_prod_test.c"
 FRAME="pc_port/src/world_map_frame_driver.c"
+FRAME_FLAGS=(
+    -include assert.h
+    -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx
+)
 
 build_run() {
     local label="$1" opt="$2" san="${3:-}"
     gcc -c "$TEST" "${FLAGS[@]}" "$opt" $san -o "$OUT/$label.test.o"
-    gcc -c "$FRAME" "${FLAGS[@]}" "$opt" -DWM_712D0_TEST_TRACE $san \
-        -DWM_71984_CONTINUATION_DISABLED -o "$OUT/$label.frame.o"
+    gcc -c "$FRAME" "${FLAGS[@]}" "${FRAME_FLAGS[@]}" "$opt" \
+        -DWM_712D0_TEST_TRACE $san \
+        -o "$OUT/$label.frame.o"
     gcc -no-pie -Wl,--gc-sections $san "$OUT/$label.test.o" \
         "$OUT/$label.frame.o" -o "$OUT/$label"
     set +e
@@ -32,9 +37,9 @@ build_run O2 -O2
 build_run UBSan_O2 -O2 "-fsanitize=undefined -fno-sanitize-recover=all"
 for label in O0 O2 UBSan_O2; do
     test "$(<"$OUT/$label.rc")" = 0
-    rg -q '^=== Results: 10/10 PASS ===$' "$OUT/$label.stdout"
+    rg -q '^=== Results: 7/7 PASS ===$' "$OUT/$label.stdout"
     ! rg -qi 'runtime error|undefined behavior' "$OUT/$label.stderr"
 done
 cmp "$OUT/O0.stdout" "$OUT/O2.stdout"
 cmp "$OUT/O0.stdout" "$OUT/UBSan_O2.stdout"
-printf 'W34B29 TEST PASS O0=10/10 O2=10/10 UBSan_O2=10/10\n'
+printf 'W34B30 TEST PASS O0=7/7 O2=7/7 UBSan_O2=7/7\n'

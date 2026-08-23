@@ -1,11 +1,11 @@
 /*
  * World-map frame-driver (W34B18-B prologue + W34B19-B second scheduler).
  *
- * Bounded retail slice 0x800712D0 .. 0x80071978 inclusive on the natural
+ * Bounded retail slice 0x800712D0 .. 0x80071980 inclusive on the natural
  * lane; alternate state is held at the first unresolved helper call.
  * Executes jal 0x80097800 / nop at 0x80071488 / 0x8007148C.
  * Executes post-pass sync/display setup through 0x800714C4.
- * Hard-cut at the bounded branch frontier (natural path: 0x8007197C;
+ * Hard-cut at the bounded branch frontier (natural path: 0x80071984;
  * alternate call-bearing paths stop before 0x80071704 or 0x800718E8;
  * all-gates-pass path: before 0x80071578).
  */
@@ -26,6 +26,7 @@ int  wm_fp_get_cd_work_calls(void);
 int  wm_fp_get_vsync_retries(void);
 int  wm_fp_get_pad_iters(void);
 int  wm_fp_get_scheduler_calls(void);
+int  wm_fp_get_image_unknowns(void);
 u32  wm_fp_get_cut_pc(void);
 
 #endif /* WORLD_MAP_FRAME_DRIVER_H */

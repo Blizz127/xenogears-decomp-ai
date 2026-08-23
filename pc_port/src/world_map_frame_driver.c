@@ -14,6 +14,8 @@
  *   before unresolved helper 0x8007634C.
  *   [0x8007185C,0x8007197C) = natural flag/update lane; alternate BE10
  *   call-bearing state stops before unresolved helper 0x800758C0.
+ *   [0x8007197C,0x80071980) = mapped 0x80025044 image-list transfer;
+ *   stop before unresolved overlay helper 0x80074F2C.
  *
  * Both the production game build and the production-linked test link this
  * same object. Do NOT duplicate this function elsewhere.
@@ -23,6 +25,15 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_frame_driver.h"
+
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 w;
+    s16 h;
+} RECT;
+typedef unsigned long u_long;
+typedef unsigned char u_char;
 
 #define WM_FP_DB_PTR        0x8009BE3Cu
 #define WM_FP_ENVREC0       0x8009BBC8u
@@ -82,6 +93,14 @@ extern int DrawSync(int mode);
 extern void GameCheckAndHandleSoftReset(void);
 extern void PutDispEnv(void *env);
 extern void PutDrawEnv(void *env);
+#if !defined(WM_7169C_CONTINUATION_DISABLED) && \
+    !defined(WM_7197C_CONTINUATION_DISABLED) && \
+    !defined(WM_71984_CONTINUATION_DISABLED)
+extern int LoadImage(RECT *rect, u_long *data);
+extern int ClearImage(RECT *rect, u_char r, u_char g, u_char b);
+extern s32 g_GfxCurContext;
+extern u32 g_GfxImageList[];
+#endif
 
 enum {
     WM_FP_TRACE_LW = 1,
@@ -106,7 +125,8 @@ enum {
     WM_FP_CALL_VSYNC_2 = 10,
     WM_FP_CALL_SOFT_RESET = 11,
     WM_FP_CALL_PUT_DISP = 12,
-    WM_FP_CALL_PUT_DRAW = 13
+    WM_FP_CALL_PUT_DRAW = 13,
+    WM_FP_CALL_25044 = 14
 };
 
 #if defined(WM_712D0_TEST_TRACE)
@@ -123,6 +143,7 @@ static int s_fp_cd_work_calls;
 static int s_fp_vsync_retries;
 static int s_fp_pad_iters;
 static int s_fp_scheduler_calls;
+static int s_fp_image_unknowns;
 static u32 s_fp_cut_pc;
 
 int wm_fp_get_entry(void) { return s_fp_entry; }
@@ -130,6 +151,7 @@ int wm_fp_get_cd_work_calls(void) { return s_fp_cd_work_calls; }
 int wm_fp_get_vsync_retries(void) { return s_fp_vsync_retries; }
 int wm_fp_get_pad_iters(void) { return s_fp_pad_iters; }
 int wm_fp_get_scheduler_calls(void) { return s_fp_scheduler_calls; }
+int wm_fp_get_image_unknowns(void) { return s_fp_image_unknowns; }
 u32 wm_fp_get_cut_pc(void) { return s_fp_cut_pc; }
 
 void wm_fp_reset(void)
@@ -139,8 +161,67 @@ void wm_fp_reset(void)
     s_fp_vsync_retries = 0;
     s_fp_pad_iters = 0;
     s_fp_scheduler_calls = 0;
+    s_fp_image_unknowns = 0;
     s_fp_cut_pc = 0;
 }
+
+#if !defined(WM_7169C_CONTINUATION_DISABLED) && \
+    !defined(WM_7197C_CONTINUATION_DISABLED) && \
+    !defined(WM_71984_CONTINUATION_DISABLED)
+static int wm_fp_guest_ptr_known(u32 value)
+{
+    return ((value & 0xFFE00000u) == 0x80000000u) ||
+           ((value & 0xFFE00000u) == 0xA0000000u);
+}
+
+/* Retail 0x80025044 consumes a guest Image list. The compiled generic body
+ * casts its u32 links directly to host pointers, so this frame route maps
+ * known PSX addresses and logs/counts unknown producer values. */
+static void wm_fp_transfer_image_list(void)
+{
+    s32 context = g_GfxCurContext;
+    u32 image;
+
+    if (context < 0 || context >= 2) {
+        s_fp_image_unknowns++;
+        fprintf(stderr,
+                "[worldmap-frame-prologue] 0x80025044 unknown context=%d "
+                "count=%d\n", context, s_fp_image_unknowns);
+        return;
+    }
+    image = g_GfxImageList[context];
+    while (image != 0u) {
+        u8 *guest_image;
+        u32 data;
+        u32 next;
+
+        if (!wm_fp_guest_ptr_known(image)) {
+            s_fp_image_unknowns++;
+            fprintf(stderr,
+                    "[worldmap-frame-prologue] 0x80025044 unknown image="
+                    "0x%08x count=%d\n", image, s_fp_image_unknowns);
+            break;
+        }
+        guest_image = (u8 *)PSX_ADDR(image);
+        data = *(u32 *)(guest_image + 0x08u);
+        next = *(u32 *)(guest_image + 0x0Cu);
+        if (data != 0u && !wm_fp_guest_ptr_known(data)) {
+            s_fp_image_unknowns++;
+            fprintf(stderr,
+                    "[worldmap-frame-prologue] 0x80025044 unknown data="
+                    "0x%08x count=%d\n", data, s_fp_image_unknowns);
+            break;
+        }
+        if (data != 0u)
+            (void)LoadImage((RECT *)guest_image,
+                            (u_long *)PSX_ADDR(data));
+        else
+            (void)ClearImage((RECT *)guest_image, 0u, 0u, 0u);
+        image = next;
+    }
+    g_GfxImageList[context] = 0u;
+}
+#endif
 
 static u16 wm_fp_load_u16(u32 address)
 {
@@ -546,6 +627,15 @@ void wm_800712D0_frame_prologue(void)
             s_fp_cut_pc = 0x800718E8u;
         }
     }
+ #endif
+ #if !defined(WM_7169C_CONTINUATION_DISABLED) && \
+     !defined(WM_7197C_CONTINUATION_DISABLED) && \
+     !defined(WM_71984_CONTINUATION_DISABLED)
+    /* Retail 0x8007197C calls the image-list transfer; stop before the
+     * unresolved 0x80074F2C overlay helper. */
+    wm_fp_transfer_image_list();
+    WM_FP_TRACE(0x8007197Cu, WM_FP_TRACE_CALL, WM_FP_CALL_25044, 0u, 0u);
+    s_fp_cut_pc = 0x80071984u;
  #endif
 #endif
     fprintf(stderr,
