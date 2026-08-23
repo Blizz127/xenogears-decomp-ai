@@ -51,10 +51,11 @@ the bounded control frontier is still `0x800719C8`.
 | `5a79d5b0` | W34B43 post-second-frame census | no production delta |
 | `77ea585c` | W34B44 finite two-reentry bound | two additional clean frames |
 | `aa4b71d2` | W34B45 third-tail callback census | no production delta |
-| pending | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
+| `90c9ce77` | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
+| pending | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40, W34B41, W34B43, W34B45, and W34B46 contain evidence/audit only. W34B42 adds one
+W34B40, W34B41, W34B43, W34B45, W34B46, and W34B47 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
 
@@ -71,7 +72,8 @@ restriction.
 
 `AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
 `AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`,
-`AUDIT_W34B44_TWO_REENTRY.md`, and `AUDIT_W34B46_D554_CLEAR_WRITERS.md`
+`AUDIT_W34B44_TWO_REENTRY.md`, `AUDIT_W34B46_D554_CLEAR_WRITERS.md`, and
+`AUDIT_W34B47_AUDIT_AHEAD.md`
 record the current boundaries. Three frame passes are clean and
 callback-covered, but D554 remains 1. The mode
 initializer `0x80072238`
@@ -90,7 +92,10 @@ executed one reviewed additional frame; W34B43 recaptured the identical
 second-tail table; W34B44 executed two additional bounded frames. W34B46
 established that the frame-local D554 clear region is 183 instructions with
 unresolved callees and that 13 other retail clear sites have no current
-body/mapping. D4 was not used to alter unrelated worktree contents.
+body/mapping. W34B47 then audited the three next regions: the unreachable
+frame-exit continuation, the 472-instruction mode initializer, and the
+132-instruction teardown. D4 was not used to alter unrelated worktree
+contents.
 
 ## 7. Tripwire status
 
@@ -108,11 +113,9 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is audit-ahead of the three post-frontier
-regions (`0x80072238` mode initializer, `0x8007299C` post-loop/renderer entry,
-and the next bounded continuation) while preserving the D554 class-(e)
-boundary. Do not clear D554 or enable the legacy driver merely to force a
-milestone.
+The single recommended next task is a reviewed D554-closure decision: audit
+the two live callback predicates at branch level and the missing frame-local
+clear lane, without enabling the legacy driver or clearing D554 by hand.
 
 ## 9. Confirmation
 

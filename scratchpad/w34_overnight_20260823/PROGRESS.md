@@ -1,5 +1,18 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B47 — D2 audit-ahead
+
+- Frontier remains `0x800719C8`; no production change.
+- Audited three next regions: frame-exit continuation
+  `0x800719D0..0x80071A4C` (31 instructions, unresolved `0x80096694`),
+  mode/session initializer `0x80072238..0x80072998` (472 instructions), and
+  post-loop teardown `0x8007299C..0x80072BAC` (132 instructions, 26 calls).
+- All three remain class-(e) in the current route. D1 found no class-(a/b)
+  convergence gap; the first small-looking block is unreachable until D554
+  clears and still has an unresolved cleanup leaf.
+- Evidence: `AUDIT_W34B47_AUDIT_AHEAD.md`, `slice_20_audit_ahead.log`.
+- Decision: no implementation, no tripwire change, no push.
+
 ## Starting validation
 
 - Worktree tracked dirt before work: quarantined `include/psyq/inline_c.h`
@@ -401,6 +414,7 @@ smallest bounded host-sync/display-environment continuation.
 - Evidence: `AUDIT_W34B46_D554_CLEAR_WRITERS.md`,
   `slice_19_d554_audit.log`; W34B45 natural/census evidence remains rc=0.
 - Decision: no implementation, no D554 clear, no tripwire change, no push.
+- Commit: `90c9ce77` evidence/audit-only.
 
 ## W34B45 — third-tail callback census
 
