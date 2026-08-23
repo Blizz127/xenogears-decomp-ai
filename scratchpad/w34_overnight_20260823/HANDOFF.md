@@ -152,10 +152,20 @@ evidence-only architecture audit.
 | scheduler missing/invalid callback guards | intact; pass 2 `29/29`, missing `0`, invalid `0` |
 | W34B38 OT adapter abort guards | intact; naturally zero aborts in W34B39 |
 | W34B50 live callback clear arms | intact; A72C result 0, C844 resync gate 0; D554 remained 1 |
+| actual PsyCross DrawOTag call | not claimed; class-(b) ABI boundary, zero by design |
 
 No should-not-run tripwire was weakened or retired by implementation.
 
-## 8. Recommended next task
+## 8. Honest not-checked list
+
+- An approved guest-aware PsyCross DrawOTag ABI bridge was not implemented.
+- The actual PsyCross DrawOTag call was therefore not made to render the
+  guest OT; only the accepted world-native adapter was exercised.
+- The unbounded/retail second-frame backedge loop was not implemented.
+- Mode-loop entry, renderer/teardown entry, and framebuffer PNG output were
+  not reached or captured.
+
+## 9. Recommended next task
 
 The single recommended next task is human review and approval of one
 guest-aware PsyCross DrawOTag architecture (or formal acceptance of the
@@ -163,9 +173,10 @@ world-only adapter milestone), before any second-frame implementation.
 Do not clear D554 by hand, enable the legacy driver, or claim actual
 DrawOTag execution from the adapter path.
 
-## 9. Confirmation
+## 10. Confirmation
 
 Nothing was pushed. Quarantined tracked dirt in `include/psyq/inline_c.h` and
 `pc_port/src/game_overrides.c` was not staged, reverted, or modified. Banked
 proof trees were not re-baselined and remain intact. No framebuffer PNG
-exists. W34B50 added no production source changes.
+exists. W34B50 added no production source changes. The second-frame/backedge
+loop was not implemented.
