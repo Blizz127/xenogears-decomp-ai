@@ -1,5 +1,22 @@
 # W34 overnight progress — 2026-08-23
 
+## W34B50 — live D554 callback branch census
+
+- Frontier remains `0x800719C8`; no production source changed.
+- On all three bounded re-entries, live slot 1 callback `0x8008A72C`
+  entered with resync `0` and `wm_80090A84` returned `0`, so its class-1
+  D554-clear arm was not selected. Live slot 4 callback `0x8008C844` also
+  entered with resync `0`, so its `wm_80090C68`/ret-1 clear path was gated
+  off.
+- Natural result: rc=0; three tails with D554=1/held=1; scheduler entry 4,
+  `53/53` executed, missing 0, invalid 0; mode/renderer/DrawOTag tripwires
+  remain zero-hit.
+- Evidence: `AUDIT_W34B50_D554_CALLBACK_CENSUS.md`,
+  `slice_23_d554_callback_census.log`, and
+  `w34b50_d554_callback_census.gdb`.
+- Decision: class-(e) remains; no callback forced, no D554 store added, no
+  tripwire changed, no push.
+
 ## W34B49 — D4 evidence hygiene
 
 - Frontier remains `0x800719C8`; no production change.

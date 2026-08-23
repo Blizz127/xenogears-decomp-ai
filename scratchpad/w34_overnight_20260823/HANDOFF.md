@@ -1,4 +1,4 @@
-# W34-OVERNIGHT handoff — W34B46 D554 clear-writer audit complete
+# W34-OVERNIGHT handoff — W34B50 D554 callback census complete
 
 ## 1. Frontier and final evidence
 
@@ -23,6 +23,13 @@ re-entry. Its final natural state (`slice_15_natural.log`) has two frame-tail
 passes, four OT packets, 2050 guest-walk steps, scheduler entry 3 with
 `41/41` callbacks, and rc=0. D554 remains nonzero after the second tail, so
 the bounded control frontier is still `0x800719C8`.
+
+The final W34B50 branch census captured both live D554-capable callbacks on
+all three bounded re-entries. Slot 1 callback `0x8008A72C` entered with
+resync `0`, and `wm_80090A84` returned `0` each time; slot 4 callback
+`0x8008C844` entered with resync `0`, which gates its `wm_80090C68` clear
+path off. D554 consequently remained `1` at all three production tail
+records. The complete capture is in `slice_23_d554_callback_census.log`.
 
 ## 2. Milestones
 
@@ -54,10 +61,11 @@ the bounded control frontier is still `0x800719C8`.
 | `90c9ce77` | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
 | `67a22478` | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
 | `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
-| pending | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
+| `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
+| pending | W34B50 live D554 callback census | no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, and W34B49 contain evidence/audit only. W34B42 adds one
+W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, W34B49, and W34B50 contain evidence/audit only. W34B42 adds one
 reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
 session loop remains deferred.
 
@@ -75,14 +83,17 @@ restriction.
 `AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
 `AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`,
 `AUDIT_W34B44_TWO_REENTRY.md`, `AUDIT_W34B46_D554_CLEAR_WRITERS.md`, and
-`AUDIT_W34B47_AUDIT_AHEAD.md`, and `AUDIT_W34B48_TRIPWIRE_HYGIENE.md`
+`AUDIT_W34B47_AUDIT_AHEAD.md`, `AUDIT_W34B48_TRIPWIRE_HYGIENE.md`, and
+`AUDIT_W34B50_D554_CALLBACK_CENSUS.md`
 record the current boundaries. Three frame passes are clean and
 callback-covered, but D554 remains 1. The mode
 initializer `0x80072238`
 is approximately 472 instructions with unresolved/gated setup calls, and
 `0x8007299C` is an approximately 0x214-byte, 26-call post-loop teardown.
 Neither is a bounded first-render slice. The convergence lane has no
-uncovered class-(a/b) gap.
+uncovered class-(a/b) gap. W34B50 rules out the two live callback clear
+predicates for the current fixture; it does not resolve the class-(e)
+frame-local state machine or the thirteen external retail writers.
 
 ## 6. Detours completed
 
@@ -101,6 +112,8 @@ contents. W34B48 rechecked the 15-entry tripwire registry, scheduler
 resolver boundary, and sole CD40-style indirect slot; all remain safe and
 intact. W34B49 validated both banked proof manifests and found no stale
 worktree metadata or missing registered worktree directory.
+W34B50 then captured the two live callback entry/gate states and the A72C
+helper return across three clean bounded re-entries; no clear arm fired.
 
 ## 7. Tripwire status
 
@@ -113,18 +126,20 @@ worktree metadata or missing registered worktree directory.
 | loop dispatch/exit guards | intact; zero-hit |
 | scheduler missing/invalid callback guards | intact; pass 2 `29/29`, missing `0`, invalid `0` |
 | W34B38 OT adapter abort guards | intact; naturally zero aborts in W34B39 |
+| W34B50 live callback clear arms | intact; A72C result 0, C844 resync gate 0; D554 remained 1 |
 
 No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a reviewed D554-closure decision: audit
-the two live callback predicates at branch level and the missing frame-local
-clear lane, without enabling the legacy driver or clearing D554 by hand.
+The single recommended next task is a reviewed implementation of the full
+second-frame/D554 closure state machine, beginning with the unresolved
+frame-local `0x8007169C..0x80071978` region and its callees. Do not clear
+D554 by hand or enable the legacy driver; preserve the natural tripwires.
 
 ## 9. Confirmation
 
 Nothing was pushed. Quarantined tracked dirt in `include/psyq/inline_c.h` and
 `pc_port/src/game_overrides.c` was not staged, reverted, or modified. Banked
 proof trees were not re-baselined and remain intact. No framebuffer PNG
-exists.
+exists. W34B50 added no production source changes.
