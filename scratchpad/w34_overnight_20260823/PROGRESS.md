@@ -396,3 +396,18 @@ smallest bounded host-sync/display-environment continuation.
   CD dispatcher entry 3 with one busy dispatch and no I/O failures; rc=0.
 - Audit: `AUDIT_W34B43_POST_SECOND_CENSUS.md`.
 - Commit: pending evidence-only commit; no push.
+
+## W34B44 — finite two-reentry diagnostic bound
+
+- Frontier remains `0x800719C8`; two additional reviewed frames now execute
+  before the diagnostic bound stops.
+- Implementation: `XENO_WORLD_FRAME_REENTRY_TWICE=1` selects limit 2 while
+  preserving the nonzero D554 predicate before each call; ONCE behavior is
+  unchanged.
+- Tests/build: predicate O0/O2/UBSan-O2 `5/5`, 3/3 mutants detected; LINK OK.
+- Natural: rc=0; three tails, three OT submissions, six packets, 3075 walk
+  steps, zero adapter aborts; scheduler entry 4, `53/53`, missing 0,
+  invalid 0. D554 remains 1; mode/renderer tripwires remain zero-hit.
+- Evidence: `AUDIT_W34B44_TWO_REENTRY.md`, `slice_17_tests.log`,
+  `slice_17_build.log`, `slice_17_natural.log`.
+- Commit: pending local implementation/evidence commit; no push.

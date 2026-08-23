@@ -140,6 +140,8 @@
  *        0x800712D0 .. 0x80071484; requires SCHEDULER; hard-cut before 0x80071488)
  *   XENO_WORLD_FRAME_REENTRY_ONCE=0 (default off; one reviewed re-entry from
  *        0x800719C8 to frame head 0x8007130C; requires FRAME_PROLOGUE)
+ *   XENO_WORLD_FRAME_REENTRY_TWICE=0 (default off; two reviewed re-entries;
+ *        requires FRAME_PROLOGUE; diagnostic bound only)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -1025,13 +1027,17 @@ static int world_frame_prologue_enabled(void)
            world_scheduler_97800_enabled();
 }
 
-static int world_frame_reentry_once_enabled(void)
+static int world_frame_reentry_limit(void)
 {
-    /* W34B42: one reviewed second-frame entry. This is intentionally bounded
-     * to one additional call while the retail backedge remains instrumented;
-     * it requires the complete accepted frame-prologue lane. */
-    return env_flag_is_one("XENO_WORLD_FRAME_REENTRY_ONCE") &&
-           world_frame_prologue_enabled();
+    /* W34B42/W34B44: finite reviewed re-entry bounds. The retail D554
+     * predicate is still evaluated before every additional frame. */
+    if (!world_frame_prologue_enabled())
+        return 0;
+    if (env_flag_is_one("XENO_WORLD_FRAME_REENTRY_TWICE"))
+        return 2;
+    if (env_flag_is_one("XENO_WORLD_FRAME_REENTRY_ONCE"))
+        return 1;
+    return 0;
 }
 
 static int world_gfx_work_buffers_enabled(void)
@@ -1178,7 +1184,8 @@ static void log_enabled_slices(void)
     int w34b5d = world_common_tail_p3_enabled();
     int w34b5e = world_common_tail_p4_enabled();
     int w34b18b = world_frame_prologue_enabled();
-    int w34b42 = world_frame_reentry_once_enabled();
+    int w34b42 = world_frame_reentry_limit() > 0;
+    int w34b44 = world_frame_reentry_limit() > 1;
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
         !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e && !w34b18b && !w34b42) {
@@ -1257,6 +1264,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W34B18B");
     if (w34b42)
         fprintf(stderr, ",W34B42");
+    if (w34b44)
+        fprintf(stderr, ",W34B44");
     fprintf(stderr, "\n");
 }
 
@@ -7439,13 +7448,22 @@ void PcPort_WorldMapInitMain(void)
             ControllerResetState();
             WM_U32(WM_FLAG_C894_ABS) = WM_U32(WM_PHASE_D7CC);
             wm_800712D0_frame_prologue();
-            if (wm_800719C8_should_reenter_once(
-                    world_frame_reentry_once_enabled(),
-                    WM_U32(WM_FRAME_D554))) {
-                fprintf(stderr,
-                        "[worldmap-frame-reentry] W34B42 reviewed re-entry "
-                        "0x800719C8 -> 0x8007130C count=1\n");
-                wm_800712D0_frame_prologue();
+            {
+                int reentry_limit = world_frame_reentry_limit();
+                int reentry_count;
+                for (reentry_count = 0;
+                     reentry_count < reentry_limit;
+                     reentry_count++) {
+                    if (!wm_800719C8_should_reenter_once(
+                            reentry_limit > reentry_count,
+                            WM_U32(WM_FRAME_D554)))
+                        break;
+                    fprintf(stderr,
+                            "[worldmap-frame-reentry] reviewed re-entry "
+                            "0x800719C8 -> 0x8007130C count=%d\n",
+                            reentry_count + 1);
+                    wm_800712D0_frame_prologue();
+                }
             }
         }
         {
