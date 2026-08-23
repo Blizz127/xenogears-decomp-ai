@@ -19,6 +19,9 @@
 - Evidence correction: the first debugger revision printed `0x8001D554`;
   W34B51 corrected it to `0x8009D554` and reproduced D554=1 at every live
   callback entry and tail. The production conclusion is unchanged.
+- Predicate inputs are now banked as well: A72C `flags=0`, `selection=-1`,
+  `byte_state=0`, helper result `0`; C844 `flags=0`, `area=-1`,
+  `boundary=0`, resync `0`. This is stable over all three re-entries.
 
 ## W34B49 — D4 evidence hygiene
 

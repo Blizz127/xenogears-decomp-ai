@@ -35,6 +35,12 @@ arms were zero-hit because the host compiler coalesced their line table;
 direct helper return breakpoints supplied the result evidence. The callback
 entry and helper records are banked in `slice_23_d554_callback_census.log`.
 
+The exact predicate inputs were also captured: A72C saw `flags=0x0000`,
+`selection=-1`, and `byte_state=0` (object `0x00000000` on the first pass,
+then `0xffffffff`). C844 saw `flags=0x0000`, `area=-1`, `boundary=0`, and
+resync `0` on every pass. The helper result `0` is therefore explained by
+the inactive movement/selection lanes, not by an unobserved D554 write.
+
 At each tail the production log still reported `D554=1`, `held=1`:
 
 ```text
