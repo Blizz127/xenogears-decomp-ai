@@ -47,7 +47,8 @@ the bounded control frontier is still `0x800719C8`.
 | `d17fb03d` | W34B41 fresh callback census | no production delta |
 | `a3f20290` | W34B42 reviewed one-frame re-entry | one extra clean frame |
 | `5a79d5b0` | W34B43 post-second-frame census | no production delta |
-| pending | W34B44 finite two-reentry bound | two additional clean frames |
+| `77ea585c` | W34B44 finite two-reentry bound | two additional clean frames |
+| pending | W34B45 third-tail callback census | no production delta |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
 W34B40, W34B41, and W34B43 contain evidence/audit only. W34B42 adds one
@@ -101,9 +102,10 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is a full third-tail 16-slot census after
-W34B44, before any further loop extension. Do not implement the mode
-initializer or teardown merely to force either milestone.
+The single recommended next task is a retail/current-port D554 clear-writer
+census, especially callback paths capable of clearing the frame-run flag,
+before any further loop extension. Do not implement the mode initializer or
+teardown merely to force either milestone.
 
 ## 9. Confirmation
 

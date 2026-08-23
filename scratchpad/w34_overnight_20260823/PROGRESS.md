@@ -385,6 +385,18 @@ smallest bounded host-sync/display-environment continuation.
   `slice_15_build.log`, `slice_15_natural.log`.
 - Commit: pending local implementation/evidence commit; no push.
 
+## W34B45 — third-tail callback census
+
+- Frontier remains `0x800719C8`; no production change.
+- Fresh full table at scheduler entry 4 is identical to W34B41/W34B43:
+  12 state-1 cb1 candidates, four state-3 dormant slots, unchanged payloads
+  and callback addresses, no callback gap.
+- Natural state: D554=1; scheduler `53/53`, missing 0, invalid 0; CD
+  dispatcher entry 4 with no I/O failures; rc=0.
+- Audit: `AUDIT_W34B45_THIRD_CENSUS.md`; next subject is the D554 clear-writer
+  census, not another blind frame extension.
+- Commit: pending evidence-only commit; no push.
+
 ## W34B43 — post-second-frame callback census
 
 - Frontier: remains `0x800719C8`; no production code changed.
