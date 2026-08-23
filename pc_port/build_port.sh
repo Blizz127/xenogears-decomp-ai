@@ -44,7 +44,7 @@ fi
 
 # This must run in an environment with the toolchain + libs (the distrobox on
 # Bazzite, NOT the immutable host). Fail fast with guidance if it's the wrong one.
-for tool in cmake gcc pkg-config python3 ar; do
+for tool in cmake gcc pkg-config python3 ar nm objcopy; do
     command -v "$tool" >/dev/null 2>&1 || {
         echo "ERROR: '$tool' not found in this shell."
         echo "       Run inside the dev container:  distrobox enter xenogears-dev"
@@ -974,6 +974,32 @@ print_known_broken_game_tus
 
 compiled=0; skipped=0; SKIPPED=""
 GAME_OBJS=()
+GAME_TU_OBJS=()
+PORT_OVERRIDE_MANIFEST="pc_port/port_owned_overrides.txt"
+if [ ! -f "$PORT_OVERRIDE_MANIFEST" ]; then
+    echo "ERROR: missing port ownership manifest: $PORT_OVERRIDE_MANIFEST"
+    exit 1
+fi
+PORT_OVERRIDE_SYMBOLS=()
+while IFS= read -r sym; do
+    if [[ ! "$sym" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        echo "ERROR: invalid symbol in $PORT_OVERRIDE_MANIFEST: $sym"
+        exit 1
+    fi
+    PORT_OVERRIDE_SYMBOLS+=("$sym")
+done < <(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$PORT_OVERRIDE_MANIFEST")
+if [ "${#PORT_OVERRIDE_SYMBOLS[@]}" -eq 0 ]; then
+    echo "ERROR: empty port ownership manifest: $PORT_OVERRIDE_MANIFEST"
+    exit 1
+fi
+declare -A PORT_OVERRIDE_SEEN=()
+for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
+    if [ "${PORT_OVERRIDE_SEEN[$sym]+set}" = set ]; then
+        echo "ERROR: duplicate symbol in $PORT_OVERRIDE_MANIFEST: $sym"
+        exit 1
+    fi
+    PORT_OVERRIDE_SEEN[$sym]=1
+done
 while IFS= read -r f; do
     # Reference-only TUs remain in the matching build but have a deliberate,
     # complete port-side runtime owner and never enter the native port link.
@@ -1001,7 +1027,9 @@ while IFS= read -r f; do
             echo "       or remove it from the broken list after a reviewed routing decision."
             exit 1
         fi
-        GAME_OBJS+=("$o"); compiled=$((compiled+1))
+        GAME_OBJS+=("$o")
+        GAME_TU_OBJS+=("$o")
+        compiled=$((compiled+1))
     elif is_known_broken_game_tu "$f"; then
         skipped=$((skipped+1)); SKIPPED="$SKIPPED $f"
         echo "    WARNING: allowlisted broken game TU failed: $f"
@@ -1194,6 +1222,43 @@ for pf in "${PORT_SOURCES[@]}"; do
     echo "    $(basename "$pf") ok"
 done
 
+# Port fallbacks are deliberately strong. If a matching game TU later gains
+# one of these retail definitions, rename that duplicate in the game object
+# before linking so ownership remains explicit and independent of link order.
+# Matching sources stay retail-shaped; a new ownership clash becomes a visible
+# build event instead of a weak-symbol runtime regression.
+PORT_OVERRIDE_OBJECT="$OBJ/game_overrides.c.o"
+if [ ! -f "$PORT_OVERRIDE_OBJECT" ]; then
+    echo "ERROR: port ownership object was not built: $PORT_OVERRIDE_OBJECT"
+    exit 1
+fi
+for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
+    if ! nm -g --defined-only "$PORT_OVERRIDE_OBJECT" 2>/dev/null \
+        | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
+        echo "ERROR: port ownership manifest symbol is not defined by $PORT_OVERRIDE_OBJECT: $sym"
+        exit 1
+    fi
+    for o in "${GAME_TU_OBJS[@]}"; do
+        if nm -g --defined-only "$o" 2>/dev/null \
+            | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
+            renamed="_xeno_matching_retired_${sym}"
+            echo "    port-owned override: renaming matching definition $sym in $(basename "$o")"
+            if ! objcopy --redefine-sym="$sym=$renamed" "$o"; then
+                echo "ERROR: failed to rename duplicate matching definition: $sym"
+                exit 1
+            fi
+        fi
+    done
+    for o in "${GAME_TU_OBJS[@]}"; do
+        if nm -g --defined-only "$o" 2>/dev/null \
+            | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
+            echo "ERROR: matching object still owns retired override symbol: $sym"
+            exit 1
+        fi
+    done
+done
+echo "    verified ${#PORT_OVERRIDE_SYMBOLS[@]} port-owned override symbols"
+
 echo "==> [3/5] Compiling port entry point"
 PORT_MAIN_SOURCE="pc_port/src/port_main.c"
 PORT_MAIN_OBJECT="$OBJ/port_main.o"
@@ -1329,8 +1394,17 @@ fi
 echo "==> [5/5] Final link"
 gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
+    for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
+        owner_count="$(nm -g --defined-only "$OUT/xeno-port" 2>/dev/null \
+            | awk -v sym="$sym" '$3 == sym {n++} END {print n+0}')"
+        if [ "$owner_count" -ne 1 ]; then
+            echo "ERROR: final link ownership check failed for $sym (owners=$owner_count)"
+            exit 1
+        fi
+    done
     echo "    LINK OK -> $OUT/xeno-port"
 else
     echo "    LINK incomplete; remaining errors:"
     grep -oE "undefined reference to \`[A-Za-z0-9_]+'|multiple definition of \`[A-Za-z0-9_]+'" "$OUT/link2.err" | sort | uniq -c | sort -rn | head -20
+    exit 1
 fi

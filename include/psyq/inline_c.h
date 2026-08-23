@@ -13,6 +13,10 @@
  * Type 1 functions
  */
 
+#ifdef XENO_PC_PORT
+#include <psx/gtereg.h>
+#endif
+
 #define gte_ldv0( r0 ) __asm__ volatile (			\
 	"lwc2	$0, 0( %0 );"					\
 	"lwc2	$1, 4( %0 )"					\
@@ -242,6 +246,12 @@
 	:							\
 	: "r"( r0 ), "r"( r1 ), "r"( r2 ) )
 
+#ifdef XENO_PC_PORT
+/* PsyCross owns the host GTE register file. The retail inline sequence uses
+ * MIPS temporaries $12/$13/$14 before ctc2; the host API preserves its
+ * component << 4 writes without requiring MIPS register names. */
+#define gte_SetBackColor( r0, r1, r2 ) SetBackColor((r0), (r1), (r2))
+#else
 #define gte_SetBackColor( r0, r1, r2 ) __asm__ volatile (	\
 	"sll	$12, %0, 4;"					\
 	"sll	$13, %1, 4;"					\
@@ -252,6 +262,7 @@
 	:							\
 	: "r"( r0 ), "r"( r1 ), "r"( r2 )			\
 	: "$12", "$13", "$14" )
+#endif
 
 #define gte_ldfcdir( r0, r1, r2 ) __asm__ volatile (		\
 	"ctc2	%0, $21;"					\
@@ -260,6 +271,10 @@
 	:							\
 	: "r"( r0 ), "r"( r1 ), "r"( r2 ) )
 
+#ifdef XENO_PC_PORT
+/* Same MIPS-temporary sequence as gte_SetBackColor; delegate to PsyCross. */
+#define gte_SetFarColor( r0, r1, r2 ) SetFarColor((r0), (r1), (r2))
+#else
 #define gte_SetFarColor( r0, r1, r2 ) __asm__ volatile (	\
 	"sll	$12, %0, 4;"					\
 	"sll	$13, %1, 4;"					\
@@ -270,6 +285,7 @@
 	:							\
 	: "r"( r0 ), "r"( r1 ), "r"( r2 )			\
 	: "$12", "$13", "$14" )
+#endif
 
 #define gte_SetGeomOffset( r0, r1 ) __asm__ volatile (	\
 	"sll	$12, %0, 16;"					\
@@ -1448,3 +1464,20 @@
 	:							\
 	:							\
 	: "$12" )
+
+#ifdef XENO_PC_PORT
+/* Host equivalents for the swc2 macros used by func_80030EE8.  PsyCross
+ * exposes the emulated CP2 data registers through gtereg.h, so preserve the
+ * retail register-to-memory transfer without emitting MIPS instructions. */
+#undef gte_stsxy0
+#undef gte_stsxy1
+#undef gte_stsxy2
+#undef gte_stsz3
+#define gte_stsxy0(r0) (*(unsigned int *)(r0) = C2_SXY0)
+#define gte_stsxy1(r0) (*(unsigned int *)(r0) = C2_SXY1)
+#define gte_stsxy2(r0) (*(unsigned int *)(r0) = C2_SXY2)
+#define gte_stsz3(r0, r1, r2) \
+	do { *(unsigned int *)(r0) = C2_SZ1; \
+	     *(unsigned int *)(r1) = C2_SZ2; \
+	     *(unsigned int *)(r2) = C2_SZ3; } while (0)
+#endif

@@ -1,0 +1,21 @@
+# Strong port-owned fallbacks. Matching game TUs may define these symbols, but
+# pc_port/build_port.sh renames those duplicate definitions before the native
+# link and verifies that this port object remains the sole final owner.
+func_8001AADC
+func_8003BDFC
+FieldScriptMemoryWriteU16
+func_800317E0
+func_80031804
+func_8001FB30
+func_80025718
+func_80023440
+func_80023958
+func_800239F4
+func_80023A48
+func_80022CAC
+func_80022B2C
+func_80022CDC
+func_80022E8C
+func_80022EB8
+func_8002CC10
+func_8002C59C
