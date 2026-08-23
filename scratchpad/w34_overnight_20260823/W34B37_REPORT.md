@@ -38,3 +38,13 @@
    representation exposed by the mapped W34B37 DrawOTag call, then rerun the
    natural route; do not implement the second frame iteration until that
    crash is resolved.
+
+## Evidence correction
+
+The production binary's debug types were rechecked after this report was
+first written. `USE_EXTENDED_PRIM_POINTERS=0`, `sizeof(OT_TAG)=8`, and
+`sizeof(P_TAG)=8`; the mismatch is retail four-byte OT words versus PsyCross
+eight-byte padded slots, not a 16-byte extended-pointer layout. The guest
+versus low-24 host link-namespace mismatch remains. The corrected audit is
+`AUDIT_W34B37_OT_LINKS.md`, with the type proof in
+`slice_11_ot_abi_reverify.log`.
