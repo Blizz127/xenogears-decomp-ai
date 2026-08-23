@@ -161,6 +161,24 @@ int wm_fp_get_scheduler_calls(void) { return s_fp_scheduler_calls; }
 int wm_fp_get_image_unknowns(void) { return s_fp_image_unknowns; }
 u32 wm_fp_get_cut_pc(void) { return s_fp_cut_pc; }
 
+int wm_800719C8_should_reenter_once(int gate_enabled, u32 d554)
+{
+#if defined(WM_W34B42_MUTANT_GATE)
+    (void)gate_enabled;
+    return d554 != 0u;
+#elif defined(WM_W34B42_MUTANT_D554)
+    (void)d554;
+    return gate_enabled != 0;
+#elif defined(WM_W34B42_MUTANT_ALWAYS)
+    (void)gate_enabled;
+    (void)d554;
+    return 1;
+#else
+    /* Retail 0x800719C0 loads D554; 0x800719C8 branches when nonzero. */
+    return gate_enabled != 0 && d554 != 0u;
+#endif
+}
+
 void wm_fp_reset(void)
 {
     s_fp_entry = 0;

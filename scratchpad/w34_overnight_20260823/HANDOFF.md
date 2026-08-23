@@ -1,4 +1,4 @@
-# W34-OVERNIGHT handoff — W34B41 census complete, second frame deferred
+# W34-OVERNIGHT handoff — W34B42 one-frame re-entry complete
 
 ## 1. Frontier and final evidence
 
@@ -15,11 +15,12 @@ Final natural evidence (`slice_13_natural.log`): frame 916; scheduler pass 2
 therefore still `0x800719C8`, with the OT sub-frontier advanced to the guest
 terminator at `0x8009CE6C`.
 
-Fresh W34B41 census evidence (`slice_14_census.log`) reproduces frame 916
-and rc=0 against the current binary. At the exact held tail, the final slot
-table has 12 state-1 cb1 candidates and four state-3 dormant slots. The
-pre-callback scheduler counters report 13 state-1/3 state-3 observations
-because slot 11 was dispatched in state 1 and returned state 3.
+Fresh W34B41 census evidence (`slice_14_census.log`) reproduced frame 916
+and rc=0 against the current binary. W34B42 then executed one reviewed
+re-entry. Its final natural state (`slice_15_natural.log`) has two frame-tail
+passes, four OT packets, 2050 guest-walk steps, scheduler entry 3 with
+`41/41` callbacks, and rc=0. D554 remains nonzero after the second tail, so
+the bounded control frontier is still `0x800719C8`.
 
 ## 2. Milestones
 
@@ -43,11 +44,12 @@ because slot 11 was dispatched in state 1 and returned state 3.
 | `07c7a9b8` | W34B38 bank adapter evidence | no production delta |
 | `80d1f0b8` | W34B39 slot-table base at `0x8009BCC0` | bucket abort -> terminator, 2 packets |
 | `215786b4` | W34B40 audit held backedge and post-convergence boundaries | audit only |
-| pending | W34B41 fresh callback census | no production delta |
+| `d17fb03d` | W34B41 fresh callback census | no production delta |
+| pending | W34B42 reviewed one-frame re-entry | one extra clean frame |
 
 All production slices above have clean LINK OK and rc=0 natural evidence.
-W34B40 and W34B41 contain evidence/audit only; no production code was added
-past the held edge.
+W34B40 and W34B41 contain evidence/audit only. W34B42 adds exactly one
+reviewed frame re-entry; the unbounded retail session loop remains deferred.
 
 ## 4. Attempted/reverted slices
 
@@ -60,22 +62,23 @@ restriction.
 
 ## 5. BLOCKED-NEEDS-REVIEW
 
-`AUDIT_W34B40_AHEAD.md` and `AUDIT_W34B41_CALLBACK_CENSUS.md` record the
-current blockers and fresh state. The held edge is the actual per-frame loop;
-the census proves that a next pass would re-enter frame head `0x8007130C`,
-then the normal scheduler call at `0x80071488`, with all 12 predicted cb1
-callbacks covered. The mode initializer `0x80072238` is approximately 472
-instructions with unresolved/gated setup calls, and `0x8007299C` is an
-approximately 0x214-byte, 26-call post-loop teardown. Neither is a bounded
-first-render slice. The convergence lane has no uncovered class-(a/b) gap.
+`AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`, and
+`AUDIT_W34B42_SECOND_FRAME.md` record the current boundaries. The reviewed
+second frame is clean, but D554 remains 1 and the new post-second-frame slot
+state has not yet received a full census. The mode initializer `0x80072238`
+is approximately 472 instructions with unresolved/gated setup calls, and
+`0x8007299C` is an approximately 0x214-byte, 26-call post-loop teardown.
+Neither is a bounded first-render slice. The convergence lane has no
+uncovered class-(a/b) gap.
 
 ## 6. Detours completed
 
 D1 convergence and D3 tripwire audits remain banked. The W34B39 detour fixed
-the slot-table base and completed the first guest-native OT walk. The W34B40
-audit-ahead packet covers the held frame re-entry, mode initializer, and
-post-loop teardown. W34B41 freshly recaptured the full slot table and resolver
-coverage. D4 was not used to alter unrelated worktree contents.
+the slot-table base and completed the first guest-native OT walk. W34B40
+audited the held frame re-entry, mode initializer, and post-loop teardown;
+W34B41 freshly recaptured the full slot table and resolver coverage; W34B42
+executed one reviewed additional frame. D4 was not used to alter unrelated
+worktree contents.
 
 ## 7. Tripwire status
 
@@ -84,7 +87,7 @@ coverage. D4 was not used to alter unrelated worktree contents.
 | `0x80072238` mode-loop entry | intact; zero-hit naturally |
 | `0x8007299C` renderer/teardown entry | intact; zero-hit naturally |
 | separate world DrawOTag guard | intact; zero-hit; guest adapter is separate |
-| frame backedge/second-iteration guard | intact; first hit held |
+| frame backedge/second-iteration guard | intact; two hits held after one bounded re-entry |
 | loop dispatch/exit guards | intact; zero-hit |
 | scheduler missing/invalid callback guards | intact; pass 2 `29/29`, missing `0`, invalid `0` |
 | W34B38 OT adapter abort guards | intact; naturally zero aborts in W34B39 |
@@ -93,10 +96,10 @@ No should-not-run tripwire was weakened or retired by implementation.
 
 ## 8. Recommended next task
 
-The single recommended next task is to implement the reviewed second-frame
-re-entry from `0x800719C8 -> 0x8007130C`, using the W34B41 census and W34B39
-OT proof. Do not implement the mode initializer or teardown merely to force
-either milestone.
+The single recommended next task is a fresh full 16-slot census at the
+post-W34B42 second-tail state, before extending the loop beyond one re-entry.
+Do not implement the mode initializer or teardown merely to force either
+milestone.
 
 ## 9. Confirmation
 

@@ -20,6 +20,9 @@
 
 void wm_800712D0_frame_prologue(void);
 
+/* W34B42: exact one-reentry predicate for retail 0x800719C0/0x800719C8. */
+int wm_800719C8_should_reenter_once(int gate_enabled, u32 d554);
+
 void wm_fp_reset(void);
 int  wm_fp_get_entry(void);
 int  wm_fp_get_cd_work_calls(void);

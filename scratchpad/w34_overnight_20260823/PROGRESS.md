@@ -366,3 +366,21 @@ smallest bounded host-sync/display-environment continuation.
 - Audit: `AUDIT_W34B41_CALLBACK_CENSUS.md`. No second frame or callback
   implementation attempted.
 - Commit: pending evidence commit; no push.
+
+## W34B42 — reviewed one-frame re-entry
+
+- Frontier before -> after: held control edge `0x800719C8` -> same retail
+  edge after one additional frame; frame execution count advanced 1 -> 2.
+- Implementation: one bounded `XENO_WORLD_FRAME_REENTRY_ONCE` re-entry from
+  the D554 branch target `0x8007130C`, using the production frame prologue
+  and the exact nonzero D554 predicate. No mode-loop/renderer path changed.
+- Focused test: O0/O2/UBSan-O2 `5/5`; gate, D554-zero, D554-nonzero, and
+  high-value cases; three wrong-logic mutants detected.
+- Build: LINK OK.
+- Natural run: rc=0; tail hit 2; OT draw calls 2; packets 4; 2050 walk
+  steps; both walks terminate at `0x8009CE6C`; zero adapter aborts; scheduler
+  entry 3, `41/41`, missing 0, invalid 0. Mode `0x80072238` and
+  `0x8007299C` remain zero-hit.
+- Evidence: `AUDIT_W34B42_SECOND_FRAME.md`, `slice_15_tests.log`,
+  `slice_15_build.log`, `slice_15_natural.log`.
+- Commit: pending local implementation/evidence commit; no push.

@@ -138,6 +138,8 @@
  *        stops before first missing callback body; DrawSync at 0x8007106C not executed)
  *   XENO_WORLD_FRAME_PROLOGUE=0 (default off; 0x8007106C continuation +
  *        0x800712D0 .. 0x80071484; requires SCHEDULER; hard-cut before 0x80071488)
+ *   XENO_WORLD_FRAME_REENTRY_ONCE=0 (default off; one reviewed re-entry from
+ *        0x800719C8 to frame head 0x8007130C; requires FRAME_PROLOGUE)
  * Default remains pure placeholder (hasOverlay=0).
  */
 #include <stdio.h>
@@ -249,6 +251,7 @@
 #define WM_MODE_POST_RETAIL      0x8007299Cu
 #define WM_DISPATCH_TABLE        0x8009A058u
 #define WM_PHASE_D7CC            0x8009D7CCu
+#define WM_FRAME_D554            0x8009D554u
 
 /* Mode-init BSS / request list (overlay) */
 #define WM_PTR_CD34              0x8009CD34u
@@ -1022,6 +1025,15 @@ static int world_frame_prologue_enabled(void)
            world_scheduler_97800_enabled();
 }
 
+static int world_frame_reentry_once_enabled(void)
+{
+    /* W34B42: one reviewed second-frame entry. This is intentionally bounded
+     * to one additional call while the retail backedge remains instrumented;
+     * it requires the complete accepted frame-prologue lane. */
+    return env_flag_is_one("XENO_WORLD_FRAME_REENTRY_ONCE") &&
+           world_frame_prologue_enabled();
+}
+
 static int world_gfx_work_buffers_enabled(void)
 {
     /* FT4 pools imply gfx work-buffer routing. */
@@ -1166,10 +1178,10 @@ static void log_enabled_slices(void)
     int w34b5d = world_common_tail_p3_enabled();
     int w34b5e = world_common_tail_p4_enabled();
     int w34b18b = world_frame_prologue_enabled();
+    int w34b42 = world_frame_reentry_once_enabled();
     fprintf(stderr, "[worldmap] enabled slices:");
     if (!w2 && !w3 && !w4 && !w5 && !w6 && !w7 && !w8 && !w10a && !w10b &&
-        !w11 && !w12 && !w13 && !w14 && !w15 && !w16 && !w17 && !w18 &&
-        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e && !w34b18b) {
+        !w19 && !w20 && !w21 && !w22 && !w23 && !w24 && !w25 && !w29 && !w32 && !w33 && !w34b1 && !w34b4b && !w34b5a && !w34b5b && !w34b5c && !w34b5d && !w34b5e && !w34b18b && !w34b42) {
         fprintf(stderr, " (none — placeholder only)\n");
         return;
     }
@@ -1243,6 +1255,8 @@ static void log_enabled_slices(void)
         fprintf(stderr, ",W34B5E");
     if (w34b18b)
         fprintf(stderr, ",W34B18B");
+    if (w34b42)
+        fprintf(stderr, ",W34B42");
     fprintf(stderr, "\n");
 }
 
@@ -7425,6 +7439,14 @@ void PcPort_WorldMapInitMain(void)
             ControllerResetState();
             WM_U32(WM_FLAG_C894_ABS) = WM_U32(WM_PHASE_D7CC);
             wm_800712D0_frame_prologue();
+            if (wm_800719C8_should_reenter_once(
+                    world_frame_reentry_once_enabled(),
+                    WM_U32(WM_FRAME_D554))) {
+                fprintf(stderr,
+                        "[worldmap-frame-reentry] W34B42 reviewed re-entry "
+                        "0x800719C8 -> 0x8007130C count=1\n");
+                wm_800712D0_frame_prologue();
+            }
         }
         {
             u32 cut_pc = WM_MAIN_LOOP;
