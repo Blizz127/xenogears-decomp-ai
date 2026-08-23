@@ -1,15 +1,21 @@
-W34B50 D554 callback branch census
+W34B50 D554 callback branch census (corrected address capture)
 Command: timeout -s INT --foreground 300 gdb -batch -x
   scratchpad/w34_overnight_20260823/w34b50_d554_callback_census.gdb
   pc_port/build_native/xeno-port
 Result: gdb exit 0; W34B50_DONE frame=916 rc=0
 
+Correction: the first capture script revision printed offset `0x1d554`
+(`0x8001D554`) instead of the D554 guest offset `0x9d554`
+(`0x8009D554`). The script was corrected and this record supersedes the
+earlier diagnostic values. Production tail records were already reading and
+reporting the correct D554 value.
+
 Live callback entries and helper returns, repeated on all three bounded
 re-entries:
 
-  W34B50_A72_ENTRY frame=916 slot=1 resync=0 d554=0x00000000
-  W34B50_A72_HELPER_RETURN result=0 d554=0x00000000
-  W34B50_C844_ENTRY frame=916 slot=4 resync=0 d554=0x00000000
+  W34B50_A72_ENTRY frame=916 slot=1 resync=0 d554=0x00000001
+  W34B50_A72_HELPER_RETURN result=0 d554=0x00000001
+  W34B50_C844_ENTRY frame=916 slot=4 resync=0 d554=0x00000001
 
 The A72C helper returned 0 on all three passes.  The C844 helper return
 breakpoints were not reached because its clear-capable path requires

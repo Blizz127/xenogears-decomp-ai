@@ -50,14 +50,14 @@ end
 break wm_8008A72C
 commands
   silent
-  printf "W34B50_A72_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_A72_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
 break wm_8008C844
 commands
   silent
-  printf "W34B50_C844_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_C844_ENTRY frame=%d slot=%d resync=%u d554=0x%08x\n", $frame, slot_idx, *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5), *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
@@ -66,28 +66,28 @@ end
 break pc_port/src/world_map_helper_90a84.c:373
 commands
   silent
-  printf "W34B50_A72_HELPER_RETURN result=%d d554=0x%08x\n", result, *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_A72_HELPER_RETURN result=%d d554=0x%08x\n", result, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
 break pc_port/src/world_map_helper_90c68.c:100
 commands
   silent
-  printf "W34B50_C844_HELPER_RETURN result=3 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_C844_HELPER_RETURN result=3 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
 break pc_port/src/world_map_helper_90c68.c:104
 commands
   silent
-  printf "W34B50_C844_HELPER_RETURN result=1 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_C844_HELPER_RETURN result=1 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
 break pc_port/src/world_map_helper_90c68.c:122
 commands
   silent
-  printf "W34B50_C844_HELPER_RETURN result=0 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554)
+  printf "W34B50_C844_HELPER_RETURN result=0 d554=0x%08x\n", *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554)
   continue
 end
 
@@ -95,7 +95,7 @@ end
 break pc_port/src/world_map_callback_8a72c.c:351
 commands
   silent
-  printf "W34B50_A72_BRANCH frame=%d slot=%d cls=%d jt2=%u d554=0x%08x resync=%u\n", $frame, slot_idx, cls, jt2, *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554), *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5)
+  printf "W34B50_A72_BRANCH frame=%d slot=%d cls=%d jt2=%u d554=0x%08x resync=%u\n", $frame, slot_idx, cls, jt2, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5)
   continue
 end
 
@@ -103,7 +103,7 @@ end
 break pc_port/src/world_map_callback_8c844.c:150
 commands
   silent
-  printf "W34B50_C844_BRANCH frame=%d slot=%d ret=%d d554=0x%08x resync=%u\n", $frame, slot_idx, ret, *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554), *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5)
+  printf "W34B50_C844_BRANCH frame=%d slot=%d ret=%d d554=0x%08x resync=%u\n", $frame, slot_idx, ret, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), *(unsigned char*)((unsigned char*)g_PsxRam + 0x6f8e5)
   continue
 end
 
@@ -111,7 +111,7 @@ break wm_80071984_tail
 commands
   silent
   if $frame == 916
-    printf "W34B50_THIRD_TAIL frame=%d d554=0x%08x sched_entry=%d\n", $frame, *(unsigned int*)((unsigned char*)g_PsxRam + 0x1d554), wm_sched_get_entry()
+    printf "W34B50_THIRD_TAIL frame=%d d554=0x%08x sched_entry=%d\n", $frame, *(unsigned int*)((unsigned char*)g_PsxRam + 0x9d554), wm_sched_get_entry()
   end
   continue
 end

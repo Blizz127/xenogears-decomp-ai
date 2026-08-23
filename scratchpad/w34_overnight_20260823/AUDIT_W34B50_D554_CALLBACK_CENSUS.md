@@ -20,12 +20,13 @@ W34B46 writer census as direct D554 clear candidates.
 
 ## Natural branch observations
 
-The debugger captured both callback entries on each of the three bounded
+The corrected debugger capture (the first revision had a diagnostic-only
+`0x8001D554` offset typo and is superseded) captured both callback entries on each of the three bounded
 re-entries. Every observation was:
 
 ```text
-A72C: slot=1, resync=0, wm_80090A84 result=0
-C844: slot=4, resync=0; wm_80090C68 clear-capable path not entered
+A72C: slot=1, resync=0, D554=1, wm_80090A84 result=0
+C844: slot=4, resync=0, D554=1; wm_80090C68 clear-capable path not entered
 ```
 
 Therefore A72C took neither its class-1 clear lane nor a resync lane, and

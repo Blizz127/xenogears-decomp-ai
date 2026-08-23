@@ -16,6 +16,9 @@
   `w34b50_d554_callback_census.gdb`.
 - Decision: class-(e) remains; no callback forced, no D554 store added, no
   tripwire changed, no push.
+- Evidence correction: the first debugger revision printed `0x8001D554`;
+  W34B51 corrected it to `0x8009D554` and reproduced D554=1 at every live
+  callback entry and tail. The production conclusion is unchanged.
 
 ## W34B49 — D4 evidence hygiene
 
