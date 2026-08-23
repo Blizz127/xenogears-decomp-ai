@@ -278,3 +278,36 @@ smallest bounded host-sync/display-environment continuation.
 - No production fix, renderer entry, second-frame iteration, or backedge
   change was attempted after the crash. The W34B37 writer/ClearOTag changes
   remain uncommitted; quarantine files remain untouched.
+
+## Slice 12 — W34B38 world-map guest-OT adapter
+
+- Frontier: DrawOTag ABI crash (ParsePrimitivesLinkedList SIGSEGV) ->
+  clean guest-native walk; first D554 BACKEDGE observed and held at
+  0x800719C8 (`fp_cut_pc=0x800719c8`).
+- Ground truth re-established (`slice_12_ground_truth.log`): with the
+  W34B37 writer fix the OT root is genuinely guest (0x800A2228); crash
+  reproduced at root+0xFFC before the adapter.
+- Design note: `AUDIT_W34B38_ADAPTER_DESIGN.md`. Decisive fact: the
+  non-extended P_TAG first word is byte-identical to the retail tag, so
+  DrawPrim is the narrow host boundary; only ClearOTagR stride and
+  nextPrim's link namespace mismatched.
+- Implementation: `world_map_ot_adapter.c/.h`; frame-driver ClearOTagR
+  call sites and the tail DrawOTag call routed through the adapter.
+  PsyCross untouched. Entry-0 terminator substitution documented
+  (retail links the 0x8005698C sentinel; port writes 0x00FFFFFF).
+- Certificate: `run_w34b38_ot_adapter_prod_test.sh` O0/O2/UBSan-O2 all
+  7/7, byte-identical stdout, mutants M1-M4 (link mask, terminator,
+  clear direction, missing bounds check) 4/4 DETECTED
+  (`slice_12_tests.log`).
+- Natural run (`slice_12_natural.log`): rc=0; pass 1 16/16, pass 2
+  29/29 missing=0; upload pumps 2+3 transfers 0 unknowns; adapter walk
+  executed for the first time and aborted safely at bucket 0x320 whose
+  word is 0x00092EA4 (expected cleared link 0x0A2EA4; delta exactly
+  0x10000); packet address 0x80092EA4 is overlay code bytes
+  (0x3C01800A). Chain dump: `slice_12_chain.log`. Backedge held; mode
+  loop 0x80072238 and renderer 0x8007299C remain zero-hit; placeholder
+  entered cleanly.
+- Commits: `71f9c56d` (W34B37 writer fix, landed once the crash was
+  resolved), `090f075d` (adapter + call sites + certificate).
+- Next slice subject (W34B39): who writes bucket 0x320 with the
+  0x10000-off link — hardware-watchpoint diagnosis.
