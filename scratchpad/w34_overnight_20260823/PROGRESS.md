@@ -261,3 +261,19 @@ smallest bounded host-sync/display-environment continuation.
   dormant. Retail backedge target re-derived as `0x8007130C`.
 - Final report: `W34B37_REPORT.md`. No callback gap and no backedge loop were
   implemented. The next task is OT linked-list representation review.
+
+## W34B37 follow-up — OT ABI/layout boundary (blocked)
+
+- Targeted natural capture is banked in `slice_10_ot_representation.log`;
+  `w34b37_ot_target.gdb` arms only after frame 916 reaches the held tail.
+- DrawOTag entered naturally with `p=0x5f2064` and root
+  `0x5f1068` (`p=root+0xFFC`). PsyCross then consumed malformed tag data and
+  SIGSEGVed in `ParsePrimitivesLinkedList`.
+- Audit `AUDIT_W34B37_OT_LINKS.md` establishes the cause: retail uses 0x400
+  four-byte OT words in 0x1000 bytes, while x86-64 PsyCross `OT_TAG` is 16
+  bytes and ClearOTagR spans 0x4000 bytes; guest 24-bit links and host
+  uintptr links are also incompatible. This is class-(e), requiring morning
+  review of a world-only adapter versus a PsyCross-wide ABI repair.
+- No production fix, renderer entry, second-frame iteration, or backedge
+  change was attempted after the crash. The W34B37 writer/ClearOTag changes
+  remain uncommitted; quarantine files remain untouched.

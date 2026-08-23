@@ -1,0 +1,33 @@
+W34B37 OT representation diagnosis — 2026-08-23
+
+Command: gdb -q -batch -x w34b37_ot_target.gdb pc_port/build_native/xeno-port
+Production binary was built after the uncommitted W34B37 writer and
+ClearOTagR PSX_ADDR changes. No second-frame/backedge implementation was used.
+
+Natural target:
+  frame=916
+  scheduler pass 2 = 29 executed / 0 missing
+  upload pump transfers = 2 and 3, unknowns = 0
+  DrawOTag entered naturally once
+  g_PsxRam=0x54ee40
+  DrawOTag p=0x5f2064, delta=0xa3224
+  OT root=p-0xffc=0x5f1068, delta=0xa2228
+
+Representative target words:
+  p-0x20: 0xafb00010 0x005f2040 0x3c02800b 0x005f2048
+  p:      0x00431025 0x005f2060 0x807ffffe 0x005f2068
+  root:   0x0009d310 0x000210c0 0x005f1068 0x9445008c
+  root+0x10: 0x005f1070 0x30630001 0x005f1078 0xac22ffec
+
+PsyCross then reported invalid tag lengths 99 and 136, malformed primitive
+length diagnostics, and stopped with SIGSEGV:
+  ParsePrimitivesLinkedList(p=0x5f2064) LIBGPU/PsyX_GPU.cpp:906
+  DrawOTag(p=0x5f2064) LIBGPU.C:456
+  wm_tail_draw_otag() world_map_frame_tail_71984.c:93
+
+Conclusion:
+  retail OT = 0x400 four-byte entries in 0x1000 bytes;
+  PsyCross x86-64 OT_TAG = 16 bytes, so ClearOTagR spans 0x4000 bytes;
+  root+0xffc is not a host OT_TAG boundary and the parser consumes unrelated
+  data. This is a class-(e) OT ABI/layout boundary. No production fix or
+  second-frame iteration was committed. DrawOTag crash means stop per task.

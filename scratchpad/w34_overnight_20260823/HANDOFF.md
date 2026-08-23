@@ -1,116 +1,74 @@
-# W34-OVERNIGHT handoff
+# W34-OVERNIGHT handoff — current W34B37 state
 
-Date: 2026-08-23
-Branch: `integrate/w34b24-i1`
-Final commit: `398cb21`
+## 1. Frontier and final evidence
 
-## 1. Frontier
+The run began at the W34B34/W34B35/W34B36 result `0x800719C8` and tested the
+first natural frame tail through DrawOTag at `0x800719B4`. The working-tree
+W34B37 writer conversion plus ClearOTagR guest mapping advanced the call into
+PsyCross, but the natural run stopped with SIGSEGV in
+`ParsePrimitivesLinkedList` at `PsyX_GPU.cpp:906`.
 
-The overnight run started at the hard cut `0x80071490` and advanced the
-natural path to `0x80071984`:
-
-```text
-0x80071490 -> 0x800714D4 -> 0x8007169C -> 0x8007185C
-             -> 0x8007197C -> 0x80071984
-```
-
-Final natural evidence (`slice_05_natural.log` and
-`slice_05_prologue_results.txt`): `rc=0`; scheduler pass 1 `16/16`, pass 2
-`29/29`, missing callbacks `0`; frame-prologue entry `1`; image-transfer
-unknowns `0`; `fp_cut_pc=0x80071984`; placeholder entered cleanly. The
-natural run did not execute beyond the image-list boundary.
+Evidence: `slice_10_ot_representation.log`; audit:
+`AUDIT_W34B37_OT_LINKS.md`. Before the crash: frame 916; scheduler pass 2
+`29 executed / 0 missing`; upload pumps completed `2` and `3` transfers with
+zero unknowns; DrawOTag entered naturally once; D554 was not re-entered.
 
 ## 2. Milestones
 
-- Milestone 1, mode loop `0x80072238`: not reached; tripwire zero-hit.
-- Milestone 2, renderer `0x8007299C`: not reached; renderer sentinel and
-  scheduler slot-2 guard zero-hit.
-- Milestone 3, nonzero framebuffer pixels: not reached; no framebuffer PNG
-  was produced.
-
-The final run captured the scheduler/frame state above and all relevant
-zero-hit tripwire counters, but there is no natural mode-loop or renderer
-entry-state capture because neither entry occurred.
+- Milestone 1 (`0x80072238` mode loop): not reached; guard intact and zero-hit.
+- Milestone 2 (`0x8007299C` renderer): not reached; guard intact and zero-hit.
+- Milestone 3 (nonzero framebuffer): not reached; no PNG produced.
 
 ## 3. Commit chain
 
-| commit | slice | frontier delta |
+| hash | slice | frontier delta |
 | --- | --- | --- |
-| `b0628a4d` | W34B25 host CD callback/UI pointer/native helper | baseline prerequisite |
-| `286c4c10` | W34B26 sync/display tail | `0x80071490 -> 0x800714D4` |
-| `99fbd14f` | W34B27 frame state gates | `0x800714D4 -> 0x8007169C` |
-| `4a19846a` | W34B28 natural C178 branch | `0x8007169C -> 0x8007185C` |
-| `0c46ba17` | W34B29 flag/update lane | `0x8007185C -> 0x8007197C` |
-| `14a7119c` | W34B30 mapped image-list boundary | `0x8007197C -> 0x80071984` |
-| `ee86846b` | W34B31 convergence/audit-ahead detours | no frontier delta |
-| `398cb21` | W34B32 tripwire/evidence hygiene | no frontier delta |
+| `2c9ec8f1` | W34B34 upload pump `0x80074F2C` | `0x80071984 -> 0x80075104` |
+| `9b3da910` | W34B35 upload pump `0x80075104` | `0x80075104 -> 0x80071994` |
+| `0cfeaaeb` | W34B36 frame tail + D554 hold | `0x80071994 -> 0x800719C8` |
+| `ba213582` | W34B37 BE3C audit + callback census evidence | no production delta |
 
-Every implementation slice rebuilt with `LINK OK`, passed its focused
-O0/O2/UBSan certificate, and had a clean natural `rc=0` run.
+The W34B37 production changes are intentionally uncommitted because the
+natural DrawOTag run is not clean.
 
-## 4. Attempted and reverted slices
+## 4. Attempted/reverted slices
 
-None. No slice was reverted.
+W34B37 attempted the class-(a) BC38/BCB0 host-pointer conversion and the
+necessary ClearOTagR `PSX_ADDR` handoff. The focused O0/O2/UBSan conversion
+certificate and LINK OK build passed. No implementation slice was committed;
+no slice was reverted. The newly exposed DrawOTag crash is the subject of the
+blocked OT ABI audit, not a downstream paper-over.
 
-## 5. BLOCKED-NEEDS-REVIEW audits
+## 5. BLOCKED-NEEDS-REVIEW
 
-The frontier `0x80071984` is class (e). Crossing it requires the absent
-helpers at `0x80074F2C` and `0x80075104`, a guest-pointer-safe DrawOTag
-handoff, and a live frame backedge with unresolved callback-pass policy.
-Audits are banked in:
+`AUDIT_W34B37_OT_LINKS.md` records the blocker. Retail uses 0x400 four-byte
+OT entries in a 0x1000-byte allocation and guest 24-bit links. x86-64 PsyCross
+uses 16-byte `OT_TAG`s with host `uintptr_t` links, so ClearOTagR spans 0x4000
+bytes and `root+0xFFC` is not a valid host tag boundary. Morning review must
+choose between a world-only guest-OT adapter and a PsyCross-wide ABI repair.
 
-- `AUDIT_AHEAD_80071984.md`
-- `AUDIT_AHEAD_80074F2C.md`
-- `AUDIT_AHEAD_80075104.md`
+## 6. Detours completed
 
-The D1 convergence audit is `DETOUR_D1_CONVERGENCE_AUDIT.md`; it found no
-bounded missing gap between the built convergence/common-tail pieces and the
-guarded mode-loop entry.
-
-## 6. Detour work completed
-
-- D1: audited convergence coverage; no safe class-(a/b) gap found.
-- D2: produced three audit-ahead packets for the next unresolved regions.
-- D3: verified all forbidden-target registrations and zero-hit guards;
-  `DETOUR_D3_TRIPWIRE_AUDIT.md`.
-- D4: validated the banked proof tree and ran `git worktree prune` without
-  deleting any registered worktree directory;
-  `DETOUR_D4_EVIDENCE_HYGIENE.md`.
+D1 convergence audit, D2 audit-ahead packets, D3 tripwire hygiene, and D4
+evidence/worktree hygiene remain banked from the prior handoff. W34B37 added
+the full 16-slot held-tail census: all predicted cb1 callbacks are mapped;
+slots 3, 6, 7, and 11 are dormant; retail backedge target is `0x8007130C`.
 
 ## 7. Tripwire status
 
-All entries are intact and zero-hit on the final natural run.
-
-| target | status |
-| --- | --- |
-| `0x800712D0` | intact; implemented driver entry is separately instrumented |
-| `0x80072238` | intact |
-| `0x8007299C` | intact |
-| `0x8009766C` | intact |
-| `0x80074E58` | intact |
-| `0x80075030` | intact |
-| `0x800739B8` | intact |
-| `0x80088F64` | intact |
-| `0x80037FD8` | intact |
-| world `DrawOTag` | intact |
-| world `ArchiveCdDataSync` | intact |
-| loop dispatch `0x80072514` | intact |
-| `0x800967E4` | intact; implemented diagnostic route is separate |
-| loop backedge `0x80072530` | intact |
-| loop exit `0x80072538` | intact |
-
-No tripwire fired and none was naturally retired by implementation.
+All existing should-not-run guards remain intact. The mode-loop and renderer
+guards are zero-hit; the separate world DrawOTag guard was not weakened. No
+tripwire was retired by implementation, and no second-frame/backedge code was
+added.
 
 ## 8. Recommended next task
 
-Have the morning review approve a bounded implementation plan for
-`0x80074F2C` first, including its `LoadImage` guest-pointer mapping, then
-re-audit the `0x80075104` sibling before touching the DrawOTag/backedge
-sequence.
+Have morning review approve the OT representation direction, then add a
+focused OT-layout/link certificate before rerunning the natural route. Do not
+implement the second frame iteration until DrawOTag completes safely.
 
 ## 9. Confirmation
 
-Nothing was pushed. The quarantined tracked dirt in
-`include/psyq/inline_c.h` and `pc_port/src/game_overrides.c` was not staged
-or modified by this run. The banked proof tree remains untouched and its
-`SHA256SUMS` check passed every entry.
+Nothing was pushed. Quarantined tracked dirt in `include/psyq/inline_c.h` and
+`pc_port/src/game_overrides.c` was not staged, reverted, or modified. Banked
+proof trees were not re-baselined. No framebuffer PNG exists.
