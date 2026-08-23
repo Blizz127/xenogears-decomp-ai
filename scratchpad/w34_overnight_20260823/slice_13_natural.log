@@ -1,0 +1,15 @@
+Command: timeout -s INT --foreground 420 gdb -batch -x
+  scratchpad/w34_overnight_20260823/w34b39_natural_capture.gdb
+  pc_port/build_native/xeno-port
+
+W34B39_NATURAL_TAIL frame=916 last_ot=0x800a3224 draw_calls=1 packets=2 steps=1025 abort_range=0 abort_align=0 abort_len=0 abort_steps=0 multi=0 last_addr=0x8009ce6c last_tag=0x08ffffff
+[worldmap-frame-tail] BACKEDGE 0x800719C8 d554=0x00000001 held=1 hit=1
+W34B39_NATURAL_SCHED frame=916 entry=2 executed=29 missing=0 invalid=0
+[worldmap-scheduler] counters: entry=2 slots=128 occupied=32 state0=16 state1=13 state2=0 state3=3 state4=0 state_invalid=0 dispatch=29 executed=29 missing=0 invalid=0 destructor_calls=0 destructor_boundary=0 completed=2 last_slot=15 last_cb=0x80087734 last_cb_state=1 outcome=0 frontier=0x8007106c
+[worldmap-common-tail-p5] DRAWOTAG: ZERO VERIFIED
+W34B39_NATURAL_PLACEHOLDER frame=916 rc=0
+
+The old bucket-0x320 abort is absent. The guest-native walk reaches the
+terminator at 0x8009CE6C with two packets submitted and no adapter abort.
+Mode-loop 0x80072238 and renderer 0x8007299C tripwires remain intact and
+zero-hit; the held backedge is not implemented.

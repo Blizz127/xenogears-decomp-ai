@@ -311,3 +311,24 @@ smallest bounded host-sync/display-environment continuation.
   resolved), `090f075d` (adapter + call sites + certificate).
 - Next slice subject (W34B39): who writes bucket 0x320 with the
   0x10000-off link — hardware-watchpoint diagnosis.
+
+## Slice 13 — W34B39 fix particle cleanup slot-table base
+
+- Audit: `AUDIT_W34B39_BUCKET320.md`. Hardware watchpoint at bucket `0x320`
+  fired first in `wm_80089580` called by `wm_80089748` from scheduler slot 14
+  (`0x80071A58`). The cleanup `sh slot_record+0x0A` changed `0x000A2EA4` to
+  `0x00092EA4` because the source loaded `0x8009BDE0`; retail loads the slot
+  table pointer from `0x8009BCC0` at `0x800896FC..0x80089708`.
+- Implementation: `world_map_helper_89580.c` now uses the retail BCC0 global.
+  No OT, renderer, callback routing, or second-frame/backedge code changed.
+- Focused certificate: O0/O2/UBSan-O2 all `6/6`, byte-identical; three address
+  mutants detected (`slice_13_tests.log`).
+- Rebuild: `LINK OK` (`slice_13_build.log`).
+- Natural run: rc=0; scheduler pass 1 `16/16`, pass 2 `29/29`, missing=0;
+  guest OT walk reaches terminator `0x8009CE6C`, submits 2 packets, takes 1025
+  steps, and records zero range/alignment/length/step aborts. The old bucket
+  `0x320` abort is gone (`slice_13_natural.log`). First D554 backedge remains
+  held at `0x800719C8`; mode loop `0x80072238` and renderer `0x8007299C`
+  remain intact and zero-hit.
+- Frontier: `0x800719C8` held tail -> completed first guest-native OT walk;
+  no milestone 1/2/3 yet.

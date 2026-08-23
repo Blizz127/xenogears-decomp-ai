@@ -9,6 +9,7 @@
 #include "psx_memory.h"
 #include "world_map_helper_89580.h"
 
+#define D_8009BCC0  0x8009BCC0u  /* slot table base pointer */
 #define D_8009BDF4  0x8009BDF4u  /* particle table base pointer */
 #define PARTICLE_COUNT 256
 #define PARTICLE_STRIDE 0x4C
@@ -20,6 +21,20 @@ static void pt_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static s16 pt_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static s8 pt_lb(u32 a) { return *(s8*)PSX_ADDR(a); }
 static u8 pt_lbu(u32 a) { return *(u8*)PSX_ADDR(a); }
+
+static u32 pt_slot_table_base(void)
+{
+#if defined(WM_89580_MUTANT_WRONG_SLOT_GLOBAL)
+    return pt_lw(0x8009BDE0u);
+#elif defined(WM_89580_MUTANT_PARTICLE_GLOBAL)
+    return pt_lw(D_8009BDF4);
+#elif defined(WM_89580_MUTANT_SLOT_OFFSET)
+    return pt_lw(D_8009BCC0 + 4u);
+#else
+    /* Retail 0x800896FC–0x80089708: lui/lw 0x8009BCC0. */
+    return pt_lw(D_8009BCC0);
+#endif
+}
 
 void wm_80089580(void)
 {
@@ -37,7 +52,7 @@ void wm_80089580(void)
             /* Inactive particle: check if slot needs cleanup */
             s16 slot_idx = pt_lh(table_base);
             if (slot_idx >= 0) {
-                u32 slot_base = pt_lw(D_8009BDF4 - 0x14); /* D_8009BCC0 + slot_idx * 672 */
+                u32 slot_base = pt_slot_table_base();
                 /* Decrement slot's particle counter */
                 u32 slot_record = slot_base + (u32)slot_idx * 672;
                 u16 pc = pt_lhu(slot_record + 0x0A);
