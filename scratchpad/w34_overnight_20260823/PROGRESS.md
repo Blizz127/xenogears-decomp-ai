@@ -200,3 +200,21 @@ smallest bounded host-sync/display-environment continuation.
   encountered because the slice stops before its tail.
 - Commit: pending; intended message `W34B34 implement world image-timer
   helper 0x80074F2C boundary 0x80071984-0x80075104`.
+
+## W34B35 morning review — 0x80075104 sibling upload pump
+
+- Confirmed the sibling’s 73-instruction retail body and distinct signed
+  dimension/factor scaling formula; audit: `AUDIT_REVERIFY_W34B35.md`.
+- Implemented native `0x80075104` (`[0x80075104,0x80075228)`) with exact
+  shared timer/index progression, signed indexed table lookup, wrapped
+  dimension scaling, and map-or-log LoadImage handling. The production call
+  now stops before `SetGeomOffset` at `0x80071994`.
+- Focused certificate: `slice_07_tests.log`, O0/O2/UBSan `7/7`, five
+  executed mutants all detected. Production build: `slice_07_build.log`,
+  `LINK OK`.
+- Natural diagnostic: `slice_07_natural.log`, `rc=0`, W34B34 transfers `2`,
+  W34B35 transfers `3`, unknowns `0`, scheduler entry `2`, callbacks `29`,
+  missing `0`, frontier `0x80071994`, placeholder clean. D554/backedge was
+  not encountered.
+- Commit: pending; intended message `W34B35 implement world image-timer
+  sibling 0x80075104 boundary 0x80075104-0x80071994`.

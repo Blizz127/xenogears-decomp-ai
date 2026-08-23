@@ -1,0 +1,14 @@
+W34B5HS_SCH_FRAME 1
+W34B5HS_SCH_FRAME 600
+W34B5HS_DIAG_PROLOGUE_ENTER frame=916 sched_entry=1
+[worldmap-upload-pump] entry count=2 array=0x800f2c58
+[worldmap-upload-pump] exit transfers=2 unknowns=0
+[worldmap-upload-pump-b] entry count=3 array=0x800f2c78
+[worldmap-upload-pump-b] exit transfers=3 unknowns=0
+W34B5HS_DIAG_712D0_CUT cut_pc=0x80071994 cd_work=1 vsync_retries=0 pad_iters=1 sched_calls=1
+W34B5HS_DIAG_SCHED_DUMP frame=916 entry=2 executed=29 missing=0 frontier=0x8007106c
+W34B5HS_DIAG fp_cut_pc=0x80071994
+W34B5HS_DIAG sched_callbacks_executed=29
+W34B5HS_DIAG sched_missing_hits=0
+W34B5HS_DIAG_PLACEHOLDER_ENTER frame=916
+DIAG_GDB_RC=0
