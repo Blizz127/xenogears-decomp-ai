@@ -332,3 +332,17 @@ smallest bounded host-sync/display-environment continuation.
   remain intact and zero-hit.
 - Frontier: `0x800719C8` held tail -> completed first guest-native OT walk;
   no milestone 1/2/3 yet.
+
+## W34B40 — held-backedge and audit-ahead review
+
+- Frontier before -> after: control frontier remains `0x800719C8` held;
+  W34B39's OT sub-frontier remains clean at terminator `0x8009CE6C`.
+- Audit: `AUDIT_W34B40_AHEAD.md`. D1 found no uncovered class-(a/b)
+  convergence gap. The frame re-entry `0x800719C8 -> 0x8007130C`, mode
+  initializer `0x80072238..0x80072998`, and post-loop region
+  `0x8007299C..0x80072BAC` are class-(e) or explicitly deferred.
+- Tests: no production code changed; prior W34B39 focused O0/O2/UBSan
+  certificate and natural rc=0 evidence remain the current proof.
+- Natural state: mode entry `0x80072238` and `0x8007299C` remain zero-hit;
+  first backedge is held; no second frame, renderer entry, or framebuffer PNG.
+- Commit: no commit; audit-only handoff update. No push.
