@@ -17,17 +17,19 @@ OT root host = 0x5f1068  (g_PsxRam + 0xa2228)
 DrawOTag p   = 0x5f2064  (g_PsxRam + 0xa3224) = root + 0xffc
 ```
 
-PsyCross is compiled with `USE_EXTENDED_PRIM_POINTERS=1`. On x86-64,
-`DECLARE_P_ADDR_PTAG` contains an eight-byte `uintptr_t addr` and four bytes
-of link metadata; the Xeno OT pad makes `sizeof(OT_TAG)` 16 bytes. Its
-`ClearOTagR` implementation casts the argument to `OT_TAG*` and writes
-`ptag_list[i]` for `i=1..0x3ff`, therefore treating the 0x1000-byte retail
-allocation as a 0x4000-byte host OT. The host tag terminator and links are
-also host pointers, while the decompiled world callbacks write retail
-four-byte tag words and guest 24-bit packet links.
+The production binary is compiled with `USE_EXTENDED_PRIM_POINTERS=0`.
+GDB's debug types report `sizeof(OT_TAG)=8`, `sizeof(P_TAG)=8`, and
+`sizeof(unsigned long)=8`. The port's `_xeno_ot_pad` makes each non-extended
+OT tag eight bytes so PsyCross's `ClearOTagR` can serve the port's other
+host-side `u_long[]` arrays. Its implementation casts the caller's memory to
+`OT_TAG*` and writes `ptag_list[i]` for `i=1..0x3ff`, therefore treating this
+0x1000-byte retail allocation as a 0x2000-byte host OT. The non-extended
+`setaddr` stores the low 24 bits of a host pointer for those cleared links,
+while the decompiled world callbacks write retail four-byte tag words and
+guest 24-bit packet links.
 
 The target capture shows the mismatch directly. At the root, the host clear
-operation is visible at 16-byte intervals, while the retail callback has
+operation is visible at eight-byte intervals, while the retail callback has
 overwritten four-byte OT words. At `root+0xFFC`, the words consumed by
 `ParsePrimitivesLinkedList` are not an OT tag; they begin with values such as
 `0x00431025`, `0x005f2060`, and `0x807ffffe`. PsyCross consequently reports
@@ -39,16 +41,18 @@ SIGSEGV in `ParsePrimitivesLinkedList` line 906.
 | Property | Retail world map | Current PsyCross path |
 | --- | --- | --- |
 | OT allocation | `HeapAlloc(0x1000, 0)` | host view of same emulated RAM |
-| OT slot stride | 4 bytes | `sizeof(OT_TAG)=16` on x86-64 |
-| link encoding | 24-bit guest address in 32-bit tag | host `uintptr_t` in `OT_TAG.addr` |
-| clear range | 0x400 words / 0x1000 bytes | 0x400 `OT_TAG`s / 0x4000 bytes |
+| OT slot stride | 4 bytes | `sizeof(OT_TAG)=8` on x86-64 |
+| link encoding | 24-bit guest address in 32-bit tag | low 24 bits of host link for PsyCross-cleared slots |
+| clear range | 0x400 words / 0x1000 bytes | 0x400 `OT_TAG`s / 0x2000 bytes |
 | DrawOTag input | `root + 0xFFC` | mapped host `root + 0xFFC`, which is not a PsyCross tag boundary |
 
 `world_map_callback_925a0.c` and `world_map_helper_73b04.c` are retail-exact
 at the guest data level: they mask and publish guest packet addresses into
 four-byte tag words. Converting those stores alone to host pointers would
-change the guest representation and would not repair the 16-byte stride or
-the `+0xFFC` tail contract. Conversely, changing the global PsyCross
+change the guest representation and would not repair the 8-byte stride or
+the `+0xFFC` tail contract. Even after a stride repair, guest packet links
+such as `0x0009d310` cannot be dereferenced as the host links expected by
+`nextPrim`. Conversely, changing the global PsyCross
 primitive ABI is outside the bounded W34B37 writer slice and risks unrelated
 GPU paths.
 

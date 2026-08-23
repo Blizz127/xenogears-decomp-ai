@@ -42,10 +42,12 @@ blocked OT ABI audit, not a downstream paper-over.
 ## 5. BLOCKED-NEEDS-REVIEW
 
 `AUDIT_W34B37_OT_LINKS.md` records the blocker. Retail uses 0x400 four-byte
-OT entries in a 0x1000-byte allocation and guest 24-bit links. x86-64 PsyCross
-uses 16-byte `OT_TAG`s with host `uintptr_t` links, so ClearOTagR spans 0x4000
-bytes and `root+0xFFC` is not a valid host tag boundary. Morning review must
-choose between a world-only guest-OT adapter and a PsyCross-wide ABI repair.
+OT entries in a 0x1000-byte allocation and guest 24-bit links. The production
+binary's non-extended PsyCross ABI uses 8-byte padded `OT_TAG`/`P_TAG` types,
+so ClearOTagR strides 8 bytes and `root+0xFFC` is not a valid host tag
+boundary; guest packet links also differ from PsyCross's low-24 host links.
+Morning review must choose between a world-only guest-OT adapter and a
+PsyCross-wide ABI repair.
 
 ## 6. Detours completed
 

@@ -270,10 +270,11 @@ smallest bounded host-sync/display-environment continuation.
   `0x5f1068` (`p=root+0xFFC`). PsyCross then consumed malformed tag data and
   SIGSEGVed in `ParsePrimitivesLinkedList`.
 - Audit `AUDIT_W34B37_OT_LINKS.md` establishes the cause: retail uses 0x400
-  four-byte OT words in 0x1000 bytes, while x86-64 PsyCross `OT_TAG` is 16
-  bytes and ClearOTagR spans 0x4000 bytes; guest 24-bit links and host
-  uintptr links are also incompatible. This is class-(e), requiring morning
-  review of a world-only adapter versus a PsyCross-wide ABI repair.
+  four-byte OT words in 0x1000 bytes, while the production non-extended
+  PsyCross `OT_TAG`/`P_TAG` types are 8 bytes and ClearOTagR spans 0x2000
+  bytes; guest 24-bit links and low-24 host links are also incompatible.
+  This is class-(e), requiring morning review of a world-only adapter versus
+  a PsyCross-wide ABI repair.
 - No production fix, renderer entry, second-frame iteration, or backedge
   change was attempted after the crash. The W34B37 writer/ClearOTag changes
   remain uncommitted; quarantine files remain untouched.

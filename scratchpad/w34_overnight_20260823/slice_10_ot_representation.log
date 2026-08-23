@@ -27,7 +27,10 @@ length diagnostics, and stopped with SIGSEGV:
 
 Conclusion:
   retail OT = 0x400 four-byte entries in 0x1000 bytes;
-  PsyCross x86-64 OT_TAG = 16 bytes, so ClearOTagR spans 0x4000 bytes;
-  root+0xffc is not a host OT_TAG boundary and the parser consumes unrelated
-  data. This is a class-(e) OT ABI/layout boundary. No production fix or
-  second-frame iteration was committed. DrawOTag crash means stop per task.
+  production binary defines USE_EXTENDED_PRIM_POINTERS=0;
+  GDB sizeof(unsigned long)=8, sizeof(OT_TAG)=8, sizeof(P_TAG)=8;
+  ClearOTagR therefore strides 8 bytes and spans 0x2000 bytes;
+  root+0xffc is not a host OT_TAG boundary, and guest callback links such as
+  0x0009d310 are not host links for nextPrim. This is a class-(e) OT
+  ABI/layout/link-namespace boundary. No production fix or second-frame
+  iteration was committed. DrawOTag crash means stop per task.
