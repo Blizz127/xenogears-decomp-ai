@@ -1245,9 +1245,11 @@ for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
         echo "ERROR: port ownership manifest symbol is not defined by $PORT_OVERRIDE_OBJECT: $sym"
         exit 1
     fi
+    matched_objects=0
     for o in "${GAME_TU_OBJS[@]}"; do
         if nm -g --defined-only "$o" 2>/dev/null \
             | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
+            matched_objects=$((matched_objects+1))
             echo "    port-owned override: weakening matching definition $sym in $(basename "$o")"
             if ! objcopy --weaken-symbol="$sym" "$o"; then
                 echo "ERROR: failed to weaken duplicate matching definition: $sym"
@@ -1255,6 +1257,11 @@ for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
             fi
         fi
     done
+    if [ "$matched_objects" -eq 0 ]; then
+        echo "ERROR: stale port ownership row has no matching game definition: $sym"
+        echo "       Retire the row and its fallback together, or restore the matching TU."
+        exit 1
+    fi
     for o in "${GAME_TU_OBJS[@]}"; do
         if nm -g --defined-only "$o" 2>/dev/null \
             | awk -v sym="$sym" '$3 == sym && $2 !~ /^[Ww]$/ {found=1} END {exit !found}'; then
