@@ -3,6 +3,7 @@
 #include "psyq/inline_c.h"
 #include "system/memory.h"
 #include "system/archive.h"
+#include "system/model.h"
 #ifdef XENO_PC_PORT
 #include <psx/gtereg.h>
 #include <stdio.h>
