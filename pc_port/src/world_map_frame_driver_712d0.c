@@ -3,6 +3,7 @@
  * Per-frame render/update orchestrator.
  */
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "common.h"
@@ -27,32 +28,48 @@
 #include "world_map_helper_93f18.h"
 #include "world_map_helper_73b04.h"
 #include "world_map_r4world_71a58.h"
+#include "world_map_ot_adapter.h"
 
 /* PsyQ functions */
 extern void DrawSync(void (*func)(unsigned long));
 extern void Vsync(long mode);
 extern void ClearOTagR(unsigned long *ot, int n);
-extern void DrawOTag(unsigned long *ot);
 extern void PutDrawEnv(void *env);
 extern void PutDispEnv(void *env);
 extern void SetGeomOffset(long ofx, long ofy);
 extern void MoveImage(void *rect, long x, long y);
 extern long CdSync(long mode, u_char *result);
 
-/* Stubs for functions not yet implemented */
-static void wm_80096694(void) { /* stub */ }
-static void wm_80075D4C(void) { /* stub */ }
-static void wm_800758C0(void) { /* stub */ }
-static void wm_800762FC(void) { /* stub */ }
-static void wm_80075B58(void) { /* stub */ }
-static void wm_80074F2C(void) { /* stub */ }
-static void wm_80075104(void) { /* stub */ }
-static void wm_80075E7C(void) { /* stub */ }
-static void wm_80025044(void) { /* stub */ }
-static void wm_800250E0(u32 a) { (void)a; /* stub */ }
-static void func_8001D468(void) { /* stub */ }
-static void func_800250E0(u32 a) { (void)a; /* stub */ }
-static void wm_80097800(void) { /* stub */ }
+/* Unresolved leaf stubs: preserve control flow, return the retail-neutral
+ * default, and leave an address-tagged work queue in the log. */
+static void wm_712d0_stub(const char* name, u32 guest_pc)
+{
+    fprintf(stderr,
+            "[worldmap-stub] guest=0x%08x name=%s default_return=0\n",
+            guest_pc, name);
+}
+
+static void wm_80096694(void) { wm_712d0_stub("80096694", 0x80096694u); }
+static void wm_80075D4C(void) { wm_712d0_stub("80075D4C", 0x80075D4Cu); }
+static void wm_800758C0(void) { wm_712d0_stub("800758C0", 0x800758C0u); }
+static void wm_800762FC(void) { wm_712d0_stub("800762FC", 0x800762FCu); }
+static void wm_80075B58(void) { wm_712d0_stub("80075B58", 0x80075B58u); }
+static void wm_80074F2C(void) { wm_712d0_stub("80074F2C", 0x80074F2Cu); }
+static void wm_80075104(void) { wm_712d0_stub("80075104", 0x80075104u); }
+static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
+static void wm_80025044(void) { wm_712d0_stub("80025044", 0x80025044u); }
+static void wm_800250E0(u32 a)
+{
+    (void)a;
+    wm_712d0_stub("800250E0", 0x800250E0u);
+}
+static void func_8001D468(void) { wm_712d0_stub("8001D468", 0x8001D468u); }
+static void func_800250E0(u32 a)
+{
+    (void)a;
+    wm_712d0_stub("800250E0", 0x800250E0u);
+}
+static void wm_80097800(void) { wm_712d0_stub("80097800", 0x80097800u); }
 extern int ControllerPopState(int port);
 extern int ControllerGetType(int port);
 extern void ResetGraph(int mode);
@@ -109,6 +126,17 @@ static s16 fd_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static void fd_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static u8 fd_lbu(u32 a) { return *(u8*)PSX_ADDR(a); }
 static void fd_sb(u32 a, u8 v) { *(u8*)PSX_ADDR(a) = v; }
+
+static void* wm_712d0_map_guest(u32 value, const char* call, u32 pc)
+{
+    if (value == 0u || value < 0x80000000u || value >= 0x80300000u) {
+        fprintf(stderr,
+                "[worldmap-safety] %s unknown guest=0x%08x at 0x%08x "
+                "skip\n", call, value, pc);
+        return NULL;
+    }
+    return PSX_ADDR(value);
+}
 
 void wm_800712D0(void)
 {
@@ -187,7 +215,11 @@ void wm_800712D0(void)
     }
 
     /* Clear OT */
-    ClearOTagR((unsigned long*)(uintptr_t)ot_ptr, 0x400);
+    {
+        void* host_ot = wm_712d0_map_guest(ot_ptr, "ClearOTagR", 0x80071468u);
+        if (host_ot != NULL)
+            ClearOTagR((unsigned long*)host_ot, 0x400);
+    }
 
     /* Process input */
     fd_lw(D_8009D7F0);
@@ -211,8 +243,11 @@ void wm_800712D0(void)
     /* Display environment */
     {
         u32 env = fd_lw(D_8009BE3C);
-        PutDispEnv((void*)(uintptr_t)(env + 0x5C));
-        PutDrawEnv((void*)(uintptr_t)env);
+        void* host_env = wm_712d0_map_guest(env, "PutDrawEnv", 0x800714ACu);
+        if (host_env != NULL) {
+            PutDispEnv((u8*)host_env + 0x5Cu);
+            PutDrawEnv(host_env);
+        }
     }
 
     /* State-dependent rendering */
@@ -317,7 +352,11 @@ void wm_800712D0(void)
     /* DrawOTag */
     {
         u32 env = fd_lw(D_8009BE3C);
-        DrawOTag((unsigned long*)(uintptr_t)(fd_lw(env + 0x70) + 0xFFC));
+        u32 guest_ot = fd_lw(env + 0x70);
+        void* host_ot = wm_712d0_map_guest(guest_ot + 0xFFCu,
+                                           "DrawOTag", 0x800719B4u);
+        if (host_ot != NULL)
+            (void)wm_ot_draw_otag_guest(guest_ot + 0xFFCu);
     }
 
     /* Loop back if mode word still set */
@@ -347,5 +386,10 @@ void wm_800712D0(void)
     Vsync(0);
 
     /* Final display environment */
-    PutDispEnv((void*)(uintptr_t)0x8009BC9Cu);
+    {
+        void* host_env = wm_712d0_map_guest(0x8009BC9Cu,
+                                            "PutDispEnv", 0x80071A00u);
+        if (host_env != NULL)
+            PutDispEnv(host_env);
+    }
 }

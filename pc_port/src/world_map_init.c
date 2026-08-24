@@ -165,6 +165,7 @@
 #include "world_map_common_tail.h"
 #include "world_map_scheduler.h"
 #include "world_map_frame_driver.h"
+#include "world_map_main_loop_71034.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -7996,5 +7997,16 @@ void PcPort_WorldMapInitMain(void)
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");
+    if (env_flag_is_one("XENO_WORLD_OPEN_LOOP")) {
+        fprintf(stderr,
+                "[worldmap-open-loop] entering 0x80071034 with "
+                "XENO_WORLD_FRAME_LIMIT=%s\n",
+                getenv("XENO_WORLD_FRAME_LIMIT") != NULL
+                    ? getenv("XENO_WORLD_FRAME_LIMIT") : "600");
+        wm_80071034();
+        fprintf(stderr, "[worldmap-open-loop] returned to init\n");
+        return;
+    }
+
     PcPort_WorldMapPlaceholderMain();
 }

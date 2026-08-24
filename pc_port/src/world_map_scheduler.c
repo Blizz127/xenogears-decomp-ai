@@ -161,6 +161,40 @@ static int s_last_callback_state;
 static int s_outcome = WM_SCHED_PASS_COMPLETE;
 static u32 s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
 
+typedef struct {
+    u32 guest_addr;
+    unsigned count;
+} wm_sched_stub_hit;
+
+static wm_sched_stub_hit s_stub_hits[64];
+static unsigned s_stub_hit_count;
+
+static void wm_sched_log_stub(u32 guest_addr, const char* kind,
+                              int slot_index, int state)
+{
+    unsigned i;
+    for (i = 0; i < s_stub_hit_count; i++) {
+        if (s_stub_hits[i].guest_addr == guest_addr) {
+            s_stub_hits[i].count++;
+            fprintf(stderr,
+                    "[worldmap-stub] guest=0x%08x kind=%s count=%u "
+                    "slot=%d state=%d default_return=0\n",
+                    guest_addr, kind, s_stub_hits[i].count,
+                    slot_index, state);
+            return;
+        }
+    }
+    if (s_stub_hit_count < sizeof(s_stub_hits) / sizeof(s_stub_hits[0])) {
+        s_stub_hits[s_stub_hit_count].guest_addr = guest_addr;
+        s_stub_hits[s_stub_hit_count].count = 1;
+        s_stub_hit_count++;
+    }
+    fprintf(stderr,
+            "[worldmap-stub] guest=0x%08x kind=%s count=1 slot=%d "
+            "state=%d default_return=0\n",
+            guest_addr, kind, slot_index, state);
+}
+
 void wm_sched_reset(void)
 {
     s_entry = 0;
@@ -180,6 +214,8 @@ void wm_sched_reset(void)
     s_last_callback_state = -1;
     s_outcome = WM_SCHED_PASS_COMPLETE;
     s_frontier_pc = WM_SCHED_CUT_BEFORE_DRAWSYNC;
+    s_stub_hit_count = 0;
+    memset(s_stub_hits, 0, sizeof(s_stub_hits));
 }
 
 void wm_sched_callback_register(u32 guest_addr, wm_sched_callback_fn fn)
@@ -564,23 +600,18 @@ void wm_80097800(void)
                 fprintf(stderr, "[worldmap-scheduler] slot=%d state=%d "
                         "cb=0x%08x executed ret=%d\n", i, state, target, ret);
             } else if (r == WM_SCHED_CB_MISSING) {
-                /* Bounded frontier: do NOT write slot state from a
-                 * fabricated return, do NOT advance to the next slot. */
                 s_missing_hits++;
-                s_outcome = WM_SCHED_STOP_MISSING_CALLBACK;
+                wm_sched_log_stub(target, "missing_callback", i, state);
                 s_frontier_pc = target;
-                fprintf(stderr, "[worldmap-scheduler] MISSING CALLBACK "
-                        "FRONTIER slot=%d state=%d cb=0x%08x (a0=%d); "
-                        "stop before body\n", i, state, target, i);
-                return;
+                /* Open-loop experiment: emulate the unresolved jalr with
+                 * the neutral s16 return value and continue the retail slot
+                 * traversal. The guest address was never called. */
+                *(s16*)(slot + WM_SCHED_OFF_STATE) = 0;
             } else {
                 s_invalid_hits++;
-                s_outcome = WM_SCHED_STOP_INVALID_CALLBACK;
+                wm_sched_log_stub(target, "invalid_callback", i, state);
                 s_frontier_pc = target;
-                fprintf(stderr, "[worldmap-scheduler] ERROR: INVALID "
-                        "CALLBACK slot=%d state=%d cb=0x%08x; bounded stop\n",
-                        i, state, target);
-                return;
+                *(s16*)(slot + WM_SCHED_OFF_STATE) = 0;
             }
             break;
         }
@@ -603,18 +634,14 @@ void wm_80097800(void)
                     s_wm_sched_test_destructor(payload);
                     s_destructor_calls++;
                 } else {
-                    /* Destructor body not ported: bounded stop, no
-                     * fabricated free behavior. */
                     s_destructor_boundary_hits++;
-                    s_outcome = WM_SCHED_STOP_DESTRUCTOR_BOUNDARY;
+                    wm_sched_log_stub(WM_SCHED_DESTRUCTOR, "destructor", i,
+                                      state);
                     s_frontier_pc = WM_SCHED_DESTRUCTOR;
                     s_last_slot = i;
                     s_last_callback = WM_SCHED_DESTRUCTOR;
                     s_last_callback_state = state;
-                    fprintf(stderr, "[worldmap-scheduler] DESTRUCTOR "
-                            "BOUNDARY slot=%d payload=0x%08x -> 0x%08x; "
-                            "bounded stop\n", i, payload, WM_SCHED_DESTRUCTOR);
-                    return;
+                    /* Unknown destructor is skipped; traversal continues. */
                 }
             }
             break;
