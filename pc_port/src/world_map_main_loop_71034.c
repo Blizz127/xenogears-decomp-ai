@@ -25,6 +25,8 @@ extern void wm_80097800(void);
 static u32 ml_lw(u32 a) { u32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void ml_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 
+extern void PsyX_TakeScreenshotPath_C(const char* path);
+
 static int ml_frame_limit(void)
 {
     const char* value = getenv("XENO_WORLD_FRAME_LIMIT");
@@ -59,6 +61,19 @@ static void ml_dispatch_guest(u32 address, int mode, int slot,
         ml_guest_stub(address, mode, slot, lane);
         break;
     }
+}
+
+static void ml_capture_frame(int frame)
+{
+    const char* dir = getenv("XENO_CAPTURE_DIR");
+    char path[512];
+
+    if (dir == NULL || (frame % 60) != 0)
+        return;
+    snprintf(path, sizeof(path), "%s/world-frame-%06d.bmp", dir, frame);
+    PsyX_TakeScreenshotPath_C(path);
+    fprintf(stderr, "[worldmap-open-loop] captured frame=%d path=%s\n",
+            frame, path);
 }
 
 void wm_80071034(void)
@@ -104,6 +119,8 @@ void wm_80071034(void)
                     "D7CC=%u\n", frame, ml_lw(D_8009D7CC));
             break;
         }
+
+        ml_capture_frame(frame);
 
         if ((frame % 60) == 0)
             fprintf(stderr, "[worldmap-open-loop] frame=%d/%d\n",

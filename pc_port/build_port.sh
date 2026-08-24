@@ -1069,6 +1069,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_ot_adapter.c
     pc_port/src/world_map_frame_driver_712d0.c
     pc_port/src/world_map_main_loop_71034.c
+    pc_port/src/world_map_capture.c
     pc_port/src/world_map_gamestate_alias.c
     pc_port/src/world_map_selector.c
     pc_port/src/psyq_compat.c
