@@ -33,7 +33,6 @@
 /* PsyQ functions */
 extern void DrawSync(void (*func)(unsigned long));
 extern void Vsync(long mode);
-extern void ClearOTagR(unsigned long *ot, int n);
 extern void PutDrawEnv(void *env);
 extern void PutDispEnv(void *env);
 extern void SetGeomOffset(long ofx, long ofy);
@@ -214,11 +213,13 @@ void wm_800712D0(void)
         fd_sw(D_8009D7F0, fd_lw(D_8009D7F0) < 1 ? 1 : 0);
     }
 
-    /* Clear OT */
+    /* Clear OT. PsyCross's ClearOTagR writes host-pointer links at its own
+     * OT_TAG stride; the OT lives in guest RAM and is walked by the
+     * guest-link adapter, so clear it in retail format. */
     {
         void* host_ot = wm_712d0_map_guest(ot_ptr, "ClearOTagR", 0x80071468u);
         if (host_ot != NULL)
-            ClearOTagR((unsigned long*)host_ot, 0x400);
+            wm_ot_clear_r_guest(ot_ptr, 0x400u);
     }
 
     /* Process input */
