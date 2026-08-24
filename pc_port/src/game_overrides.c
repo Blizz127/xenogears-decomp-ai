@@ -211,7 +211,10 @@ s32 D_8004F33C = -1;
 /* Main executable .sdata @0x8004FE50: model primitive dispatch descriptors.
  * The PSX table stores raw RAM addresses, including internal entry points such
  * as 0x8002E04C/0x8002E688. Native PC needs callable host pointers, so migrate
- * only descriptor entries reached by the field harness. */
+ * only descriptor entries reached by the field harness.  The retail data is
+ * 17 rows (0x8004FE50..0x800500E7), despite older notes calling it a
+ * 15-row table; unsupported walker entries remain NULL until their exact
+ * host paths are implemented. */
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
 /* Build-pass proc (func_8002C8CC dispatch): fn(D_80059538, D_80059528, shade);
  * must stay layout-identical to the typedef in src/slus_006.64/system/temp2.c. */
@@ -234,6 +237,8 @@ extern s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade);
 extern s32 func_8002D0C0(s32* a0);
 extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
+extern s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags);
+extern s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
@@ -264,7 +269,7 @@ static void ModelPrimVariant5Tripwire(const char* name, u32* entryCount,
     }
 }
 
-ModelPrimDesc D_8004FE50[15] = {
+ModelPrimDesc D_8004FE50[17] = {
     [0x00] = {
         /* Retail row 0x8004FE50: proc[0]=proc[4]=proc[5]=0x8002E038 (the same
          * small-tri average walker prim 4 dispatches) and proc[2]=0x8002E470
@@ -281,6 +286,20 @@ ModelPrimDesc D_8004FE50[15] = {
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x14,
+    },
+    [0x01] = {
+        /* Retail 0x8004FE78: prim 0x01 uses the lit POLY_GT3 builder
+         * 0x8002D814.  proc[0]=0x8002E04C and proc[4]/proc[5] are the
+         * already-portable depth-cued triangle walkers; proc[1..3] remain
+         * NULL because their retail entries 0x8002F2E0/0x8002E484/
+         * 0x8002E8F0 have no native implementation yet. */
+        .proc = { ModelPrimTriAverageVariant0, NULL, NULL, NULL,
+                  ModelPrimTriDepthCueVariant4,
+                  ModelPrimTriDepthCueMaxSZVariant5 },
+        .buildProc = (ModelPrimBuildProc)func_8002D814, /* PSX 0x8002D814 */
+        .cmdStride = 0x08,
+        .packetStride = 0x08,
+        .outputStride = 0x20,
     },
     [0x04] = {
         .proc = { ModelPrimTriSmallAverageVariant0, NULL,
@@ -312,6 +331,20 @@ ModelPrimDesc D_8004FE50[15] = {
         .cmdStride = 0x08,
         .packetStride = 0x04,
         .outputStride = 0x18,
+    },
+    [0x09] = {
+        /* Retail 0x8004FFB8: lit textured quad row.  The raw table proves
+         * buildProc 0x8002D530 and the 0x08/0x0C/0x28 layout.  E268,
+         * E688, FCFC and FF0C map to the existing FT4 walkers; FAE8 and
+         * EAF4 stay NULL until their separate retail paths are ported. */
+        .proc = { ModelPrimQuadFT4Variant0, NULL,
+                  func_8002E688, NULL,
+                  ModelPrimQuadFT4DepthCueVariant4,
+                  ModelPrimQuadFT4DepthCueMaxSZVariant5 },
+        .buildProc = (ModelPrimBuildProc)func_8002D530, /* PSX 0x8002D530 */
+        .cmdStride = 0x08,
+        .packetStride = 0x0C,
+        .outputStride = 0x28,
     },
     [0x0D] = {
         /* Retail table: variant 0/1 enter 0x8002E268 (AVSZ4); variant 2 enters
