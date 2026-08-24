@@ -1,21 +1,21 @@
-# Strong port-owned fallbacks. Matching game TUs may define these symbols, but
-# pc_port/build_port.sh renames those duplicate definitions before the native
-# link and verifies that this port object remains the sole final owner.
-func_8001AADC
-func_8003BDFC
-FieldScriptMemoryWriteU16
-func_800317E0
-func_80031804
-func_8001FB30
-func_80025718
-func_80023440
-func_80023958
-func_800239F4
-func_80023A48
-func_80022CAC
-func_80022B2C
-func_80022CDC
-func_80022E8C
-func_80022EB8
-func_8002CC10
-func_8002C59C
+# Strong port-owned fallbacks. Each row is symbol|reason|exit condition.
+# Remove a row, then remove its port fallback, when the exit condition is met;
+# the build validates that every remaining row has explicit retirement data.
+func_8001AADC|Port boot reset is host-routed and the matching reset seeds field globals to -1|Retire when native boot calls the matching reset and Map0 and Map1 retain actor draws
+func_8003BDFC|Sound transfer polling must use the host queue and avoid a retail busy-wait on unmapped state|Retire when the matching sound transfer state is host-backed and the sound cold-init proof passes
+FieldScriptMemoryWriteU16|Field VM writes must target the host PSX memory mapping rather than a retail absolute pointer|Retire when the matching VM runs against the host memory map with Map0 and Map1 script smoke green
+func_800317E0|OT insertion must mask host primitive pointers to PSX 24-bit links|Retire when matching OT insertion is host-safe and worldmap and field OT diagnostics agree
+func_80031804|OT insertion must mask host primitive pointers to PSX 24-bit links|Retire when matching OT insertion is host-safe and worldmap and field OT diagnostics agree
+func_8001FB30|Image-upload trampoline must use the native heap and host VRAM upload path|Retire when the matching upload chain is host-safe and texture upload smoke passes
+func_80025718|Child-sprite render callback needs host pointer-width and GTE/renderer plumbing|Retire when matching child-sprite rendering is host-safe and actor texture smoke passes
+func_80023440|Sprite type decode is retained in the port while matching animation-script ownership is incomplete|Retire when the matching animation-script path is production-linked and its type mutants pass
+func_80023958|Child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching child-sprite allocation uses the host sprite layout and render smoke passes
+func_800239F4|Mode-1 child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching mode-1 allocation uses the host sprite layout and render smoke passes
+func_80023A48|Child-sprite allocation depends on port work-list and heap ownership|Retire when matching allocation uses the port work-list/heap contracts and child render smoke passes
+func_80022CAC|Sprite motion arithmetic is coupled to the port sprite layout and host signed-width rules|Retire when matching motion runs on the port layout and asymmetric motion mutants pass
+func_80022B2C|Vertical sprite motion calls host collision and uses port-width fixed-point state|Retire when matching vertical motion is host-safe and collision motion mutants pass
+func_80022CDC|Horizontal sprite motion chains through the port motion integrator and sprite layout|Retire when matching horizontal motion is host-safe and motion integration mutants pass
+func_80022E8C|Type-7 sprite ticking must use the port timer/work-list callbacks|Retire when matching type-7 ticking is linked to host callbacks and tick smoke passes
+func_80022EB8|Sprite task free callback must unlink port work lists and free host allocations|Retire when matching task teardown is host-safe and allocation/free stress smoke passes
+func_8002CC10|Texture-page setup must use the host PsyCross TPage state|Retire when matching TPage setup is host-safe and texture-page smoke passes
+func_8002C59C|Model blob relocation must use host-width pointers and the port sprite model layout|Retire when matching model relocation is host-safe and model-load smoke passes

@@ -981,13 +981,21 @@ if [ ! -f "$PORT_OVERRIDE_MANIFEST" ]; then
     exit 1
 fi
 PORT_OVERRIDE_SYMBOLS=()
-while IFS= read -r sym; do
+declare -A PORT_OVERRIDE_REASON=()
+declare -A PORT_OVERRIDE_EXIT=()
+while IFS='|' read -r sym reason exit_condition; do
     if [[ ! "$sym" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         echo "ERROR: invalid symbol in $PORT_OVERRIDE_MANIFEST: $sym"
         exit 1
     fi
+    if [ -z "$reason" ] || [ -z "$exit_condition" ]; then
+        echo "ERROR: manifest row needs reason and exit condition: $sym"
+        exit 1
+    fi
     PORT_OVERRIDE_SYMBOLS+=("$sym")
-done < <(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$PORT_OVERRIDE_MANIFEST")
+    PORT_OVERRIDE_REASON[$sym]="$reason"
+    PORT_OVERRIDE_EXIT[$sym]="$exit_condition"
+done < <(sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$PORT_OVERRIDE_MANIFEST")
 if [ "${#PORT_OVERRIDE_SYMBOLS[@]}" -eq 0 ]; then
     echo "ERROR: empty port ownership manifest: $PORT_OVERRIDE_MANIFEST"
     exit 1
@@ -1223,10 +1231,9 @@ for pf in "${PORT_SOURCES[@]}"; do
 done
 
 # Port fallbacks are deliberately strong. If a matching game TU later gains
-# one of these retail definitions, rename that duplicate in the game object
-# before linking so ownership remains explicit and independent of link order.
-# Matching sources stay retail-shaped; a new ownership clash becomes a visible
-# build event instead of a weak-symbol runtime regression.
+# one of these retail definitions, weaken that duplicate in the game object
+# before linking. Relocations retain the original symbol name, so every caller
+# binds uniformly to the strong port owner; matching sources stay retail-shaped.
 PORT_OVERRIDE_OBJECT="$OBJ/game_overrides.c.o"
 if [ ! -f "$PORT_OVERRIDE_OBJECT" ]; then
     echo "ERROR: port ownership object was not built: $PORT_OVERRIDE_OBJECT"
@@ -1241,23 +1248,22 @@ for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
     for o in "${GAME_TU_OBJS[@]}"; do
         if nm -g --defined-only "$o" 2>/dev/null \
             | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
-            renamed="_xeno_matching_retired_${sym}"
-            echo "    port-owned override: renaming matching definition $sym in $(basename "$o")"
-            if ! objcopy --redefine-sym="$sym=$renamed" "$o"; then
-                echo "ERROR: failed to rename duplicate matching definition: $sym"
+            echo "    port-owned override: weakening matching definition $sym in $(basename "$o")"
+            if ! objcopy --weaken-symbol="$sym" "$o"; then
+                echo "ERROR: failed to weaken duplicate matching definition: $sym"
                 exit 1
             fi
         fi
     done
     for o in "${GAME_TU_OBJS[@]}"; do
         if nm -g --defined-only "$o" 2>/dev/null \
-            | awk -v sym="$sym" '$3 == sym {found=1} END {exit !found}'; then
-            echo "ERROR: matching object still owns retired override symbol: $sym"
+            | awk -v sym="$sym" '$3 == sym && $2 !~ /^[Ww]$/ {found=1} END {exit !found}'; then
+            echo "ERROR: matching object still has a strong retired override symbol: $sym"
             exit 1
         fi
     done
 done
-echo "    verified ${#PORT_OVERRIDE_SYMBOLS[@]} port-owned override symbols"
+echo "    verified ${#PORT_OVERRIDE_SYMBOLS[@]} port-owned override symbols with retirement metadata"
 
 echo "==> [3/5] Compiling port entry point"
 PORT_MAIN_SOURCE="pc_port/src/port_main.c"
