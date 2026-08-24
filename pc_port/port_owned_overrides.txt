@@ -1,7 +1,7 @@
 # Strong port-owned fallbacks. Each row is symbol|reason|exit condition.
 # Remove a row, then remove its port fallback, when the exit condition is met;
 # the build validates that every remaining row has explicit retirement data.
-func_8001AADC|Port boot reset is host-routed and the matching reset seeds field globals to -1|Retire when native boot calls the matching reset and Map0 and Map1 retain actor draws
+func_8001AADC|Matching reset writes D_8004F380/37C/378 to -1 and globally skips field actors|Retire only after the matching reset is port-safe, leaves the field actor gates at 0, and Map0 and Map1 smoke pass with the matching owner
 func_8003BDFC|Sound transfer polling must use the host queue and avoid a retail busy-wait on unmapped state|Retire when the matching sound transfer state is host-backed and the sound cold-init proof passes
 FieldScriptMemoryWriteU16|Field VM writes must target the host PSX memory mapping rather than a retail absolute pointer|Retire when the matching VM runs against the host memory map with Map0 and Map1 script smoke green
 func_800317E0|OT insertion must mask host primitive pointers to PSX 24-bit links|Retire when matching OT insertion is host-safe and worldmap and field OT diagnostics agree

@@ -1976,7 +1976,8 @@ extern s32 g_PartyIsWaitingForStreamData;
 
 /* func_8001AADC (asm/slus_006.64/system/temp3.s): original boot global-state
  * initializer called by func_80019578 before MainLoop. The native port enters
- * MainLoop directly, so keep this small reset here until temp3.c is buildable. */
+ * MainLoop directly, so keep this small reset here until the matching body is
+ * port-safe for field actor gates. */
 void func_8001AADC(void)
 {
     s32 i;

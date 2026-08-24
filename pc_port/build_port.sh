@@ -1258,7 +1258,32 @@ for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
         fi
     done
     if [ "$matched_objects" -eq 0 ]; then
-        echo "ERROR: stale port ownership row has no matching game definition: $sym"
+        symbol_sources="$(rg -l --glob '*.c' "\\b${sym}\\s*\\(" src 2>/dev/null || true)"
+        excluded_sources=""
+        broken_sources=""
+        reference_sources=""
+        while IFS= read -r candidate; do
+            [ -z "$candidate" ] && continue
+            if is_intentionally_excluded_game_tu "$candidate"; then
+                excluded_sources="$excluded_sources $candidate"
+            elif is_known_broken_game_tu "$candidate"; then
+                broken_sources="$broken_sources $candidate"
+            elif is_reference_only_game_tu "$candidate"; then
+                reference_sources="$reference_sources $candidate"
+            fi
+        done <<< "$symbol_sources"
+        if [ -n "$excluded_sources" ]; then
+            echo "ERROR: port ownership row has no compiled definition because the matching TU is intentionally excluded: $sym"
+            echo "       Sources:$excluded_sources"
+        elif [ -n "$broken_sources" ]; then
+            echo "ERROR: port ownership row has no compiled definition because the matching TU is allowlisted broken: $sym"
+            echo "       Sources:$broken_sources"
+        elif [ -n "$reference_sources" ]; then
+            echo "ERROR: port ownership row has no compiled definition because the matching TU is reference-only: $sym"
+            echo "       Sources:$reference_sources"
+        else
+            echo "ERROR: stale port ownership row has no matching game definition: $sym"
+        fi
         echo "       Retire the row and its fallback together, or restore the matching TU."
         exit 1
     fi
@@ -1405,17 +1430,37 @@ PY
 fi
 
 echo "==> [5/5] Final link"
-gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS -o "$OUT/xeno-port" 2> "$OUT/link2.err"
+LINK_MAP="$OUT/xeno-port.map"
+gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS \
+    -Wl,-Map="$LINK_MAP" -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
+    port_text_start=""
+    port_text_size=""
+    read -r port_text_start port_text_size < <(
+        awk -v obj="$PORT_OVERRIDE_OBJECT" \
+            '$1 == ".text" && $4 == obj {print $2, $3; exit}' "$LINK_MAP"
+    )
+    if [ -z "$port_text_start" ] || [ -z "$port_text_size" ]; then
+        echo "ERROR: final link map has no .text range for $PORT_OVERRIDE_OBJECT"
+        exit 1
+    fi
     for sym in "${PORT_OVERRIDE_SYMBOLS[@]}"; do
-        owner_count="$(nm -g --defined-only "$OUT/xeno-port" 2>/dev/null \
-            | awk -v sym="$sym" '$3 == sym {n++} END {print n+0}')"
-        if [ "$owner_count" -ne 1 ]; then
-            echo "ERROR: final link ownership check failed for $sym (owners=$owner_count)"
+        port_symbol_offset="$(nm -g --defined-only "$PORT_OVERRIDE_OBJECT" 2>/dev/null \
+            | awk -v sym="$sym" '$3 == sym {print "0x" $1; exit}')"
+        resolved_address="$(nm -g --defined-only "$OUT/xeno-port" 2>/dev/null \
+            | awk -v sym="$sym" '$3 == sym {print "0x" $1; exit}')"
+        if [ -z "$port_symbol_offset" ] || [ -z "$resolved_address" ]; then
+            echo "ERROR: final link ownership check has no address for $sym"
+            exit 1
+        fi
+        expected_address="$(printf '0x%016x' $((port_text_start + port_symbol_offset)))"
+        if [ "$resolved_address" != "$expected_address" ]; then
+            echo "ERROR: final link owner is not the port definition for $sym"
+            echo "       resolved=$resolved_address expected_port=$expected_address"
             exit 1
         fi
     done
-    echo "    LINK OK -> $OUT/xeno-port"
+    echo "    LINK OK -> $OUT/xeno-port (port-owned addresses verified)"
 else
     echo "    LINK incomplete; remaining errors:"
     grep -oE "undefined reference to \`[A-Za-z0-9_]+'|multiple definition of \`[A-Za-z0-9_]+'" "$OUT/link2.err" | sort | uniq -c | sort -rn | head -20
