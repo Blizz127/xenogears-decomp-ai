@@ -11,6 +11,6 @@
 
 #include "common.h"
 
-void wm_8009932C(u32 camera_data, u32 terrain_data, u32 output_data);
+void wm_8009932C(u32 ot_base, u32 packet_base, u32 position);
 
 #endif

@@ -1,72 +1,94 @@
 /*
- * World-map helper 0x80099708 (tile coordinate processor).
+ * World-map helper 0x80099708 (terrain vertex-grid producer).
+ * Retail boundary: [0x80099708, 0x8009980C).
  */
-#include <stdint.h>
 #include <string.h>
 
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_helper_99708.h"
+#include "world_map_helper_9980c.h"
 
-#define SCRATCH      0x1F800000u
-#define D_8009C618   0x8009C618u  /* table pointer */
-#define D_8009C5BC   0x8009C5BCu  /* height table */
-#define D_800523F0   0x800523F0u  /* sine table base */
+#define WM_99708_SCRATCH       0x1F800000u
+#define WM_99708_ANGLE_X       0x8009C618u
+#define WM_99708_ANGLE_Z       0x8009C5BCu
+#define WM_99708_SINE_TABLE    0x800523F0u
 
-static s16 t_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
-static u16 t_lhu(u32 a) { u16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
-static s32 t_lw(u32 a) { s32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
-static void t_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
-static void t_sw(u32 a, s32 v) { memcpy(PSX_ADDR(a), &v, 4); }
-
-void wm_80099708(u32 input_data)
+static s16 wm_99708_lh(u32 address)
 {
-    s32 i, j;
-    u32 scratch_ptr = SCRATCH;
-    u32 data_ptr = input_data;
-    u32 tbl_b = (u32)t_lw(D_8009C618);
-    s32 heading = t_lw(D_8009C5BC) & 0xFFF;
-    s32 sub_val;
-    s16 counter = -0x80;
+    s16 value;
+    memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
+}
 
-    /* Pre-compute sine lookup index */
-    u32 sine_base = D_800523F0;
+static s32 wm_99708_lw(u32 address)
+{
+    s32 value;
+    memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
+}
 
-    for (i = 0; i < 8; i++) {
-        u32 data_cur = data_ptr;
-        s32 heading_cur = heading;
-        s16 counter_cur = counter;
+static void wm_99708_sh(u32 address, u16 value)
+{
+    memcpy(PSX_ADDR(address), &value, sizeof(value));
+}
 
-        for (j = 0; j < 8; j++) {
-            u32 entry = (u32)t_lw(data_cur);
-            u32 sub = (u32)t_lw(tbl_b + (u32)(heading_cur & 0xFFF) * 4);
-            s32 result;
+static void wm_99708_sw(u32 address, u32 value)
+{
+    memcpy(PSX_ADDR(address), &value, sizeof(value));
+}
 
-            if (entry & 0x1000) {
-                /* Compute with sine lookup */
-                u32 h_idx = (u32)(heading_cur & 0xFFF);
-                s16 sine_val = t_lh(sine_base + h_idx * 2);
-                s32 scaled = (s32)((s16)(entry >> 16)) * (s32)sine_val;
-                result = (scaled >> 20) + ((s32)(s8)(entry >> 24) << 5);
+static s32 wm_99708_sign8(u32 value)
+{
+    u32 low = value & 0xFFu;
+    return low < 0x80u ? (s32)low : (s32)(low | 0xFFFFFF00u);
+}
+
+void wm_80099708(u32 tile_data, u32 ot_base, u32 packet_base, u32 origin)
+{
+    u32 scratch = WM_99708_SCRATCH;
+    u32 source = tile_data;
+    s32 origin_x = wm_99708_lh(origin);
+    s32 z = wm_99708_lh(origin + 4u);
+    s32 angle_x = wm_99708_lw(WM_99708_ANGLE_X);
+    s32 angle_z_base = wm_99708_lw(WM_99708_ANGLE_Z);
+    u32 row;
+
+    for (row = 0u; row < 9u; row++) {
+        s32 x = origin_x;
+        u32 sine_x_index = (u32)angle_x & 0xFFFu;
+        s32 sine_x_twice =
+            (s32)wm_99708_lh(WM_99708_SINE_TABLE + sine_x_index * 4u) * 2;
+        s32 angle_z = angle_z_base;
+        u32 column;
+
+        for (column = 0u; column < 9u; column++) {
+            u32 packed = (u32)wm_99708_lw(source);
+            u32 vertex_y;
+
+            if ((packed & 0x1000u) != 0u) {
+                u32 sine_z_index = (u32)angle_z & 0xFFFu;
+                s32 sine_z = wm_99708_lh(
+                    WM_99708_SINE_TABLE + sine_z_index * 4u);
+                int64_t product = (int64_t)sine_z * (int64_t)sine_x_twice;
+                s32 height = (s32)(product >> 20) +
+                             wm_99708_sign8(packed >> 24) * 8;
+                vertex_y = (u32)height << 16;
             } else {
-                /* Direct computation */
-                result = (s32)(entry << 24) >> 5;
+                vertex_y = (u32)(wm_99708_sign8(packed >> 24) * 8) << 16;
             }
 
-            /* Write to scratchpad */
-            t_sw(scratch_ptr, (u32)result | ((u32)(u16)counter_cur & 0xFFFF));
-            t_sh(scratch_ptr + 4, t_lhu(data_cur + 4));
-
-            scratch_ptr += 8;
-            data_cur += 4;
-            heading_cur += 0x200;
+            wm_99708_sw(scratch, vertex_y | ((u32)x & 0xFFFFu));
+            wm_99708_sh(scratch + 4u, (u16)z);
+            scratch += 8u;
+            source += 4u;
+            x += 0x80;
+            angle_z += 0x200;
         }
 
-        counter -= 0x80;
-        data_ptr += 0x80; /* stride per row */
-        tbl_b += 0x200;
+        z -= 0x80;
+        angle_x += 0x200;
     }
 
-    /* Final processing (stubbed — calls wm_8009980C which is not implemented) */
-    /* wm_8009980C(input_data); */
+    wm_8009980C(tile_data, ot_base, packet_base);
 }

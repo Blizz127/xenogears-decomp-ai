@@ -30,7 +30,7 @@ void wm_800968E0(u32 addr, u32 count);
 void wm_800980D4(void);
 
 /* Queue flush helper */
-void wm_80099708(u32 addr);
+void wm_80099708(u32 tile_data, u32 ot_base, u32 packet_base, u32 origin);
 
 /* CD40 sink (simple record writer) */
 void wm_80086700(u32 addr, u32 val);
