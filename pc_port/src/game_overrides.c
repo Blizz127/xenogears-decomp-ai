@@ -3403,12 +3403,12 @@ void* func_80023B84(void* pParentSprite, void* pScript, void* pAnimPackage)
 }
 
 /* ---------------------------------------------------------------------------
- * func_8002CC10 (asm/slus_006.64/nonmatchings/system/temp2/func_8002CC10.s,
- * INCLUDE_ASM at temp2.c:664): anim-script opcode 0x8D worker. Latches the
- * sprite texture-page override from the anim package's VRAM x/y and switches
- * the tpage-latch mode (D_80050108, semantics documented at temp2.c:692:
- * 0 = raw latch, 1 = mask low bits and merge the D_80059310 override, 2 =
- * full override) to "merge". GetTPage(0,0,..) = 4-bit CLUT tpage, ABR 0.
+ * func_8002CC10: native port override for the matching implementation in
+ * src/slus_006.64/system/temp2.c. The matching body is decompiled, but the
+ * port must keep ownership here because GetTPage and the tpage latch use
+ * host PsyCross state. This is anim-script opcode 0x8D: latch the sprite
+ * texture-page override from VRAM x/y and select the merge mode
+ * (D_80050108 = 1).
  * --------------------------------------------------------------------------- */
 extern s32 D_80059310;
 extern s32 D_80050108;

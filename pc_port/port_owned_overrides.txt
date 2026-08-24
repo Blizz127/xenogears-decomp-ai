@@ -17,5 +17,5 @@ func_80022B2C|Vertical sprite motion calls host collision and uses port-width fi
 func_80022CDC|Horizontal sprite motion chains through the port motion integrator and sprite layout|Retire when matching horizontal motion is host-safe and motion integration mutants pass
 func_80022E8C|Type-7 sprite ticking must use the port timer/work-list callbacks|Retire when matching type-7 ticking is linked to host callbacks and tick smoke passes
 func_80022EB8|Sprite task free callback must unlink port work lists and free host allocations|Retire when matching task teardown is host-safe and allocation/free stress smoke passes
-func_8002CC10|Texture-page setup must use the host PsyCross TPage state|Retire when matching TPage setup is host-safe and texture-page smoke passes
+func_8002CC10|Matching temp2.c body is decompiled, but native execution must use host PsyCross TPage state|Retire when the matching implementation can own the host TPage state and texture-page smoke passes
 func_8002C59C|Model blob relocation must use host-width pointers and the port sprite model layout|Retire when matching model relocation is host-safe and model-load smoke passes
