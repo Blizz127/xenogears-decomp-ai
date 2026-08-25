@@ -47,6 +47,7 @@
 #define G_MIRH       0x8006EE58u
 
 static int s_failures;
+static u8 s_native_sprite[0xC0];
 
 static void chk(const char* n, u32 got, u32 want)
 {
@@ -206,19 +207,18 @@ static void reset(void)
     wr32(SLOT1 + 0x44u, 0u);
     wr16(SLOT1 + 0x48u, 0x400u);
     wr16(SLOT1 + 0x4Au, 6u);
-    wr32(SLOT1 + 0x4Cu, 0x00200000u); /* fake native-bits object addr:
-                                       * points into g_PsxRam guard */
-    /* anim flag byte at object+0xAF (object bits resolved via PSX_ADDR) */
-    wr8((0x00200000u & 0x1FFFFFu) + 0xAFu + 0x80000000u, 0u);
+    memset(s_native_sprite, 0, sizeof(s_native_sprite));
+    wr32(SLOT1 + 0x4Cu, (u32)(uintptr_t)s_native_sprite);
+    /* Keep the incorrectly remapped guest byte distinct from the native
+     * sprite byte. The retail guard must ignore this alias. */
+    *(s8*)PSX_ADDR((u32)(uintptr_t)s_native_sprite + 0xAFu) = 7;
 }
 
 static void set_anim(u8 v)
 {
-    /* object bits 0x00200000 -> PSX_ADDR masks to 0. Write via the same
-     * path the production code reads: PSX_ADDR(obj)+0xAF. */
-    u8* p = (u8*)PSX_ADDR(0x00200000u) + 0xAF;
-
-    *p = v;
+    s_native_sprite[0xAF] = v;
+    *(s8*)PSX_ADDR((u32)(uintptr_t)s_native_sprite + 0xAFu) =
+        (s8)(v == 0u ? 1 : 0);
 }
 
 static s32 run(void)
@@ -392,6 +392,7 @@ int main(void)
     r = run();
     chk("mv1.ret", (u32)r, 1u);
     chk("mv1.n95414", count_calls("95414"), 1u);
+    chk("mv1.already-walk-call-count", count_calls("245d8"), 0u);
     {
         const Call* c = find_call("95414", 0);
 

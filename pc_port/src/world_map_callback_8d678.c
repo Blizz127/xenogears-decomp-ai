@@ -16,6 +16,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_callback_8d678.h"
+#include "world_map_animation_guard.h"
 #include "world_map_common_tail.h"
 #include "world_map_helper_74794.h"
 #include "world_map_helper_8bec8.h"
@@ -120,7 +121,7 @@ s32 wm_8008D678(s32 slot_idx)
     u32 s3;          /* scratchpad base = 0x1F800000 */
     u32 v0;
     s32 v1;
-    u32 a0, a1, a2, a3;
+    u32 a0;
 
     s3 = D678_SCRATCH;
     pool_ptr = d678_lw(D678_POOL_PTR);
@@ -186,9 +187,7 @@ s32 wm_8008D678(s32 slot_idx)
             if (pres_byte != 1) {
                 /* ---- Non-matching presence: set anim=3 + register ---- */
                 u32 actor_ptr = d678_lw(s1 + 0x4C);
-                s8 anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-
-                if (anim_flag != 3) {
+                if (wm_native_animation_differs(actor_ptr, 3)) {
                     func_800245D8((void*)(uintptr_t)actor_ptr, 3);
                 }
                 wm_800894C8((u32)(slot_idx + 0x28));
@@ -212,15 +211,13 @@ s32 wm_8008D678(s32 slot_idx)
 
                 if (match) {
                     u32 actor_ptr = d678_lw(s1 + 0x4C);
-                    s8 anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-                    if (anim_flag != 0) {
+                    if (wm_native_animation_differs(actor_ptr, 0)) {
                         func_800245D8((void*)(uintptr_t)actor_ptr, 0);
                         wm_800894C8((u32)(slot_idx + 0x28));
                     }
                 } else {
                     u32 actor_ptr = d678_lw(s1 + 0x4C);
-                    s8 anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-                    if (anim_flag != 1) {
+                    if (wm_native_animation_differs(actor_ptr, 1)) {
                         func_800245D8((void*)(uintptr_t)actor_ptr, 1);
                     }
                     wm_8008C1DC((u32)(slot_idx + 0x28), s1, s3);
@@ -311,11 +308,11 @@ s32 wm_8008D678(s32 slot_idx)
             d678_sh(s1 + 0x48, (u16)a0);
 
             /* velocity.x = rcos(heading) */
-            cos_val = rcos((long)(s16)(u16)a0);
+            cos_val = (s32)rcos((long)(s16)(u16)a0);
             d678_sw(s1 + 0x38, (u32)cos_val);
 
             /* velocity.z = -rsin(heading) */
-            sin_val = rsin((long)d678_lh(s1 + 0x48));
+            sin_val = (s32)rsin((long)d678_lh(s1 + 0x48));
             d678_sw(s1 + 0x40, (u32)(-(s32)sin_val));
 
             /* Animate + advance state */
@@ -421,7 +418,6 @@ s32 wm_8008D678(s32 slot_idx)
         /* ======== State 0x21: Presence init (wm_80089160) ======== */
         case 0x21: {
             u32 pool_base3 = d678_lw(D678_POOL_PTR);
-            u32 src;
 
             d678_sw(s1 + 0x50, d678_lw(pool_base3 + 0x228));
             d678_sw(s1 + 0x54, d678_lw(pool_base3 + 0x230));
@@ -469,8 +465,7 @@ s32 wm_8008D678(s32 slot_idx)
             d678_sw(s1 + 0x30, d678_lw(neighbor + 0x30));
 
             actor_ptr = d678_lw(s1 + 0x4C);
-            anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-
+            anim_flag = wm_native_animation_value(actor_ptr);
             if (anim_flag == 1) {
                 /* No animation change, just register */
                 wm_800894C8((u32)(slot_idx + 0x28));
@@ -512,7 +507,6 @@ s32 wm_8008D678(s32 slot_idx)
         /* ======== State 0x40: Neighbor approach (wm_8008DFF4 + rcos/rsin) ======== */
         case 0x40: {
             u32 pool_base4;
-            s32 angle3;
             s32 cos_val3, sin_val3;
 
             s0 = s1 + 0x28;
@@ -526,13 +520,13 @@ s32 wm_8008D678(s32 slot_idx)
             d678_sh(s1 + 0x48, (u16)v0);
 
             /* velocity.x = rcos(heading) * 32 */
-            cos_val3 = rcos((long)(s16)(u16)a0);
+            cos_val3 = (s32)rcos((long)(s16)(u16)a0);
             v1 = cos_val3 * 3;
             v1 = v1 << 5;  /* *32 */
             d678_sw(s3 + 0x00, d678_lw(s1 + 0x28) + (u32)v1);
 
             /* velocity.z = -rsin(heading) * 32 */
-            sin_val3 = rsin((long)d678_lh(s1 + 0x48));
+            sin_val3 = (s32)rsin((long)d678_lh(s1 + 0x48));
             v0 = (u32)(-(s32)sin_val3);
             v1 = (s32)v0 * 3;
             v1 = v1 << 5;

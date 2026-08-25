@@ -41,6 +41,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_callback_8a72c.h"
+#include "world_map_animation_guard.h"
 #include "world_map_common_tail.h"
 #include "world_map_func_95414.h"
 #include "world_map_helper_74794.h"
@@ -620,14 +621,14 @@ movement_block:
             /* velocity zero: idle anim */
             u32 obj = a72c_lw(slot + 0x4Cu);
 
-            if (*((s8*)PSX_ADDR(obj) + 0xAF) != 0) {
+            if (wm_native_animation_differs(obj, 0)) {
                 A72C_CALL_245D8(obj, (s16)0);
                 A72C_CALL_894C8(0x2Fu);
             }
         } else {
             u32 obj = a72c_lw(slot + 0x4Cu);
 
-            if (*((s8*)PSX_ADDR(obj) + 0xAF) != 1)
+            if (wm_native_animation_differs(obj, 1))
                 A72C_CALL_245D8(obj, (s16)1);
             A72C_CALL_8C1DC(0x2Fu, slot, sc);
         }

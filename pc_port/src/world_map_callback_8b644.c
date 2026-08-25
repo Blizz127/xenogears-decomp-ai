@@ -27,6 +27,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_callback_8b644.h"
+#include "world_map_animation_guard.h"
 #include "world_map_common_tail.h"
 #include "world_map_helper_74794.h"
 #include "world_map_helper_8bec8.h"
@@ -136,7 +137,7 @@ s32 wm_8008B644(s32 slot_idx)
     s32 main_state;  /* slot[+0x20] */
     s32 v1;
     u32 v0;
-    u32 a0, a1, a2, a3;
+    u32 a1;
 
     s3 = B644_SCRATCH;
     pool_ptr = b644_lw(B644_POOL_PTR);
@@ -237,9 +238,7 @@ main_dispatch:
             if (match) {
                 /* Position matches: check anim flag */
                 u32 actor_ptr = b644_lw(s1 + 0x4C);
-                s8 anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-
-                if (anim_flag != 0) {
+                if (wm_native_animation_differs(actor_ptr, 0)) {
                     /* Animate + register */
                     func_800245D8((void*)(uintptr_t)actor_ptr, 0);
                     wm_800894C8((u32)(slot_idx + 0x2E));
@@ -247,9 +246,7 @@ main_dispatch:
             } else {
                 /* Position differs: set anim=1 if needed, then path-step */
                 u32 actor_ptr = b644_lw(s1 + 0x4C);
-                s8 anim_flag = *(s8*)PSX_ADDR(actor_ptr + 0xAF);
-
-                if (anim_flag != 1) {
+                if (wm_native_animation_differs(actor_ptr, 1)) {
                     func_800245D8((void*)(uintptr_t)actor_ptr, 1);
                 }
 
@@ -285,7 +282,6 @@ main_dispatch:
 
     /* ======== State 0x08: Approach step ======== */
     case 0x08: {
-        u32 out_angle;
 
         /* wm_800941C4(pos, neighbor_pos+0x28, vel, heading) */
         /* $a0 = s1+0x28, $a1 = s0+0x28, $a2 = s1+0x38, $a3 = s1+0x48 */
@@ -355,7 +351,6 @@ main_dispatch:
         s32 terrain_y;
         s16 heading;
         s32 cos_val, sin_val;
-        u32 dx, dz;
 
         /* coord_entry = B644_COORD_TABLE + (slot_idx*3*2) */
         /* asm: sll s0, s2, 1; addu v1, s0, s2; sll v1, 1 → v1 = slot_idx * 6 */
@@ -383,13 +378,13 @@ main_dispatch:
 
         /* Compute forward offset using rcos/rsin */
         /* rcos returns sin(angle) (retail naming swap) */
-        cos_val = rcos((long)heading);
+        cos_val = (s32)rcos((long)heading);
         v1 = cos_val * 3;
         v1 = v1 << 4;  /* v1 = cos_val * 48 */
         b644_sw(s3 + 0x00, b644_lw(s1 + 0x28) + (u32)v1);
 
         /* rsin returns cos(angle) (retail naming swap) */
-        sin_val = rsin((long)heading);
+        sin_val = (s32)rsin((long)heading);
         v0 = (u32)(-(s32)sin_val);
         v1 = (s32)v0 * 3;
         v1 = v1 << 4;  /* v1 = -sin_val * 48 */

@@ -10,6 +10,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_callback_8c844.h"
+#include "world_map_animation_guard.h"
 #include "world_map_common_tail.h"
 #include "world_map_func_95414.h"
 #include "world_map_helper_74794.h"
@@ -80,7 +81,6 @@ s32 wm_8008C844(s32 slot_idx)
 {
     u32 pool_ptr;
     u32 s1;          /* slot record base */
-    u32 s3;          /* scratchpad = 0x1F800000 */
     u32 s4;          /* scratchpad base for wm_80095414 output */
     s32 main_state;
     u32 v0;
@@ -178,16 +178,14 @@ s32 wm_8008C844(s32 slot_idx)
                 if (vx == 0 && vy == 0 && vz == 0) {
                     /* Zero velocity: check anim flag */
                     u32 actor = c844_lw(s1 + 0x4C);
-                    s8 anim = *(s8*)PSX_ADDR(actor + 0xAF);
-                    if (anim != 0) {
+                    if (wm_native_animation_differs(actor, 0)) {
                         func_800245D8((void*)(uintptr_t)actor, 0);
                         wm_800894C8(0x2C);
                     }
                 } else {
                     /* Non-zero velocity: check anim flag */
                     u32 actor = c844_lw(s1 + 0x4C);
-                    s8 anim = *(s8*)PSX_ADDR(actor + 0xAF);
-                    if (anim != 1) {
+                    if (wm_native_animation_differs(actor, 1)) {
                         func_800245D8((void*)(uintptr_t)actor, 1);
                     }
                     wm_8008C1DC(0x2C, s1, s4);
@@ -264,8 +262,7 @@ s32 wm_8008C844(s32 slot_idx)
         /* pres != 1: idle path */
         {
             u32 actor = c844_lw(s1 + 0x4C);
-            s8 anim = *(s8*)PSX_ADDR(actor + 0xAF);
-            if (anim != 3) {
+            if (wm_native_animation_differs(actor, 3)) {
                 func_800245D8((void*)(uintptr_t)actor, 3);
                 wm_800894C8(0x2C);
             }
@@ -495,13 +492,13 @@ s32 wm_8008C844(s32 slot_idx)
         c844_sh(s1 + 0x48, (u16)v0);
 
         /* velocity.x = rcos(heading) * 32 */
-        cos_val = rcos((long)(s16)(u16)v0);
+        cos_val = (s32)rcos((long)(s16)(u16)v0);
         v1 = cos_val * 3;
         v1 = v1 << 5;
         c844_sw(s4 + 0, c844_lw(s1 + 0x28) + (u32)v1);
 
         /* velocity.z = -rsin(heading) * 32 */
-        sin_val = rsin((long)c844_lh(s1 + 0x48));
+        sin_val = (s32)rsin((long)c844_lh(s1 + 0x48));
         v0 = (u32)(-(s32)sin_val);
         v1 = (s32)v0 * 3;
         v1 = v1 << 5;

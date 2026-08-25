@@ -6,7 +6,7 @@ BUILD_DIR="${W34B24_I8_BUILD_DIR:-$ROOT/pc_port/build_native/w34b24_i8}"
 mkdir -p "$BUILD_DIR"
 cd "$ROOT"
 
-BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DWM_8A72C_TEST_TRACE)
+BASE=(-std=gnu17 -fno-pie -no-pie -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DWM_8A72C_TEST_TRACE)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/src)
 SRC=(pc_port/tests/w34b24_i8_8a72c_prod_test.c
@@ -67,6 +67,7 @@ cmp "$BUILD_DIR/focused_O0.stdout" "$BUILD_DIR/focused_ubsan.stdout"
 echo "FOCUSED O0/O2/UBSAN PASS; normalized output identical"
 
 mutants=(
+    WM_ANIMATION_GUARD_MUTANT_GUEST_REMAP
     WM_8A72C_MUTANT_SUBSTATE_POLARITY
     WM_8A72C_MUTANT_LAP_GATE
     WM_8A72C_MUTANT_JT1_GUARD
