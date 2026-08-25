@@ -901,6 +901,9 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_fixed_uv.patch" "_xeno_fixe
 # marker selects raw FT3/FT4 polygons only; the uniform is restricted to
 # on-screen non-PGXP PS1-textured draws and is disabled by default.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_identity.patch" "_xeno_raw_identity_option" "unidiff-zero"
+# World-map acceptance captures are requested by the game loop but fulfilled
+# at PsyX_EndScene's sole effective pre-swap presentation boundary.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_world_capture_request.patch" "_xeno_world_capture_request" "unidiff-zero"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
