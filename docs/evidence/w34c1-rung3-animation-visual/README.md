@@ -1,4 +1,4 @@
-# W34C1 Rung 3 — animation visual acceptance (UNRESOLVED)
+# W34C1 Rung 3 — animation visual acceptance (FAIL: scheduler cadence)
 
 Date: 2026-08-25
 
@@ -37,6 +37,7 @@ Artifacts:
 - `scratchpad/w34c1_full_slot_census_v2.log`
 - `scratchpad/w34c1_rung3_render_identity.gdb/.log`
 - `scratchpad/w34c1_assignment_input_domain.gdb/.log`
+- `scratchpad/w34c1_rung3_live_pose_state.gdb/.log`
 - `docs/evidence/w34c1-rung3-animation-visual/FIELD_MAP.md`
 
 ## Corrected entity and pose evidence
@@ -110,8 +111,8 @@ slot 1 velocity = (0,0,0), animation=0
 slot 2 velocity = (0,0,0), animation=0
 ```
 
-The production `world_map_frame_driver_712d0.c` also contains a separate
-retail transcription defect at this seam: it reads guest-backed
+Before Rung 3a, production `world_map_frame_driver_712d0.c` also contained a
+separate retail transcription defect at this seam: it read guest-backed
 `0x80069570/574`, `0x8006948C/490`, and `0x800694A4/A8`. Retail reads the
 native controller globals at `0x80059570/574`, `0x8005948C/490`, and
 `0x800594A4/A8`, as confirmed by the decoded `0x8007134C..0x800713F4` input
@@ -165,16 +166,97 @@ The capture-seam zeros are expected post-consumption state, not the next
 fault: `wm_8008A72C` clears slot `+0x38/+0x3c/+0x40` in its retail common
 movement tail, and `wm_800712D0` clears the input accumulators at its frame
 tail. Thus the repaired source reaches the world consumer and the existing
-retail assignment path selects walk animation 1. No break is proven before
-animation stepping/pose publication.
+retail assignment path selects walk animation 1. At that seam alone, no break
+was yet proven before animation stepping/pose publication.
+
+## Renderer-entry held/released discriminator
+
+The final state-only probe used real X11 Right-key input and did not request a
+capture or read the framebuffer. GDB remained attached for the lightweight
+state breakpoints. `PcPort_WorldCaptureSetFrame` supplied the one-based
+world-frame label. Right was held through frame 25; key-up was issued at the
+frame-26 marker and first became observable in the drawn group on frame 27.
+Both direct `func_8001E298` entries for each rendered sprite were sampled
+through frame 50. Each sample read native sprite `animation +0xaf`, signed
+wait timer `+0x9e`, and signed selected pose `+0x34`.
+
+The run produced exactly 200 records: two renderer-eligible sprites, two
+scheduler-driven renderer-entry groups, and 50 frames. `first` below is the
+outer-main-loop scheduler group before the driver clears the OT; `drawn` is
+the post-clear `0x80071488` group whose packets survive to `DrawOTag`. Slot 1
+showed:
+
+```text
+frame  pass  animation  wait  pose
+1      first     0        3     1
+1      drawn     1        1     1
+2      first     0        1     1
+2      drawn     1        1     2
+3      first     0        1     2
+3      drawn     1        1     3
+4-25   first     0        1     3
+4-25   drawn     1        1     3
+26     first     0        1     3
+26     drawn     1        1     3
+27     first     0        1     3
+27     drawn     0        3     3
+28     first     0        1     3
+28     drawn     0        0     3
+29-50  both      0        0     3
+```
+
+Slot 2 remained idle through frame 15; its drawn group first selected
+animation 1 on frame 16, then showed the same per-frame `0 -> 1` animation
+toggle. Its drawn selected pose was 41/42/43 on frames 16/17/18 and remained
+43 through frame 26. After release took effect on frame 27, the drawn group
+reached animation 0 / wait 0 on frame 28; both groups were animation 0 / wait
+0 from frame 29.
+
+This is not a missing assignment or a missing `AnimScriptTick`. The drawn
+second pass does select animation 1, but the earlier pass resets the same
+sprite to animation 0 every frame. On each subsequent effective-held frame,
+both transitions reset the timer to 1, so the drawn selected pose reaches 3
+and then remains pinned through frame 26.
+
+## Retail cadence contradiction
+
+Retail has the same two scheduler call sites at different cadences:
+
+- `0x80071064` runs in the outer `0x80071034` world-session loop. On the
+  natural entry, slot 1 runs its state-0 cb0 and transitions to state 1.
+- `0x80071488` runs once per displayed world frame inside `wm_800712D0`.
+  Recurring frames use the `0x800719C8 -> 0x8007130C` inner back-edge and do
+  not revisit `0x80071064`.
+
+The current open-loop port flattened those nested loops. Every bounded host
+frame returns from `wm_800712D0`, repeats the outer `wm_80071034` scheduler,
+and then runs the legitimate post-input scheduler at `0x80071488`. After the
+first frame, the repeated outer pass incorrectly dispatches slot-1 cb1
+`wm_8008A72C` with the movement vector already cleared, selecting idle. The
+driver then drains held controller input, and the drawn pass sees nonzero
+movement and selects walk. This exactly accounts for the observed
+`animation 0 -> 1`, `wait=1` restart on every held frame.
+
+This is a session-vs-frame control-flow transcription defect, not permission
+to special-case the animation callback or simply suppress a scheduler symbol.
+The flattened loop also repeats outer mode dispatch and re-enters one-time
+driver setup; a repair must recover the retail nested cadence while applying
+the accepted bounded frame limit at the inner frame boundary.
+
+The local no-op `func_8001D468` in `world_map_frame_driver_712d0.c` is a
+separate downstream retail divergence: it shadows the already port-owned
+work-list drain. It does not select `+0xaf` and therefore does not explain the
+cadence/restart evidence above.
 
 ## Verdict and next exact task
 
-`RUNG3=UNRESOLVED`
+`RUNG3=FAIL-CADENCE`
 
-The prior claim that animation assignment itself was the proven blocker is
-void. Rung 3a repaired the independently proven controller-source divergence,
-but visual pose acceptance remains open. Per the campaign stop rule, Rungs
-4–6 were not started.
+Rung 3a repaired the controller-source divergence and proved the live chain
+through walk selection, but the renderer-entry discriminator does not pass:
+the drawn walk pose does not advance after frame 3 because the flattened loop
+restarts idle and walk every frame. The by-eye captures remain independently
+obscured by malformed terrain. Per the campaign stop rule, Rungs 4–6 were not
+started.
 
-`NEXT_EXACT_TASK=Observe native sprite pose +0x34 at renderer entry across live held and released world frames without keeping GDB attached, to determine whether selected animation 1 advances before draw.`
+`NEXT_EXACT_TASK=Restore and certify the retail nested session/frame cadence: execute the 0x80071064 outer scheduler once at world-session entry, recur through wm_800712D0's 0x800719C8 -> 0x8007130C frame back-edge with the bounded frame limit at that inner boundary, and prove that only 0x80071488 updates active sprites per recurring displayed frame; then rerun this exact held/released renderer-entry probe.`

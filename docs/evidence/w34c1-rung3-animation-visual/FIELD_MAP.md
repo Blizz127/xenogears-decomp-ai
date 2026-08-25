@@ -13,9 +13,9 @@ native sprite record, and world controller-input domains separate.
 | `+0x38/+0x3c/+0x40` | scheduler slot | movement vector; slot 1's retail animation guard tests the three words, and the movement tail clears them |
 | `+0x4c` | scheduler slot | native sprite pointer; retail loads directly at `0x8008CCAC`/`0x8008D894` |
 | `+0x00/+0x04/+0x08` | native sprite | render transform populated by `wm_80085CDC` from slot state |
-| `+0x34` | native sprite | pose selected by the animation decoder |
-| `+0x9e` | native sprite | wait/timer decremented by `AnimScriptTick` at `0x80023210` |
-| `+0xaf` | native sprite | animation id initialized by `func_80023804`, generally set by `func_800245D8`, and restored by `func_80021D50`; world callback guards load it directly |
+| `+0x34` | native sprite | signed pose selected by the animation decoder; live held input reached slot-1 poses 1, 2, 3, then the drawn pass remained pinned at 3 under the scheduler-cadence restart |
+| `+0x9e` | native sprite | signed wait/timer decremented by `AnimScriptTick` at `0x80023210`; after the initial frame, the cadence fault resets it to 1 on both reassignment groups during effective-held frames 2-26 |
+| `+0xaf` | native sprite | signed animation id initialized by `func_80023804`, generally set by `func_800245D8`, and restored by `func_80021D50`; world callback guards load it directly; live held input currently toggles slot 1 from 0 on the repeated outer pass to 1 on the drawn pass |
 | `+0xd8/+0xdc` | native sprite | words that move smoothly for renderer-eligible slots 1/2; semantics not established and not the render transform |
 
 The complete 64-slot census found only slots 1, 2, 4, and 5 with non-null
@@ -41,3 +41,25 @@ movement triple. That run cannot establish a walk-animation failure.
 The prior Rung 3 probes successively conflated host and guest pointer domains,
 the scheduler slot and native sprite structures, and finally field input with
 world input. This map records all three boundaries explicitly.
+
+## Live renderer-entry cadence result
+
+The controller-source repair makes real Right input reach the world movement
+consumer and select animation 1. A 50-frame state-only renderer-entry probe
+then found two calls per eligible sprite per frame. Under held input, slot 1
+is reset to animation 0 by the repeated outer scheduler and reselected to
+animation 1 by the post-input drawn scheduler. Its wait timer is consequently
+reset to 1 on both groups after the initial frame during effective-held frames
+2-26, and its drawn selected pose stabilizes at 3 instead of advancing. Key-up
+is issued at frame 26 and becomes observable in the drawn group on frame 27.
+That group reaches animation 0 / wait 0 on frame 28; both groups are animation
+0 / wait 0 from frame 29.
+
+Retail does not run both scheduler sites at frame cadence. `0x80071064` is the
+outer world-session pass; recurring displayed frames remain inside
+`wm_800712D0` through `0x800719C8 -> 0x8007130C` and run only `0x80071488`.
+The current flattened open loop repeats both sites once per bounded host
+frame, which is the proven source of the animation restart. This is a nested
+control-flow/cadence defect; it must not be repaired by special-casing the
+animation guard or suppressing one scheduler call without restoring the
+retail inner-frame boundary.
