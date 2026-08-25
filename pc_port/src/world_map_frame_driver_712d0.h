@@ -12,5 +12,6 @@
 #include "common.h"
 
 void wm_800712D0(void);
+void wm_712d0_run_second_scheduler(void);
 
 #endif

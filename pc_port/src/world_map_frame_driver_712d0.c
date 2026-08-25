@@ -38,6 +38,7 @@ extern void PutDispEnv(void *env);
 extern void SetGeomOffset(long ofx, long ofy);
 extern void MoveImage(void *rect, long x, long y);
 extern long CdSync(long mode, u_char *result);
+extern void wm_80097800(void);
 
 /* Unresolved leaf stubs: preserve control flow, return the retail-neutral
  * default, and leave an address-tagged work queue in the log. */
@@ -68,7 +69,6 @@ static void func_800250E0(u32 a)
     (void)a;
     wm_712d0_stub("800250E0", 0x800250E0u);
 }
-static void wm_80097800(void) { wm_712d0_stub("80097800", 0x80097800u); }
 extern int ControllerPopState(int port);
 extern int ControllerGetType(int port);
 extern void ResetGraph(int mode);
@@ -125,6 +125,21 @@ static s16 fd_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static void fd_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static u8 fd_lbu(u32 a) { return *(u8*)PSX_ADDR(a); }
 static void fd_sb(u32 a, u8 v) { *(u8*)PSX_ADDR(a) = v; }
+
+/* Retail 0x80071488: the post-clear scheduler pass which republishes the
+ * current frame's packets before DrawOTag. Kept as a narrow test seam so the
+ * actual linked driver cannot silently regress to a local no-op again. */
+void wm_712d0_run_second_scheduler(void)
+{
+#if defined(WM_712D0_MUTANT_NO_SECOND_SCHEDULER)
+    return;
+#elif defined(WM_712D0_MUTANT_DOUBLE_SECOND_SCHEDULER)
+    wm_80097800();
+    wm_80097800();
+#else
+    wm_80097800();
+#endif
+}
 
 static void* wm_712d0_map_guest(u32 value, const char* call, u32 pc)
 {
@@ -230,7 +245,7 @@ void wm_800712D0(void)
     func_8001D468();
 
     /* Scheduler */
-    wm_80097800();
+    wm_712d0_run_second_scheduler();
 
     /* DrawSync */
     DrawSync(NULL);
