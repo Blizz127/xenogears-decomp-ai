@@ -8,6 +8,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "system/controller.h"
 #include "world_map_frame_driver_712d0.h"
 #include "world_map_helper_96130.h"
 #include "world_map_helper_97244.h"
@@ -99,12 +100,6 @@ extern void MenuMain(void);
 #define D_80069178  0x80069178u
 #define D_80069171  0x80069171u
 #define D_80069460  0x80069460u
-#define D_80069570  0x80069570u
-#define D_80069574  0x80069574u
-#define D_8006948C  0x8006948Cu
-#define D_80069490  0x80069490u
-#define D_800694A4  0x800694A4u
-#define D_800694A8  0x800694A8u
 #define D_8006EE76  0x8006EE76u
 #define D_8007EE70  0x8007EE70u
 #define D_8007EE68  0x8007EE68u
@@ -177,25 +172,25 @@ void wm_800712D0(void)
         if (controller_result != 0) {
             /* Merge controller input into global state */
             u16 buttons = fd_lhu(D_8009CD4C);
-            u16 raw_btn = fd_lhu(D_80069570);
+            u16 raw_btn = (u16)g_C1ButtonState;
             u16 sticks = fd_lhu(D_8009CD50);
-            u16 raw_stick = fd_lhu(D_80069574);
+            u16 raw_stick = (u16)g_C2ButtonState;
 
             fd_sh(D_8009CD4C, buttons | raw_btn);
             fd_sh(D_8009CD50, sticks | raw_stick);
 
             buttons = fd_lhu(D_8009BD10);
-            raw_btn = fd_lhu(D_8006948C);
+            raw_btn = (u16)g_C1ButtonStateReleased;
             sticks = fd_lhu(D_8009BD14);
-            raw_stick = fd_lhu(D_80069490);
+            raw_stick = (u16)g_C2ButtonStateReleased;
 
             fd_sh(D_8009BD10, buttons | raw_btn);
             fd_sh(D_8009BD14, sticks | raw_stick);
 
             buttons = fd_lhu(D_8009BD18);
-            raw_btn = fd_lhu(D_800694A4);
+            raw_btn = (u16)g_C1ButtonStatePressedOnce;
             sticks = fd_lhu(D_8009BD1C);
-            raw_stick = fd_lhu(D_800694A8);
+            raw_stick = (u16)g_C2ButtonStatePressedOnce;
 
             fd_sh(D_8009BD18, buttons | raw_btn);
             fd_sh(D_8009BD1C, sticks | raw_stick);
