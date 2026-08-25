@@ -1063,6 +1063,7 @@ fi
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
 PORT_SOURCES=(
     pc_port/src/psx_memory.c
+    pc_port/src/test_input.c
     pc_port/src/game_overrides.c
     pc_port/src/world_map_init.c
     pc_port/src/world_map_frame_driver.c
@@ -1306,7 +1307,9 @@ PORT_MAIN_SOURCE="pc_port/src/port_main.c"
 PORT_MAIN_OBJECT="$OBJ/port_main.o"
 PORT_MAIN_ERR="$OUT/pc_port_src_port_main.c.err"
 rm -f "$PORT_MAIN_OBJECT" "$PORT_MAIN_ERR"
-if ! gcc -c "$PORT_MAIN_SOURCE" $GFLAGS -Ipc_port/src -I"$PSX/include" -I"$PSX/include/psx" -o "$PORT_MAIN_OBJECT" 2>"$PORT_MAIN_ERR"; then
+if ! gcc -c "$PORT_MAIN_SOURCE" $GFLAGS -Ipc_port/src -Iinclude \
+    -I"$PSX/include" -I"$PSX/include/psx" -o "$PORT_MAIN_OBJECT" \
+    2>"$PORT_MAIN_ERR"; then
     echo "ERROR: port entry-point compilation failed."
     echo "       TU: $PORT_MAIN_SOURCE"
     sed 's/^/       | /' "$PORT_MAIN_ERR"

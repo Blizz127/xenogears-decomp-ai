@@ -9,6 +9,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "test_input.h"
 #include "world_map_capture.h"
 #include "world_map_main_loop_71034.h"
 #include "world_map_frame_driver_712d0.h"
@@ -16,6 +17,7 @@
 extern void DrawSync(void (*func)(unsigned long));
 extern void Vsync(long mode);
 extern void wm_80097800(void);
+extern u16 D_800AFE9C;
 
 #define D_8009C5A8  0x8009C5A8u  /* mode index */
 #define D_8009D7CC  0x8009D7CCu  /* state counter */
@@ -90,6 +92,9 @@ void wm_80071034(void)
         u32 cb1_table = D_8009A060;
         u32 cb0_addr, cb1_addr;
 
+        /* Continue the declarative input clock after the field-to-world handoff. */
+        PcPort_TestInputAdvanceFrame();
+        PcPort_TestInputInject(&D_800AFE9C);
         PcPort_WorldCaptureSetFrame(frame);
 
         /* Dispatch cb0 via table lookup */

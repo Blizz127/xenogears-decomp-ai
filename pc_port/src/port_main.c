@@ -16,6 +16,7 @@
 
 #include "xeno_pc.h"
 #include "psx_memory.h"
+#include "test_input.h"
 #include "PsyX/PsyX_public.h"
 #include "psx/libspu.h"   /* Phase-2 sound-SDK primitive probe: SpuReverbAttr/SpuCommonAttr + prims */
 
@@ -1200,6 +1201,10 @@ int main(int argc, char** argv) {
 
     /* 1. PSX main-RAM emulation must come first (PSX_ADDR targets live here). */
     PsxMemory_Init();
+
+    /* Parse the optional deterministic input schedule before game startup. */
+    if (PcPort_TestInputInit() != 0)
+        return EXIT_FAILURE;
 
     /* 2. Data migration: build the game-state dispatch table at runtime. */
     PcPort_InitGameStates();

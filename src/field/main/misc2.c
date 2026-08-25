@@ -9,6 +9,7 @@
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdlib.h>
+#include "test_input.h"
 
 #ifdef XENO_PC_PORT
 /* PsyX GTE register/intrinsic access for the func_80075B44 sprite-fog branch
@@ -1899,6 +1900,7 @@ void func_8007554C(void) {
 #ifdef XENO_PC_PORT
     s32 diagFrame = g_FieldDiagFrameCount++;
 
+    PcPort_TestInputAdvanceFrame();
     g_FieldDiagSubmittedThisFrame = 0;
 #endif
     D_800ADB9C = Vsync(1);

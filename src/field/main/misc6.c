@@ -639,6 +639,9 @@ extern u8  D_800B2354;      /* selects which d-pad->angle table */
 extern u16 D_800ADF68[];    /* d-pad -> angle table 1 (16 entries) */
 extern u16 D_800ADF88[];    /* d-pad -> angle table 2 (16 entries) */
 extern void func_80079288(void); /* checkForRandomEncounter (side behavior) */
+#ifdef XENO_PC_PORT
+#include "test_input.h"
+#endif
 
 /* func_8009F5F4 = OP_UPDATE_CHARACTER (opcode 0xA7). Called every frame for the
  * player via the idle-hold wrapper func_8009F5A8. Retail asm 8009F5F4-8009F9FC;
@@ -646,6 +649,9 @@ extern void func_80079288(void); /* checkForRandomEncounter (side behavior) */
  * scriptFlags at offset 0x00 (asm lw 0x0($a0)), NOT the ->flags field at 0x04
  * that the prior partial port checked. */
 void func_8009F5F4(void) {
+#ifdef XENO_PC_PORT
+    PcPort_TestInputInject(&D_800AFE9C);
+#endif
     u8* p = (u8*)(uintptr_t)g_FieldScriptVMCurActor;
     u32 scriptFlags = *(u32*)(p + 0x00);
 
