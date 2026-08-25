@@ -2,9 +2,7 @@
 
 Date: 2026-08-25
 
-Production HEAD: `8b0a6d5c6f18e38bc0a9c2e513c8e52e8ce65687`
-
-No production files were changed during this rung.
+Production HEAD: `065e94f51eafad4fd854a3a8a0ec876a0bf9fe3d`
 
 ## Acceptance route
 
@@ -124,12 +122,59 @@ not redundantly reselect animation 0. Slot 2 has no moving leader breadcrumb
 to follow and likewise remains idle. The animation-assignment hypothesis is
 therefore void: the recorded run never drove the retail movement consumer.
 
+## Rung 3a controller-source repair and live result
+
+Commit `065e94f51eafad4fd854a3a8a0ec876a0bf9fe3d` replaces the six
+fabricated `+0x10000` guest reads with the six distinct native controller
+globals used by retail. The focused production-linked certificate passes at
+O0, O2, and nonrecovering UBSan. Its source-order gate proves the retail
+held/released/pressed-once order, and M1--M3 are detected by named assertions
+for a restored bad guest source, an omitted source, and a missing initial
+accumulator clear.
+
+The live gate used a real X11 Right-key hold, not the scripted field-input
+word. GDB detached before `PcPort_WorldMapInitMain`; Right remained held
+through presentation frame 60 and was released immediately after that frame,
+before frame 120. The presentation captures differ:
+
+- held frame 60 BMP:
+  `6aaf86edc2ec4ea1bb3ecdd0d2036e036d4394b4245cb9271ac9f43049ffd442`
+- released frame 120 BMP:
+  `1fb5cb47383475e2f60e97e8e81065bec8ff14547e7b1842a7f84b93fddc3b66`
+
+Both captures are dominated by the separately recorded malformed-terrain
+fault and do not expose the rendered character clearly enough to certify a
+walk cycle or its return to idle by sight. The visual result is therefore
+inconclusive, not a Rung 3 pass.
+
+Rung 2's deterministic schedule and repeatable hashes remain valid, but its
+"movement differs from control" observation measured field-phase input, not
+world movement. Automated world-movement acceptance still requires the
+separate scripted world-controller bridge.
+
+A read-only live-input probe at the existing assignment seam established the
+runtime chain independently:
+
+```text
+movement-consumer: g_C1ButtonState=0x2000, 0x8009CD4C=0x2000
+capture seam:       g_C1ButtonState=0x2000, animation=1
+                    0x8009CD4C=0, slot-1 velocity=(0,0,0)
+```
+
+The capture-seam zeros are expected post-consumption state, not the next
+fault: `wm_8008A72C` clears slot `+0x38/+0x3c/+0x40` in its retail common
+movement tail, and `wm_800712D0` clears the input accumulators at its frame
+tail. Thus the repaired source reaches the world consumer and the existing
+retail assignment path selects walk animation 1. No break is proven before
+animation stepping/pose publication.
+
 ## Verdict and next exact task
 
 `RUNG3=UNRESOLVED`
 
 The prior claim that animation assignment itself was the proven blocker is
-void. No production change was made for this unresolved rung. Per the campaign
-stop rule, Rungs 4–6 were not started.
+void. Rung 3a repaired the independently proven controller-source divergence,
+but visual pose acceptance remains open. Per the campaign stop rule, Rungs
+4–6 were not started.
 
-`NEXT_EXACT_TASK=Restore and certify the scripted-input-to-world-controller bridge, including the six retail controller sources consumed by wm_800712D0, then repeat the Rung 3 pose gate with nonzero 0x8009CD4C and slot-1 velocity proven at the retail consumer.`
+`NEXT_EXACT_TASK=Observe native sprite pose +0x34 at renderer entry across live held and released world frames without keeping GDB attached, to determine whether selected animation 1 advances before draw.`
