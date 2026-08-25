@@ -92,11 +92,14 @@ rg -q 'raw_stick = 0u;' "$BUILD_DIR/M2.c"
 make_mutant M3
 perl -0pi -e 's/(fd_sh\(D_8009BD10, 0\);\n)[[:space:]]+fd_sh\(D_8009CD4C, 0\);/$1/' \
     "$BUILD_DIR/M3.c"
-test "$(rg -c 'fd_sh\(D_8009CD4C, 0\);' "$BUILD_DIR/M3.c")" -eq 1
+if rg -q 'fd_sh\(D_8009CD4C, 0\);' "$BUILD_DIR/M3.c"; then
+    echo "M3 failed to remove the sole recurring-frame clear" >&2
+    exit 1
+fi
 
 for entry in \
     'M1:controller.source.c1_held.native_not_guest_plus_10000' \
-    'M2:controller.source.c2_released.or_accumulator' \
+    'M2:controller.source.c2_released.accumulates_bd14' \
     'M3:controller.accumulator.cd4c.cleared_before_drain'; do
     label="${entry%%:*}"
     assertion="${entry#*:}"

@@ -1,6 +1,6 @@
 /*
  * World-map frame driver 0x800712D0.
- * Per-frame render/update orchestrator.
+ * Session prologue, recurring render/update loop, and natural session exit.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -147,241 +147,258 @@ static void* wm_712d0_map_guest(u32 value, const char* call, u32 pc)
     return PSX_ADDR(value);
 }
 
-void wm_800712D0(void)
+Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
 {
     u32 draw_env_ptr;
     u32 ot_ptr;
     s32 controller_result;
     s32 queue_result;
+    int frame;
 
-    /* Initialize frame state */
+    if (run == NULL || run->frame_limit <= 0 ||
+            run->displayed_frames < 0 ||
+            run->displayed_frames >= run->frame_limit) {
+        return WM_712D0_RUN_ERROR;
+    }
+
+    /* Retail 0x800712D0..0x80071308: once per world session. */
     draw_env_ptr = 0x8009BC40;
     fd_sw(D_8009BE3C, draw_env_ptr);
     fd_sw(D_8009D7F0, 1);
     fd_sw(D_8009D554, 1);
-    fd_sh(D_8009BD1C, 0);
-    fd_sh(D_8009BD14, 0);
-    fd_sh(D_8009CD50, 0);
-    fd_sh(D_8009BD18, 0);
-    fd_sh(D_8009BD10, 0);
-    fd_sh(D_8009CD4C, 0);
 
-    /* Controller polling loop */
-    do {
-        controller_result = ControllerPopState(0);
-        if (controller_result != 0) {
-            /* Merge controller input into global state */
-            u16 buttons = fd_lhu(D_8009CD4C);
-            u16 raw_btn = (u16)g_C1ButtonState;
-            u16 sticks = fd_lhu(D_8009CD50);
-            u16 raw_stick = (u16)g_C2ButtonState;
-
-            fd_sh(D_8009CD4C, buttons | raw_btn);
-            fd_sh(D_8009CD50, sticks | raw_stick);
-
-            buttons = fd_lhu(D_8009BD10);
-            raw_btn = (u16)g_C1ButtonStateReleased;
-            sticks = fd_lhu(D_8009BD14);
-            raw_stick = (u16)g_C2ButtonStateReleased;
-
-            fd_sh(D_8009BD10, buttons | raw_btn);
-            fd_sh(D_8009BD14, sticks | raw_stick);
-
-            buttons = fd_lhu(D_8009BD18);
-            raw_btn = (u16)g_C1ButtonStatePressedOnce;
-            sticks = fd_lhu(D_8009BD1C);
-            raw_stick = (u16)g_C2ButtonStatePressedOnce;
-
-            fd_sh(D_8009BD18, buttons | raw_btn);
-            fd_sh(D_8009BD1C, sticks | raw_stick);
-        }
-    } while (controller_result != 0);
-
-    /* Queue processing with Vsync wait */
-    do {
-        wm_800967E4();
-        queue_result = 0;
-        if (queue_result == 3) {
-            Vsync(0);
-        }
-    } while (queue_result == 3);
-
-    /* CD sync */
-    CdSync(1, NULL);
-
-    /* OT pointer management */
-    {
-        u32 env = fd_lw(D_8009BE3C);
-        u32 alt_env = 0x8009BBC8;
-        if (env == alt_env) {
-            alt_env += 0x78;
-        }
-        ot_ptr = fd_lw(alt_env + 0x70);
-        fd_sw(D_8009BE3C, alt_env);
-
-        /* Toggle double-buffer flag */
-        fd_sw(D_8009D7F0, fd_lw(D_8009D7F0) < 1 ? 1 : 0);
-    }
-
-    /* Clear OT. PsyCross's ClearOTagR writes host-pointer links at its own
-     * OT_TAG stride; the OT lives in guest RAM and is walked by the
-     * guest-link adapter, so clear it in retail format. */
-    {
-        void* host_ot = wm_712d0_map_guest(ot_ptr, "ClearOTagR", 0x80071468u);
-        if (host_ot != NULL)
-            wm_ot_clear_r_guest(ot_ptr, 0x400u);
-    }
-
-    /* Process input */
-    fd_lw(D_8009D7F0);
-    wm_800250E0(fd_lw(D_8009D7F0));
-
-    /* Game state processing */
-    func_8001D468();
-
-    /* Scheduler */
-    wm_712d0_run_second_scheduler();
-
-    /* DrawSync */
-    DrawSync(NULL);
-
-    /* Vsync */
-    Vsync(2);
-
-    /* Soft reset check */
-    GameCheckAndHandleSoftReset();
-
-    /* Display environment */
-    {
-        u32 env = fd_lw(D_8009BE3C);
-        void* host_env = wm_712d0_map_guest(env, "PutDrawEnv", 0x800714ACu);
-        if (host_env != NULL) {
-            PutDispEnv((u8*)host_env + 0x5Cu);
-            PutDrawEnv(host_env);
-        }
-    }
-
-    /* State-dependent rendering */
-    if (fd_lbu(D_80069179) == 0 && fd_lw(D_8009BD34) != 0 &&
-        fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) == 0 &&
-        fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
-        fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
-
-        /* World-map R4_WORLD callback */
-        s32 area_result = wm_80093F18(D_8009D55C);
-        if ((s16)(area_result & 0xFFFF) != 4) {
-            /* Copy presence bytes */
-            s32 i;
-            for (i = 0; i < 3; i++) {
-                u8 pres = fd_lbu(D_8006F8E5 + (u32)i);
-                fd_sh(D_8007EE70 + i * 2, (u16)pres);
-            }
-
-            /* Check animation state */
-            {
-                u8 anim = fd_lbu(D_8006F8E5);
-                if (anim == 0) {
-                    fd_sb(D_8006F8E5 + 2, 0);
-                    fd_sb(D_8006F8E5 + 1, 0);
-                    fd_sb(D_8006F8E5, 0);
-                } else {
-                    /* Check table entries */
-                    u32 table_base = 0x8007D940;
-                    u8 entry = fd_lbu(table_base + (u32)anim * 0x154);
-                    if (entry != 0xFF) {
-                        fd_sb(D_8006F8E5, 1);
-                    }
-                    entry = fd_lbu(table_base + (u32)(anim + 1) * 0x154);
-                    if (entry != 0xFF) {
-                        fd_sb(D_8006F8E5 + 1, 1);
-                    }
-                    entry = fd_lbu(table_base + (u32)(anim + 2) * 0x154);
-                    if (entry != 0xFF) {
-                        fd_sb(D_8006F8E5 + 2, 1);
-                    }
-                }
-            }
-
-            /* Call wm_80075D4C */
-            wm_80075D4C();
+    for (;;) {
+        frame = run->displayed_frames + 1;
+        if (run->before_frame != NULL &&
+                run->before_frame(frame, run->user) != 0) {
+            return WM_712D0_RUN_ERROR;
         }
 
-        fd_sw(D_8009BD34, 0);
-    }
-
-    /* Menu check */
-    if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
-        fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
-
-        if (fd_lhu(D_8009BD10) & 0x800) {
-            /* Toggle menu */
-            u16* toggle = (u16*)PSX_ADDR(D_8006EE76);
-            *toggle ^= 1;
-        }
-    }
-
-    /* State machine dispatch */
-    if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
-        fd_lw(D_8009D554) != 0) {
-        s32 mode = fd_lw(D_8009BE10);
-
-        if (mode <= 0) {
-            /* Idle: do nothing */
-        } else if (mode < 4) {
-            /* Active rendering modes */
-            wm_800758C0();
-            fd_sb(D_80069460, 0);
-            fd_sb(D_80069178, 0);
-            fd_sb(D_80069171, 1);
-            wm_800762FC();
-            MenuMain();
-            wm_800762FC();
-            wm_80075B58();
-        } else if (mode < 8) {
-            /* Transition modes */
-            u16 flags = fd_lhu(D_8007EE68);
-            u32 table = 0x8009B6E4;
-            fd_sw(D_8009D554, 0);
-            fd_sw(D_8009D7CC, 0);
-            fd_sw(D_8009D7D8, table);
-            flags |= 0x2000;
-            fd_sh(D_8007EE68, flags);
-        }
-    }
-
-    /* Reset boundary flag */
-    fd_sw(D_8009D804, 0);
-
-    /* Render pipeline */
-    wm_80025044();
-    wm_80074F2C();
-    wm_80075104();
-
-    /* Geometry offset */
-    SetGeomOffset(0xA0, fd_lw(D_8009BE0C));
-
-    /* DrawOTag */
-    {
-        u32 env = fd_lw(D_8009BE3C);
-        u32 guest_ot = fd_lw(env + 0x70);
-        void* host_ot = wm_712d0_map_guest(guest_ot + 0xFFCu,
-                                           "DrawOTag", 0x800719B4u);
-        if (host_ot != NULL)
-            (void)wm_ot_draw_otag_guest(guest_ot + 0xFFCu);
-    }
-
-    /* Loop back if mode word still set */
-    if (fd_lw(D_8009D554) != 0) {
-        /* Continue to next frame initialization */
+        /* Retail 0x8007130C: recurring inner-frame head. */
         fd_sh(D_8009BD1C, 0);
         fd_sh(D_8009BD14, 0);
         fd_sh(D_8009CD50, 0);
         fd_sh(D_8009BD18, 0);
         fd_sh(D_8009BD10, 0);
         fd_sh(D_8009CD4C, 0);
+
+        /* Controller polling loop */
+        do {
+            controller_result = ControllerPopState(0);
+            if (controller_result != 0) {
+                /* Merge controller input into global state */
+                u16 buttons = fd_lhu(D_8009CD4C);
+                u16 raw_btn = (u16)g_C1ButtonState;
+                u16 sticks = fd_lhu(D_8009CD50);
+                u16 raw_stick = (u16)g_C2ButtonState;
+
+                fd_sh(D_8009CD4C, buttons | raw_btn);
+                fd_sh(D_8009CD50, sticks | raw_stick);
+
+                buttons = fd_lhu(D_8009BD10);
+                raw_btn = (u16)g_C1ButtonStateReleased;
+                sticks = fd_lhu(D_8009BD14);
+                raw_stick = (u16)g_C2ButtonStateReleased;
+
+                fd_sh(D_8009BD10, buttons | raw_btn);
+                fd_sh(D_8009BD14, sticks | raw_stick);
+
+                buttons = fd_lhu(D_8009BD18);
+                raw_btn = (u16)g_C1ButtonStatePressedOnce;
+                sticks = fd_lhu(D_8009BD1C);
+                raw_stick = (u16)g_C2ButtonStatePressedOnce;
+
+                fd_sh(D_8009BD18, buttons | raw_btn);
+                fd_sh(D_8009BD1C, sticks | raw_stick);
+            }
+        } while (controller_result != 0);
+
+        /* Queue processing with Vsync wait */
+        do {
+            wm_800967E4();
+            queue_result = 0;
+            if (queue_result == 3) {
+                Vsync(0);
+            }
+        } while (queue_result == 3);
+
+        /* CD sync */
+        CdSync(1, NULL);
+
+        /* OT pointer management */
+        {
+            u32 env = fd_lw(D_8009BE3C);
+            u32 alt_env = 0x8009BBC8;
+            if (env == alt_env) {
+                alt_env += 0x78;
+            }
+            ot_ptr = fd_lw(alt_env + 0x70);
+            fd_sw(D_8009BE3C, alt_env);
+
+            /* Toggle double-buffer flag */
+            fd_sw(D_8009D7F0, fd_lw(D_8009D7F0) < 1 ? 1 : 0);
+        }
+
+        /* Clear OT. PsyCross's ClearOTagR writes host-pointer links at its own
+         * OT_TAG stride; the OT lives in guest RAM and is walked by the
+         * guest-link adapter, so clear it in retail format. */
+        {
+            void* host_ot = wm_712d0_map_guest(ot_ptr, "ClearOTagR", 0x80071468u);
+            if (host_ot != NULL)
+                wm_ot_clear_r_guest(ot_ptr, 0x400u);
+        }
+
+        /* Process input */
+        fd_lw(D_8009D7F0);
+        wm_800250E0(fd_lw(D_8009D7F0));
+
+        /* Game state processing */
+        func_8001D468();
+
+        /* Scheduler */
+        wm_712d0_run_second_scheduler();
+
+        /* DrawSync */
+        DrawSync(NULL);
+
+        /* Vsync */
+        Vsync(2);
+
+        /* Soft reset check */
+        GameCheckAndHandleSoftReset();
+
+        /* Display environment */
+        {
+            u32 env = fd_lw(D_8009BE3C);
+            void* host_env = wm_712d0_map_guest(env, "PutDrawEnv", 0x800714ACu);
+            if (host_env != NULL) {
+                PutDispEnv((u8*)host_env + 0x5Cu);
+                PutDrawEnv(host_env);
+            }
+        }
+
+        /* State-dependent rendering */
+        if (fd_lbu(D_80069179) == 0 && fd_lw(D_8009BD34) != 0 &&
+                fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) == 0 &&
+                fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
+                fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
+
+            /* World-map R4_WORLD callback */
+            s32 area_result = wm_80093F18(D_8009D55C);
+            if ((s16)(area_result & 0xFFFF) != 4) {
+                /* Copy presence bytes */
+                s32 i;
+                for (i = 0; i < 3; i++) {
+                    u8 pres = fd_lbu(D_8006F8E5 + (u32)i);
+                    fd_sh(D_8007EE70 + i * 2, (u16)pres);
+                }
+
+                /* Check animation state */
+                {
+                    u8 anim = fd_lbu(D_8006F8E5);
+                    if (anim == 0) {
+                        fd_sb(D_8006F8E5 + 2, 0);
+                        fd_sb(D_8006F8E5 + 1, 0);
+                        fd_sb(D_8006F8E5, 0);
+                    } else {
+                        /* Check table entries */
+                        u32 table_base = 0x8007D940;
+                        u8 entry = fd_lbu(table_base + (u32)anim * 0x154);
+                        if (entry != 0xFF) {
+                            fd_sb(D_8006F8E5, 1);
+                        }
+                        entry = fd_lbu(table_base + (u32)(anim + 1) * 0x154);
+                        if (entry != 0xFF) {
+                            fd_sb(D_8006F8E5 + 1, 1);
+                        }
+                        entry = fd_lbu(table_base + (u32)(anim + 2) * 0x154);
+                        if (entry != 0xFF) {
+                            fd_sb(D_8006F8E5 + 2, 1);
+                        }
+                    }
+                }
+
+                /* Call wm_80075D4C */
+                wm_80075D4C();
+            }
+
+            fd_sw(D_8009BD34, 0);
+        }
+
+        /* Menu check */
+        if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
+                fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
+
+            if (fd_lhu(D_8009BD10) & 0x800) {
+                /* Toggle menu */
+                u16* toggle = (u16*)PSX_ADDR(D_8006EE76);
+                *toggle ^= 1;
+            }
+        }
+
+        /* State machine dispatch */
+        if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
+                fd_lw(D_8009D554) != 0) {
+            s32 mode = fd_lw(D_8009BE10);
+
+            if (mode <= 0) {
+                /* Idle: do nothing */
+            } else if (mode < 4) {
+                /* Active rendering modes */
+                wm_800758C0();
+                fd_sb(D_80069460, 0);
+                fd_sb(D_80069178, 0);
+                fd_sb(D_80069171, 1);
+                wm_800762FC();
+                MenuMain();
+                wm_800762FC();
+                wm_80075B58();
+            } else if (mode < 8) {
+                /* Transition modes */
+                u16 flags = fd_lhu(D_8007EE68);
+                u32 table = 0x8009B6E4;
+                fd_sw(D_8009D554, 0);
+                fd_sw(D_8009D7CC, 0);
+                fd_sw(D_8009D7D8, table);
+                flags |= 0x2000;
+                fd_sh(D_8007EE68, flags);
+            }
+        }
+
+        /* Reset boundary flag */
+        fd_sw(D_8009D804, 0);
+
+        /* Render pipeline */
+        wm_80025044();
+        wm_80074F2C();
+        wm_80075104();
+
+        /* Geometry offset */
+        SetGeomOffset(0xA0, fd_lw(D_8009BE0C));
+
+        /* DrawOTag */
+        {
+            u32 env = fd_lw(D_8009BE3C);
+            u32 guest_ot = fd_lw(env + 0x70);
+            void* host_ot = wm_712d0_map_guest(guest_ot + 0xFFCu,
+                    "DrawOTag", 0x800719B4u);
+            if (host_ot != NULL)
+                (void)wm_ot_draw_otag_guest(guest_ot + 0xFFCu);
+        }
+
+        /* Retail 0x800719C8: the only recurring-frame back-edge. */
+        run->displayed_frames = frame;
+        if (run->after_frame != NULL &&
+                run->after_frame(frame, run->user) != 0) {
+            return WM_712D0_RUN_ERROR;
+        }
+        if (fd_lw(D_8009D554) == 0u)
+            break;
+        if (run->displayed_frames >= run->frame_limit)
+            return WM_712D0_RUN_BOUNDED_EXIT;
     }
 
-    /* Reset graph */
+    /* Retail 0x800719D0..0x80071A4C: natural session exit only. */
     ResetGraph(1);
 
     /* Final display environment */
@@ -399,8 +416,22 @@ void wm_800712D0(void)
     /* Final display environment */
     {
         void* host_env = wm_712d0_map_guest(0x8009BC9Cu,
-                                            "PutDispEnv", 0x80071A00u);
+                "PutDispEnv", 0x80071A00u);
         if (host_env != NULL)
             PutDispEnv(host_env);
     }
+
+    return WM_712D0_RUN_NATURAL_EXIT;
+}
+
+void wm_800712D0(void)
+{
+    Wm712D0BoundedRun run;
+
+    run.frame_limit = 600;
+    run.displayed_frames = 0;
+    run.before_frame = NULL;
+    run.after_frame = NULL;
+    run.user = NULL;
+    (void)wm_800712D0_run_bounded(&run);
 }

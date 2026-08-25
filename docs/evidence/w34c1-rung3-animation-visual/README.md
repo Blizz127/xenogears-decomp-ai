@@ -1,8 +1,8 @@
-# W34C1 Rung 3 — animation visual acceptance (FAIL: scheduler cadence)
+# W34C1 Rung 3 — animation acceptance (PASS: live renderer state)
 
 Date: 2026-08-25
 
-Production HEAD: `065e94f51eafad4fd854a3a8a0ec876a0bf9fe3d`
+Cadence-repair starting HEAD: `52a42877e75a6a7e5b2cde1a063ba9687e548269`
 
 ## Acceptance route
 
@@ -38,6 +38,7 @@ Artifacts:
 - `scratchpad/w34c1_rung3_render_identity.gdb/.log`
 - `scratchpad/w34c1_assignment_input_domain.gdb/.log`
 - `scratchpad/w34c1_rung3_live_pose_state.gdb/.log`
+- `scratchpad/w34c1_rung3_live_pose_state_after_cadence_final.log`
 - `docs/evidence/w34c1-rung3-animation-visual/FIELD_MAP.md`
 
 ## Corrected entity and pose evidence
@@ -248,15 +249,60 @@ separate downstream retail divergence: it shadows the already port-owned
 work-list drain. It does not select `+0xaf` and therefore does not explain the
 cadence/restart evidence above.
 
+## Cadence repair and positive renderer-entry gate
+
+The active open loop now preserves the three retail cadences instead of
+flattening them:
+
+- the already-completed `0x80071064` session scheduler is not repeated on
+  recurring frames;
+- `0x800712D0..0x80071308` runs once per session;
+- the body recurs only through `0x800719C8 -> 0x8007130C`;
+- the bounded frame limit is evaluated after `DrawOTag` at that inner latch;
+- the `0x800719D0..0x80071A4C` epilogue remains natural-exit-only;
+- the legacy pre-open-loop frame-prologue diagnostic is skipped while the
+  active open loop owns the driver.
+
+The production-linked cadence certificate passes at O0, O2, and
+nonrecovering UBSan. It proves one session scheduler plus 120 inner scheduler
+and DrawOT iterations, alternating OT buffers without re-entering the driver
+prologue, exact frame-60/frame-120 capture request/fulfillment labels, no
+pending capture at bounded exit, exactly one host presentation per completed
+inner frame, and no bounded execution of the natural epilogue. M1--M8 detect
+repeated session scheduling, missing/double inner
+scheduling, both frame-limit off-by-ones, a shifted capture trigger, repeated
+driver entry, and bounded execution of the natural epilogue.
+
+The exact prior state-only live probe was rerun with a real X11 Right-key hold
+through frame 25 and release at the frame-26 marker. It produced exactly 100
+renderer-entry records: slots 1 and 2 once each for every frame 1--50. The
+former duplicate `first`/`drawn` groups are gone. Slot 1 selected animation 1
+on frame 2, remained animation 1 through frame 26, and advanced past the old
+pose-3 ceiling to pose 22 on frame 5. Slot 2 selected animation 1 on frame 17
+and advanced from pose 41 to pose 17. Release became observable on frame 27;
+both sprites selected animation 0, completed the idle transition, and settled
+with wait 0 instead of restarting every frame.
+
+This is positive evidence at the renderer consumer: the live controller
+chain selects walk, the stepper advances the selected pose, and release
+returns it to idle. Fault #3 is closed independently of the malformed terrain
+that prevents a useful by-eye character check.
+
+The detached 120-frame terrain rerun also completed normally and fulfilled
+both capture requests at matching frame labels:
+
+- frame 60 BMP: `38c576579443c43004eb2f4a06f730843f8683735312f74c7f7e4d410c80439d`
+- frame 120 BMP: `850ce0f1882fabaa04b8e002a4203c258461f8d680851ead73587102877d6185`
+- artifacts: `scratchpad/w34c1_cadence_final_capture.tmxfrZ/`
+
+The hashes differ, and both captures contain live but densely malformed world
+terrain. The run recorded 121 scheduler entries (one session entry plus 120
+inner frames), zero OT-adapter aborts, and a normal bounded return. Scheduler
+cadence therefore did not account for fault #2; that fault remains
+independently reproducible on the corrected substrate.
+
 ## Verdict and next exact task
 
-`RUNG3=FAIL-CADENCE`
+`RUNG3=PASS-BY-LIVE-STATE`
 
-Rung 3a repaired the controller-source divergence and proved the live chain
-through walk selection, but the renderer-entry discriminator does not pass:
-the drawn walk pose does not advance after frame 3 because the flattened loop
-restarts idle and walk every frame. The by-eye captures remain independently
-obscured by malformed terrain. Per the campaign stop rule, Rungs 4–6 were not
-started.
-
-`NEXT_EXACT_TASK=Restore and certify the retail nested session/frame cadence: execute the 0x80071064 outer scheduler once at world-session entry, recur through wm_800712D0's 0x800719C8 -> 0x8007130C frame back-edge with the bounded frame limit at that inner boundary, and prove that only 0x80071488 updates active sprites per recurring displayed frame; then rerun this exact held/released renderer-entry probe.`
+`NEXT_EXACT_TASK=Run W34C1 Rung 4's bounded mechanical sweep of already-ported world-map helpers for the confirmed wrong-address and host/guest pointer-domain transcription families before resuming the malformed-terrain discriminator.`

@@ -2,7 +2,7 @@
  * World-map frame driver 0x800712D0.
  *
  * Retail boundary: [0x800712D0, 0x80071A50), 643 instructions / 2572 bytes.
- * Per-frame render/update orchestrator. Manages controller input,
+ * Session/frame render-update orchestrator. Manages controller input,
  * queue processing, CD sync, OT management, state-dependent rendering,
  * DrawOTag submission, and display environment setup.
  */
@@ -11,7 +11,24 @@
 
 #include "common.h"
 
+typedef int (*Wm712D0FrameHook)(int frame, void* user);
+
+typedef struct Wm712D0BoundedRun {
+    int frame_limit;
+    int displayed_frames;
+    Wm712D0FrameHook before_frame;
+    Wm712D0FrameHook after_frame;
+    void* user;
+} Wm712D0BoundedRun;
+
+typedef enum Wm712D0RunResult {
+    WM_712D0_RUN_ERROR = -1,
+    WM_712D0_RUN_NATURAL_EXIT = 0,
+    WM_712D0_RUN_BOUNDED_EXIT = 1
+} Wm712D0RunResult;
+
 void wm_800712D0(void);
+Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run);
 void wm_712d0_run_second_scheduler(void);
 
 #endif

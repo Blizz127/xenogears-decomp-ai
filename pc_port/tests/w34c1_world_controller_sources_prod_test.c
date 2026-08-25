@@ -157,15 +157,15 @@ static int test_asymmetric_sources_or_into_retail_destinations(void)
     }
     if (!expect_u16("controller.source.c1_held.native_not_guest_plus_10000",
                     D_8009CD4C, UINT16_C(0x0101)) ||
-        !expect_u16("controller.source.c2_held.or_accumulator", D_8009CD50,
+        !expect_u16("controller.source.c2_held.accumulates_cd50", D_8009CD50,
                     UINT16_C(0x0202)) ||
-        !expect_u16("controller.source.c1_released.or_accumulator", D_8009BD10,
+        !expect_u16("controller.source.c1_released.accumulates_bd10", D_8009BD10,
                     UINT16_C(0x0404)) ||
-        !expect_u16("controller.source.c2_released.or_accumulator", D_8009BD14,
+        !expect_u16("controller.source.c2_released.accumulates_bd14", D_8009BD14,
                     UINT16_C(0x0808)) ||
-        !expect_u16("controller.source.c1_pressed_once.or_accumulator",
+        !expect_u16("controller.source.c1_pressed_once.accumulates_bd18",
                     D_8009BD18, UINT16_C(0x1010)) ||
-        !expect_u16("controller.source.c2_pressed_once.or_accumulator",
+        !expect_u16("controller.source.c2_pressed_once.accumulates_bd1c",
                     D_8009BD1C, UINT16_C(0x2020))) {
         return 0;
     }

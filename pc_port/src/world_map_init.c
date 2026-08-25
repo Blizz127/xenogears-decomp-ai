@@ -1023,9 +1023,12 @@ static int world_frame_prologue_enabled(void)
 {
     /* W34B18-B gate: retail 0x8007106C continuation plus bounded
      * 0x800712D0 .. 0x80071484. Default OFF, requires scheduler.
-     * Hard-cut before 0x80071488 (second scheduler jal). */
+     * Hard-cut before 0x80071488 (second scheduler jal). The active open loop
+     * owns the complete continuation and must not also execute this legacy
+     * one-frame diagnostic body. */
     return env_flag_is_one("XENO_WORLD_FRAME_PROLOGUE") &&
-           world_scheduler_97800_enabled();
+           world_scheduler_97800_enabled() &&
+           !env_flag_is_one("XENO_WORLD_OPEN_LOOP");
 }
 
 static int world_frame_reentry_limit(void)
