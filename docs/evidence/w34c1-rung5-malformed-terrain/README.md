@@ -207,6 +207,39 @@ The distant-patch rate remains an anomaly for a later patch-selection/range
 audit; it is not evidence that the visible fold is caused by GTE projection
 failure.
 
+## Rung 5d — paired vertex lineage
+
+This read-only follow-up ran from `eddc6227` at frame 60, patch 27, cell
+`(0,2)`, second half. Its vertices are grid indices `3/12/11` and project to
+`(196,32)/(180,111)/(172,32)`. The shared GTE state was:
+
+`R=[2896,0,2896;1931,3052,-1932;-2158,2732,2157]`,
+`T=[0,0,1001]`, `OFX=160`, `OFY=140`, `H=256`.
+
+| Grid index | Scratch raw | Signed GTE input `(X,height,Z)` | Pre-shift MAC `(1,2,3)` | Shifted `(1,2,3)` | SZ | XY |
+|---:|---|---|---|---|---:|---|
+| 3 | `0000FD80/00000400` | `(-640,0,1024)` | `(1112064,-3214208,3590889)` | `(271,-785,876)` | 1877 | `(196,32)` |
+| 12 | `0280FD80/00000380` | `(-640,640,896)` | `(741376,-1013632,5063273)` | `(181,-248,1236)` | 2236 | `(180,111)` |
+| 11 | `0000FD00/00000380` | `(-768,0,896)` | `(370688,-3214080,3591017)` | `(90,-785,876)` | 1877 | `(172,32)` |
+
+The GTE input-register words match these three signed vectors; their raw
+16-bit values for negative X values were `0xFD80` and `0xFD00`.
+
+### Rung 5d verdict
+
+`HEIGHT_INPUT`
+
+Index 12 alone enters the GTE with a `+640` scratch height, while its two
+neighbors have height zero. That input changes the transformed Z from 876 to
+1236, the SZ from 1877 to 2236, and screen Y from 32 to 111. The matrix,
+translation, geometry offset, and projection distance are shared across the
+three vertices; no matrix multiply or divide divergence is present.
+
+The next bounded task is read-only provenance for the height at grid index
+12: identify the packed/source element and the exact retail height formula
+used by `wm_80099708`, then compare its address, stride, signed byte, and
+conditional sine contribution against the port.
+
 ## Diagnostic cleanup
 
 After the verdict:
