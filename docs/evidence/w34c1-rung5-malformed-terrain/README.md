@@ -218,12 +218,14 @@ This read-only follow-up ran from `eddc6227` at frame 60, patch 27, cell
 
 | Grid index | Scratch raw | Signed GTE input `(X,height,Z)` | Pre-shift MAC `(1,2,3)` | Shifted `(1,2,3)` | SZ | XY |
 |---:|---|---|---|---|---:|---|
-| 3 | `0000FD80/00000400` | `(-640,0,1024)` | `(1112064,-3214208,3590889)` | `(271,-785,876)` | 1877 | `(196,32)` |
-| 12 | `0280FD80/00000380` | `(-640,640,896)` | `(741376,-1013632,5063273)` | `(181,-248,1236)` | 2236 | `(180,111)` |
-| 11 | `0000FD00/00000380` | `(-768,0,896)` | `(370688,-3214080,3591017)` | `(90,-785,876)` | 1877 | `(172,32)` |
+| 3 | `0000FD80/00000400` | `(-640,0,1024)` | `(1112064,-3214208,7689984)` | `(271,-785,1877)` | 1877 | `(196,32)` |
+| 12 | `0280FD80/00000380` | `(-640,640,896)` | `(741376,-1013632,9162368)` | `(181,-248,2236)` | 2236 | `(180,111)` |
+| 11 | `0000FD00/00000380` | `(-768,0,896)` | `(370688,-3214080,7690112)` | `(90,-785,1877)` | 1877 | `(172,32)` |
 
 The GTE input-register words match these three signed vectors; their raw
 16-bit values for negative X values were `0xFD80` and `0xFD00`.
+The pre-shift reconstruction applies translation as `TR << 12`, matching the
+GTE MAC equation; the earlier table incorrectly used the unscaled `TRZ`.
 
 ### Rung 5d verdict
 
