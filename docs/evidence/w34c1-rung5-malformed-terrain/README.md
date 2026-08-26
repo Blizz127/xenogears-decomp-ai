@@ -147,6 +147,56 @@ screen, depth, and `NormalClip` gates. The runtime discriminator must
 therefore log each *attempted* cell and split half as well as the vertex
 indices, scratch values, and accepted/rejected outcome.
 
+## Rung 5b — vertex/scratch discriminator
+
+This follow-up was read-only and ran from `8479b1e4` with the same detached
+120-frame scripted-input substrate. Temporary instrumentation in
+`wm_8009980C` recorded all attempted halves at frame 60; it was removed
+before the normal rebuild. The complete log and paired capture are retained
+under `scratchpad/w34c1_rung5b_allpatch.XQ8wij/`.
+
+- Patches reached: **100**
+- Attempts per patch: **128/128** in every case
+- Total attempts: **12,800**
+- Accepted: **392**
+- Rejected at projection / screen / depth / `NormalClip`:
+  **8,186 / 3,686 / 157 / 379**
+- Index mismatches: **0**
+- Scratch-grid X/Z mismatches: **0**
+- Frame-60 capture SHA-256:
+  `38c576579443c43004eb2f4a06f730843f8683735312f74c7f7e4d410c80439d`
+
+The first selected patch was wholly off-screen, so the final run widened the
+same probe across all patches rather than treating that empty patch as a gate
+failure. Productive patches 25, 26, and 27 respectively accepted
+**64/128**, **62/128**, and **63/128**. Their first 16 attempts resolved the
+retail index layouts exactly. For example, patch 27's `(0,2)` halves resolve
+to `2/11/3` and `3/12/11`; the latter projects to
+`(196,32)/(180,111)/(172,32)` and is accepted, while its neighboring first
+half is rejected by `NormalClip` from its already-projected XY. The abrupt
+vertical change is therefore present before that gate consumes it.
+
+Raw eight-byte values were captured for every sampled vertex. The defined
+X/Z fields form the expected 9x9 grid in every patch; the high halfword of
+the second word is untouched vertex padding and was not treated as terrain
+data. The sampled height fields contain bounded, source-dependent elevations
+rather than an uninitialized grid or a failed row/column write.
+
+### Rung 5b verdict
+
+`ALL_CLEAN`
+
+The emitter resolves the retail index pattern for all 12,800 attempts, and
+the scratch grid has no X/Z discontinuity. The gates receive the same folded
+XY that appears in accepted packets; they do not mutate geometry or create a
+publication/decode discrepancy. The large whole-frame rejection total spans
+off-screen and distant patches, while productive patches retain visible
+triangles. No gate implementation divergence is proven by this run.
+
+The next bounded investigation is a W34B65-style frame-60 per-vertex
+matrix/projection lineage record for the terrain producer chain, specifically
+the first vertex whose projected Y makes a neighboring triangle fold.
+
 ## Diagnostic cleanup
 
 After the verdict:
