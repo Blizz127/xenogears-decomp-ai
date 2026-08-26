@@ -270,6 +270,39 @@ Rung 5d decoded this halfword as signed `s16` without proving that retail does
 so. Positive values in the current decode render downward on screen; both the
 field width and signedness remain unproven pending the retail consumption seam.
 
+## Rung 5f — height producer term split
+
+The frame-60 capture from the same detached route was visually inspected
+before this trace and still shows the dense malformed terrain, including the
+patch-27 region selected by Rung 5d. The preliminary gate therefore passed.
+
+The read-only producer trace at `wm_80099708` logged all 81 patch-27 cells in
+`scratchpad/w34c1_rung5f.4fZeK9/cells.txt`. Every row's `sine_x_twice` was
+zero (indices `0x400, 0x600, ..., 0x000, ..., 0x400`), and `sine_z` was zero
+in all 81 cells. All 81 cells satisfied `term_a + term_b == height`.
+
+- Conditional sine branch taken: **5/81** cells
+- `term_a = (sine_z * sine_x_twice) >> 20`: **zero in 81/81 cells**
+- Nonzero output cells, all supplied entirely by term B:
+  - index 12: `packed=0x50000000`, `term_b=640`
+  - index 13: `packed=0x5000000B`, `term_b=640`
+  - index 44: `packed=0x078B0B50`, `term_b=56`
+  - index 45: `packed=0xF8740BEC`, `term_b=-64`
+
+### Rung 5f verdict
+
+`SINE_TERM_DEAD`
+
+This is not a shift-rounding effect: both sine operands are zero before the
+product. The trace does not yet establish whether the sine table contents,
+the selected indices, or their upstream initialization diverge from retail,
+but it proves the conditional sine contribution is inert for this entire
+patch. This supersedes the index-12 outlier as the first producer target.
+
+The next bounded task is retail/port provenance for the sine table at
+`0x800523F0` and the `0x8009C618`/`0x8009C5BC` angle inputs, including the
+retail `wm_80099708` table base, index arithmetic, and initialization path.
+
 ## Diagnostic cleanup
 
 After the verdict:
