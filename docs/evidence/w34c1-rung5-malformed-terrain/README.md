@@ -134,6 +134,19 @@ the target is the grid producer or its source data. Only matching indices and
 matching scratch values with folded XY route to a W34B65-style per-vertex
 matrix/projection lineage record.
 
+A second static precheck rules out a wrong diagonal split. Let `00` be
+`(r,c)`, `01` `(r,c+1)`, `10` `(r+1,c)`, and `11` `(r+1,c+1)`. Retail and
+the port both emit:
+
+- bit 15 clear: `(00,10,01)` then `(01,11,10)`;
+- bit 15 set: `(00,10,11)` then `(01,11,00)`.
+
+The existing publication ordinals cannot establish a first-half/second-half
+fold pattern: they increment only for triangles that survive all projection,
+screen, depth, and `NormalClip` gates. The runtime discriminator must
+therefore log each *attempted* cell and split half as well as the vertex
+indices, scratch values, and accepted/rejected outcome.
+
 ## Diagnostic cleanup
 
 After the verdict:
