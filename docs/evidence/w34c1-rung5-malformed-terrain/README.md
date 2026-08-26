@@ -242,6 +242,34 @@ The next bounded task is read-only provenance for the height at grid index
 used by `wm_80099708`, then compare its address, stride, signed byte, and
 conditional sine contribution against the port.
 
+## Rung 5e — terrain height field census
+
+This read-only frame-60 run from `163d6876` dumped the complete raw 9x9 grid
+for patch 27 at entry to `wm_8009980C`, after `wm_80099708` populated it and
+before its first triangle emission. The raw 81-cell artifact is
+`scratchpad/w34c1_rung5e.WyPCtp/grid.txt`; each entry is the requested pair
+of un-decoded `u32` words.
+
+- Height-field cells: **77 zero**, **4 nonzero**
+- Nonzero low-byte frequencies: `0x80: 2`, `0x38: 1`, `0xC0: 1`
+- Nonzero high-byte frequencies: `0x02: 2`, `0x00: 1`, `0xFF: 1`
+- Layout: adjacent pair at row 1, columns 3–4 (`0x0280`); isolated entries
+  at row 4, column 8 (`0x0038`) and row 5, column 0 (`0xFFC0`).
+
+### Rung 5e verdict
+
+`MIXED`
+
+The field is mostly zero and includes two isolated entries, but it also has a
+two-cell `0x0280` cluster. Its nonzero bytes do not have one shared
+low-byte/high-byte pattern that proves a packed-field width or signedness
+error, nor do they establish a smooth authored height field. The census
+therefore does not justify either a producer repair or retiring fault #2.
+
+Rung 5d decoded this halfword as signed `s16` without proving that retail does
+so. Positive values in the current decode render downward on screen; both the
+field width and signedness remain unproven pending the retail consumption seam.
+
 ## Diagnostic cleanup
 
 After the verdict:
