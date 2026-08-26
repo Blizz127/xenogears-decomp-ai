@@ -124,10 +124,15 @@ Under the Rung 5 routing rule, the malformed geometry is upstream of the
 adapter. The next task is a read-only frame-60 connectivity discriminator in
 `wm_8009980C`: record the row/column and 9x9 scratch-grid source index for
 each of the three vertices of the first folded published triangles, alongside
-their final XY. Compare that triangle-strip walk with retail. If an index
-diverges, the bounded repair target is the vertex walk/stride; only matching
-indices with folded XY route to a W34B65-style per-vertex matrix/projection
-lineage record.
+their raw 8-byte scratch values and final XY. Compare that triangle-strip walk
+with retail. A static precheck already rules out an edge overrun: retail fills
+9 rows x 9 columns and emits 8 rows x 8 columns, exactly matching the port's
+`row < 9`/`column < 9` producer and `row < 8`/`column < 8` emitter. If an
+index diverges, the bounded repair target is the vertex walk/stride. If the
+indices match but the scratch values differ from their expected grid entries,
+the target is the grid producer or its source data. Only matching indices and
+matching scratch values with folded XY route to a W34B65-style per-vertex
+matrix/projection lineage record.
 
 ## Diagnostic cleanup
 
