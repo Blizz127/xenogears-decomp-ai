@@ -197,6 +197,16 @@ The next bounded investigation is a W34B65-style frame-60 per-vertex
 matrix/projection lineage record for the terrain producer chain, specifically
 the first vertex whose projected Y makes a neighboring triangle fold.
 
+### Noted, not investigated: distant-patch projection rejects
+
+The all-patch count includes **8,186** negative-`FLAG` projection rejections,
+but productive patches 25, 26, and 27 each have **zero** such rejections.
+A targeted read-only follow-up consequently produced no negative-`FLAG`
+samples in those visible patches: their folds are valid projected geometry.
+The distant-patch rate remains an anomaly for a later patch-selection/range
+audit; it is not evidence that the visible fold is caused by GTE projection
+failure.
+
 ## Diagnostic cleanup
 
 After the verdict:
