@@ -82,7 +82,13 @@ pointer in `C184` (`slot_guest_domain`), M6 centre pass skipped
 
 ## Next (one task)
 
-W34B59b — re-derive `wm_80097244`/`wm_80097440` per
-`scratchpad/w34b58_evidence/W34B59_PART1_STOP.md` (camera matrix rot **and**
-translation to `0x8009C808`, angles from `0x8009BD38/3A/3C` negated, base
-matrix `0x8009A180`), certificate M1–M7, then re-capture frame 60.
+Correction: the camera matrix pair was already re-derived in `087241d7`
+(certified by `run_w34b60_camera.sh` / `run_w34b65_camera_record.sh`); a
+hardware watchpoint on `0x8009C808` shows it as the sole writer, and a
+rebuild with the pre-fix bodies renders a black frame 60. So at `fb44a496`
+frame 60 is drawn from authored tiles through the retail camera and is still
+malformed. Next producer to check is the tile→vertex→packet path with real
+data: `wm_80099708`'s scratch-grid layout and `wm_8009980C`'s vertex
+indexing/emission against retail `[0x80099708,0x8009980C)` and
+`[0x8009980C,0x80099BFC)` (W34C6, read-only first: dump one tile's 81
+packed words, the 81 scratch vertices, and the emitted XYs at frame 60).
