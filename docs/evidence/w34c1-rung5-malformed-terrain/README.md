@@ -355,3 +355,7 @@ Rung 5f were camera-matrix words, not authored terrain. Queued as **W34C3**
 the `0x800523F0` sine table is now resident and Rung 5f's term A is nonzero
 in every branch-taken cell (`docs/evidence/w34c2-static-data-load/`). Frame
 60 still shows the malformed terrain; the sine table was not its cause.
+
+W34C3 result: no drawn tile has an allocated slot — the port's `981C8` emits
+tile numbers ≥256 for a 256-tile world and `97DC0` allocates 11/81 window
+tiles; see `docs/evidence/w34c3-tile-slot-population/`.
