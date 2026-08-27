@@ -64,3 +64,21 @@ the `0x8009D534` matrix source, `0x8009C808`, the composite at scratch+0x370,
 the position `0x8009BBB4`, and the first two rows of scratch vertices; then
 establish the retail producer of `0x8009D534` (rule 1) and compare
 `wm_8009980C`'s vertex indexing/projection against `[0x8009980C,0x80099BFC)`.
+
+## W34C7 seed (read-only dump at frame 60, first two dispatches)
+
+Banked in the artifact directory (`w34c7_seed_dump.txt`, harness
+`w34c7_seed.gdb`, retail `9980C` listing):
+
+- `0x8009D534` matrix source = identity (retail writer: `97BC0`,
+  `0x80097BE4-0x80097C18` and `0x80097CDC-0x80097D10`); composite at
+  scratch+0x370 therefore equals `0x8009C808`
+  (`R=[0B50,0000,0B50; 0916,0988,F6E9; F942,0CDA,06BD]`, `T=[0,0,0x460]`).
+- world position `0x8009BBB4` = `(0,0,0)`; origin for the first dispatch
+  `x=-0x1000, z=0x1000` — consistent with retail `0x80099438-44`.
+- first tile row (source data): `021bbbb0 01debb70 00884480 06444668
+  06644664 08448464 00844448 00001308 00440000`; scratch row 0 (producer
+  output): heights `-656, +905, -1024, +832, +800, +800, …` at x pitch 0x80
+  — the vertical-spike field. Whether `wm_8009980C` is meant to scale or
+  index these differently is the open question; its vertex path against
+  retail `[0x8009980C,0x80099BFC)` is unverified.
