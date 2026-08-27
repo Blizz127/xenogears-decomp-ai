@@ -166,6 +166,7 @@
 #include "world_map_scheduler.h"
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
+#include "world_map_helper_73448.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -6863,6 +6864,35 @@ static int world_map_dispatch_mode_init_once(void)
     return wm_80071CDC_mode_init();
 }
 
+
+/* W34C9 — retail entry sequence 0x800723D4-0x80072434, between W8B and W10A:
+ *   if (lhu 0x8006EE6A != 0)            jal 0x80073398        (not transcribed)
+ *   else if (lw 0x8009C894 != 0)        jal 0x8007565C; 0x80075D4C (restore; not transcribed)
+ *   else                                jal 0x80073448(lw 0x8009D3D4)  (fresh placement)
+ * The two untranscribed branches are logged, never faked. */
+static int wm_entry_placement(void)
+{
+    u16 ee6a = WM_U16(0x8006EE6Au);
+    u32 c894 = WM_U32(0x8009C894u);
+    s32 world_index = (s32)WM_U32(WM_ARG2_STATE_ABS);
+
+    if (ee6a != 0u) {
+        fprintf(stderr, "[worldmap-entry-placement] 0x8006EE6A=%u: retail "
+                "0x80073398 branch not transcribed; skipped\n", ee6a);
+        return 0;
+    }
+    if (c894 != 0u) {
+        fprintf(stderr, "[worldmap-entry-placement] C894=%u: retail restore "
+                "0x8007565C/0x80075D4C not transcribed; skipped\n", c894);
+        return 0;
+    }
+    wm_80073448(world_index);
+    fprintf(stderr, "[worldmap-entry-placement] 0x80073448 index=%d -> "
+            "C5AC=0x%08x C5B0=0x%08x C5B4=0x%08x\n", world_index,
+            WM_U32(0x8009C5ACu), WM_U32(0x8009C5B0u), WM_U32(0x8009C5B4u));
+    return 0;
+}
+
 void PcPort_WorldMapInitMain(void)
 {
     int decoded_size;
@@ -6989,6 +7019,10 @@ void PcPort_WorldMapInitMain(void)
                             if (wm_80098044_cross_product_init() != 0) {
                                 fprintf(stderr,
                                         "[worldmap-cross-products] failed; "
+                                        "still entering placeholder\n");
+                            } else if (wm_entry_placement() != 0) {
+                                fprintf(stderr,
+                                        "[worldmap-entry-placement] failed; "
                                         "still entering placeholder\n");
                             } else if (world_gpu_asset_a_enabled()) {
                                 fprintf(stderr,
