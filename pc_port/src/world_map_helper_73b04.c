@@ -203,6 +203,25 @@ static void wm_73b04_insert_four(u32 ot_address, u32 packet0, u32 packet1)
     }
 }
 
+/* W34C2: retail reads the OT depth shift from main-exe .sdata 0x80050100,
+ * which the world overlay writes (=2) at 0x800847D8 inside the unported
+ * function [0x80084580,0x80084818). The port's authority for that slot is the
+ * host global D_80050100 in game_overrides.c, shared with the natively
+ * translated primitive walkers. Reading the guest twin through PSX_ADDR
+ * yields 0 before the static-data loader and only the static initial value
+ * after it; the runtime writer is not ported, so the host global is the one
+ * place both walkers and this helper agree on. */
+extern s32 D_80050100;
+
+s32 wm_73b04_ot_shift(void)
+{
+#if defined(WM_73B04_MUTANT_GUEST_SHIFT)   /* W34C2 M3: PSX_ADDR read */
+    return wm_73b04_bits_as_s32(wm_73b04_load_u32(WM_73B04_SHIFT));
+#else
+    return D_80050100;
+#endif
+}
+
 void wm_80073B04(void)
 {
     SVECTOR* angles = (SVECTOR*)PSX_ADDR(WM_73B04_SCRATCH_ANGLES);
@@ -319,7 +338,7 @@ void wm_80073B04(void)
     {
         u32 db = wm_73b04_load_u32(WM_73B04_DB_PTR);
         u32 ot_base = wm_73b04_load_u32(db + 0x70u);
-        s32 shift = wm_73b04_bits_as_s32(wm_73b04_load_u32(WM_73B04_SHIFT));
+        s32 shift = wm_73b04_ot_shift();
         s32 bucket;
 #if defined(WM_73B04_MUTANT_M6)
         (void)shift;

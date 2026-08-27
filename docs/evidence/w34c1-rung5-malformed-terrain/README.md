@@ -343,3 +343,15 @@ After the verdict:
 - the three temporarily instrumented production files had zero tracked diff;
 - a normal `./pc_port/build_port.sh` completed with `LINK OK`;
 - no Rung 4 or Rung 6 work was started.
+
+## Supersession — W34C2 (2026-08-26)
+
+The Rung 5d/5e/5f height-outlier line is superseded. Patch 27's tile source
+`0x000003CC` is a NULL heap slot (`0x8009C184` table, `97dc0`/`98cc0`
+allocation path) plus the `+0x3CC` quadrant offset, so `wm_8009932C` handed
+`wm_80099708` the scratchpad alias `g_PsxRam+0x3CC`; the "packed" words in
+Rung 5f were camera-matrix words, not authored terrain. Queued as **W34C3**
+(tile slot population). Separately, W34C2 loaded the main-exe rodata/sdata:
+the `0x800523F0` sine table is now resident and Rung 5f's term A is nonzero
+in every branch-taken cell (`docs/evidence/w34c2-static-data-load/`). Frame
+60 still shows the malformed terrain; the sine table was not its cause.

@@ -10,6 +10,7 @@
 #ifndef XENO_PSX_MEMORY_H
 #define XENO_PSX_MEMORY_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* 2 MB main RAM + 1 MB guard (some buffers near the top of RAM can overrun;
@@ -24,5 +25,42 @@ extern uint8_t g_PsxScratchpad[];
 #define PSX_ADDR(addr) ((void*)(g_PsxRam + ((uintptr_t)(addr) & 0x1FFFFF)))
 
 void PsxMemory_Init(void);
+
+/* W34C2 — PS-X static data load path.
+ *
+ * SLUS_006.64 is a PS-X EXE: 0x800-byte header, then t_size bytes that the
+ * PS1 loader copies to t_addr (0x80010000). The port runs natively-translated
+ * C and never loaded that image, so every port site that rebases a main-exe
+ * data address through PSX_ADDR read zeros. The initialized sections are
+ * (config/slus_006.64.yaml subsegments):
+ *   rodata [0x80010000,0x80019524)   copied
+ *   .text  [0x80019524,0x8004EA90)   NOT copied (no PSX_ADDR consumer reads it)
+ *   sdata  [0x8004EA90,0x800576E4)   copied
+ *   ._49AC0 island (ELF 0x80097704)  NOT copied (inside the world overlay's
+ *                                    text range; order-dependent corruption)
+ */
+#define PSX_EXE_HEADER_SIZE   0x800u
+#define PSX_EXE_LOAD_BASE     0x80010000u
+#define PSX_EXE_RODATA_START  0x80010000u
+#define PSX_EXE_RODATA_END    0x80019524u
+#define PSX_EXE_TEXT_START    0x80019524u
+#define PSX_EXE_TEXT_END      0x8004EA90u
+#define PSX_EXE_SDATA_START   0x8004EA90u
+#define PSX_EXE_SDATA_END     0x800576E4u
+#define PSX_EXE_SBSS_START    0x800576E4u
+#define PSX_EXE_IMAGE_END     0x80059800u
+#define PSX_EXE_ISLAND_FILE   0x49AC0u
+#define PSX_EXE_ISLAND_START  0x80097704u
+#define PSX_EXE_ISLAND_END    0x80097C44u
+
+/* Copy the initialized data sections of a PS-X EXE image (whole file, header
+ * included) into g_PsxRam. Returns 0 on success, -1 if the image is not a
+ * PS-X EXE for load base 0x80010000 or is too short. */
+int PsxMemory_LoadStaticDataFromImage(const uint8_t* image, size_t size);
+
+/* Locate SLUS_006.64 (XENO_SLUS, else beside the disc image defaults) and
+ * load it. Returns 0 on success; on failure g_PsxRam is left untouched and a
+ * diagnostic is printed (the pre-W34C2 zero-filled behaviour). */
+int PsxMemory_LoadStaticData(void);
 
 #endif /* XENO_PSX_MEMORY_H */

@@ -151,6 +151,7 @@ static void seed_case(u16 theta, u32 index, s32 shift, s32 depth)
     store_u32(DB_PTR_ADDR, DB_ADDR);
     store_u32(DB_ADDR + 0x70u, OT_BASE);
     store_u32(SHIFT_ADDR, (u32)shift);
+    D_80050100 = shift; /* W34C2: host authority for the OT shift */
     for (i = 0u; i < 0x400u; i++)
         store_u32(OT_BASE + i * 4u, 0xA5000000u | (0x1000u + i));
 

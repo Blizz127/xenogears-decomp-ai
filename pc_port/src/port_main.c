@@ -1201,6 +1201,8 @@ int main(int argc, char** argv) {
 
     /* 1. PSX main-RAM emulation must come first (PSX_ADDR targets live here). */
     PsxMemory_Init();
+    /* W34C2: main-exe rodata/sdata into guest RAM (PSX_ADDR consumers). */
+    (void)PsxMemory_LoadStaticData();
 
     /* Parse the optional deterministic input schedule before game startup. */
     if (PcPort_TestInputInit() != 0)
