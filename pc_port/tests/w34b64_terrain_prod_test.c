@@ -344,18 +344,21 @@ static void run_submit_test(void)
     check(read32(0x8009D7DCu) == 128u, "submit emits two triangles per cell");
     check(projection_calls == 128 && nclip_calls == 128,
           "submit projects and clips every triangle");
+    /* Retail 0x800998D8-0x8009990C: V0 = vertex, V1 = vertex+8 (bit 15 clear),
+     * V2 = vertex+0x48 (lwc2 $4/$5). */
     check(projected_vertices[0][0] == 0x1F800000u &&
-              projected_vertices[0][1] == 0x1F800048u &&
-              projected_vertices[0][2] == 0x1F800008u,
-          "clear orientation triangle one order");
+              projected_vertices[0][1] == 0x1F800008u &&
+              projected_vertices[0][2] == 0x1F800048u,
+          "triangle A vertex order (bit 15 clear)");
     check(projected_vertices[1][0] == 0x1F800008u &&
               projected_vertices[1][1] == 0x1F800050u &&
               projected_vertices[1][2] == 0x1F800048u,
           "clear orientation triangle two order");
+    /* Retail 0x800998F0: bit 15 set -> V1 = vertex+0x50, V2 = vertex+0x48. */
     check(projected_vertices[2][0] == 0x1F800008u &&
-              projected_vertices[2][1] == 0x1F800050u &&
-              projected_vertices[2][2] == 0x1F800058u,
-          "set orientation triangle one order");
+              projected_vertices[2][1] == 0x1F800058u &&
+              projected_vertices[2][2] == 0x1F800050u,
+          "triangle A vertex order (bit 15 set)");
     check(projected_vertices[3][0] == 0x1F800010u &&
               projected_vertices[3][1] == 0x1F800058u &&
               projected_vertices[3][2] == 0x1F800008u,

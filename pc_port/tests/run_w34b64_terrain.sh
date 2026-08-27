@@ -69,4 +69,19 @@ if [[ "$rc" -eq 0 ]] || ! rg -q 'grid Y follows packed height contract' "$BUILD_
 fi
 echo "grid mutant HIGH_BYTE: DETECTED (rc=$rc)"
 
+# W34C7 mutant: the pre-W34C7 submitter passed triangle A's V1/V2 swapped
+# (retail 0x800998D8-0x8009990C). Must be detected by the vertex-order check.
+"$CC" "${BASE[@]}" "${INC[@]}" -w -DW34B64_SUBMIT_TEST -DWM_9980C_MUTANT_SWAPPED_FIRST -O0 \
+    pc_port/tests/w34b64_terrain_prod_test.c pc_port/src/psx_memory.c \
+    pc_port/src/world_map_helper_9980c.c -o "$BUILD_DIR/submit_mutant_swapped_first"
+set +e
+"$BUILD_DIR/submit_mutant_swapped_first" >"$BUILD_DIR/submit_mutant_swapped_first.raw" 2>&1
+rc=$?
+set -e
+if [[ "$rc" -eq 0 ]] || ! rg -q 'triangle A vertex order' "$BUILD_DIR/submit_mutant_swapped_first.raw"; then
+    echo "submit mutant SWAPPED_FIRST not detected (rc=$rc)" >&2
+    exit 1
+fi
+echo "submit mutant SWAPPED_FIRST: DETECTED (rc=$rc)"
+
 echo "W34B64 TERRAIN CERTIFICATE PASS; O0/O2/UBSan; strict warnings clean"

@@ -178,20 +178,39 @@ void wm_8009980C(u32 tile_data, u32 ot_base, u32 packet_base)
             wm_9980c_colors(packed, colors);
             if (packet_count >= 0x7FEu)
                 goto complete;
+            /* Triangle A, retail 0x800998D8-0x8009990C: V0 = vertex,
+             * V2 = vertex+0x48 (lwc2 $4/$5), V1 = vertex+0x50 when bit 15
+             * is set (lwc2 $2/$3 at 0x800998F0) else vertex+8 (0x80099900).
+             * Colours: +0xC = colors[0], +0x14 = colors[3] / colors[1],
+             * +0x1C = colors[2]. */
             if ((packed & 0x8000u) != 0u) {
+#if defined(WM_9980C_MUTANT_SWAPPED_FIRST)   /* pre-W34C7 shape */
                 (void)wm_9980c_emit_triangle(
                     vertex, vertex + 0x48u, vertex + 0x50u, packed,
                     colors[0], colors[3], colors[2], ot_base, &packet,
                     &packet_count);
+#else
+                (void)wm_9980c_emit_triangle(
+                    vertex, vertex + 0x50u, vertex + 0x48u, packed,
+                    colors[0], colors[3], colors[2], ot_base, &packet,
+                    &packet_count);
+#endif
                 (void)wm_9980c_emit_triangle(
                     vertex + 8u, vertex + 0x50u, vertex, packed,
                     colors[1], colors[3], colors[0], ot_base, &packet,
                     &packet_count);
             } else {
+#if defined(WM_9980C_MUTANT_SWAPPED_FIRST)
                 (void)wm_9980c_emit_triangle(
                     vertex, vertex + 0x48u, vertex + 8u, packed,
                     colors[0], colors[1], colors[2], ot_base, &packet,
                     &packet_count);
+#else
+                (void)wm_9980c_emit_triangle(
+                    vertex, vertex + 8u, vertex + 0x48u, packed,
+                    colors[0], colors[1], colors[2], ot_base, &packet,
+                    &packet_count);
+#endif
                 (void)wm_9980c_emit_triangle(
                     vertex + 8u, vertex + 0x50u, vertex + 0x48u, packed,
                     colors[1], colors[3], colors[2], ot_base, &packet,
