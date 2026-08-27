@@ -44,6 +44,20 @@ static s32 wm_99708_sign8(u32 value)
     return low < 0x80u ? (s32)low : (s32)(low | 0xFFFFFF00u);
 }
 
+
+/* Base height term: retail 0x80099790-94 (`sll v1,v1,0x18; sra v1,v1,0x15`)
+ * and 0x800997AC-B0 (`sll v0,v1,0x18; sra v0,v0,5`) sign-extend the LOW byte
+ * of the packed word and multiply by 8. The high byte is colour (see
+ * 0x80099858-70 in wm_8009980C). */
+static s32 wm_99708_base_height(u32 packed)
+{
+#if defined(WM_99708_MUTANT_HIGH_BYTE)      /* pre-W34C6 shape */
+    return wm_99708_sign8(packed >> 24) * 8;
+#else
+    return wm_99708_sign8(packed) * 8;
+#endif
+}
+
 void wm_80099708(u32 tile_data, u32 ot_base, u32 packet_base, u32 origin)
 {
     u32 scratch = WM_99708_SCRATCH;
@@ -72,10 +86,10 @@ void wm_80099708(u32 tile_data, u32 ot_base, u32 packet_base, u32 origin)
                     WM_99708_SINE_TABLE + sine_z_index * 4u);
                 int64_t product = (int64_t)sine_z * (int64_t)sine_x_twice;
                 s32 height = (s32)(product >> 20) +
-                             wm_99708_sign8(packed >> 24) * 8;
+                             wm_99708_base_height(packed);
                 vertex_y = (u32)height << 16;
             } else {
-                vertex_y = (u32)(wm_99708_sign8(packed >> 24) * 8) << 16;
+                vertex_y = (u32)wm_99708_base_height(packed) << 16;
             }
 
             wm_99708_sw(scratch, vertex_y | ((u32)x & 0xFFFFu));

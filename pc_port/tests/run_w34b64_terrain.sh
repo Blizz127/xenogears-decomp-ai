@@ -54,4 +54,19 @@ for component in dispatch grid submit; do
     cmp "$BUILD_DIR/${component}_O0.stdout" "$BUILD_DIR/${component}_UBSan.stdout"
 done
 
+# W34C6 mutant: the pre-W34C6 grid took the base height from the HIGH byte of
+# the packed word (retail 0x80099790-94 uses the low byte). Must be detected.
+"$CC" "${BASE[@]}" "${INC[@]}" -w -DW34B64_GRID_TEST -DWM_99708_MUTANT_HIGH_BYTE -O0 \
+    pc_port/tests/w34b64_terrain_prod_test.c pc_port/src/psx_memory.c \
+    pc_port/src/world_map_helper_99708.c -o "$BUILD_DIR/grid_mutant_high_byte"
+set +e
+"$BUILD_DIR/grid_mutant_high_byte" >"$BUILD_DIR/grid_mutant_high_byte.raw" 2>&1
+rc=$?
+set -e
+if [[ "$rc" -eq 0 ]] || ! rg -q 'grid Y follows packed height contract' "$BUILD_DIR/grid_mutant_high_byte.raw"; then
+    echo "grid mutant HIGH_BYTE not detected (rc=$rc)" >&2
+    exit 1
+fi
+echo "grid mutant HIGH_BYTE: DETECTED (rc=$rc)"
+
 echo "W34B64 TERRAIN CERTIFICATE PASS; O0/O2/UBSan; strict warnings clean"

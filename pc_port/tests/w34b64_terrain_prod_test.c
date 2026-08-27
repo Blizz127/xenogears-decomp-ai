@@ -72,7 +72,8 @@ void wm_8009980C(u32 tile_data, u32 ot_base, u32 packet_base)
 
 static s16 expected_y(u32 packed, s16 sine_x, s16 sine_z)
 {
-    s32 signed_height = (s32)(s8)(packed >> 24) * 8;
+    /* Retail 0x80099790-94 / 0x800997AC-B0: low byte, sign-extended, x8. */
+    s32 signed_height = (s32)(s8)(packed & 0xFFu) * 8;
 
     if ((packed & 0x1000u) != 0u) {
         int64_t product = (int64_t)sine_z * (int64_t)((s32)sine_x * 2);
