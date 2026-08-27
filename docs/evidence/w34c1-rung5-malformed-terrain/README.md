@@ -299,9 +299,40 @@ the selected indices, or their upstream initialization diverge from retail,
 but it proves the conditional sine contribution is inert for this entire
 patch. This supersedes the index-12 outlier as the first producer target.
 
+This result does not explain the patch's 77 zero-height cells: the sine
+branch is taken in only 5/81 cells, so the remaining flatness has the separate
+cause that their source bytes are zero. This is a limitation on the scope of
+the `SINE_TERM_DEAD` verdict, not a correction to it.
+
 The next bounded task is retail/port provenance for the sine table at
 `0x800523F0` and the `0x8009C618`/`0x8009C5BC` angle inputs, including the
 retail `wm_80099708` table base, index arithmetic, and initialization path.
+
+## Rung 5g — camera matrix residency
+
+This read-only frame-60 trace ran at entry to `wm_80099708` for the patch-27
+source (`0x000003CC`). Raw 32-byte snapshots were:
+
+- `0x8009C808`: `00000B50 078B0B50 F8740BEC 0AACF792 0000086D 00000000 00000000 000003E9`
+- `0x8009BD40`: `FD63020F 0000FDF0 00000000 00000000 FFFFF000 00000000 00000000 00000000`
+- `0x8009A180`: `00001000 00000000 00001000 00000000 00001000 00000000 00000000 00000000`
+- `0x8009BD38` angle halfwords: `FE24 0E00 0000`
+
+The live GTE state was
+`R=[0B50,0000,0B50;078B,0BEC,F874;F792,0AAC,086D]`,
+`T=[00000000,00000000,000003E9]`. It exactly matches the matrix at
+`0x8009C808`, including translation. In signed decimal this is the Rung 5d
+state `R=[2896,0,2896;1931,3052,-1932;-2158,2732,2157]`, `T=[0,0,1001]`.
+
+### Rung 5g verdict
+
+`CAMERA_FROM_C808`
+
+The live terrain GTE state is sourced from the shared camera matrix at
+`0x8009C808`; `0x8009BD40` is not the matrix that reaches the GTE at this
+seam. This establishes port memory residency only and does not reconcile the
+camera construction against retail. The Rung 5f sine-table investigation is
+therefore unaffected.
 
 ## Diagnostic cleanup
 
