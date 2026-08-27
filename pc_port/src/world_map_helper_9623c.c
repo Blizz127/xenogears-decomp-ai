@@ -55,22 +55,44 @@ s32 wm_800962B0(u32 word0, u32 word1, u32 word2, u32 word3)
     return 0;
 }
 
-/* wm_800963E4: record initializer (zero-fill pattern) */
+/* wm_800963E4 — retail [0x800963E4, 0x800964B0): sort a 12-byte record
+ * block {sector, size, buf} ascending by sector (bubble sort with the
+ * record swap at 0x80096418-0x80096470, walking back one record after a
+ * swap at 0x80096480-88, forward otherwise at 0x8009648C-90, until a record
+ * with sector == 0 (0x80096494-9C). Nothing is written if the second record
+ * is empty (0x800963EC-F4). W34C11: the previous body wrote 0x09000000 and
+ * zeros over the block (no retail counterpart). */
 void wm_800963E4(u32 record_addr)
 {
-    q_sw(record_addr + 0, 0x09000000);
-    q_sw(record_addr + 4, 0);
-    q_sw(record_addr + 8, 0);
-    q_sw(record_addr + 12, 0);
-    q_sw(record_addr + 16, 0);
-    q_sw(record_addr + 20, 0);
-    q_sw(record_addr + 24, 0);
-    q_sw(record_addr + 28, 0);
-    q_sw(record_addr + 32, 0);
-    q_sw(record_addr + 36, 0);
-    q_sw(record_addr + 40, 0);
-    q_sw(record_addr + 44, 0);
-    q_sw(record_addr + 48, 0);
+    u32 cur = record_addr;
+    u32 next = record_addr + 12u;
+
+#if defined(WM_963E4_MUTANT_M6)             /* pre-W34C11 shape */
+    { u32 i; q_sw(record_addr, 0x09000000u); for (i = 4u; i < 52u; i += 4u) q_sw(record_addr + i, 0u); return; }
+#endif
+    if (q_lw(next) == 0u)
+        return;
+    for (;;) {
+        u32 cs = q_lw(cur), ns = q_lw(next);
+#if defined(WM_963E4_MUTANT_M7)             /* no ordering */
+        if (0) {
+#elif defined(WM_963E4_MUTANT_M8)           /* descending */
+        if (ns > cs) {
+#else
+        if (ns < cs) {                      /* 0x8009640C sltu next < cur */
+#endif
+            u32 t1 = q_lw(cur + 4u), t2 = q_lw(cur + 8u);
+            q_sw(cur, ns); q_sw(cur + 4u, q_lw(next + 4u)); q_sw(cur + 8u, q_lw(next + 8u));
+            q_sw(next, cs); q_sw(next + 4u, t1); q_sw(next + 8u, t2);
+            if (record_addr < cur) {        /* 0x80096474 sltu a2 < a1 */
+                cur -= 12u; next -= 12u;    /* 0x80096480-88 */
+            }
+        } else {
+            cur += 12u; next += 12u;        /* 0x8009648C-90 */
+        }
+        if (q_lw(next) == 0u)               /* 0x80096494-9C */
+            break;
+    }
 }
 
 /* wm_800964B0: record copier (40-byte records) */

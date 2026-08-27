@@ -1306,17 +1306,17 @@ static void wm_80095F78(void)
             pClr[-i] = 0; /* retail walks 16 words downward from D7C4 */
 
         p = HeapAlloc(0x4200, 0);
-        WM_U32(WM_ALLOC_BE08_ABS) = (u32)(uintptr_t)p;
+        WM_U32(WM_ALLOC_BE08_ABS) = host_ptr_to_psx_u32(p); /* W34C11: guest address */
         p = HeapAlloc(0x800, 0);
-        WM_U32(WM_ALLOC_D7D4_ABS) = (u32)(uintptr_t)p;
+        WM_U32(WM_ALLOC_D7D4_ABS) = host_ptr_to_psx_u32(p); /* W34C11: spill buffer, guest address */
     } else {
         u32* pClr = (u32*)PSX_ADDR(WM_CLR_C660_ABS);
         for (i = 0; i < 0x10; i++)
             pClr[-i] = 0;
         p = HeapAlloc(0x5800, 0);
-        WM_U32(WM_ALLOC_D3C0_ABS) = (u32)(uintptr_t)p;
+        WM_U32(WM_ALLOC_D3C0_ABS) = host_ptr_to_psx_u32(p); /* W34C11: guest address */
         p = HeapAlloc(0x800, 0);
-        WM_U32(WM_ALLOC_D7D4_ABS) = (u32)(uintptr_t)p;
+        WM_U32(WM_ALLOC_D7D4_ABS) = host_ptr_to_psx_u32(p); /* W34C11: spill buffer, guest address */
     }
 
     WM_U32(WM_CLR_D808_ABS) = 0;

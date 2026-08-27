@@ -14,6 +14,6 @@
 #include "common.h"
 
 void wm_800966CC(u32 file_table);
-void wm_8009699C(u32 addr, u32 val1, u32 val2);
+void wm_8009699C(u32 list);
 
 #endif
