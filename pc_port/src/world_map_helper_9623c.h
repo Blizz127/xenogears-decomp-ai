@@ -27,7 +27,6 @@ void wm_800964B0(u32 src, u32 dst);
 void wm_800968E0(u32 addr, u32 count);
 
 /* Queue counter reset */
-void wm_800980D4(void);
 
 /* Queue flush helper */
 void wm_80099708(u32 tile_data, u32 ot_base, u32 packet_base, u32 origin);

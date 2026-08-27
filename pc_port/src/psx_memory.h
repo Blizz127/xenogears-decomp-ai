@@ -26,6 +26,20 @@ extern uint8_t g_PsxScratchpad[];
 
 void PsxMemory_Init(void);
 
+/* Guest (KUSEG) address of a host pointer that lies inside g_PsxRam; 0 for
+ * NULL. HeapAlloc returns host pointers into g_PsxRam, while retail tables
+ * store guest addresses that other port code rebases through PSX_ADDR. */
+static inline uint32_t PsxMemory_GuestAddr(const void* p)
+{
+    uintptr_t host = (uintptr_t)p;
+    uintptr_t base = (uintptr_t)g_PsxRam;
+    if (p == NULL)
+        return 0u;
+    if (host >= base && host < base + (uintptr_t)PSX_RAM_SIZE)
+        return 0x80000000u | (uint32_t)(host - base);
+    return (uint32_t)host;
+}
+
 /* W34C2 — PS-X static data load path.
  *
  * SLUS_006.64 is a PS-X EXE: 0x800-byte header, then t_size bytes that the

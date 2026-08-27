@@ -51,7 +51,8 @@ void wm_80098CC0(void)
             }
             if (!found) {
                 /* Not in active list — free it */
-                HeapFree((void*)(uintptr_t)a98_lw(D_8009C184 + (u32)slot_id * 4));
+                /* W34C5: slots hold guest addresses. */
+                HeapFree(PSX_ADDR(a98_lw(D_8009C184 + (u32)slot_id * 4)));
                 a98_sw(D_8009C184 + (u32)slot_id * 4, 0);
             }
         }
@@ -76,11 +77,11 @@ void wm_80098CC0(void)
             if (existing == 0) {
                 /* Allocate new buffer */
                 void* buf = HeapAlloc(ASSET_SIZE, 0);
-                a98_sw(D_8009C184 + (u32)slot_id * 4, (u32)(uintptr_t)buf);
+                a98_sw(D_8009C184 + (u32)slot_id * 4, PsxMemory_GuestAddr(buf));
 
                 /* Queue data copy */
                 u32 src = a98_lw(D_8009BD08) + (u32)slot_id;
-                wm_8009623C(src, ASSET_SIZE, (u32)(uintptr_t)buf);
+                wm_8009623C(src, ASSET_SIZE, PsxMemory_GuestAddr(buf));
             }
         }
     }
@@ -93,9 +94,9 @@ void wm_80098CC0(void)
 
         if (existing == 0) {
             void* buf = HeapAlloc(ASSET_SIZE, 0);
-            a98_sw(D_8009C184 + (u32)slot_id * 4, (u32)(uintptr_t)buf);
+            a98_sw(D_8009C184 + (u32)slot_id * 4, PsxMemory_GuestAddr(buf));
             wm_8009623C(secondary_base + (u32)slot_id, ASSET_SIZE,
-                        (u32)(uintptr_t)buf);
+                        PsxMemory_GuestAddr(buf));
         }
     }
 }

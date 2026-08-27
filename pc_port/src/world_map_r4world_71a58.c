@@ -20,6 +20,7 @@
 #include "world_map_helper_96130.h"
 #include "world_map_helper_97244.h"
 #include "world_map_helper_9623c.h"
+#include "world_map_helper_980d4.h"
 #include "world_map_helper_981c8.h"
 #include "world_map_helper_983a0.h"
 #include "world_map_helper_98cc0.h"
@@ -69,8 +70,8 @@ s32 wm_80071A58(s32 slot_idx)
     /* Step 7: Rendering structure init */
     wm_800848F4();
 
-    /* Step 8: Reset queue counter */
-    wm_800980D4();
+    /* Step 8: position wrap / paging gate (retail 0x80071AC8-D0: a0 = 0x8009BBB4) */
+    wm_800980D4(D_8009BBB4);
 
     /* Step 9: Tile processing (conditional on D_8009D558) */
     if (r_lh(D_8009D558) != 0) {

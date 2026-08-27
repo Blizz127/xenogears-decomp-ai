@@ -113,3 +113,6 @@ listings banked here, with a certificate whose oracle is the retail loop
 geometry (tile numbers < width·height; 81 allocations at init; D558/map
 publication), then re-run this probe: expected `slots_nonnull ≥ 81`, all
 frame-60 dispatches on allocated slots, `D570 max < 256`.
+
+Resolved by W34C5 (`docs/evidence/w34c5-tile-producers/`): 81 window
+tiles allocated at init, all frame-60 dispatches on guest heap slots.

@@ -91,12 +91,6 @@ void wm_800968E0(u32 addr, u32 count)
     }
 }
 
-/* wm_800980D4: reset queue counter */
-void wm_800980D4(void)
-{
-    q_sw(D_8009D808, 0);
-}
-
 /* wm_80086700: simple 2-word record writer */
 void wm_80086700(u32 addr, u32 val)
 {
