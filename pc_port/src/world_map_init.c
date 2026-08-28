@@ -67,8 +67,8 @@
  *       CD44 state machine (0x800968E0), processes D788 records (0x8009699C
  *       via CdIntToPos/CdSyncCallback/CdControlF), processes C624 debug
  *       records (0x800966CC via PCopen/PClseek/PCread/PCclose), and advances
- *       BCB8 tail.  One bounded production call at retail 0x80072514 behind
- *       XENO_WORLD_967E4_ROUTE gate; cut before Vsync at 0x8007251C.
+ *       BCB8 tail.  One bounded production call at retail 0x80072514 after
+ *       the archive-index transition; cut before Vsync at 0x8007251C.
  *
  * W32B: Ready-check and third-wave buffer consumption.  Reproduces the
  *       post-loop behavior at retail 0x80072558: loads ready flag from
@@ -122,7 +122,6 @@
  *   XENO_WORLD_ARCHIVE_READY_POLL=1
  *   XENO_WORLD_FIRST_WDS_CONSUMER=1
  *   XENO_WORLD_ARCHIVE_SET_INDEX=1
- *   XENO_WORLD_967E4_ROUTE=0 (default off; one bounded 0x800967E4 call)
  *   XENO_WORLD_READY_BUFFER_CONSUME=0 (default off; ready-check + buffer consume)
  *   XENO_WORLD_MODE_AUDIO_SETUP=0 (default off; mode-dependent audio setup)
  *   XENO_WORLD_CONVERGENCE_P1=0 (default off; first convergence table pass; requires MODE_AUDIO_SETUP)
@@ -881,16 +880,15 @@ static int world_archive_set_index_enabled(void)
 
 static int world_967e4_route_enabled(void)
 {
-    /* W29B gate: routes one bounded invocation of 0x800967E4.
-     * Requires XENO_WORLD_ARCHIVE_SET_INDEX (W24E) as prerequisite. */
-    return env_flag_is_one("XENO_WORLD_967E4_ROUTE");
+    /* W29B is the next established retail stage after W24E. */
+    return world_archive_set_index_enabled();
 }
 
 static int world_ready_buffer_consume_enabled(void)
 {
     /* W32B gate: routes ready-check and third-wave buffer consumption.
-     * Requires XENO_WORLD_967E4_ROUTE (W29B) as prerequisite — the
-     * routing code runs inside the W29B block. */
+     * Requires the W29B dispatcher stage as prerequisite — the routing code
+     * runs inside that established archive-transition block. */
     return env_flag_is_one("XENO_WORLD_READY_BUFFER_CONSUME");
 }
 
@@ -7321,8 +7319,6 @@ void PcPort_WorldMapInitMain(void)
                                                                                 if (world_967e4_route_enabled()) {
                                                                                     fprintf(stderr,
                                                                                             "[worldmap-967e4] "
-                                                                                            "XENO_WORLD_"
-                                                                                            "967E4_ROUTE=1: "
                                                                                             "one bounded "
                                                                                             "0x800967E4 "
                                                                                             "invocation\n");
