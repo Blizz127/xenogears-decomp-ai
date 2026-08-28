@@ -15,6 +15,9 @@
 #define Y_MIN   0xFFD80000u  /* -0x280000 */
 #define Y_MAX   0x00020000u  /*  0x20000 */
 
+/* Dead retail-stack region, following WM_95414_FRAME_ATTR. */
+#define WM_95CD4_FRAME_ATTR 0x801FFDE0u
+
 static u32 cd_lw(u32 a) { u32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void cd_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 static u16 cd_lhu(u32 a) { u16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
@@ -69,7 +72,15 @@ s32 wm_80095CD4(u32 pos, u32 vel, u32 out, s32 scale)
 
     /* Nav-mesh probe */
     {
-        s32 count = wm_80084D00(scratch_target, (u32)(uintptr_t)attr_buf);
+        s32 count;
+
+        /* F3 repair - W34C17R/W34C18.  wm_80084D00 conditionally writes
+         * attr_buf; preserve the stack image on entry and copy it back only
+         * when the helper reports the write-producing success path. */
+        memcpy(PSX_ADDR(WM_95CD4_FRAME_ATTR), attr_buf, sizeof(attr_buf));
+        count = wm_80084D00(scratch_target, WM_95CD4_FRAME_ATTR);
+        if (count != 0)
+            memcpy(attr_buf, PSX_ADDR(WM_95CD4_FRAME_ATTR), sizeof(attr_buf));
         if (count == 0) {
             goto resolve;
         }

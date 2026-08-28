@@ -10,6 +10,9 @@
 extern long rcos(long a);
 extern long rsin(long a);
 
+/* Dead retail-stack region, following WM_95414_FRAME_ATTR. */
+#define WM_8E0F0_FRAME_DIR 0x801FFDD0u
+
 s32 wm_8008E0F0(u32 pos, u32 unused, u32 out)
 {
     s32 angle;
@@ -24,8 +27,10 @@ s32 wm_8008E0F0(u32 pos, u32 unused, u32 out)
         dir[1] = 0;
         dir[2] = (u32)(-(s32)sin_val);
 
-        /* Test movement: mode=2 */
-        s32 result = wm_80095414(pos, (u32)(uintptr_t)dir, out, 0, 2);
+        /* F2 repair - W34C17R/W34C18.  wm_80095414 only reads dir. */
+        s32 result;
+        memcpy(PSX_ADDR(WM_8E0F0_FRAME_DIR), dir, sizeof(dir));
+        result = wm_80095414(pos, WM_8E0F0_FRAME_DIR, out, 0, 2);
         if (result == 1) {
             return angle;
         }

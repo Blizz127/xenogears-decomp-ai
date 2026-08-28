@@ -23,6 +23,9 @@
 #define D_8009BBB4  0x8009BBB4u
 #define D_8009BBBC  0x8009BBBCu
 
+/* Dead retail-stack region, following WM_95414_FRAME_ATTR. */
+#define WM_914D0_FRAME_DELTA 0x801FFDC0u
+
 static s16 d0_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static u16 d0_lhu(u32 a) { u16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static s32 d0_lw(u32 a) { s32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
@@ -242,8 +245,14 @@ s32 wm_800914D0(s32 slot_idx)
                 delta_vec[1] = 0;
                 delta_vec[2] = (u32)dz;
 
-                /* Wrap delta */
-                wm_80093484((u32)(uintptr_t)delta_vec);
+                /* F1 repair - W34C16/W34C18.  wm_80093484 reads and may
+                 * rewrite X/Z, so materialize retail's stack vector in guest
+                 * RAM and copy the completed vector back. */
+                memcpy(PSX_ADDR(WM_914D0_FRAME_DELTA), delta_vec,
+                       sizeof(delta_vec));
+                wm_80093484(WM_914D0_FRAME_DELTA);
+                memcpy(delta_vec, PSX_ADDR(WM_914D0_FRAME_DELTA),
+                       sizeof(delta_vec));
 
                 /* Scale delta >> 3 */
                 dx = (s32)delta_vec[0] >> 3;
