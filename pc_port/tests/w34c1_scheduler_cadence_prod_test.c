@@ -116,9 +116,10 @@ void PsyX_TakeScreenshotPath(const char* path)
     s_screenshot_calls++;
 }
 
-void DrawSync(void (*func)(unsigned long))
+int DrawSync(int mode)
 {
-    (void)func;
+    (void)mode;
+    return 0;
 }
 
 void PsyX_EndScene(void)
@@ -134,6 +135,24 @@ void Vsync(long mode)
 {
     (void)mode;
     PsyX_EndScene();
+}
+
+int VSync(int mode)
+{
+    (void)mode;
+    return 0;
+}
+
+void EnterCriticalSection(void)
+{
+}
+
+void FlushCache(void)
+{
+}
+
+void ExitCriticalSection(void)
+{
 }
 
 void ControllerResetState(void)

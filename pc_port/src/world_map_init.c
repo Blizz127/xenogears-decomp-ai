@@ -166,6 +166,7 @@
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
 #include "world_map_helper_73448.h"
+#include "world_map_helper_762fc.h"
 #include "world_map_session_setup_72238.h"
 
 /* Retail layout */
@@ -493,9 +494,6 @@
 
 extern void PcPort_WorldMapPlaceholderMain(void);
 extern void func_8003634C(void);
-extern void EnterCriticalSection(void);
-extern void ExitCriticalSection(void);
-extern void FlushCache(void);
 extern int VSync(int mode);
 extern void ControllerResetState(void);
 extern u32 g_ArchiveDebugTable;
@@ -1271,18 +1269,6 @@ static void log_enabled_slices(void)
     if (w34b44)
         fprintf(stderr, ",W34B44");
     fprintf(stderr, "\n");
-}
-
-/* Retail: DrawSync/Vsync around critical + FlushCache. */
-static void wm_800762FC(void)
-{
-    DrawSync(0);
-    VSync(0);
-    EnterCriticalSection();
-    DrawSync(0);
-    VSync(0);
-    FlushCache();
-    ExitCriticalSection();
 }
 
 /* Retail wm_80095F78: HeapAlloc pair + table clears. g_ArchiveDebugTable==0 is
