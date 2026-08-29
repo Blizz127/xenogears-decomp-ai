@@ -89,9 +89,10 @@ int wm_80072238(void)
     if (wm_72238_require(wm_72238_stage_cross_products(), "cross_products") != 0)
         return -1;
 
-    /* The accepted route is retail's fresh-session arm.  The EE6A restore
-     * helper 0x80073398 and C894 restore pair 0x8007565C/0x80075D4C are not
-     * transcribed; never silently substitute the fresh-placement path. */
+    /* The accepted route is retail's fresh-session arm. The EE6A helper
+     * 0x80073398 and the first C894 restore helper 0x8007565C remain absent;
+     * shared 0x80075D4C cannot safely run without its predecessor. Never
+     * silently substitute the fresh-placement path. */
     if (wm_72238_lhu(WM_72238_EE6A) != 0u ||
         wm_72238_lw(WM_72238_C894) != 0u) {
         fprintf(stderr,

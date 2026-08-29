@@ -6856,7 +6856,8 @@ static int world_map_dispatch_mode_init_once(void)
 
 /* W34C9 — retail entry sequence 0x800723D4-0x80072434, between W8B and W10A:
  *   if (lhu 0x8006EE6A != 0)            jal 0x80073398        (not transcribed)
- *   else if (lw 0x8009C894 != 0)        jal 0x8007565C; 0x80075D4C (restore; not transcribed)
+ *   else if (lw 0x8009C894 != 0)        jal 0x8007565C; 0x80075D4C (restore;
+ *                                      0x8007565C remains absent)
  *   else                                jal 0x80073448(lw 0x8009D3D4)  (fresh placement)
  * The two untranscribed branches are logged, never faked. */
 static int wm_entry_placement(void)
@@ -6872,7 +6873,7 @@ static int wm_entry_placement(void)
     }
     if (c894 != 0u) {
         fprintf(stderr, "[worldmap-entry-placement] C894=%u: retail restore "
-                "0x8007565C/0x80075D4C not transcribed; skipped\n", c894);
+                "0x8007565C predecessor absent; 0x80075D4C not called\n", c894);
         return 0;
     }
     wm_80073448(world_index);

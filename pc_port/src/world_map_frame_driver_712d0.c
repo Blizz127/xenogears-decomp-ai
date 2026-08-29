@@ -29,6 +29,7 @@
 #include "world_map_helper_89c78.h"
 #include "world_map_helper_93f18.h"
 #include "world_map_helper_73b04.h"
+#include "world_map_helper_75d4c.h"
 #include "world_map_helper_762fc.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_ot_adapter.h"
@@ -54,7 +55,6 @@ static void wm_712d0_stub(const char* name, u32 guest_pc)
             guest_pc, name);
 }
 
-static void wm_80075D4C(void) { wm_712d0_stub("80075D4C", 0x80075D4Cu); }
 static void wm_800758C0(void) { wm_712d0_stub("800758C0", 0x800758C0u); }
 static void wm_80075B58(void) { wm_712d0_stub("80075B58", 0x80075B58u); }
 static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
