@@ -169,6 +169,7 @@ void ResetGraph(int mode)
 
 void wm_800967E4(void) {}
 void wm_80096694(void) { s_queue_barrier_calls++; }
+int wm_80072238(void) { return 0; }
 void wm_8007299C(void) { s_slot2_calls++; }
 s32 wm_80093F18(u32 vec_addr)
 {

@@ -26,6 +26,9 @@ void* D_8006259C;
 void* g_GfxWorkBuffers;
 s32 D_80059190;
 
+/* The dispatcher object also contains the independently tested slot-1 arm. */
+int wm_80072238(void) { return 0; }
+
 static Event s_events[1024];
 static u32 s_event_count;
 static int s_failures;

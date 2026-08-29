@@ -15,6 +15,7 @@
 #include "world_map_capture.h"
 #include "world_map_main_loop_71034.h"
 #include "world_map_frame_driver_712d0.h"
+#include "world_map_session_setup_72238.h"
 #include "world_map_teardown_7299c.h"
 
 extern void DrawSync(void (*func)(unsigned long));
@@ -66,7 +67,10 @@ static void ml_dispatch_guest(u32 address, int mode, int slot,
                 address, lane, mode, slot);
         break;
     case 0x80072238u:
-        ml_guest_stub(address, mode, slot, lane);
+        if (wm_80072238() != 0)
+            fprintf(stderr,
+                    "[worldmap-slot1] guest=0x%08x mode=%d session=%d failed\n",
+                    address, mode, slot);
         break;
     case 0x8007299Cu:
         wm_8007299C();

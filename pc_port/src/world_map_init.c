@@ -166,6 +166,7 @@
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
 #include "world_map_helper_73448.h"
+#include "world_map_session_setup_72238.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -6910,6 +6911,34 @@ static int wm_fresh_session_wds_cleanup(void)
     }
     return 0;
 }
+
+/* W34N9: thin public seams for the integrated retail slot-1 owner.  Stage
+ * bodies remain here, where their established diagnostics and one-shot guards
+ * live; these wrappers add no behavior. */
+int wm_72238_stage_second_wave(void) { return world_map_second_wave_once(); }
+int wm_72238_stage_object_pool(void) { return wm_8009766C_object_pool(); }
+int wm_72238_stage_state_template(void) { return wm_state_template_copy(); }
+int wm_72238_stage_mode_enter(void) { return PcPort_WorldMapInitializeModeEnterState(); }
+int wm_72238_stage_cross_products(void) { return wm_80098044_cross_product_init(); }
+int wm_72238_stage_wds_cleanup(void) { return wm_fresh_session_wds_cleanup(); }
+int wm_72238_stage_entry_placement(void) { return wm_entry_placement(); }
+int wm_72238_stage_gpu_asset_a(void) { return wm_8008440c_gpu_asset_a(); }
+int wm_72238_stage_gpu_asset_b(void) { return wm_800979c8_gpu_asset_b(); }
+int wm_72238_stage_object_matrix(void) { return wm_80084580_object_matrix(); }
+int wm_72238_stage_third_wave(void) { return wm_80072090_third_wave(); }
+int wm_72238_stage_bss_constants(void) { return wm_800736DC_init_constants(); }
+int wm_72238_stage_primitive_templates(void) { return wm_80073E30_primitive_templates(); }
+int wm_72238_stage_record_clut(void) { return wm_80085F58_relocate_records_and_init_cluts(); }
+int wm_72238_stage_gfx_work_buffers(void) { return wm_route_gfx_allocate_work_buffers(); }
+int wm_72238_stage_ft4_pools(void) { return wm_80074594_init_ft4_pools(); }
+int wm_72238_stage_heap_table(void) { return wm_800863E0_init_heap_table_rand(); }
+int wm_72238_stage_upload_a(void) { return wm_80074E58_build_upload_records(); }
+int wm_72238_stage_upload_b(void) { return wm_80075030_build_upload_records_b(); }
+int wm_72238_stage_draw_packets(void) { return wm_800739B8_build_draw_packets(); }
+int wm_72238_stage_88f64(void) { return wm_80088F64_init_tables(); }
+int wm_72238_stage_archive_poll(void) { return wm_archive_ready_poll(); }
+int wm_72238_stage_first_wds(void) { return wm_first_wds_consumer(); }
+int wm_72238_stage_archive_index(void) { return wm_archive_set_index_transition(); }
 
 void PcPort_WorldMapInitMain(void)
 {
