@@ -2756,7 +2756,7 @@ void func_80085988(void) {
 
 extern s32 D_800B2370;
 extern void* D_800C3A1C;
-extern s32 g_GameCurLoadedWDS;
+extern void* g_GameCurLoadedWDS;
 extern s32 func_800380D0(u8* data, s32 size, s32 a2);
 extern void SoundTransferWdsPart(u8* data, s32 size);
 extern void func_8002945C(s32 idx);
@@ -2919,7 +2919,12 @@ s32 func_80085C90(s32 a0) {
                 ? malloc(((bankSize + 2047) / 2048 + 1) * 2048) : NULL;
             if (pBankBuf != NULL) {
                 ArchiveReadFileToBuffer(bankFile, pBankBuf, 0, CdlModeSpeed);
-                SoundLoadWdsFileHostStaged(pBankBuf);
+                /* The host-staged path replaces retail's streaming loader,
+                 * but it creates the same owned WDS entry.  Publish that
+                 * owner so retail cleanup (func_8001B66C) can release the
+                 * overlapping field bank before world-map slot 1 loads its
+                 * bank. */
+                g_GameCurLoadedWDS = SoundLoadWdsFileHostStaged(pBankBuf);
                 free(pBankBuf);
             }
             ArchiveSetIndex(4, 0);

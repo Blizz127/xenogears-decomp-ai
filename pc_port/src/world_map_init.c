@@ -6724,6 +6724,7 @@ static int wm_archive_ready_poll(void)
  */
 static int wm_first_wds_consumer(void)
 {
+    extern SoundWDSEntry* g_GameCurLoadedWDS;
     u32 source_psx;
     void* source_host;
     SoundWDSEntry* result;
@@ -6769,8 +6770,11 @@ static int wm_first_wds_consumer(void)
     /* Call existing native SoundLoadWdsFile(buffer, 0). */
     result = SoundLoadWdsFile((SoundWDSEntry*)source_host, 0);
 
-    /* Store result at 0x8006258C (retail behavior). */
+    /* 0x8006258C is g_GameCurLoadedWDS in retail.  The port also has a
+     * generated native symbol used by compiled cleanup consumers, so keep
+     * both representations under the same publication event. */
     WM_U32(WM_CONSUMER_RESULT) = (u32)(uintptr_t)result;
+    g_GameCurLoadedWDS = result;
 
     fprintf(stderr,
             "[worldmap-first-wds-consumer] result=%p "
@@ -6888,6 +6892,22 @@ static int wm_entry_placement(void)
     fprintf(stderr, "[worldmap-entry-placement] 0x80073448 index=%d -> "
             "C5AC=0x%08x C5B0=0x%08x C5B4=0x%08x\n", world_index,
             WM_U32(0x8009C5ACu), WM_U32(0x8009C5B0u), WM_U32(0x8009C5B4u));
+    return 0;
+}
+
+/* Retail base-mode slot 1, 0x80072380..0x800723D4: a fresh session
+ * (C894 == 0) releases the prior field WDS owner before entry placement and
+ * before the world WDS consumer at 0x800724D4.  The forced init spine had
+ * transcribed both surrounding stages but omitted this lifecycle seam. */
+static int wm_fresh_session_wds_cleanup(void)
+{
+    extern void func_8001B66C(void);
+
+    if (WM_U32(WM_FLAG_C894_ABS) == 0u) {
+        func_8001B66C();
+        fprintf(stderr,
+                "[worldmap-wds-lifecycle] fresh-session field WDS cleanup\n");
+    }
     return 0;
 }
 
@@ -7018,6 +7038,10 @@ void PcPort_WorldMapInitMain(void)
                                 fprintf(stderr,
                                         "[worldmap-cross-products] failed; "
                                         "still entering placeholder\n");
+                            } else if (wm_fresh_session_wds_cleanup() != 0) {
+                                fprintf(stderr,
+                                        "[worldmap-wds-lifecycle] cleanup "
+                                        "failed; still entering placeholder\n");
                             } else if (wm_entry_placement() != 0) {
                                 fprintf(stderr,
                                         "[worldmap-entry-placement] failed; "
