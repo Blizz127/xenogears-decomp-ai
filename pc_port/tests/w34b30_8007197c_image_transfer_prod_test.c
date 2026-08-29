@@ -6,7 +6,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
-#include "world_map_frame_driver.h"
+#include "world_map_image_transfer_25044.h"
 
 typedef struct {
     int16_t x;
@@ -72,22 +72,21 @@ static void reset_fixture(void)
     store_u32(ENVREC0 + 0x70u, 0x800F0000u);
     store_u32(ENVREC1 + 0x70u, 0x800F1000u);
     store_u32(C178, 1u);
-    wm_fp_reset();
+    wm_25044_reset();
 }
 
 static void run_empty_and_unknown(void)
 {
     reset_fixture();
-    wm_800712D0_frame_prologue();
-    check_case("empty-list", "frontier-0x80071984",
-               wm_fp_get_cut_pc() == 0x80071984u &&
-               wm_fp_get_image_unknowns() == 0);
+    wm_80025044_guest_safe();
+    check_case("empty-list", "empty-list-consumed",
+               wm_25044_get_unknowns() == 0 && g_GfxImageList[0] == 0u);
 
     reset_fixture();
     g_GfxImageList[0] = 0x12345678u;
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("unknown-head", "log-count-and-clear",
-               wm_fp_get_image_unknowns() == 1 && g_GfxImageList[0] == 0u);
+               wm_25044_get_unknowns() == 1 && g_GfxImageList[0] == 0u);
 }
 
 static void run_known_load_and_clear(void)
@@ -96,7 +95,7 @@ static void run_known_load_and_clear(void)
     g_GfxImageList[0] = NODE0;
     store_u32(NODE0 + 0x08u, DATA0);
     store_u32(NODE0 + 0x0Cu, 0u);
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("known-load", "map-guest-rect-and-data",
                s_load_calls == 1 && s_clear_calls == 0 &&
                s_last_rect == (RECT *)PSX_ADDR(NODE0) &&
@@ -106,7 +105,7 @@ static void run_known_load_and_clear(void)
     g_GfxImageList[0] = NODE0;
     store_u32(NODE0 + 0x08u, 0u);
     store_u32(NODE0 + 0x0Cu, 0u);
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("known-clear", "clear-null-data-image",
                s_load_calls == 0 && s_clear_calls == 1);
 }
@@ -117,9 +116,9 @@ static void run_unknown_data_and_chain(void)
     g_GfxImageList[0] = NODE0;
     store_u32(NODE0 + 0x08u, 0x123u);
     store_u32(NODE0 + 0x0Cu, 0u);
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("unknown-data", "log-count-and-clear",
-               wm_fp_get_image_unknowns() == 1 && s_load_calls == 0 &&
+               wm_25044_get_unknowns() == 1 && s_load_calls == 0 &&
                g_GfxImageList[0] == 0u);
 
     reset_fixture();
@@ -128,18 +127,18 @@ static void run_unknown_data_and_chain(void)
     store_u32(NODE0 + 0x0Cu, NODE1);
     store_u32(NODE1 + 0x08u, DATA0 + 4u);
     store_u32(NODE1 + 0x0Cu, 0u);
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("known-chain", "walk-two-mapped-images",
-               wm_fp_get_image_unknowns() == 0 && s_load_calls == 2);
+               wm_25044_get_unknowns() == 0 && s_load_calls == 2);
 }
 
 static void run_bad_context(void)
 {
     reset_fixture();
     g_GfxCurContext = 2;
-    wm_800712D0_frame_prologue();
+    wm_80025044_guest_safe();
     check_case("bad-context", "log-unknown-context",
-               wm_fp_get_image_unknowns() == 1);
+               wm_25044_get_unknowns() == 1);
 }
 
 int ControllerPopState(void) { return 0; }

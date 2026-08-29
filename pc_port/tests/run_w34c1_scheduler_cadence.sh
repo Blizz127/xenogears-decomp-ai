@@ -115,6 +115,26 @@ make_mutant M9
 perl -0pi -e 's/if \(slot1_addr != 0 &&/if (0 \&\& slot1_addr != 0 \&\&/' \
     "$BUILD_DIR/M9.main.c"
 
+make_mutant M10
+perl -0pi -e 's/        func_800250E0\(\(int\)fd_lw\(D_8009D7F0\)\);/        \/\* omitted 0x800250E0 \*\//' \
+    "$BUILD_DIR/M10.driver.c"
+
+make_mutant M11
+perl -0pi -e 's/        wm_80025044_guest_safe\(\);/        \/\* omitted 0x80025044 \*\//' \
+    "$BUILD_DIR/M11.driver.c"
+
+make_mutant M12
+perl -0pi -e 's/        \(void\)wm_80074F2C\(\);/        \/\* omitted 0x80074F2C \*\//' \
+    "$BUILD_DIR/M12.driver.c"
+
+make_mutant M13
+perl -0pi -e 's/        \(void\)wm_80075104\(\);/        \/\* omitted 0x80075104 \*\//' \
+    "$BUILD_DIR/M13.driver.c"
+
+make_mutant M14
+perl -0pi -e 's/        \(void\)wm_80074F2C\(\);\n        \(void\)wm_80075104\(\);/        (void)wm_80075104();\n        (void)wm_80074F2C();/' \
+    "$BUILD_DIR/M14.driver.c"
+
 for entry in \
     'M1:cadence.outer_scheduler.exactly_once' \
     'M2:cadence.inner_scheduler.once_per_displayed_frame' \
@@ -124,7 +144,12 @@ for entry in \
     'M6:capture.frame60.request_equals_present60' \
     'M7:driver.entry.once.ot_buffers_alternate' \
     'M8:bounded_exit.skips_natural_epilogue' \
-    'M9:session.slot1.exactly_once'; do
+    'M9:session.slot1.exactly_once' \
+    'M10:frame_seams.250e0.once_per_frame' \
+    'M11:frame_seams.25044.once_per_frame' \
+    'M12:frame_seams.74f2c.once_per_frame' \
+    'M13:frame_seams.75104.once_per_frame' \
+    'M14:frame_seams.retail_order'; do
     label="${entry%%:*}"
     assertion="${entry#*:}"
     set +e
@@ -142,4 +167,4 @@ for entry in \
     echo "$label DETECTED assertion=$assertion"
 done
 
-echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M9 DETECTED; focused warnings clean"
+echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M14 DETECTED; focused warnings clean"

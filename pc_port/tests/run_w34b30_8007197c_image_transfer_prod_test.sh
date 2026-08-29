@@ -11,20 +11,15 @@ FLAGS=(
     -Ipc_port/include_shim -Iinclude -Ipc_port/src
 )
 TEST="pc_port/tests/w34b30_8007197c_image_transfer_prod_test.c"
-FRAME="pc_port/src/world_map_frame_driver.c"
-FRAME_FLAGS=(
-    -include assert.h
-    -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx
-)
+TRANSFER="pc_port/src/world_map_image_transfer_25044.c"
 
 build_run() {
     local label="$1" opt="$2" san="${3:-}"
     gcc -c "$TEST" "${FLAGS[@]}" "$opt" $san -o "$OUT/$label.test.o"
-    gcc -c "$FRAME" "${FLAGS[@]}" "${FRAME_FLAGS[@]}" "$opt" \
-        -DWM_712D0_TEST_TRACE $san \
-        -o "$OUT/$label.frame.o"
+    gcc -c "$TRANSFER" "${FLAGS[@]}" "$opt" $san \
+        -o "$OUT/$label.transfer.o"
     gcc -no-pie -Wl,--gc-sections $san "$OUT/$label.test.o" \
-        "$OUT/$label.frame.o" -o "$OUT/$label"
+        "$OUT/$label.transfer.o" -o "$OUT/$label"
     set +e
     "$OUT/$label" > "$OUT/$label.stdout" 2> "$OUT/$label.stderr"
     local rc=$?

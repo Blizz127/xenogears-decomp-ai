@@ -10,6 +10,7 @@
 #include "psx_memory.h"
 #include "system/controller.h"
 #include "world_map_frame_driver_712d0.h"
+#include "world_map_image_transfer_25044.h"
 #include "world_map_helper_96130.h"
 #include "world_map_helper_97244.h"
 #include "world_map_helper_9623c.h"
@@ -30,6 +31,8 @@
 #include "world_map_helper_73b04.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_ot_adapter.h"
+#include "world_map_upload_pump_74f2c.h"
+#include "world_map_upload_pump_75104.h"
 
 /* PsyQ functions */
 extern void DrawSync(void (*func)(unsigned long));
@@ -54,21 +57,12 @@ static void wm_80075D4C(void) { wm_712d0_stub("80075D4C", 0x80075D4Cu); }
 static void wm_800758C0(void) { wm_712d0_stub("800758C0", 0x800758C0u); }
 static void wm_800762FC(void) { wm_712d0_stub("800762FC", 0x800762FCu); }
 static void wm_80075B58(void) { wm_712d0_stub("80075B58", 0x80075B58u); }
-static void wm_80074F2C(void) { wm_712d0_stub("80074F2C", 0x80074F2Cu); }
-static void wm_80075104(void) { wm_712d0_stub("80075104", 0x80075104u); }
 static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
-static void wm_80025044(void) { wm_712d0_stub("80025044", 0x80025044u); }
-static void wm_800250E0(u32 a)
-{
-    (void)a;
-    wm_712d0_stub("800250E0", 0x800250E0u);
-}
+extern void func_800250E0(int context);
+/* The compiled generic 0x8001D468 publishes native work-buffer links into
+ * the guest OT through func_8001DAE8. Keep this shadow until that downstream
+ * packet path has a guest-safe binding. */
 static void func_8001D468(void) { wm_712d0_stub("8001D468", 0x8001D468u); }
-static void func_800250E0(u32 a)
-{
-    (void)a;
-    wm_712d0_stub("800250E0", 0x800250E0u);
-}
 extern int ControllerPopState(int port);
 extern int ControllerGetType(int port);
 extern void ResetGraph(int mode);
@@ -249,7 +243,7 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
 
         /* Process input */
         fd_lw(D_8009D7F0);
-        wm_800250E0(fd_lw(D_8009D7F0));
+        func_800250E0((int)fd_lw(D_8009D7F0));
 
         /* Game state processing */
         func_8001D468();
@@ -368,9 +362,9 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
         fd_sw(D_8009D804, 0);
 
         /* Render pipeline */
-        wm_80025044();
-        wm_80074F2C();
-        wm_80075104();
+        wm_80025044_guest_safe();
+        (void)wm_80074F2C();
+        (void)wm_80075104();
 
         /* Geometry offset */
         SetGeomOffset(0xA0, fd_lw(D_8009BE0C));
