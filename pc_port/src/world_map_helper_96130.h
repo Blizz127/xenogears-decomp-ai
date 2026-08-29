@@ -8,6 +8,10 @@
  * 0x800967E4 [0x800967E4, 0x800968E0): 63 insns. Queue processor.
  * Checks archive status, calls file I/O (966CC) or CD (9699C)
  * depending on available data.
+ *
+ * 0x80096694 [0x80096694,0x800966CC): queue drain barrier. Calls Vsync(0),
+ * processes one queue item through 0x800967E4, then repeats while the
+ * circular head/tail distance from 0x80096668 is nonzero.
  */
 #ifndef WORLD_MAP_HELPER_96130_H
 #define WORLD_MAP_HELPER_96130_H
@@ -15,6 +19,7 @@
 #include "common.h"
 
 void wm_80096130(void);
+void wm_80096694(void);
 void wm_800967E4(void);
 
 #endif

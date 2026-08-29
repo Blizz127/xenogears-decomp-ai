@@ -11,6 +11,7 @@
 #include "world_map_helper_966cc.h"
 
 extern u32 func_8002C3D8(void);
+extern u32 wm_80096668_circular_distance(void);
 extern void Vsync(long mode);
 
 #define D_8009BE44  0x8009BE44u
@@ -21,6 +22,33 @@ extern void Vsync(long mode);
 
 static u32 q96_lw(u32 a) { u32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void q96_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
+
+/* Retail 0x80096694..0x800966C8. This is a do/while barrier: even an
+ * already-empty queue performs one Vsync + dispatcher poll before testing
+ * the circular distance. */
+void wm_80096694(void)
+{
+#if defined(WM_96694_MUTANT_PRECHECK)
+    if (wm_80096668_circular_distance() == 0u)
+        return;
+#endif
+
+    do {
+#if defined(WM_96694_MUTANT_REVERSED_ORDER)
+        wm_800967E4();
+        Vsync(0);
+#else
+#if !defined(WM_96694_MUTANT_NO_VSYNC)
+        Vsync(0);
+#endif
+        wm_800967E4();
+#endif
+#if defined(WM_96694_MUTANT_THRESHOLD_TWO)
+    } while (wm_80096668_circular_distance() >= 2u);
+#else
+    } while (wm_80096668_circular_distance() != 0u);
+#endif
+}
 
 /* Retail 0x800967E4 (W34C11 re-wiring, PCs inline). ready = (r1 == 0) |
  * (~r2 == 0). Ready (0x8009681C-0x80096860): if the CD machine is busy

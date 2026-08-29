@@ -50,7 +50,6 @@ static void wm_712d0_stub(const char* name, u32 guest_pc)
             guest_pc, name);
 }
 
-static void wm_80096694(void) { wm_712d0_stub("80096694", 0x80096694u); }
 static void wm_80075D4C(void) { wm_712d0_stub("80075D4C", 0x80075D4Cu); }
 static void wm_800758C0(void) { wm_712d0_stub("800758C0", 0x800758C0u); }
 static void wm_800762FC(void) { wm_712d0_stub("800762FC", 0x800762FCu); }
