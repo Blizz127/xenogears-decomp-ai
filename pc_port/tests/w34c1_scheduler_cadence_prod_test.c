@@ -39,6 +39,8 @@ static int s_input_advances;
 static int s_input_injections;
 static int s_controller_resets;
 static int s_reset_graph_calls;
+static int s_slot2_calls;
+static int s_queue_barrier_calls;
 static int s_scene_open;
 static int s_effective_presents;
 static int s_screenshot_calls;
@@ -166,6 +168,8 @@ void ResetGraph(int mode)
 }
 
 void wm_800967E4(void) {}
+void wm_80096694(void) { s_queue_barrier_calls++; }
+void wm_8007299C(void) { s_slot2_calls++; }
 s32 wm_80093F18(u32 vec_addr)
 {
     (void)vec_addr;
@@ -240,6 +244,10 @@ int main(void)
                         1, s_controller_resets);
     ok &= assertion_int("bounded_exit.skips_natural_epilogue",
                         0, s_reset_graph_calls);
+    ok &= assertion_int("bounded_exit.skips_slot2_teardown",
+                        0, s_slot2_calls);
+    ok &= assertion_int("bounded_exit.skips_queue_barrier",
+                        0, s_queue_barrier_calls);
     ok &= assertion_int("capture.only_frames_60_and_120",
                         2, s_screenshot_calls);
     ok &= assertion_int("capture.frame60.request_equals_present60",

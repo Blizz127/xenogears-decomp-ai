@@ -15,6 +15,7 @@
 #include "world_map_capture.h"
 #include "world_map_main_loop_71034.h"
 #include "world_map_frame_driver_712d0.h"
+#include "world_map_teardown_7299c.h"
 
 extern void DrawSync(void (*func)(unsigned long));
 extern void Vsync(long mode);
@@ -65,12 +66,23 @@ static void ml_dispatch_guest(u32 address, int mode, int slot,
                 address, lane, mode, slot);
         break;
     case 0x80072238u:
+        ml_guest_stub(address, mode, slot, lane);
+        break;
     case 0x8007299Cu:
+        wm_8007299C();
+        break;
     default:
         ml_guest_stub(address, mode, slot, lane);
         break;
     }
 }
+
+#if defined(WM_7299C_PROD_TEST)
+void wm_80071034_test_dispatch_slot2(void)
+{
+    ml_dispatch_guest(0x8007299Cu, 0, 2, "cb1");
+}
+#endif
 
 static int ml_before_frame(int frame, void* user)
 {
