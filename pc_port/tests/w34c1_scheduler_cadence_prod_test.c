@@ -39,6 +39,7 @@ static int s_input_advances;
 static int s_input_injections;
 static int s_controller_resets;
 static int s_reset_graph_calls;
+static int s_slot1_calls;
 static int s_slot2_calls;
 static int s_queue_barrier_calls;
 static int s_scene_open;
@@ -169,7 +170,11 @@ void ResetGraph(int mode)
 
 void wm_800967E4(void) {}
 void wm_80096694(void) { s_queue_barrier_calls++; }
-int wm_80072238(void) { return 0; }
+int wm_80072238(void)
+{
+    s_slot1_calls++;
+    return 0;
+}
 void wm_8007299C(void) { s_slot2_calls++; }
 s32 wm_80093F18(u32 vec_addr)
 {
@@ -205,6 +210,8 @@ static void reset_fixture(void)
     memset(g_PsxScratchpad, 0, sizeof(g_PsxScratchpad));
     write_u32(D_8009C5A8, 0u);
     write_u32(D_8009D7CC, 1u);
+    write_u32(UINT32_C(0x8009A05C), UINT32_C(0x80072238));
+    write_u32(UINT32_C(0x8009A060), UINT32_C(0x8007299C));
     write_u32(UINT32_C(0x8009BC38), OT_A);
     write_u32(UINT32_C(0x8009BCB0), OT_B);
 }
@@ -220,11 +227,9 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    /* world_map_init.c has already completed retail 0x80071064 when it
-     * transfers control to the bounded 0x8007106C continuation. */
-    wm_80097800();
     wm_80071034();
 
+    ok &= assertion_int("session.slot1.exactly_once", 1, s_slot1_calls);
     ok &= assertion_int("cadence.outer_scheduler.exactly_once",
                         1, s_outer_scheduler_calls);
     ok &= assertion_int("frame_limit.displayed_frames.exactly_120",

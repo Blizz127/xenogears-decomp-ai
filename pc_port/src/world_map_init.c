@@ -7021,6 +7021,25 @@ void PcPort_WorldMapInitMain(void)
         return;
     }
 
+    /* W34N10: the bounded recurring-loop harness now enters through retail's
+     * real ownership boundary.  Slot 0 runs once here; wm_80071034 then owns
+     * slot 1, its scheduler, and all displayed frames.  Do not also execute
+     * the historical environment-implied slot-1 ladder below. */
+    if (env_flag_is_one("XENO_WORLD_OPEN_LOOP")) {
+        fprintf(stderr,
+                "[worldmap-init] retail session path: slot0 -> slot1 owner -> "
+                "scheduler -> frames\n");
+        if (world_map_dispatch_mode_init_once() != 0) {
+            fprintf(stderr,
+                    "[worldmap-mode-init] failed; refusing retail session\n");
+            PcPort_WorldMapPlaceholderMain();
+            return;
+        }
+        wm_80071034();
+        fprintf(stderr, "[worldmap-open-loop] returned to init\n");
+        return;
+    }
+
     if (world_mode_init_enabled()) {
         fprintf(stderr,
                 "[worldmap-init] mode-init: one-shot slot0 dispatch\n");
@@ -8083,16 +8102,5 @@ void PcPort_WorldMapInitMain(void)
 
     /* Known-safe hollow UI — W2–W5B intentionally still show NOT YET PORTED. */
     fprintf(stderr, "[worldmap-placeholder] enter\n");
-    if (env_flag_is_one("XENO_WORLD_OPEN_LOOP")) {
-        fprintf(stderr,
-                "[worldmap-open-loop] entering 0x80071034 with "
-                "XENO_WORLD_FRAME_LIMIT=%s\n",
-                getenv("XENO_WORLD_FRAME_LIMIT") != NULL
-                    ? getenv("XENO_WORLD_FRAME_LIMIT") : "600");
-        wm_80071034();
-        fprintf(stderr, "[worldmap-open-loop] returned to init\n");
-        return;
-    }
-
     PcPort_WorldMapPlaceholderMain();
 }

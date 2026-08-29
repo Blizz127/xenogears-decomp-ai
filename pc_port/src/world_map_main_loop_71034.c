@@ -1,8 +1,7 @@
 /*
  * WorldMapMain main loop 0x80071034.
- * Mode dispatch + scheduler + frame driver + sync loop. The first bounded
- * session resumes at 0x8007106C because initialization already completed the
- * slot-1 callback and 0x80071064 scheduler.
+ * Mode dispatch + scheduler + frame driver + sync loop.  Slot 1 owns setup
+ * for every session, including the first, as it does at retail 0x80071034.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -56,8 +55,8 @@ static void ml_guest_stub(u32 address, int mode, int slot, const char* lane)
 /* The mode table contains guest function addresses. Never jalr a raw value.
  * The open-loop experiment deliberately turns unresolved mode handlers into
  * observable default-return stubs. */
-static void ml_dispatch_guest(u32 address, int mode, int slot,
-                              const char* lane)
+static int ml_dispatch_guest(u32 address, int mode, int slot,
+                             const char* lane)
 {
     switch (address) {
     case 0x80071CDCu:
@@ -65,19 +64,23 @@ static void ml_dispatch_guest(u32 address, int mode, int slot,
                 "[worldmap-stub] guest=0x%08x lane=%s mode=%d slot=%d "
                 "already_initialized default_return=0\n",
                 address, lane, mode, slot);
-        break;
+        return 0;
     case 0x80072238u:
-        if (wm_80072238() != 0)
-            fprintf(stderr,
-                    "[worldmap-slot1] guest=0x%08x mode=%d session=%d failed\n",
-                    address, mode, slot);
-        break;
+        {
+            int result = wm_80072238();
+            if (result != 0)
+                fprintf(stderr,
+                        "[worldmap-slot1] guest=0x%08x mode=%d session=%d "
+                        "failed\n",
+                        address, mode, slot);
+            return result;
+        }
     case 0x8007299Cu:
         wm_8007299C();
-        break;
+        return 0;
     default:
         ml_guest_stub(address, mode, slot, lane);
-        break;
+        return 0;
     }
 }
 
@@ -147,19 +150,21 @@ void wm_80071034(void)
 
     for (;;) {
         u32 mode = ml_lw(D_8009C5A8);
-        u32 cb0_table = D_8009A05C;
-        u32 cb1_table = D_8009A060;
-        u32 cb0_addr, cb1_addr;
+        u32 slot1_table = D_8009A05C;
+        u32 slot2_table = D_8009A060;
+        u32 slot1_addr, slot2_addr;
 
-        /* The first session enters here from the already-completed retail
-         * 0x80071064 scheduler gate. Only a later natural session repeats
-         * slot 1 and that session-entry scheduler. */
-        if (session != 1) {
-            cb0_addr = ml_lw(cb0_table + mode * 12);
-            if (cb0_addr != 0)
-                ml_dispatch_guest(cb0_addr, (int)mode, session, "cb0");
-            wm_80097800();
+        /* Retail 0x80071034: every session, including the first, executes
+         * mode-table slot 1 and then the session-entry scheduler. */
+        slot1_addr = ml_lw(slot1_table + mode * 12);
+        if (slot1_addr != 0 &&
+            ml_dispatch_guest(slot1_addr, (int)mode, session, "slot1") != 0) {
+            fprintf(stderr,
+                    "[worldmap-open-loop] slot1 setup failed session=%d\n",
+                    session);
+            exit(EXIT_FAILURE);
         }
+        wm_80097800();
 
         /* Retail 0x8007106C continuation. */
         DrawSync(NULL);
@@ -177,9 +182,9 @@ void wm_80071034(void)
             break;
 
         /* Retail natural session exit: slot 2 then the signed D7CC latch. */
-        cb1_addr = ml_lw(cb1_table + mode * 12);
-        if (cb1_addr != 0)
-            ml_dispatch_guest(cb1_addr, (int)mode, session, "cb1");
+        slot2_addr = ml_lw(slot2_table + mode * 12);
+        if (slot2_addr != 0)
+            (void)ml_dispatch_guest(slot2_addr, (int)mode, session, "slot2");
 
         if ((s32)ml_lw(D_8009D7CC) < 2) {
             fprintf(stderr,

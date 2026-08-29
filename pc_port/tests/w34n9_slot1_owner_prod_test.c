@@ -119,10 +119,9 @@ void wm_80097BC0(u32 pos)
     check(pos == 0x8009C5ACu, "terrain_position_source");
 }
 
-u32 wm_800967E4_dispatch_cd_work(void)
+void wm_800967E4(void)
 {
     event(EV_CD_WORK);
-    return 0u;
 }
 
 int Vsync(int mode)

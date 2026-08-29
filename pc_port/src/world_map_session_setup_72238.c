@@ -26,7 +26,7 @@ extern int MoveImage(void* rect, int x, int y);
 extern int DrawSync(int mode);
 extern int Vsync(int mode);
 extern void ArchiveCdDataSync(int mode);
-extern u32 wm_800967E4_dispatch_cd_work(void);
+extern void wm_800967E4(void);
 extern u32 wm_80096668_circular_distance(void);
 extern void wm_ready_buffer_consume(void);
 extern void wm_mode_audio_setup(void);
@@ -134,7 +134,7 @@ int wm_80072238(void)
 
     wm_80097BC0(0x8009C5ACu);
     do {
-        (void)wm_800967E4_dispatch_cd_work();
+        wm_800967E4();
         (void)Vsync(0);
 #if defined(W34N9_MUTANT_SINGLE_CD_DRAIN)
         break;

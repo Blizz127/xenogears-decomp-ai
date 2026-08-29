@@ -26,6 +26,12 @@ int CdReadSync(int mode, u8* result) { (void)mode; (void)result; if (!s_pending)
 static u32 s_c3d8[2]; static int s_c3d8_n; u32 func_8002C3D8(void) { return s_c3d8[(s_c3d8_n++) & 1]; }
 static int s_pc_calls; void wm_800966CC(u32 t) { (void)t; s_pc_calls++; }
 void Vsync(long m) { (void)m; }
+u32 wm_80096668_circular_distance(void)
+{
+    u32 head = lw(0x8009BE44u);
+    u32 tail = lw(0x8009BCB8u);
+    return (head - tail) & 0xFu;
+}
 /* PC-file loader externs (linked from 966cc.o, never exercised here) */
 uintptr_t PCopen(char* n, int f, int p) { (void)n; (void)f; (void)p; return (uintptr_t)-1; }
 int PClseek(uintptr_t fd, int o, int m) { (void)fd; (void)o; (void)m; return 0; }

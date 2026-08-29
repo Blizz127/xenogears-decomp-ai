@@ -111,6 +111,10 @@ make_mutant M8
 perl -0pi -e 's/return WM_712D0_RUN_BOUNDED_EXIT;/break;/' \
     "$BUILD_DIR/M8.driver.c"
 
+make_mutant M9
+perl -0pi -e 's/if \(slot1_addr != 0 &&/if (0 \&\& slot1_addr != 0 \&\&/' \
+    "$BUILD_DIR/M9.main.c"
+
 for entry in \
     'M1:cadence.outer_scheduler.exactly_once' \
     'M2:cadence.inner_scheduler.once_per_displayed_frame' \
@@ -119,7 +123,8 @@ for entry in \
     'M5:frame_limit.displayed_frames.exactly_120' \
     'M6:capture.frame60.request_equals_present60' \
     'M7:driver.entry.once.ot_buffers_alternate' \
-    'M8:bounded_exit.skips_natural_epilogue'; do
+    'M8:bounded_exit.skips_natural_epilogue' \
+    'M9:session.slot1.exactly_once'; do
     label="${entry%%:*}"
     assertion="${entry#*:}"
     set +e
@@ -137,4 +142,4 @@ for entry in \
     echo "$label DETECTED assertion=$assertion"
 done
 
-echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M8 DETECTED; focused warnings clean"
+echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M9 DETECTED; focused warnings clean"
