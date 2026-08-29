@@ -37,10 +37,17 @@ int wm_25044_get_unknowns(void)
     return s_wm25044_unknowns;
 }
 
-static int wm25044_guest_ptr_known(u32 value)
+static void *wm25044_resolve(u32 value)
 {
-    return ((value & 0xFFE00000u) == 0x80000000u) ||
-           ((value & 0xFFE00000u) == 0xA0000000u);
+    uintptr_t host = (uintptr_t)value;
+    uintptr_t base = (uintptr_t)g_PsxRam;
+
+    if (((value & 0xFFE00000u) == 0x80000000u) ||
+        ((value & 0xFFE00000u) == 0xA0000000u))
+        return PSX_ADDR(value);
+    if (host >= base && host < base + (uintptr_t)PSX_RAM_SIZE)
+        return (void *)host;
+    return NULL;
 }
 
 static void wm25044_unknown(const char *kind, u32 value)
@@ -67,20 +74,20 @@ void wm_80025044_guest_safe(void)
         u32 data;
         u32 next;
 
-        if (!wm25044_guest_ptr_known(image)) {
+        guest_image = (u8 *)wm25044_resolve(image);
+        if (guest_image == NULL) {
             wm25044_unknown("image", image);
             break;
         }
-        guest_image = (u8 *)PSX_ADDR(image);
         data = *(u32 *)(guest_image + 0x08u);
         next = *(u32 *)(guest_image + 0x0Cu);
-        if (data != 0u && !wm25044_guest_ptr_known(data)) {
+        if (data != 0u && wm25044_resolve(data) == NULL) {
             wm25044_unknown("data", data);
             break;
         }
         if (data != 0u)
             (void)LoadImage((Wm25044Rect *)guest_image,
-                            (Wm25044ULong *)PSX_ADDR(data));
+                            (Wm25044ULong *)wm25044_resolve(data));
         else
             (void)ClearImage((Wm25044Rect *)guest_image, 0u, 0u, 0u);
         image = next;

@@ -141,6 +141,23 @@ static void run_bad_context(void)
                wm_25044_get_unknowns() == 1);
 }
 
+static void run_native_in_guest_ram(void)
+{
+    u8 *node = (u8 *)PSX_ADDR(NODE0);
+    u8 *data = (u8 *)PSX_ADDR(DATA0);
+
+    reset_fixture();
+    g_GfxImageList[0] = (u32)(uintptr_t)node;
+    store_u32(NODE0 + 0x08u, (u32)(uintptr_t)data);
+    store_u32(NODE0 + 0x0Cu, 0u);
+    wm_80025044_guest_safe();
+    check_case("native-in-guest-ram", "resolve-node-and-data",
+               wm_25044_get_unknowns() == 0 && s_load_calls == 1 &&
+               (void *)s_last_rect == (void *)node &&
+               (void *)s_last_data == (void *)data &&
+               g_GfxImageList[0] == 0u);
+}
+
 int ControllerPopState(void) { return 0; }
 int VSync(int mode) { (void)mode; return 0; }
 int CdSync(int mode, u8 *result) { (void)mode; (void)result; return 0; }
@@ -175,6 +192,7 @@ int main(void)
     run_known_load_and_clear();
     run_unknown_data_and_chain();
     run_bad_context();
+    run_native_in_guest_ram();
     printf("=== Results: %d/%d PASS ===\n", s_pass, s_total);
     return s_fail == 0 ? 0 : 1;
 }

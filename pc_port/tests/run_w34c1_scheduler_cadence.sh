@@ -135,6 +135,10 @@ make_mutant M14
 perl -0pi -e 's/        \(void\)wm_80074F2C\(\);\n        \(void\)wm_80075104\(\);/        (void)wm_80075104();\n        (void)wm_80074F2C();/' \
     "$BUILD_DIR/M14.driver.c"
 
+make_mutant M15
+perl -0pi -e 's/        func_8001D468\(\);/        \/\* omitted 0x8001D468 \*\//' \
+    "$BUILD_DIR/M15.driver.c"
+
 for entry in \
     'M1:cadence.outer_scheduler.exactly_once' \
     'M2:cadence.inner_scheduler.once_per_displayed_frame' \
@@ -149,7 +153,8 @@ for entry in \
     'M11:frame_seams.25044.once_per_frame' \
     'M12:frame_seams.74f2c.once_per_frame' \
     'M13:frame_seams.75104.once_per_frame' \
-    'M14:frame_seams.retail_order'; do
+    'M14:frame_seams.retail_order' \
+    'M15:frame_seams.1d468.once_per_frame'; do
     label="${entry%%:*}"
     assertion="${entry#*:}"
     set +e
@@ -167,4 +172,4 @@ for entry in \
     echo "$label DETECTED assertion=$assertion"
 done
 
-echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M14 DETECTED; focused warnings clean"
+echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M15 DETECTED; focused warnings clean"

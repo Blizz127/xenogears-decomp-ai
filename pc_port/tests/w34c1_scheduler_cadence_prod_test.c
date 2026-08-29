@@ -43,6 +43,7 @@ static int s_slot1_calls;
 static int s_slot2_calls;
 static int s_queue_barrier_calls;
 static int s_250e0_calls;
+static int s_1d468_calls;
 static int s_25044_calls;
 static int s_74f2c_calls;
 static int s_75104_calls;
@@ -184,26 +185,33 @@ void func_800250E0(int context)
     s_frame_seam_stage = 1;
     s_250e0_calls++;
 }
-void wm_80025044_guest_safe(void)
+void func_8001D468(void)
 {
     if (s_frame_seam_stage != 1)
         s_frame_seam_order_errors++;
     s_frame_seam_stage = 2;
-    s_25044_calls++;
+    s_1d468_calls++;
 }
-int wm_80074F2C(void)
+void wm_80025044_guest_safe(void)
 {
     if (s_frame_seam_stage != 2)
         s_frame_seam_order_errors++;
     s_frame_seam_stage = 3;
+    s_25044_calls++;
+}
+int wm_80074F2C(void)
+{
+    if (s_frame_seam_stage != 3)
+        s_frame_seam_order_errors++;
+    s_frame_seam_stage = 4;
     s_74f2c_calls++;
     return 0;
 }
 int wm_80075104(void)
 {
-    if (s_frame_seam_stage != 3)
+    if (s_frame_seam_stage != 4)
         s_frame_seam_order_errors++;
-    s_frame_seam_stage = 4;
+    s_frame_seam_stage = 5;
     s_75104_calls++;
     return 0;
 }
@@ -235,7 +243,7 @@ int wm_ot_draw_otag_guest(u32 entry_guest)
         s_ot_errors++;
     if (s_scheduler_since_draw != expected_schedulers)
         s_scheduler_order_errors++;
-    if (s_frame_seam_stage != 4)
+    if (s_frame_seam_stage != 5)
         s_frame_seam_order_errors++;
     s_frame_seam_stage = 0;
     s_scheduler_since_draw = 0;
@@ -282,6 +290,8 @@ int main(void)
                         0, s_scheduler_order_errors);
     ok &= assertion_int("frame_seams.250e0.once_per_frame",
                         120, s_250e0_calls);
+    ok &= assertion_int("frame_seams.1d468.once_per_frame",
+                        120, s_1d468_calls);
     ok &= assertion_int("frame_seams.25044.once_per_frame",
                         120, s_25044_calls);
     ok &= assertion_int("frame_seams.74f2c.once_per_frame",

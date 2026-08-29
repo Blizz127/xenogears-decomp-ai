@@ -5,12 +5,15 @@
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdlib.h>
+#include "guest_prim_link.h"
+#define RENDER_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
  * not yet byte-matched, so a no-op assert compiles safely there. (uintptr_t
  * comes from include/types.h for both builds.) */
 #define assert(x) ((void)0)
+#define RENDER_ADD_PRIM(ot, prim) addPrim((ot), (prim))
 #endif
 
 // Rendering-related stuff
@@ -737,9 +740,9 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
             poly->v3 = texV + texV1;
 
             if ((flags3C >> 27) & 1) {
-                addPrim((u8*)ot - direction * 4, poly);
+                RENDER_ADD_PRIM((u8*)ot - direction * 4, poly);
             } else {
-                addPrim(ot, poly);
+                RENDER_ADD_PRIM(ot, poly);
             }
 #ifdef XENO_PC_PORT
             linkedThisCall++;

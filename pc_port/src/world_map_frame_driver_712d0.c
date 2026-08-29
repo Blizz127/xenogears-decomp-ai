@@ -59,10 +59,7 @@ static void wm_800762FC(void) { wm_712d0_stub("800762FC", 0x800762FCu); }
 static void wm_80075B58(void) { wm_712d0_stub("80075B58", 0x80075B58u); }
 static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
 extern void func_800250E0(int context);
-/* The compiled generic 0x8001D468 publishes native work-buffer links into
- * the guest OT through func_8001DAE8. Keep this shadow until that downstream
- * packet path has a guest-safe binding. */
-static void func_8001D468(void) { wm_712d0_stub("8001D468", 0x8001D468u); }
+extern void func_8001D468(void);
 extern int ControllerPopState(int port);
 extern int ControllerGetType(int port);
 extern void ResetGraph(int mode);

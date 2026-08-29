@@ -32,9 +32,9 @@ build_run O2 -O2
 build_run UBSan_O2 -O2 "-fsanitize=undefined -fno-sanitize-recover=all"
 for label in O0 O2 UBSan_O2; do
     test "$(<"$OUT/$label.rc")" = 0
-    rg -q '^=== Results: 7/7 PASS ===$' "$OUT/$label.stdout"
+    rg -q '^=== Results: 8/8 PASS ===$' "$OUT/$label.stdout"
     ! rg -qi 'runtime error|undefined behavior' "$OUT/$label.stderr"
 done
 cmp "$OUT/O0.stdout" "$OUT/O2.stdout"
 cmp "$OUT/O0.stdout" "$OUT/UBSan_O2.stdout"
-printf 'W34B30 TEST PASS O0=7/7 O2=7/7 UBSan_O2=7/7\n'
+printf 'W34B30 TEST PASS O0=8/8 O2=8/8 UBSan_O2=8/8\n'
