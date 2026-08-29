@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_helper_86124.h"
 #include "world_map_teardown_7299c.h"
 
 extern void* D_80062528;
@@ -208,21 +209,18 @@ void wm_8007299C(void)
 #endif
     wm_80084818();
 
-    td_free_value(td_lw(0x8009D7ECu));
-    td_free_value(td_lw(0x8009D7E8u));
+    wm_80086124();
     GfxFreeWorkBuffers();
     td_free_value(td_lw(0x8009CEB4u));
     td_free_value(td_lw(0x8009D150u));
-    td_free_value(td_lw(0x8009D7FCu));
-    td_free_value(td_lw(0x8009D7F8u));
+    wm_800866C8();
     td_free_value(td_lw(0x8009BE18u));
     td_free_value(td_lw(0x8009BE14u));
     td_free_value(td_lw(0x8009D30Cu));
     td_free_value(td_lw(0x8009D780u));
     td_free_value(td_lw(0x8009D7D0u));
     td_free_value(td_lw(0x8009BDF4u));
-    td_free_value(td_lw(0x8009BE1Cu));
-    td_free_value(td_lw(0x8009BE20u));
+    wm_80089128();
     wm_80097D64();
 
     td_free_value(td_lw(0x8009BC38u));

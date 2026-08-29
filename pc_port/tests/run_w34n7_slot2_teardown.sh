@@ -13,6 +13,7 @@ BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 SRC=(pc_port/tests/w34n7_slot2_teardown_prod_test.c
      pc_port/src/psx_memory.c pc_port/src/world_map_teardown_7299c.c
+     pc_port/src/world_map_helper_86124.c
      pc_port/src/world_map_main_loop_71034.c)
 
 run_regime() {
