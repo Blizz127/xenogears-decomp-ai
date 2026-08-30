@@ -30,6 +30,7 @@
 #include "world_map_helper_93f18.h"
 #include "world_map_helper_73b04.h"
 #include "world_map_helper_75d4c.h"
+#include "world_map_helper_75e7c.h"
 #include "world_map_helper_762fc.h"
 #include "world_map_menu_lifecycle.h"
 #include "world_map_r4world_71a58.h"
@@ -46,17 +47,8 @@ extern void SetGeomOffset(long ofx, long ofy);
 extern void MoveImage(void *rect, long x, long y);
 extern long CdSync(long mode, u_char *result);
 extern void wm_80097800(void);
+extern u8 D_8005954C;
 
-/* Unresolved leaf stubs: preserve control flow, return the retail-neutral
- * default, and leave an address-tagged work queue in the log. */
-static void wm_712d0_stub(const char* name, u32 guest_pc)
-{
-    fprintf(stderr,
-            "[worldmap-stub] guest=0x%08x name=%s default_return=0\n",
-            guest_pc, name);
-}
-
-static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
 extern void func_800250E0(int context);
 extern void func_8001D468(void);
 extern int ControllerPopState(int port);
@@ -84,13 +76,12 @@ extern void MenuMain(void);
 #define D_8009BE0C  0x8009BE0Cu
 #define D_8009D80C  0x8009D80Cu
 #define D_8009D558  0x8009D558u
-#define D_8006954C  0x8006954Cu
 #define D_80069179  0x80069179u
 #define D_80069178  0x80069178u
 #define D_80069171  0x80069171u
 #define D_80069460  0x80069460u
 #define D_8006EE76  0x8006EE76u
-#define D_8007EE70  0x8007EE70u
+#define D_8006EE70  0x8006EE70u
 #define D_8007EE68  0x8007EE68u
 #define D_8009D7CC  0x8009D7CCu
 #define D_8009D7D8  0x8009D7D8u
@@ -100,7 +91,7 @@ extern void MenuMain(void);
 #define D_8009BC9C  0x8009BC9Cu
 #define D_8009C588  0x8009C588u
 #define D_8009B6E4  0x8009B6E4u
-#define D_8009EF64  0x8009EF64u
+#define D_8006EF64  0x8006EF64u
 
 static u32 fd_lw(u32 a) { u32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void fd_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
@@ -123,6 +114,53 @@ void wm_712d0_run_second_scheduler(void)
 #else
     wm_80097800();
 #endif
+}
+
+void wm_712d0_run_transition_lane(void)
+{
+    s32 result = 0;
+
+#if defined(W34N18_LANE_MUTANT_WRONG_D80C_GUARD)
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) == 0u &&
+            fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
+            fd_lw(D_8009D554) != 0u && fd_lw(D_8009D80C) == 0u) {
+#else
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) == 0u &&
+            fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
+            fd_lw(D_8009D554) != 0u && fd_lw(D_8009D80C) != 0u) {
+#endif
+#if defined(W34N18_LANE_MUTANT_SKIP_SELECTOR_CALL)
+        result = 0;
+#else
+        result = wm_80075E7C(D_8009D55C, (s32)fd_lhu(D_8006EF64));
+#endif
+        if (result == 1) {
+#if !defined(W34N18_LANE_MUTANT_SKIP_SESSION_EXIT)
+            fd_sw(D_8009D554, 0u);
+            fd_sw(D_8009D7CC, (u32)result);
+#endif
+            D_8005954C = 0u;
+#if defined(W34N18_LANE_MUTANT_WRONG_PARTY_PUBLISH)
+            fd_sh(D_8006EE70, (u16)fd_lbu(D_8006F8E5 + 1u));
+#else
+            fd_sh(D_8006EE70, (u16)fd_lbu(D_8006F8E5));
+#endif
+            fd_sh(D_8006EE70 + 2u, (u16)fd_lbu(D_8006F8E5 + 1u));
+            fd_sh(D_8006EE70 + 4u, (u16)fd_lbu(D_8006F8E5 + 2u));
+        }
+    }
+
+#if !defined(W34N18_LANE_MUTANT_SKIP_D80C_CLEAR)
+    fd_sw(D_8009D80C, 0u);
+#endif
+#if defined(W34N18_LANE_MUTANT_WRONG_TOGGLE_MASK)
+    if ((fd_lhu(D_8009BD10) & 0x0800u) != 0u) {
+#else
+    if ((fd_lhu(D_8009BD10) & 0x0100u) != 0u) {
+#endif
+        u16 toggle = fd_lhu(D_8006EE76);
+        fd_sh(D_8006EE76, (u16)(toggle ^ 1u));
+    }
 }
 
 static void* wm_712d0_map_guest(u32 value, const char* call, u32 pc)
@@ -279,7 +317,7 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
                 s32 i;
                 for (i = 0; i < 3; i++) {
                     u8 pres = fd_lbu(D_8006F8E5 + (u32)i);
-                    fd_sh(D_8007EE70 + i * 2, (u16)pres);
+                    fd_sh(D_8006EE70 + i * 2, (u16)pres);
                 }
 
                 /* Check animation state */
@@ -324,6 +362,10 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
                 *toggle ^= 1;
             }
         }
+
+        /* Retail 0x80071774..0x8007188C: consume a pending transition,
+         * then clear its one-frame trigger and apply the bit-0x100 toggle. */
+        wm_712d0_run_transition_lane();
 
         /* State machine dispatch */
         if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&

@@ -180,4 +180,26 @@ for entry in \
     echo "$label DETECTED assertion=$assertion"
 done
 
-echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M15 DETECTED; focused warnings clean"
+for entry in \
+    'M16:W34N18_LANE_MUTANT_SKIP_SELECTOR_CALL:transition.lane.calls.selector' \
+    'M17:W34N18_LANE_MUTANT_WRONG_D80C_GUARD:transition.lane.calls.selector' \
+    'M18:W34N18_LANE_MUTANT_SKIP_SESSION_EXIT:transition.lane.success.session.exit' \
+    'M19:W34N18_LANE_MUTANT_WRONG_PARTY_PUBLISH:transition.lane.success.party.publish' \
+    'M20:W34N18_LANE_MUTANT_SKIP_D80C_CLEAR:transition.lane.tail.clears.d80c' \
+    'M21:W34N18_LANE_MUTANT_WRONG_TOGGLE_MASK:transition.lane.tail.toggles.bit100'; do
+    IFS=: read -r label define assertion <<<"$entry"
+    set +e
+    compile_and_run "$label" "$DRIVER" "$MAIN" -O0 -g -D"$define"
+    rc=$?
+    set -e
+    if [[ "$rc" -eq 0 ]] || \
+       ! rg -q "^ASSERTION $assertion([[:space:]]|$)" \
+           "$BUILD_DIR/$label.stderr"; then
+        echo "$label FAILED mutant gate rc=$rc expected=$assertion" >&2
+        tail -80 "$BUILD_DIR/$label.stderr" >&2
+        exit 1
+    fi
+    echo "$label DETECTED assertion=$assertion"
+done
+
+echo "W34C1 CADENCE CERTIFICATE PASS O0/O2/UBSan; M1-M21 DETECTED; focused warnings clean"

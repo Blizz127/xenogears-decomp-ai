@@ -30,5 +30,7 @@ typedef enum Wm712D0RunResult {
 void wm_800712D0(void);
 Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run);
 void wm_712d0_run_second_scheduler(void);
+/* Retail 0x80071774..0x8007188C transition-selection and flag tail. */
+void wm_712d0_run_transition_lane(void);
 
 #endif

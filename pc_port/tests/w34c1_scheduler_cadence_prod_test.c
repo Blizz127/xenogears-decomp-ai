@@ -10,6 +10,7 @@
 #include "psx_memory.h"
 #include "system/controller.h"
 #include "world_map_capture.h"
+#include "world_map_frame_driver_712d0.h"
 #include "world_map_main_loop_71034.h"
 
 #define D_8009C5A8 UINT32_C(0x8009C5A8)
@@ -54,6 +55,12 @@ static int s_effective_presents;
 static int s_screenshot_calls;
 static int s_screenshot_frames[2];
 static char s_screenshot_paths[2][512];
+static int s_transition_calls;
+static s32 s_transition_result;
+static u32 s_transition_vec;
+static s32 s_transition_threshold;
+
+u8 D_8005954C;
 
 /* The cadence certificate never enters menu modes; satisfy the production
  * driver's now-shared lifecycle symbols without exercising that separate
@@ -64,6 +71,25 @@ void wm_80075B58(void) {}
 static void write_u32(u32 address, u32 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
+}
+
+static void write_u16(u32 address, u16 value)
+{
+    memcpy(PSX_ADDR(address), &value, sizeof(value));
+}
+
+static u32 read_u32(u32 address)
+{
+    u32 value;
+    memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
+}
+
+static u16 read_u16(u32 address)
+{
+    u16 value;
+    memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
 }
 
 static int assertion_int(const char* name, int expected, int actual)
@@ -252,6 +278,14 @@ s32 wm_80093F18(u32 vec_addr)
     return 0;
 }
 
+s32 wm_80075E7C(u32 vec_addr, s32 threshold)
+{
+    s_transition_calls++;
+    s_transition_vec = vec_addr;
+    s_transition_threshold = threshold;
+    return s_transition_result;
+}
+
 void wm_ot_clear_r_guest(u32 ot_guest, u32 count)
 {
     (void)ot_guest;
@@ -287,6 +321,62 @@ static void reset_fixture(void)
     write_u32(UINT32_C(0x8009A060), UINT32_C(0x8007299C));
     write_u32(UINT32_C(0x8009BC38), OT_A);
     write_u32(UINT32_C(0x8009BCB0), OT_B);
+}
+
+static int test_transition_lane(void)
+{
+    int ok = 1;
+
+    memset(g_PsxRam, 0, sizeof(g_PsxRam));
+    s_transition_calls = 0;
+    s_transition_result = 1;
+    s_transition_vec = 0u;
+    s_transition_threshold = 0;
+    write_u32(UINT32_C(0x8009C178), 0u);
+    write_u32(UINT32_C(0x8009D804), 0u);
+    write_u16(UINT32_C(0x8009BD24), UINT16_C(0xFFFF));
+    write_u16(UINT32_C(0x8009CE68), UINT16_C(0xFFFF));
+    write_u32(UINT32_C(0x8009D554), 1u);
+    write_u32(UINT32_C(0x8009D80C), 1u);
+    write_u16(UINT32_C(0x8006EF64), UINT16_C(0x3456));
+    write_u16(UINT32_C(0x8009BD10), UINT16_C(0x0100));
+    write_u16(UINT32_C(0x8006EE76), 2u);
+    *(u8 *)PSX_ADDR(UINT32_C(0x8006F8E5)) = 4u;
+    *(u8 *)PSX_ADDR(UINT32_C(0x8006F8E6)) = 5u;
+    *(u8 *)PSX_ADDR(UINT32_C(0x8006F8E7)) = 6u;
+    D_8005954C = 0xAAu;
+
+    wm_712d0_run_transition_lane();
+    ok &= assertion_int("transition.lane.calls.selector", 1,
+                        s_transition_calls);
+    ok &= assertion_true("transition.lane.retail.arguments",
+                         s_transition_vec == UINT32_C(0x8009D55C) &&
+                         s_transition_threshold == 0x3456);
+    ok &= assertion_true("transition.lane.success.session.exit",
+                         read_u32(UINT32_C(0x8009D554)) == 0u &&
+                         read_u32(UINT32_C(0x8009D7CC)) == 1u &&
+                         D_8005954C == 0u);
+    ok &= assertion_true("transition.lane.success.party.publish",
+                         read_u16(UINT32_C(0x8006EE70)) == 4u &&
+                         read_u16(UINT32_C(0x8006EE72)) == 5u &&
+                         read_u16(UINT32_C(0x8006EE74)) == 6u);
+    ok &= assertion_int("transition.lane.tail.clears.d80c", 0,
+                        (s32)read_u32(UINT32_C(0x8009D80C)));
+    ok &= assertion_int("transition.lane.tail.toggles.bit100", 3,
+                        (s32)read_u16(UINT32_C(0x8006EE76)));
+
+    memset(g_PsxRam, 0, sizeof(g_PsxRam));
+    s_transition_calls = 0;
+    write_u32(UINT32_C(0x8009C178), 0u);
+    write_u32(UINT32_C(0x8009D804), 0u);
+    write_u16(UINT32_C(0x8009BD24), UINT16_C(0xFFFF));
+    write_u16(UINT32_C(0x8009CE68), UINT16_C(0xFFFF));
+    write_u32(UINT32_C(0x8009D554), 1u);
+    write_u32(UINT32_C(0x8009D80C), 0u);
+    wm_712d0_run_transition_lane();
+    ok &= assertion_int("transition.lane.guard.requires.nonzero.d80c", 0,
+                        s_transition_calls);
+    return ok;
 }
 
 int main(void)
@@ -359,6 +449,7 @@ int main(void)
                         s_effective_presents);
     ok &= assertion_int("bounded_exit.final_frame_presented", 0,
                         s_scene_open);
+    ok &= test_transition_lane();
 
     if (ok == 0)
         return EXIT_FAILURE;
