@@ -57,6 +57,7 @@ static int outer_stage;
 static int outer_order_errors;
 static int terminal_default_calls;
 static s32 driver_exit_state;
+static int observed_frame_limit;
 
 static void check(int condition, const char* name)
 {
@@ -109,6 +110,7 @@ static void reset_counters(void)
     outer_order_errors = 0;
     terminal_default_calls = 0;
     driver_exit_state = 0;
+    observed_frame_limit = -99;
 }
 
 static void seed(u32 bbc4, s16 type)
@@ -319,7 +321,7 @@ void ControllerResetState(void)
 
 Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
 {
-    (void)run;
+    observed_frame_limit = run->frame_limit;
     driver_calls++;
     if (outer_stage != 5)
         outer_order_errors++;
@@ -380,6 +382,24 @@ static void test_main_loop_integration(void)
           "integration.default.slot2.to.terminal.order");
     check(terminal_default_calls == 1 && main_loop_calls == 0,
           "integration.signed.default.dispatches.terminal");
+    check(observed_frame_limit == 120,
+          "integration.explicit.bound.forwarded");
+
+    if (unsetenv("XENO_WORLD_FRAME_LIMIT") != 0) {
+        perror("unsetenv");
+        exit(EXIT_FAILURE);
+    }
+    seed(1u, 3);
+    sw(0x8009C5A8u, 0u);
+    sw(D7CC, 2u);
+    sw(0x8009A05Cu, 0x80072238u);
+    sw(0x8009A060u, 0x8007299Cu);
+    driver_exit_state = -1;
+    wm_80071034();
+    check(observed_frame_limit == 0,
+          "integration.absent.bound.means.unbounded");
+    check(terminal_default_calls == 1,
+          "integration.unbounded.natural.exit.reaches.terminal");
 }
 
 int main(void)

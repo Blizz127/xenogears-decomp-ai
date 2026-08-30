@@ -43,8 +43,12 @@ static void ml_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 static int ml_frame_limit(void)
 {
     const char* value = getenv("XENO_WORLD_FRAME_LIMIT");
-    int limit = value != NULL ? atoi(value) : 600;
-    return limit > 0 ? limit : 600;
+    int limit;
+
+    if (value == NULL)
+        return 0;
+    limit = atoi(value);
+    return limit > 0 ? limit : 0;
 }
 
 static void ml_guest_stub(u32 address, int mode, int slot, const char* lane)
@@ -129,9 +133,14 @@ static int ml_after_frame(int frame, void* user)
                 frame);
         return -1;
     }
-    if ((frame % 60) == 0)
-        fprintf(stderr, "[worldmap-open-loop] frame=%d/%d\n",
-                frame, context->frame_limit);
+    if ((frame % 60) == 0) {
+        if (context->frame_limit > 0)
+            fprintf(stderr, "[worldmap-open-loop] frame=%d/%d\n",
+                    frame, context->frame_limit);
+        else
+            fprintf(stderr, "[worldmap-open-loop] frame=%d/unbounded\n",
+                    frame);
+    }
     return 0;
 }
 

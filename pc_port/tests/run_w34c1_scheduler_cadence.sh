@@ -114,11 +114,15 @@ perl -0pi -e 's/#elif defined\(WM_712D0_MUTANT_DOUBLE_SECOND_SCHEDULER\)/#elif 1
     "$BUILD_DIR/M3.driver.c"
 
 make_mutant M4
-perl -0pi -e 's/if \(run->displayed_frames >= run->frame_limit\)/if (run->displayed_frames >= run->frame_limit - 1)/' \
+perl -0pi -e 's/(run->displayed_frames >= run->frame_limit)(\)\n            return WM_712D0_RUN_BOUNDED_EXIT;)/$1 - 1$2/' \
+    "$BUILD_DIR/M4.driver.c"
+rg -q 'run->displayed_frames >= run->frame_limit - 1' \
     "$BUILD_DIR/M4.driver.c"
 
 make_mutant M5
-perl -0pi -e 's/if \(run->displayed_frames >= run->frame_limit\)/if (run->displayed_frames >= run->frame_limit + 1)/' \
+perl -0pi -e 's/(run->displayed_frames >= run->frame_limit)(\)\n            return WM_712D0_RUN_BOUNDED_EXIT;)/$1 + 1$2/' \
+    "$BUILD_DIR/M5.driver.c"
+rg -q 'run->displayed_frames >= run->frame_limit \+ 1' \
     "$BUILD_DIR/M5.driver.c"
 
 make_mutant M6

@@ -14,6 +14,8 @@
 typedef int (*Wm712D0FrameHook)(int frame, void* user);
 
 typedef struct Wm712D0BoundedRun {
+    /* Positive values request a bounded harness exit; zero is retail-style
+     * unbounded recurrence until D554 becomes zero. */
     int frame_limit;
     int displayed_frames;
     Wm712D0FrameHook before_frame;

@@ -338,9 +338,10 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
     s32 controller_result;
     int frame;
 
-    if (run == NULL || run->frame_limit <= 0 ||
+    if (run == NULL || run->frame_limit < 0 ||
             run->displayed_frames < 0 ||
-            run->displayed_frames >= run->frame_limit) {
+            (run->frame_limit > 0 &&
+             run->displayed_frames >= run->frame_limit)) {
         return WM_712D0_RUN_ERROR;
     }
 
@@ -489,7 +490,8 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
         }
         if (fd_lw(D_8009D554) == 0u)
             break;
-        if (run->displayed_frames >= run->frame_limit)
+        if (run->frame_limit > 0 &&
+                run->displayed_frames >= run->frame_limit)
             return WM_712D0_RUN_BOUNDED_EXIT;
     }
 
