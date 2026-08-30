@@ -2316,81 +2316,16 @@ void PcPort_InitGameStates(void)
     g_MainGameStates[2].hasOverlay = 1;
 
     /* Retail state 3: main 0x80070CFC, archive 0x0F, state/BSS 0x8009BBB0,
-     * heap 0x8009D80C. Never install that raw PSX entry as a host pointer.
-     * Default: hollow placeholder, hasOverlay=0 (F16).
-     * XENO_WORLD_INIT=1: load archive 0x0F, native WorldMapMain pre-loop init,
-     * then placeholder. XENO_WORLD_MODE_INIT=1: also runs Lahan mode
-     * initializer 0x80071CDC once. XENO_WORLD_SECOND_WAVE=1: also runs
-     * 0x80071EF0 → poll → 0x80073530. XENO_WORLD_OBJECT_POOL=1: also runs
-     * 0x8009766C pool init. XENO_WORLD_STATE_TEMPLATE=1: also copies
-     * 0x8009A180→0x8009BE4C (8 words). XENO_WORLD_MODE_ENTER_STATE=1: also
-     * writes the ten mode-enter u32s. XENO_WORLD_CROSS_PRODUCTS=1: also runs
-     * 0x80098044 (four OuterProduct0). XENO_WORLD_GPU_ASSET_A=1: also runs
-     * 0x8008440C (TIM→VRAM/CLUT). XENO_WORLD_GPU_ASSET_B=1: also runs
-     * 0x800979C8 (larger TIM→CLUT/TPage). XENO_WORLD_OBJECT_MATRIX=1: also
-     * runs 0x80084580 (object/matrix table). XENO_WORLD_THIRD_WAVE=1: also
-     * runs 0x80072090 (third-wave submit). XENO_WORLD_BSS_CONSTANTS=1: also
-     * runs 0x800736DC (BSS constant paint), cut before 0x80072464.
-     * XENO_WORLD_PRIMITIVE_TEMPLATES=1: also runs 0x80073E30 (packet
-     * templates), cut before 0x8007246C.
-     * XENO_WORLD_RECORD_CLUT_INIT=1: also runs 0x80085F58 (record reloc +
-     * CLUT table), cut before 0x80072478.
-     * XENO_WORLD_GFX_WORK_BUFFERS=1: also routes
-     * GfxAllocateWorkBuffers(5120,0), cut before 0x80072480.
-     * XENO_WORLD_FT4_POOLS=1: also runs 0x80074594 (heap FT4 pools), cut
-     * before 0x80072488.
-     * XENO_WORLD_HEAP_TABLE_RAND=1: also runs 0x800863E0 (heap tables A/B
-     * + 240 rand()), cut before 0x80072490 (still no 0x80074E58 / poll /
-     * main loop / wm_800712D0 / broad residual). Implies FT4_POOLS. */
+     * heap 0x8009D80C.  Bind the retail state to its port-owned native entry;
+     * never install the raw PSX function address as a host pointer. */
     {
-        extern int PcPort_WorldMapInitEnabled(void);
         extern void PcPort_WorldMapInitMain(void);
-        int worldInit = PcPort_WorldMapInitEnabled();
-        const char* modeInit = getenv("XENO_WORLD_MODE_INIT");
-        const char* secondWave = getenv("XENO_WORLD_SECOND_WAVE");
-        const char* objectPool = getenv("XENO_WORLD_OBJECT_POOL");
-        const char* stateTmpl = getenv("XENO_WORLD_STATE_TEMPLATE");
-        const char* modeEnter = getenv("XENO_WORLD_MODE_ENTER_STATE");
-        const char* crossProd = getenv("XENO_WORLD_CROSS_PRODUCTS");
-        const char* gpuAssetA = getenv("XENO_WORLD_GPU_ASSET_A");
-        const char* gpuAssetB = getenv("XENO_WORLD_GPU_ASSET_B");
-        const char* objMatrix = getenv("XENO_WORLD_OBJECT_MATRIX");
-        const char* thirdWave = getenv("XENO_WORLD_THIRD_WAVE");
-        const char* bssConst = getenv("XENO_WORLD_BSS_CONSTANTS");
-        const char* primTmpl = getenv("XENO_WORLD_PRIMITIVE_TEMPLATES");
-        const char* recClut = getenv("XENO_WORLD_RECORD_CLUT_INIT");
-        const char* gfxWork = getenv("XENO_WORLD_GFX_WORK_BUFFERS");
-        const char* ft4Pools = getenv("XENO_WORLD_FT4_POOLS");
-        const char* heapRand = getenv("XENO_WORLD_HEAP_TABLE_RAND");
-        g_MainGameStates[3].pFnMain =
-            worldInit ? PcPort_WorldMapInitMain : PcPort_WorldMapPlaceholderMain;
+        g_MainGameStates[3].pFnMain = PcPort_WorldMapInitMain;
         g_MainGameStates[3].pMemStart  = PSX_ADDR(0x0009bbb0);
         g_MainGameStates[3].pHeapStart = PSX_ADDR(0x0009d80c);
-        g_MainGameStates[3].hasOverlay = worldInit ? 1 : 0;
-        if (worldInit)
-            printf("[xeno-port][boot] world-init gate on (hasOverlay=1) "
-                   "MODE_INIT=%s SECOND_WAVE=%s OBJECT_POOL=%s "
-                   "STATE_TEMPLATE=%s MODE_ENTER_STATE=%s CROSS_PRODUCTS=%s "
-                   "GPU_ASSET_A=%s GPU_ASSET_B=%s OBJECT_MATRIX=%s "
-                   "THIRD_WAVE=%s BSS_CONSTANTS=%s PRIMITIVE_TEMPLATES=%s "
-                   "RECORD_CLUT_INIT=%s GFX_WORK_BUFFERS=%s FT4_POOLS=%s "
-                   "HEAP_TABLE_RAND=%s\n",
-                   (modeInit && modeInit[0]) ? modeInit : "off",
-                   (secondWave && secondWave[0]) ? secondWave : "off",
-                   (objectPool && objectPool[0]) ? objectPool : "off",
-                   (stateTmpl && stateTmpl[0]) ? stateTmpl : "off",
-                   (modeEnter && modeEnter[0]) ? modeEnter : "off",
-                   (crossProd && crossProd[0]) ? crossProd : "off",
-                   (gpuAssetA && gpuAssetA[0]) ? gpuAssetA : "off",
-                   (gpuAssetB && gpuAssetB[0]) ? gpuAssetB : "off",
-                   (objMatrix && objMatrix[0]) ? objMatrix : "off",
-                   (thirdWave && thirdWave[0]) ? thirdWave : "off",
-                   (bssConst && bssConst[0]) ? bssConst : "off",
-                   (primTmpl && primTmpl[0]) ? primTmpl : "off",
-                   (recClut && recClut[0]) ? recClut : "off",
-                   (gfxWork && gfxWork[0]) ? gfxWork : "off",
-                   (ft4Pools && ft4Pools[0]) ? ft4Pools : "off",
-                   (heapRand && heapRand[0]) ? heapRand : "off");
+        g_MainGameStates[3].hasOverlay = 1;
+        printf("[xeno-port][boot] world state 3: retail native owner "
+               "enabled (hasOverlay=1)\n");
     }
 
     /* states 4 and 6 are field/battle overlay mains not yet symbol-named;

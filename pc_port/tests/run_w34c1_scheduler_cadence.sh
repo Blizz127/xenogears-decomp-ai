@@ -82,8 +82,15 @@ if rg -q 'XENO_WORLD_OPEN_LOOP' pc_port/src/world_map_init.c; then
     echo 'XENO_WORLD_OPEN_LOOP still controls production world init' >&2
     exit 1
 fi
+rg -q 'g_MainGameStates\[3\]\.pFnMain = PcPort_WorldMapInitMain;' \
+    pc_port/src/game_overrides.c
+if rg -q 'PcPort_WorldMapInitEnabled' pc_port/src/game_overrides.c; then
+    echo 'XENO_WORLD_INIT still controls game-state 3 selection' >&2
+    exit 1
+fi
 echo "ORDER CLEAR_OT -> INNER_SCHEDULER -> DRAW_OT -> 0x719C8 LIMIT PASS"
 echo "OPEN_LOOP SELECTOR RETIRED PASS"
+echo "WORLD STATE 3 SELECTOR RETIRED PASS"
 
 make_mutant() {
     local label="$1"
