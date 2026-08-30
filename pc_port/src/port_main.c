@@ -1207,6 +1207,8 @@ int main(int argc, char** argv) {
     /* Parse the optional deterministic input schedule before game startup. */
     if (PcPort_TestInputInit() != 0)
         return EXIT_FAILURE;
+    if (PcPort_WorldTestInputInit() != 0)
+        return EXIT_FAILURE;
 
     /* 2. Data migration: build the game-state dispatch table at runtime. */
     PcPort_InitGameStates();

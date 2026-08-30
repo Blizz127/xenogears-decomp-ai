@@ -29,6 +29,68 @@ static void expect_invalid(const char *schedule, const char *name)
     check(PcPort_TestInputInit() != 0, name);
 }
 
+static void reset_world_with(const char *schedule)
+{
+    PcPort_WorldTestInputResetForCertificate();
+    if (schedule == NULL)
+        unsetenv("XENO_WORLD_TEST_INPUT");
+    else
+        setenv("XENO_WORLD_TEST_INPUT", schedule, 1);
+}
+
+static void test_world_schedule(void)
+{
+    u16 held;
+    u16 pressed;
+    u16 repeated;
+
+    reset_world_with(NULL);
+    check(PcPort_WorldTestInputInit() == 0, "world.unset.init.success");
+    held = 0x0001u;
+    pressed = 0x0002u;
+    repeated = 0x0004u;
+    PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+    check(held == 0x0001u && pressed == 0x0002u && repeated == 0x0004u,
+          "world.unset.merge.inert");
+
+    reset_world_with("1:0x2000");
+    check(PcPort_WorldTestInputInit() != 0,
+          "world.malformed.first_boundary");
+
+    reset_world_with("0:0x2000,2:0x20,3:0");
+    check(PcPort_WorldTestInputInit() == 0, "world.valid.init.success");
+
+    held = 0x0001u;
+    pressed = 0x0002u;
+    repeated = 0x0004u;
+    PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+    check(held == 0x2001u, "world.frame1.held");
+    check(pressed == 0x2002u && repeated == 0x2004u,
+          "world.frame1.rising");
+
+    held = 0u;
+    pressed = 0u;
+    repeated = 0u;
+    PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+    check(held == 0x2000u && pressed == 0u && repeated == 0u,
+          "world.frame2.hold-no-repeat");
+
+    held = 0x1000u;
+    pressed = 0u;
+    repeated = 0u;
+    PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+    check(held == 0x1020u, "world.frame3.merge-preserves-native-held");
+    check(pressed == 0x0020u && repeated == 0x0020u,
+          "world.frame3.new-button-rising");
+
+    held = 0u;
+    pressed = 0u;
+    repeated = 0u;
+    PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+    check(held == 0u && pressed == 0u && repeated == 0u,
+          "world.frame4.release-has-no-press-edge");
+}
+
 int main(void)
 {
     static const u16 expected[] = {
@@ -75,6 +137,8 @@ int main(void)
     PcPort_TestInputAdvanceFrame();
     PcPort_TestInputInject(&destination);
     check(destination == 0u, "set.schedule.injects.zero");
+
+    test_world_schedule();
 
     if (s_failures != 0) {
         fprintf(stderr, "%d assertion(s) failed\n", s_failures);

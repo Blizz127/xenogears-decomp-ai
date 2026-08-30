@@ -53,6 +53,10 @@ extern u8 D_80059179;
 extern u8 D_80059460;
 extern u8 D_80059171;
 extern u8 g_MenuDebugEnabled;
+extern void PcPort_WorldTestInputMerge(u16 *held_buttons,
+                                       u16 *pressed_edges,
+                                       u16 *repeat_edges)
+    __attribute__((weak));
 
 extern void func_800250E0(int context);
 extern void func_8001D468(void);
@@ -396,6 +400,20 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
                 fd_sh(D_8009BD1C, sticks | raw_stick);
             }
         } while (controller_result != 0);
+
+        /* Test-only, env-gated world-frame schedule.  The ordinary controller
+         * drain above remains authoritative; this bridge only ORs a detached
+         * acceptance schedule into the same retail accumulators. */
+        if (PcPort_WorldTestInputMerge != NULL) {
+            u16 held = fd_lhu(D_8009CD4C);
+            u16 pressed = fd_lhu(D_8009BD10);
+            u16 repeated = fd_lhu(D_8009BD18);
+
+            PcPort_WorldTestInputMerge(&held, &pressed, &repeated);
+            fd_sh(D_8009CD4C, held);
+            fd_sh(D_8009BD10, pressed);
+            fd_sh(D_8009BD18, repeated);
+        }
 
         wm_712d0_run_cd_sync_lane();
 

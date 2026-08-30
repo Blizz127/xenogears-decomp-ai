@@ -20,6 +20,9 @@ test "$(rg -c 'PcPort_TestInputInject\(&D_800AFE9C\);' \
 test "$(rg -c 'PcPort_TestInput(AdvanceFrame\(\)|Inject\(&D_800AFE9C\))' \
     pc_port/src/world_map_main_loop_71034.c)" -eq 2
 test "$(rg -c 'PcPort_TestInputInit\(\)' pc_port/src/port_main.c)" -eq 1
+test "$(rg -c 'PcPort_WorldTestInputInit\(\)' pc_port/src/port_main.c)" -eq 1
+test "$(rg -c 'PcPort_WorldTestInputMerge\(' \
+    pc_port/src/world_map_frame_driver_712d0.c)" -eq 2
 echo "SOURCE_INVENTORY=STARTUP_PARSE+FIELD_CLOCK+FIELD_INJECT+WORLD_CONTINUATION"
 
 compile_and_run() {
@@ -44,7 +47,9 @@ for regime in O0 O2 UBSan; do
         "$BUILD_DIR/$regime.stdout"
     test "$(rg -c '^\[test-input\] invalid XENO_TEST_INPUT:' \
         "$BUILD_DIR/$regime.stderr")" -eq 7
-    rg -v '^\[test-input\] (invalid XENO_TEST_INPUT:|enabled steps=|frame=)' \
+    test "$(rg -c '^\[world-test-input\] invalid XENO_WORLD_TEST_INPUT:' \
+        "$BUILD_DIR/$regime.stderr")" -eq 1
+    rg -v '^\[(test-input|world-test-input)\] (invalid XENO_(WORLD_)?TEST_INPUT:|enabled steps=|frame=)' \
         "$BUILD_DIR/$regime.stderr" >"$BUILD_DIR/$regime.unexpected" || true
     test ! -s "$BUILD_DIR/$regime.unexpected"
 done
@@ -63,4 +68,17 @@ if [[ "$mutant_rc" -eq 0 ]] || \
     exit 1
 fi
 echo "XENO_TEST_INPUT_MUTANT_DROP_HOLD DETECTED"
+
+set +e
+compile_and_run mutant_no_world_rising -O0 -g \
+    -DXENO_WORLD_TEST_INPUT_MUTANT_NO_RISING
+mutant_rc=$?
+set -e
+if [[ "$mutant_rc" -eq 0 ]] || \
+   ! rg -q '^ASSERTION world.frame1.rising$' \
+       "$BUILD_DIR/mutant_no_world_rising.stderr"; then
+    echo "XENO_WORLD_TEST_INPUT_MUTANT_NO_RISING FAILED named gate" >&2
+    exit 1
+fi
+echo "XENO_WORLD_TEST_INPUT_MUTANT_NO_RISING DETECTED"
 echo "W34C1 RUNG2 SCRIPTED INPUT CERTIFICATE PASS"
