@@ -7,6 +7,8 @@
 #include "world_map_convergence.h"
 #include "world_map_framebuffer_init.h"
 #include "world_map_helper_72db4.h"
+#include "world_map_helper_7565c.h"
+#include "world_map_helper_75d4c.h"
 #include "world_map_helper_96130.h"
 #include "world_map_terrain_init.h"
 
@@ -30,6 +32,14 @@ extern void ArchiveCdDataSync(int mode);
 extern u32 wm_80096668_circular_distance(void);
 extern void wm_ready_buffer_consume(void);
 extern void wm_mode_audio_setup(void);
+extern void func_80039CC4(void);
+extern void func_800399D4(void* manager);
+extern void* D_80062528;
+extern s32 D_8004F2FC;
+
+#if defined(WM_72238_TEST_HOOKS)
+extern void wm_72238_test_audio_store(int destination, u32 value);
+#endif
 
 static u16 wm_72238_lhu(u32 address)
 {
@@ -57,6 +67,7 @@ int wm_80072238(void)
 {
     Wm72238Rect source_rect;
     wm_conv_p1_next_t convergence_next;
+    u32 initial_c894;
 
     wm_80072BB0();
     source_rect.x = 0;
@@ -89,24 +100,71 @@ int wm_80072238(void)
     if (wm_72238_require(wm_72238_stage_cross_products(), "cross_products") != 0)
         return -1;
 
-    /* The accepted route is retail's fresh-session arm. The EE6A helper
-     * 0x80073398 and the first C894 restore helper 0x8007565C remain absent;
-     * shared 0x80075D4C cannot safely run without its predecessor. Never
-     * silently substitute the fresh-placement path. */
-    if (wm_72238_lhu(WM_72238_EE6A) != 0u ||
-        wm_72238_lw(WM_72238_C894) != 0u) {
+    /* Retail reads C894 before its audio-ownership prelude, then reads it
+     * again after the independent EE6A branch. */
+    initial_c894 = wm_72238_lw(WM_72238_C894);
+    if (initial_c894 == 0u) {
+#if !defined(W34N9_MUTANT_SKIP_WDS_CLEANUP)
+        if (wm_72238_require(wm_72238_stage_wds_cleanup(), "wds_cleanup") != 0)
+            return -1;
+#endif
+    } else {
+        /* Retail 0x800723A4..0x800723D0 transfers the parked field audio
+         * manager back to the world owner before restoring the session. */
+#if !defined(W34N22_MUTANT_SKIP_AUDIO_TRANSFER)
+        u32 parked_manager;
+
+        func_80039CC4();
+        func_800399D4(D_80062528);
+        parked_manager = (u32)D_8004F2FC;
+#if defined(W34N22_MUTANT_SWAP_AUDIO_STORES)
+        D_80062528 = (void*)(uintptr_t)parked_manager;
+#if defined(WM_72238_TEST_HOOKS)
+        wm_72238_test_audio_store(1, parked_manager);
+#endif
+#endif
+        D_8004F2FC = 0;
+#if defined(WM_72238_TEST_HOOKS)
+        wm_72238_test_audio_store(0, 0u);
+#endif
+#if !defined(W34N22_MUTANT_SWAP_AUDIO_STORES)
+        D_80062528 = (void*)(uintptr_t)parked_manager;
+#if defined(WM_72238_TEST_HOOKS)
+        wm_72238_test_audio_store(1, parked_manager);
+#endif
+#endif
+#endif
+    }
+
+    /* EE6A still requires retail helper 0x80073398.  Its check follows the
+     * audio/cleanup prelude at retail; never silently substitute another
+     * placement arm. */
+    if (wm_72238_lhu(WM_72238_EE6A) != 0u) {
         fprintf(stderr,
                 "[worldmap-slot1] unsupported restore entry EE6A=%u C894=%u\n",
                 (u32)wm_72238_lhu(WM_72238_EE6A),
                 wm_72238_lw(WM_72238_C894));
         return -2;
     }
-#if !defined(W34N9_MUTANT_SKIP_WDS_CLEANUP)
-    if (wm_72238_require(wm_72238_stage_wds_cleanup(), "wds_cleanup") != 0)
-        return -1;
+
+#if defined(W34N22_MUTANT_CACHE_C894)
+    if (initial_c894 == 0u) {
+#else
+    if (wm_72238_lw(WM_72238_C894) == 0u) {
 #endif
-    if (wm_72238_require(wm_72238_stage_entry_placement(), "entry_placement") != 0)
-        return -1;
+        if (wm_72238_require(wm_72238_stage_entry_placement(), "entry_placement") != 0)
+            return -1;
+    } else {
+#if defined(W34N22_MUTANT_SWAP_RESTORE_PAIR)
+        wm_80075D4C();
+        wm_8007565C();
+#else
+#if !defined(W34N22_MUTANT_SKIP_RESTORE_COPY)
+        wm_8007565C();
+#endif
+        wm_80075D4C();
+#endif
+    }
 
     ArchiveCdDataSync(0);
     if (wm_72238_require(wm_72238_stage_gpu_asset_a(), "gpu_asset_a") != 0 ||

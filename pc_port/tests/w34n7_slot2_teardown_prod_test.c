@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_helper_7565c.h"
 #include "world_map_teardown_7299c.h"
 
 #define D7CC       0x8009D7CCu
@@ -12,7 +13,6 @@
 #define POOL_GUEST 0x80100000u
 #define OBJ_GUEST  0x80110000u
 #define ALLOC_BASE 0x80120000u
-#define SAVE_BASE  0x8005A4E4u
 
 extern void wm_80071034_test_dispatch_slot2(void);
 
@@ -25,6 +25,7 @@ void* D_80062528;
 void* D_8006259C;
 void* g_GfxWorkBuffers;
 s32 D_80059190;
+u8 D_8005A4E4[0x10000u];
 
 /* The dispatcher object also contains the independently tested slot-1 arm. */
 int wm_80072238(void) { return 0; }
@@ -34,6 +35,14 @@ static u32 s_event_count;
 static int s_failures;
 static u32 s_poll_values[2];
 static u32 s_poll_count;
+
+typedef struct SnapshotEvent {
+    u32 offset;
+    u32 size;
+} SnapshotEvent;
+
+static SnapshotEvent s_snapshot_events[32];
+static u32 s_snapshot_event_count;
 
 #define ASSERT_MSG(condition, name, ...) do { \
     if (!(condition)) { \
@@ -53,6 +62,13 @@ static u32 lw(u32 address)
 {
     u32 value;
     memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
+}
+
+static u32 snapshot_lw(u32 offset)
+{
+    u32 value;
+    memcpy(&value, D_8005A4E4 + offset, sizeof(value));
     return value;
 }
 
@@ -76,6 +92,16 @@ static void event(char kind, u32 value)
         s_events[s_event_count].kind = kind;
         s_events[s_event_count].value = value;
         s_event_count++;
+    }
+}
+
+void wm_7299c_test_snapshot_write(u32 offset, u32 size)
+{
+    if (s_snapshot_event_count <
+        (u32)(sizeof(s_snapshot_events) / sizeof(s_snapshot_events[0]))) {
+        s_snapshot_events[s_snapshot_event_count].offset = offset;
+        s_snapshot_events[s_snapshot_event_count].size = size;
+        s_snapshot_event_count++;
     }
 }
 
@@ -156,6 +182,7 @@ static void seed_common(u32 state)
     D_80059190 = 77;
     s_event_count = 0u;
     s_poll_count = 0u;
+    s_snapshot_event_count = 0u;
     s_poll_values[0] = 0u;
     s_poll_values[1] = 1u;
 
@@ -346,34 +373,94 @@ static void check_state_zero_and_order(void)
 static void check_state_one_snapshot(void)
 {
     u8 expected_pool[0x2000];
+    static const SnapshotEvent expected_snapshot_order[] = {
+        { 0x0000u, 0x2000u },
+        { 0x2000u, 4u }, { 0x2004u, 4u }, { 0x2008u, 4u },
+        { 0x2010u, 4u }, { 0x2014u, 4u }, { 0x2018u, 4u },
+        { 0x201Cu, 4u }, { 0x2020u, 0x20u }, { 0x2040u, 0x280u },
+        { 0x22C0u, 4u }, { 0x22C4u, 4u }, { 0x22C8u, 4u },
+        { 0x22CCu, 4u }, { 0x22D0u, 4u },
+        { 0x22E4u, 4u }, { 0x22E8u, 4u },
+        { 0x22D4u, 4u }, { 0x22D8u, 4u }, { 0x22DCu, 4u },
+        { 0x22ECu, 4u }, { 0x22F0u, 4u }, { 0x22F4u, 4u }
+    };
+    u32 i;
 
     seed_common(1u);
     memcpy(expected_pool, PSX_ADDR(POOL_GUEST), sizeof(expected_pool));
     memset(expected_pool + 0x4Cu, 0, 4u);
     memset(expected_pool + 63u * 0x80u + 0x4Cu, 0, 4u);
-    memset(PSX_ADDR(SAVE_BASE), 0, 0x2300u);
+    memset(D_8005A4E4, 0xCD, 0x2300u);
+    memset(PSX_ADDR(0x8005A4E4u), 0xA5, 0x2300u);
     wm_8007299C();
 
     ASSERT_MSG(find_event('A', 0x00225000u) < 0, "state1_no_fade",
                "fade_event=%d", find_event('A', 0x00225000u));
-    ASSERT_MSG(memcmp(PSX_ADDR(SAVE_BASE), expected_pool,
+    ASSERT_MSG(memcmp(D_8005A4E4, expected_pool,
                       sizeof(expected_pool)) == 0,
                "snapshot_pool_copy", "saved 0x2000-byte pool differs");
-    ASSERT_MSG(lw(SAVE_BASE + 0x2000u) == 0x11111111u &&
-                   lw(SAVE_BASE + 0x2010u) == 0xFFFFFF80u &&
-                   lw(SAVE_BASE + 0x22C0u) == 0x0000007Fu &&
-                   lw(SAVE_BASE + 0x22F4u) == 0xBE30BE30u,
+    {
+        int guest_unchanged = 1;
+        for (i = 0u; i < 0x2300u; i++) {
+            if (*(const u8 *)PSX_ADDR(0x8005A4E4u + i) != 0xA5u) {
+                guest_unchanged = 0;
+                break;
+            }
+        }
+        ASSERT_MSG(guest_unchanged, "snapshot_native_authority",
+                   "guest mirror changed at offset=0x%x", i);
+    }
+    ASSERT_MSG(snapshot_lw(0x2000u) == 0x11111111u &&
+                   snapshot_lw(0x2010u) == 0xFFFFFF80u &&
+                   snapshot_lw(0x22C0u) == 0x0000007Fu &&
+                   snapshot_lw(0x22F4u) == 0xBE30BE30u,
                "snapshot_scalar_layout", "values=%08x/%08x/%08x/%08x",
-               lw(SAVE_BASE + 0x2000u), lw(SAVE_BASE + 0x2010u),
-               lw(SAVE_BASE + 0x22C0u), lw(SAVE_BASE + 0x22F4u));
-    ASSERT_MSG(memcmp(PSX_ADDR(SAVE_BASE + 0x2020u),
+               snapshot_lw(0x2000u), snapshot_lw(0x2010u),
+               snapshot_lw(0x22C0u), snapshot_lw(0x22F4u));
+    ASSERT_MSG(memcmp(D_8005A4E4 + 0x2020u,
                       PSX_ADDR(0x8009C854u), 0x20u) == 0 &&
-                   memcmp(PSX_ADDR(SAVE_BASE + 0x2040u),
+                   memcmp(D_8005A4E4 + 0x2040u,
                           PSX_ADDR(0x8009CEC4u), 0x280u) == 0,
                "snapshot_block_layout", "block copy differs");
+    ASSERT_MSG(snapshot_lw(0x200Cu) == 0xCDCDCDCDu &&
+                   snapshot_lw(0x22E0u) == 0xCDCDCDCDu &&
+                   snapshot_lw(0x22F8u) == 0xCDCDCDCDu,
+               "snapshot_sparse_holes_preserved", "holes=%08x/%08x/%08x",
+               snapshot_lw(0x200Cu), snapshot_lw(0x22E0u),
+               snapshot_lw(0x22F8u));
+    ASSERT_MSG(s_snapshot_event_count ==
+                   (u32)(sizeof(expected_snapshot_order) /
+                         sizeof(expected_snapshot_order[0])) &&
+                   memcmp(s_snapshot_events, expected_snapshot_order,
+                          sizeof(expected_snapshot_order)) == 0,
+               "snapshot_retail_store_order", "event_count=%u",
+               s_snapshot_event_count);
     ASSERT_MSG((u16)(lw(0x8006F954u) & 0xFFFFu) == 0x8123u,
                "transition_flag", "flags=0x%04x",
                (unsigned)(lw(0x8006F954u) & 0xFFFFu));
+
+    /* Exercise the real inverse in the same process.  The sparse words are
+     * state carried by the native buffer even though 0x80075460 leaves them
+     * untouched. */
+    memset(PSX_ADDR(POOL_GUEST), 0xEE, 0x2000u);
+    memset(PSX_ADDR(0x8009C5ACu), 0xEE, 0x10u);
+    memset(PSX_ADDR(0x8009D55Cu), 0xEE, 0x10u);
+    memset(PSX_ADDR(0x8009BBB4u), 0xEE, 0x10u);
+    memset(PSX_ADDR(0x8009BE28u), 0xEE, 0x10u);
+    wm_8007565C();
+    ASSERT_MSG(memcmp(PSX_ADDR(POOL_GUEST), expected_pool,
+                      sizeof(expected_pool)) == 0 &&
+                   lw(0x8009D55Cu) == 0x11111111u &&
+                   lw(0x8009D560u) == 0x22222222u &&
+                   lw(0x8009D564u) == 0x33333333u,
+               "snapshot_restore_round_trip", "pool/pose round trip differs");
+    ASSERT_MSG(lw(0x8009C5B8u) == 0xCDCDCDCDu &&
+                   lw(0x8009D568u) == 0xCDCDCDCDu &&
+                   lw(0x8009BBC0u) == 0xCDCDCDCDu &&
+                   lw(0x8009BE34u) == 0xCDCDCDCDu,
+               "snapshot_sparse_holes_round_trip",
+               "holes=%08x/%08x/%08x/%08x", lw(0x8009C5B8u),
+               lw(0x8009D568u), lw(0x8009BBC0u), lw(0x8009BE34u));
 }
 
 int main(void)

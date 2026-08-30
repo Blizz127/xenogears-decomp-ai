@@ -17,6 +17,7 @@ extern void* D_80062528;
 extern void* D_8006259C;
 extern void* g_GfxWorkBuffers;
 extern s32 D_80059190;
+extern u8 D_8005A4E4[];
 
 extern void func_8003A89C(void* manager, s32 level, s32 steps);
 extern void func_80039FF8(void);
@@ -26,6 +27,10 @@ extern void func_800230A8(void* sprite);
 extern void func_800346D4(void* window);
 extern void func_8002CBBC(u8* model_data);
 extern u32 func_8002C3D8(void);
+
+#if defined(WM_7299C_TEST_HOOKS)
+extern void wm_7299c_test_snapshot_write(u32 offset, u32 size);
+#endif
 
 #define WM_D7CC              0x8009D7CCu
 #define WM_POOL_BE24         0x8009BE24u
@@ -78,40 +83,70 @@ static void td_free_value(u32 value)
     HeapFree(td_pointer_to_host(value));
 }
 
-static void td_copy(u32 dst, u32 src, u32 size)
+static void td_snapshot_sw(u32 offset, u32 value)
 {
-    memcpy(PSX_ADDR(dst), PSX_ADDR(src), (size_t)size);
+#if defined(WM_7299C_TEST_HOOKS)
+    wm_7299c_test_snapshot_write(offset, 4u);
+#endif
+#if defined(WM_7299C_MUTANT_GUEST_SNAPSHOT)
+    memcpy(PSX_ADDR(0x8005A4E4u + offset), &value, sizeof(value));
+#else
+    memcpy(D_8005A4E4 + offset, &value, sizeof(value));
+#endif
+}
+
+static void td_snapshot_copy_from_guest(u32 offset, u32 src, u32 size)
+{
+#if defined(WM_7299C_TEST_HOOKS)
+    wm_7299c_test_snapshot_write(offset, size);
+#endif
+#if defined(WM_7299C_MUTANT_GUEST_SNAPSHOT)
+    memcpy(PSX_ADDR(0x8005A4E4u + offset), PSX_ADDR(src), (size_t)size);
+#else
+    memcpy(D_8005A4E4 + offset, PSX_ADDR(src), (size_t)size);
+#endif
 }
 
 /* Retail 0x80075460: preserve the base-world session state for D7CC == 1. */
 static void wm_80075460(void)
 {
-    const u32 dst = 0x8005A4E4u;
     u32 pool = td_lw(WM_POOL_BE24);
 
-    td_copy(dst, pool, 0x2000u);
-    td_sw(dst + 0x2000u, td_lw(0x8009D55Cu));
-    td_sw(dst + 0x2004u, td_lw(0x8009D560u));
-    td_sw(dst + 0x2008u, td_lw(0x8009D564u));
-    td_sw(dst + 0x2010u, (u32)(s32)td_lh(0x8009D52Cu));
-    td_sw(dst + 0x2014u, td_lw(0x8009BE40u));
-    td_sw(dst + 0x2018u, td_lw(0x8009BCC4u));
-    td_sw(dst + 0x201Cu, td_lw(0x8009D64Cu));
-    td_copy(dst + 0x2020u, 0x8009C854u, 0x20u);
-    td_copy(dst + 0x2040u, 0x8009CEC4u, 0x280u);
-    td_sw(dst + 0x22C0u, (u32)(s32)td_lh(0x8009D154u));
-    td_sw(dst + 0x22C4u, td_lw(0x8009BD38u));
-    td_sw(dst + 0x22C8u, td_lw(0x8009BD3Cu));
-    td_sw(dst + 0x22CCu, td_lw(0x8009D3F0u));
-    td_sw(dst + 0x22D0u, td_lw(0x8009BE0Cu));
-    td_sw(dst + 0x22D4u, td_lw(0x8009BBB4u));
-    td_sw(dst + 0x22D8u, td_lw(0x8009BBB8u));
-    td_sw(dst + 0x22DCu, td_lw(0x8009BBBCu));
-    td_sw(dst + 0x22E4u, td_lw(0x8009C838u));
-    td_sw(dst + 0x22E8u, td_lw(0x8009C83Cu));
-    td_sw(dst + 0x22ECu, td_lw(0x8009BE28u));
-    td_sw(dst + 0x22F0u, td_lw(0x8009BE2Cu));
-    td_sw(dst + 0x22F4u, td_lw(0x8009BE30u));
+    td_snapshot_copy_from_guest(0u, pool, 0x2000u);
+    td_snapshot_sw(0x2000u, td_lw(0x8009D55Cu));
+    td_snapshot_sw(0x2004u, td_lw(0x8009D560u));
+    td_snapshot_sw(0x2008u, td_lw(0x8009D564u));
+    td_snapshot_sw(0x2010u, (u32)(s32)td_lh(0x8009D52Cu));
+    td_snapshot_sw(0x2014u, td_lw(0x8009BE40u));
+    td_snapshot_sw(0x2018u, td_lw(0x8009BCC4u));
+    td_snapshot_sw(0x201Cu, td_lw(0x8009D64Cu));
+    td_snapshot_copy_from_guest(0x2020u, 0x8009C854u, 0x20u);
+    td_snapshot_copy_from_guest(0x2040u, 0x8009CEC4u, 0x280u);
+    td_snapshot_sw(0x22C0u, (u32)(s32)td_lh(0x8009D154u));
+    td_snapshot_sw(0x22C4u, td_lw(0x8009BD38u));
+    td_snapshot_sw(0x22C8u, td_lw(0x8009BD3Cu));
+    td_snapshot_sw(0x22CCu, td_lw(0x8009D3F0u));
+    td_snapshot_sw(0x22D0u, td_lw(0x8009BE0Cu));
+#if defined(WM_7299C_MUTANT_SWAP_SNAPSHOT_TAIL)
+    td_snapshot_sw(0x22D4u, td_lw(0x8009BBB4u));
+    td_snapshot_sw(0x22D8u, td_lw(0x8009BBB8u));
+    td_snapshot_sw(0x22DCu, td_lw(0x8009BBBCu));
+#endif
+    td_snapshot_sw(0x22E4u, td_lw(0x8009C838u));
+    td_snapshot_sw(0x22E8u, td_lw(0x8009C83Cu));
+#if !defined(WM_7299C_MUTANT_SWAP_SNAPSHOT_TAIL)
+    td_snapshot_sw(0x22D4u, td_lw(0x8009BBB4u));
+    td_snapshot_sw(0x22D8u, td_lw(0x8009BBB8u));
+    td_snapshot_sw(0x22DCu, td_lw(0x8009BBBCu));
+#endif
+    td_snapshot_sw(0x22ECu, td_lw(0x8009BE28u));
+    td_snapshot_sw(0x22F0u, td_lw(0x8009BE2Cu));
+    td_snapshot_sw(0x22F4u, td_lw(0x8009BE30u));
+#if defined(WM_7299C_MUTANT_ZERO_SNAPSHOT_HOLES)
+    td_snapshot_sw(0x200Cu, 0u);
+    td_snapshot_sw(0x22E0u, 0u);
+    td_snapshot_sw(0x22F8u, 0u);
+#endif
 }
 
 static void wm_80084818(void)

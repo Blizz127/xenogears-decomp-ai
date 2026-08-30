@@ -14,6 +14,8 @@ uint8_t g_PsxScratchpad[4096];
 enum Event {
     EV_FRAMEBUFFER = 1, EV_MOVE, EV_DRAWSYNC, EV_TRANSITION,
     EV_CDSYNC, EV_SECOND, EV_POOL, EV_TEMPLATE, EV_MODE, EV_CROSS,
+    EV_SOUND_STOP, EV_SOUND_DESTROY, EV_AUDIO_CLEAR, EV_AUDIO_PUBLISH,
+    EV_RESTORE, EV_PRESENCE,
     EV_WDS_CLEAN, EV_ENTRY, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX,
     EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
     EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
@@ -29,11 +31,25 @@ static int events[128];
 static int event_count;
 static int failures;
 static int distance_calls;
+static u32 s_audio_c894_rewrite = UINT32_MAX;
+
+void* D_80062528;
+s32 D_8004F2FC;
 
 static void event(int value)
 {
     if (event_count < (int)(sizeof(events) / sizeof(events[0])))
         events[event_count++] = value;
+}
+
+static int event_seen(int value)
+{
+    int i;
+    for (i = 0; i < event_count; i++) {
+        if (events[i] == value)
+            return 1;
+    }
+    return 0;
 }
 
 static void check(int condition, const char* name)
@@ -113,6 +129,37 @@ void ArchiveCdDataSync(int mode)
     check(mode == 0, "cd_sync_mode");
 }
 
+void func_80039CC4(void)
+{
+    event(EV_SOUND_STOP);
+}
+
+void func_800399D4(void* manager)
+{
+    event(EV_SOUND_DESTROY);
+    check(manager == (void*)(uintptr_t)0x00123450u,
+          "restore.audio.authority");
+    if (s_audio_c894_rewrite != UINT32_MAX)
+        write32(0x8009C894u, s_audio_c894_rewrite);
+}
+
+void wm_72238_test_audio_store(int destination, u32 value)
+{
+    if (destination == 0) {
+        event(EV_AUDIO_CLEAR);
+        check(value == 0u && D_8004F2FC == 0,
+              "restore.audio.clear.value");
+    } else {
+        event(EV_AUDIO_PUBLISH);
+        check(value == 0x006789A0u &&
+                  D_80062528 == (void*)(uintptr_t)0x006789A0u,
+              "restore.audio.publish.value");
+    }
+}
+
+void wm_8007565C(void) { event(EV_RESTORE); }
+void wm_80075D4C(void) { event(EV_PRESENCE); }
+
 void wm_80097BC0(u32 pos)
 {
     event(EV_TERRAIN);
@@ -185,11 +232,43 @@ static void check_order(void)
     }
 }
 
+static void check_restore_order(void)
+{
+    static const int expected[] = {
+        EV_FRAMEBUFFER, EV_MOVE, EV_DRAWSYNC, EV_TRANSITION,
+        EV_CDSYNC, EV_SECOND, EV_POOL, EV_TEMPLATE, EV_MODE, EV_CROSS,
+        EV_SOUND_STOP, EV_SOUND_DESTROY, EV_AUDIO_CLEAR, EV_AUDIO_PUBLISH,
+        EV_RESTORE, EV_PRESENCE,
+        EV_CDSYNC, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX, EV_THIRD,
+        EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
+        EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
+        EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
+        EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
+        EV_CONV_P1, EV_CONV_P2, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
+        EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
+    };
+    int i;
+
+    check(event_count == (int)(sizeof(expected) / sizeof(expected[0])),
+          "restore.event_count");
+    for (i = 0; i < event_count &&
+                i < (int)(sizeof(expected) / sizeof(expected[0])); i++) {
+        if (events[i] != expected[i]) {
+            fprintf(stderr,
+                    "ASSERTION restore.retail_order FAILED index=%d got=%d expected=%d\n",
+                    i, events[i], expected[i]);
+            failures++;
+            break;
+        }
+    }
+}
+
 int main(void)
 {
     memset(g_PsxRam, 0, sizeof(g_PsxRam));
     write32(0x8009C894u, 0u);
     write16(0x8006EE6Au, 0u);
+    s_audio_c894_rewrite = UINT32_MAX;
     check(wm_80072238() == 0, "fresh_session_return");
     check_order();
     check(distance_calls == 2, "cd_drain_repeats");
@@ -197,8 +276,49 @@ int main(void)
     event_count = 0;
     distance_calls = 0;
     write32(0x8009C894u, 1u);
-    check(wm_80072238() == -2, "restore_branch_fails_loud");
-    check(event_count == 10, "restore_branch_stops_before_fresh_cleanup");
+    write16(0x8006EE6Au, 0u);
+    D_80062528 = (void*)(uintptr_t)0x00123450u;
+    D_8004F2FC = (s32)0x006789A0u;
+    s_audio_c894_rewrite = UINT32_MAX;
+    check(wm_80072238() == 0, "restore.session.return");
+    check_restore_order();
+    check(D_80062528 == (void*)(uintptr_t)0x006789A0u &&
+              D_8004F2FC == 0,
+          "restore.audio.transfer");
+
+    event_count = 0;
+    distance_calls = 0;
+    write32(0x8009C894u, 0u);
+    write16(0x8006EE6Au, 1u);
+    check(wm_80072238() == -2, "ee6a.restore.still.loud");
+    check(event_count == 11 && events[10] == EV_WDS_CLEAN,
+          "ee6a.fresh.prelude.precedes.guard");
+
+    event_count = 0;
+    distance_calls = 0;
+    write32(0x8009C894u, 1u);
+    write16(0x8006EE6Au, 1u);
+    D_80062528 = (void*)(uintptr_t)0x00123450u;
+    D_8004F2FC = (s32)0x006789A0u;
+    s_audio_c894_rewrite = UINT32_MAX;
+    check(wm_80072238() == -2, "ee6a.audio.restore.still.loud");
+    check(event_count == 14 && events[10] == EV_SOUND_STOP &&
+              events[11] == EV_SOUND_DESTROY &&
+              events[12] == EV_AUDIO_CLEAR &&
+              events[13] == EV_AUDIO_PUBLISH,
+          "ee6a.audio.prelude.precedes.guard");
+
+    event_count = 0;
+    distance_calls = 0;
+    write32(0x8009C894u, 1u);
+    write16(0x8006EE6Au, 0u);
+    D_80062528 = (void*)(uintptr_t)0x00123450u;
+    D_8004F2FC = (s32)0x006789A0u;
+    s_audio_c894_rewrite = 0u;
+    check(wm_80072238() == 0, "restore.c894.reload.return");
+    check(event_seen(EV_ENTRY) && !event_seen(EV_RESTORE) &&
+              !event_seen(EV_PRESENCE),
+          "restore.c894.reloaded");
 
     if (failures != 0)
         return 1;
