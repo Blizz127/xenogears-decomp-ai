@@ -1,5 +1,13 @@
 # W34N9 — retail base-world slot-1 setup owner
 
+> **Later status (W34N23):** the final “first-session blocker” paragraph in
+> this historical rung was superseded by W34N10.  The accepted route now
+> dispatches this owner for session 1, and W34N5's WDS/SPU lifecycle executes
+> there with a non-null world-bank result.  W34N22 subsequently implemented
+> the C894 restore pair.  The remaining EE6A helper and natural-exit coverage
+> are later boundaries; they are not evidence that first-session WDS
+> ownership is still blocked.
+
 Verdict: **FRESH_PATH_TRANSCRIBED_AND_CERTIFIED**.
 
 Retail base-mode slot 1, `[0x80072238,0x8007299C)`, now has a compiled
