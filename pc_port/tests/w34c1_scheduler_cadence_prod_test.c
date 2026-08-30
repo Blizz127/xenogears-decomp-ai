@@ -65,6 +65,28 @@ u8 D_80059179;
 u8 D_80059460;
 u8 D_80059171;
 u8 g_MenuDebugEnabled;
+u8 D_800591AE;
+u16 D_8006F94E;
+u16 D_8006F950;
+u16 D_8006F954;
+
+/* The bounded cadence route must never reach WorldMapMain's natural terminal
+ * lane. These satisfy its linked dependencies and make accidental reachability
+ * an immediate certificate failure. */
+void* LoadGameStateOverlay(unsigned int overlay_index)
+{
+    (void)overlay_index;
+    abort();
+}
+void ChangeGameState(unsigned int state) { (void)state; abort(); }
+void MainLoop(int error_code) { (void)error_code; abort(); }
+s32 wm_80094364(u32 pos_vec, u32 list_index, s32 requested_type)
+{
+    (void)pos_vec;
+    (void)list_index;
+    (void)requested_type;
+    abort();
+}
 
 /* The cadence certificate never enters menu modes; satisfy the production
  * driver's now-shared lifecycle symbols without exercising that separate

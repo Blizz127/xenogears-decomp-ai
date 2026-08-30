@@ -15,6 +15,7 @@ INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 DRIVER=pc_port/src/world_map_frame_driver_712d0.c
 MAIN=pc_port/src/world_map_main_loop_71034.c
+TERMINAL=pc_port/src/world_map_terminal_zero_710e4.c
 CAPTURE=pc_port/src/world_map_capture.c
 SYNC_HELPER=pc_port/src/world_map_helper_762fc.c
 PRESENCE_HELPER=pc_port/src/world_map_helper_75d4c.c
@@ -31,6 +32,8 @@ compile_and_run() {
     "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
         -c "$main_source" -o "$BUILD_DIR/$name.main.o"
     "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
+        -c "$TERMINAL" -o "$BUILD_DIR/$name.terminal.o"
+    "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
         -c "$CAPTURE" -o "$BUILD_DIR/$name.capture.o"
     "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
         -c "$SYNC_HELPER" -o "$BUILD_DIR/$name.sync-helper.o"
@@ -40,6 +43,7 @@ compile_and_run() {
         -c "$TEST" -o "$BUILD_DIR/$name.test.o"
     "$CC" -no-pie -Wl,--gc-sections "$@" \
         "$BUILD_DIR/$name.test.o" "$BUILD_DIR/$name.main.o" \
+        "$BUILD_DIR/$name.terminal.o" \
         "$BUILD_DIR/$name.driver.o" "$BUILD_DIR/$name.capture.o" \
         "$BUILD_DIR/$name.sync-helper.o" \
         "$BUILD_DIR/$name.presence-helper.o" \

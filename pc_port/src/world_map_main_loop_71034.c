@@ -15,6 +15,7 @@
 #include "world_map_main_loop_71034.h"
 #include "world_map_frame_driver_712d0.h"
 #include "world_map_session_setup_72238.h"
+#include "world_map_terminal_zero_710e4.h"
 #include "world_map_teardown_7299c.h"
 
 extern void DrawSync(void (*func)(unsigned long));
@@ -135,6 +136,7 @@ static int ml_after_frame(int frame, void* user)
 void wm_80071034(void)
 {
     int session = 1;
+    s32 natural_exit_state = 2;
     const int frame_limit = ml_frame_limit();
     Wm712D0BoundedRun run;
     Wm712D0RunResult result;
@@ -187,6 +189,7 @@ void wm_80071034(void)
             (void)ml_dispatch_guest(slot2_addr, (int)mode, session, "slot2");
 
         if ((s32)ml_lw(D_8009D7CC) < 2) {
+            natural_exit_state = (s32)ml_lw(D_8009D7CC);
             fprintf(stderr,
                     "[worldmap-open-loop] natural state exit frames=%d "
                     "D7CC=%u\n", run.displayed_frames,
@@ -199,6 +202,11 @@ void wm_80071034(void)
     if (PcPort_WorldCaptureFinish() != 0) {
         fprintf(stderr, "[worldmap-open-loop] capture pending at exit\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (natural_exit_state == 0) {
+        wm_71034_run_terminal_zero_lane();
+        return;
     }
 
     fprintf(stderr, "[worldmap-open-loop] bounded exit frames=%d limit=%d\n",
