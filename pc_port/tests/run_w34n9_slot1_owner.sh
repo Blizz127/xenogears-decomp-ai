@@ -32,6 +32,8 @@ mutants=(
   "M9:W34N22_MUTANT_SWAP_RESTORE_PAIR:restore.retail_order"
   "M10:W34N22_MUTANT_SWAP_AUDIO_STORES:restore.retail_order"
   "M11:W34N22_MUTANT_CACHE_C894:restore.c894.reloaded"
+  "M12:W34N25_MUTANT_SKIP_73398:ee6a.helper.exactly_once"
+  "M13:W34N25_MUTANT_73398_FALLTHROUGH:ee6a.exclusive.arm"
 )
 for spec in "${mutants[@]}"; do
     IFS=: read -r name define assertion <<<"$spec"
@@ -54,4 +56,4 @@ if ! sed -n '/case 0x80072238u:/,+5p' \
     exit 1
 fi
 
-echo 'W34N9 SLOT1 OWNER O0/O2/UBSan PASS; strict warnings clean; M1-M11 DETECTED'
+echo 'W34N9 SLOT1 OWNER O0/O2/UBSan PASS; strict warnings clean; M1-M13 DETECTED'

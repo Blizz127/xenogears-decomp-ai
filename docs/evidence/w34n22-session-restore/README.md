@@ -1,5 +1,11 @@
 # W34N22 — retail base-world session snapshot restore
 
+> Later status: W34N25 transcribed and certified `0x80073398`, wired its
+> exclusive EE6A arm after the retail audio/WDS prelude, and preserved the
+> accepted-route frame artifacts.  The EE6A blocker and residual described
+> below are historical at this commit; the natural-arm acceptance bound
+> remains explicit in the W34N25 record.
+
 ## Result
 
 `RESTORE_REENTRY_TRANSCRIBED_AND_CERTIFIED`.

@@ -15,7 +15,7 @@ enum Event {
     EV_FRAMEBUFFER = 1, EV_MOVE, EV_DRAWSYNC, EV_TRANSITION,
     EV_CDSYNC, EV_SECOND, EV_POOL, EV_TEMPLATE, EV_MODE, EV_CROSS,
     EV_SOUND_STOP, EV_SOUND_DESTROY, EV_AUDIO_CLEAR, EV_AUDIO_PUBLISH,
-    EV_RESTORE, EV_PRESENCE,
+    EV_RESTORE, EV_PRESENCE, EV_73398,
     EV_WDS_CLEAN, EV_ENTRY, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX,
     EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
     EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
@@ -52,6 +52,17 @@ static int event_seen(int value)
     return 0;
 }
 
+static int event_occurrences(int value)
+{
+    int count = 0;
+    int i;
+    for (i = 0; i < event_count; i++) {
+        if (events[i] == value)
+            count++;
+    }
+    return count;
+}
+
 static void check(int condition, const char* name)
 {
     if (!condition) {
@@ -68,6 +79,13 @@ static void write32(u32 address, u32 value)
 static void write16(u32 address, u16 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
+}
+
+static u16 read16(u32 address)
+{
+    u16 value;
+    memcpy(&value, PSX_ADDR(address), sizeof(value));
+    return value;
 }
 
 #define STAGE(name, id) int name(void) { event(id); return 0; }
@@ -159,6 +177,11 @@ void wm_72238_test_audio_store(int destination, u32 value)
 
 void wm_8007565C(void) { event(EV_RESTORE); }
 void wm_80075D4C(void) { event(EV_PRESENCE); }
+void wm_80073398(void)
+{
+    event(EV_73398);
+    write16(0x8006EE6Au, 0u);
+}
 
 void wm_80097BC0(u32 pos)
 {
@@ -263,6 +286,66 @@ static void check_restore_order(void)
     }
 }
 
+static void check_ee6a_fresh_order(void)
+{
+    static const int expected[] = {
+        EV_FRAMEBUFFER, EV_MOVE, EV_DRAWSYNC, EV_TRANSITION,
+        EV_CDSYNC, EV_SECOND, EV_POOL, EV_TEMPLATE, EV_MODE, EV_CROSS,
+        EV_WDS_CLEAN, EV_73398, EV_CDSYNC, EV_GPU_A, EV_GPU_B,
+        EV_OBJECT_MATRIX, EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX,
+        EV_FT4, EV_HEAP, EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS,
+        EV_88F64, EV_ARCH_POLL, EV_FIRST_WDS, EV_ARCH_INDEX, EV_TERRAIN,
+        EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_CD_WORK, EV_VSYNC,
+        EV_DISTANCE, EV_READY, EV_AUDIO, EV_CONV_P1, EV_CONV_P2,
+        EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2, EV_TAIL_P3, EV_TAIL_P4,
+        EV_TAIL_P5
+    };
+    int i;
+
+    check(event_count == (int)(sizeof(expected) / sizeof(expected[0])),
+          "ee6a.fresh.event_count");
+    for (i = 0; i < event_count &&
+                i < (int)(sizeof(expected) / sizeof(expected[0])); i++) {
+        if (events[i] != expected[i]) {
+            fprintf(stderr,
+                    "ASSERTION ee6a.fresh.retail_order FAILED index=%d got=%d expected=%d\n",
+                    i, events[i], expected[i]);
+            failures++;
+            break;
+        }
+    }
+}
+
+static void check_ee6a_restore_order(void)
+{
+    static const int expected[] = {
+        EV_FRAMEBUFFER, EV_MOVE, EV_DRAWSYNC, EV_TRANSITION,
+        EV_CDSYNC, EV_SECOND, EV_POOL, EV_TEMPLATE, EV_MODE, EV_CROSS,
+        EV_SOUND_STOP, EV_SOUND_DESTROY, EV_AUDIO_CLEAR, EV_AUDIO_PUBLISH,
+        EV_73398, EV_CDSYNC, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX,
+        EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
+        EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
+        EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
+        EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
+        EV_CONV_P1, EV_CONV_P2, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
+        EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
+    };
+    int i;
+
+    check(event_count == (int)(sizeof(expected) / sizeof(expected[0])),
+          "ee6a.restore.event_count");
+    for (i = 0; i < event_count &&
+                i < (int)(sizeof(expected) / sizeof(expected[0])); i++) {
+        if (events[i] != expected[i]) {
+            fprintf(stderr,
+                    "ASSERTION ee6a.restore.retail_order FAILED index=%d got=%d expected=%d\n",
+                    i, events[i], expected[i]);
+            failures++;
+            break;
+        }
+    }
+}
+
 int main(void)
 {
     memset(g_PsxRam, 0, sizeof(g_PsxRam));
@@ -290,9 +373,15 @@ int main(void)
     distance_calls = 0;
     write32(0x8009C894u, 0u);
     write16(0x8006EE6Au, 1u);
-    check(wm_80072238() == -2, "ee6a.restore.still.loud");
-    check(event_count == 11 && events[10] == EV_WDS_CLEAN,
-          "ee6a.fresh.prelude.precedes.guard");
+    s_audio_c894_rewrite = UINT32_MAX;
+    check(wm_80072238() == 0, "ee6a.fresh.return");
+    check_ee6a_fresh_order();
+    check(event_occurrences(EV_73398) == 1 &&
+              read16(0x8006EE6Au) == 0u,
+          "ee6a.helper.exactly_once");
+    check(!event_seen(EV_ENTRY) && !event_seen(EV_RESTORE) &&
+              !event_seen(EV_PRESENCE),
+          "ee6a.exclusive.arm");
 
     event_count = 0;
     distance_calls = 0;
@@ -301,12 +390,14 @@ int main(void)
     D_80062528 = (void*)(uintptr_t)0x00123450u;
     D_8004F2FC = (s32)0x006789A0u;
     s_audio_c894_rewrite = UINT32_MAX;
-    check(wm_80072238() == -2, "ee6a.audio.restore.still.loud");
-    check(event_count == 14 && events[10] == EV_SOUND_STOP &&
-              events[11] == EV_SOUND_DESTROY &&
-              events[12] == EV_AUDIO_CLEAR &&
-              events[13] == EV_AUDIO_PUBLISH,
-          "ee6a.audio.prelude.precedes.guard");
+    check(wm_80072238() == 0, "ee6a.restore.return");
+    check_ee6a_restore_order();
+    check(event_occurrences(EV_73398) == 1 &&
+              read16(0x8006EE6Au) == 0u,
+          "ee6a.helper.exactly_once");
+    check(!event_seen(EV_ENTRY) && !event_seen(EV_RESTORE) &&
+              !event_seen(EV_PRESENCE),
+          "ee6a.exclusive.arm");
 
     event_count = 0;
     distance_calls = 0;

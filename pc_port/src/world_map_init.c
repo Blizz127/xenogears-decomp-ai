@@ -166,6 +166,7 @@
 #include "world_map_scheduler.h"
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
+#include "world_map_helper_73398.h"
 #include "world_map_helper_73448.h"
 #include "world_map_helper_762fc.h"
 #include "world_map_session_setup_72238.h"
@@ -6849,28 +6850,29 @@ static int world_map_dispatch_mode_init_once(void)
 }
 
 
-/* W34C9 — retail entry sequence 0x800723D4-0x80072434, between W8B and W10A:
- *   if (lhu 0x8006EE6A != 0)            jal 0x80073398        (not transcribed)
+/* W34C9/W34N25 — retail entry sequence 0x800723D4-0x80072434:
+ *   if (lhu 0x8006EE6A != 0)            jal 0x80073398
  *   else if (lw 0x8009C894 != 0)        jal 0x8007565C; 0x80075D4C (restore;
- *                                      0x8007565C remains absent)
+ *                                      legacy selector not yet integrated)
  *   else                                jal 0x80073448(lw 0x8009D3D4)  (fresh placement)
- * The two untranscribed branches are logged, never faked. */
+ * The remaining untranscribed restore branch is logged, never faked. */
 static int wm_entry_placement(void)
 {
     u16 ee6a = WM_U16(0x8006EE6Au);
-    u32 c894 = WM_U32(0x8009C894u);
-    s32 world_index = (s32)WM_U32(WM_ARG2_STATE_ABS);
+    u32 c894;
+    s32 world_index;
 
     if (ee6a != 0u) {
-        fprintf(stderr, "[worldmap-entry-placement] 0x8006EE6A=%u: retail "
-                "0x80073398 branch not transcribed; skipped\n", ee6a);
+        wm_80073398();
         return 0;
     }
+    c894 = WM_U32(0x8009C894u);
     if (c894 != 0u) {
-        fprintf(stderr, "[worldmap-entry-placement] C894=%u: retail restore "
-                "0x8007565C predecessor absent; 0x80075D4C not called\n", c894);
+        fprintf(stderr, "[worldmap-entry-placement] C894=%u: legacy restore "
+                "pair not integrated here; skipped\n", c894);
         return 0;
     }
+    world_index = (s32)WM_U32(WM_ARG2_STATE_ABS);
     wm_80073448(world_index);
     fprintf(stderr, "[worldmap-entry-placement] 0x80073448 index=%d -> "
             "C5AC=0x%08x C5B0=0x%08x C5B4=0x%08x\n", world_index,

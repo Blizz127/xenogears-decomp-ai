@@ -7,6 +7,7 @@
 #include "world_map_convergence.h"
 #include "world_map_framebuffer_init.h"
 #include "world_map_helper_72db4.h"
+#include "world_map_helper_73398.h"
 #include "world_map_helper_7565c.h"
 #include "world_map_helper_75d4c.h"
 #include "world_map_helper_96130.h"
@@ -136,15 +137,16 @@ int wm_80072238(void)
 #endif
     }
 
-    /* EE6A still requires retail helper 0x80073398.  Its check follows the
-     * audio/cleanup prelude at retail; never silently substitute another
-     * placement arm. */
+    /* Retail gives the restore-entry flag priority after the independent
+     * audio/cleanup prelude.  The helper consumes EE6A and this arm rejoins
+     * after placement without falling through to fresh/restore placement. */
     if (wm_72238_lhu(WM_72238_EE6A) != 0u) {
-        fprintf(stderr,
-                "[worldmap-slot1] unsupported restore entry EE6A=%u C894=%u\n",
-                (u32)wm_72238_lhu(WM_72238_EE6A),
-                wm_72238_lw(WM_72238_C894));
-        return -2;
+#if !defined(W34N25_MUTANT_SKIP_73398)
+        wm_80073398();
+#endif
+#if !defined(W34N25_MUTANT_73398_FALLTHROUGH)
+        goto entry_placement_done;
+#endif
     }
 
 #if defined(W34N22_MUTANT_CACHE_C894)
@@ -166,6 +168,9 @@ int wm_80072238(void)
 #endif
     }
 
+#if !defined(W34N25_MUTANT_73398_FALLTHROUGH)
+entry_placement_done:
+#endif
     ArchiveCdDataSync(0);
     if (wm_72238_require(wm_72238_stage_gpu_asset_a(), "gpu_asset_a") != 0 ||
         wm_72238_require(wm_72238_stage_gpu_asset_b(), "gpu_asset_b") != 0 ||
