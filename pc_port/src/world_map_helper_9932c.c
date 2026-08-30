@@ -61,6 +61,16 @@ static void wm_9932c_dispatch(u32 tile_data, u32 ot_base, u32 packet_base,
                 origin);
 }
 
+static void wm_9932c_set_cell_origins(u16 x, u16 z)
+{
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x330u, (u16)(x + 0x400u));
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x334u, z);
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x338u, x);
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x33Cu, (u16)(z - 0x400u));
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x340u, (u16)(x + 0x400u));
+    wm_9932c_sh(WM_9932C_SCRATCH + 0x344u, (u16)(z - 0x400u));
+}
+
 void wm_8009932C(u32 ot_base, u32 packet_base, u32 position)
 {
     u32 i;
@@ -102,16 +112,9 @@ void wm_8009932C(u32 ot_base, u32 packet_base, u32 position)
         for (grid_x = 0u; grid_x < 5u; grid_x++, cell++) {
             s16 skip = wm_9932c_lh(WM_9932C_SKIP_TABLE + cell * 2u);
             u16 x = wm_9932c_lhu(WM_9932C_SCRATCH + 0x328u);
-            u16 z = wm_9932c_lhu(WM_9932C_SCRATCH + 0x32Cu);
-
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x330u, (u16)(x + 0x400u));
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x334u, z);
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x338u, x);
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x33Cu, (u16)(z - 0x400u));
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x340u, (u16)(x + 0x400u));
-            wm_9932c_sh(WM_9932C_SCRATCH + 0x344u, (u16)(z - 0x400u));
 
             if (skip != -1) {
+                u16 z = wm_9932c_lhu(WM_9932C_SCRATCH + 0x32Cu);
                 s32 map_z = (s32)grid_z + wm_9932c_lh(WM_9932C_MAP_Z);
                 s32 map_x = (s32)grid_x + wm_9932c_lh(WM_9932C_MAP_X);
                 s32 tile_slot = map_z * 9 + map_x;
@@ -125,6 +128,7 @@ void wm_8009932C(u32 ot_base, u32 packet_base, u32 position)
                 u16 q3 = wm_9932c_lhu(WM_9932C_QUAD_TABLE + cell * 8u + 6u);
                 s16 combined = (s16)(q0 | q1 | q2 | q3);
 
+                wm_9932c_set_cell_origins(x, z);
                 if (combined != -1 || (s16)q0 != combined) {
                     wm_9932c_dispatch(tile_base, ot_base, packet_base,
                                       WM_9932C_SCRATCH + 0x328u);
@@ -142,6 +146,12 @@ void wm_8009932C(u32 ot_base, u32 packet_base, u32 position)
                                       WM_9932C_SCRATCH + 0x340u);
                 }
             }
+#if defined(WM_9932C_MUTANT_SKIPPED_ORIGINS)
+            else {
+                wm_9932c_set_cell_origins(
+                    x, wm_9932c_lhu(WM_9932C_SCRATCH + 0x32Cu));
+            }
+#endif
 
             wm_9932c_sh(WM_9932C_SCRATCH + 0x328u, (u16)(x + 0x800u));
         }
