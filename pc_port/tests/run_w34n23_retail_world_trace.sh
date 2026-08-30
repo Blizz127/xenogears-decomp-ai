@@ -17,6 +17,10 @@ case "$PROFILE" in
         LUA="$ROOT/pc_port/tests/w34n24_retail_session_exit.lua"
         PREFIX=W34N24_RETAIL
         ;;
+    terminal_exit)
+        LUA="$ROOT/pc_port/tests/w34n27_retail_terminal_exit.lua"
+        PREFIX=W34N27_RETAIL
+        ;;
     *)
         printf 'unknown XENO_RETAIL_TRACE_PROFILE=%s\n' "$PROFILE" >&2
         exit 2
@@ -97,6 +101,7 @@ run_once() {
     local log="$OUT/$label.log"
     local normalized="$OUT/$label.normalized.log"
     local trace="$OUT/$label.trace.txt"
+    local live="$OUT/$label.live.log"
     local run_pid watchdog_pid rc
 
     mkdir -p "$config_dir" "$run_dir/cache"
@@ -108,6 +113,7 @@ run_once() {
            .emulator.Dynarec == false' "$config_dir/pcsx.json" >/dev/null
 
     XDG_CONFIG_HOME="$run_dir/config" XDG_CACHE_HOME="$run_dir/cache" \
+        XENO_RETAIL_TRACE_LIVE="$live" \
         setsid xvfb-run -a "$APP" \
             -interpreter -run --bios "$BIOS" -iso "$DISC" \
             -memcard1 "$run_dir/memcard1.mcd" \
@@ -167,7 +173,7 @@ run_once() {
         rg -q '^W34N23_RETAIL DRIVER_ENTRY D554=0 D7CC=2$' "$normalized"
         rg -q "^W34N23_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 driver=1 slot2=0$" \
             "$normalized"
-    else
+    elif [[ "$PROFILE" == session_exit ]]; then
         rg -q "^W34N24_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
             "$normalized"
         rg -q "^W34N24_RETAIL FRAME_BRANCH frame=${FRAME_LIMIT} D554=0 taken=0$" \
@@ -178,6 +184,29 @@ run_once() {
         rg -q '^W34N24_RETAIL SESSION_DECISION D7CC=2 repeat=1$' "$normalized"
         rg -q '^W34N24_RETAIL NEXT_SESSION_HEAD D7CC=2$' "$normalized"
         rg -q "^W34N24_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 repeat=1$" \
+            "$normalized"
+    else
+        rg -q "^W34N27_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
+            "$normalized"
+        rg -q "^W34N27_RETAIL FRAME_BRANCH frame=${FRAME_LIMIT} D554=0 taken=0$" \
+            "$normalized"
+        rg -q '^W34N27_RETAIL SLOT2_CALL target=8007299c D7CC=0$' \
+            "$normalized"
+        rg -q '^W34N27_RETAIL SEED_TERMINAL D7CC_BEFORE=2 D7CC_AFTER=0 D7D8=ffffffff BBC4_BEFORE=0 BBC4_AFTER=1$' \
+            "$normalized"
+        rg -q '^W34N27_RETAIL SLOT2_RETURN D7CC=0 D7D8=' "$normalized"
+        rg -q '^W34N27_RETAIL TERMINAL_DECISION D7CC=0 lane=zero$' \
+            "$normalized"
+        rg -q '^W34N27_RETAIL LOAD_OVERLAY call=1 a0=1$' "$normalized"
+        rg -q '^W34N27_RETAIL CHANGE_STATE call=1 a0=1$' "$normalized"
+        rg -q '^W34N27_RETAIL REGION_GUARD BBC4=1 D7D8=ffffffff TYPE=SKIPPED helper_expected=0$' \
+            "$normalized"
+        rg -q '^W34N27_RETAIL REGION_OUTPUTS writes=0 ' "$normalized"
+        rg -q '^W34N27_RETAIL EF68 ' "$normalized"
+        rg -q '^W34N27_RETAIL COMMON_EPILOGUE ' "$normalized"
+        rg -q '^W34N27_RETAIL SYNC_762FC call=1 BYTE591AE=00$' "$normalized"
+        rg -q '^W34N27_RETAIL MAIN_LOOP a0=0 BYTE591AE=00 ' "$normalized"
+        rg -q "^W34N27_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 terminal=0 helper_calls=[01]$" \
             "$normalized"
     fi
 
