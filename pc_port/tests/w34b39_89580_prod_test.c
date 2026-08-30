@@ -51,10 +51,12 @@ static void reset_fixture(void)
     st32(BCC0, SLOT_BASE);
     st32(BDE0, WRONG_BASE);
     for (i = 0u; i < COUNT; i++) {
-        /* The first inactive particle owns slot 0; all later entries are
-         * detached.  This forces exactly one cleanup-record decrement. */
-        st16(PARTICLE_BASE + i * STRIDE, i == 0u ? 0u : 0xFFFFu);
-        st32(PARTICLE_BASE + i * STRIDE + 4u, 0u);
+        /* The first record owns slot 0 and has expired (nonzero owner in the
+         * packed high half, zero remaining life in the low half).  All later
+         * entries are unowned. */
+        st16(PARTICLE_BASE + i * STRIDE, 0u);
+        st32(PARTICLE_BASE + i * STRIDE + 4u,
+             i == 0u ? (1u << 16) : 0u);
     }
     st16(SLOT_BASE + 0x0Au, 0x1234u);
     st16(WRONG_BASE + 0x0Au, 0xBEEFu);
@@ -97,7 +99,7 @@ static void test_active_signed_fixture(void)
     st16(entry + 0x3Au, 4u);
     wm_80089580();
     check("active-counter-decrement",
-          (ld32(entry) & 0xFFFFu) == 4u &&
+          (ld32(entry) & 0xFFFFu) == 2u &&
           (ld32(entry) >> 16) == 5u);
     check("active-position-update-widths",
           ld32(entry + 4u) == 0x01030306u &&
