@@ -11,9 +11,9 @@
 
 /* PsyQ/data function stubs */
 extern void func_80034614(void* object);
-extern s32 func_80033728(s32 table, s32 index);
-extern void func_80034714(void* object, s32 entry);
-extern void func_80034888(void* object, s32 arg1, s32 arg2);
+extern void* GetStringEntry(void* table, s32 index);
+extern void func_80034714(void* object, void* entry);
+extern void func_80034888(void* object, void* ot, s32 render_context);
 
 #define POOL_PTR   0x8009BE24u
 #define AREA       0x8009BD24u
@@ -25,6 +25,35 @@ static s16 c70_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static void c70_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static s32 c70_lw(u32 a) { s32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void c70_sw(u32 a, s32 v) { memcpy(PSX_ADDR(a), &v, 4); }
+
+static void* c70_string_table_pointer(u32 address)
+{
+#if defined(WM_UI_MUTANT_RAW_STRING_TABLE)
+    return (void*)(uintptr_t)address;
+#else
+    return PSX_ADDR(address);
+#endif
+}
+
+static void* c70_ot_pointer(u32 address)
+{
+#if defined(WM_UI_MUTANT_RAW_OT)
+    return (void*)(uintptr_t)address;
+#else
+    return PSX_ADDR(address);
+#endif
+}
+
+static void* c70_string_entry(u32 table, s32 index)
+{
+#if defined(WM_UI_MUTANT_SKIP_STRING_LOOKUP)
+    (void)c70_string_table_pointer(table);
+    (void)index;
+    return NULL;
+#else
+    return GetStringEntry(c70_string_table_pointer(table), index);
+#endif
+}
 
 s32 wm_80092C70(s32 slot_idx)
 {
@@ -46,8 +75,8 @@ s32 wm_80092C70(s32 slot_idx)
 
         /* String lookup: GetStringEntry(D_8009D784, area) */
         {
-            s32 table = c70_lw(D_8009D784);
-            s32 entry = func_80033728(table, (s32)area);
+            u32 table = (u32)c70_lw(D_8009D784);
+            void* entry = c70_string_entry(table, (s32)area);
             func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
         }
 
@@ -68,8 +97,8 @@ s32 wm_80092C70(s32 slot_idx)
             /* Area changed: update string */
             func_80034614(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */);
             {
-                s32 table = c70_lw(D_8009D784);
-                s32 entry = func_80033728(table, (s32)area);
+                u32 table = (u32)c70_lw(D_8009D784);
+                void* entry = c70_string_entry(table, (s32)area);
                 func_80034714(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, entry);
             }
             c70_sw(slot + 0x50, (s32)area);
@@ -79,9 +108,10 @@ s32 wm_80092C70(s32 slot_idx)
     /* Common: palette/texture update */
     {
         u32 palette_source = (u32)c70_lw(/* D_8009BE3C */ 0x8009BE3Cu);
-        s32 pal_data = c70_lw(palette_source + 0x70);
+        u32 pal_data = (u32)c70_lw(palette_source + 0x70);
         s32 pal_table = c70_lw(D_8009D7F0);
-        func_80034888(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */, pal_data, pal_table);
+        func_80034888(PSX_ADDR(UI_OBJECT) /* W34B25: host ptr into g_PsxRam */,
+                      c70_ot_pointer(pal_data), pal_table);
     }
 
     return 1;

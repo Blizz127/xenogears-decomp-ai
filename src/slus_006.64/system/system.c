@@ -2,6 +2,12 @@
 #include "psyq/libgpu.h"
 #include "psyq/memory.h"
 #include "system/memory.h"
+#ifdef XENO_PC_PORT
+#include "guest_prim_link.h"
+#define SYSTEM_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
+#else
+#define SYSTEM_ADD_PRIM(ot, prim) AddPrim((ot), (prim))
+#endif
 
 
 void* g_SystemDataFile;
@@ -803,7 +809,7 @@ void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
         }
     }
 
-    AddPrim(ot, pWindow + 0x3C);
+    SYSTEM_ADD_PRIM(ot, pWindow + 0x3C);
 
     rowIndex = 0;
     rowOffset = *(s16*)(pWindow + 0x16) * 0x60;
@@ -860,11 +866,11 @@ void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
 
         *(s32*)(prim + 0x50) = xy;
         *(s32*)(prim + 0x54) = wh;
-        AddPrim(ot, prim + 0x48);
+        SYSTEM_ADD_PRIM(ot, prim + 0x48);
     }
 
     *(u16*)(pWindow + 0x10) &= 0xFEFF;
-    AddPrim(ot, pWindow + 0x30);
+    SYSTEM_ADD_PRIM(ot, pWindow + 0x30);
 }
 
 // Render string entry to a buffer

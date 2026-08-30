@@ -8,6 +8,7 @@
 #include <psx/gtereg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "guest_prim_link.h"
 #endif
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002AC24);
@@ -1866,11 +1867,16 @@ GPU_LINK_FUNC(func_80031750, 0x06000000)
 GPU_LINK_FUNC(func_80031774, 0x09000000)
 
 void func_80031798(void* ot, void* prim) {
+#ifdef XENO_PC_PORT
+    *(u32*)prim = (*(u32*)prim & 0x00FFFFFFu) | 0x04000000u;
+    PcPort_AddPrimDomainAware(ot, prim);
+#else
     u32 primAddr = (u32)(uintptr_t)prim & 0x00FFFFFF;
     u32 old = *(u32*)ot;
 
     *(u32*)ot = primAddr;
     *(u32*)(uintptr_t)primAddr = old | 0x04000000;
+#endif
 }
 
 GPU_LINK_FUNC(func_800317BC, 0x03000000)
