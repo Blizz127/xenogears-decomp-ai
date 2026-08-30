@@ -1200,6 +1200,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_97770.c
     pc_port/src/world_map_helper_941c4.c
     pc_port/src/world_map_helper_94238.c
+    pc_port/src/world_map_helper_94364.c
     pc_port/src/world_map_helper_8bec8.c
     pc_port/src/world_map_helper_8c1dc.c
     pc_port/src/world_map_helper_93534.c
