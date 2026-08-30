@@ -55,6 +55,8 @@ static int capture_resets;
 static int capture_finishes;
 static int outer_stage;
 static int outer_order_errors;
+static int terminal_default_calls;
+static s32 driver_exit_state;
 
 static void check(int condition, const char* name)
 {
@@ -105,6 +107,8 @@ static void reset_counters(void)
     capture_finishes = 0;
     outer_stage = 0;
     outer_order_errors = 0;
+    terminal_default_calls = 0;
+    driver_exit_state = 0;
 }
 
 static void seed(u32 bbc4, s16 type)
@@ -320,7 +324,7 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
     if (outer_stage != 5)
         outer_order_errors++;
     outer_stage = 6;
-    sw(D7CC, 0u);
+    sw(D7CC, (u32)driver_exit_state);
     return WM_712D0_RUN_NATURAL_EXIT;
 }
 
@@ -333,6 +337,13 @@ void wm_8007299C(void)
 }
 
 void wm_71034_run_terminal_one_lane(void) { abort(); }
+void wm_71034_run_terminal_default_lane(void)
+{
+    terminal_default_calls++;
+    if (outer_stage != 7)
+        outer_order_errors++;
+    outer_stage = 10;
+}
 
 static void test_main_loop_integration(void)
 {
@@ -355,6 +366,20 @@ static void test_main_loop_integration(void)
     check(capture_resets == 1 && capture_finishes == 1,
           "integration.capture.closed.before.terminal");
     check(main_loop_calls == 1, "integration.d7cc0.dispatches.terminal");
+
+    seed(1u, 3);
+    sw(0x8009C5A8u, 0u);
+    sw(D7CC, 2u);
+    sw(0x8009A05Cu, 0x80072238u);
+    sw(0x8009A060u, 0x8007299Cu);
+    driver_exit_state = -1;
+    wm_80071034();
+    check(slot1_calls == 1 && scheduler_calls == 1 && driver_calls == 1 &&
+          slot2_calls == 1, "integration.default.session.order.counts");
+    check(outer_order_errors == 0 && outer_stage == 10,
+          "integration.default.slot2.to.terminal.order");
+    check(terminal_default_calls == 1 && main_loop_calls == 0,
+          "integration.signed.default.dispatches.terminal");
 }
 
 int main(void)

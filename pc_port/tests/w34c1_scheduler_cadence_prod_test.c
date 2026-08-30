@@ -57,6 +57,7 @@ static int s_screenshot_frames[2];
 static char s_screenshot_paths[2][512];
 static int s_transition_calls;
 static int s_terminal_one_calls;
+static int s_terminal_default_calls;
 static s32 s_transition_result;
 static u32 s_transition_vec;
 static s32 s_transition_threshold;
@@ -89,6 +90,7 @@ s32 wm_80094364(u32 pos_vec, u32 list_index, s32 requested_type)
     abort();
 }
 void wm_71034_run_terminal_one_lane(void) { s_terminal_one_calls++; }
+void wm_71034_run_terminal_default_lane(void) { s_terminal_default_calls++; }
 
 /* The cadence certificate never enters menu modes; satisfy the production
  * driver's now-shared lifecycle symbols without exercising that separate
@@ -462,6 +464,8 @@ int main(void)
                         0, s_slot2_calls);
     ok &= assertion_int("bounded_exit.skips_terminal_lane",
                         0, s_terminal_one_calls);
+    ok &= assertion_int("bounded_exit.skips_default_terminal_lane",
+                        0, s_terminal_default_calls);
     ok &= assertion_int("bounded_exit.skips_queue_barrier",
                         0, s_queue_barrier_calls);
     ok &= assertion_int("capture.only_frames_60_and_120",

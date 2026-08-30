@@ -15,6 +15,7 @@
 #include "world_map_main_loop_71034.h"
 #include "world_map_frame_driver_712d0.h"
 #include "world_map_session_setup_72238.h"
+#include "world_map_terminal_default_71264.h"
 #include "world_map_terminal_one_711b0.h"
 #include "world_map_terminal_zero_710e4.h"
 #include "world_map_teardown_7299c.h"
@@ -211,6 +212,10 @@ void wm_80071034(void)
     }
     if (natural_exit_state == 1) {
         wm_71034_run_terminal_one_lane();
+        return;
+    }
+    if (natural_exit_state < 2) {
+        wm_71034_run_terminal_default_lane();
         return;
     }
 
