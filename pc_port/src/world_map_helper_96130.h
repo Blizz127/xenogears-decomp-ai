@@ -20,6 +20,7 @@
 
 void wm_80096130(void);
 void wm_80096694(void);
-void wm_800967E4(void);
+u32 wm_800967E4(void);
+u32 wm_800968E0(void);
 
 #endif

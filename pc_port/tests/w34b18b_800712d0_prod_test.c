@@ -239,6 +239,17 @@ void wm_80097800(void)
     s_97800_calls++;
 }
 
+/* Link-only ownership seams added to the legacy frame-prologue TU after the
+ * original W34B18C certificate was banked. */
+void wm_25044_reset(void) {}
+void wm_74f2c_reset(void) {}
+void wm_ot_clear_r_guest(u32 ot_guest, u32 count)
+{
+    s_clear_calls++;
+    s_clear_ot = ot_guest;
+    s_clear_n = (int)count;
+}
+
 u32 wm_800968E0_dispatch_partial(void)
 {
     if (s_disp_i < s_disp_n)

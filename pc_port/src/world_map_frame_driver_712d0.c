@@ -41,12 +41,12 @@
 
 /* PsyQ functions */
 extern void DrawSync(void (*func)(unsigned long));
-extern void Vsync(long mode);
+extern int Vsync(int mode);
 extern void PutDrawEnv(void *env);
 extern void PutDispEnv(void *env);
 extern void SetGeomOffset(long ofx, long ofy);
 extern void MoveImage(void *rect, long x, long y);
-extern long CdSync(long mode, u_char *result);
+extern int CdSync(int mode, u_char *result);
 extern void wm_80097800(void);
 extern u8 D_8005954C;
 extern u8 D_80059179;
@@ -114,6 +114,28 @@ void wm_712d0_run_second_scheduler(void)
     wm_80097800();
 #else
     wm_80097800();
+#endif
+}
+
+/* Retail 0x800713FC..0x8007142C: retry only dispatcher status 3, yielding
+ * once per retry, then report CdSync status through the guest result word. */
+void wm_712d0_run_cd_sync_lane(void)
+{
+    s32 queue_result;
+
+    do {
+        queue_result = (s32)wm_800967E4();
+        if (queue_result == 3) {
+#if !defined(W34N21_MUTANT_DRIVER_SKIP_RETRY_VSYNC)
+            Vsync(0);
+#endif
+        }
+    } while (queue_result == 3);
+
+#if defined(W34N21_MUTANT_DRIVER_NULL_CDSYNC_RESULT)
+    CdSync(1, NULL);
+#else
+    CdSync(1, (u_char *)PSX_ADDR(D_8009C588));
 #endif
 }
 
@@ -314,7 +336,6 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
     u32 draw_env_ptr;
     u32 ot_ptr;
     s32 controller_result;
-    s32 queue_result;
     int frame;
 
     if (run == NULL || run->frame_limit <= 0 ||
@@ -375,17 +396,7 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
             }
         } while (controller_result != 0);
 
-        /* Queue processing with Vsync wait */
-        do {
-            wm_800967E4();
-            queue_result = 0;
-            if (queue_result == 3) {
-                Vsync(0);
-            }
-        } while (queue_result == 3);
-
-        /* CD sync */
-        CdSync(1, NULL);
+        wm_712d0_run_cd_sync_lane();
 
         /* OT pointer management */
         {

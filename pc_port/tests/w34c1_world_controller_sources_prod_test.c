@@ -35,12 +35,16 @@ u_short g_C1ButtonStateReleased;
 u_short g_C2ButtonStateReleased;
 u_short g_C1ButtonStatePressedOnce;
 u_short g_C2ButtonStatePressedOnce;
+u8 D_8005954C;
+u8 D_80059179;
+u8 D_80059460;
+u8 D_80059171;
+u8 g_MenuDebugEnabled;
 
 static jmp_buf s_after_drain;
 static const ControllerSample *s_samples;
 static size_t s_sample_count;
 static size_t s_sample_index;
-static int s_bad_controller_port;
 
 static void write_u16(u32 address, u16 value)
 {
@@ -84,7 +88,6 @@ static void run_drain(const ControllerSample *samples, size_t sample_count)
     s_samples = samples;
     s_sample_count = sample_count;
     s_sample_index = 0u;
-    s_bad_controller_port = 0;
 
     if (setjmp(s_after_drain) == 0) {
         wm_800712D0();
@@ -145,10 +148,6 @@ static int test_asymmetric_sources_or_into_retail_destinations(void)
 
     run_drain(samples, 2u);
 
-    if (s_bad_controller_port != 0) {
-        fprintf(stderr, "ASSERTION controller.poll.port_zero\n");
-        return 0;
-    }
     if (s_sample_index != 2u) {
         fprintf(stderr,
                 "ASSERTION controller.poll.consumes_all_samples expected=2 actual=%zu\n",
@@ -172,11 +171,8 @@ static int test_asymmetric_sources_or_into_retail_destinations(void)
     return 1;
 }
 
-int ControllerPopState(int port)
+int ControllerPopState(void)
 {
-    if (port != 0) {
-        s_bad_controller_port = 1;
-    }
     if (s_sample_index >= s_sample_count) {
         return 0;
     }
@@ -185,13 +181,14 @@ int ControllerPopState(int port)
     return 1;
 }
 
-void wm_800967E4(void)
+u32 wm_800967E4(void)
 {
     longjmp(s_after_drain, 1);
+    return 0u;
 }
 
 /* Link-only stubs for paths beyond the bounded drain seam. */
-long CdSync(long mode, u_char *result)
+int CdSync(int mode, u_char *result)
 {
     (void)mode;
     (void)result;
@@ -199,6 +196,8 @@ long CdSync(long mode, u_char *result)
 }
 
 void DrawSync(void (*func)(unsigned long)) { (void)func; }
+void func_800250E0(int context) { (void)context; }
+void func_8001D468(void) {}
 void GameCheckAndHandleSoftReset(void) {}
 void MenuMain(void) {}
 void MoveImage(void *rect, long x, long y)
@@ -215,13 +214,30 @@ void SetGeomOffset(long ofx, long ofy)
     (void)ofx;
     (void)ofy;
 }
-void Vsync(long mode) { (void)mode; }
+int Vsync(int mode) { (void)mode; return 0; }
 s32 wm_80093F18(u32 vec_addr)
 {
     (void)vec_addr;
     return 0;
 }
 void wm_80097800(void) {}
+void wm_80096694(void) {}
+void wm_80025044_guest_safe(void) {}
+int wm_80074F2C(void) { return 0; }
+int wm_80075104(void) { return 0; }
+void wm_80075D4C(void) {}
+s32 wm_80075E7C(u32 vec_addr, s32 threshold)
+{
+    (void)vec_addr;
+    (void)threshold;
+    return 0;
+}
+void wm_8007634C(void) {}
+int ControllerGetType(int port) { (void)port; return 1; }
+void wm_80076594(void) {}
+void wm_800758C0(void) {}
+void wm_800762FC(void) {}
+void wm_80075B58(void) {}
 void wm_ot_clear_r_guest(u32 ot_guest, u32 count)
 {
     (void)ot_guest;

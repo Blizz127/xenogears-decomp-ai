@@ -167,10 +167,11 @@ void PsyX_EndScene(void)
     }
 }
 
-void Vsync(long mode)
+int Vsync(int mode)
 {
     (void)mode;
     PsyX_EndScene();
+    return 0;
 }
 
 int VSync(int mode)
@@ -205,7 +206,7 @@ int ControllerGetType(int port) { return port == 0 ? 1 : 0; }
 void wm_8007634C(void) { abort(); }
 void wm_80076594(void) { abort(); }
 
-long CdSync(long mode, u_char* result)
+int CdSync(int mode, u_char* result)
 {
     (void)mode;
     (void)result;
@@ -234,7 +235,7 @@ void ResetGraph(int mode)
     PsyX_EndScene();
 }
 
-void wm_800967E4(void) {}
+u32 wm_800967E4(void) { return 0u; }
 void wm_80096694(void) { s_queue_barrier_calls++; }
 void func_800250E0(int context)
 {

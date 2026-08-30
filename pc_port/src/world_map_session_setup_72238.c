@@ -7,6 +7,7 @@
 #include "world_map_convergence.h"
 #include "world_map_framebuffer_init.h"
 #include "world_map_helper_72db4.h"
+#include "world_map_helper_96130.h"
 #include "world_map_terrain_init.h"
 
 #include <stdio.h>
@@ -26,7 +27,6 @@ extern int MoveImage(void* rect, int x, int y);
 extern int DrawSync(int mode);
 extern int Vsync(int mode);
 extern void ArchiveCdDataSync(int mode);
-extern void wm_800967E4(void);
 extern u32 wm_80096668_circular_distance(void);
 extern void wm_ready_buffer_consume(void);
 extern void wm_mode_audio_setup(void);
@@ -135,7 +135,7 @@ int wm_80072238(void)
 
     wm_80097BC0(0x8009C5ACu);
     do {
-        wm_800967E4();
+        (void)wm_800967E4();
         (void)Vsync(0);
 #if defined(W34N9_MUTANT_SINGLE_CD_DRAIN)
         break;

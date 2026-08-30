@@ -25,7 +25,7 @@ int CdRead(int sectors, u32* buf, int mode) { (void)mode; s_read_buf = buf; s_re
 int CdReadSync(int mode, u8* result) { (void)mode; (void)result; if (!s_pending) return 0; for (int s = 0; s < s_read_n; s++) { u8* d = (u8*)s_read_buf + s * 2048; for (int i = 0; i < 2048; i++) d[i] = s_sector_byte(s_lba, i); s_lba++; } s_pending = 0; return 0; }
 static u32 s_c3d8[2]; static int s_c3d8_n; u32 func_8002C3D8(void) { return s_c3d8[(s_c3d8_n++) & 1]; }
 static int s_pc_calls; void wm_800966CC(u32 t) { (void)t; s_pc_calls++; }
-void Vsync(long m) { (void)m; }
+int Vsync(int m) { (void)m; return 0; }
 u32 wm_80096668_circular_distance(void)
 {
     u32 head = lw(0x8009BE44u);

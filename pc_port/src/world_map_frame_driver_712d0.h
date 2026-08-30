@@ -30,6 +30,8 @@ typedef enum Wm712D0RunResult {
 void wm_800712D0(void);
 Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run);
 void wm_712d0_run_second_scheduler(void);
+/* Retail 0x800713FC..0x8007142C recurring CD status/retry lane. */
+void wm_712d0_run_cd_sync_lane(void);
 /* Retail 0x800714C8..0x8007169C party-presence refresh lane. */
 void wm_712d0_run_party_refresh_lane(void);
 /* Retail 0x8007169C..0x80071774 modal pause/controller-loss lane. */

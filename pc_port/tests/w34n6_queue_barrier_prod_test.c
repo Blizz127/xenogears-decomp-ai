@@ -51,11 +51,12 @@ u32 func_8002C3D8(void)
     return 1u; /* selects retail's C624 path */
 }
 
-void Vsync(long mode)
+int Vsync(int mode)
 {
-    ASSERT_MSG(mode == 0, "vsync_mode", "mode=%ld", mode);
+    ASSERT_MSG(mode == 0, "vsync_mode", "mode=%d", mode);
     s_vsync_calls++;
     event('V');
+    return 0;
 }
 
 void wm_800966CC(u32 record)
