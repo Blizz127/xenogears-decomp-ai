@@ -7,7 +7,21 @@ DISC="${XENO_RETAIL_DISC:-$ROOT/disc/disc1.bin}"
 BIOS="${XENO_RETAIL_BIOS:-$ROOT/disc/scph5500.bin}"
 STATE="${XENO_RETAIL_WORLD_STATE:-$ROOT/scratchpad/retail_world_session_3e10093a.state}"
 CONFIG="${XENO_PCSX_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/pcsx-redux/pcsx.json}"
-LUA="$ROOT/pc_port/tests/w34n23_retail_world_trace.lua"
+PROFILE="${XENO_RETAIL_TRACE_PROFILE:-frames}"
+case "$PROFILE" in
+    frames)
+        LUA="$ROOT/pc_port/tests/w34n23_retail_world_trace.lua"
+        PREFIX=W34N23_RETAIL
+        ;;
+    session_exit)
+        LUA="$ROOT/pc_port/tests/w34n24_retail_session_exit.lua"
+        PREFIX=W34N24_RETAIL
+        ;;
+    *)
+        printf 'unknown XENO_RETAIL_TRACE_PROFILE=%s\n' "$PROFILE" >&2
+        exit 2
+        ;;
+esac
 OUT="${W34N23_OUT:-$ROOT/pc_port/build_native/w34n23_retail_world_trace}"
 FRAME_LIMIT="${XENO_RETAIL_TRACE_FRAMES:-5}"
 WATCHDOG="${XENO_RETAIL_TRACE_TIMEOUT:-120}"
@@ -136,24 +150,38 @@ run_once() {
     fi
 
     sed -E 's/[[:space:]]+$//' "$log" >"$normalized"
-    if rg -q '^W34N23_RETAIL FAIL ' "$normalized"; then
-        rg '^W34N23_RETAIL (FAIL|PASS)' "$normalized" >&2
+    if rg -q "^${PREFIX} FAIL " "$normalized"; then
+        rg "^${PREFIX} (FAIL|PASS)" "$normalized" >&2
         return 1
     fi
     rg -q '^CPU type: Interpreted$' "$normalized"
-    rg -q '^W34N23_RETAIL STATE_LOADED$' "$normalized"
-    rg -q '^W34N23_RETAIL SLOT1_CALL target=80072238$' "$normalized"
-    rg -q '^W34N23_RETAIL SLOT1_RETURN D7CC=2$' "$normalized"
-    rg -q '^W34N23_RETAIL DRIVER_ENTRY D554=0 D7CC=2$' "$normalized"
-    rg -q "^W34N23_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 driver=1 slot2=0$" \
-        "$normalized"
-
-    test "$(rg -c '^W34N23_RETAIL FRAME_HEAD ' "$normalized")" = \
+    rg -q "^${PREFIX} STATE_LOADED$" "$normalized"
+    rg -q "^${PREFIX} SLOT1_CALL target=80072238$" "$normalized"
+    test "$(rg -c "^${PREFIX} FRAME_HEAD " "$normalized")" = \
         "$FRAME_LIMIT"
-    test "$(rg -c '^W34N23_RETAIL FRAME_BRANCH ' "$normalized")" = \
+    test "$(rg -c "^${PREFIX} FRAME_BRANCH " "$normalized")" = \
         "$FRAME_LIMIT"
 
-    rg '^W34N23_RETAIL (STATE_LOADED|SLOT1_|DRIVER_|FRAME_|PASS)' \
+    if [[ "$PROFILE" == frames ]]; then
+        rg -q '^W34N23_RETAIL SLOT1_RETURN D7CC=2$' "$normalized"
+        rg -q '^W34N23_RETAIL DRIVER_ENTRY D554=0 D7CC=2$' "$normalized"
+        rg -q "^W34N23_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 driver=1 slot2=0$" \
+            "$normalized"
+    else
+        rg -q "^W34N24_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
+            "$normalized"
+        rg -q "^W34N24_RETAIL FRAME_BRANCH frame=${FRAME_LIMIT} D554=0 taken=0$" \
+            "$normalized"
+        rg -q '^W34N24_RETAIL DRIVER_EXIT D554=0 D7CC=2$' "$normalized"
+        rg -q '^W34N24_RETAIL SLOT2_CALL target=8007299c D7CC=2$' "$normalized"
+        rg -q '^W34N24_RETAIL SLOT2_RETURN D7CC=2$' "$normalized"
+        rg -q '^W34N24_RETAIL SESSION_DECISION D7CC=2 repeat=1$' "$normalized"
+        rg -q '^W34N24_RETAIL NEXT_SESSION_HEAD D7CC=2$' "$normalized"
+        rg -q "^W34N24_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 repeat=1$" \
+            "$normalized"
+    fi
+
+    rg "^${PREFIX} " \
         "$normalized" >"$trace"
 }
 
@@ -163,4 +191,4 @@ cmp "$OUT/run1.trace.txt" "$OUT/run2.trace.txt"
 cp "$OUT/run1.trace.txt" "$OUT/trace.txt"
 cat "$OUT/trace.txt"
 echo 'W34N23 REPEAT_TRACE_IDENTICAL=YES'
-echo 'W34N23 RETAIL WORLD TRACE PASS'
+printf 'W34N23 RETAIL WORLD TRACE PASS profile=%s\n' "$PROFILE"
