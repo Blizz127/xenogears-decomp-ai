@@ -160,6 +160,7 @@
 #include "world_map_selector.h"
 #include "world_map_framebuffer_init.h"
 #include "world_map_gamestate_alias.h"
+#include "world_map_gpu_asset_8440c.h"
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
 #include "world_map_scheduler.h"
@@ -3423,11 +3424,12 @@ static void wm_800931d8_expand(u16* src, u16* dst, int rows, const u8* scales)
  * W10A — native transcription of retail 0x8008440C–0x8008457C (0x174 / 372 B).
  * Consumes W4C second-wave buffer at 0x8009BD20 (TIM multi-list after LZSS),
  * uploads via func_8002DD20, expands one CLUT strip, writes 16 GetClut ids
- * to 0x8009BCE0. One-shot: frees the compressed BD20 allocation.
+ * to 0x8009BCE0. Each call consumes and frees the current BD20 allocation;
+ * retail 0x80075B58 reloads BD20 before menu-return reentry.
  */
-static int s_wm8440c_ran;
+static int s_wm8440c_completed;
 
-static int wm_8008440c_gpu_asset_a(void)
+int wm_8008440C(void)
 {
     u32 compressed_psx;
     void* compressed_host;
@@ -3446,13 +3448,6 @@ static int wm_8008440c_gpu_asset_a(void)
     fprintf(stderr, "[worldmap-gpu-asset-a] entry\n");
     fprintf(stderr, "[worldmap-gpu-asset-a] source_slot=0x%08x\n",
             WM_DST_BD20);
-
-    if (s_wm8440c_ran) {
-        fprintf(stderr,
-                "[worldmap-gpu-asset-a] ERROR: already ran this process "
-                "(BD20 is one-shot; reload lower ladder)\n");
-        return -1;
-    }
 
     compressed_psx = WM_U32(WM_DST_BD20);
     compressed_host = psx_u32_to_host(compressed_psx);
@@ -3560,7 +3555,7 @@ static int wm_8008440c_gpu_asset_a(void)
     HeapFree(exp_host);
     HeapFree(img_host);
 
-    s_wm8440c_ran = 1;
+    s_wm8440c_completed = 1;
 
     /* Lower-rung preservation (W5B/W7B/W8B samples). */
     if (WM_U32(WM_POOL_BE24) != pool_be24 || WM_U32(WM_MES_CCA4) != mes_cca4 ||
@@ -3617,7 +3612,7 @@ static int wm_800979c8_gpu_asset_b(void)
                 "(C59C is one-shot; reload lower ladder)\n");
         return -1;
     }
-    if (!s_wm8440c_ran) {
+    if (!s_wm8440c_completed) {
         fprintf(stderr,
                 "[worldmap-gpu-asset-b] ERROR: W10A did not run (required)\n");
         return -1;
@@ -6909,7 +6904,7 @@ int wm_72238_stage_mode_enter(void) { return PcPort_WorldMapInitializeModeEnterS
 int wm_72238_stage_cross_products(void) { return wm_80098044_cross_product_init(); }
 int wm_72238_stage_wds_cleanup(void) { return wm_fresh_session_wds_cleanup(); }
 int wm_72238_stage_entry_placement(void) { return wm_entry_placement(); }
-int wm_72238_stage_gpu_asset_a(void) { return wm_8008440c_gpu_asset_a(); }
+int wm_72238_stage_gpu_asset_a(void) { return wm_8008440C(); }
 int wm_72238_stage_gpu_asset_b(void) { return wm_800979c8_gpu_asset_b(); }
 int wm_72238_stage_object_matrix(void) { return wm_80084580_object_matrix(); }
 int wm_72238_stage_third_wave(void) { return wm_80072090_third_wave(); }
@@ -7086,7 +7081,7 @@ void PcPort_WorldMapInitMain(void)
                                         "[worldmap-init] "
                                         "XENO_WORLD_GPU_ASSET_A=1: "
                                         "0x8008440C TIM→CLUT GPU asset A\n");
-                                if (wm_8008440c_gpu_asset_a() != 0) {
+                                if (wm_8008440C() != 0) {
                                     fprintf(stderr,
                                             "[worldmap-gpu-asset-a] failed; "
                                             "still entering placeholder\n");

@@ -31,6 +31,7 @@
 #include "world_map_helper_73b04.h"
 #include "world_map_helper_75d4c.h"
 #include "world_map_helper_762fc.h"
+#include "world_map_menu_lifecycle.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_ot_adapter.h"
 #include "world_map_upload_pump_74f2c.h"
@@ -55,8 +56,6 @@ static void wm_712d0_stub(const char* name, u32 guest_pc)
             guest_pc, name);
 }
 
-static void wm_800758C0(void) { wm_712d0_stub("800758C0", 0x800758C0u); }
-static void wm_80075B58(void) { wm_712d0_stub("80075B58", 0x80075B58u); }
 static void wm_80075E7C(void) { wm_712d0_stub("80075E7C", 0x80075E7Cu); }
 extern void func_800250E0(int context);
 extern void func_8001D468(void);

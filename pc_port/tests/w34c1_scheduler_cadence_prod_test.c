@@ -55,6 +55,12 @@ static int s_screenshot_calls;
 static int s_screenshot_frames[2];
 static char s_screenshot_paths[2][512];
 
+/* The cadence certificate never enters menu modes; satisfy the production
+ * driver's now-shared lifecycle symbols without exercising that separate
+ * certificate here. */
+void wm_800758C0(void) {}
+void wm_80075B58(void) {}
+
 static void write_u32(u32 address, u32 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
