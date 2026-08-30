@@ -25,6 +25,10 @@ case "$PROFILE" in
         LUA="$ROOT/pc_port/tests/w34n29_retail_transition_exit.lua"
         PREFIX=W34N29_RETAIL
         ;;
+    default_exit)
+        LUA="$ROOT/pc_port/tests/w34n31_retail_default_exit.lua"
+        PREFIX=W34N31_RETAIL
+        ;;
     *)
         printf 'unknown XENO_RETAIL_TRACE_PROFILE=%s\n' "$PROFILE" >&2
         exit 2
@@ -212,7 +216,7 @@ run_once() {
         rg -q '^W34N27_RETAIL MAIN_LOOP a0=0 BYTE591AE=00 ' "$normalized"
         rg -q "^W34N27_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 terminal=0 helper_calls=[01]$" \
             "$normalized"
-    else
+    elif [[ "$PROFILE" == transition_exit ]]; then
         rg -q "^W34N29_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
             "$normalized"
         rg -q '^W34N29_RETAIL SEED_D7CC before=2 after=1$' "$normalized"
@@ -232,6 +236,22 @@ run_once() {
         rg -q '^W34N29_RETAIL MANAGER_CONFIGURE call=1 ' "$normalized"
         rg -q '^W34N29_RETAIL SYNC_762FC call=1 BYTE591AE=00$' "$normalized"
         rg -q "^W34N29_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 transition=1$" \
+            "$normalized"
+    else
+        rg -q "^W34N31_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
+            "$normalized"
+        rg -q '^W34N31_RETAIL SEED_D7CC before=2 after=-1$' "$normalized"
+        rg -q '^W34N31_RETAIL SLOT2_CALL target=8007299c D7CC=-1$' \
+            "$normalized"
+        rg -q '^W34N31_RETAIL SLOT2_RETURN D7CC=-1$' "$normalized"
+        rg -q '^W34N31_RETAIL TERMINAL_DECISION D7CC=-1 lane=default$' \
+            "$normalized"
+        rg -q '^W34N31_RETAIL CHANGE_STATE call=1 a0=0$' "$normalized"
+        rg -q '^W34N31_RETAIL CLEAR_IMAGE call=1 rect=0,0,319,431 rgb=0,0,64$' \
+            "$normalized"
+        rg -q '^W34N31_RETAIL DRAW_SYNC call=1 a0=0$' "$normalized"
+        rg -q '^W34N31_RETAIL SYNC_762FC call=1 BYTE591AE=00$' "$normalized"
+        rg -q "^W34N31_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 default=1$" \
             "$normalized"
     fi
 
