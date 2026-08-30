@@ -153,7 +153,7 @@ void wm_89160_reset(void);
 #define WM_865A0_ALLOC_COUNT         2
 #define WM_865A0_RECORD_COUNT        288
 #define WM_865A0_RECORD_STRIDE       40u       /* 0x28 */
-#define WM_865A0_RECORD_BASE_OFFSET  14        /* ptr + 14 */
+#define WM_865A0_CLUT_OFFSET         14u
 #define WM_865A0_COPY_CHUNK          16
 
 /* Global addresses written by wm_800865A0. */

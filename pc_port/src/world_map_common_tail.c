@@ -1040,14 +1040,16 @@ void wm_p3_80075228_should_not_run(void) { s_wm_ctp3_forbidden_75228++; }
  * Stores pointers at D_8009D7F8 and D_8009D7FC.
  *
  * Initializes 288 records (40 bytes each) in the first buffer.
- * Record base = alloc_ptr + 14.  Per-record writes:
+ * Retail keeps s0 = record + 14 as its CLUT anchor, but the packet passed to
+ * SetSemiTrans and consumed later by wm_80086798 starts at record.  Per-record
+ * writes relative to that packet start are:
  *   byte[+3]  = 9    (type marker)
  *   byte[+4]  = 38 (0x26)
  *   byte[+5]  = 38 (0x26)
  *   byte[+6]  = 38 (0x26)
  *   byte[+7]  = 44 (0x2C), then OR'd with 0x02 → 0x2E (SetSemiTrans)
- *   hw[+14]   = GetTPage(0, 1, 960, 256)
- *   hw[+22]   = GetClut(304, 510)
+ *   hw[+14]   = GetClut(304, 510)
+ *   hw[+22]   = GetTPage(0, 1, 960, 256)
  *
  * Then copies first buffer → second buffer (11520 bytes, 16-byte chunks).
  *
@@ -1057,7 +1059,7 @@ void wm_800865A0(void)
     void *p1_host, *p2_host;
     u32 ptr1, ptr2;
     u16 tpage_val, clut_val;
-    u32 base;
+    u32 record;
     int i;
 
     /* 0x800865A4–0x800865C4: first HeapAlloc(0x2D00, 1) */
@@ -1091,39 +1093,45 @@ void wm_800865A0(void)
             tpage_val, clut_val);
 
     /* 0x80086600–0x8008665C: initialize 288 records.
-     * Base = ptr1 + 14.  Stride = 40.  Count = 288. */
-    base = ptr1 + WM_865A0_RECORD_BASE_OFFSET;
+     * s1 is the packet start and s0 is s1 + 14.  The negative stores through
+     * s0 therefore land at packet offsets +3..+7; SetSemiTrans receives s1.
+     * Stride = 40.  Count = 288. */
+    record = ptr1;
     for (i = 0; i < WM_865A0_RECORD_COUNT; i++) {
+#if defined(WM_865A0_MUTANT_SHIFTED_HEADER)
+        u32 header = record + WM_865A0_CLUT_OFFSET;
+#else
+        u32 header = record;
+#endif
         /* 0x80086614: sb $s5, -11($s0) → byte[3] = 9 */
-        WM_U8(base + 3) = 9;
+        WM_U8(header + 3u) = 9;
 
         /* 0x8008661C: sb $s3, -10($s0) → byte[4] = 38 */
-        WM_U8(base + 4) = 38;
+        WM_U8(header + 4u) = 38;
 
         /* 0x80086620: sb $s3, -9($s0) → byte[5] = 38 */
-        WM_U8(base + 5) = 38;
+        WM_U8(header + 5u) = 38;
 
         /* 0x80086628 (delay of jal GetTPage): sb $s3, -8($s0) → byte[6] = 38 */
-        WM_U8(base + 6) = 38;
+        WM_U8(header + 6u) = 38;
 
         /* 0x80086618: sb $s4, -7($s0) → byte[7] = 44 (code byte) */
-        WM_U8(base + 7) = 44;
+        WM_U8(header + 7u) = 44;
 
-        /* 0x80086638 (delay of jal GetClut): sh $v0, 8($s0) → hw[8] = tpage
+        /* 0x80086638 (delay of jal GetClut): sh $v0, 8($s0) → tpage
          * $v0 still holds GetTPage result at this point;
-         * hw[8] = GetTPage, then GetClut overwrites $v0.
-         * 0x80086648 (delay of jal SetSemiTrans): sh $v0, 0($s0) → hw[0] = clut
-         * Note: retail stores tpage at base+8, clut at base+0.
-         * This is NOT base+14/base+22; the stores are relative to s0 = base. */
-        WM_U16(base + 8) = tpage_val;
-        WM_U16(base + 0) = clut_val;
+         * s0+8 = record+22.  GetClut then overwrites $v0.
+         * 0x80086648 (delay of jal SetSemiTrans): sh $v0, 0($s0) → clut
+         * at record+14. */
+        WM_U16(record + 22u) = tpage_val;
+        WM_U16(record + WM_865A0_CLUT_OFFSET) = clut_val;
 
-        /* 0x80086644: SetSemiTrans(ptr1 + i*40, 1) → byte[7] |= 0x02
+        /* 0x80086644: SetSemiTrans(record, 1) → byte[7] |= 0x02
          * Retail SetSemiTrans with abe=1 sets bit 1 of the code byte.
-         * Inline: code byte at base+7, OR with 0x02. */
-        WM_U8(base + 7) = WM_U8(base + 7) | 0x02;
+         * Inline: code byte at record+7, OR with 0x02. */
+        WM_U8(header + 7u) = WM_U8(header + 7u) | 0x02u;
 
-        base += WM_865A0_RECORD_STRIDE;
+        record += WM_865A0_RECORD_STRIDE;
     }
 
     /* 0x80086660–0x8008669C: copy ptr1 → ptr2 (11520 bytes, 16-byte chunks). */

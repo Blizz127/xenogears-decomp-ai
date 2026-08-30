@@ -18,16 +18,17 @@
 
 /* Provide g_PsxRam for the production module. */
 uint8_t g_PsxRam[PSX_RAM_SIZE];
+u8 D_80059179;
 
 /* HeapAlloc stub: allocates from top of g_PsxRam to produce valid KUSEG pointers. */
-static int s_heap_offset = 0;
+static u32 s_heap_offset = 0u;
 static int s_heap_alloc_count = 0;
 
 void* HeapAlloc(u_int allocSize, u_int allocFlags)
 {
     (void)allocFlags;
     s_heap_offset += allocSize;
-    s_heap_offset = (s_heap_offset + 15) & ~15;
+    s_heap_offset = (s_heap_offset + 15u) & ~UINT32_C(15);
     void *p = &g_PsxRam[PSX_RAM_SIZE - s_heap_offset];
     memset(p, 0, allocSize);
     s_heap_alloc_count++;
@@ -58,7 +59,7 @@ void SetSemiTrans(void *p, int abe)
     if (abe)
         base[7] |= 0x02;
     else
-        base[7] &= ~0x02;
+        base[7] = (u8)(base[7] & UINT8_C(0xFD));
 }
 
 static int total = 0, pass = 0, fail = 0;
@@ -103,7 +104,7 @@ int main(void)
         wm_800865A0();
 
         u32 ptr1 = *(u32*)PSX_ADDR(0x8009D7F8);
-        u32 base = ptr1 + 14;  /* record base = ptr1 + 14 */
+        u32 base = ptr1;  /* packet start; retail s0 is packet + 14 */
 
         /* Retail values. */
         u16 expected_tpage = GetTPage(0, 1, 960, 256);
@@ -117,18 +118,18 @@ int main(void)
         check("record0 byte[5] == 38",     *(u8*)PSX_ADDR(base + 5) == 38);
         check("record0 byte[6] == 38",     *(u8*)PSX_ADDR(base + 6) == 38);
         check("record0 byte[7] == 0x2E",   *(u8*)PSX_ADDR(base + 7) == 0x2E);
-        check("record0 hw[0] == clut",     *(u16*)PSX_ADDR(base + 0) == expected_clut);
-        check("record0 hw[8] == tpage",    *(u16*)PSX_ADDR(base + 8) == expected_tpage);
+        check("record0 hw[14] == clut",    *(u16*)PSX_ADDR(base + 14) == expected_clut);
+        check("record0 hw[22] == tpage",   *(u16*)PSX_ADDR(base + 22) == expected_tpage);
 
         /* Last record (287). */
-        u32 base_last = ptr1 + 14 + 287 * 40;
+        u32 base_last = ptr1 + 287 * 40;
         check("record287 byte[3] == 9",    *(u8*)PSX_ADDR(base_last + 3) == 9);
         check("record287 byte[7] == 0x2E", *(u8*)PSX_ADDR(base_last + 7) == 0x2E);
-        check("record287 hw[0] == clut",   *(u16*)PSX_ADDR(base_last + 0) == expected_clut);
-        check("record287 hw[8] == tpage",  *(u16*)PSX_ADDR(base_last + 8) == expected_tpage);
+        check("record287 hw[14] == clut",  *(u16*)PSX_ADDR(base_last + 14) == expected_clut);
+        check("record287 hw[22] == tpage", *(u16*)PSX_ADDR(base_last + 22) == expected_tpage);
 
         /* Middle record (144). */
-        u32 base_mid = ptr1 + 14 + 144 * 40;
+        u32 base_mid = ptr1 + 144 * 40;
         check("record144 byte[3] == 9",    *(u8*)PSX_ADDR(base_mid + 3) == 9);
         check("record144 byte[7] == 0x2E", *(u8*)PSX_ADDR(base_mid + 7) == 0x2E);
     }
@@ -143,8 +144,8 @@ int main(void)
 
         u32 ptr1 = *(u32*)PSX_ADDR(0x8009D7F8);
         int count = 0;
-        for (int i = 0; i < 288; i++) {
-            u32 b = ptr1 + 14 + i * 40;
+        for (u32 i = 0u; i < 288u; i++) {
+            u32 b = ptr1 + i * 40u;
             if (*(u8*)PSX_ADDR(b + 3) == 9 && (*(u8*)PSX_ADDR(b + 7) & 0x02) != 0)
                 count++;
         }
@@ -179,28 +180,28 @@ int main(void)
         wm_800865A0();
 
         u32 ptr1 = *(u32*)PSX_ADDR(0x8009D7F8);
-        u32 base = ptr1 + 14;
+        u32 base = ptr1;
 
         u16 expected_clut_guard = GetClut(304, 510);
 
-        /* Bytes 0..1 of first record = clut halfword (NOT zero).
-         * Byte 2 should be zero (gap between clut hw and type marker). */
-        check("record0 hw[0] == clut", *(u16*)PSX_ADDR(base + 0) == expected_clut_guard);
+        /* Retail's s0 anchor is packet+14, where the CLUT halfword lives.
+         * Byte 2 remains the gap before the DMA length byte. */
+        check("record0 hw[14] == clut", *(u16*)PSX_ADDR(base + 14) == expected_clut_guard);
         check("record0 byte[2] == 0 (gap before type marker)", *(u8*)PSX_ADDR(base + 2) == 0);
 
-        /* Bytes 9..13 of first record should be zero (gap between code and tpage). */
+        /* Bytes 8..13 remain the gap between code and CLUT. */
         int gap_ok = 1;
-        for (int j = 9; j <= 13; j++) {
+        for (u32 j = 8u; j <= 13u; j++) {
             if (*(u8*)PSX_ADDR(base + j) != 0) { gap_ok = 0; break; }
         }
-        check("record0 bytes[9..13] == 0 (gap before tpage hw[14])", gap_ok);
+        check("record0 bytes[8..13] == 0 (gap before clut hw[14])", gap_ok);
 
-        /* Bytes 16..21 of first record should be zero (gap between tpage and clut). */
+        /* Bytes 16..21 remain the gap between CLUT and TPage. */
         int gap2_ok = 1;
-        for (int j = 16; j <= 21; j++) {
+        for (u32 j = 16u; j <= 21u; j++) {
             if (*(u8*)PSX_ADDR(base + j) != 0) { gap2_ok = 0; break; }
         }
-        check("record0 bytes[16..21] == 0 (gap between tpage and clut hw[22])", gap2_ok);
+        check("record0 bytes[16..21] == 0 (gap before tpage hw[22])", gap2_ok);
     }
 
     /* ---- Test 6: Prior state preserved ---- */
@@ -322,7 +323,7 @@ int main(void)
         check("P3 ptr2 != P2 ptr2", p3_ptr2 != p2_ptr2);
         check("P3 ptr1 != P3 ptr2", p3_ptr2 != p3_ptr1);
 
-        check("P0 D_80059179 == 1", *(u8*)PSX_ADDR(0x80059179) == 1);
+        check("P0 D_80059179 == 1", D_80059179 == 1u);
     }
 
     /* ---- Test 10: No overlap with P1/P2 allocations ---- */
