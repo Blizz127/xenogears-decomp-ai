@@ -332,6 +332,8 @@ void wm_8007299C(void)
     outer_stage = 7;
 }
 
+void wm_71034_run_terminal_one_lane(void) { abort(); }
+
 static void test_main_loop_integration(void)
 {
     seed(1u, 3);

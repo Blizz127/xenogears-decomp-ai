@@ -159,7 +159,7 @@ for entry in \
     'M5:frame_limit.displayed_frames.exactly_120' \
     'M6:capture.frame60.request_equals_present60' \
     'M7:driver.entry.once.ot_buffers_alternate' \
-    'M8:bounded_exit.skips_natural_epilogue' \
+    'M8:bounded_exit.skips_terminal_lane' \
     'M9:session.slot1.exactly_once' \
     'M10:frame_seams.250e0.once_per_frame' \
     'M11:frame_seams.25044.once_per_frame' \
