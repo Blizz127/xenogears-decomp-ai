@@ -24,6 +24,7 @@
 /* PsyQ GPU helpers (linked from PsyCross in the full port). */
 extern u_short GetTPage(int tp, int abr, int x, int y);
 extern u_short GetClut(int x, int y);
+extern u8 D_80059179;
 
 /* ---- PSX unaligned load/store helpers (little-endian) ----
  *
@@ -629,8 +630,14 @@ u32 wm_8007290C_common_tail_p0(void)
     fprintf(stderr,
             "[worldmap-common-tail-p0] entry C610=%u\n", c610);
 
-    /* 0x80072914–0x80072918: D_80059179 = 0 (unconditional). */
+    /* 0x80072914–0x80072918: D_80059179 = 0 (unconditional).
+     * This main-executable symbol is a native authority in the port; compiled
+     * field/menu consumers read the same host object. */
+#if defined(W34N19_MUTANT_COMMON_TAIL_GUEST_TWIN)
     WM_U8(WM_D_80059179_ABS) = 0;
+#else
+    D_80059179 = 0;
+#endif
 
     /* 0x8007291C: bnez $v0, 0x8007293C */
     if (c610 != 0) {
@@ -658,7 +665,11 @@ u32 wm_8007290C_common_tail_p0(void)
 
     /* 0x80072930: v0 = 1
      * 0x80072934–0x80072938: D_80059179 = 1 */
+#if defined(W34N19_MUTANT_COMMON_TAIL_GUEST_TWIN)
     WM_U8(WM_D_80059179_ABS) = 1;
+#else
+    D_80059179 = 1;
+#endif
 
     /* Reconvergence at 0x8007293C. */
     cut = WM_COMMON_TAIL_P0_CUT;

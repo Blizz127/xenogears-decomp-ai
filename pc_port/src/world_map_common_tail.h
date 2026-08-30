@@ -47,7 +47,8 @@
 #define WM_SCHEDULER_97800           0x80097800u
 #define WM_WORLD_LOOP_712D0          0x800712D0u
 
-/* D_80059179 written by the prefix. */
+/* Retail address of D_80059179. In the native port the compiled host symbol
+ * is authoritative; this constant remains for exact-address certificates. */
 #define WM_D_80059179_ABS            0x80059179u
 
 /* 0x80089160 constants. */

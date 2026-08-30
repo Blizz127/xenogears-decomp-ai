@@ -61,6 +61,10 @@ static u32 s_transition_vec;
 static s32 s_transition_threshold;
 
 u8 D_8005954C;
+u8 D_80059179;
+u8 D_80059460;
+u8 D_80059171;
+u8 g_MenuDebugEnabled;
 
 /* The cadence certificate never enters menu modes; satisfy the production
  * driver's now-shared lifecycle symbols without exercising that separate

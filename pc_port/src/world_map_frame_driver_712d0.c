@@ -48,6 +48,10 @@ extern void MoveImage(void *rect, long x, long y);
 extern long CdSync(long mode, u_char *result);
 extern void wm_80097800(void);
 extern u8 D_8005954C;
+extern u8 D_80059179;
+extern u8 D_80059460;
+extern u8 D_80059171;
+extern u8 g_MenuDebugEnabled;
 
 extern void func_800250E0(int context);
 extern void func_8001D468(void);
@@ -76,13 +80,9 @@ extern void MenuMain(void);
 #define D_8009BE0C  0x8009BE0Cu
 #define D_8009D80C  0x8009D80Cu
 #define D_8009D558  0x8009D558u
-#define D_80069179  0x80069179u
-#define D_80069178  0x80069178u
-#define D_80069171  0x80069171u
-#define D_80069460  0x80069460u
 #define D_8006EE76  0x8006EE76u
 #define D_8006EE70  0x8006EE70u
-#define D_8007EE68  0x8007EE68u
+#define D_8006EE68  0x8006EE68u
 #define D_8009D7CC  0x8009D7CCu
 #define D_8009D7D8  0x8009D7D8u
 #define D_8009D55C  0x8009D55Cu
@@ -160,6 +160,116 @@ void wm_712d0_run_transition_lane(void)
 #endif
         u16 toggle = fd_lhu(D_8006EE76);
         fd_sh(D_8006EE76, (u16)(toggle ^ 1u));
+    }
+}
+
+/* Retail 0x800714C8..0x8007169C: refresh the three party-presence
+ * channels after a world-area change. The byte at 0x80059179 belongs to
+ * the native main-executable global; the remaining world-overlay state is
+ * guest memory. */
+void wm_712d0_run_party_refresh_lane(void)
+{
+    int guard;
+
+#if defined(W34N19_MUTANT_PARTY_GUARD_GUEST_TWIN)
+    guard = fd_lbu(0x80069179u) == 0u;
+#else
+    guard = D_80059179 == 0u;
+#endif
+    guard = guard && fd_lw(D_8009BD34) != 0u &&
+            fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) == 0u &&
+            fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
+            fd_lw(D_8009D554) != 0u && fd_lw(D_8009D80C) == 0u;
+
+#if !defined(W34N19_MUTANT_PARTY_CLEAR_ONLY_ON_GUARD)
+    /* Both the taken body and retail's 0x80071694 reconvergence clear BD34. */
+    fd_sw(D_8009BD34, 0u);
+#endif
+    if (guard) {
+        s32 area_result;
+        u32 channel;
+
+#if defined(W34N19_MUTANT_PARTY_CLEAR_ONLY_ON_GUARD)
+        fd_sw(D_8009BD34, 0u);
+#endif
+        area_result = wm_80093F18(D_8009D55C);
+        if ((s16)area_result == 4)
+            return;
+
+        for (channel = 0u; channel < 3u; channel++)
+            fd_sh(D_8006EE70 + channel * 2u,
+                  (u16)fd_lbu(D_8006F8E5 + channel));
+
+#if defined(W34N19_MUTANT_PARTY_INVERT_PRESENCE_BRANCH)
+        if (fd_lbu(D_8006F8E5) == 0u) {
+#else
+        if (fd_lbu(D_8006F8E5) != 0u) {
+#endif
+            fd_sb(D_8006F8E5 + 2u, 0u);
+            fd_sb(D_8006F8E5 + 1u, 0u);
+            fd_sb(D_8006F8E5, 0u);
+        } else {
+            for (channel = 0u; channel < 3u; channel++) {
+#if defined(W34N19_MUTANT_PARTY_WRONG_SELECTOR)
+                u8 selector = fd_lbu(D_8006F8E5 + channel);
+#else
+                u8 selector = fd_lbu(0x8006F368u + channel);
+#endif
+#if defined(W34N19_MUTANT_PARTY_WRONG_STRIDE)
+                u32 entry = 0x8007D940u + (u32)selector * 0x154u;
+#else
+                u32 entry = 0x8007D940u + (u32)selector * 0xA4u;
+#endif
+                if (fd_lbu(entry) != 0xFFu)
+                    fd_sb(D_8006F8E5 + channel, 1u);
+            }
+        }
+
+#if !defined(W34N19_MUTANT_PARTY_SKIP_RECONCILE)
+        wm_80075D4C();
+#endif
+    }
+}
+
+/* Retail 0x80071890..0x80071974: enter/return from modes 1..3, or request
+ * the field transition for modes 4..7. */
+void wm_712d0_run_menu_mode_lane(void)
+{
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) != 0u &&
+            fd_lw(D_8009D554) != 0u) {
+        s32 mode = (s32)fd_lw(D_8009BE10);
+
+        if (mode > 0 && mode < 4) {
+            wm_800758C0();
+#if defined(W34N19_MUTANT_MENU_GUEST_TWINS)
+            fd_sb(0x80069460u, 0u);
+            fd_sb(0x80069178u, 0u);
+            fd_sb(0x80069171u, 1u);
+#else
+            D_80059460 = 0u;
+            g_MenuDebugEnabled = 0u;
+            D_80059171 = 1u;
+#endif
+            wm_800762FC();
+            MenuMain();
+            wm_800762FC();
+            wm_80075B58();
+        } else if (mode >= 4 && mode < 8) {
+#if defined(W34N19_MUTANT_TRANSITION_WRONG_PAGE)
+            u16 flags = fd_lhu(0x8007EE68u);
+#else
+            u16 flags = fd_lhu(D_8006EE68);
+#endif
+            fd_sw(D_8009D554, 0u);
+            fd_sw(D_8009D7CC, 0u);
+            fd_sw(D_8009D7D8, D_8009B6E4);
+            flags = (u16)(flags | 0x2000u);
+#if defined(W34N19_MUTANT_TRANSITION_WRONG_PAGE)
+            fd_sh(0x8007EE68u, flags);
+#else
+            fd_sh(D_8006EE68, flags);
+#endif
+        }
     }
 }
 
@@ -304,97 +414,13 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
             }
         }
 
-        /* State-dependent rendering */
-        if (fd_lbu(D_80069179) == 0 && fd_lw(D_8009BD34) != 0 &&
-                fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) == 0 &&
-                fd_lh(D_8009BD24) == -1 && fd_lh(D_8009CE68) == -1 &&
-                fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
-
-            /* World-map R4_WORLD callback */
-            s32 area_result = wm_80093F18(D_8009D55C);
-            if ((s16)(area_result & 0xFFFF) != 4) {
-                /* Copy presence bytes */
-                s32 i;
-                for (i = 0; i < 3; i++) {
-                    u8 pres = fd_lbu(D_8006F8E5 + (u32)i);
-                    fd_sh(D_8006EE70 + i * 2, (u16)pres);
-                }
-
-                /* Check animation state */
-                {
-                    u8 anim = fd_lbu(D_8006F8E5);
-                    if (anim == 0) {
-                        fd_sb(D_8006F8E5 + 2, 0);
-                        fd_sb(D_8006F8E5 + 1, 0);
-                        fd_sb(D_8006F8E5, 0);
-                    } else {
-                        /* Check table entries */
-                        u32 table_base = 0x8007D940;
-                        u8 entry = fd_lbu(table_base + (u32)anim * 0x154);
-                        if (entry != 0xFF) {
-                            fd_sb(D_8006F8E5, 1);
-                        }
-                        entry = fd_lbu(table_base + (u32)(anim + 1) * 0x154);
-                        if (entry != 0xFF) {
-                            fd_sb(D_8006F8E5 + 1, 1);
-                        }
-                        entry = fd_lbu(table_base + (u32)(anim + 2) * 0x154);
-                        if (entry != 0xFF) {
-                            fd_sb(D_8006F8E5 + 2, 1);
-                        }
-                    }
-                }
-
-                /* Call wm_80075D4C */
-                wm_80075D4C();
-            }
-
-            fd_sw(D_8009BD34, 0);
-        }
-
-        /* Menu check */
-        if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
-                fd_lw(D_8009D554) != 0 && fd_lw(D_8009D80C) == 0) {
-
-            if (fd_lhu(D_8009BD10) & 0x800) {
-                /* Toggle menu */
-                u16* toggle = (u16*)PSX_ADDR(D_8006EE76);
-                *toggle ^= 1;
-            }
-        }
+        wm_712d0_run_party_refresh_lane();
 
         /* Retail 0x80071774..0x8007188C: consume a pending transition,
          * then clear its one-frame trigger and apply the bit-0x100 toggle. */
         wm_712d0_run_transition_lane();
 
-        /* State machine dispatch */
-        if (fd_lw(D_8009C178) == 0 && fd_lw(D_8009D804) != 0 &&
-                fd_lw(D_8009D554) != 0) {
-            s32 mode = fd_lw(D_8009BE10);
-
-            if (mode <= 0) {
-                /* Idle: do nothing */
-            } else if (mode < 4) {
-                /* Active rendering modes */
-                wm_800758C0();
-                fd_sb(D_80069460, 0);
-                fd_sb(D_80069178, 0);
-                fd_sb(D_80069171, 1);
-                wm_800762FC();
-                MenuMain();
-                wm_800762FC();
-                wm_80075B58();
-            } else if (mode < 8) {
-                /* Transition modes */
-                u16 flags = fd_lhu(D_8007EE68);
-                u32 table = 0x8009B6E4;
-                fd_sw(D_8009D554, 0);
-                fd_sw(D_8009D7CC, 0);
-                fd_sw(D_8009D7D8, table);
-                flags |= 0x2000;
-                fd_sh(D_8007EE68, flags);
-            }
-        }
+        wm_712d0_run_menu_mode_lane();
 
         /* Reset boundary flag */
         fd_sw(D_8009D804, 0);
