@@ -51,6 +51,7 @@ void func_80019548(void) {}
 #include "psyq/libgpu.h"
 #include <psx/inline_c.h>
 #include <psx/gtereg.h>
+#include "model_prim_link.h"
 #include "psx_memory.h"
 
 extern long DisableEvent(long event);
@@ -928,7 +929,6 @@ static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count) {
         long nclipOpz;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -970,9 +970,7 @@ static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count) {
         }
 
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1008,7 +1006,6 @@ static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count) {
         u16 sz3;
         u16 maxSz;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1050,9 +1047,7 @@ static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count) {
         }
 
         otIndex = (s32)maxSz >> (D_80050100 + 2);
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1119,7 +1114,6 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
              * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
              * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
             s32 otIndex = (s32)otz >> D_80050100;
-            u32 oldTag;
             /* XENO_PC_PORT: retail func_8002E010 skips a background poly only when
              * raw OTZ==0 (already guarded above by `otz <= 0`) and writes ot[otIndex]
              * even for otIndex==0. `<= 0` here additionally DROPPED the nearest depth
@@ -1131,9 +1125,7 @@ static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count) {
             if (otIndex < 0) {
                 continue;
             }
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
             *(u32*)(out + 0x08) = (u32)xy0;
             *(u32*)(out + 0x14) = (u32)xy1;
             *(u32*)(out + 0x20) = (u32)xy2;
@@ -1174,7 +1166,6 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         long nclipOpz = 0;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1222,9 +1213,7 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
         }
 
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         *(u32*)(out + 0x08) = (u32)xy0;
         *(u32*)(out + 0x0C) = (u32)xy1;
         *(u32*)(out + 0x10) = (u32)xy2;
@@ -1261,7 +1250,6 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
         long nclipOpz = 0;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1308,9 +1296,7 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
         }
 
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         *(u32*)(out + 0x08) = (u32)xy0;
         *(u32*)(out + 0x10) = (u32)xy1;
         *(u32*)(out + 0x18) = (u32)xy2;
@@ -1383,7 +1369,6 @@ static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count) {
             u16 sz3 = (u16)C2_SZ3;
             u16 maxSz;
             s32 otIndex;
-            u32 oldTag;
 
             /* Retail 0x8002E82C-0x8002E894 rejects any zero SZ and selects
              * max(SZ0,SZ1,SZ2,SZ3), then shifts by D_80050100 + 2. */
@@ -1397,9 +1382,7 @@ static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count) {
             if (sz3 > maxSz) maxSz = sz3;
             otIndex = (s32)maxSz >> (D_80050100 + 2);
 
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
             emitted++;
             CullCamEmit(1);
         }
@@ -1436,7 +1419,6 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
         long nclipOpz;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1477,9 +1459,7 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
 
         /* C2_OTZ is the AVSZ3 result in the port just as it is on retail. */
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1515,7 +1495,6 @@ static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count) {
         u16 sz3;
         u16 maxSz;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1563,9 +1542,7 @@ static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count) {
          * raw SZ FIFO.  RotTransPers3's return and AVSZ3's OTZ are already
          * quarter-scale, but C2_SZ1..3 are not, so the +2 is required here. */
         otIndex = (s32)maxSz >> (D_80050100 + 2);
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1616,7 +1593,6 @@ static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count) {
         long nclipOpz;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1659,9 +1635,7 @@ static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count) {
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1710,7 +1684,6 @@ static s32 ModelPrimTriDepthCueMaxSZVariant5(u8* pCmd, s32 count) {
         u16 sz3;
         u16 maxSz;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1758,9 +1731,7 @@ static s32 ModelPrimTriDepthCueMaxSZVariant5(u8* pCmd, s32 count) {
         /* Retail 0x8002F2A8 (the final-max branch delay slot) shifts the
          * selected maximum by the configured shift plus two. */
         otIndex = (s32)maxSz >> (D_80050100 + 2);
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
     }
 
@@ -1801,7 +1772,6 @@ static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count) {
         long nclipOpz = 0;
         u16 averageZ;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1851,9 +1821,7 @@ static s32 ModelPrimQuadFT4DepthCueVariant4(u8* pCmd, s32 count) {
         *(u32*)(out + 0x04) = (((u32)out[0x7] << 24) & 0xFE000000) |
                               ((u32)C2_RGB2 & 0x00FFFFFF);
         otIndex = (s32)averageZ >> D_80050100;
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(1);
     }
 
@@ -1901,7 +1869,6 @@ static s32 ModelPrimQuadFT4DepthCueMaxSZVariant5(u8* pCmd, s32 count) {
         u16 sz3;
         u16 maxSz;
         s32 otIndex;
-        u32 oldTag;
 
         count--;
         pCmd += 8;
@@ -1959,9 +1926,7 @@ static s32 ModelPrimQuadFT4DepthCueMaxSZVariant5(u8* pCmd, s32 count) {
         /* Retail 0x80030120 (the final-max branch delay slot) uses the same
          * configured-plus-two shift as its max-SZ triangle sibling. */
         otIndex = (s32)maxSz >> (D_80050100 + 2);
-        oldTag = ot[otIndex];
-        ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-        *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(1);
     }
 

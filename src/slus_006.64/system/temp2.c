@@ -437,6 +437,8 @@ extern u8 D_8004FE50[];
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
 #else
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+extern void PcPort_LinkModelPrim(u32* ot, s32 index, void* packet,
+                                  u32 tag_length);
 /* Build-pass proc, called per packet-source record by func_8002C8CC as
  * fn(D_80059538, D_80059528, shade) — mirrors the retail dispatch; the ported
  * buildProcs only consume the first arg. */
@@ -574,10 +576,7 @@ s32 func_8002E688(u8* pCmd, s32 count) {
 #else
             s32 otIndex = (s32)otz >> D_80050100;
 #endif
-            u32 oldTag;
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
             *(u32*)(out + 0x08) = (u32)xy0;
             *(u32*)(out + 0x10) = (u32)xy1;
             *(u32*)(out + 0x18) = (u32)xy2;
