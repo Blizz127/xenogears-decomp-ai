@@ -1027,8 +1027,7 @@ static int world_frame_prologue_enabled(void)
      * owns the complete continuation and must not also execute this legacy
      * one-frame diagnostic body. */
     return env_flag_is_one("XENO_WORLD_FRAME_PROLOGUE") &&
-           world_scheduler_97800_enabled() &&
-           !env_flag_is_one("XENO_WORLD_OPEN_LOOP");
+           world_scheduler_97800_enabled();
 }
 
 static int world_frame_reentry_limit(void)
@@ -7005,11 +7004,12 @@ void PcPort_WorldMapInitMain(void)
         return;
     }
 
-    /* W34N10: the bounded recurring-loop harness now enters through retail's
-     * real ownership boundary.  Slot 0 runs once here; wm_80071034 then owns
-     * slot 1, its scheduler, and all displayed frames.  Do not also execute
-     * the historical environment-implied slot-1 ladder below. */
-    if (env_flag_is_one("XENO_WORLD_OPEN_LOOP")) {
+    /* W34N33: retail session ownership is now the only active continuation.
+     * Slot 0 runs once here; wm_80071034 then owns slot 1, its scheduler, and
+     * displayed frames.  The historical implication ladder below remains
+     * source-visible for focused archaeology but is no longer selected by a
+     * runtime environment gate. */
+    {
         fprintf(stderr,
                 "[worldmap-init] retail session path: slot0 -> slot1 owner -> "
                 "scheduler -> frames\n");

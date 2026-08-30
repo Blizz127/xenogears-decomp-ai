@@ -78,9 +78,12 @@ inner_line="$(rg -n 'wm_712d0_run_second_scheduler\(\);' "$DRIVER" | cut -d: -f1
 draw_line="$(rg -n 'wm_ot_draw_otag_guest\(guest_ot \+ 0xFFCu\);' "$DRIVER" | cut -d: -f1)"
 test "$clear_line" -lt "$inner_line"
 test "$inner_line" -lt "$draw_line"
-rg -q '!env_flag_is_one\("XENO_WORLD_OPEN_LOOP"\)' pc_port/src/world_map_init.c
+if rg -q 'XENO_WORLD_OPEN_LOOP' pc_port/src/world_map_init.c; then
+    echo 'XENO_WORLD_OPEN_LOOP still controls production world init' >&2
+    exit 1
+fi
 echo "ORDER CLEAR_OT -> INNER_SCHEDULER -> DRAW_OT -> 0x719C8 LIMIT PASS"
-echo "OPEN_LOOP LEGACY FRAME PROLOGUE SKIP PASS"
+echo "OPEN_LOOP SELECTOR RETIRED PASS"
 
 make_mutant() {
     local label="$1"
