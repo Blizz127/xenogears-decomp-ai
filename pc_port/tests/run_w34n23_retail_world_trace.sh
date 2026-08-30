@@ -21,6 +21,10 @@ case "$PROFILE" in
         LUA="$ROOT/pc_port/tests/w34n27_retail_terminal_exit.lua"
         PREFIX=W34N27_RETAIL
         ;;
+    transition_exit)
+        LUA="$ROOT/pc_port/tests/w34n29_retail_transition_exit.lua"
+        PREFIX=W34N29_RETAIL
+        ;;
     *)
         printf 'unknown XENO_RETAIL_TRACE_PROFILE=%s\n' "$PROFILE" >&2
         exit 2
@@ -185,7 +189,7 @@ run_once() {
         rg -q '^W34N24_RETAIL NEXT_SESSION_HEAD D7CC=2$' "$normalized"
         rg -q "^W34N24_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 repeat=1$" \
             "$normalized"
-    else
+    elif [[ "$PROFILE" == terminal_exit ]]; then
         rg -q "^W34N27_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
             "$normalized"
         rg -q "^W34N27_RETAIL FRAME_BRANCH frame=${FRAME_LIMIT} D554=0 taken=0$" \
@@ -207,6 +211,27 @@ run_once() {
         rg -q '^W34N27_RETAIL SYNC_762FC call=1 BYTE591AE=00$' "$normalized"
         rg -q '^W34N27_RETAIL MAIN_LOOP a0=0 BYTE591AE=00 ' "$normalized"
         rg -q "^W34N27_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 terminal=0 helper_calls=[01]$" \
+            "$normalized"
+    else
+        rg -q "^W34N29_RETAIL SEED_D554 frame=${FRAME_LIMIT} before=1 after=0$" \
+            "$normalized"
+        rg -q '^W34N29_RETAIL SEED_D7CC before=2 after=1$' "$normalized"
+        rg -q '^W34N29_RETAIL SLOT2_CALL target=8007299c D7CC=1$' \
+            "$normalized"
+        rg -q '^W34N29_RETAIL SLOT2_RETURN D7CC=1 ' "$normalized"
+        rg -q '^W34N29_RETAIL TERMINAL_DECISION D7CC=1 lane=transition$' \
+            "$normalized"
+        rg -q '^W34N29_RETAIL LOAD_OVERLAY call=1 a0=2$' "$normalized"
+        rg -q '^W34N29_RETAIL CHANGE_STATE call=1 a0=2$' "$normalized"
+        rg -q '^W34N29_RETAIL SOUND_CLEANUP call=1 BYTE594F8=00 ' \
+            "$normalized"
+        rg -q '^W34N29_RETAIL ALIGNED_SIZE call=1 ' "$normalized"
+        rg -q '^W34N29_RETAIL COPY call=1 dst=80062648 ' "$normalized"
+        rg -q '^W34N29_RETAIL MANAGER_CREATE call=1 a0=80062648 ' \
+            "$normalized"
+        rg -q '^W34N29_RETAIL MANAGER_CONFIGURE call=1 ' "$normalized"
+        rg -q '^W34N29_RETAIL SYNC_762FC call=1 BYTE591AE=00$' "$normalized"
+        rg -q "^W34N29_RETAIL PASS frames=${FRAME_LIMIT} slot1=1 slot2=1 transition=1$" \
             "$normalized"
     fi
 
