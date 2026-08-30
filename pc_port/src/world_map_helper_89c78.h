@@ -1,10 +1,9 @@
 /*
  * World-map helper 0x80089C78 (scaled object renderer).
  *
- * Retail boundary: [0x80089C78, 0x8008A2C8), 404 instructions / 1616 bytes.
- * Copies camera and model matrices to scratchpad, iterates objects
- * applying ScaleMatrix + RotMatrixZ transformations, renders via
- * wm_80093534.
+ * Retail function boundary: [0x80089C78, 0x8008A2C8).  The current ported
+ * boundary ends after the per-record matrix/vector setup and retail wrap call
+ * at 0x80089F38.  Projection and FT4 publication remain to be transcribed.
  */
 #ifndef WORLD_MAP_HELPER_89C78_H
 #define WORLD_MAP_HELPER_89C78_H
