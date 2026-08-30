@@ -32,6 +32,8 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run);
 void wm_712d0_run_second_scheduler(void);
 /* Retail 0x800714C8..0x8007169C party-presence refresh lane. */
 void wm_712d0_run_party_refresh_lane(void);
+/* Retail 0x8007169C..0x80071774 modal pause/controller-loss lane. */
+void wm_712d0_run_pause_lanes(void);
 /* Retail 0x80071774..0x8007188C transition-selection and flag tail. */
 void wm_712d0_run_transition_lane(void);
 /* Retail 0x80071890..0x80071974 menu/field-transition dispatch lane. */

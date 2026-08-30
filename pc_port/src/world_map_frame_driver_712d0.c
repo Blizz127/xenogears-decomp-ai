@@ -35,6 +35,7 @@
 #include "world_map_menu_lifecycle.h"
 #include "world_map_r4world_71a58.h"
 #include "world_map_ot_adapter.h"
+#include "world_map_pause.h"
 #include "world_map_upload_pump_74f2c.h"
 #include "world_map_upload_pump_75104.h"
 
@@ -55,7 +56,7 @@ extern u8 g_MenuDebugEnabled;
 
 extern void func_800250E0(int context);
 extern void func_8001D468(void);
-extern int ControllerPopState(int port);
+extern int ControllerPopState(void);
 extern int ControllerGetType(int port);
 extern void ResetGraph(int mode);
 extern void GameCheckAndHandleSoftReset(void);
@@ -231,6 +232,30 @@ void wm_712d0_run_party_refresh_lane(void)
     }
 }
 
+/* Retail 0x8007169C..0x80071774: modal START pause and controller-loss
+ * recovery.  Re-read every guard for the second arm because the first modal
+ * may change controller and world state before it returns. */
+void wm_712d0_run_pause_lanes(void)
+{
+#if defined(W34N20_MUTANT_DRIVER_WRONG_D804_GUARD)
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) != 0u &&
+#else
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) == 0u &&
+#endif
+            fd_lw(D_8009D554) != 0u && fd_lw(D_8009D80C) == 0u &&
+            (fd_lhu(D_8009BD10) & 0x0800u) != 0u) {
+        wm_8007634C();
+    }
+
+#if !defined(W34N20_MUTANT_DRIVER_SKIP_DISCONNECT_WAIT)
+    if (fd_lw(D_8009C178) == 0u && fd_lw(D_8009D804) == 0u &&
+            fd_lw(D_8009D554) != 0u && fd_lw(D_8009D80C) == 0u &&
+            ControllerGetType(0) == 0) {
+        wm_80076594();
+    }
+#endif
+}
+
 /* Retail 0x80071890..0x80071974: enter/return from modes 1..3, or request
  * the field transition for modes 4..7. */
 void wm_712d0_run_menu_mode_lane(void)
@@ -321,7 +346,7 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
 
         /* Controller polling loop */
         do {
-            controller_result = ControllerPopState(0);
+            controller_result = ControllerPopState();
             if (controller_result != 0) {
                 /* Merge controller input into global state */
                 u16 buttons = fd_lhu(D_8009CD4C);
@@ -415,6 +440,8 @@ Wm712D0RunResult wm_800712D0_run_bounded(Wm712D0BoundedRun* run)
         }
 
         wm_712d0_run_party_refresh_lane();
+
+        wm_712d0_run_pause_lanes();
 
         /* Retail 0x80071774..0x8007188C: consume a pending transition,
          * then clear its one-frame trigger and apply the bit-0x100 toggle. */

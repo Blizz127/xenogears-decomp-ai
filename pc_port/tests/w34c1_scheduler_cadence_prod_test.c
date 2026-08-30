@@ -196,10 +196,14 @@ void ControllerResetState(void)
     s_controller_resets++;
 }
 
-int ControllerPopState(int port)
+int ControllerPopState(void)
 {
-    return port == 0 ? 0 : -1;
+    return 0;
 }
+
+int ControllerGetType(int port) { return port == 0 ? 1 : 0; }
+void wm_8007634C(void) { abort(); }
+void wm_80076594(void) { abort(); }
 
 long CdSync(long mode, u_char* result)
 {
