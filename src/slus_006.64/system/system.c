@@ -942,7 +942,14 @@ static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
     v = (glyph & 0x80) ? 0x222 : 0;
     if (glyph & 0x40) v |= 0x2220;
     if (glyph & 0x20) v |= 0x2200;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW0_OUTLINE)
     w = (glyph & 0x10) ? v : (v | 0x2000);
+#else
+    /* Retail 0x8003518C..0x80035198 adds the outline shade when
+     * the corresponding glyph pixel is present.  The old ternary had
+     * this polarity reversed and painted every empty pixel instead. */
+    w = (glyph & 0x10) ? (v | 0x2000) : v;
+#endif
     prev[0] |= w;
     next[0] |= w;
 
@@ -960,7 +967,11 @@ static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
     }
     if (glyph & 0x04) v |= 0x2220;
     if (glyph & 0x02) v |= 0x2200;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW0_OUTLINE)
     w = (glyph & 0x01) ? v : (v | 0x2000);
+#else
+    w = (glyph & 0x01) ? (v | 0x2000) : v;
+#endif
     prev[1] |= w;
     next[1] |= w;
 
@@ -980,7 +991,11 @@ static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
     }
     if (glyph & 0x4000) v |= 0x2220;
     if (glyph & 0x2000) v |= 0x2200;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW0_OUTLINE)
     w = (glyph & 0x1000) ? v : (v | 0x2000);
+#else
+    w = (glyph & 0x1000) ? (v | 0x2000) : v;
+#endif
     prev[2] |= w;
     next[2] |= w;
 
@@ -999,7 +1014,13 @@ static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
     v = (glyph & 0x80) ? 0x888 : 0;
     if (glyph & 0x40) v |= 0x8880;
     if (glyph & 0x20) v |= 0x8800;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW1_OUTLINE)
     w = (glyph & 0x10) ? v : (v | 0x8000);
+#else
+    /* Retail 0x80035474..0x80035480 has the same present-pixel
+     * polarity for the other interleaved texture page. */
+    w = (glyph & 0x10) ? (v | 0x8000) : v;
+#endif
     prev[0] |= w;
     next[0] |= w;
 
@@ -1017,7 +1038,11 @@ static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
     }
     if (glyph & 0x04) v |= 0x8880;
     if (glyph & 0x02) v |= 0x8800;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW1_OUTLINE)
     w = (glyph & 0x01) ? v : (v | 0x8000);
+#else
+    w = (glyph & 0x01) ? (v | 0x8000) : v;
+#endif
     prev[1] |= w;
     next[1] |= w;
 
@@ -1037,7 +1062,11 @@ static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
     }
     if (glyph & 0x4000) v |= 0x8880;
     if (glyph & 0x2000) v |= 0x8800;
+#if defined(WM_34FFC_MUTANT_REVERSE_ROW1_OUTLINE)
     w = (glyph & 0x1000) ? v : (v | 0x8000);
+#else
+    w = (glyph & 0x1000) ? (v | 0x8000) : v;
+#endif
     prev[2] |= w;
     next[2] |= w;
 
