@@ -69,6 +69,7 @@
 #include "world_map_callback_77dc8.h"
 #include "world_map_callback_78e2c.h"
 #include "world_map_callback_794d8.h"
+#include "world_map_callback_795e4.h"
 #include "world_map_callback_7a144.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
@@ -121,6 +122,8 @@ extern s32 wm_80078E2C(s32 slot_index) __attribute__((weak));
 extern s32 wm_80078EA4(s32 slot_index) __attribute__((weak));
 extern s32 wm_800794D8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80079538(s32 slot_index) __attribute__((weak));
+extern s32 wm_800795E4(s32 slot_index) __attribute__((weak));
+extern s32 wm_80079778(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007A410(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007A430(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007A568(s32 slot_index) __attribute__((weak));
@@ -157,6 +160,7 @@ static const u32 s_wm_sched_known_missing[] = {
     0x8007828Cu, 0x800783E8u, /* mode 9 context slot */
     0x80078E2Cu, 0x80078EA4u, /* mode 10 camera/event slot */
     0x800794D8u, 0x80079538u, /* mode 10 orbit/context slot */
+    0x800795E4u, 0x80079778u, /* mode 10 sequence/context slot */
     0x8007A410u, 0x8007A430u, /* mode 10 timed marker slot */
     0x8007A568u, 0x8007A570u, /* mode 10 marker initializer slot */
     0x8007A144u, 0x8007A1B4u, /* mode 10 scaled-stream slot */
@@ -491,6 +495,16 @@ static s16 wm_sched_builtin_80079538(int slot_index)
     return (s16)wm_80079538((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_800795E4(int slot_index)
+{
+    return (s16)wm_800795E4((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80079778(int slot_index)
+{
+    return (s16)wm_80079778((s32)slot_index);
+}
+
 static s16 wm_sched_builtin_8007A410(int slot_index)
 {
     return (s16)wm_8007A410((s32)slot_index);
@@ -706,6 +720,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80079538u && wm_80079538 != 0) {
         *out_fn = wm_sched_builtin_80079538;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800795E4u && wm_800795E4 != 0) {
+        *out_fn = wm_sched_builtin_800795E4;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80079778u && wm_80079778 != 0) {
+        *out_fn = wm_sched_builtin_80079778;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x8007A410u && wm_8007A410 != 0) {
