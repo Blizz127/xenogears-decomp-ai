@@ -18,6 +18,7 @@
 #include "world_map_mode811_lifecycle.h"
 #include "world_map_mode9_lifecycle.h"
 #include "world_map_mode10_lifecycle.h"
+#include "world_map_mode12_lifecycle.h"
 #include "world_map_mode14_lifecycle.h"
 #include "world_map_terminal_default_71264.h"
 #include "world_map_terminal_one_711b0.h"
@@ -103,6 +104,11 @@ static int ml_dispatch_guest(u32 address, int mode, int slot,
         return wm_80078A60();
     case 0x80078D24u:
         wm_80078D24();
+        return 0;
+    case 0x8007BF50u:
+        return wm_8007BF50();
+    case 0x8007C260u:
+        wm_8007C260();
         return 0;
     case 0x8007A5DCu:
         return wm_8007A5DC();
