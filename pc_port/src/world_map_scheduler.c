@@ -65,6 +65,7 @@
 #include "world_map_callback_87710.h"
 #include "world_map_callback_87734.h"
 #include "world_map_callback_7756c.h"
+#include "world_map_callback_78948.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
 #include "world_map_callback_8d678.h"
@@ -106,6 +107,8 @@ extern s32 wm_80087710(s32 slot_index) __attribute__((weak));
 extern s32 wm_80087734(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007756C(s32 slot_index) __attribute__((weak));
 extern s32 wm_800776E0(s32 slot_index) __attribute__((weak));
+extern s32 wm_80078948(s32 slot_index) __attribute__((weak));
+extern s32 wm_80078950(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -131,6 +134,7 @@ static const u32 s_wm_sched_known_missing[] = {
     0x80071A50u, 0x80071A58u, /* slot 14 */
     0x80087710u, 0x80087734u, /* slot 15 (Table B, selector 0) */
     0x8007756Cu, 0x800776E0u, /* mode 8/11 camera slot */
+    0x80078948u, 0x80078950u, /* shared mode draw slot */
 };
 #define WM_SCHED_KNOWN_MISSING_COUNT \
     (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
@@ -412,6 +416,16 @@ static s16 wm_sched_builtin_800776E0(int slot_index)
     return (s16)wm_800776E0((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_80078948(int slot_index)
+{
+    return (s16)wm_80078948((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80078950(int slot_index)
+{
+    return (s16)wm_80078950((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -557,6 +571,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x800776E0u && wm_800776E0 != 0) {
         *out_fn = wm_sched_builtin_800776E0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80078948u && wm_80078948 != 0) {
+        *out_fn = wm_sched_builtin_80078948;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80078950u && wm_80078950 != 0) {
+        *out_fn = wm_sched_builtin_80078950;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
