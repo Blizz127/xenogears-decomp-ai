@@ -311,6 +311,8 @@ int wm_80077214(void) { return 0; }
 void wm_80077480(void) {}
 int wm_80077A64(void) { return 0; }
 void wm_80077CC0(void) {}
+int wm_80078A60(void) { return 0; }
+void wm_80078D24(void) {}
 s32 wm_80093F18(u32 vec_addr)
 {
     (void)vec_addr;
