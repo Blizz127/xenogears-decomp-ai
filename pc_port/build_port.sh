@@ -908,6 +908,9 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sprite_v_orientation.patch"
 # World-map acceptance captures are requested by the game loop but fulfilled
 # at PsyX_EndScene's sole effective pre-swap presentation boundary.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_world_capture_request.patch" "_xeno_world_capture_request" "unidiff-zero"
+# OpenGL framebuffer readback starts at the lower-left. Flip complete RGBA
+# rows before SDL serializes screenshots so capture files match presentation.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_capture_readback_orientation.patch" "_xeno_capture_readback_orientation" "unidiff-zero"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.

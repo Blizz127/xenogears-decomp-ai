@@ -1,0 +1,40 @@
+diff --git a/src/PsyX_main.cpp b/src/PsyX_main.cpp
+--- a/src/PsyX_main.cpp
++++ b/src/PsyX_main.cpp
+@@ -897,0 +898,32 @@ void PsyX_EndScene()
++/* _xeno_capture_readback_orientation: OpenGL returns the first readback row
++ * from the lower-left origin, while SDL surfaces treat it as the image top.
++ * Reverse complete four-byte pixel rows before saving a screenshot. */
++void PsyX_FlipCaptureRows(u_char* pixels, int width, int height)
++{
++	if (pixels == NULL || width <= 0 || height <= 1)
++		return;
++
++#if defined(W34N53_MUTANT_M1)
++	return;
++#else
++	size_t rowBytes = (size_t)width * 4;
++	int rowPairs = height / 2;
++#if defined(W34N53_MUTANT_M2)
++	if (rowPairs > 0)
++		rowPairs--;
++#endif
++#if defined(W34N53_MUTANT_M3)
++	rowBytes = (size_t)width * 3;
++#endif
++	for (int y = 0; y < rowPairs; y++) {
++		u_char* top = pixels + (size_t)y * rowBytes;
++		u_char* bottom = pixels + (size_t)(height - 1 - y) * rowBytes;
++		for (size_t x = 0; x < rowBytes; x++) {
++			const u_char value = top[x];
++			top[x] = bottom[x];
++			bottom[x] = value;
++		}
++	}
++#endif
++}
++
+@@ -908,0 +941 @@ void PsyX_TakeScreenshotPath(const char* path)
++	PsyX_FlipCaptureRows(pixels, g_windowWidth, g_windowHeight);
+@@ -930,0 +964 @@ void PsyX_TakeScreenshot()
++	PsyX_FlipCaptureRows(pixels, g_windowWidth, g_windowHeight);
