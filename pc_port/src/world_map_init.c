@@ -173,6 +173,7 @@
 #include "world_map_mode811_lifecycle.h"
 #include "world_map_mode9_lifecycle.h"
 #include "world_map_mode10_lifecycle.h"
+#include "world_map_mode14_lifecycle.h"
 #include "world_map_helper_76954.h"
 
 /* Retail layout */
@@ -6926,6 +6927,12 @@ int wm_mode9_stage_second_wave_finish(void)
     return wm_80076954();
 }
 int wm_mode10_stage_second_wave_finish(void)
+{
+    if (wm_second_wave_poll() != 0)
+        return -1;
+    return wm_80076954();
+}
+int wm_mode14_stage_second_wave_finish(void)
 {
     if (wm_second_wave_poll() != 0)
         return -1;
