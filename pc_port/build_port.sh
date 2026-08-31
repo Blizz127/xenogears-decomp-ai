@@ -901,6 +901,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_fixed_uv.patch" "_xeno_fixe
 # marker selects raw FT3/FT4 polygons only; the uniform is restricted to
 # on-screen non-PGXP PS1-textured draws and is disabled by default.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_identity.patch" "_xeno_raw_identity_option" "unidiff-zero"
+# SPRT/SPRT_8/SPRT_16 rectangles share MakeTexcoordRect. Pair their upper
+# screen edge with the base V so PSX top-down VRAM rows stay upright in the
+# presented window; polygon UV paths remain independent.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sprite_v_orientation.patch" "_xeno_sprite_v_orientation" "unidiff-zero"
 # World-map acceptance captures are requested by the game loop but fulfilled
 # at PsyX_EndScene's sole effective pre-swap presentation boundary.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_world_capture_request.patch" "_xeno_world_capture_request" "unidiff-zero"
