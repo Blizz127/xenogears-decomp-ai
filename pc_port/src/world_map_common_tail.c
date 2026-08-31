@@ -930,11 +930,16 @@ void wm_8008901C(void)
         WM_U8(base + 0) = 0x2C;
 
         /* 0x800890A4 (delay of jal GetClut): sh $v0, 15($s0)
-         * $v0 still holds GetTPage result at this point;
-         * hw[15] = GetTPage, then GetClut overwrites $v0.
-         * 0x800890B0: sh $v0, 7($s0) → hw[7] = GetClut result. */
+         * $v0 still holds GetTPage result at this point, so packet+0x16
+         * receives tpage.  GetClut then overwrites $v0 and 0x800890B0
+         * stores it at 7($s0), which is packet+0x0e. */
+#if defined(WM_8901C_MUTANT_SWAPPED_TEXTURE_FIELDS)
         WM_U16(base + 7)  = tpage_val;
         WM_U16(base + 15) = clut_val;
+#else
+        WM_U16(base + 15) = tpage_val;
+        WM_U16(base + 7)  = clut_val;
+#endif
 
         /* 0x800890B4–0x800890B8: lbu/ori/sb → byte[0] |= 0x02 */
         WM_U8(base + 0) = WM_U8(base + 0) | 0x02;
