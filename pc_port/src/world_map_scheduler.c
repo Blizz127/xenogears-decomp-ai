@@ -164,6 +164,8 @@ extern s32 wm_80080900(s32 slot_index) __attribute__((weak));
 extern s32 wm_80080944(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008032C(s32 slot_index) __attribute__((weak));
 extern s32 wm_80080370(s32 slot_index) __attribute__((weak));
+extern s32 wm_80080A28(s32 slot_index) __attribute__((weak));
+extern s32 wm_80080AC4(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -215,6 +217,7 @@ static const u32 s_wm_sched_known_missing[] = {
     0x8007C724u, 0x8007C7D8u, /* mode 12 camera/control slot */
     0x80080900u, 0x80080944u, /* mode 13 marker slot */
     0x8008032Cu, 0x80080370u, /* mode 13 scripted-control slot */
+    0x80080A28u, 0x80080AC4u, /* mode 13 dual scaled-stream slot */
 };
 #define WM_SCHED_KNOWN_MISSING_COUNT \
     (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
@@ -756,6 +759,16 @@ static s16 wm_sched_builtin_80080370(int slot_index)
     return (s16)wm_80080370((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_80080A28(int slot_index)
+{
+    return (s16)wm_80080A28((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80080AC4(int slot_index)
+{
+    return (s16)wm_80080AC4((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -1109,6 +1122,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80080370u && wm_80080370 != 0) {
         *out_fn = wm_sched_builtin_80080370;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80080A28u && wm_80080A28 != 0) {
+        *out_fn = wm_sched_builtin_80080A28;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80080AC4u && wm_80080AC4 != 0) {
+        *out_fn = wm_sched_builtin_80080AC4;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
