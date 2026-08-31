@@ -67,6 +67,7 @@
 #include "world_map_callback_7756c.h"
 #include "world_map_callback_78948.h"
 #include "world_map_callback_77dc8.h"
+#include "world_map_callback_794d8.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
 #include "world_map_callback_8d678.h"
@@ -114,6 +115,12 @@ extern s32 wm_80077DC8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80077E68(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007828C(s32 slot_index) __attribute__((weak));
 extern s32 wm_800783E8(s32 slot_index) __attribute__((weak));
+extern s32 wm_800794D8(s32 slot_index) __attribute__((weak));
+extern s32 wm_80079538(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007A410(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007A430(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007A568(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007A570(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -142,6 +149,9 @@ static const u32 s_wm_sched_known_missing[] = {
     0x80078948u, 0x80078950u, /* shared mode draw slot */
     0x80077DC8u, 0x80077E68u, /* mode 9 path/camera slot */
     0x8007828Cu, 0x800783E8u, /* mode 9 context slot */
+    0x800794D8u, 0x80079538u, /* mode 10 orbit/context slot */
+    0x8007A410u, 0x8007A430u, /* mode 10 timed marker slot */
+    0x8007A568u, 0x8007A570u, /* mode 10 marker initializer slot */
 };
 #define WM_SCHED_KNOWN_MISSING_COUNT \
     (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
@@ -453,6 +463,36 @@ static s16 wm_sched_builtin_800783E8(int slot_index)
     return (s16)wm_800783E8((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_800794D8(int slot_index)
+{
+    return (s16)wm_800794D8((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80079538(int slot_index)
+{
+    return (s16)wm_80079538((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8007A410(int slot_index)
+{
+    return (s16)wm_8007A410((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8007A430(int slot_index)
+{
+    return (s16)wm_8007A430((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8007A568(int slot_index)
+{
+    return (s16)wm_8007A568((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8007A570(int slot_index)
+{
+    return (s16)wm_8007A570((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -622,6 +662,30 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x800783E8u && wm_800783E8 != 0) {
         *out_fn = wm_sched_builtin_800783E8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800794D8u && wm_800794D8 != 0) {
+        *out_fn = wm_sched_builtin_800794D8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80079538u && wm_80079538 != 0) {
+        *out_fn = wm_sched_builtin_80079538;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007A410u && wm_8007A410 != 0) {
+        *out_fn = wm_sched_builtin_8007A410;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007A430u && wm_8007A430 != 0) {
+        *out_fn = wm_sched_builtin_8007A430;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007A568u && wm_8007A568 != 0) {
+        *out_fn = wm_sched_builtin_8007A568;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007A570u && wm_8007A570 != 0) {
+        *out_fn = wm_sched_builtin_8007A570;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
