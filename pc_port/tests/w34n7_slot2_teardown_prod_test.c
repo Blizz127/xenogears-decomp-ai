@@ -31,6 +31,8 @@ u8 D_8005A4E4[0x10000u];
 int wm_80072238(void) { return 0; }
 int wm_80077214(void) { return 0; }
 void wm_80077480(void) {}
+int wm_80077A64(void) { return 0; }
+void wm_80077CC0(void) {}
 
 static Event s_events[1024];
 static u32 s_event_count;

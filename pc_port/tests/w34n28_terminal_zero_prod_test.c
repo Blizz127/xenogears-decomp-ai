@@ -290,6 +290,8 @@ int wm_80072238(void)
 
 int wm_80077214(void) { return 0; }
 void wm_80077480(void) {}
+int wm_80077A64(void) { return 0; }
+void wm_80077CC0(void) {}
 
 void wm_80097800(void)
 {

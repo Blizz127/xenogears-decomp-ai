@@ -171,6 +171,8 @@
 #include "world_map_helper_762fc.h"
 #include "world_map_session_setup_72238.h"
 #include "world_map_mode811_lifecycle.h"
+#include "world_map_mode9_lifecycle.h"
+#include "world_map_helper_76954.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -6915,6 +6917,12 @@ int wm_mode811_stage_second_wave_finish(void)
     if (wm_second_wave_poll() != 0)
         return -1;
     return wm_80073530_fixup();
+}
+int wm_mode9_stage_second_wave_finish(void)
+{
+    if (wm_second_wave_poll() != 0)
+        return -1;
+    return wm_80076954();
 }
 
 void PcPort_WorldMapInitMain(void)
