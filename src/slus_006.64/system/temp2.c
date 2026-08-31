@@ -459,7 +459,7 @@ extern s32 D_800500F8;
 extern s32 D_800500FC;
 extern u32 D_80059568;
 extern s32 D_80059578;
-extern s32 func_8003101C(void);
+extern s32 func_8003101C(const u8* bounds, s32 mode);
 
 static u32 ModelPrimVertexIndex1(u32 word) {
     return (word >> 16) & 0xFFFF;
@@ -593,7 +593,7 @@ s32 func_8002E688(u8* pCmd, s32 count) {
 s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
     s32 groupCount;
 
-    if (D_80050104 != 0 && func_8003101C() != 0) {
+    if (D_80050104 != 0 && func_8003101C(a0, D_80050104) != 0) {
         return 0;
     }
 
