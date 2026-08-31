@@ -158,6 +158,8 @@ extern s32 wm_8007CC6C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007CD20(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007C36C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007C3B8(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007C724(s32 slot_index) __attribute__((weak));
+extern s32 wm_8007C7D8(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -206,6 +208,7 @@ static const u32 s_wm_sched_known_missing[] = {
     0x8007CE84u, 0x8007CF18u, /* mode 12 dual-marker slot */
     0x8007CC6Cu, 0x8007CD20u, /* mode 12 four-link slot */
     0x8007C36Cu, 0x8007C3B8u, /* mode 12 scripted-control slot */
+    0x8007C724u, 0x8007C7D8u, /* mode 12 camera/control slot */
 };
 #define WM_SCHED_KNOWN_MISSING_COUNT \
     (sizeof(s_wm_sched_known_missing) / sizeof(s_wm_sched_known_missing[0]))
@@ -717,6 +720,16 @@ static s16 wm_sched_builtin_8007C3B8(int slot_index)
     return (s16)wm_8007C3B8((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_8007C724(int slot_index)
+{
+    return (s16)wm_8007C724((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8007C7D8(int slot_index)
+{
+    return (s16)wm_8007C7D8((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -1046,6 +1059,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x8007C3B8u && wm_8007C3B8 != 0) {
         *out_fn = wm_sched_builtin_8007C3B8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007C724u && wm_8007C724 != 0) {
+        *out_fn = wm_sched_builtin_8007C724;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8007C7D8u && wm_8007C7D8 != 0) {
+        *out_fn = wm_sched_builtin_8007C7D8;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
