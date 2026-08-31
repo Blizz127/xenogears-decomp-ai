@@ -1131,6 +1131,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_callback_87734.c
     pc_port/src/world_map_callback_7756c.c
     pc_port/src/world_map_callback_78948.c
+    pc_port/src/world_map_callback_77dc8.c
     pc_port/src/world_map_callback_8a72c.c
     pc_port/src/world_map_callback_8b644.c
     pc_port/src/world_map_callback_8c844.c
@@ -1165,6 +1166,9 @@ PORT_SOURCES=(
     pc_port/src/world_map_helper_73398.c
     pc_port/src/world_map_helper_73448.c
     pc_port/src/world_map_helper_72db4.c
+    pc_port/src/world_map_helper_76858.c
+    pc_port/src/world_map_helper_97070.c
+    pc_port/src/world_map_helper_94154.c
     pc_port/src/world_map_helper_7565c.c
     pc_port/src/world_map_helper_75d4c.c
     pc_port/src/world_map_helper_75e7c.c
