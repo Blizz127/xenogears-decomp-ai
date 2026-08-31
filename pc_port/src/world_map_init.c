@@ -170,6 +170,7 @@
 #include "world_map_helper_73448.h"
 #include "world_map_helper_762fc.h"
 #include "world_map_session_setup_72238.h"
+#include "world_map_mode811_lifecycle.h"
 
 /* Retail layout */
 #define WM_OVERLAY_BASE          0x8006FAF0u
@@ -3807,11 +3808,9 @@ static int wm_80084580_object_matrix(void)
                 "(non-idempotent relocate/alloc)\n");
         return -1;
     }
-    if (!s_wm979c8_ran) {
-        fprintf(stderr,
-                "[worldmap-object-matrix] ERROR: W10B did not run (required)\n");
-        return -1;
-    }
+    /* This body consumes the second-wave fixups, not GPU asset B.  Base mode
+     * happens to call 0x800979C8 first, while retail modes 8/11 call this
+     * function before both GPU asset helpers. */
 
     cd48_psx = WM_U32(WM_FIX_CD48);
     d308_psx = WM_U32(WM_FIX_D308);
@@ -4289,11 +4288,8 @@ static int wm_800736DC_init_constants(void)
                 "[worldmap-bss-constants] ERROR: already ran this process\n");
         return -1;
     }
-    if (!s_wm72090_ran) {
-        fprintf(stderr,
-                "[worldmap-bss-constants] ERROR: W12B did not run (required)\n");
-        return -1;
-    }
+    /* Retail modes 8/11 call this initializer without the base-mode third
+     * archive wave.  Its stores are independent of wm_80072090. */
 
     /* Guards + prior-rung snaps. */
     for (i = 0; i < 4; i++) {
@@ -4920,11 +4916,8 @@ static int wm_80085F58_relocate_records_and_init_cluts(void)
                 "second_call_blocked=1\n");
         return -1;
     }
-    if (!s_wm73e30_ran) {
-        fprintf(stderr,
-                "[worldmap-record-clut] ERROR: W14B did not run (required)\n");
-        return -1;
-    }
+    /* Retail modes 8/11 omit the base-mode primitive-template builder before
+     * this call.  The record relocation consumes C7EC from second-wave data. */
 
     table_psx = WM_U32(WM_FIX_C7EC);
     c180_psx = WM_U32(WM_DST_C180);
@@ -5786,12 +5779,8 @@ static int wm_800863E0_init_heap_table_rand(void)
                 "second_call_blocked=1\n");
         return -1;
     }
-    if (s_wm74594_ran == 0) {
-        fprintf(stderr,
-                "[worldmap-heap-table-rand] ERROR: W17B did not run "
-                "(required)\n");
-        return -1;
-    }
+    /* Retail modes 8/11 allocate these tables without the base-mode FT4
+     * pools.  This initializer has no data dependency on wm_80074594. */
 
     pre_d150 = WM_U32(WM_HEAP_TABLE_A_PTR);
     pre_ceb4 = WM_U32(WM_HEAP_TABLE_B_PTR);
@@ -6818,6 +6807,12 @@ static int world_map_dispatch_mode_init_once(void)
     u32* pTable;
 
     entrance = WM_U32(WM_ENTRANCE_STATE_ABS);
+    if (entrance >= 19u) {
+        fprintf(stderr,
+                "[worldmap-mode-init] ERROR: unsupported entrance row %u\n",
+                entrance);
+        return -1;
+    }
     pTable = (u32*)PSX_ADDR(WM_DISPATCH_TABLE);
     slot0 = pTable[entrance * 3 + 0];
 
@@ -6826,26 +6821,18 @@ static int world_map_dispatch_mode_init_once(void)
             "phase_D7CC=%u\n",
             entrance, slot0, WM_U32(WM_PHASE_D7CC));
 
-    if (entrance > 7) {
-        fprintf(stderr,
-                "[worldmap-mode-init] ERROR: unsupported entrance row %u "
-                "(W3B is Lahan 0..7 only)\n",
-                entrance);
-        return -1;
-    }
     if (slot0 == 0) {
         fprintf(stderr, "[worldmap-mode-init] ERROR: slot0 is NULL\n");
         return -1;
     }
-    if (slot0 != WM_MODE_INIT_RETAIL) {
-        fprintf(stderr,
-                "[worldmap-mode-init] ERROR: slot0 0x%08x != expected 0x%08x\n",
-                slot0, WM_MODE_INIT_RETAIL);
-        return -1;
-    }
-
-    /* Never call loaded MIPS; resolve known retail address to native body. */
-    return wm_80071CDC_mode_init();
+    if (slot0 == WM_MODE_INIT_RETAIL)
+        return wm_80071CDC_mode_init();
+    if (slot0 == 0x80071EF0u)
+        return wm_mode811_stage_second_wave_submit();
+    fprintf(stderr,
+            "[worldmap-mode-init] ERROR: unsupported slot0 0x%08x\n",
+            slot0);
+    return -1;
 }
 
 
@@ -6922,6 +6909,13 @@ int wm_72238_stage_88f64(void) { return wm_80088F64_init_tables(); }
 int wm_72238_stage_archive_poll(void) { return wm_archive_ready_poll(); }
 int wm_72238_stage_first_wds(void) { return wm_first_wds_consumer(); }
 int wm_72238_stage_archive_index(void) { return wm_archive_set_index_transition(); }
+int wm_mode811_stage_second_wave_submit(void) { return wm_80071EF0_second_wave(); }
+int wm_mode811_stage_second_wave_finish(void)
+{
+    if (wm_second_wave_poll() != 0)
+        return -1;
+    return wm_80073530_fixup();
+}
 
 void PcPort_WorldMapInitMain(void)
 {

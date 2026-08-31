@@ -1088,6 +1088,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_terminal_one_711b0.c
     pc_port/src/world_map_terminal_zero_710e4.c
     pc_port/src/world_map_teardown_7299c.c
+    pc_port/src/world_map_mode811_lifecycle.c
     pc_port/src/world_map_capture.c
     pc_port/src/world_map_gamestate_alias.c
     pc_port/src/world_map_selector.c

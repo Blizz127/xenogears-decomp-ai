@@ -288,6 +288,9 @@ int wm_80072238(void)
     return 0;
 }
 
+int wm_80077214(void) { return 0; }
+void wm_80077480(void) {}
+
 void wm_80097800(void)
 {
     scheduler_calls++;

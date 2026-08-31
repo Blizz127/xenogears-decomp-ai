@@ -307,6 +307,8 @@ int wm_80072238(void)
     return 0;
 }
 void wm_8007299C(void) { s_slot2_calls++; }
+int wm_80077214(void) { return 0; }
+void wm_80077480(void) {}
 s32 wm_80093F18(u32 vec_addr)
 {
     (void)vec_addr;

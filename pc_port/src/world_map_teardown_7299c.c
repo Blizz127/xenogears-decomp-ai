@@ -149,7 +149,7 @@ static void wm_80075460(void)
 #endif
 }
 
-static void wm_80084818(void)
+void wm_80084818(void)
 {
     s32 count = (s32)td_lh(0x8009D7E0u);
     u32 base = td_lw(0x8009C620u);
@@ -163,7 +163,7 @@ static void wm_80084818(void)
     td_free_value(base);
 }
 
-static void wm_80097D64(void)
+void wm_80097D64(void)
 {
     u32 i;
     for (i = 0u; i < 256u; i++) {
