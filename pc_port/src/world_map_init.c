@@ -163,6 +163,7 @@
 #include "world_map_gpu_asset_8440c.h"
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
+#include "world_map_cold_defaults.h"
 #include "world_map_scheduler.h"
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
@@ -2360,10 +2361,15 @@ static int world_map_main_init_lahan(void)
     WM_U8(WM_FLAG_91AE_ABS) = 1;
 
     if (entrance_hw == 0) {
+        if (wm_80070D58_cold_defaults((u8*)g_pGameState) != 0) {
+            fprintf(stderr,
+                    "[worldmap-init] ERROR: cold-default initialization failed\n");
+            return -1;
+        }
+        entrance_hw = GS_U16(GS_OFF_ENTRANCE);
         fprintf(stderr,
-                "[worldmap-init] ERROR: entrance halfword is 0 — cold-default "
-                "branch not implemented in W2 (Lahan slice requires entrance!=0)\n");
-        return -1;
+                "[worldmap-init] retail cold defaults applied; entrance=%u\n",
+                (unsigned)entrance_hw);
     }
 
     /* Shared path @ 0x80070F38 */
