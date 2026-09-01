@@ -34,6 +34,7 @@
 #include "world_map_helper_94238.h"
 #include "world_map_helper_95cd4.h"
 #include "world_map_helper_97770.h"
+#include "world_map_state2_8eb64.h"
 #include "world_map_terrain_sampler.h"
 
 extern void func_800245D8(void* object, s16 animation);
@@ -268,7 +269,13 @@ s32 wm_8008E76C(s32 slot_idx)
         wm_8008E078();
     }
 
-    /* --- Main dispatch --- */
+    /* Retail dispatches on slot[+0x20], not the host input word.  State 2 is
+     * the naturally live base-world arm and is restored as an exact bounded
+     * slice; other states remain on the legacy fallback below. */
+    if (e76c_lh(s2 + 0x20u) == 2)
+        return wm_8008E76C_state2(s2);
+
+    /* --- Legacy fallback for not-yet-restored states --- */
     {
         u16 buttons = e76c_lhu(E76C_BUTTONS);
         s0 = (u32)(buttons & 0x1FFF);

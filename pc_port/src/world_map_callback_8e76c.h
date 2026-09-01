@@ -18,9 +18,13 @@
  * - Area-dependent table selection (wm_8008E078)
  * - Angle search (wm_8008E0F0)
  *
- * Two-level dispatch:
- *   1. Pre-dispatch on slot[+0x04] (values 1,4,5,6,7,8)
- *   2. Main dispatch on button-derived state s0 (values 1,2,3)
+ * Retail uses two levels of dispatch:
+ *   1. Pre-dispatch on slot[+0x04]
+ *   2. Main dispatch on the signed state at slot[+0x20]
+ *
+ * The naturally active state-2 slice is exact.  Other main-dispatch states
+ * still fall through the legacy partial body and must not be described as a
+ * complete transcription of the 2013-instruction retail function.
  */
 #ifndef WORLD_MAP_CALLBACK_8E76C_H
 #define WORLD_MAP_CALLBACK_8E76C_H
