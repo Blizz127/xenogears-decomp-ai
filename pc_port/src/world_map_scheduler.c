@@ -80,6 +80,7 @@
 #include "world_map_callback_81174.h"
 #include "world_map_callback_813e8.h"
 #include "world_map_callback_817a0.h"
+#include "world_map_callback_819c8.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
 #include "world_map_callback_8d678.h"
@@ -195,6 +196,8 @@ extern s32 wm_800813E8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80081470(s32 slot_index) __attribute__((weak));
 extern s32 wm_800817A0(s32 slot_index) __attribute__((weak));
 extern s32 wm_80081868(s32 slot_index) __attribute__((weak));
+extern s32 wm_800819C8(s32 slot_index) __attribute__((weak));
+extern s32 wm_80081B24(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -907,6 +910,16 @@ static s16 wm_sched_builtin_80081868(int slot_index)
     return (s16)wm_80081868((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_800819C8(int slot_index)
+{
+    return (s16)wm_800819C8((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80081B24(int slot_index)
+{
+    return (s16)wm_80081B24((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -1348,6 +1361,14 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80081868u && wm_80081868 != 0) {
         *out_fn = wm_sched_builtin_80081868;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800819C8u && wm_800819C8 != 0) {
+        *out_fn = wm_sched_builtin_800819C8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80081B24u && wm_80081B24 != 0) {
+        *out_fn = wm_sched_builtin_80081B24;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
