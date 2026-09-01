@@ -833,8 +833,21 @@ static void PcPort_ForcedMenuActionEdges(void)
         (dst) = _h; \
     } while (0)
 
-    if (!s_xenoMenuNavActions)
+    /* Root System Menu (XENO_MENU_FORCE without a nav script): after the
+     * input reader is live, inject Cross so func_801C55A0 takes MENU_INPUT_BACK
+     * and MenuMain returns. */
+    if (!s_xenoMenuNavActions) {
+        static int rootCancelInjected = 0;
+        if (s_xenoMenuForceFired && !rootCancelInjected &&
+            g_XenoMenuNavReaderTicks >= 120) {
+            rootCancelInjected = 1;
+            g_C1ButtonStateReleased |= 0x40; /* CTRL_BTN_CROSS */
+            printf("[xeno-port][test] XENO_MENU_FORCE: Cross cancel "
+                   "at reader tick %d\n", g_XenoMenuNavReaderTicks);
+            fflush(stdout);
+        }
         return;
+    }
 
     t = g_XenoMenuNavReaderTicks;
     confirmTick = 40 + 14 * s_xenoMenuNavDowns + 14;

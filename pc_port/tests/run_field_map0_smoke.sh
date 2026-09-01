@@ -66,10 +66,34 @@ run_case() {
         exit 1
     fi
 
-    if ! rg -q '\[field-diag\] func_80075B44 frame=[0-9]+ active=[1-9][0-9]* plain=[1-9][0-9]* .*globalSkip=0' "$log"; then
+    if ! rg -q '\[field-diag\] func_80075B44 frame=[0-9]+ active=[1-9][0-9]* .*globalSkip=0' "$log"; then
         sed -n '1,260p' "$log"
         echo "$name smoke: FAIL (actor renderer globally skipped)" >&2
         exit 1
+    fi
+
+    # Village maps submit 2D NPC sprites; the opening room / forest maps are
+    # model- and object-heavy and may legitimately report plain=0.
+    if [ "$name" = "Map0" ] || [ "$name" = "Map1" ]; then
+        if ! rg -q '\[field-diag\] func_80075B44 frame=[0-9]+ active=[1-9][0-9]* plain=[1-9]' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (no plain actor draw)" >&2
+            exit 1
+        fi
+    fi
+
+    if [ "$name" = "Map16" ]; then
+        if ! rg -q '\[field-diag\] models frame=[0-9]+ .*emitted=[1-9]' "$log" &&
+           ! rg -q 'objects=[1-9][0-9]*' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (no forest model/object activity)" >&2
+            exit 1
+        fi
+        if rg -q '\[field-diag\] actor3 ip=32767 ' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (actor-3 IP frozen on object-loader stub)" >&2
+            exit 1
+        fi
     fi
 
     echo "$name smoke: PASS (runtime rc=$rc; nonzero OT submission and actor draw observed)"
@@ -77,3 +101,6 @@ run_case() {
 
 run_case Map0 0 0 12
 run_case Map1 1 6 25
+run_case Map14 14 0 16
+run_case Map15 15 0 16
+run_case Map16 16 0 16

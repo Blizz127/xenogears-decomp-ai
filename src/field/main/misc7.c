@@ -18,9 +18,12 @@ extern int FieldScriptArgument4(int index, int mask);
 extern u32 FieldScriptVMGetActorIndex(int bytecodeOffset);
 long FieldGetVec3Magnitude(long x, long y, long z);
 long FieldGetVec2Magnitude(long x, long y);
+long FieldGetVec1Magnitude(long x);
 s32 func_80099AC0(s32 useStoredAngle);
-extern s32 func_80097A50(s32 targetValue);
+s32 func_80097A50(s32 targetValue);
 extern s32 func_8007B694(s32* arg0);
+extern long VectorNormal(VECTOR* v0, VECTOR* v1);
+extern int FieldScriptVMGetArgument(int index);
 
 void func_800972F4(void) {
     D_800B00C0 = 1;
@@ -195,7 +198,164 @@ void func_800979F0(void) {
     }
 }
 
+#ifdef XENO_PC_PORT
+/*
+ * asm 80097A50-80098034. 3D walk-wait tick used by opcode 0x45 (func_80097864)
+ * and siblings. Writes a per-frame move vector toward a target selected by
+ * scripts[curScriptIndex].flags_0x17, counts down flags_0, and returns -1
+ * while still approaching (D_800B00C0=1) or 0 once arrived / timed out.
+ * Control flow transcribed from asm/field/nonmatchings/main/misc7/func_80097A50.s.
+ */
+s32 func_80097A50(s32 targetValue) {
+    FieldActor* refFieldActor = &g_FieldActors[D_800AFD1C];
+    ActorData* refActorData = (ActorData*)(uintptr_t)refFieldActor->pActorData;
+    u8* refSpriteData = (u8*)(uintptr_t)refFieldActor->pSpriteData;
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    s32 targetX = 0;
+    s32 targetY = 0;
+    s32 targetZ = 0;
+    s32 combinedSolidRange = 0;
+    s32 selfX;
+    s32 selfY;
+    s32 selfZ;
+    s32 stepMagnitude;
+    s32 distance;
+    s32 hasMove = -1;
+    s32 speedShifted;
+    s32 finalAngle;
+    VECTOR fromTarget;
+    VECTOR normal;
+    VECTOR moveVec;
+
+#ifdef NPC_EVENT_MUTANT_ALWAYS_DONE
+    return 0;
+#endif
+#ifdef NPC_EVENT_MUTANT_NO_IP
+    D_800B00C0 = 1;
+    return -1;
+#endif
+
+    /* asm 80097ABC-80097B18: per-frame movement quantum in sprite+0x18. */
+    if (refActorData->flags & 0x2000) {
+        *(s32*)(refSpriteData + 0x18) = 0x08000000 / (s16)actor->moveSpeed;
+    } else {
+        *(s32*)(refSpriteData + 0x18) = 0x04000000 / (s16)actor->moveSpeed;
+    }
+    stepMagnitude = FieldGetVec1Magnitude(*(s32*)(refSpriteData + 0x18) >> 15) + 1;
+
+    switch (slot->flags_0x17) {
+    case 0:
+        targetX = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(5));
+        targetZ = FieldScriptArgument2(3, SCRIPT_READ_U8_REL(5));
+        targetY = FieldScriptArgument3(6, SCRIPT_READ_U8_REL(5));
+        break;
+
+    case 1:
+        targetX = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(5)) + actor->unkD0.vx;
+        targetZ = FieldScriptArgument2(3, SCRIPT_READ_U8_REL(5)) + actor->unkD0.vz;
+        targetY = FieldScriptArgument3(6, SCRIPT_READ_U8_REL(5)) + actor->unkD0.vy;
+        break;
+
+    case 2: {
+        u32 otherIdx = FieldScriptVMGetActorIndex(1);
+        ActorData* other;
+
+        if (otherIdx == 0xFF) {
+            return 0;
+        }
+        otherIdx = FieldScriptVMGetActorIndex(1);
+        other = (ActorData*)(uintptr_t)g_FieldActors[otherIdx].pActorData;
+        combinedSolidRange = FieldGetVec1Magnitude(other->solidRange + actor->solidRange);
+        targetX = actor->unkD0.vx;
+        targetZ = actor->unkD0.vz;
+        targetY = FieldScriptArgument1(2, SCRIPT_READ_U8_REL(4));
+        break;
+    }
+
+    case 3: {
+        s32 angle = FieldScriptVMGetArgument(1) & 0xFFF;
+
+        /* asm 80097D14-80097D7C: X shifts the (unkD0 + rsin<<5) sum; Z adds
+         * the shifted -rcos term after the shift. Y is unkD0.vy + arg(3). */
+        targetX = (actor->unkD0.vx + (rsin(angle) << 5)) >> 12;
+        targetZ = actor->unkD0.vz + ((-(rcos(angle) << 5)) >> 12);
+        targetY = actor->unkD0.vy + FieldScriptArgument1(3, SCRIPT_READ_U8_REL(7));
+        break;
+    }
+
+    default:
+        break;
+    }
+
+    selfX = *(s16*)((u8*)actor + 0x22);
+    selfY = *(s16*)((u8*)actor + 0x26);
+    selfZ = *(s16*)((u8*)actor + 0x2A);
+
+    fromTarget.vx = selfX - targetX;
+    fromTarget.vy = selfY - targetY;
+    fromTarget.vz = selfZ - targetZ;
+    VectorNormal(&fromTarget, &normal);
+
+    speedShifted = *(s32*)(refSpriteData + 0x18) >> 8;
+    moveVec.vx = -((normal.vx * speedShifted) >> 4);
+    moveVec.vy = -((normal.vy * speedShifted) >> 4);
+    moveVec.vz = -((normal.vz * speedShifted) >> 4);
+
+    actor->move.vx = moveVec.vx;
+    actor->move.vy = moveVec.vy;
+    actor->move.vy = 0;
+    actor->move.vz = moveVec.vz;
+
+    distance = FieldGetVec3Magnitude(targetX - selfX, targetY - selfY, targetZ - selfZ);
+
+    /* asm 80097E64-80097E84: integer X/Z move both zero => no facing update. */
+    if (*(s16*)((u8*)actor + 0x42) == 0 && *(s16*)((u8*)actor + 0x4A) == 0) {
+        hasMove = 0;
+    }
+
+    actor->scriptFlags.flags |= 0x400000;
+
+    if (slot->flags_0 != 0 && stepMagnitude + combinedSolidRange < distance) {
+        if (hasMove == -1) {
+            finalAngle = (s16)func_8007B694((s32*)&moveVec);
+            finalAngle |= 0x8000;
+            actor->rotation.vx = finalAngle;
+            actor->rotation.vy = finalAngle;
+        }
+        actor->unkEC = (s16)((actor->position.vy + moveVec.vy) >> 16);
+        actor->scriptFlags.flags |= 0x40000;
+        D_800B00C0 = 1;
+        slot->flags_0 = slot->flags_0 - 1;
+        return -1;
+    }
+
+    if (hasMove == -1) {
+        if (targetValue != 0) {
+            if ((actor->scriptFlags.flags & 0x8000) == 0) {
+                finalAngle = actor->rotation.vy | 0x8000;
+            } else {
+                finalAngle = actor->unk11C | 0x8000;
+            }
+        } else {
+            finalAngle = (s16)func_8007B694((s32*)&moveVec);
+            finalAngle |= 0x8000;
+        }
+        actor->rotation.vx = finalAngle;
+        actor->rotation.vy = finalAngle;
+    }
+
+    actor->unkEC = (s16)((actor->position.vy + moveVec.vy) >> 16);
+    {
+        u32* pSlotWord = (u32*)((u8*)actor + 0x90 + actor->curScriptIndex * 8);
+        *pSlotWord &= 0xFE7FFFFFu;
+    }
+    slot->flags_0 = 0xFFFF;
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097A50);
+#endif
 
 /* asm 80098038-800980F8, opcode 0x53. Unlike 0x52, the caller supplies the
  * countdown seed and the useStoredAngle flag as an explicit script argument
@@ -838,6 +998,10 @@ long FieldGetVec1Magnitude(long x) {
     VECTOR vecSquared;
 
     vec.vx = x;
+#ifdef XENO_PC_PORT
+    vec.vy = 0;
+    vec.vz = 0;
+#endif
     Square0(&vec, &vecSquared);
     return SquareRoot0(vecSquared.vx);
 }
@@ -857,6 +1021,13 @@ extern int FieldScriptArgument2(int index, int mask);
  * case-1 target actor index is invalid).
  */
 s32 func_80099AC0(s32 useStoredAngle) {
+#ifdef NPC_EVENT_MUTANT_ALWAYS_DONE
+    return 0;
+#endif
+#ifdef NPC_EVENT_MUTANT_NO_IP
+    D_800B00C0 = 1;
+    return -1;
+#endif
     FieldActor* refFieldActor = &g_FieldActors[D_800AFD1C];
     ActorData* refActorData = (ActorData*)(uintptr_t)refFieldActor->pActorData;
     u8* refSpriteData = (u8*)(uintptr_t)refFieldActor->pSpriteData;

@@ -6,6 +6,10 @@
 #include "field/text_box.h"
 #include "system/memory.h"
 #include "system/archive.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 extern s32 D_8005A444;
 extern s32 D_8005A448;
@@ -17,6 +21,7 @@ extern s32 D_800ADB64;
 extern s32 D_800ADB70;
 extern s32 D_800C4268;
 extern void* D_800ADBF0;
+extern u16 D_800B2174[];
 
 u32 FieldScriptVMGetActorIndex(int bytecodeOffset);
 s32 func_8008A558(void);
@@ -500,6 +505,17 @@ s32 func_8009C5A8(s32 actorIndex, s32 mode) {
     func_8009CCF8(textBoxIndex);
     g_FieldScriptVMCurActor->rotation.vx |= 0x8000;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+#ifdef XENO_PC_PORT
+    {
+        const char* dump = getenv("XENO_NPC_EVENT_DUMP");
+        if (dump != NULL && dump[0] != '\0' && dump[0] != '0') {
+            printf("[npc-event] dialog-open box=%d str=%d lock=0x%x vis=%d\n",
+                   (int)textBoxIndex, (int)stringIndex,
+                   (unsigned)D_800B2174[0],
+                   (int)g_FieldTextBoxes[textBoxIndex].visibility);
+        }
+    }
+#endif
     return 0;
 }
 

@@ -53,6 +53,24 @@ void func_80019548(void) {}
 #include <psx/gtereg.h>
 #include "model_prim_link.h"
 #include "psx_memory.h"
+#include "boot_menu.h"
+#include "boot_str.h"
+#include "boot_assets.h"
+
+extern void PsyX_TakeScreenshotPath(const char* path)
+    __asm__("_Z23PsyX_TakeScreenshotPathPKc");
+
+static void PcPort_BootCapture(const char* name)
+{
+    const char* dir = getenv("XENO_BOOT_CAPTURE");
+    char path[512];
+    if (!dir || !dir[0])
+        return;
+    snprintf(path, sizeof(path), "%s/%s.png", dir, name);
+    PsyX_TakeScreenshotPath(path);
+    printf("[xeno-port][boot] captured %s\n", path);
+    fflush(stdout);
+}
 
 extern long DisableEvent(long event);
 extern long EnableEvent(long event);
@@ -240,13 +258,17 @@ extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
 extern s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags);
 extern s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags);
+extern s32 func_8002DA14(u8* pColor, s16* pIndices);
+extern s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade);
 static s32 ModelPrimQuadVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count);
+static s32 ModelPrimQuadG4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriGT3Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueMaxSZVariant5(u8* pCmd, s32 count);
@@ -302,6 +324,18 @@ ModelPrimDesc D_8004FE50[17] = {
         .packetStride = 0x08,
         .outputStride = 0x20,
     },
+    [0x03] = {
+        /* Retail 0x8004FEC8: POLY_GT3. proc[0]=proc[4]=proc[5]=0x8002E010
+         * (shared tri body: t9=0xC, tag 9, packet 0x28). buildProc
+         * 0x8002DA14. Overlay 0x6B9 MAP16 groups dispatch this row;
+         * leaving it NULL made C8CC/C700 skip the mesh (dEmits=0). */
+        .proc = { ModelPrimTriGT3Variant0, NULL, NULL, NULL,
+                  ModelPrimTriGT3Variant0, ModelPrimTriGT3Variant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002DA14, /* PSX 0x8002DA14 */
+        .cmdStride = 0x08,
+        .packetStride = 0x08,
+        .outputStride = 0x28,
+    },
     [0x04] = {
         .proc = { ModelPrimTriSmallAverageVariant0, NULL,
                   ModelPrimTriSmallMaxSZVariant2, NULL, NULL, NULL },
@@ -346,6 +380,18 @@ ModelPrimDesc D_8004FE50[17] = {
         .cmdStride = 0x08,
         .packetStride = 0x0C,
         .outputStride = 0x28,
+    },
+    [0x0A] = {
+        /* Retail 0x8004FFE0: POLY_G4. proc[0]=proc[1]=proc[4]=proc[5]=
+         * 0x8002E240 (shared quad body: t9=8, tag 8, packet 0x24).
+         * buildProc 0x8002D180. MAP16 overlay groups use this row. */
+        .proc = { ModelPrimQuadG4Variant0, ModelPrimQuadG4Variant0,
+                  NULL, NULL,
+                  ModelPrimQuadG4Variant0, ModelPrimQuadG4Variant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002D180, /* PSX 0x8002D180 */
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x24,
     },
     [0x0D] = {
         /* Retail table: variant 0/1 enter 0x8002E268 (AVSZ4); variant 2 enters
@@ -1308,6 +1354,74 @@ static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
     return 1;
 }
 
+/* Retail 0x8002E240 -> shared 0x8002E274: POLY_G4 walker. Same RTPT/NCLIP/
+ * RTPS/AVSZ4 body as the FT4 walker; 0x24-byte packets, tag len 8, xy at
+ * +8/+10/+18/+20. */
+static s32 ModelPrimQuadG4Variant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x24;
+    const u32 tagLen = 0x08000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long xy3 = 0;
+        long nclipOpz = 0;
+        u16 averageZ;
+        s32 otIndex;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        gte_ldv3(v0, v1, v2);
+        gte_rtpt();
+        gte_stsxy3(&xy0, &xy1, &xy2);
+
+        gte_nclip();
+        gte_stopz(&nclipOpz);
+        nclipOpz = (long)(s32)(u32)nclipOpz;
+        if (nclipOpz <= 0) {
+            continue;
+        }
+
+        gte_ldv0(v3);
+        gte_rtps();
+        gte_stsxy(&xy3);
+        gte_avsz4();
+
+        if (!ModelPrimQuadOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
+            continue;
+        }
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        if (averageZ == 0) {
+            continue;
+        }
+
+        otIndex = (s32)averageZ >> D_80050100;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+        *(u32*)(out + 0x20) = (u32)xy3;
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
 /* POLY_F4 variant-2 walker, retail entry 0x8002E674.  This shares retail's
  * four-vertex max-SZ path at 0x8002E82C-0x8002E894 with func_8002E688:
  * tag length 5, 0x18-byte packets, and packed SXY words at +8/+C/+10/+14. */
@@ -1461,6 +1575,73 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
         otIndex = (s32)averageZ >> D_80050100;
         PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
         CullCamEmit(0);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + packetStep;
+    return 1;
+}
+
+/* Retail 0x8002E010 -> shared 0x8002E058: POLY_GT3 average walker.
+ * Same RTPT/NCLIP/AVSZ3 body as ModelPrimTriAverageVariant0; xy words sit
+ * at +8/+14/+20 (t9=0xC) in the 0x28-byte packet. */
+static s32 ModelPrimTriGT3Variant0(u8* pCmd, s32 count) {
+    const s32 packetStep = 0x28;
+    const u32 tagLen = 0x09000000;
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* out = D_80059424 - packetStep;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+
+    while (count != 0) {
+        u32 cmd = *(u32*)pCmd;
+        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
+        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
+        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
+        long xy0 = 0;
+        long xy1 = 0;
+        long xy2 = 0;
+        long p = 0;
+        long sz3 = 0;
+        long flag = 0;
+        long nclipOpz;
+        u16 averageZ;
+        s32 otIndex;
+
+        count--;
+        pCmd += 8;
+        out += packetStep;
+
+        sz3 = RotTransPers3(v0, v1, v2, &xy0, &xy1, &xy2, &p, &flag);
+        CullCamSeen(0, flag);
+        nclipOpz = NormalClip(xy0, xy1, xy2);
+        if (!ModelPrimTriOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+
+        gte_avsz3();
+        if (nclipOpz <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            CullCamSampleNclipDrop(xy0, xy1, xy2, nclipOpz, v0, v1, v2, 0);
+            continue;
+        }
+
+        *(u32*)(out + 0x08) = (u32)xy0;
+        *(u32*)(out + 0x14) = (u32)xy1;
+        *(u32*)(out + 0x20) = (u32)xy2;
+
+        averageZ = (u16)C2_OTZ;
+        emitted++;
+        if (averageZ == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
+        }
+
+        otIndex = (s32)averageZ >> D_80050100;
+        PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
+        CullCamEmit(0);
+        (void)sz3;
     }
 
     D_80059578 = emitted;
@@ -2053,58 +2234,41 @@ MainGameState g_MainGameStates[7];
  * Port-side stand-in for the retail shipping boot path.
  *
  * Retail (Noah/Ghidra): shipping builds enter movie mode (state 6) with the
- * intro STR queued, then land on the title/new-game menu overlay. Neither the
- * movie decoder nor the save/title menu overlay is ported yet, so this harness
- * approximates the player-facing sequence with KernelMenu-style font UI:
- *   title screen -> intro movie skip -> new-game menu -> Field (state 1).
+ * intro STR queued, then land on the title/new-game menu overlay. This harness
+ * plays disc archive file 15 (Opening STR) from the first picture, then holds
+ * the last high-detail picture as the title graphic, with New Game / Continue
+ * listed over it, then Field (state 1).
  *
  * Field-test / smoke runs keep KernelMenuMain as boot state 0 (see
  * PcPort_InitGameStates) so XENO_KERNEL_SEL continues to drive the debug menu.
+ *
+ * Phase logic lives in boot_menu.c (PcPort_BootUiTick / PcPort_BootEnterField)
+ * so the boot certificate can drive the same functions as this loop.
  */
-enum {
-    PORT_BOOT_TITLE = 0,
-    PORT_BOOT_MOVIE = 1,
-    PORT_BOOT_MENU  = 2
-};
-
-static int PcPort_BootPhaseFrames(int phase)
-{
-    const char* e = getenv("XENO_BOOT_DELAY");
-    int base = (e && *e) ? atoi(e) : 60;
-    if (base < 1)
-        base = 1;
-    if (phase == PORT_BOOT_MOVIE)
-        return base / 2 > 0 ? base / 2 : 1; /* brief skip card */
-    return base;
-}
-
 void PcPort_BootMain(void)
 {
-    static char sTitle[] =
-        "\n\n\n\n"
-        "          XENOGEARS\n\n"
-        "       PRESS START BUTTON\n";
-    static char sMovie[] =
-        "\n\n\n\n"
-        "         INTRO MOVIE\n\n"
-        "   (skipped -- decoder not ported)\n\n"
-        "       PRESS START TO CONTINUE\n";
     static char sMenu[] =
         "\n\n\n\n"
         "          NEW GAME\n"
-        "          CONTINUE\n\n"
-        "   (Continue requires save system)\n";
+        "          CONTINUE\n";
     void* pOtag;
-    int phase = PORT_BOOT_TITLE;
-    int phaseFrames = 0;
-    int menuChoice = 0; /* 0 = New Game, 1 = Continue (unavailable) */
+    PcPortBootUi ui;
     int running = 1;
-    int advance;
+    int tick;
+    int i;
+    int retailGraphic;
 
     KernelMenuInitialize();
+    /* Opening menu is the last intro STR frame, not the KernelMenu navy card. */
+    for (i = 0; i < 2; i++) {
+        g_KernelMenuRenderEnvironments[i].drawEnv.r0 = 0;
+        g_KernelMenuRenderEnvironments[i].drawEnv.g0 = 0;
+        g_KernelMenuRenderEnvironments[i].drawEnv.b0 = 0;
+    }
     SetDispMask(1);
     g_KernelMenuIsRunning = 0;
     D_800592C8 = 0;
+    PcPort_BootUiInit(&ui);
     printf("[xeno-port][boot] title screen\n");
 
     while (running) {
@@ -2114,92 +2278,81 @@ void PcPort_BootMain(void)
             &g_KernelMenuRenderEnvironments[D_800592C8];
         pOtag = &g_KernelMenuCurRenderEnvironment->ot;
         TermPrim(pOtag);
-        FontDrawLetters(pOtag);
+        retailGraphic = PcPort_BootTitleUsedRetailGraphic();
+        if (ui.phase != PC_PORT_BOOT_MOVIE)
+            FontDrawLetters(pOtag);
 
-        advance = 0;
-        phaseFrames++;
-
-        switch (phase) {
-        case PORT_BOOT_TITLE:
-            FontPrintf(sTitle);
-            if ((g_C1ButtonStatePressedOnce & CTRL_BTN_START) ||
-                (g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
-                phaseFrames >= PcPort_BootPhaseFrames(phase))
-                advance = 1;
+        switch (ui.phase) {
+        case PC_PORT_BOOT_TITLE:
+            /* Black hold before the Opening STR; not the navy ASCII skip-card. */
             break;
-
-        case PORT_BOOT_MOVIE:
-            FontPrintf(sMovie);
-            if ((g_C1ButtonStatePressedOnce &
-                 (CTRL_BTN_START | CTRL_BTN_CROSS)) ||
-                (g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
-                phaseFrames >= PcPort_BootPhaseFrames(phase))
-                advance = 1;
+        case PC_PORT_BOOT_MOVIE:
+            /* STR is LoadImage'd to a 16-bit tpage in the tick; DrawPrim after
+             * PutDrawEnv so the FT4s land on the isbg-cleared backbuffer. */
             break;
-
-        case PORT_BOOT_MENU:
+        case PC_PORT_BOOT_MENU:
+            /* Title picture is the Opening STR freeze; still list New Game /
+             * Continue (not the sole chrome when the retail graphic is up). */
             FontPrintf(sMenu);
-            if (g_C1ButtonStatePressedOnce & CTRL_BTN_UP) {
-                menuChoice = 0;
-            } else if (g_C1ButtonStatePressedOnce & CTRL_BTN_DOWN) {
-                menuChoice = 1;
-            }
             setXY0Fast(&g_KernelMenuCurRenderEnvironment->cursor,
-                       0x38, menuChoice * 8 + 0x38);
+                       0x38, ui.menuChoice * 8 + 0x38);
             setXY1Fast(&g_KernelMenuCurRenderEnvironment->cursor,
-                       0x3F, menuChoice * 8 + 0x3C);
+                       0x3F, ui.menuChoice * 8 + 0x3C);
             setXY2Fast(&g_KernelMenuCurRenderEnvironment->cursor,
-                       0x38, menuChoice * 8 + 0x40);
+                       0x38, ui.menuChoice * 8 + 0x40);
             AddPrim(pOtag, &g_KernelMenuCurRenderEnvironment->cursor);
-
-            /* Confirm = Circle/Start/Cross. Continue is unavailable (no saves),
-             * so refuse it by snapping back to New Game instead of no-op'ing
-             * (which looked like a freeze with the cursor on CONTINUE). */
-            if ((g_C1ButtonStateReleased & CTRL_BTN_CIRCLE) ||
-                (g_C1ButtonStatePressedOnce &
-                 (CTRL_BTN_START | CTRL_BTN_CROSS)) ||
-                phaseFrames >= PcPort_BootPhaseFrames(phase)) {
-                if (menuChoice != 0 &&
-                    phaseFrames < PcPort_BootPhaseFrames(phase)) {
-                    printf("[xeno-port][boot] Continue unavailable "
-                           "(save system not ported) — use New Game\n");
-                    menuChoice = 0;
-                } else {
-                    /* Retail's New Game runs the gamestate-template init
-                     * (func_8001B970: archive 0x10 file 3 -> g_GameState,
-                     * roster [Fei,FF,FF], names, defaults) before entering
-                     * the field.  Direct-boot field-test launchers keep
-                     * their zero-state harness (this path is NG only). */
-                    extern void func_8001B970(void);
-
-                    printf("[xeno-port][boot] New Game -> Field\n");
-                    func_8001B970();
-                    ChangeGameState(1);
-                    running = 0;
-                }
-            }
             break;
         }
 
-        if (running && advance) {
-            phaseFrames = 0;
-            if (phase == PORT_BOOT_TITLE) {
-                phase = PORT_BOOT_MOVIE;
-                printf("[xeno-port][boot] intro movie (skipped)\n");
-            } else if (phase == PORT_BOOT_MOVIE) {
-                phase = PORT_BOOT_MENU;
-                menuChoice = 0;
-                printf("[xeno-port][boot] new game menu\n");
+        {
+            int strPicture = (ui.phase == PC_PORT_BOOT_MOVIE) ||
+                             (ui.phase == PC_PORT_BOOT_MENU && retailGraphic);
+            tick = PcPort_BootUiTick(&ui, g_C1ButtonStatePressedOnce,
+                                     g_C1ButtonStateReleased);
+            if (tick == PC_PORT_BOOT_TICK_CONTINUE) {
+                PcPort_BootEnterContinue();
+                running = 0;
+            } else if (tick == PC_PORT_BOOT_TICK_NEWGAME) {
+                PcPort_BootEnterField();
+                running = 0;
+            }
+
+            DrawSync(0);
+            Vsync(0);
+            /* Always clear: STR is drawn as POLY_FT4s, not framebuffer LoadImage. */
+            g_KernelMenuCurRenderEnvironment->drawEnv.isbg = 1;
+            PutDrawEnv(&g_KernelMenuCurRenderEnvironment->drawEnv);
+            PutDispEnv(&g_KernelMenuCurRenderEnvironment->dispEnv);
+            /* DrawPrim the STR after the isbg clear and before DrawOTag so the
+             * movie sits under New Game / Continue instead of covering them. */
+            if (strPicture)
+                PcPort_BootStrDrawPrims(NULL);
+            DrawOTag(pOtag);
+            if (strPicture && ui.phase == PC_PORT_BOOT_MOVIE &&
+                ui.strFrame == 90) {
+                const char* dir = getenv("XENO_BOOT_CAPTURE");
+                if (dir && dir[0]) {
+                    char bmp[512];
+                    snprintf(bmp, sizeof(bmp), "%s/intro_pixels.bmp", dir);
+                    PcPort_BootStrWriteBmp(bmp);
+                }
+                PcPort_BootCapture("intro");
+            }
+            if (strPicture && ui.phase == PC_PORT_BOOT_MENU &&
+                ui.phaseFrames == 2) {
+                const char* dir = getenv("XENO_BOOT_CAPTURE");
+                if (dir && dir[0]) {
+                    char bmp[512];
+                    snprintf(bmp, sizeof(bmp), "%s/boot_menu_pixels.bmp", dir);
+                    PcPort_BootStrWriteBmp(bmp);
+                }
+                PcPort_BootCapture("boot_menu");
             }
         }
-
-        DrawSync(0);
-        Vsync(0);
-        PutDrawEnv(&g_KernelMenuCurRenderEnvironment->drawEnv);
-        PutDispEnv(&g_KernelMenuCurRenderEnvironment->dispEnv);
-        DrawOTag(pOtag);
     }
 
+    PcPort_BootStrUnload();
+    PcPort_BootAssetsUnload();
     DrawSync(0);
     MainLoop(0);
 }
@@ -2510,34 +2663,63 @@ s32 func_8002DDE4(void* pImageData, s32 texMode, s32 texX, s32 texY,
     u16 cy = (u16)clutY;
     RECT rect;
     s32 i;
+    static int s_dde4Logs;
+    int diag = 0;
+    {
+        const char* env = getenv("XENO_FIELD_DIAG");
+        diag = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+
+    if (diag && s_dde4Logs < 8) {
+        u32* w0 = (u32*)pImageData;
+        fprintf(stderr,
+                "[DDE4] p=%p count=%d mode=%d/%d xy=(%d,%d) clut=(%d,%d) "
+                "w0=%08x %08x %08x %08x\n",
+                pImageData, (int)count, (int)texMode, (int)clutMode,
+                (int)texX, (int)texY, (int)clutX, (int)clutY,
+                w0[0], w0[1], w0[2], w0[3]);
+    }
 
     for (i = 0; i < count; i++) {
         u32 magic = *(u32*)pBlock;
+        u16 baseX;
+        u16 baseY;
+        u16 offsX;
+        u16 offsY;
         pBlock += 4;
+
+        baseX = *(u16*)(pBlock + 0);
+        baseY = *(u16*)(pBlock + 2);
+        offsX = *(u16*)(pBlock + 4);
+        offsY = *(u16*)(pBlock + 6);
 
         if (magic == 0x1100) {
             if (texMode16 == 1) {
-                rect.x = texX + *(u16*)(pBlock + 4);
-                rect.y = texY + *(u16*)(pBlock + 6);
+                rect.x = texX + offsX;
+                rect.y = texY + offsY;
             } else if (texMode16 == 2) {
-                rect.x = *(u16*)(pBlock + 0) + texX + *(u16*)(pBlock + 4);
-                rect.y = *(u16*)(pBlock + 2) + texY + *(u16*)(pBlock + 6);
+                rect.x = baseX + texX + offsX;
+                rect.y = baseY + texY + offsY;
             } else {
-                rect.x = *(u16*)(pBlock + 0) + *(u16*)(pBlock + 4);
-                rect.y = *(u16*)(pBlock + 2) + *(u16*)(pBlock + 6);
+                rect.x = baseX + offsX;
+                rect.y = baseY + offsY;
             }
         } else if (magic == 0x1101) {
             if (clutMode16 == 1) {
-                rect.x = cx + *(u16*)(pBlock + 4);
-                rect.y = cy + *(u16*)(pBlock + 6);
+                rect.x = cx + offsX;
+                rect.y = cy + offsY;
             } else if (clutMode16 == 2) {
-                rect.x = *(u16*)(pBlock + 0) + cx + *(u16*)(pBlock + 4);
-                rect.y = *(u16*)(pBlock + 2) + cy + *(u16*)(pBlock + 6);
+                rect.x = baseX + cx + offsX;
+                rect.y = baseY + cy + offsY;
             } else {
-                rect.x = *(u16*)(pBlock + 0) + *(u16*)(pBlock + 4);
-                rect.y = *(u16*)(pBlock + 2) + *(u16*)(pBlock + 6);
+                rect.x = baseX + offsX;
+                rect.y = baseY + offsY;
             }
         } else {
+            if (diag && s_dde4Logs < 8) {
+                fprintf(stderr, "[DDE4] bad magic[%d]=%08x\n", (int)i, magic);
+                s_dde4Logs++;
+            }
             return 1;
         }
 
@@ -2546,8 +2728,49 @@ s32 func_8002DDE4(void* pImageData, s32 texMode, s32 texX, s32 texY,
         pBlock += 2;
         rect.h = *(u16*)pBlock;
         pBlock += 2;
+        if (diag && s_dde4Logs < 8) {
+            fprintf(stderr,
+                    "[DDE4] blk[%d] magic=%04x base=(%u,%u) offs=(%u,%u) "
+                    "dest=(%d,%d) %dx%d\n",
+                    (int)i, (unsigned)magic, (unsigned)baseX, (unsigned)baseY,
+                    (unsigned)offsX, (unsigned)offsY,
+                    (int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
+        }
         LoadImage(&rect, (u_long*)pBlock);
+        if (diag && s_dde4Logs < 8 && magic == 0x1100) {
+            u16* pix = (u16*)pBlock;
+            fprintf(stderr,
+                    "[DDE4] tex16 %04x %04x %04x %04x %04x %04x %04x %04x\n",
+                    (unsigned)pix[0], (unsigned)pix[1], (unsigned)pix[2],
+                    (unsigned)pix[3], (unsigned)pix[4], (unsigned)pix[5],
+                    (unsigned)pix[6], (unsigned)pix[7]);
+        }
+        if (diag && s_dde4Logs < 8 && magic == 0x1101 &&
+            rect.w > 0 && rect.w <= 256 && rect.h > 0 && rect.h <= 4) {
+            u16 clutBuf[256];
+            RECT rd = rect;
+            int n;
+            int nPix = (int)rect.w * (int)rect.h;
+            DrawSync(0);
+            StoreImage(&rd, (u_long*)clutBuf);
+            DrawSync(0);
+            fprintf(stderr, "[DDE4] clut16");
+            for (n = 0; n < nPix && n < 16; n++) {
+                fprintf(stderr, " %04x", (unsigned)clutBuf[n]);
+            }
+            fprintf(stderr, "\n");
+            if (nPix > 80) {
+                fprintf(stderr, "[DDE4] clut80");
+                for (n = 80; n < nPix && n < 96; n++) {
+                    fprintf(stderr, " %04x", (unsigned)clutBuf[n]);
+                }
+                fprintf(stderr, "\n");
+            }
+        }
         pBlock += (s16)rect.w * (s16)rect.h * 2;
+    }
+    if (diag && s_dde4Logs < 8) {
+        s_dde4Logs++;
     }
     return 0;
 }

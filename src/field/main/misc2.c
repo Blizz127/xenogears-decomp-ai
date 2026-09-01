@@ -26,6 +26,28 @@
 #endif
 
 #ifdef XENO_PC_PORT
+static int s_walkFieldDumpFrame;
+static int s_walkFieldDumpEnabled = -1;
+
+static int XenoWalkFieldDumpEnabled(void) {
+    if (s_walkFieldDumpEnabled < 0) {
+        const char* env = getenv("XENO_WALK_ANIM_DUMP");
+        s_walkFieldDumpEnabled =
+            (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_walkFieldDumpEnabled;
+}
+
+static int XenoWalkFieldDumpFrame(void) {
+    return XenoWalkFieldDumpEnabled() ? s_walkFieldDumpFrame : 60;
+}
+
+static void XenoWalkFieldDumpAdvance(void) {
+    if (XenoWalkFieldDumpEnabled() && s_walkFieldDumpFrame < 60) {
+        s_walkFieldDumpFrame++;
+    }
+}
+
 static int XenoFieldDiagEnabled(void) {
     static int s_enabled = -1;
 
@@ -1452,11 +1474,21 @@ extern void func_8002C6E0(u8 a0, u8 a1, u8 a2);
 extern void func_80048AB0(s32 a0, s32 a1, s32 a2);
 extern s32 func_800AAA74(void* modelData);
 extern s32 func_8002C700(void* a0, void* a1, void* a2, s32 a3);
+#ifdef XENO_PC_PORT
+extern s32 D_800B2264;
+#endif
 
 void func_800748E8(void) {
     VECTOR scale;
     MATRIX work;
     s32 actorIndex;
+#ifdef XENO_PC_PORT
+    static s32 s_modelDiagFrames;
+    s32 modelConsidered = 0;
+    s32 modelEmitted = 0;
+    s32 modelHidden = 0;
+    s32 modelStatus20 = 0;
+#endif
 
     D_80059578 = 0;
     D_800595C0 = 0;
@@ -1604,7 +1636,13 @@ void func_800748E8(void) {
             assert(*(s16*)(modelData + 0x12) != 1);
 
             D_80050104 = 0;
+#ifdef XENO_PC_PORT
+            modelConsidered++;
+#endif
             if (status & 0x20) {
+#ifdef XENO_PC_PORT
+                modelStatus20++;
+#endif
                 continue;
             }
 
@@ -1673,6 +1711,9 @@ void func_800748E8(void) {
 
             hiddenByModel = func_800AAA74(modelData);
             if (hiddenByModel != 0 && (env[0x44] & 0x80) == 0) {
+#ifdef XENO_PC_PORT
+                modelHidden++;
+#endif
                 continue;
             }
 
@@ -1702,9 +1743,40 @@ void func_800748E8(void) {
                 void* modelWork = (void*)(uintptr_t)*(u32*)(modelData + 0x08 + renderIndex * 4);
                 void* ot = renderContext + ((status & 0x8000) ? 0x40D0 : 0xCC);
                 func_8002C700(modelPacket, modelWork, ot, *(s16*)(modelData + 0x12));
+#ifdef XENO_PC_PORT
+                modelEmitted++;
+#endif
             }
         }
     }
+
+#ifdef XENO_PC_PORT
+    if (XenoFieldDiagEnabled() && s_modelDiagFrames < 8) {
+        ActorData* actor3 = NULL;
+        printf("[field-diag] models frame=%d considered=%d emitted=%d hidden=%d status20=%d objects=%d otEmits=%d\n",
+               (int)s_modelDiagFrames, (int)modelConsidered, (int)modelEmitted,
+               (int)modelHidden, (int)modelStatus20, (int)D_800B2264,
+               (int)D_80059578);
+        printf("[field-diag] camera eye=(%d,%d,%d) at=(%d,%d,%d)\n",
+               (int)(g_CameraEye.vx >> 16), (int)(g_CameraEye.vy >> 16),
+               (int)(g_CameraEye.vz >> 16),
+               (int)(g_CameraAt.vx >> 16), (int)(g_CameraAt.vy >> 16),
+               (int)(g_CameraAt.vz >> 16));
+        if (g_FieldNumActors > 3) {
+            actor3 = (ActorData*)(uintptr_t)g_FieldActors[3].pActorData;
+            if (actor3 != NULL) {
+                printf("[field-diag] actor3 ip=%u flags4=%08x status=%04x pos=(%d,%d,%d)\n",
+                       (unsigned)actor3->scriptInstructionPointer,
+                       (unsigned)actor3->flags,
+                       (unsigned)(u16)g_FieldActors[3].status,
+                       (int)*(s16*)((u8*)actor3 + 0x22),
+                       (int)*(s16*)((u8*)actor3 + 0x26),
+                       (int)*(s16*)((u8*)actor3 + 0x2A));
+            }
+        }
+        s_modelDiagFrames++;
+    }
+#endif
 
     if (g_FieldSystemMode == 0) {
         assert(0 && "func_800748E8 PC-HDD timing marker branch is not migrated");
@@ -1789,8 +1861,36 @@ void func_800752C8(void) {
 
         if (shouldTick) {
             AnimScriptTick((void*)(uintptr_t)*(u32*)(pActor + 0x4));
+#ifdef XENO_PC_PORT
+            if (XenoWalkFieldDumpFrame() < 60) {
+                u8* sprite = (u8*)(uintptr_t)*(u32*)(pActor + 0x4);
+
+                if (sprite != NULL) {
+                    u8* scriptPc = (u8*)(uintptr_t)*(u32*)(sprite + 0x64);
+                    s32 moving = *(s32*)(pActorData + 0x40) |
+                                 *(s32*)(pActorData + 0x44) |
+                                 *(s32*)(pActorData + 0x48);
+                    s16 curAnim = *(s16*)(pActorData + 0xE8);
+
+                    if (moving != 0 || curAnim == 1 || curAnim == 2) {
+                        printf("[walk-anim] field f=%d actor=%d pos=%d,%d "
+                               "anim=%d sprAnim=%d pose=%d wait=%d op=0x%02x\n",
+                               XenoWalkFieldDumpFrame(), i,
+                               (int)*(s16*)(pActorData + 0x22),
+                               (int)*(s16*)(pActorData + 0x2A),
+                               (int)curAnim, (int)*(s8*)(sprite + 0xAF),
+                               (int)*(s16*)(sprite + 0x34),
+                               (int)*(s16*)(sprite + 0x9E),
+                               scriptPc != NULL ? (unsigned)scriptPc[0] : 0u);
+                    }
+                }
+            }
+#endif
         }
     }
+#ifdef XENO_PC_PORT
+    XenoWalkFieldDumpAdvance();
+#endif
 
     func_800764B4((u8*)g_FieldCurRenderContext + 0xCC, g_FieldCurRenderContextIndex);
 
@@ -2087,6 +2187,7 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
     s32 diagActorFlagSkip = 0;
     s32 diagPlain = 0;
     s32 diagSpecial = 0;
+    s32 diagObjectSkip = 0;
 #endif
 
     (void)renderContextIndex;
@@ -2132,13 +2233,17 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         if (actorFlags4 & 0x2000) {
             /* Object-actor render branch: this actor was registered by the
              * object-overlay opcode func_800A1364 (which stamps flags4 |=
-             * 0x2000).  Its visual is drawn through the menu.bin overlay
-             * entries (func_801E742C et al.), which Phase-2B proved are
-             * incoherent mid-menu-function targets -- safely no-op'd in the
-             * port.  Skip this actor's draw (visual deferred, Phase 2b); the
-             * per-actor transform snapshot above is already applied, and
-             * regular field-model actors still render normally. */
+             * 0x2000).  Retail draws it through menu.bin overlay entries
+             * (func_801E742C et al.); Phase-2B proved those mid-function
+             * entries are incoherent to port.  The opcode already bound a
+             * sprite via func_80076AC0, so the port draws that sprite
+             * instead of skipping -- otherwise MAP16's forest objects are
+             * invisible after a successful un-spin. */
+#ifdef XENO_PC_PORT
+            diagObjectSkip++;
+#else
             continue;
+#endif
         }
 
         {
@@ -2331,10 +2436,10 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 
 #ifdef XENO_PC_PORT
     if (XenoFieldDiagEnabled() && s_diagFrames < 8) {
-        printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d\n",
+        printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d objectSkip=%d\n",
                (int)s_diagFrames, (int)diagActive, (int)diagPlain,
                (int)diagStatus20, (int)diagFlagNeg, (int)diagGlobalSkip,
-               (int)diagActorFlagSkip, (int)diagSpecial);
+               (int)diagActorFlagSkip, (int)diagSpecial, (int)diagObjectSkip);
     }
     s_diagFrames++;
 #endif

@@ -17,6 +17,7 @@
 #include "xeno_pc.h"
 #include "psx_memory.h"
 #include "test_input.h"
+#include "boot_menu.h"
 #include "PsyX/PsyX_public.h"
 #include "psx/libspu.h"   /* Phase-2 sound-SDK primitive probe: SpuReverbAttr/SpuCommonAttr + prims */
 
@@ -1590,23 +1591,15 @@ int main(int argc, char** argv) {
                 }
             }
             /* Normal-boot field target for the port-side title/new-game flow
-             * (PcPort_BootMain in game_overrides.c). When this is NOT a field-test
-             * run (XENO_FIELD_TEST != "1"), default to Lahan (map 1) entrance 6,
-             * camera octant 7 -- the same spawn the harness validates -- so New
-             * Game lands in the playable town instead of the cold-default map 0 /
-             * axis-aligned camera. Any explicit XENO_FIELD_* override set above
-             * still wins; a field-test run is left untouched so the smokes keep
-             * their own map/entrance. */
+             * (PcPort_BootMain). When this is NOT a field-test run, default to
+             * the opening room (MAP14) entrance 0, camera octant 7. Any explicit
+             * XENO_FIELD_* override set above still wins; a field-test run is
+             * left untouched so the smokes keep their own map/entrance. */
             {
                 const char* fieldTest = getenv("XENO_FIELD_TEST");
                 if (!(fieldTest && fieldTest[0] == '1')) {
-                    if (getenv("XENO_FIELD_MAP") == NULL)
-                        D_8006F94E = 1;
-                    if (getenv("XENO_FIELD_ENTRANCE") == NULL)
-                        D_8006F954 = 6;
-                    if (getenv("XENO_FIELD_CAMDIR") == NULL)
-                        D_8006F950 = (unsigned short)(7 << 9);
-                    printf("[xeno-port][field] normal boot -> Lahan default "
+                    PcPort_ApplyNormalBootFieldDefaults();
+                    printf("[xeno-port][field] normal boot -> MAP14 default "
                            "(map=%u ent=%u camoct=7)\n",
                            (unsigned int)D_8006F94E, (unsigned int)D_8006F954);
                 }

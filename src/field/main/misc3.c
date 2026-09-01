@@ -820,6 +820,23 @@ void FieldLoad(void) {
 #ifdef XENO_PC_PORT
     printf("[field-diag] assets before VM: tim=%d clut=%d scripts=%d scriptData=%p\n",
            (int)timEntryCount, (int)clutEntryCount, (int)D_800ADBFC, g_FieldScriptVMCurScriptData);
+    {
+        u8* spawn = (u8*)g_FieldScriptVMCurScriptData;
+        int e;
+
+        printf("[field-diag] spawn marker=0x%02x modelsInPackage=%d\n",
+               spawn[0], (int)*(u32*)D_800AFB14);
+        if (spawn[0] == 0xFF) {
+            for (e = 0; e < 12; e++) {
+                int off = e * 7;
+                short sx = (short)(spawn[off + 1] | (spawn[off + 2] << 8));
+                short sz = (short)(spawn[off + 3] | (spawn[off + 4] << 8));
+                printf("[field-diag] spawn[%d] x=%d z=%d wm=%u rot=%u face=%u\n",
+                       e, (int)sx, (int)sz, (unsigned)spawn[off + 5],
+                       (unsigned)spawn[off + 6], (unsigned)spawn[off + 7]);
+            }
+        }
+    }
 #endif
 
     /* --- Triggers section (size 0x12C, offset 0x150) ------------------------ */
@@ -937,6 +954,9 @@ void FieldLoad(void) {
     numActors = g_FieldNumActors;
     if (numActors > 0) {
         u16* pEntry = (u16*)((u8*)D_8005A4E0 + 0x190);
+#ifdef XENO_PC_PORT
+        int modelBuilt = 0;
+#endif
         for (i = 0; i < numActors; i++) {
             FieldActor* pActor = &g_FieldActors[i];
             u16 status;
@@ -946,13 +966,16 @@ void FieldLoad(void) {
             pActor->rotation.y = *(pEntry + 1);       /* 0x52 */
             pActor->rotation.z = *(pEntry + 2);       /* 0x54 */
             pEntry += 3;
-            /* three 32-bit position pairs (0x20/0x40, 0x24/0x44, 0x28/0x48) */
-            *(s32*)((u8*)pActor + 0x20) = *(pEntry + 0);
-            *(s32*)((u8*)pActor + 0x40) = *(pEntry + 0);
-            *(s32*)((u8*)pActor + 0x24) = *(pEntry + 1);
-            *(s32*)((u8*)pActor + 0x44) = *(pEntry + 1);
-            *(s32*)((u8*)pActor + 0x28) = *(pEntry + 2);
-            *(s32*)((u8*)pActor + 0x48) = *(pEntry + 2);
+            /* three 32-bit position pairs (0x20/0x40, 0x24/0x44, 0x28/0x48).
+             * Retail loads the header shorts with lh (sign-extend). A u16
+             * promotion zero-extends negative map coords (MAP16 trees sit at
+             * ~-1100 and were stored as +64431). */
+            *(s32*)((u8*)pActor + 0x20) = (s32)(s16)pEntry[0];
+            *(s32*)((u8*)pActor + 0x40) = (s32)(s16)pEntry[0];
+            *(s32*)((u8*)pActor + 0x24) = (s32)(s16)pEntry[1];
+            *(s32*)((u8*)pActor + 0x44) = (s32)(s16)pEntry[1];
+            *(s32*)((u8*)pActor + 0x28) = (s32)(s16)pEntry[2];
+            *(s32*)((u8*)pActor + 0x48) = (s32)(s16)pEntry[2];
             pEntry += 3;
 
             status = (u16)g_FieldActors[i].status;
@@ -1010,6 +1033,20 @@ void FieldLoad(void) {
                     *(s32*)((u8*)pModel + 0x14) = 0;
                 }
                 func_8002C644((void*)(u32)*(u32*)((u8*)pModel + 0x4));
+#ifdef XENO_PC_PORT
+                modelBuilt++;
+                {
+                    u8* hdr = (u8*)(uintptr_t)*(u32*)((u8*)pModel + 0x4);
+                    printf("[field-diag] model-build actor=%d spriteId=%u groups=%u "
+                           "status=%04x faPos=(%d,%d,%d)\n",
+                           i, (unsigned)spriteId,
+                           hdr != NULL ? (unsigned)*(u16*)(hdr + 0x6) : 0u,
+                           (unsigned)(u16)g_FieldActors[i].status,
+                           (int)*(s32*)((u8*)&g_FieldActors[i] + 0x20),
+                           (int)*(s32*)((u8*)&g_FieldActors[i] + 0x24),
+                           (int)*(s32*)((u8*)&g_FieldActors[i] + 0x28));
+                }
+#endif
                 }
             } else {
                 g_FieldActors[i].status = status | 0x20;
@@ -1020,6 +1057,10 @@ void FieldLoad(void) {
             pEntry += 1;    /* asm: s5 += 2, delay slot of func_80080F44 */
             func_80080F44(i);
         }
+#ifdef XENO_PC_PORT
+        printf("[field-diag] model-build count=%d / actors=%d\n",
+               modelBuilt, (int)numActors);
+#endif
     }
 
     /* --- PC-HDD dev-only path guard ---------------------------------------- */
@@ -1112,9 +1153,27 @@ void FieldLoad(void) {
             }
         }
 #ifdef XENO_PC_PORT
-        printf("[field-diag] after VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d\n",
+        printf("[field-diag] after VM: active=%d actorData=%d/%d spriteData=%d/%d D_800AFC74=%d objects=%d player=%d\n",
                (int)activeCount, (int)actorDataCount, (int)g_FieldNumActors,
-               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74);
+               (int)spriteDataCount, (int)g_FieldNumActors, (int)D_800AFC74,
+               (int)D_800B2264, (int)g_PlayerActorIndex);
+        for (i = 0; i < g_FieldNumActors && i < 24; i++) {
+            FieldActor* pActor = &g_FieldActors[i];
+            ActorData* ad = (ActorData*)(uintptr_t)pActor->pActorData;
+            printf("[field-diag] actor[%d] status=%04x flags4=%08x faPos=(%d,%d,%d) "
+                   "adPos=(%d,%d,%d) model=%p sprite=%p ip=%u\n",
+                   i, (unsigned)(u16)pActor->status,
+                   ad != NULL ? (unsigned)ad->flags : 0u,
+                   (int)*(s32*)((u8*)pActor + 0x20),
+                   (int)*(s32*)((u8*)pActor + 0x24),
+                   (int)*(s32*)((u8*)pActor + 0x28),
+                   ad != NULL ? (int)*(s16*)((u8*)ad + 0x22) : 0,
+                   ad != NULL ? (int)*(s16*)((u8*)ad + 0x26) : 0,
+                   ad != NULL ? (int)*(s16*)((u8*)ad + 0x2A) : 0,
+                   (void*)(uintptr_t)pActor->pModelData,
+                   (void*)(uintptr_t)pActor->pSpriteData,
+                   ad != NULL ? (unsigned)ad->scriptInstructionPointer : 0u);
+        }
 #endif
     }
 

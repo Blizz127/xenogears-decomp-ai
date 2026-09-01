@@ -1146,11 +1146,12 @@ extern u8 D_8004FC40[256];
 // Run Sprite Animation VM
 void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
     u8* pData = pSpriteData;
+    /* asm $s3: delay from the last 0x00-0x3F op, reused by 0x40-0x7F. */
+    s32 delay = 0;
 
     while (1) {
         u8* pc = (u8*)(uintptr_t)*(u32*)(pData + 0x64);
         u8 opcode;
-        s32 delay;
         u32 flags;
         u32 subIndex;
 
@@ -1249,11 +1250,54 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
             continue;
         }
 
-        /* Retail-switch cases with side effects that are not yet ported:
-         * 0x40-0x7F frame-op families, 0xBE (anim state), 0xE2 (relative
-         * jump + AnimScriptStackPushU24). These must not be silently skipped. */
-        if (opcode < 0x80 || opcode == 0xBE || opcode == 0xE2) {
-            assert(0 && "func_80022660 bytecode path is not implemented");
+        /* asm 80022754-800227C0: 0x40-0x7F share the delay/subIndex tail
+         * with stale $s3. No 1D2B0; pc advances by 1. */
+        if (opcode < 0x80) {
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
+            *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
+
+            flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+            subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) + 1) & 0x3F;
+            *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+
+            if (subIndex == 0) {
+                flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+                subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
+                *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+            }
+            continue;
+        }
+
+        /* asm .L8002283C: packed unsigned pc[1]|(pc[2]<<8). Update AC/3C
+         * flip bits, 1D2B0 when pose differs, wait += 1 + ((packed>>11)&0xF),
+         * then the table-advance tail. */
+        if (opcode == 0xBE) {
+            u16 packed = (u16)pc[1] | ((u16)pc[2] << 8);
+            s32 frame = packed & 0x1FF;
+            u32 flagsAC = *(u32*)(pData + 0xAC) & ~0x8u;
+            u32 flags3C = *(u32*)(pData + 0x3C) & ~0x8u;
+
+            flagsAC |= (packed >> 6) & 0x8;
+            flags3C |= ((((flagsAC >> 3) & 0x1) ^ ((flagsAC >> 2) & 0x1)) << 3);
+            *(u32*)(pData + 0x3C) = flags3C;
+            *(u32*)(pData + 0xAC) = flagsAC;
+            if (*(u16*)(pData + 0x34) != (u16)frame) {
+                func_8001D2B0(pData, (s16)frame);
+            }
+            *(s16*)(pData + 0x9E) =
+                *(u16*)(pData + 0x9E) + 1 + ((packed >> 11) & 0xF);
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+            continue;
+        }
+
+        /* asm .L800228C0: PushU24(pc+3), then signed 16-bit PC-relative jump. */
+        if (opcode == 0xE2) {
+            s32 offset = (s16)((u16)pc[1] | ((u16)pc[2] << 8));
+
+            AnimScriptStackPushU24((SpriteData*)pData,
+                                   (s32)(uintptr_t)(pc + 3));
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+            continue;
         }
 
         /* asm .L80022930: every other opcode advances by the per-opcode

@@ -326,10 +326,18 @@ void MenuMain() {
     g_Menu->unk2D8 = 0;
     g_Menu->shouldDrawMenu = FALSE;
     MenuInitializeGfxEnvironments();
+#ifdef XENO_PC_PORT
+    /* Host framebuffer still holds KernelMenu from the field-test boot.
+     * Clear each menu drawenv so the root System Menu is not composited
+     * over that debug overlay. Retail keeps isbg=0 so the field shows. */
+    g_Menu->gfxEnvs[0].drawEnv.isbg = 1;
+    g_Menu->gfxEnvs[1].drawEnv.isbg = 1;
+#else
     if (g_MenuDebugEnabled) {
         g_Menu->gfxEnvs[0].drawEnv.isbg = 1;
         g_Menu->gfxEnvs[1].drawEnv.isbg = 1;
     }
+#endif
     func_8001BEEC();
     Vsync(0);
     PutDrawEnv(&g_Menu->gfxEnvs[0].drawEnv);

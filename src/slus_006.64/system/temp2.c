@@ -611,13 +611,28 @@ s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
             u8* pGroup = (u8*)(uintptr_t)D_80059528;
             u8 prim = pGroup[0];
             s32 count = *(s16*)(pGroup + 0x02);
-            ModelPrimDesc* desc = &D_8004FE50[prim];
-            ModelPrimProc proc = (a3 < 6) ? desc->proc[a3] : NULL;
+            ModelPrimDesc* desc;
+            ModelPrimProc proc;
 
             D_80059528 += 4;
+            if (prim >= 17) {
+                D_80059528 += (u32)count * 8u;
+                groupCount--;
+                continue;
+            }
+            desc = &D_8004FE50[prim];
+            proc = (a3 < 6) ? desc->proc[a3] : NULL;
             if (proc == NULL) {
-                fprintf(stderr, "[xeno-port] missing D_8004FE50 prim=%u variant=%d\n", prim, a3);
-                abort();
+                static int s_missing_draw_logs;
+                u32 stride = desc->cmdStride ? desc->cmdStride : 8u;
+                if (s_missing_draw_logs < 8) {
+                    fprintf(stderr, "[xeno-port] missing D_8004FE50 prim=%u variant=%d; skip group\n",
+                            prim, a3);
+                    s_missing_draw_logs++;
+                }
+                D_80059528 += (u32)count * stride;
+                groupCount--;
+                continue;
             }
 
             proc((u8*)(uintptr_t)D_80059528, count);
@@ -720,21 +735,35 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
             D_80059528 = (u32)(pCur + 0x4);
             {
                 u32 prim = *(u8*)(pCur + 0x0);
+                s32 nprim;
+                u32 stride;
+                if (prim >= 17) {
+                    nprim = (s32)*(s16*)(pCur + 0x2);
+                    stride = 8u;
+                    if (nprim > 0) {
+                        D_80059528 += (u32)nprim * stride;
+                    }
+                    s2 = s2 - 1;
+                    continue;
+                }
                 desc = &D_8004FE50[prim];
                 if (desc->buildProc == NULL) {
                     /* Retail table has a full 15-row set; the port wires a
-                     * sparse subset. World object-matrix setup (0x80084580)
-                     * hits prim=1 (retail buildProc 0x8002D814, not yet
-                     * ported). Skip the group instead of aborting so one-shot
-                     * table construction can complete; packet fill for that
-                     * prim remains incomplete until the builder is ported. */
+                     * sparse subset. Advance the command cursor by this
+                     * group's prim count so a missing row does not desync
+                     * later groups in the same header. */
                     static int s_missing_prim_logs;
+                    nprim = (s32)*(s16*)(pCur + 0x2);
+                    stride = desc->cmdStride ? desc->cmdStride : 8u;
                     if (s_missing_prim_logs < 8) {
                         fprintf(stderr,
                                 "[xeno-port] missing D_8004FE50 buildProc "
                                 "prim=%u; skip group\n",
                                 prim);
                         s_missing_prim_logs++;
+                    }
+                    if (nprim > 0) {
+                        D_80059528 += (u32)nprim * stride;
                     }
                     s2 = s2 - 1;
                     continue;
@@ -1107,6 +1136,30 @@ s32 func_8002D0E4(u8* pSrc) {
     return 1;
 }
 
+#ifdef XENO_PC_PORT
+/* Retail 0x8002D180 returns 1 and lights the 4th vertex from pColor (a0),
+ * not the shade word C8CC passes as a2. The matching C body left a2 as a
+ * pointer and dropped the return, which made the POLY_G4 builder unusable
+ * as a D_8004FE50 buildProc. */
+s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    (void)shade;
+    pPoly[3] = 8; /* POLY_G4 tag */
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x1C)
+    );
+    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pColor, pPoly + 0x1C);
+    pPoly[7] = pColor[3];
+    return 1;
+}
+#else
 void func_8002D180(u8* pColor, s16* pIndices, u8* pLightSrc) {
     u8* pPoly = D_80059424;
     s16* normals = (s16*)D_8005952C;
@@ -1123,6 +1176,7 @@ void func_8002D180(u8* pColor, s16* pIndices, u8* pLightSrc) {
     NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
     pPoly[7] = pColor[3];
 }
+#endif
 
 s32 func_8002D244(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
@@ -1289,6 +1343,13 @@ s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
     if (flags & 1) {
         if (flags & 2) {
             func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+#ifdef XENO_PC_PORT
+            /* Retail shade 3 (C8CC mode 2 first pass) stores the face
+             * normal at D_80059498; the matching C body never lit the
+             * packet, so POLY_FT3 rgb stayed 0 and overlay meshes drew
+             * black. Mirror func_8002CDCC: light from that normal. */
+            NormalLightCol((void*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+#endif
         } else {
             SVECTOR tmpNormal;
             func_8002DB84(n0, n1, n2, &tmpNormal);
@@ -1300,6 +1361,11 @@ s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
 
     D_80059498 += 8;
     pPoly[7] = pColor[3];
+#ifdef XENO_PC_PORT
+    if ((pPoly[4] | pPoly[5] | pPoly[6]) == 0) {
+        pPoly[4] = pPoly[5] = pPoly[6] = 0x80;
+    }
+#endif
     return 1;
 }
 

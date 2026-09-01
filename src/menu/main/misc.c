@@ -223,6 +223,11 @@ extern u8 D_801E9E64[];
  * input, so the loop just draws each frame). */
 void func_801C55A0(void) {
     s32 s1 = 1;
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] func_801C55A0 input loop shouldDrawMenu=%d\n",
+           (int)g_Menu->shouldDrawMenu);
+    fflush(stdout);
+#endif
 
     while (1) {
         u8 input;
@@ -269,6 +274,11 @@ void func_801C55A0(void) {
         }
 
         if (s1 == 0) {
+#ifdef XENO_PC_PORT
+            printf("[xeno-port][menu] func_801C55A0 cancel/close choice=%d\n",
+                   (int)g_Menu->menu1Choice);
+            fflush(stdout);
+#endif
             break;
         }
     }
@@ -441,7 +451,67 @@ void func_801C5F10(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5FE4);
+#else
+extern void func_801D22C4(void);
+extern void func_801D29A8(u8 open, u8 noSettle);
+extern void func_801C7BF4(void);
+extern void func_8003A094(void*);
+extern void func_8003852C(void*);
+
+/* Teardown after the root input loop: close-anim, drop draw flags, free the
+ * init-slice allocations. Field names — SystemMenu is inflated on the host. */
+void func_801C5FE4(void) {
+    if (D_80059460 == 0) {
+        func_801D22C4();
+        func_801D29A8(0, 0);
+        if (g_Menu->pManager != NULL) {
+            g_Menu->pManager->unk5[1] = 0;
+            g_Menu->pManager->unk5[0] = 0;
+        }
+        if (D_80059171 == 0) {
+            D_800594CC = g_Menu->menu1Choice;
+        }
+    }
+    func_801C7BF4();
+    func_801C7BF4();
+    g_Menu->shouldDrawMenu = 0;
+    func_801C7BF4();
+    while (g_Menu->renderContext != 0) {
+        func_801C7BF4();
+    }
+    func_801C5BB8(0);
+    func_801C5C1C(0);
+    func_801C5C80(0);
+    func_801C5CE4(0);
+    func_801C5E10(0);
+    HeapFree(g_Menu->pCursors);
+    HeapFree(g_Menu->unk2DC);
+    HeapFree(g_Menu->unk2E0);
+    HeapFree(g_Menu->unk4E0[0].pVramBuffer);
+    if (g_MenuDebugEnabled) {
+        func_8003A094(g_Menu->unk2E4);
+        func_801C7BF4();
+        func_8003852C(g_Menu->unk2E4);
+        func_801C7BF4();
+        HeapFree(g_Menu->unk2E4);
+    }
+    if (D_80059460 == 0) {
+        func_801C5B54(0);
+        func_801C5D48(0);
+        func_801C5DAC(0);
+        func_801C5E74(0);
+        HeapFree(g_Menu->windows[0]);
+        HeapFree(g_Menu->windowParameters[0]);
+        HeapFree(g_Menu->windows[1]);
+        HeapFree(g_Menu->windowParameters[1]);
+    } else if (D_80059460 == 2 || D_80059460 == 6) {
+        func_801C5B54(0);
+    }
+    HeapFree(g_Menu);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C62A8);
@@ -452,6 +522,11 @@ void func_801C62A8(void) {
     func_801C7B0C();
     g_Menu->shouldDrawMenu = 1;
     g_Menu->unk32A = 1;
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] func_801C62A8 sel=%d shouldDrawMenu=%d\n",
+           (int)D_80059460, (int)g_Menu->shouldDrawMenu);
+    fflush(stdout);
+#endif
     s0 = D_80059460;
     if (s0 == 2) {
         u8 v0;
@@ -479,38 +554,31 @@ void func_801C62A8(void) {
 #endif
 
 void func_801C6400(void) {
-    void* pMenu;
-    void* pData;
+    u8* pData;
     s32 i;
     s32 j;
     s32 pos;
     u8* buffer;
     u16 nameIndex;
 
-    for (i = 0; i < 2; i++) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + i + 0x4F88) = 0;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + i + 0x4F8A) = 0;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + i + 0x4F8C) = 0xFF;
+    /* Native SystemMenu is inflated; PSX +0x32C is g_Menu->unk32C. */
+    pData = (u8*)g_Menu->unk32C;
+    if (pData == NULL) {
+        return;
     }
 
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4FE6) = 0;
+    for (i = 0; i < 2; i++) {
+        pData[i + 0x4F88] = 0;
+        pData[i + 0x4F8A] = 0;
+        pData[i + 0x4F8C] = 0xFF;
+    }
+
+    pData[0x4FE6] = 0;
 
     j = 0;
     for (i = 0; i < 0x20; i++) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + j + 0x58) = 0;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + i + 0x4FAE) = 0xFF;
+        pData[j + 0x58] = 0;
+        pData[i + 0x4FAE] = 0xFF;
         j += 0x5C;
     }
 
@@ -540,15 +608,11 @@ void func_801C6400(void) {
         }
     }
 
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
     for (i = 0; i < 0x1E; i++) {
-        *(u8*)(pData + i + 0x4FFC) = buffer[pos + i];
+        pData[i + 0x4FFC] = buffer[pos + i];
     }
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x501A) = 0;
-    *(u8*)(pData + 0x501B) = 0;
+    pData[0x501A] = 0;
+    pData[0x501B] = 0;
 
     ArchiveSetIndex(0x10, 0);
     HeapFree(buffer);
@@ -955,7 +1019,14 @@ void func_801C7BF4(void) {
     Vsync(0);
     PutDrawEnv(&g_Menu->pGfxEnv->drawEnv);
     PutDispEnv(&g_Menu->pGfxEnv->dispEnv);
+#ifdef XENO_PC_PORT
+    /* Retail copies a 320x224 offscreen rect at (704,256) over the draw
+     * buffer before DrawOTag. On the host that VRAM slice still holds the
+     * KernelMenu boot frame, which would composite under the System Menu. */
+    (void)s0;
+#else
     MoveImage(&g_Menu->pSelectionMenu->unk1180, 0, s0 * 224);
+#endif
     DrawOTag(&g_Menu->pGfxEnv->ot[15]);
     func_801C8BEC();
     func_801C8EE8();
@@ -1491,8 +1562,8 @@ extern u8 D_801E9779;
 
 void func_801C8BEC(void) {
     void* pMenu = g_Menu;
-    void* pData = *(void**)((u8*)pMenu + 0x32C);
-    if (*(u8*)((u8*)pData + 0x4FE6) != 0) {
+    void* pData = g_Menu->unk32C;
+    if (pData != NULL && *(u8*)((u8*)pData + 0x4FE6) != 0) {
         u8 counter = *(u8*)((u8*)pMenu + 0x326) + 1;
         *(u8*)((u8*)pMenu + 0x326) = counter;
         if (counter > D_801E9779) {
@@ -1540,8 +1611,12 @@ void func_801C8D1C(u8 idx) {
 
 void func_801C8EE8(void) {
     void* pMenu = g_Menu;
-    void* pData = *(void**)((u8*)pMenu + 0x32C);
-    u8 state = *(u8*)((u8*)pData + 0x4FE6);
+    void* pData = g_Menu->unk32C;
+    u8 state;
+    if (pData == NULL) {
+        return;
+    }
+    state = *(u8*)((u8*)pData + 0x4FE6);
     if (state == 1) {
         if (*(u8*)((u8*)pData + 0x4F88) == 0) {
             if (func_801C8D78(0) != 0) {
@@ -2963,6 +3038,12 @@ void func_801D11F0(void) {
 #endif
 
 void func_801D1258(void) {
+#ifdef XENO_PC_PORT
+    /* Retail links MenuUnk1 line/DR_MODE prims built by func_801C6F70.
+     * That builder is still INCLUDE_ASM; PSX +0x348/+0x1D4 walks SEGV on the
+     * inflated SystemMenu. Skip until 6F70 is field-name ported. */
+    return;
+#else
     void* pMenu = g_Menu;
     u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x90;
     s32 idx = *(s32*)((u8*)pMenu + 0x308);
@@ -2973,6 +3054,7 @@ void func_801D1258(void) {
     idx = *(s32*)((u8*)pMenu + 0x308);
     pData = *(u8**)((u8*)pMenu + 0x348);
     AddPrim(pOT, pData + idx * 0xC + 0x140);
+#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -3297,10 +3379,31 @@ void func_801D1AAC(void) {
 }
 #endif
 
-/* Run the per-frame menu draw passes in retail order.  The native port only
- * has the window pass (func_801D0C78) live at this point in Arc A; the other
- * INCLUDE_ASM passes still resolve to generated no-op stubs there. */
+/* Run the per-frame menu draw passes in retail order.  The native port keeps
+ * the window pass plus the already-named label / gold / portrait submitters;
+ * sibling C ports that still walk PSX SystemMenu byte offsets stay skipped. */
 void func_801D1B20(void) {
+#ifdef XENO_PC_PORT
+    func_801D1AAC();
+    func_801D0C78();
+    if (g_Menu->pManager != NULL) {
+        static int s_rootSubmitLogged;
+        if (!s_rootSubmitLogged) {
+            s_rootSubmitLogged = 1;
+            printf("[xeno-port][menu] root submit labels=%d/%d gold=%d portraits=%d/%d/%d\n",
+                   g_Menu->pSelectionMenu ? g_Menu->pSelectionMenu->numCursors : -1,
+                   g_Menu->pSelectionMenu ? g_Menu->pSelectionMenu->numTexts : -1,
+                   (int)g_Menu->pManager->unk5[0],
+                   (int)g_Menu->pManager->unk0[0],
+                   (int)g_Menu->pManager->unk0[1],
+                   (int)g_Menu->pManager->unk0[2]);
+            fflush(stdout);
+        }
+        func_801CEC40();
+        func_801CE464();
+        func_801CE540();
+    }
+#else
     func_801D3B00();
     func_801D11F0();
     func_801CE3C8();
@@ -3323,6 +3426,7 @@ void func_801D1B20(void) {
     func_801D0C78();
     func_801CEC40();
     func_801CF308();
+#endif
 }
 
 extern void func_801D3B00(void);
@@ -3511,12 +3615,11 @@ void func_801D1EE0(s32 selected, s32 buildBar) {
 #endif
 
 void func_801D22C4(void) {
-    void* pMenu = g_Menu;
-    void* pManager = *(void**)((u8*)pMenu + 0x33C);
-    *(u8*)((u8*)pManager + 4) = 0;
-    pMenu = g_Menu;
-    pManager = *(void**)((u8*)pMenu + 0x33C);
-    *(u8*)((u8*)pManager + 3) = 0;
+    if (g_Menu->pManager == NULL) {
+        return;
+    }
+    g_Menu->pManager->unk4 = 0;
+    g_Menu->pManager->unk3 = 0;
 }
 
 #ifndef XENO_PC_PORT
@@ -3653,9 +3756,7 @@ void func_801D28FC(void) {
 extern void func_801D5CF8(s32, s32);
 
 void func_801D2968(void) {
-    void* pMenu = g_Menu;
-    void* pManager = *(void**)((u8*)pMenu + 0x33C);
-    if (*(u8*)((u8*)pManager + 6) != 0) {
+    if (g_Menu->pManager != NULL && g_Menu->pManager->unk5[1] != 0) {
         func_801D5CF8(0xD0, 0xCA);
     }
 }

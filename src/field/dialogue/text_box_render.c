@@ -486,7 +486,6 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
     s32 boxOffset;
     s32 openTimer;
     s32 portraitFlags;
-    u16* tpageCoords;
 
     pTalkingActor = (ActorData*)(uintptr_t)g_FieldActors[talkingActorIndex].pActorData;
     flags = pTalkingActor->dialogFlags >> 16;
@@ -545,17 +544,20 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
         portraitFlags = 0x44;
     }
 
-    /* Asm 8007FCB4-8007FCE0: tpage by textBoxIndex; window width is DialogGetWidth
-     * as-is (width*2+8 is only for boxOffset below). */ 
-    tpageCoords = &D_800ADF54 + textBoxIndex * 2;
-    func_80032F54(pTextBox + 0x18, tpageCoords[0], tpageCoords[1], x + portraitFlags + 8, y + 8,
-                  width, mode, height);
+    /* Asm 8007FCB4-8007FCE0: separate lhu of D_800ADF54 / D_800ADF56 at
+     * textBoxIndex*4. Window width is DialogGetWidth as-is (width*2+8 is
+     * only for boxOffset below). */
+    func_80032F54(pTextBox + 0x18, *(&D_800ADF54 + textBoxIndex * 2),
+                  *(&D_800ADF56 + textBoxIndex * 2), x + portraitFlags + 8, y + 8, width, mode,
+                  height);
 
     if (flags & 0x400) {
         g_FieldTextBoxes[textBoxIndex].flags |= 0x20;
     }
 
-    g_FieldTextBoxes[textBoxIndex]._pad[0x68] = (D_800B21D6 == 8) ? 1 : 2;
+    /* Asm 8007FD10-8007FD30: sb speed at box+0x80 (window+0x68). 1 when
+     * D_800B21D6 == 8, else 2. `_pad[0x68]` is a short index and missed. */
+    *(u8*)(pTextBox + 0x80) = (D_800B21D6 == 8) ? 1 : 2;
     /* XENO_PC_PORT: the string-entry pointer at 0xA8 is a 32-bit field on PSX;
      * storing a native 64-bit pointer here spills into 0xAC/0xAE (the box's
      * border x/y set by func_8007E114), collapsing the box to (0,0). Store only

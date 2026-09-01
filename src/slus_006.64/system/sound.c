@@ -5173,6 +5173,14 @@ u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     if (e == NULL) {
         e = g_SoundWdsLinkedList;
     }
+#ifdef XENO_PC_PORT
+    /* New-game template (func_8001B970) can fire MAP14 seq cmd 0xFC
+     * before any WDS bank is resident. Retail's mirrored RAM lets a NULL
+     * fallback read as zeroed instruments; the host faults. */
+    if (e == NULL) {
+        return p + 2;
+    }
+#endif
     el->unk2C = SOUND_PTR_TO_PSX(e);
     func_8003E5BC(inst, el);
     return p + 2;
@@ -5239,7 +5247,17 @@ void func_8003E5BC(s32 instrument, AudioElement* pAudioElements) {
 
     pAudioElements->unk_0x26 = instrument;
     pBank = SOUND_PSX_TO_PTR(u8, pAudioElements->unk2C);
+#ifdef XENO_PC_PORT
+    if (pBank == NULL || (s16)instrument < 0 || (s16)instrument > 0x7F) {
+        return;
+    }
+#endif
     pInstr = pBank + (((s16)instrument << 4) + 0x30);
+#ifdef XENO_PC_PORT
+    if ((u32)(uintptr_t)pInstr < 0x10000u) {
+        return;
+    }
+#endif
     base = *(s32*)pInstr << 3;
     pAudioElements->voice_data.startAddress = base + *(u32*)(pBank + 0x28);
     pAudioElements->voice_data.loopAddress = base + (*(u16*)(pInstr + 4) << 3);

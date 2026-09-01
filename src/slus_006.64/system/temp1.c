@@ -1,6 +1,20 @@
 #include "common.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+
+extern char* getenv(const char*);
+extern int printf(const char*, ...);
+
+static int XenoWalkAnimDumpEnabled(void)
+{
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_WALK_ANIM_DUMP");
+        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -820,6 +834,14 @@ void func_800245D8(void* pSpriteData, s16 animIndex) {
     *(u32*)(pData + 0x58) = (u32)(uintptr_t)pAnimation;
     func_80023538(pData, pAnimation);
     func_800223B0(pData, *(s16*)(pData + 0x80));
+#ifdef XENO_PC_PORT
+    if (XenoWalkAnimDumpEnabled()) {
+        printf("[walk-anim] 245D8 sprite=%p anim=%d pose=%d wait=%d pc=%p\n",
+               (void*)pData, (int)*(s8*)(pData + 0xAF),
+               (int)*(s16*)(pData + 0x34), (int)*(s16*)(pData + 0x9E),
+               (void*)(uintptr_t)*(u32*)(pData + 0x64));
+    }
+#endif
 }
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024730);
@@ -847,6 +869,20 @@ reenter:
 
     pc = (u8*)(uintptr_t)*(u32*)(pData + 0x64);
     opcode = *pc;
+
+#ifdef XENO_PC_PORT
+    if (XenoWalkAnimDumpEnabled()) {
+        static unsigned s_248d4;
+
+        s_248d4++;
+        if (s_248d4 <= 80u) {
+            printf("[walk-anim] 248D4 n=%u sprite=%p op=0x%02x anim=%d pose=%d wait=%d pc=%p\n",
+                   s_248d4, (void*)pData, (unsigned)opcode,
+                   (int)*(s8*)(pData + 0xAF), (int)*(s16*)(pData + 0x34),
+                   (int)*(s16*)(pData + 0x9E), (void*)pc);
+        }
+    }
+#endif
 
 #ifdef XENO_DIAG_OPCODE_SWEEP
     /* DIAG ONLY: fixed 16-byte records to launcher-preopened fd 3. */
@@ -1022,10 +1058,63 @@ reenter:
         return;
     }
 
-    /* Retail jump-table entries 0x80 and 0xBE share the handler at
-     * 0x80024A84.  In particular, 0xBE advances by 3 bytes here rather than
-     * using D_8004FC40[0xBE] == 2. */
-    if (opcode == 0x80 || opcode == 0xBE) {
+    /* asm 800249C0-80024A54: 0x40-0x7F fall through to the shared delay
+     * tail with stale $s3 (no 1D2B0). A first-opcode stale delay of 0
+     * clamps to 1, same as the 0x00-0x3F tail. */
+    if (opcode >= 0x40 && opcode < 0x80) {
+        s32 delay = 0;
+        s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
+        s32 scaledDelay;
+        u32 flags;
+        u32 subIndex;
+
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
+
+        scaledDelay = delay * speed;
+        if (scaledDelay < 0) {
+            scaledDelay += 0xFF;
+        }
+        delay = scaledDelay >> 8;
+        if (delay == 0) {
+            delay = 1;
+        }
+
+        flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+        subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) + 1) & 0x3F;
+        *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
+        *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+
+        if (subIndex == 0) {
+            flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
+            subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
+            *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
+            func_800248D4(pData);
+        }
+        return;
+    }
+
+    /* jtbl_800186E0[0x80] = 0x80024CA0, not the 0xBE packed-frame
+     * handler. One-byte terminator: clear A8 bits 28-29, invoke +0x68 if
+     * present, else 245D8(+0xB0) when that byte is non-negative. Does not
+     * set wait — looping walk/run scripts use 0x82. */
+    if (opcode == 0x80) {
+        void (*callback)(void*) = (void (*)(void*))(uintptr_t)*(u32*)(pData + 0x68);
+
+        *(u32*)(pData + 0xA8) &= 0xCFFFFFFF;
+        if (callback != NULL) {
+            callback(pData);
+            return;
+        }
+        if (*(s8*)(pData + 0xB0) >= 0) {
+            func_800245D8(pData, *(s8*)(pData + 0xB0));
+        }
+        *(u32*)(pData + 0xA8) &= 0xCFFFFFFF;
+        return;
+    }
+
+    /* jtbl_800186E0[0xBE] = 0x80024A84. Advances by 3 bytes rather than
+     * D_8004FC40[0xBE] == 2. */
+    if (opcode == 0xBE) {
         s32 packed = pc[1] | ((s32)(s8)pc[2] << 8);
         s32 delay = (((packed >> 11) & 0xF) + 1);
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
@@ -1191,19 +1280,16 @@ reenter:
         return;
     }
 
-    if (opcode == 0xB2) {
-        func_8001FBE4(pData, opcode, pc + 1);
-        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 2);
-        return;
-    }
+    if (opcode == 0xB2 || opcode == 0xA0) {
+        /* jtbl_800186E0[0xB2] and [0xA0] are the shared default .L80024EC8:
+         * FBE4, D_8004FC40 stride, re-enter. Returning here left +0x9E==0
+         * and froze AnimScriptTick after the first walk/run frame. */
+        extern const u8 D_8004FC40[256];
 
-    if (opcode == 0xa0) {
-        /* Original asm default path .L80024EC8: call func_8001FBE4 with the
-           raw opcode + operand pointer, then advance the cursor by
-           D_8004FC40[0xA0] == 2 operand bytes (pc+1 from loop entry, +2). */
         func_8001FBE4(pData, opcode, pc + 1);
-        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 3);
-        return;
+        *(u32*)(pData + 0x64) =
+            (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
     }
 
     if (opcode == 0xE4) {

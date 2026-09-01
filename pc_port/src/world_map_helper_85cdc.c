@@ -184,6 +184,27 @@ void wm_80085CDC(void)
 #if !defined(WM_85CDC_MUTANT_NO_ANIMATION_TICK)
             WM_ANIMATION_TICK((void *)(uintptr_t)object);
 #endif
+#if !defined(WM_85CDC_CERTIFICATE)
+            {
+                static int s_walkDump;
+                extern char* getenv(const char*);
+                const char* dumpEnv = getenv("XENO_WALK_ANIM_DUMP");
+                u8* sprite = (u8*)(uintptr_t)object;
+                u8* scriptPc;
+
+                if (dumpEnv != NULL && dumpEnv[0] != '\0' && dumpEnv[0] != '0' &&
+                    s_walkDump < 80) {
+                    scriptPc = (u8*)(uintptr_t)*(u32*)(sprite + 0x64);
+                    printf("[walk-anim] world n=%d slot=%d anim=%d pose=%d wait=%d "
+                           "op=0x%02x\n",
+                           s_walkDump, i, (int)(s8)sprite[0xAF],
+                           (int)*(s16*)(sprite + 0x34),
+                           (int)*(s16*)(sprite + 0x9E),
+                           scriptPc != NULL ? (unsigned)scriptPc[0] : 0u);
+                    s_walkDump++;
+                }
+            }
+#endif
         }
 
         entry += OBJ_STRIDE;

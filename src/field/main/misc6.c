@@ -8,6 +8,8 @@
 #include "field/camera.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(...) calls below mark invariant checks in
@@ -120,7 +122,9 @@ void FieldScriptVMHandlerSleep(void) {
     
     // When the timer has reached 0, we move to the next instruction
     if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].waitTimer == 0) {
+#ifndef NPC_EVENT_MUTANT_NO_IP
         g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+#endif
     }
 
     D_800B00C0 = 1;
@@ -285,6 +289,18 @@ void func_8009E4BC(void) {
 void func_8009E574(s16 x, s16 z) {
     FieldActor* pFieldActor = &g_FieldActors[D_800AFD1C];
     ActorData* pActor = g_FieldScriptVMCurActor;
+#ifdef XENO_PC_PORT
+    if (getenv("XENO_FIELD_DIAG") != NULL) {
+        u8* ipb = (u8*)g_FieldScriptVMCurScriptData;
+        unsigned ip = pActor != NULL ? (unsigned)pActor->scriptInstructionPointer : 0u;
+        printf("[field-diag] setpos actor=%d ip=%u x=%d z=%d bytes=%02x %02x %02x %02x %02x %02x %02x %02x\n",
+               (int)D_800AFD1C, ip, (int)x, (int)z,
+               ipb != NULL ? ipb[ip] : 0, ipb != NULL ? ipb[ip + 1] : 0,
+               ipb != NULL ? ipb[ip + 2] : 0, ipb != NULL ? ipb[ip + 3] : 0,
+               ipb != NULL ? ipb[ip + 4] : 0, ipb != NULL ? ipb[ip + 5] : 0,
+               ipb != NULL ? ipb[ip + 6] : 0, ipb != NULL ? ipb[ip + 7] : 0);
+    }
+#endif
     u8* pSpriteData = (u8*)(uintptr_t)pFieldActor->pSpriteData;
     s32 state[4][4];
     s16 out[4][4];
@@ -349,6 +365,23 @@ void func_8009E810(s16 arg0) {
     g_FieldScriptVMCurActor->position.vy = arg0 << 16;
     g_FieldScriptVMCurActor->unkEC = arg0;
     g_FieldScriptVMCurActor->curYPos = arg0;
+#ifdef XENO_PC_PORT
+    {
+        FieldActor* pFieldActor = &g_FieldActors[D_800AFD1C];
+        u8* pSpriteData = (u8*)(uintptr_t)pFieldActor->pSpriteData;
+
+        /* Opcode 0x1D sets XZ through func_8009E574 then overrides Y here.
+         * Mirror the FieldActor/sprite Y writes 9E574 already did for the
+         * walkmesh height so follow-cam and model matrices stay on the
+         * scripted height (MAP16 player was left at faPos.y=0). */
+        pFieldActor->transformMatrix.t[1] = arg0;
+        pFieldActor->childMatrix.t[1] = arg0;
+        if (pSpriteData != NULL) {
+            *(s16*)(pSpriteData + 0x84) = (u16)arg0;
+            *(u32*)(pSpriteData + 0x04) = (u32)g_FieldScriptVMCurActor->position.vy;
+        }
+    }
+#endif
 }
 
 void func_8009E83C(void) {
@@ -650,7 +683,16 @@ extern void func_80079288(void); /* checkForRandomEncounter (side behavior) */
  * that the prior partial port checked. */
 void func_8009F5F4(void) {
 #ifdef XENO_PC_PORT
-    PcPort_TestInputInject(&D_800AFE9C);
+    {
+        static u16 s_prevHeld;
+        u16 rising;
+        extern u16 D_800C2694;
+
+        PcPort_TestInputInject(&D_800AFE9C);
+        rising = (u16)(D_800AFE9C & (u16)~s_prevHeld);
+        D_800C2694 |= rising;
+        s_prevHeld = D_800AFE9C;
+    }
 #endif
     u8* p = (u8*)(uintptr_t)g_FieldScriptVMCurActor;
     u32 scriptFlags = *(u32*)(p + 0x00);
@@ -753,6 +795,12 @@ void func_8009FA54(s32 scriptEntryIndex) {
     s16 angle;
 
     if (scriptData[0] != 0xFF) {
+#ifdef XENO_PC_PORT
+        if (getenv("XENO_FIELD_DIAG") != NULL) {
+            printf("[field-diag] spawn-skip marker=0x%02x entry=%d\n",
+                   scriptData[0], (int)scriptEntryIndex);
+        }
+#endif
         return;
     }
 
@@ -761,6 +809,13 @@ void func_8009FA54(s32 scriptEntryIndex) {
 
     x = func_8009E330(entryOffset + 1);
     z = func_8009E330(entryOffset + 3);
+#ifdef XENO_PC_PORT
+    if (getenv("XENO_FIELD_DIAG") != NULL) {
+        printf("[field-diag] spawn-apply actor=%d entry=%d x=%d z=%d wm=%d\n",
+               (int)D_800AFD1C, (int)scriptEntryIndex, (int)x, (int)z,
+               (int)scriptData[entryOffset + 5]);
+    }
+#endif
     func_8009E574(x, z);
 
     rotByte = scriptData[entryOffset + 6];

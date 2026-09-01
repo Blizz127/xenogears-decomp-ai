@@ -1074,6 +1074,10 @@ PORT_SOURCES=(
     pc_port/src/model_prim_link.c
     pc_port/src/test_input.c
     pc_port/src/game_overrides.c
+    pc_port/src/boot_menu.c
+    pc_port/src/boot_str.c
+    pc_port/src/boot_assets.c
+    pc_port/src/field_object_overlay.c
     pc_port/src/world_map_init.c
     pc_port/src/world_map_frame_driver.c
     pc_port/src/world_map_image_transfer_25044.c

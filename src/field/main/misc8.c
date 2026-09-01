@@ -7,6 +7,7 @@
 #include "system/memory.h"
 #include "system/archive.h"
 #ifdef XENO_PC_PORT
+#include <stdio.h>
 #include <stdlib.h>
 #endif
 #include "system/sound.h"
@@ -468,6 +469,92 @@ void func_8008110C(void) {
     if (g_FieldSystemMode == 0) {
         func_80281B00(D_8006FC3C);
     }
+#ifdef XENO_PC_PORT
+    {
+        static int s_npcEventDumpEnabled = -1;
+        static int s_npcEventDumpFrame;
+        static int s_dumpInited;
+        static u16 s_lastIp[3];
+        static u8 s_lastOp[3];
+        static u16 s_lastLock = 0xFFFF;
+        static s16 s_lastVis = 0x7FFF;
+        static u16 s_lastWaitf = 0xFFFF;
+        static const int kDumpActors[3] = {16, 22, 40};
+        extern u16 D_800C2694;
+        extern s16 D_800B2174;
+        s32 i;
+
+        if (s_npcEventDumpEnabled < 0) {
+            const char* env = getenv("XENO_NPC_EVENT_DUMP");
+            s_npcEventDumpEnabled =
+                (env != NULL && env[0] != '\0' && env[0] != '0');
+        }
+        if (s_npcEventDumpEnabled && s_npcEventDumpFrame < 240) {
+            u8* scriptData = (u8*)g_FieldScriptVMCurScriptData;
+            u16 lock = (u16)D_800B2174;
+            s16 vis0 = g_FieldTextBoxes[0].visibility;
+            u16 waitf0 = *(u16*)((u8*)&g_FieldTextBoxes[0] + 0x18 + 0x10);
+            int talkedge = (D_800C2694 & 0x20) != 0;
+
+            if (!s_dumpInited || lock != s_lastLock || vis0 != s_lastVis ||
+                talkedge) {
+                printf("[npc-event] frame=%d actors=%d lock=0x%x talkedge=%d pad=0x%x\n",
+                       s_npcEventDumpFrame, (int)D_800ADBFC, (unsigned)lock,
+                       talkedge, (unsigned)D_800C2694);
+            }
+            for (i = 0; i < 3; i++) {
+                int idx = kDumpActors[i];
+                u8* fieldActor;
+                u32 pActorData;
+                ActorData* actor;
+                u16 ip;
+                u8 op;
+
+                if (idx >= D_800ADBFC) {
+                    continue;
+                }
+                fieldActor = (u8*)g_FieldActors + idx * 0x5C;
+                pActorData = *(u32*)(fieldActor + 0x4C);
+                if (pActorData == 0) {
+                    continue;
+                }
+                actor = (ActorData*)(uintptr_t)pActorData;
+                ip = actor->scriptInstructionPointer;
+                op = (scriptData != NULL) ? scriptData[ip] : 0;
+                if (!s_dumpInited || ip != s_lastIp[i] || op != s_lastOp[i]) {
+                    printf("[npc-event] f=%d actor=%d ip=%u op=0x%02x wait=%d "
+                           "flags0=%u mode=%u pos=%d,%d anim=%d\n",
+                           s_npcEventDumpFrame, idx, (unsigned)ip, (unsigned)op,
+                           (int)actor->scripts[actor->curScriptIndex].waitTimer,
+                           (unsigned)actor->scripts[actor->curScriptIndex].flags_0,
+                           (unsigned)actor->scripts[actor->curScriptIndex].flags_0x17,
+                           (int)*(s16*)((u8*)actor + 0x22),
+                           (int)*(s16*)((u8*)actor + 0x2A),
+                           (int)actor->curAnimationId);
+                    s_lastIp[i] = ip;
+                    s_lastOp[i] = op;
+                }
+            }
+            if (!s_dumpInited || vis0 != s_lastVis || waitf0 != s_lastWaitf ||
+                lock != s_lastLock) {
+                printf("[npc-event] f=%d box=0 vis=%d status=%d order=%u "
+                       "owner=%d waitf=0x%x\n",
+                       s_npcEventDumpFrame, (int)vis0,
+                       (int)g_FieldTextBoxes[0].status,
+                       (unsigned)g_FieldTextBoxes[0].order,
+                       (int)g_FieldTextBoxes[0].ownerActorID,
+                       (unsigned)waitf0);
+            }
+            s_lastLock = lock;
+            s_lastVis = vis0;
+            s_lastWaitf = waitf0;
+            s_dumpInited = 1;
+        }
+        if (s_npcEventDumpEnabled) {
+            s_npcEventDumpFrame++;
+        }
+    }
+#endif
 }
 
 extern s16 D_800B234E;

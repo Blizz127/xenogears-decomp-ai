@@ -11,6 +11,7 @@
 #include "psyq/libcd.h"
 #ifdef XENO_PC_PORT
 #include <stdint.h> /* uintptr_t for LP64 pointer widening below */
+#include <stdio.h>
 #endif
 
 /* Per-frame helper: rand seed, map-load check, angle-step timer. */
@@ -684,7 +685,9 @@ void func_800799D4(void) {
 
     D_800594D0 = 0;
     g_MenuDebugEnabled = 0;
+#ifndef MENU_MUTANT_NEVER_REQUEST
     D_80059460 = D_800ADB64 & 0x7F;
+#endif
     pPresentFlags = D_8006BE2C;
     for (i = 0; i < 3; i++) {
         pPresentFlags[i] = ((u8*)g_pGameState)[0x22B1 + i];
@@ -694,7 +697,18 @@ void func_800799D4(void) {
     D_8005A4B0 = (u8*)g_FieldRenderContexts + 0x81C0;
     FieldRenderSyncAndFlush();
 
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] func_800799D4 request=%d D_80059460=%d -> MenuMain\n",
+           (int)D_800ADB64, (int)D_80059460);
+    fflush(stdout);
+#endif
+#ifndef MENU_MUTANT_SKIP_MENUMAIN
     MenuMain();
+#endif
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] MenuMain returned D_800594D0=%d\n", (int)D_800594D0);
+    fflush(stdout);
+#endif
 
     FieldRenderSyncAndFlush();
     D_80050100 = 2;
@@ -852,7 +866,13 @@ void func_800799D4(void) {
 
     D_800ADB64 = 0xFF;
     func_80077544();
+#ifndef MENU_MUTANT_SKIP_WAIT_CLEAR
     D_8004F350 = 0;
+#endif
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] WAIT_MENU D_8004F350=%d\n", (int)D_8004F350);
+    fflush(stdout);
+#endif
 }
 #else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800799D4);
