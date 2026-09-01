@@ -23,6 +23,7 @@
 #include "world_map_mode14_lifecycle.h"
 #include "world_map_mode15_lifecycle.h"
 #include "world_map_mode16_lifecycle.h"
+#include "world_map_mode17_lifecycle.h"
 #include "world_map_terminal_default_71264.h"
 #include "world_map_terminal_one_711b0.h"
 #include "world_map_terminal_zero_710e4.h"
@@ -132,6 +133,11 @@ static int ml_dispatch_guest(u32 address, int mode, int slot,
         return wm_80080D00();
     case 0x8008106Cu:
         wm_8008106C();
+        return 0;
+    case 0x80082324u:
+        return wm_80082324();
+    case 0x800826B4u:
+        wm_800826B4();
         return 0;
     default:
         ml_guest_stub(address, mode, slot, lane);
