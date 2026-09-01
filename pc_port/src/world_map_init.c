@@ -2357,6 +2357,20 @@ static int world_map_main_init_lahan(void)
 
     /* Tuple normalize @ 0x80070F90+ — read host g_pGameState in place. */
     seed_1930 = (u32)GS_U16(GS_OFF_SEED_1930);
+    {
+        /* Port-only experiment knob: override the scenario-progress seed
+         * that wm_selector_producer bins into a world-region record.  Retail
+         * writes this halfword from field transitions; the harness routes
+         * only reach the new-game value.  Unset -> retail behavior. */
+        const char* seed_override = getenv("XENO_WORLD_SCENARIO_SEED");
+        if (seed_override != NULL && seed_override[0] != '\0') {
+            seed_1930 = (u32)strtoul(seed_override, NULL, 0) & 0xFFFFu;
+            GS_U16(GS_OFF_SEED_1930) = (u16)seed_1930;
+            fprintf(stderr,
+                    "[worldmap-init] XENO_WORLD_SCENARIO_SEED override -> "
+                    "seed_1930=0x%04x\n", (u16)seed_1930);
+        }
+    }
     entrance = GS_U16(GS_OFF_ENTRANCE);
     selector = GS_U16(GS_OFF_SELECTOR);
     arg2 = GS_U16(GS_OFF_ARG2);
