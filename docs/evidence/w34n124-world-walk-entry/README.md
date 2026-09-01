@@ -60,7 +60,19 @@ words except the retail bodies.
 
 ## Results
 
-`run_w34n124_world_walk_entry.sh mountain` (log lines, guest units):
+`run_w34n124_world_walk_entry.sh mountain` summary:
+
+```text
+W34N124 PASS slot-1 call 1 recorded
+W34N124 PASS guest position moved between call 1 and 121 (29947,-312,11075 -> 30332,-316,10496)
+W34N124 PASS target trigger (record id 2) selected at call 121
+W34N124 PASS natural world exit with D7CC=0
+W34N124 PASS terminal lane entered FieldMain map 15
+W34N124 PASS no worldmap stub reached
+W34N124 WORLD WALK ENTRY PASS target=mountain
+```
+
+Log lines (guest units):
 
 ```text
 W34N124 call=1   slot=1 pos=(29947,-312,11075) head=0xe00 BD24=-1
