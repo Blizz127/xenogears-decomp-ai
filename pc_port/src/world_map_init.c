@@ -3952,6 +3952,14 @@ static int wm_80084580_object_matrix(void)
                 copy_sz = *(s32*)(model_host + 0x34);
                 if (copy_sz > 0 && out1 != NULL && out2 != NULL)
                     wm_memcpy(out2, out1, (unsigned)copy_sz);
+
+                /* func_8002CB54 is shared native code and returns low host
+                 * pointers.  Retail publishes PSX heap addresses in these
+                 * C620 record fields; every world callback subsequently
+                 * dereferences them as guest addresses.  Convert only after
+                 * the native fill/mirror operations above are complete. */
+                *(u32*)(e + 72) = host_ptr_to_psx_u32(out1);
+                *(u32*)(e + 76) = host_ptr_to_psx_u32(out2);
             }
 
             /* Reloc table lookup: D308 + index*4 → ptr → entry+68; bump +4. */
