@@ -369,7 +369,8 @@ s32 wm_8008E76C(s32 slot_idx)
             u32 mode_w = e76c_lw(E76C_MODE_WORD);
 
             /* wm_80095CD4 collision-aware movement */
-            s32 result = wm_80095CD4(pos, vel, out, speed);
+            s32 result = wm_80095CD4(pos, vel, out, speed,
+                                     (s32)mode_w);
 
             if (result != 0) {
                 /* Movement occurred */
