@@ -82,24 +82,16 @@ W34N124 call=121 slot=1 pos=(30332,-316,10496) head=0x200 BD24=2  D7D8=0x800b670
 [FieldMain] g_pGameState=0x95acb8 g_GameSceneMapNum=15
 ```
 
-`run_w34n124_world_walk_entry.sh lahan`:
+`run_w34n124_world_walk_entry.sh lahan` summary:
 
 ```text
-PROBE call=1   idx=1 pos=(29947,-312,11075) head=0xe00 BD24=-1
-PROBE call=31  idx=1 pos=(30116,-309,10905) head=0x200 BD24=1  D7D8=0x800b671c
-[world-test-input] frame=41 schedule_frame=40 held=0x0020 rising=0x0020
-[worldmap-open-loop] natural state exit frames=41 D7CC=0
-[FieldMain] g_pGameState=0x95acb8 g_GameSceneMapNum=1
-[field-diag] FieldLoad begin field=1 mapBuf=0x7500ec
-```
-
-(The lahan lines above come from the pre-packaging probe run with the identical
-schedule, `scratchpad/probe_lahan_entry.log`; the packaged `lahan` harness run
-was still executing when this README was written and its `W34N124 ... PASS`
-summary is recorded in the follow-up commit if it completed.)
-
-```text
-(see above)
+W34N124 PASS slot-1 call 1 recorded
+W34N124 PASS guest position moved between call 1 and 31 (29947,-312,11075 -> 30116,-309,10905)
+W34N124 PASS target trigger (record id 1) selected at call 31
+W34N124 PASS natural world exit with D7CC=0
+W34N124 PASS terminal lane entered FieldMain map 1
+W34N124 PASS no worldmap stub reached
+W34N124 WORLD WALK ENTRY PASS target=lahan
 ```
 
 Both runs print no `[worldmap-stub]` line.
@@ -132,3 +124,11 @@ completion inside the harness timeout; the field lane after the world exit is
 not certified here.  The return trips (Lahan/Mountain Path exit scripts
 writing the arrival tuple with entrance 9 / 2) are field-script behavior and
 were not exercised.
+
+## Scenario seed 54 (archive base 65) list 0
+
+`XENO_WORLD_SCENARIO_SEED=54` loads files 67/68/69; list 0 keeps records for
+maps 22, 24 and 35 (same rectangles as seed 24), drops the map-15 Mountain
+Path entrance and the type-1 strip, and adds maps 74, 94, 101, 262 (two
+rectangles), 494 and 194 farther west and south.  This is the widened world
+after the Blackmoon Forest / Dazil chapter.
