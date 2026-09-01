@@ -22,6 +22,8 @@
 #define RECORDS       0x800D0000u
 #define DRAW_RECORD   0x800E0000u
 #define OT_BASE       0x800E1000u
+#define BUFFER0       0x800E2000u
+#define BUFFER1       0x800E2100u
 #define MODEL_BASE    0x800B0000u
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
@@ -30,8 +32,6 @@ s32 D_80050104;
 u32 D_800595C0;
 s32 D_80059578;
 
-static u8 s_buffer0[64];
-static u8 s_buffer1[64];
 static int s_failures;
 static int s_wrap_calls;
 static int s_scale_calls;
@@ -297,8 +297,8 @@ static void put_record(int index, s16 state, s16 kind, s32 x, s32 y,
     st32(record + 0x10u, (u32)z);
     put_matrix(record + 0x20u, (s16)(0x0100 + index * 0x20));
     st32(record + 0x40u, model);
-    st32(record + 0x48u, (u32)(uintptr_t)s_buffer0);
-    st32(record + 0x4Cu, (u32)(uintptr_t)s_buffer1);
+    st32(record + 0x48u, BUFFER0);
+    st32(record + 0x4Cu, BUFFER1);
     st32(record + 0x50u, link);
 }
 
@@ -306,8 +306,8 @@ static void initialize_fixture(void)
 {
     memset(g_PsxRam, 0, sizeof(g_PsxRam));
     memset(&gteRegs, 0, sizeof(gteRegs));
-    memset(s_buffer0, 0x10, sizeof(s_buffer0));
-    memset(s_buffer1, 0x20, sizeof(s_buffer1));
+    memset(PSX_ADDR(BUFFER0), 0x10, 64u);
+    memset(PSX_ADDR(BUFFER1), 0x20, 64u);
     reset_trace();
 
     D_80050104 = 99;
@@ -431,7 +431,7 @@ static void check_active_path(void)
     check("flag-and-depth-gates", s_dispatch_calls == 1);
     check("renderer-domain-and-buffer",
           s_dispatch_model[0] == MODEL_BASE &&
-          s_dispatch_buffer[0] == (uintptr_t)s_buffer1 &&
+          s_dispatch_buffer[0] == (uintptr_t)PSX_ADDR(BUFFER1) &&
           s_dispatch_ot[0] == OT_BASE);
     check("signed-variant-table", s_dispatch_variant[0] == -3);
     check("nonparent-records-read-only",

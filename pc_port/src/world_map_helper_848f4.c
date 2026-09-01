@@ -285,7 +285,11 @@ static void wm_848f4_dispatch(u32 record_offset)
 
 #if !defined(WM_848F4_MUTANT_NO_MODEL_DISPATCH)
     (void)func_8002C700((u8 *)PSX_ADDR(model),
+#if defined(WM_848F4_MUTANT_RAW_GUEST_BUFFER)
                         (u8 *)(uintptr_t)buffer,
+#else
+                        (u8 *)PSX_ADDR(buffer),
+#endif
                         (u32 *)PSX_ADDR(ot), variant);
 #else
     (void)model;

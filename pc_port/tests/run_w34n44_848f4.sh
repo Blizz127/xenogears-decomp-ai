@@ -58,6 +58,7 @@ mutants=(
   'M12:WM_848F4_MUTANT_FIXED_BUFFER_ZERO:renderer-domain-and-buffer'
   'M13:WM_848F4_MUTANT_VARIANT_UNSIGNED:signed-variant-table'
   'M14:WM_848F4_MUTANT_NO_MODEL_DISPATCH:flag-and-depth-gates'
+  'M15:WM_848F4_MUTANT_RAW_GUEST_BUFFER:renderer-domain-and-buffer'
 )
 
 for entry in "${mutants[@]}"; do
@@ -77,4 +78,4 @@ for entry in "${mutants[@]}"; do
     echo "$label DETECTED; ASSERTION $assertion"
 done
 
-echo "W34N44 0x800848F4 FULL CERTIFICATE PASS; M1-M14 DETECTED"
+echo "W34N44 0x800848F4 FULL CERTIFICATE PASS; M1-M15 DETECTED"

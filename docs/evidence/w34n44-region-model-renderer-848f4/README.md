@@ -24,7 +24,9 @@ The first natural call on the accepted route reported:
 - records 2 and 3 have live `+0x50=0x800D9540` parent links; the link and its
   terminator are guest-domain values
 - record model headers at `+0x40` are guest-domain values
-- record double-buffer work pointers at `+0x48/+0x4C` are native low pointers
+- record double-buffer work pointers at `+0x48/+0x4C` are guest-domain values
+  (superseded by the W34N112 producer witness and W34N113 live consumer
+  witness described below)
 
 Thus the production seam must rebase model headers and the OT through
 `PSX_ADDR`, while preserving the work pointer as a native pointer.
@@ -91,6 +93,23 @@ W34N44_848F4_LINKS model_emitted=13 guest=13 native=0 rejected=0
 - raw-native-link and missing-tag-length mutants DETECTED
 
 Normal port build: `LINK OK`.
+
+## Superseding buffer-domain correction (W34N113)
+
+The original W34N44 fixture encoded record fields `+0x48/+0x4C` as low native
+pointers and therefore certified a raw pass-through at the `func_8002C700`
+seam.  W34N112 subsequently proved that the retail C620 producer publishes
+guest addresses in those fields.  Once W34N113 restored the mode-17 camera
+controller, a region model became naturally visible and the stale W34N44
+assumption faulted immediately: guest buffer `0x80103368` reached the native
+model walker without rebasing.
+
+The consumer now translates the selected record buffer through `PSX_ADDR`, as
+it already did for the model and OT.  The W34N44 fixture now stores guest
+buffer addresses, and M15 restores the raw pass-through and is detected by
+`renderer-domain-and-buffer`.  This correction supersedes only the old buffer
+domain classification; the retail renderer flow and all other W34N44 findings
+remain in force.
 
 ## Natural acceptance
 
