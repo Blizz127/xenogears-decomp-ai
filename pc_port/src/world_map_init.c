@@ -164,6 +164,7 @@
 #include "world_map_terrain_init.h"
 #include "world_map_common_tail.h"
 #include "world_map_cold_defaults.h"
+#include "world_map_mode_selector_73300.h"
 #include "world_map_scheduler.h"
 #include "world_map_frame_driver.h"
 #include "world_map_main_loop_71034.h"
@@ -2231,37 +2232,6 @@ u32 wm_8007369C_test_host_to_psx(void* p)
     return host_ptr_to_psx_u32(p);
 }
 #endif
-
-/* Lahan: halfword @ 0x8006EE68 is not cold-defaulted; path selects mode 1/2. */
-static void wm_80073300(void)
-{
-    u16 hw = WM_U16(0x8006EE68u);
-    u32 mode;
-
-    if (hw & 0x4000) {
-        u32 idx = hw & 0x1FFF;
-        /* Jump-table path needs cold-default table; not on Lahan. */
-        if (idx < 5) {
-            fprintf(stderr,
-                    "[worldmap-init] ERROR: wm_80073300 jump-table idx=%u "
-                    "requires cold-default (not Lahan path)\n",
-                    idx);
-            mode = 1;
-        } else {
-            return;
-        }
-    } else {
-        u8 b0 = WM_U8(0x8006F8E5u);
-        u8 b1 = WM_U8(0x8006F8E6u);
-        u8 b2 = WM_U8(0x8006F8E7u);
-        if ((b0 | b1 | b2) != 0)
-            mode = 2;
-        else
-            mode = 1;
-    }
-    WM_U32(WM_MODE_BE10_ABS) = mode;
-}
-
 
 /* Record reading / world-state writes (remainder of retail wm_80071B9C
  * after selector binning). Uses the index returned by wm_selector_producer
