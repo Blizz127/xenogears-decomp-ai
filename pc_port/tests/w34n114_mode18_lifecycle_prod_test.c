@@ -270,7 +270,7 @@ static void test_setup(void)
         {UINT32_C(0x800838E8), UINT32_C(0x80076B34)},
         {UINT32_C(0x8008390C), UINT32_C(0x80083A00)},
         {UINT32_C(0x80083FE4), UINT32_C(0x80084068)},
-        {UINT32_C(0x80088948), UINT32_C(0x80088950)}
+        {UINT32_C(0x80078948), UINT32_C(0x80078950)}
     };
     uint8_t template_bytes[32];
     int index;

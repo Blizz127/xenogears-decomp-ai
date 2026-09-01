@@ -176,9 +176,9 @@ int wm_8008355C(void)
     wm_pool_register(UINT32_C(0x8008390C), UINT32_C(0x80083A00));
     wm_pool_register(UINT32_C(0x80083FE4), UINT32_C(0x80084068));
 #if defined(W34N114_MUTANT_WRONG_REGISTER_PAIR)
-    wm_pool_register(UINT32_C(0x80088948), UINT32_C(0x80084068));
+    wm_pool_register(UINT32_C(0x80078948), UINT32_C(0x80084068));
 #else
-    wm_pool_register(UINT32_C(0x80088948), UINT32_C(0x80088950));
+    wm_pool_register(UINT32_C(0x80078948), UINT32_C(0x80078950));
 #endif
 
     wm_800978FC();

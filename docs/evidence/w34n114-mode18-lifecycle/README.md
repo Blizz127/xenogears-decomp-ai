@@ -50,9 +50,8 @@ The normal PC port build links successfully.
 
 ## Natural entrance-18 frontier
 
-The accepted detached route was run with entrance 18 and the standard
-scripted input. The lifecycle completes and the scheduler naturally reaches
-all four mode-private initializers:
+The first detached route was run with entrance 18 and the standard scripted
+input. The lifecycle completed and the scheduler reached these four values:
 
 | slot | initializer | observed calls through attempted frame 60 |
 |---:|---:|---:|
@@ -61,11 +60,37 @@ all four mode-private initializers:
 | 3 | `0x80083FE4` | 61 |
 | 4 | `0x80088948` | 61 |
 
-They are still unresolved and therefore return the scheduler's observable
-neutral value instead of advancing to their update callbacks. Upload pumps
-remain at `unknowns=0`, but frame 60 has no effective presentation and its
-capture request is rejected as unfulfilled. No capture is claimed.
+That first run used an incorrectly decoded fifth registration pair:
+`0x80088948/0x80088950`. Retail forms those values with signed `addiu`
+immediates from `0x8008`, so the effective pair is the already port-owned
+`0x80078948/0x80078950`. W34N114A corrects both production and certificate;
+the table above is therefore a superseded frontier, not the final mode-18
+stub census. Upload pumps remained at `unknowns=0`, but frame 60 had no
+effective presentation and its capture request was rejected as unfulfilled.
+No capture is claimed from that run.
 
-This is a truthful moved frontier, not mode-18 visual acceptance. The next
-bounded target is the four live private callback pairs registered by
-`wm_8008355C`; all four initializers are required on this natural route.
+The corrected W34N114A run proves the effective shared pair is
+`0x80078948/0x80078950`: it resolves and presents normally. Exactly three
+private initializers remain unresolved, each reached 121 times (one setup
+scheduler pass plus 120 displayed frames):
+
+| slot | unresolved initializer | calls |
+|---:|---:|---:|
+| 1 | `0x800838E8` | 121 |
+| 2 | `0x8008390C` | 121 |
+| 3 | `0x80083FE4` | 121 |
+
+The corrected route reaches and fulfills both capture requests, completes its
+bounded 120-frame loop, and keeps both upload pumps at `unknowns=0`:
+
+- frame 60:
+  `f52c10caa70d6ce0a18f6f4aec0a001d0afc936827372f80da2c248952ecaabd`
+- frame 120:
+  `95d2fec62f92d9d15f012532e751c2b15b980968094ba0dc4318bf4d21d2da0d`
+
+Both captures contain a live but visibly incomplete/malformed mode-18 scene;
+they are evidence of presentation, not visual acceptance.
+
+This is a truthful moved frontier, not mode-18 visual acceptance. After the
+W34N114A signed-immediate correction, the next bounded target is the three
+genuinely private callback pairs registered by `wm_8008355C`.
