@@ -7,7 +7,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_helper_965a4.h"
-#include "world_map_helper_9623c.h"
+#include "world_map_helper_964b0.h"
 
 #define D_8009BE44  0x8009BE44u
 #define D_8009D3C0  0x8009D3C0u
@@ -22,24 +22,20 @@ s32 wm_800965A4(void)
     u32 idx = a5a4_lw(D_8009BE44);
     u32 base = a5a4_lw(D_8009D3C0);
 
-    /* Stride: (idx*3*4 - idx) << 7 = idx * 11 * 128 = idx * 1408 */
-    u32 stride = ((idx * 12 - idx) << 7);
+    /* Retail bank stride is 0x580 bytes (16-byte records). */
+    u32 stride = idx * 0x580u;
     u32 record = base + stride;
 
-    /* Check if record already in use */
-    if (a5a4_lw(record) != 0) {
-        if (a5a4_lw(D_8009C624 + idx * 4) != 0) {
-            a5a4_sw(D_8009D808, 0);
-            return -1;
-        }
+    if (a5a4_lw(record) == 0u ||
+        a5a4_lw(D_8009C624 + idx * 4u) != 0u) {
+        a5a4_sw(D_8009D808, 0u);
+        return -1;
     }
-
-    /* Copy record (40 bytes via wm_800964B0) */
-    wm_800964B0(record, record); /* self-copy = initialize */
+    wm_800964B0(record);
 
     /* Reset queue counter, store pointer, advance index (mod 16) */
     a5a4_sw(D_8009D808, 0);
-    a5a4_sw(D_8009C624 + idx * 4, record);
+    a5a4_sw(D_8009C624 + idx * 4u, record);
     a5a4_sw(D_8009BE44, (idx + 1) & 0xF);
 
     return 0;

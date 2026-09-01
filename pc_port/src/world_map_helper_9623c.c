@@ -95,12 +95,24 @@ void wm_800963E4(u32 record_addr)
     }
 }
 
-/* wm_800964B0: record copier (40-byte records) */
-void wm_800964B0(u32 src, u32 dst)
+/* wm_800964B0: retail insertion pass over 16-byte records, keyed by +4. */
+void wm_800964B0(u32 list)
 {
-    s32 i;
-    for (i = 0; i < 10; i++) {
-        q_sw(dst + i * 4, q_lw(src + i * 4));
+    u32 cur = list;
+    u32 next = list + 16u;
+    if (q_lw(next) == 0u) return;
+    for (;;) {
+        u32 cur_key = q_lw(cur + 4u), next_key = q_lw(next + 4u);
+        if (next_key < cur_key) {
+            u32 t0 = q_lw(cur), t1 = q_lw(cur + 4u);
+            u32 t2 = q_lw(cur + 8u), t3 = q_lw(cur + 12u);
+            q_sw(cur, q_lw(next)); q_sw(cur + 4u, q_lw(next + 4u));
+            q_sw(cur + 8u, q_lw(next + 8u)); q_sw(cur + 12u, q_lw(next + 12u));
+            q_sw(next, t0); q_sw(next + 4u, t1);
+            q_sw(next + 8u, t2); q_sw(next + 12u, t3);
+            if (list < cur) { cur -= 16u; next -= 16u; }
+        } else { cur += 16u; next += 16u; }
+        if (q_lw(next) == 0u) break;
     }
 }
 

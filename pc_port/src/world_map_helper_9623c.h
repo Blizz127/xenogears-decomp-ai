@@ -19,8 +19,8 @@ s32 wm_800962B0(u32 word0, u32 word1, u32 word2, u32 word3);
 /* Queue record initializer */
 void wm_800963E4(u32 record_addr);
 
-/* Queue record copier */
-void wm_800964B0(u32 src, u32 dst);
+/* 16-byte record insertion/sort pass */
+void wm_800964B0(u32 list);
 
 /* Queue counter reset */
 
