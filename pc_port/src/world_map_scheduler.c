@@ -87,6 +87,7 @@
 #include "world_map_callback_827ec.h"
 #include "world_map_callback_83214.h"
 #include "world_map_callback_834d0.h"
+#include "world_map_callback_838e8.h"
 #include "world_map_callback_8b644.h"
 #include "world_map_callback_8c844.h"
 #include "world_map_callback_8d678.h"
@@ -216,6 +217,9 @@ extern s32 wm_80083214(s32 slot_index) __attribute__((weak));
 extern s32 wm_80083264(s32 slot_index) __attribute__((weak));
 extern s32 wm_800834D0(s32 slot_index) __attribute__((weak));
 extern s32 wm_800834D8(s32 slot_index) __attribute__((weak));
+extern s32 wm_800838E8(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008390C(s32 slot_index) __attribute__((weak));
+extern s32 wm_80083FE4(s32 slot_index) __attribute__((weak));
 
 #define WM_SCHED_RAM(a) ((u8*)PSX_ADDR(a))
 
@@ -998,6 +1002,21 @@ static s16 wm_sched_builtin_800834D8(int slot_index)
     return (s16)wm_800834D8((s32)slot_index);
 }
 
+static s16 wm_sched_builtin_800838E8(int slot_index)
+{
+    return (s16)wm_800838E8((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008390C(int slot_index)
+{
+    return (s16)wm_8008390C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80083FE4(int slot_index)
+{
+    return (s16)wm_80083FE4((s32)slot_index);
+}
+
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
@@ -1495,6 +1514,18 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x800834D8u && wm_800834D8 != 0) {
         *out_fn = wm_sched_builtin_800834D8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800838E8u && wm_800838E8 != 0) {
+        *out_fn = wm_sched_builtin_800838E8;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008390Cu && wm_8008390C != 0) {
+        *out_fn = wm_sched_builtin_8008390C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80083FE4u && wm_80083FE4 != 0) {
+        *out_fn = wm_sched_builtin_80083FE4;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))
