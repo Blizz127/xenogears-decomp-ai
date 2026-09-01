@@ -8,10 +8,16 @@
 - Disassembly: `scratchpad/w34_render_scan_k/world_map_full.objdump.txt`
 - initializer `[0x800813E8,0x80081470)`, 136-byte SHA-256:
   `da6c4f94b4c53a470378bc52a4b2fb46886389cb58b48869b2ea311ee9663852`
-- update `[0x80081470,0x800817A0)`, 816-byte SHA-256:
-  `60760d92a5f790f24cce93b443dbecfb41fc1dfda25aed7d62d87d0cdf33515f`
-- complete pair `[0x800813E8,0x800817A0)`, 952-byte SHA-256:
-  `ad4aecd7dc6886e8f04464ebb5ca0c354b32f824382923a5b5d68631c6a69673`
+- update `[0x80081470,0x800816DC)`, 620-byte SHA-256:
+  `b593b5251048726b272b474a91e0f16ae84f11c9e5da4f03b88490a5fa891a9e`
+- complete pair `[0x800813E8,0x800816DC)`, 756-byte SHA-256:
+  `77763293e4eb6bcd696148ae5a3bbda5a85d8d9e537e29738022fad56c03c097`
+
+Boundary correction: `0x800816DC..0x800817A0` is a separate 196-byte helper
+called by the following initializer, not part of `wm_80081470`. Its SHA-256 is
+`0f83d78059f92926b4e908f3ae687aaaa0da51239fd71e8fcaba07ea18f34b18`.
+The original N104 commit anchored the larger surrounding region; this corrected
+gate is the function-level boundary actually certified by the production test.
 
 ## Production transcription
 

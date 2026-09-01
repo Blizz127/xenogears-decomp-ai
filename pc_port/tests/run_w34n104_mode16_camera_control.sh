@@ -35,10 +35,10 @@ check_slice() {
 
 check_slice $((0x800813E8)) $((0x80081470)) \
   da6c4f94b4c53a470378bc52a4b2fb46886389cb58b48869b2ea311ee9663852
-check_slice $((0x80081470)) $((0x800817A0)) \
-  60760d92a5f790f24cce93b443dbecfb41fc1dfda25aed7d62d87d0cdf33515f
-check_slice $((0x800813E8)) $((0x800817A0)) \
-  ad4aecd7dc6886e8f04464ebb5ca0c354b32f824382923a5b5d68631c6a69673
+check_slice $((0x80081470)) $((0x800816DC)) \
+  b593b5251048726b272b474a91e0f16ae84f11c9e5da4f03b88490a5fa891a9e
+check_slice $((0x800813E8)) $((0x800816DC)) \
+  77763293e4eb6bcd696148ae5a3bbda5a85d8d9e537e29738022fad56c03c097
 
 run_regime() {
   local name="$1"
