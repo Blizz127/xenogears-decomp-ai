@@ -6978,6 +6978,12 @@ int wm_mode17_stage_second_wave_finish(void)
         return -1;
     return wm_80076954();
 }
+int wm_mode18_stage_second_wave_finish(void)
+{
+    if (wm_second_wave_poll() != 0)
+        return -1;
+    return wm_80076954();
+}
 
 void PcPort_WorldMapInitMain(void)
 {
