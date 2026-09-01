@@ -1166,6 +1166,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_callback_817a0.c
     pc_port/src/world_map_callback_819c8.c
     pc_port/src/world_map_callback_81c3c.c
+    pc_port/src/world_map_callback_81fb4.c
     pc_port/src/world_map_callback_7cc6c.c
     pc_port/src/world_map_callback_7ce84.c
     pc_port/src/world_map_callback_7d078.c
