@@ -1,4 +1,4 @@
-name: Movie Player Module (archive dir 0x18 file 1, loaded at 0x801D3008 by MovieMain)
+name: Movie Player Module (archive dir 0x18 file 1, loaded at 0x801D3000 by MovieMain)
 sha1: ca808fed8ab02a7bd41d297da4bc51b0c0108028
 options:
   basename: movie_player.bin
@@ -47,11 +47,11 @@ segments:
   - name: movie_player
     type: code
     start: 0x0
-    vram: 0x801d3008
+    vram: 0x801d3000
     align: 4
     subalign: 4
     subsegments:
       - [0x0, rodata]
-      - [0xCC, asm]
+      - [0xC4, asm]
       - [0x151C0, data]
   - [0x16000]
