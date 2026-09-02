@@ -1092,6 +1092,7 @@ PORT_SOURCES=(
     pc_port/src/boot_menu.c
     pc_port/src/boot_str.c
     pc_port/src/boot_assets.c
+    pc_port/src/movie_player.c
     pc_port/src/field_object_overlay.c
     pc_port/src/world_map_init.c
     pc_port/src/world_map_frame_driver.c
