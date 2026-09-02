@@ -1,0 +1,4 @@
+// Movie overlay (movie.bin, VRAM 0x8006FAF0, 0x7453 bytes) symbols.
+// Retail g_MainGameStates[6] (SLUS 0x8001808C + 0x60): main 0x800737EC,
+// state/BSS 0x80076F38, heap 0x80077454, hasOverlay 1, archive 0x12.
+MovieMain = 0x800737EC; // type:func
