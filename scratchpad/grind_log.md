@@ -630,3 +630,16 @@ as a real one — and risks reimplementing working code.
 - **Not proven / still open:** hard-edged white rectangles over the terrain in frames 120–240 (cloud/shadow tile layer or paging tile fault; pre-existing, separately recorded). No standalone certificate for `wm_800914D0`. Evidence: `docs/evidence/w34n125-world-sprites-visible/README.md`, artifacts `scratchpad/w34n125_sprite_capture/`.
 - **Committed:** `618726b6` (source); docs follow in a separate commit.
 - **Stop reason (if stopped early):** —
+
+---
+
+### [2026-09-02 02:30] Retail boot path: state 6 movie player, opening STR, hand-off to Map 0
+- **Hypothesis:** the port's title/menu (`PcPort_BootMain`) is a stand-in; retail boots splash → `ChangeGameState(6)` (movie.bin) → opening STR → `FieldMain` with the new-game template's map. Decompile movie.bin and the movie player module and wire the retail sequence.
+- **Scope:** new `config/movie_player.yaml` + symbol seeds (movie.bin and the 0x18/1 module were never split), `src/movie/main.c`, `pc_port/src/movie_player.c`, two PsyCross patches (`psycross_cd_stream_movie`, `psycross_display_present`), `psyq_compat.c` Vsync, `port_main.c`, `game_overrides.c`, `config/symbol_addrs.slus_006.64.txt` (+2 BSS names).
+- **Change made:** eight commits, one logical unit each (see `docs/evidence/w34n126-retail-boot-movie/README.md`). Movie player: Square layer + cdstream ring + handwritten `DecDCTvlc` transcribed; MDEC is software from psx-spx with the module's tables. Boot: retail `func_80019578` tail, `func_8001BB50` template load, state 6 → `MovieMain`, MAP14 default removed, roster/skin stand-ins made harness-only (their pinned heap blocks broke MovieMain's `0x801D3000` module placement).
+- **Build result:** LINK OK after each step. `make check` 4/4 FAILED with identical hashes before/after every config change.
+- **Runtime result:** opening movie plays through the retail path — 233 frames, ~15-18 fps, zero skipped frames — then `FieldMain` map 0. Captures at frames 10..230 show the anime opening in 24-bit. W34N124 lahan harness 6/6 after the change.
+- **Proven:** retail has no title game state; state 6 plays movie `disc+2` of dir 0x18/1 and returns to state 1 with `D_8006F94E` from the template (0 on disc 1). The player's ring needs real-time sector pacing and a VRAM-display present, neither of which PsyCross had.
+- **Not proven / still open:** what retail's map 0 script shows (title menu vs the debug-room look the port renders); New Game → opening field scenes; XA audio; bit-exact MDEC; frame-80 vertical striping origin; dead `PcPort_BootMain` cleanup.
+- **Committed:** `6432959f a177ca62 f03b1747 e7a4b4f6 7991642c 3d107600 847520e9` + overlays.yaml comment fix.
+- **Stop reason (if stopped early):** —
