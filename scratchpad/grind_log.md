@@ -617,3 +617,16 @@ as a real one — and risks reimplementing working code.
   watchdog. Passive 10-second Map000/001/014 starts yielded 16/97/8 dispatches
   respectively; none were `0x85,0x8E,0x98,0xBE,0xC8,0xD4,0xE2,0xFA`. Target
   progression remains unswept.
+
+---
+
+### [2026-09-02 00:45] World map: Fei/follower/objects invisible — slot-9 camera never published D_8009BE28
+- **Hypothesis:** (inherited from the interrupted session) the sprite pass `wm_80085CDC` subtracts the world position block `D_8009BE28` from every object, and a probe showed that block reading zero all session, pushing sprites behind the camera. Retail must write it from the on-foot lane; find the writer.
+- **Scope:** `pc_port/src/world_map_callback_914d0.c` (slot-9 on-foot camera, retail `[0x800914D0, 0x80091B54)`). Investigation only elsewhere.
+- **Change made:** Retranscribed the callback against the asm and both jump tables (`0x80070BE4`, `0x80070C0C`). Retail's common tail `0x80091B04` — `wm_80093354(slot+0x28)` then copy `slot+0x28..+0x34` into `BE28..BE34` — was entirely absent; the post-dispatch follow logic (state gate, 1/8 far-branch step, Y easing 1/8 vs 1/16), the 0x00FFFFFF heading-accumulator mask, the inverted ±0x180 clamp in states 2/16, the state-1 fallthrough into the heading step, and pre-dispatch case 0's `D_8009D52C` source were also corrected. Single source commit; no config/build changes.
+- **Build result:** `./pc_port/build_port.sh` LINK OK. `make check` 4/4 FAILED before (HEAD `9d5ff780`, via stash) and after, identical hashes — pc_port is not in that build. Note member/shop were OK in the last logged baseline and now fail at HEAD before this change (likely `2261d026`, menu TUs).
+- **Runtime result:** probe on `wm_80085CDC`/`func_8001E298`: `BE28` went from `(0,0,0)` to `(122665808,-1278838,45360304)` and tracks slot 1 with the 1/8 step; Fei's render matrix translation went from `(-9818,4501,-2610)` to `(5,-3,1117)`. Captures at world frames 60/120/180/240 show Fei and the follower walking/standing, plus the Lahan village model, trees and the Mountain Path landmark (all previously missing). `run_w34n124_world_walk_entry.sh lahan|mountain` both 6/6 PASS.
+- **Proven:** the missing tail was the blocker for every camera-relative renderer on the on-foot route (sprites, scaled objects, view matrix height term); retail writers of `BE28` outside this tail are all vehicle/event-mode callbacks or the `C894 != 0` restore copy.
+- **Not proven / still open:** hard-edged white rectangles over the terrain in frames 120–240 (cloud/shadow tile layer or paging tile fault; pre-existing, separately recorded). No standalone certificate for `wm_800914D0`. Evidence: `docs/evidence/w34n125-world-sprites-visible/README.md`, artifacts `scratchpad/w34n125_sprite_capture/`.
+- **Committed:** `618726b6` (source); docs follow in a separate commit.
+- **Stop reason (if stopped early):** —
