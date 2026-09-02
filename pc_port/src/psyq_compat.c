@@ -1147,9 +1147,24 @@ int Vsync(int mode)
      * DrawPrim + Vsync with no such flush in between, so its sprite would never
      * reach the framebuffer. Flushing here (idempotent when empty, like DrawSync)
      * makes the present show everything drawn since the last frame. */
-    DrawAllSplits();
+    {
+        /* PSX display semantics: at vblank the screen shows the DISPENV area of
+         * VRAM whether or not anything was drawn.  PsyCross only presents
+         * rendered primitives, so a frame built purely by LoadImage into the
+         * display buffer (the STR movie player) never reaches the window.
+         * When no scene is open at a blocking Vsync(0), present the display
+         * area from the VRAM mirror instead (patches/psycross_display_present). */
+        extern int PsyX_IsSceneOpen(void);
+        extern int PsyX_PresentDisplayFromVRAM(void);
+        int sceneOpen = PsyX_IsSceneOpen();
 
-    PsyX_EndScene();      /* present the frame the game just finished building */
+        DrawAllSplits();
+
+        PsyX_EndScene();      /* present the frame the game just finished building */
+
+        if (!sceneOpen && mode == 0)
+            PsyX_PresentDisplayFromVRAM();
+    }
 
     /* Per-frame input, normally driven by the BIOS vblank IRQ + the game's main
      * loop, both of which live in bypassed asm. PsyX_UpdateInput() polls SDL

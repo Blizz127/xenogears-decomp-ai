@@ -954,6 +954,21 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adsr.patch" "_xeno_so
 # (XENO_SOUND_LEGACY_RESAMPLER=1 / emscripten / no-extension fallback).
 # Generated on top of the sound patches above (apply order matters).
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adpcm.patch" "_xeno_sound_adpcm"
+# STR movie streaming (movie player module, retail cdstream): CdControl
+# CdlSetmode/CdlReadS(NULL) start the spooler from the CdControlB(CdlSetloc)
+# position, CdControlB CdlSetfilter/CdlPause report success (retail spins on
+# a zero return), CdlPause joins the spooler thread, and the spooler paces
+# sector delivery at the drive rate (75/s, 150/s with CdlModeSpeed) so the
+# 32-slot STR ring is not overrun.  Generated against the tree with the
+# patches above applied (the cdsync hunk sits in the same function).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_stream_movie.patch" "_xeno_cd_stream_movie"
+# PSX display semantics for frames that draw no primitives: the STR movie
+# player LoadImages pictures straight into the DISPENV buffer and flips with
+# PutDispEnv, but PsyCross only presents rendered primitives.  Adds
+# PsyX_IsSceneOpen / PsyX_PresentDisplayFromVRAM (CPU VRAM mirror -> RGBA8,
+# 15-bit or isrgb24 24-bit, blitted over the window); pc_port's Vsync calls
+# it at a blocking Vsync(0) when no scene was opened.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_display_present.patch" "_xeno_display_present"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

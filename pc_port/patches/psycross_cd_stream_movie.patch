@@ -1,0 +1,187 @@
+--- a/src/psx/LIBCD.C
++++ b/src/psx/LIBCD.C
+@@ -113,6 +113,16 @@
+ 
+ int g_cdReadDoneFlag = 1;
+ 
++/* _xeno_cd_stream_movie: last CdlSetmode byte (CdlModeSpeed 0x80, CdlModeRT
++ * 0x40, CdlModeSF 0x08, ...) and last CdlSetfilter.  The retail STR player
++ * (movie player module, cdstream) drives the drive with CdControl(CdlSetmode)
++ * + CdControl(CdlReadS, NULL) after a CdControlB(CdlSetloc), and paces its
++ * ring buffer by the real-time sector rate (75 sectors/s, 150 at double
++ * speed).  The spooler thread honours that rate when CdlModeRT is set so the
++ * 32-slot ring is not overrun. */
++static u_char g_xeno_cdMode = 0;
++static CdlFILTER g_xeno_cdFilter = { 0, 0, 0 };
++
+ char g_cdImageBinaryFileName[2048] = { 0 };
+ int g_UseCDImage = 0;
+ 
+@@ -190,6 +200,7 @@
+ 
+ void _eCdControlF_ReadS(int sector);
+ void _eCdControlF_Pause();
++void _eCdSpoolerJoin(void);
+ 
+ //----------------------------------------------------------
+ 
+@@ -345,19 +356,36 @@
+ 	case CdlSetloc:
+ 		vfseek(&g_imageFile, CdPosToInt(cd)*g_cdSectorSize, SEEK_SET);
+ 		break;
++	case CdlSetmode:
++		/* _xeno_cd_stream_movie */
++		g_xeno_cdMode = param ? param[0] : 0;
++		return 1;
+ 	case CdlReadS:
+ 	{
+-		unsigned int filePos = vftell(&g_imageFile);
+-		
+-		CdlLOC currentLoc;
+-		CdIntToPos(filePos, &currentLoc);
+-		
+-		vfseek(&g_imageFile, CdPosToInt(cd) * g_cdSectorSize, SEEK_SET);
+-		
+-		g_cdCurrentSector = CdPosToInt(cd);
+-		
+-		if (cd->sector != currentLoc.sector)
++		if (param == NULL)
++		{
++			/* _xeno_cd_stream_movie: start streaming from the position set by
++			 * the preceding CdlSetloc (retail cdstream issues CdlReadS with no
++			 * parameter).  Returns 1 = accepted, like libcd. */
++			int sector = (int)(vftell(&g_imageFile) / g_cdSectorSize);
++			g_cdCurrentSector = sector;
++			_eCdControlF_ReadS(sector);
+ 			return 1;
++		}
++		else
++		{
++			unsigned int filePos = vftell(&g_imageFile);
++
++			CdlLOC currentLoc;
++			CdIntToPos(filePos, &currentLoc);
++
++			vfseek(&g_imageFile, CdPosToInt(cd) * g_cdSectorSize, SEEK_SET);
++
++			g_cdCurrentSector = CdPosToInt(cd);
++
++			if (cd->sector != currentLoc.sector)
++				return 1;
++		}
+ 
+ 		break;
+ 	}
+@@ -391,15 +419,28 @@
+ 	case CdlSetfilter:
+ 	{
+ 		CdlFILTER* cdf = (CdlFILTER*)param;
+-		// TODO: set channel. Primarily used for CDDA/XA
++		/* _xeno_cd_stream_movie: remember the XA file/channel filter and
++		 * report success so cdstream's retry loop terminates. */
++		if (cdf)
++			g_xeno_cdFilter = *cdf;
++		ret = 1;
+ 		break;
+ 	}
+ 	case CdlSetmode:
+ 	{
+ 		// TODO: CdlModeSize0 and CdlModeSize1 can change things
++		/* _xeno_cd_stream_movie */
++		g_xeno_cdMode = param ? param[0] : 0;
+ 
+-		eprinterr("Unimplemented 'CdlSetmode'!\n");
+-
++		ret = 1;
++		break;
++	}
++	case CdlPause:
++	{
++		/* _xeno_cd_stream_movie: stop the streaming spooler and wait for the
++		 * thread so a following CdlSetloc/CdlReadS starts clean. */
++		_eCdControlF_Pause();
++		_eCdSpoolerJoin();
+ 		ret = 1;
+ 		break;
+ 	}
+@@ -444,6 +485,13 @@
+ 			readMode = RM_XA_AUDIO;
+ 			break;
+ 		}
++		case CdlSetmode:
++		{
++			/* _xeno_cd_stream_movie: ArchiveCdSetMode issues this after a
++			 * movie; remember the mode byte for the spooler pacing. */
++			g_xeno_cdMode = param ? param[0] : 0;
++			break;
++		}
+ 		case CdlReadS:
+ 		{
+ 			// start reading sectors
+@@ -844,6 +892,35 @@
+ 
+ volatile int g_cdSpoolerSeekCmd = 0;
+ 
++/* _xeno_cd_stream_movie: real-time pacing of the spooler.  A real drive
++ * delivers one sector every 1/75 s (1/150 s at CdlModeSpeed); the STR
++ * player's 32-slot ring depends on that cadence.  The spooler is only used
++ * for CdlReadS streaming (CdRead/CdReadSync are synchronous), so it always
++ * sleeps to the drive rate. */
++static Uint64 g_xeno_cdPaceNext = 0;
++
++static void _eCdSpoolerPace(void)
++{
++	Uint64 freq;
++	Uint64 period;
++	Uint64 now;
++
++	freq = SDL_GetPerformanceFrequency();
++	period = freq / ((g_xeno_cdMode & CdlModeSpeed) ? 150 : 75);
++	now = SDL_GetPerformanceCounter();
++
++	if (g_xeno_cdPaceNext == 0 || now > g_xeno_cdPaceNext + period * 8)
++		g_xeno_cdPaceNext = now;
++
++	while (SDL_GetPerformanceCounter() < g_xeno_cdPaceNext)
++	{
++		Uint64 remain = g_xeno_cdPaceNext - SDL_GetPerformanceCounter();
++		if (remain * 1000 > freq * 2)
++			SDL_Delay(1);
++	}
++	g_xeno_cdPaceNext += period;
++}
++
+ //-----------------------------------------------------
+ // copies read sector data to addr
+ //-----------------------------------------------------
+@@ -917,6 +994,8 @@
+ 	memset(&g_cdSectorData, 0, sizeof(g_cdSectorData));
+ 	vfread(&g_cdSectorData, sizeof(Sector), 1, &g_imageFile);
+ 
++	_eCdSpoolerPace(); /* _xeno_cd_stream_movie */
++
+ 	g_isCdSectorDataRead = 0;
+ 
+ 	if (readyCb)
+@@ -1032,6 +1111,21 @@
+ 	g_cdSpoolerSeekCmd = -1;
+ }
+ 
++/* _xeno_cd_stream_movie: block until the spooler thread has exited after a
++ * pause request. */
++void _eCdSpoolerJoin(void)
++{
++#ifndef __EMSCRIPTEN__
++	if (g_cdSpoolerPCThread)
++	{
++		int returnValue;
++		SDL_WaitThread(g_cdSpoolerPCThread, &returnValue);
++		g_cdSpoolerPCThread = NULL;
++	}
++#endif
++	g_xeno_cdPaceNext = 0;
++}
++
+ char* CdComstr(u_char com)
+ {
+ 	PSYX_UNIMPLEMENTED();
