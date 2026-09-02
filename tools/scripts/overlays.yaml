@@ -45,7 +45,7 @@ overlays:
     directory_id: 0x01
     compressed: true
   # Movie player module (Square STR player + libpress/libcd), loaded raw by
-  # MovieMain (movie.bin 0x800737EC) to 0x801D3008.  Split by
+  # MovieMain (movie.bin 0x800737EC) to 0x801D3000.  Split by
   # config/movie_player.yaml.
   - name: movie_player.bin
     file_id: 0x01
