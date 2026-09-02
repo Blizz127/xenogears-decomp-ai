@@ -1518,14 +1518,33 @@ int main(int argc, char** argv) {
              * harness AND the normal KernelMenu path, so they run unconditionally
              * once the archive is available. */
             PcPort_LoadSystemTextData();
-            {
+            /* Retail boot (func_80019578 0x80019870): func_8001BB50 loads the
+             * new-game template (archive 0x10 file 3, 0x2358 bytes) over
+             * g_GameState.  The template extends past the 0x2300 GameState
+             * into the field transition tuple D_8006F94E/50/52/54, so this is
+             * what selects the first field map after the opening movie.  The
+             * harness lane keeps its own map/entrance selection below. */
+            if (!(getenv("XENO_FIELD_TEST") && getenv("XENO_FIELD_TEST")[0] == '1')) {
+                extern void func_8001BB50(void);
+                func_8001BB50();
+                printf("[xeno-port][boot] func_8001BB50: new-game template loaded "
+                       "(map=%u ent=%u cam=%u)\n",
+                       (unsigned int)D_8006F94E, (unsigned int)D_8006F954,
+                       (unsigned int)D_8006F950);
+            }
+            /* Harness lane only (XENO_FIELD_TEST=1).  The retail boot never
+             * runs these: func_8001ACA4 has no caller in the retail EXE, and
+             * its five pinned skin buffers at the top of the heap would push
+             * the free region below 0x801D3008, where MovieMain places the
+             * movie player module. */
+            if (getenv("XENO_FIELD_TEST") && getenv("XENO_FIELD_TEST")[0] == '1') {
                 extern unsigned char g_GameState[];
                 /* Retail roster stand-in; remove when new-game setup is ported. */
                 g_GameState[0x1D34] = 0x00; /* Fei */
                 g_GameState[0x1D35] = 0x02; /* character ID 2 */
                 g_GameState[0x1D36] = 0xFF; /* empty */
+                func_8001ACA4();
             }
-            func_8001ACA4();
             {
                 const char* fieldMap = getenv("XENO_FIELD_MAP");
                 if (fieldMap != NULL && fieldMap[0] != '\0') {
@@ -1590,20 +1609,6 @@ int main(int argc, char** argv) {
                     }
                 }
             }
-            /* Normal-boot field target for the port-side title/new-game flow
-             * (PcPort_BootMain). When this is NOT a field-test run, default to
-             * the opening room (MAP14) entrance 0, camera octant 7. Any explicit
-             * XENO_FIELD_* override set above still wins; a field-test run is
-             * left untouched so the smokes keep their own map/entrance. */
-            {
-                const char* fieldTest = getenv("XENO_FIELD_TEST");
-                if (!(fieldTest && fieldTest[0] == '1')) {
-                    PcPort_ApplyNormalBootFieldDefaults();
-                    printf("[xeno-port][field] normal boot -> MAP14 default "
-                           "(map=%u ent=%u camoct=7)\n",
-                           (unsigned int)D_8006F94E, (unsigned int)D_8006F954);
-                }
-            }
             printf("[xeno-port][field] font + party-skin init done\n");
         } else {
             printf("[xeno-port] WARNING: no disc image found "
@@ -1616,6 +1621,41 @@ int main(int argc, char** argv) {
      * migrated EXE blob, LoadImage CLUT+texture, DrawPrim a sprite with a
      * fade-in/hold/fade-out via Vsync), and bypasses the game ordering table. */
     GameShowSplashScreen();
+
+    /* Retail boot tail (func_80019578, 0x80019888..0x80019938): the opening
+     * movie state.  D_8004FE44 = movie number 1, D_8004FE46 = state 1 (Field)
+     * to enter afterwards, D_8004FE47 = 0 (skipping allowed), D_8004FE45 =
+     * disc number; g_CurGameStateOverlayID = -1; then func_8001B6BC (empty),
+     * ChangeGameState(6) and MainLoop(0).  MovieMain plays archive 0x18/1
+     * movie 1 and hands over to FieldMain with D_8006F94E still 0, i.e. the
+     * title screen on Map 0.  XENO_FIELD_TEST=1 keeps the developer path of
+     * entering state 0 (KernelMenu) directly. */
+    {
+        const char* fieldTest = getenv("XENO_FIELD_TEST");
+        extern unsigned char D_8004FE44;
+        extern unsigned char D_8004FE45;
+        extern unsigned char D_8004FE46;
+        extern unsigned char D_8004FE47;
+        extern unsigned int g_CurGameStateOverlayID;
+        extern void* g_CurGameStateOverlayBuffer;
+        extern int ArchiveGetDiscNumber(void);
+        extern void func_8001B6BC(void);
+        extern void ChangeGameState(unsigned int state);
+
+        g_CurGameStateOverlayID = (unsigned int)-1;
+        g_CurGameStateOverlayBuffer = NULL;
+        D_8004FE44 = 1;
+        D_8004FE46 = 1;
+        D_8004FE47 = 0;
+        D_8004FE45 = (unsigned char)ArchiveGetDiscNumber();
+        func_8001B6BC();
+        if (!(fieldTest && fieldTest[0] == '1')) {
+            printf("[xeno-port][boot] retail boot: movie state 6 (movie %u, disc %u) -> state %u\n",
+                   (unsigned int)D_8004FE44, (unsigned int)D_8004FE45,
+                   (unsigned int)D_8004FE46);
+            ChangeGameState(6);
+        }
+    }
 
     /* Oracle bootstrap: the real entry `start` (0x80019524) is still raw MIPS
      * asm, so we call the decompiled MainLoop() directly. It will run real game

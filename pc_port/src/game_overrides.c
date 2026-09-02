@@ -2406,22 +2406,18 @@ void PcPort_WorldMapPlaceholderMain(void)
 
 void PcPort_InitGameStates(void)
 {
-    const char* fieldTest = getenv("XENO_FIELD_TEST");
-    int useKernelMenu = (fieldTest && fieldTest[0] == '1');
+    extern void MovieMain(void);
 
-    /* [idx] = { pFnMain, pMemStart, pHeapStart, hasOverlay } */
-    /* Normal boot: title/movie-skip/new-game stand-in. Field-test/smokes keep
-     * the debug KernelMenu so XENO_KERNEL_SEL can still drive Field/etc. */
-    g_MainGameStates[0].pFnMain    = useKernelMenu ? KernelMenuMain
-                                                   : PcPort_BootMain;
+    /* [idx] = { pFnMain, pMemStart, pHeapStart, hasOverlay } — retail table
+     * at SLUS 0x8001808C.  State 0 is the developer KernelMenu (0x8001A4B4);
+     * the shipping boot never enters it (port_main.c calls
+     * ChangeGameState(6) after the splash, as func_80019578 does), while the
+     * XENO_FIELD_TEST=1 harness starts there so XENO_KERNEL_SEL can still
+     * drive Field/etc. */
+    g_MainGameStates[0].pFnMain    = KernelMenuMain;
     g_MainGameStates[0].pMemStart  = PSX_ADDR(0x000592b8);
     g_MainGameStates[0].pHeapStart = PSX_ADDR(0x0006faec);
     g_MainGameStates[0].hasOverlay = 0;
-
-    if (useKernelMenu)
-        printf("[xeno-port][boot] field-test: KernelMenu boot state\n");
-    else
-        printf("[xeno-port][boot] normal: title/menu boot state\n");
 
     g_MainGameStates[1].pFnMain    = FieldMain;
     g_MainGameStates[1].pMemStart  = PSX_ADDR(0x000af5e4);
@@ -2446,13 +2442,21 @@ void PcPort_InitGameStates(void)
                "enabled (hasOverlay=1)\n");
     }
 
-    /* states 4 and 6 are field/battle overlay mains not yet symbol-named;
-     * left NULL until the oracle reaches them. */
+    /* state 4 (battling, main 0x80088E90, archive 0x0D) is not yet ported;
+     * left NULL until the oracle reaches it. */
 
     g_MainGameStates[5].pFnMain    = MenuMain;
     g_MainGameStates[5].pMemStart  = PSX_ADDR(0x000592b8);
     g_MainGameStates[5].pHeapStart = PSX_ADDR(0x0006faec);
     g_MainGameStates[5].hasOverlay = 0;
+
+    /* Retail state 6: movie.bin (archive 0x12), main 0x800737EC, state/BSS
+     * 0x80076F38, heap 0x80077454.  src/movie/main.c + the native movie
+     * player module (pc_port/src/movie_player.c). */
+    g_MainGameStates[6].pFnMain    = MovieMain;
+    g_MainGameStates[6].pMemStart  = PSX_ADDR(0x00076f38);
+    g_MainGameStates[6].pHeapStart = PSX_ADDR(0x00077454);
+    g_MainGameStates[6].hasOverlay = 1;
 }
 
 /* ---------------------------------------------------------------------------
