@@ -1,8 +1,21 @@
 /*
- * World-map scheduler callback 0x800914D0 (slot-9 cb1).
+ * World-map scheduler callback 0x800914D0 (slot-9 cb1, on-foot camera).
  *
  * Register-faithful transcription of retail world_map.bin
  * [0x800914D0, 0x80091B54).  See world_map_callback_914d0.h.
+ *
+ * Pre-dispatch JT @0x80070BE4 (index = (s16)(lhu(slot+0x04) - 9),
+ * sltiu 9):
+ *   0 -> 0x80091528   1 -> 0x80091558   2..5 -> 0x800915A4 (skip)
+ *   6 -> 0x80091570   7 -> 0x80091580   8 -> 0x80091590
+ * Main dispatch JT @0x80070C0C (index = lh(slot+0x20), sltiu 17):
+ *   0 -> 0x800915D0   1 -> 0x800916CC   2 -> 0x800916F4
+ *   16 -> 0x800917BC  3..15 -> 0x80091870 (skip)
+ * Post-dispatch (0x80091870): states 0/1/2/16 follow the pose block
+ * with a 1/8 step (0x800918A4); state 3 snaps X/Z and eases Y by 1/16
+ * (0x80091A2C).  Every path exits through the common tail 0x80091B04,
+ * which wraps slot+0x28 via 0x80093354 and publishes slot+0x28..+0x34
+ * to the world position block D_8009BE28..D_8009BE34.
  */
 #include <stdint.h>
 #include <string.h>
@@ -15,15 +28,19 @@
 #include "world_map_helper_97770.h"
 
 #define POOL_PTR    0x8009BE24u
-#define HEAD_MIRROR 0x8009BD3Au
-#define DIR_WORD    0x8009CD4Cu
-#define D_8009D55C  0x8009D55Cu
-#define D_8009D560  0x8009D560u
-#define D_8009D564  0x8009D564u
+#define HEAD_MIRROR 0x8009BD3Au /* lh/sh -17094 */
+#define D_8009D52C  0x8009D52Cu /* lh -10964 */
+#define DIR_WORD    0x8009CD4Cu /* lhu -12980 */
+#define D_8009D55C  0x8009D55Cu /* pose block X */
+#define D_8009D560  0x8009D560u /* pose block Y */
+#define D_8009D564  0x8009D564u /* pose block Z */
 #define D_8009BBB4  0x8009BBB4u
 #define D_8009BBBC  0x8009BBBCu
+#define D_8009BE28  0x8009BE28u
 
-/* Dead retail-stack region, following WM_95414_FRAME_ATTR. */
+/* Dead retail-stack region, following WM_95414_FRAME_ATTR.  Retail
+ * builds the pose delta on its own stack (sp+0x10..0x18) and hands that
+ * address to the guest-pointer wrap helper 0x80093484. */
 #define WM_914D0_FRAME_DELTA 0x801FFDC0u
 
 static s16 d0_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
@@ -32,252 +49,254 @@ static s32 d0_lw(u32 a) { s32 v; memcpy(&v, PSX_ADDR(a), 4); return v; }
 static void d0_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static void d0_sw(u32 a, s32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 
-/* Heading interpolation helper: move current toward target by step */
-static s32 heading_interp(s32 current, s32 target, s32 max_step)
+/* 0x8009164C..0x800916C8: shared heading accumulator step.  The
+ * accumulator slot+0x58 is masked to 24 bits before the >>12 publish. */
+static void d0_heading_step(u32 slot)
 {
-    s32 diff = target - current;
-    s32 abs_diff = diff < 0 ? -diff : diff;
+    s32 current = (s32)d0_lh(HEAD_MIRROR);
+    s32 target = d0_lw(slot + 0x50u);
+    s32 diff;
+    s32 magnitude;
+    u32 accumulator;
 
-    /* Wrap to [-0x800, 0x800] range */
-    if (abs_diff > 0xC00) {
-        if (diff < 0) diff += 0x1000;
-        else diff -= 0x1000;
+    if (current == target) {
+        d0_sw(slot + 0x58u, (s32)((u32)current << 12));
+        return;
     }
 
-    /* Clamp step */
-    abs_diff = diff < 0 ? -diff : diff;
-    if (abs_diff > max_step) {
-        if (diff < 0) diff = -max_step;
-        else diff = max_step;
+    diff = (s32)((u32)target - (u32)current);
+    magnitude = diff < 0 ? -diff : diff;
+    if (!(magnitude < 3073)) {
+        if (diff >= 0)
+            diff -= 4096;
+        else
+            diff += 4096;
     }
 
-    return (current + diff) & 0xFFF;
+    accumulator = (u32)d0_lw(slot + 0x58u) +
+                  (u32)(((s32)((u32)diff << 12)) >> 3);
+    accumulator &= 0x00FFFFFFu;
+    d0_sw(slot + 0x58u, (s32)accumulator);
+    d0_sh(HEAD_MIRROR, (u16)(accumulator >> 12));
+}
+
+/* 0x800916F4 / 0x800917BC: approach the heading target with a clamped
+ * step (±0x180 per frame, divided by 8 for state 2 and by 32 for state
+ * 16).  Returns the newly published heading. */
+static s32 d0_heading_approach(u32 slot, u32 shift)
+{
+    s32 target = d0_lw(slot + 0x50u);
+    s32 diff = (s32)((u32)target - (u32)(s32)d0_lh(HEAD_MIRROR));
+    s32 magnitude = diff < 0 ? -diff : diff;
+    u32 accumulator;
+
+    if (!(magnitude < 2049)) {
+        if (diff >= 0)
+            diff -= 4096;
+        else
+            diff += 4096;
+    }
+
+    magnitude = diff < 0 ? -diff : diff;
+    if (!(magnitude < 385))
+        diff = diff >= 0 ? 384 : -384;
+
+    accumulator = (u32)d0_lw(slot + 0x58u) +
+                  (u32)(((s32)((u32)diff << 12)) >> shift);
+    accumulator &= 0x00FFFFFFu;
+    d0_sw(slot + 0x58u, (s32)accumulator);
+    d0_sh(HEAD_MIRROR, (u16)(accumulator >> 12));
+    return (s32)(accumulator >> 12);
 }
 
 s32 wm_800914D0(s32 slot_idx)
 {
     u32 pool_ptr = (u32)d0_lw(POOL_PTR);
     u32 slot = pool_ptr + (u32)(slot_idx << 7);
+    s16 state;
 
-    /* Pre-dispatch on slot[+0x04]-9 */
+    /* Pre-dispatch on (s16)(slot[+0x04] - 9), sltiu 9. */
     {
-        u16 sub = d0_lhu(slot + 0x04);
-        s32 idx = (s32)(s16)(sub - 9);
+        s32 idx = (s32)(s16)(d0_lhu(slot + 0x04u) - 9u);
 
-        if (idx >= 0 && idx < 9) {
+        if ((u32)idx < 9u) {
             switch (idx) {
-            case 0: /* set main=2, target heading */
-                d0_sh(slot + 0x04, 0);
-                d0_sh(slot + 0x20, 2);
-                d0_sw(slot + 0x50, (s32)d0_lh(HEAD_MIRROR));
-                d0_sw(slot + 0x58, (s32)(d0_lh(HEAD_MIRROR) << 12));
+            case 0: /* 0x80091528 */
+                d0_sh(slot + 0x04u, 0);
+                d0_sh(slot + 0x20u, 2);
+                d0_sw(slot + 0x50u, (s32)d0_lh(D_8009D52C));
+                d0_sw(slot + 0x58u,
+                      (s32)((u32)(s32)d0_lh(HEAD_MIRROR) << 12));
                 break;
-            case 1: /* set main=0, store heading */
-                d0_sh(slot + 0x04, 0);
-                d0_sh(slot + 0x20, 0);
-                d0_sw(slot + 0x50, (s32)d0_lh(HEAD_MIRROR));
+            case 1: /* 0x80091558 */
+                d0_sh(slot + 0x04u, 0);
+                d0_sh(slot + 0x20u, 0);
+                d0_sw(slot + 0x50u, (s32)d0_lh(HEAD_MIRROR));
                 break;
-            case 6: /* set main=0x10, heading offset -0x200 */
-                d0_sh(slot + 0x20, 0x10);
-                d0_sh(slot + 0x04, 0);
-                d0_sw(slot + 0x50, 0x800);
+            case 6: /* 0x80091570 */
+                d0_sh(slot + 0x20u, 16);
+                d0_sh(slot + 0x04u, 0);
+                d0_sw(slot + 0x50u, 0x800);
                 break;
-            case 7: /* set main=0x10, heading offset +0x200 */
-                d0_sh(slot + 0x20, 0x10);
-                d0_sh(slot + 0x04, 0);
-                d0_sw(slot + 0x50, 0xA00);
+            case 7: /* 0x80091580 */
+                d0_sh(slot + 0x20u, 16);
+                d0_sh(slot + 0x04u, 0);
+                d0_sw(slot + 0x50u, 0xA00);
                 break;
-            case 8: /* set main=0x10, heading offset +0x400 */
-                d0_sh(slot + 0x20, 0x10);
-                d0_sh(slot + 0x04, 0);
-                d0_sw(slot + 0x50, 0xC00);
+            case 8: /* 0x80091590 */
+                d0_sh(slot + 0x20u, 16);
+                d0_sh(slot + 0x04u, 0);
+                d0_sw(slot + 0x50u, 0xC00);
                 break;
-            default: /* 2,3,4,5: fall through */
+            default: /* 2..5 -> 0x800915A4 */
                 break;
             }
         }
     }
 
-    /* Main dispatch on slot[+0x20] */
-    {
-        s16 state = d0_lh(slot + 0x20);
+    /* Main dispatch on lh(slot[+0x20]), sltiu 17. */
+    state = d0_lh(slot + 0x20u);
+    if ((u32)(s32)state < 17u) {
+        switch (state) {
+        case 0: { /* 0x800915D0: d-pad turn request, then heading step */
+            u32 dir_bits = ((u32)d0_lhu(DIR_WORD) >> 2) & 3u;
 
-        if (state == 0) {
-            /* State 0: D-pad direction check */
-            u16 dir = d0_lhu(DIR_WORD);
-            u32 dir_bits = (dir >> 2) & 3;
-
-            if (dir_bits == 1 || dir_bits == 3) {
-                d0_sh(slot + 0x20, 1);
-                d0_sw(slot + 0x54, -0x40);
-                d0_sw(slot + 0x5C, (d0_lw(slot + 0x50) - 0x200) & 0xFFF);
-            } else if (dir_bits == 2) {
-                d0_sh(slot + 0x20, 1);
-                d0_sw(slot + 0x54, 0x40);
-                d0_sw(slot + 0x5C, (d0_lw(slot + 0x50) + 0x200) & 0xFFF);
+            if (dir_bits == 2u) {
+                d0_sh(slot + 0x20u, 1);
+                d0_sw(slot + 0x54u, 64);
+                d0_sw(slot + 0x5Cu,
+                      (s32)(((u32)d0_lw(slot + 0x50u) + 512u) & 0xFFFu));
+            } else if (dir_bits == 1u || dir_bits == 3u) {
+                d0_sh(slot + 0x20u, 1);
+                d0_sw(slot + 0x54u, -64);
+                d0_sw(slot + 0x5Cu,
+                      (s32)(((u32)d0_lw(slot + 0x50u) - 512u) & 0xFFFu));
             }
+            d0_heading_step(slot);
+            break;
+        }
+        case 1: { /* 0x800916CC: sweep target by +0x54 until +0x5C */
+            s32 next = (s32)(((u32)d0_lw(slot + 0x50u) +
+                              (u32)d0_lw(slot + 0x54u)) & 0xFFFu);
 
-            /* Heading interpolation */
-            {
-                s32 target = d0_lw(slot + 0x50);
-                s32 current = (s32)d0_lh(HEAD_MIRROR);
-                if (current != target) {
-                    s32 diff = target - current;
-                    s32 abs_diff = diff < 0 ? -diff : diff;
-                    if (abs_diff > 0xC00) {
-                        if (diff < 0) diff += 0x1000;
-                        else diff -= 0x1000;
-                    }
-                    /* Apply step: diff << 12 >> 3 = diff << 9 */
-                    s32 step = (diff << 12) >> 3;
-                    s32 new_acc = (d0_lw(slot + 0x58) + step) & 0xFFFFFFFFu;
-                    d0_sw(slot + 0x58, new_acc);
-                    d0_sh(HEAD_MIRROR, (u16)(new_acc >> 12));
-                } else {
-                    d0_sw(slot + 0x58, current << 12);
-                }
-            }
+            d0_sw(slot + 0x50u, next);
+            if (next == d0_lw(slot + 0x5Cu))
+                d0_sh(slot + 0x20u, 0);
+            d0_heading_step(slot);
+            break;
+        }
+        case 2: { /* 0x800916F4 */
+            s32 heading = d0_heading_approach(slot, 3u);
 
-        } else if (state == 1) {
-            /* State 1: smooth heading interpolation */
-            s32 target = d0_lw(slot + 0x50);
-            s32 speed = d0_lw(slot + 0x54);
-            s32 new_heading = (target + speed) & 0xFFF;
-            d0_sw(slot + 0x50, new_heading);
-
-            if (new_heading != d0_lw(slot + 0x5C)) {
-                /* Continue interpolation */
-                s32 current = (s32)d0_lh(HEAD_MIRROR);
-                s32 diff = new_heading - current;
-                s32 abs_diff = diff < 0 ? -diff : diff;
-                if (abs_diff > 0xC00) {
-                    if (diff < 0) diff += 0x1000;
-                    else diff -= 0x1000;
-                }
-                s32 step = (diff << 12) >> 3;
-                s32 new_acc = (d0_lw(slot + 0x58) + step) & 0xFFFFFFFFu;
-                d0_sw(slot + 0x58, new_acc);
-                d0_sh(HEAD_MIRROR, (u16)(new_acc >> 12));
-            } else {
-                d0_sh(slot + 0x20, 0);
-            }
-
-        } else if (state == 2) {
-            /* State 2: approach step */
-            s32 target = d0_lw(slot + 0x50);
-            s32 current = (s32)d0_lh(HEAD_MIRROR);
-            s32 diff = target - current;
-            s32 abs_diff = diff < 0 ? -diff : diff;
-
-            /* Wrap */
-            if (abs_diff > 0x800) {
-                if (diff < 0) diff += 0x1000;
-                else diff -= 0x1000;
-            }
-
-            /* Clamp to ±0x180 */
-            abs_diff = diff < 0 ? -diff : diff;
-            if (abs_diff > 0x180) {
-                diff = diff < 0 ? 0x180 : -0x180;
-            }
-
-            /* Apply step: diff << 12 >> 3 */
-            s32 step = (diff << 12) >> 3;
-            s32 new_acc = (d0_lw(slot + 0x58) + step) & 0xFFFFFFFFu;
-            d0_sw(slot + 0x58, new_acc);
-            d0_sh(HEAD_MIRROR, (u16)(new_acc >> 12));
-
-            /* Check if target reached and speed zero */
-            if (((u32)d0_lh(HEAD_MIRROR) ^ (u32)target) < 1 &&
-                d0_lw(slot + 0x60) == 0) {
-                d0_sh(slot + 0x20, 3);
+            if (heading == d0_lw(slot + 0x50u) && d0_lw(slot + 0x60u) == 0) {
+                d0_sh(slot + 0x20u, 3);
                 wm_80097770(7, 0x0B);
             }
+            break;
+        }
+        case 16: { /* 0x800917BC */
+            s32 heading = d0_heading_approach(slot, 5u);
 
-        } else if (state == 16) {
-            /* State 16: fast heading interpolation */
-            s32 target = d0_lw(slot + 0x50);
-            s32 current = (s32)d0_lh(HEAD_MIRROR);
-            s32 diff = target - current;
-            s32 abs_diff = diff < 0 ? -diff : diff;
-
-            if (abs_diff > 0x800) {
-                if (diff < 0) diff += 0x1000;
-                else diff -= 0x1000;
-            }
-
-            abs_diff = diff < 0 ? -diff : diff;
-            if (abs_diff > 0x180) {
-                diff = diff < 0 ? 0x180 : -0x180;
-            }
-
-            /* Apply step: diff << 12 >> 5 (faster) */
-            s32 step = (diff << 12) >> 5;
-            s32 new_acc = (d0_lw(slot + 0x58) + step) & 0xFFFFFFFFu;
-            d0_sw(slot + 0x58, new_acc);
-            d0_sh(HEAD_MIRROR, (u16)(new_acc >> 12));
-
-            if (((u32)d0_lh(HEAD_MIRROR) ^ (u32)target) < 1 &&
-                d0_lw(slot + 0x60) == 0) {
-                d0_sh(slot + 0x20, 3);
-            }
+            if (heading == d0_lw(slot + 0x50u) && d0_lw(slot + 0x60u) == 0)
+                d0_sh(slot + 0x20u, 3);
+            break;
+        }
+        default: /* 3..15 -> 0x80091870 */
+            break;
         }
     }
 
-    /* Post-dispatch: position update for states 3 and 0x10 */
-    {
-        s16 state = d0_lh(slot + 0x20);
-        if (state == 3 || state == 0x10) {
-            u32 pose_block = D_8009D55C;
-            s32 px = d0_lw(slot + 0x28);
-            s32 py = d0_lw(slot + 0x2C);
-            s32 pz = d0_lw(slot + 0x30);
-            s32 bx = d0_lw(pose_block + 0);
-            s32 by = d0_lw(pose_block + 4);
-            s32 bz = d0_lw(pose_block + 8);
+    /* Post-dispatch (0x80091870): follow the pose block D_8009D55C. */
+    state = d0_lh(slot + 0x20u);
+    if (state == 3) {
+        /* 0x80091A2C: snap X/Z, ease Y by 1/16. */
+        s32 px = d0_lw(slot + 0x28u);
+        s32 py = d0_lw(slot + 0x2Cu);
+        s32 pz = d0_lw(slot + 0x30u);
+        s32 bx = d0_lw(D_8009D55C);
+        s32 by = d0_lw(D_8009D560);
+        s32 bz = d0_lw(D_8009D564);
 
-            if (px != bx || py != by || pz != bz) {
-                /* Compute delta */
-                s32 dx = bx - px;
-                s32 dz = bz - pz;
-                u32 delta_vec[3];
-                delta_vec[0] = (u32)dx;
-                delta_vec[1] = 0;
-                delta_vec[2] = (u32)dz;
+        if (px != bx || py != by || pz != bz) {
+            u32 delta[3];
 
-                /* F1 repair - W34C16/W34C18.  wm_80093484 reads and may
-                 * rewrite X/Z, so materialize retail's stack vector in guest
-                 * RAM and copy the completed vector back. */
-                memcpy(PSX_ADDR(WM_914D0_FRAME_DELTA), delta_vec,
-                       sizeof(delta_vec));
-                wm_80093484(WM_914D0_FRAME_DELTA);
-                memcpy(delta_vec, PSX_ADDR(WM_914D0_FRAME_DELTA),
-                       sizeof(delta_vec));
+            delta[0] = (u32)bx - (u32)px;
+            delta[1] = (u32)by - (u32)py;
+            delta[2] = (u32)bz - (u32)pz;
+            memcpy(PSX_ADDR(WM_914D0_FRAME_DELTA), delta, sizeof(delta));
+            wm_80093484(WM_914D0_FRAME_DELTA);
+            memcpy(delta, PSX_ADDR(WM_914D0_FRAME_DELTA), sizeof(delta));
 
-                /* Scale delta >> 3 */
-                dx = (s32)delta_vec[0] >> 3;
-                dz = (s32)delta_vec[2] >> 3;
+            d0_sw(slot + 0x2Cu,
+                  (s32)((u32)d0_lw(slot + 0x2Cu) +
+                        (u32)((s32)delta[1] >> 4)));
+            d0_sw(D_8009BBB4, (s32)((u32)d0_lw(D_8009BBB4) + delta[0]));
+            d0_sw(D_8009BBBC, (s32)((u32)d0_lw(D_8009BBBC) + delta[2]));
+            d0_sw(slot + 0x28u, d0_lw(D_8009D55C));
+            d0_sw(slot + 0x30u, d0_lw(D_8009D564));
+        }
+    } else if (state == 0 || state == 1 || state == 2 || state == 16) {
+        /* 0x800918A4: step 1/8 of the delta; snap when within 64 units. */
+        s32 px = d0_lw(slot + 0x28u);
+        s32 py = d0_lw(slot + 0x2Cu);
+        s32 pz = d0_lw(slot + 0x30u);
+        s32 bx = d0_lw(D_8009D55C);
+        s32 by = d0_lw(D_8009D560);
+        s32 bz = d0_lw(D_8009D564);
 
-                if (dx < 0) dx = -dx;
-                if (dz < 0) dz = -dz;
+        if (px != bx || py != by || pz != bz) {
+            u32 delta[3];
+            s32 step_x;
+            s32 step_y;
+            s32 step_z;
+            s32 abs_x;
+            s32 abs_z;
 
-                if (dx < 0x40 && dz < 0x40) {
-                    /* Close enough: snap to target */
-                    d0_sw(slot + 0x60, 0);
-                    d0_sw(D_8009BBB4, d0_lw(D_8009BBB4) + (s32)delta_vec[0]);
-                    d0_sw(D_8009BBBC, d0_lw(D_8009BBBC) + (s32)delta_vec[2]);
-                    d0_sw(slot + 0x28, d0_lw(pose_block + 0));
-                    d0_sw(slot + 0x30, d0_lw(pose_block + 8));
-                } else {
-                    /* Still far: set flag */
-                    d0_sw(slot + 0x60, 1);
-                }
+            delta[0] = (u32)bx - (u32)px;
+            delta[1] = (u32)by - (u32)py;
+            delta[2] = (u32)bz - (u32)pz;
+            memcpy(PSX_ADDR(WM_914D0_FRAME_DELTA), delta, sizeof(delta));
+            wm_80093484(WM_914D0_FRAME_DELTA);
+            memcpy(delta, PSX_ADDR(WM_914D0_FRAME_DELTA), sizeof(delta));
 
-                /* Update Y from pose block */
-                d0_sw(slot + 0x2C, d0_lw(pose_block + 4));
+            step_x = (s32)delta[0] >> 3;
+            step_y = (s32)delta[1] >> 3;
+            step_z = (s32)delta[2] >> 3;
+            abs_x = step_x < 0 ? -step_x : step_x;
+            abs_z = step_z < 0 ? -step_z : step_z;
+
+            if (abs_x < 64 && abs_z < 64) {
+                d0_sw(slot + 0x60u, 0);
+                d0_sw(D_8009BBB4,
+                      (s32)((u32)d0_lw(D_8009BBB4) + delta[0]));
+                d0_sw(D_8009BBBC,
+                      (s32)((u32)d0_lw(D_8009BBBC) + delta[2]));
+                d0_sw(slot + 0x28u, d0_lw(D_8009D55C));
+                d0_sw(slot + 0x30u, d0_lw(D_8009D564));
+            } else {
+                d0_sw(slot + 0x60u, 1);
+                d0_sw(slot + 0x28u,
+                      (s32)((u32)d0_lw(slot + 0x28u) + (u32)step_x));
+                d0_sw(slot + 0x30u,
+                      (s32)((u32)d0_lw(slot + 0x30u) + (u32)step_z));
+                d0_sw(D_8009BBB4,
+                      (s32)((u32)d0_lw(D_8009BBB4) + (u32)step_x));
+                d0_sw(D_8009BBBC,
+                      (s32)((u32)d0_lw(D_8009BBBC) + (u32)step_z));
             }
+            d0_sw(slot + 0x2Cu,
+                  (s32)((u32)d0_lw(slot + 0x2Cu) + (u32)step_y));
         }
     }
+
+    /* Common tail 0x80091B04: wrap the camera anchor and publish it as
+     * the world position block consumed by the object/sprite passes and
+     * the view-matrix builder. */
+    wm_80093354(slot + 0x28u);
+    d0_sw(D_8009BE28 + 0x0u, d0_lw(slot + 0x28u));
+    d0_sw(D_8009BE28 + 0x4u, d0_lw(slot + 0x2Cu));
+    d0_sw(D_8009BE28 + 0x8u, d0_lw(slot + 0x30u));
+    d0_sw(D_8009BE28 + 0xCu, d0_lw(slot + 0x34u));
 
     return 1;
 }
