@@ -5,7 +5,7 @@
 - Commits: `6432959f` (split configs), `a177ca62` (movie.bin decomp),
   `f03b1747` (SLUS BSS symbols), `e7a4b4f6` (split boundary fixes),
   `7991642c` (PsyCross CD streaming + display present), `3d107600` (movie
-  player module port), `847520e9` (boot wiring), `13…` (overlays.yaml
+  player module port), `847520e9` (boot wiring), `34219225` (overlays.yaml
   comment)
 - Date: 2026-09-02
 - Verdict: **OPENING_MOVIE_PLAYS_ON_RETAIL_PATH; TITLE_SCREEN_ON_MAP0_NOT_YET_VERIFIED**
