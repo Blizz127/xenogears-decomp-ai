@@ -25,18 +25,40 @@ OBJ="$OUT/obj"
 # the normal artifacts stay untouched. Used to prove the sound tick gate
 # (g_SoundTickMutex) holds: zero data races on sound shared state under
 # main-thread-vs-240Hz-tick contention.
+#
+# XENO_ASAN=1 is the same regime with AddressSanitizer instead, for memory
+# errors (heap overruns in port-side host allocations) rather than races. It
+# uses its own build dirs (pc_port/build_asan, pc_port/build_native_asan) and
+# is mutually exclusive with XENO_TSAN.
 TSAN_FLAGS=""
 PSYX_BUILD="pc_port/build"
+if [ "${XENO_TSAN:-0}" = "1" ] && [ "${XENO_ASAN:-0}" = "1" ]; then
+    echo "ERROR: XENO_TSAN and XENO_ASAN are mutually exclusive."
+    exit 1
+fi
 if [ "${XENO_TSAN:-0}" = "1" ]; then
     TSAN_FLAGS="-fsanitize=thread"
     PSYX_BUILD="pc_port/build_tsan"
     OUT="pc_port/build_native_tsan"
     OBJ="$OUT/obj"
     echo "==> XENO_TSAN=1: ThreadSanitizer build -> $OUT"
+elif [ "${XENO_ASAN:-0}" = "1" ]; then
+    # -fno-omit-frame-pointer keeps ASan's reports readable; the sanitizer is
+    # otherwise configured entirely through ASAN_OPTIONS at run time.
+    # -static-libasan is required, not cosmetic: the port runs against the
+    # prebuilt SDL2/OpenAL in xenogears-assets/lib via LD_LIBRARY_PATH, which
+    # get loaded ahead of a dynamic libasan and trip ASan's "runtime does not
+    # come first in initial library list" bail-out (LD_PRELOAD does not fix
+    # it here). Linking the runtime in statically sidesteps the ordering.
+    TSAN_FLAGS="-fsanitize=address -fno-omit-frame-pointer -static-libasan"
+    PSYX_BUILD="pc_port/build_asan"
+    OUT="pc_port/build_native_asan"
+    OBJ="$OUT/obj"
+    echo "==> XENO_ASAN=1: AddressSanitizer build -> $OUT"
 fi
 mkdir -p "$OBJ"
 if [ -n "$TSAN_FLAGS" ] && [ -f pc_port/build_native/stubs.c ] && [ ! -f "$OUT/stubs.c" ]; then
-    # The TSan variant mirrors the normal build: reuse its validated stub
+    # The sanitizer variants mirror the normal build: reuse its validated stub
     # manifest (without matching ELFs the generator cannot create one, and
     # the undef set is identical by construction).
     cp pc_port/build_native/stubs.c "$OUT/stubs.c"
@@ -79,8 +101,8 @@ GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKI
 if [ -n "${XENO_DIAG_DEFINES:-}" ]; then
     GFLAGS="$GFLAGS $XENO_DIAG_DEFINES"
 fi
-# TSan instrumentation for game TUs (see XENO_TSAN above). GFLAGS stays
-# byte-for-byte unchanged when unset.
+# Sanitizer instrumentation for game TUs (see XENO_TSAN / XENO_ASAN above).
+# GFLAGS stays byte-for-byte unchanged when unset.
 if [ -n "$TSAN_FLAGS" ]; then
     GFLAGS="$GFLAGS $TSAN_FLAGS"
 fi
@@ -1441,7 +1463,7 @@ fi
 
 LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
 if [ -n "$TSAN_FLAGS" ]; then
-    # TSan's EH instrumentation of the C++ PsyCross objects references the
+    # Sanitizer EH instrumentation of the C++ PsyCross objects references the
     # C++ personality routine (__gxx_personality_v0); the normal build does
     # not need libstdc++ at all.
     LIBS="$LIBS -lstdc++"
