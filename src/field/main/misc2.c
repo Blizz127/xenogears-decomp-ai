@@ -1418,6 +1418,19 @@ void FieldPollControllers(void) {
     D_800C2694 &= D_800ADB00;
 
 #ifdef XENO_PC_PORT
+    /* DIAGNOSTIC / TEST TOOLING (remove with PcPort_FieldTestInput* in
+     * pc_port/src/test_input.c): scripted field input from
+     * XENO_FIELD_TEST_INPUT, merged at retail's post-drain accumulator seam so
+     * button-gated scenes (e.g. the Map 4 prologue's OP31 Circle wait) can be
+     * driven headlessly. Unset => no effect; real pads are still ORed in. */
+    {
+        extern int PcPort_FieldTestInputInit(void);
+        extern void PcPort_FieldTestInputMerge(u16*, u16*, u16*);
+
+        PcPort_FieldTestInputInit();
+        PcPort_FieldTestInputMerge(&D_800AFE9C, &D_800C3900, &D_800C2694);
+    }
+
     /* Headless field-test: synthesize Circle-released when a text box is
      * waiting on confirm (window flags bit 0x8). Real pads still work; this
      * only ORs the bit so well/dialog scripts can finish without a human. */
@@ -2119,6 +2132,48 @@ void func_8007554C(void) {
         printf("[field-diag] frame=%d D_800ADC18=%d useOT2=%d primSubmits=%d DrawOTag=1\n",
                (int)diagFrame, (int)D_800ADC18, (int)g_FieldRenderContextUseOT2,
                (int)g_FieldDiagSubmittedThisFrame);
+    }
+    /* DIAGNOSTIC (remove with the title-backdrop probes): histogram the
+     * packet codes reachable from the OT DrawOTag is about to walk, so a
+     * submitted-but-invisible layer (Map 490 horizon FT4s) can be told apart
+     * from one that never reached the list. Host prims sit below 16 MiB, so
+     * the 24-bit links are direct pointers. */
+    if (XenoFieldDiagEnabled() && diagFrame >= 4 && diagFrame < 7) {
+        u32* head = (u32*)((u8*)g_FieldCurRenderContext + 0x80F0);
+        u32 link = *head;
+        int hist[256] = {0};
+        int total = 0, steps = 0, ft4s = 0;
+        char buf[512];
+        int n = 0, c;
+        while ((link & 0xFFFFFF) != 0xFFFFFF && steps < 200000) {
+            u32* pkt = (u32*)(uintptr_t)(link & 0xFFFFFF);
+            u32 len = link >> 24;
+            if (pkt == NULL) break;
+            if (len != 0) {
+                u8 code = ((u8*)pkt)[7];
+                hist[code]++;
+                total++;
+                if ((code & 0xFC) == 0x2C && ft4s < 3) {
+                    s16* v = (s16*)pkt;
+                    printf("[field-diag] ot-ft4 #%d rgb=%02x%02x%02x xy0=(%d,%d) xy3=(%d,%d) "
+                           "uv0=%02x,%02x clut=%04x tpage=%04x\n", ft4s,
+                           ((u8*)pkt)[4], ((u8*)pkt)[5], ((u8*)pkt)[6],
+                           v[4], v[5], v[16], v[17],
+                           ((u8*)pkt)[12], ((u8*)pkt)[13],
+                           *(u16*)((u8*)pkt + 14), *(u16*)((u8*)pkt + 22));
+                    ft4s++;
+                }
+            }
+            link = *pkt;
+            steps++;
+        }
+        for (c = 0; c < 256; c++) {
+            if (hist[c] && n < 440) {
+                n += snprintf(buf + n, sizeof(buf) - n, " %02x:%d", c, hist[c]);
+            }
+        }
+        printf("[field-diag] ot-walk frame=%d steps=%d prims=%d codes:%s\n",
+               (int)diagFrame, steps, total, buf);
     }
 #endif
     DrawOTag((u_long*)((u8*)g_FieldCurRenderContext + 0x80F0));
