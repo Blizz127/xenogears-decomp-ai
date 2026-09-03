@@ -643,3 +643,137 @@ as a real one — and risks reimplementing working code.
 - **Not proven / still open:** what retail's map 0 script shows (title menu vs the debug-room look the port renders); New Game → opening field scenes; XA audio; bit-exact MDEC; frame-80 vertical striping origin; dead `PcPort_BootMain` cleanup.
 - **Committed:** `6432959f a177ca62 f03b1747 e7a4b4f6 7991642c 3d107600 847520e9` + overlays.yaml comment fix.
 - **Stop reason (if stopped early):** —
+
+## 2026-09-02 — Map 490 title: FE61 stall → FE57 open
+
+**Symptom:** Boot reached Map 490 but never FE57 / title; New Game inject timed out.
+
+**Cause:** Attract path runs FE60 → `func_800A7C58` → FE61 waits on `D_800ADB7C`. Stubbed `func_800A7C58` never set the flag (retail asm `800A7E58` stores 1), so FE61 spun and never returned to OP31 pad check (`PADRright`/`0x20` → title at FE57).
+
+**Fix (incomplete):** `XENO_PC_PORT` minimal `func_800A7C58` in `src/field/main/misc5.c` sets `D_800ADB7C=1` (+ prologue clears). Full archive/VRAM body still TODO.
+
+**Runtime:** Circle inject → FE57 → `func_801C58EC` title loop. Then SIGSEGV in `func_801D3B00` (null `pManager` / window slots) after stubbed `func_801C6F70` / `func_80036410`.
+
+**Note:** `XENO_FIELD_TEST=1` forces Map 0 developer path — do not use for title boots.
+
+## 2026-09-02 cont — title opens; Menu offset SEGV fixed
+
+**A7C58:** minimal port sets `D_800ADB7C=1` → Map 490 attract leaves FE61 → Circle (`PADRright`/`0x20`) → FE57 → `func_801C58EC`.
+
+**SEGV:** host `Menu` inflated (`pManager` @0x3F8 not 0x33C). Bulk-replaced raw `+0x33C` fetches with `g_Menu->pManager` (+ fixed `MenuManager*` byte arith). Title loop now runs; idle timeout path observed (`D_800594D0=1`).
+
+**Next:** inject New Game during `func_801C7BF4` frames (enter BP is one-shot); then Map 4. Still stubbed: `func_801C6F70`, `func_80036410`, several draw helpers.
+
+**Runtime-verified (`/tmp/wm/title_ng4.log`):** Circle → FE57 → `func_801C58EC` → New Game (choice 2, confirm injected at `func_801C7F34`, after the input reader) → `func_8001B970` → `FieldLoad map=4`. `[SUMMARY] fe57=1 title=1 ng=1 map4=1`. Inject must occur after `func_801C7D78` (it overwrites `g_Menu->input` each frame).
+
+## 2026-09-02 — Map 4 is the opening prologue narration (advances on Circle)
+
+**Verified chain:** title (Map 490) → New Game → `FieldLoad map=4` (`/tmp/wm/title_ng4.log`).
+
+**Map 4 identified:** dialog section (archive map 4, section 0x14C/0x128) decodes to the retail prologue text — "The continent of Ignas…", "…the Qislev Empire… desert kingdom of Aveh", Ethos, Gears. Screenshot `/tmp/wm/map4_wait_real.png`.
+
+**Not a hang:** `PsyX_Sys_GetVBlankCount` keeps rising (2908 → 4868 over 40s); main thread sits in normal `Vsync`/`GR_StoreFrameBuffer` present. Map 4 script waits on `OP31 mask=0x0020` (Circle) — retail "press to advance narration".
+
+**Pad injection must land at VM sampling time.** Setting `D_800AFE9C` at an arbitrary stop is clobbered by the frame's `ControllerPoll`. Injecting on `FieldScriptVMRun` entry works: with pulses, actor 0 advances 72→75→84→96→99→108→120→126 and narration actor 12 walks 5126→5143→5160 (`/tmp/wm/map4_pulse.log`). Prologue has many pages, so full playthrough needs a longer/faster driver than GDB-per-VM-run.
+
+**Known port issue seen in the screenshot:** narration pages overlap / draw out of order (page clear between `{00}xx` waits looks wrong). Separate bug from the advance mechanism.
+
+**Next:** drive field input via the port's own `PcPort_TestInputInject` harness (as `world_map_main_loop_71034.c` does) instead of GDB, then run prologue to completion and capture the map chain into the fire scene.
+
+## 2026-09-02 — Prologue completes; Map 4 -> Map 2 is the Lahan opening scene
+
+**Field input harness landed (DIAGNOSTIC).** `XENO_FIELD_TEST_INPUT` (frame:value schedule, same syntax as `XENO_WORLD_TEST_INPUT`) merged in `FieldPollControllers` (`src/field/main/misc2.c`) at retail's post-drain accumulator seam, deriving held/pressed/released edges. Deliberately NOT `XENO_FIELD_TEST`, which also selects the developer KernelMenu boot path. Field schedule gets its own 4096-step capacity (`FIELD_TEST_INPUT_MAX_STEPS`) because the prologue needs hundreds of confirms. Remove harness + call site together.
+
+**Chain proven:** `XENO_FIELD_MAP=4` + Circle schedule runs the prologue to completion and the game advances itself: `FieldLoad field=4` -> `FieldLoad field=2` (`/tmp/wm/map4_fti2.log`). Earlier 128-step cap stalled input at frame ~1806; that was the harness limit, not a game bug.
+
+**Map 2 identified = opening fire scene (Lahan attack).** Dialog decode: Citan "Are you alright?! ... Do you not know how worried Alice and Timothy are?!", "Let us evacuate to a safer spot while Fei has their attention!", Dan, Fei. 52 entries. Direct load builds the full scene: 104 actors, 65 models, player=1, geometry submitted (`/tmp/wm/m2b.log`).
+
+**Open blocker: heap-corruption abort shortly after Map 2 loads.** glibc `malloc_printerr` -> abort inside `alSource3f`, reached from `PsyX_SPUAL_SetVoiceAttr` <- `SpuSetVoiceAttr` <- `PcPort_SpuRegFlushTick` (port_main.c:537, continuous attr flush) on the PsyX 240Hz interrupt thread. Reproducible at the same point with `ALSOFT_DRIVERS=null`, so it is a real heap overrun being *detected* by OpenAL's allocator, not an OpenAL bug. No ASAN regime exists in `build_port.sh` (only `XENO_TSAN`); adding one is a build-config change and must land in isolation.
+
+**Also open:** prologue narration pages overlap / draw out of order (page clear between `{00}xx` waits), and the `[variant5]`/`[field-diag]` printf volume makes GDB-driven runs crawl.
+
+## 2026-09-02 — ASAN regime added; two real out-of-bounds writes fixed
+
+**Build config (its own commit):** `XENO_ASAN=1` in `pc_port/build_port.sh`, mirroring the existing `XENO_TSAN=1` regime — separate dirs (`pc_port/build_asan`, `pc_port/build_native_asan`), mutually exclusive with TSAN, normal artifacts untouched. `-static-libasan` is required, not cosmetic: the prebuilt SDL2/OpenAL in `xenogears-assets/lib` load ahead of a dynamic libasan and trip ASan's "runtime does not come first" bail-out (`LD_PRELOAD` does not fix it).
+
+**Bug 1 — pad buffers (`pc_port/src/data_controller.c`).** ASan: global-buffer-overflow WRITE at `PsyX_pad.cpp:133` (`PsyX_Pad_InitPad`), 3 bytes after `g_C1Buffer`, 29 before `g_C1ButtonState`. Retail has `g_C1Buffer` @0x800625FC and `g_C2Buffer` @0x8006261E — one contiguous 2 x 0x22 region, and `controller.c` indexes it as a single array (`controllerIndex * CONTROLLER_BUFFER_SIZE`). The stub generator sized `g_C1Buffer` at 0x20 (label is 0x01, generator floor is 32) and gave `g_C2Buffer` separate storage, so slot 1 registered past the object end and both PsyCross and the game read/wrote slot 1 out of bounds. Fixed with one 0x44 blob plus `.set` aliases for every splat-split interior label (same idiom as `data_game_state.c`).
+
+**Bug 2 — heap user table (`pc_port/src/data_heap.c`).** ASan: global-buffer-overflow WRITE of size 8 at `memory.c:492` (`HeapChangeCurrentUser`), 0 bytes after `g_HeapUserContentNames`. Retail reserves 0x28 = 10 x 4-byte PSX pointers; host pointers are 8 bytes, and the stub reserved 32 bytes = 4 host entries. `MovieMain` uses tag 4 and `HeapResetUser` uses `HEAP_USER_UNKNOWN` = 0xA every MainLoop iteration. Sized to `HEAP_USER_TEST + 1` (0xC) host pointers; `HEAP_NUM_USERS` deliberately NOT widened (it belongs to the matching build). Note retail's own 0xA store lands on `g_HeapDelayedFreeBlocksHead`'s first word — incidental aliasing that host pointer width cannot reproduce anyway, and nothing reads it back except `HeapPrintBlocks`.
+
+**Still open — wild write on Map 2.** Map 2 corruption pre-dates both fixes (it was the earlier glibc-heap abort seen via OpenAL). After the fixes the symptom MOVED rather than disappeared: normal build now SEGVs in `ParsePrimitivesLinkedList` from `FieldDisplay`'s `DrawOTag(ot3 + 7)` with repeated "ptag length is not valid" — i.e. the same wild write now lands on the ordering table instead of the host heap. ASan cannot see it: the target is inside the emulated PSX RAM blob, and intra-blob overruns are invisible to it. ASan under Map 2 also hits its own artifact (its allocator defeats the port's deliberate sub-4GB pointer truncation), so the hunt needs a GDB watchpoint on the corrupted OT word, not more ASan.
+
+**Note:** Map 4 (prologue) and the title path are unaffected; only Map 2's 104-actor scene trips this.
+
+## 2026-09-02 — ROOT CAUSE: missing D_8004FE50 row 4 variant 4 (Map 2 crash) — FIXED
+
+**Not a wild write.** The OT diagnostic (temporary, in `PsyX_GPU.cpp` `ParsePrimitivesLinkedList`, labeled `[xeno-ot]`) reported the bad packets as `len=9 code=0` — POLY_FT4-sized packets whose code byte was never written, reached via a previous tag whose word0 was `0x006d45b4`-style (len 0, addr24 into the field heap).
+
+**Mechanism:** `temp2.c:623-636` skips a mesh group when `D_8004FE50[prim].proc[variant]` is NULL, but the BUILD side (`temp2.c:749`, buildProc) has already linked that group's packets into `ot3` with tag lengths set. The walker then parsed uninitialized packets, reported "ptag length is not valid", and ran off the chain. Map 2 logged `missing D_8004FE50 prim=4 variant=4` repeatedly.
+
+**Evidence for the fix (no guessing):** read retail's table straight out of `disc/SLUS_006.64` .sdata at 0x8004FE50 (file offset 0x800 + vaddr - 0x80010000), rows of 0x28:
+
+    row 0x04 @8004FEF0
+      proc  = 8002E038 8002E038 8002E470 8002E8DC 8002E038 8002E038
+      build = 8002CF34  strides = 0x8,0x4,0x14
+
+Variants 1/4/5 are the SAME walker as variant 0 (0x8002E038 = `ModelPrimTriSmallAverageVariant0`, already ported, per row 0x00's own comment); only variant 3 (0x8002E8DC) is unported, exactly as row 0x00. `pc_port/src/game_overrides.c` row 0x04 updated accordingly.
+
+**Result — Map 2 stable:** zero `missing D_8004FE50`, zero OT errors, no SEGV/abort across a 120 s run (`/tmp/wm/map2_row4.log`). The earlier glibc-heap abort in `alSource3f` and the `ParsePrimitivesLinkedList` SEGV were both fallout of this one gap.
+
+**END-TO-END VERIFIED** (`/tmp/wm/full_chain.log`): boot -> movie -> title Map 490 -> `func_801C58EC` -> New Game -> `func_8001B970` -> prologue Map 4 -> Lahan Map 2. `[CHAIN-DONE] title -> New Game -> [490, 4, 2]`, exit 0, no crash.
+
+**Visual evidence:** `/tmp/wm/vis_title_real.png` — title menu renders retail's three entries (New Game / Continue / Sound) with ball + red arrow cursors, cursor on Continue (choice 1 default, matches the log). `/tmp/wm/vis_fire5_real.png` — Lahan village renders (houses, well, watchtower, foliage, a character sprite).
+
+**Remaining accuracy gaps (goal NOT complete):**
+1. Title背景/logo art missing — screen is black behind the menu (1.9% non-black). Stubs still on that path: `func_801C6F70`, `func_80036410`, `func_801D02D8`, `func_801CF37C/5E4/8D8/FB48/FF64`.
+2. Prologue narration pages overlap / draw out of order (page clear between `{00}xx` waits).
+3. Map 2 captures show the village pre-attack; the burning/fire beats of the scene are not yet confirmed on screen.
+4. Other `D_8004FE50` rows still hold NULLs where retail reuses ALREADY-PORTED walkers (rows 0x02/0x06 = 0x8002E024, 0x07 = 0x8002E010, 0x08/0x0C variants, 0x0B/0x0F = 0x8002E22C, 0x10 = 0x80030750). Same latent OT-corruption class; fill from the disc table as maps hit them.
+5. `[xeno-ot]` diagnostic in `PsyX_GPU.cpp` must be removed once this settles.
+
+## 2026-09-02 — Title backdrop compositing restored; Map 490 snapshot is empty
+
+**Fix (compositing path):**
+1. `MenuMain`: drop the port-only forced `isbg=1` (retail is `isbg=0` so the field snapshot shows under the OT). Keep `isbg=1` only when `g_MenuDebugEnabled`.
+2. `func_801C7BF4`: re-enable retail `MoveImage` of `(704,256)` under the menu OT (PsyCross `_xeno_fb_materialize` blits into the GL backbuffer).
+3. Port `func_801C6F70` under `XENO_PC_PORT` (dim POLY_F4 + DR_MODE + highlight shells) and unstub `func_801D1258` to AddPrim those typed fields.
+4. Port `func_80036410` (controller stack-full flag) under `XENO_PC_PORT`.
+
+**Runtime:** title loop survives to idle timeout (`MenuMain returned D_800594D0=1`). `func_801C6F70` no longer stubbed.
+
+**Proven gap:** after MoveImage, CPU VRAM sample shows `dest_nz=0` AND `src704_nz=0` (`/tmp/wm/title_diag2.log`). The offscreen snapshot itself is empty — Map 490 is not putting title art into the framebuffer before `func_800A4748`. Compositing is no longer the blocker; field title rendering is.
+
+**Note:** `PsyX_TakeScreenshotPath` deadlocks when called mid-`func_801C7BF4`; use VRAM sampling or SIGINT-stop captures instead.
+
+**Next:** why Map 490 (0 models, 1 actor/sprite, field-0bb TIM drain) leaves a black frame at menu-open — sprite/TIM draw path for the title logo.
+
+## 2026-09-02 — Title backdrop: horizon draws but GL FB stays black
+- VRAM sample (pre-horizon): `src704_nz=0` — snapshot empty.
+- Ported `func_8002709C`/`273C4`/`278F8`; fixed `spanPx` (`>>8`→`<<8`). FT4 geometry now `(0,0)-(256,224)` tpage=`0x108`.
+- Textures live: `tex512_nz=230` at VRAM (512,0). Field-0bb 0x48d uploads OK.
+- A476C materialize (`GR_StoreFrameBufferImmediate` of field clip) runs, but `XENO_MAT_DIAG nz=0/71680` — GL backbuffer is opaque black. So the gap is **horizon/OT not reaching the presented framebuffer**, not MoveImage compositing.
+- Next: verify horizon `AddPrim` OT (`ctx+0x40CC+D_800B21D4*4`) is linked into `DrawOTag(ctx+0x80F0)` chain; check textured split path for tpage 0x108.
+
+## 2026-09-02 — Prologue text boxes: page overlap + missing rows (retail-accurate now)
+- **Symptom:** Map 4 narration showed one line per row-pair, pages stacked/never cleared (`/tmp/wm/map4_wait_real.png`).
+- **Root cause 1 (rows):** port commit 303c83c7 added a `memset` of the row scratch at row-start in `func_80033DF0`. Retail asm (80033E30-80033E6C) has none. Rows 2k/2k+1 share one 13-line VRAM strip via the two nibble planes of that scratch, so the memset wiped the partner row before the odd row's LoadImage. Removed. (Alloc-time memset kept: retail heap contents are unspecified there.)
+- **Root cause 2 (pages):** C `func_80033DF0` mapped code `02` to retail's `03` (wait, keep page) and lacked `02` = wait + `flags|=0x48` → `0x40`→`0x20` row-reset in `func_80034888` once the wait releases. Only 3 of 16 `0F` subcodes were handled. Ported the interpreter faithfully from asm (jtbl_80018A7C): nested strings, item/weapon/char/button names, numbers, speed/delay codes, budget accounting per label.
+- **Also:** `func_80033CF0` signature was wrong vs asm (a0 value, a1 font row, a2 signed); sign glyphs inverted; scan started from an unset slot. Rewritten; port uses one contiguous 12-halfword scratch (sentinel/digits/terminator) since the three symbols are separate stubs on the host.
+- **Runtime:** title → New Game → Map 4 → Map 2 chain still completes (`/tmp/wm/txt_chain2.log`). Prologue renders full 12-line page 1, clears, page 2 types in; "The remote village of Lahan" caption OK. Evidence: `/tmp/wm/evidence_txt/frame-004950.png`, `frame-006570.png`.
+- **Open (separate):** 1-window-pixel white seam at texel 64 of each row sprite (screen x=88 for the prologue box), also in July captures. Row scratch dump shows no content there (plane B col 16 = 0 with a space glyph) → PsyCross sampling artifact, not text-engine. Not chased.
+- **Title backdrop (parked):** horizon 2709C/273C4/278F8 ported (+ spanPx `<<8` fix), textures at VRAM (512,0) present, FT4s submitted, but materialized GL FB is black at A4748 time. `A476C` materialize + GL_FRONT readback experiments did not change `src704_nz=0` and were reverted.
+
+### [2026-09-02 19:30] Text seam + Lahan dialog verification attempt
+- **Seam hypothesis (disproved):** PsyCross `MakeTexcoordRect` clamps a 256-wide SPRT's texcoord extent to 255 while the quad stays 256 px; predicted the half-texel drift crosses a boundary at sprite texel 64. Implemented an exact-extent variant (`a_extra` half-texel offset on right/bottom vertices) — seam unchanged at window x=176 (`/tmp/wm/cap_seam/frame-003650.png`, `y=107`: 1 px body colour, then 4 px outline, then 'o'). Reverted. Buffer content at that column is transparent, so the source is elsewhere in the VRAM→GL path (partial upload / texture cache?). Still open.
+- **Lahan dialogs:** `XENO_FIELD_MAP=2` direct load renders the fire-lit scene but never advances the script over 2963 field frames / 20 min (frames 25460 and 56260 identical, camera inside geometry); dialog boxes not reached. The full title→4→2 chain does reach Map 2 but at ~1-3 fps under the gdb title harness it exceeds a 400 s window before dialog. Prologue (Map 4) is the verified text-box case for now.
+- **Capture gotcha:** `XENO_CAPTURE_EVERY` fires only when the VBLANK count at EndScene is an exact multiple; at low fps use a small interval (10).
+- **Tree note:** another session is modifying `world_map_capture.c/h`, `world_map_helper_89c78.c`, `rendering.c` concurrently and ran `build_port.sh` in parallel (broke one of my links mid-build). Not touched here.
+
+### [2026-09-02 21:00] Zeboim sky bridge (Map 383, Id-fight map) loads in port
+- **Identity:** the on-foot Id boss happens on the big spanning bridge over Zeboim (Zeboim Ruins; Citan/Elly/Bart, HP 3000). TCRF debug-room list names it `383 Zeboim - Sky Bridge`, flanked by 382 crossroad / 384 hallway. Confirmed the debug number == field map ID empirically: `XENO_FIELD_MAP=383` loads from disc 1 (archive 0x3b7, 323584 bytes, 158-sector TIM drain `done=1`).
+- **Render (verified visually):** bridge deck/girders/railings, party actor sprite (green, actor[2] at faPos=(-884,-8,0)), orange sunken-city backdrop above and below. Captures: `/tmp/map383_cap/field-frame-037800.png` (entrance 0). Zero OT/walker faults in log; only pre-existing one-shot `[stub] func_80028B14`.
+- **Open accuracy item (not chased):** large pure-black quad region mid-frame (x170-470, y55-175, >50% pure #000000 with girder beams drawn over it). No walker/OT errors, so not the Map-2 missing-row class; could be the unlit far span (night scene) or a missing background layer. No retail reference reachable from here (lparchive/rpgclassics time out) to decide.
+- **Entrance note:** entrance 0 spawns on the bridge with a good camera; entrance 1 is black from the first frame (invalid direct spawn / camera in geometry). Harness uses entrance 0.
+- **Inserted into the port:** `run_case Map383 383 0 25` in `pc_port/tests/run_field_map0_smoke.sh` (generic OT/actor gates + 383 branch: FieldLoad identity, archive drain, presented OT, plain actor draw — all 6 verified against a live log). New dev capture hook `PcPort_FieldCaptureOnVsync` (`game_overrides.c`, called from `Vsync` in `psyq_compat.c`): `XENO_FIELD_CAPTURE_DIR` + `XENO_FIELD_CAPTURE_EVERY` (default 60), same present boundary as the world-map capture. Strictly env-gated.
+- **Battle status (out of scope):** the field->battle handoff `func_80281204` is an explicit no-op stub ("named next blocker"); the Id boss fight itself cannot run until the battle system is ported. Map load + render is the delivered slice.
+- **Sandbox quirks hit:** uutils `timeout` cannot exec here (used setsid+sleep+kill instead); `SDL_VIDEODRIVER=x11` segfaults instantly in this sandbox even for Map0 (environmental, pre-existing — script keeps the repo's x11 convention for CI); `pkill -f` with the binary path in the same command line kills the invoking shell (use `pgrep -x`/`pkill -x`).
