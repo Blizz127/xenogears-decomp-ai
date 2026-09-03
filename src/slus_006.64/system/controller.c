@@ -221,8 +221,15 @@ void ControllerPushState(void) {
         g_C2ButtonStatesReleased[i]    |= g_C2ButtonStateReleased;
         g_C1ButtonStatesPressedOnce[i] |= g_C1ButtonStatePressedOnce;
         g_C2ButtonStatesPressedOnce[i] |= g_C2ButtonStatePressedOnce;
-#endif
+        /* Nothing was dropped, so do not raise the overflow flag: the menu
+         * readers (MenuProcessControllerInput / func_801C7D78) treat
+         * func_80036410()!=0 as "queue corrupt" and ControllerResetState()
+         * every frame, which on the port discards every press. Retail's
+         * once-per-vblank push never overflows, so the flag is unreachable
+         * there in normal play. */
+#else
         g_ControllerIsStateStackFull = 1;
+#endif
     }
 }
 
@@ -268,3 +275,11 @@ void ControllerResetState(void) {
     g_C2ButtonState = 0;
     g_C1ButtonState = 0;
 }
+
+#ifdef XENO_PC_PORT
+/* Retail: return whether the pad-state stack overflowed (asm 80036410).
+ * Matching build still takes this from asm/slus_006.64/26644.s. */
+int func_80036410(void) {
+    return g_ControllerIsStateStackFull;
+}
+#endif
