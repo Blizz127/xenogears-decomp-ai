@@ -969,6 +969,12 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_stream_movie.patch" "_xe
 # 15-bit or isrgb24 24-bit, blitted over the window); pc_port's Vsync calls
 # it at a blocking Vsync(0) when no scene was opened.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_display_present.patch" "_xeno_display_present"
+# CPU vram[] must mirror the presented framebuffer: on software GL the
+# PBO/glGetTexImage download of the blit staging texture returns zeros, so
+# every game-side MoveImage/StoreImage of the display area (field->menu
+# backdrop snapshot func_800A476C, fades, distortion) copied black. Read the
+# still-unswapped backbuffer into vram[] at present time instead.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_fb_mirror_readpixels.patch" "_xeno_fb_mirror_readpixels"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
