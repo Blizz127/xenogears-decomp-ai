@@ -1929,8 +1929,8 @@ extern s16 D_800B00B2;
 extern s32 D_800ADB50;
 extern s32 D_800B007C;
 extern s16 D_800B21D4;
-extern void func_800273C4(s32 arg0, SVECTOR* eye, SVECTOR* at, void* arg3,
-                          void* prim, s32 renderCtxIndex);
+extern s32 func_800273C4(void* ctx, SVECTOR* eye, SVECTOR* at, MATRIX* mtx,
+                         void* ot, s32 renderCtxIndex);
 
 void func_80075484(void) {
     if (D_800B00B2 != 0 && D_800ADB50 == 0) {
@@ -1945,8 +1945,9 @@ void func_80075484(void) {
         at.vy = (s16)(g_CameraAt.vy >> 16);
         at.vz = (s16)(g_CameraAt.vz >> 16);
 
+        /* asm: a3 = g_CameraEye + 0x1E4 == &g_Scene.worldToScreenMatrix */
         prim = (u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0x40CC;
-        func_800273C4(D_800B007C, &eye, &at, (u8*)&g_CameraEye + 0x1E4,
+        func_800273C4((void*)D_800B007C, &eye, &at, &g_Scene.worldToScreenMatrix,
                       prim, g_FieldCurRenderContextIndex);
     }
 }
