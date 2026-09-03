@@ -2,6 +2,8 @@
 #include "psyq/libgpu.h"
 #include "psyq/memory.h"
 #include "system/memory.h"
+#include "system/controller.h"
+#include "main/game.h"
 #ifdef XENO_PC_PORT
 #include "guest_prim_link.h"
 #define SYSTEM_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
@@ -395,52 +397,73 @@ s32 func_80033CD0(void* arg0) {
     return 0;
 }
 
+#ifdef XENO_PC_PORT
+/* Retail lays the number scratch out contiguously: sentinel halfword at
+ * 0x8005A0C8 (tail of D_8005A0C2), ten digit indices at D_8005A0CA, and the
+ * 0xFFFF terminator at D_8005A0DE. func_80033CF0 walks across all three
+ * (asm 80033D68-80033DB8), so the port needs one contiguous buffer rather
+ * than the three separately-stubbed symbols. */
+static u16 s_NumberScratch[12];
+#define NUM_SCRATCH_SENTINEL (&s_NumberScratch[0])
+#define NUM_SCRATCH_DIGITS   (&s_NumberScratch[1])
+#define NUM_SCRATCH_TERM     (&s_NumberScratch[11])
+#else
 extern u16 D_8005A0CA[];
 extern u16 D_8005A0DE;
+#define NUM_SCRATCH_SENTINEL (&D_8005A0CA[-1])
+#define NUM_SCRATCH_DIGITS   (&D_8005A0CA[0])
+#define NUM_SCRATCH_TERM     (&D_8005A0DE)
+#endif
 
-void func_80033CF0(u8* pOut, u16 fontOffset, s32 value, s32 signed_mode) {
+/* Render a decimal number into the glyph-index scratch and decode it into
+ * D_8005A0E4 (asm 80033CF0). Args follow the asm: a0 value, a1 font offset
+ * (glyph row, <<4), a2 signed mode. Signed mode always emits a sign glyph:
+ * 0xB for >= 0, 0xA for < 0 (80033D04-80033D18). Leading zeros are skipped
+ * down to the last digit; a sentinel equal to the zero glyph sits one slot
+ * before the digits so the scan loop's pre-increment lands on digit 0. */
+void func_80033CF0(s32 value, s32 fontOffset, s32 signedMode) {
     u32 divisor = 1000000000;
     s32 signChar = 0;
-    u16* pIndices = D_8005A0CA;
+    u16* pDigits = NUM_SCRATCH_DIGITS;
+    u16* p;
     s32 i;
-    u16* pEnd;
 
     fontOffset <<= 4;
-    if (signed_mode && value < 0) {
-        value = -value;
-        signChar = 0xB; /* '-' character */
-    } else {
-        signChar = 0xA; /* '+' or space */
+    if (signedMode != 0) {
+        if (value >= 0) {
+            signChar = 0xB;
+        } else {
+            value = -value;
+            signChar = 0xA;
+        }
     }
 
     for (i = 0; i < 10; i++) {
-        u32 digit = value / divisor;
-        value %= divisor;
+        pDigits[i] = (u16)((u32)value / divisor + fontOffset);
+        value = (u32)value % divisor;
         divisor /= 10;
-        *pIndices++ = digit + fontOffset;
     }
 
-    D_8005A0DE = 0xFFFF;
-    pEnd = &D_8005A0DE;
-    pIndices = pEnd - 0xB; /* back to D_8005A0CA */
+    *NUM_SCRATCH_TERM = 0xFFFF;
+    p = NUM_SCRATCH_SENTINEL;
+    *p = (u16)fontOffset;
 
-    /* Skip leading zeros */
-    {
-        u16* pScan = pIndices;
-        u16* pLimit = pIndices + 10;
-        while (pScan < pLimit) {
-            if (*pScan != fontOffset) break;
-            pScan++;
+    if ((fontOffset & 0xFFF0) == fontOffset) {
+        u16* pLast = p + 10;
+        while (p != pLast) {
+            p++;
+            if (*p != (u16)fontOffset) {
+                break;
+            }
         }
-        pIndices = pScan;
     }
 
     if (signChar != 0) {
-        pIndices--;
-        *pIndices = signChar + fontOffset;
+        p--;
+        *p = (u16)(signChar + fontOffset);
     }
 
-    func_80033ABC(pIndices);
+    func_80033ABC(p);
 }
 
 void func_80033DD4(void* arg0, s32 arg1) {
@@ -459,7 +482,9 @@ void func_80033DF0(void* arg0) {
         s16 row = *(s16*)(pWindow + 0x02) + 1;
         s16 pageCount;
 
-        memset((void*)(uintptr_t)*(u32*)(pWindow + 0x2C), 0, *(s16*)(pWindow + 0x12) * 0x1C);
+        /* No raster clear here (asm 80033E30-80033E6C). Rows 2k/2k+1 share
+         * one 13-line VRAM strip through the two nibble planes of the same
+         * scratch buffer; zeroing it at row start wiped the partner row. */
         *(s16*)(pWindow + 0x00) = 0;
         *(s16*)(pWindow + 0x02) = row;
         *(s16*)(pWindow + 0x18) += 1;
@@ -506,11 +531,17 @@ void func_80033DF0(void* arg0) {
         return;
     }
 
+    /* Control-code interpreter, asm 80034024-800345B0. `count` is the
+     * per-frame glyph budget (s3); codes that push a nested string
+     * (func_80033DD4) or advance a bare parameter leave it unchanged, glyphs
+     * and skipped codes consume one. */
     while (count != -1) {
         u8* pScript = (u8*)(uintptr_t)*(u32*)(pWindow + 0x1C);
         s32 code = pScript[0];
 
         if (code == 0) {
+            /* End of (possibly nested) string: pop back to the caller string,
+             * or arm the wait-for-input state. */
             u16 flags = *(u16*)(pWindow + 0x10);
 
             if (flags & 0x80) {
@@ -522,23 +553,45 @@ void func_80033DF0(void* arg0) {
                 pWindow[0x6C] = 1;
                 return;
             }
-        } else if (code == 2) {
+        } else if (code == 3) {
+            /* Wait for input, keep page contents (8003 3FD0). */
             pWindow[0x6B] = 3;
             *(u16*)(pWindow + 0x10) |= 0x8;
             *(u32*)(pWindow + 0x1C) += 1;
             return;
+        } else if (code == 2) {
+            /* Wait for input, then clear the page: 0x40 turns into the 0x20
+             * row-reset in func_80034888 once the wait (0x8) releases
+             * (80034490-800344C8). A directly following line-break (01) is
+             * swallowed. */
+            pWindow[0x6B] = 2;
+            *(u16*)(pWindow + 0x10) |= 0x48;
+            *(u32*)(pWindow + 0x1C) += 1;
+            if (pScript[1] == 1) {
+                *(u32*)(pWindow + 0x1C) += 1;
+            }
+            return;
         } else if (code == 1) {
+            /* Line break: force the row-overflow path on the next call. */
             *(s16*)(pWindow + 0x00) = 0x64;
             *(u32*)(pWindow + 0x1C) += 1;
             return;
         } else if (code == 0x0F) {
             s32 subcode = pScript[1];
 
-            if (subcode == 0) {
+            if (subcode >= 0x10) {
+                /* 800340A0: out-of-range subcode consumes budget only. */
+                count--;
+                continue;
+            }
+
+            switch (subcode) {
+            case 0x0: /* delay N frames */
                 *(s16*)(pWindow + 0x84) = pScript[2];
                 *(u32*)(pWindow + 0x1C) += 3;
                 return;
-            } else if (subcode == 1) {
+
+            case 0x1: { /* text speed override / restore */
                 s32 value = pScript[2];
 
                 if (value != 0) {
@@ -554,13 +607,128 @@ void func_80033DF0(void* arg0) {
                     pWindow[0x6A] = 0;
                 }
                 *(u32*)(pWindow + 0x1C) += 3;
-            } else if (subcode == 2) {
+                count--;
+                continue;
+            }
+
+            case 0x2: /* delay N frames, suppress auto-advance */
                 pWindow[0x6C] = 1;
                 *(s16*)(pWindow + 0x84) = pScript[2];
                 *(u32*)(pWindow + 0x1C) += 3;
                 return;
-            } else {
+
+            case 0x3: { /* system string table[a] entry b */
+                void* table = (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + pScript[2] * 4);
+                s32 entry = pScript[3];
+
+                *(u32*)(pWindow + 0x1C) += 3;
+                func_80033DD4(pWindow, GetStringEntry(table, entry));
+                continue;
+            }
+
+            case 0x4: { /* name of the item in window+0x80 (class in the high byte) */
+                s32 item = *(s16*)(pWindow + 0x80);
+                s32 cls = item & 0xFF00;
+                s32 tableOfs;
+
                 *(u32*)(pWindow + 0x1C) += 1;
+                if (cls == 0x000) {
+                    tableOfs = 0x58;
+                } else if (cls == 0x100) {
+                    tableOfs = 0x5C;
+                } else if (cls == 0x200) {
+                    tableOfs = 0x44;
+                } else if (cls == 0x300) {
+                    tableOfs = 0xCC;
+                } else if (cls == 0x400) {
+                    tableOfs = 0xC8;
+                } else {
+                    count--;
+                    continue;
+                }
+                func_80033DD4(pWindow,
+                              GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableOfs),
+                                             item & 0xFF));
+                count--;
+                continue;
+            }
+
+            case 0x5: { /* character name: direct id, or party slot (>= 0x80) */
+                s32 id = pScript[2];
+                void* name;
+
+                *(u32*)(pWindow + 0x1C) += 2;
+                if (id >= 0x80) {
+                    id = *((u8*)&g_GameState + 0x1CB4 + id);
+                    if (id == 0xFF) {
+                        name = GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x68), 0);
+                        func_80033DD4(pWindow, name);
+                        continue;
+                    }
+                }
+                name = (u8*)&g_GameState + id * 20;
+                func_80033DD4(pWindow, name);
+                continue;
+            }
+
+            case 0x6: /* weapon name */
+            case 0x7: /* table +0x60 name */
+            case 0x8: { /* table +0x64 name */
+                static const u8 kTableOfs[3] = { 0x5C, 0x60, 0x64 };
+                s32 entry = pScript[2];
+
+                *(u32*)(pWindow + 0x1C) += 2;
+                func_80033DD4(pWindow,
+                              GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries +
+                                                                       kTableOfs[subcode - 6]),
+                                             entry));
+                continue;
+            }
+
+            case 0x9:   /* number, font row 0, unsigned */
+            case 0xA:   /* number, font row 1, unsigned */
+            case 0xC: { /* number, font row 1, signed */
+                s32 var = pScript[2];
+                s32 fontRow = (subcode == 0x9) ? 0 : 1;
+                s32 signedMode = (subcode == 0xC) ? 1 : 0;
+
+                *(u32*)(pWindow + 0x1C) += 2;
+                func_80033CF0(*(s32*)(pWindow + 0x70 + var * 4), fontRow, signedMode);
+                func_80033DD4(pWindow, D_8005A0E4);
+                continue;
+            }
+
+            case 0xB: /* set byte +0x6D */
+                pWindow[0x6D] = pScript[2];
+                *(u32*)(pWindow + 0x1C) += 2;
+                count--;
+                continue;
+
+            case 0xD: /* delay N, suppress auto-advance, flag 0x200 */
+                pWindow[0x6C] = 1;
+                *(u16*)(pWindow + 0x10) |= 0x200;
+                *(s16*)(pWindow + 0x84) = pScript[2];
+                *(u32*)(pWindow + 0x1C) += 3;
+                return;
+
+            case 0xE: /* reset speed to 1, set per-glyph delay */
+                pWindow[0x6A] = pWindow[0x68];
+                pWindow[0x68] = 1;
+                pWindow[0x69] = 1;
+                *(s16*)(pWindow + 0x88) = pScript[2];
+                *(s16*)(pWindow + 0x86) = pScript[2];
+                *(u32*)(pWindow + 0x1C) += 3;
+                return;
+
+            case 0xF: { /* button name via controller mapping */
+                s32 button = pScript[2];
+
+                *(u32*)(pWindow + 0x1C) += 2;
+                func_80033DD4(pWindow,
+                              GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC4),
+                                             g_ControllerButtonMappings[button]));
+                continue;
+            }
             }
         } else {
             s32 lead;
