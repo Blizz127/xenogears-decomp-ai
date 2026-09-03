@@ -1521,8 +1521,10 @@ int main(int argc, char** argv) {
             /* Retail boot (func_80019578 0x80019870): func_8001BB50 loads the
              * new-game template (archive 0x10 file 3, 0x2358 bytes) over
              * g_GameState.  The template extends past the 0x2300 GameState
-             * into the field transition tuple D_8006F94E/50/52/54, so this is
-             * what selects the first field map after the opening movie.  The
+             * into the field transition tuple D_8006F94E/50/52/54 (aliased into
+             * the same blob by data_game_state.c), so this is what selects
+             * the first field map after the opening movie: the disc-1
+             * template's +0x231A is 0x01EA, map 490 (the title field).  The
              * harness lane keeps its own map/entrance selection below. */
             if (!(getenv("XENO_FIELD_TEST") && getenv("XENO_FIELD_TEST")[0] == '1')) {
                 extern void func_8001BB50(void);
@@ -1627,8 +1629,8 @@ int main(int argc, char** argv) {
      * to enter afterwards, D_8004FE47 = 0 (skipping allowed), D_8004FE45 =
      * disc number; g_CurGameStateOverlayID = -1; then func_8001B6BC (empty),
      * ChangeGameState(6) and MainLoop(0).  MovieMain plays archive 0x18/1
-     * movie 1 and hands over to FieldMain with D_8006F94E still 0, i.e. the
-     * title screen on Map 0.  XENO_FIELD_TEST=1 keeps the developer path of
+     * movie 1 and hands over to FieldMain with D_8006F94E from the new-game
+     * template (map 490, the title field).  XENO_FIELD_TEST=1 keeps the developer path of
      * entering state 0 (KernelMenu) directly. */
     {
         const char* fieldTest = getenv("XENO_FIELD_TEST");

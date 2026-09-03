@@ -1137,6 +1137,9 @@ PORT_SOURCES=(
     pc_port/src/data_field.c
     pc_port/src/data_member_change_menu.c
     pc_port/src/data_main_menu.c
+    pc_port/src/data_game_state.c
+    pc_port/src/data_controller.c
+    pc_port/src/data_heap.c
     pc_port/src/world_map_convergence.c
     pc_port/src/world_map_framebuffer_init.c
     pc_port/src/world_map_terrain_init.c
