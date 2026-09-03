@@ -707,7 +707,10 @@ extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(void* a0, void* a1, int a2);
 extern void func_8002C644(void* a0);
 extern int  func_8002C3E8(void* a0);
-extern int  func_8002709C();
+extern void* func_8002709C(s32 a0, s32 a1, s32 a2, s32 a3,
+                           s32 clutX, s32 clutY, s32 abr, s32 scrollSign,
+                           s16* pCoords, u8* pColors,
+                           s32 skyScale, s32 fadeDiv, s32 fadeSub);
 extern void func_800223B0(void* a0, s16 a1);
 extern void FieldTextBoxInitialize(void);
 extern void FieldLoadTIM(u_long* pTimData);
@@ -1183,13 +1186,14 @@ void FieldLoad(void) {
     D_800AFC48 = 0;
     D_800AFC44 = 0;
     if (D_800B00B2 != 0) {
-        /* func_8002709C(&D_800B0084 block ...) -> D_800B007C. Mirror the asm's
-         * argument marshalling (a mix of the D_800B00xx shorts). */
-        D_800B007C = func_8002709C(
+        /* FieldLoad.s: a0..a3 = B0080/82/lh(*&B0084)/B0086; stack =
+         * B0088/8A/8C/8E, &B0084+0xC (=&B0090), &B0084+0x1C (=&B00A0),
+         * B00AC/AE/B0. */
+        D_800B007C = (s32)func_8002709C(
             D_800B0080, D_800B0082, D_800B0084, D_800B0086,
             D_800B0088, D_800B008A, D_800B008C, D_800B008E,
-            (short*)(D_800B223C + 0x0C),   /* s1 = s2 + 0xC */
-            (short*)(D_800B223C + 0x1C),   /* s0 = s2 + 0x1C */
+            (s16*)&D_800B0090,
+            (u8*)&D_800B00A0,
             D_800B00AC, D_800B00AE, D_800B00B0);
     }
 

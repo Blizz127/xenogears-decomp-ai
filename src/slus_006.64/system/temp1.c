@@ -1,6 +1,7 @@
 #include "common.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>
 
 extern char* getenv(const char*);
 extern int printf(const char*, ...);
@@ -24,6 +25,8 @@ static int XenoWalkAnimDumpEnabled(void)
 #endif
 #include "field/actor.h"
 #include "psyq/libgpu.h"
+#include "psyq/libgte.h"
+#include "system/memory.h"
 
 // Sprite / Animation functions
 
@@ -1552,7 +1555,6 @@ void func_80025044(void) {
 extern void* g_GfxCurWorkBuffer;
 extern void* g_GfxCurWorkBufferEnd;
 extern uintptr_t D_80059524;
-extern void HeapFree(void* ptr);
 
 void func_800250E0(int context) {
     u8* pPrimBuffer = context ? (u8*)g_GfxWorkBuffer2 : (u8*)g_GfxWorkBuffers;
@@ -2414,11 +2416,464 @@ __asm__(
         ".end func_80026FE8");
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002709C);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800273C4);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800278F8);
+#else
+/* Horizon / line-scroll backdrop (title map 490 path). Layout of the 0x34C
+ * heap block matches func_8002709C.s / func_800273C4.s / func_800278F8.s. */
+
+static s32 HorizonMulShift12(s32 a, s32 b) {
+    s32 t = a * b;
+    if (t < 0) {
+        t += 0xFFF;
+    }
+    return t >> 12;
+}
+
+static s32 HorizonMulShift8(s32 a, s32 b) {
+    s32 t = a * b;
+    if (t < 0) {
+        t += 0xFF;
+    }
+    return t >> 8;
+}
+
+void func_800278F8(u8* ctx, s32 scroll, s32 screenY, s32 fade, void* ot,
+                   s32 renderCtx);
+
+void* func_8002709C(s32 a0, s32 a1, s32 a2, s32 a3, s32 clutX, s32 clutY,
+                    s32 abr, s32 scrollSignArg, s16* pCoords, u8* pColors,
+                    s32 skyScale, s32 fadeDiv, s32 fadeSub) {
+    DRAWENV drawEnv;
+    u8* ctx;
+    s32 i;
+    s32 t;
+    u16 clut;
+
+    HeapChangeCurrentUser(HEAP_USER_MASA, NULL);
+    ctx = (u8*)HeapAlloc(0x34C, 0);
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+#ifdef XENO_PC_PORT
+    /* DIAGNOSTIC: one-shot horizon init probe. Remove once title backdrop
+     * dest_nz/src704_nz are non-zero. */
+    {
+        static int s_hzInitDiag;
+        if (!s_hzInitDiag) {
+            s_hzInitDiag = 1;
+            printf("[xeno-port][horizon] DIAG 2709C a0=%d a1=%d w=%d h=%d "
+                   "clut=(%d,%d) mode=%d sign=%d coords=(%d,%d,%d) "
+                   "rgb0=%02x%02x%02x sky=%d fade=%d/%d ctx=%p\n",
+                   a0, a1, a2, a3, clutX, clutY, abr, scrollSignArg,
+                   pCoords ? (int)pCoords[0] : -1,
+                   pCoords ? (int)pCoords[2] : -1,
+                   pCoords ? (int)pCoords[4] : -1,
+                   pColors ? pColors[0] : 0, pColors ? pColors[1] : 0,
+                   pColors ? pColors[2] : 0, skyScale, fadeDiv, fadeSub,
+                   (void*)ctx);
+            fflush(stdout);
+        }
+    }
+#endif
+
+    GetDrawEnv(&drawEnv); /* asm calls it; result unused */
+
+    *(s32*)(ctx + 0x328) = a2;
+    *(s32*)(ctx + 0x32C) = a3;
+    *(s16*)(ctx + 0x33C) = (s16)pCoords[0];
+    *(s16*)(ctx + 0x33E) = (s16)pCoords[2]; /* +0x4 as halfwords */
+    *(s16*)(ctx + 0x346) = (s16)skyScale;
+    *(s16*)(ctx + 0x348) = (s16)fadeDiv;
+    *(s16*)(ctx + 0x34A) = (s16)fadeSub;
+    *(s16*)(ctx + 0x340) = (s16)pCoords[4]; /* +0x8 */
+
+    if (*(s32*)((u8*)pCoords + 8) < 0) {
+        *(s32*)(ctx + 0x330) = -scrollSignArg;
+    } else {
+        *(s32*)(ctx + 0x330) = scrollSignArg;
+    }
+
+    *(s16*)(ctx + 0x336) = (s16)a1;
+    *(s16*)(ctx + 0x334) = (s16)a0;
+    *(s16*)(ctx + 0x338) = (s16)abr;
+
+    t = a1;
+    if (a1 < 0) {
+        t = a1 + 0xFF;
+    }
+    *(s16*)(ctx + 0x33A) = (s16)(a1 - ((t >> 8) << 8));
+
+    clut = GetClut(clutX, clutY);
+    {
+        u8* p = ctx;
+        for (i = 0; i < 0x10; i++) {
+            SetPolyFT4((POLY_FT4*)p);
+            SetShadeTex((POLY_FT4*)p, 1);
+            ((POLY_FT4*)p)->clut = clut;
+            p += 0x28;
+        }
+    }
+
+    if (pColors == NULL) {
+        *(s16*)(ctx + 0x344) = 0;
+        return ctx;
+    }
+
+    *(s16*)(ctx + 0x344) = 1;
+
+    /* Two top POLY_F4 sky fills at 0x280 (shared RGB from pColors[0..2]). */
+    {
+        u8* p = ctx;
+        s32 off = 0x280;
+        for (i = 0; i < 2; i++) {
+            POLY_F4* poly = (POLY_F4*)(ctx + off);
+            SetPolyF4(poly);
+            poly->r0 = pColors[0];
+            poly->g0 = pColors[1];
+            poly->b0 = pColors[2];
+            poly->x0 = 0;
+            poly->y0 = 0;
+            poly->x1 = 0x140;
+            poly->y1 = 0;
+            poly->x2 = 0;
+            poly->x3 = 0x140;
+            off += 0x18;
+            p += 0x18;
+            (void)p;
+        }
+    }
+
+    pColors += 4;
+
+    /* Two POLY_G4 gradient bands at 0x2E0. */
+    {
+        s32 off = 0x2E0;
+        for (i = 0; i < 2; i++) {
+            POLY_G4* poly = (POLY_G4*)(ctx + off);
+            u8* c0 = pColors;
+            u8* c1 = pColors + 4;
+            SetPolyG4(poly);
+            poly->r0 = c0[0];
+            poly->g0 = c0[1];
+            poly->b0 = c0[2];
+            poly->r1 = c0[0];
+            poly->g1 = c0[1];
+            poly->b1 = c0[2];
+            poly->r2 = c1[0];
+            poly->g2 = c1[1];
+            poly->b2 = c1[2];
+            poly->r3 = c1[0];
+            poly->g3 = c1[1];
+            poly->b3 = c1[2];
+            poly->x0 = 0;
+            poly->x1 = 0x140;
+            poly->x2 = 0;
+            poly->x3 = 0x140;
+            off += 0x24;
+        }
+    }
+
+    pColors += 4;
+
+    /* Two bottom POLY_F4 fills at 0x2B0 (RGB from pColors[0..2]). */
+    {
+        s32 off = 0x2B0;
+        for (i = 0; i < 2; i++) {
+            POLY_F4* poly = (POLY_F4*)(ctx + off);
+            SetPolyF4(poly);
+            poly->r0 = pColors[0];
+            poly->g0 = pColors[1];
+            poly->b0 = pColors[2];
+            poly->x0 = 0;
+            poly->x1 = 0x140;
+            poly->x2 = 0;
+            poly->y2 = 0xF0;
+            poly->x3 = 0x140;
+            poly->y3 = 0xF0;
+            off += 0x18;
+        }
+    }
+
+    return ctx;
+}
+
+s32 func_800273C4(void* ctxPtr, SVECTOR* eye, SVECTOR* at, MATRIX* mtx,
+                  void* ot, s32 renderCtx) {
+    u8* ctx = (u8*)ctxPtr;
+    VECTOR dir;
+    SVECTOR dirN;
+    SVECTOR pt;
+    long sxy;
+    long p, flag;
+    s32 fade;
+    s32 scroll;
+    s32 screenY;
+    s32 screenY2;
+    s32 yTop;
+    s32 t;
+    s32 dx, dy, dz;
+
+    if (ctx == NULL) {
+        return 0;
+    }
+
+    dir.vx = at->vx - eye->vx;
+    dir.vy = 0;
+    dir.vz = at->vz - eye->vz;
+    VectorNormalS(&dir, &dirN);
+
+    t = HorizonMulShift12(dirN.vx, *(s16*)(ctx + 0x340));
+    pt.vx = (s16)(at->vx + t);
+    pt.vy = *(s16*)(ctx + 0x33E);
+    t = HorizonMulShift12(dirN.vz, *(s16*)(ctx + 0x340));
+    pt.vz = (s16)(at->vz + t);
+
+    SetRotMatrix(mtx);
+    SetTransMatrix(mtx);
+    RotTransPers(&pt, &sxy, &p, &flag);
+    screenY = (s16)(sxy >> 16);
+
+    dx = dir.vx;
+    dz = dir.vz;
+    if (*(s16*)(ctx + 0x348) != 0) {
+        dx = at->vx - eye->vx;
+        dy = at->vy - eye->vy;
+        dz = at->vz - eye->vz;
+        {
+            s32 dist = SquareRoot0(dx * dx + dy * dy + dz * dz);
+            s32 denom = *(s16*)(ctx + 0x348);
+            fade = (dist - *(s16*)(ctx + 0x34A)) / denom;
+            if (fade < 0) {
+                fade = 0;
+            } else if (fade > 0x100) {
+                fade = 0x100;
+            }
+        }
+    } else {
+        fade = 0;
+    }
+
+    {
+        s32 ang = ratan2(dx, dz) & 0xFFF;
+        s32 prod = *(s32*)(ctx + 0x328) * *(s32*)(ctx + 0x330);
+        scroll = HorizonMulShift12(prod, ang);
+    }
+
+    func_800278F8(ctx, scroll, screenY, fade, ot, renderCtx);
+
+#ifdef XENO_PC_PORT
+    /* DIAGNOSTIC: one-shot horizon draw probe. Remove with 2709C DIAG. */
+    {
+        static int s_hzDrawDiag;
+        if (!s_hzDrawDiag) {
+            s_hzDrawDiag = 1;
+            printf("[xeno-port][horizon] DIAG 273C4 screenY=%d scroll=%d fade=%d "
+                   "hasColors=%d h=%d stripScale=%d ot=%p rcx=%d "
+                   "ft4[0]=(%d,%d)-(%d,%d) tpage=0x%x\n",
+                   screenY, scroll, fade, (int)*(s16*)(ctx + 0x344),
+                   *(s32*)(ctx + 0x32C), (int)*(s16*)(ctx + 0x346), ot,
+                   renderCtx,
+                   (int)((POLY_FT4*)ctx)->x0, (int)((POLY_FT4*)ctx)->y0,
+                   (int)((POLY_FT4*)ctx)->x3, (int)((POLY_FT4*)ctx)->y3,
+                   (unsigned)((POLY_FT4*)ctx)->tpage);
+            fflush(stdout);
+        }
+    }
+#endif
+
+    if (*(s16*)(ctx + 0x344) <= 0) {
+        return screenY;
+    }
+
+    yTop = screenY - *(s32*)(ctx + 0x32C);
+    if (yTop > 0xF0) {
+        yTop = 0xF0;
+    }
+    if (yTop > 0) {
+        POLY_F4* poly = (POLY_F4*)(ctx + 0x280 + renderCtx * 0x18);
+        poly->y2 = (s16)yTop;
+        poly->y3 = (s16)yTop;
+        AddPrim(ot, poly);
+    }
+
+    t = HorizonMulShift12(dirN.vx, *(s16*)(ctx + 0x340));
+    t = HorizonMulShift8(t, *(s16*)(ctx + 0x346));
+    pt.vx = (s16)(at->vx + t);
+    t = HorizonMulShift8(*(s16*)(ctx + 0x33E), *(s16*)(ctx + 0x346));
+    pt.vy = (s16)t;
+    t = HorizonMulShift12(dirN.vz, *(s16*)(ctx + 0x340));
+    t = HorizonMulShift8(t, *(s16*)(ctx + 0x346));
+    pt.vz = (s16)(at->vz + t);
+
+    RotTransPers(&pt, &sxy, &p, &flag);
+    screenY2 = (s16)(sxy >> 16);
+
+    if ((screenY2 - screenY) >= 0xF1) {
+        screenY2 = screenY + 0xF0;
+    }
+
+    if (screenY2 >= 0 && screenY < 0xF0) {
+        POLY_G4* poly = (POLY_G4*)(ctx + 0x2E0 + renderCtx * 0x24);
+        poly->y0 = (s16)screenY;
+        poly->y1 = (s16)screenY;
+        poly->y2 = (s16)screenY2;
+        poly->y3 = (s16)screenY2;
+        AddPrim(ot, poly);
+    }
+
+    {
+        s32 yBot = (screenY2 < 0) ? 0 : screenY2;
+        if (yBot < 0xF0) {
+            POLY_F4* poly = (POLY_F4*)(ctx + 0x2B0 + renderCtx * 0x18);
+            poly->y0 = (s16)yBot;
+            poly->y1 = (s16)yBot;
+            AddPrim(ot, poly);
+        }
+    }
+
+    return screenY;
+}
+
+void func_800278F8(u8* ctx, s32 scroll, s32 screenY, s32 fade, void* ot,
+                   s32 renderCtx) {
+    s32 width = *(s32*)(ctx + 0x328);
+    s32 height = *(s32*)(ctx + 0x32C);
+    s32 fadePlus = fade + 0x100;
+    s32 stripH;
+    s32 xCursor;
+    s32 uPos;
+    s32 i;
+    s32 half;
+    s32 t;
+    s32 vFixed;
+    POLY_FT4* poly;
+
+    t = (width << 8) / fadePlus;
+    t = 0x140 - t;
+    half = (t + (t >> 31)) >> 1;
+    t = half + HorizonMulShift8(half, fade);
+    t = (s16)(scroll - t);
+
+    if (width != 0) {
+        uPos = t % width;
+        if ((uPos << 16) < 0) {
+            uPos += (u16)width;
+        }
+    } else {
+        uPos = 0;
+    }
+
+    if (screenY < 0 || screenY > height + 0xF0) {
+        stripH = 0;
+    } else {
+        stripH = (height << 8) / fadePlus;
+    }
+    xCursor = 0;
+
+    poly = (POLY_FT4*)(ctx + ((renderCtx & 1) * 0x140));
+
+    if ((s16)stripH <= 0) {
+        return;
+    }
+
+    {
+        s32 tpX = *(s16*)(ctx + 0x334);
+        s32 abr = *(s16*)(ctx + 0x338);
+        if (tpX < 0) {
+            tpX += 0x3F;
+        }
+        vFixed = tpX - ((tpX >> 6) << 6);
+        vFixed <<= (2 - abr);
+    }
+
+    for (i = 0; i < 8; i++) {
+        s32 abr = *(s16*)(ctx + 0x338);
+        s32 tpXbase = *(u16*)(ctx + 0x334);
+        s32 shift = 2 - abr;
+        s32 tpageX = tpXbase + ((s16)uPos >> shift);
+        s32 mask = (0x100 >> abr) - 1;
+        s32 u0 = (uPos + vFixed) & mask;
+        s32 uSpan = 0x100 - u0;
+        s32 spanPx;
+        s32 x1;
+        s32 tpY = *(s16*)(ctx + 0x336);
+        s32 gx;
+
+        if ((s16)(uPos + (s16)uSpan) > width) {
+            uSpan = (s16)(width - uPos);
+        }
+
+        /* asm: sll uSpan,16; sra 8 → (s16)uSpan << 8, then / fadePlus */
+        spanPx = (((s32)(s16)uSpan << 8) / fadePlus);
+
+        if ((s16)(xCursor + spanPx) > 0x140) {
+            spanPx = 0x140 - xCursor;
+            {
+                s32 tmp = (s16)spanPx * fadePlus;
+                if (tmp < 0) {
+                    tmp += 0xFF;
+                }
+                /* asm: srl (logical) after signed round — positive spans only */
+                uSpan = (u32)tmp >> 8;
+            }
+        }
+
+        x1 = xCursor + spanPx;
+
+        {
+            s32 next = uPos + (s16)uSpan;
+            if (width != 0) {
+                uPos = next % width;
+                /* asm uses mfhi of div next/width, then if negative add width —
+                 * already handled for C % with positive width after adjust: */
+                if (uPos < 0) {
+                    uPos += width;
+                }
+            }
+        }
+
+        poly->x0 = (s16)xCursor;
+        poly->y0 = (s16)(screenY - stripH);
+        poly->x1 = (s16)x1;
+        poly->y1 = (s16)(screenY - stripH);
+        poly->x2 = (s16)xCursor;
+        poly->y2 = (s16)screenY;
+        poly->x3 = (s16)x1;
+        poly->y3 = (s16)screenY;
+
+        poly->u0 = (u8)u0;
+        poly->v0 = *(u8*)(ctx + 0x33A);
+        poly->u1 = (u8)(u0 + (s16)uSpan - 1);
+        poly->v1 = *(u8*)(ctx + 0x33A);
+        poly->u2 = (u8)u0;
+        poly->v2 = (u8)(*(u8*)(ctx + 0x33A) + *(u8*)(ctx + 0x32C));
+        poly->u3 = (u8)(u0 + (s16)uSpan - 1);
+        poly->v3 = (u8)(*(u8*)(ctx + 0x33A) + *(u8*)(ctx + 0x32C));
+
+        gx = tpageX;
+        if (gx < 0) {
+            gx += 0x3F;
+        }
+        gx = (gx >> 6) << 6;
+        if (tpY < 0) {
+            tpY += 0xFF;
+        }
+        poly->tpage = GetTPage(abr, 0, gx, (tpY >> 8) << 8);
+
+        AddPrim(ot, poly);
+
+        xCursor = x1;
+        if ((s16)xCursor >= 0x140) {
+            break;
+        }
+        poly = (POLY_FT4*)((u8*)poly + 0x28);
+    }
+}
+#endif
 
 void func_80027D40(void* ptr) {
     if (ptr != NULL) {
