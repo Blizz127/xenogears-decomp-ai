@@ -277,6 +277,35 @@ void MenuExecute(void) {
 
     ArchiveSetIndex(0x10, 0);
 
+#ifdef XENO_PC_PORT
+    /* Dispatch matches retail jtbl_800183BC (asm/slus_006.64/data/800.rodata.s).
+     * The matching-build C below follows the fall-through listing order in
+     * MenuExecute.s and is left untouched for objdiff; that order swaps title
+     * (2), save/name (3), and shop (4).  Slot 2 is the title field's FE57
+     * opener (D_800ADB64=2): func_801C62A8 → func_801C58EC. */
+    switch (D_80059460) {
+        case 0:
+            func_801C62A8();
+            break;
+        case 1:
+            func_801CB0A8();
+            break;
+        case 2:
+        case 6:
+            func_801C62A8();
+            ChangeGameState(1);
+            break;
+        case 3:
+            func_801CBDBC();
+            break;
+        case 4:
+            func_801CCD28();
+            break;
+        case 5:
+            func_801CE024();
+            break;
+    }
+#else
     switch (D_80059460) {
         case 0:
             func_801C62A8();
@@ -298,6 +327,7 @@ void MenuExecute(void) {
             func_801CE024();
             break;
     }
+#endif
 
     if (g_MenuDebugEnabled) {
         HeapFree(pBuf0);
@@ -326,18 +356,13 @@ void MenuMain() {
     g_Menu->unk2D8 = 0;
     g_Menu->shouldDrawMenu = FALSE;
     MenuInitializeGfxEnvironments();
-#ifdef XENO_PC_PORT
-    /* Host framebuffer still holds KernelMenu from the field-test boot.
-     * Clear each menu drawenv so the root System Menu is not composited
-     * over that debug overlay. Retail keeps isbg=0 so the field shows. */
-    g_Menu->gfxEnvs[0].drawEnv.isbg = 1;
-    g_Menu->gfxEnvs[1].drawEnv.isbg = 1;
-#else
+    /* Retail keeps isbg=0 so MoveImage of the field snapshot (704,256) under
+     * the menu OT remains visible. isbg=1 only when the debug KernelMenu path
+     * is armed — otherwise title/system menus clear to black every frame. */
     if (g_MenuDebugEnabled) {
         g_Menu->gfxEnvs[0].drawEnv.isbg = 1;
         g_Menu->gfxEnvs[1].drawEnv.isbg = 1;
     }
-#endif
     func_8001BEEC();
     Vsync(0);
     PutDrawEnv(&g_Menu->gfxEnvs[0].drawEnv);
