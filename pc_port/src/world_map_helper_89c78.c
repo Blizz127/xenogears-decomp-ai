@@ -293,6 +293,50 @@ void wm_80089C78(u32 input_addr)
             draw_record = s_lwu(D_8009BE3C);
             ot_base = s_lwu(draw_record + 0x70u);
             ot_address = ot_base + ((u32)depth >> 4) * 4u;
+            /* TEMP-DIAG (world-map white-quad hunt): per-object trace. Revert. */
+            {
+                extern int PcPort_WorldCaptureCurFrame(void);
+                extern char *getenv(const char *);
+                static int s_inited = 0;
+                static int s_on = 0;
+                static int s_f0 = 0;
+                static int s_f1 = 0;
+                if (!s_inited) {
+                    const char *e = getenv("XENO_WM_OBJ_DIAG");
+                    const char *a = getenv("XENO_WM_OBJ_DIAG_F0");
+                    const char *b = getenv("XENO_WM_OBJ_DIAG_F1");
+                    s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+                    s_f0 = a != NULL ? atoi(a) : 0;
+                    s_f1 = b != NULL ? atoi(b) : 0;
+                    s_inited = 1;
+                }
+                if (s_on) {
+                    int wf = PcPort_WorldCaptureCurFrame();
+                    if (wf >= s_f0 && wf <= s_f1) {
+                        u8 *pk = (u8 *)PSX_ADDR(packet);
+                        printf("[wm-obj] wf=%d rec=%d model=%d "
+                               "xy=(%d,%d)-(%d,%d)-(%d,%d)-(%d,%d) "
+                               "rgb=%02x%02x%02x tpage=%04x "
+                               "uv=%04x/%04x/%04x/%04x\n",
+                               wf, (int)i, (int)model_index,
+                               (int)(s16)(s_lhu(packet + 8u)),
+                               (int)(s16)(s_lhu(packet + 10u)),
+                               (int)(s16)(s_lhu(packet + 16u)),
+                               (int)(s16)(s_lhu(packet + 18u)),
+                               (int)(s16)(s_lhu(packet + 24u)),
+                               (int)(s16)(s_lhu(packet + 26u)),
+                               (int)(s16)(s_lhu(packet + 32u)),
+                               (int)(s16)(s_lhu(packet + 34u)),
+                               (unsigned)pk[4], (unsigned)pk[5],
+                               (unsigned)pk[6],
+                               (unsigned)s_lhu(packet + 0x16u),
+                               (unsigned)s_lhu(uv_table + 0u),
+                               (unsigned)s_lhu(uv_table + 2u),
+                               (unsigned)s_lhu(uv_table + 4u),
+                               (unsigned)s_lhu(uv_table + 6u));
+                    }
+                }
+            }
             wm_89c78_link_packet(ot_address, packet);
 #if defined(WM_89C78_MUTANT_NONCOMPACT_CURSOR)
             packet += PACKET_STRIDE * 2u;

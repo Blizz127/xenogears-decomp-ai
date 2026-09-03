@@ -7,6 +7,29 @@
 #include <stdlib.h>
 #include "guest_prim_link.h"
 #define RENDER_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
+/* TEMP-DIAG (world-map white-quad hunt): per-sprite-poly trace. Revert. */
+extern int PcPort_WorldCaptureCurFrame(void);
+static int WmSpriteDiagActive(int *f0, int *f1)
+{
+    static int s_init = 0;
+    static int s_on = 0;
+    static int s_f0 = 0;
+    static int s_f1 = 0;
+    if (!s_init) {
+        const char *e = getenv("XENO_WM_SPRITE_DIAG");
+        const char *a = getenv("XENO_WM_SPRITE_DIAG_F0");
+        const char *b = getenv("XENO_WM_SPRITE_DIAG_F1");
+        s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+        s_f0 = a != NULL ? atoi(a) : 0;
+        s_f1 = b != NULL ? atoi(b) : 0;
+        s_init = 1;
+    }
+    if (f0)
+        *f0 = s_f0;
+    if (f1)
+        *f1 = s_f1;
+    return s_on;
+}
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -746,6 +769,27 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
             }
 #ifdef XENO_PC_PORT
             linkedThisCall++;
+            {
+                int df0 = 0;
+                int df1 = 0;
+                if (WmSpriteDiagActive(&df0, &df1)) {
+                    int wf = PcPort_WorldCaptureCurFrame();
+                    if (wf >= df0 && wf <= df1) {
+                        printf("[wm-sprite] wf=%d sprite=%p xy=(%d,%d)-(%d,%d)-(%d,%d)-(%d,%d) uv=(%u,%u)+(%u,%u) tpage=%04x clut=%04x\n",
+                               wf, pSpriteData,
+                               (int)poly->x0, (int)poly->y0,
+                               (int)poly->x1, (int)poly->y1,
+                               (int)poly->x2, (int)poly->y2,
+                               (int)poly->x3, (int)poly->y3,
+                               (unsigned int)poly->u0,
+                               (unsigned int)poly->v0,
+                               (unsigned int)((int)poly->u3 - (int)poly->u0),
+                               (unsigned int)((int)poly->v3 - (int)poly->v0),
+                               (unsigned int)poly->tpage,
+                               (unsigned int)poly->clut);
+                    }
+                }
+            }
             if (XenoFieldDiagEnabled() && s_diagLinked < 8) {
                 printf("[field-diag] func_8001E3D8 link=%d poly=%p ot=%p tag=%08x code=%02x xy0=(%d,%d) uv0=(%u,%u) tpage=%04x clut=%04x dir=%d\n",
                        (int)s_diagLinked, (void*)poly, ot,

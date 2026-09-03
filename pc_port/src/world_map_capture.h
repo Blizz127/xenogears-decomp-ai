@@ -9,5 +9,6 @@ int PcPort_WorldCaptureFrameComplete(int frame);
 int PcPort_WorldCaptureFinish(void);
 int PcPort_WorldCapturePending(void);
 int PcPort_WorldCaptureLastFulfilledFrame(void);
+int PcPort_WorldCaptureCurFrame(void);
 
 #endif

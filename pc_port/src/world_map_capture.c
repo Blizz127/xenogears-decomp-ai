@@ -120,3 +120,8 @@ int PcPort_WorldCaptureLastFulfilledFrame(void)
 {
     return s_last_fulfilled_frame;
 }
+
+int PcPort_WorldCaptureCurFrame(void)
+{
+    return s_current_frame;
+}
