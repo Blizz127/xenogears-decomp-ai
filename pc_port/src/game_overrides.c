@@ -72,6 +72,41 @@ static void PcPort_BootCapture(const char* name)
     fflush(stdout);
 }
 
+/* Dev-harness field capture: when XENO_FIELD_CAPTURE_DIR is set, writes
+ * <dir>/field-frame-%06d.png every XENO_FIELD_CAPTURE_EVERY presented frames
+ * (default 60). Called from Vsync right after PsyX_EndScene, the same present
+ * boundary the world-map capture uses, so the shot reflects the finished
+ * frame. Strictly env-gated; zero overhead otherwise. */
+void PcPort_FieldCaptureOnVsync(void)
+{
+    static int s_init;
+    static const char* s_dir;
+    static int s_every;
+    static unsigned s_frames;
+    char path[512];
+
+    if (!s_init) {
+        const char* every;
+        s_init = 1;
+        s_dir = getenv("XENO_FIELD_CAPTURE_DIR");
+        s_every = 60;
+        every = getenv("XENO_FIELD_CAPTURE_EVERY");
+        if (every && *every)
+            s_every = atoi(every);
+        if (s_every <= 0)
+            s_every = 60;
+    }
+    if (!s_dir || !s_dir[0])
+        return;
+    s_frames++;
+    if ((s_frames % (unsigned)s_every) != 0)
+        return;
+    snprintf(path, sizeof(path), "%s/field-frame-%06u.png", s_dir, s_frames);
+    PsyX_TakeScreenshotPath(path);
+    printf("[xeno-port][field] captured %s\n", path);
+    fflush(stdout);
+}
+
 extern long DisableEvent(long event);
 extern long EnableEvent(long event);
 
@@ -337,8 +372,28 @@ ModelPrimDesc D_8004FE50[17] = {
         .outputStride = 0x28,
     },
     [0x04] = {
-        .proc = { ModelPrimTriSmallAverageVariant0, NULL,
-                  ModelPrimTriSmallMaxSZVariant2, NULL, NULL, NULL },
+        /* Retail row 0x8004FEF0, read straight out of disc/SLUS_006.64 .sdata
+         * (file offset 0x800 + vaddr - 0x80010000):
+         *
+         *   proc = 8002E038 8002E038 8002E470 8002E8DC 8002E038 8002E038
+         *
+         * so variants 1, 4 and 5 are the SAME small-tri average walker as
+         * variant 0 (0x8002E038 = ModelPrimTriSmallAverageVariant0, see row
+         * 0x00), and only variant 3 (0x8002E8DC) is unported -> NULL, exactly
+         * as in row 0x00.
+         *
+         * Leaving proc[4] NULL was not merely incomplete, it corrupted the
+         * ordering table: temp2.c's draw dispatcher skips the group when the
+         * variant proc is NULL, but the BUILD side has already linked that
+         * group's packets into ot3 with their tag lengths set. The walker then
+         * met POLY_FT4-sized packets whose code byte was never written
+         * ("len=9 code=0"), reported "ptag length is not valid", and ran off
+         * the chain -- the Map 2 (Lahan opening) SEGV/heap-abort. */
+        .proc = { ModelPrimTriSmallAverageVariant0,
+                  ModelPrimTriSmallAverageVariant0,
+                  ModelPrimTriSmallMaxSZVariant2, NULL,
+                  ModelPrimTriSmallAverageVariant0,
+                  ModelPrimTriSmallAverageVariant0 },
         .buildProc = (ModelPrimBuildProc)func_8002CF34,   /* PSX 0x8002CF34 */
         .cmdStride = 0x08,
         .packetStride = 0x04,
