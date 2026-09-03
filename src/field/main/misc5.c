@@ -906,7 +906,36 @@ void FieldImageConvert24BitTo15Bit(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7948);
 
+#ifdef XENO_PC_PORT
+/* Minimal port of func_800A7C58 (asm 800A7C58).
+ *
+ * Retail loads archive 0xA9, runs the FE60 2D-background transition, then sets
+ * D_800ADB7C = 1 (asm 800A7E18 ori s0,1; 800A7E58 sw s0, ADB7C) so FE61
+ * (func_8008E9F8) can leave its wait. Without that flag, Map 490's attract
+ * path sticks on FE61 and never returns to the OP31 pad check that opens
+ * FE57 (title menu).
+ *
+ * DIAG / incomplete: full VRAM + archive body still TODO. This only applies
+ * the retail completion flag (and the prologue clears retail also does).
+ * Remove this ifdef once the full function is ported. */
+extern s32 D_800ADB7C;
+extern s32 D_800ADB84;
+extern s32 D_800ADB78;
+extern s32 D_800B00E4;
+extern s32 D_800B06A0;
+extern s32 D_800AFE74;
+
+void func_800A7C58(void) {
+    D_800ADB84 = 0;
+    D_800B00E4 = 0;
+    D_800ADB78 = 0;
+    D_800B06A0 = 0;
+    D_800AFE74 = 0;
+    D_800ADB7C = 1;
+}
+#else
 INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7C58);
+#endif
 
 void func_800A8314(void) {
     u8* pBuf;
