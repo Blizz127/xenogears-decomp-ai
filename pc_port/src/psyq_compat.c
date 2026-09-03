@@ -1162,6 +1162,9 @@ int Vsync(int mode)
 
         PsyX_EndScene();      /* present the frame the game just finished building */
 
+        /* Dev-harness field capture (no-op unless XENO_FIELD_CAPTURE_DIR). */
+        { extern void PcPort_FieldCaptureOnVsync(void); PcPort_FieldCaptureOnVsync(); }
+
         if (!sceneOpen && mode == 0)
             PsyX_PresentDisplayFromVRAM();
     }

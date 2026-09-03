@@ -82,6 +82,32 @@ run_case() {
         fi
     fi
 
+    # Zeboim sky bridge (Id-fight map): pin the map identity (FieldLoad 383),
+    # its texture archive drain, and the party actor sprite on top of the
+    # generic OT/actor gates above.
+    if [ "$name" = "Map383" ]; then
+        if ! rg -q '\[field-diag\] FieldLoad begin field=383' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (field 383 never began loading)" >&2
+            exit 1
+        fi
+        if ! rg -q 'retail decoder: [0-9]+ sectors fed, sectionsLeft=0 stripsLeft=0 done=1' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (field 383 texture archive did not drain)" >&2
+            exit 1
+        fi
+        if ! rg -q '\[field-diag\] frame=[0-9]+ .*DrawOTag=1' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (no presented OT frame)" >&2
+            exit 1
+        fi
+        if ! rg -q '\[field-diag\] func_80075B44 frame=[0-9]+ active=[1-9][0-9]* plain=[1-9]' "$log"; then
+            sed -n '1,260p' "$log"
+            echo "$name smoke: FAIL (no plain actor draw)" >&2
+            exit 1
+        fi
+    fi
+
     if [ "$name" = "Map16" ]; then
         if ! rg -q '\[field-diag\] models frame=[0-9]+ .*emitted=[1-9]' "$log" &&
            ! rg -q 'objects=[1-9][0-9]*' "$log"; then
@@ -104,3 +130,4 @@ run_case Map1 1 6 25
 run_case Map14 14 0 16
 run_case Map15 15 0 16
 run_case Map16 16 0 16
+run_case Map383 383 0 25
