@@ -521,7 +521,11 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
     if (((*(u16*)(s0 + 0x0) & 0x1) == 0) && (*(s32*)(s0 + 0x30) != 0) &&
         (s1 != 0)) {
         HeapSetCurrentContentType(0x26);
-        *(void**)(s0 + 0x18) = HeapAlloc(*(s32*)(s0 + 0x30), 0);
+        /* PSX `sw` into the 4-byte slot at modelData+0x18. An 8-byte host
+         * pointer store would clobber +0x1C, which func_8002C3E8 relocates
+         * and func_800303C8 later reads as the skeletal descriptor. Same
+         * 4-byte slot rule as func_8002CB54's out1/out2 stores. */
+        *(u32*)(s0 + 0x18) = (u32)(uintptr_t)HeapAlloc(*(s32*)(s0 + 0x30), 0);
         *(u16*)(s0 + 0x0) = *(u16*)(s0 + 0x0) | 0x1;
     }
 
