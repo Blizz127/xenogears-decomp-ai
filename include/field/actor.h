@@ -77,13 +77,14 @@ typedef struct {
     /* 0x4 */ u16 unkOffset;
 } SpriteAnimPackageFileAnimation;
 
-// An animation package which has been parsed and possibly loaded in memory
+// An animation package which has been parsed and possibly loaded in memory.
+/* PSX pointer slots as u32 so sizeof stays 0x14 on LP64 (see SpriteData). */
 typedef struct {
-    /* 0x0  */ void* pFrames;
+    /* 0x0  */ u32 pFrames;
     /* 0x4  */ SVEC2 tex;
     /* 0x8  */ SVEC2 clut;
-    /* 0xC  */ void* pPalette;
-    /* 0x10 */ void* pAnimations;
+    /* 0xC  */ u32 pPalette;
+    /* 0x10 */ u32 pAnimations;
 } SpriteAnimPackage;
 
 typedef struct {
@@ -102,10 +103,10 @@ typedef struct {
     /* 0x0  */ SVEC rotation;
     /* 0x6  */ SVEC scale;
     /* 0xC  */ MATRIX transformMatrix;
-    /* 0x2C */ void* pFramesData;
-    /* 0x30 */ void* pCurRenderFramesData;
-    /* 0x34 */ SpriteDirectionTransforms* pDirTransforms;
-    /* 0x38 */ void* pNextSpriteData;
+    /* 0x2C */ u32 pFramesData;
+    /* 0x30 */ u32 pCurRenderFramesData;
+    /* 0x34 */ u32 pDirTransforms;
+    /* 0x38 */ u32 pNextSpriteData;
     /* 0x3C */ u8 offsetX;
     /* 0x3D */ u8 offsetY;
     /* 0x3E */ s16 field_0x3E;
@@ -121,7 +122,7 @@ typedef struct {
     /* 0x12 */ s16 field_0x12;
     /* 0x14 */ s16 entityId;
     /* 0x16 */ s16 field_0x16;
-    /* 0x18 */ void* field_0x18;
+    /* 0x18 */ u32 field_0x18;
 } SpriteDataI3;
 
 typedef struct {
@@ -142,13 +143,17 @@ typedef struct {
 
 // Flags (Field 0xB0):
 // 0x400: Current animation is using non-default animation package
+/* PSX pointers kept as u32 (same convention as ActorData / FieldActor) so
+ * sizeof(SpriteData) stays 0x164 and named fields (red/green/blue/prim at
+ * +0x28, direction at +0x32) stay at retail offsets on the 64-bit port.
+ * Reconstruct host pointers at use sites via (void*)(uintptr_t). */
 typedef struct {
     /* 0x0  */ IVEC3 position;
     /* 0xC  */ IVEC3 step;
     /* 0x18 */ int moveSpeed;
     /* 0x1C */ u32 gravity;
-    /* 0x20 */ SpriteDataI1* pBase;
-    /* 0x24 */ void* pVramData;
+    /* 0x20 */ u32 pBase;
+    /* 0x24 */ u32 pVramData;
     /* 0x28 */ u8 red;
     /* 0x29 */ u8 green;
     /* 0x2A */ u8 blue;
@@ -169,26 +174,26 @@ typedef struct {
     /* 0x3C */ u32 field_0x3C_3: 1;
     /* 0x3C */ u32 field_0x3C_4: 1;
     /* 0x40 */ u32 field_0x40;
-    /* 0x44 */ void* pCurAnimFile;
-    /* 0x48 */ void* pDefaultAnimFile;
-    /* 0x4C */ void* pSpecialAnimFile; // used when animation id is negative
+    /* 0x44 */ u32 pCurAnimFile;
+    /* 0x48 */ u32 pDefaultAnimFile;
+    /* 0x4C */ u32 pSpecialAnimFile; // used when animation id is negative
     /* 0x50 */ u32 field_0x50;
     /* 0x54 */ u32 field_0x54;
-    /* 0x58 */ void* pCurAnimation; // Points to animation entry in SpriteAnimPackageAnimationsData
+    /* 0x58 */ u32 pCurAnimation; // Points to animation entry in SpriteAnimPackageAnimationsData
     /* 0x5C */ u32 field_0x5C;
     /* 0x60 */ u32 field_0x60;
-    /* 0x64 */ void* pSpriteBytecode; // IP
-    /* 0x68 */ void* field_0x68; // Callback
-    /* 0x6C */ void* field_0x6C; // Pointer to self?
-    /* 0x70 */ void* field_0x70;
-    /* 0x74 */ void* pTargetEntitySprite;
+    /* 0x64 */ u32 pSpriteBytecode; // IP
+    /* 0x68 */ u32 field_0x68; // Callback
+    /* 0x6C */ u32 field_0x6C; // Pointer to self?
+    /* 0x70 */ u32 field_0x70;
+    /* 0x74 */ u32 pTargetEntitySprite;
     /* 0x78 */ u32 field_0x78;
-    /* 0x7C */ void* field_0x7C;
+    /* 0x7C */ u32 field_0x7C;
     /* 0x80 */ s16 field_0x80;
     /* 0x82 */ s16 field_0x82;
     /* 0x84 */ s16 field_0x84;
     /* 0x86 */ s16 allocatedDataSize;
-    /* 0x88 */ void* field_0x88;
+    /* 0x88 */ u32 field_0x88;
     /* 0x8C */ u8 stackIndex;
     /* 0x8D */ u8 field_0x8D;
     /* 0x8E */ u8 stack[16];

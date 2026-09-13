@@ -120,7 +120,7 @@ void func_80021BCC(void* arg0, u32 arg1) {
 }
 
 void SpriteSetSpecialAnimFile(SpriteData* pSpriteData, void* pAnimFile) {
-    pSpriteData->pSpecialAnimFile = pAnimFile;
+    pSpriteData->pSpecialAnimFile = (u32)(uintptr_t)pAnimFile;
 }
 
 void func_80021BF8(void* arg0, s32 arg1) {
