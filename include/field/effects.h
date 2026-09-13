@@ -22,10 +22,15 @@ typedef struct {
     int delta6;
     short unk38;
     short unk3C;
-    DR_MOVE* buffer0;
-    DR_MOVE* buffer1;
-    POLY_FT4* buffer2;
-    POLY_FT4* buffer3;
+    /* PSX 4-byte pointer slots. Host `DR_MOVE*`/`POLY_FT4*` here would be
+     * 8 bytes (and 8-aligned) on LP64, inflating FieldDistortion by 0x1C so
+     * FieldEffects.fades[] overlaps the packed D_800B2174 block at +0xFC
+     * (g_FieldControl, D_800B218E, etc.). Retail FieldEffects is 0xFC.
+     * Reconstruct via (void*)(uintptr_t). */
+    /* 0x3C */ u32 buffer0;
+    /* 0x40 */ u32 buffer1;
+    /* 0x44 */ u32 buffer2;
+    /* 0x48 */ u32 buffer3;
 } FieldDistortion;
 
 typedef struct {
