@@ -15,10 +15,10 @@ extern int D_800ADB24;
 void FieldDistortionFree(void) {
     g_FieldEffects.distortion.isActive = 0;
     if (D_800ADB24) {
-        HeapFree(g_FieldEffects.distortion.buffer0);
-        HeapFree(g_FieldEffects.distortion.buffer1);
-        HeapFree(g_FieldEffects.distortion.buffer2);
-        HeapFree(g_FieldEffects.distortion.buffer3);
+        HeapFree((void*)(uintptr_t)g_FieldEffects.distortion.buffer0);
+        HeapFree((void*)(uintptr_t)g_FieldEffects.distortion.buffer1);
+        HeapFree((void*)(uintptr_t)g_FieldEffects.distortion.buffer2);
+        HeapFree((void*)(uintptr_t)g_FieldEffects.distortion.buffer3);
         D_800ADB24 = 0;
     }
 }
