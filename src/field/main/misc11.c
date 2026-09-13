@@ -97,29 +97,29 @@ void func_80092404(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092424);
 
-extern u32* D_800AFB20;
+extern u32 D_800AFB20[];
 
 void func_800924D4(s32 index, s32 component, s32 value) {
-    u32* entry;
+    /* D_800AFB20[0] is the retail walkmesh-flags base (4-byte slot). Loading
+     * the symbol as u32* on LP64 concatenates that word with D_800AFB24 and
+     * writes through a non-canonical pointer. */
+    u32* flags = (u32*)(uintptr_t)D_800AFB20[0];
+    u32* entry = &flags[index];
     u32 mask;
 
     switch (component) {
         case 0:
-            entry = (u32*)((u8*)D_800AFB20 + index * 4);
             *entry = (*entry & ~0xFFu) | (value & 0xFF);
             break;
         case 1:
-            entry = &D_800AFB20[index];
             mask = 0xFFFF00FF;
             *entry = (*entry & mask) | ((value & 0xFF) << 8);
             break;
         case 2:
-            entry = &D_800AFB20[index];
             mask = 0xFF00FFFF;
             *entry = (*entry & mask) | ((value & 0xFF) << 16);
             break;
         case 3:
-            entry = &D_800AFB20[index];
             mask = 0x00FFFFFF;
             *entry = (*entry & mask) | ((value & 0xFF) << 24);
             break;
