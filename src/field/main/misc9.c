@@ -93,10 +93,10 @@ s32 func_800AAA74(void* pModelData) {
     return 0;
 }
 
-extern SpriteList* D_800AFC68;
+extern u32 D_800AFC68;
 
 void func_800AABD8(void) {
-    HeapFree(D_800AFC68);
+    HeapFree((void*)(uintptr_t)D_800AFC68);
     DrawSync(0);
 }
 
@@ -104,9 +104,13 @@ void func_800AAC08(void) {
     RECT rect;
     SPRT* pSprite;
     SPRT* pSprite2;
+    SpriteList* pList;
     int i;
 
-    D_800AFC68 = HeapAlloc(0x840, 0x0);
+    /* Packed BSS slot at 0x800AFC68 is 4 bytes; an 8-byte SpriteList* store
+     * clobbers D_800AFC6C (held-button mask) at +0x4. */
+    D_800AFC68 = (u32)(uintptr_t)HeapAlloc(0x840, 0x0);
+    pList = (SpriteList*)(uintptr_t)D_800AFC68;
     
     rect.x = 0;
     rect.y = 0;
@@ -114,10 +118,10 @@ void func_800AAC08(void) {
     rect.h = 0xFF;
     
     for (i = 0; i < 0x21; i++) {
-        SetDrawMode(&D_800AFC68->drModes[i][0], 0, 0, GetTPage(0, 0, 0x3C0, 0x100) & 0xFFFF, &rect);
-        SetDrawMode(&D_800AFC68->drModes[i][1], 0, 0, GetTPage(0, 0, 0x3C0, 0x140) & 0xFFFF, &rect);
-        pSprite = &D_800AFC68->sprites[i][0];
-        pSprite2 = &D_800AFC68->sprites[i][1];
+        SetDrawMode(&pList->drModes[i][0], 0, 0, GetTPage(0, 0, 0x3C0, 0x100) & 0xFFFF, &rect);
+        SetDrawMode(&pList->drModes[i][1], 0, 0, GetTPage(0, 0, 0x3C0, 0x140) & 0xFFFF, &rect);
+        pSprite = &pList->sprites[i][0];
+        pSprite2 = &pList->sprites[i][1];
         
         SetSprt(pSprite);
         setRGB0(pSprite, 0x80, 0x80, 0x80);
@@ -136,11 +140,14 @@ void func_800AAC08(void) {
 
 // Set RGB of sprites
 void func_800AADC8(int index, int red, int green, int blue) {
-    setRGB0(&D_800AFC68->sprites[index][0], red, green, blue);
-    setRGB0(&D_800AFC68->sprites[index][1], red, green, blue);
+    SpriteList* pList = (SpriteList*)(uintptr_t)D_800AFC68;
+    setRGB0(&pList->sprites[index][0], red, green, blue);
+    setRGB0(&pList->sprites[index][1], red, green, blue);
 }
 
 void func_800AAE4C(int index, int x, int y, int type) {
+    SpriteList* pList = (SpriteList*)(uintptr_t)D_800AFC68;
+
     switch (type) {
         case 0:
             y -= 0xC;
@@ -152,10 +159,10 @@ void func_800AAE4C(int index, int x, int y, int type) {
             break;
     }
 
-    D_800AFC68->sprites[index][g_FieldCurRenderContextIndex].x0 = x;
-    D_800AFC68->sprites[index][g_FieldCurRenderContextIndex].y0 = y;
-    addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68->sprites[index][g_FieldCurRenderContextIndex]);
-    addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68->drModes[index][g_FieldCurRenderContextIndex]);
+    pList->sprites[index][g_FieldCurRenderContextIndex].x0 = x;
+    pList->sprites[index][g_FieldCurRenderContextIndex].y0 = y;
+    addPrim(g_FieldCurRenderContext->ot3, &pList->sprites[index][g_FieldCurRenderContextIndex]);
+    addPrim(g_FieldCurRenderContext->ot3, &pList->drModes[index][g_FieldCurRenderContextIndex]);
 }
 
 extern SpriteList2* D_800B1DF0;
