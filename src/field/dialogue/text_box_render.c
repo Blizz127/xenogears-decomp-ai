@@ -526,7 +526,9 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
     }
 
     g_FieldTextBoxes[textBoxIndex]._pad[0x68] = (D_800B21D6 == 8) ? 1 : 2;
-    *(void**)(pTextBox + 0xA8) = GetStringEntry(D_800ADBF0, stringIndex);
+    /* +0xA8 is a 4-byte PSX string-pointer slot. An 8-byte void* store
+     * clobbers the text-box RECT at +0xAC/+0xAE (x/y set by func_8007E114). */
+    *(u32*)(pTextBox + 0xA8) = (u32)(uintptr_t)GetStringEntry(D_800ADBF0, stringIndex);
     g_FieldTextBoxes[textBoxIndex].visibility = 0;
     *(u16*)(pTextBox + 0x28) |= 2;
     g_FieldTextBoxes[textBoxIndex].ownerActorID = ownerActorIndex;
@@ -618,7 +620,7 @@ void func_8008004C(void* ot, s32 renderContextIndex) {
                 }
 
                 if (*(s16*)(pWindow + 0x82) == 0) {
-                    func_80034714(pWindow, *(void**)(pTextBox + 0xA8));
+                    func_80034714(pWindow, (void*)(uintptr_t)*(u32*)(pTextBox + 0xA8));
                 }
 
                 func_80034888(pWindow, ot, renderContextIndex);
