@@ -71,8 +71,7 @@ segments:
       # linked *after* the code and the overlay mismatches from byte 1 (retail
       # offset 0 is 0x00000005; a data-first split emits `addiu $sp,$sp,-0x28`
       # there instead).  movie.bin -- which matches retail exactly -- uses
-      # `rodata` here for the same reason.  battling.yaml still has the broken
-      # `data` shape, which is why it differs in 88% of its bytes.
+      # `rodata` here for the same reason.
       - [0x0, rodata]
       - [0x120C, asm]
       # Code ends after func_80099BFC; splat's own scan puts the first trailing
@@ -82,10 +81,12 @@ segments:
       # the overlay then fails to link on undefined references such as
       # D_8009B564 / D_8009BB48 / D_8009A5B4.
       - [0x2A39C, data]
-      # 0x8009bbb8 = file end 0x8009BBB6 aligned to 4.  Best known value:
-      # it leaves 2,743 of 180,422 bytes differing.  Do NOT "fix" this by
-      # nudging it -- 0x8009bbb0 was tried and is worse (2,907).  See the
-      # world_map note in ACTIVE_HANDOFF.md for the real diagnosis.
+      # 0x8009bbb8 = file end 0x8009BBB6 aligned to 4.  Do NOT nudge this --
+      # 0x8009bbb0 was tried and is worse (2,907).  splat 0.33.2 emits an
+      # address-less `.world_map_bss (NOLOAD)` for a nested bss subsegment;
+      # the Makefile then pins the VMA at 0x8009BBB8 so 16-byte .bss alignment
+      # cannot round it up to 0x8009BBC0.  Symbols are also pinned in
+      # symbol_addrs.world_map.txt (addresses are in the names).
       - { vram: 0x8009bbb8, type: bss }
   # The overlay length 0x2C0C6 is not a multiple of 4, so the final 2 bytes
   # cannot live in a word-aligned data subsegment -- without a `databin` tail

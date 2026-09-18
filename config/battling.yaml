@@ -60,11 +60,23 @@ segments:
       # The first 0xCB8 bytes are the overlay's literal/jump-table data.
       # Code begins at 0x800707A8; the 0xCB8 boundary is independently
       # visible in the retail split as the end of D_8006FAF0's data block.
-      - [0x0, data]
+      # MUST be `rodata`, not `data`: section_order puts .rodata first and
+      # .text before .data, so a leading `data` subsegment links after the
+      # code (retail offset 0 is 0x00000007; a data-first split emits
+      # `addiu $sp,$sp,-0x18` there instead).  movie.bin and world_map.yaml
+      # use `rodata` here for the same reason.
+      - [0x0, rodata]
       - [0xCB8, asm]
-      # State 4's entry is externally referenced by SLUS 0x800180CC.
-      # Keep the body in generated INCLUDE_ASM until each function is
-      # independently decompiled; no host/native implementation is implied.
-      - [0x193A0, c, main]
+      # Matching uses the splat `asm` TU, not src/battling/main.c: that C
+      # file is INCLUDE_ASM wrappers whose maspsx object drops `.L` jumptable
+      # labels (GNU as local-symbol prefix), so a `c` subsegment cannot
+      # satisfy the leading rodata's `.word .L8008B22C` relocs.  movie.bin
+      # is the same shape (code is `asm`, assembled with `as`).  The C file
+      # stays for the port; it is not the matching-build input.
+      - [0x193A0, asm]
       - { vram: 0x8009295c, type: bss }
-  - [0x22e69]
+  # Overlay length 0x22E69 is not a multiple of 4, so the final byte cannot
+  # live in a word-aligned data subsegment -- without a `databin` tail the
+  # build comes out 1 byte short of retail 142,953.
+  - [0x22E68, databin]
+  - [0x22E69]
