@@ -4211,3 +4211,91 @@ Blocks patch-editor modification of the file. Maintenance item.
 Repro: iconv -f utf-8 -t utf-8 < pc_port/extern/PsyCross/src/psx/LIBGTE.C > /dev/null
 Evidence: proven
 Last verified @ ed61298
+
+## Battle-overlay guest-RAM alias generation defects (3, block 11 host-adoption candidates)
+
+`tools/scripts/gen_battle_overlay_guest_ram.py` emits one alias per overlay `D_*`
+symbol, but three source patterns defeat it. Each is measured; all three block a
+whole TU from compiling in battle-host mode, and with it every candidate in that
+TU (10 candidates over 6 TUs at first measurement; main75/mainc84/mainc130 join
+the list later on 2026-09-18).
+
+Repro (all three): host-compile the TUs that still have no adopted leaf —
+```
+FLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin -DXENO_BATTLE_OVERLAY_HOST_BODIES -Ipc_port/include_shim -Iinclude -Ipc_port/build_native -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx"
+for tu in main32 main35 main39 main55 main70 main75 mainc84 mainc115 mainc130; do
+  gcc -c src/battle/$tu.c $FLAGS -o /dev/null || echo "FAIL $tu"
+done
+```
+1. Multi-declarator externs are mis-parsed: `parse_extern` takes the last name and
+   the tokens before it as the type, so `extern u8 D_800D3014, D_800D366C,
+   D_800C3E29;` leaves `D_800D3014` with no alias and produces
+   `#define D_800C3E29 (*((D_800D366C, *)PSX_ADDR(0x800C3E29)))`. Same for
+   `extern Row310 D_800C3EBE[], D_800C3EC0[];` (main35, main39).
+2. Type tokens are emitted globally even when they are TU-local typedefs:
+   `#define D_800D30A0 ((BattleSetupShortVector *)PSX_ADDR(0x800D30A0))` does not
+   compile in any TU that does not declare the struct (main55, main70, mainc115).
+3. One alias cannot serve a symbol used both as a word and as a pointer:
+   `D_800D367C` is `extern u8*` in main32 and `extern u32` in main31, so the
+   pointer-classified alias is not an lvalue and `D_800D367C = buf;` in
+   func_8007FD38 does not compile (main32).  The same class was fixed per-body
+   in func_800BF720/func_800BED30/func_800B3B6C/func_800B9B30/func_8009CA90 (see
+   docs/evidence/battle-host-leaf-push-20260918/README.md); fixing the generator
+   would be the general repair.
+
+Evidence: proven (host-mode compile failures reproduce)
+Last verified @ 2a148ec4 + working tree (2026-09-18)
+
+## Battle host leaves the differential prover cannot adjudicate
+
+Adopting a leaf requires proving it against retail in
+`pc_port/tests/run_battle_overlay_host_differential_test.sh`; a handful are
+unprovable *by the harness*, not necessarily wrong, and are on record in
+docs/evidence/battle-host-leaf-push-20260918/README.md. Two clusters would need
+harness work rather than body work:
+- callees the interpreter resolves through the runtime's registered adapters
+  while the host side calls the prover's placeholder (func_8008887C), and callees
+  with no host implementation at all (HeapFree/ArchiveSetIndex: func_800800E8,
+  func_8008AB4C, func_8008AB70, func_800BEDE8);
+- overlay words that hold a guest address but are classified scalar/array, so the
+  sweep's null fill makes retail fault before any case can complete
+  (func_8009E3C8, func_800B16F0, func_8008AA40).
+
+Repro: ./pc_port/tests/run_battle_overlay_host_differential_test.sh with the
+candidate appended to pc_port/src/battle_overlay_host_leaves.inc
+(UNPROVEN = no case completed; host-fault = host ran off g_PsxRam).
+Evidence: proven
+Last verified @ 2a148ec4 + working tree (2026-09-18)
+
+## Port boot floods 32 KiB of CD data through mis-sized archive buffers (title-screen SIGSEGV)
+
+Measured 2026-09-18. `pc_port/src/port_main.c:1388` calls
+`ArchiveInit(D_80010004, D_80018004, 0)` so the port reads the retail archive
+index/header from disc instead of relying on them being statically baked into the
+EXE. Both destinations are generated *data stubs*:
+`pc_port/build_native/stubs.c` sizes them `0x20` because neither the ELF nor
+`config/symbol_addrs.slus_006.64.txt` gives them a size, and the read that fills
+them is 32768 bytes per buffer (`pc_port/src/archive_port.c:574` ->
+`pc_port/extern/PsyCross/src/psx/LIBCD.C:607`).
+
+Result: the boot read overwrites 32 KiB of neighbouring port globals starting at
+`D_80010004` (host `0x9ff380` in the current link). That span covers
+`D_8004F304` (`0x9ff7a0`) and `D_80062528` (`0xa00fe0`), so the field teardown
+`func_80078D44` (`src/field/main/misc4.c:207`) then sees `D_8004F304 != 0` and
+calls `func_800399D4(D_80062528)` (`src/slus_006.64/system/sound.c:2011`) with a
+CD-data word: SIGSEGV on the title screen as soon as scripted Circle input
+advances it. gdb: `func_800399D4 (manager=0xdac0025f870003)`; a watchpoint on
+`*(long*)&D_80062528` first trips inside `ArchiveInit`'s `memmove`.
+
+Retail sizes the same region as table 0x8000 at 0x80010004 plus the header at
+0x80018004 (rodata span `[0x80010000,0x80019524)`), so the port needs those two
+host buffers sized to match the reads.
+
+Layout-dependent, **not** overlay-adoption-dependent: reproducible today with 1,
+13, 18, 19, 24 and 92 adopted leaves, while the 2026-09-11
+`pc_port/build_native/xeno-port.pre-100857` binary still boots (its neighbours
+were padding). Any port rebuild can trip it, so the buffer sizes need fixing
+rather than the layout. Also: `pc_port/src/world_map_init.c:4077`'s diagnostic
+increments the same retail counter `D_8004F304` by hand -- a second landmine on
+this path.
+Evidence: proven (runtime, gdb + watchpoint, 2026-09-18)

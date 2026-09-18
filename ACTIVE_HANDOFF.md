@@ -6,6 +6,112 @@
 > the port. Anything still running through `battle_mips_runtime.c` can never be
 > restyled.
 
+Latest completed checkpoint (2026-09-18 UTC, later): BOOT -> LAHAN RESTORED, WITH
+THE FIRST BATTLE COMPLETING. The port built from this tree crashed on the title
+screen; two root causes were found and fixed, and the route is now runtime-proven
+end to end: title (field 490) -> New Game -> prologue (field 4) -> Lahan
+(field 2) -> gear battle enters, runs and *returns* -> painting room (field 14).
+Evidence: docs/evidence/boot-to-lahan-20260918/README.md (logs, screenshots,
+gdb/watchpoint proof, harness scripts). This is better than the documented
+`lahan-natural-visible` TITLE SMOKE PASS, which reached the same battle and
+stopped inside it.
+
+Fix 1 (root cause of the title-screen SIGSEGV, and NOT caused by overlay
+adoption: it reproduces with 1, 13, 18, 19, 24 and 92 adopted leaves):
+pc_port/src/port_main.c:1388 calls ArchiveInit(D_80010004, D_80018004, 0), and
+those two host globals were generated data stubs sized 0x20 while each read is
+32768 bytes (archive_port.c -> PsyCross LIBCD.C CdReadSync). The boot read
+flooded 32 KiB of neighbouring port globals, including D_8004F304 (0x9ff7a0) and
+D_80062528 (0xa00fe0), so the field teardown func_80078D44 (misc4.c:207) called
+func_800399D4 with a CD-data word. Fixed by the port-only size file
+config/symbol_addrs.port_buffers.txt (0x8000/0x1520) now passed by
+pc_port/build_port.sh to gen_port_stubs.py; the matching configs and artifacts
+are untouched.
+
+Fix 2 (the first battle aborted 19 instructions in): the bridge table called
+0x80032498 (HeapChangeCurrentUser) data because gen_battle_bridge_map.py only
+trusted FUNC symbols from the matching ELF, and the un-decompiled PsyQ library
+range has none. The generator now also accepts a name the port binary defines as
+FUNC (--host-elf, passed by build_port.sh) or in the PsyQ heap family; adapter
+functions 101 -> 590 and the battle runs.
+
+Harness trap worth remembering: the first battle looked hung (screen
+byte-identical for 60 s, guest PC pinned in func_8008A3EC in
+asm/battle/nonmatchings/main43) — that function is the PAUSE handler, and the
+cause was the driver pressing Start; only Start closes it, Circle/Cross do not.
+scratchpad/lahan_drive2.py no longer sends Start.
+
+Next blocker for the rest of Lahan: field 14 (painting room) needs the scripted
+opening slices the 2026-09-08 natural runs drove by hand; the generic driver
+parks there. Also open: title CONTINUE hangs in func_801D9F98 (INCLUDE_ASM,
+stubbed) — New Game is unaffected.
+
+Latest completed checkpoint (2026-09-18 UTC): BATTLE OVERLAY HOST-LEAF COVERAGE
+PUSH — the adopted-leaf allowlist went 24 -> 92, all proven, and the port build,
+stub gate, prover and retail byte gate are green together. Evidence:
+docs/evidence/battle-host-leaf-push-20260918/README.md.
+
+Measured end state, all fresh: pc_port/build_port.sh LINK OK, 82 function stubs,
+0 overlay-name collisions, "92 adopted leaves reach no generated stub";
+pc_port/tests/run_battle_overlay_host_differential_test.sh PASS checks=2247
+inconclusive=386 hand-only=8 leaves=92 in O0/O2/UBSan with the wrong-result
+mutant still rejected (baseline was 24 leaves / 252 checks);
+run_battle_overlay_leaf_bridge_test.sh PASS 40 x O0/O2/UBSan + control; ninja
+build/out/battle.bin byte-identical to disc/battle.bin,
+1830b4ef1fe37129972fc310dfad534f8161d6c0b123e74254c3711334a3e291 (the matching
+overlay is unchanged by all six source edits, which are `#ifdef XENO_PC_PORT`
+guarded).
+
+Four harness upgrades were required, each at a plateau: (1) the prover now seeds
+pointer-typed overlay globals (`--pointer-globals` + sweep patterns 3-4, plus a
+pattern-filled 0x400-byte target window) so bodies that dereference
+`D_800D2D28`-style symbols are comparable instead of faulting on the retail side;
+(2) a SIGSEGV/SIGBUS handler reports a host body that walks off g_PsxRam as a
+per-case `host-fault` instead of aborting the whole sweep; (3) the closure-aware
+eligibility/stub gate from the preceding session is now exercised at every batch;
+(4) a pointer-argument pass gives every pointer parameter PTRT and writes a live
+nested target at the first word of each argument target, which is what made the
+103 generator-excluded `u8**` bodies evaluable at all. Seven matched *empty*
+bodies (retail `jr ra`) were allowlisted by hand because
+gen_battle_overlay_guest_ram.py skips empty bodies and the stub gate would
+otherwise refuse any leaf that reaches one.
+
+The prover found real retail-behaviour bugs and they are fixed: func_800BF720
+(main128.c), func_800BED30 (mainc123.c), func_800B3B6C (mainl81.c) all read or
+wrote a guest pointer through a guest-RAM alias that had been generated for a
+*different* use of the same symbol (array vs scalar vs pointer); func_800B9B30
+(mainc108.c) and the port-only coexistence body func_8009CA90 (main59.c) did not
+compile in port mode at all — main59.c/mainc108.c had never been host-compiled
+because no leaf in them had been adopted; and func_800B6930/func_800B6990
+(main90.c) added a 16-bit offset field to a pointer, which retail wraps through
+the 32-bit bus and masks into the RAM mirror while a host pointer does neither
+(the new pointer-argument pass exposed it; their hand cases used well-formed
+data and had missed it). Each fix is guarded, so matching is untouched.
+
+Newly identified generator defects (`gen_battle_overlay_guest_ram.py`), each
+blocking whole TUs: multi-declarator externs are mis-parsed (it takes the last
+name and a garbage type token: `extern u8 D_800D3014, D_800D366C, D_800C3E29;`),
+type tokens are emitted globally even when they are TU-local typedefs
+(`BattleSetupShortVector`), one alias cannot serve a symbol used both as a word
+and as a pointer, and a one-level pointer alias cannot serve a two-level
+dereference. Those are the reason main32/main35/main39/main55/main70/main75/
+mainc84/mainc115/mainc130.c still cannot host-compile (~11 candidates).
+Rejections are otherwise measured and listed in the evidence README and
+rejected-batches.txt: callees with no host implementation, unresolved call
+targets, wild-pointer bodies, and the 103 nested-deref bodies that all host-fault
+under the pointer-argument pass (which is exactly why the generator excludes
+them).
+
+Not claimed: no runtime observation — the port still does not execute the battle
+overlay, so these bodies are proven not run. pc_port/tests/battle_overlay_bootstrap_test.sh
+is red in this tree (config/battle.yaml lacks `generate_asm_macros_files: False`);
+config/battle.yaml is untouched here, so that is pre-existing. Host builds need
+the SDL2 header workaround recorded in the evidence README (the Homebrew SDL2
+prefix is missing all headers except SDL.h). Do not run two adoption cycles
+concurrently: they share `battle_overlay_host_leaves.inc` and the build objects,
+and one concurrency mistake here produced a spurious "retired override symbol"
+failure. Changes are left uncommitted.
+
 Latest completed checkpoint (2026-09-06 UTC): MAP16 (OPEN_ISSUES item 8, the
 "Blackmoon Forest renders mostly black" blocker) is RESOLVED, and its recorded
 cause was wrong. MAP16 is not a broken forest: it is a scripted cutscene — fixed
