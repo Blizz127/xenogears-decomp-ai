@@ -1,0 +1,23 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+PsyX_Sys_GetVBlankCount () at /home/blizz/Projects/xenogears-decomp/pc_port/extern/PsyCross/src/PsyX_main.cpp:159
+
+warning: 159	/home/blizz/Projects/xenogears-decomp/pc_port/extern/PsyCross/src/PsyX_main.cpp: No such file or directory
+Breakpoint 1 at 0x4cc871: file src/slus_006.64/system/animation_scripts.c, line 261.
+
+Thread 1 "xeno-port" hit Breakpoint 1, func_8001FBE4 (pSpriteData=0x752d7c <g_PsxRam+1273020>, opcodeIndex=167, operands=0x752e19 <g_PsxRam+1273177>) at src/slus_006.64/system/animation_scripts.c:261
+261	void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
+NATURAL_A7_BEFORE
+pSpriteData = 0x752d7c <g_PsxRam+1273020>
+opcodeIndex = 167
+operands = 0x752e19 <g_PsxRam+1273177>
+$1 = 0x0
+$2 = 0x0
+$3 = 0x8004
+$4 = 0
+0x00000000004fa8ab in runtime_bridge_call (opaque=0x91d0c0 <g_BattleRuntime>, cpu=0x7ffc9181a5b0, target=2147613668) at pc_port/src/battle_mips_runtime.c:914
+914	    result = function(args[0], args[1], args[2], args[3],
+NATURAL_A7_AFTER
+$5 = 0x1
+$6 = 0
+[Inferior 1 (process 671427) detached]

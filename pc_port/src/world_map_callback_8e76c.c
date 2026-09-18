@@ -35,6 +35,7 @@
 #include "world_map_helper_95cd4.h"
 #include "world_map_helper_97770.h"
 #include "world_map_state2_8eb64.h"
+#include "world_map_state01_8eb30.h"
 #include "world_map_terrain_sampler.h"
 
 extern void func_800245D8(void* object, s16 animation);
@@ -85,7 +86,6 @@ static u16 e76c_lhu(u32 a) { u16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static s16 e76c_lh(u32 a) { s16 v; memcpy(&v, PSX_ADDR(a), 2); return v; }
 static void e76c_sh(u32 a, u16 v) { memcpy(PSX_ADDR(a), &v, 2); }
 static u8 e76c_lbu(u32 a) { return *(u8*)PSX_ADDR(a); }
-static void e76c_sb(u32 a, u8 v) { *(u8*)PSX_ADDR(a) = v; }
 
 static u32 slot_base(u32 pool_ptr, s32 idx)
 {
@@ -103,8 +103,6 @@ s32 wm_8008E76C(s32 slot_idx)
     u32 s3;          /* scratchpad = 0x1F800000 */
     s32 s4;          /* slot[+0x04] value */
     u32 s0;          /* button-derived state */
-    u32 v0;
-    s32 v1;
 
     s3 = E76C_SCRATCH;
     pool_ptr = e76c_lw(E76C_POOL_PTR);
@@ -112,6 +110,14 @@ s32 wm_8008E76C(s32 slot_idx)
 
     /* --- Pre-dispatch on slot[+0x04] --- */
     s4 = e76c_lh(s2 + 0x04);
+
+    /* Retail 0x8008E7B0 branches directly to the signed slot-state jump
+     * table whenever this pre-dispatch value is not four.  Keep the restored
+     * state arms ahead of the legacy partial body so that body cannot mutate
+     * state or heading before states 0/1/2 execute. */
+    if (s4 != 4) {
+        goto restored_main_dispatch;
+    }
 
     if (s4 == 4) {
         /* Lap counter: increment, check against mode_word */
@@ -121,7 +127,7 @@ s32 wm_8008E76C(s32 slot_idx)
         lap++;
         e76c_sw(s2 + 0x74, lap);
         if (mode != lap) {
-            goto common_tail;
+            goto restored_main_dispatch;
         }
         /* Lap matched: init mode */
         wm_80097770(8, 9);
@@ -133,6 +139,10 @@ s32 wm_8008E76C(s32 slot_idx)
 
         /* Write heading mirror */
         e76c_sh(E76C_HEAD_MIRROR, e76c_lhu(s2 + 0x48));
+        /* The retail lap-match continuation is not yet bounded as part of
+         * the restored state slices.  Preserve the legacy partial owner for
+         * that path instead of claiming the exact state dispatch here. */
+        goto legacy_fallback;
     } else if (s4 == 5) {
         /* Init: terrain height, camera setup */
         e76c_sh(s2 + 0x04, 0);
@@ -269,13 +279,18 @@ s32 wm_8008E76C(s32 slot_idx)
         wm_8008E078();
     }
 
-    /* Retail dispatches on slot[+0x20], not the host input word.  State 2 is
-     * the naturally live base-world arm and is restored as an exact bounded
-     * slice; other states remain on the legacy fallback below. */
-    if (e76c_lh(s2 + 0x20u) == 2)
-        return wm_8008E76C_state2(s2);
+restored_main_dispatch:
+    /* Retail dispatches on the signed halfword at slot[+0x20]. */
+    {
+        s16 state = e76c_lh(s2 + 0x20u);
+        if (state == 0 || state == 1)
+            return wm_8008E76C_state01(slot_idx, s2);
+        if (state == 2)
+            return wm_8008E76C_state2(s2);
+    }
 
     /* --- Legacy fallback for not-yet-restored states --- */
+legacy_fallback:
     {
         u16 buttons = e76c_lhu(E76C_BUTTONS);
         s0 = (u32)(buttons & 0x1FFF);

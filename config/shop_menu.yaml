@@ -55,6 +55,23 @@ segments:
     subsegments:
       - [0x0, .rodata, main/misc]
       - [0x40, c, main/misc]
+      # The retail overlay interleaves still-assembly functions with C runs.
+      # INCLUDE_ASM expands to a file-scope __asm__ block and cc1 emits every
+      # such block before every compiled body, so a TU that mixes both pushes
+      # all of its C functions to the end of the object (measured: all 104 C
+      # functions landed +15548 bytes from their retail addresses while every
+      # function size was already exact).  Model one TU per retail run pair -
+      # the unmatched region followed by the C run after it - which is exactly
+      # the layout the compiler produces inside one TU.  Bodies are unchanged,
+      # redistributed over src/shop_menu/main/misc{,2..9}.c.
+      - [0xCBC, c, main/misc2]
+      - [0x6CF0, c, main/misc3]
+      - [0x7278, c, main/misc4]
+      - [0x7720, c, main/misc5]
+      - [0x7FF4, c, main/misc6]
+      - [0x8D14, c, main/misc7]
+      - [0x991C, c, main/misc8]
+      - [0xAF58, c, main/misc9]
       - [0xCF50, data]
       - { vram: 0x801d2800, type: bss }
   - [0xD800]

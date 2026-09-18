@@ -1,0 +1,75 @@
+{
+  "status": "CONFIRMED_NATIVE_RESULT_SPLIT; repair not yet installed",
+  "launch": {
+    "debugger_pid": 3397730,
+    "run_dir": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg",
+    "sha256": "36b934f2899d5514093d98a66753a555211914f95dbf1aa9182901eeb4886af1",
+    "head": "3a3e7aac03a2f166fb924945a489e392d706f282",
+    "started_utc": "2026-09-06T02:41:48.092656+00:00",
+    "scope": "Normal New Game with read-only guest/native battle return observations; bounded stop before post-battle ChangeGameState; host XENO_SPEED and field-only Circle schedule; no gameplay-state writes",
+    "diagnostic_environment": {
+      "XENO_SPEED": "5",
+      "XENO_FIELD_CAPTURE_DIR": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/captures",
+      "XENO_FIELD_CAPTURE_EVERY": "60",
+      "XENO_NPC_EVENT_DUMP": "1"
+    },
+    "field_input_schedule_sha256": "416ba2639679a90db7735354dbd10072037a578d0dd3693c59241a379ea45855",
+    "source_sha256": {
+      "config/symbol_addrs.slus_006.64.txt": "b70c57cc7ee4dbfeae32e2dab84030775b7991ea409d284954d72c7632b2b768",
+      "src/slus_006.64/graphics/line_scroll.c": "073e54815ee5b12c93e86272c9c0c0e4b512c17ebfd68f6370c8d10946d78073",
+      "pc_port/src/field_object_overlay.c": "659977a6cd02b55d5d57304b82fea14029bf66badf586d2c0d5662f7cf20dc8e",
+      "pc_port/src/battle_mips_runtime.c": "fd4fae9b90677538e8ec7b754e814690d2de6434c39165a512c32b7ca07a6d80",
+      "src/field/main/misc3.c": "9c1850f6892efcebd4f766fe58a10b8543050e762c4ad34e00453efcd3d2c9ed",
+      "src/slus_006.64/system/temp3.c": "c93a17cff33fb2c26b1976218a73d8bbafd184097b2e4fe124087a79c89f3ae6",
+      "src/slus_006.64/system/animation_scripts.c": "51cef2ac3afc4ffce35925b28701370d1ac32843951bf207ffec65c6d4da4b53",
+      "src/slus_006.64/system/rendering.c": "b770ddd990aa145f878c4b34cb396aefed58fc3104d47eb11ff96984e4df7199",
+      "src/battle/primitive_colors.inc": "35596a9c1dc0ddaf6c590c7b4c305f0d394cc972c832114b649394dd20802db9",
+      "src/battle/main.c": "84a3eece13d2a5e98c2798e297ebc4b1ce7c1609cf1551a02584d6c4cf5da20f",
+      "pc_port/src/game_overrides.c": "fff3464fa60aa38f629358753927771fc5f8328cb59e07cf9a1ae066feb4583f",
+      "src/slus_006.64/system/temp1.c": "9f112a23055c7beffb536597c23a7ff504588206735aed3d98ceee6c6a640441",
+      "pc_port/src/host_speed.h": "39242348d8875139fa078e7ca09e40976f4f9dbd26c1ce5dc22cc4625494954c",
+      "pc_port/src/psycross_host_speed.inl": "289ed848c6c2182efc2181c61a7379f92f4cef129e8e57e39728ed87a0790db1",
+      "pc_port/src/psycross_host_toolbar.inl": "f806ea40a4302f154ed8bcd2fe67c18afc1ef97004f24e3449225c3e58c2b53f",
+      "pc_port/src/psycross_host_toolbar_logic.h": "b1d0d7ef15b7204894d8c1a8f4dacbddfeb2bd1696a5ce6afaae3850d42df301",
+      "pc_port/patches/psycross_host_speed.patch": "1a4d2e73a04312205b5aec990ef79a933b073337cb2e3dbb7c54edba5b5da1f4",
+      "pc_port/extern/PsyCross/src/PsyX_main.cpp": "a943b7d33c426c661801ce405cd0f53c20ce7bd02868be33154af613ef04b065",
+      "pc_port/extern/PsyCross/src/audio/PsyX_SPUAL.cpp": "6dd07dfa97a409e30af3f09eeecfa19be9ce8e1fc2c6276f744d67621e743a1d",
+      "pc_port/extern/PsyCross/src/psx/LIBCD.C": "4df22f6034a73f614042cc465f265a68b539190f8cec3d1a69edf775601f15a8",
+      "pc_port/extern/PsyCross/src/render/PsyX_render.cpp": "fab65768d65e5da211d983ceba1f09ec47c0d800832f73204b1d6cdeafa87288",
+      "pc_port/CMakeLists.txt": "f2b647b830eefe4ea309e8409d895b4e07480e25ee0dacb47cde821b058231f8",
+      "pc_port/src/port_main.c": "640309e5d6bb5b8b19bcf54b9cd69449f6f9ee03c88b6dfa1f629f3cece39f39"
+    },
+    "source_manifest": "/tmp/xeno-opening-ac-20260905/type9-cleanup-launch.json"
+  },
+  "observations": [
+    {
+      "event": "battle-return",
+      "utc": "2026-09-06T02:42:46.379595+00:00",
+      "guest_result": 1,
+      "native_result": 0,
+      "guest_guard": 0,
+      "native_guard": 0,
+      "shared_return_mode": 0,
+      "scene_map": 14
+    },
+    {
+      "event": "before-change-game-state",
+      "utc": "2026-09-06T02:42:46.387033+00:00",
+      "guest_result": 1,
+      "native_result": 0,
+      "guest_guard": 0,
+      "native_guard": 0,
+      "shared_return_mode": 0,
+      "scene_map": 14,
+      "computed_state": 0
+    }
+  ],
+  "artifacts": {
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/battle-result.jsonl": "3cc9761d43475cc32720085319c4ff6e2c7d28b5cf7525bdb022028db2b15832",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/battle-return-ram.bin": "2ac9a582d18c067dc15523355a3b93b9ec69957027e69ce6400b787357395d2f",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/run.log": "fd657c9941acb037a7797bbce220738df6c92bc6e822c64d922170e63221be81",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/trace.gdb": "414774e9d6fcd0e022ddac3b111c7083bbcad8d1c8754abc1d3610326b6fa69c",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-result-trace-5-uq_vd1pg/input-actions.jsonl": "0a6058c7bcf7839292bebfeec24b4cca4f8ffe714a590b4e3671978b461c8253"
+  },
+  "runtime_end": "Owned GDB reached bounded stop at ChangeGameState entry before execution, printed backtrace and batch quit; root verified inferior and debugger no longer live."
+}

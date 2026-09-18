@@ -1,0 +1,565 @@
+{
+  "verified_utc": "2026-09-06T03:25:52.840614+00:00",
+  "scope": "Normal New Game with sparse read-only GDB probes; field-only Circle schedule; visual native output and dispatcher path observed, complete retail framebuffer parity not established",
+  "launch": {
+    "debugger_pid": 3572304,
+    "run_dir": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x",
+    "sha256": "e7dc594198cd049b1e4a275aee4635a6a15b6e64687bf8f438cc589751866361",
+    "head": "3a3e7aac03a2f166fb924945a489e392d706f282",
+    "started_utc": "2026-09-06T03:18:08.102345+00:00",
+    "scope": "Normal New Game with sparse read-only guest/native battle return and dialogue constructor observations; unexpected Kernel Menu is a bounded stop; root stops after field14 observation; host XENO_SPEED and field-only Circle schedule; no gameplay-state writes",
+    "diagnostic_environment": {
+      "XENO_SPEED": "1",
+      "XENO_FIELD_CAPTURE_DIR": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/captures",
+      "XENO_FIELD_CAPTURE_EVERY": "60",
+      "XENO_NPC_EVENT_DUMP": "1"
+    },
+    "field_input_schedule_sha256": "416ba2639679a90db7735354dbd10072037a578d0dd3693c59241a379ea45855",
+    "source_sha256": {
+      "src/slus_006.64/graphics/line_scroll.c": "073e54815ee5b12c93e86272c9c0c0e4b512c17ebfd68f6370c8d10946d78073",
+      "src/slus_006.64/system/system.c": "6e9b2c746304d38cdb72de0cb22f112a6c2809e90cbbd42ef02e43297a66bdc8",
+      "pc_port/src/field_object_overlay.c": "659977a6cd02b55d5d57304b82fea14029bf66badf586d2c0d5662f7cf20dc8e",
+      "pc_port/src/battle_mips_runtime.c": "e671118805b557588947557075f77870e1ea4357b4a99f6d9b97ab6308d42097",
+      "src/field/main/misc3.c": "9c1850f6892efcebd4f766fe58a10b8543050e762c4ad34e00453efcd3d2c9ed",
+      "src/slus_006.64/system/temp3.c": "2c9aa9e540b39c50ac7b4d15a77082aaa302ede515eee8bc3c6a2cca6fcf622a",
+      "src/slus_006.64/system/animation_scripts.c": "51cef2ac3afc4ffce35925b28701370d1ac32843951bf207ffec65c6d4da4b53",
+      "src/slus_006.64/system/rendering.c": "b770ddd990aa145f878c4b34cb396aefed58fc3104d47eb11ff96984e4df7199",
+      "src/battle/primitive_colors.inc": "35596a9c1dc0ddaf6c590c7b4c305f0d394cc972c832114b649394dd20802db9",
+      "src/battle/main.c": "84a3eece13d2a5e98c2798e297ebc4b1ce7c1609cf1551a02584d6c4cf5da20f",
+      "pc_port/src/game_overrides.c": "fff3464fa60aa38f629358753927771fc5f8328cb59e07cf9a1ae066feb4583f",
+      "src/slus_006.64/system/temp1.c": "9f112a23055c7beffb536597c23a7ff504588206735aed3d98ceee6c6a640441",
+      "pc_port/src/host_speed.h": "39242348d8875139fa078e7ca09e40976f4f9dbd26c1ce5dc22cc4625494954c",
+      "pc_port/src/psycross_host_speed.inl": "289ed848c6c2182efc2181c61a7379f92f4cef129e8e57e39728ed87a0790db1",
+      "pc_port/src/psycross_host_toolbar.inl": "f806ea40a4302f154ed8bcd2fe67c18afc1ef97004f24e3449225c3e58c2b53f",
+      "pc_port/src/psycross_host_toolbar_logic.h": "b1d0d7ef15b7204894d8c1a8f4dacbddfeb2bd1696a5ce6afaae3850d42df301",
+      "pc_port/patches/psycross_host_speed.patch": "1a4d2e73a04312205b5aec990ef79a933b073337cb2e3dbb7c54edba5b5da1f4",
+      "pc_port/extern/PsyCross/src/PsyX_main.cpp": "a943b7d33c426c661801ce405cd0f53c20ce7bd02868be33154af613ef04b065",
+      "pc_port/extern/PsyCross/src/audio/PsyX_SPUAL.cpp": "6dd07dfa97a409e30af3f09eeecfa19be9ce8e1fc2c6276f744d67621e743a1d",
+      "pc_port/extern/PsyCross/src/psx/LIBCD.C": "4df22f6034a73f614042cc465f265a68b539190f8cec3d1a69edf775601f15a8",
+      "pc_port/extern/PsyCross/src/render/PsyX_render.cpp": "fab65768d65e5da211d983ceba1f09ec47c0d800832f73204b1d6cdeafa87288",
+      "pc_port/CMakeLists.txt": "f2b647b830eefe4ea309e8409d895b4e07480e25ee0dacb47cde821b058231f8",
+      "pc_port/src/port_main.c": "640309e5d6bb5b8b19bcf54b9cd69449f6f9ee03c88b6dfa1f629f3cece39f39"
+    }
+  },
+  "observations": [
+    {
+      "event": "battle-return",
+      "utc": "2026-09-06T03:21:29.491480+00:00",
+      "guest_result": 1,
+      "native_result": null,
+      "guest_guard": 0,
+      "native_guard": null,
+      "shared_return_mode": 0,
+      "scene_map": 14
+    },
+    {
+      "event": "before-change-game-state",
+      "utc": "2026-09-06T03:21:29.501530+00:00",
+      "guest_result": 1,
+      "native_result": null,
+      "guest_guard": 0,
+      "native_guard": null,
+      "shared_return_mode": 0,
+      "scene_map": 14,
+      "computed_state": 1
+    },
+    {
+      "event": "field-entry-after-battle",
+      "utc": "2026-09-06T03:21:29.518584+00:00",
+      "guest_result": 1,
+      "native_result": null,
+      "guest_guard": 0,
+      "native_guard": null,
+      "shared_return_mode": 0,
+      "scene_map": 14,
+      "current_game_state": 0
+    }
+  ],
+  "guest_constructors": [
+    {
+      "event": "constructor",
+      "index": 9,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        28
+      ],
+      "guest_stack_args": {
+        "bytes": "1800000018000000040000000000000000000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 28,
+        "y": 24,
+        "width": 24,
+        "mode": 0,
+        "height": 4
+      },
+      "after": {
+        "address": 8136976,
+        "header": "000000001c001800640019000400000100001c000e000000000000000000000000000000000000004c417c00d4427c00000000021e0000e100000000000000021f0000e1000000000000000300000062150013007100420000000003000000621500130071004200010100000000ff000000000000000000fe480024f048f04afd4800000000fd4fff4b002400000000",
+        "text": {
+          "address": 0,
+          "null": true
+        },
+        "rows": {
+          "address": 8143180,
+          "bytes": "3302e104c40a2f651c00180000000d3164000d000d36bc0403ee20651c011800000002bd00000d003302e104c40a2f651c00180000000d3164000d000d36bc0403ee20651c011800000002bd00000d00800300011c000d000000000000dd007c"
+        },
+        "work": {
+          "address": 8143572,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "event": "constructor",
+      "index": 10,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        50
+      ],
+      "guest_stack_args": {
+        "bytes": "1800000027000000080000000000000001000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 50,
+        "y": 24,
+        "width": 39,
+        "mode": 0,
+        "height": 8
+      },
+      "after": {
+        "address": 8136976,
+        "header": "16000100320018009c0027000800000100002a000e000000010000007f1f7c0000000000000000004c417c0054447c008c131b021e0000e10000000084287c021f0000e10000000000000003000000622b001300a9007a0000000003000000622b001300a9007a00010100000000ff000000000000000000fe480024f048f04afd480000000000000000002400000000",
+        "text": {
+          "address": 8134527,
+          "bytes": "00254145015827514242120f000810445142420f0008140f0002140f0002140f00040133443d505c4f104b4a4110404b534a57605800254145015836443d50104b4a10413d4e5044103d4e4110554b5160022d4b10493d5050414e10444b53104b4250414a012810474a4b3f4710554b5110404b534a01554b51104f50454848"
+        },
+        "rows": {
+          "address": 8143180,
+          "bytes": "1efdc10482eb1965320018000000650d9c000d0026132b04ff14f66532011800000008ec00000d001efdc10482eb1965320018000000650d9c000d0026132b04ff14f66532011800000008ec00000d00800300012a000d00000000000010007c"
+        },
+        "work": {
+          "address": 8143956,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "event": "constructor",
+      "index": 11,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        32
+      ],
+      "guest_stack_args": {
+        "bytes": "9400000030000000080000000000000002000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 32,
+        "y": 148,
+        "width": 48,
+        "mode": 0,
+        "height": 8
+      },
+      "after": {
+        "address": 8136976,
+        "header": "2400020020009400c400310008000001000034000e00000002000000b41f7c00000000000000000020457c0028487c0014141b021e0000e100000000ac287c021f0000e100000000000000030000006219008f00d1007a00000000030000006219008f00d1007a00010100000000ff000000000000000000fe480024f048f04afd480000000000000000002400000000",
+        "text": {
+          "address": 8134580,
+          "bytes": "00254145015836443d50104b4a10413d4e5044103d4e4110554b5160022d4b10493d5050414e10444b53104b4250414a012810474a4b3f4710554b5110404b534a01554b51104f504548481043415010514c57580025414501582651445701214b55103d4e4110554b51014c414e4f454f50414a505758002541450158275142"
+        },
+        "rows": {
+          "address": 8144160,
+          "bytes": "00000004000000652000940000006600c4000d000000000415012b6520019400000045ff00000d0000000004000000652000940000006600c4000d000000000415012b6520019400000045ff00000d008003000134000d000000000000ff007c"
+        },
+        "work": {
+          "address": 8144936,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "event": "constructor",
+      "index": 12,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        68
+      ],
+      "guest_stack_args": {
+        "bytes": "940000001e000000080000000000000005000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 68,
+        "y": 148,
+        "width": 30,
+        "mode": 0,
+        "height": 8
+      },
+      "after": {
+        "address": 8136976,
+        "header": "24000200440094007c001f0008000001000022000e0000000200000008207c00000000000000000098437c00a0467c00e8171b021e0000e10000000084287c021f0000e10000000000000003000000623d008f0089007a0000000003000000623d008f0089007a00010100000000ff000000000000000000fe480024f048f04afd480000000000000000002400000000",
+        "text": {
+          "address": 8134664,
+          "bytes": "0025414501582651445701214b55103d4e4110554b51014c414e4f454f50414a50575800254145015827514242120f000a10445142420f000a140f000a140f000a140f000a10233d494a104550570f001e01274b53103f4b4941141414600f005a103644551040454010455001443d524110504b103f4b494110504b10504445"
+        },
+        "rows": {
+          "address": 8143768,
+          "bytes": "000000040000006544009400000000007c000d000000000400000065440194000000000000000d00000000040000006544009400000000007c000d000000000400000065440194000000000000000d008003000122000d00000000000000007c"
+        },
+        "work": {
+          "address": 8144544,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "event": "constructor",
+      "index": 13,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        92
+      ],
+      "guest_stack_args": {
+        "bytes": "180000001b000000080000000000000003000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 92,
+        "y": 24,
+        "width": 27,
+        "mode": 0,
+        "height": 8
+      },
+      "after": {
+        "address": 8136976,
+        "header": "180003005c0018006c001b000800000100001e000e00000003000000bd207c00000000000000000014447c001c477c0098161b021e0000e100000000ac287c021f0000e10000000000000003000000625500130079007a0000000003000000625500130079007a00010100000000ff000000000000000000fe480024f048f04afd480000000000000000002400000000",
+        "text": {
+          "address": 8134845,
+          "bytes": "005217181454102f4e415245415310314148413d4f411c0000002410297c00feff5f807b00ffffffffffffffffffffffffffff00ffffffffffffff00ffffffffffffff0000ff05ff00000000000000fc337c00e0397c0000010000a100e000ffffffffffffffffffffffff0703ffffffffffff0105ffffffffffff0105ffff00"
+        },
+        "rows": {
+          "address": 8143892,
+          "bytes": "05e6d104270ad9655c001800000004de6c000d00c8c59504e1f4f4655c0118000000ff0300000d0005e6d104270ad9655c001800000004de6c000d00c8c59504e1f4f4655c0118000000ff0300000d00800300011e000d00000000000080007c"
+        },
+        "work": {
+          "address": 8144668,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "event": "constructor",
+      "index": 14,
+      "battle_active": true,
+      "native_stack": [
+        {
+          "name": "func_80032F54",
+          "pc": 5123684
+        },
+        {
+          "name": "runtime_bridge_call",
+          "pc": 5207899
+        },
+        {
+          "name": "runtime_bridge",
+          "pc": 5208105
+        },
+        {
+          "name": "PcPortMipsRun",
+          "pc": 5197749
+        },
+        {
+          "name": "func_80070F40",
+          "pc": 5209129
+        },
+        {
+          "name": "func_8001B6C4",
+          "pc": 5187630
+        },
+        {
+          "name": "MainLoop",
+          "pc": 5019970
+        }
+      ],
+      "guest_pc": 2147692372,
+      "guest_call_pc": 2149478336,
+      "guest_register_args": [
+        2149251824,
+        896,
+        256,
+        32
+      ],
+      "guest_stack_args": {
+        "bytes": "1800000030000000080000000000000004000c80"
+      },
+      "native_args": {
+        "arg0": 8136976,
+        "tpageX": 896,
+        "tpageY": 256,
+        "x": 32,
+        "y": 24,
+        "width": 48,
+        "mode": 0,
+        "height": 8
+      },
+      "after": {
+        "address": 8136976,
+        "header": "1800030020001800c400310008000001000034000e000000030000002b207c0000000000000000002c447c0034477c003c171b021e0000e10000000084287c021f0000e100000000000000030000006219001300d1007a00000000030000006219001300d1007a00010100000000ff000000000000000000fe480024f048f04afd480000000000000000002400000000",
+        "text": {
+          "address": 8134699,
+          "bytes": "00254145015827514242120f000a10445142420f000a140f000a140f000a140f000a10233d494a104550570f001e01274b53103f4b4941141414600f005a103644551040454010455001443d524110504b103f4b494110504b105044454f6058002245503d4a0158254145570f001e1032504b4c570f001e01384b511049514f"
+        },
+        "rows": {
+          "address": 8143916,
+          "bytes": "c7ff57040000006520001800000096fbc4000d00000000040000006520011800000033fe00000d00c7ff57040000006520001800000096fbc4000d00000000040000006520011800000033fe00000d008003000134000d000000000000fc007c"
+        },
+        "work": {
+          "address": 8144692,
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    }
+  ],
+  "artifacts": {
+    "evidence-fei-battle-dialogue.png": {
+      "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/evidence-fei-battle-dialogue.png",
+      "sha256": "08cc80d31be792bedf66b2ed77ca169a1714f4801eac7a09601f30ee646eb70f",
+      "raw_capture": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/captures/field-frame-007440.png",
+      "raw_sha256": "174c51c7bb96b04ce95d5f4c4f5b5ec773cdbfda87985a0df27886b4f7cc10f9"
+    },
+    "evidence-direct-painting-room.png": {
+      "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/evidence-direct-painting-room.png",
+      "sha256": "8ffd2a26adb4ea957fe01630dc6efad096094232d808dab3846ce00e379671c8",
+      "raw_capture": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/captures/field-frame-009060.png",
+      "raw_sha256": "ba3a64ffb495ee01903c6eb501d5b99db990d657e4661a378af2aad6d5bb096d"
+    }
+  },
+  "runtime_at_verification": "Live native3572318 under owned debugger; recording active and speed subsequently1x; controls left alone pending operator coordination. Do not stop/restart without checking ownership.",
+  "notes": [
+    "Selected New Game at1x after two5x attempts entered unfinished Continue and aborted; initial navigation presses could repeat at5x.",
+    "Four F11 actions recorded changes through2x,3x,4x,5x; later1x was also observed. Recording was already active. No further root inputs after operator-control question.",
+    "FieldMain entry observes g_CurGameState0 because MainLoop clears that global AFTER selecting its function pointer; the preceding state selection is1 and actual FieldMain entry is observed.",
+    "No unexpected-kernel-entry event occurred.",
+    "Verified JSONL snapshots preserve this evidence while live runtime logs may continue growing."
+  ],
+  "pins": {
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/trace.gdb": "7ead649137520d48a4cc3b6b0b6789942b1112baa4e19d2ab8c009b1f78caf02",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/game-log-at-verification.txt": "b9054bac2919125ed16715eb9a428aaf3b6e654bb1ecc98a167244841902e64b",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/verified-battle-result.jsonl": "0469cf02b79a0a14a5709d761c9b9e9a94596341b9891c81a2e4dda926d7a925",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/verified-window-constructor.jsonl": "c755921022898a8111e8fcdd5b28865ec95c9180d4a5ba5846e2ba8e8b9a31c0",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/verified-input-actions.jsonl": "42600b46178ad6fb676781d461b2999e658ccce67b9dc3517757f5adfa597f65",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/final-run.log": "9915ba3a2c714a4b68ce0b9e3669edb84d51fa51202e6b2fbe2fce76c59a1954",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/opening-window-fixed-1-bsbals5x/final-input-actions.jsonl": "42600b46178ad6fb676781d461b2999e658ccce67b9dc3517757f5adfa597f65"
+  },
+  "runtime_end": {
+    "observed_utc": "2026-09-06T03:28:39.684302+00:00",
+    "status": "TERMINAL_AFTER_OPENING",
+    "cause": "After field14 and later world-map progression, a subsequent battle aborted on unimplemented sprite animation opcode0xA9/index31",
+    "sprite": "0x731f04",
+    "operands": "0x71e4ae",
+    "signal": "SIGABRT",
+    "root_requested_stop": false,
+    "debugger_behavior": "Batch backtrace then quit after SIGABRT; native and debugger no longer live",
+    "opening_acceptance": "Readable battle dialogue and direct FieldMain/map14 return were already observed before this later failure"
+  },
+  "recording": {
+    "path": "/var/home/blizz/Projects/xenogears-decomp-ai/recordings/xenogears-20260905-221812.partial.mp4",
+    "preserved": true,
+    "size_bytes": 52630223,
+    "ffprobe_duration_seconds": 387.466667,
+    "streams": [
+      "video",
+      "audio"
+    ],
+    "scope": "Container and streams readable by ffprobe; full playback not verified. Kept partial filename after aborted runtime."
+  }
+}

@@ -52,8 +52,8 @@ for spec in "${mutants[@]}"; do
     echo "$name DETECTED by ASSERTION $assertion"
 done
 
-pc_port/tests/run_w34n7_slot2_teardown.sh
-pc_port/tests/run_w34n9_slot1_owner.sh
+bash pc_port/tests/run_w34n7_slot2_teardown.sh
+bash pc_port/tests/run_w34n9_slot1_owner.sh
 
 rg -q 'pc_port/src/world_map_helper_7565c.c' pc_port/build_port.sh
 integration_block="$(sed -n '/initial_c894 = wm_72238_lw(WM_72238_C894)/,+100p' \

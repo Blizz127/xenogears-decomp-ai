@@ -1,0 +1,55 @@
+[DDE4] p=0x556ae79db0c0 count=2 mode=1/1 xy=(576,256) clut=(0,252) w0=00000002 0062cb61 0050e84d 00001101
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,252) 256x4
+=================================================================
+==77==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7fcac2d00660 at pc 0x556ae798b3f6 bp 0x7ffdd78c4bc0 sp 0x7ffdd78c4bb0
+WRITE of size 2 at 0x7fcac2d00660 thread T0
+    #0 0x556ae798b3f5 in StoreImage (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x133f5) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+    #1 0x556ae798c89a in func_8002DDE4 (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x1489a) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+    #2 0x556ae798ccec in runNative (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x14cec) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+    #3 0x556ae798ed47 in main (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x16d47) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+    #4 0x7fcac4ef31c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+    #5 0x7fcac4ef328a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+    #6 0x556ae7989624 in _start (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x11624) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+
+Address 0x7fcac2d00660 is located in stack of thread T0 at offset 608 in frame
+    #0 0x556ae798b480 in func_8002DDE4 (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x13480) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771)
+
+  This frame has 3 object(s):
+    [32, 40) 'rect' (line 10)
+    [64, 72) 'rd' (line 99)
+    [96, 608) 'clutBuf' (line 98) <== Memory access at offset 608 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow (/home/blizz/Projects/xenogears-decomp/pc_port/build_native/dde4_clut_diag_test/oldbuf.ASan.test+0x133f5) (BuildId: 5c131912e550901f70c803ff44322ed8b654a771) in StoreImage
+Shadow bytes around the buggy address:
+  0x7fcac2d00380: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00400: f1 f1 f1 f1 00 f2 f2 f2 00 f2 f2 f2 00 00 00 00
+  0x7fcac2d00480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7fcac2d00600: 00 00 00 00 00 00 00 00 00 00 00 00[f3]f3 f3 f3
+  0x7fcac2d00680: f3 f3 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00800: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7fcac2d00880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==77==ABORTING

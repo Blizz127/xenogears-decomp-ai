@@ -4,6 +4,9 @@
  * Compiles the real pc_port/src/psyq_compat.c and drives its exported Vsync
  * wrapper through instrumented fakes for the PsyCross/game externs in the
  * wrapper's call closure.  The double-present flicker path is:
+ * This test does NOT certify timing units: its VSync fake returns a sentinel.
+ * Retail mode 1 returns an H-retrace delta, while negative modes return the
+ * serviced interrupt count (asm/slus_006.64/psyq/libetc/vsync.s).
  *
  *   field frame N ends with DrawOTag -> scene left open
  *   frame N+1 calls Vsync(1) (query) -> old wrapper ends/presents the scene
@@ -11,8 +14,8 @@
  *     which swaps a second time
  *
  * The assertions below pin the intended behavior:
- *   - Vsync(1) / Vsync(<0) are pure timing queries: no flush, present, VRAM
- *     fallback, input poll, or controller push.
+ *   - Vsync(1) / Vsync(<0) never flush or present. Without elapsed ticks they
+ *     also do not poll/push. New ticks use the same service as the guest pump.
  *   - A blocking Vsync(0) with an open rendered scene ends/presents exactly
  *     once and never takes the VRAM fallback.
  *   - A blocking Vsync(0) with no scene may take the VRAM fallback exactly
@@ -21,8 +24,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include "system/controller_vblank.h"
 
 extern int Vsync(int mode);
+extern void PcPort_PadVblankPump(void);
+extern int EnterCriticalSection(void);
+extern void ExitCriticalSection(void);
+extern void SwEnterCriticalSection(void);
+extern void SwExitCriticalSection(void);
+int32_t D_80059488, D_80010000 = -1, D_80059390;
+uint8_t D_800501F8, D_80059370, D_80059418, D_80059420, D_80059484;
+uint8_t D_8005A1BC[16];
 
 /* ---- instrumented fakes for the Vsync closure ---- */
 
@@ -111,12 +124,13 @@ void PcPort_FieldPosDiag(void)
 static int s_vblankCount;
 int PsyX_Sys_GetVBlankCount(void)
 {
-    return ++s_vblankCount;
+    return s_vblankCount;
 }
 
 int VSync(int mode)
 {
     s_vsyncCalls++;
+    if (mode == 0) ++s_vblankCount;
     return s_vsyncBase + mode;
 }
 
@@ -158,6 +172,8 @@ static void reset(void)
     s_controllerPollCalls = 0;
     s_controllerPushCalls = 0;
     s_vsyncCalls = 0;
+    PcPort_ResetVblankService();
+    func_8004B7D0(func_8003634C);
 }
 
 static void check(const char* tag, int cond)
@@ -185,7 +201,7 @@ static void run_query_case(int mode)
     ret = Vsync(mode);
 
     snprintf(tag, sizeof(tag), "Vsync(%d) returns the timing sample", mode);
-    check(tag, ret == s_vsyncBase + mode);
+    check(tag, ret == (mode < 0 ? PcPort_GetServicedVblankCount() : s_vsyncBase + mode));
     check("query does not end/present a scene", s_endSceneCalls == 0 && s_sceneEnds == 0);
     check("query performs no swap", s_swapCalls == 0);
     check("query does not flush splits", s_drawAllSplitsCalls == 0);
@@ -281,12 +297,61 @@ static void run_negative_control(void)
            s_failures == before ? "PASS" : "FAIL");
 }
 
+static void run_shared_pump_case(void)
+{
+    reset();
+    g_fakeSceneOpen = 1;
+    ++s_vblankCount;
+    Vsync(1);
+    PcPort_PadVblankPump();
+    Vsync(-1);
+    check("query and guest pump share one elapsed tick",
+          s_controllerPollCalls == 1 && s_controllerPushCalls == 1 && s_updateInputCalls == 1);
+    check("elapsed query tick does not present", s_swapCalls == 0 && s_endSceneCalls == 0);
+    s_vblankCount += 2;
+    PcPort_PadVblankPump();
+    check("guest pump services two elapsed ticks without presenting",
+          s_controllerPushCalls == 3 && s_updateInputCalls == 3 && s_swapCalls == 0);
+    Vsync(0);
+    check("blocking path adds only the newly paced tick",
+          s_controllerPushCalls == 4 && s_updateInputCalls == 4 && s_swapCalls == 1);
+    func_8004B7D0(NULL);
+    ++s_vblankCount;
+    PcPort_PadVblankPump();
+    Vsync(1);
+    check("unregister disables both pump paths", s_controllerPushCalls == 4);
+    reset();
+    check("first critical entry was enabled", EnterCriticalSection() == 1);
+    check("second critical entry was disabled", EnterCriticalSection() == 0);
+    s_vblankCount += 20;
+    check("masked negative query reports no serviced IRQs", Vsync(-1) == 0);
+    PcPort_PadVblankPump();
+    check("masked pump does not deliver input", s_controllerPushCalls == 0);
+    ExitCriticalSection();
+    check("one exit enables and delivers one pending IRQ", Vsync(-1) == 1);
+    check("masked ticks coalesce", s_controllerPushCalls == 1);
+    check("duplicate query does not replay masked ticks", Vsync(-1) == 1);
+    SwEnterCriticalSection();
+    check("software enter shares mask state", EnterCriticalSection() == 0);
+    s_vblankCount += 4;
+    PcPort_PadVblankPump();
+    check("software mask prevents callback", s_controllerPushCalls == 1);
+    SwExitCriticalSection();
+    check("software exit releases one pending IRQ", Vsync(-1) == 2);
+    check("software exit enables syscall entry", EnterCriticalSection() == 1);
+    SwEnterCriticalSection();
+    ExitCriticalSection();
+    ++s_vblankCount;
+    check("one syscall exit undoes repeated mixed entries", Vsync(-1) == 3);
+}
+
 int main(void)
 {
     static const char* envs[] = {
         "XENO_MENU_FORCE", "XENO_MENU_NAV_TEST", "XENO_KERNEL_SEL",
         "XENO_FIELD_TEST", "XENO_MENU_FORCE_DELAY", "XENO_KERNEL_DELAY",
-        "XENO_FIELD_CAPTURE_DIR", "XENO_CULL_CAM_LOG"
+        "XENO_FIELD_CAPTURE_DIR", "XENO_CULL_CAM_LOG",
+        "XENO_PAD_TEST_INPUT", "XENO_PAD_ON_CONTROL"
     };
     size_t i;
 
@@ -300,6 +365,7 @@ int main(void)
     run_field_sequence();
     run_blocking_no_scene();
     run_negative_control();
+    run_shared_pump_case();
 
     if (s_failures != 0) {
         fprintf(stderr, "Vsync present regression: FAIL (%d check(s))\n",

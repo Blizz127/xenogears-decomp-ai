@@ -42,6 +42,11 @@ void* D_800ADBF0;
 s32 D_800ADE90;
 s32 D_800ADE94;
 s32 D_800ADE98;
+/* Retail cursor/face RECT tables read by func_8007E1C0 (indexed by
+ * D_800ADE94 * 8). Zeroed fixture; the port's retail-initialized copies
+ * live in pc_port/src/data_field.c. */
+RECT D_800ADEDC[8];
+RECT D_800ADF04[8];
 s32 D_800B068C[4];
 s16 D_800B21D6 = 1;
 u16 D_800C2694;
@@ -72,10 +77,13 @@ CameraInterpolation g_CamInterpolation;
 
 static FieldActor s_fieldActors[2];
 static ActorData s_actor;
+static ActorData s_targetActor;
 static u8 s_sprite[0x200];
 static u8 s_script[0x40];
 static int s_failures;
 static int s_pagesAdvanced;
+static s32 s_lastFacingVector[3];
+static int s_facingVectorCalls;
 
 static void check(int condition, const char* name)
 {
@@ -122,8 +130,11 @@ void FieldScriptMemoryWriteU16(u16 address, u16 value)
 
 s32 func_8007B694(s32* arg0)
 {
-    return (s32)(-(s32)0) & 0xFFF;
-    (void)arg0;
+    s_lastFacingVector[0] = arg0[0];
+    s_lastFacingVector[1] = arg0[1];
+    s_lastFacingVector[2] = arg0[2];
+    s_facingVectorCalls++;
+    return 0;
 }
 
 #ifdef rsin
@@ -204,6 +215,14 @@ int RotTransPers(SVECTOR* v0, int* sxy, long* p, long* flag)
 }
 u_short GetClut(int x, int y)
 {
+    (void)x;
+    (void)y;
+    return 0;
+}
+u_short GetTPage(int tp, int abr, int x, int y)
+{
+    (void)tp;
+    (void)abr;
     (void)x;
     (void)y;
     return 0;
@@ -309,6 +328,21 @@ int func_8003487C(void* a)
     return 0;
 }
 s32 ArchiveDataSync(void) { return 0; }
+s32 ArchiveCdDataSync(int mode)
+{
+    (void)mode;
+    return 0;
+}
+/* Verbatim leaf logic from src/slus_006.64/system/system.c (per-arrow
+ * words for func_8007E1C0); the test does not link system.c. */
+s32 func_800347AC(void* arg0)
+{
+    return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
+}
+s32 func_800347C0(void* arg0)
+{
+    return *(s16*)((u8*)arg0 + 0x6) + (*(s16*)((u8*)arg0 + 0x2) << 2);
+}
 void FieldLoadTIMWithClut(void) {}
 void* HeapAlloc(u32 size, u32 tag)
 {
@@ -373,6 +407,7 @@ u8 D_800ADF34[32];
 static void reset_actor(void)
 {
     memset(&s_actor, 0, sizeof(s_actor));
+    memset(&s_targetActor, 0, sizeof(s_targetActor));
     memset(s_sprite, 0, sizeof(s_sprite));
     memset(s_script, 0, sizeof(s_script));
     memset(s_fieldActors, 0, sizeof(s_fieldActors));
@@ -382,7 +417,11 @@ static void reset_actor(void)
     D_800C4268 = 0;
     D_800B00C0 = 0;
     D_800AFD1C = 0;
+    g_PlayerActorIndex = 0;
+    g_FieldNumActors = 2;
     s_pagesAdvanced = 0;
+    memset(s_lastFacingVector, 0, sizeof(s_lastFacingVector));
+    s_facingVectorCalls = 0;
     g_FieldScriptMaxInstructionCount = 8;
 
     s_actor.moveSpeed = 0x100;
@@ -397,6 +436,7 @@ static void reset_actor(void)
 
     s_fieldActors[0].pActorData = (u32)(uintptr_t)&s_actor;
     s_fieldActors[0].pSpriteData = (u32)(uintptr_t)s_sprite;
+    s_fieldActors[1].pActorData = (u32)(uintptr_t)&s_targetActor;
     g_FieldActors = s_fieldActors;
     g_FieldScriptVMCurActor = &s_actor;
     g_FieldScriptVMCurScriptData = s_script;
@@ -499,12 +539,37 @@ static void run_walkwait(void (*handler)(void), u16 done_delta)
 
 static void test_walkwait(void)
 {
-    /* Live Map1 walk-wait is opcode 0x53: func_80098038 -> func_80099AC0. */
+    /* Opcode 0x53 sets movement mode 2.  Retail's jump table at field.bin
+     * 0x8006FD30 dispatches mode 2 to the target-actor branch at 0x80099C48;
+     * the old port shifted the table and incorrectly used the circle branch. */
     reset_actor();
     s_script[0] = 0x53;
-    s_script[1] = 0x00;
+    s_script[1] = 0x01; /* target actor 1 */
     s_script[2] = 0x08;
     s_script[3] = 0x80; /* immediate duration 8 */
+    s_targetActor.position.vx = 100 << 16;
+    s_targetActor.position.vz = 25 << 16;
+    g_PlayerActorIndex = 1;
+
+    D_800B00C0 = 0;
+    func_80098038();
+    check(s_actor.scriptInstructionPointer == 0,
+          "walkwait.mode2.targets.actor");
+    check(s_facingVectorCalls == 1 &&
+          s_lastFacingVector[0] == 100 &&
+          s_lastFacingVector[1] == 0 &&
+          s_lastFacingVector[2] == 25,
+          "walkwait.mode2.targets.actor");
+    check((s_actor.scriptFlags.flags & 0x200000) != 0,
+          "walkwait.mode2.targets.actor");
+
+    reset_actor();
+    s_script[0] = 0x53;
+    s_script[1] = 0x01;
+    s_script[2] = 0x08;
+    s_script[3] = 0x80;
+    s_targetActor.position.vx = 100 << 16;
+    s_targetActor.position.vz = 25 << 16;
     run_walkwait(func_80098038, 4);
 
     /* 0x45 family still uses the previously stubbed func_80097A50. */

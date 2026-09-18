@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
 
 OUT=pc_port/build_tests/w34n69_8901c_texture_fields
+CC="${CC:-cc}"
 mkdir -p "$OUT"
 
 TEST=pc_port/tests/w34b5c_8008901c_prod_test.c
@@ -18,7 +19,7 @@ COMMON=(
 build_and_run() {
   local name=$1
   shift
-  cc "${COMMON[@]}" "$@" "$TEST" "$PROD" -o "$OUT/$name"
+  "$CC" "${COMMON[@]}" "$@" "$TEST" "$PROD" -o "$OUT/$name"
   "$OUT/$name" >"$OUT/$name.stdout" 2>"$OUT/$name.stderr"
   grep -q 'record0 packet clut is GetClut' "$OUT/$name.stdout"
   grep -q 'record0 packet tpage is GetTPage' "$OUT/$name.stdout"
@@ -30,7 +31,7 @@ build_and_run O0 -O0 -g
 build_and_run O2 -O2
 build_and_run UBSan -O1 -g -fsanitize=undefined -fno-sanitize-recover=all
 
-cc "${COMMON[@]}" -O0 -g -DWM_8901C_MUTANT_SWAPPED_TEXTURE_FIELDS \
+"$CC" "${COMMON[@]}" -O0 -g -DWM_8901C_MUTANT_SWAPPED_TEXTURE_FIELDS \
   "$TEST" "$PROD" -o "$OUT/M1_swapped_texture_fields"
 set +e
 "$OUT/M1_swapped_texture_fields" \

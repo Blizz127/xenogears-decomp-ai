@@ -79,6 +79,29 @@ int VSync(int mode)
     return 0;
 }
 
+/* Link-only providers for the 0x80071490 prologue's GPU/system calls. The
+ * test asserts dispatcher/scheduler/frontier state, never GPU effects;
+ * return values are discarded at every call site. */
+int DrawSync(int mode)
+{
+    (void)mode;
+    return 0;
+}
+
+void GameCheckAndHandleSoftReset(void)
+{
+}
+
+void PutDispEnv(void *env)
+{
+    (void)env;
+}
+
+void PutDrawEnv(void *env)
+{
+    (void)env;
+}
+
 int CdSync(int mode, u8 *result)
 {
     (void)mode;

@@ -44,8 +44,12 @@ pub fn find_c_paths(directory: &String, binary: &String) -> Vec<String> {
 // TODO: Do this based on something more clever than a hardcoded directory name
 pub fn find_base_path() -> Result<PathBuf, ()> {
     let mut path = env::current_dir().unwrap();
-    while path.file_name().ok_or_else(|| ())? != "xenogears-decomp" {
-        path.pop();
+    loop {
+        match path.file_name() {
+            Some(name) if name.to_string_lossy().starts_with("xenogears-decomp") => break,
+            Some(_) => { path.pop(); }
+            None => return Err(()),
+        }
     }
     Ok(path)
 }

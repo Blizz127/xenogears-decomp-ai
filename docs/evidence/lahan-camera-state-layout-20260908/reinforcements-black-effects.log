@@ -1,0 +1,15 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+Vsync (mode=-1) at pc_port/src/psyq_compat.c:1374
+1374	{
+$1 = {distortion = {isActive = 1, isFinished = 0, duration = 0, _pad = "\000", v1 = 196615, v2 = 327672, v3 = 8388616, v4 = 5570575, v5 = 11665410, v6 = 8912902, delta1 = 0, delta2 = 0, delta3 = 0, delta4 = 0, delta5 = 0, delta6 = 0, unk38 = 1216, unk3C = -31643, buffer0 = 8134036, buffer1 = 8134428, buffer2 = 8134820, buffer3 = 8149228}, fades = {{drawModes = {{tag = 43797108, code = {3774873664, 3791650968}}, {tag = 43797124, code = {3774873664, 3791650968}}}, tiles = {{tag = 67108863, r0 = 255 '\377', g0 = 255 '\377', b0 = 255 '\377', code = 98 'b', x0 = 0, y0 = 0, w = 320, h = 224}, {tag = 67108863, r0 = 255 '\377', g0 = 255 '\377', b0 = 255 '\377', code = 98 'b', x0 = 0, y0 = 0, w = 320, h = 224}}, r0 = 65280, g0 = 65280, b0 = 65280, redDelta = 65280, greenDelta = 65280, blueDelta = 65280, semitransparency = 2, isVisible = 1, duration = 0, _pad = 0}, {drawModes = {{tag = 43797196, code = {3774873664, 3791650968}}, {tag = 43797212, code = {3774873664, 3791650968}}}, tiles = {{tag = 60876000, r0 = 149 '\225', g0 = 160 '\240', b0 = 100 'd', code = 98 'b', x0 = 0, y0 = 0, w = 320, h = 224}, {tag = 60941824, r0 = 140 '\214', g0 = 160 '\240', b0 = 100 'd', code = 98 'b', x0 = 0, y0 = 0, w = 320, h = 224}}, r0 = 35840, g0 = 40960, b0 = 25600, redDelta = -2559, greenDelta = 0, blueDelta = 0, semitransparency = 2, isVisible = 1, duration = 5, _pad = 0}}}
+$2 = (void *) 0x73e474 <g_PsxRam+1184660>
+$3 = (ScriptsFile *) 0x73db30 <g_PsxRam+1182288>
+0x74119c <g_PsxRam+1196220>:	0x04	0x2c	0x04	0x2e	0x04	0x0d	0xac	0x00
+0x7411a4 <g_PsxRam+1196228>:	0x28	0x04	0xac	0x01	0x28	0x04	0xef	0x03
+0x7411ac <g_PsxRam+1196236>:	0x80	0x0d	0xac	0x80	0x28	0x04	0xac	0x81
+0x7411b4 <g_PsxRam+1196244>:	0x28	0x04	0xef	0x03	0x80	0x0d	0x26	0x14
+0x7411bc <g_PsxRam+1196252>:	0x80	0x0d	0x0d	0x31	0x20	0x00	0x53	0x2d
+0x7411c4 <g_PsxRam+1196260>:	0x01	0x56	0x2d	0x01	0x4b	0x2d	0x0d	0xfe
+$4 = 11574
+[Inferior 1 (process 3438797) detached]

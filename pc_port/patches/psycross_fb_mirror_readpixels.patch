@@ -1,14 +1,14 @@
 diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
 --- a/src/render/PsyX_render.cpp
 +++ b/src/render/PsyX_render.cpp
-@@ -152,6 +152,7 @@
+@@ -137,6 +137,7 @@
  /* _xeno_drmove_fb_synced: 1 while the CPU vram[] framebuffer rect is at
   * least as fresh as any pending deferred PBO capture. See build_port.sh. */
  int g_xeno_vram_fb_synced = 0;
 +static void GR_XenoReadBackbufferToVRAM(int x, int y, int w, int h); /* _xeno_fb_mirror_readpixels */
- 
- #if defined(__EMSCRIPTEN__) || defined(__RPI__) || defined(__ANDROID__)
- #if defined(RENDERER_OGL)
+ /* _xeno_raw_identity_option: opt-in exact raw-texture color identity. The
+  * uniform is enabled only for on-screen non-PGXP PS1-textured draws, while a
+  * dedicated per-vertex marker restricts the bypass to raw FT3/FT4 polygons. */
 @@ -1671,15 +1672,12 @@
  
  	// now we can read it back to VRAM texture
@@ -47,12 +47,10 @@ diff --git a/src/render/PsyX_render.cpp b/src/render/PsyX_render.cpp
  #endif
  }
  
-@@ -1884,10 +1889,16 @@
+@@ -1884,8 +1889,16 @@
   * remains deferred for frame presentation. See build_port.sh. */
  void GR_StoreFrameBufferImmediate(int x, int y, int w, int h)
  {
--	/* Still refresh the GPU VRAM texture path (blit) for any consumers that
--	 * sample g_vramTexture before the next CPU upload. */
 +	/* Refresh the GPU VRAM texture path (blit) and the CPU vram[] mirror
 +	 * (_xeno_fb_mirror_readpixels: the readback now lives in
 +	 * GR_StoreFrameBuffer itself). */

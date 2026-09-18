@@ -1,0 +1,63 @@
+{
+  "source_sha256": "c2539494ca3d29971c4af8b2815a5c61ca10452839ef05b338edcec3ed3ecaea",
+  "body_text_offset": 13120,
+  "size": 292,
+  "exact": true,
+  "sha256": "b4f76d0b3dd362838d4eb82c2dfefab068628db24f11de43f7fe0504c8b04cf3",
+  "text_bytes": 17532,
+  "scope": "actual full misc2 TU, only three referenced externs pinned for extracted function; other unrelated externs assigned 0x80010000 for isolated slice link, not whole-TU correctness",
+  "commands": [
+    [
+      "mips-linux-gnu-cpp",
+      "-Iinclude",
+      "-D_LANGUAGE_C",
+      "-DUSE_INCLUDE_ASM",
+      "-DINCLUDE_ASM_USE_MACRO_INC=1",
+      "-P",
+      "-undef",
+      "-Wall",
+      "-lang-c",
+      "-nostdinc",
+      "-o",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c.i",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c"
+    ],
+    [
+      "/var/home/blizz/Projects/xenogears-decomp-ai/tools/gcc-2.7.2-psx/cc1",
+      "-O2",
+      "-G8",
+      "-mips1",
+      "-mcpu=3000",
+      "-w",
+      "-funsigned-char",
+      "-fpeephole",
+      "-ffunction-cse",
+      "-fpcc-struct-return",
+      "-fcommon",
+      "-fverbose-asm",
+      "-msoft-float",
+      "-mgas",
+      "-fgnu-linker",
+      "-quiet",
+      "-o",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c.s",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c.i"
+    ],
+    [
+      "python3",
+      "/var/home/blizz/Projects/xenogears-decomp-ai/tools/maspsx/maspsx.py",
+      "--use-comm-section",
+      "--run-assembler",
+      "-EL",
+      "-Iinclude",
+      "-O2",
+      "-G8",
+      "-march=r3000",
+      "-mtune=r3000",
+      "-no-pad-sections",
+      "-o",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c.o",
+      "/tmp/xeno-field-matching-audit-20260906/missing-759e4/misc2.c.s"
+    ]
+  ]
+}

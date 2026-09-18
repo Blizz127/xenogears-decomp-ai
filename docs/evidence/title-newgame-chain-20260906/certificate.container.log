@@ -1,0 +1,8 @@
+TITLE NEWGAME CHAIN O0/O2/UBSAN PASS
+M1 DETECTED by fe60.keeps.circle.interrupt.bit
+M2 DETECTED by fe61.releases.on.flag
+M3 DETECTED by fe57.requests.title.menu.2
+M4 DETECTED by menu.confirm.not.on.circle.press
+M5 DETECTED by title.up.moves.continue.to.newgame
+TITLE NEWGAME CHAIN CERTIFICATE PASS; M1-M5 DETECTED
+RC=0

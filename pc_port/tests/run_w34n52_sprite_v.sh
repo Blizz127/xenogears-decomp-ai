@@ -19,6 +19,7 @@ BASE=(
     -Wno-overflow -Wno-int-to-pointer-cast -Wno-narrowing
     -Wno-format-security -Wno-missing-field-initializers
     -Wno-unused-variable -Wno-unused-parameter -Wno-strict-aliasing
+    -Wno-unused-but-set-variable
     -fpermissive
     -Ipc_port/extern/PsyCross/include
     -Ipc_port/extern/PsyCross/include/psx

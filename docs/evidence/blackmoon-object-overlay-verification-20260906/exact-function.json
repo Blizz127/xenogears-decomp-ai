@@ -1,0 +1,51 @@
+{
+  "function": "func_800A1364",
+  "retail_entry": "0x800A1364",
+  "retail_end": "0x800A14F0",
+  "field_bin_offset": "0x31874",
+  "bytes": 396,
+  "instructions": 99,
+  "frame": "0x30",
+  "disc_field_bin_sha256": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+  "retail_function_sha256": "abf8efc25897d54dc9dd9b7fa2d38ed2e464836d332eb3cbb9b506e598b7be98",
+  "relinked_function_sha256": "abf8efc25897d54dc9dd9b7fa2d38ed2e464836d332eb3cbb9b506e598b7be98",
+  "production_source": "src/field/main/misc6.c",
+  "production_source_sha256": "28e897adc81514378e8f481d2a948f9926d2814db188e1e5ee1cb959ee81f54d",
+  "object_no_flag_sha256": "47bad3dbd2cf1fd6184210acb34f24cfb511eccb99de3472577ccc881758cdc1",
+  "object_with_flag_sha256": "9abb1acde7f74f4601b6c9cb538b37b5f667abe4924a7521fee43bb928bdf7f3",
+  "control_object_sha256": "2596e0f97766465a3c170a9c1b9ac0a78559c1ccef3056e244e675474b234649",
+  "pipeline": [
+    "mips-linux-gnu-cpp (host cpp wrapper dropping -lang-c) -Iinclude -I build -D_LANGUAGE_C -DUSE_INCLUDE_ASM -DINCLUDE_ASM_USE_MACRO_INC=1 -P -MMD -MP -undef -Wall -lang-c -nostdinc",
+    "tools/gcc-2.7.2-psx/cc1 -O2 -G8 -mips1 -mcpu=3000 -w -funsigned-char -fpeephole -ffunction-cse -fpcc-struct-return -fcommon -fverbose-asm -msoft-float -mgas -fgnu-linker -quiet",
+    "python3 tools/maspsx/maspsx.py --use-comm-section --run-assembler -EL -Iinclude -I build -O2 -G8 -march=r3000 -mtune=r3000 -no-pad-sections",
+    "mips-linux-gnu-objdump -dr; relink with the ten real dependencies pinned to retail addresses and 84 unrelated externs at a 0x80010000 placeholder; objcopy -O binary -j .text"
+  ],
+  "pinned_dependencies": {
+    "D_800AFD1C": "0x800AFD1C",
+    "g_FieldActors": "0x800AFB10",
+    "g_FieldSpriteData": "0x800AFB1C",
+    "g_FieldScriptVMCurActor": "0x800B0078",
+    "D_800B2264": "0x800B2264",
+    "D_800B21DC": "0x800B21DC",
+    "D_800B225F": "0x800B225F",
+    "FieldScriptVMGetArgument": "0x800ACDEC",
+    "func_80076AC0": "0x80076AC0",
+    "func_800A0C94": "0x800A0C94"
+  },
+  "previous_body": {
+    "instructions": 89,
+    "bytes": 356,
+    "frame": "0x28",
+    "note": "former XENO_FIELD_OBJECT_OVERLAY-only body; never compiled by the matching build"
+  },
+  "candidate_search": {
+    "variants_compiled": 30,
+    "first_match": "v36",
+    "load_bearing_shapes": [
+      "pointer-arithmetic stores to D_800B21DC/D_800B225F (indexed array stores do not invalidate cached scalar globals in GCC 2.7.2)",
+      "volatile read of D_800B2264 for the slot stamp (fourth reload)",
+      "IP/flag writes through the global pointer, actor mask via g_FieldActors[D_800AFD1C]",
+      "unused s32 pad[2] for the 8 extra frame bytes"
+    ]
+  }
+}

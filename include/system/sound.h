@@ -571,6 +571,8 @@ extern void SoundInitialize(s32 arg0);
 extern AudioManager* func_8003B148(s32 arg0);
 extern u32 SoundSpuMemoryAllocateBlock(s32 size, s32 arg1);
 extern u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2);
+extern void SoundSetupCdMix(s32 level);
+extern void SoundTransferWdsPart(u8* pData, s32 size);
 extern void func_800386C4(s32 arg0);
 
 // Tick-core functions (240Hz func_8003C020 subtree; called before their

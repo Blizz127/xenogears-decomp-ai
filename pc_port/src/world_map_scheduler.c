@@ -1616,15 +1616,19 @@ void wm_80097800(void)
                 s_missing_hits++;
                 wm_sched_log_stub(target, "missing_callback", i, state);
                 s_frontier_pc = target;
-                /* Open-loop experiment: emulate the unresolved jalr with
-                 * the neutral s16 return value and continue the retail slot
-                 * traversal. The guest address was never called. */
-                *(s16*)(slot + WM_SCHED_OFF_STATE) = 0;
+                /* Bounded stop before the missing body: the guest address
+                 * was never called, so fabricate no slot state and advance
+                 * no further. Matches WM_SCHED_STOP_MISSING_CALLBACK. */
+                s_outcome = WM_SCHED_STOP_MISSING_CALLBACK;
+                return;
             } else {
                 s_invalid_hits++;
                 wm_sched_log_stub(target, "invalid_callback", i, state);
                 s_frontier_pc = target;
-                *(s16*)(slot + WM_SCHED_OFF_STATE) = 0;
+                /* Bounded stop, unknown callback address: never fabricate
+                 * slot state, never advance past the frontier. */
+                s_outcome = WM_SCHED_STOP_INVALID_CALLBACK;
+                return;
             }
             break;
         }

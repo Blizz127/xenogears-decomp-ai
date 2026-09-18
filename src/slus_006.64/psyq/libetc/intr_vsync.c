@@ -16,7 +16,7 @@ SetVsyncIntrCallback_t startIntrVSync() {
     return &setIntrVSync;
 }
 
-static void trapIntrVSync(void) {
+void trapIntrVSync(void) {
     int i;
 
     g_VsyncInterruptCount++;
@@ -27,13 +27,13 @@ static void trapIntrVSync(void) {
     }
 }
 
-static void setIntrVSync(unsigned int index, VoidCallback_t callback) {
+void setIntrVSync(unsigned int index, VoidCallback_t callback) {
     if (callback != g_VsyncInterruptCallbacks[index]) {
         g_VsyncInterruptCallbacks[index] = callback;
     }
 }
 
-static void memclrIntrVSync(void(**callbacks)(void), unsigned int numCallbacks) {
+void memclrIntrVSync(void(**callbacks)(void), unsigned int numCallbacks) {
     while (numCallbacks--) {
         *callbacks++ = NULL;
     }

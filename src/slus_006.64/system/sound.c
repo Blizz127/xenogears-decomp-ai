@@ -765,7 +765,35 @@ void SoundEnableAllSpuChannels(void) {
     g_SoundControlFlags &= ~0x40;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundMuteAllSpuChannels);
+/* Transcribed from
+ * asm/slus_006.64/nonmatchings/system/sound/SoundMuteAllSpuChannels.s
+ * (0x80037EE4-0x80037F44, 24 instructions). Sets bit 6 of
+ * g_SoundControlFlags, then walks all 24 SPU voices (0x10 bytes each) zeroing
+ * the two volume words and the ADSR-low word, writing 0x1FDF into the voice's
+ * +0x0A word, and forcing the high byte of the +8 word to 0x7F while keeping its
+ * low byte. The port keeps its own owner in pc_port/src/world_map_pause.c, so
+ * this definition is weak under XENO_PC_PORT. */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+void SoundMuteAllSpuChannels(void) {
+    u8* pVoice = (u8*)g_pSoundSpuRegisters;
+    int i;
+
+    g_SoundControlFlags |= 0x40;
+#ifdef SOUND_MUTE_MUTANT_12_VOICES
+    for (i = 0; i < 0x12; i++) {
+#else
+    for (i = 0; i < 0x18; i++) {
+#endif
+        *(u16*)(pVoice + 0x00) = 0;
+        *(u16*)(pVoice + 0x02) = 0;
+        *(u16*)(pVoice + 0x04) = 0;
+        *(u16*)(pVoice + 0x0A) = 0x1FDF;
+        *(u16*)(pVoice + 0x08) = (u16)(*(u8*)(pVoice + 0x08) + 0x7F00);
+        pVoice += 0x10;
+    }
+}
 
 void func_80037F44(void) {
     if (!(g_SoundControlFlags & 1)) {
@@ -941,7 +969,29 @@ void SoundWdsSetTransferParamters(int transferAddress, int numBytesToTransfer) {
     g_SoundWdsRemainingBytes = numBytesToTransfer;
 }
 
+#ifdef XENO_PC_PORT
+/* Retail 0x8003827C-0x80038310.  Feed at most the remaining WDS bytes to
+ * the ordinary SPU transfer queue, then advance the retail destination and
+ * remaining-byte cursors.  The queue/SpuWrite layer is the hardware adapter;
+ * file selection, chunking, and cursor behavior remain game-owned. */
+void SoundTransferWdsPart(u8* pData, s32 size) {
+    s32 transferSize;
+
+    if (g_SoundWdsRemainingBytes == 0) {
+        return;
+    }
+    transferSize = size;
+    if (g_SoundWdsRemainingBytes < transferSize) {
+        transferSize = g_SoundWdsRemainingBytes;
+    }
+    SoundQueueSpuWriteCommand(g_SoundWdsCurSpuAddress, pData,
+                              transferSize, NULL);
+    g_SoundWdsCurSpuAddress += transferSize;
+    g_SoundWdsRemainingBytes -= transferSize;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundTransferWdsPart);
+#endif
 
 void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
     SoundWDSEntry* pPrev;
@@ -1162,7 +1212,27 @@ s32 func_80038824(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+#ifdef XENO_PC_PORT
+/* Retail 0x8003885C-0x800388D4.  Store the requested CD level, derive the
+ * four-byte CD-ROM attenuation matrix, and submit it through libcd. */
+void SoundSetupCdMix(s32 level) {
+    s32 mixedLevel;
+
+    g_SoundVolumeController.unk_field2 = (s16)level;
+    if (g_SoundControlFlags & 0x700) {
+        mixedLevel = 0;
+    } else {
+        mixedLevel = level >> 1;
+    }
+    g_SoundCdRomAttenuation.val0 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val1 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val2 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val3 = (u8)mixedLevel;
+    CdMix(&g_SoundCdRomAttenuation);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSetupCdMix);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_800388D4(s32 arg0) {
@@ -1629,10 +1699,51 @@ void SoundSpuMemoryInitialize(void) {
     g_SoundSpuMemoryBlocks[0].nextBlockIndex = 0;
 }
 
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlock);
-
 extern s32 SoundSpuMemoryGetFreeBlock(void);
+
+#ifdef XENO_PC_PORT
+/* Retail 0x800393B8-0x800394B8.  First-fit allocation in the twelve-entry
+ * SPU-RAM descriptor list.  Retail does not consume arg1 in this routine. */
+u32 SoundSpuMemoryAllocateBlock(s32 size, s32 arg1) {
+    SoundSpuMemoryBlock* pBlock;
+    SoundSpuMemoryBlock* pNew;
+    s32 address;
+    s32 freeIndex;
+
+    (void)arg1;
+    pBlock = &g_SoundSpuMemoryBlocks[0];
+    address = pBlock->spuAddress + pBlock->size;
+
+    while (pBlock->nextBlockIndex != 0) {
+        SoundSpuMemoryBlock* pNext =
+            &g_SoundSpuMemoryBlocks[pBlock->nextBlockIndex];
+        if (pNext->spuAddress - address >= size) {
+            break;
+        }
+        pBlock = pNext;
+        address = pBlock->spuAddress + pBlock->size;
+    }
+
+    if (pBlock->nextBlockIndex == 0 && 0x80000 - address < size) {
+        return 0;
+    }
+
+    freeIndex = SoundSpuMemoryGetFreeBlock();
+    if (freeIndex < 0) {
+        return 0;
+    }
+    pNew = &g_SoundSpuMemoryBlocks[freeIndex];
+    pNew->flags = SPU_MEMORY_IN_USE;
+    pNew->unk1 = 0;
+    pNew->spuAddress = address;
+    pNew->size = size;
+    pNew->nextBlockIndex = pBlock->nextBlockIndex;
+    pBlock->nextBlockIndex = (s16)freeIndex;
+    return (u32)address;
+}
+#else
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlock);
+#endif
 
 void* func_800394B8(s32 size) {
     u8* pEntry = g_SoundSpuMemoryBlocks;
@@ -1982,20 +2093,34 @@ void func_80039B68(AudioManager* manager, s32 level, s32 steps) {
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039C4C(AudioManager* manager) {
+#ifdef XENO_PC_PORT
+    /* D_80062528 is a 32-byte data stub; loading it as AudioManager* can
+     * produce a non-canonical host pointer (title/Map0 FieldMain crash). */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#else
     if (manager == NULL) {
         SoundHandleError(5);
         return;
     }
+#endif
     manager->unk_Flags &= ~(1 << 15);
     SoundReleaseAllVoices(manager);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039C8C(AudioManager* manager, s32 arg1) {
+#ifdef XENO_PC_PORT
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#else
     if (manager == NULL) {
         SoundHandleError(5);
         return;
     }
+#endif
     func_8003A89C(manager, 0, arg1);
 }
 
@@ -4117,25 +4242,22 @@ u8* SoundScriptAddManagerUnk1a(u8* pScript, AudioManager* pAudioManager, AudioEl
 // Loop start handler?
 // Seq cmd: loop start -- push a loop-stack record (count-1, resume IP,
 // octave) at the element's current selector.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
- * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
- * against the split asm and exercised via the synthetic stream. */
+/* MATCHED C, byte-exact with this TU's pinned gcc-2.6.0 + maspsx.
+ * The selector must be re-read from memory (`lhu $a1, 0x72($a2)` at
+ * 0x8003D700) right after the increment store (`sh $v1, 0x72($a2)` at
+ * 0x8003D6FC) instead of being cached in a local; the sibling func_8003CF38
+ * below uses the same idiom. Verified instruction-for-instruction against the
+ * retail slice at file offset 0x2D6F0 (72 B);
+ * pc_port/tests/run_sound_voice_record_cef0_retail_test.sh re-checks it. */
 u8* func_8003CEF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8* rec;
-    u16 sel;
     *(u16*)&pAudioElements->unk_0x70[2] += 1;
-    sel = *(u16*)&pAudioElements->unk_0x70[2];
-    rec = (u8*)pAudioElements + (sel * 12 + 0x9C);
+    rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
     rec[0] = *pScript++ + 0xFF;
     *(u32*)(rec + 4) = SOUND_PTR_TO_PSX(pScript);
     rec[2] = pAudioElements->octave;
     return pScript;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CEF0);
-#endif
 
 // Loop end handler?
 // Seq cmd 0x99: loop continue -- decrement the loop-stack counter; while it
@@ -4207,20 +4329,20 @@ u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 
 // Set tempo handler?
 // Seq cmd: set manager volume (immediate).
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
+/* MATCHED C, byte-exact with this TU's pinned gcc-2.6.0 + maspsx.
+ * Retail (file offset 0x2D8E8, 40 B) masks the loaded volume byte with a
+ * redundant `andi $v0,$v0,0xFF` before `mult`; under gcc-2.6.0 a plain
+ * `pScript[0]` folds the lbu+zero-extend into a single lbu, so the byte is
+ * read through a *non-combinable* (volatile) lvalue to keep the lbu and its
+ * zero-extension as separate instructions, reproducing retail exactly.
+ * Verified instruction-for-instruction against the retail slice; see
+ * pc_port/tests/run_sound_voice_volume_d0e8_retail_test.sh. */
 u8* func_8003D0E8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    u8 raw = pScript[0];
-    s32 vol = raw & 0xFF;
+    s32 vol = *(volatile u8*)pScript;
     pAudioManager->unk_0x54 = vol * ((s16*)&pAudioManager->unk_Interpolator_0x64.currentValue)[1];
     pAudioManager->unk_0x58 = vol << 16;
     return pScript + 1;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D0E8);
-#endif
 
 // Seq cmd: nudge manager volume by a signed step.
 #ifdef XENO_PC_PORT
@@ -4240,25 +4362,27 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D110);
 
 // Seq cmd: master volume fade -- target + step count for the inline
 // interpolator at manager+0x58.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003D13C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     s32 target = pScript[1];
     s32 steps = pScript[0];
+    s32 current = pAudioManager->unk_0x58;
     s32 diff;
+    s32 shifted;
+    s32 divisor;
     *(u16*)&pAudioManager->unk_0x62 = target;
-    diff = (target << 16) - pAudioManager->unk_0x58;
-    if (steps != 0 && diff != 0) {
-        pAudioManager->unk_0x5c = diff / steps;
+    shifted = target << 16;
+#if defined(__mips__)
+    __asm__ volatile("addu %0, %1, $zero" : "=r"(divisor) : "r"(steps));
+#else
+    divisor = steps;
+#endif
+    diff = shifted - current;
+    if (divisor != 0 && diff != 0) {
+        pAudioManager->unk_0x5c = diff / divisor;
         pAudioManager->unk_0x60 = steps;
     }
     return pScript + 2;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D13C);
-#endif
 
 // Seq cmd: channel level immediate -- set interp70 and flag volume change on
 // active voices.
@@ -4556,19 +4680,22 @@ u8* func_8003D79C(u8* a0, s32 a1, void* a2) {
 }
 
 // Seq cmd: detune -- add a signed 8.8 offset to the element pitch base.
-#ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
- * ops, same offsets). */
 u8* func_8003D7C8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    s32 offset = ((s16)(pScript[0] << 8)) + pScript[1];
-    pAudioElements->status_flags |= 0x200;
-    *(u16*)&pAudioElements->unk_0x6E = *(u16*)&pAudioElements->unk_0x6E + offset;
+    s32 high = *(volatile u8*)pScript;
+    s32 low = *(volatile u8*)(pScript + 1);
+    u16 status = *(volatile u16*)&pAudioElements->status_flags;
+    s32 offset = ((s16)(high << 8)) + low;
+    u16 pitch;
+
+    __asm__ volatile("" : : "r"(offset) : "memory");
+    pitch = *(volatile u16*)&pAudioElements->unk_0x6E;
+
+    status |= 0x200;
+    pitch += offset;
+    pAudioElements->status_flags = status;
+    *(u16*)&pAudioElements->unk_0x6E = pitch;
     return pScript + 2;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7C8);
-#endif
 
 // Seq cmd: pitch slide -- explicit step target over n steps (or disable).
 u8* func_8003D7FC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -4766,14 +4893,12 @@ u8* func_8003DB98(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 
 // Seq cmd 0xF8: vibrato ramp -- from/to (signed<<24) over n steps.
 #ifdef XENO_PC_PORT
-/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
- * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
- * (commutative operand order / delay-slot copy placement / register reuse);
- * ops+offsets audited 1:1 against the split asm. */
+/* Coexistence: logic-verified port C body; matching build keeps INCLUDE_ASM
+ * below because cc1 schedules the third script byte differently from retail. */
 u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8* p = pScript;
-    s32 from = p[0] << 24;
-    s32 diff = (p[2] << 24) - from;
+    s32 from = (s32)((u32)p[0] << 24);
+    s32 diff = (s32)((u32)((u32)p[2] << 24) - (u32)from);
     s32 n = p[1];
     if (diff != 0 && n != 0) {
         u16 f4;
@@ -6048,11 +6173,20 @@ int SoundFileComputeChecksum(SoundFile* pSoundFile) {
 }
 
 
-#ifndef XENO_PC_PORT
 extern SoundFile D_80050910;
 extern u16 D_80050924[];
 extern SoundWDSEntry D_80050940;
 
+/* MATCHED C for the matching build; the same body now serves the PC port.
+ * It previously sat inside `#ifndef XENO_PC_PORT`, so the port stubbed the
+ * symbol and the live field path logged `[stub] SoundHandleError`. That stub
+ * was load-bearing: it fired because SoundLoadWdsFile could not allocate the
+ * field's common WDS bank (a duplicate load -- see misc3.c, fixed by asserting
+ * retail's D_8004F364=1 invariant now that port_main replays the retail
+ * func_80019578 boot bank closure). With the duplicate gone the handler is no
+ * longer reached on the live path, and all five callees plus the three data
+ * symbols resolve in the port link (func_8003BDFC is the port-owned
+ * transfer-polling override). */
 void SoundHandleError(s32 errorId)
 {
     if ((g_SoundControlFlags & 0x88) == 0) {
@@ -6065,7 +6199,6 @@ void SoundHandleError(s32 errorId)
         func_80039E60((D_80050924[0] << 16) | 1);
     }
 }
-#endif
 
 #ifdef XENO_PC_PORT
 /* Host sequence-command dispatch table (tick-leg step 3). Retail's

@@ -19,6 +19,27 @@ categories:
     name: Shop Menu Overlay
     paths:
       - shop_menu
+  - id: menu
+    name: Menu Overlay
+    paths:
+      - menu
+  - id: battle
+    name: Battle Overlay
+    paths:
+      # trailing slash: a bare "battle" prefix also swallows "battling/..."
+      - battle/
+  - id: battling
+    name: Battling Overlay
+    paths:
+      - battling/
+  - id: movie
+    name: Movie Overlay
+    paths:
+      - movie/
+  - id: battle_command_file1
+    name: Battle Command File1
+    paths:
+      - battle_command_file1/
 
 expected_paths:
   asm: expected/asm

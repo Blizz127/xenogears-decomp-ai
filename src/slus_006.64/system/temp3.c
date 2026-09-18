@@ -6,6 +6,16 @@
 #include "system/sound.h"
 #include "psyq/libgpu.h"
 #include "psyq/libcd.h"
+#ifdef XENO_PC_PORT
+#include "../../../pc_port/src/psx_memory.h"
+#endif
+
+#ifdef XENO_PC_PORT
+#define REG_PIN(t, n, r) t n
+#else
+#define REG_PIN(t, n, r) register t n asm(r)
+#endif
+
 
 extern s32 D_8004F330;
 extern s32 D_8004F334;
@@ -23,14 +33,33 @@ extern int g_PartyIsWaitingForStreamData;
 extern void* g_PartyDataBuffers[];
 extern void* g_PartyStreamDataPointers[];
 
-extern u8* D_800592DC;
+extern u8 *D_800592DC[];
 extern u8* D_800592E0;
 extern u8* D_800592D4;
 extern u8* D_800592D8;
 
+/* Small-data globals owned by this TU. Retail addresses exactly these via
+ * %gp_rel (cc1 -G8 emits explicit %gp_rel for same-TU small definitions,
+ * independent of the assembler -G flag); every other extern in this TU is
+ * addressed absolutely under the Default preset. Do NOT move these to
+ * headers or mark extern: their TU-local definition is what selects
+ * %gp_rel. (D_800594D5/D6 stay extern: retail addresses them absolutely.) */
+u8 D_8005946C;
+u8 D_8005947C;
+u8* D_80059480;
+u8* D_800594AC;
+u8 D_800594CC;
+u8 D_800594D4;
+u8 D_800594F8;
+u8 D_8005954C;
+u8 D_8005959C;
+s32 D_800595A0;
+u8* D_800595A8;
+u8* D_800595D0;
+
 void func_8001A5CC(void) {
     s32 row, col;
-    D_800592DC = HeapAlloc(0x3480, 1);
+    D_800592DC[0] = HeapAlloc(0x3480, 1);
     D_800592E0 = HeapAlloc(0x3480, 1);
     D_800592D4 = HeapAlloc(0x460, 1);
     D_800592D8 = HeapAlloc(0x460, 1);
@@ -50,11 +79,163 @@ void func_8001A684(s32 row, s32 col) {
     if (row >= 0x1D) row = 0;
     if (col < 0) col = 0x28;
     if (col >= 0x29) col = 0;
-    pTable = D_800592D8 + (row * 5 + row) * 8 + col;
+    pTable = D_800592D8 + ((row * 5) * 8 + col);
     pTable[0]++;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001A6E8);
+/* All heap-table globals below are plain externs addressed absolutely
+ * (Default preset: maspsx force-appends -G0). D_800592DC is an array of
+ * row pointers (retail indexes its address, never its value). */
+extern int D_800592C8;
+
+void func_8001A6E8(void* ot) {
+    /* Renders marked cells of the D_800592D4 tile table as GPU packets into
+     * per-row buffers, marks neighbours, ages the tables, then sprinkles up
+     * to 0x14 random marks (plus one final random neighbourhood). Register
+     * homes ($s0-$s7,$fp) match retail exactly. */
+    REG_PIN(int, tidx, "$2");
+    REG_PIN(u8*, pRow, "$23");
+    REG_PIN(u8*, pPkt, "$18");
+    int row;
+    int col;
+    REG_PIN(int, rm, "$22");
+    REG_PIN(int, rp, "$21");
+    REG_PIN(int, cm, "$17");
+    REG_PIN(int, cp, "$16");
+    int a2v;
+    int fp;
+    int a2base;
+    u8 v;
+    u32 pkt;
+
+    /* First-statement global load: cc1 emits it before the prologue.
+     * The row-table index scales inside the array access (sll, then the
+     * lui/addu/lw triple through $at). */
+    tidx = D_800592C8;
+    fp = 0;
+    row = 0;
+    a2base = 0;
+    pRow = D_800592DC[tidx];
+
+    for (; row < 0x1C; a2base += 0x28, row++) {
+        col = 0;
+        rm = row - 1;
+        rp = row + 1;
+        a2v = a2base;
+        pPkt = pRow + 8;
+        for (; col < 0x28; col++) {
+            u8* pD4;
+            pD4 = D_800592D4;
+            v = pD4[a2v + col];
+            if (v == 0) {
+                continue;
+            }
+            pPkt[-5] = 2;
+            *(u32*)(pPkt - 4) = 0x70280000;
+            pkt = (col << 3) | (row << 19);
+            *(u32*)pPkt = pkt;
+            AddPrim(ot, pRow);
+            pPkt += 0xC;
+            pRow += 0xC;
+            fp++;
+            { REG_PIN(int, a0rm, "$4") = rm; cm = col - 1; func_8001A684(a0rm, cm); }
+            func_8001A684(rm, col);
+            { REG_PIN(int, a0rm2, "$4") = rm; cp = col + 1; func_8001A684(a0rm2, cp); }
+            func_8001A684(row, cm);
+            func_8001A684(row, cp);
+            func_8001A684(rp, cm);
+            func_8001A684(rp, col);
+            func_8001A684(rp, cp);
+        }
+    }
+    row = 0;
+
+    {
+        REG_PIN(int, two, "$4") = 2;
+        REG_PIN(u8, vv, "$2");
+        for (; row < 0x460; row++) {
+            vv = D_800592D8[row];
+            if (vv != two) {
+                D_800592D4[row] = (vv ^ 3u) < 1u;
+            }
+            D_800592D8[row] = 0;
+        }
+    }
+
+    if (fp < 0x14) {
+        int rB;
+        fp = 0;
+        {
+            int rA;
+            rA = rand();
+            row = rA / 28;
+            row = rA - row * 28;
+            rB = rand();
+            col = rB / 40;
+            col = rB - col * 40;
+        }
+        do {
+            int rvA;
+            int rvB;
+            int mA;
+            int mB;
+            int r1;
+            int c1;
+            rvA = rand();
+            r1 = row - 1;
+            row = r1 + rvA % 3;
+            rvB = rand();
+            c1 = col - 1;
+            col = c1 + rvB % 3;
+            if (row < 0) {
+                row = 0x1C;
+            }
+            if (row >= 0x1D) {
+                row = 0;
+            }
+            if (col < 0) {
+                col = 0x28;
+            }
+            if (col >= 0x29) {
+                col = 0;
+            }
+            {
+                u8* pD4c;
+                pD4c = D_800592D4;
+                pD4c[row * 0x28 + col] = 1;
+            }
+            fp++;
+        } while (fp < 0x14);
+    }
+
+    {
+        REG_PIN(int, trm, "$16");
+        REG_PIN(int, tcm, "$18");
+        REG_PIN(int, tcp, "$17");
+        int rA2;
+        int rC;
+        rA2 = rand();
+        row = rA2 / 28;
+        row = rA2 - row * 28;
+        rC = rand();
+        trm = row - 1;
+        {
+            REG_PIN(int, a0rm, "$4") = trm;
+            col = rC / 40;
+            col = rC - col * 40;
+            tcm = col - 1;
+            func_8001A684(a0rm, tcm);
+        }
+        func_8001A684(trm, col);
+        { REG_PIN(int, a0rm3, "$4") = trm; tcp = col + 1; func_8001A684(a0rm3, tcp); }
+        func_8001A684(row, tcm);
+        func_8001A684(row, tcp);
+        trm = row + 1;
+        func_8001A684(trm, tcm);
+        func_8001A684(trm, col);
+        func_8001A684(trm, tcp);
+    }
+}
 
 extern s32 D_8005A444[];
 extern s32 D_8004F364;
@@ -137,15 +318,13 @@ void func_8001AADC(void) {
     D_8004F384 = 0;
     D_8004F318 = 0;
     D_8004F334 = -1;
+    g_GameSceneMapNum = -1;
     D_8004F33C = -1;
     D_8004F338 = -1;
     D_8004F330 = -1;
     D_8004F32C = -1;
     D_8004F340 = -1;
     D_8004F308 = -1;
-    D_8004F380 = -1;
-    D_8004F37C = -1;
-    D_8004F378 = -1;
     for (i = 0; i < 3; i++) {
         pSkins[i] = 0;
         pD8006F990[i] = 0;
@@ -439,44 +618,69 @@ void func_8001B6BC(void) {}
 extern s32* D_8005917C;
 extern u8 D_800C48EA;
 extern u8 D_800D3338;
-extern u8 D_8005947C;
-extern u8 D_800594F8;
 extern u16 D_8006F94E;
 extern u16 D_8006F950;
 extern u16 D_8006F952;
 extern u16 D_8006F954;
-extern u8 D_8005959C;
 extern void func_8003747C(void*);
-extern void* FontLoadFont(int sx, int sy, int w, int h, s32 f1, s32 f2, s32 f3, s32 f4, s32 f5, s32 f6);
+extern void* FontLoadFont(int sx, int sy, int w, int h, s32 f1, s32 f2, s32 f3, s32 f4, s32 f5, s32 f6, s32 f7);
 extern void func_80070F40(void);
 extern void ChangeGameState(unsigned int state);
 extern void MainLoop(int errorCode);
 
+/* func_8001B6C4 addresses these two bytes absolutely (lui+memop), unlike
+ * the TU's other small-data uses of the same symbols which go through
+ * %gp_rel. The port has no absolute addresses, so it uses the TU-owned
+ * variables directly. */
+#ifdef XENO_PC_PORT
+#define T3_ABS7C D_8005947C
+#define T3_ABSF8 D_800594F8
+#else
+#define T3_ABS7C (*(u8*)0x8005947Cu)
+#define T3_ABSF8 (*(u8*)0x800594F8u)
+#endif
+
 void func_8001B6C4(void) {
     s32 state;
+    s32 next;
     D_8005959C = 1;
     ArchiveCdDataSync(0);
     ArchiveSetIndex(0xC, 0);
     if (D_8005917C[0] != -1) {
         func_8003747C(0x80200000);
-        FontLoadFont(0x10, 0x10, 0x140, 0x100, 0x3E8, 0, 0x340, 0x340, 0x20, 0);
+        FontLoadFont(0x10, 0x10, 0x140, 0x100, 0x3E8, 0, 0x340, 0, 0x340, 0x20, 0);
     }
     func_8001B844();
     func_80070F40();
 
+#ifdef XENO_PC_PORT
+    /* The battle overlay owns these bytes in guest RAM. Its writes do not
+     * update the native build's generated placeholders for overlay symbols. */
+    state = *(u8*)PSX_ADDR(0x800C48EAu);
+#else
     state = D_800C48EA;
+#endif
+    /* `state` is compared only; the selected value travels to the single
+     * ChangeGameState call through `next` (which the allocator keeps in
+     * $a0), matching retail's per-path `ori $a0` setup. */
     if (state == 1 || state == 0x40 || state == 0x21) {
+#ifdef XENO_PC_PORT
+        if (*(u8*)PSX_ADDR(0x800D3338u) == 0) {
+#else
         if (D_800D3338 == 0) {
-            if (D_8005947C == 0) {
+#endif
+            if (T3_ABS7C == 0) {
                 u16 tmp = D_8006F94E & 0x7FF;
                 if (tmp < 0x400) {
-                    state = 1;
+                    next = 1;
                 } else {
-                    state = 3;
+                    next = 3;
                 }
             } else {
-                state = 2;
+                next = 2;
             }
+        } else {
+            next = 6;
         }
     } else if (state == 0x81) {
         GamePartySignalReinitialize();
@@ -484,32 +688,53 @@ void func_8001B6C4(void) {
         D_8006F950 = 0;
         D_8006F952 = 0;
         D_8006F954 = 0;
-        state = 1;
+        next = 1;
+    } else {
+        /* Retail 0x8001B7D0 skips state selection for other result bytes. */
+        goto battle_return;
     }
-    ChangeGameState(state);
+    ChangeGameState(next);
 
-    if (D_8005947C == 0) {
-        D_800594F8 = 1;
+battle_return:
+    if (T3_ABS7C == 0) {
+        T3_ABSF8 = 1;
     }
     MainLoop(0);
 }
 
 extern u8 D_800C4A7C[];
-extern void func_800379D0(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f);
+#ifdef XENO_PC_PORT
+/* Retail 0x800379D0 is exactly `jr ra; nop`. Unspecified arguments: retail
+ * calls it with two, six, then one argument, leaving the other registers
+ * untouched (all dead). */
+void func_800379D0();
+void func_800379D0() {
+}
+#else
+extern void func_800379D0();
+#endif
 extern void func_8001B94C(DRAWENV* pDrawEnv);
 
 void func_8001B844(void) {
     u8* pBase = D_800C4A7C;
+    /* $v0 still holds call 2's 0x1000 (a void callee leaves it alone);
+     * the third call reuses it. Spelled as an uninitialized $v0 pseudonym
+     * so gcc emits no materialization of its own. */
+#ifdef XENO_PC_PORT
+    int siz = 0x1000;
+#else
+    REG_PIN(int, siz, "$2");
+#endif
     ResetGraph(1);
-    func_800379D0(0x300, 0, 0, 0, 0, 0);
+    func_800379D0(0x300, 0);
     func_800379D0(8, 0x10, 0x140, 0xF0, 0, 0x1000);
-    func_800379D0(0, 0, 0, 0, 0, 0);
+    func_800379D0(siz);
     InitGeom();
     SetGeomOffset(0xA0, 0xB4);
     SetGeomScreen(0x200);
     SetDefDispEnv((DISPENV*)pBase, 0, 0xE0, 0x140, 0xE0);
     SetDefDrawEnv((DRAWENV*)(pBase - 0x5C), 0, 0, 0x140, 0xE0);
-    SetDefDispEnv((DISPENV*)(pBase + 0x4070), 0, 0xE0, 0x140, 0xE0);
+    SetDefDispEnv((DISPENV*)(pBase + 0x4070), 0, 0, 0x140, 0xE0);
     SetDefDrawEnv((DRAWENV*)(pBase + 0x4014), 0, 0xE0, 0x140, 0xE0);
     func_8001B94C((DRAWENV*)(pBase - 0x5C));
     func_8001B94C((DRAWENV*)(pBase + 0x4014));
@@ -537,74 +762,114 @@ void func_8001B94C(DRAWENV* pDrawEnv) {
  * revisit with the title-return flow. */
 extern void* g_SystemDataEntries;
 extern void func_80033B34(u16* src, u8* dst, s32 count);
-extern u8 D_800594CC;
-extern u8 D_8005947C;
+extern void* memmove(u_char* pDst, u_char* pSrc, int size);
 
 void func_8001B970(void) {
     void* buf;
-    u8* block;
-    s32 base;
+    REG_PIN(u8*, base, "$17");
+    u8 tmp[48];
+    REG_PIN(u8*, q1, "$19");
+    REG_PIN(u8*, q2, "$18");
+    REG_PIN(s32, n, "$16");
+    s32 k;
 
     ArchiveSetIndex(0x10, 0);
     HeapChangeCurrentUser(2, 0);
     buf = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
     ArchiveReadFileToBuffer(3, buf, 0, 0x80);
     ArchiveCdDataSync(0);
-    memmove(&g_GameState, buf, 0x2358);
+    base = (u8*)&g_GameState;
+    memmove(base, buf, 0x2358);
     HeapFree(buf);
 
-    block = (u8*)&g_GameState;
-    for (base = 0; base < 0x26C; base += 0x14, block += 0x14) {
-        u8 raw[0x18];
-        u8 decoded[0x18];
-        s32 j;
-        s32 k;
-
-        for (k = 0; k < 0x18; k++) {
-            decoded[k] = 0; /* retail copies stack garbage past the NUL;
-                               zeroed for determinism */
-        }
-        for (j = 0; j < 0x14; j += 2) {
-            raw[j] = block[j];
-            raw[j + 1] = block[j + 1];
-            if (block[j] == 0xF && block[j + 1] == 0) {
+    q1 = &tmp[0];
+    q2 = &tmp[1];
+    n = 0;
+    for (; n < 0x26C; n += 0x14, base += 0x14) {
+        s32 m;
+        REG_PIN(int, f15, "$9");
+        REG_PIN(u8*, g1, "$10");
+        u8* p;
+        u8* d2;
+        u8* d1;
+        k = 0;
+        m = n;
+        g1 = &((u8*)&g_GameState)[1];
+        f15 = 0xF;
+        p = base;
+        d2 = q2;
+        d1 = q1;
+        for (; k < 0x14; d2 += 2, k += 2, d1 += 2) {
+            u8 pv;
+            u8* gp;
+            *d1 = *p;
+            gp = (u8*)((m + k) + (s32)g1);
+            *d2 = *gp;
+            pv = *p;
+            p += 2;
+            if (pv == f15 && *gp == 0) {
                 break;
             }
         }
-        func_80033B34((u16*)raw, decoded, j >> 1);
-        for (k = 0; k < 0x14; k++) {
-            block[k] = decoded[k];
+        func_80033B34((u16*)tmp, tmp + 24, k / 2);
+        {
+            s32 d = (s32)base;
+            u8* s;
+#ifdef XENO_PC_PORT
+            s = tmp + 24;
+#else
+            /* Fresh rematerialization: a C tmp+24 here is CSE'd with the
+             * call arg and kept in $s4 across the jal (a1 is clobbered). */
+            asm volatile("addiu %0,$sp,0x28" : "=r" (s));
+#endif
+            {
+                s32 e = (s32)base + 0x14;
+                do {
+                    *(u8*)d++ = *s++;
+                } while (d < e);
+            }
         }
     }
 
-    *(u16*)((u8*)&g_SoundVolumeController + 0x0) = 0;
-    *(u16*)((u8*)&g_SoundVolumeController + 0x2) = 0;
-    *(u16*)((u8*)&g_SoundVolumeController + 0x4) = 0;
-    *(u16*)((u8*)&g_SoundVolumeController + 0x6) = 0;
+    {
+        u16* pVol;
+        k = 0x13;
+        pVol = (u16*)((u8*)&g_SoundVolumeController + 6);
+        for (; k >= 0; k--) {
+            *pVol-- = 0;
+        }
+    }
 
     D_800594CC = 6;
     D_8005947C = 0;
 }
 
 extern u8 D_8006F9DE;
-extern s32 D_80059470;
-extern s32 D_8005949C;
-extern s32 D_80059520;
-extern void func_800379D8(s32 a, s32 b, s32 c, s32 d, s32 e);
+extern u8* D_80059470;
+extern u8* D_8005949C;
+extern u8* D_80059520;
+extern s32 func_800379D8(s32 index, s32 variant,
+                        u8** first, u8** second, u8** third);
 
-void func_8001BB0C(void) {
-    func_800379D8((s32)&D_8005949C, 0, (s32)&D_80059470, (s32)&D_80059520, (s32)D_8006F9DE);
+s32 func_8001BB0C(void) {
+    /* Retail 8001BB24 loads the byte index into a0; 8001BB3C puts the
+     * third output address in the fifth argument slot, not vice versa. */
+#ifdef XENO_PC_PORT
+    /* Battle 80071130..54 writes the active 32-byte encounter to guest RAM.
+     * Consume its +2 byte there; a separate native stub is not that record. */
+    return func_800379D8(*(u8*)PSX_ADDR(0x8006F9DEu), 0,
+                         &D_80059470, &D_80059520, &D_8005949C);
+#else
+    return func_800379D8(D_8006F9DE, 0, &D_80059470, &D_80059520, &D_8005949C);
+#endif
 }
 
 /* Retail boot/reset helper used by func_8007954C exit 3 when D_800B0064 bit 7
- * is set. Keep the assembly in the matching build and provide its complete,
- * bounded 23-instruction behavior to the native port. */
-#ifdef XENO_PC_PORT
-extern u8 D_800594F8, D_8005946C;
-extern u8 D_800594D4, D_800594D5, D_800594D6;
-extern s32 D_800595A0;
-
+ * is set. Byte-exact in the matching build; the same body serves the port. */
 void func_8001BB50(void) {
+    extern u8 D_800594D5;
+    extern u8 D_800594D6;
+
     D_800594F8 = 1;
     D_8005946C = 0;
     func_8001B970();
@@ -614,17 +879,9 @@ void func_8001BB50(void) {
     D_800594D6 = 0x54;
     D_800595A0 = 2;
 }
-#else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001BB50);
-#endif
 
-extern u8* D_800595D0;
-extern u8* D_800595A8;
-extern u8* D_80059480;
-extern u8* D_800594AC;
-extern u8 D_8005954C;
 extern s16 D_8006F9BC;
-extern s16 D_8006F9C0;
+extern u8* D_8006F9C0;
 extern s16 D_8006F9C4;
 extern s16 D_8006F9CC;
 extern u8* D_8006F9C8;
@@ -637,41 +894,112 @@ extern void func_80039DB8(s32 a0);
 
 void func_8001BBAC(void) {
     s32 i;
+    u8* p80;
+    u8* pA8;
+    u32 aBC;
+    int addr;
+#ifdef XENO_PC_PORT
+    /* The retail queue is four 8-byte records. Native pointers need the
+     * host StreamDataQueueEntry layout consumed by archive_port.c. Keep
+     * this adapter alive through ArchiveDataSync, as on the retail path. */
+    StreamDataQueueEntry queue[4];
+#endif
     HeapChangeCurrentUser(2, NULL);
     ArchiveSetIndex(0xC, 0);
-    D_80059480 = HeapAlloc(4, 1);
-    D_800594AC = HeapAlloc((u32)D_80059480 + 0x7FE1C000, 1);
+    p80 = HeapAlloc(4, 1);
+    D_80059480 = p80;
+#ifdef XENO_PC_PORT
+    /* Retail 8001BBE4..8001BBF8 reserves down to guest 801E4000.
+     * HeapAlloc returns a host pointer in the port; do the retail address
+     * arithmetic in the guest domain, not on the host allocation address. */
+    D_800594AC = HeapAlloc(PsxMemory_GuestAddr(D_80059480) + 0x7FE1C000u, 1);
+#else
+    D_800594AC = HeapAlloc((u32)p80 + 0x7FE1C000, 1);
+#endif
+    addr = 0x801E4000;
     D_800595D0 = HeapAlloc(ArchiveDecodeAlignedSize(2), 1);
-    D_800595A8 = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
-    D_8006F9BC = 2;
+    pA8 = HeapAlloc(ArchiveDecodeAlignedSize(3), 1);
+    /* Address laundered through an integer so the halfword store below
+     * addresses it via register (shared with the queue call). The empty
+     * barrier keeps the expansion from folding the store back to a
+     * symbolic address; it emits no code of its own. */
+    aBC = (u32)&D_8006F9BC;
+    __asm__ volatile("" : "=r" (aBC) : "0" (aBC));
+    *(u16*)aBC = 2;
     D_8006F9C4 = 3;
+    D_800595A8 = pA8;
+    D_8006F9C8 = pA8;
     D_8006F9CC = 4;
-    D_8006F9D0 = 0x801E4000;
+    D_8006F9D0 = addr;
     D_8006F9D4 = 0;
     D_8006F9D8 = 0;
-    D_8006F9C0 = (s16)(s32)D_800595D0;
-    D_8006F9C8 = D_800595D0;
-    func_80029AFC((u8*)&D_8006F9BC, 0, 0x80);
+    /* SW at 8001BC90 stores the first buffer; SW at 8001BC58 stores
+     * the second HeapAlloc result. These are full pointers, not shorts. */
+    D_8006F9C0 = D_800595D0;
+#ifdef XENO_PC_PORT
+    queue[0] = (StreamDataQueueEntry){2, 0, D_8006F9C0};
+    queue[1] = (StreamDataQueueEntry){3, 0, D_8006F9C8};
+    queue[2] = (StreamDataQueueEntry){4, 0, PSX_ADDR(D_8006F9D0)};
+    queue[3] = (StreamDataQueueEntry){0, 0, NULL};
+    func_80029AFC(queue, 0, 0x80);
+#else
+    func_80029AFC((u8*)aBC, 0, 0x80);
+#endif
     while (ArchiveDataSync() == 3) {}
     SoundAddSedsEntry(D_800595D0);
     if (D_8005954C != 4) {
-        for (i = 0; i < 3; i++) {
-            u8 val = D_8004F388[D_8005954C * 3 + i];
-            if (val != 0xFF) {
-                func_80039DB8((s32)D_800595D0[0x14] << 16 | val);
+        i = 0;
+        do {
+#ifdef XENO_PC_PORT
+            /* Retail 8001BCC8..8001BCF0 indexes initialized EXE data.
+             * The generated D_8004F388 host symbol is only zero-filled BSS. */
+            u8 val = ((u8*)PSX_ADDR(0x8004F388))[D_8005954C * 3 + i++];
+#else
+            u8 val = D_8004F388[D_8005954C * 3 + i++];
+#endif
+            if (val == 0xFF) {
+                continue;
             }
-        }
+            /* Retail 8001BD04 is LHU, followed by SLL 16. */
+            func_80039DB8((u32)*(u16*)(D_800595D0 + 0x14) << 16 | val);
+        } while (i < 3);
     }
 }
 
 u8 func_8001BD40(u8 min, u8 max) {
-    u8 range;
-    if (min == 0xFF) return 0xFF;
-    if (max == 0) return 0;
-    if (min == max) return min;
-    range = max - min;
-    if (range < 0xFF) {
-        return (u8)(min + (rand() & 0xFF) % (range + 1));
+    REG_PIN(u8, mx, "$5") = max;
+    int range;
+    if (min == 0xFF) {
+        return 0xFF;
     }
-    return (u8)(rand() & 0xFF);
+    if (mx == 0) {
+        return 0;
+    }
+    if (min == mx) {
+        return min;
+    }
+    range = mx - min;
+    if (range >= 0xFF) {
+        return (u8)(rand() & 0xFF);
+    }
+    {
+#ifdef XENO_PC_PORT
+        int rr = rand();
+        int d = range + 1;
+        return (u8)(((rr & 0xFF) % d + min) & 0xFF);
+#else
+        /* cc1 otherwise schedules addiu $v1,$s0,1 ahead of andi $v0,$v0,0xFF.
+         * One asm block locks that order. Do not pin $2/$3: local register
+         * asm reserves them for the whole function and collapses the min
+         * copy/andi prologue. */
+        int rr = rand();
+        int d;
+        asm volatile(
+            "andi %0,%0,0xff\n\t"
+            "addiu %1,%3,1"
+            : "=r" (rr), "=r" (d)
+            : "0" (rr), "r" (range));
+        return (u8)((rr % d + min) & 0xFF);
+#endif
+    }
 }

@@ -1,0 +1,93 @@
+#include "common.h"
+
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCD98);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCEAC);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCFAC);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD024);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD098);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD2E4);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD3AC);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD7A0);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD810);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD974);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDA1C);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDB08);
+INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDB74);
+#endif
+extern void func_800BDB74(void* task);
+/* func_800BDC14.s: run func_800BDF1C, count the task's +0x88 timer down and,
+ * when it expires, rearm it at 0x10, set bit 1 / clear bit 0 of +0x83 and
+ * switch the task callback to func_800BDB74. */
+void func_800BDC14(u8* task) {
+    s32 t;
+
+    func_800BDF1C();
+    t = *(s32*)(task + 0x88) - 1;
+    *(s32*)(task + 0x88) = t;
+    if (t < 0) {
+        *(s32*)(task + 0x88) = 0x10;
+        task[0x83] = (task[0x83] | 2) & 0xFE;
+        TimerWorkListSetTaskCallback(task, func_800BDB74);
+    }
+}
+
+
+extern u8* TimerWorkListAllocateTask(u32 owner, u32 size);
+extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
+extern u32 func_800B57E4(u8* s);
+extern void func_800B5B3C(u8* task);
+extern void func_800B5854(void);
+extern void func_800BF73C(void);
+extern void func_800B5CC0(void);
+extern void func_800BDC14(u8* task);
+extern void func_800BDF1C(void);
+extern void func_8001E148(u32 v);
+extern void func_800C08CC(u32 a0, void* a1, void* a2);
+extern void func_800B51B0(void);
+extern void func_800245D8(u32 a0, u32 a1);
+extern u8 D_800C3EB0[];
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void func_800B7424(u32 p);
+extern void func_800B7364(void);
+extern void func_800B6F0C(void);
+extern void func_800B7134(void);
+extern void WorkListSetTaskCallback(void* pTask, void* callback);
+extern void D_80025A88(void);
+extern u8 D_800D3420[];
+extern u32 D_800C3CE8[];
+extern void WorkListTaskSetOnFreeCallback(void* pTask, void* callback);
+extern void func_800B3358(u8* p);
+extern void func_800B3588(u8* p);
+extern u32 D_800C3548[];
+
+
+/* func_800BDC78.s */
+void func_800BDC78(u8* a0) {
+    u8* s0 = a0;
+    s32 v;
+
+    func_800BDF1C();
+    if (*(u8*)(s0 + 0x7C) != 0) {
+        *(u32*)(s0 + 0x48) += 0xC0000;
+    } else {
+        *(u32*)(s0 + 0x48) += 0xFFF40000;
+    }
+    v = *(s32*)(s0 + 0x88) - 1;
+    *(s32*)(s0 + 0x88) = v;
+    if (v < 0) {
+        *(s32*)(s0 + 0x88) = 0x10;
+        TimerWorkListSetTaskCallback(s0, func_800BDC14);
+    }
+}
+/* func_800BDCF8.s */
+extern u32 D_800D2D68[];
+extern void WorkListRemoveTask(u32 p);
+extern void TimerWorkListRemoveTask(u32 p);
+void func_800BDCF8(u8* p) {
+    D_800D2D68[0] = 0;
+    WorkListRemoveTask((u32)(p + 0x1C));
+    TimerWorkListRemoveTask((u32)p);
+}

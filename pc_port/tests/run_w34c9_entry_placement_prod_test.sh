@@ -2,7 +2,13 @@
 # W34C9 — wm_80073448 fresh-entry placement certificate, O0/O2/UBSan + mutants M1-M5.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; BUILD_DIR="${W34C9_BUILD_DIR:-$ROOT/pc_port/build_native}"
-PSYCROSS_LIB="${W34C9_PSYCROSS_LIB:-$BUILD_DIR/libpsycross.a}"; mkdir -p "$BUILD_DIR"; cd "$ROOT"
+PSYX_CMAKE_LIB="$(find "$ROOT/pc_port/build" "$ROOT/pc_port/build_tsan" -name 'libpsycross.a' 2>/dev/null | head -1 || true)"
+PSYCROSS_LIB="${W34C9_PSYCROSS_LIB:-${PSYX_CMAKE_LIB:-$BUILD_DIR/libpsycross.a}}"
+if [[ ! -f "$PSYCROSS_LIB" ]]; then
+    echo "ERROR: libpsycross.a not found; run pc_port/build_port.sh first" >&2
+    exit 1
+fi
+mkdir -p "$BUILD_DIR"; cd "$ROOT"
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)

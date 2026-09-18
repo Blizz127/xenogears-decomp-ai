@@ -18,8 +18,7 @@ Categories (matching-build view -- "is the retail function decompiled?"):
                  has a real body. Two shapes, both detected:
                    - inline: INCLUDE_ASM inside a matching-only preprocessor
                      branch (`#else` of `#ifdef XENO_PC_PORT`, or `#ifndef
-                     XENO_PC_PORT`). e.g. func_800799D4 (d88f13c), the 2 sound
-                     init functions.
+                     XENO_PC_PORT`). e.g. the 2 sound init functions.
                    - file-level: the whole TU is port-replaced by a *_port.c
                      (work_list.c -> work_list_port.c, archive.c ->
                      archive_port.c); its INCLUDE_ASM functions are coexistence.
@@ -134,8 +133,20 @@ def scan_preproc_coexistence(text):
     return coex
 
 
+def overlay_of_asm_path(asm_path):
+    # INCLUDE_ASM paths are often relative ("../asm/menu/..."), so search for
+    # the asm/<overlay>/ component instead of assuming a prefix.
+    m = re.search(r"asm/([^/]+)/", asm_path)
+    return m.group(1) if m else "?"
+
+
 def scan_sources(root):
-    """funcname -> dict(status='COEXISTENCE'|'UNPORTED', file, overlay)."""
+    """(overlay, funcname) -> dict(status='COEXISTENCE'|'UNPORTED', file).
+
+    Keyed by overlay because overlays share load addresses: e.g. field's
+    func_8007DCF8 and battle's func_8007DCF8 are different functions that
+    previously collapsed onto one global name entry.
+    """
     status = {}
     for dirpath, _, files in os.walk(os.path.join(root, "src")):
         for f in files:
@@ -151,15 +162,16 @@ def scan_sources(root):
             file_level_coex = rel in PORT_REPLACED_FILES
             for m in INCLUDE_ASM_RE.finditer(text):
                 asm_path, fn = m.group(1), m.group(2)
-                overlay = asm_path.split("/")[1] if asm_path.startswith("asm/") else "?"
+                overlay = overlay_of_asm_path(asm_path)
                 if fn in inline_coex or file_level_coex:
                     st = "COEXISTENCE"
                 else:
                     st = "UNPORTED"
                 # first definition wins; prefer COEXISTENCE if any file says so
-                if fn not in status or (st == "COEXISTENCE" and status[fn]["status"] != "COEXISTENCE"):
-                    status[fn] = {"status": st, "file": rel, "overlay": overlay,
-                                  "file_level": file_level_coex and st == "COEXISTENCE"}
+                key = (overlay, fn)
+                if key not in status or (st == "COEXISTENCE" and status[key]["status"] != "COEXISTENCE"):
+                    status[key] = {"status": st, "file": rel, "overlay": overlay,
+                                   "file_level": file_level_coex and st == "COEXISTENCE"}
     return status
 
 
@@ -200,7 +212,7 @@ def classify(root):
                           ("system/work_list", "system/archive"))
         for fn in funcs:
             c["total"] += 1
-            info = src_status.get(fn)
+            info = src_status.get((overlay, fn))
             if info and info["status"] == "COEXISTENCE":
                 st = "coexistence"
                 if info["file_level"]:
@@ -222,7 +234,7 @@ def classify(root):
         c["port_replaced"] = is_replaced
         rows[(overlay, module)] = c
     universe_funcs = set(fn for funcs in universe.values() for fn in funcs)
-    return rows, per_func, have_stubs, len(src_status), stub_funcs, universe_funcs
+    return rows, per_func, have_stubs, len(src_status), stub_funcs, universe_funcs, src_status
 
 
 def fmt_pct(n, d):
@@ -237,7 +249,7 @@ def main():
     args = ap.parse_args()
 
     root = repo_root()
-    rows, per_func, have_stubs, n_src_status, stub_funcs, universe_funcs = classify(root)
+    rows, per_func, have_stubs, n_src_status, stub_funcs, universe_funcs, src_status = classify(root)
 
     # ---- roll-ups ----
     tot = defaultdict(int)
@@ -331,21 +343,31 @@ def main():
     total_incl_asm = tot["coexistence"] + tot["unported"]
     mdir = matchings_dir_count(root)
     checks = []
-    checks.append((total_incl_asm == n_src_status,
+    # src_status is keyed by (overlay, fn); only pairs inside the disassembled
+    # universe can be classified, the rest (e.g. battling refs with no asm/
+    # dir) are reported separately.
+    universe_pairs = set((pf["overlay"], pf["func"]) for pf in per_func)
+    in_universe = sum(1 for k in src_status if k in universe_pairs)
+    out_universe = n_src_status - in_universe
+    checks.append((total_incl_asm == in_universe,
                    f"INCLUDE_ASM'd funcs (coex {tot['coexistence']} + unported "
-                   f"{tot['unported']}) = {total_incl_asm} == distinct INCLUDE_ASM "
-                   f"names in src ({n_src_status})"))
+                   f"{tot['unported']}) = {total_incl_asm} == distinct in-universe "
+                   f"(overlay, fn) INCLUDE_ASM pairs in src ({in_universe}; "
+                   f"{out_universe} pairs reference overlays outside the asm/ tree, "
+                   f"e.g. battling)"))
     # matched inference vs lagging matchings/ dir (recently-matched still sit in
     # nonmatchings, so matched_inferred >= mdir by that small delta).
     checks.append((tot["matched"] >= mdir,
                    f"matched (inferred) {tot['matched']} >= matchings/ dir count "
                    f"{mdir} (delta {tot['matched'] - mdir} = recently-matched still "
                    f"in nonmatchings/, e.g. the 2 sound init fns)"))
-    # func_800799D4: the canonical d88f13c coexistence anchor
-    d4 = next((pf for pf in per_func if pf["func"] == "func_800799D4"), None)
-    checks.append((d4 is not None and d4["status"] == "coexistence",
-                   f"func_800799D4 (d88f13c anchor) classified COEXISTENCE: "
-                   f"{d4['status'] if d4 else 'NOT FOUND'}"))
+    # func_800799D4 (d88f13c): fully decompiled into src/field/main/misc4.c,
+    # so the field pair must classify MATCHED (a plain C body, no INCLUDE_ASM).
+    d4 = next((pf for pf in per_func if pf["func"] == "func_800799D4"
+               and pf["overlay"] == "field"), None)
+    checks.append((d4 is not None and d4["status"] == "matched",
+                   f"func_800799D4 (d88f13c anchor) classified MATCHED for "
+                   f"field: {d4['status'] if d4 else 'NOT FOUND'}"))
     if have_stubs:
         checks.append((True,
                        f"stubs: {n_stubs_total} total; {stubs_in_univ} in the "

@@ -1,0 +1,21 @@
+{
+  "build_result": "PASS",
+  "binary": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/xeno-port",
+  "binary_sha256": "7739b2b794a430eee899aade8be196e0c8b2d804cbce5d3bb451887b82872da6",
+  "log": "/tmp/xeno-shop-resources-c-20260906/native-build-root.log",
+  "log_sha256": "e437c7d67b998fe845b1d3f1f30d0cfb9e8f9da5be2ca09016d7a5b5dc7d216c",
+  "source_pins": {
+    "src/slus_006.64/system/menu.c": "a323d96071b9004f603085f3740667b5678a3f8cdfbd20a436751fa25eb134bb",
+    "include/system/menu.h": "7b7eca9f0769ff5bdd89bb8cd3f18f26382aa2c6ae95d76f023cace1f26a5543",
+    "pc_port/build_port.sh": "60d7016744e6f1b728dd9fb811a9aa85d77b8e7c177c886cd0aeb324de079dc5",
+    "pc_port/src/psycross_video_recording.inl": "5d98c739232f16bbab678c9f1d2e915add5ac28377cdc51850557354b5b1e725",
+    "src/member_change_menu/main/misc.c": "15a4091854071fcb92c75236165cf836d4ce0a2dea0d47c822d7a0dd616a02cb",
+    "pc_port/src/battle_file1_controller.inc": "a4d8c85d71955d185418d7a6398a519d61d6955e7b0970cb0009caf803f8ddee",
+    "pc_port/src/battle_mips_runtime.c": "a0ef5fc6c138d894f584b1c0ca17804952ec347771832cf2e3abcb2418970755",
+    "src/field/main/misc2.c": "c2539494ca3d29971c4af8b2815a5c61ca10452839ef05b338edcec3ed3ecaea",
+    "src/shop_menu/main/misc.c": "f0fd588c74c7dd9e1473151ae19dda8b2333dacab197bc30428b42a6473cf19a",
+    "include/types.h": "27d4ced608940724ea7e4c18e51cee33f0968377f34531a6bab4c457c5861abe",
+    "src/slus_006.64/system/libarchive.c": "7ec54ca02506e901b84bab739f637789dae00f8c075c0d530d094164f383d21a"
+  },
+  "runtime_status": "NOT_RUN: shop resources + archive pointer + lookup build; natural gameplay run retains copied cda8623b"
+}

@@ -8,6 +8,8 @@
 #include "system/archive.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -221,6 +223,75 @@ void func_800A1E9C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
+#ifdef XENO_PC_PORT
+/* DIAGNOSTIC / TEST TOOLING -- XENO_VM_TRACE=<actor index>|all.
+ * Prints one line per DISTINCT instruction pointer the VM dispatches for the
+ * selected actor(s): the base opcode byte, and for the 0xFE prefix the
+ * sub-opcode and its first two operand bytes.  Wait opcodes re-dispatch the
+ * same ip every frame and print once, so the output is the executed
+ * instruction sequence, not a per-frame flood.  Capped per actor so a hot
+ * script loop cannot fill a log.  Removal: delete this function and its call
+ * in FieldScriptVMRun. */
+static void PcPort_FieldVmTrace(u_short ip, u_char op) {
+    static int s_mode = -1;        /* -1 unparsed, -2 off, -3 all, else actor */
+    static u_char* s_seen[256];    /* per-actor first-seen bitset, 64K ips */
+    static u_short s_lines[256];
+    static const u_char* s_seenScript[256];
+    const u_char* script;
+    int actor;
+
+    if (s_mode == -1) {
+        const char* e = getenv("XENO_VM_TRACE");
+        if (e == NULL || e[0] == '\0') {
+            s_mode = -2;
+        } else if (e[0] == 'a') {
+            s_mode = -3;
+        } else {
+            s_mode = atoi(e) & 0xFF;
+        }
+    }
+    if (s_mode == -2) {
+        return;
+    }
+    actor = D_800AFD1C & 0xFF;
+    if (s_mode >= 0 && actor != s_mode) {
+        return;
+    }
+    script = (const u_char*)g_FieldScriptVMCurScriptData;
+    /* A new script buffer (map change) resets the actor's first-seen set. */
+    if (s_seen[actor] == NULL || s_seenScript[actor] != script) {
+        if (s_seen[actor] == NULL) {
+            s_seen[actor] = calloc(0x10000 / 8, 1);
+            if (s_seen[actor] == NULL) {
+                return;
+            }
+        } else {
+            int i;
+            for (i = 0; i < 0x10000 / 8; i++) {
+                s_seen[actor][i] = 0;
+            }
+        }
+        s_seenScript[actor] = script;
+        s_lines[actor] = 0;
+    }
+    if ((s_seen[actor][ip >> 3] & (1u << (ip & 7))) || s_lines[actor] >= 4000) {
+        return;
+    }
+    s_seen[actor][ip >> 3] |= (u_char)(1u << (ip & 7));
+    s_lines[actor]++;
+    if (op == 0xFE) {
+        printf("[vm-trace] actor=%d ip=%u op=FE%02X args=%02x %02x %02x %02x\n",
+               actor, (unsigned)ip, script[ip + 1], script[ip + 2],
+               script[ip + 3], script[ip + 4], script[ip + 5]);
+    } else {
+        printf("[vm-trace] actor=%d ip=%u op=%02X args=%02x %02x %02x %02x\n",
+               actor, (unsigned)ip, op, script[ip + 1], script[ip + 2],
+               script[ip + 3], script[ip + 4]);
+    }
+    fflush(stdout);
+}
+#endif
+
 void FieldScriptVMRun(int maxInstructionCount) {
     int nInstructionCount;
     u_short nInstructionPointer;
@@ -247,6 +318,9 @@ void FieldScriptVMRun(int maxInstructionCount) {
         }
         nInstructionPointer = g_FieldScriptVMCurActor->scriptInstructionPointer;
         nHandlerIndex = ((u_char *)g_FieldScriptVMCurScriptData)[nInstructionPointer];
+#ifdef XENO_PC_PORT
+        PcPort_FieldVmTrace(nInstructionPointer, nHandlerIndex);
+#endif
         g_FieldScriptVMHandlers[nHandlerIndex]();
 
         if (D_800AFFEC == 0) {
@@ -415,7 +489,148 @@ void func_800A22AC(int scriptRoutineIndex) {
 
 extern s32 D_800ADB8C;
 extern void func_800A22AC(int scriptRoutineIndex);
+#ifdef XENO_PC_PORT
+extern s16 D_8006BE2C[];
+extern s32 D_800B2268;
+extern s32 D_8005A444[];
+extern s32 D_8006F990[];
+extern void func_800AD4D4(s32 partySlot);
+extern void func_800ACFD0(s32 partySlot);
+extern void func_800821F4(void* sprite, s16 animation, void* actor);
+extern void FieldParticleActorStop(s32 actorIndex, s32 mode);
+extern void func_8009FEE4(s32 partySlot);
+extern void func_800A0524(s32 source, s32 destination);
+
+/* Retail 800ACFD0..800AD4D4. Unlike boarding, disembarking selects the
+ * on-foot actor through the party table, not the current script actor. */
+void func_800ACFD0(s32 partySlot) {
+    FieldActor* party;
+    FieldActor* gear;
+    u8* partyData;
+    u8* data;
+    u32* destination;
+    u32 sprite;
+
+    ((u8*)g_pGameState)[0x22b1 + partySlot] = 0;
+    party = &g_FieldActors[D_8006F990[partySlot]];
+    gear = &g_FieldActors[D_8005A444[partySlot]];
+    sprite = party->pSpriteData;
+    party->pSpriteData = gear->pSpriteData;
+    gear->pSpriteData = sprite;
+    party->status = (((u16)party->status & 0xf07fu) | 0x200u) & 0xffdfu;
+    partyData = (u8*)(uintptr_t)party->pActorData;
+    *(u32*)partyData &= ~1u;
+    func_800A0524(D_8006F990[partySlot], D_8005A444[partySlot]);
+
+    /* The copy routine is a callback boundary: reload the actor table. */
+    gear = &g_FieldActors[D_8005A444[partySlot]];
+    data = (u8*)(uintptr_t)gear->pActorData;
+    destination = (u32*)(uintptr_t)gear->pSpriteData;
+    destination[0] = *(u32*)(data + 0x20);
+    destination[1] = *(u32*)(data + 0x24);
+    destination[2] = *(u32*)(data + 0x28);
+    *(u32*)data = (*(u32*)data | 0x400u) & ~0x300u;
+    partyData = (u8*)(uintptr_t)g_FieldActors[D_8006F990[partySlot]].pActorData;
+    *(u32*)partyData &= ~0x1800u;
+    *(u32*)data &= ~0x1800u;
+    *(u16*)(partyData + 0x108) = *(u16*)(data + 0x108);
+    *(u16*)(partyData + 0x106) = *(u16*)(data + 0x106);
+    *(u16*)(partyData + 0xe8) = *(u16*)(partyData + 0xe6);
+    *(u16*)(data + 0xe8) = *(u16*)(data + 0xe6);
+    party = &g_FieldActors[D_8006F990[partySlot]];
+    func_800821F4((void*)(uintptr_t)party->pSpriteData, 6, party);
+    gear = &g_FieldActors[D_8005A444[partySlot]];
+    data = (u8*)(uintptr_t)gear->pActorData;
+    func_800821F4((void*)(uintptr_t)gear->pSpriteData,
+                 *(s16*)(data + 0xe6), gear);
+    func_8009FEE4(partySlot);
+    FieldParticleActorStop(D_8006F990[partySlot], 0);
+}
+
+/* Retail 800AD4D4..800AD898. Boarding swaps sprite ownership with the
+ * selected gear actor, preserves its position and updates both actor states.
+ * Keep the two animation calls and subsequent particle/save updates ordered. */
+void func_800AD4D4(s32 partySlot) {
+    FieldActor* current = &g_FieldActors[D_800AFD1C];
+    FieldActor* gear = &g_FieldActors[D_8005A444[partySlot]];
+    u32 sprite = current->pSpriteData;
+    u8* data;
+    u8* partyData;
+    u32* destination;
+    current->pSpriteData = gear->pSpriteData;
+    gear->pSpriteData = sprite;
+    data = (u8*)(uintptr_t)gear->pActorData;
+    destination = (u32*)(uintptr_t)gear->pSpriteData;
+    destination[0] = *(u32*)(data + 0x20);
+    destination[1] = *(u32*)(data + 0x24);
+    destination[2] = *(u32*)(data + 0x28);
+    current->status = (u16)current->status | 0x20;
+    *(u32*)data = (*(u32*)data | 0x200u) & ~0x500u;
+    ((u8*)g_pGameState)[0x22b1 + partySlot] = 1;
+    partyData = (u8*)(uintptr_t)g_FieldActors[D_8006F990[partySlot]].pActorData;
+    *(u32*)partyData &= ~0x1800u;
+    *(u32*)data &= ~0x1800u;
+    *(u16*)(partyData + 0xe8) = *(u16*)(partyData + 0xe6);
+    *(u16*)(data + 0xe8) = *(u16*)(data + 0xe6);
+    {
+        FieldActor* actor = &g_FieldActors[D_8006F990[partySlot]];
+        u8* actorData = (u8*)(uintptr_t)actor->pActorData;
+        func_800821F4((void*)(uintptr_t)actor->pSpriteData,
+                     *(s16*)(actorData + 0xe6), actor);
+    }
+    /* Retail reloads the actor table after the first animation callback. */
+    {
+        FieldActor* actor = &g_FieldActors[D_8005A444[partySlot]];
+        u8* actorData = (u8*)(uintptr_t)actor->pActorData;
+        func_800821F4((void*)(uintptr_t)actor->pSpriteData,
+                     *(s16*)(actorData + 0xe6), actor);
+    }
+    FieldParticleActorStop(D_8006F990[partySlot], 0);
+    func_8009FEE4(partySlot);
+}
+
+/* Retail 0x800AD978 reconciles each changed party slot with its field actor.
+ * The boolean comparison is the two-way retail branch at
+ * 0x800A8F78-0x800A8FB4: unequal presence calls the add/swap path, while an
+ * equal state calls the removal/refresh path. */
+void func_800AD978(s32 mode) {
+    s32 i;
+
+    if (!D_800B2268) {
+        return;
+    }
+
+    for (i = 0; i < 3; i++) {
+        s32 present;
+
+        if (D_8005A444[i] == 0xFF || D_8006BE2C[i] != 1) {
+            continue;
+        }
+
+        D_800AFD1C = D_8006F990[i];
+        present = ((u8*)g_pGameState)[0x22B1 + i] != 0;
+        if (present != (mode != 0)) {
+            func_800AD4D4(i);
+        } else {
+            func_800ACFD0(i);
+        }
+    }
+}
+
+/* Retail 0x800ACE24 converts the three pre-script party snapshots into
+ * changed/not-changed flags, then refreshes party presentation state. */
+void func_800ACE24(void) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        D_8006BE2C[i] =
+            D_8006BE2C[i] == ((u8*)g_pGameState)[0x22B1 + i] ? 0 : 1;
+    }
+    func_800AD978(0);
+}
+#else
 extern void func_800ACE24(void);
+#endif
 
 void func_800A2488(void) {
     D_800ADB8C = 1;
@@ -457,10 +672,8 @@ void func_800A24C4(void) {
     func_800A22AC(2);
     func_800AD898();
 
-    /* Refresh the registered object-slot sprites through the
-     * member_change_menu overlay entry (func_801E8330, unported -- auto-
-     * stubs fail-visible; the loop is empty while the object loader
-     * func_800A1364 stays staged and D_800B2264 is 0). */
+    /* Refresh the registered object-slot sprites through the field archive
+     * 0x6B9 native-owner entry func_801E8330. */
     for (i = 0; i < D_800B2264; i++) {
         func_801E8330(i & 0xFFFF, 0,
                       *(s16*)((u8*)&D_800B2264 - 0x80 + i * 2));
@@ -572,20 +785,36 @@ void func_800A28D4(void) {
                               flags134 & 0xF, skinId, (flags134 >> 4) & 0x1);
 
                 mode = *(u16*)((u8*)pActor + 0x12E) & 0x3;
-                if (mode == 1 || mode == 2) {
+                /* Retail 800A2A74/800A2AE4 keeps a SEPARATE copy of the
+                 * func_8002303C call + state stores per mode - a1 is 2 on the
+                 * mode==1 arm (800A2A74, `ori $a1,$zero,0x2`) and 3 on the
+                 * mode==2 arm (800A2AE4, `ori $a1,$zero,0x3` loaded in the
+                 * branch delay slot at 800A2A68). Splitting the previously
+                 * merged `mode == 1 || mode == 2` block is behaviour-preserving:
+                 * each arm below is that mode's exact projection of the old
+                 * shared body. */
+                if (mode == 1) {
                     u8* pSprite = (u8*)(uintptr_t)pFieldActor->pSpriteData;
                     u8* pBase;
                     u8* pState;
 
-                    func_8002303C(pSprite, mode + 1, 0);
+                    func_8002303C(pSprite, 2, 0);
                     pBase = (u8*)(uintptr_t)*(u32*)(pSprite + 0x7C);
                     pState = (u8*)(uintptr_t)*(u32*)(pBase + 0x18);
                     *(u16*)(pState + 0x4) = (*(u32*)((u8*)pActor + 0x12C) >> 18) & 0x3FF;
                     *(u16*)(pState + 0x6) = flags130 & 0x1FF;
-                    if (mode == 2) {
-                        *(u16*)(pState + 0x8) = (flags130 >> 9) & 0x3FF;
-                        *(u16*)(pState + 0xA) = (flags130 >> 19) & 0x1FF;
-                    }
+                } else if (mode == 2) {
+                    u8* pSprite = (u8*)(uintptr_t)pFieldActor->pSpriteData;
+                    u8* pBase;
+                    u8* pState;
+
+                    func_8002303C(pSprite, 3, 0);
+                    pBase = (u8*)(uintptr_t)*(u32*)(pSprite + 0x7C);
+                    pState = (u8*)(uintptr_t)*(u32*)(pBase + 0x18);
+                    *(u16*)(pState + 0x4) = (*(u32*)((u8*)pActor + 0x12C) >> 18) & 0x3FF;
+                    *(u16*)(pState + 0x6) = flags130 & 0x1FF;
+                    *(u16*)(pState + 0x8) = (flags130 >> 9) & 0x3FF;
+                    *(u16*)(pState + 0xA) = (flags130 >> 19) & 0x1FF;
                 }
             }
         }
@@ -688,8 +917,10 @@ int FieldScriptVMGetVariableValue(int index) {
     }
 }
 
-void FieldScriptMemoryWriteU16(u16 address, u16 value) {
-    ((u16*)&g_FieldScriptMemory)[address >> 1] = value;
+void FieldScriptMemoryWriteU16(s32 address, u16 value) {
+    s32 index = address >> 1;
+
+    ((u16*)&g_FieldScriptMemory)[index] = value;
 }
 
 // scriptIndex here refers to the index of the script, which will (always?) correspond to an entity index
@@ -818,28 +1049,25 @@ extern VECTOR g_CameraEye;
 extern char D_8006FD9C;
 extern void func_80021EBC(void*, void*);
 
-static void FieldStateRestoreCopy(void* dst, size_t size) {
-    u8* dstBytes = dst;
-    size_t i;
-
-    for (i = 0; i < size; i++) {
-        dstBytes[i] = D_800AFC50[i];
-    }
-
-    D_800AFC50 += size;
-}
+extern void* memcpy(void*, const void*, size_t);
 
 void func_800A3474(void) {
     int i;
 
-    D_800AFC50 = D_8005A4E4 + 4;
+    D_800AFC50 = D_8005A4E4;
     g_FieldNumActors = D_8005A4E4[0];
+    D_800AFC50 = D_8005A4E4 + 4;
 
-    FieldStateRestoreCopy(D_800B007C, 0x38);
-    FieldStateRestoreCopy((u8*)&g_Scene + 0xC4, 0x74);
-    FieldStateRestoreCopy((void*)(uintptr_t)D_800AFB20[0], 0x400);
-    FieldStateRestoreCopy((u8*)&g_FieldEffects, 0x2E4);
-    FieldStateRestoreCopy((u8*)&g_CameraEye, 0x1C8);
+    memcpy(D_800B007C, D_800AFC50, 0x38);
+    D_800AFC50 += 0x38;
+    memcpy((u8*)&g_Scene + 0xC4, D_800AFC50, 0x74);
+    D_800AFC50 += 0x74;
+    memcpy((void*)(uintptr_t)D_800AFB20[0], D_800AFC50, 0x400);
+    D_800AFC50 += 0x400;
+    memcpy((u8*)&g_FieldEffects, D_800AFC50, 0x2E4);
+    D_800AFC50 += 0x2E4;
+    memcpy((u8*)&g_CameraEye, D_800AFC50, 0x1C8);
+    D_800AFC50 += 0x1C8;
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* actor = (u8*)&g_FieldActors[i];
@@ -847,52 +1075,113 @@ void func_800A3474(void) {
         u8* actorSave = D_800AFC50;
         u32 saved118;
 
-        FieldStateRestoreCopy(actor + 0x50, 0x8);
+        memcpy(actor + 0x50, D_800AFC50, 0x8);
+        D_800AFC50 += 0x8;
         *(u16*)(actor + 0x58) = *(u16*)D_800AFC50;
         D_800AFC50 = actorSave + 0x3C;
 
         saved118 = *(u32*)(actorData + 0x118);
-        FieldStateRestoreCopy(actorData, 0x138);
+        memcpy(actorData, D_800AFC50, 0x138);
+        D_800AFC50 += 0x138;
         *(u32*)(actorData + 0x118) = saved118;
 
         if (*(u32*)(actorData + 0x134) & 0x80) {
             *(u32*)(actorData + 0x110) = (u32)(uintptr_t)HeapAlloc(0xC, 0);
-            FieldStateRestoreCopy((void*)(uintptr_t)*(u32*)(actorData + 0x110), 0xC);
+            memcpy((void*)(uintptr_t)*(u32*)(actorData + 0x110), D_800AFC50, 0xC);
+            D_800AFC50 += 0xC;
         }
 
         if (*(u32*)(actorData + 0x12C) & 0x1000) {
             *(u32*)(actorData + 0x114) = (u32)(uintptr_t)HeapAlloc(0x10, 0);
-            FieldStateRestoreCopy((void*)(uintptr_t)*(u32*)(actorData + 0x114), 0x10);
+            memcpy((void*)(uintptr_t)*(u32*)(actorData + 0x114), D_800AFC50, 0x10);
+            D_800AFC50 += 0x10;
         }
     }
 
-    FieldStateRestoreCopy(&g_FieldScriptMemory, 0x800);
+    memcpy(&g_FieldScriptMemory, D_800AFC50, 0x800);
+    D_800AFC50 += 0x800;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3C8C);
+extern s32 D_800B2268;
+extern void func_80021D50(void* pSprite, void* pSave);
 
-static void FieldStateSaveCopy(const void* src, size_t size) {
-    const u8* srcBytes = src;
-    size_t i;
+/* Transcribed from asm/field/nonmatchings/scripts/virtual_machine/func_800A3C8C.s
+ * (0x800A3C8C-0x800A3F48). Restore g_FieldNumActors from D_8005A4E4[0], memcpy
+ * 0x74 bytes at D_8005A4E4+0x3C into g_Scene+0xC4, count D_8005A408 vs
+ * g_pGameState[0x22B1+i] mismatches, skip to actor records at +0x95C. Per
+ * actor: skip 0xC header; if unk124!=-1 and unkEA!=0xFF patch save+0x20;
+ * func_80021D50 unless flags&0x1000000 or (D_800B2268 && scriptFlags&0x600
+ * && mismatch); advance 0x168, +0xC if flags134&0x80, +0x10 if +0x12C&0x1000.
+ * Frame 0x30. */
+void func_800A3C8C(void) {
+    s32 i;
+    s32 mismatch;
+    FieldActor* pField;
+    ActorData* pActor;
+    u8* pSave;
 
-    for (i = 0; i < size; i++) {
-        D_800AFC50[i] = srcBytes[i];
+    D_800AFC50 = D_8005A4E4;
+    g_FieldNumActors = D_8005A4E4[0];
+    D_800AFC50 = D_8005A4E4 + 0x3C;
+    memcpy((u8*)&g_Scene + 0xC4, D_800AFC50, 0x74);
+
+    mismatch = 0;
+    for (i = 0; i < 3; i++) {
+        if (D_8005A408[i] != ((u8*)g_pGameState)[0x22B1 + i]) {
+            mismatch += 1;
+        }
     }
+    D_800AFC50 += 0x920;
 
-    D_800AFC50 += size;
+    for (i = 0; i < D_800ADBFC; i++) {
+        pField = &g_FieldActors[i];
+        pActor = (ActorData*)(uintptr_t)pField->pActorData;
+        pSave = D_800AFC50;
+        D_800AFC50 = pSave + 0xC;
+        if (pActor->unk124 != -1) {
+            if (pActor->unkAnimationId != (s16)0xFF) {
+#ifdef FIELD_A3C8C_MUTANT_SKIP_ANIM_PATCH
+                /* skip save+0x20 patch */
+#else
+                *(s16*)(pSave + 0x20) = pActor->unkAnimationId;
+#endif
+            }
+        }
+        if ((pActor->flags & 0x1000000) == 0) {
+            if (D_800B2268 == 0 || (pActor->scriptFlags.flags & 0x600) == 0
+                || mismatch == 0) {
+                func_80021D50((void*)(uintptr_t)pField->pSpriteData, D_800AFC50);
+            }
+        }
+        if (*(u32*)((u8*)pActor + 0x134) & 0x80) {
+            D_800AFC50 = pSave + 0xC + 0x174;
+        } else {
+            D_800AFC50 = pSave + 0xC + 0x168;
+        }
+        if (*(u32*)((u8*)pActor + 0x12C) & 0x1000) {
+            D_800AFC50 += 0x10;
+        }
+    }
 }
+
 
 void func_800A3F4C(void) {
     int i;
 
-    D_800AFC50 = D_8005A4E4 + 4;
+    D_800AFC50 = D_8005A4E4;
     D_8005A4E4[0] = (u8)g_FieldNumActors;
+    D_800AFC50 = D_8005A4E4 + 4;
 
-    FieldStateSaveCopy(D_800B007C, 0x38);
-    FieldStateSaveCopy((u8*)&g_Scene + 0xC4, 0x74);
-    FieldStateSaveCopy((void*)(uintptr_t)D_800AFB20[0], 0x400);
-    FieldStateSaveCopy((u8*)&g_FieldEffects, 0x2E4);
-    FieldStateSaveCopy((u8*)&g_CameraEye, 0x1C8);
+    memcpy(D_800AFC50, D_800B007C, 0x38);
+    D_800AFC50 += 0x38;
+    memcpy(D_800AFC50, (u8*)&g_Scene + 0xC4, 0x74);
+    D_800AFC50 += 0x74;
+    memcpy(D_800AFC50, (void*)(uintptr_t)D_800AFB20[0], 0x400);
+    D_800AFC50 += 0x400;
+    memcpy(D_800AFC50, (u8*)&g_FieldEffects, 0x2E4);
+    D_800AFC50 += 0x2E4;
+    memcpy(D_800AFC50, (u8*)&g_CameraEye, 0x1C8);
+    D_800AFC50 += 0x1C8;
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* actor = (u8*)&g_FieldActors[i];
@@ -900,7 +1189,8 @@ void func_800A3F4C(void) {
         u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
         u8* actorSave = D_800AFC50;
 
-        FieldStateSaveCopy(actor + 0x50, 0x8);
+        memcpy(D_800AFC50, actor + 0x50, 0x8);
+        D_800AFC50 += 0x8;
         *(u16*)(actorSave + 0x8) = *(u16*)(actor + 0x58);
         *(u16*)(actorSave + 0xA) = 0;
         D_800AFC50 = actorSave + 0xC;
@@ -908,18 +1198,22 @@ void func_800A3F4C(void) {
         func_80021EBC(spriteData, D_800AFC50);
         D_800AFC50 += 0x30;
 
-        FieldStateSaveCopy(actorData, 0x138);
+        memcpy(D_800AFC50, actorData, 0x138);
+        D_800AFC50 += 0x138;
 
         if (*(u32*)(actorData + 0x134) & 0x80) {
-            FieldStateSaveCopy((void*)(uintptr_t)*(u32*)(actorData + 0x110), 0xC);
+            memcpy(D_800AFC50, (void*)(uintptr_t)*(u32*)(actorData + 0x110), 0xC);
+            D_800AFC50 += 0xC;
         }
 
         if (*(u32*)(actorData + 0x12C) & 0x1000) {
-            FieldStateSaveCopy((void*)(uintptr_t)*(u32*)(actorData + 0x114), 0x10);
+            memcpy(D_800AFC50, (void*)(uintptr_t)*(u32*)(actorData + 0x114), 0x10);
+            D_800AFC50 += 0x10;
         }
     }
 
-    FieldStateSaveCopy(&g_FieldScriptMemory, 0x800);
+    memcpy(D_800AFC50, &g_FieldScriptMemory, 0x800);
+    D_800AFC50 += 0x800;
 
     for (i = 0; i < 3; i++) {
         D_8005A408[i] = ((u8*)g_pGameState)[0x22B1 + i];
@@ -942,6 +1236,15 @@ void func_800A476C(int x, int y) {
     rect.x = 0;
     rect.h = 0xe0;
     SetGeomScreen(0x200);
+#ifdef XENO_PC_PORT
+    /* PsyCross DrawOTag writes the GL backbuffer; retail GPU already has
+     * those pixels in VRAM at (0,0). Pull them into CPU vram[] before the
+     * offscreen snapshot (title/menu backdrop at 704,256). */
+    {
+        extern void GR_StoreFrameBufferImmediate(int x, int y, int w, int h);
+        GR_StoreFrameBufferImmediate(rect.x, rect.y, rect.w, rect.h);
+    }
+#endif
     MoveImage(&rect, x, y);
     FieldRenderSync();
 }

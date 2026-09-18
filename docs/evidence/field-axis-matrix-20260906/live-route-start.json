@@ -1,0 +1,20 @@
+{
+  "run_dir": "/tmp/xeno-forest-route-20260906/run-y9dtjd02",
+  "started_utc": "2026-09-06T07:08:27.390992+00:00",
+  "display": ":1",
+  "xvfb_pid": 528340,
+  "binary_sha256": "cda8623b38a192018181a232875910308f213c9d8778e8798651c7f6c34461ae",
+  "manifest": "/var/home/blizz/Projects/xenogears-decomp-ai/docs/evidence/field-axis-matrix-20260906/final-build-pins.json",
+  "manifest_sha256": "4b5520df59b93643778e07360cc3141a5b8efcc833976d3601c659e48180a53b",
+  "driver_sha256": "7ae630dd758c81b1f5b327201da4276e05cfbf83d916f170d04d7729004c06a5",
+  "trace_sha256": "a60252278c583cb14c721bd1745b7ac5b88cb3ba0665f2198aac3b426a98fb40",
+  "scope": "isolated native observation, ordinary UI keys, sparse read-only A9 breakpoint; not retail/emulator proof",
+  "automatic_field_input": false,
+  "initial_seconds": 900,
+  "extension_file": "/tmp/xeno-forest-route-20260906/run-y9dtjd02/extend-seconds",
+  "quicksave_path": "/tmp/xeno-forest-route-20260906/run-y9dtjd02/quick.xgqs",
+  "periodic_capture": false,
+  "debugger_pid": 528348,
+  "native_pid": 528358,
+  "window": "6291508"
+}

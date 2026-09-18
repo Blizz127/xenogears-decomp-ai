@@ -77,13 +77,16 @@ s32 func_80080968(u8* pActorData) {
         s32 byteVal;
         u32* finalTable;
 
-        if (tableRow == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+        /* Native fail-closed guard. Retail assumes the relocated table owner
+         * is valid here; retaining this branch is an audited port divergence. */
+        if (tableRow == NULL) return 0;
 
         byteVal = *(u8*)(tableRow + val * 2 + 0x0C);
 
         /* Final lookup: D_800AFB20[byteVal] */
         finalTable = (u32*)(uintptr_t)D_800AFB20;
-        if (finalTable == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+        /* Same native ownership guard for the contiguous field data block. */
+        if (finalTable == NULL) return 0;
 
         return (s32)finalTable[byteVal];
     }
@@ -97,9 +100,9 @@ s32 func_800809D0(u8* pData) {
     s32 count = 0;
     D_800B14AC = 0;
     while (acc <= 0) {
-        D_800B14AC += 2;
-        acc += step;
         count += acc;
+        acc += step;
+        D_800B14AC += 2;
     }
     return count >> 16;
 }
@@ -116,8 +119,7 @@ s32 func_80080A18(void) {
 /* ---- func_80080A74: per-actor second-pass ActorData initialization ----------
  * Called from func_80080F44 for each actor. Initializes ActorData with
  * hardcoded defaults and state-array entries. Calls func_80080968 for
- * additional setup. Conditionally runs func_8007B1C4 distance-init loop
- * (skipped in port: D_800AFB54 stubbed to 0/1).
+ * additional setup. Conditionally runs the func_8007B1C4 distance-init loop.
  *
  * All offsets are byte offsets into the ActorData allocation (0x138 bytes),
  * verified against MIPS asm. */
@@ -126,11 +128,17 @@ extern s32 D_800AFB44[];
 
 void func_80080A74(s32 actorIndex) {
     u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
-    s16 stateBuf[0x34] = { 0 };
-    s32 useStateBuf = 0;
+    /* NOTE: deliberately NOT zero-initialised. This was `= { 0 };`, and GCC 2.7.2
+     * materialises such a local aggregate initialiser as a 104-byte all-zero
+     * constant template in `.rodata` ($LC0 = `.half 0` + `.space 102`, visible in
+     * build/src/field/main/misc8.c.s), then copies it onto the stack. Retail's
+     * `func_80080A74` (asm/field/matchings/main/misc8/func_80080A74.s) has ZERO
+     * `(sh|sw|sb) $zero, N($sp)` stores and no memcpy/memset call - it never zeroes
+     * this buffer. That template was the last 0x68 of field `.rodata` surplus
+     * (field_RODATA_SIZE 0x360 vs retail 0x2FC), so the initialiser is removed to
+     * match retail's behaviour and codegen. */
+    s16 stateBuf[0x34];
     s32 i;
-    s32 actorByteOff = actorIndex * 0x5C;
-    u8* pActorBytes = (u8*)g_FieldActors + actorByteOff;
 
     /* ---- early field defaults ---- */
     *(s32*)(p + 0x00) = 0xB0;
@@ -158,10 +166,15 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0xCC) = 0;
     *(s16*)(p + 0x6E) = 0;
 
-    /* flags at 0x12C / 0x130 / 0x134: clear specific bits */
+    /* flags at 0x12C / 0x130 / 0x134. Immediates are retail addiu/lui
+     * values from asm/field/matchings/main/misc8/func_80080A74.s. */
+#ifdef FIELD_ACTOR_INIT_MUTANT_12C_MASK
     *(s32*)(p + 0x12C) &= ~0x30000;
+#else
+    *(s32*)(p + 0x12C) &= -0x21; /* 0x80080B3C addiu $v1, -0x21 */
+#endif
     *(s16*)(p + 0x1E) = *(s16*)(p + 0x18);
-    *(s32*)(p + 0x12C) &= ~0x3;
+    *(s32*)(p + 0x12C) &= -0x4; /* 0x80080BA4 addiu $v0, -0x4 */
     *(s16*)(p + 0x11E) = 0x200;
     *(u8*)(p + 0x101) = 0x80;
     *(u8*)(p + 0x100) = 0x80;
@@ -170,10 +183,11 @@ void func_80080A74(s32 actorIndex) {
     *(u8*)(p + 0xFD)  = 0x80;
     *(u8*)(p + 0xFC)  = 0x80;
     *(s16*)(p + 0x128) = 0xFFFF;
-    *(s32*)(p + 0x12C) &= 0xFFFCFFFF;
-    *(s32*)(p + 0x130) &= 0xF007FFFF;
-    *(s32*)(p + 0x130) &= ~0x200;
-    *(s32*)(p + 0x12C) &= 0xF003FFFF;
+    *(s32*)(p + 0x12C) &= 0xFFFCFFFF; /* $a2 */
+    *(s32*)(p + 0x130) &= 0xF007FFFF; /* $a1 */
+    *(s32*)(p + 0x130) &= -0x200; /* 0x80080BD8 addiu $v0, -0x200 */
+    *(s32*)(p + 0x130) &= 0xFFF801FF; /* $a3; previously missing */
+    *(s32*)(p + 0x12C) &= 0xF003FFFF; /* $t0 */
 
     /* script slots: 8 entries of 8 bytes each at offset 0x8C */
     for (i = 0; i < 8; i++) {
@@ -193,7 +207,7 @@ void func_80080A74(s32 actorIndex) {
     *(s32*)(p + 0x120) = 0;
     *(s16*)(p + 0xE4) = 0xFF;
     *(s16*)(p + 0x76) = 0x100;
-    *(s32*)(p + 0x12C) &= ~0x1C0;
+    *(s32*)(p + 0x12C) &= -0x1C1; /* 0x80080C58 addiu $v0, -0x1C1 */
     *(u8*)(p + 0x83) = 0;
     *(u8*)(p + 0x82) = 0;
     *(s16*)(p + 0x8A) = 0;
@@ -204,10 +218,10 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0xE8) = 0;
     *(s16*)(p + 0x10) = 0;
     *(s16*)(p + 0xEC) = 0;
-    *(s32*)(p + 0x134) &= ~0x80;
-    *(s32*)(p + 0x12C) &= ~0xE00;
-    *(s32*)(p + 0x12C) &= ~0x1000;
-    *(s32*)(p + 0x134) &= ~0x60;
+    *(s32*)(p + 0x134) &= -0x81; /* 0x80080C64 addiu $v1, -0x81 */
+    *(s32*)(p + 0x12C) &= -0xE01; /* 0x80080C98 addiu $v0, -0xE01 */
+    *(s32*)(p + 0x12C) &= -0x1001; /* 0x80080CA0 addiu $v0, -0x1001 */
+    *(s32*)(p + 0x134) &= -0x61; /* 0x80080CAC addiu $v0, -0x61 */
 
     *(s16*)(p + 0x102) = (s16)rand();
     *(s16*)(p + 0xF4) = 0x1000;
@@ -224,51 +238,72 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0x0C) = 0;
     *(s16*)(p + 0x0A) = 0;
     *(s16*)(p + 0x08) = 0;
-    *(s32*)(p + 0x12C) &= ~0x1C;
+    *(s32*)(p + 0x12C) &= -0x1D; /* 0x80080CFC addiu $v0, -0x1D */
 
-    /* ---- D_800AFB54 loop (distance-based init; skipped when count <= 1) ---- */
-    if (D_800AFB54 > 1) {
+    /* ---- D_800AFB54 loop (blez count-1 at 0x80080D28). ----
+     * Addressing from func_80080A74.s:
+     *   jal pOut is $sp+0x58 + (i<<3) each iter (0x80080D70), not an
+     *     induction pointer;
+     *   fail zeros are sh 0x40/42/44($s2) with $s2 walking from $sp+0x18
+     *     (0x80080DC8);
+     *   dest is sh 0x8($s4) with $s4 starting at ActorData (0x80080D80). */
+    if (D_800AFB54 - 1 > 0) {
         s16* pState = stateBuf;
-        s16* pDst = (s16*)(p + 0x08);
+        s16* pWalk = stateBuf;
+        s16* pDst = (s16*)p;
 
-        useStateBuf = 1;
         for (i = 0; i < D_800AFB54 - 1; i++) {
             s16 r = func_8007B1C4(
-                *(s16*)(pActorBytes + 0x20),
-                *(s16*)(pActorBytes + 0x28),
-                i, (u8*)stateBuf + 0x40 + i * 8, pState);
-            *pDst = r;
+                *(s16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x20),
+                *(s16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x28),
+                i, (s16*)((u8*)stateBuf + 0x40 + (i << 3)), pState);
+            pDst[4] = r;
             if (r != -1 && (u32)r >= (u32)D_800AFB44[i]) {
                 D_800AFB44[i] = 0;
-                pState[0] = 0; pState[1] = 0; pState[2] = 0;
-                pState[3] = 0; pState[4] = 0; pState[5] = 0;
+                ((s32*)pState)[0] = 0;
+                ((s32*)pState)[1] = 0;
+                ((s32*)pState)[2] = 0;
+                *(s16*)((u8*)pWalk + 0x40) = 0;
+                *(s16*)((u8*)pWalk + 0x42) = 0;
+                *(s16*)((u8*)pWalk + 0x44) = 0;
             }
+            pWalk += 4;
             pState += 8;
             pDst += 1;
         }
-
-        /* status & 0x80 check + field_24 copy */
-        if (!(*(s16*)(pActorBytes + 0x58) & 0x80)) {
-            s16 choice = *(s16*)(p + 0x10);
-            *(s32*)(pActorBytes + 0x24) = stateBuf[choice * 4 + (0x5A - 0x18)/2];
-        }
     }
 
-    /* ---- post-loop setup ---- */
+    /* ---- post-loop: always jal func_80080968, always $sp+0x18 ---- */
     *(s32*)(p + 0x14) = func_80080968(p);
-    {
-        s16 choice = *(s16*)(p + 0x10);
-        s16* stateBase = useStateBuf ? stateBuf : (s16*)(p + 0x18);
-        *(s32*)(p + 0x50) = *(s32*)((u8*)stateBase + choice * 16 + 0);
-        *(s32*)(p + 0x54) = *(s32*)((u8*)stateBase + choice * 16 + 4);
-        *(s32*)(p + 0x58) = *(s32*)((u8*)stateBase + choice * 16 + 8);
+    /* Retail reloads lh 0x10($s0) for each of 0x50/54/58 (0x80080E00,
+     * 0x80080E0C, 0x80080E2C) — do not CSE into a local. */
+    *(s32*)(p + 0x50) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 0);
+    *(s32*)(p + 0x54) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 4);
+    *(s32*)(p + 0x58) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 8);
+
+    /* status & 0x80 / FieldActor+0x24 copy is AFTER 0x50/54/58
+     * (0x80080E6C). Retail keeps actorIndex*0x5C in $a0 and reloads
+     * g_FieldActors at each of 0x20/0x24/0x28/0x72 (0x80080E9C,
+     * 0x80080EBC, 0x80080EDC, 0x80080EFC); 0x72 is lw 0x24 then sh. */
+    if (!(*(u16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x58) & 0x80)) {
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) =
+            (s32)*(s16*)((u8*)stateBuf + *(s16*)(p + 0x10) * 8 + 0x42);
     }
 
-    /* Copy FieldActor fields 0x20/0x24/0x28 into ActorData */
-    *(s32*)(p + 0x20) = *(s32*)(pActorBytes + 0x20) << 16;
-    *(s32*)(p + 0x24) = *(s32*)(pActorBytes + 0x24) << 16;
-    *(s32*)(p + 0x28) = *(s32*)(pActorBytes + 0x28) << 16;
-    *(s16*)(p + 0x72) = *(s16*)(pActorBytes + 0x24);
+    /* Retail 0x80080E9C / EBC / EDC / EFC: lui/lw g_FieldActors per store.
+     * Each load clobbers the row in $v0 (lw 0x20($v0) etc.). 0x72 is
+     * lw 0x24 then sh (0x80080F0C). */
+    *(s32*)(p + 0x20) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x20) << 16;
+    *(s32*)(p + 0x24) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) << 16;
+    *(s32*)(p + 0x28) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x28) << 16;
+    *(s16*)(p + 0x72) =
+        (s16)*(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24);
 }
 
 /* ---- func_80080F44: per-actor data initialization ---------------------------
@@ -331,7 +366,7 @@ void func_80080F44(s32 actorIndex) {
         }
     }
 
-    /* 4. Per-actor init callback (stubbed in port) */
+    /* 4. Per-actor retail-derived init callback. */
     func_80080A74(actorIndex);
 
     /* 5. Allocate 0x70-byte shadow buffer */
@@ -369,12 +404,11 @@ void func_8008110C(void) {
     func_800A2030();
 
     for (i = 0; i < D_800ADBFC; i++) {
-        u8* actor = (u8*)g_FieldActors + i * 0x5C;
-        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
-
-        *(s16*)(actorData + 0x68) = *(s16*)(actorData + 0x22);
-        *(s16*)(actorData + 0x6A) = *(s16*)(actorData + 0x26);
-        *(s16*)(actorData + 0x6C) = *(s16*)(actorData + 0x2A);
+        /* Retail 80081154..800811C0 reloads g_FieldActors and the actor's
+         * 0x4C data pointer for each of the three stores. */
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x68) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x22);
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x6A) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x26);
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x6C) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x2A);
     }
 
     if (g_FieldSystemMode == 0) {
@@ -622,7 +656,6 @@ void func_800815F0(void) {
         s32 partyId;
         s32* pCursor;
         s32 k;
-        s32 off;
         u32 histFlags;
         s32 j;
 
@@ -642,12 +675,11 @@ void func_800815F0(void) {
 
         pCursor = &D_800B2360 + partyId;
         k = *pCursor;
-        off = (k * 9) * 8;
 
         /* Turn toward the history entry's facing. */
-        func_80081F80(spriteData, *(s16*)(&D_800B1504 + off), actor);
+        func_80081F80(spriteData, *(s16*)(&D_800B1504 + ((*pCursor) * 9 * 8)), actor);
 
-        histFlags = *(u32*)(&D_800B14F0 + off);
+        histFlags = *(u32*)(&D_800B14F0 + ((*pCursor) * 9 * 8));
 
         if (D_800B21CF == 1) {
             /* Snap the follower cursor to just behind the head and consume
@@ -656,7 +688,6 @@ void func_800815F0(void) {
              * anim/apply reload the snapped cursor). */
             *pCursor = (D_800B2360 + 1) & 0x1F;
             k = *pCursor;
-            off = (k * 9) * 8;
             goto consume;
         } else if (!(histFlags & 0x800)) {
             /* The history frame is an idle frame. */
@@ -721,8 +752,8 @@ void func_800815F0(void) {
             *(u32*)(actorData + 0x00) &= ~0x800u;
         }
 
-        if (*(s16*)(actorData + 0xE8) != *(s16*)(&D_800B1502 + off)) {
-            *(s16*)(actorData + 0xE8) = *(s16*)(&D_800B1502 + off);
+        if (*(s16*)(actorData + 0xE8) != *(s16*)(&D_800B1502 + ((*pCursor) * 9 * 8))) {
+            *(s16*)(actorData + 0xE8) = *(s16*)(&D_800B1502 + ((*pCursor) * 9 * 8));
             if (*(s16*)(actorData + 0xE8) < 0) {
                 *(s16*)(actorData + 0xE8) = 0;
             }
@@ -732,27 +763,27 @@ void func_800815F0(void) {
         /* The apply block: the exact inverse of func_80081C54's record. */
         for (j = 0; j < 4; j++) {
             *(u16*)(actorData + 0x08 + j * 2) =
-                *(u16*)(&D_800B1510 + off - 0x0A + j * 2);
+                *(u16*)(&D_800B1510 + ((*pCursor) * 9 * 8) - 0x0A + j * 2);
         }
-        *(s16*)(actorData + 0x10) = *(&D_800B1534 + off);
-        *(u32*)(spriteData + 0x0C) = *(u32*)(&D_800B1510 + off);
-        *(u32*)(spriteData + 0x10) = *(u32*)(&D_800B1514 + off);
-        *(u32*)(spriteData + 0x14) = *(u32*)(&D_800B1518 + off);
-        *(u32*)(actorData + 0x50) = *(u32*)(&D_800B1510 + off + 0x10);
-        *(u32*)(actorData + 0x54) = *(u32*)(&D_800B1510 + off + 0x14);
-        *(u32*)(actorData + 0x58) = *(u32*)(&D_800B1510 + off + 0x18);
-        *(u32*)(actor + 0x20) = *(s16*)(&D_800B14F8 + off);
-        *(u32*)(actor + 0x24) = *(s16*)(&D_800B14FA + off);
-        *(u32*)(actor + 0x28) = *(s16*)(&D_800B14FC + off);
+        *(s16*)(actorData + 0x10) = *(&D_800B1534 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x0C) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x10) = *(u32*)(&D_800B1514 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x14) = *(u32*)(&D_800B1518 + ((*pCursor) * 9 * 8));
+        *(u32*)(actorData + 0x50) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x10);
+        *(u32*)(actorData + 0x54) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x14);
+        *(u32*)(actorData + 0x58) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x18);
+        *(u32*)(actor + 0x20) = *(s16*)(&D_800B14F8 + ((*pCursor) * 9 * 8));
+        *(u32*)(actor + 0x24) = *(s16*)(&D_800B14FA + ((*pCursor) * 9 * 8));
+        *(u32*)(actor + 0x28) = *(s16*)(&D_800B14FC + ((*pCursor) * 9 * 8));
         *(u32*)(spriteData + 0x00) = *(s32*)(actor + 0x20) << 16;
         *(u32*)(actorData + 0x20) = *(s32*)(actor + 0x20) << 16;
         *(u32*)(spriteData + 0x04) = *(s32*)(actor + 0x24) << 16;
         *(u32*)(actorData + 0x24) = *(s32*)(actor + 0x24) << 16;
         *(u32*)(spriteData + 0x08) = *(s32*)(actor + 0x28) << 16;
         *(u32*)(actorData + 0x28) = *(s32*)(actor + 0x28) << 16;
-        *(u16*)(spriteData + 0x84) = *(u16*)(&D_800B1500 + off);
-        *(u16*)(actorData + 0x106) = *(u16*)(&D_800B1504 + off);
-        *(u16*)(actorData + 0x104) = *(u16*)(&D_800B1504 + off);
+        *(u16*)(spriteData + 0x84) = *(u16*)(&D_800B1500 + ((*pCursor) * 9 * 8));
+        *(u16*)(actorData + 0x106) = *(u16*)(&D_800B1504 + ((*pCursor) * 9 * 8));
+        *(u16*)(actorData + 0x104) = *(u16*)(&D_800B1504 + ((*pCursor) * 9 * 8));
         *pCursor = (k - 1) & 0x1F;
     }
 }
@@ -779,8 +810,6 @@ void func_80081C54(s32 actorIndex) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
     u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
-    s32 slot;
-    s32 off;
     s32 i;
 
     if (actorIndex != g_PlayerActorIndex) {
@@ -791,32 +820,33 @@ void func_80081C54(s32 actorIndex) {
         return;
     }
 
-    slot = D_800B2360;
-    off = (slot * 9) * 8;
+    /* Retail 80081C78..80081F34 reloads D_800B2360 and recomputes slot*9*8
+     * (= 72) for EVERY store; the aliasing store through the ring base defeats
+     * CSE, which is what gives this function its 194 instructions. Index the
+     * ring by the live slot at each site instead of caching the offset. */
+    *(u32*)(&D_800B1510 + D_800B2360 * 72) = *(u32*)(spriteData + 0x0C);
+    *(u32*)(&D_800B1514 + D_800B2360 * 72) = *(u32*)(spriteData + 0x10);
+    *(u32*)(&D_800B1518 + D_800B2360 * 72) = *(u32*)(spriteData + 0x14);
 
-    *(u32*)(&D_800B1510 + off) = *(u32*)(spriteData + 0x0C);
-    *(u32*)(&D_800B1514 + off) = *(u32*)(spriteData + 0x10);
-    *(u32*)(&D_800B1518 + off) = *(u32*)(spriteData + 0x14);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x10) = *(u32*)(actorData + 0x50);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x14) = *(u32*)(actorData + 0x54);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x18) = *(u32*)(actorData + 0x58);
 
-    *(u32*)(&D_800B1510 + off + 0x10) = *(u32*)(actorData + 0x50);
-    *(u32*)(&D_800B1510 + off + 0x14) = *(u32*)(actorData + 0x54);
-    *(u32*)(&D_800B1510 + off + 0x18) = *(u32*)(actorData + 0x58);
-
-    *(u16*)(&D_800B1504 + off) = *(u16*)(actorData + 0x106) & 0x0FFF;
-    *(u16*)(&D_800B1500 + off) = *(u16*)(spriteData + 0x84);
-    *(u16*)(&D_800B14F8 + off) = *(u16*)(actorData + 0x22);
-    *(u16*)(&D_800B14FA + off) = *(u16*)(actorData + 0x26);
-    *(u16*)(&D_800B14FC + off) = *(u16*)(actorData + 0x2A);
-    *(u16*)(&D_800B1502 + off) = *(u16*)(actorData + 0xE8);
-    *(u32*)(&D_800B1530 + off) = *(u32*)(actorData + 0x14);
-    *(u32*)(&D_800B14F0 + off) = *(u32*)(actorData + 0x00);
-    *(u32*)(&D_800B14F4 + off) = *(u32*)(actorData + 0x04);
+    *(u16*)(&D_800B1504 + D_800B2360 * 72) = *(u16*)(actorData + 0x106) & 0x0FFF;
+    *(u16*)(&D_800B1500 + D_800B2360 * 72) = *(u16*)(spriteData + 0x84);
+    *(u16*)(&D_800B14F8 + D_800B2360 * 72) = *(u16*)(actorData + 0x22);
+    *(u16*)(&D_800B14FA + D_800B2360 * 72) = *(u16*)(actorData + 0x26);
+    *(u16*)(&D_800B14FC + D_800B2360 * 72) = *(u16*)(actorData + 0x2A);
+    *(u16*)(&D_800B1502 + D_800B2360 * 72) = *(u16*)(actorData + 0xE8);
+    *(u32*)(&D_800B1530 + D_800B2360 * 72) = *(u32*)(actorData + 0x14);
+    *(u32*)(&D_800B14F0 + D_800B2360 * 72) = *(u32*)(actorData + 0x00);
+    *(u32*)(&D_800B14F4 + D_800B2360 * 72) = *(u32*)(actorData + 0x04);
 
     for (i = 0; i < 4; i++) {
-        *(u16*)(&D_800B1510 + off - 0x0A + i * 2) = *(u16*)(actorData + 0x08 + i * 2);
+        *(u16*)(&D_800B1510 - 0x0A + D_800B2360 * 72 + i * 2) = *(u16*)(actorData + 0x08 + i * 2);
     }
 
-    *(&D_800B1534 + off) = *(u16*)(actorData + 0x10);
+    *(&D_800B1534 + D_800B2360 * 72) = *(u16*)(actorData + 0x10);
     D_800C3910 = 0;
     D_800B2360 = (D_800B2360 - 1) & 0x1F;
 }
@@ -847,14 +877,22 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
     u8* pAD = NULL;
     u16 moveSpeed = 0;
     s32 stepMag = 0;
-    s32 doStep = 0;
-    s32 set0x18 = 0;
     s32 zeroStep = 0;
+    s32 doStep = 0;
+
+    /* Retail compiles `0x40000 / moveSpeed` as a bare MIPS `div` (which does
+     * not fault on a zero divisor); the host needs the guard, the matching
+     * build must not carry it (it adds branches retail does not have). */
+#ifdef XENO_PC_PORT
+#define FIELD_DIV(n, d) ((d) ? (s32)((n) / (d)) : 0)
+#else
+#define FIELD_DIV(n, d) ((s32)((n) / (d)))
+#endif
 
     if ((status & 0x40) == 0) {
         pAD = (u8*)(uintptr_t)*(u32*)(pFA + 0x4C);
         moveSpeed = *(u16*)(pAD + 0x76);
-        stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+        stepMag = (FIELD_DIV(0x40000, moveSpeed) >> 8) << 5;
         if ((u16)angle & 0x8000) {
             zeroStep = 1;
         } else {
@@ -875,20 +913,26 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
                 u8* pObj = (u8*)(uintptr_t)*(u32*)pEntry;
                 *(s32*)(pSprite + 0xC) = (s32)(-*(s32*)(pObj + 0x128)) << 16;
                 *(s32*)(pSprite + 0x14) = (s32)(-*(s32*)(pObj + 0x130)) << 16;
-            } else {
-                moveSpeed = *(u16*)(pAD + 0x76);
-                stepMag = (((s32)(moveSpeed ? 0x80000 / moveSpeed : 0)) >> 8) << 5;
-                doStep = 1;
+                goto clear;
             }
-        } else if (flags & 0x80000) {
             moveSpeed = *(u16*)(pAD + 0x76);
-            stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+            stepMag = (FIELD_DIV(0x80000, moveSpeed) >> 8) << 5;
             doStep = 1;
-            set0x18 = 1;
+        } else if (flags & 0x80000) {
+            /* asm .L8008203C: its own copy of the rsin/rcos step block
+             * (retail does not share it with the paths above) plus pSprite+0x18. */
+            s32 am = angle & 0xFFF;
+            moveSpeed = *(u16*)(pAD + 0x76);
+            stepMag = (FIELD_DIV(0x40000, moveSpeed) >> 8) << 5;
+            *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * *(s16*)(pAD + 0xF4);
+            *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * *(s16*)(pAD + 0xF8);
+            *(s32*)(pSprite + 0x18) = FIELD_DIV(0x4000000, moveSpeed);
+            goto clear;
         } else {
             /* Fei's path: stamp the angle; func_80021FE0 -> func_80022974
              * computes the step from angle + sprite radius (spriteData+0x18). */
             func_80021FE0(pSpriteData, angle);
+            goto clear;
         }
     }
 
@@ -897,28 +941,23 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
         *(s32*)(pSprite + 0x14) = 0;
     } else if (doStep) {
         s32 am = angle & 0xFFF;
-        s16 scaleX = *(s16*)(pAD + 0xF4);
-        s16 scaleZ = *(s16*)(pAD + 0xF8);
-        *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * scaleX;
-        *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * scaleZ;
-        if (set0x18) {
-            *(s32*)(pSprite + 0x18) = (s32)(moveSpeed ? 0x4000000 / moveSpeed : 0);
-        }
+        *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * *(s16*)(pAD + 0xF4);
+        *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * *(s16*)(pAD + 0xF8);
     }
 
+clear:
     /* asm .L800821BC: clear the low 12 (sub-pixel) bits of the X/Z step. */
     *(s32*)(pSprite + 0xC) &= ~0xFFF;
     *(s32*)(pSprite + 0x14) &= ~0xFFF;
+
+#undef FIELD_DIV
 }
 
 extern s16 D_800B2344;
 extern s16 D_800B2346;
 extern u8 D_800ADFB8[];
-/* Overlay object-anim entry (menu.bin, vram 0x801C5000).  In the PC port this
- * resolves to a safe no-op stub -- the object's visual isn't drawn, but the
- * anim-state writes below still update the object slot.  See Phase-2B finding:
- * the field's func_801E8330 target is a mid-menu-function entry, incoherent to
- * port faithfully; the draw is deferred, the state management is retail-faithful. */
+/* Field archive 0x6B9 object-animation entry. The native owner adapter keeps
+ * the retail slot/animation contract while translating PSX pointer ownership. */
 extern void func_801E8330(s32 objSlot, s32 unused, s32 animValue);
 
 void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
@@ -955,8 +994,8 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
 
     /* asm .L800822D8-.L80082360: battle-animation branch (flags4 & 0x2000 set).
      * The actor carries an object slot in bits 13..15 of its +0x12C word (the
-     * slot func_800A1364 stamped).  Drive that object's anim through the overlay
-     * entry func_801E8330 (no-op in the port -- draw deferred, Phase-2B), then
+     * slot func_800A1364 stamped). Drive that object's anim through the native
+     * archive-0x6B9 owner entry func_801E8330, then
      * record the resolved anim index into the per-slot anim-state array at
      * &D_800B2346 - 0x162, indexed by bits 12..15 (even) of the same word.
      * animIndex < 0x10 uses the D_800ADFB8[] remap; >= 0x10 subtracts 0x10. */
@@ -1549,8 +1588,6 @@ s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
     s32 wsBuf[0xB8 / 4];
     u8* ws = (u8*)wsBuf;
     u8* mesh = (u8*)pMesh;
-    u8* ownEntry;
-    u8* ownData;
     u8* prim;
     u32 rotMode;
     s32 groupCount;
@@ -1560,31 +1597,31 @@ s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
     *(u32*)(ws + 0xA4) = *(u32*)(mesh + 0x8);
     *(s32*)(ws + 0x10) = (curX << 16) + curZ;
 
-    ownEntry = (u8*)g_FieldActors + ownIndex * 0x5C;
-    ownData = (u8*)(uintptr_t)*(u32*)(ownEntry + 0x4C);
-    rotMode = *(u32*)(ownData + 0x12C) & 0x3;
+    /* Retail 800833E4..8008345C reloads g_FieldActors and recomputes the 0x5C
+     * stride for every actor/actorData access, so index the array per site. */
+    rotMode = *(u32*)((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData + 0x12C) & 0x3;
 
     if (rotMode != 0) {
         SVECTOR* rot = (SVECTOR*)(ws + 0xB0);
 
         if (rotMode == 1) {
-            rot->vx = *(u16*)(ownData + 0x70);
+            rot->vx = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
             rot->vy = 0;
             rot->vz = 0;
         } else if (rotMode == 2) {
             rot->vx = 0;
-            rot->vy = *(u16*)(ownData + 0x70);
+            rot->vy = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
             rot->vz = 0;
         } else {
             rot->vx = 0;
             rot->vy = 0;
-            rot->vz = *(u16*)(ownData + 0x70);
+            rot->vz = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
         }
         RotMatrix(rot, (MATRIX*)(ws + 0x60));
-        MulMatrix2((MATRIX*)(ownEntry + 0xC), (MATRIX*)(ws + 0x60));
-        *(s32*)(ws + 0x74) = *(s32*)(ownEntry + 0x20);
-        *(s32*)(ws + 0x78) = *(s32*)(ownEntry + 0x24);
-        *(s32*)(ws + 0x7C) = *(s32*)(ownEntry + 0x28);
+        MulMatrix2((MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC), (MATRIX*)(ws + 0x60));
+        *(s32*)(ws + 0x74) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x20);
+        *(s32*)(ws + 0x78) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x24);
+        *(s32*)(ws + 0x7C) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x28);
         CompMatrix(&g_Scene.worldRotationMatrix, (MATRIX*)(ws + 0x60),
                    (MATRIX*)(ws + 0x40));
     } else {
@@ -1598,17 +1635,17 @@ s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
         *(s32*)(ws + 0x98) = 0;
         *(s32*)(ws + 0x9C) = 0;
 
-        parentIdx = *(u8*)(ownData + 0x75);
+        parentIdx = *(u8*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x75);
         CompMatrix(&g_Scene.worldRotationMatrix, &D_800AFC30,
                    (MATRIX*)(ws + 0x80));
         if (parentIdx != 0xFF) {
             CompMatrix((MATRIX*)(ws + 0x80),
                        (MATRIX*)((u8*)g_FieldActors + parentIdx * 0x5C + 0x2C),
                        (MATRIX*)(ws + 0x60));
-            CompMatrix((MATRIX*)(ws + 0x60), (MATRIX*)(ownEntry + 0xC),
+            CompMatrix((MATRIX*)(ws + 0x60), (MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC),
                        (MATRIX*)(ws + 0x40));
         } else {
-            CompMatrix((MATRIX*)(ws + 0x80), (MATRIX*)(ownEntry + 0xC),
+            CompMatrix((MATRIX*)(ws + 0x80), (MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC),
                        (MATRIX*)(ws + 0x40));
         }
     }
@@ -1748,93 +1785,63 @@ extern s32 D_80285988;
 extern s32 D_800ADF64;
 extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
+/* Retail 8008399C..80084158. Rectangular, radial, and whole-map
+ * interactions have distinct gates; keep their enqueue join explicit. */
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
-    u8* actorData = (u8*)pActorData;
+    u8* actorData = pActorData;
     s32 playerY = *(s16*)(actorData + 0x26);
     s32 playerFloor = playerY - *(u16*)(actorData + 0x1A);
     s32 innerRadius = *(u16*)(actorData + 0x1E) + 8;
     s32 outerRadius = *(u16*)(actorData + 0x1E) + 0x20;
-    s32 playerRot = *(u16*)(actorData + 0x106) & 0x0FFF;
+    s32 playerRot = *(u16*)(actorData + 0x106) & 0xFFF;
     s32 playerX = *(s16*)(actorData + 0x22);
     s32 playerZ = *(s16*)(actorData + 0x2A);
     s32 found = 0;
-    s32 defaultScriptId = 7;
+    s32 scriptRoutine = 7;
     s32 i;
 
     for (i = 0; i < D_800ADBFC; i++) {
-        u8* otherActor = (u8*)g_FieldActors + i * 0x5C;
-        u8* otherData = (u8*)(uintptr_t)*(u32*)(otherActor + 0x4C);
-        u32 otherFlags0;
-        u32 otherFlags4;
-        s32 otherY;
-        s32 dx;
-        s32 dz;
-        s32 radius;
-        s32 vec[3];
-        s32 sq[3];
+        u8* otherData = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + i * 0x5C + 0x4C);
+        u32 flags0 = *(u32*)otherData;
+        u32 flags4;
+        s32 otherY, dx, dz, angle, dir, delta;
         s32 scriptId = 0xFF;
-        s32 scriptRoutine = defaultScriptId;
-        s32 forceInteraction = 0;
+        s32 rectangular;
+        s32 distance = 0;
+        s32 limits[3], squaredLimits[3];
+        s32 vec[3], squared[3];
 
-        otherFlags0 = *(u32*)(otherData + 0x00);
-        if (otherFlags0 & 0x1) {
+        if ((flags0 & 1) || *(u8*)(actorData + 0x74) == i) {
             continue;
         }
-
-        if (*(u8*)(actorData + 0x74) == i) {
-            *(u8*)(actorData + 0x74) = 0xFF;
-            continue;
-        }
-
         otherY = *(s16*)(otherData + 0x26) + *(s16*)(otherData + 0x62);
-        otherFlags4 = *(u32*)(otherData + 0x04);
-
-        /* Button/special interactables (asm 80083A98-80083BFC).  0x100-flagged
-         * actors are whole-map "button" targets: no proximity gate -- confirm
-         * (edge 0x20) starts their talk script (2/3) facing the player;
-         * otherwise they arm passively (script 3/4) and, for 0x8000000-flagged
-         * ones, latch D_800ADF64 once and zero the PLAYER's sprite+0x10
-         * (halting its motion state).  0x80-only actors just clear the latch.
-         * Control then falls through to the normal proximity flow below, whose
-         * blocks may re-set scriptId exactly as retail does. */
-        if (otherFlags4 & 0x180) {
-            if (otherFlags4 & 0x100) {
-                if ((D_800C2694 & 0x20) && found == 0 &&
-                    !(otherFlags4 & 0x4000000)) {
-                    if (!(otherFlags0 & 0x220000) && D_800B2174 == 0) {
-                        s32 dxw = *(s16*)(otherData + 0x22) - playerX +
-                                  *(s16*)(otherData + 0x60);
-                        s32 dzw = *(s16*)(otherData + 0x2A) - playerZ +
-                                  *(s16*)(otherData + 0x64);
-                        s32 angle = ratan2(dzw, dxw);
-
+        flags4 = *(u32*)(otherData + 4);
+        if (flags4 & 0x180) {
+            if (flags4 & 0x100) {
+                if ((D_800C2694 & 0x20) && !found && !(flags4 & 0x4000000)) {
+                    if (!(flags0 & 0x220000) && !D_800B2174) {
                         found = 1;
                         scriptId = 2;
                         scriptRoutine = 3;
-                        /* Retail keeps the raw top angle bits in place here
-                         * ((-angle) & 0xE00), unlike the shift-then-negate
-                         * form of the passive path below. */
+                        dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                        dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                        angle = ratan2(dz, dx);
                         *(u32*)(otherData + 0x12C) =
-                            (*(u32*)(otherData + 0x12C) & ~0xE00u) |
-                            ((u32)-angle & 0xE00);
+                            (*(u32*)(otherData + 0x12C) & ~0xE00u) | ((0u - angle) & 0xE00);
                     }
-                } else if (!(otherFlags0 & 0x00A20000)) {
-                    s32 dxw = *(s16*)(otherData + 0x22) - playerX +
-                              *(s16*)(otherData + 0x60);
-                    s32 dzw = *(s16*)(otherData + 0x2A) - playerZ +
-                              *(s16*)(otherData + 0x64);
-                    s32 angle = ratan2(dzw, dxw);
-                    s32 dir = (-(angle >> 9)) & 7;
-
+                } else if (!(flags0 & 0xA20000)) {
                     scriptId = 3;
                     scriptRoutine = 4;
+                    dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                    dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                    angle = ratan2(dz, dx);
+                    dir = (-(angle >> 9)) & 7;
                     *(u32*)(otherData + 0x12C) =
                         (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-                    if (D_800ADF64 == 0 && (otherFlags0 & 0x8000000)) {
-                        u8* playerSprite = (u8*)(uintptr_t)
-                            *(u32*)((u8*)pFieldActor + 0x4);
+                    if (!D_800ADF64 && (*(u32*)otherData & 0x8000000)) {
+                        u8* sprite = (u8*)(uintptr_t)*(u32*)((u8*)pFieldActor + 4);
                         D_800ADF64 = 1;
-                        *(u32*)(playerSprite + 0x10) = 0;
+                        *(u32*)(sprite + 0x10) = 0;
                     }
                 }
             } else {
@@ -1842,122 +1849,126 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
             }
         }
 
-        dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
-        dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
-
-        if (otherFlags0 & 0x2000) {
-            if (otherY < playerFloor) {
-                continue;
+        rectangular = (*(u32*)otherData & 0x2000) != 0;
+        if (rectangular) {
+            if (otherY < playerFloor || playerY < otherY - *(u16*)(otherData + 0x1A) ||
+                i == actorIndex || func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
+                goto enqueue;
             }
-            if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-                continue;
+        } else {
+            vec[0] = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+            vec[2] = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+            vec[1] = outerRadius + *(u16*)(otherData + 0x1E);
+            Square0((VECTOR*)vec, (VECTOR*)squared);
+            if ((s32)((u32)squared[0] + (u32)squared[2]) >= squared[1] || otherY < playerFloor ||
+                playerY < otherY - *(u16*)(otherData + 0x1A) || i == actorIndex) {
+                goto enqueue;
             }
-            if (i == actorIndex) {
-                continue;
-            }
-            if (func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
-                continue;
-            }
-            forceInteraction = 1;
+            /* Retail builds the vector twice but only squares it twice total
+             * (jals at 80083EE8 and 80083F20, with sp+0x90 == &vec and
+             * sp+0x88 == &squared set at 80083A2C/80083A38). The previous
+             * duplicate Square0 here re-squared identical inputs into the same
+             * buffer, so it was a redundant third call. */
+            distance = (s32)((u32)squared[0] + (u32)squared[2]);
+            limits[0] = innerRadius + *(u16*)(otherData + 0x1E);
+            limits[1] = 0; /* Retail's unused middle result is not consumed. */
+            limits[2] = outerRadius + *(u16*)(otherData + 0x1E);
+            Square0((VECTOR*)limits, (VECTOR*)squaredLimits);
         }
 
-        radius = outerRadius + *(u16*)(otherData + 0x1E);
-        vec[0] = dx;
-        vec[1] = radius;
-        vec[2] = dz;
-        Square0((VECTOR*)vec, (VECTOR*)sq);
-
-        if (!forceInteraction && sq[0] + sq[2] >= sq[1]) {
-            continue;
-        }
-        if (otherY < playerFloor) {
-            continue;
-        }
-        if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-            continue;
-        }
-        if (i == actorIndex) {
-            continue;
-        }
-
-        vec[0] = dx;
-        vec[1] = innerRadius + *(u16*)(otherData + 0x1E);
-        vec[2] = dz;
-        Square0((VECTOR*)vec, (VECTOR*)sq);
-
-        {
-            s32 dist = sq[0] + sq[2];
-            s32 innerLimit[3];
-            s32 innerLimitSq[3];
-
-            innerLimit[0] = innerRadius + *(u16*)(otherData + 0x1E);
-            innerLimit[1] = 0;
-            innerLimit[2] = outerRadius + *(u16*)(otherData + 0x1E);
-            Square0((VECTOR*)innerLimit, (VECTOR*)innerLimitSq);
-
-            if (forceInteraction || dist < innerLimitSq[0]) {
-                if ((D_800C2694 & 0x20) && found == 0 &&
-                    !(otherFlags4 & 0x4000000)) {
-                    /* Confirm-button (Circle released) talk: start the
-                     * target's talk script (id 2, routine 3) and turn it
-                     * toward the player; one interaction per poll (asm
-                     * 80083C68-80083D68). Rejects: no-talk target flags
-                     * (0x220000), global lock D_800B2174, and -- for
-                     * targets flagged 0x40000 -- a facing cone requiring
-                     * the player to face the target within ~+-0x2BB. */
-                    s32 angle;
-                    s32 dir;
-                    s32 delta;
-
-                    if (otherFlags0 & 0x220000) {
-                        continue;
-                    }
-                    if (D_800B2174 != 0) {
-                        continue;
-                    }
-
-                    angle = ratan2(dz, dx);
-                    dir = (-angle >> 9) & 7;
-                    delta = (playerRot - ((-angle) & 0xFFF)) & 0xFFF;
-
-                    if ((otherFlags4 & 0x40000) &&
-                        (u32)(delta - 0x2BC) < 0xA89u) {
-                        continue;
-                    }
-
-                    found = 1;
-                    scriptId = 2;
-                    scriptRoutine = 3;
-                    *(u32*)(otherData + 0x12C) =
-                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-                    if (g_FieldSystemMode == 0) {
-                        D_80285988 = 1;
-                    }
-                } else if ((otherFlags0 & 0x00A20000) == 0) {
-                    s32 angle = ratan2(dz, dx);
-                    s32 dir = (-angle >> 9) & 7;
-
-                    scriptId = 3;
-                    scriptRoutine = 4;
-                    *(u32*)(otherData + 0x12C) =
-                        (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-                    if (g_FieldSystemMode == 0) {
-                        D_80285988 = 1;
-                    }
+        if (rectangular) {
+            /* Retail 80083C40-80083D68 (rectangular arm). Retail keeps a
+             * SEPARATE copy of this block per arm rather than merging them, and
+             * the rectangular copy additionally requires `otherData+4 & 0x40000`
+             * before the delta test. Splitting the previously-merged block is
+             * behaviour-preserving; the conditions below are the exact
+             * rectangular projections of the old merged ones. */
+            if ((D_800C2694 & 0x20) && !found &&
+                !(*(u32*)(otherData + 4) & 0x4000000)) {
+                if (*(u32*)otherData & 0x220000) {
+                    goto enqueue;
                 }
+                if (D_800B2174) {
+                    goto enqueue;
+                }
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = ((s32)(0u - angle) >> 9) & 7;
+                delta = (playerRot - ((0u - angle) & 0xFFF)) & 0xFFF;
+                if ((*(u32*)(otherData + 4) & 0x40000) &&
+                    (u32)(delta - 0x2BC) < 0xA89u) {
+                    goto enqueue;
+                }
+                found = 1;
+                scriptId = 2;
+                scriptRoutine = 3;
+            } else {
+                if (*(u32*)otherData & 0xA20000) {
+                    goto enqueue;
+                }
+                scriptId = 3;
+                scriptRoutine = 4;
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = (-(angle >> 9)) & 7;
+            }
+        } else {
+            /* Retail 80083F40-80083FE0 (non-rectangular arm): the same block
+             * without the `0x40000` requirement - the delta test is bare. */
+            if (distance < squaredLimits[2] && (D_800C2694 & 0x20) && !found &&
+                !(*(u32*)(otherData + 4) & 0x4000000)) {
+                if (*(u32*)otherData & 0x220000) {
+                    goto enqueue;
+                }
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = ((s32)(0u - angle) >> 9) & 7;
+                delta = (playerRot - ((0u - angle) & 0xFFF)) & 0xFFF;
+                if ((u32)(delta - 0x2BC) < 0xA89u) {
+                    goto enqueue;
+                }
+                if (D_800B2174) {
+                    goto enqueue;
+                }
+                found = 1;
+                scriptId = 2;
+                scriptRoutine = 3;
+            } else {
+                if ((*(u32*)otherData & 0xA20000) || distance >= squaredLimits[0]) {
+                    goto enqueue;
+                }
+                scriptId = 3;
+                scriptRoutine = 4;
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = (-(angle >> 9)) & 7;
             }
         }
+        *(u32*)(otherData + 0x12C) =
+            (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+        /* Only the rectangular arm raises D_80285988 (confirm at
+         * 80083D5C-80083D60, passive at 80083DE8-80083DEC), each gated on
+         * g_FieldSystemMode == 0. The non-rectangular arm has no such store:
+         * its confirm/passive converge on .L80084074, which writes only the
+         * 0x12C word. 80083DDC-80083DEC is the RECTANGULAR passive, not a
+         * non-rectangular flag set. */
+        if (rectangular && g_FieldSystemMode == 0) {
+            D_80285988 = 1;
+        }
 
+enqueue:
         if (scriptId != 0xFF) {
             s32 slot;
             u8* slotBase;
-
             for (slot = 0, slotBase = otherData; slot < 8; slot++, slotBase += 8) {
                 if (*(u8*)(slotBase + 0x8F) == (u8)scriptId) {
                     break;
                 }
             }
-
             if (slot == 8) {
                 for (slot = 0, slotBase = otherData; slot < 8; slot++, slotBase += 8) {
                     u32 word = *(u32*)(slotBase + 0x90);
@@ -1974,8 +1985,6 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
                 }
             }
         }
-
-        (void)found;
     }
 }
 
@@ -2346,7 +2355,7 @@ extern char D_8006FC74[];
 extern s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
                          VECTOR* outNormal, s16* outTriangle, s32* outHeight1);
 
-static void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
+static inline void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
                                             s32 actorIndex, s32 origX,
                                             s32 origZ, s16 origState,
                                             s16 savedStates[4]) {
@@ -2593,8 +2602,13 @@ run_collision:
             } else {
                 goto settle_on_ground;
             }
-        } else if ((stateFlags & 0x420000) == 0) {
+        } else {
 settle_on_ground:
+            /* Retail 80085104-80085144 gates only the accumulator reset
+             * on the material; both paths settle position and velocity. */
+            if ((stateFlags & 0x420000) == 0) {
+                *(s32*)(actorData + 0xF0) = 0;
+            }
             if (*(s32*)(spriteData + 0x10) > 0) {
                 *(s32*)(spriteData + 0x10) = 0;
             }
@@ -2659,9 +2673,9 @@ extern s32 D_800AFEA4;
 extern s32 func_80028B14(void);
 
 // Per-frame CD-stream pump for the in-flight archive read kicked off by
-// func_80085560: func_80028B14 (still-unimplemented low-level PSX CD/DMA
-// polling primitive) reports which buffered chunk index is ready, or 0 when
-// no chunk transfer is in flight. While a chunk is in flight, forward it to
+// func_80085560: func_80028B14 reports the buffered sector address that is
+// ready, or 0 when no chunk transfer is in flight. While a chunk is ready,
+// forward it to
 // the read's registered per-chunk callback (D_800AFEA4, e.g. func_800859DC)
 // and report busy. Once idle and ArchiveDataSync confirms the CD/archive
 // subsystem is fully caught up, free the streaming buffer and clear
@@ -2691,12 +2705,13 @@ s32 func_800854D0(void) {
 extern s32 D_800ADB2C;
 extern s32 D_800ADBB8;
 extern s32 D_800AFEA4;
+extern int* ArchiveAllocStreamFile(int numEntries, int allocMode);
 
 void func_80085560(s32 a0, s32 a1, s32 a2) {
-    s32 r;
+    int* r;
     D_800ADB2C = 1;
-    r = ArchiveAllocStreamFile(8);
-    D_800ADBB8 = r;
+    r = ArchiveAllocStreamFile(8, a1);
+    D_800ADBB8 = (s32)(uintptr_t)r;
     ArchiveReadFileToBuffer(a0, r, 0, 0x100);
     D_800AFEA4 = a2;
 }
@@ -2846,7 +2861,7 @@ extern void* D_800C3A1C;
 extern void* g_GameCurLoadedWDS;
 extern s32 func_800380D0(u8* data, s32 size, s32 a2);
 extern void SoundTransferWdsPart(u8* data, s32 size);
-extern void func_8002945C(s32 idx);
+extern s32 func_8002945C(u8* pSlot);
 
 void func_800859DC(u8* pSrc) {
     if (D_800B2370 < 0) return;
@@ -2860,7 +2875,7 @@ void func_800859DC(u8* pSrc) {
             *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
         }
         D_800B2370++;
-        func_8002945C(D_800B2370);
+        func_8002945C(pSrc);
         if (D_800B2370 == 4) {
             g_GameCurLoadedWDS = func_800380D0(D_800C3A1C, 0x2000, 0);
         }
@@ -2875,16 +2890,11 @@ void func_800859DC(u8* pSrc) {
             *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
         }
         SoundTransferWdsPart(D_800C3A1C, 0x800);
-        func_8002945C(D_800B2370);
+        func_8002945C(pSrc);
     }
 }
 
 extern u8 D_800ADFCC[];
-#ifdef XENO_PC_PORT
-/* Bank file index captured at stream start (func_80085B20) for the C90
- * staging substitute; see the comments at both sites. */
-static s32 PcPort_PendingBankFile;
-#endif
 extern s32 D_8004F308;
 extern s32 D_8004F33C;
 extern s32 D_8004F354;
@@ -2913,13 +2923,6 @@ void func_80085B20(s32 a0) {
 
     archiveFile = D_800ADFCC[a0 * 2];
     if (archiveFile != 0xFF && D_8004F33C != archiveFile) {
-#ifdef XENO_PC_PORT
-        /* Record the file index this stream was STARTED with: the port's
-         * C90 bank-staging substitute must read the same file at completion
-         * even if the requested music changes mid-stream (retail's chunk
-         * pump doesn't have this problem -- the stream carries its data). */
-        PcPort_PendingBankFile = archiveFile * 2 + 0x13;
-#endif
         func_80085560(archiveFile * 2 + 0x13, 1, (s32)func_800859DC);
         D_8004F354 = 1;
         D_800B2370 = 0;
@@ -2963,17 +2966,9 @@ extern u8 D_800ADFCC[];
 extern void* D_800C3A1C;
 extern void func_8003BDFC(s32);
 
-/* Song-start M3: the real per-frame music poller (retail func_80085C90
- * structure, transcribed from the matchings asm), with ONE documented port
- * substitution in the bank-swap leg. Retail streams the music WDS bank off
- * CD in 8-sector windows and pumps each chunk to SPU-RAM via the
- * func_800859DC callback (func_800380D0 header init + SoundTransferWdsPart);
- * the port has no section-queue/chunk machinery (func_80028B14 is a stub and
- * ArchiveReadFile declines CdlModeStream), so the stream completes as an
- * empty no-op and this poller lands the SAME end state at the completion
- * boundary with the proven buffered path: whole-file read +
- * SoundLoadWdsFile. File selection, flags and completion bookkeeping are
- * retail's own. Remove the substitution when CD streaming is ported. */
+/* Song-start M3: the retail per-frame music poller.  The bank-swap leg is
+ * completed by the eight-slot archive sector ring and func_800859DC, matching
+ * the original streamed WDS path; no whole-file host staging is used. */
 s32 func_80085C90(s32 a0) {
     extern void* func_80039850(void* pSongFile);
     extern void func_80039A80(void* manager, s32 level, s32 steps);
@@ -2985,38 +2980,6 @@ s32 func_80085C90(s32 a0) {
             return -1;
         }
         func_8003BDFC(0x10);
-#ifdef XENO_PC_PORT
-        /* PORT SUBSTITUTION (see header comment): retail's chunk pump has
-         * already landed the bank in SPU-RAM by this point. The staging
-         * buffer is HOST memory: retail never holds this file in main RAM
-         * (it streams), and the field heap cannot fit ~190KB mid-load --
-         * SoundLoadWdsFileHostStaged pushes it to the backend directly. */
-        if (PcPort_PendingBankFile > 0) {
-            extern void* SoundLoadWdsFileHostStaged(void* pWdsFile);
-            s32 bankFile = PcPort_PendingBankFile;
-            s32 bankSize;
-            void* pBankBuf;
-            PcPort_PendingBankFile = 0;
-            ArchiveSetIndex(0x1C, 0);
-            bankSize = ArchiveDecodeAlignedSize(bankFile);
-            /* Sector-round the staging allocation: the CD layer works in
-             * whole 2048-byte sectors and a tail write past the byte size
-             * faults under allocators without slack (TSan mmap). */
-            pBankBuf = (bankSize > 0)
-                ? malloc(((bankSize + 2047) / 2048 + 1) * 2048) : NULL;
-            if (pBankBuf != NULL) {
-                ArchiveReadFileToBuffer(bankFile, pBankBuf, 0, CdlModeSpeed);
-                /* The host-staged path replaces retail's streaming loader,
-                 * but it creates the same owned WDS entry.  Publish that
-                 * owner so retail cleanup (func_8001B66C) can release the
-                 * overlapping field bank before world-map slot 1 loads its
-                 * bank. */
-                g_GameCurLoadedWDS = SoundLoadWdsFileHostStaged(pBankBuf);
-                free(pBankBuf);
-            }
-            ArchiveSetIndex(4, 0);
-        }
-#endif
         HeapFree(D_800C3A1C);
         g_GameHasLoadedWDS = 1;
         D_8004F354 = 0;
@@ -3096,7 +3059,7 @@ void func_80085EEC(void) {
 extern s32 D_8004F364;
 extern s32 D_8004F368;
 extern s16 D_8004F384;
-extern s32 D_80059560;
+extern SoundWDSEntry* D_80059560;
 extern SoundWDSEntry* D_8006251C;
 extern void* D_800B00E0; // WDS File Buffer
 
@@ -3193,7 +3156,7 @@ void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
 }
 
 /* Asm multiply chain: (((x*3)*17)*257*2)>>16 == (x * 0x6666)>>16. */
-static s32 FieldPositionalSfxScreenPan(s32 screenX) {
+static inline s32 FieldPositionalSfxScreenPan(s32 screenX) {
     s32 t = screenX;
     t = (t << 1) + t;
     t = t + (t << 4);

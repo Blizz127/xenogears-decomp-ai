@@ -1,0 +1,8 @@
+{
+  "field_sha256": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+  "function_start": "0x8008399c",
+  "function_end": "0x80084158",
+  "verified_assembly_words": 495,
+  "function_sha256": "973c768052da8e2c0630598c325452807cbc3c5ad221ce34dac9ec701a7afdd3",
+  "source_before_sha256": "1306df2cdd6102720e4f43292e523d836825b28e4acc6b2e718bb9f4ec5ba78f"
+}

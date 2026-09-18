@@ -4,14 +4,19 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${W34C2_BUILD_DIR:-$ROOT/pc_port/build_native}"
-PSYCROSS_LIB="${W34C2_PSYCROSS_LIB:-$BUILD_DIR/libpsycross.a}"
+PSYX_CMAKE_LIB="$(find "$ROOT/pc_port/build" "$ROOT/pc_port/build_tsan" -name 'libpsycross.a' 2>/dev/null | head -1 || true)"
+PSYCROSS_LIB="${W34C2_PSYCROSS_LIB:-${PSYX_CMAKE_LIB:-$BUILD_DIR/libpsycross.a}}"
+if [[ ! -f "$PSYCROSS_LIB" ]]; then
+    echo "ERROR: libpsycross.a not found (tried W34C2_PSYCROSS_LIB, pc_port/build, pc_port/build_tsan); run pc_port/build_port.sh first" >&2
+    exit 1
+fi
 mkdir -p "$BUILD_DIR"
 
 cd "$ROOT"
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
 LIBS=("$PSYCROSS_LIB" -lSDL2 -lopenal -lGL -lm -ldl -lpthread)
 SRC=(pc_port/tests/w34c2_static_data_prod_test.c
      pc_port/src/psx_memory.c pc_port/src/world_map_helper_73b04.c)

@@ -1,0 +1,30 @@
+{
+  "module_sha256": "7890e14bcabddcf85368de10783ecff8daa166dc5ac254e06db5e27959cab4cf",
+  "raw_start": "0x4b4",
+  "raw_end": "0x8f4",
+  "function_sha256": "f791af75ac8be21876feb8f706399780e3010ab17b780e8337fd328dcbfb2d51",
+  "dependencies": {
+    "ResolveArchiveEntryPointers": 2147693612,
+    "LZSSHeapDecompress": 2147692168,
+    "OpenTIM": 2147774900,
+    "ReadTIM": 2147774916,
+    "bzero": 2147743976,
+    "memmove": 2147744156,
+    "HeapFree": 2147688680,
+    "func_8002DD20": 2147671328,
+    "func_80026338": 2147640120,
+    "LoadImage": 2147764372,
+    "DrawSync": 2147763664,
+    "ArchiveSetIndex": 2147648624,
+    "ArchiveDecodeAlignedSize": 2147649772,
+    "HeapAlloc": 2147687388,
+    "ArchiveReadFileToBuffer": 2147653080,
+    "ArchiveCdDataSync": 2147650144,
+    "SoundAddSedsEntry": 2147714088,
+    "D_8005945C": 2147849308,
+    "D_8006259C": 2147886492,
+    "g_Menu": 2147886496,
+    "g_MenuDebugEnabled": 2147848568,
+    "D_801C5000": 2149339136
+  }
+}

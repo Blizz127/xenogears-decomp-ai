@@ -1,0 +1,228 @@
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+MAGNITUDE2 OVERFLOW ORACLE OBSERVED address=80056880 halfword=7350 result=00039a80
+MAGNITUDE2 RETAIL PASS cases=81 full SDK chain/result/GTE-state
+MAGNITUDE2 RETAIL MEMORY PASS 3 test-only lookup variations including signed halfwords
+SQUARE0 RETAIL PASS cases=262144, operand-width/in-place/guards/return/GTE-state
+NORMAL LONG RETAIL PASS cases=786432, fullword inputs, separate/in-place/partial-overlap, return/guards/GTE-state
+NORMAL LONG OVERFLOW BOUNDARY PASS near-limit=3, fail-closed=3; CPU signed-overflow exception not modeled
+NORMAL SS RETAIL PASS cases=524288, in-place/separate, guards/return/GTE-state
+NORMAL SS OVERFLOW BOUNDARY PASS near-limit=2, fail-closed=3
+BATTLE GTE MATRIX RETAIL PASS cases=136, input/guards/return/GTE-state
+BATTLE GTE RETAIL PASS RotTransPers front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 front-facing alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-winding alias=0 result=-10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-area alias=0 result=0 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers3 first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers4 first-three-depth-flags-survive-fourth alias=0 result=7500 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=0 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=1 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverageNclip4 first-three-depth-flags-survive-fourth alias=0 result=225 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=1 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-depth alias=0 result=4190209 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=1 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth alias=0 result=4190209 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 fourth-vertex-flags alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=0 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=1 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 fourth-vertex-flags alias=0 result=10609 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 nonzero-depth-cue alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=0 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=1 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth-cue-clamp alias=0 result=10609 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers3 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers4 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=0 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=1 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverageNclip4 positive-depth-cue-clamp alias=0 result=10609 flag=80011000
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+MAGNITUDE2 OVERFLOW ORACLE OBSERVED address=80056880 halfword=7350 result=00039a80
+MAGNITUDE2 RETAIL PASS cases=81 full SDK chain/result/GTE-state
+MAGNITUDE2 RETAIL MEMORY PASS 3 test-only lookup variations including signed halfwords
+SQUARE0 RETAIL PASS cases=262144, operand-width/in-place/guards/return/GTE-state
+NORMAL LONG RETAIL PASS cases=786432, fullword inputs, separate/in-place/partial-overlap, return/guards/GTE-state
+NORMAL LONG OVERFLOW BOUNDARY PASS near-limit=3, fail-closed=3; CPU signed-overflow exception not modeled
+NORMAL SS RETAIL PASS cases=524288, in-place/separate, guards/return/GTE-state
+NORMAL SS OVERFLOW BOUNDARY PASS near-limit=2, fail-closed=3
+BATTLE GTE MATRIX RETAIL PASS cases=136, input/guards/return/GTE-state
+BATTLE GTE RETAIL PASS RotTransPers front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 front-facing alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-winding alias=0 result=-10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-area alias=0 result=0 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers3 first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers4 first-three-depth-flags-survive-fourth alias=0 result=7500 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=0 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=1 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverageNclip4 first-three-depth-flags-survive-fourth alias=0 result=225 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=1 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-depth alias=0 result=4190209 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=1 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth alias=0 result=4190209 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 fourth-vertex-flags alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=0 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=1 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 fourth-vertex-flags alias=0 result=10609 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 nonzero-depth-cue alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=0 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=1 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth-cue-clamp alias=0 result=10609 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers3 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers4 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=0 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=1 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverageNclip4 positive-depth-cue-clamp alias=0 result=10609 flag=80011000
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormal: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+[xeno-port] VectorNormalSS: retail signed ADD overflow
+MAGNITUDE2 OVERFLOW ORACLE OBSERVED address=80056880 halfword=7350 result=00039a80
+MAGNITUDE2 RETAIL PASS cases=81 full SDK chain/result/GTE-state
+MAGNITUDE2 RETAIL MEMORY PASS 3 test-only lookup variations including signed halfwords
+SQUARE0 RETAIL PASS cases=262144, operand-width/in-place/guards/return/GTE-state
+NORMAL LONG RETAIL PASS cases=786432, fullword inputs, separate/in-place/partial-overlap, return/guards/GTE-state
+NORMAL LONG OVERFLOW BOUNDARY PASS near-limit=3, fail-closed=3; CPU signed-overflow exception not modeled
+NORMAL SS RETAIL PASS cases=524288, in-place/separate, guards/return/GTE-state
+NORMAL SS OVERFLOW BOUNDARY PASS near-limit=2, fail-closed=3
+BATTLE GTE MATRIX RETAIL PASS cases=136, input/guards/return/GTE-state
+BATTLE GTE RETAIL PASS RotTransPers front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 front-facing alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 front-facing alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 front-facing alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-winding alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 negative-winding alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-winding alias=0 result=-10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-area alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 zero-area alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-area alias=0 result=0 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers3 first-three-depth-flags-survive-fourth alias=0 result=16383 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers4 first-three-depth-flags-survive-fourth alias=0 result=7500 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=0 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverage4 first-three-depth-flags-survive-fourth alias=1 result=56651 flag=80440000
+BATTLE GTE RETAIL PASS RotAverageNclip4 first-three-depth-flags-survive-fourth alias=0 result=225 flag=80440000
+BATTLE GTE RETAIL PASS RotTransPers zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers3 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 zero-depth alias=1 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 zero-depth alias=0 result=4190209 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=0 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth alias=1 result=0 flag=80066000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth alias=0 result=4190209 flag=80066000
+BATTLE GTE RETAIL PASS RotTransPers fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 fourth-vertex-flags alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 fourth-vertex-flags alias=0 result=0 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=0 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverage4 fourth-vertex-flags alias=1 result=7500 flag=80026000
+BATTLE GTE RETAIL PASS RotAverageNclip4 fourth-vertex-flags alias=0 result=10609 flag=80026000
+BATTLE GTE RETAIL PASS RotTransPers nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers3 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers4 nonzero-depth-cue alias=0 result=2500 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=0 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverage4 nonzero-depth-cue alias=1 result=10000 flag=00000000
+BATTLE GTE RETAIL PASS RotAverageNclip4 nonzero-depth-cue alias=0 result=10609 flag=00000000
+BATTLE GTE RETAIL PASS RotTransPers negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers3 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers4 negative-depth-cue-clamp alias=0 result=2500 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=0 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverage4 negative-depth-cue-clamp alias=1 result=10000 flag=00001000
+BATTLE GTE RETAIL PASS RotAverageNclip4 negative-depth-cue-clamp alias=0 result=10609 flag=00001000
+BATTLE GTE RETAIL PASS RotTransPers positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers3 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotTransPers4 positive-depth-cue-clamp alias=0 result=2500 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=0 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverage4 positive-depth-cue-clamp alias=1 result=10000 flag=80011000
+BATTLE GTE RETAIL PASS RotAverageNclip4 positive-depth-cue-clamp alias=0 result=10609 flag=80011000
+SQUARE0 negative controls PASS scale/result-store
+MAGNITUDE2 negative control PASS missing LZCS write
+NORMAL LONG negative controls PASS LZCS/zero-table/GPF/store

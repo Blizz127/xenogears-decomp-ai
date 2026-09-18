@@ -4,6 +4,8 @@
 #include "psyq/libgte.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>
+#include <inline_c.h>
 
 extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 #else
@@ -14,18 +16,90 @@ extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 #define assert(x) ((void)0)
 #endif
 
+/* C1 fixes the Z rotation at zero. Preserve the signed Q12 stages in
+ * retail RotMatrix (8003F738..8003F8AC); the host trig-identity version
+ * rounds at different points. Decomp rcos is sine, rsin is cosine, as
+ * named by the retail symbol map and preserved by the port GTE shim. */
+static void AnimationC1RotMatrix(const SVECTOR* angles, MATRIX* matrix) {
+    s32 sx = rcos((u16)angles->vx & 0xFFF);
+    s32 cx = rsin((u16)angles->vx & 0xFFF);
+    s32 sy = rcos((u16)angles->vy & 0xFFF);
+    s32 cy = rsin((u16)angles->vy & 0xFFF);
+    s32 negativeY = (-sy * 4096) >> 12;
+
+    matrix->m[0][0] = (s16)cy;
+    matrix->m[0][1] = 0;
+    matrix->m[0][2] = (s16)sy;
+    matrix->m[1][0] = (s16)-((negativeY * sx) >> 12);
+    matrix->m[1][1] = (s16)cx;
+    /* 8003F890 negates the product BEFORE 8003F898 shifts it. */
+    matrix->m[1][2] = (s16)((-cy * sx) >> 12);
+    matrix->m[2][0] = (s16)((negativeY * cx) >> 12);
+    matrix->m[2][1] = (s16)sx;
+    matrix->m[2][2] = (s16)((cy * cx) >> 12);
+}
+
+static u32 AnimationRead32(const u8* p);
+#ifdef XENO_PC_PORT
+/* C4 calls retail ApplyMatrixLV (8004947C). Keep its two GTE passes:
+ * a signed-15-bit split, SF=0 quotient rotation, SF=1 remainder rotation,
+ * then wrapping high*8 + low. A full-width dot product is not equivalent
+ * because GTE IR loads truncate each split component to signed 16 bits. */
+static void AnimationC4ApplyMatrixLV(MATRIX* matrix, const u8* input, VECTOR* output) {
+    u32 quotient[3];
+    u32 remainder[3];
+    u32 high[3];
+    u32 result[3];
+    s32 i;
+    SetRotMatrix(matrix);
+    for (i = 0; i < 3; ++i) {
+        u32 value = AnimationRead32(input + i * 4);
+        if (value & 0x80000000u) {
+            u32 magnitude = 0u - value;
+            /* Retail NEGU wraps even at INT_MIN, then SRA sign-extends. */
+            u32 shifted = (magnitude >> 15) |
+                ((magnitude & 0x80000000u) ? 0xFFFE0000u : 0u);
+            quotient[i] = 0u - shifted;
+            remainder[i] = 0u - (magnitude & 0x7FFFu);
+        } else {
+            quotient[i] = value >> 15;
+            remainder[i] = value & 0x7FFFu;
+        }
+    }
+    for (i = 0; i < 3; ++i) MTC2(quotient[i], 9 + i);
+    doCOP2(0x041E012);
+    for (i = 0; i < 3; ++i) high[i] = MFC2(25 + i);
+    for (i = 0; i < 3; ++i) MTC2(remainder[i], 9 + i);
+    doCOP2(0x049E012);
+    for (i = 0; i < 3; ++i) result[i] = MFC2(25 + i) + (high[i] << 3);
+    output->vx = (s32)result[0];
+    output->vy = (s32)result[1];
+    output->vz = (s32)result[2];
+}
+#endif
+
+extern void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value);
+extern int rand(void);
+extern s32 func_80022CAC(void* pSpriteData, s32 value);
+
 void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
+    u8* pData = (u8*)pSpriteData;
     u8 index = *pIndex;
     if (!(index & 0x80)) {
         s32 signedIndex = (s8)index;
-        return &pSpriteData->stack[(s8)pSpriteData->stackIndex + signedIndex];
+        return pData + 0x8E + (s8)pData[0x8C] + signedIndex;
     }
-    return &pSpriteData->field_0x88[index & 0x7F];
+    return (void*)(uintptr_t)(AnimationRead32(pData + 0x88) + (index & 0x7F));
 }
 
+extern void func_80022CDC(void* pSpriteData);
 extern s32 D_80059198;
 extern void func_80022974(void* pSpriteData);
 extern void func_8001CE74(void* pTargetEntry);
+extern void func_80023290(u8* pSprite, s32 animType);
+extern s32 func_80021AD8(s32 color, s32 value);
+extern void func_800B2AEC(void* model, void* buffer0, void* buffer1,
+                           s32 red, s32 green, s32 blue);
 
 /* sbss 800592E4-EA ("800592E4 -> EA is bss local", rendering.c): image-blob
  * pointer + VRAM x/y handoff into func_8001FB30 (asm-only on the matching
@@ -34,6 +108,10 @@ extern u32 D_800592E4;
 extern s16 D_800592E8;
 extern s16 D_800592EA;
 extern void func_8001FB30(void);
+extern s32 func_80023124(s32 pointA, s32 pointB);
+extern void func_80021FE0(void* pSpriteData, s16 angle);
+extern void func_800223B0(void* pSpriteData, s16 angle);
+extern void SpriteSetScale(SpriteData* pSpriteData, short scale);
 
 /* Child-sprite spawner (temp1.c asm 80023B84; port implementation in
  * pc_port/src/game_overrides.c). Returns the child SpriteData. */
@@ -43,6 +121,38 @@ extern void* func_80023B84(void* pSpriteData, void* pScript,
 /* Texture-page latch (temp2.c asm 8002CC10; port implementation in
  * pc_port/src/game_overrides.c). */
 extern void func_8002CC10(s32 x, s32 y);
+
+/* Sound-bank plumbing for opcodes 0xB0/0xB9 (asm 8001FCF0..8001FD28).
+ * func_80039E60 is the allocated-slot SFX API (sound.c). D_8005919C is the
+ * sound module's selected-bank slot (sbss). The port keeps that slot in guest
+ * RAM because the retail battle overlay writes it as MIPS, so it is read
+ * through PSX_ADDR exactly like func_801E5CD8 does; bank references may be
+ * guest addresses or native pointers (same aliasing as FieldSoundBankPointer
+ * in pc_port/src/field_object_overlay.c). */
+extern void func_80039E60(s32 packedId);
+#ifdef XENO_PC_PORT
+#include "../../../pc_port/src/psx_memory.h"
+static u32 AnimationSoundBankSelector(void) {
+    u32 bank;
+    memcpy(&bank, PSX_ADDR(0x8005919C), sizeof(bank));
+    return bank;
+}
+static u8* AnimationSoundBankPointer(u32 address) {
+    if (address < 0x200000u || (address & 0xFFE00000u) == 0x80000000u ||
+        (address & 0xFFE00000u) == 0xA0000000u) {
+        return PSX_ADDR(address);
+    }
+    return (u8*)(uintptr_t)address;
+}
+#else
+extern u32 D_8005919C;
+static u32 AnimationSoundBankSelector(void) {
+    return D_8005919C;
+}
+static u8* AnimationSoundBankPointer(u32 address) {
+    return (u8*)(uintptr_t)address;
+}
+#endif
 
 /* Model-data load helpers for opcodes 0xF5/0xF6. Relocators live in
  * temp2.c (func_8002C3E8 real; func_8002C59C asm-only on the matching
@@ -110,6 +220,45 @@ static void Xeno0xBCAnchorVec(u8* ref, s32 anchorIdx, SVECTOR* vec) {
     vec->vz = *(s16*)(ref + 0xA);
 }
 
+/* jtbl_800183D8 has 0x73 entries. These exact entries branch directly to
+ * the register-restoring return at 80021AB8; they are not missing handlers.
+ * Keep this predicate separate so its complete domain can be checked against
+ * the retail table without exercising unrelated, unfinished opcode bodies. */
+int AnimationScriptOpcodeIsNoop(u32 opcodeIndex) {
+    switch ((u8)opcodeIndex) {
+    case 0x8B: case 0x8E: case 0x8F: case 0x95:
+    case 0x97: case 0x98: case 0x99: case 0x9A: case 0x9B:
+    case 0x9C: case 0x9D: case 0x9E: case 0x9F:
+    case 0xB1: case 0xB2: case 0xBE: case 0xC2: case 0xC3:
+    case 0xC7: case 0xC8: case 0xCA: case 0xCB: case 0xD4:
+    case 0xE1: case 0xE2: case 0xE3: case 0xE4: case 0xE8:
+    case 0xEC: case 0xF0: case 0xF3: case 0xF4: case 0xF8:
+    case 0xF9: case 0xFA: case 0xFB:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+/* Packed little-endian accesses for the retail data handlers. Byte accesses
+ * also preserve script/sprite aliasing without C effective-type assumptions. */
+static u16 AnimationRead16(const u8* p) {
+    return (u16)((u32)p[0] | ((u32)p[1] << 8));
+}
+static u32 AnimationRead32(const u8* p) {
+    return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
+}
+static void AnimationWrite16(u8* p, u16 value) {
+    p[0] = (u8)value;
+    p[1] = (u8)(value >> 8);
+}
+static void AnimationWrite32(u8* p, u32 value) {
+    p[0] = (u8)value;
+    p[1] = (u8)(value >> 8);
+    p[2] = (u8)(value >> 16);
+    p[3] = (u8)(value >> 24);
+}
+
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
 
@@ -118,6 +267,580 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
 
     if (dispatchIndex >= 0x73) {
         return;
+    }
+
+    if ((u8)opcodeIndex == 0xC5) {
+        /* Retail 8001FCAC..8001FCF0: latch the byte and signed divisor
+         * before any motion calls. R3000 DIV by zero yields -1 for this
+         * nonnegative numerator; unsigned counting preserves the retail
+         * wraparound for negative quotients without C signed overflow. */
+        s32 divisor = (s32)((u32)D_80059198 + 1u);
+        s32 numerator = ((u8*)operands)[0];
+        u32 remaining = (u32)(divisor == 0 ? -1 : numerator / divisor);
+        while (remaining != 0) {
+            func_80022CDC(pSpriteData);
+            --remaining;
+        }
+        return;
+    }
+
+    if ((u8)opcodeIndex == 0xB5) {
+        /* Retail 80021318..80021340: signed byte in Q8, gated by mode.
+         * SpriteSetScale is the native owner of retail 80022000. */
+        u32 flags = AnimationRead32((u8*)pSpriteData + 0x3C);
+        s16 scale = (s16)((s8)((u8*)operands)[0] * 256);
+        if (flags & 3u) SpriteSetScale((SpriteData*)pSpriteData, scale);
+        return;
+    }
+
+    if ((u8)opcodeIndex == 0x8C) { /* 8001FD50: face on X/Z plane. */
+        u8* p = pSpriteData;
+        u8* other = (u8*)(uintptr_t)AnimationRead32(p + 0x74);
+        s32 pointA;
+        s32 pointB;
+        s16 angle;
+        if (other == NULL) return;
+        pointA = (u16)AnimationRead16(p + 0x2) |
+                 ((u32)(u16)AnimationRead16(p + 0xA) << 16);
+        pointB = (u16)AnimationRead16(other + 0x2) |
+                 ((u32)(u16)AnimationRead16(other + 0xA) << 16);
+        angle = (s16)func_80023124(pointA, pointB);
+#ifdef XENO_TEST_8C
+        extern void XenoTestAnimationSetAngle(void*, s16);
+        extern void XenoTestAnimationApplyAngle(void*, s16);
+        XenoTestAnimationSetAngle(p, angle);
+        XenoTestAnimationApplyAngle(p, angle);
+#else
+        func_80021FE0(p, angle);
+        func_800223B0(p, angle);
+#endif
+        return;
+    }
+
+    /* Retail data-only destinations from jtbl_800183D8. Remaining commands
+     * still require their own bodies; this switch has no default skip. */
+    switch ((u8)opcodeIndex) {
+    case 0xA7: {
+        /* Retail 8001FDF0..8001FE60. The operand may be a resolved sprite
+         * variable (battle C8), so read it before updating the delay. */
+        extern s32 g_WorkListCurTimer;
+        u8* p = pSpriteData;
+        u32 value = *(u8*)operands;
+        if (value & 0x80u) {
+            g_WorkListCurTimer = (value & 0x7Fu) + 1;
+        } else {
+            u32 scale = (AnimationRead32(p + 0xAC) >> 7) & 0xFFFu;
+            /* Both factors are nonnegative; retail's signed /256
+             * truncation has the same result as this shift. */
+            u32 delay = ((value + 1u) * scale) >> 8;
+            if (delay == 0) delay = 1;
+            AnimationWrite16(p + 0x9E, (u16)AnimationRead16(p + 0x9E) + delay);
+        }
+        return;
+    }
+    case 0xD0: case 0xD1: case 0xD2: case 0xD3:
+    case 0xD5: case 0xDD: case 0xDE: {
+        /* 80020BB0/80020BE8/80020D68: resolve both variables before
+         * loading either value. D0/D3/DD/DE share the retail ADD body;
+         * D2/D5 share DIVU (including its all-ones zero-divisor result). */
+        u8* left = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands);
+        u8* right = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands + 1);
+        u32 a = left[0];
+        u32 b = right[0];
+        u32 value;
+        if ((u8)opcodeIndex == 0xD1) value = a * b;
+        else if ((u8)opcodeIndex == 0xD2 || (u8)opcodeIndex == 0xD5)
+            value = b ? a / b : 0xFFFFFFFFu;
+        else value = a + b;
+        left[0] = (u8)value;
+        return;
+    }
+    case 0xD6: case 0xD7: case 0xD8:
+    case 0xD9: case 0xDA: case 0xDB: case 0xDC: {
+        /* 80020C50..80020D64: byte immediate arithmetic and shifts.
+         * DA sign-extends its byte value; DC's assembled two-byte value
+         * is zero-extended before SRAV. Variable shift counts use low 5 bits. */
+        u8* slot = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands);
+        u32 value = slot[0];
+        s32 operand;
+        if ((u8)opcodeIndex == 0xDB || (u8)opcodeIndex == 0xDC)
+            value |= (u32)slot[1] << 8;
+        operand = (s8)((u8*)operands)[1];
+        switch ((u8)opcodeIndex) {
+        case 0xD6: value += (u8)operand; break;
+        case 0xD7: value *= (u32)operand; break;
+        case 0xD8:
+            value = operand ? (u32)((s32)value / operand) : 0xFFFFFFFFu;
+            break;
+        case 0xD9: case 0xDB: value <<= (u32)operand & 31u; break;
+        case 0xDA: value = (u32)((s32)(s8)value >> ((u32)operand & 31u)); break;
+        case 0xDC: value >>= (u32)operand & 31u; break;
+        }
+        slot[0] = (u8)value;
+        if ((u8)opcodeIndex == 0xDB || (u8)opcodeIndex == 0xDC)
+            slot[1] = (u8)(value >> 8);
+        return;
+    }
+    case 0x8A: { /* 80021794: notably does not clear velocity-Y at +10. */
+        u8* p = pSpriteData;
+        AnimationWrite32(p + 0xC, 0);
+        AnimationWrite32(p + 0x14, 0);
+        AnimationWrite32(p + 0x18, 0);
+        return;
+    }
+    case 0xA1: { /* 800219AC..80021A40: set vertical velocity. */
+        u8* p = pSpriteData;
+        u32 value = 0;
+        u32 numerator;
+        u32 divisor;
+        u32 quotient;
+        if (AnimationRead32(p + 0xA8) & 1u) {
+            u8* state = (u8*)(uintptr_t)AnimationRead32(p + 0x7C);
+            value = AnimationRead32(state);
+        }
+        if (value == 0) {
+            /* Both MULT results and shifts wrap at 32 bits on retail. */
+            value = (u32)(s32)(s8)((u8*)operands)[0] << 4;
+            value *= (u32)D_80059198 + 1u;
+            value *= (u32)(s32)(s16)AnimationRead16(p + 0x82);
+            if ((s32)value < 0) value += 0xFFFu;
+            value = (u32)((s32)value >> 12) << 8;
+        }
+        AnimationWrite32(p + 0x10, value);
+        numerator = AnimationRead32(p + 0x10) << 8;
+        divisor = (AnimationRead32(p + 0xAC) >> 7) & 0xFFFu;
+        /* R3000 signed DIV defines LO even when its divisor is zero. */
+        quotient = divisor ? (u32)((s32)numerator / (s32)divisor)
+                           : ((s32)numerator < 0 ? 1u : 0xFFFFFFFFu);
+        AnimationWrite32(p + 0x10, numerator);
+        AnimationWrite32(p + 0x10, quotient);
+        return;
+    }
+    case 0xA5: { /* 80021884..800218DC: add scaled speed, then rebuild velocity. */
+        u8* p = pSpriteData;
+        s32 operand = (s8)((u8*)operands)[0];
+        u32 time = (u32)D_80059198 + 1u;
+        u32 product = ((u32)operand << 4) * time;
+        u32 displacement;
+
+        product *= (u32)(s32)(s16)AnimationRead16(p + 0x82);
+        if ((s32)product < 0) product += 0xFFFu;
+        displacement = (u32)((s32)product >> 12) << 8;
+        AnimationWrite32(p + 0x18, AnimationRead32(p + 0x18) + displacement);
+        func_80022974(p);
+        return;
+    }
+    case 0xA9: { /* 80021698..800216F4: scaled relative X displacement. */
+        u8* p = pSpriteData;
+        s32 operand = (s8)((u8*)operands)[0];
+        s32 scale = (s16)AnimationRead16(p + 0x2C);
+        u32 product = (u32)operand * (u32)scale;
+        s32 displacement;
+        u32 flags;
+        u32 delta;
+
+        if ((s32)product < 0) product += 0xFFFu;
+        displacement = func_80022CAC(p, (s32)product >> 12);
+        flags = AnimationRead32(p + 0xAC);
+        delta = (u32)displacement << 16;
+        if ((flags >> 2) & 1u) delta = 0u - delta;
+        AnimationWrite32(p, AnimationRead32(p) + delta);
+        return;
+    }
+    case 0xAA: { /* 800216F4..80021730: scaled relative Y displacement. */
+        u8* p = pSpriteData;
+        s32 operand = (s8)((u8*)operands)[0];
+        s32 scale = (s16)AnimationRead16(p + 0x2C);
+        s32 product = operand * scale;
+        s32 displacement;
+        if (product < 0) product += 0xFFF;
+        displacement = func_80022CAC(p, product >> 12);
+        AnimationWrite32(p + 4, AnimationRead32(p + 4) +
+                         ((u32)displacement << 16));
+        return;
+    }
+    case 0xAB: { /* 80021730..8002176C: scaled relative Z displacement. */
+        u8* p = pSpriteData;
+        s32 operand = (s8)((u8*)operands)[0];
+        s32 scale = (s16)AnimationRead16(p + 0x2C);
+        s32 product = operand * scale;
+        s32 displacement;
+        if (product < 0) product += 0xFFF;
+        displacement = func_80022CAC(p, product >> 12);
+        AnimationWrite32(p + 8, AnimationRead32(p + 8) +
+                         ((u32)displacement << 16));
+        return;
+    }
+    case 0xE7: { /* 80021340..80021374: add a doubled, narrowed scale delta. */
+        u8* p = pSpriteData;
+        u8* source = operands;
+        u32 high = source[1];
+        u32 packed = source[0] | (high << 8);
+        s32 delta = (s16)(u16)(packed << 1);
+        s32 scale = (s16)AnimationRead16(p + 0x2C);
+        SpriteSetScale((SpriteData*)p, (s16)(scale + delta));
+        return;
+    }
+    case 0x93: {
+        /* Retail80020E30..80020F34: inherit parent direction transforms. */
+        extern s32 func_8001EE68(void*);
+        extern void func_8001D4E8(void*);
+        u8* p = pSpriteData;
+        u8* parent = (u8*)(uintptr_t)AnimationRead32(p + 0x70);
+        u8* model;
+        u8* parentModel;
+        u32 i;
+        if (parent == NULL || (AnimationRead32(p + 0x3C) & 3u) == 0) return;
+        if (!func_8001EE68((void*)(uintptr_t)AnimationRead32(
+                (u8*)(uintptr_t)AnimationRead32(p + 0x24)))) {
+            AnimationWrite32(p + 0x40,
+                (AnimationRead32(p + 0x40) & 0xFFFE1FFFu) | 0x1C000u);
+        }
+        model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        if (model != NULL) {
+            parentModel = (u8*)(uintptr_t)AnimationRead32(parent + 0x20);
+            if (AnimationRead32(parentModel + 0x34) != 0) {
+                func_8001D4E8(p);
+                for (i = 0; i < 8; i++) {
+                    u8* dst;
+                    u8* src;
+                    u32 first;
+                    u32 second;
+                    model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+                    parentModel = (u8*)(uintptr_t)AnimationRead32(parent + 0x20);
+                    dst = (u8*)(uintptr_t)AnimationRead32(model + 0x34) + i * 8;
+                    src = (u8*)(uintptr_t)AnimationRead32(parentModel + 0x34) + i * 8;
+                    first = AnimationRead32(src);
+                    second = AnimationRead32(src + 4);
+                    AnimationWrite32(dst, first);
+                    AnimationWrite32(dst + 4, second);
+                }
+                model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+                parentModel = (u8*)(uintptr_t)AnimationRead32(parent + 0x20);
+                {
+                    u8 first = parentModel[0x3C];
+                    u8 second = parentModel[0x3D];
+                    model[0x3C] = first;
+                    model[0x3D] = second;
+                }
+            }
+        }
+        func_8001D2B0(p, (s16)AnimationRead16(p + 0x34));
+        return;
+    }
+    case 0xBD: {
+        /* Retail80021410..8002143C: indexed child script. The pointer at
+         *8006BE20 is part of the packed shared block beginning8006BE10. */
+        extern u8 D_8006BE10[];
+        u8* p = pSpriteData;
+        u32 index = *(u8*)operands;
+        u8* table = (u8*)(uintptr_t)AnimationRead32(D_8006BE10 + 0x10);
+        u32 offset = AnimationRead16(table + 2u + index * 2u);
+        void* package = (void*)(uintptr_t)AnimationRead32(p + 0x24);
+        func_80023B84(p, table + offset, package);
+        return;
+    }
+    case 0xE9: case 0xEA: case 0xEB: {
+        /* Retail 80021374..8002140C, then shared dirty flag at800215A4.
+         * Read both operand bytes and the model pointer before any writes. */
+        u8* p = pSpriteData;
+        u8* source = operands;
+        u32 high = source[1];
+        u32 low = source[0];
+        u8* model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        u32 offset = 6u + ((u8)opcodeIndex - 0xE9u) * 2u;
+        u32 delta = (low | (high << 8)) << 1;
+        if (model != NULL) {
+            /* The halfword store retains the same low16 bits for signed
+             * and unsigned interpretations of the doubled operand. */
+            AnimationWrite16(model + offset, AnimationRead16(model + offset) + delta);
+            AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        }
+        return;
+    }
+    case 0xF2: { /* 80020FC8..800210F0: add signed RGB deltas. */
+        u8* p = pSpriteData;
+        u8* source = operands;
+        s32 red = p[0x28];
+        s32 delta = (s8)source[0];
+        u8* base = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        s32 green;
+        s32 blue;
+        u32 flags;
+        red = func_80021AD8(red, delta);
+        green = p[0x29];
+        p[0x28] = (u8)red;
+        green = func_80021AD8(green, (s8)source[1]);
+        blue = p[0x2A];
+        p[0x29] = (u8)green;
+        blue = func_80021AD8(blue, (s8)source[2]);
+        flags = AnimationRead32(p + 0x3C);
+        p[0x2A] = (u8)blue;
+        if ((flags & 3u) == 2u) {
+            delta = (s8)source[0];
+            AnimationWrite16(base + 0x38,
+                             AnimationRead16(base + 0x38) + delta);
+            delta = (s8)source[1];
+            AnimationWrite16(base + 0x3A,
+                             AnimationRead16(base + 0x3A) + delta);
+            delta = (s8)source[2];
+            AnimationWrite16(base + 0x3C,
+                             AnimationRead16(base + 0x3C) + delta);
+        }
+        if ((AnimationRead32(p + 0x3C) & 3u) == 1u) {
+            func_8001F6B0(p);
+        }
+        flags = AnimationRead32(p + 0x40);
+        if (((flags >> 13) & 0xFu) == 15u) {
+            u8* currentBase = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+            if (AnimationRead32(currentBase + 0x34) != 0 &&
+                (flags & 2u) == 0) {
+                /* Colors use the early base snapshot; pointers are reloaded. */
+                green = (s16)AnimationRead16(base + 0x3A);
+                red = (s16)AnimationRead16(base + 0x38);
+                blue = (s16)AnimationRead16(base + 0x3C);
+                func_800B2AEC(
+                    (void*)(uintptr_t)AnimationRead32(currentBase + 0x34),
+                    (void*)(uintptr_t)AnimationRead32(currentBase + 0x2C),
+                    (void*)(uintptr_t)AnimationRead32(currentBase + 0x30),
+                    red, green, blue);
+            }
+        }
+        return;
+    }
+    case 0xF1: { /* 80020F4C..80020FC8: set RGB, preserving packed aliases. */
+        u8* p = pSpriteData;
+        u8* source = operands;
+        u8 red = source[0];
+        u8* base = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        u32 flags;
+        p[0x28] = red;
+        p[0x29] = source[1];
+        flags = AnimationRead32(p + 0x3C);
+        p[0x2A] = source[2];
+        if ((flags & 3u) == 2u) {
+            /* Each source byte is reloaded after the previous halfword store. */
+            AnimationWrite16(base + 0x38, source[0]);
+            AnimationWrite16(base + 0x3A, source[1]);
+            AnimationWrite16(base + 0x3C, source[2]);
+        }
+        /* The halfword destinations may alias the sprite mode itself. */
+        if ((AnimationRead32(p + 0x3C) & 3u) == 1u) {
+            func_8001F6B0(p);
+        }
+        return;
+    }
+    case 0x91: /* 80020DE8 -> 80020E04: no operand; clear color-code bit 0. */
+        ((u8*)pSpriteData)[0x2B] &= 0xFEu;
+        func_8001F6B0(pSpriteData);
+        return;
+    case 0xBA: /* 80020F38..80020F4C: existing blend/type helper. */
+        func_80023290((u8*)pSpriteData, ((u8*)operands)[0]);
+        return;
+    case 0xC4: { /* 800215B8..80021644: rotate the velocity about Z. */
+        u8* p = pSpriteData;
+        u32 randomByte = (u32)rand() & 0xFFu;
+        u32 range = ((u8*)operands)[0];
+        s32 delta = (s32)((randomByte * range) >> 8) - (s32)(range >> 1);
+        SVECTOR angles;
+        MATRIX matrix;
+        VECTOR result;
+        angles.vx = 0;
+        angles.vy = 0;
+        angles.vz = (s16)(delta * 16);
+        /* With X=Y=0, this is exactly [[cos,-sin,0],[sin,cos,0],[0,0,ONE]]. */
+        RotMatrix(&angles, &matrix);
+#ifdef XENO_PC_PORT
+        AnimationC4ApplyMatrixLV(&matrix, p + 0x0C, &result);
+#else
+        ApplyMatrixLV(&matrix, (VECTOR*)(p + 0x0C), &result);
+#endif
+        AnimationWrite32(p + 0x0C, (u32)result.vx);
+        AnimationWrite32(p + 0x10, (u32)result.vy);
+        AnimationWrite32(p + 0x14, (u32)result.vz);
+        return;
+    }
+    case 0xAC: { /* 80021644..80021698: random angle adjustment. */
+        u8* p = pSpriteData;
+        u32 randomByte = (u32)rand() & 0xFFu;
+        /* 8002164C reads after RNG, even when operands alias its seed. */
+        u32 range = ((u8*)operands)[0];
+        s32 delta = (s32)((randomByte * range) >> 8) - (s32)(range >> 1);
+        s16 angle = (s16)(AnimationRead16(p + 0x32) + delta * 16);
+        func_80021FE0(p, angle);
+        return;
+    }
+    case 0xAD: { /* 80021468 -> 800214C8 */
+        u8* p = pSpriteData;
+        u32 flags = AnimationRead32(p + 0xA8) & 0xFFFFF801u;
+        u32 value = ((u8*)operands)[0];
+        AnimationWrite32(p + 0xA8, flags | (value << 1));
+        return;
+    }
+    case 0xAE: case 0xAF: { /* 800214D4 / 80021570 */
+        u8* p = pSpriteData;
+        s32 value = (s8)((u8*)operands)[0] * 16;
+        u8* base;
+        if (AnimationRead32(p + 0xAC) & 4) value = -value;
+        base = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        if (base == NULL) return;
+        if ((u8)opcodeIndex == 0xAE) value += AnimationRead16(base + 4);
+        AnimationWrite16(base + 4, (u16)value);
+        AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        return;
+    }
+    case 0xB6: case 0xB7: { /* 80021518 / 80021544 */
+        u8* p = pSpriteData;
+        u8* base = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        unsigned offset = (u8)opcodeIndex == 0xB6 ? 0 : 2;
+        s32 value;
+        if (base == NULL) return;
+        value = (s8)((u8*)operands)[0] * 16;
+        AnimationWrite16(base + offset, (u16)(AnimationRead16(base + offset) + value));
+        AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        return;
+    }
+    case 0xB4: /* 80021480..90: capture the byte before the stack push. */
+        AnimScriptStackPushU8((SpriteData*)pSpriteData, ((u8*)operands)[0]);
+        return;
+    case 0xB8: { /* 80021494: signed byte decrement with byte wrap. */
+        u8* p = pSpriteData;
+        s32 value = (s8)((u8*)operands)[0];
+        p[0x8C] = (u8)(p[0x8C] - value);
+        return;
+    }
+    case 0xBB: { /* 80020E14..2C: signed byte added to the depth bias. */
+        u8* p = pSpriteData;
+        s32 delta = (s8)((u8*)operands)[0];
+        AnimationWrite16(p + 0x30, (u16)(AnimationRead16(p + 0x30) + delta));
+        return;
+    }
+    case 0xC0: { /* 80020158..800201F0: random displacement in the X/Z plane. */
+        u8* p = pSpriteData;
+        s32 radius = (s32)((u32)rand() & 0xFFu);
+        s32 product;
+        s32 angle;
+        s32 component;
+        u32 displacement;
+
+        radius = (radius * ((u8*)operands)[0]) >> 8;
+        product = radius * (s16)AnimationRead16(p + 0x2C);
+        if (product < 0) product += 0xFFF;
+        radius = product >> 12;
+        angle = rand();
+        /* Retail symbol rsin is the cosine entry; rcos is the sine entry. */
+        component = func_80022CAC(p, (s32)rsin(angle));
+        displacement = ((u32)component * (u32)radius) << 4;
+        AnimationWrite32(p, AnimationRead32(p) + displacement);
+        component = func_80022CAC(p, (s32)rcos(angle));
+        displacement = ((u32)component * (u32)radius) << 4;
+        AnimationWrite32(p + 8, AnimationRead32(p + 8) - displacement);
+        return;
+    }
+    case 0xC1: { /* 800201F0..800202F0: scatter around the current position. */
+        u8* p = pSpriteData;
+        SVECTOR local;
+        SVECTOR angles;
+        VECTOR translation;
+        MATRIX matrix;
+        long flag;
+        s32 radius;
+        s32 product;
+
+        /* The first RNG call precedes the operand and scale reads. */
+        radius = (s32)((u32)rand() & 0xFFu);
+        radius = (radius * ((u8*)operands)[0]) >> 8;
+        product = radius * (s16)AnimationRead16(p + 0x2C);
+        if (product < 0) product += 0xFFF;
+        local.vx = (s16)func_80022CAC(p, product >> 12);
+        local.vy = 0;
+        local.vz = 0;
+        angles.vx = (s16)rand();
+        angles.vy = (s16)rand();
+        angles.vz = 0;
+        translation.vx = (s16)AnimationRead16(p + 2);
+        translation.vy = (s16)AnimationRead16(p + 6);
+        translation.vz = (s16)AnimationRead16(p + 0xA);
+        TransMatrix(&matrix, &translation);
+        SetTransMatrix(&matrix);
+        AnimationC1RotMatrix(&angles, &matrix);
+        SetRotMatrix(&matrix);
+        RotTransSV(&local, &local, &flag);
+        AnimationWrite32(p, (u32)(s32)local.vx << 16);
+        AnimationWrite32(p + 4, (u32)(s32)local.vy << 16);
+        AnimationWrite32(p + 8, (u32)(s32)local.vz << 16);
+        return;
+    }
+    case 0xC9: { /* 8001FC78: two-byte sibling of C6. */
+        u8* p = pSpriteData;
+        if (AnimationRead32(p + 0xA8) & 1) {
+            u16 value = AnimationRead16(operands);
+            u8* state = (u8*)(uintptr_t)AnimationRead32(p + 0x7C);
+            AnimationWrite16(state + 0xC, value);
+        }
+        return;
+    }
+    case 0xCD: { /* 8001FF0C..BC: model or indexed direction angle. */
+        u8* p = pSpriteData;
+        u8* model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        u32 operand;
+        u32 index;
+        u16 angle;
+        u8* destination;
+        if (model == NULL) return;
+        operand = AnimationRead16(operands);
+        angle = (u16)((operand & 0x1FFu) << 3);
+        index = (operand >> 9) & 7u;
+        destination = model;
+        if (index != 0) {
+            u8* directions = (u8*)(uintptr_t)AnimationRead32(model + 0x34);
+            if (directions == NULL) return;
+            destination = directions + index * 8u + 2u;
+        }
+        if ((operand & 0x1000u) == 0)
+            angle = (u16)(AnimationRead16(destination) + angle);
+        AnimationWrite16(destination, angle);
+        if (index == 0)
+            AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        return;
+    }
+    case 0xCC: { /* 8001FD2C: signed relative address, not a stream jump. */
+        u8* p = pSpriteData;
+        s32 relative = (s16)AnimationRead16(operands);
+        u32 stream = AnimationRead32(p + 0x64);
+        AnimationWrite32(p + 0x88, stream + (u32)relative);
+        return;
+    }
+    case 0xBF: /* 8001FEE0: zero-extended operand byte to halfword +36. */
+        AnimationWrite16((u8*)pSpriteData + 0x36, ((u8*)operands)[0]);
+        return;
+    case 0xA2: /* 8001FF00: operand byte to sprite+3D. */
+        ((u8*)pSpriteData)[0x3D] = ((u8*)operands)[0];
+        return;
+    case 0xED: case 0xEF: { /* 80021A44 / 80021AA0 */
+        u8* p = pSpriteData;
+        u32 value = AnimationRead16(operands);
+        AnimationWrite32(p + ((u8)opcodeIndex == 0xED ? 0 : 8), value << 16);
+        return;
+    }
+    case 0xE5: { /* 80020C20..4C: random byte through the script destination. */
+        u8* destination = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands);
+        u32 random = (u32)rand() & 0xFFu;
+        /* Retail resolves the destination before rand, then reads the range. */
+        *destination = (u8)((random * ((u8*)operands)[1]) >> 8);
+        return;
+    }
+    case 0xEE: { /* 80021A60: signed Q12 scale, truncation toward zero. */
+        u8* p = pSpriteData;
+        s32 value = (s16)AnimationRead16(operands);
+        s32 scale = (s16)AnimationRead16(p + 0x2C);
+        s32 base = (s16)AnimationRead16(p + 0x84);
+        s32 product = value * scale;
+        if (product < 0) product += 0xFFF;
+        value = (product >> 12) + base;
+        AnimationWrite32(p + 4, (u32)value << 16);
+        return;
+    }
     }
 
     if (dispatchIndex == 0x3) {
@@ -150,7 +873,7 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
-    if (dispatchIndex == 0x28) {
+    if (AnimationScriptOpcodeIsNoop(opcodeIndex)) {
         return;
     }
 
@@ -204,6 +927,10 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
             if (sub >= 0x27) {
                 /* Retail joins the tail with an uninitialized vector; no
                  * authored script should get here. */
+#ifdef XENO_PC_PORT
+                fprintf(stderr, "{\"event\":\"sprite_animation_bc_unimplemented\",\"sub\":%u,\"sprite\":\"%p\"}\n", (unsigned)sub, pSpriteData);
+                fflush(stderr);
+#endif
                 assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
                 return;
             }
@@ -238,12 +965,20 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
                  * no port writer for those globals yet (temp1 sprite-spawn
                  * region); implementing now would deref NULL (or 0/0 in the
                  * sub-2 centroid). */
+#ifdef XENO_PC_PORT
+                fprintf(stderr, "{\"event\":\"sprite_animation_bc_unimplemented\",\"sub\":%u,\"sprite\":\"%p\"}\n", (unsigned)sub, pSpriteData);
+                fflush(stderr);
+#endif
                 assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
                 return;
 
             case 0x05:
                 /* 800209B8: retail zeroes the accumulator block then divides
                  * it by a STALE register (indeterminate on hardware). */
+#ifdef XENO_PC_PORT
+                fprintf(stderr, "{\"event\":\"sprite_animation_bc_unimplemented\",\"sub\":%u,\"sprite\":\"%p\"}\n", (unsigned)sub, pSpriteData);
+                fflush(stderr);
+#endif
                 assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
                 return;
 
@@ -586,41 +1321,41 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
          * operand bits 0-8 encode a Y offset in units of 8, bits 9-11
          * select an 8-byte sub-entry (zero selects the transform block),
          * and bit 12 selects set rather than add. AC bit 2 mirrors the
-         * offset. Successful writes join .L800215A4 and mark the transform
+         * offset. Only model writes join .L800215A4 and mark the transform
          * matrix dirty via +0x3C bit 28. */
         u8* p = pSpriteData;
         u8* ops = operands;
-        u8* pBase = (u8*)(uintptr_t)*(u32*)(p + 0x20);
-        s32 packed = ops[0] | ((s32)(s8)ops[1] << 8);
-        u32 encoded = (u16)packed;
+        u32 encoded = AnimationRead16(ops);
+        u8* pBase = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
         u32 subIndex = (encoded >> 9) & 0x7;
         s32 value = (encoded & 0x1FF) << 3;
-        u16* pY;
+        u8* pY;
 
         if (pBase == NULL) {
             return;
         }
-        if ((*(u32*)(p + 0xAC) & 0x4) != 0) {
+        if ((AnimationRead32(p + 0xAC) & 0x4) != 0) {
             value = -value;
         }
 
         if (subIndex != 0) {
             u8* pEntries =
-                (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
+                (u8*)(uintptr_t)AnimationRead32(pBase + 0x34);
             if (pEntries == NULL) {
                 return;
             }
-            pY = (u16*)(pEntries + subIndex * 8 + 4);
+            pY = pEntries + subIndex * 8 + 4;
         } else {
-            pY = (u16*)(pBase + 0x2);
+            pY = pBase + 0x2;
         }
 
         if ((encoded & 0x1000) != 0) {
-            *pY = value;
+            AnimationWrite16(pY, (u16)value);
         } else {
-            *pY = *pY + value;
+            AnimationWrite16(pY, (u16)(AnimationRead16(pY) + value));
         }
-        *(u32*)(p + 0x3C) |= 0x10000000;
+        if (subIndex == 0)
+            AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
         return;
     }
 
@@ -705,6 +1440,100 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
         return;
     }
 
+    if (dispatchIndex == 0x26 || dispatchIndex == 0x2F) {
+        /* Opcodes 0xB0 (8001FCFC) and 0xB9 (8001FCF0): play SFX operand
+         * byte 0 on a sound bank -- the sound module's selected bank
+         * (D_8005919C) for 0xB0, the sprite's own bank (+0x50) for 0xB9;
+         * both fall into the shared tail at 8001FD04. A null bank is a
+         * retail no-op. The bank id halfword at +0x14 is the packed id's
+         * high half (lhu; sll 16; or with the operand byte). */
+        u8* p = pSpriteData;
+        u32 bank = (dispatchIndex == 0x2F) ? AnimationRead32(p + 0x50)
+                                           : AnimationSoundBankSelector();
+        u16 id;
+        if (bank == 0) return;
+        id = AnimationRead16(AnimationSoundBankPointer(bank) + 0x14);
+        func_80039E60((s32)(((u8*)operands)[0] | ((u32)id << 16)));
+        return;
+    }
+
+    if (dispatchIndex == 0x1E) {
+        /* Opcode 0xA8 (8002176C..80021790): nudge the facing angle at +0x32
+         * by (s8)operand << 4 (the store sits in the call's delay slot, so
+         * it lands before func_80022974 rebuilds the velocity from it). */
+        u8* p = pSpriteData;
+        u16 angle = AnimationRead16(p + 0x32);
+        angle = (u16)(angle + (u16)((s32)(s8)((u8*)operands)[0] * 16));
+        AnimationWrite16(p + 0x32, angle);
+        func_80022974(p);
+        return;
+    }
+
+    if (dispatchIndex == 0x45) {
+        /* Opcode 0xCF (8002008C..80020154, tail 800215A4): adjust a model
+         * part angle.  Operand halfword v (byte 1 sign-extended): bits 0-8 are
+         * the amount (<<3), bits 9-11 select a part in the table at
+         * model+0x34 (entry stride 8, halfword +6; part 0 is the model's own
+         * halfword at +4), bit 12 selects set instead of add.  Sprite flag
+         * +0xAC bit 2 negates the amount.  Null model or table -> no-op; the
+         * part-0 paths also raise +0x3C bit 28. */
+        u8* p = pSpriteData;
+        u8* ops = operands;
+        s32 v = (s32)ops[0] | ((s32)(s8)ops[1] * 256);
+        u8* model = (u8*)(uintptr_t)AnimationRead32(p + 0x20);
+        u32 a2 = (u32)v & 0xFFFFu;
+        u32 index = (a2 >> 9) & 7u;
+        s32 amount = (s32)(((u32)v & 0x1FFu) << 3);
+        if (model == NULL) return;
+        if ((AnimationRead32(p + 0xAC) >> 2) & 1u) amount = -amount;
+        if (index != 0) {
+            u8* table = (u8*)(uintptr_t)AnimationRead32(model + 0x34);
+            u8* slot;
+            if (table == NULL) return;
+            slot = table + index * 8 + 6;
+            AnimationWrite16(slot, (a2 & 0x1000u)
+                                       ? (u16)amount
+                                       : (u16)(AnimationRead16(slot) + amount));
+            return;
+        }
+        AnimationWrite16(model + 4, (a2 & 0x1000u)
+                                        ? (u16)amount
+                                        : (u16)(AnimationRead16(model + 4) + amount));
+        AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        return;
+    }
+
+    if (dispatchIndex == 0x5C) {
+        /* Opcode 0xE6 (80020DCC..80020DE4): resolve the variable slot,
+         * load the operand before either store, clear the next byte, then
+         * store the value. Preserve this order when operands alias the slot. */
+        u8* slot = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands);
+        u8 value = ((u8*)operands)[1];
+        slot[1] = 0;
+        slot[0] = value;
+        return;
+    }
+
+    if (dispatchIndex == 0x55) {
+        /* Opcode 0xDF (80020DB4..80020DC8): store operand byte 1 into the
+         * script variable slot selected by operand byte 0 (func_8001FBA4:
+         * signed stack-relative index, or 0x80|n into the +0x88 register
+         * block). Pure data write, no side effects. */
+        u8* slot = func_8001FBA4((SpriteData*)pSpriteData, (u8*)operands);
+        *slot = ((u8*)operands)[1];
+        return;
+    }
+
+    /* Failure-only host telemetry, no reads through possibly invalid inputs.
+     * Retain the original hard stop; never treat this as a successful skip. */
+#ifdef XENO_PC_PORT
+    fprintf(stderr,
+            "{\"event\":\"sprite_animation_unimplemented\",\"raw_opcode\":%u,"
+            "\"opcode\":%u,\"dispatch_index\":%u,\"sprite\":\"%p\",\"operands\":\"%p\"}\n",
+            (unsigned)opcodeIndex, (unsigned)(u8)opcodeIndex,
+            (unsigned)dispatchIndex, pSpriteData, operands);
+    fflush(stderr);
+#endif
     assert(0 && "func_8001FBE4 dispatch path is not implemented");
 }
 
@@ -781,51 +1610,59 @@ void func_80021C00(void* arg0, u32 arg1) {
 }
 
 u_char AnimScriptStackPopU8(SpriteData* pSpriteData) {
+    u8* pData = (u8*)pSpriteData;
     u_char nStackValue;
-    s8 idx = pSpriteData->stackIndex;
+    s8 idx = (s8)pData[0x8C];
 
-    nStackValue = pSpriteData->stack[idx];
-    pSpriteData->stackIndex++;
+    nStackValue = pData[0x8E + idx];
+    pData[0x8C]++;
     return nStackValue;
 }
 
 
-s16 AnimScriptStackPopU16(SpriteData* pSpriteData) {
-    s8 idx = pSpriteData->stackIndex;
-    u16 lo = pSpriteData->stack[idx];
-    u16 hi = pSpriteData->stack[idx + 1];
-    pSpriteData->stackIndex += 2;
+s32 AnimScriptStackPopU16(SpriteData* pSpriteData) {
+    /* Retail V0 is sign-extended to 32 bits; the native bridge consumes
+     * the complete register, so a host short return is insufficient. */
+    u8* pData = (u8*)pSpriteData;
+    s8 idx = (s8)pData[0x8C];
+    u16 lo = pData[0x8E + idx];
+    u16 hi = pData[0x8F + idx];
+    pData[0x8C] += 2;
     return (s16)(lo + hi * 256);
 }
 
 s32 AnimScriptStackPopU24(SpriteData* pSpriteData) {
-    s8 idx = pSpriteData->stackIndex;
-    u32 b0 = pSpriteData->stack[idx];
-    u32 b1 = pSpriteData->stack[idx + 1];
-    u32 b2 = pSpriteData->stack[idx + 2];
-    pSpriteData->stackIndex += 3;
+    u8* pData = (u8*)pSpriteData;
+    s8 idx = (s8)pData[0x8C];
+    u32 b0 = pData[0x8E + idx];
+    u32 b1 = pData[0x8F + idx];
+    u32 b2 = pData[0x90 + idx];
+    pData[0x8C] += 3;
     return b0 + b1 * 256 + b2 * 65536;
 }
 
 void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value) {
-    s8 idx = --pSpriteData->stackIndex;
-    pSpriteData->stack[idx] = value;
+    u8* pData = (u8*)pSpriteData;
+    s8 idx = (s8)--pData[0x8C];
+    pData[0x8E + idx] = value;
 }
 
 void AnimScriptStackPushU16(SpriteData* pSpriteData, u16 value) {
-    s8 idx = (s8)(pSpriteData->stackIndex -= 2);
-    pSpriteData->stack[idx] = (u8)value;
-    idx = (s8)pSpriteData->stackIndex;
-    pSpriteData->stack[idx + 1] = (u8)(value >> 8);
+    u8* pData = (u8*)pSpriteData;
+    s8 idx = (s8)(pData[0x8C] -= 2);
+    pData[0x8E + idx] = (u8)value;
+    idx = (s8)pData[0x8C];
+    pData[0x8F + idx] = (u8)(value >> 8);
 }
 
 void AnimScriptStackPushU24(SpriteData* pSpriteData, s32 value) {
-    s8 idx = (s8)(pSpriteData->stackIndex -= 3);
-    pSpriteData->stack[idx] = (u8)value;
-    idx = (s8)pSpriteData->stackIndex;
-    pSpriteData->stack[idx + 1] = (u8)(value >> 8);
-    idx = (s8)pSpriteData->stackIndex;
-    pSpriteData->stack[idx + 2] = (u8)(value >> 16);
+    u8* pData = (u8*)pSpriteData;
+    s8 idx = (s8)(pData[0x8C] -= 3);
+    pData[0x8E + idx] = (u8)value;
+    idx = (s8)pData[0x8C];
+    pData[0x8F + idx] = (u8)(value >> 8);
+    idx = (s8)pData[0x8C];
+    pData[0x90 + idx] = (u8)(value >> 16);
 }
 
 void func_80021D3C(void* arg0, s32 arg1, s32 arg2) {
@@ -844,11 +1681,12 @@ void func_80021D50(void* arg0, void* arg1) {
     *(u16*)((u8*)arg0 + 0x80) = *(u16*)((u8*)arg1 + 0x10);
     *(u8*)((u8*)arg0 + 0xAF) = *(u8*)((u8*)arg1 + 0x14);
     *(u8*)((u8*)arg0 + 0xB0) = *(u8*)((u8*)arg1 + 0x16);
-    pData = *(void**)((u8*)arg0 + 0x20);
+    /* Retail LW slots stay 32-bit even when host pointers are 64-bit. */
+    pData = (void*)(uintptr_t)*(u32*)((u8*)arg0 + 0x20);
     *(u16*)((u8*)pData + 6) = *(u16*)((u8*)arg1 + 0x24);
-    pData = *(void**)((u8*)arg0 + 0x20);
+    pData = (void*)(uintptr_t)*(u32*)((u8*)arg0 + 0x20);
     *(u16*)((u8*)pData + 8) = *(u16*)((u8*)arg1 + 0x26);
-    pData = *(void**)((u8*)arg0 + 0x20);
+    pData = (void*)(uintptr_t)*(u32*)((u8*)arg0 + 0x20);
     *(u16*)((u8*)pData + 0xA) = *(u16*)((u8*)arg1 + 0x28);
     *(u16*)((u8*)arg0 + 0x82) = *(u16*)((u8*)arg1 + 0x2C);
     *(u16*)((u8*)arg0 + 0x2C) = *(u16*)((u8*)arg1 + 0x2A);
@@ -867,9 +1705,9 @@ void func_80021D50(void* arg0, void* arg1) {
     *(u32*)((u8*)arg0 + 0x04) = *(u32*)((u8*)arg1 + 0x04);
     *(u32*)((u8*)arg0 + 0x08) = *(u32*)((u8*)arg1 + 0x08);
     {
-        void* pTable = *(void**)((u8*)arg0 + 0x7C);
+        void* pTable = (void*)(uintptr_t)*(u32*)((u8*)arg0 + 0x7C);
         *(u32*)pTable = *(u32*)((u8*)arg1 + 0x1C);
-        pTable = *(void**)((u8*)arg0 + 0x7C);
+        pTable = (void*)(uintptr_t)*(u32*)((u8*)arg0 + 0x7C);
         *(u32*)((u8*)pTable + 4) = *(u32*)((u8*)arg1 + 0x20);
     }
     D_80059198 = savedD80059198;
@@ -911,20 +1749,22 @@ void func_80021FC0(void* a0, s32 a1) {
 }
 
 void func_80021FE0(void* a0, s16 a1) {
-    *(s16*)((u8*)a0 + 0x32) = a1;
+    AnimationWrite16((u8*)a0 + 0x32, (u16)a1);
     func_80022974(a0);
 }
 
 void SpriteSetScale(SpriteData* pSpriteData, short scale) {
     u8* pData = (u8*)pSpriteData;
-    u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
+    u8* pBase = (u8*)(uintptr_t)AnimationRead32(pData + 0x20);
 
     if (pBase) {
-        *(s16*)(pData + 0x2C) = scale;
-        *(s16*)(pBase + 0xA) = scale;
-        *(s16*)(pBase + 0x8) = scale;
-        *(s16*)(pBase + 0x6) = scale;
-        *(u32*)(pData + 0x3C) |= 0x10000000;
+        /* Retail 80022000: these packed fields may overlap. Read flags
+         * after the scale stores, including when pBase aliases pData. */
+        AnimationWrite16(pData + 0x2C, (u16)scale);
+        AnimationWrite16(pBase + 0xA, (u16)scale);
+        AnimationWrite16(pBase + 0x8, (u16)scale);
+        AnimationWrite16(pBase + 0x6, (u16)scale);
+        AnimationWrite32(pData + 0x3C, AnimationRead32(pData + 0x3C) | 0x10000000u);
     }
 }
 
@@ -1308,21 +2148,27 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
     }
 }
 
-// Recompute animation speed
+/* 80022974..80022A00: horizontal velocity, preserving R3000 DIV/MULT
+ * and 32-bit shifts. Decomp rsin names retail cosine; rcos names sine. */
 void func_80022974(void* pSpriteData) {
     u8* pData = pSpriteData;
-    s32 radius = (*(s32*)(pData + 0x18) >> 4) << 8;
-    s32 divisor = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
-    s32 scaledRadius = radius / divisor;
-    s16 angle = *(s16*)(pData + 0x32);
-    s32 sinValue;
-    s32 cosValue;
+    u32 radius = (u32)((s32)AnimationRead32(pData + 0x18) >> 4) << 8;
+    u32 divisor = (AnimationRead32(pData + 0xAC) >> 7) & 0xFFFu;
+    u32 scaledRadius = divisor ? (u32)((s32)radius / (s32)divisor)
+                              : ((s32)radius < 0 ? 1u : 0xFFFFFFFFu);
+    u16 angle = AnimationRead16(pData + 0x32);
+    s32 trigValue;
+    u32 product;
 
-    sinValue = rsin(angle) >> 2;
-    *(s32*)(pData + 0x0C) = (sinValue * scaledRadius) >> 6;
+    /* Both retail entries directly index angle & FFF, including negatives. */
+    trigValue = rsin(angle & 0xFFFu) >> 2;
+    product = (u32)trigValue * scaledRadius;
+    angle = AnimationRead16(pData + 0x32); /* 800229BC: before the +C store. */
+    AnimationWrite32(pData + 0x0C, (u32)((s32)product >> 6));
 
-    cosValue = rcos(angle) >> 2;
-    *(s32*)(pData + 0x14) = -(cosValue * scaledRadius) >> 6;
+    trigValue = rcos(angle & 0xFFFu) >> 2;
+    product = 0u - (u32)trigValue * scaledRadius;
+    AnimationWrite32(pData + 0x14, (u32)((s32)product >> 6));
 }
 
 s32 func_80022A00(s32* arg0) {

@@ -58,6 +58,7 @@ echo "NPC EVENT O0/O2/UBSAN PASS"
 mutants=(
     'M1:NPC_EVENT_MUTANT_ALWAYS_DONE:walkwait.not.instant'
     'M2:NPC_EVENT_MUTANT_NO_IP:sleep.holds.then.advances'
+    'M3:NPC_EVENT_MUTANT_MODE2_CIRCLE:walkwait.mode2.targets.actor'
 )
 for entry in "${mutants[@]}"; do
     label="${entry%%:*}"
@@ -76,7 +77,7 @@ for entry in "${mutants[@]}"; do
     fi
     echo "$label DETECTED"
 done
-echo "NPC EVENT CERTIFICATE PASS; M1-M2 DETECTED"
+echo "NPC EVENT CERTIFICATE PASS; M1-M3 DETECTED"
 
 SCRATCH="${NPC_EVENT_SCRATCH:-/tmp/grok-goal-92283f6cf396/implementer}"
 mkdir -p "$SCRATCH/npc_event_cert"

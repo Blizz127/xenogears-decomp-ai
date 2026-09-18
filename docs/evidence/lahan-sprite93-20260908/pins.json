@@ -1,0 +1,10 @@
+{
+  "src/slus_006.64/system/animation_scripts.c": "bc1cd032c1625b4a2d4476242298aeb5253d5b62fbbc6570f9d2998297e708b4",
+  "src/slus_006.64/system/rendering.c": "846726b06a71c339c2e6f4c9acbb313f09b5178d0a8fdb190b49902038e66c08",
+  "src/slus_006.64/system/temp1.c": "8b2ec9f52c0b5aa18f43c14755a64352d683f53b8dacaf07edbfe1caaa4b9a03",
+  "pc_port/tests/sprite_dispatch_93_retail_test.c": "c64e494e3be2cc3b32cf94ea5c97c6f6387399252010fdc1568e61220b740be8",
+  "pc_port/tests/run_sprite_dispatch_93_retail_test.sh": "7854768adc67439be2290b513e0b574cb19d02cfda969085b305ca570f99cddd",
+  "pc_port/tests/sprite_dispatch_noop_retail_test.c": "0b52730fc5e71d2528de1c068364588af3c9dfd603487d07557feaf102f322a9",
+  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119"
+}

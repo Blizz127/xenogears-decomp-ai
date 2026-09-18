@@ -1,0 +1,6 @@
+{
+  "source": "src/slus_006.64/system/animation_scripts.c",
+  "sha256": "e6423f2de9b3a3954125a0ec8cbd97defe70273c0f8a61e594f24e4b3f9a8179",
+  "tested_candidate_sha256": "e6423f2de9b3a3954125a0ec8cbd97defe70273c0f8a61e594f24e4b3f9a8179",
+  "test_artifact": "pc_port/build_native/sprite_dispatch_c0_retail_test.pgG1PzwW"
+}

@@ -1,0 +1,12 @@
+{
+  "704": {
+    "changed_bytes": 21777,
+    "before_sha256": "e4314de8285f5a24c89e589738003c21abb8bd13884c44c40ca73ade8531d214",
+    "after_sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+  },
+  "960": {
+    "changed_bytes": 25536,
+    "before_sha256": "e0147fce67401795793cdbcced3774ffe09b650d82bf29c1af8945c11a727792",
+    "after_sha256": "6a6a3b0d26b18021f591a79ce1a5b6b66cf58cffee9d87aaf722f2c81f617e79"
+  }
+}

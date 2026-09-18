@@ -1,0 +1,77 @@
+{
+  "function": "func_801DA4A8",
+  "object_sha256": "be4ac2297c96321f1570833b114a02df82d8264d71c9de47c16672ee2fab12d0",
+  "compiled_bytes": 112,
+  "retail_bytes": 112,
+  "relocations": [
+    {
+      "offset": 8,
+      "type": 4,
+      "symbol": "func_801D22F4",
+      "retail_address": "0x801d22f4"
+    },
+    {
+      "offset": 20,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 24,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 28,
+      "type": 5,
+      "symbol": "D_801EA548",
+      "retail_address": "0x801ea548"
+    },
+    {
+      "offset": 32,
+      "type": 6,
+      "symbol": "D_801EA548",
+      "retail_address": "0x801ea548"
+    },
+    {
+      "offset": 44,
+      "type": 4,
+      "symbol": "func_801E8018",
+      "retail_address": "0x801e8018"
+    },
+    {
+      "offset": 56,
+      "type": 4,
+      "symbol": "HeapAlloc",
+      "retail_address": "0x80031bdc"
+    },
+    {
+      "offset": 68,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 72,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 80,
+      "type": 4,
+      "symbol": "bzero",
+      "retail_address": "0x8003f8e8"
+    },
+    {
+      "offset": 88,
+      "type": 4,
+      "symbol": "func_801C72BC",
+      "retail_address": "0x801c72bc"
+    }
+  ],
+  "differences": [],
+  "match": true,
+  "scope": "Object function with zero-addend relocations resolved to retail addresses; not whole-ROM match"
+}

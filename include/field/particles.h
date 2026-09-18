@@ -83,7 +83,7 @@ typedef struct {
     /* 0x26  */ u_short srange;
     /* 0x28  */ u_short erange;
     /* 0x2A  */ u_short flags;
-    /* 0x2C  */ ParticlePrimitive* pPrimitives;
+    /* 0x2C  */ u32 pPrimitives; // Packed 32-bit address; convert at use sites.
     /* 0x30  */ ParticleBankAngleOffset directions[8];
     /* 0x50  */ s16 unk50;
     /* 0x52  */ short targetActorID;
@@ -98,6 +98,19 @@ typedef struct {
     /* 0x74  */ s16 unk74;
     /* 0x76  */ short rotAngle;
 } ParticleBank; // Size: 0x78
+
+#ifdef XENO_PC_PORT
+/* Scripts mix typed access with the retail 0x78-byte stride. These must stay
+ * packed even though standalone host pointer tables use native pointers. */
+_Static_assert(sizeof(ParticleBank) == 0x78, "retail particle bank stride");
+_Static_assert(__builtin_offsetof(ParticleBank, pPrimitives) == 0x2C,
+               "retail particle pointer slot");
+_Static_assert(__builtin_offsetof(ParticleBank, directions) == 0x30,
+               "retail particle direction offset");
+_Static_assert(sizeof(ParticlePrimitive) == 0xC0, "retail particle stride");
+_Static_assert(__builtin_offsetof(ParticlePrimitive, vertices) == 0xA0,
+               "retail particle vertex offset");
+#endif
 
 typedef struct { 
     ParticleBank banks[8]; 

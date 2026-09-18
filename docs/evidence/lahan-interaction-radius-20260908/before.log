@@ -1,0 +1,3 @@
+retail events=2 native=0 flags=1234/1234
+first byte 358 retail=42 native=00
+INTERACTION FAIL case=0 native=1 full fixture/global/helper trace mismatch

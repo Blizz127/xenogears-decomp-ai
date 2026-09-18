@@ -194,6 +194,7 @@ void FieldLoadTIMWithClut(u_long* pTimData, short x, short y, short clutX, short
 int ArchiveSetIndex(int directoryIndex, int entryIndex);
 int ArchiveDecodeAlignedSize(unsigned int entryIndex);
 int ArchiveDataSync(void);
+int ArchiveCdDataSync(int mode);
 int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
 int func_8009C538(int targetId);
 
@@ -214,8 +215,8 @@ s32 func_8009C154(s32 faceId) {
         s16 state = D_800B06A6[slot * 3];
 
         if (state == 1) {
-            /* Retail: ArchiveCdDataSync(1); busy => v0 from ArchiveDataSync. */
-            if (ArchiveDataSync() != 0) {
+            /* Retail: ArchiveCdDataSync(1); busy => return -1. */
+            if (ArchiveCdDataSync(1) != 0) {
                 return -1;
             }
 
@@ -434,9 +435,18 @@ s32 func_8009C5A8(s32 actorIndex, s32 mode) {
     }
 
     if (g_FieldTextBoxes[textBoxIndex].flags & 0x80) {
-        if (mode == 0) {
-            y = screenY + 0x30;
-        } else if (mode != 3) {
+        /* Retail 8009C9E4: re-reads the actor screen position, then places the
+         * box below it (mode 0) or at the fixed bottom slot (mode 3). Other
+         * modes take the fixed 4-line slot. */
+        if (mode == 0 || mode == 3) {
+            func_8007F814(actorIndex, &screenX, &screenY, -0x40);
+            if (mode == 0) {
+                y = screenY + 0x30;
+            } else {
+                y = 0x94;
+                screenX = 0xA0;
+            }
+        } else {
             width = 0x48;
             height = 4;
             y = 0x94;

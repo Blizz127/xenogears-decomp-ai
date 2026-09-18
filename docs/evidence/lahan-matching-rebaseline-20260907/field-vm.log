@@ -1,0 +1,147 @@
+FIELD_SCRIPT_VM_AUDIT slots=483 unique=481 table_mismatches=0
+FIELD_SCRIPT_VM_MATCHING code_mismatch=54 match=346 relocation_target_mismatch=3 size_mismatch=78 relocation_checks=4084
+FIELD_SCRIPT_VM_NATIVE artifacts=present dispatched_stubs=0 dispatched_authored_stubs=0 direct_stub_edges=0 direct_authored_edges=0
+FIELD_SCRIPT_VM_FIELD_DEPS callers=15 edges=19 targets=13 source_assert_zero=4 native_assert_zero=1
+FIELD_SCRIPT_VM_FIELD_AUTHORED callers=1 edges=1 targets=1
+FIELD_SCRIPT_VM_FIELD_DATA callers=700 edges=1965 targets=279 default32=270
+FIELD_SCRIPT_VM_CLASSES C_NONMATCHING_UNPROVEN=131 PORT_OVERRIDE_UNPROVEN=8 RETAIL_MIPS_MATCH=342
+FIELD_SCRIPT_VM_GATES runtime=FAIL retail=FAIL
+FIELD_SCRIPT_VM_FINDING slots=02 handler=FieldScriptVMHandlerConditionalJmp class=C_NONMATCHING_UNPROVEN mips=relocation_target_mismatch detail=matching comparison: relocation_target_mismatch; relative=0x1a4 current={} retail={('R_MIPS_HI16', 'jtbl_8006FD58', 0): 1}
+FIELD_SCRIPT_VM_FINDING slots=0B handler=func_800A1624 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=272 retail=268
+FIELD_SCRIPT_VM_FINDING slots=16 handler=func_800A08B8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=580 retail=916
+FIELD_SCRIPT_VM_FINDING slots=34 handler=func_80096214 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=160 retail=172
+FIELD_SCRIPT_VM_FINDING slots=44 handler=func_80098184 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=228 retail=240
+FIELD_SCRIPT_VM_FINDING slots=45 handler=func_80097864 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=184 retail=240
+FIELD_SCRIPT_VM_FINDING slots=46 handler=func_80092808 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x8 current=27bdffe0 retail=27bdffe8 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=4B handler=func_80098430 class=PORT_OVERRIDE_UNPROVEN mips=match detail=native conditional body replaces retail fallback
+FIELD_SCRIPT_VM_FINDING slots=4C handler=func_800979F0 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x1c current=00621821 retail=00431021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=4D handler=func_80097954 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=136 retail=156
+FIELD_SCRIPT_VM_FINDING slots=4E handler=func_80098370 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=204 retail=192
+FIELD_SCRIPT_VM_FINDING slots=4F handler=func_80098274 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=240 retail=252
+FIELD_SCRIPT_VM_FINDING slots=50 handler=func_800977A4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=168 retail=192
+FIELD_SCRIPT_VM_FINDING slots=52 handler=func_800980FC class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=124 retail=136
+FIELD_SCRIPT_VM_FINDING slots=53 handler=func_80098038 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=160 retail=196
+FIELD_SCRIPT_VM_FINDING slots=54 handler=func_800975C0 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=228 retail=232
+FIELD_SCRIPT_VM_FINDING slots=55 handler=func_8009749C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=296 retail=292
+FIELD_SCRIPT_VM_FINDING slots=56 handler=func_80093014 class=PORT_OVERRIDE_UNPROVEN mips=size_mismatch detail=native conditional body replaces retail fallback; current=480 retail=484
+FIELD_SCRIPT_VM_FINDING slots=57 handler=func_80099214 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=1796 retail=1900
+FIELD_SCRIPT_VM_FINDING slots=5B handler=func_80095284 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=120 retail=124
+FIELD_SCRIPT_VM_FINDING slots=5C handler=func_800A0228 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=644 retail=764
+FIELD_SCRIPT_VM_FINDING slots=70 handler=func_8009A1E4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=200 retail=196
+FIELD_SCRIPT_VM_FINDING slots=73 handler=func_80086C34 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=268 retail=280
+FIELD_SCRIPT_VM_FINDING slots=7E handler=func_80097108 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=252 retail=248
+FIELD_SCRIPT_VM_FINDING slots=81 handler=func_800926C8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x38 current=34040003 retail=00408021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=82 handler=func_80093664 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x4c current=3205ffff retail=02002821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=83 handler=func_80092768 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x38 current=34040003 retail=00408021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=8D handler=func_8009640C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=148 retail=164
+FIELD_SCRIPT_VM_FINDING slots=99 handler=func_8008FB98 class=PORT_OVERRIDE_UNPROVEN mips=match detail=native conditional body replaces retail fallback
+FIELD_SCRIPT_VM_FINDING slots=9A handler=func_8008FC4C class=PORT_OVERRIDE_UNPROVEN mips=size_mismatch detail=native conditional body replaces retail fallback; current=236 retail=244
+FIELD_SCRIPT_VM_FINDING slots=9D handler=func_8009A34C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=208 retail=212
+FIELD_SCRIPT_VM_FINDING slots=9E handler=func_8009B9A0 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=104 retail=108
+FIELD_SCRIPT_VM_FINDING slots=A0 handler=func_8009BA7C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=140 retail=144
+FIELD_SCRIPT_VM_FINDING slots=A7 handler=func_8009F5F4 class=PORT_OVERRIDE_UNPROVEN mips=size_mismatch detail=native conditional body replaces retail fallback; current=964 retail=1036
+FIELD_SCRIPT_VM_FINDING slots=A9 handler=func_8009BC98 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=432 retail=448
+FIELD_SCRIPT_VM_FINDING slots=AC handler=FieldScriptStartCameraMovement class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x80 current=3c010000 retail=3c040000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=B5 handler=func_8009B8E4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=212 retail=188
+FIELD_SCRIPT_VM_FINDING slots=DA handler=func_800921E8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=592 retail=508
+FIELD_SCRIPT_VM_FINDING slots=DC handler=func_80092044 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x48 current=3205ffff retail=02002821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=DD handler=func_80091E00 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=156 retail=152
+FIELD_SCRIPT_VM_FINDING slots=E0 handler=func_80091E98 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x64 current=00431021 retail=00621821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=E1 handler=func_80091BBC class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=628 retail=580
+FIELD_SCRIPT_VM_FINDING slots=E6 handler=func_80091A08 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x48 current=00000000 retail=00021023 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=E7 handler=func_80091A78 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x30 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=F2 handler=func_8008F90C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=308 retail=300
+FIELD_SCRIPT_VM_FINDING slots=F6 handler=func_8008E8C8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xc0 current=00621821 retail=00431021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=F8 handler=func_8008E59C class=C_NONMATCHING_UNPROVEN mips=relocation_target_mismatch detail=matching comparison: relocation_target_mismatch; relative=0x40 current={} retail={('R_MIPS_HI16', 'jtbl_8006FC88', 0): 1}
+FIELD_SCRIPT_VM_FINDING slots=FA handler=func_800947B0 class=C_NONMATCHING_UNPROVEN mips=relocation_target_mismatch detail=matching comparison: relocation_target_mismatch; relative=0x74 current={} retail={('R_MIPS_HI16', 'jtbl_8006FCA8', 0): 1}
+FIELD_SCRIPT_VM_FINDING slots=FE03 handler=func_8008D0F4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=144 retail=140
+FIELD_SCRIPT_VM_FINDING slots=FE04 handler=func_8008D26C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=112 retail=108
+FIELD_SCRIPT_VM_FINDING slots=FE05 handler=func_80095CC4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x44 current=00431021 retail=00621821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE06 handler=func_80095D6C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x44 current=00431021 retail=00621821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE07 handler=func_8008D604 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=120 retail=128
+FIELD_SCRIPT_VM_FINDING slots=FE08 handler=func_8008D180 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=172 retail=176
+FIELD_SCRIPT_VM_FINDING slots=FE0C handler=func_8008CFEC class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x60 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE13 handler=func_8008CD48 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x1c current=a462010c retail=a462010a mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE14 handler=func_8008CDD4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=152 retail=144
+FIELD_SCRIPT_VM_FINDING slots=FE15 handler=func_800A14F0 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=312 retail=308
+FIELD_SCRIPT_VM_FINDING slots=FE17 handler=func_8009AA00 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xa8 current=00021823 retail=00021023 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE18 handler=func_8008BDD8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=368 retail=352
+FIELD_SCRIPT_VM_FINDING slots=FE19 handler=func_8008C334 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xe4 current=3c020001 retail=3c080001 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE1B handler=func_8008B5D4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=480 retail=704
+FIELD_SCRIPT_VM_FINDING slots=FE1C handler=func_80098A7C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=344 retail=388
+FIELD_SCRIPT_VM_FINDING slots=FE1D handler=func_800984EC class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=196 retail=208
+FIELD_SCRIPT_VM_FINDING slots=FE1E handler=func_8009FB98 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x3c current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE1F handler=func_8009FDD4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x34 current=00821021 retail=00441021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE20 handler=func_8009FE4C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x54 current=00821021 retail=00441021 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE21 handler=func_800A06E8 class=PORT_OVERRIDE_UNPROVEN mips=match detail=native conditional body replaces retail fallback
+FIELD_SCRIPT_VM_FINDING slots=FE23 handler=func_8009B398 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=568 retail=716
+FIELD_SCRIPT_VM_FINDING slots=FE24 handler=func_8009B210 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=288 retail=296
+FIELD_SCRIPT_VM_FINDING slots=FE25 handler=func_8008D5C8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x8 current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE2C handler=FieldScriptWriteActorFlags1 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x4 current=afb00010 retail=34040001 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE2D handler=FieldScriptWriteActorFlags2 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x4 current=afb00010 retail=34040001 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE2E handler=FieldScriptWriteActorFlags3 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x4 current=afb00010 retail=34040001 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE2F handler=FieldScriptWriteActorFlags4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x4 current=afb00010 retail=34040001 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE39 handler=func_8008D230 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE3C handler=func_8008B180 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x20 current=00408021 retail=34040003 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE3D handler=func_8008AEC8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=280 retail=272
+FIELD_SCRIPT_VM_FINDING slots=FE3E handler=func_8008AFD8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x68 current=00028840 retail=00108040 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE3F handler=func_8008B0E8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x30 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE40 handler=func_80092148 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x30 current=00402021 retail=3044ffff mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE43 handler=func_8009B15C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x0 current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE46 handler=func_8008AE5C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x8 current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE47 handler=func_8008B144 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE54 handler=func_80093B10 class=PORT_OVERRIDE_UNPROVEN mips=match detail=native conditional body replaces retail fallback
+FIELD_SCRIPT_VM_FINDING slots=FE56 handler=func_80093930 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=124 retail=112
+FIELD_SCRIPT_VM_FINDING slots=FE5C handler=func_800A0FD8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=844 retail=908
+FIELD_SCRIPT_VM_FINDING slots=FE60 handler=func_8008EC30 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=476 retail=484
+FIELD_SCRIPT_VM_FINDING slots=FE64 handler=func_8008F5E4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x28 current=12000007 retail=16000007 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE67 handler=func_8008EE14 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=324 retail=328
+FIELD_SCRIPT_VM_FINDING slots=FE68 handler=func_80092C20 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=472 retail=476
+FIELD_SCRIPT_VM_FINDING slots=FE6A handler=func_8008A604 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE6D handler=func_8008FB28 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x20 current=3c050000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE6F handler=func_8008B45C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=180 retail=188
+FIELD_SCRIPT_VM_FINDING slots=FE70 handler=func_80089F54 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x18 current=00000000 retail=2442ff80 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE72 handler=func_800988B8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xac current=3205ffff retail=02002821 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE73 handler=func_8009861C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xc4 current=02132023 retail=02332023 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE76 handler=func_80098738 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x11c current=02352023 retail=02552023 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE77 handler=func_8008A2E8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=508 retail=504
+FIELD_SCRIPT_VM_FINDING slots=FE80 handler=func_80089FD0 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x90 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE81 handler=func_8008A08C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=180 retail=188
+FIELD_SCRIPT_VM_FINDING slots=FE82 handler=func_8008A148 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=244 retail=252
+FIELD_SCRIPT_VM_FINDING slots=FE89 handler=func_80089DCC class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0xe8 current=14620008 retail=10620006 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FE8A handler=func_80089F18 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE8D handler=func_8008F394 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE8F handler=func_80088790 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=280 retail=276
+FIELD_SCRIPT_VM_FINDING slots=FE98 handler=func_800884CC class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FE9A handler=func_8008F0B4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=248 retail=276
+FIELD_SCRIPT_VM_FINDING slots=FE9E handler=func_8008EFE4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=156 retail=140
+FIELD_SCRIPT_VM_FINDING slots=FE9F handler=func_800883D4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=156 retail=184
+FIELD_SCRIPT_VM_FINDING slots=FEA0 handler=func_8008EA58 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=456 retail=472
+FIELD_SCRIPT_VM_FINDING slots=FEA3 handler=func_800881E8 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x0 current=3c030000 retail=3c020000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEA4 handler=func_80088198 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x0 current=3c020000 retail=00002821 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEA5 handler=func_80088C1C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=152 retail=220
+FIELD_SCRIPT_VM_FINDING slots=FEA6 handler=func_800888A4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x0 current=27bdffd8 retail=27bdffe0 mask=ffffffff
+FIELD_SCRIPT_VM_FINDING slots=FEA7 handler=func_800889BC class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=420 retail=428
+FIELD_SCRIPT_VM_FINDING slots=FEAA handler=func_8008DB2C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEAE handler=func_80096AF4 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x30 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEAF handler=func_8008800C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=420 retail=396
+FIELD_SCRIPT_VM_FINDING slots=FEB0 handler=func_8008AACC class=PORT_OVERRIDE_UNPROVEN mips=size_mismatch detail=native conditional body replaces retail fallback; current=520 retail=540
+FIELD_SCRIPT_VM_FINDING slots=FEB5 handler=func_80087FA4 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=44 retail=48
+FIELD_SCRIPT_VM_FINDING slots=FEB6 handler=func_80087E98 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=280 retail=268
+FIELD_SCRIPT_VM_FINDING slots=FEB7 handler=func_80087E5C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEB9 handler=func_80087B5C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=148 retail=176
+FIELD_SCRIPT_VM_FINDING slots=FEBA handler=func_80087C34 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=244 retail=252
+FIELD_SCRIPT_VM_FINDING slots=FEBC handler=func_80087D80 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=104 retail=96
+FIELD_SCRIPT_VM_FINDING slots=FEBD handler=func_80088B68 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=160 retail=180
+FIELD_SCRIPT_VM_FINDING slots=FEC1 handler=func_80088508 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=280 retail=276
+FIELD_SCRIPT_VM_FINDING slots=FEC2 handler=func_80088674 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=288 retail=284
+FIELD_SCRIPT_VM_FINDING slots=FEC6 handler=func_8008BC80 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=320 retail=344
+FIELD_SCRIPT_VM_FINDING slots=FEC7 handler=func_800882B8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=160 retail=168
+FIELD_SCRIPT_VM_FINDING slots=FECA handler=func_800A0EE8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=236 retail=240
+FIELD_SCRIPT_VM_FINDING slots=FECE handler=func_800A0DC0 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x10 current=3c040000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FED0 handler=func_8008764C class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=344 retail=436
+FIELD_SCRIPT_VM_FINDING slots=FED7 handler=func_80087AB8 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=152 retail=164
+FIELD_SCRIPT_VM_FINDING slots=FED8 handler=func_80087A40 class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x8 current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FED9 handler=func_80087A7C class=C_NONMATCHING_UNPROVEN mips=code_mismatch detail=matching comparison: code_mismatch; relative=0x8 current=3c020000 retail=3c030000 mask=ffff0000
+FIELD_SCRIPT_VM_FINDING slots=FEDD handler=func_800871B0 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=508 retail=532
+FIELD_SCRIPT_VM_FINDING slots=FEDE handler=func_80087148 class=C_NONMATCHING_UNPROVEN mips=size_mismatch detail=matching comparison: size_mismatch; current=112 retail=104

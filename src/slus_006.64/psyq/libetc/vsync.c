@@ -43,7 +43,7 @@ int Vsync(int mode) {
 }
 
 extern char D_800193C4; // "VSync: timeout\n"
-static void v_wait(int count, int max) {
+void v_wait(int count, int max) {
     volatile int timeout[2];
 
     timeout[0] = max << 0xF;

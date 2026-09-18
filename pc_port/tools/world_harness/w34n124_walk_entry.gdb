@@ -43,6 +43,11 @@ def u32(a): return struct.unpack('<I', rd(a,4))[0]
 def s32(a): return struct.unpack('<i', rd(a,4))[0]
 def s16(a): return struct.unpack('<h', rd(a,2))[0]
 def u16(a): return struct.unpack('<H', rd(a,2))[0]
+def native_rd(addr, n):
+    return bytes(gdb.selected_inferior().read_memory(addr, n))
+def native_u32(a): return struct.unpack('<I', native_rd(a,4))[0]
+def native_s16(a): return struct.unpack('<h', native_rd(a,2))[0]
+def native_s8(a): return struct.unpack('<b', native_rd(a,1))[0]
 
 class PaceBreakpoint(gdb.Breakpoint):
     def stop(self):
@@ -68,9 +73,11 @@ class S1Breakpoint(gdb.Breakpoint):
                 rec += 0x10
                 i += 1
         if self.n % 30 == 1 or self.n < 3:
-            print("W34N124 call=%d slot=%d state=%d pos=(%d,%d,%d) head=0x%03x cd4c=0x%04x bd10=0x%04x BD24=%d D7D8=0x%08x D554=%d" % (
+            obj = u32(slot+0x4c)
+            print("W34N124 call=%d slot=%d state=%d pos=(%d,%d,%d) head=0x%03x cd4c=0x%04x bd10=0x%04x BD24=%d D7D8=0x%08x D554=%d obj=0x%08x anim=%d pose=%d wait=%d script=0x%08x" % (
                 self.n, idx, s16(slot+0x20), s32(slot+0x28)>>12, s32(slot+0x2c)>>12, s32(slot+0x30)>>12,
-                u16(slot+0x48), u16(0x8009CD4C), u16(0x8009BD10), s16(0x8009BD24), u32(0x8009D7D8), u32(0x8009D554)))
+                u16(slot+0x48), u16(0x8009CD4C), u16(0x8009BD10), s16(0x8009BD24), u32(0x8009D7D8), u32(0x8009D554),
+                obj, native_s8(obj+0xaf), native_s16(obj+0x34), native_s16(obj+0x9e), native_u32(obj+0x64)))
         return False
 
 PaceBreakpoint("func_8007554C", internal=True)

@@ -20,6 +20,11 @@
 
 #define ARRAY_COUNT(x) (sizeof(x) / sizeof(x[0]))
 
+/* stddef.h (via -include assert.h or direct includes) already defines offsetof;
+ * keep this TU's historical definition without tripping -Werror builds. */
+#ifdef offsetof
+#undef offsetof
+#endif
 #define offsetof(s,m) ((size_t)&(((s*)0)->m))
 
 #endif

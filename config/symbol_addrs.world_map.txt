@@ -1,0 +1,4 @@
+// World map overlay (world_map.bin @ 0x8006faf0).
+// WorldMapMain is the overlay entry point, identified independently by the
+// port's reverse engineering (see pc_port/src/world_map_init.c).
+WorldMapMain = 0x80070CFC; // type:func

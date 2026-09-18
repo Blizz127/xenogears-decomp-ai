@@ -1,0 +1,16 @@
+OUTPUT /var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/scrollbar.NTitI1Ku
+PASS 131072 scrollbar six-call layout/coordinate cases
+PASS 131072 scrollbar six-call layout/coordinate cases
+PASS 131072 scrollbar six-call layout/coordinate cases
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124486 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED width-as-height
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124508 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED middle-height
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124524 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED signed-bottom
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124557 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED missing-wrap
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124577 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED wrong-cap
+pc_port/tests/run_menu_scrollbar_layout_test.sh: line 32: 2124589 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED cached-menu

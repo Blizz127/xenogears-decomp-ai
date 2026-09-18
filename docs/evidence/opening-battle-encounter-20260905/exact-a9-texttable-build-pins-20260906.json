@@ -1,0 +1,18 @@
+{
+  "pc_port/build_native/xeno-port": "f4dcc43c404d453861429e80a017a5c4bda2ff355f85829d359276c274743ec6",
+  "src/slus_006.64/system/system.c": "e1dbf43e5ecb9ca41c344e92e5109e92324ae3e4d7028c691e0575f3535f41bd",
+  "src/slus_006.64/system/animation_scripts.c": "8e5de18aa4c657cea9026626b4dd9a0d92f104788a4438024fa7a10c910bec5c",
+  "src/slus_006.64/system/temp1.c": "ef557f005fecc41317f7992f968ca819854e1e21dff6f6a953eea8292f30f451",
+  "pc_port/src/battle_mips_runtime.c": "e671118805b557588947557075f77870e1ea4357b4a99f6d9b97ab6308d42097",
+  "pc_port/src/game_overrides.c": "fff3464fa60aa38f629358753927771fc5f8328cb59e07cf9a1ae066feb4583f",
+  "src/battle_command_file1/message_controller_impl.inc": "a1dfab198ebc494cb3db6f41da124d55c442ae3c49bee543ea2ebbbbf89c2f45",
+  "src/battle_command_file1/message_controller.c": "f389a678fcf0b6ca17d3023d902125b93cf96bc4bf78f77e2dc1ee9e7d1b9ca8",
+  "gears.toml": "0cec36c39ad07133f457cd7a92810e1d2412bf1bf947e2b7beec4b0bc0d88987",
+  "pc_port/tests/textbox_timing_prod_test.c": "529e75776fd7014e982ff35706b72f74e0398f24f79fd652ff2ddf6e48afb338",
+  "pc_port/tests/run_textbox_timing.sh": "80cbcdfe492d08c93ab23c4cd0b879a25a23c5fdd73b18844df6d3d287c161a4",
+  "pc_port/tests/sprite_opcode_a9_retail_test.c": "d439e51b55032b2b84e086e02efd2b6a0e6d92d792e02eb302ee1dd045be87f2",
+  "pc_port/tests/run_sprite_opcode_a9_retail_test.sh": "380bf98ceaaeff8d7b99e852225b16239bf51f8b5111e95500ce6a7d21498c9b",
+  "build_log": "/tmp/xeno-exact-a9-texttable-native-build-20260906.log",
+  "build_log_sha256": "029829a1b4eb46b4ace39286d1b43058e38668c0fdcb62810a72c482d6d6bf4d",
+  "scope": "Native build after exact controller (inert under SKIP_ASM), A9 and text-table repair; before guest-call service work; no gameplay claim."
+}

@@ -1,0 +1,351 @@
+ALSA lib confmisc.c:855:(parse_card) cannot find card '0'
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) error evaluating name
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5731:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2721:(snd_pcm_open_noupdate) Unknown PCM default
+[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)
+[xeno-port] PSX RAM emulation: 3072 KB at 0x616e60
+[xeno-port] main-exe static data loaded from disc/SLUS_006.64: rodata [0x80010000,0x80019524) sdata [0x8004ea90,0x800576e4) (file offset 0x800 + vaddr - 0x80010000); .text and ._49AC0 island not copied
+[xeno-port][boot] world state 3: retail native owner enabled (hasOverlay=1)
+[Psy-X] Initialising Psy-X 2.8
+[Psy-X] Build date: Sep  6 2026:17:50:45
+[Psy-X] *Video adapter: llvmpipe (LLVM 20.1.2, 256 bits) by Mesa
+[Psy-X] *OpenGL version: 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+[Psy-X] *GLSL version: 4.50
+[Psy-X] Host toolbar enabled: Quick Save | Quick Load | Record | Speed (F11 cycles, Shift+F11 resets; hold Backspace for 5x)
+[Psy-X] found sound device: OpenAL Soft
+[Psy-X] [PsyX_SPUAL_InitSound] - alcOpenDevice: NULL DEVICE error: ALC_INVALID_VALUE
+[xeno-port] CD image: disc/disc1.bin
+[Psy-X] Using 'disc/disc1.bin' image, sector size: 2352, frames: 305586
+[Psy-X] [CdControl] - Unhandled command 0x07!
+[cull-cam] logging to /logs/m16C/cull.log (SELECT=MARK)
+[xeno-port] ArchiveInit done (archive index loaded from disc).
+[xeno-port][sound] retail boot WDS banks 2..5 loaded
+[xeno-port][field] XENO_FIELD_MAP=16
+[xeno-port][field] XENO_FIELD_ENTRANCE=0 (D_8006F954 -> field-script var 2)
+[xeno-port][field] camera approach octant=7 (D_8006F950 -> field-script var 8)
+[xeno-port][field] font + party-skin init done
+[xeno-port][boot] direct field-test route: state 1 (KernelMenu not rendered)
+[xeno-port] entering decompiled MainLoop() (oracle)...
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9c6ab0 g_GameSceneMapNum=16
+[FieldMain] FieldLoadUITextures
+[stub] SoundHandleError
+[field-diag] FieldLoad begin field=16 mapBuf=0x7f82f0
+[field-diag] assets before VM: tim=0 clut=2 scripts=11 scriptData=0x71efbc
+[field-diag] spawn marker=0xff modelsInPackage=1
+[field-diag] spawn[0] x=-1318 z=0 wm=0 rot=255 face=255
+[field-diag] spawn[1] x=-24388 z=-32513 wm=30 rot=128 face=0
+[field-diag] spawn[2] x=-383 z=16512 wm=2 rot=0 face=0
+[field-diag] spawn[3] x=320 z=224 wm=250 rot=1 face=1
+[field-diag] spawn[4] x=256 z=-512 wm=129 rot=0 face=0
+[field-diag] spawn[5] x=4096 z=500 wm=224 rot=254 face=130
+[field-diag] spawn[6] x=-32768 z=-32768 wm=0 rot=128 face=0
+[field-diag] spawn[7] x=128 z=128 wm=128 rot=0 face=128
+[field-diag] spawn[8] x=-32768 z=-32768 wm=0 rot=128 face=0
+[field-diag] spawn[9] x=128 z=-3712 wm=2 rot=128 face=200
+[field-diag] spawn[10] x=20608 z=128 wm=128 rot=1 face=128
+[field-diag] spawn[11] x=21246 z=0 wm=22 rot=62 face=0
+[field-diag] sprite package loaded: spriteData=0x71fb88
+[field-diag] actors allocated: count=11 actorArray=0x7219c0
+[field-diag] func_8002C644: skip invalid pin base=0x71e0a0 end=0x12effa8 hdrNext=0x0 (skips=1)
+[field-diag] model-build actor=7 spriteId=0 groups=2 status=0290 faPos=(-1105,1621,-136)
+[field-diag] model-build actor=8 spriteId=0 groups=2 status=0290 faPos=(-1446,1823,195)
+[field-diag] model-build actor=9 spriteId=0 groups=2 status=0290 faPos=(-1359,1824,-267)
+[field-diag] model-build count=3 / actors=11
+[field-diag] before VM: active=3 actorData=11/11 spriteData=0/11 D_800AFC74=0
+[field-diag] spawn-apply actor=1 entry=0 x=-1318 z=0 wm=0
+[field-diag] setpos actor=1 ip=82 x=-1318 z=0 bytes=16 3e 00 fe 0d 3e 00 1d
+[field-diag] setpos actor=1 ip=89 x=-3000 z=0 bytes=1d 48 f4 00 00 ca 08 20
+[field-diag] after VM: active=7 actorData=11/11 spriteData=11/11 D_800AFC74=1 objects=4 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x730948 ip=80
+[field-diag] actor[1] status=0260 flags4=04000400 faPos=(-3000,2250,0) adPos=(-3000,2250,0) model=(nil) sprite=0x730b1c ip=101
+[field-diag] actor[2] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x730f90 ip=105
+[field-diag] actor[3] status=0240 flags4=04202000 faPos=(-6000,4500,0) adPos=(-6000,4500,0) model=(nil) sprite=0x731164 ip=175
+[field-diag] actor[4] status=0240 flags4=04202000 faPos=(-6000,4500,0) adPos=(-6000,4500,0) model=(nil) sprite=0x731338 ip=421
+[field-diag] actor[5] status=0240 flags4=04202000 faPos=(-7000,4500,-600) adPos=(-7000,4500,-600) model=(nil) sprite=0x73150c ip=482
+[field-diag] actor[6] status=0240 flags4=04202000 faPos=(-7000,4500,600) adPos=(-7000,4500,600) model=(nil) sprite=0x7316e0 ip=541
+[field-diag] actor[7] status=0290 flags4=04000800 faPos=(-1105,1621,-136) adPos=(-1105,1621,-136) model=0x7229c4 sprite=0x7318b4 ip=579
+[field-diag] actor[8] status=0290 flags4=04000800 faPos=(-1446,1823,195) adPos=(-1446,1823,195) model=0x724bb0 sprite=0x731a88 ip=658
+[field-diag] actor[9] status=0290 flags4=04000800 faPos=(-1359,1824,-267) adPos=(-1359,1824,-267) model=0x726d9c sprite=0x731c5c ip=663
+[field-diag] actor[10] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x731e30 ip=668
+[xeno-port][horizon] DIAG 2709C a0=576 a1=0 w=320 h=224 clut=(0,506) mode=1 sign=1 coords=(0,500,4096) rgb0=000000 sky=0 fade=0/0 ctx=0x732004
+[obj-ovly] 742C slot=0 flags=0 model=0x732358 tex=0x7e998c xy=(576,256) zw=(0,252) vec=0x9b28e4
+[obj-ovly]  model[0..3]=00000002 00000010 0000517c 0000519c
+[obj-ovly]  tex[0..3]=00000004 00000018 00007fc8 0000c1c0
+[obj-ovly] DDE4 image=0x7e99a4 mode=1 xy=(576,256)
+[DDE4] p=0x7e99a4 count=7 mode=1/1 xy=(576,256) clut=(0,252) w0=00000007 00000020 000001d0 000041e0
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,252) 208x1
+[DDE4] clut16 0000 4673 3e31 3610 31ce 29ad 216b 1d4a 1929 1908 14e7 14c6 10a5 1084 0c63 0842
+[DDE4] clut80 0000 6294 5a52 5210 49ce 45ad 3d6b 3529 3108 28e7 24c6 20a5 1884 1463 1042 0c21
+[DDE4] blk[1] magic=1100 base=(832,256) offs=(0,0) dest=(576,256) 32x256
+[DDE4] tex16 1111 f111 ffff ffff 111f 1111 1111 1111
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(32,0) dest=(608,256) 16x248
+[DDE4] tex16 998f 9999 8888 f788 aaaa aaaa aaaa f9aa
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(48,0) dest=(624,256) 12x256
+[DDE4] tex16 eeee eeee 6666 6666 1111 1111 1111 1111
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(60,104) dest=(636,360) 4x112
+[DDE4] tex16 8877 aa99 ccbb eedd 8877 aa99 ccbb eedd
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(60,0) dest=(636,256) 4x88
+[DDE4] tex16 eede fedf eeee eeee eefe fedf bbbb bbbb
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(60,216) dest=(636,472) 2x16
+[DDE4] tex16 bcde a99a bcde a99a bcde a99a bcde a99a
+[obj-ovly] clip-bind anim=0 clip=0x737170 bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 2301 1700 2300 1800 2300 1d00 2301
+[obj-ovly] pose-meta flags=0000 nrot=51 ntrans=51 nnodes=52 skip6=0 applied-rot=51 applied-t=51
+[obj-ovly] pose op=10 idx=0 pose=0x73244c child-r=(699,-1024,699) child-t=(0,-3770,0)
+[obj-ovly] clip-tick ip=0x73717a op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[obj-ovly] 742C done slot=0 obj=0x73d54c nodes=0x73d6e0 groups=20 vec=(0,0,0)
+[obj-ovly] 742C slot=1 flags=0 model=0x7374fc tex=0x7dff38 xy=(512,256) zw=(0,253) vec=0x9b28ec
+[obj-ovly]  model[0..3]=00000002 00000010 00001b84 00001ba4
+[obj-ovly]  tex[0..3]=00000004 00000018 00006084 00009960
+[obj-ovly] DDE4 image=0x7dff50 mode=1 xy=(512,256)
+[DDE4] p=0x7dff50 count=10 mode=1/1 xy=(512,256) clut=(0,253) w0=0000000a 0000002c 0000015c 0000018c
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,253) 144x1
+[DDE4] clut16 0000 5695 4e53 4a32 4611 41f0 3dcf 39ae 358d 316c 2d4b 292a 2509 20e8 1cc7 18a6
+[DDE4] clut80 0000 62f8 5ab6 5695 4e73 4a31 4610 3dee 39ad 358b 2d6a 2948 2528 20e6 1cc5 1ca5
+[DDE4] blk[1] magic=1101 base=(0,496) offs=(160,0) dest=(160,253) 16x1
+[DDE4] clut16 0000 5ef7 56b5 4e73 4632 3e10 31ce 258d 194c 110b 2d09 24e8 20c7 1ca6 1485 0c43
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(0,0) dest=(512,256) 48x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 2222 2222
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(50,0) dest=(562,256) 6x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(60,0) dest=(572,256) 4x176
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(56,48) dest=(568,304) 2x136
+[DDE4] tex16 eebb bbbe dd99 999d bb77 777b aa66 666a
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(58,48) dest=(570,304) 2x128
+[DDE4] tex16 beee eebb 9ddd dd99 7bbb bb77 6aaa aa66
+[DDE4] blk[7] magic=1100 base=(832,256) offs=(48,0) dest=(560,256) 2x104
+[DDE4] tex16 1111 1111 1111 1111 2222 2222 2222 2222
+[DDE4] blk[8] magic=1100 base=(832,256) offs=(48,120) dest=(560,376) 2x72
+[DDE4] tex16 bbbb bbbb eeee eeee 2233 2222 3344 3333
+[DDE4] blk[9] magic=1100 base=(832,256) offs=(56,0) dest=(568,256) 4x32
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[obj-ovly] clip-bind anim=0 clip=0x738fe0 bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 1300 0100 0014 2100 0000 0a00 0c00
+[obj-ovly] pose-meta flags=0000 nrot=50 ntrans=50 nnodes=51 skip6=0 applied-rot=50 applied-t=50
+[obj-ovly] pose op=10 idx=0 pose=0x73758c child-r=(0,0,0) child-t=(0,-3141,0)
+[obj-ovly] clip-tick ip=0x738fea op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[obj-ovly] 742C done slot=1 obj=0x750770 nodes=0x7508f4 groups=16 vec=(0,0,0)
+[obj-ovly] 742C slot=2 flags=0 model=0x7390a8 tex=0x7d64e4 xy=(448,256) zw=(0,254) vec=0x9b28f4
+[obj-ovly]  model[0..3]=00000002 00000010 00001b84 00001ba4
+[obj-ovly]  tex[0..3]=00000004 00000018 00006084 00009960
+[obj-ovly] DDE4 image=0x7d64fc mode=1 xy=(448,256)
+[DDE4] p=0x7d64fc count=10 mode=1/1 xy=(448,256) clut=(0,254) w0=0000000a 0000002c 0000015c 0000018c
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,254) 144x1
+[DDE4] clut16 0000 5695 4e53 4a32 4611 41f0 3dcf 39ae 358d 316c 2d4b 292a 2509 20e8 1cc7 18a6
+[DDE4] clut80 0000 62f8 5ab6 5695 4e73 4a31 4610 3dee 39ad 358b 2d6a 2948 2528 20e6 1cc5 1ca5
+[DDE4] blk[1] magic=1101 base=(0,496) offs=(160,0) dest=(160,254) 16x1
+[DDE4] clut16 0000 5ef7 56b5 4e73 4632 3e10 31ce 258d 194c 110b 2d09 24e8 20c7 1ca6 1485 0c43
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(0,0) dest=(448,256) 48x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 2222 2222
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(50,0) dest=(498,256) 6x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(60,0) dest=(508,256) 4x176
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(56,48) dest=(504,304) 2x136
+[DDE4] tex16 eebb bbbe dd99 999d bb77 777b aa66 666a
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(58,48) dest=(506,304) 2x128
+[DDE4] tex16 beee eebb 9ddd dd99 7bbb bb77 6aaa aa66
+[DDE4] blk[7] magic=1100 base=(832,256) offs=(48,0) dest=(496,256) 2x104
+[DDE4] tex16 1111 1111 1111 1111 2222 2222 2222 2222
+[DDE4] blk[8] magic=1100 base=(832,256) offs=(48,120) dest=(496,376) 2x72
+[DDE4] tex16 bbbb bbbb eeee eeee 2233 2222 3344 3333
+[DDE4] blk[9] magic=1100 base=(832,256) offs=(56,0) dest=(504,256) 4x32
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[obj-ovly] clip-bind anim=0 clip=0x73ab8c bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 1300 0100 0014 2100 0000 0a00 0c00
+[obj-ovly] pose-meta flags=0000 nrot=50 ntrans=50 nnodes=51 skip6=0 applied-rot=50 applied-t=50
+[obj-ovly] pose op=10 idx=0 pose=0x739138 child-r=(0,0,0) child-t=(0,-3141,0)
+[obj-ovly] clip-tick ip=0x73ab96 op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[obj-ovly] 742C done slot=2 obj=0x761208 nodes=0x76138c groups=16 vec=(0,0,0)
+[obj-ovly] 742C slot=3 flags=0 model=0x73ac54 tex=0x7cca90 xy=(384,256) zw=(0,255) vec=0x9b28fc
+[obj-ovly]  model[0..3]=00000002 00000010 00001b84 00001ba4
+[obj-ovly]  tex[0..3]=00000004 00000018 00006084 00009960
+[obj-ovly] DDE4 image=0x7ccaa8 mode=1 xy=(384,256)
+[DDE4] p=0x7ccaa8 count=10 mode=1/1 xy=(384,256) clut=(0,255) w0=0000000a 0000002c 0000015c 0000018c
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,255) 144x1
+[DDE4] clut16 0000 5695 4e53 4a32 4611 41f0 3dcf 39ae 358d 316c 2d4b 292a 2509 20e8 1cc7 18a6
+[DDE4] clut80 0000 62f8 5ab6 5695 4e73 4a31 4610 3dee 39ad 358b 2d6a 2948 2528 20e6 1cc5 1ca5
+[DDE4] blk[1] magic=1101 base=(0,496) offs=(160,0) dest=(160,255) 16x1
+[DDE4] clut16 0000 5ef7 56b5 4e73 4632 3e10 31ce 258d 194c 110b 2d09 24e8 20c7 1ca6 1485 0c43
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(0,0) dest=(384,256) 48x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 2222 2222
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(50,0) dest=(434,256) 6x192
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(60,0) dest=(444,256) 4x176
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(56,48) dest=(440,304) 2x136
+[DDE4] tex16 eebb bbbe dd99 999d bb77 777b aa66 666a
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(58,48) dest=(442,304) 2x128
+[DDE4] tex16 beee eebb 9ddd dd99 7bbb bb77 6aaa aa66
+[DDE4] blk[7] magic=1100 base=(832,256) offs=(48,0) dest=(432,256) 2x104
+[DDE4] tex16 1111 1111 1111 1111 2222 2222 2222 2222
+[DDE4] blk[8] magic=1100 base=(832,256) offs=(48,120) dest=(432,376) 2x72
+[DDE4] tex16 bbbb bbbb eeee eeee 2233 2222 3344 3333
+[DDE4] blk[9] magic=1100 base=(832,256) offs=(56,0) dest=(440,256) 4x32
+[DDE4] tex16 1111 1111 1111 1111 1111 1111 1111 1111
+[obj-ovly] clip-bind anim=0 clip=0x73c738 bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 1300 0100 0014 2100 0000 0a00 0c00
+[obj-ovly] pose-meta flags=0000 nrot=50 ntrans=50 nnodes=51 skip6=0 applied-rot=50 applied-t=50
+[obj-ovly] pose op=10 idx=0 pose=0x73ace4 child-r=(0,0,0) child-t=(0,-3141,0)
+[obj-ovly] clip-tick ip=0x73c742 op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[obj-ovly] 742C done slot=3 obj=0x771ca0 nodes=0x771e24 groups=16 vec=(0,0,0)
+[field-diag] func_8002C644: real pin base=0x7c8890 size=10664 (pins=1)
+[field-diag] func_8002C644: real pin base=0x7f2360 size=9028 (pins=2)
+[field-diag] func_8002C644: real pin base=0x7eea7c size=9028 (pins=3)
+[field-diag] func_8002C644: real pin base=0x7eb198 size=9028 (pins=4)
+[field-0bb] archive 0xd9: 112640 bytes read, draining to VRAM
+[field-0bb] retail decoder: 55 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][opcode56] FE54 snapshot actor=2 lock_ip=0x006b pre_lock_control=0 pending=1
+[field-diag] fogenv f=1 on=0 base=(128,128,128) far=(255,255,255) near=5600 farz=12300 scrz=256 back=(30,30,30)
+[field-diag] models frame=0 considered=3 emitted=0 hidden=2 status20=1 objects=4 otEmits=0
+[field-diag] camera eye=(-2687,1962,-314) at=(-3000,2218,0)
+[field-diag] actor3 ip=176 flags4=04602000 status=0240 pos=(-6000,4500,0)
+[field-diag] func_80075B44 frame=0 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[xeno-port][horizon] DIAG 273C4 screenY=-171 scroll=280 fade=0 hasColors=1 h=224 stripScale=0 ot=0x9f9f14 rcx=0 ft4[0]=(9563,3839)-(28682,20736) tpage=0x4a00
+[obj-ovly] clip-tick ip=0x737198 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=0 actor=1 t=(-6000,4500,0) nnodes=52 child-t=(0,-2844,0) dlt=(0,0,0)
+[obj-ovly] state f=1 slot=0 bound=1 anim=0 snap=(-6000,4500,0) root.t=(-6000,4500,0) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-6000,4500,0) n1.t=(0,-2844,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=0 nodes=52 emitted=31 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=1 actor=1 t=(-6000,4500,0) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] state f=1 slot=1 bound=1 anim=0 snap=(-6000,4500,0) root.t=(-6000,4500,0) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-6000,4500,0) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=1 nodes=51 emitted=21 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] bind slot=2 actor=1 t=(-7000,4500,-600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] state f=1 slot=2 bound=1 anim=0 snap=(-7000,4500,-600) root.t=(-7000,4500,-600) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-7000,4500,-600) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=2 nodes=51 emitted=21 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] bind slot=3 actor=1 t=(-7000,4500,600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] state f=1 slot=3 bound=1 anim=0 snap=(-7000,4500,600) root.t=(-7000,4500,600) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-7000,4500,600) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=3 nodes=51 emitted=21 ctx=0 anim=0
+[cull-cam] CAMZ bit4000=1 DIP=30 SCRZ=256 meshY=0 eye2y=1962 wouldSnap=0
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=0 actor=1 t=(-6000,4500,0) nnodes=52 child-t=(0,-3673,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=0 nodes=52 emitted=31 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=1 actor=1 t=(-6000,4500,0) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=1 nodes=51 emitted=21 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] bind slot=2 actor=1 t=(-7000,4500,-600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=2 nodes=51 emitted=21 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] bind slot=3 actor=1 t=(-7000,4500,600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=3 nodes=51 emitted=21 ctx=1 anim=0
+[field-diag] frame=0 D_800ADC18=4 useOT2=1 primSubmits=0 DrawOTag=1
+[field-diag] models frame=1 considered=3 emitted=0 hidden=2 status20=1 objects=4 otEmits=0
+[field-diag] camera eye=(-2687,1962,-314) at=(-3000,2218,0)
+[field-diag] actor3 ip=183 flags4=04612000 status=0240 pos=(-6000,4500,0)
+[field-diag] func_80075B44 frame=1 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[cull-cam] CAMZ bit4000=1 DIP=30 SCRZ=256 meshY=0 eye2y=1962 wouldSnap=0
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=0 actor=1 t=(-6000,4500,0) nnodes=52 child-t=(0,-3673,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=0 nodes=52 emitted=31 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] bind slot=1 actor=1 t=(-6000,4500,0) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=1 nodes=51 emitted=21 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] bind slot=2 actor=1 t=(-7000,4500,-600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=2 nodes=51 emitted=21 ctx=0 anim=0
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] bind slot=3 actor=1 t=(-7000,4500,600) nnodes=51 child-t=(0,-3141,0) dlt=(0,0,0)
+[obj-ovly] 7D14 slot=3 nodes=51 emitted=21 ctx=0 anim=0
+[field-diag] frame=1 D_800ADC18=3 useOT2=1 primSubmits=0 DrawOTag=1
+[field-diag] models frame=2 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=186 flags4=04612000 status=0240 pos=(-6000,4500,0)
+[field-diag] func_80075B44 frame=2 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[cull-cam] CAMZ bit4000=1 DIP=30 SCRZ=256 meshY=0 eye2y=1662 wouldSnap=0
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5949,4461,0)
+[obj-ovly] 7D14 slot=0 nodes=52 emitted=31 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] 7D14 slot=1 nodes=51 emitted=21 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] 7D14 slot=2 nodes=51 emitted=21 ctx=1 anim=0
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] 7D14 slot=3 nodes=51 emitted=21 ctx=1 anim=0
+[field-diag] frame=2 D_800ADC18=2 useOT2=1 primSubmits=0 DrawOTag=1
+[field-diag] models frame=3 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=211 flags4=04612000 status=0240 pos=(-5949,4461,0)
+[field-diag] func_80075B44 frame=3 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[cull-cam] CAMZ bit4000=1 DIP=30 SCRZ=256 meshY=0 eye2y=1662 wouldSnap=0
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5898,4423,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[field-diag] frame=3 D_800ADC18=1 useOT2=1 primSubmits=0 DrawOTag=1
+[field-diag] models frame=4 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=211 flags4=04612000 status=0240 pos=(-5898,4423,0)
+[field-diag] func_80075B44 frame=4 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5847,4384,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[field-diag] submit[0] srcOff=0x40d0 size=1824 tag=00ffffff w1=009f8298 w2=009f829c w3=009f82a0
+[field-diag] submit[1] srcOff=0xcc size=1824 tag=00ffffff w1=009f4294 w2=009f4298 w3=009f429c
+[field-diag] frame=4 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=010400 xy0=(75,-103) xy3=(320,121) uv0=00,00 clut=7e80 tpage=0089
+[field-diag] ot-ft4 #1 rgb=491872 xy0=(0,-103) xy3=(75,121) uv0=75,00 clut=7e80 tpage=008a
+[field-diag] ot-ft4 #2 rgb=000000 xy0=(320,-26) xy3=(363,57) uv0=20,80 clut=7981 tpage=0007
+[field-diag] ot-walk frame=4 steps=3686 prims=28 codes: 00:22 2d:3 62:2 e1:1
+[field-diag] models frame=5 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=211 flags4=04612000 status=0240 pos=(-5847,4384,0)
+[field-diag] func_80075B44 frame=5 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5795,4346,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[field-diag] submit[2] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a083b8 w2=00a083bc w3=00a083c0
+[field-diag] submit[3] srcOff=0xcc size=1824 tag=00ffffff w1=00a043b4 w2=00a043b8 w3=00a043bc
+[field-diag] frame=5 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=b400d4 xy0=(75,-103) xy3=(320,121) uv0=00,00 clut=7e80 tpage=0089
+[field-diag] ot-ft4 #1 rgb=d31f98 xy0=(0,-103) xy3=(75,121) uv0=75,00 clut=7e80 tpage=008a
+[field-diag] ot-ft4 #2 rgb=000000 xy0=(320,-26) xy3=(363,57) uv0=20,80 clut=7981 tpage=0007
+[field-diag] ot-walk frame=5 steps=3686 prims=28 codes: 00:22 2d:3 62:2 e1:1
+[field-diag] models frame=6 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=211 flags4=04612000 status=0240 pos=(-5795,4346,0)
+[field-diag] func_80075B44 frame=6 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5744,4307,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[field-diag] submit[4] srcOff=0x40d0 size=1824 tag=00ffffff w1=009f8298 w2=009f829c w3=009f82a0
+[field-diag] submit[5] srcOff=0xcc size=1824 tag=00ffffff w1=009f4294 w2=009f4298 w3=009f429c
+[field-diag] frame=6 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=010400 xy0=(75,-103) xy3=(320,121) uv0=00,00 clut=7e80 tpage=0089
+[field-diag] ot-ft4 #1 rgb=491872 xy0=(0,-103) xy3=(75,121) uv0=75,00 clut=7e80 tpage=008a
+[field-diag] ot-ft4 #2 rgb=000000 xy0=(320,-26) xy3=(363,57) uv0=20,80 clut=7981 tpage=0007
+[field-diag] ot-walk frame=6 steps=3687 prims=29 codes: 00:23 2d:3 62:2 e1:1
+[field-diag] models frame=7 considered=3 emitted=2 hidden=0 status20=1 objects=4 otEmits=9
+[field-diag] camera eye=(-1442,1662,-58) at=(-2000,1500,0)
+[field-diag] actor3 ip=211 flags4=04612000 status=0240 pos=(-5744,4307,0)
+[field-diag] func_80075B44 frame=7 active=8 plain=0 status20=4 flagNeg=3 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=4
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5693,4269,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[field-diag] submit[6] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a083b8 w2=00a083bc w3=00a083c0
+[field-diag] submit[7] srcOff=0xcc size=1824 tag=00ffffff w1=00a043b4 w2=00a043b8 w3=00a043bc
+[field-diag] frame=7 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5642,4230,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] clip-tick ip=0x73734e op=00 rx=0 ry=3072 rz=0 d70=0000 t=(-5590,4192,0)
+[obj-ovly] clip-tick ip=0x738ff8 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-6000,4500,0)
+[obj-ovly] clip-tick ip=0x73aba4 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,-600)
+[obj-ovly] clip-tick ip=0x73c750 op=21 rx=0 ry=3072 rz=0 d70=0000 t=(-7000,4500,600)
+[obj-ovly] state f=31 slot=0 bound=1 anim=0 snap=(-4565,3423,0) root.t=(-4565,3423,0) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-4565,3423,0) n1.t=(0,-3673,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] state f=31 slot=1 bound=1 anim=0 snap=(-6000,4500,0) root.t=(-6000,4500,0) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-6000,4500,0) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] state f=31 slot=2 bound=1 anim=0 snap=(-7000,4500,-600) root.t=(-7000,4500,-600) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-7000,4500,-600) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[obj-ovly] state f=31 slot=3 bound=1 anim=0 snap=(-7000,4500,600) root.t=(-7000,4500,600) root.rot=(0,3072,0) root.scl=(4096,4096,4096) root.L0=(0,0,-4096) root.Lt=(-7000,4500,600) n1.t=(0,-3141,0) n1.W0=(0,0,0) n1.Wt=(0,0,0) dlt=(0,0,0)
+[field-diag] fogenv f=31 on=0 base=(128,128,128) far=(255,255,255) near=5600 farz=12300 scrz=256 back=(30,30,30)
+[field-diag] fmodel f=31 actor=8 st=0290 pos=(-1446,1823,195) R0=(3808,1509,-6) mm.R0=(-509,4771,11307) mm.t=(753,489,-47) work.t=(619,-5985,-2737) model=0x71e0a0 verts=0x71e0d8 packet=0x724bdc payload=4096 ngrp=2 variant=2
+[field-diag] fmodel f=31 actor=9 st=0290 pos=(-1359,1824,-267) R0=(3869,1344,57) mm.R0=(3236,-5897,10279) mm.t=(-598,381,-436) work.t=(619,-5985,-2737) model=0x71e0a0 verts=0x71e0d8 packet=0x726dc8 payload=4096 ngrp=2 variant=2

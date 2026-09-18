@@ -2,9 +2,9 @@
  * movie.bin — retail game state 6 (g_MainGameStates[6]: main MovieMain
  * 0x800737EC, state/BSS 0x80076F38, heap 0x80077454, archive 0x12).
  *
- * The shipping boot (func_80019578) sets D_8004FE44 = 1 (movie number),
+ * The shipping boot (func_80019578) sets D_8004FE44 = 1 (movie type),
  * D_8004FE46 = 1 (return state: Field), D_8004FE47 = 0 (skip allowed),
- * D_8004FE45 = disc number and calls ChangeGameState(6).  MovieMain loads the
+ * D_8004FE45 = 16 on disc 1, 7 otherwise, and calls ChangeGameState(6). MovieMain loads the
  * movie player module (archive directory 0x18 file 1, placed at 0x801D3000;
  * see config/movie_player.yaml), plays the opening STR through it and returns
  * to the requested state.  When D_8004FE44 == 0xFF, or L2 (0x100) is held on
@@ -47,7 +47,7 @@ extern unsigned char g_PsxRam[];
 
 /* SLUS symbols */
 extern u8 D_8004FE44;   /* movie number (bit 7: use D_80062514 as end frame) */
-extern u8 D_8004FE45;   /* disc number (movie file selector) */
+extern u8 D_8004FE45;   /* movie file selector, not the disc number */
 extern u8 D_8004FE46;   /* game state to enter after the movie */
 extern u8 D_8004FE47;   /* nonzero: skipping disabled */
 extern s32 D_8005A49C;

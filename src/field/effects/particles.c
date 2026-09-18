@@ -19,6 +19,12 @@ static inline SetVector(SVECTOR* pVec, short value) {
     pVec->vz = value;
 }
 
+/* The heap lives in low-address RAM in the native port. Keep its address in
+ * the retail four-byte bank slot so typed and raw script accesses agree. */
+static inline ParticlePrimitive* ParticleBankPrimitives(ParticleBank* pBank) {
+    return (ParticlePrimitive*)(uintptr_t)pBank->pPrimitives;
+}
+
 void FieldInitializeParticles(void) {
     int i;
 
@@ -35,7 +41,7 @@ void FieldParticlesFree(int index) {
     if (g_FieldParticleStatuses[index] == 1) {
         for (i = 0, pCurBank = g_FieldParticleBanks[index]; i < NUM_PARTICLE_BANKS; i++, pCurBank++) {
             if (pCurBank->max != 0) {
-                HeapFree(pCurBank->pPrimitives);
+                HeapFree(ParticleBankPrimitives(pCurBank));
             }            
         }
         HeapFree(g_FieldParticleBanks[index]);
@@ -75,7 +81,7 @@ void FieldParticlesStopBanks(int index) {
         
         pCurBank->ewait = 0;
         for (j = 0; j < pCurBank->max; j++) {
-            ParticlePrimitive* pPrim = &pCurBank->pPrimitives[j];
+            ParticlePrimitive* pPrim = &ParticleBankPrimitives(pCurBank)[j];
             pPrim->ewait = 1;
         }
     }
@@ -157,15 +163,15 @@ void FieldParticlesTickAndRender(void) {
                     
                     if (pCurBank->swait == 0) {
                         for (primIndex = 0; primIndex < pCurBank->max; primIndex++) {
-                            if (pCurBank->pPrimitives[primIndex].active == 0) {
+                            if (ParticleBankPrimitives(pCurBank)[primIndex].active == 0) {
                                 // If the particle duration on our bank is non-zero, start the particle
                                 if (pCurBank->ewait != 0) {
-                                    FieldParticleStart(pCurBank, &pCurBank->pPrimitives[primIndex], &timer);
-                                    FieldParticleUpdateAndRender(pCurBank, &pCurBank->pPrimitives[primIndex], &matWorldToScreen);
+                                    FieldParticleStart(pCurBank, &ParticleBankPrimitives(pCurBank)[primIndex], &timer);
+                                    FieldParticleUpdateAndRender(pCurBank, &ParticleBankPrimitives(pCurBank)[primIndex], &matWorldToScreen);
                                     bInUse = 1;
                                 }
                             } else {
-                                FieldParticleUpdateAndRender(pCurBank, &pCurBank->pPrimitives[primIndex], &matWorldToScreen);
+                                FieldParticleUpdateAndRender(pCurBank, &ParticleBankPrimitives(pCurBank)[primIndex], &matWorldToScreen);
                                 bInUse = 1;
                             }
                         }
@@ -253,13 +259,13 @@ int FieldInitializeParticleBanks(int actorIndex) {
         if (pCurrent->max == 0)
             continue;
         
-        pCurrent->pPrimitives = HeapAlloc(pCurrent->max * sizeof(ParticlePrimitive), 0);
+        pCurrent->pPrimitives = (u32)(uintptr_t)HeapAlloc(pCurrent->max * sizeof(ParticlePrimitive), 0);
         for (j = 0; j < pCurrent->max; j++) {
-            pCurrent->pPrimitives[j].active = 0;
+            ParticleBankPrimitives(pCurrent)[j].active = 0;
             FieldInitializeParticlePrimitive(
-                &pCurrent->pPrimitives[j], 
+                &ParticleBankPrimitives(pCurrent)[j],
                 pCurrent->shape, 
-                (((pCurrent->flags << 0x10) >> 0x18) + 1) & 3
+                ((((s16)pCurrent->flags >> 8) + 1) & 3)
             );
         }
     }
@@ -353,7 +359,10 @@ void FieldParticleRender(ParticlePrimitive* pParticle, MATRIX* pMatWorldToScreen
 
     // Render the POLY_FT4 primitive as long as out OT Z-index is valid
     if ((value - 1) < (FIELD_OT_MAX_SIZE - 1)) {
-        addPrim(g_FieldCurRenderContext->ot1 + value, &pParticle->poly[g_FieldCurRenderContextIndex]);
+        /* Retail 800A9E90..800A9EEC indexes packed words at context +0xCC.
+         * Field clear/submit use that same table, not the LP64 typed OT. */
+        u32* ot = (u32*)((u8*)g_FieldCurRenderContext + 0xCC);
+        addPrim(ot + value, &pParticle->poly[g_FieldCurRenderContextIndex]);
     }
 }
 

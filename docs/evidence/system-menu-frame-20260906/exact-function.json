@@ -1,0 +1,12 @@
+{
+  "retail_range": "SLUS[0xC874:0xC9A8] / 0x8001C074..0x8001C1A8",
+  "size": 308,
+  "retail_sha256": "0be4caf007322b055a6a33c46421b6e5228b73e54ff0244eaf7213b57a1f2ecf",
+  "compiled_sha256": "0be4caf007322b055a6a33c46421b6e5228b73e54ff0244eaf7213b57a1f2ecf",
+  "method": "GCC2.6 compiles actual full production menu.c; exact emitted function assembly is isolated unchanged and linked at retail VMA with retail symbol addresses. Whole SLUS layout remains nonmatching.",
+  "source_sha256": "a323d96071b9004f603085f3740667b5678a3f8cdfbd20a436751fa25eb134bb",
+  "header_sha256": "7b7eca9f0769ff5bdd89bb8cd3f18f26382aa2c6ae95d76f023cace1f26a5543",
+  "emitted_full_assembly_sha256": "0a65c01725c37dcd8a664b438e551e2c95c27672b55e32ec91dc098efd095e9a",
+  "command_script_sha256": "580f4e883745fc62e96702145f8f92f41d47c58a14e5eabdf13ee1ecabb49e5e",
+  "qualifier_probe": "Full menu emitted instructions unchanged before/after qualifier ownership change; shop/member emitted instructions unchanged ignoring .file and comments. Isolated makecheck confirms entire member unchanged/exact and shop unchanged."
+}

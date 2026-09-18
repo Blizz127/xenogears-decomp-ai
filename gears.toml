@@ -7,7 +7,7 @@ build = 'build'
 
 [compilation]
 binary = "slus_006.64"
-overlays = ["field", "member_change_menu", "shop_menu", "menu"]
+overlays = ["field", "member_change_menu", "shop_menu", "menu", "battle", "battling", "movie", "battle_command_file1", "world_map"]
 target = 'mips-linux-gnu'
 
 [[build_preset]]
@@ -16,7 +16,8 @@ name = "Default"
 build_variables = {
     gcc = "gcc-2.7.2-psx",
     cc_flags = "-mips1 -mcpu=3000 -w -funsigned-char -fpeephole -ffunction-cse -fpcc-struct-return -fcommon -fverbose-asm -msoft-float -mgas -fgnu-linker -quiet",
-    cpp_flags = "-D_LANGUAGE_C -DUSE_INCLUDE_ASM -P -MMD -MP -undef -Wall -lang-c -nostdinc",
+    # Use the same exported jump-table labels as standalone Splat assembly.
+    cpp_flags = "-D_LANGUAGE_C -DUSE_INCLUDE_ASM -DINCLUDE_ASM_USE_MACRO_INC=1 -P -MMD -MP -undef -Wall -lang-c -nostdinc",
     ld_flags = "-nostdlib --no-check-sections",
     maspsx_flags = "--use-comm-section --run-assembler",
     optimization_flag = "-O2",
@@ -43,6 +44,19 @@ paths = [
     "{binary}/system/sound.",
     "member_change_menu/main/misc.",
     "shop_menu/main/misc.",
+    # The shop overlay's retail code interleaves unmatched regions with C runs,
+    # so its single TU is split over misc{,2..9}.c; every one of them is the
+    # same retail compiler (gcc-2.6.0-psx).  Preset keys are substring matches,
+    # so `shop_menu/main/misc.` would miss misc2.c..misc9.c and silently compile
+    # them with the Default 2.7.2 preset (measured: 15 functions changed size).
+    "shop_menu/main/misc2.",
+    "shop_menu/main/misc3.",
+    "shop_menu/main/misc4.",
+    "shop_menu/main/misc5.",
+    "shop_menu/main/misc6.",
+    "shop_menu/main/misc7.",
+    "shop_menu/main/misc8.",
+    "shop_menu/main/misc9.",
 ]
 
 [[build_preset]]
@@ -56,11 +70,65 @@ paths = [
 ]
 
 [[build_preset]]
+name = "BattleLiteral"
+# The battle layout has two assembler flavours of the `li` expansion: most
+# bodies use maspsx's lui/ori form, but a handful of retail bodies encode the
+# constant as `addiu $r,$zero,K` exactly like gas does when maspsx leaves `li`
+# alone.  Only the addiu-flavoured TUs (named `mainl*`) select this preset; it
+# changes nothing but the li expansion.
+build_variables = {
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
+}
+paths = [
+    "battle/mainl",
+]
+
+[[build_preset]]
+name = "SdataSmall"
+# Only TUs whose retail addresses *extern* (not TU-defined) symbols via
+# %gp_rel select this preset; it changes nothing but -G forwarding.
+# NOTE (temp3 lesson): a TU whose retail mixes absolute extern access with
+# %gp_rel does NOT belong here. The %gp_rel sites must be same-TU small
+# definitions (cc1 -G8 then emits explicit %gp_rel regardless of the
+# assembler -G flag), while plain externs assemble absolute under the
+# Default preset (maspsx force-appends -G0). Putting such a mixed TU here
+# flips every absolute access to GPREL16 and regresses the whole TU.
+build_variables = {
+    maspsx_flags = "--dont-force-G0 --use-comm-section --run-assembler",
+}
+paths = [
+    "{binary}/system/temp1.",
+    "{binary}/system/memory.",
+    "{binary}/system/work_list.",
+    "{binary}/system/rendering.",
+    "{binary}/system/heap_debug.",
+    "{binary}/system/graphics.",
+    "{binary}/system/animation_scripts.",
+]
+
+[[build_preset]]
 name = "XenoMain"
 build_variables = {
     gp_flag = "-G0"
 }
 paths = [ "{binary}/main/main_loop." ]
+
+[[build_preset]]
+name = "BattleCdk"
+# Part of the battle overlay was built with the CDK compiler: it materialises a
+# call argument's symbol address as `lui %hi` before the call with `addiu %lo`
+# in the jal delay slot (and the a0 copy before the `lui`), where the PSY-Q
+# 2.7.2 cc1 emits a single `la` that gas expands in place.  Those TUs also
+# encode `li` as `addiu $r,$zero,K`, so they take the literal flavour too.
+# Bodies verified by shape harness: func_800B5924 38/38, func_800B5C18 42/42,
+# func_800BF7C8 37/37 (vs 34/38, 39/42, 33/37 with gcc-2.7.2-psx).
+build_variables = {
+    gcc = "gcc-2.7.2-cdk-psx",
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
+}
+paths = [
+    "battle/mainc",
+]
 
 [[build_preset]]
 name = "XenoGraphicsLibrary"

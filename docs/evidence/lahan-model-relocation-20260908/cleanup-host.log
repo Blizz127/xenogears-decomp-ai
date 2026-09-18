@@ -1,0 +1,248 @@
+In file included from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: ‘OvlyNodeModel’ defined but not used [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: ‘OvlyStampTpageClut’ defined but not used [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: ‘OvlyDumpVerts’ defined but not used [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+In file included from pc_port/tests/../src/field_object_overlay.c:19,
+                 from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801E37D0’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1841:5: note: in expansion of macro ‘gte_ldv0’
+ 1841 |     gte_ldv0(&offset);
+      |     ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801DCEC8’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2190:9: note: in expansion of macro ‘gte_ldv0’
+ 2190 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2196:9: note: in expansion of macro ‘gte_ldv0’
+ 2196 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2236:9: note: in expansion of macro ‘gte_ldv0’
+ 2236 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2241:9: note: in expansion of macro ‘gte_ldv0’
+ 2241 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2250:9: note: in expansion of macro ‘gte_ldv0’
+ 2250 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2258:9: note: in expansion of macro ‘gte_ldv0’
+ 2258 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: At top level:
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: ‘OvlyNodeModel’ defined but not used [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: ‘OvlyStampTpageClut’ defined but not used [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: ‘OvlyDumpVerts’ defined but not used [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+In file included from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: unused function 'OvlyDumpVerts' [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: unused function 'OvlyStampTpageClut' [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: unused function 'OvlyNodeModel' [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+3 warnings generated.
+In file included from pc_port/tests/../src/field_object_overlay.c:19,
+                 from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801E37D0’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1841:5: note: in expansion of macro ‘gte_ldv0’
+ 1841 |     gte_ldv0(&offset);
+      |     ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801DCEC8’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2190:9: note: in expansion of macro ‘gte_ldv0’
+ 2190 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2196:9: note: in expansion of macro ‘gte_ldv0’
+ 2196 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2236:9: note: in expansion of macro ‘gte_ldv0’
+ 2236 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2241:9: note: in expansion of macro ‘gte_ldv0’
+ 2241 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2250:9: note: in expansion of macro ‘gte_ldv0’
+ 2250 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2258:9: note: in expansion of macro ‘gte_ldv0’
+ 2258 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: At top level:
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: ‘OvlyNodeModel’ defined but not used [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: ‘OvlyStampTpageClut’ defined but not used [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: ‘OvlyDumpVerts’ defined but not used [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+In file included from pc_port/tests/../src/field_object_overlay.c:19,
+                 from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801E37D0’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1841:5: note: in expansion of macro ‘gte_ldv0’
+ 1841 |     gte_ldv0(&offset);
+      |     ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801DCEC8’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2190:9: note: in expansion of macro ‘gte_ldv0’
+ 2190 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2196:9: note: in expansion of macro ‘gte_ldv0’
+ 2196 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2236:9: note: in expansion of macro ‘gte_ldv0’
+ 2236 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2241:9: note: in expansion of macro ‘gte_ldv0’
+ 2241 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2250:9: note: in expansion of macro ‘gte_ldv0’
+ 2250 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2258:9: note: in expansion of macro ‘gte_ldv0’
+ 2258 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: At top level:
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: ‘OvlyNodeModel’ defined but not used [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: ‘OvlyStampTpageClut’ defined but not used [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: ‘OvlyDumpVerts’ defined but not used [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+In file included from pc_port/tests/../src/field_object_overlay.c:19,
+                 from pc_port/tests/field_object_cleanup_adapter_test.c:8:
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801E37D0’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1841:5: note: in expansion of macro ‘gte_ldv0’
+ 1841 |     gte_ldv0(&offset);
+      |     ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: In function ‘func_801DCEC8’:
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2190:9: note: in expansion of macro ‘gte_ldv0’
+ 2190 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2196:9: note: in expansion of macro ‘gte_ldv0’
+ 2196 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2236:9: note: in expansion of macro ‘gte_ldv0’
+ 2236 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2241:9: note: in expansion of macro ‘gte_ldv0’
+ 2241 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2250:9: note: in expansion of macro ‘gte_ldv0’
+ 2250 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/extern/PsyCross/include/psx/inline_c.h:45:23: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   45 |         {       MTC2(*(uint*)((char*)(r0)+0), 0);\
+      |                       ^~~~~~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:2258:9: note: in expansion of macro ‘gte_ldv0’
+ 2258 |         gte_ldv0(&sv);
+      |         ^~~~~~~~
+pc_port/tests/../src/field_object_overlay.c: At top level:
+pc_port/tests/../src/field_object_overlay.c:2632:12: warning: ‘OvlyNodeModel’ defined but not used [-Wunused-function]
+ 2632 | static u8* OvlyNodeModel(OvlyPtrTab* tab, const u8* node) {
+      |            ^~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1968:13: warning: ‘OvlyStampTpageClut’ defined but not used [-Wunused-function]
+ 1968 | static void OvlyStampTpageClut(u8* work, s32 payload, u16 tpage, u16 clut) {
+      |             ^~~~~~~~~~~~~~~~~~
+pc_port/tests/../src/field_object_overlay.c:1934:13: warning: ‘OvlyDumpVerts’ defined but not used [-Wunused-function]
+ 1934 | static void OvlyDumpVerts(u8* model, unsigned idx) {
+      |             ^~~~~~~~~~~~~
+FIELD_OBJECT_CLEANUP_ADAPTER RETAIL_SLICE PASS
+FIELD_OBJECT_CLEANUP_ADAPTER PASS checks=39
+FIELD_OBJECT_CLEANUP_ADAPTER MUTANTS PASS

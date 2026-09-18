@@ -1,0 +1,538 @@
+[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)
+[xeno-port] PSX RAM emulation: 3072 KB at 0x619ea0
+[xeno-port] main-exe static data loaded from disc/SLUS_006.64: rodata [0x80010000,0x80019524) sdata [0x8004ea90,0x800576e4) (file offset 0x800 + vaddr - 0x80010000); .text and ._49AC0 island not copied
+[xeno-port][boot] world state 3: retail native owner enabled (hasOverlay=1)
+[Psy-X] Initialising Psy-X 2.8
+[Psy-X] Build date: Sep  6 2026:17:50:45
+[Psy-X] *Video adapter: llvmpipe (LLVM 20.1.2, 256 bits) by Mesa
+[Psy-X] *OpenGL version: 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+[Psy-X] *GLSL version: 4.50
+[Psy-X] Host toolbar enabled: Quick Save | Quick Load | Record | Speed (F11 cycles, Shift+F11 resets; hold Backspace for 5x)
+[Psy-X] found sound device: OpenAL Soft
+ALSA lib confmisc.c:855:(parse_card) cannot find card '0'
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) error evaluating name
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5731:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2721:(snd_pcm_open_noupdate) Unknown PCM default
+[Psy-X] [PsyX_SPUAL_InitSound] - alcOpenDevice: NULL DEVICE error: ALC_INVALID_VALUE
+[xeno-port] CD image: disc/disc1.bin
+[Psy-X] Using 'disc/disc1.bin' image, sector size: 2352, frames: 305586
+[Psy-X] [CdControl] - Unhandled command 0x07!
+[xeno-port] ArchiveInit done (archive index loaded from disc).
+[xeno-port][sound] retail boot WDS banks 2..5 loaded
+[xeno-port][field] XENO_FIELD_MAP=2
+[xeno-port][field] XENO_FIELD_ENTRANCE=0 (D_8006F954 -> field-script var 2)
+[xeno-port][field] camera approach octant=7 (D_8006F950 -> field-script var 8)
+[xeno-port][field] font + party-skin init done
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000015.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000030.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000045.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000060.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000075.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000090.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000105.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000120.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000135.png
+[xeno-port][boot] direct field-test route: state 1 (KernelMenu not rendered)
+[xeno-port] entering decompiled MainLoop() (oracle)...
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9d1ad0 g_GameSceneMapNum=2
+[FieldMain] FieldLoadUITextures
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000150.png
+[stub] SoundHandleError
+[field-diag] FieldLoad begin field=2 mapBuf=0x7e6f98
+[field-diag] assets before VM: tim=0 clut=0 scripts=35 scriptData=0x73b234
+[field-diag] spawn marker=0xbc modelsInPackage=55
+[field-diag] sprite package loaded: spriteData=0x747c0c
+[field-diag] actors allocated: count=104 actorArray=0x74be80
+[field-diag] func_8002C644: skip invalid pin base=0x7313bc end=0x106ffa8 hdrNext=0x0 (skips=1)
+[field-diag] model-build actor=31 spriteId=48 groups=2 status=0280 faPos=(503,-94,-1224)
+[field-diag] func_8002C644: skip invalid pin base=0x72cdfc end=0x87fffa hdrNext=0x0 (skips=2)
+[field-diag] model-build actor=32 spriteId=40 groups=2 status=0290 faPos=(648,-377,-402)
+[field-diag] model-build actor=33 spriteId=0 groups=1 status=0290 faPos=(-531,29,1052)
+[field-diag] model-build actor=35 spriteId=0 groups=1 status=0290 faPos=(474,29,-33)
+[field-diag] model-build actor=36 spriteId=0 groups=1 status=0290 faPos=(99,110,-908)
+[field-diag] model-build actor=37 spriteId=0 groups=1 status=0290 faPos=(-920,-17,-920)
+[field-diag] model-build actor=38 spriteId=0 groups=1 status=0290 faPos=(-792,-33,177)
+[field-diag] model-build actor=39 spriteId=0 groups=1 status=0290 faPos=(233,85,816)
+[field-diag] model-build actor=40 spriteId=0 groups=1 status=0290 faPos=(311,-223,930)
+[field-diag] model-build actor=41 spriteId=0 groups=1 status=0290 faPos=(533,85,1007)
+[field-diag] func_8002C644: skip invalid pin base=0x721254 end=0x2606c7 hdrNext=0x0 (skips=3)
+[field-diag] model-build actor=42 spriteId=1 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] func_8002C644: skip invalid pin base=0x72140c end=0x26fa1a hdrNext=0x0 (skips=4)
+[field-diag] model-build actor=43 spriteId=2 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=44 spriteId=3 groups=3 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=45 spriteId=4 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=46 spriteId=5 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=47 spriteId=6 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=48 spriteId=7 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=49 spriteId=8 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=50 spriteId=9 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=51 spriteId=10 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=52 spriteId=11 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=53 spriteId=12 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=54 spriteId=13 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=55 spriteId=14 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=56 spriteId=11 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=57 spriteId=12 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=58 spriteId=15 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=59 spriteId=16 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=60 spriteId=17 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=61 spriteId=18 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=62 spriteId=19 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=63 spriteId=20 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=64 spriteId=21 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=65 spriteId=22 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=66 spriteId=23 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=67 spriteId=24 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=68 spriteId=25 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=69 spriteId=26 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=70 spriteId=27 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=71 spriteId=28 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=72 spriteId=29 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=73 spriteId=30 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=74 spriteId=31 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=75 spriteId=32 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=76 spriteId=33 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=77 spriteId=34 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=78 spriteId=35 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=79 spriteId=36 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=80 spriteId=37 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=81 spriteId=38 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=82 spriteId=39 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=83 spriteId=41 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=84 spriteId=42 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=85 spriteId=43 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=86 spriteId=44 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=87 spriteId=45 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=88 spriteId=46 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=89 spriteId=47 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=90 spriteId=49 groups=2 status=0010 faPos=(503,-94,-1224)
+[field-diag] model-build actor=91 spriteId=50 groups=2 status=0280 faPos=(504,-158,-1511)
+[field-diag] model-build actor=92 spriteId=51 groups=2 status=0010 faPos=(504,-158,-1511)
+[field-diag] model-build actor=93 spriteId=50 groups=2 status=0280 faPos=(215,-94,-1511)
+[field-diag] model-build actor=94 spriteId=51 groups=2 status=0010 faPos=(215,-94,-1511)
+[field-diag] model-build actor=95 spriteId=52 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=96 spriteId=53 groups=1 status=8000 faPos=(-280,496,151)
+[field-diag] model-build count=65 / actors=104
+[field-diag] before VM: active=65 actorData=35/104 spriteData=0/104 D_800AFC74=0
+[field-diag] spawn-skip marker=0xbc entry=0
+[field-diag] setpos actor=1 ip=3432 x=-151 z=1774 bytes=19 69 ff ee 06 c0 20 0d
+[field-diag] spawn-skip marker=0xbc entry=0
+[field-diag] setpos actor=2 ip=3845 x=-177 z=1450 bytes=19 4f ff aa 05 c0 69 04
+[field-diag] setpos actor=3 ip=4313 x=-358 z=570 bytes=19 9a fe 3a 02 c0 20 0d
+[field-diag] setpos actor=4 ip=4346 x=960 z=-148 bytes=19 c0 03 6c ff c0 69 05
+[field-diag] setpos actor=4 ip=4402 x=-1291 z=800 bytes=19 f5 fa 20 03 c0 fe 07
+[field-diag] setpos actor=9 ip=6146 x=-174 z=911 bytes=19 52 ff 8f 03 c0 69 04
+[field-diag] setpos actor=10 ip=6948 x=-123 z=925 bytes=19 85 ff 9d 03 c0 69 04
+[field-diag] setpos actor=13 ip=7999 x=-449 z=204 bytes=19 3f fe cc 00 c0 69 00
+[field-diag] setpos actor=17 ip=8084 x=-676 z=181 bytes=19 5c fd b5 00 c0 20 0d
+[field-diag] setpos actor=24 ip=8184 x=468 z=908 bytes=19 d4 01 8c 03 c0 21 8c
+[field-diag] setpos actor=25 ip=8201 x=-174 z=911 bytes=19 52 ff 8f 03 c0 20 0d
+[field-diag] setpos actor=26 ip=9096 x=-648 z=-1063 bytes=1d 78 fd d9 fb 60 00 69
+[field-diag] setpos actor=27 ip=9285 x=146 z=208 bytes=1d 92 00 d0 00 20 00 69
+[field-diag] setpos actor=28 ip=9717 x=-176 z=293 bytes=1d 50 ff 25 01 18 00 23
+[field-diag] setpos actor=29 ip=10074 x=-349 z=1069 bytes=1d a3 fe 2d 04 5b 00 5f
+[field-diag] setpos actor=30 ip=10188 x=-39 z=-508 bytes=1d d9 ff 04 fe 3c 00 20
+[field-diag] func_80076AC0 first: actor=33 actorPtr=0x74ca5c actorSpriteSlot=0x74ca60 curSprite=(nil) args=(33,0,0x747c24,0,0,128,0)
+[field-diag] after VM: active=78 actorData=35/104 spriteData=35/104 D_800AFC74=1 objects=1 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a0304 ip=95
+[field-diag] actor[1] status=0241 flags4=04000400 faPos=(-151,70,1774) adPos=(-151,70,1774) model=(nil) sprite=0x7a04d8 ip=3447
+[field-diag] actor[2] status=0240 flags4=0400043e faPos=(-177,130,1450) adPos=(-177,130,1450) model=(nil) sprite=0x7a094c ip=3862
+[field-diag] actor[3] status=0260 flags4=04000c00 faPos=(-358,87,570) adPos=(-358,87,570) model=(nil) sprite=0x7a0dc0 ip=4329
+[field-diag] actor[4] status=0240 flags4=0400243f faPos=(-1291,24,800) adPos=(-1291,24,800) model=(nil) sprite=0x7a1234 ip=4411
+[field-diag] actor[5] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a1408 ip=5332
+[field-diag] actor[6] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a897c ip=5479
+[field-diag] actor[7] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a8b50 ip=5857
+[field-diag] actor[8] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a8d24 ip=5925
+[field-diag] actor[9] status=0240 flags4=04000038 faPos=(-174,143,911) adPos=(-174,143,911) model=(nil) sprite=0x7a8ef8 ip=6163
+[field-diag] actor[10] status=0240 flags4=04000038 faPos=(-123,143,925) adPos=(-123,143,925) model=(nil) sprite=0x7a90cc ip=6965
+[field-diag] actor[11] status=0261 flags4=04200400 faPos=(501,-49,-74) adPos=(501,-49,-74) model=(nil) sprite=0x7a92a0 ip=7462
+[field-diag] actor[12] status=0261 flags4=04000800 faPos=(-51,24,243) adPos=(-51,24,243) model=(nil) sprite=0x7a9474 ip=7599
+[field-diag] actor[13] status=0260 flags4=04000000 faPos=(-449,87,204) adPos=(-449,87,204) model=(nil) sprite=0x7a9648 ip=8010
+[field-diag] actor[14] status=0261 flags4=04000000 faPos=(500,143,798) adPos=(500,143,798) model=(nil) sprite=0x7a984c ip=8025
+[field-diag] actor[15] status=0261 flags4=04000000 faPos=(346,87,66) adPos=(346,87,66) model=(nil) sprite=0x7a9a08 ip=8046
+[field-diag] actor[16] status=0261 flags4=04000000 faPos=(507,118,506) adPos=(507,118,506) model=(nil) sprite=0x7a9bc4 ip=8064
+[field-diag] actor[17] status=0241 flags4=04000000 faPos=(-676,33,181) adPos=(-676,33,181) model=(nil) sprite=0x7a9d80 ip=8096
+[field-diag] actor[18] status=0241 flags4=04000000 faPos=(-205,125,-741) adPos=(-205,125,-741) model=(nil) sprite=0x7a9f3c ip=8110
+[field-diag] actor[19] status=0241 flags4=04000000 faPos=(-357,87,572) adPos=(-357,87,572) model=(nil) sprite=0x7aa0f8 ip=8121
+[field-diag] actor[20] status=0241 flags4=04000000 faPos=(834,87,111) adPos=(834,87,111) model=(nil) sprite=0x7aa2b4 ip=8132
+[field-diag] actor[21] status=0241 flags4=04000000 faPos=(440,87,-73) adPos=(440,87,-73) model=(nil) sprite=0x7aa470 ip=8148
+[field-diag] actor[22] status=0241 flags4=04000000 faPos=(-553,110,-259) adPos=(-553,110,-259) model=(nil) sprite=0x7aa62c ip=8159
+[field-diag] actor[23] status=0241 flags4=04000000 faPos=(-633,146,-515) adPos=(-633,146,-515) model=(nil) sprite=0x7aa7e8 ip=8173
+[obj-ovly] 742C slot=0 flags=0 model=0x7abd18 tex=0x7edcc4 xy=(576,256) zw=(0,252) vec=0x9bd904
+[obj-ovly]  model[0..3]=00000002 00000010 000004c8 000004e8
+[obj-ovly]  tex[0..3]=00000004 00000018 000061fc 0000aedc
+[obj-ovly] DDE4 image=0x7edcdc mode=1 xy=(576,256)
+[DDE4] p=0x7edcdc count=8 mode=1/1 xy=(576,256) clut=(0,252) w0=00000008 00000024 00000174 00004584
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,252) 160x1
+[DDE4] clut16 0000 0421 0842 0c63 1084 14a5 18c6 1ce7 2108 2529 294a 2d6b 41ce 5252 5eb5 6f39
+[DDE4] clut80 0000 0421 0842 0c63 1084 14a5 18c6 1ce7 2108 2529 294a 2d6b 2d4a 358c 39ad 41ef
+[DDE4] blk[1] magic=1100 base=(832,256) offs=(0,0) dest=(576,256) 64x136
+[DDE4] tex16 1111 1111 1121 1111 1111 1111 1111 1111
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(0,152) dest=(576,408) 64x32
+[DDE4] tex16 6654 6666 dddd 77dd 8888 8888 8888 78a5
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(12,136) dest=(588,392) 52x16
+[DDE4] tex16 8888 8888 8888 8888 8888 8888 6666 6666
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(18,184) dest=(594,440) 46x8
+[DDE4] tex16 f431 ffff ffff 134f 7776 7777 7777 5677
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(46,192) dest=(622,448) 18x8
+[DDE4] tex16 6654 6666 ddcb dddd aa98 aa78 aa78 aa78
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(0,136) dest=(576,392) 8x16
+[DDE4] tex16 1235 1114 6166 6161 1616 6616 4111 5321
+[DDE4] blk[7] magic=1100 base=(832,256) offs=(26,192) dest=(602,448) 8x8
+[DDE4] tex16 8877 9998 b6a4 777b dddd 577d 5666 dd77
+[obj-ovly] clip-bind anim=0 clip=0x7ac1b4 bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 1300 0100 0014 2100 0000 0a00 0c00
+[obj-ovly] pose-meta flags=0000 nrot=46 ntrans=46 nnodes=47 skip6=0 applied-rot=46 applied-t=46
+[obj-ovly] pose op=10 idx=0 pose=0x7abd54 child-r=(0,-1024,0) child-t=(0,-3862,-109)
+[obj-ovly] clip-tick ip=0x7ac1be op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[field-diag] func_8002C644: real pin base=0x7e8fdc size=12232 (pins=1)
+[obj-ovly] 742C done slot=0 obj=0x7acf54 nodes=0x7ad0f8 groups=24 vec=(0,0,0)
+[field-0bb] archive 0xbd: 464896 bytes read, draining to VRAM
+[field-0bb] retail decoder: 227 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][opcode56] FE54 snapshot actor=0 lock_ip=0x0061 pre_lock_control=0 pending=1
+[field-sfx] cue id=0x36 vol=32 pan=64 chan=3
+[field-diag] setpos actor=25 ip=8768 x=-182 z=37 bytes=1d 4a ff 25 00 00 00 00
+[xeno-port][variant5] tri entry=1 cmd=0x7223f4 count=12; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=1 cmd=0x722458 count=11; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=2 cmd=0x723a60 count=8; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=2 cmd=0x723aa4 count=1; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=3 cmd=0x7242a8 count=16; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=3 cmd=0x724584 count=2; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=4 cmd=0x724598 count=23; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=4 cmd=0x7268f0 count=174; resume F13 retail FIFO/culling gate
+[field-diag] models frame=0 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400c00 status=0260 pos=(-358,87,570)
+[field-diag] func_8001E3D8 call=0 sprite=0x7a9f3c ot=0x9ff4d0 frames=0 flags3c=50110001 flags40=00140300 base30=0x7aa0a8 mask3d=00 work=0x798bfc end=0x79c6fc
+[field-diag] func_80075B44 draw actor=18 sprite=0x7a9f3c otIndex=159 ot=0x9ff254 status=00010241 flags4=04400000 flag=00001000 screen=015cfffb
+[field-diag] func_8001E3D8 call=1 sprite=0x7aa2b4 ot=0x9ff6b8 frames=3 flags3c=10010001 flags40=0004030c base30=0x7aa420 mask3d=00 work=0x798bfc end=0x79c6fc
+[field-diag] func_8001E3D8 link=0 poly=0x798bfc ot=0x9ff6b8 tag=099ff6b4 code=2d xy0=(-536,183) uv0=(168,178) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 link=1 poly=0x798c24 ot=0x9ff6b8 tag=09798bfc code=2d xy0=(-541,211) uv0=(47,143) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 link=2 poly=0x798c4c ot=0x9ff6b8 tag=09798c24 code=2d xy0=(-543,196) uv0=(89,177) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 done linked=3 workNow=0x798c74
+[field-diag] func_80075B44 draw actor=20 sprite=0x7aa2b4 otIndex=281 ot=0x9ff254 status=00010241 flags4=04400000 flag=00000000 screen=00d7fded
+[field-diag] func_8001E3D8 call=2 sprite=0x7aa470 ot=0x9ff5d8 frames=3 flags3c=10010001 flags40=0004030c base30=0x7aa5dc mask3d=00 work=0x798c74 end=0x79c6fc
+[field-diag] func_8001E3D8 link=3 poly=0x798c74 ot=0x9ff5d8 tag=099ff5d4 code=2d xy0=(-509,207) uv0=(69,178) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 link=4 poly=0x798c9c ot=0x9ff5d8 tag=09798c74 code=2d xy0=(-495,223) uv0=(17,1) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 link=5 poly=0x798cc4 ot=0x9ff5d8 tag=09798c9c code=2d xy0=(-514,223) uv0=(1,1) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 done linked=3 workNow=0x798cec
+[field-diag] func_80075B44 draw actor=21 sprite=0x7aa470 otIndex=225 ot=0x9ff254 status=00010241 flags4=04400000 flag=00001000 screen=00f7fe0c
+[field-diag] func_8001E3D8 call=3 sprite=0x7aa62c ot=0x9ff358 frames=3 flags3c=10010001 flags40=0004030c base30=0x7aa798 mask3d=00 work=0x798cec end=0x79c6fc
+[field-diag] func_8001E3D8 link=6 poly=0x798cec ot=0x9ff358 tag=099ff354 code=2d xy0=(-937,544) uv0=(168,178) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 link=7 poly=0x798d14 ot=0x9ff358 tag=09798cec code=2d xy0=(-958,663) uv0=(47,143) tpage=000e clut=7851 dir=4
+[field-diag] func_8001E3D8 done linked=3 workNow=0x798d64
+[field-diag] func_80075B44 draw actor=22 sprite=0x7aa62c otIndex=65 ot=0x9ff254 status=00010241 flags4=04400000 flag=00001000 screen=02a8fc6d
+[field-diag] func_8001E3D8 call=4 sprite=0x7aa7e8 ot=0x9ff368 frames=0 flags3c=50110001 flags40=00140300 base30=0x7aa954 mask3d=00 work=0x798d64 end=0x79c6fc
+[field-diag] func_80075B44 draw actor=23 sprite=0x7aa7e8 otIndex=69 ot=0x9ff254 status=00010241 flags4=04400000 flag=00001000 screen=02d0fec2
+[field-diag] func_80075B44 frame=0 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] frame=0 D_800ADC18=4 useOT2=1 primSubmits=0 DrawOTag=1
+[reg-flush] KON t=2.8s v22 voll=1764 volr=1764 pitch=0xc7 addr=0x6920
+[reg-flush] KON t=2.8s v23 voll=1598 volr=1598 pitch=0x128 addr=0xbee0
+[field-diag] models frame=1 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_8001E3D8 call=5 sprite=0x7a9f3c ot=0xa0f5f0 frames=0 flags3c=50110001 flags40=00140300 base30=0x7aa0a8 mask3d=00 work=0x79c7ec end=0x7a02fc
+[field-diag] func_80075B44 draw actor=18 sprite=0x7a9f3c otIndex=159 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=25015cfffb
+[field-diag] func_8001E3D8 call=6 sprite=0x7aa2b4 ot=0xa0f7d8 frames=3 flags3c=10010001 flags40=0004030c base30=0x7aa420 mask3d=00 work=0x79c7ec end=0x7a02fc
+[field-diag] func_8001E3D8 done linked=3 workNow=0x79c864
+[field-diag] func_80075B44 draw actor=20 sprite=0x7aa2b4 otIndex=281 ot=0xa0f374 status=00010241 flags4=04400000 flag=00000000 screen=2500d7fded
+[field-diag] func_8001E3D8 call=7 sprite=0x7aa470 ot=0xa0f6f8 frames=3 flags3c=10010001 flags40=0004030c base30=0x7aa5dc mask3d=00 work=0x79c864 end=0x7a02fc
+[field-diag] func_8001E3D8 done linked=3 workNow=0x79c8dc
+[field-diag] func_80075B44 draw actor=21 sprite=0x7aa470 otIndex=225 ot=0xa0f374 status=00010241 flags4=04400000 flag=00001000 screen=2500f7fe0c
+[field-diag] func_80075B44 draw actor=22 sprite=0x7aa62c otIndex=65 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=2502a8fc6d
+[field-diag] func_80075B44 draw actor=23 sprite=0x7aa7e8 otIndex=69 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=2502d0fec2
+[field-diag] func_80075B44 frame=1 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] frame=1 D_800ADC18=3 useOT2=1 primSubmits=0 DrawOTag=1
+[field-diag] models frame=2 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 draw actor=18 sprite=0x7a9f3c otIndex=159 ot=0x9ff254 status=00010241 flags4=04400200 flag=00001000 screen=015cfffb
+[field-diag] func_80075B44 draw actor=20 sprite=0x7aa2b4 otIndex=281 ot=0x9ff254 status=00010241 flags4=04410000 flag=00000000 screen=00d7fded
+[field-diag] func_80075B44 draw actor=21 sprite=0x7aa470 otIndex=225 ot=0x9ff254 status=00010241 flags4=04410000 flag=00001000 screen=00f7fe0c
+[field-diag] func_80075B44 draw actor=22 sprite=0x7aa62c otIndex=65 ot=0x9ff254 status=00010241 flags4=04400200 flag=00001000 screen=02a8fc6d
+[field-diag] func_80075B44 draw actor=23 sprite=0x7aa7e8 otIndex=69 ot=0x9ff254 status=00010241 flags4=04400200 flag=00001000 screen=02d0fec2
+[field-diag] func_80075B44 frame=2 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] frame=2 D_800ADC18=2 useOT2=1 primSubmits=0 DrawOTag=1
+[reg-flush] KON t=2.9s v14 voll=6020 volr=66 pitch=0xfd8 addr=0x31540
+[reg-flush] KON t=2.9s v19 voll=5109 volr=3202 pitch=0x588 addr=0x33270
+[field-diag] models frame=3 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 draw actor=18 sprite=0x7a9f3c otIndex=159 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=015cfffb
+[field-diag] func_80075B44 draw actor=20 sprite=0x7aa2b4 otIndex=281 ot=0xa0f374 status=00010241 flags4=04410000 flag=00000000 screen=00d7fded
+[field-diag] func_80075B44 draw actor=21 sprite=0x7aa470 otIndex=225 ot=0xa0f374 status=00010241 flags4=04410000 flag=00001000 screen=00f7fe0c
+[field-diag] func_80075B44 draw actor=22 sprite=0x7aa62c otIndex=65 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=02a8fc6d
+[field-diag] func_80075B44 draw actor=23 sprite=0x7aa7e8 otIndex=69 ot=0xa0f374 status=00010241 flags4=04400200 flag=00001000 screen=02d0fec2
+[field-diag] func_80075B44 frame=3 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000165.png
+[field-diag] frame=3 D_800ADC18=1 useOT2=1 primSubmits=0 DrawOTag=1
+[reg-flush] KON t=2.9s v15 voll=5910 volr=334 pitch=0xfd8 addr=0x31540
+[field-diag] models frame=4 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 frame=4 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] submit[0] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a03258 w2=00a0325c w3=00a03260
+[field-diag] submit[1] srcOff=0xcc size=1824 tag=007ad00c w1=009bf938 w2=009ff258 w3=009ff25c
+[field-diag] frame=4 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=65656d xy0=(258,166) xy3=(336,148) uv0=7e,c0 clut=7e80 tpage=0086
+[field-diag] ot-ft4 #1 rgb=62626b xy0=(165,157) xy3=(162,112) uv0=70,77 clut=7980 tpage=0086
+[field-diag] ot-ft4 #2 rgb=62626b xy0=(162,157) xy3=(160,112) uv0=71,32 clut=7980 tpage=0086
+[field-diag] ot-walk frame=4 steps=4370 prims=712 codes: 00:145 01:16 24:120 2c:422 2d:6 62:2 e1:1
+[reg-flush] KON t=3.0s v14 voll=5800 volr=602 pitch=0xfd8 addr=0x31540
+[field-diag] models frame=5 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 frame=5 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] submit[2] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a13378 w2=00a1337c w3=00a13380
+[field-diag] submit[3] srcOff=0xcc size=1824 tag=007ad034 w1=009bf9f8 w2=00a0f378 w3=00a0f37c
+[field-diag] frame=5 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=65656d xy0=(258,166) xy3=(336,148) uv0=7e,c0 clut=7e80 tpage=0086
+[field-diag] ot-ft4 #1 rgb=62626b xy0=(165,157) xy3=(162,112) uv0=70,77 clut=7980 tpage=0086
+[field-diag] ot-ft4 #2 rgb=62626b xy0=(162,157) xy3=(160,112) uv0=71,32 clut=7980 tpage=0086
+[field-diag] ot-walk frame=5 steps=4370 prims=712 codes: 00:145 01:16 24:120 2c:422 2d:6 62:2 e1:1
+[field-diag] models frame=6 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 frame=6 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] submit[4] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a03258 w2=00a0325c w3=00a03260
+[field-diag] submit[5] srcOff=0xcc size=1824 tag=007ad00c w1=009bf938 w2=009ff258 w3=009ff25c
+[field-diag] frame=6 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[field-diag] ot-ft4 #0 rgb=65656d xy0=(258,166) xy3=(336,148) uv0=7e,c0 clut=7e80 tpage=0086
+[field-diag] ot-ft4 #1 rgb=62626b xy0=(165,157) xy3=(162,112) uv0=70,77 clut=7980 tpage=0086
+[field-diag] ot-ft4 #2 rgb=62626b xy0=(162,157) xy3=(160,112) uv0=71,32 clut=7980 tpage=0086
+[field-diag] ot-walk frame=6 steps=4370 prims=712 codes: 00:145 01:16 24:120 2c:422 2d:6 62:2 e1:1
+[field-diag] models frame=7 considered=65 emitted=16 hidden=49 status20=0 objects=1 otEmits=341
+[field-diag] camera eye=(-1066,-190,-599) at=(570,-129,-1245)
+[field-diag] actor3 ip=4330 flags4=04400e00 status=0260 pos=(-358,87,570)
+[field-diag] func_80075B44 frame=7 active=32 plain=5 status20=19 flagNeg=14 globalSkip=0 actorFlagSkip=0 special=0 objectSkip=1
+[field-diag] submit[6] srcOff=0x40d0 size=1824 tag=00ffffff w1=00a13378 w2=00a1337c w3=00a13380
+[field-diag] submit[7] srcOff=0xcc size=1824 tag=007ad034 w1=009bf9f8 w2=00a0f378 w3=00a0f37c
+[field-diag] frame=7 D_800ADC18=0 useOT2=1 primSubmits=2 DrawOTag=1
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000180.png
+[field-sfx] cue id=0x7c vol=127 pan=64 chan=0
+[field-sfx] cue id=0x7d vol=127 pan=64 chan=1
+[FieldMain] entering main loop
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000195.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000210.png
+[field-sfx] cue id=0x7e vol=127 pan=64 chan=0
+[field-sfx] cue id=0x7f vol=127 pan=64 chan=1
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000225.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000240.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000255.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000270.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000285.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000300.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000315.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000330.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000345.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000360.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000375.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000390.png
+[field-diag] setpos actor=4 ip=4513 x=-1291 z=800 bytes=19 f5 fa 20 03 c0 00 fe
+[field-sfx] cue id=0x8c vol=127 pan=90 chan=2
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000405.png
+[field-sfx] cue id=0x3c vol=127 pan=90 chan=3
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000420.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000435.png
+[field-sfx] cue id=0x36 vol=32 pan=64 chan=3
+[field-diag] setpos actor=15 ip=8051 x=-208 z=-23 bytes=19 30 ff e9 ff c0 00 0b
+[field-diag] setpos actor=25 ip=8784 x=-100 z=-1720 bytes=1d 9c ff 48 f9 c4 ff 00
+[obj-ovly] 742C slot=0 flags=0 model=0x7acf54 tex=0x7f49d4 xy=(576,256) zw=(0,252) vec=0x9bd904
+[obj-ovly]  model[0..3]=00000002 00000010 0000517c 0000519c
+[obj-ovly]  tex[0..3]=00000004 00000018 00007fc8 0000c1c0
+[obj-ovly] DDE4 image=0x7f49ec mode=1 xy=(576,256)
+[DDE4] p=0x7f49ec count=7 mode=1/1 xy=(576,256) clut=(0,252) w0=00000007 00000020 000001d0 000041e0
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,252) 208x1
+[DDE4] clut16 0000 4673 3e31 3610 31ce 29ad 216b 1d4a 1929 1908 14e7 14c6 10a5 1084 0c63 0842
+[DDE4] clut80 0000 6294 5a52 5210 49ce 45ad 3d6b 3529 3108 28e7 24c6 20a5 1884 1463 1042 0c21
+[DDE4] blk[1] magic=1100 base=(832,256) offs=(0,0) dest=(576,256) 32x256
+[DDE4] tex16 1111 f111 ffff ffff 111f 1111 1111 1111
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(32,0) dest=(608,256) 16x248
+[DDE4] tex16 998f 9999 8888 f788 aaaa aaaa aaaa f9aa
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(48,0) dest=(624,256) 12x256
+[DDE4] tex16 eeee eeee 6666 6666 1111 1111 1111 1111
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(60,104) dest=(636,360) 4x112
+[DDE4] tex16 8877 aa99 ccbb eedd 8877 aa99 ccbb eedd
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(60,0) dest=(636,256) 4x88
+[DDE4] tex16 eede fedf eeee eeee eefe fedf bbbb bbbb
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(60,216) dest=(636,472) 2x16
+[DDE4] tex16 bcde a99a bcde a99a bcde a99a bcde a99a
+[obj-ovly] clip-bind anim=0 clip=0x7b1d6c bytes=0a00 0c00 0800 1000 4800 0000 0a00 0c00 4800 2301 1700 2300 1800 2300 1d00 2301
+[obj-ovly] pose-meta flags=0000 nrot=51 ntrans=51 nnodes=52 skip6=0 applied-rot=51 applied-t=51
+[obj-ovly] pose op=10 idx=0 pose=0x7ad048 child-r=(699,-1024,699) child-t=(0,-3770,0)
+[obj-ovly] clip-tick ip=0x7b1d76 op=00 rx=0 ry=0 rz=0 d70=0000 t=(0,0,0)
+[field-diag] func_8002C644: real pin base=0x7f07d4 size=10664 (pins=2)
+[obj-ovly] 742C done slot=0 obj=0x7b20f8 nodes=0x7b228c groups=20 vec=(0,0,0)
+[field-diag] setpos actor=4 ip=4910 x=-280 z=-1720 bytes=19 e8 fe 48 f9 c0 69 01
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000450.png
+[field-sfx] cue id=0x114 vol=42 pan=20 chan=2
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000465.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000480.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000495.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000510.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000525.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000540.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000555.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000570.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000585.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000600.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000615.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000630.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000645.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000660.png
+[FieldMain] teardown exitCode=0
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000675.png
+[xeno-port][battle-mips] retail adapter ready: functions=604 shared-data=188 host-ranges=256
+[xeno-port][battle-mips] enter retail battle.bin at 0x80070f40
+[DDE4] p=0x7d6884 count=2 mode=0/0 xy=(0,0) clut=(0,0) w0=00000002 0000000c 00001e1c 00001101
+[DDE4] blk[0] magic=1101 base=(0,497) offs=(0,0) dest=(0,497) 256x15
+[DDE4] blk[1] magic=1100 base=(960,52) offs=(0,0) dest=(960,52) 64x204
+[DDE4] tex16 2222 2222 0000 0000 5432 9876 0cdc 0000
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000690.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000705.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000720.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000735.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000750.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000765.png
+[DDE4] p=0x76d4c8 count=6 mode=0/0 xy=(0,0) clut=(0,0) w0=00000006 0000001c 0000122c 000013fc
+[DDE4] blk[0] magic=1101 base=(0,480) offs=(0,1) dest=(0,481) 256x9
+[DDE4] blk[1] magic=1101 base=(0,480) offs=(0,0) dest=(0,480) 224x1
+[DDE4] clut16 9084 8c63 8c63 8842 8842 8442 8421 8421 8421 8000 8000 8000 8000 8000 8000 0000
+[DDE4] clut80 98c6 94a5 90a5 9084 9084 8c63 8c63 8843 8842 8442 8421 8421 8000 8000 8000 0000
+[DDE4] blk[2] magic=1100 base=(320,0) offs=(0,0) dest=(320,0) 384x256
+[DDE4] tex16 ffff ffff ffff ffff ffff ffff fffe ffff
+[DDE4] blk[3] magic=1100 base=(320,0) offs=(384,0) dest=(704,0) 80x224
+[DDE4] tex16 fcfc fcfc fcfc fcfc fcfc fcfc fcfc fcfc
+[DDE4] blk[4] magic=1100 base=(320,0) offs=(464,0) dest=(784,0) 32x160
+[DDE4] tex16 fcfc fcfc fcfc fcfc fcfc fcfc fcfc fcfc
+[DDE4] blk[5] magic=1100 base=(320,0) offs=(496,0) dest=(816,0) 16x96
+[DDE4] tex16 fcfc fcfc fcfc fcfc fcfc fcfc fcfc fcfc
+[field-diag] func_8002C644: real pin base=0x7fa814 size=6012 (pins=3)
+[xeno-port][horizon] DIAG 2709C a0=448 a1=0 w=256 h=96 clut=(0,481) mode=1 sign=4 coords=(0,400,6400) rgb0=000000 sky=0 fade=64/-2050332112 ctx=0x712fb4
+[xeno-port][horizon] DIAG 273C4 screenY=101 scroll=0 fade=0 hasColors=0 h=96 stripScale=0 ot=0x6e292c rcx=0 ft4[0]=(0,5)-(32,101) tpage=0x88
+[DDE4] p=0x7bbf0c count=5 mode=1/1 xy=(320,256) clut=(0,451) w0=00000005 00000018 000001c8 00003fd8
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,451) 208x1
+[DDE4] clut16 0000 0bbf 0a5e 2dae 298d 256c 214b 1d2a 1909 18e8 14c7 10a6 0c85 0864 0443 0422
+[DDE4] clut80 0442 39ef 35ce 31ad 2d8c 296b 254a 2129 1d08 18e7 212a 1d09 18e8 14c7 10a6 4eb5
+[DDE4] blk[1] magic=1100 base=(832,256) offs=(8,0) dest=(328,256) 32x248
+[DDE4] tex16 cccc cccc 3347 3333 3333 3333 3333 3333
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(44,0) dest=(364,256) 20x240
+[DDE4] tex16 3333 3333 3333 3333 3333 3333 dddd dddd
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(0,0) dest=(320,256) 8x256
+[DDE4] tex16 cbde cccc cccc cccc cccc cccc cccc cccc
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(40,0) dest=(360,256) 4x224
+[DDE4] tex16 ffff ffff 3347 3333 ffff ffff 3347 3333
+[field-diag] func_8002C644: real pin base=0x7f3124 size=16028 (pins=4)
+[DDE4] p=0x7d3d18 count=8 mode=1/1 xy=(448,256) clut=(0,452) w0=00000008 00000024 00000174 00004584
+[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,452) 160x1
+[DDE4] clut16 0000 0421 0842 0c63 1084 14a5 18c6 1ce7 2108 2529 294a 2d6b 41ce 5252 5eb5 6f39
+[DDE4] clut80 0000 0421 0842 0c63 1084 14a5 18c6 1ce7 2108 2529 294a 2d6b 2d4a 358c 39ad 41ef
+[DDE4] blk[1] magic=1100 base=(832,256) offs=(0,0) dest=(448,256) 64x136
+[DDE4] tex16 1111 1111 1121 1111 1111 1111 1111 1111
+[DDE4] blk[2] magic=1100 base=(832,256) offs=(0,152) dest=(448,408) 64x32
+[DDE4] tex16 6654 6666 dddd 77dd 8888 8888 8888 78a5
+[DDE4] blk[3] magic=1100 base=(832,256) offs=(12,136) dest=(460,392) 52x16
+[DDE4] tex16 8888 8888 8888 8888 8888 8888 6666 6666
+[DDE4] blk[4] magic=1100 base=(832,256) offs=(18,184) dest=(466,440) 46x8
+[DDE4] tex16 f431 ffff ffff 134f 7776 7777 7777 5677
+[DDE4] blk[5] magic=1100 base=(832,256) offs=(46,192) dest=(494,448) 18x8
+[DDE4] tex16 6654 6666 ddcb dddd aa98 aa78 aa78 aa78
+[DDE4] blk[6] magic=1100 base=(832,256) offs=(0,136) dest=(448,392) 8x16
+[DDE4] tex16 1235 1114 6166 6161 1616 6616 4111 5321
+[DDE4] blk[7] magic=1100 base=(832,256) offs=(26,192) dest=(474,448) 8x8
+[DDE4] tex16 8877 9998 b6a4 777b dddd 577d 5666 dd77
+[field-diag] func_8002C644: real pin base=0x7f4a84 size=12232 (pins=5)
+[DDE4] p=0x7ef53c count=11 mode=0/0 xy=(0,0) clut=(0,0) w0=0000000b 00000030 00000440 00000650
+[DDE4] blk[0] magic=1101 base=(0,460) offs=(0,2) dest=(0,462) 256x2
+[DDE4] clut16 ffff 8421 f39c f7bd fbde f39d f7be fbdf e319 e73a eb5b ef7c def8 9085 8c64 8843
+[DDE4] clut80 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000
+[DDE4] blk[1] magic=1101 base=(0,460) offs=(0,0) dest=(0,460) 256x1
+[DDE4] clut16 0000 ef7b d6b5 ca52 b9ce b18c a94a a529 a108 9ce7 98c6 94a5 9084 8c63 8842 8421
+[DDE4] clut80 0000 fffe f79b fb35 e6d3 e64d dd89 c567 ad47 bca3 a4a2 9841 8c41 8020 8800 8400
+[DDE4] blk[2] magic=1101 base=(0,460) offs=(0,1) dest=(0,461) 64x1
+[DDE4] clut16 ffff f39c ef7b eb5a e739 e739 def7 dad6 d6b5 ce73 c631 bdef b9ce b18c a94a 0000
+[DDE4] blk[3] magic=1100 base=(832,59) offs=(64,0) dest=(896,59) 64x180
+[DDE4] tex16 0000 0000 0000 0000 0000 0000 0000 0000
+[DDE4] blk[4] magic=1100 base=(832,59) offs=(0,197) dest=(832,256) 64x136
+[DDE4] tex16 0000 0000 0000 0000 0000 0000 0000 0000
+[DDE4] blk[5] magic=1100 base=(832,59) offs=(0,389) dest=(832,448) 64x64
+[DDE4] tex16 4e4e 4e4e 4e4e 4e4e 4e4e 4e4e 4e4e 4e4e
+[DDE4] blk[6] magic=1100 base=(832,59) offs=(0,333) dest=(832,392) 18x56
+[DDE4] tex16 0000 0000 0000 0000 0000 0000 0000 0000
+[DDE4] blk[7] magic=1100 base=(832,59) offs=(65,180) dest=(897,239) 63x16
+[DDE4] tex16 cccc cccc cccc cccc cccc cccc cccc cccc
+[DDE4] blk[8] magic=1100 base=(832,59) offs=(18,333) dest=(850,392) 16x52
+[DDE4] tex16 0000 0000 0000 0000 0000 0000 0000 0000
+[DDE4] blk[9] magic=1100 base=(832,59) offs=(54,333) dest=(886,392) 10x48
+[DDE4] tex16 ffff ffff ffff ffff ffff ffff ffff ffff
+[DDE4] blk[10] magic=1100 base=(832,59) offs=(34,333) dest=(866,392) 18x20
+[DDE4] tex16 0000 0000 0000 0000 0000 0000 0000 0000
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000780.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000795.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000810.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000825.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000840.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000855.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000870.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000885.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000900.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000915.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000930.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000945.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000960.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000975.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-000990.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001005.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001020.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001035.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001050.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001065.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001080.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001095.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001110.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001125.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001140.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001155.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001170.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001185.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001200.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001215.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001230.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001245.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001260.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001275.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001290.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001305.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001320.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001335.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001350.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001365.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001380.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001395.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001410.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001425.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001440.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001455.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001470.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001485.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001500.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001515.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001530.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001545.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001560.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001575.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001590.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001605.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001620.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001635.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001650.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001665.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001680.png
+[xeno-port][field] captured /logs/m2fix/runB/field-frame-001695.png
+---- LOG CLOSED ----

@@ -150,9 +150,10 @@ extern s32 func_80040A4C(void);
 extern void SysEnqIntRP(s32, void*);
 
 s32 func_8004092C(void) {
-    void* pHandler = (u8*)&D_8005A204 - 4;
+    void** ppHandlers = &D_8005A204;
+    void* pHandler = (u8*)ppHandlers - 4;
     EnterCriticalSection();
-    D_8005A204 = func_800409E4;
+    ppHandlers[0] = func_800409E4;
     D_8005A208 = func_80040A4C;
     D_8005A200 = NULL;
     D_8005A20C = NULL;
@@ -167,28 +168,86 @@ extern void SysDeqIntRP(s32, void*);
 
 s32 func_800409AC(void) {
     EnterCriticalSection();
-    SysDeqIntRP(1, D_8005A200);
+    SysDeqIntRP(1, &D_8005A200);
     ExitCriticalSection();
     return 1;
 }
 
 extern void* D_80056418;
 
+#if defined(SKIP_ASM) || defined(XENO_PC_PORT)
 void func_800409E4(void) {
-    s32 i;
+    volatile s32 i;
     void* pPad = D_80056418;
     *(u16*)((u8*)pPad + 0xA) = 0;
-    for (i = 9; i != -1; i--) {}
+    for (i = 10; --i != -1;) {}
 }
+#else
+__asm__(
+        ".globl func_800409E4\n\t"
+        ".ent\tfunc_800409E4\n\t"
+        "func_800409E4:\n\t"
+        "lui $v0, %hi(D_80056418)\n\t"
+        "lw $v0, %lo(D_80056418)($v0)\n\t"
+        ".word 0x27bdfff0\n\t"
+        ".word 0xa440000a\n\t"
+        ".word 0x2402000a\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x2442ffff\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa30000\n\t"
+        ".word 0x2402ffff\n\t"
+        ".word 0x1062000a\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x2403ffff\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x2442ffff\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x1443fff9\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x27bd0010\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end\tfunc_800409E4");
+#endif
 
 extern void* D_8005641C;
 
+#if defined(SKIP_ASM) || defined(XENO_PC_PORT)
 s32 func_80040A4C(void) {
     void* pPad = D_8005641C;
     if (!(*(u32*)((u8*)pPad + 4) & 1)) return 0;
-    if (*(u32*)pPad & 1) return 0;
-    return 1;
+    if (*(u32*)pPad & 1) return 1;
+    return 0;
 }
+#else
+__asm__(
+        ".globl func_80040A4C\n\t"
+        ".ent\tfunc_80040A4C\n\t"
+        "func_80040A4C:\n\t"
+        "lui $v1, %hi(D_8005641C)\n\t"
+        "lw $v1, %lo(D_8005641C)($v1)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x8c620004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x30420001\n\t"
+        ".word 0x10400007\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x8c620000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x30420001\n\t"
+        ".word 0x14400002\n\t"
+        ".word 0x24020001\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end\tfunc_80040A4C");
+#endif
 
 __asm__(
         ".globl InitPAD2\n\t"

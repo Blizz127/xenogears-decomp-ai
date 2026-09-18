@@ -11,6 +11,7 @@
 
 extern void func_800245D8(void* pSpriteData, s16 animIndex);
 extern void AnimScriptTick(void* pSpriteData);
+extern void func_800248D4(void* pSpriteData);
 extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 
 s32 D_80059198;
@@ -65,7 +66,9 @@ s32 func_8001EE68(void* arg0)
     (void)arg0;
     return 1;
 }
-void func_800C11CC(void) {}
+static void* s_battleSprite;
+static int s_battleCalls;
+void func_800C11CC(void* sprite) { s_battleSprite = sprite; ++s_battleCalls; }
 void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr)
 {
     (void)pSpriteData;
@@ -118,6 +121,7 @@ void ReadGeomOffset(void) {}
 void RotMatrix(void) {}
 void RotTransPers(void) {}
 void RotTransPers3(void) {}
+void RotTransSV(void) { abort(); }
 void ScaleMatrix(void) {}
 void ScaleMatrixL(void) {}
 void SetDrawMode(void) {}
@@ -130,6 +134,20 @@ void SetTransMatrix(void) {}
 void TransMatrix(void) {}
 void func_8001E298(void) {}
 void func_8001E3D8(void) {}
+/* New references from the grown animation_scripts.c bodies. The walk
+ * certificate path does not reach them; fail loud if that changes. */
+void func_8001D4E8(void) { abort(); }
+void func_800B2AEC(void) { abort(); }
+void func_80039E60(void) { abort(); }
+/* GTE COP2 accessors + PSX RAM backing for the grown helpers
+ * (AnimationC4ApplyMatrixLV, AnimationSoundBankSelector). Unreached on
+ * the walk certificate path; fail loud if that changes. */
+unsigned MFC2(int r) { (void)r; abort(); }
+unsigned CFC2(int r) { (void)r; abort(); }
+void MTC2(unsigned v, int r) { (void)v; (void)r; abort(); }
+void CTC2(unsigned v, int r) { (void)v; (void)r; abort(); }
+int doCOP2(int o) { (void)o; abort(); }
+uint8_t g_PsxRam[0x200000];
 s32 func_8001EE74(void* a)
 {
     (void)a;
@@ -309,6 +327,17 @@ int main(void)
     }
     check(*(s8*)(s_sprite + 0xAF) == 0, "idle.does.not.keep.walk.cycle.after.stop");
     (void)pose_a;
+
+    reset_sprite();
+    D_800591AD = 1;
+    s_battleSprite = NULL;
+    s_battleCalls = 0;
+    /* Test the retail mode-dispatch boundary directly; AnimScriptTick has
+     * its own scheduling guards, outside this ABI assertion. */
+    func_800248D4(s_sprite);
+    check(s_battleCalls == 1, "battle.dispatch.once");
+    check(s_battleSprite == s_sprite, "battle.dispatch.preserves.sprite");
+    D_800591AD = 0;
 
     if (s_failures != 0) {
         return EXIT_FAILURE;

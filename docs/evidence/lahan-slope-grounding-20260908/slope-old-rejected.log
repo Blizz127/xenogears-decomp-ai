@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/var/home/blizz/Projects/xenogears-decomp-ai/scratchpad/lahan-natural-20260908-party-remove/check-slope-ground.py", line 10, in <module>
+    assert (p/'slope-native-ground.bin').read_bytes()==(p/'slope-retail-ground.bin').read_bytes(),(f0,gravity)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (0, 32768)

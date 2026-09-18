@@ -1,0 +1,74 @@
+{
+  "candidate.c": {
+    "sha256": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+    "bytes": 7072
+  },
+  "xeno_battle_command_file1_controller.h": {
+    "sha256": "97239a2c1055e4ee110215377e39c7346f10864b0cdf7909e9cb4268c15e6635",
+    "bytes": 504
+  },
+  "retail.bin": {
+    "sha256": "1f11c9ac7117c0d702c6829cb3fb57806d73c6413eaec5f9fbf1ecca2b427a2e",
+    "bytes": 1260
+  },
+  "retail-module.bin": {
+    "sha256": "64668d85bf48dea46cf6d5f04b38e38ca887877cfef53961f0c26cd2d363b670",
+    "bytes": 19516
+  },
+  "slice.ld": {
+    "sha256": "77ab19b5bbc8a86c910efaa31569aa3af04d38388b2fc9818045de52d4a0356f",
+    "bytes": 800
+  },
+  "build.py": {
+    "sha256": "e63adea48955ca8410c858fe928f4c33cabeed8216f186c93ef405d7bb8d321d",
+    "bytes": 3355
+  },
+  "validate.py": {
+    "sha256": "a2cca060ef3dbb57e2df915b640484830b23c22e1e4ad8474da7f880135b3c21",
+    "bytes": 1870
+  },
+  "validate_yields.py": {
+    "sha256": "745fde6761de86218422504612c6d4c4e6c5e87a035f3d5d8c8379689e144351",
+    "bytes": 1238
+  },
+  "mutation-anchor-updates.json": {
+    "sha256": "aa12e87ff9a80e7ec598bb5d44cf9c3c79b764683feb022f9339ad3b2c8a8749",
+    "bytes": 662
+  },
+  "validation-inputs.json": {
+    "sha256": "b1bfc7092ae90ced958fd8713cb37acf293e55d449107004a4a80a073e8008a0",
+    "bytes": 928
+  },
+  "validation/manifest.json": {
+    "sha256": "95a6d0c46054532eebc5d4b34edace23abfdb2411781b368343d82c232824ce1",
+    "bytes": 4223
+  },
+  "validation-yields3/manifest.json": {
+    "sha256": "2debc2094936cddcc8c20e1d6a52a3761002c9c0a7f0a20772d5ad43459894a9",
+    "bytes": 1903
+  },
+  "final/candidate.bin": {
+    "sha256": "bd7e99b1b04069c02429dee84e6d8b01f762061f484146b8c6b61b7b9d27b49b",
+    "bytes": 1260
+  },
+  "final/candidate.elf": {
+    "sha256": "fca810d8a9302d3ea505a2e7879f9cddef46a9b33fb8828b5b1dd41f5abaf22f",
+    "bytes": 31456
+  },
+  "final/comparison.json": {
+    "sha256": "d8a10245cebe4d875373209f25948b4f2a9a5cc272a45d12c19d02e689cdaec4",
+    "bytes": 1702
+  },
+  "remaining-differences.json": {
+    "sha256": "3355b3a2ef0fcc918759860131e99ac44fcf7abc2ae16e7ff0c7b9b29af4a231",
+    "bytes": 2284
+  },
+  "candidate-source.diff": {
+    "sha256": "a25e96b15e895b6f435766759dc007d8212466f570b12df7579d56eb37324f53",
+    "bytes": 4167
+  },
+  "REPORT.md": {
+    "sha256": "a802685d1353469750cea5144b7011f9dd99756915fbb363a54c984fe8718902",
+    "bytes": 8364
+  }
+}

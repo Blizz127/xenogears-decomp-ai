@@ -13,6 +13,7 @@ common=(
   -I"$repo_dir/pc_port/src"
   "$repo_dir/pc_port/tests/w34n123_state2_prod_test.c"
   "$repo_dir/pc_port/src/world_map_state2_8eb64.c"
+  "$repo_dir/pc_port/src/world_map_vehicle_tail_90620.c"
 )
 warnings=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 

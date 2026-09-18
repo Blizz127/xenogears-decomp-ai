@@ -91,13 +91,20 @@ done
 echo "MUTANTS ${killed}/${#mutants[@]} KILLED"
 
 echo "== natural noninterference =="
+gcc -c pc_port/src/world_map_image_transfer_25044.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.xfer.o"
+gcc -c pc_port/src/world_map_upload_pump_74f2c.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.pump.o"
+gcc -c pc_port/src/world_map_ot_adapter.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.ot.o"
 gcc -std=gnu17 -O2 -Wall -Wextra -Werror -DXENO_PC_PORT -DSKIP_ASM \
     -D_LANGUAGE_C -Iinclude -Ipc_port/src -Ipc_port/include_shim \
+    -DWM_7169C_CONTINUATION_DISABLED -DWM_7197C_CONTINUATION_DISABLED \
+    -DWM_71984_CONTINUATION_DISABLED -DWM_71490_CONTINUATION_DISABLED \
     pc_port/tests/w34b22_i1_93354_noninterfer_test.c \
     pc_port/src/world_map_helper_93354.c \
     pc_port/src/world_map_scheduler.c \
     pc_port/src/world_map_frame_driver.c \
     pc_port/src/psx_memory.c \
+    "$BUILD_DIR/noninterfer.xfer.o" "$BUILD_DIR/noninterfer.pump.o" "$BUILD_DIR/noninterfer.ot.o" \
+    -Wl,--gc-sections \
     -o "$BUILD_DIR/noninterfer"
 "$BUILD_DIR/noninterfer" >"$BUILD_DIR/noninterfer.stdout" \
     2>"$BUILD_DIR/noninterfer.stderr"

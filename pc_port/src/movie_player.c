@@ -55,7 +55,7 @@ extern void ArchiveCdSetMode(u_char mode);
 extern void ArchiveClearStreamFileSections(void);
 extern int* ArchiveAllocStreamFile(int numEntries, int allocMode);
 extern s32 ArchiveReadFileToBuffer(s32 index, void* pBuffer, u32 arg2, u32 flags);
-extern int func_80028F30(void** ppData, void** ppSection);
+extern int func_80028F30(u32* ppPayload, u32* ppHeader);
 extern void func_800294B4(void* pSection);
 extern void func_8002A498(int channel);
 extern u32 func_8002C3D8(void);
@@ -121,7 +121,7 @@ static void (*D_801E89CC)(void*);
 static volatile s32 D_801E89D0;
 static s32 D_801E89D8;
 static volatile s32 D_801E89DC; /* start frame to wait for */
-static s32 D_801E89E0;
+s32 D_801E89E0;                /* cdstream transition gate, shared with FE60 */
 static volatile s32 D_801E89E4;
 static volatile s32 D_801E89E8; /* last sector of a frame in flight */
 static u32 D_801E89EC;
@@ -1216,8 +1216,12 @@ static u16* MpGetFrame(u32 endFrame, u16** ppHeader)
 
     (void)endFrame;
     if (D_801E8968 != 0) {
-        if (func_80028F30((void**)&data, (void**)&header) != 0)
+        u32 payloadAddress;
+        u32 headerAddress;
+        if (func_80028F30(&payloadAddress, &headerAddress) != 0)
             return NULL;
+        data = (u16*)(uintptr_t)payloadAddress;
+        header = (u16*)(uintptr_t)headerAddress;
         frame = *(u32*)(header + 4);
         D_801E8994 = frame;
         if (frame >= endFrame)

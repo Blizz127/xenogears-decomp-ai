@@ -1,0 +1,6 @@
+{
+  "src/field/dialogue/text_box_render.c": "9308e2a0b6c038d55a63ad9099bbf92ccbfaa91b1e82028fc3b4778edf1eca94",
+  "pc_port/tests/portrait_render_regression_test.c": "907024cdac825a2693ec732a222aa084a4e0bbb97d237c62ea9c05de521017cc",
+  "pc_port/tests/run_portrait_render_regression_test.sh": "c9f0264a08c14ca02606c8b95c482ad5d548989c432b9d449d42dab878cdacfd",
+  "pc_port/build_native/xeno-port": "76ac5f4399811ee70fafd0e1bcf79a6a655da31867cd7beb69a3f929c1937c61"
+}

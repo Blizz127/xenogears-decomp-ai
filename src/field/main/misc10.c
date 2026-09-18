@@ -14,13 +14,19 @@ void func_80096214(void) {
     s32 idx = func_80095124(itemId);
     u8* pTable = func_800950A0(itemId);
     u8* pData = func_8009501C(itemId);
-    u16 addr = (u16)FieldScriptVMGetInstructionArgument(3);
+    u16 addr;
     s32 value;
+
+    /* Retail 8009625C/80096274: the instruction-argument read is duplicated
+     * into both arms; pData is called but its result is unused. */
     if (idx != -1) {
+        addr = (u16)FieldScriptVMGetInstructionArgument(3);
         value = pTable[idx];
     } else {
+        addr = (u16)FieldScriptVMGetInstructionArgument(3);
         value = 0;
     }
+
     FieldScriptMemoryWriteU16(addr, value);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
@@ -64,12 +70,15 @@ void func_8009640C(void) {
     s32 itemId = FieldScriptVMGetArgument(1);
     s32 idx = func_80095124(itemId);
     if (idx != -1) {
+        /* Retail 80096440: pData (func_8009501C) is the array cleared to
+         * 0xFF; pTable (func_800950A0) is the counter that is decremented. */
+        u8* pData = func_8009501C(itemId);
         u8* pTable = func_800950A0(itemId);
         u8* pEntry = pTable + idx;
         u8 count = pEntry[0] - 1;
         pEntry[0] = count;
         if (count == 0) {
-            pTable[idx] = 0xFF;
+            pData[idx] = 0xFF;
         }
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;

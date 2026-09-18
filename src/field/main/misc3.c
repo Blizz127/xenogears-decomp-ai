@@ -36,7 +36,7 @@ extern VECTOR g_CameraUp;
 extern void func_80030A30(s32 lightId, void* pLight);
 extern void func_80030B14(MATRIX* pMatrix);
 
-static void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
+static inline void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
     u8* pData = *ppLightData;
 
     *(s32*)(pLight + 0x0) = *(s16*)(pData + 0x0);
@@ -74,8 +74,14 @@ void func_8006FDEC(void* pLightData) {
     func_80030A30(1, pLight1);
 
     FieldLoadLightRecord(&pData, pLight2);
-    memcpy(pLight1, pLight0, 0x14);
-    memcpy(pLight2, pLight0, 0x14);
+    /* Retail copies the two 0x14-byte light records with aligned word loops
+     * (four loads/stores plus a tail), not with memcpy. */
+    {
+        typedef struct { u32 w[5]; } LightRecord20;
+
+        *(LightRecord20*)pLight1 = *(LightRecord20*)pLight0;
+        *(LightRecord20*)pLight2 = *(LightRecord20*)pLight0;
+    }
     func_80030A30(2, pLight2);
 
     *(s16*)(pScene + 0x174) = *(u16*)(pData + 0x0) << 4;
@@ -181,12 +187,23 @@ void FieldFree(void) {
             void* pAnimInfo = (void*)(uintptr_t)*(u32*)(pModelData + 0x14);
 
             /* status&0x2000 gates whether +0x14 (pAnimInfo) was ever written
-             * (func_80080A74/func_80080F44, misc8.c) -- matches retail. */
+             * (func_80080A74/func_80080F44, misc8.c) -- matches retail.
+             * IsLiveHeapBlock is a port-only host-pointer backstop (retail's
+             * asm has no equivalent check), so it is excluded from the
+             * matching build. */
+#ifdef XENO_PC_PORT
             if ((pActor->status & 0x2000) && IsLiveHeapBlock(pAnimInfo)) {
+#else
+            if (pActor->status & 0x2000) {
+#endif
                 func_800306D0(pAnimInfo);
             }
             func_8002CBBC(modelData);
+#ifdef XENO_PC_PORT
             if (IsLiveHeapBlock(pDoubleBuffer)) {
+#else
+            {
+#endif
                 HeapFree(pDoubleBuffer);
             }
             HeapFree((void*)(uintptr_t)pActor->pModelData);
@@ -369,6 +386,26 @@ extern s32 g_GamePartySkinsInitialized;
 extern void* g_pGameState;
 extern MATRIX D_800AF85C;
 
+#ifdef XENO_PC_PORT
+/* The direct-field harness has no retail exit-transition frame to publish
+ * the first field's music request.  That is a process-start condition, not
+ * a per-field condition: once FieldMain has been entered, subsequent natural
+ * field transitions own D_8004F324 and must be left to the retail scripts.
+ * Keep this state private to the port process; there is deliberately no map
+ * table or synthetic music selection here. */
+int PcPort_FieldTestMusicBootstrapAllowed(void) {
+    static int s_bootstrapped;
+    const char* ft;
+
+    ft = getenv("XENO_FIELD_TEST");
+    if (s_bootstrapped || ft == NULL || ft[0] != '1') {
+        return 0;
+    }
+    s_bootstrapped = 1;
+    return 1;
+}
+#endif
+
 void func_800705DC(void) {
     SVECTOR rotation;
     s32 i;
@@ -519,30 +556,25 @@ void func_800705DC(void) {
      * real retail flow. */
 #ifdef XENO_PC_PORT
     {
-        const char* ft = getenv("XENO_FIELD_TEST");
-        if (ft != NULL && ft[0] == '1') {
+        if (PcPort_FieldTestMusicBootstrapAllowed()) {
             extern s32 D_8004F308, D_8004F324, D_8004F364;
             extern void func_8001B66C(void);
             extern void func_80085B20(s32 musicIdx, s32 arg1);
             /* Retail boots with D_8004F364=1 ("field common WDS bank
-             * resident") because the unported new-game flow loads it before
-             * any field entry; the port never has. Load it EAGERLY here with
-             * the same retail pair the lazy C90 leg would use -- effect-cue
-             * scripts can fire before the per-frame poller gets to it, and
-             * their bank binds assume residency (retail's invariant). The
-             * port's archive reads are synchronous, so the completion poll
-             * converges immediately; the bounded retry is a backstop. */
-            {
-                extern int func_80085F30(void);
-                extern void func_80085FB8(void);
-                int tries = 16;
-                func_80085FB8();
-                while (func_80085F30() == -1 && --tries > 0) {}
-                if (tries <= 0) {
-                    printf("[field-sfx] WARNING: common WDS bank load did "
-                           "not complete at init\n");
-                }
-            }
+             * resident") because the new-game flow loads that bank before any
+             * field entry. The port now performs that boot closure itself:
+             * port_main's PcPort_LoadRetailBootSoundBanks() replays retail
+             * func_80019578's archive 0/1 files 2..5, and one of them IS this
+             * common bank (id 0x26, 0x25CF0 bytes, pinned SPU 0x12000) -- the
+             * same load also sets D_80059560, which FieldMain adopts into
+             * D_8006251C (main.c). Re-loading it here was therefore a
+             * DUPLICATE: SoundLoadWdsFile -> SoundSpuMemoryAllocateBlockAtAddress
+             * (0x25CF0, 0x12000) returned 0 (gap == 0, region already
+             * resident) and fired SoundHandleError(0x1F), which aborted the
+             * port in PsyX_SPUAL_Write. Assert retail's invariant instead of
+             * re-loading -- the per-frame C90 poller then skips the
+             * common-bank leg exactly as retail does. */
+            D_8004F364 = 1;
             func_8001B66C();
             D_8004F308 = -1;
             D_8004F324 = D_800B2290;
@@ -645,12 +677,13 @@ void func_80070C84(void) {
  *   - runs the per-actor (0x5C-byte) init loop.
  * Section offsets/sizes are read from the map header by raw byte offset to stay
  * faithful to the asm (see the ActorFile struct in field/actor.h for the map).
- * Every jal is preserved in order; callees not yet decompiled are no-op stubs in
- * the port. */
+ * Every jal is preserved in order; the native dependency audit identifies any
+ * callee still supplied by generated storage. */
 
 extern void* D_8005A4E0;
 
-/* Data buffers / scratch globals touched by FieldLoad (raw port-stubbed data). */
+/* Data buffers / scratch globals touched by FieldLoad. Native ownership and
+ * exact sizes remain tracked by the generated-data audit. */
 extern u8 D_800B1F78[];     /* 0x100-byte header table copied out of the map */
 extern u8 D_800B06BC[];     /* 4x4 grid of Quads (0x70 each) */
 extern u8 D_800B0DBC[];     /* 5 Quads (0x70 each) */
@@ -658,7 +691,7 @@ extern void* D_800AFB14;    /* decompressed model-data buffer (0x114 section) */
 extern void* D_800AFB18;    /* decompressed sprite/model-2 buffer (0x134 section) */
 /* One contiguous scratch block in the retail binary: D_800AFB20 is the base,
  * D_800AFB24 == D_800AFB20[1], and D_800AFB54 == ((s16*)D_800AFB20)[0x1A].
- * Declared as a single array so the (port-stubbed) storage stays contiguous. */
+ * Declared as a single array so the native storage stays contiguous. */
 extern u32 D_800AFB20[];    /* fixup base pointer table (>= 0x38 bytes) */
 #define D_800AFB24 (D_800AFB20[1])
 #define D_800AFB54 (((s16*)D_800AFB20)[0x1A])
@@ -666,7 +699,7 @@ extern s32 D_800AFD10;
 extern s32 D_800ADBFC;      /* == g_FieldNumActors snapshot (script actor count) */
 extern s32 D_800AFC74;
 extern void* D_800ADBF0;    /* decompressed dialogs buffer (0x128 section) */
-extern u8 D_800658DC[];     /* walkmesh decompress scratch/destination */
+extern u8 D_800658DC[];     /* field battle encounter records and weights */
 extern s32 D_8004F330;
 extern s32 D_8004F334;
 
@@ -693,7 +726,8 @@ extern void func_8006FDEC(void* pLightData);
 extern void func_800705DC(void);
 extern void func_8007A7F4(Quad* pPart, int x, int y, int tex);
 extern void func_8007A5C4(void);
-extern void func_80077844();
+extern void func_80077844(short* dst, int a, int b, int c,
+                         int d, int e, int f, int g, int h, int i);
 extern void func_80077C60(void);
 extern void func_8007469C(void);
 extern void func_80080F44(s32 actorIndex);
@@ -806,10 +840,11 @@ void FieldLoad(void) {
         }
     }
 
-    /* --- Walkmesh section (size 0x124, offset 0x148): decompress into scratch */
+    /* Retail 80071054..6C decompresses the battle encounter section at the
+     * destination base. The +0x10 is on the unused size argument, not a2. */
     FieldLZSSDecompress(NULL,
                         (u8*)((u8*)D_8005A4E0 + *(u32*)((u8*)D_8005A4E0 + 0x148)),
-                        D_800658DC + 0x10);
+                        D_800658DC);
 
     /* --- Scripts section (size 0x120, offset 0x144) ------------------------- */
     g_FieldCurScriptFile =
@@ -1083,8 +1118,10 @@ void FieldLoad(void) {
     /* Geometry / camera work-area setup (D_800B223C.. and the D_800B00xx block).
      * The asm emits absolute stores to a set of distinct data symbols; each is a
      * separate (auto-stubbed) symbol in the port, so we store to them by name. */
-    func_80077844((short*)D_800B223C, 0x800, 0, 0, 0x800, 0, 0, 0, 0);
-    func_80077844((short*)(D_800B223C - 0x20), 0x1F8, -0xFC1, -0x1F8, 0, 0, 0, 0, 0);
+    /* Retail 80071640 stores 0x800 at sp+0x1C (matrix element 6).
+     * Both call delay slots store zero at sp+0x24 (matrix element 8). */
+    func_80077844((short*)D_800B223C, 0x800, 0, 0, 0x800, 0, 0, 0x800, 0, 0);
+    func_80077844((short*)(D_800B223C - 0x20), 0x1F8, -0xFC1, -0x1F8, 0, 0, 0, 0, 0, 0);
 
     D_800B225E = 0x1E;
     D_800B225D = 0x1E;
@@ -1246,11 +1283,11 @@ void FieldLoad(void) {
             FieldActor* pActor = &g_FieldActors[i];
             u16 status = *(u16*)((u8*)pActor + 0x58);
             if (status & 0x40) {
-#ifndef XENO_PC_PORT
-                /* This loop reads pActorData (offset 0x4C) which is populated by
-                 * func_80080F44 (called per-actor above). In the port func_80080F44
-                 * is a stub, so pActorData stays NULL and this dereference crashes.
-                 * Guard it until func_80080F44 / the actor-data init is ported. */
+#ifndef FIELD_AUDIT_MUTANT_SKIP_FINAL_ACTOR_ANIM
+                /* pActorData (offset 0x4C) is populated by the retail-derived
+                 * func_80080F44 path above. Keep the final direction update in
+                 * every production build; the guard exists only for the focused
+                 * omission mutant. */
                 void* pModel = (void*)(uintptr_t)*(u32*)((u8*)pActor + 0x4C);
                 u32 flag = *(u32*)((u8*)pModel + 0x4);
                 if (flag & 0x1000000) {

@@ -2,6 +2,8 @@
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdio.h>
+#include "psx_memory.h"
+#include "guest_prim_link.h"
 
 extern char* getenv(const char*);
 extern int printf(const char*, ...);
@@ -30,91 +32,88 @@ static int XenoWalkAnimDumpEnabled(void)
 
 // Sprite / Animation functions
 
-extern void func_800BA8F4(void);
+extern void func_800BA8F4(void* pSpriteData);
 
-void func_80022B2C(u8* pSprite) {
-    u32 flags = *(u32*)(pSprite + 0x3C);
-    s32 vel, accel, curPos, target;
+void func_80022B2C(u8* pSpriteData)
+{
+    u8* p = pSpriteData;
+    s32 vel, dv, pos, floor;
 
-    if ((flags >> 26) & 1) {
-        /* Path 3: steady movement with acceleration */
-        vel = *(s32*)(pSprite + 0x10);
-        accel = *(s32*)(pSprite + 0x1C);
-        curPos = *(s32*)(pSprite + 0x04);
-        curPos += func_80022CAC(pSprite, vel >> 4) << 4;
-        *(s32*)(pSprite + 0x04) = curPos;
-        *(s32*)(pSprite + 0x10) = vel + accel;
+    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
+        vel = *(s32*)(p + 0x10);
+        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+        *(u32*)(p + 0x4) += (u32)dv;
+        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
         return;
     }
 
-    func_800BA8F4();
-    vel = *(s32*)(pSprite + 0x10);
-    accel = *(s32*)(pSprite + 0x1C);
-    target = *(s16*)(pSprite + 0x84);
+    func_800BA8F4(p);
 
-    if (vel <= 0 || accel <= 0) {
-        /* Path 2: simple forward movement */
-        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
-        curPos = *(s32*)(pSprite + 0x04) + scaled;
-        *(s32*)(pSprite + 0x04) = curPos;
-        if ((curPos >> 16) >= target) {
-            *(s32*)(pSprite + 0x04) = target << 16;
-        }
-        *(s32*)(pSprite + 0x10) += accel;
-        return;
-    }
-
-    /* Path 1: deceleration with bounce */
-    {
-        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
-        s16 y = *(s16*)(pSprite + 0x06);
-        curPos = *(s32*)(pSprite + 0x04) + scaled;
-        *(s32*)(pSprite + 0x04) = curPos;
-        if ((curPos >> 16) < target) {
-            /* Not yet at target, add acceleration */
-            *(s32*)(pSprite + 0x10) += accel;
+    vel = *(s32*)(p + 0x10);
+    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
+        floor = *(s16*)(p + 0x84);
+        if (*(s16*)(p + 0x6) == (s16)floor) {
             return;
         }
-        /* Reached target, bounce */
-        *(s32*)(pSprite + 0x04) = target << 16;
-        {
-            s32 bounceVel = -vel;
-            s32 bounceFactor = (*(u32*)(pSprite + 0xA8) >> 1) & 0x3FF;
-            s32 newVel = bounceVel * bounceFactor;
-            if (newVel < 0) {
-                *(s32*)(pSprite + 0x04) = target << 16;
-                newVel += 0xFF;
-            }
-            *(s32*)(pSprite + 0x10) = newVel >> 8;
+        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+        *(s32*)(p + 0x4) = pos;
+        if ((pos >> 16) < floor) {
+            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+            return;
         }
-        vel = *(s32*)(pSprite + 0x10);
-        accel = *(s32*)(pSprite + 0x1C);
-        if (vel < 0) vel = -vel;
-        if (accel < 0) accel = -accel;
-        if (vel < accel) {
-            *(s32*)(pSprite + 0x10) = 0;
+
+        /* Landed: snap to the floor and bounce. */
+        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
+        if (pos < 0) {
+            pos += 0xFF;
         }
+        pos >>= 8;
+        *(s32*)(p + 0x10) = pos;
+        if (pos < 0) {
+            pos = -pos;
+        }
+        dv = *(s32*)(p + 0x1C);
+        if (dv < 0) {
+            dv = (s32)(0u - (u32)dv);
+        }
+        if (pos < dv) {
+            *(s32*)(p + 0x10) = 0;
+        }
+        return;
     }
+
+    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+    *(s32*)(p + 0x4) = pos;
+    floor = *(s16*)(p + 0x84);
+    if ((pos >> 16) >= floor) {
+        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+    }
+    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
 }
 
 s32 func_80022CAC(void* pSpriteData, s32 value)
 {
     u16 factor = *(u16*)((u8*)pSpriteData + 0x3A);
-    if (factor == 0) return value;
-    {
-        s32 product = value * factor;
-        s32 adj = product;
-        if (product < 0) adj = product + 0x3FF;
-        return adj >> 10;
+    if (factor != 0) {
+        s32 adj;
+        /* MULT/MFLO keeps the low word; the wide product avoids C overflow. */
+        value = (s32)((s64)value * factor);
+        adj = value;
+        if (value < 0) adj = value + 0x3FF;
+        value = adj >> 10;
     }
+    return value;
 }
 
 void func_80022CDC(u8* pSprite) {
     s32 val;
     val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x0C) >> 4);
-    *(s32*)(pSprite + 0x00) += val << 4;
+    *(u32*)(pSprite + 0x00) += (u32)val << 4;
     val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x14) >> 4);
-    *(s32*)(pSprite + 0x08) += val << 4;
+    *(u32*)(pSprite + 0x08) += (u32)val << 4;
     func_80022B2C(pSprite);
 }
 
@@ -364,7 +363,40 @@ void func_80023340(void* pSpriteData, s32 count) {
 }
 
 // Allocate struct stuff
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800233A4);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800233A4.s
+ * (0x800233A4-0x80023440). Allocates a dataSize+0xEC wrapper for pOwner, links
+ * it into both the timer and the work list (inner node at +0x1C), initialises the
+ * +0x38 sub-structure, points both nodes' +4 field at it, then installs the
+ * timer callback func_80022DF4 and the free callback func_80022EB8, returning the
+ * wrapper. The port keeps its own owner in pc_port/src/game_overrides.c, so this
+ * definition is weak under XENO_PC_PORT. */
+extern u8 D_800591AF;
+extern void func_80023804(void* p);
+extern void func_80022DF4(void* pWork);
+extern void func_80022EB8(void* pWork);
+extern void TimerWorkListAddTask(void* pOwner, void* pTask);
+extern void WorkListAddTask(void* pTask, void* pNode);
+extern void TimerWorkListSetTaskCallback(void* pTask, void (*pCallback)(void*));
+extern void WorkListTaskSetOnFreeCallback(void* pTask, void (*pCallback)(void*));
+
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+void* func_800233A4(void* pOwner, s32 dataSize) {
+    u8* pWrapper;
+    u8* pInner;
+
+    pWrapper = HeapAlloc(dataSize + 0xEC, D_800591AF);
+    TimerWorkListAddTask(pOwner, pWrapper);
+    pInner = pWrapper + 0x1C;
+    WorkListAddTask(pWrapper, pInner);
+    func_80023804(pWrapper + 0x38);
+    *(u32*)(pWrapper + 4) = (u32)(uintptr_t)(pWrapper + 0x38);
+    *(u32*)(pInner + 4) = (u32)(uintptr_t)(pWrapper + 0x38);
+    TimerWorkListSetTaskCallback(pWrapper, func_80022DF4);
+    WorkListTaskSetOnFreeCallback(pWrapper, func_80022EB8);
+    return pWrapper;
+}
 /*
 Matches on  GCC 2.7.2-970404, ASPSX 2.67
 
@@ -407,7 +439,43 @@ s32 func_80023440(void* pData)
     return result;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023468);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023468.s
+ * (0x80023468-0x800234AC, 17 instructions). Small dispatch on `type`: retail
+ * rejects `type >= 0x10` up front, then jtbl_80018664 maps cases 0/5/6/10-14 to
+ * 1, cases 1/4/8/9 to 0 and cases 2/7/15 to 2 — while **case 3 falls through to
+ * the same exit as the out-of-range path, which returns the caller's a1
+ * register**. That register value is modelled here as the second parameter
+ * (retail's callers pass whatever a1 holds, and the C callers in this repo pass
+ * an explicit value); a one-argument call therefore yields that slot's content,
+ * exactly like retail. */
+s32 func_80023468(s32 type, s32 arg1) {
+    switch (type) {
+    case 0:
+    case 5:
+    case 6:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+        return 1;
+    case 1:
+    case 4:
+    case 8:
+    case 9:
+        return 0;
+    case 2:
+    case 7:
+    case 15:
+#ifdef TEMP1_23468_MUTANT_SWAP_GROUPS
+        return 1;
+#else
+        return 2;
+#endif
+    default:
+        return arg1;
+    }
+}
 
 void func_800234AC(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -495,7 +563,8 @@ void func_80023538(void* pSpriteData, void* pAnimation) {
             if (D_800591AD) {
                 SpriteSetScale((SpriteData*)pData, D_800591A8);
             }
-        } else if (D_800591AD) {
+        }
+        if (D_800591AD) {
             SpriteComputeTransformMatrix(pData);
         }
 
@@ -668,18 +737,231 @@ void* func_80023A48(s32 type, s32 mode, u8* pAnimData, s32 extraSize, u8* pCallb
     return pResult;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023B84);
+extern u8 D_800591AC;
+extern void func_80024730(u8* pOwner);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023FD8);
+void* func_80023B84(void* pSpriteData, void* pScript, void* pAnimPackage) {
+    u8* pSprite = pSpriteData;
+    void* pEntry = pScript;
+    u8* pExtra = pAnimPackage;
+    u8* pWrapper;
+    u8* pNode;
+    s32 kind;
+    s32 mode;
+    u8 prevFlag;
+    u32 b0;
+    u32 u24;
+    u32 r40;
+    u32 r3c;
+    u32 vMix;
+    u32 ac;
+    u32 bit9;
+
+    b0 = *(u32*)(pSprite + 0xB0) | 0x800;
+    *(u32*)(pSprite + 0xB0) = b0;
+    prevFlag = D_800591AC;
+    if (((b0 >> 8) & 1) != 0) {
+        D_800591AC = 0;
+    }
+    kind = func_80023440(pEntry);
+    if (kind == 3) {
+        kind = (*(u32*)(pSprite + 0x40) >> 13) & 0xF;
+    }
+    /* Retail leaves entry a1 (pScript/pEntry) in place: func_80023440 never
+     * writes a1, and nothing between the two jals touches it. kind is always
+     * 0-15 here so the default arm (and thus arg1) is dead, but pass it
+     * explicitly per this TU's contract. */
+    mode = func_80023468(kind, (s32)(uintptr_t)pEntry);
+    pWrapper = func_80023A48(kind, mode, pExtra, 0, *(u8**)(pSprite + 0x6C));
+    pNode = pWrapper + 0x38;
+    *(u32*)(pWrapper + 0x14) |= 0x20000000;
+    r40 = (*(u32*)(pNode + 0x40) & 0xFFFE1FFF) | ((kind & 0xF) << 13);
+    *(u32*)(pNode + 0x40) = r40;
+    u24 = *(u32*)(pNode + 0x24);
+    *(u32*)(pNode + 0x3C) = (*(u32*)(pNode + 0x3C) & ~3) | (mode & 3);
+    {
+        u32 r40b = r40;
+        r40b = (r40b & ~0x1F00) | (*(u32*)(pSprite + 0x40) & 0x1F00);
+        *(u32*)(pNode + 0x40) = r40b;
+    }
+    *(u32*)(pNode + 0x3C) = (*(u32*)(pNode + 0x3C) & ~8) | (*(u32*)(pSprite + 0x3C) & 8);
+    *(u32*)(pNode + 0x3C) = (*(u32*)(pNode + 0x3C) & ~0x10) | (*(u32*)(pSprite + 0x3C) & 0x10);
+    *(u8*)(pNode + 0x3D) = *(u8*)(pSprite + 0x3D);
+    r40 = (*(u32*)(pNode + 0x40) & 0xFFFBFFFF) | (*(u32*)(pSprite + 0x40) & 0x40000);
+    *(u32*)(pNode + 0x40) = r40;
+    *(u32*)(pNode + 0x3C) = (*(u32*)(pNode + 0x3C) | 0x4000000) & ~4;
+    *(u32*)(pNode + 0x18) = *(u32*)(pSprite + 0x18);
+    *(u16*)(pNode + 0x32) = *(u16*)(pSprite + 0x32);
+    *(u16*)(pNode + 0x2C) = *(u16*)(pSprite + 0x2C);
+    *(u16*)(pNode + 0x34) = *(u16*)(pSprite + 0x34);
+    {
+        u32 b0s = *(u32*)(pNode + 0xB0);
+        bit9 = (*(u32*)(pSprite + 0xB0) >> 9) & 1;
+        b0s = (b0s & ~0x200) | (bit9 << 9);
+        *(u32*)(pNode + 0xB0) = b0s;
+        if (bit9 != 0) {
+            *(u32*)(pNode + 0x40) = (*(u32*)(pNode + 0x40) & 0xFFFE1FFF) | 0x300;
+            *(u16*)(pNode + 0x3A) = *(u16*)(pSprite + 0x3A);
+        }
+    }
+    vMix = ((*(u32*)(pSprite + 0xAC) & 3) << 2) | (*(u32*)(pSprite + 0xA8) >> 30);
+    *(u32*)(pNode + 0xA8) = (*(u32*)(pNode + 0xA8) & 0x3FFFFFFF) | (vMix << 30);
+    *(u32*)(pNode + 0xAC) = (*(u32*)(pNode + 0xAC) & ~3) | (vMix >> 2);
+    *(u32*)(pNode + 0xB0) = (*(u32*)(pNode + 0xB0) & ~0x100) | (*(u32*)(pSprite + 0xB0) & 0x100);
+    *(u32*)(pNode + 0xAC) = (*(u32*)(pNode + 0xAC) & ~0x40) | (*(u32*)(pSprite + 0xAC) & 0x40);
+    ac = (*(u32*)(pNode + 0xAC) & 0xFFF8007F) | (*(u32*)(pSprite + 0xAC) & 0x7FF80);
+    *(u32*)(pNode + 0xAC) = ac;
+    ac &= ~4;
+    *(u32*)(pNode + 0xA8) &= ~1;
+    ac |= (*(u32*)(pSprite + 0xAC) & 4);
+    *(u32*)(pNode + 0xAC) = ac;
+    if ((*(u32*)(pSprite + 0xA8) & 1) != 0) {
+        *(u32*)(pNode + 0x7C) = 0;
+    } else {
+        *(u32*)(pNode + 0x7C) = *(u32*)(pSprite + 0x7C);
+    }
+    *(u32*)(pNode + 0x70) = (u32)pSprite;
+    *(u32*)(pNode + 0x44) = *(u32*)(pSprite + 0x44);
+    *(u32*)(pNode + 0x48) = *(u32*)(pSprite + 0x48);
+    *(u32*)(pNode + 0x74) = *(u32*)(pSprite + 0x74);
+    *(u16*)(pNode + 0x82) = *(u16*)(pSprite + 0x82);
+    *(u32*)(pNode + 0x50) = *(u32*)(pSprite + 0x50);
+    *(u8*)(pNode + 0x8D) = *(u8*)(pSprite + 0xAF);
+    *(u32*)(pNode + 0x78) = *(u32*)(pSprite + 0x78);
+    *(u32*)(pNode + 0x0) = *(u32*)(pSprite + 0x0);
+    *(u32*)(pNode + 0x4) = *(u32*)(pSprite + 0x4);
+    *(u32*)(pNode + 0x8) = *(u32*)(pSprite + 0x8);
+    *(u32*)(pNode + 0xC) = *(u32*)(pSprite + 0xC);
+    *(u32*)(pNode + 0x10) = *(u32*)(pSprite + 0x10);
+    *(u32*)(pNode + 0x14) = *(u32*)(pSprite + 0x14);
+    if (mode != 0) {
+        *(u16*)(*(u8**)(pNode + 0x20) + 0x0) = *(u16*)(*(u8**)(pSprite + 0x20) + 0x0);
+        *(u16*)(*(u8**)(pNode + 0x20) + 0x2) = *(u16*)(*(u8**)(pSprite + 0x20) + 0x2);
+        *(u16*)(*(u8**)(pNode + 0x20) + 0x4) = *(u16*)(*(u8**)(pSprite + 0x20) + 0x4);
+        *(u16*)(*(u8**)(pNode + 0x20) + 0x6) = *(u16*)(*(u8**)(pSprite + 0x20) + 0x6);
+        *(u16*)(*(u8**)(pNode + 0x20) + 0x8) = *(u16*)(*(u8**)(pSprite + 0x20) + 0x8);
+        *(u16*)(*(u8**)(pNode + 0x20) + 0xA) = *(u16*)(*(u8**)(pSprite + 0x20) + 0xA);
+    }
+    func_80023538(pNode, pEntry);
+    /* Keep u24 (dead retail load) and kind live across the call above so the
+     * allocator places them in s3/s1; both asms emit zero bytes. */
+    __asm__ volatile("" :: "r"(kind));
+    __asm__ volatile("" :: "r"(u24));
+    func_80024730(pWrapper);
+    D_800591AC = prevFlag;
+    return pNode;
+}
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023FD8.s
+ * (0x80023FD8-0x80024294, 175 instructions). Sprite-script spawn: resolves the
+ * script entry `index` (u16 byte offset at package+0x10, indexed two bytes per
+ * entry, read from +2), classifies it with func_80023440 / func_80023468
+ * (retail passes the still-live a1 = package to the dispatcher, which is only
+ * observable for the case-3 fall-through), allocates through func_80023A48,
+ * then tags wrapper+0x14 in place. The optional block runs only when
+ * D_800591AD is set and the player sprite D_800C3E1C is non-NULL: retail
+ * copies the player's render/tint/colour state into the new node, keeps **two
+ * separate** +0x7C transfers, and re-joins the (player+0xA8 >> 30) with
+ * (player+0xAC & 3) into node+0xA8 bits 30-31 / node+0xAC bits 0-1. The tail
+ * re-stores +0x24 (loaded after func_80023A48 returned), clears
+ * +0x44/+0x48/+0x34, folds type into +0x40 bits 13-16 and mode into +0x3C
+ * bits 0-1, writes the D_800591A8 duration to +0x82, stores the three s16
+ * script values <<16 into +0x0/+0x4/+0x8, then runs func_80023538(node, entry)
+ * and func_80024730(wrapper). */
+extern void func_80024730(u8* pOwner);
+extern u32 D_800C3E1C;
+
+/* The port keeps its host-pointer constructor in pc_port/src/sprite_constructor.c
+ * (field_object_overlay.c calls it with host-translated pointers); this matching
+ * owner writes the retail 32-bit pointer words, so it is weak under the port. */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+u8* func_80023FD8(s32 index, u8* pAnimData, s16* pPosition, s32 extraSize) {
+    u8* pScriptTable;
+    u8* pEntry;
+    u8* pWrapper;
+    u8* pNode;
+    u8* pParent;
+    u32 source;
+    u32 bits40;
+    u32 bits3c;
+    u32 bitsAC;
+    u32 split;
+    u16 duration;
+    s32 type;
+    s32 mode;
+
+    pScriptTable = (u8*)(uintptr_t)*(u32*)(pAnimData + 0x10);
+    pEntry = pScriptTable + *(u16*)(pScriptTable + index * 2 + 2);
+    type = func_80023440(pEntry);
+    mode = func_80023468(type, (s32)(uintptr_t)pAnimData);
+    pWrapper = (u8*)func_80023A48(type, mode, pAnimData, extraSize, NULL);
+    pNode = pWrapper + 0x38;
+
+    *(u32*)(pWrapper + 0x14) |= 0x20000000;
+    source = *(u32*)(pNode + 0x24);
+    *(u32*)(pNode + 0x70) = 0;
+    *(u32*)(pNode + 0x74) = 0;
+
+    if (D_800591AD != 0) {
+        pParent = (u8*)(uintptr_t)D_800C3E1C;
+        if (pParent != NULL) {
+            bits40 = *(u32*)(pNode + 0x40);
+            *(u32*)(pNode + 0x44) = *(u32*)(pParent + 0x44);
+            *(u32*)(pNode + 0x48) = *(u32*)(pParent + 0x48);
+            *(u32*)(pNode + 0x74) = *(u32*)(pParent + 0x74);
+            *(u32*)(pNode + 0x18) = *(u32*)(pParent + 0x18);
+            *(u16*)(pNode + 0x32) = *(u16*)(pParent + 0x32);
+            bits40 = (bits40 & 0xFFFFE0FF) | (*(u32*)(pParent + 0x40) & 0x1F00);
+            *(u32*)(pNode + 0x40) = bits40;
+            bits3c = *(u32*)(pNode + 0x3C);
+            bits3c = (bits3c & ~0x8) | (*(u32*)(pParent + 0x3C) & 0x8);
+            *(u32*)(pNode + 0x3C) = bits3c;
+            bits3c = (bits3c & ~0x10) | (*(u32*)(pParent + 0x3C) & 0x10);
+            *(u32*)(pNode + 0x3C) = bits3c;
+            *(u8*)(pNode + 0x3D) = *(u8*)(pParent + 0x3D);
+            *(u16*)(pNode + 0x2C) = *(u16*)(pParent + 0x2C);
+            bits3c = (*(u32*)(pNode + 0x3C) | 0x04000000) & ~0x4;
+            *(u32*)(pNode + 0x3C) = bits3c;
+            bitsAC = (*(u32*)(pNode + 0xAC) & ~0x4) | (*(u32*)(pParent + 0xAC) & 0x4);
+            *(u32*)(pNode + 0xAC) = bitsAC;
+            bitsAC = (bitsAC & 0xFFF8007F) | (*(u32*)(pParent + 0xAC) & 0x7FF80);
+            *(u32*)(pNode + 0xAC) = bitsAC;
+            *(u32*)(pNode + 0x7C) = *(u32*)(pParent + 0x7C);
+            *(u32*)(pNode + 0x7C) = *(u32*)(pParent + 0x7C);
+            split = (*(u32*)(pParent + 0xA8) >> 30) | ((*(u32*)(pParent + 0xAC) & 0x3) << 2);
+            *(u32*)(pNode + 0xA8) = (*(u32*)(pNode + 0xA8) & 0x3FFFFFFF) | (split << 30);
+            *(u32*)(pNode + 0xAC) = (*(u32*)(pNode + 0xAC) & ~0x3) | (split >> 2);
+            *(u32*)(pNode + 0x50) = *(u32*)(pParent + 0x50);
+            *(u8*)(pNode + 0x8D) = *(u8*)(pParent + 0xAF);
+        }
+    }
+
+    bits40 = *(u32*)(pNode + 0x40) & 0xFFFE1FFF;
+    bits3c = *(u32*)(pNode + 0x3C);
+    duration = (u16)D_800591A8;
+    *(u32*)(pNode + 0x44) = 0;
+    *(u32*)(pNode + 0x48) = 0;
+    *(u16*)(pNode + 0x34) = 0;
+    *(u32*)(pNode + 0x24) = source;
+    bits40 |= ((u32)type & 0xF) << 13;
+    *(u32*)(pNode + 0x40) = bits40;
+    bits3c = (bits3c & ~0x3) | ((u32)mode & 0x3);
+    *(u32*)(pNode + 0x3C) = bits3c;
+    *(u16*)(pNode + 0x82) = duration;
+    *(u32*)(pNode + 0x0) = (u32)pPosition[0] << 16;
+    *(u32*)(pNode + 0x4) = (u32)pPosition[1] << 16;
+    *(u32*)(pNode + 0x8) = (u32)pPosition[2] << 16;
+    func_80023538(pNode, pEntry);
+    func_80024730(pWrapper);
+    return pWrapper;
+}
 
 extern s32 D_800591B8;
 extern void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5);
-#ifdef XENO_PC_PORT
-/* Host GNU C has no implicit int(): prototype must precede the call at
- * func_800242F4. Matching build keeps the original implicit-decl order. */
 void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY,
                     s16 clutX, s16 clutY, s16 arg6);
-#endif
 
 void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
     void* pSpriteData;
@@ -691,20 +973,15 @@ void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
     return pSpriteData;
 }
 
-void* func_800242F4(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
-    void* pSpriteData;
-    D_800591B8 = arg6;
-#ifdef XENO_PC_PORT
-    /* Seven-arg retail signature. First slot is filled with pAnimPackage
-     * (the only initialized void* already in this function). No HeapAlloc
-     * and no func_80024524. Matching build keeps the original six-arg call. */
-    pSpriteData = func_8002435C(pAnimPackage, pAnimPackage, texX, texY, clutX,
-                               clutY, arg5);
-#else
-    pSpriteData = func_8002435C(pAnimPackage, texX, texY, clutX, clutY, arg5);
-#endif
+void* func_800242F4(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg6, s32 flags) {
+    void* pResult;
+
+    /* Retail 800242F4 preserves a0/a1 and forwards five signed halfwords;
+     * the eighth argument (caller SP+1C) supplies the temporary flags. */
+    D_800591B8 = flags;
+    pResult = func_8002435C(pSpriteData, pAnimPackage, texX, texY, clutX, clutY, arg6);
     D_800591B8 = 0;
-    return pSpriteData;
+    return pResult;
 }
 
 extern u8 D_800591AD;
@@ -847,11 +1124,85 @@ void func_800245D8(void* pSpriteData, s16 animIndex) {
 #endif
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024730);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80024730.s
+ * (0x80024730-0x800248D4; the next retail symbol func_800248D4 starts there, so
+ * the earlier "0x800248C0" note here understated the body by the tail's last
+ * three instructions). Animation-state dispatch keyed on bits 13-16 of the
+ * state word at pOwner+0x38+0x40; retail's jtbl_800186A4 maps cases 0-6 and 14 to
+ * "no state change", 7 to re-arming the timer callback with func_80022E8C, 8/9 to
+ * writing a new sprite byte (0x68 / +0x36=3 with 0x60), 10/11 to clearing the
+ * +0x34 counter and copying the three-word state block from D_8006F99C /
+ * D_8006F9AC, and 12/13 to stepping the mode down by two (rewriting the flag
+ * word's bits 13-16) plus the D_8006F99C block. Every path ends in
+ * func_80025224(pOwner+0x1C, mode) with the post-transition mode.
+ *
+ * Case 7 binds the timer callback on **pOwner itself** (the wrapper), not on the
+ * inner node: at .L80024878 the `jal TimerWorkListSetTaskCallback` still has the
+ * incoming a0 = pOwner, and `addu $a0, $s2, $zero` (s2 = pOwner+0x1C) only sits
+ * in the delay slot of the *following* `j .L800248B0`, i.e. it feeds the tail
+ * func_80025224 call. The first version of this body passed pOwner+0x1C here;
+ * the retail differential caught it.
+ * The func_800BC158 cases likewise store before the call, because retail puts
+ * those stores in the `jal` delay slot: cases 10/11 `sh $zero,0x34($s0)` and
+ * 12/13 both `sh $v1,0x34($s0)` and the masked `sw $a1,0x40($s0)` execute before
+ * func_800BC158 runs (the first version stored them afterwards). */
+extern u32 D_8006F99C[];
+extern u32 D_8006F9AC[];
+
+void func_80024730(u8* pOwner) {
+    u8* pState = pOwner + 0x38;
+    u8* pInner = pOwner + 0x1C;
+    s32 mode = (*(u32*)(pState + 0x40) >> 13) & 0xF;
+    u32 flags;
+
+    switch (mode) {
+    case 7:
+        TimerWorkListSetTaskCallback(pOwner, func_80022E8C);
+        break;
+    case 8:
+        *(u8*)(pState + 0x2B) = 0x68;
+        *(u16*)(pState + 0x34) = 1;
+        break;
+    case 9:
+        *(u16*)(pState + 0x36) = 3;
+        *(u8*)(pState + 0x2B) = 0x60;
+        *(u16*)(pState + 0x34) = 1;
+        break;
+    case 10:
+        *(u16*)(pState + 0x34) = 0;
+        func_800BC158(pOwner);
+        *(u32*)(pState + 0x00) = D_8006F99C[0];
+        *(u32*)(pState + 0x04) = D_8006F99C[1];
+        *(u32*)(pState + 0x08) = D_8006F99C[2];
+        break;
+    case 11:
+        *(u16*)(pState + 0x34) = 0;
+        func_800BC158(pOwner);
+        *(u32*)(pState + 0x00) = D_8006F9AC[0];
+        *(u32*)(pState + 0x04) = D_8006F9AC[1];
+        *(u32*)(pState + 0x08) = D_8006F9AC[2];
+        break;
+    case 12:
+    case 13:
+        flags = *(u32*)(pState + 0x40);
+        *(u16*)(pState + 0x34) = 1;
+        mode = (((flags >> 13) & 0xF) - 2) & 0xF;
+        *(u32*)(pState + 0x40) = (flags & 0xFFFE1FFF) | ((u32)mode << 13);
+        func_800BC158(pOwner);
+        *(u32*)(pState + 0x00) = D_8006F99C[0];
+        *(u32*)(pState + 0x04) = D_8006F99C[1];
+        *(u32*)(pState + 0x08) = D_8006F99C[2];
+        break;
+    default:
+        break;
+    }
+
+    func_80025224(pInner, mode);
+}
 
 extern u8 D_800591AD;
 extern s32 g_WorkListCurTimer;
-extern void func_800C11CC(void);
+extern void func_800C11CC(void* pSpriteData);
 extern void func_80022D44(void* pSpriteData);
 extern void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands);
 
@@ -861,7 +1212,7 @@ void func_800248D4(void* pSpriteData) {
     u8 opcode;
 
     if (D_800591AD) {
-        func_800C11CC();
+        func_800C11CC(pData);
         return;
     }
 
@@ -1371,6 +1722,10 @@ reenter:
     if (opcode == 0x85 || opcode == 0x8E ||
         opcode == 0x98 || opcode == 0xC8 ||
         opcode == 0xD4 || opcode == 0xE2 || opcode == 0xFA) {
+#ifdef XENO_PC_PORT
+        fprintf(stderr, "{\"event\":\"sprite_animation_dedicated_unimplemented\",\"opcode\":%u,\"pc\":\"%p\"}\n", (unsigned)opcode, (void*)pc);
+        fflush(stderr);
+#endif
         assert(0 && "func_800248D4 dedicated opcode path is not implemented");
     }
 
@@ -1388,6 +1743,10 @@ reenter:
         return;
     }
 
+#ifdef XENO_PC_PORT
+    fprintf(stderr, "{\"event\":\"sprite_animation_opcode_unimplemented\",\"opcode\":%u,\"pc\":\"%p\"}\n", (unsigned)opcode, (void*)pc);
+    fflush(stderr);
+#endif
     assert(0 && "func_800248D4 opcode path is not implemented");
 }
 
@@ -1451,7 +1810,20 @@ void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag) {
 }
 */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", GfxFreeWorkBuffers);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/GfxFreeWorkBuffers.s
+ * (0x80024FB8-0x80024FE4, 11 instructions): free the work buffers and reset the
+ * sprite/image lists. The port keeps its own owner in
+ * pc_port/src/world_map_teardown_7299c.c, so the matching definition is weak
+ * under XENO_PC_PORT and the port's strong one wins the link. */
+extern void func_8001D2A4(void);
+
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+void GfxFreeWorkBuffers(void) {
+    HeapFree(g_GfxWorkBuffers);
+    func_8001D2A4();
+}
 /*
 void GfxFreeWorkBuffers(void) {
     HeapFree(g_GfxWorkBuffers);
@@ -1609,29 +1981,19 @@ void func_800250E0(int context) {
 */
 
 
+/* func_80025180: GfxQueueWorkEntry -- bump an 8-byte node off
+ * g_GfxCurWorkBuffer (retail advances the head by 8 even when it is NULL) and
+ * push it onto the D_80059300[g_GfxCurContext] list, pData at +0 and the
+ * previous head at +4.  Not decompiled here on purpose: retail reaches
+ * g_GfxCurWorkBuffer and g_GfxCurContext through $gp in one instruction each
+ * because they are DEFINED small objects in its TU, while they are `extern`
+ * here, so a C body costs three extra instructions (84 vs 72 bytes).  The PORT
+ * already owns this symbol as a host-safe override in
+ * pc_port/src/game_overrides.c (g_GfxCurWorkBuffer is a u32 there, not a
+ * pointer), so adding a body here would be a duplicate definition. */
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025180);
-/*
-typedef struct {
-    void* pData; // Sprite Tile data stuff
-    struct LinkedListEntry* pNext;
-} LinkedListEntry;
-
-extern LinkedListEntry* D_80059300[2];
-int g_GfxCurContext;
-void* g_GfxCurWorkBuffer;
-
-void func_80025180(void* pData) {
-    LinkedListEntry* pNewEntry;
-
-    pNewEntry = (LinkedListEntry*) g_GfxCurWorkBuffer;
-    g_GfxCurWorkBuffer = pNewEntry + 1;
-    if (pNewEntry) {
-        pNewEntry->pData = pData;
-        pNewEntry->pNext = D_80059300[g_GfxCurContext];
-        D_80059300[g_GfxCurContext] = pNewEntry;
-    }
-}
-*/
+#endif
 
 // GfxQueueShapeTransfer
 // Add Image to current g_GfxImageList[g_GfxCurContext] linked list
@@ -1688,7 +2050,20 @@ void func_800251C8(u_long* addr, int x, int y, int width, int height) {
 */
 
 // Sets pStruct->unk8 callback
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025224);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80025224.s
+ * (0x80025224-0x80025258). Loads the handler pointer from the retail callback
+ * table at D_8004FD40 (16 entries; see the table listing below) and hands it to
+ * WorkListSetTaskCallback. NOTE: in the current build that table symbol is
+ * parked at 0x8004FDBC instead of 0x8004FD40 (data-symbol placement, see
+ * ACTIVE_HANDOFF), so the emitted immediate is not yet retail-identical. */
+extern void (*D_8004FD40[])(void*);
+void func_80025224(void* pTask, int handlerIndex) {
+#ifdef TEMP1_25224_MUTANT_INDEX_PLUS1
+    WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex + 1]);
+#else
+    WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex]);
+#endif
+}
 /*
 CALLBACK_TABLE
 8004fd40 func_80025258
@@ -1718,202 +2093,199 @@ extern u8 D_800C3664;
 extern void func_8001E3D8(void* pSpriteData, void* ot);
 extern void func_8001E298(void* pSpriteData, void* ot);
 
+static u8* SpriteRenderAddress(uintptr_t address) {
+#ifdef XENO_PC_PORT
+    if ((address & ~(uintptr_t)0x1FFFFFu) == 0x80000000u ||
+        (address & ~(uintptr_t)0x1FFFFFu) == 0xA0000000u) {
+        return PSX_ADDR(address);
+    }
+#endif
+    return (u8*)address;
+}
+
+/* Retail 80025258..80025418: shared render callback for types 0/5/6/14.
+ * Task fields and OT entries remain four bytes on the native host. */
 void func_80025258(u8* pEntry) {
-    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u32 flagsB0 = *(u32*)(pSprite + 0xB0);
-    s32 otz;
     s32 depth;
-    long pxy[2];
-    long flg;
+    u32 flags3C;
+    SVECTOR pos;
+    long pxy = 0;
+    long flg = 0;
 
     if ((flagsB0 >> 8) & 1) {
+#ifdef XENO_PC_PORT
+        if (*(u8*)PSX_ADDR(0x800C3664u) != 0) return;
+#else
         if (D_800C3664 != 0) return;
+#endif
     }
 
-    /* Set up GTE with global matrix */
+    pos.vx = *(s16*)(pSprite + 0x02);
+    pos.vy = *(s16*)(pSprite + 0x06);
+    pos.vz = *(s16*)(pSprite + 0x0A);
     SetRotMatrix(&D_8004FBB8);
     SetTransMatrix(&D_8004FBB8);
-
-    {
-        SVECTOR pos;
-        pos.vx = *(s16*)(pSprite + 0x02);
-        pos.vy = *(s16*)(pSprite + 0x06);
-        pos.vz = *(s16*)(pSprite + 0x0A);
-        otz = RotTransPers(&pos, pxy, &flg, &flg);
-        otz >>= D_80050100;
-    }
-
-    depth = *(s16*)(pSprite + 0x30);
+    depth = (s32)RotTransPers(&pos, &pxy, &pxy, &flg) >> (D_80050100 & 31);
+    depth = (s32)((u32)depth + (u32)(s32)*(s16*)(pSprite + 0x30));
     if (flg & 0x8000) {
-        depth = otz + depth;
-    } else {
         depth = 0;
     }
 
-    {
-        u32 flags3C = *(u32*)(pSprite + 0x3C);
-        u32 flag24 = (flags3C >> 24) & 1;
-        u32 flag29 = (flags3C >> 29) & 1;
-
-        *(u16*)(pSprite + 0x2E) = (u16)depth;
-
-        if (flag24) {
-            /* Path 1: full rendering with matrix setup */
-            s32 depthLimit;
-            func_80022038(pSprite);
-            {
-                VECTOR trans;
-                trans.vx = *(s16*)(pSprite + 0x02);
-                trans.vy = *(s16*)(pSprite + 0x06);
-                trans.vz = *(s16*)(pSprite + 0x0A);
-                TransMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC), &trans);
-            }
-            SetRotMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC));
-            SetTransMatrix((MATRIX*)(*(u32*)(pSprite + 0x20) + 0xC));
-
-            if ((flags3C >> 25) & 1) {
-                depthLimit = *(s16*)(pSprite + 0x30);
-            } else {
-                depthLimit = 0xFFF;
-            }
-            if ((u32)(depthLimit - 1) < 0xFFF) {
-                func_8001E3D8(pSprite, g_GfxCurOT + depthLimit * 4);
-            }
-        } else if (flag29) {
-            /* Path 2: use depth from +0x70 sub-structure */
-            u32 pSub = *(u32*)(pSprite + 0x70);
+    flags3C = *(u32*)(pSprite + 0x3C);
+    *(u16*)(pSprite + 0x2E) = (u16)depth;
+    if ((flags3C >> 24) & 1) {
+        VECTOR trans;
+        func_80022038(pSprite);
+        trans.vx = *(s16*)(pSprite + 0x02);
+        trans.vy = *(s16*)(pSprite + 0x06);
+        trans.vz = *(s16*)(pSprite + 0x0A);
+        TransMatrix((MATRIX*)(SpriteRenderAddress(*(u32*)(pSprite + 0x20)) + 0xC), &trans);
+        SetRotMatrix((MATRIX*)(SpriteRenderAddress(*(u32*)(pSprite + 0x20)) + 0xC));
+        SetTransMatrix((MATRIX*)(SpriteRenderAddress(*(u32*)(pSprite + 0x20)) + 0xC));
+        /* The transform helper can change flags: retail reloads them here. */
+        depth = (*(u32*)(pSprite + 0x3C) & 0x02000000u)
+                    ? 0xFFF : *(s16*)(pSprite + 0x30);
+        if ((u32)depth - 1u < 0xFFFu) {
+            func_8001E3D8(pSprite,
+                SpriteRenderAddress((uintptr_t)g_GfxCurOT) + ((u32)depth << 2));
+        }
+    } else {
+        if ((flags3C >> 29) & 1) {
+            u8* pSub = SpriteRenderAddress(*(u32*)(pSprite + 0x70));
             depth = *(s16*)(pSub + 0x2E);
-            if ((u32)(depth - 1) < 0xFFF) {
-                func_8001E298(pSprite, g_GfxCurOT + depth * 4);
-            }
+        }
+        if ((u32)depth - 1u < 0xFFFu) {
+            func_8001E298(pSprite,
+                SpriteRenderAddress((uintptr_t)g_GfxCurOT) + ((u32)depth << 2));
         }
     }
 }
 
+extern s32 D_80050100;
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002541C);
-/*
-Matches on GCC 2.7.2-970404, ASPSX 2.67
-Co-Authored-By: dezgeg <dezgeg@users.noreply.github.com>
-Co-Authored-By: Mc-muffin <Mc-muffin@users.noreply.github.com>
-
-extern MATRIX D_8004FBB8;
-extern s32 D_80050100;
-void* g_GfxCurWorkBufferEnd; // End of Prim buffer
-extern u_long* g_GfxCurOT;
-void* g_GfxCurWorkBuffer; // Prim buffer
-
-void func_8002541C(WorkListEntry* pTask) {
-    SVECTOR vec;
-    int nFlag;
-    int nOTOffset;
-    DR_TPAGE* pPrimTPage;
-    TILE_1* pPrim;
-    u32 pNewBufferHead;
-    u32 pNewBufferHead_2;
-    SpriteData* pSpriteData;
-    MATRIX* pMatrix;
-
-    pSpriteData = pTask->unk4;
-    if (pSpriteData->frameIdToRender == 0) {
-        pPrim = g_GfxCurWorkBuffer;
-        pNewBufferHead = pPrim + 1;
-        if (pNewBufferHead < g_GfxCurWorkBufferEnd) {
-            pMatrix = &D_8004FBB8;
-            vec.vx = pSpriteData->unkX >> 16;
-            vec.vy = pSpriteData->unkY >> 16;
-            vec.vz = pSpriteData->unkZ >> 16;
-            g_GfxCurWorkBuffer = pNewBufferHead;
-            SetRotMatrix(pMatrix);
-            SetTransMatrix(pMatrix);
-            nOTOffset = RotTransPers(&vec, &pPrim->x0, &nFlag, &nFlag) >> D_80050100;
-            pSpriteData->unk2E = nOTOffset;
-
-            // SetTile1 / 8 / 16
-            setlen(pPrim, 2);
-            *((u32*)&pPrim->r0) =  *((u32*)&pSpriteData->primR);
-            
-            AddPrim(&g_GfxCurOT[nOTOffset], pPrim);
-
-            pPrimTPage = g_GfxCurWorkBuffer;
-            pNewBufferHead_2 = pPrimTPage + 1;
-            if (pNewBufferHead_2 < g_GfxCurWorkBufferEnd) {
-                g_GfxCurWorkBuffer = pNewBufferHead_2;
-
-                // SpriteData->flags3C & 0x60 => tpage
-                // setDrawTPage does ((u_long *)(p))[1] = _get_mode(dfe, dtd, tpage)
-                // _get_mode(dfe, dtd, tpage) would OR in 0x200 and 0x400 if dfe or dtd was not 0,
-                // so we're only left with the tpage as a possibility
-                setDrawTPage(pPrimTPage, 0, 0, pSpriteData->flags3C & 0x60);
-                AddPrim(&g_GfxCurOT[nOTOffset], pPrimTPage);
-            }
-        }
-    }
-}
-*/
-
-extern s32 D_80050100;
-
-void func_80025544(u8* pEntry) {
-    u8* pSprite = *(u8**)(pEntry + 0x04);
-    u16 size;
-    s32 otz;
+#else
+/* Retail 8002541C..80025540: projected TILE_1 (12-byte packet, tag len 2)
+ * followed by an 8-byte draw-mode prim. Sibling of func_80025544. */
+void func_8002541C(u8* pEntry) {
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
+    u32 cursor, next, otOffset, otAddress, color;
     u8* pTile;
-    s32 halfSize;
     u8* pMode;
-    SVECTOR v0, v1, v2;
-    long pxy0[2], pxy1[2], pxy2[2];
-    long flg0, flg1, flg2;
+    SVECTOR v0;
+    long flag = 0;
+    s32 depth;
 
-    if (*(u16*)(pSprite + 0x34) != 0) return;
-    size = *(u16*)(pSprite + 0x36);
-
-    /* Allocate TILE primitive */
-    pTile = (u8*)g_GfxCurWorkBuffer;
-    if (pTile + 0x10 >= (u8*)g_GfxCurWorkBufferEnd) return;
-    g_GfxCurWorkBuffer = pTile + 0x10;
-
-    /* Set up GTE */
-    SetRotMatrix(&D_8004FBB8);
-    SetTransMatrix(&D_8004FBB8);
-
-    /* Transform 3 vertices */
+    if (*(u16*)(pSprite + 0x34) != 0) {
+        return;
+    }
+    cursor = (u32)(uintptr_t)g_GfxCurWorkBuffer;
+    next = cursor + 0xCu;
+    if (next >= (u32)(uintptr_t)g_GfxCurWorkBufferEnd) {
+        return;
+    }
+    pTile = SpriteRenderAddress(cursor);
     v0.vx = *(s16*)(pSprite + 0x02);
     v0.vy = *(s16*)(pSprite + 0x06);
     v0.vz = *(s16*)(pSprite + 0x0A);
-    v1.vx = v0.vx + size;
-    v1.vy = v0.vy;
-    v1.vz = v0.vz;
-    v2.vx = v0.vx;
-    v2.vy = v0.vy + size;
-    v2.vz = v0.vz;
+    v0.pad = 0;
+    g_GfxCurWorkBuffer = (void*)(uintptr_t)next;
+    SetRotMatrix(&D_8004FBB8);
+    SetTransMatrix(&D_8004FBB8);
+    depth = (s32)RotTransPers(&v0, (long*)(pTile + 8), &flag, &flag);
+    depth >>= (D_80050100 & 31);
+    *(u16*)(pSprite + 0x2E) = (u16)depth;
+    pTile[3] = 2;
+    color = *(u32*)(pSprite + 0x28);
+    *(u32*)(pTile + 4) = color;
+    otAddress = (u32)(uintptr_t)g_GfxCurOT;
+    otOffset = (u32)depth << 2;
+    PcPort_AddPrimDomainAware(SpriteRenderAddress(otAddress + otOffset), pTile);
 
-    otz = RotTransPers3(&v0, &v1, &v2, pxy0, pxy1, pxy2, &flg0, &flg1);
-    otz >>= D_80050100;
-    *(u16*)(pSprite + 0x2E) = (u16)otz;
+    cursor = (u32)(uintptr_t)g_GfxCurWorkBuffer;
+    next = cursor + 8u;
+    if (next >= (u32)(uintptr_t)g_GfxCurWorkBufferEnd) {
+        return;
+    }
+    g_GfxCurWorkBuffer = (void*)(uintptr_t)next;
+    pMode = SpriteRenderAddress(cursor);
+    pMode[3] = 1;
+    *(u32*)(pMode + 4) = 0xE1000000u | (*(u32*)(pSprite + 0x3C) & 0x60u);
+    PcPort_AddPrimDomainAware(SpriteRenderAddress(otAddress + otOffset), pMode);
+}
+#endif
 
-    /* Compute tile size from transformed coords */
-    halfSize = (s32)(s16)pxy1[0] - (s32)(s16)pxy0[0];
-    if (halfSize == 0) halfSize = 1;
-    if (halfSize < 0) halfSize = -halfSize;
-    halfSize = (halfSize + 1) / 2;
+/* Retail 80025544..80025710: projected square TILE followed by draw mode. */
+void func_80025544(u8* pEntry) {
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
+    u16 size;
+    u32 cursor, next, otOffset, otAddress, color;
+    u32 originX, originY;
+    s32 depth, dimension, halfSize;
+    u8* pTile;
+    u8* pMode;
+    SVECTOR v0, v1;
+    long xy0 = 0, xy1 = 0, xy2 = 0, sharedFlag = 0;
 
-    /* Build TILE primitive */
-    pTile[3] = 3; /* TILE tag */
-    *(u32*)(pTile + 4) = *(u32*)(pSprite + 0x28);
-    *(u16*)(pTile + 8) = (u16)((s16)pxy0[0] - halfSize);
-    *(u16*)(pTile + 0xA) = (u16)((s16)pxy0[1] - halfSize);
-    *(u16*)(pTile + 0xC) = (u16)size;
-    *(u16*)(pTile + 0xE) = (u16)size;
-    AddPrim(g_GfxCurOT + otz * 4, pTile);
+    if (*(u16*)(pSprite + 0x34) != 0) return;
+    size = *(u16*)(pSprite + 0x36);
+    cursor = (u32)(uintptr_t)g_GfxCurWorkBuffer;
+    next = cursor + 0x10u;
+    if (next >= (u32)(uintptr_t)g_GfxCurWorkBufferEnd) return;
+    pTile = SpriteRenderAddress(cursor);
 
-    /* Allocate DR_MODE primitive */
-    pMode = (u8*)g_GfxCurWorkBuffer;
-    if (pMode + 8 >= (u8*)g_GfxCurWorkBufferEnd) return;
-    g_GfxCurWorkBuffer = pMode + 8;
+    v0.vx = *(s16*)(pSprite + 0x02);
+    v0.vy = *(s16*)(pSprite + 0x06);
+    v0.vz = *(s16*)(pSprite + 0x0A);
+    v0.pad = 0;
+    g_GfxCurWorkBuffer = (void*)(uintptr_t)next;
+    SetRotMatrix(&D_8004FBB8);
+    SetTransMatrix(&D_8004FBB8);
+    v1 = v0;
+    v1.vx = (s16)((u16)v0.vx + size);
+    depth = (s32)RotTransPers3(&v0, &v1, &v0, &xy0, &xy1, &xy2,
+                              &sharedFlag, &sharedFlag);
+    *(u32*)(pTile + 0x08) = (u32)xy0;
+    depth >>= (D_80050100 & 31);
+    *(u16*)(pSprite + 0x2E) = (u16)depth;
 
-    pMode[3] = 1; /* DR_MODE tag */
-    *(u32*)(pMode + 4) = 0xE1000000 | (*(u32*)(pSprite + 0x3C) & 0x60);
-    AddPrim(g_GfxCurOT + otz * 4, pMode);
+    dimension = (s32)(s16)(u32)xy1 - (s32)*(s16*)(pTile + 0x08);
+    originX = *(u16*)(pTile + 0x08);
+    if (dimension == 0) dimension = 1;
+    if (dimension < 0) dimension = -dimension;
+    halfSize = dimension >> 1;
+    originY = *(u16*)(pTile + 0x0A);
+    *(u16*)(pTile + 0x08) = (u16)(originX - (u32)halfSize);
+    *(u16*)(pTile + 0x0A) = (u16)(originY - (u32)halfSize);
+    color = *(u32*)(pSprite + 0x28);
+    pTile[3] = 3;
+    *(u32*)(pTile + 4) = color;
+    otAddress = (u32)(uintptr_t)g_GfxCurOT;
+    otOffset = (u32)depth << 2;
+    *(u16*)(pTile + 0x0E) = (u16)dimension;
+    *(u16*)(pTile + 0x0C) = (u16)dimension;
+#ifdef XENO_PC_PORT
+    PcPort_AddPrimDomainAware(SpriteRenderAddress(otAddress + otOffset), pTile);
+#else
+    AddPrim(SpriteRenderAddress(otAddress + otOffset), pTile);
+#endif
+
+    cursor = (u32)(uintptr_t)g_GfxCurWorkBuffer;
+    next = cursor + 8u;
+    if (next >= (u32)(uintptr_t)g_GfxCurWorkBufferEnd) return;
+    g_GfxCurWorkBuffer = (void*)(uintptr_t)next;
+    pMode = SpriteRenderAddress(cursor);
+    pMode[3] = 1;
+    otAddress = (u32)(uintptr_t)g_GfxCurOT;
+    *(u32*)(pMode + 4) = 0xE1000000u | (*(u32*)(pSprite + 0x3C) & 0x60u);
+#ifdef XENO_PC_PORT
+    PcPort_AddPrimDomainAware(SpriteRenderAddress(otAddress + otOffset), pMode);
+#else
+    AddPrim(SpriteRenderAddress(otAddress + otOffset), pMode);
+#endif
 }
 
 void func_80025710(void) {}
@@ -1959,7 +2331,94 @@ void func_80025718(u8* pEntry) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800257F0);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800257F0.s
+ * (0x800257F0-0x800258A0 ... 0x80025A6C). Sprite transform/render setup:
+ * func_80022038 on the sprite, an optional colour/light matrix block built from
+ * the +0x20 data (RotMatrix + two MulMatrix0 with D_8004FDA0, SetBackColor
+ * 0x202020, SetColorMatrix/SetLightMatrix then PopMatrix), the +2/+6/+0xA
+ * translation via TransMatrix, either CompMatrix(D_8004FBB8) or the raw matrix
+ * for SetRotMatrix, SetTransMatrix, an optional geom-offset override
+ * (ReadGeomOffset/SetGeomOffset 0xA0,0x70) and finally func_800B1F6C with either
+ * the +0x30 half-word and D_80050100 unchanged, or D_80050100 = 0x10 with 0xFEC
+ * (restored afterwards); the geom offset is restored when the flag word was
+ * negative. */
+extern void func_80022038(void* p);
+extern u16 D_8004FD80[];
+extern void func_800B1F6C();
+extern MATRIX D_8004FDA0;
+
+void func_800257F0(u8* pArg) {
+    u8* pSprite = *(u8**)(pArg + 4);
+    u8* pData;
+    MATRIX matA;
+    MATRIX matB;
+    VECTOR trans;
+    MATRIX comp;
+    s32 saved;
+    s32 geomX;
+    s32 geomY;
+    u8 flag;
+    s32 halved;
+
+    func_80022038(pSprite);
+    pData = *(u8**)(pSprite + 0x20);
+    if (*(u32*)(pData + 0x34) == 0) {
+        return;
+    }
+
+    if (((*(u32*)(pSprite + 0x40) >> 1) & 1) != 0) {
+        PushMatrix();
+        D_8004FD80[0] = *(u16*)(pData + 0x4C);
+        D_8004FD80[3] = *(u16*)(pData + 0x4E);
+        D_8004FD80[6] = *(u16*)(pData + 0x50);
+        RotMatrix(pData + 0x44, &matA);
+        MulMatrix0(&matA, pData + 0x0C, &matA);
+        MulMatrix0(&D_8004FDA0, &matA, &matB);
+        SetBackColor(0x20, 0x20, 0x20);
+        SetColorMatrix((u32*)D_8004FD80);
+        SetLightMatrix(&matB);
+        PopMatrix();
+    }
+
+    trans.vx = *(s16*)(pSprite + 0x02);
+    trans.vy = *(s16*)(pSprite + 0x06);
+    trans.vz = *(s16*)(pSprite + 0x0A);
+    TransMatrix(pData + 0x0C, &trans);
+
+    if ((*(u8*)(pSprite + 0x3F) & 1) == 0) {
+        CompMatrix(&D_8004FBB8, pData + 0x0C, &comp);
+        SetRotMatrix(&comp);
+        SetTransMatrix(&comp);
+    } else {
+        SetRotMatrix(pData + 0x0C);
+        SetTransMatrix(pData + 0x0C);
+    }
+
+    flag = *(u8*)(pSprite + 0x3C);
+    if (*(s32*)(pSprite + 0x3C) < 0) {
+        ReadGeomOffset(&geomX, &geomY);
+        SetGeomOffset(0xA0, 0x70);
+    }
+    halved = (s32)((*(u32*)(pSprite + 0x3C)) >> 25) & 1;
+
+    if (halved == 0) {
+        ((void (*)(s32, void*, void*, s32, s32, s32))func_800B1F6C)(*(s32*)(pData + 0x34),
+                      *(void**)((u8*)pData + (g_GfxCurContext << 2) + 0x2C),
+                      g_GfxCurOT, 0,
+                      (s32)*(s16*)(pSprite + 0x30), (s32)(flag >> 5));
+    } else {
+        saved = D_80050100;
+        D_80050100 = 0x10;
+        ((void (*)(s32, void*, void*, s32, s32, s32))func_800B1F6C)(*(s32*)(pData + 0x34),
+                      *(void**)((u8*)pData + (g_GfxCurContext << 2) + 0x2C),
+                      g_GfxCurOT, 0, 0xFEC, (s32)(flag >> 5));
+        D_80050100 = saved;
+    }
+
+    if (*(s32*)(pSprite + 0x3C) < 0) {
+        SetGeomOffset(geomX, geomY);
+    }
+}
 
 extern s32 D_80050100;
 extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32 f);
@@ -2098,7 +2557,86 @@ __asm__(
         ".end func_80025D4C");
 #endif
 
+#ifdef XENO_PC_PORT
+#include "psx_memory.h"
+/* Retail 80025FA8..80026338: atlas entry to double-buffered FT4 packets.
+ * The two fixed data addresses refer to the loaded retail EXE image, not
+ * replacement artwork. Keep hardware calls and their ordering intact. */
+s32 func_80025FA8(u8* table, s32 index, u8* packets, s32 buffer,
+                  s32 screenX, s32 screenY, s32 scaleX, s32 scaleY, s32 angle)
+{
+    extern MATRIX* ScaleMatrixL(MATRIX*, VECTOR*);
+    extern void ReadGeomOffset(long*, long*);
+    extern s32 ReadGeomScreen(void);
+    MATRIX matrix;
+    VECTOR scale;
+    SVECTOR* corners = PSX_ADDR(0x8004FDC0u);
+    u8* entry;
+    long oldX = 0, oldY = 0, screen;
+    s32 i;
+
+    _Static_assert(sizeof(MATRIX) == 32, "retail atlas matrix size");
+    _Static_assert(sizeof(POLY_FT4) == 40, "retail atlas packet size");
+    __builtin_memcpy(&matrix, PSX_ADDR(0x800188CCu), 32);
+    scale.vx = (s16)scaleX; scale.vy = (s16)scaleY; scale.vz = 0x1000;
+    PushMatrix();
+    ScaleMatrixL(&matrix, &scale);
+    RotMatrixZ((s16)angle, &matrix);
+    ReadGeomOffset(&oldX, &oldY);
+    screen = ReadGeomScreen();
+    SetGeomOffset((s16)screenX, (s16)screenY);
+    SetGeomScreen(0x1000);
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+    entry = table + *(u16*)(table + index * 2 + 4);
+    for (i = 0; i != *(s16*)entry; i++) {
+        u8* item = entry + 4 + i * 28;
+        POLY_FT4* poly = (POLY_FT4*)(packets + i * 80 + buffer * 40);
+        s32 u, v, width, height, x, y, rotation;
+        long interpolation = 0, flag = 0;
+        SetPolyFT4(poly);
+        SetSemiTrans(poly, 0);
+        SetShadeTex(poly, 1);
+        poly->tpage = GetTPage(*(s16*)(item+16), 0, *(s16*)(item+22), *(s16*)(item+24));
+        poly->clut = GetClut(*(s16*)(item+18), *(s16*)(item+20));
+        width = *(u16*)(item+4); height = *(u16*)(item+6);
+        x = *(u16*)(item+8); y = *(u16*)(item+10);
+        corners[0].vx = corners[3].vx = item[26] ? x + width : x;
+        corners[1].vx = corners[2].vx = item[26] ? x : x + width;
+        corners[0].vy = corners[1].vy = item[27] ? y + height : y;
+        corners[2].vy = corners[3].vy = item[27] ? y : y + height;
+        /* Projection order is perimeter order; FT4 storage is grid order.
+         * XY outputs are packed words; p/FLAG are actual host long objects. */
+        RotTransPers4(corners, corners+1, corners+2, corners+3,
+            (long*)&poly->x0, (long*)&poly->x1, (long*)&poly->x3, (long*)&poly->x2,
+            &interpolation, &flag);
+        u = *(u16*)item; v = *(u16*)(item+2);
+        width = *(u16*)(item+4); height = *(u16*)(item+6);
+        rotation = (u16)angle & 0xfff;
+        if (rotation == 0xc00) u--;
+        if (rotation == 0) {
+            if (poly->x3 < poly->x0) {
+                u--;
+                if ((s16)u < 0) { u = 0; width--; }
+            }
+            if (poly->y3 < poly->y0) {
+                v--;
+                if ((s16)v < 0) { v = 0; height--; }
+            }
+        }
+        poly->u0 = u; poly->v0 = v;
+        poly->u1 = u + width; poly->v1 = v;
+        poly->u2 = u; poly->v2 = v + height;
+        poly->u3 = u + width; poly->v3 = v + height;
+    }
+    SetGeomOffset(oldX, oldY);
+    SetGeomScreen(screen);
+    PopMatrix();
+    return *(s16*)entry;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025FA8);
+#endif
 
 #ifdef XENO_PC_PORT
 /* Unpack a texture-atlas entry (indexed by `index` into `table`) into the
@@ -2120,6 +2658,9 @@ void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage, s32* pClutX,
     } else {
         shift = ((s32)((u32)packed << 16)) >> 18;
     }
+#ifdef TEMP1_26338_MUTANT_SHIFT3
+    shift++;
+#endif
     *pTPage = *(s16*)(item + 0x10);
     *pClutX = *(s16*)(item + 0x12);
     *pClutY = *(s16*)(item + 0x14);
@@ -2127,10 +2668,110 @@ void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage, s32* pClutX,
     *pTexY = (s32)(s16)(*(u16*)(item + 0x18) & 0xFF00) + *(s16*)(item + 2);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026338);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80026338.s
+ * (0x80026338-0x800263E4). Record getter: `index` selects a u16 offset from
+ * `base`; the resulting record holds a signed first field, a u16 at +4 whose
+ * (s16) value is shifted right by 2 or 4 depending on whether the signed +0x14
+ * field is non-zero, four more signed fields, and two masked sums (0xFFC0 at
+ * +0x1A plus the shift, 0xFF00 at +0x1C plus the signed +6 field). All six
+ * results go to the caller's out-pointers. */
+void func_80026338(u8* base, s32 index, s32* pOut0, s32* pOut1, s32* pOut2,
+                   s32* pOut3, s32* pOut4, s32* pOut5) {
+    u16* pEntry = (u16*)(base + index * 2);
+    u8* pRec = base + pEntry[2];
+    u16 n;
+    s32 shift;
+
+    *pOut0 = *(s16*)(pRec + 0);
+    n = *(u16*)(pRec + 4);
+#ifdef TEMP1_26338_MUTANT_SHIFT3
+    shift = (s16)n >> 3;
+#else
+    if (*(s16*)(pRec + 0x14) != 0) {
+        shift = (s16)n >> 2;
+    } else {
+        shift = (s16)n >> 4;
+    }
+#endif
+    *pOut1 = *(s16*)(pRec + 0x14);
+    *pOut2 = *(s16*)(pRec + 0x16);
+    *pOut3 = *(s16*)(pRec + 0x18);
+    *pOut4 = (s16)(*(u16*)(pRec + 0x1A) & 0xFFC0) + shift;
+    *pOut5 = (s16)(*(u16*)(pRec + 0x1C) & 0xFF00) + *(s16*)(pRec + 6);
+}
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800263E4);
+/* Retail 800263E4..8002675C. The last two arguments are independent
+ * byte-sized axis flips; packet coordinates narrow before the UV test. */
+s32 func_800263E4(u8* table, s32 index, void* packets, s32 buffer,
+                  s32 x, s32 y, s32 scale, s32 flipX, s32 flipY) {
+    u8* entry = table + *(u16*)(table + index * 2 + 4);
+    u8* output = packets;
+    s32 i = 0;
+    s32 itemOffset = 4;
+    s32 factor = (u16)scale;
+    if (*(s16*)entry != 0) {
+        do {
+            u8* item = entry + itemOffset;
+            POLY_FT4* poly = (POLY_FT4*)(output + buffer * 40);
+            s32 dx, dy, width, height, product;
+            s32 u, v, uw, vh;
+            s32 left, right, top, bottom;
+            product = *(s16*)(item + 8) * factor;
+            if (product < 0) product += 0xFFF;
+            dx = product >> 12;
+            product = *(s16*)(item + 10) * factor;
+            if (product < 0) product += 0xFFF;
+            dy = product >> 12;
+            product = *(s16*)(item + 4) * factor;
+            if (product < 0) product += 0xFFF;
+            width = product >> 12;
+            product = *(s16*)(item + 6) * factor;
+            if (product < 0) product += 0xFFF;
+            height = product >> 12;
+            SetPolyFT4(poly);
+            SetSemiTrans(poly, 0);
+            SetShadeTex(poly, 1);
+            poly->tpage = GetTPage(*(s16*)(item + 16), 0,
+                                   *(s16*)(item + 22), *(s16*)(item + 24));
+            poly->clut = GetClut(*(s16*)(item + 18), *(s16*)(item + 20));
+            if ((u8)flipX) { dx = -dx; width = -width; }
+            if ((u8)flipY) { dy = -dy; height = -height; }
+            u = *(u16*)item; v = *(u16*)(item + 2);
+            uw = *(u16*)(item + 4); vh = *(u16*)(item + 6);
+            left = (u16)x + dx; right = left + width;
+            if (item[26]) {
+                poly->x0 = poly->x2 = right;
+                poly->x1 = poly->x3 = left;
+            } else {
+                poly->x0 = poly->x2 = left;
+                poly->x1 = poly->x3 = right;
+            }
+            top = (u16)y + dy; bottom = top + height;
+            if (item[27]) {
+                poly->y0 = poly->y1 = bottom;
+                poly->y2 = poly->y3 = top;
+            } else {
+                poly->y0 = poly->y1 = top;
+                poly->y2 = poly->y3 = bottom;
+            }
+            if (poly->x3 < poly->x0) {
+                --u;
+                if ((s16)u < 0) { u = 0; --uw; }
+            }
+            if (poly->y3 < poly->y0) {
+                --v;
+                if ((s16)v < 0) { v = 0; --vh; }
+            }
+            poly->u0 = poly->u2 = u; poly->u1 = poly->u3 = u + uw;
+            poly->v0 = poly->v1 = v; poly->v2 = poly->v3 = v + vh;
+            itemOffset += 28;
+            output += 80;
+            ++i;
+        } while (i != *(s16*)entry);
+    }
+    return *(s16*)entry;
+}
 
 #ifdef XENO_PC_PORT
 /* Build a run of POLY_FT4 sprites for atlas entry `index` (window borders,
@@ -2254,74 +2895,47 @@ s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 of
 void func_80026B9C(void) {
 }
 
-void func_80026BA4(u8* pTable, s32 index, s16 ofsX, s16 ofsY, s16 ofsZ, u8* pPrimBuffer) {
+/* Retail 80026BA4..80026DCC takes five arguments. Packets come from the
+ * current graphics work buffer; the fifth argument is the ordering-table
+ * entry itself. A sixth stack word belongs to the caller, not this API. */
+void func_80026BA4(u8* pTable, s32 index, s32 ofsX, s32 ofsY, void* ot) {
     u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
-    s32 count = *(s16*)(pDesc);
+    s32 count = *(s16*)pDesc;
     s32 i;
-    s32 stride = 0;
-    u8* pEntry = pDesc + 4;
-    u8* pCur = pPrimBuffer;
 
-    if (count == 0) return;
+    /* Retail uses an unsigned strict comparison, rejecting an exact fit. */
+    if ((u32)((uintptr_t)g_GfxCurWorkBuffer + (u32)count * 40u) >=
+        (u32)(uintptr_t)g_GfxCurWorkBufferEnd || count == 0) {
+        return;
+    }
+    for (i = 0; i != count; i++) {
+        u8* item = pDesc + 4 + i * 28;
+        u8* poly = g_GfxCurWorkBuffer;
+        s32 u = *(s16*)item;
+        s32 v = *(s16*)(item + 2);
+        s32 width = *(s16*)(item + 4);
+        s32 height = *(s16*)(item + 6);
+        u32 x = (u32)*(s16*)(item + 8) + (u32)ofsX;
+        u32 y = (u32)*(s16*)(item + 10) + (u32)ofsY;
+        s32 mode = *(s16*)(item + 16);
+        s32 shift = mode == 0 ? u >> 4 : u >> 2;
+        s32 texX = (s16)(*(u16*)(item + 22) & 0xFFC0) + shift;
+        s32 texY = (s16)(*(u16*)(item + 24) & 0xFF00) + v;
 
-    for (i = 0; i < count; i++) {
-        u16 packed = *(u16*)(pEntry);
-        s16 tpageFlag = *(s16*)(pEntry + 0x10);
-        s32 shift;
-        s16 texX, texY;
-        s32 clut, tpage;
-        s16 u0, v0, u1, v1;
-        s16 x0, y0, x1, y1;
-
-        if (tpageFlag == 0) {
-            shift = ((s32)((u32)packed << 16)) >> 20;
-        } else {
-            shift = ((s32)((u32)packed << 16)) >> 18;
-        }
-
-        texX = *(s16*)(pEntry + 0x12);
-        texY = *(s16*)(pEntry + 0x14);
-        u0 = (s16)((s32)((u16)*(u16*)(pEntry + 0x16) & 0xFFC0) << 16 >> 16) + shift;
-        v0 = (s16)((s32)((u16)*(u16*)(pEntry + 0x18) & 0xFF00) << 16 >> 16) + *(s16*)(pEntry + 0x02);
-        u1 = *(s16*)(pEntry + 0x04);
-        v1 = *(s16*)(pEntry + 0x06);
-        x0 = *(s16*)(pEntry + 0x08);
-        y0 = *(s16*)(pEntry + 0x0A);
-
-        clut = GetClut(texX, texY);
-        tpage = GetTPage(tpageFlag, 0, texX, texY);
-
-        /* Build POLY_GT4 */
-        pCur[3] = 0x09; /* GT4 tag len */
-        pCur[7] = 0x2D; /* POLY_GT4 code */
-        *(u16*)(pCur + 0x0E) = (u16)clut;
-        *(u16*)(pCur + 0x16) = (u16)tpage;
-
-        x0 += ofsX;
-        y0 += ofsY;
-        x1 = x0 + u1;
-        y1 = y0 + v1;
-
-        *(s16*)(pCur + 0x08) = x0;
-        *(s16*)(pCur + 0x0A) = y0;
-        *(u8*)(pCur + 0x0C) = (u8)u0;
-        *(u8*)(pCur + 0x0D) = (u8)v0;
-        *(s16*)(pCur + 0x10) = x1;
-        *(s16*)(pCur + 0x12) = y0;
-        *(u8*)(pCur + 0x14) = (u8)(u0 + u1);
-        *(u8*)(pCur + 0x15) = (u8)v0;
-        *(s16*)(pCur + 0x18) = x0;
-        *(s16*)(pCur + 0x1A) = y1;
-        *(u8*)(pCur + 0x1C) = (u8)u0;
-        *(u8*)(pCur + 0x1D) = (u8)(v0 + v1);
-        *(s16*)(pCur + 0x20) = x1;
-        *(s16*)(pCur + 0x22) = y1;
-        *(u8*)(pCur + 0x24) = (u8)(u0 + u1);
-        *(u8*)(pCur + 0x25) = (u8)(v0 + v1);
-
-        AddPrim(g_GfxCurOT + ofsZ * 4, pCur);
-        pEntry += 0x1C;
-        pCur += 0x28;
+        g_GfxCurWorkBuffer = poly + 40;
+        poly[3] = 9;
+        poly[7] = 0x2D;
+        *(u16*)(poly + 14) = GetClut(*(s16*)(item + 18), *(s16*)(item + 20));
+        *(u16*)(poly + 22) = GetTPage(mode, 0, texX, texY);
+        *(u16*)(poly + 8) = *(u16*)(poly + 24) = x;
+        *(u16*)(poly + 16) = *(u16*)(poly + 32) = x + (u32)width;
+        *(u16*)(poly + 10) = *(u16*)(poly + 18) = y;
+        *(u16*)(poly + 26) = *(u16*)(poly + 34) = y + (u32)height;
+        poly[12] = poly[28] = u;
+        poly[20] = poly[36] = u + width;
+        poly[13] = poly[21] = v;
+        poly[29] = poly[37] = v + height;
+        AddPrim(ot, poly);
     }
 }
 

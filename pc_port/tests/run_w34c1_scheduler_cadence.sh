@@ -19,6 +19,7 @@ TERMINAL=pc_port/src/world_map_terminal_zero_710e4.c
 CAPTURE=pc_port/src/world_map_capture.c
 SYNC_HELPER=pc_port/src/world_map_helper_762fc.c
 PRESENCE_HELPER=pc_port/src/world_map_helper_75d4c.c
+MODE_STUBS=pc_port/tests/world_map_mode_lifecycle_stubs.c
 TEST=pc_port/tests/w34c1_scheduler_cadence_prod_test.c
 
 compile_and_run() {
@@ -41,12 +42,15 @@ compile_and_run() {
         -c "$PRESENCE_HELPER" -o "$BUILD_DIR/$name.presence-helper.o"
     "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
         -c "$TEST" -o "$BUILD_DIR/$name.test.o"
+    "$CC" "${BASE[@]}" "${WARN[@]}" "${INC[@]}" "$@" \
+        -c "$MODE_STUBS" -o "$BUILD_DIR/$name.mode-stubs.o"
     "$CC" -no-pie -Wl,--gc-sections "$@" \
         "$BUILD_DIR/$name.test.o" "$BUILD_DIR/$name.main.o" \
         "$BUILD_DIR/$name.terminal.o" \
         "$BUILD_DIR/$name.driver.o" "$BUILD_DIR/$name.capture.o" \
         "$BUILD_DIR/$name.sync-helper.o" \
         "$BUILD_DIR/$name.presence-helper.o" \
+        "$BUILD_DIR/$name.mode-stubs.o" \
         -o "$BUILD_DIR/$name"
     "$BUILD_DIR/$name" >"$BUILD_DIR/$name.stdout" \
         2>"$BUILD_DIR/$name.stderr" || run_rc=$?

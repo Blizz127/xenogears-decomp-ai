@@ -14,40 +14,44 @@ void func_80034874(void* arg0, u8 arg1);
 int func_8003487C(void* arg0);
 
 void func_8007DCF8(s32 index, void* ot, s32 renderContextIndex) {
-    u8* pTextBox = (u8*)&g_FieldTextBoxes[index];
-    u8* pWindow = pTextBox + 0x18;
-
     (void)ot;
     (void)renderContextIndex;
 
-    if (*(s16*)(pTextBox + 0x37C) != 0 || *(s16*)(pTextBox + 0x408) != 0) {
+    /* Every field is addressed through the array element rather than through a
+     * local base pointer: retail re-materialises g_FieldTextBoxes + offset for
+     * each access (lui at / addu at,at,index*0x498), which is a large part of
+     * this function's 468 bytes.  Not yet byte-exact: retail's compiler keeps
+     * the window-not-initialised arm out of line at the end and we emit it
+     * inline, which costs one extra jump (472 vs 468). */
+    if (g_FieldTextBoxes[index].cursor.visibility != 0 ||
+        g_FieldTextBoxes[index].windowOpenTimer != 0) {
         return;
     }
 
-    if (*(u16*)(pTextBox + 0x410) != 0) {
-        func_8003487C(pWindow);
+    if (g_FieldTextBoxes[index].order != 0) {
+        func_8003487C((u8*)&g_FieldTextBoxes[index] + 0x18);
         return;
     }
 
     if (D_800C3900 & 0x4000) {
-        s16 value = *(s16*)(pTextBox + 0x382) + 1;
-
-        *(s16*)(pTextBox + 0x382) = value;
-        if ((*(s16*)(pTextBox + 0x380) - 1) < value) {
-            *(s16*)(pTextBox + 0x382) = 0;
+        g_FieldTextBoxes[index].cursor.curPosition++;
+        if (g_FieldTextBoxes[index].cursor.maxPosition - 1 <
+            g_FieldTextBoxes[index].cursor.curPosition) {
+            g_FieldTextBoxes[index].cursor.curPosition = 0;
         }
     }
 
     if (D_800C3900 & 0x1000) {
-        s16 value = *(s16*)(pTextBox + 0x382) - 1;
-
-        *(s16*)(pTextBox + 0x382) = value;
-        if (value < 0) {
-            *(s16*)(pTextBox + 0x382) = *(s16*)(pTextBox + 0x380) - 1;
+        g_FieldTextBoxes[index].cursor.curPosition--;
+        if (g_FieldTextBoxes[index].cursor.curPosition < 0) {
+            g_FieldTextBoxes[index].cursor.curPosition =
+                g_FieldTextBoxes[index].cursor.maxPosition - 1;
         }
     }
 
-    func_80034874(pWindow, *(s16*)(pTextBox + 0x382) + *(s16*)(pTextBox + 0x37E));
+    func_80034874((u8*)&g_FieldTextBoxes[index] + 0x18,
+                  g_FieldTextBoxes[index].cursor.curPosition +
+                      g_FieldTextBoxes[index].cursor.startPosition);
 }
 
 // https://decomp.me/scratch/NE0tE
@@ -63,6 +67,12 @@ extern u16 D_800ADF54;
 extern u16 D_800ADF56;
 extern s16 D_800B21D6;
 extern void* D_800ADBF0;
+/* Continue-arrow helpers and the per-rotation arrow RECT table used by
+ * func_8007E1C0's 0x40A == 0 arm (retail 8007E4B8-8007E534). */
+extern RECT D_800ADF04;
+extern RECT D_800ADEDC;
+extern s32 func_800347AC(void* pWindow);
+extern s32 func_800347C0(void* pWindow);
 
 void FieldTextBoxInitializePrimitives(int index);
 void* GetStringEntry(void* arg0, s32 arg1);
@@ -78,7 +88,7 @@ int func_8003487C(void* arg0);
 int func_80033CD0(void* arg0);
 void func_8007E1C0(void* arg0, s32 arg1, s32 arg2);
 
-static void FieldTextBoxLinkPrim(void* ot, void* prim) {
+static inline void FieldTextBoxLinkPrim(void* ot, void* prim) {
     u32 old = *(u32*)ot;
     u32 addr = (u32)(uintptr_t)prim & 0x00FFFFFF;
 
@@ -222,6 +232,35 @@ void func_8007E1C0(void* ot, s32 renderContextIndex, s32 textBoxIndex) {
         *(s16*)(pTextBox + 0x40A) = 2;
     } else if (*(s16*)(pTextBox + 0x40A) != 0) {
         *(s16*)(pTextBox + 0x40A) -= 1;
+    } else {
+        /* Retail 8007E4B8-8007E5F8 (the 0x40A == 0 arm): build the
+         * continue-arrow draw mode for this render context.
+         *
+         * func_800347AC / func_800347C0 return the two per-arrow words that
+         * retail stores at g_FieldTextBoxes[textBoxIndex]+0x3E8/+0x3EA for the
+         * current render context (stride 20), after which it re-links the
+         * primitives into the OT. The rect comes from the D_800ADF04 RECT
+         * table indexed by the rotation counter D_800ADE94. */
+        u8* pWindow = pTextBox + 0x18;
+        s32 arrowA = func_800347AC(pWindow);
+        s32 arrowB = func_800347C0(pWindow);
+        RECT rect;
+        s32 tpage;
+        u8* pArrowBase;
+
+        rect.x = *(u16*)((u8*)&D_800ADF04 + D_800ADE94 * 8 + 0);
+        rect.y = *(u16*)((u8*)&D_800ADF04 + D_800ADE94 * 8 + 2);
+        rect.w = *(u16*)((u8*)&D_800ADF04 + D_800ADE94 * 8 + 4);
+        rect.h = *(u16*)((u8*)&D_800ADF04 + D_800ADE94 * 8 + 6);
+
+        tpage = GetTPage(0, 0, 0x298, 0x1C0);
+
+        pArrowBase = (u8*)&g_FieldTextBoxes + textBoxIndex * 0x498;
+        SetDrawMode((DR_MODE*)(pArrowBase + 0x3C4 + renderContextIndex * 12 + 4),
+                    0, 0, (u16)tpage, &rect);
+
+        *(s16*)(pArrowBase + 0x3E8 + renderContextIndex * 20) = (s16)arrowA;
+        *(s16*)(pArrowBase + 0x3EA + renderContextIndex * 20) = (s16)arrowB;
     }
 
     pBorders = &g_FieldTextBoxes[textBoxIndex].borders;
@@ -267,6 +306,58 @@ void func_8007E1C0(void* ot, s32 renderContextIndex, s32 textBoxIndex) {
         }
     }
 
+    {
+        FieldTextBoxPortrait* pPortrait = &g_FieldTextBoxes[textBoxIndex].portrait;
+        POLY_FT4* pPortraitPoly = &pPortrait->polys[renderContextIndex];
+        s32 portraitW = (w - 4 < 0x40) ? w - 8 : 0x40;
+        s32 portraitH = (h - 4 < 0x40) ? h - 8 : 0x40;
+        s32 portraitX = x + 4;
+        s32 portraitY = y + 4;
+
+        if (flags & 0x20) {
+            portraitX = x + w - portraitW - 4;
+        }
+
+        func_8007E16C(pPortraitPoly, portraitX, portraitY,
+                      portraitW, portraitH, flags & 0x20);
+
+        if (pPortrait->shouldRenderPortrait == 1) {
+            FieldTextBoxLinkPrim(ot, pPortraitPoly);
+            FieldTextBoxLinkPrim(ot, &pPortrait->drawModes[renderContextIndex]);
+        }
+    }
+
+    /* Retail .L8007EA4C-.L8007EC28: the cursor SPRT + its draw mode. Entered
+     * only while the box is settled (0x37C == 0, 0x410 == 0, 0x408 == 0); the
+     * horizontal placement is x+0x16 when the portrait is suppressed or the
+     * box is right-aligned (0x40C & 0x20), else x+0x5A. The vertical position
+     * is (0x382 + 0x37E) * 14 + y + 8 and the rect comes from the
+     * D_800ADEDC RECT table indexed by D_800ADE94. */
+    if (*(s16*)(pTextBox + 0x37C) == 0 && *(u16*)(pTextBox + 0x410) == 0 &&
+        *(s16*)(pTextBox + 0x408) == 0) {
+        RECT cursorRect;
+        s32 cursorTPage;
+        s32 cursorIdx = textBoxIndex * 0x498 + renderContextIndex * 20;
+
+        if (*(u8*)(pTextBox + 0x494) != 1 || (flags & 0x20)) {
+            *(s16*)((u8*)&g_FieldTextBoxes + 0x3A4 + cursorIdx) = (s16)(x + 0x16);
+        } else {
+            *(s16*)((u8*)&g_FieldTextBoxes + 0x3A4 + cursorIdx) = (s16)(x + 0x5A);
+        }
+        *(s16*)((u8*)&g_FieldTextBoxes + 0x3A6 + cursorIdx) =
+            (s16)((*(s16*)(pTextBox + 0x382) + *(s16*)(pTextBox + 0x37E)) * 14 +
+                  y + 8);
+
+        cursorRect.x = *(u16*)((u8*)&D_800ADEDC + D_800ADE94 * 8 + 0);
+        cursorRect.y = *(u16*)((u8*)&D_800ADEDC + D_800ADE94 * 8 + 2);
+        cursorRect.w = *(u16*)((u8*)&D_800ADEDC + D_800ADE94 * 8 + 4);
+        cursorRect.h = *(u16*)((u8*)&D_800ADEDC + D_800ADE94 * 8 + 6);
+
+        cursorTPage = GetTPage(0, 0, 0x288, 0x1C0);
+        SetDrawMode((DR_MODE*)(pTextBox + 0x37C + renderContextIndex * 12 + 8),
+                    0, 0, (u16)cursorTPage, &cursorRect);
+    }
+
     pBackground = &g_FieldTextBoxes[textBoxIndex].background;
     pBackground->tiles[renderContextIndex].x0 = x;
     pBackground->tiles[renderContextIndex].y0 = y + 1;
@@ -300,61 +391,51 @@ void FieldTextBoxInitializePrimitives(int index) {
     u16* pWidth;
     u16* pHeight;
 
-    FieldTextBoxBackground* pBackground;
-    FieldTextBoxCursor* pCursor;
-    FieldTextBoxContinueArrow* pArrow;
-    FieldTextBoxBorders* pBorders;
-    FieldTextBoxPortrait* pPortrait;
-
     // Background
-    pBackground = &g_FieldTextBoxes[index].background;
-    SetDrawMode(&pBackground->drawModes[0], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), NULL);
-    SetDrawMode(&pBackground->drawModes[1], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), NULL);
-    pBackgroundTile = &pBackground->tiles[0];
+    SetDrawMode(&g_FieldTextBoxes[index].background.drawModes[0], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), NULL);
+    SetDrawMode(&g_FieldTextBoxes[index].background.drawModes[1], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), NULL);
+    pBackgroundTile = &g_FieldTextBoxes[index].background.tiles[0];
     SetTile(pBackgroundTile);
     setRGB0(pBackgroundTile, D_800594D4, D_800594D5, D_800594D6);
     SetSemiTrans(pBackgroundTile, 1);
-    pBackgroundTile2 =  &pBackground->tiles[1];
+    pBackgroundTile2 =  &g_FieldTextBoxes[index].background.tiles[1];
     *pBackgroundTile2 = *pBackgroundTile;
 
     // Arrow
-    pArrow = &g_FieldTextBoxes[index].continueArrow;
     rect.x = D_800ADF04.x;
     rect.y = D_800ADF04.y;
     rect.w = D_800ADF04.w;
     rect.h = D_800ADF04.h;
-    SetDrawMode(&pArrow->drawModes[0], NULL, 0, GetTPage(0, 0, 0x298, 0x1C0), &rect);
-    SetDrawMode(&pArrow->drawModes[1], NULL, 0, GetTPage(0, 0, 0x298, 0x1C0), &rect);
-    SetSprt(&pArrow->sprites[0]);
-    pArrowSprite = &pArrow->sprites[0];
+    SetDrawMode(&g_FieldTextBoxes[index].continueArrow.drawModes[0], NULL, 0, GetTPage(0, 0, 0x298, 0x1C0), &rect);
+    SetDrawMode(&g_FieldTextBoxes[index].continueArrow.drawModes[1], NULL, 0, GetTPage(0, 0, 0x298, 0x1C0), &rect);
+    SetSprt(&g_FieldTextBoxes[index].continueArrow.sprites[0]);
+    pArrowSprite = &g_FieldTextBoxes[index].continueArrow.sprites[0];
     setRGB0(pArrowSprite, 0x80, 0x80, 0x80);
     setWH(pArrowSprite, 0xC, 0x8);
     pArrowSprite->clut = GetClut(0x100, 0xF6);
-    pArrowSprite2 = &pArrow->sprites[1];
+    pArrowSprite2 = &g_FieldTextBoxes[index].continueArrow.sprites[1];
     setUV0(pArrowSprite, 0x80, 0xC0);
     setXY0(pArrowSprite, 0x0, 0x0);
     *pArrowSprite2 = *pArrowSprite;
 
     // Cursor
-    pCursor = &g_FieldTextBoxes[index].cursor;
     rect.x = D_800ADEDC.x;
     rect.y = D_800ADEDC.y;
     rect.w = D_800ADEDC.w;
     rect.h = D_800ADEDC.h;
-    SetDrawMode(&pCursor->drawModes[0], NULL, 0, GetTPage(0, 0, 0x288, 0x1C0), &rect);
-    SetDrawMode(&pCursor->drawModes[1], NULL, 0, GetTPage(0, 0, 0x288, 0x1C0), &rect);
-    SetSprt(&pCursor->sprites[0]);
-    setRGB0(&pCursor->sprites[0], 0x80, 0x80, 0x80);
-    pCursor->sprites[0].clut = GetClut(0x100, 0xF6);
-    pCursorSprite2 = &pCursor->sprites[1];
-    setWH(&pCursor->sprites[0], 0x8, 0xC);
-    setUV0(&pCursor->sprites[0], 0x80, 0xC0);
-    setXY0(&pCursor->sprites[0], 0x0, 0x0);
-    *pCursorSprite2 = pCursor->sprites[0];
+    SetDrawMode(&g_FieldTextBoxes[index].cursor.drawModes[0], NULL, 0, GetTPage(0, 0, 0x288, 0x1C0), &rect);
+    SetDrawMode(&g_FieldTextBoxes[index].cursor.drawModes[1], NULL, 0, GetTPage(0, 0, 0x288, 0x1C0), &rect);
+    SetSprt(&g_FieldTextBoxes[index].cursor.sprites[0]);
+    setRGB0(&g_FieldTextBoxes[index].cursor.sprites[0], 0x80, 0x80, 0x80);
+    g_FieldTextBoxes[index].cursor.sprites[0].clut = GetClut(0x100, 0xF6);
+    pCursorSprite2 = &g_FieldTextBoxes[index].cursor.sprites[1];
+    setWH(&g_FieldTextBoxes[index].cursor.sprites[0], 0x8, 0xC);
+    setUV0(&g_FieldTextBoxes[index].cursor.sprites[0], 0x80, 0xC0);
+    setXY0(&g_FieldTextBoxes[index].cursor.sprites[0], 0x0, 0x0);
+    *pCursorSprite2 = g_FieldTextBoxes[index].cursor.sprites[0];
     g_FieldTextBoxes[index].continueArrowTimer = 2;
 
     // Borders
-    pBorders = &g_FieldTextBoxes[index].borders;
     for (i = 0; i < 8; i++) {
         pWidth = &D_800ADE9C[i].w;
         pHeight = &D_800ADE9C[i].h;
@@ -364,9 +445,9 @@ void FieldTextBoxInitializePrimitives(int index) {
         rect.w = *pWidth;
         rect.h = *pHeight;
         
-        SetDrawMode(&pBorders->drawModes1[i], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), &rect);
-        SetDrawMode(&pBorders->drawModes2[i], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), &rect);
-        pBorderSprite1 = &pBorders->sprites1[i];
+        SetDrawMode(&g_FieldTextBoxes[index].borders.drawModes1[i], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), &rect);
+        SetDrawMode(&g_FieldTextBoxes[index].borders.drawModes2[i], NULL, 0, GetTPage(0, 2, 0x280, 0x1F0), &rect);
+        pBorderSprite1 = &g_FieldTextBoxes[index].borders.sprites1[i];
         SetSprt(pBorderSprite1);
         setRGB0(pBorderSprite1, 0x80, 0x80, 0x80);
         pBorderSprite1->clut = GetClut(0x100, 0xF4);
@@ -374,23 +455,22 @@ void FieldTextBoxInitializePrimitives(int index) {
         setUV0(pBorderSprite1, 0x80, 0xC0);
         setWH(pBorderSprite1, *pWidth, *pHeight);
         setXY0(pBorderSprite1, 0x0, 0x0);
-        pBorderSprite2 =  &pBorders->sprites2[i];
+        pBorderSprite2 =  &g_FieldTextBoxes[index].borders.sprites2[i];
         *pBorderSprite2 = *pBorderSprite1;
     }
 
     // Portrait
-    pPortrait = &g_FieldTextBoxes[index].portrait;
     rect.y = 0;
     rect.x = 0;
     rect.h = 0xFF;
     rect.w = 0xFF;
-    SetDrawMode(&pPortrait->drawModes[0], NULL, 0, GetTPage(1, 0, 0x2C0, 0x100), &rect);
-    SetDrawMode(&pPortrait->drawModes[1], NULL, 0, GetTPage(1, 0, 0x2C0, 0x100), &rect);
-    pPoly = &pPortrait->polys[0];
+    SetDrawMode(&g_FieldTextBoxes[index].portrait.drawModes[0], NULL, 0, GetTPage(1, 0, 0x2C0, 0x100), &rect);
+    SetDrawMode(&g_FieldTextBoxes[index].portrait.drawModes[1], NULL, 0, GetTPage(1, 0, 0x2C0, 0x100), &rect);
+    pPoly = &g_FieldTextBoxes[index].portrait.polys[0];
     SetPolyFT4(pPoly);
     setRGB0(pPoly, 0x80, 0x80, 0x80);
     pPoly->clut = GetClut(0, 0xE0);
-    pPoly2 = &pPortrait->polys[1];
+    pPoly2 = &g_FieldTextBoxes[index].portrait.polys[1];
     pPoly->tpage = GetTPage(1, 0, 0x2C0, 0x100);
     *pPoly2 = *pPoly;
 }
@@ -398,46 +478,52 @@ void FieldTextBoxInitializePrimitives(int index) {
 extern u8 D_800ADF34[];
 
 void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
-    FieldTextBoxPortrait* pPortrait;
-    u8* pUv;
-    u8 u;
-    u8 v;
+    /* Retail 8007F5AC .. 8007F6F8: both portrait primitives are written
+     * unrolled, corner by corner (poly0 then poly1 for each byte), each store
+     * addressing the array element directly, and the CLUT lookup is issued
+     * only after all sixteen UV stores.
+     * Not yet byte-exact: the retail compiler re-loads the source bytes for the
+     * later stores while ours keeps them in registers, which is 12 bytes (3
+     * instructions) of the 332. */
+    u8* pUv = &D_800ADF34[faceDirection << 2];
+    u8 u = pUv[0];
+    u8 v = pUv[2];
     u16 clut;
-    s32 i;
 
-    pPortrait = &g_FieldTextBoxes[textBoxIndex].portrait;
-    pUv = &D_800ADF34[faceDirection << 2];
-    u = pUv[0];
-    v = pUv[2];
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].u0 = u;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].u0 = u;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].v0 = v;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].v0 = v;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].u1 = u + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].u1 = u + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].v1 = v;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].v1 = v;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].u2 = u;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].u2 = u;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].v2 = v + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].v2 = v + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].u3 = u + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].u3 = u + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].v3 = v + 0x40;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].v3 = v + 0x40;
+
     clut = GetClut(0, faceDirection + 0xE0);
-
-    for (i = 0; i < 2; i++) {
-        POLY_FT4* pPoly = &pPortrait->polys[i];
-
-        pPoly->u0 = u;
-        pPoly->v0 = v;
-        pPoly->u1 = u + 0x40;
-        pPoly->v1 = v;
-        pPoly->u2 = u;
-        pPoly->v2 = v + 0x40;
-        pPoly->u3 = u + 0x40;
-        pPoly->v3 = v + 0x40;
-        pPoly->clut = clut;
-    }
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[0].clut = clut;
+    g_FieldTextBoxes[textBoxIndex].portrait.polys[1].clut = clut;
 }
 
 void func_8007F6F8(s16 index) {
-    u8* pTextBox;
     u32 mask;
 
     if (g_FieldTextBoxes[index].visibility != 0) {
         return;
     }
 
-    pTextBox = (u8*)&g_FieldTextBoxes[index];
-    func_80034614(pTextBox + 0x18);
-    func_800345E0(pTextBox + 0x18);
-    func_800346D4(pTextBox + 0x18);
+    /* Each call re-derives the window base from the array element, as retail
+     * does (lui at, %hi(g_FieldTextBoxes + 0x18); addu at, at, index*0x498). */
+    func_80034614((u8*)&g_FieldTextBoxes[index] + 0x18);
+    func_800345E0((u8*)&g_FieldTextBoxes[index] + 0x18);
+    func_800346D4((u8*)&g_FieldTextBoxes[index] + 0x18);
 
     g_FieldTextBoxes[index].cursor.visibility = -1;
     g_FieldTextBoxes[index].visibility = -1;
@@ -475,6 +561,7 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
                   s32 ownerActorIndex, s32 talkingActorIndex, s32 mode, s32 orientationFlags,
                   s32 dialogFlags) {
     u8* pTextBox;
+    ActorData* pOwnerActor;
     ActorData* pTalkingActor;
     s32 flags;
     s32 slot;
@@ -488,9 +575,12 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
     s32 portraitFlags;
 
     pTalkingActor = (ActorData*)(uintptr_t)g_FieldActors[talkingActorIndex].pActorData;
-    flags = pTalkingActor->dialogFlags >> 16;
+    /* Retail s4 is argument 7 (owner); argument 8 remains the speaker used
+     * for screen positioning and the final hidden-actor check. */
+    pOwnerActor = (ActorData*)(uintptr_t)g_FieldActors[ownerActorIndex].pActorData;
+    flags = pOwnerActor->dialogFlags >> 16;
     if (flags == 0) {
-        flags = pTalkingActor->dialogFlags & 0xFFFF;
+        flags = pOwnerActor->dialogFlags & 0xFFFF;
     }
     flags |= orientationFlags;
 
@@ -521,14 +611,17 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
         func_8007F814(talkingActorIndex, &targetX, &targetY, -0x40);
     }
 
-    if (pTalkingActor->faceId != 0xFF) {
+    if (pOwnerActor->faceId != 0xFF) {
+        u32 actorFlags12C = *(u32*)((u8*)pOwnerActor + 0x12C);
+        s32 portraitSelector = (actorFlags12C >> 1) & 0xE;
+
         if ((flags & 0x402) == 0) {
-            func_8007F5AC(textBoxIndex, ((pTalkingActor->direction << 1) & 0xE) | 1);
+            func_8007F5AC(textBoxIndex, portraitSelector | 1);
         } else {
-            func_8007F5AC(textBoxIndex, (pTalkingActor->direction << 1) & 0xE);
+            func_8007F5AC(textBoxIndex, portraitSelector);
         }
         g_FieldTextBoxes[textBoxIndex].portrait.shouldRenderPortrait = 1;
-        g_FieldTextBoxes[textBoxIndex].portrait.portraitID = pTalkingActor->faceId;
+        g_FieldTextBoxes[textBoxIndex].portrait.portraitID = pOwnerActor->faceId;
     } else {
         g_FieldTextBoxes[textBoxIndex].portrait.shouldRenderPortrait = 0;
         g_FieldTextBoxes[textBoxIndex].portrait.portraitID = 0x80;
@@ -540,7 +633,7 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
     func_8007E114(textBoxIndex, x, y, boxPixelWidth, boxPixelHeight);
 
     portraitFlags = 0;
-    if (pTalkingActor->faceId != 0xFF && (flags & 0x402) == 0) {
+    if (pOwnerActor->faceId != 0xFF && (flags & 0x402) == 0) {
         portraitFlags = 0x44;
     }
 
@@ -627,6 +720,44 @@ void func_8008004C(void* ot, s32 renderContextIndex) {
 
     for (i = 0; i < 4; i++) {
         orders[i] = 0xFFFF;
+    }
+
+    /* Retail .L80080148-.L800802FC: the unordered pass. Runs over every entry
+     * with 0x412 set and 0x40E clear, and - unlike the ordered pass below -
+     * tests func_80033CD0 BEFORE the func_800345E0/34714/34888 group. */
+    for (i = 0; i < 4; i++) {
+        u8* pTextBox = (u8*)&g_FieldTextBoxes[i];
+        u8* pWindow = pTextBox + 0x18;
+
+        if (*(s16*)(pTextBox + 0x40E) != 0 || *(s16*)(pTextBox + 0x412) == 0) {
+            continue;
+        }
+
+        *(s16*)(pTextBox + 0x3C4) = -1;
+        if (*(s16*)(pTextBox + 0x408) == 0) {
+            if (func_80033CD0(pWindow) != 0 && *(s16*)(pTextBox + 0x37C) != 0) {
+                *(s16*)(pTextBox + 0x3C4) = 0;
+            }
+
+            if ((D_800C2694 & 0x20) != 0) {
+                s32 actorIndex = *(s16*)(pTextBox + 0x416);
+                ActorData* pActor = (ActorData*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
+
+                *(s16*)(pTextBox + 0x37C) = -1;
+                pActor->unk81 = *(u8*)(pTextBox + 0x382) + *(u8*)(pTextBox + 0x37E);
+                func_800345E0(pWindow);
+            }
+
+            if (*(s16*)(pWindow + 0x82) == 0) {
+                func_80034714(pWindow, (void*)(uintptr_t)*(u32*)(pTextBox + 0xA8));
+            }
+
+            func_80034888(pWindow, ot, renderContextIndex);
+        }
+
+        FieldTextBoxLinkPrim(ot, pTextBox + renderContextIndex * sizeof(DR_MODE));
+        func_8007E1C0(ot, renderContextIndex, i);
+        func_8007DCF8(i, ot, renderContextIndex);
     }
 
     for (order = 0; order < 4; order++) {

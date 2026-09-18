@@ -1,0 +1,20 @@
+{
+  "pins": {
+    "src/field/main/misc8.c": "29cc6efdc16d9de1c8c51d3b1f3984f1b177837a6a20dc83eb6260b4a9fefdc3",
+    "disc/field.bin": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+    "pc_port/tests/field_interaction_retail_test.c": "f994e08d37544630070f643e9b1fb5a2d3e4b65553c8460734d280017a24a6d1",
+    "pc_port/tests/run_field_interaction_retail_test.sh": "fe9499c2be13d3042879fd1fb970777b3c75e15ec8f03c07970808df5d53057a",
+    "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+    "pc_port/build_native/interaction.VJWMAp5a/body.c": "7b4518202c62db5e8490db417d8950154cf912739e38c8273ab93b9bce35f498"
+  },
+  "controls": [
+    "inner-confirm",
+    "outer-passive",
+    "optional-normal-facing",
+    "normal-global-write",
+    "discard-selected-button",
+    "clear-skipped-parent",
+    "slot-routine"
+  ],
+  "scope": "verbatim production body vs all 495 retail instructions; controlled ratan2, rectangle, script lookup boundaries; bounded SQR arithmetic; not whole-game parity"
+}

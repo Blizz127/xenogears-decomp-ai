@@ -1,0 +1,42 @@
+{
+  "wrong-archive": {
+    "adapter_sha256": "e6cad0a5191dfa4530828fa23328dfd7394aac0e03e3a856f83a78dba63bb0c3",
+    "runtime_sha256": "e2edbf996fee103445d4105b732528c0752a7cb196526b026f207c45dc9ef612"
+  },
+  "blind-full-payload": {
+    "adapter_sha256": "b9db45918d1dec012bbe35323937c71d8e9b1ef6e27035a4231409c8dbf573a4",
+    "runtime_sha256": "7fa5dfdf14a39ba03365d164c1766c84f58e61b80a5347586b6a5095e96fc083"
+  },
+  "keep-stale-authority": {
+    "adapter_sha256": "9cb4c5f8184743be018786b9c8a9abe24d91039f913edcccb55cbc8306ef0781",
+    "runtime_sha256": "ed3e1f114b230516eadb58154dbd82a998b0381e8a6dd1e57d4e023346112449"
+  },
+  "skip-immutable-check": {
+    "adapter_sha256": "d02e3e9d717d4dca63ca0202e7df14adb6cd220ace085e37a0763f62182fe375",
+    "runtime_sha256": "0efe197073b38ab54222a36c7f28f74e01226576ebaf821d8a98445ff09d5109"
+  },
+  "mask-bad-pointer": {
+    "adapter_sha256": "9506dd109acec1e6ab217e4662b1bfe4e820ec006f6f6dc2bc53154a98d6e774",
+    "runtime_sha256": "76c83e7e49c765c4e27d13a94a841e75d03e032ee1d457deaf2714a41116f0b1"
+  },
+  "skip-helper-generation-check": {
+    "adapter_sha256": "b13ba90a9280ad0b1940a886f6a4692e621083a8a0ddfe15a1687a8d7ebfbad4",
+    "runtime_sha256": "737a0b73e851c39c98759b8d7479a16bb4ccb05e4bf649c57a514163779deacc"
+  },
+  "wrong-resident-frame": {
+    "adapter_sha256": "2cd7dcd9dd0f02c670e92f984ebf9cd00aaf01695838e7f04c3ce8184d6c995f",
+    "runtime_sha256": "c567277696f3f1760d5e810e8b62f6c545508d5161483c6bacaae170933269e0"
+  },
+  "wrong-constructor-stack": {
+    "adapter_sha256": "00797a6db84ae960357de41f2bb124f5df4f09775eff477565b886c7041cbe68",
+    "runtime_sha256": "afed123d722e374e1d8a62e209a88a3cd75e029c49c6e5b7c0f140f3e61c5ed7"
+  },
+  "constant-defaults": {
+    "adapter_sha256": "8f2c5f586dcb5efebad7ba2bac8598f1677763af1b56bfe3fff18cb52a5f81f0",
+    "runtime_sha256": "f1b0a38fda4c88d1567138aec903461ef5c6bfc0da2f08f7b74bedcd1ce0ef54"
+  },
+  "stale-window-binding": {
+    "adapter_sha256": "68cbb010ee2dd1306128159a29fdf3ba633619c8886d2ecbaeff76c4620d9057",
+    "runtime_sha256": "60e8077a3f78fdbd91332d99df683cf2ab9a52c23478bc87e314fffa46a39646"
+  }
+}

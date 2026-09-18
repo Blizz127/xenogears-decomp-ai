@@ -8,6 +8,7 @@
 #include "world_map_common_tail.h"
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
+u8 D_80059179; /* field scene flag read by the linked helper (BSS-zero) */
 
 void *HeapAlloc(u_int allocSize, u_int allocFlags)
 {

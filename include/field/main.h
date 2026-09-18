@@ -123,4 +123,8 @@ extern int g_FieldRenderContextUseOT2;
 extern RenderContext* g_FieldCurRenderContext;
 extern RenderContext g_FieldRenderContexts[2];
 
+/* Retail gear transitions consume a party slot, not an actor index. */
+void func_800AD4D4(s32 partySlot);
+void func_800ACFD0(s32 partySlot);
+
 #endif

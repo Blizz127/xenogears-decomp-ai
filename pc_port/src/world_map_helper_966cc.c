@@ -8,11 +8,8 @@
 #include "psx_memory.h"
 #include "world_map_helper_966cc.h"
 
-/* PsyQ file I/O (from PsyCross libsn.h) */
-extern uintptr_t PCopen(char* name, int flags, int perms);
-extern int PClseek(uintptr_t fd, int offset, int mode);
-extern int PCread(uintptr_t fd, char* buff, int len);
-extern int PCclose(uintptr_t fd);
+/* Retail integer-handle ABI, implemented by pc_file_io.c. */
+#include "psyq/pc.h"
 
 /* PsyQ CD functions (from PsyCross) */
 

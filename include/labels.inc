@@ -33,13 +33,7 @@
 
 
 # A label referenced by a jumptable.
-# Visibility must be GLOBAL: this project migrates jump-table rodata into
-# separate data .s objects (e.g. slus data/800.rodata.s), whose `.word .LXXX`
-# entries can only resolve against exported labels.  include/macro.inc (the
-# raw-asm path) has always globalized jlabel; a `local` default here leaves
-# every INCLUDE_ASM'd function's jtbl targets unexported and breaks the slus
-# and field links (jtbl_80018664 -> .L80023490 et al).
-.macro jlabel label, visibility=global
+.macro jlabel label, visibility=local
     .\visibility \label
     \label:
 .endm

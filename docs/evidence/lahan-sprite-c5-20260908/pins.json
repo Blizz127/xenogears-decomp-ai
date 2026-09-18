@@ -1,0 +1,6 @@
+{
+  "src/slus_006.64/system/animation_scripts.c": "e2c5fb6a0c59f2c98d245f6190fb24aab7198f0834095c7e0ddb07e471f1077f",
+  "pc_port/tests/sprite_dispatch_c5_retail_test.c": "7d3f89fbf4ea3b0c10e041e6efad9b1048b37a8273d81add92edf613eaa23704",
+  "pc_port/tests/run_sprite_dispatch_c5_retail_test.sh": "293ed4a6c239a908d3902f5273da0afe30de8153af3651aadd0bb78382f7ede6",
+  "pc_port/build_native/xeno-port": "263da43c05a048b9f143fdcda45a345101f9e2039efc824481a0bafe11527f0c"
+}

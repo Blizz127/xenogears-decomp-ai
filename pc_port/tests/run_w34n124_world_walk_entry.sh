@@ -66,6 +66,14 @@ pos1=$(grep -a 'W34N124 call=1 slot=1 ' "$log" | sed -n 's/.*pos=(\([^)]*\)).*/\
 pos31=$(grep -a "W34N124 call=$sample_call slot=1 " "$log" | sed -n 's/.*pos=(\([^)]*\)).*/\1/p' | head -1)
 name="guest position moved between call 1 and $sample_call ($pos1 -> $pos31)"
 check test -n "$pos1" -a -n "$pos31" -a "$pos1" != "$pos31"
+anim2=$(grep -a 'W34N124 call=2 slot=1 ' "$log" | sed -n 's/.* anim=\([-0-9]*\) .*/\1/p' | head -1)
+pose2=$(grep -a 'W34N124 call=2 slot=1 ' "$log" | sed -n 's/.* pose=\([-0-9]*\) .*/\1/p' | head -1)
+anim_sample=$(grep -a "W34N124 call=$sample_call slot=1 " "$log" | sed -n 's/.* anim=\([-0-9]*\) .*/\1/p' | head -1)
+pose_sample=$(grep -a "W34N124 call=$sample_call slot=1 " "$log" | sed -n 's/.* pose=\([-0-9]*\) .*/\1/p' | head -1)
+name="moving player selects walk animation 1 ($anim2, $anim_sample)"
+check test "$anim2" = 1 -a "$anim_sample" = 1
+name="moving player advances rendered pose ($pose2 -> $pose_sample)"
+check test -n "$pose2" -a -n "$pose_sample" -a "$pose2" != "$pose_sample"
 name="target trigger (record id $expect_id) selected at call $sample_call"
 check grep -aq "W34N124 call=$sample_call slot=1 .*BD24=$expect_id " "$log"
 name="natural world exit with D7CC=0"

@@ -18,8 +18,11 @@ build_run() {
     gcc -c "$TEST" "${FLAGS[@]}" "$opt" $san -o "$OUT/$label.test.o"
     gcc -c "$FRAME" "${FLAGS[@]}" "$opt" -DWM_712D0_TEST_TRACE $san \
         -DWM_71984_CONTINUATION_DISABLED -o "$OUT/$label.frame.o"
+    gcc -c pc_port/src/world_map_image_transfer_25044.c -std=gnu17 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src "$opt" $san -o "$OUT/$label.xfer.o"
+    gcc -c pc_port/src/world_map_upload_pump_74f2c.c -std=gnu17 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src "$opt" $san -o "$OUT/$label.pump.o"
+    gcc -c pc_port/src/world_map_ot_adapter.c -std=gnu17 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src "$opt" $san -o "$OUT/$label.ot.o"
     gcc -no-pie -Wl,--gc-sections $san "$OUT/$label.test.o" \
-        "$OUT/$label.frame.o" -o "$OUT/$label"
+        "$OUT/$label.frame.o" "$OUT/$label.xfer.o" "$OUT/$label.pump.o" "$OUT/$label.ot.o" -o "$OUT/$label"
     set +e
     "$OUT/$label" > "$OUT/$label.stdout" 2> "$OUT/$label.stderr"
     local rc=$?

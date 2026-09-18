@@ -551,7 +551,7 @@ MATRIX* MulMatrix0(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
         "or $9, $9, $15\n\t"
         "sw $9, 8(%3)\n\t"
         "swc2 $11, 16(%3)\n\t"
-        "move %0, %3\n\t"
+        "addu %0, %3, $zero\n\t"
         ".set at"
         : "=r"(result)
         : "r"(m0), "r"(m1), "r"(m2)
@@ -559,9 +559,6 @@ MATRIX* MulMatrix0(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
           "$24", "memory");
     return result;
 }
-
-/* Retail padding at 0x80049318, outside MulMatrix0's symbol bounds. */
-__asm__(".word 0");
 
 MATRIX* CompMatrix(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     MATRIX* result;
@@ -665,51 +662,99 @@ MATRIX* CompMatrix(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     return result;
 }
 
-VECTOR* ApplyMatrixLV(MATRIX* m, VECTOR* v0, VECTOR* v1) {
-    VECTOR hi;
-    VECTOR lo;
-
-    gte_SetRotMatrix(m);
-    hi = *v0;
-
-    if (hi.vx < 0) {
-        lo.vx = -(-hi.vx >> 15);
-        hi.vx = -(-hi.vx & 0x7FFF);
-    } else {
-        lo.vx = hi.vx >> 15;
-        hi.vx &= 0x7FFF;
-    }
-    if (hi.vy < 0) {
-        lo.vy = -(-hi.vy >> 15);
-        hi.vy = -(-hi.vy & 0x7FFF);
-    } else {
-        lo.vy = hi.vy >> 15;
-        hi.vy &= 0x7FFF;
-    }
-    if (hi.vz < 0) {
-        lo.vz = -(-hi.vz >> 15);
-        hi.vz = -(-hi.vz & 0x7FFF);
-    } else {
-        lo.vz = hi.vz >> 15;
-        hi.vz &= 0x7FFF;
-    }
-
-    gte_ldlvl(&lo);
-    gte_rtir_sf0();
-    gte_stlvnl(&lo);
-    gte_ldlvl(&hi);
-    gte_rtir();
-
-    if (lo.vx < 0) lo.vx *= 8; else lo.vx <<= 3;
-    if (lo.vy < 0) lo.vy *= 8; else lo.vy <<= 3;
-    if (lo.vz < 0) lo.vz *= 8; else lo.vz <<= 3;
-    gte_stlvnl(&hi);
-
-    v1->vx = hi.vx + lo.vx;
-    v1->vy = hi.vy + lo.vy;
-    v1->vz = hi.vz + lo.vz;
-    return v1;
-}
+__asm__(
+        ".globl ApplyMatrixLV\n\t"
+        ".ent ApplyMatrixLV\n\t"
+        "ApplyMatrixLV:\n\t"
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x8c8b000c\n\t"
+        ".word 0x8c8c0010\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c90800\n\t"
+        ".word 0x48ca1000\n\t"
+        ".word 0x48cb1800\n\t"
+        ".word 0x48cc2000\n\t"
+        ".word 0x8ca80000\n\t"
+        ".word 0x8ca90004\n\t"
+        ".word 0x8caa0008\n\t"
+        ".word 0x05010008\n\t"
+        ".word 0x00085bc3\n\t"
+        ".word 0x00084023\n\t"
+        ".word 0x00085bc3\n\t"
+        ".word 0x31087fff\n\t"
+        ".word 0x000b5823\n\t"
+        ".word 0x10000003\n\t"
+        ".word 0x00084023\n\t"
+        ".word 0x00085bc3\n\t"
+        ".word 0x31087fff\n\t"
+        ".word 0x05210008\n\t"
+        ".word 0x000963c3\n\t"
+        ".word 0x00094823\n\t"
+        ".word 0x000963c3\n\t"
+        ".word 0x31297fff\n\t"
+        ".word 0x000c6023\n\t"
+        ".word 0x10000003\n\t"
+        ".word 0x00094823\n\t"
+        ".word 0x000963c3\n\t"
+        ".word 0x31297fff\n\t"
+        ".word 0x05410008\n\t"
+        ".word 0x000a6bc3\n\t"
+        ".word 0x000a5023\n\t"
+        ".word 0x000a6bc3\n\t"
+        ".word 0x314a7fff\n\t"
+        ".word 0x000d6823\n\t"
+        ".word 0x10000003\n\t"
+        ".word 0x000a5023\n\t"
+        ".word 0x000a6bc3\n\t"
+        ".word 0x314a7fff\n\t"
+        ".word 0x488b4800\n\t"
+        ".word 0x488c5000\n\t"
+        ".word 0x488d5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a41e012\n\t"
+        ".word 0x480bc800\n\t"
+        ".word 0x480cd000\n\t"
+        ".word 0x480dd800\n\t"
+        ".word 0x48884800\n\t"
+        ".word 0x48895000\n\t"
+        ".word 0x488a5800\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a49e012\n\t"
+        ".word 0x05610005\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x000b5823\n\t"
+        ".word 0x000b58c0\n\t"
+        ".word 0x10000002\n\t"
+        ".word 0x000b5823\n\t"
+        ".word 0x000b58c0\n\t"
+        ".word 0x05810005\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x000c6023\n\t"
+        ".word 0x000c60c0\n\t"
+        ".word 0x10000002\n\t"
+        ".word 0x000c6023\n\t"
+        ".word 0x000c60c0\n\t"
+        ".word 0x05a10005\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x000d6823\n\t"
+        ".word 0x000d68c0\n\t"
+        ".word 0x10000002\n\t"
+        ".word 0x000d6823\n\t"
+        ".word 0x000d68c0\n\t"
+        ".word 0x4808c800\n\t"
+        ".word 0x4809d000\n\t"
+        ".word 0x480ad800\n\t"
+        ".word 0x010b4021\n\t"
+        ".word 0x012c4821\n\t"
+        ".word 0x014d5021\n\t"
+        ".word 0xacc80000\n\t"
+        ".word 0xacc90004\n\t"
+        ".word 0xacca0008\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00c01021\n\t"
+        ".end ApplyMatrixLV");
 
 VECTOR* ApplyRotMatrix(SVECTOR* input, VECTOR* output) {
     register VECTOR* result asm("$2");
@@ -1233,11 +1278,31 @@ VECTOR* ApplyMatrix(MATRIX* matrix, SVECTOR* input, VECTOR* output) {
 }
 
 SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1) {
-    gte_SetRotMatrix(m);
-    gte_ldv0(v0);
-    gte_rtv0();
-    gte_stsv(v1);
-    return v1;
+    SVECTOR* result;
+    __asm__ volatile(
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x8c8b000c\n\t"
+        ".word 0x8c8c0010\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c90800\n\t"
+        ".word 0x48ca1000\n\t"
+        ".word 0x48cb1800\n\t"
+        ".word 0x48cc2000\n\t"
+        ".word 0xc8a00000\n\t"
+        ".word 0xc8a10004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a486012\n\t"
+        ".word 0x48084800\n\t"
+        ".word 0x48095000\n\t"
+        ".word 0x480a5800\n\t"
+        ".word 0xa4c80000\n\t"
+        ".word 0xa4c90002\n\t"
+        ".word 0xa4ca0004\n\t"
+        "addu %0, $6, $zero"
+        : "=r"(result) : : "$8", "$9", "$10", "$11", "$12", "memory");
+    return result;
 }
 
 MATRIX* TransMatrix(MATRIX* matrix, VECTOR* translation) {
@@ -1334,7 +1399,18 @@ __asm__(
         ".end ScaleMatrix");
 
 void SetRotMatrix(MATRIX* m) {
-    gte_SetRotMatrix(m);
+    __asm__ volatile(
+        ".word 0x8c880000\n\t"
+        ".word 0x8c890004\n\t"
+        ".word 0x8c8a0008\n\t"
+        ".word 0x8c8b000c\n\t"
+        ".word 0x8c8c0010\n\t"
+        ".word 0x48c80000\n\t"
+        ".word 0x48c90800\n\t"
+        ".word 0x48ca1000\n\t"
+        ".word 0x48cb1800\n\t"
+        ".word 0x48cc2000"
+        : : : "$8", "$9", "$10", "$11", "$12");
 }
 
 void SetLightMatrix(MATRIX* matrix) {
@@ -1368,7 +1444,14 @@ void SetColorMatrix(MATRIX* matrix) {
 }
 
 void SetTransMatrix(MATRIX* m) {
-    gte_SetTransMatrix(m);
+    __asm__ volatile(
+        ".word 0x8c880014\n\t"
+        ".word 0x8c890018\n\t"
+        ".word 0x8c8a001c\n\t"
+        ".word 0x48c82800\n\t"
+        ".word 0x48c93000\n\t"
+        ".word 0x48ca3800"
+        : : : "$8", "$9", "$10");
 }
 
 void SetVertex0(SVECTOR* vertex) {
@@ -2032,53 +2115,91 @@ void RotTrans(SVECTOR* input, VECTOR* output, long* flag) {
 long NormalClip(long sxy0, long sxy1, long sxy2) {
     long mac0;
 
-    gte_ldsxy3(sxy0, sxy1, sxy2);
-    gte_nclip();
-    gte_stopz(&mac0);
+    __asm__ volatile(
+        "mtc2 $4, $12\n\t"
+        "mtc2 $6, $14\n\t"
+        "mtc2 $5, $13\n\t"
+        "nop\n\t"
+        "nop\n\t"
+        ".word 0x4b400006\n\t"
+        "mfc2 %0, $24"
+        : "=r"(mac0));
     return mac0;
 }
 
-long RotTransPers4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
-                   long* sxy0, long* sxy1, long* sxy2, long* sxy3,
-                   long* p, long* flag) {
-    long flag0;
+__asm__(
+        ".globl RotTransPers4\n\t"
+        ".ent RotTransPers4\n\t"
+        "RotTransPers4:\n\t"
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a280030\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0xe90c0000\n\t"
+        ".word 0xe92d0000\n\t"
+        ".word 0xe94e0000\n\t"
+        ".word 0x4843f800\n\t"
+        ".word 0xc8e00000\n\t"
+        ".word 0xc8e10004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a180001\n\t"
+        ".word 0x8fa8001c\n\t"
+        ".word 0x8fa90020\n\t"
+        ".word 0x8faa0024\n\t"
+        ".word 0xe90e0000\n\t"
+        ".word 0xe9280000\n\t"
+        ".word 0x4848f800\n\t"
+        ".word 0x48029800\n\t"
+        ".word 0x01034025\n\t"
+        ".word 0xad480000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00021083\n\t"
+        ".end RotTransPers4");
 
-    gte_ldv3(v0, v1, v2);
-    gte_rtpt();
-    gte_stsxy3(sxy0, sxy1, sxy2);
-    gte_stflg(&flag0);
-
-    gte_ldv0(v3);
-    gte_rtps();
-    gte_stsxy(sxy3);
-    gte_stdp(p);
-    gte_stflg(flag);
-    *flag |= flag0;
-    return *p >> 2;
-}
-
-/* PsyQ libgte, retail 0x8004A7BC.  The command order deliberately retains the
- * two separate FLAG samples: RTPT's result is ORed with RTPS's before AVSZ4. */
 long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
                  long* sxy0, long* sxy1, long* sxy2, long* sxy3,
                  long* p, long* flag) {
-    long flag0;
-
-    gte_ldv3(v0, v1, v2);
-    gte_rtpt();
-    gte_stsxy3(sxy0, sxy1, sxy2);
-    gte_stflg(&flag0);
-
-    gte_ldv0(v3);
-    gte_rtps();
-    gte_stsxy(sxy3);
-    gte_stflg(flag);
-    gte_stdp(p);
-    *flag |= flag0;
-
-    gte_avsz4();
-    gte_stotz(p);
-    return *p;
+    register long result asm("$2");
+    __asm__ volatile(
+        ".word 0xc8800000\n\t"
+        ".word 0xc8810004\n\t"
+        ".word 0xc8a20000\n\t"
+        ".word 0xc8a30004\n\t"
+        ".word 0xc8c40000\n\t"
+        ".word 0xc8c50004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a280030\n\t"
+        ".word 0x8fa80010\n\t"
+        ".word 0x8fa90014\n\t"
+        ".word 0x8faa0018\n\t"
+        ".word 0xe90c0000\n\t"
+        ".word 0xe92d0000\n\t"
+        ".word 0xe94e0000\n\t"
+        ".word 0x4843f800\n\t"
+        ".word 0xc8e00000\n\t"
+        ".word 0xc8e10004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x4a180001\n\t"
+        ".word 0x8fa8001c\n\t"
+        ".word 0x8fa90020\n\t"
+        ".word 0x8faa0024\n\t"
+        ".word 0xe90e0000\n\t"
+        ".word 0x4848f800\n\t"
+        ".word 0xe9280000\n\t"
+        ".word 0x01034025\n\t"
+        ".word 0xad480000\n\t"
+        ".word 0x4b68002e\n\t"
+        ".word 0x48023800"
+        : "=r"(result)
+        : : "$3", "$8", "$9", "$10", "memory");
+    return result;
 }
 
 long RotAverageNclip4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,

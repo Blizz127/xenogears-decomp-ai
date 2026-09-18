@@ -1,0 +1,8 @@
+{
+  "object": "build/src/slus_006.64/system/temp2.c.o",
+  "object_sha256": "8fc1fa5fb24ad15ec7cffa51e02fc0fdc9a1fd60b87b92d324994e5fed9b5eab",
+  "compiled_bytes": 236,
+  "retail_bytes": 224,
+  "exact_match": false,
+  "scope": "Size gate only; relocation-normalized byte comparison not run if sizes differ."
+}

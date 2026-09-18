@@ -1,0 +1,24 @@
+{
+  "observed_at": "2026-09-08T10:57:29.584965-05:00",
+  "run": "scratchpad/lahan-natural-20260908-sprite-c5",
+  "binary_sha256": "f2fa9ee0fb4de62dc091188a1c46b0885577dfb5302a317dd028604a78c1e4b6",
+  "movie_events": [
+    "[xeno-port][fe60] enter str=13 start=0 end=4462 mode=0 flags=0x80 loop=0 rgb24=1 sysmode=1",
+    "[xeno-port][fe60] first STR frame delivered (D_800ADB7C=1)",
+    "[xeno-port][fe60] exit reason=circle frame=60 end=4462",
+    "[xeno-port][fe60] enter str=4 start=0 end=563 mode=0 flags=0x00 loop=0 rgb24=1 sysmode=1",
+    "[xeno-port][fe60] first STR frame delivered (D_800ADB7C=1)",
+    "[xeno-port][fe60] exit reason=frame-budget frame=563 end=563"
+  ],
+  "allocation_events": [
+    "301 alloc_enter 0x47d233 (nil) 88604 0",
+    "302 alloc_return 0x47d233 0x72d6f0 88604 0",
+    "60625 alloc_enter 0x47d233 (nil) 88604 0",
+    "60626 alloc_return 0x47d233 0x7ed270 88604 0"
+  ],
+  "screenshots": {
+    "movie4-current.png": "c706c1eb0ec04612ff803527b2a21d08fb8889e1d2b540436bc6756357d3165e",
+    "movie4-after.png": "17b02d13e4d218a6eca6ea802f7008ad1603d56b57c059124036e2ea0feeaaf0"
+  },
+  "scope": "Natural New Game through Citan and burning Lahan; STR4 allocation succeeded, frame-budget 563 completed, returned to Citan dialogue. No state writes. Does not establish full constructor exactness or retail audiovisual parity."
+}

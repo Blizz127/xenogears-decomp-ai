@@ -18,6 +18,8 @@
 
 /* Provide g_PsxRam for the production module. */
 uint8_t g_PsxRam[PSX_RAM_SIZE];
+/* Native main-executable gate referenced by the linked P0 slice. */
+u8 D_80059179;
 
 /* HeapAlloc stub: allocates from top of g_PsxRam to produce valid KUSEG pointers. */
 static int s_heap_offset = 0;
@@ -96,7 +98,8 @@ int main(void)
         u32 base = ptr1 + 22;  /* record base = ptr1 + 22 */
 
         /* Retail values. */
-        u16 expected_tpage = GetTPage(0, 1, 240, 511);
+        /* Retail 80086090..800860A0: a0=0,a1=0,a2=896,a3=256. */
+        u16 expected_tpage = 0x001E;
         u16 expected_clut  = GetClut(240, 511);
 
         printf("  INFO: tpage=0x%04x clut=0x%04x\n", expected_tpage, expected_clut);
@@ -149,6 +152,16 @@ int main(void)
                 count++;
         }
         check("512 records initialized", count == 512);
+        {
+            int pages_ok = 1;
+            u32 ptr2 = *(u32*)PSX_ADDR(0x8009D7EC);
+            for (int i = 0; i < 512; i++) {
+                if (*(u16*)PSX_ADDR(ptr1 + i * 40 + 22) != 0x001E ||
+                    *(u16*)PSX_ADDR(ptr2 + i * 40 + 22) != 0x001E)
+                    pages_ok = 0;
+            }
+            check("all 1024 buffered records use retail page 0x001E", pages_ok);
+        }
     }
 
     /* ---- Test 4: Copy verification ---- */
@@ -366,7 +379,8 @@ int main(void)
         check("P4 ptr2 != P3 ptr1", p4_ptr2 != p3_ptr1);
         check("P4 ptr2 != P3 ptr2", p4_ptr2 != p3_ptr2);
 
-        check("P0 D_80059179 == 1", *(u8*)PSX_ADDR(0x80059179) == 1);
+        check("P0 native D_80059179 == 1", D_80059179 == 1);
+        check("P0 leaves guest twin untouched", *(u8*)PSX_ADDR(0x80059179) == 0);
     }
 
     /* ---- Test 10: No overlap with P1/P2/P3 allocations ---- */
@@ -430,18 +444,15 @@ int main(void)
     /* ---- Test 11: TPage/CLUT exact values ---- */
     printf("\nTest 11: TPage/CLUT exact values\n");
     {
-        u16 tpage = GetTPage(0, 1, 240, 511);
+        u16 tpage = GetTPage(0, 0, 896, 256);
         u16 clut  = GetClut(240, 511);
 
-        /* GetTPage(0, 1, 240, 511):
-         *   tp=0, abr=1, x=240, y=511
-         *   = (0<<7) | (1<<5) | ((511&0x100)>>4) | ((240&0x3FF)>>6)
-         *   = 0 | 0x20 | 0x10 | 3 = 0x0033
+        /* Retail GetTPage(0, 0, 896, 256): 0x10 | 14 = 0x001E.
          *
          * GetClut(240, 511):
          *   = (511<<6) | ((240>>4)&0x3F)
          *   = 0x7FC0 | 0x0F = 0x7FCF */
-        check("GetTPage(0,1,240,511) == 0x0033", tpage == 0x0033);
+        check("GetTPage(0,0,896,256) == 0x001E", tpage == 0x001E);
         check("GetClut(240,511) == 0x7FCF",      clut == 0x7FCF);
     }
 

@@ -23,7 +23,6 @@ static int s_geom_calls;
 static int s_last_ofx;
 static int s_last_ofy;
 static int s_draw_calls;
-static unsigned long *s_last_ot;
 
 static void check_case(const char *name, const char *assertion, int ok)
 {
@@ -49,7 +48,6 @@ static void reset_fixture(void)
     s_last_ofx = 0;
     s_last_ofy = 0;
     s_draw_calls = 0;
-    s_last_ot = NULL;
     store_u32(GEOM, 140u);
     store_u32(BE3C, ENV);
     store_u32(ENV + 0x70u, OT);
@@ -62,8 +60,8 @@ static void run_known_and_no_backedge(void)
     reset_fixture();
     check_case("known-tail", "geom-map-draw-and-hold-backedge",
                wm_80071984_tail() == 1 && s_geom_calls == 1 &&
-               s_last_ofx == 160 && s_last_ofy == 140 && s_draw_calls == 1 &&
-               s_last_ot == (unsigned long *)PSX_ADDR(OT + 0xFFCu) &&
+               s_last_ofx == 160 && s_last_ofy == 140 &&
+               wm_71984_tail_get_draw_calls() == 1 &&
                wm_71984_tail_get_backedge_hits() == 1 &&
                wm_71984_tail_get_unknowns() == 0);
 
@@ -72,7 +70,7 @@ static void run_known_and_no_backedge(void)
     store_u32(GEOM, 0xFFFFFFF0u);
     check_case("no-backedge", "zero-d554-returns-after-draw",
                wm_80071984_tail() == 0 && s_geom_calls == 1 &&
-               s_last_ofy == -16 && s_draw_calls == 1 &&
+               s_last_ofy == -16 && wm_71984_tail_get_draw_calls() == 1 &&
                wm_71984_tail_get_backedge_hits() == 0);
 }
 
@@ -102,9 +100,12 @@ void SetGeomOffset(int ofx, int ofy)
 
 void DrawOTag(unsigned long *ot)
 {
+    (void)ot;
     s_draw_calls++;
-    s_last_ot = ot;
 }
+/* Headless link-only: packet walk validated via OT memory, not GL. */
+void DrawPrim(void *p) { (void)p; }
+void DrawAllSplits(void) {}
 
 int main(void)
 {

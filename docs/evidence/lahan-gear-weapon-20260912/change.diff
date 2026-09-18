@@ -1,0 +1,23 @@
+--- before
++++ after
+@@ -1,6 +1,10 @@
+ void func_801E4754(void* arg0, u8 charIdx) {
+     u8* pGS = (u8*)&g_GameState + 0x978 + charIdx * 0xA4;
+-    void** pSrcBase = (void**)(arg0 + 0x18);
++#ifdef XENO_PC_PORT
++    u32* pSrcBase = (u32*)&((MenuUnk6*)arg0)->unk8[0x10];
++#else
++    void** pSrcBase = (void**)((u8*)arg0 + 0x18);
++#endif
+     u8 slot;
+     u8* pSrc;
+ 
+@@ -50,7 +54,7 @@
+     u8* pEntry = (u8*)&g_GameState + 0x978 + (s32)idx * 0xA4;
+     u16 val = *(u16*)(pEntry + 0x44);
+     u8 base = pEntry[0x75];
+-    s32 result = (s32)(val / 15) - base;
++    s32 result = (s32)(val / 120) - base;
+     result /= 2;
+     if (result < 0) result = 0;
+     return (u8)(result & 0xFF);

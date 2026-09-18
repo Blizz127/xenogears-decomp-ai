@@ -1,0 +1,52 @@
+{
+  "source": "src/member_change_menu/main/misc.c",
+  "source_sha256": "15a4091854071fcb92c75236165cf836d4ce0a2dea0d47c822d7a0dd616a02cb",
+  "source_body_sha256": "c33af32619667751c5a2084f4a706dd2fae60a69498283ae15b641e79620f3ea",
+  "helper_source": "src/member_change_menu/main/misc.c",
+  "helper_source_sha256": "15a4091854071fcb92c75236165cf836d4ce0a2dea0d47c822d7a0dd616a02cb",
+  "helper_body_sha256": "95e0738da20f3c91b43f28b0f12601dcb5b897f60cc268ab737120e911a6d147",
+  "module": "disc/member_change_menu.bin",
+  "module_sha256": "3b9e2b890c27ae0de97fe343ac75cd35c05fe7f9605ae387d2166da0be78109c",
+  "retail_range": "member_change_menu.bin[0x5B48:0x5D14] / 0x801CAB48..0x801CAD14",
+  "retail_swap_sha256": "a65fe1e11ad3f13b0cd9b732ec90a9a794ba476ef8b09b14ddf0f838a177fbd5",
+  "retail_helper_range": "member_change_menu.bin[0x18:0x34] / 0x801C5018..0x801C5034",
+  "retail_helper_sha256": "8bd5935e3f4bda74214fea110c7420646d7f876b709c9996d882c44d14718d39",
+  "retail_masks_range": "member_change_menu.bin[0x657C:0x659C] / 0x801CB57C..0x801CB59C",
+  "retail_masks_sha256": "266e8eb790b40fb67ee3415b197d907c10761fe872a2a24cee5cae55063d348c",
+  "test_sha256": "e683293f7eed9a3d90b939bc91e44589cf062ee316c6e8adfe59dbfe575ad2d3",
+  "runner_sha256": "1ea04b60a61d87e45387282965f10fb48f9bd43897983147008e70f2337d6c47",
+  "adapter_sha256": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+  "adapter_header_sha256": "acd0133574e1cb546ce2b33ee582d7b8dff48c988298c6ac4fa6cb65e4b5f12a",
+  "menu_header_sha256": "d36ba8046ea42e2535ade63155072e2d53245f31013526807bffa009fa7b19d0",
+  "game_header_sha256": "7f3317f4db5fb252b93aa8a2670c75c91750cf03b0e505d11adbbdb6a70c76ee",
+  "psyx_config_sha256": "c837d59b11a1c2e68a89f2084e4548d3a682ff0311fae58cc1b981f1fe3b0605",
+  "build_port_sha256": "60d7016744e6f1b728dd9fb811a9aa85d77b8e7c177c886cd0aeb324de079dc5",
+  "native_compile_definitions": [
+    "XENO_PC_PORT",
+    "XENO_FIELD_OBJECT_OVERLAY",
+    "SKIP_ASM",
+    "_LANGUAGE_C",
+    "USE_EXTENDED_PRIM_POINTERS=0"
+  ],
+  "native_game_state_storage": "fixture symbol is 0x4600 bytes, matching pc_port/src/data_game_state.c",
+  "native_layout": "actual SystemMenu/MenuManager host structs; guest side uses retail packed offsets",
+  "controls": [
+    "missing-current-lock-check",
+    "missing-bench-lock-check",
+    "wrong-party-index",
+    "skipped-swap",
+    "omitted-rollback",
+    "count-only-two-party-slots",
+    "wrong-success-result"
+  ],
+  "compiler_manifest": {
+    "gcc": "gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+    "/home/linuxbrew/.linuxbrew/bin/clang": "Homebrew clang version 22.1.8"
+  },
+  "results": [
+    "production-O0 PASS",
+    "production-O2 PASS",
+    "production-UBSan PASS",
+    "7 semantic controls rejected"
+  ]
+}

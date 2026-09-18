@@ -1,0 +1,152 @@
+--- before/src/menu/main/misc.c
++++ src/menu/main/misc.c
+@@ -7653,7 +7653,149 @@
+     }
+ }
+ 
++#ifndef XENO_PC_PORT
+ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E05D0);
++#else
++extern u16 D_801E9DBC[];
++extern s32 func_801DE5CC(s32, s32, s32, s32, s32);
++extern void func_801DF5D0(s32, s32);
++extern void func_801DFB68(s32, s32, s32, s32, s32, s32);
++extern void func_801DFF5C(s32, s32, s32, s32, s32, s32, s32);
++extern void func_801DF890(s32, s32);
++extern s32 func_801DF0D4(s32, s32, s32, s32);
++extern void func_801E36D4(void*, u8);
++extern void func_801E3A80(void*, u8);
++/* Full retail Equip control loop, 801E05D0..801E0F78. Rendering and
++ * equipment-data helpers remain independent owners. */
++void func_801E05D0(u8 selected, u8 openAnimation, u8 gearMode) {
++    s32 page=0, category=0, row=0, count=0;
++    s32 previousCategory=255, previousRow=255, previousPage=255;
++    u8 group=0, previousSelected=255, redraw=1;
++    u8 running=1, initialize=1, preview=0, showRows=0;
++    u8 repeatConfirm=0, listing=0;
++    ((u8*)g_Menu->pManager)[7]=0;
++    func_801DE2C8(gearMode);
++    func_801DF5D0(selected,gearMode);
++    while(running) {
++        func_801C7BF4();
++        if(redraw || selected!=previousSelected) {
++            func_801D8EA4(selected,(u8)(group+1),listing,gearMode);
++            func_801DE474(group,gearMode);
++            redraw=0;
++        }
++        if(page!=previousPage || selected!=previousSelected) {
++            s32 scroll;
++            count=func_801DE5CC(selected,page,category,group,gearMode);
++            if(count) {
++                scroll=(page*100/count)/2;
++                func_801D3344(0x94,scroll+0x12,0x32);
++            } else func_801D3344(0x94,0x12,0x64);
++        }
++        if(showRows)func_801DB0A8(row,page,3,0);
++        else ((u8*)g_Menu->pManager)[0x50]=0;
++        if(row!=previousRow || selected!=previousSelected || page!=previousPage) {
++            if(preview)func_801DFB68(selected,category,row,page,group,gearMode);
++            preview=1;
++            if(gearMode==0) {
++                func_801E36D4(g_Menu->unk330,g_Menu->pManager->currentCharacterIDs[selected]);
++                func_801E3A80(g_Menu->unk330,g_Menu->pManager->currentCharacterIDs[selected]);
++            } else func_801DFE2C(selected);
++            func_801DFF5C(category,row,page,group,gearMode,0,selected);
++            func_801D8DE4(selected,1,listing,gearMode);
++            previousRow=row;previousPage=page;
++        }
++        if(category!=previousCategory || selected!=previousSelected) {
++            POLY_FT4* p;
++            u16 y;
++            func_801DFF5C(category,row,page,group,gearMode,1,selected);
++            p=&g_Menu->pCursors->polysCursor[g_Menu->pCursors->renderContexts[0]];
++            y=D_801E9DBC[(group*4+category)*2];
++            p->x0=0x8C;p->y0=y;p->x1=0x9C;p->y1=y;
++            p->x2=0x8C;p->y2=y+0x10;p->x3=0x9C;p->y3=y+0x10;
++            previousCategory=category;previousSelected=selected;
++        }
++        if(initialize) {
++            func_801D397C(2,0x94,0xA,0x94,0x74,0,1,4,1);
++            func_801D397C(3,0x6C,0x87,0xC4,0x48,0,1,4,0);
++            func_801D397C(5,8,0x8E,0x60,0x40,0,1,4,0);
++            if(openAnimation) {
++                func_801D1E80();func_801D29A8(0,0);
++                while(g_Menu->transitionEffectState)func_801C7BF4();
++            }
++            g_Menu->pCursors->shouldRender[0]=1;
++            ((u8*)g_Menu->pManager)[6]=0;
++            ((u8*)g_Menu->pManager)[0x21]=0;
++            initialize=0;
++        }
++        ((u8*)g_Menu->pManager)[0x2F]=1;
++        if(repeatConfirm){repeatConfirm=0;g_Menu->input=4;}
++        if(!listing) {
++            switch(g_Menu->input) {
++            case 5:running=0;break;
++            case 4:
++                func_801DF5D0(selected,gearMode);
++                page=0;listing=1;previousPage=previousRow=255;redraw=1;
++                g_Menu->pCursors->shouldRender[0]=0;showRows=1;row=0;
++                ((u8*)g_Menu->pManager)[0x50]=1;
++                break;
++            case 0:case 2:
++                if(g_Menu->pManager->currentCharacterIDs[selected]==4) {
++                    group^=1;previousCategory=255;redraw=1;category=0;
++                }
++                break;
++            case 1:
++                if(++category>=4)category=0;
++                if(group && gearMode && (u32)(category-1)<2)category=3;
++                break;
++            case 3:
++                if(--category<0)category=3;
++                if(group && gearMode && (u32)(category-1)<2)category=0;
++                break;
++            case 9:case 10: {
++                u8 direction=g_Menu->input==10;
++                if(func_801D9704(selected,direction,gearMode)!=selected) {
++                    selected=func_801D9704(selected,direction,gearMode);
++                    group=0;preview=0;
++                }
++                break;
++            }
++            }
++        } else {
++            u8 leaveListing=0;
++            switch(g_Menu->input) {
++            case 5:
++                func_801DF890(selected,gearMode);
++                leaveListing=1;showRows=0;g_Menu->pCursors->shouldRender[0]=1;
++                func_801DB0A8(0,page,3,0);
++                row=0;previousSelected=255;((u8*)g_Menu->pManager)[0x50]=0;
++                break;
++            case 4:
++                if((u8)func_801DF0D4(selected,(u8)category,group,gearMode)) {
++                    group^=1;redraw=1;repeatConfirm=1;
++                    func_801E0434(selected,gearMode);
++                }
++                previousSelected=255;
++                func_801DF5D0(selected,gearMode);
++                leaveListing=1;showRows=0;g_Menu->pCursors->shouldRender[0]=1;
++                func_801DB0A8(0,page,3,0);
++                row=0;((u8*)g_Menu->pManager)[0x50]=0;
++                break;
++            case 1:
++                if(++row>=8) {++page;row=7;if(page>count)page=count;}
++                break;
++            case 3:
++                if(--row<0) {--page;row=0;if(page<0)page=0;}
++                break;
++            }
++            if(leaveListing) {
++                row=page=0;listing=0;previousRow=255;redraw=1;preview=0;
++                MenuRawPointer(0x35C)[0x32F2]=0;
++            }
++        }
++    }
++    func_801D2484();func_801DB340(0);
++}
++#endif
+ 
+ s32 func_801E0F78(u8 arg0, u8 arg1) {
+     void* p1 = HeapAlloc(0x32F4, NULL);

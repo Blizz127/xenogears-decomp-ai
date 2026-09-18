@@ -393,6 +393,10 @@ g_FieldSpriteData = 0x800AFB1C;
 g_FieldStoredImageDest = 0x800AFC28; // type:RECT size:0x8
 g_FieldScriptMaxInstructionCount = 0x800AFC7C;
 
+D_800AEF10 = 0x800AEF10; // overlay layout xy, stride 8
+D_800AEF14 = 0x800AEF14; // overlay layout texture index
+D_800AEF16 = 0x800AEF16; // overlay layout flags
+
 D_800AFE24 = 0x800AFE24; // size:0xC
 D_800AFE3C = 0x800AFE3C; // size:0x8
 D_800AFE54 = 0x800AFE54; // size:0x10

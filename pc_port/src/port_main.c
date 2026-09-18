@@ -18,6 +18,9 @@
 #include "psx_memory.h"
 #include "test_input.h"
 #include "boot_menu.h"
+#include "field_direct_boot_route.h"
+#include "boot_sound_banks.h"
+#include "boot_sound_commit.h"
 #include "PsyX/PsyX_public.h"
 #include "psx/libspu.h"   /* Phase-2 sound-SDK primitive probe: SpuReverbAttr/SpuCommonAttr + prims */
 
@@ -25,6 +28,7 @@
  * first, etc.). Signatures match PsyCross. */
 extern int ResetCallback(void);
 extern int ResetGraph(int mode);
+extern int SetVideoMode(int mode);
 extern void SpuInit(void);            /* PsyCross LIBSPU: wakes the OpenAL SPU backend */
 
 /* Phase-1 sound-pump synthetic probe (env XENO_SOUND_PUMP_PROBE=1). Registers a
@@ -1214,7 +1218,10 @@ int main(int argc, char** argv) {
     /* 2. Data migration: build the game-state dispatch table at runtime. */
     PcPort_InitGameStates();
 
-    /* 3. Bring up PsyCross (SDL2 window + OpenGL context). */
+    /* SLUS_006.64 initializes g_VideoMode (80058990) to NTSC (0).
+     * Publish it before PsyX_Initialise starts the interrupt thread; the
+     * backend's unset mode otherwise selects the 50-Hz PAL clock. */
+    SetVideoMode(0);
     PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
     /* XENO_PC_PORT: PsyCross's default keyboard map puts Circle (the field
@@ -1269,14 +1276,12 @@ int main(int argc, char** argv) {
         PortRunSoundPrimProbe();
     }
 
-    /* 4c (init-proof milestone): route the game's own SoundInitialize(0) into
-     * boot -- the func_80019578 duty port_main did not replicate. Wakes the sound
-     * manager: allocates the audio-manager (D_800595D8), sets up its sound heap,
-     * registers the 240Hz tick func_8003C020 on the RCnt2 pump (body still
-     * STUBBED), configures reverb/mixer via the wired Phase-2 primitives.
-     * Cross-thread safe while the tick body is stubbed -- the dispatched stub
-     * touches no shared state; SPU-IRQ / real tick body remain the gate before
-     * the tick leg. WDS/playback (SoundLoadWdsFile) intentionally NOT routed. */
+    /* 4c: route the game's own SoundInitialize(0) into boot -- one duty of
+     * retail func_80019578 that port_main must reproduce. This allocates the
+     * audio manager, initializes its sound heap, registers the translated
+     * retail 240Hz func_8003C020 tick on RCnt2, and configures reverb/mixer.
+     * The disc-backed boot WDS banks are loaded below, after ArchiveInit, at
+     * the corresponding point in retail func_80019578. */
     SoundInitialize(0);
 
     /* B5.1: register the register->backend translator on the pump (slot after
@@ -1310,8 +1315,8 @@ int main(int argc, char** argv) {
 
     /* 4d-probe (tick-leg step 1, gate-first): concurrency validation of the
      * sound tick gate (g_SoundTickMutex; psycross_sound_gate.patch). Runs with
-     * the real func_8003C020 registered + enabled (its stub dispatches under
-     * the gate throughout). Diagnostic only; does not run in normal boot. */
+     * translated retail func_8003C020 registered and enabled under the gate.
+     * Diagnostic only; does not run in normal boot. */
     if (getenv("XENO_SOUND_GATE_STRESS")) {
         PortRunSoundGateStress();
     }
@@ -1326,6 +1331,15 @@ int main(int argc, char** argv) {
     PsyX_Pad_InitPad(0, &g_C1Buffer[0]);
     PsyX_Pad_InitPad(1, &g_C1Buffer[PORT_CONTROLLER_BUFFER_SIZE]);
     g_padCommEnable = 1;
+    /* Retail boot 80019618-80019620 registers the game vblank body after
+     * controller setup. Native dispatch stays on the game thread. */
+    {
+        extern void func_8003634C(void);
+        extern void PcPort_ResetVblankService(void);
+        extern void func_8004B7D0(void (*callback)(void));
+        PcPort_ResetVblankService();
+        func_8004B7D0(func_8003634C);
+    }
 
     /* 5. One-time HeapInit the asm boot (func_80019578) runs before MainLoop;
      * MainLoop only HeapRelocate()s and would crash on an uninitialised heap. */
@@ -1373,6 +1387,12 @@ int main(int argc, char** argv) {
              * from disc (pDebugTable = 0); g_ArchiveDebugTable still ends up NULL. */
             ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
             printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
+
+            /* Retail func_80019578 loads archive 0/1 WDS files 2..5 here,
+             * waits for their SPU transfers, stores the second/fourth handles,
+             * then frees only the source buffers. */
+            PcPort_LoadRetailBootSoundBanks();
+            printf("[xeno-port][sound] retail boot WDS banks 2..5 loaded\n");
 
             /* B5.1 WDS-load probe (env XENO_SOUND_WDS_PROBE=1): replicate the
              * retail loader pair (func_80085FB8 + func_80085F30 core): read the
@@ -1528,6 +1548,7 @@ int main(int argc, char** argv) {
              * harness lane keeps its own map/entrance selection below. */
             if (!(getenv("XENO_FIELD_TEST") && getenv("XENO_FIELD_TEST")[0] == '1')) {
                 extern void func_8001BB50(void);
+                PcPort_CommitPendingBootSoundCommonAttr();
                 func_8001BB50();
                 printf("[xeno-port][boot] func_8001BB50: new-game template loaded "
                        "(map=%u ent=%u cam=%u)\n",
@@ -1625,15 +1646,18 @@ int main(int argc, char** argv) {
     GameShowSplashScreen();
 
     /* Retail boot tail (func_80019578, 0x80019888..0x80019938): the opening
-     * movie state.  D_8004FE44 = movie number 1, D_8004FE46 = state 1 (Field)
+     * movie state.  D_8004FE44 = movie type 1, D_8004FE46 = state 1 (Field)
      * to enter afterwards, D_8004FE47 = 0 (skipping allowed), D_8004FE45 =
-     * disc number; g_CurGameStateOverlayID = -1; then func_8001B6BC (empty),
+     * movie selector 16 on disc 1, 7 otherwise; g_CurGameStateOverlayID = -1;
+     * then func_8001B6BC (empty),
      * ChangeGameState(6) and MainLoop(0).  MovieMain plays archive 0x18/1
-     * movie 1 and hands over to FieldMain with D_8006F94E from the new-game
+     * the selected movie and hands over to FieldMain with D_8006F94E from the new-game
      * template (map 490, the title field).  XENO_FIELD_TEST=1 keeps the developer path of
      * entering state 0 (KernelMenu) directly. */
     {
         const char* fieldTest = getenv("XENO_FIELD_TEST");
+        const char* kernelSelection = getenv("XENO_KERNEL_SEL");
+        unsigned int bootState;
         extern unsigned char D_8004FE44;
         extern unsigned char D_8004FE45;
         extern unsigned char D_8004FE46;
@@ -1649,13 +1673,18 @@ int main(int argc, char** argv) {
         D_8004FE44 = 1;
         D_8004FE46 = 1;
         D_8004FE47 = 0;
-        D_8004FE45 = (unsigned char)ArchiveGetDiscNumber();
+        D_8004FE45 = PcPort_SelectBootMovie(ArchiveGetDiscNumber());
         func_8001B6BC();
-        if (!(fieldTest && fieldTest[0] == '1')) {
-            printf("[xeno-port][boot] retail boot: movie state 6 (movie %u, disc %u) -> state %u\n",
+        bootState = PcPort_SelectBootState(fieldTest, kernelSelection);
+        if (bootState == 6u) {
+            printf("[xeno-port][boot] retail boot: movie state 6 (type %u, movie %u) -> state %u\n",
                    (unsigned int)D_8004FE44, (unsigned int)D_8004FE45,
                    (unsigned int)D_8004FE46);
             ChangeGameState(6);
+        } else if (bootState == 1u) {
+            printf("[xeno-port][boot] direct field-test route: state 1 "
+                   "(KernelMenu not rendered)\n");
+            ChangeGameState(1);
         }
     }
 

@@ -1,0 +1,13 @@
+{
+  "pc_port/src/psycross_video_recording.inl": "5d98c739232f16bbab678c9f1d2e915add5ac28377cdc51850557354b5b1e725",
+  "pc_port/build_native/xeno-port": "bd9b23362e894ba56a4852671235f9bf016437bd9473e8ce2ca0e9968732e5ac",
+  "pc_port/patches/psycross_video_recording.patch": "744c99dc2a5ca288951fdca4777504b39c7a7d9dfe7f229d6a1de1854e6e9797",
+  "pc_port/build_port.sh": "60d7016744e6f1b728dd9fb811a9aa85d77b8e7c177c886cd0aeb324de079dc5",
+  "before_recorder_sha256": "68a814a6ec5e5b2336f9c36301bb495864116fea165eb4a51d78df1aa0799e9f",
+  "native_build_log": "/tmp/xeno-recording-audio-fixed-native-build-20260906.log",
+  "native_build_log_sha256": "029829a1b4eb46b4ace39286d1b43058e38668c0fdcb62810a72c482d6d6bf4d",
+  "scope": "Recorder timestamp correction; native build and real game paired recording verified; durable normal/fast functional tests and old-source negative control pass.",
+  "pc_port/tests/run_recording_audio_test.py": "63f805c2d7b920708a2e10b58f93a566b1e414e15f5484f903174781f02d2a5c",
+  "pc_port/tests/recording_audio_fixture.cpp": "3d91c98a12d73c75b2ad34cd6b03b56870963dd41c7a1c212d15f51354ee8ff5",
+  "pc_port/tests/psycross_recording_regression_test.sh": "59c0696e2293d9a8623761d35edd8e5d2f2ced11c21d18dcf2565d56c32e5a03"
+}

@@ -1,25 +1,438 @@
 #include "common.h"
 #include "psyq/libgte.h"
+#ifdef XENO_PC_PORT
+/* Execute GTE operations through the host adapter, not PsyQ's assembler
+ * placeholders (which the x86 assembler also accepts as raw data). */
+#include <psx/inline_c.h>
+#else
 #include "psyq/inline_c.h"
+#endif
 #include "system/memory.h"
 #include "system/archive.h"
 #include "system/model.h"
+#include "psyq/pc.h"
 #ifdef XENO_PC_PORT
 #include <psx/gtereg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "guest_prim_link.h"
+#include "psx_memory.h"
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002AC24);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B084);
+extern CdlLOC D_80059EF8;
+extern s32 D_8004FDE4;
+extern s32 D_8004FDEC;
+extern s8* D_8004FE08;
+extern u8 D_800596F8[];
+extern s32 g_ArchiveCurFileSector;
+extern s32 D_8005A4DC;
+extern s32 D_8004FE10;
+extern u16 D_8004FE26;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B2F0);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B084.s
+ * (0x8002B084-0x8002B2F0, 155 instructions). CdReadyCallback handler for the
+ * sector-read state: status != 1 (or an abort request, or a position mismatch)
+ * takes the shared re-arm path — D_8005A4DC counter, CdReadyCallback(NULL) into
+ * D_80059F08, CdIntToPos, then error 3 + state 0xA or the busy-wait/error 4/
+ * D_8005A4A4++ variant, ending in CdSyncCallback + CdControlF(1, NULL). Status 1
+ * with a live stream pulls the sector position (3 words) plus the payload:
+ * a full 0x800 sector as 0x200 words, or a partial one as (size+3)/4 words with
+ * the remainder cleared through D_800596F8. Matching positions advance
+ * D_8004FE08 by 0x800 and decrement g_ArchiveCurFileSize, and once that reaches
+ * zero (or on abort) the ready callback is cleared and ArchiveCdSeekToFile(
+ * D_8004FE38) + D_8004FDFC = 0 end the stream. A position mismatch bumps
+ * D_8004FDE4 and re-arms instead. */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+s32 func_8002B084(u8 status) {
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B5D0);
+    if ((status & 0xFF) != 1) {
+        goto rearm;
+    }
+    if (D_8004FE34 > 0) {
+        goto finish;
+    }
+    size = g_ArchiveCurFileSize;
+    if (size >= 0x800) {
+        CdGetSector(&D_80059EF8, 3);
+        CdGetSector(D_8004FE08, 0x200);
+    } else if (size > 0) {
+        CdGetSector(&D_80059EF8, 3);
+        CdGetSector(D_8004FE08, (size + 3) / 4);
+        CdGetSector(D_800596F8, 0x200 - ((size + 3) / 4));
+    }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B8B0);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDE4 += 1;
+        goto rearm;
+    }
+    g_ArchiveCurFileSector += 1;
+    D_8004FE08 += 0x800;
+    g_ArchiveCurFileSize -= 0x800;
+    if (g_ArchiveCurFileSize > 0) {
+        return 0;
+    }
+
+finish:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    ArchiveCdSeekToFile(D_8004FE38);
+    D_8004FDFC = 0;
+    return 0;
+
+rearm:
+    D_8005A4DC += 1;
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        g_ArchiveCdDriveState = 0xA;
+    } else {
+        {
+            s32 v1;
+            s32 v0;
+            for (v1 = 0x270F; v1 >= 0; v1--) {
+                for (v0 = 0x7CF; v0 >= 0; v0--) {
+                    ;
+                }
+            }
+        }
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 += 1;
+        g_ArchiveCdDriveState = 0xA;
+    }
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+    return 0;
+}
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B2F0.s
+ * (0x8002B2F0-0x8002B5B4, 184 instructions). The ring-slot variant of the CD
+ * ready handler: status != 1 bumps D_8005A4DC and re-arms; an abort request
+ * (D_8004FE34 > 0) clears both callbacks, zeroes the size, seeks to D_8004FE38
+ * and clears D_8004FDFC; a dead stream just clears the ready callback and the
+ * size. Otherwise it rotates D_8004FE10 over the D_8004FE40 ring slots to a
+ * NOT_LOADED one (a loaded walk target re-arms without the counter bump),
+ * verifies CdPosToInt against g_ArchiveCurFileSector — a mismatch bumps
+ * D_8004FDEC, swallows 0x200 words into D_800596F8 and re-arms — and on a match
+ * marks the slot state 1 with id D_8004FE26 (then bumped), reads 0x200 words into
+ * D_8004FE08 + index*0x800, decrements the size by 0x800 and advances the sector;
+ * a size that stays positive returns, otherwise the ready callback is cleared and
+ * the size zeroed. The re-arm path matches func_8002B084's (error 3 or the
+ * busy-wait/error 4 variant, then CdSyncCallback + CdControlF(1, NULL)). */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+s32 func_8002B2F0(u8 status) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+
+    if ((status & 0xFF) != 1) {
+        goto rearm_bump;
+    }
+    if (D_8004FE34 > 0) {
+        CdReadyCallback(NULL);
+        CdDataCallback(NULL);
+        g_ArchiveCurFileSize = 0;
+        ArchiveCdSeekToFile(D_8004FE38);
+        D_8004FDFC = 0;
+        return 0;
+    }
+    if (g_ArchiveCurFileSize <= 0) {
+        goto clear_ready;
+    }
+
+    pSlot = (u8*)D_8004FE2C;
+    index = 0;
+    if (D_8004FE40 > 0) {
+        nSectors = D_8004FE40;
+        i = 0;
+        do {
+            index = D_8004FE10;
+            pSlot = (u8*)D_8004FE2C + (index << 3);
+            D_8004FE10 = index + 1;
+            if (D_8004FE10 >= nSectors) {
+                D_8004FE10 = 0;
+            }
+            if (*(u16*)pSlot == 0) {
+                break;
+            }
+            i++;
+        } while (i < nSectors);
+    }
+    if (*(u16*)pSlot != 0) {
+        goto rearm;
+    }
+
+    CdGetSector(&D_80059EF8, 3);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDEC += 1;
+        CdGetSector(D_800596F8, 0x200);
+        goto rearm_bump;
+    }
+    *(u16*)pSlot = 1;
+    *(u16*)(pSlot + 2) = D_8004FE26;
+    D_8004FE26 = D_8004FE26 + 1;
+    CdGetSector(D_8004FE08 + (index << 11), 0x200);
+    g_ArchiveCurFileSize -= 0x800;
+    g_ArchiveCurFileSector += 1;
+    if (g_ArchiveCurFileSize > 0) {
+        return 0;
+    }
+
+clear_ready:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    return 0;
+
+rearm_bump:
+#ifdef TEMP2_CDSTATE_MUTANT_NO_BUMP
+    ;
+#else
+    D_8005A4DC += 1;
+#endif
+rearm:
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        g_ArchiveCdDriveState = 0xA;
+    } else {
+        s32 v1;
+        s32 v0;
+        for (v1 = 0x270F; v1 >= 0; v1--) {
+            for (v0 = 0x7CF; v0 >= 0; v0--) {
+                ;
+            }
+        }
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 += 1;
+        g_ArchiveCdDriveState = 0xA;
+    }
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+    return 0;
+}
+
+extern s32 D_8004FE10;
+extern u16 D_8004FE26;
+extern s8* D_8004FE08;
+extern s32 D_80059F04;
+extern s32 g_ArchiveCurFileSector;
+extern void func_8002804C(s32, s32, s32, s32);
+
+extern s32 D_8004FDEC;
+extern s32 D_8005A4DC;
+extern CdlLOC D_80059EF8;
+extern u8 D_800596F8[];
+
+/* Transcribed from asm/slus_006.64/nonmonmatchings/system/temp2/func_8002B5D0.s
+ * (0x8002B5D0-0x8002B8B0, frame 0x28). CdReadyCallback handler for the
+ * streaming read: on status 1 it queues the next sector into a free ring slot,
+ * on any other status (or a full ring) it re-arms the drive.
+ *   D_8004FE34 > 0 (explicit abort): clear both callbacks, zero
+ *   g_ArchiveCurFileSize, ArchiveCdSeekToFile(D_8004FE38), D_8004FDFC = 0.
+ *   g_ArchiveCurFileSize <= 0: clear the ready callback and the size.
+ *   Status 1 with a live stream: rotate D_8004FE10 over D_8004FE40 slots to a
+ *   NOT_LOADED one; a loaded walk target means "no room" (below).
+ *   Found: CdGetSector(D_80059EF8, 3) + CdPosToInt must equal
+ *   g_ArchiveCurFileSector, otherwise D_8004FDEC += 1, swallow 0x200 words
+ *   into D_800596F8, bump D_8005A4DC and take the re-arm path. On a match the
+ *   slot is marked state 1 with id D_8004FE26 (then bumped), 0x200 words are
+ *   read into D_8004FE08 + index*0x800, g_ArchiveCurFileSize -= 0x800 and
+ *   g_ArchiveCurFileSector += 1, returning while the size stays positive and
+ *   otherwise clearing the ready callback and the size.
+ *   No room / other status: D_8005A4DC += 1 (other status only), clear the
+ *   ready callback into D_80059F08, CdIntToPos(g_ArchiveCurFileSector,
+ *   &g_ArchiveCdCurLocation), then either error 3 with state 0xA
+ *   (D_8005A4DC < 3) or a busy-wait, D_8005A4DC = 0, error 4,
+ *   D_8005A4A4 += 1 and state 0xA. Both end with
+ *   CdSyncCallback(&ArchiveCdDriveCommandHandler) and CdControlF(1, NULL).
+ * Note: retail reads an undefined slot pointer when D_8004FE40 <= 0 (only
+ * reachable with an empty ring); this C probes slot 0. The busy-wait is a
+ * delay loop, written as a nested counter loop. */
+void func_8002B5D0(u8 status) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+    s32 v0;
+    s32 v1;
+
+    if (status != 1) {
+        D_8005A4DC += 1;
+        goto no_room;
+    }
+
+    if (D_8004FE34 > 0) {
+        CdReadyCallback(NULL);
+        CdDataCallback(NULL);
+        g_ArchiveCurFileSize = 0;
+        ArchiveCdSeekToFile(D_8004FE38);
+        D_8004FDFC = 0;
+        return;
+    }
+
+    if (g_ArchiveCurFileSize <= 0) {
+        goto stop;
+    }
+
+    pSlot = (u8*)D_8004FE2C;
+    index = 0;
+    if (D_8004FE40 > 0) {
+        nSectors = D_8004FE40;
+        i = 0;
+        do {
+            index = D_8004FE10;
+            pSlot = (u8*)D_8004FE2C + (index << 3);
+            D_8004FE10 = index + 1;
+            if (D_8004FE10 >= nSectors) {
+                D_8004FE10 = 0;
+            }
+            if (*(u16*)pSlot == 0) {
+                break;
+            }
+            i++;
+        } while (i < nSectors);
+    }
+    if (*(u16*)pSlot != 0) {
+        goto no_room;
+    }
+
+    CdGetSector(&D_80059EF8, 3);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDEC += 1;
+        CdGetSector(D_800596F8, 0x200);
+        D_8005A4DC += 1;
+        goto no_room;
+    }
+
+    v0 = D_8004FE26;
+#ifdef TEMP2_B5D0_MUTANT_MARK_STATE3
+    *(u16*)pSlot = 3;
+#else
+    *(u16*)pSlot = 1;
+#endif
+    *(u16*)(pSlot + 2) = (u16)v0;
+    D_8004FE26 = (u16)(v0 + 1);
+    CdGetSector((void*)(D_8004FE08 + (index << 11)), 0x200);
+    g_ArchiveCurFileSize -= 0x800;
+    g_ArchiveCurFileSector += 1;
+    if (g_ArchiveCurFileSize > 0) {
+        return;
+    }
+
+stop:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    return;
+
+no_room:
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        v0 = 0xA;
+    } else {
+        for (v1 = 0x270F; v1 >= 0; v1--) {
+            for (v0 = 0x7CF; v0 >= 0; v0--) {
+                ;
+            }
+        }
+        v0 = D_8005A4A4;
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 = v0 + 1;
+        v0 = 0xA;
+    }
+
+    g_ArchiveCdDriveState = (u_int)v0;
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+}
+
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B8B0.s
+ * (0x8002B8B0-0x8002BA40, frame 0x20). Queue one 0x800 sector from the open
+ * PC file into the ring:
+ *   g_ArchiveCurFileSize <= 0 -> clear it and return.
+ *   Otherwise rotate D_8004FE10 over the D_8004FE40 ring slots (wrapping to 0)
+ *   until a NOT_LOADED slot is found; a full ring whose walked slot is loaded
+ *   just clears g_ArchiveCurFileSize.
+ *   The found slot is marked state 1 with id D_8004FE26 (then bumped) and
+ *   PCread(0x800) fills D_8004FE08 + index*0x800 with up to three
+ *   func_8002804C(i,0,0xFF,0) retries; a read that never succeeds still falls
+ *   through to the accounting below.
+ *   Then g_ArchiveCurFileSize -= 0x800 and g_ArchiveCurFileSector += 1, and
+ *   g_ArchiveCurFileSize is cleared when it did not stay positive. */
+void func_8002B8B0(void) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+
+    if (g_ArchiveCurFileSize > 0) {
+        nSectors = D_8004FE40;
+        if (nSectors > 0) {
+            i = 0;
+            do {
+                index = D_8004FE10;
+                pSlot = (u8*)D_8004FE2C + (index << 3);
+                D_8004FE10 = index + 1;
+                if (D_8004FE10 >= nSectors) {
+                    D_8004FE10 = 0;
+                }
+                if (*(u16*)pSlot == 0) {
+                    break;
+                }
+                i++;
+            } while (i < nSectors);
+            if (*(u16*)pSlot != 0) {
+                g_ArchiveCurFileSize = 0;
+                goto tail;
+            }
+        } else {
+            /* Retail reads an undefined slot pointer on this path; treat an
+             * unpublished ring as "no room" instead. */
+            g_ArchiveCurFileSize = 0;
+            goto tail;
+        }
+
+#ifdef TEMP2_B8B0_MUTANT_MARK_STATE2
+        *(u16*)pSlot = 2;
+#else
+        *(u16*)pSlot = 1;
+#endif
+        *(u16*)(pSlot + 2) = D_8004FE26;
+        D_8004FE26 = D_8004FE26 + 1;
+
+        for (i = 0; i < 4; i++) {
+            if (PCread(D_80059F04, (char*)(D_8004FE08 + (index << 11)), 0x800) != 0) {
+                break;
+            }
+            func_8002804C(i, 0, 0xFF, 0);
+        }
+
+        g_ArchiveCurFileSize -= 0x800;
+        g_ArchiveCurFileSector += 1;
+    }
+
+tail:
+    if (g_ArchiveCurFileSize > 0) {
+        return;
+    }
+    g_ArchiveCurFileSize = 0;
+}
 
 extern s32 D_8004FE00;
 extern s32 D_8004FDFC;
@@ -60,12 +473,14 @@ void func_8002BA58(void) {
     if (D_8004FDFC < 2) {
         g_ArchiveCurFileSize = 0;
         CdDataCallback(0);
-        ArchiveCdSeekToFile((void*)(uintptr_t)D_8004FE38);
+        ArchiveCdSeekToFile(D_8004FE38);
         D_8004FDFC = 0;
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BB50);
+#endif
 
 /* ---- func_8002BF38: synchronous VRAM stream section decoder -----------------
  * asm 8002BF38-8002C30C. Consumes at most ONE 0x800 stream sector per call,
@@ -298,27 +713,32 @@ s32 func_8002C4BC(u8* pBlock) {
     u32 flags = *(u32*)(pBlock + 4);
     s32 count = *(s32*)(pBlock);
     s32 i;
+    u8* pEntry;
     if (!(flags & 1)) return count;
     *(u32*)(pBlock + 4) = flags & ~1;
-    for (i = 0; i < count; i++) {
-        u8* pEntry = pBlock + 0x18 + i * 0x38;
-        *(u32*)(pEntry + 0x00) -= (u32)pBlock;
-        *(u32*)(pEntry + 0x04) -= (u32)pBlock;
-        *(u32*)(pEntry + 0x08) -= (u32)pBlock;
+    pEntry = pBlock + 0x2C;
+    for (i = 0; i < count; i++, pEntry += 0x38) {
+        *(u32*)(pEntry - 0x14) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x10) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x0C) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x08) -= (u32)pBlock;
         {
-            u32 rel = *(u32*)(pEntry + 0x14);
-            if (rel != 0) {
-                u8* pTable = pBlock + rel;
-                s32 cnt = *(s32*)(pTable);
-                s32 j;
-                if (cnt != -1) {
-                    pTable += 4;
-                    for (j = cnt; j >= 0; j--) {
-                        *(u32*)(pTable + j * 12 + 4) -= (u32)pBlock;
-                        *(u32*)(pTable + j * 12 + 8) -= (u32)pBlock;
-                    }
+            u32 tableAddress = *(u32*)pEntry;
+            if (tableAddress != 0) {
+                /* Retail uses the relocated table directly, then restores
+                 * its offset after walking entries backwards through zero. */
+                u8* pTable = (u8*)(uintptr_t)tableAddress;
+                s32 remaining = *(s32*)pTable;
+                if (remaining != -1) {
+                    u8* pRecord = pTable + 4 + remaining * 12;
+                    do {
+                        remaining--;
+                        *(u32*)(pRecord + 4) -= (u32)pBlock;
+                        *(u32*)(pRecord + 8) -= (u32)pBlock;
+                        pRecord -= 12;
+                    } while (remaining != -1);
                 }
-                *(u32*)(pEntry + 0x14) -= (u32)pBlock;
+                *(u32*)pEntry -= (u32)pBlock;
             }
         }
     }
@@ -673,7 +1093,9 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
     if (((*(u16*)(s0 + 0x0) & 0x1) == 0) && (*(s32*)(s0 + 0x30) != 0) &&
         (s1 != 0)) {
         HeapSetCurrentContentType(0x26);
-        *(void**)(s0 + 0x18) = HeapAlloc(*(s32*)(s0 + 0x30), 0);
+        /* The model header stores a PSX u32 pointer at +0x18.  A native
+         * void* store is eight bytes on the port host and overwrites +0x1C. */
+        *(u32*)(s0 + 0x18) = (u32)(uintptr_t)HeapAlloc(*(s32*)(s0 + 0x30), 0);
         *(u16*)(s0 + 0x0) = *(u16*)(s0 + 0x0) | 0x1;
     }
 
@@ -849,7 +1271,8 @@ void func_8002CBBC(u8* modelData) {
     u16 flags = *(u16*)(modelData + 0x0);
 
     if (flags & 0x1) {
-        HeapFree(*(void**)(modelData + 0x18));
+        /* The optional buffer is stored in the model's PSX u32 slot. */
+        HeapFree((void*)(uintptr_t)*(u32*)(modelData + 0x18));
         *(u16*)(modelData + 0x0) = flags & 0xFFFE;
     }
 }
@@ -1416,7 +1839,7 @@ s32 func_8002DA14(u8* pColor, s16* pIndices) {
 
 void func_8002DAFC(void) {
     u8* pPoly = D_80059424;
-    SetPolyFT3(pPoly);
+    SetPolyFT3((POLY_FT3*)pPoly);
     SetShadeTex(pPoly, 1);
     {
         s32 tpage = GetTPage(1, 0, 0x280, 0);
@@ -1509,11 +1932,11 @@ void func_8002DD20(u32* pList) {
         ReadTIM(&tim);
         if (tim.caddr != NULL) {
             DrawSync(0);
-            LoadImage(tim.crect, tim.caddr);
+            LoadImage(tim.crect, (u_long*)tim.caddr);
         }
         DrawSync(0);
         pEntry -= 1;
-        LoadImage(tim.prect, tim.paddr);
+        LoadImage(tim.prect, (u_long*)tim.paddr);
         count -= 1;
     } while (count != -1);
 }
@@ -1545,7 +1968,70 @@ void func_8002DD20(u_long* table) {
 }
 #endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002DDE4.s
+ * (0x8002DDE4-0x8002DFE0, 127 instructions). Uploads a sequence of images: the
+ * header word at pImageData[0] is the count, records follow at +4 with a 0x1100
+ * (texX/texY mode) or 0x1101 (ofsX/ofsY mode) opcode. For each record the RECT
+ * x/y comes from the record's u/v fields — via the mode-1 offset pair, the
+ * mode-2 offset pair plus the record sums, or the record sums alone when the
+ * mode is neither — then the width/height words follow, and LoadImage uploads
+ * the pixels; the cursor advances by w*h*2. Returns 0 normally, 0 when the count
+ * is not positive, and **0x1101** for an unknown opcode (the value retail leaves
+ * in v0 via its delay slot). */
+s32 func_8002DDE4(u32* pImageData, s32 arg1, s32 texX, s32 texY, s32 modeB, u16 ofsX, u16 ofsY) {
+    RECT rect;
+    s16 modeA = (s16)arg1;
+    u32 count = pImageData[0];
+    u8* pSrc = (u8*)pImageData + (count * 4) + 4;
+    s32 i = 0;
+    u32 opcode;
+
+    if ((s32)count <= 0) {
+        return 0;
+    }
+    do {
+        opcode = *(u32*)pSrc;
+        pSrc += 4;
+        if (opcode == 0x1100) {
+            if (modeA == 1) {
+                rect.x = (s16)(texX + *(u16*)(pSrc + 4));
+                rect.y = (s16)(texY + *(u16*)(pSrc + 6));
+            } else if (modeA == 2) {
+                rect.x = (s16)(texX + *(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(texY + *(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            } else {
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(*(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            }
+        } else if (opcode == 0x1101) {
+            if (modeB == 1) {
+                rect.x = (s16)(ofsX + *(u16*)(pSrc + 4));
+                rect.y = (s16)(ofsY + *(u16*)(pSrc + 6));
+            } else if (modeB == 2) {
+#ifdef TEMP2_DDE4_MUTANT_MODE2_NO_OFFSET
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+#else
+                rect.x = (s16)(ofsX + *(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+#endif
+                rect.y = (s16)(ofsY + *(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            } else {
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(*(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            }
+        } else {
+            return 0x1101;
+        }
+        pSrc += 8;
+        rect.w = (s16)*(u16*)pSrc;
+        pSrc += 2;
+        rect.h = (s16)*(u16*)pSrc;
+        pSrc += 2;
+        LoadImage(&rect, (u_long*)pSrc);
+        pSrc += rect.w * rect.h * 2;
+        i++;
+    } while (i < (s32)count);
+    return 0;
+}
 
 extern u8 D_8006FAF0[];
 
@@ -1561,35 +2047,281 @@ void func_8002DFF0(s32 a0, s32 a1) {
     D_800500F8 = a0;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E010);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E448);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E64C);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E8B4);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002EAB8);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002ED20);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002EEF8);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F0E4);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F2E0);
+#else
+/* Retail 8002F2E0..8002F4B0, with the shared tail at 8002E1F4.
+ * Lit FT3 variant: one normal per triangle, NCS updates the first RGB word.
+ * Keep the pipeline's lookahead and final RTPT, including count == 0; those
+ * leave observable GTE state. Rejected triangles can still write XY words.
+ * Native OT address translation is confined to the shared link adapter. */
+s32 func_8002F2E0(u8* pCmd, s32 count) {
+    u8* vertices = (u8*)(uintptr_t)D_8005953C;
+    u8* normals = (u8*)(uintptr_t)D_80059498;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x20u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertices + ((cmd & 0xffffu) << 3);
+    u8* nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u8* nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
 
+    MTC2(*(u32*)nextV1, 2);
+    MTC2(*(u32*)(nextV1 + 4), 3);
+    MTC2(*(u32*)nextV2, 4);
+    MTC2(*(u32*)(nextV2 + 4), 5);
+    for (;;) {
+        u32 xy0, xy1, xy2, averageZ;
+        u8* out;
+
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt();
+        if (remaining == 0) break;
+        remaining--;
+        pCmd += 8;
+        packet += 0x20u;
+        cmd = *(u32*)pCmd;
+        nextV0 = vertices + ((cmd & 0xffffu) << 3);
+        normals += 8;
+        nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+        nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)nextV1, 2);
+        MTC2(*(u32*)(nextV1 + 4), 3);
+        MTC2(*(u32*)nextV2, 4);
+        MTC2(*(u32*)(nextV2 + 4), 5);
+
+        /* MFC2 $31 reads LZCR, not the FLAG control register. */
+        if ((s32)MFC2(31) < 0) continue;
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound ||
+              (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound)) continue;
+
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x10) = xy1; /* delay slot, even for backfaces */
+        if ((s32)MFC2(24) <= 0) continue;
+        gte_avsz3();
+        *(u32*)(out + 0x18) = xy2;
+        /* Retail masks the packet pointer to its 24-bit DMA identity here.
+         * Host pointers remain host pointers until the link adapter below. */
+        averageZ = MFC2(7);
+        emitted++;
+        MTC2(*(u32*)(normals - 8), 0); /* OTZ-zero branch delay slot */
+        if (averageZ == 0) continue;
+        MTC2(*(u32*)(normals - 4), 1);
+        gte_ncs();
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(22) & 0x00ffffffu);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x07000000u);
+    }
+    D_80059498 = (u32)(uintptr_t)normals;
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x20u);
+    return (s32)yBound;
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F4B4);
+#else
+/* Retail 8002F4B4..8002F6B4 and shared tail 8002E1F4: lit GT3.
+ * Scratchpad holds indexed normal addresses, not a per-face normal cursor.
+ * Preserve partial XY writes on rejection and the terminal RTPT. */
+s32 func_8002F4B4(u8* pCmd, s32 count) {
+    u32 vertices = D_8005953C;
+    u32 normalDelta = D_8005952C - vertices;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x28u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32* scratch = (u32*)g_PsxScratchpad; /* retail 0x1F800000 */
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u32 v0 = vertices + ((cmd & 0xffffu) << 3);
+    u32 v1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u32 v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+    for (;;) {
+        u32 xy0, xy1, xy2, averageZ;
+        u8* out;
+        u8* n0;
+        u8* n1;
+        u8* n2;
+        MTC2(*(u32*)(uintptr_t)v0, 0);
+        MTC2(*(u32*)(uintptr_t)(v0 + 4), 1);
+        MTC2(*(u32*)(uintptr_t)v1, 2);
+        MTC2(*(u32*)(uintptr_t)(v1 + 4), 3);
+        MTC2(*(u32*)(uintptr_t)v2, 4);
+        MTC2(*(u32*)(uintptr_t)(v2 + 4), 5);
+        gte_rtpt();
+        if (remaining == 0) break;
+        scratch[0] = v0 + normalDelta;
+        scratch[1] = v1 + normalDelta;
+        scratch[2] = v2 + normalDelta;
+        remaining--;
+        pCmd += 8;
+        packet += 0x28u;
+        cmd = *(u32*)pCmd;
+        v0 = vertices + ((cmd & 0xffffu) << 3);
+        v1 = vertices + ((cmd >> 13) & 0xfff8u);
+        v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        if ((s32)MFC2(31) < 0) continue;
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound || (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound)) continue;
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x14) = xy1; /* backface branch delay slot */
+        if ((s32)MFC2(24) <= 0) continue;
+        gte_avsz3();
+        *(u32*)(out + 0x20) = xy2;
+        averageZ = MFC2(7);
+        if (averageZ == 0) continue;
+        emitted++;
+        n0 = (u8*)(uintptr_t)scratch[0];
+        n1 = (u8*)(uintptr_t)scratch[1];
+        n2 = (u8*)(uintptr_t)scratch[2];
+        MTC2(*(u32*)n0, 0);
+        MTC2(*(u32*)(n0 + 4), 1);
+        MTC2(*(u32*)n1, 2);
+        MTC2(*(u32*)(n1 + 4), 3);
+        MTC2(*(u32*)n2, 4);
+        MTC2(*(u32*)(n2 + 4), 5);
+        gte_nct();
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(20) & 0x00ffffffu);
+        *(u32*)(out + 0x10) = MFC2(21);
+        *(u32*)(out + 0x1c) = MFC2(22);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x09000000u);
+    }
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x28u);
+    return (s32)yBound;
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F6B4);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F8D0);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FAE8);
+#else
+/* Retail 8002FAE8..8002FCFC and shared tail 8002E1F4: lit FT4.
+ * Preserve lookahead, terminal RTPT, rejection-side GTE operations and
+ * per-face normal consumption. Only OT pointer translation is host-specific. */
+s32 func_8002FAE8(u8* pCmd, s32 count) {
+    u8* vertices = (u8*)(uintptr_t)D_8005953C;
+    u8* normals = (u8*)(uintptr_t)D_80059498;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x28u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertices + ((cmd & 0xffffu) << 3);
+    u8* nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u8* nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
 
+    MTC2(*(u32*)nextV1, 2);
+    MTC2(*(u32*)(nextV1 + 4), 3);
+    MTC2(*(u32*)nextV2, 4);
+    MTC2(*(u32*)(nextV2 + 4), 5);
+    for (;;) {
+        u32 xy0, xy1, xy2, xy3, averageZ;
+        s32 lzcr;
+        u8* fourth;
+        u8* out;
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt();
+        if (remaining == 0) break;
+        remaining--;
+        pCmd += 8;
+        packet += 0x28u;
+        cmd = *(u32*)pCmd;
+        /* Unlike the initial preload, retail masks lookahead V0 to 13 bits. */
+        nextV0 = vertices + ((cmd << 3) & 0xfff8u);
+        nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+        nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)nextV1, 2);
+        MTC2(*(u32*)(nextV1 + 4), 3);
+        MTC2(*(u32*)nextV2, 4);
+        MTC2(*(u32*)(nextV2 + 4), 5);
+        normals += 8;
+        lzcr = (s32)MFC2(31);
+        gte_nclip();
+        if (lzcr < 0) continue;
+        fourth = vertices + ((u32)*(u16*)(pCmd - 2) << 3);
+        xy0 = MFC2(12);
+        if ((s32)MFC2(24) <= 0) continue;
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        MTC2(*(u32*)fourth, 0);
+        MTC2(*(u32*)(fourth + 4), 1);
+        gte_rtps();
+        xy3 = MFC2(14);
+        lzcr = (s32)MFC2(31);
+        gte_avsz4(); /* executes even on the LZCR rejection branch */
+        if (lzcr < 0) continue;
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound || xy3 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound || (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound || (xy3 & 0xffffu) < xBound)) continue;
+        averageZ = MFC2(7);
+        emitted++;
+        if (averageZ == 0) continue;
+        MTC2(*(u32*)(normals - 8), 0);
+        MTC2(*(u32*)(normals - 4), 1);
+        gte_ncs();
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x10) = xy1;
+        *(u32*)(out + 0x18) = xy2;
+        *(u32*)(out + 0x20) = xy3;
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(22) & 0x00ffffffu);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x09000000u);
+    }
+    D_80059498 = (u32)(uintptr_t)normals;
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x28u);
+    return (s32)yBound;
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FCFC);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
+#endif
 
 s32 func_8003014C(s32* pData) {
     s32 cur = pData[2];
@@ -1802,7 +2534,9 @@ void func_800306D0(u8* pAnimInfo) {
     HeapFree(pAnimInfo);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
+#endif
 
 extern s16 D_800308D0[];
 
@@ -1878,7 +2612,9 @@ void func_80030C78(u32 a, u32 b, u32 c) {
     gte_SetBackColor(a, b, c);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
+#endif
 
 s32 func_80030EE8(void) {
     u32 sz0;
@@ -1905,7 +2641,9 @@ s32 func_80030EE8(void) {
     return 0;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003101C);
+#endif
 
 /* GPU primitive link functions: set next pointer and tag with type code */
 #define GPU_LINK_FUNC(name, tag) \

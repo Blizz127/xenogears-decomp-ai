@@ -54,9 +54,29 @@ static s32 bits_to_s32(u32 b){ s32 v; memcpy(&v,&b,4); return v; }
 static u32 s32_to_bits(s32 v){ u32 b; memcpy(&b,&v,4); return b; }
 static u32 sra_bits(u32 b,u32 amt){ u32 v=b>>amt; if(b&0x80000000u) v|=0xFFFFFFFFu << (32-amt); return v; }
 
+/* Retail GTE sqrt table exploited by SquareRoot0 (0x80048C4C): 192 s16
+ * entries at 0x80056A00, sliced from the SLUS image like the libsn oracle.
+ * Without it every nonzero distance sqrt reads the 0xA5 fill and no
+ * boundary tier can match. */
+#define SQRT_TABLE_GUEST 0x80056A00u
+#define SQRT_TABLE_FILE_OFF (0x800u + (0x80056A00u - 0x80010000u))
+#define SQRT_TABLE_SIZE 384u
+
 static void reset_ram(void)
 {
+    FILE *f;
     memset(g_PsxRam, 0xA5, PSX_RAM_SIZE);
+    f = fopen("disc/SLUS_006.64", "rb");
+    if (f == NULL) {
+        fprintf(stderr, "FATAL w34b23: cannot open disc/SLUS_006.64\n");
+        exit(2);
+    }
+    if (fseek(f, SQRT_TABLE_FILE_OFF, SEEK_SET) != 0 ||
+        fread(PSX_ADDR(SQRT_TABLE_GUEST), 1, SQRT_TABLE_SIZE, f) != SQRT_TABLE_SIZE) {
+        fprintf(stderr, "FATAL w34b23: cannot load sqrt table\n");
+        exit(2);
+    }
+    fclose(f);
 }
 
 /* Independent wrap like 93534 */

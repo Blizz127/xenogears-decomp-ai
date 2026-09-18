@@ -1,0 +1,77 @@
+--- scratchpad/lahan-sprite-motion-20260908/before.c	2026-09-08 16:55:35.654121060 -0500
++++ pc_port/src/game_overrides.c	2026-09-08 16:55:35.655187760 -0500
+@@ -3487,9 +3487,9 @@
+ 
+     if ((*(u32*)(p + 0x3C) >> 26) & 1) {
+         vel = *(s32*)(p + 0x10);
+-        dv = func_80022CAC(p, vel >> 4) << 4;
+-        *(s32*)(p + 0x4) += dv;
+-        *(s32*)(p + 0x10) = vel + *(s32*)(p + 0x1C);
++        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++        *(u32*)(p + 0x4) += (u32)dv;
++        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
+         return;
+     }
+ 
+@@ -3501,17 +3501,17 @@
+         if (*(s16*)(p + 0x6) == (s16)floor) {
+             return;
+         }
+-        dv = func_80022CAC(p, vel >> 4) << 4;
+-        pos = *(s32*)(p + 0x4) + dv;
++        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+         *(s32*)(p + 0x4) = pos;
+         if ((pos >> 16) < floor) {
+-            *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
++            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+             return;
+         }
+ 
+         /* Landed: snap to the floor and bounce. */
+-        *(s32*)(p + 0x4) = floor << 16;
+-        pos = -vel * (s32)((*(u32*)(p + 0xA8) >> 1) & 0x3FF);
++        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
++        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
+         if (pos < 0) {
+             pos += 0xFF;
+         }
+@@ -3522,7 +3522,7 @@
+         }
+         dv = *(s32*)(p + 0x1C);
+         if (dv < 0) {
+-            dv = -dv;
++            dv = (s32)(0u - (u32)dv);
+         }
+         if (pos < dv) {
+             *(s32*)(p + 0x10) = 0;
+@@ -3530,14 +3530,14 @@
+         return;
+     }
+ 
+-    dv = func_80022CAC(p, vel >> 4) << 4;
+-    pos = *(s32*)(p + 0x4) + dv;
++    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+     *(s32*)(p + 0x4) = pos;
+     floor = *(s16*)(p + 0x84);
+     if ((pos >> 16) >= floor) {
+-        *(s32*)(p + 0x4) = floor << 16;
++        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+     }
+-    *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
++    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+ }
+ 
+ /* asm 80022CDC: horizontal motion (x +0x0 by velocity +0xC, z +0x8 by
+@@ -3546,8 +3546,8 @@
+ {
+     u8* p = pSpriteData;
+ 
+-    *(s32*)(p + 0x0) += func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4;
+-    *(s32*)(p + 0x8) += func_80022CAC(p, *(s32*)(p + 0x14) >> 4) << 4;
++    *(u32*)(p + 0x0) += (u32)func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4;
++    *(u32*)(p + 0x8) += (u32)func_80022CAC(p, *(s32*)(p + 0x14) >> 4) << 4;
+     func_80022B2C(p);
+ }
+ 

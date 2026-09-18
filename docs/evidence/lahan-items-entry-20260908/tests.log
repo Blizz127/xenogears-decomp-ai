@@ -1,0 +1,12 @@
+OUTPUT /var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/items-init.G3RNcaAx
+PASS 512 Items initializer layout/call-order cases; work=4784 bytes
+PASS 512 Items initializer layout/call-order cases; work=4784 bytes
+PASS 512 Items initializer layout/call-order cases; work=4784 bytes
+pc_port/tests/run_menu_items_init_layout_test.sh: line 35: 2019555 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED string-offset
+pc_port/tests/run_menu_items_init_layout_test.sh: line 35: 2019598 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED slot-offset
+pc_port/tests/run_menu_items_init_layout_test.sh: line 35: 2019631 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED allocation-size
+pc_port/tests/run_menu_items_init_layout_test.sh: line 35: 2019661 Aborted                    (core dumped) "$OUT/$name" > "$OUT/$name.log" 2>&1
+REJECTED clear-size

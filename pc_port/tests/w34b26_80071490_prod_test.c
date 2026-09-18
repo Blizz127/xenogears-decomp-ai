@@ -49,9 +49,7 @@ static void *s_put_disp;
 static void *s_put_draw;
 static int s_scheduler_calls;
 static int s_gamecheck_calls;
-static int s_clear_calls;
-static u32 s_clear_ot;
-static int s_clear_n;
+/* (W34B38: ClearOTagR call-spy state removed; size verified in guest RAM.) */
 static int s_250e0_calls;
 static int s_1d468_calls;
 
@@ -116,9 +114,8 @@ int CdSync(int mode, u8 *result)
 
 u32 *ClearOTagR(u32 *ot, int n)
 {
-    s_clear_calls++;
-    s_clear_ot = (u32)(uintptr_t)ot;
-    s_clear_n = n;
+    (void)ot;
+    (void)n;
     return ot;
 }
 
@@ -182,9 +179,7 @@ static void reset_fixture(void)
     s_put_draw = NULL;
     s_scheduler_calls = 0;
     s_gamecheck_calls = 0;
-    s_clear_calls = 0;
-    s_clear_ot = 0;
-    s_clear_n = 0;
+    /* (W34B38: no ClearOTagR spy state to reset.) */
     s_250e0_calls = 0;
     s_1d468_calls = 0;
     g_C1ButtonState = 0;
@@ -216,8 +211,19 @@ static void run_fixture(const char *name)
     check_case(name, "cdsync-mode-one", s_cdsync_mode == 1);
     check_case(name, "cdsync-buffer-is-guest-mapped",
                s_cdsync_result == PSX_ADDR(CDSYNC));
-    check_case(name, "clear-otag-retail-size",
-               s_clear_calls == 1 && s_clear_n == 0x400);
+    {
+        /* W34B38: the prologue clears via the guest-native path, not the
+         * PSYQ ClearOTagR call, so the call spy never fires. Verify the
+         * retail size (0x400 entries) and link pattern in guest RAM
+         * instead. env provably stays at ENVREC0 (put-disp assertion). */
+        u32 ot = 0x800F0000u;
+        u32 i;
+        int cleared = load_u32(ot) == 0x00FFFFFFu;
+        for (i = 1u; cleared && i < 0x400u; i++)
+            cleared = load_u32(ot + i * 4u) ==
+                      ((ot + (i - 1u) * 4u) & 0x00FFFFFFu);
+        check_case(name, "clear-otag-retail-size", cleared);
+    }
     check_case(name, "put-disp-uses-env-plus-0x5c",
                s_put_disp == (void *)PSX_ADDR(ENVREC0 + 0x5Cu));
     check_case(name, "put-draw-uses-env-base",

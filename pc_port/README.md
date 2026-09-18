@@ -76,8 +76,20 @@ python3 tools/scripts/gen_port_stubs.py \
 
 ## Building (Linux)
 
+The native memory-card title font provider reads a user-supplied SCPH-5500
+BIOS from `XENO_BIOS`, or `disc/scph5500.bin` when unset. It requires exactly
+512 KB with SHA-256
+`11052b6499e466bbf0a709b1f9cb6834a9418e66680387912451e971cf8a1fef`.
+The verified copy is retained for the process lifetime. Missing/wrong BIOS
+data or selector-dependent codes without guest state stop with
+`KROM_UNRESOLVED`; they are not replaced by fabricated glyphs. This path is
+wired for menu titles and field glyph strips. Natural in-game rendering
+acceptance remains separate from the provider and upload-buffer tests.
+
 Requires `cmake`, a C/C++ compiler, and dev packages for **SDL2**, **OpenAL**,
-and **OpenGL**. On the immutable Bazzite host, build inside a container or a
+and **OpenGL**. The full `build_port.sh` driver also requires **OpenSSL 3**
+development files (`libssl-dev` on Ubuntu) for pinned BIOS verification.
+No BIOS payload is embedded in the build. On the immutable Bazzite host, build inside a container or a
 `distrobox` (Ubuntu shown):
 
 ```bash
@@ -89,6 +101,28 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j"$(nproc)"
 ./build/xeno-port      # opens a window on a real display
 ```
+
+## Host hotkeys
+
+- A clickable host toolbar is reserved above the game viewport. Its `SAVE`,
+  `LOAD`, and `RECORD` buttons perform the same actions as the hotkeys below.
+  Save/load displays amber `WAIT` while field control is locked, green
+  `SAVED`/`LOADED` on success, or red `ERROR` on failure. While recording,
+  `RECORD` becomes a red `STOP` button. The toolbar is drawn after capture
+  readback and is therefore not included in screenshots or MP4s.
+- `F7` writes a field checkpoint to `quicksaves/quick.xgqs`.
+- `F8` validates and loads that checkpoint, including its field, entrance, game
+  state, and player position. Save/load requests made during dialogue,
+  transitions, scripted control, or a menu are queued until the next safe field
+  frame because this is a field checkpoint rather than a full process savestate.
+- `F9` starts or stops an MP4 recording in `recordings/`. Linux recording
+  requires `ffmpeg` and `pactl`; it records the completed game framebuffer as
+  H.264 and the default PipeWire/Pulse output monitor as AAC stereo. Because the
+  monitor is the system output, other desktop sounds are recorded too.
+
+Set `XENO_QUICKSAVE_PATH`, `XENO_RECORDING_DIR`, or
+`XENO_RECORDING_AUDIO_SOURCE` to override the checkpoint file, recording
+directory, or Pulse monitor source respectively.
 
 ### Linux portability notes (handled in `CMakeLists.txt`, no vendored edits)
 - PsyCross's bundled CMake is bypassed (case-sensitive globs miss its uppercase

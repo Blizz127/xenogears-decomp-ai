@@ -1,9 +1,24 @@
 #include "common.h"
 #include "system/menu.h"
 #include "main/game.h"
+
+/* These title-overlay tables retain their retail 32-bit pointer slots inside
+ * the native-inflated SystemMenu.  Keep access centralized so an 8-byte host
+ * pointer cannot overwrite the adjacent menu field. */
+static u8* MenuRawPointer(u32 offset);
+static void MenuStoreRawPointer(u32 offset, void* pointer);
+
 #ifdef XENO_PC_PORT
 #include <stdio.h>
+#include "../../../pc_port/src/krom_rom.h"
+#include <stdlib.h>
+#include <string.h>
+#include <psx/kernel.h>
+extern struct DIRENTRY* firstfile(char*, struct DIRENTRY*);
+extern struct DIRENTRY* nextfile(struct DIRENTRY*);
 #endif
+
+extern s32 func_801C8D78(u8 port);
 
 /* Main-menu (menu.bin) Phase B1a: dispatcher + init allocation slice, ported.
  * NB the port's SystemMenu/MenuManager/etc are NATIVE layout (8-byte pointers
@@ -62,6 +77,22 @@ extern u8 D_80059171;
 extern u8 D_800594CC;
 extern u8 D_800594D0;
 
+/* The retail fields at 0x42C and 0x440 are four-byte pointer slots.  Keep
+ * their PSX width in the native-inflated SystemMenu and explicitly truncate
+ * the port heap address, matching the established unk340 convention.
+ * Shared with the matching build: func_801D14B0 / teardown paths call these. */
+static ItemMenuWork* MenuItemWork(void) {
+    return (ItemMenuWork*)(uintptr_t)g_Menu->unk42C[0];
+}
+
+static void MenuSetItemWork(ItemMenuWork* p) {
+    g_Menu->unk42C[0] = (u32)(uintptr_t)p;
+}
+
+static void* MenuUnk440Pointer(void) {
+    return (void*)(uintptr_t)*(u32*)&g_Menu->unk440[0];
+}
+
 #ifdef XENO_PC_PORT
 extern s32 func_801D9808(void);
 extern s32 func_801D9F98(s32, s32);
@@ -84,21 +115,6 @@ extern u8 D_801E96A4;
 extern u8 D_801E977A;
 extern u8 D_801E9784;
 extern u8 D_801EA530[];
-
-/* The retail fields at 0x42C and 0x440 are four-byte pointer slots.  Keep
- * their PSX width in the native-inflated SystemMenu and explicitly truncate
- * the port heap address, matching the established unk340 convention. */
-static ItemMenuWork* MenuItemWork(void) {
-    return (ItemMenuWork*)(uintptr_t)g_Menu->unk42C[0];
-}
-
-static void MenuSetItemWork(ItemMenuWork* p) {
-    g_Menu->unk42C[0] = (u32)(uintptr_t)p;
-}
-
-static void* MenuUnk440Pointer(void) {
-    return (void*)(uintptr_t)*(u32*)&g_Menu->unk440[0];
-}
 
 /* Live N2a capture marker: 1 = Items windows settled open, 2 = common-exit
  * teardown finished.  Port-only and inert outside the explicit harness. */
@@ -372,6 +388,15 @@ void func_801C58EC(void) {
         func_801C7BF4();
         input = g_Menu->input;
 
+#ifdef TITLE_CHAIN_MUTANT_TITLE_UP_IS_DOWN
+        /* Deliberate mutant (pc_port/tests/run_title_newgame_chain.sh):
+         * swap the two vertical nav codes so UP moves Continue -> Options. */
+        if (input == 3) {
+            input = 1;
+        } else if (input == 1) {
+            input = 3;
+        }
+#endif
         if (input == 3) {
             g_Menu->menu1Choice++;
             if ((u8)g_Menu->menu1Choice >= 3) {
@@ -1004,9 +1029,8 @@ void func_801C6F70(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C72BC);
 #else
-/* Nav N2a resource engine slice.  Retail has 24 modes; Items reaches only
- * mode 0 (archive file 2 -> item data + description bundle) and mode 0x10
- * (their matching frees).  Every other mode is deliberately fail-visible. */
+/* Retail resource dispatcher: Items, Abilities and Equip lifecycle modes.
+ * Remaining modes retain an explicit unresolved boundary. */
 void func_801C72BC(s32 mode) {
     u32* archive = NULL;
     u8 resourceMode = (u8)mode;
@@ -1058,13 +1082,59 @@ void func_801C72BC(s32 mode) {
         } else {
             HeapFree((void*)(uintptr_t)work->abilityBank);
         }
+    } else if (resourceMode == 3) {
+        /* Retail 801C748C..801C7518. Native pointer members are widened;
+         * the unnamed resource slots in unk8 remain packed 32-bit values. */
+        g_Menu->unk330->pWeaponsData =
+            LZSSHeapDecompress((void*)(uintptr_t)archive[2], 0);
+        g_Menu->unk330->pAccessoriesData =
+            LZSSHeapDecompress((void*)(uintptr_t)archive[3], 0);
+        *(u32*)&g_Menu->unk330->unk8[0x10] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x2B], 0);
+        *(u32*)&g_Menu->unk330->unk8[0x0C] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x14], 0);
+    } else if (resourceMode == 0x13) {
+        HeapFree(g_Menu->unk330->pWeaponsData);
+        HeapFree(g_Menu->unk330->pAccessoriesData);
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x10]);
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x0C]);
+    } else if (resourceMode == 7) {
+        /* Retail 801C76FC..801C7788: Equip description banks into the
+         * list work buffer at menu+0x434 (unk42C[2], PSX-width). */
+        u8* listBuf = MenuRawPointer(0x434);
+        u32 token;
+        token = (u32)(uintptr_t)LZSSHeapDecompress(
+            (void*)(uintptr_t)archive[0x35], 0);
+        memcpy(listBuf + 0xA00, &token, 4);
+        token = (u32)(uintptr_t)LZSSHeapDecompress(
+            (void*)(uintptr_t)archive[0x36], 0);
+        memcpy(listBuf + 0xA04, &token, 4);
+        token = (u32)(uintptr_t)LZSSHeapDecompress(
+            (void*)(uintptr_t)archive[0x37], 0);
+        memcpy(listBuf + 0xA08, &token, 4);
+        token = (u32)(uintptr_t)LZSSHeapDecompress(
+            (void*)(uintptr_t)archive[0x38], 0);
+        memcpy(listBuf + 0xA0C, &token, 4);
+    } else if (resourceMode == 0x17) {
+        /* Retail 801C7A54..801C7ACC: free the four description banks. */
+        u8* listBuf = MenuRawPointer(0x434);
+        u32 token;
+        memcpy(&token, listBuf + 0xA00, 4);
+        HeapFree((void*)(uintptr_t)token);
+        memcpy(&token, listBuf + 0xA04, 4);
+        HeapFree((void*)(uintptr_t)token);
+        memcpy(&token, listBuf + 0xA08, 4);
+        HeapFree((void*)(uintptr_t)token);
+        memcpy(&token, listBuf + 0xA0C, 4);
+        HeapFree((void*)(uintptr_t)token);
     } else {
         static u32 warnedModes;
         u32 bit = (resourceMode < 32) ? (1u << resourceMode) : 0;
         if (bit == 0 || (warnedModes & bit) == 0) {
             warnedModes |= bit;
             printf("[xeno-port][stub-path] func_801C72BC mode %u not ported "
-                   "(ported: 0, 2, 0x10, 0x12)\n", resourceMode);
+                   "(ported: 0, 2, 3, 7, 0x10, 0x12, 0x13, 0x17)\n",
+                   resourceMode);
             fflush(stdout);
         }
     }
@@ -1124,7 +1194,7 @@ extern u8 D_801E9784;
 extern s32 D_80059488;
 extern void func_801C7D78(void);      /* input (stub) */
 extern void func_8001BD40(s32, s32);
-extern void func_801C7F34(s32 frames, u8* pOut);  /* play-time digit format */
+extern void func_801C7F34(u32 ticks); /* Seven menu-owned time fields. */
 extern void func_801D1D40(void);      /* view matrix (stub for now) */
 extern void func_801D2968(void);      /* sub-draw (stub) */
 extern void func_801D1CA0(void);      /* the render -> window (ported) */
@@ -1157,13 +1227,7 @@ void func_801C7BF4(void) {
     func_8001BD40(0, 0xFF);
     func_801D1D40();
     g_Menu->unk2D8 += 1;
-    {
-        /* retail passes $a1 register residue as the digit sink (asm 801C7CAC);
-         * the port passes an explicit scratch sink, per the residue convention
-         * (cf. the func_801D5A50 charId note). */
-        u8 playTimeDigits[6];
-        func_801C7F34(D_80059488, playTimeDigits);
-    }
+    func_801C7F34((u32)D_80059488);
     func_801D2968();
     func_801D1CA0();
     s0 = (g_Menu->renderContext == 0);
@@ -1303,6 +1367,11 @@ void func_801C7D78(void) {
             if (pressed & 0x8000) { input = 2; func_801C8574(1); break; }
             if (pressed & 0x1000) { input = 3; func_801C8574(1); break; }
             released = g_C1ButtonStateReleased;
+#ifdef TITLE_CHAIN_MUTANT_CONFIRM_ON_PRESS
+            /* Deliberate mutant (pc_port/tests/run_title_newgame_chain.sh):
+             * confirm on the Circle press edge instead of its release. */
+            released = (u16)(released & ~0x20u) | (pressed & 0x20);
+#endif
             if (released & 0x20) {                            /* CIRCLE */
                 input = 4;
                 func_801C8574(2);
@@ -1323,7 +1392,22 @@ void func_801C7D78(void) {
     g_Menu->input = (u8)input;
 }
 
-void func_801C7F34(s32 frames, u8* pOut) {
+void func_801C7F34(
+#ifdef XENO_PC_PORT
+    u32 ticks) {
+    /* Retail decomposes an unsigned 60 Hz count into seven word fields.
+     * Preserve the full leading quotient; do not clamp it to one digit. */
+    static const u32 divisors[7] = {
+        21600000, 2160000, 216000, 36000, 3600, 600, 60
+    };
+    s32 i;
+    for (i = 0; i < 7; i++) {
+        u32 value = ticks / divisors[i];
+        ticks %= divisors[i];
+        memcpy(g_Menu->unk2EC + i * 4, &value, sizeof(value));
+    }
+#else
+    s32 frames, u8* pOut) {
     s32 total = frames;
     s32 mins, secs, frac;
     mins = total / 14400;
@@ -1337,6 +1421,7 @@ void func_801C7F34(s32 frames, u8* pOut) {
     pOut[3] = (u8)(secs % 10);
     pOut[4] = (u8)(frac / 10);
     pOut[5] = (u8)(frac % 10);
+#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -1584,6 +1669,35 @@ extern void func_801E92CC(void);
 extern s32 func_801E93A0(s32);
 
 void func_801C8694(s32 discNum) {
+#ifdef XENO_PC_PORT
+    /* Retail 801C86CC sets the wait flag in the branch delay slot even when
+     * transition state is already zero.  Only the animation wait is optional.
+     * 801C8704 masks the input before adding one, so target 256 is retained. */
+    s32 targetDisc = (u8)discNum + 1;
+    u8 param = (u8)((u8)discNum * 3 - 0x7D);
+    func_801D1E80();
+    while (g_Menu->transitionEffectState != 0) {
+        func_801C7BF4();
+    }
+    func_801D22F4(0);
+    for (;;) {
+        if (ArchiveGetDiscNumber() == targetDisc) break;
+        func_801E92CC();
+        func_801D2F4C(param);
+        if (func_801E93A0(targetDisc) == 0) {
+            func_801D32B4(0);
+            break;
+        }
+        func_801D32B4(0);
+        func_801D2F4C(0x89);
+        for (s32 delay = 0x1D; delay != 0; --delay) {
+            func_801C7BF4();
+        }
+        func_801D32B4(0);
+        func_801C7BF4();
+    }
+    func_801D2484();
+#else
     u8 waiting = 0;
     func_801D1E80();
     if (*(u8*)((u8*)g_Menu + 0x329) != 0) {
@@ -1619,6 +1733,7 @@ void func_801C8694(s32 discNum) {
         }
     }
     func_801D2484();
+#endif
 }
 
 void func_801C87C4(void) {
@@ -1628,31 +1743,23 @@ void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x2000);
 }
 
+static u32 MenuCardEvent(s32 slot);
+
 s32 func_801C881C(s32 port) {
-    void* pMenu;
-    void* pData;
     while (1) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (TestEvent(*(void**)((u8*)pData + 0x4FF8)) == 1) {
+        if (TestEvent(MenuCardEvent(3)) == 1) {
             func_801C87C4();
             return 3;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (TestEvent(*(void**)((u8*)pData + 0x4FF0)) == 1) {
+        if (TestEvent(MenuCardEvent(1)) == 1) {
             func_801C87C4();
             return 1;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (TestEvent(*(void**)((u8*)pData + 0x4FEC)) == 1) {
+        if (TestEvent(MenuCardEvent(0)) == 1) {
             func_801C87C4();
             return 0;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (TestEvent(*(void**)((u8*)pData + 0x4FF4)) == 1) {
+        if (TestEvent(MenuCardEvent(2)) == 1) {
             func_801C87C4();
             return 2;
         }
@@ -1672,29 +1779,71 @@ s32 func_801C891C(s32 port) {
 
 extern void func_801C7BF4(void);
 
+/* BIOS event IDs are four-byte integers, not host pointers. These slots
+ * live in the byte tail after TIM_IMAGE, which expands in native builds. */
+static u32 MenuCardEvent(s32 slot) {
+    u8* p = &g_Menu->unk32C->unk4F80[0x6C + slot * 4];
+    return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
+}
+
+static void MenuSetCardEvent(s32 slot, u32 event) {
+    u8* p = &g_Menu->unk32C->unk4F80[0x6C + slot * 4];
+    p[0] = (u8)event;
+    p[1] = (u8)(event >> 8);
+    p[2] = (u8)(event >> 16);
+    p[3] = (u8)(event >> 24);
+}
+
 void func_801C8960(void) {
-    void* pMenu;
-    void* pData;
     func_801C7BF4();
     EnterCriticalSection();
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    CloseEvent(*(void**)((u8*)pData + 0x4FEC));
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    CloseEvent(*(void**)((u8*)pData + 0x4FF0));
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    CloseEvent(*(void**)((u8*)pData + 0x4FF4));
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    CloseEvent(*(void**)((u8*)pData + 0x4FF8));
+    CloseEvent(MenuCardEvent(0));
+    CloseEvent(MenuCardEvent(1));
+    CloseEvent(MenuCardEvent(2));
+    CloseEvent(MenuCardEvent(3));
     ExitCriticalSection();
 }
 
 extern s32 D_801EA900;
 
 s32 func_801C8A10(u8 port) {
+#ifdef XENO_PC_PORT
+    extern s32 D_801EA904;
+    MenuUnk2* card;
+    s32 previous, result, stored;
+    s32 i;
+    g_Menu->unk32C->unk4F80[0x64 + port] = 1;
+    result = func_801C891C((port != 0) << 4);
+    card = g_Menu->unk32C;
+    stored = result;
+    /* 8A84..8A8C skips the normal status store: a newly present card
+     * reports the transition internally but keeps persistent status zero. */
+    if (result == 0) {
+        memcpy(&previous, &card->unk4C94[0x2E0 + port * 4], sizeof(previous));
+        if (previous == -1) {
+            result = 1;
+            stored = 0;
+        }
+    }
+    memcpy(&card->unk4C94[0x2E0 + port * 4], &stored, sizeof(stored));
+    if (result == -1) {
+        card->unk4F80[0x0A + port] = 0;
+        card->unk4F80[0x64 + port] = 0;
+        if (port == 0) D_801EA900 = 0;
+        else D_801EA904 = 0;
+        for (i = 0; i < 16; ++i) {
+            s32 index = port * 16 + i;
+            card->unk4F80[0x2E + index] = 0xFF;
+            card->unk4F80[0x0E + index] = 0;
+            card->unk0[index * 0x5C + 0x58] = 0;
+        }
+    }
+    if (card->unk4F80[0x68 + port] != card->unk4F80[0x64 + port]) {
+        card->unk4F80[8 + port] = 0;
+        card->unk4F80[0x68 + port] = card->unk4F80[0x64 + port];
+    }
+    return result != -2;
+#else
     void* pMenu;
     void* pData;
     s32 result;
@@ -1761,11 +1910,29 @@ s32 func_801C8A10(u8 port) {
     }
 
     return ret;
+#endif
 }
 
 extern u8 D_801E9779;
 
 void func_801C8BEC(void) {
+#ifdef XENO_PC_PORT
+    s32 status;
+    if (g_Menu->unk32C == NULL || g_Menu->unk32C->unk4F80[0x66] == 0) return;
+    g_Menu->unk326 = (u8)(g_Menu->unk326 + 1);
+    if (g_Menu->unk326 > D_801E9779) {
+        func_801C8A10(0);
+        func_801C8A10(1);
+        /* Both polls may replace the menu; inspect and reset the current
+         * owner, retaining the retail byte-counter wrap and strict test. */
+        memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E0], sizeof(status));
+        if (status == -1) {
+            memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E4], sizeof(status));
+            if (status == -1) g_Menu->unk334 = 0;
+        }
+        g_Menu->unk326 = 0;
+    }
+#else
     void* pMenu = g_Menu;
     void* pData = g_Menu->unk32C;
     if (pData != NULL && *(u8*)((u8*)pData + 0x4FE6) != 0) {
@@ -1785,9 +1952,20 @@ void func_801C8BEC(void) {
             *(u8*)((u8*)g_Menu + 0x326) = 0;
         }
     }
+#endif
 }
 
 void func_801C8CA4(u8 idx) {
+#ifdef XENO_PC_PORT
+    s32 status;
+    s32 i;
+    memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E0 + idx * 4], sizeof(status));
+    if (status == -2) return;
+    g_Menu->unk32C->unk4F80[0x66] = 2;
+    for (i = 0; i < 59; ++i) func_801C7BF4();
+    /* Menu pumping may replace g_Menu; clear the current owner's state. */
+    g_Menu->unk32C->unk4F80[0x66] = 0;
+#else
     void* pMenu = g_Menu;
     void* pData = *(void**)((u8*)pMenu + 0x32C);
     s32 val = *(s32*)((u8*)pData + 0x4F74 + idx * 4);
@@ -1800,9 +1978,17 @@ void func_801C8CA4(u8 idx) {
         pMenu = g_Menu;
         *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4FE6) = 0;
     }
+#endif
 }
 
 void func_801C8D1C(u8 idx) {
+#ifdef XENO_PC_PORT
+    s32 status;
+    s32 i;
+    memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E0 + idx * 4], sizeof(status));
+    if (status == -2) return;
+    for (i = 0; i < 59; ++i) Vsync(0);
+#else
     void* pMenu = g_Menu;
     void* pData = *(void**)((u8*)pMenu + 0x32C);
     s32 val = *(s32*)((u8*)pData + 0x4F74 + idx * 4);
@@ -1812,9 +1998,27 @@ void func_801C8D1C(u8 idx) {
             Vsync(0);
         }
     }
+#endif
 }
 
 void func_801C8EE8(void) {
+#ifdef XENO_PC_PORT
+    u8 state;
+    s32 port;
+    if (g_Menu->unk32C == NULL) return;
+    state = g_Menu->unk32C->unk4F80[0x66];
+    if (state != 1 && state != 2) return;
+
+    /* Retail 8EE8..9034 keeps the entry state but reloads menu ownership
+     * and the next port's ready byte after each enumeration callback. */
+    for (port = 0; port < 2; ++port) {
+        if (g_Menu->unk32C->unk4F80[8 + port] == 0) {
+            s32 count = func_801C8D78((u8)port);
+            if (state == 1 && (u8)count != 0) g_Menu->unk334 = 1;
+            g_Menu->unk32C->unk4F80[8 + port] = 1;
+        }
+    }
+#else
     void* pMenu = g_Menu;
     void* pData = g_Menu->unk32C;
     u8 state;
@@ -1848,6 +2052,7 @@ void func_801C8EE8(void) {
             *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
         }
     }
+#endif
 }
 
 s32 func_801C9038(char* path, void* pBuf) {
@@ -1867,6 +2072,29 @@ extern char D_801C50B0[];
 extern char D_801C50B4;
 
 void func_801C90B0(u8 port, u8 slot) {
+#ifdef XENO_PC_PORT
+    char pathBuf[0x48];
+    char prefix[6];
+    s32 index = port * 16 + slot;
+    s32 blockOffset = index * 0x200;
+    s32 i;
+
+    /* Retail 90B0..926C: one read attempt, even on failure. The TIM_IMAGE
+     * preceding the block data grows on the host; use native members. */
+    memcpy(prefix, port == 0 ? D_801C50A8 : D_801C50B0, sizeof(prefix));
+    strcpy(pathBuf, prefix);
+    strcat(pathBuf, (char*)&g_Menu->unk32C->unk0[index * 0x5C + 0x18]);
+    func_801C9038(pathBuf, &g_Menu->unk32C->unkB94[blockOffset]);
+
+    for (i = 0; i < g_Menu->unk32C->unkB94[blockOffset + 3]; ++i) {
+        u8* tail = g_Menu->unk32C->unk4F80;
+        u32 writeIndex;
+        memcpy(&writeIndex, &tail[4], sizeof(writeIndex));
+        tail[0x2E + port * 16 + writeIndex] = (u8)index;
+        ++writeIndex;
+        memcpy(&tail[4], &writeIndex, sizeof(writeIndex));
+    }
+#else
     char pathBuf[0x58];
     char prefix[6];
     void* pMenu;
@@ -1914,13 +2142,40 @@ void func_801C90B0(u8 port, u8 slot) {
             }
         }
     }
+#endif
 }
 
 extern u8 D_801EA6D0[];
 extern s32 D_801EA6F4;
 extern s32 D_801EA900;
+extern s32 D_801EA904;
 
-void func_801C8D78(u8 port) {
+s32 func_801C8D78(u8 port) {
+#ifdef XENO_PC_PORT
+    char path[6];
+    struct DIRENTRY entry;
+    u8 count = 0;
+    s32 port16 = port * 16;
+    s32 i;
+
+    /* 8D78..8EE4: per-port status, one enumeration, exact entry-pointer
+     * success test, and byte count returned to the caller. */
+    if (port == 0) D_801EA900 = 0;
+    else D_801EA904 = 0;
+    for (i = 0; i < 16; ++i) {
+        g_Menu->unk32C->unk4F80[0x2E + port16 + i] = 0xFF;
+        D_801EA6D0[port16 + i] = 0;
+    }
+    memcpy(path, port == 0 ? D_801C50A8 : D_801C50B0, sizeof(path));
+    if (firstfile(path, &entry) == &entry) {
+        do {
+            strcpy((char*)&g_Menu->unk32C->unk0[(port16 + count) * 0x5C + 0x18], entry.name);
+            ++count;
+        } while (nextfile(&entry) == &entry);
+    }
+    g_Menu->unk32C->unk4F80[0x0A + port] = count;
+    return count;
+#else
     char pathBuf[0x38];
     char entryBuf[0x28];
     void* pMenu;
@@ -1968,6 +2223,8 @@ void func_801C8D78(u8 port) {
         pData = *(void**)((u8*)pMenu + 0x32C);
         *(u8*)(pData + portU + 0x4F8A) = count;
     }
+    return count;
+#endif
 }
 
 void func_801C9270(u8 port) {
@@ -2011,7 +2268,9 @@ void func_801C9270(u8 port) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C93A8);
+#endif
 
 extern u32 D_801E981C[];
 
@@ -2120,13 +2379,124 @@ s32 func_801C9D34(s32 mode) {
     return result;
 }
 
+#ifdef XENO_PC_PORT
+extern u32 D_801E9820[];
+void func_801C9EF4(s32 mode, s32 selected) {
+    MenuUnk2* card;
+    s32 next, probe;
+    if (mode < 0 || mode > 2) return;
+    card = g_Menu->unk32C;
+    next = (s32)((u32)selected + 3);
+    if (mode == 2) {
+        /* Retail reads this presence/state byte before the range branch. */
+        if (card->unk4F80[0x64 + next / 15] == 0) return;
+        if (next < 30) {
+            card->unk4F7C = next;
+        } else {
+            probe = (s32)((u32)card->unk4F7C + 3);
+            next = (s32)((u32)card->unk4F7C + 4);
+            if (probe < 30 && next < 30) card->unk4F7C = next;
+        }
+        return;
+    }
+    /* D_801E9828 aliases D_801E9820 + two four-byte entries. */
+    for (probe = selected; next < 30;
+         probe = (s32)((u32)probe + 3), next = (s32)((u32)next + 3)) {
+        u32 slot = D_801E9820[probe + 2];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (mode == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+    probe = (s32)((u32)card->unk4F7C + 3);
+    next = (s32)((u32)card->unk4F7C + 4);
+    if (probe >= 30) return;
+    for (; next < 30; probe = (s32)((u32)probe + 1), next = (s32)((u32)next + 1)) {
+        u32 slot = D_801E9820[probe];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (mode == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+}
+#else
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9EF4);
+#endif
 
+#ifdef XENO_PC_PORT
+void func_801CA1D4(s32 mode, s32 selected) {
+    MenuUnk2* card;
+    s32 next, probe;
+    if (mode < 0 || mode > 2) return;
+    card = g_Menu->unk32C;
+    next = (s32)((u32)selected - 3);
+    if (mode == 2) {
+        /* Retail signed division truncates -3..-1 to zero before testing
+         * the candidate range. Do not clamp or skip the presence read. */
+        if (card->unk4F80[0x64 + next / 15] == 0) return;
+        if (next >= 0) {
+            card->unk4F7C = next;
+        } else {
+            probe = (s32)((u32)card->unk4F7C - 3);
+            next = (s32)((u32)card->unk4F7C - 4);
+            if (probe >= 0 && next >= 0) card->unk4F7C = next;
+        }
+        return;
+    }
+    /* Retail D_801E9810[selected] equals D_801E981C[selected-3];
+     * fallback D_801E9818[probe] likewise equals the candidate entry. */
+    for (; next >= 0; next = (s32)((u32)next - 3)) {
+        u32 slot = D_801E981C[next];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (mode == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+    probe = (s32)((u32)card->unk4F7C - 3);
+    next = (s32)((u32)card->unk4F7C - 4);
+    if (probe < 0) return;
+    for (; next >= 0; next = (s32)((u32)next - 1)) {
+        u32 slot = D_801E981C[next];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (mode == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+}
+#else
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA1D4);
+#endif
 
 extern u32 D_801E9820[];
 
 void func_801CA480(s32 direction, s32 startIdx, s32 limit) {
+#ifdef XENO_PC_PORT
+    MenuUnk2* card;
+    s32 next;
+    (void)limit; /* Retail replaces a2 with startIdx+1 before using it. */
+    if (direction < 0 || direction > 2) return;
+    next = (s32)((u32)startIdx + 1);
+    if (direction == 2) {
+        card = g_Menu->unk32C;
+        if (card->unk4F80[0x64 + next / 15] != 0 && next < 30)
+            card->unk4F7C = next;
+        return;
+    }
+    if (next >= 30) return;
+    card = g_Menu->unk32C;
+    for (; next < 30; next = (s32)((u32)next + 1)) {
+        u32 slot = D_801E981C[next];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (direction == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+#else
     void* pMenu = g_Menu;
     void* pData = *(void**)((u8*)pMenu + 0x32C);
     s32 idx;
@@ -2165,11 +2535,35 @@ void func_801CA480(s32 direction, s32 startIdx, s32 limit) {
             }
         }
     }
+#endif
 }
 
 extern u32 D_801E9818[];
 
 void func_801CA5F0(s32 direction, s32 startIdx, s32 limit) {
+#ifdef XENO_PC_PORT
+    MenuUnk2* card;
+    s32 next;
+    (void)limit; /* Retail replaces a2 with startIdx-1 before using it. */
+    if (direction < 0 || direction > 2) return;
+    next = (s32)((u32)startIdx - 1);
+    if (direction == 2) {
+        card = g_Menu->unk32C;
+        if (card->unk4F80[0x64 + next / 15] != 0 && next >= 0)
+            card->unk4F7C = next;
+        return;
+    }
+    if (next < 0) return;
+    card = g_Menu->unk32C;
+    for (; next >= 0; next = (s32)((u32)next - 1)) {
+        u32 slot = D_801E981C[next];
+        if (card->unk4F80[0x2E + slot] != 0xFF &&
+            (direction == 0 || card->unk4F80[0x0E + slot] != 0)) {
+            card->unk4F7C = next;
+            return;
+        }
+    }
+#else
     void* pMenu;
     void* pData;
     s32 idx;
@@ -2212,22 +2606,56 @@ void func_801CA5F0(s32 direction, s32 startIdx, s32 limit) {
             }
         }
     }
+#endif
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50A8);
-
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50AC);
-
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50B0);
-
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50B4);
-
 INCLUDE_RODATA("../asm/menu/nonmatchings/main/misc", D_801C50B8);
+#endif
 
 extern void func_801C9EF4(s32 direction, s32 selection);
 extern void func_801CA1D4(s32 direction, s32 selection);
+#ifdef XENO_PC_PORT
+extern void func_801E781C(s32 screenId, u8 animFlag);
+#endif
 
 s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
+#ifdef XENO_PC_PORT
+    s32 result = 0;
+    s32 previous;
+    MenuUnk2* card;
+    (void)unused;
+    switch (g_Menu->input) {
+    case MENU_INPUT_CONFIRM: result = 1; break;
+    case MENU_INPUT_BACK: result = 2; break;
+    case MENU_INPUT_RIGHT:
+        func_801C9EF4(direction, g_Menu->unk32C->unk4F7C);
+        break;
+    case MENU_INPUT_LEFT:
+        func_801CA1D4(direction, g_Menu->unk32C->unk4F7C);
+        break;
+    case MENU_INPUT_DOWN:
+        func_801CA480(direction, g_Menu->unk32C->unk4F7C, limit);
+        break;
+    case MENU_INPUT_UP:
+        func_801CA5F0(direction, g_Menu->unk32C->unk4F7C, limit);
+        break;
+    }
+    card = g_Menu->unk32C;
+    memcpy(&previous, card->unk4F80, sizeof(previous));
+    if (card->unk4F7C != previous) {
+        u32 slot = D_801E981C[card->unk4F7C];
+        func_801E781C(card->unk4F80[0x2E + slot], card->unk4F80[0x0E + slot]);
+        /* The refresh callback may change both ownership and selection. */
+        card = g_Menu->unk32C;
+        memcpy(card->unk4F80, &card->unk4F7C, sizeof(card->unk4F7C));
+    }
+    return result;
+#else
     s32 result = 0;
     u8* data;
     s32 selection;
@@ -2263,11 +2691,78 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
         *(s32*)(data + 0x4F80) = *(s32*)(data + 0x4F7C);
     }
     return result;
+#endif
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA8C0);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAA38);
+#else
+extern u8 D_801E9778;
+
+/* Retail 801CAA38..801CACF4. The card bytes are within the unchanged byte
+ * tail of the native-inflated MenuUnk2, not at g_Menu->unk32C + 0x4FE4. */
+u32 func_801CAA38(u8 interactive) {
+    u8 card0 = g_Menu->unk32C->unk4F80[0x64];
+    u8 card1 = g_Menu->unk32C->unk4F80[0x65];
+    u8 remaining = 0xB4;
+    u32 selected = 0;
+    s32 running = 1;
+
+    if (D_801E977A != 0) {
+        g_Menu->unk32C->unk4F80[0x66] = 2;
+    }
+    D_801EA8FC = 0;
+    while (running) {
+        if (interactive == 0) {
+            g_Menu->pCursors->shouldRender[2] = 0;
+            g_Menu->pCursors->shouldRender[3] = 0;
+            if (g_Menu->input != MENU_INPUT_IDLE) break;
+            if (--remaining == 0) break;
+        }
+        func_801C7BF4();
+        if (interactive != 0 && D_801E977A != 0) {
+            if (card0 != g_Menu->unk32C->unk4F80[0x64]) {
+                g_Menu->unk32C->unk4F80[8] = 0;
+                g_Menu->input = MENU_INPUT_BACK;
+                D_801E9778 = 1;
+            }
+            if (card1 != g_Menu->unk32C->unk4F80[0x65]) {
+                g_Menu->unk32C->unk4F80[9] = 0;
+                g_Menu->input = MENU_INPUT_BACK;
+                D_801E9778 = 1;
+            }
+        }
+        switch (g_Menu->input) {
+        case MENU_INPUT_CONFIRM:
+            running = 0;
+            break;
+        case MENU_INPUT_BACK:
+            selected = 0;
+            D_801EA8FC = 1;
+            running = 0;
+            break;
+        case MENU_INPUT_LEFT:
+            g_Menu->pCursors->shouldRender[2] = 1;
+            g_Menu->pCursors->shouldRender[3] = 0;
+            selected = 1;
+            break;
+        case MENU_INPUT_RIGHT:
+            g_Menu->pCursors->shouldRender[2] = 0;
+            g_Menu->pCursors->shouldRender[3] = 1;
+            selected = 0;
+            break;
+        }
+    }
+    g_Menu->pCursors->shouldRender[2] = 0;
+    g_Menu->pCursors->shouldRender[3] = 0;
+    g_Menu->unk32C->unk4F80[0x66] = 0;
+    return selected;
+}
+#endif
 
 extern void func_801D2F4C(u8);
 extern u32 func_801CAA38(u8);
@@ -2275,18 +2770,15 @@ extern s32 func_801D32B4(s32);
 
 u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
     u32 result;
-    void* pMenu;
     func_801D2F4C(arg0);
-    pMenu = g_Menu;
-    *(u8*)(*(void**)((u8*)pMenu + 0x428) + 0x143) = 1;
+    g_Menu->pCursors->shouldRender[3] = 1;
     result = func_801CAA38(arg2);
-    result = func_801D32B4(result);
+    func_801D32B4(result);
     if (arg1 != 0xFF && (result & 0xFF) != 0) {
-        func_801D2F4C(arg0);
-        pMenu = g_Menu;
-        *(u8*)(*(void**)((u8*)pMenu + 0x428) + 0x143) = 1;
+        func_801D2F4C(arg1);
+        g_Menu->pCursors->shouldRender[3] = 1;
         result = func_801CAA38(arg2);
-        result = func_801D32B4(result);
+        func_801D32B4(result);
     }
     return (u8)(result & 0xFF);
 }
@@ -2303,7 +2795,9 @@ void func_801CADB0(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
+#endif
 
 #ifndef XENO_PC_PORT
 extern void func_80033B34(u8*, u8*, s32);
@@ -2358,7 +2852,9 @@ void func_801CB28C(s32 arg0) {
     func_801CB184();
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
+#endif
 
 u8 func_801CB8AC(u8 arg0) {
     void* pMenu = g_Menu;
@@ -2415,13 +2911,12 @@ u8 func_801CB9E8(u8 idx, u8 startIdx) {
     return startIdx;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBA4C);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBD90);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CC6D8);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD2AC);
+#endif
 
 extern void func_801CC6D8(void);
 extern void func_801CD2AC(void);
@@ -2786,9 +3281,103 @@ void func_801CE540(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE660);
+#else
+/* Retail 0x801CE660: submit the twelve counted lists owned by menu buffer
+ * 0x358.  The third list has its own render context at 0x2AEE; every other
+ * list uses the shared context at 0x2AE0. */
+void func_801CE660(void) {
+    u8* data;
 
+    if (!g_Menu->pManager || !((u8*)g_Menu->pManager)[7]) {
+        return;
+    }
+
+    data = MenuRawPointer(0x358);
+    func_801CE198(1, (SVECTOR*)(data + 0x1EA0),
+                  (POLY_FT4*)data, data[0x2AE0]);
+    func_801CE198(1, (SVECTOR*)(data + 0x1EC0),
+                  (POLY_FT4*)(data + 0x50), data[0x2AE0]);
+    func_801CE198(data[0x2AED], (SVECTOR*)(data + 0x2AA0),
+                  (POLY_FT4*)(data + 0x1E00), data[0x2AEE]);
+    func_801CE198(data[0x2AEC], (SVECTOR*)(data + 0x1EE0),
+                  (POLY_FT4*)(data + 0xA0), data[0x2AE0]);
+    func_801CE198(data[0x2AE7], (SVECTOR*)(data + 0x2780),
+                  (POLY_FT4*)(data + 0x1630), data[0x2AE0]);
+    func_801CE198(data[0x2AE8], (SVECTOR*)(data + 0x2820),
+                  (POLY_FT4*)(data + 0x17C0), data[0x2AE0]);
+    func_801CE198(data[0x2AE9], (SVECTOR*)(data + 0x28C0),
+                  (POLY_FT4*)(data + 0x1950), data[0x2AE0]);
+    func_801CE198(data[0x2AEA], (SVECTOR*)(data + 0x2960),
+                  (POLY_FT4*)(data + 0x1AE0), data[0x2AE0]);
+    func_801CE198(data[0x2AE1], (SVECTOR*)(data + 0x2300),
+                  (POLY_FT4*)(data + 0xAF0), data[0x2AE0]);
+    func_801CE198(data[0x2AE3], (SVECTOR*)(data + 0x23C0),
+                  (POLY_FT4*)(data + 0xCD0), data[0x2AE0]);
+    func_801CE198(data[0x2AE5], (SVECTOR*)(data + 0x25C0),
+                  (POLY_FT4*)(data + 0x11D0), data[0x2AE0]);
+    func_801CE198(data[0x2AEB], (SVECTOR*)(data + 0x2A00),
+                  (POLY_FT4*)(data + 0x1C70), data[0x2AE0]);
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE860);
+#else
+/* Retail 801CE860..801CEB5C: project and queue the seven Equip-row glyph
+ * strips from the 0x35C work buffer.  When preview flag 0x32F2 is set, also
+ * submit the comparison (delta) strips.
+ *
+ * Bar POLY_G4s are double-buffered at stride 0x24 inside a per-row slot of
+ * 0x48 (D8644's polyRow).  Retail increments those bases each loop
+ * (801CEB28/801CEB38).  Using only renderContext*0x24 AddPrims the same G4
+ * seven times and cycles the OT. */
+void func_801CE860(void) {
+    s32 i;
+    long interpolated;
+    long flag;
+    u8* data = MenuRawPointer(0x35C);
+
+    for (i = 0; i < 7; i++) {
+        u8* row = data + i;
+        u8* verts;
+        u8* poly;
+        u8 ctx;
+
+        if (row[0x32EA] == 0) {
+            continue;
+        }
+
+        if (data[0x32F2] != 0) {
+            verts = data + 0x31E0 + i * 0x20;
+            ctx = row[0x32E3];
+            poly = data + 0x2228 + i * 0x48 + ctx * 0x24;
+            RotTransPers4((SVECTOR*)(verts + 0x00), (SVECTOR*)(verts + 0x08),
+                          (SVECTOR*)(verts + 0x10), (SVECTOR*)(verts + 0x18),
+                          (long*)(poly + 0x08), (long*)(poly + 0x10),
+                          (long*)(poly + 0x18), (long*)(poly + 0x20),
+                          &interpolated, &flag);
+            AddPrim(&g_Menu->pGfxEnv->ot[4], poly);
+            func_801CE198(row[0x32CE], (SVECTOR*)(data + 0x2D80 + i * 0x80),
+                          (POLY_FT4*)(data + 0x1770 + i * 0x140),
+                          row[0x32D5]);
+        }
+
+        verts = data + 0x3100 + i * 0x20;
+        ctx = row[0x32DC];
+        poly = data + 0x2030 + i * 0x48 + ctx * 0x24;
+        RotTransPers4((SVECTOR*)(verts + 0x00), (SVECTOR*)(verts + 0x08),
+                      (SVECTOR*)(verts + 0x10), (SVECTOR*)(verts + 0x18),
+                      (long*)(poly + 0x08), (long*)(poly + 0x10),
+                      (long*)(poly + 0x18), (long*)(poly + 0x20),
+                      &interpolated, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], poly);
+        func_801CE198(row[0x32C0], (SVECTOR*)(data + 0x2A00 + i * 0x80),
+                      (POLY_FT4*)(data + 0xEB0 + i * 0x140), row[0x32C7]);
+    }
+}
+#endif
 
 extern void func_801CE860(void);
 
@@ -2796,7 +3385,7 @@ void func_801CEB5C(void) {
     void* pMenu = g_Menu;
     void* pManager = g_Menu->pManager;
     if (*(u8*)((u8*)pManager + 8) != 0) {
-        void* pData = *(void**)((u8*)pMenu + 0x35C);
+        void* pData = MenuRawPointer(0x35C);
         u8 val1 = *(u8*)((u8*)pData + 0x32F3);
         u8 val2 = *(u8*)((u8*)pData + 0x32F1);
         func_801CE198(val1, (u8*)pData + 0x2420, pData, val2);
@@ -2812,7 +3401,7 @@ void func_801CEBB4(void) {
         for (i = 0; i < 5; i++) {
             pMenu = g_Menu;
             {
-                void* pData = *(void**)((u8*)pMenu + 0x360);
+                void* pData = MenuRawPointer(0x360);
                 if (*(u8*)((u8*)pData + 0x294 + i) != 0) {
                     func_801CE198(1, (u8*)pData + i * 0x80 + 0x50,
                                   (u8*)pData + i * 0x80,
@@ -2887,15 +3476,242 @@ void func_801CF308(void) {
     }
 }
 
+/* Retail g_Menu+off is a 4-byte pointer slot.  Native SystemMenu inflates, so
+ * raw byte offsets land in unrelated fields (e.g. +0x434 hits unk2E4, +0x360
+ * hits unk220).  Map the known PSX-width slots onto their struct members. */
+static u32* MenuPsxPointerSlot(u32 retailOffset) {
+    switch (retailOffset) {
+    case 0x340:
+        return (u32*)&g_Menu->unk340[0];
+    case 0x344:
+        return (u32*)&g_Menu->unk340[4];
+    case 0x34C:
+        return (u32*)&g_Menu->unk34C[0];
+    case 0x358:
+        return (u32*)&g_Menu->unk358[0];
+    case 0x35C:
+        return (u32*)&g_Menu->unk358[4];
+    case 0x360:
+        return (u32*)&g_Menu->unk358[8];
+    case 0x42C:
+        return &g_Menu->unk42C[0];
+    case 0x430:
+        return &g_Menu->unk42C[1];
+    case 0x434:
+        return &g_Menu->unk42C[2];
+    case 0x438:
+        return &g_Menu->unk42C[3];
+    case 0x440:
+        return (u32*)&g_Menu->unk440[0];
+    case 0x44C:
+        return (u32*)&g_Menu->unk44C[0];
+    default:
+        if (retailOffset >= 0x3A8 && retailOffset < 0x3C8 &&
+            ((retailOffset - 0x3A8) & 3) == 0) {
+            /* Title string slots: retail unk39C + 0xC + i*4. */
+            return (u32*)&g_Menu->unk39C[0xC + (retailOffset - 0x3A8)];
+        }
+        return (u32*)((u8*)g_Menu + retailOffset);
+    }
+}
+
+static u8* MenuRawPointer(u32 offset) {
+    return (u8*)(uintptr_t)*MenuPsxPointerSlot(offset);
+}
+
+static void MenuStoreRawPointer(u32 offset, void* pointer) {
+    *MenuPsxPointerSlot(offset) = (u32)(uintptr_t)pointer;
+}
+
+static u8* MenuTitleSlot(s32 index) {
+    return MenuRawPointer(0x3A8 + index * 4);
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF37C);
+#else
+void func_801CF37C(void) {
+    u8* data = (u8*)g_Menu->unk32C;
+    s32 i;
+    if (data == NULL || ((u8*)g_Menu)[0x4D8] != 2) return;
+    for (i = 0; i < 32; i++) {
+        s32 selected = *(s32*)(data + 0x4F7C);
+        u8 wanted = data[D_801E981C[selected] + 0x4FAE];
+        u8 current = data[0x4FAE + i];
+        if (current != wanted) continue;
+        if (current == 0xFF && i != D_801E981C[selected]) continue;
+        {
+            u8* slot = MenuTitleSlot(i);
+            if (slot == NULL) continue;
+            u8* line = slot + 0xB0 + g_Menu->renderContext * 24;
+            long p;
+            long flag;
+            line[4] = ((u8*)g_Menu)[0x4D4];
+            line[5] = ((u8*)g_Menu)[0x4D4];
+            line[6] = ((u8*)g_Menu)[0x4D4];
+            RotTransPers4((SVECTOR*)(slot + 0xE0), (SVECTOR*)(slot + 0xE8),
+                          (SVECTOR*)(slot + 0xF0), (SVECTOR*)(slot + 0xF8),
+                          (long*)(line + 0x08), (long*)(line + 0x0C),
+                          (long*)(line + 0x10), (long*)(line + 0x14),
+                          &p, &flag);
+            AddPrim(&g_Menu->pGfxEnv->ot[4], line);
+            AddPrim(&g_Menu->pGfxEnv->ot[4],
+                    slot + 0x140 + g_Menu->renderContext * 12);
+        }
+    }
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF5E4);
+#else
+void func_801CF5E4(s32 first, s32 slotIndex, s32 limit) {
+    u8* data = (u8*)g_Menu->unk32C;
+    s32 i;
+    s32 slot = slotIndex;
+    for (i = first; i < limit; i++) {
+        u8* entry = data + i * 0x5C;
+        s32 s3;
+        if (entry[0x58] == 0) continue;
+        for (s3 = 0; s3 < data[i * 0x200 + 0xB97]; s3++, slot++) {
+            u8* dst = MenuTitleSlot(slot);
+            u8* poly = dst + g_Menu->renderContext * 40;
+            s32 value = i * 0x10;
+            u8 source = entry[(*(s32*)((u8*)g_Menu + 0x4CC)) * 4];
+            poly[0x0C] = (u8)value;
+            poly[0x0D] = source;
+            poly[0x14] = (u8)(value + 0x10);
+            poly[0x15] = source;
+            poly[0x1C] = (u8)value;
+            poly[0x1D] = (u8)(source + 0x10);
+            poly[0x24] = (u8)(value + 0x10);
+            poly[0x25] = (u8)(source + 0x10);
+            *(u16*)(poly + 0x0E) = GetClut(value, (i >> 4) + 0x1C1);
+            func_801CE198(1, (SVECTOR*)(dst + 0xE0), dst, g_Menu->renderContext);
+        }
+    }
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF8D8);
+#else
+void func_801CF8D8(void) {
+    u8* data = (u8*)g_Menu->unk32C;
+    s32 i;
+    if (data == NULL || ((u8*)g_Menu)[0x4D8] == 0) return;
+    for (i = 0; i < 2; i++) {
+        s32 selected = *(s32*)(data + 0x4F7C);
+        s32 group = selected < 0 ? (selected + 15) >> 4 : selected >> 4;
+        if (!data[0x4FE4 + i] || ((u8*)g_Menu->pManager)[0x68] == 0) continue;
+        {
+            s32 glyph = (((u8*)g_Menu->pManager)[0x2F] && i != group)
+                            ? 0x115 : 0x122;
+            s32 count = func_8002675C(g_Menu->unk2DC, glyph,
+                                      data + 0x4D94 + i * 0xF0,
+                                      g_Menu->renderContext, 0x1E + i * 0x90, 0x36, 0x1000);
+            count = func_8002675C(g_Menu->unk2DC, i + 0x162,
+                      data + 0x4DE4 + i * 0xF0, g_Menu->renderContext,
+                      0x1B + i * 0x90, 0x36, 0x1000);
+            {
+                s32 j;
+                for (j = 0; j < count; j++) {
+                    AddPrim(&g_Menu->pGfxEnv->ot[4],
+                            data + 0x4D94 + i * 0xF0 + 0x50 +
+                            (g_Menu->renderContext + j * 2) * 40);
+                }
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        data + 0x4D94 + i * 0xF0 + g_Menu->renderContext * 40);
+            }
+        }
+    }
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CFB48);
+#else
+void func_801CFB48(void) {
+    u8* data = (u8*)g_Menu->unk32C;
+    s32 i;
+    if (data == NULL || !((u8*)g_Menu)[0x4D8]) return;
+    {
+        u8 menuState = ((u8*)g_Menu)[0x4D8];
+    for (i = 0; i < 32; i++) {
+        u8* slot = MenuTitleSlot(i);
+        s32 group = i >> 4;
+        if (!data[0x4FE4 + group] || (group << 4) == i - 15) continue;
+        if (data[0x4FAE + i] != data[D_801E981C[*(s32*)(data + 0x4F7C)] + 0x4FAE]) continue;
+        {
+            u8* firstPoly = slot + 0x50 + g_Menu->renderContext * 24;
+            u8* secondPoly = slot + 0x80 + g_Menu->renderContext * 24;
+            s32 special = menuState == 2 && data[0x4FAE + i] == 0xFF &&
+                          D_801E981C[*(s32*)(data + 0x4F7C)] == i;
+            firstPoly[4] = special ? 0xFF : 0;
+            firstPoly[5] = special ? 0 : 0xFF;
+            firstPoly[6] = 0;
+            secondPoly[4] = firstPoly[4];
+            secondPoly[5] = firstPoly[5];
+            secondPoly[6] = 0;
+        }
+        {
+            long p;
+            long flag;
+        RotTransPers3((SVECTOR*)(slot + 0x100), (SVECTOR*)(slot + 0x108),
+                      (SVECTOR*)(slot + 0x118),
+                      (long*)(slot + 0x58 + g_Menu->renderContext * 24),
+                      (long*)(slot + 0x5C + g_Menu->renderContext * 24),
+                      (long*)(slot + 0x60 + g_Menu->renderContext * 24), &p, &flag);
+        }
+        AddPrim(&g_Menu->pGfxEnv->ot[4], slot + 0x50 + g_Menu->renderContext * 24);
+        {
+            long p;
+            long flag;
+        RotTransPers3((SVECTOR*)(slot + 0x120), (SVECTOR*)(slot + 0x130),
+                      (SVECTOR*)(slot + 0x138),
+                      (long*)(slot + 0x88 + g_Menu->renderContext * 24),
+                      (long*)(slot + 0x8C + g_Menu->renderContext * 24),
+                      (long*)(slot + 0x90 + g_Menu->renderContext * 24), &p, &flag);
+        }
+        AddPrim(&g_Menu->pGfxEnv->ot[4], slot + 0x80 + g_Menu->renderContext * 24);
+    }
+    }
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CFF64);
+#else
+void func_801CFF64(void) {
+    MenuManager* manager = g_Menu->pManager;
+    u8* arrows = MenuRawPointer(0x44C);
+    u8 state;
+    u8 index;
+    u8* arrow;
+    if (!manager || !arrows) return;
+    state = ((u8*)manager)[0x52];
+    if (!state) return;
+    index = arrows[0x7B8];
+    arrow = arrows + index * 24;
+    *(u16*)(arrow + 8) = 0x20;
+    *(u16*)(arrow + 0xA) = 0x61;
+    *(u16*)(arrow + 0xC) = *(u16*)(arrows + 0x7B0) + 0x20;
+    *(u16*)(arrow + 0xE) = 0x61;
+    *(u16*)(arrow + 0x10) = 0x20;
+    *(u16*)(arrow + 0x12) = 0x68;
+    *(u16*)(arrow + 0x14) = *(u16*)(arrows + 0x7B0) + 0x20;
+    *(u16*)(arrow + 0x16) = 0x68;
+    if ((*(u32*)(arrows + 0x7B0) % 6) < 4 || state == 2) {
+        func_801CE2B4(2, arrows + 0x3F0, index);
+    }
+    func_801CE2B4(0xC, arrows + 0x30, index);
+    AddPrim(&g_Menu->pGfxEnv->ot[4], arrow);
+    if (state == 1) {
+        *(u32*)(arrows + 0x7B0) += *(u32*)(arrows + 0x7B4);
+        if (*(u32*)(arrows + 0x7B0) >= 0x101) *(u32*)(arrows + 0x7B0) = 0;
+    }
+}
+#endif
 
 extern void func_801CF37C(void);
 extern void func_801CF5E4(s32, s32, s32);
@@ -2949,7 +3765,84 @@ void func_801D01D0(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D02D8);
+#else
+void func_801D02D8(void) {
+    u8* data = MenuRawPointer(0x34C);
+    s32 i;
+    if (!g_Menu->pManager || !g_Menu->pManager->unkB) return;
+    if (!data) return;
+    if (!data[0x2DBC]) {
+        func_801CE2B4(0x20, data, g_Menu->renderContext);
+        {
+            MenuUnk2* manager = g_Menu->unk32C;
+            s32 selected = manager->unk4F7C;
+            s32 wanted = manager->unk4F80[D_801E981C[selected] + 0x2E];
+            s32 animation;
+            u16 clut;
+            memcpy(&animation, g_Menu->unk4CC, sizeof(animation));
+            u8 source = manager->unk0[wanted * 0x5C + animation * 4];
+            data = MenuRawPointer(0x34C);
+            u8* poly = data + g_Menu->renderContext * 40;
+            s32 value = wanted << 4;
+            poly[0xA0C] = (u8)value;
+            poly[0xA0D] = source;
+            poly[0xA14] = (u8)(value + 15);
+            poly[0xA15] = source;
+            poly[0xA1C] = (u8)value;
+            poly[0xA1D] = (u8)(source + 15);
+            poly[0xA24] = (u8)(value + 15);
+            poly[0xA25] = (u8)(source + 15);
+            clut = GetClut(value, (wanted >> 4) + 0x1C1);
+            /* Retail 801D067C..06A4 reloads owner, context and destination
+             * after GetClut; do not retain the pre-call packet pointer. */
+            data = MenuRawPointer(0x34C);
+            poly = data + g_Menu->renderContext * 40;
+            *(u16*)(poly + 0xA0E) = clut;
+            AddPrim(&g_Menu->pGfxEnv->ot[4], data + 0xA00 + g_Menu->renderContext * 40);
+        }
+    } else {
+        for (i = 0; i < 3; i++) {
+            static const u16 countOffsets[] = {0x1312,0x1308,0x1309,0x130A,0x130B,0x130C,0x130D};
+            static const u16 listOffsets[] = {0x50,0x320,0x410,0x500,0x5F0,0x6E0,0x780};
+            s32 list;
+            data = MenuRawPointer(0x34C); /* detail: next character owner */
+            u8* meta = data + i * 0x87C;
+            u8* slot = meta + 0xA98;
+            if (!meta[0x1310]) continue;
+            /* Retail reloads the owner before every list call, but checks
+             * the character-enable byte only once at the start of its run. */
+            for (list = 0; list < 7; list++) {
+                data = MenuRawPointer(0x34C); /* detail: list owner */
+                meta = data + i * 0x87C;
+                slot = meta + 0xA98;
+                func_801CE2B4(meta[countOffsets[list]], slot + listOffsets[list],
+                             meta[list == 0 ? 0x130E : 0x130F]);
+            }
+            /* Retail 801D0844..54 / 801D087C..90 select 40-byte FT4s,
+             * not 24-byte packets, for both saved context markers. */
+            /* 801D083C loads the first quad's marker from the base panel,
+             * before 801D0840 adds this character's primitive offset. */
+            data = MenuRawPointer(0x34C); /* detail: first quad owner */
+            slot = data + i * 0x87C + 0xA98;
+            AddPrim(&g_Menu->pGfxEnv->ot[4], slot + data[0x130F] * sizeof(POLY_FT4));
+            data = MenuRawPointer(0x34C); /* detail: name quad owner */
+            meta = data + i * 0x87C;
+            slot = meta + 0xA98;
+            AddPrim(&g_Menu->pGfxEnv->ot[4], slot + 0x820 + meta[0x1311] * sizeof(POLY_FT4));
+        }
+        data = MenuRawPointer(0x34C); /* detail: summary owner */
+        func_801CE2B4(0xB, data + 0x240C, data[0x130F]);
+        data = MenuRawPointer(0x34C); /* detail: suffix owner */
+        func_801CE2B4(4, data + 0x2C7C, data[0x130F]);
+        data = MenuRawPointer(0x34C); /* detail: strip owner */
+        func_801CE2B4(0x10, data + 0x277C, data[0x130F]);
+    }
+    data = MenuRawPointer(0x34C); /* Retail shared tail reload at 801D0918. */
+    AddPrim(&g_Menu->pGfxEnv->ot[4], data + 0xA50 + g_Menu->renderContext * 36);
+}
+#endif
 
 /* Arc A (menu window render): project one window quad's 4 vertices via
  * RotTransPers4 into its POLY_FT4 xy coords, then AddPrim it to the gfxEnv OT.
@@ -3135,16 +4028,16 @@ void func_801D0ED4(void) {
 
 void func_801D0F54(void) {
     s32 i;
-    u32 offset = 0x14E0;
+    /* unk14E0 is a packed retail MenuString bank (0x80/slot).  Native
+     * SystemMenu inflates earlier members, so g_Menu+0x14E0 is NOT
+     * &unk14E0[0] — always index the member. */
     for (i = 0; i < 6; i++) {
-        void* pMenu = g_Menu;
-        void* pManager = g_Menu->pManager;
-        if (*(u8*)((u8*)pManager + 0x40 + i) != 0) {
-            u8* pData = (u8*)pMenu + offset;
-            u8 val = *(u8*)((u8*)pMenu + i * 0x80 + 0x155D);
-            func_801CE198(1, pData + 0x50, pData, val);
+        if (g_Menu->pManager != NULL &&
+            ((u8*)g_Menu->pManager)[0x40 + i] != 0) {
+            u8* pData = &g_Menu->unk14E0[i * 0x80];
+            func_801CE198(1, (SVECTOR*)(pData + 0x50), (POLY_FT4*)pData,
+                          pData[0x7D]);
         }
-        offset += 0x80;
     }
 }
 
@@ -3160,21 +4053,16 @@ void func_801D0FD4(void) {
 }
 
 void func_801D1030(void) {
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    if (*(u8*)((u8*)pManager + 0x2E) != 0) {
+    if (g_Menu->pManager->unk2E != 0) {
         s32 i;
         for (i = 0; i < 3; i++) {
-            pMenu = g_Menu;
-            {
-                u8* pData = *(u8**)((u8*)pMenu + 0x1DE0 + i * 4);
-                if (*(u8*)(pData + 0x7F) != 0) {
-                    func_801CE198(1, pData + 0x50, pData, *(u8*)(pData + 0x7D));
-                } else {
-                    u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
-                    u8 idx = *(u8*)(pData + 0x7D);
-                    AddPrim(pOT, pData + idx * 0x28);
-                }
+            MenuString* string = g_Menu->unk1DE0[i];
+            if (string->unk7F != 0) {
+                func_801CE198(1, string->vertices, string->polys,
+                              string->renderContext);
+            } else {
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        &string->polys[string->renderContext]);
             }
         }
     }
@@ -3336,19 +4224,18 @@ void func_801D13F8(void) {
 #endif
 
 void func_801D1464(void) {
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    if (*(u8*)((u8*)pManager + 0x49) != 0) {
-        void* pData = *(void**)((u8*)pMenu + 0x43C);
-        func_801CE198(1, (u8*)pData + 0x50, pData, *(u8*)((u8*)pData + 0x70));
+    if (g_Menu->pManager->scrollHandleActive != 0) {
+        MenuScrollBarHandle* handle = g_Menu->pScrollHandle;
+        func_801CE198(1, handle->vertices, handle->polys, handle->renderContext);
     }
 }
 
 void func_801D14B0(void) {
-    void* pMenu = g_Menu;
     void* pManager = g_Menu->pManager;
     if (*(u8*)((u8*)pManager + 0x53) != 0) {
-        void* pData = *(void**)((u8*)pMenu + 0x440);
+        /* menu+0x440 is a PSX-width slot; use the field helper, not a raw
+         * +0x440 peek into the inflated SystemMenu. */
+        void* pData = MenuUnk440Pointer();
         func_801CE198(4, (u8*)pData + 0x140, pData, *(u8*)((u8*)pData + 0x1C0));
     }
 }
@@ -3439,37 +4326,29 @@ void func_801D1640(void) {
 #endif
 
 void func_801D17C4(void) {
-    void* pMenu = g_Menu;
     void* pManager = g_Menu->pManager;
     if (*(u8*)((u8*)pManager + 0x4C) != 0) {
         s32 i;
         u32 offset = 0x400;
         for (i = 0; i < 8; i++) {
-            pMenu = g_Menu;
-            {
-                u8* pData = *(u8**)((u8*)pMenu + 0x434);
-                if (*(u8*)(pData + 0xA10 + i) != 0) {
-                    u8* pSlot = pData + i * 0x80;
-                    func_801CE198(1, pSlot + 0x50, pSlot, *(u8*)(pSlot + 0x7D));
-                    pMenu = g_Menu;
-                    pData = *(u8**)((u8*)pMenu + 0x434);
-                    func_801CE198(1, pData + offset + 0x50, pData + offset,
-                                  *(u8*)(pSlot + 0x47D));
-                }
+            u8* pData = MenuRawPointer(0x434);
+            if (*(u8*)(pData + 0xA10 + i) != 0) {
+                u8* pSlot = pData + i * 0x80;
+                func_801CE198(1, pSlot + 0x50, pSlot, *(u8*)(pSlot + 0x7D));
+                pData = MenuRawPointer(0x434);
+                func_801CE198(1, pData + offset + 0x50, pData + offset,
+                              *(u8*)(pSlot + 0x47D));
             }
             offset += 0x80;
         }
-        pMenu = g_Menu;
         {
-            u8* pData = *(u8**)((u8*)pMenu + 0x434);
+            u8* pData = MenuRawPointer(0x434);
             func_801CE198(1, pData + 0x850, pData + 0x800, *(u8*)(pData + 0x87D));
-            pMenu = g_Menu;
-            pData = *(u8**)((u8*)pMenu + 0x434);
+            pData = MenuRawPointer(0x434);
             if (*(u8*)(pData + 0xA18) != 0) {
                 u32 off2 = 0x880;
                 for (i = 0; i < 3; i++) {
-                    pMenu = g_Menu;
-                    pData = *(u8**)((u8*)pMenu + 0x434);
+                    pData = MenuRawPointer(0x434);
                     func_801CE198(1, pData + off2 + 0x50, pData + off2,
                                   *(u8*)(pData + i * 0x80 + 0x8FD));
                     off2 += 0x80;
@@ -3572,31 +4451,8 @@ void func_801D1AAC(void) {
 }
 #endif
 
-/* Run the per-frame menu draw passes in retail order.  The native port keeps
- * the window pass plus the already-named label / gold / portrait submitters;
- * sibling C ports that still walk PSX SystemMenu byte offsets stay skipped. */
+/* Run the per-frame menu draw passes in retail order. */
 void func_801D1B20(void) {
-#ifdef XENO_PC_PORT
-    func_801D1AAC();
-    func_801D0C78();
-    if (g_Menu->pManager != NULL) {
-        static int s_rootSubmitLogged;
-        if (!s_rootSubmitLogged) {
-            s_rootSubmitLogged = 1;
-            printf("[xeno-port][menu] root submit labels=%d/%d gold=%d portraits=%d/%d/%d\n",
-                   g_Menu->pSelectionMenu ? g_Menu->pSelectionMenu->numCursors : -1,
-                   g_Menu->pSelectionMenu ? g_Menu->pSelectionMenu->numTexts : -1,
-                   (int)g_Menu->pManager->unk5[0],
-                   (int)g_Menu->pManager->unk0[0],
-                   (int)g_Menu->pManager->unk0[1],
-                   (int)g_Menu->pManager->unk0[2]);
-            fflush(stdout);
-        }
-        func_801CEC40();
-        func_801CE464();
-        func_801CE540();
-    }
-#else
     func_801D3B00();
     func_801D11F0();
     func_801CE3C8();
@@ -3619,7 +4475,6 @@ void func_801D1B20(void) {
     func_801D0C78();
     func_801CEC40();
     func_801CF308();
-#endif
 }
 
 extern void func_801D3B00(void);
@@ -3910,7 +4765,9 @@ void func_801D25E4(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
+#endif
 
 #ifndef XENO_PC_PORT
 extern void func_801D5BA4(s32 x, s32 y);
@@ -3934,7 +4791,9 @@ void func_801D28A8(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28FC);
 #else
-extern void func_801D397C();  /* unprototyped: see the K&R def below */
+extern void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                          u8 directParams, u8 unk714, s32 zIndex,
+                          u8 hasScrollBar);
 extern void func_801D5CF8(s32 x, s32 y);
 
 /* Arc A verts: post-setup for the main menu -- build window 1's geometry
@@ -4097,19 +4956,72 @@ void func_801D2EC0(u8 arg0, u8 arg1) {
     func_801D8EA4(arg0, 0, 0, arg1);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2F4C);
+#else
+extern void func_801E920C(POLY_FT4*, s32, s32, s32, s32, s32, s32);
+extern void* GetStringEntry(void*, s32);
+extern s32 SystemRenderStringEntry(void*, void*, s32, s32);
+
+/* Retail 801D2F4C..801D32B0: four descriptors share two upload buffers.
+ * Only three rows are rendered. Use native MenuString sizes and pointer
+ * fields throughout; the fourth descriptor still owns a shared pointer. */
+void func_801D2F4C(u8 firstString) {
+    s32 i;
+    MenuWindowParameters* parameters;
+
+    func_801D397C(2, 0x7A, 0x96, 0xBC, 0x40, 1, 1, 4, 0);
+    parameters = g_Menu->windowParameters[2];
+    while (parameters->unk11 == 0) {
+        func_801C7BF4();
+    }
+    for (i = 0; i < 4; i++) {
+        void* allocation = HeapAlloc(sizeof(MenuString), 0);
+        g_Menu->unk1DE0[i] = allocation;
+        bzero(allocation, sizeof(MenuString));
+        if ((i & 1) == 0) {
+            void* pixels = HeapAlloc(0x5CA, 0);
+            g_Menu->unk1DE0[i]->pVramBuffer = pixels;
+            g_Menu->unk1DE0[i]->vramDest.x = 0x140;
+            g_Menu->unk1DE0[i]->vramDest.y = 0x4E + (i / 2) * 0xD;
+            g_Menu->unk1DE0[i]->vramDest.w = 0x3A;
+            g_Menu->unk1DE0[i]->vramDest.h = 0xD;
+        } else {
+            g_Menu->unk1DE0[i]->pVramBuffer = g_Menu->unk1DE0[i - 1]->pVramBuffer;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        MenuString* string = g_Menu->unk1DE0[i];
+        void* entry = GetStringEntry(g_Menu->unk2E0, firstString + i);
+        string->width = SystemRenderStringEntry(entry, string->pVramBuffer,
+                                                0x36, i & 1);
+        func_801E7C50(string, i, 0, 0);
+        func_801E920C(&string->polys[g_Menu->renderContext],
+                      0x84, 0xA0 + i * 0x10, 0, 0x4E + (i / 2) * 0xD,
+                      string->width, 0xD);
+        func_801C851C(string->vertices, 0x84, 0xA0 + i * 0x10,
+                      string->width, 0xD);
+        string->unk7F = 1;
+        string->renderContext = (u8)g_Menu->renderContext;
+    }
+    LoadImage(&g_Menu->unk1DE0[0]->vramDest, g_Menu->unk1DE0[0]->pVramBuffer);
+    LoadImage(&g_Menu->unk1DE0[2]->vramDest, g_Menu->unk1DE0[2]->pVramBuffer);
+    DrawSync(0);
+    g_Menu->pManager->unk2E = 1;
+    HeapFree(g_Menu->unk1DE0[0]->pVramBuffer);
+    HeapFree(g_Menu->unk1DE0[2]->pVramBuffer);
+    func_801C7BF4();
+    func_801C7BF4();
+}
+#endif
 
 s32 func_801D32B4(s32 arg0) {
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    if (*(u8*)((u8*)pManager + 0x22) != 0) {
+    if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
         s32 i;
         func_801D4EA0(2);
-        pMenu = g_Menu;
-        ((u8*)g_Menu->pManager)[0x2E] = 0;
+        g_Menu->pManager->unk2E = 0;
         for (i = 0; i < 4; i++) {
-            pMenu = g_Menu;
-            HeapFree(*(void**)((u8*)pMenu + 0x1DE0 + i * 4));
+            HeapFree(g_Menu->unk1DE0[i]);
         }
     }
     func_801C7BF4();
@@ -4292,17 +5204,8 @@ extern void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
  * demand (0/1 come from func_801D2D38).  directParams != 0 stores the raw rect
  * into windowParameters (deferred build); 0 runs the geometry build now
  * (func_801D4D1C). */
-/* K&R-style (unprototyped) on purpose: one retail caller (func_801DE474)
- * passes only 6 args, reading stack residue for the rest — a prototyped def
- * would reject that call at compile time. */
-void func_801D397C(windowIndex, x, y, w, h, directParams, unk714, zIndex,
-                   hasScrollBar)
-u8 windowIndex;
-s32 x, y, w, h;
-u8 directParams, unk714;
-s32 zIndex;
-u8 hasScrollBar;
-{
+void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h, u8 directParams,
+                   u8 unk714, s32 zIndex, u8 hasScrollBar) {
     MenuWindowParameters* pParams;
 
     if (windowIndex >= 2) {
@@ -4336,7 +5239,7 @@ u8 hasScrollBar;
 #endif
 
 #ifndef XENO_PC_PORT
-extern void func_801D4D1C(s32, s32, s32, u16, u8, u16, s32, u8);
+extern void func_801D4D1C(u8, s32, s32, s32, s32, u8, s32, u8);
 #endif
 
 void func_801D3B00(void) {
@@ -4368,12 +5271,12 @@ void func_801D3B00(void) {
             } else {
                 pData->unkA = curH + 0x20;
             }
-            if ((scrollX | scrollY) == 2) {
+            /* Retail increments a completion count once per clamped axis. */
+            if (scrollX + scrollY == 2) {
                 pData->unk11 = 1;
             }
             {
                 u16 h = pData->unkA;
-                u8 flags = pData->index;
                 u16 w = pData->width;
                 u16 x0 = pData->x;
                 u16 y0 = pData->y;
@@ -4381,30 +5284,33 @@ void func_801D3B00(void) {
                 u16 curH2 = pData->height;
                 s32 x = (s32)(x0 + w / 2 - curW2 / 2) & 0xFFFF;
                 s32 y = (s32)(y0 + curH2 / 2 - h / 2) & 0xFFFF;
-                s32 pad = pData->zIndex;
-                u8 pad2 = pData->hasScrollBar;
-                func_801D4D1C(x, y, curW2 | (curH2 << 16), h, flags, w, pad, pad2);
+                func_801D4D1C(pData->index, x, y, curW2, h,
+                              pData->unk12, pData->zIndex, pData->hasScrollBar);
             }
         }
     }
 }
 
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
-extern void func_800263E4(s32, s32, void*, s32, s32, s32, s32, s32);
+extern s32 func_800263E4(u8*, s32, void*, s32, s32, s32, s32, s32, s32);
 
-void func_801D3C4C(u8 slotIdx, u16 x, u16 y, u16 h) {
-    void* pMenu = g_Menu;
-    u8* pBuf = *(u8**)((u8*)pMenu + 0x364 + slotIdx * 4);
-    func_8002675C(*(s32*)((u8*)pMenu + 0x2DC), 0x105, pBuf + 0x410, *(s32*)((u8*)pMenu + 0x308), x, y, 0x1000);
-    {
-        s32 yAdj = (s32)y + (s32)(u16)h - 8;
-        func_800263E4(*(s32*)((u8*)pMenu + 0x2DC), 0x105, pBuf + 0x460, *(s32*)((u8*)pMenu + 0x308), x, yAdj, 0x1000, 0);
-    }
-    pMenu = g_Menu;
-    func_8002675C(*(s32*)((u8*)pMenu + 0x2DC), 0x106, pBuf + 0x3C0, *(s32*)((u8*)pMenu + 0x308), x, y + 8, 0x1000);
-    func_801C851C(pBuf + 0x6D0, x, y, 8, 8);
-    func_801C851C(pBuf + 0x6F0, x, (y + h) & 0xFFFF, 8, (s32)(s16)0xFFF8);
-    func_801C851C(pBuf + 0x6B0, x, (y + 8) & 0xFFFF, 8, (s32)(s16)h);
+void func_801D3C4C(u8 slotIdx, s32 x, s32 y, s32 w, s32 h) {
+    MenuWindow* window = g_Menu->windows[slotIdx];
+    u32 ux = (u16)x;
+    u32 uy = (u16)y;
+    (void)w; /* Retail ignores a3 and reads height from the fifth argument. */
+    func_8002675C(g_Menu->unk2DC, 0x105, &window->polysScrollBarEnds[0],
+                 g_Menu->renderContext, ux, uy, 0x1000);
+    func_800263E4(g_Menu->unk2DC, 0x105, &window->polysScrollBarEnds[2],
+                 g_Menu->renderContext, ux, (s32)(uy + (u16)h) - 8,
+                 0x1000, 0, 1);
+    func_8002675C(g_Menu->unk2DC, 0x106, window->polysScrollBarEmpty,
+                 g_Menu->renderContext, ux, uy + 8, 0x1000);
+    func_801C851C(&window->vertsScrollBarEnds[0], ux, uy, 8, 8);
+    func_801C851C(&window->vertsScrollBarEnds[4], ux,
+                 (u16)((u32)y + (u32)h), 8, 0xFFF8);
+    func_801C851C(window->vertsScrollBarEmpty, ux,
+                 (u16)((u32)y + 8), 8, (u16)((u32)h - 8));
 }
 
 #ifndef XENO_PC_PORT
@@ -4608,9 +5514,7 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
     func_801D4688(windowIndex, x, y, h);
     func_801D49D0(windowIndex, x, y, w, h);
     if (hasScrollBar) {
-        /* retail passes h as a 5th stack arg the 4-param callee never reads
-         * (asm 801D4E1C-801D4E2C); the port drops it. */
-        func_801D3C4C(windowIndex, x, y, w);
+        func_801D3C4C(windowIndex, x, y, w, h);
     }
     pWindow->hasScrollBar = hasScrollBar;
     pWindow->unk714 = unk714;
@@ -4986,7 +5890,9 @@ void func_801D5CF8(s32 x, s32 y) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5ED4);
+#endif
 
 extern s32 D_801EA39C[];
 extern s32 D_801E9B60[];
@@ -4999,7 +5905,7 @@ void func_801D6194(u8 slotType) {
     s32 i;
 
     pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x358);
+    pData = MenuRawPointer(0x358);
     *(u8*)(pData + 0x2AEC) = 0;
 
     for (i = 0; i < 0x18; i++) {
@@ -5009,7 +5915,7 @@ void func_801D6194(u8 slotType) {
 
         pMenu = g_Menu;
         {
-            void* pRender = *(void**)((u8*)pMenu + 0x358);
+            void* pRender = MenuRawPointer(0x358);
             u8 count = *(u8*)(pRender + 0x2AEC);
             s32 off = count * 0xA0 + 0xA0;
             s32 stackArg;
@@ -5027,13 +5933,13 @@ void func_801D6194(u8 slotType) {
                 );
             }
             pMenu = g_Menu;
-            pData = *(void**)((u8*)pMenu + 0x358);
+            pData = MenuRawPointer(0x358);
             *(u8*)(pData + 0x2AEC) = *(u8*)(pData + 0x2AEC) + (u8)val;
         }
     }
 
     pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x358);
+    pData = MenuRawPointer(0x358);
     if (*(u8*)(pData + 0x2AEC) > 0) {
         s32 primOff = 0x1EE0;
         for (i = 0; i < *(u8*)(pData + 0x2AEC); i++) {
@@ -5044,7 +5950,7 @@ void func_801D6194(u8 slotType) {
                 tmp = (tmp + i * 2);
                 entryOff = tmp * 0x28;
             }
-            pData = *(void**)((u8*)pMenu + 0x358);
+            pData = MenuRawPointer(0x358);
             {
                 u16 x0 = *(u16*)(pData + entryOff + 0xA8);
                 u16 y0 = *(u16*)(pData + entryOff + 0xAA);
@@ -5059,17 +5965,14 @@ void func_801D6194(u8 slotType) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D6338);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D680C);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D6CF4);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7154);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D74EC);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7884);
+#endif
 
 void func_801D7C3C(u8 arg0, u8 arg1) {
     func_801D5ED4(arg0, arg1);
@@ -5087,7 +5990,7 @@ void func_801D7C3C(u8 arg0, u8 arg1) {
     }
     {
         void* pMenu = g_Menu;
-        void* pData = *(void**)((u8*)pMenu + 0x358);
+        void* pData = MenuRawPointer(0x358);
         *(u8*)((u8*)pData + 0x2AE0) = *(u8*)((u8*)pMenu + 0x308);
     }
 }
@@ -5104,7 +6007,7 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
     s32 i;
 
     pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x358);
+    pData = MenuRawPointer(0x358);
     *(u8*)(pData + 0x2AED) = 0;
 
     if (arg1 == 0) return;
@@ -5117,7 +6020,7 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
             func_8002675C(
                 *(u8**)((u8*)pM + 0x2DC),
                 D_801E977C[i],
-                *(void**)((u8*)pM + 0x358),
+                MenuRawPointer(0x358),
                 *(s32*)((u8*)pM + 0x308),
                 0x78,
                 0x5A,
@@ -5132,7 +6035,7 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
             s32 tmp = (rc + i * 2);
             entryOff = tmp * 0x28 + 0x1E00;
         }
-        pData = *(void**)((u8*)pMenu + 0x358);
+        pData = MenuRawPointer(0x358);
         {
             u16 x0 = *(u16*)(pData + entryOff + 0x08);
             u16 y0 = *(u16*)(pData + entryOff + 0x0A);
@@ -5153,10 +6056,10 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
             s32 tmp = (rc + inverted * 2);
             entryOff = tmp * 0x28 + 0x1E00;
         }
-        func_801E91C4((POLY_FT4*)(*(void**)((u8*)pMenu + 0x358) + entryOff));
+        func_801E91C4((POLY_FT4*)(MenuRawPointer(0x358) + entryOff));
 
         pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x358);
+        pData = MenuRawPointer(0x358);
         {
             s32 rc = *(s32*)((u8*)pMenu + 0x308);
             s32 tmp = (rc + inverted * 2);
@@ -5168,15 +6071,66 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
         }
 
         pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x358);
+        pData = MenuRawPointer(0x358);
         *(u8*)(pData + 0x2AEE) = *(u8*)((u8*)pMenu + 0x308);
         pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x358);
+        pData = MenuRawPointer(0x358);
         *(u8*)(pData + 0x2AED) = 2;
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
+#else
+extern s32 D_801E9D40[];
+extern s32 D_801E9D5C[];
+extern s32 D_801EA45C[];
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+
+/* Retail 801D7F50..801D827C: seed Equip-row ornament glyphs into the 0x35C
+ * buffer from texture table index 0xE0 / D_801EA45C, then project verts. */
+void func_801D7F50(u8 w, u8 h, u8 gearMode) {
+    u32 uv;
+    s32 tpage, clutX, clutY, texX, texY;
+    u8* data;
+    s32 limit;
+    s32 i;
+    s32 j;
+    s32 rc = g_Menu->renderContext;
+
+    func_80026338((u8*)g_Menu->unk2DC, 0xE0, &uv, &tpage, &clutX, &clutY,
+                  &texX, &texY);
+    data = MenuRawPointer(0x35C);
+    data[0x32F3] = 0;
+    limit = 7 - (gearMode & 0xFF);
+    for (i = 0; i < limit; i++) {
+        u8 before = data[0x32F3];
+        s32 glyph = D_801EA45C[(gearMode & 0xFF) * 7 + i];
+        s32 added = func_8002675C(
+            (u8*)g_Menu->unk2DC, glyph, data + before * 0x50, rc,
+            (s32)w + D_801E9D40[i], (s32)h + D_801E9D5C[i], 0x1000);
+        data[0x32F3] = (u8)(before + added);
+        if (i & 1) {
+            for (j = before; j < data[0x32F3]; j++) {
+                u8* poly = data + (j * 2 + rc) * 0x28;
+                SetShadeTex(poly, 0);
+                poly[4] = 0x40;
+                poly[5] = 0x40;
+                poly[6] = 0x40;
+            }
+        }
+    }
+    for (i = 0; i < data[0x32F3]; i++) {
+        u8* poly = data + (i * 2 + rc) * 0x28;
+        u16 x0 = *(u16*)(poly + 0x8);
+        u16 y0 = *(u16*)(poly + 0xA);
+        u16 x1 = *(u16*)(poly + 0x10);
+        u16 y3 = *(u16*)(poly + 0x22);
+        func_801C851C((SVECTOR*)(data + 0x2420 + i * 0x20), x0, y0,
+                      (u16)(x1 - x0), (u16)(y3 - y0));
+    }
+}
+#endif
 
 void func_801D827C(void* pPrims, u8 mode) {
     u8 color[3];
@@ -5253,7 +6207,177 @@ s32 func_801D85DC(s32 arg0, u16* pArr1, u16* pArr2) {
     return (s32)maxVal;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8644);
+#else
+extern s32 D_801E9D78;
+extern s32 D_801E9D7C;
+extern s32 D_801E9D80;
+extern s32 D_801E9D84;
+extern s32 D_801EA6FC;
+extern s32 D_801EA704;
+extern s32 D_801EA708;
+extern s32 D_801EA70C;
+extern u8 D_801EA710;
+extern u8 D_801EA714;
+extern void func_801C80B8(u32 value);
+extern void func_801C851C(SVECTOR* vertices, s32 x, s32 y, s32 w, s32 h);
+
+/* Retail 801D8644..801D8DE4: per-row Equip stat bars + digit glyphs into the
+ * 0x35C buffer.  `listing` selects preview/compare (work+0x280 vs unk330+0xB8). */
+void func_801D8644(u8 slot, u8 w, u8 h, u8 listing, u8 gearMode) {
+    u16* currentStats;
+    u16* baseStats;
+    s32 maxVal;
+    s32 row;
+    s32 limit = 7 - (gearMode & 0xFF);
+    s32 polyOff = 0;
+    s32 rowY = 0;
+    s32 strOffA = 0x2A00;
+    s32 strOffB = 0x2D80;
+    s32 polyRow = 0;
+    u8* data;
+
+    (void)slot;
+    if (listing == 0) {
+        baseStats = (u16*)((u8*)g_Menu->unk330 + 0xB8);
+        currentStats = baseStats;
+    } else {
+        currentStats = (u16*)(MenuRawPointer(0x360) + 0x280);
+        baseStats = (u16*)((u8*)g_Menu->unk330 + 0xB8);
+    }
+    maxVal = func_801D85DC(0, currentStats, baseStats);
+    if (maxVal <= 0) {
+        /* Harness cold-boot stats can be all zero; retail PSX div-by-zero is
+         * undefined — host SIGFPE if we call func_801D84B4 with maxVal==0. */
+        return;
+    }
+    if (limit <= 0) {
+        return;
+    }
+
+    for (row = 0; row < limit; row++) {
+        s32 i;
+        u16 cur = currentStats[row];
+        u16 base = baseStats[row];
+        u8* rowData;
+
+        data = MenuRawPointer(0x35C);
+        rowData = data + row;
+        rowData[0x32C0] = 0;
+        rowData[0x32CE] = 0;
+
+        /* Retail 801D8778: a0=currentStats[row] (0x38), a1=baseStats[row]
+         * (0x40), a2=maxVal. */
+        func_801D84B4(cur, base, maxVal);
+        func_801D827C(data + polyRow + 0x2030, 0);
+        func_801C851C((SVECTOR*)(data + 0x3100 + row * 0x20),
+                      (u16)((u16)D_801E9D78 + w),
+                      (u16)((u16)D_801E9D7C + h + rowY),
+                      (u16)D_801EA708, 6);
+        rowData[0x32DC] = (u8)g_Menu->renderContext;
+        func_801C80B8((u32)D_801EA6FC);
+
+        for (i = 0; i < 4; i++) {
+            u8 d = g_Menu->digits[5 + i];
+            if (d == 0xFF) {
+                continue;
+            }
+            {
+                s32 before = rowData[0x32C0];
+                s32 added = func_8002675C(
+                    (u8*)g_Menu->unk2DC, d,
+                    data + 0xEB0 + polyOff + before * 0x50,
+                    g_Menu->renderContext,
+                    w + D_801E9D80 + i * 8, h + D_801E9D84 + rowY, 0x1000);
+                rowData[0x32C0] = (u8)(before + added);
+            }
+        }
+
+        if (rowData[0x32C0] > 0) {
+            for (i = 0; i < rowData[0x32C0]; i++) {
+                u8* poly = data + 0xEB0 + polyOff +
+                           (i * 2 + g_Menu->renderContext) * 0x28;
+                u16 x0 = *(u16*)(poly + 0x8);
+                u16 y0 = *(u16*)(poly + 0xA);
+                u16 x1 = *(u16*)(poly + 0x10);
+                u16 y3 = *(u16*)(poly + 0x22);
+                func_801C851C((SVECTOR*)(data + strOffA + i * 0x20), x0, y0,
+                              (u16)(x1 - x0), (u16)(y3 - y0));
+            }
+        }
+        if (row & 1) {
+            func_801D83AC(data + 0xEB0 + polyOff, 2, rowData[0x32C0],
+                          (u8)g_Menu->renderContext);
+        }
+        rowData[0x32C7] = (u8)g_Menu->renderContext;
+
+        if (listing != 0) {
+            s32 barX;
+            func_801D827C(data + polyRow + 0x2228, D_801EA710);
+            if (D_801EA710 == 2) {
+                barX = w + D_801E9D78 + D_801EA708;
+            } else {
+                barX = w + D_801E9D78 + D_801EA708 - D_801EA70C;
+            }
+            func_801C851C((SVECTOR*)(data + 0x31E0 + row * 0x20), (u16)barX,
+                          (u16)(h + (u16)D_801E9D7C + rowY), (u16)D_801EA70C,
+                          6);
+            rowData[0x32E3] = (u8)g_Menu->renderContext;
+
+            if (D_801EA704 != 0) {
+                s32 before = rowData[0x32CE];
+                s32 added = func_8002675C(
+                    (u8*)g_Menu->unk2DC, D_801EA714,
+                    data + 0x1770 + polyOff + before * 0x50,
+                    g_Menu->renderContext, w + D_801E9D80 + 0x20,
+                    h + D_801E9D84 + rowY, 0x1000);
+                s32 xAdvance = 0x28;
+                rowData[0x32CE] = (u8)(before + added);
+                func_801C80B8((u32)D_801EA704);
+                for (i = 0; i < 3; i++) {
+                    u8 d = g_Menu->digits[6 + i];
+                    if (d != 0xFF) {
+                        before = rowData[0x32CE];
+                        added = func_8002675C(
+                            (u8*)g_Menu->unk2DC, d,
+                            data + 0x1770 + polyOff + before * 0x50,
+                            g_Menu->renderContext, w + D_801E9D80 + xAdvance,
+                            h + D_801E9D84 + rowY, 0x1000);
+                        rowData[0x32CE] = (u8)(before + added);
+                        xAdvance += 8;
+                    }
+                }
+
+                if (rowData[0x32CE] > 0) {
+                    for (i = 0; i < rowData[0x32CE]; i++) {
+                        u8* poly = data + 0x1770 + polyOff +
+                                   (i * 2 + g_Menu->renderContext) * 0x28;
+                        u16 x0 = *(u16*)(poly + 0x8);
+                        u16 y0 = *(u16*)(poly + 0xA);
+                        u16 x1 = *(u16*)(poly + 0x10);
+                        u16 y3 = *(u16*)(poly + 0x22);
+                        func_801C851C((SVECTOR*)(data + strOffB + i * 0x20), x0,
+                                      y0, (u16)(x1 - x0), (u16)(y3 - y0));
+                    }
+                }
+                func_801D83AC(data + 0x1770 + polyOff,
+                              (u8)(D_801EA710 - 2), rowData[0x32CE],
+                              (u8)g_Menu->renderContext);
+                rowData[0x32D5] = (u8)g_Menu->renderContext;
+                data[0x32F2] = 1;
+            }
+        }
+
+        rowData[0x32EA] = 1;
+        polyOff += 0x140;
+        rowY += 8;
+        strOffA += 0x80;
+        strOffB += 0x80;
+        polyRow += 0x48;
+    }
+}
+#endif
 
 extern void func_801D7F50(u8, u8, u8);
 extern void func_801D8644(u8, u8, u8, u8, u8);
@@ -5275,12 +6399,200 @@ void func_801D8DE4(u8 arg0, u8 arg1, u8 arg2, u8 arg3) {
     }
     {
         void* pMenu = g_Menu;
-        void* pData = *(void**)((u8*)pMenu + 0x35C);
+        void* pData = MenuRawPointer(0x35C);
         *(u8*)((u8*)pData + 0x32F1) = *(u8*)((u8*)pMenu + 0x308);
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8EA4);
+#else
+extern void* GetWeaponName(s32 index);
+extern void* GetAccessoryName(s32 index);
+extern void* func_80033A2C(s32 index);
+extern void* func_80033A5C(s32 index);
+extern s32 SystemRenderStringEntry(void* string, void* work, s32 height,
+                                   s32 field);
+extern u16 D_801E9D88[];
+
+/* Retail menu.elf 0x801D83B4..0x801D8C14: build the five character/gear
+ * equipment-name rows (four for a nonzero mode), upload their temporary text
+ * strips, and initialize the paired quads and vertices in the 0x2AC work
+ * block owned by g_Menu's retail pointer slot 0x360.
+ *
+ * The visible s32 parameters retain the declaration used by the existing
+ * callers; every argument is narrowed exactly where retail applies andi
+ * 0xFF.  Work-block accesses deliberately use retail byte offsets because
+ * this allocation contains PSX-width MenuString records, not native-inflated
+ * MenuString structs. */
+void func_801D8EA4(s32 slotArg, s32 modeArg, s32 buildTextArg,
+                   s32 renderSlotArg) {
+    u8 slot = (u8)slotArg;
+    u8 mode = (u8)modeArg;
+    u8 buildText = (u8)buildTextArg;
+    u8 renderSlot = (u8)renderSlotArg;
+    u8* work = MenuRawPointer(0x360);
+    u8 characterId = g_Menu->pManager->currentCharacterIDs[slot];
+    u8* character = (u8*)&g_GameState.characters[characterId];
+    u8* firstEquipment = character + 0x6A;
+    u8* secondEquipment = character + 0x6F;
+    u8* accessories = character + 0x74;
+    u8* renderBuffer;
+    s32 rowCount = 5;
+    s32 baseX = 0xD0;
+    s32 labelOffset = 0;
+    s32 row;
+    /* Retail leaves the first stack byte indeterminate on render-slot paths.
+     * Normalize only that first value; all later assignments/carry behavior
+     * below remains identical. Exact caller-stack residue is UNRESOLVED until
+     * it can be captured from retail hardware/emulation, so this branch is
+     * not claimed as bit-exact parity. */
+    u8 upload = 0;
+
+    if (mode != 0) {
+        rowCount = 4;
+        baseX = 0x28;
+        labelOffset = 9;
+        if (mode == 1) {
+            labelOffset = 5;
+        }
+        work[0x298] = 0;
+    }
+
+    if (renderSlot != 0) {
+        u8* gear = (u8*)&g_GameState.gears[character[0xA0]];
+
+        firstEquipment = gear + 0xC;
+        secondEquipment = gear + 4;
+        accessories = gear + 9;
+    }
+
+    if (buildText != 0) {
+        firstEquipment = work + 0x29C;
+        secondEquipment = work + 0x2A1;
+        accessories = work + 0x2A6;
+    }
+
+    renderBuffer = HeapAlloc(0x3F6, 0);
+    for (row = 0; row < rowCount; row++) {
+        u8* line = work + row * 0x80;
+        void* name;
+        s32 textField = row & 1;
+        s32 renderName = 1;
+
+        if (row == 0) {
+            u8 equipment = mode == 2 ? secondEquipment[0]
+                                     : firstEquipment[0];
+
+            name = renderSlot == 0 ? GetWeaponName(equipment)
+                                   : func_80033A5C(equipment);
+        } else if (row == 4 && renderSlot == 0) {
+            renderName = 0;
+        } else {
+            if (mode < 2) {
+                if (renderSlot == 0) {
+                    name = GetAccessoryName(accessories[row - 1]);
+                } else if (mode == 0) {
+                    if (row == 1) {
+                        name = func_80033A5C(firstEquipment[3]);
+                    } else {
+                        name = func_80033A2C(accessories[row - 2]);
+                    }
+                } else {
+                    name = func_80033A2C(accessories[row - 1]);
+                }
+            } else if (renderSlot == 0) {
+                name = GetWeaponName(secondEquipment[row]);
+            } else {
+                name = func_80033A5C(secondEquipment[row]);
+            }
+        }
+
+        if (renderName != 0) {
+            line[0x7E] = (u8)SystemRenderStringEntry(
+                name, renderBuffer, 0x24, textField);
+        }
+
+        /* After the normalized first value, this is retail's assignment and
+         * carry graph: even render-slot rows reuse the preceding stack byte. */
+        if ((row & 1) != 0) {
+            upload = 1;
+        } else if (renderSlot == 0) {
+            upload = 0;
+        } else if (mode == 0 && row == 4) {
+            upload = 1;
+        }
+
+        if (upload != 0) {
+            RECT rect;
+
+            rect.x = (s16)(0x140 + ((row << 4) & 0x20));
+            rect.y = (s16)(0x27 + (row / 4) * 0xD);
+            rect.w = 0x28;
+            rect.h = 0xD;
+            LoadImage(&rect, (u_long*)renderBuffer);
+            DrawSync(0);
+        }
+
+        /* func_801E7C50 is a source-backed dependency whose native MenuString
+         * has an eight-byte pointer at retail offset 0x78.  Stage only the
+         * fields that routine consumes, then copy its two retail 0x28-byte
+         * polygons and trailing bytes back into this PSX-width work record. */
+        {
+            MenuString nativeLine;
+            u8* nativeBytes = (u8*)&nativeLine;
+            s32 byte;
+
+            for (byte = 0; byte < 0x50; byte++) {
+                nativeBytes[byte] = line[byte];
+            }
+            nativeLine.width = line[0x7E];
+            nativeLine.unk7C = line[0x7C];
+            func_801E7C50(&nativeLine, row, 0xC, 0);
+            for (byte = 0; byte < 0x50; byte++) {
+                line[byte] = nativeBytes[byte];
+            }
+            line[0x7C] = nativeLine.unk7C;
+            line[0x7F] = nativeLine.unk7F;
+        }
+
+        if (row == 4 && renderSlot == 0) {
+            u8* poly = work + 0x200 + g_Menu->renderContext * 0x28;
+            s32 atlasX = (*(s32*)(D_801EA584 + slot * 4) << 2) & 0xFC;
+            u8 atlasY = ((u8*)D_801EA5D0)[slot * 4];
+
+            *(u16*)(poly + 0x16) = GetTPage(0, 0, 0x180, 0);
+            *(u16*)(poly + 0x0E) =
+                ((character[0xA0] + 0xB) & 1) != 0
+                    ? g_SystemPalette2
+                    : g_SystemPalette1;
+            poly[0x0C] = (u8)atlasX;
+            poly[0x0D] = atlasY;
+            poly[0x14] = (u8)(atlasX + 0x60);
+            poly[0x15] = atlasY;
+            poly[0x1C] = (u8)atlasX;
+            poly[0x1D] = (u8)(atlasY + 0xD);
+            poly[0x24] = (u8)(atlasX + 0x60);
+            poly[0x25] = (u8)(atlasY + 0xD);
+            line[0x7E] = 0x60;
+        }
+
+        /* Retail 0x801D9630..0x801D9640: `sll (labelOffset+row), 2` then
+         * `lhu` -- the row-Y table is a word-stride array whose low
+         * halfword holds the Y (data.s: .short Y / .short 0 pairs).  A
+         * halfword-stride read returns 0 for every odd index and the wrong
+         * row for the rest (mode 1 rows landed at 0/159/0/174 instead of
+         * 30/57/70/83). */
+        func_801C851C((SVECTOR*)(line + 0x50), baseX,
+                      D_801E9D88[(labelOffset + row) * 2], line[0x7E], 0xD);
+        work[0x294 + row] = 1;
+    }
+
+    work[0x299] = (u8)g_Menu->renderContext;
+    g_Menu->pManager->unk4A[1] = 1;
+    HeapFree(renderBuffer);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9704);
@@ -5372,7 +6684,9 @@ s32 backward, gearMode;
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9808);
+#endif
 
 void func_801D9B08(void) {
     func_801C8960();
@@ -5383,14 +6697,14 @@ void func_801D9B08(void) {
     DrawSync(0);
     Vsync(0);
     EnterCriticalSection();
-    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FEC) = OpenEvent(0xF4000001, 0x4, 0x2000, NULL);
-    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF0) = OpenEvent(0xF4000001, 0x8000, 0x2000, NULL);
-    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF4) = OpenEvent(0xF4000001, 0x100, 0x2000, NULL);
-    *(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF8) = OpenEvent(0xF4000001, 0x2000, 0x2000, NULL);
-    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FEC));
-    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF0));
-    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF4));
-    EnableEvent(*(void**)((u8*)*(void**)((u8*)g_Menu + 0x32C) + 0x4FF8));
+    MenuSetCardEvent(0, OpenEvent(0xF4000001, 0x4, 0x2000, NULL));
+    MenuSetCardEvent(1, OpenEvent(0xF4000001, 0x8000, 0x2000, NULL));
+    MenuSetCardEvent(2, OpenEvent(0xF4000001, 0x100, 0x2000, NULL));
+    MenuSetCardEvent(3, OpenEvent(0xF4000001, 0x2000, 0x2000, NULL));
+    EnableEvent(MenuCardEvent(0));
+    EnableEvent(MenuCardEvent(1));
+    EnableEvent(MenuCardEvent(2));
+    EnableEvent(MenuCardEvent(3));
     ExitCriticalSection();
 }
 
@@ -5508,42 +6822,37 @@ void func_801D9F34(void) {
     func_801E8018(6, (u8*)pMenu + 0xDE0, pTable, (u8*)(g_Menu->pManager) + 0x1A);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
+#endif
 
 extern u8 D_801EA548[];
 
 void func_801DA4A8(void) {
-    void* pMenu;
-    void* work;
+    ItemMenuWork* work;
 
     func_801D22F4(2);
-    pMenu = g_Menu;
-    func_801E8018(8, (u8*)pMenu + 0x10E0, D_801EA548,
-                   (u8*)(g_Menu->pManager) + 0x38);
-    work = HeapAlloc(0x1198, 0);
-    pMenu = g_Menu;
-    *(void**)((u8*)pMenu + 0x42C) = work;
-    bzero(work, 0x1198);
+    func_801E8018(8, g_Menu->itemMenuStrings, D_801EA548,
+                   g_Menu->pManager->unk38);
+    /* Retail allocates/clears 0x1198 bytes and publishes at +0x42C.
+     * Embedded MenuStrings expand on the host; use their owning types. */
+    work = HeapAlloc(sizeof(ItemMenuWork), 0);
+    g_Menu->unk42C[0] = (u32)(uintptr_t)work;
+    bzero(work, sizeof(ItemMenuWork));
     func_801C72BC(0);
 }
 
 void func_801DA518(void) {
-    void* pMenu;
-    void* pWork;
-
     func_801D3444();
     func_801D4EA0(3);
     func_801D4EA0(4);
-    pMenu = g_Menu;
-    ((u8*)g_Menu->pManager)[0x48] = 0;
+    g_Menu->pManager->unk48 = 0;
     func_801C72BC(0x10);
-    pMenu = g_Menu;
-    pWork = *(void**)((u8*)pMenu + 0x42C);
-    HeapFree(*(void**)((u8*)pWork + 0x1180));
-    pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x42C));
-    pMenu = g_Menu;
-    HeapFree(*(void**)(*(void**)((u8*)pMenu + 0x330) + 0x1C));
+    /* Preserve retail's explicit releases after the resource-mode call. */
+    HeapFree((void*)(uintptr_t)
+        ((ItemMenuWork*)(uintptr_t)g_Menu->unk42C[0])->descriptionBundle);
+    HeapFree((void*)(uintptr_t)g_Menu->unk42C[0]);
+    HeapFree(g_Menu->unk330->pItemsData);
 }
 
 #ifndef XENO_PC_PORT
@@ -6003,7 +7312,9 @@ extern u8 D_80059171;
 extern u8 D_801E9785;
 extern void func_801C7BF4(void);
 extern void func_801C8574(s32);
-extern void func_801D397C();  /* unprototyped: see the K&R def above */
+extern void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+                          u8 directParams, u8 unk714, s32 zIndex,
+                          u8 hasScrollBar);
 extern void func_801D4EA0(s32);
 extern u8 func_801D9704();  /* unprototyped: see the K&R def above */
 extern void func_801DA5BC(s32);
@@ -6863,7 +8174,9 @@ void func_801DD5E8(u8 charIdx) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD790);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DDF24);
@@ -7012,18 +8325,88 @@ s32 func_801DE29C(s32 charSel, s32 openAnim) {
 extern u8 D_801EA558[];
 extern void func_801D22F4(s32);
 extern void func_801DB02C(s32);
+#ifdef XENO_PC_PORT
+extern void* GetStringEntry(void* bundle, s32 index);
+extern s32 SystemRenderStringEntry(void* string, void* work, s32 height,
+                                   s32 field);
+extern void func_801E7C50(MenuString*, s32, s32, s32);
+#endif
+
+#ifdef XENO_PC_PORT
+/* Build descriptor pairs into a packed retail MenuString bank (0x80/slot).
+ * Native E7E68 strides sizeof(MenuString)==152; Equip's unk14E0 is the
+ * packed u8[0x900] bank that E8070 mode 3 / D0F54 also address at 0x80. */
+static void MenuPackedE7E68(u8* strings, u8* descriptorIds, s32 yOffset,
+                            s32 count) {
+    s32 index = 0;
+
+    while (index < count) {
+        u8* firstLine = strings + index * 0x80;
+        u8* secondLine = strings + (index + 1) * 0x80;
+        s32 row = (index + yOffset) / 4;
+        MenuString nativeFirst;
+        MenuString nativeSecond;
+        RECT vramDest;
+        s32 byte;
+
+        firstLine[0x7E] = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, descriptorIds[0]),
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 0);
+        secondLine[0x7E] = (u8)SystemRenderStringEntry(
+            GetStringEntry(g_Menu->unk2E0, descriptorIds[1]),
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 1);
+
+        vramDest.x = (s16)(0x140 + ((index << 4) & 0x20));
+        vramDest.y = (s16)(row * 0xD);
+        vramDest.w = 0x1C;
+        vramDest.h = 0xD;
+
+        memset(&nativeFirst, 0, sizeof(nativeFirst));
+        memset(&nativeSecond, 0, sizeof(nativeSecond));
+        for (byte = 0; byte < 0x50; byte++) {
+            ((u8*)&nativeFirst)[byte] = firstLine[byte];
+            ((u8*)&nativeSecond)[byte] = secondLine[byte];
+        }
+        nativeFirst.width = firstLine[0x7E];
+        nativeSecond.width = secondLine[0x7E];
+        nativeFirst.unk7C = firstLine[0x7C];
+        nativeSecond.unk7C = secondLine[0x7C];
+        func_801E7C50(&nativeFirst, index, yOffset, 0);
+        func_801E7C50(&nativeSecond, index + 1, yOffset, 0);
+        for (byte = 0; byte < 0x50; byte++) {
+            firstLine[byte] = ((u8*)&nativeFirst)[byte];
+            secondLine[byte] = ((u8*)&nativeSecond)[byte];
+        }
+        firstLine[0x7C] = nativeFirst.unk7C;
+        firstLine[0x7F] = nativeFirst.unk7F;
+        secondLine[0x7C] = nativeSecond.unk7C;
+        secondLine[0x7F] = nativeSecond.unk7F;
+
+        LoadImage(&vramDest, (u_long*)g_Menu->unk4E0[0].pVramBuffer);
+        descriptorIds += 2;
+        index += 2;
+        DrawSync(0);
+    }
+}
+#endif
 
 void func_801DE2C8(u8 arg0) {
     void* pBuf = HeapAlloc(0xA1C, NULL);
     void* pMenu = g_Menu;
-    *(void**)((u8*)pMenu + 0x434) = pBuf;
+    /* menu+0x434 → unk42C[2] via MenuStoreRawPointer remap. */
+    MenuStoreRawPointer(0x434, pBuf);
     bzero(pBuf, 0xA1C);
     {
         u8* pTable = D_801EA558 + arg0 * 6;
         pMenu = g_Menu;
         {
+#ifdef XENO_PC_PORT
+            (void)pMenu;
+            MenuPackedE7E68(g_Menu->unk14E0, pTable, 4, 6);
+#else
             void* pManager = g_Menu->pManager;
-            func_801E8018(6, (u8*)pMenu + 0x14E0, pTable, (u8*)pManager + 0x40);
+            func_801E8018(6, g_Menu->unk14E0, pTable, (u8*)pManager + 0x40);
+#endif
         }
     }
     func_801C72BC(7);
@@ -7044,8 +8427,18 @@ void func_801DE36C(void) {
     func_801E8044(6, (u8*)(g_Menu->pManager) + 0x40);
     func_801C72BC(0x17);
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x434));
+    HeapFree(MenuRawPointer(0x434));
     func_801D3444();
+#ifdef XENO_PC_PORT
+    /* TEST TOOLING: remove with Equip acceptance harness. */
+    {
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (ft && ft[0] == '1') {
+            printf("[xeno-port][test] Equip teardown complete; main nav rebuilt\n");
+            fflush(stdout);
+        }
+    }
+#endif
 }
 
 void func_801DE400(void) {
@@ -7057,91 +8450,705 @@ void func_801DE400(void) {
     *(u8*)((u8*)pManager + 0x4B) = 0;
     func_801C7BF4();
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x35C));
+    HeapFree(MenuRawPointer(0x35C));
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x360));
+    HeapFree(MenuRawPointer(0x360));
 }
 
 extern u8 D_801EA558[];
 extern u8 D_801E9EA0[];
-#ifndef XENO_PC_PORT
-extern void func_801E8070(void*, void*, void*, void*, s32, s32, s32, s32);
-extern void func_801D397C(s32, s32, s32, s32, s32, s32);
-#endif
+extern void func_801E8070(s32, void*, void*, void*, void*, s32, s32, s32);
 
 void func_801DE474(u8 arg0, u8 arg1) {
     s32 i;
     s32 start, end;
     s32 yOff;
-    void* pMenu;
     for (i = 0; i < 6; i++) {
-        pMenu = g_Menu;
         ((u8*)g_Menu->pManager)[0x40 + i] = 0;
     }
     if (arg0) {
-        start = 2; end = 6; yOff = 0x72;
+        start = 2;
+        end = 6;
+        yOff = 0x72;
     } else {
-        start = 0; end = 2; yOff = 0x5A;
+        start = 0;
+        end = 2;
+        yOff = 0x5A;
     }
+    /* Retail 801DE4FC..: E8070(count=6, strings@menu+0x14E0, idTable,
+     * offTable, flags@manager+0x40, selected=i, arg6=i, mode=3). */
     for (i = start; i < end; i++) {
         u8* pTable = D_801EA558 + arg1 * 6;
-        void* pManager;
-        pMenu = g_Menu;
-        pManager = g_Menu->pManager;
-        func_801E8070((u8*)pMenu + 0x14E0, pTable, D_801E9EA0, (u8*)pManager + 0x40, i, i, 3, (u8*)pManager + 0x40);
+        func_801E8070(6, g_Menu->unk14E0, pTable, D_801E9EA0,
+                      (u8*)g_Menu->pManager + 0x40, i, i, 3);
     }
-    pMenu = g_Menu;
-    if (((u8*)g_Menu->pManager)[0x24] != 0) {
+    /* Retail 801DE56C: beqz shouldRenderWindow[4] has delay-slot ori a0,4
+     * so BOTH arms fall into D397C(4,...).  The nonzero arm frees first.
+     * (An earlier port used window 6 from the E8070 loop's a0 residue.) */
+    if (g_Menu->pManager->shouldRenderWindow[4] != 0) {
         func_801D4EA0(4);
     }
-    func_801D397C(yOff, 0x10, 0xC, 0x80, 1, 0);
+    func_801D397C(4, 0x10, 0xC, 0x80, yOff, 0, 1, 4, 0);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE5CC);
+#else
+extern u8 D_801EA730[];
+extern u8 D_801EA7F8[];
+extern void* GetWeaponName(s32 index);
+extern void* GetAccessoryName(s32 index);
+extern void* func_80033A2C(s32 index);
+extern void* func_80033A5C(s32 index);
+extern s32 SystemRenderStringEntry(void* string, void* work, s32 height,
+                                   s32 field);
+extern void func_80033B34(u16* src, u8* dst, s32 count);
+extern void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF0D4);
+/* Retail Equip list builder/renderer 801DE5CC..801DF0D0 (2824 bytes).
+ * Fills D_801EA730 / D_801EA7F8, paints eight rows from `page`, returns
+ * max(0, filled-8). The 0x434 work buffer keeps PSX MenuString byte layout. */
+static void EquipListStageE7C50(u8* line, s32 row, s32 u0, s32 u1) {
+    MenuString nativeLine;
+    u8* nativeBytes = (u8*)&nativeLine;
+    s32 byte;
+    for (byte = 0; byte < 0x50; byte++) nativeBytes[byte] = line[byte];
+    nativeLine.width = line[0x7E];
+    nativeLine.unk7C = line[0x7C];
+    func_801E7C50(&nativeLine, row, u0, u1);
+    for (byte = 0; byte < 0x50; byte++) line[byte] = nativeBytes[byte];
+    line[0x7C] = nativeLine.unk7C;
+    line[0x7F] = nativeLine.unk7F;
+}
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF5D0);
+s32 func_801DE5CC(s32 selectedArg, s32 pageArg, s32 categoryArg, s32 groupArg,
+                  s32 gearModeArg) {
+    u8 selected = (u8)selectedArg;
+    s32 page = pageArg;
+    s32 category = categoryArg;
+    u8 group = (u8)groupArg;
+    u8 gearMode = (u8)gearModeArg;
+    MenuManager* manager = g_Menu->pManager;
+    u8* work = MenuRawPointer(0x360);
+    u8* state = (u8*)&g_GameState;
+    MenuUnk6* resources = g_Menu->unk330;
+    u8* listBuf;
+    u8 type;
+    s32 limit;
+    u8* equippedWeapon = NULL;
+    u8* equippedGearWeapon = NULL;
+    u8* equippedAccessory = NULL;
+    u16 slotMask = 0;
+    u16 otherMask = 0;
+    s32 filled;
+    s32 i;
+    s32 isAccessory;
+    u32 rawPtr;
+    u8* weapons;
+    u8* accessories;
+    u8* gearAccessories;
+    u8* gearWeapons;
+    listBuf = MenuRawPointer(0x434);
+    weapons = (u8*)resources->pWeaponsData;
+    accessories = (u8*)resources->pAccessoriesData;
+    memcpy(&rawPtr, resources->unk8 + 0xC, 4);
+    gearAccessories = (u8*)(uintptr_t)rawPtr;
+    memcpy(&rawPtr, resources->unk8 + 0x10, 4);
+    gearWeapons = (u8*)(uintptr_t)rawPtr;
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF890);
+    if (group) {
+        type = (u8)(category + 1);
+        limit = 100;
+        if (!gearMode) {
+            u8 id = work[0x29C + category];
+            equippedWeapon = weapons + (id << 4);
+        } else {
+            u8 id = work[0x29C + category];
+            equippedGearWeapon = gearWeapons + id * 20;
+        }
+    } else if (!gearMode) {
+        if (category) {
+            type = 5;
+            limit = 200;
+            equippedAccessory = accessories + (work[0x2A5 + category] << 4);
+            slotMask = *(u16*)(equippedAccessory + 0xE);
+            otherMask = 0;
+            for (i = 0; i < 3; i++) {
+                u8* entry = accessories + (work[0x2A6 + i] << 4);
+                otherMask |= *(u16*)(entry + 0xE);
+            }
+        } else {
+            type = 0;
+            limit = 100;
+        }
+    } else if (category) {
+        type = 5;
+        limit = 150;
+        equippedAccessory = gearAccessories + work[0x2A5 + category] * 28;
+        slotMask = *(u16*)(equippedAccessory + 8);
+        otherMask = 0;
+        for (i = 0; i < 3; i++) {
+            u8* entry = gearAccessories + work[0x2A6 + i] * 28;
+            otherMask |= *(u16*)(entry + 8);
+        }
+    } else {
+        type = 0;
+        limit = 100;
+    }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFB68);
+    for (i = 0; i < 0x190; i++) D_801EA730[i] = 0;
 
-extern void func_801E3ECC(void*, u8);
-extern void func_801E3C2C(s32, u8);
+    isAccessory = type == 5;
+    filled = isAccessory;
+    if (limit) {
+        u8* charWeaponIds = state + 0x1D9C;
+        u8* charWeaponCounts = state + 0x1D38;
+        u8* charAccIds = state + 0x1EC8;
+        u8* charAccCounts = state + 0x1E00;
+        u8* gearWeaponIds = state + 0x2120;
+        u8* gearWeaponCounts = state + 0x20BC;
+        u8* gearAccIds = state + 0x221A;
+        u8* gearAccCounts = state + 0x2184;
+        u8* outIds = D_801EA730 + filled;
+        u8* outCounts = D_801EA7F8 + filled;
 
-void func_801DFE2C(u8 slotIdx) {
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    u8 charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
-    u8* pEntry = (u8*)&g_GameState + 0x30C + charIdx * 0x28;
-    u8 entryByte = pEntry[0];
-    s32 gameData = *(s32*)((u8*)pMenu + 0x330);
-    func_801E3ECC(gameData, entryByte);
-    pMenu = g_Menu;
-    pManager = g_Menu->pManager;
-    charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
-    pEntry = (u8*)&g_GameState + 0x30C + charIdx * 0x28;
-    entryByte = pEntry[0];
-    gameData = *(s32*)((u8*)pMenu + 0x330);
-    func_801E3C2C(gameData, entryByte);
+        for (i = 0; i < limit; i++) {
+            u8 accept = 0;
+            u8 charId = manager->currentCharacterIDs[selected];
+            if (!gearMode) {
+                if (type < 5) {
+                    u8* weapon = weapons + (charWeaponIds[i] << 4);
+                    if (type == 0) {
+                        if (func_801C865C(*(u16*)weapon, charId) &&
+                            weapon[6] < 5 && charWeaponIds[i] < 0x32) {
+                            accept = 1;
+                        }
+                    } else if (func_801C865C(*(u16*)weapon, charId) &&
+                               weapon[6] == equippedWeapon[6] &&
+                               charWeaponIds[i] >= 0x32) {
+                        accept = 1;
+                    }
+                } else {
+                    u8* item = accessories + (charAccIds[i] << 4);
+                    if (func_801C865C(*(u16*)item, charId)) {
+                        u16 flags = *(u16*)(item + 0xE);
+                        if (!flags || (slotMask & flags)) accept = 1;
+                        else if (!(otherMask & flags)) accept = 1;
+                    }
+                }
+            } else {
+                u8 gearId = state[0x30C + charId * 0xA4];
+                if (type < 5) {
+                    u8* weapon = gearWeapons + gearWeaponIds[i] * 20;
+                    if (type == 0) {
+                        if (func_801C8678(*(u32*)(weapon + 4), gearId) &&
+                            weapon[0xF] < 5 && gearWeaponIds[i] < 0x32) {
+                            accept = 1;
+                        }
+                    } else if (func_801C8678(*(u32*)(weapon + 4), gearId) &&
+                               weapon[0xF] == equippedGearWeapon[0xF] &&
+                               gearWeaponIds[i] >= 0x32) {
+                        accept = 1;
+                    }
+                } else {
+                    u8* item = gearAccessories + gearAccIds[i] * 28;
+                    if (func_801C8678(*(u32*)item, gearId)) {
+                        u16 flags = *(u16*)(item + 8);
+                        if (!flags || (slotMask & flags)) accept = 1;
+                        else if (!(otherMask & flags)) accept = 1;
+                    }
+                }
+            }
+
+            if (accept) {
+                if (!gearMode) {
+                    if (type == 5) {
+                        outIds[0] = charAccIds[i];
+                        outCounts[0] = charAccCounts[i];
+                    } else {
+                        outIds[0] = charWeaponIds[i];
+                        outCounts[0] = charWeaponCounts[i];
+                    }
+                } else if (type == 5) {
+                    outIds[0] = gearAccIds[i];
+                    outCounts[0] = gearAccCounts[i];
+                } else {
+                    outIds[0] = gearWeaponIds[i];
+                    outCounts[0] = gearWeaponCounts[i];
+                }
+                outIds++;
+                outCounts++;
+                filled++;
+            }
+        }
+    }
+
     {
-        void* pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xB8) = *(u16*)((u8*)pGameData + 0xB0);
-        pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xBA) = *(u16*)((u8*)pGameData + 0xA4);
-        pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xBC) = *(u16*)((u8*)pGameData + 0xA6);
-        pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xBE) = *(u8*)((u8*)pGameData + 0xB2);
-        pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xC0) = *(u8*)((u8*)pGameData + 0xB3);
-        pGameData = *(void**)((u8*)pMenu + 0x330);
-        *(u16*)((u8*)pGameData + 0xC2) = *(u8*)((u8*)pGameData + 0xB4);
+        u8* renderBuffer = HeapAlloc(0x3F6, 0);
+        s32 row;
+        s32 y = 0x12;
+        s32 nameOff = 0;
+        s32 countOff = 0x400;
+        for (row = 0; row < 8; row++, page++) {
+            u8 itemId = D_801EA730[page];
+            if (itemId) {
+                void* name;
+                u16 digits[2];
+                u8 digitBuf[8];
+                u8 tens;
+                u8 ones;
+                u8* nameLine = listBuf + nameOff;
+                u8* countLine = listBuf + countOff;
+                s32 width;
+                RECT rect;
+
+                if (!gearMode) {
+                    name = type == 5 ? GetAccessoryName(itemId)
+                                     : GetWeaponName(itemId);
+                } else {
+                    name = type == 5 ? func_80033A2C(itemId)
+                                     : func_80033A5C(itemId);
+                }
+                width = SystemRenderStringEntry(name, renderBuffer, 0x24, 0);
+                nameLine[0x7E] = (u8)width;
+
+                tens = (u8)(D_801EA7F8[page] / 10);
+                ones = (u8)(D_801EA7F8[page] - tens * 10);
+                digits[0] = tens ? (u16)(tens + 0x10) : 0xC3;
+                digits[1] = (u16)(ones + 0x10);
+                func_80033B34(digits, digitBuf, 2);
+                width = SystemRenderStringEntry(digitBuf, renderBuffer, 0x24, 1);
+                countLine[0x7E] = (u8)width;
+
+                /* Retail: x=((row&1)*3)<<3+0x180; y=(row>>1)*0xD+0x80 */
+                rect.x = (s16)((((row & 1) * 3) << 3) + 0x180);
+                rect.y = (s16)((row >> 1) * 0xD + 0x80);
+                rect.w = 0x28;
+                rect.h = 0xD;
+                LoadImage(&rect, (u_long*)renderBuffer);
+                DrawSync(0);
+
+                EquipListStageE7C50(nameLine, row, 0x80, 0x81);
+                EquipListStageE7C50(countLine, row, 0x80, 0x82);
+                func_801C851C((SVECTOR*)(nameLine + 0x50), 0xA8, y,
+                              nameLine[0x7E], 0xD);
+                func_801C851C((SVECTOR*)(countLine + 0x50), 0x10C, y,
+                              countLine[0x7E], 0xD);
+                nameLine[0x7D] = ((u8*)g_Menu)[0x308];
+                countLine[0x7D] = ((u8*)g_Menu)[0x308];
+                listBuf[0xA10 + row] = 1;
+            } else {
+                listBuf[0xA10 + row] = 0;
+            }
+            y += 0xD;
+            nameOff += 0x80;
+            countOff += 0x80;
+        }
+        HeapFree(renderBuffer);
+    }
+
+#ifndef XENO_EQUIP_LIST_TEST
+    /* listBuf+0x800 is a PSX-width MenuString (0x80).  Native D36E0 writes
+     * sizeof(MenuString)==152 — stage through a host MenuString and pack
+     * polys/vertices/meta back so description lines at +0x880 stay intact. */
+    {
+        u8* line = listBuf + 0x800;
+        MenuString nativeTitle;
+        u8* nativeBytes = (u8*)&nativeTitle;
+        s32 byte;
+
+        memset(&nativeTitle, 0, sizeof(nativeTitle));
+        for (byte = 0; byte < 0x50; byte++) {
+            nativeBytes[byte] = line[byte];
+        }
+        memcpy(nativeTitle.vertices, line + 0x50, sizeof(SVECTOR) * 4);
+        nativeTitle.width = line[0x7E];
+        nativeTitle.unk7C = line[0x7C];
+        nativeTitle.renderContext = line[0x7D];
+        func_801D36E0(&nativeTitle, selected, gearMode, 0);
+        for (byte = 0; byte < 0x50; byte++) {
+            line[byte] = nativeBytes[byte];
+        }
+        memcpy(line + 0x50, nativeTitle.vertices, sizeof(SVECTOR) * 4);
+        line[0x7C] = nativeTitle.unk7C;
+        line[0x7D] = nativeTitle.renderContext;
+        line[0x7E] = nativeTitle.width;
+        line[0x7F] = nativeTitle.unk7F;
+    }
+#endif
+    filled -= 8;
+    ((u8*)manager)[0x4C] = 1;
+    if (filled < 0) filled = 0;
+    return filled;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF0D4);
+#else
+/* The native data_game_state.c owner allocates 0x4600 bytes. GameState
+ * currently describes only the prefix; this helper also accesses the tail. */
+extern u8 MenuEquipmentStateStorage[0x4600] __asm__("g_GameState");
+
+/* Retail commit of the preview selection and inventory reconciliation. */
+s32 func_801DF0D4(s32 slotArg, s32 categoryArg, s32 groupArg, s32 modeArg) {
+    u8* state = MenuEquipmentStateStorage;
+    u8* work = MenuRawPointer(0x360);
+    u8 character = g_Menu->pManager->currentCharacterIDs[(u8)slotArg];
+    u8 category = (u8)categoryArg;
+    u8 mode = (u8)modeArg;
+    u32 base = character * 0xA4;
+    u8* ids = state + (mode ? 0x2120 : 0x1D9C);
+    u8* counts = ids - 100;
+    s32 limit = 100, result = 0, i, found;
+    u8* equipped;
+    u8 previous, current;
+    if (mode) base = state[0x30C + base] * 0xA4;
+    if ((u8)groupArg) {
+        u8* markers = state + (mode ? 0x22B6 : 0x2286);
+        equipped = state + base + (mode ? 0x97C : 0x2DB) + category;
+        current = *equipped;
+        previous = work[0x2A1 + category];
+        if (!current) {
+            *equipped = previous;
+            return 0;
+        }
+        if (markers[current] < 100) previous = 0;
+        markers[current] = 100;
+    } else if (!category) {
+        equipped = state + base + (mode ? 0x984 : 0x2D6);
+        current = *equipped;
+        previous = work[0x29C];
+        if (!current) {
+            *equipped = previous;
+            return 0;
+        }
+        result = character == 4;
+    } else {
+        ids = state + (mode ? 0x221A : 0x1EC8);
+        counts = state + (mode ? 0x2184 : 0x1E00);
+        limit = mode ? 150 : 200;
+        current = state[base + (mode ? 0x980 : 0x2DF) + category];
+        previous = work[0x2A5 + category];
+    }
+    if (current) {
+        for (i = 0; i < limit; i++) {
+            if (ids[i] == current) { counts[i]--; break; }
+        }
+    }
+    if (previous) {
+        found = 0;
+        for (i = 0; i < limit; i++) {
+            if (ids[i] == previous) { counts[i]++; found = 1; break; }
+        }
+        if (!found) {
+            for (i = 0; i < limit; i++) {
+                if (!ids[i]) { ids[i] = previous; counts[i] = 1; break; }
+            }
+        }
+    }
+    for (i = 0; i < limit; i++) {
+        if (!counts[i]) ids[i] = 0;
+        else if (counts[i] >= 100) counts[i] = 99;
+    }
+    return result;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF5D0);
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DF890);
+#else
+/* Retail Equip preview snapshot/cancel. Game-state records retain their
+ * 0xA4 byte stride; the resource record contains widened native pointers. */
+void func_801DF5D0(s32 slotArg, s32 modeArg) {
+    u8* work = MenuRawPointer(0x360);
+    u8* state = (u8*)&g_GameState;
+    u8* stats = (u8*)&g_Menu->unk330->unkB8;
+    u32 character = g_Menu->pManager->currentCharacterIDs[(u8)slotArg];
+    u32 base = character * 0xA4;
+    s32 i;
+    for (i = 0; i < 18; i++) work[0x280 + i] = stats[i];
+    if ((u8)modeArg == 0) {
+        for (i = 0; i < 5; i++) {
+            work[0x29C + i] = state[0x2D6 + base + i];
+            work[0x2A1 + i] = state[0x2DB + base + i];
+            work[0x2A6 + i] = state[0x2E0 + base + i];
+        }
+    } else {
+        base = state[0x30C + base] * 0xA4;
+        for (i = 0; i < 4; i++) {
+            work[0x29C + i] = state[0x984 + base + i];
+            work[0x2A1 + i] = state[0x97C + base + i];
+            work[0x2A6 + i] = state[0x981 + base + i];
+        }
     }
 }
 
+void func_801DF890(s32 slotArg, s32 modeArg) {
+    u8* work = MenuRawPointer(0x360);
+    u8* state = (u8*)&g_GameState;
+    u32 character = g_Menu->pManager->currentCharacterIDs[(u8)slotArg];
+    u32 base = character * 0xA4;
+    s32 i;
+    if ((u8)modeArg == 0) {
+        for (i = 0; i < 5; i++) {
+            state[0x2D6 + base + i] = work[0x29C + i];
+            state[0x2DB + base + i] = work[0x2A1 + i];
+        }
+        /* Retail deliberately restores only three bytes of this bank. */
+        for (i = 0; i < 3; i++) state[0x2E0 + base + i] = work[0x2A6 + i];
+    } else {
+        base = state[0x30C + base] * 0xA4;
+        for (i = 0; i < 4; i++) {
+            state[0x984 + base + i] = work[0x29C + i];
+            state[0x97C + base + i] = work[0x2A1 + i];
+        }
+        for (i = 0; i < 3; i++) state[0x981 + base + i] = work[0x2A6 + i];
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFB68);
+#else
+extern u8 D_801EA730[];
+/* Write the selected preview item; the retail caller owns list bounds.
+ * Category is signed/full-width, while slot, group and mode use low bytes. */
+void func_801DFB68(s32 slotArg, s32 category, s32 row, s32 scroll,
+                   s32 groupArg, s32 modeArg) {
+    u8* state = (u8*)&g_GameState;
+    u32 base;
+    s32 offset;
+    if ((u8)groupArg == 0 && (category < 0 || category >= 4)) return;
+    base = g_Menu->pManager->currentCharacterIDs[(u8)slotArg] * 0xA4;
+    if ((u8)modeArg == 0) {
+        offset = (u8)groupArg ? 0x2DB + category :
+                 category == 0 ? 0x2D6 : 0x2DF + category;
+    } else {
+        base = state[0x30C + base] * 0xA4;
+        offset = (u8)groupArg ? 0x97C + category :
+                 category == 0 ? 0x984 : 0x980 + category;
+    }
+    state[base + offset] = D_801EA730[(u32)row + (u32)scroll];
+}
+#endif
+
+extern void func_801E3ECC(void*, u8);
+extern void func_801E3C2C(void*, u8);
+
+void func_801DFE2C(u8 slotIdx) {
+    u8 characterId = g_Menu->pManager->currentCharacterIDs[slotIdx];
+    u8 gearId = ((u8*)&g_GameState)[0x30C + characterId * 0xA4];
+    MenuUnk6* resource;
+    u8* source;
+    u8* destination;
+    func_801E3ECC(g_Menu->unk330, gearId);
+    /* Retail reloads party mapping and resource ownership after each call. */
+    characterId = g_Menu->pManager->currentCharacterIDs[slotIdx];
+    gearId = ((u8*)&g_GameState)[0x30C + characterId * 0xA4];
+    func_801E3C2C(g_Menu->unk330, gearId);
+    resource = g_Menu->unk330;
+    source = resource->unk20;
+    destination = (u8*)&resource->unkB8;
+    *(u16*)(destination + 0) = *(u16*)(source + 0x90);
+    *(u16*)(destination + 2) = *(u16*)(source + 0x84);
+    *(u16*)(destination + 4) = *(u16*)(source + 0x86);
+    *(u16*)(destination + 6) = source[0x92];
+    *(u16*)(destination + 8) = source[0x93];
+    *(u16*)(destination + 10) = source[0x94];
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFF5C);
+#else
+extern u8 D_801EA730[];
+extern void* GetStringEntry(void* bundle, s32 index);
+extern void* GetAccessoryName(s32 index);
+extern s32 SystemRenderStringEntry(void* string, void* work, s32 height,
+                                   s32 field);
+
+/* Retail Equip description renderer 801DFF5C..801E0430 (1240 bytes).
+ * Resolves the focused item id (list row or currently equipped), pulls three
+ * GetStringEntry lines from the category's description bank on listBuf+0xA00..,
+ * and stages them at listBuf+0x880. listBuf+0xA18 is the visible flag. */
+static void EquipDescStageE7C50(u8* line, s32 row, s32 u0, s32 u1) {
+    MenuString nativeLine;
+    u8* nativeBytes = (u8*)&nativeLine;
+    s32 byte;
+    for (byte = 0; byte < 0x50; byte++) nativeBytes[byte] = line[byte];
+    nativeLine.width = line[0x7E];
+    nativeLine.unk7C = line[0x7C];
+    func_801E7C50(&nativeLine, row, u0, u1);
+    for (byte = 0; byte < 0x50; byte++) line[byte] = nativeBytes[byte];
+    line[0x7C] = nativeLine.unk7C;
+    line[0x7F] = nativeLine.unk7F;
+}
+
+void func_801DFF5C(s32 categoryArg, s32 rowArg, s32 pageArg, s32 groupArg,
+                   s32 gearModeArg, s32 modeFlagArg, s32 selectedArg) {
+    u8 category = (u8)categoryArg;
+    u8 group = (u8)groupArg;
+    u8 gearMode = (u8)gearModeArg;
+    u8 modeFlag = (u8)modeFlagArg;
+    u8 selected = (u8)selectedArg;
+    u8* listBuf;
+    u8 itemId;
+    u8 kind;
+    u32 rawPtr;
+    void* bundle = NULL;
+    u8* state = (u8*)&g_GameState;
+    u8 charId;
+    u32 base;
+
+    listBuf = MenuRawPointer(0x434);
+
+    itemId = D_801EA730[rowArg + pageArg];
+    if (modeFlag) itemId = 0xFF;
+    if (itemId == 0) {
+        listBuf[0xA18] = 0;
+        return;
+    }
+
+    kind = 0;
+    if (!group && category) kind = 1;
+    kind = (u8)(kind + (gearMode << 1));
+
+    charId = g_Menu->pManager->currentCharacterIDs[selected];
+    base = charId * 0xA4;
+
+    if (kind == 0) {
+        memcpy(&rawPtr, listBuf + 0xA00, 4);
+        bundle = (void*)(uintptr_t)rawPtr;
+        if (modeFlag) {
+            if (!group) {
+                itemId = state[0x2D6 + base];
+            } else {
+                itemId = state[0x2DB + base + category];
+            }
+        }
+    } else if (kind == 1) {
+        memcpy(&rawPtr, listBuf + 0xA04, 4);
+        bundle = (void*)(uintptr_t)rawPtr;
+        if (modeFlag) itemId = state[0x2DF + base + category];
+    } else if (kind == 2) {
+        memcpy(&rawPtr, listBuf + 0xA08, 4);
+        bundle = (void*)(uintptr_t)rawPtr;
+        if (modeFlag) {
+            u8 gearId = state[0x30C + base];
+            u32 gbase = gearId * 0xA4;
+            if (!group) {
+                itemId = state[0x984 + gbase];
+            } else {
+                itemId = state[0x97C + gbase + category];
+            }
+        }
+    } else if (kind == 3) {
+        memcpy(&rawPtr, listBuf + 0xA0C, 4);
+        bundle = (void*)(uintptr_t)rawPtr;
+        if (modeFlag) {
+            u8 gearId = state[0x30C + base];
+            itemId = state[0x980 + gearId * 0xA4 + category];
+        }
+    }
+
+    if (itemId == 0) {
+        listBuf[0xA18] = 0;
+        return;
+    }
+
+    {
+        u8* renderBuffer = HeapAlloc(0x3F6, 0);
+        s32 line;
+        s32 descOff = 0x880;
+        s32 entryBase = itemId * 3;
+
+        bzero(renderBuffer, 0x3F6);
+        for (line = 0; line < 3; line++) {
+            u8* descLine = listBuf + descOff;
+            s32 width;
+            RECT rect;
+            s32 slot = line + 8;
+
+            width = SystemRenderStringEntry(
+                GetStringEntry(bundle, entryBase + line), renderBuffer, 0x24, 0);
+            descLine[0x7E] = (u8)width;
+#ifdef XENO_PC_PORT
+            {
+                const char* ft = getenv("XENO_FIELD_TEST");
+                if (ft && ft[0] == '1' && modeFlag && line == 0) {
+                    u8* se = (u8*)GetStringEntry(bundle, entryBase);
+                    void* an = GetAccessoryName((s32)itemId);
+                    s32 anW = SystemRenderStringEntry(an, renderBuffer, 0x24, 0);
+                    u16* offs = (u16*)bundle;
+                    s32 i;
+                    s32 nonempty = 0;
+                    s32 firstRich = -1;
+                    s32 richW = 0;
+                    u32 nEnt = offs[0];
+                    if (nEnt > 0x800) nEnt = 0x100;
+                    for (i = 0; i < (s32)nEnt - 1; i++) {
+                        u16 a = offs[2 + i];
+                        u16 b = offs[3 + i];
+                        if ((u16)(b - a) > 2) {
+                            nonempty++;
+                            if (firstRich < 0) {
+                                u8* p = (u8*)bundle + a;
+                                firstRich = i;
+                                richW = SystemRenderStringEntry(
+                                    p, renderBuffer, 0x24, 0);
+                            }
+                        }
+                    }
+                    printf("[xeno-port][test] Equip DFF5C render id=%u "
+                           "entry=%d width=%d se0=%02x%02x "
+                           "accNameW=%d hdr0=%04x nonempty=%d "
+                           "firstRich=%d richW=%d\n",
+                           (unsigned)itemId, entryBase, width,
+                           se ? se[0] : 0, se ? se[1] : 0,
+                           anW, (unsigned)offs[0], nonempty,
+                           firstRich, richW);
+                    {
+                        s32 probeIds[] = {1, 16, 92, 31, firstRich / 3};
+                        s32 pi;
+                        for (pi = 0; pi < 5; pi++) {
+                            s32 pid = probeIds[pi];
+                            u8* p0 = (u8*)GetStringEntry(bundle, pid * 3);
+                            s32 pw = SystemRenderStringEntry(
+                                p0, renderBuffer, 0x24, 0);
+                            void* pn = GetAccessoryName(pid);
+                            s32 nw = SystemRenderStringEntry(
+                                pn, renderBuffer, 0x24, 0);
+                            printf("[xeno-port][test] Equip desc probe "
+                                   "id=%d nameW=%d descW=%d se0=%02x%02x\n",
+                                   pid, nw, pw, p0[0], p0[1]);
+                        }
+                    }
+                    fflush(stdout);
+                }
+            }
+#endif
+
+            rect.x = (s16)((((slot & 1) * 3) << 3) + 0x180);
+            rect.y = (s16)((slot >> 1) * 0xD + 0x80);
+            rect.w = 0x28;
+            rect.h = 0xD;
+            LoadImage(&rect, (u_long*)renderBuffer);
+            DrawSync(0);
+
+#ifndef XENO_EQUIP_DESC_TEST
+            EquipDescStageE7C50(descLine, slot, 0x80, 0x81);
+            func_801C851C((SVECTOR*)(descLine + 0x50), 0x10,
+                          (0x96 + (line << 4)) & 0xFFFE, descLine[0x7E], 0xD);
+#endif
+            descLine[0x7D] = ((u8*)g_Menu)[0x308];
+            descOff += 0x80;
+        }
+        listBuf[0xA18] = 1;
+        HeapFree(renderBuffer);
+    }
+}
+#endif
 
 void func_801E0434(u8 slotIdx, u8 mode) {
     u8* pTable;
@@ -7189,26 +9196,265 @@ void func_801E0434(u8 slotIdx, u8 mode) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E05D0);
+#else
+extern u16 D_801E9DBC[];
+extern s32 func_801DE5CC(s32, s32, s32, s32, s32);
+extern void func_801DF5D0(s32, s32);
+extern void func_801DFB68(s32, s32, s32, s32, s32, s32);
+extern void func_801DFF5C(s32, s32, s32, s32, s32, s32, s32);
+extern void func_801DF890(s32, s32);
+extern s32 func_801DF0D4(s32, s32, s32, s32);
+extern void func_801E36D4(void*, u8);
+extern void func_801E3A80(void*, u8);
+/* Full retail Equip control loop, 801E05D0..801E0F78. Rendering and
+ * equipment-data helpers remain independent owners. */
+void func_801E05D0(u8 selected, u8 openAnimation, u8 gearMode) {
+    s32 page=0, category=0, row=0, count=0;
+    s32 previousCategory=255, previousRow=255, previousPage=255;
+    u8 group=0, previousSelected=255, redraw=1;
+    u8 running=1, initialize=1, preview=0, showRows=0;
+    u8 repeatConfirm=0, listing=0;
+    ((u8*)g_Menu->pManager)[7]=0;
+    func_801DE2C8(gearMode);
+    func_801DF5D0(selected,gearMode);
+    while(running) {
+        func_801C7BF4();
+        if(redraw || selected!=previousSelected) {
+            func_801D8EA4(selected,(u8)(group+1),listing,gearMode);
+            func_801DE474(group,gearMode);
+            redraw=0;
+        }
+        if(page!=previousPage || selected!=previousSelected) {
+            s32 scroll;
+            count=func_801DE5CC(selected,page,category,group,gearMode);
+#ifdef XENO_PC_PORT
+            /* TEST TOOLING: remove with Equip acceptance harness. */
+            {
+                const char* ft = getenv("XENO_FIELD_TEST");
+                if (ft && ft[0] == '1') {
+                    u8* lb = MenuRawPointer(0x434);
+                    printf("[xeno-port][test] Equip list DE5CC count=%d "
+                           "gate4C=%u A18=%u A10=%u%u%u%u id0=%u\n",
+                           count,
+                           (unsigned)((u8*)g_Menu->pManager)[0x4C],
+                           lb ? (unsigned)lb[0xA18] : 0u,
+                           lb ? (unsigned)lb[0xA10] : 0u,
+                           lb ? (unsigned)lb[0xA11] : 0u,
+                           lb ? (unsigned)lb[0xA12] : 0u,
+                           lb ? (unsigned)lb[0xA13] : 0u,
+                           (unsigned)D_801EA730[0]);
+                    fflush(stdout);
+                }
+            }
+#endif
+            if(count) {
+                scroll=(page*100/count)/2;
+                func_801D3344(0x94,scroll+0x12,0x32);
+            } else func_801D3344(0x94,0x12,0x64);
+        }
+        if(showRows)func_801DB0A8(row,page,3,0);
+        else ((u8*)g_Menu->pManager)[0x50]=0;
+        if(row!=previousRow || selected!=previousSelected || page!=previousPage) {
+            if(preview)func_801DFB68(selected,category,row,page,group,gearMode);
+            preview=1;
+            if(gearMode==0) {
+                func_801E36D4(g_Menu->unk330,g_Menu->pManager->currentCharacterIDs[selected]);
+                func_801E3A80(g_Menu->unk330,g_Menu->pManager->currentCharacterIDs[selected]);
+            } else func_801DFE2C(selected);
+            func_801DFF5C(category,row,page,group,gearMode,0,selected);
+            func_801D8DE4(selected,1,listing,gearMode);
+            previousRow=row;previousPage=page;
+#ifdef XENO_PC_PORT
+            /* TEST TOOLING: remove with Equip acceptance harness. */
+            {
+                const char* ft = getenv("XENO_FIELD_TEST");
+                if (ft && ft[0] == '1') {
+                    static int once;
+                    if (!once) {
+                        u8* lb = MenuRawPointer(0x434);
+                        u32 tok = 0;
+                        if (lb) memcpy(&tok, lb + 0xA00, 4);
+                        printf("[xeno-port][test] Equip desc after DFF5C "
+                               "A18=%u bundle=%08x itemRow0=%u flags40=%02x%02x\n",
+                               lb ? (unsigned)lb[0xA18] : 0u,
+                               (unsigned)tok,
+                               (unsigned)D_801EA730[0],
+                               (unsigned)((u8*)g_Menu->pManager)[0x40],
+                               (unsigned)((u8*)g_Menu->pManager)[0x41]);
+                        fflush(stdout);
+                        once = 1;
+                    }
+                }
+            }
+#endif
+        }
+        if(category!=previousCategory || selected!=previousSelected) {
+            POLY_FT4* p;
+            u16 y;
+            func_801DFF5C(category,row,page,group,gearMode,1,selected);
+#ifdef XENO_PC_PORT
+            /* TEST TOOLING: remove with Equip acceptance harness. */
+            {
+                const char* ft = getenv("XENO_FIELD_TEST");
+                if (ft && ft[0] == '1') {
+                    u8* lb = MenuRawPointer(0x434);
+                    u8 charId = g_Menu->pManager->currentCharacterIDs[selected];
+                    u8* st = (u8*)&g_GameState;
+                    u32 base = charId * 0xA4;
+                    u8 eq = category
+                        ? st[0x2DF + base + category]
+                        : st[0x2D6 + base];
+                    printf("[xeno-port][test] Equip desc mode1 cat=%u A18=%u "
+                           "equipped=%u char=%u\n",
+                           (unsigned)category,
+                           lb ? (unsigned)lb[0xA18] : 0u,
+                           (unsigned)eq, (unsigned)charId);
+                    if (lb && lb[0xA18]) {
+                        s16* v0 = (s16*)(lb + 0x880 + 0x50);
+                        printf("[xeno-port][test] Equip desc lines "
+                               "w=%u/%u/%u rc=%u/%u/%u "
+                               "xy0=(%d,%d) bundleA04=%08x\n",
+                               (unsigned)lb[0x880 + 0x7E],
+                               (unsigned)lb[0x900 + 0x7E],
+                               (unsigned)lb[0x980 + 0x7E],
+                               (unsigned)lb[0x880 + 0x7D],
+                               (unsigned)lb[0x900 + 0x7D],
+                               (unsigned)lb[0x980 + 0x7D],
+                               (int)v0[0], (int)v0[1],
+                               (unsigned)(*(u32*)(lb + 0xA04)));
+                    }
+                    fflush(stdout);
+                }
+            }
+#endif
+            p=&g_Menu->pCursors->polysCursor[g_Menu->pCursors->renderContexts[0]];
+            y=D_801E9DBC[(group*4+category)*2];
+            p->x0=0x8C;p->y0=y;p->x1=0x9C;p->y1=y;
+            p->x2=0x8C;p->y2=y+0x10;p->x3=0x9C;p->y3=y+0x10;
+            previousCategory=category;previousSelected=selected;
+        }
+        if(initialize) {
+            func_801D397C(2,0x94,0xA,0x94,0x74,0,1,4,1);
+            func_801D397C(3,0x6C,0x87,0xC4,0x48,0,1,4,0);
+            func_801D397C(5,8,0x8E,0x60,0x40,0,1,4,0);
+            if(openAnimation) {
+                func_801D1E80();func_801D29A8(0,0);
+                while(g_Menu->transitionEffectState)func_801C7BF4();
+            }
+            g_Menu->pCursors->shouldRender[0]=1;
+            ((u8*)g_Menu->pManager)[6]=0;
+            ((u8*)g_Menu->pManager)[0x21]=0;
+            initialize=0;
+        }
+        ((u8*)g_Menu->pManager)[0x2F]=1;
+        if(repeatConfirm){repeatConfirm=0;g_Menu->input=4;}
+        if(!listing) {
+            switch(g_Menu->input) {
+            case 5:running=0;break;
+            case 4:
+                func_801DF5D0(selected,gearMode);
+                page=0;listing=1;previousPage=previousRow=255;redraw=1;
+                g_Menu->pCursors->shouldRender[0]=0;showRows=1;row=0;
+                ((u8*)g_Menu->pManager)[0x50]=1;
+                break;
+            case 0:case 2:
+                if(g_Menu->pManager->currentCharacterIDs[selected]==4) {
+                    group^=1;previousCategory=255;redraw=1;category=0;
+                }
+                break;
+            case 1:
+                if(++category>=4)category=0;
+                if(group && gearMode && (u32)(category-1)<2)category=3;
+                break;
+            case 3:
+                if(--category<0)category=3;
+                if(group && gearMode && (u32)(category-1)<2)category=0;
+                break;
+            case 9:case 10: {
+                u8 direction=g_Menu->input==10;
+                if(func_801D9704(selected,direction,gearMode)!=selected) {
+                    selected=func_801D9704(selected,direction,gearMode);
+                    group=0;preview=0;
+                }
+                break;
+            }
+            }
+        } else {
+            u8 leaveListing=0;
+            switch(g_Menu->input) {
+            case 5:
+                func_801DF890(selected,gearMode);
+                leaveListing=1;showRows=0;g_Menu->pCursors->shouldRender[0]=1;
+                func_801DB0A8(0,page,3,0);
+                row=0;previousSelected=255;((u8*)g_Menu->pManager)[0x50]=0;
+                break;
+            case 4:
+                if((u8)func_801DF0D4(selected,(u8)category,group,gearMode)) {
+                    group^=1;redraw=1;repeatConfirm=1;
+                    func_801E0434(selected,gearMode);
+                }
+                previousSelected=255;
+                func_801DF5D0(selected,gearMode);
+                leaveListing=1;showRows=0;g_Menu->pCursors->shouldRender[0]=1;
+                func_801DB0A8(0,page,3,0);
+                row=0;((u8*)g_Menu->pManager)[0x50]=0;
+                break;
+            case 1:
+                if(++row>=8) {++page;row=7;if(page>count)page=count;}
+                break;
+            case 3:
+                if(--row<0) {--page;row=0;if(page<0)page=0;}
+                break;
+            }
+            if(leaveListing) {
+                row=page=0;listing=0;previousRow=255;redraw=1;preview=0;
+                MenuRawPointer(0x35C)[0x32F2]=0;
+            }
+        }
+    }
+    func_801D2484();func_801DB340(0);
+}
+#endif
 
 s32 func_801E0F78(u8 arg0, u8 arg1) {
-    void* p1 = HeapAlloc(0x32F4, NULL);
-    void* pMenu = g_Menu;
-    *(void**)((u8*)pMenu + 0x35C) = p1;
-    bzero(p1, 0x32F4);
+    void* p1;
+    void* pMenu;
+    void* p2;
+#ifdef XENO_PC_PORT
+    /* TEST TOOLING: Equip acceptance harness. Prefer PAD_ON_CONTROL over
+     * XENO_FIELD_TEST — FIELD_TEST takes the direct field-0 boot route and
+     * breaks the natural title→NG path (run13). Remove with the harness. */
     {
-        void* p2 = HeapAlloc(0x2AC, NULL);
-        pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x360) = p2;
-        bzero(p2, 0x2AC);
+        const char* ft = getenv("XENO_FIELD_TEST");
+        const char* poc = getenv("XENO_PAD_ON_CONTROL");
+        if ((ft && ft[0] == '1') ||
+            (poc && strcmp(poc, "equip") == 0)) {
+            printf("[xeno-port][test] Equip entry func_801E0F78 slot=%u "
+                   "anim=%u\n",
+                   (unsigned)arg0, (unsigned)arg1);
+            fflush(stdout);
+        }
     }
+#endif
+    p1 = HeapAlloc(0x32F4, NULL);
+    pMenu = g_Menu;
+    MenuStoreRawPointer(0x35C, p1);
+    bzero(p1, 0x32F4);
+    p2 = HeapAlloc(0x2AC, NULL);
+    pMenu = g_Menu;
+    MenuStoreRawPointer(0x360, p2);
+    bzero(p2, 0x2AC);
     func_801C72BC(3);
     func_801E05D0(arg0, arg1, 0);
     func_801C72BC(0x13);
     return 1;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1014);
+#endif
 
 extern void func_801D3674(void);
 extern void func_801D4EA0(s32);
@@ -7280,9 +9526,10 @@ next:
     return 0;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1544);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1AC8);
+#endif
 
 extern void func_801E1014(void);
 extern void func_801E1AC8(u8);
@@ -7345,18 +9592,18 @@ u8 func_801E2250(void) {
     s32 i;
     void* p1 = HeapAlloc(0x2AF0, NULL);
     pMenu = g_Menu;
-    *(void**)((u8*)pMenu + 0x358) = p1;
+    MenuStoreRawPointer(0x358, p1);
     bzero(p1, 0x2AF0);
     {
         void* p2 = HeapAlloc(0x32F4, NULL);
         pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x35C) = p2;
+        MenuStoreRawPointer(0x35C, p2);
         bzero(p2, 0x32F4);
     }
     {
         void* p3 = HeapAlloc(0x2AC, NULL);
         pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x360) = p3;
+        MenuStoreRawPointer(0x360, p3);
         bzero(p3, 0x2AC);
     }
     func_801C72BC(3);
@@ -7383,15 +9630,17 @@ void func_801E2324(u8 arg0) {
 
 void func_801E2368(void) {
     void* pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x358));
+    HeapFree(MenuRawPointer(0x358));
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x35C));
+    HeapFree(MenuRawPointer(0x35C));
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x360));
+    HeapFree(MenuRawPointer(0x360));
     func_801C72BC(0x13);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E23CC);
+#endif
 
 extern void func_801D249C(s32);
 #ifndef XENO_PC_PORT
@@ -7404,19 +9653,19 @@ void func_801E2AE0(void) {
     {
         void* p1 = HeapAlloc(0x2AF0, NULL);
         pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x358) = p1;
+        MenuStoreRawPointer(0x358, p1);
         bzero(p1, 0x2AF0);
     }
     {
         void* p2 = HeapAlloc(0x32F4, NULL);
         pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x35C) = p2;
+        MenuStoreRawPointer(0x35C, p2);
         bzero(p2, 0x32F4);
     }
     {
         void* p3 = HeapAlloc(0x2AC, NULL);
         pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x360) = p3;
+        MenuStoreRawPointer(0x360, p3);
         bzero(p3, 0x2AC);
     }
     func_801C72BC(3);
@@ -7425,15 +9674,33 @@ void func_801E2AE0(void) {
 
 void func_801E2B80(void) {
     void* pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x358));
+    HeapFree(MenuRawPointer(0x358));
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x35C));
+    HeapFree(MenuRawPointer(0x35C));
     pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x360));
+    HeapFree(MenuRawPointer(0x360));
     func_801C72BC(0x13);
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2BE4);
+#else
+/* The retail Status controller is not translated yet.  Calling the generated
+ * port stub returned without running func_801E2AE0, but func_801C531C still
+ * dispatched the retail Status teardown, which freed three uninitialized work
+ * pointers.  Build the matching Status work set before returning to the root
+ * menu so that the shared teardown remains balanced and deterministic.
+ *
+ * This is intentionally a safe-return bridge, not a claim that the Status
+ * screen itself is implemented.  Replace this body with the retail controller
+ * when that routine and its input/render loop are translated. */
+s32 func_801E2BE4(void) {
+    func_801E2AE0();
+    printf("[xeno-port][menu] Status screen is not ported yet; returning to main menu\n");
+    fflush(stdout);
+    return 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3088);
@@ -7644,28 +9911,157 @@ void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, s32 isReverse
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E36D4);
+#else
+/* Retail character equipment effects. Access packed records by byte so the
+ * native pointer width cannot change the 16-byte item or 0xA4 character stride. */
+void func_801E36D4(void* resourceArg, u8 characterId) {
+    MenuUnk6* resources = resourceArg;
+    u8* character = (u8*)&g_GameState.characters[characterId];
+    u8* accessories = (u8*)resources->pAccessoriesData;
+    u8* weapons = (u8*)resources->pWeaponsData;
+    static const u8 bonusOffsets[8] = {0x28,0x29,0x2A,0x2B,0x2C,0x2E,0x2F,0x2D};
+    s32 i, bit;
+    for (i = 0x28; i <= 0x33; i++) character[i] = 0;
+    for (i = 0x7E; i <= 0x8E; i += 4) {
+        character[i] = 0;
+        character[i + 1] = 0;
+    }
+    character[0xA1] = 0;
+    for (i = 0; i < 3; i++) {
+        u8* item = accessories + character[0x74 + i] * 16;
+        s32 target = -1;
+        character[0x2D] += item[8];
+        switch (item[9]) {
+        case 1: target = 0x7E; break;
+        case 2: target = 0x82; break;
+        case 3: target = 0x86; break;
+        case 4: target = 0x8A; break;
+        case 5: target = 0x32; break;
+        case 7: target = 0x8E; break;
+        case 8: case 9: character[0x30] += item[0xA]; break;
+        case 10: character[0xA1] += item[0xA]; break;
+        }
+        if (target >= 0) {
+            character[target] |= item[0xA];
+            character[target + 1] |= item[0xB];
+        }
+        for (bit = 0; bit < 8; bit++) {
+            if (item[0xD] & (0x80 >> bit)) character[bonusOffsets[bit]] += item[0xC];
+        }
+    }
+    /* Character type 4 replaces the primary weapon and also writes a
+     * secondary weapon block. Other characters leave that block untouched. */
+    for (i = 0; i < (character[0x56] == 4 ? 3 : 1); i++) {
+        s32 equipment = i == 0 ? 0x6A : i == 1 ? 0x6F : 0x72;
+        s32 destination = i == 2 ? 0x18 : 0;
+        u8* weapon = weapons + character[equipment] * 16;
+        character[destination + 4] = weapon[0xC];
+        character[destination] = weapon[8];
+        character[destination + 1] = weapon[9];
+        character[destination + 2] = weapon[0xA];
+        character[destination + 3] = weapon[0xB];
+    }
+    if (character[3] == 0x64) {
+        character[0x8E] |= character[0];
+        character[0x8F] |= character[1];
+    }
+}
+#endif
 
+/* Retail 801E3A80: aggregate character stats into the Equip resource block
+ * (unk330+0xB8..0xC4), not into the GameState character record. */
 void func_801E3A80(void* pCtx, u8 charIdx) {
-    u8* pEntry = (u8*)&g_GameState + 0x26C + charIdx * 0x28;
+    u8* pEntry = (u8*)&g_GameState.characters[charIdx];
+    #ifdef XENO_PC_PORT
+    u8* pDst = (u8*)&((MenuUnk6*)pCtx)->unkB8;
+#else
+    u8* pDst = (u8*)pCtx + 0xB8;
+#endif
     s32 val;
+
     if (pEntry[0x56] == 4) {
-        val = (s32)(pEntry[4] + pEntry[0x1C]) * 6 / 5;
-        *(u16*)(pEntry + 0xB8) = (u16)val;
+        val = (s32)(pEntry[4] + pEntry[0x1C]) * 6 / 10;
+        *(u16*)(pDst + 0x0) = (u16)val;
     } else {
         val = pEntry[0x58] + pEntry[0x28] + pEntry[4];
-        *(u16*)(pEntry + 0xB8) = (u16)val;
+        *(u16*)(pDst + 0x0) = (u16)val;
     }
-    *(u16*)(pEntry + 0xBA) = (u16)(pEntry[0x5E] + pEntry[0x2E]);
-    *(u16*)(pEntry + 0xBC) = (u16)(pEntry[0x59] + pEntry[0x29] + pEntry[0x2D]);
-    *(u16*)(pEntry + 0xBE) = (u16)(pEntry[0x5F] + pEntry[0x2F]);
-    *(u16*)(pEntry + 0xC0) = (u16)(pEntry[0x5B] + pEntry[0x2B]);
-    *(u16*)(pEntry + 0xC2) = (u16)(pEntry[0x5C] + pEntry[0x2C]);
+    *(u16*)(pDst + 0x2) = (u16)(pEntry[0x5E] + pEntry[0x2E]);
+    *(u16*)(pDst + 0x4) = (u16)(pEntry[0x59] + pEntry[0x29] + pEntry[0x2D]);
+    *(u16*)(pDst + 0x6) = (u16)(pEntry[0x5F] + pEntry[0x2F]);
+    *(u16*)(pDst + 0x8) = (u16)(pEntry[0x5B] + pEntry[0x2B]);
+    *(u16*)(pDst + 0xA) = (u16)(pEntry[0x5C] + pEntry[0x2C]);
+    *(u16*)(pDst + 0xC) = (u16)(pEntry[0x5A] + pEntry[0x2A]);
+
+    if (*(u16*)(pDst + 0x0) >= 0xFB) {
+        *(u16*)(pDst + 0x0) = 0xFA;
+    }
+    if (*(u16*)(pDst + 0x2) >= 0x64) {
+        *(u16*)(pDst + 0x2) = 0x63;
+    }
+    if (*(u16*)(pDst + 0x4) >= 0xFB) {
+        *(u16*)(pDst + 0x4) = 0xFA;
+    }
+    if (*(u16*)(pDst + 0x6) >= 0x64) {
+        *(u16*)(pDst + 0x6) = 0x63;
+    }
+    if (*(u16*)(pDst + 0x8) >= 0xFB) {
+        *(u16*)(pDst + 0x8) = 0xFA;
+    }
+    if (*(u16*)(pDst + 0xA) >= 0xFB) {
+        *(u16*)(pDst + 0xA) = 0xFA;
+    }
+    if (*(u16*)(pDst + 0xC) >= 0x15) {
+        *(u16*)(pDst + 0xC) = 0x10;
+    }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
+#else
+extern u8 D_801E9808[];
+/* Gear preview aggregate. Resource offsets 0x9C..0xB6 are inside the
+ * pointer-free unk20 block; the host shifts that block after wider pointers. */
+void func_801E3C2C(void* resourceArg, u8 gearId) {
+    u8* state = (u8*)&g_GameState;
+    u8* gear = (u8*)&g_GameState.gears[gearId];
+    u8* out = ((MenuUnk6*)resourceArg)->unk20 + 0x7C;
+    u8* character;
+    u32 attack;
+    if (*(u16*)(state + 0x22B6) & 0x1000) D_801E9808[9] = 10;
+    if (gearId == 7) {
+        *(u32*)(state + 0xE54) = *(u16*)(state + 0x734) * 50;
+        *(u32*)(state + 0xE58) = *(u16*)(state + 0x736) * 50;
+        state[0xE30] = state[0x740] + state[0x710];
+        *(u16*)(state + 0xE64) = (state[0x741] + state[0x711]) * 12;
+        *(u16*)(state + 0xE66) = (state[0x744] + state[0x714]) * 6;
+        state[0xE8C] = state[0x742] + state[0x712];
+    }
+    character = (u8*)&g_GameState.characters[D_801E9808[gearId]];
+    *(u32*)(out + 0) = *(u32*)(gear + 0x60);
+    *(u32*)(out + 4) = *(u32*)(gear + 0x64);
+    *(u16*)(out + 8) = *(u16*)(gear + 0x70) + *(u16*)(gear + 0x40);
+    *(u16*)(out + 10) = character[0x5C] + character[0x2C] +
+                         *(u16*)(gear + 0x42) + *(u16*)(gear + 0x72);
+    *(u16*)(out + 12) = *(u16*)(gear + 0x68) + *(u16*)(gear + 0x44);
+    *(u16*)(out + 14) = *(u16*)(gear + 0x6A);
+    *(u16*)(out + 16) = *(u16*)(gear + 0x38);
+    *(u16*)(out + 18) = *(u16*)(gear + 0x3A);
+    attack = gear[0x3C] * (gear[0x74] + gear[0x56]);
+    attack += (gearId == 5 || gearId == 13) ?
+              (gear[0x12] + gear[0x22]) * 6 / 10 : gear[0x12];
+    *(u16*)(out + 20) = attack;
+    out[22] = gear[0x9F] + gear[0x4D];
+    out[23] = gear[0x98] - gear[0x4A];
+    out[24] = gear[0x9E] + gear[0x54];
+    out[25] = gear[0x9D];
+    out[26] = gear[0x9C];
+}
+#endif
 
-extern void func_801E433C(s32, u8);
+extern void func_801E433C(void*, u8);
 extern void func_801E4754(void*, u8);
 
 void func_801E3ECC(void* arg0, u8 idx) {
@@ -7766,11 +10162,75 @@ void func_801E42AC(s32 arg0, u8 idx) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E433C);
+#else
+extern u8 func_801E4928(u8);
+/* Retail Gear accessories: resource+0x14 is a retained 32-bit pointer slot. */
+void func_801E433C(void* resourceArg, u8 gearId) {
+    MenuUnk6* resource = resourceArg;
+    u8* state = MenuEquipmentStateStorage;
+    u8* gear = state + 0x978 + gearId * 0xA4;
+    u8 character = D_801E9808[gearId];
+    u16* flags = (u16*)(state + 0x16C4 + character * 0x20);
+    u16* status = (u16*)(state + 0x16DA + character * 0x20);
+    u8* table = (u8*)(uintptr_t)*(u32*)&resource->unk8[0xC];
+    s32 i, j;
+    *(u16*)(gear + 0x40) = 0;
+    *(u16*)(gear + 0x42) = 0;
+    *(u16*)(gear + 0x44) = 0;
+    *(u16*)(gear + 0x48) = 0;
+    for (i = 0x4C; i <= 0x57; i++) gear[i] = 0;
+    *(u16*)(gear + 0x6E) = 0;
+    for (i = 0x88; i < 0x98; i++) gear[i] = 0;
+    *(u16*)(gear + 0x7E) = 0;
+    *(u16*)(gear + 0x82) = 0;
+    *(u16*)(gear + 0x86) &= 0xF000;
+    *flags &= 0xFB6F;
+    for (i = 0; i < 3; i++) {
+        u8* item = table + gear[9 + i] * 28;
+        u16 effect = *(u16*)(item + 0x16);
+        *(u16*)(gear + 0x40) += item[0xD];
+        *(u16*)(gear + 0x42) += item[0xE];
+        *(u16*)(gear + 0x44) += *(u16*)(item + 6);
+        gear[0x4C] += item[0x18];
+        gear[0x4D] += item[0x14];
+        gear[0x54] += item[0x1B];
+        for (j = 0; j < 4; j++) gear[0x50 + j] += item[0x10 + j];
+        switch (item[0x15]) {
+        case 1: *(u16*)(gear + 0x7E) |= effect; break;
+        case 2: *(u16*)(gear + 0x82) |= effect; break;
+        case 3: *(u16*)(gear + 0x86) |= effect; break;
+        case 4:
+            *(u16*)(gear + 0x6E) |= effect;
+            for (j = 0; j < 16; j++)
+                if (effect & (0x8000 >> j)) gear[0x88 + j] += item[0x1A];
+            break;
+        case 5: gear[0x4F] += item[0x16]; break;
+        case 6: if ((*flags & 0x1800) == 0x1800) *flags |= 0x400; break;
+        case 7: if ((*flags & 0x300) == 0x300) *flags |= 0x80; break;
+        case 8: if ((*flags & 0x60) == 0x60) *flags |= 0x10; break;
+        case 9:
+            *(u16*)(gear + 0x48) |= effect;
+            /* Retail falls through to type 10. */
+        case 10: gear[0x56] += item[0x16]; break;
+        case 11: gear[0x57] += item[0x16]; break;
+        }
+    }
+    gear[0x4A] = func_801E4928(gearId);
+    if (gear[0x4F]) *status |= 0x8000;
+    else if (state[0x30C + D_801E9808[gearId] * 0xA4] == gearId)
+        *status &= 0x7FFF;
+}
+#endif
 
 void func_801E4754(void* arg0, u8 charIdx) {
     u8* pGS = (u8*)&g_GameState + 0x978 + charIdx * 0xA4;
-    void** pSrcBase = (void**)(arg0 + 0x18);
+#ifdef XENO_PC_PORT
+    u32* pSrcBase = (u32*)&((MenuUnk6*)arg0)->unk8[0x10];
+#else
+    void** pSrcBase = (void**)((u8*)arg0 + 0x18);
+#endif
     u8 slot;
     u8* pSrc;
 
@@ -7820,7 +10280,7 @@ u8 func_801E4928(u8 idx) {
     u8* pEntry = (u8*)&g_GameState + 0x978 + (s32)idx * 0xA4;
     u16 val = *(u16*)(pEntry + 0x44);
     u8 base = pEntry[0x75];
-    s32 result = (s32)(val / 15) - base;
+    s32 result = (s32)(val / 120) - base;
     result /= 2;
     if (result < 0) result = 0;
     return (u8)(result & 0xFF);
@@ -7840,9 +10300,10 @@ void func_801E4998(s32 arg0, u8 idx) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4D10);
+#endif
 
 /* Nav N2c-4: the magnitude-1 bulk special (func_801E31C0's effectFlags&0x1
  * dispatch).  Populates all five inventory families with sequential IDs at
@@ -8030,7 +10491,9 @@ void func_801E53CC(u8 windowIndex) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E56E8);
+#endif
 
 extern u16 D_801E9894[];
 extern u16 D_801E9914[];
@@ -8039,7 +10502,7 @@ void func_801E5924(s32 slotIdx) {
     u16* pX = &D_801E9894[slotIdx];
     u16* pY = &D_801E9914[slotIdx];
     void* pMenu = g_Menu;
-    u8* pBuf = *(u8**)((u8*)pMenu + 0x3A8 + slotIdx * 4);
+    u8* pBuf = MenuRawPointer(0x3A8 + slotIdx * 4);
     u8* pBase = pBuf;
     s32 i;
     u32 off1 = 0x50;
@@ -8070,7 +10533,7 @@ void func_801E5ACC(void) {
     for (i = 0; i < 0x20; i++) {
         void* pBuf = HeapAlloc(0x158, NULL);
         void* pMenu = g_Menu;
-        *(void**)((u8*)pMenu + 0x3A8 + i * 4) = pBuf;
+        MenuStoreRawPointer(0x3A8 + i * 4, pBuf);
         bzero(pBuf, 0x158);
         func_801E56E8(i);
         func_801E5924(i);
@@ -8081,15 +10544,62 @@ void func_801E5B3C(void) {
     s32 i;
     for (i = 0; i < 0x20; i++) {
         void* pMenu = g_Menu;
-        HeapFree(*(void**)((u8*)pMenu + 0x3A8 + i * 4));
+        HeapFree(MenuRawPointer(0x3A8 + i * 4));
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5B88);
-
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5E4C);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E61B0);
+#else
+extern u32 D_801EA494[], D_801E9F98[], D_801E9FBC[];
+extern u16 D_801EA590[], D_801EA5DC[];
+extern void func_801E927C(POLY_FT4*);
+extern void func_801E920C(POLY_FT4*, s32, s32, s32, s32, s32, s32);
+
+void func_801E61B0(void) {
+    s32 slot, i;
+    for (slot = 0; slot < 3; slot++) {
+        u32 offset = slot * 0x87C;
+        u8* panel = MenuRawPointer(0x34C);
+        POLY_FT4* p;
+        u16 page;
+        u32 atlas;
+        panel[offset + 0x1312] = 0;
+        for (i = 0; i < 9; i++) {
+            if (D_801EA494[i] != 0xFFFF) {
+                s32 written;
+                panel = MenuRawPointer(0x34C);
+                written = func_8002675C(
+                    g_Menu->unk2DC, D_801EA494[i],
+                    panel + offset + 0xA98 + 0x50 + panel[offset + 0x1312] * 0x50,
+                    g_Menu->renderContext, D_801E9F98[i] + slot * 0x50,
+                    D_801E9FBC[i], 0x1000);
+                panel = MenuRawPointer(0x34C);
+                panel[offset + 0x1312] += (u8)written;
+            }
+        }
+        MenuRawPointer(0x34C)[offset + 0x130E] = (u8)g_Menu->renderContext;
+        p = (POLY_FT4*)(MenuRawPointer(0x34C) + offset + 0x12B8) + g_Menu->renderContext;
+        func_801E927C(p);
+        page = GetTPage(0, 0, 384, 0);
+        p = (POLY_FT4*)(MenuRawPointer(0x34C) + offset + 0x12B8) + g_Menu->renderContext;
+        p->tpage = page;
+        p->clut = g_SystemPalette1;
+        /* Retail consumes a word and a byte at four-byte table strides,
+         * despite adjacent consumers declaring these tables as halfwords. */
+        memcpy(&atlas, (u8*)D_801EA590 + slot * 4, sizeof(atlas));
+        func_801E920C(p, (u16)((u16)D_801E9F98[0] + slot * 0x50),
+                     (u16)((u16)D_801E9FBC[0] + 7), (atlas * 4) & 0xFC,
+                     ((u8*)D_801EA5DC)[slot * 4], 0x48, 0x0D);
+        MenuRawPointer(0x34C)[offset + 0x1311] = (u8)g_Menu->renderContext;
+    }
+}
+#endif
 
 extern void func_801E5B88(void);
 extern void func_801E5E4C(void);
@@ -8098,7 +10608,7 @@ void func_801E6450(void) {
     volatile u64 reserve;
     void* pBuf = HeapAlloc(0x2DC0, NULL);
     void* pMenu = g_Menu;
-    *(void**)((u8*)pMenu + 0x34C) = pBuf;
+    MenuStoreRawPointer(0x34C, pBuf);
     bzero(pBuf, 0x2DC0);
     func_801E5B88();
     func_801E5E4C();
@@ -8106,7 +10616,7 @@ void func_801E6450(void) {
 
 void func_801E649C(void) {
     void* pMenu = g_Menu;
-    HeapFree(*(void**)((u8*)pMenu + 0x34C));
+    HeapFree(MenuRawPointer(0x34C));
     pMenu = g_Menu;
     ((u8*)g_Menu->pManager)[0xB] = 0;
 }
@@ -8151,6 +10661,22 @@ extern u8 D_801EA8C0;
 extern u16 D_801EA5D0[];
 
 void* func_801E65E4(u8* pChar) {
+#ifdef XENO_PC_PORT
+    u16 code;
+    if (pChar[0] < 0x20) {
+        /* Retail's branch delay slot supplies lead byte 0x81. */
+        code = 0x8140;
+        D_801EA8C0 = 0;
+    } else if (pChar[0] < 0x80) {
+        /* The table halfword already has the KROM code's byte order. */
+        code = D_801EA5D0[pChar[0]];
+        D_801EA8C0 = 0;
+    } else {
+        code = ((u16)pChar[0] << 8) | pChar[1];
+        D_801EA8C0 = 1;
+    }
+    return (void*)PcPortKromFont(code, 32);
+#else
     u8 lo = pChar[0];
     u8 hi = pChar[1];
     u16 code;
@@ -8167,18 +10693,111 @@ void* func_801E65E4(u8* pChar) {
         }
     }
     return Krom2RawAdd((lo << 8) | hi);
+#endif
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6668);
+#else
+/* This overlay address is also a field-object routine with two pointers. */
+#define func_801E6668 MenuRenderCardTitle
+void func_801E6668(s32 screenId) {
+    u8 *pixels = HeapAlloc(0x100, 1);
+    u16 *image = HeapAlloc(0x1000, 1);
+    u8 *title;
+    s32 consumed = 0, index = 0;
+    RECT rect;
+    bzero(image, 0x1000);
+    /* TIM_IMAGE expands on the host: use the typed card-data member. */
+    title = g_Menu->unk32C->unkB94 + 4 + screenId * 512;
+    while (*title != 0) {
+        const u8 *glyph = func_801E65E4(title);
+        if (glyph != (void*)(intptr_t)-1) {
+            s32 row, col;
+            /* Retail reads 32 bytes even though the BIOS glyph stride is 30. */
+            for (row = 0; row < 16; ++row) {
+                for (col = 0; col < 8; ++col) {
+                    pixels[row * 16 + col] = (glyph[row * 2] >> (7 - col)) & 1;
+                    pixels[row * 16 + 8 + col] = (glyph[row * 2 + 1] >> (7 - col)) & 1;
+                }
+            }
+            func_801E6544(pixels);
+            for (row = 0; row < 16; ++row) {
+                for (col = 0; col < 12; ++col) {
+                    s32 word = (index / 16) * 1024 + (index % 16) * 4 + row * 64 + col / 4;
+                    image[word] |= pixels[row * 16 + col] << ((col % 4) * 4);
+                }
+            }
+        }
+        ++title;
+        ++consumed;
+        if (D_801EA8C0 != 0) {
+            ++title;
+            ++consumed;
+        }
+        if (consumed >= 64) break;
+        if (++index >= 32) break;
+    }
+    rect.x = 320; rect.y = 224; rect.w = 64; rect.h = 32;
+    LoadImage(&rect, (u_long*)image);
+    DrawSync(0);
+    HeapFree(pixels);
+    HeapFree(image);
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E68AC);
+#else
+extern u32 D_801E9FE0[];
+
+void func_801E68AC(u8* entry) {
+    u32 ticks;
+    s32 i;
+    for (i = 0; i < 2; i++) {
+        func_8002675C(g_Menu->unk2DC, 0xEE,
+                     MenuRawPointer(0x34C) + 0x240C + i * 0xA0,
+                     g_Menu->renderContext, D_801E9FE0[i], 0x7A, 0x1000);
+    }
+    memcpy(&ticks, entry, sizeof(ticks));
+    func_801C7F34(ticks);
+    for (i = 0; i < 7; i++) {
+        u32 glyph;
+        memcpy(&glyph, g_Menu->unk2EC + i * 4, sizeof(glyph));
+        func_8002675C(g_Menu->unk2DC, glyph,
+                     MenuRawPointer(0x34C) + 0x254C + i * 0x50,
+                     g_Menu->renderContext, D_801E9FE0[2 + i], 0x7A, 0x1000);
+    }
+    func_8002675C(g_Menu->unk2DC, 0x17, MenuRawPointer(0x34C) + 0x2C7C,
+                 g_Menu->renderContext, 8, 0x66, 0x1000);
+    func_8002675C(g_Menu->unk2DC, 0x32, MenuRawPointer(0x34C) + 0x2CCC,
+                 g_Menu->renderContext, 0x10, 0x66, 0x1000);
+    func_8002675C(g_Menu->unk2DC, ((u32)entry[0x23] + 1) / 10,
+                 MenuRawPointer(0x34C) + 0x2D1C,
+                 g_Menu->renderContext, 0x10, 0x6E, 0x1000);
+    /* Retail re-reads the entry byte after the tens renderer returns. */
+    func_8002675C(g_Menu->unk2DC, ((u32)entry[0x23] + 1) % 10,
+                 MenuRawPointer(0x34C) + 0x2D6C,
+                 g_Menu->renderContext, 0x18, 0x6E, 0x1000);
+}
+#endif
 
 extern s32 D_801EA004[];
 extern s32 D_801EA010[];
 
-void func_801E6AE8(u8 slotIdx, s32 arg1) {
+void func_801E6AE8(u8 slotIdx,
+#ifdef XENO_PC_PORT
+                     u8* entry) {
+    /* Retail reads the character byte from the selected save entry;
+     * each character's render panel occupies 0x87C bytes. */
+    func_8002675C(g_Menu->unk2DC, entry[0x1C + slotIdx] + 0x14E,
+                 MenuRawPointer(0x34C) + 0xA98 + slotIdx * 0x87C,
+                 g_Menu->renderContext, D_801EA004[slotIdx],
+                 D_801EA010[slotIdx], 0x1000);
+#else
+                     s32 arg1) {
     void* pMenu = g_Menu;
-    u8* pData = *(u8**)((u8*)pMenu + 0x34C);
+    u8* pData = MenuRawPointer(0x34C);
     u8 charIdx = arg1 + slotIdx;
     s32 arg3 = *(u32*)((u8*)pMenu + 0x308);
     u8* pSlot = pData + 0xA98 + slotIdx * 0x7C;
@@ -8187,12 +10806,37 @@ void func_801E6AE8(u8 slotIdx, s32 arg1) {
     stackArgs[1] = D_801EA010[slotIdx];
     stackArgs[2] = 0x1000;
     func_8002675C(*(u32*)((u8*)pMenu + 0x2DC), charIdx + 0x14E, pSlot, arg3, stackArgs[0], stackArgs[1], stackArgs[2]);
+#endif
 }
 
 extern u32 D_801EA01C;
 extern u32 D_801EA020;
 
 void func_801E6B70(u8 slotIdx, u8* pTable) {
+#ifdef XENO_PC_PORT
+    u32 offset = slotIdx * 0x87C;
+    s32 i;
+    func_801C80B8(pTable[slotIdx + 0x16]);
+    MenuRawPointer(0x34C)[offset + 0x1308] = 0;
+    for (i = 0; i < 3; i++) {
+        u8 digit = g_Menu->digits[6 + i];
+        if (digit != 0xFF) {
+            u8* panel = MenuRawPointer(0x34C);
+            u8 count = panel[offset + 0x1308];
+            s32 written = func_8002675C(
+                g_Menu->unk2DC, digit,
+                panel + offset + 0xA98 + 0x320 + count * 0x50,
+                g_Menu->renderContext, D_801EA01C + slotIdx * 0x50 + i * 8,
+                D_801EA020, 0x1000);
+            /* The font callback may replace the menu. Accumulate its
+             * result into the current owner's byte counter, as retail does. */
+            panel = MenuRawPointer(0x34C);
+            panel[offset + 0x1308] += (u8)written;
+        }
+    }
+    func_801C80B8(pTable[slotIdx + 0x19]);
+    MenuRawPointer(0x34C)[offset + 0x1309] = 0;
+#else
     s32 i;
     u8* pMenu;
     u8* pData;
@@ -8202,20 +10846,20 @@ void func_801E6B70(u8 slotIdx, u8* pTable) {
     val = pTable[slotIdx + 0x16];
     func_801C80B8(val);
     pMenu = (u8*)g_Menu;
-    pData = *(u8**)(pMenu + 0x34C);
+    pData = MenuRawPointer(0x34C);
     dataOff = slotIdx * 0x7C;
     pSlotBase = pData + dataOff;
     pSlotBase[0x1308] = 0;
     for (i = 0; i < 3; i++) {
         pMenu = (u8*)g_Menu;
         if (*(u8*)(pMenu + 0x322 + i) != 0xFF) {
-            u8* pBuf = *(u8**)(pMenu + 0x34C);
+            u8* pBuf = MenuRawPointer(0x34C);
             u8 tblVal = *(u8*)(pBuf + dataOff + 0x1308);
             u32 tableEntry = D_801EA01C + slotIdx * 0x30 + i * 8;
             u8* pRender = pBuf + dataOff + 0xA98 + tblVal * 0x320;
             func_8002675C(*(s32*)(pMenu + 0x2DC), *(u8*)(pMenu + 0x322 + i), pRender, *(s32*)(pMenu + 0x308), tableEntry, D_801EA020, 0x1000);
             pMenu = (u8*)g_Menu;
-            pData = *(u8**)(pMenu + 0x34C);
+            pData = MenuRawPointer(0x34C);
             *(u8*)(pData + dataOff + 0x1308) += 1;
         }
     }
@@ -8223,18 +10867,121 @@ void func_801E6B70(u8 slotIdx, u8* pTable) {
     val = pTable[slotIdx + 0x19];
     func_801C80B8(val);
     pMenu = (u8*)g_Menu;
-    pData = *(u8**)(pMenu + 0x34C);
+    pData = MenuRawPointer(0x34C);
     *(u8*)(pData + slotIdx * 0x7C + 0x1309) = 0;
+#endif
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6CFC);
+#else
+extern u32 D_801EA02C, D_801EA030, D_801EA034, D_801EA038;
 
+void func_801E6CFC(u8 slotIdx, u8* entry) {
+    u32 offset = slotIdx * 0x87C;
+    s32 row, i;
+    for (row = 0; row < 2; row++) {
+        u16 value;
+        u32 counter = 0x130A + row;
+        u32 glyphBase = row == 0 ? 0x500 : 0x5F0;
+        s32 column = 0;
+        memcpy(&value, entry + 4 + row * 6 + slotIdx * 2, sizeof(value));
+        func_801C80B8(value);
+        MenuRawPointer(0x34C)[offset + counter] = 0;
+        for (i = 0; i < 3; i++) {
+            u8 digit = g_Menu->digits[6 + i];
+            if (digit != 0xFF) {
+                u8* panel = MenuRawPointer(0x34C);
+                u8 count = panel[offset + counter];
+                /* First value retains digit columns; second packs only
+                 * visible digits, independently of glyphs returned. */
+                u32 x = (row == 0 ? D_801EA02C : D_801EA034) +
+                        slotIdx * 0x50 + (row == 0 ? i : column) * 8;
+                s32 written = func_8002675C(
+                    g_Menu->unk2DC, digit,
+                    panel + offset + 0xA98 + glyphBase + count * 0x50,
+                    g_Menu->renderContext, x,
+                    row == 0 ? D_801EA030 : D_801EA038, 0x1000);
+                panel = MenuRawPointer(0x34C);
+                panel[offset + counter] += (u8)written;
+                column++;
+            }
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6F5C);
+#else
+extern u32 D_801EA03C, D_801EA040, D_801EA044, D_801EA048;
+
+void func_801E6F5C(u8 slotIdx, u8* entry) {
+    u32 offset = slotIdx * 0x87C;
+    s32 row, i;
+    for (row = 0; row < 2; row++) {
+        u32 counter = 0x130C + row;
+        u32 glyphBase = row == 0 ? 0x6E0 : 0x780;
+        s32 column = 0;
+        func_801C80B8(entry[0x10 + row * 3 + slotIdx]);
+        MenuRawPointer(0x34C)[offset + counter] = 0;
+        for (i = 0; i < 2; i++) {
+            u8 digit = g_Menu->digits[7 + i];
+            if (digit != 0xFF) {
+                u8* panel = MenuRawPointer(0x34C);
+                u8 count = panel[offset + counter];
+                u32 x = (row == 0 ? D_801EA03C : D_801EA044) +
+                        slotIdx * 0x50 + (row == 0 ? i : column) * 8;
+                s32 written = func_8002675C(
+                    g_Menu->unk2DC, digit,
+                    panel + offset + 0xA98 + glyphBase + count * 0x50,
+                    g_Menu->renderContext, x,
+                    row == 0 ? D_801EA040 : D_801EA048, 0x1000);
+                /* Reload ownership after rendering, retaining byte wrap. */
+                panel = MenuRawPointer(0x34C);
+                panel[offset + counter] += (u8)written;
+                column++;
+            }
+        }
+    }
+}
+#endif
 
 extern u16 D_801EA590[];
 extern u16 D_801EA5DC[];
 
+#ifdef XENO_PC_PORT
+extern void func_80033B34(u16*, u8*, s32);
+#endif
+
 void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
+#ifdef XENO_PC_PORT
+    u8* entry = g_Menu->unk32C->unkB94 + 0x100 + screenIdx * 512;
+    u8 character = ((u8*)pData)[0x1C + charIdx];
+    u16 raw[12];
+    u8 decoded[24];
+    u8* bytes = (u8*)raw;
+    s32 i;
+    void* buffer;
+    RECT rect;
+    for (i = 0; i < 20; i += 2) {
+        bytes[i] = entry[0x24 + character * 20 + i];
+        bytes[i + 1] = entry[0x25 + character * 20 + i];
+        if (bytes[i] == 0 && bytes[i + 1] == 0) break;
+    }
+    func_80033B34(raw, decoded, i / 2);
+    buffer = HeapAlloc(0x3F6, 0);
+    bzero(buffer, 0x3F6);
+    SystemRenderStringEntry(decoded, buffer, 0x24, 0);
+    /* Both atlas coordinates are halfwords at four-byte spacing. */
+    rect.x = (s16)(D_801EA590[charIdx * 2] + 0x180);
+    rect.y = (s16)D_801EA5DC[charIdx * 2];
+    rect.w = 0x28;
+    rect.h = 0x0D;
+    LoadImage(&rect, buffer);
+    DrawSync(0);
+    HeapFree(buffer);
+#else
     u8* pSrc = (u8*)pData + charIdx;
     void* pMenu = g_Menu;
     void* pMgrData = *(void**)((u8*)pMenu + 0x32C);
@@ -8271,34 +11018,91 @@ void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
     LoadImage(&rect, pAlloc);
     DrawSync(0);
     HeapFree(pAlloc);
+#endif
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E733C);
+#else
+extern u16 D_801EA04C, D_801EA050;
+extern void func_801E927C(POLY_FT4*);
+
+void func_801E733C(void) {
+    s32 i;
+    for (i = 0; i < 16; i++) {
+        POLY_FT4* p = (POLY_FT4*)(MenuRawPointer(0x34C) + 0x277C) +
+                      i * 2 + g_Menu->renderContext;
+        u16 x, y, page, clut;
+        func_801E927C(p);
+        p = (POLY_FT4*)(MenuRawPointer(0x34C) + 0x277C) +
+            i * 2 + g_Menu->renderContext;
+        x = (u16)(D_801EA04C + i * 12);
+        y = D_801EA050;
+        p->x0 = p->x2 = (s16)x;
+        p->x1 = p->x3 = (s16)(x + 12);
+        p->y0 = p->y1 = (s16)y;
+        p->y2 = p->y3 = (s16)(y + 16);
+        p->u0 = p->u2 = (u8)(i * 16);
+        p->u1 = p->u3 = (u8)(i * 16 + 12);
+        p->v0 = p->v1 = 0xF0;
+        p->v2 = p->v3 = 0xFF;
+        page = GetTPage(0, 0, 320, 128);
+        /* Retail reloads the destination after each external call. */
+        p = (POLY_FT4*)(MenuRawPointer(0x34C) + 0x277C) +
+            i * 2 + g_Menu->renderContext;
+        p->tpage = page;
+        clut = GetClut(0, 448);
+        p = (POLY_FT4*)(MenuRawPointer(0x34C) + 0x277C) +
+            i * 2 + g_Menu->renderContext;
+        p->clut = clut;
+    }
+}
+#endif
+
+#ifdef XENO_PC_PORT
+extern void func_801E61B0(void);
+extern void func_801E733C(void);
+#endif
 
 void func_801E76EC(s32 screenIdx) {
+#ifdef XENO_PC_PORT
+    /* Retail saves card+0xC94+screen*512 before the rendering initializer.
+     * Its return value is not a pointer; callbacks may replace g_Menu. */
+    u8* pEntry = g_Menu->unk32C->unkB94 + 0x100 + (u32)screenIdx * 512u;
+    func_801E61B0();
+#else
     void* pMenu = g_Menu;
     void* pData = *(void**)((u8*)pMenu + 0x32C);
     void* pTable = func_801E61B0((u8*)pData + (screenIdx << 9));
     u8* pEntry = (u8*)pTable + 0xC94;
+#endif
     s32 i;
     u32 slotOff = 0;
     for (i = 0; i < 3; i++) {
         if (*(u8*)(pEntry + i + 0x1C) != 0xFF) {
             u8 idx = (u8)i;
-            *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x1310) = 1;
+            *(u8*)(MenuRawPointer(0x34C) + slotOff + 0x1310) = 1;
             func_801E6AE8(idx, pEntry);
             func_801E6B70(idx, pEntry);
             func_801E6CFC(idx, pEntry);
             func_801E6F5C(idx, pEntry);
             func_801E71B4(idx, pEntry, screenIdx);
         } else {
-            *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x1310) = 0;
+            *(u8*)(MenuRawPointer(0x34C) + slotOff + 0x1310) = 0;
         }
-        *(u8*)(*(void**)((u8*)g_Menu + 0x34C) + slotOff + 0x130F) = *(u8*)((u8*)g_Menu + 0x308);
+#ifdef XENO_PC_PORT
+        *(u8*)(MenuRawPointer(0x34C) + slotOff + 0x130F) = (u8)g_Menu->renderContext;
+#else
+        *(u8*)(MenuRawPointer(0x34C) + slotOff + 0x130F) = *(u8*)((u8*)g_Menu + 0x308);
+#endif
         slotOff += 0x87C;
     }
     func_801E68AC(pEntry);
+#ifdef XENO_PC_PORT
+    func_801E733C();
+#else
     func_801E733C(pEntry);
+#endif
 }
 
 extern void func_801E76EC(s32);
@@ -8312,17 +11116,19 @@ void func_801E781C(s32 screenId, u8 animFlag) {
         func_801E76EC(screenId);
         func_801E6668(screenId);
         pMenu = g_Menu;
-        *(u8*)(*(void**)((u8*)pMenu + 0x34C) + 0x2DBC) = 1;
+        *(u8*)(MenuRawPointer(0x34C) + 0x2DBC) = 1;
     } else {
         func_801E6668(screenId);
         pMenu = g_Menu;
-        *(u8*)(*(void**)((u8*)pMenu + 0x34C) + 0x2DBC) = 0;
+        *(u8*)(MenuRawPointer(0x34C) + 0x2DBC) = 0;
     }
     pMenu = g_Menu;
     ((u8*)g_Menu->pManager)[0xB] = 1;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E78C8);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7C50);
@@ -8445,11 +11251,13 @@ extern u8 D_801E9EC4[];   /* Items description label x positions */
 extern u8 D_801E9EE4[];   /* Items description label y position */
 extern u8 D_801E9EE8[];   /* Abilities row x positions (E8070 mode 2/5) */
 extern u8 D_801E9F28[];   /* Abilities row y positions, indexed by arg6 */
+extern u8 D_801E9F30[];   /* Equip category label y positions (mode 3) */
 
 /* Nav N1: position the selected option's MenuString quad (the rendered text
  * strip) at the cursor's table position, mark it visible.  Retail is a 7-case
  * jump table.  Mode 0 serves the main menu and mode 1 serves the Items
- * description labels; all remaining modes stay deliberately unported. */
+ * description labels; mode 2 is Abilities rows; mode 3 is Equip category
+ * labels into the packed retail MenuString buffer at unk14E0. */
 void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
                    void* pFlags, s32 selected, s32 arg6, s32 mode) {
     MenuString* pStr;
@@ -8490,12 +11298,25 @@ void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
         return;
     }
 
+    /* Equip category labels: retail packs MenuString at 0x80 into unk14E0.
+     * Mode 3 sets x=0x18 and y from D_801E9F30[arg6], then the shared
+     * C851C + flag tail (.L801E82C4 -> .L801E8418). */
+    if ((mode & 0xFF) == 3) {
+        u8* line = (u8*)pStrings + sel * 0x80;
+        x = 0x18;
+        y = *(u16*)(D_801E9F30 + (arg6 & 0xFF) * 4);
+        func_801C851C((SVECTOR*)(line + 0x50), x, y, line[0x7E], 0xD);
+        line[0x7D] = (u8)rc;
+        ((u8*)pFlags)[sel] = 1;
+        return;
+    }
+
     if ((mode & 0xFF) != 0) {
         static int warned;
         if (!warned) {
             warned = 1;
             printf("[xeno-port][stub-path] func_801E8070 mode %d not ported "
-                   "(ported: 0, 1, 2)\n", mode & 0xFF);
+                   "(ported: 0, 1, 2, 3)\n", mode & 0xFF);
         }
         return;
     }
@@ -8580,7 +11401,9 @@ void func_801E8474(s32 count, void* pTable) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E86C8);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8978);
@@ -8619,7 +11442,9 @@ void func_801E8978(s32 count, s32 selected, void* pTable) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8B4C);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8DA8);
@@ -8825,4 +11650,74 @@ void func_801E9340(char* path, void* pBuf, s32 size) {
     PCclose(fd);
 }
 
+#ifdef XENO_PC_PORT
+extern u32 g_ArchiveTable, g_ArchiveHeader, g_ArchiveDebugTable;
+extern s32 ArchiveReadFileFromCdSector(s32, void*, s32, s32, u32);
+
+/* Retail menu 801E93A0..801E96A0. Archive globals retain their existing
+ * low-address 32-bit storage; the local sector header is a full host pointer.
+ * Keep drive polling unbounded as on retail: transport/cancellation belongs
+ * to the CD provider, not a fabricated success or timeout in this routine. */
+s32 func_801E93A0(s32 disc) {
+    u32 header[4] = {0, 0, 0, 0};
+    CdlLOC location;
+    s32 result;
+
+    ArchiveCdDataSync(0);
+    if (func_8002C3D8() != 0) {
+        if (disc == 1) {
+            func_801E9340("c:\\work\\cdrom.mdg", (void*)(uintptr_t)g_ArchiveTable, 0x8000);
+            func_801E9340("c:\\work\\cdrom.fid", (void*)(uintptr_t)g_ArchiveHeader, 0x7A);
+            func_801E9340("c:\\work\\cdrom.fnd", (void*)(uintptr_t)g_ArchiveDebugTable, 0x40000);
+        } else {
+            func_801E9340("c:\\work\\cdrom2.mdg", (void*)(uintptr_t)g_ArchiveTable, 0x8000);
+            func_801E9340("c:\\work\\cdrom2.fid", (void*)(uintptr_t)g_ArchiveHeader, 0x7A);
+            func_801E9340("c:\\work\\cdrom2.fnd", (void*)(uintptr_t)g_ArchiveDebugTable, 0x40000);
+        }
+        return 0;
+    }
+
+    CdIntToPos(0, &location);
+    do {
+        Vsync(3);
+        CdControlB(1, NULL, D_801EA8F4);
+    } while ((D_801EA8F4[0] & 0x10) == 0);
+    do {
+        Vsync(3);
+        CdControlB(1, NULL, D_801EA8F4);
+    } while ((D_801EA8F4[0] & 0x10) != 0);
+    do {
+        Vsync(3);
+        result = CdControlB(1, NULL, D_801EA8F4);
+    } while ((D_801EA8F4[0] & 2) == 0 || result == 0);
+
+    do {
+        do {
+            Vsync(3);
+        } while (CdControlB(0x13, NULL, D_801EA8F4) == 0);
+        do {
+            Vsync(3);
+        } while (CdControlB(2, (u8*)&location, D_801EA8F4) == 0);
+        result = CdControlB(0x15, NULL, D_801EA8F4);
+        if ((D_801EA8F4[0] & 1) != 0 && (D_801EA8F4[1] & 0x40) != 0 && result == 0) {
+            return 2;
+        }
+    } while (result == 0);
+
+    ArchiveCdSetMode(0xA0);
+    ArchiveCdDataSync(0);
+    Vsync(3);
+    Vsync(3);
+    ArchiveReadFileFromCdSector(0x17, header, 0x10, 0, 0);
+    ArchiveCdDataSync(0);
+    if (header[1] != 0x4E45585F) return 2;
+    if (((u8*)header)[3] != (u32)disc + 0x30u) return 3;
+    ArchiveReadFileFromCdSector(0x18, (void*)(uintptr_t)g_ArchiveTable, 0x8000, 0, 0);
+    ArchiveCdDataSync(0);
+    ArchiveReadFileFromCdSector(0x28, (void*)(uintptr_t)g_ArchiveHeader, 0x7A, 0, 0);
+    ArchiveCdDataSync(0);
+    return 0;
+}
+#else
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E93A0);
+#endif

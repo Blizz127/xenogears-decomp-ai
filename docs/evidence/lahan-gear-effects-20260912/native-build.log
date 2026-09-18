@@ -1,0 +1,417 @@
+==> [1/5] Building PsyCross (libpsycross.a) via CMake
+    libpsycross.a: pc_port/build/libpsycross.a
+==> [2/5] Compiling game translation units in port mode
+    Intentionally excluded game TUs (not compiled or linked):
+      src/battling/main.c — retail state-4 MIPS overlay scaffold; not a native host translation unit
+      src/slus_006.64/system/archive.c — replaced by pc_port/src/archive_port.c
+      */psyq/* — PsyQ originals are replaced at runtime by PsyCross
+    Reference-only game TUs (matching source; replaced in the port link):
+      src/slus_006.64/system/work_list.c — runtime replaced by pc_port/src/work_list_port.c (packed 0x1C entry layout)
+      src/battle/main.c — retail MIPS overlay scaffold; runtime executes disc/battle.bin through pc_port/src/battle_mips_runtime.c
+      src/battle/main2.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main3.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main4.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main5.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main6.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main7.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main8.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main9.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main10.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main11.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main12.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main13.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main14.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main15.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main16.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main17.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc18.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main19.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main20.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main21.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main22.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main23.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main24.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main25.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main26.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main27.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main28.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main29.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main30.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main31.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main32.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main33.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main34.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main35.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main36.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main37.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main38.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main39.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main40.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main41.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main42.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main43.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main44.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main45.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main46.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main47.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main48.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main49.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main50.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main51.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main52.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main53.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main54.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main55.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main56.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main57.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main58.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main59.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main60.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main61.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main62.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main63.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main64.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main65.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main66.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main67.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main68.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main69.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main70.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main71.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main72.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main73.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main74.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main75.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc76.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main77.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc78.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc79.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc80.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl81.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc82.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc83.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc84.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc85.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc86.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main87.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc88.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc89.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main90.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main91.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl92.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main93.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl94.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc95.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main96.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc97.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl98.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc99.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc100.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main101.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc102.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main103.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc104.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main105.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main106.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc107.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc108.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl109.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl110.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main111.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc112.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc113.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc114.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl115.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc116.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc117.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc118.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main119.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc120.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main121.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc122.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc123.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc124.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main125.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc126.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc127.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main128.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc129.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc130.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc131.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc132.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainl133.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/mainc134.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+      src/battle/main135.c — retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin
+    Allowlisted broken game TUs (compile failures tolerated): none
+    compiled=58  skipped=0
+==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)
+    psx_memory.c ok
+    battle_mips_adapter.c ok
+    battle_mips_runtime.c ok
+    guest_prim_link.c ok
+    model_prim_link.c ok
+    model_prim_ed20.c ok
+    test_input.c ok
+    quick_checkpoint_file.c ok
+    quick_checkpoint.c ok
+    field_pos_diag.c ok
+    game_overrides.c ok
+    retail_leaf_adapters.c ok
+    boot_menu.c ok
+    boot_str.c ok
+    boot_assets.c ok
+    boot_sound_banks.c ok
+    boot_sound_commit.c ok
+    movie_player.c ok
+    field_object_overlay.c ok
+    field_timed_commands.c ok
+    field_clip_prelude.c ok
+    field_clip_control.c ok
+    field_clip_data.c ok
+    sprite_constructor.c ok
+    world_map_init.c ok
+    world_map_frame_driver.c ok
+    world_map_image_transfer_25044.c ok
+    world_map_upload_pump_74f2c.c ok
+    world_map_upload_pump_75104.c ok
+    world_map_frame_tail_71984.c ok
+    world_map_ot_adapter.c ok
+    world_map_frame_driver_712d0.c ok
+    world_map_pause.c ok
+    world_map_main_loop_71034.c ok
+    world_map_terminal_default_71264.c ok
+    world_map_terminal_one_711b0.c ok
+    world_map_terminal_zero_710e4.c ok
+    world_map_teardown_7299c.c ok
+    world_map_mode811_lifecycle.c ok
+    world_map_mode9_lifecycle.c ok
+    world_map_mode10_lifecycle.c ok
+    world_map_mode12_lifecycle.c ok
+    world_map_mode13_lifecycle.c ok
+    world_map_mode14_lifecycle.c ok
+    world_map_mode15_lifecycle.c ok
+    world_map_mode16_lifecycle.c ok
+    world_map_mode17_lifecycle.c ok
+    world_map_mode18_lifecycle.c ok
+    world_map_capture.c ok
+    world_map_gamestate_alias.c ok
+    world_map_selector.c ok
+    psyq_cd_mix.c ok
+    psyq_compat.c ok
+    archive_port.c ok
+    work_list_port.c ok
+    sound_transfer_callbacks.c ok
+    data_published_logo.c ok
+    data_font.c ok
+    data_kernel_menu.c ok
+    data_field.c ok
+    data_member_change_menu.c ok
+    data_main_menu.c ok
+    data_game_state.c ok
+    data_controller.c ok
+    data_heap.c ok
+    data_boot_globals.c ok
+    world_map_convergence.c ok
+    world_map_framebuffer_init.c ok
+    world_map_terrain_init.c ok
+    world_map_terrain_cell.c ok
+    world_map_plane_solver.c ok
+    world_map_terrain_normal.c ok
+    world_map_terrain_sampler.c ok
+    world_map_common_tail.c ok
+    world_map_scheduler.c ok
+    world_map_callback_923a8.c ok
+    world_map_callback_925a0.c ok
+    world_map_callback_8a2c8.c ok
+    world_map_callback_8b2bc.c ok
+    world_map_callback_8bb40.c ok
+    world_map_callback_8c530.c ok
+    world_map_callback_8d3f0.c ok
+    world_map_callback_8dd6c.c ok
+    world_map_callback_8e190.c ok
+    world_map_callback_906e0.c ok
+    world_map_callback_91430.c ok
+    world_map_callback_91b54.c ok
+    world_map_callback_92234.c ok
+    world_map_callback_92be4.c ok
+    world_map_callback_92df8.c ok
+    world_map_callback_71a50.c ok
+    world_map_callback_87710.c ok
+    world_map_callback_87734.c ok
+    world_map_callback_7756c.c ok
+    world_map_callback_76a14.c ok
+    world_map_callback_78948.c ok
+    world_map_callback_77dc8.c ok
+    world_map_callback_78e2c.c ok
+    world_map_callback_794d8.c ok
+    world_map_callback_795e4.c ok
+    world_map_callback_7a144.c ok
+    world_map_callback_7a9b4.c ok
+    world_map_callback_7ad34.c ok
+    world_map_callback_7b200.c ok
+    world_map_callback_7b604.c ok
+    world_map_callback_7ba08.c ok
+    world_map_callback_7bb60.c ok
+    world_map_callback_7c36c.c ok
+    world_map_callback_7c724.c ok
+    world_map_callback_7de14.c ok
+    world_map_callback_7e450.c ok
+    world_map_callback_7eca4.c ok
+    world_map_callback_7f8ac.c ok
+    world_map_callback_7fc8c.c ok
+    world_map_callback_8032c.c ok
+    world_map_callback_80578.c ok
+    world_map_callback_80900.c ok
+    world_map_callback_80a28.c ok
+    world_map_callback_81174.c ok
+    world_map_callback_813e8.c ok
+    world_map_callback_817a0.c ok
+    world_map_callback_819c8.c ok
+    world_map_callback_81c3c.c ok
+    world_map_callback_81fb4.c ok
+    world_map_callback_827c8.c ok
+    world_map_callback_827ec.c ok
+    world_map_callback_83214.c ok
+    world_map_callback_834d0.c ok
+    world_map_callback_838e8.c ok
+    world_map_callback_83a00.c ok
+    world_map_callback_84068.c ok
+    world_map_cold_defaults.c ok
+    world_map_mode_selector_73300.c ok
+    psyq_normal_light_col.c ok
+    psyq_spu_noise_clock.c ok
+    world_map_callback_7cc6c.c ok
+    world_map_callback_7ce84.c ok
+    world_map_callback_7d078.c ok
+    world_map_callback_7d228.c ok
+    world_map_callback_7d414.c ok
+    world_map_callback_7d600.c ok
+    world_map_callback_7d774.c ok
+    world_map_callback_8a72c.c ok
+    world_map_callback_8b644.c ok
+    world_map_callback_8c844.c ok
+    world_map_callback_8d678.c ok
+    world_map_callback_8e76c.c ok
+    world_map_state01_8eb30.c ok
+    world_map_state2_8eb64.c ok
+    world_map_vehicle_tail_90620.c ok
+    world_map_callback_914d0.c ok
+    world_map_callback_91c18.c ok
+    world_map_callback_922ac.c ok
+    world_map_callback_92c70.c ok
+    world_map_callback_92fd8.c ok
+    world_map_r4world_71a58.c ok
+    world_map_helper_8bfd4.c ok
+    world_map_helper_8e078.c ok
+    world_map_helper_8e0f0.c ok
+    world_map_helper_90c68.c ok
+    world_map_helper_90e14.c ok
+    world_map_helper_907f4.c ok
+    world_map_helper_90fb4.c ok
+    world_map_helper_91ff8.c ok
+    world_map_helper_3101c.c ok
+    world_map_helper_93484.c ok
+    world_map_helper_96f18.c ok
+    world_map_helper_93a5c.c ok
+    world_map_helper_95cd4.c ok
+    world_map_helper_9623c.c ok
+    world_map_helper_983a0.c ok
+    world_map_helper_987ac.c ok
+    world_map_helper_9980c.c ok
+    world_map_helper_96328.c ok
+    world_map_helper_97dc0.c ok
+    world_map_helper_980d4.c ok
+    world_map_helper_73398.c ok
+    world_map_helper_73448.c ok
+    world_map_helper_72db4.c ok
+    world_map_helper_76858.c ok
+    world_map_helper_76954.c ok
+    world_map_helper_97070.c ok
+    world_map_helper_94154.c ok
+    world_map_helper_7565c.c ok
+    world_map_helper_75d4c.c ok
+    world_map_helper_75e7c.c ok
+    world_map_helper_762fc.c ok
+    world_map_helper_86124.c ok
+    world_map_helper_71fec.c ok
+    world_map_menu_lifecycle.c ok
+    world_map_session_setup_72238.c ok
+    world_map_helper_96130.c ok
+    world_map_helper_966cc.c ok
+    world_map_helper_737ec.c ok
+    world_map_helper_747dc.c ok
+    world_map_helper_740b8.c ok
+    world_map_helper_97244.c ok
+    world_map_helper_965a4.c ok
+    world_map_helper_89580.c ok
+    world_map_helper_89748.c ok
+    world_map_helper_98cc0.c ok
+    world_map_helper_9932c.c ok
+    world_map_helper_99bfc.c ok
+    world_map_helper_99708.c ok
+    world_map_helper_981c8.c ok
+    world_map_helper_848b4.c ok
+    world_map_helper_848f4.c ok
+    world_map_helper_85cdc.c ok
+    world_map_helper_89c78.c ok
+    world_map_helper_8615c.c ok
+    world_map_helper_86798.c ok
+    world_map_helper_c28c.c ok
+    world_map_helper_c364.c ok
+    world_map_helper_8dff4.c ok
+    world_map_helper_7528c.c ok
+    world_map_helper_8e034.c ok
+    world_map_helper_73b04.c ok
+    world_map_helper_90a84.c ok
+    world_map_helper_74794.c ok
+    world_map_helper_85760.c ok
+    world_map_helper_85418.c ok
+    world_map_helper_93354.c ok
+    world_map_helper_952b0.c ok
+    world_map_helper_95324.c ok
+    world_map_helper_93fe4.c ok
+    world_map_helper_94088.c ok
+    world_map_helper_951a8.c ok
+    world_map_helper_85158.c ok
+    world_map_helper_84db8.c ok
+    world_map_helper_84d00.c ok
+    world_map_helper_97770.c ok
+    world_map_helper_941c4.c ok
+    world_map_helper_94238.c ok
+    world_map_helper_94364.c ok
+    world_map_helper_8bec8.c ok
+    world_map_helper_8c1dc.c ok
+    world_map_helper_93534.c ok
+    world_map_helper_93e8c.c ok
+    world_map_helper_93f18.c ok
+    world_map_helper_94060.c ok
+    world_map_helper_8c040.c ok
+    world_map_private_collision.c ok
+    world_map_func_94a5c.c ok
+    world_map_func_95414.c ok
+    port-owned override: weakening matching definition func_8001AADC in src_slus_006.64_system_temp3.c.o
+    port-owned override: weakening matching definition func_8003BDFC in src_slus_006.64_system_sound.c.o
+    port-owned override: weakening matching definition FieldScriptMemoryWriteU16 in src_field_scripts_virtual_machine.c.o
+    port-owned override: weakening matching definition func_800317E0 in src_slus_006.64_system_temp2.c.o
+    port-owned override: weakening matching definition func_80031804 in src_slus_006.64_system_temp2.c.o
+    port-owned override: weakening matching definition func_8001FB30 in src_slus_006.64_system_rendering.c.o
+    port-owned override: weakening matching definition func_80025718 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80023440 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80023958 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_800239F4 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80023A48 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80022E8C in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80022EB8 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_8002CC10 in src_slus_006.64_system_temp2.c.o
+    port-owned override: weakening matching definition func_8002C59C in src_slus_006.64_system_temp2.c.o
+    port-owned override: weakening matching definition func_80025224 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80024730 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_80023468 in src_slus_006.64_system_temp1.c.o
+    port-owned override: weakening matching definition func_8002DDE4 in src_slus_006.64_system_temp2.c.o
+    verified 19 port-owned override symbols with retirement metadata
+==> [3/5] Compiling port entry point
+==> [4/5] Trial link to discover undefined references
+    undefined symbols to stub: 639
+Wrote pc_port/build_native/stubs.c: 66 function stubs, 572 data symbols (10 sized from symbol_addrs)
+==> [5/5] Final link
+    LINK OK -> pc_port/build_native/xeno-port (port-owned addresses verified)

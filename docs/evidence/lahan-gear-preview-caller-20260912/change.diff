@@ -1,0 +1,52 @@
+--- before
++++ after
+@@ -1,30 +1,21 @@
+ void func_801DFE2C(u8 slotIdx) {
+-    void* pMenu = g_Menu;
+-    void* pManager = g_Menu->pManager;
+-    u8 charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
+-    u8* pEntry = (u8*)&g_GameState + 0x30C + charIdx * 0x28;
+-    u8 entryByte = pEntry[0];
+-    s32 gameData = *(s32*)((u8*)pMenu + 0x330);
+-    func_801E3ECC(gameData, entryByte);
+-    pMenu = g_Menu;
+-    pManager = g_Menu->pManager;
+-    charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
+-    pEntry = (u8*)&g_GameState + 0x30C + charIdx * 0x28;
+-    entryByte = pEntry[0];
+-    gameData = *(s32*)((u8*)pMenu + 0x330);
+-    func_801E3C2C(gameData, entryByte);
+-    {
+-        void* pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xB8) = *(u16*)((u8*)pGameData + 0xB0);
+-        pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xBA) = *(u16*)((u8*)pGameData + 0xA4);
+-        pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xBC) = *(u16*)((u8*)pGameData + 0xA6);
+-        pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xBE) = *(u8*)((u8*)pGameData + 0xB2);
+-        pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xC0) = *(u8*)((u8*)pGameData + 0xB3);
+-        pGameData = *(void**)((u8*)pMenu + 0x330);
+-        *(u16*)((u8*)pGameData + 0xC2) = *(u8*)((u8*)pGameData + 0xB4);
+-    }
++    u8 characterId = g_Menu->pManager->currentCharacterIDs[slotIdx];
++    u8 gearId = ((u8*)&g_GameState)[0x30C + characterId * 0xA4];
++    MenuUnk6* resource;
++    u8* source;
++    u8* destination;
++    func_801E3ECC(g_Menu->unk330, gearId);
++    /* Retail reloads party mapping and resource ownership after each call. */
++    characterId = g_Menu->pManager->currentCharacterIDs[slotIdx];
++    gearId = ((u8*)&g_GameState)[0x30C + characterId * 0xA4];
++    func_801E3C2C(g_Menu->unk330, gearId);
++    resource = g_Menu->unk330;
++    source = resource->unk20;
++    destination = (u8*)&resource->unkB8;
++    *(u16*)(destination + 0) = *(u16*)(source + 0x90);
++    *(u16*)(destination + 2) = *(u16*)(source + 0x84);
++    *(u16*)(destination + 4) = *(u16*)(source + 0x86);
++    *(u16*)(destination + 6) = source[0x92];
++    *(u16*)(destination + 8) = source[0x93];
++    *(u16*)(destination + 10) = source[0x94];
+ }

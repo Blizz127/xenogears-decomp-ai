@@ -1,0 +1,7 @@
+{
+  "source": "src/slus_006.64/system/temp1.c",
+  "sha256": "494f6f78dc51aaf65e57d1bad5bc7a06e288059134de89c907648e709032d441",
+  "candidate_sha256": "494f6f78dc51aaf65e57d1bad5bc7a06e288059134de89c907648e709032d441",
+  "test": "sprite_bind_transform_retail_test.SCA0V7Iq",
+  "scope": "retailhelperboundary,32cases/mode,oldelse-ifandcachedconditioncontrols"
+}

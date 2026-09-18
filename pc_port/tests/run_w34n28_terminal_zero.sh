@@ -14,7 +14,8 @@ BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
       -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 SRC=(pc_port/tests/w34n28_terminal_zero_prod_test.c
      pc_port/src/world_map_terminal_zero_710e4.c
-     pc_port/src/world_map_main_loop_71034.c)
+     pc_port/src/world_map_main_loop_71034.c
+     pc_port/tests/world_map_mode_lifecycle_stubs.c)
 
 compile_and_run() {
     local name="$1"

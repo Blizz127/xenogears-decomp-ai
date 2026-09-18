@@ -1,0 +1,8003 @@
+[
+  {
+    "name": "FieldFree",
+    "unit": "main/misc3",
+    "retail_address": 2147942576,
+    "retail_size": 656,
+    "compiled_offset": 764,
+    "compiled_size": 704,
+    "delta": 48
+  },
+  {
+    "name": "FieldLZSSDecompress",
+    "unit": "main/misc3",
+    "retail_address": 2147942540,
+    "retail_size": 36,
+    "compiled_offset": 596,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldLoad",
+    "unit": "main/misc3",
+    "retail_address": 2147945672,
+    "retail_size": 3484,
+    "compiled_offset": 3912,
+    "compiled_size": 3408,
+    "delta": -76
+  },
+  {
+    "name": "FieldLoadTIMWithClut",
+    "unit": "main/misc3",
+    "retail_address": 2147943232,
+    "retail_size": 328,
+    "compiled_offset": 1468,
+    "compiled_size": 328,
+    "delta": 0
+  },
+  {
+    "name": "func_8006FDEC",
+    "unit": "main/misc3",
+    "retail_address": 2147941868,
+    "retail_size": 672,
+    "compiled_offset": 100,
+    "compiled_size": 496,
+    "delta": -176
+  },
+  {
+    "name": "func_80070488",
+    "unit": "main/misc3",
+    "retail_address": 2147943560,
+    "retail_size": 128,
+    "compiled_offset": 1796,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "func_80070508",
+    "unit": "main/misc3",
+    "retail_address": 2147943688,
+    "retail_size": 88,
+    "compiled_offset": 1924,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_80070560",
+    "unit": "main/misc3",
+    "retail_address": 2147943776,
+    "retail_size": 52,
+    "compiled_offset": 2012,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "func_80070594",
+    "unit": "main/misc3",
+    "retail_address": 2147943828,
+    "retail_size": 72,
+    "compiled_offset": 2064,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_800705DC",
+    "unit": "main/misc3",
+    "retail_address": 2147943900,
+    "retail_size": 1704,
+    "compiled_offset": 2136,
+    "compiled_size": 1708,
+    "delta": 4
+  },
+  {
+    "name": "func_80070C84",
+    "unit": "main/misc3",
+    "retail_address": 2147945604,
+    "retail_size": 68,
+    "compiled_offset": 3844,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldLoadLightRecord",
+    "unit": "main/misc3",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 0,
+    "compiled_size": 100,
+    "delta": 100
+  },
+  {
+    "name": "IsLiveHeapBlock",
+    "unit": "main/misc3",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 632,
+    "compiled_size": 132,
+    "delta": 132
+  },
+  {
+    "name": "FieldFadeInitialize",
+    "unit": "effects/fade",
+    "retail_address": 2147949156,
+    "retail_size": 40,
+    "compiled_offset": 0,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeSetParameters",
+    "unit": "effects/fade",
+    "retail_address": 2147949832,
+    "retail_size": 196,
+    "compiled_offset": 676,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeToBlack",
+    "unit": "effects/fade",
+    "retail_address": 2147950168,
+    "retail_size": 144,
+    "compiled_offset": 1012,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeToWhite",
+    "unit": "effects/fade",
+    "retail_address": 2147950028,
+    "retail_size": 140,
+    "compiled_offset": 872,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeUpdate",
+    "unit": "effects/fade",
+    "retail_address": 2147949196,
+    "retail_size": 552,
+    "compiled_offset": 40,
+    "compiled_size": 552,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeUpdateAndDraw",
+    "unit": "effects/fade",
+    "retail_address": 2147949748,
+    "retail_size": 84,
+    "compiled_offset": 592,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeControllersAndMouse",
+    "unit": "main/init",
+    "retail_address": 2147950312,
+    "retail_size": 124,
+    "compiled_offset": 0,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeRenderContexts",
+    "unit": "main/init",
+    "retail_address": 2147950512,
+    "retail_size": 400,
+    "compiled_offset": 200,
+    "compiled_size": 400,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetClipDimensions",
+    "unit": "main/init",
+    "retail_address": 2147950436,
+    "retail_size": 76,
+    "compiled_offset": 124,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "FieldAddPrimitives",
+    "unit": "main/misc2",
+    "retail_address": 2147963992,
+    "retail_size": 44,
+    "compiled_offset": 11784,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "FieldClearAndSwapOTag",
+    "unit": "main/misc2",
+    "retail_address": 2147958752,
+    "retail_size": 88,
+    "compiled_offset": 7360,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldClearAndSwapOTagInternal",
+    "unit": "main/misc2",
+    "retail_address": 2147958608,
+    "retail_size": 144,
+    "compiled_offset": 7216,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "FieldComputeSceneMatrices",
+    "unit": "main/misc2",
+    "retail_address": 2147950928,
+    "retail_size": 260,
+    "compiled_offset": 92,
+    "compiled_size": 260,
+    "delta": 0
+  },
+  {
+    "name": "FieldLoadTIM",
+    "unit": "main/misc2",
+    "retail_address": 2147971576,
+    "retail_size": 112,
+    "compiled_offset": 16580,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldMathInterpolateAngle",
+    "unit": "main/misc2",
+    "retail_address": 2147957040,
+    "retail_size": 88,
+    "compiled_offset": 5732,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldMathUpdateAngle",
+    "unit": "main/misc2",
+    "retail_address": 2147957128,
+    "retail_size": 56,
+    "compiled_offset": 5820,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixCopy",
+    "unit": "main/misc2",
+    "retail_address": 2147958840,
+    "retail_size": 64,
+    "compiled_offset": 7448,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixCopyTransform",
+    "unit": "main/misc2",
+    "retail_address": 2147958940,
+    "retail_size": 108,
+    "compiled_offset": 7548,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixCopyTranslation",
+    "unit": "main/misc2",
+    "retail_address": 2147958904,
+    "retail_size": 36,
+    "compiled_offset": 7512,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixCreateWorldToScreen",
+    "unit": "main/misc2",
+    "retail_address": 2147951348,
+    "retail_size": 88,
+    "compiled_offset": 504,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixLookAt",
+    "unit": "main/misc2",
+    "retail_address": 2147956560,
+    "retail_size": 480,
+    "compiled_offset": 5252,
+    "compiled_size": 480,
+    "delta": 0
+  },
+  {
+    "name": "FieldMatrixResetTranslation",
+    "unit": "main/misc2",
+    "retail_address": 2147950912,
+    "retail_size": 16,
+    "compiled_offset": 76,
+    "compiled_size": 16,
+    "delta": 0
+  },
+  {
+    "name": "FieldPollControllers",
+    "unit": "main/misc2",
+    "retail_address": 2147960576,
+    "retail_size": 488,
+    "compiled_offset": 9176,
+    "compiled_size": 488,
+    "delta": 0
+  },
+  {
+    "name": "func_80072254",
+    "unit": "main/misc2",
+    "retail_address": 2147951188,
+    "retail_size": 160,
+    "compiled_offset": 352,
+    "compiled_size": 152,
+    "delta": -8
+  },
+  {
+    "name": "func_8007234C",
+    "unit": "main/misc2",
+    "retail_address": 2147951436,
+    "retail_size": 76,
+    "compiled_offset": 0,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_80072398",
+    "unit": "main/misc2",
+    "retail_address": 2147951512,
+    "retail_size": 76,
+    "compiled_offset": 592,
+    "compiled_size": 72,
+    "delta": -4
+  },
+  {
+    "name": "func_800723E4",
+    "unit": "main/misc2",
+    "retail_address": 2147951588,
+    "retail_size": 360,
+    "compiled_offset": 664,
+    "compiled_size": 348,
+    "delta": -12
+  },
+  {
+    "name": "func_8007254C",
+    "unit": "main/misc2",
+    "retail_address": 2147951948,
+    "retail_size": 412,
+    "compiled_offset": 1012,
+    "compiled_size": 436,
+    "delta": 24
+  },
+  {
+    "name": "func_800726E8",
+    "unit": "main/misc2",
+    "retail_address": 2147952360,
+    "retail_size": 848,
+    "compiled_offset": 1448,
+    "compiled_size": 860,
+    "delta": 12
+  },
+  {
+    "name": "func_80072A38",
+    "unit": "main/misc2",
+    "retail_address": 2147953208,
+    "retail_size": 828,
+    "compiled_offset": 2308,
+    "compiled_size": 796,
+    "delta": -32
+  },
+  {
+    "name": "func_80072D74",
+    "unit": "main/misc2",
+    "retail_address": 2147954036,
+    "retail_size": 1212,
+    "compiled_offset": 3104,
+    "compiled_size": 872,
+    "delta": -340
+  },
+  {
+    "name": "func_80073230",
+    "unit": "main/misc2",
+    "retail_address": 2147955248,
+    "retail_size": 1108,
+    "compiled_offset": 3976,
+    "compiled_size": 1072,
+    "delta": -36
+  },
+  {
+    "name": "func_80073684",
+    "unit": "main/misc2",
+    "retail_address": 2147956356,
+    "retail_size": 176,
+    "compiled_offset": 5048,
+    "compiled_size": 176,
+    "delta": 0
+  },
+  {
+    "name": "func_80073734",
+    "unit": "main/misc2",
+    "retail_address": 2147956532,
+    "retail_size": 28,
+    "compiled_offset": 5224,
+    "compiled_size": 28,
+    "delta": 0
+  },
+  {
+    "name": "func_800739C0",
+    "unit": "main/misc2",
+    "retail_address": 2147957184,
+    "retail_size": 1144,
+    "compiled_offset": 5876,
+    "compiled_size": 1080,
+    "delta": -64
+  },
+  {
+    "name": "func_80073E38",
+    "unit": "main/misc2",
+    "retail_address": 2147958328,
+    "retail_size": 280,
+    "compiled_offset": 6956,
+    "compiled_size": 260,
+    "delta": -20
+  },
+  {
+    "name": "func_80074108",
+    "unit": "main/misc2",
+    "retail_address": 2147959048,
+    "retail_size": 1428,
+    "compiled_offset": 7656,
+    "compiled_size": 1412,
+    "delta": -16
+  },
+  {
+    "name": "func_8007469C",
+    "unit": "main/misc2",
+    "retail_address": 2147960476,
+    "retail_size": 100,
+    "compiled_offset": 9068,
+    "compiled_size": 108,
+    "delta": 8
+  },
+  {
+    "name": "func_800748E8",
+    "unit": "main/misc2",
+    "retail_address": 2147961064,
+    "retail_size": 2340,
+    "compiled_offset": 9664,
+    "compiled_size": 1548,
+    "delta": -792
+  },
+  {
+    "name": "func_8007520C",
+    "unit": "main/misc2",
+    "retail_address": 2147963404,
+    "retail_size": 188,
+    "compiled_offset": 11212,
+    "compiled_size": 180,
+    "delta": -8
+  },
+  {
+    "name": "func_800752C8",
+    "unit": "main/misc2",
+    "retail_address": 2147963592,
+    "retail_size": 400,
+    "compiled_offset": 11392,
+    "compiled_size": 392,
+    "delta": -8
+  },
+  {
+    "name": "func_80075484",
+    "unit": "main/misc2",
+    "retail_address": 2147964036,
+    "retail_size": 200,
+    "compiled_offset": 11828,
+    "compiled_size": 200,
+    "delta": 0
+  },
+  {
+    "name": "func_8007554C",
+    "unit": "main/misc2",
+    "retail_address": 2147964236,
+    "retail_size": 964,
+    "compiled_offset": 12028,
+    "compiled_size": 880,
+    "delta": -84
+  },
+  {
+    "name": "func_80075910",
+    "unit": "main/misc2",
+    "retail_address": 2147965200,
+    "retail_size": 212,
+    "compiled_offset": 12908,
+    "compiled_size": 212,
+    "delta": 0
+  },
+  {
+    "name": "func_800759E4",
+    "unit": "main/misc2",
+    "retail_address": 2147965412,
+    "retail_size": 292,
+    "compiled_offset": null,
+    "compiled_size": 0,
+    "delta": -292
+  },
+  {
+    "name": "func_80075B08",
+    "unit": "main/misc2",
+    "retail_address": 2147965704,
+    "retail_size": 60,
+    "compiled_offset": 13120,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80075B44",
+    "unit": "main/misc2",
+    "retail_address": 2147965764,
+    "retail_size": 2416,
+    "compiled_offset": 13180,
+    "compiled_size": 1140,
+    "delta": -1276
+  },
+  {
+    "name": "func_800764B4",
+    "unit": "main/misc2",
+    "retail_address": 2147968180,
+    "retail_size": 1472,
+    "compiled_offset": 14320,
+    "compiled_size": 1020,
+    "delta": -452
+  },
+  {
+    "name": "func_80076A74",
+    "unit": "main/misc2",
+    "retail_address": 2147969652,
+    "retail_size": 76,
+    "compiled_offset": 15340,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_80076AC0",
+    "unit": "main/misc2",
+    "retail_address": 2147969728,
+    "retail_size": 1776,
+    "compiled_offset": 15460,
+    "compiled_size": 1040,
+    "delta": -736
+  },
+  {
+    "name": "func_800771B0",
+    "unit": "main/misc2",
+    "retail_address": 2147971504,
+    "retail_size": 72,
+    "compiled_offset": 16500,
+    "compiled_size": 80,
+    "delta": 8
+  },
+  {
+    "name": "func_80077268",
+    "unit": "main/misc2",
+    "retail_address": 2147971688,
+    "retail_size": 732,
+    "compiled_offset": 16692,
+    "compiled_size": 424,
+    "delta": -308
+  },
+  {
+    "name": "func_80077544",
+    "unit": "main/misc2",
+    "retail_address": 2147972420,
+    "retail_size": 124,
+    "compiled_offset": 17116,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "FieldActorSyncSpritePosition",
+    "unit": "main/misc2",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 15416,
+    "compiled_size": 44,
+    "delta": 44
+  },
+  {
+    "name": "FieldInitializeControllers",
+    "unit": "main/main",
+    "retail_address": 2147972544,
+    "retail_size": 56,
+    "compiled_offset": 0,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldLoadUITextures",
+    "unit": "main/main",
+    "retail_address": 2147972640,
+    "retail_size": 444,
+    "compiled_offset": 96,
+    "compiled_size": 428,
+    "delta": -16
+  },
+  {
+    "name": "FieldMain",
+    "unit": "main/main",
+    "retail_address": 2147974792,
+    "retail_size": 3284,
+    "compiled_offset": 2204,
+    "compiled_size": 3284,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyAllocateSkinDataBuffers",
+    "unit": "main/main",
+    "retail_address": 2147974280,
+    "retail_size": 164,
+    "compiled_offset": 1684,
+    "compiled_size": 164,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyFreeSkinDataBuffers",
+    "unit": "main/main",
+    "retail_address": 2147974444,
+    "retail_size": 128,
+    "compiled_offset": 1848,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "FieldRenderSync",
+    "unit": "main/main",
+    "retail_address": 2147972600,
+    "retail_size": 40,
+    "compiled_offset": 56,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldUpdateDeltaTime",
+    "unit": "main/main",
+    "retail_address": 2147973148,
+    "retail_size": 40,
+    "compiled_offset": 588,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800777DC",
+    "unit": "main/main",
+    "retail_address": 2147973084,
+    "retail_size": 64,
+    "compiled_offset": 524,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_80077844",
+    "unit": "main/main",
+    "retail_address": 2147973188,
+    "retail_size": 64,
+    "compiled_offset": 628,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_80077884",
+    "unit": "main/main",
+    "retail_address": 2147973252,
+    "retail_size": 560,
+    "compiled_offset": 720,
+    "compiled_size": 524,
+    "delta": -36
+  },
+  {
+    "name": "func_80077AB4",
+    "unit": "main/main",
+    "retail_address": 2147973812,
+    "retail_size": 428,
+    "compiled_offset": 1244,
+    "compiled_size": 400,
+    "delta": -28
+  },
+  {
+    "name": "func_80077C60",
+    "unit": "main/main",
+    "retail_address": 2147974240,
+    "retail_size": 40,
+    "compiled_offset": 1644,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_80077DAC",
+    "unit": "main/main",
+    "retail_address": 2147974572,
+    "retail_size": 100,
+    "compiled_offset": 1976,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80077E10",
+    "unit": "main/main",
+    "retail_address": 2147974672,
+    "retail_size": 120,
+    "compiled_offset": 2076,
+    "compiled_size": 128,
+    "delta": 8
+  },
+  {
+    "name": "FieldSetArchiveQueueEntry",
+    "unit": "main/main",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 692,
+    "compiled_size": 28,
+    "delta": 28
+  },
+  {
+    "name": "FieldClampPolyFT4UVs",
+    "unit": "main/misc4",
+    "retail_address": 2147984460,
+    "retail_size": 376,
+    "compiled_offset": 6364,
+    "compiled_size": 376,
+    "delta": 0
+  },
+  {
+    "name": "FieldRenderQuad",
+    "unit": "main/misc4",
+    "retail_address": 2147986284,
+    "retail_size": 236,
+    "compiled_offset": 8204,
+    "compiled_size": 236,
+    "delta": 0
+  },
+  {
+    "name": "FieldRenderSyncAndFlush",
+    "unit": "main/misc4",
+    "retail_address": 2147981724,
+    "retail_size": 56,
+    "compiled_offset": 6308,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetControllerBuffers",
+    "unit": "main/misc4",
+    "retail_address": 2147986828,
+    "retail_size": 24,
+    "compiled_offset": 8748,
+    "compiled_size": 24,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetMousePosition",
+    "unit": "main/misc4",
+    "retail_address": 2147986988,
+    "retail_size": 76,
+    "compiled_offset": 8908,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetMouseSpeed",
+    "unit": "main/misc4",
+    "retail_address": 2147986964,
+    "retail_size": 24,
+    "compiled_offset": 8884,
+    "compiled_size": 24,
+    "delta": 0
+  },
+  {
+    "name": "FieldSwapRenderContext",
+    "unit": "main/misc4",
+    "retail_address": 2147981052,
+    "retail_size": 136,
+    "compiled_offset": 5796,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "func_80078B5C",
+    "unit": "main/misc4",
+    "retail_address": 2147978076,
+    "retail_size": 108,
+    "compiled_offset": 2840,
+    "compiled_size": 104,
+    "delta": -4
+  },
+  {
+    "name": "func_80078BC8",
+    "unit": "main/misc4",
+    "retail_address": 2147978184,
+    "retail_size": 148,
+    "compiled_offset": 2944,
+    "compiled_size": 144,
+    "delta": -4
+  },
+  {
+    "name": "func_80078C5C",
+    "unit": "main/misc4",
+    "retail_address": 2147978332,
+    "retail_size": 232,
+    "compiled_offset": 3088,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "func_80078D44",
+    "unit": "main/misc4",
+    "retail_address": 2147978564,
+    "retail_size": 1348,
+    "compiled_offset": 3320,
+    "compiled_size": 1340,
+    "delta": -8
+  },
+  {
+    "name": "func_80079288",
+    "unit": "main/misc4",
+    "retail_address": 2147979912,
+    "retail_size": 708,
+    "compiled_offset": 4660,
+    "compiled_size": 704,
+    "delta": -4
+  },
+  {
+    "name": "func_8007954C",
+    "unit": "main/misc4",
+    "retail_address": 2147980620,
+    "retail_size": 424,
+    "compiled_offset": 5364,
+    "compiled_size": 424,
+    "delta": 0
+  },
+  {
+    "name": "func_800796F4",
+    "unit": "main/misc4",
+    "retail_address": 2147981044,
+    "retail_size": 8,
+    "compiled_offset": 5788,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_80079784",
+    "unit": "main/misc4",
+    "retail_address": 2147981188,
+    "retail_size": 312,
+    "compiled_offset": 5932,
+    "compiled_size": 312,
+    "delta": 0
+  },
+  {
+    "name": "func_800798BC",
+    "unit": "main/misc4",
+    "retail_address": 2147981500,
+    "retail_size": 160,
+    "compiled_offset": 0,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_8007995C",
+    "unit": "main/misc4",
+    "retail_address": 2147981660,
+    "retail_size": 64,
+    "compiled_offset": 6244,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_800799D4",
+    "unit": "main/misc4",
+    "retail_address": 2147981780,
+    "retail_size": 2680,
+    "compiled_offset": 160,
+    "compiled_size": 2680,
+    "delta": 0
+  },
+  {
+    "name": "func_8007A5C4",
+    "unit": "main/misc4",
+    "retail_address": 2147984836,
+    "retail_size": 560,
+    "compiled_offset": 6740,
+    "compiled_size": 576,
+    "delta": 16
+  },
+  {
+    "name": "func_8007A7F4",
+    "unit": "main/misc4",
+    "retail_address": 2147985396,
+    "retail_size": 592,
+    "compiled_offset": 7316,
+    "compiled_size": 592,
+    "delta": 0
+  },
+  {
+    "name": "func_8007AA44",
+    "unit": "main/misc4",
+    "retail_address": 2147985988,
+    "retail_size": 296,
+    "compiled_offset": 7908,
+    "compiled_size": 296,
+    "delta": 0
+  },
+  {
+    "name": "func_8007AC58",
+    "unit": "main/misc4",
+    "retail_address": 2147986520,
+    "retail_size": 308,
+    "compiled_offset": 8440,
+    "compiled_size": 308,
+    "delta": 0
+  },
+  {
+    "name": "func_8007ADA4",
+    "unit": "main/misc4",
+    "retail_address": 2147986852,
+    "retail_size": 112,
+    "compiled_offset": 8772,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8007AE78",
+    "unit": "main/misc4",
+    "retail_address": 2147987064,
+    "retail_size": 252,
+    "compiled_offset": 8984,
+    "compiled_size": 248,
+    "delta": -4
+  },
+  {
+    "name": "func_8007AF74",
+    "unit": "main/misc4",
+    "retail_address": 2147987316,
+    "retail_size": 264,
+    "compiled_offset": 9232,
+    "compiled_size": 272,
+    "delta": 8
+  },
+  {
+    "name": "func_8007B07C",
+    "unit": "main/misc4",
+    "retail_address": 2147987580,
+    "retail_size": 328,
+    "compiled_offset": 9504,
+    "compiled_size": 336,
+    "delta": 8
+  },
+  {
+    "name": "func_8007B1C4",
+    "unit": "main/misc4",
+    "retail_address": 2147987908,
+    "retail_size": 692,
+    "compiled_offset": 9840,
+    "compiled_size": 464,
+    "delta": -228
+  },
+  {
+    "name": "func_8007B478",
+    "unit": "main/misc4",
+    "retail_address": 2147988600,
+    "retail_size": 412,
+    "compiled_offset": 10304,
+    "compiled_size": 408,
+    "delta": -4
+  },
+  {
+    "name": "func_8007B614",
+    "unit": "main/misc4",
+    "retail_address": 2147989012,
+    "retail_size": 128,
+    "compiled_offset": 10712,
+    "compiled_size": 132,
+    "delta": 4
+  },
+  {
+    "name": "func_8007B694",
+    "unit": "main/misc4",
+    "retail_address": 2147989140,
+    "retail_size": 48,
+    "compiled_offset": 10844,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_8007B6C4",
+    "unit": "main/misc4",
+    "retail_address": 2147989188,
+    "retail_size": 336,
+    "compiled_offset": 10892,
+    "compiled_size": 328,
+    "delta": -8
+  },
+  {
+    "name": "func_8007B814",
+    "unit": "main/misc4",
+    "retail_address": 2147989524,
+    "retail_size": 684,
+    "compiled_offset": 11220,
+    "compiled_size": 712,
+    "delta": 28
+  },
+  {
+    "name": "func_8007BAC0",
+    "unit": "main/misc4",
+    "retail_address": 2147990208,
+    "retail_size": 1076,
+    "compiled_offset": 11932,
+    "compiled_size": 1112,
+    "delta": 36
+  },
+  {
+    "name": "func_8007BEF4",
+    "unit": "main/misc4",
+    "retail_address": 2147991284,
+    "retail_size": 1916,
+    "compiled_offset": 13044,
+    "compiled_size": 1404,
+    "delta": -512
+  },
+  {
+    "name": "func_8007C670",
+    "unit": "main/misc4",
+    "retail_address": 2147993200,
+    "retail_size": 36,
+    "compiled_offset": 14448,
+    "compiled_size": 24,
+    "delta": -12
+  },
+  {
+    "name": "func_8007C694",
+    "unit": "main/misc4",
+    "retail_address": 2147993236,
+    "retail_size": 1704,
+    "compiled_offset": 14472,
+    "compiled_size": 1212,
+    "delta": -492
+  },
+  {
+    "name": "func_8007CD3C",
+    "unit": "main/misc4",
+    "retail_address": 2147994940,
+    "retail_size": 36,
+    "compiled_offset": 15684,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "func_8007CD60",
+    "unit": "main/misc4",
+    "retail_address": 2147994976,
+    "retail_size": 32,
+    "compiled_offset": 15720,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_8007CD80",
+    "unit": "main/misc4",
+    "retail_address": 2147995008,
+    "retail_size": 1620,
+    "compiled_offset": 15824,
+    "compiled_size": 1072,
+    "delta": -548
+  },
+  {
+    "name": "func_8007D3D4",
+    "unit": "main/misc4",
+    "retail_address": 2147996628,
+    "retail_size": 1092,
+    "compiled_offset": 16896,
+    "compiled_size": 1032,
+    "delta": -60
+  },
+  {
+    "name": "func_8007D818",
+    "unit": "main/misc4",
+    "retail_address": 2147997720,
+    "retail_size": 156,
+    "compiled_offset": 17928,
+    "compiled_size": 156,
+    "delta": 0
+  },
+  {
+    "name": "func_8007D8B4",
+    "unit": "main/misc4",
+    "retail_address": 2147997876,
+    "retail_size": 136,
+    "compiled_offset": 18084,
+    "compiled_size": 88,
+    "delta": -48
+  },
+  {
+    "name": "FieldCopyCameraEdge",
+    "unit": "main/misc4",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 15772,
+    "compiled_size": 52,
+    "delta": 52
+  },
+  {
+    "name": "FieldPackedXZ",
+    "unit": "main/misc4",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 15752,
+    "compiled_size": 20,
+    "delta": 20
+  },
+  {
+    "name": "FieldFadeDraw",
+    "unit": "effects/fade_render",
+    "retail_address": 2147998276,
+    "retail_size": 692,
+    "compiled_offset": 264,
+    "compiled_size": 692,
+    "delta": 0
+  },
+  {
+    "name": "FieldFadeInitializePrimitives",
+    "unit": "effects/fade_render",
+    "retail_address": 2147998012,
+    "retail_size": 264,
+    "compiled_offset": 0,
+    "compiled_size": 264,
+    "delta": 0
+  },
+  {
+    "name": "FieldTextBoxInitialize",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2147999436,
+    "retail_size": 584,
+    "compiled_offset": 344,
+    "compiled_size": 432,
+    "delta": -152
+  },
+  {
+    "name": "FieldTextBoxInitializePrimitives",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148003340,
+    "retail_size": 1952,
+    "compiled_offset": 2096,
+    "compiled_size": 1576,
+    "delta": -376
+  },
+  {
+    "name": "func_8007DCF8",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2147998968,
+    "retail_size": 468,
+    "compiled_offset": 0,
+    "compiled_size": 288,
+    "delta": -180
+  },
+  {
+    "name": "func_8007E114",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148000020,
+    "retail_size": 88,
+    "compiled_offset": 776,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_8007E16C",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148000108,
+    "retail_size": 84,
+    "compiled_offset": 864,
+    "compiled_size": 88,
+    "delta": 4
+  },
+  {
+    "name": "func_8007E1C0",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148000192,
+    "retail_size": 3148,
+    "compiled_offset": 952,
+    "compiled_size": 1144,
+    "delta": -2004
+  },
+  {
+    "name": "func_8007F5AC",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148005292,
+    "retail_size": 332,
+    "compiled_offset": 3672,
+    "compiled_size": 200,
+    "delta": -132
+  },
+  {
+    "name": "func_8007F6F8",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148005624,
+    "retail_size": 284,
+    "compiled_offset": 3872,
+    "compiled_size": 280,
+    "delta": -4
+  },
+  {
+    "name": "func_8007F814",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148005908,
+    "retail_size": 200,
+    "compiled_offset": 4152,
+    "compiled_size": 188,
+    "delta": -12
+  },
+  {
+    "name": "func_8007F8DC",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148006108,
+    "retail_size": 1804,
+    "compiled_offset": 4340,
+    "compiled_size": 1352,
+    "delta": -452
+  },
+  {
+    "name": "func_8007FFE8",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148007912,
+    "retail_size": 100,
+    "compiled_offset": 5692,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_8008004C",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148008012,
+    "retail_size": 1448,
+    "compiled_offset": 5792,
+    "compiled_size": 712,
+    "delta": -736
+  },
+  {
+    "name": "func_800805F4",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148009460,
+    "retail_size": 240,
+    "compiled_offset": 6504,
+    "compiled_size": 240,
+    "delta": 0
+  },
+  {
+    "name": "func_800806E4",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148009700,
+    "retail_size": 60,
+    "compiled_offset": 6744,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80080720",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148009760,
+    "retail_size": 64,
+    "compiled_offset": 6804,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_80080760",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148009824,
+    "retail_size": 84,
+    "compiled_offset": 6868,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800807B4",
+    "unit": "dialogue/text_box_render",
+    "retail_address": 2148009908,
+    "retail_size": 136,
+    "compiled_offset": 6952,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldTextBoxLinkPrim",
+    "unit": "dialogue/text_box_render",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 288,
+    "compiled_size": 56,
+    "delta": 56
+  },
+  {
+    "name": "FieldActorWorldToScreenPosition",
+    "unit": "main/misc8",
+    "retail_address": 2148033024,
+    "retail_size": 204,
+    "compiled_offset": 20976,
+    "compiled_size": 200,
+    "delta": -4
+  },
+  {
+    "name": "FieldScriptVM2Run",
+    "unit": "main/misc8",
+    "retail_address": 2148035000,
+    "retail_size": 100,
+    "compiled_offset": 23032,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_8008083C",
+    "unit": "main/misc8",
+    "retail_address": 2148010044,
+    "retail_size": 300,
+    "compiled_offset": 0,
+    "compiled_size": 300,
+    "delta": 0
+  },
+  {
+    "name": "func_80080968",
+    "unit": "main/misc8",
+    "retail_address": 2148010344,
+    "retail_size": 104,
+    "compiled_offset": 300,
+    "compiled_size": 120,
+    "delta": 16
+  },
+  {
+    "name": "func_800809D0",
+    "unit": "main/misc8",
+    "retail_address": 2148010448,
+    "retail_size": 72,
+    "compiled_offset": 420,
+    "compiled_size": 68,
+    "delta": -4
+  },
+  {
+    "name": "func_80080A18",
+    "unit": "main/misc8",
+    "retail_address": 2148010520,
+    "retail_size": 92,
+    "compiled_offset": 488,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_80080A74",
+    "unit": "main/misc8",
+    "retail_address": 2148010612,
+    "retail_size": 1232,
+    "compiled_offset": 580,
+    "compiled_size": 1348,
+    "delta": 116
+  },
+  {
+    "name": "func_80080F44",
+    "unit": "main/misc8",
+    "retail_address": 2148011844,
+    "retail_size": 456,
+    "compiled_offset": 1928,
+    "compiled_size": 400,
+    "delta": -56
+  },
+  {
+    "name": "func_8008110C",
+    "unit": "main/misc8",
+    "retail_address": 2148012300,
+    "retail_size": 1252,
+    "compiled_offset": 2328,
+    "compiled_size": 1080,
+    "delta": -172
+  },
+  {
+    "name": "func_800815F0",
+    "unit": "main/misc8",
+    "retail_address": 2148013552,
+    "retail_size": 1636,
+    "compiled_offset": 3408,
+    "compiled_size": 1356,
+    "delta": -280
+  },
+  {
+    "name": "func_80081C54",
+    "unit": "main/misc8",
+    "retail_address": 2148015188,
+    "retail_size": 776,
+    "compiled_offset": 4764,
+    "compiled_size": 456,
+    "delta": -320
+  },
+  {
+    "name": "func_80081F5C",
+    "unit": "main/misc8",
+    "retail_address": 2148015964,
+    "retail_size": 36,
+    "compiled_offset": 5220,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "func_80081F80",
+    "unit": "main/misc8",
+    "retail_address": 2148016000,
+    "retail_size": 628,
+    "compiled_offset": 5256,
+    "compiled_size": 668,
+    "delta": 40
+  },
+  {
+    "name": "func_800821F4",
+    "unit": "main/misc8",
+    "retail_address": 2148016628,
+    "retail_size": 392,
+    "compiled_offset": 5924,
+    "compiled_size": 352,
+    "delta": -40
+  },
+  {
+    "name": "func_8008237C",
+    "unit": "main/misc8",
+    "retail_address": 2148017020,
+    "retail_size": 280,
+    "compiled_offset": 6276,
+    "compiled_size": 280,
+    "delta": 0
+  },
+  {
+    "name": "func_80082494",
+    "unit": "main/misc8",
+    "retail_address": 2148017300,
+    "retail_size": 280,
+    "compiled_offset": 6556,
+    "compiled_size": 280,
+    "delta": 0
+  },
+  {
+    "name": "func_800825AC",
+    "unit": "main/misc8",
+    "retail_address": 2148017580,
+    "retail_size": 116,
+    "compiled_offset": 6836,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_80082620",
+    "unit": "main/misc8",
+    "retail_address": 2148017696,
+    "retail_size": 1432,
+    "compiled_offset": 6952,
+    "compiled_size": 1172,
+    "delta": -260
+  },
+  {
+    "name": "func_80082BB8",
+    "unit": "main/misc8",
+    "retail_address": 2148019128,
+    "retail_size": 1472,
+    "compiled_offset": 8124,
+    "compiled_size": 1440,
+    "delta": -32
+  },
+  {
+    "name": "func_80083178",
+    "unit": "main/misc8",
+    "retail_address": 2148020600,
+    "retail_size": 88,
+    "compiled_offset": 9564,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_800831D0",
+    "unit": "main/misc8",
+    "retail_address": 2148020688,
+    "retail_size": 36,
+    "compiled_offset": 9652,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "func_800831F4",
+    "unit": "main/misc8",
+    "retail_address": 2148020724,
+    "retail_size": 148,
+    "compiled_offset": 9688,
+    "compiled_size": 140,
+    "delta": -8
+  },
+  {
+    "name": "func_80083288",
+    "unit": "main/misc8",
+    "retail_address": 2148020872,
+    "retail_size": 1804,
+    "compiled_offset": 9828,
+    "compiled_size": 1568,
+    "delta": -236
+  },
+  {
+    "name": "func_80083994",
+    "unit": "main/misc8",
+    "retail_address": 2148022676,
+    "retail_size": 8,
+    "compiled_offset": 11396,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008399C",
+    "unit": "main/misc8",
+    "retail_address": 2148022684,
+    "retail_size": 1980,
+    "compiled_offset": 11404,
+    "compiled_size": 1652,
+    "delta": -328
+  },
+  {
+    "name": "func_80084158",
+    "unit": "main/misc8",
+    "retail_address": 2148024664,
+    "retail_size": 2004,
+    "compiled_offset": 13056,
+    "compiled_size": 1852,
+    "delta": -152
+  },
+  {
+    "name": "func_8008492C",
+    "unit": "main/misc8",
+    "retail_address": 2148026668,
+    "retail_size": 276,
+    "compiled_offset": 14908,
+    "compiled_size": 276,
+    "delta": 0
+  },
+  {
+    "name": "func_80084A40",
+    "unit": "main/misc8",
+    "retail_address": 2148026944,
+    "retail_size": 2704,
+    "compiled_offset": 15408,
+    "compiled_size": 2388,
+    "delta": -316
+  },
+  {
+    "name": "func_800854D0",
+    "unit": "main/misc8",
+    "retail_address": 2148029648,
+    "retail_size": 144,
+    "compiled_offset": 17796,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "func_80085560",
+    "unit": "main/misc8",
+    "retail_address": 2148029792,
+    "retail_size": 104,
+    "compiled_offset": 17940,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "func_800855C8",
+    "unit": "main/misc8",
+    "retail_address": 2148029896,
+    "retail_size": 108,
+    "compiled_offset": 18044,
+    "compiled_size": 112,
+    "delta": 4
+  },
+  {
+    "name": "func_80085634",
+    "unit": "main/misc8",
+    "retail_address": 2148030004,
+    "retail_size": 68,
+    "compiled_offset": 18156,
+    "compiled_size": 76,
+    "delta": 8
+  },
+  {
+    "name": "func_80085678",
+    "unit": "main/misc8",
+    "retail_address": 2148030072,
+    "retail_size": 192,
+    "compiled_offset": 18232,
+    "compiled_size": 180,
+    "delta": -12
+  },
+  {
+    "name": "func_80085738",
+    "unit": "main/misc8",
+    "retail_address": 2148030264,
+    "retail_size": 80,
+    "compiled_offset": 18412,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80085788",
+    "unit": "main/misc8",
+    "retail_address": 2148030344,
+    "retail_size": 264,
+    "compiled_offset": 18492,
+    "compiled_size": 276,
+    "delta": 12
+  },
+  {
+    "name": "func_80085890",
+    "unit": "main/misc8",
+    "retail_address": 2148030608,
+    "retail_size": 248,
+    "compiled_offset": 18768,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "func_80085988",
+    "unit": "main/misc8",
+    "retail_address": 2148030856,
+    "retail_size": 84,
+    "compiled_offset": 19016,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800859DC",
+    "unit": "main/misc8",
+    "retail_address": 2148030940,
+    "retail_size": 324,
+    "compiled_offset": 19100,
+    "compiled_size": 360,
+    "delta": 36
+  },
+  {
+    "name": "func_80085B20",
+    "unit": "main/misc8",
+    "retail_address": 2148031264,
+    "retail_size": 284,
+    "compiled_offset": 19460,
+    "compiled_size": 284,
+    "delta": 0
+  },
+  {
+    "name": "func_80085C3C",
+    "unit": "main/misc8",
+    "retail_address": 2148031548,
+    "retail_size": 84,
+    "compiled_offset": 19744,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80085C90",
+    "unit": "main/misc8",
+    "retail_address": 2148031632,
+    "retail_size": 604,
+    "compiled_offset": 19828,
+    "compiled_size": 604,
+    "delta": 0
+  },
+  {
+    "name": "func_80085EEC",
+    "unit": "main/misc8",
+    "retail_address": 2148032236,
+    "retail_size": 68,
+    "compiled_offset": 20432,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_80085F30",
+    "unit": "main/misc8",
+    "retail_address": 2148032304,
+    "retail_size": 136,
+    "compiled_offset": 20500,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "func_80085FB8",
+    "unit": "main/misc8",
+    "retail_address": 2148032440,
+    "retail_size": 108,
+    "compiled_offset": 20636,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_80086024",
+    "unit": "main/misc8",
+    "retail_address": 2148032548,
+    "retail_size": 84,
+    "compiled_offset": 20744,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80086078",
+    "unit": "main/misc8",
+    "retail_address": 2148032632,
+    "retail_size": 120,
+    "compiled_offset": 20828,
+    "compiled_size": 148,
+    "delta": 28
+  },
+  {
+    "name": "func_800860F0",
+    "unit": "main/misc8",
+    "retail_address": 2148032752,
+    "retail_size": 272,
+    "compiled_offset": 21212,
+    "compiled_size": 212,
+    "delta": -60
+  },
+  {
+    "name": "func_800862CC",
+    "unit": "main/misc8",
+    "retail_address": 2148033228,
+    "retail_size": 284,
+    "compiled_offset": 21424,
+    "compiled_size": 252,
+    "delta": -32
+  },
+  {
+    "name": "func_800863E8",
+    "unit": "main/misc8",
+    "retail_address": 2148033512,
+    "retail_size": 136,
+    "compiled_offset": 21676,
+    "compiled_size": 132,
+    "delta": -4
+  },
+  {
+    "name": "func_80086470",
+    "unit": "main/misc8",
+    "retail_address": 2148033648,
+    "retail_size": 68,
+    "compiled_offset": 21808,
+    "compiled_size": 64,
+    "delta": -4
+  },
+  {
+    "name": "func_800864B4",
+    "unit": "main/misc8",
+    "retail_address": 2148033716,
+    "retail_size": 60,
+    "compiled_offset": 21872,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_800864F0",
+    "unit": "main/misc8",
+    "retail_address": 2148033776,
+    "retail_size": 160,
+    "compiled_offset": 21932,
+    "compiled_size": 148,
+    "delta": -12
+  },
+  {
+    "name": "func_80086590",
+    "unit": "main/misc8",
+    "retail_address": 2148033936,
+    "retail_size": 888,
+    "compiled_offset": 22080,
+    "compiled_size": 776,
+    "delta": -112
+  },
+  {
+    "name": "func_80086908",
+    "unit": "main/misc8",
+    "retail_address": 2148034824,
+    "retail_size": 176,
+    "compiled_offset": 22856,
+    "compiled_size": 176,
+    "delta": 0
+  },
+  {
+    "name": "func_80086A1C",
+    "unit": "main/misc8",
+    "retail_address": 2148035100,
+    "retail_size": 396,
+    "compiled_offset": 23132,
+    "compiled_size": 320,
+    "delta": -76
+  },
+  {
+    "name": "func_80086BA8",
+    "unit": "main/misc8",
+    "retail_address": 2148035496,
+    "retail_size": 140,
+    "compiled_offset": 23452,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_80086C34",
+    "unit": "main/misc8",
+    "retail_address": 2148035636,
+    "retail_size": 280,
+    "compiled_offset": 23592,
+    "compiled_size": 268,
+    "delta": -12
+  },
+  {
+    "name": "func_80086D4C",
+    "unit": "main/misc8",
+    "retail_address": 2148035916,
+    "retail_size": 64,
+    "compiled_offset": 23860,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "FieldPositionalSfxScreenPan",
+    "unit": "main/misc8",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 21176,
+    "compiled_size": 36,
+    "delta": 36
+  },
+  {
+    "name": "func_80084A40_RestoreActorState",
+    "unit": "main/misc8",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 15184,
+    "compiled_size": 224,
+    "delta": 224
+  },
+  {
+    "name": "FieldActorCopyPlacement",
+    "unit": "main/misc",
+    "retail_address": 2148062080,
+    "retail_size": 496,
+    "compiled_offset": 25384,
+    "compiled_size": 400,
+    "delta": -96
+  },
+  {
+    "name": "FieldPartyMemberDecreaseGearHp",
+    "unit": "main/misc",
+    "retail_address": 2148064240,
+    "retail_size": 132,
+    "compiled_offset": 27116,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyMemberIncreaseGearHp",
+    "unit": "main/misc",
+    "retail_address": 2148064104,
+    "retail_size": 136,
+    "compiled_offset": 26980,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCopyGear",
+    "unit": "main/misc",
+    "retail_address": 2148038016,
+    "retail_size": 204,
+    "compiled_offset": 2020,
+    "compiled_size": 204,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptInitializeParticleBank",
+    "unit": "main/misc",
+    "retail_address": 2148044804,
+    "retail_size": 368,
+    "compiled_offset": 8544,
+    "compiled_size": 368,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptParticlesInitialize",
+    "unit": "main/misc",
+    "retail_address": 2148047488,
+    "retail_size": 100,
+    "compiled_offset": 11228,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCharacterGear",
+    "unit": "main/misc",
+    "retail_address": 2148041568,
+    "retail_size": 116,
+    "compiled_offset": 5464,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParentActor",
+    "unit": "main/misc",
+    "retail_address": 2148064868,
+    "retail_size": 88,
+    "compiled_offset": 27744,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankColor",
+    "unit": "main/misc",
+    "retail_address": 2148046976,
+    "retail_size": 512,
+    "compiled_offset": 10716,
+    "compiled_size": 512,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankDirections",
+    "unit": "main/misc",
+    "retail_address": 2148044088,
+    "retail_size": 716,
+    "compiled_offset": 7828,
+    "compiled_size": 716,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankParameters",
+    "unit": "main/misc",
+    "retail_address": 2148046196,
+    "retail_size": 352,
+    "compiled_offset": 9936,
+    "compiled_size": 352,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankPhysics",
+    "unit": "main/misc",
+    "retail_address": 2148045684,
+    "retail_size": 512,
+    "compiled_offset": 9424,
+    "compiled_size": 512,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankPosition",
+    "unit": "main/misc",
+    "retail_address": 2148045172,
+    "retail_size": 512,
+    "compiled_offset": 8912,
+    "compiled_size": 512,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetParticleBankScale",
+    "unit": "main/misc",
+    "retail_address": 2148046548,
+    "retail_size": 428,
+    "compiled_offset": 10288,
+    "compiled_size": 428,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptStopParticleActor",
+    "unit": "main/misc",
+    "retail_address": 2148047588,
+    "retail_size": 112,
+    "compiled_offset": 11328,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMConditionalJump5",
+    "unit": "main/misc",
+    "retail_address": 2148065608,
+    "retail_size": 108,
+    "compiled_offset": 28484,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMConditionalJump6",
+    "unit": "main/misc",
+    "retail_address": 2148065500,
+    "retail_size": 108,
+    "compiled_offset": 28376,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDecreasePartyGearHp",
+    "unit": "main/misc",
+    "retail_address": 2148064620,
+    "retail_size": 248,
+    "compiled_offset": 27496,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerIncreasePartyGearHp",
+    "unit": "main/misc",
+    "retail_address": 2148064372,
+    "retail_size": 248,
+    "compiled_offset": 27248,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteActorDistance",
+    "unit": "main/misc",
+    "retail_address": 2148065716,
+    "retail_size": 228,
+    "compiled_offset": 28592,
+    "compiled_size": 228,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteActorFlags1",
+    "unit": "main/misc",
+    "retail_address": 2148064956,
+    "retail_size": 136,
+    "compiled_offset": 27832,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteActorFlags2",
+    "unit": "main/misc",
+    "retail_address": 2148065092,
+    "retail_size": 136,
+    "compiled_offset": 27968,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteActorFlags3",
+    "unit": "main/misc",
+    "retail_address": 2148065228,
+    "retail_size": 136,
+    "compiled_offset": 28104,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteActorFlags4",
+    "unit": "main/misc",
+    "retail_address": 2148065364,
+    "retail_size": 136,
+    "compiled_offset": 28240,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetScreenDimensions",
+    "unit": "main/misc",
+    "retail_address": 2148035980,
+    "retail_size": 84,
+    "compiled_offset": 0,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80086DE0",
+    "unit": "main/misc",
+    "retail_address": 2148036064,
+    "retail_size": 60,
+    "compiled_offset": 84,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80086E1C",
+    "unit": "main/misc",
+    "retail_address": 2148036124,
+    "retail_size": 352,
+    "compiled_offset": 144,
+    "compiled_size": 352,
+    "delta": 0
+  },
+  {
+    "name": "func_80086F7C",
+    "unit": "main/misc",
+    "retail_address": 2148036476,
+    "retail_size": 84,
+    "compiled_offset": 496,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80086FD0",
+    "unit": "main/misc",
+    "retail_address": 2148036560,
+    "retail_size": 376,
+    "compiled_offset": 580,
+    "compiled_size": 376,
+    "delta": 0
+  },
+  {
+    "name": "func_80087148",
+    "unit": "main/misc",
+    "retail_address": 2148036936,
+    "retail_size": 104,
+    "compiled_offset": 956,
+    "compiled_size": 112,
+    "delta": 8
+  },
+  {
+    "name": "func_800871B0",
+    "unit": "main/misc",
+    "retail_address": 2148037040,
+    "retail_size": 532,
+    "compiled_offset": 1068,
+    "compiled_size": 508,
+    "delta": -24
+  },
+  {
+    "name": "func_800873C4",
+    "unit": "main/misc",
+    "retail_address": 2148037572,
+    "retail_size": 92,
+    "compiled_offset": 1576,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_80087420",
+    "unit": "main/misc",
+    "retail_address": 2148037664,
+    "retail_size": 268,
+    "compiled_offset": 1668,
+    "compiled_size": 268,
+    "delta": 0
+  },
+  {
+    "name": "func_8008752C",
+    "unit": "main/misc",
+    "retail_address": 2148037932,
+    "retail_size": 32,
+    "compiled_offset": 1936,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_8008754C",
+    "unit": "main/misc",
+    "retail_address": 2148037964,
+    "retail_size": 52,
+    "compiled_offset": 1968,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "func_8008764C",
+    "unit": "main/misc",
+    "retail_address": 2148038220,
+    "retail_size": 436,
+    "compiled_offset": 2224,
+    "compiled_size": 344,
+    "delta": -92
+  },
+  {
+    "name": "func_80087800",
+    "unit": "main/misc",
+    "retail_address": 2148038656,
+    "retail_size": 72,
+    "compiled_offset": 2568,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_80087848",
+    "unit": "main/misc",
+    "retail_address": 2148038728,
+    "retail_size": 280,
+    "compiled_offset": 2640,
+    "compiled_size": 280,
+    "delta": 0
+  },
+  {
+    "name": "func_80087960",
+    "unit": "main/misc",
+    "retail_address": 2148039008,
+    "retail_size": 112,
+    "compiled_offset": 2920,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_800879D0",
+    "unit": "main/misc",
+    "retail_address": 2148039120,
+    "retail_size": 112,
+    "compiled_offset": 3032,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80087A40",
+    "unit": "main/misc",
+    "retail_address": 2148039232,
+    "retail_size": 60,
+    "compiled_offset": 3144,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80087A7C",
+    "unit": "main/misc",
+    "retail_address": 2148039292,
+    "retail_size": 60,
+    "compiled_offset": 3204,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80087AB8",
+    "unit": "main/misc",
+    "retail_address": 2148039352,
+    "retail_size": 164,
+    "compiled_offset": 3264,
+    "compiled_size": 152,
+    "delta": -12
+  },
+  {
+    "name": "func_80087B5C",
+    "unit": "main/misc",
+    "retail_address": 2148039516,
+    "retail_size": 176,
+    "compiled_offset": 3416,
+    "compiled_size": 148,
+    "delta": -28
+  },
+  {
+    "name": "func_80087C0C",
+    "unit": "main/misc",
+    "retail_address": 2148039692,
+    "retail_size": 40,
+    "compiled_offset": 3564,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_80087C34",
+    "unit": "main/misc",
+    "retail_address": 2148039732,
+    "retail_size": 252,
+    "compiled_offset": 3604,
+    "compiled_size": 244,
+    "delta": -8
+  },
+  {
+    "name": "func_80087D30",
+    "unit": "main/misc",
+    "retail_address": 2148039984,
+    "retail_size": 80,
+    "compiled_offset": 3848,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80087D80",
+    "unit": "main/misc",
+    "retail_address": 2148040064,
+    "retail_size": 96,
+    "compiled_offset": 3928,
+    "compiled_size": 104,
+    "delta": 8
+  },
+  {
+    "name": "func_80087DE0",
+    "unit": "main/misc",
+    "retail_address": 2148040160,
+    "retail_size": 124,
+    "compiled_offset": 4032,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "func_80087E5C",
+    "unit": "main/misc",
+    "retail_address": 2148040284,
+    "retail_size": 60,
+    "compiled_offset": 4156,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80087E98",
+    "unit": "main/misc",
+    "retail_address": 2148040344,
+    "retail_size": 268,
+    "compiled_offset": 4216,
+    "compiled_size": 280,
+    "delta": 12
+  },
+  {
+    "name": "func_80087FA4",
+    "unit": "main/misc",
+    "retail_address": 2148040612,
+    "retail_size": 48,
+    "compiled_offset": 4496,
+    "compiled_size": 44,
+    "delta": -4
+  },
+  {
+    "name": "func_80087FD4",
+    "unit": "main/misc",
+    "retail_address": 2148040660,
+    "retail_size": 56,
+    "compiled_offset": 4540,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008800C",
+    "unit": "main/misc",
+    "retail_address": 2148040716,
+    "retail_size": 396,
+    "compiled_offset": 4596,
+    "compiled_size": 420,
+    "delta": 24
+  },
+  {
+    "name": "func_80088198",
+    "unit": "main/misc",
+    "retail_address": 2148041112,
+    "retail_size": 80,
+    "compiled_offset": 5016,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_800881E8",
+    "unit": "main/misc",
+    "retail_address": 2148041192,
+    "retail_size": 116,
+    "compiled_offset": 5096,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_8008825C",
+    "unit": "main/misc",
+    "retail_address": 2148041308,
+    "retail_size": 92,
+    "compiled_offset": 5212,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_800882B8",
+    "unit": "main/misc",
+    "retail_address": 2148041400,
+    "retail_size": 168,
+    "compiled_offset": 5304,
+    "compiled_size": 160,
+    "delta": -8
+  },
+  {
+    "name": "func_800883D4",
+    "unit": "main/misc",
+    "retail_address": 2148041684,
+    "retail_size": 184,
+    "compiled_offset": 5580,
+    "compiled_size": 156,
+    "delta": -28
+  },
+  {
+    "name": "func_8008848C",
+    "unit": "main/misc",
+    "retail_address": 2148041868,
+    "retail_size": 64,
+    "compiled_offset": 5736,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_800884CC",
+    "unit": "main/misc",
+    "retail_address": 2148041932,
+    "retail_size": 60,
+    "compiled_offset": 5800,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80088508",
+    "unit": "main/misc",
+    "retail_address": 2148041992,
+    "retail_size": 276,
+    "compiled_offset": 5860,
+    "compiled_size": 280,
+    "delta": 4
+  },
+  {
+    "name": "func_8008861C",
+    "unit": "main/misc",
+    "retail_address": 2148042268,
+    "retail_size": 88,
+    "compiled_offset": 6140,
+    "compiled_size": 44,
+    "delta": -44
+  },
+  {
+    "name": "func_80088674",
+    "unit": "main/misc",
+    "retail_address": 2148042356,
+    "retail_size": 284,
+    "compiled_offset": 6184,
+    "compiled_size": 288,
+    "delta": 4
+  },
+  {
+    "name": "func_80088790",
+    "unit": "main/misc",
+    "retail_address": 2148042640,
+    "retail_size": 276,
+    "compiled_offset": 6472,
+    "compiled_size": 280,
+    "delta": 4
+  },
+  {
+    "name": "func_800888A4",
+    "unit": "main/misc",
+    "retail_address": 2148042916,
+    "retail_size": 280,
+    "compiled_offset": 6752,
+    "compiled_size": 280,
+    "delta": 0
+  },
+  {
+    "name": "func_800889BC",
+    "unit": "main/misc",
+    "retail_address": 2148043196,
+    "retail_size": 428,
+    "compiled_offset": 7032,
+    "compiled_size": 420,
+    "delta": -8
+  },
+  {
+    "name": "func_80088B68",
+    "unit": "main/misc",
+    "retail_address": 2148043624,
+    "retail_size": 180,
+    "compiled_offset": 7452,
+    "compiled_size": 160,
+    "delta": -20
+  },
+  {
+    "name": "func_80088C1C",
+    "unit": "main/misc",
+    "retail_address": 2148043804,
+    "retail_size": 220,
+    "compiled_offset": 7612,
+    "compiled_size": 152,
+    "delta": -68
+  },
+  {
+    "name": "func_80088CF8",
+    "unit": "main/misc",
+    "retail_address": 2148044024,
+    "retail_size": 32,
+    "compiled_offset": 7764,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_80088D18",
+    "unit": "main/misc",
+    "retail_address": 2148044056,
+    "retail_size": 32,
+    "compiled_offset": 7796,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_80089B54",
+    "unit": "main/misc",
+    "retail_address": 2148047700,
+    "retail_size": 156,
+    "compiled_offset": 11440,
+    "compiled_size": 156,
+    "delta": 0
+  },
+  {
+    "name": "func_80089BF0",
+    "unit": "main/misc",
+    "retail_address": 2148047856,
+    "retail_size": 476,
+    "compiled_offset": 11596,
+    "compiled_size": 476,
+    "delta": 0
+  },
+  {
+    "name": "func_80089DCC",
+    "unit": "main/misc",
+    "retail_address": 2148048332,
+    "retail_size": 332,
+    "compiled_offset": 12072,
+    "compiled_size": 332,
+    "delta": 0
+  },
+  {
+    "name": "func_80089F18",
+    "unit": "main/misc",
+    "retail_address": 2148048664,
+    "retail_size": 60,
+    "compiled_offset": 12404,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80089F54",
+    "unit": "main/misc",
+    "retail_address": 2148048724,
+    "retail_size": 64,
+    "compiled_offset": 12464,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_80089F94",
+    "unit": "main/misc",
+    "retail_address": 2148048788,
+    "retail_size": 60,
+    "compiled_offset": 12528,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80089FD0",
+    "unit": "main/misc",
+    "retail_address": 2148048848,
+    "retail_size": 188,
+    "compiled_offset": 12588,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A08C",
+    "unit": "main/misc",
+    "retail_address": 2148049036,
+    "retail_size": 188,
+    "compiled_offset": 12776,
+    "compiled_size": 180,
+    "delta": -8
+  },
+  {
+    "name": "func_8008A148",
+    "unit": "main/misc",
+    "retail_address": 2148049224,
+    "retail_size": 252,
+    "compiled_offset": 12956,
+    "compiled_size": 244,
+    "delta": -8
+  },
+  {
+    "name": "func_8008A244",
+    "unit": "main/misc",
+    "retail_address": 2148049476,
+    "retail_size": 92,
+    "compiled_offset": 13200,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A2A0",
+    "unit": "main/misc",
+    "retail_address": 2148049568,
+    "retail_size": 72,
+    "compiled_offset": 13292,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A2E8",
+    "unit": "main/misc",
+    "retail_address": 2148049640,
+    "retail_size": 504,
+    "compiled_offset": 13364,
+    "compiled_size": 508,
+    "delta": 4
+  },
+  {
+    "name": "func_8008A4E0",
+    "unit": "main/misc",
+    "retail_address": 2148050144,
+    "retail_size": 8,
+    "compiled_offset": 13872,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A4E8",
+    "unit": "main/misc",
+    "retail_address": 2148050152,
+    "retail_size": 8,
+    "compiled_offset": 13880,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A4F0",
+    "unit": "main/misc",
+    "retail_address": 2148050160,
+    "retail_size": 8,
+    "compiled_offset": 13888,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A4F8",
+    "unit": "main/misc",
+    "retail_address": 2148050168,
+    "retail_size": 8,
+    "compiled_offset": 13896,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A500",
+    "unit": "main/misc",
+    "retail_address": 2148050176,
+    "retail_size": 8,
+    "compiled_offset": 13904,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A508",
+    "unit": "main/misc",
+    "retail_address": 2148050184,
+    "retail_size": 8,
+    "compiled_offset": 13912,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A510",
+    "unit": "main/misc",
+    "retail_address": 2148050192,
+    "retail_size": 8,
+    "compiled_offset": 13920,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A518",
+    "unit": "main/misc",
+    "retail_address": 2148050200,
+    "retail_size": 8,
+    "compiled_offset": 13928,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A520",
+    "unit": "main/misc",
+    "retail_address": 2148050208,
+    "retail_size": 56,
+    "compiled_offset": 13936,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A558",
+    "unit": "main/misc",
+    "retail_address": 2148050264,
+    "retail_size": 72,
+    "compiled_offset": 13992,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A5A0",
+    "unit": "main/misc",
+    "retail_address": 2148050336,
+    "retail_size": 100,
+    "compiled_offset": 14064,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A604",
+    "unit": "main/misc",
+    "retail_address": 2148050436,
+    "retail_size": 60,
+    "compiled_offset": 14164,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A640",
+    "unit": "main/misc",
+    "retail_address": 2148050496,
+    "retail_size": 160,
+    "compiled_offset": 14224,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A6E0",
+    "unit": "main/misc",
+    "retail_address": 2148050656,
+    "retail_size": 176,
+    "compiled_offset": 14384,
+    "compiled_size": 176,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A790",
+    "unit": "main/misc",
+    "retail_address": 2148050832,
+    "retail_size": 76,
+    "compiled_offset": 14560,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A7DC",
+    "unit": "main/misc",
+    "retail_address": 2148050908,
+    "retail_size": 352,
+    "compiled_offset": 14636,
+    "compiled_size": 332,
+    "delta": -20
+  },
+  {
+    "name": "func_8008A93C",
+    "unit": "main/misc",
+    "retail_address": 2148051260,
+    "retail_size": 56,
+    "compiled_offset": 14968,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A974",
+    "unit": "main/misc",
+    "retail_address": 2148051316,
+    "retail_size": 56,
+    "compiled_offset": 15024,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008A9AC",
+    "unit": "main/misc",
+    "retail_address": 2148051372,
+    "retail_size": 180,
+    "compiled_offset": 15080,
+    "compiled_size": 180,
+    "delta": 0
+  },
+  {
+    "name": "func_8008AA60",
+    "unit": "main/misc",
+    "retail_address": 2148051552,
+    "retail_size": 108,
+    "compiled_offset": 15260,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008AACC",
+    "unit": "main/misc",
+    "retail_address": 2148051660,
+    "retail_size": 540,
+    "compiled_offset": 15368,
+    "compiled_size": 520,
+    "delta": -20
+  },
+  {
+    "name": "func_8008ACE8",
+    "unit": "main/misc",
+    "retail_address": 2148052200,
+    "retail_size": 372,
+    "compiled_offset": 15888,
+    "compiled_size": 372,
+    "delta": 0
+  },
+  {
+    "name": "func_8008AE5C",
+    "unit": "main/misc",
+    "retail_address": 2148052572,
+    "retail_size": 108,
+    "compiled_offset": 16260,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008AEC8",
+    "unit": "main/misc",
+    "retail_address": 2148052680,
+    "retail_size": 272,
+    "compiled_offset": 16368,
+    "compiled_size": 280,
+    "delta": 8
+  },
+  {
+    "name": "func_8008AFD8",
+    "unit": "main/misc",
+    "retail_address": 2148052952,
+    "retail_size": 272,
+    "compiled_offset": 16648,
+    "compiled_size": 272,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B0E8",
+    "unit": "main/misc",
+    "retail_address": 2148053224,
+    "retail_size": 92,
+    "compiled_offset": 16920,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B144",
+    "unit": "main/misc",
+    "retail_address": 2148053316,
+    "retail_size": 60,
+    "compiled_offset": 17012,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B180",
+    "unit": "main/misc",
+    "retail_address": 2148053376,
+    "retail_size": 144,
+    "compiled_offset": 17072,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B210",
+    "unit": "main/misc",
+    "retail_address": 2148053520,
+    "retail_size": 56,
+    "compiled_offset": 17216,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B248",
+    "unit": "main/misc",
+    "retail_address": 2148053576,
+    "retail_size": 168,
+    "compiled_offset": 17272,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B2F0",
+    "unit": "main/misc",
+    "retail_address": 2148053744,
+    "retail_size": 56,
+    "compiled_offset": 17440,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B328",
+    "unit": "main/misc",
+    "retail_address": 2148053800,
+    "retail_size": 308,
+    "compiled_offset": 17496,
+    "compiled_size": 308,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B45C",
+    "unit": "main/misc",
+    "retail_address": 2148054108,
+    "retail_size": 188,
+    "compiled_offset": 17804,
+    "compiled_size": 180,
+    "delta": -8
+  },
+  {
+    "name": "func_8008B518",
+    "unit": "main/misc",
+    "retail_address": 2148054296,
+    "retail_size": 188,
+    "compiled_offset": 17984,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B5D4",
+    "unit": "main/misc",
+    "retail_address": 2148054484,
+    "retail_size": 704,
+    "compiled_offset": 18172,
+    "compiled_size": 480,
+    "delta": -224
+  },
+  {
+    "name": "func_8008B894",
+    "unit": "main/misc",
+    "retail_address": 2148055188,
+    "retail_size": 228,
+    "compiled_offset": 18652,
+    "compiled_size": 228,
+    "delta": 0
+  },
+  {
+    "name": "func_8008B978",
+    "unit": "main/misc",
+    "retail_address": 2148055416,
+    "retail_size": 776,
+    "compiled_offset": 18880,
+    "compiled_size": 724,
+    "delta": -52
+  },
+  {
+    "name": "func_8008BC80",
+    "unit": "main/misc",
+    "retail_address": 2148056192,
+    "retail_size": 344,
+    "compiled_offset": 19604,
+    "compiled_size": 320,
+    "delta": -24
+  },
+  {
+    "name": "func_8008BDD8",
+    "unit": "main/misc",
+    "retail_address": 2148056536,
+    "retail_size": 352,
+    "compiled_offset": 19924,
+    "compiled_size": 368,
+    "delta": 16
+  },
+  {
+    "name": "func_8008BF38",
+    "unit": "main/misc",
+    "retail_address": 2148056888,
+    "retail_size": 584,
+    "compiled_offset": 20292,
+    "compiled_size": 564,
+    "delta": -20
+  },
+  {
+    "name": "func_8008C180",
+    "unit": "main/misc",
+    "retail_address": 2148057472,
+    "retail_size": 436,
+    "compiled_offset": 20856,
+    "compiled_size": 336,
+    "delta": -100
+  },
+  {
+    "name": "func_8008C334",
+    "unit": "main/misc",
+    "retail_address": 2148057908,
+    "retail_size": 1188,
+    "compiled_offset": 21192,
+    "compiled_size": 1188,
+    "delta": 0
+  },
+  {
+    "name": "func_8008C7D8",
+    "unit": "main/misc",
+    "retail_address": 2148059096,
+    "retail_size": 116,
+    "compiled_offset": 22380,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_8008C84C",
+    "unit": "main/misc",
+    "retail_address": 2148059212,
+    "retail_size": 236,
+    "compiled_offset": 22496,
+    "compiled_size": 236,
+    "delta": 0
+  },
+  {
+    "name": "func_8008C938",
+    "unit": "main/misc",
+    "retail_address": 2148059448,
+    "retail_size": 296,
+    "compiled_offset": 22732,
+    "compiled_size": 296,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CA60",
+    "unit": "main/misc",
+    "retail_address": 2148059744,
+    "retail_size": 236,
+    "compiled_offset": 23028,
+    "compiled_size": 236,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CB4C",
+    "unit": "main/misc",
+    "retail_address": 2148059980,
+    "retail_size": 296,
+    "compiled_offset": 23264,
+    "compiled_size": 296,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CC74",
+    "unit": "main/misc",
+    "retail_address": 2148060276,
+    "retail_size": 212,
+    "compiled_offset": 23560,
+    "compiled_size": 212,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CD48",
+    "unit": "main/misc",
+    "retail_address": 2148060488,
+    "retail_size": 140,
+    "compiled_offset": 23772,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CDD4",
+    "unit": "main/misc",
+    "retail_address": 2148060628,
+    "retail_size": 144,
+    "compiled_offset": 23912,
+    "compiled_size": 152,
+    "delta": 8
+  },
+  {
+    "name": "func_8008CE64",
+    "unit": "main/misc",
+    "retail_address": 2148060772,
+    "retail_size": 108,
+    "compiled_offset": 24064,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CED0",
+    "unit": "main/misc",
+    "retail_address": 2148060880,
+    "retail_size": 108,
+    "compiled_offset": 24172,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CF3C",
+    "unit": "main/misc",
+    "retail_address": 2148060988,
+    "retail_size": 96,
+    "compiled_offset": 24280,
+    "compiled_size": 104,
+    "delta": 8
+  },
+  {
+    "name": "func_8008CF9C",
+    "unit": "main/misc",
+    "retail_address": 2148061084,
+    "retail_size": 80,
+    "compiled_offset": 24384,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_8008CFEC",
+    "unit": "main/misc",
+    "retail_address": 2148061164,
+    "retail_size": 140,
+    "compiled_offset": 24464,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D078",
+    "unit": "main/misc",
+    "retail_address": 2148061304,
+    "retail_size": 124,
+    "compiled_offset": 24604,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D0F4",
+    "unit": "main/misc",
+    "retail_address": 2148061428,
+    "retail_size": 140,
+    "compiled_offset": 24728,
+    "compiled_size": 144,
+    "delta": 4
+  },
+  {
+    "name": "func_8008D180",
+    "unit": "main/misc",
+    "retail_address": 2148061568,
+    "retail_size": 176,
+    "compiled_offset": 24872,
+    "compiled_size": 172,
+    "delta": -4
+  },
+  {
+    "name": "func_8008D230",
+    "unit": "main/misc",
+    "retail_address": 2148061744,
+    "retail_size": 60,
+    "compiled_offset": 25044,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D26C",
+    "unit": "main/misc",
+    "retail_address": 2148061804,
+    "retail_size": 108,
+    "compiled_offset": 25104,
+    "compiled_size": 112,
+    "delta": 4
+  },
+  {
+    "name": "func_8008D2D8",
+    "unit": "main/misc",
+    "retail_address": 2148061912,
+    "retail_size": 8,
+    "compiled_offset": 25216,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D2E0",
+    "unit": "main/misc",
+    "retail_address": 2148061920,
+    "retail_size": 44,
+    "compiled_offset": 25224,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D30C",
+    "unit": "main/misc",
+    "retail_address": 2148061964,
+    "retail_size": 116,
+    "compiled_offset": 25268,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D570",
+    "unit": "main/misc",
+    "retail_address": 2148062576,
+    "retail_size": 88,
+    "compiled_offset": 25784,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D5C8",
+    "unit": "main/misc",
+    "retail_address": 2148062664,
+    "retail_size": 60,
+    "compiled_offset": 25872,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D604",
+    "unit": "main/misc",
+    "retail_address": 2148062724,
+    "retail_size": 128,
+    "compiled_offset": 25932,
+    "compiled_size": 120,
+    "delta": -8
+  },
+  {
+    "name": "func_8008D684",
+    "unit": "main/misc",
+    "retail_address": 2148062852,
+    "retail_size": 124,
+    "compiled_offset": 26052,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D700",
+    "unit": "main/misc",
+    "retail_address": 2148062976,
+    "retail_size": 128,
+    "compiled_offset": 26176,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D780",
+    "unit": "main/misc",
+    "retail_address": 2148063104,
+    "retail_size": 136,
+    "compiled_offset": 26304,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "func_8008D808",
+    "unit": "main/misc",
+    "retail_address": 2148063240,
+    "retail_size": 508,
+    "compiled_offset": 26440,
+    "compiled_size": 232,
+    "delta": -276
+  },
+  {
+    "name": "func_8008DA04",
+    "unit": "main/misc",
+    "retail_address": 2148063748,
+    "retail_size": 248,
+    "compiled_offset": 26672,
+    "compiled_size": 200,
+    "delta": -48
+  },
+  {
+    "name": "func_8008DAFC",
+    "unit": "main/misc",
+    "retail_address": 2148063996,
+    "retail_size": 48,
+    "compiled_offset": 26872,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_8008DB2C",
+    "unit": "main/misc",
+    "retail_address": 2148064044,
+    "retail_size": 60,
+    "compiled_offset": 26920,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E298",
+    "unit": "main/misc",
+    "retail_address": 2148065944,
+    "retail_size": 84,
+    "compiled_offset": 28820,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E2EC",
+    "unit": "main/misc",
+    "retail_address": 2148066028,
+    "retail_size": 84,
+    "compiled_offset": 28904,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E340",
+    "unit": "main/misc",
+    "retail_address": 2148066112,
+    "retail_size": 84,
+    "compiled_offset": 28988,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E394",
+    "unit": "main/misc",
+    "retail_address": 2148066196,
+    "retail_size": 84,
+    "compiled_offset": 29072,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E3E8",
+    "unit": "main/misc",
+    "retail_address": 2148066280,
+    "retail_size": 44,
+    "compiled_offset": 29156,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E414",
+    "unit": "main/misc",
+    "retail_address": 2148066324,
+    "retail_size": 44,
+    "compiled_offset": 29200,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E440",
+    "unit": "main/misc",
+    "retail_address": 2148066368,
+    "retail_size": 44,
+    "compiled_offset": 29244,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E46C",
+    "unit": "main/misc",
+    "retail_address": 2148066412,
+    "retail_size": 44,
+    "compiled_offset": 29288,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E498",
+    "unit": "main/misc",
+    "retail_address": 2148066456,
+    "retail_size": 84,
+    "compiled_offset": 29332,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E4EC",
+    "unit": "main/misc",
+    "retail_address": 2148066540,
+    "retail_size": 44,
+    "compiled_offset": 29416,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E518",
+    "unit": "main/misc",
+    "retail_address": 2148066584,
+    "retail_size": 44,
+    "compiled_offset": 29460,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E544",
+    "unit": "main/misc",
+    "retail_address": 2148066628,
+    "retail_size": 44,
+    "compiled_offset": 29504,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E570",
+    "unit": "main/misc",
+    "retail_address": 2148066672,
+    "retail_size": 44,
+    "compiled_offset": 29548,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E59C",
+    "unit": "main/misc",
+    "retail_address": 2148066716,
+    "retail_size": 380,
+    "compiled_offset": 29592,
+    "compiled_size": 380,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E718",
+    "unit": "main/misc",
+    "retail_address": 2148067096,
+    "retail_size": 324,
+    "compiled_offset": 29972,
+    "compiled_size": 344,
+    "delta": 20
+  },
+  {
+    "name": "func_8008E85C",
+    "unit": "main/misc",
+    "retail_address": 2148067420,
+    "retail_size": 108,
+    "compiled_offset": 30316,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E8C8",
+    "unit": "main/misc",
+    "retail_address": 2148067528,
+    "retail_size": 304,
+    "compiled_offset": 30424,
+    "compiled_size": 304,
+    "delta": 0
+  },
+  {
+    "name": "func_8008E9F8",
+    "unit": "main/misc",
+    "retail_address": 2148067832,
+    "retail_size": 96,
+    "compiled_offset": 30728,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_8008EA58",
+    "unit": "main/misc",
+    "retail_address": 2148067928,
+    "retail_size": 472,
+    "compiled_offset": 30824,
+    "compiled_size": 456,
+    "delta": -16
+  },
+  {
+    "name": "func_8008EC30",
+    "unit": "main/misc",
+    "retail_address": 2148068400,
+    "retail_size": 484,
+    "compiled_offset": 31280,
+    "compiled_size": 476,
+    "delta": -8
+  },
+  {
+    "name": "func_8008EE14",
+    "unit": "main/misc",
+    "retail_address": 2148068884,
+    "retail_size": 328,
+    "compiled_offset": 31756,
+    "compiled_size": 324,
+    "delta": -4
+  },
+  {
+    "name": "func_8008EF5C",
+    "unit": "main/misc",
+    "retail_address": 2148069212,
+    "retail_size": 68,
+    "compiled_offset": 32080,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_8008EFA0",
+    "unit": "main/misc",
+    "retail_address": 2148069280,
+    "retail_size": 68,
+    "compiled_offset": 32148,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_8008EFE4",
+    "unit": "main/misc",
+    "retail_address": 2148069348,
+    "retail_size": 140,
+    "compiled_offset": 32216,
+    "compiled_size": 156,
+    "delta": 16
+  },
+  {
+    "name": "func_8008F070",
+    "unit": "main/misc",
+    "retail_address": 2148069488,
+    "retail_size": 68,
+    "compiled_offset": 32372,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F0B4",
+    "unit": "main/misc",
+    "retail_address": 2148069556,
+    "retail_size": 276,
+    "compiled_offset": 32440,
+    "compiled_size": 248,
+    "delta": -28
+  },
+  {
+    "name": "func_8008F1C8",
+    "unit": "main/misc",
+    "retail_address": 2148069832,
+    "retail_size": 272,
+    "compiled_offset": 32688,
+    "compiled_size": 272,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F2D8",
+    "unit": "main/misc",
+    "retail_address": 2148070104,
+    "retail_size": 112,
+    "compiled_offset": 32960,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F348",
+    "unit": "main/misc",
+    "retail_address": 2148070216,
+    "retail_size": 76,
+    "compiled_offset": 33072,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F394",
+    "unit": "main/misc",
+    "retail_address": 2148070292,
+    "retail_size": 60,
+    "compiled_offset": 33148,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F3D0",
+    "unit": "main/misc",
+    "retail_address": 2148070352,
+    "retail_size": 116,
+    "compiled_offset": 33208,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F444",
+    "unit": "main/misc",
+    "retail_address": 2148070468,
+    "retail_size": 92,
+    "compiled_offset": 33324,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F4A0",
+    "unit": "main/misc",
+    "retail_address": 2148070560,
+    "retail_size": 92,
+    "compiled_offset": 33416,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F4FC",
+    "unit": "main/misc",
+    "retail_address": 2148070652,
+    "retail_size": 92,
+    "compiled_offset": 33508,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F558",
+    "unit": "main/misc",
+    "retail_address": 2148070744,
+    "retail_size": 140,
+    "compiled_offset": 33600,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F5E4",
+    "unit": "main/misc",
+    "retail_address": 2148070884,
+    "retail_size": 132,
+    "compiled_offset": 33740,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F668",
+    "unit": "main/misc",
+    "retail_address": 2148071016,
+    "retail_size": 68,
+    "compiled_offset": 33872,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F6AC",
+    "unit": "main/misc",
+    "retail_address": 2148071084,
+    "retail_size": 120,
+    "compiled_offset": 33940,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F724",
+    "unit": "main/misc",
+    "retail_address": 2148071204,
+    "retail_size": 72,
+    "compiled_offset": 34060,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F76C",
+    "unit": "main/misc",
+    "retail_address": 2148071276,
+    "retail_size": 76,
+    "compiled_offset": 34132,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F7B8",
+    "unit": "main/misc",
+    "retail_address": 2148071352,
+    "retail_size": 340,
+    "compiled_offset": 34208,
+    "compiled_size": 340,
+    "delta": 0
+  },
+  {
+    "name": "func_8008F90C",
+    "unit": "main/misc",
+    "retail_address": 2148071692,
+    "retail_size": 300,
+    "compiled_offset": 34548,
+    "compiled_size": 308,
+    "delta": 8
+  },
+  {
+    "name": "FieldScriptResetCameraMovements",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148074240,
+    "retail_size": 188,
+    "compiled_offset": 2240,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptResetCameraPosMovement",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073576,
+    "retail_size": 92,
+    "compiled_offset": 1576,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptResetCameraTargetMovement",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072912,
+    "retail_size": 92,
+    "compiled_offset": 912,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraInterpolationStep",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072768,
+    "retail_size": 144,
+    "compiled_offset": 768,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraMovementParameter",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148079392,
+    "retail_size": 548,
+    "compiled_offset": 7392,
+    "compiled_size": 548,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraPosMovementDest",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148074024,
+    "retail_size": 216,
+    "compiled_offset": 2024,
+    "compiled_size": 216,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraPosMovementDestToActor",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073884,
+    "retail_size": 140,
+    "compiled_offset": 1884,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraPosMovementFrom",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073668,
+    "retail_size": 216,
+    "compiled_offset": 1668,
+    "compiled_size": 216,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraTargetMovementDest",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073360,
+    "retail_size": 216,
+    "compiled_offset": 1360,
+    "compiled_size": 216,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraTargetMovementDestToActor",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073220,
+    "retail_size": 140,
+    "compiled_offset": 1220,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetCameraTargetMovementFrom",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148073004,
+    "retail_size": 216,
+    "compiled_offset": 1004,
+    "compiled_size": 216,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptStartCameraMovement",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148074428,
+    "retail_size": 1620,
+    "compiled_offset": 2428,
+    "compiled_size": 1620,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWaitForCameraMovement",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148071992,
+    "retail_size": 132,
+    "compiled_offset": 0,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCameraMovementParameter",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148079044,
+    "retail_size": 348,
+    "compiled_offset": 7044,
+    "compiled_size": 348,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCameraTweenPosition",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076444,
+    "retail_size": 132,
+    "compiled_offset": 4444,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCameraTweenTarget",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076312,
+    "retail_size": 132,
+    "compiled_offset": 4312,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCurCameraPosition",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076180,
+    "retail_size": 132,
+    "compiled_offset": 4180,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCurCameraTarget",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076048,
+    "retail_size": 132,
+    "compiled_offset": 4048,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_8008FABC",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072124,
+    "retail_size": 108,
+    "compiled_offset": 132,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_8008FB28",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072232,
+    "retail_size": 112,
+    "compiled_offset": 240,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8008FB98",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072344,
+    "retail_size": 180,
+    "compiled_offset": 352,
+    "compiled_size": 180,
+    "delta": 0
+  },
+  {
+    "name": "func_8008FC4C",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148072524,
+    "retail_size": 244,
+    "compiled_offset": 532,
+    "compiled_size": 236,
+    "delta": -8
+  },
+  {
+    "name": "func_80090C20",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076576,
+    "retail_size": 152,
+    "compiled_offset": 4576,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "func_80090CB8",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076728,
+    "retail_size": 152,
+    "compiled_offset": 4728,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "func_80090D50",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148076880,
+    "retail_size": 156,
+    "compiled_offset": 4880,
+    "compiled_size": 156,
+    "delta": 0
+  },
+  {
+    "name": "func_80090DEC",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148077036,
+    "retail_size": 132,
+    "compiled_offset": 5036,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_80090E70",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148077168,
+    "retail_size": 408,
+    "compiled_offset": 5168,
+    "compiled_size": 408,
+    "delta": 0
+  },
+  {
+    "name": "func_80091008",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148077576,
+    "retail_size": 184,
+    "compiled_offset": 5576,
+    "compiled_size": 184,
+    "delta": 0
+  },
+  {
+    "name": "func_800910C0",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148077760,
+    "retail_size": 600,
+    "compiled_offset": 5760,
+    "compiled_size": 600,
+    "delta": 0
+  },
+  {
+    "name": "func_80091318",
+    "unit": "camera/camera_movement",
+    "retail_address": 2148078360,
+    "retail_size": 684,
+    "compiled_offset": 6360,
+    "compiled_size": 684,
+    "delta": 0
+  },
+  {
+    "name": "FieldProjectActorOriginToScreen",
+    "unit": "main/misc11",
+    "retail_address": 2148096636,
+    "retail_size": 192,
+    "compiled_offset": 16796,
+    "compiled_size": 180,
+    "delta": -12
+  },
+  {
+    "name": "FieldScriptCheckActorDistance",
+    "unit": "main/misc11",
+    "retail_address": 2148097608,
+    "retail_size": 220,
+    "compiled_offset": 17756,
+    "compiled_size": 220,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckActorOnScreen",
+    "unit": "main/misc11",
+    "retail_address": 2148097024,
+    "retail_size": 196,
+    "compiled_offset": 17172,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckTriggerZone",
+    "unit": "main/misc11",
+    "retail_address": 2148096192,
+    "retail_size": 444,
+    "compiled_offset": 16352,
+    "compiled_size": 444,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckTriggerZone2D",
+    "unit": "main/misc11",
+    "retail_address": 2148095796,
+    "retail_size": 396,
+    "compiled_offset": 15956,
+    "compiled_size": 396,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptDisableCompass",
+    "unit": "main/misc11",
+    "retail_address": 2148088864,
+    "retail_size": 40,
+    "compiled_offset": 9028,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptEnableCompass",
+    "unit": "main/misc11",
+    "retail_address": 2148088828,
+    "retail_size": 36,
+    "compiled_offset": 8992,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptHandleTriggerZone",
+    "unit": "main/misc11",
+    "retail_address": 2148095264,
+    "retail_size": 532,
+    "compiled_offset": 15424,
+    "compiled_size": 532,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptHandleTriggerZone2D",
+    "unit": "main/misc11",
+    "retail_address": 2148094780,
+    "retail_size": 484,
+    "compiled_offset": 14940,
+    "compiled_size": 484,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDisableRandomEncounters",
+    "unit": "main/misc11",
+    "retail_address": 2148088904,
+    "retail_size": 36,
+    "compiled_offset": 9068,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerSetControllerBtnMask",
+    "unit": "main/misc11",
+    "retail_address": 2148083240,
+    "retail_size": 60,
+    "compiled_offset": 3424,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80091944",
+    "unit": "main/misc11",
+    "retail_address": 2148079940,
+    "retail_size": 196,
+    "compiled_offset": 0,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "func_80091A08",
+    "unit": "main/misc11",
+    "retail_address": 2148080136,
+    "retail_size": 112,
+    "compiled_offset": 196,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80091A78",
+    "unit": "main/misc11",
+    "retail_address": 2148080248,
+    "retail_size": 92,
+    "compiled_offset": 308,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_80091AD4",
+    "unit": "main/misc11",
+    "retail_address": 2148080340,
+    "retail_size": 8,
+    "compiled_offset": 400,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_80091ADC",
+    "unit": "main/misc11",
+    "retail_address": 2148080348,
+    "retail_size": 224,
+    "compiled_offset": 408,
+    "compiled_size": 184,
+    "delta": -40
+  },
+  {
+    "name": "func_80091BBC",
+    "unit": "main/misc11",
+    "retail_address": 2148080572,
+    "retail_size": 580,
+    "compiled_offset": 592,
+    "compiled_size": 628,
+    "delta": 48
+  },
+  {
+    "name": "func_80091E00",
+    "unit": "main/misc11",
+    "retail_address": 2148081152,
+    "retail_size": 152,
+    "compiled_offset": 1220,
+    "compiled_size": 156,
+    "delta": 4
+  },
+  {
+    "name": "func_80091E98",
+    "unit": "main/misc11",
+    "retail_address": 2148081304,
+    "retail_size": 236,
+    "compiled_offset": 1376,
+    "compiled_size": 236,
+    "delta": 0
+  },
+  {
+    "name": "func_80091F84",
+    "unit": "main/misc11",
+    "retail_address": 2148081540,
+    "retail_size": 192,
+    "compiled_offset": 1612,
+    "compiled_size": 192,
+    "delta": 0
+  },
+  {
+    "name": "func_80092044",
+    "unit": "main/misc11",
+    "retail_address": 2148081732,
+    "retail_size": 148,
+    "compiled_offset": 1804,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_800920D8",
+    "unit": "main/misc11",
+    "retail_address": 2148081880,
+    "retail_size": 112,
+    "compiled_offset": 1952,
+    "compiled_size": 104,
+    "delta": -8
+  },
+  {
+    "name": "func_80092148",
+    "unit": "main/misc11",
+    "retail_address": 2148081992,
+    "retail_size": 160,
+    "compiled_offset": 2056,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_800921E8",
+    "unit": "main/misc11",
+    "retail_address": 2148082152,
+    "retail_size": 508,
+    "compiled_offset": 2216,
+    "compiled_size": 592,
+    "delta": 84
+  },
+  {
+    "name": "func_800923E4",
+    "unit": "main/misc11",
+    "retail_address": 2148082660,
+    "retail_size": 32,
+    "compiled_offset": 2808,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_80092404",
+    "unit": "main/misc11",
+    "retail_address": 2148082692,
+    "retail_size": 32,
+    "compiled_offset": 2840,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_80092424",
+    "unit": "main/misc11",
+    "retail_address": 2148082724,
+    "retail_size": 176,
+    "compiled_offset": 2872,
+    "compiled_size": 176,
+    "delta": 0
+  },
+  {
+    "name": "func_800924D4",
+    "unit": "main/misc11",
+    "retail_address": 2148082900,
+    "retail_size": 204,
+    "compiled_offset": 3048,
+    "compiled_size": 240,
+    "delta": 36
+  },
+  {
+    "name": "func_800925A0",
+    "unit": "main/misc11",
+    "retail_address": 2148083104,
+    "retail_size": 136,
+    "compiled_offset": 3288,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "func_80092664",
+    "unit": "main/misc11",
+    "retail_address": 2148083300,
+    "retail_size": 100,
+    "compiled_offset": 3484,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_800926C8",
+    "unit": "main/misc11",
+    "retail_address": 2148083400,
+    "retail_size": 160,
+    "compiled_offset": 3584,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_80092768",
+    "unit": "main/misc11",
+    "retail_address": 2148083560,
+    "retail_size": 160,
+    "compiled_offset": 3744,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_80092808",
+    "unit": "main/misc11",
+    "retail_address": 2148083720,
+    "retail_size": 140,
+    "compiled_offset": 3904,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_80092894",
+    "unit": "main/misc11",
+    "retail_address": 2148083860,
+    "retail_size": 908,
+    "compiled_offset": 4044,
+    "compiled_size": 884,
+    "delta": -24
+  },
+  {
+    "name": "func_80092C20",
+    "unit": "main/misc11",
+    "retail_address": 2148084768,
+    "retail_size": 476,
+    "compiled_offset": 4928,
+    "compiled_size": 472,
+    "delta": -4
+  },
+  {
+    "name": "func_80092DFC",
+    "unit": "main/misc11",
+    "retail_address": 2148085244,
+    "retail_size": 164,
+    "compiled_offset": 5400,
+    "compiled_size": 164,
+    "delta": 0
+  },
+  {
+    "name": "func_80092EA0",
+    "unit": "main/misc11",
+    "retail_address": 2148085408,
+    "retail_size": 164,
+    "compiled_offset": 5564,
+    "compiled_size": 164,
+    "delta": 0
+  },
+  {
+    "name": "func_80092F44",
+    "unit": "main/misc11",
+    "retail_address": 2148085572,
+    "retail_size": 112,
+    "compiled_offset": 5728,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80092FB4",
+    "unit": "main/misc11",
+    "retail_address": 2148085684,
+    "retail_size": 96,
+    "compiled_offset": 5840,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_80093014",
+    "unit": "main/misc11",
+    "retail_address": 2148085780,
+    "retail_size": 484,
+    "compiled_offset": 5936,
+    "compiled_size": 480,
+    "delta": -4
+  },
+  {
+    "name": "func_800931F8",
+    "unit": "main/misc11",
+    "retail_address": 2148086264,
+    "retail_size": 8,
+    "compiled_offset": 6416,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "func_80093200",
+    "unit": "main/misc11",
+    "retail_address": 2148086272,
+    "retail_size": 208,
+    "compiled_offset": 6424,
+    "compiled_size": 208,
+    "delta": 0
+  },
+  {
+    "name": "func_800932D0",
+    "unit": "main/misc11",
+    "retail_address": 2148086480,
+    "retail_size": 296,
+    "compiled_offset": 6632,
+    "compiled_size": 296,
+    "delta": 0
+  },
+  {
+    "name": "func_800933F8",
+    "unit": "main/misc11",
+    "retail_address": 2148086776,
+    "retail_size": 368,
+    "compiled_offset": 6928,
+    "compiled_size": 368,
+    "delta": 0
+  },
+  {
+    "name": "func_80093568",
+    "unit": "main/misc11",
+    "retail_address": 2148087144,
+    "retail_size": 252,
+    "compiled_offset": 7296,
+    "compiled_size": 252,
+    "delta": 0
+  },
+  {
+    "name": "func_80093664",
+    "unit": "main/misc11",
+    "retail_address": 2148087396,
+    "retail_size": 128,
+    "compiled_offset": 7548,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "func_800936E4",
+    "unit": "main/misc11",
+    "retail_address": 2148087524,
+    "retail_size": 92,
+    "compiled_offset": 7676,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_80093740",
+    "unit": "main/misc11",
+    "retail_address": 2148087616,
+    "retail_size": 80,
+    "compiled_offset": 7768,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80093790",
+    "unit": "main/misc11",
+    "retail_address": 2148087696,
+    "retail_size": 80,
+    "compiled_offset": 7848,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_800937E0",
+    "unit": "main/misc11",
+    "retail_address": 2148087776,
+    "retail_size": 68,
+    "compiled_offset": 7928,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_80093824",
+    "unit": "main/misc11",
+    "retail_address": 2148087844,
+    "retail_size": 100,
+    "compiled_offset": 7996,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80093888",
+    "unit": "main/misc11",
+    "retail_address": 2148087944,
+    "retail_size": 168,
+    "compiled_offset": 8096,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "func_80093930",
+    "unit": "main/misc11",
+    "retail_address": 2148088112,
+    "retail_size": 112,
+    "compiled_offset": 8264,
+    "compiled_size": 124,
+    "delta": 12
+  },
+  {
+    "name": "func_800939A0",
+    "unit": "main/misc11",
+    "retail_address": 2148088224,
+    "retail_size": 100,
+    "compiled_offset": 8388,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80093A04",
+    "unit": "main/misc11",
+    "retail_address": 2148088324,
+    "retail_size": 100,
+    "compiled_offset": 8488,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80093A68",
+    "unit": "main/misc11",
+    "retail_address": 2148088424,
+    "retail_size": 48,
+    "compiled_offset": 8588,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_80093A98",
+    "unit": "main/misc11",
+    "retail_address": 2148088472,
+    "retail_size": 48,
+    "compiled_offset": 8636,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_80093AC8",
+    "unit": "main/misc11",
+    "retail_address": 2148088520,
+    "retail_size": 72,
+    "compiled_offset": 8684,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_80093B10",
+    "unit": "main/misc11",
+    "retail_address": 2148088592,
+    "retail_size": 160,
+    "compiled_offset": 8756,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_80093BB0",
+    "unit": "main/misc11",
+    "retail_address": 2148088752,
+    "retail_size": 36,
+    "compiled_offset": 8916,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "func_80093BD4",
+    "unit": "main/misc11",
+    "retail_address": 2148088788,
+    "retail_size": 40,
+    "compiled_offset": 8952,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_80093C6C",
+    "unit": "main/misc11",
+    "retail_address": 2148088940,
+    "retail_size": 100,
+    "compiled_offset": 9104,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80093CD0",
+    "unit": "main/misc11",
+    "retail_address": 2148089040,
+    "retail_size": 120,
+    "compiled_offset": 9204,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "func_80093D48",
+    "unit": "main/misc11",
+    "retail_address": 2148089160,
+    "retail_size": 232,
+    "compiled_offset": 9324,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "func_80093E30",
+    "unit": "main/misc11",
+    "retail_address": 2148089392,
+    "retail_size": 400,
+    "compiled_offset": 9556,
+    "compiled_size": 400,
+    "delta": 0
+  },
+  {
+    "name": "func_80093FC0",
+    "unit": "main/misc11",
+    "retail_address": 2148089792,
+    "retail_size": 408,
+    "compiled_offset": 9956,
+    "compiled_size": 408,
+    "delta": 0
+  },
+  {
+    "name": "func_80094158",
+    "unit": "main/misc11",
+    "retail_address": 2148090200,
+    "retail_size": 596,
+    "compiled_offset": 10364,
+    "compiled_size": 596,
+    "delta": 0
+  },
+  {
+    "name": "func_800943AC",
+    "unit": "main/misc11",
+    "retail_address": 2148090796,
+    "retail_size": 552,
+    "compiled_offset": 10960,
+    "compiled_size": 552,
+    "delta": 0
+  },
+  {
+    "name": "func_800945D4",
+    "unit": "main/misc11",
+    "retail_address": 2148091348,
+    "retail_size": 124,
+    "compiled_offset": 11512,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "func_80094650",
+    "unit": "main/misc11",
+    "retail_address": 2148091472,
+    "retail_size": 60,
+    "compiled_offset": 11636,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8009468C",
+    "unit": "main/misc11",
+    "retail_address": 2148091532,
+    "retail_size": 48,
+    "compiled_offset": 11696,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_800946BC",
+    "unit": "main/misc11",
+    "retail_address": 2148091580,
+    "retail_size": 84,
+    "compiled_offset": 11744,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80094710",
+    "unit": "main/misc11",
+    "retail_address": 2148091664,
+    "retail_size": 84,
+    "compiled_offset": 11828,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_80094764",
+    "unit": "main/misc11",
+    "retail_address": 2148091748,
+    "retail_size": 76,
+    "compiled_offset": 11912,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_800947B0",
+    "unit": "main/misc11",
+    "retail_address": 2148091824,
+    "retail_size": 360,
+    "compiled_offset": 11988,
+    "compiled_size": 360,
+    "delta": 0
+  },
+  {
+    "name": "func_80094918",
+    "unit": "main/misc11",
+    "retail_address": 2148092184,
+    "retail_size": 324,
+    "compiled_offset": 12348,
+    "compiled_size": 324,
+    "delta": 0
+  },
+  {
+    "name": "func_80094A5C",
+    "unit": "main/misc11",
+    "retail_address": 2148092508,
+    "retail_size": 112,
+    "compiled_offset": 12672,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094ACC",
+    "unit": "main/misc11",
+    "retail_address": 2148092620,
+    "retail_size": 112,
+    "compiled_offset": 12784,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094B3C",
+    "unit": "main/misc11",
+    "retail_address": 2148092732,
+    "retail_size": 112,
+    "compiled_offset": 12896,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094BAC",
+    "unit": "main/misc11",
+    "retail_address": 2148092844,
+    "retail_size": 112,
+    "compiled_offset": 13008,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094C1C",
+    "unit": "main/misc11",
+    "retail_address": 2148092956,
+    "retail_size": 112,
+    "compiled_offset": 13120,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094C8C",
+    "unit": "main/misc11",
+    "retail_address": 2148093068,
+    "retail_size": 112,
+    "compiled_offset": 13232,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80094CFC",
+    "unit": "main/misc11",
+    "retail_address": 2148093180,
+    "retail_size": 80,
+    "compiled_offset": 13344,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094D4C",
+    "unit": "main/misc11",
+    "retail_address": 2148093260,
+    "retail_size": 80,
+    "compiled_offset": 13424,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094D9C",
+    "unit": "main/misc11",
+    "retail_address": 2148093340,
+    "retail_size": 80,
+    "compiled_offset": 13504,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094DEC",
+    "unit": "main/misc11",
+    "retail_address": 2148093420,
+    "retail_size": 80,
+    "compiled_offset": 13584,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094E3C",
+    "unit": "main/misc11",
+    "retail_address": 2148093500,
+    "retail_size": 80,
+    "compiled_offset": 13664,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094E8C",
+    "unit": "main/misc11",
+    "retail_address": 2148093580,
+    "retail_size": 80,
+    "compiled_offset": 13744,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094EDC",
+    "unit": "main/misc11",
+    "retail_address": 2148093660,
+    "retail_size": 80,
+    "compiled_offset": 13824,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094F2C",
+    "unit": "main/misc11",
+    "retail_address": 2148093740,
+    "retail_size": 80,
+    "compiled_offset": 13904,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094F7C",
+    "unit": "main/misc11",
+    "retail_address": 2148093820,
+    "retail_size": 80,
+    "compiled_offset": 13984,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_80094FCC",
+    "unit": "main/misc11",
+    "retail_address": 2148093900,
+    "retail_size": 80,
+    "compiled_offset": 14064,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_8009501C",
+    "unit": "main/misc11",
+    "retail_address": 2148093980,
+    "retail_size": 132,
+    "compiled_offset": 14144,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_800950A0",
+    "unit": "main/misc11",
+    "retail_address": 2148094112,
+    "retail_size": 132,
+    "compiled_offset": 14276,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_80095124",
+    "unit": "main/misc11",
+    "retail_address": 2148094244,
+    "retail_size": 148,
+    "compiled_offset": 14408,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_800951B8",
+    "unit": "main/misc11",
+    "retail_address": 2148094392,
+    "retail_size": 148,
+    "compiled_offset": 14556,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_8009524C",
+    "unit": "main/misc11",
+    "retail_address": 2148094540,
+    "retail_size": 56,
+    "compiled_offset": 14704,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_80095284",
+    "unit": "main/misc11",
+    "retail_address": 2148094596,
+    "retail_size": 124,
+    "compiled_offset": 14760,
+    "compiled_size": 120,
+    "delta": -4
+  },
+  {
+    "name": "func_80095300",
+    "unit": "main/misc11",
+    "retail_address": 2148094720,
+    "retail_size": 60,
+    "compiled_offset": 14880,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80095B3C",
+    "unit": "main/misc11",
+    "retail_address": 2148096828,
+    "retail_size": 196,
+    "compiled_offset": 16976,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "func_80095CC4",
+    "unit": "main/misc11",
+    "retail_address": 2148097220,
+    "retail_size": 168,
+    "compiled_offset": 17368,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "func_80095D6C",
+    "unit": "main/misc11",
+    "retail_address": 2148097388,
+    "retail_size": 220,
+    "compiled_offset": 17536,
+    "compiled_size": 220,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckGoldAmount",
+    "unit": "game_logic/gold",
+    "retail_address": 2148097828,
+    "retail_size": 148,
+    "compiled_offset": 0,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptDecreaseGold",
+    "unit": "game_logic/gold",
+    "retail_address": 2148098076,
+    "retail_size": 92,
+    "compiled_offset": 248,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptIncreaseGold",
+    "unit": "game_logic/gold",
+    "retail_address": 2148097976,
+    "retail_size": 100,
+    "compiled_offset": 148,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckControllerInputExact",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098276,
+    "retail_size": 108,
+    "compiled_offset": 108,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMCheckControllerInput",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098168,
+    "retail_size": 108,
+    "compiled_offset": 0,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_80096150",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098384,
+    "retail_size": 40,
+    "compiled_offset": 216,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_80096178",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098424,
+    "retail_size": 40,
+    "compiled_offset": 256,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800961A0",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098464,
+    "retail_size": 40,
+    "compiled_offset": 296,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800961C8",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098504,
+    "retail_size": 40,
+    "compiled_offset": 336,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800961F0",
+    "unit": "main/input_script_handlers",
+    "retail_address": 2148098544,
+    "retail_size": 36,
+    "compiled_offset": 376,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckPartyMember",
+    "unit": "main/misc10",
+    "retail_address": 2148099248,
+    "retail_size": 132,
+    "compiled_offset": 640,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_80096214",
+    "unit": "main/misc10",
+    "retail_address": 2148098580,
+    "retail_size": 172,
+    "compiled_offset": 0,
+    "compiled_size": 160,
+    "delta": -12
+  },
+  {
+    "name": "func_800962C0",
+    "unit": "main/misc10",
+    "retail_address": 2148098752,
+    "retail_size": 92,
+    "compiled_offset": 160,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8009631C",
+    "unit": "main/misc10",
+    "retail_address": 2148098844,
+    "retail_size": 64,
+    "compiled_offset": 252,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_8009635C",
+    "unit": "main/misc10",
+    "retail_address": 2148098908,
+    "retail_size": 176,
+    "compiled_offset": 316,
+    "compiled_size": 176,
+    "delta": 0
+  },
+  {
+    "name": "func_8009640C",
+    "unit": "main/misc10",
+    "retail_address": 2148099084,
+    "retail_size": 164,
+    "compiled_offset": 492,
+    "compiled_size": 148,
+    "delta": -16
+  },
+  {
+    "name": "func_80096534",
+    "unit": "main/misc10",
+    "retail_address": 2148099380,
+    "retail_size": 116,
+    "compiled_offset": 772,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "func_800965A8",
+    "unit": "main/misc10",
+    "retail_address": 2148099496,
+    "retail_size": 76,
+    "compiled_offset": 888,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_800965F4",
+    "unit": "main/misc10",
+    "retail_address": 2148099572,
+    "retail_size": 80,
+    "compiled_offset": 964,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckScenarioFlagsEqual",
+    "unit": "game_logic/scenario_flags",
+    "retail_address": 2148099876,
+    "retail_size": 108,
+    "compiled_offset": 224,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckScenarioFlagsGreaterThan",
+    "unit": "game_logic/scenario_flags",
+    "retail_address": 2148099764,
+    "retail_size": 112,
+    "compiled_offset": 112,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCheckScenarioFlagsLessThan",
+    "unit": "game_logic/scenario_flags",
+    "retail_address": 2148099652,
+    "retail_size": 112,
+    "compiled_offset": 0,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptGetScenarioFlags",
+    "unit": "game_logic/scenario_flags",
+    "retail_address": 2148100072,
+    "retail_size": 92,
+    "compiled_offset": 420,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetScenarioFlags",
+    "unit": "game_logic/scenario_flags",
+    "retail_address": 2148099984,
+    "retail_size": 88,
+    "compiled_offset": 332,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyMemberDecreaseHp",
+    "unit": "party/stats",
+    "retail_address": 2148100300,
+    "retail_size": 84,
+    "compiled_offset": 136,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyMemberDecreaseMp",
+    "unit": "party/stats",
+    "retail_address": 2148100520,
+    "retail_size": 84,
+    "compiled_offset": 356,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyMemberIncreaseHp",
+    "unit": "party/stats",
+    "retail_address": 2148100164,
+    "retail_size": 136,
+    "compiled_offset": 0,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldPartyMemberIncreaseMp",
+    "unit": "party/stats",
+    "retail_address": 2148100384,
+    "retail_size": 136,
+    "compiled_offset": 220,
+    "compiled_size": 136,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDecreasePartyHp",
+    "unit": "party/stats",
+    "retail_address": 2148100604,
+    "retail_size": 248,
+    "compiled_offset": 440,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDecreasePartyMp",
+    "unit": "party/stats",
+    "retail_address": 2148102160,
+    "retail_size": 248,
+    "compiled_offset": 1996,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerIncreasePartyMp",
+    "unit": "party/stats",
+    "retail_address": 2148101912,
+    "retail_size": 248,
+    "compiled_offset": 1748,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerRestoreCharacterHpAndMp",
+    "unit": "party/stats",
+    "retail_address": 2148102656,
+    "retail_size": 100,
+    "compiled_offset": 2496,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerRestoreHp",
+    "unit": "party/stats",
+    "retail_address": 2148102756,
+    "retail_size": 72,
+    "compiled_offset": 2596,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerRestoreMp",
+    "unit": "party/stats",
+    "retail_address": 2148102828,
+    "retail_size": 72,
+    "compiled_offset": 2668,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerSetPartyMemberHp",
+    "unit": "party/stats",
+    "retail_address": 2148101416,
+    "retail_size": 248,
+    "compiled_offset": 1252,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerSetPartyMemberMp",
+    "unit": "party/stats",
+    "retail_address": 2148101664,
+    "retail_size": 248,
+    "compiled_offset": 1500,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerWritePartyMemberHp",
+    "unit": "party/stats",
+    "retail_address": 2148100952,
+    "retail_size": 232,
+    "compiled_offset": 788,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerWritePartyMemberMp",
+    "unit": "party/stats",
+    "retail_address": 2148101184,
+    "retail_size": 232,
+    "compiled_offset": 1020,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "func_80096AF4",
+    "unit": "party/stats",
+    "retail_address": 2148100852,
+    "retail_size": 100,
+    "compiled_offset": 688,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_80097108",
+    "unit": "party/stats",
+    "retail_address": 2148102408,
+    "retail_size": 248,
+    "compiled_offset": 2244,
+    "compiled_size": 252,
+    "delta": 4
+  },
+  {
+    "name": "FieldGetCameraDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148115732,
+    "retail_size": 32,
+    "compiled_offset": 12428,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "FieldGetPlayerActorDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148103244,
+    "retail_size": 80,
+    "compiled_offset": 2044,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "FieldGetVec1Magnitude",
+    "unit": "main/misc7",
+    "retail_address": 2148113036,
+    "retail_size": 52,
+    "compiled_offset": 9800,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "FieldGetVec2Magnitude",
+    "unit": "main/misc7",
+    "retail_address": 2148112972,
+    "retail_size": 64,
+    "compiled_offset": 9736,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "FieldGetVec3Magnitude",
+    "unit": "main/misc7",
+    "retail_address": 2148112900,
+    "retail_size": 72,
+    "compiled_offset": 9664,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptAtan2",
+    "unit": "main/misc7",
+    "retail_address": 2148116516,
+    "retail_size": 184,
+    "compiled_offset": 13212,
+    "compiled_size": 184,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptCos",
+    "unit": "main/misc7",
+    "retail_address": 2148116140,
+    "retail_size": 188,
+    "compiled_offset": 12836,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptFadeIn",
+    "unit": "main/misc7",
+    "retail_address": 2148103012,
+    "retail_size": 64,
+    "compiled_offset": 1812,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptFadeOut",
+    "unit": "main/misc7",
+    "retail_address": 2148102940,
+    "retail_size": 72,
+    "compiled_offset": 1740,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptGetCurActorDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148116700,
+    "retail_size": 40,
+    "compiled_offset": 13396,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptRotateActorClockwise",
+    "unit": "main/misc7",
+    "retail_address": 2148117340,
+    "retail_size": 80,
+    "compiled_offset": 14036,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptRotateActorCounterClockwise",
+    "unit": "main/misc7",
+    "retail_address": 2148117420,
+    "retail_size": 80,
+    "compiled_offset": 14116,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetActorDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148117500,
+    "retail_size": 56,
+    "compiled_offset": 14196,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetActorRotation",
+    "unit": "main/misc7",
+    "retail_address": 2148116824,
+    "retail_size": 168,
+    "compiled_offset": 13520,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetDollySet",
+    "unit": "main/misc7",
+    "retail_address": 2148116020,
+    "retail_size": 60,
+    "compiled_offset": 12716,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSetDollyStop",
+    "unit": "main/misc7",
+    "retail_address": 2148116080,
+    "retail_size": 60,
+    "compiled_offset": 12776,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptSin",
+    "unit": "main/misc7",
+    "retail_address": 2148116328,
+    "retail_size": 188,
+    "compiled_offset": 13024,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerGetActorDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148114372,
+    "retail_size": 96,
+    "compiled_offset": 11068,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerGetActorPosition",
+    "unit": "main/misc7",
+    "retail_address": 2148114468,
+    "retail_size": 216,
+    "compiled_offset": 11164,
+    "compiled_size": 216,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerPlayAnimation",
+    "unit": "main/misc7",
+    "retail_address": 2148114736,
+    "retail_size": 68,
+    "compiled_offset": 11432,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerSetCurActorRotation",
+    "unit": "main/misc7",
+    "retail_address": 2148117628,
+    "retail_size": 56,
+    "compiled_offset": 14324,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMWriteCurCharacterID",
+    "unit": "main/misc7",
+    "retail_address": 2148114168,
+    "retail_size": 80,
+    "compiled_offset": 10864,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMWritePartyLeaderCharacterID",
+    "unit": "main/misc7",
+    "retail_address": 2148114248,
+    "retail_size": 124,
+    "compiled_offset": 10944,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWriteCameraDirection",
+    "unit": "main/misc7",
+    "retail_address": 2148115764,
+    "retail_size": 88,
+    "compiled_offset": 12460,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldSetCurrentActorRotation",
+    "unit": "main/misc7",
+    "retail_address": 2148116740,
+    "retail_size": 84,
+    "compiled_offset": 13436,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800972F4",
+    "unit": "main/misc7",
+    "retail_address": 2148102900,
+    "retail_size": 40,
+    "compiled_offset": 1700,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800973A4",
+    "unit": "main/misc7",
+    "retail_address": 2148103076,
+    "retail_size": 108,
+    "compiled_offset": 1876,
+    "compiled_size": 108,
+    "delta": 0
+  },
+  {
+    "name": "func_80097410",
+    "unit": "main/misc7",
+    "retail_address": 2148103184,
+    "retail_size": 60,
+    "compiled_offset": 1984,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_8009749C",
+    "unit": "main/misc7",
+    "retail_address": 2148103324,
+    "retail_size": 292,
+    "compiled_offset": 2124,
+    "compiled_size": 296,
+    "delta": 4
+  },
+  {
+    "name": "func_800975C0",
+    "unit": "main/misc7",
+    "retail_address": 2148103616,
+    "retail_size": 232,
+    "compiled_offset": 2420,
+    "compiled_size": 228,
+    "delta": -4
+  },
+  {
+    "name": "func_800976A8",
+    "unit": "main/misc7",
+    "retail_address": 2148103848,
+    "retail_size": 252,
+    "compiled_offset": 2648,
+    "compiled_size": 252,
+    "delta": 0
+  },
+  {
+    "name": "func_800977A4",
+    "unit": "main/misc7",
+    "retail_address": 2148104100,
+    "retail_size": 192,
+    "compiled_offset": 2900,
+    "compiled_size": 168,
+    "delta": -24
+  },
+  {
+    "name": "func_80097864",
+    "unit": "main/misc7",
+    "retail_address": 2148104292,
+    "retail_size": 240,
+    "compiled_offset": 3068,
+    "compiled_size": 184,
+    "delta": -56
+  },
+  {
+    "name": "func_80097954",
+    "unit": "main/misc7",
+    "retail_address": 2148104532,
+    "retail_size": 156,
+    "compiled_offset": 3252,
+    "compiled_size": 136,
+    "delta": -20
+  },
+  {
+    "name": "func_800979F0",
+    "unit": "main/misc7",
+    "retail_address": 2148104688,
+    "retail_size": 96,
+    "compiled_offset": 3388,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_80097A50",
+    "unit": "main/misc7",
+    "retail_address": 2148104784,
+    "retail_size": 1512,
+    "compiled_offset": 0,
+    "compiled_size": 1512,
+    "delta": 0
+  },
+  {
+    "name": "func_80098038",
+    "unit": "main/misc7",
+    "retail_address": 2148106296,
+    "retail_size": 196,
+    "compiled_offset": 3484,
+    "compiled_size": 160,
+    "delta": -36
+  },
+  {
+    "name": "func_800980FC",
+    "unit": "main/misc7",
+    "retail_address": 2148106492,
+    "retail_size": 136,
+    "compiled_offset": 3644,
+    "compiled_size": 124,
+    "delta": -12
+  },
+  {
+    "name": "func_80098184",
+    "unit": "main/misc7",
+    "retail_address": 2148106628,
+    "retail_size": 240,
+    "compiled_offset": 3768,
+    "compiled_size": 228,
+    "delta": -12
+  },
+  {
+    "name": "func_80098274",
+    "unit": "main/misc7",
+    "retail_address": 2148106868,
+    "retail_size": 252,
+    "compiled_offset": 3996,
+    "compiled_size": 240,
+    "delta": -12
+  },
+  {
+    "name": "func_80098370",
+    "unit": "main/misc7",
+    "retail_address": 2148107120,
+    "retail_size": 192,
+    "compiled_offset": 4236,
+    "compiled_size": 204,
+    "delta": 12
+  },
+  {
+    "name": "func_80098430",
+    "unit": "main/misc7",
+    "retail_address": 2148107312,
+    "retail_size": 188,
+    "compiled_offset": 1512,
+    "compiled_size": 188,
+    "delta": 0
+  },
+  {
+    "name": "func_800984EC",
+    "unit": "main/misc7",
+    "retail_address": 2148107500,
+    "retail_size": 208,
+    "compiled_offset": 4440,
+    "compiled_size": 196,
+    "delta": -12
+  },
+  {
+    "name": "func_800985BC",
+    "unit": "main/misc7",
+    "retail_address": 2148107708,
+    "retail_size": 96,
+    "compiled_offset": 4636,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_8009861C",
+    "unit": "main/misc7",
+    "retail_address": 2148107804,
+    "retail_size": 284,
+    "compiled_offset": 4732,
+    "compiled_size": 284,
+    "delta": 0
+  },
+  {
+    "name": "func_80098738",
+    "unit": "main/misc7",
+    "retail_address": 2148108088,
+    "retail_size": 384,
+    "compiled_offset": 5016,
+    "compiled_size": 384,
+    "delta": 0
+  },
+  {
+    "name": "func_800988B8",
+    "unit": "main/misc7",
+    "retail_address": 2148108472,
+    "retail_size": 228,
+    "compiled_offset": 5400,
+    "compiled_size": 228,
+    "delta": 0
+  },
+  {
+    "name": "func_8009899C",
+    "unit": "main/misc7",
+    "retail_address": 2148108700,
+    "retail_size": 84,
+    "compiled_offset": 5628,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800989F0",
+    "unit": "main/misc7",
+    "retail_address": 2148108784,
+    "retail_size": 140,
+    "compiled_offset": 5712,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_80098A7C",
+    "unit": "main/misc7",
+    "retail_address": 2148108924,
+    "retail_size": 388,
+    "compiled_offset": 5852,
+    "compiled_size": 344,
+    "delta": -44
+  },
+  {
+    "name": "func_80098C00",
+    "unit": "main/misc7",
+    "retail_address": 2148109312,
+    "retail_size": 60,
+    "compiled_offset": 6196,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_80098C3C",
+    "unit": "main/misc7",
+    "retail_address": 2148109372,
+    "retail_size": 112,
+    "compiled_offset": 6256,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_80098CAC",
+    "unit": "main/misc7",
+    "retail_address": 2148109484,
+    "retail_size": 1384,
+    "compiled_offset": 6368,
+    "compiled_size": 1368,
+    "delta": -16
+  },
+  {
+    "name": "func_80099214",
+    "unit": "main/misc7",
+    "retail_address": 2148110868,
+    "retail_size": 1900,
+    "compiled_offset": 7736,
+    "compiled_size": 1796,
+    "delta": -104
+  },
+  {
+    "name": "func_80099980",
+    "unit": "main/misc7",
+    "retail_address": 2148112768,
+    "retail_size": 132,
+    "compiled_offset": 9532,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_80099AC0",
+    "unit": "main/misc7",
+    "retail_address": 2148113088,
+    "retail_size": 1080,
+    "compiled_offset": 9852,
+    "compiled_size": 1012,
+    "delta": -68
+  },
+  {
+    "name": "func_8009A0FC",
+    "unit": "main/misc7",
+    "retail_address": 2148114684,
+    "retail_size": 52,
+    "compiled_offset": 11380,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A174",
+    "unit": "main/misc7",
+    "retail_address": 2148114804,
+    "retail_size": 56,
+    "compiled_offset": 11500,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A1AC",
+    "unit": "main/misc7",
+    "retail_address": 2148114860,
+    "retail_size": 56,
+    "compiled_offset": 11556,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A1E4",
+    "unit": "main/misc7",
+    "retail_address": 2148114916,
+    "retail_size": 196,
+    "compiled_offset": 11612,
+    "compiled_size": 200,
+    "delta": 4
+  },
+  {
+    "name": "func_8009A2A8",
+    "unit": "main/misc7",
+    "retail_address": 2148115112,
+    "retail_size": 164,
+    "compiled_offset": 11812,
+    "compiled_size": 164,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A34C",
+    "unit": "main/misc7",
+    "retail_address": 2148115276,
+    "retail_size": 212,
+    "compiled_offset": 11976,
+    "compiled_size": 208,
+    "delta": -4
+  },
+  {
+    "name": "func_8009A420",
+    "unit": "main/misc7",
+    "retail_address": 2148115488,
+    "retail_size": 112,
+    "compiled_offset": 12184,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A490",
+    "unit": "main/misc7",
+    "retail_address": 2148115600,
+    "retail_size": 132,
+    "compiled_offset": 12296,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A58C",
+    "unit": "main/misc7",
+    "retail_address": 2148115852,
+    "retail_size": 84,
+    "compiled_offset": 12548,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8009A5E0",
+    "unit": "main/misc7",
+    "retail_address": 2148115936,
+    "retail_size": 84,
+    "compiled_offset": 12632,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AA00",
+    "unit": "main/misc7",
+    "retail_address": 2148116992,
+    "retail_size": 264,
+    "compiled_offset": 13688,
+    "compiled_size": 264,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AB08",
+    "unit": "main/misc7",
+    "retail_address": 2148117256,
+    "retail_size": 84,
+    "compiled_offset": 13952,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AC34",
+    "unit": "main/misc7",
+    "retail_address": 2148117556,
+    "retail_size": 72,
+    "compiled_offset": 14252,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_8009ACB4",
+    "unit": "main/misc7",
+    "retail_address": 2148117684,
+    "retail_size": 56,
+    "compiled_offset": 14380,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8009ACEC",
+    "unit": "main/misc7",
+    "retail_address": 2148117740,
+    "retail_size": 128,
+    "compiled_offset": 14436,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AD6C",
+    "unit": "main/misc7",
+    "retail_address": 2148117868,
+    "retail_size": 112,
+    "compiled_offset": 14564,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8009ADDC",
+    "unit": "main/misc7",
+    "retail_address": 2148117980,
+    "retail_size": 48,
+    "compiled_offset": 14676,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AE0C",
+    "unit": "main/misc7",
+    "retail_address": 2148118028,
+    "retail_size": 48,
+    "compiled_offset": 14724,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_8009AE3C",
+    "unit": "main/misc7",
+    "retail_address": 2148118076,
+    "retail_size": 164,
+    "compiled_offset": 14772,
+    "compiled_size": 160,
+    "delta": -4
+  },
+  {
+    "name": "func_8009AEE0",
+    "unit": "main/misc7",
+    "retail_address": 2148118240,
+    "retail_size": 636,
+    "compiled_offset": 14932,
+    "compiled_size": 632,
+    "delta": -4
+  },
+  {
+    "name": "func_8009B15C",
+    "unit": "main/misc7",
+    "retail_address": 2148118876,
+    "retail_size": 40,
+    "compiled_offset": 15564,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B184",
+    "unit": "main/misc7",
+    "retail_address": 2148118916,
+    "retail_size": 140,
+    "compiled_offset": 15604,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B210",
+    "unit": "main/misc7",
+    "retail_address": 2148119056,
+    "retail_size": 296,
+    "compiled_offset": 15744,
+    "compiled_size": 288,
+    "delta": -8
+  },
+  {
+    "name": "func_8009B338",
+    "unit": "main/misc7",
+    "retail_address": 2148119352,
+    "retail_size": 96,
+    "compiled_offset": 16032,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B398",
+    "unit": "main/misc7",
+    "retail_address": 2148119448,
+    "retail_size": 716,
+    "compiled_offset": 16128,
+    "compiled_size": 568,
+    "delta": -148
+  },
+  {
+    "name": "func_8009B664",
+    "unit": "main/misc7",
+    "retail_address": 2148120164,
+    "retail_size": 72,
+    "compiled_offset": 16696,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B6AC",
+    "unit": "main/misc7",
+    "retail_address": 2148120236,
+    "retail_size": 92,
+    "compiled_offset": 16768,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B708",
+    "unit": "main/misc7",
+    "retail_address": 2148120328,
+    "retail_size": 160,
+    "compiled_offset": 16860,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B7A8",
+    "unit": "main/misc7",
+    "retail_address": 2148120488,
+    "retail_size": 124,
+    "compiled_offset": 17020,
+    "compiled_size": 120,
+    "delta": -4
+  },
+  {
+    "name": "func_8009B824",
+    "unit": "main/misc7",
+    "retail_address": 2148120612,
+    "retail_size": 96,
+    "compiled_offset": 17140,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B884",
+    "unit": "main/misc7",
+    "retail_address": 2148120708,
+    "retail_size": 96,
+    "compiled_offset": 17236,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_8009B8E4",
+    "unit": "main/misc7",
+    "retail_address": 2148120804,
+    "retail_size": 188,
+    "compiled_offset": 17332,
+    "compiled_size": 212,
+    "delta": 24
+  },
+  {
+    "name": "func_8009B9A0",
+    "unit": "main/misc7",
+    "retail_address": 2148120992,
+    "retail_size": 108,
+    "compiled_offset": 17544,
+    "compiled_size": 104,
+    "delta": -4
+  },
+  {
+    "name": "func_8009BA0C",
+    "unit": "main/misc7",
+    "retail_address": 2148121100,
+    "retail_size": 112,
+    "compiled_offset": 17648,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8009BA7C",
+    "unit": "main/misc7",
+    "retail_address": 2148121212,
+    "retail_size": 144,
+    "compiled_offset": 17760,
+    "compiled_size": 140,
+    "delta": -4
+  },
+  {
+    "name": "FieldScriptVMGetActorIndex",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148126132,
+    "retail_size": 148,
+    "compiled_offset": 4808,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_8009BB0C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148121356,
+    "retail_size": 396,
+    "compiled_offset": 0,
+    "compiled_size": 396,
+    "delta": 0
+  },
+  {
+    "name": "func_8009BC98",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148121752,
+    "retail_size": 448,
+    "compiled_offset": 396,
+    "compiled_size": 432,
+    "delta": -16
+  },
+  {
+    "name": "func_8009BE58",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122200,
+    "retail_size": 68,
+    "compiled_offset": 828,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_8009BE9C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122268,
+    "retail_size": 240,
+    "compiled_offset": 896,
+    "compiled_size": 240,
+    "delta": 0
+  },
+  {
+    "name": "func_8009BF8C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122508,
+    "retail_size": 144,
+    "compiled_offset": 1136,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C01C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122652,
+    "retail_size": 152,
+    "compiled_offset": 1280,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C0B4",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122804,
+    "retail_size": 40,
+    "compiled_offset": 1432,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C0DC",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122844,
+    "retail_size": 40,
+    "compiled_offset": 1472,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C104",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122884,
+    "retail_size": 40,
+    "compiled_offset": 1512,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C12C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122924,
+    "retail_size": 40,
+    "compiled_offset": 1552,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C154",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148122964,
+    "retail_size": 996,
+    "compiled_offset": 1592,
+    "compiled_size": 944,
+    "delta": -52
+  },
+  {
+    "name": "func_8009C538",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148123960,
+    "retail_size": 112,
+    "compiled_offset": 2536,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "func_8009C5A8",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148124072,
+    "retail_size": 1872,
+    "compiled_offset": 2648,
+    "compiled_size": 1972,
+    "delta": 100
+  },
+  {
+    "name": "func_8009CCF8",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148125944,
+    "retail_size": 32,
+    "compiled_offset": 4620,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "func_8009CD18",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148125976,
+    "retail_size": 100,
+    "compiled_offset": 4652,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_8009CD7C",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148126076,
+    "retail_size": 56,
+    "compiled_offset": 4752,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8009CE48",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148126280,
+    "retail_size": 152,
+    "compiled_offset": 4956,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "func_8009CEE0",
+    "unit": "dialogue/text_box",
+    "retail_address": 2148126432,
+    "retail_size": 144,
+    "compiled_offset": 5108,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument1",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126584,
+    "retail_size": 68,
+    "compiled_offset": 8,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument2",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126652,
+    "retail_size": 68,
+    "compiled_offset": 76,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument3",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126720,
+    "retail_size": 68,
+    "compiled_offset": 144,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument4",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126788,
+    "retail_size": 68,
+    "compiled_offset": 212,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument5",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126856,
+    "retail_size": 68,
+    "compiled_offset": 280,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument6",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126924,
+    "retail_size": 68,
+    "compiled_offset": 348,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument7",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126992,
+    "retail_size": 68,
+    "compiled_offset": 416,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptArgument8",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127060,
+    "retail_size": 68,
+    "compiled_offset": 484,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDecVariable",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127652,
+    "retail_size": 100,
+    "compiled_offset": 1076,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerIncVariable",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127552,
+    "retail_size": 100,
+    "compiled_offset": 976,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerLShiftVariable",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127440,
+    "retail_size": 112,
+    "compiled_offset": 864,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerMulVariableWithRand",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127216,
+    "retail_size": 112,
+    "compiled_offset": 640,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerRShiftVariable",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127328,
+    "retail_size": 112,
+    "compiled_offset": 752,
+    "compiled_size": 112,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerRandVariable",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127128,
+    "retail_size": 88,
+    "compiled_offset": 552,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableAND",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128184,
+    "retail_size": 140,
+    "compiled_offset": 1608,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableAdd",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128912,
+    "retail_size": 140,
+    "compiled_offset": 2336,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableAssign",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148129188,
+    "retail_size": 120,
+    "compiled_offset": 2612,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableDiv",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128616,
+    "retail_size": 156,
+    "compiled_offset": 2040,
+    "compiled_size": 156,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableMul",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128472,
+    "retail_size": 144,
+    "compiled_offset": 1896,
+    "compiled_size": 144,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableOR",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128044,
+    "retail_size": 140,
+    "compiled_offset": 1468,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableSetBit",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128324,
+    "retail_size": 148,
+    "compiled_offset": 1748,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableSetFalse",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148129052,
+    "retail_size": 68,
+    "compiled_offset": 2476,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableSetTrue",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148129120,
+    "retail_size": 68,
+    "compiled_offset": 2544,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableSub",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148128772,
+    "retail_size": 140,
+    "compiled_offset": 2196,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableUnsetBit",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127752,
+    "retail_size": 152,
+    "compiled_offset": 1176,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerVariableXOR",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148127904,
+    "retail_size": 140,
+    "compiled_offset": 1328,
+    "compiled_size": 140,
+    "delta": 0
+  },
+  {
+    "name": "func_8009CF70",
+    "unit": "scripts/variable_handlers",
+    "retail_address": 2148126576,
+    "retail_size": 8,
+    "compiled_offset": 0,
+    "compiled_size": 8,
+    "delta": 0
+  },
+  {
+    "name": "FieldActorGetScriptStatus",
+    "unit": "main/misc6",
+    "retail_address": 2148133704,
+    "retail_size": 48,
+    "compiled_offset": 5116,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "FieldCharacterIdToPartyId",
+    "unit": "main/misc6",
+    "retail_address": 2148137472,
+    "retail_size": 84,
+    "compiled_offset": 8812,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptPartyMemberDisembarkGear",
+    "unit": "main/misc6",
+    "retail_address": 2148138156,
+    "retail_size": 100,
+    "compiled_offset": 9464,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptPartyMemberRideGear",
+    "unit": "main/misc6",
+    "retail_address": 2148138056,
+    "retail_size": 100,
+    "compiled_offset": 9364,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerDisableDialogActivation",
+    "unit": "main/misc6",
+    "retail_address": 2148129308,
+    "retail_size": 40,
+    "compiled_offset": 860,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerEnableActorVM",
+    "unit": "main/misc6",
+    "retail_address": 2148129736,
+    "retail_size": 132,
+    "compiled_offset": 1288,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerEnableDialogActivation",
+    "unit": "main/misc6",
+    "retail_address": 2148129348,
+    "retail_size": 44,
+    "compiled_offset": 900,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerHideActor",
+    "unit": "main/misc6",
+    "retail_address": 2148130880,
+    "retail_size": 84,
+    "compiled_offset": 2432,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerHideActorById",
+    "unit": "main/misc6",
+    "retail_address": 2148130452,
+    "retail_size": 124,
+    "compiled_offset": 2004,
+    "compiled_size": 124,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerShowActor",
+    "unit": "main/misc6",
+    "retail_address": 2148130576,
+    "retail_size": 104,
+    "compiled_offset": 2128,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerShowActorById",
+    "unit": "main/misc6",
+    "retail_address": 2148130284,
+    "retail_size": 168,
+    "compiled_offset": 1836,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerSleep",
+    "unit": "main/misc6",
+    "retail_address": 2148130100,
+    "retail_size": 184,
+    "compiled_offset": 1652,
+    "compiled_size": 184,
+    "delta": 0
+  },
+  {
+    "name": "func_8009DA70",
+    "unit": "main/misc6",
+    "retail_address": 2148129392,
+    "retail_size": 40,
+    "compiled_offset": 944,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_8009DA98",
+    "unit": "main/misc6",
+    "retail_address": 2148129432,
+    "retail_size": 44,
+    "compiled_offset": 984,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8009DAC4",
+    "unit": "main/misc6",
+    "retail_address": 2148129476,
+    "retail_size": 260,
+    "compiled_offset": 1028,
+    "compiled_size": 260,
+    "delta": 0
+  },
+  {
+    "name": "func_8009DC4C",
+    "unit": "main/misc6",
+    "retail_address": 2148129868,
+    "retail_size": 232,
+    "compiled_offset": 1420,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "func_8009DF78",
+    "unit": "main/misc6",
+    "retail_address": 2148130680,
+    "retail_size": 156,
+    "compiled_offset": 2232,
+    "compiled_size": 156,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E014",
+    "unit": "main/misc6",
+    "retail_address": 2148130836,
+    "retail_size": 44,
+    "compiled_offset": 2388,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E094",
+    "unit": "main/misc6",
+    "retail_address": 2148130964,
+    "retail_size": 120,
+    "compiled_offset": 2516,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E10C",
+    "unit": "main/misc6",
+    "retail_address": 2148131084,
+    "retail_size": 148,
+    "compiled_offset": 2636,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E1A0",
+    "unit": "main/misc6",
+    "retail_address": 2148131232,
+    "retail_size": 104,
+    "compiled_offset": 2784,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E208",
+    "unit": "main/misc6",
+    "retail_address": 2148131336,
+    "retail_size": 64,
+    "compiled_offset": 2888,
+    "compiled_size": 64,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E248",
+    "unit": "main/misc6",
+    "retail_address": 2148131400,
+    "retail_size": 128,
+    "compiled_offset": 2952,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E2C8",
+    "unit": "main/misc6",
+    "retail_address": 2148131528,
+    "retail_size": 104,
+    "compiled_offset": 3080,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E330",
+    "unit": "main/misc6",
+    "retail_address": 2148131632,
+    "retail_size": 44,
+    "compiled_offset": 3184,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E35C",
+    "unit": "main/misc6",
+    "retail_address": 2148131676,
+    "retail_size": 204,
+    "compiled_offset": 3228,
+    "compiled_size": 204,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E428",
+    "unit": "main/misc6",
+    "retail_address": 2148131880,
+    "retail_size": 148,
+    "compiled_offset": 3432,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E4BC",
+    "unit": "main/misc6",
+    "retail_address": 2148132028,
+    "retail_size": 184,
+    "compiled_offset": 3580,
+    "compiled_size": 184,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E574",
+    "unit": "main/misc6",
+    "retail_address": 2148132212,
+    "retail_size": 668,
+    "compiled_offset": 3764,
+    "compiled_size": 540,
+    "delta": -128
+  },
+  {
+    "name": "func_8009E810",
+    "unit": "main/misc6",
+    "retail_address": 2148132880,
+    "retail_size": 44,
+    "compiled_offset": 4304,
+    "compiled_size": 32,
+    "delta": -12
+  },
+  {
+    "name": "func_8009E83C",
+    "unit": "main/misc6",
+    "retail_address": 2148132924,
+    "retail_size": 224,
+    "compiled_offset": 4336,
+    "compiled_size": 224,
+    "delta": 0
+  },
+  {
+    "name": "func_8009E91C",
+    "unit": "main/misc6",
+    "retail_address": 2148133148,
+    "retail_size": 556,
+    "compiled_offset": 4560,
+    "compiled_size": 556,
+    "delta": 0
+  },
+  {
+    "name": "func_8009EB78",
+    "unit": "main/misc6",
+    "retail_address": 2148133752,
+    "retail_size": 496,
+    "compiled_offset": 5164,
+    "compiled_size": 496,
+    "delta": 0
+  },
+  {
+    "name": "func_8009ED68",
+    "unit": "main/misc6",
+    "retail_address": 2148134248,
+    "retail_size": 824,
+    "compiled_offset": 5660,
+    "compiled_size": 824,
+    "delta": 0
+  },
+  {
+    "name": "func_8009F0A0",
+    "unit": "main/misc6",
+    "retail_address": 2148135072,
+    "retail_size": 900,
+    "compiled_offset": 6484,
+    "compiled_size": 900,
+    "delta": 0
+  },
+  {
+    "name": "func_8009F424",
+    "unit": "main/misc6",
+    "retail_address": 2148135972,
+    "retail_size": 168,
+    "compiled_offset": 7384,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "func_8009F4CC",
+    "unit": "main/misc6",
+    "retail_address": 2148136140,
+    "retail_size": 220,
+    "compiled_offset": 7552,
+    "compiled_size": 220,
+    "delta": 0
+  },
+  {
+    "name": "func_8009F5A8",
+    "unit": "main/misc6",
+    "retail_address": 2148136360,
+    "retail_size": 76,
+    "compiled_offset": 7772,
+    "compiled_size": 76,
+    "delta": 0
+  },
+  {
+    "name": "func_8009F5F4",
+    "unit": "main/misc6",
+    "retail_address": 2148136436,
+    "retail_size": 1036,
+    "compiled_offset": 7848,
+    "compiled_size": 964,
+    "delta": -72
+  },
+  {
+    "name": "func_8009FA54",
+    "unit": "main/misc6",
+    "retail_address": 2148137556,
+    "retail_size": 324,
+    "compiled_offset": 8896,
+    "compiled_size": 292,
+    "delta": -32
+  },
+  {
+    "name": "func_8009FB98",
+    "unit": "main/misc6",
+    "retail_address": 2148137880,
+    "retail_size": 120,
+    "compiled_offset": 9188,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "func_8009FC10",
+    "unit": "main/misc6",
+    "retail_address": 2148138000,
+    "retail_size": 56,
+    "compiled_offset": 9308,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_8009FD10",
+    "unit": "main/misc6",
+    "retail_address": 2148138256,
+    "retail_size": 196,
+    "compiled_offset": 9564,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "func_8009FDD4",
+    "unit": "main/misc6",
+    "retail_address": 2148138452,
+    "retail_size": 120,
+    "compiled_offset": 9760,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "func_8009FE4C",
+    "unit": "main/misc6",
+    "retail_address": 2148138572,
+    "retail_size": 152,
+    "compiled_offset": 9880,
+    "compiled_size": 152,
+    "delta": 0
+  },
+  {
+    "name": "func_8009FEE4",
+    "unit": "main/misc6",
+    "retail_address": 2148138724,
+    "retail_size": 628,
+    "compiled_offset": 10032,
+    "compiled_size": 628,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0158",
+    "unit": "main/misc6",
+    "retail_address": 2148139352,
+    "retail_size": 208,
+    "compiled_offset": 10660,
+    "compiled_size": 208,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0228",
+    "unit": "main/misc6",
+    "retail_address": 2148139560,
+    "retail_size": 764,
+    "compiled_offset": 10868,
+    "compiled_size": 644,
+    "delta": -120
+  },
+  {
+    "name": "func_800A0524",
+    "unit": "main/misc6",
+    "retail_address": 2148140324,
+    "retail_size": 452,
+    "compiled_offset": 11512,
+    "compiled_size": 380,
+    "delta": -72
+  },
+  {
+    "name": "func_800A06E8",
+    "unit": "main/misc6",
+    "retail_address": 2148140776,
+    "retail_size": 464,
+    "compiled_offset": 0,
+    "compiled_size": 464,
+    "delta": 0
+  },
+  {
+    "name": "func_800A08B8",
+    "unit": "main/misc6",
+    "retail_address": 2148141240,
+    "retail_size": 916,
+    "compiled_offset": 11892,
+    "compiled_size": 580,
+    "delta": -336
+  },
+  {
+    "name": "func_800A0C4C",
+    "unit": "main/misc6",
+    "retail_address": 2148142156,
+    "retail_size": 72,
+    "compiled_offset": 12472,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0C94",
+    "unit": "main/misc6",
+    "retail_address": 2148142228,
+    "retail_size": 168,
+    "compiled_offset": 12544,
+    "compiled_size": 152,
+    "delta": -16
+  },
+  {
+    "name": "func_800A0D3C",
+    "unit": "main/misc6",
+    "retail_address": 2148142396,
+    "retail_size": 132,
+    "compiled_offset": 12696,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0DC0",
+    "unit": "main/misc6",
+    "retail_address": 2148142528,
+    "retail_size": 60,
+    "compiled_offset": 12828,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0DFC",
+    "unit": "main/misc6",
+    "retail_address": 2148142588,
+    "retail_size": 88,
+    "compiled_offset": 12888,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0E54",
+    "unit": "main/misc6",
+    "retail_address": 2148142676,
+    "retail_size": 92,
+    "compiled_offset": 12976,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0EB0",
+    "unit": "main/misc6",
+    "retail_address": 2148142768,
+    "retail_size": 56,
+    "compiled_offset": 13068,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_800A0EE8",
+    "unit": "main/misc6",
+    "retail_address": 2148142824,
+    "retail_size": 240,
+    "compiled_offset": 13124,
+    "compiled_size": 236,
+    "delta": -4
+  },
+  {
+    "name": "func_800A0FD8",
+    "unit": "main/misc6",
+    "retail_address": 2148143064,
+    "retail_size": 908,
+    "compiled_offset": 13360,
+    "compiled_size": 844,
+    "delta": -64
+  },
+  {
+    "name": "func_800A1364",
+    "unit": "main/misc6",
+    "retail_address": 2148143972,
+    "retail_size": 396,
+    "compiled_offset": 464,
+    "compiled_size": 396,
+    "delta": 0
+  },
+  {
+    "name": "func_800A14F0",
+    "unit": "main/misc6",
+    "retail_address": 2148144368,
+    "retail_size": 308,
+    "compiled_offset": 14204,
+    "compiled_size": 312,
+    "delta": 4
+  },
+  {
+    "name": "func_800A1624",
+    "unit": "main/misc6",
+    "retail_address": 2148144676,
+    "retail_size": 268,
+    "compiled_offset": 14516,
+    "compiled_size": 272,
+    "delta": 4
+  },
+  {
+    "name": "FieldScriptGetBytecodeOffset",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151440,
+    "retail_size": 36,
+    "compiled_offset": 6424,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptMemoryWriteU16",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151412,
+    "retail_size": 28,
+    "compiled_offset": 6400,
+    "compiled_size": 24,
+    "delta": -4
+  },
+  {
+    "name": "FieldScriptVMGetVariableSign",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151264,
+    "retail_size": 56,
+    "compiled_offset": 6252,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMGetVariableValue",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151320,
+    "retail_size": 92,
+    "compiled_offset": 6308,
+    "compiled_size": 92,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerConditionalJmp",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148146128,
+    "retail_size": 676,
+    "compiled_offset": 1888,
+    "compiled_size": 676,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerJmp",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148146804,
+    "retail_size": 40,
+    "compiled_offset": 2564,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMHandlerNop",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151232,
+    "retail_size": 32,
+    "compiled_offset": 6220,
+    "compiled_size": 32,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMRun",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148146888,
+    "retail_size": 360,
+    "compiled_offset": 2648,
+    "compiled_size": 360,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptWritePartyMemberIDs",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151476,
+    "retail_size": 72,
+    "compiled_offset": 6460,
+    "compiled_size": 72,
+    "delta": 0
+  },
+  {
+    "name": "func_800A1730",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148144944,
+    "retail_size": 196,
+    "compiled_offset": 704,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "func_800A17F4",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148145140,
+    "retail_size": 196,
+    "compiled_offset": 900,
+    "compiled_size": 196,
+    "delta": 0
+  },
+  {
+    "name": "func_800A18B8",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148145336,
+    "retail_size": 248,
+    "compiled_offset": 1096,
+    "compiled_size": 248,
+    "delta": 0
+  },
+  {
+    "name": "func_800A19B0",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148145584,
+    "retail_size": 220,
+    "compiled_offset": 1344,
+    "compiled_size": 220,
+    "delta": 0
+  },
+  {
+    "name": "func_800A1A8C",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148145804,
+    "retail_size": 228,
+    "compiled_offset": 1564,
+    "compiled_size": 228,
+    "delta": 0
+  },
+  {
+    "name": "func_800A1B70",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148146032,
+    "retail_size": 96,
+    "compiled_offset": 1792,
+    "compiled_size": 96,
+    "delta": 0
+  },
+  {
+    "name": "func_800A1E9C",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148146844,
+    "retail_size": 44,
+    "compiled_offset": 2604,
+    "compiled_size": 44,
+    "delta": 0
+  },
+  {
+    "name": "func_800A2030",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148147248,
+    "retail_size": 636,
+    "compiled_offset": 3008,
+    "compiled_size": 648,
+    "delta": 12
+  },
+  {
+    "name": "func_800A22AC",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148147884,
+    "retail_size": 476,
+    "compiled_offset": 3656,
+    "compiled_size": 476,
+    "delta": 0
+  },
+  {
+    "name": "func_800A2488",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148148360,
+    "retail_size": 60,
+    "compiled_offset": 4132,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_800A24C4",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148148420,
+    "retail_size": 592,
+    "compiled_offset": 4192,
+    "compiled_size": 428,
+    "delta": -164
+  },
+  {
+    "name": "func_800A2714",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148149012,
+    "retail_size": 448,
+    "compiled_offset": 4620,
+    "compiled_size": 448,
+    "delta": 0
+  },
+  {
+    "name": "func_800A28D4",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148149460,
+    "retail_size": 1772,
+    "compiled_offset": 5068,
+    "compiled_size": 1152,
+    "delta": -620
+  },
+  {
+    "name": "func_800A30FC",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151548,
+    "retail_size": 236,
+    "compiled_offset": 6532,
+    "compiled_size": 240,
+    "delta": 4
+  },
+  {
+    "name": "func_800A31E8",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148151784,
+    "retail_size": 652,
+    "compiled_offset": 6772,
+    "compiled_size": 644,
+    "delta": -8
+  },
+  {
+    "name": "func_800A3474",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148152436,
+    "retail_size": 2072,
+    "compiled_offset": 7504,
+    "compiled_size": 416,
+    "delta": -1656
+  },
+  {
+    "name": "func_800A3C8C",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148154508,
+    "retail_size": 704,
+    "compiled_offset": 0,
+    "compiled_size": 704,
+    "delta": 0
+  },
+  {
+    "name": "func_800A3F4C",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148155212,
+    "retail_size": 2044,
+    "compiled_offset": 8004,
+    "compiled_size": 524,
+    "delta": -1520
+  },
+  {
+    "name": "func_800A4748",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148157256,
+    "retail_size": 36,
+    "compiled_offset": 8528,
+    "compiled_size": 36,
+    "delta": 0
+  },
+  {
+    "name": "func_800A476C",
+    "unit": "scripts/virtual_machine",
+    "retail_address": 2148157292,
+    "retail_size": 104,
+    "compiled_offset": 8564,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "FieldStateRestoreCopy",
+    "unit": "scripts/virtual_machine",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 7416,
+    "compiled_size": 88,
+    "delta": 88
+  },
+  {
+    "name": "FieldStateSaveCopy",
+    "unit": "scripts/virtual_machine",
+    "retail_address": null,
+    "retail_size": 0,
+    "compiled_offset": 7920,
+    "compiled_size": 84,
+    "delta": 84
+  },
+  {
+    "name": "FieldDistortionDraw",
+    "unit": "effects/distortion",
+    "retail_address": 2148158892,
+    "retail_size": 2060,
+    "compiled_offset": 1488,
+    "compiled_size": 1612,
+    "delta": -448
+  },
+  {
+    "name": "FieldDistortionFree",
+    "unit": "effects/distortion",
+    "retail_address": 2148157396,
+    "retail_size": 120,
+    "compiled_offset": 0,
+    "compiled_size": 120,
+    "delta": 0
+  },
+  {
+    "name": "FieldDistortionInitialize",
+    "unit": "effects/distortion",
+    "retail_address": 2148157516,
+    "retail_size": 1144,
+    "compiled_offset": 120,
+    "compiled_size": 1136,
+    "delta": -8
+  },
+  {
+    "name": "FieldDistortionSetTarget",
+    "unit": "effects/distortion",
+    "retail_address": 2148158660,
+    "retail_size": 232,
+    "compiled_offset": 1256,
+    "compiled_size": 232,
+    "delta": 0
+  },
+  {
+    "name": "FieldDisplay",
+    "unit": "main/misc5",
+    "retail_address": 2148165924,
+    "retail_size": 116,
+    "compiled_offset": 11804,
+    "compiled_size": 116,
+    "delta": 0
+  },
+  {
+    "name": "FieldImageConvert24BitColorTo15Bit",
+    "unit": "main/misc5",
+    "retail_address": 2148169540,
+    "retail_size": 128,
+    "compiled_offset": 13504,
+    "compiled_size": 128,
+    "delta": 0
+  },
+  {
+    "name": "FieldImageConvert24BitTo15Bit",
+    "unit": "main/misc5",
+    "retail_address": 2148169668,
+    "retail_size": 388,
+    "compiled_offset": 13632,
+    "compiled_size": 388,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeParticlePrimitive",
+    "unit": "main/misc5",
+    "retail_address": 2148175532,
+    "retail_size": 520,
+    "compiled_offset": 14484,
+    "compiled_size": 588,
+    "delta": 68
+  },
+  {
+    "name": "FieldZoomFadeEffectInitialize",
+    "unit": "main/misc5",
+    "retail_address": 2148165180,
+    "retail_size": 744,
+    "compiled_offset": 11032,
+    "compiled_size": 772,
+    "delta": 28
+  },
+  {
+    "name": "FieldZoomFadeEffectUpdate",
+    "unit": "main/misc5",
+    "retail_address": 2148164616,
+    "retail_size": 564,
+    "compiled_offset": 10568,
+    "compiled_size": 464,
+    "delta": -100
+  },
+  {
+    "name": "func_800A55B8",
+    "unit": "main/misc5",
+    "retail_address": 2148160952,
+    "retail_size": 16,
+    "compiled_offset": 6876,
+    "compiled_size": 16,
+    "delta": 0
+  },
+  {
+    "name": "func_800A55C8",
+    "unit": "main/misc5",
+    "retail_address": 2148160968,
+    "retail_size": 56,
+    "compiled_offset": 6892,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5600",
+    "unit": "main/misc5",
+    "retail_address": 2148161024,
+    "retail_size": 168,
+    "compiled_offset": 6948,
+    "compiled_size": 168,
+    "delta": 0
+  },
+  {
+    "name": "func_800A56A8",
+    "unit": "main/misc5",
+    "retail_address": 2148161192,
+    "retail_size": 104,
+    "compiled_offset": 7116,
+    "compiled_size": 104,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5710",
+    "unit": "main/misc5",
+    "retail_address": 2148161296,
+    "retail_size": 100,
+    "compiled_offset": 7220,
+    "compiled_size": 100,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5774",
+    "unit": "main/misc5",
+    "retail_address": 2148161396,
+    "retail_size": 272,
+    "compiled_offset": 7320,
+    "compiled_size": 272,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5884",
+    "unit": "main/misc5",
+    "retail_address": 2148161668,
+    "retail_size": 160,
+    "compiled_offset": 7592,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5924",
+    "unit": "main/misc5",
+    "retail_address": 2148161828,
+    "retail_size": 796,
+    "compiled_offset": 7752,
+    "compiled_size": 796,
+    "delta": 0
+  },
+  {
+    "name": "func_800A5C40",
+    "unit": "main/misc5",
+    "retail_address": 2148162624,
+    "retail_size": 1992,
+    "compiled_offset": 8548,
+    "compiled_size": 2020,
+    "delta": 28
+  },
+  {
+    "name": "func_800A6998",
+    "unit": "main/misc5",
+    "retail_address": 2148166040,
+    "retail_size": 680,
+    "compiled_offset": 0,
+    "compiled_size": 680,
+    "delta": 0
+  },
+  {
+    "name": "func_800A6C40",
+    "unit": "main/misc5",
+    "retail_address": 2148166720,
+    "retail_size": 560,
+    "compiled_offset": 680,
+    "compiled_size": 560,
+    "delta": 0
+  },
+  {
+    "name": "func_800A6E70",
+    "unit": "main/misc5",
+    "retail_address": 2148167280,
+    "retail_size": 500,
+    "compiled_offset": 11920,
+    "compiled_size": 516,
+    "delta": 16
+  },
+  {
+    "name": "func_800A7064",
+    "unit": "main/misc5",
+    "retail_address": 2148167780,
+    "retail_size": 40,
+    "compiled_offset": 12436,
+    "compiled_size": 40,
+    "delta": 0
+  },
+  {
+    "name": "func_800A708C",
+    "unit": "main/misc5",
+    "retail_address": 2148167820,
+    "retail_size": 148,
+    "compiled_offset": 12476,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_800A7120",
+    "unit": "main/misc5",
+    "retail_address": 2148167968,
+    "retail_size": 248,
+    "compiled_offset": 12624,
+    "compiled_size": 212,
+    "delta": -36
+  },
+  {
+    "name": "func_800A7218",
+    "unit": "main/misc5",
+    "retail_address": 2148168216,
+    "retail_size": 276,
+    "compiled_offset": 12836,
+    "compiled_size": 280,
+    "delta": 4
+  },
+  {
+    "name": "func_800A732C",
+    "unit": "main/misc5",
+    "retail_address": 2148168492,
+    "retail_size": 104,
+    "compiled_offset": 13116,
+    "compiled_size": 112,
+    "delta": 8
+  },
+  {
+    "name": "func_800A7394",
+    "unit": "main/misc5",
+    "retail_address": 2148168596,
+    "retail_size": 84,
+    "compiled_offset": 13228,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800A73E8",
+    "unit": "main/misc5",
+    "retail_address": 2148168680,
+    "retail_size": 272,
+    "compiled_offset": 13312,
+    "compiled_size": 192,
+    "delta": -80
+  },
+  {
+    "name": "func_800A74F8",
+    "unit": "main/misc5",
+    "retail_address": 2148168952,
+    "retail_size": 588,
+    "compiled_offset": 1240,
+    "compiled_size": 588,
+    "delta": 0
+  },
+  {
+    "name": "func_800A7948",
+    "unit": "main/misc5",
+    "retail_address": 2148170056,
+    "retail_size": 784,
+    "compiled_offset": 1828,
+    "compiled_size": 784,
+    "delta": 0
+  },
+  {
+    "name": "func_800A7C58",
+    "unit": "main/misc5",
+    "retail_address": 2148170840,
+    "retail_size": 1724,
+    "compiled_offset": 2612,
+    "compiled_size": 1724,
+    "delta": 0
+  },
+  {
+    "name": "func_800A8314",
+    "unit": "main/misc5",
+    "retail_address": 2148172564,
+    "retail_size": 160,
+    "compiled_offset": 14020,
+    "compiled_size": 160,
+    "delta": 0
+  },
+  {
+    "name": "func_800A83B4",
+    "unit": "main/misc5",
+    "retail_address": 2148172724,
+    "retail_size": 84,
+    "compiled_offset": 14180,
+    "compiled_size": 84,
+    "delta": 0
+  },
+  {
+    "name": "func_800A8408",
+    "unit": "main/misc5",
+    "retail_address": 2148172808,
+    "retail_size": 184,
+    "compiled_offset": 14264,
+    "compiled_size": 220,
+    "delta": 36
+  },
+  {
+    "name": "func_800A84C0",
+    "unit": "main/misc5",
+    "retail_address": 2148172992,
+    "retail_size": 1764,
+    "compiled_offset": 4336,
+    "compiled_size": 1764,
+    "delta": 0
+  },
+  {
+    "name": "func_800A8BA4",
+    "unit": "main/misc5",
+    "retail_address": 2148174756,
+    "retail_size": 776,
+    "compiled_offset": 6100,
+    "compiled_size": 776,
+    "delta": 0
+  },
+  {
+    "name": "func_800A90B4",
+    "unit": "main/misc5",
+    "retail_address": 2148176052,
+    "retail_size": 168,
+    "compiled_offset": 15072,
+    "compiled_size": 272,
+    "delta": 104
+  },
+  {
+    "name": "func_800A915C",
+    "unit": "main/misc5",
+    "retail_address": 2148176220,
+    "retail_size": 148,
+    "compiled_offset": 15344,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "func_800A91F0",
+    "unit": "main/misc5",
+    "retail_address": 2148176368,
+    "retail_size": 132,
+    "compiled_offset": 15492,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeDefaultParticleBanks",
+    "unit": "effects/particles",
+    "retail_address": 2148177060,
+    "retail_size": 484,
+    "compiled_offset": 560,
+    "compiled_size": 484,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeParticleBanks",
+    "unit": "effects/particles",
+    "retail_address": 2148178344,
+    "retail_size": 372,
+    "compiled_offset": 1844,
+    "compiled_size": 372,
+    "delta": 0
+  },
+  {
+    "name": "FieldInitializeParticles",
+    "unit": "effects/particles",
+    "retail_address": 2148176500,
+    "retail_size": 56,
+    "compiled_offset": 0,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticleActorStop",
+    "unit": "effects/particles",
+    "retail_address": 2148178152,
+    "retail_size": 192,
+    "compiled_offset": 1652,
+    "compiled_size": 192,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticleRender",
+    "unit": "effects/particles",
+    "retail_address": 2148178772,
+    "retail_size": 964,
+    "compiled_offset": 2272,
+    "compiled_size": 968,
+    "delta": 4
+  },
+  {
+    "name": "FieldParticleStart",
+    "unit": "effects/particles",
+    "retail_address": 2148181684,
+    "retail_size": 808,
+    "compiled_offset": 5188,
+    "compiled_size": 808,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticleUpdateAndRender",
+    "unit": "effects/particles",
+    "retail_address": 2148179736,
+    "retail_size": 1948,
+    "compiled_offset": 3240,
+    "compiled_size": 1948,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticleUpdateColor",
+    "unit": "effects/particles",
+    "retail_address": 2148178716,
+    "retail_size": 56,
+    "compiled_offset": 2216,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesFindFreeIndex",
+    "unit": "effects/particles",
+    "retail_address": 2148178100,
+    "retail_size": 52,
+    "compiled_offset": 1600,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesFree",
+    "unit": "effects/particles",
+    "retail_address": 2148176556,
+    "retail_size": 200,
+    "compiled_offset": 56,
+    "compiled_size": 200,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesFreeAll",
+    "unit": "effects/particles",
+    "retail_address": 2148176992,
+    "retail_size": 68,
+    "compiled_offset": 492,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesRandRange",
+    "unit": "effects/particles",
+    "retail_address": 2148178044,
+    "retail_size": 56,
+    "compiled_offset": 1544,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesStop",
+    "unit": "effects/particles",
+    "retail_address": 2148176756,
+    "retail_size": 88,
+    "compiled_offset": 256,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesStopBanks",
+    "unit": "effects/particles",
+    "retail_address": 2148176844,
+    "retail_size": 148,
+    "compiled_offset": 344,
+    "compiled_size": 148,
+    "delta": 0
+  },
+  {
+    "name": "FieldParticlesTickAndRender",
+    "unit": "effects/particles",
+    "retail_address": 2148177544,
+    "retail_size": 500,
+    "compiled_offset": 1044,
+    "compiled_size": 500,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMGetArgument",
+    "unit": "main/misc9",
+    "retail_address": 2148191724,
+    "retail_size": 56,
+    "compiled_offset": 9212,
+    "compiled_size": 56,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMGetInstructionArgument",
+    "unit": "main/misc9",
+    "retail_address": 2148191672,
+    "retail_size": 52,
+    "compiled_offset": 9160,
+    "compiled_size": 52,
+    "delta": 0
+  },
+  {
+    "name": "FieldScriptVMGetInstructionArgumentS16",
+    "unit": "main/misc9",
+    "retail_address": 2148191612,
+    "retail_size": 60,
+    "compiled_offset": 9100,
+    "compiled_size": 60,
+    "delta": 0
+  },
+  {
+    "name": "func_800AA9DC",
+    "unit": "main/misc9",
+    "retail_address": 2148182492,
+    "retail_size": 152,
+    "compiled_offset": 4044,
+    "compiled_size": 148,
+    "delta": -4
+  },
+  {
+    "name": "func_800AAA74",
+    "unit": "main/misc9",
+    "retail_address": 2148182644,
+    "retail_size": 356,
+    "compiled_offset": 4192,
+    "compiled_size": 364,
+    "delta": 8
+  },
+  {
+    "name": "func_800AABD8",
+    "unit": "main/misc9",
+    "retail_address": 2148183000,
+    "retail_size": 48,
+    "compiled_offset": 4556,
+    "compiled_size": 48,
+    "delta": 0
+  },
+  {
+    "name": "func_800AAC08",
+    "unit": "main/misc9",
+    "retail_address": 2148183048,
+    "retail_size": 448,
+    "compiled_offset": 4604,
+    "compiled_size": 448,
+    "delta": 0
+  },
+  {
+    "name": "func_800AADC8",
+    "unit": "main/misc9",
+    "retail_address": 2148183496,
+    "retail_size": 132,
+    "compiled_offset": 5052,
+    "compiled_size": 132,
+    "delta": 0
+  },
+  {
+    "name": "func_800AAE4C",
+    "unit": "main/misc9",
+    "retail_address": 2148183628,
+    "retail_size": 308,
+    "compiled_offset": 5184,
+    "compiled_size": 308,
+    "delta": 0
+  },
+  {
+    "name": "func_800AAF80",
+    "unit": "main/misc9",
+    "retail_address": 2148183936,
+    "retail_size": 936,
+    "compiled_offset": 5492,
+    "compiled_size": 936,
+    "delta": 0
+  },
+  {
+    "name": "func_800AB328",
+    "unit": "main/misc9",
+    "retail_address": 2148184872,
+    "retail_size": 80,
+    "compiled_offset": 6428,
+    "compiled_size": 80,
+    "delta": 0
+  },
+  {
+    "name": "func_800AB378",
+    "unit": "main/misc9",
+    "retail_address": 2148184952,
+    "retail_size": 976,
+    "compiled_offset": 6508,
+    "compiled_size": 976,
+    "delta": 0
+  },
+  {
+    "name": "func_800AB748",
+    "unit": "main/misc9",
+    "retail_address": 2148185928,
+    "retail_size": 192,
+    "compiled_offset": 0,
+    "compiled_size": 192,
+    "delta": 0
+  },
+  {
+    "name": "func_800AB808",
+    "unit": "main/misc9",
+    "retail_address": 2148186120,
+    "retail_size": 656,
+    "compiled_offset": 192,
+    "compiled_size": 656,
+    "delta": 0
+  },
+  {
+    "name": "func_800ABA98",
+    "unit": "main/misc9",
+    "retail_address": 2148186776,
+    "retail_size": 640,
+    "compiled_offset": 848,
+    "compiled_size": 640,
+    "delta": 0
+  },
+  {
+    "name": "func_800ABD18",
+    "unit": "main/misc9",
+    "retail_address": 2148187416,
+    "retail_size": 432,
+    "compiled_offset": 7484,
+    "compiled_size": 432,
+    "delta": 0
+  },
+  {
+    "name": "func_800ABEC8",
+    "unit": "main/misc9",
+    "retail_address": 2148187848,
+    "retail_size": 276,
+    "compiled_offset": 7916,
+    "compiled_size": 276,
+    "delta": 0
+  },
+  {
+    "name": "func_800ABFDC",
+    "unit": "main/misc9",
+    "retail_address": 2148188124,
+    "retail_size": 96,
+    "compiled_offset": 8192,
+    "compiled_size": 84,
+    "delta": -12
+  },
+  {
+    "name": "func_800AC03C",
+    "unit": "main/misc9",
+    "retail_address": 2148188220,
+    "retail_size": 180,
+    "compiled_offset": 8276,
+    "compiled_size": 168,
+    "delta": -12
+  },
+  {
+    "name": "func_800AC0F0",
+    "unit": "main/misc9",
+    "retail_address": 2148188400,
+    "retail_size": 536,
+    "compiled_offset": 1488,
+    "compiled_size": 536,
+    "delta": 0
+  },
+  {
+    "name": "func_800AC308",
+    "unit": "main/misc9",
+    "retail_address": 2148188936,
+    "retail_size": 164,
+    "compiled_offset": 8444,
+    "compiled_size": 164,
+    "delta": 0
+  },
+  {
+    "name": "func_800AC3AC",
+    "unit": "main/misc9",
+    "retail_address": 2148189100,
+    "retail_size": 1520,
+    "compiled_offset": 2024,
+    "compiled_size": 1520,
+    "delta": 0
+  },
+  {
+    "name": "func_800AC99C",
+    "unit": "main/misc9",
+    "retail_address": 2148190620,
+    "retail_size": 500,
+    "compiled_offset": 3544,
+    "compiled_size": 500,
+    "delta": 0
+  },
+  {
+    "name": "func_800ACB90",
+    "unit": "main/misc9",
+    "retail_address": 2148191120,
+    "retail_size": 200,
+    "compiled_offset": 8608,
+    "compiled_size": 200,
+    "delta": 0
+  },
+  {
+    "name": "func_800ACC58",
+    "unit": "main/misc9",
+    "retail_address": 2148191320,
+    "retail_size": 88,
+    "compiled_offset": 8808,
+    "compiled_size": 88,
+    "delta": 0
+  },
+  {
+    "name": "func_800ACCB0",
+    "unit": "main/misc9",
+    "retail_address": 2148191408,
+    "retail_size": 68,
+    "compiled_offset": 8896,
+    "compiled_size": 68,
+    "delta": 0
+  },
+  {
+    "name": "func_800ACCF4",
+    "unit": "main/misc9",
+    "retail_address": 2148191476,
+    "retail_size": 136,
+    "compiled_offset": 8964,
+    "compiled_size": 136,
+    "delta": 0
+  }
+]

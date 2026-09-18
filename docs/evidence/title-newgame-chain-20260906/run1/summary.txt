@@ -1,0 +1,5 @@
+schedule_steps=4095
+runtime_rc=124
+lines: field490=50 fe60=2081 fe60exit=2092 fe57=0 request2=2113 title=2115 newgame=2132 field4=2200 field2=3967
+captures=330
+TITLE SMOKE overall=FAIL

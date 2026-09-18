@@ -1,0 +1,7 @@
+{
+  "source": "src/slus_006.64/system/animation_scripts.c",
+  "source_sha256": "45385b9d8f54e2262f2fc0e8f6f8294df28ea494008559615cd1912436d42a6c",
+  "tested_candidate": "/tmp/xeno-opening-ac-20260905/animation_scripts.e7-candidate.c",
+  "test_artifact": "pc_port/build_native/sprite_dispatch_e7_retail_test.Jlf177YE",
+  "installed_source_equals_tested_candidate": true
+}

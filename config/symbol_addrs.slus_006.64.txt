@@ -57,7 +57,7 @@ jtbl_800186E0 = 0x800186E0; // type:u32 size:0x1EC
 // (system.c) -- the script-byte dispatch loop rewritten as if/else-if chains
 // on code/subcode values instead of a GCC switch.
 jtbl_80018A7C = 0x80018A7C; // type:u32 size:0x40
-
+jtbl_80018E9C = 0x80018E9C; // type:u32 size:0x14
 // Work List
 WorkListsFreeAllEntries = 0x8001C8DC;
 WorkListsReset = 0x8001C944;
@@ -98,6 +98,11 @@ SpriteComputeTransformMatrix = 0x80022090;
 
 GfxLoadImageAccelerated = 0x80022A0C;
 GfxLoadClutsAccelerated = 0x80022A70;
+
+// Animation task callbacks registered by retail 800233A4 / 80024730.
+func_80022DF4 = 0x80022DF4;
+func_80022E8C = 0x80022E8C;
+func_80022EB8 = 0x80022EB8;
 
 AnimScriptTick = 0x80023210;
 
@@ -829,7 +834,7 @@ g_pDMA_DPCR = 0x80058938;
 g_VsyncInterruptCallbacks = 0x80058940;
 g_VsyncInterruptCount = 0x80058960;
 g_VideoMode = 0x80058990;
-g_InterruptEnvironment = 0x800578A4;
+g_InterruptEnvironment = 0x800578A4; // type:InterruptEnvironment_t size:0x1068 (ends at g_InterruptControl - sizeless entry made spimdisasm emit D_800578xx for field offsets)
 g_InterruptControl = 0x8005890C;
 g_pInterruptControl = 0x8005892C;
 
@@ -977,6 +982,13 @@ g_SoundControlFlags = 0x8005957C;
 g_SoundWdsCurSpuAddress = 0x80059584;
 g_SoundWdsRemainingBytes = 0x80059588;
 g_SoundUploadDestBuffer = 0x800595A4;
+// Battle loader stores archive file 3 here (8001BC50); module reads 800595A8.
+D_800595A8 = 0x800595A8; // size:0x4
+// Paired-asset loader outputs (8001BB0C / 800379D8), one retail pointer each.
+D_80059470 = 0x80059470; // size:0x4
+D_8005949C = 0x8005949C; // size:0x4
+D_80059520 = 0x80059520; // size:0x4
+D_800658C8 = 0x800658C8; // size:0x4
 g_SoundUploadSourceAddr = 0x800595DC;
 g_SoundUploadBytesRemaining = 0x800595E0;
 g_SoundVolumeController = 0x8005A3C0; // type:SoundVolumeController size:0x48

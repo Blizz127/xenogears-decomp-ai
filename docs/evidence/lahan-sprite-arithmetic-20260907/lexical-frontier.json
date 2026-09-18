@@ -1,0 +1,57 @@
+{
+  "scope": "lexical missing-case census only; present cases may be incomplete or incorrect; not runtime reachability or parity",
+  "missing": [
+    {
+      "opcode": "0x90",
+      "retail_entry": "0x800210f0"
+    },
+    {
+      "opcode": "0x92",
+      "retail_entry": "0x80020df8"
+    },
+    {
+      "opcode": "0x93",
+      "retail_entry": "0x80020e30"
+    },
+    {
+      "opcode": "0xa4",
+      "retail_entry": "0x80020d9c"
+    },
+    {
+      "opcode": "0xa7",
+      "retail_entry": "0x8001fdf0"
+    },
+    {
+      "opcode": "0xab",
+      "retail_entry": "0x80021730"
+    },
+    {
+      "opcode": "0xbd",
+      "retail_entry": "0x80021410"
+    },
+    {
+      "opcode": "0xc5",
+      "retail_entry": "0x8001fcac"
+    },
+    {
+      "opcode": "0xcd",
+      "retail_entry": "0x8001ff0c"
+    },
+    {
+      "opcode": "0xe9",
+      "retail_entry": "0x80021374"
+    },
+    {
+      "opcode": "0xea",
+      "retail_entry": "0x800213a8"
+    },
+    {
+      "opcode": "0xeb",
+      "retail_entry": "0x800213dc"
+    },
+    {
+      "opcode": "0xf7",
+      "retail_entry": "0x80021278"
+    }
+  ]
+}

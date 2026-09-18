@@ -1,0 +1,9 @@
+# Sprite AB scaled Z displacement
+
+A normal New Game traversal reached field15 and encountered a Jackal and Hoppers. During that first field15 battle, the frozen CE executable aborted on sprite opcode AB at02:07:51CDT. There was no completed field15 battle return in that run. Core1205725 is retained in scratchpad/lahan-natural-20260908-ce. The failing operands start05; sprite Z is03FD0000, scale2000, and helper timer0000.
+
+The pinned retail jump-table entry for AB targets80021730..8002176C. It reads a signed byte operand and signed halfword scale at sprite+2C, rounds their negative product toward zero when dividing by4096, calls80022CAC, then adds the returned displacement shifted16 to sprite+8 with 32-bit wrapping. The native body now follows those steps with defined unsigned shifting/addition.
+
+Run `SPRITE_AB_RUN_GREEN=1 bash pc_port/tests/run_sprite_dispatch_ab_retail_test.sh`. The test executes the actual retail dispatcher and80022CAC instructions against the native dispatcher and a source-pinned extraction of the native helper. It compares the full fixture, helper arguments, call count, and destination value at helper entry. Each of O0/O2/UBSan passes201216 cases covering every operand, scale, and timer value in separate sweeps, boundary cross-products, wrapping positions, and operand aliases. This is not a full Cartesian sweep of all state. Six mutations are rejected: unsigned operand, wrong scale field, missing negative rounding, wrong shift, wrong destination load, and missing helper call. The captured crash values also pass a quick differential case.
+
+Native link and PSX build pass. These are behavioral and build checks; exact compiled-byte matching, live completion of this AB branch, battle UI parity, and end-to-end Lahan acceptance remain unproven. A separate normal run under scratchpad/lahan-natural-20260908-ab includes the repair. No state forcing, commit, or push was performed.

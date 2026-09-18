@@ -1,0 +1,123 @@
+{
+  "entry": "801E05D0",
+  "bytes": 2472,
+  "retail_sha256": "2ce48be4aeca8631810116c8e9b907a52fc2098d0250fadf0b190347da1f6e3e",
+  "calls": [
+    {
+      "function": "func_801C7BF4",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D1E80",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D2484",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D29A8",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D3344",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D397C",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D8DE4",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D8EA4",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801D9704",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DB0A8",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DB340",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DE2C8",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DE474",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DE5CC",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801DF0D4",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801DF5D0",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801DF890",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801DFB68",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801DFE2C",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801DFF5C",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801E0434",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    },
+    {
+      "function": "func_801E36D4",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": true
+    },
+    {
+      "function": "func_801E3A80",
+      "listed_in_native_stubs": false,
+      "listed_in_native_stubs_after_core_link": false
+    }
+  ],
+  "core_status": "native control loop implemented and differentially tested; dependent helpers unresolved"
+}

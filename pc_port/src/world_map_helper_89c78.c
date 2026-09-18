@@ -9,6 +9,8 @@
  * wm_80093534, corrupting unrelated globals (notably 0x8009D7EC).
  */
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common.h"

@@ -1,0 +1,4 @@
+[T] slot=0 ev98=-1 ev9C=0 ev9E=0 listA0=00000000 b35=0 b38=0 b39=107 w3C=0 w3E=0 hdr0=009b3520 ip10=0073934e
+[T] slot=1 ev98=-1 ev9C=0 ev9E=0 listA0=00000000 b35=0 b38=0 b39=107 w3C=0 w3E=0 hdr0=009b3530 ip10=0073aff8
+[T] slot=2 ev98=-1 ev9C=0 ev9E=0 listA0=00000000 b35=0 b38=0 b39=107 w3C=0 w3E=0 hdr0=009b3540 ip10=0073cba4
+[T] slot=3 ev98=-1 ev9C=0 ev9E=0 listA0=00000000 b35=0 b38=0 b39=107 w3C=0 w3E=0 hdr0=009b3550 ip10=0073e750

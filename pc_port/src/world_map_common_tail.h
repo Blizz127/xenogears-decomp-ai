@@ -259,7 +259,7 @@ int  wm_ctp3_get_forbidden_75228(void);
  *   byte[+14] = 31   (0x1F)
  *   byte[+15] = 111  (0x6F)
  *   hw[-8]    = GetClut(240, 511)
- *   hw[+0]    = GetTPage(0, 1, 240, 511)
+ *   hw[+0]    = GetTPage(0, 0, 896, 256)
  *
  * Then copies first buffer → second buffer (20480 bytes, 16-byte chunks).
  *

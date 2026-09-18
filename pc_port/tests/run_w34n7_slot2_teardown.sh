@@ -16,7 +16,8 @@ SRC=(pc_port/tests/w34n7_slot2_teardown_prod_test.c
      pc_port/src/psx_memory.c pc_port/src/world_map_teardown_7299c.c
      pc_port/src/world_map_helper_7565c.c
      pc_port/src/world_map_helper_86124.c
-     pc_port/src/world_map_main_loop_71034.c)
+     pc_port/src/world_map_main_loop_71034.c
+     pc_port/tests/world_map_mode_lifecycle_stubs.c)
 
 run_regime() {
     local name="$1"

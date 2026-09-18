@@ -6,17 +6,20 @@ void _spu_FiDMA(void);
 
 void _SpuInit(s32 bHot) {
     s32 i;
+    u_short v;
 
     ResetCallback();
     _spu_init(bHot);
 
     if (bHot == 0)
     {
-        for(i = 0; i < NUM_VOICES; i++)
+        v = 0xC000;
+        for(i = NUM_VOICES - 1; i >= 0; i--)
         {
-            _spu_voice_centerNote[i] = 0xC000;
+            _spu_voice_centerNote[i] = v;
         }
     }
+
 
     SpuStart();
     _spu_rev_flag = 0;

@@ -24,7 +24,7 @@ typedef unsigned long long u64;
 
 typedef unsigned int mem_addr;
 
-/* uintptr_t: several shared-source files cast a stored PSX 32-bit field to a
+/* Pointer-width integer types: several shared-source files cast a stored PSX 32-bit field to a
  * host pointer via (T*)(uintptr_t)value. On the PC port <stdint.h> supplies the
  * real (64-bit) type; the matching build's MIPS toolchain runs with -nostdinc
  * (no system headers reachable at all), so provide a matching-safe fallback
@@ -33,6 +33,7 @@ typedef unsigned int mem_addr;
  * file gets it via common.h without needing its own <stdint.h>/local typedef. */
 #ifndef XENO_PC_PORT
 typedef unsigned int uintptr_t;
+typedef signed int intptr_t;
 #endif
 
 // Typedefs for making uncertain and tentative fields, variables etc. explicit

@@ -32,7 +32,39 @@ extern s16 g_SystemPalette1;
 extern s16 g_SystemPalette2;
 
 void func_80031798(void* ot, void* prim);
+#ifdef XENO_PC_PORT
+void func_80033DD4(void* arg0, void* arg1);
+/* The synchronous string renderer owns one packed retail descriptor. Keep
+ * its full host pointers separately: stack strings/work buffers need not be
+ * below 4GB, and widening the packed slots would overwrite adjacent fields.
+ * Ordinary heap-backed windows retain their existing four-byte addresses.
+ * Slots correspond to 1C,20,24(unused),28,2C. Lifetime/non-reentrancy is the
+ * same as the retail static descriptor, not a registry of window pointers. */
+static unsigned char s_StringRenderDescriptor[0x100];
+static uintptr_t s_StringRenderPointers[5];
+static uintptr_t SystemTextAddress(u8* window, unsigned offset) {
+    if (window == s_StringRenderDescriptor) {
+        return s_StringRenderPointers[(offset - 0x1C) / 4];
+    }
+    return *(u32*)(window + offset);
+}
+static void SystemTextSetAddress(u8* window, unsigned offset, uintptr_t address) {
+    if (window == s_StringRenderDescriptor) {
+        s_StringRenderPointers[(offset - 0x1C) / 4] = address;
+    }
+    *(u32*)(window + offset) = (u32)address;
+}
+#define SYSTEM_TEXT_ADDRESS(window, offset) SystemTextAddress((u8*)(window), (offset))
+#define SYSTEM_TEXT_SET_ADDRESS(window, offset, address) \
+    SystemTextSetAddress((u8*)(window), (offset), (uintptr_t)(address))
+#else
 void func_80033DD4(void* arg0, s32 arg1);
+#define SYSTEM_TEXT_ADDRESS(window, offset) (*(u32*)((u8*)(window) + (offset)))
+#define SYSTEM_TEXT_SET_ADDRESS(window, offset, address) \
+    (*(u32*)((u8*)(window) + (offset)) = (u32)(address))
+#endif
+#define SYSTEM_TEXT_ADVANCE(window, amount) \
+    SYSTEM_TEXT_SET_ADDRESS(window, 0x1C, SYSTEM_TEXT_ADDRESS(window, 0x1C) + (amount))
 void func_80033DF0(void* arg0);
 int func_80034F98(s32 arg0, s32 arg1);
 void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4);
@@ -46,6 +78,15 @@ void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, 
     s16 tpage1;
 
     (void)mode;
+
+    /* Retail stores/reloads signed halfword coordinates and row count.
+     * Normalizing the texture coordinates also keeps later arithmetic in
+     * range; their retained UV/RECT fields use only the same low bits. */
+    tpageX = (s16)tpageX;
+    tpageY = (s16)tpageY;
+    x = (s16)x;
+    y = (s16)y;
+    height = (s16)height;
 
     *(s16*)(pWindow + 0x04) = x;
     *(s16*)(pWindow + 0x10) = 0;
@@ -65,19 +106,18 @@ void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, 
     *(s16*)(pWindow + 0x06) = y;
     *(s16*)(pWindow + 0x0C) = height;
     *(s16*)(pWindow + 0x0A) = *(u16*)(pWindow + 0x0A) | 1;
-    *(s16*)(pWindow + 0x08) = *(s16*)(pWindow + 0x0A) << 2;
+    *(u16*)(pWindow + 0x08) = (u32)*(u16*)(pWindow + 0x0A) << 2;
     *(s16*)(pWindow + 0x12) = *(u16*)(pWindow + 0x0A) + 3;
 
     HeapSetCurrentContentType(0x29);
     *(u32*)(pWindow + 0x28) = (u32)(uintptr_t)HeapAlloc(height * 0x60, 2);
     HeapSetCurrentContentType(0x28);
     *(u32*)(pWindow + 0x2C) = (u32)(uintptr_t)HeapAlloc(*(s16*)(pWindow + 0x12) * 0x1C, 2);
-    memset((void*)(uintptr_t)*(u32*)(pWindow + 0x2C), 0, *(s16*)(pWindow + 0x12) * 0x1C);
 
     *(u8*)(pWindow + 0x4B) = 3;
     *(u32*)(pWindow + 0x4C) = 0x60000000;
-    *(u32*)(pWindow + 0x50) = ((y - 5) << 16) | ((x - 7) & 0xFFFF);
-    *(u32*)(pWindow + 0x54) = ((height * 0x0E + 0x0A) << 16) | (((*(s16*)(pWindow + 0x0A) << 2) + 0x0D) & 0xFFFF);
+    *(u32*)(pWindow + 0x50) = ((u32)(y - 5) << 16) | (u32)(x - 7);
+    *(u32*)(pWindow + 0x54) = ((u32)(height * 0x0E + 0x0A) << 16) | (u32)(*(s16*)(pWindow + 0x0A) * 4 + 0x0D);
     SetSemiTrans(pWindow + 0x48, 1);
 
     *(u32*)(pWindow + 0x58) = *(u32*)(pWindow + 0x48);
@@ -93,11 +133,11 @@ void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, 
         s32 oddRow = i & 1;
         s32 textureX = tpageY + pairIndex * 0x0D;
         u16 uv = textureUBase | ((textureX & 0xFF) << 8);
-        u32 tpageLeft = (*(s16*)(pWindow + 0x08) < 0x101) ? (0x000D0000 | *(u16*)(pWindow + 0x08)) : 0x000D0100;
+        u32 tpageLeft = (*(s16*)(pWindow + 0x08) < 0x101) ? (0x000D0000u | (u32)(s32)*(s16*)(pWindow + 0x08)) : 0x000D0100;
         u32 tpageRight = (*(s16*)(pWindow + 0x08) < 0x101) ? 0x000D0000 : (0x000D0000 | (*(s16*)(pWindow + 0x08) - 0xF0));
 
-        *(u32*)(rowPrim + 0x08) = ((y + rowStride * i) << 16) | (x & 0xFFFF);
-        *(u32*)(rowPrim + 0x1C) = ((y + rowStride * i) << 16) | ((x + 0x100) & 0xFFFF);
+        *(u32*)(rowPrim + 0x08) = ((u32)(y + rowStride * i) << 16) | (u32)x;
+        *(u32*)(rowPrim + 0x1C) = ((u32)(y + rowStride * i) << 16) | (u32)(x + 0x100);
         *(u32*)(rowPrim + 0x10) = tpageLeft;
         *(u32*)(rowPrim + 0x24) = tpageRight;
         *(u16*)(rowPrim + 0x0C) = uv;
@@ -246,15 +286,17 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex) {
 }
 
 void* func_80033784(s32 tableIndex, s32 stringIndex) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + tableIndex * 4), stringIndex);
+    /* ResolveArchiveEntryPointers keeps four-byte slots even on the host.
+     * Match the retail LW here and in the fixed-offset readers below. */
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4), stringIndex);
 }
 
 void* func_800337B8(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x40), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x40), index);
 }
 
 void* GetAccessoryName(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x44), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x44), index);
 }
 
 void* GetItemName(s32 index) {
@@ -265,19 +307,19 @@ void* GetItemName(s32 index) {
 }
 
 void* GetWeaponName(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x5C), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x5C), index);
 }
 
 void* func_80033878(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x60), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x60), index);
 }
 
 void* func_800338A8(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x64), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x64), index);
 }
 
 void* func_800338D8(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x48), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x48), index);
 }
 
 void* func_80033908(s32 index) {
@@ -289,49 +331,51 @@ void* func_80033908(s32 index) {
 }
 
 void* func_80033938(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x4C), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x4C), index);
 }
 
 void* func_80033968(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x54), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x54), index);
 }
 
 void* func_80033998(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0x6C), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C), index);
 }
 
 void* func_800339C8(s32 tableIndex, s32 stringIndex) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + tableIndex * 4 + 0x70), stringIndex);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4 + 0x70), stringIndex);
 }
 
 void* func_800339FC(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xC0), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC0), index);
 }
 
 void* func_80033A2C(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xC8), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC8), index);
 }
 
 void* func_80033A5C(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xCC), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xCC), index);
 }
 
 void* func_80033A8C(s32 index) {
-    return GetStringEntry(*(void**)((u8*)g_SystemDataEntries + 0xD0), index);
+    return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xD0), index);
 }
 
 extern u8 D_8005A0E4[];
 
 void func_80033ABC(u16* pIndices) {
-    u8* pTable = *(u8**)((u8*)g_SystemDataEntries + 0x6C);
+    u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     u8* pOut = D_8005A0E4;
     u16 idx = pIndices[0];
     while (idx != 0xFFFF) {
         u8* pEntry = pTable + idx * 2;
         u8 first = pEntry[0];
         u8 second = pEntry[1];
+        /* Retail 80033AFC is a branch-delay-slot increment: both the
+         * single-byte and double-byte glyph paths consume this index. */
+        pIndices++;
         if (first != 0) {
-            pIndices++;
             *pOut++ = first;
         }
         *pOut++ = second;
@@ -362,7 +406,7 @@ void func_80033B34(u16* src, u8* dst, s32 count) {
 }
 
 s16 func_80033BAC(u8 a, u8 b) {
-    u8* pTable = *(u8**)((u8*)g_SystemDataEntries + 0x6C);
+    u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     s16 i;
     for (i = 0; i < 0x144; i++) {
         u8* pEntry = pTable + i * 2;
@@ -466,9 +510,15 @@ void func_80033CF0(s32 value, s32 fontOffset, s32 signedMode) {
     func_80033ABC(p);
 }
 
+#ifdef XENO_PC_PORT
+void func_80033DD4(void* arg0, void* arg1) {
+    SYSTEM_TEXT_SET_ADDRESS(arg0, 0x20, SYSTEM_TEXT_ADDRESS(arg0, 0x1C));
+    SYSTEM_TEXT_SET_ADDRESS(arg0, 0x1C, arg1);
+#else
 void func_80033DD4(void* arg0, s32 arg1) {
     *(s32*)((u8*)arg0 + 0x20) = *(s32*)((u8*)arg0 + 0x1C);
     *(s32*)((u8*)arg0 + 0x1C) = arg1;
+#endif
     *(u16*)((u8*)arg0 + 0x10) |= 0x80;
 }
 
@@ -494,7 +544,7 @@ void func_80033DF0(void* arg0) {
         }
 
         if (*(u16*)(pWindow + 0x10) & 1) {
-            u8* pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+            u8* pRows = (u8*)(uintptr_t)SYSTEM_TEXT_ADDRESS(pWindow, 0x28);
             s16 oldBase = *(s16*)(pWindow + 0x16);
 
             *(s16*)(pRows + oldBase * 0x60 + 0x58) = 0;
@@ -508,7 +558,7 @@ void func_80033DF0(void* arg0) {
         pageCount = *(s16*)(pWindow + 0x18) % (*(s16*)(pWindow + 0x0C) + 1);
         {
             s16 row = *(s16*)(pWindow + 0x02);
-            u8* pRow = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28) + row * 0x60;
+            u8* pRow = (u8*)(uintptr_t)SYSTEM_TEXT_ADDRESS(pWindow, 0x28) + row * 0x60;
             s32 shade = (pageCount + ((u32)pageCount >> 31)) >> 1;
             s32 color = *(u8*)(pWindow + 0x0E) + shade * 13;
 
@@ -536,7 +586,7 @@ void func_80033DF0(void* arg0) {
      * (func_80033DD4) or advance a bare parameter leave it unchanged, glyphs
      * and skipped codes consume one. */
     while (count != -1) {
-        u8* pScript = (u8*)(uintptr_t)*(u32*)(pWindow + 0x1C);
+        u8* pScript = (u8*)(uintptr_t)SYSTEM_TEXT_ADDRESS(pWindow, 0x1C);
         s32 code = pScript[0];
 
         if (code == 0) {
@@ -546,7 +596,7 @@ void func_80033DF0(void* arg0) {
 
             if (flags & 0x80) {
                 *(u16*)(pWindow + 0x10) = flags & 0xFF7F;
-                *(u32*)(pWindow + 0x1C) = *(u32*)(pWindow + 0x20) + 1;
+                SYSTEM_TEXT_SET_ADDRESS(pWindow, 0x1C, SYSTEM_TEXT_ADDRESS(pWindow, 0x20) + 1);
             } else {
                 *(u16*)(pWindow + 0x10) = flags | 0x8;
                 pWindow[0x6B] = 1;
@@ -557,7 +607,7 @@ void func_80033DF0(void* arg0) {
             /* Wait for input, keep page contents (8003 3FD0). */
             pWindow[0x6B] = 3;
             *(u16*)(pWindow + 0x10) |= 0x8;
-            *(u32*)(pWindow + 0x1C) += 1;
+            SYSTEM_TEXT_ADVANCE(pWindow, 1);
             return;
         } else if (code == 2) {
             /* Wait for input, then clear the page: 0x40 turns into the 0x20
@@ -566,15 +616,15 @@ void func_80033DF0(void* arg0) {
              * swallowed. */
             pWindow[0x6B] = 2;
             *(u16*)(pWindow + 0x10) |= 0x48;
-            *(u32*)(pWindow + 0x1C) += 1;
+            SYSTEM_TEXT_ADVANCE(pWindow, 1);
             if (pScript[1] == 1) {
-                *(u32*)(pWindow + 0x1C) += 1;
+                SYSTEM_TEXT_ADVANCE(pWindow, 1);
             }
             return;
         } else if (code == 1) {
             /* Line break: force the row-overflow path on the next call. */
             *(s16*)(pWindow + 0x00) = 0x64;
-            *(u32*)(pWindow + 0x1C) += 1;
+            SYSTEM_TEXT_ADVANCE(pWindow, 1);
             return;
         } else if (code == 0x0F) {
             s32 subcode = pScript[1];
@@ -588,7 +638,7 @@ void func_80033DF0(void* arg0) {
             switch (subcode) {
             case 0x0: /* delay N frames */
                 *(s16*)(pWindow + 0x84) = pScript[2];
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 return;
 
             case 0x1: { /* text speed override / restore */
@@ -606,7 +656,7 @@ void func_80033DF0(void* arg0) {
                     pWindow[0x69] = pWindow[0x6A];
                     pWindow[0x6A] = 0;
                 }
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 count--;
                 continue;
             }
@@ -614,14 +664,14 @@ void func_80033DF0(void* arg0) {
             case 0x2: /* delay N frames, suppress auto-advance */
                 pWindow[0x6C] = 1;
                 *(s16*)(pWindow + 0x84) = pScript[2];
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 return;
 
             case 0x3: { /* system string table[a] entry b */
                 void* table = (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + pScript[2] * 4);
                 s32 entry = pScript[3];
 
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 func_80033DD4(pWindow, GetStringEntry(table, entry));
                 continue;
             }
@@ -631,7 +681,7 @@ void func_80033DF0(void* arg0) {
                 s32 cls = item & 0xFF00;
                 s32 tableOfs;
 
-                *(u32*)(pWindow + 0x1C) += 1;
+                SYSTEM_TEXT_ADVANCE(pWindow, 1);
                 if (cls == 0x000) {
                     tableOfs = 0x58;
                 } else if (cls == 0x100) {
@@ -657,7 +707,7 @@ void func_80033DF0(void* arg0) {
                 s32 id = pScript[2];
                 void* name;
 
-                *(u32*)(pWindow + 0x1C) += 2;
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
                 if (id >= 0x80) {
                     id = *((u8*)&g_GameState + 0x1CB4 + id);
                     if (id == 0xFF) {
@@ -671,16 +721,35 @@ void func_80033DF0(void* arg0) {
                 continue;
             }
 
-            case 0x6: /* weapon name */
-            case 0x7: /* table +0x60 name */
-            case 0x8: { /* table +0x64 name */
-                static const u8 kTableOfs[3] = { 0x5C, 0x60, 0x64 };
+            case 0x6: { /* weapon name; retail 80034304 loads +0x5C */
                 s32 entry = pScript[2];
 
-                *(u32*)(pWindow + 0x1C) += 2;
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
                 func_80033DD4(pWindow,
                               GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries +
-                                                                       kTableOfs[subcode - 6]),
+                                                                       0x5C),
+                                             entry));
+                continue;
+            }
+
+            case 0x7: { /* table +0x60 name; retail 8003432C loads +0x60 */
+                s32 entry = pScript[2];
+
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
+                func_80033DD4(pWindow,
+                              GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries +
+                                                                       0x60),
+                                             entry));
+                continue;
+            }
+
+            case 0x8: { /* table +0x64 name; retail 80034354 loads +0x64 */
+                s32 entry = pScript[2];
+
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
+                func_80033DD4(pWindow,
+                              GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries +
+                                                                       0x64),
                                              entry));
                 continue;
             }
@@ -692,7 +761,7 @@ void func_80033DF0(void* arg0) {
                 s32 fontRow = (subcode == 0x9) ? 0 : 1;
                 s32 signedMode = (subcode == 0xC) ? 1 : 0;
 
-                *(u32*)(pWindow + 0x1C) += 2;
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
                 func_80033CF0(*(s32*)(pWindow + 0x70 + var * 4), fontRow, signedMode);
                 func_80033DD4(pWindow, D_8005A0E4);
                 continue;
@@ -700,7 +769,7 @@ void func_80033DF0(void* arg0) {
 
             case 0xB: /* set byte +0x6D */
                 pWindow[0x6D] = pScript[2];
-                *(u32*)(pWindow + 0x1C) += 2;
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
                 count--;
                 continue;
 
@@ -708,7 +777,7 @@ void func_80033DF0(void* arg0) {
                 pWindow[0x6C] = 1;
                 *(u16*)(pWindow + 0x10) |= 0x200;
                 *(s16*)(pWindow + 0x84) = pScript[2];
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 return;
 
             case 0xE: /* reset speed to 1, set per-glyph delay */
@@ -717,13 +786,13 @@ void func_80033DF0(void* arg0) {
                 pWindow[0x69] = 1;
                 *(s16*)(pWindow + 0x88) = pScript[2];
                 *(s16*)(pWindow + 0x86) = pScript[2];
-                *(u32*)(pWindow + 0x1C) += 3;
+                SYSTEM_TEXT_ADVANCE(pWindow, 3);
                 return;
 
             case 0xF: { /* button name via controller mapping */
                 s32 button = pScript[2];
 
-                *(u32*)(pWindow + 0x1C) += 2;
+                SYSTEM_TEXT_ADVANCE(pWindow, 2);
                 func_80033DD4(pWindow,
                               GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC4),
                                              g_ControllerButtonMappings[button]));
@@ -756,12 +825,12 @@ void func_80033DF0(void* arg0) {
 
             {
                 s16 row = *(s16*)(pWindow + 0x02);
-                u8* pRow = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28) + row * 0x60;
+                u8* pRow = (u8*)(uintptr_t)SYSTEM_TEXT_ADDRESS(pWindow, 0x28) + row * 0x60;
                 u8 rowPage = pRow[0x5A];
 
-                func_80034FFC(lead, trail, (u8*)(uintptr_t)*(u32*)(pWindow + 0x2C) + oldX * 2,
+                func_80034FFC(lead, trail, (u8*)(uintptr_t)SYSTEM_TEXT_ADDRESS(pWindow, 0x2C) + oldX * 2,
                               *(s16*)(pWindow + 0x12), rowPage);
-                *(u32*)(pWindow + 0x1C) += consumed;
+                SYSTEM_TEXT_ADVANCE(pWindow, consumed);
                 *(s16*)(pWindow + 0x00) = oldX + width;
                 *(s16*)(pRow + 0x58) = oldX + width;
             }
@@ -1048,10 +1117,9 @@ void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
  * func_80033DF0 (already ported) reads it via arg0+offset, so it MUST be one
  * contiguous buffer, not 18 separate zeroed symbols (the overlay-data alias
  * trap).  Nothing else references these symbols (verified), so a single static
- * buffer is safe.  The +0x28 field holds a HOST pointer to the row buffer
- * (+0x90); port data lives below 4GB so the u32 field func_80033DF0 casts back
- * holds it without truncation (the port's standard pointer-in-u32 convention). */
-static unsigned char s_StringRenderDescriptor[0x100];
+ * buffer is safe. Full-width pointer storage is declared above the shared
+ * interpreter; packed pointer words are only low-word mirrors for this
+ * descriptor, never the authority for its native pointer consumers. */
 
 s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
     u8* d = s_StringRenderDescriptor;
@@ -1062,18 +1130,18 @@ s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
     *(u16*)(d + 0x08) = (u16)(((s32)((u32)height << 16)) >> 14);
     *(u16*)(d + 0x0A) = (u16)height;
     height += 3;
-    *(u32*)(d + 0x1C) = (u32)(uintptr_t)pString;
+    SYSTEM_TEXT_SET_ADDRESS(d, 0x1C, pString);
     *(u8*)(d + 0x68) = 1;
     *(u16*)(d + 0x12) = (u16)height;
     *(u16*)(d + 0x84) = 0;
     *(u8*)(d + 0x6C) = 0;
     *(u8*)(d + 0x6A) = 0;
-    *(u32*)(d + 0x2C) = (u32)(uintptr_t)pWork;
+    SYSTEM_TEXT_SET_ADDRESS(d, 0x2C, pWork);
     *(u16*)(d + 0x10) = 0;
     *(u16*)(d + 0x02) = 0;
     *(u16*)(d + 0x00) = 0;
     *(u8*)(d + 0x69) = 0x64;
-    *(u32*)(d + 0x28) = (u32)(uintptr_t)(d + 0x90);
+    SYSTEM_TEXT_SET_ADDRESS(d, 0x28, d + 0x90);
     *(u16*)(d + 0xE8) = 0;
     *(u8*)(d + 0xEA) = (u8)(flag & 1);
     func_80033DF0(d);

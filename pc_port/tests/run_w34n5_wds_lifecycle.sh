@@ -24,7 +24,10 @@ PROD_FLAGS=(-std=gnu17 -fpermissive -DXENO_PC_PORT
             -Ipc_port/extern/PsyCross/include
             -Ipc_port/extern/PsyCross/include/psx)
 
-rg -q -F 'g_GameCurLoadedWDS = SoundLoadWdsFileHostStaged(pBankBuf);' \
+# The field bank owner must be published for retail cleanup (func_8001B66C)
+# to release. Since the sector-pump rewrite (field_wds_stream_retail_test),
+# the publisher is retail's streaming loader, not the retired host stager.
+rg -q -F 'g_GameCurLoadedWDS = func_800380D0(D_800C3A1C, 0x2000, 0);' \
     src/field/main/misc8.c
 
 compile_run() {

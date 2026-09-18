@@ -4,6 +4,29 @@
 #include "psyq/libdma.h"
 #include "psyq/libmctrl.h"
 
+/* Timeout report strings. TU-owned bytes (yaml [0x9C6C, .rodata,
+ * psyq/libspu/Spu]) kept in retail order; the D_ names match the disassembly
+ * labels so relocs read the same. Retail addresses them absolutely
+ * (lui+addiu), so each use pins the arg regs and materializes the address
+ * explicitly (same idiom as system/memory.c's HEAP_FMT_PTR). */
+const char D_8001946C[] = "SPU:T/O [%s]\n";
+const char D_8001947C[] = "wait (reset)";
+const char D_8001948C[] = "wait (wrdy H -> L)";
+const char D_800194A0[] = "wait (dmaf clear/W)";
+
+#ifdef XENO_PC_PORT
+#define SPU_STR_REG(name) const char* name
+#define SPU_STR_REG1(name) const char* name
+#define SPU_STR_PTR(dst, sym) ((dst) = (sym))
+#else
+#define SPU_STR_REG(name) register const char* name asm("$4")
+#define SPU_STR_REG1(name) register const char* name asm("$5")
+#define SPU_STR_PTR(dst, sym) __asm__ volatile( \
+    "lui %0,%%hi(" #sym ")\n\taddiu %0,%0,%%lo(" #sym ")" : "=r" (dst))
+#endif
+
+
+
 long _spu_init(long bHot) {
     u32 dmaTimer;
     int i;
@@ -24,7 +47,13 @@ long _spu_init(long bHot) {
     {
         if (++dmaTimer > DMA_TIMEOUT)
         {
-            printf("SPU:T/O [%s]\n", "wait (reset)");
+            {
+                SPU_STR_REG(f);
+                SPU_STR_REG1(s);
+                SPU_STR_PTR(f, D_8001946C);
+                SPU_STR_PTR(s, D_8001947C);
+                printf(f, s);
+            }
             break;
         }
     }
@@ -93,7 +122,7 @@ long _spu_init(long bHot) {
     return 0;
 }
 
-static void _spu_FwriteByIO(void* data, u32 size) {
+void _spu_FwriteByIO(void* data, u32 size) {
     u16 initStatus;
     s32 dmaTimer;
     s32 blockSize;
@@ -135,7 +164,13 @@ static void _spu_FwriteByIO(void* data, u32 size) {
         {
             if (++dmaTimer > DMA_TIMEOUT)
             {
-                printf("SPU:T/O [%s]\n", "wait (wrdy H -> L)");
+                {
+                    SPU_STR_REG(f);
+                    SPU_STR_REG1(s);
+                    SPU_STR_PTR(f, D_8001946C);
+                    SPU_STR_PTR(s, D_8001948C);
+                    printf(f, s);
+                }
                 break;
             }
         }
@@ -156,7 +191,13 @@ static void _spu_FwriteByIO(void* data, u32 size) {
     {
         if (++dmaTimer > DMA_TIMEOUT)
         {
-            printf("SPU:T/O [%s]\n", "wait (dmaf clear/W)");
+            {
+                SPU_STR_REG(f);
+                SPU_STR_REG1(s);
+                SPU_STR_PTR(f, D_8001946C);
+                SPU_STR_PTR(s, D_800194A0);
+                printf(f, s);
+            }
             break;
         }
     }
@@ -372,12 +413,12 @@ void _spu_FsetPCR(s32 bKindOfHighPriority) {
 // NOTE(jperos): I'm currently unaware of exactly what these DMA timing override codes mean exactly.
 //               From: https://psx-spx.consoledev.net/memorycontrol/ :
 //                   1F801014h - SPU Delay/Size (200931E1h) (use 220931E1h for SPU-RAM reads)
-static void _spu_FsetDelayW(void) {
+void _spu_FsetDelayW(void) {
     *_spu_delay = (*_spu_delay & ~MCTRL_DELAY_DMA_TIMING_OVERRIDE_MASK) |
                   MCTRL_DELAY_DMA_TIMING_SELECT;
 }
 
-static void _spu_FsetDelayR(void) {
+void _spu_FsetDelayR(void) {
     *_spu_delay = (*_spu_delay & ~MCTRL_DELAY_DMA_TIMING_OVERRIDE_MASK) |
                   ((2 << MCTRL_DELAY_DMA_TIMING_OVERRIDE_SHIFT) | MCTRL_DELAY_DMA_TIMING_SELECT);
 }

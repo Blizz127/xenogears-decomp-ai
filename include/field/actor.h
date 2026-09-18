@@ -419,7 +419,13 @@ typedef struct {
 } ScriptsFile;
 
 extern int g_FieldNumActors;
+#ifdef XENO_PC_PORT
+/* The native owner republishes this pointer while loading a field.  Keep the
+ * host access volatile without changing PSYQ scheduling in the retail build. */
 extern FieldActor* volatile g_FieldActors;
+#else
+extern FieldActor* g_FieldActors;
+#endif
 
 extern ActorData* g_FieldScriptVMCurActor;
 extern void* g_FieldScriptVMCurScriptData;

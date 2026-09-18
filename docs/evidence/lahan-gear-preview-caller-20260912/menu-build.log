@@ -1,0 +1,4 @@
+[1/4] Compile src/menu/main/misc.c (CPP)
+[2/4] Compile build/src/menu/main/misc.c.i (CC)
+[3/4] Assemble build/src/menu/main/misc.c.s (MASPSX)
+[4/4] Linking  (LD)

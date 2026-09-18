@@ -1,0 +1,37 @@
+{
+  "status-set": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/status-set.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=0 native=1 native/raw complete state and boundary trace"
+  },
+  "ip-advance": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/ip-advance.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=0 native=1 native/raw complete state and boundary trace"
+  },
+  "actor-clear": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/actor-clear.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=1 native=1 native/raw complete state and boundary trace"
+  },
+  "flags4": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/flags4.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=5 native=1 native/raw complete state and boundary trace"
+  },
+  "id-scale": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/id-scale.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=6 native=1 native/raw complete state and boundary trace"
+  },
+  "slot-shift": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/slot-shift.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=72 native=1 native/raw complete state and boundary trace"
+  },
+  "count-increment": {
+    "source": "/var/tmp/xeno-blackmoon-verify-mT7beL/regtest/count-increment.c",
+    "rejected": true,
+    "first_failure": "FIELD OBJECT REGISTER FAIL case=0 native=1 native/raw complete state and boundary trace"
+  }
+}

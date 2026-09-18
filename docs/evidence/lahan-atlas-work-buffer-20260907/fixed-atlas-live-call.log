@@ -1,0 +1,15 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+0x0000000000539fe4 in Vsync (mode=-1) at pc_port/src/psyq_compat.c:1384
+1384	        return VSync(mode);
+Breakpoint 1 at 0x4ed5fa: file src/slus_006.64/system/temp1.c, line 2347.
+FIXED_ATLAS_CALL
+pTable = 0x6fa18c <g_PsxRam+909516> <incomplete sequence \352>
+index = 129
+ofsX = 144
+ofsY = 42
+ot = 0x6e4bc0 <g_PsxRam+822016>
+$1 = (void *) 0x726530 <g_PsxRam+1090672>
+$2 = (void *) 0x72b4e0 <g_PsxRam+1111072>
+0x6d6a20 <g_PsxRam+764256>:	0x97a20012	0xae300078	0xa6220084	0x8fbf0030
+[Inferior 1 (process 623679) detached]

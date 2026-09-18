@@ -1,0 +1,12 @@
+--- scratchpad/lahan-sprite-scale-20260908/before.c	2026-09-08 16:51:09.328189157 -0500
++++ pc_port/src/game_overrides.c	2026-09-08 16:51:09.329189161 -0500
+@@ -3468,7 +3468,8 @@
+     if (t == 0) {
+         return value;
+     }
+-    v = value * t;
++    /* Retail MULT/MFLO retains the low word before the signed test. */
++    v = (s32)((u32)value * (u32)t);
+     if (v < 0) {
+         v += 0x3FF;
+     }

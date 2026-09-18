@@ -387,16 +387,16 @@ s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     s32 threshold;
     s16 savedX, savedZ;
     u8* pActorData;
-    u8* pModelData;
+    u8* pSpriteData;
     s32 angle;
 
     g_FieldControl.isRandomEncountersEnabled = -1;
 
     pActorData = (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
-    pModelData = (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pModelData;
+    pSpriteData = (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pSpriteData;
 
     *(u32*)(pActorData + 0x4) |= 0x38;
-    *(u32*)(pModelData + 0x18) = 0x80000;
+    *(u32*)(pSpriteData + 0x18) = 0x80000;
 
     threshold = FieldGetVec1Magnitude(8) * 2;
     savedX = *(s16*)(pActorData + 0x22);
@@ -466,9 +466,9 @@ finalize:
         *(u16*)(pActorData + 0x104) = flags;
         *(u16*)(pActorData + 0x106) = flags;
     }
-    *(u32*)(pModelData + 0x18) = 0;
+    *(u32*)(pSpriteData + 0x18) = 0;
     *(s16*)(pActorData + 0xE8) = 0;
-    func_800821F4(pModelData, 0, &g_FieldActors[g_PlayerActorIndex]);
+    func_800821F4(pSpriteData, 0, &g_FieldActors[g_PlayerActorIndex]);
     D_800B00C0 = 1;
     {
         u32 tblIdx = *(u8*)(pActorData + 0xCE);
@@ -851,8 +851,16 @@ void func_80093790(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
+/* FE57: request the title menu (MenuExecute slot 2 -> func_801C62A8 ->
+ * func_801C58EC).  FieldMain's opener func_800799D4 consumes D_800ADB64. */
 void func_800937E0(void) {
+#ifdef TITLE_CHAIN_MUTANT_FE57_WRONG_MENU
+    /* Deliberate mutant (pc_port/tests/run_title_newgame_chain.sh): request
+     * the field system menu instead of the title menu. */
+    D_800ADB64 = 0;
+#else
     D_800ADB64 = 2;
+#endif
     D_800B00C0 = 1;
     D_8004F350++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;

@@ -1,0 +1,3 @@
+# Current exact-match frontier
+
+The generated shared-source assembly in build/src/slus_006.64/system/temp1.c.s emits a112-byte frame for func_80026BA4; retail uses80 bytes. Current C computes X/Y sums before the GetClut/GetTPage calls, extending their lifetimes across calls. Retail computes these sums afterward and saves incoming a2/a3 in caller argument slots. This is an observed instruction/scheduling difference and a candidate direction for further matching work, not a proven complete explanation of all byte differences. No source change was made from this observation. Functional differential coverage and exact compiled-byte matching remain separate gates.

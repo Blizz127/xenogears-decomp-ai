@@ -11,11 +11,7 @@
  * removes it from the auto-generated stub set.
  */
 
-/* func_800363F0  (asm/slus_006.64/26644.s):
- *     lui $at, %hi(D_800501FC); sw $a0, %lo(D_800501FC)($at); jr $ra
- *   => D_800501FC = arg0; */
-int D_800501FC;
-void func_800363F0(int arg0) { D_800501FC = arg0; }
+/* The typed vblank callback owner now lives in controller_vblank_dispatch.c. */
 
 /* func_80019548 (asm/slus_006.64/9D24.s): PSX boot tail that restores the
  * hardware stack/global registers before returning. Native PC state is already
@@ -77,16 +73,24 @@ static void PcPort_BootCapture(const char* name)
  * (default 60). Called from Vsync right after PsyX_EndScene, the same present
  * boundary the world-map capture uses, so the shot reflects the finished
  * frame. Strictly env-gated; zero overhead otherwise. */
+unsigned g_PcPortPresentedFrames;
 void PcPort_FieldCaptureOnVsync(void)
 {
     static int s_init;
     static const char* s_dir;
     static int s_every;
     static unsigned s_frames;
+    /* Optional presented-frame window [FROM, TO]; outside it nothing is
+     * written. Lets a dense (EVERY=1) capture target one transition without
+     * filling the disk with the rest of the run. Both default to "no bound". */
+    static unsigned s_from;
+    static unsigned s_to;
     char path[512];
 
     if (!s_init) {
         const char* every;
+        const char* from;
+        const char* to;
         s_init = 1;
         s_dir = getenv("XENO_FIELD_CAPTURE_DIR");
         s_every = 60;
@@ -95,10 +99,24 @@ void PcPort_FieldCaptureOnVsync(void)
             s_every = atoi(every);
         if (s_every <= 0)
             s_every = 60;
+        s_from = 0;
+        s_to = 0xFFFFFFFFu;
+        from = getenv("XENO_FIELD_CAPTURE_FROM");
+        if (from && *from)
+            s_from = (unsigned)strtoul(from, NULL, 0);
+        to = getenv("XENO_FIELD_CAPTURE_TO");
+        if (to && *to)
+            s_to = (unsigned)strtoul(to, NULL, 0);
     }
+    /* Presented-frame count, exported so other diagnostics (the battle OT
+     * histogram in battle_mips_runtime.c) can line up with capture names.
+     * Counted whether or not a capture directory is set. */
+    s_frames++;
+    g_PcPortPresentedFrames = s_frames;
     if (!s_dir || !s_dir[0])
         return;
-    s_frames++;
+    if (s_frames < s_from || s_frames > s_to)
+        return;
     if ((s_frames % (unsigned)s_every) != 0)
         return;
     snprintf(path, sizeof(path), "%s/field-frame-%06u.png", s_dir, s_frames);
@@ -283,6 +301,10 @@ typedef struct ModelPrimDesc {
 } ModelPrimDesc;
 
 extern s32 func_8002E688(u8* pCmd, s32 count);
+extern s32 func_8002F2E0(u8* pCmd, s32 count);
+extern s32 func_8002F4B4(u8* pCmd, s32 count);
+extern s32 func_8002ED20(u8* pCmd, s32 count); /* model_prim_ed20.c */
+extern s32 func_8002FAE8(u8* pCmd, s32 count);
 /* Build-pass handlers ported in temp2.c; only the first arg is consumed, so the
  * (ModelPrimBuildProc) casts are ABI-safe truncated-u32 host-pointer calls. */
 extern s32 func_8002CDCC(u8* pSrc, u8* pCmd, s32 shade);
@@ -292,6 +314,11 @@ extern s32 func_8002D0C0(s32* a0);
 extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
 extern s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags);
+/* Rows 0x02 / 0x06 build passes (temp2.c:1297, :1317).  Both return void on
+ * retail; only the first argument is consumed through the cast, as with the
+ * other build handlers above. */
+extern void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags);
+extern void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc);
 extern s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags);
 extern s32 func_8002DA14(u8* pColor, s16* pIndices);
 extern s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade);
@@ -303,6 +330,7 @@ static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriSmallMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count);
+static s32 ModelPrimTriMediumAverageVariant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriGT3Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimTriMaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimTriDepthCueVariant4(u8* pCmd, s32 count);
@@ -332,11 +360,13 @@ ModelPrimDesc D_8004FE50[17] = {
         /* Retail row 0x8004FE50: proc[0]=proc[4]=proc[5]=0x8002E038 (the same
          * small-tri average walker prim 4 dispatches) and proc[2]=0x8002E470
          * (small-tri max-SZ) -- retail literally reuses prim 4's walkers.
-         * proc[1]=0x8002ED20 / proc[3]=0x8002E8DC are unported -> NULL (the
-         * dispatcher aborts loudly if a map ever reaches them). The buildProc
-         * 0x8002CDCC is a byte-identical retail clone of prim 8's 0x8002CF58
-         * (lit flat tri builder, tag len 4), ported in temp2.c. */
-        .proc = { ModelPrimTriSmallAverageVariant0, NULL,
+         * proc[1]=0x8002ED20 is the lit small-tri walker (model_prim_ed20.c;
+         * the object overlay draws with variant 1 and MAP16's follower
+         * models dispatch this row). proc[3]=0x8002E8DC stays unported ->
+         * NULL (the dispatcher aborts loudly if a map ever reaches it). The
+         * buildProc 0x8002CDCC is a byte-identical retail clone of prim 8's
+         * 0x8002CF58 (lit flat tri builder, tag len 4), ported in temp2.c. */
+        .proc = { ModelPrimTriSmallAverageVariant0, func_8002ED20,
                   ModelPrimTriSmallMaxSZVariant2, NULL,
                   ModelPrimTriSmallAverageVariant0,
                   ModelPrimTriSmallAverageVariant0 },
@@ -348,10 +378,10 @@ ModelPrimDesc D_8004FE50[17] = {
     [0x01] = {
         /* Retail 0x8004FE78: prim 0x01 uses the lit POLY_GT3 builder
          * 0x8002D814.  proc[0]=0x8002E04C and proc[4]/proc[5] are the
-         * already-portable depth-cued triangle walkers; proc[1..3] remain
-         * NULL because their retail entries 0x8002F2E0/0x8002E484/
-         * 0x8002E8F0 have no native implementation yet. */
-        .proc = { ModelPrimTriAverageVariant0, NULL, NULL, NULL,
+         * already-portable depth-cued triangle walkers; proc[1] is the
+         * decomp-owned NCS lighting walker at 0x8002F2E0. The separate
+         * entries 0x8002E484/0x8002E8F0 remain unimplemented here. */
+        .proc = { ModelPrimTriAverageVariant0, func_8002F2E0, NULL, NULL,
                   ModelPrimTriDepthCueVariant4,
                   ModelPrimTriDepthCueMaxSZVariant5 },
         .buildProc = (ModelPrimBuildProc)func_8002D814, /* PSX 0x8002D814 */
@@ -359,12 +389,31 @@ ModelPrimDesc D_8004FE50[17] = {
         .packetStride = 0x08,
         .outputStride = 0x20,
     },
+    [0x02] = {
+        /* Retail row 0x8004FEA0, from disc/SLUS_006.64 .sdata:
+         *   proc  = 8002E024 8002F6B4 8002E45C 8002E8C8 8002E024 8002E024
+         *   build = 8002D6AC  strides = 0x8,0x4,0x1C
+         * 0x8002E024 is the medium alternate entry of the shared hand-written
+         * tri walker (see ModelPrimTriAverageShared) -- packet 0x1C, tag
+         * 0x06000000, matching this row's outputStride exactly.  proc[1]
+         * 0x8002F6B4 (the separate lit path) and proc[2]/proc[3]
+         * 0x8002E45C / 0x8002E8C8 stay unported -> NULL, as in rows 0x00/0x03.
+         * buildProc func_8002D6AC is already real C in temp2.c. */
+        .proc = { ModelPrimTriMediumAverageVariant0, NULL, NULL, NULL,
+                  ModelPrimTriMediumAverageVariant0,
+                  ModelPrimTriMediumAverageVariant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002D6AC, /* PSX 0x8002D6AC */
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x1C,
+    },
     [0x03] = {
         /* Retail 0x8004FEC8: POLY_GT3. proc[0]=proc[4]=proc[5]=0x8002E010
          * (shared tri body: t9=0xC, tag 9, packet 0x28). buildProc
          * 0x8002DA14. Overlay 0x6B9 MAP16 groups dispatch this row;
-         * leaving it NULL made C8CC/C700 skip the mesh (dEmits=0). */
-        .proc = { ModelPrimTriGT3Variant0, NULL, NULL, NULL,
+         * leaving it NULL made C8CC/C700 skip the mesh (dEmits=0).
+         * Variant 1 is the separate retail-tested F4B4 lit GT3 path. */
+        .proc = { ModelPrimTriGT3Variant0, func_8002F4B4, NULL, NULL,
                   ModelPrimTriGT3Variant0, ModelPrimTriGT3Variant0 },
         .buildProc = (ModelPrimBuildProc)func_8002DA14, /* PSX 0x8002DA14 */
         .cmdStride = 0x08,
@@ -412,6 +461,49 @@ ModelPrimDesc D_8004FE50[17] = {
         .packetStride = 0x08,
         .outputStride = 0x20,
     },
+    [0x06] = {
+        /* Retail row 0x8004FF40, from disc/SLUS_006.64 .sdata:
+         *   proc  = 8002E024 8002E024 8002E45C 8002E8C8 8002E024 8002E024
+         *   build = 8002D77C  strides = 0x8,0x4,0x1C
+         * Row 0x02 with proc[1] reusing the shared 0x8002E024 entry instead of
+         * the separate lit path, exactly as row 0x07 relates to row 0x03.
+         * buildProc func_8002D77C is already real C in temp2.c. */
+        .proc = { ModelPrimTriMediumAverageVariant0,
+                  ModelPrimTriMediumAverageVariant0, NULL, NULL,
+                  ModelPrimTriMediumAverageVariant0,
+                  ModelPrimTriMediumAverageVariant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002D77C, /* PSX 0x8002D77C */
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x1C,
+    },
+    [0x07] = {
+        /* Retail row 0x8004FF68, read straight out of disc/SLUS_006.64 .sdata
+         * (file offset 0x800 + vaddr - 0x80010000):
+         *
+         *   proc  = 8002E010 8002E010 8002E448 8002E8B4 8002E010 8002E010
+         *   build = 8002DA14  strides = 0x8,0x8,0x28
+         *
+         * This row is retail row 0x03 with proc[1] pointing at the shared
+         * 0x8002E010 body instead of row 3's separate lit GT3 path 0x8002F4B4;
+         * everything else (buildProc and all three strides) is identical, so
+         * the already-ported ModelPrimTriGT3Variant0 covers variants 0/1/4/5.
+         * proc[2]=0x8002E448 and proc[3]=0x8002E8B4 stay unported -> NULL,
+         * exactly as in row 0x03.
+         *
+         * The row was previously ABSENT from this designated initializer, so it
+         * was zero-filled: a NULL buildProc and 0/0/0 strides. That is the same
+         * latent ordering-table corruption class as the row 0x04 gap (the build
+         * side links a group's packets into ot3 with tag lengths set, then the
+         * walker meets packets whose code byte was never written) -- it just had
+         * not been reached by a map yet. */
+        .proc = { ModelPrimTriGT3Variant0, ModelPrimTriGT3Variant0, NULL, NULL,
+                  ModelPrimTriGT3Variant0, ModelPrimTriGT3Variant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002DA14, /* PSX 0x8002DA14 */
+        .cmdStride = 0x08,
+        .packetStride = 0x08,
+        .outputStride = 0x28,
+    },
     [0x08] = {
         /* Retail D_8004FE50[0x08].proc[0] = 0x8002E254: 4-vert F4 walker (RTPT+RTPS,
          * AVSZ4, screen-overlap over all 4 SXY, writes xy0..xy3). Was wrongly wired
@@ -425,9 +517,9 @@ ModelPrimDesc D_8004FE50[17] = {
     [0x09] = {
         /* Retail 0x8004FFB8: lit textured quad row.  The raw table proves
          * buildProc 0x8002D530 and the 0x08/0x0C/0x28 layout.  E268,
-         * E688, FCFC and FF0C map to the existing FT4 walkers; FAE8 and
-         * EAF4 stay NULL until their separate retail paths are ported. */
-        .proc = { ModelPrimQuadFT4Variant0, NULL,
+         * E688, FCFC and FF0C map to the existing FT4 walkers; FAE8 is
+         * the retail-tested lit path. EAF4 remains unimplemented. */
+        .proc = { ModelPrimQuadFT4Variant0, func_8002FAE8,
                   func_8002E688, NULL,
                   ModelPrimQuadFT4DepthCueVariant4,
                   ModelPrimQuadFT4DepthCueMaxSZVariant5 },
@@ -473,6 +565,29 @@ ModelPrimDesc D_8004FE50[17] = {
         .packetStride = 0x04,
         .outputStride = 0x18,
     },
+    [0x0E] = {
+        /* Retail row 0x80050080, read straight out of disc/SLUS_006.64 .sdata:
+         *
+         *   proc  = 8002E240 8002E240 8002E660 8002EACC 8002E240 8002E240
+         *   build = 8002D180  strides = 0x8,0x4,0x24
+         *
+         * Byte-for-byte the SAME row as retail row 0x0A (0x8004FFE0) -- same six
+         * proc entries, same buildProc, same three strides -- so it is filled
+         * identically to the already-ported [0x0A] above: the shared POLY_G4
+         * body 0x8002E240 for variants 0/1/4/5, and proc[2]=0x8002E660 /
+         * proc[3]=0x8002EACC unported -> NULL.
+         *
+         * Like row 0x07 above, this row was absent from the initializer and so
+         * zero-filled (NULL buildProc, 0/0/0 strides) -- latent OT corruption
+         * for any map whose mesh groups dispatch prim 0x0E. */
+        .proc = { ModelPrimQuadG4Variant0, ModelPrimQuadG4Variant0,
+                  NULL, NULL,
+                  ModelPrimQuadG4Variant0, ModelPrimQuadG4Variant0 },
+        .buildProc = (ModelPrimBuildProc)func_8002D180, /* PSX 0x8002D180 */
+        .cmdStride = 0x08,
+        .packetStride = 0x04,
+        .outputStride = 0x24,
+    },
 };
 
 /* Initialized renderer bounds/depth-shift globals adjacent to D_8004FE50. */
@@ -482,13 +597,20 @@ s32 D_80050100 = 2;
 s32 D_80050104 = 1;
 
 /* Main-exe BSS consumed by the decompiled encounter roll func_80079288
- * (src/field/main/misc4.c). D_80065ADC = the 16 per-formation encounter WEIGHTS;
- * it is populated at runtime by a not-yet-ported encounter/map-data load path,
- * so as a zero-init stub the weighted roll is degenerate (sum==0 -> no encounter
- * fires). See ACTIVE_HANDOFF.md. D_80059508/D_800594F8 = battle-transition params. */
-u8 D_80065ADC[16];
+ * (src/field/main/misc4.c): D_80059508 = battle-transition param.
+ * D_800594F8 now lives in src/slus_006.64/system/temp3.c (matching owner).
+ *
+ * D_80065ADC (the 16 per-formation encounter WEIGHTS) is deliberately NOT
+ * defined here any more. Retail stores it as the tail of ONE contiguous object
+ * beginning at D_800658DC -- 16 formation records of 0x20 bytes, then the
+ * weights at +0x200, which is exactly the address 0x80065ADC. FieldLoad
+ * decompresses that whole section to D_800658DC in a single call
+ * (src/field/main/misc3.c:831-833), so a standalone 16-byte object here could
+ * never receive the weights: the entire decode landed inside D_800658DC, the
+ * sum stayed 0, and no encounter ever fired. D_80065ADC is now an alias at
+ * g_SlusBss_800658DC + 0x200 -- see pc_port/src/data_field.c and
+ * docs/evidence/encounter-weight-aliasing-20260906/README.md. */
 u8 D_80059508;
-u8 D_800594F8;
 
 /* 0xBC sub-command 0x26's track table (animation_scripts.c): 16 entries of
  * 0x1C bytes. Sized properly here so the port build doesn't fall back to a
@@ -975,12 +1097,26 @@ void PcPort_CullCamLogOnVsync(void) {
         }
     }
 
+    {
+    extern s16 g_FieldCameraMode;
+    extern u16 g_CamMovementFlags;
+    extern VECTOR g_CamEyeMovementCurrent;
     fprintf(s_ccFile,
-            "f=%u eye2=%d,%d,%d eye=%d,%d,%d at2=%d,%d,%d angY=%d camRot=%d,%d,%d "
+            "f=%u camMode=%d camFlags=%04x eyeCur=%d,%d,%d "
+            "eye2=%d,%d,%d eye=%d,%d,%d at2=%d,%d,%d angY=%d camRot=%d,%d,%d "
             "fei=%d,%d,%d st=%04x f4=%08x otEmit=%d | "
             "seen=%u emit=%u flag=%u otz=%u nclip_backface=%u overlap=%u oversize=%u "
             "gte31=%u qf4seen=%u qf4flag=%u qf4emit=%u\n",
             s_ccFrame,
+            /* TEMP-DIAG: g_FieldCameraMode selects the eye source in
+             * func_80073230 (misc2.c) -- 0/2 follow-cam, 1 scripted eye from
+             * g_CamEyeMovementCurrent.  Logged to tell "camera never armed"
+             * apart from "geometry missing" on maps that render black. */
+            (int)g_FieldCameraMode,
+            (unsigned)g_CamMovementFlags,
+            (int)(g_CamEyeMovementCurrent.vx >> 16),
+            (int)(g_CamEyeMovementCurrent.vy >> 16),
+            (int)(g_CamEyeMovementCurrent.vz >> 16),
             (int)(g_CameraEye2.vx >> 16), (int)(g_CameraEye2.vy >> 16),
             (int)(g_CameraEye2.vz >> 16),
             (int)(g_CameraEye.vx >> 16), (int)(g_CameraEye.vy >> 16),
@@ -996,6 +1132,7 @@ void PcPort_CullCamLogOnVsync(void) {
             s_cc[CC_NCLIP_BACKFACE], s_cc[CC_OVERLAP], s_cc[CC_OVERSIZE],
             s_cc[CC_GTE31], s_cc[CC_QF4_SEEN], s_cc[CC_QF4_FLAG],
             s_cc[CC_QF4_EMIT]);
+    }
 
     {
         int i;
@@ -1562,13 +1699,31 @@ static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count) {
     return 1;
 }
 
-/* Retail 0x8002E04C -> shared 0x8002E058: three-vertex packet walker using
- * AVSZ3 for OT ordering.  This is deliberately separate from proc 2: retail's
- * 0x8002E484 path orders the same packet format by max(SZ1,SZ2,SZ3)
- * shifted by D_80050100 + 2 instead. */
-static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
-    const s32 packetStep = 0x20;
-    const u32 tagLen = 0x07000000;
+/* Retail 0x8002E04C / 0x8002E024 -> shared 0x8002E058: three-vertex packet
+ * walker using AVSZ3 for OT ordering.  This is deliberately separate from
+ * proc 2: retail's 0x8002E484 path orders the same packet format by
+ * max(SZ1,SZ2,SZ3) shifted by D_80050100 + 2 instead.
+ *
+ * `func_8002E010` is a HAND-WRITTEN retail function with four alternate entry
+ * points that each load three constants and jump to one shared body at
+ * .L8002E058 (asm/slus_006.64/nonmatchings/system/temp2/func_8002E010.s):
+ *
+ *     entry       t9    t8 (tag)     a3 (packet)   table rows
+ *     8002E010    0xC   0x09000000   0x28          0x03, 0x07
+ *     8002E024    0x8   0x06000000   0x1C          0x02, 0x06
+ *     8002E038    0x4   0x04000000   0x14          0x00, 0x04
+ *     8002E04C    0x8   0x07000000   0x20          0x01, 0x05
+ *
+ * $a3 is exactly the row's outputStride and $t8 the packet tag, which matches
+ * the retail D_8004FE50 table read from disc/SLUS_006.64 for every row above.
+ * $t9 is the per-vertex stride inside the packet, so the xy store offsets
+ * differ per entry -- 0x8002E024 shares t9=0x8 with 0x8002E04C and therefore
+ * shares this exact body, differing ONLY in the packet size and tag.  The
+ * t9=0xC and t9=0x4 entries have their own xy layouts and keep their own
+ * bodies below (ModelPrimTriGT3Variant0 / ModelPrimTriSmallAverageVariant0).
+ */
+static s32 ModelPrimTriAverageShared(u8* pCmd, s32 count, s32 packetStep,
+                                     u32 tagLen) {
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
     u8* out = D_80059424 - packetStep;
     u32* ot = (u32*)(uintptr_t)D_80059568;
@@ -1635,6 +1790,17 @@ static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
     D_80059578 = emitted;
     D_80059424 = out + packetStep;
     return 1;
+}
+
+/* Retail entry 0x8002E04C: packet 0x20, tag 0x07000000 (rows 0x01 / 0x05). */
+static s32 ModelPrimTriAverageVariant0(u8* pCmd, s32 count) {
+    return ModelPrimTriAverageShared(pCmd, count, 0x20, 0x07000000);
+}
+
+/* Retail entry 0x8002E024: packet 0x1C, tag 0x06000000 (rows 0x02 / 0x06).
+ * Same shared body and same t9=0x8 vertex layout as 0x8002E04C. */
+static s32 ModelPrimTriMediumAverageVariant0(u8* pCmd, s32 count) {
+    return ModelPrimTriAverageShared(pCmd, count, 0x1C, 0x06000000);
 }
 
 /* Retail 0x8002E010 -> shared 0x8002E058: POLY_GT3 average walker.
@@ -2806,7 +2972,9 @@ s32 func_8002DDE4(void* pImageData, s32 texMode, s32 texX, s32 texY,
         }
         if (diag && s_dde4Logs < 8 && magic == 0x1101 &&
             rect.w > 0 && rect.w <= 256 && rect.h > 0 && rect.h <= 4) {
-            u16 clutBuf[256];
+            /* The guard admits up to 256 x 4 halfwords; the buffer must
+             * hold the full rectangle (StoreImage writes w*h halfwords). */
+            u16 clutBuf[256 * 4];
             RECT rd = rect;
             int n;
             int nPix = (int)rect.w * (int)rect.h;
@@ -2951,29 +3119,24 @@ s32 D_800592EC;
 u32 D_8006F99C[4];
 u32 D_8006F9AC[4];
 
-/* Field-overlay hooks called from the main executable's sprite code. Neither
- * has decompiled source anywhere in the repo (0x800BAxxx/0x800BCxxx live in
- * the field overlay's address space); until they are ported, log once and
- * no-op so the gap is visible instead of silent. */
+/* Main-executable sprite code re-enters the active retail battle overlay for
+ * floor queries and scripted child ownership. Keep its actual state and
+ * nested callback stack, as with the battle animation interpreter. */
+extern int PcPort_BattleMipsDispatchCallback(u32 callback, void* argument);
+
 void func_800BA8F4(void* pSpriteData)
 {
-    static int logged;
-    (void)pSpriteData;
-    if (!logged) {
-        logged = 1;
-        fprintf(stderr, "[port] func_800BA8F4 (field-overlay hook in sprite "
-                        "gravity path) not ported; no-op\n");
+    if (!PcPort_BattleMipsDispatchCallback(0x800ba8f4u, pSpriteData)) {
+        fputs("[xeno-port][battle-mips] sprite floor query called without an active retail battle overlay\n", stderr);
+        abort();
     }
 }
 
 void func_800BC158(void* pWrapper)
 {
-    static int logged;
-    (void)pWrapper;
-    if (!logged) {
-        logged = 1;
-        fprintf(stderr, "[port] func_800BC158 (field-overlay hook for type "
-                        "10-13 child sprites) not ported; no-op\n");
+    if (!PcPort_BattleMipsDispatchCallback(0x800bc158u, pWrapper)) {
+        fputs("[xeno-port][battle-mips] child sprite ownership called without an active retail battle overlay\n", stderr);
+        abort();
     }
 }
 
@@ -3066,21 +3229,24 @@ void func_80025718(void* pTask)
 /* Retail .data callback table @0x8004FD40 (temp1.c CALLBACK_TABLE comment):
  * per-type render callbacks WorkListSetTaskCallback'd onto the child's task2.
  * Retail entries: 0/5/6/14=func_80025258, 1=func_80025710, 2/7=func_80025718,
- * 8=func_8002541C, 9=func_80025544, 15=func_800257F0, 3/4/10-13=NULL. Only
- * func_80025710 (dummy) is decompiled so far; the others stay NULL here and
- * func_80025224 logs when a retail-non-NULL slot is requested — those sprites
- * exist and animate but do not render until their callback is ported. */
+ * 8=func_8002541C, 9=func_80025544, 15=func_800257F0, 3/4/10-13=NULL.
+ * Billboard and model callbacks are native; the remaining missing callbacks
+ * are logged by func_80025224 when requested. */
+extern void func_80025258(u8* pEntry);
+extern void func_8002541C(u8* pEntry);
+extern void func_80025544(u8* pEntry);
 static void (*const D_8004FD40[16])(void*) = {
-    NULL,                          /* 0: func_80025258 (unported) */
+    (void (*)(void*))func_80025258, /* 0: billboard */
     (void (*)(void*))func_80025710,/* 1: dummy */
     func_80025718,                 /* 2: type-2 child model draw */
     NULL, NULL,                    /* 3,4: NULL in retail */
-    NULL, NULL,                    /* 5,6: func_80025258 (unported) */
+    (void (*)(void*))func_80025258, /* 5: billboard */
+    (void (*)(void*))func_80025258, /* 6: billboard */
     func_80025718,                 /* 7: type-7 child model draw */
-    NULL,                          /* 8: func_8002541C (unported) */
-    NULL,                          /* 9: func_80025544 (unported) */
+    (void (*)(void*))func_8002541C, /* 8: projected TILE_1 */
+    (void (*)(void*))func_80025544, /* 9: projected square */
     NULL, NULL, NULL, NULL,        /* 10-13: NULL in retail */
-    NULL,                          /* 14: func_80025258 (unported) */
+    (void (*)(void*))func_80025258, /* 14: billboard */
     NULL,                          /* 15: func_800257F0 (unported) */
 };
 
@@ -3289,97 +3455,8 @@ void func_80024730(void* pWrapper)
     func_80025224(w + 0x1C, idx);
 }
 
-/* asm 80022CAC: scale value by the sprite's slow-motion timer (+0x3A,
- * 10-bit fixed point); passthrough when the timer is zero. */
-s32 func_80022CAC(void* pSpriteData, s32 value)
-{
-    s32 t = *(u16*)((u8*)pSpriteData + 0x3A);
-    s32 v;
-
-    if (t == 0) {
-        return value;
-    }
-    v = value * t;
-    if (v < 0) {
-        v += 0x3FF;
-    }
-    return v >> 10;
-}
-
-/* asm 80022B2C: vertical motion integrator. Bit 26 of +0x3C selects the
- * simple path (no floor); otherwise position +0x4 advances by scaled
- * velocity +0x10, clamps to the floor height +0x84, bounces by the
- * A8-encoded coefficient when falling onto it, and gains gravity +0x1C. */
-void func_80022B2C(void* pSpriteData)
-{
-    u8* p = pSpriteData;
-    s32 vel, dv, pos, floor;
-
-    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
-        vel = *(s32*)(p + 0x10);
-        dv = func_80022CAC(p, vel >> 4) << 4;
-        *(s32*)(p + 0x4) += dv;
-        *(s32*)(p + 0x10) = vel + *(s32*)(p + 0x1C);
-        return;
-    }
-
-    func_800BA8F4(p);
-
-    vel = *(s32*)(p + 0x10);
-    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
-        floor = *(s16*)(p + 0x84);
-        if (*(s16*)(p + 0x6) == (s16)floor) {
-            return;
-        }
-        dv = func_80022CAC(p, vel >> 4) << 4;
-        pos = *(s32*)(p + 0x4) + dv;
-        *(s32*)(p + 0x4) = pos;
-        if ((pos >> 16) < floor) {
-            *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
-            return;
-        }
-
-        /* Landed: snap to the floor and bounce. */
-        *(s32*)(p + 0x4) = floor << 16;
-        pos = -vel * (s32)((*(u32*)(p + 0xA8) >> 1) & 0x3FF);
-        if (pos < 0) {
-            pos += 0xFF;
-        }
-        pos >>= 8;
-        *(s32*)(p + 0x10) = pos;
-        if (pos < 0) {
-            pos = -pos;
-        }
-        dv = *(s32*)(p + 0x1C);
-        if (dv < 0) {
-            dv = -dv;
-        }
-        if (pos < dv) {
-            *(s32*)(p + 0x10) = 0;
-        }
-        return;
-    }
-
-    dv = func_80022CAC(p, vel >> 4) << 4;
-    pos = *(s32*)(p + 0x4) + dv;
-    *(s32*)(p + 0x4) = pos;
-    floor = *(s16*)(p + 0x84);
-    if ((pos >> 16) >= floor) {
-        *(s32*)(p + 0x4) = floor << 16;
-    }
-    *(s32*)(p + 0x10) += *(s32*)(p + 0x1C);
-}
-
-/* asm 80022CDC: horizontal motion (x +0x0 by velocity +0xC, z +0x8 by
- * velocity +0x14, both slow-motion scaled) then the vertical integrator. */
-void func_80022CDC(void* pSpriteData)
-{
-    u8* p = pSpriteData;
-
-    *(s32*)(p + 0x0) += func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4;
-    *(s32*)(p + 0x8) += func_80022CAC(p, *(s32*)(p + 0x14) >> 4) << 4;
-    func_80022B2C(p);
-}
+/* Motion ownership lives in the verified decompiled temp1.c functions. */
+extern void func_80022CDC(u8* pSpriteData);
 
 /* asm 80022DF4: AnimTask timer tick. Runs the sprite's script + motion; when
  * the script terminates (+0x64 == 0) — immediately, or after the double-tick
@@ -3649,3 +3726,6 @@ void func_8002C59C(u8* pModel)
         } while (count != -1);
     }
 }
+
+/* Shared native decompilation of retail battle primitive RGB recoloring. */
+#include "../../src/battle/primitive_colors.inc"

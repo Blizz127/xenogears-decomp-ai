@@ -522,11 +522,13 @@ void func_8008825C(void) {
 
 void func_800882B8(void) {
     s32 charId = func_8008CF3C(FieldScriptVMGetArgument(1));
-    u16 dest = (u16)FieldScriptVMGetInstructionArgument(3);
+    u16 dest;
     if (charId != 0xFF) {
         u8* pChar = (u8*)g_pGameState + charId * 164;
+        dest = (u16)FieldScriptVMGetInstructionArgument(3);
         FieldScriptMemoryWriteU16(dest, pChar[0x30C]);
     } else {
+        dest = (u16)FieldScriptVMGetInstructionArgument(3);
         FieldScriptMemoryWriteU16(dest, 0xFF);
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
@@ -699,14 +701,17 @@ void func_800889BC(void) {
     u32 actorIdx = (u32)D_800AFD1C;
     u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
     u32 pActorData = *(u32*)(pFieldActor + 0x04);
+    /* Retail 80088A04..80088A58: arguments are read in order
+     * (1),(1),(3),(5),(5),(7); speed = ((arg1b>>4)<<8) + arg3 and
+     * speed2 = ((arg5b>>4)<<8) + arg7. */
     s32 arg1 = FieldScriptVMGetArgument(1);
     s32 dirBits = arg1 & 0xF;
     s32 arg1b = FieldScriptVMGetArgument(1);
-    s32 speed = ((s32)arg1b >> 4 << 8) | (arg1b & 0xF);
+    s32 speed = ((s32)arg1b >> 4 << 8) + FieldScriptVMGetArgument(3);
     s32 arg5 = FieldScriptVMGetArgument(5);
     s32 dirBits2 = arg5 & 0xF;
-    s32 arg7 = FieldScriptVMGetArgument(7);
-    s32 speed2 = ((s32)arg7 >> 4 << 8) | (arg7 & 0xF);
+    s32 arg5b = FieldScriptVMGetArgument(5);
+    s32 speed2 = ((s32)arg5b >> 4 << 8) + FieldScriptVMGetArgument(7);
     u8* pActor = (u8*)g_FieldScriptVMCurActor;
     u32 pSub;
 
@@ -1302,8 +1307,13 @@ extern void* D_800AFD08;
 extern s32 D_800AFD0C;
 extern s32 D_800AFD18;
 extern s32 D_80062518[];
+#ifdef XENO_PC_PORT
+extern void* D_80062524;
+extern void* D_800595AC;
+#else
 extern s32 D_80062524[];
 extern s32 D_800595AC;
+#endif
 extern s32 D_8004F370;
 extern void SoundLoadWdsFile(void* pData, s32 a1);
 extern void SoundFreeWdsEntry(s32 handle);
@@ -1324,7 +1334,11 @@ void func_8008AACC(void) {
         func_8003BDFC(0x10);
         HeapFree(D_800AFD08);
         if (D_800AFD18 == 3) {
+#ifdef XENO_PC_PORT
+            D_800595AC = D_80062524;
+#else
             D_800595AC = D_80062524[0];
+#endif
         }
         D_800B00C0 = 1;
         g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
@@ -1473,9 +1487,8 @@ extern u16 D_800B21E4[];
 extern void func_801E8330(s32 slot, s32 unused, s32 anim);
 
 /* Field-script opcode: when D_800ADB1C is set, drive an object's anim via the
- * overlay entry func_801E8330 (no-op'd in the port -- Phase-2B) and record the
- * anim into D_800B21E4[arg1]. Always IP += 5. Stubbed, it never advanced the IP
- * -> another MAP3 script desync feeding func_8009EB78 (same class as FE07). */
+ * field archive 0x6B9 entry func_801E8330 and record the anim into
+ * D_800B21E4[arg1]. Always IP += 5. */
 void func_8008B180(void) {
     if (D_800ADB1C != 0) {
         s32 arg1 = FieldScriptVMGetArgument(1);
@@ -1557,7 +1570,70 @@ void func_8008B518(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B5D4);
+/* Retail FE1B, 0x8008B5D4-0x8008B894. Offset every polygon coordinate in the
+ * current actor-model packet page and publish those changed coordinate bytes
+ * to the alternate double-buffer page. The model's command stream supplies
+ * the primitive count (header high halfword), shape (low-byte bit 3), and two
+ * 32-bit descriptor words per primitive. C4/C8 control records consume only
+ * their four-byte header and do not advance either packet cursor. */
+void func_8008B5D4(void) {
+    FieldActor* fieldActors = g_FieldActors;
+    u8* modelData =
+        (u8*)(uintptr_t)fieldActors[D_800AFD1C].pModelData;
+    s32 page = g_FieldCurRenderContextIndex;
+    u8* currentPackets =
+        (u8*)(uintptr_t)*(u32*)(modelData + 0x08 + page * 4);
+    u8* alternatePackets =
+        (u8*)(uintptr_t)*(u32*)(modelData + 0x08 + ((page + 1) & 1) * 4);
+    u8* modelHeader = (u8*)(uintptr_t)*(u32*)(modelData + 0x04);
+    u8* command = (u8*)(uintptr_t)*(u32*)(modelHeader + 0x10);
+    s16 xOffset = FieldScriptVMGetInstructionArgumentS16(1);
+    s16 yOffset = FieldScriptVMGetInstructionArgumentS16(3);
+    s32 commandCount = *(u16*)(modelHeader + 0x06);
+
+    while (commandCount > 0) {
+        u32 header = *(u32*)command;
+        u8 opcode = (u8)header;
+        u32 primitiveCount = header >> 16;
+        command += 4;
+
+        if (opcode != 0xC4 && opcode != 0xC8) {
+            s32 vertexCount = (header & 8) ? 4 : 3;
+            s32 packetStride = (header & 8) ? 0x28 : 0x20;
+#ifdef FIELD_VM_AUDIT_MUTANT_PRIM_TRIANGLE_STRIDE_28
+            if ((header & 8) == 0) {
+                packetStride = 0x28;
+            }
+#endif
+            while (primitiveCount != 0) {
+                s32 vertex;
+                for (vertex = 0; vertex < vertexCount; vertex++) {
+                    u8 xByte = (u8)(0x0C + vertex * 8);
+                    u8 yByte = (u8)(xByte + 1);
+                    currentPackets[xByte] =
+                        (u8)(currentPackets[xByte] + xOffset);
+                    currentPackets[yByte] =
+                        (u8)(currentPackets[yByte] + yOffset);
+                }
+#ifndef FIELD_VM_AUDIT_MUTANT_PRIM_SKIP_ALT_COPY
+                for (vertex = 0; vertex < vertexCount; vertex++) {
+                    u8 xByte = (u8)(0x0C + vertex * 8);
+                    u8 yByte = (u8)(xByte + 1);
+                    alternatePackets[xByte] = currentPackets[xByte];
+                    alternatePackets[yByte] = currentPackets[yByte];
+                }
+#endif
+                command += 8;
+                currentPackets += packetStride;
+                alternatePackets += packetStride;
+                primitiveCount--;
+            }
+        }
+        commandCount--;
+    }
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+}
 
 /* --- Party-join chain (the Citan-join machinery) ------------------------
  * add-member opcodes (func_8008BC80 arg-variant / func_8008BDD8 immediate)
@@ -1642,6 +1718,7 @@ void func_8008B978(s32 charId) {
         u16 off0 = FieldScriptGetBytecodeOffset(i, 0);
         u8* pc = (u8*)g_FieldScriptVMCurScriptData + off0;
         u16 off0b;
+        u16 off0c;
 
         if (pc[0] != 0x16 || pc[1] != charId) {
             continue;
@@ -1655,8 +1732,11 @@ void func_8008B978(s32 charId) {
             ->scriptInstructionPointer = off0;
         D_800AFD1C = i;
         off0b = FieldScriptGetBytecodeOffset(i, 0);
-        g_FieldScriptVMCurActor->scriptInstructionPointer = off0b;
         D_800AFFEC = 0;
+        /* Retail 8008BADC reads the offset a second time (result kept in $s1
+         * for the map-num gi path), after clearing D_800AFFEC. */
+        off0c = FieldScriptGetBytecodeOffset(i, 0);
+        g_FieldScriptVMCurActor->scriptInstructionPointer = off0b;
         FieldActorCopyPlacement(i, g_PlayerActorIndex);
         FieldScriptVMRun(0xFFFF);
         func_80077268();
@@ -1670,7 +1750,7 @@ void func_8008B978(s32 charId) {
                 (ActorData*)(uintptr_t)g_FieldActors[gi].pActorData;
             func_80080A74(gi);
             ((ActorData*)(uintptr_t)g_FieldActors[i].pActorData)
-                ->scriptInstructionPointer = off0b;
+                ->scriptInstructionPointer = off0c;
             D_800AFD1C = gi;
             g_FieldScriptVMCurActor->scriptInstructionPointer =
                 FieldScriptGetBytecodeOffset(gi, 0);
@@ -1808,34 +1888,42 @@ void func_8008BF38(s32 partyId) {
 extern void* D_800B06B8;
 extern void func_80080A74(s32 actorIndex);
 
+/* Retail 8008C180..8008C334 keeps the calling FieldActor and ActorData
+ * independently. The constructor can republish the target ActorData owner. */
 void func_8008C180(s32 partyId) {
     s32 slot = D_8005A444[partyId];
     if (slot != 0xFF) {
-        u8* pFieldActor = (u8*)g_FieldActors + slot * 92;
-        u32 pActorData = *(u32*)(pFieldActor + 0x4C);
-        u32 savedIP;
-        void* savedB06B8 = D_800B06B8;
-        s32 savedAFD1C = D_800AFD1C;
-        u16 savedCC = g_FieldScriptVMCurActor->scriptInstructionPointer;
+        FieldActor* fieldActor = &g_FieldActors[slot];
+        void* savedFieldActor = D_800B06B8;
+        ActorData* savedActor = g_FieldScriptVMCurActor;
+        s32 savedIndex = D_800AFD1C;
+        u16 savedIP = savedActor->scriptInstructionPointer;
+        ActorData* target;
+        u32 targetFlags;
 
+        D_800B06B8 = fieldActor;
+        g_FieldScriptVMCurActor = (ActorData*)(uintptr_t)fieldActor->pActorData;
+        func_80080A74(slot);
+
+        slot = D_8005A444[partyId];
+        fieldActor = &g_FieldActors[slot];
         D_800AFD1C = slot;
-        *(u16*)(pFieldActor + 0x58) = (*(u16*)(pFieldActor + 0x58) & 0xF07F) | 0x200;
-
+        fieldActor->status = (fieldActor->status & 0xF07F) | 0x200;
         func_80076AC0(slot, 0, g_PartyDataBuffers[0], 1, 0, 0, 1);
 
-        {
-            u32 flags0 = *(u32*)(g_FieldScriptVMCurActor);
-            u32 flags4 = *(u32*)((u8*)g_FieldScriptVMCurActor + 4);
-            *(u32*)(g_FieldScriptVMCurActor) = flags0 | 0x1;
-            *(u32*)((u8*)g_FieldScriptVMCurActor + 4) = (flags4 | 0x100000) | 0x400;
-            *(u32*)(g_FieldScriptVMCurActor) |= 0x20000;
-        }
-
+        target = g_FieldScriptVMCurActor;
+        target->scriptFlags.flags |= 1;
+        targetFlags = target->flags;
         D_800B00C0 = 0;
-        g_FieldScriptVMCurActor = (void*)savedB06B8;
-        D_800B06B8 = savedB06B8;
-        D_800AFD1C = savedAFD1C;
-        g_FieldScriptVMCurActor->scriptInstructionPointer = savedCC;
+        g_FieldScriptVMCurActor = savedActor;
+        D_800B06B8 = savedFieldActor;
+        D_800AFD1C = savedIndex;
+        /* Retail SH at 8008C2C4 addresses the target still held in a0. */
+        target->scriptInstructionPointer = savedIP;
+        target->flags = targetFlags | 0x100000;
+        target->scriptFlags.flags |= 0x20000;
+        target->flags |= 0x400;
+        D_8005A444[partyId] = 0xFF;
     }
     g_GamePartyMembers[partyId] = 0xFF;
     g_GamePartyMemberSkins[partyId] = 0xFF;
@@ -2374,26 +2462,23 @@ void func_8008D780(void) {
 }
 
 void func_8008D808(s32 arg0, s32 arg1, s32 arg2) {
-    u8* pScript = g_FieldScriptVMCurScriptData;
-    u16 ip = g_FieldScriptVMCurActor->scriptInstructionPointer;
-    u8* pIP = pScript + ip;
-    pIP[0x00] = 0x57;
-    pIP[0x01] = 0x81;
-    func_8008D2E0(arg0, ip + 2);
-    func_8008D2E0(arg1, ip + 4);
-    func_8008D2E0(arg2, ip + 6);
-    func_8008D2E0(0xC, ip + 8);
-    pScript = g_FieldScriptVMCurScriptData;
-    ip = g_FieldScriptVMCurActor->scriptInstructionPointer;
-    pIP = pScript + ip;
-    pIP[0x0A] = 0xFF;
-    pIP[0x0B] = 0x57;
-    pIP[0x0C] = 0x8F;
-    pIP[0x0D] = 0x26;
-    pIP[0x0E] = 0x01;
-    pIP[0x0F] = 0x80;
-    pIP[0x10] = 0x57;
-    pIP[0x11] = 0x0F;
+    /* Retail 8008D808 reloads g_FieldScriptVMCurActor->scriptInstructionPointer
+     * (0xCC) and g_FieldScriptVMCurScriptData for every byte store and every
+     * func_8008D2E0 call (127 instructions); caching them collapses the body. */
+    SCRIPT_READ_U8_REL(0x00) = 0x57;
+    SCRIPT_READ_U8_REL(0x01) = 0x81;
+    func_8008D2E0(arg0, g_FieldScriptVMCurActor->scriptInstructionPointer + 0x02);
+    func_8008D2E0(arg1, g_FieldScriptVMCurActor->scriptInstructionPointer + 0x04);
+    func_8008D2E0(arg2, g_FieldScriptVMCurActor->scriptInstructionPointer + 0x06);
+    func_8008D2E0(0xC, g_FieldScriptVMCurActor->scriptInstructionPointer + 0x08);
+    SCRIPT_READ_U8_REL(0x0A) = 0xFF;
+    SCRIPT_READ_U8_REL(0x0B) = 0x57;
+    SCRIPT_READ_U8_REL(0x0C) = 0x8F;
+    SCRIPT_READ_U8_REL(0x0D) = 0x26;
+    SCRIPT_READ_U8_REL(0x0E) = 0x01;
+    SCRIPT_READ_U8_REL(0x0F) = 0x80;
+    SCRIPT_READ_U8_REL(0x10) = 0x57;
+    SCRIPT_READ_U8_REL(0x11) = 0x0F;
 }
 
 void func_8008DA04(s32 arg0, s32 arg1) {
@@ -2560,13 +2645,10 @@ void FieldScriptVMConditionalJump5(unsigned short flag) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorDistance);
-/*
-Matches as long as g_FieldActors is NOT volatile.
-
 void FieldScriptWriteActorDistance(void) {
     ActorData* pActorA;
     ActorData* pActorB;
+    FieldActor* actors;
     int actorIndexA;
     int actorIndexB;
     int distance;
@@ -2575,20 +2657,24 @@ void FieldScriptWriteActorDistance(void) {
     actorIndexA = FieldScriptVMGetActorIndex(3);
     actorIndexB = FieldScriptVMGetActorIndex(4);
     if ((actorIndexA != ACTOR_ID_INVALID) && (actorIndexB != ACTOR_ID_INVALID)) {
-        pActorA = (ActorData*)(uintptr_t)g_FieldActors[actorIndexA].pActorData;
-        pActorB = (ActorData*)(uintptr_t)g_FieldActors[actorIndexB].pActorData;
+        /* Snapshot the volatile publication once, as the retail load does. */
+        actors = g_FieldActors;
+        pActorA = (ActorData*)(uintptr_t)actors[actorIndexA].pActorData;
+        pActorB = (ActorData*)(uintptr_t)actors[actorIndexB].pActorData;
         distance = FieldGetVec2Magnitude(
-            CONV_TO_GTE(pActorA->position.vx) - CONV_TO_GTE(pActorB->position.vx), 
+            CONV_TO_GTE(pActorA->position.vx) - CONV_TO_GTE(pActorB->position.vx),
             CONV_TO_GTE(pActorA->position.vz) - CONV_TO_GTE(pActorB->position.vz)
         );
     }
+#ifdef FIELD_VM_AUDIT_MUTANT_DISTANCE_ZERO
+    distance = 0;
+#endif
     FieldScriptMemoryWriteU16(
-        SCRIPT_IMM_ARG(1), 
+        SCRIPT_IMM_ARG(1),
         distance
     );
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-*/
 
 void func_8008E298(void) {
     FieldScriptVMConditionalJump6(((u16*)g_FieldActors[FieldScriptVMGetActorIndex(3)].pActorData)[0]);
@@ -2777,7 +2863,17 @@ void func_8008E8C8(void) {
 
 extern s32 D_800ADB7C;
 
+/* FE61: wait for the FE60 transition body (func_800A7C58) to publish
+ * D_800ADB7C, then consume the flag and advance.  Title map 490 sits here
+ * while the attract STR plays. */
 void func_8008E9F8(void) {
+#ifdef TITLE_CHAIN_MUTANT_FE61_NEVER_RELEASES
+    /* Deliberate mutant (pc_port/tests/run_title_newgame_chain.sh): the wait
+     * never consumes the flag, so the title script spins forever. */
+    g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
+    D_800B00C0 = 1;
+    return;
+#endif
     if (D_800ADB7C == 0) {
         g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
     } else {
@@ -2833,7 +2929,13 @@ void func_8008EC30(void) {
     arg7 = FieldScriptVMGetArgument(7);
     type = arg7 & 0xF;
     D_800C3A30 = (s16)arg7;
+#ifdef TITLE_CHAIN_MUTANT_FE60_DROPS_CIRCLE_GATE
+    /* Deliberate mutant (pc_port/tests/run_title_newgame_chain.sh): drop bit
+     * 0x80, the flag func_800A7C58 needs before it polls Circle. */
+    D_800ADB80 = arg7 & 0x40;
+#else
     D_800ADB80 = arg7 & 0xC0;
+#endif
     D_800C3A32 = 0x140;
     D_800C3A34 = 0x100;
     D_800C3A30 = (s16)type;

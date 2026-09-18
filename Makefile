@@ -74,6 +74,10 @@ build:
 		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
 	grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
 		echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
+	grep -q '^D_800578D6 = ' linker/undefined_syms_auto.slus_006.64.txt || \
+		printf 'D_800578D6 = 0x800578D6;\nD_800578D8 = 0x800578D8;\n' >> linker/undefined_syms_auto.slus_006.64.txt; \
+	grep -q '^D_80090F38 = ' linker/undefined_syms_auto.battling.txt || \
+		printf 'D_80090F38 = 0x80090F38;\nD_800925A4 = 0x800925A4;\n' >> linker/undefined_syms_auto.battling.txt; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC)
 endif

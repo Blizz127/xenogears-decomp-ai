@@ -1,0 +1,33 @@
+{
+  "source_and_test_sha256": {
+    "src/member_change_menu/main/misc.c": "15a4091854071fcb92c75236165cf836d4ce0a2dea0d47c822d7a0dd616a02cb",
+    "pc_port/tests/member_change_swap_retail_test.c": "e683293f7eed9a3d90b939bc91e44589cf062ee316c6e8adfe59dbfe575ad2d3",
+    "pc_port/tests/run_member_change_swap_retail_test.sh": "1ea04b60a61d87e45387282965f10fb48f9bd43897983147008e70f2337d6c47",
+    "pc_port/tests/member_change_labels_retail_test.c": "d420e4fc9be16cd2c2621adb798a548d8e496e604ca569dace416b25580ad117",
+    "pc_port/tests/run_member_change_labels_retail_test.sh": "cd27eb17a4591d9cb1866122824c9c05eb49ff30f735c31d31f2a535793f152d",
+    "pc_port/tests/member_change_name_retail_test.c": "71e1464642fe94cb587c2f1147d7a0983cb2b1ebd564a4f26580f91c16e238fa",
+    "pc_port/tests/run_member_change_name_retail_test.sh": "8a9e096f5e2a648c72927ac482910f581753ee2c0afd6ea46f4748cb479e296c"
+  },
+  "root_runs": {
+    "swap": "/tmp/xeno-member-change-swap-retail-test-20260906/run.gEf8GJWa",
+    "labels": "/tmp/xeno-member-labels-test.OdMRMi4A",
+    "name": "/tmp/xeno-member-change-name-retail-test-20260906/run.0mINLSTv"
+  },
+  "results": {
+    "swap": "PASS O0/O2/ClangUBSan 1389 swap + 80 helper cases; 7 controls rejected",
+    "labels": "PASS O0/O2/mixed GCC Clang-runtime UBSan 240 cases/18803 checks; 5 controls rejected",
+    "name": "PASS O0/O2/ClangUBSan 44 cases/727 checks; 4 semantic controls and reconstructed signed-shift UBSan control rejected"
+  },
+  "limitations": [
+    "helper/GPU boundaries mocked; no natural menu visit or pixel parity claim",
+    "global checksum gates SLUS, field, shop menu still fail"
+  ],
+  "retained_evidence_sha256": {
+    "swap-test-manifest.json": "0b2460c91deed7214b649ab33a85357081669eac81c6eb046a28851bd9c38f2a",
+    "labels-test-provenance.json": "702174b8205b32dceaf8a953c43b02ec7fc8a48dfbe3824343f59c494db86805",
+    "labels-controls.json": "f923429ea09fbd6c98ff48132357797567e82bd5b34b28b37ef545073ebfafd7",
+    "name-test-manifest.json": "d46e44ebb6d33f20082c56d6e57ac9e95e81b22e24c261eb78c507ad1a17862a",
+    "final-build-pins.json": "81bb087eadd817231b7bb7641ac64dffbe5ae4b209a00b3d735a5ee82af774dc",
+    "full-module-matching.md": "8e7572f9440bf143b65ecab1bd85f143653d5e38a978bcf0f44216c92e195751"
+  }
+}

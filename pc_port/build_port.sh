@@ -9,7 +9,7 @@
 # missing function on the live execution path (the oracle).
 #
 # Run inside a Linux toolchain env (distrobox/container) with:
-#   gcc g++ cmake make pkg-config binutils python3 libsdl2-dev libopenal-dev libgl1-mesa-dev
+#   gcc g++ cmake make pkg-config binutils python3 libsdl2-dev libopenal-dev libgl1-mesa-dev libssl-dev
 #
 set -uo pipefail
 
@@ -80,7 +80,11 @@ pkg-config --exists sdl2 2>/dev/null || {
     exit 1
 }
 
-INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
+pkg-config --atleast-version=3.0 libcrypto 2>/dev/null || {
+    echo "ERROR: OpenSSL 3 development files required for verified KROM loading (Ubuntu: libssl-dev)."
+    exit 1
+}
+INC="-Ipc_port/include_shim -Iinclude -I$OUT -I$PSX/include -I$PSX/include/psx $(pkg-config --cflags libcrypto)"
 # -std=gnu17: the game predates C23; gcc >= 15 defaults to C23 and rejects it.
 # -fpermissive: gcc >= 14 promotes old-C constructs (implicit decls, int/pointer
 #   conversions) to hard errors that -w can't silence; -fpermissive demotes them.
@@ -89,11 +93,10 @@ INC="-Ipc_port/include_shim -Iinclude -I$PSX/include -I$PSX/include/psx"
 #   perspective/offscreen path that doesn't render here, and its 24-byte SPRT
 #   layout mismatches the game's hardcoded 0x10 strides (font.c). MUST match the
 #   value PsyCross's lib is built with (see pc_port/CMakeLists.txt).
-# XENO_FIELD_OBJECT_OVERLAY (Phase 3): activate func_800A1364's object-register
-# body (sprite-load + script IP-advance/un-spin + object registration).  The
-# object DRAW entries (func_801E742C/738C/7D14/8330) remain safe no-op stubs
-# (Phase-2B proved they are incoherent mid-menu-function targets); this arms the
-# un-spin so stuck field scripts (MAP3/MAP16) advance and field models build.
+# XENO_FIELD_OBJECT_OVERLAY: activate func_800A1364's retail object-register
+# body. The native owner for the field-local 0x6B9 overlay is compiled from
+# pc_port/src/field_object_overlay.c; 0x801E742C/738C/7D14/8030/8330 are real
+# entry points in that retail archive, not member-change-menu mid-functions.
 GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
 # Optional compile-time diagnostics, for example:
 # XENO_DIAG_DEFINES=-DXENO_DIAG_OPCODE_SWEEP ./scratchpad/run_build_port.sh
@@ -121,10 +124,179 @@ INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
     "*/psyq/*"
 )
 INTENTIONALLY_EXCLUDED_GAME_TUS=(
+    "src/battling/main.c"
     "src/slus_006.64/system/archive.c"
 )
 REFERENCE_ONLY_GAME_TUS=(
     "src/slus_006.64/system/work_list.c"
+    "src/battle/main.c"
+    "src/battle/main2.c"
+    "src/battle/main3.c"
+    "src/battle/main4.c"
+    "src/battle/main5.c"
+    "src/battle/main6.c"
+    "src/battle/main7.c"
+    "src/battle/main8.c"
+    "src/battle/main9.c"
+    "src/battle/main10.c"
+    "src/battle/main11.c"
+    "src/battle/main12.c"
+    "src/battle/main13.c"
+    "src/battle/main14.c"
+    "src/battle/mainc15.c"
+    "src/battle/main16.c"
+    "src/battle/main17.c"
+    "src/battle/mainc18_q1.c"
+    "src/battle/mainc18_q2.c"
+    "src/battle/main19.c"
+    "src/battle/main20.c"
+    "src/battle/main21.c"
+    "src/battle/main22.c"
+    "src/battle/main23.c"
+    "src/battle/main24.c"
+    "src/battle/mainc25.c"
+    "src/battle/main26.c"
+    "src/battle/main27.c"
+    "src/battle/main28.c"
+    "src/battle/mainc29.c"
+    "src/battle/main30.c"
+    "src/battle/main31.c"
+    "src/battle/main32.c"
+    "src/battle/main33.c"
+    "src/battle/main34.c"
+    "src/battle/main35.c"
+    "src/battle/main35_p1.c"
+    "src/battle/main35_p2.c"
+    "src/battle/main35_p4.c"
+    "src/battle/main36.c"
+    "src/battle/main36_p2.c"
+    "src/battle/main37.c"
+    "src/battle/main38.c"
+    "src/battle/main38_p2.c"
+    "src/battle/main39.c"
+    "src/battle/main40.c"
+    "src/battle/main40_p2.c"
+    "src/battle/main41.c"
+    "src/battle/main42.c"
+    "src/battle/main43.c"
+    "src/battle/main44.c"
+    "src/battle/main45.c"
+    "src/battle/main46.c"
+    "src/battle/main47.c"
+    "src/battle/main48.c"
+    "src/battle/main49.c"
+    "src/battle/main50.c"
+    "src/battle/main51.c"
+    "src/battle/main52.c"
+    "src/battle/main53.c"
+    "src/battle/main54.c"
+    "src/battle/main55.c"
+    "src/battle/main56.c"
+    "src/battle/main57.c"
+    "src/battle/main58.c"
+    "src/battle/main59.c"
+    "src/battle/main60.c"
+    "src/battle/main61.c"
+    "src/battle/main62.c"
+    "src/battle/main63.c"
+    "src/battle/main64.c"
+    "src/battle/main65.c"
+    "src/battle/main66.c"
+    "src/battle/main67.c"
+    "src/battle/main68.c"
+    "src/battle/main69.c"
+    "src/battle/main70.c"
+    "src/battle/main71.c"
+    "src/battle/main72.c"
+    "src/battle/main72_p1.c"
+    "src/battle/main72_p2.c"
+    "src/battle/main72_p3.c"
+    "src/battle/main73.c"
+    "src/battle/main73_p1.c"
+    "src/battle/main73_p2.c"
+    "src/battle/main74.c"
+    "src/battle/main75.c"
+    "src/battle/mainc76.c"
+    "src/battle/main77.c"
+    "src/battle/mainc78.c"
+    "src/battle/mainc79.c"
+    "src/battle/mainc80.c"
+    "src/battle/mainl81.c"
+    "src/battle/mainc82.c"
+    "src/battle/mainc83.c"
+    "src/battle/mainc84.c"
+    "src/battle/mainc85.c"
+    "src/battle/mainc86.c"
+    "src/battle/main87.c"
+    "src/battle/mainc88.c"
+    "src/battle/mainc89.c"
+    "src/battle/main90.c"
+    "src/battle/main91.c"
+    "src/battle/mainl92.c"
+    "src/battle/main93.c"
+    "src/battle/mainl94.c"
+    "src/battle/mainc95.c"
+    "src/battle/main96.c"
+    "src/battle/mainc97.c"
+    "src/battle/mainl98.c"
+    "src/battle/mainc99.c"
+    "src/battle/mainc100.c"
+    "src/battle/main101.c"
+    "src/battle/mainc102.c"
+    "src/battle/main103.c"
+    "src/battle/mainc104.c"
+    "src/battle/main105.c"
+    "src/battle/main106.c"
+    "src/battle/mainc107.c"
+    "src/battle/mainc108.c"
+    "src/battle/mainl109.c"
+    "src/battle/mainl110.c"
+    "src/battle/main111.c"
+    "src/battle/mainc112.c"
+    "src/battle/mainc113.c"
+    "src/battle/mainc114.c"
+    "src/battle/mainc114_p1.c"
+    "src/battle/mainc114_p2.c"
+    "src/battle/mainc115.c"
+    "src/battle/mainl115.c"
+    "src/battle/mainc116.c"
+    "src/battle/mainc117.c"
+    "src/battle/mainc118.c"
+    "src/battle/main119.c"
+    "src/battle/mainc120.c"
+    "src/battle/main121.c"
+    "src/battle/mainc122.c"
+    "src/battle/mainc123.c"
+    "src/battle/mainc124.c"
+    "src/battle/main125.c"
+    "src/battle/mainc126.c"
+    "src/battle/mainc127.c"
+    "src/battle/main128.c"
+    "src/battle/mainc129.c"
+    "src/battle/mainc130.c"
+    "src/battle/mainc131.c"
+    "src/battle/mainc132.c"
+    "src/battle/mainl133.c"
+    "src/battle/mainc134.c"
+    "src/battle/main135.c"
+    "src/battle/main125_q1.c"
+    "src/battle/main125_q2.c"
+    "src/battle/main17_q1.c"
+    "src/battle/main17_q2.c"
+    "src/battle/main19_q1.c"
+    "src/battle/main19_q2.c"
+    "src/battle/main22_q1.c"
+    "src/battle/main22_q2.c"
+    "src/battle/main34_q1.c"
+    "src/battle/main34_q2.c"
+    "src/battle/main35_p3_q1.c"
+    "src/battle/main35_p3_q2.c"
+    "src/battle/main37_q1.c"
+    "src/battle/main37_q2.c"
+    "src/battle/mainc25_q1.c"
+    "src/battle/mainc25_q2.c"
+    "src/battle/mainc29_q1.c"
+    "src/battle/mainc29_q2.c"
 )
 KNOWN_BROKEN_GAME_TUS=(
 )
@@ -168,6 +340,10 @@ is_reference_only_game_tu() {
 
 reference_only_game_tu_reason() {
     case "$1" in
+        src/battle/main.c)
+            echo "retail MIPS overlay scaffold; runtime executes disc/battle.bin through pc_port/src/battle_mips_runtime.c" ;;
+        src/battle/main*.c)
+            echo "retail MIPS overlay scaffold (asm stubs for the un-decompiled battle runs); runtime executes disc/battle.bin" ;;
         src/slus_006.64/system/work_list.c)
             echo "runtime replaced by pc_port/src/work_list_port.c (packed 0x1C entry layout)" ;;
     esac
@@ -177,6 +353,8 @@ excluded_game_tu_reason() {
     case "$1" in
         "*/psyq/*")
             echo "PsyQ originals are replaced at runtime by PsyCross" ;;
+        src/battling/main.c)
+            echo "retail state-4 MIPS overlay scaffold; not a native host translation unit" ;;
         src/slus_006.64/system/archive.c)
             echo "replaced by pc_port/src/archive_port.c" ;;
     esac
@@ -215,631 +393,6 @@ print_known_broken_game_tus() {
     echo "    WARNING: these are temporary exceptions; any other game-TU compile failure aborts."
 }
 
-# PsyCross bugfix (idempotent; the vendored tree is gitignored so this patch lives
-# here in the tracked build, not as an untracked source edit). The sprite/tile
-# primitive switch masks the code with 0xFD, which clears the semi-transparency bit
-# but NOT bit 0. Every case (0x60..0x7C) has bit 0 == 0, so any "shaded" sprite with
-# bit 0 set (0x65/0x75/0x7D) -- which the game's font uses (primitiveCode 0x75/0x7D
-# in font.c) -- falls through unrendered. 0xFC clears both flag bits so they map to
-# their base case; shading/semi-trans are read from the unmasked code, so this is
-# strictly additive (bit-0-clear codes are unaffected).
-sed -i 's/switch (polyTag->code & 0xFD)/switch (polyTag->code \& 0xFC)/' \
-    "$PSX/src/gpu/PsyX_GPU.cpp"
-
-# PsyCross bugfix (idempotent). DrawSplit() routes a split off-screen (to the
-# render-to-VRAM offscreen RT, which never reaches the presented framebuffer)
-# whenever the PSX "draw to display area" flag dfe (GP0(E1) bit 10) is 0. But
-# dfe=0 is just normal back-buffer drawing on PSX: Xenogears' font issues a
-# DR_TPAGE with dfe=0 (font.c SetDrawTPage(...,0,0,...)), so every KernelMenu/UI
-# glyph after it was drawn off-screen and never seen (the cursor/background use
-# dfe=1 and rendered). This title doesn't use the render-to-VRAM path at this
-# stage, so always draw on-screen.
-sed -i 's/const bool drawOnScreen = split.drawenv.dfe;/const bool drawOnScreen = true; \/* XENO_PC_PORT: dfe=0 is normal back-buffer draw; see build_port.sh *\//' \
-    "$PSX/src/gpu/PsyX_GPU.cpp"
-
-# PsyCross bugfix (idempotent). DR_MODE/DR_ENV packets may carry a zero command
-# terminator inside the declared packet length. ProcessDrawEnv used to return
-# only the number of non-zero GP0(E*) commands processed before the terminator;
-# ParsePrimitivesLinkedList then advanced into the terminator word and treated it
-# as a fake zero-length primitive. The packet has still been consumed on PSX, so
-# advance by the tag's declared length.
-sed -i 's/return processedLongs;$/return polyTag->len; \/* XENO_PC_PORT: consume full DR_MODE packet including zero terminator; see build_port.sh *\//' \
-    "$PSX/src/gpu/PsyX_GPU.cpp"
-
-# PsyCross bugfix (idempotent). In this native port the non-extended primitive
-# tag stores a host pointer-sized addr plus len/code bytes, so DR_MODE has two
-# payload words after the tag. The stock PSX setDrawMode macro still writes
-# len=3; ParsePrimitivesLinkedList then advances one word past each DR_MODE and
-# logs "diff=-12" when the field zoom fade queues draw-mode packets.
-sed -i '/#define setDrawMode/,/((p)->code\\[1\\] = _get_tw/s/setlen(p, 3)/setlen(p, 2)/' \
-    "$PSX/include/psx/libgpu.h"
-
-# PsyCross bugfix (idempotent). The full-size TILE primitive has three payload
-# words after the tag (color/code, xy, wh). The stock PsyCross header used len=2
-# while its parser consumes three payload words, so field fade TILE packets
-# (code 0x62 with semi-transparency) leave ParsePrimitivesLinkedList one word
-# past the packet and produce diff=-4 / zero-length primitive traversal noise.
-sed -i 's/#define setTile(p)[[:space:]]*setlen(p, 2),[[:space:]]*setcode(p, 0x60)/#define setTile(p)\tsetlen(p, 3),  setcode(p, 0x60)/' \
-    "$PSX/include/psx/libgpu.h"
-
-# PsyCross bugfix (idempotent, grep-guarded so it inserts the pad field exactly
-# once). ClearOTag/ClearOTagR build the OT linked list by casting the caller's
-# array to OT_TAG* and striding by sizeof(OT_TAG). On PSX u_long is 4 bytes and
-# OT_TAG (addr:24,len:8) is also 4, so they coincide. In the port u_long is 8
-# bytes, so the game declares its OTs as 8-byte-strided u_long[] arrays (e.g.
-# RenderContext.ot3[8], field ot1/ot2[0x1000], menu ot[0x10]) and indexes/draws
-# them at 8-byte stride -- but ClearOTagR still wrote a 4-byte-strided list,
-# leaving the upper half of every slot zeroed. DrawOTag(ot3+7) then read slot 7
-# at byte 56 (zero) -> addr=0 (not the 0xffffff terminator) -> walked to null ->
-# SIGSEGV in ParsePrimitivesLinkedList. Pad OT_TAG to the host u_long size so
-# ClearOTag(R)'s stride matches the game's u_long[] OTs. (Port is always built
-# non-extended; OT_TAG is only used by ClearOTag(R) + the unused prim_terminator.)
-grep -q "_xeno_ot_pad" "$PSX/include/psx/libgpu.h" || \
-sed -i 's|^} OT_TAG;|\tu_int _xeno_ot_pad; /* XENO_PC_PORT: pad OT slot to host u_long (8B) so ClearOTag(R) stride matches the game'"'"'s u_long[] OTs; see build_port.sh */\n} OT_TAG;|' \
-    "$PSX/include/psx/libgpu.h"
-
-# PsyCross bugfix (idempotent, grep-guarded). GR_CopyVRAM (the LoadImage backend)
-# wrote to vram[dst_x + dst_y*VRAM_WIDTH] with no coordinate masking. The PSX GPU
-# masks VRAM-transfer coords to the framebuffer dimensions (X to 10 bits, Y to 9).
-# Field NPC sprite skins upload with texX = (texPageOffset<<4)+0x100 as high as
-# 2368, which the hardware wraps to 2368 & 0x3FF = 320 on the SAME row -- exactly
-# where the NPC prims' clut/tpage fields sample. Unmasked, the copy ran off the
-# row into the wrong VRAM line, so the NPC palette/texel pages stayed empty and
-# every NPC rendered fully transparent (invisible). Mask dst_x/dst_y to VRAM
-# bounds. Legitimate uploads all use x<1024/y<512, so they are unchanged; only
-# the >=1024 sprite-skin uploads move from a wrong line to the correct wrapped
-# one. (A copy that itself straddles x=1024 is not row-wrapped; no field upload
-# does that.)
-grep -q "_xeno_vram_wrap" "$PSX/src/render/PsyX_render.cpp" || \
-sed -i 's|\(\tunsigned short\* dst = vram + dst_x + dst_y \* VRAM_WIDTH;\)|\tdst_x \&= (VRAM_WIDTH - 1); dst_y \&= (VRAM_HEIGHT - 1); /* _xeno_vram_wrap: PSX coord mask; see build_port.sh */\n\1|' \
-    "$PSX/src/render/PsyX_render.cpp"
-
-# PsyCross bugfix (idempotent, grep-guarded), two coordinated edits. PsyX defers
-# the GL backbuffer -> vram[] readback and, in stock form, materializes it on
-# EVERY DrawSync. In the field the game presents from a debug-menu second
-# display buffer whose rows (y>=240) also hold the dialog UI palette/tiles it
-# uploads by LoadImage after the frame was latched; the blanket materialize
-# splatted the stale frame snapshot over those newer uploads, erasing the UI
-# CLUTs (flat 0x8004) so dialog boxes drew nothing. Fix: (A) drop the eager
-# DrawSync materialize; (B) do it lazily in GR_CopyVRAM's VRAM-READ path
-# (MoveImage source) and ONLY when the read rect overlaps the snapshot rect, so
-# non-overlapping reads (e.g. the screen-capture MoveImage at x=704) leave the
-# freshly uploaded rows intact. Matches PSX order (frame pixels are written at
-# draw time, before any later LoadImage).
-grep -q "_xeno_read_materialize" "$PSX/src/psx/LIBGPU.C" || \
-perl -0777 -i -pe 's/\tGR_ReadFramebufferDataToVRAM\(\);\n\n\tif \(g_splitIndex/\t\/* _xeno_read_materialize: moved to GR_CopyVRAM read path; the eager\n\t * DrawSync materialize splatted stale frame snapshots over newer\n\t * LoadImage uploads. See build_port.sh. *\/\n\n\tif (g_splitIndex/' \
-    "$PSX/src/psx/LIBGPU.C"
-grep -q "_xeno_read_materialize" "$PSX/src/render/PsyX_render.cpp" || \
-perl -0777 -i -pe 's/\tif \(!src\)\n\t\{\n\t\tframebuffer_need_update = 1;/\tif (!src)\n\t{\n\t\t\/* _xeno_read_materialize: reconcile the pending rendered-frame\n\t\t * snapshot into vram[] only when this VRAM read overlaps the\n\t\t * snapshot rect, so the read sees frame pixels without erasing\n\t\t * non-overlapping rows the game re-used for uploads. See build_port.sh. *\/\n\t\tif (framebuffer_need_update \&\&\n\t\t    x < g_PreviousFramebuffer.x + g_PreviousFramebuffer.w \&\&\n\t\t    x + w > g_PreviousFramebuffer.x \&\&\n\t\t    y < g_PreviousFramebuffer.y + g_PreviousFramebuffer.h \&\&\n\t\t    y + h > g_PreviousFramebuffer.y)\n\t\t{\n\t\t\tGR_ReadFramebufferDataToVRAM();\n\t\t}\n\n\t\tframebuffer_need_update = 1;/' \
-    "$PSX/src/render/PsyX_render.cpp"
-
-# PsyCross bugfix (idempotent, grep-guarded): GR_CopyRGBAFramebufferToVRAM read
-# the GL backbuffer (RGBA8, R in the low byte) but extracted R into the RGB555
-# B-field and B into the R-field, swapping red<->blue on every framebuffer->vram
-# readback. VRAM readbacks (and any effect that re-uses the materialized frame,
-# e.g. field water/reflection) therefore came out R/B swapped: the dialog text's
-# blue outline (0xc086) materialized as red (0x1890), which is why VRAM-capture
-# diagnostics kept reporting a "red overlay" even though the live GL display was
-# already correct white/blue. The direct display path (GR_SwapWindow) is
-# unaffected; this only corrects the readback so vram[] matches the screen.
-grep -q "_xeno_fb_rgb" "$PSX/src/render/PsyX_render.cpp" || \
-perl -0777 -i -pe 's/\t\t\tu_char b = \(\(c >> 3\) & 0x1F\);\n\t\t\tu_char g = \(\(c >> 11\) & 0x1F\);\n\t\t\tu_char r = \(\(c >> 19\) & 0x1F\);/\t\t\tu_char r = ((c >> 3) \& 0x1F); \/* _xeno_fb_rgb: RGBA source, R is the low byte; stock code swapped R<->B on readback. See build_port.sh. *\/\n\t\t\tu_char g = ((c >> 11) \& 0x1F);\n\t\t\tu_char b = ((c >> 19) \& 0x1F);/' \
-    "$PSX/src/render/PsyX_render.cpp"
-
-# PsyCross bugfix (idempotent): a PSX DR_MOVE executes in ordering-table order.
-# PsyCross batches FT3/FT4s until the end of DrawOTag, but executes MoveImage
-# immediately while parsing. Framebuffer-feedback effects (Map014's painting
-# distortion is the first live case) therefore copied stale CPU VRAM instead of
-# the polygons preceding the copy. At a DR_MOVE boundary, flush the completed
-# batch, synchronously materialize the current draw buffer into both GPU/CPU
-# VRAM, then perform the copy. The following textured split uploads the changed
-# VRAM before it captures its texture ID, preserving GPU command order without
-# forcing a readback for every one of the effect's adjacent strip copies.
-# PsyCross is gitignored, so
-# keep this durable source patch in the tracked build driver.
-python3 - "$PSX" <<'DRMOVE_PY'
-import sys
-
-psx = sys.argv[1]
-gpu = psx + "/src/gpu/PsyX_GPU.cpp"
-ren = psx + "/src/render/PsyX_render.cpp"
-hdr = psx + "/include/PsyX/PsyX_render.h"
-
-def edit(path, marker, pairs):
-    with open(path) as f:
-        s = f.read()
-    if marker in s:
-        return
-    for old, new, count in pairs:
-        found = s.count(old)
-        if found != count:
-            sys.exit("ERROR: DR_MOVE patch anchor mismatch in %s for %s "
-                     "(found %d, expected %d): %r" %
-                     (path, marker, found, count, old[:80]))
-        s = s.replace(old, new)
-    with open(path, "w") as f:
-        f.write(s)
-
-edit(hdr, "_xeno_drmove_snapshot_decl", [(
-"extern void\t\t\tGR_StoreFrameBuffer(int x, int y, int w, int h);\n",
-"extern void\t\t\tGR_StoreFrameBuffer(int x, int y, int w, int h);\n"
-"extern void\t\t\tGR_StoreFrameBufferImmediate(int x, int y, int w, int h); /* _xeno_drmove_snapshot_decl */\n",
-1)])
-
-edit(ren, "_xeno_fb_staging_local", [(
-"\t\tglBlitFramebuffer(0, 0, g_windowWidth, g_windowHeight, x, y + h, x + w, y, GL_COLOR_BUFFER_BIT, GL_NEAREST);\n",
-"\t\t/* _xeno_fb_staging_local: g_fbTexture is a w-by-h staging texture,\n"
-"\t\t * not a full VRAM surface. x/y select the final VRAM destination\n"
-"\t\t * below; copying to those nonzero coordinates here clips context 1\n"
-"\t\t * (y=256) completely out of the staging FBO. */\n"
-"\t\tglBlitFramebuffer(0, 0, g_windowWidth, g_windowHeight, 0, h, w, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);\n",
-1)])
-
-edit(ren, "_xeno_drmove_snapshot", [(
-"void GR_CopyVRAM(unsigned short* src, int x, int y, int w, int h, int dst_x, int dst_y)\n",
-"/* _xeno_drmove_snapshot: unlike the normal present path, DR_MOVE must see\n"
-" * polygons submitted earlier in this same ordering table. GR_StoreFrameBuffer\n"
-" * keeps the GPU VRAM texture current; this synchronous read completes the CPU\n"
-" * vram[] mirror that MoveImage reads. The ordinary PBO path intentionally\n"
-" * remains deferred for frame presentation. See build_port.sh. */\n"
-"void GR_StoreFrameBufferImmediate(int x, int y, int w, int h)\n"
-"{\n"
-"\tGR_StoreFrameBuffer(x, y, w, h);\n"
-"\n"
-"#if USE_OPENGL\n"
-"\tif (w <= 0 || h <= 0)\n"
-"\t\treturn;\n"
-"\n"
-"\tu_int* pixels = (u_int*)malloc((size_t)w * h * sizeof(u_int));\n"
-"\tif (!pixels)\n"
-"\t\treturn;\n"
-"\n"
-"\tglActiveTexture(GL_TEXTURE0);\n"
-"\tglBindTexture(GL_TEXTURE_2D, g_fbTexture);\n"
-"\tglGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);\n"
-"\tglBindTexture(GL_TEXTURE_2D, g_lastBoundTexture >= 0 ? g_lastBoundTexture : 0);\n"
-"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n"
-"\tfree(pixels);\n"
-"#endif\n"
-"}\n"
-"\n"
-"void GR_CopyVRAM(unsigned short* src, int x, int y, int w, int h, int dst_x, int dst_y)\n",
-1)])
-
-edit(gpu, "_xeno_drmove_snapshot_dirty", [(
-"int g_splitIndex = 0;\n",
-"int g_splitIndex = 0;\n"
-"/* _xeno_drmove_snapshot_dirty: a completed draw batch changes the GL\n"
-" * framebuffer, so the next VRAM-read DR_MOVE must materialize it once. */\n"
-"static int g_xeno_vram_snapshot_dirty = 1;\n",
-1)])
-
-edit(gpu, "_xeno_drmove_upload", [(
-"\t// next code ideally should be called before EndScene\n"
-"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
-"\t// next code ideally should be called before EndScene\n"
-"\t/* _xeno_drmove_upload: MoveImage changes the CPU VRAM mirror while an\n"
-"\t * OT is being parsed. Upload it at the next actual draw boundary, rather\n"
-"\t * than once per adjacent DR_MOVE packet. See build_port.sh. */\n"
-"\tGR_UpdateVRAM();\n"
-"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
-1), (
-"\tfor (int i = 1; i <= g_splitIndex; i++)\n"
-"\t\tDrawSplit(g_splits[i]);\n"
-"\n"
-"\tClearSplits();\n",
-"\tfor (int i = 1; i <= g_splitIndex; i++)\n"
-"\t\tDrawSplit(g_splits[i]);\n"
-"\n"
-"\tif (g_vertexIndex != 0)\n"
-"\t\tg_xeno_vram_snapshot_dirty = 1;\n"
-"\n"
-"\tClearSplits();\n",
-1)])
-
-# The first version synchronized CPU VRAM in DrawAllSplits. That happened after
-# AddSplit had captured a double-buffered texture ID, so feedback FT4s bound
-# stale VRAM. Migrate that version, then synchronize before textured splits
-# capture g_vramTexture. The v2 marker intentionally contains the v1 marker.
-edit(gpu, "_xeno_drmove_upload_v2", [(
-"\t// next code ideally should be called before EndScene\n"
-"\t/* _xeno_drmove_upload: MoveImage changes the CPU VRAM mirror while an\n"
-"\t * OT is being parsed. Upload it at the next actual draw boundary, rather\n"
-"\t * than once per adjacent DR_MOVE packet. See build_port.sh. */\n"
-"\tGR_UpdateVRAM();\n"
-"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
-"\t// next code ideally should be called before EndScene\n"
-"\t/* _xeno_drmove_upload_v2: textured splits synchronize VRAM before they\n"
-"\t * capture g_vramTexture in AddSplit; doing it here would rotate the\n"
-"\t * double-buffer after that ID was already recorded. */\n"
-"\tGR_UpdateVertexBuffer(g_vertexBuffer, g_vertexIndex);\n",
-1)])
-
-edit(gpu, "_xeno_drmove_split_upload", [(
-"\tTextureID textureId = textured ? g_vramTexture : g_whiteTexture;\n",
-"\t/* _xeno_drmove_split_upload: MoveImage changes CPU VRAM during OT\n"
-"\t * traversal. Synchronize before this split snapshots g_vramTexture;\n"
-"\t * otherwise the double-buffer flips later in DrawAllSplits and the\n"
-"\t * feedback FT4s sample the pre-MoveImage page. The helper is a no-op\n"
-"\t * when VRAM is already current. */\n"
-"\tif (textured)\n"
-"\t\tGR_UpdateVRAM();\n"
-"\n"
-"\tTextureID textureId = textured ? g_vramTexture : g_whiteTexture;\n",
-1)])
-
-edit(gpu, "_xeno_drmove_order", [(
-"\t\t\tMoveImage(&rect, x, y);\n"
-"\t\t\tprimLength = 5;\n",
-"\t\t\t/* _xeno_drmove_order: PsyCross normally defers polygons until the\n"
-"\t\t\t * end of DrawOTag, but the PSX GPU executes this VRAM copy after\n"
-"\t\t\t * every earlier packet. Finalize the still-open split before the\n"
-"\t\t\t * flush, then materialize the draw target once before the first\n"
-"\t\t\t * following VRAM read. See build_port.sh. */\n"
-"\t\t\tif (g_splitIndex > 0)\n"
-"\t\t\t{\n"
-"\t\t\t\tGPUDrawSplit& lastSplit = g_splits[g_splitIndex];\n"
-"\t\t\t\tlastSplit.numVerts = g_vertexIndex - lastSplit.startVertex;\n"
-"\t\t\t\tDrawAllSplits();\n"
-"\t\t\t}\n"
-"\n"
-"\t\t\tif (g_xeno_vram_snapshot_dirty)\n"
-"\t\t\t{\n"
-"\t\t\t\tGR_StoreFrameBufferImmediate(activeDrawEnv.clip.x, activeDrawEnv.clip.y,\n"
-"\t\t\t\t\tactiveDrawEnv.clip.w, activeDrawEnv.clip.h);\n"
-"\t\t\t\tg_xeno_vram_snapshot_dirty = 0;\n"
-"\t\t\t}\n"
-"\n"
-"\t\t\tMoveImage(&rect, x, y);\n"
-"\t\t\tprimLength = 5;\n",
-1)])
-
-# Adjacent DR_MOVEs (the distortion effect queues 15 in a row) re-arm
-# framebuffer_need_update in GR_CopyVRAM's read path without any new capture,
-# so the second move's entry check splatted a two-downloads-stale PBO frame
-# over the fresh synchronous snapshot and the first move's writes. Track
-# whether vram[] is at least as fresh as any pending deferred capture: the
-# synchronous snapshot sets the flag, and only an actual framebuffer advance
-# (EndScene/Clear) clears it. The PBO's content can never be newer than the
-# synchronous snapshot, so suppressing the splat while the flag is set is
-# strictly lossless.
-edit(ren, "_xeno_drmove_fb_synced", [(
-"int framebuffer_need_update = 0;\n",
-"int framebuffer_need_update = 0;\n"
-"/* _xeno_drmove_fb_synced: 1 while the CPU vram[] framebuffer rect is at\n"
-" * least as fresh as any pending deferred PBO capture. See build_port.sh. */\n"
-"int g_xeno_vram_fb_synced = 0;\n",
-1), (
-"void GR_EndScene()\n{\n\tframebuffer_need_update = 1;\n",
-"void GR_EndScene()\n{\n\tframebuffer_need_update = 1;\n\tg_xeno_vram_fb_synced = 0; /* _xeno_drmove_fb_synced */\n",
-1), (
-"void GR_Clear(int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b)\n{\n\tframebuffer_need_update = 1;\n",
-"void GR_Clear(int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b)\n{\n\tframebuffer_need_update = 1;\n\tg_xeno_vram_fb_synced = 0; /* _xeno_drmove_fb_synced */\n",
-1), (
-"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n\tfree(pixels);\n",
-"\tGR_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);\n\tfree(pixels);\n"
-"\tg_xeno_vram_fb_synced = 1; /* _xeno_drmove_fb_synced: vram[] is newest */\n",
-1), (
-"\t\tif (framebuffer_need_update &&\n",
-"\t\t/* _xeno_drmove_fb_synced: skip the deferred splat while the synchronous\n"
-"\t\t * snapshot in vram[] is newer than anything the PBO could hold. */\n"
-"\t\tif (framebuffer_need_update && !g_xeno_vram_fb_synced &&\n",
-1)])
-
-print("    DR_MOVE ordering patches OK")
-DRMOVE_PY
-
-# PsyCross bugfix (idempotent, grep-guarded): gte_stflg writes FLAG as a
-# 32-bit uint into the caller's slot. On LP64 the game stores that into a
-# `long flag` and tests `flag < 0` (bit 63), while retail `bltz` tests bit 31
-# of the 32-bit FLAG (e.g. 0x80021000 = SX/SY saturation). Sign-extend after
-# each RotTransPers* write so matching C keeps working. Do NOT widen gte_stflg
-# itself — RotTransPers4's local `int _flag` is a 32-bit destination.
-grep -q "_xeno_gte_flag_sx" "$PSX/src/psx/LIBGTE.C" || \
-perl -0777 -i -pe 's/(int RotTransPers\(SVECTOR\* v0, int\* sxy, long\* p, long\* flag\)\n\{\n\tint sz;\n\tgte_RotTransPers\(v0, sxy, p, flag, \&sz\);\n\n\treturn sz;\n\})/int RotTransPers(SVECTOR* v0, int* sxy, long* p, long* flag)\n{\n\tint sz;\n\tgte_RotTransPers(v0, sxy, p, flag, \&sz);\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx *\/\n\treturn sz;\n}/s' \
-    "$PSX/src/psx/LIBGTE.C"
-grep -q "_xeno_gte_flag_sx3" "$PSX/src/psx/LIBGTE.C" || \
-perl -0777 -i -pe 's/(int RotTransPers3\(SVECTOR\* v0, SVECTOR\* v1, SVECTOR\* v2, long\* sxy0, long\* sxy1, long\* sxy2, long\* p, long\* flag\)\n\{\n\tint sz;\n\tgte_RotTransPers3\(v0, v1, v2, sxy0, sxy1, sxy2, p, flag, \&sz\);\n\n\treturn sz;\n\})/int RotTransPers3(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, long* sxy0, long* sxy1, long* sxy2, long* p, long* flag)\n{\n\tint sz;\n\tgte_RotTransPers3(v0, v1, v2, sxy0, sxy1, sxy2, p, flag, \&sz);\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx3 *\/\n\treturn sz;\n}/s' \
-    "$PSX/src/psx/LIBGTE.C"
-grep -q "_xeno_gte_flag_sx4" "$PSX/src/psx/LIBGTE.C" || \
-perl -0777 -i -pe 's/(\t\*flag \|= _flag;\n\tgte_stszotz\(&sz\);\n\n\treturn sz;\n\})/\t*flag |= _flag;\n\t*flag = (long)(int)(unsigned int)*flag; \/* _xeno_gte_flag_sx4 *\/\n\tgte_stszotz(\&sz);\n\n\treturn sz;\n}/s' \
-    "$PSX/src/psx/LIBGTE.C"
-
-# PsyCross feature (idempotent, per-edit marker-guarded): PSX texture-window
-# (GP0 E2h) emulation. PsyX parsed DR_TWIN into activeDrawEnv.tw but nothing
-# ever APPLIED it -- primitives sampled raw UVs. Xenogears' dialog UI relies on
-# the window: border/glyph SPRTs carry UVs like (128,192) and expect the E2
-# window to confine/tile them into the small border tile, so without emulation
-# they sampled unrelated VRAM (scattered black dashes). Edits, all general (no
-# game-specific casing):
-#   parse    - normalize raw E2 mask/offset into the same pixel RECT form
-#              PutDrawEnv stores (w/h = window size, 0 = disabled; x/y =
-#              pre-masked origin): one canonical representation, both sources;
-#   split    - an E2 change breaks the draw batch (tw is repurposed as the
-#              override-texture size when overrideTexture is active, so the
-#              comparison is skipped there);
-#   override - only the 32-bit override-texture path may stomp split tw with
-#              the override size (previously stomped EVERY split with zeros);
-#   draw     - DrawSplit forwards tw to the new GR_SetTextureWindow for PSX
-#              texture formats;
-#   render   - GR_SetTextureWindow re-derives the 5-bit hardware mask/offset
-#              (only hardware-representable windows apply) and hands the
-#              fragment shaders u_texWindow = (sizeX, sizeY, ofsX, ofsY);
-#   shader   - samplePSX applies coord' = ofs + mod(coord, size) before every
-#              VRAM tap (exact for all libgpu-encodable windows; identity when
-#              disabled since size=256, ofs=0). Uniform is initialized to the
-#              disabled window at compile so unset state stays a no-op.
-python3 - "$PSX" <<'TEXWINDOW_PY'
-import sys
-
-psx = sys.argv[1]
-GPU = psx + "/src/gpu/PsyX_GPU.cpp"
-REN = psx + "/src/render/PsyX_render.cpp"
-HDR = psx + "/include/PsyX/PsyX_render.h"
-
-def edit(path, marker, pairs):
-    with open(path) as f:
-        s = f.read()
-    if marker in s:
-        return
-    for old, new, count in pairs:
-        n = s.count(old)
-        if n != count:
-            sys.exit("ERROR: texwindow patch anchor mismatch in %s for %s "
-                     "(found %d, expected %d): %r" % (path, marker, n, count, old[:70]))
-        s = s.replace(old, new)
-    with open(path, "w") as f:
-        f.write(s)
-
-edit(GPU, "_xeno_texwindow_parse", [(
-"\t\t\t// DR_TWIN\n"
-"\t\t\tactiveDrawEnv.tw.w = (code & 0x1F);\n"
-"\t\t\tactiveDrawEnv.tw.h = ((code >> 5) & 0x1F);\n"
-"\t\t\tactiveDrawEnv.tw.x = ((code >> 10) & 0x1F);\n"
-"\t\t\tactiveDrawEnv.tw.y = ((code >> 15) & 0x1F);\n",
-"\t\t\t// DR_TWIN\n"
-"\t\t\t/* _xeno_texwindow_parse: normalize raw E2 mask/offset fields into\n"
-"\t\t\t * the pixel RECT form PutDrawEnv stores (w/h = window size, 0 =\n"
-"\t\t\t * disabled; x/y = pre-masked origin) so one canonical form reaches\n"
-"\t\t\t * GR_SetTextureWindow. See build_port.sh. */\n"
-"\t\t\t{\n"
-"\t\t\t\tconst u_int twMaskX = code & 0x1F;\n"
-"\t\t\t\tconst u_int twMaskY = (code >> 5) & 0x1F;\n"
-"\t\t\t\tactiveDrawEnv.tw.w = (256 - twMaskX * 8) & 0xFF;\n"
-"\t\t\t\tactiveDrawEnv.tw.h = (256 - twMaskY * 8) & 0xFF;\n"
-"\t\t\t\tactiveDrawEnv.tw.x = (((code >> 10) & 0x1F) & twMaskX) << 3;\n"
-"\t\t\t\tactiveDrawEnv.tw.y = (((code >> 15) & 0x1F) & twMaskY) << 3;\n"
-"\t\t\t}\n", 1)])
-
-edit(GPU, "_xeno_texwindow_split", [(
-"\t\tcurSplit.drawenv.dfe == activeDrawEnv.dfe &&\n",
-"\t\tcurSplit.drawenv.dfe == activeDrawEnv.dfe &&\n"
-"\t\t/* _xeno_texwindow_split: an E2 texture-window change must break the\n"
-"\t\t * batch (tw is repurposed as the override size when overrideTexture\n"
-"\t\t * is active, so the comparison is skipped there). See build_port.sh. */\n"
-"\t\t(overrideTexture != 0 || (\n"
-"\t\t\tcurSplit.drawenv.tw.x == activeDrawEnv.tw.x &&\n"
-"\t\t\tcurSplit.drawenv.tw.y == activeDrawEnv.tw.y &&\n"
-"\t\t\tcurSplit.drawenv.tw.w == activeDrawEnv.tw.w &&\n"
-"\t\t\tcurSplit.drawenv.tw.h == activeDrawEnv.tw.h)) &&\n", 1)])
-
-edit(GPU, "_xeno_texwindow_override", [(
-"\tsplit.drawenv.tw.w = overrideTextureWidth;\n"
-"\tsplit.drawenv.tw.h = overrideTextureHeight;\n",
-"\tif (textured && overrideTexture != 0)\n"
-"\t{\n"
-"\t\t/* _xeno_texwindow_override: only the 32-bit override-texture path\n"
-"\t\t * repurposes tw as the override size; PSX-format splits keep the\n"
-"\t\t * game's E2 texture window. See build_port.sh. */\n"
-"\t\tsplit.drawenv.tw.w = overrideTextureWidth;\n"
-"\t\tsplit.drawenv.tw.h = overrideTextureHeight;\n"
-"\t}\n", 1)])
-
-edit(GPU, "_xeno_texwindow_draw", [(
-"\tif (split.texFormat == TF_32_BIT_RGBA)\n"
-"\t\tGR_SetOverrideTextureSize(split.drawenv.tw.w, split.drawenv.tw.h);\n",
-"\tif (split.texFormat == TF_32_BIT_RGBA)\n"
-"\t\tGR_SetOverrideTextureSize(split.drawenv.tw.w, split.drawenv.tw.h);\n"
-"\telse\n"
-"\t\tGR_SetTextureWindow(&split.drawenv.tw); /* _xeno_texwindow_draw: see build_port.sh */\n", 1)])
-
-edit(HDR, "_xeno_texwindow_decl", [(
-"extern void\t\t\tGR_SetOverrideTextureSize(int width, int height);\n",
-"extern void\t\t\tGR_SetOverrideTextureSize(int width, int height);\n"
-"extern void\t\t\tGR_SetTextureWindow(const RECT16* tw); /* _xeno_texwindow_decl: see build_port.sh */\n", 1)])
-
-edit(REN, "_xeno_texwindow_loc_struct", [(
-"\tGLint texelSizeLoc;\n",
-"\tGLint texelSizeLoc;\n"
-"\tGLint texWindowLoc; /* _xeno_texwindow_loc_struct */\n", 1)])
-
-edit(REN, "_xeno_texwindow_loc_global", [(
-"GLint u_texelSizeLoc;\n",
-"GLint u_texelSizeLoc;\n"
-"GLint u_texWindowLoc = -1; /* _xeno_texwindow_loc_global */\n", 1)])
-
-edit(REN, "_xeno_texwindow_loc_get", [(
-"\tsh->lutLoc = glGetUniformLocation(sh->shader, \"s_rgLut\");\n",
-"\tsh->lutLoc = glGetUniformLocation(sh->shader, \"s_rgLut\");\n"
-"\t/* _xeno_texwindow_loc_get: fetch the texture-window uniform and default\n"
-"\t * it to the disabled window so unset state is an exact no-op. */\n"
-"\tsh->texWindowLoc = glGetUniformLocation(sh->shader, \"u_texWindow\");\n"
-"\tif (sh->texWindowLoc != -1)\n"
-"\t{\n"
-"\t\tglUseProgram(sh->shader);\n"
-"\t\tglUniform4f(sh->texWindowLoc, 256.0f, 256.0f, 0.0f, 0.0f);\n"
-"\t\tglUseProgram(0);\n"
-"\t}\n", 1)])
-
-edit(REN, "_xeno_texwindow_loc_route", [
-("\t\tlutLoc = g_gpu_shader_4.lutLoc;\n",
- "\t\tlutLoc = g_gpu_shader_4.lutLoc;\n"
- "\t\tu_texWindowLoc = g_gpu_shader_4.texWindowLoc; /* _xeno_texwindow_loc_route */\n", 1),
-("\t\tlutLoc = g_gpu_shader_8.lutLoc;\n",
- "\t\tlutLoc = g_gpu_shader_8.lutLoc;\n"
- "\t\tu_texWindowLoc = g_gpu_shader_8.texWindowLoc;\n", 1),
-("\t\tlutLoc = g_gpu_shader_16.lutLoc;\n",
- "\t\tlutLoc = g_gpu_shader_16.lutLoc;\n"
- "\t\tu_texWindowLoc = g_gpu_shader_16.texWindowLoc;\n", 1),
-("\t\tu_texelSizeLoc = g_gpu_shader_32_rgba.texelSizeLoc;\n",
- "\t\tu_texelSizeLoc = g_gpu_shader_32_rgba.texelSizeLoc;\n"
- "\t\tu_texWindowLoc = -1;\n", 1)])
-
-edit(REN, "_xeno_texwindow_func", [(
-"void GR_SetOverrideTextureSize(int width, int height)\n",
-"/* _xeno_texwindow_func: PSX texture window (GP0 E2h). tw is the pixel RECT\n"
-" * form (w/h = window size, 0 = disabled; x/y = origin). Re-derive the 5-bit\n"
-" * hardware mask/offset so only hardware-representable windows apply, then\n"
-" * hand the shader size+origin: coord' = origin + mod(coord, size).\n"
-" * See build_port.sh. */\n"
-"void GR_SetTextureWindow(const RECT16* tw)\n"
-"{\n"
-"#if USE_OPENGL\n"
-"\tconst int maskX = ((256 - (tw->w & 0xFF)) >> 3) & 0x1F;\n"
-"\tconst int maskY = ((256 - (tw->h & 0xFF)) >> 3) & 0x1F;\n"
-"\tconst float sizeX = (float)(256 - maskX * 8);\n"
-"\tconst float sizeY = (float)(256 - maskY * 8);\n"
-"\tconst float ofsX = (float)((((tw->x & 0xFF) >> 3) & maskX) << 3);\n"
-"\tconst float ofsY = (float)((((tw->y & 0xFF) >> 3) & maskY) << 3);\n"
-"\tif (u_texWindowLoc != -1)\n"
-"\t\tglUniform4f(u_texWindowLoc, sizeX, sizeY, ofsX, ofsY);\n"
-"#endif\n"
-"}\n"
-"\n"
-"void GR_SetOverrideTextureSize(int width, int height)\n", 1)])
-
-edit(REN, "_xeno_texwindow_shader_decl", [(
-"\t\t\"\tconst vec2 c_VRAMTexel = vec2(1.0 / 1024.0, 1.0 / 512.0);\\n\"\\\n",
-"\t\t\"\tconst vec2 c_VRAMTexel = vec2(1.0 / 1024.0, 1.0 / 512.0);\\n\"\\\n"
-"\t\t\"\tuniform vec4 u_texWindow; // _xeno_texwindow_shader_decl\\n\"\\\n", 2)])
-
-edit(REN, "_xeno_texwindow_shader_apply", [
-("    \"   vec2 samplePSX(vec2 tc) {\\n\"\\\n",
- "    \"   vec2 samplePSX(vec2 tc) {\\n\"\\\n"
- "    \"       tc = u_texWindow.zw + mod(tc, u_texWindow.xy); // _xeno_texwindow_shader_apply\\n\"\\\n", 1),
-("\t\"\tvec2 samplePSX(vec2 tc) {\\n\"\\\n",
- "\t\"\tvec2 samplePSX(vec2 tc) {\\n\"\\\n"
- "\t\"\t\ttc = u_texWindow.zw + mod(tc, u_texWindow.xy);\\n\"\\\n", 2)])
-
-print("    texture-window patches OK")
-TEXWINDOW_PY
-
-# PsyCross DRAWENV.isbg background-clear (upstream TODO): real libgpu's
-# PutDrawEnv issues a fill of the clip rect when isbg is set -- the menu AND
-# the field both set isbg=1 and rely on the per-frame clear (without it the
-# menu's open/reveal animations leave trails). Implemented at env-apply
-# (PutDrawEnv), NOT in DrawPrim: immediate-mode callers (the splash fades)
-# would over-clear between prims. ClearImage = GR_ClearVRAM (rect-accurate)
-# + GR_Clear (full-backbuffer glClear -- correct: it runs post-present,
-# pre-DrawOTag in both the menu and field frame flows).
-python3 - "$PSX" <<'ISBG_PY'
-import sys
-
-psx = sys.argv[1]
-libgpu = psx + "/src/psx/LIBGPU.C"
-
-def edit(path, marker, pairs):
-    with open(path) as f:
-        s = f.read()
-    if marker in s:
-        return
-    for old, new, count in pairs:
-        found = s.count(old)
-        if found != count:
-            sys.exit("ERROR: isbg patch anchor mismatch in %s for %s "
-                     "(found %d, expected %d): %r" %
-                     (path, marker, found, count, old[:80]))
-        s = s.replace(old, new)
-    with open(path, "w") as f:
-        f.write(s)
-
-edit(libgpu, "_xeno_isbg", [
-("\tmemcpy((char*)&activeDrawEnv, env, sizeof(DRAWENV));\n\treturn 0;\n",
- "\tmemcpy((char*)&activeDrawEnv, env, sizeof(DRAWENV));\n"
- "\t/* _xeno_isbg: honor the DRAWENV background-clear flag (upstream TODO).\n"
- "\t * Real libgpu fills the clip rect on env-apply when isbg is set; the\n"
- "\t * menu and field both rely on the per-frame clear. */\n"
- "\tif (env->isbg)\n"
- "\t\tClearImage(&env->clip, env->r0, env->g0, env->b0);\n"
- "\treturn 0;\n", 1)])
-
-print("    isbg background-clear patch OK")
-ISBG_PY
-
-# PsyCross MoveImage->GL materialize (the menu-trails fix): the menu's
-# per-frame clear is a MoveImage restoring its backdrop VRAM rect over the
-# draw framebuffer, then prims draw on top. PsyX renders prims into the GL
-# backbuffer only -- the restored backdrop never reaches GL, so the menu's
-# quads accumulate across frames (trails). Fix: when a MoveImage dest overlaps
-# the active draw env clip, blit the freshly-restored vram rect over the
-# backbuffer as the frame's base layer (vram-texture FBO -> default fb,
-# y-flipped, full-window -- prims then composite on a clean base). Both files
-# compile as C++ (PsyCross .C convention), so plain C++ linkage.
-python3 - "$PSX" <<'FBMAT_PY'
-import sys
-
-psx = sys.argv[1]
-libgpu = psx + "/src/psx/LIBGPU.C"
-ren = psx + "/src/render/PsyX_render.cpp"
-
-def edit(path, marker, pairs):
-    with open(path) as f:
-        s = f.read()
-    if marker in s:
-        return
-    for old, new, count in pairs:
-        found = s.count(old)
-        if found != count:
-            sys.exit("ERROR: fb-materialize patch anchor mismatch in %s for %s "
-                     "(found %d, expected %d): %r" %
-                     (path, marker, found, count, old[:80]))
-        s = s.replace(old, new)
-    with open(path, "w") as f:
-        f.write(s)
-
-edit(ren, "_xeno_fb_materialize_impl", [
-("void GR_SwapWindow()\n",
- "/* _xeno_fb_materialize_impl: composite a freshly MoveImage-restored draw-\n"
- " * framebuffer rect into the GL backbuffer as the frame's base layer (the\n"
- " * menu's per-frame backdrop restore; prims composite on top). */\n"
- "void GR_MaterializeFramebufferRect(int x, int y, int w, int h)\n"
- "{\n"
- "#if USE_OPENGL\n"
- "\tGR_UpdateVRAM();\n"
- "\tglBindFramebuffer(GL_READ_FRAMEBUFFER, g_glBlitFramebuffer);\n"
- "\tglFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_vramTexture, 0);\n"
- "\tglBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);\n"
- "\tglBlitFramebuffer(x, y, x + w, y + h,\n"
- "\t                  0, g_windowHeight, g_windowWidth, 0,\n"
- "\t                  GL_COLOR_BUFFER_BIT, GL_NEAREST);\n"
- "\tglBindFramebuffer(GL_FRAMEBUFFER, 0);\n"
- "#endif\n"
- "}\n"
- "\n"
- "void GR_SwapWindow()\n", 1)])
-
-edit(libgpu, "_xeno_fb_materialize", [
-("int MoveImage(RECT16* rect, int x, int y)\n{\n"
- "\tGR_CopyVRAM(NULL, rect->x, rect->y, rect->w, rect->h, x, y);\n"
- "\treturn 0;\n}",
- "int MoveImage(RECT16* rect, int x, int y)\n{\n"
- "\tGR_CopyVRAM(NULL, rect->x, rect->y, rect->w, rect->h, x, y);\n"
- "\t/* _xeno_fb_materialize: a MoveImage restoring the ACTIVE draw\n"
- "\t * framebuffer is the game's per-frame backdrop (the menu); composite it\n"
- "\t * into the GL backbuffer as the frame's base layer. Dests outside the\n"
- "\t * draw clip (texture/backup moves) are untouched. */\n"
- "\tif (x < activeDrawEnv.clip.x + activeDrawEnv.clip.w &&\n"
- "\t    x + rect->w > activeDrawEnv.clip.x &&\n"
- "\t    y < activeDrawEnv.clip.y + activeDrawEnv.clip.h &&\n"
- "\t    y + rect->h > activeDrawEnv.clip.y)\n"
- "\t{\n"
- "\t\textern void GR_MaterializeFramebufferRect(int x, int y, int w, int h);\n"
- "\t\tGR_MaterializeFramebufferRect(x, y, rect->w, rect->h);\n"
- "\t}\n"
- "\treturn 0;\n}", 1)])
-
-print("    MoveImage fb-materialize patch OK")
-FBMAT_PY
 
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
 # gitignored. Apply in dependency order: the ABR patch was generated after the
@@ -900,9 +453,26 @@ apply_psycross_patch() {
     "$git_bin" -C "$PSX" apply "${apply_args[@]}" "$patch"
 }
 
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_port_prelude.patch" "_xeno_drmove_snapshot_decl"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_image_open.patch" "_xeno_cd_image_open"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_cue_checked.patch" "_xeno_cd_cue_checked"
+# PsyCross carries a non-retail, unused DRAWENV.drt byte.  Removing it restores
+# PsyQ's 0x5C DRAWENV ABI so the game's literal +0x5C/+0xB8 DISPENV accesses
+# address the same data as typed host code.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_retail_drawenv_layout.patch" "_xeno_retail_drawenv_layout"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_pad_include.patch" "_xeno_pad_stdlib"
+# Preserve SDL key-down edges until the next pad sample.  Render/present paths
+# may poll and drain both halves of a quick tap before PsyX_UpdateInput samples
+# SDL_GetKeyboardState; without this latch normal keyboard taps vanish.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_keyboard_tap_latch.patch" "_xeno_keyboard_tap_latch"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_raw_texture_dither.patch" "_xeno_raw_texture_dither"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_abr_clut_bit15.patch" "_xeno_clut_bit15_abr"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_xeno_compmatrix_alias"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_word_store.patch" "_xeno_compmatrix_word_store"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sqrt_lz_registers.patch" "_xeno_sqrt_lz_registers"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sqrt_retail_memory.patch" "_xeno_sqrt_retail_memory"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_mvmva_signed_translation.patch" "_xeno_gte_mvmva_signed_translation"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_projection_signed_translation.patch" "_xeno_gte_projection_signed_translation"
 # Optional F22 logical-origin correction. This is intentionally applied only
 # by the on-screen non-PGXP branch in GR_SetOffscreenState; unset/0 retains the
 # original GR_Ortho2D call byte-for-byte, while offscreen VRAM and PGXP paths
@@ -933,6 +503,16 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_world_capture_request.patch
 # OpenGL framebuffer readback starts at the lower-left. Flip complete RGBA
 # rows before SDL serializes screenshots so capture files match presentation.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_capture_readback_orientation.patch" "_xeno_capture_readback_orientation" "unidiff-zero"
+# Recording extends the direct-display presentation seam, and the toolbar
+# then extends both.  Keep that dependency order reproducible from the vendor
+# baseline instead of relying on an already-patched working tree.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_display_present.patch" "_xeno_display_present"
+# Host-only F9 video capture. The recorder reads the completed backbuffer at
+# both presentation boundaries before swap and streams raw frames to ffmpeg.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_video_recording.patch" "_xeno_video_recording"
+# Clickable host controls occupy pixels reserved above the PSX framebuffer;
+# capture readback remains limited to the retail game region below the bar.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_toolbar.patch" "_xeno_host_toolbar"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
@@ -960,6 +540,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_prims.patch" "_xeno_s
 # tick, matching retail's disabled-event semantics; the pump can never stall
 # or deadlock). Prerequisite for every real tick-body decomp. See OPEN_ISSUES.md.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_gate.patch" "_xeno_sound_gate"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_critical_declarations.patch" "_xeno_critical_declarations"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_sw_critical_mask.patch" "_xeno_sw_critical_mask"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_event_delivery.patch" "_xeno_event_delivery"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_wait_event.patch" "_xeno_wait_event"
 # ADSR fidelity phase 1: per-voice hardware ADSR envelope (psx-spx 44100Hz
 # counter machine) in the SPU backend -- KON=attack-from-zero, KOFF=release
 # tail (source kept playing to level 0), composed single-writer AL_GAIN
@@ -984,19 +568,26 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_adpcm.patch" "_xeno_s
 # 32-slot STR ring is not overrun.  Generated against the tree with the
 # patches above applied (the cdsync hunk sits in the same function).
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_stream_movie.patch" "_xeno_cd_stream_movie"
-# PSX display semantics for frames that draw no primitives: the STR movie
-# player LoadImages pictures straight into the DISPENV buffer and flips with
-# PutDispEnv, but PsyCross only presents rendered primitives.  Adds
-# PsyX_IsSceneOpen / PsyX_PresentDisplayFromVRAM (CPU VRAM mirror -> RGBA8,
-# 15-bit or isrgb24 24-bit, blitted over the window); pc_port's Vsync calls
-# it at a blocking Vsync(0) when no scene was opened.
-apply_psycross_patch "$ROOT/pc_port/patches/psycross_display_present.patch" "_xeno_display_present"
-# CPU vram[] must mirror the presented framebuffer: on software GL the
-# PBO/glGetTexImage download of the blit staging texture returns zeros, so
-# every game-side MoveImage/StoreImage of the display area (field->menu
-# backdrop snapshot func_800A476C, fades, distortion) copied black. Read the
-# still-unswapped backbuffer into vram[] at present time instead.
+# Host shutdown may race an active paced CdlReadS worker. Quiesce and join that
+# worker before SDL_Quit invalidates SDL_Delay/event machinery.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_shutdown_cd_join.patch" "_xeno_cd_shutdown_join"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_image_ready.patch" "_xeno_cd_image_ready"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_complete_sector.patch" "_xeno_cd_complete_sector"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_pause_boundary.patch" "_xeno_cd_pause_boundary"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_cd_bounded_seek.patch" "_xeno_cd_bounded_seek"
+# Mirror completed framebuffer captures into CPU VRAM at the copy boundary.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_fb_mirror_readpixels.patch" "_xeno_fb_mirror_readpixels"
+# The same FBO also reads VRAM for MoveImage presentation. Restore its staging
+# attachment before the next capture; otherwise CPU VRAM receives stale pixels.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_framebuffer_staging_attachment.patch" "_xeno_fb_staging_attachment"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_framebuffer_materialize_rgb555.patch" "_xeno_fb_materialize_rgb555"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_framebuffer_materialize_rect.patch" "_xeno_fb_materialize_rect"
+# Intro DR_MOVE can pass RECT.x < 0. Mask like GR_CopyVRAM instead of aborting.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_vram_copy_wrap.patch" "_xeno_vram_copy_wrap"
+
+# Host testing speed: pace vblank, sound and streamed disc reads together,
+# without incrementing game clocks on queries or bypassing frame waits.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_speed.patch" "_xeno_host_speed"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
@@ -1011,7 +602,10 @@ if [ -n "$TSAN_FLAGS" ]; then
 else
     cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug >/dev/null
 fi
-cmake --build "$PSYX_BUILD" --target psycross -j"$(nproc)" >/dev/null
+if ! cmake --build "$PSYX_BUILD" --target psycross -j"$(nproc)" >/dev/null; then
+    echo "ERROR: PsyCross build failed; refusing to link a stale library." >&2
+    exit 1
+fi
 PSYLIB="$(find "$PSYX_BUILD" -name 'libpsycross.a' 2>/dev/null | head -1)"
 if [ -z "$PSYLIB" ] || [ ! -s "$PSYLIB" ]; then
     echo "ERROR: libpsycross.a was not built (the CMake step failed above)."
@@ -1111,17 +705,48 @@ if [ -n "$SKIPPED" ]; then
 fi
 
 echo "==> [2b/5] Compiling port-only sources (PSX RAM emu, overrides/dispatch table)"
+BATTLE_BRIDGE_ELFS=()
+if [ -f build/out/slus_006.64.elf ]; then
+    BATTLE_BRIDGE_ELFS+=(--elf build/out/slus_006.64.elf)
+fi
+python3 tools/scripts/gen_battle_bridge_map.py \
+    "${BATTLE_BRIDGE_ELFS[@]}" \
+    --symbols config/symbol_addrs.slus_006.64.txt \
+    --symbols linker/undefined_funcs_auto.battle.txt \
+    --symbols linker/undefined_syms_auto.battle.txt \
+    --out "$OUT/battle_bridge_map.inc"
 PORT_SOURCES=(
+    pc_port/src/krom_rom.c
+    pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
+    pc_port/src/battle_mips_adapter.c
+    pc_port/src/battle_mips_runtime.c
     pc_port/src/guest_prim_link.c
     pc_port/src/model_prim_link.c
+    pc_port/src/model_prim_ed20.c
     pc_port/src/test_input.c
+    pc_port/src/quick_checkpoint_file.c
+    pc_port/src/quick_checkpoint.c
+    pc_port/src/field_pos_diag.c  # TEST TOOLING: XENO_FIELD_POS_DIAG walk telemetry
     pc_port/src/game_overrides.c
+    pc_port/src/retail_leaf_adapters.c
     pc_port/src/boot_menu.c
     pc_port/src/boot_str.c
     pc_port/src/boot_assets.c
+    pc_port/src/boot_sound_banks.c
+    pc_port/src/boot_sound_commit.c
     pc_port/src/movie_player.c
+    pc_port/src/pc_file_io.c
+    pc_port/src/controller_vblank_helpers.c
+    pc_port/src/controller_vblank_dispatch.c
+    pc_port/src/controller_vblank_service.c
     pc_port/src/field_object_overlay.c
+    pc_port/src/field_party_gear.c
+    pc_port/src/field_timed_commands.c
+    pc_port/src/field_clip_prelude.c
+    pc_port/src/field_clip_control.c
+    pc_port/src/field_clip_data.c
+    pc_port/src/sprite_constructor.c
     pc_port/src/world_map_init.c
     pc_port/src/world_map_frame_driver.c
     pc_port/src/world_map_image_transfer_25044.c
@@ -1149,6 +774,7 @@ PORT_SOURCES=(
     pc_port/src/world_map_capture.c
     pc_port/src/world_map_gamestate_alias.c
     pc_port/src/world_map_selector.c
+    pc_port/src/psyq_cd_mix.c
     pc_port/src/psyq_compat.c
     pc_port/src/archive_port.c
     pc_port/src/work_list_port.c
@@ -1162,6 +788,7 @@ PORT_SOURCES=(
     pc_port/src/data_game_state.c
     pc_port/src/data_controller.c
     pc_port/src/data_heap.c
+    pc_port/src/data_boot_globals.c
     pc_port/src/world_map_convergence.c
     pc_port/src/world_map_framebuffer_init.c
     pc_port/src/world_map_terrain_init.c
@@ -1243,7 +870,9 @@ PORT_SOURCES=(
     pc_port/src/world_map_callback_8c844.c
     pc_port/src/world_map_callback_8d678.c
     pc_port/src/world_map_callback_8e76c.c
+    pc_port/src/world_map_state01_8eb30.c
     pc_port/src/world_map_state2_8eb64.c
+    pc_port/src/world_map_vehicle_tail_90620.c
     pc_port/src/world_map_callback_914d0.c
     pc_port/src/world_map_callback_91c18.c
     pc_port/src/world_map_callback_922ac.c
@@ -1340,11 +969,63 @@ PORT_SOURCES=(
     pc_port/src/world_map_func_95414.c
 )
 
-# The list above is the port link's explicit ownership registry. Refuse to
+# Port-side sources that are deliberately NOT part of the runtime link: each is
+# a verification fixture that its own pc_port/tests/run_*.sh compiles directly,
+# and no runtime port source includes its header.  Verified with
+#   grep -rln '#include "battle_target' pc_port --include=*.c --include=*.h
+# which lists only these files and pc_port/tests/*.c.  They are registered here
+# rather than added to PORT_SOURCES so the link keeps exactly the symbols it
+# had before they were written; dropping them from the tree instead would take
+# the differential tests with them.
+TEST_ONLY_PORT_SOURCES=(
+    pc_port/src/battle_target_bounds.c
+    pc_port/src/battle_target_camera.c
+    pc_port/src/battle_target_eligibility_ram.c
+    pc_port/src/battle_target_list_ram.c
+    pc_port/src/battle_target_setup.c
+)
+
+test_only_port_source_reason() {
+    case "$1" in
+        pc_port/src/battle_target_bounds.c)
+            echo "target-bounds oracle for run_battle_target_{bounds,radius,camera}_test.sh" ;;
+        pc_port/src/battle_target_camera.c)
+            echo "camera-projection oracle for run_battle_target_camera_test.sh" ;;
+        pc_port/src/battle_target_eligibility_ram.c)
+            echo "guest-RAM eligibility oracle for run_battle_target_{eligibility_ram,guest_frame}_test.sh" ;;
+        pc_port/src/battle_target_list_ram.c)
+            echo "guest-RAM target-list oracle for run_battle_target_guest_frame_test.sh" ;;
+        pc_port/src/battle_target_setup.c)
+            echo "setup/cleanup contract oracle for run_battle_target_setup_*.sh and run_battle_target_cleanup_retail_test.sh" ;;
+    esac
+}
+
+is_test_only_port_source() {
+    local candidate="$1"
+    local entry
+    for entry in "${TEST_ONLY_PORT_SOURCES[@]}"; do
+        [ "$candidate" = "$entry" ] && return 0
+    done
+    return 1
+}
+
+print_test_only_port_sources() {
+    echo "    Test-only port sources (compiled by their own tests, never linked):"
+    local entry
+    for entry in "${TEST_ONLY_PORT_SOURCES[@]}"; do
+        echo "      $entry — $(test_only_port_source_reason "$entry")"
+    done
+}
+
+# The lists above are the port link's explicit ownership registry. Refuse to
 # silently ignore a new port-side TU: every C source under pc_port/src must be
-# either the separately-built entry point or present in PORT_SOURCES.
+# the separately-built entry point, present in PORT_SOURCES, or registered as
+# test-only above.
 while IFS= read -r pf; do
     [ "$pf" = "pc_port/src/port_main.c" ] && continue
+    if is_test_only_port_source "$pf"; then
+        continue
+    fi
     listed=0
     for listed_pf in "${PORT_SOURCES[@]}"; do
         if [ "$pf" = "$listed_pf" ]; then
@@ -1354,10 +1035,28 @@ while IFS= read -r pf; do
     done
     if [ "$listed" -eq 0 ]; then
         echo "ERROR: unclassified port source is not in PORT_SOURCES: $pf"
+        echo "ERROR: if it is a verification fixture, register it in"
+        echo "ERROR: TEST_ONLY_PORT_SOURCES with a reason instead."
         echo "ERROR: aborting before trial link and stub generation."
         exit 1
     fi
 done < <(find pc_port/src -type f -name '*.c' | sort)
+
+# A test-only source must not also be linked, and must actually exist.
+for pf in "${TEST_ONLY_PORT_SOURCES[@]}"; do
+    if [ ! -f "$pf" ]; then
+        echo "ERROR: test-only port source does not exist: $pf"
+        exit 1
+    fi
+    for listed_pf in "${PORT_SOURCES[@]}"; do
+        if [ "$pf" = "$listed_pf" ]; then
+            echo "ERROR: $pf is registered both test-only and in PORT_SOURCES."
+            exit 1
+        fi
+    done
+done
+
+print_test_only_port_sources
 
 for pf in "${PORT_SOURCES[@]}"; do
     if [ ! -f "$pf" ]; then
@@ -1461,7 +1160,7 @@ if ! gcc -c "$PORT_MAIN_SOURCE" $GFLAGS -Ipc_port/src -Iinclude \
     exit 1
 fi
 
-LIBS="$(pkg-config --libs sdl2 openal 2>/dev/null) -lGL -lm -lpthread -ldl"
+LIBS="$(pkg-config --libs sdl2 openal libcrypto 2>/dev/null) -lGL -lm -lpthread -ldl"
 if [ -n "$TSAN_FLAGS" ]; then
     # Sanitizer EH instrumentation of the C++ PsyCross objects references the
     # C++ personality routine (__gxx_personality_v0); the normal build does
@@ -1473,7 +1172,7 @@ fi
 # lives below 4 GiB. The decompiled game truncates its own pointers to 32 bits
 # all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
 # low 32-bit address space makes every such truncation a lossless round-trip.
-NOPIE="-no-pie -fno-pie"
+NOPIE="-no-pie -fno-pie -rdynamic"
 LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
@@ -1484,18 +1183,28 @@ echo "    undefined symbols to stub: $(wc -l < "$OUT/undef.txt")"
 
 if [ -s "$OUT/undef.txt" ]; then
     ELFS=()
-    for e in build/out/slus_006.64.elf build/out/field.elf build/out/member_change_menu.elf build/out/shop_menu.elf build/out/menu.elf; do
+    for e in build/out/slus_006.64.elf build/out/field.elf build/out/member_change_menu.elf \
+             build/out/shop_menu.elf build/out/menu.elf build/out/battle.elf; do
         [ -f "$e" ] && ELFS+=(--elf "$e")
+    done
+    MAPS=()
+    for m in build/out/slus_006.64.map build/out/field.map build/out/member_change_menu.map \
+             build/out/shop_menu.map build/out/menu.map build/out/battle.map; do
+        [ -f "$m" ] && MAPS+=(--map "$m")
     done
     # symbol_addrs files carry the real struct sizes (size:) the ELF omits, so data
     # stubs (e.g. g_GameState = 0x2300) are reserved at full size instead of 16 bytes.
     SYMS=()
     for s in config/symbol_addrs.slus_006.64.txt config/symbol_addrs.field.txt \
-             config/symbol_addrs.member_change_menu.txt config/symbol_addrs.shop_menu.txt; do
+             config/symbol_addrs.member_change_menu.txt config/symbol_addrs.shop_menu.txt \
+             config/symbol_addrs.menu.txt config/symbol_addrs.battle.txt; do
         [ -f "$s" ] && SYMS+=(--symbol-addrs "$s")
     done
-    if [ "${#ELFS[@]}" -gt 0 ]; then
-        python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"
+    if [ "${#ELFS[@]}" -gt 0 ] || [ "${#MAPS[@]}" -gt 0 ]; then
+        if ! python3 tools/scripts/gen_port_stubs.py "${ELFS[@]}" "${MAPS[@]}" "${SYMS[@]}" --undefined "$OUT/undef.txt" --out "$OUT/stubs.c"; then
+            echo "ERROR: stub classification failed; refusing to compile or link stale stubs."
+            exit 1
+        fi
     elif [ -f "$OUT/stubs.c" ]; then
         # Without matching ELFs the generator cannot safely classify a newly
         # undefined symbol as function vs data, nor size new data storage.

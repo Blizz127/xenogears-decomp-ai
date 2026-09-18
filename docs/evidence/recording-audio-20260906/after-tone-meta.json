@@ -1,0 +1,8 @@
+{
+  "module": "536870916",
+  "sink": "xeno_recorder_probe_106638",
+  "source": "/tmp/xeno-recording-tone-noaudio-wallclock-ujcnkg1s/recorder.inl",
+  "source_sha256": "8a7623f2ce274553e3377367d4959bdf116d0aba1212f99dc46967b85b6f068e",
+  "sink_id": 38209,
+  "source_id": 38209
+}

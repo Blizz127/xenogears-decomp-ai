@@ -1,0 +1,29 @@
+{
+  "scope": "Named config symbols present in the executable; unnamed/missing symbols not covered. Block names are not authoritative addresses: g_FieldBss_800B20A8 stores retail g_FieldEffects at800B2078.",
+  "checked": [
+    "g_CameraEye",
+    "g_CameraAt",
+    "g_CameraUp",
+    "g_CameraEye2",
+    "g_CameraAt2",
+    "g_CamAtMovementFrom",
+    "g_CamAtMovementTo",
+    "g_CamEyeMovementFrom",
+    "g_CamEyeMovementTo",
+    "g_FieldCameraMode",
+    "g_CamMovementFlags",
+    "g_CamAtMovementDuration",
+    "g_CamAtMovementCurrent",
+    "g_CamAtMovementDelta",
+    "g_CamEyeMovementDuration",
+    "g_CamEyeMovementCurrent",
+    "g_CamEyeMovementDelta",
+    "g_CamInterpolation",
+    "g_Scene",
+    "g_WorldScale",
+    "g_FieldEffects",
+    "g_FieldControl",
+    "g_PlayerActorIndex"
+  ],
+  "mismatches": []
+}

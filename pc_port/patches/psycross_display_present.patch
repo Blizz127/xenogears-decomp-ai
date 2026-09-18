@@ -8,30 +8,37 @@
 + * not been presented yet. */
 +extern int PsyX_IsSceneOpen(void);
 +
-+/* _xeno_display_present: present the active DISPENV area straight from the
-+ * CPU VRAM mirror (15-bit, or 24-bit when isrgb24 is set) and swap.  The PSX
-+ * display always shows VRAM; PsyCross only presents rendered primitives, so a
-+ * game that LoadImages pictures into the display buffer (STR movies) would
-+ * otherwise never reach the window.  Returns 0 without presenting when a
-+ * scene is open. */
++/* _xeno_display_present: present the submitted/current DISPENV area straight
++ * from the CPU VRAM mirror (15-bit, or 24-bit when isrgb24 is set) and swap.
++ * The PSX display always shows VRAM; PsyCross only presents rendered
++ * primitives, so a game that LoadImages pictures into the display buffer (STR
++ * movies) would otherwise never reach the window.  Returns 0 without
++ * presenting when a scene is open. */
 +extern int PsyX_PresentDisplayFromVRAM(void);
 +
  /* Explicitly updates emulator input loop */
  extern void PsyX_UpdateInput(void);
  
+@@ -110,4 +122,4 @@
+ }
+ #endif
+ 
+-#endif
+\ No newline at end of file
++#endif
 --- a/include/PsyX/PsyX_render.h
 +++ b/include/PsyX/PsyX_render.h
 @@ -186,6 +186,7 @@
  
  extern void			GR_StoreFrameBuffer(int x, int y, int w, int h);
  extern void			GR_StoreFrameBufferImmediate(int x, int y, int w, int h); /* _xeno_drmove_snapshot_decl */
-+extern void			GR_PresentVRAMDisplay(int x, int y, int w, int h, int rgb24); /* _xeno_display_present */
++extern void			GR_PresentVRAMDisplay(int x, int y, int w, int h, int rgb24, int displayEnabled); /* _xeno_display_present */
  extern void			GR_UpdateVRAM();
  extern void			GR_ReadFramebufferDataToVRAM();
  
 --- a/src/PsyX_main.cpp
 +++ b/src/PsyX_main.cpp
-@@ -855,6 +855,25 @@
+@@ -855,6 +855,26 @@
  	__attribute__((weak));
  #endif
  
@@ -48,8 +55,9 @@
 +		return 0;
 +
 +	PsyX_Sys_DoPollEvent();
-+	GR_PresentVRAMDisplay(activeDispEnv.disp.x, activeDispEnv.disp.y,
-+		activeDispEnv.disp.w, activeDispEnv.disp.h, activeDispEnv.isrgb24);
++	GR_PresentVRAMDisplay(currentDispEnv.disp.x, currentDispEnv.disp.y,
++		currentDispEnv.disp.w, currentDispEnv.disp.h,
++		currentDispEnv.isrgb24, !g_GPUDisabledState);
 +	GR_SwapWindow();
 +	return 1;
 +}
@@ -59,7 +67,7 @@
  	if (!begin_scene_flag)
 --- a/src/render/PsyX_render.cpp
 +++ b/src/render/PsyX_render.cpp
-@@ -2043,6 +2043,98 @@
+@@ -2043,6 +2043,102 @@
  #endif
  }
  
@@ -67,7 +75,7 @@
 + * RGBA8 (15-bit texels, or 24-bit packed bytes when rgb24) and blit it over
 + * the whole window, flipped like GR_MaterializeFramebufferRect.  Used when a
 + * vblank passes without any primitive having been drawn. */
-+void GR_PresentVRAMDisplay(int x, int y, int w, int h, int rgb24)
++void GR_PresentVRAMDisplay(int x, int y, int w, int h, int rgb24, int displayEnabled)
 +{
 +#if USE_OPENGL
 +	static GLuint tex = 0;
@@ -92,7 +100,11 @@
 +		}
 +	}
 +
-+	for (int j = 0; j < h; j++)
++	/* SetDispMask(0) gates scanout, not VRAM writes.  Preserve every VRAM byte
++	 * while presenting hardware-black until the game enables the display. */
++	if (!displayEnabled)
++		memset(pixels, 0, (size_t)w * h * sizeof(*pixels));
++	else for (int j = 0; j < h; j++)
 +	{
 +		const unsigned short* row = &vram[((y + j) & (VRAM_HEIGHT - 1)) * VRAM_WIDTH];
 +		u_int* out = &pixels[j * w];

@@ -200,36 +200,12 @@ void ControllerPushState(void) {
         g_C2ButtonStatesReleased[i] = g_C2ButtonStateReleased;
         g_C1ButtonStatesPressedOnce[i] = g_C1ButtonStatePressedOnce;
         g_C2ButtonStatesPressedOnce[i] = g_C2ButtonStatePressedOnce;
-        g_ControllerCurStateWriteIndex += 1;
+        /* Retail ADDIU wraps the 32-bit index without signed overflow. */
+        g_ControllerCurStateWriteIndex = (int)((u_int)g_ControllerCurStateWriteIndex + 1u);
     } else {
-#ifdef XENO_PC_PORT
-        /* XENO_PC_PORT: the port drives ControllerPoll+ControllerPushState from
-         * the Vsync shim (psyq_compat.c) ~42x per logic frame instead of once per
-         * real vblank as retail's vblank IRQ (func_8003634C) did, so this 16-slot
-         * queue overflows every frame. The field drains it once per frame by OR-ing
-         * all queued states (FieldPollControllers, misc2.c:1304-1313). Retail's
-         * drop-on-overflow then LOSES a one-frame rising-edge -- e.g. the confirm/
-         * talk bit (Circle = 0x20) -- that landed past slot 16, so a real face-
-         * button press never reached D_800C2694, while held bits (movement) survived
-         * in the early pushes. OR-merge the overflow state into the newest slot so
-         * the OR-drain still sees every transition. (Non-port/matching build keeps
-         * the original drop; on retail the queue never overflows so this is dead.) */
-        i = (g_ControllerCurStateWriteIndex - 1) & (CONTROLLER_MAX_NUM_STATES - 1);
-        g_C1ButtonStatesPressed[i]     |= g_C1ButtonState;
-        g_C2ButtonStatesPressed[i]     |= g_C2ButtonState;
-        g_C1ButtonStatesReleased[i]    |= g_C1ButtonStateReleased;
-        g_C2ButtonStatesReleased[i]    |= g_C2ButtonStateReleased;
-        g_C1ButtonStatesPressedOnce[i] |= g_C1ButtonStatePressedOnce;
-        g_C2ButtonStatesPressedOnce[i] |= g_C2ButtonStatePressedOnce;
-        /* Nothing was dropped, so do not raise the overflow flag: the menu
-         * readers (MenuProcessControllerInput / func_801C7D78) treat
-         * func_80036410()!=0 as "queue corrupt" and ControllerResetState()
-         * every frame, which on the port discards every press. Retail's
-         * once-per-vblank push never overflows, so the flag is unreachable
-         * there in normal play. */
-#else
+        /* Retail 80035CC8: preserve queued states and report overflow.
+         * Input scheduling must not be compensated by modifying the FIFO. */
         g_ControllerIsStateStackFull = 1;
-#endif
     }
 }
 
@@ -241,7 +217,7 @@ int ControllerPopState(void) {
     }
     
     i = g_ControllerCurStateReadIndex & (CONTROLLER_MAX_NUM_STATES - 1);
-    g_ControllerCurStateReadIndex++;
+    g_ControllerCurStateReadIndex = (int)((u_int)g_ControllerCurStateReadIndex + 1u);
     g_C1ButtonState =  g_C1ButtonStatesPressed[i];
     g_C2ButtonState = g_C2ButtonStatesPressed[i];
     g_C1ButtonStateReleased = g_C1ButtonStatesReleased[i];

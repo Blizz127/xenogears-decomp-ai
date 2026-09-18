@@ -64,7 +64,7 @@ typedef struct {
     /* 0x0 */ u_short equipFlags; // Which characters can use this item?
     /* 0x2 */ u16 unk2;
     /* 0x4 */ u_short price;
-    /* 0x6 */ u8 unk6[0xA]
+    /* 0x6 */ u8 unk6[0xA];
 } MenuShopWeapon; // Size: 0x10
 
 typedef struct {
@@ -540,10 +540,9 @@ typedef struct {
     /* 0x1E60 */ u_char shopItemTypes[MAX_SHOP_ITEMS];
     /* 0x1E90 */ u8 unk1E90[0x4];
     /* 0x1E94 */ u8 unk1E94;
-    // Decompiling `MenuProcessControllerInput` worked better if this field is
-    // volatile.  If you need to remove `volatile`, you can insert a temporary
-    // variable instead as done here: https://decomp.me/scratch/xsigV
-    /* 0x1E95 */ volatile u8 unk1E95;
+    /* Ordinary RAM; MenuProcessControllerInput uses volatile accesses locally
+     * to retain its retail load/store schedule without qualifying all readers. */
+    /* 0x1E95 */ u8 unk1E95;
     /* 0x1E96 */ u8 unk1E96[2];
 } SystemMenu; // Size: 0x1E98
 

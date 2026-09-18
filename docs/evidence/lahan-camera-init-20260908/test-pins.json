@@ -1,0 +1,5 @@
+{
+  "src/field/main/misc2.c": "a78d1420d32f57bc3f2cdfe1c37ca6a3c6386d62371ed44a679e1c94a3a364f8",
+  "pc_port/tests/field_camera_init_retail_test.c": "6f5aef935861796cc984a7ea3949f381d51ce647864d288eb9781bf109a62550",
+  "pc_port/tests/run_field_camera_init_retail_test.sh": "55c8c0d5f7ad59000b19813d036e72965abe3b3c2a08e3846b4e35439440199d"
+}

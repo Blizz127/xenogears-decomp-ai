@@ -4,10 +4,11 @@
  * Owned retail regions:
  *   state body    [0x8008EB64, 0x8008EE78)
  *   stop arm      [0x8008FAAC, 0x8008FAC4)
- *   shared tail   [0x80090620, 0x800906B4)
  *
- * The parent callback remains only partially transcribed.  Keeping this live
- * state in a bounded unit makes its retail behavior independently certifiable.
+ * The shared tail [0x80090620, 0x800906B4) is owned by
+ * world_map_vehicle_tail_90620.c.  The parent callback remains only partially
+ * transcribed; keeping this state in a bounded unit makes its retail behavior
+ * independently certifiable.
  */
 #include <stdint.h>
 #include <string.h>
@@ -29,6 +30,7 @@
 #include "world_map_helper_97770.h"
 #include "world_map_state2_8eb64.h"
 #include "world_map_terrain_sampler.h"
+#include "world_map_vehicle_tail_90620.h"
 
 #define WM_S2_SCRATCH       UINT32_C(0x1F800000)
 #define WM_S2_MODE          UINT32_C(0x8009BE10)
@@ -61,13 +63,6 @@ static u8 s2_lbu(u32 address)
 static u16 s2_lhu(u32 address)
 {
     u16 value;
-    memcpy(&value, PSX_ADDR(address), sizeof(value));
-    return value;
-}
-
-static s16 s2_lh(u32 address)
-{
-    s16 value;
     memcpy(&value, PSX_ADDR(address), sizeof(value));
     return value;
 }
@@ -125,31 +120,6 @@ static void s2_copy_words(u32 destination, u32 source, u32 count)
 
     for (index = 0u; index < count; index++)
         s2_sw(destination + index * 4u, s2_lw(source + index * 4u));
-}
-
-static void s2_epilogue(u32 slot)
-{
-    u32 context = s2_lw(WM_S2_CONTEXT_PTR);
-    u32 x = s2_sra(s2_lw(slot + 0x28u), 12u);
-    u32 y = s2_sra(s2_lw(slot + 0x2Cu), 12u);
-    u32 z = s2_sra(s2_lw(slot + 0x30u), 12u);
-    s16 state = s2_lh(slot + 0x20u);
-
-    s2_sw(context + 0x5Cu, x);
-    s2_sw(context + 0x08u, x);
-    s2_sw(context + 0x60u, y);
-    s2_sw(context + 0x0Cu, y);
-    s2_sw(context + 0x64u, z);
-    s2_sw(context + 0x10u, z);
-    wm_8008E034(slot + 0x28u);
-    s2_sh(WM_S2_NATIVE_HEAD, s2_lhu(slot + 0x48u));
-
-#if defined(W34N123_MUTANT_M10_WRONG_PUBLISH_STATES)
-    if (state == 2 || state == 8)
-#else
-    if (state == 2 || state == 8 || state == 16)
-#endif
-        wm_80074794(2, slot + 0x28u);
 }
 
 /* Retail 0x8008EC34..0x8008EC48: the transition arm clears only the area
@@ -257,7 +227,7 @@ s32 wm_8008E76C_state2(u32 slot)
 #if !defined(W34N123_MUTANT_M1_SKIP_EXIT_CODE_CLEAR)
         s2_sw(WM_S2_EXIT_CODE, 0u);
 #endif
-        s2_epilogue(slot);
+        wm_8008E76C_shared_tail(slot);
         return 1;
     }
 
@@ -280,7 +250,7 @@ s32 wm_8008E76C_state2(u32 slot)
             if (angle != -1)
                 s2_transition(slot, angle);
         }
-        s2_epilogue(slot);
+        wm_8008E76C_shared_tail(slot);
         return 1;
     }
 
@@ -325,6 +295,6 @@ s32 wm_8008E76C_state2(u32 slot)
     s2_build_matrices(slot);
     s2_update_presence(slot);
     s2_clear_walking_state(slot);
-    s2_epilogue(slot);
+    wm_8008E76C_shared_tail(slot);
     return 1;
 }

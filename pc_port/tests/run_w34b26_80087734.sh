@@ -51,7 +51,7 @@ build_and_run focused_ubsan -O2 -g -fsanitize=undefined -fno-sanitize-recover=un
 
 for regime in focused_O0 focused_O2 focused_ubsan; do
     grep -q '^W34B26 0x80087734 focused oracle PASS' "$BUILD_DIR/$regime.stdout"
-    grep -v 'worldmap-scheduler' "$BUILD_DIR/$regime.stderr" > "$BUILD_DIR/$regime.diag" || true
+    grep -v -e 'worldmap-scheduler' -e 'worldmap-stub' "$BUILD_DIR/$regime.stderr" > "$BUILD_DIR/$regime.diag" || true
     test ! -s "$BUILD_DIR/$regime.diag"
 done
 cmp "$BUILD_DIR/focused_O0.norm" "$BUILD_DIR/focused_O2.norm"

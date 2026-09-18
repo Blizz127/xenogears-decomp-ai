@@ -1,0 +1,833 @@
+[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)
+[xeno-port] PSX RAM emulation: 3072 KB at 0x61b0c0
+[xeno-port] main-exe static data loaded from disc/SLUS_006.64: rodata [0x80010000,0x80019524) sdata [0x8004ea90,0x800576e4) (file offset 0x800 + vaddr - 0x80010000); .text and ._49AC0 island not copied
+[xeno-port][boot] world state 3: retail native owner enabled (hasOverlay=1)
+[Psy-X] Initialising Psy-X 2.8
+[Psy-X] Build date: Sep  6 2026:17:50:45
+[Psy-X] *Video adapter: llvmpipe (LLVM 20.1.2, 256 bits) by Mesa
+[Psy-X] *OpenGL version: 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+[Psy-X] *GLSL version: 4.50
+[Psy-X] Host toolbar enabled: Quick Save | Quick Load | Record | Speed (F11 cycles, Shift+F11 resets; hold Backspace for 5x)
+[Psy-X] found sound device: OpenAL Soft
+ALSA lib confmisc.c:855:(parse_card) cannot find card '0'
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) error evaluating name
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5731:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2721:(snd_pcm_open_noupdate) Unknown PCM default
+[Psy-X] [PsyX_SPUAL_InitSound] - alcOpenDevice: NULL DEVICE error: ALC_INVALID_VALUE
+[xeno-port] CD image: disc/disc1.bin
+[Psy-X] Using 'disc/disc1.bin' image, sector size: 2352, frames: 305586
+[Psy-X] [CdControl] - Unhandled command 0x07!
+[xeno-port] ArchiveInit done (archive index loaded from disc).
+[xeno-port][sound] retail boot WDS banks 2..5 loaded
+[xeno-port][field] XENO_FIELD_MAP=2
+[xeno-port][field] XENO_FIELD_ENTRANCE=0 (D_8006F954 -> field-script var 2)
+[xeno-port][field] camera approach octant=7 (D_8006F950 -> field-script var 8)
+[xeno-port][field] font + party-skin init done
+[xeno-port][boot] direct field-test route: state 1 (KernelMenu not rendered)
+[xeno-port] entering decompiled MainLoop() (oracle)...
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9d2d10 g_GameSceneMapNum=2
+[FieldMain] FieldLoadUITextures
+[stub] SoundHandleError
+[field-diag] FieldLoad begin field=2 mapBuf=0x7e81b8
+[field-diag] assets before VM: tim=0 clut=0 scripts=35 scriptData=0x73c454
+[field-diag] spawn marker=0xbc modelsInPackage=55
+[field-diag] sprite package loaded: spriteData=0x748e2c
+[field-diag] actors allocated: count=104 actorArray=0x74d0a0
+[field-diag] func_8002C644: skip invalid pin base=0x7325dc end=0x106ffa8 hdrNext=0x0 (skips=1)
+[field-diag] model-build actor=31 spriteId=48 groups=2 status=0280 faPos=(503,-94,-1224)
+[field-diag] func_8002C644: skip invalid pin base=0x72e01c end=0x87fffa hdrNext=0x0 (skips=2)
+[field-diag] model-build actor=32 spriteId=40 groups=2 status=0290 faPos=(648,-377,-402)
+[field-diag] model-build actor=33 spriteId=0 groups=1 status=0290 faPos=(-531,29,1052)
+[field-diag] model-build actor=35 spriteId=0 groups=1 status=0290 faPos=(474,29,-33)
+[field-diag] model-build actor=36 spriteId=0 groups=1 status=0290 faPos=(99,110,-908)
+[field-diag] model-build actor=37 spriteId=0 groups=1 status=0290 faPos=(-920,-17,-920)
+[field-diag] model-build actor=38 spriteId=0 groups=1 status=0290 faPos=(-792,-33,177)
+[field-diag] model-build actor=39 spriteId=0 groups=1 status=0290 faPos=(233,85,816)
+[field-diag] model-build actor=40 spriteId=0 groups=1 status=0290 faPos=(311,-223,930)
+[field-diag] model-build actor=41 spriteId=0 groups=1 status=0290 faPos=(533,85,1007)
+[field-diag] func_8002C644: skip invalid pin base=0x722474 end=0x2606c7 hdrNext=0x0 (skips=3)
+[field-diag] model-build actor=42 spriteId=1 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] func_8002C644: skip invalid pin base=0x72262c end=0x26fa1a hdrNext=0x0 (skips=4)
+[field-diag] model-build actor=43 spriteId=2 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=44 spriteId=3 groups=3 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=45 spriteId=4 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=46 spriteId=5 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=47 spriteId=6 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=48 spriteId=7 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=49 spriteId=8 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=50 spriteId=9 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=51 spriteId=10 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=52 spriteId=11 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=53 spriteId=12 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=54 spriteId=13 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=55 spriteId=14 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=56 spriteId=11 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=57 spriteId=12 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=58 spriteId=15 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=59 spriteId=16 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=60 spriteId=17 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=61 spriteId=18 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=62 spriteId=19 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=63 spriteId=20 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=64 spriteId=21 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=65 spriteId=22 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=66 spriteId=23 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=67 spriteId=24 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=68 spriteId=25 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=69 spriteId=26 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=70 spriteId=27 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=71 spriteId=28 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=72 spriteId=29 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=73 spriteId=30 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=74 spriteId=31 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=75 spriteId=32 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=76 spriteId=33 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=77 spriteId=34 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=78 spriteId=35 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=79 spriteId=36 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=80 spriteId=37 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=81 spriteId=38 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=82 spriteId=39 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=83 spriteId=41 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=84 spriteId=42 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=85 spriteId=43 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=86 spriteId=44 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=87 spriteId=45 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=88 spriteId=46 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=89 spriteId=47 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=90 spriteId=49 groups=2 status=0010 faPos=(503,-94,-1224)
+[field-diag] model-build actor=91 spriteId=50 groups=2 status=0280 faPos=(504,-158,-1511)
+[field-diag] model-build actor=92 spriteId=51 groups=2 status=0010 faPos=(504,-158,-1511)
+[field-diag] model-build actor=93 spriteId=50 groups=2 status=0280 faPos=(215,-94,-1511)
+[field-diag] model-build actor=94 spriteId=51 groups=2 status=0010 faPos=(215,-94,-1511)
+[field-diag] model-build actor=95 spriteId=52 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=96 spriteId=53 groups=1 status=8000 faPos=(-280,496,151)
+[field-diag] model-build count=65 / actors=104
+[field-diag] before VM: active=65 actorData=35/104 spriteData=0/104 D_800AFC74=0
+[field-diag] func_80076AC0 first: actor=33 actorPtr=0x74dc7c actorSpriteSlot=0x74dc80 curSprite=(nil) args=(33,0,0x748e44,0,0,128,0)
+[field-diag] after VM: active=78 actorData=35/104 spriteData=35/104 D_800AFC74=1 objects=1 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a1524 ip=95
+[field-diag] actor[1] status=0241 flags4=04000400 faPos=(-151,70,1774) adPos=(-151,70,1774) model=(nil) sprite=0x7a16f8 ip=3447
+[field-diag] actor[2] status=0240 flags4=0400043e faPos=(-177,130,1450) adPos=(-177,130,1450) model=(nil) sprite=0x7a1b6c ip=3862
+[field-diag] actor[3] status=0260 flags4=04000c00 faPos=(-358,87,570) adPos=(-358,87,570) model=(nil) sprite=0x7a1fe0 ip=4329
+[field-diag] actor[4] status=0240 flags4=0400243f faPos=(-1291,24,800) adPos=(-1291,24,800) model=(nil) sprite=0x7a2454 ip=4411
+[field-diag] actor[5] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a2628 ip=5332
+[field-diag] actor[6] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a9b9c ip=5479
+[field-diag] actor[7] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a9d70 ip=5857
+[field-diag] actor[8] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a9f44 ip=5925
+[field-diag] actor[9] status=0240 flags4=04000038 faPos=(-174,143,911) adPos=(-174,143,911) model=(nil) sprite=0x7aa118 ip=6163
+[field-diag] actor[10] status=0240 flags4=04000038 faPos=(-123,143,925) adPos=(-123,143,925) model=(nil) sprite=0x7aa2ec ip=6965
+[field-diag] actor[11] status=0261 flags4=04200400 faPos=(501,-49,-74) adPos=(501,-49,-74) model=(nil) sprite=0x7aa4c0 ip=7462
+[field-diag] actor[12] status=0261 flags4=04000800 faPos=(-51,24,243) adPos=(-51,24,243) model=(nil) sprite=0x7aa694 ip=7599
+[field-diag] actor[13] status=0260 flags4=04000000 faPos=(-449,87,204) adPos=(-449,87,204) model=(nil) sprite=0x7aa868 ip=8010
+[field-diag] actor[14] status=0261 flags4=04000000 faPos=(500,143,798) adPos=(500,143,798) model=(nil) sprite=0x7aaa6c ip=8025
+[field-diag] actor[15] status=0261 flags4=04000000 faPos=(346,87,66) adPos=(346,87,66) model=(nil) sprite=0x7aac28 ip=8046
+[field-diag] actor[16] status=0261 flags4=04000000 faPos=(507,118,506) adPos=(507,118,506) model=(nil) sprite=0x7aade4 ip=8064
+[field-diag] actor[17] status=0241 flags4=04000000 faPos=(-676,33,181) adPos=(-676,33,181) model=(nil) sprite=0x7aafa0 ip=8096
+[field-diag] actor[18] status=0241 flags4=04000000 faPos=(-205,125,-741) adPos=(-205,125,-741) model=(nil) sprite=0x7ab15c ip=8110
+[field-diag] actor[19] status=0241 flags4=04000000 faPos=(-357,87,572) adPos=(-357,87,572) model=(nil) sprite=0x7ab318 ip=8121
+[field-diag] actor[20] status=0241 flags4=04000000 faPos=(834,87,111) adPos=(834,87,111) model=(nil) sprite=0x7ab4d4 ip=8132
+[field-diag] actor[21] status=0241 flags4=04000000 faPos=(440,87,-73) adPos=(440,87,-73) model=(nil) sprite=0x7ab690 ip=8148
+[field-diag] actor[22] status=0241 flags4=04000000 faPos=(-553,110,-259) adPos=(-553,110,-259) model=(nil) sprite=0x7ab84c ip=8159
+[field-diag] actor[23] status=0241 flags4=04000000 faPos=(-633,146,-515) adPos=(-633,146,-515) model=(nil) sprite=0x7aba08 ip=8173
+[field-diag] func_8002C644: real pin base=0x7ea1fc size=12232 (pins=1)
+[field-0bb] archive 0xbd: 464896 bytes read, draining to VRAM
+[field-0bb] retail decoder: 227 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][opcode56] FE54 snapshot actor=0 lock_ip=0x0061 pre_lock_control=0 pending=1
+[xeno-port][variant5] tri entry=1 cmd=0x723614 count=12; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=1 cmd=0x723678 count=11; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=2 cmd=0x724c80 count=8; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=2 cmd=0x724cc4 count=1; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=3 cmd=0x7254c8 count=16; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=3 cmd=0x7257a4 count=2; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=4 cmd=0x7257b8 count=23; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=4 cmd=0x727b10 count=174; resume F13 retail FIFO/culling gate
+[reg-flush] KON t=2.8s v22 voll=1764 volr=1764 pitch=0xc7 addr=0x6920
+[reg-flush] KON t=2.8s v23 voll=1598 volr=1598 pitch=0x128 addr=0xbee0
+[reg-flush] KON t=2.9s v14 voll=6020 volr=66 pitch=0xfd8 addr=0x31540
+[reg-flush] KON t=2.9s v19 voll=5109 volr=3202 pitch=0x588 addr=0x33270
+[reg-flush] KON t=2.9s v15 voll=5910 volr=334 pitch=0xfd8 addr=0x31540
+[reg-flush] KON t=3.0s v14 voll=5800 volr=602 pitch=0xfd8 addr=0x31540
+[FieldMain] entering main loop
+[field-diag] func_8002C644: real pin base=0x7f19f4 size=10664 (pins=2)
+[FieldMain] teardown exitCode=0
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000676.png
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000677.png
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000678.png
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000679.png
+[xeno-port][battle-mips] retail adapter ready: functions=604 shared-data=188 host-ranges=256
+[xeno-port][battle-mips] enter retail battle.bin at 0x80070f40
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000680.png
+[battle-ot] frame=1 presented=680 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000681.png
+[battle-ot] frame=2 presented=681 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000682.png
+[battle-ot] frame=3 presented=682 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000683.png
+[battle-ot] frame=4 presented=683 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000684.png
+[battle-ot] frame=5 presented=684 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000685.png
+[battle-ot] frame=6 presented=685 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000686.png
+[battle-ot] frame=7 presented=686 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000687.png
+[battle-ot] frame=8 presented=687 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000688.png
+[battle-ot] frame=9 presented=688 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000689.png
+[battle-ot] frame=10 presented=689 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000690.png
+[battle-ot] frame=11 presented=690 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000691.png
+[battle-ot] frame=12 presented=691 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000692.png
+[battle-ot] frame=13 presented=692 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000693.png
+[battle-ot] frame=14 presented=693 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000694.png
+[battle-ot] frame=15 presented=694 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000695.png
+[battle-ot] frame=16 presented=695 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000696.png
+[battle-ot] frame=17 presented=696 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000697.png
+[battle-ot] frame=18 presented=697 packets=560 hist: 24=560
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000698.png
+[battle-ot] frame=19 presented=698 packets=559 hist: 24=559
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000699.png
+[battle-ot] frame=20 presented=699 packets=557 hist: 24=557
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000700.png
+[battle-ot] frame=21 presented=700 packets=543 hist: 24=543
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000701.png
+[battle-ot] frame=22 presented=701 packets=523 hist: 24=523
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000702.png
+[battle-ot] frame=23 presented=702 packets=506 hist: 24=506
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000703.png
+[battle-ot] frame=24 presented=703 packets=496 hist: 24=496
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000704.png
+[battle-ot] frame=25 presented=704 packets=477 hist: 24=477
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000705.png
+[battle-ot] frame=26 presented=705 packets=462 hist: 24=462
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000706.png
+[battle-ot] frame=27 presented=706 packets=456 hist: 24=456
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000707.png
+[battle-ot] frame=28 presented=707 packets=446 hist: 24=446
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000708.png
+[battle-ot] frame=29 presented=708 packets=439 hist: 24=439
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000709.png
+[battle-ot] frame=30 presented=709 packets=431 hist: 24=431
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000710.png
+[battle-ot] frame=31 presented=710 packets=423 hist: 24=423
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000711.png
+[battle-ot] frame=32 presented=711 packets=418 hist: 24=418
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000712.png
+[battle-ot] frame=33 presented=712 packets=414 hist: 24=414
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000713.png
+[battle-ot] frame=34 presented=713 packets=408 hist: 24=408
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000714.png
+[battle-ot] frame=35 presented=714 packets=403 hist: 24=403
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000715.png
+[battle-ot] frame=36 presented=715 packets=395 hist: 24=395
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000716.png
+[battle-ot] frame=37 presented=716 packets=387 hist: 24=387
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000717.png
+[battle-ot] frame=38 presented=717 packets=382 hist: 24=382
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000718.png
+[battle-ot] frame=39 presented=718 packets=372 hist: 24=372
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000719.png
+[battle-ot] frame=40 presented=719 packets=372 hist: 24=372
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000720.png
+[battle-ot] frame=41 presented=720 packets=364 hist: 24=364
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000721.png
+[battle-ot] frame=42 presented=721 packets=361 hist: 24=361
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000722.png
+[battle-ot] frame=43 presented=722 packets=356 hist: 24=356
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000723.png
+[battle-ot] frame=44 presented=723 packets=353 hist: 24=353
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000724.png
+[battle-ot] frame=45 presented=724 packets=350 hist: 24=350
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000725.png
+[battle-ot] frame=46 presented=725 packets=345 hist: 24=345
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000726.png
+[battle-ot] frame=47 presented=726 packets=345 hist: 24=345
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000727.png
+[battle-ot] frame=48 presented=727 packets=344 hist: 24=344
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000728.png
+[battle-ot] frame=49 presented=728 packets=341 hist: 24=341
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000729.png
+[battle-ot] frame=50 presented=729 packets=340 hist: 24=340
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000730.png
+[battle-ot] frame=51 presented=730 packets=339 hist: 24=339
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000731.png
+[battle-ot] frame=52 presented=731 packets=338 hist: 24=338
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000732.png
+[battle-ot] frame=53 presented=732 packets=338 hist: 24=338
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000733.png
+[battle-ot] frame=54 presented=733 packets=337 hist: 24=337
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000734.png
+[battle-ot] frame=55 presented=734 packets=334 hist: 24=334
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000735.png
+[battle-ot] frame=56 presented=735 packets=334 hist: 24=334
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000736.png
+[battle-ot] frame=57 presented=736 packets=333 hist: 24=333
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000737.png
+[battle-ot] frame=58 presented=737 packets=331 hist: 24=331
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000738.png
+[battle-ot] frame=59 presented=738 packets=329 hist: 24=329
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000739.png
+[battle-ot] frame=60 presented=739 packets=328 hist: 24=328
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000740.png
+[battle-ot] frame=61 presented=740 packets=326 hist: 24=326
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000741.png
+[battle-ot] frame=62 presented=741 packets=325 hist: 24=325
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000742.png
+[battle-ot] frame=63 presented=742 packets=324 hist: 24=324
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000743.png
+[battle-ot] frame=64 presented=743 packets=324 hist: 24=324
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000744.png
+[battle-ot] frame=65 presented=744 packets=321 hist: 24=321
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000745.png
+[battle-ot] frame=66 presented=745 packets=320 hist: 24=320
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000746.png
+[battle-ot] frame=67 presented=746 packets=319 hist: 24=319
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000747.png
+[battle-ot] frame=68 presented=747 packets=318 hist: 24=318
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000748.png
+[battle-ot] frame=69 presented=748 packets=316 hist: 24=316
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000749.png
+[battle-ot] frame=70 presented=749 packets=316 hist: 24=316
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000750.png
+[battle-ot] frame=71 presented=750 packets=316 hist: 24=316
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000751.png
+[battle-ot] frame=72 presented=751 packets=315 hist: 24=315
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000752.png
+[battle-ot] frame=73 presented=752 packets=315 hist: 24=315
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000753.png
+[battle-ot] frame=74 presented=753 packets=314 hist: 24=314
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000754.png
+[battle-ot] frame=75 presented=754 packets=313 hist: 24=313
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000755.png
+[battle-ot] frame=76 presented=755 packets=312 hist: 24=312
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000756.png
+[battle-ot] frame=77 presented=756 packets=312 hist: 24=312
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000757.png
+[battle-ot] frame=78 presented=757 packets=312 hist: 24=312
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000758.png
+[battle-ot] frame=79 presented=758 packets=312 hist: 24=312
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000759.png
+[battle-ot] frame=80 presented=759 packets=311 hist: 24=311
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000760.png
+[battle-ot] frame=81 presented=760 packets=311 hist: 24=311
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000761.png
+[battle-ot] frame=82 presented=761 packets=311 hist: 24=311
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000762.png
+[battle-ot] frame=83 presented=762 packets=310 hist: 24=310
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000763.png
+[battle-ot] frame=84 presented=763 packets=310 hist: 24=310
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000764.png
+[battle-ot] frame=85 presented=764 packets=310 hist: 24=310
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000765.png
+[battle-ot] frame=86 presented=765 packets=310 hist: 24=310
+[field-diag] func_8002C644: real pin base=0x7fba34 size=6012 (pins=3)
+[xeno-port][horizon] DIAG 2709C a0=448 a1=0 w=256 h=96 clut=(0,481) mode=1 sign=4 coords=(0,400,6400) rgb0=000000 sky=0 fade=64/-929841840 ctx=0x7141d4
+[xeno-port][horizon] DIAG 273C4 screenY=101 scroll=0 fade=256 hasColors=0 h=96 stripScale=0 ot=0x6e3b4c rcx=0 ft4[0]=(0,53)-(96,101) tpage=0x87
+[field-diag] func_8002C644: real pin base=0x7f4344 size=16028 (pins=4)
+[field-diag] func_8002C644: real pin base=0x7f5ca4 size=12232 (pins=5)
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000766.png
+[battle-ot] frame=87 presented=766 packets=374 hist: 25=30 27=126 2a=1 2d=214 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000767.png
+[battle-ot] frame=88 presented=767 packets=2450 hist: 24=2074 25=30 27=124 2a=1 2c=3 2d=215 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000768.png
+[battle-ot] frame=89 presented=768 packets=2458 hist: 24=2079 25=32 27=120 2a=1 2c=5 2d=213 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000769.png
+[battle-ot] frame=90 presented=769 packets=2446 hist: 24=2069 25=32 27=120 2a=1 2c=4 2d=212 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000770.png
+[battle-ot] frame=91 presented=770 packets=2459 hist: 24=2093 25=32 27=120 2a=1 2c=3 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000771.png
+[battle-ot] frame=92 presented=771 packets=2401 hist: 24=2033 25=32 27=120 2a=1 2c=5 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000772.png
+[battle-ot] frame=93 presented=772 packets=2407 hist: 24=2043 25=32 27=118 2a=1 2c=3 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000773.png
+[battle-ot] frame=94 presented=773 packets=2450 hist: 24=2090 25=30 27=118 2a=1 2c=2 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000774.png
+[battle-ot] frame=95 presented=774 packets=2446 hist: 24=2084 25=30 27=118 2a=1 2c=4 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000775.png
+[battle-ot] frame=96 presented=775 packets=2432 hist: 24=2071 25=30 27=118 2a=1 2c=2 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000776.png
+[battle-ot] frame=97 presented=776 packets=2412 hist: 24=2051 25=30 27=118 2a=1 2c=3 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000777.png
+[battle-ot] frame=98 presented=777 packets=2397 hist: 24=2036 25=30 27=118 2a=1 2c=3 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000778.png
+[battle-ot] frame=99 presented=778 packets=2416 hist: 24=2053 25=30 27=118 2a=1 2c=5 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000779.png
+[battle-ot] frame=100 presented=779 packets=2447 hist: 24=2084 25=30 27=118 2a=1 2c=5 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000780.png
+[battle-ot] frame=101 presented=780 packets=2426 hist: 24=2066 25=30 27=118 2a=1 2c=2 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000781.png
+[battle-ot] frame=102 presented=781 packets=2401 hist: 24=2040 25=30 27=118 2a=1 2c=4 2d=200 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000782.png
+[battle-ot] frame=103 presented=782 packets=2421 hist: 24=2060 25=30 27=118 2a=1 2c=4 2d=200 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000783.png
+[battle-ot] frame=104 presented=783 packets=2485 hist: 24=2124 25=30 27=118 2a=1 2c=4 2d=200 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000784.png
+[battle-ot] frame=105 presented=784 packets=2463 hist: 24=2102 25=30 27=118 2a=1 2c=2 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000785.png
+[battle-ot] frame=106 presented=785 packets=2423 hist: 24=2062 25=30 27=118 2a=1 2c=2 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000786.png
+[battle-ot] frame=107 presented=786 packets=2422 hist: 24=2061 25=30 27=118 2a=1 2c=3 2d=201 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000787.png
+[battle-ot] frame=108 presented=787 packets=2424 hist: 24=2064 25=30 27=118 2a=1 2c=3 2d=200 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000788.png
+[battle-ot] frame=109 presented=788 packets=2428 hist: 24=2067 25=30 27=118 2a=1 2c=2 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000789.png
+[battle-ot] frame=110 presented=789 packets=2457 hist: 24=2094 25=30 27=118 2a=1 2c=4 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000790.png
+[battle-ot] frame=111 presented=790 packets=2436 hist: 24=2075 25=30 27=118 2a=1 2c=2 2d=202 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000791.png
+[battle-ot] frame=112 presented=791 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000792.png
+[battle-ot] frame=113 presented=792 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000793.png
+[battle-ot] frame=114 presented=793 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000794.png
+[battle-ot] frame=115 presented=794 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000795.png
+[battle-ot] frame=116 presented=795 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000796.png
+[battle-ot] frame=117 presented=796 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000797.png
+[battle-ot] frame=118 presented=797 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000798.png
+[battle-ot] frame=119 presented=798 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000799.png
+[battle-ot] frame=120 presented=799 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000800.png
+[battle-ot] frame=121 presented=800 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000801.png
+[battle-ot] frame=122 presented=801 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000802.png
+[battle-ot] frame=123 presented=802 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000803.png
+[battle-ot] frame=124 presented=803 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000804.png
+[battle-ot] frame=125 presented=804 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000805.png
+[battle-ot] frame=126 presented=805 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000806.png
+[battle-ot] frame=127 presented=806 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000807.png
+[battle-ot] frame=128 presented=807 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000808.png
+[battle-ot] frame=129 presented=808 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000809.png
+[battle-ot] frame=130 presented=809 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000810.png
+[battle-ot] frame=131 presented=810 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000811.png
+[battle-ot] frame=132 presented=811 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000812.png
+[battle-ot] frame=133 presented=812 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000813.png
+[battle-ot] frame=134 presented=813 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000814.png
+[battle-ot] frame=135 presented=814 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000815.png
+[battle-ot] frame=136 presented=815 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000816.png
+[battle-ot] frame=137 presented=816 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000817.png
+[battle-ot] frame=138 presented=817 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000818.png
+[battle-ot] frame=139 presented=818 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000819.png
+[battle-ot] frame=140 presented=819 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000820.png
+[battle-ot] frame=141 presented=820 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000821.png
+[battle-ot] frame=142 presented=821 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000822.png
+[battle-ot] frame=143 presented=822 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000823.png
+[battle-ot] frame=144 presented=823 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000824.png
+[battle-ot] frame=145 presented=824 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000825.png
+[battle-ot] frame=146 presented=825 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000826.png
+[battle-ot] frame=147 presented=826 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000827.png
+[battle-ot] frame=148 presented=827 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000828.png
+[battle-ot] frame=149 presented=828 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000829.png
+[battle-ot] frame=150 presented=829 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000830.png
+[battle-ot] frame=151 presented=830 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000831.png
+[battle-ot] frame=152 presented=831 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000832.png
+[battle-ot] frame=153 presented=832 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000833.png
+[battle-ot] frame=154 presented=833 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000834.png
+[battle-ot] frame=155 presented=834 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000835.png
+[battle-ot] frame=156 presented=835 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000836.png
+[battle-ot] frame=157 presented=836 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000837.png
+[battle-ot] frame=158 presented=837 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000838.png
+[battle-ot] frame=159 presented=838 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000839.png
+[battle-ot] frame=160 presented=839 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000840.png
+[battle-ot] frame=161 presented=840 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000841.png
+[battle-ot] frame=162 presented=841 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000842.png
+[battle-ot] frame=163 presented=842 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000843.png
+[battle-ot] frame=164 presented=843 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000844.png
+[battle-ot] frame=165 presented=844 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000845.png
+[battle-ot] frame=166 presented=845 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000846.png
+[battle-ot] frame=167 presented=846 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000847.png
+[battle-ot] frame=168 presented=847 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000848.png
+[battle-ot] frame=169 presented=848 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000849.png
+[battle-ot] frame=170 presented=849 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000850.png
+[battle-ot] frame=171 presented=850 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000851.png
+[battle-ot] frame=172 presented=851 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000852.png
+[battle-ot] frame=173 presented=852 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000853.png
+[battle-ot] frame=174 presented=853 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000854.png
+[battle-ot] frame=175 presented=854 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000855.png
+[battle-ot] frame=176 presented=855 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000856.png
+[battle-ot] frame=177 presented=856 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000857.png
+[battle-ot] frame=178 presented=857 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000858.png
+[battle-ot] frame=179 presented=858 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000859.png
+[battle-ot] frame=180 presented=859 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000860.png
+[battle-ot] frame=181 presented=860 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000861.png
+[battle-ot] frame=182 presented=861 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000862.png
+[battle-ot] frame=183 presented=862 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000863.png
+[battle-ot] frame=184 presented=863 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000864.png
+[battle-ot] frame=185 presented=864 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000865.png
+[battle-ot] frame=186 presented=865 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000866.png
+[battle-ot] frame=187 presented=866 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000867.png
+[battle-ot] frame=188 presented=867 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000868.png
+[battle-ot] frame=189 presented=868 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000869.png
+[battle-ot] frame=190 presented=869 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000870.png
+[battle-ot] frame=191 presented=870 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000871.png
+[battle-ot] frame=192 presented=871 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000872.png
+[battle-ot] frame=193 presented=872 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000873.png
+[battle-ot] frame=194 presented=873 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000874.png
+[battle-ot] frame=195 presented=874 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000875.png
+[battle-ot] frame=196 presented=875 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000876.png
+[battle-ot] frame=197 presented=876 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000877.png
+[battle-ot] frame=198 presented=877 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000878.png
+[battle-ot] frame=199 presented=878 packets=19 hist: 27=7 2a=1 2d=3 2e=5 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000879.png
+[battle-ot] frame=200 presented=879 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000880.png
+[battle-ot] frame=201 presented=880 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000881.png
+[battle-ot] frame=202 presented=881 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000882.png
+[battle-ot] frame=203 presented=882 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000883.png
+[battle-ot] frame=204 presented=883 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000884.png
+[battle-ot] frame=205 presented=884 packets=17 hist: 27=7 2d=3 2e=5 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000885.png
+[battle-ot] frame=206 presented=885 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000886.png
+[battle-ot] frame=207 presented=886 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000887.png
+[battle-ot] frame=208 presented=887 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000888.png
+[battle-ot] frame=209 presented=888 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000889.png
+[battle-ot] frame=210 presented=889 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000890.png
+[battle-ot] frame=211 presented=890 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000891.png
+[battle-ot] frame=212 presented=891 packets=15 hist: 27=7 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000892.png
+[battle-ot] frame=213 presented=892 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000893.png
+[battle-ot] frame=214 presented=893 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000894.png
+[battle-ot] frame=215 presented=894 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000895.png
+[battle-ot] frame=216 presented=895 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000896.png
+[battle-ot] frame=217 presented=896 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000897.png
+[battle-ot] frame=218 presented=897 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000898.png
+[battle-ot] frame=219 presented=898 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000899.png
+[battle-ot] frame=220 presented=899 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000900.png
+[battle-ot] frame=221 presented=900 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000901.png
+[battle-ot] frame=222 presented=901 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000902.png
+[battle-ot] frame=223 presented=902 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000903.png
+[battle-ot] frame=224 presented=903 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000904.png
+[battle-ot] frame=225 presented=904 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000905.png
+[battle-ot] frame=226 presented=905 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000906.png
+[battle-ot] frame=227 presented=906 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000907.png
+[battle-ot] frame=228 presented=907 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000908.png
+[battle-ot] frame=229 presented=908 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000909.png
+[battle-ot] frame=230 presented=909 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000910.png
+[battle-ot] frame=231 presented=910 packets=17 hist: 27=7 2a=1 2d=3 2e=3 e1=3
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000911.png
+[battle-ot] frame=232 presented=911 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000912.png
+[battle-ot] frame=233 presented=912 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000913.png
+[battle-ot] frame=234 presented=913 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000914.png
+[battle-ot] frame=235 presented=914 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000915.png
+[battle-ot] frame=236 presented=915 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000916.png
+[battle-ot] frame=237 presented=916 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000917.png
+[battle-ot] frame=238 presented=917 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000918.png
+[battle-ot] frame=239 presented=918 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000919.png
+[battle-ot] frame=240 presented=919 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000920.png
+[battle-ot] frame=241 presented=920 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000921.png
+[battle-ot] frame=242 presented=921 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000922.png
+[battle-ot] frame=243 presented=922 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000923.png
+[battle-ot] frame=244 presented=923 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000924.png
+[battle-ot] frame=245 presented=924 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000925.png
+[battle-ot] frame=246 presented=925 packets=14 hist: 27=6 2d=3 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000926.png
+[battle-ot] frame=247 presented=926 packets=19 hist: 27=6 2d=8 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000927.png
+[battle-ot] frame=248 presented=927 packets=23 hist: 27=10 2d=8 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000928.png
+[battle-ot] frame=249 presented=928 packets=25 hist: 27=12 2d=8 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000929.png
+[battle-ot] frame=250 presented=929 packets=26 hist: 27=12 2d=9 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000930.png
+[battle-ot] frame=251 presented=930 packets=28 hist: 27=12 2d=11 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000931.png
+[battle-ot] frame=252 presented=931 packets=23 hist: 27=6 2d=12 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000932.png
+[battle-ot] frame=253 presented=932 packets=23 hist: 27=6 2d=12 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000933.png
+[battle-ot] frame=254 presented=933 packets=25 hist: 27=6 2d=14 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000934.png
+[battle-ot] frame=255 presented=934 packets=27 hist: 27=6 2d=16 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000935.png
+[battle-ot] frame=256 presented=935 packets=26 hist: 27=6 2d=15 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000936.png
+[battle-ot] frame=257 presented=936 packets=31 hist: 27=6 2d=20 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000937.png
+[battle-ot] frame=258 presented=937 packets=31 hist: 27=6 2d=20 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000938.png
+[battle-ot] frame=259 presented=938 packets=35 hist: 27=6 2d=24 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000939.png
+[battle-ot] frame=260 presented=939 packets=36 hist: 25=1 27=6 2d=24 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000940.png
+[battle-ot] frame=261 presented=940 packets=38 hist: 25=1 27=6 2d=26 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000941.png
+[battle-ot] frame=262 presented=941 packets=45 hist: 25=1 27=10 2d=29 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000942.png
+[battle-ot] frame=263 presented=942 packets=48 hist: 25=4 27=10 2d=29 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000943.png
+[battle-ot] frame=264 presented=943 packets=44 hist: 25=4 27=4 2d=31 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000944.png
+[battle-ot] frame=265 presented=944 packets=45 hist: 25=5 27=4 2d=31 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000945.png
+[battle-ot] frame=266 presented=945 packets=52 hist: 25=8 27=4 2d=35 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000946.png
+[battle-ot] frame=267 presented=946 packets=53 hist: 25=8 27=4 2d=36 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000947.png
+[battle-ot] frame=268 presented=947 packets=64 hist: 25=8 27=14 2d=37 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000948.png
+[battle-ot] frame=269 presented=948 packets=71 hist: 25=10 27=14 2d=42 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000949.png
+[battle-ot] frame=270 presented=949 packets=69 hist: 25=10 27=14 2d=40 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000950.png
+[battle-ot] frame=271 presented=950 packets=71 hist: 25=10 27=14 2d=42 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000951.png
+[battle-ot] frame=272 presented=951 packets=73 hist: 25=10 27=14 2d=44 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000952.png
+[battle-ot] frame=273 presented=952 packets=84 hist: 24=10 25=9 27=14 2d=46 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000953.png
+[battle-ot] frame=274 presented=953 packets=130 hist: 24=54 25=9 27=15 2d=47 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000954.png
+[battle-ot] frame=275 presented=954 packets=165 hist: 24=86 25=9 27=18 2d=47 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000955.png
+[battle-ot] frame=276 presented=955 packets=195 hist: 24=115 25=8 27=18 2d=49 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000956.png
+[battle-ot] frame=277 presented=956 packets=218 hist: 24=136 25=8 27=18 2d=51 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000957.png
+[battle-ot] frame=278 presented=957 packets=288 hist: 24=196 25=8 27=26 2d=53 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000958.png
+[battle-ot] frame=279 presented=958 packets=331 hist: 24=239 25=7 27=26 2d=54 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000959.png
+[battle-ot] frame=280 presented=959 packets=353 hist: 24=260 25=7 27=26 2d=55 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000960.png
+[battle-ot] frame=281 presented=960 packets=390 hist: 24=294 25=7 27=26 2d=58 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000961.png
+[battle-ot] frame=282 presented=961 packets=400 hist: 24=305 25=5 27=26 2d=59 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000962.png
+[battle-ot] frame=283 presented=962 packets=408 hist: 24=314 25=5 27=26 2c=1 2d=57 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000963.png
+[battle-ot] frame=284 presented=963 packets=431 hist: 24=335 25=4 27=26 2c=1 2d=60 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000964.png
+[battle-ot] frame=285 presented=964 packets=461 hist: 24=358 25=4 27=30 2c=1 2d=63 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000965.png
+[battle-ot] frame=286 presented=965 packets=475 hist: 24=370 25=4 27=32 2c=1 2d=63 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000966.png
+[battle-ot] frame=287 presented=966 packets=490 hist: 24=383 25=4 27=31 2c=1 2d=66 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000967.png
+[battle-ot] frame=288 presented=967 packets=499 hist: 24=394 25=4 27=28 2c=1 2d=67 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000968.png
+[battle-ot] frame=289 presented=968 packets=529 hist: 24=424 25=4 27=28 2c=1 2d=67 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000969.png
+[battle-ot] frame=290 presented=969 packets=532 hist: 24=425 25=5 27=28 2c=1 2d=68 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000970.png
+[battle-ot] frame=291 presented=970 packets=547 hist: 24=438 25=6 27=30 2c=1 2d=67 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000971.png
+[battle-ot] frame=292 presented=971 packets=560 hist: 24=445 25=5 27=34 2c=1 2d=70 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000972.png
+[battle-ot] frame=293 presented=972 packets=579 hist: 24=457 25=5 27=40 2c=1 2d=71 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000973.png
+[battle-ot] frame=294 presented=973 packets=576 hist: 24=454 25=5 27=39 2c=1 2d=72 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000974.png
+[battle-ot] frame=295 presented=974 packets=575 hist: 24=454 25=5 27=37 2c=1 2d=73 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000975.png
+[battle-ot] frame=296 presented=975 packets=584 hist: 24=461 25=5 27=37 2c=1 2d=75 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000976.png
+[battle-ot] frame=297 presented=976 packets=587 hist: 24=464 25=6 27=35 2c=1 2d=76 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000977.png
+[battle-ot] frame=298 presented=977 packets=592 hist: 24=471 25=6 27=34 2c=1 2d=75 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000978.png
+[battle-ot] frame=299 presented=978 packets=589 hist: 24=468 25=6 27=34 2c=1 2d=75 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000979.png
+[battle-ot] frame=300 presented=979 packets=592 hist: 24=467 25=6 27=38 2c=1 2d=75 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000980.png
+[battle-ot] frame=301 presented=980 packets=603 hist: 24=476 25=6 27=40 2c=1 2d=75 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000981.png
+[battle-ot] frame=302 presented=981 packets=600 hist: 24=471 25=6 27=40 2c=1 2d=77 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000982.png
+[battle-ot] frame=303 presented=982 packets=605 hist: 24=473 25=8 27=40 2c=1 2d=78 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000983.png
+[battle-ot] frame=304 presented=983 packets=602 hist: 24=468 25=8 27=40 2c=1 2d=80 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000984.png
+[battle-ot] frame=305 presented=984 packets=609 hist: 24=476 25=8 27=40 2c=1 2d=79 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000985.png
+[battle-ot] frame=306 presented=985 packets=599 hist: 24=467 25=7 27=40 2c=1 2d=79 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000986.png
+[battle-ot] frame=307 presented=986 packets=608 hist: 24=476 25=7 27=40 2c=1 2d=79 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000987.png
+[battle-ot] frame=308 presented=987 packets=601 hist: 24=469 25=7 27=40 2c=1 2d=79 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000988.png
+[battle-ot] frame=309 presented=988 packets=610 hist: 24=475 25=8 27=40 2c=1 2d=81 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000989.png
+[battle-ot] frame=310 presented=989 packets=612 hist: 24=476 25=8 27=40 2c=1 2d=82 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000990.png
+[battle-ot] frame=311 presented=990 packets=616 hist: 24=474 25=8 27=46 2c=1 2d=82 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000991.png
+[battle-ot] frame=312 presented=991 packets=623 hist: 24=478 25=8 27=48 2c=1 2d=83 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000992.png
+[battle-ot] frame=313 presented=992 packets=623 hist: 24=478 25=8 27=48 2c=1 2d=83 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000993.png
+[battle-ot] frame=314 presented=993 packets=614 hist: 24=467 25=8 27=50 2c=1 2d=83 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000994.png
+[battle-ot] frame=315 presented=994 packets=616 hist: 24=467 25=8 27=50 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000995.png
+[battle-ot] frame=316 presented=995 packets=619 hist: 24=470 25=8 27=50 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000996.png
+[battle-ot] frame=317 presented=996 packets=613 hist: 24=462 25=8 27=52 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000997.png
+[battle-ot] frame=318 presented=997 packets=624 hist: 24=473 25=8 27=52 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000998.png
+[battle-ot] frame=319 presented=998 packets=623 hist: 24=473 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-000999.png
+[battle-ot] frame=320 presented=999 packets=621 hist: 24=471 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[xeno-port][field] captured /logs/m2fix/runC/field-frame-001000.png
+[battle-ot] frame=321 presented=1000 packets=614 hist: 24=463 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=322 presented=1001 packets=627 hist: 24=476 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=323 presented=1002 packets=617 hist: 24=466 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=324 presented=1003 packets=624 hist: 24=474 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[battle-ot] frame=325 presented=1004 packets=611 hist: 24=461 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[battle-ot] frame=326 presented=1005 packets=625 hist: 24=475 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[battle-ot] frame=327 presented=1006 packets=619 hist: 24=469 25=7 27=52 2c=1 2d=85 2e=3 e1=2
+[battle-ot] frame=328 presented=1007 packets=622 hist: 24=471 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=329 presented=1008 packets=628 hist: 24=477 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=330 presented=1009 packets=627 hist: 24=476 25=7 27=52 2c=1 2d=86 2e=3 e1=2
+[battle-ot] frame=331 presented=1010 packets=636 hist: 24=484 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=332 presented=1011 packets=639 hist: 24=487 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=333 presented=1012 packets=650 hist: 24=498 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=334 presented=1013 packets=641 hist: 24=489 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=335 presented=1014 packets=636 hist: 24=484 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=336 presented=1015 packets=629 hist: 24=477 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=337 presented=1016 packets=647 hist: 24=495 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=338 presented=1017 packets=649 hist: 24=497 25=7 27=52 2c=1 2d=87 2e=3 e1=2
+[battle-ot] frame=339 presented=1018 packets=653 hist: 24=487 25=7 27=52 2c=1 2d=87 2e=15 3a=1 e1=3
+[battle-ot] frame=340 presented=1019 packets=668 hist: 24=500 25=7 27=54 2c=1 2d=87 2e=15 3a=1 e1=3
+---- LOG CLOSED ----

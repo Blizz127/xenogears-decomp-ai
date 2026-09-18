@@ -1,0 +1,8 @@
+{
+  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119",
+  "scratchpad/lahan-sprite-motion-20260908/before.c": "517c5312bfca6eb9660ff8fb9a11c4da39686d266cdf7d9d32fed2bcdcc61904",
+  "pc_port/src/game_overrides.c": "2f85d60cdd493061bde6167fcdbe0c519247994e3c6c9eb4a87930b3cb20f641",
+  "pc_port/tests/sprite_motion_retail_test.c": "419f36a62ae61849c148d6767fd089e201d81a6dce58c75e1afdcc66b3da6c69",
+  "pc_port/tests/run_sprite_motion_retail_test.sh": "77ed2dcc4dfcf2685c5297b9c6688c4d74a363b82646e589b07888017fa4b6ab",
+  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22"
+}

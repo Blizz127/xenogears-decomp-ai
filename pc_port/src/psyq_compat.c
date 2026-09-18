@@ -12,8 +12,10 @@
  * extern "C" (unmangled T symbols in libpsycross.a), so they're callable from C.
  */
 
+#include <errno.h>    /* strtoul validation for the scripted pad schedule below */
 #include <stdarg.h>
 #include <stdint.h>
+#include "system/controller_vblank.h"
 #include <stdio.h>
 #include <stdlib.h>   /* getenv/atoi for the headless test hook below */
 #include <string.h>   /* memcpy for TIM parsing */
@@ -25,6 +27,21 @@
 extern void PsyX_EndScene(void);  /* GR_EndScene + GR_StoreFrameBuffer + GR_SwapWindow (SDL_GL_SwapWindow) */
 extern int  VSync(int mode);      /* PsyCross frame pacing; returns vblank count. Does NOT present. */
 extern void DrawAllSplits(void);  /* flush queued primitives to the GL framebuffer; no-op when none */
+
+/* CdFlush remains unresolved: retail CD_flush resets interrupt state. */
+
+/* Retail soft-reset teardown (libapi 0x800408F4): stop pad communication,
+ * remove the pad interrupt registration, and clear the active-pad flag. The
+ * host has no PSX interrupt table to unregister from, so that middle step is
+ * represented by the existing host lifecycle boundary. */
+void func_800408F4(void)
+{
+    extern void PadStopCom(void);
+    extern int32_t D_80056414;
+
+    PadStopCom();
+    D_80056414 = 0;
+}
 
 /* build_port.sh excludes src/slus_006.64/psyq, so an unqualified rand() would
  * otherwise bind to the host libc and produce a different range and sequence.
@@ -57,6 +74,32 @@ void ReadGeomOffset(long* ofxp, long* ofyp)
 {
     *ofxp = C2_OFX >> 16;
     *ofyp = C2_OFY >> 16;
+}
+
+/*
+ * Field C (misc2.c) uses the PSY-Q gte_* names. Matching builds expand those
+ * via gtemac.h; the port TU does not, so they compiled as calls. Auto-stubs
+ * were `long gte_*(void)` and never wrote the output vectors. Intro then
+ * VectorNormal'd garbage and DrawOTag walked a junk OT (SIGSEGV in
+ * ParsePrimitivesLinkedList). Forward to PsyCross's real GTE.
+ */
+void OuterProduct12(VECTOR* v0, VECTOR* v1, VECTOR* v2);
+void gte_OuterProduct12(VECTOR* v0, VECTOR* v1, VECTOR* v2)
+{
+    OuterProduct12(v0, v1, v2);
+}
+
+SVECTOR* gte_ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1)
+{
+    return ApplyMatrixSV(m, v0, v1);
+}
+
+int gte_RotTransPers(SVECTOR* v0, int* sxy, long* p, long* flag, long* otz)
+{
+    int z = RotTransPers(v0, sxy, p, flag);
+    if (otz)
+        *otz = z;
+    return z;
 }
 
 /*
@@ -138,9 +181,11 @@ void SetPolyF3(POLY_F3* p)
 
 VECTOR* Square0(VECTOR* v0, VECTOR* v1)
 {
-    v1->vx = v0->vx * v0->vx;
-    v1->vy = v0->vy * v0->vy;
-    v1->vz = v0->vz * v0->vz;
+    /* Retail 8004A414: IR loads, SQR(sf=0), then MAC stores. This also
+     * preserves GTE side effects and loads all inputs before in-place writes. */
+    gte_ldlvl(v0);
+    gte_sqr0();
+    gte_stlvnl(v1);
     return v1;
 }
 
@@ -265,14 +310,48 @@ static int32_t VectorNormalWork(int32_t x, int32_t y, int32_t z, int32_t* outX, 
     return (int32_t)squared;
 }
 
+/* Retail entry 80048D7C..48DA8 and shared core 80048DD8..48E94.
+ * Load all three full words before any output, retaining partial aliasing
+ * and SQR/GPF/LZCS state; only IR loads narrow the operands to signed16. */
 long VectorNormal(VECTOR* v0, VECTOR* v1)
 {
-    int32_t x, y, z;
-    int32_t squared = VectorNormalWork(v0->vx, v0->vy, v0->vz, &x, &y, &z);
+    int32_t x = v0->vx, y = v0->vy, z = v0->vz;
+    uint32_t squared;
+    int32_t even, shift, index, scale;
+
+    MTC2((uint32_t)x, 9);
+    MTC2((uint32_t)y, 10);
+    MTC2((uint32_t)z, 11);
+    doCOP2(0x00a00428); /* SQR0 */
+    squared = MFC2(25) + MFC2(26) + MFC2(27);
+    if (squared > INT32_MAX) {
+        /* The retail signed ADD traps for this domain. The native port has
+         * no PS1 exception handler; fail explicitly instead of normalizing
+         * an invented clamped vector or indexing outside the retail table. */
+        fputs("[xeno-port] VectorNormal: retail signed ADD overflow\n", stderr);
+        abort();
+    }
+    MTC2(squared, 30);
+    even = (int32_t)MFC2(31) & ~1;
+    shift = ((31 - even) >> 1) & 31; /* MIPS SRAV masks the count */
+    index = even >= 24 ? (int32_t)(squared << (even - 24))
+                       : (int32_t)squared >> (24 - even);
+    index -= 0x40;
+    /* Zero takes index -64: the LH at 80048E50 reads 80056B14, before
+     * D_80056B94. Retain its actual 0x1C6C value even though output is zero. */
+    scale = squared == 0 ? 0x1c6c : s_InvSqrtTable[index];
+    MTC2((uint32_t)scale, 8);
+    MTC2((uint32_t)x, 9);
+    MTC2((uint32_t)y, 10);
+    MTC2((uint32_t)z, 11);
+    doCOP2(0x0190003d); /* GPF0 */
+    x = (int32_t)MFC2(25) >> shift;
+    y = (int32_t)MFC2(26) >> shift;
+    z = (int32_t)MFC2(27) >> shift;
     v1->vx = x;
     v1->vy = y;
     v1->vz = z;
-    return squared;
+    return (int32_t)squared;
 }
 
 long VectorNormalS(VECTOR* v0, SVECTOR* v1)
@@ -285,11 +364,58 @@ long VectorNormalS(VECTOR* v0, SVECTOR* v1)
     return squared;
 }
 
+/* Retail 80048DA8..80048E94. Preserve SQR/GPF register side effects,
+ * signed halfword loads and the three halfword stores (including aliasing).
+ * Do not use VectorNormalWork: its host arithmetic omits GTE state changes. */
+long VectorNormalSS(SVECTOR* v0, SVECTOR* v1)
+{
+    int32_t x = v0->vx, y = v0->vy, z = v0->vz;
+    uint32_t squared;
+    int32_t even, shift, index, scale;
+
+    MTC2((uint32_t)x, 9);
+    MTC2((uint32_t)y, 10);
+    MTC2((uint32_t)z, 11);
+    doCOP2(0x00a00428); /* SQR0 */
+    squared = MFC2(25) + MFC2(26) + MFC2(27);
+    if (squared > INT32_MAX) {
+        /* The retail signed ADD traps for this domain. The native port has
+         * no PS1 exception handler; fail explicitly instead of normalizing
+         * an invented clamped vector or indexing outside the retail table. */
+        fputs("[xeno-port] VectorNormalSS: retail signed ADD overflow\n", stderr);
+        abort();
+    }
+    MTC2(squared, 30);
+    even = (int32_t)MFC2(31) & ~1;
+    shift = ((31 - even) >> 1) & 31; /* MIPS SRAV masks the count */
+    index = even >= 24 ? (int32_t)(squared << (even - 24))
+                       : (int32_t)squared >> (24 - even);
+    index -= 0x40;
+    /* Zero takes index -64: the LH at 80048E50 reads 80056B14, before
+     * D_80056B94. Retain its actual 0x1C6C value even though output is zero. */
+    scale = squared == 0 ? 0x1c6c : s_InvSqrtTable[index];
+    MTC2((uint32_t)scale, 8);
+    MTC2((uint32_t)x, 9);
+    MTC2((uint32_t)y, 10);
+    MTC2((uint32_t)z, 11);
+    doCOP2(0x0190003d); /* GPF0 */
+    x = (int32_t)MFC2(25) >> shift;
+    y = (int32_t)MFC2(26) >> shift;
+    z = (int32_t)MFC2(27) >> shift;
+    v1->vx = (int16_t)x;
+    v1->vy = (int16_t)y;
+    v1->vz = (int16_t)z;
+    return (int32_t)squared;
+}
+
 long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
                  long* sxy0, long* sxy1, long* sxy2, long* sxy3,
                  long* p, long* flag)
 {
-    long flag0;
+    long flag0 = 0;
+    long flag1 = 0;
+    long interpolation = 0;
+    long otz = 0;
 
     gte_ldv3(v0, v1, v2);
     gte_rtpt();
@@ -299,35 +425,32 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     gte_ldv0(v3);
     gte_rtps();
     gte_stsxy(sxy3);
-    gte_stflg(flag);
-    gte_stdp(p);
-    *flag |= flag0;
-    /* XENO_PC_PORT: gte_stflg writes only the low 32 bits of a long*; sign-extend
-     * so `flag < 0` matches retail bltz on GTE FLAG bit 31 (see build_port.sh
-     * _xeno_gte_flag_sx*). Callers must pass a real long* — (long*)&int smashes
-     * the stack on LP64 (see FieldZoomFadeEffectUpdate). */
-    *flag = (long)(int)(unsigned int)*flag;
+    gte_stflg(&flag1);
+    gte_stdp(&interpolation);
+    /* Retail 8004A81C/824 writes IR0 first, then both projection FLAGs.
+     * Particle rendering aliases p/flag, so the final FLAG must win. These
+     * are host long outputs; guest calls narrow them at the ABI boundary. */
+    *p = (long)(int32_t)(uint32_t)interpolation;
+    *flag = (long)(int32_t)((uint32_t)flag0 | (uint32_t)flag1);
 
     gte_avsz4();
-    gte_stotz(p);
+    gte_stotz(&otz);
 
-    return *p;
+    /* Retail returns OTZ in v0; it does not overwrite either output. */
+    return (long)(int32_t)(uint32_t)otz;
 }
 
-/* Retail Enter/ExitCriticalSection masks ALL interrupts, and the game uses
- * it across many subsystems. The port keeps the GLOBAL mapping a no-op:
- * coupling every critical section to the sound-tick gate (tried in B5.2)
- * couples unrelated subsystems to the audio lock and destabilizes the
- * TSan build. The one load-bearing use for the port -- the SPU
- * transfer-queue writes racing the 240Hz tick -- is bracketed at its own
- * call sites in sound.c with PsyX_Sys_SoundGateEnterCritical/Exit. */
+/* Mask deferred game-thread vblank delivery. This does not couple arbitrary
+ * critical sections to the sound mutex: sound transfer writes retain their
+ * dedicated gate. Other native interrupt sources still need separate audit. */
 int EnterCriticalSection(void)
 {
-    return 0;
+    return PcPort_MaskVblank();
 }
 
 void ExitCriticalSection(void)
 {
+    PcPort_UnmaskVblank();
 }
 
 int CdDataSync(int mode)
@@ -451,6 +574,60 @@ static void PcPort_ForcedFieldMenu(void)
     if (++frame < delay)
         return;
     if (D_800ADB64 == 0xFF && D_800ADB68 == 1) {
+        /* Equip ONLY (XENO_MENU_NAV_TEST=equip): XENO_FIELD_TEST=1 skips
+         * func_8001BB50, leaving character stats at zero so func_801D8644's
+         * bar scaler sees maxVal==0 and returns.  Load the retail new-game
+         * template via func_8001B970 when Fei still has no HP.  TEST TOOLING
+         * -- remove with the Equip acceptance harness. */
+        {
+            const char* nav = getenv("XENO_MENU_NAV_TEST");
+            if (nav && strcmp(nav, "equip") == 0) {
+                extern unsigned char g_GameState[];
+
+                if (*(unsigned short*)&g_GameState[0x2B8] == 0) {
+                    extern void func_8001B970(void);
+                    extern unsigned char D_800594CC;
+
+                    func_8001B970();
+                    /* B970 sets D_800594CC=6; func_801C6AA0 restores that as
+                     * menu1Choice, so 2x DOWN lands on Items (4) not Equip. */
+                    D_800594CC = 0;
+                    g_GameState[0x1D34] = 0;
+                    g_GameState[0x1D35] = 0xFF;
+                    g_GameState[0x1D36] = 0xFF;
+                    *(unsigned short*)&g_GameState[0x1D30] = 1;
+                    *(unsigned short*)&g_GameState[0x1D32] = 0xFFFF;
+                    printf("[xeno-port][test] EQUIP SEED: func_8001B970 "
+                           "(new-game template; FIELD_TEST skips BB50), "
+                           "D_800594CC=0, Fei-only roster\n");
+                    /* TEST TOOLING: dump retail-flat equip/inventory bytes. */
+                    printf("[xeno-port][test] EQUIP SEED dump: "
+                           "eq@2D6=");
+                    {
+                        int ei;
+                        for (ei = 0; ei < 16; ei++)
+                            printf("%u%s", g_GameState[0x2D6 + ei],
+                                   ei == 15 ? "" : " ");
+                    }
+                    printf(" wpnIds=%u,%u,%u,%u wpnQty=%u,%u,%u,%u "
+                           "accIds=%u,%u,%u,%u\n",
+                           g_GameState[0x1D9C], g_GameState[0x1D9D],
+                           g_GameState[0x1D9E], g_GameState[0x1D9F],
+                           g_GameState[0x1D38], g_GameState[0x1D39],
+                           g_GameState[0x1D3A], g_GameState[0x1D3B],
+                           g_GameState[0x1EC8], g_GameState[0x1EC9],
+                           g_GameState[0x1ECA], g_GameState[0x1ECB]);
+                    /* Also dump HP/level to prove template landed. */
+                    printf("[xeno-port][test] EQUIP SEED char0 "
+                           "hp=%u/%u lv=%u at=%u df=%u\n",
+                           *(unsigned short*)&g_GameState[0x2B8],
+                           *(unsigned short*)&g_GameState[0x2BA],
+                           g_GameState[0x2CE],
+                           g_GameState[0x2C4], g_GameState[0x2C5]);
+                    fflush(stdout);
+                }
+            }
+        }
         /* HARNESS-ONLY availability setup.  Retail at the established Map1
          * party-init anchor has roster {0,2,FF}, mask 0x0005, FrMask 0xFFFF:
          * derive the mask from valid roster IDs so XENO_MENU_FORCE preserves
@@ -576,10 +753,305 @@ static void PcPort_ForcedFieldMenu(void)
 #undef fired
 }
 
+/* DIAGNOSTIC / TEST TOOLING -- controller-level scripted input.
+ *
+ * XENO_PAD_TEST_INPUT="frame:value,frame:value,..." -- same schedule syntax as
+ * XENO_FIELD_TEST_INPUT / XENO_WORLD_TEST_INPUT (pc_port/src/test_input.c):
+ * first frame must be 0, boundaries strictly increase, `value` is a held-button
+ * mask that stays in effect until the next boundary.  Values are in the game's
+ * CTRL_BTN_* space (include/system/controller.h): 0x40 Cross, 0x20 Circle,
+ * 0x10 Triangle, 0x80 Square, 0x800 Start, 0x1000/0x2000/0x4000/0x8000
+ * Up/Right/Down/Left.  Accepts 0x-prefixed or decimal values.
+ *
+ * Why this exists instead of reusing the field/world schedules: those merge at
+ * the field's and world's per-frame accumulator seams, which only tick from
+ * their own main loops.  MenuMain() is called SYNCHRONOUSLY from inside the
+ * field menu opener func_800799D4 (src/field/main/misc4.c), so while a menu is
+ * up neither loop runs and neither schedule advances -- there was no headless
+ * way to CLOSE a menu.  This one injects at the RAW BIOS pad buffer
+ * (g_C1Buffer), which every input path in the game ultimately reads through
+ * ControllerPoll(), so it works in the field, the world map, the menus, and
+ * anywhere else the Vsync shim below is reached.
+ *
+ * The pad buffer is ACTIVE LOW (idle = 0xFF); ControllerGetButtonState()
+ * returns (~buf[3] & 0xFF) | ((buf[2] << 8) ^ 0xFF00), so game bits 0x00FF live
+ * in buf[CONTROLLER_BUTTONS_2] and bits 0xFF00 in buf[CONTROLLER_BUTTONS_1].
+ * Pressing == clearing the bit, which is exactly what a real key does, so the
+ * synthetic hold flows through ControllerPoll -> the derived edge globals ->
+ * ControllerPushState -> the queue drained by the menu/field readers.  Because
+ * we only CLEAR bits, a real keypress on the same frame still registers.
+ *
+ * The frame clock is Vsync-shim calls, i.e. presented frames -- deliberately
+ * NOT the field frame counter, so a schedule keeps advancing across the
+ * open/close phases that reset the field's own cadence.
+ *
+ * Frame numbers are logged on every step transition so a capture can be lined
+ * up against the schedule. */
+/* Same capacity as the field schedule (FIELD_TEST_INPUT_MAX_STEPS): the
+ * title -> New Game -> prologue smoke needs several hundred Circle pulses
+ * to page through the Map 4 narration, which does not fit in 256 steps. */
+#define PAD_TEST_INPUT_MAX_STEPS 4096
+
+static struct { unsigned int frame; unsigned short value; }
+    s_padTestSteps[PAD_TEST_INPUT_MAX_STEPS];
+static int s_padTestStepCount;
+static int s_padTestCurrentStep;
+static unsigned int s_padTestFrame;
+static int s_padTestState = -1;   /* -1 unparsed, 0 disabled, 1 enabled */
+/* TEST TOOLING: PadOnControl sets this so a lingering title/prologue Circle
+ * mash cannot fight Triangle/Equip nav after free-roam unlock. Remove with
+ * XENO_PAD_ON_CONTROL. */
+static int s_padTestSuppress;
+
+static int pad_test_input_error(const char* reason)
+{
+    fprintf(stderr, "[pad-test-input] invalid XENO_PAD_TEST_INPUT: %s\n",
+            reason);
+    s_padTestStepCount = 0;
+    s_padTestState = 0;
+    return -1;
+}
+
+static int PcPort_PadTestInputInit(void)
+{
+    const char* schedule;
+    const char* cursor;
+    unsigned long previousFrame = 0;
+
+    s_padTestState = 0;
+    schedule = getenv("XENO_PAD_TEST_INPUT");
+    if (schedule == NULL)
+        return 0;
+    if (*schedule == '\0')
+        return pad_test_input_error("empty schedule");
+
+    cursor = schedule;
+    while (*cursor != '\0') {
+        char* end;
+        unsigned long frame;
+        unsigned long value;
+
+        if (s_padTestStepCount == PAD_TEST_INPUT_MAX_STEPS)
+            return pad_test_input_error("too many frame/value pairs");
+        errno = 0;
+        frame = strtoul(cursor, &end, 10);
+        if (errno != 0 || end == cursor || *end != ':')
+            return pad_test_input_error("invalid frame boundary");
+        cursor = end + 1;
+        errno = 0;
+        value = strtoul(cursor, &end, 0);
+        if (errno != 0 || end == cursor || value > 0xFFFFu)
+            return pad_test_input_error("invalid input value");
+        if (*end != '\0' && *end != ',')
+            return pad_test_input_error("expected comma between pairs");
+        if (s_padTestStepCount == 0 && frame != 0)
+            return pad_test_input_error("first frame must be zero");
+        if (s_padTestStepCount != 0 && frame <= previousFrame)
+            return pad_test_input_error("frame boundaries must increase");
+
+        s_padTestSteps[s_padTestStepCount].frame = (unsigned int)frame;
+        s_padTestSteps[s_padTestStepCount].value = (unsigned short)value;
+        s_padTestStepCount++;
+        previousFrame = frame;
+        if (*end == '\0')
+            break;
+        cursor = end + 1;
+        if (*cursor == '\0')
+            return pad_test_input_error("trailing comma");
+    }
+
+    s_padTestState = 1;
+    fprintf(stderr, "[pad-test-input] enabled steps=%d\n", s_padTestStepCount);
+    return 0;
+}
+
+/* Must run AFTER PsyX_UpdateInput() refreshes g_C1Buffer from SDL and BEFORE
+ * ControllerPoll() derives the edge state from it. */
+static void PcPort_PadTestInputInject(void)
+{
+    extern unsigned char g_C1Buffer[];
+    unsigned short value;
+    int previousStep;
+
+    if (s_padTestState < 0)
+        PcPort_PadTestInputInit();
+    if (s_padTestState != 1)
+        return;
+
+    previousStep = s_padTestCurrentStep;
+    while (s_padTestCurrentStep + 1 < s_padTestStepCount &&
+           s_padTestFrame >= s_padTestSteps[s_padTestCurrentStep + 1].frame)
+        s_padTestCurrentStep++;
+    value = s_padTestSuppress ? 0 : s_padTestSteps[s_padTestCurrentStep].value;
+
+#if defined(XENO_PAD_TEST_INPUT_MUTANT_NO_INJECT)
+    /* Deliberate mutant control: parse and log the schedule but never touch
+     * the pad buffer, so nothing the schedule asks for can happen. */
+    value = 0;
+#endif
+
+    /* CONTROLLER_BUTTONS_1 == 0x2 carries game bits 0xFF00,
+     * CONTROLLER_BUTTONS_2 == 0x3 carries game bits 0x00FF, both active low. */
+    g_C1Buffer[0x2] &= (unsigned char)~(unsigned char)(value >> 8);
+    g_C1Buffer[0x3] &= (unsigned char)~(unsigned char)(value & 0xFF);
+
+    if (s_padTestFrame == 0 || s_padTestCurrentStep != previousStep) {
+        printf("[xeno-port][test] XENO_PAD_TEST_INPUT: frame=%u held=0x%04x "
+               "(pad buf[2]=%02x buf[3]=%02x)\n",
+               s_padTestFrame, (unsigned int)value,
+               (unsigned int)g_C1Buffer[0x2], (unsigned int)g_C1Buffer[0x3]);
+        fflush(stdout);
+    }
+    s_padTestFrame++;
+}
+
+/* TEST TOOLING -- set by func_800799D4 just before MenuMain when the field
+ * menu actually opens (not when D_800B21D0 blocks the opener).  PadOnControl
+ * waits for this instead of trusting ADB64, which main.c clears even on the
+ * early-return path.  Remove with XENO_PAD_ON_CONTROL. */
+int g_PcPortFieldMenuOpened;
+
+
+/* Guest busy-waits (including battle pause) may never call Vsync. Use the
+ * same counter epoch as the presentation path, not a second input producer. */
+void PcPort_PadVblankPump(void)
+{
+    PcPort_ServiceVblank();
+}
+
+/* TEST TOOLING -- natural field-menu driver after free-roam unlock.
+ *
+ * XENO_PAD_ON_CONTROL=equip: post-opening-battle, wait for ADB68==1 with
+ * dialog gate D_800B21D0[0]==0 (misc4 early-returns and main clears ADB64
+ * when a dialog is busy).  Then store ADB64=0x80 (retail Triangle path) and
+ * wait for g_PcPortFieldMenuOpened before Equip nav.  While dialogs block,
+ * pulse Circle.  Remove with the natural Equip acceptance harness. */
+static void PcPort_PadOnControl(void)
+{
+    extern unsigned char g_C1Buffer[];
+    extern int D_800ADB64;
+    extern int D_800ADB68;
+    extern unsigned char D_800B21D0;
+    extern int g_PcPortFieldMenuOpened;
+    extern int g_GameSceneMapNum;
+    static int armed = -2;
+    static int prev68 = -1;
+    static int phase = 0; /* 0 hunt menu open, 1 Equip nav timeline */
+    static int tick = 0;
+    static int tri_pulses = 0;
+    static int seen_run = 0;
+    static int clearTick = 0;
+    unsigned short hold = 0;
+    int mapId;
+
+    if (armed == -2) {
+        const char* e = getenv("XENO_PAD_ON_CONTROL");
+        armed = (e && strcmp(e, "equip") == 0) ? 1 : 0;
+    }
+    if (!armed)
+        return;
+
+    mapId = g_GameSceneMapNum & 0xFFF;
+    if (D_800ADB68 != prev68) {
+        printf("[xeno-port][test] XENO_PAD_ON_CONTROL: D_800ADB68 %d -> %d "
+               "ADB64=%d B21D0=%u map=%d suppress=%d phase=%d\n",
+               prev68, D_800ADB68, D_800ADB64, (unsigned)D_800B21D0, mapId,
+               s_padTestSuppress, phase);
+        fflush(stdout);
+        prev68 = D_800ADB68;
+    }
+
+    if (phase == 0) {
+        if (g_PcPortFieldMenuOpened) {
+            s_padTestSuppress = 1;
+            phase = 1;
+            tick = 0;
+            printf("[xeno-port][test] XENO_PAD_ON_CONTROL: field MenuMain "
+                   "opened — Equip nav\n");
+            fflush(stdout);
+            return;
+        }
+        /* Natural Lahan Equip only: post-opening-battle field 14. FIELD_TEST
+         * direct-boots field 0 with ADB68==1 (run13 false arm). */
+        if (mapId != 14)
+            return;
+        if (D_800ADB68 == 1)
+            seen_run = 1;
+        if (seen_run && !s_padTestSuppress) {
+            s_padTestSuppress = 1;
+            clearTick = 0;
+            printf("[xeno-port][test] XENO_PAD_ON_CONTROL: suppressing pad "
+                   "mash (post-run-control)\n");
+            fflush(stdout);
+        }
+        if (D_800ADB68 == 1 && D_800B21D0 == 0) {
+            /* Retail gates for Triangle→menu; also survive Vsync/field-body
+             * sampling order by writing the same ADB64 store as main.c:662.
+             * Do NOT request while D_800B21D0!=0: misc4 early-returns and
+             * main.c still clears ADB64 to 0xFF. */
+            hold = 0x10;
+            D_800ADB64 = 0x80;
+            tri_pulses++;
+            if (tri_pulses <= 5 || (tri_pulses % 30) == 0) {
+                printf("[xeno-port][test] XENO_PAD_ON_CONTROL: "
+                       "Triangle+ADB64=0x80 pulse #%d (B21D0 clear)\n",
+                       tri_pulses);
+                fflush(stdout);
+            }
+        } else if (s_padTestSuppress) {
+            clearTick++;
+            if ((clearTick % 45) < 2)
+                hold = 0x20; /* Circle — clear dialogs blocking B21D0/FE54 */
+            if (hold && (clearTick % 45) == 1) {
+                printf("[xeno-port][test] XENO_PAD_ON_CONTROL: dialog Circle "
+                       "clearTick=%d B21D0=%u ADB68=%d\n",
+                       clearTick, (unsigned)D_800B21D0, D_800ADB68);
+                fflush(stdout);
+            }
+        }
+        if (hold) {
+            g_C1Buffer[0x2] &= (unsigned char)~(unsigned char)(hold >> 8);
+            g_C1Buffer[0x3] &= (unsigned char)~(unsigned char)(hold & 0xFF);
+        }
+        return;
+    }
+
+    tick++;
+    /* Timeline in Vsync-shim frames after MenuMain open.
+     * Field main list: Status, Equip, Items, ... — cursor starts on Status.
+     * One Down lands Equip; a second Down overshoots to Items (run11). */
+    if (tick >= 40 && tick < 44)
+        hold = 0x4000; /* Down → Equip */
+    else if (tick >= 70 && tick < 74)
+        hold = 0x20; /* Circle — open Equip */
+    else if (tick >= 250 && tick < 254)
+        hold = 0x40; /* Cross — leave Equip to main */
+    else if (tick >= 310 && tick < 314)
+        hold = 0x40; /* Cross — close field MenuMain */
+    else if (tick >= 360)
+        armed = 0; /* one-shot done */
+
+    if (hold) {
+        g_C1Buffer[0x2] &= (unsigned char)~(unsigned char)(hold >> 8);
+        g_C1Buffer[0x3] &= (unsigned char)~(unsigned char)(hold & 0xFF);
+        if (tick == 40 || tick == 70 || tick == 250 || tick == 310) {
+            printf("[xeno-port][test] XENO_PAD_ON_CONTROL: hold=0x%04x at "
+                   "tick %d\n",
+                   (unsigned)hold, tick);
+            fflush(stdout);
+        }
+    }
+}
+
 static int s_xenoMenuNavActions = 0;
 static int s_xenoMenuNavDowns = 0;
 static int s_xenoMenuReorderActions = 0;
 static int s_xenoMenuPromptActions = 0;
+static int s_xenoMenuEquipActions = 0; /* TEST TOOLING: NAV_TEST=equip */
+/* TEST TOOLING: Accessories category DOWNs. Template Fei 0x2E0={1,16,92};
+ * id 92 has nonempty desc bank text; 1/16 are empty stubs. */
+static int s_xenoMenuEquipAccDowns = 0;
+static int s_xenoMenuEquipAccDownBase = -1;
 static int s_xenoMenuItemsOpenTick = -1;
 
 /* Synthetic menu-nav edges (XENO_MENU_NAV_TEST=N): once the forced menu has
@@ -611,6 +1083,7 @@ static void PcPort_ForcedMenuNav(void)
     if (armed == -2) {
         const char* e = getenv("XENO_MENU_NAV_TEST");
         if (e && (strcmp(e, "abilities") == 0 ||
+                  strcmp(e, "equip") == 0 ||
                   strcmp(e, "items") == 0 ||
                   strcmp(e, "items-reorder") == 0 ||
                   strcmp(e, "items-prompt") == 0 ||
@@ -621,11 +1094,18 @@ static void PcPort_ForcedMenuNav(void)
             /* N3a-A1a: DOWN DECREMENTS menu1Choice (wrapping 0..6), so the
              * established 3 taps land on Items (entry 4); Abilities is entry 3,
              * one further along the same direction -> 4 taps.  Measured, not
-             * assumed: 2 taps routed to func_801E0F78 (Equip, entry 5). */
-            armed = (strcmp(e, "abilities") == 0) ? 4 : 3;
+             * assumed: 2 taps routed to func_801E0F78 (Equip, entry 5).
+             * TEST TOOLING: XENO_MENU_NAV_TEST=equip is pad-buffer only. */
+            if (strcmp(e, "equip") == 0) {
+                armed = 2;
+                s_xenoMenuEquipActions = 1;
+            } else {
+                armed = (strcmp(e, "abilities") == 0) ? 4 : 3;
+            }
             s_xenoMenuNavActions = 1;
             s_xenoMenuReorderActions = strcmp(e, "items-reorder") == 0;
             s_xenoMenuPromptActions = strcmp(e, "abilities") != 0 &&
+                                      strcmp(e, "equip") != 0 &&
                                       (strcmp(e, "items-prompt") == 0 ||
                                       strncmp(e, "prompt-nav", 10) == 0 ||
                                       strcmp(e, "item-use") == 0 ||
@@ -668,6 +1148,22 @@ static void PcPort_ForcedMenuNav(void)
                 printf("[xeno-port][test] XENO_MENU_NAV_TEST: press DOWN %d/%d "
                        "(reader tick %d)\n", injected, armed, t);
                 fflush(stdout);
+            }
+        }
+
+        /* TEST TOOLING: Equip category DOWNs (pad-buffer PressedOnce). */
+        if (s_xenoMenuEquipAccDowns > 0 && s_xenoMenuEquipAccDownBase >= 0 &&
+            t >= s_xenoMenuEquipAccDownBase) {
+            int k = (t - s_xenoMenuEquipAccDownBase) / 14;
+            int ph = (t - s_xenoMenuEquipAccDownBase) % 14;
+            if (k < s_xenoMenuEquipAccDowns && ph < 4) {
+                g_C1Buffer[0x2] &= (unsigned char)~0x40;
+                if (ph == 0) {
+                    printf("[xeno-port][test] XENO_MENU_NAV_TEST=equip: DOWN "
+                           "category %d/%d at reader tick %d\n",
+                           k + 1, s_xenoMenuEquipAccDowns, t);
+                    fflush(stdout);
+                }
             }
         }
 
@@ -854,9 +1350,27 @@ static void PcPort_ForcedMenuActionEdges(void)
     if (!confirmInjected && t >= confirmTick) {
         confirmInjected = 1;
         g_C1ButtonStateReleased |= 0x20;  /* CTRL_BTN_CIRCLE */
-        printf("[xeno-port][test] XENO_MENU_NAV_TEST=items: Circle confirm "
-               "at reader tick %d\n", t);
+        printf("[xeno-port][test] XENO_MENU_NAV_TEST=%s: Circle confirm "
+               "at reader tick %d\n",
+               s_xenoMenuEquipActions ? "equip" : "items", t);
         fflush(stdout);
+    }
+
+    /* TEST TOOLING: Equip — three DOWNs to accessory id 92 (Stamina Ring). */
+    if (s_xenoMenuEquipActions && confirmInjected && !cancelInjected) {
+        static int equipDownArmed = 0;
+        if (!equipDownArmed && t >= confirmTick + 50) {
+            equipDownArmed = 1;
+            s_xenoMenuEquipAccDowns = 3; /* cat 0→1→2→3 → 0x2E2=92 */
+            s_xenoMenuEquipAccDownBase = t;
+        }
+        if (t >= confirmTick + 220) {
+            cancelInjected = 1;
+            g_C1ButtonStateReleased |= 0x40; /* CTRL_BTN_CROSS */
+            printf("[xeno-port][test] XENO_MENU_NAV_TEST=equip: Cross cancel "
+                   "at reader tick %d\n", t);
+            fflush(stdout);
+        }
     }
 
     /* N3a-A1a (kind 5): Abilities lifecycle.  Snapshot state at the confirm
@@ -1138,8 +1652,39 @@ static void PcPort_ForcedMenuActionEdges(void)
     #undef HASH_REGION
 }
 
+/* Called once per dispatched game vblank, not once per timing query. */
+void PcPort_PrepareControllerPoll(void)
+{
+    extern void PsyX_UpdateInput(void);
+    PsyX_UpdateInput();
+    PcPort_PadTestInputInject();
+    PcPort_PadOnControl();
+    PcPort_ForcedMenuNav();
+}
+
+void PcPort_BeforeControllerPush(void)
+{
+    PcPort_ForcedMenuActionEdges();
+}
+
 int Vsync(int mode)
 {
+    int count;
+    /* Retail Vsync(1)/Vsync(<0) are timing queries: they must not flush or
+     * present. The deferred IRQ service may consume newly elapsed ticks, but
+     * repeated queries at the same count never add controller states. The
+     * field starts each iteration with Vsync(1) while the prior DrawOTag scene
+     * is still open and reaches the blocking Vsync(0) later in the same
+     * iteration. Presenting at the query would close the scene there and then
+     * make the Vsync(0) take the VRAM fallback, so one rendered frame swaps
+     * twice (PsyX_EndScene + VRAM fallback) and flickers. Keep presentation
+     * in the blocking path. */
+    if (mode == 1 || mode < 0) {
+        count = VSync(mode);
+        PcPort_ServiceVblank();
+        return mode < 0 ? PcPort_GetServicedVblankCount() : count;
+    }
+
     /* Flush any primitives queued this frame before presenting. DrawOTag flushes
      * its own ordering table via DrawAllSplits, but immediate-mode DrawPrim (used
      * by GameShowSplashScreen's fade loops) does NOT -- it only queues into the
@@ -1169,25 +1714,12 @@ int Vsync(int mode)
             PsyX_PresentDisplayFromVRAM();
     }
 
-    /* Per-frame input, normally driven by the BIOS vblank IRQ + the game's main
-     * loop, both of which live in bypassed asm. PsyX_UpdateInput() polls SDL
-     * events and refreshes the registered pad buffer (g_C1Buffer) from the
-     * keyboard/gamepad; ControllerPoll() then folds that buffer into the game's
-     * g_C1ButtonState* edge/repeat state that the menus/field read. */
-    { extern void PsyX_UpdateInput(void); PsyX_UpdateInput(); }
-
-    /* Synthetic menu-nav edges (no-op unless XENO_MENU_NAV_TEST=N). MUST run
-     * after the pad buffer is refreshed and before ControllerPoll derives edges
-     * from it -- it pokes DPAD-DOWN into g_C1Buffer for one frame. */
-    PcPort_ForcedMenuNav();
-
-    { extern void ControllerPoll(void);   ControllerPoll();   }
-    PcPort_ForcedMenuActionEdges();
-    /* Retail's per-vblank handler func_8003634C pairs ControllerPoll with
-     * ControllerPushState (asm 80036368/80036370). FieldPollControllers reads
-     * input only by draining that queue via ControllerPopState, so without the
-     * push the field never sees any input. */
-    { extern void ControllerPushState(void); ControllerPushState(); }
+    /* TEST TOOLING: headless walk telemetry (XENO_FIELD_POS_DIAG). */
+    { extern void PcPort_FieldPosDiag(void); PcPort_FieldPosDiag(); }
+    /* Pace first so the newly elapsed tick is serviced before returning.
+     * All entry points share one counter cursor, including the guest pump. */
+    count = VSync(mode);
+    PcPort_ServiceVblank();
 
     /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the
@@ -1200,5 +1732,5 @@ int Vsync(int mode)
     /* Temporary interactive camera+cull logger (XENO_CULL_CAM_LOG=1). */
     { extern void PcPort_CullCamLogOnVsync(void); PcPort_CullCamLogOnVsync(); }
 
-    return VSync(mode);   /* then pace to the next vblank */
+    return count;
 }

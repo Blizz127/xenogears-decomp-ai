@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-09-08T23:11:49.893154-05:00",
+  "run_directory": "scratchpad/lahan-natural-20260908-slope-ground",
+  "binary_sha256": "0ebb5b95379d474c9f2dc3859e323a6d93acd8ff8e811adccd54b43f31b802da",
+  "result": "OBSERVED natural Lahan aftermath departure to rendered world map",
+  "limits": [
+    "No controlled live A/B isolation of party-removal repair",
+    "Not exhaustive retail behavior or audiovisual parity",
+    "Party removal PSX exact match FAIL 424 versus 436 bytes",
+    "Visible solid-blue Gear portions and striped world-map objects remain unresolved"
+  ],
+  "files": {
+    "scratchpad/lahan-natural-20260908-slope-ground/build-pins.json": "aa6a559feddb079eb205a4bc4436c267f3b4f46e1c666a99d853d96f47a3d184",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gear-after5.png": "52ad30e49897acb65e18ad0b45f68d31ae39292b7acc1fbba0526e0bdf8fcf4f",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gear-level-result.png": "235621c9825d45ac357ac8a3d97d62c942bc4c26c738f3a30ace7fd6fb81e0e3",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gear-items.png": "45bc4071836ad2254aa732fee915e46a14db0e9cbf7aa30e759077358213fbc9",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/aftermath-page127.png": "ca1f3b4180694d5dd59cde2c645252a4357f168014d7bbb20940c3b5f2d7d058",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/departure-observe.png": "dad865b3d2839dec2f70b4f6a39c74eee32c21bec54fffd2d715b78d82e2f7c6",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/aftermath-page151.png": "0f9c9ff42b23b4f4630b92d6cc936c21a8dfaad3af3e156440be36f100877a01",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/departure-final-observe.png": "03a77fd07ca841ee24b3005f09feaa208686fa0158588f23cb9ec129d75404dc",
+    "scratchpad/lahan-natural-20260908-slope-ground/manual-input.log": "e8787c720812ce310fdde30fbbcbf693f24133ede329614c001901137ad3caaa"
+  }
+}

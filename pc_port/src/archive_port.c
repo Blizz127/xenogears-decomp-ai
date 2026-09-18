@@ -8,24 +8,26 @@
  * into the destination buffer as the drive spools. ArchiveCdDataSync() then busy-
  * polls g_ArchiveCdDriveState until the callbacks drive it back to IDLE.
  *
- * In the port that whole dance is unavailable: the copy callbacks are unported
- * no-op stubs, and reproducing PSX async-CD callback timing on top of PsyCross's
- * spooler thread is fragile. PsyCross does, however, expose a fully synchronous
- * libcd read (CdControlB(CdlSetloc) seeks + selects data mode, CdRead/CdReadSync
- * deliver 2048 data bytes per sector straight from the disc image). So we exclude
- * the game's src/.../system/archive.c from the port build (see build_port.sh) and
- * provide a synchronous ArchiveReadFile here. The arithmetic-only archive helpers
- * (ArchiveSetIndex, ArchiveDecode*, ArchiveReadFileToBuffer/FromCdSector) still
- * come from the compiled libarchive.c and call straight into this function.
+ * PsyCross exposes the same libcd sector primitives the port needs
+ * (CdControlB(CdlSetloc) seeks, CdRead queues one sector, and CdReadSync(1)
+ * advances one sector). We exclude the game's src/.../system/archive.c from the
+ * port build (see build_port.sh) and provide the retail archive state machine's
+ * CD-facing part here. Ordinary files still use a blocking read; stream files
+ * use one queued sector per func_80028B14 poll and the retail section ring.
+ * The arithmetic-only archive helpers (ArchiveSetIndex, ArchiveDecode*,
+ * ArchiveReadFileToBuffer/FromCdSector) still come from libarchive.c and call
+ * straight into this function.
  *
- * Everything else that lived in archive.c (the async ArchiveCdDriveCommandHandler,
- * ArchiveCdSeek*, ArchiveCdSetMode, the stream-file helpers) becomes a logged
- * no-op stub. None of those are on the synchronous overlay-load path; they get
- * real implementations here only if a [stub] log shows the game needs them.
+ * The command callback is intentionally kept out of this TU: PsyCross's CD
+ * queue has no PSX interrupt callback boundary for the archive's DMA handler.
+ * The sector pump below is the equivalent boundary at the retail caller's
+ * ArchiveDataSync/func_80028B14 polling boundary; it never reports completion
+ * until a sector was actually consumed by CdReadSync.
  */
 
 #include "common.h"
 #include "system/archive.h"
+#include "psyq/pc.h"
 #include "psyq/libcd.h"
 #include "psyq/libgpu.h"   /* RECT, LoadImage, DrawSync for the 0xBB VRAM uploader */
 #include "psx_memory.h"
@@ -37,19 +39,39 @@
  * is already declared through common.h (psyq/memory.h). */
 extern void* malloc(unsigned long size);
 extern void  free(void* ptr);
+extern int   printf(const char* format, ...);
+extern void* memcpy(void* dest, const void* src, unsigned long size);
 
 /* Set by ArchiveReadFileToBuffer/ArchiveReadFileFromCdSector (libarchive.c) just
  * before they call us: the absolute CD sector and the byte length to read. */
 extern s32 g_ArchiveCurFileSector;
 extern int ArchiveReadFileToBuffer(int entryIndex, void* pDestBuffer, int arg2, int flags);
+int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags);
 extern int ArchiveDecodeSize(int entryIndex);
 extern int ArchiveDecodeSector(int entryIndex);
 extern int ArchiveDecodeAlignedSize(unsigned int entryIndex);
+extern int ArchiveDataSync(void);
 extern void* HeapAlloc(u_int size, u_int allocMode);
 extern void ArchiveChangeStreamingFile(void* pStreamFile);
 extern void ArchiveClearStreamFileSections(void);
 extern void ArchiveCdDataSync(int mode);
 extern u8 D_800B2394;
+extern s16 D_8004FE10;
+extern s16 D_8004FE24;
+
+/* ArchiveCdDriveCommandHandler remains unresolved: PsyCross's
+ * CdSyncCallback is unimplemented. The polling path below does not establish
+ * equivalence for every retained caller of the retail command callback. */
+
+typedef struct {
+    void* streamFile;
+    s32 nextSector;
+    s32 sectorsLeft;
+    s32 slot;
+    s32 readPending;
+} ArchivePortStreamReadState;
+
+static ArchivePortStreamReadState s_ArchivePortStreamRead;
 
 static u16 ArchivePsxQueueGetIndex(u8* pEntries, int index) {
     return *(u16*)(pEntries + index * 8);
@@ -137,6 +159,48 @@ int* ArchiveAllocStreamFile(int numEntries, int allocMode) {
         }
     }
     return NULL;
+}
+
+/* PsyCross executes Setloc/Pause synchronously and does not provide the PSX
+ * command-completion interrupt used by ArchiveCdDriveCommandHandler.  Keep the
+ * retail entry-index decoding and externally visible drive-state contract,
+ * but close the SEEK -> SEEK_DONE -> IDLE sequence in this adapter once the
+ * host command has actually completed. */
+static void ArchivePortCdSeekOrPause(int entryIndex) {
+    int ok;
+
+    if (entryIndex > 0) {
+        int sector = ArchiveDecodeSector(entryIndex);
+        CdIntToPos(sector, &g_ArchiveCdCurLocation);
+        g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_SEEK;
+        ok = CdControlB(CdlSetloc, (u_char*)&g_ArchiveCdCurLocation, NULL);
+        if (!ok) {
+            g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_SEEK;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
+            return;
+        }
+    } else {
+        g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_DONE;
+        ok = CdControlB(CdlPause, NULL, NULL);
+        if (!ok) {
+            g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_GENERIC;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
+            return;
+        }
+    }
+
+    g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
+}
+
+void ArchiveCdSeekOrPause(int entryIndex) {
+    if (g_ArchiveDebugTable == 0 && ArchiveDataSync() == 0) {
+        D_8004FE18 = g_CurArchiveOffset;
+        ArchivePortCdSeekOrPause(entryIndex);
+    }
+}
+
+void ArchiveCdSeekToFile(int entryIndex) {
+    ArchivePortCdSeekOrPause(entryIndex);
 }
 
 extern void func_8002BF38(void);
@@ -336,6 +400,90 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
     return 0;
 }
 
+/* Retail func_80028B14's CD path selects the next empty slot, lets the CD DMA
+ * callback mark it ready, and returns that slot's 0x800-byte payload.  The
+ * PsyCross libcd queue has the same sector payload but exposes completion via
+ * CdReadSync(1), so retain the retail two-phase boundary: one call queues a
+ * sector and a later call consumes exactly that one sector.  This is important
+ * for WDS banks and streamed field data; reading the complete file here would
+ * change when the caller's callback observes each chunk and can overrun the
+ * retail eight-slot window.
+ */
+s32 func_80028B14(void) {
+    u8* streamFile = (u8*)g_ArchiveCurStreamFile;
+    u8* table;
+    u8* buffers;
+    s32 slotCount;
+    s32 i;
+
+    if (streamFile == NULL || s_ArchivePortStreamRead.streamFile != streamFile ||
+        s_ArchivePortStreamRead.sectorsLeft <= 0) {
+        return 0;
+    }
+
+    table = streamFile + 4;
+    buffers = streamFile + 0x24 + (*(s32*)streamFile * sizeof(ArchiveStreamFileSectionHeader));
+    slotCount = *(s32*)streamFile;
+    if (slotCount <= 0 || slotCount > ARCHIVE_MAX_SECTIONS) {
+        return 0;
+    }
+
+    if (s_ArchivePortStreamRead.readPending) {
+        int readStatus = CdReadSync(1, NULL);
+        if (readStatus < 0) {
+            g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_READ;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
+            s_ArchivePortStreamRead.readPending = 0;
+            return 0;
+        }
+
+        /* CdReadSync(1) has consumed exactly one MODE2 user-data sector.  The
+         * archive callback's externally visible state is state=3 and the
+         * monotonically increasing sector id. */
+        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 0) = 3;
+        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 2) = (u16)D_8004FE24;
+        D_8004FE24 = (s16)(D_8004FE24 + 1);
+        s_ArchivePortStreamRead.readPending = 0;
+        s_ArchivePortStreamRead.nextSector += 1;
+        s_ArchivePortStreamRead.sectorsLeft -= 1;
+        if (s_ArchivePortStreamRead.sectorsLeft == 0) {
+            g_ArchiveCurFileSize = 0;
+            D_8004FDFC = 0;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
+        }
+        return (s32)(uintptr_t)(buffers + s_ArchivePortStreamRead.slot * CD_SECTOR_SIZE);
+    }
+
+    /* Match the retail circular scan beginning at D_8004FE28.  A full ring
+     * means the consumer has not released a prior slot yet; report no data
+     * and leave the request outstanding so the caller can poll again. */
+    for (i = 0; i < slotCount; i += 1) {
+        s32 slot = (D_8004FE28 + i) % slotCount;
+        if (*(u16*)(table + slot * 8 + 0) == ARCHIVE_STREAM_FILE_NOT_LOADED) {
+            s_ArchivePortStreamRead.slot = slot;
+            D_8004FE28 = (s16)((slot + 1) % slotCount);
+            break;
+        }
+    }
+    if (i == slotCount) {
+        return 0;
+    }
+
+    /* The read starts at the archive sector captured by libarchive.c.  Each
+     * subsequent one-sector queue advances PsyCross's image cursor naturally. */
+    if (!s_ArchivePortStreamRead.readPending) {
+        if (!CdRead(1,
+                    (u_long*)(buffers + s_ArchivePortStreamRead.slot * CD_SECTOR_SIZE),
+                    CdlModeSpeed)) {
+            g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_READ;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
+            return 0;
+        }
+        s_ArchivePortStreamRead.readPending = 1;
+    }
+    return 0;
+}
+
 int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
     int nSectors;
     CdlLOC loc;
@@ -343,11 +491,65 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
     (void)dbgEntryIndex;
     (void)arg2;
 
-    /* Streaming reads (field BG/audio: CdlModeStream 0x100, and the 0x200 ADPCM
-     * path) aren't ported yet -- they need the section-queue machinery. Fail
-     * gracefully so callers fall back rather than read garbage. */
-    if (flags & (CdlModeStream | 0x200)) {
+    /* The normal stream mode is the 0x800-byte field/WDS path implemented by
+     * func_80028B14 below.  0x200 selects the retail 2340-byte ADPCM sector
+     * path; PsyCross's CdReadSync data primitive currently exposes only the
+     * 2048-byte MODE2 payload, so accepting it here would silently truncate
+     * the sector.  Keep that distinct mode fail-closed until its XA/DMA
+     * payload boundary is implemented. */
+    if (flags & 0x200) {
         return -4;
+    }
+
+    if (flags & CdlModeStream) {
+        u8* streamFile = (u8*)pDestBuffer;
+        s32 slotCount;
+
+        if (streamFile == NULL || streamFile != (u8*)g_ArchiveCurStreamFile) {
+            return -3;
+        }
+        slotCount = *(s32*)streamFile;
+        if (slotCount <= 0 || slotCount > ARCHIVE_MAX_SECTIONS) {
+            return -3;
+        }
+
+        ArchiveChangeStreamingFile(streamFile);
+        D_8004FE08 = (s8*)(streamFile + 0x24 +
+                            slotCount * sizeof(ArchiveStreamFileSectionHeader));
+        D_8004FE2C = (ArchiveStreamFileSectionHeader*)(streamFile + 4);
+        D_8004FE40 = slotCount;
+        D_8004FE10 = 0;
+        D_8004FE24 = 0;
+        D_8004FE28 = 0;
+        D_8004FE34 = 0;
+        D_8004FDFC = 1;
+        g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_READ_SECTOR;
+        ArchiveClearStreamFileSections();
+
+        s_ArchivePortStreamRead.streamFile = streamFile;
+        s_ArchivePortStreamRead.nextSector = g_ArchiveCurFileSector;
+        s_ArchivePortStreamRead.sectorsLeft =
+            (g_ArchiveCurFileSize + (CD_SECTOR_SIZE - 1)) / CD_SECTOR_SIZE;
+        s_ArchivePortStreamRead.slot = 0;
+        s_ArchivePortStreamRead.readPending = 0;
+
+        if (s_ArchivePortStreamRead.sectorsLeft <= 0) {
+            g_ArchiveCurFileSize = 0;
+            D_8004FDFC = 0;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
+            return -4;
+        }
+
+        /* Seek is synchronous in PsyCross, but the data transfer remains
+         * sector-granular and is completed only by func_80028B14 polling. */
+        CdIntToPos(g_ArchiveCurFileSector, &loc);
+        if (!CdControlB(CdlSetloc, (u_char*)&loc, NULL)) {
+            s_ArchivePortStreamRead.sectorsLeft = 0;
+            D_8004FDFC = 0;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
+            return -1;
+        }
+        return 0;
     }
 
     if (pDestBuffer == NULL || g_ArchiveCurFileSize <= 0) {
@@ -409,4 +611,30 @@ void ArchiveCdSetMode(u_char mode) {
     CdControlF(CdlSetmode, D_80059F18);
     CdControlF(CdlPause, NULL);
     g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
+}
+
+/* Retail func_8002A498: stop the current archive stream on a channel.  The
+ * debug-table close/retry path is retained verbatim; the normal CD path only
+ * updates the stream state consumed by the movie/archive callers. */
+void func_8002A498(int channel) {
+    int i;
+
+    D_8004FE34 = 1;
+    D_8004FE38 = channel;
+    if (g_ArchiveDebugTable) {
+        g_ArchiveCurFileSize = 0;
+        D_8004FDFC = 0;
+
+        /* Close (debug) streaming file handle. */
+        if (D_8004FE4C != -1) {
+            while (i = PCclose(D_8004FE4C)) {
+                if (i != 0) {
+                    if (i + 1 < 4)
+                        continue;
+                }
+                break;
+            }
+            D_8004FE4C = -1;
+        }
+    }
 }

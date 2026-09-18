@@ -38,6 +38,10 @@
 #define STRIDE         0x4Cu
 
 GTERegisters gteRegs;
+
+/* Satisfies world_map_helper_89c78.c's TEMP-DIAG per-object trace hook. The
+ * trace only fires when XENO_WM_OBJ_DIAG is set, which no test does. */
+int PcPort_WorldCaptureCurFrame(void) { return 0; }
 static int s_pass;
 static int s_total;
 static int s_rot_calls;

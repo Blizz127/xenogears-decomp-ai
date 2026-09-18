@@ -560,12 +560,7 @@ extern s32 D_80059190;
 #define GS_U16(off) (*(u16*)((u8*)g_pGameState + (off)))
 #define GS_S16(off) (*(s16*)((u8*)g_pGameState + (off)))
 
-/* Retail registers a vsync IRQ callback (libetc). Host has no PSX IRQ table;
- * accepting the function pointer is enough for init ordering. */
-void func_8004B7D0(void (*fn)(void))
-{
-    (void)fn;
-}
+/* Channel-4 callback ownership is in controller_vblank_service.c. */
 
 /* Local memcpy / memeq — avoid string.h vs game strlen conflict. */
 static void wm_memcpy(void* dst, const void* src, unsigned n)

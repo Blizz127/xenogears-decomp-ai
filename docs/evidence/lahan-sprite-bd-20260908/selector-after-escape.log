@@ -1,0 +1,8 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+Vsync (mode=-1) at pc_port/src/psyq_compat.c:1383
+1383	    if (mode == 1 || mode < 0)
+$1 = 15
+$2 = {590, -15, -441}
+0x74cb4a <g_PsxRam+1247882>:	0x83	0x03
+[Inferior 1 (process 876907) detached]

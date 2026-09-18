@@ -1248,7 +1248,7 @@ void wm_p4_800712D0_should_not_run(void)  { s_wm_ctp4_forbidden_world_loop++; }
  *   byte[+14] = 31   (0x1F)
  *   byte[+15] = 111  (0x6F)
  *   hw[-8]    = GetClut(240, 511)
- *   hw[+0]    = GetTPage(0, 1, 240, 511)
+ *   hw[+0]    = GetTPage(0, 0, 896, 256)
  *
  * Then copies first buffer → second buffer (20480 bytes, 16-byte chunks).
  *
@@ -1327,14 +1327,14 @@ void wm_80085FE0(void)
         /* 0x80086088: jal GetClut(240, 511) */
         clut_val = GetClut(240, 511);
 
-        /* 0x800860A4 (delay of jal GetClut): sh $v0, -8($s0)
+        /* 0x800860A4 (delay of jal GetTPage): sh $v0, -8($s0)
          * $v0 = GetClut result.  Store at hw[-8]. */
         *(u16*)PSX_ADDR(base - 8) = clut_val;
 
-        /* 0x800860A0: jal GetTPage(0, 1, 240, 511) */
-        tpage_val = GetTPage(0, 1, 240, 511);
+        /* 0x80086090..0x800860A0: a0=0, a1=0, a2=896, a3=256. */
+        tpage_val = GetTPage(0, 0, 896, 256);
 
-        /* 0x800860AC (delay of jal GetTPage): sh $v0, 0($s0)
+        /* 0x800860AC (after GetTPage returns): sh $v0, 0($s0)
          * $v0 = GetTPage result.  Store at hw[0]. */
         *(u16*)PSX_ADDR(base + 0) = tpage_val;
 

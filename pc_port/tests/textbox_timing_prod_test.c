@@ -18,6 +18,7 @@
 #include "field/actor.h"
 #include "field/main.h"
 #include "field/text_box.h"
+#include "main/game.h"
 
 enum {
     kWindowGlyphX = 0x00,
@@ -33,6 +34,7 @@ enum {
 };
 
 extern void func_80033DF0(void* arg0);
+extern void* g_SystemDataEntries;
 extern s32 func_80034F98(s32 arg0, s32 arg1);
 extern void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y,
                           s32 width, s32 mode, s32 height);
@@ -51,12 +53,20 @@ extern u32 D_8005935C;
 extern u32 D_80059364;
 
 u16 D_800501D0[11];
+GameState g_GameState;
+u_char g_ControllerButtonMappings[8];
+u8 D_8005A0E4[0x400];
 s16 g_SystemPalette1;
 s16 g_SystemPalette2;
 
 s32 D_800ADE90;
 s32 D_800ADE94;
 s32 D_800ADE98;
+/* Retail cursor/face RECT tables read by func_8007E1C0 (indexed by
+ * D_800ADE94 * 8). Zeroed fixture; the port's retail-initialized copies
+ * live in pc_port/src/data_field.c. */
+RECT D_800ADEDC[8];
+RECT D_800ADF04[8];
 s32 D_800B068C[4];
 s16 D_800B21D6;
 u16 D_800C2694;
@@ -79,6 +89,11 @@ static ActorData s_actor;
 static u8 s_stringTable[0x40];
 static u8 s_fontBlob[0x200];
 static u8 s_windowScratch[0x200];
+static u8 s_nestedEntries[0x100];
+static u8 s_nestedTable6[0x40];
+static u8 s_nestedTable7[0x40];
+static u8 s_nestedTable8[0x40];
+static u8 s_nestedScripts[3][4];
 static u8 s_heapArena[0x10000];
 static size_t s_heapUsed;
 static int s_failures;
@@ -342,6 +357,68 @@ static void setup_standalone_window(u8* window, const u8* encoded, u8 speed)
     *(u16*)(window + kWindowFlags) = 0;
 }
 
+static void init_nested_table(u8* table, u16 entry, u16 string_offset, u8 glyph)
+{
+    memset(table, 0, 0x40);
+    *(u16*)(table + 4 + entry * 2) = string_offset;
+    table[string_offset] = glyph;
+    table[string_offset + 1] = 0;
+}
+
+static void test_nested_table_offsets(void)
+{
+    static const struct {
+        u8 subcode;
+        u16 table_offset;
+        u8* table;
+        u16 entry;
+        u16 string_offset;
+        u8 glyph;
+        const char* label;
+    } cases[] = {
+        {0x6, 0x5C, s_nestedTable6, 3, 0x10, 0x41, "table6"},
+        {0x7, 0x60, s_nestedTable7, 5, 0x12, 0x42, "table7"},
+        {0x8, 0x64, s_nestedTable8, 7, 0x14, 0x43, "table8"},
+    };
+    u8* window = s_windowScratch;
+
+    reset_world();
+    memset(s_nestedEntries, 0, sizeof(s_nestedEntries));
+    init_nested_table(s_nestedTable6, cases[0].entry, cases[0].string_offset, cases[0].glyph);
+    init_nested_table(s_nestedTable7, cases[1].entry, cases[1].string_offset, cases[1].glyph);
+    init_nested_table(s_nestedTable8, cases[2].entry, cases[2].string_offset, cases[2].glyph);
+    *(u32*)(s_nestedEntries + 0x5C) = (u32)(uintptr_t)s_nestedTable6;
+    *(u32*)(s_nestedEntries + 0x60) = (u32)(uintptr_t)s_nestedTable7;
+    *(u32*)(s_nestedEntries + 0x64) = (u32)(uintptr_t)s_nestedTable8;
+    g_SystemDataEntries = s_nestedEntries;
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        u8* table;
+        u8* nested;
+
+        s_nestedScripts[i][0] = 0x0F;
+        s_nestedScripts[i][1] = cases[i].subcode;
+        s_nestedScripts[i][2] = (u8)cases[i].entry;
+        s_nestedScripts[i][3] = 0;
+        setup_standalone_window(window, s_nestedScripts[i], 1);
+        func_80033DF0(window);
+
+        table = (u8*)(uintptr_t)*(u32*)(s_nestedEntries + cases[i].table_offset);
+        nested = GetStringEntry(table, cases[i].entry);
+        check(window_string(window) == (u32)(uintptr_t)(nested + 1),
+              cases[i].label);
+        check(*(u32*)(window + 0x20) == (u32)(uintptr_t)(s_nestedScripts[i] + 2),
+              "nested.table.saved.return.pc");
+        check(*(u8*)(uintptr_t)window_string(window) == 0,
+              "nested.table.terminator.follows.glyph");
+        check(*(u8*)(uintptr_t)(window_string(window) - 1) == cases[i].glyph,
+              "nested.table.selected.entry.glyph");
+        func_80033DF0(window);
+        check(window_string(window) == (u32)(uintptr_t)(s_nestedScripts[i] + 3),
+              "nested.table.return.pc.restored");
+    }
+}
+
 static void test_setup_speed_byte(void)
 {
     u8* window;
@@ -537,6 +614,7 @@ int main(void)
     test_glyph_widths();
     test_control_bytes_halt_tick();
     test_open_timer_gate();
+    test_nested_table_offsets();
 
     if (s_failures != 0 || s_pass != s_total) {
         return EXIT_FAILURE;

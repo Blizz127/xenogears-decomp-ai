@@ -1,7 +1,42 @@
 #include "common.h"
+#include "psx_memory.h"
+#include "work_list_callback.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 typedef void (*WorkListCallback_t)(void*);
+
+extern void* HeapAlloc(u_int allocationSize, u_int allocationFlags);
+extern u_int HeapFree(void* allocation);
+
+__attribute__((weak)) int PcPort_BattleMipsDispatchCallback(
+    u32 callback, void* argument)
+{
+    (void)callback;
+    (void)argument;
+    return 0;
+}
+
+static void WorkListInvokeCallback(WorkListCallback_t callback, void* argument)
+{
+    u32 address = (u32)(uintptr_t)callback;
+
+    if ((address & 0xE0000000u) == 0x80000000u) {
+        if (PcPort_BattleMipsDispatchCallback(address, argument))
+            return;
+        fprintf(stderr,
+                "[xeno-port][work-list] unresolved guest callback 0x%08x\n",
+                address);
+        abort();
+    }
+    callback(argument);
+}
+
+void PcPort_WorkListInvokeSavedCallback(uint32_t callback, void* argument)
+{
+    WorkListInvokeCallback((WorkListCallback_t)(uintptr_t)callback, argument);
+}
 
 /* PSX-layout entry: 0x1C bytes, pointer fields stored as u32. The game embeds
  * these in heap objects at fixed offsets (AnimTask: task1 +0x0, task2 +0x1C,
@@ -31,6 +66,16 @@ _Static_assert(sizeof(WorkListEntry) == 0x1C,
 #define WL_PTR(x) ((WorkListEntry*)(uintptr_t)(x))
 #define WL_U32(p) ((u32)(uintptr_t)(p))
 
+/* KUSEG address zero aliases the first byte of PS1 RAM.  Battle deliberately
+ * passes zero as the timer owner, and retail TimerWorkListAddTask reads its
+ * task id from address 0x10.  Do that read against emulated RAM instead of
+ * dereferencing a host null pointer. */
+static u32 WorkListOwnerId(const WorkListEntry* owner) {
+    if (owner == NULL)
+        return (*(const u32*)(g_PsxRam + 0x10)) & 0x1FFFFFFFu;
+    return owner->unk10;
+}
+
 extern s32 D_80059190;
 extern s32 g_NumTimerWorkListEntries;
 extern s32 g_NumWorkListEntries;
@@ -45,6 +90,10 @@ extern void func_800234AC(void* pSpriteData);
 extern void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr);
 extern u8 D_8005A474[];
 extern u8 D_8006BE10[];
+
+void func_8001D2A4(void) {
+    D_80059190 = 0;
+}
 
 void WorkListsReset(void) {
     g_TimerWorkList = NULL;
@@ -73,7 +122,7 @@ void TimerWorkListUpdate(void) {
         D_80059590 = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
         pFnCallback = (WorkListCallback_t)(uintptr_t)*(u32*)(pEntry + 0x8);
         if (pFnCallback) {
-            pFnCallback(pEntry);
+            WorkListInvokeCallback(pFnCallback, pEntry);
         }
     }
 }
@@ -89,7 +138,7 @@ void WorkListUpdate(void) {
         D_80059590 = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
         pFnCallback = (WorkListCallback_t)(uintptr_t)*(u32*)(pEntry + 0x8);
         if (pFnCallback) {
-            pFnCallback(pEntry);
+            WorkListInvokeCallback(pFnCallback, pEntry);
         }
     }
 }
@@ -105,13 +154,13 @@ void WorkListsFreeAllEntries(void) {
     while ((pEntry = g_TimerWorkList) != NULL) {
         pFnCallback =
             (WorkListCallback_t)(uintptr_t)pEntry->onFreeCallback;
-        pFnCallback(pEntry);
+        WorkListInvokeCallback(pFnCallback, pEntry);
     }
 
     while ((pEntry = g_WorkList) != NULL) {
         pFnCallback =
             (WorkListCallback_t)(uintptr_t)pEntry->onFreeCallback;
-        pFnCallback(pEntry);
+        WorkListInvokeCallback(pFnCallback, pEntry);
     }
 }
 
@@ -141,7 +190,7 @@ void func_8001CE74(WorkListEntry* pTargetEntry) {
             pFnOnDeleteCallback =
                 (WorkListCallback_t)(uintptr_t)pCurEntry->onFreeCallback;
             if (pFnOnDeleteCallback) {
-                pFnOnDeleteCallback(pCurEntry);
+                WorkListInvokeCallback(pFnOnDeleteCallback, pCurEntry);
             }
         } else {
             pPrevEntry = pCurEntry;
@@ -166,7 +215,7 @@ void func_8001CE74(WorkListEntry* pTargetEntry) {
             pFnOnDeleteCallback =
                 (WorkListCallback_t)(uintptr_t)pCurEntry->onFreeCallback;
             if (pFnOnDeleteCallback) {
-                pFnOnDeleteCallback(pCurEntry);
+                WorkListInvokeCallback(pFnOnDeleteCallback, pCurEntry);
             }
         } else {
             pPrevEntry = pCurEntry;
@@ -287,7 +336,7 @@ void WorkListAddTask(WorkListEntry* pOwner, WorkListEntry* pEntry) {
     D_80059184++;
     pEntry->onTriggerCallback = 0;
     pEntry->onFreeCallback = WL_U32(WorkListRemoveTask);
-    pEntry->unk14 = pOwner->unk10;
+    pEntry->unk14 = WorkListOwnerId(pOwner);
     pEntry->unk14_1 = 0;
     pEntry->unk14_2 = 0;
     pEntry->unk14_3 = 0;
@@ -302,9 +351,9 @@ void TimerWorkListAddTask(WorkListEntry* pOwner, WorkListEntry* pEntry) {
     pEntry->onTriggerCallback = 0;
     pEntry->pNext = WL_U32(g_TimerWorkList);
     g_TimerWorkList = pEntry;
-    pEntry->unk14 = pOwner->unk10;
+    pEntry->unk14 = WorkListOwnerId(pOwner);
     pEntry->unk10 = D_80059184;
-    D_80059184++;
+    D_80059184 = (s32)((u32)D_80059184 + 1u); /* retail ADDIU wrap */
     pEntry->unk14_1 = 0;
     pEntry->unk14_2 = 0;
     pEntry->unk14_3 = 0;
@@ -373,6 +422,23 @@ void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     g_NumTimerWorkListEntries--;
 }
 
+/* Retail 8001CE44..8001CE74: unlink before releasing the same allocation. */
+void TimerWorkListDeleteTask(WorkListEntry* pTask) {
+    TimerWorkListRemoveTask(pTask);
+    HeapFree(pTask);
+}
+
+/* Retail 8001CD08..8001CD64; the matching work_list.c TU is excluded from
+ * the native build. Keep its 0x1C-byte header and 32-bit allocation arithmetic
+ * here, alongside the packed Add/Remove owners used by field and battle. */
+WorkListEntry* TimerWorkListAllocateTask(void* owner, s32 dataSize) {
+    WorkListEntry* entry = HeapAlloc((u32)dataSize + 0x1Cu, D_800591AF);
+    TimerWorkListAddTask(owner, entry);
+    entry->onFreeCallback = WL_U32(TimerWorkListDeleteTask);
+    entry->unk4 = 0;
+    return entry;
+}
+
 void WorkListSetTaskCallback(WorkListEntry* pTask, WorkListCallback_t callback) {
     pTask->onTriggerCallback = WL_U32(callback);
 }
@@ -381,8 +447,48 @@ void TimerWorkListSetTaskCallback(WorkListEntry* pTask, WorkListCallback_t callb
     pTask->onTriggerCallback = WL_U32(callback);
 }
 
+/* Retail 8001CD7C..8001CD88: one packed32-bit load, not a host-width field. */
+WorkListCallback_t WorkListTaskGetTaskCallback(WorkListEntry* pTask) {
+    return (WorkListCallback_t)(uintptr_t)pTask->onTriggerCallback;
+}
+
 void WorkListTaskSetOnFreeCallback(WorkListEntry* pTask, WorkListCallback_t callback) {
     pTask->onFreeCallback = WL_U32(callback);
+}
+
+/* Retail 0x8001D19C: the timer/work pair shares one allocation. */
+void WorkListsDeleteTasks(WorkListEntry* pTasks) {
+    WorkListRemoveTask((WorkListEntry*)((u8*)pTasks + 0x1C));
+    TimerWorkListRemoveTask(pTasks);
+    HeapFree(pTasks);
+}
+
+/* Retail 0x8001D1D8-0x8001D298.  Contrary to the older four-argument C
+ * placeholder, the first argument is the caller-selected allocation size and
+ * the free callback is the fifth o32 stack argument.  The two list records
+ * occupy the first 0x38 bytes; battle owners append their payload afterward. */
+WorkListEntry* WorkListsAddTasks(u32 allocationSize,
+                                 WorkListEntry* timerOwner,
+                                 WorkListCallback_t timerCallback,
+                                 WorkListCallback_t workCallback,
+                                 WorkListCallback_t onFreeCallback) {
+    WorkListEntry* timerEntry =
+        (WorkListEntry*)HeapAlloc(allocationSize, D_800591AF);
+    WorkListEntry* workEntry;
+
+    TimerWorkListAddTask(timerOwner, timerEntry);
+    workEntry = (WorkListEntry*)((u8*)timerEntry + 0x1C);
+    WorkListAddTask(timerEntry, workEntry);
+    TimerWorkListSetTaskCallback(timerEntry, timerCallback);
+    WorkListSetTaskCallback(workEntry, workCallback);
+    WorkListTaskSetOnFreeCallback(
+        timerEntry,
+        onFreeCallback != NULL
+            ? onFreeCallback
+            : (WorkListCallback_t)WorkListsDeleteTasks);
+    timerEntry->unk4 = WL_U32(timerEntry);
+    workEntry->unk4 = WL_U32(timerEntry);
+    return timerEntry;
 }
 
 /* Matched C from work_list.c (asm 8001D034): zero the +0x70 parent link of
@@ -401,6 +507,21 @@ void func_8001D034(WorkListEntry* pTargetEntry) {
             }
         }
     }
+}
+
+/* Retail 8001D0A4..8001D108; packed-pointer adapter for work_list.c's
+ * decompiled timer lookup. Callback values are identities, not data pointers.
+ * The 29-bit ids exclude the three upper flag bits on both entries. */
+void* func_8001D0A4(void* pTask, void* pCallback) {
+    WorkListEntry* pCur;
+    for (pCur = g_TimerWorkList; pCur != NULL; pCur = WL_PTR(pCur->pNext)) {
+        if (pCur->unk0 == WL_U32(pTask) &&
+            pCur->unk14 == WorkListOwnerId(pTask) &&
+            pCur->onTriggerCallback == WL_U32(pCallback)) {
+            return pCur;
+        }
+    }
+    return NULL;
 }
 
 /* asm 8001D3F4: unlink a sprite from the D_80059190 pending-frame chain

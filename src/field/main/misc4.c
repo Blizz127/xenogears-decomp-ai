@@ -9,9 +9,26 @@
 #include "system/math.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
+/* Retail inlines the libgte macro form of NormalClip (6 inlined NCLIP in
+ * func_8007CD80, zero `jal NormalClip`). Use the same PSY-Q inline macros in
+ * the matching build; the port resolves these to PsyCross' equivalents. */
+#ifdef XENO_PC_PORT
+#include <psx/inline_c.h>
+#include <psx/gtemac.h>
+/* PsyCross gte_ldsxy3 dereferences its arguments; PSY-Q mtc2's packed SXY
+ * values. Route the matching-shape macro onto NormalClip() so the live
+ * path does not SEGV. Matching still uses the PSY-Q inline form. */
+#undef gte_NormalClip
+#define gte_NormalClip(r1, r2, r3, r4) \
+    do { *(r4) = NormalClip((int)(r1), (int)(r2), (int)(r3)); } while (0)
+#else
+#include "psyq/inline_c.h"
+#include "psyq/gtemac.h"
+#endif
 #ifdef XENO_PC_PORT
 #include <stdint.h> /* uintptr_t for LP64 pointer widening below */
 #include <stdio.h>
+#include <stdlib.h> /* getenv for the env-gated party-pointer diagnostic */
 #endif
 
 /* Per-frame helper: rand seed, map-load check, angle-step timer. */
@@ -97,7 +114,8 @@ extern s32 g_GamePartySkinsInitialized;
 extern u8 D_800594D0, D_8005942C;
 extern void *D_800ADC14, *D_80062528, *g_GameCurLoadedWDS;
 extern void func_80077544(), func_800A915C(), func_800777DC(), func_800A4748();
-extern void func_800A476C(), func_800A5884(), func_80070488(), func_801E7378();
+extern void func_800A476C(), func_800A5884(), func_80070488();
+extern void func_801E7378(s32 value);
 extern void func_800A5600(), func_80039C4C(), func_800399D4(), func_800A24C4();
 extern void func_8001B66C(), func_80085B20(), func_80085EEC(), func_800A31E8();
 extern void func_800A91F0(), func_80077DAC(), func_80078B5C(), func_8007554C();
@@ -141,9 +159,7 @@ void func_80078D44(void) {
     func_80070488();
     D_800AFD04 = 1;
     if (D_800B2264 != 0) {
-#ifndef XENO_PC_PORT
         func_801E7378(1);
-#endif
     }
     if (D_800594D0 == 1) {
         s2 = 0;
@@ -248,9 +264,7 @@ void func_80078D44(void) {
     }
 
     if (D_800B2264 != 0) {
-#ifndef XENO_PC_PORT
         func_801E7378(0);
-#endif
     }
     func_800A91F0();
     HeapConsolidate();
@@ -462,8 +476,11 @@ void func_80079784(int color) {
 
 
 /* Resolve the field movement gate from the active player actor's +0x14 flags,
- * then apply the signed-halfword script override when it is not 0x00FF. */
-#ifdef XENO_PC_PORT
+ * then apply the signed-halfword script override when it is not 0x00FF.
+ * Transcribed from asm/field/nonmatchings/main/misc4/func_800798BC.s
+ * (0x800798BC-0x80079958). Retail control flow: beqz D_800B2268 -> store 1;
+ * else andi flags+0x14,0xC0 / bnez store 1 else store 0; then lh D_800B234C
+ * and sb override when != 0xFF. */
 extern s32 D_800B2268;
 extern s16 D_800B234C;
 extern u8 D_80059179;
@@ -471,20 +488,25 @@ extern s32 g_PlayerActorIndex;
 
 void func_800798BC(void) {
     if (D_800B2268 != 0) {
-        ActorData* pActorData =
-            (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
-        D_80059179 = ((*(u32*)((u8*)pActorData + 0x14) & 0xC0) != 0);
+        u32 flags = *(u32*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData
+                            + 0x14);
+#ifdef FIELD_MOVEGATE_MUTANT_C0_MASK
+        if (flags & 0x40) {
+#else
+        if (flags & 0xC0) {
+#endif
+            D_80059179 = 1;
+        } else {
+            D_80059179 = 0;
+        }
     } else {
         D_80059179 = 1;
     }
 
     if (D_800B234C != 0xFF) {
-        D_80059179 = (u8)D_800B234C;
+        D_80059179 = D_800B234C;
     }
 }
-#else
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800798BC);
-#endif
 
 void func_8007995C(short w, short h, short x, short y, int destX, int destY) {
     RECT rect;
@@ -549,19 +571,152 @@ extern void FieldScriptMemoryWriteU16(int index, int value);
 extern int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
 extern u32 LZSSDecompress(void* src, void* dst);
 
-/* Field-script menu open/close wrapper. Retail asm 0x800799D4-0x8007A448.
- * Reads the menu request D_800ADB64 (& 0x7F -> D_80059460), fades the field
- * out, backs up the party-sprite VRAM regions, batch-loads the shared menu
- * resources plus the request's overlay, runs MenuMain, then restores VRAM,
- * fades back in, reloads party skin data, and clears the WAIT_MENU counter
- * D_8004F350 so the field script's FE 87 opcode can advance. */
 #ifdef XENO_PC_PORT
-/* Port-side implementation, transcribed from retail asm 0x800799D4-0x8007A448
- * and behaviorally validated on the map005 menu repro (MenuMain runs, WAIT_MENU
- * clears).  The matching build keeps the INCLUDE_ASM below: the C transcription
- * currently objdiffs at 653/671 (one register-spill cascade short of {}), so it
- * is not yet claimed as a matched decomp.  When the spill closes, drop this
- * outer ifdef pair and let the body serve both builds. */
+/* DIAGNOSTIC / TEST TOOLING (XENO_MENU_PARTY_DIAG=1).  The field menu opener
+ * frees and reallocates the party skin buffers around MenuMain.  On PSX the
+ * heap is deterministic, so the reallocation lands on the same addresses and
+ * any pointer an actor still holds into them keeps working; on the host it need
+ * not.  Dump g_PartyDataBuffers[], g_GamePartyMemberSkins[], and every field
+ * actor's pSpriteData (+0x4) / pActorData (+0x4C) at each seam so a retained
+ * pre-free pointer is visible rather than inferred.  Inert unless armed. */
+extern s32 D_800ADBFC;      /* live actor count (party + scripted actors) */
+extern s32 g_FieldNumActors;
+extern s32 g_PlayerActorIndex;
+
+static int PcPort_MenuPartyDiagArmed(void)
+{
+    static int armed = -1;
+    if (armed < 0) {
+        const char* e = getenv("XENO_MENU_PARTY_DIAG");
+        armed = (e && e[0] == '1') ? 1 : 0;
+    }
+    return armed;
+}
+
+/* DIAGNOSTIC / TEST TOOLING (XENO_MENU_PARTY_DIAG=1).  Second half of the same
+ * question: the opener blits the 6 party-sprite VRAM rects out to the backup
+ * table before MenuMain and back afterwards.  The C is symmetric, but that only
+ * proves the *calls* pair up -- if the host MoveImage loses the pixels, the
+ * party textures come back as 0x0000 texels, which the PSX blender treats as
+ * fully transparent, i.e. the sprite draws its quads and shows nothing.  Digest
+ * both rect tables straight out of the VRAM mirror so that case is measured
+ * rather than assumed. */
+static void PcPort_MenuVramDigest(const char* tag)
+{
+    extern unsigned short vram[];
+    enum { VRAM_W = 1024, RECT_W = 0x40, RECT_H = 0x20 };
+    s32 r;
+
+    if (!PcPort_MenuPartyDiagArmed())
+        return;
+    /* Retail party-page coordinates spelled out, INDEPENDENT of the migrated
+     * D_800ADCB0 (asm/field/data/3DF78.data.s @ 0x3E1C0).  The table-driven
+     * digest below reports whatever the build actually blits; this probe always
+     * reports the real party texture pages, so a build whose table is stubbed
+     * to zero can still be measured at the same place as a build whose table is
+     * correct.  That is what makes the before/after comparison an A/B. */
+    {
+        static const FieldVramCoord kRetailPartyPages[6] = {
+            { 0x0000, 0x00E0 }, { 0x0040, 0x00E0 }, { 0x0080, 0x00E0 },
+            { 0x00C0, 0x00E0 }, { 0x0100, 0x00E0 }, { 0x0100, 0x01E0 },
+        };
+
+        for (r = 0; r < 6; r++) {
+            unsigned int h = 2166136261u;
+            int nonZero = 0;
+            s32 y;
+
+            for (y = 0; y < RECT_H; y++) {
+                s32 x;
+                for (x = 0; x < RECT_W; x++) {
+                    unsigned short p =
+                        vram[(kRetailPartyPages[r].y + y) * VRAM_W +
+                             kRetailPartyPages[r].x + x];
+                    h ^= p;
+                    h *= 16777619u;
+                    if (p != 0)
+                        nonZero++;
+                }
+            }
+            printf("[xeno-port][vram-probe] %-11s page[%d] (%u,%u) fnv=%08x "
+                   "nonzero=%d/%d\n",
+                   tag, (int)r, (unsigned)kRetailPartyPages[r].x,
+                   (unsigned)kRetailPartyPages[r].y, h, nonZero,
+                   RECT_W * RECT_H);
+        }
+    }
+
+    for (r = 0; r < 6; r++) {
+        const FieldVramCoord* pRects[2];
+        const char* names[2];
+        s32 t;
+
+        pRects[0] = &D_800ADCB0[r];
+        pRects[1] = &D_800ADCC8[r];
+        names[0] = "field";
+        names[1] = "backup";
+        for (t = 0; t < 2; t++) {
+            unsigned int h = 2166136261u;
+            int nonZero = 0;
+            s32 y;
+
+            for (y = 0; y < RECT_H; y++) {
+                s32 x;
+                for (x = 0; x < RECT_W; x++) {
+                    unsigned short p =
+                        vram[(pRects[t]->y + y) * VRAM_W + pRects[t]->x + x];
+                    h ^= p;
+                    h *= 16777619u;
+                    if (p != 0)
+                        nonZero++;
+                }
+            }
+            printf("[xeno-port][vram-diag] %-11s %s[%d] (%u,%u) fnv=%08x "
+                   "nonzero=%d/%d\n",
+                   tag, names[t], (int)r, (unsigned)pRects[t]->x,
+                   (unsigned)pRects[t]->y, h, nonZero, RECT_W * RECT_H);
+        }
+    }
+    fflush(stdout);
+}
+
+static void PcPort_MenuPartyDiag(const char* tag)
+{
+    s32 i;
+    s32 count;
+
+    if (!PcPort_MenuPartyDiagArmed())
+        return;
+    printf("[xeno-port][party-diag] %-10s buffers=%p/%p/%p skins=%d/%d/%d "
+           "numActors=%d liveActors=%d player=%d\n",
+           tag, g_PartyDataBuffers[0], g_PartyDataBuffers[1],
+           g_PartyDataBuffers[2], (int)g_GamePartyMemberSkins[0],
+           (int)g_GamePartyMemberSkins[1], (int)g_GamePartyMemberSkins[2],
+           (int)g_FieldNumActors, (int)D_800ADBFC, (int)g_PlayerActorIndex);
+    count = D_800ADBFC;
+    if (count > 8)
+        count = 8;
+    for (i = 0; i < count; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u32 sprite = *(u32*)(actor + 0x4);
+        u32 data = *(u32*)(actor + 0x4C);
+        u32 skinId = 0xFFFFFFFFu;
+        if (data != 0)
+            skinId = *(u8*)((u8*)(uintptr_t)data + 0x126);
+        printf("[xeno-port][party-diag] %-10s actor[%d] pSpriteData=%08x "
+               "pActorData=%08x skinId=%02x status=%04x\n",
+               tag, (int)i, (unsigned)sprite, (unsigned)data,
+               (unsigned)skinId, (unsigned)*(u16*)(actor + 0x58));
+    }
+    fflush(stdout);
+}
+#endif
+
+/* Transcribed from asm/field/nonmatchings/main/misc4/func_800799D4.s
+ * (0x800799D4-0x8007A448). Early-out if request==0x80 and D_800B21D0!=0.
+ * Overlay HeapAlloc uses ArchiveDecodeAlignedSize((id+5)&0x7F) when
+ * D_8004F370==1, else (D_800ADB30&0xFFFFFF)+0xFFE3AFF8. Restore 0x6B9 uses
+ * the same D_800ADB30 word +0xFFE23FF8 when D_8004F370==0. */
 void func_800799D4(void) {
     FieldVramCoord* pFieldRects;
     FieldVramCoord* pBackupRects;
@@ -594,7 +749,13 @@ void func_800799D4(void) {
 
     SetDrawMode(&D_800AFE24[0], 0, 0, GetTPage(0, 2, 0, 0), 0);
     SetDrawMode(&D_800AFE24[1], 0, 0, GetTPage(0, 2, 0, 0), 0);
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("pre-free");
+#endif
     FieldPartyFreeSkinDataBuffers();
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("post-free");
+#endif
 
     /* Preserve the streamed 0x6B9 field archive across the overlay load. */
     if (D_800B2264 != 0) {
@@ -648,6 +809,9 @@ void func_800799D4(void) {
     ArchiveSetIndex(0x4, 0);
 
     /* Back up the field party-sprite VRAM rects, then two fixed screen rects. */
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("pre-backup");
+#endif
     pFieldRects = D_800ADCB0;
     pBackupRects = D_800ADCC8;
     rect.w = 0x40;
@@ -660,6 +824,9 @@ void func_800799D4(void) {
         pFieldRects++;
         pBackupRects++;
     }
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("post-backup");
+#endif
     func_8007995C(0x40, 0x100, 0x3C0, 0x100, 0x300, 0);
     func_8007995C(0x40, 0x100, 0x2C0, 0x100, 0x280, 0);
 
@@ -701,6 +868,12 @@ void func_800799D4(void) {
     printf("[xeno-port][menu] func_800799D4 request=%d D_80059460=%d -> MenuMain\n",
            (int)D_800ADB64, (int)D_80059460);
     fflush(stdout);
+    /* TEST TOOLING: only the field system menu (ADB64=0x80). Title/other
+     * requests must not arm PadOnControl Equip nav. */
+    if (D_800ADB64 == 0x80) {
+        extern int g_PcPortFieldMenuOpened;
+        g_PcPortFieldMenuOpened = 1;
+    }
 #endif
 #ifndef MENU_MUTANT_SKIP_MENUMAIN
     MenuMain();
@@ -766,6 +939,9 @@ void func_800799D4(void) {
     StoreImage(&rect, (u_long*)pSaveBottom);
     DrawSync(0);
 
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("pre-restore");
+#endif
     pFieldRects = D_800ADCC8;
     pBackupRects = D_800ADCB0;
     for (i = 0; i < 6; i++) {
@@ -778,6 +954,9 @@ void func_800799D4(void) {
         pFieldRects++;
         pBackupRects++;
     }
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("post-restore");
+#endif
 
     ArchiveSetIndex(0x4, 0);
     HeapChangeCurrentUser(0x8, NULL);
@@ -800,7 +979,8 @@ void func_800799D4(void) {
 
     FieldRenderSync();
     rect.x = 0x2C0;
-    rect.y = 0;
+    /* Retail 8007A1FC restores the saved field texture strips at y=0x100. */
+    rect.y = 0x100;
     rect.w = 0x40;
     rect.h = 0x100;
     LoadImage(&rect, (u_long*)pSaveBottom);
@@ -825,7 +1005,8 @@ void func_800799D4(void) {
         D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
 #else
         if (D_8004F370 == 0) {
-            D_800ADB20 = HeapAlloc(((u32)pMenuArchiveBackup & 0xFFFFFF) + 0xFFE23FF8, 1);
+            D_800ADB20 = HeapAlloc(
+                ((u32)savedMenuArgSrc & 0xFFFFFF) + 0xFFE23FF8, 1);
         } else {
             D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
         }
@@ -837,6 +1018,9 @@ void func_800799D4(void) {
     SetGeomOffset(0xA0, 0x70);
     SetGeomScreen(g_Scene.sceneScrZ);
     FieldPartyAllocateSkinDataBuffers();
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("post-alloc");
+#endif
 
     if (D_800ADB64 == 1) {
         g_GamePartyMemberSkins[0] = 0xFF;
@@ -860,7 +1044,13 @@ void func_800799D4(void) {
                 HeapFree(pBuf);
             }
         }
+#ifdef XENO_PC_PORT
+        PcPort_MenuPartyDiag("post-lzss");
+#endif
         func_800A2488();
+#ifdef XENO_PC_PORT
+        PcPort_MenuPartyDiag("post-2488");
+#endif
         FieldRenderSync();
     }
 
@@ -874,9 +1064,6 @@ void func_800799D4(void) {
     fflush(stdout);
 #endif
 }
-#else
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800799D4);
-#endif /* XENO_PC_PORT */
 
 
 // Quad rendering
@@ -1270,6 +1457,10 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
         s32 p1 = ((s32)v1[0] << 16) + v1[2];
         s32 p2 = ((s32)v2[0] << 16) + v2[2];
 
+        /* NOTE: retail inlines NCLIP here too, but this function's overall
+         * loop structure is still a faithful rewrite (see 8007B1C4 header), so
+         * the macro form measures 12 bytes WORSE than the call form until the
+         * rest of the body is matched. Keep the call form for now. */
         if (NormalClip(p0, p1, packedPos) < 0) {
             continue;
         }
@@ -1582,8 +1773,18 @@ retry_along_normal:
     return 0;
 }
 
-static s32 FieldPackedXZ(const s16* vert);
-static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b);
+static inline s32 FieldPackedXZ(const s16* vert) {
+    return ((s32)vert[0] << 16) + vert[2];
+}
+
+static inline void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
+    *(u16*)(out + 0x00) = (u16)a[0];
+    *(u16*)(out + 0x02) = (u16)a[1];
+    *(u16*)(out + 0x04) = (u16)a[2];
+    *(u16*)(out + 0x08) = (u16)b[0];
+    *(u16*)(out + 0x0A) = (u16)b[1];
+    *(u16*)(out + 0x0C) = (u16)b[2];
+}
 
 s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
                   s16* outPoint, s32 mode, s32* outFlags) {
@@ -1613,6 +1814,11 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
         collisionMask = (D_800B21CC == 0) ? -1 : 0;
     }
 
+    /* NOTE: kept hoisted here. Moving this computation inside the loop below
+     * (to mimic retail's duplicated `triBase + idx*14` scaling at 8007BFF0 and
+     * 8007C00C) was TRIED and MEASURED: it made func_8007BEF4 1504 -> 1484 B,
+     * i.e. 20 bytes WORSE, because GCC then treats the whole sequence as
+     * loop-invariant and hoists more. Do not re-attempt without new evidence. */
     {
         s16* tri = (s16*)(triBase + triIndex * 14);
         u32 triFlags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)];
@@ -1653,16 +1859,56 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
             nextTri = tri[4];
             break;
         case 3:
-            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
+            if (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[3];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 1;
+#endif
+            } else {
+                nextTri = tri[4];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 2;
+#endif
+            }
             break;
         case 4:
             nextTri = tri[5];
             break;
         case 5:
-            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            if (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[5];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 4;
+#endif
+            } else {
+                nextTri = tri[3];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 1;
+#endif
+            }
             break;
         case 6:
-            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            if (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) {
+                nextTri = tri[5];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 4;
+#endif
+            } else {
+                nextTri = tri[4];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 2;
+#endif
+            }
+            break;
+        case 7:
+            /* Retail's switch has EIGHT cases: the dispatch range check is
+             * `sltiu ..., 0x8` (x2) in
+             * asm/field/matchings/main/misc4/func_8007BEF4.s and jtbl_8006FB8C has
+             * eight entries. Index 7's target is 0x8007C244 =
+             * `addiu $s0, $zero, -0x1` (line 241), i.e. triIndex = -1 - the same
+             * body our `default:` had, which is why GCC emitted a literal-0 8th
+             * table slot instead of a real address. */
+            triIndex = -1;
             break;
         default:
             triIndex = -1;
@@ -1721,15 +1967,44 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
 
     if (sideMask == 1 || sideMask == 2 || sideMask == 4) {
         s16* tri = (s16*)(triBase + lastTri * 14);
+        /* Written out explicitly rather than via FieldCopyCameraEdge, for two
+         * reasons that retail's own code establishes:
+         *  1. retail's dispatch is s2==1 -> 8007C418, s2==2 -> 8007C4C8,
+         *     s2==4 -> 8007C578, and each arm holds its OWN copy of the stores;
+         *     calling the `static inline` helper three times let GCC collapse
+         *     them into a single copy.
+         *  2. the arms are NOT uniform: arms 1 and 2 store only FIVE halfwords
+         *     (out+0x00/0x02/0x04 from the first vertex, out+0x08/0x0A from the
+         *     second), while arm 3 stores SIX (adding out+0x0C from b[2]).
+         *     Retail has 16 `sh $s7` in total: 5 + 5 + 6. */
         if (sideMask == 1) {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[0] * 8),
-                                (s16*)(vertBase + tri[1] * 8));
+            const s16* a = (const s16*)(vertBase + tri[0] * 8);
+            const s16* b = (const s16*)(vertBase + tri[1] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
         } else if (sideMask == 2) {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[1] * 8),
-                                (s16*)(vertBase + tri[2] * 8));
+            const s16* a = (const s16*)(vertBase + tri[1] * 8);
+            const s16* b = (const s16*)(vertBase + tri[2] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
         } else {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[2] * 8),
-                                (s16*)(vertBase + tri[0] * 8));
+            const s16* a = (const s16*)(vertBase + tri[2] * 8);
+            const s16* b = (const s16*)(vertBase + tri[0] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
+            ((u16*)outEdge)[0x6] = (u16)b[2];
         }
     }
 
@@ -1740,7 +2015,10 @@ void func_8007C670(s32* arg0, s32* arg1, s32 arg2) {
     s32 value = *arg0;
 
     if (arg2 >= 0) {
+        *arg0 = value;
         value += arg2;
+    } else {
+        *arg0 = value;
     }
 
     *arg1 = value;
@@ -1837,6 +2115,14 @@ s32 func_8007C694(s32* move, s32* base, void* pActorData,
                 sideMask = 2;
             }
             break;
+        case 7:
+            /* Same missing case as in func_8007BEF4 above: the retail dispatch in
+             * asm/field/matchings/main/misc4/func_8007C694.s has two
+             * `sltiu ..., 0x8` range checks (eight cases) and jtbl_8006FBAC has
+             * eight entries; index 7's target 0x8007C980 is
+             * `addiu $s0, $zero, -0x1` (line 214) = triIndex = -1. */
+            triIndex = -1;
+            break;
         default:
             triIndex = -1;
             break;
@@ -1911,19 +2197,6 @@ void func_8007CD60(s32 a0) {
     D_800ADC10 -= a0;
 }
 
-static s32 FieldPackedXZ(const s16* vert) {
-    return ((s32)vert[0] << 16) + vert[2];
-}
-
-static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
-    *(u16*)(out + 0x00) = (u16)a[0];
-    *(u16*)(out + 0x02) = (u16)a[1];
-    *(u16*)(out + 0x04) = (u16)a[2];
-    *(u16*)(out + 0x08) = (u16)b[0];
-    *(u16*)(out + 0x0A) = (u16)b[1];
-    *(u16*)(out + 0x0C) = (u16)b[2];
-}
-
 s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
     s16 posX = *(s16*)((u8*)arg0 + 0x02);
     s16 posZ = *(s16*)((u8*)arg0 + 0x0A);
@@ -1984,14 +2257,21 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
         p2 = FieldPackedXZ(v2);
 
         sideMask = 0;
-        if (NormalClip(p0, p1, packedPos) < 0) {
-            sideMask |= 1;
-        }
-        if (NormalClip(p1, p2, packedPos) < 0) {
-            sideMask |= 2;
-        }
-        if (NormalClip(p2, p0, packedPos) < 0) {
-            sideMask |= 4;
+        {
+            s32 nclip;
+
+            gte_NormalClip(p0, p1, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 1;
+            }
+            gte_NormalClip(p1, p2, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 2;
+            }
+            gte_NormalClip(p2, p0, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 4;
+            }
         }
 
         nextTri = -1;
@@ -2000,25 +2280,54 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
             steps = 0xFF;
             break;
         case 1:
-            nextTri = tri[3];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
             break;
         case 2:
-            nextTri = tri[4];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
-        case 3:
-            nextTri = (NormalClip(p1, packedPos, packedClamped) < 0) ?
-                      tri[3] : tri[4];
+        case 3: {
+            s32 nclip;
+
+            gte_NormalClip(p1, packedPos, packedClamped, &nclip);
+            nextTri = (nclip < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 6)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
+        }
         case 4:
-            nextTri = tri[5];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 10);
             break;
-        case 5:
-            nextTri = (NormalClip(p0, packedPos, packedClamped) < 0) ?
-                      tri[5] : tri[3];
+        case 5: {
+            s32 nclip;
+
+            gte_NormalClip(p0, packedPos, packedClamped, &nclip);
+            nextTri = (nclip < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 6);
             break;
-        case 6:
-            nextTri = (NormalClip(p2, packedPos, packedClamped) >= 0) ?
-                      tri[5] : tri[4];
+        }
+        case 6: {
+            s32 nclip;
+
+            gte_NormalClip(p2, packedPos, packedClamped, &nclip);
+            nextTri = (nclip >= 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
+            break;
+        }
+        case 7:
+            /* Retail switch admits 8 values: dispatch is
+             * `sltiu $v0, $a1, 0x8` (x2) in
+             * asm/field/matchings/main/misc4/func_8007CD80.s lines 159/161
+             * (0x8007CF94 / 0x8007CF9C), and jtbl_8006FBCC has eight entries.
+             * $a1 is sideMask. Index 7's target 0x8007D0F0 is
+             * `addiu $a3, $zero, -0x1` (line 250). $a3 is the live triangle
+             * index written by cases 1-6 (nextTri in this C). */
+#ifdef FIELD_WALKMESH_MUTANT_CASE7_WALK
+            nextTri = tri[3];
+#else
+            nextTri = -1;
+#endif
             break;
         default:
             nextTri = -1;
@@ -2138,27 +2447,63 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
             sideMask |= 4;
         }
 
+        /* Retail's case-body emission order is 0,3,5,1,6,2,4,7, recovered from
+         * jtbl_8006FBEC's target addresses (0x8007D5A8, 0x8007D5B0, 0x8007D5D0,
+         * 0x8007D5E8, 0x8007D604, 0x8007D61C, 0x8007D638, 0x8007D654). Index i
+         * still dispatches to case value i, and every body ends in `break`, so
+         * this label order is behaviour-neutral.
+         *
+         * GCC 2.7.2 lays the bodies out by CFG, not source order: indexing the
+         * cached `tri` local ranks the emitted table (0,2,6,1,5,3,4,7) for any
+         * source order. Writing the address as `triBase + triIndex * 14` in each
+         * body reproduces retail's shape (0x8007D5E8/0x8007D61C/0x8007D638
+         * compute it, and cases 3/5/6 branch into those shared suffixes), which
+         * is what lets this label order canonicalise to the retail table. */
         switch (sideMask) {
         case 0:
             steps = 0xFF;
             break;
-        case 1:
-            nextTri = tri[3];
-            break;
-        case 2:
-            nextTri = tri[4];
-            break;
         case 3:
-            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
-            break;
-        case 4:
-            nextTri = tri[5];
+            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 6)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
         case 5:
-            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 6);
+            break;
+        case 1:
+#ifdef FIELD_WALKMESH_MUTANT_D3D4_SWAP12
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
+#else
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
+#endif
             break;
         case 6:
-            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
+            break;
+        case 2:
+#ifdef FIELD_WALKMESH_MUTANT_D3D4_SWAP12
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
+#else
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
+#endif
+            break;
+        case 4:
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 10);
+            break;
+        case 7:
+            /* Retail's switch really does have a case 7: its dispatch range check is
+             * `sltiu $v0, $s0, 0x8` (asm/field/matchings/main/misc4/func_8007D3D4.s
+             * lines 127/129) and jtbl_8006FBEC has EIGHT entries. Our C previously
+             * stopped at case 6 and let `default:` absorb index 7, which is why the
+             * built table had only 7 entries where retail has 8 - the last 4 bytes of
+             * the field rodata discrepancy. The index-7 target in retail is
+             * 0x8007D654 = `addiu $s1, $zero, -0x1`, i.e. nextTri = -1. */
+            nextTri = -1;
             break;
         default:
             nextTri = -1;
