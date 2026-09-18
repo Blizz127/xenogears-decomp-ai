@@ -6,8 +6,12 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DD7;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DD8[];
+#endif
 
 
 /* func_80080AE4.s: 12-slot min search over D_800D2DD8: return the v1 with the
@@ -51,12 +55,24 @@ u8 func_80080AE4(u8 target) {
 #endif /* XENO_PC_PORT */
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C402F[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C400B[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D366C;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D3278;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C204C;
+#endif
 extern void func_8007FCE8(void);
 extern void func_8007FDEC(void);
 extern void func_800800E8(u8 index);

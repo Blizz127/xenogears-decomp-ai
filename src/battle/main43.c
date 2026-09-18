@@ -7,13 +7,17 @@ INCLUDE_ASM("asm/battle/nonmatchings/main43", func_8008A684);
 #endif
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E4C;
+#endif
 extern void func_8008A684(u8 v);
 extern void func_8008A274(u8 v);
 extern void func_8008A3EC(u8 v);
 extern u32 D_8005919C;
 extern void func_80039DB8(u32 v);
+#ifndef XENO_PC_PORT
 extern u8 D_800D366C;
+#endif
 
 
 /* func_8008A9C0.s */

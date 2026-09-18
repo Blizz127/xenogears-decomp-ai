@@ -1,9 +1,13 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u32 D_800C3610;
+#endif
 extern u32 D_80059464;
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D68;
+#endif
 extern void func_800BD2E4(void);
 extern u32 func_800BF720(void);
 

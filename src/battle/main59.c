@@ -7,9 +7,15 @@ INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C198);
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C4B4);
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C9C4);
 #endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3DFC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E50;
+#endif
 #ifdef XENO_PC_PORT
 /* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
  * matching build assembles retail bytes below and the port uses this body. */
@@ -34,7 +40,9 @@ void func_8009CA90(void) {
 #else
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009CA90);
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD8C[];
+#endif
 
 
 /* func_8009CB68.s */

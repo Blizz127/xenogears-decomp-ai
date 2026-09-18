@@ -11,11 +11,21 @@ INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800785D4);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800787E0);
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E8C;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C400B[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C402F[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C4022[];
+#endif
 /* func_8007887C.s: append one 72-byte entry at the D_800C3EAC+0x2DA cursor --
  * colour a0, marker 0xF8 and the halfword D_800C3E8C - 1 -- then bump the
  * cursor.  Skipped entirely while D_800C3E8C is 0. */
@@ -32,7 +42,9 @@ void func_8007887C(u8 a0) {
 }
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E5F[];
+#endif
 extern void func_80078658(u8 a, u8 b);
 extern void func_800787E0(u8 a, u8 b);
 extern void func_8007887C(u8 a);

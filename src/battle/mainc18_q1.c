@@ -1,7 +1,9 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 
 
 /* The mainc18 operator family: each entry applies one arithmetic operation to

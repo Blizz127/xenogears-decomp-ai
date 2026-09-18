@@ -7,8 +7,12 @@ INCLUDE_ASM("asm/battle/nonmatchings/main10", func_80078E24);
 #endif
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E5D[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E60[];
+#endif
 extern void func_80079ED8(u8 a0, u8 a1, u8 a2, s32 a3);
 
 

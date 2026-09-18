@@ -4,6 +4,11 @@
 #include "include_asm.h"
 #include "types.h"
 
+#ifdef XENO_PC_PORT
+#include "psx_memory.h"
+#include "battle_overlay_guest_ram.h"
+#endif
+
 #define PSX_SCRATCH ((void*)0x1F800000)
 
 #define ALIGN(x, a) \

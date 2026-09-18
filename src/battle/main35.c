@@ -43,8 +43,12 @@ struct BattleCommandContext {
     BattleCommandActor rows[0];
 };
 STATIC_ASSERT_SIZEOF(BattleCommandActor, 0x40);
+#ifndef XENO_PC_PORT
 extern struct BattleCommandContext *D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3014, D_800D366C, D_800C3E29;
+#endif
 extern void func_80087A38(u32);
 extern void func_80084A7C(u32);
 extern void func_80077698(void);
@@ -113,9 +117,15 @@ reject:
 #endif /* BATTLE_PART(1) */
 #if BATTLE_PART(2)
 #endif /* BATTLE_PART(2) */
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DCC[], D_800C3EB7[][28], D_800D32A1[][8];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB4[][28], *D_800D3364;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800CCD64[][184], D_800CCE08[][184];
+#endif
 #if BATTLE_PART(2)
 /* func_80083FF4.s: alternate status bypasses the group matrix entirely.
  * Keep the early exits so no irrelevant matrix pointer is dereferenced. */
@@ -137,9 +147,15 @@ u32 func_80084108(u32 arg0, u32 arg1) {
     return result;
 }
 #endif /* BATTLE_PART(2) */
+#ifndef XENO_PC_PORT
 extern u8 D_800D3274;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E90[], D_800C3EB4[][28];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800CCD34[][184];
+#endif
 extern u32 func_80083FF4(u32, u32);
 #if BATTLE_PART(2)
 /* func_800841E0.s: stable group partition followed by slot-zero swaps,
@@ -153,7 +169,9 @@ extern u32 func_80083FF4(u32, u32);
 #endif /* BATTLE_PART(2) */
 #if BATTLE_PART(3)
 #endif /* BATTLE_PART(3) */
+#ifndef XENO_PC_PORT
 extern u16 D_800C3D64;
+#endif
 extern u16 func_80089C08(u8);
 #if BATTLE_PART(3)
 /* Retail 84750: actor-filtered range, table mask, no group/rank sorting. */
@@ -198,7 +216,9 @@ typedef struct {
     u16 v;
     u8 pad[26];
 } Row310;
+#ifndef XENO_PC_PORT
 extern Row310 D_800C3EBE[], D_800C3EC0[];
+#endif
 #ifdef XENO_PC_PORT
 extern int ratan2(int, int); /* PsyCross's native API uses 32-bit int. */
 #else
@@ -268,8 +288,12 @@ u32 func_80084854(u32 arg0, u32 arg1) {
 }
 #endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(3) */
+#ifndef XENO_PC_PORT
 extern u8 D_800D3274;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E90[];
+#endif
 #if BATTLE_PART(3)
 extern u32 func_800841E0(u32 arg0);
 /* func_80084A7C.s: list-building may replace the context or actor target.
@@ -296,8 +320,12 @@ extern void func_800716D8(void);
 
 #if BATTLE_PART(4)
 /* func_80085310.s */
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D5C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2D70[];
+#endif
 s32 func_80085310(u32 a0, u32 a1) {
     return (u32)D_800C3EBE[a0 & 0xFF].v > (u32)D_800C3EBE[a1 & 0xFF].v;
 }

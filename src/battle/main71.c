@@ -2,7 +2,9 @@
 
 
 /* func_800AA79C.s */
+#ifndef XENO_PC_PORT
 extern u32 D_800D3368[];
+#endif
 void func_800AA79C(u32 arg0, u32 arg1) {
     u32 a;
     u32 b;
@@ -16,7 +18,9 @@ void func_800AA79C(u32 arg0, u32 arg1) {
 
 
 /* func_800AA7DC.s */
+#ifndef XENO_PC_PORT
 extern u8 D_800C402F[];
+#endif
 s32 func_800AA7DC(u32 index) {
     u32 match = 0xF7;
     u32 off = index * 0x48;

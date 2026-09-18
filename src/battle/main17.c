@@ -6,7 +6,9 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
 
 /* func_8007A9D0.s: saturating u8 add of board operand into battle table cell */
 #if BATTLE_SUB(1)

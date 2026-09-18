@@ -45,7 +45,9 @@ void func_800AA6E0(u8* p) {
         *(u8**)(p + 0x110) = buf;
     }
 }extern u32 D_800D3368[];
+#ifndef XENO_PC_PORT
 extern u8 D_800C3B74;
+#endif
 
 
 /* func_800AA760.s */

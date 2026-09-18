@@ -6,8 +6,12 @@ INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A7E4);
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A854);
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A9D0);
 #endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2C34;
+#endif
 /* func_8009AA44.s: clear the D_800C34B0 mode byte, set bit0 of the actor's
  * +0x15A flag and, when that flag already had bit7 with +0x126 bit4, drop the
  * 0x1B0 bits of +0x120 and bit12 of +0x7C.  Finishes by stamping 0x3D into

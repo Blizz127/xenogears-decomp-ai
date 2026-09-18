@@ -30,8 +30,12 @@ u16 func_80089B50(u16 lo, u16 hi) {
 #else
 INCLUDE_ASM("asm/battle/nonmatchings/main41", func_80089B50);
 #endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C3468[];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C3448[];
+#endif
 
 
 /* func_80089BEC.s */

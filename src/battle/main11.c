@@ -1,8 +1,12 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E5D[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E60[];
+#endif
 extern u32 func_80079ED8(u32 a0, u32 a1, u32 a2, u32 a3);
 /* func_80079098.s: callee declared u32 (not u8) so its return value flows
  * into v0 unmasked; the final & 0xFF keeps semantics identical. */
@@ -15,7 +19,9 @@ void func_80079098(u32 a0, u32 a1) {
 }
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E61[];
+#endif
 extern void func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
 
 

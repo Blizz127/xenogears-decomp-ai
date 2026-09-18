@@ -117,7 +117,9 @@ u32 func_800AE1BC(u8* a0, u8* a1, u32 a2) {
 #endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(2) */
 extern u8* D_8005919C;
+#ifndef XENO_PC_PORT
 extern u8* D_800C4924;
+#endif
 
 #if BATTLE_PART(2)
 /* func_800AE220.s: select a node by a1 (0 -> D_8005919C, 1 -> +0xB0 chain,

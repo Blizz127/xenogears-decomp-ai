@@ -11,8 +11,12 @@
 #define BATTLE_PART(n) (BATTLE_TU_PART == 0 || BATTLE_TU_PART == (n))
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3FE8[];
+#endif
 
 #if BATTLE_PART(1)
 /* func_80085388.s: 11 passes (i = 0..10) clearing two u16 slots and
@@ -39,12 +43,24 @@ void func_80085388(void) {
 }
 #endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(1) */
+#ifndef XENO_PC_PORT
 extern u8 D_800C3FE8[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2C54[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2C88[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D70[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D5C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D67;
+#endif
 
 #if BATTLE_PART(1)
 /* func_80085454.s: copy D_800D2C54 (u16 every 4 bytes) and D_800D2C88
@@ -133,20 +149,48 @@ void func_80085454(s32 arg0) {
 #endif /* XENO_PC_PORT */
 
 #endif /* BATTLE_PART(1) */
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DCC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD34[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD36[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD64[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C4000[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD38[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD3A[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDC4[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDC6[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDEC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDF0[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE08[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C2050;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C48E8;
+#endif
 extern u16 func_80089C08(u8 idx);
 extern void func_800883AC(u8 a0);
 
@@ -315,10 +359,18 @@ void func_80085618(s32 a0) {
 }
 #endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(1) */
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD68[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD36[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD34[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD74[];
+#endif
 
 #if BATTLE_PART(1)
 /* func_80085AC4.s: t = a0 & 0xFF, off = 368*t: copy the halfword
@@ -398,12 +450,22 @@ void func_80085B58(s32 a0, u32 a2save) {
 #endif /* BATTLE_PART(2) */
 
 
+#ifndef XENO_PC_PORT
 extern u16 D_800D39DC;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C48E8;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C94;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C96;
+#endif
 extern void func_80098C6C(u32 v);
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
 extern void func_80085454(s32);
 extern void func_80085618(s32);
 

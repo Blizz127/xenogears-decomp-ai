@@ -13,10 +13,18 @@ extern void *memset(void *, int, unsigned);
 extern MATRIX *RotMatrixZYX(SVECTOR *, MATRIX *);
 extern long ReadGeomScreen(void);
 extern void func_800BB844(MATRIX *, SVECTOR *, SVECTOR *, SVECTOR *);
+#ifndef XENO_PC_PORT
 extern u8 D_800C3688[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C3678[];
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3CDC[];
+#endif
+#ifndef XENO_PC_PORT
 extern SVECTOR D_800C3740[], D_800C3730;
+#endif
 extern struct { SVECTOR eye,target; } D_800D30A0;
 typedef struct Position {
     s32 x,y,z;
@@ -28,7 +36,9 @@ typedef struct BattleTargets {
     u8 gap[0x8c8c-11*0x1c];
     Position *positions[11];
 } BattleTargets;
+#ifndef XENO_PC_PORT
 extern BattleTargets D_800C3EB0;
+#endif
 
 void func_800BC460(u32 mask) {
     VECTOR center;

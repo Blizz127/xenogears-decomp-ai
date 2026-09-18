@@ -6,9 +6,15 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2CE0[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2CB0[];
+#endif
 
 
 /* func_8007D0CC.s: row[p[1]] = D_800D2CB0[i] for first i<48 with
@@ -33,8 +39,12 @@ void func_8007D0CC(u8 **pp, s32 idx) {
 #endif /* XENO_PC_PORT */
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
+#endif
 extern u8 g_GameState[];
 
 

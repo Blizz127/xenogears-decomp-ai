@@ -16,9 +16,15 @@ INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F8F4);
 #endif
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D2E38[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D90[];
+#endif
 extern void func_800716D8(void);
 extern void HeapFree(u32 p);
 

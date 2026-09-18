@@ -7,14 +7,30 @@
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D39DC;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C48E8;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2CA9;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C94;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C98;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C96;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2CAA;
+#endif
 extern void func_800941A4(void);
 
 /* func_80085CCC.s: snapshot D_800D39DC, clear D_800C48E8, store a0/a1/a2
@@ -41,9 +57,15 @@ void func_80085CCC(u8 a0, u16 a1, u16 a2) {
 #endif /* BATTLE_SUB(1) */
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EA4;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCB34;
+#endif
 extern u32 func_80076A10(u32 a0, u32 a1, u32 a2, u32 a3);
 
 /* func_80085D34.s: zero D_800D2D28[0x7B], then three rounds calling

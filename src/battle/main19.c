@@ -6,8 +6,12 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 
 
 /* func_8007AE38.s: u8 saturating add row[p[3]] = min(row[p[1]] + row[p[2]], 0xFF) */

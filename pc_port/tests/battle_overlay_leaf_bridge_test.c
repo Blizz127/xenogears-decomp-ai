@@ -7,6 +7,7 @@
 #define BATTLE_RUNTIME_SOURCE "../src/battle_mips_runtime.c"
 #endif
 #include BATTLE_RUNTIME_SOURCE
+#include "battle_overlay_guest_ram.h"
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
@@ -73,6 +74,47 @@ __attribute__((used)) void func_800B69E4(uint16_t *a0, uint8_t *a1)
     a0[1] = (uint16_t)(a0[1] + (((int32_t)(int8_t)r[3] << 8) | r[2]));
     a0[2] = (uint16_t)(a0[2] + (((int32_t)(int8_t)r[5] << 8) | r[4]));
 }
+__attribute__((used)) uint8_t func_80079ED8(uint8_t a0, uint8_t a1, uint8_t a2, uint8_t a3)
+{
+    uint8_t *p = D_800CCCEC + a0 * 368;
+    (void)a1;
+    if (a3 == 0) {
+        *p = a2;
+        return 0;
+    }
+    return *p;
+}
+__attribute__((used)) uint16_t func_8007A280(uint8_t a0, uint8_t a1, uint16_t a2, uint8_t a3)
+{
+    uint8_t *p = D_800CCD36 + a0 * 368;
+    (void)a1;
+    if (a3 == 0) {
+        p[0] = (uint8_t)a2;
+        p[1] = (uint8_t)(a2 >> 8);
+        return 0;
+    }
+    return (uint16_t)(p[0] | (p[1] << 8));
+}
+__attribute__((used)) void func_80079E18(uint8_t index)
+{
+    D_800D2D28[0xB4] = 1;
+    *(uint8_t *)(D_800D3725 + (((uint32_t)index * 3u) << 5)) = 1;
+}
+__attribute__((used)) void func_80079E4C(uint8_t index)
+{
+    D_800D2D28[0xB4] = 0;
+    *(uint8_t *)(D_800D3725 + (((uint32_t)index * 3u) << 5)) = 0;
+}
+__attribute__((used)) uint32_t func_800AA898(uint8_t *p, uint32_t a1, uint32_t a2, uint32_t a3)
+{
+    (void)a1;
+    *(uint16_t *)(p + 0x3C) = 0xFFFF;
+    p[0x5C] = 0xFF;
+    *(uint32_t *)(p + 0x8) = a2;
+    *(uint32_t *)(p + 0x14) = a3;
+    *(uint16_t *)(p + 0x8E) = 1;
+    return 1;
+}
 
 #define WORD 0x80020100u
 #define HALF 0x80020200u
@@ -122,8 +164,13 @@ static void setup(void)
         const char *name;
     } leaves[] = {
         { 0x80079934u, (void *)func_80079934, "func_80079934" },
+        { 0x80079e18u, (void *)func_80079E18, "func_80079E18" },
+        { 0x80079e4cu, (void *)func_80079E4C, "func_80079E4C" },
+        { 0x80079ed8u, (void *)func_80079ED8, "func_80079ED8" },
+        { 0x8007a280u, (void *)func_8007A280, "func_8007A280" },
         { 0x80089b50u, (void *)func_80089B50, "func_80089B50" },
         { 0x800a3484u, (void *)func_800A3484, "func_800A3484" },
+        { 0x800aa898u, (void *)func_800AA898, "func_800AA898" },
         { 0x800aeeeCu, (void *)func_800AEEEC, "func_800AEEEC" },
         { 0x800b16a4u, (void *)func_800B16A4, "func_800B16A4" },
         { 0x800b6930u, (void *)func_800B6930, "func_800B6930" },
@@ -152,6 +199,11 @@ int main(void)
     keep = (void *)func_800B6930;
     keep = (void *)func_800B6990;
     keep = (void *)func_800B69E4;
+    keep = (void *)func_800AA898;
+    keep = (void *)func_80079ED8;
+    keep = (void *)func_8007A280;
+    keep = (void *)func_80079E18;
+    keep = (void *)func_80079E4C;
     (void)keep;
 
     setup();
@@ -236,6 +288,51 @@ int main(void)
     CHECK("B69E4 a0[0]", half(DST) == 11);
     CHECK("B69E4 a0[1]", half(DST + 2) == 22);
     CHECK("B69E4 a0[2]", half(DST + 4) == 33);
+
+    setup();
+    cpu.gpr[4] = 0;
+    cpu.gpr[5] = 0;
+    cpu.gpr[6] = 0xAB;
+    cpu.gpr[7] = 0;
+    rc = runtime_bridge(&rt, &cpu, 0x80079ed8u);
+    CHECK("79ED8 store bridged", rc == 1);
+    CHECK("79ED8 wrote D_800CCCEC", load_le(PSX_ADDR(0x800CCCEC), 1) == 0xAB);
+    cpu.gpr[6] = 0;
+    cpu.gpr[7] = 1;
+    rc = runtime_bridge(&rt, &cpu, 0x80079ed8u);
+    CHECK("79ED8 load bridged", rc == 1);
+    CHECK("79ED8 read D_800CCCEC", (cpu.gpr[2] & 0xffu) == 0xAB);
+
+    setup();
+    cpu.gpr[4] = 0;
+    cpu.gpr[5] = 0;
+    cpu.gpr[6] = 0x3344;
+    cpu.gpr[7] = 0;
+    rc = runtime_bridge(&rt, &cpu, 0x8007a280u);
+    CHECK("7A280 store bridged", rc == 1);
+    CHECK("7A280 wrote D_800CCD36", half(0x800CCD36u) == 0x3344);
+
+    setup();
+    store_le(PSX_ADDR(0x800D2D28), 4, 0x801F0800u);
+    cpu.gpr[4] = 1;
+    rc = runtime_bridge(&rt, &cpu, 0x80079e18u);
+    CHECK("79E18 bridged", rc == 1);
+    CHECK("79E18 ui+0xB4", load_le(PSX_ADDR(0x801F0800u + 0xB4), 1) == 1);
+    CHECK("79E18 table", load_le(PSX_ADDR(0x800D3725u + (3u << 5)), 1) == 1);
+    rc = runtime_bridge(&rt, &cpu, 0x80079e4cu);
+    CHECK("79E4C bridged", rc == 1);
+    CHECK("79E4C ui+0xB4", load_le(PSX_ADDR(0x801F0800u + 0xB4), 1) == 0);
+
+    setup();
+    cpu.gpr[4] = DST;
+    cpu.gpr[5] = 0;
+    cpu.gpr[6] = 0x11111111u;
+    cpu.gpr[7] = 0x22222222u;
+    rc = runtime_bridge(&rt, &cpu, 0x800aa898u);
+    CHECK("AA898 bridged", rc == 1);
+    CHECK("AA898 v0", cpu.gpr[2] == 1);
+    CHECK("AA898 +8", word(DST + 8) == 0x11111111u);
+    CHECK("AA898 +14", word(DST + 0x14) == 0x22222222u);
 
     /* A non-allowlisted overlay target still interprets (jr ra / nop). */
     setup();

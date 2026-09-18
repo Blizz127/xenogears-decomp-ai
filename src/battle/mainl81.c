@@ -6,7 +6,9 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainl81", func_800B39C0);
 #endif
 
 
+#ifndef XENO_PC_PORT
 extern u32 D_800C3558;
+#endif
 
 
 /* func_800B3B6C.s */

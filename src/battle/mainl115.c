@@ -2,7 +2,9 @@
 
 /* func_800BC460 now lives in src/battle/mainc115.c (BattleCdk TU). */
 
+#ifndef XENO_PC_PORT
 extern u8 D_800C37C8;
+#endif
 extern void func_800BC2F0(s32 v);
 
 

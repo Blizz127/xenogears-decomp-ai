@@ -1,7 +1,9 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800C3CF4[];
+#endif
 
 
 /* func_8008AAA0.s */

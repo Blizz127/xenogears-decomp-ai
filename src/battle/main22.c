@@ -6,9 +6,15 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
 
 
 /* func_8007B98C.s: row copy u16: T[p[2]] = T[p[1]] in D_800D3420 row. */
@@ -82,8 +88,12 @@ void func_8007BA44(u8 **pp, s32 idx) {
 
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D343F;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D342E;
+#endif
 
 
 /* func_8007BA88.s */

@@ -1,16 +1,26 @@
 #include "common.h"
 
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD64[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DCC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB7[];
+#endif
 
 
 extern u32 func_8007A6C8(u8 a0, u8 a1);
 extern u8 func_8001BD40(u8 a0, u8 a1);
 /* D_800D3420 / func_80089C08 are also declared below; repeated here so
  * func_8007D344 (transcribed above them) sees them. */
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 extern u32 func_80089C08(u8 idx);
 
 /* func_8007D344.s: clear the D_800D3420 slot ((index & 0xFF) << 6 +
@@ -149,10 +159,18 @@ void func_8007D610(u8** ppBoard, u8 index) {
 }
 #endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D32A1[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDEC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD34[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 extern u32 func_8007A628(u32 a0, u32 a1);
 extern u32 func_80089C08(u8 idx);
 

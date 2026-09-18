@@ -1,7 +1,9 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE34[];
+#endif
 
 /* func_8007BAE8.s: slot = (a1 & 0xFF) + 3; store (u32)(p[1] | (p[2] << 8))
  * (p = *a0) to D_800CCE34 + slot * 368. Retail leaves the offset in v0,
@@ -21,13 +23,27 @@ void func_8007BAE8(u8** a0, u8 a1) {
 #endif /* XENO_PC_PORT */
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3D[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3B[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE39[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3A[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE38[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3E[];
+#endif
 
 
 /* func_8007BB2C.s */

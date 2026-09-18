@@ -11,25 +11,55 @@
 #define BATTLE_PART(n) (BATTLE_TU_PART == 0 || BATTLE_TU_PART == (n))
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800C33B0[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCB34;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 *D_800D2DB4;
+#endif
 extern u32 func_80076A10(u8 sel, u8 *p, u32 m, u32 n);
 extern void func_80076B68(u8 *p);
 extern void func_80076BF0(u8 *p);
 extern u32 func_8001BD40(u32 a0, u32 a1, u32 a2, u32 a3);
+#ifndef XENO_PC_PORT
 extern u8 D_800C3A94;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3A98;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C207C;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A7C;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A80;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A84;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A88;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A8C;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A90;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C3A9C;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C2080;
+#endif
+#ifndef XENO_PC_PORT
 extern s32 D_800C2084;
+#endif
 
 
 #if BATTLE_PART(1)

@@ -1,10 +1,18 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800D2DC8;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3DFC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E50;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
+#endif
 #ifdef XENO_PC_PORT
 /* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
  * matching build assembles retail bytes below and the port uses this body.
@@ -37,8 +45,12 @@ void func_8009E48C(void) {
 #else
 INCLUDE_ASM("asm/battle/nonmatchings/main63", func_8009E48C);
 #endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D2DC8;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3E34;
+#endif
 
 
 /* func_8009E508.s */

@@ -1,7 +1,9 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 
 
 /* func_8007B2C0.s: row[p[3]] = row[p[1]] & row[p[2]] on the D_800D3420 halfword row */

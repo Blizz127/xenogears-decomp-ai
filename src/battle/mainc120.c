@@ -21,7 +21,9 @@ extern void func_8001E148(u32 v);
 extern void func_800C08CC(u32 a0, void* a1, void* a2);
 extern void func_800B51B0(void);
 extern void func_800245D8(u32 a0, u32 a1);
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
+#endif
 extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
 extern void func_800B7424(u32 p);
 extern void func_800B7364(void);
@@ -29,16 +31,24 @@ extern void func_800B6F0C(void);
 extern void func_800B7134(void);
 extern void WorkListSetTaskCallback(void* pTask, void* callback);
 extern void D_80025A88(void);
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C3CE8[];
+#endif
 extern void WorkListTaskSetOnFreeCallback(void* pTask, void* callback);
 extern void func_800B3358(u8* p);
 extern void func_800B3588(u8* p);
+#ifndef XENO_PC_PORT
 extern u32 D_800C3548[];
+#endif
 
 
 /* func_800BE0DC.s */
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D68[];
+#endif
 extern void func_800BDCF8(u8* p);
 void func_800BE0DC(void) {
     u8* p = (u8*)(u32)D_800D2D68[0];
@@ -48,8 +58,12 @@ void func_800BE0DC(void) {
     }
 }
 /* func_800BE108.s */
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D68[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C374C[];
+#endif
 void func_800BE108(void) {
     D_800D2D68[0] = 0;
     D_800C374C[0] = 0;

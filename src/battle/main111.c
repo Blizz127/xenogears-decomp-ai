@@ -9,7 +9,9 @@ INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAC50);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BACBC);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BADD4);
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
+#endif
 extern void func_800223B0(u8* p, s32 v);
 extern void func_80021FE0(u8* p, s32 v);
 #ifdef XENO_PC_PORT
@@ -31,8 +33,12 @@ void func_800BAEB8(s32 a0) {
 #else
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAEB8);
 #endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D2DC8;
+#endif
 
 
 /* func_800BAF40.s */

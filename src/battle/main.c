@@ -91,12 +91,24 @@ INCLUDE_ASM("asm/battle/nonmatchings/main", func_800716D8);
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_8007171C);
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_800718BC);
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2CAF;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D2C94;
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800C48E8;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D39F0;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D39C0;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D39C6;
+#endif
 extern u32 GetStringEntry(u32 id);
 extern u8 SystemRenderStringEntry(u32 entry, u32 buf, u32 a2, u32 a3);
 extern void LoadImage(void* pRect, u32 buf);
@@ -124,11 +136,17 @@ void func_80071964(void) {
 #else
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_80071964);
 #endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
 extern u8 g_GameState[];
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
 extern void func_800716D8(void);
+#ifndef XENO_PC_PORT
 extern u8 D_800D3725[];
+#endif
 
 
 /* func_80071A08.s */

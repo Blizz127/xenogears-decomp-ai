@@ -6,15 +6,33 @@ INCLUDE_ASM("asm/battle/nonmatchings/main30", func_8007E7E4);
 #endif
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D3410[];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800CCD64[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D301C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D39DC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB7[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DC0;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D3364;
+#endif
 extern s32 func_80079E7C(u32 value);
 extern void func_80078508(void* pBuffer);
 

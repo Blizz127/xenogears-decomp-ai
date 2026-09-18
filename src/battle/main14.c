@@ -1,30 +1,78 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800CCCEC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD3E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDC8[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDCB[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD40[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD41[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD42[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD15[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD45[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD43[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD44[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD46[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD47[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD48[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD49[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD4C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD4D[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD4E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD4F[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE24[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD9E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE28[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE29[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE2A[];
+#endif
 
 /* func_80079ED8.s: jump-table (jtbl_8006FB7C) dispatch on a1 picking one of
  * 24 D_800CCxx bases; the byte at base + 368*a0 is returned when a3 != 0,
@@ -68,30 +116,78 @@ u8 func_80079ED8(u8 a0, u8 a1, u8 a2, u8 a3) {
     }
     return ret;
 }
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD36[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD34[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD64[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD66[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD68[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD6A[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD6C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD6E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD70[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD72[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD74[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD76[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDF8[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDFC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCDFE[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE08[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE0A[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE0C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE0E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE10[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE12[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD1C[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD1E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD20[];
+#endif
 
 /* func_8007A280.s: halfword twin of func_80079ED8 over jtbl_8006FBDC. */
 u16 func_8007A280(u8 a0, u8 a1, u16 a2, u8 a3) {
@@ -130,8 +226,12 @@ u16 func_8007A280(u8 a0, u8 a1, u16 a2, u8 a3) {
     }
     return ret;
 }
+#ifndef XENO_PC_PORT
 extern u8 D_800D2DCC[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB7[];
+#endif
 
 /* func_8007A628.s: gate on D_800D2DCC[a0], D_800C3EB7[a0*28],
  * D_800CCD64[a0*368] & 0xC002. If a1 != 0 the result is 1, else it is

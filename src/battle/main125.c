@@ -17,7 +17,9 @@ extern void func_800AA320(u32 arg0, u32 arg1, u32 arg2);
  * reloads $sp from the slot -- and finally HeapFree(buf).  Reassigning $sp is
  * not expressible in portable C, so this stays retail assembly; the port does
  * not link this reference-only TU. */
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
+#endif
 
 /* func_800BEEB4: scan 11 mask bits; for each set bit whose
  * D_800C3EB0[0x8C8C + i*4] row pointer is non-null, publish value at row+0x74
@@ -110,7 +112,9 @@ u32 func_800BEF8C(u8 *arg0) {
 #endif /* XENO_PC_PORT */
 
 extern void func_800245D8(u32 arg0, u32 arg1);
+#ifndef XENO_PC_PORT
 extern u8 *D_800C3610;
+#endif
 
 /* Not yet byte-matching: the matching build assembles retail bytes for
  * this function from its own asm segment (see config/battle.yaml).  The
@@ -140,11 +144,21 @@ void func_800BEFF4(u32 arg0) {
 #endif /* XENO_PC_PORT */
 
 
+#ifndef XENO_PC_PORT
 extern u32 D_800D3344;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D39CC;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3B74;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3D6C;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800C3610;
+#endif
 
 
 /* func_800BF0B4.s */

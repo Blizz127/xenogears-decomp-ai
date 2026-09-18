@@ -1,9 +1,15 @@
 #include "common.h"
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D32A1[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D367C;
+#endif
 extern void func_8008AC50(void);
 extern void func_8008AB94(void);
 extern u32 ArchiveDecodeAlignedSize(u32 file);
@@ -33,8 +39,12 @@ void func_8007FD38(u8 index) {
 }
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C3DE8;
+#endif
 extern void HeapFree(u32 p);
 
 

@@ -460,20 +460,21 @@ static int target_is_guest_code(uint32_t target)
     return 0;
 }
 
-/* Overlay C that only mutates through translated pointer arguments.  Do not
- * add functions that (1) treat a 0x8xxxxxxx integer as an address to return,
- * (2) touch overlay BSS via host `D_*` symbols, or (3) are empty placeholders.
- * Everything else stays in the MIPS interpreter. */
+/* Overlay C adopted onto the host. Pointer-only leaves plus bodies that
+ * touch overlay D_* through battle_overlay_guest_ram.h (guest RAM, not a
+ * second host copy). Nested guest pointers loaded from structs stay in
+ * the interpreter until they grow an explicit translator. */
 static int overlay_leaf_host_ok(const char *name)
 {
-    return strcmp(name, "func_80079934") == 0 ||
-           strcmp(name, "func_80089B50") == 0 ||
-           strcmp(name, "func_800A3484") == 0 ||
-           strcmp(name, "func_800AEEEC") == 0 ||
-           strcmp(name, "func_800B16A4") == 0 ||
-           strcmp(name, "func_800B6930") == 0 ||
-           strcmp(name, "func_800B6990") == 0 ||
-           strcmp(name, "func_800B69E4") == 0;
+    static const char *const kLeaves[] = {
+#include "battle_overlay_host_leaves.inc"
+    };
+    size_t i;
+    for (i = 0; i < sizeof(kLeaves) / sizeof(kLeaves[0]); i++) {
+        if (strcmp(name, kLeaves[i]) == 0)
+            return 1;
+    }
+    return 0;
 }
 
 static int graphics_pointer_to_guest(const void *pointer, uint32_t *value)

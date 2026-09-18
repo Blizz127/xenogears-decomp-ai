@@ -1,7 +1,9 @@
 #include "common.h"
 
 #ifdef XENO_PC_PORT
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 extern u32 func_80079E7C(u16 value);
 extern u32 func_80079ED8(u8 a0, u8 a1, u8 a2, s32 a3);
 extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
@@ -44,7 +46,9 @@ INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B608);
 INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B6C0);
 INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B7B0);
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
 extern u16 D_8005A3A0[];
 /* func_8007B8D4.s: board-to-party halfword setter: row[p[1]] = D_8005A3A0[p[2]]. */
 void func_8007B8D4(u8** ppBoard, u8 index) {
@@ -55,14 +59,28 @@ void func_8007B8D4(u8** ppBoard, u8 index) {
     base = D_800D3420;
     ((u16*)(base + off))[p[1]] = D_8005A3A0[p[2]];
 }
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D3410[];
+#endif
 extern u16 D_8005A3A0[];
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE34[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCE3E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D343F;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D342E;
+#endif
 
 
 /* func_8007B914.s */

@@ -6,7 +6,9 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
+#endif
 
 
 /* func_8007E6A0.s: row[(idx&0xFF)] table add: T[p[3]] = T[p[1]] + T[p[2]]. */
@@ -74,13 +76,25 @@ void func_8007E780(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 
 
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D40;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800D2D48;
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3BCC[];
+#endif
 extern u16 D_8005A3A0[];
+#ifndef XENO_PC_PORT
 extern u8 D_800D2E62[];
+#endif
+#ifndef XENO_PC_PORT
 extern u16 D_800D39E0;
+#endif
+#ifndef XENO_PC_PORT
 extern u8* D_800D3278;
+#endif
 extern void LoadImage(void* pRect, void* pData);
 extern void DrawSync(s32 mode);
 

@@ -11,11 +11,21 @@
 #define BATTLE_PART(n) (BATTLE_TU_PART == 0 || BATTLE_TU_PART == (n))
 
 
+#ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C3160[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD3E[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D24[];
+#endif
+#ifndef XENO_PC_PORT
 extern u32 D_800C31AC[];
+#endif
 extern u8 g_GameState[];
 extern u32 func_80089C6C(u32 a0, u8 a1);
 
@@ -91,9 +101,15 @@ u32 func_80085EB4(s32 a0, s32 a1, u8* a2, s32 a3) {
 #endif /* BATTLE_PART(2) */
 
 
+#ifndef XENO_PC_PORT
 extern u8 D_800C402F[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C400B[];
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3FFE[];
+#endif
 extern u16 func_80089C08(u8 idx);
 
 
