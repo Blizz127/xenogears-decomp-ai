@@ -1078,6 +1078,51 @@ for pf in "${PORT_SOURCES[@]}"; do
     echo "    $(basename "$pf") ok"
 done
 
+echo "==> [2c/5] Compiling adopted battle overlay host bodies"
+# src/battle TUs stay reference-only for the interpreter's benefit, but the
+# functions listed in pc_port/src/battle_overlay_host_leaves.inc are allowed to
+# run as native C instead of interpreted retail bytes. That allowlist is only
+# real if the bodies are in the link: runtime_bridge_call() resolves overlay
+# targets with dlsym(RTLD_DEFAULT, "func_XXXXXXXX"), so an uncompiled allowlist
+# entry silently falls through to the interpreter and the port claims native
+# coverage it does not have. Derive the TU set from the allowlist itself so the
+# two can never drift, and fail the build rather than ship an inert allowlist.
+BATTLE_HOST_TUS="$(python3 tools/scripts/battle_overlay_host_tus.py --verify)" || {
+    echo "ERROR: could not derive the battle host TU list from the allowlist."
+    exit 1
+}
+BATTLE_HOST_OBJS=()
+for btu in $BATTLE_HOST_TUS; do
+    bo="$OBJ/battle_host_$(basename "$btu").o"
+    berr="$OUT/$(echo "$btu" | tr '/' '_').host.err"
+    rm -f "$bo" "$berr"
+    # XENO_BATTLE_OVERLAY_HOST_BODIES is what activates the guest-RAM D_*
+    # aliases (see include/common.h); it must not be set for any other TU.
+    if ! gcc -c "$btu" $GFLAGS -DXENO_BATTLE_OVERLAY_HOST_BODIES $INC \
+        -o "$bo" 2>"$berr"; then
+        echo "ERROR: adopted battle overlay host TU failed to compile: $btu"
+        sed 's/^/       | /' "$berr"
+        echo "ERROR: an adopted leaf may not enter the link unbuilt."
+        exit 1
+    fi
+    GAME_OBJS+=("$bo")
+    BATTLE_HOST_OBJS+=("$bo")
+    echo "    $(basename "$btu") ok"
+done
+if [ "${#BATTLE_HOST_OBJS[@]}" -eq 0 ]; then
+    echo "ERROR: the overlay host allowlist produced no translation units."
+    exit 1
+fi
+for leaf in $(python3 tools/scripts/battle_overlay_host_tus.py --leaves); do
+    if ! nm -g --defined-only "${BATTLE_HOST_OBJS[@]}" 2>/dev/null \
+        | awk -v s="$leaf" '$3 == s {found=1} END {exit !found}'; then
+        echo "ERROR: adopted leaf $leaf is defined by no battle host object."
+        echo "ERROR: the allowlist would be inert for it; fix the TU mapping."
+        exit 1
+    fi
+done
+echo "    ${#BATTLE_HOST_OBJS[@]} battle host units define the full allowlist"
+
 # Port fallbacks are deliberately strong. If a matching game TU later gains
 # one of these retail definitions, weaken that duplicate in the game object
 # before linking. Relocations retain the original symbol name, so every caller
@@ -1321,6 +1366,28 @@ if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
         fi
     done
     echo "    LINK OK -> $OUT/xeno-port (port-owned addresses verified)"
+
+    # The shipped binary is the artifact that matters. An adopted overlay leaf
+    # must be a real definition here and must NOT be one of the generated
+    # stubs: runtime_bridge_call() refuses stub-backed overlay targets, so a
+    # leaf in both places would be reinterpreted while the allowlist claims it
+    # runs natively.
+    defeated=""
+    for leaf in $(python3 tools/scripts/battle_overlay_host_tus.py --leaves); do
+        if ! nm -g --defined-only "$OUT/xeno-port" 2>/dev/null \
+            | awk -v s="$leaf" '$3 == s {found=1} END {exit !found}'; then
+            echo "ERROR: adopted leaf is absent from the linked binary: $leaf"
+            defeated="$defeated $leaf(missing)"
+        elif rg -q "\"$leaf\"" "$OUT/stubs.c" 2>/dev/null; then
+            echo "ERROR: adopted leaf is also a generated stub: $leaf"
+            defeated="$defeated $leaf(stub)"
+        fi
+    done
+    if [ -n "$defeated" ]; then
+        echo "ERROR: the overlay host allowlist is not effective:$defeated"
+        exit 1
+    fi
+    echo "    overlay host allowlist verified against the linked binary"
 else
     echo "    LINK incomplete; remaining errors:"
     grep -oE "undefined reference to \`[A-Za-z0-9_]+'|multiple definition of \`[A-Za-z0-9_]+'" "$OUT/link2.err" | sort | uniq -c | sort -rn | head -20

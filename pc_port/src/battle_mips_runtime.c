@@ -69,6 +69,11 @@ typedef struct BattleMipsRuntime BattleMipsRuntime;
 struct BattleMipsRuntime {
     int initialized;
     int trace_calls;
+    /* Verification hook, off in production. When set, overlay targets are never
+     * adopted: every guest call resolves to the interpreter. The differential
+     * harness sets it to run the retail bytes for a function and then the host
+     * C body on identical guest RAM and compare the two. */
+    int force_interpret;
     BattleFile1Identity file1;
     PcPortMipsCpu *bridge_cpu;
     ResolvedFunction functions[1024];
@@ -815,6 +820,12 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
     void *fallback_host;
     ResolvedFunction fallback_entry;
     int file1_load_candidate = 0;
+
+    /* Verification hook (see the field comment). Placed above the file-1
+     * controller so the always-interpret control in
+     * run_battle_overlay_leaf_bridge_test.sh keeps its injection anchor. */
+    if (runtime->force_interpret && target_is_guest_code(target))
+        return 0;
 
     if (target == 0x801e6ce8u) {
         int adopted = file1_try_controller(runtime, cpu);
