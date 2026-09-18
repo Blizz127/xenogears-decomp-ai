@@ -460,6 +460,17 @@ static int target_is_guest_code(uint32_t target)
     return 0;
 }
 
+/* Overlay C that only mutates through translated pointer arguments.  Do not
+ * add functions that (1) treat a 0x8xxxxxxx integer as an address to return,
+ * (2) touch overlay BSS via host `D_*` symbols, or (3) are empty placeholders.
+ * Everything else stays in the MIPS interpreter. */
+static int overlay_leaf_host_ok(const char *name)
+{
+    return strcmp(name, "func_80079934") == 0 ||
+           strcmp(name, "func_800A3484") == 0 ||
+           strcmp(name, "func_800AEEEC") == 0;
+}
+
 static int graphics_pointer_to_guest(const void *pointer, uint32_t *value)
 {
     uintptr_t host = (uintptr_t)pointer;
@@ -803,8 +814,6 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
         int adopted = file1_try_controller(runtime, cpu);
         if (adopted != 0) return adopted;
     }
-    if (target_is_guest_code(target))
-        return 0;
 
     resolved = find_function(runtime, target);
     if (resolved == NULL) {
@@ -824,14 +833,20 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
     if (resolved == NULL) {
         snprintf(fallback, sizeof(fallback), "func_%08X", target);
         fallback_host = dlsym(RTLD_DEFAULT, fallback);
-        if (fallback_host != NULL) {
+        if (fallback_host != NULL &&
+            (!target_is_guest_code(target) || overlay_leaf_host_ok(fallback))) {
             fallback_entry.address = target;
             fallback_entry.host = fallback_host;
             fallback_entry.name = fallback;
             resolved = &fallback_entry;
         }
     }
+    if (resolved != NULL && target_is_guest_code(target) &&
+        !overlay_leaf_host_ok(resolved->name))
+        resolved = NULL;
     if (resolved == NULL) {
+        if (target_is_guest_code(target))
+            return 0;
         fprintf(stderr,
                 "[xeno-port][battle-mips] unresolved native call "
                 "target=0x%08x guest-pc=0x%08x\n",
