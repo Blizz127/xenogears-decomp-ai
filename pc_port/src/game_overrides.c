@@ -197,6 +197,12 @@ extern void* g_pGameState;
 
 void PcPort_FieldOpcode56RecordControlLock(
     s16 controlBefore, s32 actor, u16 lockIp) {
+    /* FE54 (func_80093B10) re-runs itself (IP--) until D_800ADBDC and
+     * D_800ADBE4 are both non-zero, so the gate values AT THIS MOMENT decide
+     * whether the field departure can ever arm. Print them with the snapshot: a
+     * pre-lock control value alone cannot tell a stalled departure from a
+     * healthy one (2026-09-18 field-14 investigation). */
+    extern s32 D_800ADBDC, D_800ADBE4, D_800ADB2C, D_800ADB90, D_800B00C0;
     s_Opcode56ControlLockSnapshot.controlBefore = controlBefore;
     s_Opcode56ControlLockSnapshot.lockIp = lockIp;
     s_Opcode56ControlLockSnapshot.actor = actor;
@@ -204,8 +210,11 @@ void PcPort_FieldOpcode56RecordControlLock(
 
     fprintf(stderr,
             "[xeno-port][opcode56] FE54 snapshot actor=%d lock_ip=0x%04x "
-            "pre_lock_control=%d pending=1\n",
-            actor, lockIp, controlBefore);
+            "pre_lock_control=%d pending=1 gates: dbdc=%d dbe4=%d db2c=%d "
+            "f308=%d db90=%d b00c0=%d\n",
+            actor, lockIp, controlBefore, (int)D_800ADBDC, (int)D_800ADBE4,
+            (int)D_800ADB2C, (int)D_8004F308, (int)D_800ADB90,
+            (int)D_800B00C0);
 }
 
 void PcPort_FieldOpcode56TransitionIntercept(

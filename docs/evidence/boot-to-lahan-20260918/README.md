@@ -188,3 +188,43 @@ Findings from that work:
    stops at painting14" in scratchpad/lahan-natural-20260908-compmatrix), so
    leaving the room needs either those slices replayed or the scene's exit
    condition decompiled. Everything before it is verified working above.
+
+## Field 14 deadlock: measured mechanism (2026-09-18, goal run)
+
+Field 14's script set cannot leave the field. Evidence collected with the port's
+own opcode-0x56 instrumentation (extended this session to print the guard values
+at the moment FE54 runs) and with gdb on a live run:
+
+- After the dream battle returns, the field-14 script set executes retail's
+  departure sequence: **FE54 (`func_80093B10`) is the departure input lock** and
+  **opcode 0x56 (`func_80093014`) arms the four-halfword field/world-map
+  transition tuple** in `g_GameState` (+0x231A/0x231C/0x231E/0x2320). FieldMain
+  then tears the field down and `func_8007954C(3)` switches to
+  `ChangeGameState(D_800B0064 & 0x7F)`.
+- FE54 **re-runs itself** (`scriptInstructionPointer--`) until `D_800ADBDC` and
+  `D_800ADBE4` are both non-zero. The live log shows 75-93 `FE54 snapshot` lines
+  in field 14 from actors 11 and 12 and **not one** `0x56` arm line: the guard
+  never passes, so the departure never arms and the field never leaves.
+- Sampled live in the same run: `D_800ADBDC = -1`, `D_800ADBE4 = -1`,
+  `D_800ADB2C = 0`, `D_8004F308 = 0`, `D_800ADB90 = 0`, `D_800ADBD0 = 0`,
+  `g_FieldControl = 0xFFFF` (locked), `D_800B00C0 = 1` (VM yielded),
+  player index 1, actor 11 IP 0x041E at lock time and 0xA14 when sampled. The
+  guard values sampled *outside* the opcode are healthy, which is why the
+  instrumentation now prints them *inside* it: only the at-execution values can
+  say which gate is closed.
+- The field is not *permanently* locked: F7 (quick save) succeeded with
+  `map=14 pos=(118,0,-454)`, and `checkpoint_is_safe()` requires
+  `D_800B21D0 == 0` and no player script lock. So the lock is applied and
+  released repeatedly while the departure stalls.
+- Two follow-ups found while testing the fast path: pressing **F8 (quick load)
+  at the title screen queues loads and then SIGSEGVs** (field 490 is the only
+  field loaded), and the quick-load commit only happens on a field exit with
+  code 4 after `checkpoint_is_safe()`, so it cannot replace a locked scene.
+
+Consequence for the goal: everything up to and including the dream battle and
+the return to the painting room is verified working; the departure from field 14
+is where the port stops, and the next step is to determine which of the two FE54
+guards reads zero at execution time and why (its writer is not identified in the
+port: `D_800ADBDC` is zeroed by the encounter roll `func_80079288`
+(src/field/main/misc4.c:358) and by misc11.c:773/805, and set to -1 only by the
+field setup at src/field/main/main.c:462).
