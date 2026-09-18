@@ -467,8 +467,13 @@ static int target_is_guest_code(uint32_t target)
 static int overlay_leaf_host_ok(const char *name)
 {
     return strcmp(name, "func_80079934") == 0 ||
+           strcmp(name, "func_80089B50") == 0 ||
            strcmp(name, "func_800A3484") == 0 ||
-           strcmp(name, "func_800AEEEC") == 0;
+           strcmp(name, "func_800AEEEC") == 0 ||
+           strcmp(name, "func_800B16A4") == 0 ||
+           strcmp(name, "func_800B6930") == 0 ||
+           strcmp(name, "func_800B6990") == 0 ||
+           strcmp(name, "func_800B69E4") == 0;
 }
 
 static int graphics_pointer_to_guest(const void *pointer, uint32_t *value)
