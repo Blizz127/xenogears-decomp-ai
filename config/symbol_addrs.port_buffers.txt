@@ -1,0 +1,20 @@
+# Port-only buffer sizes, 2026-09-18.
+#
+# Retail regions the PC port READS INTO at runtime through host globals that the
+# stub generator would otherwise size at its 16-byte floor. Consumed by
+# pc_port/build_port.sh (gen_port_stubs.py --symbol-addrs) and NOT by the
+# matching build, so matching output is unaffected.
+#
+# size: is the retail PSX span; gen_port_stubs.py doubles it for the 64-bit port.
+#
+# D_80010004/D_80018004: pc_port/src/port_main.c calls
+# ArchiveInit(D_80010004, D_80018004, 0), which reads 32768 bytes per buffer
+# (pc_port/src/archive_port.c -> PsyCross LIBCD.C CdReadSync). Retail bakes the
+# archive table at 0x80010004 and the header at 0x80018004 inside the main-exe
+# rodata span [0x80010000,0x80019524). At the 16-byte floor the boot read
+# overwrote 32 KiB of neighbouring port globals -- including D_8004F304 and
+# D_80062528 -- and the field teardown then called
+# func_800399D4(D_80062528) with a CD-data word: SIGSEGV on the title screen.
+
+D_80010004 = 0x80010004; // type:u8 size:0x8000   archive table buffer (read target)
+D_80018004 = 0x80018004; // type:u8 size:0x1520   archive header buffer (read target)

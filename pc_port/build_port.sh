@@ -1271,10 +1271,13 @@ if [ -s "$OUT/undef.txt" ]; then
     done
     # symbol_addrs files carry the real struct sizes (size:) the ELF omits, so data
     # stubs (e.g. g_GameState = 0x2300) are reserved at full size instead of 16 bytes.
+    # port_buffers.txt is port-only: it sizes retail regions the port READS INTO at
+    # runtime (boot archive buffers), which the matching configs do not annotate.
     SYMS=()
     for s in config/symbol_addrs.slus_006.64.txt config/symbol_addrs.field.txt \
              config/symbol_addrs.member_change_menu.txt config/symbol_addrs.shop_menu.txt \
-             config/symbol_addrs.menu.txt config/symbol_addrs.battle.txt; do
+             config/symbol_addrs.menu.txt config/symbol_addrs.battle.txt \
+             config/symbol_addrs.port_buffers.txt; do
         [ -f "$s" ] && SYMS+=(--symbol-addrs "$s")
     done
     if [ "${#ELFS[@]}" -gt 0 ] || [ "${#MAPS[@]}" -gt 0 ]; then
