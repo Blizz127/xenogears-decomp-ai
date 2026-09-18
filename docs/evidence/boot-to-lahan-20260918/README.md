@@ -228,3 +228,25 @@ guards reads zero at execution time and why (its writer is not identified in the
 port: `D_800ADBDC` is zeroed by the encounter roll `func_80079288`
 (src/field/main/misc4.c:358) and by misc11.c:773/805, and set to -1 only by the
 field setup at src/field/main/main.c:462).
+
+## Room replay result and goal outcome (4-hour goal, 2026-09-18)
+
+Replaying the 2026-09-08 recorded slices at a human pace (1 s settle) from
+`painting-close0` through the first 60 steps -- painting close/final,
+easel-backoff, stairs-approach, stairs, dan-trigger, dan-0..38,
+house-exit-approach, house-exit, village-camera, village-east1, village-south --
+left the route at 490 -> 4 -> 2 -> 14: **no field change**. The recorded slice
+names do confirm the intended route out (painting -> Dan -> house exit -> village
+east -> village south), so the inputs are right; the player is simply not free
+to move while the room's script set holds the FE54 lock, and those inputs are
+consumed by the lock.
+
+Goal result: **start-to-painting-room is playable and verified** (title -> New
+Game -> prologue -> Lahan -> dream battle enters, runs and returns -> painting
+room), and the departure from the painting room is the one blocking step. It is
+not a missing symbol, a stub hit, a crash or a wrong flag: FE54 advances with
+every gate healthy, so the room's own script loop (not the port's departure
+state) is what never reaches the 0x56 arm. The next step is to find what that
+loop waits for -- the room's exit script is the place to look, and the tools are
+now in place: `XENO_FIELD_POS_DIAG` telemetry, the FE54 gate print, the field-14
+quick-save seeder, and the route player that can replay any named slice.
