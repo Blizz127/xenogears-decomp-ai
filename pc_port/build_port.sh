@@ -1123,6 +1123,38 @@ for leaf in $(python3 tools/scripts/battle_overlay_host_tus.py --leaves); do
 done
 echo "    ${#BATTLE_HOST_OBJS[@]} battle host units define the full allowlist"
 
+# Every overlay loads at the same vram base, so a battle function and a field
+# function can share an address -- and therefore a splat symbol name. src/battle
+# /main2.c defines func_800764B4 and so does src/field/main/misc2.c. Two strong
+# definitions cannot both be linked.
+#
+# A non-adopted body in a compiled TU is unreachable: the interpreter only ever
+# enters an overlay target that is on the allowlist, so weakening one of those
+# changes nothing that runs. Anything an adopted leaf can reach is a different
+# matter -- redirecting that would silently change what the leaf calls -- so a
+# collision on those names is fatal and has to be resolved in the source.
+BATTLE_HOST_REFERENCES="$(python3 tools/scripts/battle_overlay_host_tus.py --referenced)"
+for o in "${GAME_OBJS[@]}"; do
+    case " ${BATTLE_HOST_OBJS[*]} " in *" $o "*) continue ;; esac
+    nm -g --defined-only "$o" 2>/dev/null | awk '{print $3}'
+done | sort -u > "$OUT/port_defined.txt"
+weakened=0
+for bo in "${BATTLE_HOST_OBJS[@]}"; do
+    while read -r sym; do
+        [ -z "$sym" ] && continue
+        grep -qx "$sym" "$OUT/port_defined.txt" || continue
+        if printf '%s\n' "$BATTLE_HOST_REFERENCES" | grep -qx "$sym"; then
+            echo "ERROR: $sym is defined by both $(basename "$bo") and another port module,"
+            echo "ERROR: and an adopted leaf can reach it. Resolve the ownership in source."
+            exit 1
+        fi
+        objcopy --weaken-symbol="$sym" "$bo"
+        weakened=$((weakened+1))
+        echo "    overlay name collision, weakened non-adopted $sym in $(basename "$bo")"
+    done < <(nm -g --defined-only "$bo" 2>/dev/null | awk '$2 ~ /^[TDBW]$/ {print $3}')
+done
+echo "    ${weakened} overlay name collision(s) resolved by weakening"
+
 # Port fallbacks are deliberately strong. If a matching game TU later gains
 # one of these retail definitions, weaken that duplicate in the game object
 # before linking. Relocations retain the original symbol name, so every caller
@@ -1388,6 +1420,17 @@ if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
         exit 1
     fi
     echo "    overlay host allowlist verified against the linked binary"
+
+    # Being in the binary is not enough: an adopted body that reaches a
+    # generated stub calls a placeholder where retail ran real code, and it
+    # would do so silently. Walk each adopted leaf's call graph through the
+    # battle C bodies and refuse any path that lands on a stub. Address-taken
+    # functions count, since a later JALR reaches the same placeholder.
+    if ! python3 tools/scripts/battle_overlay_host_tus.py --check-stubs \
+        "$OUT/stubs.c"; then
+        echo "ERROR: adopted overlay leaves reach generated stubs."
+        exit 1
+    fi
 else
     echo "    LINK incomplete; remaining errors:"
     grep -oE "undefined reference to \`[A-Za-z0-9_]+'|multiple definition of \`[A-Za-z0-9_]+'" "$OUT/link2.err" | sort | uniq -c | sort -rn | head -20

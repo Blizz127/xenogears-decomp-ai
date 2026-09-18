@@ -25,15 +25,18 @@ extern u8 D_800C3E50;
 void func_8009CA90(void) {
     u8* p = D_800C34B0;
 
+    /* D_800C3DFC is pointer-typed in the guest-RAM alias, so the cursor word
+     * itself has to be advanced through PSX_ADDR; assigning to the alias is not
+     * even an lvalue. Retail adds to the stored guest address, same as here. */
     if ((u32)(p[0x5FC2] - 0xC) < 3) {
         if (((p + D_800C3E50 * 368)[0x15A] & 0x80) == 0) {
-            D_800C3DFC = D_800C3DFC + 0x78;
+            *(u32 *)PSX_ADDR(0x800C3DFC) += 0x78;
             return;
         }
     }
     if (p[0x5FC2] < 3) {
         if (((p + D_800C3E50 * 368)[0x15A] & 0x80) == 0) {
-            D_800C3DFC = D_800C3DFC + 0x258;
+            *(u32 *)PSX_ADDR(0x800C3DFC) += 0x258;
         }
     }
 }

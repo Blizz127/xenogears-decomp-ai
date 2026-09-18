@@ -22,6 +22,8 @@
  *    than failed, so unexercised paths do not masquerade as proof.
  */
 
+#include <setjmp.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,6 +75,17 @@ static const Leaf kLeaves[] = {
 };
 #define LEAF_COUNT (sizeof(kLeaves) / sizeof(kLeaves[0]))
 
+/* Guest addresses whose overlay alias is a pointer: the guest word holds a PSX
+ * address that a body dereferences. The sweep seeds each of these with one live
+ * RAM address, because a zero word makes retail fault on the dereference and the
+ * case could never complete. Generated from the same aliases the bodies use, so
+ * a body cannot silently lose its seed. */
+static const uint32_t kPointerGlobals[] = {
+#include "overlay_pointer_globals.inc"
+};
+#define POINTER_GLOBAL_COUNT \
+    (sizeof(kPointerGlobals) / sizeof(kPointerGlobals[0]))
+
 #define OVERLAY_BASE 0x8006FAF0u
 #define SCRATCH      0x800C4000u   /* overlay BSS: raw guest RAM on both sides */
 #define SCRATCH_END  0x800C8000u
@@ -88,6 +101,9 @@ static const Leaf kLeaves[] = {
 #define SRC  0x800C5400u
 #define DST  0x800C5600u
 #define PTRT 0x801E0000u   /* inside RAM, outside the excluded stack window */
+/* Bytes of PTRT the pointer-argument cases fill with the RAM pattern. Large
+ * enough for the struct an overlay body typically touches through a pointer. */
+#define POINTER_TARGET_SIZE 0x400u
 
 static BattleMipsRuntime rt;
 static PcPortMipsCpu cpu;
@@ -101,6 +117,11 @@ static unsigned checks;
 static unsigned inconclusive;
 static unsigned failures;
 static unsigned hand_only;
+/* Per-leaf count of comparisons that actually completed. A leaf with none is
+ * reported UNPROVEN: being allowlisted without evidence is not a claim this
+ * harness is willing to make. */
+static unsigned proven[LEAF_COUNT];
+static unsigned inconclusive_logged[LEAF_COUNT];
 
 static uint32_t rng_state = 0x12345678u;
 static uint32_t rnd(void)
@@ -116,7 +137,7 @@ static void fail(const char *name, const char *what, const char *detail)
     failures++;
 }
 
-static void seed_ram(uint32_t pattern)
+static void begin_case(uint32_t pattern, int seed_pointers)
 {
     uint32_t a;
     memset(g_PsxRam, 0, sizeof(g_PsxRam));
@@ -130,6 +151,31 @@ static void seed_ram(uint32_t pattern)
         else
             v = (uint8_t)rnd();
         *((uint8_t *)PSX_ADDR(a)) = v;
+    }
+    /* Seeded after the fill: a pointer global that the pattern would leave null
+     * (pattern 0) or wild (patterns 1-2) gets a live target instead, which is
+     * what lets a body that dereferences it finish on both sides. The target
+     * window then gets the pattern too, so a body that reads through a pointer
+     * sees pattern data instead of the zero fill. */
+    if (seed_pointers) {
+        unsigned g;
+        for (g = 0; g < POINTER_GLOBAL_COUNT; g++)
+            *((uint32_t *)PSX_ADDR(kPointerGlobals[g])) = PTRT;
+        for (a = PTRT; a < PTRT + POINTER_TARGET_SIZE; a++) {
+            uint8_t v;
+            if (pattern == 0)
+                v = 0;
+            else if (pattern == 1)
+                v = 0xA5;
+            else
+                v = (uint8_t)rnd();
+            *((uint8_t *)PSX_ADDR(a)) = v;
+        }
+        /* An argument can be a pointer to a pointer (u8**): give the first word
+         * of every argument target a live target of its own, so the inner
+         * dereference lands in emulated RAM instead of address zero. */
+        for (a = 0; a < 4; a++)
+            *((uint32_t *)PSX_ADDR(PTRT + 0x100u * a)) = PTRT + 0x200u;
     }
 }
 
@@ -182,13 +228,27 @@ static int run_host(uint32_t target, const uint32_t *args)
     return runtime_bridge(&rt, &cpu, target);
 }
 
+/* The interpreter validates every address through its bus; the host C body runs
+ * on the real CPU and does not. A body that computes an out-of-range guest
+ * address (the 2 MiB wrap the hardware does and the port does not model) walks
+ * off g_PsxRam and faults instead of returning. Catch that so one runaway body
+ * cannot abort the whole sweep and hide every other leaf's result; the case is
+ * reported as a divergence, because retail completed it. */
+static sigjmp_buf host_fault_jmp;
+
+static void host_fault_handler(int sig)
+{
+    (void)sig;
+    siglongjmp(host_fault_jmp, 1);
+}
+
 static uint32_t leaf_address(const char *name)
 {
     /* "func_XXXXXXXX" -> 0xXXXXXXXX */
     return (uint32_t)strtoul(name + 5, NULL, 16);
 }
 
-static void compare(const Leaf *leaf, const uint32_t *args, uint32_t pattern)
+static void compare(const Leaf *leaf, const uint32_t *args)
 {
     const char *name = leaf->name;
     uint32_t target = leaf_address(name);
@@ -199,14 +259,21 @@ static void compare(const Leaf *leaf, const uint32_t *args, uint32_t pattern)
     uint32_t first = 0;
     char detail[200];
 
-    seed_ram(pattern);
     memcpy(before, g_PsxRam, sizeof(before));
     /* Both sides call the same rand(); start each run from the same point or
      * every random-dependent body would differ for no reason. */
     srand(1);
     irc = run_interpreted(target, args);
     if (irc != PC_PORT_MIPS_HALTED) {
+        unsigned index = (unsigned)(leaf - kLeaves);
         inconclusive++;
+        /* Explain the first skip per leaf: "unproven" is only actionable if the
+         * reason is on the record. */
+        if (inconclusive_logged[index] == 0) {
+            inconclusive_logged[index] = 1;
+            fprintf(stderr, "[prover] inconclusive %s rc=%d err=%s\n", name, irc,
+                    cpu.error);
+        }
         rt.force_interpret = 0;
         return;
     }
@@ -216,6 +283,11 @@ static void compare(const Leaf *leaf, const uint32_t *args, uint32_t pattern)
 
     memcpy(g_PsxRam, before, sizeof(g_PsxRam));
     srand(1);
+    if (sigsetjmp(host_fault_jmp, 1) != 0) {
+        fail(name, "host-fault",
+             "host body faulted where the interpreter completed (wild address)");
+        return;
+    }
     hrc = run_host(target, args);
     if (hrc != 1) {
         snprintf(detail, sizeof(detail), "rc=%d (not adopted)", hrc);
@@ -260,6 +332,7 @@ static void compare(const Leaf *leaf, const uint32_t *args, uint32_t pattern)
         return;
     }
     checks++;
+    proven[(unsigned)(leaf - kLeaves)]++;
 }
 
 static const Leaf *leaf_by_name(const char *name)
@@ -273,9 +346,9 @@ static const Leaf *leaf_by_name(const char *name)
     exit(2);
 }
 
-static void compare_name(const char *name, const uint32_t *args, uint32_t pattern)
+static void compare_name(const char *name, const uint32_t *args)
 {
-    compare(leaf_by_name(name), args, pattern);
+    compare(leaf_by_name(name), args);
 }
 
 /* One case per adopted leaf, with the arguments the port's bridge test already
@@ -284,94 +357,101 @@ static void hand_cases(void)
 {
     uint32_t args[4];
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint32_t *)PSX_ADDR(WORD)) = 10;
     args[0] = WORD; args[1] = args[2] = args[3] = 0;
-    compare_name("func_80079934", args, 0);
+    compare_name("func_80079934", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint16_t *)PSX_ADDR(HALF)) = 0x1234;
     args[0] = HALF; args[1] = args[2] = args[3] = 0;
-    compare_name("func_800A3484", args, 0);
+    compare_name("func_800A3484", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint16_t *)PSX_ADDR(REC + 0x98)) = 0x7777;
     args[0] = REC; args[1] = args[2] = args[3] = 0;
-    compare_name("func_800AEEEC", args, 0);
+    compare_name("func_800AEEEC", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     args[0] = 7; args[1] = 7; args[2] = args[3] = 0;
-    compare_name("func_80089B50", args, 0);
+    compare_name("func_80089B50", args);
     args[0] = 0xFFFF; args[1] = 3;
-    compare_name("func_80089B50", args, 0);
+    compare_name("func_80089B50", args);
     args[0] = 0; args[1] = 0xFFFF;
-    compare_name("func_80089B50", args, 0);
+    compare_name("func_80089B50", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint32_t *)PSX_ADDR(SRC + 0x10)) = 0x18;
     *((uint32_t *)PSX_ADDR(SRC + 0x14)) = 1;
     args[0] = SRC; args[1] = args[2] = args[3] = 0;
-    compare_name("func_800B16A4", args, 0);
+    compare_name("func_800B16A4", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint16_t *)PSX_ADDR(SRC)) = 2;
     *((uint16_t *)PSX_ADDR(SRC + 2)) = 1;
     *((uint16_t *)PSX_ADDR(SRC + 4)) = 2;
     *((uint16_t *)PSX_ADDR(SRC + 6)) = 3;
     args[0] = DST; args[1] = SRC; args[2] = args[3] = 0;
-    compare_name("func_800B6930", args, 0);
+    compare_name("func_800B6930", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint16_t *)PSX_ADDR(SRC)) = 2;
     *((uint16_t *)PSX_ADDR(SRC + 2)) = 0x0011;
     *((uint16_t *)PSX_ADDR(SRC + 4)) = 0x0022;
     *((uint16_t *)PSX_ADDR(SRC + 6)) = 0x0033;
     args[0] = DST; args[1] = SRC; args[2] = args[3] = 0;
-    compare_name("func_800B6990", args, 0);
+    compare_name("func_800B6990", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint16_t *)PSX_ADDR(DST)) = 10;
     *((uint16_t *)PSX_ADDR(DST + 2)) = 20;
     *((uint16_t *)PSX_ADDR(DST + 4)) = 30;
     args[0] = DST; args[1] = SRC; args[2] = args[3] = 0;
-    compare_name("func_800B69E4", args, 0);
+    compare_name("func_800B69E4", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     args[0] = 0; args[1] = 0; args[2] = 0xAB; args[3] = 0;
-    compare_name("func_80079ED8", args, 0);
+    compare_name("func_80079ED8", args);
     args[3] = 1;
-    compare_name("func_80079ED8", args, 0);
+    compare_name("func_80079ED8", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     args[0] = 0; args[1] = 0; args[2] = 0x3344; args[3] = 0;
-    compare_name("func_8007A280", args, 0);
+    compare_name("func_8007A280", args);
     args[3] = 1;
-    compare_name("func_8007A280", args, 0);
+    compare_name("func_8007A280", args);
 
     /* D_800D2D28 is pointer-typed in the retail image; give it a live target so
      * both sides dereference the same guest word. */
-    seed_ram(0);
+    begin_case(0, 0);
     *((uint32_t *)PSX_ADDR(0x800D2D28u)) = PTRT;
     args[0] = 1; args[1] = args[2] = args[3] = 0;
-    compare_name("func_80079E18", args, 0);
-    compare_name("func_80079E4C", args, 0);
+    compare_name("func_80079E18", args);
+    compare_name("func_80079E4C", args);
 
-    seed_ram(0);
+    begin_case(0, 0);
     args[0] = DST; args[1] = 0; args[2] = 0x11111111u; args[3] = 0x22222222u;
-    compare_name("func_800AA898", args, 0);
+    compare_name("func_800AA898", args);
 }
 
-/* Deterministic sweep: scalar-argument leaves, several argument shapes, three
- * RAM seeds.
+/* Deterministic sweep: scalar-argument leaves, several argument shapes, five RAM
+ * seeds; then a pointer-argument pass for leaves that declare a pointer.
  *
  * The bridge cannot tell a scalar from a pointer: an argument that looks like a
  * KSEG0/KSEG1 address is translated to a host pointer before the body sees it.
  * Feeding pointer-shaped values to a scalar parameter would therefore measure
  * that convention rather than the body, and feeding scalar values to a pointer
  * parameter would make the host dereference a wild address that the interpreter
- * (which validates through the bus) would simply fault on. Leaves that declare
- * a pointer parameter are covered by the hand cases, where the arguments are
- * typed by construction; the count is reported so coverage is not overstated. */
+ * (which validates through the bus) would simply fault on. Leaves that declare a
+ * pointer parameter are therefore given PTRT for exactly those parameters, with
+ * the target window and the pointer globals seeded, which is the same typed
+ * shape the hand cases construct by hand.
+ *
+ * Patterns 0-2 fill RAM only; patterns 3-4 repeat two of those fills with the
+ * pointer-typed overlay globals seeded. Without the seeded pass, a body that
+ * dereferences such a global faults on the retail side in every case and can
+ * never be proven. The unseeded patterns still run: for those bodies they are
+ * reported inconclusive, not passed. */
 static void sweep(void)
 {
     unsigned index;
@@ -380,11 +460,31 @@ static void sweep(void)
 
     for (index = 0; index < LEAF_COUNT; index++) {
         if (kLeaves[index].pointer_params != 0) {
+            unsigned mask = kLeaves[index].pointer_params;
+
             hand_only++;
+            for (pattern = 0; pattern < 3; pattern++) {
+                for (round = 0; round < 4; round++) {
+                    uint32_t args[4];
+                    unsigned a;
+                    begin_case(pattern, 1);
+                    for (a = 0; a < 4; a++) {
+                        if ((mask >> a) & 1u)
+                            args[a] = PTRT + 0x100u * a;
+                        else
+                            args[a] = (round == 0) ? 0u : (rnd() & 0xFFFFu);
+                    }
+                    compare(&kLeaves[index], args);
+                }
+            }
             continue;
         }
-        for (pattern = 0; pattern < 3; pattern++) {
+        for (pattern = 0; pattern < 5; pattern++) {
+            int seeded = pattern >= 3;
+            uint32_t fill = seeded ? pattern - 3 : pattern;
+
             for (round = 0; round < 6; round++) {
+                begin_case(fill, seeded);
                 uint32_t args[4];
                 unsigned a;
                 for (a = 0; a < 4; a++) {
@@ -395,7 +495,7 @@ static void sweep(void)
                     default: args[a] = 0xFFFFFFFFu; break;
                     }
                 }
-                compare(&kLeaves[index], args, pattern);
+                compare(&kLeaves[index], args);
             }
         }
     }
@@ -406,6 +506,10 @@ int main(void)
     load();
     runtime_up();
 
+    /* A host body that runs off g_PsxRam must not take the whole run with it. */
+    signal(SIGSEGV, host_fault_handler);
+    signal(SIGBUS, host_fault_handler);
+
     /* The prover is worthless if the host bodies are absent; fail loudly. */
     if (rt.function_count == 0)
         fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL note: no native bindings\n");
@@ -413,6 +517,18 @@ int main(void)
     hand_cases();
     sweep();
 
+    if (failures == 0) {
+        /* An allowlisted leaf with no completed comparison is not evidence of
+         * anything. Say so by name; the batch has to be pruned. */
+        unsigned i;
+        for (i = 0; i < LEAF_COUNT; i++) {
+            if (proven[i] != 0)
+                continue;
+            fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL UNPROVEN %s\n",
+                    kLeaves[i].name);
+            failures++;
+        }
+    }
     if (failures != 0) {
         fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL total=%u\n", failures);
         return 1;

@@ -55,6 +55,14 @@ extern u16 D_800D2E54[];
 #endif
 void func_800BED30(void) {
     D_800C3E20[0] = 0;
+#ifdef XENO_PC_PORT
+    /* main125.c/main68.c read D_800C3610 as a u8*, so the guest-RAM alias is
+     * the load-and-translate pointer form and `D_800C3610[0] = 0` would store
+     * through the pointer's old value. Retail stores a word zero in the
+     * pointer variable itself (sw $zero, D_800C3610). */
+    *(u32*)PSX_ADDR(0x800C3610) = 0;
+#else
     D_800C3610[0] = 0;
+#endif
     D_800D2E54[0] = 0;
 }

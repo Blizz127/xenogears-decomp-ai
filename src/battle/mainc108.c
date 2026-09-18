@@ -49,6 +49,14 @@ extern u32 D_800C3548[];
 extern u8* D_800C3610[];
 #endif
 void func_800B9B30(void) {
+#ifdef XENO_PC_PORT
+    /* main125.c/main68.c read D_800C3610 as a u8*, so the guest-RAM alias is
+     * that pointer and the retail array's [0] element is the alias itself.
+     * Indexing it a second time would subscript a u8. */
+    D_800C3610[0x48] = 1;
+    D_800C3610[0x49] = D_800C3610[0x1C];
+#else
     D_800C3610[0][0x48] = 1;
     D_800C3610[0][0x49] = D_800C3610[0][0x1C];
+#endif
 }

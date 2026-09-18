@@ -27,5 +27,13 @@ u32 func_800BF6F8(void) {
 }
 /* func_800BF720.s: boolean view of the D_800D2D68 word (sltu $v0, $zero, $v0). */
 u32 func_800BF720(void) {
+#ifdef XENO_PC_PORT
+    /* mainc118.c/mainc120.c declare D_800D2D68 as an array, so the guest-RAM
+     * alias is a pointer there and a bare `D_800D2D68 != 0` degenerates into a
+     * pointer-nonnull test that is always true. Read element 0, which is the
+     * word retail loads. */
+    return D_800D2D68[0] != 0;
+#else
     return D_800D2D68 != 0;
+#endif
 }
