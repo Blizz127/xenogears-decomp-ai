@@ -709,8 +709,17 @@ BATTLE_BRIDGE_ELFS=()
 if [ -f build/out/slus_006.64.elf ]; then
     BATTLE_BRIDGE_ELFS+=(--elf build/out/slus_006.64.elf)
 fi
+# The port binary from the previous build is evidence for classifying the retail
+# library range (heap/CD/SPU/GTE): a name it defines as FUNC is bindable, so a
+# retail jal to that address is a function call even though the matching ELF has
+# no symbol for that (un-decompiled) code. Absent on the first clean build.
+BATTLE_BRIDGE_HOST_ELFS=()
+if [ -f "$OUT/xeno-port" ]; then
+    BATTLE_BRIDGE_HOST_ELFS+=(--host-elf "$OUT/xeno-port")
+fi
 python3 tools/scripts/gen_battle_bridge_map.py \
     "${BATTLE_BRIDGE_ELFS[@]}" \
+    "${BATTLE_BRIDGE_HOST_ELFS[@]}" \
     --symbols config/symbol_addrs.slus_006.64.txt \
     --symbols linker/undefined_funcs_auto.battle.txt \
     --symbols linker/undefined_syms_auto.battle.txt \
