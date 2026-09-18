@@ -27,6 +27,10 @@ DISP = sys.argv[2] if len(sys.argv) > 2 else "82"
 SECONDS = int(sys.argv[3]) if len(sys.argv) > 3 else 2400
 SCHED_FILE = sys.argv[4] if len(sys.argv) > 4 else ""
 SETTLE = int(os.environ.get("XENO_DRIVE_SETTLE", "260"))
+# Walk in long strides: 0.5 s taps only nudge Fei, so the driver never crossed a
+# room (2026-09-18: parked in the field-14 painting room).
+WALK_HOLD = float(os.environ.get("XENO_DRIVE_WALK_HOLD", "3.5"))
+WALK_GAP = float(os.environ.get("XENO_DRIVE_WALK_GAP", "1.0"))
 BIN = os.environ.get("XENO_PORT_BINARY", str(ROOT / "pc_port/build_native/xeno-port"))
 
 (OUT / "shots").mkdir(parents=True, exist_ok=True)
@@ -129,8 +133,8 @@ try:
             if now - last_confirm > 1.5:    # Circle: talk / advance dialogue
                 key("z")
                 last_confirm = now
-            if now - last_walk > 2.6:       # walk to keep the story moving
-                key(["Up", "Right", "Down", "Left"][direction % 4], hold=0.5)
+            if now - last_walk > WALK_GAP:  # walk to keep the story moving
+                key(["Up", "Right", "Down", "Left"][direction % 4], hold=WALK_HOLD)
                 direction += 1
                 last_walk = now
         time.sleep(0.25)

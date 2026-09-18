@@ -147,3 +147,44 @@ Start, with the reason recorded inline.
 4. Long-route pacing: the pad schedule caps at 4096 steps
    (`PAD_TEST_INPUT_MAX_STEPS`), so past ~Lahan the route needs live input
    (`lahan_drive2.py`) or a raised cap.
+
+## Push from field 14 (the painting room): what works, what blocks
+
+After the route above, work continued from the painting room with a faster loop:
+
+- `scratchpad/seed_field14.py` boots once, drives the battle with Circle+Cross,
+  and saves a quick-save checkpoint in field 14 (`/var/tmp/.../lahan14.xgqs`).
+  The save only commits when the field's own safety gate opens, so the script
+  clears the aftermath dialogue first and polls for the file.
+- `scratchpad/explore.py` is meant to boot, quick-load that checkpoint (F8) and
+  sweep the field with `XENO_FIELD_POS_DIAG=40` telemetry (map, player position,
+  trigger zones).
+
+Findings from that work:
+
+1. **The title menu defaults to Continue and Continue hangs.** `func_801C58EC`
+   (src/menu/main/misc.c) wraps choice 0..2: choice 0 = options, choice 1 =
+   Continue, choice 2 = New Game, and the loop enters at choice 1. Circle alone
+   therefore confirms **Continue**, which enters `func_801D9F98` (still
+   `INCLUDE_ASM`, stubbed) and the menu then spins without reaching the Vsync
+   shim. New Game needs **Up then Circle** - exactly what the recorded schedule
+   does at frames 3200/3300. A real fix is decompiling/shimming func_801D9F98;
+   until then, any player who presses Circle at the title hangs the port.
+2. **Walk strides matter.** 0.5 s d-pad taps only nudge the actor, and a rotating
+   direction sweep cancels itself out. The driver now takes a configurable long
+   stride (`XENO_DRIVE_WALK_HOLD`, default 3.5 s) and one direction at a time.
+3. **The quick-load gate needs free player control.** `checkpoint_is_safe()`
+   requires `D_800ADB68 == 1`, `D_800ADB64 == 0xFF`, `D_800B21D0 == 0` and no
+   script control lock on the player actor (`status & 0x1800 == 0`), and the
+   commit happens on the field exit with code 4. Queued loads sat in
+   "waiting for free field control" for as long as the scene held the player, so
+   F8 cannot replace a locked scene with the checkpoint.
+4. **Field 14 currently holds the player.** After the first battle returns to
+   field 14 the room renders (easel, canvases, stove, rug, door) and Fei is
+   drawn, but no d-pad direction (each tried for 15-25 s, including the
+   diagonals, with Circle taps) moves him or fires a zone transition: the
+   aftermath scene keeps the player script-locked. The 2026-09-08 natural runs
+   hit the same point and switched to hand-driven slices there ("Automatic input
+   stops at painting14" in scratchpad/lahan-natural-20260908-compmatrix), so
+   leaving the room needs either those slices replayed or the scene's exit
+   condition decompiled. Everything before it is verified working above.
