@@ -32,15 +32,18 @@ LEAVES = ROOT / "pc_port" / "src" / "battle_overlay_host_leaves.inc"
 
 # A definition, not a declaration: the parameter list is followed by '{' rather
 # than ';'.  Mirrors the recogniser in gen_battle_overlay_guest_ram.py.
-RETURN_TYPES = (
-    r"void|u32|s32|int|long|short|u16|s16|u8|s8|char|"
-    r"u32\s*\*|void\s*\*|u8\s*\*|s16\s*\*|u16\s*\*"
-)
+RETURN_TYPES = r"void|u32|s32|int|long|short|u16|s16|u8|s8|char"
 DEFINITION_RE = re.compile(
     rf"^[ \t]*(?:__attribute__\(\(weak\)\)[ \t]*)?(?:static[ \t]+)?"
-    rf"(?:{RETURN_TYPES})[ \t\*]+(func_\w+)[ \t]*\(",
+    rf"({RETURN_TYPES})[ \t]+(\**)(func_\w+)[ \t]*\(",
     re.M,
 )
+RETURN_WIDTH = {
+    "void": 0, "": 0,
+    "u8": 8, "s8": 8, "char": 8,
+    "u16": 16, "s16": 16, "short": 16,
+    "u32": 32, "s32": 32, "int": 32, "long": 32,
+}
 CONDITIONAL_RE = re.compile(
     r"^[ \t]*#[ \t]*(ifdef|ifndef|if|elif|else|endif)\b[^\n]*", re.M
 )
@@ -98,10 +101,69 @@ def definitions() -> dict[str, list[tuple[str, bool]]]:
         for m in DEFINITION_RE.finditer(text):
             if not is_definition(text, m.end() - 1):
                 continue
-            found.setdefault(m.group(1), []).append(
+            found.setdefault(m.group(3), []).append(
                 (path.name, in_spans(m.start(), port_only))
             )
     return found
+
+
+def return_widths() -> dict[str, int]:
+    """name -> width in bits of the value the C body returns.
+
+    A pointer return is reported as 0, meaning "do not compare the return
+    register": retail returns a guest address there and the host body returns a
+    host pointer, so the two are *supposed* to differ. Those bodies have to be
+    judged on the guest RAM they change instead.
+    """
+    widths: dict[str, int] = {}
+    for path in sorted(BATTLE_SRC.glob("*.c")):
+        text = path.read_text(errors="ignore")
+        for m in DEFINITION_RE.finditer(text):
+            if not is_definition(text, m.end() - 1):
+                continue
+            kind, stars, name = m.group(1), m.group(2), m.group(3)
+            if stars:
+                widths[name] = 0
+            else:
+                widths.setdefault(name, RETURN_WIDTH.get(kind, 0))
+    return widths
+
+
+def pointer_params() -> dict[str, int]:
+    """name -> bitmask of parameter positions declared as a pointer.
+
+    The native bridge translates an argument that looks like a KSEG0/KSEG1
+    address into a host pointer, because it cannot tell a pointer from a scalar.
+    A sweep that feeds pointer-shaped values to a scalar parameter therefore
+    measures that convention, not the body. The differential harness uses this
+    mask to keep the two apart.
+    """
+    masks: dict[str, int] = {}
+    for path in sorted(BATTLE_SRC.glob("*.c")):
+        text = path.read_text(errors="ignore")
+        for m in DEFINITION_RE.finditer(text):
+            if not is_definition(text, m.end() - 1):
+                continue
+            name = m.group(3)
+            depth = 0
+            end = m.end() - 1
+            for i in range(end, min(len(text), end + 400)):
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            params = text[m.end() : end]
+            mask = 0
+            for index, param in enumerate(params.split(",")):
+                if index >= 8:
+                    break
+                if "*" in param:
+                    mask |= 1 << index
+            masks[name] = mask
+    return masks
 
 
 def owners(name: str, found: dict[str, list[tuple[str, bool]]]) -> list[str]:
@@ -145,6 +207,15 @@ def main() -> int:
     if "--leaves" in sys.argv:
         for name in wanted:
             print(name)
+        return 0
+
+    if "--leaf-types" in sys.argv:
+        widths = return_widths()
+        masks = pointer_params()
+        for name in wanted:
+            print(
+                f'    {{ "{name}", {widths.get(name, 0)}, {masks.get(name, 0)} }},'
+            )
         return 0
 
     for tu in sorted(tus):
