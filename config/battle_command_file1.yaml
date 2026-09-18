@@ -42,7 +42,11 @@ segments:
     subsegments:
       - [0x0000, rodata, dispatch]
       - [0x0160, asm, before_controller]
-      - [0x1CE8, c, message_controller]
+      # Matching uses splat `asm`, not src/battle_command_file1/message_controller.c.
+      # That C reconstruction is 0x4E8 bytes against retail 0x4EC, which shifts
+      # every later address by 4 and leaves the overlay 4 bytes short.  The C
+      # file stays for the port; it is not the matching-build input.
+      - [0x1CE8, asm, message_controller]
       - [0x21D4, asm, after_controller]
       - [0x4B5C, data, module_data]
   - [0x4C3C]
