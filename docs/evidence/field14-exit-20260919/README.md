@@ -484,6 +484,58 @@ placing those models on the script actors, or a second step that attaches a
 built model to its script actor is missing. Compare the loop's actor index
 against retail, and check what sets `actorData+0x04` bit 0x80.
 
+## Hand-played run (2026-09-19): field 14 IS passable, and the wall moves to field 12
+
+A human played the direct-boot field-14 build on the real desktop and got
+**much** further than any driver here:
+
+```
+field route: 14 -> 13 -> 1 -> 9 -> 1 -> 11 -> 12
+field-14 track: (115,-455) (112,-464) (113,-432) (253,-372) (118,-224)
+                (204,-33) (250,-33) -> field 13
+```
+
+**This retracts "area A is sealed".** The player crossed z=-410 and walked the
+whole room. The 2521-sample directed walk that pressed against z ~ -410 and
+never crossed was my greedy navigator failing to find the path, not a wall, and
+I stated that far too strongly. Field 14 is traversable on foot.
+
+### The new stopping point: field 12, Alice scene, Fei walking in place
+
+Reported symptom: the Alice scene starts, Alice speaks, **Fei walks in place on
+the stairs**, and the scene never advances. Diagnosed live on the stuck
+process:
+
+```
+map=12  pos=(29,15,135)  scenario=7  canRun=0  b21d0=1  status=0x0240
+script actors = 15, player = actor 1
+actor IPs: a0=53  a1=141  a2=346  a3=357
+script bytes at IP 141: 4a 46 00      -> opcode 0x4A = func_80099980
+```
+
+`func_80099980` (`src/field/main/misc7.c:987`) sets `flags_0x17 = 0` (absolute
+target) and `flags_0 = 0xFFFF`, then advances the IP **only** when
+`func_80099AC0(0xFFFF)` returns 0. `func_80099AC0` (misc7.c:1048) is the
+walk-toward-target tick: "Returns -1 while still approaching (and holds the VM
+via `D_800B00C0=1`), 0 once arrived."
+
+So Fei is under a scripted walk to an absolute point, the move never translates
+him, and the scene waits on an arrival that cannot happen. **That is the
+walking-in-place symptom exactly**, and it is the same missing-floor problem
+seen in field 14 -- except here it blocks *story progress* at a scripted beat,
+which is a much stronger statement of the bug than "the player cannot find the
+path".
+
+### Also corrected: the game was never hung
+
+I first read POSDIAG going silent plus 188% CPU as a hard hang in a busy-wait,
+and traced `func_8007554C`'s frame-pacing loop
+(`while (Vsync(-1) < target) {}`, misc2.c:2297). That was wrong on both counts:
+the serviced vblank counter was advancing normally (32038 -> 33688), and two
+screenshots six seconds apart differ, so the game is rendering throughout.
+POSDIAG stops during a scene because it early-returns when the field-active
+latch is off, and the CPU is just the render loop. Nothing is deadlocked.
+
 ## Tools added this session
 
 | Path | What it does |
