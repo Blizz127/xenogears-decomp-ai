@@ -25,8 +25,9 @@ identity against a retail hardware capture.
 
 Required route acceptance still outstanding:
 
-- Optional Alice interaction was not exercised; downstairs, village, and mountain
-  traversal are now observed (see the latest continuation below).
+- Alice's upstairs event is REQUIRED for the subsequent Citan story chain; the
+  earlier optional classification was incorrect (see prerequisite correction below).
+  Downstairs, village, and mountain traversal are observed.
 - Citan's house, story events, night return, burning Lahan and Gear combat.
 - Destruction, aftermath and normal departure to the world map.
 - Natural entry into Blackmoon Forest, its required story events and battles,
@@ -44,8 +45,8 @@ backed diagnosis, relevant differential/byte checks and natural-path retesting.
 The fresh route continued through Dan's dialogue (scenario7), field1 Lahan and
 its mountain exit into field15. Navigation used ordinary keys; an older input
 sequence stopped against a village rock and was corrected by walking around it.
-This was navigation, not a detected collision defect. Alice's optional visit was
-not exercised in this segment.
+This was navigation, not a detected collision defect. Alice's visit was not
+exercised in this segment; later script inspection established it is required.
 
 A random encounter started naturally on the mountain: Fei entered with 50/50 HP
 and fought three enemies through the standard command/attack interface. The
@@ -207,3 +208,53 @@ Blackmoon Forest. Those gates remain unobserved on this route. This milestone
 proves traversal and dialogue/control return, not full audiovisual parity;
 room screenshots still require comparison against a retail capture. There were
 no source changes or new builds/tests in this gameplay-only continuation.
+
+## Correction: Alice is a required story prerequisite
+
+The rooftop approach at scenario7 did not trigger the story event. Inspection
+of the field scripts, followed by the retail scenario-handler assembly, explains
+this without a port repair:
+- Field12 script0,0x001e checks scenario<8; the event writes scenario8 at0x0038
+  before returning to field11 at0x0047.
+- Field19 Yui interaction checks scenario<8 at0x037d. At7 it gives the short
+  greeting and exits through0x038f; the later branch writes scenario10 at0x03d0.
+- Field17 rooftop event actor13 checks scenario==10 at0x0569; otherwise its
+  initialization takes0x0584.
+The LessThan/Equal handler branches were read against their checked-in retail
+assembly in asm/field/matchings/game_logic/scenario_flags. Decoded raw scripts
+are in scratchpad/boot-to-blackmoon-20260909/field{12,17,19}-decode.txt.
+The earlier statement that Alice was optional was wrong. The brief Yui greeting
+was valid at scenario7, but did not satisfy the progression prerequisite.
+
+The attempted normal backtrack won one encounter, then Fei was defeated in the
+next with lowHP before recovery. F8 successfully loaded a preserved copy of
+rested-at-home.xgqs through the title recovery path. This rolls the active route
+back to that earned state; Citan/bridge traversal remains observed as an earlier
+attempt, not the active story state. Later earned checkpoints remain preserved.
+No state was fabricated. The painting texture after this reload appears different
+from the earlier room capture; audiovisual fidelity remains unverified and needs
+a controlled comparison, rather than treating checkpoint success as that proof.
+
+Normal walking reached Alice's entrance (field1 actor51 at474,29,-33). Speaking
+to the woman from the front completed her dialogue and moved her aside. Entering
+field11, walking up its stairs, and entering field12 started the Alice event: Fei
+walked normally and the wedding-dress dialogue appeared (`alice-scene-start.png`).
+The prior field12 walk stall has not recurred on this entrance. Dialogue and final
+scenario transition are being observed; do not assume completion from the opening.
+
+Alice completion is now observed on the same live ff29b755 binary. Ordinary
+confirm inputs advanced the dialogue and staged walking/camera sequence. The
+event returned naturally to field11 at(-115,0,274), scenario8,canRun1,owner0xff,
+b21d0=0. F7 then saved successfully; `alice-complete-earned.xgqs` preserves that
+file and `recovery.xgqs` is the active copy. Screenshot `alice-complete.png` and
+the runtime log record the actual end state. This freshly exercises the field12
+walk sequence through its scene exit; it did not stall.
+
+Current handoff: PID96416 remains live on:95/window2097204,1x,HD2D ON; all input
+helpers have finished. Fei is downstairs in Alice's house, with the required
+scenario8 earned normally. Next: leave field11, consider ordinary shop healing
+supplies for the mountain, repeat the known western route to Citan, talk to Yui
+again to reach scenario10, and trigger the rooftop event. Do not load the older
+scenario7 Citan checkpoint to skip the travel: that would lose this prerequisite.
+No implementation change was made for the retail story gate. Full Blackmoon
+route acceptance and audiovisual parity remain incomplete.
