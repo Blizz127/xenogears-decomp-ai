@@ -4292,25 +4292,6 @@ back to the title instead of a stub that never returns control.
 Evidence: observed (runtime, 2026-09-18)
 Last verified @ c7717819
 
-## F8 (quick load) at the title screen queues loads and then SIGSEGVs
-
-Measured 2026-09-18. The quick-load key is accepted at the title, where field
-490 is the only field loaded, and the queued load then faults. The commit path
-is guarded (`checkpoint_is_safe()` requires `D_800ADB68 == 1`,
-`D_800ADB64 == 0xFF`, `D_800B21D0 == 0` and no script control lock, and the
-commit only happens on a field exit with code 4), but the *queueing* is not
-gated on there being a loadable field at all.
-
-Consequence beyond the crash: because the commit needs free player control,
-quick-load cannot be used to escape a scene that holds the player -- so it is
-not a workaround for a stuck field, which is what it was reached for.
-
-Repro: boot the port, press F8 at the title screen.
-Fix shape: refuse to queue a quick load when no field with free player control
-is loaded, rather than queueing and faulting.
-Evidence: observed (runtime, 2026-09-18)
-Last verified @ c7717819
-
 ## Field 14 driving: harness must wait on canRun=1, not a fixed delay (NOT a port bug)
 
 Measured 2026-09-19. Filed so nobody re-opens this as a port defect: the

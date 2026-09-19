@@ -19,6 +19,7 @@ extern FieldActor* volatile g_FieldActors;
 extern s32 D_800ADB64;
 extern s32 D_800ADB68;
 extern u8 D_800B21D0;
+extern s32 D_800ADBFC;   /* live field actor count */
 
 static int s_fieldActive;
 static PcPortQuickRequestState s_request;
@@ -36,6 +37,15 @@ static ActorData* player_actor(FieldActor** field_actor)
 {
     FieldActor* slot;
     if (!g_FieldActors || g_PlayerActorIndex < 0)
+        return NULL;
+    /* Bound the index against the LIVE actor count, not just the array
+     * pointer. g_PlayerActorIndex persists across field changes, so on a field
+     * with fewer actors -- the title map 490 is the case that bites -- the old
+     * index reads past the end of the table and hands back a garbage
+     * pActorData that checkpoint_is_safe() then dereferences: F8 at the title
+     * queued a load and SIGSEGV'd. A stale index means "no player actor here",
+     * which is exactly what NULL says. */
+    if (D_800ADBFC <= 0 || g_PlayerActorIndex >= D_800ADBFC)
         return NULL;
     slot = &g_FieldActors[g_PlayerActorIndex];
     if (!slot->pActorData)

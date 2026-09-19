@@ -237,10 +237,23 @@ try:
     if TARGET == "actors":
         # Field 14's only zone is outside the reachable floor, so the way out
         # is an actor (door or NPC).  Visit each one and answer with Circle.
-        amap = actors_for(FIELD)
-        say(f"field {FIELD} actors: {amap}")
+        # Actors parked at (0,0) are unplaced slots, not places -- targeting
+        # them burns the budget walking at a point that does not exist.
+        amap = {i: p for i, p in actors_for(FIELD).items() if p != (0, 0)}
+        here = state()
+        origin = (here[1], here[3]) if here else (0, 0)
+        say(f"field {FIELD} placed actors: {amap}")
         zmap = amap
-        targets = sorted(amap)
+        targets = sorted(amap, key=lambda i: dist(amap[i], origin))
+    elif TARGET.startswith("goto:"):
+        # Walk at an arbitrary point and answer with Circle wherever the walk
+        # stalls.  A stall IS the interesting place: field 14's floor is a
+        # narrow strip and its exit is a door actor just past the east end,
+        # so the boundary the hill-climb pins against is exactly where a door
+        # would be answered.
+        gx, gz = TARGET[5:].split(",")
+        zmap = {-1: (int(gx), int(gz))}
+        targets = [-1]
     else:
         targets = sorted(zmap) if TARGET == "all" else [int(TARGET)]
     deadline = time.monotonic() + BUDGET
@@ -281,6 +294,21 @@ try:
                 break
             d1 = dist((x2, z2), goal)
             say(f"  {name:<2} ({x},{z}) d={d0:.0f} -> ({x2},{z2}) d={d1:.0f}")
+            if TARGET.startswith("goto:") and d1 < 60:
+                # Proximity, not stall: a door actor answers Circle when the
+                # player stands near its offset point, and the walk reaches
+                # that spot long before the hill-climb decides it is stuck.
+                say(f"  within {d1:.0f} of goal at ({x2},{z2}) -- Circle")
+                for _ in range(6):
+                    if wid:
+                        xdo("windowfocus", "--sync", wid)
+                    xdo("key", "z")
+                    time.sleep(0.7)
+                st5 = state()
+                if st5 and str(st5[0]) != FIELD:
+                    say(f"FIELD CHANGED to {st5[0]} after Circle at ({x2},{z2})")
+                    raise SystemExit
+                say(f"  after Circle: {st5}")
             if TARGET == "actors" and d1 < 60:
                 say(f"  within {d1:.0f} of actor {zi}; pressing Circle")
                 for _ in range(6):
@@ -297,6 +325,17 @@ try:
             if d1 < d0 - 2:
                 stalls = 0          # keep this direction
             else:
+                if TARGET.startswith("goto:") and stalls > 0 and stalls % 4 == 0:
+                    say(f"  stalled at ({x2},{z2}) -- pressing Circle here")
+                    for _ in range(4):
+                        if wid:
+                            xdo("windowfocus", "--sync", wid)
+                        xdo("key", "z")
+                        time.sleep(0.7)
+                    st4 = state()
+                    if st4 and str(st4[0]) != FIELD:
+                        say(f"FIELD CHANGED to {st4[0]} after Circle at ({x2},{z2})")
+                        raise SystemExit
                 dir_index += 1
                 stalls += 1
                 if stalls >= 2 * len(DIRECTIONS):

@@ -290,6 +290,32 @@ zone entry. ACTORDUMP puts actor 14 at (358,-421), just past the strip's east
 end, which is the right shape for that door. That is the next thing to try, and
 it is a bounded experiment rather than an open question.
 
+## The door-actor hypothesis, tested and negative
+
+ACTORDUMP put actor 14 at (358,-421), just past the walkable strip's east end,
+and the established Lahan pattern is to stand near a door actor's offset point
+(actor + (-26,-26), here **(332,-447)**) and press Circle. The control-gated
+navigator reaches (323,-457)/(321,-464) comfortably -- 13 to 20 units from that
+offset point -- and pressed Circle there **seven times across two runs**:
+
+```
+within 13 of goal at (323,-457) -- Circle   -> no change
+within 20 of goal at (321,-464) -- Circle   -> no change   (x6)
+```
+
+No field change, no dialogue, no reaction of any kind, with the player under
+free control and Circle demonstrably reaching the pad. **Actor 14 is not the
+door.** Recorded so the next attempt does not spend another two runs on it.
+
+What that leaves: the remaining placed actors (9 at (310,-243), 13 at
+(16,-331), 17 at (-100,-510), 10/16/19/20 further out) all sit OUTSIDE the
+reachable strip `x[87,324] z[-496,-413]`, so none of them can be approached
+either. Every candidate exit -- the one trigger zone and every actor -- is
+outside the floor the player can stand on. That is now the strongest statement
+available, and it points at the floor/spawn itself rather than at any exit
+mechanism: either the post-battle spawn puts the player on the wrong part of
+map 14, or the walkable geometry the port builds for this room is short.
+
 ## Tools added this session
 
 | Path | What it does |
