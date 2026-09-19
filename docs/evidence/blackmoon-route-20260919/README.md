@@ -61,3 +61,30 @@ before controlling it. Input scripts have finished and all keys are released.
 The binary is still commit7d50c62a. Continue walking the mountain toward Citan,
 handling encounters normally. Do not reload the older unrelated test saves or
 use Escape's test-only battle bypass. The full goal remains active.
+
+## Mountain continuation: five normal victories
+
+The preserved live run won encounters 2 through 5 using normal battle controls.
+Each victory returned to field15. The Items screen opened and cancelled normally;
+a read-only debugger inspection found all 150 live item quantities zero. The
+Abilities screen displayed Guided Shot and cancelled normally. Fei is level2,
+11/52 HP, 10/11 EP; healing through normal gameplay is needed before further
+encounters. No inventory or health was injected. A mistaken File selection
+exercised the explicit unsupported message; dismissal returned to the menu.
+
+Navigation at the central cliff was investigated with read-only walkmesh dumps.
+A simple triangle adjacency route that ignored materials incorrectly proposed
+climbing material2 cliff faces. Restricting that diagnostic to material1 revealed
+the eastern climb, which was traversed normally to approximately (585,-475,1124),
+but it ends at a cliff rather than the bridge route. No collision repair was
+justified or applied. Layer1 geometry identifies the raised western trail;
+continuation should use the western route rather than repeat the eastern detour.
+
+Latest earned save: route.xgqs, with fifth-victory.xgqs preserved separately.
+Player is at field15 approximately (584,-14,-505), facing after two camera
+rotation experiments (do not assume the original screen/world direction map).
+Game PID1767877 remains owned and live on :95; all input scripts are finished.
+Health management is the next gameplay decision. Normal battle Escape via its
+command menu is allowed; the keyboard Escape test bypass remains forbidden.
+The goal is still incomplete: Citan, burning Lahan, aftermath/world departure,
+and Blackmoon Forest have not been reached on this fresh run.
