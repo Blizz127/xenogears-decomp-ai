@@ -316,6 +316,62 @@ available, and it points at the floor/spawn itself rather than at any exit
 mechanism: either the post-battle spawn puts the player on the wrong part of
 map 14, or the walkable geometry the port builds for this room is short.
 
+## Spawn or geometry? (2026-09-19, later)
+
+### First: the warp-probe method is INVALID, and that voids earlier verdicts
+
+Teleporting the player somewhere and asking "can he move here?" looked like a
+clean way to map the floor. It is not. The control point settles it: warped to
+**(200,-455)** -- a spot inside the strip the player walks through freely in
+ordinary play -- he was *completely immobile*, 1047 samples with a direction
+held and the control lock down, one distinct position. Same verdict as points
+far outside the strip.
+
+Writing `position` directly evidently desynchronises the actor from whatever
+the movement code consults, so **"pinned after a warp" says nothing about the
+floor**. Every warp-based mobility verdict is therefore void, including the
+earlier (320,-250) result that this document previously leaned on. Warping
+remains valid for the one thing it was first used for -- entering a trigger
+zone, which only reads position -- and that result stands.
+
+### The valid method: let the GAME place the player
+
+`XENO_FIELD_MAP=14` + `XENO_FIELD_ENTRANCE=<n>` drives `D_8006F954` ->
+field-script var 2, and the field-load script picks the spawn itself. Whatever
+the player can then walk is genuinely walkable. It also boots in ~20 s instead
+of five minutes. `scratchpad/field14_entrance_walk.py`:
+
+| entrance | game placed the player at | walked region | distinct |
+| --- | --- | --- | --- |
+| 0 | **(115,-455)** | x[94,162] z[-496,-409] | 142 |
+| 1 | (182,245) | x[30,340] z[167,334] | 364 |
+| 2 | -- | field never became active | -- |
+
+**Two things follow.**
+
+1. **The post-battle position is not a misplacement.** (115,-455) is *exactly*
+   what field 14's own entrance-0 spawn produces on a cold direct boot. It is a
+   legitimate spawn point of the map, not a battle-return artifact or a scene
+   error. The "wrong spawn" hypothesis is therefore weak.
+2. **Field 14 has at least two disjoint walkable areas.** Entrance 1 opens a
+   much larger one (x[30,340] z[167,334]) that the post-battle player never
+   reaches. The exit zone (335,-26) lies between the two and was reached from
+   neither.
+
+So the remaining suspect is the **connection** between the post-battle area and
+the rest of the room -- the recorded human route crosses it with slices named
+`stairs-approach` / `stairs-foot` / `stairs`, which is exactly what a narrow
+link between two areas looks like. Either that link exists and neither search
+strategy has found it, or the port's walkable geometry is missing it.
+
+### Correction: the spawn-table dump is unreliable
+
+`misc3.c`'s `[field-diag] spawn[...]` block parses 12 entries at a 7-byte
+stride and reported `spawn[0] x=165 z=-25`. Entrance 0 actually places the
+player at (115,-455), so that parse is wrong (stride and/or field layout) and
+its later entries are visibly garbage (|x| ~32000). Do not use those numbers;
+use `XENO_FIELD_ENTRANCE` and read the resulting POSDIAG instead.
+
 ## Tools added this session
 
 | Path | What it does |

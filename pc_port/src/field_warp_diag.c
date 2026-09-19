@@ -33,6 +33,95 @@
 
 extern s32 g_PlayerActorIndex;
 extern int g_GameSceneMapNum;
+extern s32 D_800ADBFC;   /* live field actor count */
+
+/* XENO_FIELD_WARP_PROBE="<map>:<dwell>:x1,z1;x2,z2;..." -- walk-test several
+ * places in ONE run.
+ *
+ * The open question for field 14 is whether the post-battle SPAWN is wrong or
+ * the room's walkable GEOMETRY is short. Those are distinguished by asking, at
+ * a point outside the reachable strip, "can the player move here at all?": if
+ * yes the surface exists and the strip is merely disconnected from it, if no
+ * there is no surface there. One warp per run makes that cost ~6 minutes per
+ * point, so this teleports to each listed point in turn, holding each for
+ * `dwell` field-active frames while the driver keeps pressing directions.
+ *
+ * Writes game state, like its neighbour above; diagnostic runs only. */
+#define WARP_PROBE_MAX 12
+
+static void PcPort_FieldWarpProbe(ActorData* actor, int mapId)
+{
+    static int parsed = 0;
+    static int armed = 0;
+    static int wantMap = -1;
+    static int dwell = 600;
+    /* Skip the room's setup scene before the first point: a warp landing
+     * during it is simply overwritten by the scene's own placement, which is
+     * why probe point 1 kept reporting the spawn instead of its target. */
+    static int startDelay = 900;
+    static int count = 0;
+    static int px[WARP_PROBE_MAX];
+    static int pz[WARP_PROBE_MAX];
+    static int ticks = 0;
+    static int index = -1;
+
+    if (!parsed) {
+        const char* e = getenv("XENO_FIELD_WARP_PROBE");
+
+        parsed = 1;
+        if (e != NULL && *e != '\0') {
+            const char* p = e;
+            int m, d, n;
+
+            if (sscanf(p, "%d:%d:%d:%n", &m, &d, &startDelay, &n) == 3 ||
+                sscanf(p, "%d:%d:%n", &m, &d, &n) == 2) {
+                wantMap = m;
+                dwell = d > 0 ? d : 600;
+                p += n;
+                while (count < WARP_PROBE_MAX && *p) {
+                    int x, z, used = 0;
+
+                    if (sscanf(p, "%d,%d%n", &x, &z, &used) != 2)
+                        break;
+                    px[count] = x;
+                    pz[count] = z;
+                    count++;
+                    p += used;
+                    if (*p == ';')
+                        p++;
+                }
+                armed = count > 0;
+                printf("[xeno-port][test] WARPPROBE armed map=%d dwell=%d "
+                       "start=%d points=%d\n", wantMap, dwell,
+                       startDelay, count);
+                fflush(stdout);
+            }
+        }
+    }
+    if (!armed || mapId != wantMap || actor == NULL)
+        return;
+    if (index >= count)
+        return;
+    if (index < 0 && ticks < startDelay) {
+        ticks++;
+        return;
+    }
+    if (index < 0 || ticks >= dwell) {
+        ticks = 0;
+        index++;
+        if (index >= count) {
+            printf("[xeno-port][test] WARPPROBE done\n");
+            fflush(stdout);
+            return;
+        }
+        printf("[xeno-port][test] WARPPROBE point %d/%d -> (%d,%d)\n",
+               index + 1, count, px[index], pz[index]);
+        fflush(stdout);
+        actor->position.vx = CONV_FROM_GTE(px[index]);
+        actor->position.vz = CONV_FROM_GTE(pz[index]);
+    }
+    ticks++;
+}
 
 void PcPort_FieldWarpDiag(void)
 {
@@ -67,18 +156,34 @@ void PcPort_FieldWarpDiag(void)
             fflush(stdout);
         }
     }
-    if (!armed)
+    /* Stay completely inert unless a diagnostic asked for something: this
+     * runs on every field frame, and resolving the player actor is not free of
+     * risk (see the index bound below). */
+    if (!armed && getenv("XENO_FIELD_WARP_PROBE") == NULL)
         return;
-    if ((g_GameSceneMapNum & 0xFFF) != wantMap)
-        return;
+    /* Resolve the player actor FIRST and share it: the probe is armed by its
+     * own variable and must still run when the one-shot warp is unset. */
     if (!PcPort_QuickCheckpointFieldIsActive())
         return;
     if (g_FieldActors == NULL)
+        return;
+    /* Bound the index against the live actor count for the same reason
+     * quick_checkpoint.c does: g_PlayerActorIndex survives field changes, so a
+     * field with fewer actors would otherwise be read past the end of the
+     * table and hand back a garbage pActorData. */
+    if (g_PlayerActorIndex < 0 || D_800ADBFC <= 0 ||
+        g_PlayerActorIndex >= D_800ADBFC)
         return;
     actor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
     if (actor == NULL)
         return;
 
+    PcPort_FieldWarpProbe(actor, g_GameSceneMapNum & 0xFFF);
+
+    if (!armed)
+        return;
+    if ((g_GameSceneMapNum & 0xFFF) != wantMap)
+        return;
     if (ticks++ < delay)
         return;
     if (((ticks - delay) % period) != 0)

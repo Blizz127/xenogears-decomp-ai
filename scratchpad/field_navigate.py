@@ -56,7 +56,8 @@ env.update(DISPLAY=f":{DISP}", SDL_VIDEODRIVER="x11", XENO_KERNEL_SEL="0",
 # particular lets a run start the walk from somewhere other than the
 # post-battle spawn, which is how "is the player wedged at the spawn?" gets
 # separated from "is the room hard to path through?".
-for passthrough in ("XENO_FIELD_WARP", "XENO_VM_TRACE", "XENO_VM_TRACE_REPEAT",
+for passthrough in ("XENO_FIELD_WARP", "XENO_FIELD_WARP_PROBE",
+                    "XENO_VM_TRACE", "XENO_VM_TRACE_REPEAT",
                     "XENO_VM_TRACE_MAX", "XENO_VM_TRACE_FIELD"):
     if os.environ.get(passthrough):
         env[passthrough] = os.environ[passthrough]
