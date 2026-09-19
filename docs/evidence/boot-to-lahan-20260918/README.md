@@ -201,10 +201,17 @@ at the moment FE54 runs) and with gdb on a live run:
   transition tuple** in `g_GameState` (+0x231A/0x231C/0x231E/0x2320). FieldMain
   then tears the field down and `func_8007954C(3)` switches to
   `ChangeGameState(D_800B0064 & 0x7F)`.
-- FE54 **re-runs itself** (`scriptInstructionPointer--`) until `D_800ADBDC` and
-  `D_800ADBE4` are both non-zero. The live log shows 75-93 `FE54 snapshot` lines
-  in field 14 from actors 11 and 12 and **not one** `0x56` arm line: the guard
-  never passes, so the departure never arms and the field never leaves.
+- FE54 **can** re-run itself (`scriptInstructionPointer--`), but only while
+  `D_800ADBDC == 0 || D_800ADBE4 == 0` (`src/field/main/misc11.c:948`). The live
+  log shows 75-93 `FE54 snapshot` lines in field 14 from actors 11 and 12 and
+  **not one** `0x56` arm line.
+  **Correction (2026-09-19):** an earlier draft of this bullet read "the guard
+  never passes". That is wrong, and the gate print added later in the same
+  session disproves it — at every one of those executions the printed values are
+  `dbdc=-1 dbe4=-1`, both non-zero, so the guard passes and FE54 advances the IP
+  each time. The repetition is the script *looping back* to FE54, not FE54
+  spinning on its own guard. The stall is therefore in the room's script loop,
+  not in the port's departure flags.
 - Sampled live in the same run: `D_800ADBDC = -1`, `D_800ADBE4 = -1`,
   `D_800ADB2C = 0`, `D_8004F308 = 0`, `D_800ADB90 = 0`, `D_800ADBD0 = 0`,
   `g_FieldControl = 0xFFFF` (locked), `D_800B00C0 = 1` (VM yielded),

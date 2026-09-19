@@ -4267,35 +4267,46 @@ candidate appended to pc_port/src/battle_overlay_host_leaves.inc
 Evidence: proven
 Last verified @ 2a148ec4 + working tree (2026-09-18)
 
-## Port boot floods 32 KiB of CD data through mis-sized archive buffers (title-screen SIGSEGV)
+## Title-screen "Continue" hangs the port (the DEFAULT cursor position)
 
-Measured 2026-09-18. `pc_port/src/port_main.c:1388` calls
-`ArchiveInit(D_80010004, D_80018004, 0)` so the port reads the retail archive
-index/header from disc instead of relying on them being statically baked into the
-EXE. Both destinations are generated *data stubs*:
-`pc_port/build_native/stubs.c` sizes them `0x20` because neither the ELF nor
-`config/symbol_addrs.slus_006.64.txt` gives them a size, and the read that fills
-them is 32768 bytes per buffer (`pc_port/src/archive_port.c:574` ->
-`pc_port/extern/PsyCross/src/psx/LIBCD.C:607`).
+Measured 2026-09-18. `func_801C58EC` (`src/menu/main/misc.c:373`) enters the
+title loop at `menu1Choice == 1`, and confirm calls `func_801C531C(7)`, so the
+entry index is `choice + 7`:
+  choice 0 -> entry 7 (options)   choice 1 -> entry 8 (**Continue**)
+  choice 2 -> entry 9 (New Game, `func_8001B970`)
+Circle alone therefore confirms **Continue**, which is entry 8 ->
+`func_801D9F98(1, 0)` (`src/menu/main/misc.c:177`). That function is still
+`INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98)`
+(`src/menu/main/misc.c:6826`) -- the save/load screen is unported -- and the
+title loop then spins without reaching the Vsync shim.
 
-Result: the boot read overwrites 32 KiB of neighbouring port globals starting at
-`D_80010004` (host `0x9ff380` in the current link). That span covers
-`D_8004F304` (`0x9ff7a0`) and `D_80062528` (`0xa00fe0`), so the field teardown
-`func_80078D44` (`src/field/main/misc4.c:207`) then sees `D_8004F304 != 0` and
-calls `func_800399D4(D_80062528)` (`src/slus_006.64/system/sound.c:2011`) with a
-CD-data word: SIGSEGV on the title screen as soon as scripted Circle input
-advances it. gdb: `func_800399D4 (manager=0xdac0025f870003)`; a watchpoint on
-`*(long*)&D_80062528` first trips inside `ArchiveInit`'s `memmove`.
+This is the first thing a real player does, and the cursor starts ON it: the
+scripted route only survives because it presses Up then Circle (frames
+3200/3300 of the recorded schedule) to reach New Game. Every manual boot that
+presses Circle at the title hangs.
 
-Retail sizes the same region as table 0x8000 at 0x80010004 plus the header at
-0x80018004 (rodata span `[0x80010000,0x80019524)`), so the port needs those two
-host buffers sized to match the reads.
+Repro: boot the port, let the title come up, press Circle (z) without pressing
+Up first. Expect: no further stdout, no Vsync progress.
+Fix shape: decompile `func_801D9F98`, or give the port a screen that cancels
+back to the title instead of a stub that never returns control.
+Evidence: observed (runtime, 2026-09-18)
+Last verified @ c7717819
 
-Layout-dependent, **not** overlay-adoption-dependent: reproducible today with 1,
-13, 18, 19, 24 and 92 adopted leaves, while the 2026-09-11
-`pc_port/build_native/xeno-port.pre-100857` binary still boots (its neighbours
-were padding). Any port rebuild can trip it, so the buffer sizes need fixing
-rather than the layout. Also: `pc_port/src/world_map_init.c:4077`'s diagnostic
-increments the same retail counter `D_8004F304` by hand -- a second landmine on
-this path.
-Evidence: proven (runtime, gdb + watchpoint, 2026-09-18)
+## F8 (quick load) at the title screen queues loads and then SIGSEGVs
+
+Measured 2026-09-18. The quick-load key is accepted at the title, where field
+490 is the only field loaded, and the queued load then faults. The commit path
+is guarded (`checkpoint_is_safe()` requires `D_800ADB68 == 1`,
+`D_800ADB64 == 0xFF`, `D_800B21D0 == 0` and no script control lock, and the
+commit only happens on a field exit with code 4), but the *queueing* is not
+gated on there being a loadable field at all.
+
+Consequence beyond the crash: because the commit needs free player control,
+quick-load cannot be used to escape a scene that holds the player -- so it is
+not a workaround for a stuck field, which is what it was reached for.
+
+Repro: boot the port, press F8 at the title screen.
+Fix shape: refuse to queue a quick load when no field with free player control
+is loaded, rather than queueing and faulting.
+Evidence: observed (runtime, 2026-09-18)
+Last verified @ c7717819
