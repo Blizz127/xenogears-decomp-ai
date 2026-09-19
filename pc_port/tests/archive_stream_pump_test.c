@@ -10,6 +10,8 @@ void* g_ArchiveCurStreamFile;
 s32 g_ArchiveCurFileSector;
 s32 g_ArchiveCurFileSize;
 s32 D_8004FDFC;
+u32 g_ArchiveDebugTable;
+int CdDataSync(int mode) { (void)mode; return 0; }
 s16 D_8004FE10;
 s16 D_8004FE24;
 s16 D_8004FE28;
@@ -24,6 +26,7 @@ u_int g_ArchiveCdDriveError;
 static int s_setloc_sector;
 static int s_read_calls;
 static int s_sync_calls;
+static int s_defer_sync;
 static u8* s_read_destination;
 static u8 s_stream[0x24 + 2 * 8 + 2 * CD_SECTOR_SIZE];
 
@@ -49,6 +52,7 @@ int CdRead(int sectors, u_long* buffer, int mode) {
 
 int CdReadSync(int mode, u_char* result) {
     (void)result;
+    if (s_defer_sync) { s_defer_sync = 0; return 1; }
     if (mode != 1 || s_sync_calls >= s_read_calls)
         return -1;
     for (int i = 0; i < CD_SECTOR_SIZE; i++)
@@ -75,6 +79,7 @@ void ArchiveClearStreamFileSections(void) {
 }
 
 #include "../src/archive_port.c"
+#include "archive_sync_under_test.inc"
 
 int main(void) {
     u8* first;
@@ -110,5 +115,41 @@ int main(void) {
         return 7;
     if (D_8004FDFC != 0 || g_ArchiveCurFileSize != 0)
         return 8;
+    /* Regression: field-menu wait while two sectors remain outstanding.
+     * No field consumer runs during this wait. Transport must complete, and
+     * both sectors must still be delivered in order afterwards. */
+    g_ArchiveCurFileSize = 2 * CD_SECTOR_SIZE;
+    if (ArchiveReadFile(7, stream, 0, CdlModeStream) != 0) return 9;
+    ArchiveCdDataSync(0);
+    if (ArchiveDataSync() != 0 || s_sync_calls != 4) return 10;
+    first = (u8*)(uintptr_t)(u32)func_80028B14();
+    second = (u8*)(uintptr_t)(u32)func_80028B14();
+    if (!first || !second || first == second || first[0] != 0x42 || second[0] != 0x43) return 11;
+    if (func_80028B14() != 0 || D_8004FE24 != 2) return 12;
+    /* A finished/freed ring must not be dereferenced on a stray later poll. */
+    g_ArchiveCurStreamFile = s_ArchivePortStreamRead.streamFile = (void*)1;
+    if (func_80028B14() != 0) return 13;
+    g_ArchiveCurStreamFile = stream;
+    g_ArchiveCurFileSize = 3 * CD_SECTOR_SIZE;
+    if (ArchiveReadFile(7, stream, 0, CdlModeStream) != 0) return 14;
+    PcPort_ArchivePollTransport();
+    s_defer_sync = 1;
+    PcPort_ArchivePollTransport();
+    if (s_sync_calls != 4 || !s_ArchivePortStreamRead.readPending) return 15;
+    PcPort_ArchivePollTransport();
+    PcPort_ArchivePollTransport();
+    PcPort_ArchivePollTransport();
+    /* The two-slot ring is full. Further transport polls must neither
+     * overwrite a sector nor announce completion of the third one. */
+    for (int i = 0; i < 10; ++i) PcPort_ArchivePollTransport();
+    if (s_sync_calls != 6 || D_8004FDFC != 1) return 16;
+    first = (u8*)(uintptr_t)(u32)func_80028B14();
+    if (!first || first[0] != 0x44) return 17;
+    ((ArchiveStreamFileSectionHeader*)(stream + 4))->state = 0;
+    ArchiveCdDataSync(0);
+    second = (u8*)(uintptr_t)(u32)func_80028B14();
+    if (!second || second[0] != 0x45) return 18;
+    first = (u8*)(uintptr_t)(u32)func_80028B14();
+    if (!first || first[0] != 0x46 || func_80028B14() != 0) return 19;
     return 0;
 }

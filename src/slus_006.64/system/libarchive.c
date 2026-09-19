@@ -334,6 +334,12 @@ void ArchiveCdDataSync(int mode) {
 
     if (mode == 0) {
         do {
+#ifdef XENO_PC_PORT
+            /* Retail CD interrupts progress independently of this loop.
+             * PsyCross needs a game-thread transport service point. */
+            extern void PcPort_ArchivePollTransport(void);
+            PcPort_ArchivePollTransport();
+#endif
             nResult = ArchiveDataSync();
         } while (0 < nResult);
     }

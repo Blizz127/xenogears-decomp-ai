@@ -21,7 +21,7 @@
  * The command callback is intentionally kept out of this TU: PsyCross's CD
  * queue has no PSX interrupt callback boundary for the archive's DMA handler.
  * The sector pump below is the equivalent boundary at the retail caller's
- * ArchiveDataSync/func_80028B14 polling boundary; it never reports completion
+ * ArchiveCdDataSync/func_80028B14 polling boundary; it never reports completion
  * until a sector was actually consumed by CdReadSync.
  */
 
@@ -69,6 +69,7 @@ typedef struct {
     s32 sectorsLeft;
     s32 slot;
     s32 readPending;
+    u16 producedId; /* DMA producer; D_8004FE24 remains the consumer cursor. */
 } ArchivePortStreamReadState;
 
 static ArchivePortStreamReadState s_ArchivePortStreamRead;
@@ -400,8 +401,8 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
     return 0;
 }
 
-/* Retail func_80028B14's CD path selects the next empty slot, lets the CD DMA
- * callback mark it ready, and returns that slot's 0x800-byte payload.  The
+/* The retail CD producer selects the next empty slot and lets the CD DMA
+ * callback mark it ready without advancing the consumer cursor. The
  * PsyCross libcd queue has the same sector payload but exposes completion via
  * CdReadSync(1), so retain the retail two-phase boundary: one call queues a
  * sector and a later call consumes exactly that one sector.  This is important
@@ -409,7 +410,7 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
  * change when the caller's callback observes each chunk and can overrun the
  * retail eight-slot window.
  */
-s32 func_80028B14(void) {
+void PcPort_ArchivePollTransport(void) {
     u8* streamFile = (u8*)g_ArchiveCurStreamFile;
     u8* table;
     u8* buffers;
@@ -418,14 +419,14 @@ s32 func_80028B14(void) {
 
     if (streamFile == NULL || s_ArchivePortStreamRead.streamFile != streamFile ||
         s_ArchivePortStreamRead.sectorsLeft <= 0) {
-        return 0;
+        return;
     }
 
     table = streamFile + 4;
     buffers = streamFile + 0x24 + (*(s32*)streamFile * sizeof(ArchiveStreamFileSectionHeader));
     slotCount = *(s32*)streamFile;
     if (slotCount <= 0 || slotCount > ARCHIVE_MAX_SECTIONS) {
-        return 0;
+        return;
     }
 
     if (s_ArchivePortStreamRead.readPending) {
@@ -434,15 +435,16 @@ s32 func_80028B14(void) {
             g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_READ;
             g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
             s_ArchivePortStreamRead.readPending = 0;
-            return 0;
+            return;
         }
+
+        if (readStatus > 0) return;
 
         /* CdReadSync(1) has consumed exactly one MODE2 user-data sector.  The
          * archive callback's externally visible state is state=3 and the
          * monotonically increasing sector id. */
         *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 0) = 3;
-        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 2) = (u16)D_8004FE24;
-        D_8004FE24 = (s16)(D_8004FE24 + 1);
+        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 2) = s_ArchivePortStreamRead.producedId++;
         s_ArchivePortStreamRead.readPending = 0;
         s_ArchivePortStreamRead.nextSector += 1;
         s_ArchivePortStreamRead.sectorsLeft -= 1;
@@ -451,7 +453,7 @@ s32 func_80028B14(void) {
             D_8004FDFC = 0;
             g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
         }
-        return (s32)(uintptr_t)(buffers + s_ArchivePortStreamRead.slot * CD_SECTOR_SIZE);
+        return;
     }
 
     /* Match the retail circular scan beginning at D_8004FE28.  A full ring
@@ -466,7 +468,7 @@ s32 func_80028B14(void) {
         }
     }
     if (i == slotCount) {
-        return 0;
+        return;
     }
 
     /* The read starts at the archive sector captured by libarchive.c.  Each
@@ -477,9 +479,31 @@ s32 func_80028B14(void) {
                     CdlModeSpeed)) {
             g_ArchiveCdDriveError = ARCHIVE_CD_DRIVE_ERR_READ;
             g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_ERROR;
-            return 0;
+            return;
         }
         s_ArchivePortStreamRead.readPending = 1;
+    }
+    return;
+}
+
+/* Polling the CD transport does not consume a ready sector. This matches the
+ * retail CD interrupt / func_80028B14 split and lets ArchiveCdDataSync complete
+ * a transfer while a menu has temporarily stopped the field consumer. */
+s32 func_80028B14(void) {
+    u8* stream = (u8*)g_ArchiveCurStreamFile;
+    s32 count, i;
+    if (!stream || s_ArchivePortStreamRead.streamFile != stream) return 0;
+    if (s_ArchivePortStreamRead.sectorsLeft <= 0 &&
+        s_ArchivePortStreamRead.producedId == (u16)D_8004FE24) return 0;
+    count = *(s32*)stream;
+    if (count <= 0 || count > ARCHIVE_MAX_SECTIONS) return 0;
+    PcPort_ArchivePollTransport();
+    for (i = 0; i < count; ++i) {
+        u16* entry = (u16*)(stream + 4 + i * 8);
+        if (entry[0] == 3 && entry[1] == (u16)D_8004FE24) {
+            D_8004FE24 = (s16)((u16)D_8004FE24 + 1u);
+            return (s32)(uintptr_t)(stream + 0x24 + count * 8 + i * CD_SECTOR_SIZE);
+        }
     }
     return 0;
 }
@@ -530,6 +554,7 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
         s_ArchivePortStreamRead.nextSector = g_ArchiveCurFileSector;
         s_ArchivePortStreamRead.sectorsLeft =
             (g_ArchiveCurFileSize + (CD_SECTOR_SIZE - 1)) / CD_SECTOR_SIZE;
+        s_ArchivePortStreamRead.producedId = 0;
         s_ArchivePortStreamRead.slot = 0;
         s_ArchivePortStreamRead.readPending = 0;
 
