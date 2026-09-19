@@ -26,6 +26,9 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from xeno_control import wait_for_control  # noqa: E402
+
 ROOT = Path("/var/home/blizz/Projects/xenogears-decomp-ai")
 TAG = sys.argv[1]
 DISP = sys.argv[2]
@@ -121,6 +124,9 @@ def actors_for(field):
 
 
 def press(keys, duration):
+    # Never press a direction into a raised field-control lock: the input is
+    # discarded and the caller mis-reads the resulting non-movement as a wall.
+    wait_for_control(text, timeout=60.0, tap=lambda: xdo("key", "z"))
     if wid:
         xdo("windowfocus", "--sync", wid)
     xdo("keydown", *keys)

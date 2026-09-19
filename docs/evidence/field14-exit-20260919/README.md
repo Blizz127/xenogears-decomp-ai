@@ -250,6 +250,46 @@ pressed too early, because the pans take longer here than they did then.
 POSDIAG reports `canRun=1` (equivalently `g_FieldControl == 0`). That signal
 did not exist before this session and now does.
 
+## Driving on `canRun=1` instead of a clock (the fix, and what it revealed)
+
+`scratchpad/xeno_control.py` (new, shared) blocks until POSDIAG reports
+`canRun=1` before any movement key is pressed, tapping Circle meanwhile to
+advance a scene that is waiting on dialogue rather than on a camera. Confirm
+keys are deliberately NOT gated -- dialogue advances while the lock is raised,
+and that is how the scene is driven to its end. It is wired into
+`lahan_route.py` (movement slices only) and `field_navigate.py` (every press).
+
+The route replay improves immediately and measurably:
+
+```
+replay done: 60 slices played; 0 movement slices pressed while still locked
+player moved (115,-455) -> (122,-453) -> (98,-422)
+```
+
+versus every earlier run, which spent its movement slices into a raised lock
+and never moved at all. **The harness race is fixed.**
+
+It also removes the last doubt about the floor. A 900 s control-gated
+navigation run:
+
+```
+1661 samples in field 14, 291 distinct positions
+canRun=1 on 95% of samples
+reachable extent: x [87,324]   z [-496,-413]
+```
+
+With the player demonstrably free almost the entire run and 291 distinct
+positions explored, the boundary at **z ~ -413** is real, not a search
+artifact. The painting room's walkable floor is a narrow east-west strip, and
+field 14's only trigger zone (335,-26) lies ~390 units north of it.
+
+So walking to that zone from the post-battle spawn is **not possible**, and the
+route out must be something else. The recorded 2026-09-08 route agrees: its
+exit slice is `house-exit z` -- a **Circle press**, i.e. a door actor, not a
+zone entry. ACTORDUMP puts actor 14 at (358,-421), just past the strip's east
+end, which is the right shape for that door. That is the next thing to try, and
+it is a bounded experiment rather than an open question.
+
 ## Tools added this session
 
 | Path | What it does |

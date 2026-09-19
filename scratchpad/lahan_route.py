@@ -22,6 +22,9 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from xeno_control import needs_control, wait_for_control  # noqa: E402
+
 ROOT = Path("/var/home/blizz/Projects/xenogears-decomp-ai")
 TAG = sys.argv[1]
 DISP = sys.argv[2]
@@ -45,6 +48,8 @@ log = open(OUT / "run.log", "w")
 # later slice is applied from the wrong place. Recover the gaps from the
 # timestamps and honour them, capped so one long pause cannot eat the budget.
 GAP_CAP = float(os.environ.get("XENO_ROUTE_GAP_CAP", "40"))
+# How long to wait for the field to hand back control before pressing anyway.
+CONTROL_TIMEOUT = float(os.environ.get("XENO_ROUTE_CONTROL_TIMEOUT", "90"))
 steps = []
 prev_t = None
 for line in SLICE_LOG.read_text().splitlines():
@@ -131,6 +136,7 @@ start = time.monotonic()
 phase = None
 battles_in = battles_out = 0
 plays = 0
+locked_slices = 0
 try:
     # --- phase 1: boot to the painting room -----------------------------------
     say(f"boot: schedule={SCHEDULE.name}, waiting for field {WANT_FIELD}")
@@ -172,8 +178,22 @@ try:
             phase = prefix
             say(f"phase {phase} at slice {index} ({name})")
             shot(f"phase-{phase}.png")
+        # The recorded gap is the human waiting for the scene; honour it, but
+        # do not TRUST it. A movement slice pressed while the field-control
+        # lock is up is discarded outright, so wait on the game's own canRun
+        # bit instead and let the clock be only a lower bound.
         if gap > 0:
             time.sleep(gap)
+        if needs_control(keys):
+            freed = wait_for_control(
+                lambda: (OUT / "run.log").read_text(errors="replace"),
+                timeout=CONTROL_TIMEOUT,
+                tap=lambda: key("z", 0.1),
+                log=say)
+            if not freed:
+                say(f"  slice {index} ({name}) pressed while STILL LOCKED — "
+                    f"this movement will be discarded")
+                locked_slices += 1
         press(keys, duration)
         plays += 1
         text = (OUT / "run.log").read_text(errors="replace")
@@ -196,7 +216,7 @@ try:
         if index % 25 == 0:
             say(f"progress {index}/{len(route)} ({name}); fields {field_route()}")
             shot(f"progress-{index}.png")
-    say(f"replay done: {plays} slices played")
+    say(f"replay done: {plays} slices played; {locked_slices} movement slices pressed while still locked")
 except SystemExit:
     pass
 except Exception as exc:  # noqa: BLE001
