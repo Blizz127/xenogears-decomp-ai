@@ -35,6 +35,13 @@ extern int g_GameSceneMapNum;
 extern s32 D_800ADBFC;   /* live field actor count */
 extern u16 D_800AFE9C;   /* held-button field mask */
 extern u16 D_800C2694;   /* newly pressed field-button mask */
+/* The gates OP_UPDATE_CHARACTER (func_8009F5F4, src/field/main/misc6.c) tests
+ * before it will move the player. Printed because field 14 shows held input
+ * arriving at a player under free control that still does not move, and these
+ * are the only remaining things that can be refusing it. */
+extern s32 D_800ADB68;   /* playerCanRun */
+extern s32 D_800ADB64;   /* active field/menu owner; 0xFF = none */
+extern u8  D_800B21D0;   /* encounter/control block flag */
 
 void PcPort_FieldPosDiag(void)
 {
@@ -175,12 +182,16 @@ void PcPort_FieldPosDiag(void)
      * unless the window owns X input focus) but latches TAPS from key events,
      * so on a WM-less Xvfb confirms can work while direction holds do not. */
     printf("[xeno-port][test] POSDIAG map=%d pos=(%d,%d,%d) inZones=[%s] "
-           "scenario=%u var20=%u held=0x%04x newpress=0x%04x\n",
+           "scenario=%u var20=%u held=0x%04x newpress=0x%04x "
+           "canRun=%d owner=0x%02x b21d0=%u status=0x%04x\n",
            g_GameSceneMapNum & 0xFFF, (int)CONV_TO_GTE(actor->position.vx),
            (int)CONV_TO_GTE(actor->position.vy),
            (int)CONV_TO_GTE(actor->position.vz), zones,
            (unsigned)((u16*)&g_FieldScriptMemory)[SCRIPT_VAR_SCENARIO_FLAG >> 1],
            (unsigned)((u16*)&g_FieldScriptMemory)[0x20 >> 1],
-           (unsigned)D_800AFE9C, (unsigned)D_800C2694);
+           (unsigned)D_800AFE9C, (unsigned)D_800C2694,
+           (int)D_800ADB68, (unsigned)(D_800ADB64 & 0xFF),
+           (unsigned)D_800B21D0,
+           (unsigned)(g_FieldActors[g_PlayerActorIndex].status & 0xFFFF));
     fflush(stdout);
 }

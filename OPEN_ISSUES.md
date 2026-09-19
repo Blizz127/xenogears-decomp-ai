@@ -4333,10 +4333,24 @@ tested and disproved: the boot pad schedule's Circle pulse train (retired with
 the new XENO_PAD_TEST_STOP_FIELD and the player still did not move) and
 diagonals not reaching the pad (0xc000 observed).
 
-Not yet printed, and the place to look: the gates inside OP_UPDATE_CHARACTER --
-`D_800ADB68` (playerCanRun), `D_800B21D0`, `D_800ADB64` (active field/menu
-owner, 0xFF = none), and the player actor's `status & 0x1800` script lock.
-Compare a walking run against a non-walking one.
+WHICH GATE (measured, run w7): POSDIAG now prints the OP_UPDATE_CHARACTER
+gates, and all 21 held-direction samples read identically --
+`canRun=0 owner=0xff b21d0=1 status=0x0260`. `status & 0x1800 == 0` (no script
+control lock) and no menu owns input, so the refusing gates are
+`D_800ADB68 == 0` and `D_800B21D0 == 1`.
+
+`D_800B21D0[0] = 1` is set by **FE54 (`func_80093B10`, src/field/main/misc11.c:948)**
+and cleared only by FE4F (`func_80093BB0`) or FE53 (`func_80093AC8`). In the
+full all-actor field-14 VM trace FE54 occurs ONCE and FE4F/FE53 occur ZERO
+times: nothing in the room's script ever clears the flag FE54 set. Some C path
+clears it occasionally (samples with `b21d0=0, canRun=1` exist), which is why
+movement is intermittent rather than always dead.
+
+So the 2026-09-18 note that "FE54 is involved" was right for the wrong reason:
+the problem is FE54's side effect on the control gate, not its guard and not
+the departure arming. Open question: who is supposed to clear D_800B21D0 after
+FE54 in this scene -- a script opcode the port never reaches, or a port-side
+path that does not run -- and why D_800ADB68 is 0 alongside it.
 
 Repro: python3 scratchpad/field14_walk.py <tag> <display> 3.5
        (then check `held=` vs `pos=` in /var/tmp/xeno-leaf-push/walk14-<tag>/run.log)

@@ -132,11 +132,46 @@ So, precisely:
 * Whether the player can walk at all in field 14 after the dream battle
   **varies between otherwise identical runs**.
 
-That is the thing to chase next, and it is a different bug from the one this
-session started on. The gates inside `func_8009F5F4` (OP_UPDATE_CHARACTER) are
-where to look: `D_800ADB68` (playerCanRun), `D_800B21D0`, `D_800ADB64` (active
-field/menu owner, 0xFF = none) and the player actor's `status & 0x1800` script
-lock — none of which are printed yet.
+## Which gate refuses: `D_800B21D0`, set by FE54 and never cleared
+
+POSDIAG now also prints the gates OP_UPDATE_CHARACTER (`func_8009F5F4`) tests.
+Run `w7`, 65 samples in field 14, 21 with a direction held, 1 distinct
+position. **Every single held-direction sample reads the same:**
+
+```
+held      pos          canRun  owner  b21d0  status
+0x1000    (115,-455)   0       0xff   1      0x0260    <- Up
+0x2000    (115,-455)   0       0xff   1      0x0260    <- Right
+0x4000    (115,-455)   0       0xff   1      0x0260    <- Down
+0x8000    (115,-455)   0       0xff   1      0x0260    <- Left
+0x3000    (115,-455)   0       0xff   1      0x0260    <- Up+Right
+0xc000    (115,-455)   0       0xff   1      0x0260    <- Down+Left
+```
+
+`status & 0x1800 == 0` — no script control lock, confirming again that this is
+not the script holding the player. `owner == 0xff` — no menu owns input. What
+is wrong is `D_800ADB68` (playerCanRun) `== 0` and `D_800B21D0 == 1`.
+
+And `D_800B21D0` has a known writer. **FE54 (`func_80093B10`) sets
+`D_800B21D0[0] = 1`** (`src/field/main/misc11.c:948`), and only three opcodes
+clear it: FE4F (`func_80093BB0`), FE53 (`func_80093AC8`), against FE50
+(`func_80093BD4`) which sets it again. In the full all-actor field-14 trace:
+
+```
+FE54 (sets B21D0=1)   : 1 occurrence
+FE4F (clears B21D0=0) : 0
+FE53 (clears B21D0=0) : 0
+```
+
+FE54 runs once during setup and **nothing in field 14's script ever clears the
+flag it set**. The 2026-09-18 pass was right that FE54 matters — but the
+mechanism is its *side effect on the control gate*, not a failing guard, and
+not the departure arming. Some C path clears the flag occasionally (samples
+with `b21d0=0, canRun=1` do exist), which is why movement is intermittent.
+
+Next step: find who is supposed to clear `D_800B21D0` after FE54 in this scene
+— a missing script opcode, or a port-side path that does not run — and why
+`D_800ADB68` is 0 with it.
 
 Two hypotheses were tested and **disproved** along the way, so they need not be
 retried:
