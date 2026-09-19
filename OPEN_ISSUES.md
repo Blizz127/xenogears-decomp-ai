@@ -4331,10 +4331,31 @@ field 14's walkable floor is a narrow east-west strip and its only trigger zone
 (335,-26) sits ~390 units north of it. Walking to the zone from the post-battle
 spawn is not possible.
 
-NEXT: the exit is almost certainly a DOOR ACTOR answering Circle, not the zone.
-The recorded route's exit slice is `house-exit z` (a Circle press), and
-ACTORDUMP puts actor 14 at (358,-421), just past the strip's east end. Walk to
-roughly (324,-430) with the control gate on and press Circle.
+SPAWN vs GEOMETRY (measured 2026-09-19): the spawn is NOT wrong. Cold
+direct-boot with XENO_FIELD_MAP=14 XENO_FIELD_ENTRANCE=0 places the player at
+exactly (115,-455) -- the same spot as the post-battle return -- so that is a
+legitimate entrance-0 spawn of the map, not a battle or scene artifact.
+
+Field 14 has at least TWO DISJOINT walkable areas
+(scratchpad/field14_entrance_walk.py, ~20 s per boot):
+  entrance 0 -> (115,-455), walks x[94,162] z[-496,-409], 142 distinct
+  entrance 1 -> (182,245),  walks x[30,340] z[167,334],   364 distinct
+  entrance 2 -> field never becomes active
+The exit zone (335,-26) lies between them and is reached from neither.
+
+NEXT: find the CONNECTION between the post-battle area and the rest of the
+room. The recorded route crosses it with slices named stairs-approach /
+stairs-foot / stairs, so it is a narrow link; either it exists and neither
+search strategy has found it, or the port's walkable geometry is missing it.
+
+DO NOT use the warp to test this: teleport-then-test-mobility is INVALID. A
+control point warped to (200,-455) -- inside the area the player walks freely
+-- was equally immobile (1047 gated samples, one position). Writing position
+desynchronises the actor from the movement code. Warping into a trigger zone is
+still fine; that only reads position.
+
+ALSO disproved: actor 14 at (358,-421) is not a door. Circle was pressed 7
+times from 13-20 units away across two runs with no reaction.
 Repro: XENO_VM_TRACE=a python3 scratchpad/field14_walk.py <tag> <display> 3.5
        then compare the FE54/FE53 order against `canRun=` in the POSDIAG lines.
 Evidence: proven (runtime, port telemetry, 3 all-actor runs, 2026-09-19)
