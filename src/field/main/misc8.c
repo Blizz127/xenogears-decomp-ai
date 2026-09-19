@@ -2274,6 +2274,35 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
         }
     }
 
+#ifdef XENO_PC_PORT
+    /* DIAGNOSTIC (XENO_MOVE_DIAG=1): the INTERACTION-target result for the
+     * player -- which actor (if any) the player is standing on//next to.
+     *
+     * Do NOT read hasTarget==0 as "no floor under the player". Measured on
+     * map 1, which walks perfectly: hasTarget is 0 and selectedY stays at its
+     * 0x7FFFFFFF sentinel on every sample there too. This search is about
+     * ride/talk targets, not ordinary ground, so a 0 here is the normal case
+     * and says nothing about walkability. (Recorded because the opposite
+     * reading looked briefly like a root cause.) Removal: delete this block. */
+    {
+        static int s_on = -1;
+        static unsigned long s_calls;
+
+        if (s_on < 0) {
+            const char* e = getenv("XENO_MOVE_DIAG");
+            s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+        }
+        if (s_on && actorIndex == g_PlayerActorIndex && (s_calls++ % 30) == 0) {
+            printf("[xeno-port][move] ground actor=%d pos=(%d,%d) "
+                   "hasTarget=%d selectedY=%d targetState=%d scanned=%d\n",
+                   (int)actorIndex, (int)currentPos.vx, (int)currentPos.vz,
+                   (int)hasTarget, (int)selectedY, (int)targetState,
+                   (int)D_800ADBFC);
+            fflush(stdout);
+        }
+    }
+#endif
+
     if ((*(u32*)(actorData + 0x00) & 0x00010000) == 0 &&
         (*(u32*)(actorData + 0x04) & 0x00200000) == 0) {
         func_80084A40(actorIndex, selectedY, actor, actorData, targetState);

@@ -1,4 +1,8 @@
 #include "common.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 #include "main/game.h"
 #include "system/math.h"
 #include "field/main.h"
@@ -1135,8 +1139,41 @@ s32 func_80099AC0(s32 useStoredAngle) {
     actor->scriptFlags.flags |= 0x400000;
 
     if (slot->flags_0 != 0 && stepMagnitude + combinedSolidRange < distance) {
-        /* asm 80099E9C: still approaching -- tick the countdown, face the
-         * target, and hold the VM (D_800B00C0=1) instead of advancing IP. */
+#ifdef XENO_PC_PORT
+        /* DIAGNOSTIC (XENO_MOVE_DIAG=1): a scripted walk that never arrives is
+         * what hangs the field-12 Alice scene -- Fei animates in place while
+         * this tick keeps returning -1. This function does NOT translate the
+         * actor; it only faces the target and raises scriptFlags 0x400000 for
+         * the mover. So the question is whether the POSITION changes between
+         * ticks: if `self` is pinned while `d` never shrinks, the mover is
+         * refusing the move (the missing-floor theory) rather than the script
+         * asking for something impossible. Removal: delete this block. */
+        {
+            static int s_on = -1;
+            static s32 s_lastX, s_lastZ;
+            static unsigned long s_ticks;
+
+            if (s_on < 0) {
+                const char* e = getenv("XENO_MOVE_DIAG");
+                s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+            }
+            if (s_on) {
+                int moved = (selfX != s_lastX) || (selfZ != s_lastZ);
+                if ((s_ticks++ % 30) == 0 || moved) {
+                    printf("[xeno-port][move] walk tick #%lu actor=%d "
+                           "self=(%d,%d) target=(%d,%d) d=%d step=%d "
+                           "solid=%d countdown=%u moved=%d\n",
+                           s_ticks, (int)D_800AFD1C, (int)selfX, (int)selfZ,
+                           (int)targetX, (int)targetZ, (int)distance,
+                           (int)stepMagnitude, (int)combinedSolidRange,
+                           (unsigned)slot->flags_0, moved);
+                    fflush(stdout);
+                }
+                s_lastX = selfX;
+                s_lastZ = selfZ;
+            }
+        }
+#endif
         slot->flags_0 = slot->flags_0 - 1;
         finalAngle = (s16)func_8007B694(deltaVec);
         D_800B00C0 = 1;
