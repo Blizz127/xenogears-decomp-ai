@@ -9,7 +9,9 @@ byte-compared directly with MIPS code.
 Baseline: branch `experiment/worldmap-open-gates-20260823`, HEAD
 `f1830448959de0bde3aaf3b524d06553896a5bd6`, plus the guarded
 [field-12 repair](../field12-walk-stall-20260919/README.md). No other gameplay
-logic was repaired by this audit. No commit or push was made.
+logic was repaired by this audit. This snapshot was subsequently committed as
+`20d74007`; [post-commit testing](../field12-postcommit-playthrough-20260919/README.md)
+records the additional runtime check and diagnostic repair. Nothing was pushed.
 
 ## Fresh byte comparison
 

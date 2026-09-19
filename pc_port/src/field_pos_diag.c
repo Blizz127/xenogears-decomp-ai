@@ -43,6 +43,7 @@ extern u16 D_800C2694;   /* newly pressed field-button mask */
 extern s32 D_800ADB68;   /* playerCanRun */
 extern s32 D_800ADB64;   /* active field/menu owner; 0xFF = none */
 extern u8  D_800B21D0;   /* encounter/control block flag */
+extern u8  D_800ADB04;   /* field data available; cleared across map transitions */
 
 void PcPort_FieldPosDiag(void)
 {
@@ -69,6 +70,11 @@ void PcPort_FieldPosDiag(void)
      * Vsync while g_FieldActors[player].pActorData is stale, and reading it
      * there segfaults (observed: crash in the opening battle, walk3). */
     if (!PcPort_QuickCheckpointFieldIsActive())
+        return;
+    /* FieldMain keeps field mode active across func_800A5C40's reload/fade.
+     * Its transition gate is cleared before that sequence and restored only
+     * afterwards. Vsync can run with freed actor/header pointers in between. */
+    if (D_800ADB04 == 0)
         return;
     if (g_FieldActors == NULL || g_pFieldTriggerZones == NULL ||
         D_8005A4E0 == NULL)
