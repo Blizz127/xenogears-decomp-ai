@@ -25,7 +25,8 @@ identity against a retail hardware capture.
 
 Required route acceptance still outstanding:
 
-- Finish downstairs dialogue, village, Alice interaction and mountain traversal.
+- Optional Alice interaction was not exercised; downstairs, village, and mountain
+  traversal are now observed (see the latest continuation below).
 - Citan's house, story events, night return, burning Lahan and Gear combat.
 - Destruction, aftermath and normal departure to the world map.
 - Natural entry into Blackmoon Forest, its required story events and battles,
@@ -164,3 +165,45 @@ orientation Down approximately decreases x and z; Down+Right decreases z.
 Next: return to mountain, follow the western ascent/running-jump route to Citan,
 and continue required story progression. Bed recovery and checkpoint recovery
 are observed; Blackmoon Forest and full retail fidelity are still unproven.
+
+## Western mountain traversal and Citan arrival (ff29b755 runtime)
+
+The preserved rested game continued without another load or state edit. Normal
+walking left field14, passed field13 and Lahan, and re-entered mountain15. Five
+more random battles were won with ordinary attacks; each returned to the field.
+`runtime-resume3.log` now contains six battle returns including its earlier
+post-title-load encounter. The five new instruction counts are56386678,41659908,
+51608816,37247635,43006359. No test-only Escape key was used.
+
+The western route was traversed naturally: lower slope near(-811,-191,-730),
+ramp near(-338,-286,-330), jump onto the upper trail near(-129,-348,-330),
+then the narrow ledge. One overshoot dropped to the lower path; walking back
+up and jumping the ramp recovered normally. No collision code change was made.
+A fresh earned save was made at(-675,-409,-766). Holding ordinary directional
+run+jump crossed the gap to(-1307,-457,-707), captured in `gap-landing.png`.
+Bridge entry was near(-1099,-540,-187); after another normal encounter and
+return, walking crossed to(-1111,-560,1107). The northern trail and another
+victory led to the north exit(-167,-727,2353) and naturally into field17.
+
+Field17 initially owned control during entry, so F7 queued until control
+released, then saved(26,175,-1706). `citan-path-earned.xgqs` is the verified
+copy of that completed save (an earlier copy was refreshed after the actual
+save log). The workshop door and return worked. The main house loaded field19;
+walking around the table reached Yui. Her normal dialogue opened, completed,
+and released control. Repeated confirms briefly reopened the same conversation;
+the helper then stopped at observed free control.
+
+Latest earned state: `recovery.xgqs` and `yui-house-earned.xgqs`, field19 at
+(20,0,396), scenario7. Preserved earlier checkpoints include rested-at-home,
+gap-takeoff-earned, and citan-path-earned. All are isolated from user saves.
+Live game remains PID96416, display:95, window2097204, speed1x, HD2D ON, binary
+from ff29b755; revalidate before input. All input helpers finished. The camera
+was rotated four L1 taps inside field19 to see around the wall/table. Do not
+reuse mountain direction mappings in this room.
+
+Next is leaving the house and reaching Citan on the rooftop, then music-box,
+dinner/night return, burning Lahan, Gear battle, aftermath/world departure and
+Blackmoon Forest. Those gates remain unobserved on this route. This milestone
+proves traversal and dialogue/control return, not full audiovisual parity;
+room screenshots still require comparison against a retail capture. There were
+no source changes or new builds/tests in this gameplay-only continuation.
