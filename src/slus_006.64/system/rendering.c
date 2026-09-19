@@ -7,6 +7,7 @@
 #include <stdio.h>   /* fflush for the env-gated player-render census */
 #include <stdlib.h>
 #include "guest_prim_link.h"
+#include "fei_hd2d.h"
 #define RENDER_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
 /* TEMP-DIAG (world-map white-quad hunt): per-sprite-poly trace. Revert. */
 extern int PcPort_WorldCaptureCurFrame(void);
@@ -618,6 +619,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     static s32 s_diagCalls;
     static s32 s_diagLinked;
     s32 linkedThisCall = 0;
+    PcPortFeiHd2dBatch hdFei;
 #endif
 
     if ((flagsAC >> 2) & 1) {
@@ -680,6 +682,9 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
         return;
     }
 
+#ifdef XENO_PC_PORT
+    PcPort_FeiHd2dBegin(&hdFei, pSpriteData, frameCount);
+#endif
     for (i = 0; i < frameCount; i++, pFramePrim += 0x18) {
         s32 direction = *(u32*)(pFramePrim + 0x14) & 0x7;
 
@@ -821,6 +826,10 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
             poly->u3 = texU + texU1;
             poly->v3 = texV + texV1;
 
+#ifdef XENO_PC_PORT
+            if (!PcPort_FeiHd2dCapture(&hdFei, poly,
+                    ((flags3C >> 27) & 1) ? (u8*)ot - direction * 4 : ot))
+#endif
             if ((flags3C >> 27) & 1) {
                 RENDER_ADD_PRIM((u8*)ot - direction * 4, poly);
             } else {
@@ -864,6 +873,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 
 #ifdef XENO_PC_PORT
+    PcPort_FeiHd2dEnd(&hdFei);
     if (XenoFieldDiagEnabled() && s_diagCalls <= 8) {
         printf("[field-diag] func_8001E3D8 done linked=%d workNow=%p\n",
                (int)linkedThisCall, g_GfxCurWorkBuffer);

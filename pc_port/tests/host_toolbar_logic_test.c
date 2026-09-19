@@ -20,6 +20,11 @@ int main(void)
     assert(PcPort_HostToolbarHitTest(20, PC_PORT_HOST_TOOLBAR_HEIGHT) ==
            PC_PORT_TOOLBAR_NONE);
 
+    assert(PcPort_HostToolbarHitTest(400, 4) == PC_PORT_TOOLBAR_FEI_HD2D);
+    assert(PcPort_HostToolbarHitTest(555, 29) == PC_PORT_TOOLBAR_FEI_HD2D);
+    assert(PcPort_HostToolbarHitTest(399, 4) == PC_PORT_TOOLBAR_NONE);
+    assert(PcPort_HostToolbarHitTest(556, 4) == PC_PORT_TOOLBAR_NONE);
+
     puts("host toolbar hit-zone regression: PASS");
     return 0;
 }
