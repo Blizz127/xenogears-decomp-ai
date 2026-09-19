@@ -12,6 +12,10 @@
 #include "common.h"
 #include "field/actor.h"
 
+extern s16 D_800AFB54;
+extern s16 func_8007B1C4(s16, s16, s32, s16*, s32*);
+extern s32 func_80080968(u8*);
+
 extern unsigned char g_GameState[];
 extern s32 g_GameSceneMapNum;
 extern s32 g_PlayerActorIndex;
@@ -246,6 +250,25 @@ void PcPort_QuickCheckpointRestorePlayer(void)
         sprite->position.x = actor->position.vx;
         sprite->position.y = actor->position.vy;
         sprite->position.z = actor->position.vz;
+    }
+    /* As in retail's func_8009E574, relocating an actor must locate its
+     * triangles on every loaded walkmesh and refresh the active surface.
+     * Keep the checkpoint's precise position/height rather than snapping it
+     * to the integer surface point returned by the locator. */
+    {
+        s32 state[4][4] = {{0}};
+        s16 out[4][4] = {{0}};
+        s32 i;
+        for (i = 0; i < D_800AFB54 - 1 && i < 4; ++i)
+            actor->walkmeshTriIds[i] = func_8007B1C4(
+                actor->position.vx >> 16, actor->position.vz >> 16,
+                i, out[i], state[i]);
+        actor->curWalkmeshTriMaterial = func_80080968((u8*)actor);
+        if (actor->walkmeshId >= 0 && actor->walkmeshId < i) {
+            actor->curTriNormal.vx = state[actor->walkmeshId][0];
+            actor->curTriNormal.vy = state[actor->walkmeshId][1];
+            actor->curTriNormal.vz = state[actor->walkmeshId][2];
+        }
     }
     s_restoreReady = 0;
     fprintf(stderr, "[xeno-port][quick] player position restored\n");
