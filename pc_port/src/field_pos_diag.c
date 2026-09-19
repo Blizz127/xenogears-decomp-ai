@@ -32,7 +32,8 @@
 extern s32 g_PlayerActorIndex;
 extern void* D_8005A4E0; /* loaded field header; +0x12C = triggers size */
 extern int g_GameSceneMapNum;
-extern s32 D_800ADBFC;   /* live field actor count */
+extern s32 D_800ADBFC;   /* live SCRIPT actor count */
+extern s32 g_FieldNumActors; /* total allocated actors */
 extern u16 D_800AFE9C;   /* held-button field mask */
 extern u16 D_800C2694;   /* newly pressed field-button mask */
 /* The gates OP_UPDATE_CHARACTER (func_8009F5F4, src/field/main/misc6.c) tests
@@ -148,23 +149,49 @@ void PcPort_FieldPosDiag(void)
         if ((samples++ % ACTORDIAG_EVERY) == 0) {
             int i;
 
-            printf("[xeno-port][test] ACTORDUMP map=%d count=%d player=%d\n",
+            /* Iterate ALL allocated actors, not just D_800ADBFC. That count
+             * is the SCRIPT actor count (22 in field 14); the model/collision
+             * actors live above it -- field 14 builds models onto actors 15
+             * and 22..47 out of g_FieldNumActors=52. Stopping at D_800ADBFC
+             * hides exactly the actors that carry the floor meshes. */
+            printf("[xeno-port][test] ACTORDUMP map=%d script=%d alloc=%d "
+                   "player=%d\n",
                    g_GameSceneMapNum & 0xFFF, (int)D_800ADBFC,
-                   (int)g_PlayerActorIndex);
-            for (i = 0; i < (int)D_800ADBFC && i < 64; i++) {
+                   (int)g_FieldNumActors, (int)g_PlayerActorIndex);
+            for (i = 0; i < (int)g_FieldNumActors && i < 96; i++) {
+                /* Do NOT skip actors without script data: the model and
+                 * collision actors (22..47 in field 14) have pActorData NULL
+                 * and are precisely the ones that can carry floor meshes. */
                 ActorData* a =
                     (ActorData*)(uintptr_t)g_FieldActors[i].pActorData;
+                /* Also report what makes an actor part of the FLOOR. The
+                 * walkable surface is not one map walkmesh: func_80082620's
+                 * ground search (src/field/main/misc8.c:2030) walks the actor
+                 * list and, for actors whose actorData+0x04 has bit 0x80
+                 * ("interaction region"), tests the player's (x,z) against
+                 * that actor's collision mesh at *(model+0x4). So an actor
+                 * with no 0x80 bit, or a null model/mesh, contributes no
+                 * floor -- which is exactly the shape of field 14's problem. */
+                {
+                    u8* raw = (u8*)g_FieldActors + i * 0x5C;
+                    u8* adata = (u8*)(uintptr_t)*(u32*)(raw + 0x4C);
+                    u8* model = (u8*)(uintptr_t)*(u32*)(raw + 0x00);
+                    unsigned f0 = adata ? *(u32*)(adata + 0x00) : 0u;
+                    unsigned f4 = adata ? *(u32*)(adata + 0x04) : 0u;
+                    void* mesh = model ? (void*)(uintptr_t)*(u32*)(model + 0x4)
+                                       : NULL;
 
-                if (a == NULL) {
-                    continue;
+                    printf("[xeno-port][test] ACTOR %2d pos=(%d,%d,%d) "
+                           "status=0x%04x ip=%d f0=0x%08x f4=0x%08x "
+                           "region=%d model=%p mesh=%p\n",
+                           i,
+                           a ? (int)CONV_TO_GTE(a->position.vx) : 0,
+                           a ? (int)CONV_TO_GTE(a->position.vy) : 0,
+                           a ? (int)CONV_TO_GTE(a->position.vz) : 0,
+                           (unsigned)(g_FieldActors[i].status & 0xFFFF),
+                           a ? (int)a->scriptInstructionPointer : -1,
+                           f0, f4, (f4 & 0x80) ? 1 : 0, (void*)model, mesh);
                 }
-                printf("[xeno-port][test] ACTOR %2d pos=(%d,%d,%d) "
-                       "status=0x%04x ip=%u\n",
-                       i, (int)CONV_TO_GTE(a->position.vx),
-                       (int)CONV_TO_GTE(a->position.vy),
-                       (int)CONV_TO_GTE(a->position.vz),
-                       (unsigned)(g_FieldActors[i].status & 0xFFFF),
-                       (unsigned)a->scriptInstructionPointer);
             }
             fflush(stdout);
         }

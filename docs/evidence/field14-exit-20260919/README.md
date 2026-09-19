@@ -431,6 +431,59 @@ offset at size+0x24); the trigger zones (+0x12C/+0x150) and scripts
 buffers the loader fills but nothing in `src/field/` reads by name --
 `D_800AFB14` (+0x114/+0x138) and `D_800AFB18` (+0x110/+0x134).
 
+## Mechanism: the floor is actor collision meshes, and the script actors have none
+
+The walkable surface in a Xenogears field is **not** one map walkmesh. The
+ground search `func_80084158` (`src/field/main/misc8.c:2030`, **byte-matched**)
+walks the actor list and, for each actor, tests the player's (x,z) against that
+actor's collision mesh at `*(model + 0x4)` via `func_80083288` ("POLYCHECK").
+So the floor is the union of the actors' meshes, and an actor with no model
+contributes none.
+
+Dumping every allocated actor (not just the script ones) in field 14:
+
+```
+g_FieldNumActors = 52,  D_800ADBFC (script actors) = 22,  models in package = 27
+actors WITH model+mesh : 15, and 22..47        (27 of them)
+actors 22..47          : pActorData = NULL, f0 = f4 = 0
+script actors 0..21    : only actor 15 has a model; the rest are model=(nil)
+```
+
+And the loop bound matters: `for (i = 0; i < D_800ADBFC; i++)` — i.e. actors
+**0..21 only**. That bound is retail's own (`lw $v0, %lo(D_800ADBFC)` at
+`80084210` in the matched asm), so the 26 meshes sitting on actors 22..47 are
+**never consulted for ground at all**, by design. The floor available to the
+ground search is therefore whatever meshes the *script* actors carry — and in
+this port that is actor 15 alone. Two disjoint islands out of one mesh is
+entirely consistent with that.
+
+The script actors that ought to be furnishing the room -- 9, 11, 12, 13, 14,
+16, 17, 19, 20, standing at real positions spanning x[-350,358] z[-544,255] --
+all report `model=(nil) mesh=(nil)`.
+
+### Correction: two flag words, and I read the wrong one
+
+An earlier pass of this dump printed `region=0` for every actor and I took that
+to mean nothing is marked as an interaction region. That column tested
+`actorData+0x04 & 0x80`, but the script opcode that marks an actor,
+`func_8009E10C` (opcode 0x20, which actor 11 runs at ip=1035), writes
+`actorData+0x00` -- and retail does the same (`lw/sw 0x0($a0)` at 8009E174 /
+8009E188, matched). The two are different fields: +0x00 is
+`scriptFlags.flags`, +0x04 is `->flags`.
+
+Read correctly, the script actors **are** marked: 9, 11, 12, 13, 14, 16, 17, 19
+and 20 all carry `f0=0x004401b0`, which has bit 0x80 set. They are script-marked
+as regions and simply have no model or mesh behind that marking.
+
+### Where to look next
+
+The model-to-actor binding in `src/field/main/misc3.c` (~line 1030, the
+`model-build` loop). Field 14 binds package models to actors 15 and 22..47;
+the ground search only ever looks at 0..21. Either the binding should be
+placing those models on the script actors, or a second step that attaches a
+built model to its script actor is missing. Compare the loop's actor index
+against retail, and check what sets `actorData+0x04` bit 0x80.
+
 ## Tools added this session
 
 | Path | What it does |
