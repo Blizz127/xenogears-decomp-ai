@@ -8,6 +8,18 @@ extern "C" int PcPort_FeiHd2dEnabled(void) __attribute__((weak));
 extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
 #endif
 
+/* The native File/card screen has not been implemented. Keep the failure
+ * visible and recoverable without entering its retail cleanup path. */
+extern "C" void PcPort_NotifyUnsupportedFileMenu(void)
+{
+    eprintinfo("File menu unavailable: native memory-card screen is not implemented\n");
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
+        "File menu not implemented",
+        "The in-game memory-card File menu is not implemented in this port yet.\n\n"
+        "Close this message and cancel back to the field. Use the toolbar's "
+        "SAVE and LOAD buttons for field checkpoints.", g_window);
+}
+
 #if !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && \
 	(defined(RENDERER_OGL) || defined(RENDERER_OGLES))
 

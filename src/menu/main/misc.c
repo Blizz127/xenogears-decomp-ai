@@ -222,6 +222,7 @@ s32 func_801C531C(s32 arg0) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C55A0);
 #else
 extern void func_801C8574(s32);
+extern void PcPort_NotifyUnsupportedFileMenu(void);
 extern void func_801D22C4(void);
 extern void func_801E8044(s32, void*);
 extern s32 func_801C531C(s32);
@@ -266,6 +267,13 @@ void func_801C55A0(void) {
             }
         } else if (input == 4) {
             u8 ok = 1;
+            /* File still reaches the unimplemented native card screen
+             * 801D9F98. Reject entry before nav teardown or card cleanup;
+             * otherwise its stub return frees never-created card objects. */
+            if (g_Menu->menu1Choice == 1) {
+                PcPort_NotifyUnsupportedFileMenu();
+                ok = 0;
+            }
             if (g_Menu->menu1Choice == 2 && g_Menu->unk33B == 0) {
                 ok = 0;
                 func_801C8574(4);
