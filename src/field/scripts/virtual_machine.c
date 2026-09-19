@@ -230,18 +230,42 @@ void func_800A1E9C(void) {
  * sub-opcode and its first two operand bytes.  Wait opcodes re-dispatch the
  * same ip every frame and print once, so the output is the executed
  * instruction sequence, not a per-frame flood.  Capped per actor so a hot
- * script loop cannot fill a log.  Removal: delete this function and its call
- * in FieldScriptVMRun. */
+ * script loop cannot fill a log.
+ *
+ * Three refinements make a STALLED script readable, which first-seen alone
+ * cannot do -- a loop prints its body once and then goes silent, so the cycle
+ * it is spinning in is invisible:
+ *   XENO_VM_TRACE_REPEAT=1   print EVERY dispatch, not just first-seen, so the
+ *                            repeating cycle and its branch decisions show up.
+ *   XENO_VM_TRACE_MAX=<n>    per-actor line cap (default 4000); repeat mode
+ *                            needs a bigger budget to cover several cycles.
+ *   XENO_VM_TRACE_FIELD=<n>  only trace while that field is loaded, so the
+ *                            budget is not burned on the boot/prologue fields
+ *                            before the one under investigation.
+ * A monotonic sequence number is printed so lines from different actors can be
+ * interleaved back into dispatch order.
+ * Removal: delete this function and its call in FieldScriptVMRun. */
 static void PcPort_FieldVmTrace(u_short ip, u_char op) {
     static int s_mode = -1;        /* -1 unparsed, -2 off, -3 all, else actor */
+    static int s_repeat;           /* 1 = print every dispatch (no dedup) */
+    static int s_max;              /* per-actor line cap */
+    static int s_field;            /* -1 = any field, else only this field */
+    static unsigned s_seq;
     static u_char* s_seen[256];    /* per-actor first-seen bitset, 64K ips */
-    static u_short s_lines[256];
+    static int s_lines[256];
     static const u_char* s_seenScript[256];
+    extern s32 g_GameSceneMapNum;
     const u_char* script;
     int actor;
 
     if (s_mode == -1) {
         const char* e = getenv("XENO_VM_TRACE");
+        const char* r = getenv("XENO_VM_TRACE_REPEAT");
+        const char* m = getenv("XENO_VM_TRACE_MAX");
+        const char* f = getenv("XENO_VM_TRACE_FIELD");
+        s_repeat = (r != NULL && r[0] != '\0' && r[0] != '0');
+        s_max = (m != NULL && m[0] != '\0') ? atoi(m) : 4000;
+        s_field = (f != NULL && f[0] != '\0') ? atoi(f) : -1;
         if (e == NULL || e[0] == '\0') {
             s_mode = -2;
         } else if (e[0] == 'a') {
@@ -251,6 +275,9 @@ static void PcPort_FieldVmTrace(u_short ip, u_char op) {
         }
     }
     if (s_mode == -2) {
+        return;
+    }
+    if (s_field >= 0 && (int)g_GameSceneMapNum != s_field) {
         return;
     }
     actor = D_800AFD1C & 0xFF;
@@ -274,18 +301,22 @@ static void PcPort_FieldVmTrace(u_short ip, u_char op) {
         s_seenScript[actor] = script;
         s_lines[actor] = 0;
     }
-    if ((s_seen[actor][ip >> 3] & (1u << (ip & 7))) || s_lines[actor] >= 4000) {
+    if (s_lines[actor] >= s_max) {
+        return;
+    }
+    if (!s_repeat && (s_seen[actor][ip >> 3] & (1u << (ip & 7)))) {
         return;
     }
     s_seen[actor][ip >> 3] |= (u_char)(1u << (ip & 7));
     s_lines[actor]++;
+    s_seq++;
     if (op == 0xFE) {
-        printf("[vm-trace] actor=%d ip=%u op=FE%02X args=%02x %02x %02x %02x\n",
-               actor, (unsigned)ip, script[ip + 1], script[ip + 2],
+        printf("[vm-trace] #%u actor=%d ip=%u op=FE%02X args=%02x %02x %02x %02x\n",
+               s_seq, actor, (unsigned)ip, script[ip + 1], script[ip + 2],
                script[ip + 3], script[ip + 4], script[ip + 5]);
     } else {
-        printf("[vm-trace] actor=%d ip=%u op=%02X args=%02x %02x %02x %02x\n",
-               actor, (unsigned)ip, op, script[ip + 1], script[ip + 2],
+        printf("[vm-trace] #%u actor=%d ip=%u op=%02X args=%02x %02x %02x %02x\n",
+               s_seq, actor, (unsigned)ip, op, script[ip + 1], script[ip + 2],
                script[ip + 3], script[ip + 4]);
     }
     fflush(stdout);
