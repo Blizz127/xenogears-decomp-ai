@@ -15,8 +15,8 @@ real blocker is one the previous pass never tested for.
 | --- | --- |
 | FE54's guard never passes, so the departure never arms | FE54's guard passes every time; it runs **once** in field 14, during scene setup |
 | The room's script loop stalls after the FE54 lock | No stall. Actor 0 reaches its terminal park; actor 1 reaches **free player control** |
-| Field 14 keeps Fei script-locked; no d-pad input moves him | Fei moves on 5 of 6 strides; position changes every time |
-| Leaving needs the scene's exit condition decompiled | Nothing needs decompiling. It is a **navigation** problem |
+| Field 14 keeps Fei script-locked; no d-pad input moves him | Not a script lock: the player actor reaches free control, and held d-pad input provably reaches the field's button mask. Whether he then walks varies run to run |
+| Leaving needs the scene's exit condition decompiled | Nothing needs decompiling. The exit fires correctly when the player is in the zone |
 
 ## The instrument that settled it
 
@@ -98,6 +98,57 @@ Down+Left-> pos=(161,0,-492)   moved
 script-lock reading. Note the displacements are **not** a fixed axis mapping —
 field input is camera-relative and field 14's camera is scripted, which is why
 earlier fixed-direction sweeps read as "nothing moves".
+
+**But it does not reproduce every run**, and that turns out to be the sharpest
+result of the session — see the next section.
+
+## Movement in field 14 is intermittent, and not for want of input
+
+Later runs of the same probe, same procedure, produced the opposite: the player
+parked on `0x0C` and did not move at all. To tell "the game ignored the input"
+from "the input never arrived" — opposite fixes — POSDIAG now also prints the
+field's own button masks (`D_800AFE9C` held, `D_800C2694` newly-pressed).
+
+With that, run `w6`, 65 samples in field 14:
+
+```
+samples with a direction held:                  22
+held masks seen:  0x1000 Up   0x2000 Right  0x4000 Down  0x8000 Left
+                  0x3000 Up+Right            0xc000 Down+Left   (0x20 Circle)
+held-samples followed by a position change:      0
+distinct positions:                              1   -- (115,-455)
+```
+
+Every direction **and both diagonals** reached the field's held-button mask,
+the player actor was parked on the free-control opcode, and the position never
+changed once across the whole run. Compare run `w1` (earlier build, before the
+mask was printed): 7 distinct positions, x in [88,161], z in [-495,-413].
+
+So, precisely:
+
+* Input delivery is **not** the blocker — the held mask proves the holds arrive,
+  diagonals included.
+* The script lock is **not** the blocker — actor 1 is on `0x0C`.
+* Whether the player can walk at all in field 14 after the dream battle
+  **varies between otherwise identical runs**.
+
+That is the thing to chase next, and it is a different bug from the one this
+session started on. The gates inside `func_8009F5F4` (OP_UPDATE_CHARACTER) are
+where to look: `D_800ADB68` (playerCanRun), `D_800B21D0`, `D_800ADB64` (active
+field/menu owner, 0xFF = none) and the player actor's `status & 0x1800` script
+lock — none of which are printed yet.
+
+Two hypotheses were tested and **disproved** along the way, so they need not be
+retried:
+
+* *The boot pad schedule mashes Circle forever and blocks walking.* It really
+  does pulse Circle every 2 frames from frame 3800 to 11962 (`0x20`), and a
+  field Circle is talk/confirm, so this was worth testing. `XENO_PAD_TEST_STOP_FIELD`
+  (new) retires the schedule the moment a chosen field loads; with it fired and
+  logged (`field 14 reached at frame 12039; schedule retired`) the player still
+  did not move. Keep the switch — a driver that wants to walk should own the
+  pad — but it is not the cause.
+* *Diagonals do not reach the pad.* `held=0xc000` and `0x3000` say otherwise.
 
 ## The actual blocker: the only exit zone is outside the reachable floor
 
@@ -212,15 +263,20 @@ has to interact, not just walk.
 
 ## What is actually left
 
-1. **Navigate field 14 on foot** — closed-loop, with interaction: reach the
-   stairs, talk to Dan (39 confirms), then the door. Distance hill-climbing
-   alone gets trapped in local pockets; a coverage/patrol pass that reaches
-   walls and corners is the next thing to try, and the ZONEDUMP/ACTORDUMP
-   telemetry now makes the targets visible.
-2. `XENO_FIELD_WARP` makes every later field reachable for testing **now**,
-   without solving (1) first — so the rest of the Lahan chapter can be swept
+1. **Find out why the player intermittently cannot walk in field 14** even with
+   free control and input arriving. This is now the top item and it is a
+   different bug from the one this session started on. Print the
+   OP_UPDATE_CHARACTER gates (`D_800ADB68`, `D_800B21D0`, `D_800ADB64`, the
+   actor's `status & 0x1800`) alongside the held mask and compare a run that
+   walks against one that does not.
+2. **Then navigate field 14 on foot** — closed-loop, with interaction: reach
+   the stairs, talk to Dan (39 confirms), then the door. Distance hill-climbing
+   gets trapped in local pockets; ZONEDUMP/ACTORDUMP now make the targets
+   visible.
+3. `XENO_FIELD_WARP` makes every later field reachable for testing **now**,
+   without solving (1) or (2) first — so the rest of the Lahan chapter can be swept
    for blockers in parallel.
-3. Unrelated, still open and now filed in `OPEN_ISSUES.md`: the title screen's
+4. Unrelated, still open and now filed in `OPEN_ISSUES.md`: the title screen's
    default cursor is **Continue**, which enters the unported `func_801D9F98`
    and hangs; and F8 at the title SIGSEGVs.
 

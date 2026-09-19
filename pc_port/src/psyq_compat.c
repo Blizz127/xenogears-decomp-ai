@@ -878,6 +878,36 @@ static void PcPort_PadTestInputInject(void)
     if (s_padTestState != 1)
         return;
 
+    /* XENO_PAD_TEST_STOP_FIELD=<map>: retire the schedule for good once that
+     * field is loaded.
+     *
+     * The boot schedules end with a Circle pulse train thousands of frames
+     * long (the Lahan one mashes Circle every 2 frames from frame 3800 to
+     * 11962) because paging the prologue narration needs it.  That train does
+     * not stop when the prologue does, and in a FIELD Circle is talk/confirm:
+     * it re-triggers interaction continuously and the player cannot walk.
+     * Measured in field 14 -- the player actor sat parked on the free-control
+     * opcode 0x0C for 4628 dispatches while all 32 direction trials moved him
+     * exactly 0 units.  A driver that wants to walk has to be able to take the
+     * pad back, and only the schedule's owner knows when. */
+    {
+        static int stopField = -2;
+        extern int g_GameSceneMapNum;
+
+        if (stopField == -2) {
+            const char* e = getenv("XENO_PAD_TEST_STOP_FIELD");
+            stopField = (e != NULL && e[0] != '\0') ? atoi(e) : -1;
+        }
+        if (stopField >= 0 && !s_padTestSuppress &&
+            (g_GameSceneMapNum & 0xFFF) == stopField) {
+            s_padTestSuppress = 1;
+            printf("[xeno-port][test] XENO_PAD_TEST_STOP_FIELD: field %d "
+                   "reached at frame %u; schedule retired\n",
+                   stopField, s_padTestFrame);
+            fflush(stdout);
+        }
+    }
+
     previousStep = s_padTestCurrentStep;
     while (s_padTestCurrentStep + 1 < s_padTestStepCount &&
            s_padTestFrame >= s_padTestSteps[s_padTestCurrentStep + 1].frame)

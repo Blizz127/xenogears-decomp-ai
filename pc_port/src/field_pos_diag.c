@@ -33,6 +33,8 @@ extern s32 g_PlayerActorIndex;
 extern void* D_8005A4E0; /* loaded field header; +0x12C = triggers size */
 extern int g_GameSceneMapNum;
 extern s32 D_800ADBFC;   /* live field actor count */
+extern u16 D_800AFE9C;   /* held-button field mask */
+extern u16 D_800C2694;   /* newly pressed field-button mask */
 
 void PcPort_FieldPosDiag(void)
 {
@@ -166,12 +168,19 @@ void PcPort_FieldPosDiag(void)
      * 0x20 is the variable map 15's actor-22 block tests before its
      * CHANGE_FIELD to map 16 (Blackmoon Forest).  Same u16 view as
      * FieldScriptVMGetVariableValue / FieldScriptMemoryWriteU16. */
+    /* held/newpress: the field's own button masks.  A headless walk cannot
+     * otherwise tell "the game ignored my input" from "my input never got
+     * there" -- and those need opposite fixes.  It matters here because
+     * PsyCross reads HELD buttons from SDL_GetKeyboardState (which is empty
+     * unless the window owns X input focus) but latches TAPS from key events,
+     * so on a WM-less Xvfb confirms can work while direction holds do not. */
     printf("[xeno-port][test] POSDIAG map=%d pos=(%d,%d,%d) inZones=[%s] "
-           "scenario=%u var20=%u\n",
+           "scenario=%u var20=%u held=0x%04x newpress=0x%04x\n",
            g_GameSceneMapNum & 0xFFF, (int)CONV_TO_GTE(actor->position.vx),
            (int)CONV_TO_GTE(actor->position.vy),
            (int)CONV_TO_GTE(actor->position.vz), zones,
            (unsigned)((u16*)&g_FieldScriptMemory)[SCRIPT_VAR_SCENARIO_FLAG >> 1],
-           (unsigned)((u16*)&g_FieldScriptMemory)[0x20 >> 1]);
+           (unsigned)((u16*)&g_FieldScriptMemory)[0x20 >> 1],
+           (unsigned)D_800AFE9C, (unsigned)D_800C2694);
     fflush(stdout);
 }

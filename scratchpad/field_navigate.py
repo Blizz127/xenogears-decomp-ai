@@ -49,6 +49,14 @@ env = {k: v for k, v in os.environ.items() if not k.startswith("XENO_")}
 env.update(DISPLAY=f":{DISP}", SDL_VIDEODRIVER="x11", XENO_KERNEL_SEL="0",
            XENO_PAD_TEST_INPUT=SCHEDULE.read_text().strip(),
            XENO_FIELD_POS_DIAG="15")
+# Diagnostic switches must survive the XENO_ filter above. XENO_FIELD_WARP in
+# particular lets a run start the walk from somewhere other than the
+# post-battle spawn, which is how "is the player wedged at the spawn?" gets
+# separated from "is the room hard to path through?".
+for passthrough in ("XENO_FIELD_WARP", "XENO_VM_TRACE", "XENO_VM_TRACE_REPEAT",
+                    "XENO_VM_TRACE_MAX", "XENO_VM_TRACE_FIELD"):
+    if os.environ.get(passthrough):
+        env[passthrough] = os.environ[passthrough]
 game = subprocess.Popen(["stdbuf", "-oL", "-eL", str(BIN)], cwd=ROOT, env=env,
                         stdout=log, stderr=subprocess.STDOUT)
 wid = None

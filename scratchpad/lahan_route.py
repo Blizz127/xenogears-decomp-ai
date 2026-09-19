@@ -37,13 +37,28 @@ OUT = Path("/var/tmp/xeno-leaf-push/route-" + TAG)
 (OUT / "shots").mkdir(parents=True, exist_ok=True)
 log = open(OUT / "run.log", "w")
 
+# The recording's WAIT between slices is part of the route, not noise: the
+# human who made it sat through each scene before pressing the next key (26 s
+# between painting-final and easel-backoff, 29 s before dan-0). Replaying the
+# keys back to back with a fixed settle spends every movement slice while the
+# field-14 scene still holds the player, so the actor never moves and every
+# later slice is applied from the wrong place. Recover the gaps from the
+# timestamps and honour them, capped so one long pause cannot eat the budget.
+GAP_CAP = float(os.environ.get("XENO_ROUTE_GAP_CAP", "40"))
 steps = []
+prev_t = None
 for line in SLICE_LOG.read_text().splitlines():
     parts = line.split()
     if len(parts) != 6:
         continue
-    _, _, name, keys, duration, _unit = parts
-    steps.append((name, keys.split("+"), float(duration)))
+    day, clock, name, keys, duration, _unit = parts
+    try:
+        t = time.mktime(time.strptime(f"{day} {clock}", "%Y-%m-%d %H:%M:%S"))
+    except ValueError:
+        continue
+    gap = 0.0 if prev_t is None else max(0.0, min(GAP_CAP, t - prev_t - float(duration)))
+    prev_t = t
+    steps.append((name, keys.split("+"), float(duration), gap))
 start_index = next((i for i, s in enumerate(steps) if s[0] == START_SLICE), None)
 if start_index is None:
     raise SystemExit(f"start slice {START_SLICE!r} not in {SLICE_LOG}")
@@ -145,7 +160,7 @@ try:
     shot("route-start.png")
 
     # --- phase 2: replay the recorded slices ---------------------------------
-    for index, (name, keys, duration) in enumerate(route, start=1):
+    for index, (name, keys, duration, gap) in enumerate(route, start=1):
         if game.poll() is not None:
             say(f"game exited during slice {name}")
             break
@@ -157,9 +172,17 @@ try:
             phase = prefix
             say(f"phase {phase} at slice {index} ({name})")
             shot(f"phase-{phase}.png")
+        if gap > 0:
+            time.sleep(gap)
         press(keys, duration)
         plays += 1
         text = (OUT / "run.log").read_text(errors="replace")
+        # Per-slice position. Replay is open-loop, so the only way to see WHERE
+        # it diverges from the recording is to print where each slice left the
+        # player rather than only which fields were reached.
+        posl = [l for l in text.splitlines() if "POSDIAG" in l]
+        if posl:
+            say(f"  slice {index:<4} {name:<22} {posl[-1].split('POSDIAG')[-1].strip()}")
         new_in = text.count("enter retail battle")
         new_out = text.count("retail battle returned")
         if new_in > battles_in:
