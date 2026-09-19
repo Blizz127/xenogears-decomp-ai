@@ -1,5 +1,18 @@
 # Astra task: Lahan stops in field 12 — a scripted walk produces no movement
 
+> **Resolution (2026-09-19):** Fixed and naturally reproduced after repair.
+> The stalled actor had stateIdx=0 and a non-null table row; a nonzero sprite
+> movement vector reached collision. Two port branches in `func_8007BEF4`
+> omitted retail's shared-tail second-endpoint z store. Restoring those stores
+> under `XENO_PC_PORT` releases opcode0x4A and advances the Alice scene.
+> Fresh MIPS compilation also disproved the byte-match assertion below for
+> `80080968`, `80082620`, `80099AC0`, and `80084158`; none was edited.
+> See [runtime and byte evidence](../evidence/field12-walk-stall-20260919/README.md)
+> and [current-port audit](../evidence/current-port-mips-audit-20260919/README.md).
+> The original investigation below is retained as historical context; its
+> no-vector inference and byte-match claim are superseded by these measurements.
+
+
 **Status:** root cause narrowed to one function and one suspect line. Not fixed.
 **Branch:** `experiment/worldmap-open-gates-20260823` (see commits `15bf8e85`..`a30af79f`).
 

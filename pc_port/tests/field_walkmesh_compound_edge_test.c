@@ -80,10 +80,8 @@ static void expect_eq_s16(const char* case_name, const char* field,
     fail("compound.side.normalized", detail);
 }
 
-/* Retail's side arms are NOT uniform (see the matching asm: 8007C418 and
- * 8007C4C8 hold five `sh` each, only 8007C578 holds six): arms 1/2 never
- * store out+0x0C, so b.z keeps the 0x6B fill; only arm 4 writes b.z.
- * expected_bz carries the arm-appropriate expectation. */
+/* All three retail arms reach the b.z store at 8007C628..8007C634.
+ * Arms 1/2 jump there; counting only their local stores misses that tail. */
 static void expect_edge(const char* case_name, const s16* edge,
                         int first_vertex, int second_vertex, s16 expected_bz)
 {
@@ -118,7 +116,7 @@ static void run_case(const char* name,
     s_clip_values[1] = clip1;
     s_clip_values[2] = clip2;
     s_clip_values[3] = chooser;
-    s_clip_count = 4;
+    s_clip_count = (clip0 < 0) + (clip1 < 0) + (clip2 < 0) == 2 ? 4 : 3;
     s_clip_index = 0;
 
     result = func_8007BEF4(move, base, actor, edge, point, 0, &flags);
@@ -169,18 +167,18 @@ int main(void)
     D_800AFB20[0] = (u32)material_addr;
     D_800B21CC = 0;
 
-    /* mask 3: chooser < 0 selects edge 1; otherwise edge 2. Arms 1/2 store
-     * five halfwords, so b.z keeps the 0x6B fill. */
-    run_case("mask3.edge1", -1, -1, 1, -1, 0, 1, (s16)0x6B6B);
-    run_case("mask3.edge2", -1, -1, 1, 1, 1, 2, (s16)0x6B6B);
+    /* Direct edge exits, including the field-12 failing edge-2 path. */
+    run_case("mask1.edge1", -1, 1, 1, 0, 0, 1, 22);
+    run_case("mask2.edge2", 1, -1, 1, 0, 1, 2, 32);
+    run_case("mask4.edge4", 1, 1, -1, 0, 2, 0, 12);
 
-    /* mask 5: chooser < 0 selects edge 4 (six stores); otherwise edge 1. */
+    /* Compound masks must select a single edge AND write both endpoints. */
+    run_case("mask3.edge1", -1, -1, 1, -1, 0, 1, 22);
+    run_case("mask3.edge2", -1, -1, 1, 1, 1, 2, 32);
     run_case("mask5.edge4", -1, 1, -1, -1, 2, 0, 12);
-    run_case("mask5.edge1", -1, 1, -1, 1, 0, 1, (s16)0x6B6B);
-
-    /* mask 6: chooser >= 0 selects edge 4 (six stores); otherwise edge 2. */
+    run_case("mask5.edge1", -1, 1, -1, 1, 0, 1, 22);
     run_case("mask6.edge4", 1, -1, -1, 1, 2, 0, 12);
-    run_case("mask6.edge2", 1, -1, -1, -1, 1, 2, (s16)0x6B6B);
+    run_case("mask6.edge2", 1, -1, -1, -1, 1, 2, 32);
 
     printf("FIELD WALKMESH COMPOUND EDGE certificate PASS checks=%u\n",
            s_checks);

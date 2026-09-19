@@ -1967,16 +1967,9 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
 
     if (sideMask == 1 || sideMask == 2 || sideMask == 4) {
         s16* tri = (s16*)(triBase + lastTri * 14);
-        /* Written out explicitly rather than via FieldCopyCameraEdge, for two
-         * reasons that retail's own code establishes:
-         *  1. retail's dispatch is s2==1 -> 8007C418, s2==2 -> 8007C4C8,
-         *     s2==4 -> 8007C578, and each arm holds its OWN copy of the stores;
-         *     calling the `static inline` helper three times let GCC collapse
-         *     them into a single copy.
-         *  2. the arms are NOT uniform: arms 1 and 2 store only FIVE halfwords
-         *     (out+0x00/0x02/0x04 from the first vertex, out+0x08/0x0A from the
-         *     second), while arm 3 stores SIX (adding out+0x0C from b[2]).
-         *     Retail has 16 `sh $s7` in total: 5 + 5 + 6. */
+        /* Retail's three arms share the final b.z store at 8007C628.
+         * Keep the matching-build expression unchanged here; the native
+         * branches below restore that shared-tail effect for edges 1/2. */
         if (sideMask == 1) {
             const s16* a = (const s16*)(vertBase + tri[0] * 8);
             const s16* b = (const s16*)(vertBase + tri[1] * 8);
@@ -1986,6 +1979,10 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
             ((u16*)outEdge)[0x2] = (u16)a[2];
             ((u16*)outEdge)[0x4] = (u16)b[0];
             ((u16*)outEdge)[0x5] = (u16)b[1];
+#ifdef XENO_PC_PORT
+            /* 8007C4C0 / 8007C570 jump to the b.z store at 8007C634. */
+            ((u16*)outEdge)[0x6] = (u16)b[2];
+#endif
         } else if (sideMask == 2) {
             const s16* a = (const s16*)(vertBase + tri[1] * 8);
             const s16* b = (const s16*)(vertBase + tri[2] * 8);
@@ -1995,6 +1992,10 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
             ((u16*)outEdge)[0x2] = (u16)a[2];
             ((u16*)outEdge)[0x4] = (u16)b[0];
             ((u16*)outEdge)[0x5] = (u16)b[1];
+#ifdef XENO_PC_PORT
+            /* 8007C4C0 / 8007C570 jump to the b.z store at 8007C634. */
+            ((u16*)outEdge)[0x6] = (u16)b[2];
+#endif
         } else {
             const s16* a = (const s16*)(vertBase + tri[2] * 8);
             const s16* b = (const s16*)(vertBase + tri[0] * 8);
