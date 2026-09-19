@@ -4292,6 +4292,38 @@ back to the title instead of a stub that never returns control.
 Evidence: observed (runtime, 2026-09-18)
 Last verified @ c7717819
 
+## Lahan progress stops in field 12: scripted walk never completes (Fei walks in place)
+
+Measured 2026-09-19 by hand-playing the direct-boot field-14 build:
+  route  14 -> 13 -> 1 -> 9 -> 1 -> 11 -> 12
+  symptom: the Alice scene starts, Alice speaks, Fei walks IN PLACE on the
+  stairs, and the scene never advances. The game is NOT hung -- it renders
+  throughout.
+
+Live diagnosis on the stuck process:
+  map=12 pos=(29,15,135) scenario=7 canRun=0 b21d0=1 status=0x0240
+  15 script actors, player = actor 1, IPs a0=53 a1=141 a2=346 a3=357
+  script bytes at IP 141: 4a 46 00  ->  opcode 0x4A = func_80099980
+
+func_80099980 (src/field/main/misc7.c:987) sets flags_0x17=0 (absolute target),
+flags_0=0xFFFF, and advances the IP ONLY when func_80099AC0(0xFFFF) returns 0.
+func_80099AC0 (misc7.c:1048) is the walk-toward-target tick -- "-1 while still
+approaching (and holds the VM via D_800B00C0=1), 0 once arrived". So Fei is
+under a scripted absolute-target walk whose movement never translates him, and
+the scene waits on an arrival that cannot happen.
+
+Almost certainly the same missing-floor cause as the field 14 entry below: a
+scripted move is resolved against the walkable surface, and if there is no
+ground along the path the actor animates without translating. This is the
+stronger form of that bug -- it blocks STORY PROGRESS, not just free walking.
+
+NEXT: instrument the move-apply path to log when a scripted move is rejected,
+then confirm the rejection coincides with absent ground under the target.
+Repro: launch with XENO_FIELD_TEST=1 XENO_FIELD_MAP=14 XENO_FIELD_ENTRANCE=0 on
+a real display and play through to field 12 (the Alice scene).
+Evidence: proven (runtime, live gdb on the stuck process, 2026-09-19)
+Last verified @ a64d5a78
+
 ## Field 14 driving: harness must wait on canRun=1, not a fixed delay (NOT a port bug)
 
 Measured 2026-09-19. Filed so nobody re-opens this as a port defect: the
@@ -4336,7 +4368,11 @@ direct-boot with XENO_FIELD_MAP=14 XENO_FIELD_ENTRANCE=0 places the player at
 exactly (115,-455) -- the same spot as the post-battle return -- so that is a
 legitimate entrance-0 spawn of the map, not a battle or scene artifact.
 
-Field 14 has at least TWO DISJOINT walkable areas
+RETRACTED 2026-09-19: "area A is sealed" was WRONG -- a hand-played run crossed
+field 14 from (115,-455) to (204,-33) and left via field 13. The automated walk
+that never crossed z ~ -410 was the greedy navigator failing, not a wall.
+Field 14 has at least TWO DISJOINT walkable areas AS MEASURED BY THAT WALKER,
+but they are evidently connected in ways it could not find
 (scratchpad/field14_entrance_walk.py, ~20 s per boot):
   entrance 0 -> (115,-455), walks x[94,162] z[-496,-409], 142 distinct
   entrance 1 -> (182,245),  walks x[30,340] z[167,334],   364 distinct
