@@ -4310,3 +4310,38 @@ Fix shape: refuse to queue a quick load when no field with free player control
 is loaded, rather than queueing and faulting.
 Evidence: observed (runtime, 2026-09-18)
 Last verified @ c7717819
+
+## Field 14: the player intermittently cannot walk, with free control and input arriving
+
+Measured 2026-09-19. After the dream battle returns to the painting room the
+player actor (index 1) parks on VM opcode `0x0C` (`func_8009F5A8`, the player
+idle-hold wrapper that calls `func_8009F5F4` = OP_UPDATE_CHARACTER every
+frame), i.e. the scene has ended and the player HAS control. Held d-pad input
+demonstrably reaches the field: POSDIAG's `held=` mask shows Up 0x1000, Right
+0x2000, Down 0x4000, Left 0x8000 and both diagonals 0x3000/0xc000.
+
+And the player still does not move. Run w6: 65 samples in field 14, 22 of them
+with a direction held, **zero** followed by a position change, **one** distinct
+position for the whole run -- (115,0,-455), the post-battle spawn. Run w1, same
+probe and procedure on the preceding build, moved normally (7 distinct
+positions, x in [88,161], z in [-495,-413]). So it varies run to run.
+
+This is what actually blocks leaving Lahan's first room. It is NOT the
+previously-recorded "field 14 keeps Fei script-locked" (disproved: opcode 0x0C)
+and NOT missing input (disproved: the held mask). Two further candidates were
+tested and disproved: the boot pad schedule's Circle pulse train (retired with
+the new XENO_PAD_TEST_STOP_FIELD and the player still did not move) and
+diagonals not reaching the pad (0xc000 observed).
+
+Not yet printed, and the place to look: the gates inside OP_UPDATE_CHARACTER --
+`D_800ADB68` (playerCanRun), `D_800B21D0`, `D_800ADB64` (active field/menu
+owner, 0xFF = none), and the player actor's `status & 0x1800` script lock.
+Compare a walking run against a non-walking one.
+
+Repro: python3 scratchpad/field14_walk.py <tag> <display> 3.5
+       (then check `held=` vs `pos=` in /var/tmp/xeno-leaf-push/walk14-<tag>/run.log)
+Note: the exit itself is fine -- XENO_FIELD_WARP=14:335:-26:600:5 puts the
+player in the room's only trigger zone and the field changes to 13 immediately.
+Evidence: proven (runtime, port telemetry, 2026-09-19)
+Last verified @ 999cc13e
+
