@@ -55,6 +55,14 @@ time.sleep(2)
 env = {k: v for k, v in os.environ.items() if not k.startswith("XENO_")}
 env.update(DISPLAY=f":{DISP}", SDL_VIDEODRIVER="x11", XENO_KERNEL_SEL="0",
            XENO_PAD_TEST_INPUT=SCHEDULE.read_text().strip())
+# The XENO_ filter above exists so a stale harness variable cannot change the
+# route, but diagnostics have to reach the game: forward the trace/diag ones
+# explicitly (they only add logging, they never alter game state).
+for passthrough in ("XENO_VM_TRACE", "XENO_VM_TRACE_REPEAT", "XENO_VM_TRACE_MAX",
+                    "XENO_VM_TRACE_FIELD", "XENO_FIELD_POS_DIAG", "XENO_FIELD_DIAG",
+                    "XENO_DISTORTION_DIAG"):
+    if os.environ.get(passthrough):
+        env[passthrough] = os.environ[passthrough]
 game = subprocess.Popen(["stdbuf", "-oL", "-eL", BIN], cwd=ROOT, env=env,
                         stdout=log, stderr=subprocess.STDOUT)
 (OUT / "process.json").write_text(f'{{"game": {game.pid}, "xvfb": {xvfb.pid}, "display": "{DISP}"}}\n')
