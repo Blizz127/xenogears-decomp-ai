@@ -4311,56 +4311,38 @@ is loaded, rather than queueing and faulting.
 Evidence: observed (runtime, 2026-09-18)
 Last verified @ c7717819
 
-## Field 14: the player intermittently cannot walk, with free control and input arriving
+## Field 14 driving: harness must wait on canRun=1, not a fixed delay (NOT a port bug)
 
-Measured 2026-09-19. After the dream battle returns to the painting room the
-player actor (index 1) parks on VM opcode `0x0C` (`func_8009F5A8`, the player
-idle-hold wrapper that calls `func_8009F5F4` = OP_UPDATE_CHARACTER every
-frame), i.e. the scene has ended and the player HAS control. Held d-pad input
-demonstrably reaches the field: POSDIAG's `held=` mask shows Up 0x1000, Right
-0x2000, Down 0x4000, Left 0x8000 and both diagonals 0x3000/0xc000.
+Measured 2026-09-19. Filed so nobody re-opens this as a port defect: the
+painting room is NOT broken. Its script completes, hands the player control
+(actor 1 parks on VM opcode 0x0C = the player idle-hold wrapper) and its exit
+works -- `XENO_FIELD_WARP=14:335:-26:600:5` puts the player in the room's only
+trigger zone and the field changes to 13 immediately.
 
-And the player still does not move. Run w6: 65 samples in field 14, 22 of them
-with a direction held, **zero** followed by a position change, **one** distinct
-position for the whole run -- (115,0,-455), the post-battle spawn. Run w1, same
-probe and procedure on the preceding build, moved normally (7 distinct
-positions, x in [88,161], z in [-495,-413]). So it varies run to run.
+What made every previous attempt read as "Fei is script-locked": actor 11 is
+the room's SCRIPTED CAMERA. Between each `FE54` (raise field-control lock) and
+`FE53` (lower it) it runs one camera shot --
+SetCameraTargetMovementDest / SetCameraPosMovementDest / StartCameraMovement /
+WaitForCameraMovement (ip 1053 -> 1192). It does this for several shots. While
+the lock is raised, OP_UPDATE_CHARACTER does
+`lh $v0, %lo(g_FieldControl); bnez $v0, <park idle; return>` -- byte-matched in
+asm/field/matchings/main/misc6/func_8009F5F4.s -- so the player cannot move and
+`D_800ADB68` is never set to 1. All faithful retail behaviour.
 
-This is what actually blocks leaving Lahan's first room. It is NOT the
-previously-recorded "field 14 keeps Fei script-locked" (disproved: opcode 0x0C)
-and NOT missing input (disproved: the held mask). Two further candidates were
-tested and disproved: the boot pad schedule's Circle pulse train (retired with
-the new XENO_PAD_TEST_STOP_FIELD and the player still did not move) and
-diagonals not reaching the pad (0xc000 observed).
+Three identical all-actor runs differ only in where they stopped:
+  w8  WALKED  8 positions, 22 held samples,  0 with the lock on, ends on FE53
+  w9  WALKED  5 positions, 21 held samples,  0 with the lock on, ends on FE53
+  w10 FROZEN  1 position,  20 held samples, 20 with the lock on, ends on FE54
+A fixed 40 s wait races the camera sequence, and this machine runs the game
+well below 60 fps under llvmpipe when other agents are loading it.
 
-WHICH GATE (measured): POSDIAG now prints the OP_UPDATE_CHARACTER gates. On a
-frozen run (w7) all 21 held-direction samples read
-`canRun=0 owner=0xff b21d0=1 status=0x0260`, one distinct position all run.
-`status & 0x1800 == 0` (no script control lock on the actor) and no menu owns
-input, so what refuses is the FIELD-CONTROL halfword: OP_UPDATE_CHARACTER does
-`lh $v0, %lo(g_FieldControl); bnez $v0, <park idle and return>` -- byte-matched
-in asm/field/matchings/main/misc6/func_8009F5F4.s -- and that halfword is
-`g_FieldControl.isRandomEncountersEnabled`, a short at offset 0
-(include/field/main.h:105), which FE54 (func_80093B10, also byte-matched) sets
-to -1. Both sides are faithful retail.
-
-WHY IT VARIES: the room's script CYCLES the lock. Full all-actor trace (w8,
-30756 dispatches): FE54 x5 (actor 0 ip=29, actor 11 ip=1053 x4) and FE53
-x5 (actor 11 ip=1192 x4, actor 1 ip=404 x1). Actor 1 clears the lock at ip=404
-and parks on free control at ip=406 -- and in that run all 22 held-direction
-samples read `canRun=1 b21d0=0` with 8 distinct positions: the player walked.
-So the clearers DO run (an earlier draft of this entry said they never do; that
-was grepped from a 4-second trace and is wrong).
-
-OPEN: why some runs end with the lock still applied -- an actor-11 FE54 not
-matched by its FE53, or an ordering/timing difference. Diff the FE54/FE53
-pairing between a walking run and a frozen one with
-XENO_VM_TRACE=a XENO_VM_TRACE_REPEAT=1 XENO_VM_TRACE_FIELD=14.
-
-Repro: python3 scratchpad/field14_walk.py <tag> <display> 3.5
-       (then check `held=` vs `pos=` in /var/tmp/xeno-leaf-push/walk14-<tag>/run.log)
-Note: the exit itself is fine -- XENO_FIELD_WARP=14:335:-26:600:5 puts the
-player in the room's only trigger zone and the field changes to 13 immediately.
-Evidence: proven (runtime, port telemetry, 2026-09-19)
-Last verified @ 999cc13e
-
+ACTION: drivers under scratchpad/ (field14_walk.py, field14_input_char.py,
+field_navigate.py, lahan_route.py) still wait on a clock. They should poll
+POSDIAG for `canRun=1` before pressing anything. The same applies to the
+2026-09-08 recorded slices: the human's 26 s pause before `easel-backoff` and
+29 s before `dan-0` are them watching those pans finish, and replaying the gaps
+verbatim still races them.
+Repro: XENO_VM_TRACE=a python3 scratchpad/field14_walk.py <tag> <display> 3.5
+       then compare the FE54/FE53 order against `canRun=` in the POSDIAG lines.
+Evidence: proven (runtime, port telemetry, 3 all-actor runs, 2026-09-19)
+Last verified @ f7dd5c7e

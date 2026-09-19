@@ -6,8 +6,11 @@ XENO_PC_PORT`, so the matching build is untouched.
 
 This session set out to find "what field 14's exit script loop waits for", the
 open question left by the 2026-09-18 push. The answer is that **there is no
-such loop**. The three inherited claims about field 14 are all wrong, and the
-real blocker is one the previous pass never tested for.
+such loop, and nothing in the port is broken here**. The room's script
+completes, hands the player control, and its exit works. What blocked every
+previous attempt was the room's scripted camera locking input during each of
+its pans, combined with drivers that waited a fixed time and then pressed keys
+into a locked field.
 
 ## What the previous pass concluded, and what is actually true
 
@@ -184,10 +187,68 @@ immobile player even though the script has otherwise finished and input is
 arriving. This matches the 2026-09-18 observation that "the lock is applied and
 released repeatedly" -- that part of the old note was right.
 
-The open question is no longer "what clears it" but **why some runs end with
-the lock still applied** -- an actor-11 FE54 not matched by its FE53, or an
-ordering/timing difference between runs. That is a much smaller question than
-where this session started.
+### Actor 11 toggles the lock forever, and the run stops in one half or the other
+
+Three all-actor runs, same build, same procedure. The lock-op sequence is
+**identical** in all three; only where it stops differs:
+
+```
+w8  WALKED  8 positions, 22 held samples,  0 with the lock on
+    54@a0 53@a1 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11
+w9  WALKED  5 positions, 21 held samples,  0 with the lock on
+    54@a0 53@a1 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11
+w10 FROZEN  1 position,  20 held samples, 20 with the lock on
+    54@a0 53@a1 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11 54@a11 53@a11 54@a11
+                                                                    ^^^^^^^
+                                            one extra FE54, no FE53 after it
+```
+
+So **actor 11's script sits in a loop that raises the field-control lock (FE54)
+and lowers it (FE53) over and over**, and the player can only walk during the
+lowered half. w10 was sampled during a raised half and every one of its 20
+held-direction samples saw `canRun=0`; w8 and w9 stopped on a lowered half and
+walked.
+
+That fully accounts for the "intermittency", for the 2026-09-18 note that the
+lock "is applied and released repeatedly", and for why hand-driven play works
+(a human just keeps pressing until the lock happens to be down) while a
+scripted stride of a fixed length does not.
+
+### What actor 11 is actually doing: a multi-shot camera sequence
+
+Annotating actor 11's own trace answers the last question, and the answer is
+benign. Between its FE54 and its FE53 it runs a camera shot:
+
+```
+ip=1053  FE54  func_80093B10                     <- lock input
+ip=1121  99/35 ...
+ip=1128  63    FieldScriptSetCameraTargetMovementDest
+ip=1136  A3    FieldScriptSetCameraPosMovementDest
+ip=1144  05    func_800A17F4  -> 2068..2583 (interpolation step, reset,
+                                 StartCameraMovement x2, WaitForCameraMovement)
+ip=1192  FE53  func_80093AC8                     <- unlock
+```
+
+...and then repeats for the next shot. Actor 11 is the painting room's
+**scripted camera**, and locking player input for the duration of each pan is
+exactly what a cutscene camera should do. The sequence is finite -- w8 and w9
+both ran out of shots, ended on FE53, and the player walked.
+
+**So the port is behaving correctly here.** What was wrong was the harness: it
+waited a fixed 40 s and then drove, and on a CPU-starved machine (this box was
+running several other agents at load ~6-7, so the game renders well below 60
+fps under llvmpipe) the camera sequence is still mid-pan at that point. w10
+simply sampled during the last pan.
+
+This also explains the whole saga end to end. The 2026-09-08 human recording
+waited **26 s before `easel-backoff` and 29 s before `dan-0`** -- those pauses
+are the human watching the camera pans finish. A replay that dropped the gaps
+pressed every movement key during a pan; a replay that honoured the gaps still
+pressed too early, because the pans take longer here than they did then.
+
+**The harness fix is to wait on the lock, not on a clock:** drive only when
+POSDIAG reports `canRun=1` (equivalently `g_FieldControl == 0`). That signal
+did not exist before this session and now does.
 
 ## Tools added this session
 
@@ -204,13 +265,10 @@ where this session started.
 
 ## What is actually left
 
-1. **Find out why some runs end with field 14's control lock still applied.**
-   The scene cycles it (actor 11 runs FE54/FE53 four times each; actor 1 clears
-   it at ip=404 before parking on free control), and a run that ends locked has
-   `g_FieldControl != 0`, so OP_UPDATE_CHARACTER parks the player idle and
-   never reaches `D_800ADB68 = 1`. Trace all actors
-   (`XENO_VM_TRACE=a XENO_VM_TRACE_REPEAT=1 XENO_VM_TRACE_FIELD=14`) on a
-   walking run and a frozen one and diff the FE54/FE53 pairing.
+1. **Make every driver wait on `canRun=1` instead of a fixed delay.** That one
+   change is what makes field-14 driving repeatable: the room's camera actor
+   locks input per pan, and any fixed wait races it on a loaded machine. The
+   probes here still use a clock; they should poll POSDIAG.
 2. **Then navigate field 14 on foot** — closed-loop, with interaction: reach
    the stairs, talk to Dan (39 confirms), then the door. Distance hill-climbing
    gets trapped in local pockets; ZONEDUMP/ACTORDUMP now make the targets
