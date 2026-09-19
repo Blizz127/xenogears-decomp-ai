@@ -90,3 +90,7 @@
     "func_800B00D0",
     "func_800BCB54",
     "func_800BF0B4",
+    "func_800A3490",
+    "func_800A3514",
+    "func_800A3578",
+    "func_800A35C8",

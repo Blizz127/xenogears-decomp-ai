@@ -1,3 +1,13 @@
+### Latest native fidelity slice — 2026-09-19
+
+Four battle effect progression callbacks (`800A3490`, `800A3514`, `800A3578`,
+`800A35C8`) now have native bodies and verified scalar bridge dispatch.
+Current build: **78 function stubs, 577 data placeholders, 96 adopted battle
+leaves**. Retail-instruction differential checks pass O0/O2/UBSan; no natural
+battle-effect observation is claimed. See
+[the evidence](../evidence/battle-effect-callbacks-20260919/README.md).
+Earlier numeric coverage claims below are historical, not current certification.
+
 > **PROJECT GOAL:** a native PC port in the mould of Ship of Harkinian /
 > the Silent Hill decomp ports, ultimately re-rendered (HD-2D).
 > **Read `docs/ai_context/PORT_GOAL_AND_PLAN.md` before planning any work.**
