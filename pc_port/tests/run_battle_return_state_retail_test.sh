@@ -27,7 +27,7 @@ assert retail_sha == '05a824d3eac6a3fe154d9ae725c8ab846615bdd0a8624eb80c48cb01a7
 
 text = source.read_text()
 needle = 'void func_8001B6C4(void)'
-begin = text.index(needle)
+begin = text.index('#ifdef XENO_PC_PORT', text.index('/* func_8001B6C4 addresses'))
 # Select the XENO_PC_PORT arms while extracting so mutually exclusive braces do
 # not confuse the bounded function scanner.
 selected = []
@@ -43,7 +43,8 @@ for line in text[begin:].splitlines(keepends=True):
         enabled = stack.pop(); continue
     if enabled: selected.append(line)
 text = ''.join(selected)
-begin = 0
+begin = text.index(needle)
+prefix = text[:begin]
 brace = text.index('{', begin)
 depth = 0
 end = None
@@ -55,7 +56,7 @@ for i in range(brace, len(text)):
             end = i + 1
             break
 assert end is not None
-(out / 'production_body.c').write_text(text[begin:end] + '\n')
+(out / 'production_body.c').write_text(prefix + text[begin:end] + '\n')
 (out / 'retail_8001b6c4_8001b844.bin').write_bytes(retail)
 (out / 'pins.json').write_text(json.dumps({
     'disc': 'disc/SLUS_006.64', 'disc_sha256': disc_sha,
@@ -124,11 +125,11 @@ mutations = {
     'host-guard-split': ('*(u8*)PSX_ADDR(0x800D3338u) == 0', 'D_800D3338 == 0'),
     'mask-wide': ('D_8006F94E & 0x7FF', 'D_8006F94E & 0xFFFF'),
     'boundary-inclusive': ('tmp < 0x400', 'tmp <= 0x400'),
-    'guard-state-original': ('state = 6;', 'state = D_800C48EA;'),
+    'guard-state-original': ('next = 6;', 'next = D_800C48EA;'),
     'unknown-change-call': ('goto battle_return;',
-                            'if (state == 0xff) goto battle_return;'),
+                            'if (state == 0xff) { goto battle_return; } next = state;'),
     'reset-map0': ('D_8006F94E = 0x1EA;', 'D_8006F94E = 0x1EB;'),
-    'return-flag-unconditional': ('battle_return:\n    if (D_8005947C == 0)',
+    'return-flag-unconditional': ('battle_return:\n    if (T3_ABS7C == 0)',
                                   'battle_return:\n    if (1)'),
     'drop-reinitialize': ('GamePartySignalReinitialize();', '/* mutation: omitted */'),
 }

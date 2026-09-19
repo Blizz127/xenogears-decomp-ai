@@ -41,7 +41,9 @@ for mode in ${BATTLE_GUEST_CALL_MODES:-O0 O2 UBSan}; do
         "-DBATTLE_RUNTIME_SOURCE=\"$SOURCE\"" -c pc_port/tests/battle_guest_call_test.c -o "$OUT/$mode.test.o"
     clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c pc_port/src/battle_mips_adapter.c -o "$OUT/$mode.cpu.o"
-    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$mode.compat.o" \
+    clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+        -c pc_port/src/controller_vblank_service.c -o "$OUT/$mode.vblank.o"
+    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$mode.vblank.o" "$OUT/$mode.compat.o" \
         "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -ldl -o "$OUT/$mode"
     status=0
     "$OUT/$mode" >"$OUT/$mode.log" 2>&1 || status=$?
@@ -72,7 +74,7 @@ PYCONTROL
 for mutant in wrong-frame wrong-stack-slot drop-gp missing-context-restore aliased-args-not-snapshotted masking-ram-target; do
     clang "${COMMON[@]}" -O2 -Wall -Wextra -Werror \
         "-DBATTLE_RUNTIME_SOURCE=\"$OUT/$mutant.c\"" -c pc_port/tests/battle_guest_call_test.c -o "$OUT/$mutant.test.o"
-    clang -no-pie -O2 -Wl,--gc-sections "$OUT/O2.compat.o" "$OUT/$mutant.test.o" "$OUT/O2.cpu.o" -ldl -o "$OUT/$mutant"
+    clang -no-pie -O2 -Wl,--gc-sections "$OUT/O2.vblank.o" "$OUT/O2.compat.o" "$OUT/$mutant.test.o" "$OUT/O2.cpu.o" -ldl -o "$OUT/$mutant"
     status=0
     "$OUT/$mutant" >"$OUT/$mutant.log" 2>&1 || status=$?
     if [ "$status" -ne 1 ] || ! rg -q '^BATTLE GUEST CALL FAIL ' "$OUT/$mutant.log"; then

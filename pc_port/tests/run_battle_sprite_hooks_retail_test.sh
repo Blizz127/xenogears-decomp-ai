@@ -5,6 +5,9 @@ cd "$(dirname "$0")/../.."
 OUT=$(mktemp -d pc_port/build_native/battle_sprite_hooks_retail_test.XXXXXXXX)
 echo "BATTLE SPRITE HOOKS artifacts: $OUT"
 bridge_elf=(); if [ -f build/out/slus_006.64.elf ]; then bridge_elf+=(--elf build/out/slus_006.64.elf); fi
+# Use the same native symbol classification as the shipped port.
+# Retail addresses still come exclusively from the symbol maps.
+bridge_elf+=(--host-elf pc_port/build_native/xeno-port)
 python3 tools/scripts/gen_battle_bridge_map.py "${bridge_elf[@]}" --symbols config/symbol_addrs.slus_006.64.txt \
  --symbols linker/undefined_funcs_auto.battle.txt --symbols linker/undefined_syms_auto.battle.txt \
  --symbols config/symbol_addrs.battle.txt \

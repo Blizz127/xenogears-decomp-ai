@@ -5,8 +5,9 @@
 #include "psx_memory.h"
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
-uint8_t *D_800595D0, *D_800595A8, *D_80059480, *D_800594AC;
-uint8_t D_8005954C, D_8004F388[768];
+extern uint8_t *D_800595D0, *D_800595A8, *D_80059480, *D_800594AC;
+extern uint8_t D_8005954C;
+uint8_t D_8004F388[768];
 /* Keep the legacy generated-data symbol zero: production must use the
  * initialized retail image, not its unrelated native placeholder. */
 #define D_8004F388 ((uint8_t *)PSX_ADDR(0x8004f388u))

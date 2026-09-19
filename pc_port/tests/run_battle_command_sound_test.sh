@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+ulimit -c 0
 cd "$(dirname "$0")/../.."
 out=$(mktemp -d scratchpad/battle-command-sound.XXXXXX)
 echo "Evidence: $out"
@@ -7,7 +8,7 @@ read -r digest _ < <(dd if=disc/battle.bin bs=1 skip=$((0x1af50)) count=$((0x60)
 test "$digest" = 23a387c4a275dd2a77a95f7c3c6e0a9bc4439280b9e8c1d690201fca00f03f72
 body() {
     cc -std=gnu17 "${flags[@]}" -fno-pie -ffunction-sections -fdata-sections \
-        -DXENO_PC_PORT -DSKIP_ASM -Iinclude -Ipc_port/include_shim -c "$1" -o "$2"
+        -DXENO_PC_PORT -DXENO_BATTLE_OVERLAY_HOST_BODIES -DSKIP_ASM -Iinclude -Ipc_port/include_shim -Ipc_port/src -c "$1" -o "$2"
 }
 for mode in O0 O2 UBSan; do
     flags=(-"$mode")
@@ -21,10 +22,11 @@ for mode in O0 O2 UBSan; do
     "$out/$mode.test" | tee "$out/$mode.log"
 done
 flags=(-O2)
-for mutant in gate packed_id; do
+for mutant in gate packed_id guest_pointer; do
     case "$mutant" in
         gate) expression='s/D_800D366C != 0/D_800D366C == 0/' ;;
         packed_id) expression='s/v << 16/v << 8/' ;;
+        guest_pointer) expression='s/PSX_ADDR(bank)/(void*)(uintptr_t)bank/' ;;
     esac
     sed "$expression" src/battle/main43.c > "$out/$mutant.c"
     if cmp -s src/battle/main43.c "$out/$mutant.c"; then exit 1; fi
@@ -35,4 +37,4 @@ for mutant in gate packed_id; do
     fi
     rg -q 'COMMAND SOUND FAIL native differs from retail' "$out/$mutant.log"
 done
-echo 'COMMAND SOUND negative controls PASS gate/packed-id'
+echo 'COMMAND SOUND negative controls PASS gate/packed-id/guest-pointer'

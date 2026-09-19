@@ -38,7 +38,18 @@ void func_8008A9C0(u8 v) {
 }
 /* func_8008AA40.s */
 void func_8008AA40(u8 a) {
+#ifdef XENO_PC_PORT
+    /* The interpreter stores a 32-bit bank address in the shared selector.
+     * Retail 8008AA44/8008AA50 load that word then its +0x14 halfword.
+     * Translate RAM aliases; native bank allocations retain their address. */
+    u32 bank = D_8005919C;
+    u8* p = (bank < 0x200000u || (bank & 0xFFE00000u) == 0x80000000u ||
+             (bank & 0xFFE00000u) == 0xA0000000u)
+                ? PSX_ADDR(bank) : (void*)(uintptr_t)bank;
+    u32 v = *(u16*)(p + 0x14);
+#else
     u32 v = *(u16*)(D_8005919C + 0x14);
+#endif
 
     func_80039DB8((v << 16) | (a & 0xFF));
 }

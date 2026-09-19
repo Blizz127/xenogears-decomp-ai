@@ -122,12 +122,12 @@ void func_8003747C(void *destination)
 }
 
 void *FontLoadFont(int a0, int a1, int a2, int a3, s32 a4, s32 a5,
-                   s32 a6, s32 a7, s32 a8, s32 a9)
+                   s32 a6, s32 a7, s32 a8, s32 a9, s32 a10)
 {
     uint32_t args[] = {(uint32_t)a0, (uint32_t)a1, (uint32_t)a2,
                        (uint32_t)a3, (uint32_t)a4, (uint32_t)a5,
                        (uint32_t)a6, (uint32_t)a7, (uint32_t)a8,
-                       (uint32_t)a9, 0};
+                       (uint32_t)a9, (uint32_t)a10};
     trace_event(EV_FONT_LOAD, args, 11);
     return (void *)(uintptr_t)0x5a5aa5a5u;
 }

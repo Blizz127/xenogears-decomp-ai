@@ -16,7 +16,9 @@ for opt in O0 O2 UBSan; do
     gcc "${COMMON[@]}" "${flags[@]}" -fpermissive -w -c pc_port/src/psyq_compat.c -o "$OUT/$opt.compat.o"
     gcc "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror -c pc_port/tests/battle_graphics_abi_test.c -o "$OUT/$opt.test.o"
     gcc "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror -c pc_port/src/battle_mips_adapter.c -o "$OUT/$opt.cpu.o"
-    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$opt.compat.o" "$OUT/$opt.test.o" "$OUT/$opt.cpu.o" -ldl -o "$OUT/$opt"
+    clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+        -c pc_port/src/controller_vblank_service.c -o "$OUT/$opt.vblank.o"
+    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$opt.vblank.o" "$OUT/$opt.compat.o" "$OUT/$opt.test.o" "$OUT/$opt.cpu.o" -ldl -o "$OUT/$opt"
     "$OUT/$opt"
 done
 # A no-op at the native-to-retail boundary must fail the real opcode test.
@@ -25,7 +27,7 @@ sed '/^void func_800C11CC(void\* sprite)/,/^}/c\void func_800C11CC(void* sprite)
 sed "s|../src/battle_mips_runtime.c|$PWD/$OUT/noop-runtime.c|" \
     pc_port/tests/battle_graphics_abi_test.c > "$OUT/noop-test.c"
 gcc "${COMMON[@]}" -O2 -Wall -Wextra -Werror -c "$OUT/noop-test.c" -o "$OUT/noop-test.o"
-clang -no-pie -Wl,--gc-sections "$OUT/O2.compat.o" "$OUT/noop-test.o" \
+clang -no-pie -Wl,--gc-sections "$OUT/O2.vblank.o" "$OUT/O2.compat.o" "$OUT/noop-test.o" \
     "$OUT/O2.cpu.o" -ldl -o "$OUT/noop-test"
 if "$OUT/noop-test" > "$OUT/noop-test.log" 2>&1; then
     echo 'BATTLE SPRITE REENTRY FAIL no-op mutant survived' >&2
