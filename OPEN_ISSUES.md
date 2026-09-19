@@ -4336,12 +4336,24 @@ Three identical all-actor runs differ only in where they stopped:
 A fixed 40 s wait races the camera sequence, and this machine runs the game
 well below 60 fps under llvmpipe when other agents are loading it.
 
-ACTION: drivers under scratchpad/ (field14_walk.py, field14_input_char.py,
-field_navigate.py, lahan_route.py) still wait on a clock. They should poll
-POSDIAG for `canRun=1` before pressing anything. The same applies to the
-2026-09-08 recorded slices: the human's 26 s pause before `easel-backoff` and
-29 s before `dan-0` are them watching those pans finish, and replaying the gaps
-verbatim still races them.
+DONE (2026-09-19): scratchpad/xeno_control.py gates every movement press on
+`canRun=1` and is wired into lahan_route.py and field_navigate.py. The replay
+now reports "0 movement slices pressed while still locked" and the player
+moves. field14_walk.py / field14_input_char.py still use clocks -- gate them
+too when next touched.
+
+WHAT THAT REVEALED (the remaining blocker): with the harness race gone, a 900 s
+control-gated navigation run took 1661 samples over 291 distinct positions with
+canRun=1 on 95% of them and reached only `x [87,324] z [-496,-413]`. The player
+was free almost the whole run, so that boundary is REAL, not a stuck search:
+field 14's walkable floor is a narrow east-west strip and its only trigger zone
+(335,-26) sits ~390 units north of it. Walking to the zone from the post-battle
+spawn is not possible.
+
+NEXT: the exit is almost certainly a DOOR ACTOR answering Circle, not the zone.
+The recorded route's exit slice is `house-exit z` (a Circle press), and
+ACTORDUMP puts actor 14 at (358,-421), just past the strip's east end. Walk to
+roughly (324,-430) with the control gate on and press Circle.
 Repro: XENO_VM_TRACE=a python3 scratchpad/field14_walk.py <tag> <display> 3.5
        then compare the FE54/FE53 order against `canRun=` in the POSDIAG lines.
 Evidence: proven (runtime, port telemetry, 3 all-actor runs, 2026-09-19)
