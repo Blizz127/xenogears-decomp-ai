@@ -75,8 +75,9 @@ static int checkpoint_is_safe(void)
 void PcPort_QuickCheckpointRequestSave(void)
 {
     if (!PcPort_QuickRequestQueue(&s_request, PC_PORT_QUICK_REQUEST_SAVE,
-                                  s_fieldActive)) {
-        fprintf(stderr, "[xeno-port][quick] F7 ignored: not in a field\n");
+                                  s_fieldActive &&
+                                  (g_GameSceneMapNum & 0x3FFF) != 490)) {
+        fprintf(stderr, "[xeno-port][quick] F7 ignored: not in a gameplay field\n");
         return;
     }
     fprintf(stderr, "[xeno-port][quick] save queued\n");
@@ -137,9 +138,19 @@ int PcPort_QuickCheckpointPoll(void)
     PcPortQuickCheckpoint checkpoint;
     const char* path;
     PcPortQuickRequestAction request;
+    /* A title-menu poll can prepare the load; keep the result available for
+     * FieldMain's next poll after the menu's own cleanup has finished. */
+    if (s_loadReady)
+        return 1;
     if (s_request.action == PC_PORT_QUICK_REQUEST_NONE)
         return 0;
-    if (!checkpoint_is_safe()) {
+    /* Map 490 is the retail title field. It owns script control and has no
+     * controllable player, but Poll runs only after field initialization and
+     * between updates, where the existing teardown/load path is safe. Allow
+     * only loading here: capturing title state would overwrite earned progress.
+     * Short-circuit before consulting any stale player actor on the title. */
+    if (!(s_fieldActive && s_request.action == PC_PORT_QUICK_REQUEST_LOAD &&
+          (g_GameSceneMapNum & 0x3FFF) == 490) && !checkpoint_is_safe()) {
         if (!s_request.wait_reported) {
             fprintf(stderr,
                     "[xeno-port][quick] queued: waiting for free field control\n");

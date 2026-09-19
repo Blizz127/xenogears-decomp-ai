@@ -20,6 +20,7 @@ FieldActor g_TestFieldActors[1];
 FieldActor* volatile g_FieldActors = g_TestFieldActors;
 s32 D_800ADB64;
 s32 D_800ADB68;
+s32 D_800ADBFC = 1;
 u8 D_800B21D0;
 
 static ActorData* g_actor;
@@ -47,6 +48,8 @@ static void reset_case(void)
     memset(g_actor, 0, sizeof(*g_actor));
     g_GameSceneMapNum = 13;
     g_PlayerActorIndex = 0;
+    g_FieldActors = g_TestFieldActors;
+    D_800ADBFC = 1;
     D_800ADB64 = 0xFF;
     D_800ADB68 = 1;
     D_800B21D0 = 0;
@@ -148,6 +151,60 @@ int main(int argc, char** argv)
             "inactive request did not fail");
     require(access(g_path, F_OK) != 0, "inactive request wrote checkpoint");
     puts("QUICK GATE inactive field: PASS");
+
+    /* A real field checkpoint can be loaded from the fully initialized title
+     * loop, whose script owns control and has no usable player actor. */
+    reset_case();
+    PcPort_QuickCheckpointRequestSave();
+    expect_saved("title fixture");
+    g_GameSceneMapNum = 490;
+    D_800ADB68 = 0;
+    D_800B21D0 = 1;
+    D_800ADBFC = 0;
+    g_FieldActors = NULL;
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointPoll() == 1, "title load did not complete");
+    require(PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_OK,
+            "title load did not report success");
+    require(PcPort_QuickCheckpointPoll() == 1, "title handoff lost pending load");
+    memset(g_GameState, 0, sizeof(g_GameState));
+    PcPort_QuickCheckpointCommitLoad();
+    require(*(u16*)(g_GameState + 0x231A) == 13 &&
+            *(u16*)(g_GameState + 0x2320) == 7 && g_GameState[0] == 0x5A,
+            "title load did not restore saved state/map/entrance");
+    PcPort_QuickCheckpointRequestSave();
+    require(PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_SAVE_ERROR,
+            "title save must be rejected");
+    { PcPortQuickCheckpoint preserved;
+      require(PcPort_QuickCheckpointReadFile(g_path, &preserved) == 0 &&
+              preserved.map == 13 && preserved.game_state[0] == 0x5A,
+              "title save changed existing checkpoint"); }
+
+    /* The title exemption cannot bypass locks on a gameplay map. */
+    g_GameSceneMapNum = 13;
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointPoll() == 0 &&
+            PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_PENDING,
+            "locked gameplay accepted title exemption");
+    PcPort_QuickCheckpointSetFieldActive(0);
+    g_GameSceneMapNum = 490;
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_ERROR,
+            "inactive title accepted load");
+    PcPort_QuickCheckpointSetFieldActive(1);
+    unlink(g_path);
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointPoll() == 0 &&
+            PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_ERROR,
+            "missing title checkpoint was not rejected");
+    { FILE* f = fopen(g_path, "wb"); require(f != NULL, "corrupt fixture");
+      fputs("not a checkpoint", f); fclose(f); }
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointPoll() == 0 &&
+            PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_ERROR,
+            "corrupt title checkpoint was not rejected");
+    unlink(g_path);
+    puts("QUICK GATE title load/overwrite protection/invalid files: PASS");
 
     require(munmap(g_actor_mapping, 4096) == 0, "actor unmap");
     puts("QUICK CHECKPOINT GATE PASS stable-file/blocked-controls/release");

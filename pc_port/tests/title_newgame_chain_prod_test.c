@@ -150,7 +150,8 @@ int ArchiveGetDiscNumber(void) { return 1; }
 void func_801E8474(s32 a, void* b) { (void)a; (void)b; }
 void func_801E8018(s32 a, void* b, void* c, void* d) { (void)a; (void)b; (void)c; (void)d; }
 void func_801D22C4(void) {}
-void func_801E8044(s32 a, void* b) { (void)a; (void)b; }
+static int s_titleCleanup;
+void func_801E8044(s32 a, void* b) { (void)a; (void)b; s_titleCleanup++; }
 void func_801E8978(s32 a, s32 b, void* c) { (void)a; (void)b; (void)c; }
 void func_801E8070(s32 a, void* b, void* c, void* d, void* e, s32 f, s32 g, s32 h)
 {
@@ -182,6 +183,8 @@ static const u8* s_pumpScript;
 static int s_pumpLength;
 static int s_pumpCalls;
 static int s_choiceAtConfirm = -1;
+static int s_checkpointReady;
+int PcPort_QuickCheckpointPoll(void) { return s_checkpointReady; }
 
 void func_801C7BF4(void)
 {
@@ -237,6 +240,8 @@ static void reset_menu_fixture(void)
     s_newGameCalls = 0;
     s_optionsCalls = 0;
     s_pumpCalls = 0;
+    s_checkpointReady = 0;
+    s_titleCleanup = 0;
     s_choiceAtConfirm = -1;
 }
 
@@ -418,6 +423,19 @@ static void test_title_loop_default_is_continue(void)
           "title.idle.timeout.exit");
 }
 
+static void test_title_checkpoint_handoff(void)
+{
+    reset_menu_fixture();
+    g_Menu->menu1Choice = 1;
+    s_checkpointReady = 1;
+    func_801C58EC();
+    check(s_pumpCalls == 1, "title.checkpoint.exits.without.idle.timeout");
+    check(s_titleCleanup == 1, "title.checkpoint.cleans.up");
+    check(s_newGameCalls == 0 && s_continueCalls == 0,
+          "title.checkpoint.does.not.execute.menu.choice");
+    check(D_800594D0 == 0, "title.checkpoint.does.not.select.attract.mode");
+}
+
 int main(void)
 {
     test_fe60_arms_transition();
@@ -427,6 +445,7 @@ int main(void)
     test_menu_input_decode();
     test_title_loop_new_game();
     test_title_loop_default_is_continue();
+    test_title_checkpoint_handoff();
 
     if (s_failures != 0) {
         fprintf(stderr, "TITLE NEWGAME CHAIN certificate FAIL (%d)\n", s_failures);

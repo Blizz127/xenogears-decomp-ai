@@ -370,6 +370,8 @@ extern u8 D_801E9E84[];
 extern u8 D_801E9784;
 extern u8 D_800594D0;
 
+extern int PcPort_QuickCheckpointPoll(void);
+
 /* Title / New Game / Continue input loop (asm 0x801C58EC-0x801C5B50).
  * Opened when the field title map (490) hits FE57 → D_800ADB64=2 →
  * MenuExecute jtbl slot 2 → func_801C62A8 with D_80059460==2.
@@ -394,6 +396,10 @@ void func_801C58EC(void) {
         u8 input;
 
         func_801C7BF4();
+        /* Native checkpoint loads must leave this nested menu loop through
+         * its normal cleanup before FieldMain performs the field teardown. */
+        if (PcPort_QuickCheckpointPoll())
+            break;
         input = g_Menu->input;
 
 #ifdef TITLE_CHAIN_MUTANT_TITLE_UP_IS_DOWN

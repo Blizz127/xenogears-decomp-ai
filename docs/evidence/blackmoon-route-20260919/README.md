@@ -4,8 +4,9 @@ Goal: retail-faithful normal play from the opening through Blackmoon Forest.
 Status: **IN_PROGRESS**, not a parity certificate.
 
 Fresh run starts at commit 7d50c62a using normal retail boot and title New Game.
-No field-map override, scenario override, checkpoint load, forced battle result,
-teleport or game-state patch is used. HD-2D Fei remains enabled as requested;
+The initial run used no field-map override, scenario override, checkpoint load,
+forced battle result, teleport or game-state patch. A later process restart and
+earned-checkpoint continuation are recorded below. HD-2D Fei remains enabled as requested;
 its optional presentation changes are separate from retail simulation fidelity.
 
 Local evidence is `scratchpad/blackmoon-route-20260919/`: run.json pins the
@@ -88,3 +89,78 @@ Health management is the next gameplay decision. Normal battle Escape via its
 command menu is allowed; the keyboard Escape test bypass remains forbidden.
 The goal is still incomplete: Citan, burning Lahan, aftermath/world departure,
 and Blackmoon Forest have not been reached on this fresh run.
+
+## Process interruption and earned-checkpoint continuation
+
+After the fifth victory, ordinary walking returned through Lahan (field1),
+Fei's main floor (field13), and his basement room (field14). The bed interaction
+displayed "Took your hidden money." (`bed4.png`). Rest and restored HP were not
+yet observed. The session was then interrupted; on the next live check neither
+the game nor Xvfb existed. The log has no recorded fatal error at its end. Cause
+of process termination is unverified; do not classify it as a reproduced game
+crash. No save was made after leaving the fifth-victory checkpoint.
+
+The original `runtime.log` and `run.json` are preserved. A new process was
+launched with the identical binary SHA256 (c62d685ea6e834b284e1af93782a706d7f4a7bd8e10771fc845232be6537f4f8),
+same isolated checkpoint path, normal boot, and HD-2D enabled. Its log is
+`runtime-resume1.log`, with pins in `resume1.json`. Normal New Game was selected
+because loading checkpoints requires free field control. The continuation is
+intended to load only this run's earned `route.xgqs`; load acceptance and recovery
+remain pending until observed. This is not an uninterrupted playthrough.
+
+## Title checkpoint recovery fix
+
+The first restart replayed the opening (using 5x for the already-covered segment,
+restored to 1x before F8) and loaded the earned fifth-victory checkpoint. A random
+encounter interrupted the return home. Fei entered with 11/52 HP and was defeated
+after normal Escape attempts. The later checkpoint is preserved; continuation
+uses a separate byte-identical copy of this run's first-victory checkpoint in
+`recovery.xgqs` (SHA256 a9b6a8a559f4cc99e14d309aa2657753a49441080315d19b3eb3a5b9bf8922bd).
+This explicitly rolls back the later four victories for the ongoing route.
+
+Recovery exposed a native checkpoint gap: title field490 has no controllable
+player and its nested menu loop prevents FieldMain polling. F8 stayed pending.
+The fix permits loads in the initialized title field, rejects title saves, polls
+in the port title-menu body and carries the prepared load through ordinary menu
+cleanup to FieldMain's existing teardown. Other gameplay control gates remain.
+The first live attempt with only the field gate fixed stayed pending, motivating
+the title-loop regression and handoff fix. This supports native checkpoints;
+it does not implement retail memory-card Continue or certify that interface.
+
+Validation:
+- Real checkpoint gate regression failed before the fix at title loading; O0,
+  O2 and UBSan now pass. Tests cover locked gameplay, inactive title, missing and
+  corrupt files, preserved save contents, and the two-stage menu/field handoff.
+- Production-linked title-chain tests pass O0/O2/UBSan, including checkpoint
+  exit/cleanup without selecting New Game, Continue or attract mode. Existing
+  five negative-control mutants still fail as expected.
+- Existing file, request, collision-restore and integration regressions pass.
+- Full native build passes: 78 generated function stubs, 96 adopted leaves.
+- Fresh before/after MIPS compilation of `src/menu/main/misc.c` gives identical
+  whole `.text` bytes, SHA256
+  `7ff8ccc25bf6ba12b25cd80e2e813799fb77cbf9c2a5271a32ced06230ee2504`.
+  The title hook is exclusively in the XENO_PC_PORT branch. This proves no
+  MIPS change from this patch, not whole-port byte identity.
+- Live rebuilt game: title F7 rejected; F8 loaded field15 at (555,-40,-737).
+  `title-load-pass2.png` shows LOADED and HD2D ON. The source checkpoint hash
+  remained unchanged. A natural random encounter followed; Fei displayed49/50HP.
+
+Current continuation is pinned by `resume3.json`, with log `runtime-resume3.log`.
+The earlier PIDs above are historical. Full Blackmoon route acceptance remains
+incomplete; no new retail movement/combat repair was justified in this segment.
+
+The subsequent encounter was won normally and returned to field15. Directional
+input then moved Fei from (578,-19,-610) to (380,-36,-851), verifying movement
+after title load and battle return. Walking through Lahan, field13 and field14
+reached the bed. The normal interaction awarded200G, showed the rest prompt,
+and Yes restored Fei: `recovery-stats2.png` shows level1,50/50HP,10/10EP,300G.
+The menu cancelled normally; F7 saved field14 at (232,0,-237).
+`recovery.xgqs` now holds that earned rested state; `rested-at-home.xgqs` is a
+preserved copy. The earlier first/fifth-victory and route checkpoints remain.
+Live continuation at this entry: PID96416, Xvfb :95, window2097204,1x speed,
+HD2D ON; all automation/input scripts have finished. Verify these live before
+resuming. The map camera differs from the previous low-HP run: in the present
+orientation Down approximately decreases x and z; Down+Right decreases z.
+Next: return to mountain, follow the western ascent/running-jump route to Citan,
+and continue required story progression. Bed recovery and checkpoint recovery
+are observed; Blackmoon Forest and full retail fidelity are still unproven.
