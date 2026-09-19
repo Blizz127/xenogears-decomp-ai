@@ -1716,6 +1716,8 @@ int Vsync(int mode)
 
     /* TEST TOOLING: headless walk telemetry (XENO_FIELD_POS_DIAG). */
     { extern void PcPort_FieldPosDiag(void); PcPort_FieldPosDiag(); }
+    /* TEST TOOLING: one-shot debug teleport (XENO_FIELD_WARP); inert unset. */
+    { extern void PcPort_FieldWarpDiag(void); PcPort_FieldWarpDiag(); }
     /* Pace first so the newly elapsed tick is serviced before returning.
      * All entry points share one counter cursor, including the guest pump. */
     count = VSync(mode);

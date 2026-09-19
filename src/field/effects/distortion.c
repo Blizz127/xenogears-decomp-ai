@@ -3,6 +3,8 @@
 #include "field/effects.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
@@ -29,6 +31,26 @@ void FieldDistortionSetTarget(int, int, int, int, int, int, int);
     (g_FieldEffects.distortion.member)
 #define FIELD_DISTORTION_STORE_BUFFER(member, value) \
     (g_FieldEffects.distortion.member = (value))
+#endif
+
+#ifdef XENO_PC_PORT
+/* DIAGNOSTIC -- XENO_DISTORTION_DIAG=1.
+ * Script opcode FE27 case 1 waits for distortion.isActive to clear, and the
+ * ONLY writer that clears it on completion is FieldDistortionDraw below
+ * (duration expired AND isFinished set).  A field that hangs on that wait is
+ * therefore either not drawing, not counting down, or not marked finished, and
+ * those three are indistinguishable from the script side -- hence the counter.
+ * Removal: delete these two symbols and their three uses. */
+unsigned long g_XenoDistortionDrawCalls = 0;
+int g_XenoDistortionDiag = -1;
+
+int PcPort_DistortionDiagEnabled(void) {
+    if (g_XenoDistortionDiag < 0) {
+        const char* e = getenv("XENO_DISTORTION_DIAG");
+        g_XenoDistortionDiag = (e != NULL && e[0] != '\0' && e[0] != '0');
+    }
+    return g_XenoDistortionDiag;
+}
 #endif
 
 void FieldDistortionFree(void) {
@@ -173,6 +195,10 @@ void FieldDistortionDraw(void) {
     extern void* g_FieldCurRenderContext;
     extern u8 D_800B1E18[];
     extern int rsin(int angle);
+
+#ifdef XENO_PC_PORT
+    g_XenoDistortionDrawCalls++;
+#endif
 
     if (distortion->isActive == 0) {
         return;

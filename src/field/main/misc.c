@@ -8,6 +8,9 @@
 #include "field/text_box.h"
 #include "field/particles.h"
 #include "field/effects.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#endif
 
 void FieldScriptMemoryWriteU16(int, int);
 
@@ -1516,6 +1519,13 @@ void func_8008B248(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xB;
 }
 
+#ifdef XENO_PC_PORT
+/* Defined in src/field/effects/distortion.c alongside the only writer that
+ * clears distortion.isActive; see the FE27 case 1 diagnostic below. */
+extern unsigned long g_XenoDistortionDrawCalls;
+extern int PcPort_DistortionDiagEnabled(void);
+#endif
+
 void func_8008B2F0(void) {
     FieldDistortionInitialize(0);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xF;
@@ -1529,6 +1539,28 @@ void func_8008B328(void) {
             g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
             break;
         case 1:
+#ifdef XENO_PC_PORT
+            /* DIAGNOSTIC (XENO_DISTORTION_DIAG=1): this wait hangs field 14
+             * after the dream battle.  Print the three inputs that decide it
+             * plus the draw counter, rate-limited so a long wait stays
+             * readable.  Removal: delete this block. */
+            if (g_FieldEffects.distortion.isActive != 0 &&
+                PcPort_DistortionDiagEnabled()) {
+                static unsigned long s_waits;
+                if ((s_waits++ % 60) == 0) {
+                    printf("[xeno-port][distortion] FE27 wait #%lu "
+                           "isActive=%d isFinished=%d duration=%d "
+                           "v1=%d v2=%d draws=%lu\n",
+                           s_waits, (int)g_FieldEffects.distortion.isActive,
+                           (int)g_FieldEffects.distortion.isFinished,
+                           (int)g_FieldEffects.distortion.duration,
+                           (int)g_FieldEffects.distortion.v1,
+                           (int)g_FieldEffects.distortion.v2,
+                           g_XenoDistortionDrawCalls);
+                    fflush(stdout);
+                }
+            }
+#endif
             if (g_FieldEffects.distortion.isActive == 0) {
                 g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
             } else {

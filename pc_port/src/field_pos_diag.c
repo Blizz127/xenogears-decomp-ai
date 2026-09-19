@@ -32,6 +32,7 @@
 extern s32 g_PlayerActorIndex;
 extern void* D_8005A4E0; /* loaded field header; +0x12C = triggers size */
 extern int g_GameSceneMapNum;
+extern s32 D_800ADBFC;   /* live field actor count */
 
 void PcPort_FieldPosDiag(void)
 {
@@ -77,6 +78,37 @@ void PcPort_FieldPosDiag(void)
     zoneCount = (int)(*(u32*)((u8*)D_8005A4E0 + 0x12C) / sizeof(FieldTriggerZone));
     if (zoneCount < 0 || zoneCount > 256)
         return;
+    /* One-time per field: dump every trigger zone's quad.  "inZones=[]" tells
+     * a walk that it is not standing in a zone but not where any zone IS, so
+     * route-finding degenerates to blind sweeping -- which is how field 14 got
+     * mis-read as a script lock.  Printed once per loaded field, keyed on the
+     * trigger table pointer so a re-entry re-dumps. */
+    {
+        static FieldTriggerZone* dumped = NULL;
+
+        if (dumped != g_pFieldTriggerZones) {
+            int i;
+
+            dumped = g_pFieldTriggerZones;
+            printf("[xeno-port][test] ZONEDUMP map=%d count=%d\n",
+                   g_GameSceneMapNum & 0xFFF, zoneCount);
+            for (i = 0; i < zoneCount; i++) {
+                FieldTriggerZone* z = &g_pFieldTriggerZones[i];
+
+                if (z->x0 == 0 && z->z0 == 0 && z->x1 == 0 && z->z1 == 0 &&
+                    z->x2 == 0 && z->z2 == 0 && z->x3 == 0 && z->z3 == 0) {
+                    continue;
+                }
+                printf("[xeno-port][test] ZONE %2d "
+                       "(%d,%d) (%d,%d) (%d,%d) (%d,%d) center=(%d,%d)\n",
+                       i, (int)z->x0, (int)z->z0, (int)z->x1, (int)z->z1,
+                       (int)z->x2, (int)z->z2, (int)z->x3, (int)z->z3,
+                       ((int)z->x0 + z->x1 + z->x2 + z->x3) / 4,
+                       ((int)z->z0 + z->z1 + z->z2 + z->z3) / 4);
+            }
+            fflush(stdout);
+        }
+    }
     for (zone = 0; zone < zoneCount; zone++) {
         FieldTriggerZone* z = &g_pFieldTriggerZones[zone];
         long p0 = (z->z0 << 0x10) + z->x0;
@@ -94,6 +126,41 @@ void PcPort_FieldPosDiag(void)
                 break;
         }
     }
+    /* Field actors, every ACTORDIAG_EVERY position samples.  Field 14's only
+     * trigger zone sits ~470 units outside the reachable floor, so the way out
+     * of that room is an ACTOR (a door or an NPC answering Circle), not a zone
+     * -- and there was previously no way to see where any actor stood.
+     * Enabled with the same XENO_FIELD_POS_DIAG switch to keep the harness
+     * surface small; read-only. */
+    {
+        static unsigned int samples = 0;
+        enum { ACTORDIAG_EVERY = 20 };
+
+        if ((samples++ % ACTORDIAG_EVERY) == 0) {
+            int i;
+
+            printf("[xeno-port][test] ACTORDUMP map=%d count=%d player=%d\n",
+                   g_GameSceneMapNum & 0xFFF, (int)D_800ADBFC,
+                   (int)g_PlayerActorIndex);
+            for (i = 0; i < (int)D_800ADBFC && i < 64; i++) {
+                ActorData* a =
+                    (ActorData*)(uintptr_t)g_FieldActors[i].pActorData;
+
+                if (a == NULL) {
+                    continue;
+                }
+                printf("[xeno-port][test] ACTOR %2d pos=(%d,%d,%d) "
+                       "status=0x%04x ip=%u\n",
+                       i, (int)CONV_TO_GTE(a->position.vx),
+                       (int)CONV_TO_GTE(a->position.vy),
+                       (int)CONV_TO_GTE(a->position.vz),
+                       (unsigned)(g_FieldActors[i].status & 0xFFFF),
+                       (unsigned)a->scriptInstructionPointer);
+            }
+            fflush(stdout);
+        }
+    }
+
     /* Script memory words that gate story-driven map entry.  Index 0 is
      * SCRIPT_VAR_SCENARIO_FLAG (include/field/script_vm.h); byte address
      * 0x20 is the variable map 15's actor-22 block tests before its
