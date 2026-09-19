@@ -372,6 +372,65 @@ player at (115,-455), so that parse is wrong (stride and/or field layout) and
 its later entries are visibly garbage (|x| ~32000). Do not use those numbers;
 use `XENO_FIELD_ENTRANCE` and read the resulting POSDIAG instead.
 
+## ANSWER: the walkable geometry is under-built, and the spawn's area is sealed
+
+Both halves of the question are now settled by measurement, using only
+game-placed spawns and real walking (no teleports).
+
+**The spawn is legitimate.** Cold direct boot with entrance 0 puts the player
+at exactly (115,-455), the post-battle position. Field 14 has exactly **two**
+valid entrances -- 2, 3, 4 and 5 never activate the field -- so there is no
+"other, correct" entrance the port should have used.
+
+**The walkable surface is two small disjoint islands:**
+
+```
+area A (entrance 0, (115,-455))   x[ 94,162]  z[-496,-410]   209 distinct
+area B (entrance 1, (182,245))    x[ 30,340]  z[ 171, 335]   706 distinct
+exit zone 0                       x[308,363]  z[ -52,   0]   in NEITHER
+```
+
+**Area A is sealed.** A 420 s directed walk north, 2521 samples, 209 distinct
+positions, repeatedly pressed against z ~ -410 -- (106,-413), (108,-412),
+(105,-414) -- and never crossed it. Its northern edge peaks at x=100..119 and
+falls away eastward, which is the shape of a wall, not a doorway. There is no
+way out of the post-battle area on foot.
+
+**And the giveaway: 1 of field 14's 10 placed actors stands on walkable
+ground.**
+
+```
+actor bounding box   x[-350,358]  z[-544,255]      <- the room's real extent
+walkable surface     two islands totalling a small fraction of that
+on walkable ground   actor 10 (270,255) only; the other nine are off-mesh
+area A contains      NO actors at all
+```
+
+Actors 11 (75,-484) and 12 (158,-544) are the painting room's own props and
+they sit *outside* area A, the very region the player spawns into. A room whose
+NPCs and objects cannot be stood next to, and whose only exit lies in empty
+space, is not a room the port has built correctly.
+
+So: **this is a collision/walkmesh defect, not a spawn, script, control or
+input defect.** Everything downstream was verified working earlier -- the script
+completes and hands over control, the control lock cycles and clears, input
+reaches the field, and the exit transition fires correctly when the player is
+placed in the zone. What is missing is the floor between them.
+
+The one loose end worth noting: area B's south edge is a straight wall at
+z=227 for every column except a taper at x~120..199 bottoming at z=171, right
+below the entrance-1 spawn at (182,245). That may be a real corridor mouth
+whose continuation is also missing, or simply the island's shape.
+
+### Next
+
+Find where the port builds field 14's walkable surface and compare it with the
+retail data. The field header carries eight sections (size at +0x110..+0x12C,
+offset at size+0x24); the trigger zones (+0x12C/+0x150) and scripts
+(+0x120/+0x144) are identified, the collision section is not. Suspects are the
+buffers the loader fills but nothing in `src/field/` reads by name --
+`D_800AFB14` (+0x114/+0x138) and `D_800AFB18` (+0x110/+0x134).
+
 ## Tools added this session
 
 | Path | What it does |

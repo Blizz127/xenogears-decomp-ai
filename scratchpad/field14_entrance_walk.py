@@ -30,6 +30,13 @@ from pathlib import Path
 ROOT = Path("/var/home/blizz/Projects/xenogears-decomp-ai")
 TAG, DISP, ENTRANCE = sys.argv[1], sys.argv[2], sys.argv[3]
 SECONDS = float(sys.argv[4]) if len(sys.argv) > 4 else 240.0
+# Optional "x,z": hill-climb toward that point instead of sweeping. Sweeping
+# answers "how big is this area"; a goal answers "does this area reach there",
+# which is what the exit zone question needs.
+GOAL = None
+if len(sys.argv) > 5:
+    _gx, _gz = sys.argv[5].split(",")
+    GOAL = (int(_gx), int(_gz))
 OUT = Path("/var/tmp/xeno-leaf-push/ent-" + TAG)
 OUT.mkdir(parents=True, exist_ok=True)
 log = open(OUT / "run.log", "w")
@@ -90,15 +97,38 @@ try:
     say(f"game placed the player at ({first[1]},{first[3]})")
 
     i = 0
+    dir_index = 0
+    stalls = 0
     deadline = time.monotonic() + SECONDS
     while time.monotonic() < deadline and game.poll() is None:
-        keys = DIRS[i % len(DIRS)]
+        if GOAL is None:
+            keys = DIRS[i % len(DIRS)]
+        else:
+            keys = DIRS[dir_index % len(DIRS)]
         i += 1
+        before = [(int(x), int(z)) for m, x, _y, z in POS.findall(text()) if m == "14"]
         xdo("windowfocus", "--sync", wid)
         xdo("keydown", *keys)
         time.sleep(2.0)
         xdo("keyup", *reversed(keys))
         time.sleep(0.2)
+        if GOAL is not None:
+            after = [(int(x), int(z)) for m, x, _y, z in POS.findall(text()) if m == "14"]
+            fields_now = re.findall(r"FieldLoad begin field=(\d+)", text())
+            if fields_now and fields_now[-1] != "14":
+                say(f"FIELD CHANGED to {fields_now[-1]} -- reached the exit from "
+                    f"entrance {ENTRANCE}")
+                break
+            if before and after:
+                d0 = abs(before[-1][0] - GOAL[0]) + abs(before[-1][1] - GOAL[1])
+                d1 = abs(after[-1][0] - GOAL[0]) + abs(after[-1][1] - GOAL[1])
+                if d1 < d0 - 2:
+                    stalls = 0
+                else:
+                    dir_index += 1
+                    stalls += 1
+                if i % 8 == 0:
+                    say(f"  {i}: at {after[-1]} manhattan-d={d1} (stalls={stalls})")
         if i % 16 == 0:
             pts = [(int(x), int(z)) for m, x, _y, z in POS.findall(text()) if m == "14"]
             if pts:
