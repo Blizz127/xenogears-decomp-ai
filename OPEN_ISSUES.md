@@ -4343,10 +4343,37 @@ Field 14 has at least TWO DISJOINT walkable areas
   entrance 2 -> field never becomes active
 The exit zone (335,-26) lies between them and is reached from neither.
 
-NEXT: find the CONNECTION between the post-battle area and the rest of the
-room. The recorded route crosses it with slices named stairs-approach /
-stairs-foot / stairs, so it is a narrow link; either it exists and neither
-search strategy has found it, or the port's walkable geometry is missing it.
+ROOT CAUSE (measured 2026-09-19): the room's FLOOR is missing, because the
+script actors that should provide it have no models.
+
+A field's walkable surface is not a map walkmesh. The ground search
+func_80084158 (src/field/main/misc8.c:2030, BYTE-MATCHED) walks the actor list
+and tests the player's (x,z) against each actor's collision mesh at
+*(model+0x4) via func_80083288 ("POLYCHECK"). The floor is the union of those
+meshes, so an actor with no model contributes none.
+
+Field 14: g_FieldNumActors=52, D_800ADBFC (script actors)=22, 27 models in the
+package. Models are bound to actors 15 and 22..47. Actors 22..47 have
+pActorData NULL and zero flags. Of the script actors 0..21, ONLY actor 15 has a
+model. And the ground search's bound is `i < D_800ADBFC` -- retail's own
+(lw %lo(D_800ADBFC) at 80084210 in the matched asm) -- so the 26 meshes on
+actors 22..47 are never consulted for ground at all. The floor the search can
+see is actor 15's mesh alone, which is why the player gets two small disjoint
+islands.
+
+The script actors that should be furnishing the room -- 9, 11, 12, 13, 14, 16,
+17, 19, 20, at real positions spanning x[-350,358] z[-544,255] -- all report
+model=(nil) mesh=(nil), while being correctly script-marked as regions
+(f0=0x004401b0, bit 0x80 set by opcode 0x20 / func_8009E10C, which writes
+actorData+0x00; retail matches).
+
+NEXT: the model-to-actor binding in src/field/main/misc3.c (~line 1030, the
+model-build loop). Either it should be placing package models on the script
+actors, or a later step that attaches a built model to its script actor is
+missing. Also identify what sets actorData+0x04 bit 0x80, which is the flag the
+ground search actually tests.
+Repro: python3 scratchpad/field14_entrance_walk.py <tag> <disp> 0 30
+       then read the ACTORDUMP block (model=/mesh= columns).
 
 DO NOT use the warp to test this: teleport-then-test-mobility is INVALID. A
 control point warped to (200,-455) -- inside the area the player walks freely
