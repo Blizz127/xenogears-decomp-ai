@@ -40,7 +40,12 @@ time.sleep(2)
 env = {k: v for k, v in os.environ.items() if not k.startswith("XENO_")}
 env.update(DISPLAY=f":{DISP}", SDL_VIDEODRIVER="x11", XENO_KERNEL_SEL="0",
            XENO_PAD_TEST_INPUT=SCHEDULE.read_text().strip(),
-           XENO_FIELD_POS_DIAG="30", XENO_VM_TRACE="1", XENO_VM_TRACE_REPEAT="1",
+           XENO_FIELD_POS_DIAG="30",
+           # Default to the player actor; pass XENO_VM_TRACE=a to trace ALL
+           # actors, which is what answering "does ANY actor's script clear the
+           # control lock?" needs -- one actor's trace cannot.
+           XENO_VM_TRACE=os.environ.get("XENO_VM_TRACE", "1"),
+           XENO_VM_TRACE_REPEAT="1",
            XENO_PAD_TEST_STOP_FIELD="14",
            XENO_VM_TRACE_FIELD="14", XENO_VM_TRACE_MAX="40000")
 game = subprocess.Popen(["stdbuf", "-oL", "-eL", str(BIN)], cwd=ROOT, env=env,

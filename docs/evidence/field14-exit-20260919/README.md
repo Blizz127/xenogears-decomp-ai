@@ -132,156 +132,62 @@ So, precisely:
 * Whether the player can walk at all in field 14 after the dream battle
   **varies between otherwise identical runs**.
 
-## Which gate refuses: `D_800B21D0`, set by FE54 and never cleared
+## Which gate refuses, and why it varies: the script cycles the control lock
 
 POSDIAG now also prints the gates OP_UPDATE_CHARACTER (`func_8009F5F4`) tests.
-Run `w7`, 65 samples in field 14, 21 with a direction held, 1 distinct
-position. **Every single held-direction sample reads the same:**
+The gate is byte-matched retail, not a port guess -- `asm/field/matchings/main/
+misc6/func_8009F5F4.s`:
 
 ```
-held      pos          canRun  owner  b21d0  status
-0x1000    (115,-455)   0       0xff   1      0x0260    <- Up
-0x2000    (115,-455)   0       0xff   1      0x0260    <- Right
-0x4000    (115,-455)   0       0xff   1      0x0260    <- Down
-0x8000    (115,-455)   0       0xff   1      0x0260    <- Left
-0x3000    (115,-455)   0       0xff   1      0x0260    <- Up+Right
-0xc000    (115,-455)   0       0xff   1      0x0260    <- Down+Left
+lui   $v0, %hi(g_FieldControl)
+lh    $v0, %lo(g_FieldControl)($v0)
+bnez  $v0, .L8009F9A8          <- non-zero: park the actor idle and RETURN,
+                                  before `D_800ADB68 = 1` is ever reached
 ```
 
-`status & 0x1800 == 0` — no script control lock, confirming again that this is
-not the script holding the player. `owner == 0xff` — no menu owns input. What
-is wrong is `D_800ADB68` (playerCanRun) `== 0` and `D_800B21D0 == 1`.
+`g_FieldControl.isRandomEncountersEnabled` is a `short` at **offset 0**
+(`include/field/main.h:105`), so that halfword IS the field-control lock, and
+**FE54 (`func_80093B10`) sets it to -1** -- also byte-matched
+(`asm/field/matchings/main/misc11/func_80093B10.s`). Both sides are faithful.
 
-And `D_800B21D0` has a known writer. **FE54 (`func_80093B10`) sets
-`D_800B21D0[0] = 1`** (`src/field/main/misc11.c:948`), and only three opcodes
-clear it: FE4F (`func_80093BB0`), FE53 (`func_80093AC8`), against FE50
-(`func_80093BD4`) which sets it again. In the full all-actor field-14 trace:
-
-```
-FE54 (sets B21D0=1)   : 1 occurrence
-FE4F (clears B21D0=0) : 0
-FE53 (clears B21D0=0) : 0
-```
-
-FE54 runs once during setup and **nothing in field 14's script ever clears the
-flag it set**. The 2026-09-18 pass was right that FE54 matters — but the
-mechanism is its *side effect on the control gate*, not a failing guard, and
-not the departure arming. Some C path clears the flag occasionally (samples
-with `b21d0=0, canRun=1` do exist), which is why movement is intermittent.
-
-Next step: find who is supposed to clear `D_800B21D0` after FE54 in this scene
-— a missing script opcode, or a port-side path that does not run — and why
-`D_800ADB68` is 0 with it.
-
-Two hypotheses were tested and **disproved** along the way, so they need not be
-retried:
-
-* *The boot pad schedule mashes Circle forever and blocks walking.* It really
-  does pulse Circle every 2 frames from frame 3800 to 11962 (`0x20`), and a
-  field Circle is talk/confirm, so this was worth testing. `XENO_PAD_TEST_STOP_FIELD`
-  (new) retires the schedule the moment a chosen field loads; with it fired and
-  logged (`field 14 reached at frame 12039; schedule retired`) the player still
-  did not move. Keep the switch — a driver that wants to walk should own the
-  pad — but it is not the cause.
-* *Diagonals do not reach the pad.* `held=0xc000` and `0x3000` say otherwise.
-
-## The actual blocker: the only exit zone is outside the reachable floor
-
-Two new read-only dumps in `pc_port/src/field_pos_diag.c` (both under the
-existing `XENO_FIELD_POS_DIAG` switch):
-
-* **ZONEDUMP** — every trigger zone's quad, once per loaded field.
-* **ACTORDUMP** — every field actor's position/status/IP, periodically.
-
-Field 14 has **exactly one** trigger zone:
+A run where the player cannot walk (`w7`) reads the same on all 21
+held-direction samples, one distinct position all run:
 
 ```
-ZONEDUMP map=14 count=1
-ZONE  0 ... center=(335,-26)
+held 0x1000/0x2000/0x4000/0x8000/0x3000/0xc000
+canRun=0  owner=0xff  b21d0=1  status=0x0260
 ```
 
-That is the map 14 -> 13 door box already on record (x in [308,363], z in
-[-52,0]). A closed-loop walk (`scratchpad/field_navigate.py`, which measures
-what each direction does instead of assuming a mapping) reached only
-`x in [88,323], z in [-496,-331]` before every direction stopped reducing the
-distance, ~470 units short of the zone in Z, with `inZones=[]` in every sample
-of every run.
+`status & 0x1800 == 0` -- no script control lock on the actor, and no menu owns
+input. What refuses is the field-control halfword.
 
-Careful about what that does and does not prove: distance hill-climbing gets
-trapped in local pockets, so "the search stopped here" is **not** "a wall is
-here". ACTORDUMP settles it — field 14's actors stand at
+**An earlier draft of this section claimed field 14's script sets that lock and
+never clears it. That was wrong**, and it was wrong because it grepped a
+4-second trace. A full all-actor trace of the whole scene (`w8`, 30756
+dispatches) shows the clearers running:
 
 ```
-9:(310,-243) 10:(270,255) 11:(75,-484) 12:(158,-544) 13:(16,-331)
-14:(358,-421) 16:(-232,74) 17:(-100,-510) 19:(-350,-59) 20:(-350,-127)
+FE54 (set lock)    5   actor 0 ip=29 (x1), actor 11 ip=1053 (x4)
+FE53 (clear lock)  5   actor 11 ip=1192 (x4), actor 1 ip=404 (x1)
+FE4F / FE50        0
 ```
 
-i.e. the room extends to at least z=+255 and x=-350, well outside the region
-the walk covered. So the floor is larger than the search found, and the honest
-statement is: **no walk has yet reached field 14's only trigger zone**, and
-the search method — not a proven wall — is the current limit.
+Actor 1 clears the lock at ip=404 and parks on free control at ip=406 -- the
+scene's own unlock, exactly where it belongs. And in that same run all 22
+held-direction samples read `canRun=1 b21d0=0`, with **8 distinct positions**:
+the player walked.
 
-Actor 14 at `(358,-421)` is the strongest exit candidate: it sits just past
-the east edge of the covered region, which is the shape a door actor has (the
-established Lahan pattern is to stand near a door actor's offset point and
-press Circle, not to walk into a zone). `scenario=6` throughout. The recorded
-2026-09-08 slice names agree that an NPC conversation stands between spawn and
-exit: `stairs-*`, `dan-trigger`, `dan-0..38`, `house-exit-*`.
+So the correct statement is: **field 14's scene repeatedly applies and releases
+the control lock** (actor 11 cycles FE54/FE53 four times), and whether a run
+ends with it released varies. A run that ends locked shows a completely
+immobile player even though the script has otherwise finished and input is
+arriving. This matches the 2026-09-18 observation that "the lock is applied and
+released repeatedly" -- that part of the old note was right.
 
-## Proof that the exit itself works: warp into the zone
-
-Walking could not distinguish "cannot path there" from "the zone is broken", so
-`pc_port/src/field_warp_diag.c` (`XENO_FIELD_WARP=<map>:<x>:<z>[:delay:repeats]`,
-inert unless set) places the player once and the run reports what follows.
-This one **writes game state**, unlike everything else here, so it lives in its
-own translation unit with its own switch and its output is evidence about the
-zone, not about ordinary play.
-
-First attempt fired too early — at the first field-active frame, i.e. during
-the room's setup scene, which then repositioned the player and erased it
-(`WARP firing: (-151,1774)`, player ended at `(112,-458)`). With a delay:
-
-```
-WARP armed map=14 -> (335,-26) delay=600 repeats=5
-WARP firing 1/5: (115,-455) -> (335,-26)
-POSDIAG map=13 pos=(-37,0,0) ...
-FIELD CHANGED -> 13   (route 490 -> 4 -> 2 -> 14 -> 13)
-```
-
-**The field changes on the very next sample.** The trigger zone, its poller
-(actor 17), the transition and the field load are all working. The single
-remaining problem in field 14 is getting the player from `(115,-455)` to the
-door box on foot.
-
-## Why replaying the recorded route does not solve it
-
-`scratchpad/lahan-natural-20260908-compmatrix/run.log` proves the room is
-navigable by hand: that session went `490 -> 4 -> 2 -> 14 -> 13 -> 1 -> 11 ->
-12 -> 15 -> 17 -> 21 -> 19 ...`. Its `manual-input.log` records the way out:
-
-```
-easel-backoff    Down+Right 0.7s
-easel-side       Up+Right   1.0s
-stairs-approach  Up+Left    4.8s
-stairs-adjust    Down+Left  0.15s
-stairs-foot      Up+Left    1.4s
-stairs           Up+Right   1.8s
-dan-trigger      Up+Right   1.6s
-dan-0 .. dan-38  z              (39 dialogue confirms)
-house-exit-approach Up+Right 0.85s
-house-exit       z
-```
-
-Replaying it is open-loop, and this session replayed **475 of the 934 slices**
-(the previous pass replayed 60) with the field never leaving 14. A 4.8 s blind
-stride cannot self-correct: any difference in start position, camera angle or
-frame pacing compounds, and every later slice is then applied from the wrong
-place. The recording is a record of what a human pressed *while watching*, so
-it is a good description of the route and a bad script for reproducing it.
-
-The fix is closed-loop navigation, not a better recording. Note the route also
-shows the exit is gated behind **Dan's 39-step conversation**, so a navigator
-has to interact, not just walk.
+The open question is no longer "what clears it" but **why some runs end with
+the lock still applied** -- an actor-11 FE54 not matched by its FE53, or an
+ordering/timing difference between runs. That is a much smaller question than
+where this session started.
 
 ## Tools added this session
 
@@ -298,12 +204,13 @@ has to interact, not just walk.
 
 ## What is actually left
 
-1. **Find out why the player intermittently cannot walk in field 14** even with
-   free control and input arriving. This is now the top item and it is a
-   different bug from the one this session started on. Print the
-   OP_UPDATE_CHARACTER gates (`D_800ADB68`, `D_800B21D0`, `D_800ADB64`, the
-   actor's `status & 0x1800`) alongside the held mask and compare a run that
-   walks against one that does not.
+1. **Find out why some runs end with field 14's control lock still applied.**
+   The scene cycles it (actor 11 runs FE54/FE53 four times each; actor 1 clears
+   it at ip=404 before parking on free control), and a run that ends locked has
+   `g_FieldControl != 0`, so OP_UPDATE_CHARACTER parks the player idle and
+   never reaches `D_800ADB68 = 1`. Trace all actors
+   (`XENO_VM_TRACE=a XENO_VM_TRACE_REPEAT=1 XENO_VM_TRACE_FIELD=14`) on a
+   walking run and a frozen one and diff the FE54/FE53 pairing.
 2. **Then navigate field 14 on foot** — closed-loop, with interaction: reach
    the stairs, talk to Dan (39 confirms), then the door. Distance hill-climbing
    gets trapped in local pockets; ZONEDUMP/ACTORDUMP now make the targets

@@ -4333,24 +4333,29 @@ tested and disproved: the boot pad schedule's Circle pulse train (retired with
 the new XENO_PAD_TEST_STOP_FIELD and the player still did not move) and
 diagonals not reaching the pad (0xc000 observed).
 
-WHICH GATE (measured, run w7): POSDIAG now prints the OP_UPDATE_CHARACTER
-gates, and all 21 held-direction samples read identically --
-`canRun=0 owner=0xff b21d0=1 status=0x0260`. `status & 0x1800 == 0` (no script
-control lock) and no menu owns input, so the refusing gates are
-`D_800ADB68 == 0` and `D_800B21D0 == 1`.
+WHICH GATE (measured): POSDIAG now prints the OP_UPDATE_CHARACTER gates. On a
+frozen run (w7) all 21 held-direction samples read
+`canRun=0 owner=0xff b21d0=1 status=0x0260`, one distinct position all run.
+`status & 0x1800 == 0` (no script control lock on the actor) and no menu owns
+input, so what refuses is the FIELD-CONTROL halfword: OP_UPDATE_CHARACTER does
+`lh $v0, %lo(g_FieldControl); bnez $v0, <park idle and return>` -- byte-matched
+in asm/field/matchings/main/misc6/func_8009F5F4.s -- and that halfword is
+`g_FieldControl.isRandomEncountersEnabled`, a short at offset 0
+(include/field/main.h:105), which FE54 (func_80093B10, also byte-matched) sets
+to -1. Both sides are faithful retail.
 
-`D_800B21D0[0] = 1` is set by **FE54 (`func_80093B10`, src/field/main/misc11.c:948)**
-and cleared only by FE4F (`func_80093BB0`) or FE53 (`func_80093AC8`). In the
-full all-actor field-14 VM trace FE54 occurs ONCE and FE4F/FE53 occur ZERO
-times: nothing in the room's script ever clears the flag FE54 set. Some C path
-clears it occasionally (samples with `b21d0=0, canRun=1` exist), which is why
-movement is intermittent rather than always dead.
+WHY IT VARIES: the room's script CYCLES the lock. Full all-actor trace (w8,
+30756 dispatches): FE54 x5 (actor 0 ip=29, actor 11 ip=1053 x4) and FE53
+x5 (actor 11 ip=1192 x4, actor 1 ip=404 x1). Actor 1 clears the lock at ip=404
+and parks on free control at ip=406 -- and in that run all 22 held-direction
+samples read `canRun=1 b21d0=0` with 8 distinct positions: the player walked.
+So the clearers DO run (an earlier draft of this entry said they never do; that
+was grepped from a 4-second trace and is wrong).
 
-So the 2026-09-18 note that "FE54 is involved" was right for the wrong reason:
-the problem is FE54's side effect on the control gate, not its guard and not
-the departure arming. Open question: who is supposed to clear D_800B21D0 after
-FE54 in this scene -- a script opcode the port never reaches, or a port-side
-path that does not run -- and why D_800ADB68 is 0 alongside it.
+OPEN: why some runs end with the lock still applied -- an actor-11 FE54 not
+matched by its FE53, or an ordering/timing difference. Diff the FE54/FE53
+pairing between a walking run and a frozen one with
+XENO_VM_TRACE=a XENO_VM_TRACE_REPEAT=1 XENO_VM_TRACE_FIELD=14.
 
 Repro: python3 scratchpad/field14_walk.py <tag> <display> 3.5
        (then check `held=` vs `pos=` in /var/tmp/xeno-leaf-push/walk14-<tag>/run.log)
