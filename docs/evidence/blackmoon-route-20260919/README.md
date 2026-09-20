@@ -1817,3 +1817,45 @@ mis-initialises a per-battle value for these enemies.
 Until this is understood, the basin approach cannot be pushed through on foot:
 the encounter that blocks the last ~200 units into trigger zone 2 is the one
 that deadlocks.  Zone 2 and the forest-exit cutscene remain unobserved.
+
+
+## Suspected defect: the field menu can wedge while holding the input owner (round 9)
+
+While trying to heal at the (-417,-1428) checkpoint the **field menu stopped
+responding while still displayed**, and nothing could move it back:
+
+1. `V` opened the menu normally - `resume23v-menu-open.png`, Fei 24/84 / Elly
+   1/40, cursor on Status.
+2. `Down, Down, Z` opened the Items list (`resume23v-items-open.png`).
+3. From then on the item window stayed drawn but stopped taking input.  Arrow
+   presses began moving the *main menu* cursor behind it, the description panel
+   stayed blank, and eventually no key changed anything:
+   `resume23v-menu-wedged.png` and `-wedged-late.png` are byte-different frames
+   taken ~25 s apart with the play clock still advancing (000:02:41 -> 000:03:27).
+   Circle, Triangle and the D-pad were all tried.
+
+The field itself is alive throughout - `POSDIAG` keeps printing with
+`canRun=1` and the position is unchanged - but its `owner` byte is **0x80**
+(the menu) instead of 0xFF (none):
+
+```
+POSDIAG map=23 pos=(-417,0,-1428) inZones=[] scenario=27 ...
+        held=0x0010 newpress=0x0000 canRun=1 owner=0x80 b21d0=0
+```
+
+So the menu holds the field's input ownership while it no longer consumes input.
+This is the same wedge seen in round 1 (where it was mis-attributed to stuck
+keys) and it is the practical blocker for the heal-then-push plan: with the menu
+wedged, the player cannot heal, save or walk.
+
+**Not diagnosed.**  Next: find the menu state machine that sets `D_800ADB64` to
+0x80 and check which transition can leave it set with the menu's own input poll
+no longer running - the candidates are the Items list hand-off and the pending
+F7 save observed earlier (a queued save shows `WAIT` in the toolbar and the menu
+stopped cancelling at the same time).  A regression test needs the production
+menu/field input-owner hand-off, not just the checkpoint gate.
+
+Route state: zone 2 is still not entered.  The run that did get a normal
+encounter this round won it (Fei 15/84, Elly KO'd) - so the deadlock recorded
+last round did **not** reproduce, and the remaining obstacle is party condition
+plus this menu wedge.
