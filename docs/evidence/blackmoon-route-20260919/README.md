@@ -3142,3 +3142,49 @@ where the edge is consumed - either drop the field's `D_800C3900` bit at the poi
 `FieldMain` reads it when the field has just been restored, or find which title-menu
 path leaves the pad state queued.  A watchpoint on `D_800C3900` across the load
 would name the producer.
+
+
+## ROOT CAUSE: the port's function keys leak into the pad state (round 38)
+
+The stale menu owner after a quick-load is now explained end to end, and the cause
+is not the menu at all: **pressing a function key also presses a pad button.**
+
+Measured live by sampling `g_C1ButtonState` while each key was held:
+
+| key | `g_C1ButtonState` |
+|---|---|
+| `q` (unmapped) | `0x0` |
+| `F1` | `0x0` |
+| **`F8`** (quick-load) | **`0x20` = Circle** |
+| **`F9`** (recording) | **`0x20` = Circle** |
+| **`F11`** (speed cycle) | **`0x10` = Triangle** |
+| `z` (mapped Circle) | `0x20` (as expected) |
+
+So a quick-load both loads the checkpoint **and presses Circle**, which:
+
+- explains why the title menu kept auto-selecting or confirming entries while the
+  load was being prepared, and
+- is the press edge that the restored field sees - `D_800C3900` picks it up and
+  `FieldMain` (`main.c:678-679`, watchpoint-proven) opens the system menu, whose
+  `0x80` owner then swallows every movement press.
+
+F11 leaking Triangle is the same defect and is user-visible too: cycling the speed
+also presses Triangle, which opens the field menu.
+
+`PcPort_ForcedKernelSelect` (`pc_port/src/psyq_compat.c:505`) is the only synthetic
+Circle injection in the tree and it is inert here (`sel` starts at -1 and returns
+early), so the leak is in the keyboard-to-pad path - PsyCross's `PAD_Update` / the
+port's `g_cfg_keyboardMapping` overrides (`port_main.c:1234` sets `kc_circle = 29`,
+`kc_triangle = 25`) or in how the port's function-key handler interacts with the
+pad state that frame.
+
+**Next step:** fix the leak - consume the function keys before the pad update, or
+exclude them from the pad mapping - then the quick-load needs no menu guard at all.
+
+A menu-open guard was implemented and tested along the way (arm on restore, allow
+once the input settles, hard cap).  Its certificate passed 63 checks x 3 regimes
+with 5/5 mutants rejected, but the settle rule **failed live** (a 30-frame window
+let the menu open a frame later, and even a settle-based rule released before the
+edge arrived; only a long fixed window kept it shut).  Since it mitigates a cause
+now identified, the whole change was reverted and the build restored to
+`589fb02e...` rather than ship an unproven guard plus a certificate for it.
