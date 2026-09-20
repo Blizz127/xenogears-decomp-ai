@@ -3009,3 +3009,54 @@ readout for that.)
 Next step: capture the battle's per-frame bridge call sequence for one stalled
 fight (`XENO_BATTLE_MIPS_TRACE=1`) and look for the update the battle expects
 between frames but never gets - the AP/time advance is the obvious candidate.
+
+
+## The battle frame loop, and what the stall is NOT (round 36)
+
+The traced-battle run could not be driven to a fight this round (the harness ended
+up with a pending quick-save showing `WAIT` in the toolbar and the field menu open
+and unresponsive - the round-7 observation again - so `owner=0x80` blocked every
+move), but reading the battle's frame loop narrows the stall usefully.
+
+`func_800BE790` (`asm/battle/nonmatchings/mainc122/func_800BE790.s`) is the battle's
+per-frame driver, and it does this every frame:
+
+```asm
+    jal  func_8001D468
+    jal  WorkListUpdate
+    jal  TimerWorkListUpdate
+    lh   $s0, D_80059494        # frame counter
+    addiu $s0, $s0, -1
+    beq  $s0, -1, .L800BE904    # done when it reaches -1
+.L800BE8EC:
+    jal  func_800BBAB8
+    addiu $s0, $s0, -1
+    jal  TimerWorkListUpdate
+    bne  $s0, $1, .L800BE8EC
+```
+
+so the battle paces itself on `D_80059494`, and retail's `TimerWorkListUpdate`
+(`src/slus_006.64/system/work_list.c:86`) is what moves it:
+
+```c
+    if (g_WorkListCurTimer) {
+        g_WorkListCurTimer--;
+        if (g_WorkListCurTimer == 0) {
+            D_80059494 = 0;
+        }
+        return;
+    }
+    ... walk g_TimerWorkList, calling each onTriggerCallback ...
+```
+
+**The port's `TimerWorkListUpdate` (`pc_port/src/work_list_port.c:106`) is
+byte-for-byte the same logic, including `D_80059494 = 0`, and its callback
+dispatch (`WorkListInvokeCallback`) either runs the callback or aborts loudly with
+"unresolved guest callback".**  So the stall is *not* a silently dropped timer
+callback, and it is not the work-list plumbing: if a battle timer callback were
+unresolvable the port would abort instead of hanging quietly.
+
+That leaves the battle waiting on something the work-list does not drive - the
+attack/animation task it started (`func_800BBAB8` and friends), an expected input
+edge, or the AP gauge update.  Continuing from here needs the bridge call trace of
+one stalled fight, which the harness must first be able to reach.
