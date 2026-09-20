@@ -738,6 +738,7 @@ PORT_SOURCES=(
     pc_port/src/quick_checkpoint.c
     pc_port/src/fei_hd2d.c
     pc_port/src/god_mode.c
+    pc_port/src/file_menu_notice.c
     pc_port/src/field_pos_diag.c  # TEST TOOLING: XENO_FIELD_POS_DIAG walk telemetry
     pc_port/src/field_warp_diag.c # TEST TOOLING: XENO_FIELD_WARP one-shot debug teleport
     pc_port/src/game_overrides.c

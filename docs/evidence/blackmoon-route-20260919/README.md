@@ -2066,7 +2066,28 @@ Circle:
   Cross returned `POSDIAG ... owner=0xff`, so the menu closed normally and the
   field became playable.
 
-**Owed:** the independent mutant-rejecting regression test for this seam -
-override `PcPort_FileMenuNoticeDialog` with a slow fake, assert
-`PcPort_NotifyUnsupportedFileMenu()` returns immediately and dispatches exactly
-once, and reject mutants that call the dialog synchronously or skip it entirely.
+### Regression test (added in round 14)
+
+The policy was extracted into `pc_port/src/file_menu_notice.c` (SDL-free) with the
+platform hooks as installable function pointers
+(`PcPort_FileMenuNoticeAlloc/Free/Log/StartThread/Dialog`); the host renderer
+installs the SDL-backed ones.  That makes the "never run the modal dialog on the
+calling thread" rule directly testable:
+
+- `pc_port/tests/file_menu_notice_test.c` + `run_file_menu_notice_test.sh` -
+  **23 checks at O0/O2/UBSan** (gcc, gcc, clang, with the UBSan compiler probed
+  and printed).  They pin that the request allocates once, hands the notice to
+  the thread hook, never calls the dialog inline, dispatches exactly once, runs
+  the dialog and frees from the thread body, returns in under 50 ms even though
+  the dialog is blocking, cleans up when the dispatch is refused, does not free
+  on an allocation failure, and keeps the advertised title/text.
+- The runner mutates the production source and rejects **5/5** controls:
+  `dialog-inline` (the original defect), `dispatch-skipped`, `oom-frees`,
+  `failure-leaks` and `title-drift`.
+- Provenance is pinned too: the call site must stay on the `menu1Choice == 1`
+  (File) branch of `src/menu/main/misc.c`, and the request entry must not call
+  `PcPort_FileMenuNoticeDialog` directly.
+
+Re-verified live after the refactor: selecting File leaves the menu open
+(`owner=0x80`) with the game running, and Cross returns it to the field
+(`owner=0xff`) - no hang.

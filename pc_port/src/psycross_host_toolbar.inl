@@ -3,6 +3,7 @@
  * after recording readback, so it never contaminates game captures. */
 #include "psycross_host_toolbar_logic.h"
 #include "quick_checkpoint_request.h"
+#include "file_menu_notice.h"
 #if defined(__GNUC__)
 extern "C" int PcPort_GodModeEnabled(void) __attribute__((weak));
 extern "C" void PcPort_GodModeToggle(void) __attribute__((weak));
@@ -10,70 +11,69 @@ extern "C" int PcPort_FeiHd2dEnabled(void) __attribute__((weak));
 extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
 #endif
 
-/* The native File/card screen has not been implemented. Keep the failure
- * visible and recoverable without entering its retail cleanup path.
+/* The native File/card screen has not been implemented.  The policy (dispatch
+ * the notice off the game thread, never call the modal dialog inline) lives in
+ * pc_port/src/file_menu_notice.c so it can be unit tested; this file supplies
+ * the SDL-backed platform hooks.
  *
  * SDL_ShowSimpleMessageBox is MODAL: it runs the native dialog and does not
- * return until the user dismisses it.  Calling it from the field menu loop is
- * therefore a hard hang whenever the dialog cannot be surfaced - with no window
- * manager mapping the zenity window onto the game's display, the game thread
- * never returns, no frame is drawn and no input is ever read again.  That is
- * exactly what the Blackmoon Forest route hit: selecting File froze the field at
+ * return until the user dismisses it.  Calling it from the field menu loop is a
+ * hard hang whenever the dialog cannot be surfaced - with no window manager
+ * mapping the zenity window onto the game's display, the game thread never
+ * returns, no frame is drawn and no input is ever read again.  That is exactly
+ * what the Blackmoon Forest route hit: selecting File froze the field at
  * (-496,0,-1276) with two byte-identical screenshots 25 s apart and the stack
- * parked in SDL_Zenity_ShowMessageBox.
- *
- * Dispatch the notice on a detached thread instead, so the field stays live
- * whether or not the dialog can be shown.  PcPort_FileMenuNoticeDialog is the
- * dispatch seam the regression test overrides; it never runs on the game
- * thread. */
-extern "C" void PcPort_FileMenuNoticeDialog(const char *title, const char *text)
-    __attribute__((weak));
-extern "C" void PcPort_FileMenuNoticeDialog(const char *title, const char *text)
+ * parked in SDL_Zenity_ShowMessageBox. */
+static void PsyX_FileMenuNoticeDialog(const char *title, const char *text)
 {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, title, text, g_window);
 }
 
-typedef struct PcPortFileMenuNotice {
-    const char *title;
-    const char *text;
-} PcPortFileMenuNotice;
-
-static int PcPort_FileMenuNoticeThread(void *userdata)
+static void *PsyX_FileMenuNoticeAlloc(unsigned long size)
 {
-    PcPortFileMenuNotice *notice = (PcPortFileMenuNotice *)userdata;
-    PcPort_FileMenuNoticeDialog(notice->title, notice->text);
-    SDL_free(notice);
+    return SDL_malloc((size_t)size);
+}
+
+static void PsyX_FileMenuNoticeFree(void *memory)
+{
+    SDL_free(memory);
+}
+
+static void PsyX_FileMenuNoticeLog(const char *message)
+{
+    eprintinfo("%s", message);
+}
+
+static int PsyX_FileMenuNoticeTrampoline(void *context)
+{
+    PcPort_FileMenuNoticeThreadMain(context);
     return 0;
 }
 
-static const char *const kPcPortFileMenuNoticeTitle = "File menu not implemented";
-static const char *const kPcPortFileMenuNoticeText =
-    "The in-game memory-card File menu is not implemented in this port yet.\n\n"
-    "Close this message and cancel back to the field. Use the toolbar's "
-    "SAVE and LOAD buttons for field checkpoints.";
-
-extern "C" void PcPort_NotifyUnsupportedFileMenu(void)
+static int PsyX_FileMenuNoticeStartThread(void (*entry)(void *), void *context)
 {
-    PcPortFileMenuNotice *notice;
     SDL_Thread *thread;
 
-    eprintinfo("File menu unavailable: native memory-card screen is not implemented\n");
-    notice = (PcPortFileMenuNotice *)SDL_malloc(sizeof(*notice));
-    if (notice == NULL) {
-        eprinterr("File menu notice skipped: out of memory\n");
-        return;
-    }
-    notice->title = kPcPortFileMenuNoticeTitle;
-    notice->text = kPcPortFileMenuNoticeText;
-    thread = SDL_CreateThread(PcPort_FileMenuNoticeThread,
-                              "fileMenuNotice", notice);
+    (void)entry; /* the host always runs the policy's thread body */
+    thread = SDL_CreateThread(PsyX_FileMenuNoticeTrampoline,
+                              "fileMenuNotice", context);
     if (thread == NULL) {
-        eprinterr("File menu notice skipped: %s\n", SDL_GetError());
-        SDL_free(notice);
-        return;
+        eprinterr("File menu notice thread failed: %s\n", SDL_GetError());
+        return 0;
     }
     SDL_DetachThread(thread);
+    return 1;
 }
+
+/* Installed for the field menu; the policy checks every hook for NULL. */
+void *(*PcPort_FileMenuNoticeAlloc)(unsigned long size) =
+    PsyX_FileMenuNoticeAlloc;
+void (*PcPort_FileMenuNoticeFree)(void *memory) = PsyX_FileMenuNoticeFree;
+void (*PcPort_FileMenuNoticeLog)(const char *message) = PsyX_FileMenuNoticeLog;
+int (*PcPort_FileMenuNoticeStartThread)(void (*entry)(void *), void *context) =
+    PsyX_FileMenuNoticeStartThread;
+void (*PcPort_FileMenuNoticeDialog)(const char *title, const char *text) =
+    PsyX_FileMenuNoticeDialog;
 
 #if !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && \
 	(defined(RENDERER_OGL) || defined(RENDERER_OGLES))
