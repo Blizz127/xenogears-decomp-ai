@@ -1689,3 +1689,32 @@ active) instead of spinning inside `GR_CopyVRAM`.
 
 Build: LINK OK, `xeno-port` SHA-256
 `fa33ec66bfadc721d29e660d076c43ec2aa3573d0b21eb918973419642761e1e`.
+
+
+## Earned mid-forest checkpoint on the ramp (round 5)
+
+The corridor walk with escape-first battles reached the ramp and, after the
+routine F7 refusal while a script lock was still up (moving one step cleared
+it), a normal F7 wrote an **earned mid-forest checkpoint**:
+
+- `recovery.xgqs` sha256 `04122f1e3032a1cc00cc29d35e2a9a0cfacda23ba11ac0a2f2f22c2511fa6492`,
+  map 23, (-393,0,-1247), scenario 27.
+- The previous map-23 start checkpoint is preserved as
+  `route23-start-earned.xgqs` (sha256
+  `bfe7bd2985dadf0cae56ddf7ad0f4e6ae0a18005838430fb942bac0c1f51030c`).
+
+This is the route's first checkpoint past the corridor, so a wipe no longer
+costs the whole walk: F8 at the title reloads the ramp directly (verified -
+`pos=(-393,0,-1247)` was restored). From there the walkmesh route to trigger
+zone 2 is only ~550 units: (-414,-1212) -> (-521,-1258) -> (-591,-1235) ->
+(-714,-1452).
+
+Two attempts from it were lost to ordinary attrition (the mapped encounters
+come faster than the escapes succeed: escape attempts failed 2-3 times per
+fight, and the checkpoint party is Fei LV6 75 HP / Elly LV4 40 HP). The walker
+did reach (-495,-1279), i.e. inside the zone-2 approach, before the wipe.
+Zone 2 entry and the forest-exit cutscene are still **not observed**.
+
+No new port defect was established this round: every battle entered ran,
+rendered and returned (or was escaped) on build `fa33ec66`, so the round-4
+cache-eviction fix holds up under repeated play.
