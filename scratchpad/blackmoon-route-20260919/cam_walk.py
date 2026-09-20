@@ -93,19 +93,18 @@ def battle_active(text=None):
         text.count("retail battle returned")
 
 
-def fight_until_done(limit=30):
-    """Attack until the battle ends.  Every press is gated on the battle still
-    being active: the routine used to press Triangle twice per round, and when a
-    battle ended mid-round those presses landed in the FIELD, where Triangle
-    opens the status menu - which then owned input (owner=0x80) and made every
-    subsequent move look blocked."""
+def fight_until_done(limit=60):
+    """Include Square and stop sending inputs once the battle returns.
+
+    The captured round-40 fight resumed on X/Square, which the old driver
+    never sent. Z confirms menus; V and X cover the other attack inputs.
+    This bounded driver is not proof that every waiting battle is healthy.
+    """
     for _ in range(limit):
-        for key, hold, pause in (("c", 0.5, 1.6), ("z", 0.5, 1.8),
-                                 ("v", 0.5, 1.6), ("v", 0.5, 1.6),
-                                 ("z", 0.5, 2.8)):
+        for key, pause in (("z", 1.2), ("v", 1.1), ("x", 1.1), ("z", 1.6)):
             if not battle_active():
                 return True
-            tap(key, hold)
+            tap(key, 0.15)
             time.sleep(pause)
     return not battle_active()
 

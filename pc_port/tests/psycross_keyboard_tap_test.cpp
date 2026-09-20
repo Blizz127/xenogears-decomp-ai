@@ -83,6 +83,26 @@ int main()
         }
     }
 
+    /* Host shortcuts must not become game-pad input, whether SDL reports
+     * a held key or a keydown latched before the next controller sample. */
+    unsigned unmapped = 0;
+    for (int scan = 0; scan < SDL_NUM_SCANCODES; ++scan) {
+        bool mapped = false;
+        for (const TapCase& tap : taps) mapped |= tap.scancode == scan;
+        if (mapped) continue;
+        keyboard[scan] = 1;
+        PsyX_Pad_LatchKeyboardInput(scan);
+        const u_short held = PsyX_Pad_UpdateKeyboardInput();
+        keyboard[scan] = 0;
+        const u_short released = PsyX_Pad_UpdateKeyboardInput();
+        if (held != 0xFFFF || released != 0xFFFF) {
+            std::fprintf(stderr, "unmapped scancode %d leaked: held=%04x released=%04x\n",
+                         scan, held, released);
+            return 1;
+        }
+        ++unmapped;
+    }
+    std::printf("PsyCross unmapped keyboard isolation: PASS (%u scancodes)\n", unmapped);
     std::puts("PsyCross queued keyboard tap: PASS");
     return 0;
 }

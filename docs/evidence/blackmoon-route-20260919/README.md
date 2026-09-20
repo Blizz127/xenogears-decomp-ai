@@ -3292,3 +3292,73 @@ blocked acceptance attempts in rounds 8, 30, 32, 36 and 40, twice at the last ho
 of the descent; the party is healthy when it happens and the guest is executing
 (`pc` samples across the battle overlay), so it is not a crash and not an
 out-of-resources state.
+
+
+## Astra takeover: captured battle responds to omitted input (2026-09-20)
+
+Revalidated branch `experiment/worldmap-open-gates-20260823`, HEAD `852598ce`,
+PID 148517 and the only live game before sending input. No input driver was
+running at takeover. Executable SHA-256 was
+`589fb02e77e8a50b73d422a8b66bac2d2397b4724f18fff6c3d8fc5832ce133d`.
+The recovery checkpoint remains
+`53a26c8c7333f28d6d9caf2dc47f50600a738484e4b55116f23247da7e3fe825`.
+DeepSeek's pre-existing dirty walker changes were preserved.
+
+### Corrections to the preceding blocker report
+
+The exact live round-40 fight was responsive. A normal X keypress advanced its
+pending attack immediately; subsequent normal inputs reached victory and the
+field. The log now records that fourth battle returning after 3,413,081,454 guest
+instructions. The prior walker never sent X/Square, so its timeout was not proof
+that the game rejected all inputs. Core, stack and pre-input screenshot were
+saved before this experiment under `scratchpad/blackmoon-route-20260919/`:
+`astra-stalled-battle.core`, `astra-takeover-stack.log`, and
+`astra-takeover-stall.png`.
+
+Crucially, GOD was enabled at takeover (confirmed through the native getter and
+mass-damage output). That recovery is **not retail acceptance**. GOD was switched
+off, the unchanged checkpoint reloaded, and the following normal encounter was
+won with Fei at 41/84 HP and Elly KO. Victory was observed and the fifth battle
+returned to map 23 with `canRun=1 owner=0xff`. See
+`runtime-accept39.log`, `astra-manual-effective.png`, and
+`astra-manual-final.png`. Earlier historical stalls remain unclassified; this
+observation does not prove they all had the same cause.
+
+The battle driver now includes X, retains confirm and other attack inputs,
+omits the cancel input, and checks battle ownership before each press. Four
+isolated driver tests pass; the old committed function fails both tests that
+require the missing X input. These are driver regression tests, not simulated
+proof of retail combat. No engine logic, guest code, retail timer, or MIPS
+assembly was changed. Physical keyboard mapping was checked independently:
+Z=Circle, X=Square, V=Triangle, C=Cross. Do not infer attack AP costs merely from
+those physical labels.
+
+### Host-input claim: not reproduced in this takeover
+
+Read-only live pad sampling across F8, F9 (twice), and F11 observed neutral pad
+bytes and zero C1 state throughout the sampled intervals. F8 restored the field
+without menu ownership. This is bounded sampling, not proof against every event
+ordering or mouse edge. `astra-input-probe.py` records the probe implementation.
+The production PsyCross keyboard test now checks all 496 unmapped SDL scancodes
+for held and latched leakage; all pass, along with the 16 mapped one-shot tests.
+This does not test mouse routing. No speculative input patch was made.
+
+If a host-input defect is reproduced, tracked PsyCross changes already belong in
+`pc_port/patches/`, applied by `build_port.sh`; the ignored extern checkout does
+not require a new placement decision.
+
+Full encounters-live route acceptance, zone 2, forward story progression, and
+the parked Equip/Status/Gear screens remain unfinished. Reaching map 22 alone
+must not be treated as proof of completing the forward story route.
+
+
+### Automated validation of the revised driver
+
+After another load of the unchanged checkpoint, a single walker with GOD off,
+encounters enabled and speed 1X won the sixth logged encounter automatically.
+`runtime-accept39.log` records its return after 60,501,102 guest instructions;
+`astra-driver-validation.log` then records normal walking through triangles
+294, 295, 296, 297 and 306. No manual battle inputs were needed for that fight.
+A seventh encounter started at leg 30 before the user interrupted the turn.
+At resume there was no remaining input driver; the game was waiting at an attack
+ring with Fei 46/84 and Elly 20/40. This is not full-route acceptance.
