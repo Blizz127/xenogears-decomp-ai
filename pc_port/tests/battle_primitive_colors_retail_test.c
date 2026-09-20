@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "battle_mips_adapter.h"
+#include "psx_memory.h"
+uint8_t g_PsxRam[PSX_RAM_SIZE];
 
 extern void func_800B2AEC(void *, void *, void *, int32_t, int32_t, int32_t);
 extern int32_t func_80021AD8(int32_t, int32_t);
@@ -45,6 +47,13 @@ static uint8_t *address(uint32_t value, unsigned width)
     if (value >= STACK_BASE &&
         (uint64_t)value + width <= STACK_BASE + sizeof(stack_ram))
         return stack_ram + (value - STACK_BASE);
+    uintptr_t native_ram = (uintptr_t)g_PsxRam;
+    if (value >= native_ram && (uint64_t)value + width <= native_ram + PSX_RAM_SIZE)
+        return (uint8_t *)(uintptr_t)value;
+    if (((value & 0xFFE00000u) == 0x80000000u ||
+         (value & 0xFFE00000u) == 0xA0000000u) &&
+        (value & 0x1FFFFFu) + width <= 0x200000u)
+        return (uint8_t *)PSX_ADDR(value);
     return NULL;
 }
 
@@ -225,10 +234,47 @@ static void compare(unsigned key, unsigned count, unsigned source_stride,
     ++cases;
 }
 
+/* The Aquasol F2 path keeps a native model pointer but serializes both
+ * packet buffers as KSEG addresses. Cover each independent argument domain,
+ * including cached/uncached guest aliases, against the same retail routine. */
+static void compare_pointer_domains(void)
+{
+    Fixture *backing = (Fixture *)PSX_ADDR(0x80100000u);
+    const unsigned keys[] = {0, 8, 0x10, 0x18, 4, 0xc, 0x14, 0x1c,
+                            0x104, 0x10c, 0x114, 0x11c};
+    for (unsigned alias = 0; alias != 2; ++alias)
+        for (unsigned domains = 0; domains != 8; ++domains)
+            for (unsigned k = 0; k != sizeof(keys)/sizeof(keys[0]); ++k) {
+                memset(backing, 0xA5, sizeof(*backing));
+                put32(backing->header + 0x10,
+                      (uint32_t)(backing->descriptor - backing->header));
+                put32(backing->header + 0x14, 2);
+                init_descriptor(backing->descriptor, keys[k], 9, 11, k);
+                init_descriptor(backing->descriptor + 40, keys[k], 9, 11, k + 1);
+                void *args[] = {backing->header, backing->arena0, backing->arena1};
+                for (unsigned a = 0; a != 3; ++a)
+                    if (domains & (1u << a))
+                        args[a] = (void *)(uintptr_t)((alias ? 0xA0000000u : 0x80000000u) |
+                            (uint32_t)((uint8_t *)args[a] - g_PsxRam));
+                initial = *backing;
+                run_retail(-7, -7, -7, args[0], args[1], args[2]);
+                expected = *backing;
+                *backing = initial;
+                func_800B2AEC(args[0], args[1], args[2], -7, -7, -7);
+                if (memcmp(backing, &expected, sizeof(*backing))) {
+                    fprintf(stderr, "B2AEC FAIL case=%u pointer domains=%u alias=%u key=%x\n",
+                            cases, domains, alias, keys[k]);
+                    exit(1);
+                }
+                ++cases;
+            }
+}
+
 int main(void)
 {
     assert((uintptr_t)&fixture + sizeof(fixture) <= UINT32_MAX);
     load_battle();
+    compare_pointer_domains();
 
     /* First case is the explicit scratch-empty RED when production is absent. */
     compare(0, 1, 2, 2, 0, 0, 0, 0, 0, 0);

@@ -1022,3 +1022,57 @@ and world-return18-moved.png after Left 0.6 seconds: movement and terrain scroll
 work. Both show SPEED 1X, FEI HD2D ON, GOD OFF. No teleport, forced combat outcome,
 or altered player stats used. Forest recovery hash still matches its pre-test
 snapshot. Full Blackmoon Forest story completion remains pending.
+
+## Aquasol F2 packet-address crash (resume19/20)
+
+Resume19 continued normal map22 traversal and encounters. Using Aquasol during
+a four-Hobgob battle crashed in native `func_800B2AEC`, called by animation
+opcode F2. The core shows a native model pointer (`0x781454`) alongside guest
+packet-buffer addresses (`0x8013d010`, `0x8013e410`), with RGB deltas -7.
+Dereferencing the latter as host pointers caused SIGSEGV. Evidence:
+`forest-aquasol.core`, `forest-aquasol.gdb`, and `runtime-resume19.log`.
+
+The native primitive-color leaf now independently translates KSEG0/KSEG1 RAM
+arguments through `PSX_ADDR`, preserving native pointers and the existing
+packet/color logic. Translation is guarded by `XENO_PC_PORT`; the matching
+retail build still uses its existing assembly body. This native leaf is not
+claimed to compile byte-identically to retail.
+
+The regression runner pins the actual 2,140-byte battle routine and 44-byte
+SLUS clamp and executes those instructions for the comparison. Added 192 cases
+covering every independent native/guest argument combination, both cached and
+uncached aliases, twelve supported packet shapes, two records, and guards.
+All 4,422 cases pass at O0, O2, and UBSan. Removing the address translation
+reproduces SIGSEGV; the seven existing arithmetic/layout mutants are also
+rejected. The native build passes (75 generated function stubs, 96 adopted
+leaves checked). Logs: `aquasol-pointer-tests.log`, `aquasol-pointer-build.log`.
+
+Resume20 loaded the earned map22 checkpoint with Aquasol count3, HP66/73,
+GOD OFF, HD2D ON and 1X speed. Normal Aquasol use in a two-Armor-Grub encounter
+survived the former crash point; HP69/73 after the next enemy hit and subsequent
+turns were visually observed (`aquasol20-result.png`, `aquasol20-nextturn.png`).
+The battle was won normally, with HP27/73 and Bizfruit1 awarded
+(`aquasol20-aftercombo.png`, `aquasol20-return.png`). The field resumed,
+ordinary Left input changed the player position, and the field menu opened.
+`aquasol20-inventory.png` visibly confirms Aquasol2: exactly one consumed.
+Field return/menu functionality is observed, but return-position fidelity needs
+investigation: the last pre-battle position log is (613,0,1021), while the first
+stable post-battle position is (96,37,299), with the view obscured by a tree.
+No conclusion about the cause or retail-correct return positioning is drawn.
+The earned recovery checkpoint is not overwritten with this return state.
+
+Rendering remains incomplete: both runs report unbound animation render table
+index15 (retail `func_800257F0`). Its decompiled body still has packed-pointer
+loads unsafe for the native build, and its `func_800B1F6C` dependency remains a
+generated stub. The crash fix does not establish healing-effect visual parity.
+
+Navigation finding: the map22 route climbs the southwest root staircase before
+following the raised western path north; the exit log cannot be reached by
+jumping directly from the ground below it. Read-only decoding of guide actor22's
+retail jump script gives these (x,y,z) landings: (-847,-42,-1030),
+(-928,-90,-925), (-999,-173,-933), (-1097,-193,-899), (-1219,-252,-964),
+then (-1218,-158,-1060). These are navigation evidence, not injected poses.
+The next attempt must turn south as well as west at the fifth landing.
+No movement defect has been established from the failed ground approaches.
+The earned recovery checkpoint predates the Aquasol crash; the backup
+`pre-aquasol-crash-earned.xgqs` preserves it. User saves remain untouched.

@@ -8,6 +8,10 @@
  * once it is transcribed retail-shaped and proven byte-exact.
  *
  * Packet offsets are PSX bytes, independent of host GPU structure layouts. */
+#ifdef XENO_PC_PORT
+#include "psx_memory.h"
+#endif
+
 extern s32 func_80021AD8(s32 color, s32 value);
 
 static u32 BattlePrimitiveColorRead32(const u8* p) {
@@ -15,11 +19,24 @@ static u32 BattlePrimitiveColorRead32(const u8* p) {
            ((u32)p[2] << 16) | ((u32)p[3] << 24);
 }
 
+/* Animation F2 can pass a native model alongside guest packet addresses
+ * written by the battle MIPS code. Translate each argument independently;
+ * native pointers and packet layout/colour arithmetic remain unchanged. */
+static u8* BattlePrimitiveColorAddress(void* pointer) {
+#ifdef XENO_PC_PORT
+    uintptr_t address = (uintptr_t)pointer;
+    if ((address & ~(uintptr_t)0x1FFFFFu) == 0x80000000u ||
+        (address & ~(uintptr_t)0x1FFFFFu) == 0xA0000000u)
+        return PSX_ADDR(address);
+#endif
+    return pointer;
+}
+
 void func_800B2AEC(void* model, void* buffer0, void* buffer1,
                    s32 red, s32 green, s32 blue) {
-    u8* header = model;
-    u8* out0 = buffer0;
-    u8* out1 = buffer1;
+    u8* header = BattlePrimitiveColorAddress(model);
+    u8* out0 = BattlePrimitiveColorAddress(buffer0);
+    u8* out1 = BattlePrimitiveColorAddress(buffer1);
     u32 descriptorOffset = BattlePrimitiveColorRead32(header + 0x10);
     u32 count = BattlePrimitiveColorRead32(header + 0x14);
     u8* descriptor = (u8*)((uintptr_t)header + descriptorOffset);

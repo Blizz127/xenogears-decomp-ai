@@ -74,7 +74,7 @@ build_case() {
     gcc -std=gnu17 "${common[@]}" -c "$TEST_OUT/clamp.c" -o "$TEST_OUT/$name.clamp.o" >> "$TEST_OUT/$name.build.log" 2>&1
     gcc -std=gnu17 "${common[@]}" -c pc_port/tests/battle_primitive_colors_retail_test.c -o "$TEST_OUT/$name.test.o" >> "$TEST_OUT/$name.build.log" 2>&1
     gcc -std=gnu17 "${common[@]}" -c pc_port/src/battle_mips_adapter.c -o "$TEST_OUT/$name.adapter.o" >> "$TEST_OUT/$name.build.log" 2>&1
-    clang -std=c17 -Wall -Wextra -Werror -Ipc_port/src -no-pie "${common[@]}" -Wl,--gc-sections \
+    gcc -std=c17 -Wall -Wextra -Werror -Ipc_port/src -no-pie "${common[@]}" -Wl,--gc-sections \
         "$TEST_OUT/$name.test.o" "$TEST_OUT/$name.adapter.o" "$TEST_OUT/$name.native.o" "$TEST_OUT/$name.clamp.o" \
         -o "$TEST_OUT/$name.test" >> "$TEST_OUT/$name.build.log" 2>&1
 }
@@ -108,8 +108,10 @@ run_mutant() {
     if [ "$status" -eq 0 ]; then
         echo "B2AEC CONTROL FAILED TO REJECT: $name" >&2
         failed=1
-    elif [ "$status" -eq 1 ] && rg -q '^B2AEC FAIL case=' "$TEST_OUT/$name.log"; then
+    elif [ "$status" -eq 1 ] && grep -q '^B2AEC FAIL case=' "$TEST_OUT/$name.log"; then
         echo "B2AEC CONTROL PASS: $name rejected";
+    elif [ "$name" = guest_pointer_pass_through ] && [ "$status" -eq 139 ]; then
+        echo "B2AEC CONTROL PASS: $name rejected (original invalid guest dereference)";
     else
         cat "$TEST_OUT/$name.log" >&2
         echo "B2AEC CONTROL UNEXPECTED FAILURE: $name rc=$status" >&2
@@ -141,7 +143,7 @@ for opt in O0 O2 UBSan; do
     "$TEST_OUT/$opt.test" > "$TEST_OUT/$opt.log" 2>&1 || status=$?
     if [ "$status" -eq 0 ]; then
         cat "$TEST_OUT/$opt.log"
-    elif rg -q '^B2AEC FAIL case=' "$TEST_OUT/$opt.log"; then
+    elif grep -q '^B2AEC FAIL case=' "$TEST_OUT/$opt.log"; then
         cat "$TEST_OUT/$opt.log" >&2
         failed=1
     else
@@ -152,6 +154,9 @@ for opt in O0 O2 UBSan; do
 done
 
 if [ "$NATIVE_MODE" = production ]; then
+    run_mutant guest_pointer_pass_through \
+        'return PSX_ADDR(address);' \
+        'return pointer;'
     run_mutant key_invert \
         '(((descriptor[2] ^ 1u) & 1u) << 8)' \
         '(((descriptor[2] ^ 0u) & 1u) << 8)'
