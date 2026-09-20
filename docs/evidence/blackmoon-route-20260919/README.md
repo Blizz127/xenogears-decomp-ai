@@ -2091,3 +2091,18 @@ calling thread" rule directly testable:
 Re-verified live after the refactor: selecting File leaves the menu open
 (`owner=0x80`) with the game running, and Cross returns it to the field
 (`owner=0xff`) - no hang.
+
+
+### Route probing after the fix (round 14)
+
+With the hang understood, the basin approach was re-probed and the wall is
+**z-banded**, not absolute:
+
+- from (-417,-1428): Up -> (-417,-1338) -> (-426,-1042), then **Left to
+  (-553,-1003)** - westward movement is open up there;
+- pushing south from (-553,-1003) drifts south-east: (-543,-1047) ->
+  (-448,-1369) -> (-374,-1546), where Left is blocked again at (-395,-1512).
+
+So the route needs to go west while north (z ~ -1000), reach x < -606, and only
+then descend into the zone's z range [-1793,-1314].  An encounter interrupted the
+last attempt at (-395,-1252).  Trigger zone 2 is still not entered.
