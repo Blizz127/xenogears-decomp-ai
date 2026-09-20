@@ -1501,3 +1501,60 @@ reached (-383,0,-1530), i.e. z is already inside trigger zone 2's range but x
 walk further west. Zone 2 entry and the scripted forest-exit cutscene
 (particles off, field resources streamed, camera yaw, Fei/Elly routines) are
 **not yet observed**, so no completion is claimed for the route.
+
+## Round notes: the ramp, battle controls, and a new effect-render defect (2026-09-20 later)
+
+### Walkmesh route into zone 2 (the direct line does not exist)
+
+`scratchpad/blackmoon-route-20260919/plan_zone2_path.py` Dijkstras over the
+extracted map23 layer-0 walkmesh with a 0.4 walkable-slope filter (the 0.6 filter
+in `map23-route.py` drops the ramp). From the ramp triangle tri232
+(-426,-96,-1509) the only route into zone 2 is
+tri232 -> tri219 (-496,-1643) -> tri221 (-623,-1641): go -z along the ramp first,
+then -x across the basin floor (y~-144). Approaching zone 2 directly from the
+east is blocked by the cliff; a re-plan from (-415,-1430) gives
+(-423,-1468) -> (-425,-1336) -> (-521,-1258) -> (-591,-1235) -> (-714,-1452).
+The fixed-mapping walker reached (-415,-1430), i.e. standing on the ramp, before
+the party was wiped.
+
+### Battle controls, learned by live experiment
+
+- The command ring rotates with Up/Down; the entry that Circle (Z) opens is the
+  one drawn as the bottom label.  `resume23i-wheel-item-selected.png` shows
+  `Escape | Combo` above `Item` and Circle opens the item list;
+  `resume23i-wheel-attack-selected.png` shows `Chi` above `Defense | Attack`.
+  Getting a specific command therefore means rotating until it is the bottom
+  label, not reading the highlighted one.
+- In the item list Circle selects, a target cursor appears, and Circle confirms.
+  Cross (C) cancels back out one level.  `resume23i-aquasol-heal-effect.png`
+  shows Aquasol restoring Fei 58 -> 70/75 **with the blue healing ring drawn**,
+  which is a live confirmation that the newly ported index-15 effect renderer
+  (`func_800257F0` / `func_800B1F6C`) is emitting the retail effect primitives.
+- Items resolve but the *description panel* for later items renders empty
+  (Zetasol/Rosesol list with a blank top panel), and Circle then does not
+  advance from that list.  That is a real UI gap worth a look, captured in the
+  round's screenshots.
+
+### New defect on the live path: corrupt full-screen effect primitives
+
+`resume23i-corrupt-effect.png` shows a full-screen field of vertical
+rainbow-striped triangles during a map-23 battle (the attack/effect between an
+enemy action and the next turn).  It is not the healing ring and does not look
+like any authored effect.  The prime suspect is the newly ported overlay
+renderer `func_800B1F6C` producing garbage for a descriptor key family the
+healing path does not exercise (its 40-case differential covers all 16 keys, but
+only against the *retail interpreter*, and the live caller passes shared-sprite
+state the test fixture does not model), or the shared global `D_80050100`/OT
+pointer being fed a guest address.  Not yet diagnosed; recorded here so it is not
+lost.  It is a rendering regression risk introduced by the effect-render port and
+must be triaged before any effect-parity claim.
+
+### Party survival is the route bottleneck
+
+The map-23 random encounters wipe the checkpoint party (Fei LV6 75 HP, Elly LV4
+40 HP) after roughly four to six fights, and a wipe returns to the title, so each
+attempt costs the full walk plus the fights.  The checkpoint is intact.  The next
+attempt should either get an F7 save on the ramp (an earned mid-forest
+checkpoint, which the route already uses) before pushing into the basin, or find
+the Escape command reliably (escape is explicitly allowed) to conserve HP.
+`resume23i-low-hp-battle.png` records the state at which this attempt was lost.
