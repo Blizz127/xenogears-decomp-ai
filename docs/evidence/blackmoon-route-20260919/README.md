@@ -2345,3 +2345,25 @@ The route itself is unchanged and short: from the checkpoint triangle tri240,
 into trigger zone 2.  Next attempt should load the checkpoint and run
 `cam_walk.py` immediately, before any manual wandering moves the player off
 tri240.
+
+
+### Aim-past-the-edge, and where the attempt ended (round 20)
+
+One more driver change came out of the clean run: the eight key combinations move
+at 45 degrees, so a steering target sitting exactly **on** a shared edge gets
+oscillated around rather than crossed (observed: tri240 -> tri241 -> tri243 back
+to tri240).  `next_hop` now aims at a point up to 60 units **beyond** the edge,
+towards the neighbour's centroid, so an overshoot lands inside the neighbour.
+
+The clean attempt from the checkpoint then ran into the usual tax: an encounter
+started within the first couple of legs, and the fight routine - attacking with
+the verified combo sequence - was still working through it when the round's
+budget ran out.  At that point the party was healthy (Fei 60/84, Elly 28/40) and
+the field was on tri240 at (-415,0,-1306).  `recovery.xgqs` (`53a26c8c...`) is
+untouched.
+
+So: the tools are now correct and verified (triangle identity, camera telemetry,
+per-step key measurement, cosine-combination choice, aim-past-edge, battle
+gating, map guard), the route is 8 triangles long, and what remains is **execution
+time on the route**: the walker needs to survive the plateau encounters long
+enough to make the ~7 hops.
