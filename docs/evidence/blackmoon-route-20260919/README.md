@@ -2274,3 +2274,35 @@ can convert "I need to move -x,+z" into the correct key analytically instead of
 learning it - which is exactly the trick that made the triangle index work.
 `src/field/main/misc11.c`/`misc8.c` carry the field camera state; the render
 context already exposes the rotation used for the view transform.
+
+
+## Camera telemetry, and the analytic walker reaching the descent edge (round 19)
+
+POSDIAG now prints the field camera as well (`eye=`/`at=`, 16.16 world units):
+
+```
+POSDIAG map=23 pos=(-417,0,-1428) ... tri=240 layer=0 triV=161,160,168
+        eye=(-417,-814,-2782) at=(-417,-32,-1428)
+```
+
+That is the missing piece for input: the direction keys are camera-relative, so
+`forward = normalize(at - eye)` and `right = (forward.z, -forward.x)` turn "I need
+to move -x,+z" into a key combination analytically, with one probe to fix the
+global handedness sign.
+
+`cam_walk.py` does that - recomputing the basis every step, re-planning from the
+player's actual triangle every step, and scaling the key hold to the distance
+left.  Live it walked the plateau and arrived **7 units from the tri241/tri61
+descent edge** (`fwd=0 sid=-8`), the closest any attempt has come.  Two driver
+defects showed up and are fixed:
+
+- the step size was a fixed 0.6 s (~90 units), so a 7-unit approach overshot the
+  neighbour triangle; it is now `clamp(want/140, 0.12, 0.75)`;
+- the battle routine pressed Triangle twice per round, and when a battle ended
+  mid-round those presses landed in the **field**, where Triangle opens the
+  status menu - which then owned input (`owner=0x80`) and made every subsequent
+  move look blocked.  Every press is now gated on the battle still being active.
+
+Both are harness bugs, not port bugs.  With them fixed the descent chain
+(tri240 -> tri241 -> tri61 -> tri128 -> tri190 -> tri192 -> tri193 -> tri210) is
+within reach of the analytic walker.

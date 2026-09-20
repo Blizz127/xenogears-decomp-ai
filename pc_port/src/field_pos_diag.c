@@ -53,6 +53,13 @@ extern u8  D_800ADB04;   /* field data available; cleared across map transitions
  * triangle (tri61) and could not tell which edge it was missing. */
 extern s32 D_800AFB24[];  /* triangle base per walkmesh layer */
 extern s32 D_800AFB34[];  /* vertex base per walkmesh layer */
+/* Field camera position (eye) and look-at, in 16.16.  The direction keys are
+ * camera-relative, so without these a headless walk cannot turn "I need to go
+ * +x,-z" into a key: the mapping is a rotation by the camera yaw, and the wrong
+ * guess walks the player away from the target.  Printed so the driver can
+ * compute the rotation instead of learning it by trial. */
+extern VECTOR g_CameraEye2;
+extern VECTOR g_CameraAt2;
 
 void PcPort_FieldPosDiag(void)
 {
@@ -244,7 +251,8 @@ void PcPort_FieldPosDiag(void)
     printf("[xeno-port][test] POSDIAG map=%d pos=(%d,%d,%d) inZones=[%s] "
            "scenario=%u var20=%u held=0x%04x newpress=0x%04x "
            "canRun=%d owner=0x%02x b21d0=%u status=0x%04x "
-           "tri=%d layer=%d triV=%d,%d,%d\n",
+           "tri=%d layer=%d triV=%d,%d,%d "
+           "eye=(%d,%d,%d) at=(%d,%d,%d)\n",
            g_GameSceneMapNum & 0xFFF, (int)CONV_TO_GTE(actor->position.vx),
            (int)CONV_TO_GTE(actor->position.vy),
            (int)CONV_TO_GTE(actor->position.vz), zones,
@@ -254,6 +262,10 @@ void PcPort_FieldPosDiag(void)
            (int)D_800ADB68, (unsigned)(D_800ADB64 & 0xFF),
            (unsigned)D_800B21D0,
            (unsigned)(g_FieldActors[g_PlayerActorIndex].status & 0xFFFF),
-           (int)triIndex, (int)layer, (int)triV0, (int)triV1, (int)triV2);
+           (int)triIndex, (int)layer, (int)triV0, (int)triV1, (int)triV2,
+           (int)(g_CameraEye2.vx >> 16), (int)(g_CameraEye2.vy >> 16),
+           (int)(g_CameraEye2.vz >> 16),
+           (int)(g_CameraAt2.vx >> 16), (int)(g_CameraAt2.vy >> 16),
+           (int)(g_CameraAt2.vz >> 16));
     fflush(stdout);
 }
