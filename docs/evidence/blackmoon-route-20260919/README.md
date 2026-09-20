@@ -1938,3 +1938,46 @@ real queue (two `ControllerPushState` snapshots with different
 `g_Menu->input == MENU_INPUT_BACK`; plus a mutant that drops the release field in
 the push snapshot.  That is a much smaller target than the whole menu and is
 directly on the live path that fails.
+
+
+## CORRECTION: the "field-menu wedge" was not a port defect (round 11)
+
+The wedge recorded in rounds 9-10 does **not** reproduce as a defect, and the
+earlier conclusion is withdrawn.  Re-testing on a clean load:
+
+1. Loaded the (-417,-1428) checkpoint - `g_C1ButtonState`,
+   `g_C1ButtonStateReleased` and `g_C1PrevButtonState` all read `0`, so no stuck
+   key was involved.
+2. Opened the menu and the Items screen; the port logged
+   `Nav N2a: Items windows 3/4 settled open`.
+3. A hardware **watchpoint on `g_Menu->input`** caught the reader writing
+   `Old value = 8 (idle)` -> `New value = 5 (MENU_INPUT_BACK)`: the Cross
+   cancel edge does reach the Items loop.
+4. Pressing Cross (c) with slower spacing (0.6 s hold, 2.5 s apart) then closed
+   the menu: `POSDIAG ... owner=0xff` returned and the field was playable again.
+
+So the menu, the pad queue and the cancel path all work.  What failed was my
+*input timing*: the menu consumes one queued pad state per frame, and the rapid
+repeated taps used earlier could land entirely between reads, which looked like
+a wedged loop.  The round-9/10 entries above are kept as the record of what was
+observed, but no port defect should be inferred from them, and no fix is owed.
+
+### The same timing rule fixes item use
+
+The Items screen needs **three** confirms, not one: the first sets `selected`,
+the second opens the use prompt, the third picks the target.  With 0.5 s holds
+and ~2 s spacing this worked end to end:
+
+- **Omegasol** ("Restores HP and EP to FULL") used on Elly: 1/40 -> **40/40**,
+  and the item left the list.
+- **Hob-Jerky** ("Restores HP (50) Non-battle") used on Fei, count 4 -> 3.
+- The description panel only renders once the list settles; an empty panel just
+  means the cursor is on an empty slot, not a data gap.
+
+### Healed checkpoint
+
+A normal F7 then wrote `recovery.xgqs` sha256
+`53a26c8c7333f28d6d9caf2dc47f50600a738484e4b55116f23247da7e3fe825` at map 23,
+(-417,0,-1428) - the same resume point as `22e61c2d...`, but with the party
+healed (Fei ~74/84, Elly 40/40).  Future pushes into zone 2 now start from a
+healthy party instead of 53/75 and 1/40.
