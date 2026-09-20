@@ -2849,3 +2849,49 @@ flag it tests, and check whether the port advances it.  The stall is intermitten
 (roughly one encounter in three on this map), so it is reproducible but not
 deterministic; `recovery.xgqs` (`53a26c8c...`) is intact and the acceptance run can
 be retried.
+
+
+## Candidate cause of the stall: `Vsync` returns the wrong value (round 33)
+
+Sampling the stalled battle puts the guest inside a **nested guest callback**:
+`run_guest_callback(callback=0x800BA974)` -> `PcPortMipsRun`, i.e. the battle
+overlay invoked a guest callback (`func_800BA8F4`,
+`asm/battle/matchings/mainl110/func_800BA8F4.s`, which is called per actor and
+returns immediately), and the outer interpreter is parked in `Vsync`
+(`0x8004B54C`).  So the battle's frame loop is running - the scene animates - but
+it never satisfies whatever ends the fight.
+
+Reading retail `Vsync` next to the port's shows a concrete parity gap in its
+**return value**:
+
+```
+retail (asm/slus_006.64/matchings/psyq/libetc/vsync/Vsync.s)
+    $s1 = (g_pTMR_HRETRACE_VAL - g_HsyncInterruptCount) & 0xFFFF
+    a0 < 0   -> return g_VsyncInterruptCount
+    a0 == 1  -> return $s1                      # hretrace delta
+    a0 == 0  -> v_wait(...); return $s1         # hretrace delta
+    a0  > 1  -> v_wait(...); return $s1
+
+port (pc_port/src/psyq_compat.c:1700)
+    mode == 1 or mode < 0 -> VSync(mode)  (PsyCross: PsyX_Sys_GetVBlankCount())
+    otherwise             -> VSync(mode); return PsyX_Sys_GetVBlankCount()
+```
+
+So for `mode >= 0` retail returns a 16-bit **hretrace delta**, while the port
+returns a **monotonically increasing vblank count**.  The guest consumes that
+value as a per-frame timing quantity:
+
+- `g_FrameDeltaTime = Vsync(1);` (`src/field/main/main.c:131`, `FieldUpdateDeltaTime`)
+- `D_800ADB9C = Vsync(1);` (`src/field/main/main.c:308`, `src/field/main/misc2.c:2133, 2207`)
+
+A value that grows without bound instead of measuring the frame is exactly the
+kind of thing that makes a `Vsync`-paced battle loop never terminate.  `Vsync(-1)`
+(the `while (Vsync(-1) < target)` waits in `src/field/main/misc2.c:2297` and the
+libcd timeouts) is the one form the port gets right.
+
+The port has `g_VsyncInterruptCount` but **no** hsync/hretrace counters, so the
+faithful value is not available as-is.  **Next step:** implement a port-owned
+per-call delta (frames elapsed since the previous `Vsync(1)` query) as the
+`mode >= 0` return, with a regression test that pins "the value tracks elapsed
+frames rather than the absolute count" and rejects a mutant returning the raw
+count; then re-run the acceptance pass and see whether the stall clears.
