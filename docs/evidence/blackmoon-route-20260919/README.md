@@ -1190,3 +1190,25 @@ The latest earned recovery checkpoint is after winning the log battle, at
 normal Right+C along the log to zone3, then ordinary dialogue confirmations.
 GOD OFF and HD2D ON throughout the successful log-battle/movie segment. All
 input helpers and the debugger have stopped; Xvfb95 remains available.
+
+## Timer callback lookup repair (2026-09-20)
+
+Added the native-only `func_8001D164` owner to `work_list_port.c`, returning the
+first callback match or NULL on exhaustion. The interpreter now preserves its
+argument0 as a callback identity. No retail source or assembly was changed.
+All 56 annotated assembly bytes compare equal to the disc; SHA-256
+`13bdca2e97bc7696a87d543c4551f7e79f51c8f46961caed7f59f6abe2652262`.
+The test executes that retail slice and compares native return values, list
+heads, and node guards for 480 empty/miss/first/duplicate/address-identity cases
+at O0/O2/UBSan. Existing 576 timer allocation/list and 30,721 owner/callback
+lookup cases also pass. A deliberately wrong last-node-on-miss implementation
+is rejected. The production interpreter bridge test covers five callback
+identities and rejects treating argument0 as a data pointer. Both suites pass;
+logs are `timer-callback-lookup-tests.log` and `timer-callback-abi-tests.log`.
+The ABI runner now links the actual God-mode hook (default OFF), which its
+production runtime include requires.
+
+Native build passes (`timer-callback-build.log`, 75 stubs checked, 96 adopted
+leaves); `nm -D` confirms an exported `func_8001D164`. Resume22 launch metadata
+pins the rebuilt binary for the natural Wels retry from the earned checkpoint.
+These machine checks alone do not establish Wels victory or forest completion.

@@ -445,6 +445,8 @@ static uintptr_t translate_argument(BattleMipsRuntime *runtime,
 
 static int is_callback_argument(const char *name, unsigned index)
 {
+    if (index == 0 && strcmp(name, "func_8001D164") == 0)
+        return 1;
     if (index == 1 &&
         (strcmp(name, "WorkListSetTaskCallback") == 0 ||
          strcmp(name, "TimerWorkListSetTaskCallback") == 0 ||

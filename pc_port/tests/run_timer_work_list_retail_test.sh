@@ -15,6 +15,20 @@ if [ "$lookup_sha" != 4d2e3d0559a80d25efb325eadf0c64edacc7fabd24e3147a3ade1cfd7c
     echo "TIMER LOOKUP RETAIL SLICE MISMATCH" >&2
     exit 1
 fi
+python3 - <<'PIN'
+from pathlib import Path
+from hashlib import sha256
+import re
+image=Path('disc/SLUS_006.64').read_bytes()
+assembly=Path('asm/slus_006.64/matchings/system/work_list/func_8001D164.s').read_text()
+rows=re.findall(r'/\* ([0-9A-F]+) ([0-9A-F]+) ([0-9A-F]+) \*/',assembly)
+assert len(rows)==14
+for _,address,word in rows:
+    offset=int(address,16)-0x8000f800
+    assert image[offset:offset+4]==bytes.fromhex(word)
+assert sha256(image[0xd964:0xd99c]).hexdigest()=='13bdca2e97bc7696a87d543c4551f7e79f51c8f46961caed7f59f6abe2652262'
+print('TIMER CALLBACK LOOKUP 56 annotated bytes match retail disc')
+PIN
 COMMON=(-std=gnu17 -fno-pie -fno-builtin -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
     -DUSE_EXTENDED_PRIM_POINTERS=0 -ffunction-sections -fdata-sections
     -Ipc_port/include_shim -Iinclude -Ipc_port/src
@@ -36,3 +50,23 @@ for opt in O0 O2 UBSan; do
         "$OUT/$opt.cpu.o" -o "$OUT/$opt.test"
     "$OUT/$opt.test"
 done
+
+# Reject the decompiled miss behavior: retail clears v0 on list exhaustion.
+python3 - <<'MUTANT'
+from pathlib import Path
+p=Path('pc_port/src/work_list_port.c').read_text()
+a=p.index('void* func_8001D164(')
+b=p.index('\n/* asm 8001D3F4',a)
+body=p[a:b].replace('WorkListEntry* pCur;', 'WorkListEntry* pCur; WorkListEntry* last = NULL;')
+body=body.replace('if (pCur->onTriggerCallback', 'last = pCur; if (pCur->onTriggerCallback')
+body=body.replace('return NULL;', 'return last;')
+Path('pc_port/build_native/timer_work_list_retail_test/miss-mutant.c').write_text(p[:a]+body+p[b:])
+MUTANT
+gcc "${COMMON[@]}" -O0 -Wall -Wextra -Werror -c "$OUT/miss-mutant.c" -o "$OUT/miss-mutant.o"
+"$CC" -no-pie -Wl,--gc-sections "$OUT/O0.test.o" "$OUT/miss-mutant.o" "$OUT/O0.cpu.o" -o "$OUT/miss-mutant"
+if "$OUT/miss-mutant" > "$OUT/miss-mutant.log" 2>&1; then
+    echo 'TIMER CALLBACK LOOKUP FAIL miss mutant survived' >&2
+    exit 1
+fi
+grep -q 'TIMER CALLBACK LOOKUP FAIL case=' "$OUT/miss-mutant.log"
+echo 'TIMER CALLBACK LOOKUP miss mutant rejected'

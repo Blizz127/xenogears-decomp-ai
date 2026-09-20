@@ -18,6 +18,7 @@ extern u8 D_800591AC, D_800591AF;
 extern WorkListEntry *TimerWorkListAllocateTask(void *, s32) __attribute__((weak));
 extern void TimerWorkListDeleteTask(WorkListEntry *) __attribute__((weak));
 extern void *func_8001D0A4(void *, void *) __attribute__((weak));
+extern void *func_8001D164(void *) __attribute__((weak));
 
 #define AREA 0x80100000u
 #define NODE 0x80100020u
@@ -245,6 +246,43 @@ static int check_lookup(void)
     return 1;
 }
 
+static int check_callback_lookup(void)
+{
+    if (!func_8001D164) {
+        fputs("TIMER CALLBACK LOOKUP FAIL missing native owner\n", stderr);
+        return 0;
+    }
+    const u32 callbacks[] = {0, 0x800bcbb4u, 0x800bcb54u,
+                            0x00412340u, 0x800c11ccu, 0xa00bcbb4u};
+    unsigned cases = 0;
+    for (unsigned length = 0; length <= 4; length++)
+    for (unsigned matches = 0; matches < 16; matches++)
+    for (unsigned cb = 0; cb < sizeof(callbacks)/sizeof(*callbacks); cb++) {
+        u8 before[0x240];
+        memset(PSX_ADDR(AREA), 0xa5, sizeof(before));
+        for (unsigned n = 0; n < length; n++) {
+            const u32 node = NODE + n * 0x40;
+            put(node + 8, matches & (1u << n) ? callbacks[cb] : callbacks[cb] ^ 4u);
+            put(node + 0x18, n + 1 < length ? WL_U32(PSX_ADDR(node + 0x40)) : 0);
+        }
+        g_TimerWorkList = length ? PSX_ADDR(NODE) : NULL;
+        const u32 head = WL_U32(g_TimerWorkList);
+        put(0x8005958cu, head);
+        memcpy(before, PSX_ADDR(AREA), sizeof(before));
+        const u32 expected = retail(0x8001d164u, callbacks[cb], 0);
+        const u32 actual = WL_U32(func_8001D164((void *)(uintptr_t)callbacks[cb]));
+        if (actual != expected || memcmp(before, PSX_ADDR(AREA), sizeof(before)) ||
+            WL_U32(g_TimerWorkList) != head || word(0x8005958cu) != head) {
+            fprintf(stderr, "TIMER CALLBACK LOOKUP FAIL case=%u got=%08x expected=%08x\n",
+                    cases, actual, expected);
+            return 0;
+        }
+        ++cases;
+    }
+    printf("TIMER CALLBACK LOOKUP RETAIL PASS cases=%u empty/miss/first/multiple/identity/guards\n", cases);
+    return 1;
+}
+
 int main(void)
 {
     if (!TimerWorkListAllocateTask || !TimerWorkListDeleteTask) {
@@ -257,6 +295,8 @@ int main(void)
     assert(fread(PSX_ADDR(0x8001cc18u), 1, 0x25c, image) == 0x25c);
     assert(fseek(image, 0x8001d0a4u - 0x8000f800u, SEEK_SET) == 0);
     assert(fread(PSX_ADDR(0x8001d0a4u), 1, 0x68, image) == 0x68);
+    assert(fseek(image, 0x8001d164u - 0x8000f800u, SEEK_SET) == 0);
+    assert(fread(PSX_ADDR(0x8001d164u), 1, 0x38, image) == 0x38);
     fclose(image);
     unsigned cases = 0;
     for (unsigned flags = 0; flags < 256; flags++, cases++)
@@ -269,5 +309,5 @@ int main(void)
                 if (!compare_case(0xff, k & 1 ? 0xff : 0, ids[j], k & 1,
                                   (k >> 1) & 1, k >> 2, sizes[i], k & 1)) return 1;
     printf("TIMER WORK LIST RETAIL PASS cases=%u, allocation/list bytes/counters/delete/guards\n", cases);
-    return check_lookup() ? 0 : 1;
+    return check_lookup() && check_callback_lookup() ? 0 : 1;
 }

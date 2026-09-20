@@ -465,7 +465,21 @@ static int check_lookup_callback_argument(void)
             return 0;
         }
     }
-    puts("TIMER LOOKUP ABI PASS owner translated/callback preserved/result");
+    runtime.functions[0] = (ResolvedFunction){0x8001d164u, lookup_boundary, "func_8001D164"};
+    for (unsigned n = 0; n < sizeof(callbacks) / sizeof(*callbacks); n++) {
+        PcPortMipsCpu cpu;
+        initialize_cpu(&cpu, &runtime);
+        cpu.gpr[4] = callbacks[n];
+        cpu.gpr[29] = 0x801ff000u;
+        if (runtime_bridge(&runtime, &cpu, 0x8001d164u) != 1 ||
+            lookup_owner_arg != callbacks[n] ||
+            cpu.gpr[2] != (uintptr_t)PSX_ADDR(0x80180100u)) {
+            fprintf(stderr, "TIMER CALLBACK LOOKUP ABI FAIL callback=%08x received=%lx\n",
+                    callbacks[n], (unsigned long)lookup_owner_arg);
+            return 0;
+        }
+    }
+    puts("TIMER LOOKUP ABI PASS both lookups preserve callback identity/result");
     return 1;
 }
 

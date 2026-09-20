@@ -524,6 +524,19 @@ void* func_8001D0A4(void* pTask, void* pCallback) {
     return NULL;
 }
 
+/* Retail 8001D164..8001D19C: callback identity lookup. The delay slot at
+ * 8001D190 clears v0 when the list is exhausted, so a miss returns NULL,
+ * not the last visited node. Task pointers retain their packed PSX width. */
+void* func_8001D164(void* pCallback) {
+    WorkListEntry* pCur;
+    for (pCur = g_TimerWorkList; pCur != NULL; pCur = WL_PTR(pCur->pNext)) {
+        if (pCur->onTriggerCallback == WL_U32(pCallback)) {
+            return pCur;
+        }
+    }
+    return NULL;
+}
+
 /* asm 8001D3F4: unlink a sprite from the D_80059190 pending-frame chain
  * (linked through *(sprite+0x20)+0x38, the same chain func_8001D2B0 pushes
  * onto and func_8001D468 drains). */

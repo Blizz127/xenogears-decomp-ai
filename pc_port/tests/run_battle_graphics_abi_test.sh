@@ -18,7 +18,8 @@ for opt in O0 O2 UBSan; do
     gcc "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror -c pc_port/src/battle_mips_adapter.c -o "$OUT/$opt.cpu.o"
     clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c pc_port/src/controller_vblank_service.c -o "$OUT/$opt.vblank.o"
-    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$opt.vblank.o" "$OUT/$opt.compat.o" "$OUT/$opt.test.o" "$OUT/$opt.cpu.o" -ldl -o "$OUT/$opt"
+    gcc "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror -c pc_port/src/god_mode.c -o "$OUT/$opt.god.o"
+    clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$opt.vblank.o" "$OUT/$opt.compat.o" "$OUT/$opt.test.o" "$OUT/$opt.cpu.o" "$OUT/$opt.god.o" -ldl -o "$OUT/$opt"
     "$OUT/$opt"
 done
 # A no-op at the native-to-retail boundary must fail the real opcode test.
@@ -28,7 +29,7 @@ sed "s|../src/battle_mips_runtime.c|$PWD/$OUT/noop-runtime.c|" \
     pc_port/tests/battle_graphics_abi_test.c > "$OUT/noop-test.c"
 gcc "${COMMON[@]}" -O2 -Wall -Wextra -Werror -c "$OUT/noop-test.c" -o "$OUT/noop-test.o"
 clang -no-pie -Wl,--gc-sections "$OUT/O2.vblank.o" "$OUT/O2.compat.o" "$OUT/noop-test.o" \
-    "$OUT/O2.cpu.o" -ldl -o "$OUT/noop-test"
+    "$OUT/O2.cpu.o" "$OUT/O2.god.o" -ldl -o "$OUT/noop-test"
 if "$OUT/noop-test" > "$OUT/noop-test.log" 2>&1; then
     echo 'BATTLE SPRITE REENTRY FAIL no-op mutant survived' >&2
     exit 1
@@ -52,3 +53,18 @@ for start, end, expected in [
     assert actual == expected, (hex(start), actual, expected)
 print("BATTLE GRAPHICS ABI RETAIL SLICES PASS")
 PY
+
+# Guest code addresses must remain callback identities at the lookup boundary.
+sed 's/index == 0 && strcmp(name, "func_8001D164")/index == 1 \&\& strcmp(name, "func_8001D164")/' \
+    pc_port/src/battle_mips_runtime.c > "$OUT/callback-mutant-runtime.c"
+sed "s|../src/battle_mips_runtime.c|$PWD/$OUT/callback-mutant-runtime.c|" \
+    pc_port/tests/battle_graphics_abi_test.c > "$OUT/callback-mutant-test.c"
+gcc "${COMMON[@]}" -O2 -Wall -Wextra -Werror -c "$OUT/callback-mutant-test.c" -o "$OUT/callback-mutant-test.o"
+clang -no-pie -Wl,--gc-sections "$OUT/O2.vblank.o" "$OUT/O2.compat.o" "$OUT/callback-mutant-test.o" \
+    "$OUT/O2.cpu.o" "$OUT/O2.god.o" -ldl -o "$OUT/callback-mutant-test"
+if "$OUT/callback-mutant-test" > "$OUT/callback-mutant-test.log" 2>&1; then
+    echo 'TIMER CALLBACK LOOKUP ABI FAIL translation mutant survived' >&2
+    exit 1
+fi
+rg -q 'TIMER CALLBACK LOOKUP ABI FAIL callback=800bcbb4' "$OUT/callback-mutant-test.log"
+echo 'TIMER CALLBACK LOOKUP ABI translation mutant rejected'
