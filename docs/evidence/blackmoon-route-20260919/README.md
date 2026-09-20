@@ -829,3 +829,58 @@ logs and `god-mode-final-on.png` / `god-mode-final-off.png`; the complete
 labels are visible. Final native build and toolbar boundary tests pass.
 The game is left running at title, HD2D ON, God mode OFF. The earned route
 checkpoint is unchanged; Blackmoon field initialization remains unresolved.
+
+## Blackmoon entry collision-flag pointer repair
+
+Reproduced the entry crash on commit 04f1dc28 from the unchanged scenario24
+checkpoint, with HD2D ON and God mode OFF. Normal controls: exit Mountain Path
+with Down+C, then world Down 1s, Left 2s, Down 1s; visible Blackmoon Forest
+label; Z to enter. GDB captured `func_800924D4(index=152, component=0,
+value=216)` dereferencing `0x0076bcf00077339c`. The table held two independent
+words `0077313c 0076bcf0`; the port's `extern u32*` loaded both into a 64-bit
+pointer. Retail's LW at 8009251C loads only the first word, as does the field
+loader's existing packed-u32 table representation.
+
+Native getter and setter now explicitly widen table word zero. The retail
+build keeps its original declaration and expressions. The native high-byte
+setter uses an unsigned shift, resolving the UBSan failure for value216 <<24.
+No bounds clamp, skipped script or substituted collision behavior was added.
+
+`run_field_collision_flags_test.sh` compiles the production TU and compares
+getter/setter behavior against the actual disc MIPS through the interpreter:
+all256 indices, all4 components, 5 byte values, plus unchanged-neighbor checks.
+5120 cases pass at O0, O2 and UBSan. The identical runner against the pre-fix
+production TU segfaults (exit139), demonstrating sensitivity to this bug.
+Annotated getter/setter instructions match disc bytes (176 and204 bytes):
+- getter SHA256 b6ec77629f5f3aadac9084334163fb0377430ce8d33ea3a38d53999f819df367
+- setter SHA256 c125f26e7774584bd3b9287e5b45c278f3c5f3d978de82ed30f925e580d25d2d
+
+Raw evidence: `forest-repro.gdb`, `forest-flags-tests.log`,
+`forest-flags-negative.log`, and `forest-flags-build.log` in the local route
+scratch directory. Live fixed-build acceptance is pending below.
+
+The legacy MIPS compiler successfully rebuilt the production misc11 object.
+Its `.text` is byte-identical to the pre-edit object; SHA256
+`d24bf8c558d42731d4dc8d8391e36a89ebf34c13dfbd9db403d9e403c8baac03`.
+Host ninja emitted its three commands for execution inside the toolchain
+container (which does not contain ninja). No compiled-retail behavior changed.
+
+On the first fixed-build retry (resume14), a normal world-map encounter occurred
+before entry. The battle returned through retail, then world reload aborted in
+`PsyX_SPUAL_Write`'s size/address assertion. Its core stack includes
+`SoundLoadWdsFile -> SoundHandleError -> SoundLoadWdsFile -> SpuWrite` during
+`wm_first_wds_consumer`. This separate audio-bank lifecycle failure is OPEN;
+it must not be hidden by relaxing the SPU assertion. Resume14's core is retained
+by systemd (PID926167). A fresh retry uses the same untouched checkpoint.
+
+Fixed-build live acceptance (resume15, PID934514): normal world travel reached
+the Blackmoon label, Z entered field22 successfully. Fei started at
+(1949,0,1561), scenario24, control enabled. Holding Up for0.5s moved him to
+(1949,0,1486), visible in before/after screenshots. HD2D stayed ON, God mode
+OFF throughout. F7 saved the earned forest checkpoint to the scratch recovery
+path; the previous mountain checkpoint was backed up first as
+`pre-forest-scenario24-earned.xgqs`. Original user quicksaves are untouched.
+Evidence: `resume15.json`, `runtime-resume15.log`, `resume15-label.png`,
+`resume15-forest-entered.png`, `resume15-moved.png`. This proves entry and initial
+movement, not completion through the forest or resolution of the separate
+world battle-return SPU failure. Game remains live at the forest entrance.

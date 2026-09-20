@@ -275,14 +275,22 @@ void func_80092404(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
+#ifdef XENO_PC_PORT
+/* FieldLoad stores packed 32-bit addresses here, including the next layer
+ * pointer at +4. A native pointer load would combine those two words. */
+extern u32 D_800AFB20[];
+#define FIELD_COLLISION_FLAGS ((u8*)(uintptr_t)D_800AFB20[0])
+#else
 extern u32* D_800AFB20;
+#define FIELD_COLLISION_FLAGS ((u8*)D_800AFB20)
+#endif
 
 u32 func_80092424(s32 index, s32 component) {
     switch (component) {
-        case 0: return ((u8*)D_800AFB20)[index * 4];
-        case 1: return ((u8*)D_800AFB20)[index * 4 + 1];
-        case 2: return ((u8*)D_800AFB20)[index * 4 + 2];
-        case 3: return ((u8*)D_800AFB20)[index * 4 + 3];
+        case 0: return FIELD_COLLISION_FLAGS[index * 4];
+        case 1: return FIELD_COLLISION_FLAGS[index * 4 + 1];
+        case 2: return FIELD_COLLISION_FLAGS[index * 4 + 2];
+        case 3: return FIELD_COLLISION_FLAGS[index * 4 + 3];
     }
     return 0;
 }
@@ -293,23 +301,27 @@ void func_800924D4(s32 index, s32 component, s32 value) {
 
     switch (component) {
         case 0:
-            entry = (u32*)((u8*)D_800AFB20 + index * 4);
+            entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             *entry = (*entry & ~0xFFu) | (value & 0xFF);
             break;
         case 1:
-            entry = (u32*)((u8*)D_800AFB20 + index * 4);
+            entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0xFFFF00FF;
             *entry = (*entry & mask) | ((value & 0xFF) << 8);
             break;
         case 2:
-            entry = (u32*)((u8*)D_800AFB20 + index * 4);
+            entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0xFF00FFFF;
             *entry = (*entry & mask) | ((value & 0xFF) << 16);
             break;
         case 3:
-            entry = (u32*)((u8*)D_800AFB20 + index * 4);
+            entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0x00FFFFFF;
+#ifdef XENO_PC_PORT
+            *entry = (*entry & mask) | (((u32)value & 0xFFu) << 24);
+#else
             *entry = (*entry & mask) | ((value & 0xFF) << 24);
+#endif
             break;
     }
 }
