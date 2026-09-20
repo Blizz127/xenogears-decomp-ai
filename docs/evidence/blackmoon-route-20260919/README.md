@@ -3188,3 +3188,43 @@ let the menu open a frame later, and even a settle-based rule released before th
 edge arrived; only a long fixed window kept it shut).  Since it mitigates a cause
 now identified, the whole change was reverted and the build restored to
 `589fb02e...` rather than ship an unproven guard plus a certificate for it.
+
+
+## Input leaks and a stale-driver confound (round 39)
+
+Two things were measured this round, and one of them had been corrupting every
+attempt:
+
+**1. Stale walker processes.**  Four `cam_walk.py` instances from earlier rounds
+were still alive and kept pressing keys, so input arrived from several drivers at
+once and the field menu kept being re-opened.  After killing every driver
+(`cam_walk`, `goto`, `fight`, `tri_walk`) and closing the menu once with Cross
+presses, a single walker ran cleanly - which also means several earlier "the menu
+re-opened by itself" observations were partly this, not only the F8 leak.
+
+**2. Host input leaks into the pad.**  Sampling `g_C1ButtonState` while holding
+keys or clicking shows host UI actions reaching the game as pad buttons:
+
+| action | `g_C1ButtonState` |
+|---|---|
+| `q` (unmapped key) | `0x0` |
+| `F1` | `0x0` |
+| `F8` (quick-load) | `0x20` Circle |
+| `F9` (recording) | `0x20` Circle |
+| `F11` (speed) | `0x10` Triangle |
+| click on the GOD button (617,17) | `0x20` Circle |
+| click in the game area (300,300) | `0x10` Triangle |
+| click bottom-right (640,500) | `0x0` |
+
+So the toolbar's own buttons - including LOAD, which is the documented way to
+restore a checkpoint - also press Circle in the game.  `PcPort_ForcedKernelSelect`
+is the only synthetic Circle injection and is inert here, and `PsyX_pad.cpp`'s
+keyboard mapping reads `g_sdlKeyboardState[mapping.kc_circle]` correctly, so the
+leak is elsewhere in the host-input path and still needs pinning.  Recorded as
+**known input-routing debt**, with the practical workaround that the menu must be
+closed with Cross presses after a load before walking.
+
+**3. The acceptance walk now runs.**  With one driver and the menu closed, the
+retail-play walk (encounters **live**, GOD off) reached **leg 29, tri314
+(117,0,174)**, heading for the tri504 descent staircase, having entered 2
+encounters - i.e. the north-east route is being walked under normal play.
