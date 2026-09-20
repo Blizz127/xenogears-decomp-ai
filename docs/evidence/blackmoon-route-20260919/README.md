@@ -463,3 +463,41 @@ Observed screenshots: `shop-cancel-buy.png`, `shop-cancel-back.png`,
 This supersedes the failed resume7 cancel result, not its item-list observation.
 Selected-item pricing/description and stored quantity remain the next gaps;
 Blackmoon route completion is still unproven.
+
+## Stored inventory quantity helper ported
+
+Native `func_801CE91C` now follows retail801CE91C..801CEB3C: select the
+weapon/accessory/item inventory, call the existing first-match byte lookup,
+store D_801D2260, render the two-character quantity, upload its VRAM rectangle,
+configure the Stored string, enable its renderer, and free the work buffer.
+The quantity is not clamped to99; retail's byte inventory value and its digit
+formatting are retained. Native inventory and MenuString fields replace retail
+layout arithmetic only under XENO_PC_PORT.
+
+`run_shop_stored_retail_test.sh` executes the544-byte disc routine and its real
+68-byte inventory lookup, comparing with both production native functions.
+15,360 cases cover types0/1/2, contexts0/1, every quantity0..255, IDs0/1/255,
+upper ID bits, first/middle/last/missing/duplicate matches. The harness compares
+ordered helper calls and string/rectangle payloads, byte-truncated width,
+render context/flag, stored quantity, and unchanged inventory. O0/O2/UBSan each
+pass522,380 checks.132/136 main-routine instruction sites execute; four invalid
+item-type default jumps at801CE950/954/964/968 are excluded. Shop initialization
+provides types0..2; invalid types remain outside this certification. Four
+mutants (skip last inventory slot, wrong leading blank, wrong texture flag,
+disabled renderer) are rejected. The production Buy-cancel regression also
+passes O0/O2/ASan+UBSan and rejects its undersized-buffer mutant.
+
+All544 annotated assembly bytes match the disc, SHA256
+`deb7098105f27cf3db7fb65c21932c1d3eeb91e92bea4395b5d4f4e2d0b9595a`.
+Compiled misc8 whole .text remains unchanged, SHA256
+`91cef40c4eb8ff1f2d08e73d589a18a1d49269a9f49fa32123173976dd1ba200`.
+Full native build passes; func_801CE91C is defined in the executable.
+Evidence: `shop-stored-{test,build,cancel-regression}.log` and
+`shop-stored-misc8-*.text` in the route scratch directory.
+
+No new live purchase/route claim: process458481 remains on the previous
+Buy-cancel build at the earned scenario8 checkpoint. The selected-item caller
+801CEB3C is still a stub, so this helper has not yet been reached naturally in
+the shop. Port that full caller next, retaining the equipment-preview dependency
+801CE480 as an explicit remaining gap, then verify normal purchase and travel.
+Blackmoon completion remains unproven.

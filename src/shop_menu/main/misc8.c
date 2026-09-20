@@ -134,8 +134,63 @@ void func_801CCE1C(void* output, u8 characterId);
  * regions with C runs; cc1 emits every file-scope __asm__ block before every
  * compiled body, so each part below is (one retail asm run) + (the C run that
  * follows it) - the layout the compiler produces inside a single TU. */
-#ifndef XENO_PC_PORT
+#ifdef XENO_PC_PORT
+extern u8 func_801CE8D8(u8*, u8*, s32, s32);
+extern void func_80033B34(u16*, u8*, s32);
+extern s32 SystemRenderStringEntry(void*, void*, s32, s32);
+extern void func_801C5A7C(MenuString*, s32, s32, u8);
+extern void ShopMenuSetVertices(SVECTOR*, u16, u16, u16, u16);
+
+/* Retail 801CE91C..801CEB3C: inventory lookup and the Stored count string.
+ * Shop initialization supplies item types 0..2. Use native inventory/string
+ * fields because their host pointer layout differs from retail. */
+void func_801CE91C(u8 type, s32 id) {
+    u8* ids;
+    u8* quantities;
+    s32 count;
+    u16 quantity;
+    u16 digits[2];
+    u8 text[8];
+    void* work;
+    MenuString* str = &g_Menu->pShop->str45B0;
+    RECT rect = {408, 180, 40, 13};
+
+    switch (type) {
+        case 0:
+            ids = g_GameState.weaponIDs;
+            quantities = g_GameState.weaponQuantities;
+            count = MAX_INVENTORY_WEAPONS;
+            break;
+        case 1:
+            ids = g_GameState.accessoryIDs;
+            quantities = g_GameState.accessoryQuantities;
+            count = MAX_INVENTORY_ACCESSORIES;
+            break;
+        case 2:
+            ids = g_GameState.itemIDs;
+            quantities = g_GameState.itemQuantities;
+            count = MAX_INVENTORY_ITEMS;
+            break;
+    }
+    quantity = func_801CE8D8(ids, quantities, count, (u8)id);
+    D_801D2260 = quantity;
+    work = HeapAlloc(0x3F6, 0);
+    digits[0] = quantity / 10 ? (u8)(quantity / 10 + 0x10) : 0xC3;
+    digits[1] = quantity % 10 + 0x10;
+    func_80033B34(digits, text, 2);
+    str->width = SystemRenderStringEntry(text, work, 0x24, 1);
+    LoadImage(&rect, work);
+    DrawSync(0);
+    func_801C5A7C(str, 9, 0x80, 0x82);
+    ShopMenuSetVertices(str->vertices, 248, 142, str->width, 13);
+    str->renderContext = (u8)g_Menu->renderContext;
+    g_Menu->pShop->unk4785 = 1;
+    HeapFree(work);
+}
+#else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc8", func_801CE91C);
+#endif
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc8", func_801CEB3C);
 #endif
 
