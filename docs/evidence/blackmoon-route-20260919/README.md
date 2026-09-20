@@ -2905,3 +2905,31 @@ per-call delta (frames elapsed since the previous `Vsync(1)` query) as the
 `mode >= 0` return, with a regression test that pins "the value tracks elapsed
 frames rather than the absolute count" and rejects a mutant returning the raw
 count; then re-run the acceptance pass and see whether the stall clears.
+
+
+## CORRECTION: the Vsync return gap is real parity debt, but NOT the stall's cause (round 34)
+
+Round 33 flagged `Vsync`'s return value as a candidate cause of the stalled
+battle.  Checking every access to the global that receives it settles the
+question: **`D_800ADB9C` is written and never read.**
+
+```
+asm/field/matchings/main/misc2/func_8007554C.s:9    sw $v0, %lo(D_800ADB9C)($at)
+asm/field/matchings/main/misc2/func_8007554C.s:167  sw $v0, %lo(D_800ADB9C)($at)
+asm/field/matchings/main/main/func_80077DAC.s:7     sw $v0, %lo(D_800ADB9C)($at)
+```
+
+Three stores, no loads - and `g_FrameDeltaTime` (`main.c:131`) has no readers
+either.  So the field records `Vsync(1)`'s value and never branches on it, and the
+divergence cannot be what ends - or fails to end - a battle.
+
+It is still a genuine parity gap worth fixing for fidelity: retail returns a 16-bit
+hretrace delta for `mode >= 0` (`(g_pTMR_HRETRACE_VAL - g_HsyncInterruptCount) &
+0xFFFF`) where the port returns the absolute vblank count.  It is recorded here as
+**known parity debt with no observed live effect**, not as the stall's cause; no
+fix is claimed for it, and the earlier "candidate cause" wording is withdrawn.
+
+The stall therefore still needs its own investigation.  The next step is a
+differential call trace: run one battle with `XENO_BATTLE_MIPS_TRACE=1` to
+completion and one to the stall, and diff the bridge call sequences to see which
+call the stalled one stops making.
