@@ -884,3 +884,34 @@ Evidence: `resume15.json`, `runtime-resume15.log`, `resume15-label.png`,
 `resume15-forest-entered.png`, `resume15-moved.png`. This proves entry and initial
 movement, not completion through the forest or resolution of the separate
 world battle-return SPU failure. Game remains live at the forest entrance.
+
+## Forest traversal, combat and healing follow-up
+
+Continued live PID934514 on 88b6b2e9 with God mode OFF / HD2D ON. Two normal
+forest encounters completed and returned to map22, with movement and the menu
+working afterward. The second victory screen showed level5, EXP229, HP38/73,
+EP14/14. Used one existing Aquasol through Items and the normal Fei target
+prompt: HP38->73, quantity4->3, then closed the menu and continued walking.
+Screenshots `forest-battle01..03.png`, `forest-menu02..05.png`, and
+`forest-healed.png` preserve the UI observations. The 45-input battle helper
+expired on the second victory/reward screen; manual Z confirmations completed
+the return, so that helper timeout was not an engine stall.
+
+Traversal has not yet left map22. Normal walking, camera rotation and a jump
+input were tested around trees and ledges; `forest-walk01..20.png` preserve
+views. Latest F7 checkpoint is map22 (-1098,0,141), scenario24, after healing.
+`forest-entrance-earned.xgqs` backs up the original forest entrance checkpoint.
+No teleports, flags, stat writes or encounter skips were used. The live game
+remains running. Full forest/story completion remains OPEN.
+
+Further read-only analysis of resume14's world battle-return core identified
+size=0 at PsyX_SPUAL_Write, called for the zeroed native D_80050940 error bank.
+The preceding error is SoundSpuErrorId31 (allocation failure) while loading
+bank46 (196608 bytes). Bank46 is already resident at SPU229376 and remains the
+g_GameCurLoadedWDS owner. C894 is zero in the dump. Retail branches around the
+world WDS load at800724C4 when C894!=0; the native slot1 owner contains that
+branch too. Next diagnosis must trace why the resumed world takes the fresh
+session path / retains that ownership; do not change allocation behavior or
+relax the SPU assertion to hide it. Evidence: `world-battle-return.gdb`,
+`world-audio-banks.gdb`, `world-audio-owner.gdb`, and the preserved systemd core
+(PID926167). No audio repair has been made yet.
