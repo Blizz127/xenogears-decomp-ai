@@ -1616,3 +1616,39 @@ runner mutates the whole production file and rejects 5/5 controls:
 
 Build: LINK OK, 76 stubs, 489 data symbols, 96 adopted leaves,
 `xeno-port` SHA-256 `8e467514067d02ce32b67a7ee1d858001e46b670b5bba09cecd99ac398f8599e`.
+
+
+## New route blocker: a garbage RECT reaches `LoadImage` in the battle overlay (2026-09-20 round 3)
+
+After the `LoadImage` pointer fix the SIGSEGV stopped (the source pointer is now
+correctly `g_PsxRam + 0x1000`), but the battle still never finishes: the guest
+loops in the overlay's texture upload, and the stack repeatedly lands in
+
+```
+bridge_load_image -> LoadImage(rect=g_PsxRam+0xC4A90, p=g_PsxRam+0x1000)
+                  -> GR_CopyVRAM(src=..., x=0, y=0, w=19088, h=12, dst_x=396, dst_y=5)
+```
+
+`w=0x4A90`, `h=0xC` come straight from the RECT the guest passes.  Reading it
+live gives `{0x698c, 0x0005, 0x4a90, 0x000c}` - four halfwords that are not a
+rectangle, while PsyCross's `GR_CopyVRAM` does `for i<h: memcpy(dst, src, w*2)`
+with no bounds check, so each row copies 19088 pixels and scribbles far past the
+VRAM row.  That both hangs the upload and is the most likely source of the
+full-screen corrupt-effect frame recorded earlier.
+
+Where the RECT comes from: the overlay's own `LoadImage` call site in
+`func_800B7870` (`asm/battle/nonmatchings/mainc99/func_800B7870.s:49`) builds a
+*stack* RECT (`sp+0x10` = 0x2C0 x 0x100, 0x140 x 0xE0 = 320x224) - that is not
+the call being sampled.  The sampled argument 0x800C4A90 is `D_800C3EB0+0xBE0`,
+i.e. inside the battle overlay's own structure area, and it has no symbol.  That
+address is **past the loaded battle image** (`disc/battle.bin` is 0x53F80 bytes
+from base 0x8006FAF0, ending at 0x800C3A70), so it is overlay BSS: retail zeroes
+it on load and the overlay fills it at runtime, while the port loads the image
+and never clears the region beyond it.  Stale bytes there would explain a
+rectangle nobody wrote.
+
+**Not yet diagnosed or fixed.**  Next: identify the overlay routine that fills
+`D_800C3EB0+0xBE0` and check whether it ran; and decide whether the port must
+clear the battle overlay's BSS range on load (the route notes already record
+that the field's `0x800AF5E4..0x800C426C` region is never cleared either).  Do
+not paper over it by clamping `GR_CopyVRAM`: the invalid RECT is guest state.
