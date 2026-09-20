@@ -3244,6 +3244,7 @@ void func_80025718(void* pTask)
 extern void func_80025258(u8* pEntry);
 extern void func_8002541C(u8* pEntry);
 extern void func_80025544(u8* pEntry);
+extern void func_800257F0(u8* pEntry);
 static void (*const D_8004FD40[16])(void*) = {
     (void (*)(void*))func_80025258, /* 0: billboard */
     (void (*)(void*))func_80025710,/* 1: dummy */
@@ -3256,7 +3257,7 @@ static void (*const D_8004FD40[16])(void*) = {
     (void (*)(void*))func_80025544, /* 9: projected square */
     NULL, NULL, NULL, NULL,        /* 10-13: NULL in retail */
     (void (*)(void*))func_80025258, /* 14: billboard */
-    NULL,                          /* 15: func_800257F0 (unported) */
+    (void (*)(void*))func_800257F0, /* 15: indexed/quad effect render */
 };
 
 /* asm 80025224: bind the per-type render callback onto the child's render
@@ -3738,3 +3739,7 @@ void func_8002C59C(u8* pModel)
 
 /* Shared native decompilation of retail battle primitive RGB recoloring. */
 #include "../../src/battle/primitive_colors.inc"
+
+/* Native animation-render callback 15 (func_800257F0) and its battle-overlay
+ * renderer dependency (func_800B1F6C / func_800B1F0C). */
+#include "../../src/battle/anim_render_index15.inc"

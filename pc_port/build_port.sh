@@ -802,6 +802,7 @@ PORT_SOURCES=(
     pc_port/src/data_controller.c
     pc_port/src/data_heap.c
     pc_port/src/data_boot_globals.c
+    pc_port/src/data_slus_sdata.c
     pc_port/src/world_map_convergence.c
     pc_port/src/world_map_framebuffer_init.c
     pc_port/src/world_map_terrain_init.c

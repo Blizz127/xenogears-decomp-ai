@@ -104,7 +104,7 @@ int main(void)
   {"kseg1-packed-alias",0,0,0,0,0,4,0,1,1,1},
  };
  FILE*f=fopen("disc/SLUS_006.64","rb");assert(f);assert(!fseek(f,0x80025258u-0x8000f800u,SEEK_SET));assert(fread(PSX_ADDR(0x80025258),1,0x1c4,f)==0x1c4);fclose(f);
- initialize_runtime(&g_BattleRuntime);unsigned fail=0;void(*expected[16])(void*)={(void(*)(void*))func_80025258,func_80025710,func_80025718,0,0,(void(*)(void*))func_80025258,(void(*)(void*))func_80025258,func_80025718,func_8002541C,func_80025544,0,0,0,0,(void(*)(void*))func_80025258,0};
+ initialize_runtime(&g_BattleRuntime);unsigned fail=0;void(*expected[16])(void*)={(void(*)(void*))func_80025258,func_80025710,func_80025718,0,0,(void(*)(void*))func_80025258,(void(*)(void*))func_80025258,func_80025718,func_8002541C,func_80025544,0,0,0,0,(void(*)(void*))func_80025258,(void(*)(void*))func_800257F0};
  for(int i=0;i<16;i++){registered=(void*)1;func_80025224(PSX_ADDR(0x80170000),i);if(registered!=expected[i])fail++;}
  for(unsigned i=0;i<sizeof cases/sizeof cases[0];i++){unsigned rc=one_case(&g_BattleRuntime,&cases[i]);if(rc){fprintf(stderr,"BATTLE CHILD BILLBOARD case %s failed rc=%u\n",cases[i].name,rc);fail++;}}
  if(fail){fprintf(stderr,"BATTLE CHILD BILLBOARD RED failures=%u\n",fail);return 1;}puts("BATTLE CHILD BILLBOARD PASS bindings, suppression, flags, depths 1..4095, OT byte stride, KSEG aliases");return 0;

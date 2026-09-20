@@ -1142,15 +1142,46 @@ static int run_guest_callback(BattleMipsRuntime *runtime, uint32_t callback,
     return 0;
 }
 
+/* Main-executable code that the interpreted battle overlay stores in a packed
+ * work-list callback slot. func_800B6438 (mainc88.c) does exactly this: it
+ * WorkListSetTaskCallback's the retail address 0x80025A88, the main-exe effect
+ * renderer func_80025A88. The native work list then has a guest callback it
+ * must invoke. Resolve it to the host owner with the same two lookups
+ * runtime_bridge_call uses (bridge entry first, then the func_%08X symbol),
+ * and refuse a generated stub the same way. Returns 1 if called. */
+static int run_main_exe_callback(BattleMipsRuntime *runtime, uint32_t callback,
+                                 void *argument)
+{
+    const ResolvedFunction *resolved = find_function(runtime, callback);
+    void *host = NULL;
+
+    if (resolved != NULL && resolved->host != NULL &&
+        !xeno_port_is_generated_stub(resolved->name)) {
+        host = resolved->host;
+    }
+    if (host == NULL) {
+        char fallback[32];
+        snprintf(fallback, sizeof(fallback), "func_%08X", callback);
+        host = dlsym(RTLD_DEFAULT, fallback);
+        if (host == NULL || xeno_port_is_generated_stub(fallback))
+            return 0;
+    }
+    ((void (*)(void *))host)(argument);
+    return 1;
+}
+
 /* Called by the packed native work-list adapter when a retail task carries a
  * guest callback address. Returns 1 if dispatched, 0 if it is not ours. */
 int PcPort_BattleMipsDispatchCallback(uint32_t callback, void *argument)
 {
-    if (g_ActiveBattleRuntime == NULL || !target_is_guest_code(callback))
+    if (g_ActiveBattleRuntime == NULL)
         return 0;
-    if (run_guest_callback(g_ActiveBattleRuntime, callback, argument) != 0)
-        abort();
-    return 1;
+    if (target_is_guest_code(callback)) {
+        if (run_guest_callback(g_ActiveBattleRuntime, callback, argument) != 0)
+            abort();
+        return 1;
+    }
+    return run_main_exe_callback(g_ActiveBattleRuntime, callback, argument);
 }
 
 /* Native main-executable sprite code re-enters the currently loaded battle

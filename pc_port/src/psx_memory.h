@@ -49,9 +49,17 @@ static inline uint32_t PsxMemory_GuestAddr(const void* p)
  * (config/slus_006.64.yaml subsegments):
  *   rodata [0x80010000,0x80019524)   copied
  *   .text  [0x80019524,0x8004EA90)   NOT copied (no PSX_ADDR consumer reads it)
- *   sdata  [0x8004EA90,0x800576E4)   copied
+ *   sdata  [0x8004EA90,0x800592BC)   copied
+ *   .data  [0x800592BC,0x800592C0)   copied (4 bytes, all zero in retail)
+ *   .sbss  starts at 0x800592C0      NOT copied (zero-filled on the PS1)
  *   ._49AC0 island (ELF 0x80097704)  NOT copied (inside the world overlay's
  *                                    text range; order-dependent corruption)
+ *
+ * The loader copies the single range [0x8004EA90,0x800592C0), i.e. .sdata plus
+ * the 4-byte .data word, and stops exactly at the .sbss boundary. The last
+ * non-zero byte of the retail initialized image is 0x800592BB; retail
+ * [0x800592C0,0x80059800) is .sbss and is zero. (An earlier revision ended the
+ * copy at 0x800576E4, silently dropping 0x1BD8 bytes of real .sdata.)
  */
 #define PSX_EXE_HEADER_SIZE   0x800u
 #define PSX_EXE_LOAD_BASE     0x80010000u
@@ -60,8 +68,10 @@ static inline uint32_t PsxMemory_GuestAddr(const void* p)
 #define PSX_EXE_TEXT_START    0x80019524u
 #define PSX_EXE_TEXT_END      0x8004EA90u
 #define PSX_EXE_SDATA_START   0x8004EA90u
-#define PSX_EXE_SDATA_END     0x800576E4u
-#define PSX_EXE_SBSS_START    0x800576E4u
+/* .sdata end == .data end == .sbss start: config/slus_006.64.yaml places the
+ * 4-byte .data subsegment at [0x800592BC,0x800592C0) and .sbss at 0x800592C0. */
+#define PSX_EXE_SDATA_END     0x800592C0u
+#define PSX_EXE_SBSS_START    0x800592C0u
 #define PSX_EXE_IMAGE_END     0x80059800u
 #define PSX_EXE_ISLAND_FILE   0x49AC0u
 #define PSX_EXE_ISLAND_START  0x80097704u

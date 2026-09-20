@@ -1367,7 +1367,21 @@ void SoundExecuteReverbWorkAreaTransfer(void) {
 
         SoundQueueSpuWriteCommand(currentSourceAddr, g_SoundUploadDestBuffer, chunkSize, SoundExecuteReverbWorkAreaTransfer);
 
+#ifdef XENO_PC_PORT
+        /* The port's SPU backend completes SpuWrite synchronously, so the call
+         * above already ran the whole chunk chain to its bytesRemaining==0
+         * tail, which frees g_SoundUploadDestBuffer and zeroes it. Retail's
+         * DMA transfer callback fires from the SPU interrupt, i.e. after this
+         * duplicate write has been queued, so its pointer is still live here.
+         * The buffer is zeroed by SoundHeapAllocate and the duplicate writes
+         * the same chunk to the same SPU address, so once the synchronous
+         * completion has released it there is nothing left that retail would
+         * observe: skip the duplicate instead of handing PsyX_SPUAL_Write a
+         * host NULL (SIGSEGV in the reverb clear path). */
+        if ((g_SoundControlFlags & (1 << 4)) == 0 && g_SoundUploadDestBuffer != 0) {
+#else
         if ((g_SoundControlFlags & (1 << 4)) == 0) {
+#endif
             SoundQueueSpuWriteCommand(currentSourceAddr, g_SoundUploadDestBuffer, chunkSize, NULL);
         }
     }
@@ -2628,6 +2642,20 @@ void func_8003A838(AudioManager* manager, s32 target, s32 steps) {
 // a nonzero level while flag 0x100 (bank-rebind resume) is set completes the
 // resume via func_8003AA30. This is field opcode FE 0E's target.
 void func_8003A89C(AudioManager* manager, s32 level, s32 steps) {
+#ifdef XENO_PC_PORT
+    /* Field teardown calls this directly with the song-manager global
+     * (src/field/main/main.c:578, `func_8003A89C(D_80062528, 0x7F, 0)`), and a
+     * map entered without a started song leaves that global NULL -- the
+     * music-manager chain only writes it once a WDS song lands (misc8.c:3053).
+     * The sibling entry points func_80039C4C / func_80039C8C / func_800399D4
+     * already take the same NULL guard; without it here the first
+     * `manager->...` store faults (SIGSEGV observed on map 23 at the first
+     * field teardown after a map reload). Retail's global is never NULL on
+     * this path, so the guard only covers port-only state. */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#endif
     manager->unk_Interpolator_0x70.targetValue = level << 8;
     if (steps == 0) {
         manager->unk_Interpolator_0x70.currentValue = level << 24;

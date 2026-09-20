@@ -105,6 +105,13 @@ int main(void)
      * whatever the file holds at 0x49AC0 (M2). */
     memset(PSX_ADDR(PSX_EXE_ISLAND_START), 0xA5,
            PSX_EXE_ISLAND_END - PSX_EXE_ISLAND_START);
+    /* Canary in .sbss [0x800592C0,0x80059800): the loader must stop exactly at
+     * the .sdata/.sbss boundary and never copy guest bytes there (M4). A plain
+     * "still zero" check cannot see M4 any more now that the production range
+     * correctly ends at 0x800592C0, because retail .sbss bytes are zero too;
+     * a canary makes the illegal copy observable. */
+    memset(PSX_ADDR(PSX_EXE_SBSS_START), 0xA5,
+           PSX_EXE_IMAGE_END - PSX_EXE_SBSS_START);
 
     rc = PsxMemory_LoadStaticDataFromImage(image, size);
     ASSERT_MSG(rc == 0, "load_rc", "loader returned %d", rc);
@@ -146,11 +153,18 @@ int main(void)
         memset(PSX_ADDR(PSX_EXE_ISLAND_START), 0,
                PSX_EXE_ISLAND_END - PSX_EXE_ISLAND_START);
     }
-    /* 5. .sbss stays zero (M4: sdata range extended into .sbss picks up the
-     *    island bytes the PS1 loader would place at 0x800592C0). */
-    ASSERT_MSG(range_is_zero(PSX_EXE_SBSS_START, PSX_EXE_IMAGE_END), "sbss_zero",
-               ".sbss [0x%08x,0x%08x) was populated", PSX_EXE_SBSS_START,
-               PSX_EXE_IMAGE_END);
+    /* 5. .sbss stays untouched by the loader (M4: sdata range extended into
+     *    .sbss copies the guest bytes there, zeroing the 0xA5 canary). */
+    {
+        const uint8_t* p = (const uint8_t*)PSX_ADDR(PSX_EXE_SBSS_START);
+        size_t k, intact = 1;
+        for (k = 0; k < (size_t)(PSX_EXE_IMAGE_END - PSX_EXE_SBSS_START); k++)
+            if (p[k] != 0xA5) { intact = 0; break; }
+        ASSERT_MSG(intact, "sbss_untouched",
+                   ".sbss [0x%08x,0x%08x) canary overwritten at +0x%zx (loader "
+                   "copied past 0x%08x)", PSX_EXE_SBSS_START, PSX_EXE_IMAGE_END,
+                   k, PSX_EXE_SDATA_END);
+    }
     /* Nothing above the image end either. */
     ASSERT_MSG(range_is_zero(PSX_EXE_IMAGE_END, PSX_EXE_IMAGE_END + 0x1000u),
                "above_image_zero", "bytes above 0x80059800 were populated");

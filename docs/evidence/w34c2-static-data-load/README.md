@@ -40,6 +40,25 @@ migrated to host copies (`data_font.c`, `data_published_logo.c`,
 - `pc_port/tests/w34b_r4world_73b04_prod_test.c`: per-case shift now drives
   the host global too (its guest store is kept).
 
+### 2026-09-20 correction: the sdata end was wrong by 0x1BD8
+
+The ranges above are superseded. `config/slus_006.64.yaml` places `.sdata` at
+`[0x8004EA90,0x800592BC)`, a 4-byte `.data` word at `[0x800592BC,0x800592C0)`,
+and `.sbss` at `0x800592C0` — not `0x800576E4`. The retail image is non-zero
+right through `0x800592BB` (e.g. `0x800576E4 = c7 01 c7 01 c8 01 …`,
+`0x80059000 = ef 06 d2 03 …`), so the old constant silently dropped 7128 bytes
+of real initialized data. `PSX_EXE_SDATA_END` and `PSX_EXE_SBSS_START` are now
+`0x800592C0`; the loader copies `[0x8004EA90,0x800592C0)`.
+
+This also makes the old certificate line `.sbss [0x800576E4,0x80059800)` zero
+circular — it asserted that guest RAM stayed zero where the loader had simply
+never written. The range check is now `.sbss [0x800592C0,0x80059800)` zero, and
+`w34c2_static_data_prod_test.c` pre-fills `.sbss` with an `0xA5` canary and
+asserts it is untouched, so mutant M4 (sdata extended into `.sbss`) is still
+detected. Real `.sdata` bytes for 29 of the previously zero-stubbed symbols are
+now defined in `pc_port/src/data_slus_sdata.c` with a per-symbol retail memcmp
+certificate (`pc_port/tests/run_data_slus_sdata_retail_test.sh`).
+
 Correction to the pre-gate note: retail's *static* `.sdata` word at
 `0x80050100` in `disc/SLUS_006.64` is already `2`; the `0x342e342b` value
 quoted in the pre-gate came from `build/out/slus_006.64.elf`, whose `.main`

@@ -1247,3 +1247,152 @@ and jump inputs have been tried around the central tree/log boundary, without
 establishing a new movement bug or changing collision logic. Zone2 bounds are
 X[-978,-606], Z[-1793,-1314]; zone0 is centered(-1853,-2439), zone1(2536,1412).
 Do not treat those geometric zones alone as proof of their story destinations.
+
+## Zone-2 destination decoded, and three live defects repaired (2026-09-20)
+
+### Destination: trigger zone index 2 (not 0 or 1)
+
+Read-only decoding of `map23-script.bin` (the live `g_FieldCurScriptFile`, bytecode
+base +0x6C4) found the map's only scenario-27 check, in actor 1 routine 1 at code
+0x1ED, and the zone test that follows it at code 0x1F6 (`C9 02 1E 02` =
+`CheckTriggerZone2D` index byte `0x02`). Live cross-check (non-pausing
+`/proc/<pid>/mem`): `scenario=27`, `g_FieldScriptMemory+0x404=1` (the arm flag set
+by code 0x1F2), actor 1 `ip=0x21E` (the miss/yield target), and
+`g_pFieldTriggerZones[2]` = x[-978,-606], z[-1793,-1314], centre(-792,-1553),
+floor y~-144. Zone 1 (2536,1412 east) and zone 0 (-1853,-2439 far SW) are never
+checked by the scenario-27 path. The earlier "zone 2 unreachable" result was an
+artefact of `map23-route.py`'s 0.6 slope filter dropping the real ramp triangles
+tri231/tri232; at 0.4 the mesh connects start -> zone 2 (616 triangles, goal
+reached). The headless walker therefore aims at (-700,-1500). Full writeup:
+`analysis/map23-route-decode.md`.
+
+### Defect 1 (fixed): main-executable work-list callback abort, 0x80025A88
+
+A normal map-23 battle aborted with
+`[xeno-port][work-list] unresolved guest callback 0x80025a88` (core preserved for
+PID 3811934 at ~01:11; the work-list fix path `abort()`s by design). Cause: the
+interpreted battle overlay's `func_800B6438` (`src/battle/mainc88.c:50`) does
+`WorkListSetTaskCallback(task, 0x80025A88)` — the retail address of the
+main-executable effect renderer `func_80025A88` — and
+`PcPort_BattleMipsDispatchCallback` only dispatched battle-overlay guest code, so
+the packed callback slot could never be invoked.
+
+Fix (`pc_port/src/battle_mips_runtime.c`): the dispatcher now, for a callback that
+is not overlay guest code, calls a new `run_main_exe_callback`, which resolves the
+address with the same two lookups `runtime_bridge_call` uses (`find_function`
+bridge entry, then `dlsym(RTLD_DEFAULT, "func_%08X")`) and calls the host owner
+with the already-native argument, refusing generated stubs. Overlay dispatch is
+unchanged.
+
+Regression test `run_battle_main_exe_callback_dispatch_test.sh`: 23 checks at
+O0/O2/UBSan covering bridge-table dispatch (called exactly once, identical
+argument, returns 1, wins over dlsym), the dlsym fallback, generated-stub refusal
+on both paths, unknown-address returns 0, inactive-runtime returns 0, and a
+guard-byte canary. 5/5 source-level mutants rejected (`old-main-exe-early-return`,
+`host-wrong-argument`, `drop-bridge-stub-refusal`, `drop-dlsym-stub-refusal`,
+`success-without-call`).
+
+Live retest: the same battle now wins and returns to map 23; the walk continued
+from (-201,-860) through (-437,-1025), (-437,-1252), (-499,-1277).
+
+### Defect 2 (fixed): animation-render callback 15 and its renderer
+
+`D_8004FD40[15]` was NULL, so the healing-effect render was skipped and every use
+logged an unbound callback. `src/battle/anim_render_index15.inc` (new) now
+implements, natively and with guest->host address translation, `func_800257F0`
+(callback 15), its sibling `func_80025A88`, and the battle-overlay indexed
+primitive batch renderer `func_800B1F6C` + `func_800B1F0C`. `game_overrides.c`
+binds slot 15; `port_owned_overrides.txt` carries `func_800257F0` and
+`func_80025A88`. Retail pins: `800257F0` 166, `80025A88` 95, `800B1F6C` 736,
+`800B1F0C` 24 annotated instructions all match disc.
+
+Regression test `run_anim_render_index15_retail_test.sh`: 19+11 callback cases
+and 40 renderer cases (all 16 descriptor keys, 8 shapes, counts, tpage, depth
+clamp/reject, shift mask, domains, work-buffer capacity, full GTE state) at
+O0/O2/UBSan, with 17/17 mutants rejected. `battle_child_billboard_retail_test.c`
+was strengthened to assert the now-bound slot 15. This is a behaviour-preserving
+reimplementation, not a byte-match transcription.
+
+### Defect 3 (fixed): 7 KB of retail .sdata was never loaded, 64 zero stubs
+
+`pc_port/src/psx_memory.h` ended `.sdata` at 0x800576E4; `config/slus_006.64.yaml`
+places `.sdata` at [0x8004EA90,0x800592BC), a 4-byte `.data` at
+[0x800592BC,0x800592C0) and `.sbss` at 0x800592C0. The loader therefore dropped
+7128 bytes of real initialized data, and 64 generated data symbols whose retail
+bytes are non-zero were linked as all-zero arrays (60 of them read by native
+code). The boundary is now 0x800592C0, and `pc_port/src/data_slus_sdata.c` (new)
+defines 29 of those symbols with exact retail bytes (26 byte-exact arrays incl.
+the `D_8004FBB8`/`D_8004FDA0` matrices, the controller stick LUTs, the font CLUT,
+the reverb sizes and the sound tables; 3 pointer tables stored as host pointers
+into `g_PsxRam` because native readers dereference them on LP64).
+
+Test `run_data_slus_sdata_retail_test.sh`: 107 assertions at O0/O2 (per-symbol
+retail memcmp, section boundaries, last non-zero image byte 0x800592BB, the
+previously-dropped tail non-empty) with 3/3 mutants rejected (`zero`, `truncate`,
+`sdataend`). `w34c2_static_data_prod_test.c` now canaries `.sbss` with 0xA5 so its
+M4 mutant is still detected; `docs/evidence/w34c2-static-data-load/README.md`
+carries the correction.
+
+### Regressions the .sdata fix exposed, both real port defects (fixed)
+
+The reverb-work-area and music-manager paths had never run because their tables
+were zero. With real bytes they do, and both faulted:
+
+1. `SoundInitiateReverbWorkAreaTransfer` -> `SoundExecuteReverbWorkAreaTransfer`
+   (sound.c). PsyCross completes `SpuWrite` synchronously, so the first
+   `SoundQueueSpuWriteCommand` already ran the chunk chain to its
+   `bytesRemaining==0` tail, which frees `g_SoundUploadDestBuffer`; the guarded
+   duplicate write then handed `PsyX_SPUAL_Write` a host NULL and SIGSEGV'd at
+   boot. The port now skips the duplicate when the synchronous completion has
+   already released the buffer (the buffer is zeroed and the duplicate writes the
+   same zeros to the same SPU address, so nothing retail would observe is lost).
+2. `func_8003A89C(NULL, 0x7F, 0)` from field teardown (`src/field/main/main.c:578`)
+   once a map is torn down before its song manager was created (the manager global
+   is only written when a WDS song lands, `misc8.c:3053`). The sibling entry
+   points `func_80039C4C`/`func_80039C8C`/`func_800399D4` already took a NULL
+   guard; `func_8003A89C` now does too. Live evidence: SIGSEGV in
+   `func_8003A89C(manager=0x0, level=127, steps=0)` at `sound.c:2645` with a full
+   gdb backtrace on the map-23 teardown after a map reload.
+
+Both fixes are `XENO_PC_PORT`-guarded so the matching C is unchanged.
+
+### Next live frontier: opcode 0xBC sub-command 0x22
+
+After those repairs the walk continued further and the port then failed loudly, by
+design:
+
+```
+{"event":"sprite_animation_bc_unimplemented","sub":34,"sprite":"0x79a4e8"}
+src/slus_006.64/system/animation_scripts.c:972: func_8001FBE4: Assertion
+`0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented"' failed.
+```
+
+`sub` 34 = 0x22 is in the player/party-relative group that reads `D_800C3E1C`
+(player sprite) and `D_800D363C` (party list), whose retail writer is not in the
+port yet. This is being implemented next from
+`asm/slus_006.64/matchings/system/animation_scripts/func_8001FBE4.s`; it is a real
+gap, not a walk error.
+
+### Build and test environment notes
+
+- The host has no SDL2 development files, so `pc_port/build_port.sh` must run in a
+  container. The working invocation on 2026-09-20 was
+  `podman run --rm --userns=keep-id --security-opt label=disable -v <repo>:/workspace:rw -w /workspace -e TMPDIR=/var/tmp localhost/xenogears-dev-toolchain:krom-20260913 bash pc_port/build_port.sh`
+  (rootless podman maps container uid 0 to the host user, so `--userns=keep-id` is
+  required for the bind mount to be writable).
+- This host's GCC cannot link UBSan (`/usr/lib64/libubsan.so.1.0.0` and the 64-bit
+  `libubsan.a` are both missing). Every new runner probes for it and runs the
+  UBSan regime under `clang -fsanitize=undefined` instead, printing which compiler
+  ran; none silently skips.
+- Two pre-existing runners are currently broken for reasons unrelated to this
+  work and are NOT claimed green:
+  `run_battle_child_billboard_retail_test.sh` fails in its `fn()` source extractor
+  (it matches the `SpriteRenderAddress` forward declaration at `temp1.c:1931`
+  instead of the definition at 2109, yielding `#endif without #if`), and
+  `run_battle_guest_call_test.sh` fails to link with `undefined reference to
+  PcPort_GodModeBeforeGuest` (its stub set predates that hook).
+- Integrated build at the end of this session: LINK OK, 74 function stubs,
+  `# 96 adopted leaves reach no generated stub`, `xeno-port` SHA-256
+  `695e784d95107de874169d905f2c66fc501494c0a47e1b5387c7cad6c61eba97`.
+  No documented completion below claims audiovisual identity against a retail
+  hardware capture.

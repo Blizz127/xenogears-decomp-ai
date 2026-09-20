@@ -8,6 +8,8 @@ func_800317E0|OT insertion must mask host primitive pointers to PSX 24-bit links
 func_80031804|OT insertion must mask host primitive pointers to PSX 24-bit links|Retire when matching OT insertion is host-safe and worldmap and field OT diagnostics agree
 func_8001FB30|Image-upload trampoline must use the native heap and host VRAM upload path|Retire when the matching upload chain is host-safe and texture upload smoke passes
 func_80025718|Child-sprite render callback needs host pointer-width and GTE/renderer plumbing|Retire when matching child-sprite rendering is host-safe and actor texture smoke passes
+func_800257F0|Animation render callback 15 needs host pointer-width, long geom-offset locals and the native indexed-primitive renderer|Retire when the matching owner is host-safe and index-15 healing-effect render parity is proven
+func_80025A88|Sibling animation render callback needs host pointer-width and the native indexed-primitive renderer|Retire when the matching owner is host-safe and sibling animation render parity is proven
 func_80023440|Sprite type decode is retained in the port while matching animation-script ownership is incomplete|Retire when the matching animation-script path is production-linked and its type mutants pass
 func_80023958|Child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching child-sprite allocation uses the host sprite layout and render smoke passes
 func_800239F4|Mode-1 child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching mode-1 allocation uses the host sprite layout and render smoke passes
