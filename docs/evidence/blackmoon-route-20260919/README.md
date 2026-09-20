@@ -2411,3 +2411,63 @@ triangle flags/normal test it computes), compare it against the triangle's own
 normal, and decide (1) or (2) from evidence rather than from the planner's
 assumption.  The player is sitting at (-493,0,-1278) on tri241, one edge from the
 descent, so the case is reproducible in seconds.
+
+
+## RESOLVED: why the basin is not walkable-to, with the collision rule to prove it (round 21)
+
+The blocked descent edge now has a complete, evidence-backed explanation, and it
+is **not** a port defect - the game's own rule refuses both descent routes for the
+actor state the party is in.
+
+**1. The planner's "walkable" filter was wrong.**  `plan_zone2_path.py`/
+`tri_path.py` used an arbitrary slope threshold of 0.4.  Re-planning with the
+game's actual rule instead (drop triangles whose material flags carry the ledge
+bit) gives a *short* route the slope filter had been excluding:
+
+```
+tri240(y=0) -> tri191(y=-48) -> tri758(y=-96) -> tri757(y=-144)
+            -> tri193(y=-144) -> tri210(y=-144, ZONE 2)
+```
+
+**2. Both descents are refused by `func_8007BEF4`** (`src/field/main/misc4.c`,
+the field's walkmesh edge search).  The extracted material flags for the two
+descent routes are:
+
+| triangle | y span | slope | material flags |
+|---|---|---|---|
+| tri240 (plateau) | 0,0,0 | 0 deg | 0x18 |
+| tri61 / tri128 | -144..0 | ~60 deg | **0x400022** |
+| tri191 / tri758 | -144..0 | 70-73 deg | **0x800000** |
+| tri757 / tri193 / tri210 (basin, zone) | -144 | 0 deg | 0x4 / 0x4 / 0x0 |
+
+and the code refuses exactly those flags for this actor:
+
+```c
+} else if ((flags & 0x00800000) != 0 && *(s16*)(actorData + 0x10) == 0) {
+    triIndex = -1;                      /* refused: actor layer 0 */
+} else if ((flags & 0x00400000) != 0) {
+    if (!forceEdgeSearch) {
+        func_8007B07C(...);             /* surface height at the target point */
+        if (outPoint[1] < *(s16*)((u8*)base + 0x06)) {
+            triIndex = -1;              /* refused: stepping DOWN */
+        }
+    }
+}
+```
+
+`POSDIAG` reports `layer=0` for the player throughout, and the live attempt
+confirms it: short westward taps reach (-493,0,-1278), ~8 units from the tri241|
+tri61 edge, and stop there.
+
+**3. So the basin is not reached by walking down from this plateau.**  Both ways
+in (the 0x400000 slope down the south side, the 0x800000 slope at tri191) are
+refused for a layer-0 actor, and no other non-ledge route exists from tri240.
+The zone-2 trigger must therefore be reached either by a **scripted move** (the
+story taking the party down) or from **another field map** whose walkmesh
+connects to the basin floor - not by free walking from the camp plateau.
+
+This is where the "walk the ramp" line of attack ends.  The next step is to look
+for the scripted/other-map entrance to the basin (the forest is multi-map; the
+MAPJUMP/exit list for map 23 and the neighbouring maps' load points are the
+place to look), and to drive that instead - which is normal retail play, since it
+is what the game does.
