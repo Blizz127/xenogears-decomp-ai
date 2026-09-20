@@ -1603,10 +1603,16 @@ Live after both fixes: a fresh checkpoint load survived a normal encounter and
 the walk continued to (-201,-725) with zero `unresolved native call` lines,
 where the same segment previously aborted or stalled.
 
-**Owed:** a dedicated regression test for `bridge_load_image` (and for the call
-cache) in a `pc_port/tests/run_*_retail_test.sh` harness with mutants - the
-straight-line code is live-verified but not yet covered by an independent
-mutant-rejecting test. That is the first task of the next round.
+**Regression test (added):** `pc_port/tests/battle_load_image_cache_test.c` +
+`run_battle_load_image_cache_test.sh`. 16 checks at O0/O2/UBSan (gcc, gcc,
+clang - the UBSan regime probes and prints its compiler): KSEG0 RECT + low
+source, bare low RECT + low source, KSEG1 source, and two cache proofs - a hit
+must keep using the entry resolved on the first call even after the bridge
+table's host is swapped, and the slot must actually store its target key. The
+runner mutates the whole production file and rejects 5/5 controls:
+`loadimage-no-low-map`, `loadimage-no-rect-kseg0`, `loadimage-rect-not-guest`,
+`cache-key-dropped` (the exact bug hit while writing the fix) and
+`cache-ignored`.
 
 Build: LINK OK, 76 stubs, 489 data symbols, 96 adopted leaves,
 `xeno-port` SHA-256 `8e467514067d02ce32b67a7ee1d858001e46b670b5bba09cecd99ac398f8599e`.
