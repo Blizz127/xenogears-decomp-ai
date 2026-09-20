@@ -554,3 +554,53 @@ stored-five,farewell,saved}.png`; inventory evidence:
 Next: travel naturally to Citan with these supplies and Alice's scenario8 intact.
 Equipment-preview calculation801CE480 is still a fidelity gap; no equipment
 purchase/stat-preview runtime claim is made. Blackmoon completion remains unproven.
+
+## Supplied route to Citan and Yui scenario10 observed
+
+Continued process508015 on the selected-item build without loading another save
+or editing game state. Normal movement/talk exited shop6, crossed Lahan1, and
+entered mountain15 with Alice's scenario8 intact. Three naturally triggered
+encounters were won with ordinary Attack/confirm controls. Each returned to the
+field and accepted movement; retail interpreter return instruction counts were
+73,841,440;45,163,074;56,686,137. The bounded attack helpers stopped on the logged
+battle return. No keyboard Escape bypass was used.
+
+After the second victory, the field menu showed level2 Fei at40/60HP and10/11EP,
+the purchased supplies, and a Hob-Jerky battle drop. Normal Items/Aquasol/Fei
+selection consumed exactly one Aquasol (5→4) and restored HP40→60, confirmed
+both visually and by read-only state inspection. Three cancels returned to the
+field. The third encounter began at60HP and ended at57HP. No health, inventory,
+position, script flag or result was injected.
+
+Natural traversal passed the western ascent and first running-jump section,
+walked the narrow upper ledge, and jumped from(-643,-405,-760) across the gap to
+(-1306,-449,-745). The bridge was crossed to(-1099,-575,1318), followed by the
+northern trail and exit into field17. No collision/gameplay change was needed.
+The mountain guide dialogue and Citan-area entrance camera sequence completed;
+the latter released control and fulfilled the queued F7 save at(26,175,-1706).
+The resulting scenario8 checkpoint is `citan-scenario8-earned.xgqs`.
+
+Normal door interaction entered Yui's house19. Walking around the doorway/table,
+with four ordinary L1 camera taps for visibility, reached Midori and Yui. Both
+conversations ran normally. Yui's required conversation advanced scenario8→10;
+a follow-up backyard reminder was also completed and visibly dismissed.
+F7 then saved field19(47,0,413), scenario10,57/60HP, four Aquasols remaining.
+`yui-scenario10-earned.xgqs` preserves that actual save. Read-only final state
+is recorded in `yui-scenario10-state.txt`. Current controls are rotated180degrees
+inside this room: screen Down increases world z; screen Right decreases world x.
+Recheck after leaving the room. The character is near Yui, with no dialogue open.
+
+Evidence lives under the route scratch directory: `runtime-resume9.log`,
+`inputs.log`, `fight-resume9-{1,2,3}.log`, `route-heal-{menu,items,target,result,
+return}.png`, `route-heal-result.txt`, `route-gap-{takeoff,land}.png`,
+`route-bridge-{entry,crossing}.png`, `route-citan-{arrival,entry-control}.png`,
+`route-yui-{talk2,dialogue3,dialogue7,scenario10,closed}.png`.
+Process508015 remains live on display95/window2097204; input helpers finished.
+Speed1x and HD2D remain enabled. Original user saves are unchanged.
+
+This continuation changed no engine source and required no rebuild. It proves
+this supplied scenario8 mountain route, three battle returns, field healing,
+and Yui's scenario10 gate. It does not prove full audiovisual retail parity.
+Next: leave house19, approach field17's workshop-side rooftop trigger now that
+scenario10 is set, then Citan/music box/dinner/night return/burning Lahan and
+Blackmoon. Those later gates and equipment-preview helper801CE480 remain open.
