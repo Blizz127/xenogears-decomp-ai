@@ -1558,3 +1558,55 @@ attempt should either get an F7 save on the ramp (an earned mid-forest
 checkpoint, which the route already uses) before pushing into the basin, or find
 the Escape command reliably (escape is explicitly allowed) to conserve HP.
 `resume23i-low-hp-battle.png` records the state at which this attempt was lost.
+
+## Battle bridge: unresolved-call cache and LoadImage pointer translation (2026-09-20 round 2)
+
+Two defects found by driving map 23 after the opcode fix. Both are in
+`pc_port/src/battle_mips_runtime.c`; neither changes a resolution outcome.
+
+### 1. Unresolved guest calls were re-resolved through `dlsym` on every call
+
+An attack stalled for minutes while the screen barely changed. Sampling the
+live process showed the stack repeatedly inside the dynamic linker
+(`do_lookup_x` / `_dl_lookup_symbol_x` for `func_800806CC`, `func_800BEB24`,
+...) and inside `runtime_bridge_call`'s O(n) host-pointer scan
+(`battle_mips_runtime.c:847`). Every call to a guest routine that is not in the
+bridge table fell back to `dlsym(RTLD_DEFAULT, "func_%08X")` and a linear scan,
+per call, forever.
+
+Fix: a 512-slot, 4-way-probing cache (`BridgeCallCacheSlot` in the runtime
+struct) keyed by retail target address, storing either the resolved
+`ResolvedFunction` or the "no host owner, run the retail bytes" verdict. It is
+cleared when the table is (re)built and stores its key (the first cut forgot
+`slot->target = target`, which made it a no-op cache - worth remembering).
+Behaviour is unchanged: the same entries are chosen, only their cost changes.
+The existing `run_battle_guest_call_test` (204 checks), the
+main-executable-callback test (23 checks) and the anim-render suite all still
+pass.
+
+### 2. `LoadImage` received an untranslated low physical-RAM pointer
+
+With the battle running at speed the guest reached `LoadImage(RECT*, u_long*)`
+(`0x80044894`) at `0x800b78d8` and passed a *low physical* RAM address `0x1000`.
+`translate_argument` deliberately only rewrites KSEG0/KSEG1/scratchpad values
+because it is shared by scalar arguments, so `0x1000` reached PsyCross unchanged
+and `GR_CopyVRAM` memmoved from host address `0x1000` (SIGSEGV; core backtrace
+`LoadImage -> GR_CopyVRAM(src=0x1000, w=19088, h=12)`).
+
+Fix: a `LoadImage` bridge (`bridge_load_image`), the same shape as the existing
+`ReadTIM` bridge. It resolves the RECT pointer as a guest pointer (OR-ing the
+KSEG0 bit for low addresses, exactly like the CompMatrix bridge already does)
+and maps a low source address to `g_PsxRam + address`, which is what the PS1
+physical alias means; anything else goes through `translate_argument`.
+
+Live after both fixes: a fresh checkpoint load survived a normal encounter and
+the walk continued to (-201,-725) with zero `unresolved native call` lines,
+where the same segment previously aborted or stalled.
+
+**Owed:** a dedicated regression test for `bridge_load_image` (and for the call
+cache) in a `pc_port/tests/run_*_retail_test.sh` harness with mutants - the
+straight-line code is live-verified but not yet covered by an independent
+mutant-rejecting test. That is the first task of the next round.
+
+Build: LINK OK, 76 stubs, 489 data symbols, 96 adopted leaves,
+`xeno-port` SHA-256 `8e467514067d02ce32b67a7ee1d858001e46b670b5bba09cecd99ac398f8599e`.

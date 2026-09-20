@@ -67,6 +67,22 @@ typedef struct HostRange {
 typedef struct BattleMipsRuntime BattleMipsRuntime;
 #include "battle_file1_controller.h"
 
+/* One resolved-call cache slot.  Every guest call that is not found in the
+ * bridge table used to fall back to a `func_%08X` dlsym on EVERY call, plus a
+ * linear scan of the whole function table; a battle that calls an
+ * interpreter-only overlay routine in a loop then spends all its time inside
+ * the dynamic linker (observed live: an attack stalled for minutes with the
+ * stack repeatedly in do_lookup_x / _dl_lookup_symbol_x).  Cache the verdict
+ * per target address instead -- resolved host entry, or "no host owner, run the
+ * retail bytes".  This changes no resolution outcome, only its cost. */
+#define BRIDGE_CALL_CACHE_SIZE 512
+typedef struct BridgeCallCacheSlot {
+    uint32_t target;
+    int state;              /* 0 empty, 1 resolved, 2 unresolved */
+    ResolvedFunction entry; /* storage when the fallback path built one */
+    char name[32];          /* backing store for entry.name */
+} BridgeCallCacheSlot;
+
 struct BattleMipsRuntime {
     int initialized;
     int trace_calls;
@@ -83,6 +99,7 @@ struct BattleMipsRuntime {
     size_t data_count;
     HostRange host_ranges[256];
     size_t host_range_count;
+    BridgeCallCacheSlot call_cache[BRIDGE_CALL_CACHE_SIZE];
 };
 
 typedef uintptr_t (*GenericHostFunction)(
@@ -216,6 +233,8 @@ static void initialize_runtime(BattleMipsRuntime *runtime)
         return;
     runtime->trace_calls = getenv("XENO_BATTLE_MIPS_TRACE") != NULL;
     load_host_ranges(runtime);
+    /* The call cache stores resolved entries for the table built below. */
+    memset(runtime->call_cache, 0, sizeof(runtime->call_cache));
 
     for (i = 0; i < g_BattleBridgeSymbolCount; i++) {
         const PcPortBattleSymbol *symbol = &g_BattleBridgeSymbols[i];
@@ -499,6 +518,34 @@ static int graphics_pointer_to_guest(const void *pointer, uint32_t *value)
     }
     *value = (uint32_t)host;
     return 0;
+}
+
+/* LoadImage(RECT* rect, u_long* p): both arguments are guest pointers, and the
+ * pixel source may be a *low physical* RAM address -- the battle overlay passes
+ * 0x1000 -- which translate_argument leaves alone on purpose because it is
+ * shared by scalar arguments.  Translate both explicitly here; otherwise
+ * PsyCross's GR_CopyVRAM memmoves from host address 0x1000 and SIGSEGVs
+ * (observed live: LoadImage -> GR_CopyVRAM(src=0x1000, w=19088)). */
+static int bridge_load_image(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
+                             void *host_function)
+{
+    int (*load_image)(void *, void *) = (int (*)(void *, void *))host_function;
+    uint32_t address = cpu->gpr[4];
+    uint32_t source = cpu->gpr[5];
+    void *rect;
+    void *data;
+
+    if (address < 0x200000u)
+        address |= 0x80000000u;
+    rect = resolve_memory(runtime, address, 8u, 0);
+    if (rect == NULL)
+        return -1;
+    if (source < 0x200000u)
+        data = g_PsxRam + source;
+    else
+        data = (void *)translate_argument(runtime, source);
+    cpu->gpr[2] = (uint32_t)load_image(rect, data);
+    return 1;
 }
 
 static int bridge_read_tim(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
@@ -810,8 +857,25 @@ static int bridge_draw_otag(PcPortMipsCpu *cpu)
     return -1;
 }
 
+/* Direct-mapped, 4-way probe cache keyed by retail target address. */
+static BridgeCallCacheSlot *bridge_cache_slot(BattleMipsRuntime *runtime,
+                                              uint32_t target)
+{
+    unsigned base = (unsigned)((target * 2654435761u) >> 23) &
+                    (BRIDGE_CALL_CACHE_SIZE - 1);
+    unsigned i;
+    for (i = 0; i < 4; i++) {
+        BridgeCallCacheSlot *s = &runtime->call_cache[(base + i) &
+                                 (BRIDGE_CALL_CACHE_SIZE - 1)];
+        if (s->state == 0 || s->target == target)
+            return s;
+    }
+    return &runtime->call_cache[base];
+}
+
 static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
 {
+    BridgeCallCacheSlot *slot;
     BattleMipsRuntime *runtime = opaque;
     const ResolvedFunction *resolved;
     GenericHostFunction function;
@@ -821,7 +885,6 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
     unsigned i;
     char fallback[32];
     void *fallback_host;
-    ResolvedFunction fallback_entry;
     int file1_load_candidate = 0;
 
     /* Verification hook (see the field comment). Placed above the file-1
@@ -835,35 +898,56 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
         if (adopted != 0) return adopted;
     }
 
-    resolved = find_function(runtime, target);
-    if (resolved == NULL) {
-        /* Native task allocators put registered host callbacks in their
-         * packed callback slots. Retail battle code reads those slots and
-         * uses JALR (observed at 800BB5E0 for TimerWorkListDeleteTask).
-         * Resolve back to the existing symbol entry so normal ABI handling
-         * and generated-stub rejection still apply. Never call arbitrary
-         * host addresses, and never match by truncating a wider pointer. */
-        for (size_t index = 0; index < runtime->function_count; index++) {
-            if ((uintptr_t)runtime->functions[index].host == (uintptr_t)target) {
-                resolved = &runtime->functions[index];
-                break;
+    resolved = NULL;
+    slot = bridge_cache_slot(runtime, target);
+    if (slot->state == 0) {
+        resolved = find_function(runtime, target);
+        if (resolved == NULL) {
+            /* Native task allocators put registered host callbacks in their
+             * packed callback slots. Retail battle code reads those slots and
+             * uses JALR (observed at 800BB5E0 for TimerWorkListDeleteTask).
+             * Resolve back to the existing symbol entry so normal ABI handling
+             * and generated-stub rejection still apply. Never call arbitrary
+             * host addresses, and never match by truncating a wider pointer. */
+            for (size_t index = 0; index < runtime->function_count; index++) {
+                if ((uintptr_t)runtime->functions[index].host == (uintptr_t)target) {
+                    resolved = &runtime->functions[index];
+                    break;
+                }
             }
         }
-    }
-    if (resolved == NULL) {
-        snprintf(fallback, sizeof(fallback), "func_%08X", target);
-        fallback_host = dlsym(RTLD_DEFAULT, fallback);
-        if (fallback_host != NULL &&
-            (!target_is_guest_code(target) || overlay_leaf_host_ok(fallback))) {
-            fallback_entry.address = target;
-            fallback_entry.host = fallback_host;
-            fallback_entry.name = fallback;
-            resolved = &fallback_entry;
+        if (resolved == NULL) {
+            snprintf(fallback, sizeof(fallback), "func_%08X", target);
+            fallback_host = dlsym(RTLD_DEFAULT, fallback);
+            if (fallback_host != NULL &&
+                (!target_is_guest_code(target) || overlay_leaf_host_ok(fallback))) {
+                memcpy(slot->name, fallback, sizeof(slot->name));
+                slot->name[sizeof(slot->name) - 1] = '\0';
+                slot->entry.address = target;
+                slot->entry.host = fallback_host;
+                slot->entry.name = slot->name;
+                resolved = &slot->entry;
+            }
         }
+        if (resolved != NULL && target_is_guest_code(target) &&
+            !overlay_leaf_host_ok(resolved->name))
+            resolved = NULL;
+        if (resolved != NULL && xeno_port_is_generated_stub(resolved->name)) {
+            fprintf(stderr,
+                    "[xeno-port][battle-mips] refusing generated stub %s "
+                    "at retail target 0x%08x\n",
+                    resolved->name, target);
+            return -1;
+        }
+        if (resolved != NULL && resolved != &slot->entry) {
+            slot->entry = *resolved;
+            resolved = &slot->entry;
+        }
+        slot->target = target;
+        slot->state = (resolved != NULL) ? 1 : 2;
+    } else if (slot->state == 1) {
+        resolved = &slot->entry;
     }
-    if (resolved != NULL && target_is_guest_code(target) &&
-        !overlay_leaf_host_ok(resolved->name))
-        resolved = NULL;
     if (resolved == NULL) {
         if (target_is_guest_code(target))
             return 0;
@@ -871,13 +955,6 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
                 "[xeno-port][battle-mips] unresolved native call "
                 "target=0x%08x guest-pc=0x%08x\n",
                 target, cpu->gpr[31] - 8u);
-        return -1;
-    }
-    if (xeno_port_is_generated_stub(resolved->name)) {
-        fprintf(stderr,
-                "[xeno-port][battle-mips] refusing generated stub %s "
-                "at retail target 0x%08x\n",
-                resolved->name, target);
         return -1;
     }
 
@@ -968,6 +1045,8 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
                 "a0=%08x a1=%08x a2=%08x a3=%08x\n",
                 resolved->name, target, cpu->gpr[4], cpu->gpr[5],
                 cpu->gpr[6], cpu->gpr[7]);
+    if (strcmp(resolved->name, "LoadImage") == 0)
+        return bridge_load_image(runtime, cpu, resolved->host);
     if (strcmp(resolved->name, "ReadTIM") == 0)
         return bridge_read_tim(runtime, cpu, resolved->host);
     if (strcmp(resolved->name, "ReadGeomOffset") == 0)
