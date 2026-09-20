@@ -703,3 +703,55 @@ on display95/window2097204 at the saved field15 entrance, speed1x, HD2D enabled,
 with no input helper left running. Next: leave Mountain Path normally, navigate
 the world map to Blackmoon Forest, and test its story, traversal and encounters.
 Full route completion and equipment-preview helper801CE480 remain unfinished.
+
+## Repeated world-entry guard lifetime repaired
+
+Leaving the earned scenario24 Mountain Path checkpoint in process508015
+reproduced a fatal second field→world transition. The runtime log ends with
+`gpu-asset-b ERROR: already ran this process`, slot1 setup failure and process
+termination. This was a native guard failure, not a retail script gate.
+`MainLoop` clears/reloads/decompresses the selected overlay on every state
+change (`src/slus_006.64/main/main_loop.c`). The native static stage ownership
+flags instead survived the previous world visit. GPU asset B was the first
+rejecting stage; subsequent asset/record/upload/WDS stages had the same lifetime
+mismatch, as did the work-buffer dispatch count and ready-consumer entry count.
+
+`PcPort_WorldMapInitMain` now resets those native guards at the entry boundary.
+Duplicate-stage checks remain active within each visit. No guest flags, stats,
+coordinates, retail source logic or MIPS code changed. Diagnostic wording now
+identifies the world entry rather than the process as the guard lifetime.
+
+`run_world_entry_guard_test.py` extracts the actual production entry prefix,
+seeds prior-visit native guards and verifies three fresh entries. It failed on
+the original code, passes atO0/O2/UBSan, and rejects18 omitted-reset mutations.
+Its subsystem-reset calls are stubs; this focused test proves guard lifetime,
+not resource reloads or runtime behavior. The existing slot1-owner suite passes
+O0/O2/UBSan with13 negative controls detected. The container lacked rg, so its
+simple `rg -q` checks used an exported grep wrapper for that run; assertions
+were unchanged. Full native builds pass (75function stubs,96adopted leaves).
+The annotated retail setup span80072238..80072620 matches all1000 disc bytes,
+SHA256 f5df46873f4b7463ba67f850b62ee144dc0e8b089639c232803739a881a09903.
+This is a disc/assembly comparison, not a claim of whole-port byte identity.
+
+Fresh process724853 loaded the earned scenario24 save via F8, exited Mountain
+Path to the world, walked to its entrance, entered withz, then exited again.
+Both world entries completed asset setup and rendered normally in the same
+process; the original failing lifecycle is now observed passing. Live binary
+pins are in `resume10.json`, log `runtime-resume10.log`. The final rebuild after
+this runtime check changes only diagnostic wording relative to that live binary.
+No gameplay state was forced; the original user saves and HD2D setting persist.
+
+World navigation remains in progress. Left/Right inputs produce travel. From
+clear ground near the forest, a one-second Down sample left slot1 x/y/z at
+0x07408000/0xffedb000/0x029b0000. This is evidence for further collision/input
+investigation, not enough to attribute a root cause or certify navigation.
+Process724853 remains live on display95/window2097204 at that world position.
+The latest working checkpoint is still the earned scenario24 field15 entrance;
+no new world save was attempted. No input helper remains running.
+
+Evidence: `bm01` attempt failed because the original process had exited;
+`bm03-world-first.png`, `bm04-mountain-target.png`, `bm05-world-second.png`,
+`bm06-world-west.png`, `bm10-clear-ground.png`, `bm10-{before,after}-down.txt`,
+`world-entry-{guard-test,owner-tests,build,final-build}.log` under route scratch.
+Blackmoon entry/traversal/encounters and the equipment-preview helper remain
+unverified/unfinished. The full goal is still active.

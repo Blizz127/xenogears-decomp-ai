@@ -3600,7 +3600,7 @@ static int wm_800979c8_gpu_asset_b(void)
 
     if (s_wm979c8_ran) {
         fprintf(stderr,
-                "[worldmap-gpu-asset-b] ERROR: already ran this process "
+                "[worldmap-gpu-asset-b] ERROR: already ran this world entry "
                 "(C59C is one-shot; reload lower ladder)\n");
         return -1;
     }
@@ -3795,7 +3795,7 @@ static int wm_80084580_object_matrix(void)
 
     if (s_wm84580_ran) {
         fprintf(stderr,
-                "[worldmap-object-matrix] ERROR: already ran this process "
+                "[worldmap-object-matrix] ERROR: already ran this world entry "
                 "(non-idempotent relocate/alloc)\n");
         return -1;
     }
@@ -4055,7 +4055,7 @@ static int wm_80072090_third_wave(void)
 
     if (s_wm72090_ran) {
         fprintf(stderr,
-                "[worldmap-third-wave] ERROR: already ran this process "
+                "[worldmap-third-wave] ERROR: already ran this world entry "
                 "(non-idempotent queue rebuild)\n");
         return -1;
     }
@@ -4284,7 +4284,7 @@ static int wm_800736DC_init_constants(void)
 
     if (s_wm736dc_ran) {
         fprintf(stderr,
-                "[worldmap-bss-constants] ERROR: already ran this process\n");
+                "[worldmap-bss-constants] ERROR: already ran this world entry\n");
         return -1;
     }
     /* Retail modes 8/11 call this initializer without the base-mode third
@@ -4864,7 +4864,7 @@ static int s_wm85f58_ran;
 /*
  * Retail 0x80085F58 — one-shot record-table relocation + CLUT id paint.
  * Non-idempotent on field_00: process-local s_wm85f58_ran is the only
- * ownership (reset only on process restart, same as prior world rungs).
+ * ownership within one world entry (reset by PcPort_WorldMapInitMain).
  * Cut residual before 0x80072478 (jal GfxAllocateWorkBuffers).
  */
 static int wm_80085F58_relocate_records_and_init_cluts(void)
@@ -4908,7 +4908,7 @@ static int wm_80085F58_relocate_records_and_init_cluts(void)
 
     if (s_wm85f58_ran) {
         fprintf(stderr,
-                "[worldmap-record-clut] ERROR: already ran this process "
+                "[worldmap-record-clut] ERROR: already ran this world entry "
                 "(non-idempotent relocation; blocked)\n");
         fprintf(stderr,
                 "[worldmap-record-clut] second_call_detected=1 "
@@ -5430,7 +5430,7 @@ static int wm_80074594_init_ft4_pools(void)
 
     if (s_wm74594_ran) {
         fprintf(stderr,
-                "[worldmap-ft4-pools] ERROR: already ran this process "
+                "[worldmap-ft4-pools] ERROR: already ran this world entry "
                 "(non-idempotent alloc; blocked)\n");
         fprintf(stderr,
                 "[worldmap-ft4-pools] second_call_detected=1 "
@@ -6976,6 +6976,29 @@ void PcPort_WorldMapInitMain(void)
     u32 final_write = 0;
     u8 bss_before[16];
     u8 bss_after[16];
+
+    /* Retail reloads the overlay and its assets on every field -> world
+     * entry. Native diagnostics outlive that overlay, so their one-shot
+     * ownership must start afresh too. Keep duplicate-stage protection
+     * within an entry; these resets do not touch guest game state. */
+    s_wm8440c_completed = 0;
+    s_wm979c8_ran = 0;
+    s_wm84580_ran = 0;
+    s_wm72090_ran = 0;
+    s_wm736dc_ran = 0;
+    s_wm73e30_ran = 0;
+    s_wm85f58_ran = 0;
+    s_wm74594_ran = 0;
+    s_wm863E0_ran = 0;
+    s_wm74e58_ran = 0;
+    s_wm75030_ran = 0;
+    s_wm739b8_ran = 0;
+    s_wm88f64_ran = 0;
+    s_wm_first_wds_ran = 0;
+    s_wm_archive_set_index_ran = 0;
+    s_wm_gfx_work_rung_dispatches = 0;
+    s_wm_gfx_work_world_hits = 0;
+    s_wm32b_entry = 0;
 
     s_wm712d0_hits = 0;
     s_wm_drawotag_hits = 0;
