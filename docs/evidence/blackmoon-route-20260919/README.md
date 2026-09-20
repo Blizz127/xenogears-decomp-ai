@@ -1750,3 +1750,37 @@ Two related live facts:
   with Zetasol ("Removes KO status"), is the lever for the last ~550 units.
 
 Zone 2 entry and the forest-exit cutscene are still not observed.
+
+
+## Resume point advanced to the basin approach (round 7)
+
+A normal F7 at the ramp/basin boundary wrote a further-forward earned
+checkpoint:
+
+- `recovery.xgqs` sha256 `22e61c2d4407578f98beb610f9f83c2c3464ec39713b66536893794a5039ec57`,
+  map 23, **(-417,0,-1428)**, scenario 27.
+- The earlier ramp checkpoint `04122f1e...` at (-393,0,-1247) is superseded; the
+  map-23 start backup `route23-start-earned.xgqs` (`bfe7bd29...`) is unchanged.
+
+This is the closest resume point yet to trigger zone 2 (x[-978,-606],
+z[-1793,-1314]). From here the walkmesh route is the ramp descent
+tri232 (-426,-1509) -> tri219 (-496,-1643) -> tri221 (-623,-1641), so it needs
+mostly -z then -x; the walker reached (-315,-1521) before the encounter that
+ended the attempt.
+
+### Menu observations from this round
+
+- Item descriptions do render, but not for every entry: `Bizfruit` showed
+  "Restores EP (10) Non-battle" while `Omegasol`, `Rosesol` and `Hob-Jerky`
+  showed a blank panel. `Bizfruit` is an EP item, so it is not the HP heal the
+  party needs; the HP items are `Rosesol`/`Hob-Jerky`/`Aquasol` (Aquasol's
+  "Restores HP (50)" was confirmed earlier). Whether the blank panel is a data
+  gap or just a slow description load is not established.
+- A queued F7 save shows `WAIT` in the toolbar and, while it is pending, the
+  field menu stopped responding to Circle as a cancel (the item window stayed
+  open across several presses). The save did complete later, from that same
+  state. Recorded as an observation only - no defect is claimed, and a menu
+  cancel regression test is not yet written.
+
+The party still wipes on the way in (Fei alone after Elly is KO'd), so zone 2
+and the forest-exit cutscene remain unobserved.
