@@ -2144,3 +2144,39 @@ Recommended next attempt: drive the planner's waypoint chain
 (-594,-1348) -> (-714,-1452) with a walker that **scores y first** (a y drop is
 worth more than any flat progress), so it takes the ramp instead of drifting past
 it, and that fights through the encounters rather than trying to escape them.
+
+
+## The descent edge is adjacent but not enterable from the reachable side (round 16)
+
+Ran the planner from the checkpoint itself and it returns an 11-step path whose
+**first node is the ramp** - tri231 at (-423,-48,-1468), 40 units from the
+start - then tri240 (-425,-1336) back at y=0, tri61 (-521,-48,-1258), tri190
+(-591,-144,-1235) on the basin floor, and finally tri210 (-714,-144,-1452)
+inside trigger zone 2.
+
+A new walker (`route_walk.py`) follows that chain, scoring a y drop at 12x its
+distance value so it prefers the descent, and fighting encounters instead of
+escaping.  It walked the plateau fine (reaching (-490,-1273), i.e. ~30 units
+from tri61) and then reported BLOCKED, and manual probing agrees:
+
+| at | move | result |
+|---|---|---|
+| (-490,-1273) | Up | (-490,-1078) north |
+| (-490,-1273) | Down | (-490,-1273) back |
+| (-490,-1273) | Left / Right | blocked |
+| (-490,-1273) | Up+Left, Down+Left, Up+Right | blocked, position pinned |
+| (-396,-1512) | Left | blocked; Down drifts south-east to (-284,-1660) |
+
+So the walkmesh route exists but its first traversable edge is not reachable from
+the positions the player can stand on: around x=-490 the terrain only allows
+north-south movement, and the westward band that *is* open (z ~ -808, reaching
+x=-988) does not connect south into the basin.  Five-plus encounters were fought
+during the attempt and won; the party is healthy at the checkpoint.
+
+**Concrete next step:** stop guessing coordinates.  Extend the existing
+`XENO_FIELD_POS_DIAG` telemetry (`pc_port/src/field_pos_diag.c`) to print the
+**current walkmesh triangle index**, so the driver can steer by triangle identity
+("be on tri231") - the planner already speaks that language - and so a blocked
+edge is reported as "triA has no traversable neighbour towards triB" instead of a
+coordinate guess.  That is a test-only diagnostic, guarded by the same env var as
+the rest of POSDIAG.
