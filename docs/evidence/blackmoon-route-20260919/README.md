@@ -645,3 +645,61 @@ behavior, not a complete retail audiovisual comparison or human audio audition.
 Next: nighttime descent toward Lahan, the incoming-Gear event, burning-village
 and Gear-battle sequence, aftermath/world departure, then Blackmoon Forest.
 Those gates and equipment-preview helper801CE480 remain unfinished.
+
+## Night descent, burning Lahan and scenario24 world departure completed
+
+Continued process508015 from the earned scenario15 night exterior using normal
+movement, jump, dialogue and battle inputs. Field17's south exit loaded field15.
+The nighttime bridge trigger advanced scenario15→16; Fei's Giants dialogue and
+Citan's arrival/conversation completed and returned control at(-1053,-540,-193).
+F7 saved there; `bridge-scenario16-earned.xgqs` preserves that actual checkpoint.
+The incoming-Gear cinematic itself was not fully captured visually: a black
+transition frame and the resulting dialogue were observed, so do not claim its
+complete audiovisual presentation was verified.
+
+Descending the mountain naturally reached burning Lahan(field2). The return jump
+from the western platform landed on the lower path at(-728,-202,-712); normal
+walking then reached the south exit. The village's fire effects, Alice/Timothy
+conversation, Citan's departure, Dan/Gear events and cockpit movie progressed.
+The cockpit STR decoder exited at frame563/end563 and field dialogue resumed.
+Normal confirms advanced the Gear startup tutorial; a heavy attack consumed
+30fuel and defeated the first enemy, while enemy damage reduced Weltall's HP
+from1800 to1704. Further normal attacks completed the playable encounter.
+The bounded input helper stopped as soon as its return appeared in the log.
+
+Three consecutive retail battle interpreter invocations returned successfully:
+241201233 instructions for the playable/tutorial fight,97623088 for the
+reinforcement story sequence,107654881 for the later scripted confrontation.
+The latter two advanced through normal dialogue/timed events. No battle escape
+shortcut, forced result, modified stats or debugger state writes were used.
+The destruction sequence then transitioned to Fei waking near the survivors.
+Dan's confrontation, Citan's intervention, Blackmoon/Aveh directions, departure
+and intervening camera/flashback scenes all advanced to the world map.
+
+A Down/Down+c movement attempt appeared stationary, so a possible stall was
+investigated before editing. Read-only guest slot1 position samples and a Right
+input proved actual world movement to the Mountain Path entrance: position
+changed from0x074fb000/0x02b43000 to0x0767d880/0x02900100 (x/z fixed point).
+The cause of the earlier stationary direction was not determined; no general
+world-map stall is established by that observation. F7 on the world map was
+explicitly rejected as not a gameplay field, leaving the bridge save intact.
+Normal z interaction re-entered field15 at(585,101,-1700), scenario24, with
+free control. F7 then saved successfully. `post-lahan-scenario24-earned.xgqs`
+preserves this actual save, and `recovery.xgqs` is the current working copy.
+Read-only `rt24-earned-state.txt` confirms scenario24, Fei73/73HP and consumable
+quantities4/1/1/1 (IDs1/6/49/57). Original user saves remain unchanged.
+
+Raw evidence is in the route scratch directory: `runtime-resume9.log`,
+`inputs.log`, `rt15-*.png`, `rt16-*.png`, `rt17-*.png`, `rt18-*.png`,
+`rt24-world-right.png`, `rt24-mountain-reentry.png`, `rt16-fight.log`,
+`rt18-world-stall-state.txt`, `rt24-world-held.txt`, `rt24-earned-state.txt`.
+Screenshot prefixes rt17/rt18 were chosen before reading the actual final
+scenario24 and must not be treated as measured scenario values.
+
+No engine source changed, so this pass required no rebuild or new MIPS byte
+comparison. It establishes observed gameplay progression and battle/field/world
+handoffs, not exhaustive retail audiovisual parity. Process508015 remains live
+on display95/window2097204 at the saved field15 entrance, speed1x, HD2D enabled,
+with no input helper left running. Next: leave Mountain Path normally, navigate
+the world map to Blackmoon Forest, and test its story, traversal and encounters.
+Full route completion and equipment-preview helper801CE480 remain unfinished.
