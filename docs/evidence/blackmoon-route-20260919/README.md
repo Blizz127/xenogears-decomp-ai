@@ -3098,3 +3098,47 @@ load being *prepared* by the title menu (see the comment in
 cleanup") so the field's first frame runs the title menu's pending request.  Trace
 `D_800ADB64` writes across one load (a watchpoint on it) and close the path that
 sets `0x80`.
+
+
+## BATTLES button verified, and the menu-owner write pinned (round 38)
+
+**The random-battle switch works from both controls.**  Clicking the toolbar
+**BATTLES** button (now x 472-570, y 4-30 after the right-hand re-layout) toggles
+it and the log confirms each press; **F10** does the same:
+
+```
+[xeno-port][random-battles] OFF (route testing; field encounter rolls suppressed while off)
+[xeno-port][random-battles] ON  (route testing; field encounter rolls suppressed while off)
+```
+
+The button reads **green** while encounters are live and **red** while they are
+suppressed (both captured this round).  So the switch the user asked for behaves
+correctly from the toolbar and the keyboard.
+
+**The stale menu owner is a real write in the field.**  A conditioned hardware
+watchpoint on `D_800ADB64` across one quick-load caught it:
+
+```
+Hardware watchpoint 1: D_800ADB64
+Old value = 255
+New value = 128
+#0  FieldMain () at src/field/main/main.c:679
+#1  MainLoop (errorCode=0) at src/slus_006.64/main/main_loop.c:149
+#2  FieldMain () at src/field/main/main.c:708
+```
+
+so it is the field's own menu-open at `main.c:678-679`, firing because
+`D_800C3900 & 0x10` (a Triangle press edge) is set on that frame - the loader's
+own clear to 0xFF happens first (`func_800705DC` during `FieldLoad`), and a press
+edge from the title-menu phase is still in the pad queue afterwards.
+
+A guard was implemented (arm on restore, suppress the menu-open for N frames) and
+tested at both 1 frame and 30 frames: **the menu still opened**, so the edge is not
+confined to the frames after the restore, and the change was reverted rather than
+committed unproven.  The build is back to `589fb02e...`.
+
+**Next step:** the edge survives longer than a fixed window, so the fix belongs
+where the edge is consumed - either drop the field's `D_800C3900` bit at the point
+`FieldMain` reads it when the field has just been restored, or find which title-menu
+path leaves the pad state queued.  A watchpoint on `D_800C3900` across the load
+would name the producer.
