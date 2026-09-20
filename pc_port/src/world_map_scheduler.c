@@ -102,6 +102,19 @@
 extern s16 wm_800923A8(int slot_index) __attribute__((weak));
 extern s32 wm_800925A0(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008A2C8(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008A52C(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008B498(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008BD1C(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008C6EC(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008D520(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008DE9C(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008E4F4(s32 slot_index) __attribute__((weak));
+extern s32 wm_800907C4(s32 slot_index) __attribute__((weak));
+extern s32 wm_80087F60(s32 slot_index) __attribute__((weak));
+extern s32 wm_8008868C(s32 slot_index) __attribute__((weak));
+extern s32 wm_800879E0(s32 slot_index) __attribute__((weak));
+extern s32 wm_80088C90(s32 slot_index) __attribute__((weak));
+
 extern s32 wm_8008A72C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008B2BC(s32 slot_index) __attribute__((weak));
 extern s32 wm_8008B644(s32 slot_index) __attribute__((weak));
@@ -403,6 +416,66 @@ static wm_sched_callback_fn wm_sched_lookup(u32 guest_addr)
         if (s_wm_sched_registry[i].guest_addr == guest_addr)
             return s_wm_sched_registry[i].fn;
     return 0;
+}
+
+static s16 wm_sched_builtin_8008A52C(int slot_index)
+{
+    return (s16)wm_8008A52C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008B498(int slot_index)
+{
+    return (s16)wm_8008B498((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008BD1C(int slot_index)
+{
+    return (s16)wm_8008BD1C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008C6EC(int slot_index)
+{
+    return (s16)wm_8008C6EC((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008D520(int slot_index)
+{
+    return (s16)wm_8008D520((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008DE9C(int slot_index)
+{
+    return (s16)wm_8008DE9C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008E4F4(int slot_index)
+{
+    return (s16)wm_8008E4F4((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_800907C4(int slot_index)
+{
+    return (s16)wm_800907C4((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80087F60(int slot_index)
+{
+    return (s16)wm_80087F60((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_8008868C(int slot_index)
+{
+    return (s16)wm_8008868C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_800879E0(int slot_index)
+{
+    return (s16)wm_800879E0((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80088C90(int slot_index)
+{
+    return (s16)wm_80088C90((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8008A2C8(int slot_index)
@@ -1056,6 +1129,54 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x800925A0u && wm_800925A0 != 0) {
         *out_fn = wm_sched_builtin_800925A0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008A52Cu && wm_8008A52C != 0) {
+        *out_fn = wm_sched_builtin_8008A52C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008B498u && wm_8008B498 != 0) {
+        *out_fn = wm_sched_builtin_8008B498;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008BD1Cu && wm_8008BD1C != 0) {
+        *out_fn = wm_sched_builtin_8008BD1C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008C6ECu && wm_8008C6EC != 0) {
+        *out_fn = wm_sched_builtin_8008C6EC;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008D520u && wm_8008D520 != 0) {
+        *out_fn = wm_sched_builtin_8008D520;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008DE9Cu && wm_8008DE9C != 0) {
+        *out_fn = wm_sched_builtin_8008DE9C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008E4F4u && wm_8008E4F4 != 0) {
+        *out_fn = wm_sched_builtin_8008E4F4;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800907C4u && wm_800907C4 != 0) {
+        *out_fn = wm_sched_builtin_800907C4;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80087F60u && wm_80087F60 != 0) {
+        *out_fn = wm_sched_builtin_80087F60;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x8008868Cu && wm_8008868C != 0) {
+        *out_fn = wm_sched_builtin_8008868C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x800879E0u && wm_800879E0 != 0) {
+        *out_fn = wm_sched_builtin_800879E0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80088C90u && wm_80088C90 != 0) {
+        *out_fn = wm_sched_builtin_80088C90;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (guest_addr == 0x8008A2C8u && wm_8008A2C8 != 0) {

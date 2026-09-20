@@ -971,17 +971,54 @@ and entered the resumed world without the prior SPU assertion or null-sprite
 update. It stopped at a newly exposed porting gap: scheduler reports
 `guest=0x8008a52c kind=invalid_callback slot=1 state=0`. The required retail
 resume initializer is not registered/implemented in the native scheduler.
-Stopped PID1034174 normally because it was repeatedly logging this known
-frontier; no successful full world battle return is claimed. Forest recovery
+Sent TERM to PID1034174 because it was repeatedly logging this known
+frontier; a later process check found it still alive, so KILL was required; no successful full world battle return is claimed. Forest recovery
 hash remains unchanged. Runtime/launch evidence is resume17.json and
 runtime-resume17.log; screenshot world-return17-restored.png is black and is
 NOT visual acceptance.
 
 Next required work: implement and register the retail resume initializers
-selected by80072784. First is8008A52C..8008A5B4 (144 bytes): same sprite creation,
+selected by80072784. First is8008A52C..8008A5B8 (140 bytes, exclusive end): same sprite creation,
 animation0, scale1800 and flag-bit2 clear as the first part of cold initializer
 8008A2C8, but crucially preserves saved movement/state. Do not substitute the
 cold initializer because it resets the saved position. Inspect the remaining
 selected callbacks for missing scheduler entries too; avoid only satisfying
 slot1 and leaving the next slot unresolved. Keep branch/MIPS differential
 coverage and retry a complete natural encounter after callback completion.
+
+
+## World battle resume initializers and live return (resume18)
+
+Implemented the twelve missing initializers selected by the retail resume branch:
+8008A52C, 8008B498, 8008BD1C, 8008C6EC, 8008D520, 8008DE9C, 8008E4F4,
+800907C4, 80087F60, 8008868C, 800879E0, and 80088C90. The native-only module
+recreates released sprites without resetting their saved pose, restores channel
+objects and model visibility/matrices, and reinstates context links and textured
+packet state. The last operation includes the previously missing 80087904 helper.
+Registered all twelve through the production scheduler's weak bindings/adapters.
+No retail MIPS source changed.
+
+`run_world_resume_initializers_test.sh` verifies every annotated instruction byte
+of these thirteen routines against disc/world_map.bin, then executes their actual
+retail instructions in the MIPS interpreter. The production native callbacks are
+called through the production scheduler resolver/adapters. External dependencies
+use matching test bridges; 80087904 itself executes as retail MIPS. Comparisons
+cover return values, ordered helper arguments, full RAM below the guest stack,
+complete scratchpad, all 64 slot indices, absent/present party members, modes
+including signed extremes, both EE68 result branches, and zero/multiple packets.
+Native SpriteData pointers are normalized to a guest object address for comparison.
+All 1,152 cases pass independently at O0, O2, and O2+UBSan. Seven deliberate
+regressions are rejected: lost saved position, wrong sprite scale, missing sprite
+flag clear, absent-party creation, channel mode boundary, packet transparency,
+and omitted scheduler binding. Evidence: world-resume-initializers-tests.log.
+
+Native build passed with 75 generated function stubs and 96 adopted leaves checked;
+log world-return-build3.log. Resume18 ran that binary (launch JSON records hash)
+from the isolated earned world-return-checkpoint. A normal encounter completed
+with ordinary battle inputs and returned after 29,546,194 retail instructions.
+The resumed scheduler executed the new initializers, and world update passes
+continued. Visually inspected world-return18-restored.png (terrain, Fei, map)
+and world-return18-moved.png after Left 0.6 seconds: movement and terrain scrolling
+work. Both show SPEED 1X, FEI HD2D ON, GOD OFF. No teleport, forced combat outcome,
+or altered player stats used. Forest recovery hash still matches its pre-test
+snapshot. Full Blackmoon Forest story completion remains pending.
