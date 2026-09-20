@@ -3060,3 +3060,41 @@ That leaves the battle waiting on something the work-list does not drive - the
 attack/animation task it started (`func_800BBAB8` and friends), an expected input
 edge, or the AP gauge update.  Continuing from here needs the bridge call trace of
 one stalled fight, which the harness must first be able to reach.
+
+
+## The real harness blocker: a quick-load leaves a stale menu owner (round 37)
+
+Round 34-36 blamed the title's auto-continue for the load trouble.  The load does
+work (with F8 pressed early enough), but **every quick-load leaves the field menu
+owning input**, and that is why movement never starts afterwards.
+
+Measured with **no input at all** immediately after a load:
+
+```
+g_C1ButtonState     = 0x0      no pad button held
+g_C1PrevButtonState = 0x0
+D_800C3900          = 0x0      no field press edge
+D_800ADB64          = 0x80     <- the field system menu owns input
+POSDIAG ... owner=0x80
+[xeno-port][menu] func_800799D4 request=128 -> MenuMain
+```
+
+So the menu is open with zero input: the owner is stale, not pressed.  The field
+only clears it in `src/field/main/main.c:671-675`, and that guard (render context
+0 and no actor script lock) is evidently not met at that moment, so `0x80` sticks
+and every movement press is swallowed.
+
+A fix was attempted in `PcPort_QuickCheckpointRestore` - drop the queued pad
+states (`ControllerResetState`), clear the field's derived masks (`D_800C3900`,
+`D_800C2694`, `D_800AFE9C`) and set `D_800ADB64 = 0xFF` - and **it did not work**:
+`owner` came back as `0x80` on the next sample, so something re-sets the owner
+after the restore runs (only `src/field/main/main.c:678` assigns `0x80`, guarded by
+`D_800C3900 & 0x10`, which needs a press edge).  Rather than commit an unproven
+change the edit was reverted and the build restored to `589fb02e...`.
+
+**Next step:** find what sets the owner after the restore - the prime suspect is the
+load being *prepared* by the title menu (see the comment in
+`pc_port/src/quick_checkpoint.c` about "FieldMain's next poll after the menu's own
+cleanup") so the field's first frame runs the title menu's pending request.  Trace
+`D_800ADB64` writes across one load (a watchpoint on it) and close the path that
+sets `0x80`.
