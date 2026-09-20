@@ -2703,3 +2703,33 @@ Next step: find the story event that performs the descent.  The search is over
 map 23's field scripts and the neighbouring maps' load points for the opcode that
 places the party on the ramp (or moves them to the basin map), and then drive that
 trigger in normal play - which is what a player does.
+
+
+## CORRECTION + the map's real walkable descent is in the NORTH-EAST (round 29)
+
+Round 28 concluded the party could not walk down anywhere.  That is wrong: it is
+true only of the two ramps next to the checkpoint.  Filtering the mesh by the
+game's own two refusal rules (`0x400000` step-down, `0x800000` layer-0) and
+running Dijkstra from tri239 shows **296 reachable triangles spanning heights 0
+down to -300** - so a walkable descent exists, just elsewhere:
+
+```
+tri239 -> tri40 -> tri240 -> tri241 -> tri242 -> tri247 -> tri248 -> tri249
+       -> ... -> tri314 -> tri504(-15) -> tri507(-35) -> tri508(-58)
+       -> tri509(-74) -> tri510(-94) -> tri511(-110) -> tri512(-127)
+       -> tri514(-135)
+```
+
+The descent is an unflagged staircase of triangles **tri504..tri514** in the
+**north-east**, landing at tri514 (712,-135,452) - 42 hops and ~3100 cost from the
+checkpoint.  Every earlier attempt was fighting over tri231/tri233/tri191, which
+the collision rule refuses and which the map does not need.
+
+Note also what this implies about the trigger zones: with both refusal rules
+applied, **neither zone 0 nor zone 2 is reachable from tri239**, so the forest's
+exit is not one of map 23's three trigger zones as far as walking is concerned -
+it is either the north-east low ground or a map transition out there.
+
+`cam_walk.py` gained a `XENO_WALK_GOAL_TRI` override (walk to one triangle rather
+than the zone rectangle) plus the corrected two-flag walkability rule, and is
+walking the 42-hop route live (`tri240 -> tri241` confirmed) as the round ends.
