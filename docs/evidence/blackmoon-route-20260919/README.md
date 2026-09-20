@@ -501,3 +501,56 @@ Buy-cancel build at the earned scenario8 checkpoint. The selected-item caller
 the shop. Port that full caller next, retaining the equipment-preview dependency
 801CE480 as an explicit remaining gap, then verify normal purchase and travel.
 Blackmoon completion remains unproven.
+
+## Selected-item update restored; normal supply purchase observed
+
+Native func_801CEB3C follows retail801CEB3C..801CF2A0 for all three valid item
+types: description lookup/upload, returned price, equip eligibility highlights,
+equipped markers, stat-preview digit/color calls, and the Stored quantity chain.
+It uses the last three positions of the nine-digit buffer (retail menu+0x322),
+not the first three. It preserves compact portrait indexing across unavailable
+characters and unchanged stat contexts where the preview value is zero.
+All implementation changes remain under XENO_PC_PORT.
+
+`run_shop_selected_retail_test.sh` compares the native production selected-item,
+stored-count and inventory-lookup chain with the disc MIPS. Graphics/text,
+equipped-flag and stat-calculation helpers are observed with deterministic shared
+responses.1,536 cases exercise all three types, both contexts, four row/scroll
+positions, empty/sparse/nine-member availability patterns including character15,
+zero/nonzero item IDs, price extremes, equip masks, both stat colors, zero and
+1/9/10/99/100/999/1000 preview values. O0/O2/UBSan each pass5,067,229 checks.
+All469 valid-type instruction sites execute; four invalid-type jumps are
+excluded (801CEBC8/BCC/BDC/BE0). The stat helper801CE480 remains unported: these
+tests verify its caller contract, not that helper's gameplay calculation.
+Five mutants (zero item price, wrong digit positions, broken portrait indexing,
+nonempty description for ID0, wrong stat color) are rejected. The Buy-cancel
+regression now includes the actual selected-item and Stored routines; it passes
+O0/O2/ASan+UBSan and still detects the four-byte caller buffer overflow.
+
+All1,892 annotated selected-item assembly bytes match the disc, SHA256
+`22046557ec7d501b7b6901b314d92b64eb2c3ce38c23880c7b098ce1e6b627ad`.
+Compiled misc8 whole .text remains byte-identical, SHA256
+`91cef40c4eb8ff1f2d08e73d589a18a1d49269a9f49fa32123173976dd1ba200`.
+Full native build passes. Raw evidence: `shop-selected-{test,build,cancel-test}.log`
+and `shop-selected-misc8-*.text` in the route scratch directory.
+
+Live process508015 (`resume9.json`/`runtime-resume9.log`) restored the earned
+checkpoint, used ordinary shopkeeper dialogue and Buy, then showed Aquasol's
+"Restores HP (50)" description and Stored0. Normal quantity inputs selected
+five Aquasols, one Rosesol and one Omegasol. The confirmation displayed250G;
+Left selected Yes and confirm completed the purchase. Read-only before/after
+inventory inspection shows gold300→50, IDs1/6/49 with quantities5/1/1 (initial
+consumable inventory empty). Reopening Buy displays Stored5 for Aquasol and
+unaffordable rows dimmed. No shop stub call was logged on this consumable path.
+No quantity, gold, script or result was written through a debugger.
+
+Normal cancel/cancel/farewell and F7 saved field6(-144,0,-152), scenario8,
+HD2D on, speed1x. Process508015 remains alive there. The pre-purchase earned
+checkpoint is backed up as `shop-prepurchase-earned.xgqs`; original user saves
+remain untouched. Screenshots: `shop-selected-{buy,supplies,confirm,purchased,
+stored-five,farewell,saved}.png`; inventory evidence:
+`shop-{prepurchase,postpurchase}-inventory.txt`.
+
+Next: travel naturally to Citan with these supplies and Alice's scenario8 intact.
+Equipment-preview calculation801CE480 is still a fidelity gap; no equipment
+purchase/stat-preview runtime claim is made. Blackmoon completion remains unproven.

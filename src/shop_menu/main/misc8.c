@@ -190,7 +190,99 @@ void func_801CE91C(u8 type, s32 id) {
 #else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc8", func_801CE91C);
 #endif
-#ifndef XENO_PC_PORT
+#ifdef XENO_PC_PORT
+extern void* GetStringEntry(void*, s32);
+extern u_short ShopMenuGetCharacterEquippedItemFlags(u_char, u_char);
+extern u_short ShopMenuIsCharacterFlagSet(u_short, u_char);
+extern void func_801C5040(POLY_FT4*, short, short, u_char, u_char, short, short);
+extern s32 func_8002675C(void*, s32, POLY_FT4*, s32, s32, s32, s32);
+extern void func_801CE480(s32*, u8*, u8, u8, u8);
+extern void ShopMenuParseNumberToString(unsigned int);
+extern void ShopMenuSetStatChangeColor(int, POLY_FT4*, u_char);
+
+/* Retail 801CEB3C..801CF2A0. The third caller argument is unused in retail. */
+s32 func_801CEB3C(s32 row, s32 scrollOffset, u8* affordable) {
+    MenuShop* shop = g_Menu->pShop;
+    MenuString* desc = &shop->strItemDesc;
+    u8 id = g_Menu->shopItemIDs[scrollOffset + row];
+    u8 type = g_Menu->shopItemTypes[scrollOffset + row];
+    u16 equipFlags = 0;
+    u16 equipped;
+    s32 price;
+    s32 character, portrait = 0;
+    void* work = HeapAlloc(0x618, 0);
+    RECT rect = {320, 78, 60, 13};
+    (void)affordable;
+    bzero(work, 0x618);
+    switch (type) {
+        case 0:
+            desc->width = SystemRenderStringEntry(GetStringEntry(shop->pWeaponDescriptions, id), work, 0x39, 0);
+            price = g_Menu->unk330->pWeaponsData[id].price;
+            equipFlags = g_Menu->unk330->pWeaponsData[id].equipFlags;
+            break;
+        case 1:
+            desc->width = SystemRenderStringEntry(GetStringEntry(shop->pAccessoryDescriptions, id), work, 0x39, 0);
+            price = g_Menu->unk330->pAccessoriesData[id].price;
+            equipFlags = g_Menu->unk330->pAccessoriesData[id].equipFlags;
+            break;
+        case 2:
+            desc->width = SystemRenderStringEntry(GetStringEntry(shop->pItemDescriptions, id), work, 0x39, 0);
+            price = g_Menu->unk330->pItemsData[id].price;
+            break;
+    }
+    equipped = ShopMenuGetCharacterEquippedItemFlags(id, type);
+    LoadImage(&rect, work);
+    DrawSync(0);
+    func_801C5A7C(desc, 0, 0, 0);
+    func_801C5040(&desc->polys[g_Menu->renderContext], 44, 18, 0, 78, desc->width, 13);
+    ShopMenuSetVertices(desc->vertices, 44, 18, desc->width, 13);
+    desc->renderContext = (u8)g_Menu->renderContext;
+    HeapFree(work);
+    shop->unk46A7 = id != 0;
+    shop->unk46A9 = 0;
+    for (character = 0; character < 16; character++) {
+        if (g_Menu->availableCharacters[character]) {
+            shop->unk469C[portrait] = ShopMenuIsCharacterFlagSet(equipFlags, character) != 0;
+            if (ShopMenuIsCharacterFlagSet(equipped, character)) {
+                shop->unk46A9 += func_8002675C(g_Menu->unk2DC, 0xE,
+                    &shop->polys2D0[shop->unk46A9 * 2], g_Menu->renderContext,
+                    D_801D21CC[portrait] + 14, 180, 0x1000);
+            }
+            shop->unk46BC[portrait] = 0;
+            shop->unk46C5[portrait] = 0;
+            if (shop->unk469C[portrait]) {
+                s32 changes[2] = {0, 0};
+                u8 colors[2];
+                s32 stat, digit;
+                func_801CE480(changes, colors, id, type, character);
+                for (stat = 0; stat < 2; stat++) {
+                    POLY_FT4* polys = stat ? &shop->polys3020[portrait * 6] : &shop->polys27B0[portrait * 6];
+                    u8* length = stat ? &shop->unk46C5[portrait] : &shop->unk46BC[portrait];
+                    u8* context = stat ? &shop->unk46D7[portrait] : &shop->unk46CE[portrait];
+                    if (changes[stat] != 0) {
+                        ShopMenuParseNumberToString(changes[stat]);
+                        for (digit = 0; digit < 3; digit++) {
+                            /* Retail uses the last three of the nine digits. */
+                            u8 code = g_Menu->digits[6 + digit];
+                            if (code != 0xFF) {
+                                *length += func_8002675C(g_Menu->unk2DC, code,
+                                    &polys[*length * 2], g_Menu->renderContext,
+                                    73 + portrait * 26 + digit * 8, stat ? 198 : 190, 0x1000);
+                            }
+                        }
+                        ShopMenuSetStatChangeColor(*length, polys, colors[stat]);
+                        *context = (u8)g_Menu->renderContext;
+                    }
+                }
+            }
+            portrait++;
+        }
+    }
+    shop->unk46A8 = (u8)g_Menu->renderContext;
+    func_801CE91C(type, id);
+    return price;
+}
+#else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc8", func_801CEB3C);
 #endif
 
