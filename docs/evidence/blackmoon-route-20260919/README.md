@@ -1890,3 +1890,51 @@ Next step (not done): a focused test that drives a Cross press+release across
 the field -> menu ownership hand-off and asserts `func_801C55A0` leaves its
 loop, with a mutant that drops the release edge.  That is a much narrower target
 than the whole menu.
+
+
+### Wedge narrowed to the pad-queue release edge (same round, live measurements)
+
+The stack during the wedge is in the **Items screen**, not the top-level menu:
+`func_801C7BF4` (menu draw) -> `func_801DBE54` (`src/menu/main/misc.c:7560`,
+the port's Nav-N2a Items lifecycle).  That loop runs `while (running)` and only
+clears `running` on `MENU_INPUT_BACK` (`0x5`) with nothing selected:
+
+```c
+        case MENU_INPUT_BACK:
+            if (selected == -1) { running = 0; } else { selected = -1; }
+```
+
+`MENU_INPUT_BACK` comes from `func_801C7D78`
+(`src/menu/main/misc.c:1343`), which sets `input = 5` only on
+`g_C1ButtonStateReleased & 0x40` (Cross release).
+
+Live measurements taken from the wedged process:
+
+| probe | value | meaning |
+|---|---|---|
+| `'controller_vblank_service.c'::enabled` | `1` | vblank delivery is not masked |
+| `serviced_count` vs `PsyX_Sys_GetVBlankCount()` | `7488` vs `7488` | the tick service is keeping up |
+| `g_ControllerIsStateStackFull` | `0` | the queue is not overflowing/resetting |
+| `g_ControllerNumStates` | `0..1` | states are being pushed and popped |
+| `g_XenoMenuNavReaderTicks` | climbing (1652 -> 1908) | the reader runs every frame |
+| `g_C1ButtonState` while held | z `0x20`, c `0x40`, v `0x10`, x `0x80` | per-key mapping is correct |
+| `g_Menu->input` | `8` (idle) and `0` seen, never `5` | cancel never arrives |
+
+So the mapping is right, the press path works (direction inputs are read from
+`pressed` and did move the cursor), the queue is live, and the tick service is
+healthy - what never happens is the **Cross release edge** reaching the reader as
+`g_Menu->input = 5`.
+
+Why the existing coverage misses it: the port's headless menu harness
+(`psyq_compat.c` `XENO_MENU_NAV_TEST`, around line 1358) injects the edge
+directly - `g_C1ButtonStateReleased |= 0x40` - after `g_XenoMenuNavReaderTicks`
+reaches a threshold.  It therefore bypasses the `ControllerPushState` ->
+`ControllerPopState` -> `g_C1ButtonStateReleased` path entirely, which is exactly
+where this wedge lives.
+
+Next step: a scoped test that pushes a Cross press **and** release through the
+real queue (two `ControllerPushState` snapshots with different
+`g_C1ButtonStateReleased`), pops them through `func_801C7D78`, and asserts
+`g_Menu->input == MENU_INPUT_BACK`; plus a mutant that drops the release field in
+the push snapshot.  That is a much smaller target than the whole menu and is
+directly on the live path that fails.
