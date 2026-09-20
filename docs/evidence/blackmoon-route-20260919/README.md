@@ -2367,3 +2367,47 @@ per-step key measurement, cosine-combination choice, aim-past-edge, battle
 gating, map guard), the route is 8 triangles long, and what remains is **execution
 time on the route**: the walker needs to survive the plateau encounters long
 enough to make the ~7 hops.
+
+
+## The descent edge is blocked in-game, and it is the ONLY planner route (round 21)
+
+Walked the descent edge by hand with the triangle telemetry guiding it, and got
+right up against it:
+
+- tri241 and tri61 share the edge between vertices 159 (-491,0,-1222) and
+  160 (-502,0,-1281) - a north-south line at x ~ -496 spanning 59 units of z;
+- stepping west with short taps reached **(-493,0,-1278)**, i.e. ~8 units from
+  that edge at that z, and there the player **stops**: further Left presses do
+  nothing, while Down steps back to tri240 and Up/Left shuffle along tri241.
+
+So the walkmesh edge to the descent triangle cannot be traversed.  And the
+descent triangle is not optional: re-running the planner from tri240 with
+stricter slope filters gives
+
+```
+threshold 0.40 -> NO PATH? no: tri240 -> tri241 -> tri61 -> tri128 -> tri190 ... (573 cost)
+threshold 0.70 -> NO PATH from tri240
+threshold 0.85 -> NO PATH from tri240
+```
+
+i.e. **every** route into zone 2 crosses tri61 (and tri128), a slope whose
+vertices span y=0 to y=-144 over ~80 horizontal units (~60 degrees).  The 0.4
+threshold the planner has been using is more permissive than the game's own
+collision is.
+
+This reframes the blocker.  Either:
+
+1. the intended route to zone 2 does not start from this plateau at all (the
+   forest exit may be reached from a different part of map 23, or the zone is
+   entered from a scripted move), or
+2. the port's translation of the field collision (`func_8007BEF4`,
+   `src/field/main/misc4.c:1789`, which contains the walkmesh edge search and
+   slope handling) refuses a slope the retail game allows - which would be a real
+   port defect and exactly the kind this objective is for.
+
+The next step is therefore a **retail-backed check of the slope rule**: find the
+criterion `func_8007BEF4` uses to reject an edge (the threshold is in the
+triangle flags/normal test it computes), compare it against the triangle's own
+normal, and decide (1) or (2) from evidence rather than from the planner's
+assumption.  The player is sitting at (-493,0,-1278) on tri241, one edge from the
+descent, so the case is reproducible in seconds.
