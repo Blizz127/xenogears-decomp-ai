@@ -1212,3 +1212,38 @@ Native build passes (`timer-callback-build.log`, 75 stubs checked, 96 adopted
 leaves); `nm -D` confirms an exported `func_8001D164`. Resume22 launch metadata
 pins the rebuilt binary for the natural Wels retry from the earned checkpoint.
 These machine checks alone do not establish Wels victory or forest completion.
+
+Resume22 reproduced the scripted two-Wels encounter with Fei at43/73
+(`resume22-wels.png`). Normal Aquasol selection no longer aborts; the next
+battle-menu observation is58/73 after enemy actions (`resume22-wels-healed.png`).
+Ordinary attacks won the encounter (`resume22-wels-fight.png`, victory screen,
+level6/HP58/75). The retail battle returned to map22 and the next story event
+ran: Fei holds Elly and says "Are you alright!? Hang in there!"
+(`resume22-post-wels.png`). This is live evidence beyond the original
+8001D164 crash, not merely a test result. God mode stayed OFF, HD2D ON, speed1X.
+The unbound animation-render callback15 warning remains; no complete
+healing-effect fidelity claim is made. Rankar/Citan/forest exit remain pending.
+
+The post-Wels story naturally moved to map25's campfire conversation
+(`resume22-camp.png`, `resume22-camp2.png`). Its camera transition subsequently
+started retail STR7, frames0..1059, and delivered the first frame; the flashback
+is visible in `resume22-camp4.png`. No story flag or field position override
+was used.
+
+STR7 completed at frame1059. Normal dialogue confirmations then returned field
+control on map23, scenario27 (`resume22-post-flashback.png`). F7 saved the earned
+state at(29,0,1270) to the isolated `recovery.xgqs`; the preceding log/Wels
+checkpoint was retained as `pre-wels-earned.xgqs`. Ordinary walking changed the
+position to(29,0,1191), then onward through the map. The next route frontier is
+map23 navigation toward the remaining forest events; no Rankar/Citan/forest
+exit acceptance is claimed yet.
+
+At the end of this observation the live resume22 process is PID2376929, map23,
+scenario27, position(-396,0,-1511), layer0/triangle239, canRun1, held0. No input
+helper or debugger remains active. The saved checkpoint remains at the start
+of this map, not this exploration position. Several camera angles occlude Fei
+behind trees/raised terrain; shoulder-button rotation changes the view. Walk
+and jump inputs have been tried around the central tree/log boundary, without
+establishing a new movement bug or changing collision logic. Zone2 bounds are
+X[-978,-606], Z[-1793,-1314]; zone0 is centered(-1853,-2439), zone1(2536,1412).
+Do not treat those geometric zones alone as proof of their story destinations.
