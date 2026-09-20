@@ -261,7 +261,12 @@ void ShopMenuSetFinalPriceGraphics(unsigned int number) {
 }
 
 u_char ShopMenuBuyMenu(void) {
+#ifdef XENO_PC_PORT
+    /* func_801CDD14 writes one affordability flag for each visible row. */
+    u8 sp28[MAX_ITEMS_IN_VIEW];
+#else
     u8 sp28[0x4]; // ???
+#endif
     u_char isRunning;
     u_char shouldInitialize;
     u_char refreshGoldGraphics;

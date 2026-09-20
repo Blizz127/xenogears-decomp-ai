@@ -416,16 +416,50 @@ Full native build passes:75 function stubs,547 data symbols,96 adopted leaves.
 Evidence: `shop-list-test.log`, `shop-list-build.log`, `shop-misc7-*.text` in the
 route scratch directory.
 
-Process423403 runs this build (resume7.json/runtime-resume7.log), after normal
+Process423403 ran this build (resume7.json/runtime-resume7.log), after normal
 F8 recovery of the earned shop checkpoint and normal shopkeeper dialogue.
 Entering Buy now visibly lists Aquasol20, Rosesol100, Omegasol50, SurvivalTent150
 (`shop-list-live.png`). No list-builder stub is hit. `func_801CEB3C` is still a
 stub: the description and transaction total are incomplete. **No purchase was
-attempted/completed.** Two ordinary cancels, farewell confirm, then F7 returned
-to/saved field6(-154,0,-165), scenario8,300G, HD2D on, speed1x.
+attempted/completed.** The first cancel instead aborted in ShopMenuBuyMenu
+with stack corruption; the subsequent inputs failed because the window was
+gone. The earlier return/save claim was incorrect. No new checkpoint was
+written; the last valid checkpoint remains field6(-143,0,-154), scenario8,300G.
+The builder writes eight flags into the caller's four-byte sp28 declaration.
+Crash evidence: shop-list-cancel-crash.txt (coredumpctl, process423403).
 
 Next implement selected-item update801CEB3C and its stored-quantity helper
 801CE91C. The equipment-preview branch also calls still-unported801CE480;
 that remains a separate fidelity gap and must not be silently substituted.
 Then test a normal Aquasol purchase and continue scenario8 toward Citan.
 Blackmoon completion remains unproven.
+
+## Buy cancel stack overwrite repaired
+
+The native-only Buy caller buffer now has MAX_ITEMS_IN_VIEW (eight) bytes.
+Retail assembly passes sp+0x28 to the row builder and keeps its next stack
+local at sp+0x30, leaving eight bytes; the decompiled four-byte C declaration
+was unsafe under the host stack layout. Retail source configuration is retained.
+The caller's annotated assembly matches all2,008 corresponding disc bytes,
+SHA256 `af8c2523a3a67cf5fb0bdf0c8b17d92e2e38dc66afb4aaabab2916a20270d411`.
+Compiled misc8 whole .text before/after is identical, SHA256
+`91cef40c4eb8ff1f2d08e73d589a18a1d49269a9f49fa32123173976dd1ba200`.
+These checks are scoped to this caller/source file, not whole-port parity.
+
+`run_shop_buy_cancel_test.sh` links the production Buy caller and row builder
+with isolated menu/text/GPU helpers. It fills all eight rows, verifies their
+flags at the selected-item boundary, supplies ordinary Back, and checks return
+and unchanged gold/quantities. O0/O2 with stack protection and ASan+UBSan pass.
+Restoring the four-byte buffer is rejected by ASan with the original builder
+write into the caller's stack redzone. Full native build passes.
+
+Live process458481 (`resume8.json`, `runtime-resume8.log`) entered Buy through
+normal dialogue, displayed four item rows and300G, canceled to Buy/Sell/Exit,
+canceled to farewell, confirmed, and successfully saved field6(-133,0,-141).
+Scenario8 is retained, HD2D is on, speed1x. No purchase was attempted.
+Observed screenshots: `shop-cancel-buy.png`, `shop-cancel-back.png`,
+`shop-cancel-farewell.png`, `shop-cancel-field.png`. Test/build logs:
+`shop-buy-cancel-{test,build}.log`; retail byte captures: `shop-misc8-*.text`.
+This supersedes the failed resume7 cancel result, not its item-list observation.
+Selected-item pricing/description and stored quantity remain the next gaps;
+Blackmoon route completion is still unproven.
