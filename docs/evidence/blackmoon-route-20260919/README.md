@@ -1784,3 +1784,36 @@ ended the attempt.
 
 The party still wipes on the way in (Fei alone after Elly is KO'd), so zone 2
 and the forest-exit cutscene remain unobserved.
+
+
+## Suspected defect: a map-23 encounter never grants the party a turn (round 8)
+
+From the basin-approach checkpoint (-417,-1428) a normal encounter started at
+map 23 (-392,-1514) and then **stalled**: for well over 90 seconds the screen
+kept animating but neither character ever acted.
+
+Observed in `runtime-resume23t.log` and the screenshots
+`resume23t-stalled-battle-start.png` (Fei 24/84), `-ap0.png` and `-late.png`
+(Fei 16/84):
+
+- Both the AP and Time gauges stay pinned at **0**; they never fill.
+- Fei's HP dropped 24 -> 16 early and then did not change again, so the enemies
+  were not acting either - the battle is a deadlock, not a beating.
+- The command ring stays in its default `Defense | Attack` state and does not
+  respond: repeated Left/Circle pairs (six attempts, 0.7 s apart, 3 s between)
+  never rotated it to `Escape | Combo`, so there is no turn in which to escape
+  or fight.
+- `retail battle returned` never appears; the interpreter is not looping in the
+  bridge (no unresolved-call or stub messages), it simply never advances the
+  turn scheduler far enough for a command window.
+
+Earlier encounters in the same session did grant turns (several were won), so
+this is encounter-specific rather than a global battle break.  **Not diagnosed
+yet**: the next step is to instrument the battle face/ATB state
+(`func_8008A3EC` pause path, the AP fill, and the turn-order list) and compare
+against the retail update that advances them, then decide whether the port
+mis-initialises a per-battle value for these enemies.
+
+Until this is understood, the basin approach cannot be pushed through on foot:
+the encounter that blocks the last ~200 units into trigger zone 2 is the one
+that deadlocks.  Zone 2 and the forest-exit cutscene remain unobserved.
