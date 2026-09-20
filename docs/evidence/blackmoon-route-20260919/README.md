@@ -2733,3 +2733,43 @@ it is either the north-east low ground or a map transition out there.
 `cam_walk.py` gained a `XENO_WALK_GOAL_TRI` override (walk to one triangle rather
 than the zone rectangle) plus the corrected two-flag walkability rule, and is
 walking the 42-hop route live (`tri240 -> tri241` confirmed) as the round ends.
+
+
+## New harness switches: mass damage in GOD mode, and random battles on/off
+
+Route testing was spending nearly all of its wall clock in random encounters, and
+each attempt ended when the party was worn down rather than when the route was
+explored.  Two host-side switches fix that.  Both default to retail behaviour and
+neither writes a guest word for the encounter switch, so the matching build is
+untouched (the two call-site skips are `#ifdef XENO_PC_PORT`).
+
+**GOD mode now also deals mass damage.**  `PcPort_GodModeBeforeGuest` already
+hooks retail `0x80085618`, which consumes an action row (HP damage kinds 0/5/7/8,
+amounts at `0xC3FE8 + action*72 + slot*2`, slots 0..2 party and 3..10 enemies).
+It used to only zero the party's incoming damage; it now walks every slot and
+forces enemy damage to **9999** (keeping the Gear bit, never touching an absorb),
+so ordinary encounters end in one action while a boss with more HP still takes
+the hit and the row-consume path stays honest.  Log:
+
+```
+[xeno-port][god-mode] ON (party HP damage blocked, enemy damage forced to 9999, foot and Gear)
+[xeno-port][god-mode] mass damage 24 -> 9999 slot=3 gear=0
+```
+
+**Random encounters can be switched off.**  Retail gates encounters on
+`g_FieldControl.isRandomEncountersEnabled == 0` and rolls for one on every held
+direction (`func_80079288`) plus the per-frame check (`func_8008399C`,
+`src/field/main/misc8.c:495`, `src/field/main/misc6.c:747`).  Both call sites now
+consult `PcPort_RandomBattlesEnabled()`.
+
+Controls: **F10** toggles, and the toolbar gained a **BATTLES** button (green =
+encounters live, red = suppressed).  The F10 binding lives in
+`pc_port/src/psycross_host_toolbar.inl` (tracked) rather than in PsyCross's
+`PsyX_main.cpp`, because `pc_port/extern/` is git-ignored - a binding there would
+vanish on a clean checkout.  That handler sees every SDL event first and consumes
+the key, so there is exactly one toggle per press (verified: one log line).  The right-hand buttons were re-laid out to
+fit: `HD2D` 400-468, `BATTLES` 472-570, `GOD` 578-656.
+
+Verified live: with BATTLES off, eight movement presses produced **0 encounters**
+(the party walked from (-417,-1428) to (-237,-1641) freely), and clicking GOD on
+logged the mass-damage mode.  Build `cc14798dd96c…`, LINK OK.

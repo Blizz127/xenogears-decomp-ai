@@ -7,6 +7,8 @@
 #if defined(__GNUC__)
 extern "C" int PcPort_GodModeEnabled(void) __attribute__((weak));
 extern "C" void PcPort_GodModeToggle(void) __attribute__((weak));
+extern "C" int PcPort_RandomBattlesEnabled(void) __attribute__((weak));
+extern "C" void PcPort_RandomBattlesToggle(void) __attribute__((weak));
 extern "C" int PcPort_FeiHd2dEnabled(void) __attribute__((weak));
 extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
 #endif
@@ -146,6 +148,11 @@ static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
 		if (PcPort_FeiHd2dToggle != NULL) PcPort_FeiHd2dToggle();
 #endif
 		break;
+	case PC_PORT_TOOLBAR_RANDOM_BATTLES:
+#if defined(__GNUC__)
+		if (PcPort_RandomBattlesToggle != NULL) PcPort_RandomBattlesToggle();
+#endif
+		break;
 	case PC_PORT_TOOLBAR_GOD_MODE:
 #if defined(__GNUC__)
 		if (PcPort_GodModeToggle != NULL) PcPort_GodModeToggle();
@@ -174,6 +181,18 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 		event->window.data2 =
 			PsyX_HostToolbarContentHeight(event->window.data2);
 		return 0;
+	}
+	/* F10 is the keyboard half of the random-battle switch.  It lives here
+	 * rather than in PsyX_main.cpp because pc_port/extern is git-ignored, and
+	 * this handler sees every event first and can consume it. */
+	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
+		event->key.keysym.scancode == SDL_SCANCODE_F10) {
+#if defined(__GNUC__)
+		if (PcPort_RandomBattlesToggle != NULL) {
+			PcPort_RandomBattlesToggle();
+			return 1;
+		}
+#endif
 	}
 	if (event->type == SDL_MOUSEMOTION) {
 		action = PcPort_HostToolbarHitTest(event->motion.x, event->motion.y);
@@ -382,13 +401,19 @@ static void PsyX_HostToolbarDraw()
 #if defined(__GNUC__)
 	if (PcPort_GodModeEnabled != NULL) {
 		int god = PcPort_GodModeEnabled();
-		PsyX_HostToolbarDrawButton(564, 92, PC_PORT_TOOLBAR_GOD_MODE,
-			god ? "GOD ON" : "GOD OFF", 568, god ? 3 : 0);
+		PsyX_HostToolbarDrawButton(578, 78, PC_PORT_TOOLBAR_GOD_MODE,
+			"GOD", 606, god ? 3 : 0);
+	}
+	if (PcPort_RandomBattlesEnabled != NULL) {
+		/* Green while encounters are live, red while they are suppressed. */
+		int battles = PcPort_RandomBattlesEnabled();
+		PsyX_HostToolbarDrawButton(472, 98, PC_PORT_TOOLBAR_RANDOM_BATTLES,
+			"BATTLES", 496, battles ? 2 : 3);
 	}
 	if (PcPort_FeiHd2dEnabled != NULL) {
 		int hd = PcPort_FeiHd2dEnabled();
-		PsyX_HostToolbarDrawButton(400, 156, PC_PORT_TOOLBAR_FEI_HD2D,
-			hd ? "FEI HD2D ON" : "FEI HD2D OFF", 410, hd ? 2 : 0);
+		PsyX_HostToolbarDrawButton(400, 68, PC_PORT_TOOLBAR_FEI_HD2D,
+			"HD2D", 412, hd ? 2 : 0);
 	}
 #endif
 

@@ -492,7 +492,17 @@ void func_8008110C(void) {
         func_80281B00(D_8006FC30);
     }
 
+#ifdef XENO_PC_PORT
+extern int PcPort_RandomBattlesEnabled(void);
+#endif
+    /* The port can suppress random encounters for route testing; the flag is
+     * host-side, so the matching build keeps the retail condition. */
+#ifdef XENO_PC_PORT
+    if (PcPort_RandomBattlesEnabled() &&
+        g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
+#else
     if (g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
+#endif
         u8* player = (u8*)g_FieldActors + g_PlayerActorIndex * 0x5C;
         func_8008399C(g_PlayerActorIndex, player, (void*)(uintptr_t)*(u32*)(player + 0x4C));
     }
