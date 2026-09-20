@@ -1927,11 +1927,19 @@ void func_80025044(void) {
 extern void* g_GfxCurWorkBuffer;
 extern void* g_GfxCurWorkBufferEnd;
 extern uintptr_t D_80059524;
+#ifdef XENO_PC_PORT
+static u8* SpriteRenderAddress(uintptr_t address);
+#endif
 
 void func_800250E0(int context) {
     u8* pPrimBuffer = context ? (u8*)g_GfxWorkBuffer2 : (u8*)g_GfxWorkBuffers;
     u32* pListHead = context ? &D_80059304 : &D_80059300;
     u8* pCurEntry = (u8*)(uintptr_t)*pListHead;
+#ifdef XENO_PC_PORT
+    /* Battle effects serialize guest pointers into the deferred-free list.
+     * Resolve each packed slot independently, including mixed native nodes. */
+    pCurEntry = SpriteRenderAddress((uintptr_t)pCurEntry);
+#endif
 
     g_GfxCurContext = context;
     g_GfxCurWorkBuffer = pPrimBuffer;
@@ -1939,8 +1947,13 @@ void func_800250E0(int context) {
     g_GfxCurWorkBufferEnd = pPrimBuffer + g_GfxWorkBufferSize;
 
     while (pCurEntry != NULL) {
+#ifdef XENO_PC_PORT
+        HeapFree(SpriteRenderAddress(*(u32*)(pCurEntry + 0x0)));
+        pCurEntry = SpriteRenderAddress(*(u32*)(pCurEntry + 0x4));
+#else
         HeapFree((void*)(uintptr_t)*(u32*)(pCurEntry + 0x0));
         pCurEntry = (u8*)(uintptr_t)*(u32*)(pCurEntry + 0x4);
+#endif
     }
 
     *pListHead = 0;

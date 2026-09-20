@@ -1107,3 +1107,41 @@ recovery checkpoint using F7. User memory cards and quicksave remain untouched.
 HD2D ON, GOD OFF, SPEED1X throughout. The next natural encounter occurred while
 following the raised western path toward the log/boulder event. Elly, the boss,
 and the forest exit remain pending.
+
+## Deferred graphics-free guest pointer (log-side encounter)
+
+Continued along the raised western path, won the next two-Armor-Grub encounter,
+and returned at the pre-battle position (-1698,-143,-39). Normal movement around
+the stumps reached the log/boulder area. F7 saved the earned checkpoint at
+(-1071,-189,953), HP48/73. Approaching the log's Hobgob and interacting normally
+started the four-Hobgob encounter (`forest87.png`). Aquasol use then produced a
+new SIGSEGV. Resume20 is terminated; its core and stack are preserved as
+`log-hobgob-aquasol.core` and `log-hobgob-aquasol.gdb`.
+
+The color-update fault fixed by 0da7e4ae was passed. The new fault was in
+`HeapFree(0x8013d010)`, called by native graphics-context reset `func_800250E0`.
+The deferred list still contained guest packet pointers. Its consumer now
+translates the list head, payload and next link independently using the existing
+graphics address helper, solely under `XENO_PC_PORT`. The free order, reading
+the next link after each free, context selection and list clearing are unchanged.
+No retail-source branch or heap algorithm is changed.
+
+`run_gfx_deferred_free_retail_test.sh` compares every annotated instruction byte
+of 800250E0..80025180 with the disc (160 bytes, SHA-256
+`305e3a5c2f2ea2284536e0f47b7760caaa1827edd657d98faf06ab2c27834ac3`).
+The actual disc routine executes in the MIPS interpreter; HeapFree is bridged
+to an ordered-call observer in this fixture. The production native function is
+linked from the complete temp1 translation unit. Each O0/O2/UBSan run passes
+1,458 cases: both contexts, zero/one/two nodes, independent native/KSEG0/KSEG1
+head/link/payload domains, untouched other-context list, graphics cursor/end
+state and node guards. Removing each of the three conversions independently
+is detected. The original code fails the new suite with SIGSEGV. This is finite
+boundary coverage, not a whole-allocator or visual parity certificate.
+
+The native build passes (75 generated function stubs, 96 adopted leaves checked).
+Logs: `gfx-deferred-free-red.log`, `gfx-deferred-free-tests.log`,
+`gfx-deferred-free-build.log`. Resume21's launch record pins the rebuilt binary
+and the isolated checkpoint path. The same normal log encounter and Aquasol
+use now restore Fei to 73/73 without the cleanup crash (`resume21-aquasol.png`).
+GOD OFF, HD2D ON, SPEED1X. Render callback15 remains unbound; full healing-effect
+visual fidelity is still pending. Battle victory/return is checked separately.
