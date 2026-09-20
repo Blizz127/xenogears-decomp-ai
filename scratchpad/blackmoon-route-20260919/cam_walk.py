@@ -22,6 +22,7 @@ Usage: cam_walk.py <log> [steps]
 """
 import heapq
 import math
+import os
 import re
 import struct
 import subprocess
@@ -140,11 +141,29 @@ def load_layer(L):
     out = []
     for i in range(len(tb) // 14):
         a = struct.unpack_from("<7H", tb, i * 14)
-        out.append({"v": [verts[k] for k in a[:3]], "n": a[3:6], "idx": a[:3]})
+        out.append({"v": [verts[k] for k in a[:3]], "n": a[3:6],
+                    "idx": a[:3], "mat": a[6]})
     return out
 
 
 TRIS = load_layer(LAYER)
+
+# Walkability is the GAME's rule, not an arbitrary slope threshold: the field's
+# edge search (func_8007BEF4) refuses a triangle whose material flags carry
+# 0x00400000 when the new surface is below the current one.  Using a 0.4 slope
+# filter instead excluded tri191/tri758 - the only non-ledge descent - and made
+# zone 2 look unreachable.  Materials come from the same extraction the planner
+# uses (map23-materials.bin = D_800AFB20 rows).
+try:
+    import struct as _struct
+    _MAT = (HERE / "map23-materials.bin").read_bytes()
+
+    def _mat_flags(mat):
+        return (_struct.unpack_from("<I", _MAT, mat * 4)[0]
+                if mat * 4 + 4 <= len(_MAT) else 0)
+except OSError:
+    def _mat_flags(mat):
+        return 0
 
 
 def centroid(t):
@@ -160,9 +179,21 @@ def walkable(t):
     return abs(n[1]) >= math.hypot(n[0], n[2]) * THRESH
 
 
-OK = [walkable(t) for t in TRIS]
+# Walkability: the game refuses a flagged triangle both when stepping DOWN onto
+# it (0x400000, forceEdgeSearch is false because the *current* triangle is
+# unflagged) and when the actor layer is 0 (0x800000).  Refuse both here so the
+# planner only ever routes over ground the player can actually walk.
+OK = [(_mat_flags(t["mat"]) & 0x00C00000) == 0 and t["v"] is not None
+      for t in TRIS]
 CEN = [centroid(t) for t in TRIS]
-ZONE_TRIS = {i for i in range(len(TRIS)) if OK[i] and
+# XENO_WALK_GOAL_TRI lets the route aim at one specific triangle (the map's real
+# walkable descent lands in the north-east low ground, which is not a trigger
+# zone), while the default stays the zone-2 rectangle.
+_GOAL_TRI = os.environ.get("XENO_WALK_GOAL_TRI")
+if _GOAL_TRI is not None:
+    ZONE_TRIS = {int(_GOAL_TRI)}
+else:
+    ZONE_TRIS = {i for i in range(len(TRIS)) if OK[i] and
              min(ZONE2[0][0], ZONE2[1][0]) <= CEN[i][0] <=
              max(ZONE2[0][0], ZONE2[1][0]) and
              min(ZONE2[0][1], ZONE2[1][1]) <= CEN[i][2] <=
@@ -200,17 +231,12 @@ def next_hop(start):
     pts = [TRIS[start]["v"][TRIS[start]["idx"].index(i)] for i in shared]
     mid = (tuple(sum(p[k] for p in pts) / len(pts) for k in range(3))
            if pts else CEN[nxt])
-    # Aim past the shared edge, into the neighbour: the keys move at 45 degrees,
-    # so a target sitting exactly ON the edge gets oscillated around instead of
-    # crossed.  Steering at a point just beyond the edge means an overshoot lands
-    # inside the neighbour.
-    tx, ty, tz = mid
-    cx, cy, cz = CEN[nxt]
-    vx, vz = cx - tx, cz - tz
-    n = math.hypot(vx, vz)
-    if n > 1e-6:
-        back = min(60.0, n)
-        mid = (tx - vx / n * back, ty, tz - vz / n * back)
+    # Steer at the neighbour's CENTROID, not the shared-edge midpoint: the keys
+    # move at 45 degrees, so a target sitting on the edge is orbited rather than
+    # crossed, and "60 units past the edge" can even land on top of the player.
+    # The centroid is unambiguously inside the neighbour, so any step towards it
+    # crosses the edge.
+    mid = CEN[nxt]
     return nxt, mid
 
 
@@ -227,6 +253,8 @@ def main():
     global LOG
     LOG = Path(sys.argv[1]).resolve()
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 60
+
+    cached_deltas = {}
 
     for step in range(steps):
         here = settle()
@@ -255,22 +283,29 @@ def main():
         # around tri247 without ever crossing into tri129), so measure instead of
         # assuming.  Undo drift does not matter: the plan is recomputed from the
         # player's real triangle next step.
-        deltas = {}
-        for probe_key, undo_key in (("Up", "Down"), ("Right", "Left")):
-            b = position()
-            tap(probe_key, 0.45)
-            if battle_active():
-                fight_until_done()
-                break
-            a = fresh_position()
-            tap(undo_key, 0.45)
-            if battle_active():
-                fight_until_done()
-            if battle_active():
-                fight_until_done()
-            if a is not None and b is not None:
-                deltas[probe_key] = (a["x"] - b["x"], a["z"] - b["z"])
-                deltas[undo_key] = (-(a["x"] - b["x"]), -(a["z"] - b["z"]))
+        # Measuring costs ~5 s per step (two probe+undo pairs), which dominates
+        # the walk's wall clock and matters because the route is 42 hops across an
+        # encounter-heavy map.  The camera turns slowly, so reuse the previous
+        # measurement and only re-measure on a schedule or when a step fails.
+        if not cached_deltas or step % 8 == 0:
+            deltas = {}
+            for probe_key, undo_key in (("Up", "Down"), ("Right", "Left")):
+                b0 = position()
+                tap(probe_key, 0.4)
+                if battle_active():
+                    fight_until_done()
+                    break
+                a0 = fresh_position()
+                tap(undo_key, 0.4)
+                if battle_active():
+                    fight_until_done()
+                if a0 is not None and b0 is not None:
+                    d = (a0["x"] - b0["x"], a0["z"] - b0["z"])
+                    deltas[probe_key] = d
+                    deltas[undo_key] = (-d[0], -d[1])
+            cached_deltas = deltas
+        else:
+            deltas = cached_deltas
         dx0 = mid[0] - here["x"]
         dz0 = mid[2] - here["z"]
         want = math.hypot(dx0, dz0)
@@ -310,6 +345,9 @@ def main():
             fight_until_done()
             continue
         after = fresh_position()
+        if (after is not None and before is not None and
+                after["x"] == before["x"] and after["z"] == before["z"]):
+            cached_deltas = {}          # the mapping moved: force a re-measure
         if after is not None and after["tri"] != before["tri"]:
             print(f"  {combo}: tri {before['tri']} -> {after['tri']}",
                   flush=True)
