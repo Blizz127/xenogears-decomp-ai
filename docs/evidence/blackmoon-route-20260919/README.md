@@ -306,3 +306,37 @@ Screenshots `shop-fixed-menu.png` and `shop-fixed-cancel.png` show that distinct
 No purchases, stats edits, warps, or scenario writes were performed. HD2D remains
 on, speed1x. Next: implement the two retail-backed shop functions and test a
 normal purchase/return, then continue scenario8 toward Citan and Blackmoon.
+
+## Selected shop text: retail instruction differential
+
+Implemented native `func_801CBCF0` in shop misc3, leaving its retail INCLUDE_ASM
+branch intact. This is the first of the two stubs reached by the live purchase
+attempt above. It clears the requested active flags in mode0, positions the
+selected record using the shop tables, preserves retail's mode1 use of record0's
+width, and updates the selected record's render-context/active bytes. Other
+modes only update those bytes. Native MenuString indexing replaces guest0x80
+strides; coordinates still narrow through the polygon's16-bit fields.
+
+`run_shop_selected_text_retail_test.sh` executes the pinned disc's820-byte
+801CBCF0..801CC024 body through the MIPS adapter and compares native output.
+The called clear helper is bridged with its retail byte-count/zeroing contract;
+the native helper call is observed with the same contract. All205 instruction
+sites execute across14,336 cases. O0/O2/UBSan each pass638,160 checks, including
+both render contexts, modes0/1/2/255, selected records0..7, table offsets0..6,
+coordinate narrowing, record preservation, zero/nonzero/truncated clear counts,
+and the complete active-byte array. Four negative controls (wrong mode1 width,
+lost context, omitted clearing, wrong Y) are rejected.
+
+Before/after compiled misc3 whole .text is identical, SHA256
+`a276cd675d8e46d36002427bb3291741caa1fe912ec6ea05802b4d45fbc4de42`.
+Full native build passes, now77 function stubs; the binary contains a strong
+`func_801CBCF0` owner. The adopted-leaf check remains96 leaves, not an assertion
+that this newly implemented shop path is fully stub-free. Raw artifacts:
+`shop-selected-test.log`, `shop-selected-build.log`, `shop-misc3-{before,after}.text`.
+
+Runtime acceptance of this function and purchase completion remain pending.
+The still-live process294163 is intentionally the previous shop-layout build;
+its earned field6 checkpoint is preserved. Next implement `func_801CCFF4`,
+whose retail body dispatches portrait highlights, descriptions, price strings,
+and list rows, then restart on the new binary and repeat the normal shop flow.
+Blackmoon route completion remains unproven.

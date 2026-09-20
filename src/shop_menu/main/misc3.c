@@ -134,7 +134,34 @@ void func_801CCE1C(void* output, u8 characterId);
  * regions with C runs; cc1 emits every file-scope __asm__ block before every
  * compiled body, so each part below is (one retail asm run) + (the C run that
  * follows it) - the layout the compiler produces inside a single TU. */
-#ifndef XENO_PC_PORT
+#ifdef XENO_PC_PORT
+extern void func_801CBC88(u8, u8, void*, void*, u8*);
+/* Retail 801CBCF0..801CC024. Records expand with native pointers; the
+ * geometry, byte argument narrowing and mode-1 base-record width do not. */
+void func_801CBCF0(s32 count, MenuString* strings, void* ids, s32* xOffsets,
+                  u8* active, u8 selected, u8 offset, u8 mode) {
+    MenuString* string = &strings[selected];
+    POLY_FT4* poly = &string->polys[g_Menu->renderContext];
+    s32 x, y, width;
+    if (mode == 0) {
+        func_801CBC88(0, (u8)count, strings, ids, active);
+        x = (u16)D_801D2194[selected + offset] + (u16)xOffsets[selected] + 22;
+        y = (u16)D_801D21B0[selected + offset] - 34;
+        width = string->width;
+    } else if (mode == 1) {
+        x = 236;
+        y = 126;
+        width = strings[0].width;
+    } else {
+        string->renderContext = (u8)g_Menu->renderContext;
+        active[selected] = 1;
+        return;
+    }
+    setXY4(poly, x, y, x + width, y, x, y + 13, x + width, y + 13);
+    string->renderContext = (u8)g_Menu->renderContext;
+    active[selected] = 1;
+}
+#else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc3", func_801CBCF0);
 #endif
 
