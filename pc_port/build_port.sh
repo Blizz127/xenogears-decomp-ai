@@ -795,6 +795,7 @@ PORT_SOURCES=(
     pc_port/src/data_kernel_menu.c
     pc_port/src/data_field.c
     pc_port/src/data_member_change_menu.c
+    pc_port/src/data_shop_menu.c
     pc_port/src/data_main_menu.c
     pc_port/src/data_game_state.c
     pc_port/src/data_controller.c

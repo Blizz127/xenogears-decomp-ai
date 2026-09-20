@@ -134,7 +134,58 @@ void func_801CCE1C(void* output, u8 characterId);
  * regions with C runs; cc1 emits every file-scope __asm__ block before every
  * compiled body, so each part below is (one retail asm run) + (the C run that
  * follows it) - the layout the compiler produces inside a single TU. */
-#ifndef XENO_PC_PORT
+#ifdef XENO_PC_PORT
+extern void ShopMenuRenderString(int, POLY_FT4*, int);
+extern void ShopMenuRenderPolygons(int, SVECTOR*, POLY_FT4*, int);
+
+/* Retail 801CCFF4..801CD404. Keep draw order and independent price gate;
+ * native members account for pointer expansion in embedded MenuStrings. */
+void func_801CCFF4(void) {
+    MenuShop* shop = g_Menu->pShop;
+    s32 i;
+    if (g_Menu->pManager->unk5A) {
+        for (i = 0; i < 9; ++i) {
+            if (shop->unk469C[i]) {
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        &shop->linesPortraitHighlight1[i * 2 + g_Menu->renderContext]);
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        &shop->linesPortraitHighlight2[i * 2 + g_Menu->renderContext]);
+            }
+        }
+        ShopMenuRenderString(shop->explanationsLen, shop->polysExplanations, shop->explanationsRenderCtx);
+        ShopMenuRenderString(shop->unk46A9, shop->polys2D0, shop->unk46A8);
+        ShopMenuRenderString(shop->numPortraits, shop->polysCharacterPortraits, shop->portraitsRenderCtx);
+        for (i = 0; i < 8; ++i) {
+            if (shop->unk4684[i]) {
+                MenuString* first = &shop->strings3C30[i];
+                MenuString* second = &shop->strings4030[i];
+                ShopMenuRenderPolygons(1, first->vertices, first->polys, first->renderContext);
+                ShopMenuRenderPolygons(1, second->vertices, second->polys, second->renderContext);
+            }
+        }
+        if (shop->unk46A7)
+            ShopMenuRenderPolygons(1, shop->strItemDesc.vertices, shop->strItemDesc.polys, shop->strItemDesc.renderContext);
+        if (shop->unk46B5)
+            ShopMenuRenderPolygons(1, shop->str44B0.vertices, shop->str44B0.polys, shop->str44B0.renderContext);
+        if (shop->unk4785)
+            ShopMenuRenderPolygons(1, shop->str45B0.vertices, shop->str45B0.polys, shop->str45B0.renderContext);
+        if (shop->unk46B2) {
+            AddPrim(&g_Menu->pGfxEnv->ot[4], &shop->lines3BF0[g_Menu->renderContext]);
+            ShopMenuRenderString(shop->goldBeforeStrLen, shop->polysGoldBefore, shop->goldBeforeRenderCtx);
+            ShopMenuRenderString(shop->totalPriceStrLen, shop->polysTotalPrice, shop->totalPriceRenderCtx);
+            ShopMenuRenderString(shop->goldAfterStrLen, shop->polysGoldAfter, shop->goldAfterRenderCtx);
+        }
+        for (i = 0; i < 8; ++i)
+            ShopMenuRenderString(shop->unk468C[i], (POLY_FT4*)(shop->unk1DB0 + i * 0x140), shop->unk4694[i]);
+        for (i = 0; i < 9; ++i) {
+            ShopMenuRenderString(shop->unk46BC[i], &shop->polys27B0[i * 6], shop->unk46CE[i]);
+            ShopMenuRenderString(shop->unk46C5[i], &shop->polys3020[i * 6], shop->unk46D7[i]);
+        }
+    }
+    if (g_Menu->pManager->unk5B == 1)
+        ShopMenuRenderString(shop->finalPriceStrLen, shop->polysFinalPrice, shop->finalPriceRenderCtx);
+}
+#else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc6", func_801CCFF4);
 #endif
 

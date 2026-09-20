@@ -371,10 +371,22 @@ typedef struct {
     /* 0x3890 */ LINE_F3 linesPortraitHighlight1[9 * 2]; // Red highlight line around portraits, 1st half
     /* 0x3A40 */ LINE_F3 linesPortraitHighlight2[9 * 2]; // Red highlight line around portraits, 2nd half
     /* 0x3BF0 */ LINE_F2 lines3BF0[2]; // White line between gold amounts?
+#ifdef XENO_PC_PORT
+    /* Retail 801CCFF4 renders these as eight pairs of MenuString records. */
+    /* 0x3C10 */ u8 unk3C10[0x20];
+    /* 0x3C30 */ MenuString strings3C30[8];
+    /* 0x4030 */ MenuString strings4030[8];
+#else
     /* 0x3C10 */ u8 unk3C10[0x820];
+#endif
     /* 0x4430 */ MenuString strItemDesc;
     /* 0x44B0 */ MenuString str44B0;
+#ifdef XENO_PC_PORT
+    /* 0x4530 */ u8 unk4530[0x80];
+    /* 0x45B0 */ MenuString str45B0;
+#else
     /* 0x4530 */ u8 unk4530[0x100];
+#endif
     /* 0x4630 */ void* pItemDescriptions;
     /* 0x4634 */ void* pWeaponDescriptions;
     /* 0x4638 */ void* pAccessoryDescriptions;

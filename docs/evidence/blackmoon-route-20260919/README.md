@@ -340,3 +340,51 @@ its earned field6 checkpoint is preserved. Next implement `func_801CCFF4`,
 whose retail body dispatches portrait highlights, descriptions, price strings,
 and list rows, then restart on the new binary and repeat the normal shop flow.
 Blackmoon route completion remains unproven.
+
+## Shop renderer and static tables: visible menu, remaining item-list gate
+
+Implemented native `func_801CCFF4` from retail801CCFF4..801CD404. It emits
+portrait highlights, explanation/portrait strings, paired list strings,
+descriptions, price lines/strings, quantity rows, and the independently gated
+final-price string in retail order. Native MenuShop now declares the embedded
+MenuString records at retail3C30/4030/45B0 instead of treating them as padding;
+retail declarations remain unchanged behind the preprocessor branch.
+
+The production-linked MIPS differential compares ordered calls and normalized
+pointers at AddPrim/ShopMenuRenderString/ShopMenuRenderPolygons boundaries. Across
+768 cases it executes all260 instructions, tests all-off/all-on/non-boolean and
+individual flags, both contexts, and the independent equality-to-one final-price
+gate. O0/O2/UBSan each pass43,799 checks; four mutations (truthy price gate,
+wrong buffer, missing last row, swapped paired draw) are rejected. Selected-text
+and text-pair regression suites also pass after the native layout change.
+Compiled misc6 whole .text is unchanged before/after, SHA256
+`c61da91444b89743222cee61dd6138aac4274a16861a2281f23e32210c7907e6`.
+
+The first live retry (process372160, runtime-resume5.log) stopped hitting both
+prior stubs but was still blank. Read-only GDB found numTexts=numCursors=3 and
+all D_801D1F54 texture IDs and D_801D2194 positions zero. All three choices
+therefore used texture0 at160,150. Those symbols were generated zero data stubs,
+not the retail layout values. Added native data_shop_menu.c using the existing
+contiguous-data/assembler-alias pattern: all2,224 bytes in retailCF50..D800 and
+all32 aliases match the disc and corresponding decompiled data assembly.
+The test compiles the real data module and checks every byte and alias address;
+changed-value and shifted-alias mutants are rejected. The writable contiguous
+image preserves table adjacency and the overlay's scratch globals.
+
+Full native build passes with76 function stubs,547 data symbols,96 adopted
+leaves. The second live retry (process393389, runtime-resume6.log, resume6.json)
+loaded the earned field6 checkpoint through F8. Normal conversation opened
+visible Buy/Sell/Exit choices (`shop-retail-data-menu.png`). Confirming Buy
+opened its windows, character portrait, stored-quantity label and300G balance
+(`shop-buy-first.png`). The item list is still empty, and the log identifies
+the next missing functions: `func_801CDD14` and `func_801CEB3C`.
+**No purchase has been made; purchase completion and Blackmoon remain unproven.**
+Two normal cancels returned to the shopkeeper farewell (`shop-render-exit.png`),
+then confirm returned to field control. F7 preserved the earned field6 scene.
+HD2D on, speed1x, scenario8. No state edits or forced outcomes.
+
+Raw evidence in the route scratch folder: `shop-render-test.log`,
+`shop-render-{selected,pair}-regression.log`, `shop-render-build.log`,
+`shop-data-test.log`, `shop-data-build.log`, and `shop-misc6-*.text`.
+Next: port the retail item-list builder and selected-item update, verify a normal
+healing-item purchase, then resume travel to Citan with Alice's scenario8 intact.
