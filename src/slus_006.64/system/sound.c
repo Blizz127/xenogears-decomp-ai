@@ -2022,6 +2022,18 @@ AudioManager* func_80039910(SoundFile* pFile, AudioManager* manager) {
 // manager list, release voices, and free the block unless 0x4000 marks it
 // caller-owned (func_80039910 rebinds).
 void func_800399D4(AudioManager* manager) {
+#ifdef XENO_PC_PORT
+    /* Same port-only guard as func_80039C4C / func_80039C8C / func_8003A89C:
+     * the song-manager global (D_80062528) can be NULL in the port because the
+     * music start path stores whatever func_80039850 returned (misc8.c:3053)
+     * and still raises D_8004F35C, so the teardown chain reaches here with
+     * NULL (SIGSEGV observed at map 23 field teardown, backtrace
+     * func_800399D4(manager=0x0) <- func_8001B5E8 <- func_8001B66C <-
+     * func_80078D44).  Retail's global is never NULL on this path. */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#endif
     if (*(s16*)&manager->unk_Flags & 0x8000) {
         func_80039C4C(manager);
     }

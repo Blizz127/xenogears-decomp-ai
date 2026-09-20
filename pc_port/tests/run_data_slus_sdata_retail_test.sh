@@ -83,25 +83,31 @@ base=(-std=gnu17 -m64 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
       -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
 test_src=pc_port/tests/data_slus_sdata_retail_test.c
 
+# UBSan compiler selection: prefer gcc, fall back to clang, never skip.
 echo "== production regimes =="
-have_ubsan=0
+ubsan_cc=
 if gcc "${base[@]}" -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-        "$test_src" -o "$out/ubsan_probe" >/dev/null 2>&1; then
-    have_ubsan=1
+        "$test_src" -o "$out/ubsan_probe_gcc" >/dev/null 2>&1; then
+    ubsan_cc=gcc
+elif command -v clang >/dev/null 2>&1 && \
+     clang "${base[@]}" -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+        "$test_src" -o "$out/ubsan_probe_clang" >/dev/null 2>&1; then
+    ubsan_cc=clang
+    echo "  NOTE: gcc cannot link UBSan here (missing libubsan.so.1.0.0); using clang"
 else
-    echo "  WARNING: UBSan runtime unavailable (missing libubsan); skipping UBSan regime"
+    echo "ERROR: no compiler can build the UBSan regime; refusing to skip silently" >&2
+    exit 1
 fi
 for opt in O0 O2 UBSan; do
-    if [[ "$opt" == UBSan && "$have_ubsan" -eq 0 ]]; then
-        continue
-    fi
+    cc=gcc
     flags=(-"$opt")
     if [[ "$opt" == UBSan ]]; then
+        cc="$ubsan_cc"
         flags=(-O2 -fsanitize=undefined -fno-sanitize-recover=all)
     fi
-    gcc "${base[@]}" "${flags[@]}" -Wall -Wextra -Werror "$test_src" -o "$out/$opt"
+    "$cc" "${base[@]}" "${flags[@]}" -Wall -Wextra -Werror "$test_src" -o "$out/$opt"
     "$out/$opt"
-    echo "  $opt: PASS"
+    echo "  $opt ($cc): PASS"
 done
 
 run_mutant() {

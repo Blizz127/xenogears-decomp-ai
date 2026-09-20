@@ -1402,3 +1402,102 @@ gap, not a walk error.
   `695e784d95107de874169d905f2c66fc501494c0a47e1b5387c7cad6c61eba97`.
   No documented completion below claims audiovisual identity against a retail
   hardware capture.
+
+## Opcode 0xBC sub-command 0x22, .rodata data restoration, and the last teardown guard
+
+### `func_8001FBE4` opcode 0xBC sub 0x22 (the fail-loud frontier above) - fixed
+
+Decoded from `jtbl_800185A8` (39 entries, index `op0 & 0x3F`): index 0x22 ->
+`0x8002049C` (`lui/lw $s0,%lo(D_800C3E1C)`; `j .L80020550`), i.e. the shared
+sub-0x14 body with the *player/leader* sprite as its source instead of the
+target: `vec.vx/vy/vz = *(s16*)(player + 0x2/0x6/0xA)` and
+`vec.vy -= *(u16*)(player + 0x38)` (the full height; the half variant is 0x23),
+with the camera-relative flag `sprite+0x3F bit 0` preserved into the existing
+shared tail. Neighbours decoded: 0x20/0x21/0x23 = the 0x12/0x13/0x15 bodies with
+the player source, 0x01 = player position, 0x19-0x1F = the player anchor table,
+0x03 = player/self midpoint, 0x02/0x04 = averages over the `D_800D363C` chain,
+0x05 genuinely indeterminate.
+
+`D_800C3E1C` has exactly two writers in the whole game, both battle:
+`func_800BF85C` (mainc131) and `func_800B8048` (mainc100). The port already has
+both at runtime - `func_800B8048` as a native adopted leaf and `func_800BF85C`
+executed by the interpreter, both writing the same guest RAM slot - so no new
+writer was needed; the helper deliberately does not NULL-check, matching retail's
+dereference of RAM offset 2. `src/slus_006.64/system/animation_scripts.c` now
+implements case 0x22 and leaves the other player/party subs fail-loud.
+
+Test `run_sprite_dispatch_bc22_retail_test.sh`: four disc SHA-256 slice pins
+(`jtbl_800185A8`, the sub-22 entry, the body, the whole 0xBC handler), 19
+annotated instruction bytes matched, **336 cases at O0/O2/UBSan** (player XYZ x
+height 0/1/2/3/0xFFFF/0x8000/0x7FFF x camera flag x op0 bit 6 x guest/host
+pointer encoding) and 7/7 mutants rejected (`height_off`, `half`, `add_height`,
+`x_off`, `y_off`, `camera_flip`, `host_ptr`). One bit-identical extra: the shared
+0xBC word-destination tail now writes `(u32)(s32)v << 16` instead of
+`(s32)v << 16`, removing UBSan signed-shift UB and matching the idiom used
+elsewhere in the file.
+
+Still fail-loud by design: 0xBC subs 0x01-0x04, 0x19-0x1F, 0x20, 0x21, 0x23 and
+the indeterminate 0x05. Field-slot caveat: the port never clears the field BSS
+region (`0x800AF5E4..0x800C426C`) on map load, so after a battle the field can
+observe a stale `D_800C3E1C` where retail sees 0.
+
+### 27 `.rodata` mismatches restored, and the generator's function/data bug
+
+`pc_port/src/data_slus_rodata.c` (new) defines all 27 `.rodata` symbols the data
+audit found retail-non-zero/host-zero, with exact retail bytes and splat
+`.size` from the per-symbol `.rodata.s` listings: `D_80010000[4]=0xFFFFFFFF`,
+`D_80010004[0x8000]`, `D_80018004[0x80]` (the real size is 0x80, not the
+0x1520 in `port_buffers`), and 24 debug/format strings `D_800180FC..D_80018974`;
+33498 bytes total. The audit's remaining `.sdata` entries are not defects
+(`D_8004FD40` split-brain, `D_80050200`/`D_800591B0` write-only, `D_800591B1` is
+byte 1 of `D_800591B0`, and `D_80056414` is a false positive whose own word is
+zero). `port_main.c`'s ad-hoc `*(int*)D_80010000 = -1` is now subsumed and was
+removed; `ArchiveInit(...,0)` was kept because passing retail's `-1` would switch
+the archive to the baked-table path, an unverified behaviour change.
+
+`firstfile`/`nextfile` are FUNCTIONS in the main-exe `.text`, but the overlay ELFs
+carry them as ABS symbols so the generator classified them as data and emitted
+`unsigned char firstfile[32]`, which the menu call sites then bound to. The
+generator now honours splat's `type:func` annotation (`parse_symbol_types`), the
+two names are annotated in `config/symbol_addrs.slus_006.64.txt`, and a control
+run shows the classification diff is exactly those two symbols (74/518 ->
+76/516). `D_800308D0` is a mid-function GTE code label inside `func_80030750`,
+not data; its consumer's last access needs 0x8E bytes, so a port-only
+`size:0x8E` annotation stops the 32-byte stub from being overflowed (content
+stays zero; nothing natively reads it).
+
+Tests: `run_data_slus_rodata_retail_test.sh` (125 assertions, 5/5 mutants
+rejected) and `run_gen_port_stubs_classify_test.sh` (3/3 mutants). A pre-existing
+generator unit test, `tools/tests/test_gen_port_stubs.py::
+test_unknown_function_name_is_not_authority`, also fails on HEAD and is unrelated
+to this change.
+
+### Last teardown guard: `func_800399D4`
+
+The same NULL song-manager state crashed a second teardown entry point -
+`func_800399D4(manager=0x0)` at `sound.c`, reached via `func_8001B5E8` <-
+`func_8001B66C` <- `func_80078D44` on the map-23 teardown after a map reload. It
+now takes the same `XENO_PC_PORT` guard as `func_80039C4C`/`func_80039C8C`/
+`func_8003A89C`. The underlying cause is open and NOT claimed fixed: the port's
+song-start path stores whatever `func_80039850` returned and still sets
+`D_8004F35C`, so a failed/failed-to-run manager creation leaves a NULL manager
+while the "song loaded" flag is set. No music-manager allocation failure has been
+observed or ruled out yet.
+
+### Final integrated state
+
+Container build: LINK OK, **76 function stubs, 489 data symbols, 96 adopted
+leaves across 61 translation units**, `xeno-port` SHA-256
+`072eece28bae8cc79163ae409d8c1aa852b613e7d81c989312e8fc43a488bc6b`. All eight
+affected suites PASS on that binary: `run_sprite_dispatch_bc22_retail_test`,
+`run_data_slus_rodata_retail_test`, `run_gen_port_stubs_classify_test`,
+`run_data_slus_sdata_retail_test`, `run_battle_main_exe_callback_dispatch_test`,
+`run_battle_child_billboard_retail_test`, `run_battle_guest_call_test`,
+`run_anim_render_index15_retail_test`.
+
+Live map-23 progress with the fixes: the checkpointed walk from (29,0,1270)
+reached (-383,0,-1530), i.e. z is already inside trigger zone 2's range but x
+(-383) has not yet crossed the zone's -606 edge; the destination is a short
+walk further west. Zone 2 entry and the scripted forest-exit cutscene
+(particles off, field resources streamed, camera yaw, Fei/Elly routines) are
+**not yet observed**, so no completion is claimed for the route.

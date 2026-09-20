@@ -1368,23 +1368,25 @@ int main(int argc, char** argv) {
     {
         const char* disc = PcPort_FindDiscImage();
         /* D_80010000 is static read-only ROM data (asm/.../data/800.rodata.s) with
-         * value 0xFFFFFFFF; nothing ever writes it. The auto-generated stub leaves it
-         * zeroed, which makes FieldMain compute g_FieldSystemMode = SYSTEM_MODE_PC_HDD
-         * (0) and hit a `break 1` trap meant only for the PC-HDD dev path. Restoring
-         * the real value (-1) lets the original control flow pick SYSTEM_MODE_CD_ROM
-         * (1) -- not a forced mode, just the correct constant. ArchiveInit treats the
-         * value as pDebugTable: -1, like 0, selects the CD path (g_ArchiveDebugTable
-         * = NULL), so disc loading is unchanged. */
-        *(int*)D_80010000 = -1;
+         * value 0xFFFFFFFF. The exact retail bytes are now baked by
+         * pc_port/src/data_slus_rodata.c, so the old ad-hoc
+         * `*(int*)D_80010000 = -1;` write is gone -- the correction is in the data,
+         * not in a boot patch. A zero stub made FieldMain compute
+         * g_FieldSystemMode = SYSTEM_MODE_PC_HDD (0) and hit a `break 1` trap meant
+         * only for the PC-HDD dev path; the real constant picks SYSTEM_MODE_CD_ROM
+         * (1). ArchiveInit treats the value as pDebugTable: -1, like 0, selects the
+         * CD path (g_ArchiveDebugTable = NULL), so disc loading is unchanged. */
         if (disc) {
             printf("[xeno-port] CD image: %s\n", disc);
             PsyX_CDFS_Init(disc, 0, PORT_CD_SECTOR_SIZE);
             /* pDebugTable MUST be 0 here, not D_80010000's -1. Retail passes -1, but
              * ArchiveInit only reads the archive table/header from CD when
              * pDebugTable == 0 (`if (!pDebugTable)`); with -1 it relies on the table
-             * being statically baked into the EXE at D_80010004/D_80018004, which the
-             * port's data migration does not provide. So the port reads the index
-             * from disc (pDebugTable = 0); g_ArchiveDebugTable still ends up NULL. */
+             * statically baked into the EXE at D_80010004/D_80018004. Those retail
+             * bytes are now baked (pc_port/src/data_slus_rodata.c), but the port still
+             * takes the disc path deliberately, so the live CD image -- not the
+             * main-exe snapshot -- drives the archive index. g_ArchiveDebugTable still
+             * ends up NULL. */
             ArchiveInit((unsigned int)D_80010004, (unsigned int)D_80018004, 0);
             printf("[xeno-port] ArchiveInit done (archive index loaded from disc).\n");
 

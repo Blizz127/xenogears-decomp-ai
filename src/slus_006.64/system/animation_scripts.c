@@ -259,6 +259,37 @@ static void AnimationWrite32(u8* p, u32 value) {
     p[3] = (u8)(value >> 24);
 }
 
+/* Player/leader sprite pointer for the 0xBC player-relative sub-commands
+ * (0x22 reads it here; 0x01, 0x19-0x1F and 0x20/0x21/0x23 share the source and
+ * stay fail-loud). Retail keeps D_800C3E1C in the overlay BSS slot and
+ * dereferences it with no NULL check. Its only writers are the battle-overlay
+ * functions func_800BF85C (0x800BF85C: D_800C3E1C = D_800C3EB0[idx*4+0x8C8C],
+ * plus the D_800D363C/D_800D3634 party latch) and func_800B8048 (0x800B8048,
+ * a native adopted leaf in the port). Neither runs in the field: retail zeroes
+ * the slot when a field overlay loads (g_MainGameStates[1] pMemStart..pHeapStart
+ * = 0x800AF5E4..0x800C426C), and the observed live abort happened in field with
+ * the slot at 0. Address 0 therefore must stay PSX_ADDR(0): retail reads RAM
+ * offset 2 there and does not fault, so the port must not add a NULL guard.
+ * The stored word is a guest address when the interpreter ran func_800BF85C and
+ * a native heap pointer when native code ran func_800B8048 - exactly the
+ * aliasing AnimationSoundBankPointer already handles. */
+#ifdef XENO_PC_PORT
+static u8* AnimationPlayerSprite(void) {
+    u32 address = AnimationRead32((const u8*)PSX_ADDR(0x800C3E1C));
+
+    if (address < 0x200000u || (address & 0xFFE00000u) == 0x80000000u ||
+        (address & 0xFFE00000u) == 0xA0000000u) {
+        return (u8*)PSX_ADDR(address);
+    }
+    return (u8*)(uintptr_t)address;
+}
+#else
+extern u32 D_800C3E1C;
+static u8* AnimationPlayerSprite(void) {
+    return (u8*)(uintptr_t)D_800C3E1C;
+}
+#endif
+
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
 
@@ -908,10 +939,14 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
          *
          * Player/party-relative sub-commands (1-4, 0x19-0x23) read the
          * animation system's player-sprite global D_800C3E1C and party list
-         * D_800D363C, which have NO writer in the port yet (their latch
-         * lives in temp1's unported sprite-spawn region) - they stay
-         * fail-loud. Sub 5 divides zeroed accumulators by a stale register
-         * in retail (indeterminate) and stays fail-loud too. */
+         * D_800D363C. Those are battle-overlay BSS written only by
+         * func_800BF85C / func_800B8048 (see AnimationPlayerSprite), never by
+         * the field, where the slot is zero; this opcode still runs natively
+         * from temp1's func_800248D4 and through the battle bridge map. Sub
+         * 0x22 is implemented (AnimationPlayerSprite); its decoded siblings
+         * 0x01, 0x02, 0x03, 0x04, 0x19-0x1F, 0x20, 0x21 and 0x23 stay
+         * fail-loud. Sub 5 divides zeroed accumulators by a stale register in
+         * retail (indeterminate) and stays fail-loud too. */
         u8* p = pSpriteData;
         u32 op0 = ((u8*)operands)[0];
 
@@ -959,18 +994,41 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
             case 0x1F:
             case 0x20:
             case 0x21:
-            case 0x22:
             case 0x23:
-                /* Player (D_800C3E1C) / party list (D_800D363C) relative -
-                 * no port writer for those globals yet (temp1 sprite-spawn
-                 * region); implementing now would deref NULL (or 0/0 in the
-                 * sub-2 centroid). */
+                /* Player-relative siblings of 0x22, decoded from jtbl_800185A8
+                 * (all read D_800C3E1C, still fail-loud):
+                 *   0x20 -> 8002047C -> .L800204C0 (sub 0x12 body): vy -= h36
+                 *   0x21 -> 8002048C -> .L800204F8 (sub 0x13 body): vy -= h36-half
+                 *   0x23 -> 800204AC -> .L80020590 (sub 0x15 body): vy -= h38-half
+                 * 0x01 (80020610 -> .L80020744) is the player position,
+                 * 0x19-0x1F (80020730, a0 -= 0xE) the player anchor table
+                 * (index sub-0x18), 0x03 (8002081C) the player/self midpoint,
+                 * and 0x02/0x04 (8002076C/800208C4) averages over the
+                 * D_800D363C pointer chain. Only the battle writer above
+                 * populates those globals; sub 0x05 (800209B8) is genuinely
+                 * indeterminate (zeroed accumulators divided by stale $s0). */
 #ifdef XENO_PC_PORT
                 fprintf(stderr, "{\"event\":\"sprite_animation_bc_unimplemented\",\"sub\":%u,\"sprite\":\"%p\"}\n", (unsigned)sub, pSpriteData);
                 fflush(stderr);
 #endif
                 assert(0 && "func_8001FBE4 opcode 0xBC sub-command is not implemented");
                 return;
+
+            case 0x22: {
+                /* 8002049C -> `lui/lw $s0,%lo(D_800C3E1C); j .L80020550`: the
+                 * shared sub-0x14 body with the player/leader sprite as the
+                 * source instead of the target (+0x74).  vec is the player
+                 * position with the full +0x38 height subtracted from Y; the
+                 * jump lands on .L80020A20, so the camera-relative flag s1 is
+                 * preserved. (0x20/0x21/0x23 are the 0x12/0x13/0x15 bodies:
+                 * .L800204C0/.L800204F8/.L80020590.) */
+                u8* pPlayer = AnimationPlayerSprite();
+
+                vec.vx = *(s16*)(pPlayer + 0x2);
+                vec.vy = (s16)((s32)*(s16*)(pPlayer + 0x6) - (s32)*(u16*)(pPlayer + 0x38));
+                vec.vz = *(s16*)(pPlayer + 0xA);
+                break;
+            }
 
             case 0x05:
                 /* 800209B8: retail zeroes the accumulator block then divides
@@ -1144,9 +1202,12 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
                 *(u16*)(p + 0xA2) = (u16)vec.vy;
                 *(u16*)(p + 0xA4) = (u16)vec.vz;
             } else {
-                *(s32*)(p + 0x0) = (s32)vec.vx << 16;
-                *(s32*)(p + 0x4) = (s32)vec.vy << 16;
-                *(s32*)(p + 0x8) = (s32)vec.vz << 16;
+                /* (u32) mirror of the signed value: same sll encoding as the
+                 * other position stores in this file, without the UBSan
+                 * signed-left-shift undefined behaviour. */
+                *(s32*)(p + 0x0) = (u32)(s32)vec.vx << 16;
+                *(s32*)(p + 0x4) = (u32)(s32)vec.vy << 16;
+                *(s32*)(p + 0x8) = (u32)(s32)vec.vz << 16;
             }
             return;
         }

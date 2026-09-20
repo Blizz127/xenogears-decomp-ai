@@ -62,6 +62,35 @@ def parse_symbol_sizes(paths):
     return sizes
 
 
+# Matches a splat symbol_addrs type annotation, e.g.
+#   firstfile = 0x80040584; // type:func
+# splat writes `type:func` for names it knows are code even when an overlay ELF
+# only carries them as ABS (undefined) references. That is exactly the case for
+# firstfile/nextfile: they live in the main executable's .text, but the menu
+# overlay links them as ABS symbols, so ELF/map classification alone sees a
+# NOTYPE symbol with no section and would emit a zeroed data array.
+_TYPE_RE = re.compile(
+    r"^\s*([A-Za-z_.$][\w.$]*)\s*=\s*0x[0-9A-Fa-f]+\s*;.*?\btype:\s*([A-Za-z_]\w*)"
+)
+
+
+def parse_symbol_types(paths):
+    """Return {name: type} from symbol_addrs `type:` annotations (last wins)."""
+    types = {}
+    for p in paths:
+        try:
+            with open(p) as fh:
+                lines = fh.readlines()
+        except FileNotFoundError:
+            print(f"  (warning: symbol-addrs file not found: {p})", file=sys.stderr)
+            continue
+        for line in lines:
+            m = _TYPE_RE.match(line)
+            if m:
+                types[m.group(1)] = m.group(2).lower()
+    return types
+
+
 def classify_symbols(elf_paths):
     """Return {name: (is_func, size)}.
 
@@ -211,11 +240,14 @@ def main():
         print(f"  classified {prefixed} leftover splat-style names by prefix "
               f"(func_/D_/g_/jtbl_/jpt_)", file=sys.stderr)
     sym_sizes = parse_symbol_sizes(args.symbol_addrs)
+    # `type:func` overrides an ABS/NOTYPE (data-looking) ELF sighting. This is
+    # the only signal for a .text function that overlay ELFs reference as ABS.
+    sym_types = parse_symbol_types(args.symbol_addrs)
 
     funcs, data, resized = [], [], 0
     for n in names:
         info = table.get(n)
-        if info[0] or n.startswith("func_"):  # is_func
+        if info[0] or n.startswith("func_") or sym_types.get(n) == "func":  # is_func
             # Some overlay entrypoints are referenced from the main executable at
             # addresses that are BSS in the main map. Prefer the code-style name
             # over NOTYPE/BSS so native calls cannot bind to data storage.
