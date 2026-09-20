@@ -3228,3 +3228,17 @@ closed with Cross presses after a load before walking.
 retail-play walk (encounters **live**, GOD off) reached **leg 29, tri314
 (117,0,174)**, heading for the tri504 descent staircase, having entered 2
 encounters - i.e. the north-east route is being walked under normal play.
+
+### Round 39 addendum: the walk completed 3/3 encounters
+
+With a single driver and the menu closed, the retail-play walk (encounters live,
+GOD off) reached **leg 71 at tri318 (340,0,469)** heading for the tri504 descent
+staircase and **completed all three encounters it met (3 entered / 3 returned)**.
+
+That matters because the "intermittent stalled battle" chased since round 8 did not
+occur once the stray drivers were gone.  Several of those stalls were probably the
+same confound - more than one `cam_walk.py`/`fight.py` instance alive at once,
+pressing battle keys and leaving the battle waiting for input that never arrives in
+the order it expects.  The stall is still recorded as *unexplained* rather than
+solved, but any future attempt should treat "exactly one driver" as a precondition
+before blaming the port.
