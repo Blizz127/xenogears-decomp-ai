@@ -1718,3 +1718,35 @@ Zone 2 entry and the forest-exit cutscene are still **not observed**.
 No new port defect was established this round: every battle entered ran,
 rendered and returned (or was escaped) on build `fa33ec66`, so the round-4
 cache-eviction fix holds up under repeated play.
+
+
+## Field-menu healing, verified (round 6)
+
+The ramp checkpoint saves a *worn* party - Fei 53/75, Elly 1/40 (the status
+screen after loading shows exactly that) - which is why every push from it died
+in the first two encounters.  The field menu can repair that, and the sequence
+is now verified end to end:
+
+```
+V (open menu)            cursor lands on Status
+Down, Down               -> Items
+Z                        -> item list, first item selected, description shown
+Z                        -> target panel (Fei / Elly with their HP)
+Z                        -> uses the item on the highlighted character
+Down x4, Z               -> Exit
+```
+
+Confirmed with screenshots: Aquasol took Fei from 53/75 to 75/75 on the status
+screen and left the list.  Target selection is a panel listing both characters
+with a red cursor, so a specific character can be chosen with Up/Down before the
+final Z.
+
+Two related live facts:
+- Battle input only lands during the party's own turn; presses issued while an
+  enemy acts are discarded.  That is why escape attempts often fail - the
+  Left/Circle pair has to fall inside the command window.
+- Elly at 1/40 is KO'd by the first hit and stays down, so the party effectively
+  fights one character.  Healing her before the first encounter, or reviving her
+  with Zetasol ("Removes KO status"), is the lever for the last ~550 units.
+
+Zone 2 entry and the forest-exit cutscene are still not observed.
