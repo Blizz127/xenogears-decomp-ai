@@ -2237,3 +2237,40 @@ owns input every probe looks blocked).
 **re-plan from the resulting triangle** instead of undoing, so drift cannot
 accumulate.  `tri_path.py` already takes an arbitrary start triangle, so a
 re-plan per step is cheap.
+
+
+## Closed-loop walking works structurally; the camera-relative input mapping is the real blocker (round 18)
+
+`closed_loop.py` (new) removes the round-17 drift by construction: it never
+undoes a probe.  Each step reads the player's triangle, **re-plans from that
+triangle** (Dijkstra over the extracted mesh, `tri_path.py`'s hop logic), aims at
+the shared-edge midpoint, and steps once.  Live it walked the plateau cleanly -
+`tri249 -> tri247`, `tri248 -> tri247`, and up to **tri241, 28 units from the
+descent triangle tri61** - confirming hops by triangle identity as it went.
+
+What defeats it is not the path but the **input mapping**:
+
+- the field's direction keys are **camera-relative**, and the camera rotates as
+  the player moves, so a direction's world delta measured at one spot does not
+  hold at the next;
+- the first version calibrated once and every 8 steps and went stale - it drifted
+  east through `tri40 -> tri237 -> tri234`;
+- adding diagonals (`Up+Left`, ...) and accepting any triangle change helped but
+  still relied on a stale table;
+- making the table **adaptive** (each committed step records the delta it
+  produced) removed the separate calibration pass, but with an empty/short table
+  the walker has nothing to rank with, so it deadlocked at `tri234`
+  ("order=[]") and the party, after five more won encounters on the way, was
+  finally wiped.  `recovery.xgqs` (`53a26c8c...`) is untouched.
+
+The important part is that this is a *driver* problem, not a port problem: the
+triangle telemetry from round 17 makes the game state fully observable, and the
+walkmesh route (tri240 -> tri241 -> tri61 -> tri128 -> tri190 -> tri192 ->
+tri193 -> tri210) is known and short.
+
+**Concrete next step:** print the **field camera yaw** in the same POSDIAG line.
+With the yaw, the camera-relative key mapping is a pure rotation, so the driver
+can convert "I need to move -x,+z" into the correct key analytically instead of
+learning it - which is exactly the trick that made the triangle index work.
+`src/field/main/misc11.c`/`misc8.c` carry the field camera state; the render
+context already exposes the rotation used for the view transform.
