@@ -2471,3 +2471,60 @@ for the scripted/other-map entrance to the basin (the forest is multi-map; the
 MAPJUMP/exit list for map 23 and the neighbouring maps' load points are the
 place to look), and to drive that instead - which is normal retail play, since it
 is what the game does.
+
+
+## CORRECTION: the descent DOES work; round 21's conclusion was too strong (round 22)
+
+Round 21 concluded the basin was "not walkable-to" because the descent triangles
+carry ledge-flagged materials.  That was wrong on two counts.
+
+**1. The collision checks are conditional, not absolute.**  In `func_8007BEF4`
+the flags are masked before use:
+
+```c
+    if (((*(u32*)(actorData + 0x04) >> (state + 3)) & 1) == 0) {
+        collisionMask = (D_800B21CC == 0) ? -1 : 0;
+    }
+    ...
+    flags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)] & collisionMask;
+```
+
+so with the actor's collision bit set (or `D_800B21CC != 0`) the masked flags are
+0 and *no* rejection runs.  And for tri61 the `0x00400000` branch is skipped
+anyway, because `forceEdgeSearch` is itself set by that flag
+(`forceEdgeSearch = ((triFlags & 0x00400000) != 0) || mode == 0x80;`).
+
+**2. There is direct evidence the party has descended here before.**  Older
+POSDIAG samples in this evidence set show the player well below the plateau on
+map 23 at the ramp:
+
+```
+pos=(-399,-57,-1520)
+pos=(-391,-92,-1514)
+pos=(-423,-119,-1525)
+```
+
+i.e. y = -57, -92, -119 around x -400..-423, z -1514..-1525 - the tri191/tri231
+ramp.  So walking down works.
+
+**3. Re-planning with the game's ledge rule instead of an arbitrary slope
+threshold** (0.4) gives a short route the slope filter had wrongly excluded:
+
+```
+tri240(y=0) -> tri191(y=-48) -> tri758(y=-96) -> tri757(y=-144)
+            -> tri193(y=-144) -> tri210(y=-144, ZONE 2)
+```
+
+Zone-2 triangles are reachable this way (8 of them), and so are zone-0's.
+
+So the basin is reachable on foot, and the blocker is entirely in the driver:
+`cam_walk.py` was re-planned onto this chain, but the camera-relative key mapping
+shifts as the player moves, and the ramp entry window is narrow - the attempts
+this round kept being steered past it (south-east drift) or interrupted by
+encounters.  The player was taken to (-396,0,-1509), essentially the ramp mouth,
+and further probing drifted east before the round's budget ran out.
+
+Next step: enter the ramp while standing on the right line.  The measured mapping
+at (-374,-1469) was `Left = pure -x`, so from (-396,-1509) a Left press puts the
+player at x ~ -421 on the ramp line; the following step has to be **south along
+that line**, which the current key set only reaches as a diagonal.
