@@ -2106,3 +2106,41 @@ With the hang understood, the basin approach was re-probed and the wall is
 So the route needs to go west while north (z ~ -1000), reach x < -606, and only
 then descend into the zone's z range [-1793,-1314].  An encounter interrupted the
 last attempt at (-395,-1252).  Trigger zone 2 is still not entered.
+
+
+## Basin approach mapped, descent not yet threaded (round 15)
+
+Long route session from the healed checkpoint (Fei 74/84, Elly 40/40).  Five
+encounters were fought and won with the Attack sequence, then the party wiped
+and the game returned to the title; `recovery.xgqs` (`53a26c8c...`) is untouched.
+
+What the walk showed about the terrain (all y=0, map 23):
+
+| from | move | to | note |
+|---|---|---|---|
+| (-395,-1212) | Up, Up | (-426,-828) | north is open |
+| (-426,-828) | Left x2 | **(-846,-808)**, **(-988,-852)** | far west, past the zone's x edge |
+| (-979,-870) | Down x10 | unchanged | **stuck**: only Up moved afterwards |
+| (-441,-868) | Left | (-546,-988) | west+south |
+| (-516,-1143) | Down | **(-420,-1421)** | **z inside the zone band**, x 190 too far east |
+| (-420,-1421) | Left x2 | (-499,-1276) | blocked at x=-499 |
+| (-553,-1005) | Left | blocked | west is closed here |
+| (-553,-1005) | Up, Left | (-553,-1005) | no progress |
+
+Two facts that shape the next attempt:
+
+1. **Westward movement is z-banded.** It works around z=-808 (reaching x=-988)
+   but is closed around z=-1005..-1276 (blocked at x~-500).  So the route must
+   go west *before* descending south, not after.
+2. **The zone's z band is reachable at x=-420** (east of the zone), and the
+   walkmesh planner's descent is the ramp at tri128 (-554,-96,-1215) ->
+   tri193 (-594,-144,-1348) -> tri210 (-714,-144,-1452, inside the zone).  The
+   party stood at (-526,-1103), i.e. right beside that ramp mouth, several times
+   without stepping onto the descent - pressing Down there drifted south-east
+   instead.
+
+Recommended next attempt: drive the planner's waypoint chain
+(-646,-841) -> (-512,-822) -> (-491,-943) -> (-500,-1079) -> (-554,-1215) ->
+(-594,-1348) -> (-714,-1452) with a walker that **scores y first** (a y drop is
+worth more than any flat progress), so it takes the ramp instead of drifting past
+it, and that fights through the encounters rather than trying to escape them.
