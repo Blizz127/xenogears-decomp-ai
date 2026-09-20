@@ -2180,3 +2180,60 @@ during the attempt and won; the party is healthy at the checkpoint.
 edge is reported as "triA has no traversable neighbour towards triB" instead of a
 coordinate guess.  That is a test-only diagnostic, guarded by the same env var as
 the rest of POSDIAG.
+
+
+## Walkmesh triangle telemetry, verified against the extracted mesh (round 17)
+
+`XENO_FIELD_POS_DIAG` now also prints the player's current walkmesh triangle, read
+exactly as the engine's own collision routine does
+(`src/field/main/misc4.c:1789-1794`: the layer is `*(s16*)(actorData + 0x10)`, the
+triangle index for that layer is `*(s16*)(actorData + layer*2 + 0x08)`, and the
+per-layer bases are `D_800AFB24[]`/`D_800AFB34[]`):
+
+```
+POSDIAG map=23 pos=(-417,0,-1428) ... tri=240 layer=0 triV=161,160,168
+```
+
+**The runtime index matches the extracted map23 walkmesh exactly**: extracted
+tri240 is `verts=(161, 160, 168)`.  So the planner's triangle language and the
+live game now agree, which is what the coordinate attempts could never confirm -
+standing 30 units from the descent triangle looked identical to standing on it.
+
+### The descent chain, in triangle identity
+
+`tri_path.py` (new) Dijkstras the extracted mesh from a *triangle index* and emits
+each hop with the **midpoint of the shared edge** as the steering target, which is
+what the driver needs (the neighbour's centroid is often outside the current
+triangle).  From the spawn triangle:
+
+```
+tri240(y=0) -> tri241(y=0) -> tri61(y=-48) -> tri128(y=-96) -> tri190(y=-144)
+            -> tri192(y=-144) -> tri193(y=-144) -> tri210(y=-144, zone 2)
+  tri240 -> tri241 via [-433.5, 0.0, -1279.5]
+  tri241 -> tri61  via [-496.5, 0.0, -1251.5]
+  tri61  -> tri128 via [-530.0, -72.0, -1246.0]
+  tri128 -> tri190 via [-585.5, -144.0, -1211.0]
+  tri190 -> tri192 via [-585.0, -144.0, -1277.0]
+  tri192 -> tri193 via [-594.5, -144.0, -1310.0]
+  tri193 -> tri210 via [-606.0, -144.0, -1387.5]
+```
+
+Eight triangles, three of them the actual descent (y steps 0 -> -48 -> -96 ->
+-144), and the final hop crosses x=-606 at z=-1387.5, i.e. **into the zone's x
+range inside its z band**.  This is a much shorter route than the round-15
+plateau loop: from the checkpoint the descent is almost directly south-west.
+
+### Walker status
+
+`tri_walk.py` (new) confirms hops by triangle identity and did follow
+tri240 -> tri241 live, but it drifts afterwards: it probes all four directions and
+*undoes* each probe, and the undo does not return to the same position, so the
+next leg starts from a different triangle (observed drifting
+tri249 -> tri253 -> tri242 -> tri247).  It also needs the menu guard now added
+(the battle driver's Cross presses can leave the field menu open, and while it
+owns input every probe looks blocked).
+
+**Next step:** make it closed-loop - step once in the chosen direction, then
+**re-plan from the resulting triangle** instead of undoing, so drift cannot
+accumulate.  `tri_path.py` already takes an arbitrary start triangle, so a
+re-plan per step is cheap.

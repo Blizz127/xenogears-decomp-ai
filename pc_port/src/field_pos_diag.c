@@ -44,6 +44,15 @@ extern s32 D_800ADB68;   /* playerCanRun */
 extern s32 D_800ADB64;   /* active field/menu owner; 0xFF = none */
 extern u8  D_800B21D0;   /* encounter/control block flag */
 extern u8  D_800ADB04;   /* field data available; cleared across map transitions */
+/* Walkmesh state: the actor carries the layer at +0x10 and the current
+ * triangle index for that layer at +state*2+0x08, and the loader publishes the
+ * triangle/vertex bases per layer here (src/field/main/misc4.c:1789-1794, the
+ * engine's own accessors).  Printed so a walk can steer by TRIANGLE IDENTITY
+ * against the extracted map23 walkmesh the planner speaks in, instead of
+ * guessing coordinates: the round-16 attempt stood ~30 units from the descent
+ * triangle (tri61) and could not tell which edge it was missing. */
+extern s32 D_800AFB24[];  /* triangle base per walkmesh layer */
+extern s32 D_800AFB34[];  /* vertex base per walkmesh layer */
 
 void PcPort_FieldPosDiag(void)
 {
@@ -51,6 +60,9 @@ void PcPort_FieldPosDiag(void)
     static unsigned int frame = 0;
     ActorData* actor;
     long here;
+    s32 layer = -1;
+    s32 triIndex = -1;
+    s32 triV0 = -1, triV1 = -1, triV2 = -1;
     int zone;
     int zoneCount;
     char zones[128];
@@ -82,6 +94,21 @@ void PcPort_FieldPosDiag(void)
     actor = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
     if (actor == NULL)
         return;
+
+    /* Current walkmesh triangle, read exactly as func_8007BEF4 does.  The
+     * layer is bounded before indexing so a half-torn-down field cannot make
+     * this diagnostic read out of bounds. */
+    layer = *(s16*)((u8*)actor + 0x10);
+    if (layer >= 0 && layer < 4) {
+        triIndex = *(s16*)((u8*)actor + layer * 2 + 0x08);
+        if (triIndex >= 0 && triIndex < 0x4000 && D_800AFB24[layer] != 0) {
+            u16* tri = (u16*)(uintptr_t)(u32)D_800AFB24[layer] +
+                       (size_t)triIndex * 7;
+            triV0 = (s32)tri[0];
+            triV1 = (s32)tri[1];
+            triV2 = (s32)tri[2];
+        }
+    }
 
     here = (CONV_TO_GTE(actor->position.vz) << 0x10) +
            CONV_TO_GTE(actor->position.vx);
@@ -216,7 +243,8 @@ void PcPort_FieldPosDiag(void)
      * so on a WM-less Xvfb confirms can work while direction holds do not. */
     printf("[xeno-port][test] POSDIAG map=%d pos=(%d,%d,%d) inZones=[%s] "
            "scenario=%u var20=%u held=0x%04x newpress=0x%04x "
-           "canRun=%d owner=0x%02x b21d0=%u status=0x%04x\n",
+           "canRun=%d owner=0x%02x b21d0=%u status=0x%04x "
+           "tri=%d layer=%d triV=%d,%d,%d\n",
            g_GameSceneMapNum & 0xFFF, (int)CONV_TO_GTE(actor->position.vx),
            (int)CONV_TO_GTE(actor->position.vy),
            (int)CONV_TO_GTE(actor->position.vz), zones,
@@ -225,6 +253,7 @@ void PcPort_FieldPosDiag(void)
            (unsigned)D_800AFE9C, (unsigned)D_800C2694,
            (int)D_800ADB68, (unsigned)(D_800ADB64 & 0xFF),
            (unsigned)D_800B21D0,
-           (unsigned)(g_FieldActors[g_PlayerActorIndex].status & 0xFFFF));
+           (unsigned)(g_FieldActors[g_PlayerActorIndex].status & 0xFFFF),
+           (int)triIndex, (int)layer, (int)triV0, (int)triV1, (int)triV2);
     fflush(stdout);
 }
