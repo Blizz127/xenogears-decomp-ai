@@ -145,6 +145,10 @@ changes = {
     'cache-ignored': (
         '    } else if (slot->state == 1) {\n        resolved = &slot->entry;',
         '    } else if (0) {\n        resolved = &slot->entry;'),
+    # Eviction returns a live slot, so another target's verdict is used as a hit.
+    'cache-evict-stale': (
+        '        BridgeCallCacheSlot *victim = &runtime->call_cache[base];\n        victim->state = 0;\n        return victim;',
+        '        return &runtime->call_cache[base];'),
     # LoadImage stops resolving the RECT through guest memory.
     'loadimage-rect-not-guest': (
         '    rect = resolve_memory(runtime, address, 8u, 0);',
@@ -162,7 +166,7 @@ print('LOADIMAGE CACHE mutants written:', ' '.join(manifest))
 PY
 
 echo "== mutants (each must be rejected) =="
-MUTANTS=(loadimage-no-low-map loadimage-no-rect-kseg0 cache-key-dropped cache-ignored loadimage-rect-not-guest)
+MUTANTS=(loadimage-no-low-map loadimage-no-rect-kseg0 cache-key-dropped cache-ignored cache-evict-stale loadimage-rect-not-guest)
 for mutant in "${MUTANTS[@]}"; do
     set +e
     build_and_run "$mutant" gcc "$OUT/$mutant.c" -O0 -w > "$OUT/$mutant.log" 2>&1
@@ -182,4 +186,4 @@ from hashlib import sha256
 import sys
 print('LOADIMAGE CACHE source pin unchanged:', sha256(Path(sys.argv[1]).read_bytes()).hexdigest()[:16])
 PY
-echo 'LOADIMAGE CACHE PASS (3 regimes, 5/5 mutants rejected)'
+echo 'LOADIMAGE CACHE PASS (3 regimes, 6/6 mutants rejected)'

@@ -870,7 +870,16 @@ static BridgeCallCacheSlot *bridge_cache_slot(BattleMipsRuntime *runtime,
         if (s->state == 0 || s->target == target)
             return s;
     }
-    return &runtime->call_cache[base];
+    /* All four ways belong to other targets: reuse the primary slot, but mark
+     * it empty first.  Returning a live slot here would let the caller treat
+     * another target's verdict as a HIT, and the bridge would then dispatch
+     * that target's host function for this address -- observed live as the
+     * overlay PC 0x800b798c being dispatched to LoadImage in a tight loop. */
+    {
+        BridgeCallCacheSlot *victim = &runtime->call_cache[base];
+        victim->state = 0;
+        return victim;
+    }
 }
 
 static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target)

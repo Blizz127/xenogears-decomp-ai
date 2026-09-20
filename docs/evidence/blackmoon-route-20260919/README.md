@@ -1652,3 +1652,40 @@ rectangle nobody wrote.
 clear the battle overlay's BSS range on load (the route notes already record
 that the field's `0x800AF5E4..0x800C426C` region is never cleared either).  Do
 not paper over it by clamping `GR_CopyVRAM`: the invalid RECT is guest state.
+
+
+## Fixed: the bridge call cache handed out another target's entry on eviction (round 4)
+
+The `LoadImage` loop above was not guest state at all - it was a bug in the
+resolved-call cache added the previous round.  `bridge_cache_slot` probes four
+ways of one hash base and, when all four belong to other targets, returned the
+primary slot **without clearing its state**.  `runtime_bridge_call` then saw
+`state == 1` and treated the victim's verdict as a hit, so the address being
+looked up was dispatched to whatever host function happened to live in that
+slot.  The bridge is invoked once per guest instruction with `cpu->pc`, so the
+cache thrashes and the mis-dispatch was frequent: the trace
+(`XENO_BATTLE_MIPS_TRACE=1`) showed
+
+```
+call LoadImage target=0x800b798c a0=800c4a90 a1=00001000 a2=000000e0 a3=00000140
+```
+
+repeated forever - `0x800b798c` is an overlay PC, not `LoadImage` (0x80044894),
+and the "RECT" it passed is an unrelated overlay table.  That also explains why
+the first battle after the cache landed survived (no collision on the paths it
+took) and later ones did not.
+
+Fix: mark the victim empty (`victim->state = 0`) before returning it, so the
+caller re-resolves.  `battle_load_image_cache_test.c` gained a case that finds
+four non-guest targets sharing a cache base, fills all four ways, and then looks
+up an unresolved *guest* target with the same base - it must be interpreted, not
+dispatched.  The runner now rejects 6/6 controls, the new one being
+`cache-evict-stale` (return the live slot instead of clearing it).  25 checks at
+O0/O2/UBSan.
+
+Live after the rebuild: the same encounter that looped forever now renders and
+runs a normal attack sequence (`resume23q` battle, Fei 75/75, combo counter
+active) instead of spinning inside `GR_CopyVRAM`.
+
+Build: LINK OK, `xeno-port` SHA-256
+`fa33ec66bfadc721d29e660d076c43ec2aa3573d0b21eb918973419642761e1e`.

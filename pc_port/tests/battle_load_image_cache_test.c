@@ -72,6 +72,21 @@ static unsigned checks;
     return 0; } } while (0)
 
 static unsigned a_calls, b_calls;
+static unsigned hot_calls;
+
+/* The generic bridge calls a host owner through the 12-argument
+ * GenericHostFunction pointer, so the "hot" entries need that exact shape for
+ * UBSan's indirect-call type check. */
+static uintptr_t fake_hot_host(uintptr_t a0, uintptr_t a1, uintptr_t a2,
+                               uintptr_t a3, uintptr_t a4, uintptr_t a5,
+                               uintptr_t a6, uintptr_t a7, uintptr_t a8,
+                               uintptr_t a9, uintptr_t a10, uintptr_t a11)
+{
+    (void)a0; (void)a1; (void)a2; (void)a3; (void)a4; (void)a5;
+    (void)a6; (void)a7; (void)a8; (void)a9; (void)a10; (void)a11;
+    hot_calls++;
+    return 0;
+}
 static void *a_rect, *a_data;
 
 static int fake_load_image_a(void *rect, void *data)
@@ -177,6 +192,93 @@ static int cache_is_keyed(void)
     return 1;
 }
 
+/* 6. Cache eviction must not serve another target's entry.  Five guest-code
+ * targets are found that share a cache base; the first four fill the four ways
+ * with resolvable hosts, then the fifth (unresolvable) must re-resolve and be
+ * interpreted rather than dispatched to a stale neighbour. */
+static unsigned collision_base(uint32_t target)
+{
+    return (unsigned)((target * 2654435761u) >> 23) & (BRIDGE_CALL_CACHE_SIZE - 1);
+}
+
+static int cache_eviction_re_resolves(void)
+{
+    /* Four non-guest (main-executable) addresses resolve to a host owner without
+     * the overlay leaf gate, and are placed first so they occupy the four ways
+     * of one base.  The fifth is guest overlay code, which must be interpreted
+     * when unresolved -- with the eviction bug it is handed one of the four. */
+    uint32_t hot[4];
+    uint32_t victim_target = 0;
+    unsigned found = 0, i, j;
+    uint32_t candidate;
+    PcPortMipsCpu cpu;
+
+    setup();
+    for (i = 0; i < 4; i++)
+        hot[i] = 0;
+    /* Collect non-guest candidates first. */
+    for (candidate = 0x80010000u; candidate < 0x8006F000u && found < 8; candidate += 4u) {
+        unsigned b = collision_base(candidate);
+        (void)b;
+        break;
+    }
+    {
+        /* Bucket non-guest candidates by base, then look for a base that also
+         * has a guest-code candidate. */
+        static uint32_t bucket[2][BRIDGE_CALL_CACHE_SIZE][4];
+        static unsigned bucket_n[2][BRIDGE_CALL_CACHE_SIZE];
+        unsigned r;
+        memset(bucket, 0, sizeof(bucket));
+        for (r = 0; r < 2; r++) {
+            uint32_t lo = (r == 0) ? 0x80010000u : 0x801D0000u;
+            uint32_t hi = (r == 0) ? 0x8006F000u : 0x80300000u;
+            for (candidate = lo; candidate < hi; candidate += 4u) {
+                unsigned b = collision_base(candidate);
+                if (bucket_n[r][b] < 4)
+                    bucket[r][b][bucket_n[r][b]++] = candidate;
+            }
+        }
+        for (candidate = 0x80070000u; candidate < 0x800C0000u; candidate += 4u) {
+            unsigned b = collision_base(candidate);
+            if (bucket_n[0][b] >= 4 || bucket_n[1][b] >= 4) {
+                unsigned r = (bucket_n[0][b] >= 4) ? 0u : 1u;
+                for (i = 0; i < 4; i++)
+                    hot[i] = bucket[r][b][i];
+                victim_target = candidate;
+                found = 1;
+                break;
+            }
+        }
+    }
+    CHECK("evict-group", found == 1 && victim_target != 0);
+    CHECK("evict-distinct", hot[0] != hot[1] && hot[1] != hot[2] && hot[2] != hot[3]);
+
+    for (i = 0; i < 4; i++)
+        for (j = i + 1; j < 4; j++)
+            if (hot[j] < hot[i]) {
+                uint32_t t = hot[i];
+                hot[i] = hot[j];
+                hot[j] = t;
+            }
+    rt.function_count = 4;
+    for (i = 0; i < 4; i++) {
+        rt.functions[i].address = hot[i];
+        rt.functions[i].host = (void *)fake_hot_host;
+        rt.functions[i].name = "hot";
+    }
+    hot_calls = 0;
+    for (i = 0; i < 4; i++) {
+        memset(&cpu, 0, sizeof(cpu));
+        CHECK("evict-fill", runtime_bridge_call(&rt, &cpu, hot[i]) == 1);
+    }
+    CHECK("evict-host-called", hot_calls == 4);
+    hot_calls = 0;
+    memset(&cpu, 0, sizeof(cpu));
+    CHECK("evict-fallback", runtime_bridge_call(&rt, &cpu, victim_target) == 0);
+    CHECK("evict-no-wrong-host", hot_calls == 0);
+    return 1;
+}
+
 int main(void)
 {
     if (!kseg0_and_low_source()) return 1;
@@ -184,6 +286,7 @@ int main(void)
     if (!kseg1_source()) return 1;
     if (!cache_hit_reuses_entry()) return 1;
     if (!cache_is_keyed()) return 1;
+    if (!cache_eviction_re_resolves()) return 1;
     printf("LOADIMAGE CACHE PASS checks=%u translate/cache\n", checks);
     return 0;
 }
