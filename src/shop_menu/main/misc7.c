@@ -134,8 +134,106 @@ void func_801CCE1C(void* output, u8 characterId);
  * regions with C runs; cc1 emits every file-scope __asm__ block before every
  * compiled body, so each part below is (one retail asm run) + (the C run that
  * follows it) - the layout the compiler produces inside a single TU. */
-#ifndef XENO_PC_PORT
+#ifdef XENO_PC_PORT
+extern void* GetWeaponName(s32);
+extern void* GetAccessoryName(s32);
+extern void* GetItemName(s32);
+extern s32 SystemRenderStringEntry(void*, void*, s32, s32);
+extern void func_80033B34(u16*, u8*, s32);
+extern void func_801C5A7C(MenuString*, s32, s32, u8);
+extern void ShopMenuSetVertices(SVECTOR*, u16, u16, u16, u16);
+extern s32 func_8002675C(void*, s32, POLY_FT4*, s32, s32, s32, s32);
+
+/* Retail 801CDD14..801CE480. ShopMenuInitializeShopData produces types0..2.
+ * Keep the two uploads and duplicate first-record context store: both are
+ * present in retail. No inventory or funds are changed by this builder. */
+void func_801CDD14(s32 firstItem, s32 gold, u8* affordable) {
+    void* work = HeapAlloc(0x3F6, 0);
+    s32 row;
+    for (row = 0; row < 8; ++row) {
+        s32 item = firstItem + row;
+        MenuShop* shop = g_Menu->pShop;
+        MenuString* name = &shop->strings3C30[row];
+        MenuString* cost = &shop->strings4030[row];
+        u8 id = g_Menu->shopItemIDs[item];
+        u16 digits[7] = {0};
+        u8 priceString[16];
+        s32 price;
+        s32 remaining, divisor, digit;
+        s32 started = 0;
+        RECT rect;
+        affordable[row] = 0;
+        shop->unk468C[row] = 0;
+        if (!id) {
+            shop->unk4684[row] = 0;
+            continue;
+        }
+        switch (g_Menu->shopItemTypes[item]) {
+        case 0:
+            name->width = SystemRenderStringEntry(GetWeaponName(id), work, 0x24, 0);
+            price = g_Menu->unk330->pWeaponsData[id].price;
+            break;
+        case 1:
+            name->width = SystemRenderStringEntry(GetAccessoryName(id), work, 0x24, 0);
+            price = g_Menu->unk330->pAccessoriesData[id].price;
+            break;
+        case 2:
+            name->width = SystemRenderStringEntry(GetItemName(id), work, 0x24, 0);
+            price = g_Menu->unk330->pItemsData[id].price;
+            break;
+        }
+        affordable[row] = gold >= price ? 0x80 : 0;
+        remaining = price;
+        divisor = 10000;
+        for (digit = 0; digit < 4; ++digit) {
+            s32 value = remaining / divisor;
+            if (value || started) {
+                digits[digit] = value + 0x10;
+                remaining -= value * divisor;
+                started = 1;
+            } else {
+                digits[digit] = 0xC3;
+            }
+            divisor /= 10;
+        }
+        digits[4] = remaining % 10 + 0x10;
+        func_80033B34(digits, priceString, 5);
+        cost->width = SystemRenderStringEntry(priceString, work, 0x24, 1);
+        rect.x = 384 + (row & 1) * 24;
+        rect.y = 128 + (row / 2) * 13;
+        rect.w = 40;
+        rect.h = 13;
+        LoadImage(&rect, work);
+        func_801C5A7C(name, row, 128, affordable[row] + 1);
+        ShopMenuSetVertices(name->vertices, 36, 50 + row * 13, name->width, 13);
+        LoadImage(&rect, work);
+        DrawSync(0);
+        func_801C5A7C(cost, row, 128, affordable[row] + 2);
+        ShopMenuSetVertices(cost->vertices, 140, 50 + row * 13, cost->width, 13);
+        name->renderContext = (u8)g_Menu->renderContext;
+        name->renderContext = (u8)g_Menu->renderContext;
+        shop->unk4684[row] = 1;
+        if (shop->curItemQuantities[item]) {
+            POLY_FT4* polys = (POLY_FT4*)(shop->unk1DB0 + row * 0x140);
+            u8 quantity = shop->curItemQuantities[item];
+            shop->unk468C[row] += func_8002675C(g_Menu->unk2DC, 0xF1, polys,
+                g_Menu->renderContext, 180, 54 + row * 13, 0x1000);
+            if (quantity / 10)
+                shop->unk468C[row] += func_8002675C(g_Menu->unk2DC, quantity / 10,
+                    &polys[shop->unk468C[row] * 2], g_Menu->renderContext,
+                    188, 54 + row * 13, 0x1000);
+            shop->unk468C[row] += func_8002675C(g_Menu->unk2DC, quantity % 10,
+                &polys[shop->unk468C[row] * 2], g_Menu->renderContext,
+                196, 54 + row * 13, 0x1000);
+            shop->unk4694[row] = (u8)g_Menu->renderContext;
+        }
+    }
+    HeapFree(work);
+}
+#else
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc7", func_801CDD14);
+#endif
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/shop_menu/nonmatchings/main/misc7", func_801CE480);
 #endif
 

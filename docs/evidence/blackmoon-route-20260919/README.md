@@ -388,3 +388,44 @@ Raw evidence in the route scratch folder: `shop-render-test.log`,
 `shop-data-test.log`, `shop-data-build.log`, and `shop-misc6-*.text`.
 Next: port the retail item-list builder and selected-item update, verify a normal
 healing-item purchase, then resume travel to Citan with Alice's scenario8 intact.
+
+## Retail item-list builder: names and prices visible
+
+Implemented native `func_801CDD14`, retail801CDD14..801CE480, in shop misc7.
+It builds eight rows using the shop's compacted weapon/accessory/item IDs,
+reads their retail16-byte records for prices, formats the five-digit cost,
+marks affordability, uploads the two text planes, and builds owned-quantity
+polygons. Empty rows clear their active/count flags. The two uploads and the
+duplicate first-string render-context store are intentionally preserved from
+retail; the second record's context is not silently rewritten.
+
+The differential executes the1,900-byte disc function against the native owner,
+observing text/GPU helper calls and deterministic helper responses, string
+inputs, upload rectangles, affordability, widths, contexts, and row/count
+outputs.396 cases cover start indices0/1/40, both contexts, all three valid item
+types, empty rows, prices0..65535, gold-1..65535, and quantities0/1/9/99.
+O0/O2/UBSan each pass120,070 checks.471/475 instruction sites execute; the four
+excluded instructions are the default-type jumps at801CDE2C/30/40/44.
+ShopMenuInitializeShopData produces only types0..2; invalid-type behavior is
+not certified. Four mutants (strict affordability comparison, missing last row,
+wrong digit, rewriting the price record's context) are rejected.
+
+Compiled misc7 whole .text before/after remains byte-identical, SHA256
+`9e6dc7d65ff47961e31e7dcdfa8b424e5310fe0fcfa12a627e83f93b7e197930`.
+Full native build passes:75 function stubs,547 data symbols,96 adopted leaves.
+Evidence: `shop-list-test.log`, `shop-list-build.log`, `shop-misc7-*.text` in the
+route scratch directory.
+
+Process423403 runs this build (resume7.json/runtime-resume7.log), after normal
+F8 recovery of the earned shop checkpoint and normal shopkeeper dialogue.
+Entering Buy now visibly lists Aquasol20, Rosesol100, Omegasol50, SurvivalTent150
+(`shop-list-live.png`). No list-builder stub is hit. `func_801CEB3C` is still a
+stub: the description and transaction total are incomplete. **No purchase was
+attempted/completed.** Two ordinary cancels, farewell confirm, then F7 returned
+to/saved field6(-154,0,-165), scenario8,300G, HD2D on, speed1x.
+
+Next implement selected-item update801CEB3C and its stored-quantity helper
+801CE91C. The equipment-preview branch also calls still-unported801CE480;
+that remains a separate fidelity gap and must not be silently substituted.
+Then test a normal Aquasol purchase and continue scenario8 toward Citan.
+Blackmoon completion remains unproven.
