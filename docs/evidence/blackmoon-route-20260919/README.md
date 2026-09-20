@@ -2306,3 +2306,42 @@ defects showed up and are fixed:
 Both are harness bugs, not port bugs.  With them fixed the descent chain
 (tri240 -> tri241 -> tri61 -> tri128 -> tri190 -> tri192 -> tri193 -> tri210) is
 within reach of the analytic walker.
+
+
+## The analytic walker works; four harness fixes it needed (round 20)
+
+`cam_walk.py` now walks the extracted walkmesh correctly.  Getting there needed
+four harness fixes, all of them in the driver rather than the port:
+
+1. **Fine steps.** A fixed 0.6 s press moves ~90 units and hopped clean over a
+   7-unit approach to the descent edge; the hold is now
+   `clamp(want/140, 0.12, 0.75)`.
+2. **Battle key leakage.** The fight routine pressed Triangle twice per round,
+   and when a battle ended mid-round those presses landed in the FIELD, where
+   Triangle opens the status menu - which then owned input (`owner=0x80`) and
+   made every move look blocked.  Every press is now gated on the battle still
+   being active.
+3. **Stale telemetry.** POSDIAG prints once per 60 frames, so measuring a press
+   with the last sample read gave `(0,0)` for every direction.  The walker now
+   waits for a NEW POSDIAG line before measuring.
+4. **Combination choice.** Picking the best vertical and best horizontal
+   independently chose `Down+Right` for a mostly-southward target (Left and Right
+   are near-perpendicular there, so noise decided) and pushed the player east
+   every step.  All eight key combinations are now ranked by the cosine between
+   the move they would produce and the direction wanted.
+
+Measured live, the mapping at the checkpoint was `Up=(0,70)`, `Down=(0,-70)`,
+`Right=(65,-65)`, `Left=(-65,65)` - i.e. the diagonal keys move at 45 degrees, so
+the eight-way choice really is the whole input space.
+
+With all four fixed the walker followed the chain hop by hop (`tri245 -> tri246`
+confirmed).  The attempt then died the way the others did - the party, after the
+encounters the plateau throws at it, was wiped and the run returned to the title
+- and a **map guard** was added so the walker stops instead of planning against
+the title map's walkmesh (`tri18`), which it did before the fix.
+
+The route itself is unchanged and short: from the checkpoint triangle tri240,
+`tri240 -> tri241 -> tri61 -> tri128 -> tri190 -> tri192 -> tri193 -> tri210`
+into trigger zone 2.  Next attempt should load the checkpoint and run
+`cam_walk.py` immediately, before any manual wandering moves the player off
+tri240.
