@@ -2933,3 +2933,26 @@ The stall therefore still needs its own investigation.  The next step is a
 differential call trace: run one battle with `XENO_BATTLE_MIPS_TRACE=1` to
 completion and one to the stall, and diff the bridge call sequences to see which
 call the stalled one stops making.
+
+
+## Harness note: the title lands in the Continue stub and refuses the load (round 34)
+
+The traced-battle investigation could not start: every fresh boot this round ended
+up on the title's **Continue** screen, which calls the stubbed `func_801D9F98`,
+and the checkpoint load was then refused:
+
+```
+[xeno-port][quick] F8 ignored: not in a field      (repeated)
+```
+
+The working run earlier in the session has no such line - its log goes straight
+from boot to `load queued` -> `FieldLoad begin field=23` - so the difference is
+that the title entered the Continue screen before the load.  `key.py` sends F8 via
+`xdotool keydown/keyup` after focusing the window, and F8 does reach the handler
+(the "ignored" line is the handler's own message), so the title screen itself is
+what consumed the state.
+
+Nothing about the route or the port changed; this is purely a harness state issue
+and it needs to be cleared before the differential trace.  Candidate recovery:
+confirm the title menu's cursor position before the load (or clear the Continue
+selection) and load while the field is still active.
