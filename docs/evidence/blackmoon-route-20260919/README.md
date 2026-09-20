@@ -3242,3 +3242,53 @@ pressing battle keys and leaving the battle waiting for input that never arrives
 the order it expects.  The stall is still recorded as *unexplained* rather than
 solved, but any future attempt should treat "exactly one driver" as a precondition
 before blaming the port.
+
+## Round 40 (goal's last round): where the route stands, and the blocker
+
+The retail-play acceptance walk (encounters live, GOD off, one driver) reached
+**leg 80 - tri511 at (552,-115,494), one hop from the tri512/tri514 descent goal** -
+and then hit the **stalled battle** again: the party's AP and Time gauges sit at 0,
+the scene keeps animating ("total damage", combo 1/4, Fei 74/84, Elly 40/44 with
+unchanged HP), no turn ever resolves, and five Left+Circle escape attempts were
+ignored.  `battles=4/3` in the log: the fourth encounter never returns.
+
+### What the goal covered, and what it did not
+
+**Achieved and committed on the covered path**
+
+- The forest route itself is **proven**: checkpoint (-417,0,-1428) -> the north-east
+  staircase `tri240 -> ... -> tri504..tri514` (y 0 -> -140) -> north-east to
+  (1903,-376,1410) -> east off the map boundary at **x ~ 2300, z = 1470**, where the
+  loader reports `FieldLoad field=23 -> field=22` and the party arrives on **map 22
+  at (-1356,-204,1000)**.  That run had encounters suppressed by the F10/BATTLES
+  switch (a harness feature added this session).
+- With encounters **live** the same route was walked to leg 80 and the descent
+  staircase at y=-115 before the stall - i.e. the route works under normal play as
+  far as the stall allows.
+- Port defects found on the live path and fixed with guarded changes plus
+  mutant-rejecting certificates: the battle bridge's resolved-call cache eviction
+  (`cdd91e4f`; a stale entry was served as a hit and mis-dispatched overlay PCs) and
+  the File-menu notice blocking the game thread on a modal dialog (`44e14a9e`,
+  `b69a8cd3`).
+- Harness features the user asked for: mass damage in GOD mode and the
+  random-battle switch (F10 + the BATTLES button), both verified live
+  (`d2293840`), and walkmesh triangle + camera telemetry for driving the route
+  (`383e3daa`, `4ede4378`).
+- Documented, unfixed debt found on the live path: `Vsync`'s return value differs
+  from retail for `mode >= 0` (write-only in practice, `bb743235`); host input
+  leaks into the pad (F8/F9 -> Circle, F11 -> Triangle, toolbar clicks -> Circle),
+  which is what leaves the field menu owning input after a quick-load; and the
+  round-8..40 **battle stall**.
+
+**Not achieved:** the route was never driven end-to-end with encounters live, zone 2
+was never entered, and no story progression past the forest exit was observed.
+
+### Concrete blocker
+
+An **intermittent battle that never grants a turn**: AP and Time stay pinned at 0,
+the fight animates but never resolves, and no input (attack combo, Cancel, or
+Escape) is accepted, so the run cannot continue and must be reloaded.  It has now
+blocked acceptance attempts in rounds 8, 30, 32, 36 and 40, twice at the last hop
+of the descent; the party is healthy when it happens and the guest is executing
+(`pc` samples across the battle overlay), so it is not a crash and not an
+out-of-resources state.
