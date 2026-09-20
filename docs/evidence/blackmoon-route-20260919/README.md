@@ -2956,3 +2956,56 @@ Nothing about the route or the port changed; this is purely a harness state issu
 and it needs to be cleared before the differential trace.  Candidate recovery:
 confirm the title menu's cursor position before the load (or clear the Continue
 selection) and load while the field is still active.
+
+
+## Harness recovered, and the stall is now consistently reproducible (round 35)
+
+**Why the load kept failing.**  With *no input at all* a fresh boot still ends up on
+the title's Continue screen and then the stubbed save screen
+(`[stub] func_801D9F98`).  The cause is the port's boot menu: on timeout it
+confirms whatever the cursor is on, and the cursor defaults to Continue
+(`pc_port/src/boot_menu.c:179`):
+
+```c
+        if ((released & CTRL_BTN_CIRCLE) ||
+            (pressedOnce & (CTRL_BTN_START | CTRL_BTN_CROSS)) ||
+            ui->phaseFrames >= delay) {
+            int timedOut = ui->phaseFrames >= delay;
+            ...
+            if (ui->menuChoice != 0) {              /* Continue */
+                if (PcPort_BootHasSave()) {
+                    return PC_PORT_BOOT_TICK_CONTINUE;   /* -> save screen (stub) */
+```
+
+So a timed-out title silently enters an unimplemented screen and the field stops
+being active, after which `F8` is refused with "not in a field".
+`XENO_BOOT_DELAY` did not avoid it because the retail title loop, not only the
+port's boot UI, is what advances here.
+
+**Recovery that works:** press F8 repeatedly from ~10 s after boot; the press that
+lands before the title's timeout queues the load and the checkpoint comes back at
+(-417,0,-1428) on tri240.  That is what the run this round used.
+
+Worth fixing at some point (port wart, not on the critical path): a timed-out
+title menu should not confirm an unimplemented entry - it should stay on the menu.
+
+**The stall now reproduces every time.**  With the checkpoint loaded and
+encounters live, the acceptance walk reached leg 19 and its first battle stalled in
+exactly the known way (AP and Time pinned at 0, no turn, inputs dead).  Unlike
+earlier rounds this is now consistent, which makes it a good fix candidate.
+Sampling the live guest during the stall:
+
+```
+pc=0x80089f20  ra=0x80089e7c  sp=0x801ffd98
+pc=0x800aaf10  ra=0x800aaeec  sp=0x801ffb80
+```
+
+Both are battle-overlay addresses and the stack pointer is in the guest stack, so
+the overlay is executing a *variety* of code rather than spinning in one place -
+the fight simply never advances a turn.  (Guest memory is inside `g_PsxRam`, so
+`gdb` cannot dump the stack directly; the port would need a small guest-stack
+readout for that.)
+
+Next step: capture the battle's per-frame bridge call sequence for one stalled
+fight (`XENO_BATTLE_MIPS_TRACE=1`) and look for the update the battle expects
+between frames but never gets - the AP/time advance is the obvious candidate.
