@@ -2814,3 +2814,38 @@ switch, so no battle was fought between the checkpoint and the exit.  The route
 is proven walkable; re-running it with encounters live (battles on) is the
 retail-play acceptance step, and the checkpoint plus the triangle chain above
 make that a repeatable scripted run.
+
+
+## The intermittent stalled battle, localised: the guest spins in Vsync (round 32)
+
+The retail-play acceptance pass (encounters live, GOD off) reached leg 14 of the
+north-east chain and then hit the same stalled battle seen in rounds 8 and 30:
+the party's **AP and Time gauges stay pinned at 0**, the scene keeps animating,
+no turn ever resolves and no input helps (Circle, Cross, Escape and the attack
+combo were all tried for several minutes).  `retail battle returned` never
+appears, so the run cannot continue.
+
+Sampling the live guest during the stall now names the loop:
+
+```
+$1 = 0x8004b54c          <- guest PC
+$2 = 520246042           <- instructions executed
+```
+
+`0x8004B54C` is `Vsync` - `asm/slus_006.64/matchings/psyq/libetc/vsync/Vsync.s:2`
+and `linker/undefined_funcs_auto.menu.txt:105 Vsync = 0x8004B54C`.  The round-8
+stall sampled the *same* address (`0x8004b54c`, 130 million steps), so this is one
+recurring defect and not three different ones: during these encounters the battle
+code sits in a **`Vsync`-driven wait loop whose exit condition never becomes true**
+in the port, which is also why the AP/Time gauges never fill.
+
+That reframes it usefully: `Vsync` itself is not stuck (the port's shim advances
+frames - the scene animates), so the missing piece is whatever the battle expects
+to change between frames: the AP/time update, or a work-list timer task that the
+port does not service while the battle overlay runs.
+
+**Next step:** find the battle routine that calls `Vsync` in a loop, identify the
+flag it tests, and check whether the port advances it.  The stall is intermittent
+(roughly one encounter in three on this map), so it is reproducible but not
+deterministic; `recovery.xgqs` (`53a26c8c...`) is intact and the acceptance run can
+be retried.
