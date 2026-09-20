@@ -792,3 +792,40 @@ The earned scenario24 checkpoint is intact. No game process remains running.
 User additionally requested a toggle for invulnerability in on-foot and Gear
 combat. Implementation is pending; default is planned OFF and retail acceptance
 must continue with it OFF. This does not change the natural-route goal.
+
+## Optional combat HP protection toggle
+
+Added a native toolbar `GOD OFF` / `GOD ON` button. Default is OFF on each
+process launch; clicking it toggles party HP damage protection in both foot and
+Gear battles. ON is shown in red. The setting is not written to game saves.
+It does not revive defeated actors or guarantee protection against status
+changes, scripted defeat or other non-HP mechanics. EP and fuel remain retail.
+
+The native battle interpreter intercepts entry to retail `func_80085618` and,
+only while enabled, zeros positive queued HP damage for active party slots
+0..2 (damage kinds 0/5/7/8). It preserves enemy slots 3..10, healing and other
+action kinds. Retail damage/death handling then executes unchanged. No retail
+source or disc instruction is patched. This feature is explicitly a testing
+option; route acceptance continues with it OFF.
+
+Validation: the test runner checks all 1,196 annotated instruction bytes at
+80085618..80085AC0 against `disc/battle.bin` (SHA-256
+`05fc6de8ea8fb22b5c59d3ca757c1334ada092ae9262dcae95f47f0ec5c67b89`).
+It executes that actual disc routine using the port interpreter, with external
+slot-mask/death-notification callees replaced by fixtures. Each O0/O2/UBSan run
+passes 2,116 cases covering both modes, all 11 actor slots, all 12 action kinds,
+two action rows, lethal/nonlethal damage, healing, signed-foot versus unsigned-
+Gear damage and switching protection back OFF. Toolbar hit-zone tests pass.
+These controlled combat fixtures are not natural-route acceptance evidence.
+
+Native build passes. Live toolbar clicks emitted ON then OFF; initial visual
+inspection found the missing G glyph and insufficient label width, both fixed
+before final validation. Evidence logs/images are local under
+`scratchpad/blackmoon-route-20260919/god-mode-*`.
+
+Final UI validation: fresh process 869720 (`runtime-resume13.log`) launched
+with protection OFF. Normal mouse clicks toggled ON then OFF, confirmed by
+logs and `god-mode-final-on.png` / `god-mode-final-off.png`; the complete
+labels are visible. Final native build and toolbar boundary tests pass.
+The game is left running at title, HD2D ON, God mode OFF. The earned route
+checkpoint is unchanged; Blackmoon field initialization remains unresolved.

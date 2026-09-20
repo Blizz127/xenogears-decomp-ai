@@ -4,6 +4,8 @@
 #include "psycross_host_toolbar_logic.h"
 #include "quick_checkpoint_request.h"
 #if defined(__GNUC__)
+extern "C" int PcPort_GodModeEnabled(void) __attribute__((weak));
+extern "C" void PcPort_GodModeToggle(void) __attribute__((weak));
 extern "C" int PcPort_FeiHd2dEnabled(void) __attribute__((weak));
 extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
 #endif
@@ -59,7 +61,8 @@ static void PsyX_HostToolbarInitialise()
 		return;
 	SDL_GetWindowSize(g_window, &width, &height);
 	g_xenoHostToolbarActive = 1;
-	SDL_SetWindowMinimumSize(g_window, 564,
+	width = width < 664 ? 664 : width;
+	SDL_SetWindowMinimumSize(g_window, 664,
 		240 + PC_PORT_HOST_TOOLBAR_HEIGHT);
 	SDL_SetWindowSize(g_window, width,
 		height + PC_PORT_HOST_TOOLBAR_HEIGHT);
@@ -88,6 +91,11 @@ static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
 	case PC_PORT_TOOLBAR_FEI_HD2D:
 #if defined(__GNUC__)
 		if (PcPort_FeiHd2dToggle != NULL) PcPort_FeiHd2dToggle();
+#endif
+		break;
+	case PC_PORT_TOOLBAR_GOD_MODE:
+#if defined(__GNUC__)
+		if (PcPort_GodModeToggle != NULL) PcPort_GodModeToggle();
 #endif
 		break;
 	case PC_PORT_TOOLBAR_RECORD:
@@ -148,6 +156,7 @@ static const unsigned char* PsyX_HostToolbarGlyph(char ch)
 	static const unsigned char glyphD[7] = {30, 17, 17, 17, 17, 17, 30};
 	static const unsigned char glyphE[7] = {31, 16, 16, 30, 16, 16, 31};
 	static const unsigned char glyphF[7] = {31, 16, 16, 30, 16, 16, 16};
+	static const unsigned char glyphG[7] = {14, 17, 16, 23, 17, 17, 14};
 	static const unsigned char glyphH[7] = {17, 17, 17, 31, 17, 17, 17};
 	static const unsigned char glyphN[7] = {17, 25, 25, 21, 19, 19, 17};
 	static const unsigned char glyphI[7] = {31, 4, 4, 4, 4, 4, 31};
@@ -175,6 +184,7 @@ static const unsigned char* PsyX_HostToolbarGlyph(char ch)
 	case 'D': return glyphD;
 	case 'E': return glyphE;
 	case 'F': return glyphF;
+	case 'G': return glyphG;
 	case 'H': return glyphH;
 	case 'N': return glyphN;
 	case 'I': return glyphI;
@@ -317,6 +327,11 @@ static void PsyX_HostToolbarDraw()
 		speedLabel, 294, PsyX_GetSpeedMultiplier() > 1 ? 1 : 0);
 
 #if defined(__GNUC__)
+	if (PcPort_GodModeEnabled != NULL) {
+		int god = PcPort_GodModeEnabled();
+		PsyX_HostToolbarDrawButton(564, 92, PC_PORT_TOOLBAR_GOD_MODE,
+			god ? "GOD ON" : "GOD OFF", 568, god ? 3 : 0);
+	}
 	if (PcPort_FeiHd2dEnabled != NULL) {
 		int hd = PcPort_FeiHd2dEnabled();
 		PsyX_HostToolbarDrawButton(400, 156, PC_PORT_TOOLBAR_FEI_HD2D,

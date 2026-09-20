@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 
+#include "god_mode.h"
 #include "battle_mips_adapter.h"
 #include "battle_mips_runtime_internal.h"
 #include "psx_memory.h"
@@ -1009,6 +1010,7 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
     { extern void PcPort_PadVblankPump(void); PcPort_PadVblankPump(); }
     PcPortMipsCpu *previous = runtime->bridge_cpu;
     runtime->bridge_cpu = cpu;
+    PcPort_GodModeBeforeGuest(cpu, target);
     int result = runtime_bridge_call(opaque, cpu, target);
     runtime->bridge_cpu = previous;
     return result;

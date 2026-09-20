@@ -9,7 +9,8 @@ typedef enum PcPortHostToolbarAction {
     PC_PORT_TOOLBAR_QUICK_LOAD,
     PC_PORT_TOOLBAR_RECORD,
     PC_PORT_TOOLBAR_SPEED,
-    PC_PORT_TOOLBAR_FEI_HD2D
+    PC_PORT_TOOLBAR_FEI_HD2D,
+    PC_PORT_TOOLBAR_GOD_MODE
 } PcPortHostToolbarAction;
 
 static inline PcPortHostToolbarAction PcPort_HostToolbarHitTest(int x, int y)
@@ -26,6 +27,8 @@ static inline PcPortHostToolbarAction PcPort_HostToolbarHitTest(int x, int y)
         return PC_PORT_TOOLBAR_SPEED;
     if (x >= 400 && x < 556)
         return PC_PORT_TOOLBAR_FEI_HD2D;
+    if (x >= 564 && x < 656)
+        return PC_PORT_TOOLBAR_GOD_MODE;
     return PC_PORT_TOOLBAR_NONE;
 }
 
