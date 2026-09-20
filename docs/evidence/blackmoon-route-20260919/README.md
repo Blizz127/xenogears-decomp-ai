@@ -2639,3 +2639,67 @@ again (one fight, one menu close, then repositioning).
 Next: `goto.py <log> -403 -1487 10 20` from a fresh load - it aims at the edge
 midpoint with per-step measurement; then a single short `Up+Left` tap should cross
 onto tri231 and drop y to about -48.
+
+
+## PROVEN: the party cannot walk down into the basin (round 28)
+
+Rounds 21-27 assumed the descent was a driver-precision problem.  It is not: the
+retail collision code refuses both descent edges for the actor state the party is
+in, and the caller settles the one remaining doubt.
+
+The player's own movement calls the walkmesh search with **`mode = -1`**
+(`src/field/main/misc4.c:1679`, `func_8007BEF4(move, ..., -1, &flags)`), so
+
+```c
+    forceEdgeSearch = ((triFlags & 0x00400000) != 0) || mode == 0x80;
+```
+
+evaluates `triFlags` from the **current** triangle.  The party stands on the
+plateau - tri237/tri239/tri240, which are unflagged (`0x0`, `0x0`, `0x18`) - so
+`forceEdgeSearch` is **false** and the step-down test runs:
+
+```c
+    } else if ((flags & 0x00400000) != 0) {
+        if (!forceEdgeSearch) {
+            func_8007B07C(...);                 /* surface height at the target */
+            if (outPoint[1] < *(s16*)((u8*)base + 0x06)) {
+                triIndex = -1;                  /* refused: stepping DOWN */
+            }
+        }
+    }
+```
+
+Every ramp triangle carries `0x400022`, and stepping onto one from the plateau
+means moving to a surface *below* the current one - refused.  The other descent,
+tri191/tri758, carries `0x800000`, refused outright for a layer-0 actor:
+
+```c
+    } else if ((flags & 0x00800000) != 0 && *(s16*)(actorData + 0x10) == 0) {
+        triIndex = -1;
+    }
+```
+
+and `POSDIAG` reports `layer=0` throughout.
+
+Live this is exactly what happens, and the two exact edges were driven to this
+round:
+
+| descent | shared edge | midpoint | result |
+|---|---|---|---|
+| tri237 -> tri233 | verts 162-225 | (-378,0,-1545) | player walks the edge line, never crosses |
+| tri240 -> tri191 | verts 161-160 | (-456,0,-1366) | player reached **(-454,-1363)**, 3 units from the edge, and every south/south-west tap slid east along the plateau |
+
+`goto.py` put the player within 3-4 units of both edges - the targeting is now
+exact - and the crossing still does not happen, which is the rule and not the
+input.
+
+**So the descent is a scripted move, not a walk.**  The historical y=-57/-92/-119
+samples on the ramp came from a state the walker cannot reach on foot (the party
+is placed on the ramp), which also explains why the basin is only reachable
+through itself: the ledge-rule graph connects tri239 to the basin, but every
+connection is one of these two refused edges.
+
+Next step: find the story event that performs the descent.  The search is over
+map 23's field scripts and the neighbouring maps' load points for the opcode that
+places the party on the ramp (or moves them to the basin map), and then drive that
+trigger in normal play - which is what a player does.
