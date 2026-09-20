@@ -2773,3 +2773,44 @@ fit: `HD2D` 400-468, `BATTLES` 472-570, `GOD` 578-656.
 Verified live: with BATTLES off, eight movement presses produced **0 encounters**
 (the party walked from (-417,-1428) to (-237,-1641) freely), and clicking GOD on
 logged the mass-damage mode.  Build `cc14798dd96c…`, LINK OK.
+
+
+## FOREST EXIT REACHED: map 23 -> map 22 (round 31)
+
+With the encounter switch off (F10, the harness feature added this session) the
+walk was finally uninterrupted and the exit was found and crossed.
+
+**The route**, from the earned checkpoint at (-417,0,-1428) on tri239:
+
+1. **North-east staircase, not the checkpoint ramps.**  `cam_walk.py` planned with
+   both of retail's refusal rules applied (`0x400000` step-down, `0x800000`
+   layer-0) and walked the 42-hop chain
+   `tri239 -> tri40 -> tri240 -> tri241 -> ... -> tri504(-15) -> tri507(-35) ->
+   tri508(-58) -> tri509(-74) -> tri510(-94) -> tri511(-110) -> tri512(-127) ->
+   tri514(-135)`.  It arrived at **tri514, (727,-140,511)**, i.e. down on the
+   lower forest floor, and the walker logged `IN ZONE at (727,-140,511)`.
+2. **Continue north-east.**  A second plan to tri185 crossed 60+ more hops and
+   reached **(1903,-376,1410)** - the map descends further out there.
+3. **Walk east.**  From (2267,-351,1470) pressing east crossed the map boundary:
+   the last map-23 sample is `pos=(2267,-351,1470)`, the first map-22 sample is
+   `pos=(2327,-348,1470)`, and the loader log shows
+
+```
+[field-diag] FieldLoad begin field=23 mapBuf=0x821d14
+[field-diag] FieldLoad begin field=22 mapBuf=0x81b45c
+```
+
+So **the map-23 exit is the eastern boundary at x ~ 2300, z = 1470**, and the
+party arrives on **map 22 at (-1356,-204,1000)** - the lower forest, with a log
+bridge visible on screen.
+
+This closes the navigation question completely: the checkpoint ramps the earlier
+rounds fought over (tri191/tri231/tri232/tri233) are refused by retail's own
+collision rules and are **not** the route; the route is the north-east staircase,
+then east off the map edge.
+
+**Caveat for acceptance:** this run had random encounters suppressed by the F10
+switch, so no battle was fought between the checkpoint and the exit.  The route
+is proven walkable; re-running it with encounters live (battles on) is the
+retail-play acceptance step, and the checkpoint plus the triangle chain above
+make that a repeatable scripted run.
