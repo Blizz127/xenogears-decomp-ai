@@ -9,6 +9,15 @@ extern int PcPort_BattleMipsCallGuest(uint32_t, const uint32_t *, unsigned,
 #endif
 #include BATTLE_RUNTIME_SOURCE
 
+/* Added to battle_mips_runtime.c after this test was written; the runtime
+ * bridge calls it before every guest invocation, so this test TU (the only
+ * definition linked by the runner) must provide it. */
+void PcPort_GodModeBeforeGuest(PcPortMipsCpu *cpu, uint32_t target)
+{
+    (void)cpu;
+    (void)target;
+}
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 unsigned int MFC2(int reg) { (void)reg; abort(); }
@@ -195,6 +204,8 @@ static uintptr_t host_reenter(uintptr_t a0,uintptr_t a1,uintptr_t a2,uintptr_t a
     native_depth--;
     return 0x76543210;
 }
+static unsigned nonguest_dispatches;
+static void host_nonguest(void *argument){(void)argument;nonguest_dispatches++;}
 static void calling_guest(uint32_t addr)
 {
     const uint32_t code[]={0x27bdffe0,0xafbf001c,0x0c004020,0,
@@ -214,6 +225,14 @@ static int nesting(void)
     g_ActiveBattleRuntime=NULL;
     CHECK("legacy callback inactive unhandled",PcPort_BattleMipsDispatchCallback(CALLBACK,NULL)==0);
     g_ActiveBattleRuntime=&rt;
+    /* The dispatcher gained main-executable callback support (commit
+     * b7d74b67): a registered non-guest callback is now handled, and only a
+     * callback with no bridge entry and no host symbol is unhandled. */
+    nonguest_dispatches=0;
+    rt.functions[0]=(ResolvedFunction){HOST_CALL,(void*)host_nonguest,"guest_call_test_host"};
+    CHECK("legacy callback nonguest dispatched",PcPort_BattleMipsDispatchCallback(HOST_CALL,NULL)==1);
+    CHECK("legacy callback nonguest host called once",nonguest_dispatches==1);
+    rt.function_count=0;
     CHECK("legacy callback nonguest unhandled",PcPort_BattleMipsDispatchCallback(HOST_CALL,NULL)==0);
     return 1;
 }

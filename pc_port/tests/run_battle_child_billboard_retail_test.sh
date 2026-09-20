@@ -2,7 +2,7 @@
 set -euo pipefail
 ulimit -c 0
 cd "$(dirname "$0")/../.."
-OUT=$(mktemp -d pc_port/build_native/battle_child_billboard_retail_test.XXXXXXXX)
+OUT=${BATTLE_CHILD_BILLBOARD_OUT:-$(mktemp -d pc_port/build_native/battle_child_billboard_retail_test.XXXXXXXX)}
 echo "BATTLE CHILD BILLBOARD artifacts: $OUT"
 python3 tools/scripts/gen_battle_bridge_map.py --symbols config/symbol_addrs.slus_006.64.txt --symbols linker/undefined_funcs_auto.battle.txt --symbols linker/undefined_syms_auto.battle.txt --symbols config/symbol_addrs.battle.txt --out "$OUT/battle_bridge_map.inc"
 python3 - "$OUT" <<'PY'
@@ -11,10 +11,18 @@ from hashlib import sha256
 import json,sys
 out=Path(sys.argv[1]); temp=Path('src/slus_006.64/system/temp1.c').read_text(); overrides=Path('pc_port/src/game_overrides.c').read_text()
 def fn(src,sig):
- s=src.index(sig); depth=0
- for i in range(src.index('{',s),len(src)):
-  depth += (src[i]=='{')-(src[i]=='}')
-  if depth==0:return src[s:i+1]
+ # Match the definition, not a forward declaration: the signature must be
+ # followed by its opening '{' before any terminating ';'.
+ start=0
+ while True:
+  s=src.index(sig,start)
+  brace=src.find('{',s); semi=src.find(';',s)
+  if brace!=-1 and (semi==-1 or brace<semi):
+   depth=0
+   for i in range(brace,len(src)):
+    depth += (src[i]=='{')-(src[i]=='}')
+    if depth==0:return src[s:i+1]
+  start=s+len(sig)
 table=overrides[overrides.index('static void (*const D_8004FD40'):overrides.index('\n};',overrides.index('static void (*const D_8004FD40'))+3]
 p='''#include <stdint.h>\n#include <stdio.h>\ntypedef uint8_t u8;typedef uint16_t u16;typedef int16_t s16;typedef uint32_t u32;typedef int32_t s32;typedef unsigned long u_long;\ntypedef struct {s16 vx,vy,vz,pad;} SVECTOR;typedef struct {s32 vx,vy,vz,pad;} VECTOR;typedef struct {s16 m[3][3];s32 t[3];} MATRIX;\n#include "psx_memory.h"\nextern u8 D_800C3664;extern s32 D_80050100;extern MATRIX D_8004FBB8;extern u_long *g_GfxCurOT;\nextern void SetRotMatrix(MATRIX*);extern void SetTransMatrix(MATRIX*);extern int RotTransPers(SVECTOR*,int*,long*,long*);extern MATRIX* TransMatrix(MATRIX*,VECTOR*);extern void func_80022038(void*);extern void func_8001E3D8(void*,void*);extern void func_8001E298(void*,void*);\nextern void func_80025710(void*),func_80025718(void*),func_8002541C(void*),func_80025544(void*),func_800257F0(void*);extern void WorkListSetTaskCallback(void*,void(*)(void*));\n'''
 p+=fn(temp,'static u8* SpriteRenderAddress(')+'\n'+fn(temp,'void func_80025258(')+'\n'+table+'\n'+fn(overrides,'void func_80025224(')+'\n'
@@ -46,6 +54,7 @@ build_positive() {
 }
 build_positive O0 -O0 ''
 build_positive O2 -O2 ''
+echo "BATTLE CHILD BILLBOARD UBSan regime: clang (-fsanitize=undefined; gcc cannot link libubsan on this host)"
 build_positive UBSan -O1 '-fsanitize=undefined -fno-sanitize=function -fno-sanitize-recover=all'
 for source in "$OUT"/mutant-*.c; do
  name=${source##*/};name=${name%.c}

@@ -35,7 +35,10 @@ COMMON=(-std=gnu17 -fno-pie -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
     -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
 for mode in ${BATTLE_GUEST_CALL_MODES:-O0 O2 UBSan}; do
     flags=(-"$mode")
-    if [ "$mode" = UBSan ]; then flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
+    if [ "$mode" = UBSan ]; then
+        flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all)
+        echo "BATTLE GUEST CALL UBSan regime: clang (-fsanitize=undefined; gcc cannot link libubsan on this host)"
+    fi
     clang "${COMMON[@]}" "${flags[@]}" -w -c pc_port/src/psyq_compat.c -o "$OUT/$mode.compat.o"
     clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         "-DBATTLE_RUNTIME_SOURCE=\"$SOURCE\"" -c pc_port/tests/battle_guest_call_test.c -o "$OUT/$mode.test.o"

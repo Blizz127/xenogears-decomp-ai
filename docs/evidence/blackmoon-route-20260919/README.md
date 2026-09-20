@@ -1384,13 +1384,19 @@ gap, not a walk error.
   `libubsan.a` are both missing). Every new runner probes for it and runs the
   UBSan regime under `clang -fsanitize=undefined` instead, printing which compiler
   ran; none silently skips.
-- Two pre-existing runners are currently broken for reasons unrelated to this
-  work and are NOT claimed green:
-  `run_battle_child_billboard_retail_test.sh` fails in its `fn()` source extractor
-  (it matches the `SpriteRenderAddress` forward declaration at `temp1.c:1931`
-  instead of the definition at 2109, yielding `#endif without #if`), and
-  `run_battle_guest_call_test.sh` fails to link with `undefined reference to
-  PcPort_GodModeBeforeGuest` (its stub set predates that hook).
+- Two pre-existing runners were broken during this work and are now repaired and
+  green (test-harness changes only; no production source changed for them):
+  `run_battle_child_billboard_retail_test.sh` failed because its `fn()` extractor
+  matched the `SpriteRenderAddress` forward declaration at `temp1.c:1931` instead
+  of the definition at 2109 (the extractor now requires the definition's `{`
+  before the next `;`), and it also needed the `PcPort_GodModeBeforeGuest` stub;
+  it is EXIT=0 at O0/O2/UBSan with 7/7 mutants rejected.
+  `run_battle_guest_call_test.sh` needed the same stub, and its "legacy callback
+  nonguest unhandled" assertion had been made stale by the dispatcher change
+  above; that assertion was kept (now with an empty bridge table so the callback
+  is genuinely unresolvable) and coverage for the new registered-non-guest
+  dispatch path was added - 204 checks at O0/O2/UBSan with 6/6 controls rejected,
+  no assertion deleted.
 - Integrated build at the end of this session: LINK OK, 74 function stubs,
   `# 96 adopted leaves reach no generated stub`, `xeno-port` SHA-256
   `695e784d95107de874169d905f2c66fc501494c0a47e1b5387c7cad6c61eba97`.

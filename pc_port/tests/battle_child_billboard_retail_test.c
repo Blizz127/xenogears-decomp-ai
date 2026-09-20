@@ -10,6 +10,7 @@ void DrawAllSplits(void){abort();} void ParsePrimitivesLinkedList(u_long*p,int s
 unsigned MFC2(int r){(void)r;abort();} unsigned CFC2(int r){(void)r;abort();}
 void MTC2(unsigned v,int r){(void)v;(void)r;abort();} void CTC2(unsigned v,int r){(void)v;(void)r;abort();}
 int doCOP2(int o){(void)o;abort();}
+void PcPort_GodModeBeforeGuest(PcPortMipsCpu*cpu,uint32_t target){(void)cpu;(void)target;}
 
 extern void func_80025258(uint8_t *entry);
 extern void func_80025224(void *task,int type);
