@@ -2564,3 +2564,40 @@ triangle every step; live it walked tri236 -> tri237 -> tri239 -> tri240
 correctly, then met an encounter and was fighting through it when the round's
 budget ran out.  The party is being worn down by the encounter rate on the
 plateau (Fei 50/84, Elly KO'd in that fight), which is what ends most attempts.
+
+
+## The ramp top edge is directly south of the checkpoint (round 24)
+
+Point-in-triangle tests along the line due south of the spawn settle the approach:
+
+| point | triangle | height |
+|---|---|---|
+| (-417,-1428) spawn | tri240 | 0 |
+| (-417,-1498) | **tri232** | **-51.7** |
+| (-417,-1510) | tri232 | -65.9 |
+| (-430,-1510) | tri232 | -111.1 |
+| (-440,-1520) | tri217 | -144.0 (basin floor) |
+| (-399,-1520) | tri233 | -15.7 |
+
+So the ramp (tri232/233) starts at z ~ -1490, i.e. **70 units due south of the
+checkpoint**, and it is wide open there - the earlier "30-unit mouth at x -400..
+-425" is only the part reachable *after* drifting east.
+
+The catch is the input, not the terrain: measured live, `Down` at the spawn was
+`(+18,-62)` - not pure south - so one press from (-417,-1428) lands at
+(-399,-1490) on **tri239 at y=0**, one triangle east of the ramp, and the next
+press carries further east to tri237/tri236.  A press of `Left` before the
+descent puts the player back on the ramp line.
+
+`goto.py` (new) is a targeted version of the analytic walker: instead of planning
+a chain it drives to one fixed point, measuring the four key deltas every step,
+ranking all eight key combinations by direction cosine, and re-reading the
+position after probing.  Verified live: it took tri236 -> tri238 in one step at
+(-394,-1509).  Attempts this round were again dominated by encounters - the
+driver spent its budget inside the battle routine - so the descent was not
+completed.
+
+Next step is small and specific: from the spawn press `Down` (one step to tri239
+at ~(-399,-1490)), then `Left` to return to x ~ -417, then `Down` again, which
+lands on tri232 and drops y to ~ -50.  `goto.py <log> -417 -1495 15 20` does
+exactly that as one target if the encounters allow it through.
