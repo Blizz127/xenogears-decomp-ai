@@ -604,3 +604,44 @@ and Yui's scenario10 gate. It does not prove full audiovisual retail parity.
 Next: leave house19, approach field17's workshop-side rooftop trigger now that
 scenario10 is set, then Citan/music box/dinner/night return/burning Lahan and
 Blackmoon. Those later gates and equipment-preview helper801CE480 remain open.
+
+## Rooftop, music box, dinner and nighttime departure completed
+
+Continued live process508015 from the earned Yui scenario10 state, with normal
+movement/dialogue controls and no load or game-state edits. Leaving house19
+returned to field17. Walking around the house to the workshop automatically
+triggered Fei's call to Citan at(-451,31,415). The rooftop camera sequence,
+Citan/Land Crab dialogue, and return of control completed, advancing to scenario12.
+This is the naturally satisfied rooftop gate that previously failed at scenario7.
+
+Normal workshop-door interaction loaded field21. Approaching and examining the
+music box started its complete visual/story sequence: opening panels, statue,
+light/particle effects, Fei's reaction, Citan's entrance and explanation, Fei's
+scripted exit, the statue's destruction and Citan's closing dialogue. The scene
+then transitioned to field19's dinner sequence at scenario13. Dinner dialogue
+and actor movements completed, followed by the nighttime exterior conversation
+in field17. Control returned at scenario15, position(65,31,-1153).
+
+F7 saved this free-control state. `night-scenario15-earned.xgqs` is a preserved
+copy of that actual save; `recovery.xgqs` is the current working checkpoint.
+Read-only `rt15-night-state.txt` confirms scenario15, Fei57/60HP and remaining
+consumable quantities4/1/1/1. No new STUB/FATAL/ERROR log entries were found.
+Process508015 remains live on display95/window2097204, speed1x, HD2D enabled;
+all input helper processes have finished. Recheck camera-relative directions
+before descending: the rooftop/night cutscenes changed camera orientation.
+
+Raw evidence remains in the route scratch directory: `runtime-resume9.log`,
+`inputs.log`, `rt10-roof-trigger.png`, `rt10-roof-dialogue{1,4,7,11,14}.png`,
+`rt12-workshop-inside2.png`, `rt12-musicbox2.png`, `rt12-musicbox-wait.png`,
+`rt12-musicbox-timed.png`, the `rt12-musicbox-dialogue*.png` sequence,
+`rt12-closing-timed.png`, `rt12-after-musicbox.png`, `rt12-transition.png`,
+`rt13-dinner-dialogue{5,11,17,23}.png`, and `rt13-night-control.png`.
+`roof-approach.png` was reused during this continuation; the current trigger
+capture has also been copied to the distinct `rt10-roof-trigger.png` name.
+
+No engine source changed and no rebuild was needed for this gameplay pass.
+The evidence establishes natural progression and observed scene/transition
+behavior, not a complete retail audiovisual comparison or human audio audition.
+Next: nighttime descent toward Lahan, the incoming-Gear event, burning-village
+and Gear-battle sequence, aftermath/world departure, then Blackmoon Forest.
+Those gates and equipment-preview helper801CE480 remain unfinished.
