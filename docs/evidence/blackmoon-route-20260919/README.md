@@ -1159,3 +1159,34 @@ the subsequent Elly/boss/forest-exit gates remain to be observed.
 STR6 then exited at frame300 and returned to the forest. Elly's initial
 conversation is visible with her portrait and text in `resume21-elly1.png`.
 No movie skip, forced flag or field override was used.
+
+## Elly/Wels frontier: missing timer callback lookup
+
+Normal confirmations advanced Elly's conversation and its camera/animation
+changes (`resume21-elly2.png` through `resume21-elly5.png`) into the scripted
+two-Wels battle (`resume21-elly-battle.png`). Fei entered at HP43/73. Attempting
+normal Aquasol use during that encounter exposed a different missing boundary:
+`unresolved native call target=0x8001d164 guest-pc=0x800b4d50`, then callback
+800C11CC aborted. This was SIGABRT, not either previously fixed SIGSEGV.
+Resume21 is terminated. Preserved `wels-unresolved.core`,
+`wels-unresolved-core.log`, `wels-unresolved.gdb`, and its runtime log.
+No Wels victory or subsequent forest completion is claimed.
+
+The native binary has no `func_8001D164` export, although the generated battle
+bridge map already lists it. `src/slus_006.64/system/work_list.c` contains a
+decompiled body, but the port uses `pc_port/src/work_list_port.c`, which lacks
+this routine. The retail assembly at 8001D164..8001D19C searches the timer list
+for a matching callback at +8, follows +18, and returns the first match or NULL.
+Its branch-delay slot clears v0 at exhaustion. The decompiled body's return of
+the previous/last node on a miss is therefore not authoritative; do not copy
+that behavior into the port. Preserve the callback's address as an identity:
+`is_callback_argument` currently lacks the index0 case for this function.
+Existing timer-work-list retail and battle-graphics ABI suites can cover the
+native lookup and its interpreter boundary respectively. No repair for this
+new frontier has been made yet.
+
+The latest earned recovery checkpoint is after winning the log battle, at
+(-22,-177,1008), before entering zone3 and the Elly movie. Replay from it uses
+normal Right+C along the log to zone3, then ordinary dialogue confirmations.
+GOD OFF and HD2D ON throughout the successful log-battle/movie segment. All
+input helpers and the debugger have stopped; Xvfb95 remains available.
