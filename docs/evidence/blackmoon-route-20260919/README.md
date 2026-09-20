@@ -1145,3 +1145,17 @@ and the isolated checkpoint path. The same normal log encounter and Aquasol
 use now restore Fei to 73/73 without the cleanup crash (`resume21-aquasol.png`).
 GOD OFF, HD2D ON, SPEED1X. Render callback15 remains unbound; full healing-effect
 visual fidelity is still pending. Battle victory/return is checked separately.
+
+Resume21 subsequently won the four-Hobgob battle normally and returned to
+map22. The follow-on log event moved Fei under script control from
+(-1122,-196,1008) to (-22,-177,1008), then unlocked control. Visually inspected
+`resume21-log-event.png`; saved that earned state with F7. Normal Right+C
+movement along the log reached zone3 at (-1654,-210,1008) and started retail
+STR6, frames0..300. `resume21-log-cross.png` visibly shows the Fei/Elly anime
+sequence, and the log confirms the first STR frame was delivered. This advances
+the route beyond the root staircase and log encounter; movie completion and
+the subsequent Elly/boss/forest-exit gates remain to be observed.
+
+STR6 then exited at frame300 and returned to the forest. Elly's initial
+conversation is visible with her portrait and text in `resume21-elly1.png`.
+No movie skip, forced flag or field override was used.
