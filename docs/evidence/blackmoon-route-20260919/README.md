@@ -1981,3 +1981,46 @@ A normal F7 then wrote `recovery.xgqs` sha256
 (-417,0,-1428) - the same resume point as `22e61c2d...`, but with the party
 healed (Fei ~74/84, Elly 40/40).  Future pushes into zone 2 now start from a
 healthy party instead of 53/75 and 1/40.
+
+
+## Battle driving recipe, and where the route still stands (round 12)
+
+Battles on this route are winnable with pure command input, and the sequence is
+now known and scripted (`scratchpad/blackmoon-route-20260919/fight.py`):
+
+```
+Cross (c)                reset the ring to Defense | Attack
+Circle (z)               select Attack
+Triangle (v), Triangle   spend two combo points (the menu shows
+                         "1 point" Triangle / "2 points" Square /
+                         "3 points" Cross / "cancel-end" Circle)
+Circle (z)               execute
+```
+
+Every press is held ~0.5 s and the steps are ~2 s apart, for the same reason the
+menu needs it: the command ring only accepts input on the party's own turn and
+consumes one queued pad state per frame.  With that, three encounters in a row
+were won with no losses, and both characters levelled (Fei LV7, Elly LV4 -> LV5
+with 48 max HP); the drops also topped the bag up (Hob-Jerky 3 -> 7,
+Zetasol 2 -> 4).
+
+### Navigation is the only remaining blocker
+
+The party is pinned at the ramp foot.  Movement probes from (-396,-1495) show
+`+z` (Up) and `+x,+z` (Right) open while `-x` (Left) is blocked, and every
+attempt to cross to the ramp proper at x ~ -426 stops there.  The walkmesh route
+to trigger zone 2 needs that crossing followed by the descent (the ramp drops
+from y=0 to y=-48/-96 at tri231/tri232, then the basin floor is y=-144), and the
+zone itself starts at x=-606.  Encounters fire every few seconds in this pocket,
+so each attempt spends most of its time in battles.
+
+### Checkpoint left untouched
+
+The party was at Elly 1/48 when the round ran out, so the healed checkpoint
+(`53a26c8c...`, Fei ~74/84, Elly 40/40 at (-417,0,-1428)) was deliberately **not**
+overwritten.  The levelled state (Elly LV5) is live in the running session but
+not persisted.
+
+No new port defect was established this round: every battle entered ran,
+rendered and returned normally, and the two menu interactions exercised behaved
+correctly.  Zone 2 and the forest-exit cutscene remain unobserved.
