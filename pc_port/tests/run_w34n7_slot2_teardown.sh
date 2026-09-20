@@ -8,7 +8,7 @@ cd "$ROOT"
 
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
       -DWM_7299C_PROD_TEST -DWM_7299C_TEST_HOOKS
       -ffunction-sections -fdata-sections)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
@@ -43,7 +43,8 @@ for entry in \
     "M6:WM_7299C_MUTANT_SKIP_SECONDARY_PAIR:secondary_pair_freed" \
     "M7:WM_7299C_MUTANT_GUEST_SNAPSHOT:snapshot_native_authority" \
     "M8:WM_7299C_MUTANT_ZERO_SNAPSHOT_HOLES:snapshot_sparse_holes_preserved" \
-    "M9:WM_7299C_MUTANT_SWAP_SNAPSHOT_TAIL:snapshot_retail_store_order"
+    "M9:WM_7299C_MUTANT_SWAP_SNAPSHOT_TAIL:snapshot_retail_store_order" \
+    "M10:WM_7299C_MUTANT_GUEST_TRANSITION:transition_flag"
 do
     IFS=: read -r mutant define assertion <<<"$entry"
     gcc "${BASE[@]}" "${INC[@]}" -w -O0 -D"$define" "${SRC[@]}" -lm \

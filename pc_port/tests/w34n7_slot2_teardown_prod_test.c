@@ -25,6 +25,7 @@ void* D_80062528;
 void* D_8006259C;
 void* g_GfxWorkBuffers;
 s32 D_80059190;
+u16 D_8006F954;
 u8 D_8005A4E4[0x10000u];
 
 /* The dispatcher object also contains the independently tested slot-1 arm. */
@@ -179,7 +180,8 @@ static void seed_common(u32 state)
     memset(PSX_ADDR(POOL_GUEST), 0x5Au, 0x2000u);
     sw(D7CC, state);
     sw(POOL_PTR, POOL_GUEST);
-    sh(0x8006F954u, 0x0123u);
+    sh(0x8006F954u, 0x0456u);
+    D_8006F954 = 0x0123u;
     D_80062528 = (void*)(uintptr_t)0x00225000u;
     D_8006259C = (void*)(uintptr_t)0x00226000u;
     g_GfxWorkBuffers = (void*)(uintptr_t)0x00227000u;
@@ -319,6 +321,9 @@ static void check_state_zero_and_order(void)
 
     seed_common(0u);
     wm_80071034_test_dispatch_slot2();
+    ASSERT_MSG(D_8006F954 == 0x0123u &&
+                   (lw(0x8006F954u) & 0xFFFFu) == 0x0456u,
+               "state0_transition_unchanged", "state zero changed entrance");
 
     ASSERT_MSG(s_event_count > 4u && s_events[0].kind == 'A' &&
                    s_events[1].kind == 'S' && s_events[2].kind == 'E' &&
@@ -439,9 +444,11 @@ static void check_state_one_snapshot(void)
                           sizeof(expected_snapshot_order)) == 0,
                "snapshot_retail_store_order", "event_count=%u",
                s_snapshot_event_count);
-    ASSERT_MSG((u16)(lw(0x8006F954u) & 0xFFFFu) == 0x8123u,
+    ASSERT_MSG(D_8006F954 == 0x8123u,
                "transition_flag", "flags=0x%04x",
-               (unsigned)(lw(0x8006F954u) & 0xFFFFu));
+               (unsigned)D_8006F954);
+    ASSERT_MSG((lw(0x8006F954u) & 0xFFFFu) == 0x0456u,
+               "transition_guest_unchanged", "guest flags changed");
 
     /* Exercise the real inverse in the same process.  The sparse words are
      * state carried by the native buffer even though 0x80075460 leaves them

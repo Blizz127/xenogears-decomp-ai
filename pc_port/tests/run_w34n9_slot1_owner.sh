@@ -34,6 +34,7 @@ mutants=(
   "M11:W34N22_MUTANT_CACHE_C894:restore.c894.reloaded"
   "M12:W34N25_MUTANT_SKIP_73398:ee6a.helper.exactly_once"
   "M13:W34N25_MUTANT_73398_FALLTHROUGH:ee6a.exclusive.arm"
+  "M14:WM_RESUME_MUTANT_SKIP_BRANCH:restore.event_count"
 )
 for spec in "${mutants[@]}"; do
     IFS=: read -r name define assertion <<<"$spec"
@@ -42,7 +43,7 @@ for spec in "${mutants[@]}"; do
     "$out/$name" >"$out/$name.log" 2>&1
     rc=$?
     set -e
-    if [[ $rc -eq 0 ]] || ! rg -q "ASSERTION $assertion FAILED" "$out/$name.log"; then
+    if [[ $rc -eq 0 ]] || ! grep -q "ASSERTION $assertion FAILED" "$out/$name.log"; then
         echo "$name failed mutant gate rc=$rc expected=$assertion" >&2
         cat "$out/$name.log" >&2
         exit 1
@@ -51,9 +52,9 @@ for spec in "${mutants[@]}"; do
 done
 
 if ! sed -n '/case 0x80072238u:/,+5p' \
-        pc_port/src/world_map_main_loop_71034.c | rg -q 'wm_80072238\(\)'; then
+        pc_port/src/world_map_main_loop_71034.c | grep -q 'wm_80072238\(\)'; then
     echo 'slot-1 dispatcher is not wired to wm_80072238' >&2
     exit 1
 fi
 
-echo 'W34N9 SLOT1 OWNER O0/O2/UBSan PASS; strict warnings clean; M1-M13 DETECTED'
+echo 'W34N9 SLOT1 OWNER O0/O2/UBSan PASS; strict warnings clean; M1-M14 DETECTED'

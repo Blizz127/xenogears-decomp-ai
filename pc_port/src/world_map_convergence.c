@@ -314,3 +314,36 @@ u32 wm_8007272C_convergence_p2(void)
             s_wm_conv_p2_iterations, WM_CONV_P1_CUT_COMMON_TAIL);
     return WM_CONV_P1_CUT_COMMON_TAIL;
 }
+
+/* Retail 800976FC: re-arm a saved slot without changing its update callback
+ * or saved movement state. The initializer recreates its freed sprite. */
+static void wm_resume_slot(u32 callback, u32 index)
+{
+    u8* slot = (u8*)PSX_ADDR(WM_U32(0x8009BE24u) + index * 128u);
+    *(u16*)slot = 0;
+    *(u32*)(slot + 0x18u) = callback;
+}
+
+/* Retail 80072784..80072908, C894 == 1 convergence branch. */
+void wm_80072784_convergence_resume(void)
+{
+    static const u32 callbacks[] = {
+        0x800923A8u, 0x8008A52Cu, 0x8008B498u, 0x8008BD1Cu,
+        0x8008C6ECu, 0x8008D520u, 0x8008DE9Cu, 0x8008E4F4u,
+        0x800907C4u, 0x80092BE4u, 0x80092DF8u, 0x80071A50u
+    };
+    static const u32 slots[] = {0u,1u,2u,3u,4u,5u,6u,7u,8u,12u,13u,14u};
+    u32 selector;
+    u32 i;
+    for (i = 0; i < 12u; ++i)
+        wm_resume_slot(callbacks[i], slots[i]);
+    selector = WM_U32(0x8009C610u);
+    if (selector >= 3u && selector <= 7u) {
+        wm_resume_slot(0x80087F60u, 15u);
+        wm_resume_slot(0x8008868Cu, 16u);
+    }
+    if (selector >= 4u && selector <= 8u)
+        wm_resume_slot(0x800879E0u, 17u);
+    if (selector == 4u)
+        wm_resume_slot(0x80088C90u, 19u);
+}

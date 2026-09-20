@@ -915,3 +915,73 @@ session path / retains that ownership; do not change allocation behavior or
 relax the SPU assertion to hide it. Evidence: `world-battle-return.gdb`,
 `world-audio-banks.gdb`, `world-audio-owner.gdb`, and the preserved systemd core
 (PID926167). No audio repair has been made yet.
+
+## World battle-return entrance ownership repair
+
+The resume14 core proves a split transition flag: native D_8006F954=0001,
+guest RAM at8006F954=8000. Native world initialization reads the game-state
+blob (the native D_8006F954 alias at offset2320). Native slot2 teardown had
+instead read/written the guest mirror for retail80072A68..74. Consequently the
+next entry missed the resume bit and attempted to allocate resident bank46
+again. The resulting allocation error entered an unpopulated error-bank path,
+which attempted a zero-size SPU upload. This is upstream of the SPU assertion.
+
+The native-only teardown now ORs8000 into the native entrance owner. Retail
+logic, sound allocation and the SPU assertion are unchanged. The strengthened
+production test seeds native0123 versus guest0456, requires native8123 and an
+unchanged guest value on the battle branch, and requires both unchanged on
+state0. The pre-fix production code failed both ownership assertions. O0/O2/
+UBSan plus ten mutation checks pass, including the old guest-write behavior.
+The 532 retail teardown bytes at8007299C..80072BAC match disc/world_map.bin;
+SHA25646d838ed3e2342dd1af4e5701f7b16c686704cdf81bb51eea516b32124be2c9b.
+Native build passes. No MIPS-build source was changed.
+
+Natural validation uses a copy of the earlier scenario24 Mountain Path save
+(`world-return-checkpoint.xgqs`); the newer forest recovery save is preserved
+and hashed in `forest-save-before-world-test.sha256`. PID934514 was stopped
+normally after its earned checkpoint had been saved. Fixed-build resume16
+launches with HD2D ON and God mode OFF; live validation follows below.
+
+Resume16 natural test: world walking triggered an encounter, retail battle
+returned, and native entrance8001 was observed during battle. Reload reached
+C894=1, skipped the duplicate WDS load and passed audio setup. It then crashed
+at wm_native_animation_value(sprite_bits=0), called by slot1's update callback.
+The resume16 core and `world-return-restore.gdb` preserve this subsequent fault.
+No successful complete return is claimed for this intermediate fix.
+
+Diagnosis found the resume convergence branch80072784..80072908 still only
+represented as a cut PC. The slot1 owner discarded that result and went to the
+common tail. Retail instead uses800976FC to reset twelve saved slots to init
+state and install their initialization callbacks (plus selector-dependent
+slots15/16/17/19). Snapshot teardown had correctly freed and cleared the old
+sprites; skipping initialization ran update with a null sprite.
+
+Added that native resume branch and routed the owner to it on the existing
+FLAG1_ARC result. A test executes the actual disc branch AND helper in the MIPS
+interpreter and compares the complete8192-byte pool against production for
+selectors0..14 andUINT_MAX: all branches pass O0/O2/UBSan. Byte checks cover
+392 bytes of branch and28 bytes of helper. The owner test now models the actual
+C894-dependent convergence result and requires the resume call in sequence;
+its new skip-branch mutant fails, all14 owner mutants detected. No null-sprite
+bypass or forced runtime state was introduced. Logs: world-resume-callback-tests,
+world-resume-owner-tests and world-return-build2.
+
+Resume17 reached a second natural world encounter, completed retail battle,
+and entered the resumed world without the prior SPU assertion or null-sprite
+update. It stopped at a newly exposed porting gap: scheduler reports
+`guest=0x8008a52c kind=invalid_callback slot=1 state=0`. The required retail
+resume initializer is not registered/implemented in the native scheduler.
+Stopped PID1034174 normally because it was repeatedly logging this known
+frontier; no successful full world battle return is claimed. Forest recovery
+hash remains unchanged. Runtime/launch evidence is resume17.json and
+runtime-resume17.log; screenshot world-return17-restored.png is black and is
+NOT visual acceptance.
+
+Next required work: implement and register the retail resume initializers
+selected by80072784. First is8008A52C..8008A5B4 (144 bytes): same sprite creation,
+animation0, scale1800 and flag-bit2 clear as the first part of cold initializer
+8008A2C8, but crucially preserves saved movement/state. Do not substitute the
+cold initializer because it resets the saved position. Inspect the remaining
+selected callbacks for missing scheduler entries too; avoid only satisfying
+slot1 and leaving the next slot unresolved. Keep branch/MIPS differential
+coverage and retry a complete natural encounter after callback completion.

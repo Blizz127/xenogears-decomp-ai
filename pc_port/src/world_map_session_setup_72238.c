@@ -208,7 +208,10 @@ entry_placement_done:
     wm_ready_buffer_consume();
     wm_mode_audio_setup();
     convergence_next = wm_800726C0_convergence_p1();
-    (void)convergence_next;
+#if !defined(WM_RESUME_MUTANT_SKIP_BRANCH)
+    if (convergence_next == WM_CONV_P1_CUT_FLAG1_ARC)
+        wm_80072784_convergence_resume();
+#endif
 #if !defined(W34N9_MUTANT_SKIP_CONVERGENCE_P2)
     if (convergence_next == WM_CONV_P1_CUT_SECOND_TABLE)
         (void)wm_8007272C_convergence_p2();

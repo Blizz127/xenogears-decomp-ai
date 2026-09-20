@@ -20,7 +20,7 @@ enum Event {
     EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
     EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
     EV_FIRST_WDS, EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC,
-    EV_DISTANCE, EV_READY, EV_AUDIO, EV_CONV_P1, EV_CONV_P2,
+    EV_DISTANCE, EV_READY, EV_AUDIO, EV_CONV_P1, EV_CONV_P2, EV_CONV_RESUME,
     EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2, EV_TAIL_P3, EV_TAIL_P4,
     EV_TAIL_P5
 };
@@ -214,8 +214,11 @@ void wm_mode_audio_setup(void) { event(EV_AUDIO); }
 wm_conv_p1_next_t wm_800726C0_convergence_p1(void)
 {
     event(EV_CONV_P1);
-    return WM_CONV_P1_CUT_SECOND_TABLE;
+    u32 flag;
+    memcpy(&flag, PSX_ADDR(0x8009C894u), sizeof(flag));
+    return flag == 1u ? WM_CONV_P1_CUT_FLAG1_ARC : WM_CONV_P1_CUT_SECOND_TABLE;
 }
+void wm_80072784_convergence_resume(void) { event(EV_CONV_RESUME); }
 u32 wm_8007272C_convergence_p2(void)
 {
     event(EV_CONV_P2);
@@ -267,7 +270,7 @@ static void check_restore_order(void)
         EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
         EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
         EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
-        EV_CONV_P1, EV_CONV_P2, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
+        EV_CONV_P1, EV_CONV_RESUME, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
         EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
     };
     int i;
@@ -327,7 +330,7 @@ static void check_ee6a_restore_order(void)
         EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
         EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
         EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
-        EV_CONV_P1, EV_CONV_P2, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
+        EV_CONV_P1, EV_CONV_RESUME, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
         EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
     };
     int i;

@@ -25,6 +25,9 @@ wm_conv_p1_next_t wm_800726C0_convergence_p1(void);
 /* Production P2 function — second convergence table pass. */
 u32 wm_8007272C_convergence_p2(void);
 
+/* Retail restored-session callback initialization branch. */
+void wm_80072784_convergence_resume(void);
+
 /* Pool registration helper (called by P1 and P2). */
 void wm_pool_register(u32 a0, u32 a1);
 

@@ -17,6 +17,7 @@ extern void* D_80062528;
 extern void* D_8006259C;
 extern void* g_GfxWorkBuffers;
 extern s32 D_80059190;
+extern u16 D_8006F954;
 extern u8 D_8005A4E4[];
 
 extern void func_8003A89C(void* manager, s32 level, s32 steps);
@@ -50,6 +51,7 @@ static s16 td_lh(u32 address)
     return value;
 }
 
+#if defined(WM_7299C_MUTANT_GUEST_TRANSITION)
 static u16 td_lhu(u32 address)
 {
     u16 value;
@@ -57,15 +59,20 @@ static u16 td_lhu(u32 address)
     return value;
 }
 
+#endif
+
 static void td_sw(u32 address, u32 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
+#if defined(WM_7299C_MUTANT_GUEST_TRANSITION)
 static void td_sh(u32 address, u16 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
+
+#endif
 
 /* World allocations are KSEG after the Rung-4 domain repairs.  Retain the
  * legacy low-native case for allocations owned by older compiled system TUs. */
@@ -231,8 +238,14 @@ void wm_8007299C(void)
 #if !defined(WM_7299C_MUTANT_SKIP_SNAPSHOT)
         wm_80075460();
 #endif
+#if defined(WM_7299C_MUTANT_GUEST_TRANSITION)
         td_sh(WM_TRANSITION_FLAGS,
               (u16)(td_lhu(WM_TRANSITION_FLAGS) | 0x8000u));
+#else
+        /* Retail 80072A68..74 updates the game-state entrance halfword.
+         * World initialization reads its native owner, not the guest mirror. */
+        D_8006F954 = (u16)(D_8006F954 | 0x8000u);
+#endif
     }
 
 #if defined(WM_7299C_MUTANT_SWAP_WINDOW_ORDER)
