@@ -1859,3 +1859,34 @@ Route state: zone 2 is still not entered.  The run that did get a normal
 encounter this round won it (Fei 15/84, Elly KO'd) - so the deadlock recorded
 last round did **not** reproduce, and the remaining obstacle is party condition
 plus this menu wedge.
+
+
+### Follow-up diagnosis of the menu wedge (same round)
+
+The menu code path is now pinned, and it explains the symptom exactly:
+
+- `func_801C55A0` (`src/menu/main/misc.c:241`, port body) is the field system
+  menu's input/render loop.  It draws each frame through `func_801C7BF4()` and
+  then does `input = g_Menu->input`.  It **only leaves the loop** when
+  `input == 5` (cancel) or when the confirm path sets `s1 = 0`.
+- `g_Menu->input` is produced by `func_801C7D78` (`src/menu/main/misc.c:1343`).
+  Its mapping is `released & 0x20` (Circle) -> `input = 4` (confirm) and
+  `released & 0x40` (**Cross**) -> `input = 5` (cancel), i.e. the menu expects
+  Cross to be *released* while it owns input.
+- The port's own diagnostics agree with the observations: the log shows
+  `func_800799D4 request=128 -> MenuMain`, then
+  `func_801C55A0 input loop shouldDrawMenu=1`, and **no further menu line** - the
+  loop is running (the on-screen clock keeps advancing) but never sees
+  `input == 5`.
+
+So the wedge is not a hung renderer and not the field: `func_801C55A0` is
+spinning with a `g_Menu->input` that never reaches cancel, because the Cross
+*release* edge is not reaching `func_801C7D78` while the menu owns input
+(`owner=0x80`).  The pad queue is reset between the field and menu phases (see
+the harness note on `g_XenoMenuNavReaderTicks` in the same file), which is the
+obvious suspect for a press/release pair being split across the hand-off.
+
+Next step (not done): a focused test that drives a Cross press+release across
+the field -> menu ownership hand-off and asserts `func_801C55A0` leaves its
+loop, with a mutant that drops the release edge.  That is a much narrower target
+than the whole menu.
