@@ -2884,6 +2884,16 @@ value as a per-frame timing quantity:
 - `g_FrameDeltaTime = Vsync(1);` (`src/field/main/main.c:131`, `FieldUpdateDeltaTime`)
 - `D_800ADB9C = Vsync(1);` (`src/field/main/main.c:308`, `src/field/main/misc2.c:2133, 2207`)
 
+and the field's frame function confirms the store in asm
+(`asm/field/matchings/main/misc2/func_8007554C.s`):
+
+```asm
+    jal   Vsync            # a0 = 1
+    lui   $at, %hi(D_800ADB9C)
+    sw    $v0, %lo(D_800ADB9C)($at)   # Vsync(1)'s value is kept per frame
+    jal   Vsync            # a0 = -1  -> the vblank count, which the port gets right
+```
+
 A value that grows without bound instead of measuring the frame is exactly the
 kind of thing that makes a `Vsync`-paced battle loop never terminate.  `Vsync(-1)`
 (the `while (Vsync(-1) < target)` waits in `src/field/main/misc2.c:2297` and the
