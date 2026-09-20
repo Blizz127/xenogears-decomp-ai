@@ -5,12 +5,17 @@
 #include "system/menu.h"
 
 extern void func_801C5CBC(void*, u8*, s32, s32);
+extern void func_801C5EE8(void);
+u8 D_801D2018[] = {3, 9, 1, 8};
 SystemMenu* g_Menu;
 
-static u8 menu_storage[0x800];
-static u8 output[0x400];
-static u8 work[0x200];
+static SystemMenu menu;
+static MenuString* output;
+static u8 work[0x38E];
+static u16 palette[16];
 static u8 bundle[0x40];
+static unsigned checks;
+static s32 expected_offset;
 static unsigned string_calls;
 static unsigned render_calls;
 static unsigned shape_calls;
@@ -39,15 +44,19 @@ s32 SystemRenderStringEntry(void* string, void* pWork, s32 height, s32 flag)
 
 void func_801C5A7C(MenuString* pString, s32 index, s32 offset, u8 flags)
 {
-    check((u8*)pString >= output && (u8*)pString < output + sizeof(output), "shape pointer", index);
+    check(pString >= output && pString < output + 4, "shape pointer", index);
     check(flags == 0, "shape flags", index);
+    check(render_calls == (unsigned)((index / 2 + 1) * 2), "both planes before shape", index);
     shaped_indices[shape_calls] = index;
     shaped_offsets[shape_calls++] = offset;
 }
 
 int LoadImage(RECT* rect, u_long* data)
 {
-    check((u8*)rect == output + (upload_calls / 1) * 0x100 + 0x70, "upload rect", upload_calls);
+    if (data == (u_long*)palette) return 0;
+    check(rect == &output[upload_calls * 2].vramDest, "upload rect", upload_calls);
+    check(rect->x == 320 + 32 * (s32)upload_calls && rect->y == ((2 * (s32)upload_calls + expected_offset) / 4) * 13 && rect->w == 28 && rect->h == 13, "retail upload geometry", upload_calls);
+    check(memcmp(rect, &output[upload_calls * 2 + 1].vramDest, sizeof(*rect)) == 0, "paired rectangle", upload_calls);
     check((u8*)data == work, "upload buffer", upload_calls);
     upload_calls++;
     return 0;
@@ -61,26 +70,31 @@ int DrawSync(int mode)
 
 void check(int ok, const char* what, s32 value)
 {
+    ++checks;
     if (!ok) {
         fprintf(stderr, "SHOP C5CBC FAIL %s value=%d\n", what, (int)value);
         exit(1);
     }
 }
 
+void* HeapAlloc(u_int size, u_int flags) {
+    check(flags == 0, "allocation flags", flags);
+    check(size == sizeof(work) || size == sizeof(palette), "allocation size", size);
+    return size == sizeof(work) ? (void*)work : (void*)palette;
+}
+u_int HeapFree(void* p) { check(p == palette, "palette free", 0); return 0; }
+void SystemTransferPaletteToVRAM(s32 a, s32 b) { check(a == 0 && b == 0x1d1, "palette transfer", b); }
+
 int main(void)
 {
-    static const u8 ids[] = {3, 9, 1, 8};
     unsigned i;
-
-    memset(menu_storage, 0, sizeof(menu_storage));
-    memset(output, 0xa5, sizeof(output));
+    memset(&menu, 0, sizeof(menu));
     memset(work, 0x5a, sizeof(work));
     memset(bundle, 0, sizeof(bundle));
-    *(void**)(menu_storage + 0x378) = bundle;
-    *(void**)(menu_storage + 0x678) = work;
-    g_Menu = (SystemMenu*)menu_storage;
-
-    func_801C5CBC(output, (u8*)ids, 7, 4);
+    g_Menu = &menu;
+    g_Menu->unk2E0 = bundle;
+    output = g_Menu->unk4E0;
+    func_801C5EE8();
 
     check(string_calls == 4, "string call count", string_calls);
     check(render_calls == 4, "render call count", render_calls);
@@ -91,12 +105,19 @@ int main(void)
     check(shaped_indices[0] == 0 && shaped_indices[1] == 1 &&
           shaped_indices[2] == 2 && shaped_indices[3] == 3, "shape indices", 0);
     for (i = 0; i < 4; i++) {
-        check(shaped_offsets[i] == 7, "shape offset", shaped_offsets[i]);
+        check(shaped_offsets[i] == 0, "shape offset", shaped_offsets[i]);
     }
-    check(*(u8*)(output + 0x82) == 0x23, "first width pair 0", output[0x82]);
-    check(*(u8*)(output + 0x102) == 0x29, "second width pair 0", output[0x102]);
-    check(*(u8*)(output + 0x182) == 0x21, "first width pair 1", output[0x182]);
-    check(*(u8*)(output + 0x202) == 0x28, "second width pair 1", output[0x202]);
-    puts("SHOP TEXT PAIR C5CBC certificate PASS checks=20");
+    check(output[0].width == 0x23 && output[1].width == 0x29 &&
+          output[2].width == 0x21 && output[3].width == 0x28, "native pair widths", 0);
+    check(g_Menu->unk4E0[0].pVramBuffer == work, "initialized work pointer", 0);
+    /* Preserve the separate nonzero-offset case used by other shop windows. */
+    string_calls = render_calls = shape_calls = upload_calls = 0;
+    expected_offset = 7;
+    func_801C5CBC(output, D_801D2018, expected_offset, 4);
+    check(upload_calls == 2 && render_calls == 4 && shape_calls == 4,
+          "offset pair counts", 0);
+    for (i = 0; i < 4; ++i)
+        check(shaped_offsets[i] == expected_offset, "nonzero shape offset", i);
+    printf("SHOP TEXT PAIR C5CBC certificate PASS checks=%u\n", checks);
     return 0;
 }

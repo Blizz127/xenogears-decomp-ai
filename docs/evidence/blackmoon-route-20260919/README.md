@@ -258,3 +258,51 @@ again to reach scenario10, and trigger the rooftop event. Do not load the older
 scenario7 Citan checkpoint to skip the travel: that would lose this prerequisite.
 No implementation change was made for the retail story gate. Full Blackmoon
 route acceptance and audiovisual parity remain incomplete.
+
+## Supply shop: natural crash, native layout repair, remaining stub gate
+
+From the completed Alice checkpoint, normal doorway/movement input reached
+Lahan's supply shop (field6, exterior actor55 around -531,1052). Talking across
+the counter from approximately (-138,0,-153) completed the shopkeeper's wedding
+pitch. Menu request4 then crashed process96416. `shop-crash-info.txt` and
+`shop.core` preserve the crash in `func_80034FFC`, called with a null destination
+by `SystemRenderStringEntry -> func_801C5CBC -> func_801C5EE8 -> ShopMenuMain`.
+These and all screenshots/logs below are under the ignored route scratch folder.
+
+The initializer wrote its allocation at retail SystemMenu offset0x558, whereas
+the builder read the expanded native `unk4E0[0].pVramBuffer`. The builder also
+mixed retail0x80 record strides with native MenuString accesses and omitted
+retail801C5D6C..801C5DD8's paired upload rectangles. The repair uses native
+members/array indexing under XENO_PC_PORT and restores the retail rectangle and
+render-before-shape order. The PSX branch is unchanged.
+
+The regression now invokes the production initializer and builder together,
+using the same primitive-layout define as production. Its previous fixture
+manually planted pointers at host offsets, hiding the producer/consumer mismatch.
+The revised test failed before the fix (`render args`, null work buffer), then
+passed92 checks at O0/O2/UBSan. String-ID, allocation-offset, stride, and rectangle
+mutants are rejected. The nonzero-offset7 case is retained. The retail pin now
+covers the entire0x1B0-byte builder, not just its first0xAC bytes. This is a
+production-linked semantic test, not an executed MIPS differential.
+
+Recompiled shop misc2 whole .text is byte-identical before/after:
+`8fa779dd66a10c4ee6544fd67187f4e53b9477de6ad98755035898f3ae0842b7`.
+This demonstrates no MIPS change; it is not a new claim that the complete
+compiled overlay matches retail. Adjacent shop-string UV tests pass13,200 cases,
+224,406 checks, six distinguished mutants, at O0/O2/UBSan. Full native build
+passes with78 stubs and96 adopted leaves. Raw outputs: `shop-test-red.log`,
+`shop-test-green.log`, `shop-uv-test.log`, `shop-build.log`, `shop-mips*.text`.
+
+The fixed binary was launched as process294163 on replacement Xvfb294052,
+DISPLAY95/window2097204; pins are in `resume4.json`, log `runtime-resume4.log`.
+F8 loaded the earned Alice checkpoint; normal movement repeated the shop entry
+and dialogue. Menu request4 no longer crashes, but produces an unusable dark
+interface and logs stubs `func_801CCFF4` and `func_801CBCF0`.
+**Purchasing remains UNVERIFIED and blocked by missing shop rendering.**
+Cross/cancel returns normally to the shopkeeper's farewell, then the field;
+F7 saved field6(-132,0,-144), scenario8. Preserved copy:
+`shop-repro-earned.xgqs`; active `recovery.xgqs` is the same state.
+Screenshots `shop-fixed-menu.png` and `shop-fixed-cancel.png` show that distinction.
+No purchases, stats edits, warps, or scenario writes were performed. HD2D remains
+on, speed1x. Next: implement the two retail-backed shop functions and test a
+normal purchase/return, then continue scenario8 toward Citan and Blackmoon.

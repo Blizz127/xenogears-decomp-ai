@@ -139,28 +139,30 @@ extern void* GetStringEntry(void* bundle, s32 index);
 extern s32 SystemRenderStringEntry(void* string, void* work, s32 height, s32 flag);
 extern void func_801C5A7C(MenuString* pString, s32 index, s32 offset, u8 flags);
 
-/* Port body for the retail text-pair builder.  The two MenuString records in
- * each iteration are adjacent at +0x00/+0x80, and the next pair begins at
- * +0x100; retain those guest-layout strides instead of native pointer math. */
+/* Retail uses 0x80-byte records. Native MenuString contains a wider pointer,
+ * so both initialization and iteration must use the native structure layout. */
 void func_801C5CBC(void* output, u8* stringIds, s32 firstIndex, s32 count) {
-    u8* p = output;
+    MenuString* strings = output;
     s32 i;
     void* work = g_Menu->unk4E0[0].pVramBuffer;
 
     for (i = 0; i < count; i += 2) {
-        MenuString* first = (MenuString*)(p + i * 0x80);
-        MenuString* second = (MenuString*)((u8*)first + 0x80);
+        MenuString* first = &strings[i];
+        MenuString* second = &strings[i + 1];
 
         first->width = (u8)SystemRenderStringEntry(
-            GetStringEntry(g_Menu->unk2E0, stringIds[i]),
-            work, 0x18, 0);
-        func_801C5A7C(first, i, firstIndex, 0);
-
+            GetStringEntry(g_Menu->unk2E0, stringIds[i]), work, 0x18, 0);
         second->width = (u8)SystemRenderStringEntry(
-            GetStringEntry(g_Menu->unk2E0, stringIds[i + 1]),
-            work, 0x18, 1);
-        func_801C5A7C(second, i + 1, firstIndex, 0);
+            GetStringEntry(g_Menu->unk2E0, stringIds[i + 1]), work, 0x18, 1);
 
+        /* Retail 801C5D6C..801C5DD8: both bitplanes share one upload. */
+        first->vramDest.x = 0x140 + ((i * 16) & 0x20);
+        first->vramDest.y = ((i + firstIndex) / 4) * 13;
+        first->vramDest.w = 0x1C;
+        first->vramDest.h = 13;
+        second->vramDest = first->vramDest;
+        func_801C5A7C(first, i, firstIndex, 0);
+        func_801C5A7C(second, i + 1, firstIndex, 0);
         LoadImage(&first->vramDest, work);
         DrawSync(0);
     }
@@ -191,8 +193,13 @@ extern u8 D_801D2018[];
 
 void func_801C5EE8(void) {
     SystemTransferPaletteToVRAM(0, 0x1D1);
+#ifdef XENO_PC_PORT
+    g_Menu->unk4E0[0].pVramBuffer = HeapAlloc(0x38E, 0);
+    func_801C5CBC(g_Menu->unk4E0, D_801D2018, 0, 4);
+#else
     *(void**)((u8*)g_Menu + 0x558) = HeapAlloc(0x38E, 0);
     func_801C5CBC((u8*)g_Menu + 0x4E0, D_801D2018, 0, 4);
+#endif
     func_801C5E6C();
 }
 
