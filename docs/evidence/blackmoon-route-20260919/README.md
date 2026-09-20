@@ -2601,3 +2601,41 @@ Next step is small and specific: from the spawn press `Down` (one step to tri239
 at ~(-399,-1490)), then `Left` to return to x ~ -417, then `Down` again, which
 lands on tri232 and drops y to ~ -50.  `goto.py <log> -417 -1495 15 20` does
 exactly that as one target if the encounters allow it through.
+
+
+## The descent entry edge, in exact coordinates (round 25)
+
+Reading the ramp's adjacency out of the extracted mesh names the whole descent:
+
+```
+tri239 (plateau, y=0)      neighbours 238, 231, 40
+tri231 (ramp,  y -144..0)  neighbours 191, 239, 232
+tri232 (ramp,  y -144..0)  neighbours 217, 231, 233
+tri233 (ramp,  y -144..0)  neighbours 232, 237, 127
+tri217 (basin, y -144)     <- floor
+```
+
+so the way down is **tri239 -> tri231 -> tri232 -> tri217**, and the edge to cross
+is the one tri239 and tri231 share, between vertices 225 and 161:
+
+| vertex | world position |
+|---|---|
+| 225 | **(-397, 0, -1513)** |
+| 161 | **(-409, 0, -1450)** |
+| edge midpoint | **(-403, 0, -1482)** |
+
+That is the exact target: stand at about (-403,-1490) and step north-west across
+that 63-unit segment.  Everything the driver was doing - pushing south toward
+(-399,-1520) - was aiming at tri233, which is **not** a neighbour of the plateau
+tri239 at all (its neighbours are 232, 237, 127), which is why the southward taps
+always ended on tri237 at y=0.
+
+Live this round the player got to (-396,-1507) - within a few units of the edge's
+southern end - and a pair of `Up+Left` presses moved it to (-399,-1493) and then
+jumped to (-412,-1441) without entering tri231, so the crossing still needs a
+shorter step at the right moment.  Encounters took most of the round's budget
+again (one fight, one menu close, then repositioning).
+
+Next: `goto.py <log> -403 -1487 10 20` from a fresh load - it aims at the edge
+midpoint with per-step measurement; then a single short `Up+Left` tap should cross
+onto tri231 and drop y to about -48.
