@@ -755,3 +755,40 @@ Evidence: `bm01` attempt failed because the original process had exited;
 `world-entry-{guard-test,owner-tests,build,final-build}.log` under route scratch.
 Blackmoon entry/traversal/encounters and the equipment-preview helper remain
 unverified/unfinished. The full goal is still active.
+
+## World direction delay-slot transcription corrected
+
+Read-only breakpoint observation in process724853 found that Down never supplied
+nonzero velocity to95414; a subsequent Right input reached it with(4096,0,-4096).
+`bm11-down-resolver.txt` therefore records the subsequent Right call, despite
+its initial filename. Retail80090B6C calls rcos;80090B7C stores its result in the
+jal-rsin delay slot BEFORE rsin executes. The native90A84 helper incorrectly
+stored sine to+0x38 and negative sine to+0x40, making two cardinal directions
+stationary. The old focused test encoded the same wrong sine expectation.
+
+Corrected the native store and call/store order, with the existing test changed
+first to the disc-backed cosine expectation (observed RED). Added execution of
+the actual56-byte disc sequence80090B50..80090B88 via the MIPS adapter; distinct
+trig doubles are shared with native and the rsin boundary asserts that cosine
+has already been stored. All16 existing mutations are detected, including the
+former sine-store bug, with O0/O2/UBSan passing. The runner drops the C-inapplicable
+fpermissive flag and uses grep for its simple assertion check. All476 annotated
+bytes80090A84..80090C60 match disc/world_map.bin, SHA256
+3d44f71483da56bb24aa5df0fc0ff0f32462a8e2c051e7a948db94284aa86fa5.
+Only native code/tests changed; the retail compiled source is untouched.
+
+Build passed. New process790479 (`resume11.json`, `runtime-resume11.log`) loaded
+the earned scenario24 checkpoint. A mountain encounter occurred before exit;
+the heavy-only helper timed out, then normal c/x inputs completed the fight,
+and reward confirms returned through the pending exit to the world. No battle
+bypass or state edits were used. Down then changed x07580000→073a0000 with
+z02900000 unchanged (`bm19-{before,after}-down.txt`), proving the repaired cardinal
+movement. Left followed by Down reached the visible Blackmoon Forest label
+(`bm21-forest-trigger.png`). Normalz entered the forest loader, but process790479
+terminated during field initialization. This new crash remains unresolved;
+forest playability is NOT established. The failed bm22 capture was not created.
+The earned scenario24 checkpoint is intact. No game process remains running.
+
+User additionally requested a toggle for invulnerability in on-foot and Gear
+combat. Implementation is pending; default is planned OFF and retail acceptance
+must continue with it OFF. This does not change the natural-route goal.

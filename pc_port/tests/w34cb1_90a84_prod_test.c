@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "battle_mips_adapter.h"
 #include "psx_memory.h"
 #include "world_map_helper_90a84.h"
 
@@ -176,8 +177,8 @@ static int test_heading_table(void)
         } else {
             failures += expect_u32("heading rcos calls", g_rcos_calls, 1u);
             failures += expect_u32("heading rsin calls", g_rsin_calls, 1u);
-            failures += expect_u32("heading rsin slot", load_u32(SLOT_ADDR + 0x38u),
-                                   0xF2345678u);
+            failures += expect_u32("heading rcos delay-slot store", load_u32(SLOT_ADDR + 0x38u),
+                                   0x11223344u);
             failures += expect_u32("heading negated rsin slot", load_u32(SLOT_ADDR + 0x40u),
                                    0x0DCBA988u);
         }
@@ -245,8 +246,9 @@ static int test_ordered_event_oracle(void)
         { WM_90A84_TRACE_LOAD_ANGLE, ANGLE, 0x1234u },
         { WM_90A84_TRACE_STORE_ANGLE, SLOT_ADDR + 0x48u, 0x0034u },
         { WM_90A84_TRACE_CALL_RCOS, 0x80090B6Cu, 0x0034u },
+        /* jal rsin delay slot executes before rsin replaces v0. */
+        { WM_90A84_TRACE_STORE_COS, SLOT_ADDR + 0x38u, 0x11223344u },
         { WM_90A84_TRACE_CALL_RSIN, 0x80090B78u, 0x0034u },
-        { WM_90A84_TRACE_STORE_COS, SLOT_ADDR + 0x38u, 0xF2345678u },
         { WM_90A84_TRACE_STORE_SIN, SLOT_ADDR + 0x40u, 0x0DCBA988u },
         { WM_90A84_TRACE_LOAD_FLAGS, FLAGS, 0u },
         { WM_90A84_TRACE_LOAD_SELECTION, SELECTION, 0xFFFFu },
@@ -274,6 +276,65 @@ static int test_ordered_event_oracle(void)
     return failures;
 }
 
+/* Execute the actual disc instructions, including the jal delay slot.
+ * The trig functions are deterministic boundary doubles, shared with native. */
+static int retail_read(void* opaque, uint32_t address, unsigned width, uint32_t* value)
+{
+    (void)opaque;
+    if (address < 0x80000000u || address + width > 0x80200000u) return -1;
+    *value = 0;
+    memcpy(value, PSX_ADDR(address), width);
+    return 0;
+}
+static int retail_write(void* opaque, uint32_t address, unsigned width, uint32_t value)
+{
+    (void)opaque;
+    if (address < 0x80000000u || address + width > 0x80200000u) return -1;
+    memcpy(PSX_ADDR(address), &value, width);
+    return 0;
+}
+static int retail_trig(void* opaque, PcPortMipsCpu* cpu, uint32_t target)
+{
+    (void)opaque;
+    if (target == 0x8003F8B0u) cpu->gpr[2] = (u32)rcos((int)cpu->gpr[4]);
+    else if (target == 0x8003F8CCu) {
+        /* The delay-slot store must already have committed before entry. */
+        if (load_u32(SLOT_ADDR + 0x38u) != 0x11223344u) return -1;
+        cpu->gpr[2] = (u32)rsin((int)cpu->gpr[4]);
+    } else return 0;
+    return 1;
+}
+static int test_disc_delay_slot(void)
+{
+    FILE* file = fopen("disc/world_map.bin", "rb");
+    PcPortMipsBus bus = {0};
+    PcPortMipsCpu cpu;
+    u32 native_x, native_z;
+    int failures = 0;
+    if (!file) return expect_result("open retail disc", 0, 1);
+    reset_fixture();
+    store_u16(HEADING, 0x1000u);
+    (void)wm_80090A84(SLOT_ADDR);
+    native_x = load_u32(SLOT_ADDR + 0x38u);
+    native_z = load_u32(SLOT_ADDR + 0x40u);
+    if (fseek(file, 0x80090B50u - 0x8006FAF0u, SEEK_SET) != 0 ||
+        fread(PSX_ADDR(0x80090B50u), 1, 0x38u, file) != 0x38u) {
+        fclose(file);
+        return expect_result("read retail code", 0, 1);
+    }
+    fclose(file);
+    store_u32(SLOT_ADDR + 0x38u, 0u);
+    store_u32(SLOT_ADDR + 0x40u, 0u);
+    bus.read = retail_read; bus.write = retail_write; bus.bridge = retail_trig;
+    PcPortMipsCpuInit(&cpu, &bus);
+    cpu.gpr[16] = SLOT_ADDR;
+    failures += expect_result("disc delay-slot execution",
+        PcPortMipsRun(&cpu, 0x80090B50u, 0x80090B88u, 100u), PC_PORT_MIPS_HALTED);
+    failures += expect_u32("native versus disc cosine", native_x, load_u32(SLOT_ADDR + 0x38u));
+    failures += expect_u32("native versus disc negated sine", native_z, load_u32(SLOT_ADDR + 0x40u));
+    return failures;
+}
+
 int main(void)
 {
     int failures;
@@ -282,6 +343,7 @@ int main(void)
     failures = test_heading_table();
     failures += test_return_branches();
     failures += test_ordered_event_oracle();
+    failures += test_disc_delay_slot();
     if (failures != 0) {
         fprintf(stderr, "0x80090A84 certificate FAILED (%d assertions)\n",
                 failures);

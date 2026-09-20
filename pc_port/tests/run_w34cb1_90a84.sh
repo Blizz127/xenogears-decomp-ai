@@ -9,10 +9,11 @@ cd "$ROOT"
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
       -DWM_90A84_TEST_TRACE)
 SRC=(pc_port/tests/w34cb1_90a84_prod_test.c
-     pc_port/src/psx_memory.c pc_port/src/world_map_helper_90a84.c)
+     pc_port/src/psx_memory.c pc_port/src/world_map_helper_90a84.c
+     pc_port/src/battle_mips_adapter.c)
 
 build_and_run() {
     local name="$1"; shift
@@ -36,7 +37,7 @@ for mutant in $(seq 1 16); do
         >"$BUILD_DIR/w34cb1_90a84_mutant_M$mutant.log" 2>&1
     rc=$?
     set -e
-    if [ "$rc" -eq 0 ] || ! rg -q 'ASSERTION ' \
+    if [ "$rc" -eq 0 ] || ! grep -q 'ASSERTION ' \
         "$BUILD_DIR/w34cb1_90a84_mutant_M$mutant.log"; then
         echo "M$mutant FAILED mutant gate (rc=$rc)" >&2
         exit 1

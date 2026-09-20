@@ -329,10 +329,7 @@ s32 wm_80090A84(u32 slot_addr)
         WM_90A84_TRACE(WM_90A84_TRACE_CALL_RSIN, 0x80090B78u,
                        (u32)(s32)angle);
         sine = rsin(angle);
-        WM_90A84_TRACE(WM_90A84_TRACE_CALL_RCOS, 0x80090B6Cu,
-                       (u32)(s32)angle);
-        cosine = rcos(angle);
-#else
+#endif
         WM_90A84_TRACE(WM_90A84_TRACE_CALL_RCOS, 0x80090B6Cu,
                        (u32)(s32)angle);
 #if defined(WM_90A84_MUTANT_M2)
@@ -340,25 +337,22 @@ s32 wm_80090A84(u32 slot_addr)
 #else
         cosine = rcos(angle);
 #endif
-#if defined(WM_90A84_MUTANT_M3)
-        sine = 0;
-#else
-        WM_90A84_TRACE(WM_90A84_TRACE_CALL_RSIN, 0x80090B78u,
-                       (u32)(s32)angle);
-        sine = rsin(angle);
-#endif
-#endif
-#if defined(WM_90A84_MUTANT_M1)
+        /* 80090B7C is the jal rsin delay slot: v0 still holds rcos. */
         WM_90A84_TRACE(WM_90A84_TRACE_STORE_COS,
                        slot_addr + WM_90A84_SLOT_COS, (u32)cosine);
         wm_90a84_store_u32(slot_addr + WM_90A84_SLOT_COS,
                             (u32)cosine);
-#else
-        WM_90A84_TRACE(WM_90A84_TRACE_STORE_COS,
-                       slot_addr + WM_90A84_SLOT_COS, (u32)sine);
+#if defined(WM_90A84_MUTANT_M3)
+        sine = 0;
+#elif !defined(WM_90A84_MUTANT_M4)
+        WM_90A84_TRACE(WM_90A84_TRACE_CALL_RSIN, 0x80090B78u,
+                       (u32)(s32)angle);
+        sine = rsin(angle);
+#endif
+#if defined(WM_90A84_MUTANT_M1)
+        /* Reproduce the former post-call store bug. */
         wm_90a84_store_u32(slot_addr + WM_90A84_SLOT_COS, (u32)sine);
 #endif
-        (void)cosine;
         WM_90A84_TRACE(WM_90A84_TRACE_STORE_SIN,
                        slot_addr + WM_90A84_SLOT_SIN,
                        wm_90a84_negate_bits(sine));
