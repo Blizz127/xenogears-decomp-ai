@@ -2528,3 +2528,39 @@ Next step: enter the ramp while standing on the right line.  The measured mappin
 at (-374,-1469) was `Left = pure -x`, so from (-396,-1509) a Left press puts the
 player at x ~ -421 on the ramp line; the following step has to be **south along
 that line**, which the current key set only reaches as a diagonal.
+
+
+## Ramp geometry pinned, and why the driver keeps missing it (round 23)
+
+Point-in-triangle tests on the extracted mesh locate the historical descents
+exactly:
+
+| point | triangle | surface height |
+|---|---|---|
+| (-417,-1428) | tri240 | 0 |
+| (-396,-1509) | tri239 | 0 |
+| **(-399,-1520)** | **tri233** | **-15.7** |
+| **(-423,-1525)** | **tri232** | **-104.5** |
+| (-426,-1509) | tri232 | -96 |
+
+So the south ramp is **tri232/tri233**, entered from tri239 at z ~ -1515, and its
+mouth is only about 30 units wide in z at x ~ -400..-425.  The other ramp is
+tri191/tri758 (centroid (-458,-48,-1391)), which is what the ledge-rule planner
+routes through from tri240.
+
+Two driver facts make that 30-unit window hard to hit:
+
+- **The key mapping rotates as the player moves.**  At (-399,-1491) `Up` was
+  (0,+60) - pure +z - and a moment later, two steps away, `Down` measured
+  (+34,-44).  So a mapping learned (or even measured) at one spot is wrong at the
+  next, which is exactly why the table-based walkers drifted and why the
+  analytic walker re-measures every step.
+- **The eight moves are 45-degree diagonals**, so a "south, slightly west" step
+  to enter the ramp has to be built from two presses, and a single coarse press
+  (+33,-50 at 0.6 s) jumps clean over the 30-unit window into tri237.
+
+`cam_walk.py` now runs with the game's ledge rule and re-plans from the player's
+triangle every step; live it walked tri236 -> tri237 -> tri239 -> tri240
+correctly, then met an encounter and was fighting through it when the round's
+budget ran out.  The party is being worn down by the encounter rate on the
+plateau (Fei 50/84, Elly KO'd in that fight), which is what ends most attempts.
