@@ -2024,3 +2024,49 @@ not persisted.
 No new port defect was established this round: every battle entered ran,
 rendered and returned normally, and the two menu interactions exercised behaved
 correctly.  Zone 2 and the forest-exit cutscene remain unobserved.
+
+
+## FIXED: selecting "File" in the field menu hung the game (round 13)
+
+The wedge chased since round 9 is **this**, and it is a real port defect - not an
+input-timing artefact as round 11 concluded.  The trigger is the field menu's
+**File** entry:
+
+`src/menu/main/misc.c` calls `PcPort_NotifyUnsupportedFileMenu()` when File is
+chosen, and `pc_port/src/psycross_host_toolbar.inl` implemented it by calling
+`SDL_ShowSimpleMessageBox` **on the game thread**.  That call is modal - it runs
+the native dialog and does not return until the user dismisses it - so when the
+dialog cannot be surfaced (no window manager to map the zenity window onto the
+game's display) the game thread never returns.  Observed state:
+
+- `POSDIAG` frozen at map 23 (-496,0,-1276) with `owner=0x80`, `held=0x0010`;
+- two screenshots 25 s apart were **byte-identical**, i.e. the frame was not even
+  being redrawn;
+- `gdb` showed the stack parked in `SDL_SYS_DelayNS` ->
+  `SDL_Zenity_ShowMessageBox`, and `ps` showed an orphan
+  `zenity --question ... --title "File menu not implemented"`.
+
+Round 9 was the same hang; the round-11 retest simply never selected File.
+
+### Fix
+
+`PcPort_NotifyUnsupportedFileMenu` now dispatches the notice through the weak
+`PcPort_FileMenuNoticeDialog` seam on a **detached thread**
+(`SDL_CreateThread` + `SDL_DetachThread`), so the field stays live whether or not
+the dialog can be shown.  Allocation and thread-creation failures log and return
+instead of crashing.
+
+### Verified live after the rebuild
+
+Same script as the failure - open the menu, move the cursor to **File**, press
+Circle:
+
+- a dialog still spawned (the notice is still surfaced where possible);
+- the game stayed responsive: two screenshots 6 s apart differed, and pressing
+  Cross returned `POSDIAG ... owner=0xff`, so the menu closed normally and the
+  field became playable.
+
+**Owed:** the independent mutant-rejecting regression test for this seam -
+override `PcPort_FileMenuNoticeDialog` with a slow fake, assert
+`PcPort_NotifyUnsupportedFileMenu()` returns immediately and dispatches exactly
+once, and reject mutants that call the dialog synchronously or skip it entirely.

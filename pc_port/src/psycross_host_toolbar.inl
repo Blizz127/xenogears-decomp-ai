@@ -11,15 +11,68 @@ extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
 #endif
 
 /* The native File/card screen has not been implemented. Keep the failure
- * visible and recoverable without entering its retail cleanup path. */
+ * visible and recoverable without entering its retail cleanup path.
+ *
+ * SDL_ShowSimpleMessageBox is MODAL: it runs the native dialog and does not
+ * return until the user dismisses it.  Calling it from the field menu loop is
+ * therefore a hard hang whenever the dialog cannot be surfaced - with no window
+ * manager mapping the zenity window onto the game's display, the game thread
+ * never returns, no frame is drawn and no input is ever read again.  That is
+ * exactly what the Blackmoon Forest route hit: selecting File froze the field at
+ * (-496,0,-1276) with two byte-identical screenshots 25 s apart and the stack
+ * parked in SDL_Zenity_ShowMessageBox.
+ *
+ * Dispatch the notice on a detached thread instead, so the field stays live
+ * whether or not the dialog can be shown.  PcPort_FileMenuNoticeDialog is the
+ * dispatch seam the regression test overrides; it never runs on the game
+ * thread. */
+extern "C" void PcPort_FileMenuNoticeDialog(const char *title, const char *text)
+    __attribute__((weak));
+extern "C" void PcPort_FileMenuNoticeDialog(const char *title, const char *text)
+{
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, title, text, g_window);
+}
+
+typedef struct PcPortFileMenuNotice {
+    const char *title;
+    const char *text;
+} PcPortFileMenuNotice;
+
+static int PcPort_FileMenuNoticeThread(void *userdata)
+{
+    PcPortFileMenuNotice *notice = (PcPortFileMenuNotice *)userdata;
+    PcPort_FileMenuNoticeDialog(notice->title, notice->text);
+    SDL_free(notice);
+    return 0;
+}
+
+static const char *const kPcPortFileMenuNoticeTitle = "File menu not implemented";
+static const char *const kPcPortFileMenuNoticeText =
+    "The in-game memory-card File menu is not implemented in this port yet.\n\n"
+    "Close this message and cancel back to the field. Use the toolbar's "
+    "SAVE and LOAD buttons for field checkpoints.";
+
 extern "C" void PcPort_NotifyUnsupportedFileMenu(void)
 {
+    PcPortFileMenuNotice *notice;
+    SDL_Thread *thread;
+
     eprintinfo("File menu unavailable: native memory-card screen is not implemented\n");
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
-        "File menu not implemented",
-        "The in-game memory-card File menu is not implemented in this port yet.\n\n"
-        "Close this message and cancel back to the field. Use the toolbar's "
-        "SAVE and LOAD buttons for field checkpoints.", g_window);
+    notice = (PcPortFileMenuNotice *)SDL_malloc(sizeof(*notice));
+    if (notice == NULL) {
+        eprinterr("File menu notice skipped: out of memory\n");
+        return;
+    }
+    notice->title = kPcPortFileMenuNoticeTitle;
+    notice->text = kPcPortFileMenuNoticeText;
+    thread = SDL_CreateThread(PcPort_FileMenuNoticeThread,
+                              "fileMenuNotice", notice);
+    if (thread == NULL) {
+        eprinterr("File menu notice skipped: %s\n", SDL_GetError());
+        SDL_free(notice);
+        return;
+    }
+    SDL_DetachThread(thread);
 }
 
 #if !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && \
