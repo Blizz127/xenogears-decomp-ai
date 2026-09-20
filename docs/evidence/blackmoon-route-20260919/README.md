@@ -1076,3 +1076,34 @@ The next attempt must turn south as well as west at the fifth landing.
 No movement defect has been established from the failed ground approaches.
 The earned recovery checkpoint predates the Aquasol crash; the backup
 `pre-aquasol-crash-earned.xgqs` preserves it. User saves remain untouched.
+
+## Traced field return and root-staircase progress (resume20 continued)
+
+Loaded the preserved earned checkpoint and triggered another encounter using
+ordinary movement. Read-only GDB tracing captured the field snapshot at
+`func_8007954C` and again at entry to `func_800A3474` after a normal victory.
+The complete 65,536-byte snapshot is identical before and after battle:
+SHA-256 `d39119d6c4ea5e10bf37faa4ad4335bbc1b451c166dc11f62656fb7380fe61ab`.
+Player actor4 was saved at (-697,0,777), and settled at (-696,0,762) after
+restoration. The restore path is used and saved data was not damaged in this
+repro. The earlier comparison used a periodic pre-battle movement sample rather
+than the actual saved position; its large discrepancy does not establish a
+return-position bug. A small post-restore displacement remains unclassified.
+No code change was made from that inconclusive observation. Evidence:
+`field-return-trace.gdb`, `field-return-trace.log`, `field-save-before.bin`,
+`field-save-after.bin`, and `field-return-battle-end2.png`. GDB detached normally.
+
+Normal traversal then cleared the southwest root staircase. Observed landings:
+(-834,-38,-1026), (-918,-85,-943), (-988,-171,-934), (-1086,-193,-900),
+(-1202,-258,-968), and (-1234,-162,-1044). A jump from the lower slope to the
+fifth landing needed vertical clearance before lateral movement: X for .15s,
+then Right+Up+C for .12s while X remained held. This is ordinary controller
+input, not a position/velocity write. A stationary jump measurement also showed
+the expected approximately119-unit rise; collision changes are not justified.
+Screenshots `forest56.png` through `forest65.png` show the ascent and western
+ledge. The save-point interaction at (-1626,-143,-981) opened the field menu
+(`forest66.png`). Exited normally and saved that earned location to the isolated
+recovery checkpoint using F7. User memory cards and quicksave remain untouched.
+HD2D ON, GOD OFF, SPEED1X throughout. The next natural encounter occurred while
+following the raised western path toward the log/boulder event. Elly, the boss,
+and the forest exit remain pending.
