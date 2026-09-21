@@ -1,0 +1,17 @@
+== unfilled delay-slot nops, retail vs built ==
+function                   deficit  rNOP  bNOP  nopD nopBytes  %ofDef
+func_80034FFC                   52    16    21    -5      -20    -38%
+func_80034888                  396    52    36    16       64     16%
+func_80032F54                  316    23     4    19       76     24%
+func_80023804                   88     2     1     1        4      5%
+func_800234AC                   80     9     2     7       28     35%
+func_80030A30                   68     3     2     1        4      6%
+GfxLoadImageAccelerated         60     2     2     0        0      0%
+func_8003014C                   48     7     2     5       20     42%
+func_800347C0                   44     4     3     1        4      9%
+func_80033B34                   32     5     3     2        8     25%
+NormalClip                      20     6     1     5       20    100%
+func_8004BED8                   12     3     0     3       12    100%
+Lzc                             12     4     1     3       12    100%
+AverageSZ4                      12     4     1     3       12    100%
+func_8004BEC0                    8     3     1     2        8    100%

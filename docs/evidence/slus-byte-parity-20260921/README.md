@@ -1,5 +1,16 @@
 # Where slus_006.64's 224,139 differing bytes actually are
 
+> **CORRECTION (2026-09-21, same day).** The short-function cohort figures in
+> this report — "17 functions, 2,424 bytes" and `func_80034FFC` at "29% of
+> retail" — are inflated by two measurement artifacts found while triaging
+> them: static helpers charged to no caller (1,152 B) and inter-function `nop`
+> padding charged to the preceding symbol (72 B, because the retail parser
+> below ignores `.size`). Corrected: 12 functions with any deficit totalling
+> 1,156 bytes, and `func_80034FFC` at 97% of retail with a 52-byte residual.
+> One function in the cohort was genuinely missing behaviour and is now fixed.
+> See `../slus-codegen-triage-20260921/README.md`. The per-TU totals here are
+> unaffected — they come from the linker map, which has neither problem.
+
 Date: 2026-09-21 UTC. Analysis only; no C source change. Measured on branch
 `Blizz127/wt-battling-layout` at `c1ea7b87`, the commit that first made
 `build/out/slus_006.64` link.

@@ -918,8 +918,42 @@ s32 func_800347AC(void* arg0) {
     return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
 }
 
+/* Retail 800347C0 (asm/slus_006.64/matchings/system/system/func_800347C0.s).
+ *
+ * This is NOT the vertical twin of func_800347AC above.  It was written as if
+ * it were -- same shape with the offsets bumped by 2 and the same `<< 2` --
+ * and that is wrong in three ways.  Retail:
+ *
+ *   lh   v1, 0x02(a0)        ; current row
+ *   lh   v0, 0x16(a0)        ; scroll base row
+ *   subu v1, v1, v0
+ *   bgez v1, .L800347E4      ; if it went negative, wrap to the last row
+ *   lh   v0, 0x0C(a0)        ;   row count
+ *   addiu v1, v0, -1
+ * .L800347E4:
+ *   lh   v0, 0x14(a0)        ; row stride in pixels
+ *   mult v1, v0
+ *   lh   v0, 0x06(a0)        ; window origin y
+ *   mflo a1
+ *   addu v0, v0, a1
+ *
+ * The old body ignored the scroll base at +0x16, dropped the negative-wrap
+ * clamp entirely, and multiplied by a hardcoded 4 instead of the row stride
+ * at +0x14 -- which func_80032F54 initialises to 0x0E.  So the dialogue
+ * continue-arrow's y was ~3.5x too small and did not follow scrolled text.
+ * Horizontally 4 is right (func_800347AC, character cell width); vertically
+ * it never was.  func_80034888 places every text row at
+ * `*(u16*)(pWindow + 0x06) + *(s16*)(pWindow + 0x14) * rowIndex`, which is
+ * the same formula this must agree with.
+ */
 s32 func_800347C0(void* arg0) {
-    return *(s16*)((u8*)arg0 + 0x6) + (*(s16*)((u8*)arg0 + 0x2) << 2);
+    u8* pWindow = arg0;
+    s32 row = *(s16*)(pWindow + 0x02) - *(s16*)(pWindow + 0x16);
+
+    if (row < 0) {
+        row = *(s16*)(pWindow + 0x0C) - 1;
+    }
+    return *(s16*)(pWindow + 0x06) + row * *(s16*)(pWindow + 0x14);
 }
 
 void func_80034800(void* arg0, s32 r, s32 g, s32 b) {
