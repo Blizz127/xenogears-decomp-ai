@@ -875,3 +875,163 @@ Identical 7-OK/3-FAILED result as before this dispatch's changes. `menu.bin`
 was already `FAILED` for the documented, unrelated, accepted reason; this
 dispatch did not touch anything on the byte-parity axis and did not change
 that result.
+
+---
+
+## Addendum, same day — generalising the `func_801D261C` revert: pointer-drift characterisation
+
+**Direct answer: yes — this run found five currently-shipping functions in
+`src/menu/main/misc.c` that are wrong at runtime today, on this host build,
+for exactly the hazard `func_801D261C` was reverted for. Independently, the
+same day, the `battle` worker found and fixed five more (of six checked) in
+a mechanically different but related shape.** Ten already-committed,
+already-shipping bodies wrong for the same underlying reason — retail
+assumes a 32-bit machine, this host is 64-bit — found by two workers
+starting from opposite ends of the codebase with no coordination. None was
+introduced by this dispatch; all predate it. The menu five are reported
+here, not fixed, per this dispatch's scope; the battle five were fixed and
+verified by that worker (cited below, not independently re-verified here).
+The general rule, both measured examples, the detection method, and the
+menu table are now recorded in `docs/ai_context/MATCHING_LAYOUT_CONTRACT.md`
+("Port bodies: 32-bit PSX assumptions are silently wrong on this 64-bit
+host") so the next body-writer hits the warning before writing the next
+one.
+
+### Corroboration: `battle` found the same class independently, same day
+
+Reported by the `battle` worker after this addendum's menu findings were
+already written; folded in here because it changes "is this a menu-specific
+quirk" to "no, it is a class." Five of six divergent `battle` port bodies
+(`func_800AA7DC`, `func_800885D0`, `func_800AA79C`, `func_800AA760`,
+`func_800BEDE8`) were wrong, and — same as `func_801D261C` — **none were
+logic errors**: retail control flow was already correct in every case, and
+each failed on a 32-bit-PSX assumption invisible until the body actually
+executes on a 64-bit host. Four distinct shapes: a guest address
+dereferenced as a host pointer; an unbounded index running past the end of
+the emulated 2 MiB PSX RAM (retail `lw`/`lbu` and the interpreter both wrap
+inside it, host memory does not); a 64-bit pointer truncated to `u32` and
+used as an address; and a pointer-typed alias (`D_800C3610`) where retail's
+`lw`/`sw` meant the 32-bit word stored there, not whatever it points to.
+One fix was a partial translation that still failed the prover, because it
+fixed only half of a wild-pointer-plus-wild-index pair. One defect
+(`func_800885D0`'s double-scaled index) was *introduced* by an earlier,
+correct type-fidelity fix elsewhere — evidence that type changes need the
+differential prover re-run over everything downstream, not just the
+function edited. All five fixes verified by the project's differential
+prover against retail bytes; `battle.bin` remains byte-identical
+(matching-side untouched, as expected for a port-only class). Full detail
+in `docs/ai_context/MATCHING_LAYOUT_CONTRACT.md`, "Class B."
+
+### Method (menu / Class A)
+
+1. **Find retail-mapped structs that contain a host-width field.** Parsed
+   every `typedef struct {...} Name;` in `include/**/*.h` (265 found) for a
+   field containing `*` (pointer) or a function-pointer signature (67
+   matched). Cross-referenced against every `extern Type[*] g_X;` global
+   declared in the same headers (94 found): **7** are typed as one of those
+   67 structs — `g_Menu` (`SystemMenu`), `g_Font`, `g_FieldCurScriptFile`,
+   `g_InterruptControl`/`g_pInterruptControl`, `g_KernelMenuCurRenderEnvironment`,
+   `g_SoundTransferQueue`. This undercounts: it only catches direct
+   `extern`-declared globals, not structs reached indirectly (`MenuUnk2` via
+   `g_Menu->unk32C`, which also has the hazard via an embedded `TIM_IMAGE`,
+   was not in this list and was found separately while writing
+   `func_801CA8C0`).
+2. **Grep for raw-offset access to each of the 7.** Pattern
+   `(u8*)<global> + 0x...` (and the `(void**)((u8*)<global> + ...)`
+   variant). Two of the seven have any hits at all: `g_Menu` (28 sites,
+   `src/menu/main/misc.c`, `src/shop_menu/main/misc2.c`,
+   `src/slus_006.64/system/menu.c`) and `g_FieldCurScriptFile` (2 sites,
+   `src/field/**`, out of this worker's scope to edit — see "Unchecked",
+   below). This also undercounts: it only matches the literal global name
+   in the offset expression, not a local alias (`void* pMenu = g_Menu; ...
+   (u8*)pMenu + 0x...`) unless that same statement happens to also touch
+   the global directly, which several of the found sites do incidentally.
+3. **Classify each `g_Menu` hit by preprocessor branch** (matching-only
+   `#ifndef XENO_PC_PORT`, port-active `#ifdef`/`#else`, or unconditional —
+   reused the same brace/branch scanner written for the baseline's §4c
+   INCLUDE_ASM survey). Of 28: **15 are port-reachable** (compiled into the
+   actual host build — either unconditional or inside an `XENO_PC_PORT`
+   branch), 13 are matching-only (compiled only by the 32-bit MIPS
+   cross-compiler, where the hazard does not apply and the offsets are
+   correct).
+4. **For a sample of the 15 port-reachable hits, measure `offsetof` on the
+   host build and compare to the retail literal.** Checked 5 of the 15
+   (chosen for being unconditional functions with an unambiguous named
+   field to compare against); all 5 disagreed. Did not check the remaining
+   10 individually — see "Unchecked."
+
+### The five confirmed-wrong functions
+
+| function | file:line | retail offset used | intended field | measured host `offsetof` |
+| --- | --- | --- | --- | --- |
+| `func_801C57A4` | `src/menu/main/misc.c:326` | `0x329` | `transitionEffectState` | `0x3c9` |
+| `func_801CD710` | `src/menu/main/misc.c:2976` | `0x338` | `menu2Choice` | `0x3e4` |
+| `func_801D9E3C` | `src/menu/main/misc.c:6847` | `0x32C` | `unk32C` | `0x3d0` |
+| `func_801D0D90` | `src/menu/main/misc.c:4015` | `0x1D4` | `pGfxEnv` | `0x260` |
+| `func_801D6194` | `src/menu/main/misc.c:6004` | `0x308` | `renderContext` | `0x3a8` |
+
+`func_801D0D90` is the most instructive: the line immediately above its bug
+carries the comment *"Host Menu is inflated — do not use raw PSX 0x33C for
+pManager"* and correctly uses `g_Menu->pManager` — someone already knew
+about this hazard, fixed **one** field in this function, and the very next
+two lines in the same function still read `0x1D4` and index `g_Menu` by
+`i*0x80+0x55D` raw. Knowing the hazard exists does not mean every site
+touching it gets fixed; each raw offset is its own bug.
+
+None of these five was reachable from `pc_port/tests/
+menu_misc_coexistence_test.c` or any other existing test (confirmed: none
+of the five functions appears in any `pc_port/tests/*.c` file by name) —
+which is why they were never caught. This is the mechanism the new contract
+entry names: static review cannot catch this, because the offset matches
+the retail disassembly exactly; only a differential test that actually
+exercises that offset can.
+
+### A partial, self-aware mitigation that is not itself broken — yet
+
+`MenuPsxPointerSlot()` (`src/menu/main/misc.c:3524`) is a **sixth** thing
+this survey found, and it is not a bug today: its own comment already
+names this exact hazard (*"Native SystemMenu inflates, so raw byte offsets
+land in unrelated fields"*) and maps twelve specific retail offsets to
+their correct host `SystemMenu` fields via a `switch`. Every one of its
+~80 call sites (`MenuRawPointer`/`MenuStoreRawPointer`, all in
+`src/menu/main/misc.c`) was checked and passes only one of those twelve
+offsets — so it is currently safe. But the `switch`'s `default` case is
+`(u32*)((u8*)g_Menu + retailOffset)` — the exact hazard, unguarded — for
+any offset not in the list. It is a latent trap for the next caller, not a
+live bug, and is called out in the contract doc precisely so a future
+extension does not add the thirteenth offset without checking it.
+
+### Unchecked — bounding the risk rather than closing it
+
+- **10 of the 15 port-reachable `g_Menu` raw-offset sites** were not
+  individually verified against `offsetof`. Given 5 of 5 checked were
+  wrong, a naive extrapolation would suggest most of the remaining 10 are
+  too, but that is a guess, not a measurement — they are unchecked, stated
+  as such, not assumed.
+- **`g_FieldCurScriptFile` / `ScriptsFile`** (`src/field/**`, sibling-owned,
+  read-only for this survey): its `metadata` field is declared `void*` at
+  retail offset `0x84`, but the two call sites that reach it
+  (`src/field/main/misc3.c:857`, `src/field/scripts/virtual_machine.c:963`)
+  both treat offset `0x84` as the **start of inline metadata bytes**, not
+  as a pointer to be dereferenced — which reads as a struct-field type
+  that should be a byte array, not a pointer, in which case these two
+  sites are *not* hazard instances (offset `0x84` is exactly where the
+  field starts on both builds; nothing before it has drifted). Not
+  confirmed either way in the time available, and out of this worker's
+  scope to fix regardless. Flagged for whoever owns `src/field/**`.
+- **`g_Font`, `g_InterruptControl`/`g_pInterruptControl`,
+  `g_KernelMenuCurRenderEnvironment`, `g_SoundTransferQueue`**: confirmed
+  pointer-bearing (their struct types have a pointer field), zero raw-offset
+  hits found by the grep pattern used — meaning either genuinely unused by
+  raw offset, or reached only through a local alias variable the grep
+  pattern does not catch (see method step 2). Not exhaustively cleared.
+- **`pc_port/src/*.c`** (port-only files, no matching-side equivalent):
+  15 raw-offset-cast sites found by the same grep pattern, not
+  individually triaged against their target types in this pass.
+- **Every other overlay** (`field`, `battle`, `battle_command_file1`,
+  `battling`, `world_map`, `movie`, `member_change_menu`, `shop_menu`):
+  not surveyed at all. This characterisation is scoped to `menu`/`SystemMenu`
+  because that is where `func_801D261C` surfaced the hazard; the underlying
+  mechanism (a retail-mapped struct with a host-width field) is general and
+  almost certainly recurs wherever another overlay's C body reaches a
+  pointer-bearing retail struct by raw offset. Sizing that is future work.
