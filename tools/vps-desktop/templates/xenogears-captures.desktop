@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — Open Captures
+Comment=Open the captures directory in the file manager
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/open-captures
+Icon=folder-pictures
+Terminal=false
+Type=Application
+Categories=Game;Development;

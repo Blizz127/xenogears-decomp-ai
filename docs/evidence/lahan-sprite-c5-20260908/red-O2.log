@@ -1,0 +1,2 @@
+{"event":"sprite_animation_unimplemented","raw_opcode":197,"opcode":197,"dispatch_index":59,"sprite":"0x4090ac","operands":"0x4091ac"}
+O2.test: src/slus_006.64/system/animation_scripts.c:1521: func_8001FBE4: Assertion `0 && "func_8001FBE4 dispatch path is not implemented"' failed.

@@ -1,0 +1,22 @@
+id,macro,fault_class,killed_by,result
+1,WM_PRIVATE_MUTANT_SWAP_RATIO,swapped ratio numerator/denominator,candidate orthogonal vector mismatch,PASS
+2,WM_PRIVATE_MUTANT_UNSIGNED_ARITH,unsigned division/multiply,candidate orthogonal vector mismatch,PASS
+3,WM_PRIVATE_MUTANT_WRONG_SHIFT_TRUNC,wrong shift/truncation semantics,candidate orthogonal vector mismatch,PASS
+4,WM_PRIVATE_MUTANT_MISSING_TRAP,missing division trap,zero-denominator child returned normally,PASS
+5,WM_PRIVATE_MUTANT_WRONG_MASK,wrong 0xFFF80000 mask,candidate axis mismatch,PASS
+6,WM_PRIVATE_MUTANT_WRONG_EDGE_SOURCE,wrong positive/negative edge source,candidate axis mismatch,PASS
+7,WM_PRIVATE_MUTANT_WRONG_MINUS_ONE,missing/misplaced -1 adjustment,candidate axis mismatch,PASS
+8,WM_PRIVATE_MUTANT_WRONG_SEED,wrong scratchpad seed offset,candidate axis mismatch,PASS
+9,WM_PRIVATE_MUTANT_WRONG_FIELD,wrong candidate field offset,candidate axis mismatch,PASS
+10,WM_PRIVATE_MUTANT_SWAP_AXIS_ORTHO,swapped axis/orthogonal calculation,candidate orthogonal mismatch,PASS
+11,WM_PRIVATE_MUTANT_WRONG_CALL_ORDER,wrong callee order,event 0 mismatch,PASS
+12,WM_PRIVATE_MUTANT_WRONG_CANDIDATE_PTR,wrong candidate pointer,callee pointer mismatch,PASS
+13,WM_PRIVATE_MUTANT_SWAP_94060_ARGS,swapped 94060 mode/code arguments,observed mode mismatch,PASS
+14,WM_PRIVATE_MUTANT_NO_MODE_SIGNEXT,missing s16 extension of mode,observed mode mismatch,PASS
+15,WM_PRIVATE_MUTANT_NO_CODE_SIGNEXT,missing s16 extension of 93F18 result,observed code mismatch,PASS
+16,WM_PRIVATE_MUTANT_WRONG_FIRST_BRANCH,wrong first-probe branch,return mismatch,PASS
+17,WM_PRIVATE_MUTANT_NO_SHORT_CIRCUIT,failure to short-circuit candidate 1,event count mismatch,PASS
+18,WM_PRIVATE_MUTANT_WRONG_COPY,wrong four-word copy,copied word mismatch,PASS
+19,WM_PRIVATE_MUTANT_BOOLEAN_RETURN,boolean collapse,X candidate-1 return mismatch,PASS
+20,WM_PRIVATE_MUTANT_WRONG_X_CODE,X second-success code changed from 3,X return mismatch,PASS
+21,WM_PRIVATE_MUTANT_WRONG_Z_CODE,Z second-success code changed from 2,Z return mismatch,PASS

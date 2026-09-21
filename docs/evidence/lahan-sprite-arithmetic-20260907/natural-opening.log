@@ -1,0 +1,324 @@
+[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)
+[xeno-port] PSX RAM emulation: 3072 KB at 0x61c0c0
+[xeno-port] main-exe static data loaded from disc/SLUS_006.64: rodata [0x80010000,0x80019524) sdata [0x8004ea90,0x800576e4) (file offset 0x800 + vaddr - 0x80010000); .text and ._49AC0 island not copied
+[xeno-port][boot] world state 3: retail native owner enabled (hasOverlay=1)
+[Psy-X] Initialising Psy-X 2.8
+[Psy-X] Build date: Sep  6 2026:17:50:45
+[Psy-X] *Video adapter: llvmpipe (LLVM 22.1.8, 256 bits) by Mesa
+[Psy-X] *OpenGL version: 4.6 (Core Profile) Mesa 26.2.1
+[Psy-X] *GLSL version: 4.60
+[Psy-X] Host toolbar enabled: Quick Save | Quick Load | Record | Speed (F11 cycles, Shift+F11 resets; hold Backspace for 5x)
+[Psy-X] found sound device: OpenAL Soft
+[Psy-X] SPU streaming synthesis active (ADPCM + Gaussian)
+[Psy-X] CD-XA streaming synthesis active (PS1 zigzag -> 44100 Hz)
+[Psy-X] PSX SPU effects are supported and initialized
+[xeno-port] CD image: disc/disc1.bin
+[Psy-X] Using 'disc/disc1.bin' image, sector size: 2352, frames: 305586
+[Psy-X] [CdControl] - Unhandled command 0x07!
+[xeno-port] ArchiveInit done (archive index loaded from disc).
+[xeno-port][sound] retail boot WDS banks 2..5 loaded
+[xeno-port][boot] func_8001BB50: new-game template loaded (map=490 ent=0 cam=0)
+[xeno-port][field] font + party-skin init done
+[xeno-port][boot] retail boot: movie state 6 (type 1, movie 16) -> state 1
+[xeno-port] entering decompiled MainLoop() (oracle)...
+[movie-player] module tables loaded (archive 0x18/1)
+[Psy-X] Running CD thread...
+[Psy-X] CD: 'CdlReadS' at 106105
+[Psy-X] CD: 'CdlPause'
+[Psy-X] CD thread work done.
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9d7d30 g_GameSceneMapNum=490
+[FieldMain] FieldLoadUITextures
+[field-diag] FieldLoad begin field=490 mapBuf=0x806468
+[field-diag] assets before VM: tim=0 clut=0 scripts=1 scriptData=0x7233c8
+[field-diag] spawn marker=0xbc modelsInPackage=0
+[field-diag] sprite package loaded: spriteData=0x723c04
+[field-diag] actors allocated: count=1 actorArray=0x724784
+[field-diag] model-build count=0 / actors=1
+[field-diag] before VM: active=0 actorData=1/1 spriteData=0/1 D_800AFC74=0
+[field-diag] after VM: active=0 actorData=1/1 spriteData=1/1 D_800AFC74=1 objects=0 player=0
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x72c1a8 ip=60
+[xeno-port][horizon] DIAG 2709C a0=512 a1=0 w=320 h=224 clut=(0,480) mode=2 sign=0 coords=(0,224,0) rgb0=000000 sky=256 fade=0/0 ctx=0x72c37c
+[field-0bb] archive 0x48d: 182272 bytes read, draining to VRAM
+[field-0bb] retail decoder: 89 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][horizon] DIAG 273C4 screenY=224 scroll=0 fade=0 hasColors=1 h=224 stripScale=256 ot=0xa0b134 rcx=0 ft4[0]=(0,0)-(256,224) tpage=0x108
+[FieldMain] entering main loop
+[xeno-port][menu] func_800799D4 request=2 D_80059460=2 -> MenuMain
+[xeno-port][menu] func_801C62A8 sel=2 shouldDrawMenu=1
+[xeno-port][menu] func_801C58EC title loop enter choice=1 D_80059460=2
+[xeno-port][menu] DIAG backdrop isbg=0 dest_nz=0/1120 src704_nz=0/1120 dest_sum=0 src_sum=0 tex512_nz=156 fb0_nz=0 tex_sum=493221 fb0_sum=0
+[reg-flush] KON t=21.6s v22 voll=0 volr=0 pitch=0x2a8 addr=0xfe00
+[reg-flush] KON t=21.6s v23 voll=8505 volr=8505 pitch=0x168 addr=0xcf90
+[reg-flush] KON t=22.3s v22 voll=0 volr=0 pitch=0x2a8 addr=0x1050
+[reg-flush] KON t=22.3s v23 voll=8505 volr=8505 pitch=0x1e1 addr=0xcf90
+[xeno-port][menu] title confirm choice=2 keep=0 D_800594D0=0
+[reg-flush] KON t=22.4s v22 voll=2678 volr=2678 pitch=0x9f addr=0x1ae0
+[reg-flush] KON t=22.4s v23 voll=2678 volr=2678 pitch=0x9e addr=0x1ae0
+[xeno-port][menu] MenuMain returned D_800594D0=0
+[field-0bb] archive 0xc1: 507904 bytes read, draining to VRAM
+[field-0bb] retail decoder: 248 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][menu] WAIT_MENU D_8004F350=0
+[xeno-port][fe60] enter str=13 start=0 end=4462 mode=0 flags=0x80 loop=0 rgb24=1 sysmode=1
+[Psy-X] Running CD thread...
+[Psy-X] CD: 'CdlReadS' at 54133
+[xeno-port][fe60] first STR frame delivered (D_800ADB7C=1)
+[xeno-port][fe60] exit reason=circle frame=60 end=4462
+[Psy-X] CD: 'CdlPause'
+[Psy-X] CD thread work done.
+[field-0bb] archive 0xc1: 507904 bytes read, draining to VRAM
+[field-0bb] retail decoder: 248 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[FieldMain] teardown exitCode=3
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9d7d30 g_GameSceneMapNum=4
+[FieldMain] FieldLoadUITextures
+[field-diag] FieldLoad begin field=4 mapBuf=0x805b78
+[field-diag] assets before VM: tim=0 clut=0 scripts=14 scriptData=0x723a68
+[field-diag] spawn marker=0xff modelsInPackage=2
+[field-diag] spawn[0] x=0 z=0 wm=0 rot=255 face=0
+[field-diag] spawn[1] x=10940 z=160 wm=128 rot=30 face=128
+[field-diag] spawn[2] x=-32000 z=753 wm=128 rot=255 face=128
+[field-diag] spawn[3] x=-32513 z=-32513 wm=1 rot=128 face=117
+[field-diag] spawn[4] x=-32727 z=-512 wm=84 rot=254 face=14
+[field-diag] spawn[5] x=-32641 z=-32767 wm=153 rot=53 face=10
+[field-diag] spawn[6] x=260 z=16384 wm=99 rot=228 face=255
+[field-diag] spawn[7] x=-1425 z=380 wm=224 rot=163 face=205
+[field-diag] spawn[8] x=28671 z=-1292 wm=0 rot=224 face=5
+[field-diag] spawn[9] x=5203 z=15398 wm=128 rot=8 face=12
+[field-diag] spawn[10] x=9829 z=-32528 wm=38 rot=210 face=128
+[field-diag] spawn[11] x=26629 z=-19434 wm=60 rot=128 face=38
+[field-diag] sprite package loaded: spriteData=0x726084
+[field-diag] actors allocated: count=15 actorArray=0x726480
+[field-diag] model-build actor=11 spriteId=1 groups=1 status=0290 faPos=(2,0,-156)
+[field-diag] func_8002C644: skip invalid pin base=0x723304 end=0x500000 hdrNext=0x0 (skips=1)
+[field-diag] model-build actor=14 spriteId=0 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build count=2 / actors=15
+[field-diag] before VM: active=2 actorData=14/15 spriteData=0/15 D_800AFC74=1
+[field-diag] func_80076AC0 first: actor=13 actorPtr=0x72692c actorSpriteSlot=0x726930 curSprite=(nil) args=(13,0,0x72608c,0,0,128,0)
+[field-diag] after VM: active=1 actorData=14/15 spriteData=14/15 D_800AFC74=1 objects=0 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x72ffbc ip=31
+[field-diag] actor[1] status=0260 flags4=04000400 faPos=(0,685,0) adPos=(0,685,0) model=(nil) sprite=0x730160 ip=281
+[field-diag] actor[2] status=0260 flags4=04000400 faPos=(0,685,0) adPos=(0,685,0) model=(nil) sprite=0x7305d4 ip=376
+[field-diag] actor[3] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x730a48 ip=383
+[field-diag] actor[4] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x730ebc ip=395
+[field-diag] actor[5] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x731330 ip=407
+[field-diag] actor[6] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7317a4 ip=419
+[field-diag] actor[7] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x731c18 ip=431
+[field-diag] actor[8] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x73208c ip=443
+[field-diag] actor[9] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x732500 ip=455
+[field-diag] actor[10] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x732974 ip=467
+[field-diag] actor[11] status=02b0 flags4=04000800 faPos=(2,0,-156) adPos=(2,0,-156) model=0x727cd4 sprite=0x732de8 ip=485
+[field-diag] actor[12] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x732f8c ip=5105
+[field-diag] actor[13] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x733130 ip=5196
+[field-diag] actor[14] status=0010 flags4=00000000 faPos=(0,0,0) adPos=(0,0,0) model=0x728280 sprite=(nil) ip=0
+[field-0bb] archive 0xc1: 507904 bytes read, draining to VRAM
+[field-0bb] retail decoder: 248 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][opcode56] FE54 snapshot actor=0 lock_ip=0x0021 pre_lock_control=0 pending=1
+[FieldMain] entering main loop
+[reg-flush] KON t=30.7s v5 voll=584 volr=987 pitch=0xa1e addr=0x57a20
+[reg-flush] KON t=30.7s v7 voll=3434 volr=3139 pitch=0x1423 addr=0x62090
+[reg-flush] KON t=30.7s v15 voll=3314 volr=4874 pitch=0x6b4 addr=0x5cf20
+[field-diag] FieldLoad begin field=2 mapBuf=0x7e91b8
+[field-diag] assets before VM: tim=0 clut=0 scripts=35 scriptData=0x73d454
+[field-diag] spawn marker=0xbc modelsInPackage=55
+[field-diag] sprite package loaded: spriteData=0x749e2c
+[field-diag] actors allocated: count=104 actorArray=0x74e0a0
+[field-diag] func_8002C644: skip invalid pin base=0x7335dc end=0x106ffa8 hdrNext=0x0 (skips=2)
+[field-diag] model-build actor=31 spriteId=48 groups=2 status=0280 faPos=(503,-94,-1224)
+[field-diag] func_8002C644: skip invalid pin base=0x72f01c end=0x87fffa hdrNext=0x0 (skips=3)
+[field-diag] model-build actor=32 spriteId=40 groups=2 status=0290 faPos=(648,-377,-402)
+[field-diag] model-build actor=33 spriteId=0 groups=1 status=0290 faPos=(-531,29,1052)
+[field-diag] model-build actor=35 spriteId=0 groups=1 status=0290 faPos=(474,29,-33)
+[field-diag] model-build actor=36 spriteId=0 groups=1 status=0290 faPos=(99,110,-908)
+[field-diag] model-build actor=37 spriteId=0 groups=1 status=0290 faPos=(-920,-17,-920)
+[field-diag] model-build actor=38 spriteId=0 groups=1 status=0290 faPos=(-792,-33,177)
+[field-diag] model-build actor=39 spriteId=0 groups=1 status=0290 faPos=(233,85,816)
+[field-diag] model-build actor=40 spriteId=0 groups=1 status=0290 faPos=(311,-223,930)
+[field-diag] model-build actor=41 spriteId=0 groups=1 status=0290 faPos=(533,85,1007)
+[field-diag] func_8002C644: skip invalid pin base=0x723474 end=0x2606c7 hdrNext=0x0 (skips=4)
+[field-diag] model-build actor=42 spriteId=1 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=43 spriteId=2 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=44 spriteId=3 groups=3 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=45 spriteId=4 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=46 spriteId=5 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=47 spriteId=6 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=48 spriteId=7 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=49 spriteId=8 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=50 spriteId=9 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=51 spriteId=10 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=52 spriteId=11 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=53 spriteId=12 groups=1 status=0010 faPos=(-581,0,481)
+[field-diag] model-build actor=54 spriteId=13 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=55 spriteId=14 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=56 spriteId=11 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=57 spriteId=12 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=58 spriteId=15 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=59 spriteId=16 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=60 spriteId=17 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=61 spriteId=18 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=62 spriteId=19 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=63 spriteId=20 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=64 spriteId=21 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=65 spriteId=22 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=66 spriteId=23 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=67 spriteId=24 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=68 spriteId=25 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=69 spriteId=26 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=70 spriteId=27 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=71 spriteId=28 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=72 spriteId=29 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=73 spriteId=30 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=74 spriteId=31 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=75 spriteId=32 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=76 spriteId=33 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=77 spriteId=34 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=78 spriteId=35 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=79 spriteId=36 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=80 spriteId=37 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=81 spriteId=38 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=82 spriteId=39 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=83 spriteId=41 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=84 spriteId=42 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=85 spriteId=43 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=86 spriteId=44 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=87 spriteId=45 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=88 spriteId=46 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=89 spriteId=47 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=90 spriteId=49 groups=2 status=0010 faPos=(503,-94,-1224)
+[field-diag] model-build actor=91 spriteId=50 groups=2 status=0280 faPos=(504,-158,-1511)
+[field-diag] model-build actor=92 spriteId=51 groups=2 status=0010 faPos=(504,-158,-1511)
+[field-diag] model-build actor=93 spriteId=50 groups=2 status=0280 faPos=(215,-94,-1511)
+[field-diag] model-build actor=94 spriteId=51 groups=2 status=0010 faPos=(215,-94,-1511)
+[field-diag] model-build actor=95 spriteId=52 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=96 spriteId=53 groups=1 status=8000 faPos=(-280,496,151)
+[field-diag] model-build count=65 / actors=104
+[field-diag] before VM: active=65 actorData=35/104 spriteData=0/104 D_800AFC74=1
+[field-diag] after VM: active=78 actorData=35/104 spriteData=35/104 D_800AFC74=1 objects=1 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a2524 ip=95
+[field-diag] actor[1] status=0241 flags4=04000400 faPos=(-151,70,1774) adPos=(-151,70,1774) model=(nil) sprite=0x7a26f8 ip=3447
+[field-diag] actor[2] status=0240 flags4=0400043e faPos=(-177,130,1450) adPos=(-177,130,1450) model=(nil) sprite=0x7a2b6c ip=3862
+[field-diag] actor[3] status=0260 flags4=04000c00 faPos=(-358,87,570) adPos=(-358,87,570) model=(nil) sprite=0x7a2fe0 ip=4329
+[field-diag] actor[4] status=0240 flags4=0400243f faPos=(-1291,24,800) adPos=(-1291,24,800) model=(nil) sprite=0x7a3454 ip=4411
+[field-diag] actor[5] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7a3628 ip=5332
+[field-diag] actor[6] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7aab9c ip=5479
+[field-diag] actor[7] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7aad70 ip=5857
+[field-diag] actor[8] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7aaf44 ip=5925
+[field-diag] actor[9] status=0240 flags4=04000038 faPos=(-174,143,911) adPos=(-174,143,911) model=(nil) sprite=0x7ab118 ip=6163
+[field-diag] actor[10] status=0240 flags4=04000038 faPos=(-123,143,925) adPos=(-123,143,925) model=(nil) sprite=0x7ab2ec ip=6965
+[field-diag] actor[11] status=0261 flags4=04200400 faPos=(501,-49,-74) adPos=(501,-49,-74) model=(nil) sprite=0x7ab4c0 ip=7462
+[field-diag] actor[12] status=0261 flags4=04000800 faPos=(-51,24,243) adPos=(-51,24,243) model=(nil) sprite=0x7ab694 ip=7599
+[field-diag] actor[13] status=0260 flags4=04000000 faPos=(-449,87,204) adPos=(-449,87,204) model=(nil) sprite=0x7ab868 ip=8010
+[field-diag] actor[14] status=0261 flags4=04000000 faPos=(500,143,798) adPos=(500,143,798) model=(nil) sprite=0x7aba6c ip=8025
+[field-diag] actor[15] status=0261 flags4=04000000 faPos=(346,87,66) adPos=(346,87,66) model=(nil) sprite=0x7abc28 ip=8046
+[field-diag] actor[16] status=0261 flags4=04000000 faPos=(507,118,506) adPos=(507,118,506) model=(nil) sprite=0x7abde4 ip=8064
+[field-diag] actor[17] status=0241 flags4=04000000 faPos=(-676,33,181) adPos=(-676,33,181) model=(nil) sprite=0x7abfa0 ip=8096
+[field-diag] actor[18] status=0241 flags4=04000000 faPos=(-205,125,-741) adPos=(-205,125,-741) model=(nil) sprite=0x7ac15c ip=8110
+[field-diag] actor[19] status=0241 flags4=04000000 faPos=(-357,87,572) adPos=(-357,87,572) model=(nil) sprite=0x7ac318 ip=8121
+[field-diag] actor[20] status=0241 flags4=04000000 faPos=(834,87,111) adPos=(834,87,111) model=(nil) sprite=0x7ac4d4 ip=8132
+[field-diag] actor[21] status=0241 flags4=04000000 faPos=(440,87,-73) adPos=(440,87,-73) model=(nil) sprite=0x7ac690 ip=8148
+[field-diag] actor[22] status=0241 flags4=04000000 faPos=(-553,110,-259) adPos=(-553,110,-259) model=(nil) sprite=0x7ac84c ip=8159
+[field-diag] actor[23] status=0241 flags4=04000000 faPos=(-633,146,-515) adPos=(-633,146,-515) model=(nil) sprite=0x7aca08 ip=8173
+[field-diag] func_8002C644: real pin base=0x7eb1fc size=12232 (pins=1)
+[field-0bb] archive 0xbd: 464896 bytes read, draining to VRAM
+[field-0bb] retail decoder: 227 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[xeno-port][opcode56] FE54 snapshot actor=0 lock_ip=0x0061 pre_lock_control=0 pending=1
+[xeno-port][variant5] tri entry=1 cmd=0x724614 count=12; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=1 cmd=0x724678 count=11; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=2 cmd=0x725c80 count=8; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=2 cmd=0x725cc4 count=1; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=3 cmd=0x7264c8 count=16; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=3 cmd=0x7267a4 count=2; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] quad entry=4 cmd=0x7267b8 count=23; resume F13 retail FIFO/culling gate
+[xeno-port][variant5] tri entry=4 cmd=0x728b10 count=174; resume F13 retail FIFO/culling gate
+[field-diag] func_8002C644: real pin base=0x7f29f4 size=10664 (pins=2)
+[FieldMain] teardown exitCode=0
+[xeno-port][battle-mips] retail adapter ready: functions=606 shared-data=188 host-ranges=256
+[xeno-port][battle-mips] enter retail battle.bin at 0x80070f40
+[field-diag] func_8002C644: real pin base=0x7fca34 size=6012 (pins=3)
+[field-diag] func_8002C644: real pin base=0x7f5344 size=16028 (pins=4)
+[field-diag] func_8002C644: real pin base=0x7f6ca4 size=12232 (pins=5)
+[field-diag] func_8002C644: real pin base=0x7ee484 size=10664 (pins=6)
+[xeno-port][battle-mips] retail battle returned after 107090115 instructions
+[FieldMain] entry. D_80010000=0xffffffff
+[FieldMain] g_FieldSystemMode=1 (CD_ROM)
+[FieldMain] FieldInitializeControllers
+[FieldMain] g_pGameState=0x9d7d30 g_GameSceneMapNum=14
+[FieldMain] FieldLoadUITextures
+[field-diag] FieldLoad begin field=14 mapBuf=0x7ffa28
+[field-diag] assets before VM: tim=0 clut=0 scripts=22 scriptData=0x72c004
+[field-diag] spawn marker=0xff modelsInPackage=27
+[field-diag] spawn[0] x=165 z=-25 wm=0 rot=255 face=255
+[field-diag] spawn[1] x=178 z=313 wm=0 rot=255 face=255
+[field-diag] spawn[2] x=10940 z=1440 wm=128 rot=25 face=128
+[field-diag] spawn[3] x=-32256 z=1668 wm=128 rot=113 face=0
+[field-diag] spawn[4] x=21758 z=9982 wm=4 rot=128 face=4
+[field-diag] spawn[5] x=-25216 z=-29312 wm=128 rot=215 face=128
+[field-diag] spawn[6] x=-32512 z=-32768 wm=241 rot=2 face=128
+[field-diag] spawn[7] x=-32768 z=-32718 wm=12 rot=128 face=1
+[field-diag] spawn[8] x=-384 z=537 wm=187 rot=2 face=254
+[field-diag] spawn[9] x=66 z=-384 wm=161 rot=0 face=128
+[field-diag] spawn[10] x=-32513 z=-139 wm=128 rot=254 face=14
+[field-diag] spawn[11] x=-32768 z=-32768 wm=114 rot=0 face=128
+[field-diag] sprite package loaded: spriteData=0x72e9f4
+[field-diag] actors allocated: count=52 actorArray=0x72f7bc
+[field-diag] model-build actor=15 spriteId=4 groups=2 status=0210 faPos=(0,0,0)
+[field-diag] model-build actor=22 spriteId=0 groups=2 status=8010 faPos=(0,0,0)
+[field-diag] model-build actor=23 spriteId=1 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=24 spriteId=2 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=25 spriteId=3 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=26 spriteId=5 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=27 spriteId=6 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=28 spriteId=7 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=29 spriteId=8 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=30 spriteId=9 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=31 spriteId=10 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=32 spriteId=11 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=33 spriteId=12 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=34 spriteId=13 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=35 spriteId=14 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=36 spriteId=15 groups=1 status=0010 faPos=(0,0,-96)
+[field-diag] model-build actor=37 spriteId=15 groups=1 status=0010 faPos=(0,0,-35)
+[field-diag] model-build actor=38 spriteId=16 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=39 spriteId=17 groups=3 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=40 spriteId=18 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=41 spriteId=19 groups=2 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=42 spriteId=20 groups=2 status=0010 faPos=(-26,-5,-51)
+[field-diag] model-build actor=43 spriteId=21 groups=2 status=0000 faPos=(-26,-5,-51)
+[field-diag] model-build actor=44 spriteId=22 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build actor=45 spriteId=23 groups=2 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=46 spriteId=24 groups=1 status=0010 faPos=(0,0,0)
+[field-diag] model-build actor=47 spriteId=25 groups=1 status=0000 faPos=(0,0,0)
+[field-diag] model-build count=27 / actors=52
+[field-diag] before VM: active=27 actorData=22/52 spriteData=0/52 D_800AFC74=1
+[xeno-port][opcode56] FE54 snapshot actor=0 lock_ip=0x001e pre_lock_control=0 pending=1
+[field-diag] after VM: active=29 actorData=22/52 spriteData=22/52 D_800AFC74=1 objects=0 player=1
+[field-diag] actor[0] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x74a678 ip=113
+[field-diag] actor[1] status=0240 flags4=04000400 faPos=(115,0,-455) adPos=(115,0,-455) model=(nil) sprite=0x751bd4 ip=180
+[field-diag] actor[2] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x752048 ip=548
+[field-diag] actor[3] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7524bc ip=559
+[field-diag] actor[4] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x752930 ip=570
+[field-diag] actor[5] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x752da4 ip=581
+[field-diag] actor[6] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x753218 ip=592
+[field-diag] actor[7] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x75368c ip=603
+[field-diag] actor[8] status=0260 flags4=04100c00 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x753b00 ip=614
+[field-diag] actor[9] status=01e0 flags4=00000800 faPos=(310,0,-243) adPos=(310,0,-243) model=(nil) sprite=0x753f74 ip=638
+[field-diag] actor[10] status=0241 flags4=00000000 faPos=(188,0,311) adPos=(188,0,311) model=(nil) sprite=0x754130 ip=766
+[field-diag] actor[11] status=0260 flags4=00000000 faPos=(75,-46,-484) adPos=(75,-46,-484) model=(nil) sprite=0x7542ec ip=1051
+[field-diag] actor[12] status=0261 flags4=00000000 faPos=(158,-17,-544) adPos=(158,-17,-544) model=(nil) sprite=0x754490 ip=1221
+[field-diag] actor[13] status=0261 flags4=00000000 faPos=(16,-30,-331) adPos=(16,-30,-331) model=(nil) sprite=0x754634 ip=1424
+[field-diag] actor[14] status=0261 flags4=00000000 faPos=(358,-30,-421) adPos=(358,-30,-421) model=(nil) sprite=0x7547d8 ip=1608
+[field-diag] actor[15] status=0210 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=0x73243c sprite=0x75497c ip=1807
+[field-diag] actor[16] status=01e0 flags4=00000800 faPos=(-232,-100,74) adPos=(-232,-100,74) model=(nil) sprite=0x754b38 ip=1835
+[field-diag] actor[17] status=01e0 flags4=04000800 faPos=(-100,0,-510) adPos=(-100,0,-510) model=(nil) sprite=0x754cf4 ip=1871
+[field-diag] actor[18] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x754eb0 ip=1895
+[field-diag] actor[19] status=01e0 flags4=00000800 faPos=(-350,0,-59) adPos=(-350,0,-59) model=(nil) sprite=0x75506c ip=1966
+[field-diag] actor[20] status=01e0 flags4=00000800 faPos=(-350,0,-127) adPos=(-350,0,-127) model=(nil) sprite=0x755228 ip=2025
+[field-diag] actor[21] status=01e0 flags4=04000800 faPos=(0,0,0) adPos=(0,0,0) model=(nil) sprite=0x7553e4 ip=2061
+[field-diag] actor[22] status=8010 flags4=00000000 faPos=(0,0,0) adPos=(0,0,0) model=0x733298 sprite=(nil) ip=0
+[field-diag] actor[23] status=0010 flags4=00000000 faPos=(0,0,0) adPos=(0,0,0) model=0x73508c sprite=(nil) ip=0
+[field-0bb] archive 0xd5: 339968 bytes read, draining to VRAM
+[field-0bb] retail decoder: 166 sectors fed, sectionsLeft=0 stripsLeft=0 done=1
+[FieldMain] entering main loop

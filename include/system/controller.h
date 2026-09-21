@@ -1,6 +1,8 @@
 #ifndef _XENO_CONTROLLER_INPUT_H
 #define _XENO_CONTROLLER_INPUT_H
 
+#include "system/controller_vblank.h"
+
 // Internal controller type masks
 #define CONTROLLER_INTERNAL_TYPE_MOUSE 0x10
 #define CONTROLLER_INTERNAL_TYPE_DIGITAL_PAD 0x40

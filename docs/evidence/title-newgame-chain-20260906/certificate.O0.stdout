@@ -1,0 +1,6 @@
+[xeno-port][menu] func_801C58EC title loop enter choice=1 D_80059460=2
+[xeno-port][menu] title confirm choice=2 keep=0 D_800594D0=0
+[xeno-port][menu] func_801C58EC title loop enter choice=1 D_80059460=2
+[xeno-port][menu] title confirm choice=1 keep=1 D_800594D0=0
+[xeno-port][menu] title idle timeout -> D_800594D0=1
+TITLE NEWGAME CHAIN certificate PASS

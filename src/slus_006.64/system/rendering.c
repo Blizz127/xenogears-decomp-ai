@@ -4,13 +4,41 @@
 #include "system/memory.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
+#include <stdio.h>   /* fflush for the env-gated player-render census */
 #include <stdlib.h>
+#include "guest_prim_link.h"
+#include "fei_hd2d.h"
+#define RENDER_ADD_PRIM(ot, prim) PcPort_AddPrimDomainAware((ot), (prim))
+/* TEMP-DIAG (world-map white-quad hunt): per-sprite-poly trace. Revert. */
+extern int PcPort_WorldCaptureCurFrame(void);
+static int WmSpriteDiagActive(int *f0, int *f1)
+{
+    static int s_init = 0;
+    static int s_on = 0;
+    static int s_f0 = 0;
+    static int s_f1 = 0;
+    if (!s_init) {
+        const char *e = getenv("XENO_WM_SPRITE_DIAG");
+        const char *a = getenv("XENO_WM_SPRITE_DIAG_F0");
+        const char *b = getenv("XENO_WM_SPRITE_DIAG_F1");
+        s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+        s_f0 = a != NULL ? atoi(a) : 0;
+        s_f1 = b != NULL ? atoi(b) : 0;
+        s_init = 1;
+    }
+    if (f0)
+        *f0 = s_f0;
+    if (f1)
+        *f1 = s_f1;
+    return s_on;
+}
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(0) below marks an unimplemented path in a function
  * not yet byte-matched, so a no-op assert compiles safely there. (uintptr_t
  * comes from include/types.h for both builds.) */
 #define assert(x) ((void)0)
+#define RENDER_ADD_PRIM(ot, prim) addPrim((ot), (prim))
 #endif
 
 // Rendering-related stuff
@@ -22,6 +50,26 @@ static int XenoFieldDiagEnabled(void) {
     if (s_enabled < 0) {
         const char* env = getenv("XENO_FIELD_DIAG");
         s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_enabled;
+}
+
+/* DIAGNOSTIC / TEST TOOLING (XENO_PLAYER_RENDER_DIAG=1).
+ *
+ * "The player character stops rendering" has exactly one render-level
+ * signature: func_8001E3D8 either is not called for the player's sprite at
+ * all, or is called and emits no quad because frameCount ((flags40 >> 2) &
+ * 0x3F, written by the frame builders func_8001DAE8 / func_8001D53C) is zero,
+ * or because the per-frame work buffer is exhausted.  Log a transition-only
+ * trace for the PLAYER actor's sprite plus a periodic heartbeat, so a menu
+ * round trip yields a number rather than a screenshot judgement.  Inert unless
+ * armed. */
+static int XenoPlayerRenderDiagEnabled(void) {
+    static int s_enabled = -1;
+
+    if (s_enabled < 0) {
+        const char* env = getenv("XENO_PLAYER_RENDER_DIAG");
+        s_enabled = (env != NULL && env[0] == '1');
     }
     return s_enabled;
 }
@@ -61,18 +109,18 @@ static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
     return result >> 12;
 }
 
-// Allocate directions array
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D4E8);
-/*
-Matches on decomp.me
-
-void func_8001D4E8(SpriteData* pSpriteData) {
-    if (pSpriteData->pBase->pDirTransforms == 0) {
-        pSpriteData->pBase->pDirTransforms = HeapAlloc(sizeof(SpriteDirectionTransforms), 0);
-        func_800234AC(pSpriteData);
+/* Retail8001D4E8: allocate and initialize eight direction records once. */
+extern void func_800234AC(void* pSpriteData);
+void func_8001D4E8(void* pSpriteData) {
+    u8* sprite = pSpriteData;
+    if (*(u32*)((u8*)(uintptr_t)*(u32*)(sprite + 0x20) + 0x34) == 0) {
+        void* directions = HeapAlloc(0x40, 0);
+        /* Retail reloads the model after HeapAlloc returns. */
+        u8* model = (u8*)(uintptr_t)*(u32*)(sprite + 0x20);
+        *(u32*)(model + 0x34) = (u32)(uintptr_t)directions;
+        func_800234AC(sprite);
     }
 }
-*/
 
 extern void func_800251C8(u_long* addr, int x, int y, int width, int height);
 extern void func_800234AC(void* pSpriteData);
@@ -311,9 +359,19 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         s32 directionIndex = 4;
         s32 i;
 
+        s32 texUBase4;
+        s32 texUBase8;
+
         if (((*(u32*)(pData + 0x40) >> 13) & 0xF) == 0xE) {
             func_8001F530(&vramX, pFrame[4]);
         }
+
+        /* asm 8001DD0C-8001DD2C: the part U coordinate is based at the
+         * sprite band's texel origin within its 64-word texture page
+         * ((vramX & 0x3F) scaled per bpp); computed after the func_8001F530
+         * vramX rewrite, once for the whole frame. */
+        texUBase4 = (vramX & 0x3F) << 2;
+        texUBase8 = (vramX & 0x3F) << 1;
 
         *(s16*)(pData + 0x36) = ScaleSpriteFrameByte(pFrame[3], *(s16*)(pData + 0x2C));
         *(s16*)(pData + 0x38) = ScaleSpriteFrameByte(pFrame[1], *(s16*)(pData + 0x2C));
@@ -324,6 +382,7 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             u16 descriptor1;
             u16 tileHeader;
             s32 texX;
+            s32 texU;
             s32 texY;
             s32 width;
             s32 abr;
@@ -383,13 +442,19 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             texY = (descriptor1 >> 5) & 0x3F;
             tileHeader = *(u16*)(pTile + 2);
 
+            /* asm 8001DED4-8001DF20: the sampled U is the band-origin base
+             * plus the bpp-scaled tile column; texX itself stays in RAW word
+             * units for the VRAM upload below (sp 0x20 in the asm). An
+             * earlier transcription shifted texX in place and reused it for
+             * the upload x, planting every part's texels up to 3*31 words
+             * right of where the quad samples. */
             if (tileHeader & 0x1) {
                 *(u32*)(pPrim + 0x14) |= 0x8;
-                texX <<= 1;
+                texU = texUBase8 + (texX << 1);
                 width = pTile[0] >> 1;
             } else {
                 *(u32*)(pPrim + 0x14) &= ~0x8;
-                texX <<= 2;
+                texU = texUBase4 + (texX << 2);
                 width = pTile[0] >> 2;
             }
 
@@ -398,7 +463,7 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
             flags |= directionIndex;
             *(u32*)(pPrim + 0x14) = flags;
 
-            *(u8*)(pPrim + 0x4) = texX;
+            *(u8*)(pPrim + 0x4) = texU;
             *(u8*)(pPrim + 0x5) = texY + baseClutY;
             *(u8*)(pPrim + 0x6) = pTile[0];
             *(u8*)(pPrim + 0x7) = pTile[1];
@@ -554,6 +619,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     static s32 s_diagCalls;
     static s32 s_diagLinked;
     s32 linkedThisCall = 0;
+    PcPortFeiHd2dBatch hdFei;
 #endif
 
     if ((flagsAC >> 2) & 1) {
@@ -561,6 +627,44 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 
 #ifdef XENO_PC_PORT
+    /* Player-sprite render census -- see XenoPlayerRenderDiagEnabled above. */
+    if (XenoPlayerRenderDiagEnabled()) {
+        extern s32 g_PlayerActorIndex;
+        static u32 s_prevSprite;
+        static s32 s_prevFrameCount = -1;
+        static s32 s_calls;
+        u32 playerSprite = 0;
+
+        if (g_FieldActors != NULL) {
+            playerSprite = *(u32*)((u8*)g_FieldActors +
+                                   g_PlayerActorIndex * 0x5C + 0x4);
+        }
+        if (playerSprite != 0 &&
+            (u32)(uintptr_t)pSpriteData == playerSprite) {
+            int exhausted = (((u8*)g_GfxCurWorkBuffer + frameCount * 0x28) >=
+                             (u8*)g_GfxCurWorkBufferEnd);
+
+            s_calls++;
+            if (playerSprite != s_prevSprite ||
+                frameCount != s_prevFrameCount || exhausted ||
+                (s_calls % 120) == 0) {
+                printf("[xeno-port][player-render] call=%d sprite=%08x "
+                       "frameCount=%d %s%sbase=%08x base30=%08x "
+                       "flags40=%08x flags3c=%08x mask3d=%02x\n",
+                       (int)s_calls, (unsigned)playerSprite, (int)frameCount,
+                       frameCount == 0 ? "NO-QUADS(frameCount==0) " : "",
+                       exhausted ? "NO-QUADS(work-buffer-full) " : "",
+                       (unsigned)(uintptr_t)pBase,
+                       (unsigned)(uintptr_t)pFramePrim,
+                       (unsigned)flags40, (unsigned)flags3C,
+                       (unsigned)*(u8*)(pData + 0x3D));
+                fflush(stdout);
+                s_prevSprite = playerSprite;
+                s_prevFrameCount = frameCount;
+            }
+        }
+    }
+
     if (XenoFieldDiagEnabled() && s_diagCalls < 8) {
         printf("[field-diag] func_8001E3D8 call=%d sprite=%p ot=%p frames=%d flags3c=%08x flags40=%08x base30=%p mask3d=%02x work=%p end=%p\n",
                (int)s_diagCalls, pSpriteData, ot, (int)frameCount,
@@ -578,6 +682,9 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
         return;
     }
 
+#ifdef XENO_PC_PORT
+    PcPort_FeiHd2dBegin(&hdFei, pSpriteData, frameCount);
+#endif
     for (i = 0; i < frameCount; i++, pFramePrim += 0x18) {
         s32 direction = *(u32*)(pFramePrim + 0x14) & 0x7;
 
@@ -719,13 +826,38 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
             poly->u3 = texU + texU1;
             poly->v3 = texV + texV1;
 
+#ifdef XENO_PC_PORT
+            if (!PcPort_FeiHd2dCapture(&hdFei, poly,
+                    ((flags3C >> 27) & 1) ? (u8*)ot - direction * 4 : ot))
+#endif
             if ((flags3C >> 27) & 1) {
-                addPrim((u8*)ot - direction * 4, poly);
+                RENDER_ADD_PRIM((u8*)ot - direction * 4, poly);
             } else {
-                addPrim(ot, poly);
+                RENDER_ADD_PRIM(ot, poly);
             }
 #ifdef XENO_PC_PORT
             linkedThisCall++;
+            {
+                int df0 = 0;
+                int df1 = 0;
+                if (WmSpriteDiagActive(&df0, &df1)) {
+                    int wf = PcPort_WorldCaptureCurFrame();
+                    if (wf >= df0 && wf <= df1) {
+                        printf("[wm-sprite] wf=%d sprite=%p xy=(%d,%d)-(%d,%d)-(%d,%d)-(%d,%d) uv=(%u,%u)+(%u,%u) tpage=%04x clut=%04x\n",
+                               wf, pSpriteData,
+                               (int)poly->x0, (int)poly->y0,
+                               (int)poly->x1, (int)poly->y1,
+                               (int)poly->x2, (int)poly->y2,
+                               (int)poly->x3, (int)poly->y3,
+                               (unsigned int)poly->u0,
+                               (unsigned int)poly->v0,
+                               (unsigned int)((int)poly->u3 - (int)poly->u0),
+                               (unsigned int)((int)poly->v3 - (int)poly->v0),
+                               (unsigned int)poly->tpage,
+                               (unsigned int)poly->clut);
+                    }
+                }
+            }
             if (XenoFieldDiagEnabled() && s_diagLinked < 8) {
                 printf("[field-diag] func_8001E3D8 link=%d poly=%p ot=%p tag=%08x code=%02x xy0=(%d,%d) uv0=(%u,%u) tpage=%04x clut=%04x dir=%d\n",
                        (int)s_diagLinked, (void*)poly, ot,
@@ -741,6 +873,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 
 #ifdef XENO_PC_PORT
+    PcPort_FeiHd2dEnd(&hdFei);
     if (XenoFieldDiagEnabled() && s_diagCalls <= 8) {
         printf("[field-diag] func_8001E3D8 done linked=%d workNow=%p\n",
                (int)linkedThisCall, g_GfxCurWorkBuffer);
@@ -748,7 +881,101 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
 #endif
 }
 
+#ifdef XENO_PC_PORT
+/* Retail 8004FAD8: four initially-zero vectors, separate from the sprite
+ * XY scratch at 8004FB98. The shadow renderer writes X/Z, preserving Y. */
+static SVECTOR s_ShadowQuad8004FAD8[4];
+extern MATRIX* ScaleMatrixL(MATRIX* matrix, VECTOR* scale);
+
+void func_8001E9BC(void* sprite, void* ot) {
+    u8* data = sprite;
+    MATRIX matrix = D_8004FBB8;
+    SVECTOR position;
+    VECTOR scale, translated;
+    u8* base;
+    u8* frame;
+    u32 count, i;
+    s32 direction = -1;
+    int visible = 0;
+
+    position.vx = *(s16*)(data + 2);
+    position.vy = *(s16*)(data + 6);
+    position.vz = *(s16*)(data + 10);
+    scale.vx = *(s16*)(data + 0x2C);
+    scale.vy = scale.vx / 2;
+    scale.vz = 0;
+    ScaleMatrixL(&matrix, &scale);
+    position.vy = *(s16*)(data + 0x84);
+    ApplyMatrix(&D_8004FBB8, &position, &translated);
+    matrix.t[0] = (u32)matrix.t[0] + (u32)translated.vx;
+    matrix.t[1] = (u32)matrix.t[1] + (u32)translated.vy;
+    matrix.t[2] = (u32)matrix.t[2] + (u32)translated.vz;
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+
+    count = data[0x40] >> 2;
+    base = (u8*)(uintptr_t)*(u32*)(data + 0x20);
+    frame = (u8*)(uintptr_t)*(u32*)(base + 0x30);
+    if ((u32)(uintptr_t)g_GfxCurWorkBuffer + count * 40 >=
+        (u32)(uintptr_t)g_GfxCurWorkBufferEnd || count == 0) return;
+    for (i = 0; i < (data[0x40] >> 2); ++i, frame += 24) {
+        u32 frameFlags = *(u32*)(frame + 20);
+        u32 flags = *(u32*)(data + 0x3C);
+        u32 shift = (*(u32*)(data + 0x40) >> 8) & 31;
+        s32 x, z, dx, dz, other;
+        u8* poly;
+        long xy[4] = {0, 0, 0, 0}, p, flag;
+        s16 average;
+        if (direction != (frameFlags & 7)) {
+            direction = frameFlags & 7;
+            visible = (s_DirectionMask8004FAF8[direction] & data[0x3D]) == 0;
+        }
+        if (!visible) continue;
+        dx = (s32)((u32)(s32)(s16)(frame[6] + (s8)frame[8]) << shift);
+        dz = (s32)((u32)(s32)(s16)(frame[7] + (s8)frame[9]) << shift);
+        x = (s32)((u32)(s32)*(s16*)frame << shift);
+        z = (s32)((u32)(s32)*(s16*)(frame + 2) << shift);
+        if (flags & 8) { dx = (s32)(0u - (u32)dx); x = (s32)(0u - (u32)x); }
+        if (((flags >> 4) ^ (frameFlags >> 5)) & 1) {
+            dz = (s32)(0u - (u32)dz); z = (s32)(0u - (u32)z);
+        }
+        other = (s32)((u32)x + (u32)dx);
+        s_ShadowQuad8004FAD8[0].vx = (frameFlags & 16) ? other : x;
+        s_ShadowQuad8004FAD8[1].vx = (frameFlags & 16) ? x : other;
+        s_ShadowQuad8004FAD8[2].vx = s_ShadowQuad8004FAD8[1].vx;
+        s_ShadowQuad8004FAD8[3].vx = s_ShadowQuad8004FAD8[0].vx;
+        other = (s32)((u32)z + (u32)dz);
+        s_ShadowQuad8004FAD8[0].vz = (frameFlags & 32) ? other : z;
+        s_ShadowQuad8004FAD8[1].vz = s_ShadowQuad8004FAD8[0].vz;
+        s_ShadowQuad8004FAD8[2].vz = (frameFlags & 32) ? z : other;
+        s_ShadowQuad8004FAD8[3].vz = s_ShadowQuad8004FAD8[2].vz;
+        poly = g_GfxCurWorkBuffer;
+        g_GfxCurWorkBuffer = poly + 40;
+        poly[3] = 9;
+        *(u32*)(poly + 4) = 0x2C000000u;
+        RotTransPers4(&s_ShadowQuad8004FAD8[0], &s_ShadowQuad8004FAD8[1],
+                      &s_ShadowQuad8004FAD8[2], &s_ShadowQuad8004FAD8[3],
+                      &xy[0], &xy[1], &xy[2], &xy[3], &p, &flag);
+        *(u32*)(poly + 8) = (u32)xy[0]; *(u32*)(poly + 16) = (u32)xy[1];
+        *(u32*)(poly + 32) = (u32)xy[2]; *(u32*)(poly + 24) = (u32)xy[3];
+        /* The retail sum wraps to a signed halfword BEFORE division by two. */
+        average = (s16)(*(u16*)(poly + 10) + *(u16*)(poly + 18));
+        *(s16*)(poly + 10) = *(s16*)(poly + 18) = average / 2;
+        average = (s16)(*(u16*)(poly + 26) + *(u16*)(poly + 34));
+        *(s16*)(poly + 26) = *(s16*)(poly + 34) = average / 2;
+        *(u16*)(poly + 22) = *(u16*)(frame + 10);
+        *(u16*)(poly + 14) = *(u16*)(frame + 12);
+        poly[12] = poly[28] = frame[4];
+        poly[20] = poly[36] = frame[4] + frame[6] - 1;
+        poly[13] = poly[21] = frame[5];
+        poly[29] = poly[37] = frame[5] + frame[7] - 1;
+        *(u32*)poly = (*(u32*)poly & 0xFF000000u) | (*(u32*)ot & 0xFFFFFFu);
+        *(u32*)ot = (*(u32*)ot & 0xFF000000u) | ((u32)(uintptr_t)poly & 0xFFFFFFu);
+    }
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E9BC);
+#endif
 
 int func_8001EE68(u8* arg0) {
     return arg0[1] >> 7;
@@ -758,11 +985,130 @@ int func_8001EE74(u16* arg0) {
     return (arg0[0] >> 9) & 0x3F;
 }
 
+#ifdef XENO_PC_PORT
+/* Retail 8001EE88 / 8001F1D4 split each frame primitive at a vertical
+ * coordinate, not an angle. Keep MIPS wrapping shifts/additions explicit.
+ * Even rejected primitives consume a packet and update the scratch Xs. */
+static void RenderSpriteVerticalSplit(void* sprite, void* ot, s16 splitY,
+                                      int lowerPart) {
+    u8* data = sprite;
+    u8* base = (u8*)(uintptr_t)*(u32*)(data + 0x20);
+    u8* frame = (u8*)(uintptr_t)*(u32*)(base + 0x30);
+    u32 flags = *(u32*)(data + 0x40);
+    u32 count = (flags >> 2) & 0x3F;
+    s32 split = (s32)((u32)(s32)splitY << ((flags >> 8) & 31));
+    u32 cursor = (u32)(uintptr_t)g_GfxCurWorkBuffer;
+    u32 end = (u32)(uintptr_t)g_GfxCurWorkBufferEnd;
+    u32 i;
+
+    if (cursor + count * 40 >= end || count == 0) return;
+    for (i = 0; i < ((u8*)data)[0x40] >> 2; ++i, frame += 24) {
+        u8* poly = g_GfxCurWorkBuffer;
+        u32 shift = (*(u32*)(data + 0x40) >> 8) & 31;
+        u32 mirror = *(u32*)(data + 0x3C);
+        u32 frameFlags = *(u32*)(frame + 0x14);
+        s32 x = (s32)((u32)(s32)*(s16*)frame << shift);
+        s32 y = (s32)((u32)(s32)*(s16*)(frame + 2) << shift);
+        s32 dx = (s32)((u32)((s32)frame[6] + (s8)frame[8]) << shift);
+        s32 dy = (s32)((u32)((s32)frame[7] + (s8)frame[9]) << shift);
+        s32 other, low, high, clipped = 0;
+        s32 texU, texV, texWidth, texHeight;
+        long xy[4] = {0, 0, 0, 0}, p, flag;
+
+        g_GfxCurWorkBuffer = poly + 40;
+        poly[3] = 9;
+        *(u32*)(poly + 4) = *(u32*)(frame + 16);
+        *(u16*)(poly + 22) = *(u16*)(frame + 10);
+        *(u16*)(poly + 14) = *(u16*)(frame + 12);
+        if (mirror & 8) { x = (s32)(0u - (u32)x); dx = (s32)(0u - (u32)dx); }
+        if (mirror & 16) { y = (s32)(0u - (u32)y); dy = (s32)(0u - (u32)dy); }
+        other = (s32)((u32)x + (u32)dx);
+        s_QuadWork8004FB98[0].vx = (frameFlags & 16) ? other : x;
+        s_QuadWork8004FB98[1].vx = (frameFlags & 16) ? x : other;
+        s_QuadWork8004FB98[2].vx = s_QuadWork8004FB98[1].vx;
+        s_QuadWork8004FB98[3].vx = s_QuadWork8004FB98[0].vx;
+        other = (s32)((u32)y + (u32)dy);
+        low = dy > 0 ? y : other;
+        high = dy > 0 ? other : y;
+        if (lowerPart) {
+            if (high < split) continue;
+            if (low < split) clipped = (s32)((u32)split - (u32)low);
+            y = (s32)((u32)y + (u32)clipped);
+            dy = dy > 0 ? (s32)((u32)dy - (u32)clipped)
+                        : (s32)((u32)dy + (u32)clipped);
+        } else {
+            if (split < low) continue;
+            if (split < high) clipped = (s32)((u32)high - (u32)split);
+            dy = (s32)((u32)dy - (u32)clipped);
+            if (dy < 0) y = (s32)((u32)y - (u32)clipped);
+        }
+        other = (s32)((u32)y + (u32)dy);
+        s_QuadWork8004FB98[0].vy = (frameFlags & 32) ? other : y;
+        s_QuadWork8004FB98[1].vy = s_QuadWork8004FB98[0].vy;
+        s_QuadWork8004FB98[2].vy = (frameFlags & 32) ? y : other;
+        s_QuadWork8004FB98[3].vy = s_QuadWork8004FB98[2].vy;
+        RotTransPers4(&s_QuadWork8004FB98[0], &s_QuadWork8004FB98[1],
+                      &s_QuadWork8004FB98[2], &s_QuadWork8004FB98[3],
+                      &xy[0], &xy[1], &xy[2], &xy[3], &p, &flag);
+        *(u32*)(poly + 8) = (u32)xy[0];
+        *(u32*)(poly + 16) = (u32)xy[1];
+        *(u32*)(poly + 32) = (u32)xy[2];
+        *(u32*)(poly + 24) = (u32)xy[3];
+        shift = (*(u32*)(data + 0x40) >> 8) & 31;
+        clipped >>= shift;
+        texU = frame[4]; texV = frame[5]; texWidth = frame[6];
+        texHeight = (s32)((u32)frame[7] - (u32)clipped);
+        if (lowerPart) texV = dy > 0 ? (s32)((u32)texV + (u32)clipped)
+                                    : (s32)((u32)texV - (u32)clipped);
+        else if (dy <= 0) texV = (s32)((u32)texV - (u32)clipped);
+        if (*(s16*)(poly + 32) < *(s16*)(poly + 8)) {
+            if (--texU < 0) { texU = 0; --texWidth; }
+        }
+        poly[12] = poly[28] = texU;
+        poly[20] = poly[36] = texU + texWidth;
+        poly[13] = poly[21] = texV;
+        poly[29] = poly[37] = (u32)texV + (u32)texHeight;
+        *(u32*)poly = (*(u32*)poly & 0xFF000000u) | (*(u32*)ot & 0xFFFFFFu);
+        *(u32*)ot = (*(u32*)ot & 0xFF000000u) | ((u32)(uintptr_t)poly & 0xFFFFFFu);
+    }
+}
+
+void func_8001EE88(void* sprite, void* ot, s16 splitY) {
+    RenderSpriteVerticalSplit(sprite, ot, splitY, 0);
+}
+
+void func_8001F1D4(void* sprite, void* ot, s16 splitY) {
+    RenderSpriteVerticalSplit(sprite, ot, splitY, 1);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001EE88);
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F1D4);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F530);
+extern s16 D_80059194;
+extern s16 D_80059196;
+
+void func_8001F530(void* pOut, s32 advance) {
+    u16* p = (u16*)pOut;
+    s16 y = D_80059196;
+    if (y + advance >= 0x41) {
+        D_80059196 = 0;
+        D_80059194++;
+        if (D_80059194 >= 3) {
+            D_80059194 = 0;
+        }
+    }
+    {
+        u16 curY = D_80059196;
+        s16 curX = D_80059194;
+        s16 outY = curY + 0x300;
+        s16 outX = curX * 64 + 0x140;
+        p[0] = outY;
+        p[1] = outX;
+    }
+    D_80059196 += advance;
+}
 
 static s32 ScaleFrameExtent(s32 value, s16 scale) {
     s32 result = value * scale;
@@ -977,19 +1323,47 @@ void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
 
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", GraphicsDrawPauseLetters);
-/*
-Matches on  GCC 2.7.2-970404, ASPSX 2.67
-
+/* Matches retail bytes under the Default preset (verified via objdump diff
+ * against asm/slus_006.64/nonmatchings/system/rendering/GraphicsDrawPauseLetters.s).
+ * The native port keeps the PSX-RAM source path in pc_port/src/world_map_pause.c.
+ */
 extern void* g_GfxPauseLettersCompressed[];
 
+#ifndef XENO_PC_PORT
 void GraphicsDrawPauseLetters(int x, int y) {
-    void* pPauseImgData = LZSSHeapDecompress(&g_GfxPauseLettersCompressed, 0x0);
-    func_8002DDE4(pPauseImgData, 1, x, y, 0, 0, 0);
+    void* pPauseImgData;
+    int dx = x;
+    int dy = y;
+    int iRegSteer;
+    pPauseImgData = LZSSHeapDecompress(&g_GfxPauseLettersCompressed, 0x0);
+    /* Empty asm pair: emits zero bytes but keeps a zero-range quantity live
+     * here so gcc 2.7.2 assigns pPauseImgData to s0 (retail layout). */
+    __asm__ volatile("" : "=r"(iRegSteer));
+    __asm__ volatile("" :: "r"(iRegSteer));
+    func_8002DDE4(pPauseImgData, 1, dx, dy, 0, 0, 0);
     DrawSync(0);
     HeapFree(pPauseImgData);
 }
-*/
+#endif
 
-// 800592E4 -> EA is bss local
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001FB30);
+extern void* D_800592E4;
+extern s16 D_800592E8;
+extern s16 D_800592EA;
+
+void func_8001FB30(void) {
+    u8* pStack = HeapAlloc(0x2000, 1);
+#ifdef XENO_PC_PORT
+    /* Host cannot emit R3000 $sp move/lw. Alloc/free stay so heap state
+     * matches retail; the native stack needs no switch (same as the
+     * game_overrides trampoline). Matching build keeps the three asms. */
+    func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
+#else
+    u8* pOldSp;
+    __asm__ volatile("move %0, $sp" : "=r"(pOldSp));
+    __asm__ volatile("move $sp, %0" : : "r"(pStack + 0x1F00 - 4));
+    *(u32*)(pStack + 0x1F00 - 4) = (u32)pOldSp;
+    func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
+    __asm__ volatile("lw $sp, 0($sp)");
+#endif
+    HeapFree(pStack);
+}

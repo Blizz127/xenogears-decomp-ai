@@ -1,0 +1,14 @@
+{
+  "scope": "func_800A1364 C body installed in src/field/main/misc6.c (INCLUDE_ASM and XENO_FIELD_OBJECT_OVERLAY staging removed); host generator splat 0.41.1 / spimdisasm 1.42.2; scratch /var/tmp/xeno-blackmoon-verify-mT7beL/xenogears-decomp",
+  "make_check": "472 tasks completed; exit 2 with 3 checksum failures (slus, field, shop), member_change_menu OK",
+  "files": {
+    "build/out/slus_006.64": {"size": 301636, "sha256": "3192a514276a7dd0da9c391c416bbb7488dc3d9140d379ead85a9c88d5b57ace"},
+    "build/out/field.bin": {"size": 242622, "sha256": "f49b4fd02316ddd6a1bb568440ff7dff99082d5a13c04947c267ada0bbf2d854"},
+    "build/out/member_change_menu.bin": {"size": 26624, "sha256": "3b9e2b890c27ae0de97fe343ac75cd35c05fe7f9605ae387d2166da0be78109c"},
+    "build/out/shop_menu.bin": {"size": 55296, "sha256": "770921ded3bb1232d63df2589bd74bf264f3ac055581d78747ce0df2b58f4641"},
+    "build/out/menu.bin": {"size": 152860, "sha256": "9fc9b811b273089fada70f81c5282c4b3391fcdf1fffc82e62aa8e9906a25185"}
+  },
+  "field_layout_note": "field.bin re-hashes from ececa463 because func_800A1364 now sits at its retail-relative position inside misc6 .text (0x8009dc70, was 0x8009a850 where INCLUDE_ASM emitted it); per-function comparison of the 1054 field functions with relocation fields masked shows 0 differing bodies and 60 moved symbols (+13344 for the function, -396 for the 59 functions between)",
+  "log": "/var/tmp/xeno-blackmoon-verify-mT7beL/make-check-final.log",
+  "log_sha256": "2148c801530783d015460d37f3d7df30ebd389e794717066915f88f2705f0b2a"
+}

@@ -200,8 +200,11 @@ void ControllerPushState(void) {
         g_C2ButtonStatesReleased[i] = g_C2ButtonStateReleased;
         g_C1ButtonStatesPressedOnce[i] = g_C1ButtonStatePressedOnce;
         g_C2ButtonStatesPressedOnce[i] = g_C2ButtonStatePressedOnce;
-        g_ControllerCurStateWriteIndex += 1;
+        /* Retail ADDIU wraps the 32-bit index without signed overflow. */
+        g_ControllerCurStateWriteIndex = (int)((u_int)g_ControllerCurStateWriteIndex + 1u);
     } else {
+        /* Retail 80035CC8: preserve queued states and report overflow.
+         * Input scheduling must not be compensated by modifying the FIFO. */
         g_ControllerIsStateStackFull = 1;
     }
 }
@@ -214,7 +217,7 @@ int ControllerPopState(void) {
     }
     
     i = g_ControllerCurStateReadIndex & (CONTROLLER_MAX_NUM_STATES - 1);
-    g_ControllerCurStateReadIndex++;
+    g_ControllerCurStateReadIndex = (int)((u_int)g_ControllerCurStateReadIndex + 1u);
     g_C1ButtonState =  g_C1ButtonStatesPressed[i];
     g_C2ButtonState = g_C2ButtonStatesPressed[i];
     g_C1ButtonStateReleased = g_C1ButtonStatesReleased[i];
@@ -248,3 +251,11 @@ void ControllerResetState(void) {
     g_C2ButtonState = 0;
     g_C1ButtonState = 0;
 }
+
+#ifdef XENO_PC_PORT
+/* Retail: return whether the pad-state stack overflowed (asm 80036410).
+ * Matching build still takes this from asm/slus_006.64/26644.s. */
+int func_80036410(void) {
+    return g_ControllerIsStateStackFull;
+}
+#endif

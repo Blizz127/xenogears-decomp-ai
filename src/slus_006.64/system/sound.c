@@ -3,6 +3,13 @@
 #include "psyq/kernel.h"
 #include "psyq/libspu.h"
 
+#ifdef XENO_PC_PORT
+/* Host GNU C has no implicit int(): prototypes must precede first use.
+ * Matching build keeps the original implicit-decl order (gcc 2.7.2). */
+SoundWDSEntry* SoundFindWdsEntry(int targetID);
+AudioManager* func_80039850(SoundFile* pFile);
+#endif
+
 //----------------------------------------------------------------------------------------------------------------------
 // SPU DECLARATIONS
 //----------------------------------------------------------------------------------------------------------------------
@@ -228,9 +235,496 @@ typedef union {
 } SpuUnion;
 
 extern SpuUnion* g_pSoundSpuRegisters;
+
+#ifdef XENO_PC_PORT
+/* Retail g_pSoundSpuRegisters is an .sdata pointer to the memory-mapped SPU
+ * register block at 0x1F801C00. The port has no mapped SPU hardware and the
+ * auto-stub left the pointer NULL -- safe only while the tick body was
+ * stubbed. Back it with a static block so the real tick's direct register
+ * writes (func_8003E900/EB5C key on/off, ADSR, pitch) land in real memory.
+ * Register state is faithfully maintained but not yet wired to the OpenAL
+ * backend (that wiring is the WDS/B5 leg). */
+static SpuUnion s_SpuRegisterBackingPage;
+SpuUnion* g_pSoundSpuRegisters = &s_SpuRegisterBackingPage;
+#endif
+
+
+#ifdef XENO_PC_PORT
+/* Retail sound sdata tables (3F290.sdata.s), port-side definitions --
+ * the auto-stubs were zeros, which made note pitch/velocity/operand
+ * lookups return 0 (silent notes, broken scan skips). Extracted
+ * mechanically from the split data. Matching build uses the .sdata. */
+u8 D_80050B78[120] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B,
+    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B,
+    0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B,
+    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B,
+    0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B,
+    0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B,
+    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x00, 0x00, 0x00
+};
+s16 D_80050BF0[3072] = {
+    0x2000, 0x2002, 0x2004, 0x2006, 0x2007, 0x2009, 0x200B, 0x200D, 0x200F, 0x2011, 0x2013, 0x2014,
+    0x2016, 0x2018, 0x201A, 0x201C, 0x201E, 0x201F, 0x2021, 0x2023, 0x2025, 0x2027, 0x2029, 0x202B,
+    0x202C, 0x202E, 0x2030, 0x2032, 0x2034, 0x2036, 0x2038, 0x203A, 0x203B, 0x203D, 0x203F, 0x2041,
+    0x2043, 0x2045, 0x2047, 0x2048, 0x204A, 0x204C, 0x204E, 0x2050, 0x2052, 0x2054, 0x2055, 0x2057,
+    0x2059, 0x205B, 0x205D, 0x205F, 0x2061, 0x2063, 0x2064, 0x2066, 0x2068, 0x206A, 0x206C, 0x206E,
+    0x2070, 0x2072, 0x2073, 0x2075, 0x2077, 0x2079, 0x207B, 0x207D, 0x207F, 0x2081, 0x2082, 0x2084,
+    0x2086, 0x2088, 0x208A, 0x208C, 0x208E, 0x2090, 0x2091, 0x2093, 0x2095, 0x2097, 0x2099, 0x209B,
+    0x209D, 0x209F, 0x20A1, 0x20A2, 0x20A4, 0x20A6, 0x20A8, 0x20AA, 0x20AC, 0x20AE, 0x20B0, 0x20B1,
+    0x20B3, 0x20B5, 0x20B7, 0x20B9, 0x20BB, 0x20BD, 0x20BF, 0x20C1, 0x20C3, 0x20C4, 0x20C6, 0x20C8,
+    0x20CA, 0x20CC, 0x20CE, 0x20D0, 0x20D2, 0x20D4, 0x20D5, 0x20D7, 0x20D9, 0x20DB, 0x20DD, 0x20DF,
+    0x20E1, 0x20E3, 0x20E5, 0x20E7, 0x20E8, 0x20EA, 0x20EC, 0x20EE, 0x20F0, 0x20F2, 0x20F4, 0x20F6,
+    0x20F8, 0x20FA, 0x20FB, 0x20FD, 0x20FF, 0x2101, 0x2103, 0x2105, 0x2107, 0x2109, 0x210B, 0x210D,
+    0x210F, 0x2110, 0x2112, 0x2114, 0x2116, 0x2118, 0x211A, 0x211C, 0x211E, 0x2120, 0x2122, 0x2124,
+    0x2125, 0x2127, 0x2129, 0x212B, 0x212D, 0x212F, 0x2131, 0x2133, 0x2135, 0x2137, 0x2139, 0x213B,
+    0x213C, 0x213E, 0x2140, 0x2142, 0x2144, 0x2146, 0x2148, 0x214A, 0x214C, 0x214E, 0x2150, 0x2152,
+    0x2154, 0x2155, 0x2157, 0x2159, 0x215B, 0x215D, 0x215F, 0x2161, 0x2163, 0x2165, 0x2167, 0x2169,
+    0x216B, 0x216D, 0x216F, 0x2170, 0x2172, 0x2174, 0x2176, 0x2178, 0x217A, 0x217C, 0x217E, 0x2180,
+    0x2182, 0x2184, 0x2186, 0x2188, 0x218A, 0x218C, 0x218E, 0x218F, 0x2191, 0x2193, 0x2195, 0x2197,
+    0x2199, 0x219B, 0x219D, 0x219F, 0x21A1, 0x21A3, 0x21A5, 0x21A7, 0x21A9, 0x21AB, 0x21AD, 0x21AF,
+    0x21B0, 0x21B2, 0x21B4, 0x21B6, 0x21B8, 0x21BA, 0x21BC, 0x21BE, 0x21C0, 0x21C2, 0x21C4, 0x21C6,
+    0x21C8, 0x21CA, 0x21CC, 0x21CE, 0x21D0, 0x21D2, 0x21D4, 0x21D6, 0x21D7, 0x21D9, 0x21DB, 0x21DD,
+    0x21DF, 0x21E1, 0x21E3, 0x21E5, 0x21E7, 0x21E9, 0x21EB, 0x21ED, 0x21EF, 0x21F1, 0x21F3, 0x21F5,
+    0x21F7, 0x21F9, 0x21FB, 0x21FD, 0x21FF, 0x2201, 0x2203, 0x2205, 0x2207, 0x2208, 0x220A, 0x220C,
+    0x220E, 0x2210, 0x2212, 0x2214, 0x2216, 0x2218, 0x221A, 0x221C, 0x221E, 0x2220, 0x2222, 0x2224,
+    0x2226, 0x2228, 0x222A, 0x222C, 0x222E, 0x2230, 0x2232, 0x2234, 0x2236, 0x2238, 0x223A, 0x223C,
+    0x223E, 0x2240, 0x2242, 0x2244, 0x2246, 0x2248, 0x224A, 0x224C, 0x224E, 0x2250, 0x2252, 0x2253,
+    0x2255, 0x2257, 0x2259, 0x225B, 0x225D, 0x225F, 0x2261, 0x2263, 0x2265, 0x2267, 0x2269, 0x226B,
+    0x226D, 0x226F, 0x2271, 0x2273, 0x2275, 0x2277, 0x2279, 0x227B, 0x227D, 0x227F, 0x2281, 0x2283,
+    0x2285, 0x2287, 0x2289, 0x228B, 0x228D, 0x228F, 0x2291, 0x2293, 0x2295, 0x2297, 0x2299, 0x229B,
+    0x229D, 0x229F, 0x22A1, 0x22A3, 0x22A5, 0x22A7, 0x22A9, 0x22AB, 0x22AD, 0x22AF, 0x22B1, 0x22B3,
+    0x22B5, 0x22B7, 0x22B9, 0x22BB, 0x22BD, 0x22BF, 0x22C1, 0x22C3, 0x22C5, 0x22C7, 0x22C9, 0x22CB,
+    0x22CD, 0x22CF, 0x22D1, 0x22D3, 0x22D5, 0x22D7, 0x22D9, 0x22DB, 0x22DD, 0x22DF, 0x22E1, 0x22E3,
+    0x22E5, 0x22E7, 0x22E9, 0x22EB, 0x22EE, 0x22F0, 0x22F2, 0x22F4, 0x22F6, 0x22F8, 0x22FA, 0x22FC,
+    0x22FE, 0x2300, 0x2302, 0x2304, 0x2306, 0x2308, 0x230A, 0x230C, 0x230E, 0x2310, 0x2312, 0x2314,
+    0x2316, 0x2318, 0x231A, 0x231C, 0x231E, 0x2320, 0x2322, 0x2324, 0x2326, 0x2328, 0x232A, 0x232C,
+    0x232E, 0x2330, 0x2332, 0x2334, 0x2336, 0x2338, 0x233B, 0x233D, 0x233F, 0x2341, 0x2343, 0x2345,
+    0x2347, 0x2349, 0x234B, 0x234D, 0x234F, 0x2351, 0x2353, 0x2355, 0x2357, 0x2359, 0x235B, 0x235D,
+    0x235F, 0x2361, 0x2363, 0x2365, 0x2367, 0x2369, 0x236B, 0x236E, 0x2370, 0x2372, 0x2374, 0x2376,
+    0x2378, 0x237A, 0x237C, 0x237E, 0x2380, 0x2382, 0x2384, 0x2386, 0x2388, 0x238A, 0x238C, 0x238E,
+    0x2390, 0x2392, 0x2394, 0x2397, 0x2399, 0x239B, 0x239D, 0x239F, 0x23A1, 0x23A3, 0x23A5, 0x23A7,
+    0x23A9, 0x23AB, 0x23AD, 0x23AF, 0x23B1, 0x23B3, 0x23B5, 0x23B7, 0x23BA, 0x23BC, 0x23BE, 0x23C0,
+    0x23C2, 0x23C4, 0x23C6, 0x23C8, 0x23CA, 0x23CC, 0x23CE, 0x23D0, 0x23D2, 0x23D4, 0x23D6, 0x23D9,
+    0x23DB, 0x23DD, 0x23DF, 0x23E1, 0x23E3, 0x23E5, 0x23E7, 0x23E9, 0x23EB, 0x23ED, 0x23EF, 0x23F1,
+    0x23F4, 0x23F6, 0x23F8, 0x23FA, 0x23FC, 0x23FE, 0x2400, 0x2402, 0x2404, 0x2406, 0x2408, 0x240A,
+    0x240C, 0x240F, 0x2411, 0x2413, 0x2415, 0x2417, 0x2419, 0x241B, 0x241D, 0x241F, 0x2421, 0x2423,
+    0x2425, 0x2428, 0x242A, 0x242C, 0x242E, 0x2430, 0x2432, 0x2434, 0x2436, 0x2438, 0x243A, 0x243C,
+    0x243F, 0x2441, 0x2443, 0x2445, 0x2447, 0x2449, 0x244B, 0x244D, 0x244F, 0x2451, 0x2454, 0x2456,
+    0x2458, 0x245A, 0x245C, 0x245E, 0x2460, 0x2462, 0x2464, 0x2466, 0x2469, 0x246B, 0x246D, 0x246F,
+    0x2471, 0x2473, 0x2475, 0x2477, 0x2479, 0x247B, 0x247E, 0x2480, 0x2482, 0x2484, 0x2486, 0x2488,
+    0x248A, 0x248C, 0x248E, 0x2491, 0x2493, 0x2495, 0x2497, 0x2499, 0x249B, 0x249D, 0x249F, 0x24A1,
+    0x24A4, 0x24A6, 0x24A8, 0x24AA, 0x24AC, 0x24AE, 0x24B0, 0x24B2, 0x24B5, 0x24B7, 0x24B9, 0x24BB,
+    0x24BD, 0x24BF, 0x24C1, 0x24C3, 0x24C6, 0x24C8, 0x24CA, 0x24CC, 0x24CE, 0x24D0, 0x24D2, 0x24D4,
+    0x24D7, 0x24D9, 0x24DB, 0x24DD, 0x24DF, 0x24E1, 0x24E3, 0x24E5, 0x24E8, 0x24EA, 0x24EC, 0x24EE,
+    0x24F0, 0x24F2, 0x24F4, 0x24F7, 0x24F9, 0x24FB, 0x24FD, 0x24FF, 0x2501, 0x2503, 0x2505, 0x2508,
+    0x250A, 0x250C, 0x250E, 0x2510, 0x2512, 0x2514, 0x2517, 0x2519, 0x251B, 0x251D, 0x251F, 0x2521,
+    0x2523, 0x2526, 0x2528, 0x252A, 0x252C, 0x252E, 0x2530, 0x2532, 0x2535, 0x2537, 0x2539, 0x253B,
+    0x253D, 0x253F, 0x2542, 0x2544, 0x2546, 0x2548, 0x254A, 0x254C, 0x254E, 0x2551, 0x2553, 0x2555,
+    0x2557, 0x2559, 0x255B, 0x255E, 0x2560, 0x2562, 0x2564, 0x2566, 0x2568, 0x256B, 0x256D, 0x256F,
+    0x2571, 0x2573, 0x2575, 0x2577, 0x257A, 0x257C, 0x257E, 0x2580, 0x2582, 0x2584, 0x2587, 0x2589,
+    0x258B, 0x258D, 0x258F, 0x2591, 0x2594, 0x2596, 0x2598, 0x259A, 0x259C, 0x259F, 0x25A1, 0x25A3,
+    0x25A5, 0x25A7, 0x25A9, 0x25AC, 0x25AE, 0x25B0, 0x25B2, 0x25B4, 0x25B6, 0x25B9, 0x25BB, 0x25BD,
+    0x25BF, 0x25C1, 0x25C4, 0x25C6, 0x25C8, 0x25CA, 0x25CC, 0x25CE, 0x25D1, 0x25D3, 0x25D5, 0x25D7,
+    0x25D9, 0x25DC, 0x25DE, 0x25E0, 0x25E2, 0x25E4, 0x25E6, 0x25E9, 0x25EB, 0x25ED, 0x25EF, 0x25F1,
+    0x25F4, 0x25F6, 0x25F8, 0x25FA, 0x25FC, 0x25FF, 0x2601, 0x2603, 0x2605, 0x2607, 0x260A, 0x260C,
+    0x260E, 0x2610, 0x2612, 0x2615, 0x2617, 0x2619, 0x261B, 0x261D, 0x2620, 0x2622, 0x2624, 0x2626,
+    0x2628, 0x262B, 0x262D, 0x262F, 0x2631, 0x2633, 0x2636, 0x2638, 0x263A, 0x263C, 0x263E, 0x2641,
+    0x2643, 0x2645, 0x2647, 0x264A, 0x264C, 0x264E, 0x2650, 0x2652, 0x2655, 0x2657, 0x2659, 0x265B,
+    0x265D, 0x2660, 0x2662, 0x2664, 0x2666, 0x2669, 0x266B, 0x266D, 0x266F, 0x2671, 0x2674, 0x2676,
+    0x2678, 0x267A, 0x267D, 0x267F, 0x2681, 0x2683, 0x2685, 0x2688, 0x268A, 0x268C, 0x268E, 0x2691,
+    0x2693, 0x2695, 0x2697, 0x2699, 0x269C, 0x269E, 0x26A0, 0x26A2, 0x26A5, 0x26A7, 0x26A9, 0x26AB,
+    0x26AE, 0x26B0, 0x26B2, 0x26B4, 0x26B6, 0x26B9, 0x26BB, 0x26BD, 0x26BF, 0x26C2, 0x26C4, 0x26C6,
+    0x26C8, 0x26CB, 0x26CD, 0x26CF, 0x26D1, 0x26D4, 0x26D6, 0x26D8, 0x26DA, 0x26DD, 0x26DF, 0x26E1,
+    0x26E3, 0x26E6, 0x26E8, 0x26EA, 0x26EC, 0x26EF, 0x26F1, 0x26F3, 0x26F5, 0x26F8, 0x26FA, 0x26FC,
+    0x26FE, 0x2701, 0x2703, 0x2705, 0x2707, 0x270A, 0x270C, 0x270E, 0x2710, 0x2713, 0x2715, 0x2717,
+    0x2719, 0x271C, 0x271E, 0x2720, 0x2722, 0x2725, 0x2727, 0x2729, 0x272B, 0x272E, 0x2730, 0x2732,
+    0x2735, 0x2737, 0x2739, 0x273B, 0x273E, 0x2740, 0x2742, 0x2744, 0x2747, 0x2749, 0x274B, 0x274D,
+    0x2750, 0x2752, 0x2754, 0x2757, 0x2759, 0x275B, 0x275D, 0x2760, 0x2762, 0x2764, 0x2766, 0x2769,
+    0x276B, 0x276D, 0x2770, 0x2772, 0x2774, 0x2776, 0x2779, 0x277B, 0x277D, 0x2780, 0x2782, 0x2784,
+    0x2786, 0x2789, 0x278B, 0x278D, 0x278F, 0x2792, 0x2794, 0x2796, 0x2799, 0x279B, 0x279D, 0x27A0,
+    0x27A2, 0x27A4, 0x27A6, 0x27A9, 0x27AB, 0x27AD, 0x27B0, 0x27B2, 0x27B4, 0x27B6, 0x27B9, 0x27BB,
+    0x27BD, 0x27C0, 0x27C2, 0x27C4, 0x27C6, 0x27C9, 0x27CB, 0x27CD, 0x27D0, 0x27D2, 0x27D4, 0x27D7,
+    0x27D9, 0x27DB, 0x27DD, 0x27E0, 0x27E2, 0x27E4, 0x27E7, 0x27E9, 0x27EB, 0x27EE, 0x27F0, 0x27F2,
+    0x27F5, 0x27F7, 0x27F9, 0x27FB, 0x27FE, 0x2800, 0x2802, 0x2805, 0x2807, 0x2809, 0x280C, 0x280E,
+    0x2810, 0x2813, 0x2815, 0x2817, 0x281A, 0x281C, 0x281E, 0x2820, 0x2823, 0x2825, 0x2827, 0x282A,
+    0x282C, 0x282E, 0x2831, 0x2833, 0x2835, 0x2838, 0x283A, 0x283C, 0x283F, 0x2841, 0x2843, 0x2846,
+    0x2848, 0x284A, 0x284D, 0x284F, 0x2851, 0x2854, 0x2856, 0x2858, 0x285B, 0x285D, 0x285F, 0x2862,
+    0x2864, 0x2866, 0x2869, 0x286B, 0x286D, 0x2870, 0x2872, 0x2874, 0x2877, 0x2879, 0x287B, 0x287E,
+    0x2880, 0x2882, 0x2885, 0x2887, 0x2889, 0x288C, 0x288E, 0x2890, 0x2893, 0x2895, 0x2897, 0x289A,
+    0x289C, 0x289E, 0x28A1, 0x28A3, 0x28A5, 0x28A8, 0x28AA, 0x28AC, 0x28AF, 0x28B1, 0x28B4, 0x28B6,
+    0x28B8, 0x28BB, 0x28BD, 0x28BF, 0x28C2, 0x28C4, 0x28C6, 0x28C9, 0x28CB, 0x28CD, 0x28D0, 0x28D2,
+    0x28D5, 0x28D7, 0x28D9, 0x28DC, 0x28DE, 0x28E0, 0x28E3, 0x28E5, 0x28E7, 0x28EA, 0x28EC, 0x28EE,
+    0x28F1, 0x28F3, 0x28F6, 0x28F8, 0x28FA, 0x28FD, 0x28FF, 0x2901, 0x2904, 0x2906, 0x2909, 0x290B,
+    0x290D, 0x2910, 0x2912, 0x2914, 0x2917, 0x2919, 0x291C, 0x291E, 0x2920, 0x2923, 0x2925, 0x2927,
+    0x292A, 0x292C, 0x292F, 0x2931, 0x2933, 0x2936, 0x2938, 0x293A, 0x293D, 0x293F, 0x2942, 0x2944,
+    0x2946, 0x2949, 0x294B, 0x294D, 0x2950, 0x2952, 0x2955, 0x2957, 0x2959, 0x295C, 0x295E, 0x2961,
+    0x2963, 0x2965, 0x2968, 0x296A, 0x296D, 0x296F, 0x2971, 0x2974, 0x2976, 0x2979, 0x297B, 0x297D,
+    0x2980, 0x2982, 0x2985, 0x2987, 0x2989, 0x298C, 0x298E, 0x2991, 0x2993, 0x2995, 0x2998, 0x299A,
+    0x299D, 0x299F, 0x29A1, 0x29A4, 0x29A6, 0x29A9, 0x29AB, 0x29AD, 0x29B0, 0x29B2, 0x29B5, 0x29B7,
+    0x29B9, 0x29BC, 0x29BE, 0x29C1, 0x29C3, 0x29C5, 0x29C8, 0x29CA, 0x29CD, 0x29CF, 0x29D2, 0x29D4,
+    0x29D6, 0x29D9, 0x29DB, 0x29DE, 0x29E0, 0x29E2, 0x29E5, 0x29E7, 0x29EA, 0x29EC, 0x29EF, 0x29F1,
+    0x29F3, 0x29F6, 0x29F8, 0x29FB, 0x29FD, 0x2A00, 0x2A02, 0x2A04, 0x2A07, 0x2A09, 0x2A0C, 0x2A0E,
+    0x2A11, 0x2A13, 0x2A15, 0x2A18, 0x2A1A, 0x2A1D, 0x2A1F, 0x2A22, 0x2A24, 0x2A26, 0x2A29, 0x2A2B,
+    0x2A2E, 0x2A30, 0x2A33, 0x2A35, 0x2A37, 0x2A3A, 0x2A3C, 0x2A3F, 0x2A41, 0x2A44, 0x2A46, 0x2A49,
+    0x2A4B, 0x2A4D, 0x2A50, 0x2A52, 0x2A55, 0x2A57, 0x2A5A, 0x2A5C, 0x2A5F, 0x2A61, 0x2A63, 0x2A66,
+    0x2A68, 0x2A6B, 0x2A6D, 0x2A70, 0x2A72, 0x2A75, 0x2A77, 0x2A79, 0x2A7C, 0x2A7E, 0x2A81, 0x2A83,
+    0x2A86, 0x2A88, 0x2A8B, 0x2A8D, 0x2A90, 0x2A92, 0x2A95, 0x2A97, 0x2A99, 0x2A9C, 0x2A9E, 0x2AA1,
+    0x2AA3, 0x2AA6, 0x2AA8, 0x2AAB, 0x2AAD, 0x2AB0, 0x2AB2, 0x2AB5, 0x2AB7, 0x2AB9, 0x2ABC, 0x2ABE,
+    0x2AC1, 0x2AC3, 0x2AC6, 0x2AC8, 0x2ACB, 0x2ACD, 0x2AD0, 0x2AD2, 0x2AD5, 0x2AD7, 0x2ADA, 0x2ADC,
+    0x2ADF, 0x2AE1, 0x2AE4, 0x2AE6, 0x2AE8, 0x2AEB, 0x2AED, 0x2AF0, 0x2AF2, 0x2AF5, 0x2AF7, 0x2AFA,
+    0x2AFC, 0x2AFF, 0x2B01, 0x2B04, 0x2B06, 0x2B09, 0x2B0B, 0x2B0E, 0x2B10, 0x2B13, 0x2B15, 0x2B18,
+    0x2B1A, 0x2B1D, 0x2B1F, 0x2B22, 0x2B24, 0x2B27, 0x2B29, 0x2B2C, 0x2B2E, 0x2B31, 0x2B33, 0x2B36,
+    0x2B38, 0x2B3B, 0x2B3D, 0x2B40, 0x2B42, 0x2B45, 0x2B47, 0x2B4A, 0x2B4C, 0x2B4F, 0x2B51, 0x2B54,
+    0x2B56, 0x2B59, 0x2B5B, 0x2B5E, 0x2B60, 0x2B63, 0x2B65, 0x2B68, 0x2B6A, 0x2B6D, 0x2B6F, 0x2B72,
+    0x2B74, 0x2B77, 0x2B79, 0x2B7C, 0x2B7E, 0x2B81, 0x2B83, 0x2B86, 0x2B88, 0x2B8B, 0x2B8D, 0x2B90,
+    0x2B92, 0x2B95, 0x2B97, 0x2B9A, 0x2B9C, 0x2B9F, 0x2BA1, 0x2BA4, 0x2BA6, 0x2BA9, 0x2BAB, 0x2BAE,
+    0x2BB1, 0x2BB3, 0x2BB6, 0x2BB8, 0x2BBB, 0x2BBD, 0x2BC0, 0x2BC2, 0x2BC5, 0x2BC7, 0x2BCA, 0x2BCC,
+    0x2BCF, 0x2BD1, 0x2BD4, 0x2BD6, 0x2BD9, 0x2BDC, 0x2BDE, 0x2BE1, 0x2BE3, 0x2BE6, 0x2BE8, 0x2BEB,
+    0x2BED, 0x2BF0, 0x2BF2, 0x2BF5, 0x2BF7, 0x2BFA, 0x2BFD, 0x2BFF, 0x2C02, 0x2C04, 0x2C07, 0x2C09,
+    0x2C0C, 0x2C0E, 0x2C11, 0x2C13, 0x2C16, 0x2C18, 0x2C1B, 0x2C1E, 0x2C20, 0x2C23, 0x2C25, 0x2C28,
+    0x2C2A, 0x2C2D, 0x2C2F, 0x2C32, 0x2C35, 0x2C37, 0x2C3A, 0x2C3C, 0x2C3F, 0x2C41, 0x2C44, 0x2C46,
+    0x2C49, 0x2C4C, 0x2C4E, 0x2C51, 0x2C53, 0x2C56, 0x2C58, 0x2C5B, 0x2C5D, 0x2C60, 0x2C63, 0x2C65,
+    0x2C68, 0x2C6A, 0x2C6D, 0x2C6F, 0x2C72, 0x2C75, 0x2C77, 0x2C7A, 0x2C7C, 0x2C7F, 0x2C81, 0x2C84,
+    0x2C87, 0x2C89, 0x2C8C, 0x2C8E, 0x2C91, 0x2C93, 0x2C96, 0x2C99, 0x2C9B, 0x2C9E, 0x2CA0, 0x2CA3,
+    0x2CA5, 0x2CA8, 0x2CAB, 0x2CAD, 0x2CB0, 0x2CB2, 0x2CB5, 0x2CB8, 0x2CBA, 0x2CBD, 0x2CBF, 0x2CC2,
+    0x2CC4, 0x2CC7, 0x2CCA, 0x2CCC, 0x2CCF, 0x2CD1, 0x2CD4, 0x2CD7, 0x2CD9, 0x2CDC, 0x2CDE, 0x2CE1,
+    0x2CE4, 0x2CE6, 0x2CE9, 0x2CEB, 0x2CEE, 0x2CF0, 0x2CF3, 0x2CF6, 0x2CF8, 0x2CFB, 0x2CFD, 0x2D00,
+    0x2D03, 0x2D05, 0x2D08, 0x2D0A, 0x2D0D, 0x2D10, 0x2D12, 0x2D15, 0x2D17, 0x2D1A, 0x2D1D, 0x2D1F,
+    0x2D22, 0x2D25, 0x2D27, 0x2D2A, 0x2D2C, 0x2D2F, 0x2D32, 0x2D34, 0x2D37, 0x2D39, 0x2D3C, 0x2D3F,
+    0x2D41, 0x2D44, 0x2D46, 0x2D49, 0x2D4C, 0x2D4E, 0x2D51, 0x2D54, 0x2D56, 0x2D59, 0x2D5B, 0x2D5E,
+    0x2D61, 0x2D63, 0x2D66, 0x2D69, 0x2D6B, 0x2D6E, 0x2D70, 0x2D73, 0x2D76, 0x2D78, 0x2D7B, 0x2D7E,
+    0x2D80, 0x2D83, 0x2D85, 0x2D88, 0x2D8B, 0x2D8D, 0x2D90, 0x2D93, 0x2D95, 0x2D98, 0x2D9A, 0x2D9D,
+    0x2DA0, 0x2DA2, 0x2DA5, 0x2DA8, 0x2DAA, 0x2DAD, 0x2DB0, 0x2DB2, 0x2DB5, 0x2DB7, 0x2DBA, 0x2DBD,
+    0x2DBF, 0x2DC2, 0x2DC5, 0x2DC7, 0x2DCA, 0x2DCD, 0x2DCF, 0x2DD2, 0x2DD5, 0x2DD7, 0x2DDA, 0x2DDC,
+    0x2DDF, 0x2DE2, 0x2DE4, 0x2DE7, 0x2DEA, 0x2DEC, 0x2DEF, 0x2DF2, 0x2DF4, 0x2DF7, 0x2DFA, 0x2DFC,
+    0x2DFF, 0x2E02, 0x2E04, 0x2E07, 0x2E0A, 0x2E0C, 0x2E0F, 0x2E12, 0x2E14, 0x2E17, 0x2E1A, 0x2E1C,
+    0x2E1F, 0x2E22, 0x2E24, 0x2E27, 0x2E2A, 0x2E2C, 0x2E2F, 0x2E32, 0x2E34, 0x2E37, 0x2E3A, 0x2E3C,
+    0x2E3F, 0x2E42, 0x2E44, 0x2E47, 0x2E4A, 0x2E4C, 0x2E4F, 0x2E52, 0x2E54, 0x2E57, 0x2E5A, 0x2E5C,
+    0x2E5F, 0x2E62, 0x2E64, 0x2E67, 0x2E6A, 0x2E6C, 0x2E6F, 0x2E72, 0x2E74, 0x2E77, 0x2E7A, 0x2E7D,
+    0x2E7F, 0x2E82, 0x2E85, 0x2E87, 0x2E8A, 0x2E8D, 0x2E8F, 0x2E92, 0x2E95, 0x2E97, 0x2E9A, 0x2E9D,
+    0x2E9F, 0x2EA2, 0x2EA5, 0x2EA8, 0x2EAA, 0x2EAD, 0x2EB0, 0x2EB2, 0x2EB5, 0x2EB8, 0x2EBA, 0x2EBD,
+    0x2EC0, 0x2EC3, 0x2EC5, 0x2EC8, 0x2ECB, 0x2ECD, 0x2ED0, 0x2ED3, 0x2ED5, 0x2ED8, 0x2EDB, 0x2EDE,
+    0x2EE0, 0x2EE3, 0x2EE6, 0x2EE8, 0x2EEB, 0x2EEE, 0x2EF1, 0x2EF3, 0x2EF6, 0x2EF9, 0x2EFB, 0x2EFE,
+    0x2F01, 0x2F04, 0x2F06, 0x2F09, 0x2F0C, 0x2F0E, 0x2F11, 0x2F14, 0x2F17, 0x2F19, 0x2F1C, 0x2F1F,
+    0x2F21, 0x2F24, 0x2F27, 0x2F2A, 0x2F2C, 0x2F2F, 0x2F32, 0x2F35, 0x2F37, 0x2F3A, 0x2F3D, 0x2F3F,
+    0x2F42, 0x2F45, 0x2F48, 0x2F4A, 0x2F4D, 0x2F50, 0x2F53, 0x2F55, 0x2F58, 0x2F5B, 0x2F5D, 0x2F60,
+    0x2F63, 0x2F66, 0x2F68, 0x2F6B, 0x2F6E, 0x2F71, 0x2F73, 0x2F76, 0x2F79, 0x2F7C, 0x2F7E, 0x2F81,
+    0x2F84, 0x2F87, 0x2F89, 0x2F8C, 0x2F8F, 0x2F92, 0x2F94, 0x2F97, 0x2F9A, 0x2F9D, 0x2F9F, 0x2FA2,
+    0x2FA5, 0x2FA8, 0x2FAA, 0x2FAD, 0x2FB0, 0x2FB3, 0x2FB5, 0x2FB8, 0x2FBB, 0x2FBE, 0x2FC0, 0x2FC3,
+    0x2FC6, 0x2FC9, 0x2FCB, 0x2FCE, 0x2FD1, 0x2FD4, 0x2FD6, 0x2FD9, 0x2FDC, 0x2FDF, 0x2FE2, 0x2FE4,
+    0x2FE7, 0x2FEA, 0x2FED, 0x2FEF, 0x2FF2, 0x2FF5, 0x2FF8, 0x2FFA, 0x2FFD, 0x3000, 0x3003, 0x3006,
+    0x3008, 0x300B, 0x300E, 0x3011, 0x3013, 0x3016, 0x3019, 0x301C, 0x301F, 0x3021, 0x3024, 0x3027,
+    0x302A, 0x302C, 0x302F, 0x3032, 0x3035, 0x3038, 0x303A, 0x303D, 0x3040, 0x3043, 0x3045, 0x3048,
+    0x304B, 0x304E, 0x3051, 0x3053, 0x3056, 0x3059, 0x305C, 0x305F, 0x3061, 0x3064, 0x3067, 0x306A,
+    0x306D, 0x306F, 0x3072, 0x3075, 0x3078, 0x307B, 0x307D, 0x3080, 0x3083, 0x3086, 0x3089, 0x308B,
+    0x308E, 0x3091, 0x3094, 0x3097, 0x3099, 0x309C, 0x309F, 0x30A2, 0x30A5, 0x30A7, 0x30AA, 0x30AD,
+    0x30B0, 0x30B3, 0x30B6, 0x30B8, 0x30BB, 0x30BE, 0x30C1, 0x30C4, 0x30C6, 0x30C9, 0x30CC, 0x30CF,
+    0x30D2, 0x30D5, 0x30D7, 0x30DA, 0x30DD, 0x30E0, 0x30E3, 0x30E5, 0x30E8, 0x30EB, 0x30EE, 0x30F1,
+    0x30F4, 0x30F6, 0x30F9, 0x30FC, 0x30FF, 0x3102, 0x3105, 0x3107, 0x310A, 0x310D, 0x3110, 0x3113,
+    0x3116, 0x3118, 0x311B, 0x311E, 0x3121, 0x3124, 0x3127, 0x3129, 0x312C, 0x312F, 0x3132, 0x3135,
+    0x3138, 0x313A, 0x313D, 0x3140, 0x3143, 0x3146, 0x3149, 0x314C, 0x314E, 0x3151, 0x3154, 0x3157,
+    0x315A, 0x315D, 0x315F, 0x3162, 0x3165, 0x3168, 0x316B, 0x316E, 0x3171, 0x3173, 0x3176, 0x3179,
+    0x317C, 0x317F, 0x3182, 0x3185, 0x3187, 0x318A, 0x318D, 0x3190, 0x3193, 0x3196, 0x3199, 0x319C,
+    0x319E, 0x31A1, 0x31A4, 0x31A7, 0x31AA, 0x31AD, 0x31B0, 0x31B2, 0x31B5, 0x31B8, 0x31BB, 0x31BE,
+    0x31C1, 0x31C4, 0x31C7, 0x31C9, 0x31CC, 0x31CF, 0x31D2, 0x31D5, 0x31D8, 0x31DB, 0x31DE, 0x31E0,
+    0x31E3, 0x31E6, 0x31E9, 0x31EC, 0x31EF, 0x31F2, 0x31F5, 0x31F8, 0x31FA, 0x31FD, 0x3200, 0x3203,
+    0x3206, 0x3209, 0x320C, 0x320F, 0x3212, 0x3214, 0x3217, 0x321A, 0x321D, 0x3220, 0x3223, 0x3226,
+    0x3229, 0x322C, 0x322F, 0x3231, 0x3234, 0x3237, 0x323A, 0x323D, 0x3240, 0x3243, 0x3246, 0x3249,
+    0x324C, 0x324E, 0x3251, 0x3254, 0x3257, 0x325A, 0x325D, 0x3260, 0x3263, 0x3266, 0x3269, 0x326C,
+    0x326E, 0x3271, 0x3274, 0x3277, 0x327A, 0x327D, 0x3280, 0x3283, 0x3286, 0x3289, 0x328C, 0x328F,
+    0x3291, 0x3294, 0x3297, 0x329A, 0x329D, 0x32A0, 0x32A3, 0x32A6, 0x32A9, 0x32AC, 0x32AF, 0x32B2,
+    0x32B5, 0x32B7, 0x32BA, 0x32BD, 0x32C0, 0x32C3, 0x32C6, 0x32C9, 0x32CC, 0x32CF, 0x32D2, 0x32D5,
+    0x32D8, 0x32DB, 0x32DE, 0x32E1, 0x32E3, 0x32E6, 0x32E9, 0x32EC, 0x32EF, 0x32F2, 0x32F5, 0x32F8,
+    0x32FB, 0x32FE, 0x3301, 0x3304, 0x3307, 0x330A, 0x330D, 0x3310, 0x3313, 0x3316, 0x3319, 0x331B,
+    0x331E, 0x3321, 0x3324, 0x3327, 0x332A, 0x332D, 0x3330, 0x3333, 0x3336, 0x3339, 0x333C, 0x333F,
+    0x3342, 0x3345, 0x3348, 0x334B, 0x334E, 0x3351, 0x3354, 0x3357, 0x335A, 0x335D, 0x3360, 0x3362,
+    0x3365, 0x3368, 0x336B, 0x336E, 0x3371, 0x3374, 0x3377, 0x337A, 0x337D, 0x3380, 0x3383, 0x3386,
+    0x3389, 0x338C, 0x338F, 0x3392, 0x3395, 0x3398, 0x339B, 0x339E, 0x33A1, 0x33A4, 0x33A7, 0x33AA,
+    0x33AD, 0x33B0, 0x33B3, 0x33B6, 0x33B9, 0x33BC, 0x33BF, 0x33C2, 0x33C5, 0x33C8, 0x33CB, 0x33CE,
+    0x33D1, 0x33D4, 0x33D7, 0x33DA, 0x33DD, 0x33E0, 0x33E3, 0x33E6, 0x33E9, 0x33EC, 0x33EF, 0x33F2,
+    0x33F5, 0x33F8, 0x33FB, 0x33FE, 0x3401, 0x3404, 0x3407, 0x340A, 0x340D, 0x3410, 0x3413, 0x3416,
+    0x3419, 0x341C, 0x341F, 0x3422, 0x3425, 0x3428, 0x342B, 0x342E, 0x3431, 0x3434, 0x3437, 0x343A,
+    0x343D, 0x3440, 0x3443, 0x3446, 0x3449, 0x344C, 0x344F, 0x3452, 0x3455, 0x3458, 0x345B, 0x345E,
+    0x3461, 0x3464, 0x3467, 0x346A, 0x346D, 0x3470, 0x3473, 0x3476, 0x3479, 0x347C, 0x3480, 0x3483,
+    0x3486, 0x3489, 0x348C, 0x348F, 0x3492, 0x3495, 0x3498, 0x349B, 0x349E, 0x34A1, 0x34A4, 0x34A7,
+    0x34AA, 0x34AD, 0x34B0, 0x34B3, 0x34B6, 0x34B9, 0x34BC, 0x34BF, 0x34C2, 0x34C5, 0x34C8, 0x34CC,
+    0x34CF, 0x34D2, 0x34D5, 0x34D8, 0x34DB, 0x34DE, 0x34E1, 0x34E4, 0x34E7, 0x34EA, 0x34ED, 0x34F0,
+    0x34F3, 0x34F6, 0x34F9, 0x34FC, 0x34FF, 0x3503, 0x3506, 0x3509, 0x350C, 0x350F, 0x3512, 0x3515,
+    0x3518, 0x351B, 0x351E, 0x3521, 0x3524, 0x3527, 0x352A, 0x352D, 0x3531, 0x3534, 0x3537, 0x353A,
+    0x353D, 0x3540, 0x3543, 0x3546, 0x3549, 0x354C, 0x354F, 0x3552, 0x3555, 0x3559, 0x355C, 0x355F,
+    0x3562, 0x3565, 0x3568, 0x356B, 0x356E, 0x3571, 0x3574, 0x3577, 0x357A, 0x357E, 0x3581, 0x3584,
+    0x3587, 0x358A, 0x358D, 0x3590, 0x3593, 0x3596, 0x3599, 0x359D, 0x35A0, 0x35A3, 0x35A6, 0x35A9,
+    0x35AC, 0x35AF, 0x35B2, 0x35B5, 0x35B8, 0x35BC, 0x35BF, 0x35C2, 0x35C5, 0x35C8, 0x35CB, 0x35CE,
+    0x35D1, 0x35D4, 0x35D7, 0x35DB, 0x35DE, 0x35E1, 0x35E4, 0x35E7, 0x35EA, 0x35ED, 0x35F0, 0x35F3,
+    0x35F7, 0x35FA, 0x35FD, 0x3600, 0x3603, 0x3606, 0x3609, 0x360C, 0x3610, 0x3613, 0x3616, 0x3619,
+    0x361C, 0x361F, 0x3622, 0x3625, 0x3629, 0x362C, 0x362F, 0x3632, 0x3635, 0x3638, 0x363B, 0x363E,
+    0x3642, 0x3645, 0x3648, 0x364B, 0x364E, 0x3651, 0x3654, 0x3658, 0x365B, 0x365E, 0x3661, 0x3664,
+    0x3667, 0x366A, 0x366E, 0x3671, 0x3674, 0x3677, 0x367A, 0x367D, 0x3680, 0x3684, 0x3687, 0x368A,
+    0x368D, 0x3690, 0x3693, 0x3696, 0x369A, 0x369D, 0x36A0, 0x36A3, 0x36A6, 0x36A9, 0x36AD, 0x36B0,
+    0x36B3, 0x36B6, 0x36B9, 0x36BC, 0x36C0, 0x36C3, 0x36C6, 0x36C9, 0x36CC, 0x36CF, 0x36D3, 0x36D6,
+    0x36D9, 0x36DC, 0x36DF, 0x36E2, 0x36E6, 0x36E9, 0x36EC, 0x36EF, 0x36F2, 0x36F5, 0x36F9, 0x36FC,
+    0x36FF, 0x3702, 0x3705, 0x3708, 0x370C, 0x370F, 0x3712, 0x3715, 0x3718, 0x371C, 0x371F, 0x3722,
+    0x3725, 0x3728, 0x372B, 0x372F, 0x3732, 0x3735, 0x3738, 0x373B, 0x373F, 0x3742, 0x3745, 0x3748,
+    0x374B, 0x374F, 0x3752, 0x3755, 0x3758, 0x375B, 0x375F, 0x3762, 0x3765, 0x3768, 0x376B, 0x376F,
+    0x3772, 0x3775, 0x3778, 0x377B, 0x377F, 0x3782, 0x3785, 0x3788, 0x378B, 0x378F, 0x3792, 0x3795,
+    0x3798, 0x379B, 0x379F, 0x37A2, 0x37A5, 0x37A8, 0x37AC, 0x37AF, 0x37B2, 0x37B5, 0x37B8, 0x37BC,
+    0x37BF, 0x37C2, 0x37C5, 0x37C8, 0x37CC, 0x37CF, 0x37D2, 0x37D5, 0x37D9, 0x37DC, 0x37DF, 0x37E2,
+    0x37E6, 0x37E9, 0x37EC, 0x37EF, 0x37F2, 0x37F6, 0x37F9, 0x37FC, 0x37FF, 0x3803, 0x3806, 0x3809,
+    0x380C, 0x3810, 0x3813, 0x3816, 0x3819, 0x381D, 0x3820, 0x3823, 0x3826, 0x3829, 0x382D, 0x3830,
+    0x3833, 0x3836, 0x383A, 0x383D, 0x3840, 0x3843, 0x3847, 0x384A, 0x384D, 0x3850, 0x3854, 0x3857,
+    0x385A, 0x385D, 0x3861, 0x3864, 0x3867, 0x386B, 0x386E, 0x3871, 0x3874, 0x3878, 0x387B, 0x387E,
+    0x3881, 0x3885, 0x3888, 0x388B, 0x388E, 0x3892, 0x3895, 0x3898, 0x389B, 0x389F, 0x38A2, 0x38A5,
+    0x38A9, 0x38AC, 0x38AF, 0x38B2, 0x38B6, 0x38B9, 0x38BC, 0x38BF, 0x38C3, 0x38C6, 0x38C9, 0x38CD,
+    0x38D0, 0x38D3, 0x38D6, 0x38DA, 0x38DD, 0x38E0, 0x38E4, 0x38E7, 0x38EA, 0x38ED, 0x38F1, 0x38F4,
+    0x38F7, 0x38FB, 0x38FE, 0x3901, 0x3904, 0x3908, 0x390B, 0x390E, 0x3912, 0x3915, 0x3918, 0x391C,
+    0x391F, 0x3922, 0x3925, 0x3929, 0x392C, 0x392F, 0x3933, 0x3936, 0x3939, 0x393D, 0x3940, 0x3943,
+    0x3947, 0x394A, 0x394D, 0x3950, 0x3954, 0x3957, 0x395A, 0x395E, 0x3961, 0x3964, 0x3968, 0x396B,
+    0x396E, 0x3972, 0x3975, 0x3978, 0x397C, 0x397F, 0x3982, 0x3985, 0x3989, 0x398C, 0x398F, 0x3993,
+    0x3996, 0x3999, 0x399D, 0x39A0, 0x39A3, 0x39A7, 0x39AA, 0x39AD, 0x39B1, 0x39B4, 0x39B7, 0x39BB,
+    0x39BE, 0x39C1, 0x39C5, 0x39C8, 0x39CB, 0x39CF, 0x39D2, 0x39D5, 0x39D9, 0x39DC, 0x39DF, 0x39E3,
+    0x39E6, 0x39EA, 0x39ED, 0x39F0, 0x39F4, 0x39F7, 0x39FA, 0x39FE, 0x3A01, 0x3A04, 0x3A08, 0x3A0B,
+    0x3A0E, 0x3A12, 0x3A15, 0x3A18, 0x3A1C, 0x3A1F, 0x3A22, 0x3A26, 0x3A29, 0x3A2D, 0x3A30, 0x3A33,
+    0x3A37, 0x3A3A, 0x3A3D, 0x3A41, 0x3A44, 0x3A47, 0x3A4B, 0x3A4E, 0x3A52, 0x3A55, 0x3A58, 0x3A5C,
+    0x3A5F, 0x3A62, 0x3A66, 0x3A69, 0x3A6D, 0x3A70, 0x3A73, 0x3A77, 0x3A7A, 0x3A7D, 0x3A81, 0x3A84,
+    0x3A88, 0x3A8B, 0x3A8E, 0x3A92, 0x3A95, 0x3A98, 0x3A9C, 0x3A9F, 0x3AA3, 0x3AA6, 0x3AA9, 0x3AAD,
+    0x3AB0, 0x3AB4, 0x3AB7, 0x3ABA, 0x3ABE, 0x3AC1, 0x3AC5, 0x3AC8, 0x3ACB, 0x3ACF, 0x3AD2, 0x3AD6,
+    0x3AD9, 0x3ADC, 0x3AE0, 0x3AE3, 0x3AE7, 0x3AEA, 0x3AED, 0x3AF1, 0x3AF4, 0x3AF8, 0x3AFB, 0x3AFE,
+    0x3B02, 0x3B05, 0x3B09, 0x3B0C, 0x3B0F, 0x3B13, 0x3B16, 0x3B1A, 0x3B1D, 0x3B20, 0x3B24, 0x3B27,
+    0x3B2B, 0x3B2E, 0x3B32, 0x3B35, 0x3B38, 0x3B3C, 0x3B3F, 0x3B43, 0x3B46, 0x3B4A, 0x3B4D, 0x3B50,
+    0x3B54, 0x3B57, 0x3B5B, 0x3B5E, 0x3B62, 0x3B65, 0x3B68, 0x3B6C, 0x3B6F, 0x3B73, 0x3B76, 0x3B7A,
+    0x3B7D, 0x3B80, 0x3B84, 0x3B87, 0x3B8B, 0x3B8E, 0x3B92, 0x3B95, 0x3B98, 0x3B9C, 0x3B9F, 0x3BA3,
+    0x3BA6, 0x3BAA, 0x3BAD, 0x3BB1, 0x3BB4, 0x3BB8, 0x3BBB, 0x3BBE, 0x3BC2, 0x3BC5, 0x3BC9, 0x3BCC,
+    0x3BD0, 0x3BD3, 0x3BD7, 0x3BDA, 0x3BDD, 0x3BE1, 0x3BE4, 0x3BE8, 0x3BEB, 0x3BEF, 0x3BF2, 0x3BF6,
+    0x3BF9, 0x3BFD, 0x3C00, 0x3C04, 0x3C07, 0x3C0B, 0x3C0E, 0x3C11, 0x3C15, 0x3C18, 0x3C1C, 0x3C1F,
+    0x3C23, 0x3C26, 0x3C2A, 0x3C2D, 0x3C31, 0x3C34, 0x3C38, 0x3C3B, 0x3C3F, 0x3C42, 0x3C46, 0x3C49,
+    0x3C4D, 0x3C50, 0x3C54, 0x3C57, 0x3C5A, 0x3C5E, 0x3C61, 0x3C65, 0x3C68, 0x3C6C, 0x3C6F, 0x3C73,
+    0x3C76, 0x3C7A, 0x3C7D, 0x3C81, 0x3C84, 0x3C88, 0x3C8B, 0x3C8F, 0x3C92, 0x3C96, 0x3C99, 0x3C9D,
+    0x3CA0, 0x3CA4, 0x3CA7, 0x3CAB, 0x3CAE, 0x3CB2, 0x3CB5, 0x3CB9, 0x3CBC, 0x3CC0, 0x3CC3, 0x3CC7,
+    0x3CCA, 0x3CCE, 0x3CD1, 0x3CD5, 0x3CD8, 0x3CDC, 0x3CE0, 0x3CE3, 0x3CE7, 0x3CEA, 0x3CEE, 0x3CF1,
+    0x3CF5, 0x3CF8, 0x3CFC, 0x3CFF, 0x3D03, 0x3D06, 0x3D0A, 0x3D0D, 0x3D11, 0x3D14, 0x3D18, 0x3D1B,
+    0x3D1F, 0x3D22, 0x3D26, 0x3D2A, 0x3D2D, 0x3D31, 0x3D34, 0x3D38, 0x3D3B, 0x3D3F, 0x3D42, 0x3D46,
+    0x3D49, 0x3D4D, 0x3D50, 0x3D54, 0x3D58, 0x3D5B, 0x3D5F, 0x3D62, 0x3D66, 0x3D69, 0x3D6D, 0x3D70,
+    0x3D74, 0x3D77, 0x3D7B, 0x3D7F, 0x3D82, 0x3D86, 0x3D89, 0x3D8D, 0x3D90, 0x3D94, 0x3D97, 0x3D9B,
+    0x3D9F, 0x3DA2, 0x3DA6, 0x3DA9, 0x3DAD, 0x3DB0, 0x3DB4, 0x3DB7, 0x3DBB, 0x3DBF, 0x3DC2, 0x3DC6,
+    0x3DC9, 0x3DCD, 0x3DD0, 0x3DD4, 0x3DD8, 0x3DDB, 0x3DDF, 0x3DE2, 0x3DE6, 0x3DE9, 0x3DED, 0x3DF1,
+    0x3DF4, 0x3DF8, 0x3DFB, 0x3DFF, 0x3E03, 0x3E06, 0x3E0A, 0x3E0D, 0x3E11, 0x3E14, 0x3E18, 0x3E1C,
+    0x3E1F, 0x3E23, 0x3E26, 0x3E2A, 0x3E2E, 0x3E31, 0x3E35, 0x3E38, 0x3E3C, 0x3E40, 0x3E43, 0x3E47,
+    0x3E4A, 0x3E4E, 0x3E52, 0x3E55, 0x3E59, 0x3E5C, 0x3E60, 0x3E64, 0x3E67, 0x3E6B, 0x3E6E, 0x3E72,
+    0x3E76, 0x3E79, 0x3E7D, 0x3E80, 0x3E84, 0x3E88, 0x3E8B, 0x3E8F, 0x3E92, 0x3E96, 0x3E9A, 0x3E9D,
+    0x3EA1, 0x3EA5, 0x3EA8, 0x3EAC, 0x3EAF, 0x3EB3, 0x3EB7, 0x3EBA, 0x3EBE, 0x3EC2, 0x3EC5, 0x3EC9,
+    0x3ECC, 0x3ED0, 0x3ED4, 0x3ED7, 0x3EDB, 0x3EDF, 0x3EE2, 0x3EE6, 0x3EE9, 0x3EED, 0x3EF1, 0x3EF4,
+    0x3EF8, 0x3EFC, 0x3EFF, 0x3F03, 0x3F07, 0x3F0A, 0x3F0E, 0x3F11, 0x3F15, 0x3F19, 0x3F1C, 0x3F20,
+    0x3F24, 0x3F27, 0x3F2B, 0x3F2F, 0x3F32, 0x3F36, 0x3F3A, 0x3F3D, 0x3F41, 0x3F45, 0x3F48, 0x3F4C,
+    0x3F50, 0x3F53, 0x3F57, 0x3F5A, 0x3F5E, 0x3F62, 0x3F65, 0x3F69, 0x3F6D, 0x3F70, 0x3F74, 0x3F78,
+    0x3F7B, 0x3F7F, 0x3F83, 0x3F86, 0x3F8A, 0x3F8E, 0x3F91, 0x3F95, 0x3F99, 0x3F9C, 0x3FA0, 0x3FA4,
+    0x3FA8, 0x3FAB, 0x3FAF, 0x3FB3, 0x3FB6, 0x3FBA, 0x3FBE, 0x3FC1, 0x3FC5, 0x3FC9, 0x3FCC, 0x3FD0,
+    0x3FD4, 0x3FD7, 0x3FDB, 0x3FDF, 0x3FE2, 0x3FE6, 0x3FEA, 0x3FEE, 0x3FF1, 0x3FF5, 0x3FF9, 0x3FFC
+};
+u8 D_80050A94[228] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+    0x08, 0x08, 0x08, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09,
+    0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0A, 0x0A,
+    0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
+    0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B,
+    0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B
+};
+u8 D_800509B0[228] = {
+    0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10,
+    0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48,
+    0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04,
+    0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18,
+    0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90,
+    0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08,
+    0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24,
+    0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00,
+    0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C,
+    0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40,
+    0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03,
+    0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12,
+    0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60,
+    0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06,
+    0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20,
+    0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0,
+    0x90, 0x60, 0x48, 0x40, 0x30, 0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09,
+    0x08, 0x06, 0x04, 0x03, 0x02, 0x00, 0xC0, 0x90, 0x60, 0x48, 0x40, 0x30,
+    0x24, 0x20, 0x18, 0x12, 0x10, 0x0C, 0x09, 0x08, 0x06, 0x04, 0x03, 0x02
+};
+u8 D_80050824[128] = {
+    0x02, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x02, 0x04, 0x01, 0x01, 0x01, 0x00, 0x00, 0x02, 0x01, 0x01, 0x03,
+    0x02, 0x01, 0x01, 0x00, 0x04, 0x04, 0x04, 0x00, 0x02, 0x02, 0x03, 0x00,
+    0x02, 0x02, 0x02, 0x03, 0x00, 0x02, 0x02, 0x00, 0x02, 0x02, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x01, 0x01, 0x04, 0x00, 0x01, 0x01,
+    0x04, 0x01, 0x01, 0x00, 0x01, 0x04, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03,
+    0x02, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x03,
+    0x03, 0x01, 0x02, 0x02, 0x04, 0x04, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00,
+    0x02, 0x02, 0x03, 0x02, 0x04, 0x04, 0x01, 0x01, 0x02, 0x02, 0x03, 0x02,
+    0x04, 0x04, 0x01, 0x01, 0x04, 0x04, 0x03, 0x00, 0x00, 0x02, 0x02, 0x02,
+    0x04, 0x03, 0x00, 0x00, 0x03, 0x02, 0x02, 0x01
+};
+#endif /* XENO_PC_PORT sound sdata tables */
+
+/* Note/pitch tables (sdata). D_80050B78: per-octave table (low nibble = pitch
+ * table page, high nibble = octave shift). D_80050BF0: per-note SPU pitch. */
+extern u8 D_80050B78[];
+extern s16 D_80050BF0[];
+/* Note-on velocity/articulation tables (sdata), indexed by the note byte. */
+extern u8 D_80050A94[];
+extern u8 D_800509B0[];
+/* Script-opcode operand lengths (sdata), indexed by opcode-0x80. */
+extern u8 D_80050824[];
+/* Sequence-command dispatch table (sdata), indexed by opcode-0x80. Retail
+ * data holds 128 handler addresses; the port's real handler routing is the
+ * step-3 pass (unreached until sequence data loads -- no active elements). */
+extern u8* (*g_SoundScriptHandlers[])(u8* pScript, AudioManager* pAudioManager,
+                                      AudioElement* pAudioElements);
+/* Tick bookkeeping: SPU-IRQ re-enable request flag, cumulative tick duration
+ * in RCnt2 ticks, and tick count (the 240Hz profiler pair). */
+extern u16 D_8005955C;
+extern s32 D_800595C4;
+extern s32 D_80059540;
+/* Per-voice envelope object: 4 per element at element+0xD8, 0x20 bytes each.
+ * The first word is the envelope HANDLER METHOD POINTER (retail: function
+ * address; kept at ABI width as a SoundPsxAddress on LP64 -- this is the
+ * runtime-trace-required jalr set from the tick-leg scoping; its setters are
+ * script handlers (step 3), so in the port the active flag stays clear and
+ * the call site is not reached yet). */
+typedef struct {
+    /* 0x00 */ SoundPsxAddress pfnHandler;
+    /* 0x04 */ u8 unk4[0x10];
+    /* 0x14 */ u16 delay;
+    /* 0x16 */ u8 unk16[2];
+    /* 0x18 */ s16 step;
+    /* 0x1A */ u16 stepAdd;
+    /* 0x1C */ u8 state;
+    /* 0x1D */ u8 unk1D;
+    /* 0x1E */ u16 flags;
+} SoundEnvelope;
+
+/* SFX chain (real as of S1). */
+extern void func_8003A14C();
+extern void func_80039F18();
+extern s32 func_8003A65C();
+extern void func_8003B644();
+extern void* func_80039024(s32 size);
+extern u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode);
+extern void func_8003E3E0();
+extern s32 func_8003E290();
+#ifdef XENO_PC_PORT
+extern void PsyX_Sys_SoundGateEnterCritical(void);
+extern void PsyX_Sys_SoundGateExitCritical(void);
+#endif
+/* Envelope handler methods (real as of B5.2; bound directly by 0xD8/0xE4/
+ * 0xEC and via the D_800508A4 table). */
+extern s32 func_8003F240();
+extern s32 func_8003F2A0();
+extern s32 func_8003F43C();
+/* Envelope handler-method table (retail sdata 3F290: 16 function words;
+ * slots 8-15 are the no-op method). Port side: the same functions as host
+ * addresses narrowed to the retail-width u32 slots -- the no-pie build
+ * round-trips them through SoundPsxAddress (pfnHandler stores these,
+ * func_8003EFE4 casts back and calls). Matching build uses the .sdata. */
+#ifdef XENO_PC_PORT
+extern void func_8003F190();
+extern s32 func_8003F1A4();
+extern s32 func_8003F1EC();
+extern s32 func_8003F308();
+extern s32 func_8003F354();
+extern s32 func_8003F3C0();
+SoundPsxAddress D_800508A4[16];
+/* Filled at SoundInitialize (a 32-bit truncating cast of a host function
+ * address is not a valid static initializer). */
+static void PcPort_InitEnvelopeMethodTable(void) {
+    static void* const methods[16] = {
+        (void*)func_8003F1A4, (void*)func_8003F1EC,
+        (void*)func_8003F240, (void*)func_8003F2A0,
+        (void*)func_8003F308, (void*)func_8003F308,
+        (void*)func_8003F354, (void*)func_8003F3C0,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+        (void*)func_8003F190, (void*)func_8003F190,
+    };
+    int i;
+    for (i = 0; i < 16; i++) {
+        D_800508A4[i] = SOUND_PTR_TO_PSX(methods[i]);
+    }
+}
+#else
+extern u32 D_800508A4[];
+#endif
 //----------------------------------------------------------------------------------------------------------------------
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundInitialize);
+void SoundInitialize(s32 arg0) {
+    if (g_SoundControlFlags < 0) {
+        SoundHandleError(0x28);
+        return;
+    }
+#ifdef XENO_PC_PORT
+    PcPort_InitEnvelopeMethodTable();
+#endif
+    g_SoundControlFlags = arg0 | 0xB801;
+    SpuInitMalloc(4, (char*)g_SoundSpuMemoryTableStart);
+    SoundHeapInitialize(D_80065B0C, 0x6300);
+    SoundSpuMemoryInitialize();
+    g_SoundTransferQueue = SoundHeapAllocate(0xA0);
+    SoundClearVoiceDataPointers();
+    D_800594E4 = 0x12345678;
+    g_SoundAudioManagerListHead = NULL;
+    D_800595D8 = 0;
+    g_SoundSedsLinkedList = NULL;
+    g_SoundWdsLinkedList = NULL;
+    D_80059518 = NULL;
+    g_SoundKeyOnFlags = 0;
+    g_SoundKeyOffFlags = 0;
+    g_unk_VoicesNeedingProcessing = 0;
+    g_SoundVolumeController.commonAttr.mvolmode.left = 0;
+    g_SoundVolumeController.commonAttr.mvolmode.right = 0;
+    g_SoundVolumeController.commonAttr.mask = 0xC;
+    EnterCriticalSection();
+    g_unk_SoundEvent = OpenEvent(0xF2000002, 2, 0x1000, func_8003C020);
+    SetRCnt(0xF2000002, 0x44E8, 0x1000);
+    StartRCnt(0xF2000002);
+    SpuSetTransferCallback(SoundOnTransferCallback);
+    SpuSetIRQCallback(SoundSpuIRQHandler);
+    SpuSetIRQ(0);
+    D_80059504 = 0;
+    g_SoundSpuIRQCount = 0;
+    ExitCriticalSection();
+    SoundSpuMemoryAllocateBlockAtAddress(0x2000, 0x10000, 4);
+    func_800386C4(1);
+    SoundSetCdAttr(0, 1);
+    SoundSetMasterVolumeWithFade(0x3FFF, 0);
+    SoundSetCdVolumeWithFade(0x7FFF, 0);
+    if (g_SoundControlFlags & 0x4000) {
+        SoundSetupCdMix(0x80);
+    }
+    D_800595D8 = SOUND_PTR_TO_PSX(func_8003B148(0x10));
+    D_80059544 = 8;
+    g_SoundReverbMemoryHandle = -1;
+    g_SoundUploadDestBuffer = 0;
+    g_SoundReverbType = 0xFF;
+    SoundSetReverbModeWithAllocation(4, 0, 0, 0);
+    SpuSetReverb(1);
+    g_SoundSpuErrorId = 0;
+}
 
 void SoundReset(void) {
     int i;
@@ -257,9 +751,49 @@ void SoundReset(void) {
     g_SoundSpuErrorId = 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundEnableAllSpuChannels);
+void SoundEnableAllSpuChannels(void) {
+    SoundVoiceData** ppChannel = &g_SoundChannels[0];
+    int i = 0;
+    do {
+        SoundVoiceData* pChannel = *ppChannel;
+        i++;
+        if (pChannel != NULL) {
+            pChannel->flags |= 0x1F5;
+        }
+        ppChannel++;
+    } while (i < 24);
+    g_SoundControlFlags &= ~0x40;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundMuteAllSpuChannels);
+/* Transcribed from
+ * asm/slus_006.64/nonmatchings/system/sound/SoundMuteAllSpuChannels.s
+ * (0x80037EE4-0x80037F44, 24 instructions). Sets bit 6 of
+ * g_SoundControlFlags, then walks all 24 SPU voices (0x10 bytes each) zeroing
+ * the two volume words and the ADSR-low word, writing 0x1FDF into the voice's
+ * +0x0A word, and forcing the high byte of the +8 word to 0x7F while keeping its
+ * low byte. The port keeps its own owner in pc_port/src/world_map_pause.c, so
+ * this definition is weak under XENO_PC_PORT. */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+void SoundMuteAllSpuChannels(void) {
+    u8* pVoice = (u8*)g_pSoundSpuRegisters;
+    int i;
+
+    g_SoundControlFlags |= 0x40;
+#ifdef SOUND_MUTE_MUTANT_12_VOICES
+    for (i = 0; i < 0x12; i++) {
+#else
+    for (i = 0; i < 0x18; i++) {
+#endif
+        *(u16*)(pVoice + 0x00) = 0;
+        *(u16*)(pVoice + 0x02) = 0;
+        *(u16*)(pVoice + 0x04) = 0;
+        *(u16*)(pVoice + 0x0A) = 0x1FDF;
+        *(u16*)(pVoice + 0x08) = (u16)(*(u8*)(pVoice + 0x08) + 0x7F00);
+        pVoice += 0x10;
+    }
+}
 
 void func_80037F44(void) {
     if (!(g_SoundControlFlags & 1)) {
@@ -277,39 +811,195 @@ void func_80037F88(void) {
 
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundLoadWdsFile);
+// Load a WDS sample-bank file: allocate SPU-RAM for the ADPCM data, queue
+// its upload (transfer queue -> SpuWrite), copy the header into a sound-heap
+// block, and append the entry to the WDS linked list under the tick bracket.
+SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode) {
+    u32 spuAddr;
+    SoundWDSEntry* pEntry;
+
+    spuAddr = SoundSpuMemoryAllocateWDS(pWdsFile, mode);
+    if (spuAddr == 0) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SoundQueueSpuWriteCommand(spuAddr, (u8*)pWdsFile + pWdsFile->adpcmDataOffset,
+                              pWdsFile->adpcmDataSize, NULL);
+    pEntry = func_80039024(pWdsFile->headerSizeMby);
+    if (pEntry == NULL) {
+        SoundSpuMemoryFreeBlock(spuAddr);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pEntry, pWdsFile, pWdsFile->headerSizeMby);
+    pEntry->spuMemoryAddress = spuAddr;
+    DisableEvent(g_unk_SoundEvent);
+    {
+        SoundPsxAddress* pList = (SoundPsxAddress*)&g_SoundWdsLinkedList;
+        while (SOUND_PSX_TO_PTR(SoundWDSEntry, *pList) != NULL) {
+            pList = &SOUND_PSX_TO_PTR(SoundWDSEntry, *pList)->pNext;
+        }
+        *pList = SOUND_PTR_TO_PSX(pEntry);
+    }
+    pEntry->pNext = 0;
+    EnableEvent(g_unk_SoundEvent);
+    return pEntry;
+}
 
 // Loads part of a WDS file, basically a sized SoundLoadWdsFile?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800380D0);
+void* func_800380D0(void* pWds, s32 arg1, s32 arg2) {
+    void* pEntry;
+    void* pSpu;
+    void* pManager;
+    if (SoundFindWdsEntry(*(u16*)((u8*)pWds + 0x20)) != NULL) {
+        SoundHandleError(0x16);
+        return NULL;
+    }
+    pSpu = SoundSpuMemoryAllocateWDS(pWds, arg2);
+    if (pSpu == NULL) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SoundWdsSetTransferParamters(pSpu, *(s32*)((u8*)pWds + 0x14), 0x1F);
+    SoundTransferWdsPart((u8*)pWds + *(s32*)((u8*)pWds + 0x18), arg1 - *(s32*)((u8*)pWds + 0x10));
+    pManager = func_80039024(*(s32*)((u8*)pWds + 0x10));
+    if (pManager == NULL) {
+        SoundSpuMemoryFreeBlock(pSpu);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pManager, pWds, *(s32*)((u8*)pWds + 0x10));
+    DisableEvent(g_unk_SoundEvent);
+    *(void**)((u8*)pManager + 0x28) = pSpu;
+    {
+        void** ppList = &g_SoundWdsLinkedList;
+        while (*ppList != NULL) {
+            ppList = (void**)((u8*)*ppList + 0x2C);
+        }
+        *ppList = pManager;
+    }
+    EnableEvent(g_unk_SoundEvent);
+    *(u32*)((u8*)pManager + 0x2C) = 0;
+    return pManager;
+}
 
-void SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
+#ifdef XENO_PC_PORT
+/* Port variant of SoundLoadWdsFile for the field music-bank stream
+ * substitute (func_80085C90): identical registration flow -- SPU alloc,
+ * sound-heap header copy, list append under the tick bracket -- but the
+ * ADPCM payload goes to the backend synchronously via SpuWrite instead of
+ * the transfer queue. Retail STREAMS this file (16KB CD windows chunk-pumped
+ * to SPU); it is never resident in main RAM, and the field heap cannot fit
+ * it, so the port stages it in HOST memory -- which the transfer queue
+ * cannot take (SoundQueueTransferCommand narrows source pointers to PSX
+ * addresses). Synchronous SpuWrite from the caller's thread is safe: the
+ * PsyX backend copies into its SPU image under its own mutex, and the tick
+ * only reads SPU regions its voices already point at. */
+SoundWDSEntry* SoundLoadWdsFileHostStaged(SoundWDSEntry* pWdsFile) {
+    u32 spuAddr;
+    SoundWDSEntry* pEntry;
+
+    spuAddr = SoundSpuMemoryAllocateWDS(pWdsFile, 0);
+    if (spuAddr == 0) {
+        SoundHandleError(0x1F);
+        return NULL;
+    }
+    SpuSetTransferStartAddr(spuAddr);
+    SpuWrite((u8*)pWdsFile + pWdsFile->adpcmDataOffset, pWdsFile->adpcmDataSize);
+    pEntry = func_80039024(pWdsFile->headerSizeMby);
+    if (pEntry == NULL) {
+        SoundSpuMemoryFreeBlock(spuAddr);
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    SoundHeapSetBlockMemory(pEntry, pWdsFile, pWdsFile->headerSizeMby);
+    pEntry->spuMemoryAddress = spuAddr;
+    DisableEvent(g_unk_SoundEvent);
+    {
+        SoundPsxAddress* pList = (SoundPsxAddress*)&g_SoundWdsLinkedList;
+        while (SOUND_PSX_TO_PTR(SoundWDSEntry, *pList) != NULL) {
+            pList = &SOUND_PSX_TO_PTR(SoundWDSEntry, *pList)->pNext;
+        }
+        *pList = SOUND_PTR_TO_PSX(pEntry);
+    }
+    pEntry->pNext = 0;
+    EnableEvent(g_unk_SoundEvent);
+    return pEntry;
+}
+#endif
+
+#ifdef XENO_PC_PORT
+/* Port body: explicit returns. Retail's bare-return v0-passthrough (kept
+ * below for the matching build) is undefined behavior on the host -- the
+ * native x86 build happened to keep the allocator's result in the return
+ * register, but TSan's function-exit instrumentation clobbers it (caught as
+ * spuAddr=garbage under XENO_TSAN=1). */
+u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
     if (mode == SOUND_WDS_ALLOCATE_AT_ADDRESS) {
         mode = pWdsFile->spuMemoryAddress;
     } else if (mode == SOUND_WDS_ALLOCATE_AUTOMATIC) {
         mode = 0;
     }
-    
+
+    if (mode == 0) {
+        return SoundSpuMemoryAllocateBlock(pWdsFile->adpcmDataSize, pWdsFile->unk1E);
+    }
+
+    return SoundSpuMemoryAllocateBlockAtAddress(pWdsFile->adpcmDataSize, pWdsFile->spuMemoryAddress, pWdsFile->unk1E);
+}
+#else
+u32 SoundSpuMemoryAllocateWDS(SoundWDSEntry* pWdsFile, int mode) {
+    if (mode == SOUND_WDS_ALLOCATE_AT_ADDRESS) {
+        mode = pWdsFile->spuMemoryAddress;
+    } else if (mode == SOUND_WDS_ALLOCATE_AUTOMATIC) {
+        mode = 0;
+    }
+
     if (mode == 0) {
         SoundSpuMemoryAllocateBlock(pWdsFile->adpcmDataSize, pWdsFile->unk1E);
-        return;
+        return;   /* retail: result rides v0 from the allocator (bare return in a u32 fn) */
     }
-    
+
     SoundSpuMemoryAllocateBlockAtAddress(pWdsFile->adpcmDataSize, pWdsFile->spuMemoryAddress, pWdsFile->unk1E);
 }
+#endif
 
 void SoundWdsSetTransferParamters(int transferAddress, int numBytesToTransfer) {
     g_SoundWdsCurSpuAddress = transferAddress;
     g_SoundWdsRemainingBytes = numBytesToTransfer;
 }
 
+#ifdef XENO_PC_PORT
+/* Retail 0x8003827C-0x80038310.  Feed at most the remaining WDS bytes to
+ * the ordinary SPU transfer queue, then advance the retail destination and
+ * remaining-byte cursors.  The queue/SpuWrite layer is the hardware adapter;
+ * file selection, chunking, and cursor behavior remain game-owned. */
+void SoundTransferWdsPart(u8* pData, s32 size) {
+    s32 transferSize;
+
+    if (g_SoundWdsRemainingBytes == 0) {
+        return;
+    }
+    transferSize = size;
+    if (g_SoundWdsRemainingBytes < transferSize) {
+        transferSize = g_SoundWdsRemainingBytes;
+    }
+    SoundQueueSpuWriteCommand(g_SoundWdsCurSpuAddress, pData,
+                              transferSize, NULL);
+    g_SoundWdsCurSpuAddress += transferSize;
+    g_SoundWdsRemainingBytes -= transferSize;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundTransferWdsPart);
+#endif
 
 void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
     SoundWDSEntry* pPrev;
     SoundWDSEntry* pCurrent;
 
     pPrev = NULL;
-    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL; pCurrent = pCurrent->pNext) {
+    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL;
+         pCurrent = SOUND_PSX_TO_PTR(SoundWDSEntry, pCurrent->pNext)) {
         if (pCurrent == pTargetEntry) 
             break;
         
@@ -323,9 +1013,10 @@ void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
 
     DisableEvent(g_unk_SoundEvent);
     if (pPrev != NULL)
-        pPrev->pNext = pTargetEntry->pNext;
+        pPrev->pNext = SOUND_PTR_TO_PSX(
+            SOUND_PSX_TO_PTR(SoundWDSEntry, pTargetEntry->pNext));
     else 
-        g_SoundWdsLinkedList = pTargetEntry->pNext;
+        g_SoundWdsLinkedList = SOUND_PSX_TO_PTR(SoundWDSEntry, pTargetEntry->pNext);
     EnableEvent(g_unk_SoundEvent);
     
     if (pTargetEntry->spuMemoryAddress != SoundSpuMemoryFreeBlock(pTargetEntry->spuMemoryAddress)) {
@@ -338,7 +1029,8 @@ void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
 SoundWDSEntry* SoundFindWdsEntry(int targetID) {
     SoundWDSEntry* pCurrent;
 
-    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL; pCurrent = pCurrent->pNext) {
+    for (pCurrent = g_SoundWdsLinkedList; pCurrent != NULL;
+         pCurrent = SOUND_PSX_TO_PTR(SoundWDSEntry, pCurrent->pNext)) {
         if (pCurrent->id == targetID) {
             return pCurrent;
         }
@@ -350,12 +1042,13 @@ SoundWDSEntry* SoundFindWdsEntry(int targetID) {
 void SoundAddSedsEntry(SoundFile* pSoundFile) {
     SoundFile* pEntry;
     short nSedsStatus;
-    SoundFile** pList;
+    SoundPsxAddress* pList;
     SoundFile* pSoundFileToVerify = pSoundFile;
 
     // Ensure that an entry with the same SED ID does not exists in the linked list already
     if (!(g_SoundControlFlags & 0x80)) {
-        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL; pEntry = pEntry->pNext) {
+        for (pEntry = g_SoundSedsLinkedList; pEntry != NULL;
+             pEntry = SOUND_PSX_TO_PTR(SoundFile, pEntry->pNext)) {
             if (pSoundFile->sedId == pEntry->sedId) {
                 SoundHandleError(SOUND_ERR_ENTRY_ALREADY_EXISTS);
                 return;
@@ -372,15 +1065,46 @@ void SoundAddSedsEntry(SoundFile* pSoundFile) {
 
     // Add the SED Entry to the linked list
     DisableEvent(g_unk_SoundEvent);
-    pList = &g_SoundSedsLinkedList;
-    while (*pList != NULL)
-        pList = &((*pList)->pNext);
-    *pList = pSoundFile;
-    pSoundFile->pNext = NULL;
+    pList = (SoundPsxAddress*)&g_SoundSedsLinkedList;
+    while (SOUND_PSX_TO_PTR(SoundFile, *pList) != NULL)
+        pList = &SOUND_PSX_TO_PTR(SoundFile, *pList)->pNext;
+    *pList = SOUND_PTR_TO_PSX(pSoundFile);
+    pSoundFile->pNext = SOUND_PTR_TO_PSX(NULL);
     EnableEvent(g_unk_SoundEvent);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003852C);
+#ifdef XENO_PC_PORT
+extern void func_8003A094(SoundFile*);
+#else
+extern void func_8003A094(void*);
+#endif
+extern void SoundHandleError(s32);
+
+void func_8003852C(void* pSed) {
+    void* pPrev = NULL;
+    void* pCur = g_SoundSedsLinkedList;
+    while (pCur != NULL && pCur != pSed) {
+        pPrev = pCur;
+        pCur = *(void**)((u8*)pCur + 0x1C);
+    }
+    if (pCur == NULL) {
+        SoundHandleError(0x10);
+        return;
+    }
+    func_8003A094(pSed);
+    DisableEvent(g_unk_SoundEvent);
+    if (pPrev != NULL) {
+        *(void**)((u8*)pPrev + 0x1C) = *(void**)((u8*)pSed + 0x1C);
+    } else {
+        g_SoundSedsLinkedList = *(void**)((u8*)pSed + 0x1C);
+    }
+    *(void**)((u8*)pSed + 0x1C) = NULL;
+    if (SoundValidateFile(pSed, 0x73646573, 0x101) != 0) {
+        SoundHandleError(0xB);
+    } else {
+        EnableEvent(g_unk_SoundEvent);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80038624(void) {
@@ -389,7 +1113,15 @@ void func_80038624(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003864C);
+void* func_8003864C(void* pData) {
+    s16 targetId = pData ? *(u16*)((u8*)pData + 0x14) : 0;
+    void* pEntry = g_SoundSedsLinkedList;
+    while (pEntry != NULL) {
+        if (*(s16*)((u8*)pEntry + 0x14) == targetId) break;
+        pEntry = *(void**)((u8*)pEntry + 0x1C);
+    }
+    return pEntry;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003869C(void) {
@@ -398,7 +1130,70 @@ void func_8003869C(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
+ * keeps INCLUDE_ASM (byte-exact) below. Semantics traced 1:1 against the asm
+ * (reverb-mode flag machine: clear control bits 8-10, then OR in 0x100/0x300/
+ * 0x500 for arg 1/2/3; re-apply volume; flag active voices; optional CD mix;
+ * the D_80059518 echo-controller leg is dead at cold init -- that global is
+ * only ever set to 0). Residual vs {}: gcc-2.7.2 lowers the mode switch to a
+ * range-split decision tree (slti a0,3) whereas retail emits a linear
+ * beq-to-body chain with a tail-merged store; neither a switch, a flat nor a
+ * nested if-else, nor a shared-store switch reproduces retail's expand_case
+ * shape. Not claimed as {}. */
+void func_800386C4(s32 arg0) {
+    AudioManager* manager;
+    u8* p;
+    s32 value;
+    s16 flags;
+
+    flags = g_SoundControlFlags & 0xF8FF;
+    g_SoundControlFlags = flags;
+    switch (arg0) {
+    case 1:
+        g_SoundControlFlags = flags | 0x100;
+        break;
+    case 2:
+        g_SoundControlFlags = flags | 0x300;
+        break;
+    case 3:
+        g_SoundControlFlags = flags | 0x500;
+        break;
+    }
+    SoundApplyVolumeSettings();
+    SpuSetReverbModeDepth(g_SoundReverbDepth.left, g_SoundReverbDepth.right);
+    manager = g_SoundAudioManagerListHead;
+    if (manager != NULL) {
+        do {
+            unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+            manager = SOUND_PSX_TO_PTR(AudioManager, manager->next);
+        } while (manager != NULL);
+    }
+    if (g_SoundControlFlags & 0x4000) {
+        SoundSetupCdMix(g_SoundVolumeController.unk_field2);
+    }
+    p = (u8*)D_80059518;
+    if (p != NULL && (*(u16*)(p + 0x0) & 1)) {
+        value = *(u16*)(p + 0x12);
+        if (func_80038824() != 0) {
+            value <<= 7;
+            *(u16*)(p + 0x38) = value;
+            *(u16*)(p + 0x3A) = 0;
+            *(u16*)(p + 0x64) = 0;
+        } else {
+            value <<= 6;
+            *(u16*)(p + 0x38) = value;
+            *(u16*)(p + 0x3A) = value;
+            *(u16*)(p + 0x64) = value;
+        }
+        *(u16*)(p + 0x66) = value;
+        *(u16*)(p + 0x36) = 1;
+        *(u16*)(p + 0x62) = 1;
+    }
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800386C4);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 s32 func_80038824(void) {
@@ -417,7 +1212,27 @@ s32 func_80038824(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+#ifdef XENO_PC_PORT
+/* Retail 0x8003885C-0x800388D4.  Store the requested CD level, derive the
+ * four-byte CD-ROM attenuation matrix, and submit it through libcd. */
+void SoundSetupCdMix(s32 level) {
+    s32 mixedLevel;
+
+    g_SoundVolumeController.unk_field2 = (s16)level;
+    if (g_SoundControlFlags & 0x700) {
+        mixedLevel = 0;
+    } else {
+        mixedLevel = level >> 1;
+    }
+    g_SoundCdRomAttenuation.val0 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val1 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val2 = (u8)mixedLevel;
+    g_SoundCdRomAttenuation.val3 = (u8)mixedLevel;
+    CdMix(&g_SoundCdRomAttenuation);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSetupCdMix);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_800388D4(s32 arg0) {
@@ -552,7 +1367,21 @@ void SoundExecuteReverbWorkAreaTransfer(void) {
 
         SoundQueueSpuWriteCommand(currentSourceAddr, g_SoundUploadDestBuffer, chunkSize, SoundExecuteReverbWorkAreaTransfer);
 
+#ifdef XENO_PC_PORT
+        /* The port's SPU backend completes SpuWrite synchronously, so the call
+         * above already ran the whole chunk chain to its bytesRemaining==0
+         * tail, which frees g_SoundUploadDestBuffer and zeroes it. Retail's
+         * DMA transfer callback fires from the SPU interrupt, i.e. after this
+         * duplicate write has been queued, so its pointer is still live here.
+         * The buffer is zeroed by SoundHeapAllocate and the duplicate writes
+         * the same chunk to the same SPU address, so once the synchronous
+         * completion has released it there is nothing left that retail would
+         * observe: skip the duplicate instead of handing PsyX_SPUAL_Write a
+         * host NULL (SIGSEGV in the reverb clear path). */
+        if ((g_SoundControlFlags & (1 << 4)) == 0 && g_SoundUploadDestBuffer != 0) {
+#else
         if ((g_SoundControlFlags & (1 << 4)) == 0) {
+#endif
             SoundQueueSpuWriteCommand(currentSourceAddr, g_SoundUploadDestBuffer, chunkSize, NULL);
         }
     }
@@ -664,11 +1493,11 @@ void SoundHeapInitialize(void* startAddress, unsigned int size) {
     g_SoundHeapSize = nAlignedSize;
     pHeapBlock->unk2 = 0;
     pHeapBlock->unk4 = 0;
-    pHeapBlock->pPrev = pHeapBlock + 1;
-    pHeapBlock->pNext = NULL;
+    pHeapBlock->pPrev = SOUND_PTR_TO_PSX(pHeapBlock + 1);
+    pHeapBlock->pNext = SOUND_PTR_TO_PSX(NULL);
 }
 
-void* SoundHeapAllocate(unsigned int allocSize) {
+void* SoundHeapAllocate(u32 allocSize) {
     void* pMemory;
     SoundHeapBlockHeader* pNewBlock;
     unsigned int nTotalSize;
@@ -679,26 +1508,30 @@ void* SoundHeapAllocate(unsigned int allocSize) {
     DisableEvent(g_unk_SoundEvent);
     nTotalSize = ((allocSize + 0xF) & ~0xF) + sizeof(SoundHeapBlockHeader);
     
-    for (pHeapBlock = g_SoundHeapHead; pHeapBlock->pNext != NULL; pHeapBlock = pHeapBlock->pNext) {
-        pNext = pHeapBlock->pNext;
-        nSize = (u32)pHeapBlock->pNext - (u32)pHeapBlock->pPrev;
+    for (pHeapBlock = g_SoundHeapHead;
+         SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext) != NULL;
+         pHeapBlock = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext)) {
+        pNext = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext);
+        nSize = (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pNext) -
+                (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev);
         if (nSize >= nTotalSize) {
             goto alloc_new_block;
         }
     }
     
     pNext = (SoundHeapBlockHeader*)g_SoundHeapEnd;
-    if ((u32)pNext - (u32)pHeapBlock->pPrev >= nTotalSize) {
+    if ((u32)pNext - (u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev) >= nTotalSize) {
     alloc_new_block:
-        pNewBlock = (SoundHeapBlockHeader*)(((u32)pHeapBlock->pPrev + 0xF) & ~0xF);
+        pNewBlock = (SoundHeapBlockHeader*)
+            (((u32)SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pHeapBlock->pPrev) + 0xF) & ~0xF);
         pMemory = pNewBlock + 1;
-        pNewBlock->pPrev = (SoundHeapBlockHeader*)((u32)pMemory + allocSize);
-        pNewBlock->pNext = NULL;
+        pNewBlock->pPrev = SOUND_PTR_TO_PSX((u8*)pMemory + allocSize);
+        pNewBlock->pNext = SOUND_PTR_TO_PSX(NULL);
         pNewBlock->unk4 = 0;
         pNewBlock->unk0 = 2;
         pNewBlock->unk2 = 0;
         pNewBlock->pNext = pHeapBlock->pNext;
-        pHeapBlock->pNext = pNewBlock;
+        pHeapBlock->pNext = SOUND_PTR_TO_PSX(pNewBlock);
         EnableEvent(g_unk_SoundEvent);
         SoundHeapClearBlockMemory(pMemory, allocSize);
         return pMemory;
@@ -708,15 +1541,105 @@ void* SoundHeapAllocate(unsigned int allocSize) {
 }
 
 // SoundHeapAllocate, but slightly different
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039024);
+// Sound-heap allocate-from-top: find the LAST gap that fits (keeping WDS
+// headers away from the low heap), link a block header in, zero the memory.
+// NOTE (retail-faithful): the allocation-failure path returns WITHOUT
+// re-enabling the tick event -- the bracket leaks on heap-full (unhit in
+// practice; the caller error-paths out).
+void* func_80039024(s32 size) {
+    SoundHeapBlockHeader* found;
+    u32 end;
+    s32 aligned;
+    void* pMem;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHeapFree);
+    DisableEvent(g_unk_SoundEvent);
+    aligned = ((size + 0xF) & -0x10) + 0x10;
+    found = NULL;
+    end = 0;
+    {
+        SoundHeapBlockHeader* blk = g_SoundHeapHead;
+        u32 heapEnd = g_SoundHeapEnd;
+        for (;;) {
+            SoundPsxAddress next = blk->pNext;
+            if (next == 0) {
+                if ((s32)(heapEnd - blk->pPrev) >= aligned) {
+                    found = blk;
+                    end = heapEnd;
+                }
+                break;
+            }
+            if ((s32)(next - blk->pPrev) >= aligned) {
+                found = blk;
+                end = next;
+            }
+            blk = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, next);
+        }
+    }
+    if (found == NULL) {
+        return NULL;
+    }
+    {
+        SoundHeapBlockHeader* hdr;
+        end = end - aligned;
+        hdr = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, (end + 0xF) & -0x10);
+        pMem = (u8*)hdr + 0x10;
+        hdr->pPrev = SOUND_PTR_TO_PSX((u8*)pMem + size);
+        hdr->pNext = 0;
+        hdr->unk4 = 0;
+        hdr->unk0 = 0x2;
+        hdr->unk2 = 0;
+        hdr->pNext = found->pNext;
+        found->pNext = SOUND_PTR_TO_PSX(hdr);
+        EnableEvent(g_unk_SoundEvent);
+        SoundHeapClearBlockMemory(pMem, size);
+        return pMem;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800391CC);
+void SoundHeapFree(void* pMemory) {
+    SoundHeapBlockHeader* pBlock;
+    SoundHeapBlockHeader* pPrevious;
+    SoundHeapBlockHeader* pTarget;
+
+    pTarget = (SoundHeapBlockHeader*)((u8*)pMemory - sizeof(SoundHeapBlockHeader));
+    pBlock = g_SoundHeapHead;
+    pPrevious = NULL;
+
+    DisableEvent(g_unk_SoundEvent);
+    while (pBlock != pTarget) {
+        pPrevious = pBlock;
+        pBlock = SOUND_PSX_TO_PTR(SoundHeapBlockHeader, pPrevious->pNext);
+    }
+
+    if (pPrevious != NULL) {
+        pPrevious->pNext = pTarget->pNext;
+    }
+    EnableEvent(g_unk_SoundEvent);
+}
+
+s32 func_800391CC(void) {
+    void* pBlock = g_SoundHeapHead;
+    s32 maxFree = 0;
+    void* pLast;
+    while (*(void**)((u8*)pBlock + 0xC) != NULL) {
+        void* pNext = *(void**)((u8*)pBlock + 0xC);
+        s32 free = (u8*)pNext - *(u8**)((u8*)pBlock + 8);
+        if (free > maxFree) maxFree = free;
+        pLast = pNext;
+        pBlock = pNext;
+    }
+    {
+        s32 tailFree = (u8*)g_SoundHeapEnd - *(u8**)((u8*)pBlock + 8);
+        if (tailFree > maxFree) maxFree = tailFree;
+    }
+    return maxFree & ~0xF;
+}
 
 void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
     u32* pCurSrc;
     u32* pCurDst;
+    u8* pCurSrcByte;
+    u8* pCurDstByte;
     u32* pNextSrc;
     u32* pNextDst;
     u32 v0,v1,v2,v3;
@@ -744,12 +1667,14 @@ void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
         *pCurDst++ = *pCurSrc++;
     }
 
+    pCurSrcByte = (u8*)pCurSrc;
+    pCurDstByte = (u8*)pCurDst;
     for (nCount = size & 3; nCount != 0; nCount--) {
-        *((u8*)pCurDst)++ = *((u8*)pCurSrc)++;
+        *pCurDstByte++ = *pCurSrcByte++;
     }
 }
 
-void SoundHeapClearBlockMemory(void* pMemory, int size) {
+void SoundHeapClearBlockMemory(void* pMemory, s32 size) {
     unsigned int nCount;
     u32* pDword;
     u8* pByte;
@@ -788,12 +1713,163 @@ void SoundSpuMemoryInitialize(void) {
     g_SoundSpuMemoryBlocks[0].nextBlockIndex = 0;
 }
 
+extern s32 SoundSpuMemoryGetFreeBlock(void);
 
+#ifdef XENO_PC_PORT
+/* Retail 0x800393B8-0x800394B8.  First-fit allocation in the twelve-entry
+ * SPU-RAM descriptor list.  Retail does not consume arg1 in this routine. */
+u32 SoundSpuMemoryAllocateBlock(s32 size, s32 arg1) {
+    SoundSpuMemoryBlock* pBlock;
+    SoundSpuMemoryBlock* pNew;
+    s32 address;
+    s32 freeIndex;
+
+    (void)arg1;
+    pBlock = &g_SoundSpuMemoryBlocks[0];
+    address = pBlock->spuAddress + pBlock->size;
+
+    while (pBlock->nextBlockIndex != 0) {
+        SoundSpuMemoryBlock* pNext =
+            &g_SoundSpuMemoryBlocks[pBlock->nextBlockIndex];
+        if (pNext->spuAddress - address >= size) {
+            break;
+        }
+        pBlock = pNext;
+        address = pBlock->spuAddress + pBlock->size;
+    }
+
+    if (pBlock->nextBlockIndex == 0 && 0x80000 - address < size) {
+        return 0;
+    }
+
+    freeIndex = SoundSpuMemoryGetFreeBlock();
+    if (freeIndex < 0) {
+        return 0;
+    }
+    pNew = &g_SoundSpuMemoryBlocks[freeIndex];
+    pNew->flags = SPU_MEMORY_IN_USE;
+    pNew->unk1 = 0;
+    pNew->spuAddress = address;
+    pNew->size = size;
+    pNew->nextBlockIndex = pBlock->nextBlockIndex;
+    pBlock->nextBlockIndex = (s16)freeIndex;
+    return (u32)address;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlock);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800394B8);
+void* func_800394B8(s32 size) {
+    u8* pEntry = g_SoundSpuMemoryBlocks;
+    u8* pBest = NULL;
+    s32 bestSpace = 0;
+    u8* pBase = g_SoundSpuMemoryBlocks;
+    while (1) {
+        s16 type = *(s16*)(pEntry + 2);
+        u8* pEnd = *(u32*)(pEntry + 4) + *(u32*)(pEntry + 8);
+        if (type == 0) {
+            s32 space = 0x80000 - (s32)(uintptr_t)pEnd;
+            if (space >= size) {
+                pBest = pEntry;
+                bestSpace = 0x80000 - size;
+            }
+        } else {
+            s16 nextIdx = *(s16*)(pEntry + 2);
+            u8* pNext = pBase + nextIdx * 16;
+            s32 gap = *(u32*)(pNext + 4) - (s32)(uintptr_t)pEnd;
+            if (gap >= size) {
+                pBest = pEntry;
+                bestSpace = *(u32*)(pNext + 4) - size;
+            }
+            pEntry = pNext;
+            if (*(s32*)(pEntry + 4) != 0) continue;
+        }
+        if (type == 0) break;
+        if (*(s32*)(pEntry + 4) == 0) break;
+    }
+    if (pBest == NULL) return NULL;
+    {
+        s32 blockIdx = SoundSpuMemoryGetFreeBlock();
+        if (blockIdx < 0) return NULL;
+        {
+            u8* pNew = pBase + blockIdx * 16;
+            s16 prevNext = *(s16*)(pBest + 2);
+            *(u8*)(pNew + 0) = 0x80;
+            *(u8*)(pNew + 1) = 0;
+            *(s16*)(pNew + 2) = prevNext;
+            *(u32*)(pNew + 4) = bestSpace;
+            *(u32*)(pNew + 8) = size;
+            *(s16*)(pBest + 2) = (s16)blockIdx;
+            return (void*)(uintptr_t)bestSpace;
+        }
+    }
+}
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
+ * keeps INCLUDE_ASM (byte-exact) below. Semantics traced 1:1 against the asm
+ * (block-search over g_SoundSpuMemoryBlocks for a free gap containing
+ * [addr, addr+size); insert a new in-use block). Residual vs {}: gcc-2.7.2
+ * colors `addr` into s0 and the walking pointer into s1 (retail is the reverse)
+ * and reloads the array base instead of caching it in t0 -- a register-coloring
+ * inversion driven by `addr` being live across the SoundSpuMemoryGetFreeBlock
+ * call; the instruction stream is otherwise identical. Not claimed as {}. */
+u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2) {
+    SoundSpuMemoryBlock* pBlock;
+    SoundSpuMemoryBlock* pNext;
+    s32 freeIdx;
+    s32 gap;
+    s32 regionEnd;
+    s32 blockEnd;
+    s32 nextIdx;
+
+    pBlock = g_SoundSpuMemoryBlocks;
+    gap = 0;
+    regionEnd = addr + size;
+    blockEnd = pBlock->spuAddress + pBlock->size;
+
+    if (pBlock->spuAddress < addr) {
+        for (;;) {
+            nextIdx = pBlock->nextBlockIndex;
+            if (nextIdx == 0) {
+                gap = 0x80000 - blockEnd;
+                break;
+            }
+            pNext = &g_SoundSpuMemoryBlocks[nextIdx];
+            if (pNext->spuAddress >= regionEnd) {
+                gap = pNext->spuAddress - blockEnd;
+                break;
+            }
+            blockEnd = pNext->spuAddress + pNext->size;
+            if (pNext->spuAddress >= addr) {
+                break;
+            }
+            pBlock = pNext;
+        }
+    }
+
+    if (gap < size) {
+        return 0;
+    }
+    if (addr < blockEnd) {
+        return 0;
+    }
+    freeIdx = SoundSpuMemoryGetFreeBlock();
+    if (freeIdx < 0) {
+        return 0;
+    }
+    pNext = &g_SoundSpuMemoryBlocks[freeIdx];
+    pNext->flags = 0x80;
+    pNext->unk1 = 0;
+    pNext->spuAddress = addr;
+    pNext->size = size;
+    pNext->nextBlockIndex = pBlock->nextBlockIndex;
+    pBlock->nextBlockIndex = freeIdx;
+    return addr;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlockAtAddress);
+#endif
 
 int SoundSpuMemoryFreeBlock(int targetAddress) {
     SoundSpuMemoryBlock* pCurBlock;
@@ -849,7 +1925,7 @@ int SoundSpuMemoryGetFreeBlock() {
 }
 
 // Possibly misleading name
-SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(int targetAddress) {
+SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(s32 targetAddress) {
     SoundSpuMemoryBlock* pCurrent;
     SoundSpuMemoryBlock* pRes;
     
@@ -868,34 +1944,209 @@ SoundSpuMemoryBlock* SoundSpuMemoryFindBlock(int targetAddress) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800397FC);
+void* func_800397FC(s32 arg0, s32 arg1, s32 arg2) {
+    void* result = func_80039850(arg0);
+    func_80039A80(result, arg1, arg2);
+    return result;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039850);
+// Song-start: create an AudioManager from a loaded song file (music twin of
+// func_8003B148). Sized by the file's element count (+0x180 tail block when
+// the file carries override records), bound to the file at mgr+0x8, then
+// header-init + element-arm + list registration.
+AudioManager* func_80039850(SoundFile* pFile) {
+    SoundFile* pF;
+    s16 res;
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039910);
+    res = SoundUnkDebug0(pFile);
+    /* Retail merges live ranges: the parameter register is reused for the
+     * manager while pF keeps the file; the copy schedules into the error
+     * branch's delay slot. */
+    pF = pFile;
+    if (res != 0) {
+        SoundHandleError(res);
+        return NULL;
+    }
+    size = SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]);
+    if (((u8*)pFile)[0x15] != 0) {
+        size += 0x180;
+    }
+    pFile = SoundHeapAllocate(size);
+    if (pFile == NULL) {
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    ((AudioManager*)pFile)->unk_0x8 = SOUND_PTR_TO_PSX(pF);
+    if (((u8*)pF)[0x15] != 0) {
+        func_8003B0AC((AudioManager*)pFile, pF);
+    }
+    func_8003B22C((AudioManager*)pFile);
+    func_8003B424((AudioManager*)pFile);
+    *(u32*)&((AudioManager*)pFile)->unk_0x4c[0] = 0;
+    SoundAddAudioManagerToList((AudioManager*)pFile);
+    return (AudioManager*)pFile;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800399D4);
+// Song-start: rebind an EXISTING manager allocation to a new song file
+// (song switch without realloc) -- clear, rebind, re-init, re-arm,
+// re-register; the 0x4000 flag marks the block as not-heap-owned so
+// func_800399D4 will not free it.
+AudioManager* func_80039910(SoundFile* pFile, AudioManager* manager) {
+    s16 res;
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039A80);
+    res = SoundUnkDebug0(pFile);
+    if (res != 0) {
+        SoundHandleError(res);
+        return NULL;
+    }
+    size = SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]);
+    if (((u8*)pFile)[0x15] != 0) {
+        size += 0x180;
+    }
+    SoundHeapClearBlockMemory(manager, size);
+    manager->unk_0x8 = SOUND_PTR_TO_PSX(pFile);
+    if (((u8*)pFile)[0x15] != 0) {
+        func_8003B0AC(manager, pFile);
+    }
+    func_8003B22C(manager);
+    func_8003B424(manager);
+    *(u32*)&manager->unk_0x4c[0] = 0;
+    SoundAddAudioManagerToList(manager);
+    *(u16*)&manager->unk_Flags |= 0x4000;
+    return manager;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039B68);
+// Song-start: destroy a song manager -- stop if running, unregister from the
+// manager list, release voices, and free the block unless 0x4000 marks it
+// caller-owned (func_80039910 rebinds).
+void func_800399D4(AudioManager* manager) {
+#ifdef XENO_PC_PORT
+    /* Same port-only guard as func_80039C4C / func_80039C8C / func_8003A89C:
+     * the song-manager global (D_80062528) can be NULL in the port because the
+     * music start path stores whatever func_80039850 returned (misc8.c:3053)
+     * and still raises D_8004F35C, so the teardown chain reaches here with
+     * NULL (SIGSEGV observed at map 23 field teardown, backtrace
+     * func_800399D4(manager=0x0) <- func_8001B5E8 <- func_8001B66C <-
+     * func_80078D44).  Retail's global is never NULL on this path. */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#endif
+    if (*(s16*)&manager->unk_Flags & 0x8000) {
+        func_80039C4C(manager);
+    }
+    if ((s16)SoundUnkDebug0(SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8)) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    if (SoundRemoveAudioManagerFromList(manager) != 0) {
+        SoundHandleError(5);
+        return;
+    }
+    func_8003B930(manager);
+    if (!(*(u16*)&manager->unk_Flags & 0x4000)) {
+        SoundHeapFree(manager);
+    }
+}
 
-//----------------------------------------------------------------------------------------------------------------------
-void func_80039C4C(AudioManager* manager) {
+// Song-start: (re)start the bound song from the top -- re-init the manager
+// from its file, re-arm the elements, zero the channel level then set it
+// (func_8003A89C), and raise the running flag; all under the tick bracket.
+void func_80039A80(AudioManager* manager, s32 level, s32 steps) {
     if (manager == NULL) {
         SoundHandleError(5);
         return;
     }
+    *(u16*)&manager->unk_Flags &= 0x7FFF;
+    if ((s16)SoundUnkDebug0(SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8)) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    if (*(s16*)&manager->unk_Flags & 0x8000) {
+        func_80039C4C(manager);
+    }
+    DisableEvent(g_unk_SoundEvent);
+    func_8003B22C(manager);
+    func_8003B424(manager);
+    manager->unk_Interpolator_0x70.currentValue = 0;
+    func_8003A89C(manager, level, steps);
+    {
+        u16 flags = *(u16*)&manager->unk_Flags;
+        u32 ev = g_unk_SoundEvent;
+        *(u16*)&manager->unk_Flags = flags | 0x8000;
+        EnableEvent(ev);
+    }
+}
+
+// Song-start: WDS-rebind resume -- after a sample-bank swap, re-derive every
+// element's SPU start/loop addresses from its instrument record in the
+// (re)loaded bank, mark all voice registers dirty, then fade the level back
+// in; 0x100 arms the resume path inside func_8003A89C.
+void func_80039B68(AudioManager* manager, s32 level, s32 steps) {
+    AudioElement* el;
+    s32 count;
+
+    if (manager == NULL) {
+        SoundHandleError(5);
+        return;
+    }
+    count = manager->elementCount;
+    el = &manager->elements[0];
+    /* The flags store sits LAST so the loop's induction family anchors on
+     * voice_data.flags (el+0x36), matching retail; the scheduler then hoists
+     * the halfword store into the load-delay slack above it. */
+    do {
+        u8* pBank;
+        u8* pInstr;
+        s32 base;
+
+        pBank = (u8*)SoundFindWdsEntry(((u8*)&el->unk_0x24)[1]);
+        count--;
+        pInstr = pBank + ((el->unk_0x26 << 4) + 0x30);
+        el->unk2C = SOUND_PTR_TO_PSX(pBank);
+        base = *(s32*)pInstr << 3;
+        el->voice_data.startAddress = base + *(u32*)(pBank + 0x28);
+        el->voice_data.loopAddress = base + (*(u16*)(pInstr + 4) << 3);
+        el->voice_data.flags = 0xFFFF;
+        el++;
+    } while (count != 0);
+    manager->unk_Interpolator_0x70.currentValue = 0;
+    *(u16*)&manager->unk_Flags |= 0x100;
+    func_8003A89C(manager, level, steps);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void func_80039C4C(AudioManager* manager) {
+#ifdef XENO_PC_PORT
+    /* D_80062528 is a 32-byte data stub; loading it as AudioManager* can
+     * produce a non-canonical host pointer (title/Map0 FieldMain crash). */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#else
+    if (manager == NULL) {
+        SoundHandleError(5);
+        return;
+    }
+#endif
     manager->unk_Flags &= ~(1 << 15);
-    SoundReleaseAllVoices();
+    SoundReleaseAllVoices(manager);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039C8C(AudioManager* manager, s32 arg1) {
+#ifdef XENO_PC_PORT
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#else
     if (manager == NULL) {
         SoundHandleError(5);
         return;
     }
+#endif
     func_8003A89C(manager, 0, arg1);
 }
 
@@ -910,7 +2161,7 @@ void func_80039CC4(void) {
                 pManager->unk_Flags &= ~(1 << 15);
                 SoundReleaseAllVoices(pManager);
             }
-            pManager = pManager->next;
+            pManager = SOUND_PSX_TO_PTR(AudioManager, pManager->next);
         } while (pManager != NULL);
     }
 }
@@ -928,9 +2179,29 @@ void func_80039D2C(s32 bIn) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039D78);
+extern s32 D_80059544;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039DB8);
+s32 func_80039D78(s32 numVoices) {
+    if (numVoices != 0) {
+        s32 val;
+        if (numVoices >= 0x11) numVoices = 0x10;
+        if (numVoices < 4) numVoices = 4;
+        val = numVoices & 0xFE;
+        D_80059544 = val;
+    }
+    return D_80059544;
+}
+
+// SFX API: play a packed (sedId<<16|entry) effect on the fixed top slot
+// (rotator-2) at default volume/pan; priority byte 0x80 (not stealable).
+void func_80039DB8(s32 packedId) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot;
+        D_80059404 = 2;
+        slot = D_80059478 - 2;
+        func_8003B644((s16)(slot | -0x8000), packedId, 0x6000, 0x4000);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // Wowoweewa flag central
@@ -942,7 +2213,15 @@ void func_80039E18(s32 arg0) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039E60);
+// SFX API: play a packed effect on an allocated slot (func_8003A65C dedupes
+// and picks/steals a pair) at default volume/pan.
+void func_80039E60(s32 packedId) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot = func_8003A65C(packedId, 2);
+        D_80059404 = 2;
+        func_8003B644((s16)(slot | 0x2000), packedId, 0x6000, 0x4000);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_80039EC4(s32 arg0, s32 arg1) {
@@ -958,73 +2237,676 @@ void func_80039EC4(s32 arg0, s32 arg1) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039F18);
+// SFX API (also reached from sequence handler CFF0 -- script-spawned
+// effects): play a packed effect on an allocated slot with signed 8-bit
+// volume/pan scaled <<8.
+void func_80039F18(s32 packedId, s32 volume, s32 pan) {
+    if (g_SoundControlFlags & 0x800) {
+        s32 slot = func_8003A65C(packedId, 2);
+        D_80059404 = 2;
+        func_8003B644((s16)(slot | 0x2000), packedId, (s8)volume << 8,
+                      (s8)pan << 8);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039F9C);
+// SFX API (field cues): play a packed effect on an explicit field slot
+// (mapped onto the element pairs via ^8) with signed 8-bit volume/pan.
+void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan) {
+    if (g_SoundControlFlags & 0x800) {
+        D_80059404 = 2;
+        func_8003B644((s16)(((slot & 0xFE) ^ 8) | 0x2000), packedId,
+                      (s8)volume << 8, (s8)pan << 8);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_80039FF8);
+// SFX: stop ALL effect elements (the D_80059478 SFX region of the main
+// manager) under the tick bracket and clear the busy mask.
+void func_80039FF8(void) {
+    s32 count = D_80059478;
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    AudioElement* el;
+    SoundVoiceData* vd;
 
+    el = &manager->elements[0];
+    DisableEvent(g_unk_SoundEvent);
+    vd = &manager->elements[0].voice_data;
+    do {
+        if (el->active_flag & 0x1) {
+            el->active_flag = 0;
+            SoundReleaseVoiceFromChannel(vd, *((u8*)vd - 0x9));
+        }
+        vd = (SoundVoiceData*)((u8*)vd + 0x158);
+        count--;
+        el++;
+    } while (count != 0);
+    manager->unk_0x48 = 0;
+    EnableEvent(g_unk_SoundEvent);
+}
+
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: cc1 re-anchors the element/voice cursor family (role permutation of the two loop cursors); same operations at the same element offsets.
+ * Not claimed as {}. */
+// SFX: stop every active effect belonging to a SED file (element+0x0A holds
+// the sedId half of the packed id) and release its voice.
+void func_8003A094(SoundFile* pFile) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    s16 sedId = *(s16*)((u8*)pFile + 0x14);
+    u8* q = (u8*)manager + 0xBB;
+
+    do {
+        AudioElement* el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s16*)(q - 0x1D) == sedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A094);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A14C);
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: cc1 re-anchors the element/voice cursor family (role permutation); same operations at the same element offsets.
+ * Not claimed as {}. */
+// SFX (also reached from a sequence handler): stop every active effect
+// matching a full packed (sedId<<16|entry) id.
+void func_8003A14C(s32 packedId) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    u8* q = (u8*)manager + 0xBB;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A20C);
+    do {
+        AudioElement* el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+}
+#else
+void func_8003A14C(s32 packedId) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    register AudioElement* el asm("$17") = (AudioElement*)((u8*)manager + 0x94);
+    register u8* q asm("$16") = (u8*)manager + 0xBB;
+
+    do {
+        __asm__("" : : "r"(el), "r"(q));
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        el++;
+        count--;
+    } while (count != 0);
+}
+#endif
+
+// SFX: stop the effect pair on a field slot and release its voices.
+void func_8003A20C(s32 slot) {
+    AudioManager* manager;
+    AudioElement* el;
+    u8* q;
+    s32 count;
+
+    slot &= 0xFE;
+    slot ^= 8;
+    count = 2;
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    el = (AudioElement*)((slot * 0x158 + 0x94) + (u8*)manager);
+    q = (u8*)el + 0x27;
+    do {
+        if (el->active_flag & 0x1) {
+            el->active_flag = 0;
+            manager->unk_0x48 &= ~(1 << *(q - 0x21));
+            SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+        }
+        q += 0x158;
+        count--;
+        el = (AudioElement*)((u8*)el + 0x158);
+    } while (count != 0);
+}
 
 void func_8003A2D4(void) {}
 
 void func_8003A2DC(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A2E4);
+extern s32 D_80059478;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A344);
+void func_8003A2E4(s32 pData, s32 volume) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x96;
+    s32 count = D_80059478;
+    u16 volWord = (u16)(volume << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 2);
+        if ((flags & 1) && *(s32*)(pEntry + 6) == pData) {
+            *(u16*)(pEntry + 0x74) = volWord;
+            *(u16*)(pEntry + 0) = 0x100;
+        }
+        pEntry += 0x158;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A3B8);
+// SFX: set the expression volume (el+0x76) of an active field-slot pair;
+// status = 0x100 (volume-dirty).
+void func_8003A344(s32 slot, s32 volume) {
+    AudioElement* el;
+    u16* st;
+    s32 count;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A450);
+    slot &= 0xFE;
+    slot ^= 8;
+    count = 2;
+    volume <<= 8;
+    el = (AudioElement*)((slot * 0x158 + 0x94) +
+                         (u8*)SOUND_PSX_TO_PTR(AudioManager, D_800595D8));
+    st = &el->status_flags;
+    do {
+        if (el->active_flag & 0x1) {
+            st[0x3A] = volume;
+            st[0] = 0x100;
+        }
+        el = (AudioElement*)((u8*)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A4FC);
+void func_8003A3B8(s32 pData, s32 pitch, s32 steps) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x98;
+    s32 count = D_80059478;
+    u16 pitchWord = (u16)(pitch << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 4);
+        if ((flags & 1) && *(s32*)(pEntry + 4) == pData) {
+            s16 curPitch = *(s16*)(pEntry + 0x72);
+            s32 delta = pitchWord - curPitch;
+            if (delta != 0) {
+                s32 step;
+                if (steps == 0) steps = 1;
+                step = delta / steps;
+                *(u16*)(pEntry + 0x8A) = pitchWord;
+                *(u16*)(pEntry + 0x96) = (u16)steps;
+                *(u16*)(pEntry + 0) |= 0x20;
+                *(u16*)(pEntry + 0x88) = (u16)step;
+            }
+        }
+        pEntry += 0x158;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A55C);
+void func_8003A450(s32 channel, s32 pitch, s32 steps) {
+    s32 idx = (channel & 0xFE) ^ 8;
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pFlags = pBase + 0x94 + idx * 0x2B8;
+    u8* pEntry = pFlags + 4;
+    s32 count = 2;
+    u16 pitchWord = (u16)(pitch << 8);
+    while (count-- != 0) {
+        if (*(u16*)pFlags & 1) {
+            s16 curPitch = *(s16*)(pEntry + 0x72);
+            s32 delta = pitchWord - curPitch;
+            if (delta != 0) {
+                s32 step;
+                if (steps == 0) steps = 1;
+                step = delta / steps;
+                *(u16*)(pEntry + 0x8A) = pitchWord;
+                *(u16*)(pEntry + 0x96) = (u16)steps;
+                *(u16*)pEntry |= 0x20;
+                *(u16*)(pEntry + 0x88) = (u16)step;
+            }
+        }
+        pFlags += 0x158;
+        pEntry += 0x158;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A5D0);
+void func_8003A4FC(s32 pData, s32 pan) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x96;
+    s32 count = D_80059478;
+    u16 panWord = (u16)(pan << 8);
+    while (count-- != 0) {
+        u16 flags = *(u16*)(pEntry - 2);
+        if ((flags & 1) && *(s32*)(pEntry + 6) == pData) {
+            *(u16*)(pEntry + 0x72) = panWord;
+            *(u16*)(pEntry + 0) = 0x100;
+        }
+        pEntry += 0x158;
+    }
+}
 
+// SFX: set the pan (el+0x74) of an active field-slot pair; status = 0x100.
+void func_8003A55C(s32 slot, s32 pan) {
+    AudioElement* el;
+    u16* st;
+    s32 count;
+
+    slot &= 0xFE;
+    slot ^= 8;
+    count = 2;
+    pan <<= 8;
+    el = (AudioElement*)((slot * 0x158 + 0x94) +
+                         (u8*)SOUND_PSX_TO_PTR(AudioManager, D_800595D8));
+    st = &el->status_flags;
+    do {
+        if (el->active_flag & 0x1) {
+            st[0x39] = pan;
+            st[0] = 0x100;
+        }
+        el = (AudioElement*)((u8*)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
+}
+
+u32 func_8003A5D0(s32 pData) {
+    u8* pBase = (u8*)(uintptr_t)D_800595D8;
+    u8* pEntry = pBase + 0x94;
+    s32 count = D_80059478;
+    u32 mask = 0;
+    u32 bit = 1;
+    if (pData == -1) {
+        while (count-- != 0) {
+            if (*(u16*)pEntry & 1) mask |= bit;
+            pEntry += 0x158;
+            bit <<= 1;
+        }
+    } else {
+        while (count-- != 0) {
+            if ((*(u16*)pEntry & 1) && *(s32*)(pEntry + 8) == pData) {
+                mask |= bit;
+            }
+            pEntry += 0x158;
+            bit <<= 1;
+        }
+    }
+    return mask;
+}
+
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: register-allocation permutation across the steal-scan (window/mask/serial temporaries); control flow and offsets verified 1:1.
+ * Not claimed as {}. */
+// SFX slot allocator: first stop any element already playing this packed id
+// (retrigger dedupe), then scan pair-aligned slots downward from the SFX
+// rotator for a free window in the busy mask; if none, steal the OLDEST
+// (smallest start serial) slot whose priority byte is <= 0x20.
+s32 func_8003A65C(s32 packedId, s32 pairSize) {
+    AudioManager* manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    s32 count = D_80059478;
+    u8* q = (u8*)manager + 0xBB;
+    AudioElement* el;
+    u32 exclude = 0;
+    s32 bestSerial = -1;
+    s32 best;
+    s32 start;
+    s32 lower;
+    u32 mask;
+    u32 window;
+    u32 busy;
+
+#ifdef XENO_PC_PORT
+    /* Retail leaves `best` uninitialized ($s6) when every candidate has
+     * priority > 0x20 -- on PSX the garbage index wraps harmlessly; on the
+     * host it would index wild. Default to the scan start. */
+    best = D_80059478 - (pairSize + 2);
+#endif
+    do {
+        el = (AudioElement*)(q - 0x27);
+        if (el->active_flag & 0x1) {
+            if (*(s32*)(q - 0x1F) == packedId) {
+                el->active_flag = 0;
+                manager->unk_0x48 &= ~(1 << *(q - 0x21));
+                SoundReleaseVoiceFromChannel(&el->voice_data, q[0]);
+            }
+        }
+        q += 0x158;
+        count--;
+    } while (count != 0);
+
+    start = D_80059478 - (pairSize + 2);
+    lower = manager->elementCount - D_80059544;
+    mask = 0xFFFFFFFFu >> (0x20 - pairSize);
+    window = mask << start;
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    el = (AudioElement*)((u8*)manager + start * 0x158 + 0x94);
+    busy = ~exclude & manager->unk_0x48;
+    if ((busy & window) != 0) {
+        s32 stride = pairSize * 0x158;
+        for (;;) {
+            s32 serial = *(s32*)((u8*)el + 0xC);
+            if ((u32)serial < (u32)bestSerial) {
+                if (*((u8*)el + 0x7) < 0x21) {
+                    bestSerial = serial;
+                    best = start;
+                }
+            }
+            window >>= pairSize;
+            if (window < mask) {
+                start = best;
+                break;
+            }
+            if (!((u32)lower < (u32)start)) {
+                start = best;
+                break;
+            }
+            el = (AudioElement*)((u8*)el - stride);
+            start -= pairSize;
+            if ((busy & window) == 0) {
+                break;
+            }
+        }
+    }
+    return start;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A65C);
+#endif
 
 s32 func_8003A82C(u16* arg0) {
     return arg0[8] >> 15;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A838);
+// Program the manager's master-volume interpolator: immediate set (steps==0)
+// or a stepped fade to `target` over `steps` ticks.
+void func_8003A838(AudioManager* manager, s32 target, s32 steps) {
+    s32 diff;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A89C);
+    if (target == 0) {
+        target = 0x100;
+    }
+    manager->unk_Interpolator_0x64.targetValue = target;
+    if (steps == 0) {
+        manager->unk_Interpolator_0x64.counter = 0;
+        manager->unk_Interpolator_0x64.currentValue = target << 16;
+        manager->unk_0x54 = ((s16*)&manager->unk_0x58)[1] * target;
+    } else {
+        diff = (target << 16) - manager->unk_Interpolator_0x64.currentValue;
+        if (diff != 0) {
+            manager->unk_Interpolator_0x64.stepIncrement = diff / steps;
+            manager->unk_Interpolator_0x64.counter = steps;
+        }
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A948);
+// Song-start: set the manager channel level (interp70) -- immediate when
+// steps==0 (marks every active element volume-dirty), else programs a fade;
+// a nonzero level while flag 0x100 (bank-rebind resume) is set completes the
+// resume via func_8003AA30. This is field opcode FE 0E's target.
+void func_8003A89C(AudioManager* manager, s32 level, s32 steps) {
+#ifdef XENO_PC_PORT
+    /* Field teardown calls this directly with the song-manager global
+     * (src/field/main/main.c:578, `func_8003A89C(D_80062528, 0x7F, 0)`), and a
+     * map entered without a started song leaves that global NULL -- the
+     * music-manager chain only writes it once a WDS song lands (misc8.c:3053).
+     * The sibling entry points func_80039C4C / func_80039C8C / func_800399D4
+     * already take the same NULL guard; without it here the first
+     * `manager->...` store faults (SIGSEGV observed on map 23 at the first
+     * field teardown after a map reload). Retail's global is never NULL on
+     * this path, so the guard only covers port-only state. */
+    if (manager == NULL || ((unsigned long)manager >> 47) != 0) {
+        return;
+    }
+#endif
+    manager->unk_Interpolator_0x70.targetValue = level << 8;
+    if (steps == 0) {
+        manager->unk_Interpolator_0x70.currentValue = level << 24;
+        manager->unk_Interpolator_0x70.counter = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+    } else {
+        s32 diff = (level << 16) - (manager->unk_Interpolator_0x70.currentValue >> 8);
+        if (diff == 0) {
+            return;
+        }
+        manager->unk_Interpolator_0x70.counter = steps;
+        manager->unk_Interpolator_0x70.stepIncrement = (diff / steps) << 8;
+    }
+    if ((*(u16*)&manager->unk_Flags & 0x100) && level != 0) {
+        func_8003AA30(manager);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A9BC);
+void func_8003A948(void* pManager, s32 target, s32 steps) {
+    *(u16*)((u8*)pManager + 0x86) = (u16)(target << 8);
+    if (steps == 0) {
+        *(s32*)((u8*)pManager + 0x7C) = target << 24;
+        *(u16*)((u8*)pManager + 0x84) = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x200, pManager);
+    } else {
+        s32 current = *(s32*)((u8*)pManager + 0x7C) >> 8;
+        s32 delta = (target << 16) - current;
+        if (delta != 0) {
+            s32 step = delta / steps;
+            *(u16*)((u8*)pManager + 0x84) = (u16)steps;
+            *(s32*)((u8*)pManager + 0x80) = step << 8;
+        }
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AA30);
+void func_8003A9BC(void* pManager, s32 target, s32 steps) {
+    *(u16*)((u8*)pManager + 0x92) = (u16)(target << 8);
+    if (steps == 0) {
+        *(s32*)((u8*)pManager + 0x88) = target << 24;
+        *(u16*)((u8*)pManager + 0x90) = 0;
+        unk_SoundSetFlagsOnActiveVoices(0x100, pManager);
+    } else {
+        s32 current = *(s32*)((u8*)pManager + 0x88) >> 8;
+        s32 delta = (target << 16) - current;
+        if (delta != 0) {
+            s32 step = delta / steps;
+            *(u16*)((u8*)pManager + 0x90) = (u16)steps;
+            *(s32*)((u8*)pManager + 0x8C) = step << 8;
+        }
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AAC4);
+// Song-start: resume a muted/rebound manager -- reapply its reverb program,
+// mark every voice register dirty (full SPU rewrite on the next tick),
+// resync, clear the resume flag and raise running; under the tick bracket.
+void func_8003AA30(AudioManager* manager) {
+    DisableEvent(g_unk_SoundEvent);
+    if (g_SoundControlFlags & 0x1000) {
+        SoundSetReverbModeWithAllocation(manager->unk_0x40[1],
+                                         *(s16*)&manager->unk_0x40[4],
+                                         manager->unk_0x40[2],
+                                         manager->unk_0x40[3]);
+    }
+    SoundSetFlagsOnActiveVoices(manager, 0xFFFF);
+    func_8003AFA0(manager);
+    {
+        u16 flags = *(u16*)&manager->unk_Flags;
+        u32 ev = g_unk_SoundEvent;
+        *(u16*)&manager->unk_Flags = (flags & 0xFEFF) | 0x8000;
+        EnableEvent(ev);
+    }
+}
+
+void func_8003AAC4(void* pManager, u32 mask) {
+    u8* pFlags;
+    u8* pVoiceData;
+    u8* pChannelData;
+    s32 count;
+    if (pManager == NULL) return;
+    pFlags = (u8*)pManager + 0x94;
+    pVoiceData = (u8*)pManager + 0xBB;
+    count = *(u8*)((u8*)pManager + 0x14);
+    pChannelData = (u8*)pManager + 0xC4;
+    *(u32*)((u8*)pManager + 0x4C) = mask;
+    while (count-- != 0) {
+        u16 flags = *(u16*)pFlags;
+        if (flags != 0) {
+            if (mask & 1) {
+                if (!(flags & 0x20)) {
+                    *(u16*)pFlags = flags | 0x20;
+                    if (*(s16*)((u8*)pManager + 0x10) & 0x8000) {
+                        SoundStopVoiceOnChannel(pChannelData, *pVoiceData);
+                    }
+                }
+            } else {
+                if (flags & 0x20) {
+                    *(u16*)pFlags = flags & 0xFFDF;
+                    if ((*(u32*)pFlags & 0x110) == 0x100) {
+                        if (*(s16*)((u8*)pManager + 0x10) & 0x8000) {
+                            SoundAssignVoiceToChannelAndPlay(pChannelData, *pVoiceData);
+                        }
+                    }
+                }
+            }
+        }
+        pVoiceData += 0x158;
+        pChannelData += 0x158;
+        pFlags += 0x158;
+        mask >>= 1;
+    }
+}
 
 void func_8003ABE8(u8* arg0, u8 arg1) {
     arg0[0x1B] = arg1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ABF0);
+void func_8003ABF0(void* source, void* output) {
+    u32 value = *(u32*)((u8*)source + 0x28) >> 8;
+    u32 units = value / 240;
+    u32 largeUnits;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AC58);
+    *(u32*)output = *(u32*)((u8*)source + 0x24);
+    *(u16*)((u8*)output + 4) = value - units * 240;
+    largeUnits = units / 60;
+    *(u16*)((u8*)output + 6) = units - largeUnits * 60;
+    *(u16*)((u8*)output + 8) = largeUnits;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ACC8);
+u16* func_8003AC58(void* pManager) {
+    u8* pFlags = (u8*)pManager + 0x94;
+    u16 count = *(u8*)((u8*)pManager + 0x14);
+    u16* pOutput = (u16*)((u8*)pManager + 0x30);
+    u16 minVal = 0xFFFF;
+    u8* pVal = (u8*)pManager + 0xB4;
+    while (count-- != 0) {
+        if (*(u16*)pFlags != 0) {
+            u16 val = *(u16*)pVal;
+            if (val < minVal) minVal = val;
+        }
+        pFlags += 0x158;
+        pVal += 0x158;
+    }
+    if (minVal == 0xFFFF) minVal = 0;
+    *pOutput = minVal;
+    return pOutput;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD20);
+void* func_8003ACC8(void* pTarget) {
+    void* pEntry;
+    if (pTarget == NULL) return NULL;
+    pEntry = g_SoundAudioManagerListHead;
+    while (pEntry != NULL && pEntry != pTarget) {
+        pEntry = *(void**)((u8*)pEntry + 0);
+    }
+    if (pEntry == NULL) return NULL;
+    {
+        void* pData = *(void**)((u8*)pEntry + 8);
+        u16 offset = *(u16*)((u8*)pData + 0x1E);
+        return (u8*)pData + offset;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AD98);
+void func_8003AD20(void* pManager, s32 mode) {
+    switch (mode) {
+        case 0: func_8003AD98(pManager); break;
+        case 1: func_8003ADCC(pManager); break;
+        case 2: func_8003AE84(pManager); break;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ADCC);
+void func_8003AD98(void* pManager) {
+    u16 flags = *(u16*)((u8*)pManager + 0x10);
+    if (flags & 0x10) {
+        *(u16*)((u8*)pManager + 0x10) = flags & 0xFFEF;
+        func_8003B930(pManager);
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AE84);
+extern s32 SoundCalculateAudioManagerSize(s32);
+extern void SoundHeapSetBlockMemory(void*, void*, s32);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AF24);
+void func_8003ADCC(void* pManager) {
+    void* pAlloc;
+    s32 size;
+    DisableEvent(g_unk_SoundEvent);
+    size = SoundCalculateAudioManagerSize(*(u8*)((u8*)pManager + 0x14));
+    if (*(void**)((u8*)pManager + 4) == NULL) {
+        pAlloc = SoundHeapAllocate(size);
+    } else {
+        pAlloc = *(void**)((u8*)pManager + 4);
+    }
+    if (pAlloc == NULL) {
+        EnableEvent(g_unk_SoundEvent);
+        return;
+    }
+    *(void**)((u8*)pManager + 4) = pAlloc;
+    *(u16*)((u8*)pManager + 0x10) |= 0x10;
+    SoundHeapSetBlockMemory(pAlloc, pManager, size);
+    *(u32*)pAlloc = 0;
+    *(u32*)((u8*)pAlloc + 4) = 0;
+    *(u32*)((u8*)pManager + 0x2C) = 0;
+    EnableEvent(g_unk_SoundEvent);
+}
+
+// Manager lifecycle restart: when the manager has a source image (unk_0x4)
+// and the restart flag (0x10), re-seed the manager from it. Runs ON the tick
+// path and re-enters the DisableEvent/EnableEvent bracket -- the reason the
+// port's g_SoundTickMutex must be recursive (see psycross_sound_gate.patch).
+void func_8003AE84(AudioManager* manager) {
+    s32 savedTicks;
+
+    if (manager->unk_Manager_0x4 != 0 && (manager->unk_Flags & 0x10)) {
+        DisableEvent(g_unk_SoundEvent);
+        SoundReleaseAllVoices(manager);
+        savedTicks = manager->unk_0x24;
+        SoundCopyAudioManagerData(manager,
+                                  SOUND_PSX_TO_PTR(AudioManager, manager->unk_Manager_0x4));
+        manager->unk_0x2c = savedTicks;
+        SoundSetFlagsOnActiveVoices(manager, 0xFFFF);
+        func_8003AFA0(manager);
+        EnableEvent(g_unk_SoundEvent);
+    }
+}
+
+void func_8003AF24(void* pManager, s32 arg1) {
+    u16 flags;
+    s16 vol;
+    DisableEvent(g_unk_SoundEvent);
+    *(u16*)((u8*)pManager + 0x1E) = (u16)arg1;
+    flags = *(u16*)((u8*)pManager + 0x10);
+    *(u16*)((u8*)pManager + 0x10) = flags | 0x20;
+    SoundReleaseAllVoices(pManager);
+    EnableEvent(g_unk_SoundEvent);
+    vol = *(s16*)((u8*)pManager + 0x5A);
+    *(u16*)((u8*)pManager + 0x6E) = 0x7F00;
+    *(u16*)((u8*)pManager + 0x6C) = 0;
+    *(s32*)((u8*)pManager + 0x64) = 0x7F000000;
+    *(s32*)((u8*)pManager + 0x54) = vol * 0x7F00;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003AFA0(AudioManager* manager) {
@@ -1080,15 +2962,106 @@ void SoundReleaseAllVoices(AudioManager* manager) {
     } while (cnt);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B0AC);
+// Song-start: load the song file's override records into the manager's tail
+// block (the +0x180 region func_80039850 allocates when file[0x15] != 0):
+// file[0x15] 5-byte records {slot, valueLE32} at file + *(u16*)(file+0x20),
+// stored word-wise at tailBlock[slot].
+void func_8003B0AC(AudioManager* manager, SoundFile* pFile) {
+    u32* block;
+    u8* rec;
+    s32 n;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B148);
+    block = (u32*)((u8*)manager +
+                   SoundCalculateAudioManagerSize(((u8*)pFile)[0x14]));
+    manager->unk_0xc = SOUND_PTR_TO_PSX(block);
+    n = ((u8*)pFile)[0x15];
+    rec = (u8*)pFile + *(u16*)((u8*)pFile + 0x20);
+    do {
+        u32 val = rec[1] | (rec[2] << 8) | (rec[3] << 16) |
+                  ((u32)rec[4] << 24);
+        *(u32*)((u8*)block + (rec[0] << 2)) = val;
+        rec += 5;
+        n--;
+    } while (n != 0);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B1FC);
+AudioManager* func_8003B148(s32 arg0) {
+    s32 count;
+    AudioManager* manager;
+    AudioElement* elem;
+    s32 i;
+    s32 voice;
+    s32 n;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B22C);
+    count = arg0 & ~1;
+    D_80059478 = count;
+    manager = SoundHeapAllocate(SoundCalculateAudioManagerSize(count));
+    if (manager == NULL) {
+        SoundHandleError(0x1E);
+        return NULL;
+    }
+    func_8003B32C(manager);
+    elem = manager->elements;
+    voice = 0x18 - count;
+    n = count;
+    i = 0;
+    do {
+        elem->active_flag = 0;
+        elem->unk_0x06[0] = i;
+        elem->voice_number = voice;
+        i++;
+        elem++;
+        voice++;
+    } while (--n);
+    SoundAddAudioManagerToList(manager);
+    return manager;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B32C);
+extern void SoundHeapFree(void*);
+
+void func_8003B1FC(void* pManager) {
+    SoundRemoveAudioManagerFromList(pManager);
+    SoundHeapFree(pManager);
+}
+
+// Song-start: init the manager from its bound song file's header -- copy id/
+// element count/WDS id/tempo base/reverb program (file 0x10-0x1D), flag the
+// manager as a song manager (bit 0), apply reverb when globally enabled,
+// then the common manager init.
+void func_8003B22C(AudioManager* manager) {
+    SoundFile* pFile;
+
+    pFile = SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8);
+    if ((s16)SoundUnkDebug0(pFile) != 0) {
+        SoundHandleError(0xA);
+        return;
+    }
+    *(u16*)&manager->unk_Flags |= 1;
+    *(u16*)&manager->unk2[0] = *(u16*)((u8*)pFile + 0x10);
+    manager->elementCount = ((u8*)pFile)[0x14];
+    *(u16*)&manager->unk_0x15[1] = *(u16*)((u8*)pFile + 0x16);
+    *(u16*)&manager->unk_0x18 = *(u16*)((u8*)pFile + 0x18);
+    manager->unk_0x40[1] = ((u8*)pFile)[0x1A];
+    *(u16*)&manager->unk_0x40[4] = ((u8*)pFile)[0x1B] << 8;
+    manager->unk_0x40[2] = ((u8*)pFile)[0x1C];
+    manager->unk_0x40[3] = ((u8*)pFile)[0x1D];
+    if (g_SoundControlFlags & 0x1000) {
+        SoundSetReverbModeWithAllocation(*(s8*)&manager->unk_0x40[1],
+                                         *(s16*)&manager->unk_0x40[4],
+                                         manager->unk_0x40[2],
+                                         manager->unk_0x40[3]);
+    }
+    SoundInitializeAudioManager(manager);
+}
+
+void func_8003B32C(AudioManager* manager) {
+    manager->unk_Flags = 2;
+    *(u16*)&manager->unk2[0] = 0x7FFF;
+    *(u16*)&manager->unk_0x15[1] = 0;
+    manager->unk_0x18 = 0x7F;
+    manager->elementCount = D_80059478;
+    SoundInitializeAudioManager(manager);
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // TODO(jperos): Boy, we really need some names of this stuff
@@ -1127,22 +3100,274 @@ void SoundInitializeAudioManager(AudioManager* manager) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// Song-start: the music element-arm loop (twin of the SFX starter's loop,
+// driven by the manager's bound song file instead of a SED entry). Per
+// channel script offset (file+0x22 halfwords): arm the element -- REST state
+// (0x401; +0x20 if its bit persists in mgr+0x4C, +0x4 under manager flag
+// 0x4), status 0x170, script IP = file + offset (base + current), volume
+// accumulator 0x7F<<24, expression 0x6000, pan 0x4000, envelope run flags
+// cleared, WDS bank bound + instrument 0 primed, voice parked stopped. A
+// zero offset deactivates the slot. NOTE (retail-faithful): voice numbers
+// lag the element index by one -- element 0 (the conductor track) gets
+// voice 0xFF, which every voice-indexed path bounds-checks away.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: the same cc1
+ * anchor-rebase family as C6E8/EBF0 -- retail keeps the element-field
+ * cluster on the voice_data cursor (mgr+0xC4) while this pipeline's cc1
+ * rebases the induction family onto a different anchor (last-use / derived-
+ * giv), register-permuting the loop. Same operations at the same absolute
+ * element offsets; semantics audited field-by-field against the split asm
+ * (offset map in the body comments). Not claimed as {}. */
+void func_8003B424(AudioManager* manager) {
+    AudioElement* el;
+    SoundVoiceData* vd;
+    u16* pOffset;
+    SoundFile* pFile;
+    SoundWDSEntry* pBank;
+    u32 mask;
+    s32 index;
+    s32 voice;
+    s32 count;
+
+    count = manager->elementCount;
+    el = &manager->elements[0];
+    if (count == 0) {
+        return;
+    }
+    index = 0;
+    voice = -1;                         /* element 0 = conductor, no voice */
+    mask = 0;
+    pFile = SOUND_PSX_TO_PTR(SoundFile, manager->unk_0x8);
+    pOffset = (u16*)((u8*)pFile + 0x22);
+    pBank = SoundFindWdsEntry(*(s16*)&manager->unk_0x15[1]);
+    if (pBank == NULL) {
+        pBank = g_SoundWdsLinkedList;
+    }
+    do {
+        vd = &el->voice_data;
+        if (*pOffset != 0) {
+            u32 bit = 1 << index;
+            u8* ip;
+
+            mask |= bit;
+            if (bit & *(u32*)&manager->unk_0x4c[0]) {
+                el->active_flag = 0x421;            /* asm: sh 0x421, el+0x00 */
+            } else {
+                el->active_flag = 0x401;            /* asm: sh 0x401, el+0x00 */
+            }
+            if (*(u16*)&manager->unk_Flags & 0x4) {
+                el->active_flag |= 0x4;             /* asm: lhu/ori 4/sh el+0x00 */
+            }
+            el->status_flags = 0x170;               /* asm: sh 0x170, el+0x02 */
+            el->unk_0x04 = 0;                       /* asm: sh 0,     el+0x04 */
+            el->unk_0x06[1] = 0x10;                 /* asm: sb 0x10,  el+0x07 */
+            el->unk_0x06[0] = index;                /* asm: sb s5,    el+0x06 */
+            *(u32*)&el->unk_0x06[2] =               /* asm: sw,       el+0x08 */
+                *(u16*)((u8*)pFile + 0x10);         /*   = song id (file+0x10) */
+            el->octave = 0x3C;                      /* asm: sh 0x3C,  el+0x66 */
+            el->unk_0x62 = 0xF;                     /* asm: sh 0xF,   el+0x62 */
+            *(u16*)&el->unk_0x70[2] = 0xFFFF;       /* asm: sh,       el+0x72 */
+            *(u16*)&el->unk_0x76[0] = 0x6000;       /* asm: sh,       el+0x76 (expression) */
+            *(s32*)&el->unk_0x76[2] = 0x7F000000;   /* asm: sw,       el+0x78 (vol accum) */
+            el->savedScriptIP = 0;                  /* asm: sw 0,     el+0x18 */
+            *(u32*)&el->unk_0x1C[0] = 0;            /* asm: sw 0,     el+0x1C */
+            *(u16*)&el->unk_0x1C[4] = 0;            /* asm: sh 0,     el+0x20 */
+            el->unk_0x1C[6] = 0;                    /* asm: sb 0,     el+0x22 */
+            el->fermataDuration = 0;                /* asm: sh 0,     el+0x5C */
+            el->unk_0x5E[2] = 0;                    /* asm: sb 0,     el+0x60 */
+            el->unk_0x6E = 0;                       /* asm: sh 0,     el+0x6E */
+            el->unk_0x64[0] = 0;                    /* asm: sb 0,     el+0x64 */
+            el->unk_0x74 = 0x4000;                  /* asm: sh 0x4000,el+0x74 (pan) */
+            *(u16*)&el->unk_0x70[0] = 0;            /* asm: sh 0,     el+0x70 */
+            *(u16*)&el->unk_0xD0[0] = 0;            /* asm: sh 0,     el+0xD0 */
+            *(u16*)&el->unk_0xD0[2] = 0;            /* asm: sh 0,     el+0xD2 */
+            *(u16*)&el->unk_0xD0[4] = 0;            /* asm: sh 0,     el+0xD4 */
+            *(u16*)&vd->unkC[0] = 0;                /* asm: sh 0,     el+0x3C */
+            *(u16*)&vd->unkC[2] = 0;                /* asm: sh 0,     el+0x3E */
+            el->unk_0xCE = 0;                       /* asm: sh 0,     el+0xCE */
+            ip = (u8*)pFile + *pOffset;
+            *(SoundPsxAddress*)&el->unk_0x06[0xA] = SOUND_PTR_TO_PSX(ip); /* el+0x10 */
+            el->unk14 = SOUND_PTR_TO_PSX(ip);       /* asm: sw,       el+0x14 (tick IP) */
+            {
+                /* Clear the four envelope run-flag halfwords: el+0x156,
+                 * 0x136, 0x116, 0xF6 (asm walks down from el+0x60+0xF6). */
+                u8* q = (u8*)el + 0x60;
+                s32 i = 3;
+                do {
+                    *(u16*)(q + 0xF6) = 0;
+                    q -= 0x20;
+                } while (--i >= 0);
+            }
+            el->unk2C = SOUND_PTR_TO_PSX(pBank);    /* asm: sw,       el+0x2C */
+            ((u8*)&el->unk_0x24)[1] = manager->unk_0x15[1]; /* sb mgr+0x16 -> el+0x25 */
+            if (pBank != NULL) {
+                func_8003E5BC(0, el);
+            }
+            el->voice_number = voice;               /* asm: sb s4,    el+0x27 */
+            vd->modeFlags = 0;                      /* asm: sh 0,     el+0x32 */
+            vd->priority = 0x100;                   /* asm: sh 0x100, el+0x34 */
+            SoundAssignVoiceToChannelAndStop(vd, voice);
+        } else {
+            el->active_flag = 0;
+        }
+        pOffset++;
+        el++;
+        index++;
+        voice++;
+        count--;
+    } while (count != 0);
+    manager->unk_0x48 = mask;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B424);
+#endif
 
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: the B424/C6E8/EBF0 cc1 anchor-rebase residual on the element-arm loop (expected: B424 is its twin); every store audited against the split asm offsets.
+ * Not claimed as {}. */
+// SFX element-arm (the twin of the music arm loop func_8003B424, driven by
+// a SED entry instead of a song file): find the SED by id, bind its WDS
+// bank, scale the requested volume by the entry's authored volume byte
+// (clamped 0x7FFF), then arm D_80059404 consecutive elements from the
+// spec's low byte -- each SED entry carries one script offset halfword per
+// element (base sed+0x20). A zero offset releases that element instead.
+// Element fields ride the q (= &voice_number) cursor, matching retail's
+// anchor; el carries active_flag/envelope base/the E5BC argument and vd the
+// voice-call argument.
+void func_8003B644(s32 elementSpec, s32 packedId, s32 volume, s32 pan) {
+    SoundFile* sed;
+    AudioManager* manager;
+    AudioElement* el;
+    SoundVoiceData* vd;
+    u8* q;
+    u8* bank;
+    u16* pOffset;
+    s32 count;
+    s32 vol;
+    u8 prio;
+
+    sed = g_SoundSedsLinkedList;
+    manager = SOUND_PSX_TO_PTR(AudioManager, D_800595D8);
+    while (sed->sedId != (s16)(packedId >> 16)) {
+        sed = SOUND_PSX_TO_PTR(SoundFile, sed->pNext);
+        if (sed == NULL) {
+            return;
+        }
+    }
+    bank = (u8*)SoundFindWdsEntry(sed->sndId);
+    if (bank == NULL) {
+        bank = (u8*)g_SoundWdsLinkedList;
+    }
+    vol = ((s16)volume *
+           *((u8*)sed + *(u16*)((u8*)sed + 0x18) + (packedId & 0xFFFF))) >> 7;
+    if ((vol >> 15) & 0x1) {
+        vol = 0x7FFF;
+    }
+    prio = (u32)elementSpec >> 8;
+    pOffset = (u16*)((u8*)sed + ((packedId & 0xFFFF) << 2) + 0x20);
+    el = (AudioElement*)((u8*)manager + (elementSpec & 0xFF) * 0x158 + 0x94);
+    q = (u8*)el + 0x27;
+    vd = &el->voice_data;
+    count = D_80059404;
+    DisableEvent(g_unk_SoundEvent);
+    do {
+        *(u32*)(q - 0x1F) = packedId;                 /* el+0x08 id */
+        *(u32*)(q - 0x1B) = D_80059504;               /* el+0x0C start serial */
+        *(q - 0x20) = prio;                           /* el+0x07 priority */
+        if (*pOffset != 0) {
+            u8* ip;
+
+            manager->unk_0x48 |= 1 << *(q - 0x21);
+            el->active_flag = 0x409;
+            if (*(u16*)((u8*)sed + 0x10) & 0x1) {
+                el->active_flag = 0x40B;
+            }
+            *(u16*)(q - 0x25) = 0x170;                /* el+0x02 status */
+            *(u16*)(q - 0x23) = 0;                    /* el+0x04 */
+            *(u16*)(q + 0x3F) = 0x3C;                 /* el+0x66 octave */
+            *(u16*)(q + 0x3B) = 0xF;                  /* el+0x62 */
+            *(u16*)(q + 0x4B) = 0xFFFF;               /* el+0x72 */
+            *(u32*)(q - 0xF) = 0;                     /* el+0x18 */
+            *(u32*)(q - 0xB) = 0;                     /* el+0x1C */
+            *(u16*)(q - 0x7) = 0;                     /* el+0x20 */
+            *(q - 0x5) = 0;                           /* el+0x22 */
+            *(u16*)(q + 0x35) = 0;                    /* el+0x5C */
+            *(q + 0x39) = 0;                          /* el+0x60 */
+            *(u16*)(q + 0x47) = 0;                    /* el+0x6E */
+            *(q + 0x3D) = 0;                          /* el+0x64 */
+            *(u16*)(q + 0x4F) = vol;                  /* el+0x76 expression */
+            *(s32*)(q + 0x51) = 0x7F000000;           /* el+0x78 vol accum */
+            *(u16*)(q + 0x15) = 0;                    /* el+0x3C */
+            *(u16*)(q + 0x17) = 0;                    /* el+0x3E */
+            *(u16*)(q + 0xA9) = 0;                    /* el+0xD0 */
+            *(u16*)(q + 0xAB) = 0;                    /* el+0xD2 */
+            *(u16*)(q + 0xAD) = 0;                    /* el+0xD4 */
+            *(u16*)(q + 0xA7) = 0;                    /* el+0xCE */
+            *(u16*)(q + 0x4D) = pan;                  /* el+0x74 */
+            ip = (u8*)sed + *pOffset;
+            *(u32*)(q - 0x17) = SOUND_PTR_TO_PSX(ip); /* el+0x10 */
+            *(u32*)(q - 0x13) = SOUND_PTR_TO_PSX(ip); /* el+0x14 tick IP */
+            {
+                u8* p = (u8*)el + 0x60;
+                s32 i = 3;
+                do {
+                    *(u16*)(p + 0xF6) = 0;
+                    p -= 0x20;
+                } while (--i >= 0);
+            }
+            *(u32*)(q + 0x5) = SOUND_PTR_TO_PSX(bank);/* el+0x2C */
+            *(q - 0x2) = *((u8*)sed + 0x16);          /* el+0x25 bank id */
+            if (bank != NULL) {
+                func_8003E5BC(0, el);
+            }
+            *(u16*)(q + 0xB) = 0;                     /* vd modeFlags */
+            *(u16*)(q + 0xD) = 0x200;                 /* vd priority */
+            SoundAssignVoiceToChannelAndStop(vd, q[0]);
+        } else {
+            manager->unk_0x48 &= ~(1 << *(q - 0x21));
+            el->active_flag = 0;
+            SoundReleaseVoiceFromChannel(vd, q[0]);
+        }
+        pOffset++;
+        vd = (SoundVoiceData*)((u8*)vd + 0x158);
+        q += 0x158;
+        count--;
+        el = (AudioElement*)((u8*)el + 0x158);
+    } while (count != 0);
+    *(u16*)&manager->unk_Flags |= 0x8000;
+    EnableEvent(g_unk_SoundEvent);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B930);
+void func_8003B930(AudioManager* manager) {
+    AudioManager* pEntry;
+    AudioManager* pNext;
+
+    pEntry = SOUND_PSX_TO_PTR(AudioManager, manager->unk_Manager_0x4);
+    if (pEntry != NULL) {
+        manager->unk_Manager_0x4 = SOUND_PTR_TO_PSX(NULL);
+        do {
+            pNext = SOUND_PSX_TO_PTR(AudioManager, pEntry->unk_Manager_0x4);
+            SoundHeapFree(pEntry);
+            pEntry = pNext;
+        } while (pEntry != NULL);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundCopyAudioManagerData(AudioManager* pDest, AudioManager* pSrc) {
     AudioManager* savedNext;
     AudioManager* savedUnk;
 
-    savedNext = pDest->next;
-    savedUnk = pDest->unk_Manager_0x4;
+    savedNext = SOUND_PSX_TO_PTR(AudioManager, pDest->next);
+    savedUnk = SOUND_PSX_TO_PTR(AudioManager, pDest->unk_Manager_0x4);
     SoundHeapSetBlockMemory(pDest, pSrc, SoundCalculateAudioManagerSize(pDest->elementCount));
-    pDest->next = savedNext;
-    pDest->unk_Manager_0x4 = savedUnk;
+    pDest->next = SOUND_PTR_TO_PSX(savedNext);
+    pDest->unk_Manager_0x4 = SOUND_PTR_TO_PSX(savedUnk);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -1152,7 +3377,7 @@ void SoundAddAudioManagerToList(AudioManager* manager)
 
     DisableEvent(g_unk_SoundEvent);
     temp = manager;
-    manager->next = g_SoundAudioManagerListHead;
+    manager->next = SOUND_PTR_TO_PSX(g_SoundAudioManagerListHead);
     g_SoundAudioManagerListHead = temp;
     EnableEvent(g_unk_SoundEvent);
 }
@@ -1168,7 +3393,7 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
             break;
         }
         previous = current;
-        current = current->next;
+        current = SOUND_PSX_TO_PTR(AudioManager, current->next);
     }
 
     // If not found, return error
@@ -1194,14 +3419,23 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
         previous->next = manager->next;
     } else {
         // Removing middle/end node
-        g_SoundAudioManagerListHead = manager->next;
+        g_SoundAudioManagerListHead = SOUND_PSX_TO_PTR(AudioManager, manager->next);
     }
 
     return 0;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003BB08);
+void func_8003BB08(u16 mask, void* pData) {
+    u16* pEntry = (u16*)((u8*)pData + 0x94);
+    s32 count = *(u8*)((u8*)pData + 0x14);
+    while (count-- != 0) {
+        if (*pEntry != 0) {
+            *pEntry |= mask;
+        }
+        pEntry += 0xAC; /* stride 0x158 / 2 */
+    }
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 s32 SoundCalculateAudioManagerSize(s32 elementCount) {
@@ -1212,7 +3446,12 @@ s32 SoundCalculateAudioManagerSize(s32 elementCount) {
 void SoundOnTransferCallback(void) {
     SoundCommandCallback_t pCallback;
 
+#ifdef XENO_PC_PORT
+    pCallback = SoundTransferCallbackResolve(
+        g_SoundTransferQueue[g_SoundTransferQueueReadIndex].callbackToken);
+#else
     pCallback = (&g_SoundTransferQueue[g_SoundTransferQueueReadIndex])->pCallbackFn;
+#endif
     g_SoundControlFlags |= 4;
     if (pCallback) {
         pCallback();
@@ -1252,6 +3491,13 @@ void SoundQueueTransferCommand(u32 transferAddress, void* pData, u_long dataSize
     if (!(nControlFlags & 4)) {
         while (SoundTransferQueueSync());
         EnterCriticalSection();
+#ifdef XENO_PC_PORT
+        /* Retail's interrupt mask kept the 240Hz tick out of the queue-index
+         * writes below; the port's EnterCriticalSection is a global no-op, so
+         * take the tick gate here (caught as a real TSan race when the field
+         * music path went live). */
+        PsyX_Sys_SoundGateEnterCritical();
+#endif
     }
 
     nNextIndex = g_SoundTransferQueueWriteIndex + 1;
@@ -1260,20 +3506,34 @@ void SoundQueueTransferCommand(u32 transferAddress, void* pData, u_long dataSize
     }
     g_SoundTransferQueueWriteIndex = nNextIndex;
     
+#ifdef XENO_PC_PORT
+    pCmd = &g_SoundTransferQueue[nNextIndex];
+#else
     // TODO: pCmd = &g_SoundTransferQueue[nNextIndex]; doesn't match, but there should be a cleaner line here
     pCmd = nNextIndex * sizeof(SoundTransferCommand) + (u32)g_SoundTransferQueue;
+#endif
     pCmd->commandType = commandType & 0xF;
     pCmd->unk2 = 0;
+#ifdef XENO_PC_PORT
+    pCmd->pSpuData = SOUND_PTR_TO_PSX(pData);
+    pCmd->pTransferAddress = (SoundPsxAddress)(transferAddress & 0x7FFF8);
+    pCmd->dataSize = (u32)dataSize;
+    pCmd->callbackToken = SoundTransferCallbackStore(nNextIndex, pCallback);
+#else
     pCmd->pSpuData = pData;
     pCmd->pTransferAddress = transferAddress & 0x7FFF8;
     pCmd->dataSize = dataSize;
     pCmd->pCallbackFn = pCallback;
+#endif
     
     if (!(g_SoundControlFlags & 0x10)) {
         SoundProcessTransferCommand();
     }
     
     if (!(nControlFlags & 4)) {
+#ifdef XENO_PC_PORT
+        PsyX_Sys_SoundGateExitCritical();
+#endif
         ExitCriticalSection();
     }
 }
@@ -1288,7 +3548,17 @@ int SoundTransferQueueSync() {
 
 void func_8003BDF4(void) {}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003BDFC);
+s16 func_8003BDFC(s32 flags) {
+    if (flags & 0x10) {
+        while (g_SoundControlFlags & 0x10) {}
+    }
+    if (g_SoundControlFlags & 0x10) {
+        u8* queue = (u8*)g_SoundTransferQueue;
+        s32 idx = g_SoundTransferQueueReadIndex;
+        return *(s16*)(queue + idx * 20);
+    }
+    return 0;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundProcessTransferCommand(void) {
@@ -1304,8 +3574,12 @@ void SoundProcessTransferCommand(void) {
     
     g_SoundControlFlags |= 0x10;
 
+#ifdef XENO_PC_PORT
+    pCmd = &g_SoundTransferQueue[nNextIndex];
+#else
     // TODO: pCmd = &g_SoundTransferQueue[nNextIndex]; doesn't match, but there should be a cleaner line here
     pCmd = nNextIndex * sizeof(SoundTransferCommand) + (u32)g_SoundTransferQueue;
+#endif
     
     pPrevCallback = SpuSetTransferCallback(&SoundOnTransferCallback);
     SpuSetTransferMode(SPU_TRANSFER_BY_DMA);
@@ -1314,16 +3588,34 @@ void SoundProcessTransferCommand(void) {
         case 0:
             break;
         case SOUND_SPU_COMMAND_WRITE:
+#ifdef XENO_PC_PORT
+            SpuWrite(SOUND_PSX_TO_PTR(void, pCmd->pSpuData), pCmd->dataSize);
+#else
             SpuWrite(pCmd->pSpuData, pCmd->dataSize);
+#endif
             break;
         case SOUND_SPU_COMMAND_READ:
+#ifdef XENO_PC_PORT
+            SpuRead(SOUND_PSX_TO_PTR(void, pCmd->pSpuData), pCmd->dataSize);
+#else
             SpuRead(pCmd->pSpuData, pCmd->dataSize);
+#endif
             break;
         case 3:
+#ifdef XENO_PC_PORT
+            D_80059548 = SpuReadDecodedData(
+                SOUND_PSX_TO_PTR(void, pCmd->pSpuData), SPU_ALL);
+#else
             D_80059548 = SpuReadDecodedData(pCmd->pSpuData, SPU_ALL);
+#endif
             break;
         case 4:
+#ifdef XENO_PC_PORT
+            D_80059548 = SpuReadDecodedData(
+                SOUND_PSX_TO_PTR(void, pCmd->pSpuData), SPU_CDONLY);
+#else
             D_80059548 = SpuReadDecodedData(pCmd->pSpuData, SPU_CDONLY);
+#endif
             break;
     }
     
@@ -1348,7 +3640,163 @@ void SoundSetSpuIrqCallback(u32 func) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// The 240Hz sound tick (RCnt2 counter-2 event handler, registered by
+// SoundInitialize). Every other tick: master/CD volume fades + pending
+// SpuSetCommonAttr flush. Every tick: flush dirty voice registers
+// (func_8003E900); for each active manager run the lifecycle restart check
+// (func_8003AE84 -- re-enters the event bracket), interpolator ticks, and
+// the sequencer step loop (func_8003C4C4 + func_8003C6E8) while the step
+// accumulator is in debt; second pass runs the envelope (func_8003EFE4) and
+// voice-apply (func_8003EBF0) passes; then key-off flush (func_8003EB5C),
+// deferred SPU-IRQ re-enable, and tick-duration bookkeeping.
+// On the port this body runs on the interrupt thread inside g_SoundTickMutex
+// (psycross_sound_gate.patch) -- the gate validated before this body landed.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: this pipeline's
+ * cc1 strength-reduces the element cursor family onto a different anchor and
+ * fills load-latency slack the retail object leaves unfilled -- same
+ * operations at the same absolute element offsets, rebased registers/
+ * displacements. Semantics traced 1:1 against the split asm. Not claimed
+ * as {}. */
+long func_8003C020(void) {
+    u32 start;
+    AudioManager* manager;
+
+    if (g_SoundControlFlags & 0x40) {
+        return 0;
+    }
+    start = GetRCnt(0xF2000002);
+    {
+        s32 phase = D_80059504;
+        D_80059504 = phase + 1;
+        if (phase & 0x1) {
+            if (g_SoundVolumeController.masterInterpolator.counter != 0) {
+                s16 vol;
+                SoundTickInterpolator(&g_SoundVolumeController.masterInterpolator);
+                vol = ((s16*)&g_SoundVolumeController.masterInterpolator.currentValue)[1];
+                g_SoundVolumeController.currentMasterVolume = vol;
+                SoundSetVolumeWithPhase(vol, &g_SoundVolumeController.commonAttr.mvol, 0);
+                g_SoundVolumeController.commonAttr.mask |= 0x3;
+            }
+            /* Retail reads this via the alias symbol g_SoundCdFadeFramesRemaining
+             * (== &g_SoundVolumeController.cdInterpolator.counter, 0x8005A404);
+             * the struct field keeps one storage location on the port. */
+            if (g_SoundVolumeController.cdInterpolator.counter != 0) {
+                u16 vol;
+                SoundTickInterpolator(&g_SoundVolumeController.cdInterpolator);
+                vol = ((u16*)&g_SoundVolumeController.cdInterpolator.currentValue)[1];
+                g_SoundVolumeController.currentCdVolume = vol;
+                g_SoundVolumeController.commonAttr.cd.volume.right = vol;
+                g_SoundVolumeController.commonAttr.cd.volume.left = vol;
+                g_SoundVolumeController.commonAttr.mask |= 0xC0;
+            }
+            if (g_SoundVolumeController.commonAttr.mask != 0) {
+                SpuSetCommonAttr(&g_SoundVolumeController.commonAttr);
+                g_SoundVolumeController.commonAttr.mask = 0;
+            }
+        }
+    }
+    func_8003E900();
+    manager = g_SoundAudioManagerListHead;
+    if (manager != NULL) {
+        do {
+            if (manager->unk_Flags < 0) {
+                if (manager->unk_0x2c != 0 &&
+                    (u32)manager->unk_0x24 >= (u32)manager->unk_0x2c) {
+                    func_8003AE84(manager);
+                }
+                if (manager->unk_Interpolator_0x64.counter != 0) {
+                    SoundTickInterpolator(&manager->unk_Interpolator_0x64);
+                    manager->unk_0x54 =
+                        ((s16*)&manager->unk_0x58)[1] *
+                        ((s16*)&manager->unk_Interpolator_0x64.currentValue)[1];
+                }
+                if (manager->unk_Interpolator_0x70.counter != 0) {
+                    SoundTickInterpolator(&manager->unk_Interpolator_0x70);
+                    unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+                }
+                if (manager->unk_Interpolator_0x7c.counter != 0) {
+                    SoundTickInterpolator(&manager->unk_Interpolator_0x7c);
+                    unk_SoundSetFlagsOnActiveVoices(0x200, manager);
+                }
+                if (manager->unk_Interpolator_0x88.counter != 0) {
+                    SoundTickInterpolator(&manager->unk_Interpolator_0x88);
+                    unk_SoundSetFlagsOnActiveVoices(0x100, manager);
+                }
+                manager->unk_0x20++;
+                manager->unk_0x28 += ((s16*)&manager->unk_Interpolator_0x64.currentValue)[1];
+                manager->unk_0x50 -= manager->unk_0x54;
+                if (manager->unk_0x50 < 0) {
+                    do {
+                        manager->unk_0x36--;
+                        manager->unk_0x50 += 0x10000;
+                        if (manager->unk_0x36 == 0) {
+                            manager->unk_0x36 = manager->unk_0x3a;
+                            manager->unk_0x34++;
+                            if (manager->unk_0x38 < manager->unk_0x34) {
+                                manager->unk_0x34 = 1;
+                                manager->unk_0x32++;
+                            }
+                        }
+                        {
+                            u32 cnt = manager->elementCount;
+                            if (cnt != 0) {
+                                func_8003C4C4(manager, &manager->elements[0], cnt);
+                                func_8003C6E8(manager, &manager->elements[0], cnt);
+                            }
+                        }
+                        if (manager->unk_0x48 == 0) {
+                            manager->unk_Flags &= 0x7FFF;
+                            break;
+                        }
+                        manager->unk_0x24++;
+                        if (manager->unk_Interpolator_0x70.currentValue == 0) {
+                            func_80039C4C(manager);
+                            manager->unk_Flags |= 0x100;
+                        }
+                        if (manager->unk_0x32 == *(u16*)&manager->unk_0x1c[2]) {
+                            manager->unk_Flags &= 0xFFDF;
+                            func_8003A838(manager, 0, 0);
+                            *(u16*)&manager->unk_0x1c[2] = 0;
+                        }
+                    } while (manager->unk_0x50 < 0);
+                }
+            }
+            manager = SOUND_PSX_TO_PTR(AudioManager, manager->next);
+        } while (manager != NULL);
+        manager = g_SoundAudioManagerListHead;
+    }
+    while (manager != NULL) {
+        if (manager->unk_Flags < 0) {
+            u32 cnt = manager->elementCount;
+            if (cnt != 0) {
+                func_8003EFE4(manager, &manager->elements[0], cnt);
+                func_8003EBF0(manager, &manager->elements[0], cnt);
+            }
+        }
+        manager = SOUND_PSX_TO_PTR(AudioManager, manager->next);
+    }
+    func_8003EB5C();
+    {
+        u16 irqFlags = D_8005955C;
+        if (irqFlags & 0x1) {
+            D_8005955C = irqFlags & 0xFFFE;
+            SpuSetIRQ(0x1);
+        }
+    }
+    {
+        u32 end = GetRCnt(0xF2000002);
+        if (end >= start) {
+            D_800595C4 += end - start;
+            D_80059540++;
+        }
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003C020);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundTickInterpolator(AudioInterpolator* interpolator) {
@@ -1362,18 +3810,366 @@ void SoundTickInterpolator(AudioInterpolator* interpolator) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// Per-step envelope/counter tick, run once per sequencer step for every
+// active element: steps the manager's inline master-volume interpolator
+// (unk_0x58 block), then per element decrements the pitch/vibrato/volume/pan
+// envelope counters (packed u16 pairs), advances their accumulators, and
+// retires notes whose duration ran out. The element is addressed through the
+// status_flags-anchored cursor (`st`, halfword units) -- the retail second
+// induction pointer.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: this pipeline's
+ * cc1 strength-reduces the element cursor family onto a different anchor and
+ * fills load-latency slack the retail object leaves unfilled -- same
+ * operations at the same absolute element offsets, rebased registers/
+ * displacements. Semantics traced 1:1 against the split asm. Not claimed
+ * as {}. */
+void func_8003C4C4(AudioManager* manager, AudioElement* pAudioElements, s32 count) {
+    u32 minusOne;
+    u16* st;
+    u16 steps;
+
+    steps = manager->unk_0x60;
+    if (steps != 0) {
+        steps--;
+        if (steps != 0) {
+            manager->unk_0x58 = manager->unk_0x58 + manager->unk_0x5c;
+        } else {
+            manager->unk_0x58 = *(u16*)&manager->unk_0x62 << 16;
+        }
+        manager->unk_0x60 = steps;
+        manager->unk_0x54 = ((s16*)&manager->unk_0x58)[1] *
+                            ((s16*)&manager->unk_Interpolator_0x64.currentValue)[1];
+    }
+    minusOne = 0xFFFF;
+    st = &pAudioElements->status_flags;
+    do {
+        u16 act = pAudioElements->active_flag;
+        if (act) {
+            u32 pair;
+            u32 lo;
+            u32 hi;
+            u16 status;
+            pair = *(s32*)&st[0x2D];
+            status = st[0];
+            lo = pair & 0xFFFF;
+            hi = pair >> 16;
+            if (lo != 0) {
+                u16 instFlags = st[1];
+                u16 cnt;
+                u16 v;
+                if (instFlags & 0x8) {
+                    cnt = st[0x4A] + minusOne;
+                    st[0x4A] = cnt;
+                    status |= 0x100;
+                    if (cnt == 0) {
+                        instFlags &= 0xFFF7;
+                    }
+                    *(s32*)&st[0x3B] = *(s32*)&st[0x3B] + *(s32*)&st[0x43];
+                }
+                if (instFlags & 0x1) {
+                    status |= 0x200;
+                    if (!(instFlags & 0x2)) {
+                        cnt = st[0x49] + minusOne;
+                        st[0x49] = cnt;
+                        if (cnt == 0) {
+                            instFlags &= 0xFFFE;
+                        }
+                    }
+                    *(s32*)&st[0x33] = *(s32*)&st[0x33] + *(s32*)&st[0x41];
+                }
+                if (instFlags & 0x10) {
+                    cnt = st[0x4B] + minusOne;
+                    st[0x4B] = cnt;
+                    if (cnt == 0) {
+                        v = st[0x48];
+                        instFlags &= 0xFFEF;
+                    } else {
+                        v = st[0x39] + st[0x47];
+                    }
+                    st[0x39] = v;
+                    status |= 0x100;
+                }
+                if (instFlags & 0x20) {
+                    cnt = st[0x4C] + minusOne;
+                    st[0x4C] = cnt;
+                    if (cnt == 0) {
+                        v = st[0x46];
+                        instFlags &= 0xFFDF;
+                    } else {
+                        v = st[0x3A] + st[0x45];
+                    }
+                    st[0x3A] = v;
+                    status |= 0x100;
+                }
+                st[1] = instFlags;
+                lo--;
+                hi--;
+                if (lo == 1 && (act & 0x1000)) {
+                    *(u8*)&st[0x2C] = 0x6;
+                    st[0x1A] |= 0x80;
+                }
+                if (hi == 0) {
+                    status |= 0x2;
+                    pAudioElements->active_flag |= 0x400;
+                }
+                *(s32*)&st[0x2D] = lo + (hi << 16);
+            }
+            st[0] = status;
+        }
+        st += 0xAC;
+        count--;
+        pAudioElements++;
+    } while ((s16)count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003C4C4);
+#endif
 
+// Sequencer step: for every active element whose duration counter reached
+// zero, interpret script bytes -- notes (<0x80: velocity/articulation lookup,
+// instrument/percussion prime) and command opcodes (>=0x80: dispatch through
+// g_SoundScriptHandlers) -- until a status bit (0x100 note / 0x400 rest)
+// stops the stream. Then scan ahead for ties (0x80/0x81/0x90/0x99/0x9A/0xB0)
+// to decide the note-off, derive the duration/gate pair, and arm portamento,
+// vibrato and envelope objects for the new note.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: this pipeline's
+ * cc1 strength-reduces the element cursor family onto a different anchor and
+ * fills load-latency slack the retail object leaves unfilled -- same
+ * operations at the same absolute element offsets, rebased registers/
+ * displacements. Semantics traced 1:1 against the split asm. Not claimed
+ * as {}. */
+void func_8003C6E8(AudioManager* manager, AudioElement* pAudioElements, s32 count) {
+    u16* st;
+
+    st = &pAudioElements->status_flags;
+    do {
+        if (pAudioElements->active_flag != 0 && st[0x2D] == 0) {
+            u32 hasNote;
+            u16 flagsIn;
+            u8* ip;
+            u32 b;
+
+            hasNote = 0;
+            flagsIn = pAudioElements->active_flag;
+            ip = SOUND_PSX_TO_PTR(u8, *(SoundPsxAddress*)&st[0x9]);
+            pAudioElements->active_flag = flagsIn & 0xF8FF;
+            for (;;) {
+                b = *ip++;
+                if (b < 0x80) {
+                    if (!(pAudioElements->active_flag & 0x8)) {
+                        st[0x39] = b << 8;
+                    }
+                    st[0] |= 0x100;
+                    {
+                        u32 vel = *ip;
+                        u32 tmp = *(u8*)&st[0x32] + D_80050A94[vel];
+                        u32 dur;
+                        ip++;
+                        ((u8*)&st[0x31])[1] = tmp;
+                        dur = D_800509B0[vel];
+                        b = tmp & 0xFF;
+                        if (dur == 0) {
+                            dur = *ip++;
+                        }
+                        st[0x2D] = dur;
+                    }
+                    *(u8*)&st[0x2C] = *(u8*)&st[0x13];
+                    st[0x1A] |= 0x80;
+                    if (pAudioElements->active_flag & 0x10) {
+                        func_8003CC84(manager, pAudioElements, b);
+                    } else {
+                        *(s32*)&st[0x33] =
+                            (u32)((b << 8) + *(s16*)&st[0x36] + *(s16*)&st[0x35]) << 16;
+                    }
+                    st[0] |= 0x200;
+                    pAudioElements->active_flag |= 0x180;
+                    hasNote = 1;
+                    if (flagsIn & 0x400) {
+                        st[0] |= 0x1;
+                    }
+                    {
+                        u16 act = pAudioElements->active_flag;
+                        if (act & 0x8000) {
+                            pAudioElements->active_flag = act & 0x7FFF;
+                            st[0x1A] = 0xFFFF;
+                            st[0] |= 0x300;
+                        }
+                    }
+                } else {
+                    ip = g_SoundScriptHandlers[(s16)(b - 0x80)](ip, manager, pAudioElements);
+                    if (pAudioElements->active_flag == 0) {
+                        manager->unk_0x48 &= ~(1 << *(u8*)&st[0x2]);
+                        goto store_ip;
+                    }
+                }
+                if (pAudioElements->active_flag & 0x500) {
+                    break;
+                }
+            }
+        store_ip:
+            *(SoundPsxAddress*)&st[0x9] = SOUND_PTR_TO_PSX(ip);
+            if (pAudioElements->active_flag != 0) {
+                u16 act;
+                u8* rec;
+                s32 rel;
+                s32 dur2;
+                u32 gate;
+
+                act = pAudioElements->active_flag;
+                if (act & 0x800) {
+                    pAudioElements->active_flag = act | 0x200;
+                }
+                rec = (u8*)pAudioElements + (st[0x38] * 12) + 0x9C;
+                b = *ip;
+                while (b >= 0x80) {
+                    s32 sb = (s16)b;
+                    if (sb == 0x90) {
+                        SoundPsxAddress saved = *(SoundPsxAddress*)&st[0xB];
+                        if (saved == 0) {
+                            break;
+                        }
+                        ip = SOUND_PSX_TO_PTR(u8, saved);
+                    } else if (sb == 0x80) {
+                        pAudioElements->active_flag &= 0xFDFF;
+                        break;
+                    } else if (sb == 0x81) {
+                        pAudioElements->active_flag |= 0x200;
+                        break;
+                    } else if ((u32)(sb - 0xB0) < 2) {
+                        pAudioElements->active_flag &= 0xFDFF;
+                        break;
+                    } else {
+                        if (sb == 0x99) {
+                            if (*rec != 0) {
+                                ip = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 4));
+                                goto scan_next;
+                            }
+                            rec -= 0xC;
+                        }
+                        if (b == 0x9A && *rec == 0) {
+                            ip = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 8));
+                            rec -= 0xC;
+                            goto scan_next;
+                        }
+                        ip += D_80050824[(s16)(b - 0x80)];
+                    }
+                scan_next:
+                    b = *ip;
+                }
+                if (b < 0x80) {
+                    pAudioElements->active_flag |= 0x1000;
+                } else {
+                    pAudioElements->active_flag &= 0xEFFF;
+                }
+                rel = (s8)*(u8*)&st[0x2F] + st[0x2D];
+                if ((s16)rel > 0) {
+                    dur2 = rel;
+                } else {
+                    dur2 = st[0x2D] + rel;
+                    *(u8*)&st[0x2F] = *(u8*)&st[0x2F] + *(u8*)&st[0x2D];
+                }
+                if (!(pAudioElements->active_flag & 0x600)) {
+                    gate = st[0x30];
+                    if (gate == 0xF) {
+                        gate = dur2 - 1;
+                    } else if (gate == 0x10) {
+                        gate = dur2;
+                    } else {
+                        gate = ((s16)dur2 * gate) >> 4;
+                    }
+                    if ((u16)gate == 0) {
+                        gate = 1;
+                    }
+                } else {
+                    gate = 0x7FFF;
+                }
+                *(s32*)&st[0x2D] = (s16)dur2 + (gate << 16);
+                if (hasNote != 0) {
+                    if (st[1] & 0x4) {
+                        u32 diff = ((u8*)&st[0x31])[1] - *(u8*)&st[0x31];
+                        if ((s8)diff != 0) {
+                            s32 slide = (s32)(diff << 24) / st[0x37];
+                            st[1] |= 0x1;
+                            st[0x49] = st[0x37];
+                            *(s32*)&st[0x33] =
+                                (u32)((*(u8*)&st[0x31] << 8) + *(s16*)&st[0x36] +
+                                      *(s16*)&st[0x35]) << 16;
+                            *(s32*)&st[0x41] = slide;
+                        }
+                    }
+                    {
+                        u16 instFlags2 = st[1];
+                        *(u8*)&st[0x31] = ((u8*)&st[0x31])[1];
+                        if (instFlags2 & 0x100) {
+                            st[0x4A] = st[0x3F];
+                            *(s32*)&st[0x43] = *(s32*)&st[0x3D];
+                            *(s32*)&st[0x3B] = st[0x40] << 16;
+                            st[1] = instFlags2 | 0x8;
+                        }
+                    }
+                    {
+                        s32 slot = 4;
+                        u16* pEnvFlags = (u16*)((u8*)pAudioElements + 0xF6);
+                        do {
+                            u16 envFlags = pEnvFlags[0];
+                            if ((envFlags & 0x3) == 0x3) {
+                                *(s32*)&pEnvFlags[-0xD] = 0;
+                                pEnvFlags[-7] = 1;
+                                pEnvFlags[-5] = pEnvFlags[-4];
+                                pEnvFlags[-3] = pEnvFlags[-2];
+                                st[0] |= 0x100;
+                                pEnvFlags[0] = envFlags & 0xFFF3;
+                            }
+                            slot--;
+                            pEnvFlags += 0x10;
+                        } while (slot != 0);
+                    }
+                }
+            }
+        }
+        st += 0xAC;
+        count--;
+        pAudioElements++;
+    } while ((s16)count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003C6E8);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CC84);
+// Percussion note-on: load the percussion map entry for `note` (instrument,
+// transpose, pan), program the element's instrument via func_8003E5BC, and
+// prime the note pitch + VOLUME_CHANGE status.
+void func_8003CC84(AudioManager* manager, AudioElement* pAudioElements, s32 note) {
+    u8* pPerc;
+
+    pPerc = SOUND_PSX_TO_PTR(u8, ((note & 0xFF) << 2) + manager->unk_0xc);
+    func_8003E5BC(pPerc[0], pAudioElements);
+    pAudioElements->unk68 =
+        (u32)((pPerc[1] << 8) + pAudioElements->unk_0x6E + pAudioElements->unk_0x6C) << 16;
+    {
+        u16 status = pAudioElements->status_flags;
+        u32 pan = pPerc[3];
+        pAudioElements->status_flags = status | 0x100;
+        pAudioElements->unk_0x74 = pan << 8;
+    }
+}
 
 u8* SoundScriptDefaultHandler(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     return pScript;
 }
 
 // Rest note handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD08);
+// Seq cmd: rest -- set duration, flag REST status + active bit.
+u8* func_8003CD08(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    pAudioElements->fermataDuration = pScript[0];
+    pAudioElements->active_flag |= 0x400;
+    pAudioElements->status_flags |= 0x2;
+    return pScript + 1;
+}
 
 // Fermata / Hold note
 u8* SoundScriptFermata(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -1387,7 +4183,16 @@ u8* SoundScriptNop3(u8* pScript, AudioManager* pAudioManager, AudioElement* pAud
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD54);
+// Seq cmd: loop-return marker -- when the marker byte matches the manager's
+// current marker, save the resume IP + octave.
+u8* func_8003CD54(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 marker = *pScript++;
+    if (marker == pAudioManager->unk_0x1b) {
+        pAudioElements->savedScriptIP = SOUND_PTR_TO_PSX(pScript);
+        pAudioElements->savedOctave = pAudioElements->octave;
+    }
+    return pScript;
+}
 
 u8* SoundScriptDefaultSkip3(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     return pScript + 3;
@@ -1397,10 +4202,25 @@ u8* SoundScriptNop4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAud
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CD8C);
+// Seq cmd 0x90: return to the saved IP (dal segno) with octave restore; with
+// no saved IP, release the voice and deactivate the element (track end).
+u8* func_8003CD8C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* ip = pScript;
+    if (pAudioElements->savedScriptIP != 0) {
+        ip = SOUND_PSX_TO_PTR(u8, pAudioElements->savedScriptIP);
+        *(u16*)&pAudioElements->unk_0x1C[4] += 1;
+        pAudioElements->octave = pAudioElements->savedOctave;
+    } else {
+        pAudioElements->status_flags &= 0xFFFC;
+        SoundReleaseVoiceFromChannel(&pAudioElements->voice_data,
+                                     pAudioElements->voice_number);
+        pAudioElements->active_flag = 0;
+    }
+    return ip;
+}
 
 u8* SoundScriptSaveOctaveAndIP(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
-    pAudioElements->savedScriptIP = pScript;
+    pAudioElements->savedScriptIP = SOUND_PTR_TO_PSX(pScript);
     pAudioElements->savedOctave = pAudioElements->octave;
     return pScript;
 }
@@ -1421,9 +4241,33 @@ u8* SoundScriptLowerOctave(u8* pScript, AudioManager* pAudioManager, AudioElemen
 }
 
 // Time signature handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CE68);
+// Seq cmd: time signature -- beats/measure + beat length (0xC0/denominator).
+u8* func_8003CE68(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+#ifdef XENO_PC_PORT
+    s32 denom = pScript[1];
+#else
+    register s32 denom asm("$6") = pScript[1];
+#endif
+    s32 beats = pScript[0];
+    pAudioManager->unk_0x3a = 0xC0 / denom;
+    pAudioManager->unk_0x3c = denom;
+    pAudioManager->unk_0x38 = beats;
+    pAudioManager->unk_0x3e = beats;
+    pAudioManager->unk_0x36 = pAudioManager->unk_0x3a;
+    return pScript + 2;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CE9C);
+// Seq cmd: jump-count / measure sync -- latch measure number + beat.
+u8* func_8003CE9C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 beat;
+    u8 measure;
+    pAudioManager->unk_0x32 = pScript[0];
+    beat = pAudioManager->unk_0x3a;
+    measure = pScript[1];
+    pAudioManager->unk_0x36 = beat;
+    pAudioManager->unk_0x34 = measure;
+    return pScript + 2;
+}
 
 u8* SoundScriptSetManagerUnk1a(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioManager->unk_0x1a = *pScript;
@@ -1436,36 +4280,196 @@ u8* SoundScriptAddManagerUnk1a(u8* pScript, AudioManager* pAudioManager, AudioEl
 }
 
 // Loop start handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CEF0);
+// Seq cmd: loop start -- push a loop-stack record (count-1, resume IP,
+// octave) at the element's current selector.
+/* MATCHED C, byte-exact with this TU's pinned gcc-2.6.0 + maspsx.
+ * The selector must be re-read from memory (`lhu $a1, 0x72($a2)` at
+ * 0x8003D700) right after the increment store (`sh $v1, 0x72($a2)` at
+ * 0x8003D6FC) instead of being cached in a local; the sibling func_8003CF38
+ * below uses the same idiom. Verified instruction-for-instruction against the
+ * retail slice at file offset 0x2D6F0 (72 B);
+ * pc_port/tests/run_sound_voice_record_cef0_retail_test.sh re-checks it. */
+u8* func_8003CEF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec;
+    *(u16*)&pAudioElements->unk_0x70[2] += 1;
+    rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
+    rec[0] = *pScript++ + 0xFF;
+    *(u32*)(rec + 4) = SOUND_PTR_TO_PSX(pScript);
+    rec[2] = pAudioElements->octave;
+    return pScript;
+}
 
 // Loop end handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CF38);
+// Seq cmd 0x99: loop continue -- decrement the loop-stack counter; while it
+// hasn't wrapped, jump back to the loop start (saving the fall-through IP +
+// octave in the record); when exhausted, pop the selector.
+u8* func_8003CF38(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
+    u8 cnt = rec[0] - 1;
+    rec[0] = cnt;
+    if (cnt != 0xFF) {
+        *(u32*)(rec + 8) = SOUND_PTR_TO_PSX(pScript);
+        rec[3] = pAudioElements->octave;
+        pScript = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 4));
+        pAudioElements->octave = rec[2];
+    } else {
+        *(u16*)&pAudioElements->unk_0x70[2] -= 1;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CFA4);
+// Seq cmd: loop end (exhausted) -- when the record's counter hit zero, pop
+// the loop stack: resume IP from the record, restore octave.
+u8* func_8003CFA4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* rec = (u8*)pAudioElements + (*(u16*)&pAudioElements->unk_0x70[2] * 12 + 0x9C);
+    if (rec[0] == 0) {
+        u16 sel;
+        pScript = SOUND_PSX_TO_PTR(u8, *(u32*)(rec + 8));
+        sel = *(u16*)&pAudioElements->unk_0x70[2] - 1;
+        pAudioElements->octave = rec[3];
+        *(u16*)&pAudioElements->unk_0x70[2] = sel;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003CFF0);
+// Seq cmd: manager event with 16-bit parameter (fixed velocity/flag args).
+u8* func_8003CFF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    func_80039F18(pScript[0] | (pScript[1] << 8), 0x7F, 0x40);
+    return pScript + 3;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D034);
+// Seq cmd: manager event -- forward a 16-bit parameter to func_8003A14C.
+u8* func_8003D034(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    func_8003A14C(pScript[0] | (pScript[1] << 8));
+    return pScript + 2;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D070);
+// Seq cmd 0x9E: external jump into a SED file -- find the SED by the
+// element's id (or take the list head), then jump via its 16-bit offset
+// table. Not-found leaves the IP unadvanced (retail behavior).
+u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundFile* e = g_SoundSedsLinkedList;
+    u32 pair = pScript[0] | (pScript[1] << 8);
+    s16 id = *(s16*)&pAudioElements->unk_0x06[4];
+    u8 q = pScript[2];
+    if (id != 0) {
+        while (*(u16*)((u8*)e + 0x14) != id) {
+            e = SOUND_PSX_TO_PTR(SoundFile, *(u32*)((u8*)e + 0x1C));
+            if (e == NULL) {
+                return pScript;
+            }
+        }
+    }
+    {
+        u16 off = *(u16*)(((q + ((s16)pair << 1)) << 1) + (u32)e + 0x20);
+        pScript = (u8*)e + off;
+    }
+    return pScript + 3;
+}
 
 // Set tempo handler?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D0E8);
+// Seq cmd: set manager volume (immediate).
+/* MATCHED C, byte-exact with this TU's pinned gcc-2.6.0 + maspsx.
+ * Retail (file offset 0x2D8E8, 40 B) masks the loaded volume byte with a
+ * redundant `andi $v0,$v0,0xFF` before `mult`; under gcc-2.6.0 a plain
+ * `pScript[0]` folds the lbu+zero-extend into a single lbu, so the byte is
+ * read through a *non-combinable* (volatile) lvalue to keep the lbu and its
+ * zero-extension as separate instructions, reproducing retail exactly.
+ * Verified instruction-for-instruction against the retail slice; see
+ * pc_port/tests/run_sound_voice_volume_d0e8_retail_test.sh. */
+u8* func_8003D0E8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    s32 vol = *(volatile u8*)pScript;
+    pAudioManager->unk_0x54 = vol * ((s16*)&pAudioManager->unk_Interpolator_0x64.currentValue)[1];
+    pAudioManager->unk_0x58 = vol << 16;
+    return pScript + 1;
+}
 
+// Seq cmd: nudge manager volume by a signed step.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: load-scheduling cluster placement (same
+ * ops, same offsets). */
+u8* func_8003D110(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    s32 step = (s8)pScript[0] << 16;
+    s32 cur = pAudioManager->unk_0x58;
+    pAudioManager->unk_0x54 = 0;
+    pAudioManager->unk_0x58 = cur + step;
+    return pScript + 1;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D110);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D13C);
+// Seq cmd: master volume fade -- target + step count for the inline
+// interpolator at manager+0x58.
+u8* func_8003D13C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    s32 target = pScript[1];
+    s32 steps = pScript[0];
+    s32 current = pAudioManager->unk_0x58;
+    s32 diff;
+    s32 shifted;
+    s32 divisor;
+    *(u16*)&pAudioManager->unk_0x62 = target;
+    shifted = target << 16;
+#if defined(__mips__)
+    __asm__ volatile("addu %0, %1, $zero" : "=r"(divisor) : "r"(steps));
+#else
+    divisor = steps;
+#endif
+    diff = shifted - current;
+    if (divisor != 0 && diff != 0) {
+        pAudioManager->unk_0x5c = diff / divisor;
+        pAudioManager->unk_0x60 = steps;
+    }
+    return pScript + 2;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D17C);
+// Seq cmd: channel level immediate -- set interp70 and flag volume change on
+// active voices.
+u8* func_8003D17C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 level = *pScript++;
+    pAudioManager->unk_Interpolator_0x70.currentValue = level << 24;
+    unk_SoundSetFlagsOnActiveVoices(0x100, pAudioManager);
+    return pScript;
+}
 
+// Seq cmd: channel level fade -- program the manager's interp70 toward
+// target<<24 over n*32 steps.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen shape (load-reload
+ * elision / register-copy / arg-setup scheduling); ops+offsets audited 1:1
+ * against the split asm and exercised via the synthetic stream. */
+u8* func_8003D1BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    s32 steps = p[0] << 5;
+    s32 diff = (p[1] << 24) - pAudioManager->unk_Interpolator_0x70.currentValue;
+    if (steps != 0 && diff != 0) {
+        pAudioManager->unk_Interpolator_0x70.counter = steps;
+        pAudioManager->unk_Interpolator_0x70.targetValue = p[1] << 8;
+        pAudioManager->unk_Interpolator_0x70.stepIncrement = diff / steps;
+    }
+    return p + 2;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D1BC);
+#endif
 
 u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0x62 = *pScript;
     return pScript + 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D21C);
+// Seq cmd 0xAA: move the element to another voice (release + assign-stopped).
+u8* func_8003D21C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    s32 n = *pScript++;
+    if (n < 0x19) {
+        SoundVoiceData* vd = &pAudioElements->voice_data;
+        SoundReleaseVoiceFromChannel(vd, pAudioElements->voice_number);
+        SoundAssignVoiceToChannelAndStop(vd, pAudioElements->voice_number = n);
+    }
+    return pScript;
+}
 
 u8* func_8003D298(u8* a0, s32 a1, s32 a2) {
     func_8003E5BC(*a0++, a2);
@@ -1505,13 +4509,44 @@ u8* SoundScriptClearActiveFlag800(u8* pScript, AudioManager* pAudioManager, Audi
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D370);
+// Seq cmd: noise mode on (odd voices only).
+u8* func_8003D370(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    if (pAudioElements->voice_number & 0x1) {
+        pAudioElements->voice_data.flags |= 0x1000;
+        pAudioElements->voice_data.modeFlags |= 0x10;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D3A4);
+// Seq cmd: noise mode off (odd voices only).
+u8* func_8003D3A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    if (pAudioElements->voice_number & 0x1) {
+        pAudioElements->voice_data.flags |= 0x1000;
+        pAudioElements->voice_data.modeFlags &= 0xFFEF;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D3D8);
+// Seq cmd 0xB4: set the noise clock; flag the voice for noise mode.
+u8* func_8003D3D8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    AudioElement* el = pAudioElements;
+    *(u16*)&pAudioManager->unk_0x1c[0] = pScript[0];
+    SpuSetNoiseClock((pScript++, *(u16*)&pAudioManager->unk_0x1c[0]));
+    el->voice_data.flags |= 0x2000;
+    el->voice_data.modeFlags |= 0x20;
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D438);
+// Seq cmd 0xB5: nudge the noise clock (mod 64); flag the voice for noise.
+u8* func_8003D438(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    AudioElement* el = pAudioElements;
+    *(u16*)&pAudioManager->unk_0x1c[0] =
+        (pScript[0] + *(u16*)&pAudioManager->unk_0x1c[0]) & 0x3F;
+    SpuSetNoiseClock((pScript++, *(u16*)&pAudioManager->unk_0x1c[0]));
+    el->voice_data.flags |= 0x2000;
+    el->voice_data.modeFlags |= 0x20;
+    return pScript;
+}
 
 u8* SoundScriptSetVoiceFlags2000AndMode(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->voice_data.flags |= 0x2000;
@@ -1525,9 +4560,45 @@ u8* SoundScriptSetVoiceFlags2000ClearMode(u8* pScript, AudioManager* pAudioManag
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D4E4);
+// Seq cmd: reverb mode + depths -- stash in the manager, then apply via
+// SoundSetReverbModeWithAllocation (auto work-area).
+u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 mode = pScript[0];
+#ifdef XENO_PC_PORT
+    s32 depthL;
+    s32 depthR;
+#else
+    register s32 depthL asm("$6");
+    register s32 depthR asm("$7");
+#endif
+    *(u16*)&pAudioManager->unk_0x40[4] = mode << 8;
+    depthL = ((s8*)pScript)[1];
+    pAudioManager->unk_0x40[2] = depthL;
+    depthR = ((s8*)pScript)[2];
+    pAudioManager->unk_0x40[3] = depthR;
+    SoundSetReverbModeWithAllocation(-1, (s8)mode << 8, depthL, depthR);
+    return pScript + 3;
+}
 
+// Seq cmd 0xBA: conditional reverb-voice enable -- always when the manager
+// isn't SFX-class; for SFX only when globally allowed and not flagged off.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003D53C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* ip = pScript;
+    if (!(pAudioManager->unk_Flags & 0x6) ||
+        ((g_SoundControlFlags & 0x2000) && !(pAudioElements->active_flag & 0x2))) {
+        pAudioElements->voice_data.flags |= 0x4000;
+        pAudioElements->voice_data.modeFlags |= 0x40;
+    }
+    return ip;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D53C);
+#endif
 
 u8* SoundScriptSetVoiceFlags4000ClearMode(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->voice_data.flags |= 0x4000;
@@ -1553,7 +4624,16 @@ u8* SoundScriptCallE5BC(u8* pScript, AudioManager* pAudioManager, AudioElement* 
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D60C);
+// Seq cmd: set raw ADSR attack/decay/sustain fields.
+u8* func_8003D60C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 adsr3;
+    pAudioElements->voice_data.unkAdsr1 = pScript[0];
+    pAudioElements->voice_data.unkAdsr2 = pScript[1];
+    adsr3 = pScript[2];
+    pAudioElements->voice_data.flags |= 0x1F0;
+    pAudioElements->voice_data.unkAdsr3 = adsr3;
+    return pScript + 3;
+}
 
 u8* SoundScriptSetAttackTime(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     u8 attackTime = *pScript;
@@ -1639,9 +4719,39 @@ u8* func_8003D79C(u8* a0, s32 a1, void* a2) {
     return a0 + 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7C8);
+// Seq cmd: detune -- add a signed 8.8 offset to the element pitch base.
+u8* func_8003D7C8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    s32 high = *(volatile u8*)pScript;
+    s32 low = *(volatile u8*)(pScript + 1);
+    u16 status = *(volatile u16*)&pAudioElements->status_flags;
+    s32 offset = ((s16)(high << 8)) + low;
+    u16 pitch;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D7FC);
+    __asm__ volatile("" : : "r"(offset) : "memory");
+    pitch = *(volatile u16*)&pAudioElements->unk_0x6E;
+
+    status |= 0x200;
+    pitch += offset;
+    pAudioElements->status_flags = status;
+    *(u16*)&pAudioElements->unk_0x6E = pitch;
+    return pScript + 2;
+}
+
+// Seq cmd: pitch slide -- explicit step target over n steps (or disable).
+u8* func_8003D7FC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 step = (s8)pScript[1] << 24;
+    if (n != 0 && step != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x1E] = n;
+        pAudioElements->unk_0x04 = f4 | 0x1;
+        *(s32*)&pAudioElements->unk_0x76[0xE] = step / n;
+    } else {
+        pAudioElements->unk_0x04 &= 0xFFFE;
+    }
+    return pScript + 2;
+}
 
 u8* SoundScriptToggleUnk04Bit2(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0x04 ^= 0x2;
@@ -1653,13 +4763,117 @@ u8* SoundScriptClearUnk04Bit1(u8* pScript, AudioManager* pAudioManager, AudioEle
     return pScript;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D884);
+// Seq cmd: portamento divisor -- nonzero enables portamento, zero disables.
+u8* func_8003D884(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 divisor = *pScript++;
+    *(u16*)&pAudioElements->unk_0x70[0] = divisor;
+    if (divisor != 0) {
+        pAudioElements->unk_0x04 |= 0x4;
+    } else {
+        pAudioElements->unk_0x04 &= 0xFFFB;
+    }
+    return pScript;
+}
 
+// Seq cmd 0xD8: prime envelope object 0 (direct method, signed-square
+// target): arg = sign-preserving target^2 << 14.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003D8B8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xD8);
+        s32 arg;
+        s32 sq;
+        {
+            s32 t = (s8)p[1];
+            if (t < 0) {
+                arg = t * -t;
+            } else {
+                arg = t * t;
+            }
+        }
+        sq = (s16)n * (s16)n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290(arg << 14, (s16)n, 3);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F2A0);
+        env->unk1D = 3;
+        env->flags = 3;
+        env->state = 0;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x1;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D8B8);
+#endif
 
+// Seq cmd 0xD9: prime envelope object 0 (table method, signed-square target).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003D9A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xD8);
+        u16 mode;
+        u8 m;
+        s32 arg;
+        s32 sq;
+        {
+            s32 t = (s8)p[1];
+            if (t < 0) {
+                arg = t * -t;
+            } else {
+                arg = t * t;
+            }
+        }
+        sq = (s16)n * (s16)n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290(arg << 14, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->unk1D = m;
+        env->state = 0;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x1;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D9A4);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DAB0);
+// Seq cmd: envelope 0 rate -- step = 0x400 / ((n+1)*4).
+u8* func_8003DAB0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = *pScript++ + 1;
+    if (n != 0) {
+        u16 step = 0x400 / (n << 2);
+        *(u16*)&pAudioElements->unk_0xD0[0x22] = step;
+        *(u16*)&pAudioElements->unk_0xD0[0x20] = step;
+    }
+    return pScript;
+}
 
 u8* SoundScriptSetUnkCEAndF6(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0xCE |= 0x1;
@@ -1674,20 +4888,154 @@ u8* SoundScriptClearUnkCEAndF6(u8* pScript, AudioManager* pAudioManager, AudioEl
 }
 
 // Set volume handler / Dynamic?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB2C);
+// Seq cmd: set vibrato accumulator (byte << 24), drop pitch-env bits, mark
+// volume change.
+u8* func_8003DB2C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 f4;
+    u16 status;
+    f4 = pAudioElements->unk_0x04;
+    *(s32*)&pAudioElements->unk_0x76[2] = pScript[0] << 24;
+    status = pAudioElements->status_flags;
+    pAudioElements->status_flags = status | 0x100;
+    pAudioElements->unk_0x04 = f4 & 0xFEF7;
+    return pScript + 1;
+}
 
 // Crescendo?
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB58);
+// Seq cmd: nudge the vibrato accumulator by a signed step (clamped positive),
+// mark volume change, drop pitch-env bits.
+u8* func_8003DB58(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 status;
+    u16 f4;
+    *(s32*)&pAudioElements->unk_0x76[2] =
+        (*(s32*)&pAudioElements->unk_0x76[2] + ((s8)pScript[0] << 24)) & 0x7FFFFFFF;
+    status = pAudioElements->status_flags;
+    f4 = pAudioElements->unk_0x04;
+    pAudioElements->status_flags = status | 0x100;
+    pAudioElements->unk_0x04 = f4 & 0xFEF7;
+    return pScript + 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DB98);
+// Seq cmd: vibrato depth fade -- step the accumulator toward target<<24
+// over n steps.
+u8* func_8003DB98(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 diff = ((s8)pScript[1] << 24) - *(s32*)&pAudioElements->unk_0x76[2];
+    if (n != 0 && diff != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x20] = n;
+        pAudioElements->unk_0x04 = (f4 | 0x8) & 0xFEFF;
+        *(s32*)&pAudioElements->unk_0x76[0x12] = diff / n;
+    }
+    return pScript + 2;
+}
 
+// Seq cmd 0xF8: vibrato ramp -- from/to (signed<<24) over n steps.
+#ifdef XENO_PC_PORT
+/* Coexistence: logic-verified port C body; matching build keeps INCLUDE_ASM
+ * below because cc1 schedules the third script byte differently from retail. */
+u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    s32 from = (s32)((u32)p[0] << 24);
+    s32 diff = (s32)((u32)((u32)p[2] << 24) - (u32)from);
+    s32 n = p[1];
+    if (diff != 0 && n != 0) {
+        u16 f4;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0xC] = from >> 16;
+        *(u16*)&pAudioElements->unk_0x76[0xA] = n;
+        pAudioElements->unk_0x04 = (f4 | 0x100) & 0xFFF7;
+        *(s32*)&pAudioElements->unk_0x76[0x6] = diff / n;
+    } else {
+        pAudioElements->unk_0x04 &= 0xFEFF;
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DBE4);
+#endif
 
+// Seq cmd 0xE4: prime envelope object 1 (direct method) -- rate =
+// n + n*n/64, packed target via func_8003E290, arm + notify func_8003E3E0.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DC50(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xF8);
+        s32 sq = n * n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, 2);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F240);
+        env->unk1D = 2;
+        env->state = 1;
+        env->flags = 3;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x2;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DC50);
+#endif
 
+// Seq cmd 0xE5: prime envelope object 1 (method from the D_800508A4
+// table, low nibble of p2 selects; bit4 of p2 selects one-shot vs looping).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DD24(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0xF8);
+        u16 mode;
+        u8 m;
+        s32 sq = n * n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->state = 1;
+        env->unk1D = m;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x2;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DD24);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DE18);
+// Seq cmd: envelope 1 rate -- step = 0x400 / ((n+1)*4).
+u8* func_8003DE18(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = *pScript++ + 1;
+    if (n != 0) {
+        u16 step = 0x400 / (n << 2);
+        *(u16*)&pAudioElements->unk_0xF8[0x1A] = step;
+        *(u16*)&pAudioElements->unk_0xF8[0x18] = step;
+    }
+    return pScript;
+}
 
 u8* SoundScriptSetUnkCEAndUnk116(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0xCE |= 0x2;
@@ -1708,15 +5056,109 @@ u8* SoundScriptSetUnk74(u8* pScript, AudioManager* pAudioManager, AudioElement* 
     return pScript + 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DEB4);
+// Seq cmd: nudge pan by a signed step (clamped to 15 bits).
+u8* func_8003DEB4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    pAudioElements->unk_0x74 = (pAudioElements->unk_0x74 + ((s8)pScript[0] << 8)) & 0x7FFF;
+    pAudioElements->status_flags |= 0x100;
+    return pScript + 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DEE4);
+// Seq cmd: pan fade -- step pan toward the signed target over n steps.
+u8* func_8003DEE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u16 n = pScript[0];
+    s32 diff = (s8)pScript[1] - (((s16)pAudioElements->unk_0x74) >> 8);
+    if (n != 0 && diff != 0) {
+        u16 f4;
+        s32 scaled = diff << 8;
+        f4 = pAudioElements->unk_0x04;
+        *(u16*)&pAudioElements->unk_0x76[0x1C] = scaled;
+        *(u16*)&pAudioElements->unk_0x76[0x22] = n;
+        pAudioElements->unk_0x04 = f4 | 0x10;
+        *(u16*)&pAudioElements->unk_0x76[0x1A] = scaled / n;
+    }
+    return pScript + 2;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DF3C);
+// Seq cmd: envelope 2 rate -- step = 0x400 / ((n+1)*4).
+u8* func_8003DF3C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = *pScript++ + 1;
+    if (n != 0) {
+        u16 step = 0x400 / (n << 2);
+        *(u16*)&pAudioElements->unk_0x118[0x1A] = step;
+        *(u16*)&pAudioElements->unk_0x118[0x18] = step;
+    }
+    return pScript;
+}
 
+// Seq cmd 0xEC: prime envelope object 2 (direct method) -- rate =
+// n + n*n/64, packed target via func_8003E290, arm + notify func_8003E3E0.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003DF78(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0x118);
+        s32 sq = n * n;
+        n = n + sq / 64;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, 3);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        env->pfnHandler = SOUND_PTR_TO_PSX(func_8003F2A0);
+        env->unk1D = 3;
+        env->state = 2;
+        env->flags = 3;
+        *(u16*)&env->unk16[0] = p[2] << 2;
+        el->unk_0xCE |= 0x4;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DF78);
+#endif
 
+// Seq cmd 0xED: prime envelope object 2 (method from the D_800508A4
+// table, low nibble of p2 selects; bit4 of p2 selects one-shot vs looping).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: register-pressure frame shape (one
+ * extra callee-saved reg vs retail); ops+offsets audited 1:1 against the
+ * split asm (envelope base/field offsets cross-checked across the sibling
+ * pair variants). {}-upgrade candidate for a fresh matching session. */
+u8* func_8003E04C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8* p = pScript;
+    u16 n = p[0];
+    AudioElement* el = pAudioElements;
+    if ((s8)p[1] != 0 && n != 0) {
+        SoundEnvelope* env = (SoundEnvelope*)((u8*)el + 0x118);
+        u16 mode;
+        u8 m;
+        s32 sq = n * n;
+        n = n + sq / 64;
+        mode = ((p[2] & 0x10) == 0) << 1;
+        m = p[2] & 0xF;
+        *(s32*)&env->unk4[8] = func_8003E290((s8)p[1] << 24, (s16)n, m);
+        env->stepAdd = 0x400;
+        *(u16*)&env->unk4[0xE] = n;
+        *(u16*)&env->unk16[0] = 0;
+        env->state = 2;
+        env->unk1D = m;
+        env->flags = mode + 1;
+        env->pfnHandler = D_800508A4[m];
+        el->unk_0xCE |= 0x4;
+        func_8003E3E0(env);
+    }
+    return p + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E04C);
+#endif
 
 u8* SoundScriptSetUnkCEAndUnk136(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     pAudioElements->unk_0xCE |= 0x4;
@@ -1730,33 +5172,280 @@ s32 func_8003E160(s32 a0, s32 a1, u16* a2) {
     return a0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E180);
+// Seq cmd 0xF0: define envelope object -- select slot, bind the handler
+// method from the D_800508A4 table (retail PSX address; the port's host
+// routing for these lands with the envelope pass), set mode/state.
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E180(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env;
+    u8 state;
+    *(u16*)&pAudioElements->unk_0x76[0x56] = pScript[0];
+    env = (SoundEnvelope*)((u8*)pAudioElements +
+                           ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    {
+        u8 m = pScript[1];
+        env->unk1D = m & 0xF;
+        env->pfnHandler = D_800508A4[env->unk1D];
+        if (!(m & 0x10)) {
+            env->flags = 0x2;
+        } else {
+            env->flags = 0;
+        }
+    }
+    state = pScript[2];
+    env->stepAdd = 0x400;
+    *(u16*)&env->unk16[0] = 0;
+    env->state = state;
+    return pScript + 3;
+}
 
+// Seq cmd 0xF1: envelope target/rate -- rate = n + n*n/64; packed target via
+// func_8003E290 keyed by the envelope's method index.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env = (SoundEnvelope*)((u8*)pAudioElements +
+                         ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    s32 sq = pScript[0] * pScript[0];
+    u16 rate = pScript[0] + sq / 64;
+    *(s32*)&env->unk4[0x8] = func_8003E290(((s8)pScript[1] << 24) | (pScript[2] << 16),
+                                           rate, env->unk1D);
+    *(u16*)&env->unk4[0xE] = rate;
+    return pScript + 3;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E1F8);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E290);
+// Envelope target packing: scale the packed target by the step count for
+// ramp-style methods (2/3: per-step delta; 4: ping-pong delta over rate-1
+// steps); methods 0/1 and out-of-range leave the target absolute.
+s32 func_8003E290(s32 target, s32 rate, s32 method) {
+    if (target != 0) {
+        s16 r = rate;
+        if (r != 0) {
+            s16 m = method;
+            switch (m) {
+            case 2:
+            case 3:
+                target = target / r;
+                break;
+            case 4:
+                if (r != 1) {
+                    target = target / (r - 1);
+                }
+                break;
+            }
+        }
+    }
+    return target;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E308);
+// Seq cmd: envelope-object rate config (selected slot): delay = p0*4,
+// step/stepAdd = 0x400 / ((p1+1)*4).
+u8* func_8003E308(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundEnvelope* env;
+    u8 n = pScript[1] + 1;
+    env = (SoundEnvelope*)((u8*)pAudioElements +
+                           ((*(u16*)&pAudioElements->unk_0x76[0x56] << 5) + 0xD8));
+    if (n != 0) {
+        u16 rate = 0x400 / (n << 2);
+        *(u16*)&env->unk16[0] = pScript[0] << 2;
+        env->stepAdd = rate;
+        env->step = rate;
+    }
+    return pScript + 2;
+}
 
 u8* SoundScriptNop5(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     return pScript;
 }
 
+// Seq cmd 0xF6: arm envelope object N (prime via func_8003E3E0, set run flag
+// + the element's active-envelope bit).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E360(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u8 n = pScript[0];
+    SoundEnvelope* env = (SoundEnvelope*)((u8*)pAudioElements + ((n << 5) + 0xD8));
+    func_8003E3E0(env);
+    pScript++;
+    env->flags |= 0x1;
+    pAudioElements->unk_0xCE |= 1 << n;
+    return pScript;
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E360);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E3E0);
+// Envelope arm/reset: first tick fires immediately (counter 1), direction/
+// phase flags cleared, delay reloaded from its programmed value, current
+// value zeroed, step reset to the base step.
+void func_8003E3E0(SoundEnvelope* env) {
+    u16 flags;
+    u16 d;
+    u16 add;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E40C);
+    *(u16*)&env->unk4[0xC] = 1;
+    flags = env->flags;
+    d = *(u16*)&env->unk16[0];
+    add = env->stepAdd;
+    *(s32*)&env->unk4[0] = 0;
+    env->flags = flags & 0xFFF3;
+    env->delay = d;
+    env->step = add;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E44C);
+// Seq cmd: disarm envelope object N -- clear its run flag + its bit in the
+// element's active-envelope mask.
+u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u32 n = pScript[0];
+    *(u16*)((u8*)pAudioElements + (n << 5) + 0xF6) &= 0xFFFE;
+    pAudioElements->unk_0xCE &= ~(1 << n);
+    return pScript + 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E4BC);
+// Seq cmd 0xFC: select sample bank + load instrument in one command.
+/* Coexistence (d88f13c pattern): logic-verified port C body; matching build
+ * keeps INCLUDE_ASM below. Residual: non-semantic codegen micro-shape
+ * (commutative operand order / delay-slot copy placement / register reuse);
+ * ops+offsets audited 1:1 against the split asm. */
+u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+#ifdef XENO_PC_PORT
+    AudioElement* el = pAudioElements;
+    u8* p = pScript;
+    SoundWDSEntry* e;
+    u8 bank = p[0];
+    u8 inst = p[1];
+#else
+    register AudioElement* el asm("$16") = pAudioElements;
+    register u8* p asm("$17") = pScript;
+    SoundWDSEntry* e;
+    u8 bank = p[0];
+    register u8 inst asm("$18") = p[1];
+#endif
+    ((u8*)&el->unk_0x24)[1] = bank;
+    e = SoundFindWdsEntry(bank);
+    if (e == NULL) {
+        e = g_SoundWdsLinkedList;
+    }
+#ifdef XENO_PC_PORT
+    /* New-game template (func_8001B970) can fire MAP14 seq cmd 0xFC
+     * before any WDS bank is resident. Retail's mirrored RAM lets a NULL
+     * fallback read as zeroed instruments; the host faults. */
+    if (e == NULL) {
+        return p + 2;
+    }
+#endif
+    el->unk2C = SOUND_PTR_TO_PSX(e);
+    func_8003E5BC(inst, el);
+    return p + 2;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E4F0);
+// Seq cmd: master level (manager interpolator immediate).
+u8* func_8003E4BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    u32 level = *pScript++;
+    if (level != 0) {
+        pAudioManager->unk_0x54 = ((s16*)&pAudioManager->unk_0x58)[1] * (level << 8);
+        pAudioManager->unk_Interpolator_0x64.currentValue = level << 24;
+    }
+    return pScript;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E54C);
+// Seq cmd: select sample bank -- find the WDS entry by id (fall back to the
+// list head) and point the element's bank pointer at it.
+u8* func_8003E4F0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    SoundWDSEntry* e;
+    u32 id = *pScript;
+    pScript++;
+    ((u8*)&pAudioElements->unk_0x24)[1] = id;
+    e = SoundFindWdsEntry(id);
+    if (e == NULL) {
+        e = g_SoundWdsLinkedList;
+    }
+    pAudioElements->unk2C = SOUND_PTR_TO_PSX(e);
+    return pScript;
+}
 
+// Seq cmd 0xFF: release the voice if its envelope has fully decayed.
+u8* func_8003E54C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
+    long keyStat;
+    short envx;
+    SpuGetVoiceEnvelopeAttr(pAudioElements->voice_number, &keyStat, &envx);
+    if (envx == 0) {
+        pAudioElements->status_flags &= 0xFFFC;
+        SoundReleaseVoiceFromChannel(&pAudioElements->voice_data,
+                                     pAudioElements->voice_number);
+        pAudioElements->active_flag = 0;
+    }
+    return pScript;
+}
+
+// Load instrument #instrument from the element's bank (unk2C) into its voice
+// data: sample/loop SPU addresses, unpacked ADSR fields, program number.
+// Marks the element CHANGE_INSTRUMENT and latches the instrument pitch base.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching build
+ * keeps INCLUDE_ASM (byte-exact) below. Semantics traced 1:1 against the asm.
+ * Residual vs {}: retail leaves the load-delay slot after the second ADSR-word
+ * load unfilled (nop) and keeps the active_flag RMW at the statement tail;
+ * this pipeline's cc1 lifts the RMW cluster into that latency hole (same ops,
+ * same registers, 3 instructions placed ~14 slots earlier). Six source-shape
+ * variants (RMW split, statement reorder, shared-temp) all canonicalize to the
+ * hoisted schedule. Not claimed as {}. */
+void func_8003E5BC(s32 instrument, AudioElement* pAudioElements) {
+    u8* pBank;
+    u8* pInstr;
+    u32 adsr;
+    u32 num;
+    s32 base;
+    u16 activeFlag;
+
+    pAudioElements->unk_0x26 = instrument;
+    pBank = SOUND_PSX_TO_PTR(u8, pAudioElements->unk2C);
+#ifdef XENO_PC_PORT
+    if (pBank == NULL || (s16)instrument < 0 || (s16)instrument > 0x7F) {
+        return;
+    }
+#endif
+    pInstr = pBank + (((s16)instrument << 4) + 0x30);
+#ifdef XENO_PC_PORT
+    if ((u32)(uintptr_t)pInstr < 0x10000u) {
+        return;
+    }
+#endif
+    base = *(s32*)pInstr << 3;
+    pAudioElements->voice_data.startAddress = base + *(u32*)(pBank + 0x28);
+    pAudioElements->voice_data.loopAddress = base + (*(u16*)(pInstr + 4) << 3);
+    adsr = *(u16*)(pInstr + 0xC);
+    pAudioElements->voice_data.unkAdsr1 = adsr & 0x7;
+    pAudioElements->voice_data.unkAdsr2 = (adsr >> 4) & 0x7;
+    pAudioElements->voice_data.unkAdsr3 = (adsr >> 8) & 0x7;
+    adsr = *(u32*)(pInstr + 8);
+    num = adsr >> 24;
+    pAudioElements->voice_data.unkAdsr4 = adsr & 0x7F;
+    pAudioElements->voice_data.adsrDR = (adsr >> 8) & 0xF;
+    pAudioElements->voice_data.unkAdsr5 = (adsr >> 16) & 0x7F;
+    pAudioElements->voice_data.adsrSR = (adsr >> 12) & 0xF;
+    activeFlag = pAudioElements->active_flag;
+    num &= 0x1F;
+    pAudioElements->unk_0x28 = num;
+    pAudioElements->voice_data.unkAdsr6 = num;
+    pAudioElements->active_flag = activeFlag | 0x8000;
+    pAudioElements->unk_0x6C = *(u16*)(pInstr + 6);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E5BC);
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void unk_SoundSetFlagsOnActiveVoices(u16 flags, AudioManager* manager) {
@@ -1886,13 +5575,248 @@ void SoundAbortVoiceOnChannel(SoundVoiceData* voiceData, u32 channelIndex) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E900);
+// Every-tick voice register flush: each assigned channel's dirty-flag word
+// (SoundVoiceData::flags) selects which SPU voice registers to rewrite
+// (volume/pitch/addresses/ADSR nibbles). Mode-bit masks (FM/noise/reverb) are
+// accumulated over all voices and written when a voice requested them; pending
+// key-ons are committed last.
+void func_8003E900(void) {
+    SoundVoiceData** ppChannel;
+    u32 revMask;
+    u32 noiseMask;
+    u32 fmMask;
+    u16 accFlags;
+    SPU_VOICE_REG* pReg;
+    volatile u16* pAdsr;
+    u32 keyOn;
+    s32 i;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003EB5C);
+    ppChannel = &g_SoundChannels[0];
+    revMask = 0;
+    noiseMask = 0;
+    fmMask = 0;
+    accFlags = 0;
+    /* Hardware view: the ADSR-anchored cursor walks the volatile register
+     * image (no CSE/reordering of the RMWs); volume.left rides the plain
+     * voice-struct cursor. Both consume the loaded register pointer, so the
+     * post-loop flag writes reload g_pSoundSpuRegisters. */
+    pReg = &g_pSoundSpuRegisters->_rxx.voice[0];
+    i = 0;
+    pAdsr = &g_pSoundSpuRegisters->rxx.voice[0].adsr[0];
+    for (; i < NUM_VOICES; pAdsr += 8, pReg++, i++, ppChannel++) {
+        SoundVoiceData* pVoice = *ppChannel;
+        if (pVoice != NULL) {
+            u16 flags = pVoice->flags;
+            if (flags != 0) {
+                u16 val;
+                if (flags & 0x1) {
+                    pReg->volume.left = pVoice->volume.left;
+                    pAdsr[-3] = pVoice->volume.right;
+                }
+                if (flags & 0x4) {
+                    pAdsr[-2] = pVoice->pitch;
+                }
+                if (flags & 0x8) {
+                    pAdsr[-1] = pVoice->startAddress >> 3;
+                    pAdsr[3] = pVoice->loopAddress >> 3;
+                }
+                if (flags & 0x10) {
+                    val = *(volatile u8*)pAdsr;
+                    val = val + (pVoice->unkAdsr4 << 8) + ((pVoice->unkAdsr1 >> 2) << 15);
+                    pAdsr[0] = val;
+                }
+                if (flags & 0x20) {
+                    val = pAdsr[0];
+                    val = (val & 0xFF0F) + (pVoice->adsrDR << 4);
+                    pAdsr[0] = val;
+                }
+                if (flags & 0x40) {
+                    val = pAdsr[1];
+                    val = (val & 0x3F) + (pVoice->unkAdsr5 << 6) +
+                          ((pVoice->unkAdsr2 >> 1) << 14);
+                    pAdsr[1] = val;
+                }
+                if (flags & 0x80) {
+                    val = pAdsr[1];
+                    val = (val & 0xFFC0) +
+                          (pVoice->unkAdsr6 + ((pVoice->unkAdsr3 >> 2) << 5));
+                    pAdsr[1] = val;
+                }
+                if (flags & 0x100) {
+                    val = pAdsr[0];
+                    val = pVoice->adsrSR + (val & 0xFFF0);
+                    pAdsr[0] = val;
+                }
+                accFlags |= flags & 0x7000;
+                pVoice->flags = 0;
+            }
+            fmMask |= ((pVoice->modeFlags >> 4) & 1) << i;
+            noiseMask |= ((pVoice->modeFlags >> 5) & 1) << i;
+            revMask |= ((pVoice->modeFlags >> 6) & 1) << i;
+        }
+    }
+    /* The cursor register is re-pointed at the union base for the tail
+     * writes (retail reuses the same variable for both roles). */
+    pReg = &g_pSoundSpuRegisters->_rxx.voice[0];
+    if (accFlags) {
+        if (accFlags & 0x1000) {
+            ((SpuUnion*)pReg)->_rxx.chan_fm[0] = fmMask;
+            ((SpuUnion*)pReg)->_rxx.chan_fm[1] = fmMask >> 16;
+        }
+        if (accFlags & 0x2000) {
+            ((SpuUnion*)pReg)->_rxx.noise_mode[0] = noiseMask;
+            ((SpuUnion*)pReg)->_rxx.noise_mode[1] = noiseMask >> 16;
+        }
+        if (accFlags & 0x4000) {
+            ((SpuUnion*)pReg)->_rxx.rev_mode[0] = revMask;
+            ((SpuUnion*)pReg)->_rxx.rev_mode[1] = revMask >> 16;
+        }
+    }
+    keyOn = g_SoundKeyOnFlags;
+    if (keyOn != 0) {
+        ((SpuUnion*)pReg)->_rxx.key_on[0] = keyOn;
+        ((SpuUnion*)pReg)->_rxx.key_on[1] = keyOn >> 16;
+        g_SoundKeyOnFlags = 0;
+    }
+}
 
+// Every-tick voice release/key-off flush: newly reassigned voices
+// (g_unk_VoicesNeedingProcessing) get their release rate forced, then both
+// pending masks are written to the SPU KOFF registers and cleared.
+void func_8003EB5C(void) {
+    u32 pending;
+    SpuUnion* spu;
+    s32 i;
+
+    pending = g_unk_VoicesNeedingProcessing;
+    spu = g_pSoundSpuRegisters;
+    if (pending) {
+        u32 bit;
+        u16* pAdsr1;
+        i = 0;
+        bit = 1;
+        pAdsr1 = &spu->_rxx.voice[0].adsr[1];
+        for (; i < NUM_VOICES; i++, pAdsr1 += 8) {
+            if (pending & (bit << i)) {
+                *pAdsr1 = (*pAdsr1 & 0xFFC0) | 0x6;
+            }
+        }
+    }
+    pending = g_SoundKeyOffFlags | g_unk_VoicesNeedingProcessing;
+    if (pending) {
+        spu->_rxx.key_off[0] = pending;
+        spu->_rxx.key_off[1] = pending >> 16;
+        g_unk_VoicesNeedingProcessing = 0;
+        g_SoundKeyOffFlags = 0;
+    }
+}
+
+// Voice-apply pass (final tick pass, per element): fold the master/envelope
+// volumes and the pan law into the SPU volume pair, convert the accumulated
+// note (+envelope pitch bend +manager bend) into an SPU pitch via
+// func_8003EEA0, then issue the pending key-on/key-off. Skipped entirely when
+// the manager is muted (flag 0x20).
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: this pipeline's
+ * cc1 strength-reduces the element cursor family onto a different anchor and
+ * fills load-latency slack the retail object leaves unfilled -- same
+ * operations at the same absolute element offsets, rebased registers/
+ * displacements. Semantics traced 1:1 against the split asm. Not claimed
+ * as {}. */
+void func_8003EBF0(AudioManager* manager, AudioElement* pAudioElements, s32 count) {
+    u16* st;
+
+    if (!(manager->unk_Flags & 0x20)) {
+        st = &pAudioElements->status_flags;
+        do {
+            if (pAudioElements->active_flag) {
+                u16 status = st[0];
+                if (status & 0x100) {
+                    s32 vol;
+                    s32 pan;
+                    s32 left;
+                    s32 right;
+                    vol = *(s16*)&st[0x3C] -
+                          (((*(s16*)&st[0x3C]) * (*(s16*)&st[0x68])) >> 15);
+                    if (vol > 0x7FFF) {
+                        vol = 0x7FFF;
+                    }
+                    if (vol < 0) {
+                        vol = 0;
+                    }
+                    vol = ((*(s16*)&st[0x3A]) * vol) >> 15;
+                    vol = (((s16*)&manager->unk_Interpolator_0x70.currentValue)[1] * vol) >> 16;
+                    pan = *(s16*)&st[0x39] + *(s16*)&st[0x69] +
+                          ((s16*)&manager->unk_Interpolator_0x88.currentValue)[1];
+                    if (pan > 0x7F00) {
+                        pan = 0x7F00;
+                    }
+                    if (pan < 0) {
+                        pan = 0;
+                    }
+                    if (g_SoundControlFlags & 0x100) {
+                        if (pan < 0x4000) {
+                            right = (pan * 0x5A00) >> 14;
+                            left = 0x7F00 - ((pan * 0x2500) >> 14);
+                        } else {
+                            pan = 0x8000 - pan;
+                            left = (pan * 0x5A00) >> 14;
+                            right = 0x7F00 - ((pan * 0x2500) >> 14);
+                        }
+                        left = (left * vol) >> 15;
+                        right = (right * vol) >> 15;
+                    } else {
+                        right = (vol * 0x5A00) >> 15;
+                        left = right;
+                    }
+                    st[0x1A] |= 0x1;
+                    st[0x1B] = left;
+                    st[0x1C] = right;
+                }
+                if (status & 0x200) {
+                    s16 pitch = func_8003EEA0(
+                        (s16)(*(s16*)&st[0x34] + *(s16*)&st[0x67] +
+                              ((s16*)&manager->unk_Interpolator_0x7c.currentValue)[1]));
+                    st[0x21] = pitch & 0x3FFF;
+                    st[0x1A] |= 0x4;
+                }
+                if ((status & 0x1) && !(pAudioElements->active_flag & 0x20)) {
+                    SoundAssignVoiceToChannelAndPlay(&pAudioElements->voice_data,
+                                                     ((u8*)&st[0x12])[1]);
+                }
+                if (status & 0x2) {
+                    SoundStopVoiceOnChannel(&pAudioElements->voice_data, ((u8*)&st[0x12])[1]);
+                }
+                st[0] = 0;
+            }
+            st += 0xAC;
+            count--;
+            pAudioElements++;
+        } while ((s16)count != 0);
+    }
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003EBF0);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003EEA0);
+// Convert a note number (semitone in the high byte-ish 15-bit form) to an SPU
+// pitch: octave table lookup + per-note pitch table + octave shift.
+s16 func_8003EEA0(u32 note) {
+    s32 entry;
+    s32 pitch;
+    s32 shift;
+
+    entry = D_80050B78[(note & 0x7FFF) >> 8];
+    pitch = D_80050BF0[(note & 0xFF) + ((entry & 0xF) << 8)];
+    shift = 6 - (entry >> 4);
+    if (shift < 0) {
+        pitch = pitch << -shift;
+    } else {
+        pitch = pitch >> shift;
+    }
+    return pitch;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundAssignVoiceToChannelAndPlay(SoundVoiceData* voiceData, u32 channelIndex)
@@ -1932,25 +5856,222 @@ void SoundStopVoiceOnChannel(SoundVoiceData* voiceData, u32 channelIndex) {
     }
 }
 
+
+
+// Envelope pass (second tick pass, per element): clear the per-axis envelope
+// accumulators (element+0xD0/D2/D4), then for each of the 4 envelope objects
+// whose flag bit 0 is set either count down its delay or invoke its handler
+// method and accumulate the scaled result into the pitch (state 0) or
+// volume/pan (states 1/2) accumulator, marking the matching status bit.
+#ifdef XENO_PC_PORT
+/* Coexistence (d88f13c pattern): logic-verified port C body; the matching
+ * build keeps INCLUDE_ASM (byte-exact) below. Residual vs {}: this pipeline's
+ * cc1 strength-reduces the element cursor family onto a different anchor and
+ * fills load-latency slack the retail object leaves unfilled -- same
+ * operations at the same absolute element offsets, rebased registers/
+ * displacements. Semantics traced 1:1 against the split asm. Not claimed
+ * as {}. */
+void func_8003EFE4(AudioManager* manager, AudioElement* pAudioElements, s32 count) {
+    u16* st;
+
+    st = &pAudioElements->status_flags;
+    do {
+        if (pAudioElements->active_flag) {
+            u16 nActive = st[0x66];
+            st[0x69] = 0;
+            st[0x68] = 0;
+            st[0x67] = 0;
+            if (nActive != 0) {
+                s32 slot;
+                SoundEnvelope* env;
+                u16 status;
+                u16* pSt;
+                slot = 4;
+                env = (SoundEnvelope*)((u8*)pAudioElements + 0xD8);
+                status = st[0];
+                pSt = (u16*)((u8*)pAudioElements + 0xF4);
+                do {
+                    if (pSt[1] & 0x1) {
+                        if (pSt[-4] != 0) {
+                            pSt[-4] = pSt[-4] - 1;
+                        } else {
+                            s32 value;
+                            s32 step;
+                            value = ((s32 (*)())SOUND_PSX_TO_PTR(void, env->pfnHandler))(env);
+                            step = *(s16*)&pSt[-2];
+                            if (step < 0x400) {
+                                s32 scaled = (value >> 10) * step;
+                                pSt[-2] = step + pSt[-1];
+                                value = scaled;
+                            }
+                            value >>= 16;
+                            switch (*(u8*)pSt) {
+                                case 0:
+                                    st[0x67] += value;
+                                    status |= 0x200;
+                                    break;
+                                case 1:
+                                    st[0x68] += value;
+                                    status |= 0x100;
+                                    break;
+                                case 2:
+                                    st[0x69] += value;
+                                    status |= 0x100;
+                                    break;
+                            }
+                        }
+                    }
+                    pSt += 0x10;
+                    slot--;
+                    env++;
+                } while (slot != 0);
+                st[0] = status;
+            }
+        }
+        st += 0xAC;
+        count--;
+        pAudioElements++;
+    } while ((s16)count != 0);
+}
+#else
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003EFE4);
+#endif
 
 void func_8003F190(u16* arg0) {
     arg0[0xF] &= 0xFFFE;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F1A4);
+// Envelope method 1: gate/square -- on each period toggle the value between
+// the target and zero.
+s32 func_8003F1A4(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 v = 0;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (*(s32*)&env->unk4[0] == 0) {
+            v = *(s32*)&env->unk4[8];
+        }
+        *(s32*)&env->unk4[0] = v;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F1EC);
+// Envelope method 2: alternating set -- on each period set the value to the
+// target with alternating sign.
+s32 func_8003F1EC(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 v = *(s32*)&env->unk4[8];
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (env->flags & 0x8) {
+            v = -v;
+        }
+        *(s32*)&env->unk4[0] = v;
+        env->flags ^= 0x8;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F240);
+// Envelope method 3: triangle ramp -- accumulate the per-step delta every
+// tick, flipping the delta's sign at each period boundary.
+s32 func_8003F240(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    s32 v;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F2A0);
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 stp = *(s32*)&env->unk4[8];
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        if (env->flags & 0x8) {
+            stp = -stp;
+        }
+        *(s32*)&env->unk4[4] = stp;
+        env->flags ^= 0x8;
+    }
+    v = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[4];
+    *(s32*)&env->unk4[0] = v;
+    return v;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F308);
+// Envelope method 4: ping-pong ramp -- like the triangle, but after the
+// first (attack) leg the period doubles (flag 0x4), so the value swings
+// symmetrically about the peak.
+s32 func_8003F2A0(SoundEnvelope* env) {
+    s32 cnt = *(u16*)&env->unk4[0xC];
+    s32 v;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F354);
+    cnt = cnt - 1;
+    if (cnt == 0) {
+        u16 flags = env->flags;
+        s32 stp;
+        /* the reload reuses the counter variable (retail merges the ranges) */
+        cnt = *(u16*)&env->unk4[0xE];
+        if (flags & 0x4) {
+            cnt <<= 1;
+        }
+        stp = *(s32*)&env->unk4[8];
+        *(s32*)&env->unk4[4] = stp;
+        if (flags & 0x8) {
+            *(s32*)&env->unk4[4] = -stp;
+        }
+        flags = (flags | 0x4) ^ 0x8;
+        env->flags = flags;
+    }
+    v = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[4];
+    *(u16*)&env->unk4[0xC] = cnt;
+    *(s32*)&env->unk4[0] = v;
+    return v;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F3C0);
+// Envelope method 5 (slots 4 and 5): sawtooth -- accumulate the per-step
+// delta, snapping back to zero at each period boundary.
+s32 func_8003F308(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        *(s32*)&env->unk4[0] = 0;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+    } else {
+        *(s32*)&env->unk4[0] = *(s32*)&env->unk4[0] + *(s32*)&env->unk4[8];
+    }
+    return *(s32*)&env->unk4[0];
+}
+
+// Envelope method 6: random level -- each period, sample the xorshift RNG
+// and scale the target by it (advancing the RNG every tick keeps the
+// sequence hot, as retail does).
+s32 func_8003F354(SoundEnvelope* env) {
+    u16 cnt;
+
+    func_8003F43C();
+    cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 r;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        r = func_8003F43C();
+        *(s32*)&env->unk4[0] = (*(s32*)&env->unk4[8] >> 15) * r;
+    }
+    return *(s32*)&env->unk4[0];
+}
+
+// Envelope method 7: random bipolar -- each period, a random value scaled
+// by the target and re-centered to swing about zero.
+s32 func_8003F3C0(SoundEnvelope* env) {
+    u16 cnt = *(u16*)&env->unk4[0xC] - 1;
+    *(u16*)&env->unk4[0xC] = cnt;
+    if (cnt == 0) {
+        s32 r;
+        s32 t;
+        *(u16*)&env->unk4[0xC] = *(u16*)&env->unk4[0xE];
+        r = func_8003F43C();
+        t = *(s32*)&env->unk4[8];
+        *(s32*)&env->unk4[0] = (t >> 14) * r - t;
+    }
+    return *(s32*)&env->unk4[0];
+}
 
 extern s32 D_800594E4;
 
@@ -1958,7 +6079,15 @@ void func_8003F42C(s32 arg0) {
     D_800594E4 = arg0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003F43C);
+// Sound xorshift RNG (seed D_800594E4, set 0x12345678 at SoundInitialize):
+// v ^= v<<17; v ^= v>>15 (arithmetic); 15-bit result.
+s32 func_8003F43C(void) {
+    s32 v = D_800594E4;
+    v ^= v << 17;
+    v ^= v >> 15;
+    D_800594E4 = v;
+    return v & 0x7FFF;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundSetVoiceKeyOn(u32 voiceFlags) {
@@ -2042,7 +6171,7 @@ void SoundSetVoiceAdsrSustainLevel(s32 voiceIndex, s32 sustainLevel) {
 // End ADSR functions
 
 //----------------------------------------------------------------------------------------------------------------------
-int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, unsigned short targetValue) {
+int SoundValidateFile(SoundFile* pSoundFile, u32 magicBytes, u16 targetValue) {
     unsigned char bIsError;
     
     if (pSoundFile->magic != magicBytes) {
@@ -2084,4 +6213,223 @@ int SoundFileComputeChecksum(SoundFile* pSoundFile) {
 }
 
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHandleError);
+extern SoundFile D_80050910;
+extern u16 D_80050924[];
+extern SoundWDSEntry D_80050940;
+
+/* MATCHED C for the matching build; the same body now serves the PC port.
+ * It previously sat inside `#ifndef XENO_PC_PORT`, so the port stubbed the
+ * symbol and the live field path logged `[stub] SoundHandleError`. That stub
+ * was load-bearing: it fired because SoundLoadWdsFile could not allocate the
+ * field's common WDS bank (a duplicate load -- see misc3.c, fixed by asserting
+ * retail's D_8004F364=1 invariant now that port_main replays the retail
+ * func_80019578 boot bank closure). With the duplicate gone the handler is no
+ * longer reached on the live path, and all five callees plus the three data
+ * symbols resolve in the port link (func_8003BDFC is the port-owned
+ * transfer-polling override). */
+void SoundHandleError(s32 errorId)
+{
+    if ((g_SoundControlFlags & 0x88) == 0) {
+        g_SoundControlFlags |= 8;
+        g_SoundSpuErrorId = errorId;
+        SoundSpuMemoryFreeBlock(0x10000);
+        SoundLoadWdsFile(&D_80050940, 0);
+        SoundAddSedsEntry(&D_80050910);
+        func_8003BDFC(0x10);
+        func_80039E60((D_80050924[0] << 16) | 1);
+    }
+}
+
+#ifdef XENO_PC_PORT
+/* Host sequence-command dispatch table (tick-leg step 3). Retail's
+ * g_SoundScriptHandlers is 128 PSX addresses in .sdata (3F290.sdata.s);
+ * on LP64 the port needs host-width function pointers, so the table is
+ * rebuilt here with the same 128 entries in the same slot order (the
+ * game_overrides.c runtime-dispatch-table pattern). The matching build
+ * keeps the .sdata original. func_8003C6E8 dispatches through this for
+ * every opcode >= 0x80. Entry casts: a few legacy handlers use loose
+ * parameter types; the call convention is identical. */
+typedef u8* (*SoundScriptHandlerFn)(u8* pScript, AudioManager* pAudioManager,
+                                    AudioElement* pAudioElements);
+extern u8* func_8003CD08(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CD54(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CD8C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CE68(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CE9C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CEF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CF38(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CFA4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003CFF0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D034(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D070(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D0E8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D110(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D13C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D17C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D1BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D21C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D370(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D3A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D3D8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D438(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D4E4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D53C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D60C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D7C8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D7FC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D884(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D8B8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003D9A4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DAB0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DB2C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DB58(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DB98(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DC50(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DD24(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DE18(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DEB4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DEE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DF3C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003DF78(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E04C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E180(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E308(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E360(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E40C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E44C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E4BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E4F0(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+extern u8* func_8003E54C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements);
+SoundScriptHandlerFn g_SoundScriptHandlers[128] = {
+    /* 0x80 */ (SoundScriptHandlerFn)func_8003CD08,
+    /* 0x81 */ (SoundScriptHandlerFn)SoundScriptFermata,
+    /* 0x82 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x83 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x84 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x85 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x86 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x87 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x88 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x89 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x8A */ (SoundScriptHandlerFn)SoundScriptNop3,
+    /* 0x8B */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x8C */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x8D */ (SoundScriptHandlerFn)func_8003CD54,
+    /* 0x8E */ (SoundScriptHandlerFn)SoundScriptDefaultSkip3,
+    /* 0x8F */ (SoundScriptHandlerFn)SoundScriptNop4,
+    /* 0x90 */ (SoundScriptHandlerFn)func_8003CD8C,
+    /* 0x91 */ (SoundScriptHandlerFn)SoundScriptSaveOctaveAndIP,
+    /* 0x92 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x93 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x94 */ (SoundScriptHandlerFn)SoundScriptSetOctave,
+    /* 0x95 */ (SoundScriptHandlerFn)SoundScriptRaiseOctave,
+    /* 0x96 */ (SoundScriptHandlerFn)SoundScriptLowerOctave,
+    /* 0x97 */ (SoundScriptHandlerFn)func_8003CE68,
+    /* 0x98 */ (SoundScriptHandlerFn)func_8003CEF0,
+    /* 0x99 */ (SoundScriptHandlerFn)func_8003CF38,
+    /* 0x9A */ (SoundScriptHandlerFn)func_8003CFA4,
+    /* 0x9B */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0x9C */ (SoundScriptHandlerFn)func_8003CFF0,
+    /* 0x9D */ (SoundScriptHandlerFn)func_8003D034,
+    /* 0x9E */ (SoundScriptHandlerFn)func_8003D070,
+    /* 0x9F */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xA0 */ (SoundScriptHandlerFn)func_8003D0E8,
+    /* 0xA1 */ (SoundScriptHandlerFn)func_8003D110,
+    /* 0xA2 */ (SoundScriptHandlerFn)func_8003D13C,
+    /* 0xA3 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xA4 */ (SoundScriptHandlerFn)SoundScriptSetManagerUnk1a,
+    /* 0xA5 */ (SoundScriptHandlerFn)SoundScriptAddManagerUnk1a,
+    /* 0xA6 */ (SoundScriptHandlerFn)func_8003D17C,
+    /* 0xA7 */ (SoundScriptHandlerFn)func_8003D1BC,
+    /* 0xA8 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xA9 */ (SoundScriptHandlerFn)SoundScriptSetUnk62,
+    /* 0xAA */ (SoundScriptHandlerFn)func_8003D21C,
+    /* 0xAB */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xAC */ (SoundScriptHandlerFn)func_8003D298,
+    /* 0xAD */ (SoundScriptHandlerFn)func_8003D2D0,
+    /* 0xAE */ (SoundScriptHandlerFn)func_8003D300,
+    /* 0xAF */ (SoundScriptHandlerFn)SoundScriptPercussionOff,
+    /* 0xB0 */ (SoundScriptHandlerFn)SoundScriptSetActiveFlag800,
+    /* 0xB1 */ (SoundScriptHandlerFn)SoundScriptClearActiveFlag800,
+    /* 0xB2 */ (SoundScriptHandlerFn)func_8003D370,
+    /* 0xB3 */ (SoundScriptHandlerFn)func_8003D3A4,
+    /* 0xB4 */ (SoundScriptHandlerFn)func_8003D3D8,
+    /* 0xB5 */ (SoundScriptHandlerFn)func_8003D438,
+    /* 0xB6 */ (SoundScriptHandlerFn)SoundScriptSetVoiceFlags2000AndMode,
+    /* 0xB7 */ (SoundScriptHandlerFn)SoundScriptSetVoiceFlags2000ClearMode,
+    /* 0xB8 */ (SoundScriptHandlerFn)func_8003D4E4,
+    /* 0xB9 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xBA */ (SoundScriptHandlerFn)func_8003D53C,
+    /* 0xBB */ (SoundScriptHandlerFn)SoundScriptSetVoiceFlags4000ClearMode,
+    /* 0xBC */ (SoundScriptHandlerFn)SoundScriptSkip3,
+    /* 0xBD */ (SoundScriptHandlerFn)SoundScriptNop,
+    /* 0xBE */ (SoundScriptHandlerFn)SoundScriptNop2,
+    /* 0xBF */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xC0 */ (SoundScriptHandlerFn)SoundScriptCallE5BC,
+    /* 0xC1 */ (SoundScriptHandlerFn)func_8003D60C,
+    /* 0xC2 */ (SoundScriptHandlerFn)SoundScriptSetAttackTime,
+    /* 0xC3 */ (SoundScriptHandlerFn)SoundScriptSetDecayTime,
+    /* 0xC4 */ (SoundScriptHandlerFn)SoundScriptSetSustain,
+    /* 0xC5 */ (SoundScriptHandlerFn)SoundScriptSetRelease,
+    /* 0xC6 */ (SoundScriptHandlerFn)SoundScriptSetSustainLevel,
+    /* 0xC7 */ (SoundScriptHandlerFn)SoundScriptSetAdsrDRAndSR,
+    /* 0xC8 */ (SoundScriptHandlerFn)SoundScriptSetAttackMode,
+    /* 0xC9 */ (SoundScriptHandlerFn)SoundScriptSetSustainMode,
+    /* 0xCA */ (SoundScriptHandlerFn)SoundScriptSetReleaseMode,
+    /* 0xCB */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xCC */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xCD */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xCE */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xCF */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xD0 */ (SoundScriptHandlerFn)SoundScriptSetUnk6E,
+    /* 0xD1 */ (SoundScriptHandlerFn)SoundScriptAddUnk6E,
+    /* 0xD2 */ (SoundScriptHandlerFn)func_8003D79C,
+    /* 0xD3 */ (SoundScriptHandlerFn)func_8003D7C8,
+    /* 0xD4 */ (SoundScriptHandlerFn)func_8003D7FC,
+    /* 0xD5 */ (SoundScriptHandlerFn)SoundScriptToggleUnk04Bit2,
+    /* 0xD6 */ (SoundScriptHandlerFn)func_8003D884,
+    /* 0xD7 */ (SoundScriptHandlerFn)func_8003DAB0,
+    /* 0xD8 */ (SoundScriptHandlerFn)func_8003D8B8,
+    /* 0xD9 */ (SoundScriptHandlerFn)func_8003D9A4,
+    /* 0xDA */ (SoundScriptHandlerFn)SoundScriptSetUnkCEAndF6,
+    /* 0xDB */ (SoundScriptHandlerFn)SoundScriptClearUnkCEAndF6,
+    /* 0xDC */ (SoundScriptHandlerFn)SoundScriptClearUnk04Bit1,
+    /* 0xDD */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xDE */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xDF */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xE0 */ (SoundScriptHandlerFn)func_8003DB2C,
+    /* 0xE1 */ (SoundScriptHandlerFn)func_8003DB58,
+    /* 0xE2 */ (SoundScriptHandlerFn)func_8003DB98,
+    /* 0xE3 */ (SoundScriptHandlerFn)func_8003DE18,
+    /* 0xE4 */ (SoundScriptHandlerFn)func_8003DC50,
+    /* 0xE5 */ (SoundScriptHandlerFn)func_8003DD24,
+    /* 0xE6 */ (SoundScriptHandlerFn)SoundScriptSetUnkCEAndUnk116,
+    /* 0xE7 */ (SoundScriptHandlerFn)SoundScriptClearUnkCEAndUnk116,
+    /* 0xE8 */ (SoundScriptHandlerFn)SoundScriptSetUnk74,
+    /* 0xE9 */ (SoundScriptHandlerFn)func_8003DEB4,
+    /* 0xEA */ (SoundScriptHandlerFn)func_8003DEE4,
+    /* 0xEB */ (SoundScriptHandlerFn)func_8003DF3C,
+    /* 0xEC */ (SoundScriptHandlerFn)func_8003DF78,
+    /* 0xED */ (SoundScriptHandlerFn)func_8003E04C,
+    /* 0xEE */ (SoundScriptHandlerFn)SoundScriptSetUnkCEAndUnk136,
+    /* 0xEF */ (SoundScriptHandlerFn)func_8003E160,
+    /* 0xF0 */ (SoundScriptHandlerFn)func_8003E180,
+    /* 0xF1 */ (SoundScriptHandlerFn)func_8003E1F8,
+    /* 0xF2 */ (SoundScriptHandlerFn)func_8003E308,
+    /* 0xF3 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xF4 */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xF5 */ (SoundScriptHandlerFn)SoundScriptNop5,
+    /* 0xF6 */ (SoundScriptHandlerFn)func_8003E360,
+    /* 0xF7 */ (SoundScriptHandlerFn)func_8003E40C,
+    /* 0xF8 */ (SoundScriptHandlerFn)func_8003DBE4,
+    /* 0xF9 */ (SoundScriptHandlerFn)func_8003CE9C,
+    /* 0xFA */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xFB */ (SoundScriptHandlerFn)SoundScriptDefaultHandler,
+    /* 0xFC */ (SoundScriptHandlerFn)func_8003E44C,
+    /* 0xFD */ (SoundScriptHandlerFn)func_8003E4BC,
+    /* 0xFE */ (SoundScriptHandlerFn)func_8003E4F0,
+    /* 0xFF */ (SoundScriptHandlerFn)func_8003E54C,
+};
+#endif /* XENO_PC_PORT: host g_SoundScriptHandlers */

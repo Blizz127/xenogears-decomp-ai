@@ -1,0 +1,28 @@
+table,slot_index,table_word_va,retail_target,meaning,conditions,direct_calls,exit
+JT1,0x0,0x80070518,0x8008A810,init/idle state,resident byte [0x8006F8E5]!=0 -> resync block 0x8008AB6C else JT2 dispatch on wm_80090A84(slot),"wm_80090A84; resync: wm_800894C8(0x2F)",per sub-case
+JT1,0x1,0x8007051C,0x8008A810,same as 0x0 (shared),same,same,same
+JT1,0x2,0x80070520,0x8008ABB4,follow-slot7 copy,unconditional,none,"copy pool[+0x3A8/0x3AC/0x3B0]->slot[+0x28/2C/30], pool[+0x3C8]->slot[+0x48]; -> common tail"
+JT1,0x3,0x80070524,0x8008ABB4,same as 0x2 (shared),same,none,same
+JT1,0x8,0x80070530,0x8008ABF0,slot2 handshake,resident byte [0x8006F369]==0xFF -> state++ ; else [0x8006F8E6]==0 ? wm_80097770(2,1) then (5,8)+sh curbyte->slot[+0x86] : wm_80097770(5,1)+sh curbyte->pool[+0x286],wm_80097770 x2,state++ via 0x8008B23C
+JT1,0x9,0x80070534,0x8008AC70,slot3 handshake,mirror of 0x8 with [0x8006F36A]/[0x8006F8E7]-family / wm_80097770(3,1)/(6,8) / slot[+0x106] / pool[+0x306],wm_80097770 x2,state++
+JT1,0xA,0x80070538,0x8008ACF0,slot4 claim,[0x8006F368]==0xFF -> state=0xD ; else wm_80097770(4,8) ok -> state=0xD else hold,wm_80097770,state=0xD or hold
+JT1,0xD,0x8007053C+? (0x80070518+0x34),0x8008AD24,approach setup,unconditional,"wm_800941C4(slot+0x28, pool+curbyte*128+0x28, slot+0x38, slot+0x48); func_800245D8(slot[+0x4C],1)","slot[+0x50]=target.x>>12, slot[+0x54]=target.z>>12; state++"
+JT1,0xE,0x80070550,0x8008AD9C,approach step,wm_8008BEC8(slot)==3 -> state++,"wm_8008BEC8; wm_8008C1DC(slot_idx+0x2E, slot, 0x1F800000)","pos->D_8009D55C, heading->D_8009D52C; -> common tail"
+JT1,0xF,0x80070554,0x8008AE10,handoff,wm_80097770(lbu[0x8009BD60],4) nonzero -> slot[+0x24]=1 state=2 wm_800894C8(0x2F) else hold,"wm_80097770, wm_800894C8",state=2 or hold
+JT1,0x10,0x80070558,0x8008AE44,slot2 re-claim,[0x8006F369]==0xFF -> state++ ; else wm_80097770(2,1) ok -> slot[+0x86]=5 state++ else hold,wm_80097770,state++ or hold
+JT1,0x11,0x8007055C,0x8008AE84,slot3 re-claim,mirror with [0x8006F36A] / wm_80097770(3,1) / slot[+0x106]=6,wm_80097770,state++ or hold
+JT1,0x12,0x80070560,0x8008AEC4,teleport + ring refill,unconditional,"wm_80093978(scratch pos)","scratch 0x30/0x38 = resident u16 [0x8006EF90/2]<<12; heading [0x8006EE5A]->0x1F8000A0; ring index reset; 32x ring entries filled from scratch; state=0xD"
+JT1,0x28,0x800705B8,0x8008AF5C,warp-in,unconditional,"wm_80093978; rcos; rsin; wm_800941C4(slot+0x28, 0x1F800000, slot+0x38, slot+0x48); func_800245D8(slot[+0x4C],1)","pos = resident u16s<<12; heading -> slot[+0x5C]/[+0x48]; facing point = pos + (rcos*48, -rsin*48); slot[+0x50/54]; slot[+0x24]=0; state++"
+JT1,0x29,0x800705BC,0x8008B034,warp approach,wm_8008BEC8(slot)==3 -> func_800245D8(slot[+0x4C],0) zero vel state++,"wm_8008BEC8; func_800245D8","pos->D_8009D55C block, heading->D_8009D52C; -> common tail"
+JT1,0x2A,0x800705C0,0x8008B0AC,ring reset,unconditional,none,"sb 0->[0x8006F8E5]; slot[+0x58]=1; [0x8009D154]=0; 32x ring fill from slot pos; state++"
+JT1,0x2B,0x800705C4,0x8008B14C,mode wait,state++ first; then *(0x8009C170): 1 -> commit; 2 -> commit if [0x8006F8E6]==0; 3 -> commit if [0x8006F8E6]|[0x8006F8E7]==0; else hold,none,conditional state++
+JT1,0x2C,0x800705C8,0x8008B1D8,slot2 release,[0x8006F369]==0xFF -> state++ ; else wm_80097770(2,5) ok -> state++,wm_80097770,state++ or hold
+JT1,0x2D,0x800705CC,0x8008B214,slot3 release,[0x8006F36A]==0xFF -> state=0x40 ; else wm_80097770(3,5) ok -> state=0x40,wm_80097770,state=0x40 or hold
+JT1,others,-,0x8008B240,parked no-op,"indices 0x4-0x7, 0xB, 0xC, 0x13-0x27, 0x2E-0x40 (46 of 65 slots)",none,common tail only
+JT1,OOR,-,0x8008B240,guard sltiu 0x41 fails,index >= 0x41,none,common tail (table never read)
+JT2,0,0x80070620,0x8008A854,90A84 class 1,unconditional,none,"state=0x40; D_8009D554=0; D_8009D7CC=0; -> pre-tail 0x8008AB5C"
+JT2,1,0x80070624,0x8008AB5C,90A84 class 2,unconditional,none,"pre-tail: [0x8009BD04]=0, slot[+0x24]=0 -> common tail"
+JT2,2,0x80070628,0x8008A874,90A84 class 3,cur byte [0x8009BD60]==7 -> state=8 else sb 4->[0x8009BD60] state=0x10,none,state write -> pre-tail
+JT2,3,0x8007062C,0x8008AB5C,90A84 class 4,same as class 2,none,pre-tail
+JT2,4,0x80070630,0x8008AB5C,90A84 class 5,same as class 2,none,pre-tail
+JT2,OOR,-,0x8008A8A8,"90A84 result 0 or >=6 (guard sltiu (r-1),5)",falls into the MOVEMENT BLOCK (the live player-motion path),"see CFG movement block: func_800245D8, wm_800894C8, wm_8008C1DC, wm_80095414 x2, wm_8008C040, wm_8007528C, wm_80094238",common tail

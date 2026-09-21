@@ -1,0 +1,18 @@
+mutant,fault_class,killed_by,detail
+WM_8A72C_MUTANT_SUBSTATE_POLARITY,state-arm selection,sub3.state,substates 2 and 3 target states swapped
+WM_8A72C_MUTANT_LAP_GATE,branch polarity,sub6c.state,lap-complete commit on mismatch instead of match
+WM_8A72C_MUTANT_JT1_GUARD,dispatch guard,s2da.state,guard 0x2D severs the live slot-3-release state (0x41->0x40 is unobservable: slot 0x40 parks either way — recorded honestly)
+WM_8A72C_MUTANT_JT2_BIAS,index bias,sub3.state,JT2 index = class instead of class-1
+WM_8A72C_MUTANT_JT2_OOR_POLARITY,dispatch polarity,mv1.n95414,JT2 out-of-range goes to pre-tail instead of the movement block
+WM_8A72C_MUTANT_RETRY_COPY_EXTENT,copy extent,mvr.v44,velocity redirect copies 2 words instead of 4
+WM_8A72C_MUTANT_ZERO_FALLBACK_EXTENT,store set,mvz.v44,double-failure fallback zeroes all 4 velocity words instead of +0x40/+0x38
+WM_8A72C_MUTANT_R_TEST_WIDTH,wrong width,mvw.n95414,32-bit r==0 test instead of the retail low-halfword test
+WM_8A72C_MUTANT_AREA_PLUS3,wrong bias,mv7.posx,area==7 adds 2 instead of 3
+WM_8A72C_MUTANT_RING_MASK,wrong mask,wrap.ring,ring index & 0x3F instead of & 0x1F
+WM_8A72C_MUTANT_NEIGHBOR_OFFSET,wrong offset,s8c.pool286,slot-2 busy handshake writes pool+0x282
+WM_8A72C_MUTANT_MIRROR_ADDR,swapped stores,sub3.mirx,resident X/Z mirrors exchanged
+WM_8A72C_MUTANT_RETURN_VARIABLE,return variation,park.ret,returns current state instead of constant 1
+WM_8A72C_MUTANT_74794_GATE,gate polarity,sub3.n74794,74794 called when +0x24 != 0
+WM_8A72C_MUTANT_STATE2D_TARGET,state target,s2da.state,slot-3 release advances ++ instead of jumping to 0x40
+WM_8A72C_MUTANT_COMMIT_SET,copy extent,mv1.posw,breadcrumb commit copies 3 words instead of 4
+WM_8A72C_MUTANT_97770_ARGS,swapped arguments,s8b.c0.slot,first handshake claim called (1 2) instead of (2 1)

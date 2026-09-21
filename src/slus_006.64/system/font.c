@@ -10,7 +10,7 @@ extern void func_80036718(char*, char*, ...);
 extern void* g_FontClutData;
 extern RECT g_FontClutDest;
 extern void* D_800593A0; // Non-heap allocated Font?
-extern void* D_80050240; // Default embedded font file?
+extern u8 D_80050240[]; // Default embedded font file
 
 void FontSetFlag(u_short flag) {
     g_Font->flags |= flag;
@@ -374,7 +374,7 @@ void* FontLoadFont(int startX, int startY, int width, int height, int maxLetters
 
     // Decompress font file
     if (pCompressedFontFile == NULL)
-        pCompressedFontFile = &D_80050240;
+        pCompressedFontFile = D_80050240;
     pFontFile = LZSSHeapDecompress(pCompressedFontFile, 0);
     
     nMode = pFontFile->mode;

@@ -120,7 +120,7 @@ extern int CheckCallback();
 /**
  * Fn Foward Decls
  */
-static int getintr();
+int getintr();
 
 static void rescpy(void* _dst, void* _src, u32 _size) {
     char* pDst = (char*)_dst;
@@ -134,6 +134,8 @@ static void rescpy(void* _dst, void* _src, u32 _size) {
     }
 }
 
+/* Keep static: inlined into CD_sync/CD_ready/CD_cw; the &callback uses in
+ * CD_initintr/CD_init link to identical bytes via section-relative relocs. */
 static void callback() {
     u8 masked;
     u32 status;
@@ -169,7 +171,7 @@ static int get_alarm() {
     }
 }
 
-static int getintr(void) {
+int getintr(void) {
     volatile u8 nReg;
     u8 bHasError;
     s32 i;
@@ -217,7 +219,7 @@ static int getintr(void) {
     *reg2 = 0x7;
 
     // Anything but ACK
-    if ((nReg != 3) || (D_80056570[CD_com + 0x40] != 0)) {
+    if ((nReg != 3) || (ComAttr[CD_com + 0x20] != 0)) {
         if ((CD_status & 0x10) == 0 && (buffer[0] & 0x10) != 0) {
             CD_nopen++;
         }

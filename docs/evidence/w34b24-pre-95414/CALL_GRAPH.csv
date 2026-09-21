@@ -1,0 +1,28 @@
+direction,function,site,status,scope_insns,callees_of_dep,notes
+callee,wm_80093354,0x800954A8,CANONICAL,-,-,accepted W34B22-I1 (wrap/normalize projected vector; scratchpad 0x1F800060)
+callee,wm_80093354,0x80095528,CANONICAL,-,-,same on out vector
+callee,wm_80093978,0x800954C0,CANONICAL,-,-,accepted terrain-sampler angle helper (world_map_terrain_sampler.c)
+callee,wm_80093978,0x80095538,CANONICAL,-,-,same on out vector
+callee,wm_800951A8,0x800955A8,CANONICAL,-,-,W34B23 (candidate ec779a3; integrated; independent acceptance pending); site in DEAD switch arm v1==0
+callee,wm_800951A8,0x80095720,CANONICAL,-,-,live fallback (case-1 no-candidate path)
+callee,wm_800951A8,0x80095B3C,CANONICAL,-,-,live fallback (dispatch-loop shared tail)
+callee,wm_80085760,0x800957A0,CANONICAL,-,-,accepted (6e7ac5d); returns dispatch class 0..7 consumed by the jump table
+callee,wm_80084D00,0x800955F4,NEEDS_PREREQUISITE,46,wm_80084DB8,candidate lookup; needs 84DB8 first
+callee,wm_80084DB8,(via 84D00),READY_BOUNDED,232,"ScaleMatrix, SetRotMatrix, SetTransMatrix, func_8004A70C","6 undecoded words (embedded data); func_8004A70C is currently an auto-stub returning 0 in the port - its retail behavior must be resolved in that rung"
+callee,wm_80085158,0x800956A0,READY_BOUNDED,176,"VectorNormal, ScaleMatrix, SetRotMatrix, SetTransMatrix, OuterProduct0, RotTrans, wm_800935DC",all callees CANONICAL (libgte + accepted 935DC)
+callee,wm_80085158,0x800957EC,READY_BOUNDED,176,-,second site (jump-table slot 0)
+callee,wm_80085418,0x80095628,READY_BOUNDED,210,"VectorNormal, ApplyMatrixLV, ScaleMatrix, SetRotMatrix, SetTransMatrix, OuterProduct0, RotTrans",all callees CANONICAL libgte
+callee,wm_800952B0,0x80095A20,READY_SMALL,29,leaf,redirect tail A (fp+0x30)
+callee,wm_800952B0,0x80095B90,READY_SMALL,29,leaf,redirect tail B (fp+0x40)
+callee,wm_800952B0,0x80095BD0,READY_SMALL,29,leaf,redirect tail C (fp+0x50)
+callee,wm_80095324,0x800956FC,READY_SMALL,60,"VectorNormal, OuterProduct12",both CANONICAL libgte
+caller,wm_8008A72C,0x8008A958,MISSING (live frontier),740,-,slot-1 cb1; the measured scheduler frontier; 2 call sites into 95414
+caller,wm_8008A72C,0x8008A9AC,MISSING (live frontier),740,-,second site
+caller,wm_8008C844,0x8008CAB4,MISSING,747,-,slot-4 cb1 (not on the current natural route until its slot activates)
+caller,wm_8008C844,0x8008CB04,MISSING,747,-,second site
+caller,wm_8008E0F0,0x8008E14C,MISSING,40,-,small helper (rcos/rsin + 95414)
+caller,wm_8008E76C,0x8008F038,MISSING,2013,-,slot-7 cb1; 4 sites
+caller,wm_8008E76C,0x8008F088,MISSING,2013,-,-
+caller,wm_8008E76C,0x8008F3A4,MISSING,2013,-,-
+caller,wm_8008E76C,0x8008F3F4,MISSING,2013,-,-
+chain,wm_800951A8,-,CANONICAL,-,"wm_80094A5C, wm_80094088 -> wm_80093FE4 -> wm_80093E8C",95414 consumes the full new W34B22/W34B23 chain DIRECTLY at 3 sites (once live, 951A8 pulls in 94A5C + 94088 + 93FE4 transitively)

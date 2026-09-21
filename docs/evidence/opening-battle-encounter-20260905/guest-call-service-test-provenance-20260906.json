@@ -1,0 +1,12 @@
+{
+  "scope": "production native-to-guest call service; synthetic MIPS callees; no controller substitution",
+  "retail_controller_frame_bytes": 80,
+  "source_pins": {
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime.c": "b8163d779af41cc276824f00e16d4a00389b3cefc2688d56bf213b9c74b642b8",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/battle_guest_call_test.c": "4ffe162dbf65d6afd2c40b5be29858e608acff551ce3c559c7c50f23964cbb13",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_guest_call_test.sh": "0f1aa11d76a5b5db4060d58a48ca4110aa9c64ccc722e4e433016bc328d16208",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/asm/battle_command_file1/matchings/message_controller/xeno_battle_command_file1_controller.s": "dc5e96c58c27965fb5b3e5d05385455ecb41afb2a361abe9f8f69ccb3db3d42f",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime_internal.h": "5ffc92e25e94c0787d466f866df5c922e38d16f868e7290950055297b88f0a27"
+  }
+}

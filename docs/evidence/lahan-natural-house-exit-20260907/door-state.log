@@ -1,0 +1,73 @@
+[New LWP 471653]
+[New LWP 471652]
+[New LWP 471651]
+[New LWP 471650]
+[New LWP 471649]
+[New LWP 471644]
+[New LWP 471643]
+[New LWP 471642]
+[New LWP 471638]
+[New LWP 471637]
+[New LWP 471636]
+[New LWP 471635]
+[New LWP 471634]
+[New LWP 471633]
+[New LWP 471632]
+[New LWP 471631]
+[New LWP 471630]
+[New LWP 471629]
+[New LWP 471628]
+[New LWP 471627]
+[New LWP 471626]
+[New LWP 471625]
+[New LWP 471624]
+[New LWP 471623]
+[New LWP 471622]
+[New LWP 471621]
+[New LWP 471620]
+[New LWP 471619]
+[New LWP 471618]
+[New LWP 471617]
+[New LWP 471616]
+[New LWP 471615]
+[New LWP 471614]
+[New LWP 471613]
+[New LWP 471612]
+[New LWP 471611]
+[New LWP 471610]
+[New LWP 471609]
+[New LWP 471608]
+[New LWP 471607]
+[New LWP 471606]
+[New LWP 471605]
+[New LWP 471604]
+[New LWP 471603]
+[New LWP 471602]
+[New LWP 471601]
+[New LWP 471600]
+[New LWP 471599]
+[New LWP 471598]
+[New LWP 471597]
+[New LWP 471596]
+[New LWP 471595]
+[New LWP 471594]
+[New LWP 471593]
+[New LWP 471592]
+[New LWP 471591]
+[New LWP 471590]
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <ima:enforcing>
+  <https://debuginfod.fedoraproject.org/>
+  <ima:ignore>
+Enable debuginfod for this session? (y or [n]) [answered N; input not from terminal]
+Debuginfod has been disabled.
+To make this setting permanent, add 'set debuginfod enabled off' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+Vsync (mode=-1) at pc_port/src/psyq_compat.c:1374
+1374	{
+$1 = {156, 0, 1}
+$2 = {210, -58, -38}
+$3 = {scriptFlags = {flags = 176, fields = {scriptFlags_0x0 = 0, scriptFlags_0x1 = 88, scriptFlags_0x8 = 0, type = 0, scriptFlags_0xX = 0, scriptFlags_0xA = 0, scriptFlags_0x10 = 0, scriptFlags_0x11 = 0, scriptFlags_0x13 = 0, scriptFlags_0x14 = 0, scriptFlags_0x15 = 0, scriptFlags_0x16 = 0, scriptFlags_0x17 = 0, scriptFlags_0x18 = 0, scriptFlags_0x19 = 0}}, flags = 4196352, walkmeshTriIds = {0, 0, 0, 0}, walkmeshId = 0, pad_0x12 = 0, curWalkmeshTriMaterial = 248, width = 16, height = 88, zWidth = 16, solidRange = 16, position = {vx = 13762560, vy = -3801088, vz = -2490368, pad = 0}, moveModified = {vx = 0, vy = 0, vz = 0, pad = 0}, move = {vx = 0, vy = 0, vz = 0, pad = 0}, curTriNormal = {vx = 0, vy = 0, vz = 0, pad = 0}, unk60 = {vx = 0, vy = 0, vz = 36, pad = 0}, prevPosition = {x = 210, y = -58, z = -38}, unk6E = 0, unk70 = 0, curYPos = 65478, canInteract = 255 '\377', parentActorId = 255 '\377', moveSpeed = 256, scriptPointersStack = {0, 0, 0, 0}, faceId = 255 '\377', unk81 = 0 '\000', dialogWidth = 0 '\000', dialogHeight = 0 '\000', dialogFlags = 0, dialogPixelWidth = 0, dialogPixelHeight = 0, scripts = {{currentIP = 1384, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 1, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}, {currentIP = 65535, waitTimer = 0 '\000', scriptId = 255 '\377', flags_0 = 65535, state = 0, flags_0x12 = 15, isInUse = 0, flags_0x17 = 0, flags_0x19 = 0}}, scriptInstructionPointer = 1384, curScriptIndex = 0 '\000', unkCF = 0 '\000', unkD0 = {vx = 0, vy = 0, vz = 0, pad = 0}, unkE0 = 0, curDoorStep = 0 '\000', unkE3 = 0 '\000', characterId = 255, defaultAnimationId = 0, curAnimationId = 0, unkAnimationId = 255, unkEC = 0, unkEE = 0, unkF0 = 0, scaleX = 4096, scaleY = 4096, scaleZ = 4096, unkFA = 0, unkFC = 128 '\200', unkFD = 128 '\200', unkFE = 128 '\200', unkFF = 128 '\200', unk100 = 128 '\200', unk101 = 128 '\200', unk102 = 8597, rotation = {vx = -32768, vy = -32768, vz = 0, pad = 0}, unk10A = -256, unk10C = 0 '\000', unk10D = 0 '\000', unk110 = 0, unk114 = 0, unk118 = 0, unk11C = 0, unk11E = 512, unk120 = 0, unk124 = -1, unk126 = 0 '\000', spriteId = 0 '\000', modelAnimation = -1, unk12A = 0, flags12C_0 = 0, flags12C_0x2 = 0, flags12C_0x5 = 0, flags12C_0x6 = 0, direction = 0, flags12C_0xD = 0, flags12C_0xE = 0, flags130 = 0, flags134 = 0}
+[Inferior 1 (process 471575) detached]

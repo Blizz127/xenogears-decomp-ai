@@ -4,6 +4,7 @@
 #include "system/memory.h"
 #include "system/archive.h"
 #include "system/controller.h"
+#include "field/actor.h"
 
 extern int g_FrameDeltaTime;
 
@@ -42,6 +43,19 @@ void FieldLoadUITextures(void) {
     u32* pDataPtr;
     s32 i;
 
+#ifdef XENO_PC_PORT
+    /* Boot streams archive 0xA7 into D_8005A4A0 and sets D_8004F344=1.
+     * Movie teardown / heap reset can leave that pointer non-canonical
+     * (observed: HeapUnpinBlock(0xf8000248e20000b0) SIGSEGV on title
+     * entry). Reload from the archive whenever the cached buffer is not
+     * a host heap pointer. */
+    if (D_8005A4A0 == NULL ||
+        ((uintptr_t)D_8005A4A0 >> 47) != 0) {
+        D_8004F344 = 0;
+        D_8005A4A0 = NULL;
+    }
+#endif
+
     if (D_8004F344 == 0) {
         s32 size = ArchiveDecodeAlignedSize(0xA7);
         void* pBuf = HeapAlloc(size, 1);
@@ -53,7 +67,9 @@ void FieldLoadUITextures(void) {
 
     pTable = D_800ADC44;
     pTableB = D_800ADC44 + 5;
-    HeapUnpinBlock(D_8005A4A0);
+    if (D_8005A4A0 != NULL) {
+        HeapUnpinBlock(D_8005A4A0);
+    }
     D_8004F344 = 0;
     D_800C2692 = 0;
     D_800C2690 = 0;
@@ -115,7 +131,7 @@ void FieldUpdateDeltaTime(void) {
     g_FrameDeltaTime = Vsync(1);
 }
 
-void func_80077844(short* dst, short a, short b, short c, short d, short e, short f, short g, short h, short i) {
+void func_80077844(short* dst, int a, int b, int c, int d, int e, int f, int g, int h, int i) {
     dst[0] = a;
     dst[1] = b;
     dst[2] = c;
@@ -138,14 +154,21 @@ extern u8 g_FieldEffects[];
 extern void* D_8005A420[];
 extern void* D_8005A450[];
 extern void* D_801E8644;
+#ifdef XENO_PC_PORT
+/* Retail 0x801E8670 is a table of PSX words; a void* declaration strides
+ * eight bytes on the 64-bit host, so slots 1.. read the wrong entries and
+ * the object scale table below was never written for them. */
+extern u32 D_801E8670[];
+#else
 extern void* D_801E8670[];
+#endif
 extern void FieldRenderSyncAndFlush(void);
 extern void func_801E738C(s32 arg0);
 extern void func_801E742C(s32 arg0, s32 arg1, void* arg2, void* arg3,
                           s32 arg4, s32 arg5, s32 arg6, s32 arg7, void* arg8);
 extern void func_800A90B4(s32 arg0);
 
-static void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* pData) {
+static inline void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* pData) {
     u8* entry = &D_800B2394 + index * 8;
 
     *(u16*)entry = archiveIndex;
@@ -165,11 +188,21 @@ void func_80077884(void) {
     ArchiveSetIndex(4, 0);
     func_800A90B4(0);
 
+#ifdef XENO_PC_PORT
+    /* Retail's D_8004F370==0 branch sizes this buffer as the fixed-map gap
+     * [0x801DC008, D_800ADB30) -- meaningless host-pointer arithmetic in the
+     * port (bogus ~5MB -> HeapAlloc failure -> GameHandleError(130) spin,
+     * MAP3 repro).  Size by the archive's decoded size instead -- the same
+     * derivation retail's own else-branch uses for the same buffer.  Same
+     * pattern as the menu-overlay fix in misc4.c (func_80078E90). */
+    size = ArchiveDecodeAlignedSize(0x6B9);
+#else
     if (D_8004F370 == 0) {
         size = ((u32)(unsigned long)D_800ADB30 & 0xFFFFFF) + (s32)0xFFE23FF8;
     } else {
         size = ArchiveDecodeAlignedSize(0x6B9);
     }
+#endif
     D_800ADB20 = HeapAlloc(size, 1);
 
     func_800A90B4(1);
@@ -221,7 +254,16 @@ void func_80077AB4(void) {
         func_801E742C(i, 0, D_8005A420[i], D_8005A450[i],
                       x, 0x100, 0, top, vec);
         HeapFree(D_8005A450[i]);
-        *(s32*)(work + 0x20 + i * 4) = *(s16*)((u8*)D_801E8670[i] + 0x1C);
+#ifdef XENO_PC_PORT
+        /* Native owner guard: func_801E742C normally publishes the instantiated
+         * archive-0x6B9 object here. Retail assumes that owner succeeded; the
+         * fail-closed branch remains an explicit, audited port divergence. */
+        if (D_801E8670[i] == 0) {
+            top += 1;
+            continue;
+        }
+#endif
+        *(s32*)(work + 0x20 + i * 4) = *(s16*)((u8*)(uintptr_t)D_801E8670[i] + 0x1C);
         top += 1;
     }
 
@@ -274,13 +316,29 @@ void func_80077DAC(void) {
     func_800A31E8();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077E10);
+extern FieldActor* volatile g_FieldActors;
+extern s32 D_800ADBD0;
+extern s16 D_800B2344;
+extern s32 g_PlayerActorIndex;
+
+s32 func_80077E10(void) {
+    if (D_800ADBD0 == 1 && D_800B2344 == 0) {
+        /* FieldActor is 0x5C on the PSX.  Its +0x4C pActorData member is a
+         * 32-bit PSX pointer slot; reconstruct it before reading ActorData. */
+        ActorData* pActorData =
+            (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
+        u32 flags = pActorData->scriptFlags.flags;
+        return -(s32)((flags & 0x800) != 0);
+    }
+    return 0;
+}
 
 /* ---- FieldMain: field game-state driver (Phase C gateway) -------------------
  * Functional decompile (port-first; not yet byte-matched). Control flow mirrors
  * asm/field/nonmatchings/main/main/FieldMain.s 1:1 via labels/gotos; every call
- * is preserved even where the callee is still INCLUDE_ASM (a no-op stub in the
- * port). g_FieldSystemMode comes from D_80010000 (-1 in retail rodata) exactly as
+ * is preserved. The native dependency audit identifies any call that still
+ * resolves to generated storage. g_FieldSystemMode comes from D_80010000
+ * (-1 in retail rodata) exactly as
  * the original does -> SYSTEM_MODE_CD_ROM, which skips the mode-0-only `break 1`
  * and the raw-0x80280000 dev read. Port-only instrumentation is guarded. */
 #ifdef XENO_PC_PORT
@@ -300,7 +358,7 @@ extern int D_80010000;
 extern void *g_pGameState;
 extern u8 g_GameState[];
 extern s32 g_PlayerActorIndex;
-extern void *g_FieldActors;          /* FieldActor* (0x5C stride; +0x4C = pActorData) */
+extern FieldActor *volatile g_FieldActors; /* 0x5C stride; +0x4C = pActorData */
 extern u8 g_FieldEffects[];
 extern u8 g_FieldDefaultParticleBanks[];
 extern s32 g_GamePartySkinsInitialized;
@@ -339,13 +397,21 @@ extern void GamePartySyncSkinData(), GamePartySyncStreamedData(), GraphicsDrawPa
 extern void FieldPollControllers(), SoundMuteAllSpuChannels(), SoundEnableAllSpuChannels();
 extern void GameCheckAndHandleSoftReset(), FieldParticlesFreeAll(), FieldFree();
 extern void FieldScriptMemoryWriteU16();
+#ifdef XENO_PC_PORT
+extern void PcPort_QuickCheckpointSetFieldActive(int active);
+extern int PcPort_QuickCheckpointPoll(void);
+extern void PcPort_QuickCheckpointCommitLoad(void);
+extern void PcPort_QuickCheckpointRestorePlayer(void);
+extern void ChangeGameState(unsigned int state);
+extern void MainLoop(int errorCode) __attribute__((noreturn));
+#endif
 
 /* g_FieldActors[idx].pActorData->flags. pActorData is a u32 slot (== pointer
  * size on MIPS, so matching-safe). On the 64-bit port the u32 is widened to a
  * host pointer via uintptr_t before dereferencing. sizeof(FieldActor)==0x5C on
- * both builds, so the raw offset 0x4C is correct.
- * XENO_PC_PORT: pActorData is NULL until func_80080F44 (actor-data init) is
- * ported; return 0 (no flags set) instead of dereferencing NULL. */
+ * both builds, so the raw offset 0x4C is correct. The native null return is a
+ * fail-closed ownership guard; retail assumes func_80080F44 published a valid
+ * actor-data pointer, so the guard remains an audited divergence. */
 #ifdef XENO_PC_PORT
 #define FIELD_ACTOR_FLAGS(idx) \
     ({ u32 _p = *(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C); \
@@ -431,10 +497,20 @@ void FieldMain(void) {
         *(s16*)(g_FieldDefaultParticleBanks + 6) = 0x10;
     }
     func_80078D44();
+#ifdef XENO_PC_PORT
+    PcPort_QuickCheckpointRestorePlayer();
+    PcPort_QuickCheckpointSetFieldActive(1);
+#endif
     D_800ADB04 = 1;
     FM_LOG("entering main loop\n");
 
     for (;;) {  /* .L80078174 */
+#ifdef XENO_PC_PORT
+        if (PcPort_QuickCheckpointPoll()) {
+            exitCode = 4;
+            goto teardown;
+        }
+#endif
         /* wait for a controller if none present */
         if (ControllerGetType(0) == 0) {
             savedSound = D_80059488;
@@ -609,6 +685,9 @@ void FieldMain(void) {
 
 teardown:  /* .L80078ABC */
     FM_LOG("teardown exitCode=%d\n", exitCode);
+#ifdef XENO_PC_PORT
+    PcPort_QuickCheckpointSetFieldActive(0);
+#endif
     func_800798BC();
     func_800A91F0();
     func_800A31E8();
@@ -622,5 +701,12 @@ teardown:  /* .L80078ABC */
     func_80085988();
     D_8004F31C = 0;
     HeapFree(D_800ADB30);
+#ifdef XENO_PC_PORT
+    if (exitCode == 4) {
+        PcPort_QuickCheckpointCommitLoad();
+        ChangeGameState(1);
+        MainLoop(0);
+    }
+#endif
     func_8007954C(exitCode);
 }

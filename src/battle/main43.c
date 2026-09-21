@@ -1,0 +1,62 @@
+#include "common.h"
+
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/battle/nonmatchings/main43", func_8008A3EC);
+INCLUDE_ASM("asm/battle/nonmatchings/main43", func_8008A684);
+#endif
+
+
+#ifndef XENO_PC_PORT
+extern u8 D_800C3E4C;
+#endif
+extern void func_8008A684(u8 v);
+extern void func_8008A274(u8 v);
+extern void func_8008A3EC(u8 v);
+extern u32 D_8005919C;
+extern void func_80039DB8(u32 v);
+#ifndef XENO_PC_PORT
+extern u8 D_800D366C;
+#endif
+
+
+/* func_8008A9C0.s */
+void func_8008A9C0(u8 v) {
+    switch (D_800C3E4C) {
+    case 0:
+        func_8008A684(v);
+        break;
+    case 1:
+        func_8008A274(v);
+        break;
+    case 2:
+        func_8008A3EC(v);
+        break;
+    default:
+        break;
+    }
+}
+/* func_8008AA40.s */
+void func_8008AA40(u8 a) {
+#ifdef XENO_PC_PORT
+    /* The interpreter stores a 32-bit bank address in the shared selector.
+     * Retail 8008AA44/8008AA50 load that word then its +0x14 halfword.
+     * Translate RAM aliases; native bank allocations retain their address. */
+    u32 bank = D_8005919C;
+    u8* p = (bank < 0x200000u || (bank & 0xFFE00000u) == 0x80000000u ||
+             (bank & 0xFFE00000u) == 0xA0000000u)
+                ? PSX_ADDR(bank) : (void*)(uintptr_t)bank;
+    u32 v = *(u16*)(p + 0x14);
+#else
+    u32 v = *(u16*)(D_8005919C + 0x14);
+#endif
+
+    func_80039DB8((v << 16) | (a & 0xFF));
+}
+/* Retail 8008AA74 accepts the argument word and masks it at 8008AA8C,
+ * only when forwarding to 8008AA40. Keep caller declarations word-sized. */
+void func_8008AA74(u32 v) {
+    if (D_800D366C != 0) {
+        func_8008AA40(v & 0xFF);
+    }
+}

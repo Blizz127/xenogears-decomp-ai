@@ -1,0 +1,11 @@
+SPRITE AB artifacts: pc_port/build_native/sprite_dispatch_ab_retail_test.qrtknMrw
+SPRITE AB PASS 201216 cases: full operand/scale/timer domains, signed fixed-point rounding, helper ordering, and operand aliases
+SPRITE AB PASS 201216 cases: full operand/scale/timer domains, signed fixed-point rounding, helper ordering, and operand aliases
+SPRITE AB PASS 201216 cases: full operand/scale/timer domains, signed fixed-point rounding, helper ordering, and operand aliases
+SPRITE AB control rejected unsigned-operand: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/1 args=fffffc01/000003ff
+SPRITE AB control rejected wrong-scale-field: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/1 args=fffffc01/fffffdaf
+SPRITE AB control rejected missing-negative-round: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/1 args=fffffc01/fffffc00
+SPRITE AB control rejected wrong-helper-shift: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/1 args=fffffc01/fffff802
+SPRITE AB control rejected wrong-position-load: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/1 args=fffffc01/fffffc01
+SPRITE AB control rejected missing-helper: SPRITE AB FAIL case=0 operand=80 scale=7fff timer=03ff alias=0 helper=1/0 args=fffffc01/00000000
+SPRITE AB GREEN: O0/O2/UBSan full domains and six isolated controls; pc_port/build_native/sprite_dispatch_ab_retail_test.qrtknMrw

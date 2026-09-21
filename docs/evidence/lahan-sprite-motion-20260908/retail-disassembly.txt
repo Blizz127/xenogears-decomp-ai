@@ -1,0 +1,134 @@
+80022b2c addiu       $sp, $sp, -0x18
+80022b30 sw          $s0, 0x10($sp)
+80022b34 addu        $s0, $a0, $zero
+80022b38 sw          $ra, 0x14($sp)
+80022b3c lw          $v0, 0x3C($s0)
+80022b40 nop
+80022b44 srl         $v0, $v0, 26
+80022b48 andi        $v0, $v0, 0x1
+80022b4c bnez        $v0, . + 4 + (0x46 << 2)
+80022b50 nop
+80022b54 jal         func_800BA8F4
+80022b58 nop
+80022b5c lw          $a1, 0x10($s0)
+80022b60 nop
+80022b64 blez        $a1, . + 4 + (0x2E << 2)
+80022b68 addu        $a0, $s0, $zero
+80022b6c lw          $v0, 0x1C($s0)
+80022b70 nop
+80022b74 blez        $v0, . + 4 + (0x2A << 2)
+80022b78 nop
+80022b7c lh          $v1, 0x6($s0)
+80022b80 lh          $v0, 0x84($s0)
+80022b84 nop
+80022b88 beq         $v1, $v0, . + 4 + (0x43 << 2)
+80022b8c nop
+80022b90 jal         func_80022CAC
+80022b94 sra         $a1, $a1, 4
+80022b98 sll         $v0, $v0, 4
+80022b9c lw          $v1, 0x4($s0)
+80022ba0 lh          $a0, 0x84($s0)
+80022ba4 addu        $v1, $v1, $v0
+80022ba8 sw          $v1, 0x4($s0)
+80022bac sra         $v1, $v1, 16
+80022bb0 slt         $v1, $v1, $a0
+80022bb4 bnez        $v1, . + 4 + (0x26 << 2)
+80022bb8 nop
+80022bbc lw          $v1, 0x10($s0)
+80022bc0 lw          $v0, 0xA8($s0)
+80022bc4 negu        $v1, $v1
+80022bc8 srl         $v0, $v0, 1
+80022bcc andi        $v0, $v0, 0x3FF
+80022bd0 mult        $v1, $v0
+80022bd4 sll         $v0, $a0, 16
+80022bd8 mflo        $v1
+80022bdc bgez        $v1, . + 4 + (0x2 << 2)
+80022be0 sw          $v0, 0x4($s0)
+80022be4 addiu       $v1, $v1, 0xFF
+80022be8 lw          $v0, 0x1C($s0)
+80022bec sra         $v1, $v1, 8
+80022bf0 sw          $v1, 0x10($s0)
+80022bf4 bgez        $v1, . + 4 + (0x2 << 2)
+80022bf8 nop
+80022bfc negu        $v1, $v1
+80022c00 bgez        $v0, . + 4 + (0x2 << 2)
+80022c04 nop
+80022c08 negu        $v0, $v0
+80022c0c slt         $v1, $v1, $v0
+80022c10 beqz        $v1, . + 4 + (0x21 << 2)
+80022c14 nop
+80022c18 j           func_80022C98
+80022c1c sw          $zero, 0x10($s0)
+80022c20 jal         func_80022CAC
+80022c24 sra         $a1, $a1, 4
+80022c28 lw          $v1, 0x4($s0)
+80022c2c sll         $v0, $v0, 4
+80022c30 addu        $v1, $v1, $v0
+80022c34 lh          $v0, 0x84($s0)
+80022c38 sw          $v1, 0x4($s0)
+80022c3c sra         $v1, $v1, 16
+80022c40 slt         $v1, $v1, $v0
+80022c44 bnez        $v1, . + 4 + (0x2 << 2)
+80022c48 sll         $v0, $v0, 16
+80022c4c sw          $v0, 0x4($s0)
+80022c50 lw          $v0, 0x10($s0)
+80022c54 lw          $v1, 0x1C($s0)
+80022c58 nop
+80022c5c addu        $v0, $v0, $v1
+80022c60 j           func_80022C98
+80022c64 sw          $v0, 0x10($s0)
+80022c68 lw          $a1, 0x10($s0)
+80022c6c addu        $a0, $s0, $zero
+80022c70 jal         func_80022CAC
+80022c74 sra         $a1, $a1, 4
+80022c78 sll         $v0, $v0, 4
+80022c7c lw          $v1, 0x4($s0)
+80022c80 lw          $a0, 0x10($s0)
+80022c84 lw          $a1, 0x1C($s0)
+80022c88 addu        $v1, $v1, $v0
+80022c8c addu        $a0, $a0, $a1
+80022c90 sw          $v1, 0x4($s0)
+80022c94 sw          $a0, 0x10($s0)
+80022c98 lw          $ra, 0x14($sp)
+80022c9c lw          $s0, 0x10($sp)
+80022ca0 addiu       $sp, $sp, 0x18
+80022ca4 jr          $ra
+80022ca8 nop
+80022cac lhu         $v1, 0x3A($a0)
+80022cb0 nop
+80022cb4 beqz        $v1, . + 4 + (0x7 << 2)
+80022cb8 addu        $v0, $a1, $zero
+80022cbc mult        $v0, $v1
+80022cc0 mflo        $v0
+80022cc4 bgez        $v0, . + 4 + (0x2 << 2)
+80022cc8 addu        $v1, $v0, $zero
+80022ccc addiu       $v1, $v0, 0x3FF
+80022cd0 sra         $v0, $v1, 10
+80022cd4 jr          $ra
+80022cd8 nop
+80022cdc addiu       $sp, $sp, -0x18
+80022ce0 sw          $s0, 0x10($sp)
+80022ce4 addu        $s0, $a0, $zero
+80022ce8 sw          $ra, 0x14($sp)
+80022cec lw          $a1, 0xC($s0)
+80022cf0 jal         func_80022CAC
+80022cf4 sra         $a1, $a1, 4
+80022cf8 addu        $a0, $s0, $zero
+80022cfc sll         $v0, $v0, 4
+80022d00 lw          $a1, 0x14($s0)
+80022d04 lw          $v1, 0x0($s0)
+80022d08 sra         $a1, $a1, 4
+80022d0c addu        $v1, $v1, $v0
+80022d10 jal         func_80022CAC
+80022d14 sw          $v1, 0x0($s0)
+80022d18 addu        $a0, $s0, $zero
+80022d1c lw          $v1, 0x8($a0)
+80022d20 sll         $v0, $v0, 4
+80022d24 addu        $v1, $v1, $v0
+80022d28 jal         func_80022B2C
+80022d2c sw          $v1, 0x8($a0)
+80022d30 lw          $ra, 0x14($sp)
+80022d34 lw          $s0, 0x10($sp)
+80022d38 addiu       $sp, $sp, 0x18
+80022d3c jr          $ra
+80022d40 nop

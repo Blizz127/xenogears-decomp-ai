@@ -1,0 +1,571 @@
+Breakpoint 1 at 0x426ffb: file src/field/main/misc2.c, line 1896.
+Breakpoint 2 at 0x4b0c93: file pc_port/src/world_map_init.c, line 7852.
+Breakpoint 3 at 0x4afd8d: file pc_port/src/world_map_init.c, line 7414.
+Breakpoint 4 at 0x4b1221: file pc_port/src/world_map_frame_driver.c, line 196.
+Breakpoint 5 at 0x4b169b: file pc_port/src/world_map_frame_driver.c, line 496.
+Breakpoint 6 at 0x4b0e5c: file pc_port/src/world_map_init.c, line 7886.
+Breakpoint 7 at 0x49e67c: file pc_port/src/game_overrides.c, line 2228.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/x86_64-linux-gnu/libthread_db.so.1".
+[W][01:29:09.863322] pw.conf      | [          conf.c: 1204 pw_conf_load_conf_for_context()] setting config.name to client-rt.conf is deprecated, using client.conf
+[W][01:29:09.863457] pw.conf      | [          conf.c: 1182 try_load_conf()] can't load config client.conf: No such file or directory
+[E][01:29:09.863470] pw.conf      | [          conf.c: 1215 pw_conf_load_conf_for_context()] can't load config client.conf: No such file or directory
+[ALSOFT] (EE) Failed to create PipeWire event context (errno: 2)
+W34B5HS_SCH_FRAME 1
+[stub] func_80028B14
+W34B5HS_SCH_FRAME 600
+[xeno-port][opcode56] FE54 snapshot actor=50 lock_ip=0x184c pre_lock_control=0 pending=1
+[xeno-port][opcode56] at-arm actor=50 opcode_ip=0x184d selector=0x0400 heading=0x0e00 unknown231e=0x0001 entrance=0x0001 D_800B02C8=1 field_control=-1 D_800ADBE4=0 func_8009FEE4_condition=not-fired count_delta=0 lock_snapshot=adjacent
+[stub] GfxFreeWorkBuffers
+[xeno-port] ChangeGameState(3) → MainLoop overlay load archive=0x0F hasOverlay=1
+[xeno-port] LoadGameStateOverlay(3) returned 0x729ad8
+[worldmap-init] entry
+[worldmap] enabled slices: W2,W3B,W4C,W5B,W6B,W7B,W8B,W10A,W10B,W11B,W12B,W13B,W14B,W15B,W16B,W17B,W18B,W19A,W20B,W21B,W22B,W23B,W24C,W24E,W29B,W32B,W33B,W34B1,W34B4B,W34B5A,W34B5B,W34B5C,W34B5D,W34B5E,W34B18B
+[worldmap-init] LoadGameStateOverlay(3), archive=0x0F
+[worldmap-init] decoded_size=54816 (0xd620) compressed
+[worldmap-init] decompressed_size=180422 (0x2c0c6)
+[worldmap-init] destination=0x8006faf0
+[worldmap-init] final_write=0x8009bbb6
+[worldmap-init] nominal_bss_span=180416 bss_overlap_bytes=6 (retail intentional: image ends 6 bytes into cleared BSS)
+[worldmap-init] overlay resident fingerprint=0x27bdffd8 at 0x80070cfc
+[worldmap-init] final_write=0x8009bbb6
+[worldmap-init] first 16 @ 0x8009BBB0 before_plant/load context: 48005000...
+[worldmap-init] first 16 @ 0x8009BBB0 after image present: 480050000000 (6-byte overlay tail into BSS start)
+[worldmap-init] selector=0x0400 world_index=0 entrance=1 heading=0x0e00 arg2=1 seed_1930=0x0000
+[selector-producer] entry entrance=1 seed=0x0000
+[selector-producer] write C610=0 (a0=1)
+[worldmap-init] w2-complete retail_resume=0x80070ffc (W2 cut docs 0x80071000; main loop 0x80071034)
+[worldmap-init] mode-init: one-shot slot0 dispatch
+[worldmap-mode-init] dispatch entrance=1 slot0_retail=0x80071cdc phase_D7CC=2
+[worldmap-mode-init] entry
+[worldmap-mode-init] channel_id[0]=0x00 aligned_size[0]=29208 allocation[0]=host:0x5f1078 psx_u32=0x800a4238 secondary_id=0x00 sec_size=10960 sec_alloc=host:0x5f8298 sec_psx=0x800ab458
+[worldmap-mode-init] channel_id[1]=0x02 aligned_size[1]=23652 allocation[1]=host:0x5fad70 psx_u32=0x800adf30 secondary_id=0x00 sec_size=10960 sec_alloc=host:0x6009dc sec_psx=0x800b3b9c
+[worldmap-mode-init] channel_id[2]=0xff aligned_size[2]=0 allocation[2]=host:(nil) psx_u32=0x00000000 secondary_id=0xff sec_size=0 sec_alloc=host:(nil) sec_psx=0x00000000
+[worldmap-mode-init] request_count=4 (primary_counter C170=2)
+[worldmap-mode-init] request[0] archive_index=2 pData_u32=0x800a4238 host=0x800a4238
+[worldmap-mode-init] request[1] archive_index=19 pData_u32=0x800ab458 host=0x800ab458
+[worldmap-mode-init] request[2] archive_index=4 pData_u32=0x800adf30 host=0x800adf30
+[worldmap-mode-init] request[3] archive_index=19 pData_u32=0x800b3b9c host=0x800b3b9c
+[worldmap-mode-init] queue_submit=0
+[worldmap-mode-init] exit
+[worldmap-init] second-wave: 0x80071EF0 → poll → 0x80073530
+[worldmap-second-wave] entry
+[worldmap-second-wave] source_id[0]=0x0000002d (45)
+[worldmap-second-wave] source_id[1]=0x0000002e (46)
+[worldmap-second-wave] source_id[2]=0x0000002c (44)
+[worldmap-second-wave] archive_id[0]=45 aligned_size[0]=295040 destination_psx[0]=0x801ab42c host=0x6f826c
+[worldmap-second-wave] archive_id[1]=46 aligned_size[1]=29256 destination_psx[1]=0x801a41dc host=0x6f101c
+[worldmap-second-wave] archive_id[2]=44 aligned_size[2]=42528 destination_psx[2]=0x80199bb4 host=0x6e69f4
+[worldmap-second-wave] request_count=3
+[worldmap-second-wave] request[0] archive=44 pData_psx=0x80199bb4
+[worldmap-second-wave] request[1] archive=45 pData_psx=0x801ab42c
+[worldmap-second-wave] request[2] archive=46 pData_psx=0x801a41dc
+[worldmap-second-wave] queue_submit=0
+[worldmap-second-wave] submitted
+[worldmap-second-wave] poll_first=0
+[worldmap-second-wave] poll_count=1
+[worldmap-second-wave] poll_final=0
+[worldmap-second-wave] fixup_entry
+[worldmap-second-wave] compressed_psx=0x80199bb4 host=0x6e69f4 lzss_hdr_size=134844
+[worldmap-second-wave] decompressed_psx=0x800b6674 host=0x6034b4
+[worldmap-second-wave] decompressed_size=134844 (lzss header)
+[worldmap-second-wave] pointer_table_count=16
+[worldmap-second-wave] relocated_entries=30
+[worldmap-second-wave] D73C[0]=0x800d4f2c D73C[1]=0x800d518c D308=0x800ba184 BD00=0x800b66fc
+[worldmap-second-wave] fixup_exit
+[worldmap-second-wave] cut-before-broad-update retail_pc=0x800722bc
+[worldmap-init] object-pool: 0x8009766C pool init
+[worldmap-object-pool] entry
+[worldmap-object-pool] alloc_size=8192
+[worldmap-object-pool] pool_host=0x624378
+[worldmap-object-pool] pool_psx=0x800d7538
+[worldmap-object-pool] slot_count=64
+[worldmap-object-pool] slot_stride=0x80
+[worldmap-object-pool] zero_offsets=0x18,0x1c,0x4c
+[worldmap-object-pool] slot_check=64/64
+[worldmap-object-pool] slot0 +0x18=0x00000000 +0x1C=0x00000000 +0x4C=0x00000000
+[worldmap-object-pool] slot1 +0x18=0x00000000 +0x1C=0x00000000 +0x4C=0x00000000
+[worldmap-object-pool] slot63 +0x18=0x00000000 +0x1C=0x00000000 +0x4C=0x00000000
+[worldmap-object-pool] exit
+[worldmap-object-pool] cut-before-next-step retail_pc=0x800722c4
+[worldmap-init] state-template: A180→BE4C 8-word copy
+[worldmap-state-template] entry
+[worldmap-state-template] src_psx=0x8009a180 dst_psx=0x8009be4c words=8 bytes=32
+[worldmap-state-template] src_host=0x5e6fc0 dst_host=0x5e8c8c
+[worldmap-state-template] src_words: 0x00001000 0x00000000 0x00001000 0x00000000 0x00001000 0x00000000 0x00000000 0x00000000
+[worldmap-state-template] dst_words: 0x00001000 0x00000000 0x00001000 0x00000000 0x00001000 0x00000000 0x00000000 0x00000000
+[worldmap-state-template] word_match=8/8
+[worldmap-state-template] pool_BE24_unchanged=0x800d7538 (not written by this step)
+[worldmap-state-template] exit
+[worldmap-state-template] cut-before-const-block retail_pc=0x80072314
+[worldmap-init] mode-enter-state: ten u32 stores
+[worldmap-mode-enter-state] entry
+[worldmap-mode-enter-state] store_count=10
+[worldmap-mode-enter-state] store[0] dst=0x8009cca4 before=0x00000000 value=0x00000002 expected=0x00000002
+[worldmap-mode-enter-state] store[1] dst=0x8009d3cc before=0x00000000 value=0x00000004 expected=0x00000004
+[worldmap-mode-enter-state] store[2] dst=0x8009d804 before=0x00000000 value=0x00000000 expected=0x00000000
+[worldmap-mode-enter-state] store[3] dst=0x8009cec0 before=0x00000000 value=0x00000000 expected=0x00000000
+[worldmap-mode-enter-state] store[4] dst=0x8009c7e8 before=0x00000000 value=0x00000000 expected=0x00000000
+[worldmap-mode-enter-state] store[5] dst=0x8009bd34 before=0x00000000 value=0x00000000 expected=0x00000000
+[worldmap-mode-enter-state] store[6] dst=0x8009d144 before=0x00000000 value=0x00000000 expected=0x00000000
+[worldmap-mode-enter-state] store[7] dst=0x80059198 before=0x00000001 value=0x00000001 expected=0x00000001
+[worldmap-mode-enter-state] store[8] dst=0x8009c178 before=0x00000000 value=0x00000001 expected=0x00000001
+[worldmap-mode-enter-state] store[9] dst=0x8009cd40 before=0x00000000 value=0x80086700 expected=0x80086700
+[worldmap-mode-enter-state] match=10/10 pool_preserved=1 template_preserved=1
+[worldmap-mode-enter-state] exit
+[worldmap-mode-enter-state] cut-before-0x80098044 retail_pc=0x80072378
+[worldmap-init] XENO_WORLD_CROSS_PRODUCTS=1: 0x80098044 four OuterProduct0
+[worldmap-cross-products] entry
+[worldmap-cross-products] call0 srcA=0x8009bb6c srcB=0x8009bb4c dst=0x8009c828
+[worldmap-cross-products] call1 srcA=0x8009bb4c srcB=0x8009bb7c dst=0x8009c844
+[worldmap-cross-products] call2 srcA=0x8009bb8c srcB=0x8009bb5c dst=0x8009c874
+[worldmap-cross-products] call3 srcA=0x8009bb5c srcB=0x8009bb9c dst=0x8009c7f0
+[worldmap-cross-products] in BB4C=(0,-1,0) BB5C=(1,0,0) BB6C=(-2170,0,3474)
+[worldmap-cross-products] in BB7C=(2170,0,3474) BB8C=(0,-2170,3474) BB9C=(0,2170,0)
+[worldmap-cross-products] out0=(3474,0,2170) exp=(3474,0,2170)
+[worldmap-cross-products] out1=(-3474,0,2170) exp=(-3474,0,2170)
+[worldmap-cross-products] out2=(0,3474,2170) exp=(0,3474,2170)
+[worldmap-cross-products] out3=(0,0,2170) exp=(0,0,2170)
+[worldmap-cross-products] output_match=4/4 component_match=12/12 inputs_ok=1 boundary_ok=1 lower_ok=1 pool_BE24=0x800d7538 template0=0x00001000 mes_CCA4=0x00000002
+[worldmap-cross-products] exit
+[worldmap-cross-products] cut-before-next-step retail_pc=0x80072380
+[worldmap-init] XENO_WORLD_GPU_ASSET_A=1: 0x8008440C TIM→CLUT GPU asset A
+[worldmap-gpu-asset-a] entry
+[worldmap-gpu-asset-a] source_slot=0x8009bd20
+[worldmap-gpu-asset-a] compressed_psx=0x801a41dc host=0x6f101c scales=(0xe0,0xf5,0xff)
+[worldmap-gpu-asset-a] decompressed_host=0x6e0690
+[worldmap-gpu-asset-a] work_img=0x6f8064 work_exp=0x6f605c
+[worldmap-gpu-asset-a] store_rect=(0,496,256,1)
+[worldmap-gpu-asset-a] expand_entry
+[worldmap-gpu-asset-a] expand_exit rows=16 width=256 output_size=4096 halfwords scales=(0xe0,0xf5,0xff)
+[worldmap-gpu-asset-a] load_rect=(0,496,256,15)
+[worldmap-gpu-asset-a] clut_count=16 clut_table=0x8009bce0
+[worldmap-gpu-asset-a] clut[0] xy=(0,496) value=0x7c00 formula=0x7c00
+[worldmap-gpu-asset-a] clut[1] xy=(0,497) value=0x7c40 formula=0x7c40
+[worldmap-gpu-asset-a] clut[2] xy=(0,498) value=0x7c80 formula=0x7c80
+[worldmap-gpu-asset-a] clut[3] xy=(0,499) value=0x7cc0 formula=0x7cc0
+[worldmap-gpu-asset-a] clut[4] xy=(0,500) value=0x7d00 formula=0x7d00
+[worldmap-gpu-asset-a] clut[5] xy=(0,501) value=0x7d40 formula=0x7d40
+[worldmap-gpu-asset-a] clut[6] xy=(0,502) value=0x7d80 formula=0x7d80
+[worldmap-gpu-asset-a] clut[7] xy=(0,503) value=0x7dc0 formula=0x7dc0
+[worldmap-gpu-asset-a] clut[8] xy=(0,504) value=0x7e00 formula=0x7e00
+[worldmap-gpu-asset-a] clut[9] xy=(0,505) value=0x7e40 formula=0x7e40
+[worldmap-gpu-asset-a] clut[10] xy=(0,506) value=0x7e80 formula=0x7e80
+[worldmap-gpu-asset-a] clut[11] xy=(0,507) value=0x7ec0 formula=0x7ec0
+[worldmap-gpu-asset-a] clut[12] xy=(0,508) value=0x7f00 formula=0x7f00
+[worldmap-gpu-asset-a] clut[13] xy=(0,509) value=0x7f40 formula=0x7f40
+[worldmap-gpu-asset-a] clut[14] xy=(0,510) value=0x7f80 formula=0x7f80
+[worldmap-gpu-asset-a] clut[15] xy=(0,511) value=0x7fc0 formula=0x7fc0
+[worldmap-gpu-asset-a] clut_match=16/16
+[worldmap-gpu-asset-a] exit
+[worldmap-gpu-asset-a] cut-before-next-head retail_pc=0x80072444
+[worldmap-init] XENO_WORLD_GPU_ASSET_B=1: 0x800979C8 TIM→CLUT/TPage GPU asset B
+[worldmap-gpu-asset-b] entry
+[worldmap-gpu-asset-b] source_slot=0x8009c59c
+[worldmap-gpu-asset-b] compressed_psx=0x801ab42c host=0x6f826c scales=(0xc0,0xd0,0xf0) expand_passes=2
+[worldmap-gpu-asset-b] decompressed_host=0x69757c
+[worldmap-gpu-asset-b] work_img=0x73feec work_exp=0x737ee4
+[worldmap-gpu-asset-b] store_rect=(0,480,256,2)
+[worldmap-gpu-asset-a] expand_entry
+[worldmap-gpu-asset-a] expand_exit rows=32 width=256 output_size=8192 halfwords scales=(0xc0,0xd0,0xf0)
+[worldmap-gpu-asset-a] expand_entry
+[worldmap-gpu-asset-a] expand_exit rows=32 width=256 output_size=8192 halfwords scales=(0xc0,0xd0,0xf0)
+[worldmap-gpu-asset-b] load_rect=(0,432,256,64)
+[worldmap-gpu-asset-b] clut_count=64 clut_table=0x8009ccb4
+[worldmap-gpu-asset-b] clut_match=64/64
+[worldmap-gpu-asset-b] tpage_cd54[0] GetTPage(1,0,512,0)=0x0088
+[worldmap-gpu-asset-b] tpage_cd54[1] GetTPage(1,0,640,0)=0x008a
+[worldmap-gpu-asset-b] tpage_cd54[2] GetTPage(1,0,768,0)=0x008c
+[worldmap-gpu-asset-b] tpage_cd54[3] GetTPage(1,0,896,0)=0x008e
+[worldmap-gpu-asset-b] tpage_cd5c[0] GetTPage(1,0,384,256)=0x0096
+[worldmap-gpu-asset-b] tpage_cd5c[1] GetTPage(1,0,512,256)=0x0098
+[worldmap-gpu-asset-b] tpage_cd5c[2] GetTPage(1,0,640,256)=0x009a
+[worldmap-gpu-asset-b] tpage_writes=7/7 persistent_store_cd54=0x0088 persistent_store_cd5c=0x0096
+[worldmap-gpu-asset-b] exit
+[worldmap-gpu-asset-b] cut-before-next-head retail_pc=0x8007244c
+[worldmap-init] XENO_WORLD_OBJECT_MATRIX=1: 0x80084580 object/matrix table
+[worldmap-object-matrix] entry
+[worldmap-object-matrix] relocate_entry asset_base_psx=0x800b676c relocation_table_psx=0x800ba184
+[worldmap-object-matrix] relocate_exit relocation_count=16 relocation_table_final_psx=0x800ba188 bd28=16
+[worldmap-object-matrix] entry_count=18 record_stride=84 allocation_size=1512 table_host=0x626380 table_psx=0x800d9540
+[xeno-port] missing D_8004FE50 buildProc prim=1; skip group
+[worldmap-object-matrix] entry[0] src_off=2 dst_off=0 idx=0 model_psx=0x800b677c copy_sz=4768
+[xeno-port] missing D_8004FE50 buildProc prim=1; skip group
+[worldmap-object-matrix] entry[1] src_off=18 dst_off=84 idx=1 model_psx=0x800b67b4 copy_sz=2464
+[xeno-port] missing D_8004FE50 buildProc prim=1; skip group
+[xeno-port] missing D_8004FE50 buildProc prim=1; skip group
+[worldmap-object-matrix] entry[17] src_off=274 dst_off=1428 idx=15 model_psx=0x800b6ac4 copy_sz=1736
+[worldmap-object-matrix] entry_count=18 table_psx=0x800d9540 final_flags_ok=1
+[worldmap-object-matrix] exit
+[worldmap-object-matrix] cut-before-third-wave retail_pc=0x80072454
+[worldmap-init] XENO_WORLD_THIRD_WAVE=1: 0x80072090 third-wave submit
+[worldmap-third-wave] entry
+[worldmap-third-wave] D_8004F304_before=0 D_8004F304_after=1
+[worldmap-third-wave] source_id[0]=0x0000002f (47)
+[worldmap-third-wave] source_id[1]=0x00000030 (48)
+[worldmap-third-wave] source_id[2]=0x00000031 (49)
+[worldmap-third-wave] source_id[3]=0x00000032 (50)
+[worldmap-third-wave] source_id[4]=0x00000033 (51)
+[worldmap-third-wave] archive_id[0]=47 aligned_size[0]=197024 destination_psx[0]=0x801c330c host=0x71014c
+[worldmap-third-wave] archive_id[1]=48 aligned_size[1]=5172 destination_psx[1]=0x800e3f38 host=0x630d78
+[worldmap-third-wave] archive_id[2]=49 aligned_size[2]=28560 destination_psx[2]=0x800e5374 host=0x6321b4
+[worldmap-third-wave] archive_id[3]=50 aligned_size[3]=6192 destination_psx[3]=0x800ec30c host=0x63914c
+[worldmap-third-wave] archive_id[4]=51 aligned_size[4]=7132 destination_psx[4]=0x800edb44 host=0x63a984
+[worldmap-third-wave] request_count=5
+[worldmap-third-wave] request[0] archive=47 pData_psx=0x801c330c
+[worldmap-third-wave] request[1] archive=48 pData_psx=0x800e3f38
+[worldmap-third-wave] request[2] archive=49 pData_psx=0x800e5374
+[worldmap-third-wave] request[3] archive=50 pData_psx=0x800ec30c
+[worldmap-third-wave] request[4] archive=51 pData_psx=0x800edb44
+[worldmap-third-wave] mirrors C88C=0x801c330c C884=0x800e3f38 D_8006259C_host=0x6321b4 C888=0x800ec30c C614=0x800edb44
+[worldmap-third-wave] queue_submit=0
+[worldmap-third-wave] exit
+[worldmap-third-wave] cut-before-next-step retail_pc=0x8007245c
+[worldmap-init] XENO_WORLD_BSS_CONSTANTS=1: 0x800736DC constant paint
+[worldmap-bss-constants] entry
+[worldmap-bss-constants] store_count=48 unique_bytes=136 lowest_address=0x8009d197 highest_address=0x8009d2af
+[worldmap-bss-constants] pre_hash=0x90b34b65 post_hash=0x4323f4c5 expected_fnv=0x4323f4c5 expected_bytes=136/136
+[worldmap-bss-constants] exit
+[worldmap-bss-constants] cut-before-next-step retail_pc=0x80072464
+[worldmap-init] XENO_WORLD_PRIMITIVE_TEMPLATES=1: 0x80073E30 packet templates
+[worldmap-primitive-templates] entry
+[worldmap-primitive-templates] helpers GetTPage(0,0,896,256)=0x001e GetClut(256,510)=0x7f90 GetTPage(0,1,896,256)=0x003e DR_mode=0xe100043e
+[worldmap-primitive-templates] FT4[0] code=0x2e clut=0x7f90 tpage=0x001e rgb=(128,128,128) xy0=(208,120) xy3=(311,215) uv0=(0,128) uv3=(127,255)
+[worldmap-primitive-templates] FT4 equal=1 G3[0] code=0x32 TILE[0] code=0x60 w=2 h=2
+[worldmap-primitive-templates] hashes DR pre=0x9be17165 post=0xa4a5da43 exp=0xa4a5da43 | FT4 pre=0xea6207e5 post=0x0a707f83 exp=0x0a707f83 | G3 pre=0x7deecb45 post=0xf1ee8085 exp=0xf1ee8085 | TILE pre=0x1f116dc5 post=0xa31eadc5 exp=0xa31eadc5
+[worldmap-primitive-templates] match FT4=40/40 G3=224/224 TILE=1024/1024 unexpected=0 ft4_1_hash=0x0a707f83
+[worldmap-primitive-templates] exit
+[worldmap-primitive-templates] cut-before-next-step retail_pc=0x8007246c
+[worldmap-init] XENO_WORLD_RECORD_CLUT_INIT=1: 0x80085F58 relocate+CLUT
+[worldmap-record-clut] entry
+[worldmap-record-clut] table_psx=0x800ba5f0 table_host=0x607430 record_count=256 c180_psx=0x800b6674
+[worldmap-record-clut] nonzero_records=18 field04_nz=18 max_rel=0x000039b8 first_nz=40 last_nz=182 table_span=0x800ba5f0..0x800badef
+[worldmap-record-clut] relocated_records=18 clut_count=16 first_clut=0x7c0f last_clut=0x7fcf
+[worldmap-record-clut] hashes rec pre=0xb8a07fbb post=0xa2bdd787 exp=0xa2bdd787 | clut pre=0x0b2ae445 post=0x4d5c1715 exp=0x4d5c1715
+[worldmap-record-clut] match rec=2048/2048 clut=32/32 unexpected=0
+[worldmap-record-clut] rep idx0 pre=0x00000000 post=0x00000000 | idx40 pre=0x00000800 post=0x800badf0 f4=0x00000077 | idx255 pre=0x00000000 post=0x00000000
+[worldmap-record-clut] first_nz idx=40 pre=0x00000800 post=0x800badf0
+[worldmap-record-clut] exit
+[worldmap-record-clut] cut-before-gfx-work-buffers retail_pc=0x80072478
+[worldmap-init] XENO_WORLD_GFX_WORK_BUFFERS=1: GfxAllocateWorkBuffers(5120,0)
+[worldmap-gfx-work-buffers] entry
+[worldmap-gfx-work-buffers] size=5120 alloc_flag=0
+[worldmap-gfx-work-buffers] pre size=15360 buf0=0x6f26b0 buf1=0x6f62b0 D59300=0x00000000 D59304=0x00000000 img=(nil) D59190=0
+[worldmap-gfx-work-buffers] pre-existing field free leak: PRESENT (pre_buf0=0x6f26b0 still non-null before world allocate; GfxFreeWorkBuffers is stubbed — not introduced by W16B)
+[worldmap-gfx-work-buffers] allocation_base=0x63c568 buffer0=0x63c568 buffer1=0x63d968 buffer_distance=5120 total_bytes=10240 roots_cleared=1
+[worldmap-gfx-work-buffers] world_gfx_allocate_hits=1 rung_dispatches=1 field_leak=PRESENT new_block=yes
+[worldmap-gfx-work-buffers] exit
+[worldmap-gfx-work-buffers] cut-before-next-helper retail_pc=0x80072480
+[worldmap-init] XENO_WORLD_FT4_POOLS=1: 0x80074594 FT4 pools
+[worldmap-ft4-pools] entry
+[worldmap-ft4-pools] records_psx=0x800f1f30 pool_a_psx=0x800f1fb8 pool_b_psx=0x800f2240 record_bytes=128 pool_bytes=640 ft4_count=16 pools_equal=1 be38=0
+[worldmap-ft4-pools] host_rec=0x63ed70 host_a=0x63edf8 host_b=0x63f080 clut=0x7f92 tpage=0x001e code0=0x2e
+[worldmap-ft4-pools] match rec=128/128 poolA=640/640 poolB=640/640 unexpected=0 hashes rec=0x362c19c0/0x362c19c0 pool=0x87ff9cab/0x87ff9cab/0x87ff9cab
+[worldmap-ft4-pools] exit
+[worldmap-ft4-pools] cut-before-next-helper retail_pc=0x80072488
+[worldmap-init] XENO_WORLD_HEAP_TABLE_RAND=1: 0x800863E0 heap-table rand init
+[worldmap-heap-table-rand] entry
+[worldmap-heap-table-rand] table_a_psx=0x800f24c8 table_b_psx=0x800f29d0 pre_seed=0xd7017da1 post_seed=0xc0913d31 oracle_seed=0xc0913d31 rand_calls=240
+[worldmap-heap-table-rand] mismatch_a=0/1280 mismatch_b=0/640 hashes a=0xf537fe5d/0xf537fe5d b=0x80a31bc6/0x80a31bc6
+[worldmap-heap-table-rand] exit
+[worldmap-heap-table-rand] cut-before-next-helper retail_pc=0x80072490
+[worldmap-init] XENO_WORLD_UPLOAD_RECORDS=1: 0x80074E58 upload-record builder
+[worldmap-upload-records] entry
+[worldmap-upload-records] d77c=0x800cb88c count=2 array_psx=0x800f2c58 bytes=24 value_base=0x8009a1e8
+[worldmap-upload-records] exit
+[worldmap-upload-records] cut-before-next-helper retail_pc=0x80072498
+[worldmap-init] XENO_WORLD_UPLOAD_RECORDS_B=1: 0x80075030 upload-record builder-b
+[worldmap-upload-records-b] entry
+[worldmap-upload-records-b] d7c8=0x800cb99c count=3 array_psx=0x800f2c78 bytes=36 value_base=0x8009a250
+[worldmap-upload-records-b] exit
+[worldmap-upload-records-b] cut-before-next-helper retail_pc=0x800724a0
+[worldmap-init] XENO_WORLD_DRAW_PACKETS=1: 0x800739B8 draw-packet builder
+[worldmap-draw-packets] entry
+[worldmap-draw-packets] base=0x8009c744 records=4 stride=40 tpage=0x003e clut=0x7f91 dr_tpage_a=0x8009d3d8 dr_tpage_b=0x8009d3e4
+[worldmap-draw-packets] exit
+[worldmap-draw-packets] cut-before-next-helper retail_pc=0x800724a8
+[worldmap-init] XENO_WORLD_88F64=1: 0x80088F64 table init
+[worldmap-88f64] entry
+[worldmap-88f64] table_a_psx=0x800c0df0 host=0x60dc30 count=512 stride=84
+[worldmap-88f64] table_b_psx=0x800f2ca4 host=0x63fae4 count=256 stride=76 alloc=19456
+[worldmap-88f64] exit
+[worldmap-88f64] cut-before-archive-poll retail_pc=0x800724b0
+[worldmap-init] XENO_WORLD_ARCHIVE_READY_POLL=1: archive readiness poll
+[worldmap-archive-poll] entry
+[worldmap-archive-poll] argument=0
+[worldmap-archive-poll] result=0 flag=0x00000000 branch=NOT_READY (consumer would be called)
+[worldmap-archive-poll] poll_count=1
+[worldmap-archive-poll] cut-before-first-consumer retail_pc=0x800724d4
+[worldmap-init] XENO_WORLD_FIRST_WDS_CONSUMER=1: SoundLoadWdsFile
+[worldmap-first-wds-consumer] entry
+[worldmap-first-wds-consumer] source_psx=0x801c330c source_host=0x71014c
+[stub] SoundHandleError
+[worldmap-first-wds-consumer] result=(nil) stored_at=0x8006258c
+[worldmap-first-wds-consumer] exit
+[worldmap-first-wds-consumer] cut-before-next-consumer retail_pc=0x800724e8
+[worldmap-init] XENO_WORLD_ARCHIVE_SET_INDEX=1: ArchiveSetIndex
+[worldmap-archive-set-index] entry
+[worldmap-archive-set-index] arguments=(36, 0)
+[worldmap-archive-set-index] result=3921
+[worldmap-archive-set-index] exit
+[worldmap-archive-set-index] cut-before-flag-check retail_pc=0x800724f0
+[worldmap-967e4] XENO_WORLD_967E4_ROUTE=1: one bounded 0x800967E4 invocation
+[worldmap-967e4] return captured; CD44=0 BD2C=0 BCB8=0 BE44=0 D788[0]=0x00000000 C624[0]=0x00000000
+[worldmap-967e4] cut-before-Vsync retail_pc=0x8007251c
+[worldmap-ready-consume] XENO_WORLD_READY_BUFFER_CONSUME=1: ready-check + buffer consumption
+[worldmap-ready-consume] entry ready_flag=0x00000000
+[worldmap-ready-consume] ready_branch=1 (normal path)
+[worldmap-ready-consume] buffer_psx=0x801c330c buffer_host=0x71014c
+[worldmap-ready-consume] HeapFree done
+[worldmap-ready-consume] seds_host=0x6321b4
+[worldmap-ready-consume] SoundAddSedsEntry done
+[worldmap-ready-consume] exit
+[worldmap-ready-consume] cut-before-mode-audio retail_pc=0x800725ac
+[worldmap-mode-audio] XENO_WORLD_MODE_AUDIO_SETUP=1: mode-dependent audio setup
+[worldmap-mode-audio] entry ready_flag=0x00000000 mode=1
+[worldmap-mode-audio] non-mode7 archive_id=0x00000030 buffer_psx=0x800e3f38
+[worldmap-mode-audio] decode_size=5172
+[worldmap-mode-audio] memcpy done
+[worldmap-mode-audio] AudioManager created: 0x87f410
+[worldmap-mode-audio] level set: 127, steps=0
+[worldmap-mode-audio] exit
+[worldmap-mode-audio] cut-before-convergence retail_pc=0x800726c0
+[worldmap-fbi] XENO_WORLD_FRAMEBUFFER_GTE_INIT=1: framebuffer/GTE init
+[worldmap-fbi] entry (call 1)
+[worldmap-fbi] exit mode=2
+[worldmap-tpi] XENO_WORLD_TERRAIN_POSITION_INIT=1: terrain/position init
+[worldmap-tpi] entry (call 1) pos_ptr=0x8009C5AC
+[worldmap-tpi] exit
+[worldmap-convergence-p1] XENO_WORLD_CONVERGENCE_P1=1: first-table pass
+[worldmap-convergence-p1] entry flag=0x00000000
+[worldmap-convergence-p1] iter a0=0x800923a8 a1=0x800925a0 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x800923a8 a1=0x800925a0
+[worldmap-pool-register] slot=0 inserted a0=0x800923a8 a1=0x800925a0
+[worldmap-convergence-p1] iter a0=0x8008a2c8 a1=0x8008a72c (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008a2c8 a1=0x8008a72c
+[worldmap-pool-register] slot=1 inserted a0=0x8008a2c8 a1=0x8008a72c
+[worldmap-convergence-p1] iter a0=0x8008b2bc a1=0x8008b644 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008b2bc a1=0x8008b644
+[worldmap-pool-register] slot=2 inserted a0=0x8008b2bc a1=0x8008b644
+[worldmap-convergence-p1] iter a0=0x8008bb40 a1=0x8008b644 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008bb40 a1=0x8008b644
+[worldmap-pool-register] slot=3 inserted a0=0x8008bb40 a1=0x8008b644
+[worldmap-convergence-p1] iter a0=0x8008c530 a1=0x8008c844 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008c530 a1=0x8008c844
+[worldmap-pool-register] slot=4 inserted a0=0x8008c530 a1=0x8008c844
+[worldmap-convergence-p1] iter a0=0x8008d3f0 a1=0x8008d678 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008d3f0 a1=0x8008d678
+[worldmap-pool-register] slot=5 inserted a0=0x8008d3f0 a1=0x8008d678
+[worldmap-convergence-p1] iter a0=0x8008dd6c a1=0x8008d678 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008dd6c a1=0x8008d678
+[worldmap-pool-register] slot=6 inserted a0=0x8008dd6c a1=0x8008d678
+[worldmap-convergence-p1] iter a0=0x8008e190 a1=0x8008e76c (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x8008e190 a1=0x8008e76c
+[worldmap-pool-register] slot=7 inserted a0=0x8008e190 a1=0x8008e76c
+[worldmap-convergence-p1] iter a0=0x800906e0 a1=0x800907f4 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x800906e0 a1=0x800907f4
+[worldmap-pool-register] slot=8 inserted a0=0x800906e0 a1=0x800907f4
+[worldmap-convergence-p1] iter a0=0x80091430 a1=0x800914d0 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80091430 a1=0x800914d0
+[worldmap-pool-register] slot=9 inserted a0=0x80091430 a1=0x800914d0
+[worldmap-convergence-p1] iter a0=0x80091b54 a1=0x80091c18 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80091b54 a1=0x80091c18
+[worldmap-pool-register] slot=10 inserted a0=0x80091b54 a1=0x80091c18
+[worldmap-convergence-p1] iter a0=0x80092234 a1=0x800922ac (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80092234 a1=0x800922ac
+[worldmap-pool-register] slot=11 inserted a0=0x80092234 a1=0x800922ac
+[worldmap-convergence-p1] iter a0=0x80092be4 a1=0x80092c70 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80092be4 a1=0x80092c70
+[worldmap-pool-register] slot=12 inserted a0=0x80092be4 a1=0x80092c70
+[worldmap-convergence-p1] iter a0=0x80092df8 a1=0x80092fd8 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80092df8 a1=0x80092fd8
+[worldmap-pool-register] slot=13 inserted a0=0x80092df8 a1=0x80092fd8
+[worldmap-convergence-p1] iter a0=0x80071a50 a1=0x80071a58 (helper @0x80072714)
+[worldmap-pool-register] entry a0=0x80071a50 a1=0x80071a58
+[worldmap-pool-register] slot=14 inserted a0=0x80071a50 a1=0x80071a58
+[worldmap-convergence-p1] cut retail_pc=0x8007272c iterations=15
+[worldmap-convergence-p2] XENO_WORLD_CONVERGENCE_P2=1: second-table pass
+[worldmap-convergence-p2] entry
+[worldmap-convergence-p2] selector=0
+[worldmap-convergence-p2] selected_psx=0x80099f0c
+[worldmap-convergence-p2] iter a0=0x80087710 a1=0x80087734 (helper)
+[worldmap-pool-register] entry a0=0x80087710 a1=0x80087734
+[worldmap-pool-register] slot=15 inserted a0=0x80087710 a1=0x80087734
+[worldmap-convergence-p2] done iterations=1 cut retail_pc=0x8007290c
+[worldmap-common-tail-p0] XENO_WORLD_COMMON_TAIL_P0=1: common-tail prefix
+[worldmap-common-tail-p0] entry C610=0
+[worldmap-common-tail-p0] C610=0 → calling wm_80089160(14,0,0)
+[wm-80089160] entry a0=14 a1=0x00000000 a2=0x00000000 table_base=0x800c0df0 record=0x800c32b0
+[wm-80089160] Path A t2=0
+[wm-80089160] exit t2=0 iterations=8
+[worldmap-common-tail-p0] exit cut=0x8007293c
+[worldmap-common-tail-p1] XENO_WORLD_COMMON_TAIL_P1=1: wm_800978FC caller slice
+[worldmap-common-tail-p1] calling wm_800978FC
+[wm-800978FC] alloc ptr1=0x801e34ac ptr2=0x801d34a4
+[wm-800978FC] init+copy done
+[worldmap-common-tail-p1] exit cut=0x80072944
+[worldmap-common-tail-p2] XENO_WORLD_COMMON_TAIL_P2=1: wm_8008901C caller slice
+[worldmap-common-tail-p2] calling wm_8008901C
+[wm-8008901C] alloc ptr1=0x801d0c9c ptr2=0x801ce494
+[wm-8008901C] tpage=0x00bd clut=0x7fd0
+[wm-8008901C] init+copy done
+[worldmap-common-tail-p2] exit cut=0x8007294c
+[worldmap-common-tail-p3] XENO_WORLD_COMMON_TAIL_P3=1: wm_800865A0 caller slice
+[worldmap-common-tail-p3] calling wm_800865A0
+[wm-800865A0] alloc ptr1=0x801cb78c ptr2=0x801c8a84
+[wm-800865A0] tpage=0x003f clut=0x7f93
+[wm-800865A0] init+copy done
+[worldmap-common-tail-p3] exit cut=0x80072954
+[worldmap-common-tail-p4] XENO_WORLD_COMMON_TAIL_P4=1: wm_80085FE0 caller slice
+[worldmap-common-tail-p4] calling wm_80085FE0
+[wm-80085FE0] alloc ptr1=0x801c3a7c ptr2=0x801bea74
+[wm-80085FE0] init+copy done
+[worldmap-common-tail-p4] exit cut=0x8007295c
+[worldmap-common-tail-p5] XENO_WORLD_COMMON_TAIL_P5=1: wm_80075228 + palette caller slice
+[worldmap-common-tail-p5] entry C894=0
+[worldmap-common-tail-p5] C894=0 → calling wm_80075228
+[worldmap-common-tail-p5] calling SystemTransferPaletteToVRAM(0x130, 0x1e0)
+[worldmap-common-tail-p5] exit cut=0x8007299c
+[worldmap-scheduler] XENO_WORLD_SCHEDULER_97800=1: bounded scheduler execution at 0x80071064
+[worldmap-scheduler] entry pool=0x800d7538
+[worldmap-cb923a8] entry slot=0 (call 1)
+[worldmap-cb923a8] exit return=1
+[worldmap-scheduler] slot=0 state=0 cb=0x800923a8 executed ret=1
+[worldmap-scheduler] slot=1 state=0 cb=0x8008a2c8 executed ret=1
+[worldmap-scheduler] slot=2 state=0 cb=0x8008b2bc executed ret=1
+[worldmap-scheduler] slot=3 state=0 cb=0x8008bb40 executed ret=3
+[worldmap-scheduler] slot=4 state=0 cb=0x8008c530 executed ret=1
+[worldmap-scheduler] slot=5 state=0 cb=0x8008d3f0 executed ret=1
+[worldmap-scheduler] slot=6 state=0 cb=0x8008dd6c executed ret=3
+[worldmap-scheduler] slot=7 state=0 cb=0x8008e190 executed ret=3
+[worldmap-scheduler] slot=8 state=0 cb=0x800906e0 executed ret=1
+[worldmap-scheduler] slot=9 state=0 cb=0x80091430 executed ret=1
+[worldmap-scheduler] slot=10 state=0 cb=0x80091b54 executed ret=1
+[worldmap-scheduler] slot=11 state=0 cb=0x80092234 executed ret=1
+[worldmap-scheduler] slot=12 state=0 cb=0x80092be4 executed ret=1
+[worldmap-scheduler] slot=13 state=0 cb=0x80092df8 executed ret=1
+[worldmap-scheduler] slot=14 state=0 cb=0x80071a50 executed ret=1
+[worldmap-scheduler] slot=15 state=0 cb=0x80087710 executed ret=1
+[worldmap-scheduler] pass complete slots=64 occupied=16 dispatched=16 executed=16
+[worldmap-frame-prologue] XENO_WORLD_FRAME_PROLOGUE=1: retail 0x8007106C continuation + 0x800712D0 through 0x80071484
+W34B5HS_DIAG_PROLOGUE_ENTER frame=916 sched_entry=1 (retail 0x8007106C continuation)
+W34B5HS_DIAG_712D0_ENTER frame=916 fp_entry_before=0
+[worldmap-frame-prologue] entry call=1
+[worldmap-cd-sync-96a6c] CD44 1->2, ready boundary registered, CdlReadS at CEBC loc
+[worldmap-scheduler] entry pool=0x800d7538
+[worldmap-scheduler] slot=0 state=1 cb=0x800925a0 executed ret=1
+[worldmap-scheduler] slot=1 state=1 cb=0x8008a72c executed ret=1
+[worldmap-scheduler] slot=2 state=1 cb=0x8008b644 executed ret=1
+[worldmap-scheduler] slot=4 state=1 cb=0x8008c844 executed ret=1
+[worldmap-scheduler] slot=5 state=1 cb=0x8008d678 executed ret=1
+[worldmap-scheduler] slot=8 state=1 cb=0x800907f4 executed ret=1
+[worldmap-scheduler] slot=9 state=1 cb=0x800914d0 executed ret=1
+[worldmap-scheduler] slot=10 state=1 cb=0x80091c18 executed ret=1
+[worldmap-scheduler] slot=11 state=1 cb=0x800922ac executed ret=3
+[worldmap-scheduler] slot=12 state=1 cb=0x80092c70 executed ret=1
+[worldmap-scheduler] slot=13 state=1 cb=0x80092fd8 executed ret=1
+[worldmap-scheduler] slot=14 state=1 cb=0x80071a58 executed ret=1
+[worldmap-scheduler] slot=15 state=1 cb=0x80087734 executed ret=1
+[worldmap-scheduler] pass complete slots=128 occupied=32 dispatched=29 executed=29
+W34B5HS_DIAG_712D0_CUT cut_pc=0x8007169c cd_work=1 vsync_retries=0 pad_iters=1 sched_calls=1
+[worldmap-frame-prologue] HARD CUT before 0x8007169c cd_work_calls=1 vsync_retries=0 pad_iters=1 scheduler_calls=1
+[worldmap-init] cut-before-main-loop retail_pc=0x8007169c
+[worldmap-967e4] counters: entry=2 dbg_nz=0 dispatch:idle=2 busy=0 tail=0 invalid=0 d788:null=1 process=1 c624:null=0 process=0 tail_advance=0 route=1 d788_proc=1 c624_proc=0 pcopen_fail=0 pcread_fail=0 pcclose_fail=0
+[worldmap-967e4] Vsync_after_call: ZERO VERIFIED
+[worldmap-967e4] 0x80096668_loop_check: ZERO VERIFIED
+[worldmap-967e4] loop_backedge: ZERO VERIFIED
+[worldmap-967e4] loop_exit: ZERO VERIFIED
+[worldmap-ready-consume] counters: entry=1 ready_branch=1 not_ready=0 heapfree=1 sound_add=1 second_blocked=0 route=1
+[worldmap-ready-consume] convergence_dispatch: ZERO VERIFIED
+[worldmap-ready-consume] world_update: ZERO VERIFIED
+[worldmap-ready-consume] first_render: ZERO VERIFIED
+[worldmap-ready-consume] world_DrawOTag: ZERO VERIFIED
+[worldmap-mode-audio] counters: entry=1 mode7=0 non_mode7=1 ready=1 not_ready=0 decode=1 memcpy=1 audio_create=1 audio_load=0 level_set=1 route=1
+[worldmap-mode-audio] convergence: ZERO VERIFIED
+[worldmap-mode-audio] world_update: ZERO VERIFIED
+[worldmap-mode-audio] first_render: ZERO VERIFIED
+[worldmap-mode-audio] world_DrawOTag: ZERO VERIFIED
+[worldmap-pool-register] counters: alloc=16
+[worldmap-convergence-p1] counters: entry=1 flag0=1 empty=0 iterations=15 helper_calls=15 flag1_cut=0 other_cut=0 cut_second_table=1
+[worldmap-convergence-p1] forbidden 0x8009C610 read: ZERO VERIFIED
+[worldmap-convergence-p1] forbidden 0x8009A034 read: ZERO VERIFIED
+[worldmap-convergence-p1] forbidden 0x800976FC call: ZERO VERIFIED
+[worldmap-convergence-p1] forbidden common tail 0x8007290C: ZERO VERIFIED
+[worldmap-convergence-p1] forbidden excluded 0x8007272C execution: ZERO VERIFIED
+[worldmap-convergence-p2] counters: entry=1 empty=0 iterations=1 helper_calls=1 selector=0 selected_ptr=0x80099f0c
+[worldmap-convergence-p2] forbidden C894==1 arc: ZERO VERIFIED
+[worldmap-convergence-p2] forbidden 0x800976FC call: ZERO VERIFIED
+[worldmap-convergence-p2] forbidden common tail execution: ZERO VERIFIED
+[worldmap-convergence-p2] forbidden first-excluded 0x80072784: ZERO VERIFIED
+[worldmap-common-tail-p0] counters: entry=1 c610_zero=1 c610_nonzero=0 89160_calls=1 last_cut=0x8007293c
+[worldmap-common-tail-p0] 89160 counters: calls=1 iterations=8
+[worldmap-common-tail-p0] FIRST NEXT HELPER 0x800978FC: ZERO VERIFIED
+[worldmap-common-tail-p0] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p0] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p1] counters: entry=1 978fc_calls=1 last_cut=0x80072944
+[worldmap-common-tail-p1] FIRST EXCLUDED 0x80072944: ZERO VERIFIED
+[worldmap-common-tail-p1] NEXT HELPER 0x8008901C: ZERO VERIFIED
+[worldmap-common-tail-p1] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p1] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p2] counters: entry=1 8901c_calls=1 alloc_calls=2 last_cut=0x8007294c
+[worldmap-common-tail-p2] FIRST EXCLUDED 0x8007294C: ZERO VERIFIED
+[worldmap-common-tail-p2] NEXT HELPER 0x800865A0: ZERO VERIFIED
+[worldmap-common-tail-p2] 0x80085FE0: ZERO VERIFIED
+[worldmap-common-tail-p2] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p2] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p3] counters: entry=1 865a0_calls=1 alloc_calls=2 last_cut=0x80072954
+[worldmap-common-tail-p3] FIRST EXCLUDED 0x80072954: ZERO VERIFIED
+[worldmap-common-tail-p3] NEXT HELPER 0x80085FE0: ZERO VERIFIED
+[worldmap-common-tail-p3] 0x80075228: ZERO VERIFIED
+[worldmap-common-tail-p3] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p3] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p4] counters: entry=1 85fe0_calls=1 alloc_calls=2 last_cut=0x8007295c
+[worldmap-common-tail-p4] FIRST EXCLUDED 0x8007295C: ZERO VERIFIED
+[worldmap-common-tail-p4] 0x80075228: ZERO VERIFIED
+[worldmap-common-tail-p4] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p4] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p5] counters: entry=1 c894_zero=1 c894_nonzero=0 75228_calls=1 palette_calls=1 last_cut=0x8007299c
+[worldmap-common-tail-p5] SLOT-2 SENTINEL 0x8007299C: ZERO VERIFIED
+[worldmap-common-tail-p5] SCHEDULER: ZERO VERIFIED
+[worldmap-common-tail-p5] WORLD LOOP: ZERO VERIFIED
+[worldmap-common-tail-p5] DRAWOTAG: ZERO VERIFIED
+W34B5HS_DIAG_SCHED_DUMP frame=916 entry=2 executed=29 missing=0 frontier=0x8007106c
+[worldmap-scheduler] counters: entry=2 slots=128 occupied=32 state0=16 state1=13 state2=0 state3=3 state4=0 state_invalid=0 dispatch=29 executed=29 missing=0 invalid=0 destructor_calls=0 destructor_boundary=0 completed=2 last_slot=15 last_cb=0x80087734 last_cb_state=1 outcome=0 frontier=0x8007106c
+W34B5HS_DIAG_PROLOGUE_DUMP frame=916
+W34B5HS_DIAG fp_cd_work_calls=1
+W34B5HS_DIAG fp_cut_pc=0x8007169c
+W34B5HS_DIAG fp_entry=1
+W34B5HS_DIAG fp_pad_iters=1
+W34B5HS_DIAG fp_scheduler_calls=1
+W34B5HS_DIAG fp_vsync_retries=0
+W34B5HS_DIAG sched_callbacks_executed=29
+W34B5HS_DIAG sched_entry=2
+W34B5HS_DIAG sched_frontier_pc=0x8007106c
+W34B5HS_DIAG sched_last_callback=0x80087734
+W34B5HS_DIAG sched_last_slot=15
+W34B5HS_DIAG sched_missing_hits=0
+W34B5HS_DIAG sched_outcome=0
+W34B5HS_DIAG_SAVED
+[worldmap-frame-prologue] DrawSync_after_scheduler: EXECUTED
+[worldmap-frame-prologue] Vsync_after_scheduler: EXECUTED
+[worldmap-frame-prologue] ControllerResetState_after_scheduler: EXECUTED
+[worldmap-frame-prologue] world_driver_800712D0: EXECUTED entry=1 cut=0x8007169c scheduler_entry=2
+[worldmap-scheduler] slot2_8007299C: ZERO VERIFIED
+[worldmap-scheduler] world_DrawOTag: ZERO VERIFIED
+[worldmap-fbi] counters: calls=1
+[worldmap-fbi] BCDC=256 (expected 256)
+[worldmap-pool-register] convergence_entry_800726C0: ZERO VERIFIED
+[worldmap-pool-register] convergence_80072714: ZERO VERIFIED
+[worldmap-pool-register] convergence_80072764: ZERO VERIFIED
+[worldmap-convergence-p2] FIRST EXCLUDED 0x80072784: ZERO VERIFIED
+[worldmap-convergence-p2] COMMON TAIL 0x8007290C: ZERO VERIFIED
+[worldmap-fbi] COMMON TAIL 0x8007290C: ZERO VERIFIED
+[worldmap-fbi] 0x80089160: ZERO VERIFIED
+[worldmap-placeholder] enter
+W34B5HS_DIAG_PLACEHOLDER_ENTER frame=916 (progress stops here: hollow UI idle)
+#0  PcPort_WorldMapPlaceholderMain () at pc_port/src/game_overrides.c:2228
+#1  0x00000000004b105b in PcPort_WorldMapInitMain () at pc_port/src/world_map_init.c:7950
+#2  0x0000000000476489 in MainLoop (errorCode=0) at src/slus_006.64/main/main_loop.c:149
+#3  0x000000000042c339 in func_8007954C (exitCode=1) at src/field/main/misc4.c:435
+#4  0x0000000000413e34 in FieldMain () at src/field/main/main.c:661
+#5  0x0000000000476489 in MainLoop (errorCode=0) at src/slus_006.64/main/main_loop.c:149

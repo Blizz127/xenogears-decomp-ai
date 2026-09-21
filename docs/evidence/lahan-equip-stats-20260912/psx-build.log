@@ -1,0 +1,729 @@
+make clean; \
+tools/gears/prebuilt/gears matching; \
+grep -q '^ApplyMatrixSV = ' linker/undefined_funcs_auto.field.txt || \
+	sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
+grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
+	echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
+ninja -t clean; \
+ninja -j24
+make[1]: Entering directory '/home/blizz/Projects/xenogears-decomp'
+
+         █▀▀ █▀▀ █▀█ █▀▄ █▀▀    Metabuild system
+         █ █ █▀▀ █▀█ █▀▄ ▀▀█    for Xenogears
+         ▀▀▀ ▀▀▀ ▀ ▀ ▀ ▀ ▀▀▀   :-----------------------
+
+    
+make[1]: Leaving directory '/home/blizz/Projects/xenogears-decomp'
+
+         █▀▀ █▀▀ █▀█ █▀▄ █▀▀    Metabuild system
+         █ █ █▀▀ █▀█ █▀▄ ▀▀█    for Xenogears
+         ▀▀▀ ▀▀▀ ▀ ▀ ▀ ▀ ▀▀▀   :-----------------------
+
+    
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 330201.73it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Scanning header:   0%|          | 0/3 [00:00<?, ?it/s]Scanning main:   0%|          | 0/3 [00:00<?, ?it/s]  
+Rodata segment '800' may belong to the text segment 'main/main'
+    Based on the usage from the function func_80019578 to the symbol D_80010004
+
+Rodata segment '800' may belong to the text segment 'main/main_loop'
+    Based on the usage from the function MainLoop to the symbol g_MainGameStateOverlayBuffer
+
+Rodata segment '800' may belong to the text segment 'system/kernel_menu'
+    Based on the usage from the function KernelMenuUpdate to the symbol D_800182B0
+
+Rodata segment '800' may belong to the text segment 'system/menu'
+    Based on the usage from the function MenuExecute to the symbol D_8001833C
+
+Rodata segment '800' may belong to the text segment 'system/animation_scripts'
+    Based on the usage from the function func_8001FBE4 to the symbol jtbl_800183D8
+
+Rodata segment '8EE0' may belong to the text segment 'system/temp1'
+    Based on the usage from the function func_800248D4 to the symbol jtbl_800186E0
+
+Rodata segment '8EE0' may belong to the text segment 'graphics/line_scroll'
+    Based on the usage from the function func_8002804C to the symbol D_800188EC
+
+Rodata segment '9144' may belong to the text segment 'system/temp2'
+    Based on the usage from the function func_8002C310 to the symbol D_80018944
+
+The rodata segment '9144' has jumptables that are not aligned properly file-wise, indicating one or more likely file split.
+File split suggestions for this segment will follow in config yaml format:
+      - [0x9180, rodata]
+
+
+Rodata segment '927C' may belong to the text segment 'system/system'
+    Based on the usage from the function func_80033DF0 to the symbol jtbl_80018A7C
+
+Rodata segment '927C' may belong to the text segment '26644'
+    Based on the usage from the function func_80035FF8 to the symbol D_80018ABC
+
+The rodata segment '927C' has jumptables that are not aligned properly file-wise, indicating one or more likely file split.
+File split suggestions for this segment will follow in config yaml format:
+      - [0x9358, rodata]
+
+
+Rodata segment '93F0' may belong to the text segment 'psyq/libc'
+    Based on the usage from the function Sprintf to the symbol D_80018BF0
+
+Rodata segment '93F0' may belong to the text segment 'psyq/libcd/event'
+    Based on the usage from the function CdInit to the symbol D_80018CCC
+
+Rodata segment '93F0' may belong to the text segment 'psyq/libcd/bios'
+    Based on the usage from the function getintr to the symbol D_80018E54
+
+Rodata segment '96B0' may belong to the text segment 'psyq/libcd/bios'
+    Based on the usage from the function CD_sync to the symbol D_80018EB0
+
+Rodata segment '96B0' may belong to the text segment 'psyq/libc2/puts'
+    Based on the usage from the function puts to the symbol D_80018F3C
+
+Rodata segment '96B0' may belong to the text segment 'psyq/libcd/cdread'
+    Based on the usage from the function cb_read to the symbol D_80018F44
+
+Rodata segment '9858' may belong to the text segment 'psyq/libgpu'
+    Based on the usage from the function ResetGraph to the symbol D_8001908C
+
+Rodata segment '9858' may belong to the text segment '35B7C'
+    Based on the usage from the function func_80046F30 to the symbol D_80019240
+
+Rodata segment '9858' may belong to the text segment 'psyq/libetc/vsync'
+    Based on the usage from the function v_wait to the symbol D_800193C4
+
+Rodata segment '9858' may belong to the text segment 'psyq/libetc/intr'
+    Based on the usage from the function trapIntr to the symbol D_80019408
+
+Rodata segment '9858' may belong to the text segment 'psyq/libetc/intr_dma'
+    Based on the usage from the function trapIntrDMA to the symbol D_80019440
+
+
+Range check triggered: .data symbol (name: _spu_dummy, address: 0x80058E48):
+    User declared size (0x20) does not match the amount of bytes that will be emitted (0x10).
+    Try checking the size again or look for symbols which overlaps this region
+
+
+
+Range check triggered: .bss symbol (name: g_SoundVolumeController, address: 0x8005A3C0):
+    User declared size (0x48) does not match the .space that will be emitted (0x3C).
+    Try checking the size again or look for symbols which overlaps this region
+
+
+
+Range check triggered: .bss symbol (name: g_SoundChannels, address: 0x8006252C):
+    User declared size (0xC0) does not match the .space that will be emitted (0x60).
+    Try checking the size again or look for symbols which overlaps this region
+
+
+
+Range check triggered: .bss symbol (name: g_Menu, address: 0x800625A0):
+    User declared size (0x1E98) does not match the .space that will be emitted (0x4).
+    Try checking the size again or look for symbols which overlaps this region
+
+
+
+Range check triggered: .bss symbol (name: D_80062648, address: 0x80062648):
+    User declared size (0x3200) does not match the .space that will be emitted (0x1DF0).
+    Try checking the size again or look for symbols which overlaps this region
+
+
+
+Range check triggered: .bss symbol (name: D_80065ADC, address: 0x80065ADC):
+    User declared size (0x30) does not match the .space that will be emitted (0x20).
+    Try checking the size again or look for symbols which overlaps this region
+
+Scanning main:  67%|██████▋   | 2/3 [00:00<00:00,  3.66it/s]Scanning 49AC0:  67%|██████▋   | 2/3 [00:00<00:00,  3.66it/s]Scanning 49AC0: 100%|██████████| 3/3 [00:00<00:00,  5.48it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Splitting header:   0%|          | 0/3 [00:00<?, ?it/s]Splitting main:   0%|          | 0/3 [00:00<?, ?it/s]  Splitting main:  67%|██████▋   | 2/3 [00:00<00:00,  3.43it/s]Splitting 49AC0:  67%|██████▋   | 2/3 [00:00<00:00,  3.43it/s]Splitting 49AC0: 100%|██████████| 3/3 [00:00<00:00,  5.14it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Linker script header:   0%|          | 0/3 [00:00<?, ?it/s]Linker script main:   0%|          | 0/3 [00:00<?, ?it/s]  Linker script 49AC0:   0%|          | 0/3 [00:00<?, ?it/s]Linker script 49AC0: 100%|██████████| 3/3 [00:00<00:00, 188.73it/s]
+Split 221 KB (73.20%) in defined segments
+              header:     2 KB (0.68%) 1 split, 0 cached
+                 asm:    20 KB (6.80%) 12 split, 0 cached
+                hasm:    564 B (0.19%) 23 split, 0 cached
+                   c:   197 KB (65.09%) 67 split, 0 cached
+           rodatabin:     1 KB (0.44%) 1 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/448 [00:00<?, ?it/s]Loading symbols (symbol_addrs.field):   0%|          | 0/448 [00:00<?, ?it/s]Loading symbols (symbol_addrs.field): 100%|██████████| 448/448 [00:00<00:00, 245338.58it/s]
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 393077.98it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Scanning field:   0%|          | 0/2 [00:00<?, ?it/s]
+Rodata segment '0' may belong to the text segment 'main/misc3'
+    Based on the usage from the function FieldLoad to the symbol D_8006FAF4
+
+Rodata segment '0' may belong to the text segment 'main/misc2'
+    Based on the usage from the function func_800739C0 to the symbol D_8006FB04
+
+Rodata segment '0' may belong to the text segment 'main/main'
+    Based on the usage from the function func_80077DAC to the symbol D_8006FB80
+
+Rodata segment '11C' may belong to the text segment 'main/misc8'
+    Based on the usage from the function func_8008110C to the symbol D_8006FC0C
+
+Rodata segment '22C' may belong to the text segment 'main/misc7'
+    Based on the usage from the function func_800985BC to the symbol D_8006FD1C
+
+Rodata segment '294' may belong to the text segment 'scripts/virtual_machine'
+    Based on the usage from the function FieldScriptVMRun to the symbol D_8006FD84
+
+Rodata segment '2D8' may belong to the text segment 'effects/particles'
+    Based on the usage from the function FieldParticlesTickAndRender to the symbol D_8006FDC8
+Scanning field:  50%|█████     | 1/2 [00:00<00:00,  1.54it/s]Scanning 3FAFC:  50%|█████     | 1/2 [00:00<00:00,  1.54it/s]Scanning 3FAFC: 100%|██████████| 2/2 [00:00<00:00,  3.08it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Splitting field:   0%|          | 0/2 [00:00<?, ?it/s]Splitting field:  50%|█████     | 1/2 [00:00<00:00,  1.90it/s]Splitting 3FAFC:  50%|█████     | 1/2 [00:00<00:00,  1.90it/s]Splitting 3FAFC: 100%|██████████| 2/2 [00:00<00:00,  3.79it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Linker script field:   0%|          | 0/2 [00:00<?, ?it/s]Linker script 3FAFC:   0%|          | 0/2 [00:00<?, ?it/s]Linker script 3FAFC: 100%|██████████| 2/2 [00:00<00:00, 386.18it/s]
+Split 253 KB (97.01%) in defined segments
+                   c:   249 KB (95.80%) 26 split, 0 cached
+                 asm:     3 KB (1.20%) 1 split, 0 cached
+             databin:      2 B (0.00%) 1 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/71 [00:00<?, ?it/s]Loading symbols (symbol_addrs.member_change_menu):   0%|          | 0/71 [00:00<?, ?it/s]Loading symbols (symbol_addrs.member_change_menu): 100%|██████████| 71/71 [00:00<00:00, 250248.39it/s]
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 399493.15it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Scanning member_change_menu:   0%|          | 0/2 [00:00<?, ?it/s]Scanning 659C:   0%|          | 0/2 [00:00<?, ?it/s]              Scanning 659C: 100%|██████████| 2/2 [00:00<00:00, 63.65it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Splitting member_change_menu:   0%|          | 0/2 [00:00<?, ?it/s]Splitting 659C:   0%|          | 0/2 [00:00<?, ?it/s]              Splitting 659C: 100%|██████████| 2/2 [00:00<00:00, 42.18it/s]
+  0%|          | 0/2 [00:00<?, ?it/s]Linker script member_change_menu:   0%|          | 0/2 [00:00<?, ?it/s]Linker script 659C:   0%|          | 0/2 [00:00<?, ?it/s]              Linker script 659C: 100%|██████████| 2/2 [00:00<00:00, 2223.33it/s]
+Split 25 KB (95.96%) in defined segments
+                   c:    24 KB (93.66%) 1 split, 0 cached
+             databin:    612 B (2.30%) 1 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/107 [00:00<?, ?it/s]Loading symbols (symbol_addrs.shop_menu):   0%|          | 0/107 [00:00<?, ?it/s]Loading symbols (symbol_addrs.shop_menu): 100%|██████████| 107/107 [00:00<00:00, 292944.21it/s]
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 192858.17it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Scanning shop_menu:   0%|          | 0/1 [00:00<?, ?it/s]Scanning shop_menu: 100%|██████████| 1/1 [00:00<00:00, 11.21it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Splitting shop_menu:   0%|          | 0/1 [00:00<?, ?it/s]Splitting shop_menu: 100%|██████████| 1/1 [00:00<00:00, 10.84it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Linker script shop_menu:   0%|          | 0/1 [00:00<?, ?it/s]Linker script shop_menu: 100%|██████████| 1/1 [00:00<00:00, 557.16it/s]
+Split 53 KB (95.86%) in defined segments
+                   c:    53 KB (95.86%) 9 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/12 [00:00<?, ?it/s]Loading symbols (symbol_addrs.menu):   0%|          | 0/12 [00:00<?, ?it/s]Loading symbols (symbol_addrs.menu): 100%|██████████| 12/12 [00:00<00:00, 182361.04it/s]
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 369231.51it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Scanning menu:   0%|          | 0/1 [00:00<?, ?it/s]
+The rodata segment 'main/misc' has jumptables that are not aligned properly file-wise, indicating one or more likely file split.
+File split suggestions for this segment will follow in config yaml format:
+      - [0xFC, .rodata]
+      - [0x278, .rodata]
+
+Scanning menu: 100%|██████████| 1/1 [00:00<00:00,  3.57it/s]Scanning menu: 100%|██████████| 1/1 [00:00<00:00,  3.57it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Splitting menu:   0%|          | 0/1 [00:00<?, ?it/s]Splitting menu: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]Splitting menu: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]Linker script menu:   0%|          | 0/1 [00:00<?, ?it/s]Linker script menu: 100%|██████████| 1/1 [00:00<00:00, 1385.17it/s]
+Split 148 KB (96.42%) in defined segments
+                   c:   148 KB (96.42%) 1 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/11 [00:00<?, ?it/s]Loading symbols (symbol_addrs.battle):   0%|          | 0/11 [00:00<?, ?it/s]Loading symbols (symbol_addrs.battle): 100%|██████████| 11/11 [00:00<00:00, 96521.64it/s]
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64): 100%|██████████| 1068/1068 [00:00<00:00, 341713.07it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Scanning battle:   0%|          | 0/3 [00:00<?, ?it/s]
+Rodata segment '0' may belong to the text segment 'main2'
+    Based on the usage from the function func_800745EC to the symbol jtbl_8006FAF4
+
+Rodata segment '0' may belong to the text segment 'main12'
+    Based on the usage from the function func_800792F8 to the symbol D_8006FB08
+
+Rodata segment '0' may belong to the text segment 'main14'
+    Based on the usage from the function func_80079ED8 to the symbol jtbl_8006FB7C
+
+Rodata segment '0' may belong to the text segment 'main31'
+    Based on the usage from the function func_8007EF6C to the symbol jtbl_8006FC3C
+
+Rodata segment '0' may belong to the text segment 'main34'
+    Based on the usage from the function func_80080160 to the symbol jtbl_8006FE7C
+
+Rodata segment '0' may belong to the text segment 'main35'
+    Based on the usage from the function func_8008115C to the symbol jtbl_80070010
+
+Rodata segment '0' may belong to the text segment 'main36'
+    Based on the usage from the function func_80085618 to the symbol jtbl_80070250
+
+Rodata segment '0' may belong to the text segment 'main38'
+    Based on the usage from the function func_80085EB4 to the symbol jtbl_80070280
+
+Rodata segment '0' may belong to the text segment 'main46'
+    Based on the usage from the function func_8008B478 to the symbol jtbl_80070314
+
+Rodata segment '0' may belong to the text segment 'main47'
+    Based on the usage from the function func_8008BED8 to the symbol jtbl_8007032C
+
+Rodata segment '0' may belong to the text segment 'main48'
+    Based on the usage from the function func_8008C81C to the symbol jtbl_80070344
+
+Rodata segment '0' may belong to the text segment 'main51'
+    Based on the usage from the function func_80094EE4 to the symbol jtbl_80070370
+
+Rodata segment '0' may belong to the text segment 'main52'
+    Based on the usage from the function func_80097964 to the symbol jtbl_800703C0
+
+Rodata segment '0' may belong to the text segment 'main53'
+    Based on the usage from the function func_80098D2C to the symbol jtbl_80070410
+
+Rodata segment '0' may belong to the text segment 'main57'
+    Based on the usage from the function func_8009AFD8 to the symbol jtbl_80070428
+
+Rodata segment '0' may belong to the text segment 'main58'
+    Based on the usage from the function func_8009B684 to the symbol jtbl_80070478
+
+Rodata segment '0' may belong to the text segment 'main64'
+    Based on the usage from the function func_8009E788 to the symbol jtbl_800704CC
+
+Rodata segment '0' may belong to the text segment 'main65'
+    Based on the usage from the function func_800A0838 to the symbol jtbl_80070514
+
+Rodata segment '0' may belong to the text segment 'main70'
+    Based on the usage from the function func_800A6884 to the symbol jtbl_80070554
+
+Rodata segment '0' may belong to the text segment 'main72'
+    Based on the usage from the function func_800AAD54 to the symbol jtbl_8007056C
+
+Rodata segment '0' may belong to the text segment 'main74'
+    Based on the usage from the function func_800B026C to the symbol jtbl_8007079C
+
+Rodata segment '0' may belong to the text segment 'main77'
+    Based on the usage from the function func_800B1F6C to the symbol jtbl_800707DC
+
+Rodata segment '0' may belong to the text segment 'mainc83'
+    Based on the usage from the function func_800B3F04 to the symbol jtbl_80070850
+
+Rodata segment '0' may belong to the text segment 'mainc99'
+    Based on the usage from the function func_800B7870 to the symbol jtbl_800709FC
+
+Rodata segment '0' may belong to the text segment 'main101'
+    Based on the usage from the function func_800B8098 to the symbol jtbl_80070A10
+
+Rodata segment '0' may belong to the text segment 'mainc108'
+    Based on the usage from the function func_800B9284 to the symbol jtbl_80070A28
+
+Rodata segment '0' may belong to the text segment 'mainl110'
+    Based on the usage from the function func_800B9C78 to the symbol jtbl_80070A80
+
+Rodata segment '0' may belong to the text segment 'mainc118'
+    Based on the usage from the function func_800BD3AC to the symbol jtbl_80070ADC
+
+Rodata segment '0' may belong to the text segment 'mainc134'
+    Based on the usage from the function func_800BFE48 to the symbol jtbl_80070B08
+
+Rodata segment '0' may belong to the text segment 'main135'
+    Based on the usage from the function func_800C11CC to the symbol jtbl_80070C14
+
+The rodata segment '0' has jumptables that are not aligned properly file-wise, indicating one or more likely file split.
+File split suggestions for this segment will follow in config yaml format:
+      - [0x4, rodata]
+      - [0x48, rodata]
+      - [0x8C, rodata]
+      - [0x520, rodata]
+      - [0x824, rodata]
+      - [0x880, rodata]
+      - [0x9DC, rodata]
+      - [0xD60, rodata]
+      - [0xF0C, rodata]
+      - [0xF20, rodata]
+      - [0xFEC, rodata]
+      - [0x1018, rodata]
+      - [0x1124, rodata]
+
+Scanning battle:  33%|███▎      | 1/3 [00:00<00:01,  1.45it/s]Scanning battle_bss:  33%|███▎      | 1/3 [00:00<00:01,  1.45it/s]Scanning 53F7C:  33%|███▎      | 1/3 [00:00<00:01,  1.45it/s]     Scanning 53F7C: 100%|██████████| 3/3 [00:00<00:00,  4.36it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Splitting battle:   0%|          | 0/3 [00:00<?, ?it/s]Splitting battle:  33%|███▎      | 1/3 [00:00<00:01,  1.62it/s]Splitting battle_bss:  33%|███▎      | 1/3 [00:00<00:01,  1.62it/s]Splitting 53F7C:  33%|███▎      | 1/3 [00:00<00:01,  1.62it/s]     Splitting 53F7C: 100%|██████████| 3/3 [00:00<00:00,  4.84it/s]
+  0%|          | 0/3 [00:00<?, ?it/s]Linker script battle:   0%|          | 0/3 [00:00<?, ?it/s]Linker script battle_bss:   0%|          | 0/3 [00:00<?, ?it/s]Linker script 53F7C:   0%|          | 0/3 [00:00<?, ?it/s]     Linker script 53F7C: 100%|██████████| 3/3 [00:00<00:00, 164.46it/s]
+Split 332 KB (96.62%) in defined segments
+                 asm:    276 B (0.08%) 1 split, 0 cached
+                   c:   332 KB (96.54%) 135 split, 0 cached
+             databin:      4 B (0.00%) 1 split, 0 cached
+             unknown:      0 B (0.00%) from unknown bin files
+Cleaning... 0 files.
+[1/1059] Compile src/slus_006.64/psyq/libcd/cdread.c (CPP)
+[2/1059] Compile src/slus_006.64/psyq/libetc/vsync.c (CPP)
+[3/1059] Compile src/slus_006.64/main/main.c (CPP)
+[4/1059] Compile src/slus_006.64/psyq/libc2/puts.c (CPP)
+[5/1059] Compile src/slus_006.64/psyq/libcd/sys.c (CPP)
+[6/1059] Compile src/slus_006.64/psyq/libetc/intr_vsync.c (CPP)
+[7/1059] Compile src/slus_006.64/psyq/libetc/video_mode.c (CPP)
+[8/1059] Compile src/slus_006.64/psyq/libetc/intr.c (CPP)
+[9/1059] Compile src/slus_006.64/psyq/libspu/Spu.c (CPP)
+[10/1059] Compile src/slus_006.64/psyq/libspu/SpuClearReverbWorkArea.c (CPP)
+[11/1059] Compile src/slus_006.64/psyq/libspu/SpuGetVoiceEnvelopeAttr.c (CPP)
+[12/1059] Compile src/slus_006.64/psyq/libspu/SpuInit.c (CPP)
+[13/1059] Compile src/slus_006.64/psyq/libspu/SpuInitMalloc.c (CPP)
+[14/1059] Compile src/slus_006.64/psyq/libspu/SpuQuit.c (CPP)
+[15/1059] Compile src/slus_006.64/psyq/libspu/SpuReadDecodedData.c (CPP)
+[16/1059] Compile src/slus_006.64/graphics/line_scroll.c (CPP)
+[17/1059] Compile src/slus_006.64/main/main_loop.c (CPP)
+[18/1059] Compile src/slus_006.64/psyq/libcd/bios.c (CPP)
+[19/1059] Compile src/slus_006.64/psyq/libcd/event.c (CPP)
+[20/1059] Compile src/slus_006.64/psyq/libetc/intr_dma.c (CPP)
+[21/1059] Compile src/slus_006.64/psyq/libspu/SpuDataCallback.c (CPP)
+[22/1059] Compile src/slus_006.64/psyq/libspu/SpuGetReverbModeType.c (CPP)
+[23/1059] Compile src/slus_006.64/psyq/libspu/SpuRead.c (CPP)
+[24/1059] Compile src/slus_006.64/psyq/libapi/WaitEvent.c (CPP)
+[25/1059] Compile src/slus_006.64/psyq/libspu/SpuSetReverb.c (CPP)
+[26/1059] Compile src/slus_006.64/psyq/libspu/SpuSetNoiseClock.c (CPP)
+[27/1059] Compile src/slus_006.64/psyq/libspu/_SpuCallback.c (CPP)
+[28/1059] Compile src/slus_006.64/psyq/libspu/SpuSetIRQ.c (CPP)
+[29/1059] Compile src/slus_006.64/psyq/libspu/SpuSetIRQCallback.c (CPP)
+[30/1059] Compile src/slus_006.64/psyq/libspu/SpuSetTransferCallback.c (CPP)
+[31/1059] Compile src/slus_006.64/psyq/libspu/SpuSetCommonAttr.c (CPP)
+[32/1059] Compile src/slus_006.64/psyq/libspu/SpuSetReverbModeDepth.c (CPP)
+[33/1059] Compile src/slus_006.64/psyq/libspu/SpuSetReverbModeType.c (CPP)
+[34/1059] Compile src/slus_006.64/psyq/libspu/_SpuIsInAllocateArea.c (CPP)
+[35/1059] Compile src/slus_006.64/psyq/libspu/_spu_setReverbAttr.c (CPP)
+[36/1059] Compile src/slus_006.64/psyq/libapi_2.c (CPP)
+[37/1059] Compile src/slus_006.64/psyq/libspu/SpuSetReverbModeFeedback.c (CPP)
+[38/1059] Compile src/slus_006.64/psyq/libspu/SpuSetTransferStartAddr.c (CPP)
+[39/1059] Compile src/slus_006.64/psyq/libspu/SpuWrite.c (CPP)
+[40/1059] Compile src/slus_006.64/psyq/libspu/_SpuInit.c (CPP)
+[41/1059] Compile src/slus_006.64/psyq/libapi.c (CPP)
+[42/1059] Compile src/slus_006.64/psyq/libcard.c (CPP)
+[43/1059] Compile src/slus_006.64/psyq/libspu/SpuSetReverbModeDelayTime.c (CPP)
+[44/1059] Compile src/slus_006.64/psyq/libspu/SpuSetTransferMode.c (CPP)
+[45/1059] Compile src/slus_006.64/psyq/libgpu.c (CPP)
+[46/1059] Compile src/slus_006.64/psyq/libsn.c (CPP)
+[47/1059] Compile src/slus_006.64/system/archive.c (CPP)
+[48/1059] Compile src/slus_006.64/system/graphics.c (CPP)
+[49/1059] Compile src/slus_006.64/psyq/libc.c (CPP)
+[50/1059] Compile src/slus_006.64/psyq/libgte.c (CPP)
+[51/1059] Compile src/slus_006.64/system/font.c (CPP)
+[52/1059] Compile src/slus_006.64/system/kernel_menu.c (CPP)
+[53/1059] Compile src/slus_006.64/psyq/libapi_3.c (CPP)
+[54/1059] Compile src/slus_006.64/system/heap_debug.c (CPP)
+[55/1059] Compile src/slus_006.64/system/memory.c (CPP)
+[56/1059] Compile src/slus_006.64/system/controller.c (CPP)
+[57/1059] Compile src/slus_006.64/system/libarchive.c (CPP)
+[58/1059] Compile src/slus_006.64/system/menu.c (CPP)
+[59/1059] Compile src/slus_006.64/system/sound.c (CPP)
+[60/1059] Compile src/slus_006.64/system/system.c (CPP)
+[61/1059] Compile src/slus_006.64/system/temp1.c (CPP)
+[62/1059] Compile src/slus_006.64/system/temp2.c (CPP)
+[63/1059] Compile src/slus_006.64/system/temp3.c (CPP)
+[64/1059] Compile src/slus_006.64/system/work_list.c (CPP)
+[65/1059] Compile src/slus_006.64/system/asset_loader.c (CPP)
+[66/1059] Compile src/slus_006.64/system/rendering.c (CPP)
+[67/1059] Compile src/field/camera/camera_movement.c (CPP)
+[68/1059] Compile src/field/game_logic/scenario_flags.c (CPP)
+[69/1059] Compile src/field/dialogue/text_box.c (CPP)
+[70/1059] Compile src/field/dialogue/text_box_render.c (CPP)
+[71/1059] Compile src/field/effects/particles.c (CPP)
+[72/1059] Compile src/field/game_logic/gold.c (CPP)
+[73/1059] Compile src/field/main/init.c (CPP)
+[74/1059] Compile src/slus_006.64/system/animation_scripts.c (CPP)
+[75/1059] Compile src/field/effects/distortion.c (CPP)
+[76/1059] Compile src/field/effects/fade.c (CPP)
+[77/1059] Compile src/field/effects/fade_render.c (CPP)
+[78/1059] Compile src/field/main/input_script_handlers.c (CPP)
+[79/1059] Compile src/field/main/misc10.c (CPP)
+[80/1059] Compile src/field/main/misc6.c (CPP)
+[81/1059] Compile src/field/main/misc7.c (CPP)
+[82/1059] Compile src/field/main/misc8.c (CPP)
+[83/1059] Compile src/field/main/misc.c (CPP)
+[84/1059] Compile src/field/main/misc9.c (CPP)
+[85/1059] Compile src/field/main/misc3.c (CPP)
+[86/1059] Compile src/field/party/stats.c (CPP)
+[87/1059] Compile src/field/main/main.c (CPP)
+[88/1059] Compile src/field/main/misc11.c (CPP)
+[89/1059] Compile src/field/scripts/variable_handlers.c (CPP)
+[90/1059] Compile src/field/scripts/virtual_machine.c (CPP)
+[91/1059] Compile src/shop_menu/main/misc.c (CPP)
+[92/1059] Compile src/battle/main.c (CPP)
+[93/1059] Compile src/member_change_menu/main/misc.c (CPP)
+[94/1059] Compile src/shop_menu/main/misc7.c (CPP)
+[95/1059] Compile src/battle/main3.c (CPP)
+[96/1059] Compile src/shop_menu/main/misc3.c (CPP)
+[97/1059] Compile src/shop_menu/main/misc9.c (CPP)
+[98/1059] Compile src/shop_menu/main/misc8.c (CPP)
+[99/1059] Compile src/battle/main4.c (CPP)
+[100/1059] Compile src/battle/main5.c (CPP)
+[101/1059] Compile src/battle/main9.c (CPP)
+[102/1059] Compile src/battle/main6.c (CPP)
+[103/1059] Compile src/battle/main8.c (CPP)
+[104/1059] Compile src/shop_menu/main/misc5.c (CPP)
+[105/1059] Compile src/battle/main10.c (CPP)
+[106/1059] Compile src/battle/main12.c (CPP)
+[107/1059] Compile src/field/main/misc5.c (CPP)
+[108/1059] Compile src/shop_menu/main/misc2.c (CPP)
+[109/1059] Compile src/field/main/misc2.c (CPP)
+[110/1059] Compile src/shop_menu/main/misc6.c (CPP)
+[111/1059] Compile src/field/main/misc4.c (CPP)
+[112/1059] Compile src/shop_menu/main/misc4.c (CPP)
+[113/1059] Compile src/menu/main/misc.c (CPP)
+[114/1059] Compile src/battle/main2.c (CPP)
+[115/1059] Compile src/battle/main7.c (CPP)
+[116/1059] Compile src/battle/main13.c (CPP)
+[117/1059] Compile src/battle/main14.c (CPP)
+[118/1059] Compile src/battle/main15.c (CPP)
+[119/1059] Compile src/battle/main16.c (CPP)
+[120/1059] Compile src/battle/main17.c (CPP)
+[121/1059] Compile src/battle/main21.c (CPP)
+[122/1059] Compile src/battle/main22.c (CPP)
+[123/1059] Compile src/battle/main28.c (CPP)
+[124/1059] Compile src/battle/main11.c (CPP)
+[125/1059] Compile src/battle/main19.c (CPP)
+[126/1059] Compile src/battle/main20.c (CPP)
+[127/1059] Compile src/battle/main23.c (CPP)
+[128/1059] Compile src/battle/main24.c (CPP)
+[129/1059] Compile src/battle/main25.c (CPP)
+[130/1059] Compile src/battle/main26.c (CPP)
+[131/1059] Compile src/battle/main27.c (CPP)
+[132/1059] Compile src/battle/main29.c (CPP)
+[133/1059] Compile src/battle/main30.c (CPP)
+[134/1059] Compile src/battle/main31.c (CPP)
+[135/1059] Compile src/battle/main32.c (CPP)
+[136/1059] Compile src/battle/main33.c (CPP)
+[137/1059] Compile src/battle/main34.c (CPP)
+[138/1059] Compile src/battle/main35.c (CPP)
+[139/1059] Compile src/battle/main39.c (CPP)
+[140/1059] Compile src/battle/main37.c (CPP)
+[141/1059] Compile src/battle/main38.c (CPP)
+[142/1059] Compile src/battle/main40.c (CPP)
+[143/1059] Compile src/battle/main41.c (CPP)
+[144/1059] Compile src/battle/main42.c (CPP)
+[145/1059] Compile src/battle/main43.c (CPP)
+[146/1059] Compile src/battle/main44.c (CPP)
+[147/1059] Compile src/battle/main45.c (CPP)
+[148/1059] Compile src/battle/main46.c (CPP)
+[149/1059] Compile src/battle/main48.c (CPP)
+[150/1059] Compile src/battle/main50.c (CPP)
+[151/1059] Compile src/battle/main47.c (CPP)
+[152/1059] Compile src/battle/main53.c (CPP)
+[153/1059] Compile src/battle/main54.c (CPP)
+[154/1059] Compile src/battle/main56.c (CPP)
+[155/1059] Compile src/battle/main49.c (CPP)
+[156/1059] Compile src/battle/main51.c (CPP)
+[157/1059] Compile src/battle/main57.c (CPP)
+[158/1059] Compile src/battle/main60.c (CPP)
+[159/1059] Compile src/battle/main52.c (CPP)
+[160/1059] Compile src/battle/main64.c (CPP)
+[161/1059] Compile src/battle/main55.c (CPP)
+[162/1059] Compile src/battle/main58.c (CPP)
+[163/1059] Compile src/battle/main61.c (CPP)
+[164/1059] Compile src/battle/main59.c (CPP)
+[165/1059] Compile src/battle/main62.c (CPP)
+[166/1059] Compile src/battle/main71.c (CPP)
+[167/1059] Compile src/battle/main65.c (CPP)
+[168/1059] Compile src/battle/main67.c (CPP)
+[169/1059] Compile src/battle/main63.c (CPP)
+[170/1059] Compile src/battle/main69.c (CPP)
+[171/1059] Compile src/battle/main66.c (CPP)
+[172/1059] Compile src/battle/main68.c (CPP)
+[173/1059] Compile src/battle/main70.c (CPP)
+[174/1059] Compile src/battle/main72.c (CPP)
+[175/1059] Compile src/battle/main73.c (CPP)
+[176/1059] Compile src/battle/mainc78.c (CPP)
+[177/1059] Compile src/battle/mainc80.c (CPP)
+[178/1059] Compile src/battle/mainc18.c (CPP)
+[179/1059] Compile src/battle/main75.c (CPP)
+[180/1059] Compile src/battle/mainc83.c (CPP)
+[181/1059] Compile src/battle/mainc86.c (CPP)
+[182/1059] Compile src/battle/mainc97.c (CPP)
+[183/1059] Compile src/battle/mainc76.c (CPP)
+[184/1059] Compile src/battle/mainc82.c (CPP)
+[185/1059] Compile src/battle/main101.c (CPP)
+[186/1059] Compile src/battle/mainc84.c (CPP)
+[187/1059] Compile src/battle/main91.c (CPP)
+[188/1059] Compile src/battle/mainl92.c (CPP)
+[189/1059] Compile src/battle/mainc95.c (CPP)
+[190/1059] Compile src/battle/mainc124.c (CPP)
+[191/1059] Compile src/battle/mainc100.c (CPP)
+[192/1059] Compile src/battle/mainc102.c (CPP)
+[193/1059] Compile src/battle/main103.c (CPP)
+[194/1059] Compile src/battle/mainc114.c (CPP)
+[195/1059] Compile src/battle/mainc120.c (CPP)
+[196/1059] Compile src/battle/mainc129.c (CPP)
+[197/1059] Compile src/battle/mainc112.c (CPP)
+[198/1059] Compile src/battle/mainc127.c (CPP)
+[199/1059] Compile src/battle/mainc116.c (CPP)
+[200/1059] Compile src/battle/mainc118.c (CPP)
+[201/1059] Compile src/battle/mainc122.c (CPP)
+[202/1059] Compile src/battle/mainc130.c (CPP)
+[203/1059] Compile src/battle/mainc132.c (CPP)
+[204/1059] Compile src/battle/main74.c (CPP)
+[205/1059] Compile src/battle/main77.c (CPP)
+[206/1059] Compile src/battle/mainc79.c (CPP)
+[207/1059] Compile src/battle/mainc85.c (CPP)
+[208/1059] Compile src/battle/main119.c (CPP)
+[209/1059] Compile src/battle/mainl81.c (CPP)
+[210/1059] Compile src/battle/main87.c (CPP)
+[211/1059] Compile src/battle/mainc88.c (CPP)
+[212/1059] Compile src/battle/mainc89.c (CPP)
+[213/1059] Compile src/battle/main90.c (CPP)
+[214/1059] Compile src/battle/main93.c (CPP)
+[215/1059] Compile src/battle/mainl94.c (CPP)
+[216/1059] Compile src/battle/main96.c (CPP)
+[217/1059] Compile src/battle/mainl98.c (CPP)
+[218/1059] Compile src/battle/mainc99.c (CPP)
+[219/1059] Compile src/battle/mainc104.c (CPP)
+[220/1059] Compile src/battle/main105.c (CPP)
+[221/1059] Compile src/battle/main106.c (CPP)
+[222/1059] Compile src/battle/mainc108.c (CPP)
+[223/1059] Compile src/battle/mainl110.c (CPP)
+[224/1059] Compile src/battle/mainc113.c (CPP)
+[225/1059] Compile src/battle/mainc117.c (CPP)
+[226/1059] Compile src/battle/main121.c (CPP)
+[227/1059] Compile src/battle/mainc123.c (CPP)
+[228/1059] Compile src/battle/mainc107.c (CPP)
+[229/1059] Compile src/battle/mainl109.c (CPP)
+[230/1059] Compile src/battle/main111.c (CPP)
+[231/1059] Compile src/battle/mainl115.c (CPP)
+[232/1059] Compile src/battle/main125.c (CPP)
+[233/1059] Compile src/battle/mainc126.c (CPP)
+[234/1059] Compile src/battle/main128.c (CPP)
+[235/1059] Compile src/battle/mainc131.c (CPP)
+[236/1059] Compile src/battle/mainl133.c (CPP)
+[237/1059] Compile src/battle/mainc134.c (CPP)
+[238/1059] Compile src/battle/main135.c (CPP)
+[239/1059] Compile src/battle/main36.c (CPP)
+[240/1059] Compile build/src/slus_006.64/main/main.c.i (CC)
+[241/1059] Compile build/src/slus_006.64/psyq/libapi/WaitEvent.c.i (CC)
+[242/1059] Compile build/src/slus_006.64/psyq/libc2/puts.c.i (CC)
+[243/1059] Compile build/src/slus_006.64/psyq/libcd/event.c.i (CC)
+[244/1059] Compile build/src/slus_006.64/psyq/libetc/intr_vsync.c.i (CC)
+[245/1059] Compile build/src/slus_006.64/psyq/libetc/video_mode.c.i (CC)
+[246/1059] Compile build/src/slus_006.64/psyq/libetc/vsync.c.i (CC)
+[247/1059] Compile build/src/slus_006.64/psyq/libetc/intr_dma.c.i (CC)
+[248/1059] Compile build/src/slus_006.64/psyq/libspu/SpuClearReverbWorkArea.c.i (CC)
+[249/1059] Compile build/src/slus_006.64/psyq/libspu/SpuDataCallback.c.i (CC)
+[250/1059] Compile build/src/slus_006.64/psyq/libspu/SpuGetReverbModeType.c.i (CC)
+[251/1059] Compile build/src/slus_006.64/psyq/libspu/SpuGetVoiceEnvelopeAttr.c.i (CC)
+[252/1059] Compile build/src/slus_006.64/psyq/libspu/SpuInit.c.i (CC)
+[253/1059] Compile build/src/slus_006.64/psyq/libspu/SpuInitMalloc.c.i (CC)
+[254/1059] Compile build/src/slus_006.64/psyq/libspu/SpuQuit.c.i (CC)
+[255/1059] Compile build/src/slus_006.64/psyq/libcd/cdread.c.i (CC)
+[256/1059] Compile build/src/slus_006.64/psyq/libetc/intr.c.i (CC)
+[257/1059] Compile build/src/slus_006.64/psyq/libspu/SpuRead.c.i (CC)
+[258/1059] Compile build/src/slus_006.64/psyq/libspu/SpuReadDecodedData.c.i (CC)
+[259/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetIRQ.c.i (CC)
+[260/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetIRQCallback.c.i (CC)
+[261/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetNoiseClock.c.i (CC)
+[262/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetTransferCallback.c.i (CC)
+[263/1059] Compile build/src/slus_006.64/main/main_loop.c.i (CC)
+[264/1059] Compile build/src/slus_006.64/psyq/libcd/sys.c.i (CC)
+[265/1059] Compile build/src/slus_006.64/psyq/libspu/Spu.c.i (CC)
+[266/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetCommonAttr.c.i (CC)
+[267/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetReverb.c.i (CC)
+[268/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetReverbModeDelayTime.c.i (CC)
+[269/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetReverbModeDepth.c.i (CC)
+[270/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetReverbModeFeedback.c.i (CC)
+[271/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetReverbModeType.c.i (CC)
+[272/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetTransferMode.c.i (CC)
+[273/1059] Compile build/src/slus_006.64/psyq/libspu/SpuSetTransferStartAddr.c.i (CC)
+[274/1059] Compile build/src/slus_006.64/psyq/libspu/SpuWrite.c.i (CC)
+[275/1059] Compile build/src/slus_006.64/psyq/libspu/_SpuCallback.c.i (CC)
+[276/1059] Compile build/src/slus_006.64/psyq/libspu/_SpuInit.c.i (CC)
+[277/1059] Compile build/src/slus_006.64/psyq/libspu/_SpuIsInAllocateArea.c.i (CC)
+[278/1059] Compile build/src/slus_006.64/psyq/libapi_2.c.i (CC)
+[279/1059] Compile build/src/slus_006.64/psyq/libapi_3.c.i (CC)
+[280/1059] Compile build/src/slus_006.64/psyq/libcard.c.i (CC)
+[281/1059] Compile build/src/slus_006.64/psyq/libspu/_spu_setReverbAttr.c.i (CC)
+[282/1059] Compile build/src/slus_006.64/psyq/libapi.c.i (CC)
+[283/1059] Compile build/src/slus_006.64/psyq/libsn.c.i (CC)
+[284/1059] Compile build/src/slus_006.64/graphics/line_scroll.c.i (CC)
+[285/1059] Compile build/src/slus_006.64/psyq/libc.c.i (CC)
+[286/1059] Compile build/src/slus_006.64/system/heap_debug.c.i (CC)
+[287/1059] Compile build/src/slus_006.64/system/graphics.c.i (CC)
+[288/1059] Compile build/src/slus_006.64/system/asset_loader.c.i (CC)
+[289/1059] Compile build/src/slus_006.64/system/kernel_menu.c.i (CC)
+[290/1059] Compile build/src/slus_006.64/system/controller.c.i (CC)
+[291/1059] Compile build/src/slus_006.64/psyq/libgte.c.i (CC)
+[292/1059] Compile build/src/slus_006.64/system/menu.c.i (CC)
+[293/1059] Compile build/src/slus_006.64/system/font.c.i (CC)
+[294/1059] Compile build/src/slus_006.64/system/work_list.c.i (CC)
+[295/1059] Compile build/src/field/effects/fade.c.i (CC)
+[296/1059] Compile build/src/field/effects/fade_render.c.i (CC)
+[297/1059] Compile build/src/slus_006.64/psyq/libcd/bios.c.i (CC)
+[298/1059] Compile build/src/slus_006.64/system/archive.c.i (CC)
+[299/1059] Compile build/src/slus_006.64/system/memory.c.i (CC)
+[300/1059] Compile build/src/slus_006.64/system/libarchive.c.i (CC)
+[301/1059] Compile build/src/field/effects/distortion.c.i (CC)
+[302/1059] Compile build/src/field/game_logic/scenario_flags.c.i (CC)
+[303/1059] Compile build/src/slus_006.64/psyq/libgpu.c.i (CC)
+[304/1059] Compile build/src/field/main/init.c.i (CC)
+[305/1059] Compile build/src/field/main/input_script_handlers.c.i (CC)
+[306/1059] Compile build/src/slus_006.64/system/temp3.c.i (CC)
+[307/1059] Compile build/src/field/game_logic/gold.c.i (CC)
+[308/1059] Compile build/src/slus_006.64/system/system.c.i (CC)
+[309/1059] Compile build/src/slus_006.64/system/rendering.c.i (CC)
+[310/1059] Compile build/src/field/dialogue/text_box.c.i (CC)
+[311/1059] Compile build/src/field/effects/particles.c.i (CC)
+[312/1059] Compile build/src/field/camera/camera_movement.c.i (CC)
+[313/1059] Compile build/src/field/main/misc10.c.i (CC)
+[314/1059] Compile build/src/field/dialogue/text_box_render.c.i (CC)
+[315/1059] Compile build/src/field/scripts/variable_handlers.c.i (CC)
+[316/1059] Compile build/src/field/party/stats.c.i (CC)
+[317/1059] Compile build/src/field/main/main.c.i (CC)
+[318/1059] Compile build/src/shop_menu/main/misc3.c.i (CC)
+[319/1059] Compile build/src/slus_006.64/system/temp2.c.i (CC)
+[320/1059] Compile build/src/shop_menu/main/misc7.c.i (CC)
+[321/1059] Compile build/src/field/main/misc9.c.i (CC)
+[322/1059] Compile build/src/field/main/misc3.c.i (CC)
+[323/1059] Compile build/src/shop_menu/main/misc4.c.i (CC)
+[324/1059] Compile build/src/battle/main.c.i (CC)
+[325/1059] Compile build/src/slus_006.64/system/temp1.c.i (CC)
+[326/1059] Compile build/src/battle/main2.c.i (CC)
+[327/1059] Compile build/src/battle/main4.c.i (CC)
+[328/1059] Compile build/src/shop_menu/main/misc.c.i (CC)
+[329/1059] Compile build/src/shop_menu/main/misc5.c.i (CC)
+[330/1059] Compile build/src/shop_menu/main/misc8.c.i (CC)
+[331/1059] Compile build/src/shop_menu/main/misc9.c.i (CC)
+[332/1059] Compile build/src/battle/main3.c.i (CC)
+[333/1059] Compile build/src/battle/main5.c.i (CC)
+[334/1059] Compile build/src/battle/main6.c.i (CC)
+[335/1059] Compile build/src/slus_006.64/system/animation_scripts.c.i (CC)
+[336/1059] Compile build/src/field/main/misc5.c.i (CC)
+[337/1059] Compile build/src/field/scripts/virtual_machine.c.i (CC)
+[338/1059] Compile build/src/shop_menu/main/misc6.c.i (CC)
+[339/1059] Compile build/src/battle/main7.c.i (CC)
+[340/1059] Compile build/src/battle/main8.c.i (CC)
+[341/1059] Compile build/src/battle/main9.c.i (CC)
+[342/1059] Compile build/src/battle/main10.c.i (CC)
+[343/1059] Compile build/src/battle/main11.c.i (CC)
+[344/1059] Compile build/src/slus_006.64/system/sound.c.i (CC)
+[345/1059] Compile build/src/battle/main12.c.i (CC)
+[346/1059] Compile build/src/battle/main13.c.i (CC)
+[347/1059] Compile build/src/battle/main14.c.i (CC)
+[348/1059] Compile build/src/battle/main15.c.i (CC)
+[349/1059] Compile build/src/battle/main16.c.i (CC)
+[350/1059] Compile build/src/battle/main17.c.i (CC)
+[351/1059] Compile build/src/battle/main20.c.i (CC)
+[352/1059] Compile build/src/battle/main21.c.i (CC)
+[353/1059] Compile build/src/battle/main22.c.i (CC)
+[354/1059] Compile build/src/battle/main23.c.i (CC)
+[355/1059] Compile build/src/battle/main25.c.i (CC)
+[356/1059] Compile build/src/battle/main31.c.i (CC)
+[357/1059] Compile build/src/battle/main32.c.i (CC)
+[358/1059] Compile build/src/battle/main33.c.i (CC)
+[359/1059] Compile build/src/battle/main19.c.i (CC)
+[360/1059] Compile build/src/battle/main24.c.i (CC)
+[361/1059] Compile build/src/battle/main34.c.i (CC)
+[362/1059] Compile build/src/battle/main35.c.i (CC)
+[363/1059] Compile build/src/battle/main39.c.i (CC)
+[364/1059] Compile build/src/field/main/misc6.c.i (CC)
+[365/1059] Compile build/src/battle/main26.c.i (CC)
+[366/1059] Compile build/src/battle/main28.c.i (CC)
+[367/1059] Compile build/src/battle/main29.c.i (CC)
+[368/1059] Compile build/src/field/main/misc7.c.i (CC)
+[369/1059] Compile build/src/battle/main27.c.i (CC)
+FAILED: [code=33] build/src/battle/main27.c.s 
+tools/gcc-2.7.2-psx/cc1 -O2 -G8 -mips1 -mcpu=3000 -w -funsigned-char -fpeephole -ffunction-cse -fpcc-struct-return -fcommon -fverbose-asm -msoft-float -mgas -fgnu-linker -quiet -o build/src/battle/main27.c.s build/src/battle/main27.c.i
+build/src/battle/main27.c.i: In function `func_8007D478':
+build/src/battle/main27.c.i:97: parse error before `h'
+build/src/battle/main27.c.i:98: `h' undeclared (first use this function)
+build/src/battle/main27.c.i:98: (Each undeclared identifier is reported only once
+build/src/battle/main27.c.i:98: for each function it appears in.)
+[370/1059] Compile build/src/battle/main30.c.i (CC)
+[371/1059] Compile build/src/battle/main37.c.i (CC)
+[372/1059] Compile build/src/battle/main38.c.i (CC)
+[373/1059] Compile build/src/battle/main41.c.i (CC)
+[374/1059] Compile build/src/battle/main42.c.i (CC)
+[375/1059] Compile build/src/battle/main43.c.i (CC)
+[376/1059] Compile build/src/battle/main44.c.i (CC)
+[377/1059] Compile build/src/battle/main45.c.i (CC)
+[378/1059] Compile build/src/battle/main46.c.i (CC)
+[379/1059] Compile build/src/battle/main47.c.i (CC)
+[380/1059] Compile build/src/battle/main48.c.i (CC)
+[381/1059] Compile build/src/battle/main53.c.i (CC)
+[382/1059] Compile build/src/battle/main40.c.i (CC)
+[383/1059] Compile build/src/battle/main54.c.i (CC)
+[384/1059] Compile build/src/battle/main50.c.i (CC)
+[385/1059] Compile build/src/field/main/misc4.c.i (CC)
+[386/1059] Compile build/src/field/main/misc2.c.i (CC)
+[387/1059] Compile build/src/field/main/misc11.c.i (CC)
+[388/1059] Compile build/src/shop_menu/main/misc2.c.i (CC)
+[389/1059] Compile build/src/member_change_menu/main/misc.c.i (CC)
+[390/1059] Compile build/src/field/main/misc8.c.i (CC)
+[391/1059] Compile build/src/field/main/misc.c.i (CC)
+[392/1059] Compile build/src/menu/main/misc.c.i (CC)
+ninja: build stopped: subcommand failed.
+make: *** [Makefile:71: build] Error 33

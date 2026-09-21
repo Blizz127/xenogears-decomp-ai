@@ -1,0 +1,17 @@
+{
+  "dispatcher": {
+    "start": "0x8001fbe4",
+    "end": "0x80021ad8",
+    "sha256": "7431f354f172d1b450e6c231528af93546595e8aa6d750d10ca489d75e88442c"
+  },
+  "handler": {
+    "start": "0x8001fcac",
+    "end": "0x8001fcf0",
+    "sha256": "6836927bde0da7551edb02f4ebdbe04609e206a277a44efe630bb8d7992419b6"
+  },
+  "handler_sha256": "6836927bde0da7551edb02f4ebdbe04609e206a277a44efe630bb8d7992419b6",
+  "src/slus_006.64/system/animation_scripts.c": "e2c5fb6a0c59f2c98d245f6190fb24aab7198f0834095c7e0ddb07e471f1077f",
+  "pc_port/tests/sprite_dispatch_c5_retail_test.c": "7d3f89fbf4ea3b0c10e041e6efad9b1048b37a8273d81add92edf613eaa23704",
+  "pc_port/tests/run_sprite_dispatch_c5_retail_test.sh": "293ed4a6c239a908d3902f5273da0afe30de8153af3651aadd0bb78382f7ede6",
+  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22"
+}

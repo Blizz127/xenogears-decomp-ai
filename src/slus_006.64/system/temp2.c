@@ -1,31 +1,438 @@
 #include "common.h"
 #include "psyq/libgte.h"
-#include "system/memory.h"
 #ifdef XENO_PC_PORT
+/* Execute GTE operations through the host adapter, not PsyQ's assembler
+ * placeholders (which the x86 assembler also accepts as raw data). */
+#include <psx/inline_c.h>
+#else
+#include "psyq/inline_c.h"
+#endif
+#include "system/memory.h"
+#include "system/archive.h"
+#include "system/model.h"
+#include "psyq/pc.h"
+#ifdef XENO_PC_PORT
+#include <psx/gtereg.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-/* Opt-in [field-diag] gate (same contract as misc2.c / rendering.c). */
-static int XenoFieldDiagEnabled(void) {
-    static int s_enabled = -1;
-
-    if (s_enabled < 0) {
-        const char* env = getenv("XENO_FIELD_DIAG");
-        s_enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
-    }
-    return s_enabled;
-}
+#include "guest_prim_link.h"
+#include "psx_memory.h"
 #endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002AC24);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B084);
+extern CdlLOC D_80059EF8;
+extern s32 D_8004FDE4;
+extern s32 D_8004FDEC;
+extern s8* D_8004FE08;
+extern u8 D_800596F8[];
+extern s32 g_ArchiveCurFileSector;
+extern s32 D_8005A4DC;
+extern s32 D_8004FE10;
+extern u16 D_8004FE26;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B2F0);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B084.s
+ * (0x8002B084-0x8002B2F0, 155 instructions). CdReadyCallback handler for the
+ * sector-read state: status != 1 (or an abort request, or a position mismatch)
+ * takes the shared re-arm path — D_8005A4DC counter, CdReadyCallback(NULL) into
+ * D_80059F08, CdIntToPos, then error 3 + state 0xA or the busy-wait/error 4/
+ * D_8005A4A4++ variant, ending in CdSyncCallback + CdControlF(1, NULL). Status 1
+ * with a live stream pulls the sector position (3 words) plus the payload:
+ * a full 0x800 sector as 0x200 words, or a partial one as (size+3)/4 words with
+ * the remainder cleared through D_800596F8. Matching positions advance
+ * D_8004FE08 by 0x800 and decrement g_ArchiveCurFileSize, and once that reaches
+ * zero (or on abort) the ready callback is cleared and ArchiveCdSeekToFile(
+ * D_8004FE38) + D_8004FDFC = 0 end the stream. A position mismatch bumps
+ * D_8004FDE4 and re-arms instead. */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+s32 func_8002B084(u8 status) {
+    s32 size;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B5D0);
+    if ((status & 0xFF) != 1) {
+        goto rearm;
+    }
+    if (D_8004FE34 > 0) {
+        goto finish;
+    }
+    size = g_ArchiveCurFileSize;
+    if (size >= 0x800) {
+        CdGetSector(&D_80059EF8, 3);
+        CdGetSector(D_8004FE08, 0x200);
+    } else if (size > 0) {
+        CdGetSector(&D_80059EF8, 3);
+        CdGetSector(D_8004FE08, (size + 3) / 4);
+        CdGetSector(D_800596F8, 0x200 - ((size + 3) / 4));
+    }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B8B0);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDE4 += 1;
+        goto rearm;
+    }
+    g_ArchiveCurFileSector += 1;
+    D_8004FE08 += 0x800;
+    g_ArchiveCurFileSize -= 0x800;
+    if (g_ArchiveCurFileSize > 0) {
+        return 0;
+    }
+
+finish:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    ArchiveCdSeekToFile(D_8004FE38);
+    D_8004FDFC = 0;
+    return 0;
+
+rearm:
+    D_8005A4DC += 1;
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        g_ArchiveCdDriveState = 0xA;
+    } else {
+        {
+            s32 v1;
+            s32 v0;
+            for (v1 = 0x270F; v1 >= 0; v1--) {
+                for (v0 = 0x7CF; v0 >= 0; v0--) {
+                    ;
+                }
+            }
+        }
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 += 1;
+        g_ArchiveCdDriveState = 0xA;
+    }
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+    return 0;
+}
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B2F0.s
+ * (0x8002B2F0-0x8002B5B4, 184 instructions). The ring-slot variant of the CD
+ * ready handler: status != 1 bumps D_8005A4DC and re-arms; an abort request
+ * (D_8004FE34 > 0) clears both callbacks, zeroes the size, seeks to D_8004FE38
+ * and clears D_8004FDFC; a dead stream just clears the ready callback and the
+ * size. Otherwise it rotates D_8004FE10 over the D_8004FE40 ring slots to a
+ * NOT_LOADED one (a loaded walk target re-arms without the counter bump),
+ * verifies CdPosToInt against g_ArchiveCurFileSector — a mismatch bumps
+ * D_8004FDEC, swallows 0x200 words into D_800596F8 and re-arms — and on a match
+ * marks the slot state 1 with id D_8004FE26 (then bumped), reads 0x200 words into
+ * D_8004FE08 + index*0x800, decrements the size by 0x800 and advances the sector;
+ * a size that stays positive returns, otherwise the ready callback is cleared and
+ * the size zeroed. The re-arm path matches func_8002B084's (error 3 or the
+ * busy-wait/error 4 variant, then CdSyncCallback + CdControlF(1, NULL)). */
+#ifdef XENO_PC_PORT
+__attribute__((weak))
+#endif
+s32 func_8002B2F0(u8 status) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+
+    if ((status & 0xFF) != 1) {
+        goto rearm_bump;
+    }
+    if (D_8004FE34 > 0) {
+        CdReadyCallback(NULL);
+        CdDataCallback(NULL);
+        g_ArchiveCurFileSize = 0;
+        ArchiveCdSeekToFile(D_8004FE38);
+        D_8004FDFC = 0;
+        return 0;
+    }
+    if (g_ArchiveCurFileSize <= 0) {
+        goto clear_ready;
+    }
+
+    pSlot = (u8*)D_8004FE2C;
+    index = 0;
+    if (D_8004FE40 > 0) {
+        nSectors = D_8004FE40;
+        i = 0;
+        do {
+            index = D_8004FE10;
+            pSlot = (u8*)D_8004FE2C + (index << 3);
+            D_8004FE10 = index + 1;
+            if (D_8004FE10 >= nSectors) {
+                D_8004FE10 = 0;
+            }
+            if (*(u16*)pSlot == 0) {
+                break;
+            }
+            i++;
+        } while (i < nSectors);
+    }
+    if (*(u16*)pSlot != 0) {
+        goto rearm;
+    }
+
+    CdGetSector(&D_80059EF8, 3);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDEC += 1;
+        CdGetSector(D_800596F8, 0x200);
+        goto rearm_bump;
+    }
+    *(u16*)pSlot = 1;
+    *(u16*)(pSlot + 2) = D_8004FE26;
+    D_8004FE26 = D_8004FE26 + 1;
+    CdGetSector(D_8004FE08 + (index << 11), 0x200);
+    g_ArchiveCurFileSize -= 0x800;
+    g_ArchiveCurFileSector += 1;
+    if (g_ArchiveCurFileSize > 0) {
+        return 0;
+    }
+
+clear_ready:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    return 0;
+
+rearm_bump:
+#ifdef TEMP2_CDSTATE_MUTANT_NO_BUMP
+    ;
+#else
+    D_8005A4DC += 1;
+#endif
+rearm:
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        g_ArchiveCdDriveState = 0xA;
+    } else {
+        s32 v1;
+        s32 v0;
+        for (v1 = 0x270F; v1 >= 0; v1--) {
+            for (v0 = 0x7CF; v0 >= 0; v0--) {
+                ;
+            }
+        }
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 += 1;
+        g_ArchiveCdDriveState = 0xA;
+    }
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+    return 0;
+}
+
+extern s32 D_8004FE10;
+extern u16 D_8004FE26;
+extern s8* D_8004FE08;
+extern s32 D_80059F04;
+extern s32 g_ArchiveCurFileSector;
+extern void func_8002804C(s32, s32, s32, s32);
+
+extern s32 D_8004FDEC;
+extern s32 D_8005A4DC;
+extern CdlLOC D_80059EF8;
+extern u8 D_800596F8[];
+
+/* Transcribed from asm/slus_006.64/nonmonmatchings/system/temp2/func_8002B5D0.s
+ * (0x8002B5D0-0x8002B8B0, frame 0x28). CdReadyCallback handler for the
+ * streaming read: on status 1 it queues the next sector into a free ring slot,
+ * on any other status (or a full ring) it re-arms the drive.
+ *   D_8004FE34 > 0 (explicit abort): clear both callbacks, zero
+ *   g_ArchiveCurFileSize, ArchiveCdSeekToFile(D_8004FE38), D_8004FDFC = 0.
+ *   g_ArchiveCurFileSize <= 0: clear the ready callback and the size.
+ *   Status 1 with a live stream: rotate D_8004FE10 over D_8004FE40 slots to a
+ *   NOT_LOADED one; a loaded walk target means "no room" (below).
+ *   Found: CdGetSector(D_80059EF8, 3) + CdPosToInt must equal
+ *   g_ArchiveCurFileSector, otherwise D_8004FDEC += 1, swallow 0x200 words
+ *   into D_800596F8, bump D_8005A4DC and take the re-arm path. On a match the
+ *   slot is marked state 1 with id D_8004FE26 (then bumped), 0x200 words are
+ *   read into D_8004FE08 + index*0x800, g_ArchiveCurFileSize -= 0x800 and
+ *   g_ArchiveCurFileSector += 1, returning while the size stays positive and
+ *   otherwise clearing the ready callback and the size.
+ *   No room / other status: D_8005A4DC += 1 (other status only), clear the
+ *   ready callback into D_80059F08, CdIntToPos(g_ArchiveCurFileSector,
+ *   &g_ArchiveCdCurLocation), then either error 3 with state 0xA
+ *   (D_8005A4DC < 3) or a busy-wait, D_8005A4DC = 0, error 4,
+ *   D_8005A4A4 += 1 and state 0xA. Both end with
+ *   CdSyncCallback(&ArchiveCdDriveCommandHandler) and CdControlF(1, NULL).
+ * Note: retail reads an undefined slot pointer when D_8004FE40 <= 0 (only
+ * reachable with an empty ring); this C probes slot 0. The busy-wait is a
+ * delay loop, written as a nested counter loop. */
+void func_8002B5D0(u8 status) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+    s32 v0;
+    s32 v1;
+
+    if (status != 1) {
+        D_8005A4DC += 1;
+        goto no_room;
+    }
+
+    if (D_8004FE34 > 0) {
+        CdReadyCallback(NULL);
+        CdDataCallback(NULL);
+        g_ArchiveCurFileSize = 0;
+        ArchiveCdSeekToFile(D_8004FE38);
+        D_8004FDFC = 0;
+        return;
+    }
+
+    if (g_ArchiveCurFileSize <= 0) {
+        goto stop;
+    }
+
+    pSlot = (u8*)D_8004FE2C;
+    index = 0;
+    if (D_8004FE40 > 0) {
+        nSectors = D_8004FE40;
+        i = 0;
+        do {
+            index = D_8004FE10;
+            pSlot = (u8*)D_8004FE2C + (index << 3);
+            D_8004FE10 = index + 1;
+            if (D_8004FE10 >= nSectors) {
+                D_8004FE10 = 0;
+            }
+            if (*(u16*)pSlot == 0) {
+                break;
+            }
+            i++;
+        } while (i < nSectors);
+    }
+    if (*(u16*)pSlot != 0) {
+        goto no_room;
+    }
+
+    CdGetSector(&D_80059EF8, 3);
+    if (CdPosToInt(&D_80059EF8) != g_ArchiveCurFileSector) {
+        D_8004FDEC += 1;
+        CdGetSector(D_800596F8, 0x200);
+        D_8005A4DC += 1;
+        goto no_room;
+    }
+
+    v0 = D_8004FE26;
+#ifdef TEMP2_B5D0_MUTANT_MARK_STATE3
+    *(u16*)pSlot = 3;
+#else
+    *(u16*)pSlot = 1;
+#endif
+    *(u16*)(pSlot + 2) = (u16)v0;
+    D_8004FE26 = (u16)(v0 + 1);
+    CdGetSector((void*)(D_8004FE08 + (index << 11)), 0x200);
+    g_ArchiveCurFileSize -= 0x800;
+    g_ArchiveCurFileSector += 1;
+    if (g_ArchiveCurFileSize > 0) {
+        return;
+    }
+
+stop:
+    CdReadyCallback(NULL);
+    g_ArchiveCurFileSize = 0;
+    return;
+
+no_room:
+    D_80059F08 = (void*)(uintptr_t)CdReadyCallback(NULL);
+    CdIntToPos(g_ArchiveCurFileSector, &g_ArchiveCdCurLocation);
+    if (D_8005A4DC < 3) {
+        g_ArchiveCdDriveError = 3;
+        v0 = 0xA;
+    } else {
+        for (v1 = 0x270F; v1 >= 0; v1--) {
+            for (v0 = 0x7CF; v0 >= 0; v0--) {
+                ;
+            }
+        }
+        v0 = D_8005A4A4;
+        D_8005A4DC = 0;
+        g_ArchiveCdDriveError = 4;
+        D_8005A4A4 = v0 + 1;
+        v0 = 0xA;
+    }
+
+    g_ArchiveCdDriveState = (u_int)v0;
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdControlF(1, NULL);
+}
+
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B8B0.s
+ * (0x8002B8B0-0x8002BA40, frame 0x20). Queue one 0x800 sector from the open
+ * PC file into the ring:
+ *   g_ArchiveCurFileSize <= 0 -> clear it and return.
+ *   Otherwise rotate D_8004FE10 over the D_8004FE40 ring slots (wrapping to 0)
+ *   until a NOT_LOADED slot is found; a full ring whose walked slot is loaded
+ *   just clears g_ArchiveCurFileSize.
+ *   The found slot is marked state 1 with id D_8004FE26 (then bumped) and
+ *   PCread(0x800) fills D_8004FE08 + index*0x800 with up to three
+ *   func_8002804C(i,0,0xFF,0) retries; a read that never succeeds still falls
+ *   through to the accounting below.
+ *   Then g_ArchiveCurFileSize -= 0x800 and g_ArchiveCurFileSector += 1, and
+ *   g_ArchiveCurFileSize is cleared when it did not stay positive. */
+void func_8002B8B0(void) {
+    u8* pSlot;
+    s32 nSectors;
+    s16 i;
+    s32 index;
+
+    if (g_ArchiveCurFileSize > 0) {
+        nSectors = D_8004FE40;
+        if (nSectors > 0) {
+            i = 0;
+            do {
+                index = D_8004FE10;
+                pSlot = (u8*)D_8004FE2C + (index << 3);
+                D_8004FE10 = index + 1;
+                if (D_8004FE10 >= nSectors) {
+                    D_8004FE10 = 0;
+                }
+                if (*(u16*)pSlot == 0) {
+                    break;
+                }
+                i++;
+            } while (i < nSectors);
+            if (*(u16*)pSlot != 0) {
+                g_ArchiveCurFileSize = 0;
+                goto tail;
+            }
+        } else {
+            /* Retail reads an undefined slot pointer on this path; treat an
+             * unpublished ring as "no room" instead. */
+            g_ArchiveCurFileSize = 0;
+            goto tail;
+        }
+
+#ifdef TEMP2_B8B0_MUTANT_MARK_STATE2
+        *(u16*)pSlot = 2;
+#else
+        *(u16*)pSlot = 1;
+#endif
+        *(u16*)(pSlot + 2) = D_8004FE26;
+        D_8004FE26 = D_8004FE26 + 1;
+
+        for (i = 0; i < 4; i++) {
+            if (PCread(D_80059F04, (char*)(D_8004FE08 + (index << 11)), 0x800) != 0) {
+                break;
+            }
+            func_8002804C(i, 0, 0xFF, 0);
+        }
+
+        g_ArchiveCurFileSize -= 0x800;
+        g_ArchiveCurFileSector += 1;
+    }
+
+tail:
+    if (g_ArchiveCurFileSize > 0) {
+        return;
+    }
+    g_ArchiveCurFileSize = 0;
+}
 
 extern s32 D_8004FE00;
 extern s32 D_8004FDFC;
@@ -34,9 +441,46 @@ void func_8002BA40(void) {
     D_8004FDFC = D_8004FE00;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
+extern s32 D_8004FE40;
+extern s16 D_8004FE28;
+extern s32 D_8004FE38;
+extern s32 g_ArchiveCurFileSize;
 
+void func_8002BA58(void) {
+    s32 slotCount = D_8004FE40;
+    u8* slot = (u8*)D_8004FE2C;
+    s16 i = 0;
+    u8* sector;
+
+    if (slotCount > 0) {
+        u16 seq = (u16)D_8004FE28;
+        for (i = 0; i < slotCount; i++, slot += 8) {
+            if (*(u16*)(slot + 0) == 1 && *(u16*)(slot + 2) == seq) {
+                break;
+            }
+        }
+    }
+    if (i == slotCount) {
+        return;
+    }
+
+    /* Found matching slot — mark as processed */
+    *(u16*)(slot + 0) = 3;
+    D_8004FE28++;
+
+    if (g_ArchiveCurFileSize > 0) return;
+
+    if (D_8004FDFC < 2) {
+        g_ArchiveCurFileSize = 0;
+        CdDataCallback(0);
+        ArchiveCdSeekToFile(D_8004FE38);
+        D_8004FDFC = 0;
+    }
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BB50);
+#endif
 
 /* ---- func_8002BF38: synchronous VRAM stream section decoder -----------------
  * asm 8002BF38-8002C30C. Consumes at most ONE 0x800 stream sector per call,
@@ -186,7 +630,26 @@ void func_8002BF38(void) {
     }
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C310);
+extern void func_800379C8(char*, ...);
+extern char D_80018944[];
+extern char D_80018954[];
+extern char D_80018964[];
+extern char D_80018974[];
+extern s32 D_8004FE10;
+extern s16 temp2_D_80059F40 asm("D_80059F40");
+extern s16 temp2_D_80059F44 asm("D_80059F44");
+extern s16 temp2_D_80059F48 asm("D_80059F48");
+
+void func_8002C310(void)
+{
+    func_800379C8(D_80018944, g_ArchiveTable, D_8004FE08, D_8004FE2C);
+    func_800379C8(D_80018954, D_8004FE40, D_8004FE10, D_80059F3C,
+                  D_80059F50);
+    func_800379C8(D_80018964, temp2_D_80059F40, temp2_D_80059F44,
+                  temp2_D_80059F48, D_80059F4C);
+    func_800379C8(D_80018974, D_80059F4C[0], D_80059F4C[1],
+                  D_80059F4C[2]);
+}
 
 extern u32 g_ArchiveDebugTable;
 
@@ -246,9 +709,67 @@ int func_8002C3E8(u8* pModel) {
     return count;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
+s32 func_8002C4BC(u8* pBlock) {
+    u32 flags = *(u32*)(pBlock + 4);
+    s32 count = *(s32*)(pBlock);
+    s32 i;
+    u8* pEntry;
+    if (!(flags & 1)) return count;
+    *(u32*)(pBlock + 4) = flags & ~1;
+    pEntry = pBlock + 0x2C;
+    for (i = 0; i < count; i++, pEntry += 0x38) {
+        *(u32*)(pEntry - 0x14) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x10) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x0C) -= (u32)pBlock;
+        *(u32*)(pEntry - 0x08) -= (u32)pBlock;
+        {
+            u32 tableAddress = *(u32*)pEntry;
+            if (tableAddress != 0) {
+                /* Retail uses the relocated table directly, then restores
+                 * its offset after walking entries backwards through zero. */
+                u8* pTable = (u8*)(uintptr_t)tableAddress;
+                s32 remaining = *(s32*)pTable;
+                if (remaining != -1) {
+                    u8* pRecord = pTable + 4 + remaining * 12;
+                    do {
+                        remaining--;
+                        *(u32*)(pRecord + 4) -= (u32)pBlock;
+                        *(u32*)(pRecord + 8) -= (u32)pBlock;
+                        pRecord -= 12;
+                    } while (remaining != -1);
+                }
+                *(u32*)pEntry -= (u32)pBlock;
+            }
+        }
+    }
+    return count;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C59C);
+void func_8002C59C(u8* pBlock) {
+    u16 flags = *(u16*)(pBlock);
+    s32 count;
+    s32 i;
+    u8* pTable;
+    if (flags & 0x20) return;
+    *(u16*)(pBlock) = flags | 0x20;
+    *(u32*)(pBlock + 0x08) += (u32)pBlock;
+    *(u32*)(pBlock + 0x0C) += (u32)pBlock;
+    *(u32*)(pBlock + 0x10) += (u32)pBlock;
+    *(u32*)(pBlock + 0x14) += (u32)pBlock;
+    {
+        u32 rel = *(u32*)(pBlock + 0x1C);
+        if (rel == 0) return;
+        pTable = pBlock + rel;
+        *(u32*)(pBlock + 0x1C) = (u32)pTable;
+    }
+    count = *(s32*)(pTable);
+    if (count == -1) return;
+    pTable += 4;
+    for (i = count; i >= 0; i--) {
+        *(u32*)(pTable + i * 12 + 4) += (u32)pBlock;
+        *(u32*)(pTable + i * 12 + 8) += (u32)pBlock;
+    }
+}
 
 /* Finalizes a model control block: pins its backing buffer into the heap so it
  * won't move. Reads a flags word at +0x4; if bit 0x2 is already set the block is
@@ -282,17 +803,15 @@ s32 func_8002C644(u8* a0) {
             if (end <= base || (end - base) >= 0x200000 ||
                 hdrNext <= base || (hdrNext - base) >= 0x200000) {
                 s_skippedPins++;
-                if (XenoFieldDiagEnabled() && s_skippedPins <= 4) {
+                if (s_skippedPins <= 4) {
                     printf("[field-diag] func_8002C644: skip invalid pin base=0x%x end=0x%x hdrNext=0x%x (skips=%d)\n",
                            base, end, hdrNext, s_skippedPins);
                 }
                 return 0;
             }
             s_realPins++;
-            if (XenoFieldDiagEnabled()) {
-                printf("[field-diag] func_8002C644: real pin base=0x%x size=%u (pins=%d)\n",
-                       base, end - base, s_realPins);
-            }
+            printf("[field-diag] func_8002C644: real pin base=0x%x size=%u (pins=%d)\n",
+                   base, end - base, s_realPins);
         }
 #endif
         HeapInsertAlloc((HeapBlock*)a0, (u_int)(a1 - (s32)a0));
@@ -301,7 +820,16 @@ s32 func_8002C644(u8* a0) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C68C);
+s32 func_8002C68C(u8* pBlock) {
+    u16 flags = *(u16*)(pBlock);
+    if (flags & 0x40) {
+        return 1;
+    }
+    *(u16*)(pBlock) = flags | 0x40;
+    HeapInsertAlloc((void*)pBlock, *(u32*)(pBlock + 0x14) - (u32)pBlock);
+    *(u32*)(pBlock + 0x14) = 0;
+    return 0;
+}
 
 extern u8 D_80059598;
 extern u8 D_80059599;
@@ -329,6 +857,8 @@ extern u8 D_8004FE50[];
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C700);
 #else
 typedef s32 (*ModelPrimProc)(u8* pCmd, s32 count);
+extern void PcPort_LinkModelPrim(u32* ot, s32 index, void* packet,
+                                  u32 tag_length);
 /* Build-pass proc, called per packet-source record by func_8002C8CC as
  * fn(D_80059538, D_80059528, shade) — mirrors the retail dispatch; the ported
  * buildProcs only consume the first arg. */
@@ -349,17 +879,22 @@ extern s32 D_800500F8;
 extern s32 D_800500FC;
 extern u32 D_80059568;
 extern s32 D_80059578;
-extern s32 func_8003101C(void);
+extern s32 func_8003101C(const u8* bounds, s32 mode);
 
 static u32 ModelPrimVertexIndex1(u32 word) {
     return (word >> 16) & 0xFFFF;
 }
 
+/* Retail screen cull (asm 8002E7CC-8002E818): keep a prim only when at least
+ * one vertex has packed SXY <u D_800500FC (y within [0, screenH-1]; negative
+ * or below-screen y fails the unsigned compare) AND at least one vertex has
+ * x <u D_800500F8. An earlier port transcription inverted the first
+ * comparison, culling exactly the on-screen prims. */
 static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     u32 yMaxPacked = (u32)D_800500FC;
     u32 xMax = (u32)D_800500F8;
 
-    if (!(xy0 > yMaxPacked || xy1 > yMaxPacked || xy2 > yMaxPacked || xy3 > yMaxPacked)) {
+    if (!(xy0 < yMaxPacked || xy1 < yMaxPacked || xy2 < yMaxPacked || xy3 < yMaxPacked)) {
         return 0;
     }
     return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
@@ -369,7 +904,8 @@ static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
 /* PSX GPU hardware rule (see game_overrides.c ModelPrimTriOversized):
  * polygons wider than 1023 or taller than 511 in projected screen space are
  * silently rejected by the rasterizer; PsyX does not implement this. */
-static int ModelPrimPackedOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
+/* Kept for reference; retail E688 has no oversize cull. */
+static int __attribute__((unused)) ModelPrimPackedOversized(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
     s32 xs[4], ys[4], xmin, xmax, ymin, ymax, i;
     u32 v[4];
     v[0] = xy0; v[1] = xy1; v[2] = xy2; v[3] = xy3;
@@ -406,8 +942,8 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         long xy1 = 0;
         long xy2 = 0;
         long xy3 = 0;
-        long p = 0;
         long otz = 0;
+        long p = 0;
         long flag = 0;
 
         count--;
@@ -415,31 +951,52 @@ s32 func_8002E688(u8* pCmd, s32 count) {
         out += packetStep;
 
         otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        if (flag < 0 || otz <= 0) {
+        /* No FLAG rejection (inert-LZCR sweep): retail's apparent flag gates
+         * at 8002E788/8002E7C0 are `mfc2 $t0, $31` -- MFC2 reads DATA reg 31
+         * (LZCR, always 1..32), not the FLAG control reg (CFC2) -- so the
+         * bltz never takes on hardware; overflowed divides saturate and the
+         * quad draws.  (The former XENO_E688_IGNORE_FLAG diagnostic toggle
+         * modeled a gate that does not exist; deleted.)  The zero/negative
+         * depth check is kept. */
+        if (otz <= 0) {
             continue;
         }
-        if (NormalClip(xy0, xy1, xy2) < 0) {
+        /* asm 8002E7AC: blez MAC0 after NCLIP — reject backface/degenerate. */
+        if (NormalClip(xy0, xy1, xy2) <= 0) {
             continue;
         }
         if (!ModelPrimPackedOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
             continue;
         }
-        if (ModelPrimPackedOversized((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
-            continue;
-        }
+        /* No oversize cull in retail 8002E688 (asm 8002E7CC-8002E894 is only the
+         * screen-overlap + max-SZ OT path). A port-only 1023x511 reject would
+         * delete extreme close-up FT4s (Map014 painting hold). */
 
         {
-            /* Depth-bucket from OTZ (=SZ3>>2, the RotTransPers4 return), matching
-             * the original asm's SZ3 >> (D_80050100 + 2). The p out-param is the
-             * GTE depth-cue (IR0), NOT a depth -- it is 0 with DQ regs unset. */
-            s32 otIndex = (s32)otz >> D_80050100;
-            u32 oldTag;
-            if (otIndex <= 0) {
+            /* Retail 0x8002E82C-0x8002E894 rejects any zero SZ, selects
+             * max(SZ0,SZ1,SZ2,SZ3), and shifts it by D_80050100 + 2.
+             * RotTransPers4's return is SZ3 >> 2 and is correct for the PsyQ
+             * helper contract, but is not this walker's OT-depth source. */
+#ifdef XENO_PC_PORT
+            u16 sz0 = (u16)C2_SZ0;
+            u16 sz1 = (u16)C2_SZ1;
+            u16 sz2 = (u16)C2_SZ2;
+            u16 sz3 = (u16)C2_SZ3;
+            u16 maxSz;
+            s32 otIndex;
+
+            if (sz0 == 0 || sz1 == 0 || sz2 == 0 || sz3 == 0) {
                 continue;
             }
-            oldTag = ot[otIndex];
-            ot[otIndex] = (u32)(uintptr_t)out & 0x00FFFFFF;
-            *(u32*)(out + 0x00) = (oldTag & 0x00FFFFFF) | tagLen;
+            maxSz = sz0;
+            if (sz1 > maxSz) maxSz = sz1;
+            if (sz2 > maxSz) maxSz = sz2;
+            if (sz3 > maxSz) maxSz = sz3;
+            otIndex = (s32)maxSz >> (D_80050100 + 2);
+#else
+            s32 otIndex = (s32)otz >> D_80050100;
+#endif
+            PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
             *(u32*)(out + 0x08) = (u32)xy0;
             *(u32*)(out + 0x10) = (u32)xy1;
             *(u32*)(out + 0x18) = (u32)xy2;
@@ -456,7 +1013,7 @@ s32 func_8002E688(u8* pCmd, s32 count) {
 s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
     s32 groupCount;
 
-    if (D_80050104 != 0 && func_8003101C() != 0) {
+    if (D_80050104 != 0 && func_8003101C(a0, D_80050104) != 0) {
         return 0;
     }
 
@@ -474,13 +1031,28 @@ s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
             u8* pGroup = (u8*)(uintptr_t)D_80059528;
             u8 prim = pGroup[0];
             s32 count = *(s16*)(pGroup + 0x02);
-            ModelPrimDesc* desc = &D_8004FE50[prim];
-            ModelPrimProc proc = (a3 < 6) ? desc->proc[a3] : NULL;
+            ModelPrimDesc* desc;
+            ModelPrimProc proc;
 
             D_80059528 += 4;
+            if (prim >= 17) {
+                D_80059528 += (u32)count * 8u;
+                groupCount--;
+                continue;
+            }
+            desc = &D_8004FE50[prim];
+            proc = (a3 < 6) ? desc->proc[a3] : NULL;
             if (proc == NULL) {
-                fprintf(stderr, "[xeno-port] missing D_8004FE50 prim=%u variant=%d\n", prim, a3);
-                abort();
+                static int s_missing_draw_logs;
+                u32 stride = desc->cmdStride ? desc->cmdStride : 8u;
+                if (s_missing_draw_logs < 8) {
+                    fprintf(stderr, "[xeno-port] missing D_8004FE50 prim=%u variant=%d; skip group\n",
+                            prim, a3);
+                    s_missing_draw_logs++;
+                }
+                D_80059528 += (u32)count * stride;
+                groupCount--;
+                continue;
             }
 
             proc((u8*)(uintptr_t)D_80059528, count);
@@ -521,7 +1093,9 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
     if (((*(u16*)(s0 + 0x0) & 0x1) == 0) && (*(s32*)(s0 + 0x30) != 0) &&
         (s1 != 0)) {
         HeapSetCurrentContentType(0x26);
-        *(void**)(s0 + 0x18) = HeapAlloc(*(s32*)(s0 + 0x30), 0);
+        /* The model header stores a PSX u32 pointer at +0x18.  A native
+         * void* store is eight bytes on the port host and overwrites +0x1C. */
+        *(u32*)(s0 + 0x18) = (u32)(uintptr_t)HeapAlloc(*(s32*)(s0 + 0x30), 0);
         *(u16*)(s0 + 0x0) = *(u16*)(s0 + 0x0) | 0x1;
     }
 
@@ -583,10 +1157,38 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
             D_80059528 = (u32)(pCur + 0x4);
             {
                 u32 prim = *(u8*)(pCur + 0x0);
+                s32 nprim;
+                u32 stride;
+                if (prim >= 17) {
+                    nprim = (s32)*(s16*)(pCur + 0x2);
+                    stride = 8u;
+                    if (nprim > 0) {
+                        D_80059528 += (u32)nprim * stride;
+                    }
+                    s2 = s2 - 1;
+                    continue;
+                }
                 desc = &D_8004FE50[prim];
                 if (desc->buildProc == NULL) {
-                    fprintf(stderr, "[xeno-port] missing D_8004FE50 buildProc prim=%u\n", prim);
-                    abort();
+                    /* Retail table has a full 15-row set; the port wires a
+                     * sparse subset. Advance the command cursor by this
+                     * group's prim count so a missing row does not desync
+                     * later groups in the same header. */
+                    static int s_missing_prim_logs;
+                    nprim = (s32)*(s16*)(pCur + 0x2);
+                    stride = desc->cmdStride ? desc->cmdStride : 8u;
+                    if (s_missing_prim_logs < 8) {
+                        fprintf(stderr,
+                                "[xeno-port] missing D_8004FE50 buildProc "
+                                "prim=%u; skip group\n",
+                                prim);
+                        s_missing_prim_logs++;
+                    }
+                    if (nprim > 0) {
+                        D_80059528 += (u32)nprim * stride;
+                    }
+                    s2 = s2 - 1;
+                    continue;
                 }
             }
             fn = desc->buildProc;
@@ -661,9 +1263,27 @@ void func_8002CB54(u8* modelData, u32* out1, u32* out2) {
     *out2 = (u32)((u8*)buf + *(s32*)(modelData + 0x34));
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CBBC);
+// Frees the model's optional secondary buffer at modelData+0x18 iff the
+// model's own flags word (+0x0) has bit 0x1 set, then clears that bit. The
+// flag is self-describing: it is only set when +0x18 was actually populated
+// with a real allocation, so this never frees an unowned/uninitialized field.
+void func_8002CBBC(u8* modelData) {
+    u16 flags = *(u16*)(modelData + 0x0);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CC10);
+    if (flags & 0x1) {
+        /* The optional buffer is stored in the model's PSX u32 slot. */
+        HeapFree((void*)(uintptr_t)*(u32*)(modelData + 0x18));
+        *(u16*)(modelData + 0x0) = flags & 0xFFFE;
+    }
+}
+
+extern s32 D_80059310;
+extern s32 D_80050108;
+
+void func_8002CC10(u16 x, u16 y) {
+    D_80059310 = GetTPage(0, 0, x, y) & 0x1F;
+    D_80050108 = 1;
+}
 
 extern s32 D_80059310;
 extern s32 D_80050108;
@@ -749,7 +1369,102 @@ s32 func_8002CD64(u8* pSrc) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CDCC);
+/* buildProc for prim 0x00 (lit flat tri template, tag len 4). Byte-identical
+ * retail clone of prim 0x08's builder func_8002CF58 below -- only the three
+ * intra-function jump targets differ in the retail bytes; see that function's
+ * comment for the four shade paths. asm: func_8002CDCC.s. */
+extern void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal);
+extern void NormalLightCol(void* a0, void* a1, void* a2);
+
+#ifdef XENO_PC_PORT
+/* Coexistence: the C transcription compiles ~59% fuzzy under mwcc (same as
+ * the sibling builders), so the matching build keeps the retail bytes via
+ * INCLUDE_ASM below and only the port compiles this body. */
+s32 func_8002CDCC(u8* pSrc, u8* pCmd, s32 shade) {
+    u8* p = D_80059424;
+    SVECTOR tmpNormal; /* asm's sp+0x10 out-normal for the plain-lit path */
+
+    p[0x3] = 0x4;
+    if (shade & 0x1) {
+        if (shade & 0x2) {
+            u8* vb;
+            SVECTOR *n0;
+            SVECTOR *n1;
+            SVECTOR *n2;
+
+            *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
+            vb = (u8*)(uintptr_t)D_8005953C;
+            n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+            D_80059498 += 4;
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+            NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+            D_80059498 += 8;
+        } else {
+            u8* vb = (u8*)(uintptr_t)D_8005953C;
+            SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pSrc, p + 0x4);
+        }
+        p[0x7] = pSrc[0x3];
+    } else if (shade & 0x4) {
+        D_80059498 += 4;
+        NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+        D_80059498 += 8;
+        p[0x7] = pSrc[0x3];
+    } else {
+        *(u32*)(p + 0x4) = *(u32*)pSrc;
+    }
+    return 1;
+}
+#else
+/* retail 0x8002CDCC: prim builder 0x04 -- four shade paths */
+s32 func_8002CDCC(u8* pSrc, u8* pCmd, s32 shade) {
+    u8* p = D_80059424;
+    SVECTOR tmpNormal;
+
+    p[0x3] = 0x4;
+    if (shade & 0x1) {
+        if (shade & 0x2) {
+            u8* vb;
+            SVECTOR *n0;
+            SVECTOR *n1;
+            SVECTOR *n2;
+
+            *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
+            vb = (u8*)(uintptr_t)D_8005953C;
+            n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+            D_80059498 += 4;
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+            NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+            D_80059498 += 8;
+        } else {
+            u8* vb = (u8*)(uintptr_t)D_8005953C;
+            SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pSrc, p + 0x4);
+        }
+        p[0x7] = pSrc[0x3];
+    } else if (shade & 0x4) {
+        D_80059498 += 4;
+        NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
+        D_80059498 += 8;
+        p[0x7] = pSrc[0x3];
+    } else {
+        *(u32*)(p + 0x4) = *(u32*)pSrc;
+    }
+    return 1;
+}
+#endif
 
 extern u8* D_80059424;
 
@@ -776,18 +1491,27 @@ s32 func_8002CF58(u8* pSrc, u8* pCmd, s32 shade) {
 
     p[0x3] = 0x4;
     if (shade & 0x1) {
-        u8* vb = (u8*)(uintptr_t)D_8005953C;
-        SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
-        SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
-        SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
-
         if (shade & 0x2) {
+            u8* vb;
+            SVECTOR *n0;
+            SVECTOR *n1;
+            SVECTOR *n2;
+
             *(u32*)(uintptr_t)D_80059498 = *(u32*)pSrc;
+            vb = (u8*)(uintptr_t)D_8005953C;
+            n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
             D_80059498 += 4;
             func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
             NormalLightCol((void*)(uintptr_t)D_80059498, pSrc, p + 0x4);
             D_80059498 += 8;
         } else {
+            u8* vb = (u8*)(uintptr_t)D_8005953C;
+            SVECTOR* n0 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x0) << 3));
+            SVECTOR* n1 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x2) << 3));
+            SVECTOR* n2 = (SVECTOR*)(vb + ((s32)*(s16*)(pCmd + 0x4) << 3));
+
             func_8002DB84(n0, n1, n2, &tmpNormal);
             NormalLightCol(&tmpNormal, pSrc, p + 0x4);
         }
@@ -835,21 +1559,238 @@ s32 func_8002D0E4(u8* pSrc) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D180);
+#ifdef XENO_PC_PORT
+/* Retail 0x8002D180 returns 1 and lights the 4th vertex from pColor (a0),
+ * not the shade word C8CC passes as a2. The matching C body left a2 as a
+ * pointer and dropped the return, which made the POLY_G4 builder unusable
+ * as a D_8004FE50 buildProc. */
+s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    (void)shade;
+    pPoly[3] = 8; /* POLY_G4 tag */
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x1C)
+    );
+    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pColor, pPoly + 0x1C);
+    pPoly[7] = pColor[3];
+    return 1;
+}
+#else
+void func_8002D180(u8* pColor, s16* pIndices, u8* pLightSrc) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 8; /* POLY_G4 tag */
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x1C)
+    );
+    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
+    pPoly[7] = pColor[3];
+}
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D244);
+s32 func_8002D244(u8* pColor, s16* pIndices) {
+    if (func_8002CD64(pColor) == 0) return 0;
+    {
+        u8* pPoly = D_80059424;
+        s16* normals = (s16*)D_8005952C;
+        pPoly[3] = 0xC; /* POLY_GT4 tag */
+        NormalColor3(
+            (SVECTOR*)&normals[pIndices[0] * 4],
+            (SVECTOR*)&normals[pIndices[1] * 4],
+            (SVECTOR*)&normals[pIndices[2] * 4],
+            (CVECTOR*)(pPoly + 4),
+            (CVECTOR*)(pPoly + 0x10),
+            (CVECTOR*)(pPoly + 0x1C)
+        );
+        NormalColor((SVECTOR*)&normals[pIndices[3] * 4], (CVECTOR*)(pPoly + 0x28));
+        *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+        *(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+        *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
+        *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+        pPoly[7] = pColor[3];
+    }
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D354);
+void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 8; /* POLY_G4 tag */
+    *(s32*)(pPoly + 4) = *(s32*)(pColor);
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x1C)
+    );
+    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
+    pPoly[7] = pColor[3];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
+s32 func_8002D420(u8* pColor, s16* pIndices) {
+    if (func_8002CD64(pColor) == 0) return 0;
+    {
+        u8* pPoly = D_80059424;
+        s16* normals = (s16*)D_8005952C;
+        pPoly[3] = 0xC; /* POLY_GT4 tag */
+        NormalColor3(
+            (SVECTOR*)&normals[pIndices[0] * 4],
+            (SVECTOR*)&normals[pIndices[1] * 4],
+            (SVECTOR*)&normals[pIndices[2] * 4],
+            (CVECTOR*)(pPoly + 4),
+            (CVECTOR*)(pPoly + 0x10),
+            (CVECTOR*)(pPoly + 0x1C)
+        );
+        NormalColor((SVECTOR*)&normals[pIndices[3] * 4], (CVECTOR*)(pPoly + 0x28));
+        *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+        *(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+        *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
+        *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+        pPoly[7] = pColor[3];
+    }
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
+s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags) {
+    u8* pPoly;
+    s16* normals;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D6AC);
+    if (func_8002CD64(pColor) == 0) return 0;
+    pPoly = D_80059424;
+    normals = (s16*)D_8005953C;
+    pPoly[3] = 0xC; /* POLY_GT4 tag */
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D77C);
+    /* Vertex color tpage/clut merge */
+    *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+    *(u32*)(pPoly + 0x14) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);
+    *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
+    if (flags & 1) {
+        SVECTOR* n0 = (SVECTOR*)&normals[pIndices[0] * 4];
+        SVECTOR* n1 = (SVECTOR*)&normals[pIndices[1] * 4];
+        SVECTOR* n2 = (SVECTOR*)&normals[pIndices[2] * 4];
+        if (flags & 2) {
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+            NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+        } else {
+            SVECTOR tmpNormal;
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalLightCol(&tmpNormal, pColor, pPoly + 4);
+        }
+        D_80059498 += 8;
+    } else if (flags & 4) {
+        NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+        D_80059498 += 4;
+    }
+
+    *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+    pPoly[7] = pColor[3];
+    return 1;
+}
+
+extern u32 D_80059498;
+
+void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 6; /* POLY_G3 tag */
+    if (flags & 2) {
+        *(s32*)(uintptr_t)D_80059498 = *(s32*)(pColor);
+        D_80059498 += 4;
+    }
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x14)
+    );
+    pPoly[7] = pColor[3];
+}
+
+void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
+    u8* pPoly = D_80059424;
+    s16* normals = (s16*)D_8005952C;
+    pPoly[3] = 6; /* POLY_G3 tag */
+    NormalColorCol3(
+        (SVECTOR*)&normals[pIndices[0] * 4],
+        (SVECTOR*)&normals[pIndices[1] * 4],
+        (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)(pPoly + 4),
+        (CVECTOR*)(pPoly + 0xC),
+        (CVECTOR*)(pPoly + 0x14),
+        (CVECTOR*)(pPoly + 0x14)
+    );
+    pPoly[7] = pColor[3];
+}
+
+s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
+    u8* pPoly;
+    s16* normals;
+    SVECTOR* n0;
+    SVECTOR* n1;
+    SVECTOR* n2;
+
+    if (func_8002CD64(pColor) == 0) return 0;
+    pPoly = D_80059424;
+    normals = (s16*)D_8005953C;
+    pPoly[3] = 7; /* POLY_GT3 tag */
+    n0 = (SVECTOR*)&normals[pIndices[0] * 4];
+    n1 = (SVECTOR*)&normals[pIndices[1] * 4];
+    n2 = (SVECTOR*)&normals[pIndices[2] * 4];
+
+    /* Vertex color tpage/clut merge */
+    *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+    *(u32*)(pPoly + 0x14) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);
+
+    if (flags & 1) {
+        if (flags & 2) {
+            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
+#ifdef XENO_PC_PORT
+            /* Retail shade 3 (C8CC mode 2 first pass) stores the face
+             * normal at D_80059498; the matching C body never lit the
+             * packet, so POLY_FT3 rgb stayed 0 and overlay meshes drew
+             * black. Mirror func_8002CDCC: light from that normal. */
+            NormalLightCol((void*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+#endif
+        } else {
+            SVECTOR tmpNormal;
+            func_8002DB84(n0, n1, n2, &tmpNormal);
+            NormalColor(&tmpNormal, (CVECTOR*)(pPoly + 4));
+        }
+    } else if (flags & 4) {
+        NormalColor((SVECTOR*)(uintptr_t)D_80059498, (CVECTOR*)(pPoly + 4));
+    }
+
+    D_80059498 += 8;
+    pPoly[7] = pColor[3];
+#ifdef XENO_PC_PORT
+    if ((pPoly[4] | pPoly[5] | pPoly[6]) == 0) {
+        pPoly[4] = pPoly[5] = pPoly[6] = 0x80;
+    }
+#endif
+    return 1;
+}
 
 /* buildProc for prim 0x05 (textured tri, POLY_FT3 template, tag len 7).
  * Reads one 0x08-byte packet-source record and writes the static packet fields;
@@ -871,9 +1812,44 @@ s32 func_8002D984(u8* pSrc) {
     return 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
+extern u16 D_80059308;
+extern u16 D_8005930C;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DAFC);
+s32 func_8002DA14(u8* pColor, s16* pIndices) {
+    if (func_8002CD64(pColor) == 0) return 0;
+    {
+        u8* pPoly = D_80059424;
+        s16* normals = (s16*)D_8005952C;
+        pPoly[3] = 9; /* POLY_F4 tag */
+        NormalColor3(
+            (SVECTOR*)&normals[pIndices[0] * 4],
+            (SVECTOR*)&normals[pIndices[1] * 4],
+            (SVECTOR*)&normals[pIndices[2] * 4],
+            (CVECTOR*)(pPoly + 4),
+            (CVECTOR*)(pPoly + 0x10),
+            (CVECTOR*)(pPoly + 0x1C)
+        );
+        *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
+        *(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
+        *(u16*)(pPoly + 0x24) = *(u16*)(pColor);
+        pPoly[7] = pColor[3];
+    }
+    return 1;
+}
+
+void func_8002DAFC(void) {
+    u8* pPoly = D_80059424;
+    SetPolyFT3((POLY_FT3*)pPoly);
+    SetShadeTex(pPoly, 1);
+    {
+        s32 tpage = GetTPage(1, 0, 0x280, 0);
+        *(u16*)(pPoly + 0x16) = (tpage & 0xFFE0) | D_80059310;
+    }
+    {
+        s32 clut = GetClut(0, 0x1E0);
+        *(u16*)(pPoly + 0x0E) = (clut & 0xF) | D_80059314;
+    }
+}
 
 /* Computes the normalized face normal of the triangle (v0,v1,v2) into
  * outNormal (SVECTOR, 4096-scale via VectorNormalS). asm: edge diffs ->
@@ -934,9 +1910,128 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z) {
     return z;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DD20);
+#ifdef XENO_PC_PORT
+/* TIM resource loader: pList[0] = entry count + 1; pList[1..count] is an offset
+ * table; each offset points at a TIM blob within pList. Walk it high->low,
+ * OpenTIM/ReadTIM each, upload the CLUT (if present) then the pixels to VRAM via
+ * LoadImage. This uploads the member-change menu's textures + font CLUT --
+ * stubbed, the font renders with the wrong palette (colour bands, not glyphs). */
+void func_8002DD20(u32* pList) {
+    s32 count = (s32)pList[0] - 1;
+    u32* pEntry;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
+    if (count == -1) {
+        return;
+    }
+    pEntry = pList + count;
+    do {
+        u32 offset = (pEntry[1] >> 2) << 2;
+        TIM_IMAGE tim;
+
+        OpenTIM((u_long*)((u8*)pList + offset));
+        ReadTIM(&tim);
+        if (tim.caddr != NULL) {
+            DrawSync(0);
+            LoadImage(tim.crect, (u_long*)tim.caddr);
+        }
+        DrawSync(0);
+        pEntry -= 1;
+        LoadImage(tim.prect, (u_long*)tim.paddr);
+        count -= 1;
+    } while (count != -1);
+}
+#else
+/* retail 0x8002DD20: upload the TIM images referenced by a strip table */
+void func_8002DD20(u_long* table) {
+    TIM_IMAGE tim;
+    u_long* entry;
+    s32 i;
+    s32 end;
+
+    i = table[0];
+    if (--i == -1) return;
+    end = -1;
+    entry = (u_long*)((u32)i * 4 + (u32)table);
+
+    while (1) {
+        OpenTIM((u_long*)((u8*)table + ((entry[1] >> 2) << 2)));
+        ReadTIM(&tim);
+        if (tim.caddr != 0) {
+            DrawSync(0);
+            LoadImage(tim.crect, tim.caddr);
+        }
+        DrawSync(0);
+        entry--;
+        LoadImage(tim.prect, tim.paddr);
+        if (--i == end) break;
+    }
+}
+#endif
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002DDE4.s
+ * (0x8002DDE4-0x8002DFE0, 127 instructions). Uploads a sequence of images: the
+ * header word at pImageData[0] is the count, records follow at +4 with a 0x1100
+ * (texX/texY mode) or 0x1101 (ofsX/ofsY mode) opcode. For each record the RECT
+ * x/y comes from the record's u/v fields — via the mode-1 offset pair, the
+ * mode-2 offset pair plus the record sums, or the record sums alone when the
+ * mode is neither — then the width/height words follow, and LoadImage uploads
+ * the pixels; the cursor advances by w*h*2. Returns 0 normally, 0 when the count
+ * is not positive, and **0x1101** for an unknown opcode (the value retail leaves
+ * in v0 via its delay slot). */
+s32 func_8002DDE4(u32* pImageData, s32 arg1, s32 texX, s32 texY, s32 modeB, u16 ofsX, u16 ofsY) {
+    RECT rect;
+    s16 modeA = (s16)arg1;
+    u32 count = pImageData[0];
+    u8* pSrc = (u8*)pImageData + (count * 4) + 4;
+    s32 i = 0;
+    u32 opcode;
+
+    if ((s32)count <= 0) {
+        return 0;
+    }
+    do {
+        opcode = *(u32*)pSrc;
+        pSrc += 4;
+        if (opcode == 0x1100) {
+            if (modeA == 1) {
+                rect.x = (s16)(texX + *(u16*)(pSrc + 4));
+                rect.y = (s16)(texY + *(u16*)(pSrc + 6));
+            } else if (modeA == 2) {
+                rect.x = (s16)(texX + *(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(texY + *(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            } else {
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(*(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            }
+        } else if (opcode == 0x1101) {
+            if (modeB == 1) {
+                rect.x = (s16)(ofsX + *(u16*)(pSrc + 4));
+                rect.y = (s16)(ofsY + *(u16*)(pSrc + 6));
+            } else if (modeB == 2) {
+#ifdef TEMP2_DDE4_MUTANT_MODE2_NO_OFFSET
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+#else
+                rect.x = (s16)(ofsX + *(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+#endif
+                rect.y = (s16)(ofsY + *(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            } else {
+                rect.x = (s16)(*(u16*)(pSrc + 0) + *(u16*)(pSrc + 4));
+                rect.y = (s16)(*(u16*)(pSrc + 2) + *(u16*)(pSrc + 6));
+            }
+        } else {
+            return 0x1101;
+        }
+        pSrc += 8;
+        rect.w = (s16)*(u16*)pSrc;
+        pSrc += 2;
+        rect.h = (s16)*(u16*)pSrc;
+        pSrc += 2;
+        LoadImage(&rect, (u_long*)pSrc);
+        pSrc += rect.w * rect.h * 2;
+        i++;
+    } while (i < (s32)count);
+    return 0;
+}
 
 extern u8 D_8006FAF0[];
 
@@ -952,45 +2047,345 @@ void func_8002DFF0(s32 a0, s32 a1) {
     D_800500F8 = a0;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E010);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E448);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E64C);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002E8B4);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002EAB8);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002ED20);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002EEF8);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F0E4);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F2E0);
+#else
+/* Retail 8002F2E0..8002F4B0, with the shared tail at 8002E1F4.
+ * Lit FT3 variant: one normal per triangle, NCS updates the first RGB word.
+ * Keep the pipeline's lookahead and final RTPT, including count == 0; those
+ * leave observable GTE state. Rejected triangles can still write XY words.
+ * Native OT address translation is confined to the shared link adapter. */
+s32 func_8002F2E0(u8* pCmd, s32 count) {
+    u8* vertices = (u8*)(uintptr_t)D_8005953C;
+    u8* normals = (u8*)(uintptr_t)D_80059498;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x20u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertices + ((cmd & 0xffffu) << 3);
+    u8* nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u8* nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
 
+    MTC2(*(u32*)nextV1, 2);
+    MTC2(*(u32*)(nextV1 + 4), 3);
+    MTC2(*(u32*)nextV2, 4);
+    MTC2(*(u32*)(nextV2 + 4), 5);
+    for (;;) {
+        u32 xy0, xy1, xy2, averageZ;
+        u8* out;
+
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt();
+        if (remaining == 0) break;
+        remaining--;
+        pCmd += 8;
+        packet += 0x20u;
+        cmd = *(u32*)pCmd;
+        nextV0 = vertices + ((cmd & 0xffffu) << 3);
+        normals += 8;
+        nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+        nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)nextV1, 2);
+        MTC2(*(u32*)(nextV1 + 4), 3);
+        MTC2(*(u32*)nextV2, 4);
+        MTC2(*(u32*)(nextV2 + 4), 5);
+
+        /* MFC2 $31 reads LZCR, not the FLAG control register. */
+        if ((s32)MFC2(31) < 0) continue;
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound ||
+              (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound)) continue;
+
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x10) = xy1; /* delay slot, even for backfaces */
+        if ((s32)MFC2(24) <= 0) continue;
+        gte_avsz3();
+        *(u32*)(out + 0x18) = xy2;
+        /* Retail masks the packet pointer to its 24-bit DMA identity here.
+         * Host pointers remain host pointers until the link adapter below. */
+        averageZ = MFC2(7);
+        emitted++;
+        MTC2(*(u32*)(normals - 8), 0); /* OTZ-zero branch delay slot */
+        if (averageZ == 0) continue;
+        MTC2(*(u32*)(normals - 4), 1);
+        gte_ncs();
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(22) & 0x00ffffffu);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x07000000u);
+    }
+    D_80059498 = (u32)(uintptr_t)normals;
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x20u);
+    return (s32)yBound;
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F4B4);
+#else
+/* Retail 8002F4B4..8002F6B4 and shared tail 8002E1F4: lit GT3.
+ * Scratchpad holds indexed normal addresses, not a per-face normal cursor.
+ * Preserve partial XY writes on rejection and the terminal RTPT. */
+s32 func_8002F4B4(u8* pCmd, s32 count) {
+    u32 vertices = D_8005953C;
+    u32 normalDelta = D_8005952C - vertices;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x28u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32* scratch = (u32*)g_PsxScratchpad; /* retail 0x1F800000 */
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u32 v0 = vertices + ((cmd & 0xffffu) << 3);
+    u32 v1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u32 v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+    for (;;) {
+        u32 xy0, xy1, xy2, averageZ;
+        u8* out;
+        u8* n0;
+        u8* n1;
+        u8* n2;
+        MTC2(*(u32*)(uintptr_t)v0, 0);
+        MTC2(*(u32*)(uintptr_t)(v0 + 4), 1);
+        MTC2(*(u32*)(uintptr_t)v1, 2);
+        MTC2(*(u32*)(uintptr_t)(v1 + 4), 3);
+        MTC2(*(u32*)(uintptr_t)v2, 4);
+        MTC2(*(u32*)(uintptr_t)(v2 + 4), 5);
+        gte_rtpt();
+        if (remaining == 0) break;
+        scratch[0] = v0 + normalDelta;
+        scratch[1] = v1 + normalDelta;
+        scratch[2] = v2 + normalDelta;
+        remaining--;
+        pCmd += 8;
+        packet += 0x28u;
+        cmd = *(u32*)pCmd;
+        v0 = vertices + ((cmd & 0xffffu) << 3);
+        v1 = vertices + ((cmd >> 13) & 0xfff8u);
+        v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        if ((s32)MFC2(31) < 0) continue;
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound || (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound)) continue;
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x14) = xy1; /* backface branch delay slot */
+        if ((s32)MFC2(24) <= 0) continue;
+        gte_avsz3();
+        *(u32*)(out + 0x20) = xy2;
+        averageZ = MFC2(7);
+        if (averageZ == 0) continue;
+        emitted++;
+        n0 = (u8*)(uintptr_t)scratch[0];
+        n1 = (u8*)(uintptr_t)scratch[1];
+        n2 = (u8*)(uintptr_t)scratch[2];
+        MTC2(*(u32*)n0, 0);
+        MTC2(*(u32*)(n0 + 4), 1);
+        MTC2(*(u32*)n1, 2);
+        MTC2(*(u32*)(n1 + 4), 3);
+        MTC2(*(u32*)n2, 4);
+        MTC2(*(u32*)(n2 + 4), 5);
+        gte_nct();
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(20) & 0x00ffffffu);
+        *(u32*)(out + 0x10) = MFC2(21);
+        *(u32*)(out + 0x1c) = MFC2(22);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x09000000u);
+    }
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x28u);
+    return (s32)yBound;
+}
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F6B4);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002F8D0);
+#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FAE8);
+#else
+/* Retail 8002FAE8..8002FCFC and shared tail 8002E1F4: lit FT4.
+ * Preserve lookahead, terminal RTPT, rejection-side GTE operations and
+ * per-face normal consumption. Only OT pointer translation is host-specific. */
+s32 func_8002FAE8(u8* pCmd, s32 count) {
+    u8* vertices = (u8*)(uintptr_t)D_8005953C;
+    u8* normals = (u8*)(uintptr_t)D_80059498;
+    uintptr_t packet = (uintptr_t)D_80059424 - 0x28u;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    u32 emitted = (u32)D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 remaining = (u32)count;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertices + ((cmd & 0xffffu) << 3);
+    u8* nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+    u8* nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
 
+    MTC2(*(u32*)nextV1, 2);
+    MTC2(*(u32*)(nextV1 + 4), 3);
+    MTC2(*(u32*)nextV2, 4);
+    MTC2(*(u32*)(nextV2 + 4), 5);
+    for (;;) {
+        u32 xy0, xy1, xy2, xy3, averageZ;
+        s32 lzcr;
+        u8* fourth;
+        u8* out;
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt();
+        if (remaining == 0) break;
+        remaining--;
+        pCmd += 8;
+        packet += 0x28u;
+        cmd = *(u32*)pCmd;
+        /* Unlike the initial preload, retail masks lookahead V0 to 13 bits. */
+        nextV0 = vertices + ((cmd << 3) & 0xfff8u);
+        nextV1 = vertices + ((cmd >> 13) & 0xfff8u);
+        nextV2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)nextV1, 2);
+        MTC2(*(u32*)(nextV1 + 4), 3);
+        MTC2(*(u32*)nextV2, 4);
+        MTC2(*(u32*)(nextV2 + 4), 5);
+        normals += 8;
+        lzcr = (s32)MFC2(31);
+        gte_nclip();
+        if (lzcr < 0) continue;
+        fourth = vertices + ((u32)*(u16*)(pCmd - 2) << 3);
+        xy0 = MFC2(12);
+        if ((s32)MFC2(24) <= 0) continue;
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        MTC2(*(u32*)fourth, 0);
+        MTC2(*(u32*)(fourth + 4), 1);
+        gte_rtps();
+        xy3 = MFC2(14);
+        lzcr = (s32)MFC2(31);
+        gte_avsz4(); /* executes even on the LZCR rejection branch */
+        if (lzcr < 0) continue;
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound || xy3 < yBound)) continue;
+        if (!((xy0 & 0xffffu) < xBound || (xy1 & 0xffffu) < xBound ||
+              (xy2 & 0xffffu) < xBound || (xy3 & 0xffffu) < xBound)) continue;
+        averageZ = MFC2(7);
+        emitted++;
+        if (averageZ == 0) continue;
+        MTC2(*(u32*)(normals - 8), 0);
+        MTC2(*(u32*)(normals - 4), 1);
+        gte_ncs();
+        out = (u8*)packet;
+        *(u32*)(out + 8) = xy0;
+        *(u32*)(out + 0x10) = xy1;
+        *(u32*)(out + 0x18) = xy2;
+        *(u32*)(out + 0x20) = xy3;
+        *(u32*)(out + 4) = (*(u32*)(out + 4) & 0xff000000u) |
+                          (MFC2(22) & 0x00ffffffu);
+        PcPort_LinkModelPrim(ot, (s32)averageZ >> shift, out, 0x09000000u);
+    }
+    D_80059498 = (u32)(uintptr_t)normals;
+    D_80059578 = (s32)emitted;
+    D_80059424 = (u8*)(packet + 0x28u);
+    return (s32)yBound;
+}
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FCFC);
-
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003014C);
+s32 func_8003014C(s32* pData) {
+    s32 cur = pData[2];
+    s32 target = pData[1];
+    s32 step = pData[3];
+    if (cur > target) {
+        cur -= step;
+        if (cur < target) cur = target;
+        pData[2] = cur;
+    } else if (cur < target) {
+        cur += step;
+        if (cur > target) cur = target;
+        pData[2] = cur;
+    }
+    return pData[2];
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
+void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
+    s32 i;
+    if (count == 0) return;
+    pIndices += count - 1;
+    for (i = count - 1; i >= 0; i--) {
+        s32 idx = pIndices[0] * 8;
+        u8* s = pSrc + idx;
+        u8* d = pDst + idx;
+        *(u16*)(d + 0) = *(u16*)(s + 0);
+        *(u16*)(d + 2) = *(u16*)(s + 2);
+        *(u16*)(d + 4) = *(u16*)(s + 4);
+        pIndices--;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
+void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
+    s32 i;
+    if (scale == 0 || count == 0) return;
+    for (i = 0; i < count; i++) {
+        s32 idx = pDeltas[i * 4 + 1] * 8;
+        u16* pVert = (u16*)(pVertices + idx);
+        s32 d;
+        d = (pDeltas[i * 4 + 0] * scale) >> 12;
+        pVert[0] += d;
+        d = (pDeltas[i * 4 + 3] * scale) >> 12;
+        pVert[1] += d;
+        d = (pDeltas[i * 4 + 2] * scale) >> 12;
+        pVert[2] += d;
+    }
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
-
-extern void func_8003014C();
+void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
+    s32 i;
+    if (scale == 0 || count == 0) return;
+    for (i = count - 1; i >= 0; i--) {
+        s32 idx = pDeltas[i * 4 + 1] * 8;
+        SVECTOR* pNorm = (SVECTOR*)(pNormals + idx);
+        s32 d;
+        d = (pDeltas[i * 4 + 0] * scale) >> 12;
+        pNorm->vx += d;
+        d = (pDeltas[i * 4 + 3] * scale) >> 12;
+        pNorm->vy += d;
+        d = (pDeltas[i * 4 + 2] * scale) >> 12;
+        pNorm->vz += d;
+        VectorNormalSS(pNorm, pNorm);
+    }
+}
 
 /* Allocates and populates the "animation/joint" work block for a model that has
  * the 0x2000 (skeletal) status bit. a0=modelData, a1=heap flags (0).
@@ -1068,13 +2463,99 @@ void* func_800303C8(u8* a0, s32 a1) {
     return s1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
+void func_800305D8(u8* pAnimData) {
+    u8* pModel;
+    u8* pDeltas;
+    u32 count;
+    u8* pChannels;
+    u8* pJoint;
+    u32 i;
+    s32 scale;
+    u32 hasNormals;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800306D0);
+    if (pAnimData == NULL) return;
+    pModel = *(u8**)(pAnimData + 0x00);
+    pDeltas = *(u8**)(pAnimData + 0x04);
+    count = *(u32*)(pAnimData + 0x0C);
+    pChannels = *(u8**)(pAnimData + 0x10);
+    pJoint = *(u8**)(pModel + 0x1C) + 4;
+    hasNormals = *(u16*)(pModel) & 0x10;
 
+    func_800301C8(
+        *(u8**)(pModel + 0x08),
+        pJoint,
+        count,
+        *(s16**)((u32)(pJoint + count * 12))
+    );
+
+    for (i = 0; i < count; i++) {
+        s32 (*cb)(u8*) = *(s32 (**)(u8*))(pChannels);
+        scale = cb(pChannels);
+        func_80030228(
+            *(u8**)(pModel + 0x08),
+            *(s16**)(pJoint + 4),
+            *(s32*)(pJoint),
+            scale
+        );
+        if (hasNormals) {
+            func_800302D4(
+                *(u8**)(pModel + 0x0C),
+                *(s16**)(pJoint + 8),
+                *(s32*)(pJoint),
+                scale
+            );
+        }
+        pChannels += 0x20;
+        pJoint += 0xC;
+    }
+}
+
+// Hands a model's shared anim-work buffers (pAnimInfo->+0x0, a pointer to a
+// per-model-type shared work block) back before freeing pAnimInfo itself:
+// frees the work block's own +0x8 (and, if its flags bit 0x10 is set, +0xC),
+// then restashes pAnimInfo's +0x4/+0x8 into the work block's +0x8/+0xC so the
+// next actor sharing that model type picks them up, then frees pAnimInfo.
+void func_800306D0(u8* pAnimInfo) {
+    u8* pWork;
+
+    if (pAnimInfo == NULL) {
+        return;
+    }
+
+    pWork = (u8*)(uintptr_t)*(u32*)(pAnimInfo + 0x0);
+    HeapFree((void*)(uintptr_t)*(u32*)(pWork + 0x8));
+
+    if (*(u16*)(pWork + 0x0) & 0x10) {
+        HeapFree((void*)(uintptr_t)*(u32*)(pWork + 0xC));
+    }
+
+    *(u32*)(pWork + 0x8) = *(u32*)(pAnimInfo + 0x4);
+    *(u32*)(pWork + 0xC) = *(u32*)(pAnimInfo + 0x8);
+    HeapFree(pAnimInfo);
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030988);
+extern s16 D_800308D0[];
+
+void func_80030988(u16 u, u16 v, s16 texX, s16 texY) {
+    u16 uVal = u << 6;
+    u16 vVal = v << 6;
+    D_800308D0[0x18] = (D_800308D0[0x18] & 0xF83F) | uVal;
+    D_800308D0[0x2E] = (D_800308D0[0x2E] & 0xF83F) | uVal;
+    D_800308D0[0x3E] = (D_800308D0[0x3E] & 0xF83F) | uVal;
+    D_800308D0[0x1E] = (D_800308D0[0x1E] & 0xF83F) | vVal;
+    D_800308D0[0x34] = (D_800308D0[0x34] & 0xF83F) | vVal;
+    D_800308D0[0x44] = (D_800308D0[0x44] & 0xF83F) | vVal;
+    D_800308D0[0x1A] = texX;
+    D_800308D0[0x30] = texX;
+    D_800308D0[0x40] = texX;
+    D_800308D0[0x20] = texY;
+    D_800308D0[0x36] = texY;
+    D_800308D0[0x46] = texY;
+}
 
 MATRIX D_80059F64;
 MATRIX D_80059F84;
@@ -1123,60 +2604,88 @@ void func_80030B14(MATRIX* pMatrix) {
     SetLightMatrix(&matrix);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C40);
+void func_80030C40(u16 a, u16 b, u16 c) {
+    gte_SetBackColor((u32)a >> 4, (u32)b >> 4, (u32)c >> 4);
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C78);
+void func_80030C78(u32 a, u32 b, u32 c) {
+    gte_SetBackColor(a, b, c);
+}
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030EE8);
+s32 func_80030EE8(void) {
+    u32 sz0;
+    u32 sz1;
+    u32 sz2;
+    u32 sxy;
+    /* nop;nop;RTPT -- aspsx assembled inline_c.h gte_rtpt()'s placeholder
+     * word 0x000000bf as the real encoding 0x4A280030; emit it directly. */
+    __asm__ volatile("nop\n\tnop\n\t.word 0x4a280030" ::: "memory");
+    gte_stsz3(&sz0, &sz1, &sz2);
+    gte_stsxy0(&sxy);
+    /* Check each vertex's screen coords */
+    if ((u16)(sz0 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
+    }
+    gte_stsxy1(&sxy);
+    if ((u16)(sz1 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
+    }
+    gte_stsxy2(&sxy);
+    if ((u16)(sz2 + 1) >= 2) {
+        if (sxy < (u32)D_800500FC && (u16)sxy < (u32)D_800500F8) return 1;
+    }
+    return 0;
+}
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003101C);
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315A0);
+/* GPU primitive link functions: set next pointer and tag with type code */
+#define GPU_LINK_FUNC(name, tag) \
+    void name(u32* pPrim, u32 nextAddr) { \
+        u32 old = *pPrim; \
+        *pPrim = nextAddr & 0xFFFFFF; \
+        *(u32*)(uintptr_t)nextAddr = old | tag; \
+    }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315C4);
+GPU_LINK_FUNC(func_800315A0, 0x04000000)
+GPU_LINK_FUNC(func_800315C4, 0x07000000)
+GPU_LINK_FUNC(func_800315E8, 0x06000000)
+GPU_LINK_FUNC(func_8003160C, 0x09000000)
+GPU_LINK_FUNC(func_80031630, 0x05000000)
+GPU_LINK_FUNC(func_80031654, 0x08000000)
+GPU_LINK_FUNC(func_80031678, 0x0B000000)
+GPU_LINK_FUNC(func_8003169C, 0x0A000000)
+GPU_LINK_FUNC(func_800316C0, 0x0D000000)
+GPU_LINK_FUNC(func_800316E4, 0x0C000000)
+GPU_LINK_FUNC(func_80031708, 0x0E000000)
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315E8);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003160C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031630);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031654);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031678);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003169C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316C0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316E4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031708);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003172C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031750);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031774);
+GPU_LINK_FUNC(func_8003172C, 0x07000000)
+GPU_LINK_FUNC(func_80031750, 0x06000000)
+GPU_LINK_FUNC(func_80031774, 0x09000000)
 
 void func_80031798(void* ot, void* prim) {
+#ifdef XENO_PC_PORT
+    *(u32*)prim = (*(u32*)prim & 0x00FFFFFFu) | 0x04000000u;
+    PcPort_AddPrimDomainAware(ot, prim);
+#else
     u32 primAddr = (u32)(uintptr_t)prim & 0x00FFFFFF;
     u32 old = *(u32*)ot;
 
     *(u32*)ot = primAddr;
     *(u32*)(uintptr_t)primAddr = old | 0x04000000;
+#endif
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317BC);
+GPU_LINK_FUNC(func_800317BC, 0x03000000)
+GPU_LINK_FUNC(func_800317E0, 0x03000000)
+GPU_LINK_FUNC(func_80031804, 0x03000000)
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317E0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031804);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031828);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003184C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031870);
+GPU_LINK_FUNC(func_80031828, 0x02000000)
+GPU_LINK_FUNC(func_8003184C, 0x02000000)
+GPU_LINK_FUNC(func_80031870, 0x02000000)

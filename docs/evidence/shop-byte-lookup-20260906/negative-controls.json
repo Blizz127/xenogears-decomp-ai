@@ -1,0 +1,18 @@
+{
+  "wrong-target-mask": {
+    "path": "/tmp/xeno-shop-byte-lookup.KmiUKXaA/wrong-target-mask.c",
+    "sha256": "a4400b8316005ea1eae34ff9ece5df59b560bbf323d7d57bb7ef5046843f73fd"
+  },
+  "missing-count-guard": {
+    "path": "/tmp/xeno-shop-byte-lookup.KmiUKXaA/missing-count-guard.c",
+    "sha256": "b1c3a3ef6d5c3522aa5d48ae463c23bf1f19e6e128f05204ed0aad3b814df16b"
+  },
+  "truncated-end-pointer": {
+    "path": "/tmp/xeno-shop-byte-lookup.KmiUKXaA/truncated-end-pointer.c",
+    "sha256": "a07ccc3e5681285c2326fa99715a272a0587096b308e832686e16658b9445459"
+  },
+  "wrong-return-byte": {
+    "path": "/tmp/xeno-shop-byte-lookup.KmiUKXaA/wrong-return-byte.c",
+    "sha256": "90c96a8102cd11d883f5197a78cc10c35dba35f575ec40e711ba04b86cee2cbd"
+  }
+}

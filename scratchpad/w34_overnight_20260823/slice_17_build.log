@@ -1,0 +1,4 @@
+W34B44 production build
+Command: bash pc_port/build_port.sh
+Result: exit 0; LINK OK -> pc_port/build_native/xeno-port
+Changed production source: world_map_init.c finite two-reentry bound

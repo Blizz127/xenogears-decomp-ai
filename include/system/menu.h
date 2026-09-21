@@ -44,14 +44,27 @@
 typedef struct {
     /* 0x0 */ u16 unk0;
     /* 0x2 */ u_short price;
-    /* 0x4 */ u8 unk4[0xC];
+    /* 0x4 */ u16 categoryFlags;
+    /* 0x6 */ u8 flags;
+    /* 0x7 */ u8 unk7;
+    /* 0x8 */ u8 effectMagnitude;  // func_801E31C0: HP +mag*50, MP +mag*10,
+                                   // stat boosts +mag; 1/2 select the special
+                                   // dispatch when effectFlags bit 0 is set
+    /* 0x9 */ u8 unk9;
+    /* 0xA */ s16 effectFlags;     // bit15 HP restore, bit14 MP restore,
+                                   // bit2 stat block, bit1 unk78 gauge,
+                                   // bit0 special dispatch (E5058/E5178)
+    /* 0xC */ s16 statEffectFlags; // bit15 attack, bit14 defense, bit13 ether,
+                                   // bit12 etherDefence, bit11 maxHp,
+                                   // bit10 maxMp; low byte = unk78 amount
+    /* 0xE */ u8 unkE[0x2];
 } MenuShopItem; // Size: 0x10
 
 typedef struct {
     /* 0x0 */ u_short equipFlags; // Which characters can use this item?
     /* 0x2 */ u16 unk2;
     /* 0x4 */ u_short price;
-    /* 0x6 */ u8 unk6[0xA]
+    /* 0x6 */ u8 unk6[0xA];
 } MenuShopWeapon; // Size: 0x10
 
 typedef struct {
@@ -110,8 +123,8 @@ typedef struct {
     /* 0x1A */ u8 unk1A[0x6];
     /* 0x20 */ u8 shouldRenderWindow[MENU_MAX_NUM_WINDOWS];
     /* 0x27 */ u8 unk27[MENU_MAX_NUM_WINDOWS];
-    /* 0x2B */ u8 unk2B;
-    /* 0x2C */ u_char shouldRenderCursors;
+    /* 0x2E */ u8 unk2E;
+    /* 0x2F */ u_char shouldRenderPointerCursors;
     /* 0x30 */ u8 currentCharacterIDs[0x3];
     /* 0x33 */ u8 _pad33;
     /* 0x34 */ u8 unk34[0x4];
@@ -171,20 +184,16 @@ typedef struct {
 // Character Info
 typedef struct {
     /* 0x0   */ POLY_FT4 polysDescriptionStrings[18];
-    /* 0x2D0 */ POLY_FT4 polys2D0[2]; // Unknown if bigger or not
-    /* 0x320 */ u8 unk320[0x140];
+    /* 0x2D0 */ POLY_FT4 polys2D0[2];
+    /* 0x320 */ POLY_FT4 polysFixedLabelTail[8];
     /* 0x460 */ POLY_FT4 polysPortraitSmall[2];
     /* 0x4B0 */ POLY_FT4 polys4B0[2];
     /* 0x500 */ POLY_FT4 polysLevelString[6];
     /* 0x5F0 */ POLY_FT4 polys5F0[6];
-    /* 0x6E0 */ POLY_FT4 polysHpString[6];
-    /* 0x7D0 */ u8 unk7D0[0xA0];
-    /* 0x870 */ POLY_FT4 polysMaxHpString[6];
-    /* 0x960 */ u8 unk960[0xA0];
-    /* 0xA00 */ POLY_FT4 polysMpString[4];
-    /* 0xAA0 */ u8 unkAA0[0x50];
-    /* 0xAF0 */ POLY_FT4 polysMaxMpString[4];
-    /* 0xB90 */ u8 unkB90[0x50];
+    /* 0x6E0 */ POLY_FT4 polysHpString[10];
+    /* 0x870 */ POLY_FT4 polysMaxHpString[10];
+    /* 0xA00 */ POLY_FT4 polysMpString[6];
+    /* 0xAF0 */ POLY_FT4 polysMaxMpString[6];
     /* 0xBE0 */ u_char levelStringLength;
     /* 0xBE1 */ u8 unkBE1; // Num polys5F0
     /* 0xBE2 */ u_char hpStringLength;
@@ -208,6 +217,90 @@ typedef struct {
     /* 0x7E */ u8 width;
     /* 0x7F */ u8 unk7F;
 } MenuString; // Size: 0x80
+
+/* Items submenu content.  The offsets describe the retail 32-bit layout;
+ * embedded MenuStrings naturally expand in the native 64-bit port.  The
+ * description bundle remains a four-byte PSX pointer slot (lw semantics),
+ * matching SystemMenu.unk42C and the port's below-4GB heap convention. */
+typedef struct {
+    /* 0x0000 */ MenuString itemNames[16];
+    /* 0x0800 */ MenuString itemCounts[16];
+    /* 0x1000 */ MenuString selectedItemName;
+    /* 0x1080 */ MenuString selectedItemCount;
+    /* 0x1100 */ MenuString selectedItemDescription;
+    /* 0x1180 */ u32 descriptionBundle;
+    /* 0x1184 */ u8 rowVisible[16];
+    /* 0x1194 */ u8 descriptionVisible;
+    /* 0x1195 */ u8 _pad1195[3];
+} ItemMenuWork; // Retail size: 0x1198
+
+/* Abilities submenu content, allocated by func_801DC1D4 and stored in the
+ * truncated PSX-pointer slot SystemMenu.unk42C[1] (retail g_Menu + 0x430) --
+ * the same convention Items established at unk42C[0].  Retail size 0x1094;
+ * the embedded MenuStrings expand naturally in the native 64-bit port.
+ *
+ * NOT ItemMenuWork: that struct's 0x1080 is a MenuString, this one's is a
+ * four-byte pointer slot.  Reusing the Items type would compile and look
+ * right while writing a pointer into a MenuString's vertex data.
+ *
+ * Unnamed spans are sized filler with no observed access. */
+typedef struct {
+    /* 0x0000 */ MenuString strings[32];
+    /* 0x1000 */ MenuString unk1000String; /* 33rd string slot, immediately
+                                      * past strings[32].  Single observed
+                                      * writer: func_801DC3D8's epilogue
+                                      * (func_801D36E0 sprite setup, once per
+                                      * build).  Observed reader: func_801D1640,
+                                      * which draws it every frame while the
+                                      * pManager->unk4A[0] content latch is
+                                      * set.
+                                      * Declared, NOT filler: native MenuString
+                                      * is 0x98 (POLY_FT4's 8-byte u_long tag
+                                      * inflates it from PSX 0x80), so writing
+                                      * one through a u8[0x80] span would put
+                                      * renderContext (native +0x91) on
+                                      * unk1090[1] -- the row-13 rowFlags
+                                      * spill -- silently corrupting it. */
+    /* 0x1080 */ u32 abilityBank;    /* LZSSHeapDecompress result, C72BC
+                                      * mode 2; freed by 0x12. PSX-width. */
+    /* 0x1084 */ u8 rowFlags[0xC];   /* per-row flags, indexed by the 0..0xB
+                                      * cursor (bound proven by func_801DDF24's
+                                      * cursor arithmetic: slti 0xC / bgez, and
+                                      * the +-2 paged variants).  func_801DC3D8
+                                      * writes, func_801DDF24 tests bit 0x80 to
+                                      * gate the confirm dispatch into
+                                      * func_801DD790, func_801DCE60 reads.
+                                      * Each site does `addu <base>,<cursor>`
+                                      * one instruction before the access. */
+    /* 0x1090 */ u8 unk1090[0x2];    /* rowFlags spill: func_801DC3D8 builds
+                                      * rows 0..0xD and writes 0x1084+i for all
+                                      * of them, so rows 12/13 land here.  The
+                                      * cursor is bounded at 0xC (func_801DDF24),
+                                      * so these two entries are built but
+                                      * unreachable by cursor. */
+    /* 0x1092 */ u8 unk1092;         /* scalar -- NOT indexed (accessed direct
+                                      * off the work pointer in func_801DCE60) */
+    /* 0x1093 */ u8 unk1093;         /* tail pad to 0x1094 */
+} AbilityMenuWork; // Retail size: 0x1094
+
+/* Built by func_801D3488 into SystemMenu.unk440 (retail g_Menu + 0x440),
+ * HeapAlloc'd once and guarded by MenuManager.unk5C[0xB] (retail +0x67).
+ * SHARED BY SEVEN CALLERS across Abilities / Equip / Gear / Status, so the
+ * layout is load-bearing well beyond the slice that first defines it.
+ *
+ * NAME IS DELIBERATELY STRUCTURAL.  The shape is unambiguous -- func_8002675C
+ * takes the polys (2 calls x 4 POLY_FT4) and func_801C851C takes the vertex
+ * groups (4 calls x 4 SVECTOR), with the geometry read from
+ * polys[i*2 + renderContext] at the exact POLY_FT4 vertex offsets -- but what
+ * the four quads DEPICT is not: sprite-table indices 0x164 + i out of
+ * SystemMenu.unk2DC, bank selected by D_801EA16C[arg0], and arg0 differs per
+ * caller.  Rename when the atlas proves what they are. */
+typedef struct {
+    /* 0x000 */ POLY_FT4 polys[8];      /* 4 quads as double-buffered pairs */
+    /* 0x140 */ SVECTOR vertices[16];   /* 4 groups of 4, one group per quad */
+    /* 0x1C0 */ u_char renderContext;
+    /* 0x1C1 */ u8 unk1C1[0x3];         /* pad to 0x1C4; no observed access */
+} MenuUnk440Work; // Size: 0x1C4
 
 typedef struct {
     /* 0x0   */ POLY_FT4 polysWindowBorderCorners[8];
@@ -278,10 +371,22 @@ typedef struct {
     /* 0x3890 */ LINE_F3 linesPortraitHighlight1[9 * 2]; // Red highlight line around portraits, 1st half
     /* 0x3A40 */ LINE_F3 linesPortraitHighlight2[9 * 2]; // Red highlight line around portraits, 2nd half
     /* 0x3BF0 */ LINE_F2 lines3BF0[2]; // White line between gold amounts?
+#ifdef XENO_PC_PORT
+    /* Retail 801CCFF4 renders these as eight pairs of MenuString records. */
+    /* 0x3C10 */ u8 unk3C10[0x20];
+    /* 0x3C30 */ MenuString strings3C30[8];
+    /* 0x4030 */ MenuString strings4030[8];
+#else
     /* 0x3C10 */ u8 unk3C10[0x820];
+#endif
     /* 0x4430 */ MenuString strItemDesc;
     /* 0x44B0 */ MenuString str44B0;
+#ifdef XENO_PC_PORT
+    /* 0x4530 */ u8 unk4530[0x80];
+    /* 0x45B0 */ MenuString str45B0;
+#else
     /* 0x4530 */ u8 unk4530[0x100];
+#endif
     /* 0x4630 */ void* pItemDescriptions;
     /* 0x4634 */ void* pWeaponDescriptions;
     /* 0x4638 */ void* pAccessoryDescriptions;
@@ -392,7 +497,7 @@ typedef struct {
     /* 0x380  */ MenuWindowParameters* windowParameters[MENU_MAX_NUM_WINDOWS];
     /* 0x39C  */ u8 unk39C[0x8C];
     /* 0x428  */ MenuPointerCursors* pCursors;
-    /* 0x42C  */ u8 unk42C[0x10];
+    /* 0x42C  */ u32 unk42C[4]; // Truncated PSX-pointer slots (native heap is <4GB)
     /* 0x43C  */ MenuScrollBarHandle* pScrollHandle;
     /* 0x440  */ u8 unk440[0x4];
     /* 0x444  */ MenuArrowCursor* arrowCursors[MENU_MAX_NUM_ARROW_CURSORS];
@@ -426,11 +531,15 @@ typedef struct {
     /* 0x4C4  */ s32 texPageX3;
     /* 0x4C8  */ s32 texPageY3;
 
-    /* 0x4CC  */ u8 unk4CC[0x14];
+    /* 0x4CC  */ u8 unk4CC[0x10];
+    /* 0x4DC  */ u8 selectedPartySlot;
+    /* 0x4DD  */ u8 _pad4DD[0x3];
     /* 0x4E0  */ MenuString unk4E0[4];
     /* 0x6E0  */ MenuString unk6E0[8];
     /* 0xAE0  */ MenuString unkAE0[6];
-    /* 0xDE0  */ u8 unk8D0[0x1000];
+    /* 0xDE0  */ u8 unkDE0[0x300];
+    /* 0x10E0 */ MenuString itemMenuStrings[8];
+    /* 0x14E0 */ u8 unk14E0[0x900];
     /* 0x1DE0 */ MenuString* unk1DE0[4];
     /* 0x1DF0 */ MenuCharacter* benchedCharacters[MAX_BENCHED_PARTY_MEMBERS];
     /* 0x1E08 */ MenuCharacter* currentCharacters[MAX_PARTY_MEMBERS];
@@ -443,10 +552,9 @@ typedef struct {
     /* 0x1E60 */ u_char shopItemTypes[MAX_SHOP_ITEMS];
     /* 0x1E90 */ u8 unk1E90[0x4];
     /* 0x1E94 */ u8 unk1E94;
-    // Decompiling `MenuProcessControllerInput` worked better if this field is
-    // volatile.  If you need to remove `volatile`, you can insert a temporary
-    // variable instead as done here: https://decomp.me/scratch/xsigV
-    /* 0x1E95 */ volatile u8 unk1E95;
+    /* Ordinary RAM; MenuProcessControllerInput uses volatile accesses locally
+     * to retain its retail load/store schedule without qualifying all readers. */
+    /* 0x1E95 */ u8 unk1E95;
     /* 0x1E96 */ u8 unk1E96[2];
 } SystemMenu; // Size: 0x1E98
 

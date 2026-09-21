@@ -1,0 +1,9 @@
+{
+  "installed_utc": "2026-09-06T02:15:44.587184+00:00",
+  "test_artifacts": "pc_port/build_native/battle_child_tile_retail_test.GuFD7hpi",
+  "source_sha256": {
+    "src/slus_006.64/system/temp1.c": "9f112a23055c7beffb536597c23a7ff504588206735aed3d98ceee6c6a640441",
+    "pc_port/src/game_overrides.c": "fff3464fa60aa38f629358753927771fc5f8328cb59e07cf9a1ae066feb4583f"
+  },
+  "scope": "20 finite controlled cases at O0/O2/UBSan, real SDK instruction oracle cases at O0/O2,14 negative controls plus pre-repair draft. Actual retail matrix/RTP3/AddPrim instructions; shared PsyCross COP2 backend, not physical PS1 or runtime pixel proof."
+}

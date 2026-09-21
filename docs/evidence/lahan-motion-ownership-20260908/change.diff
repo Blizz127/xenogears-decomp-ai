@@ -1,0 +1,191 @@
+--- scratchpad/lahan-motion-ownership-20260908/game_overrides.c	2026-09-08 17:14:02.324154656 -0500
++++ pc_port/src/game_overrides.c	2026-09-08 17:14:02.325362752 -0500
+@@ -3458,98 +3458,8 @@
+     func_80025224(w + 0x1C, idx);
+ }
+ 
+-/* asm 80022CAC: scale value by the sprite's slow-motion timer (+0x3A,
+- * 10-bit fixed point); passthrough when the timer is zero. */
+-s32 func_80022CAC(void* pSpriteData, s32 value)
+-{
+-    s32 t = *(u16*)((u8*)pSpriteData + 0x3A);
+-    s32 v;
+-
+-    if (t == 0) {
+-        return value;
+-    }
+-    /* Retail MULT/MFLO retains the low word before the signed test. */
+-    v = (s32)((u32)value * (u32)t);
+-    if (v < 0) {
+-        v += 0x3FF;
+-    }
+-    return v >> 10;
+-}
+-
+-/* asm 80022B2C: vertical motion integrator. Bit 26 of +0x3C selects the
+- * simple path (no floor); otherwise position +0x4 advances by scaled
+- * velocity +0x10, clamps to the floor height +0x84, bounces by the
+- * A8-encoded coefficient when falling onto it, and gains gravity +0x1C. */
+-void func_80022B2C(void* pSpriteData)
+-{
+-    u8* p = pSpriteData;
+-    s32 vel, dv, pos, floor;
+-
+-    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
+-        vel = *(s32*)(p + 0x10);
+-        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+-        *(u32*)(p + 0x4) += (u32)dv;
+-        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
+-        return;
+-    }
+-
+-    func_800BA8F4(p);
+-
+-    vel = *(s32*)(p + 0x10);
+-    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
+-        floor = *(s16*)(p + 0x84);
+-        if (*(s16*)(p + 0x6) == (s16)floor) {
+-            return;
+-        }
+-        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+-        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+-        *(s32*)(p + 0x4) = pos;
+-        if ((pos >> 16) < floor) {
+-            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+-            return;
+-        }
+-
+-        /* Landed: snap to the floor and bounce. */
+-        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+-        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
+-        if (pos < 0) {
+-            pos += 0xFF;
+-        }
+-        pos >>= 8;
+-        *(s32*)(p + 0x10) = pos;
+-        if (pos < 0) {
+-            pos = -pos;
+-        }
+-        dv = *(s32*)(p + 0x1C);
+-        if (dv < 0) {
+-            dv = (s32)(0u - (u32)dv);
+-        }
+-        if (pos < dv) {
+-            *(s32*)(p + 0x10) = 0;
+-        }
+-        return;
+-    }
+-
+-    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+-    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+-    *(s32*)(p + 0x4) = pos;
+-    floor = *(s16*)(p + 0x84);
+-    if ((pos >> 16) >= floor) {
+-        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+-    }
+-    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+-}
+-
+-/* asm 80022CDC: horizontal motion (x +0x0 by velocity +0xC, z +0x8 by
+- * velocity +0x14, both slow-motion scaled) then the vertical integrator. */
+-void func_80022CDC(void* pSpriteData)
+-{
+-    u8* p = pSpriteData;
+-
+-    *(u32*)(p + 0x0) += (u32)func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4;
+-    *(u32*)(p + 0x8) += (u32)func_80022CAC(p, *(s32*)(p + 0x14) >> 4) << 4;
+-    func_80022B2C(p);
+-}
++/* Motion ownership lives in the verified decompiled temp1.c functions. */
++extern void func_80022CDC(u8* pSpriteData);
+ 
+ /* asm 80022DF4: AnimTask timer tick. Runs the sprite's script + motion; when
+  * the script terminates (+0x64 == 0) — immediately, or after the double-tick
+--- scratchpad/lahan-motion-ownership-20260908/port_owned_overrides.txt	2026-09-08 17:14:02.324417669 -0500
++++ pc_port/port_owned_overrides.txt	2026-09-08 17:14:02.326029276 -0500
+@@ -12,9 +12,6 @@
+ func_80023958|Child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching child-sprite allocation uses the host sprite layout and render smoke passes
+ func_800239F4|Mode-1 child-sprite transform allocation writes host pointers into the port sprite layout|Retire when matching mode-1 allocation uses the host sprite layout and render smoke passes
+ func_80023A48|Child-sprite allocation depends on port work-list and heap ownership|Retire when matching allocation uses the port work-list/heap contracts and child render smoke passes
+-func_80022CAC|Sprite motion arithmetic is coupled to the port sprite layout and host signed-width rules|Retire when matching motion runs on the port layout and asymmetric motion mutants pass
+-func_80022B2C|Vertical sprite motion calls host collision and uses port-width fixed-point state|Retire when matching vertical motion is host-safe and collision motion mutants pass
+-func_80022CDC|Horizontal sprite motion chains through the port motion integrator and sprite layout|Retire when matching horizontal motion is host-safe and motion integration mutants pass
+ func_80022E8C|Type-7 sprite ticking must use the port timer/work-list callbacks|Retire when matching type-7 ticking is linked to host callbacks and tick smoke passes
+ func_80022EB8|Sprite task free callback must unlink port work lists and free host allocations|Retire when matching task teardown is host-safe and allocation/free stress smoke passes
+ func_8002CC10|Matching temp2.c body is decompiled, but native execution must use host PsyCross TPage state|Retire when the matching implementation can own the host TPage state and texture-page smoke passes
+--- scratchpad/lahan-motion-ownership-20260908/run_sprite_motion_retail_test.sh	2026-09-08 17:14:02.324508096 -0500
++++ pc_port/tests/run_sprite_motion_retail_test.sh	2026-09-08 17:14:02.326297752 -0500
+@@ -11,24 +11,36 @@
+ print('SPRITE MOTION retail bytes SHA256',sha256(b[0x1332c:0x13544]).hexdigest())
+ PY
+ common=(-std=gnu17 -fpermissive -fno-pie -ffunction-sections -fdata-sections -include assert.h -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -Ipc_port/include_shim -Iinclude -Ipc_port/src -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
++weaken_matching() {
++ local object=$1 symbol reason condition
++ while IFS='|' read -r symbol reason condition; do
++  [[ -z "$symbol" || "$symbol" == \#* ]] && continue
++  objcopy --weaken-symbol="$symbol" "$object"
++ done < pc_port/port_owned_overrides.txt
++ for symbol in func_80022CAC func_80022B2C func_80022CDC; do
++  nm -g --defined-only "$object" | awk -v s="$symbol" '$3==s && $2=="T" {found=1} END {exit !found}'
++ done
++}
+ for mode in ${SPRITE_MOTION_MODES:-O0 O2 UBSan}; do
+  flags=(-"$mode"); if [ "$mode" = UBSan ]; then flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
+- gcc "${common[@]}" "${flags[@]}" -w -c pc_port/src/game_overrides.c -o "$OUT/$mode.source.o"
++ gcc "${common[@]}" "${flags[@]}" -w -c pc_port/src/game_overrides.c -o "$OUT/$mode.port.o"
++ gcc "${common[@]}" "${flags[@]}" -w -c src/slus_006.64/system/temp1.c -o "$OUT/$mode.source.o"
++ weaken_matching "$OUT/$mode.source.o"
+  gcc "${common[@]}" "${flags[@]}" -c pc_port/tests/sprite_motion_retail_test.c -o "$OUT/$mode.test.o"
+  gcc "${common[@]}" "${flags[@]}" -c pc_port/src/battle_mips_adapter.c -o "$OUT/$mode.cpu.o"
+- clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$mode.source.o" "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -o "$OUT/$mode.test"
++ clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$mode.source.o" "$OUT/$mode.port.o" "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -o "$OUT/$mode.test"
+  "$OUT/$mode.test" disc/SLUS_006.64 | tee "$OUT/$mode.log"
+ done
+ python3 - "$OUT" <<'PY'
+ from pathlib import Path
+ import sys
+-s=Path('pc_port/src/game_overrides.c').read_text();a=s.index('void func_80022B2C(');b=s.index('/* asm 80022DF4',a);body=s[a:b]
++s=Path('src/slus_006.64/system/temp1.c').read_text();a=s.index('void func_80022B2C(');b=s.index('extern void func_8001D2B0',a);body=s[a:b]
+ controls={
+  'floor-query':('func_800BA8F4(p);','/* missing query */'),
+  'bounce-coefficient':('& 0x3FF','& 0x1FF'),
+  'gravity':('*(u32*)(p + 0x10) += *(u32*)(p + 0x1C);','*(u32*)(p + 0x10) += 0;'),
+- 'horizontal-axis':('p + 0x14) >> 4','p + 0xC) >> 4'),
+- 'signed-shift':('(u32)func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4','func_80022CAC(p, *(s32*)(p + 0xC) >> 4) << 4')}
++ 'horizontal-axis':('pSprite + 0x14) >> 4','pSprite + 0x0C) >> 4'),
++ 'signed-shift':('(u32)val << 4','val << 4')}
+ for name,(old,new) in controls.items():
+  assert old in body,name
+  Path(sys.argv[1],name+'.c').write_text(s[:a]+body.replace(old,new)+s[b:])
+@@ -37,7 +49,8 @@
+  mode=O2;flags=(-O2)
+  if [ "$control" = signed-shift ]; then mode=UBSan;flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
+  gcc "${common[@]}" "${flags[@]}" -w -c "$OUT/$control.c" -o "$OUT/$control.o"
+- clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$control.o" "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -o "$OUT/$control.test"
++ weaken_matching "$OUT/$control.o"
++ clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$control.o" "$OUT/$mode.port.o" "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -o "$OUT/$control.test"
+  rc=0;"$OUT/$control.test" disc/SLUS_006.64 > "$OUT/$control.log" 2>&1 || rc=$?
+  test "$rc" != 0
+  if [ "$control" = signed-shift ]; then rg -q 'left shift of negative value' "$OUT/$control.log";else rg -q 'SPRITE MOTION FAIL' "$OUT/$control.log";fi
+--- scratchpad/lahan-motion-ownership-20260908/run_sprite_scale_retail_test.sh	2026-09-08 17:14:02.324718189 -0500
++++ pc_port/tests/run_sprite_scale_retail_test.sh	2026-09-08 17:14:02.326218246 -0500
+@@ -13,7 +13,7 @@
+ common=(-std=gnu17 -fpermissive -fno-pie -ffunction-sections -fdata-sections -include assert.h -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -Ipc_port/include_shim -Iinclude -Ipc_port/src -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
+ for mode in O0 O2 UBSan; do
+  flags=(-"$mode"); if [ "$mode" = UBSan ]; then flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
+- gcc "${common[@]}" "${flags[@]}" -w -c pc_port/src/game_overrides.c -o "$OUT/$mode.source.o"
++ gcc "${common[@]}" "${flags[@]}" -w -c src/slus_006.64/system/temp1.c -o "$OUT/$mode.source.o"
+  gcc "${common[@]}" "${flags[@]}" -c pc_port/tests/sprite_scale_retail_test.c -o "$OUT/$mode.test.o"
+  gcc "${common[@]}" "${flags[@]}" -c pc_port/src/battle_mips_adapter.c -o "$OUT/$mode.cpu.o"
+  clang -no-pie "${flags[@]}" -Wl,--gc-sections "$OUT/$mode.source.o" "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -o "$OUT/$mode.test"
+@@ -22,8 +22,8 @@
+ python3 - "$OUT" <<'PY'
+ from pathlib import Path
+ import sys
+-s=Path('pc_port/src/game_overrides.c').read_text();a=s.index('s32 func_80022CAC(');b=s.index('/* asm 80022B2C',a);body=s[a:b]
+-for name,old,new in [('rounding','v += 0x3FF;','v += 0;'),('passthrough','return value;','return 0;'),('signed-product','(s32)((u32)value * (u32)t)','value * t')]:
++s=Path('src/slus_006.64/system/temp1.c').read_text();a=s.index('s32 func_80022CAC(');b=s.index('void func_80022CDC(',a);body=s[a:b]
++for name,old,new in [('rounding','adj = value + 0x3FF;','adj = value;'),('passthrough','return value;','return 0;'),('signed-product','(s32)((s64)value * factor)','value * factor')]:
+  assert old in body
+  Path(sys.argv[1],name+'.c').write_text(s[:a]+body.replace(old,new)+s[b:])
+ PY

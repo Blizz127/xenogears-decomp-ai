@@ -1,0 +1,31 @@
+[
+  {
+    "label": "fixed",
+    "output": "/tmp/xeno-recording-audio-root-fixed-ong_ytap",
+    "exit": 0,
+    "failure": null,
+    "cases": [
+      {
+        "rate": 30,
+        "active": 38,
+        "bins": 38,
+        "rms_ratio": 0.9997257874850128,
+        "av_delta": 0.012666999999999984
+      },
+      {
+        "rate": 150,
+        "active": 39,
+        "bins": 39,
+        "rms_ratio": 0.9998849064186341,
+        "av_delta": 0.017999999999999794
+      }
+    ]
+  },
+  {
+    "label": "old-control",
+    "output": "/tmp/xeno-recording-audio-root-old-control-1u4svgiq",
+    "exit": 0,
+    "failure": "AudioQualityFailure('recorded audio is not sustained: 3/38')",
+    "cases": []
+  }
+]

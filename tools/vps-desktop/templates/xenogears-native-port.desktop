@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — Run Native Port
+Comment=Launch the Xenogears PC port (native OpenGL)
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/run-xeno-port
+Icon=applications-games
+Terminal=false
+Type=Application
+Categories=Game;Development;

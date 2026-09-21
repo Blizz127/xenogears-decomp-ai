@@ -14,7 +14,17 @@ extern volatile long* g_pInterruptStatusRegister;
 extern volatile Counter* g_pRCounters;
 extern volatile long g_InterruptStatusMasks[4];
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", ChangeClearPAD);
+__asm__(
+        ".globl ChangeClearPAD\n\t"
+        ".ent ChangeClearPAD\n\t"
+        "ChangeClearPAD:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x2409005b\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x03801021\n\t"
+        ".end ChangeClearPAD");
 
 long SetRCnt(long spec, short target, long mode) {
     int i = spec & 0xFFFF;
@@ -80,36 +90,273 @@ s32 func_8004077C(void) {
     return D_80056414;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004078C);
+extern void func_80040C5C(void);
+extern void _patch_pad(void);
+extern void ChangeClearPAD(s32);
+extern void func_80040ABC(s32, s32, s32, s32);
+extern void func_80040BA4(void);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD);
+s32 func_8004078C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    func_80040C5C();
+    EnterCriticalSection();
+    _patch_pad();
+    ExitCriticalSection();
+    ChangeClearPAD(0);
+    func_8004092C();
+    func_80040ABC(arg0, arg1, arg2, arg3);
+    func_80040BA4();
+    D_80056414 = 1;
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StartPAD);
+long InitPAD(char* buffer1, long len1, char* buffer2, long len2) {
+    extern void InitPAD2(char*, long, char*, long);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_800408F4);
+    func_80040C5C();
+    EnterCriticalSection();
+    _patch_pad();
+    ExitCriticalSection();
+    ChangeClearPAD(0);
+    func_8004092C();
+    InitPAD2(buffer1, len1, buffer2, len2);
+    func_80040BA4();
+    D_80056414 = 1;
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_8004092C);
+void StartPAD(void) {
+    StartPAD2();
+    ChangeClearPAD(0);
+    EnablePAD();
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_800409AC);
+extern void func_80040B00(void);
+extern void StopPAD2(void);
+extern s32 D_80056414;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_800409E4);
+void func_800408F4(void) {
+    func_80040B00();
+    StopPAD2();
+    func_800409AC();
+    D_80056414 = 0;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040A4C);
+extern void* D_8005A204;
+extern void* D_8005A208;
+extern void* D_8005A200;
+extern void* D_8005A20C;
+extern void func_800409E4(void);
+extern s32 func_80040A4C(void);
+extern void SysEnqIntRP(s32, void*);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", InitPAD2);
+s32 func_8004092C(void) {
+    void** ppHandlers = &D_8005A204;
+    void* pHandler = (u8*)ppHandlers - 4;
+    EnterCriticalSection();
+    ppHandlers[0] = func_800409E4;
+    D_8005A208 = func_80040A4C;
+    D_8005A200 = NULL;
+    D_8005A20C = NULL;
+    SysDeqIntRP(1, pHandler);
+    SysEnqIntRP(1, pHandler);
+    ExitCriticalSection();
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StartPAD2);
+extern void* D_8005A200;
+extern void SysDeqIntRP(s32, void*);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", StopPAD2);
+s32 func_800409AC(void) {
+    EnterCriticalSection();
+    SysDeqIntRP(1, &D_8005A200);
+    ExitCriticalSection();
+    return 1;
+}
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040ABC);
+extern void* D_80056418;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", SysEnqIntRP);
+#if defined(SKIP_ASM) || defined(XENO_PC_PORT)
+void func_800409E4(void) {
+    volatile s32 i;
+    void* pPad = D_80056418;
+    *(u16*)((u8*)pPad + 0xA) = 0;
+    for (i = 10; --i != -1;) {}
+}
+#else
+__asm__(
+        ".globl func_800409E4\n\t"
+        ".ent\tfunc_800409E4\n\t"
+        "func_800409E4:\n\t"
+        "lui $v0, %hi(D_80056418)\n\t"
+        "lw $v0, %lo(D_80056418)($v0)\n\t"
+        ".word 0x27bdfff0\n\t"
+        ".word 0xa440000a\n\t"
+        ".word 0x2402000a\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x2442ffff\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa30000\n\t"
+        ".word 0x2402ffff\n\t"
+        ".word 0x1062000a\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x2403ffff\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x2442ffff\n\t"
+        ".word 0xafa20000\n\t"
+        ".word 0x8fa20000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x1443fff9\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x27bd0010\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end\tfunc_800409E4");
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", SysDeqIntRP);
+extern void* D_8005641C;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", EnablePAD);
+#if defined(SKIP_ASM) || defined(XENO_PC_PORT)
+s32 func_80040A4C(void) {
+    void* pPad = D_8005641C;
+    if (!(*(u32*)((u8*)pPad + 4) & 1)) return 0;
+    if (*(u32*)pPad & 1) return 1;
+    return 0;
+}
+#else
+__asm__(
+        ".globl func_80040A4C\n\t"
+        ".ent\tfunc_80040A4C\n\t"
+        "func_80040A4C:\n\t"
+        "lui $v1, %hi(D_8005641C)\n\t"
+        "lw $v1, %lo(D_8005641C)($v1)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x8c620004\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x30420001\n\t"
+        ".word 0x10400007\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x8c620000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x30420001\n\t"
+        ".word 0x14400002\n\t"
+        ".word 0x24020001\n\t"
+        ".word 0x00001021\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".end\tfunc_80040A4C");
+#endif
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", func_80040B00);
+__asm__(
+        ".globl InitPAD2\n\t"
+        ".ent InitPAD2\n\t"
+        "InitPAD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090012\n\t"
+        ".end InitPAD2");
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi", _patch_pad);
+__asm__(
+        ".globl StartPAD2\n\t"
+        ".ent StartPAD2\n\t"
+        "StartPAD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090013\n\t"
+        ".end StartPAD2");
+
+__asm__(
+        ".globl StopPAD2\n\t"
+        ".ent StopPAD2\n\t"
+        "StopPAD2:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090014\n\t"
+        ".end StopPAD2");
+
+__asm__(
+        ".globl func_80040ABC\n\t"
+        ".ent func_80040ABC\n\t"
+        "func_80040ABC:\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090015\n\t"
+        ".end func_80040ABC");
+
+__asm__(
+        ".globl SysEnqIntRP\n\t"
+        ".ent SysEnqIntRP\n\t"
+        "SysEnqIntRP:\n\t"
+        ".word 0x240a00c0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090002\n\t"
+        ".end SysEnqIntRP");
+
+__asm__(
+        ".globl SysDeqIntRP\n\t"
+        ".ent SysDeqIntRP\n\t"
+        "SysDeqIntRP:\n\t"
+        ".word 0x240a00c0\n\t"
+        ".word 0x01400008\n\t"
+        ".word 0x24090003\n\t"
+        ".end SysDeqIntRP");
+
+__asm__(
+        ".globl EnablePAD\n\t"
+        ".ent EnablePAD\n\t"
+        "EnablePAD:\n\t"
+        "lui $9, %hi(jtbl_800593AC)\n\t"
+        "lw $9, %lo(jtbl_800593AC)($9)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x01200008\n\t"
+        ".word 0x00000000\n\t"
+        ".end EnablePAD");
+
+__asm__(
+        ".globl func_80040B00\n\t"
+        ".ent func_80040B00\n\t"
+        "func_80040B00:\n\t"
+        "lui $9, %hi(jtbl_800593B0)\n\t"
+        "lw $9, %lo(jtbl_800593B0)($9)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x01200008\n\t"
+        ".word 0x00000000\n\t"
+        ".end func_80040B00");
+
+__asm__(
+        ".globl _patch_pad\n\t"
+        ".ent _patch_pad\n\t"
+        "_patch_pad:\n\t"
+        ".set noat\n\t"
+        "lui $1, %hi(D_800593A4)\n\t"
+        "sw $31, %lo(D_800593A4)($1)\n\t"
+        ".reloc ., R_MIPS_26, EnterCriticalSection\n\t"
+        ".word 0x0c000000\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x240a00b0\n\t"
+        ".word 0x0140f809\n\t"
+        ".word 0x24090057\n\t"
+        ".word 0x8c42016c\n\t"
+        "lui $1, %hi(jtbl_800593AC)\n\t"
+        ".word 0x20430884\n\t"
+        "sw $3, %lo(jtbl_800593AC)($1)\n\t"
+        "lui $1, %hi(jtbl_800593B0)\n\t"
+        ".word 0x20430894\n\t"
+        ".word 0x2409000b\n\t"
+        "sw $3, %lo(jtbl_800593B0)($1)\n\t"
+        ".word 0x2529ffff\n\t"
+        ".word 0xac400594\n\t"
+        ".word 0x1520fffd\n\t"
+        ".word 0x24420004\n\t"
+        ".reloc ., R_MIPS_26, FlushCache\n\t"
+        ".word 0x0c000000\n\t"
+        ".word 0x00000000\n\t"
+        "lui $31, %hi(D_800593A4)\n\t"
+        "lw $31, %lo(D_800593A4)($31)\n\t"
+        ".word 0x00000000\n\t"
+        ".word 0x03e00008\n\t"
+        ".word 0x00000000\n\t"
+        ".set at\n\t"
+        ".end _patch_pad");

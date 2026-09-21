@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Launch Xenogears native port with GDB-automated Lahan field walk.
+# Uses the established walk.gdb script from scratchpad for deterministic
+# field traversal with frame-captured GL backbuffer screenshots.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+if [ -f "$REPO_ROOT/.env.local" ]; then
+  set -a; . "$REPO_ROOT/.env.local"; set +a
+fi
+
+EXE="${XENO_BUILD_NATIVE:-$REPO_ROOT/pc_port/build_native/xeno-port}"
+LIB="${XENO_LIB_ROOT:-/home/blizz/dev/xenogears-assets/lib}"
+LOG_DIR="${XENO_LOG_ROOT:-/home/blizz/dev/xenogears-assets/logs}"
+GDB_SCRIPT="$REPO_ROOT/scratchpad/walk.gdb"
+
+if [ ! -x "$EXE" ]; then
+  echo "ERROR: xeno-port binary not found: $EXE" >&2; exit 1
+fi
+if [ ! -f "$GDB_SCRIPT" ]; then
+  echo "ERROR: GDB script not found: $GDB_SCRIPT" >&2; exit 1
+fi
+if [ -z "${DISPLAY:-}" ]; then
+  echo "ERROR: DISPLAY not set. Launch from graphical session." >&2; exit 1
+fi
+
+export LD_LIBRARY_PATH="${LIB:+$LIB:}${LD_LIBRARY_PATH:-}"
+mkdir -p "$LOG_DIR"
+
+echo "[run-xeno-lahan] GDB-automated Lahan walk test"
+cd "$REPO_ROOT"
+exec gdb -batch -x "$GDB_SCRIPT" --args "$EXE" 2>&1 | tee "$LOG_DIR/xeno-lahan-$(date +%Y%m%d-%H%M%S).log"

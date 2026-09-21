@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-09-08T22:20:41.469236-05:00",
+  "run_directory": "scratchpad/lahan-natural-20260908-slope-ground",
+  "observed": "Natural slope recovery, west gap crossing, bridge crossing, and field17 entry",
+  "not_proven": [
+    "hardware audiovisual parity",
+    "complete retail behavior parity",
+    "exact compiled function matching",
+    "Lahan departure"
+  ],
+  "files": {
+    "scratchpad/lahan-natural-20260908-slope-ground/xeno-port": "0ebb5b95379d474c9f2dc3859e323a6d93acd8ff8e811adccd54b43f31b802da",
+    "scratchpad/lahan-natural-20260908-slope-ground/build-pins.json": "aa6a559feddb079eb205a4bc4436c267f3b4f46e1c666a99d853d96f47a3d184",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/slope-climb-north.png": "63bafc9507894f2baa082d0adcd4eda2e7b224806317ba8ded1cb0ef62e099ba",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/slope-release-south.png": "70e5bfb4317dd53004efe1a23523acb414c9659b4ab0af41f341836174700285",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gap-late-takeoff.png": "a57a64a416138092e40ebfe5832574e5c7e3a8276491e61ea26555f5acbda8c7",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gap-late-jump-1.png": "e26cd6158c2e6c4dedea407bce097c4bca96a755e301a6d04a09c2d0aa3927f4",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gap-late-jump-3.png": "d59e15e3d04fde1c3b0588877d1197abb9315ed0422456adff4f09d2cac10d42",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/gap-late-landing.png": "f3aaefc7c544833907227ee20fa049ceef87077b88a917c56538d547d6fe08b6",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/bridge-cross.png": "748de63bd1a6950a1969a825bda35ee89fa7b2598de1347f94a44627a1974d8f",
+    "scratchpad/lahan-natural-20260908-slope-ground/shots/citan-path-entry.png": "f8636ef48505594e2f2a962be3263d60ceb22db67875f83d51b0c995b8166598"
+  }
+}

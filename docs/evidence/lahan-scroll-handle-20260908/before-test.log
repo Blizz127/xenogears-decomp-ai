@@ -1,0 +1,2 @@
+OUTPUT /var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/scroll-handle.THqoWZSX
+pc_port/tests/run_menu_scroll_handle_layout_test.sh: line 20: 2145576 Segmentation fault         (core dumped) "$OUT/$mode"

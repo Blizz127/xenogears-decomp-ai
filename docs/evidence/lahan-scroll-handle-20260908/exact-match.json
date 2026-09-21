@@ -1,0 +1,29 @@
+{
+  "function": "func_801D1464",
+  "object_sha256": "05c55693efce92053ac9a11cca3e88760ae091dd4b2b6b68ba581a350333e183",
+  "compiled_bytes": 76,
+  "retail_bytes": 76,
+  "relocations": [
+    {
+      "offset": 0,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 4,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 52,
+      "type": 4,
+      "symbol": "func_801CE198",
+      "retail_address": "0x801ce198"
+    }
+  ],
+  "differences": [],
+  "match": true,
+  "scope": "Object function with zero-addend relocations resolved to retail addresses; not whole-ROM match"
+}

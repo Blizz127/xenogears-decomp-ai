@@ -63,6 +63,14 @@ segments:
     align: 4
     subsegments:
       - [0x800, rodata]
+      # jtbl_800186A4: the 15-entry switch table of system/temp1's func_80024730
+      # (rom 0x8EA4, 0x3C bytes). GCC must own this range so its emitted table
+      # replaces the retail one, whose .L800248xx labels vanish with the C body.
+      # jtbl_80018664: the 16-entry switch table of system/temp1's func_80023468
+      # (rom 0x8E64, 0x40 bytes; it ends exactly where the table below begins).
+      - [0x8E64, .rodata, system/temp1]
+      - [0x8EA4, .rodata, system/temp1]
+      - [0x8EE0, rodata]
       #- [0x88FC, .rodata, main/main_loop]
       #- [0x8A6C, rodata]
       - [0x90F4, .rodata, system/archive]
@@ -105,6 +113,7 @@ segments:
       - [0x26644, asm]
       - [0x274D8, c, system/font]
       - [0x28078, asm]
+      - [0x281D8, c, system/asset_loader]
       - [0x28388, c, system/sound]
       - [0x2FF38, asm]
       - [0x300E8, c, psyq/libc]

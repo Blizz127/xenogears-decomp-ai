@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — Open in Cursor
+Comment=Open the Xenogears decomp project in Cursor
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/open-project
+Icon=applications-development
+Terminal=false
+Type=Application
+Categories=Development;IDE;

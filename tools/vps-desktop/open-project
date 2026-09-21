@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Open the Xenogears decomp project in Cursor (or fallback editor).
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+if command -v cursor >/dev/null 2>&1; then
+  echo "[open-project] opening in Cursor: $REPO_ROOT"
+  exec cursor "$REPO_ROOT"
+elif command -v code >/dev/null 2>&1; then
+  echo "[open-project] opening in VS Code: $REPO_ROOT"
+  exec code "$REPO_ROOT"
+else
+  echo "[open-project] no graphical editor found, opening in xfce4-terminal"
+  exec xfce4-terminal --working-directory="$REPO_ROOT"
+fi

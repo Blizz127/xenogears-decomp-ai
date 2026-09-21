@@ -1,0 +1,63 @@
+{
+  "source_sha256": "f0fd588c74c7dd9e1473151ae19dda8b2333dacab197bc30428b42a6473cf19a",
+  "body_text_offset": 17264,
+  "size": 1088,
+  "exact": true,
+  "sha256": "f791af75ac8be21876feb8f706399780e3010ab17b780e8337fd328dcbfb2d51",
+  "scope": "actual full shop TU; tested dependencies retail-pinned; unrelated externs assigned KSEG placeholder for isolated function extraction",
+  "commands": [
+    [
+      "mips-linux-gnu-cpp",
+      "-Iinclude",
+      "-D_LANGUAGE_C",
+      "-DUSE_INCLUDE_ASM",
+      "-DINCLUDE_ASM_USE_MACRO_INC=1",
+      "-P",
+      "-undef",
+      "-Wall",
+      "-lang-c",
+      "-nostdinc",
+      "-o",
+      "/tmp/xeno-shop-resources-c-20260906/full.i",
+      "/tmp/xeno-shop-resources-c-20260906/full-candidate.c"
+    ],
+    [
+      "/var/home/blizz/Projects/xenogears-decomp-ai/tools/gcc-2.6.0-psx/cc1",
+      "-O2",
+      "-G8",
+      "-mips1",
+      "-mcpu=3000",
+      "-w",
+      "-funsigned-char",
+      "-fpeephole",
+      "-ffunction-cse",
+      "-fpcc-struct-return",
+      "-fcommon",
+      "-fverbose-asm",
+      "-msoft-float",
+      "-mgas",
+      "-fgnu-linker",
+      "-quiet",
+      "-o",
+      "/tmp/xeno-shop-resources-c-20260906/full.s",
+      "/tmp/xeno-shop-resources-c-20260906/full.i"
+    ],
+    [
+      "python3",
+      "/var/home/blizz/Projects/xenogears-decomp-ai/tools/maspsx/maspsx.py",
+      "--use-comm-section",
+      "--run-assembler",
+      "-EL",
+      "-Iinclude",
+      "-I/tmp/xeno-global-jtbl-audit-20260906/xenogears-decomp",
+      "-O2",
+      "-G8",
+      "-march=r3000",
+      "-mtune=r3000",
+      "-no-pad-sections",
+      "-o",
+      "/tmp/xeno-shop-resources-c-20260906/full.o",
+      "/tmp/xeno-shop-resources-c-20260906/full.s"
+    ]
+  ]
+}

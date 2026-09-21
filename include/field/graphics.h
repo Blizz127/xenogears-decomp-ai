@@ -3,6 +3,9 @@
 
 #include "psyq/libgpu.h"
 
+void FieldClampPolyFT4UVs(POLY_FT4* poly, short u0, short v0, short u1, short v1,
+                         short u2, short v2, short u3, short v3);
+
 typedef struct {
     DR_MODE drModes[0x21][2];
     SPRT sprites[0x21][2];

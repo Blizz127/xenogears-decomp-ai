@@ -9,6 +9,27 @@
 #include "system/math.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
+/* Retail inlines the libgte macro form of NormalClip (6 inlined NCLIP in
+ * func_8007CD80, zero `jal NormalClip`). Use the same PSY-Q inline macros in
+ * the matching build; the port resolves these to PsyCross' equivalents. */
+#ifdef XENO_PC_PORT
+#include <psx/inline_c.h>
+#include <psx/gtemac.h>
+/* PsyCross gte_ldsxy3 dereferences its arguments; PSY-Q mtc2's packed SXY
+ * values. Route the matching-shape macro onto NormalClip() so the live
+ * path does not SEGV. Matching still uses the PSY-Q inline form. */
+#undef gte_NormalClip
+#define gte_NormalClip(r1, r2, r3, r4) \
+    do { *(r4) = NormalClip((int)(r1), (int)(r2), (int)(r3)); } while (0)
+#else
+#include "psyq/inline_c.h"
+#include "psyq/gtemac.h"
+#endif
+#ifdef XENO_PC_PORT
+#include <stdint.h> /* uintptr_t for LP64 pointer widening below */
+#include <stdio.h>
+#include <stdlib.h> /* getenv for the env-gated party-pointer diagnostic */
+#endif
 
 /* Per-frame helper: rand seed, map-load check, angle-step timer. */
 extern s32 D_8004F308, D_8004F324, D_800ADC18;
@@ -93,7 +114,8 @@ extern s32 g_GamePartySkinsInitialized;
 extern u8 D_800594D0, D_8005942C;
 extern void *D_800ADC14, *D_80062528, *g_GameCurLoadedWDS;
 extern void func_80077544(), func_800A915C(), func_800777DC(), func_800A4748();
-extern void func_800A476C(), func_800A5884(), func_80070488(), func_801E7378();
+extern void func_800A476C(), func_800A5884(), func_80070488();
+extern void func_801E7378(s32 value);
 extern void func_800A5600(), func_80039C4C(), func_800399D4(), func_800A24C4();
 extern void func_8001B66C(), func_80085B20(), func_80085EEC(), func_800A31E8();
 extern void func_800A91F0(), func_80077DAC(), func_80078B5C(), func_8007554C();
@@ -137,9 +159,7 @@ void func_80078D44(void) {
     func_80070488();
     D_800AFD04 = 1;
     if (D_800B2264 != 0) {
-#ifndef XENO_PC_PORT
         func_801E7378(1);
-#endif
     }
     if (D_800594D0 == 1) {
         s2 = 0;
@@ -244,9 +264,7 @@ void func_80078D44(void) {
     }
 
     if (D_800B2264 != 0) {
-#ifndef XENO_PC_PORT
         func_801E7378(0);
-#endif
     }
     func_800A91F0();
     HeapConsolidate();
@@ -255,10 +273,182 @@ void func_80078D44(void) {
     D_800AFD04 = 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80079288);
+/* func_80079288 -- per-step random-encounter roll. Decompiled from
+ * asm/field/nonmatchings/main/misc4/func_80079288.s (was INCLUDE_ASM ->
+ * stubbed, so encounters never rolled). Called each field step a direction is
+ * held (misc6.c:659). Guards -> step-counter decrement (refresh via
+ * func_8008E718 at 0) -> age cooldown timers -> on an expired timer, weighted
+ * roll over the 16 formation weights (D_80065ADC) -> commit + battle handoff.
+ * See docs/ai_context/ACTIVE_HANDOFF.md. */
+extern s32 D_8004F308, D_8004F370;
+extern s32 D_800ADBDC, D_800ADBE4, D_800ADBEC, D_800ADB2C, D_800ADBD0;
+extern u8  D_800ADB04;
+extern s32 D_800B2294, D_800B2298, D_800B229C;
+extern s16 D_800B22A0[];
+extern s16 D_800B2270[];
+extern s16 D_800B2290;
+extern u8  D_80065ADC[16];        /* per-formation encounter weights (main-exe BSS) */
+extern u8  D_80059508, D_800594F8;
+extern void  func_8008E718(void);
+extern void  func_80281204(s32);
+extern void *LoadGameStateOverlay(unsigned int);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007954C);
+void func_80079288(void) {
+    u16 *timers = (u16 *)D_800B22A0;
+    s32  cumulative[16];
+    s32  i, sum, acc, roll, hit, selected;
 
+    if (D_800ADBDC == 0) return;
+    if (D_800ADBE4 == 0) return;
+    if (D_800ADBEC == 0) return;
+    if (D_8004F308 == -1) return;
+    if (D_800B2298 == 0) return;
+    if (*(s16 *)&g_FieldControl == -1) return;
+    if (D_800ADB2C == 1) return;
+    if (D_800ADB04 == 0) return;
+
+    D_800B2294 -= 1;
+    if (D_800B2294 == 0) {
+        func_8008E718();
+    }
+
+    if (D_800B229C > 0) {
+        for (i = 0; i < D_800B229C; i++) {
+            if (timers[i] != 0xFFFF) {
+                timers[i] = (u16)(timers[i] - 1);
+            }
+        }
+    }
+
+    if (D_800B229C <= 0) return;
+    hit = -1;
+    for (i = 0; i < D_800B229C; i++) {
+        if (timers[i] == 0) { hit = i; break; }
+    }
+    if (hit < 0) return;
+    timers[hit] = 0xFFFF;
+
+    sum = 0;
+    for (i = 0; i < 16; i++) {
+        sum += D_80065ADC[i];
+    }
+    acc = 0;
+    for (i = 0; i < 16; i++) {
+        cumulative[i] = acc;
+        acc += D_80065ADC[i];
+    }
+
+    roll = (rand() * (sum + 1)) >> 15;
+
+    selected = -1;
+    for (i = 15; i >= 0; i--) {
+        if (D_80065ADC[i] != 0 && cumulative[i] < roll) {
+            selected = i;
+            break;
+        }
+    }
+    if (selected < 0) return;
+
+    D_80059508 = (u8)selected;
+    D_800594F8 = 0;
+    D_800B2290 = D_800B2270[selected];
+    if (D_8004F370 == 0) {
+        LoadGameStateOverlay(2);
+    }
+    D_800ADBDC = 0;
+    D_800ADBD0 = 1;
+    if (g_FieldSystemMode == 0) {
+        func_80281204(selected);
+    }
+}
+
+/* Field-state exit dispatcher. */
+extern s16 D_8004F384;
+extern s32 D_800AFC78, D_800B0064;
+extern void* g_pGameState;
+extern void func_80085FB8(void);
+extern int func_80085F30(void);
+extern void func_8001BB50(void);
+extern void ChangeGameState(unsigned int state);
+extern void MainLoop(int errorCode) __attribute__((noreturn));
+
+void func_8007954C(s32 exitCode) {
+    D_8005942C = 0;
+
+    switch (exitCode) {
+    case 0: {
+        void* gameState;
+        s32 skin;
+        s32 pending;
+        u16 priorSkin;
+
+        func_800A30FC();
+        gameState = g_pGameState;
+        skin = D_800AFC78;
+        pending = D_8004F370;
+        priorSkin = *(u16*)((u8*)gameState + 0x1932);
+        D_8004F324 = skin;
+        *(u16*)((u8*)gameState + 0x2322) = (u16)skin;
+        *(u16*)((u8*)gameState + 0x2320) = priorSkin;
+        if (pending != 0) {
+            return;
+        }
+        ChangeGameState(2);
+        break;
+    }
+
+    case 1:
+        if (D_8004F384 == 1) {
+            func_8001B66C();
+            func_80085FB8();
+            ArchiveCdDataSync(0);
+            func_80085F30();
+            func_8001B66C();
+        }
+        if (D_8004F370 != 0) {
+            return;
+        }
+        ChangeGameState(3);
+        break;
+
+    case 2: {
+        void* gameState = g_pGameState;
+#ifdef XENO_PC_PORT
+        s32 skin = D_8004F324;
+#else
+        register s32 skin __asm__("$3") = D_8004F324;
+#endif
+        s32 pending = D_8004F370;
+        u16 priorSkin = *(u16*)((u8*)gameState + 0x1932);
+
+        *(u16*)((u8*)gameState + 0x2322) = (u16)skin;
+        *(u16*)((u8*)gameState + 0x2320) = priorSkin;
+        if (pending != 0) {
+            return;
+        }
+        ChangeGameState(4);
+        g_GamePartySkinsInitialized++;
+        break;
+    }
+
+    case 3:
+        D_8004F310 = 0;
+        g_GamePartySkinsInitialized = 0;
+        if (D_8004F370 != 0) {
+            return;
+        }
+        if (D_800B0064 & 0x80) {
+            func_8001BB50();
+        }
+        ChangeGameState(D_800B0064 & 0x7F);
+        break;
+
+    default:
+        break;
+    }
+
+    MainLoop(0);
+}
 void func_800796F4(void) {}
 
 void FieldSwapRenderContext(void) {
@@ -285,7 +475,38 @@ void func_80079784(int color) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800798BC);
+/* Resolve the field movement gate from the active player actor's +0x14 flags,
+ * then apply the signed-halfword script override when it is not 0x00FF.
+ * Transcribed from asm/field/nonmatchings/main/misc4/func_800798BC.s
+ * (0x800798BC-0x80079958). Retail control flow: beqz D_800B2268 -> store 1;
+ * else andi flags+0x14,0xC0 / bnez store 1 else store 0; then lh D_800B234C
+ * and sb override when != 0xFF. */
+extern s32 D_800B2268;
+extern s16 D_800B234C;
+extern u8 D_80059179;
+extern s32 g_PlayerActorIndex;
+
+void func_800798BC(void) {
+    if (D_800B2268 != 0) {
+        u32 flags = *(u32*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData
+                            + 0x14);
+#ifdef FIELD_MOVEGATE_MUTANT_C0_MASK
+        if (flags & 0x40) {
+#else
+        if (flags & 0xC0) {
+#endif
+            D_80059179 = 1;
+        } else {
+            D_80059179 = 0;
+        }
+    } else {
+        D_80059179 = 1;
+    }
+
+    if (D_800B234C != 0xFF) {
+        D_80059179 = D_800B234C;
+    }
+}
 
 void func_8007995C(short w, short h, short x, short y, int destX, int destY) {
     RECT rect;
@@ -305,7 +526,544 @@ void FieldRenderSyncAndFlush(void) {
     ExitCriticalSection();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800799D4);
+/* VRAM coordinate pairs for the party-sprite save/restore blit tables. */
+typedef struct {
+    u16 x;
+    u16 y;
+} FieldVramCoord;
+
+extern FieldVramCoord D_800ADCB0[]; /* field-side sprite VRAM rects */
+extern FieldVramCoord D_800ADCC8[]; /* menu-backup VRAM rects */
+extern s16 D_8006BE2C[];            /* party-member-present flags snapshot */
+extern TILE D_800AFE64;             /* fade tile, render context 1 */
+extern void* D_8005945C;            /* menu shared-resource buffer */
+extern void* D_800ADB20;            /* saved 0x6B9 archive buffer */
+extern void* D_800ADB30;            /* menu-arg source buffer */
+extern void* D_8005A4AC;            /* &g_FieldRenderContexts + 0xCC */
+extern void* D_8005A4B0;            /* &g_FieldRenderContexts + 0x81C0 */
+extern u8 D_80059460;               /* menuToEnter = request & 0x7F */
+extern u8 D_800B02C8;
+extern u8 D_800ADB05;
+extern s32 D_800AFE84, D_800ADB50, D_800ADB60, D_800ADBEC;
+extern s32 D_80050100, D_8004F320, D_8004F31C, D_8004F350;
+extern s32 D_800ADB64;
+extern s32 g_GameSceneMapNum;
+extern s32 g_GamePartyMemberSkins[];
+extern RenderContext g_FieldRenderContexts[2];
+extern void* g_pGameState;
+extern u8 D_800B21D0[];
+extern u8 g_MenuDebugEnabled;
+extern void* g_PartyDataBuffers[];
+
+extern void func_800798BC(void);
+extern void func_800A2488(void);
+extern void func_80070488(void);
+extern void func_80070508(void);
+extern void func_80077544(void);
+extern void FieldPartyFreeSkinDataBuffers(void);
+extern void FieldPartyAllocateSkinDataBuffers(void);
+extern void GamePartySyncSkinData(void);
+extern void GamePartySyncStreamedData(void);
+extern void FontFree(void);
+extern void FieldSwapRenderContext(void);
+extern void MenuMain(void);
+extern void FieldScriptMemoryWriteU16(int index, int value);
+extern int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
+extern u32 LZSSDecompress(void* src, void* dst);
+
+#ifdef XENO_PC_PORT
+/* DIAGNOSTIC / TEST TOOLING (XENO_MENU_PARTY_DIAG=1).  The field menu opener
+ * frees and reallocates the party skin buffers around MenuMain.  On PSX the
+ * heap is deterministic, so the reallocation lands on the same addresses and
+ * any pointer an actor still holds into them keeps working; on the host it need
+ * not.  Dump g_PartyDataBuffers[], g_GamePartyMemberSkins[], and every field
+ * actor's pSpriteData (+0x4) / pActorData (+0x4C) at each seam so a retained
+ * pre-free pointer is visible rather than inferred.  Inert unless armed. */
+extern s32 D_800ADBFC;      /* live actor count (party + scripted actors) */
+extern s32 g_FieldNumActors;
+extern s32 g_PlayerActorIndex;
+
+static int PcPort_MenuPartyDiagArmed(void)
+{
+    static int armed = -1;
+    if (armed < 0) {
+        const char* e = getenv("XENO_MENU_PARTY_DIAG");
+        armed = (e && e[0] == '1') ? 1 : 0;
+    }
+    return armed;
+}
+
+/* DIAGNOSTIC / TEST TOOLING (XENO_MENU_PARTY_DIAG=1).  Second half of the same
+ * question: the opener blits the 6 party-sprite VRAM rects out to the backup
+ * table before MenuMain and back afterwards.  The C is symmetric, but that only
+ * proves the *calls* pair up -- if the host MoveImage loses the pixels, the
+ * party textures come back as 0x0000 texels, which the PSX blender treats as
+ * fully transparent, i.e. the sprite draws its quads and shows nothing.  Digest
+ * both rect tables straight out of the VRAM mirror so that case is measured
+ * rather than assumed. */
+static void PcPort_MenuVramDigest(const char* tag)
+{
+    extern unsigned short vram[];
+    enum { VRAM_W = 1024, RECT_W = 0x40, RECT_H = 0x20 };
+    s32 r;
+
+    if (!PcPort_MenuPartyDiagArmed())
+        return;
+    /* Retail party-page coordinates spelled out, INDEPENDENT of the migrated
+     * D_800ADCB0 (asm/field/data/3DF78.data.s @ 0x3E1C0).  The table-driven
+     * digest below reports whatever the build actually blits; this probe always
+     * reports the real party texture pages, so a build whose table is stubbed
+     * to zero can still be measured at the same place as a build whose table is
+     * correct.  That is what makes the before/after comparison an A/B. */
+    {
+        static const FieldVramCoord kRetailPartyPages[6] = {
+            { 0x0000, 0x00E0 }, { 0x0040, 0x00E0 }, { 0x0080, 0x00E0 },
+            { 0x00C0, 0x00E0 }, { 0x0100, 0x00E0 }, { 0x0100, 0x01E0 },
+        };
+
+        for (r = 0; r < 6; r++) {
+            unsigned int h = 2166136261u;
+            int nonZero = 0;
+            s32 y;
+
+            for (y = 0; y < RECT_H; y++) {
+                s32 x;
+                for (x = 0; x < RECT_W; x++) {
+                    unsigned short p =
+                        vram[(kRetailPartyPages[r].y + y) * VRAM_W +
+                             kRetailPartyPages[r].x + x];
+                    h ^= p;
+                    h *= 16777619u;
+                    if (p != 0)
+                        nonZero++;
+                }
+            }
+            printf("[xeno-port][vram-probe] %-11s page[%d] (%u,%u) fnv=%08x "
+                   "nonzero=%d/%d\n",
+                   tag, (int)r, (unsigned)kRetailPartyPages[r].x,
+                   (unsigned)kRetailPartyPages[r].y, h, nonZero,
+                   RECT_W * RECT_H);
+        }
+    }
+
+    for (r = 0; r < 6; r++) {
+        const FieldVramCoord* pRects[2];
+        const char* names[2];
+        s32 t;
+
+        pRects[0] = &D_800ADCB0[r];
+        pRects[1] = &D_800ADCC8[r];
+        names[0] = "field";
+        names[1] = "backup";
+        for (t = 0; t < 2; t++) {
+            unsigned int h = 2166136261u;
+            int nonZero = 0;
+            s32 y;
+
+            for (y = 0; y < RECT_H; y++) {
+                s32 x;
+                for (x = 0; x < RECT_W; x++) {
+                    unsigned short p =
+                        vram[(pRects[t]->y + y) * VRAM_W + pRects[t]->x + x];
+                    h ^= p;
+                    h *= 16777619u;
+                    if (p != 0)
+                        nonZero++;
+                }
+            }
+            printf("[xeno-port][vram-diag] %-11s %s[%d] (%u,%u) fnv=%08x "
+                   "nonzero=%d/%d\n",
+                   tag, names[t], (int)r, (unsigned)pRects[t]->x,
+                   (unsigned)pRects[t]->y, h, nonZero, RECT_W * RECT_H);
+        }
+    }
+    fflush(stdout);
+}
+
+static void PcPort_MenuPartyDiag(const char* tag)
+{
+    s32 i;
+    s32 count;
+
+    if (!PcPort_MenuPartyDiagArmed())
+        return;
+    printf("[xeno-port][party-diag] %-10s buffers=%p/%p/%p skins=%d/%d/%d "
+           "numActors=%d liveActors=%d player=%d\n",
+           tag, g_PartyDataBuffers[0], g_PartyDataBuffers[1],
+           g_PartyDataBuffers[2], (int)g_GamePartyMemberSkins[0],
+           (int)g_GamePartyMemberSkins[1], (int)g_GamePartyMemberSkins[2],
+           (int)g_FieldNumActors, (int)D_800ADBFC, (int)g_PlayerActorIndex);
+    count = D_800ADBFC;
+    if (count > 8)
+        count = 8;
+    for (i = 0; i < count; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u32 sprite = *(u32*)(actor + 0x4);
+        u32 data = *(u32*)(actor + 0x4C);
+        u32 skinId = 0xFFFFFFFFu;
+        if (data != 0)
+            skinId = *(u8*)((u8*)(uintptr_t)data + 0x126);
+        printf("[xeno-port][party-diag] %-10s actor[%d] pSpriteData=%08x "
+               "pActorData=%08x skinId=%02x status=%04x\n",
+               tag, (int)i, (unsigned)sprite, (unsigned)data,
+               (unsigned)skinId, (unsigned)*(u16*)(actor + 0x58));
+    }
+    fflush(stdout);
+}
+#endif
+
+/* Transcribed from asm/field/nonmatchings/main/misc4/func_800799D4.s
+ * (0x800799D4-0x8007A448). Early-out if request==0x80 and D_800B21D0!=0.
+ * Overlay HeapAlloc uses ArchiveDecodeAlignedSize((id+5)&0x7F) when
+ * D_8004F370==1, else (D_800ADB30&0xFFFFFF)+0xFFE3AFF8. Restore 0x6B9 uses
+ * the same D_800ADB30 word +0xFFE23FF8 when D_8004F370==0. */
+void func_800799D4(void) {
+    FieldVramCoord* pFieldRects;
+    FieldVramCoord* pBackupRects;
+    void* pMenuArchiveBackup = NULL;
+    void* pOverlayBuf;
+    void* pSaveTop;
+    void* pSaveBottom;
+    StreamDataQueueEntry menuLoadCommands[4];
+    void* savedMenuArgSrc;
+    RECT rect;
+    s32 i;
+    s32 menuId;
+    s16* pPresentFlags;
+
+    if (D_800ADB64 == 0x80 && D_800B21D0[0] != 0) {
+        return;
+    }
+
+    /* Full-screen semi-transparent black fade tile, duplicated per context. */
+    setTile(&D_800AFE54[0]);
+    SetSemiTrans(&D_800AFE54[0], 1);
+    D_800AFE54[0].w = 0x140;
+    D_800AFE54[0].b0 = 0;
+    D_800AFE54[0].g0 = 0;
+    D_800AFE54[0].r0 = 0;
+    D_800AFE54[0].y0 = 0;
+    D_800AFE54[0].x0 = 0;
+    D_800AFE54[0].h = 0xE0;
+    D_800AFE64 = D_800AFE54[0];
+
+    SetDrawMode(&D_800AFE24[0], 0, 0, GetTPage(0, 2, 0, 0), 0);
+    SetDrawMode(&D_800AFE24[1], 0, 0, GetTPage(0, 2, 0, 0), 0);
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("pre-free");
+#endif
+    FieldPartyFreeSkinDataBuffers();
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("post-free");
+#endif
+
+    /* Preserve the streamed 0x6B9 field archive across the overlay load. */
+    if (D_800B2264 != 0) {
+        ArchiveSetIndex(0x4, 0);
+        pMenuArchiveBackup = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 0);
+        memcpy(pMenuArchiveBackup, D_800ADB20, ArchiveDecodeAlignedSize(0x6B9));
+        HeapFree(D_800ADB20);
+    }
+
+    savedMenuArgSrc = D_800ADB30;
+    ArchiveSetIndex(0x10, 0);
+#ifdef XENO_PC_PORT
+    /* Retail's else-branch sizes this buffer as the fixed-map gap
+     * [0x801C5008, D_800ADB30): the menu overlay must land at 0x801C5000 on
+     * PSX, and D_800ADB30 is the next allocation above it.  On the host heap
+     * D_800ADB30 is a host pointer, so that subtraction is meaningless (it
+     * produced a ~5MB bogus size -> HeapAlloc failure -> GameHandleError(130)
+     * in the map005 repro).  Size the buffer by what is actually loaded into
+     * it: menuLoadCommands[1] streams archive file (menu id + 5) here, so use
+     * that file's decoded size -- the same derivation retail's own
+     * D_8004F370 branch and func_80077884's TOC branch (main.c:171) use.
+     * (void)savedMenuArgSrc: keep the retail read; only the sizing differs. */
+    (void)savedMenuArgSrc;
+    pOverlayBuf = HeapAlloc(ArchiveDecodeAlignedSize((D_800ADB64 + 5) & 0x7F), 1);
+#else
+    if (D_8004F370 == 1) {
+        pOverlayBuf = HeapAlloc(ArchiveDecodeAlignedSize((D_800ADB64 + 5) & 0x7F), 1);
+    } else {
+        pOverlayBuf = HeapAlloc(
+            ((u32)savedMenuArgSrc & 0xFFFFFF) + 0xFFE3AFF8, 1);
+    }
+#endif
+
+    menuLoadCommands[0].archiveIndex = 1;
+    menuLoadCommands[2].archiveIndex = 0;
+    menuLoadCommands[2].pData = NULL;
+    menuLoadCommands[3].archiveIndex = 0;
+    menuLoadCommands[3].pData = NULL;
+    menuLoadCommands[0].pData = HeapAlloc(ArchiveDecodeAlignedSize(1), 1);
+    D_8005945C = menuLoadCommands[0].pData;
+    menuLoadCommands[1].pData = pOverlayBuf;
+    menuId = D_800ADB64 & 0x7F;
+    menuLoadCommands[1].archiveIndex = menuId + 5;
+    if (menuId == 5 && D_8004F370 == 0) {
+        menuLoadCommands[2].archiveIndex = 0xC;
+        menuLoadCommands[2].pData = (void*)0x1DC000;
+    }
+
+    ArchiveCdDataSync(0);
+    func_80029AFC(menuLoadCommands, 0, 0);
+    ArchiveSetIndex(0x4, 0);
+
+    /* Back up the field party-sprite VRAM rects, then two fixed screen rects. */
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("pre-backup");
+#endif
+    pFieldRects = D_800ADCB0;
+    pBackupRects = D_800ADCC8;
+    rect.w = 0x40;
+    rect.h = 0x20;
+    for (i = 0; i < 6; i++) {
+        rect.x = pFieldRects->x;
+        rect.y = pFieldRects->y;
+        MoveImage(&rect, pBackupRects->x, pBackupRects->y);
+        DrawSync(0);
+        pFieldRects++;
+        pBackupRects++;
+    }
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("post-backup");
+#endif
+    func_8007995C(0x40, 0x100, 0x3C0, 0x100, 0x300, 0);
+    func_8007995C(0x40, 0x100, 0x2C0, 0x100, 0x280, 0);
+
+    D_800AFE4C.x = 0x2C0;
+    D_800AFE4C.y = 0x100;
+    D_800AFE4C.w = 0x140;
+    D_800AFE4C.h = 0xE0;
+    func_800A4748();
+    MoveImage(&D_800AFE4C, 0, 0x100);
+    DrawSync(0);
+
+    for (i = 0; i < 0x20; i++) {
+        func_80079784(i);
+    }
+    FieldRenderSync();
+    D_800AFE4C.x = 0;
+    D_800AFE4C.y = 0;
+    FieldSwapRenderContext();
+    FontFree();
+    MoveImage(&D_800AFE4C, 0, 0xE0);
+    FieldRenderSync();
+    ArchiveCdDataSync(0);
+
+    D_800594D0 = 0;
+    g_MenuDebugEnabled = 0;
+#ifndef MENU_MUTANT_NEVER_REQUEST
+    D_80059460 = D_800ADB64 & 0x7F;
+#endif
+    pPresentFlags = D_8006BE2C;
+    for (i = 0; i < 3; i++) {
+        pPresentFlags[i] = ((u8*)g_pGameState)[0x22B1 + i];
+    }
+    func_800798BC();
+    D_8005A4AC = (u8*)g_FieldRenderContexts + 0xCC;
+    D_8005A4B0 = (u8*)g_FieldRenderContexts + 0x81C0;
+    FieldRenderSyncAndFlush();
+
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] func_800799D4 request=%d D_80059460=%d -> MenuMain\n",
+           (int)D_800ADB64, (int)D_80059460);
+    fflush(stdout);
+    /* TEST TOOLING: only the field system menu (ADB64=0x80). Title/other
+     * requests must not arm PadOnControl Equip nav. */
+    if (D_800ADB64 == 0x80) {
+        extern int g_PcPortFieldMenuOpened;
+        g_PcPortFieldMenuOpened = 1;
+    }
+#endif
+#ifndef MENU_MUTANT_SKIP_MENUMAIN
+    MenuMain();
+#endif
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] MenuMain returned D_800594D0=%d\n", (int)D_800594D0);
+    fflush(stdout);
+#endif
+
+    FieldRenderSyncAndFlush();
+    D_80050100 = 2;
+
+    /* Post-menu state fixups keyed on the menu return state D_800594D0. */
+    if (D_800594D0 == 0 && (D_800ADB64 & 0x7F) == 2) {
+        D_800B02C8 = 1;
+        FieldScriptMemoryWriteU16(0x46, 0);
+        FieldScriptMemoryWriteU16(4, 4);
+        g_GameSceneMapNum = 4;
+        *(s16*)((u8*)g_pGameState + 0x2320) = 0;
+        *(s16*)((u8*)g_pGameState + 0x1932) = 0;
+        *(s16*)((u8*)g_pGameState + 0x231A) = 4;
+    }
+    if (D_800594D0 == 2) {
+        D_800B02C8 = 1;
+        FieldScriptMemoryWriteU16(0x46, 2);
+        FieldScriptMemoryWriteU16(4, *(u16*)((u8*)g_pGameState + 0x231A) & 0x3FFF);
+        if ((*(u16*)((u8*)g_pGameState + 0x231A) & 0x3FFF) < 0x400) {
+            *(s16*)((u8*)g_pGameState + 0x2320) =
+                *(u16*)((u8*)g_pGameState + 0x1984);
+        }
+    }
+
+    /* Restore the fade rects and back up the two menu screen halves. */
+    FieldRenderSync();
+    D_800AFE4C.x = 0;
+    D_800AFE4C.y = 0xE0;
+    D_800AFE4C.w = 0x140;
+    D_800AFE4C.h = 0xE0;
+    MoveImage(&D_800AFE4C, 0, 0);
+    FieldRenderSync();
+    D_800AFE4C.x = 0x140;
+    D_800AFE4C.y = 0;
+    MoveImage(&D_800AFE4C, 0, 0);
+    MoveImage(&D_800AFE4C, 0, 0x100);
+    FieldRenderSync();
+
+    PutDispEnv(&g_FieldCurRenderContext->dispEnv);
+    PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
+    D_800AFE4C.x = 0x2C0;
+    D_800AFE4C.y = 0x100;
+    rect.x = 0x300;
+    rect.y = 0;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    pSaveTop = HeapAlloc(0x8000, 1);
+    StoreImage(&rect, (u_long*)pSaveTop);
+    DrawSync(0);
+    rect.x = 0x280;
+    rect.y = 0;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    pSaveBottom = HeapAlloc(0x8000, 1);
+    StoreImage(&rect, (u_long*)pSaveBottom);
+    DrawSync(0);
+
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("pre-restore");
+#endif
+    pFieldRects = D_800ADCC8;
+    pBackupRects = D_800ADCB0;
+    for (i = 0; i < 6; i++) {
+        rect.w = 0x40;
+        rect.h = 0x20;
+        rect.x = pFieldRects->x;
+        rect.y = pFieldRects->y;
+        MoveImage(&rect, pBackupRects->x, pBackupRects->y);
+        DrawSync(0);
+        pFieldRects++;
+        pBackupRects++;
+    }
+#ifdef XENO_PC_PORT
+    PcPort_MenuVramDigest("post-restore");
+#endif
+
+    ArchiveSetIndex(0x4, 0);
+    HeapChangeCurrentUser(0x8, NULL);
+    D_800ADB60 = 0;
+    func_80070488();
+
+    if (D_800AFE84 != 0) {
+        for (i = 0x20; i < 0x3F; i++) {
+            func_80079784(i);
+        }
+        D_800ADB50 = 1;
+    } else {
+        for (i = 0x1F; i >= 0; i--) {
+            func_80079784(i);
+        }
+        func_80079784(0);
+        D_800ADB50 = 0;
+    }
+    func_80070508();
+
+    FieldRenderSync();
+    rect.x = 0x2C0;
+    /* Retail 8007A1FC restores the saved field texture strips at y=0x100. */
+    rect.y = 0x100;
+    rect.w = 0x40;
+    rect.h = 0x100;
+    LoadImage(&rect, (u_long*)pSaveBottom);
+    DrawSync(0);
+    rect.x = 0x3C0;
+    LoadImage(&rect, (u_long*)pSaveTop);
+    DrawSync(0);
+    HeapFree(pSaveBottom);
+    HeapFree(pSaveTop);
+    HeapFree(pOverlayBuf);
+
+    ArchiveSetIndex(0x4, 0);
+    if (D_800B2264 != 0) {
+#ifdef XENO_PC_PORT
+        /* Same fixed-map idiom as the overlay alloc above: retail sizes the
+         * restored 0x6B9 buffer as [0x801DC008, pMenuArchiveBackup), invalid
+         * against a host pointer.  The buffer holds the decoded 0x6B9 archive
+         * (memcpy'd back below), so use its decoded size -- identical to
+         * retail's own D_8004F370 branch and main.c:171. Latent at cold boot
+         * (D_800B2264 == 0 in the repro) but the same crash class once maps
+         * with streamed archives open a menu. */
+        D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
+#else
+        if (D_8004F370 == 0) {
+            D_800ADB20 = HeapAlloc(
+                ((u32)savedMenuArgSrc & 0xFFFFFF) + 0xFFE23FF8, 1);
+        } else {
+            D_800ADB20 = HeapAlloc(ArchiveDecodeAlignedSize(0x6B9), 1);
+        }
+#endif
+        memcpy(D_800ADB20, pMenuArchiveBackup, ArchiveDecodeAlignedSize(0x6B9));
+        HeapFree(pMenuArchiveBackup);
+    }
+
+    SetGeomOffset(0xA0, 0x70);
+    SetGeomScreen(g_Scene.sceneScrZ);
+    FieldPartyAllocateSkinDataBuffers();
+#ifdef XENO_PC_PORT
+    PcPort_MenuPartyDiag("post-alloc");
+#endif
+
+    if (D_800ADB64 == 1) {
+        g_GamePartyMemberSkins[0] = 0xFF;
+        g_GamePartyMemberSkins[1] = 0xFF;
+        g_GamePartyMemberSkins[2] = 0xFF;
+        D_8004F320 = 0;
+        D_8004F31C = 0;
+        GamePartySyncSkinData();
+        GamePartySyncStreamedData();
+        FieldRenderSync();
+        D_800ADBEC = 0;
+        D_800ADB05 = 1;
+    } else {
+        for (i = 0; i < 3; i++) {
+            s32 skin = g_GamePartyMemberSkins[i];
+            if (skin != 0xFF) {
+                void* pBuf = HeapAlloc(ArchiveDecodeAlignedSize(skin + 5), 1);
+                ArchiveReadFileToBuffer(skin + 5, pBuf, 0, 0x80);
+                ArchiveCdDataSync(0);
+                LZSSDecompress(pBuf, g_PartyDataBuffers[i]);
+                HeapFree(pBuf);
+            }
+        }
+#ifdef XENO_PC_PORT
+        PcPort_MenuPartyDiag("post-lzss");
+#endif
+        func_800A2488();
+#ifdef XENO_PC_PORT
+        PcPort_MenuPartyDiag("post-2488");
+#endif
+        FieldRenderSync();
+    }
+
+    D_800ADB64 = 0xFF;
+    func_80077544();
+#ifndef MENU_MUTANT_SKIP_WAIT_CLEAR
+    D_8004F350 = 0;
+#endif
+#ifdef XENO_PC_PORT
+    printf("[xeno-port][menu] WAIT_MENU D_8004F350=%d\n", (int)D_8004F350);
+    fflush(stdout);
+#endif
+}
 
 
 // Quad rendering
@@ -508,8 +1266,8 @@ void FieldRenderQuad(u_long* ot, Quad* pQuad, MATRIX* pMatTransform, int renderC
 }
 
 void func_8007AC58(u_long* ot, Quad* pQuad, MATRIX* pMatTransform, int renderContext) {
-    int nInterpolation;
-    int nFlag;
+    long nInterpolation;
+    long nFlag;
     int nPosY;
     int nPosX1;
     POLY_FT4* pPoly;
@@ -699,6 +1457,10 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
         s32 p1 = ((s32)v1[0] << 16) + v1[2];
         s32 p2 = ((s32)v2[0] << 16) + v2[2];
 
+        /* NOTE: retail inlines NCLIP here too, but this function's overall
+         * loop structure is still a faithful rewrite (see 8007B1C4 header), so
+         * the macro form measures 12 bytes WORSE than the call form until the
+         * rest of the body is matched. Keep the call form for now. */
         if (NormalClip(p0, p1, packedPos) < 0) {
             continue;
         }
@@ -727,7 +1489,38 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
+s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
+    VECTOR edge1, edge2, cross;
+    /* Edge1 = p1 - p0, Edge2 = p2 - p0 */
+    edge1.vx = p1->vx - p0->vx;
+    edge1.vy = p1->vy - p0->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - p0->vx;
+    edge2.vy = p2->vy - p0->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    if (cross.vz < 0) return -1;
+
+    /* Edge1 = pTest - p0, Edge2 = p2 - p0 */
+    edge1.vx = pTest->vx - p0->vx;
+    edge1.vy = pTest->vy - p0->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - p0->vx;
+    edge2.vy = p2->vy - p0->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    if (cross.vz < 0) return -1;
+
+    /* Edge1 = p1 - pTest, Edge2 = p2 - pTest */
+    edge1.vx = p1->vx - pTest->vx;
+    edge1.vy = p1->vy - pTest->vy;
+    edge1.vz = 0;
+    edge2.vx = p2->vx - pTest->vx;
+    edge2.vy = p2->vy - pTest->vy;
+    edge2.vz = 0;
+    OuterProduct0(&edge1, &edge2, &cross);
+    return cross.vz >> 31;
+}
 
 extern s16 D_800B218C;
 
@@ -980,8 +1773,18 @@ retry_along_normal:
     return 0;
 }
 
-static s32 FieldPackedXZ(const s16* vert);
-static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b);
+static inline s32 FieldPackedXZ(const s16* vert) {
+    return ((s32)vert[0] << 16) + vert[2];
+}
+
+static inline void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
+    *(u16*)(out + 0x00) = (u16)a[0];
+    *(u16*)(out + 0x02) = (u16)a[1];
+    *(u16*)(out + 0x04) = (u16)a[2];
+    *(u16*)(out + 0x08) = (u16)b[0];
+    *(u16*)(out + 0x0A) = (u16)b[1];
+    *(u16*)(out + 0x0C) = (u16)b[2];
+}
 
 s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
                   s16* outPoint, s32 mode, s32* outFlags) {
@@ -1011,6 +1814,11 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
         collisionMask = (D_800B21CC == 0) ? -1 : 0;
     }
 
+    /* NOTE: kept hoisted here. Moving this computation inside the loop below
+     * (to mimic retail's duplicated `triBase + idx*14` scaling at 8007BFF0 and
+     * 8007C00C) was TRIED and MEASURED: it made func_8007BEF4 1504 -> 1484 B,
+     * i.e. 20 bytes WORSE, because GCC then treats the whole sequence as
+     * loop-invariant and hoists more. Do not re-attempt without new evidence. */
     {
         s16* tri = (s16*)(triBase + triIndex * 14);
         u32 triFlags = ((u32*)(uintptr_t)D_800AFB20[0])[*((u8*)tri + 0x0C)];
@@ -1051,16 +1859,56 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
             nextTri = tri[4];
             break;
         case 3:
-            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
+            if (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[3];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 1;
+#endif
+            } else {
+                nextTri = tri[4];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 2;
+#endif
+            }
             break;
         case 4:
             nextTri = tri[5];
             break;
         case 5:
-            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            if (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) {
+                nextTri = tri[5];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 4;
+#endif
+            } else {
+                nextTri = tri[3];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 1;
+#endif
+            }
             break;
         case 6:
-            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            if (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) {
+                nextTri = tri[5];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 4;
+#endif
+            } else {
+                nextTri = tri[4];
+#ifndef FIELD_WALKMESH_MUTANT_KEEP_COMPOUND_SIDE
+                sideMask = 2;
+#endif
+            }
+            break;
+        case 7:
+            /* Retail's switch has EIGHT cases: the dispatch range check is
+             * `sltiu ..., 0x8` (x2) in
+             * asm/field/matchings/main/misc4/func_8007BEF4.s and jtbl_8006FB8C has
+             * eight entries. Index 7's target is 0x8007C244 =
+             * `addiu $s0, $zero, -0x1` (line 241), i.e. triIndex = -1 - the same
+             * body our `default:` had, which is why GCC emitted a literal-0 8th
+             * table slot instead of a real address. */
+            triIndex = -1;
             break;
         default:
             triIndex = -1;
@@ -1119,15 +1967,45 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
 
     if (sideMask == 1 || sideMask == 2 || sideMask == 4) {
         s16* tri = (s16*)(triBase + lastTri * 14);
+        /* Retail's three arms share the final b.z store at 8007C628.
+         * Keep the matching-build expression unchanged here; the native
+         * branches below restore that shared-tail effect for edges 1/2. */
         if (sideMask == 1) {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[0] * 8),
-                                (s16*)(vertBase + tri[1] * 8));
+            const s16* a = (const s16*)(vertBase + tri[0] * 8);
+            const s16* b = (const s16*)(vertBase + tri[1] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
+#ifdef XENO_PC_PORT
+            /* 8007C4C0 / 8007C570 jump to the b.z store at 8007C634. */
+            ((u16*)outEdge)[0x6] = (u16)b[2];
+#endif
         } else if (sideMask == 2) {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[1] * 8),
-                                (s16*)(vertBase + tri[2] * 8));
+            const s16* a = (const s16*)(vertBase + tri[1] * 8);
+            const s16* b = (const s16*)(vertBase + tri[2] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
+#ifdef XENO_PC_PORT
+            /* 8007C4C0 / 8007C570 jump to the b.z store at 8007C634. */
+            ((u16*)outEdge)[0x6] = (u16)b[2];
+#endif
         } else {
-            FieldCopyCameraEdge((u8*)outEdge, (s16*)(vertBase + tri[2] * 8),
-                                (s16*)(vertBase + tri[0] * 8));
+            const s16* a = (const s16*)(vertBase + tri[2] * 8);
+            const s16* b = (const s16*)(vertBase + tri[0] * 8);
+
+            ((u16*)outEdge)[0x0] = (u16)a[0];
+            ((u16*)outEdge)[0x1] = (u16)a[1];
+            ((u16*)outEdge)[0x2] = (u16)a[2];
+            ((u16*)outEdge)[0x4] = (u16)b[0];
+            ((u16*)outEdge)[0x5] = (u16)b[1];
+            ((u16*)outEdge)[0x6] = (u16)b[2];
         }
     }
 
@@ -1138,7 +2016,10 @@ void func_8007C670(s32* arg0, s32* arg1, s32 arg2) {
     s32 value = *arg0;
 
     if (arg2 >= 0) {
+        *arg0 = value;
         value += arg2;
+    } else {
+        *arg0 = value;
     }
 
     *arg1 = value;
@@ -1235,6 +2116,14 @@ s32 func_8007C694(s32* move, s32* base, void* pActorData,
                 sideMask = 2;
             }
             break;
+        case 7:
+            /* Same missing case as in func_8007BEF4 above: the retail dispatch in
+             * asm/field/matchings/main/misc4/func_8007C694.s has two
+             * `sltiu ..., 0x8` range checks (eight cases) and jtbl_8006FBAC has
+             * eight entries; index 7's target 0x8007C980 is
+             * `addiu $s0, $zero, -0x1` (line 214) = triIndex = -1. */
+            triIndex = -1;
+            break;
         default:
             triIndex = -1;
             break;
@@ -1309,19 +2198,6 @@ void func_8007CD60(s32 a0) {
     D_800ADC10 -= a0;
 }
 
-static s32 FieldPackedXZ(const s16* vert) {
-    return ((s32)vert[0] << 16) + vert[2];
-}
-
-static void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
-    *(u16*)(out + 0x00) = (u16)a[0];
-    *(u16*)(out + 0x02) = (u16)a[1];
-    *(u16*)(out + 0x04) = (u16)a[2];
-    *(u16*)(out + 0x08) = (u16)b[0];
-    *(u16*)(out + 0x0A) = (u16)b[1];
-    *(u16*)(out + 0x0C) = (u16)b[2];
-}
-
 s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
     s16 posX = *(s16*)((u8*)arg0 + 0x02);
     s16 posZ = *(s16*)((u8*)arg0 + 0x0A);
@@ -1382,14 +2258,21 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
         p2 = FieldPackedXZ(v2);
 
         sideMask = 0;
-        if (NormalClip(p0, p1, packedPos) < 0) {
-            sideMask |= 1;
-        }
-        if (NormalClip(p1, p2, packedPos) < 0) {
-            sideMask |= 2;
-        }
-        if (NormalClip(p2, p0, packedPos) < 0) {
-            sideMask |= 4;
+        {
+            s32 nclip;
+
+            gte_NormalClip(p0, p1, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 1;
+            }
+            gte_NormalClip(p1, p2, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 2;
+            }
+            gte_NormalClip(p2, p0, packedPos, &nclip);
+            if (nclip < 0) {
+                sideMask |= 4;
+            }
         }
 
         nextTri = -1;
@@ -1398,25 +2281,54 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
             steps = 0xFF;
             break;
         case 1:
-            nextTri = tri[3];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
             break;
         case 2:
-            nextTri = tri[4];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
-        case 3:
-            nextTri = (NormalClip(p1, packedPos, packedClamped) < 0) ?
-                      tri[3] : tri[4];
+        case 3: {
+            s32 nclip;
+
+            gte_NormalClip(p1, packedPos, packedClamped, &nclip);
+            nextTri = (nclip < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 6)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
+        }
         case 4:
-            nextTri = tri[5];
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 10);
             break;
-        case 5:
-            nextTri = (NormalClip(p0, packedPos, packedClamped) < 0) ?
-                      tri[5] : tri[3];
+        case 5: {
+            s32 nclip;
+
+            gte_NormalClip(p0, packedPos, packedClamped, &nclip);
+            nextTri = (nclip < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 6);
             break;
-        case 6:
-            nextTri = (NormalClip(p2, packedPos, packedClamped) >= 0) ?
-                      tri[5] : tri[4];
+        }
+        case 6: {
+            s32 nclip;
+
+            gte_NormalClip(p2, packedPos, packedClamped, &nclip);
+            nextTri = (nclip >= 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
+            break;
+        }
+        case 7:
+            /* Retail switch admits 8 values: dispatch is
+             * `sltiu $v0, $a1, 0x8` (x2) in
+             * asm/field/matchings/main/misc4/func_8007CD80.s lines 159/161
+             * (0x8007CF94 / 0x8007CF9C), and jtbl_8006FBCC has eight entries.
+             * $a1 is sideMask. Index 7's target 0x8007D0F0 is
+             * `addiu $a3, $zero, -0x1` (line 250). $a3 is the live triangle
+             * index written by cases 1-6 (nextTri in this C). */
+#ifdef FIELD_WALKMESH_MUTANT_CASE7_WALK
+            nextTri = tri[3];
+#else
+            nextTri = -1;
+#endif
             break;
         default:
             nextTri = -1;
@@ -1536,27 +2448,63 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
             sideMask |= 4;
         }
 
+        /* Retail's case-body emission order is 0,3,5,1,6,2,4,7, recovered from
+         * jtbl_8006FBEC's target addresses (0x8007D5A8, 0x8007D5B0, 0x8007D5D0,
+         * 0x8007D5E8, 0x8007D604, 0x8007D61C, 0x8007D638, 0x8007D654). Index i
+         * still dispatches to case value i, and every body ends in `break`, so
+         * this label order is behaviour-neutral.
+         *
+         * GCC 2.7.2 lays the bodies out by CFG, not source order: indexing the
+         * cached `tri` local ranks the emitted table (0,2,6,1,5,3,4,7) for any
+         * source order. Writing the address as `triBase + triIndex * 14` in each
+         * body reproduces retail's shape (0x8007D5E8/0x8007D61C/0x8007D638
+         * compute it, and cases 3/5/6 branch into those shared suffixes), which
+         * is what lets this label order canonicalise to the retail table. */
         switch (sideMask) {
         case 0:
             steps = 0xFF;
             break;
-        case 1:
-            nextTri = tri[3];
-            break;
-        case 2:
-            nextTri = tri[4];
-            break;
         case 3:
-            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0) ? tri[3] : tri[4];
-            break;
-        case 4:
-            nextTri = tri[5];
+            nextTri = (NormalClip(p1, packedNewXZ, packedOldXZ) < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 6)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
             break;
         case 5:
-            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0) ? tri[5] : tri[3];
+            nextTri = (NormalClip(p0, packedNewXZ, packedOldXZ) < 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 6);
+            break;
+        case 1:
+#ifdef FIELD_WALKMESH_MUTANT_D3D4_SWAP12
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
+#else
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
+#endif
             break;
         case 6:
-            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0) ? tri[5] : tri[4];
+            nextTri = (NormalClip(p2, packedNewXZ, packedOldXZ) >= 0)
+                ? *(s16*)((u8*)triBase + triIndex * 14 + 10)
+                : *(s16*)((u8*)triBase + triIndex * 14 + 8);
+            break;
+        case 2:
+#ifdef FIELD_WALKMESH_MUTANT_D3D4_SWAP12
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 6);
+#else
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 8);
+#endif
+            break;
+        case 4:
+            nextTri = *(s16*)((u8*)triBase + triIndex * 14 + 10);
+            break;
+        case 7:
+            /* Retail's switch really does have a case 7: its dispatch range check is
+             * `sltiu $v0, $s0, 0x8` (asm/field/matchings/main/misc4/func_8007D3D4.s
+             * lines 127/129) and jtbl_8006FBEC has EIGHT entries. Our C previously
+             * stopped at case 6 and let `default:` absorb index 7, which is why the
+             * built table had only 7 entries where retail has 8 - the last 4 bytes of
+             * the field rodata discrepancy. The index-7 target in retail is
+             * 0x8007D654 = `addiu $s1, $zero, -0x1`, i.e. nextTri = -1. */
+            nextTri = -1;
             break;
         default:
             nextTri = -1;
@@ -1622,6 +2570,29 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D818);
+extern s32 func_8007D8B4(s32 a, s32 b, s32 c);
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
+void func_8007D818(s32* pVec, VECTOR* pOut) {
+    s32 result = func_8007D8B4(pVec[0], pVec[1], pVec[2]);
+    pVec[0] >>= 12;
+    pVec[1] >>= 12;
+    pVec[2] >>= 12;
+    if (result < 0) {
+        pVec[0] = -pVec[0];
+        pVec[1] = -pVec[1];
+        pVec[2] = -pVec[2];
+    }
+    VectorNormal((VECTOR*)pVec, pOut);
+}
+
+s32 func_8007D8B4(s32 x, s32 y, s32 z) {
+    s32 ax = x < 0 ? -x : x;
+    s32 ay = y < 0 ? -y : y;
+    s32 az = z < 0 ? -z : z;
+    if (ax >= ay) {
+        if (ax >= az) return x;
+    } else if (ay >= az) {
+        return y;
+    }
+    return z;
+}

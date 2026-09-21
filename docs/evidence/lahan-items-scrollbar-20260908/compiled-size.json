@@ -1,0 +1,8 @@
+{
+  "object": "build/src/menu/main/misc.c.o",
+  "object_sha256": "05c55693efce92053ac9a11cca3e88760ae091dd4b2b6b68ba581a350333e183",
+  "compiled_bytes": 352,
+  "retail_bytes": 356,
+  "exact_match": false,
+  "scope": "Size gate only; relocation-normalized byte comparison not run if sizes differ."
+}

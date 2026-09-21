@@ -1,0 +1,6 @@
+{
+  "src/slus_006.64/system/animation_scripts.c": "af23238cf10482e29bd910912d54760286592eed1caaafdff8188baca799498b",
+  "pc_port/tests/sprite_dispatch_ce_retail_test.c": "21380110a60d340e9e3caf26a033934b3f86fc25a855fd494fee1e751573923c",
+  "pc_port/tests/run_sprite_dispatch_ce_retail_test.sh": "1cb976c3b2c23dc0c230e111c7f2f9f44cae5297fd59e0293ab797b8b54040a3",
+  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119"
+}

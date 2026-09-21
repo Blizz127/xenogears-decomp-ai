@@ -1,0 +1,26 @@
+mutant,fault_class,killed_by,detail
+WM_97770_MUTANT_WRONG_STRIDE,wrong stride,A.stride.addr,sll 6 instead of 7 (64-byte slots)
+WM_97770_MUTANT_WRONG_OCC_OFFSET,wrong offset,A.claim.ret,occupancy read at +2 instead of +4
+WM_97770_MUTANT_BUSY_POLARITY,wrong branch polarity,A.claim.ret,claims busy slots and rejects free ones
+WM_97770_MUTANT_MISSING_MARK,skipped store,A.claim.mark,+0 marker halfword not written
+WM_97770_MUTANT_WRONG_VALUE_WIDTH,wrong store width,A.claim.canary6,sw instead of sh clobbers +6
+WM_941C4_MUTANT_SWAPPED_RATAN2_ARGS,swapped arguments,B.basic.ratan2_y,ratan2(dx dz) instead of (dz dx)
+WM_941C4_MUTANT_WRONG_ANGLE_BIAS,wrong constant,B.basic.angle,+0x800 instead of +0x400
+WM_941C4_MUTANT_WRONG_ANGLE_MASK,wrong mask,B.wrap_sub.angle,andi 0x7FF instead of 0xFFF
+WM_941C4_MUTANT_MISSING_SIN_NEGATE,missed operation,B.basic.outz,out.Z receives +rsin
+WM_941C4_MUTANT_SWAPPED_TRIG_ORDER,wrong call order,B.basic.order,rsin before rcos
+WM_94238_MUTANT_MISSING_COORD_MASK,missing mask,C.srl_neg.ret,andi 0xFFFF dropped after srl 12 (NOTE: sra-for-srl is behaviorally EQUIVALENT here because the andi keeps only original bits [27:12]; recorded honestly and not claimed as a mutant)
+WM_94238_MUTANT_EXCLUSIVE_BOUND,off-by-one boundary,C.hit4_low.ret,lower bound made exclusive
+WM_94238_MUTANT_WRONG_TYPE_CONST,wrong constant,C.hit4_low.ptr,type compare against 3
+WM_94238_MUTANT_SWAPPED_GLOBALS,wrong global target,C.hit4_low.ida,id stored to BD24 in the type-4 arm
+WM_94238_MUTANT_WRONG_STRIDE,wrong stride,C.hit2_second.ret,record stride 0xC instead of 0x10
+WM_8BEC8_MUTANT_WRONG_CLOSE_THRESH,off-by-one boundary,D.thresh.ret,slti threshold 6 instead of 5
+WM_8BEC8_MUTANT_MISSING_ABS,missed operation,D.negd.ret,negative distance not absolute-valued
+WM_8BEC8_MUTANT_WRONG_STEP_ROUND,wrong truncation,D.negstep.posx,sra 1 without sign-bias (round toward -inf)
+WM_8BEC8_MUTANT_SWAPPED_AXES,swapped operands,D.close.ret,X axis stepped with Z offsets
+WM_8BEC8_MUTANT_MASK_POLARITY,wrong result encoding,D.xfar.ret,close bits X<->Z exchanged
+WM_8C1DC_MUTANT_WRONG_BRANCH_CONST,wrong constant,E.c3.stores,class compare against 2
+WM_8C1DC_MUTANT_MISSING_SIGN16,missing sign extension,E.sign16.calls160,raw 93F18 result compared (0x10003 != 3)
+WM_8C1DC_MUTANT_WRONG_OFFSET_A4,wrong offset,E.c3.o4,Z halfword stored at +0xA6
+WM_8C1DC_MUTANT_SWAPPED_CALLEE,wrong helper,E.c3.calls160,89160/894C8 arms exchanged
+WM_8C1DC_MUTANT_WRONG_5C_WIDTH,wrong store width,E.c3.ac,sw of obj[0x5C] clobbers +0xAC

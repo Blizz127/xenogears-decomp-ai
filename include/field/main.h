@@ -60,6 +60,9 @@ extern FieldTriggerZone* g_pFieldTriggerZones;
 extern FieldScene g_Scene;
 extern int g_WorldScale;
 
+/* Model-resource overlay helper loaded from archive 0x6B9 at 0x801DC000. */
+void func_801E72CC(MATRIX* dst, MATRIX* unused, s32 selector, s32 index);
+
 
 typedef struct {
     DRAWENV drawEnvs[2];
@@ -119,5 +122,9 @@ extern int g_FieldCurRenderContextIndex;
 extern int g_FieldRenderContextUseOT2;
 extern RenderContext* g_FieldCurRenderContext;
 extern RenderContext g_FieldRenderContexts[2];
+
+/* Retail gear transitions consume a party slot, not an actor index. */
+void func_800AD4D4(s32 partySlot);
+void func_800ACFD0(s32 partySlot);
 
 #endif

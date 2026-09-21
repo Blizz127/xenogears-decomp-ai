@@ -1,0 +1,6 @@
+mutant,define,injected_change,expected_weakness,killed,evidence
+SRA11,WM_94A5C_MUTANT_SRA11,"prologue newX/newZ use >>11 instead of >>12",wrong fixed-point scale of movement,Yes,"test t0=0 (near-boundary) move flips to t0=1; A-tail-93354 mismatch"
+THRESHOLD10,WM_94A5C_MUTANT_THRESHOLD10,"tail test uses t0>=10 instead of t0>=11",wrong early-tail on t0=10,Yes,"case t0=10 no longer runs complex helpers; A-4a70c missing"
+SWAP_PATTERN,WM_94A5C_MUTANT_SWAP_PATTERN,"P1/P2 patterns swapped for cases 5/10 vs 6/9",wrong helper call order for case 6/9,Yes,"case t0=5/6 first-call helper id mismatch"
+WRONG_MASK,WM_94A5C_MUTANT_WRONG_MASK,"mask AND uses 0xFFF00000 instead of 0xFFF80000",wrong workspace mask,Yes,"case t0=6 mask0/mask2 mismatch"
+TAIL_NOCOPY,WM_94A5C_MUTANT_TAIL_NOCOPY,"skip the s1[0x10..0x1c] -> s1[0..0xc] copy",missing tail result copy,Yes,"case t0=0 copy mismatch"

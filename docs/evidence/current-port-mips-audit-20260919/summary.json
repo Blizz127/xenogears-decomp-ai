@@ -1,0 +1,96 @@
+{
+  "head": "f1830448959de0bde3aaf3b524d06553896a5bd6",
+  "translation_units": 275,
+  "function_definition_occurrences": 3559,
+  "unique_overlay_function_names": 3507,
+  "authority": {
+    "battle": {
+      "sha256": "1830b4ef1fe37129972fc310dfad534f8161d6c0b123e74254c3711334a3e291",
+      "listing_words_verified": 163751,
+      "functions": 857
+    },
+    "battle_command_file1": {
+      "sha256": "64668d85bf48dea46cf6d5f04b38e38ca887877cfef53961f0c26cd2d363b670",
+      "listing_words_verified": 5050,
+      "functions": 105
+    },
+    "battling": {
+      "sha256": "3e6df915e9c7f05f5fb997cb331392f1333e867dfb2628cd65e5e1ea1575646e",
+      "listing_words_verified": 54664,
+      "functions": 458
+    },
+    "field": {
+      "sha256": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+      "listing_words_verified": 125741,
+      "functions": 884
+    },
+    "member_change_menu": {
+      "sha256": "3b9e2b890c27ae0de97fe343ac75cd35c05fe7f9605ae387d2166da0be78109c",
+      "listing_words_verified": 12468,
+      "functions": 67
+    },
+    "menu": {
+      "sha256": "82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d",
+      "listing_words_verified": 74180,
+      "functions": 307
+    },
+    "movie": {
+      "sha256": "50e1a9d9e08b90eed0c2da1c289507e71cbf51749893a92f457ce79a59701f9a",
+      "listing_words_verified": 6743,
+      "functions": 34
+    },
+    "shop_menu": {
+      "sha256": "7890e14bcabddcf85368de10783ecff8daa166dc5ac254e06db5e27959cab4cf",
+      "listing_words_verified": 26504,
+      "functions": 118
+    },
+    "slus_006.64": {
+      "sha256": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119",
+      "listing_words_verified": 103945,
+      "functions": 1220
+    },
+    "world_map": {
+      "sha256": "4c15fd32b3a03d7cd5ea4403dcaabc70abaf99b6aaca65d63d6866803edaac70",
+      "listing_words_verified": 42084,
+      "functions": 386
+    }
+  },
+  "counts": {
+    "SIZE_DIFFERENT": 535,
+    "BYTE_IDENTICAL": 2807,
+    "UNRESOLVED_RELOCATION": 26,
+    "NO_RETAIL_LISTING": 31,
+    "BYTE_DIFFERENT": 158,
+    "ASSEMBLY_SPAN_UNRESOLVED": 2
+  },
+  "C_counts": {
+    "SIZE_DIFFERENT": 535,
+    "BYTE_IDENTICAL": 1905,
+    "UNRESOLVED_RELOCATION": 26,
+    "NO_RETAIL_LISTING": 31,
+    "BYTE_DIFFERENT": 158
+  },
+  "ASM_counts": {
+    "BYTE_IDENTICAL": 902,
+    "ASSEMBLY_SPAN_UNRESOLVED": 2
+  },
+  "native_owner_counts": {
+    "PORT_REPLACEMENT": 244,
+    "SAME_SOURCE_LINKED": 2186,
+    "NO_LINKED_SYMBOL_BY_NAME": 1033,
+    "GENERATED_STUB": 70,
+    "OTHER_SOURCE_OR_OVERLAY": 26
+  },
+  "same_source_linked_C_counts": {
+    "BYTE_IDENTICAL": 1372,
+    "SIZE_DIFFERENT": 463,
+    "BYTE_DIFFERENT": 147,
+    "UNRESOLVED_RELOCATION": 18,
+    "NO_RETAIL_LISTING": 28
+  },
+  "function_stubs": 82,
+  "stubs_with_C_candidate": 12,
+  "port_runtime_sources": 253,
+  "test_only_port_sources": 5,
+  "native_sha256": "3ab30d4c17b4d6af196656d5df29063b03025aab85025f7633e9b4829c2b1497"
+}

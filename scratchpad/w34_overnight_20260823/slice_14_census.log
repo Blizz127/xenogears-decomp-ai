@@ -1,0 +1,33 @@
+W34B41 fresh read-only callback census against pc_port/build_native/xeno-port
+GDB script: w34b37_slot_census.gdb
+Capture completed: frame 916, scheduler entry 2, natural rc=0
+
+W34B37_CENSUS_ENTRY frame=916 sched_entry=2
+W34B37_CENSUS_POOL 0x800d7538
+W34B37_SLOT 00 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x800923a8 cb1=0x800925a0 payload=0x00000000
+W34B37_SLOT 01 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x8008a2c8 cb1=0x8008a72c payload=0x0064c4f4
+W34B37_SLOT 02 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x8008b2bc cb1=0x8008b644 payload=0x0064c728
+W34B37_SLOT 03 state=3 state_raw=0x0003 timer=0x0000 flag=0x0000 cb0=0x8008bb40 cb1=0x8008b644 payload=0x00000000
+W34B37_SLOT 04 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x8008c530 cb1=0x8008c844 payload=0x0064c95c
+W34B37_SLOT 05 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x8008d3f0 cb1=0x8008d678 payload=0x0064cbc0
+W34B37_SLOT 06 state=3 state_raw=0x0003 timer=0x0000 flag=0x0000 cb0=0x8008dd6c cb1=0x8008d678 payload=0x00000000
+W34B37_SLOT 07 state=3 state_raw=0x0003 timer=0x0000 flag=0x0000 cb0=0x8008e190 cb1=0x8008e76c payload=0x00000000
+W34B37_SLOT 08 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x800906e0 cb1=0x800907f4 payload=0x00000000
+W34B37_SLOT 09 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80091430 cb1=0x800914d0 payload=0x00000000
+W34B37_SLOT 10 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80091b54 cb1=0x80091c18 payload=0x00000000
+W34B37_SLOT 11 state=3 state_raw=0x0003 timer=0x0000 flag=0x0000 cb0=0x80092234 cb1=0x800922ac payload=0x00000000
+W34B37_SLOT 12 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80092be4 cb1=0x80092c70 payload=0x00000000
+W34B37_SLOT 13 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80092df8 cb1=0x80092fd8 payload=0x00000000
+W34B37_SLOT 14 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80071a50 cb1=0x80071a58 payload=0x00000000
+W34B37_SLOT 15 state=1 state_raw=0x0001 timer=0x0000 flag=0x0000 cb0=0x80087710 cb1=0x80087734 payload=0x00000000
+W34B37_CENSUS_BACKEDGE target=0x8007130C (retail 0x800719C8 bnez)
+[worldmap-frame-tail] BACKEDGE 0x800719C8 d554=0x00000001 held=1 hit=1
+W34B37_CENSUS_DONE frame=916 rc=0
+
+Supporting natural counters from the same run:
+[worldmap-scheduler] counters: entry=2 slots=128 occupied=32 state0=16 state1=13 state2=0 state3=3 state4=0 state_invalid=0 dispatch=29 executed=29 missing=0 invalid=0 destructor_calls=0 destructor_boundary=0 completed=2 last_slot=15 last_cb=0x80087734 last_cb_state=1 outcome=0 frontier=0x8007106c
+
+Interpretation: the scheduler counters are pre-callback observations. The
+state-1 slot 11 callback returned 3 during pass 2, so the final held-tail
+census correctly shows slot 11 as state 3. Thus the final table is 12 state-1
+cb1 candidates and four dormant state-3 slots.

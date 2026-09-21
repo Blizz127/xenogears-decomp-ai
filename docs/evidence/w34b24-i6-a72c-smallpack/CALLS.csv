@@ -1,0 +1,16 @@
+function,callee,site,status,notes
+wm_80097770,-,-,leaf,pool base *(0x8009BE24) (accepted convergence pool)
+wm_800941C4,ratan2 (0x8004B32C),0x800941F0,CANONICAL,args (B.Z-A.Z B.X-A.X)
+wm_800941C4,rcos (0x8003F8B0),0x80094200,CANONICAL,arg = biased masked angle
+wm_800941C4,rsin (0x8003F8CC),0x80094210,CANONICAL,arg = lh reload of stored angle
+wm_80094238,-,-,leaf,globals 0x8009BD00 (table ptr) 0x8009D7D8 0x8009BD24 0x8009CE68
+wm_8008BEC8,wm_80093354,0x8008BF9C,CANONICAL,wrap of obj+0x28 vector
+wm_8008BEC8,wm_80093978,0x8008BFAC,CANONICAL,heading from stepped position
+wm_8008C1DC,wm_80093F18,0x8008C1FC,CANONICAL,terrain class of obj+0x28
+wm_8008C1DC,wm_80089160,0x8008C258,CANONICAL,class-3 arm (ctx out+0xA0 out+0xA8)
+wm_8008C1DC,wm_800894C8,0x8008C268,CANONICAL,other-class arm (ctx)
+callers,wm_80097770,~180 sites incl. wm_8008A72C x14,-,full-overlay JAL scan in lane notes
+callers,wm_800941C4,13 sites incl. 0x8008AD48/0x8008AFF8 (8A72C),-,-
+callers,wm_80094238,5 sites: 0x8008AB10 0x8008CC48 0x8008ED34 0x8008F16C 0x8008F52C,-,-
+callers,wm_8008BEC8,13 sites incl. 0x8008AD9C/0x8008B034 (8A72C),-,-
+callers,wm_8008C1DC,8 sites incl. 0x8008A928/0x8008AE00 (8A72C),-,$v0 discarded at all 8 sites (verified)

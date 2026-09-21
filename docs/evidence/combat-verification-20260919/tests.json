@@ -1,0 +1,446 @@
+[
+  {
+    "test": "battle_overlay_bootstrap_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "8aa59d4d2da397f3ee1552fd3c4c688cb7e98d2d7cabce2bbbc9d4352a29ca5d",
+    "classification": "OBSOLETE_BOOTSTRAP_CONFIG_EXPECTATION"
+  },
+  {
+    "test": "run_battle_animation_leaf_test.sh",
+    "returncode": 1,
+    "seconds": 0.16,
+    "initial_log_sha256": "78d33ff3c767fa0a60f592b6abb0412569d14cc0e16a3e027e159095bd84abba",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_asset_loader_test.sh",
+    "returncode": 0,
+    "seconds": 1.37,
+    "initial_log_sha256": "83bac0f0e351a5a937f36c50d0dc37376a7fa22d130581194fda6f468a27a187"
+  },
+  {
+    "test": "run_battle_attack_ring_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "06e617d79394c6f4a68f4365f0b874dbf787ce2c8ea517ccb823c4066260ec7e",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_attack_ring_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "a47a7f59767affc204bb30670a65367eab376afd44153e9694b90a25681f7c80",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_board_family_7e8_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "674333f88e1032216edec2fca5b671fa2db7b7e0f20f2ff12fe93c74a603072a",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_cdk_task_spawners_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "d7cf4a5dd8d9c54ab80f293bbe0fd44277723065eab6c52c4f80e82cf5e01a63",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_child_billboard_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.31,
+    "initial_log_sha256": "99066437f3d5b46d50b8973f0129871297f5c3c723a8f15b300d6233337d3ff6",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/billboard-fixed.log",
+      "sha256": "911b27c5ff895cc1b8377d628b4d8b0599af412d6be9ef024e74046c9f6738f1"
+    }
+  },
+  {
+    "test": "run_battle_child_tile_retail_test.sh",
+    "returncode": 0,
+    "seconds": 3.77,
+    "initial_log_sha256": "d3dab8e7434933f2f896e11a484e975e1d538dd027c66fef6c2d30f1a72ab641"
+  },
+  {
+    "test": "run_battle_command_sound_test.sh",
+    "returncode": 1,
+    "seconds": 0.02,
+    "initial_log_sha256": "5fe4448dbd705b0f23e636290267f2efd7ec30b66bbac54e6224b10e0729190e",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/command-green.log",
+      "sha256": "0bf3aefb7f32f17e06b3c0af875975322b425e5574e7c4a27c37c21d98ce1706"
+    }
+  },
+  {
+    "test": "run_battle_compmatrix_bridge_retail_test.sh",
+    "returncode": 0,
+    "seconds": 5.13,
+    "initial_log_sha256": "a1557f5891163cb057abb623824134fb151a704d9db56084242d2dbc15a8a603"
+  },
+  {
+    "test": "run_battle_encounter_alias_test.sh",
+    "returncode": 0,
+    "seconds": 1.77,
+    "initial_log_sha256": "97777a949d25090817abea73ed126898c70247846605d85a95babaac18d620d7"
+  },
+  {
+    "test": "run_battle_graphics_abi_test.sh",
+    "returncode": 1,
+    "seconds": 0.26,
+    "initial_log_sha256": "f4728cc14e74529ddcc4d5cdb9f4bd8ac7d0caa71321b828ab57c11448527371",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/graphics-fixed.log",
+      "sha256": "e6e0eb131d005f5b3a9c09f203f7b6a1063a1cd5298a7790b1ff498181a54c51"
+    }
+  },
+  {
+    "test": "run_battle_gte_retail_test.sh",
+    "returncode": 0,
+    "seconds": 14.1,
+    "initial_log_sha256": "2ddb940b3ffee2aab5513f45e0561bca003edbf95e2fc6ab707258cbde49230b"
+  },
+  {
+    "test": "run_battle_guest_call_test.sh",
+    "returncode": 1,
+    "seconds": 0.26,
+    "initial_log_sha256": "81f9cc3f54d8f2cbc429ebddc9b6cdce1e743e580f1f13ac3c91015b8c2c678e",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/guest-fixed.log",
+      "sha256": "e995cc27ee82d550591d4f2f008bfcd38998df7204bbf40bdbd8668906df846b"
+    }
+  },
+  {
+    "test": "run_battle_heap_pointer_retail_test.sh",
+    "returncode": 0,
+    "seconds": 4.68,
+    "initial_log_sha256": "5a4ed533ba766a276d5eafefdab1013deab94f1bcfffb2761655b33350d20eee"
+  },
+  {
+    "test": "run_battle_heap_reservation_test.sh",
+    "returncode": 1,
+    "seconds": 0.12,
+    "initial_log_sha256": "cc7ce117b9ba7a71cd83386c7dbe553e52e318525dbdcbf30d2c7fd6ca5aef9a",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/heap-fixed.log",
+      "sha256": "f464b433851d6daebfd740fb2de9b1426003359767d946731bfd9d4fda3ed757"
+    }
+  },
+  {
+    "test": "run_battle_leaf_setters_bf6cc_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "57c7dbf7188d2bf9e684f69cdb42e859431a0a7ff9627e893afa3eca42dc6f90",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_mips_adapter_test.sh",
+    "returncode": 0,
+    "seconds": 0.11,
+    "initial_log_sha256": "82e3f2fff06e3184e94fa2db7aeea103644527e098ed3bee51804e2e66ba8e35"
+  },
+  {
+    "test": "run_battle_native_callback_map_test.sh",
+    "returncode": 0,
+    "seconds": 1.22,
+    "initial_log_sha256": "1ca36a19834b6906c2217651e989db41826b1a5dce9d09c43a7d2989e77642cf"
+  },
+  {
+    "test": "run_battle_overlay_host_differential_test.sh",
+    "returncode": 0,
+    "seconds": 24.47,
+    "initial_log_sha256": "715193e7f11740884e2c1abaec27f29ff8f7d9d0ba67f19d1509d0e5fddbe231",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/overlay-fixed.log",
+      "sha256": "b02939bb6ab604fdd279e874edbe247e00c3aa37b1efb5d96b9e5d912a88c4c8"
+    }
+  },
+  {
+    "test": "run_battle_overlay_leaf_bridge_test.sh",
+    "returncode": 0,
+    "seconds": 1.47,
+    "initial_log_sha256": "79014599a50d9686eff52172dabc526098c00cbf837be70f0c8c344d2a7bd28c"
+  },
+  {
+    "test": "run_battle_primitive_colors_retail_test.sh",
+    "returncode": 0,
+    "seconds": 3.22,
+    "initial_log_sha256": "a85e0673865f2219566ab360b4eb578f0567cbf616bf7d1644badea854bb034b"
+  },
+  {
+    "test": "run_battle_return_state_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.16,
+    "initial_log_sha256": "512234d19942edea88a05f2b606b1b4b934d4e33062ca757c39cffac5179c96d",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/return-fixed.log",
+      "sha256": "290cb775e0ce1267c1f748f95105e7972770402aac003093eb9460c1ea2c3c4d"
+    }
+  },
+  {
+    "test": "run_battle_sprite_callback_retail_test.sh",
+    "returncode": 0,
+    "seconds": 1.67,
+    "initial_log_sha256": "44f8f7c70a676e88026b687b809ff2326f6f204b8f293675a90bebb459138278"
+  },
+  {
+    "test": "run_battle_sprite_hooks_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.27,
+    "initial_log_sha256": "ac9c252d0fb06adf84ffaa5315d47f733f49e5c5dd0a8974229c7bc9b1148c1c",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/sprite-fixed.log",
+      "sha256": "3c011cf881ef81f59f888414d93d094bd1e5473fbc93d210e2e810b91e596221"
+    }
+  },
+  {
+    "test": "run_battle_target_actor_range_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "8fdbf510bca991c9e8841c7b8a9c0b2185a71e5749a7fb37b77fd7e7cab8f161",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_bounds_test.sh",
+    "returncode": 0,
+    "seconds": 3.07,
+    "initial_log_sha256": "bab8db11800d319c88920e49f5442d215871cd549f05b8509d067002edb8e923"
+  },
+  {
+    "test": "run_battle_target_camera_test.sh",
+    "returncode": 1,
+    "seconds": 0.46,
+    "initial_log_sha256": "e2e065dbb44d3b25493b7b7ff63efd13149614e231b9df6c6d5ad672b4643582",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_chain_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "066a1bc2fa295a6847599bdb1fdbd729a82582b2d95ae0379a1f747593a8a2df",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_cleanup_retail_test.sh",
+    "returncode": 0,
+    "seconds": 89.6,
+    "initial_log_sha256": "fff966ba6f7f672d7d0cbc4d6ff4b98d9dae0a97f1d87726487e623190480415"
+  },
+  {
+    "test": "run_battle_target_direction_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "afbf76b038e808e43deff1b8289224b4b05396c993ff05f81b818627b4881705",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_direction_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.12,
+    "initial_log_sha256": "9f5d8c901890e86f8a0f9d8b17babca49d7b8cd6d9d2b354b1155ec1c394e4c1",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_display_match.sh",
+    "returncode": 0,
+    "seconds": 0.11,
+    "initial_log_sha256": "73e3130a447ab4b4485c284b5e3d1ec8d0fae9c078a92d1d9ebaae69ef27f7c2"
+  },
+  {
+    "test": "run_battle_target_display_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "dd55a1cfd576387962d16bef799c246b634865dbc578c3cc7e8645911deb7907",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_eligibility_bindings_test.sh",
+    "returncode": 0,
+    "seconds": 0.26,
+    "initial_log_sha256": "83bd3f885c0cc2662cdab4bf81b79c0837e85fd58f0bc86552f2cedf28c03f79"
+  },
+  {
+    "test": "run_battle_target_eligibility_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "bf5f1fcf33e497e9f1613a19c21adf66f0aa48a9497b174d2477d0865e1abc7e",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_eligibility_ram_test.sh",
+    "returncode": 124,
+    "seconds": 240.0,
+    "initial_log_sha256": "da088ecb74ceffd5acd05372d8995972a2dff140035f713384fe0a9f833190aa",
+    "classification": "Initial 240-second aggregate timeout; extended run PASS",
+    "rerun": {
+      "returncode": 0,
+      "log": "scratchpad/astra-combat-20260919/eligibility-long.log",
+      "sha256": "c23da5858824bd26599e2c3df4921cc90237b75c24f8f834b168407e7de02cf1"
+    }
+  },
+  {
+    "test": "run_battle_target_eligibility_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "f4294585e68e4b9b7c02c229425175f27f08b589606b771494d657745af64a41",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_guest_frame_test.sh",
+    "returncode": 0,
+    "seconds": 52.64,
+    "initial_log_sha256": "cf6a43bf1534f6c308640d42b23b03a7295e53f0e7304879526ee305e7078038"
+  },
+  {
+    "test": "run_battle_target_list_bindings_test.sh",
+    "returncode": 0,
+    "seconds": 0.31,
+    "initial_log_sha256": "ed7f13684420392faa92fa46d4e2e7f9e7315829f2454b0953dbd4c100612268"
+  },
+  {
+    "test": "run_battle_target_list_match.sh",
+    "returncode": 1,
+    "seconds": 0.06,
+    "initial_log_sha256": "b0d962f4aa974cb7055cb6ba720a7f2f26120f6466819121da21a8af7eac9482",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_list_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "78505a8a41b52d2164a8d8ff6b9c13c9cd4cc504c179bdec96e9c89b21bc117f",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_radius_test.sh",
+    "returncode": 0,
+    "seconds": 1.92,
+    "initial_log_sha256": "3697522e2ce20b36beaddb663e61233ff40be6284e1734f37983973e52320325"
+  },
+  {
+    "test": "run_battle_target_range_caller_test.sh",
+    "returncode": 0,
+    "seconds": 2.07,
+    "initial_log_sha256": "310357c62714deed5fc201d9c3bfac8c67946cfb0d17d7c4acaad52cbc7f6630"
+  },
+  {
+    "test": "run_battle_target_ranges_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "db2f2930b2f71d7c672882ee671686456a9c60880e0cee4788348ce4b3230ab7",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_selection_bindings_test.sh",
+    "returncode": 0,
+    "seconds": 0.27,
+    "initial_log_sha256": "b348a0a724156094c79c4e028d0396e9e7dd4269a23796ce2e55a2d5b1762d52"
+  },
+  {
+    "test": "run_battle_target_selection_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "c3905e1855867dd3b3d8890c01cc8a3e195f4f28a5fd95a7938a20af826bda1b",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_setup_alias_test.sh",
+    "returncode": 0,
+    "seconds": 1.17,
+    "initial_log_sha256": "e51e98d3409ccd489d263f3966008be3a4387b7e31d76911d485d68a0a998942"
+  },
+  {
+    "test": "run_battle_target_setup_contract_test.sh",
+    "returncode": 0,
+    "seconds": 3.07,
+    "initial_log_sha256": "03ebc637d2b07c8d84cc70d52a7b5269a11f4ea2c616127d51437ba61d6534d0"
+  },
+  {
+    "test": "run_battle_target_setup_match.sh",
+    "returncode": 0,
+    "seconds": 0.11,
+    "initial_log_sha256": "3ecb8654234bbbf5c3b2f347d031d5cdccddb6c0e656771129d6e38985e306b7"
+  },
+  {
+    "test": "run_battle_target_setup_runtime_test.sh",
+    "returncode": 0,
+    "seconds": 2.62,
+    "initial_log_sha256": "1e9e4b8fbe371e2f4ad9a57cfb752569fe6c38acfe2f9ca05a8e1dbcf236a9cf"
+  },
+  {
+    "test": "run_battle_target_status_filter_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "813192bdd8900021140306692b396f2015d9596c9b90d10328f3ba2061de9a88",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_status_filter_test.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "1005f4482844ad4a8c41a220337b3e8ecd8ff36c17943344497ea9a610135a6c",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_ui_contract_test.sh",
+    "returncode": 1,
+    "seconds": 1.12,
+    "initial_log_sha256": "055e6f1695f2f3c87dd41d3457c28c6955bfa3fe34f8705ec0f542cbea110a69",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_target_ui_match.sh",
+    "returncode": 1,
+    "seconds": 0.11,
+    "initial_log_sha256": "17ce5247c1e39c35cd0959c7db09ebb5764685ec8c9633bae0680cd861c39902",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_tiny_leaves_retail_test.sh",
+    "returncode": 1,
+    "seconds": 0.03,
+    "initial_log_sha256": "e9699a767cf6d3acb2080d110d0dcbfab1fdf00f93a952bb077fbeaf1f361ed8",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_trig_bridge_retail_test.sh",
+    "returncode": 0,
+    "seconds": 4.77,
+    "initial_log_sha256": "64596b6924c79dc84e56651a9bd231ca382e17a2cc5d2f4c8862cdcdf9ca7646"
+  },
+  {
+    "test": "run_battle_view_matrix_match.sh",
+    "returncode": 0,
+    "seconds": 0.11,
+    "initial_log_sha256": "3a4e8a9606f11024ae62abbc42c90ed6ae5803a0e0b895e9aa05da29c2fd8344"
+  },
+  {
+    "test": "run_battle_view_matrix_native_test.sh",
+    "returncode": 1,
+    "seconds": 0.47,
+    "initial_log_sha256": "9861d5db957b9c86e5d7c6369115cd1d98cb15b72bbbb895344205b54212fa1b",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_battle_window_constructor_abi_test.sh",
+    "returncode": 1,
+    "seconds": 0.26,
+    "initial_log_sha256": "6d14f19290de7f7a8dd8079a438486ab041c30ce84328ae24d8eb190518c02f6",
+    "classification": "BUILD_FAILURE; obsolete fixture/source wiring"
+  },
+  {
+    "test": "run_field_battle_record_retail_test.sh",
+    "returncode": 0,
+    "seconds": 1.07,
+    "initial_log_sha256": "8cae6c2d1b3ec89672efb724039368b074762541d2cd1578b09c622178058cf4"
+  }
+]

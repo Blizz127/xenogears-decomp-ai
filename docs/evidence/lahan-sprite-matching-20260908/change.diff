@@ -1,0 +1,155 @@
+--- scratchpad/lahan-sprite-matching-20260908/before.c	2026-09-08 17:00:00.801646420 -0500
++++ src/slus_006.64/system/temp1.c	2026-09-08 17:00:54.491293454 -0500
+@@ -32,91 +32,88 @@
+ 
+ // Sprite / Animation functions
+ 
+-extern void func_800BA8F4(void);
++extern void func_800BA8F4(void* pSpriteData);
+ 
+-void func_80022B2C(u8* pSprite) {
+-    u32 flags = *(u32*)(pSprite + 0x3C);
+-    s32 vel, accel, curPos, target;
+-
+-    if ((flags >> 26) & 1) {
+-        /* Path 3: steady movement with acceleration */
+-        vel = *(s32*)(pSprite + 0x10);
+-        accel = *(s32*)(pSprite + 0x1C);
+-        curPos = *(s32*)(pSprite + 0x04);
+-        curPos += func_80022CAC(pSprite, vel >> 4) << 4;
+-        *(s32*)(pSprite + 0x04) = curPos;
+-        *(s32*)(pSprite + 0x10) = vel + accel;
+-        return;
+-    }
++void func_80022B2C(u8* pSpriteData)
++{
++    u8* p = pSpriteData;
++    s32 vel, dv, pos, floor;
+ 
+-    func_800BA8F4();
+-    vel = *(s32*)(pSprite + 0x10);
+-    accel = *(s32*)(pSprite + 0x1C);
+-    target = *(s16*)(pSprite + 0x84);
+-
+-    if (vel <= 0 || accel <= 0) {
+-        /* Path 2: simple forward movement */
+-        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
+-        curPos = *(s32*)(pSprite + 0x04) + scaled;
+-        *(s32*)(pSprite + 0x04) = curPos;
+-        if ((curPos >> 16) >= target) {
+-            *(s32*)(pSprite + 0x04) = target << 16;
+-        }
+-        *(s32*)(pSprite + 0x10) += accel;
++    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
++        vel = *(s32*)(p + 0x10);
++        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++        *(u32*)(p + 0x4) += (u32)dv;
++        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
+         return;
+     }
+ 
+-    /* Path 1: deceleration with bounce */
+-    {
+-        s32 scaled = func_80022CAC(pSprite, vel >> 4) << 4;
+-        s16 y = *(s16*)(pSprite + 0x06);
+-        curPos = *(s32*)(pSprite + 0x04) + scaled;
+-        *(s32*)(pSprite + 0x04) = curPos;
+-        if ((curPos >> 16) < target) {
+-            /* Not yet at target, add acceleration */
+-            *(s32*)(pSprite + 0x10) += accel;
++    func_800BA8F4(p);
++
++    vel = *(s32*)(p + 0x10);
++    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
++        floor = *(s16*)(p + 0x84);
++        if (*(s16*)(p + 0x6) == (s16)floor) {
++            return;
++        }
++        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
++        *(s32*)(p + 0x4) = pos;
++        if ((pos >> 16) < floor) {
++            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+             return;
+         }
+-        /* Reached target, bounce */
+-        *(s32*)(pSprite + 0x04) = target << 16;
+-        {
+-            s32 bounceVel = -vel;
+-            s32 bounceFactor = (*(u32*)(pSprite + 0xA8) >> 1) & 0x3FF;
+-            s32 newVel = bounceVel * bounceFactor;
+-            if (newVel < 0) {
+-                *(s32*)(pSprite + 0x04) = target << 16;
+-                newVel += 0xFF;
+-            }
+-            *(s32*)(pSprite + 0x10) = newVel >> 8;
+-        }
+-        vel = *(s32*)(pSprite + 0x10);
+-        accel = *(s32*)(pSprite + 0x1C);
+-        if (vel < 0) vel = -vel;
+-        if (accel < 0) accel = -accel;
+-        if (vel < accel) {
+-            *(s32*)(pSprite + 0x10) = 0;
++
++        /* Landed: snap to the floor and bounce. */
++        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
++        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
++        if (pos < 0) {
++            pos += 0xFF;
++        }
++        pos >>= 8;
++        *(s32*)(p + 0x10) = pos;
++        if (pos < 0) {
++            pos = -pos;
++        }
++        dv = *(s32*)(p + 0x1C);
++        if (dv < 0) {
++            dv = (s32)(0u - (u32)dv);
++        }
++        if (pos < dv) {
++            *(s32*)(p + 0x10) = 0;
+         }
++        return;
++    }
++
++    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
++    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
++    *(s32*)(p + 0x4) = pos;
++    floor = *(s16*)(p + 0x84);
++    if ((pos >> 16) >= floor) {
++        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+     }
++    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+ }
+ 
+ s32 func_80022CAC(void* pSpriteData, s32 value)
+ {
+     u16 factor = *(u16*)((u8*)pSpriteData + 0x3A);
+-    if (factor == 0) return value;
+-    {
+-        s32 product = value * factor;
+-        s32 adj = product;
+-        if (product < 0) adj = product + 0x3FF;
+-        return adj >> 10;
++    if (factor != 0) {
++        s32 adj;
++        /* MULT/MFLO keeps the low word; the wide product avoids C overflow. */
++        value = (s32)((s64)value * factor);
++        adj = value;
++        if (value < 0) adj = value + 0x3FF;
++        value = adj >> 10;
+     }
++    return value;
+ }
+ 
+ void func_80022CDC(u8* pSprite) {
+     s32 val;
+     val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x0C) >> 4);
+-    *(s32*)(pSprite + 0x00) += val << 4;
++    *(u32*)(pSprite + 0x00) += (u32)val << 4;
+     val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x14) >> 4);
+-    *(s32*)(pSprite + 0x08) += val << 4;
++    *(u32*)(pSprite + 0x08) += (u32)val << 4;
+     func_80022B2C(pSprite);
+ }
+ 

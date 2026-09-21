@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xenogears — Map014 Visual Test
+Comment=GDB-automated Map014 painting sequence review
+Exec=/home/blizz/dev/xenogears-decomp/tools/vps-desktop/run-xeno-map014
+Icon=applications-games
+Terminal=true
+Type=Application
+Categories=Game;Development;

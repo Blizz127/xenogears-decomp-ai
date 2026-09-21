@@ -1,0 +1,8 @@
+{
+  "object": "build/src/field/dialogue/text_box_render.c.o",
+  "object_sha256": "da4b8fbacde357b401e8ffccaa779f01ecf27e0327850c4421d6aae7dab77455",
+  "compiled_bytes": 1396,
+  "retail_bytes": 1804,
+  "exact_match": false,
+  "scope": "Size gate only; relocation-normalized byte comparison not run if sizes differ."
+}

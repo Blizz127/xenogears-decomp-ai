@@ -1,0 +1,202 @@
+{
+  "head": "3a3e7aac03a2f166fb924945a489e392d706f282",
+  "source_pins": {
+    "config/battle_command_file1.yaml": "c5c17bc58d7e5784aeabc986b0fcbd06a928358f2712f25456ba4aa9917d061b",
+    "config/symbol_addrs.battle_command_file1.txt": "fd3ebc41285bdd1bda29996a80ffec5f8f8e769162cfef6f2f30b3a96c09f6a2",
+    "src/battle_command_file1/message_controller.c": "48028e02b4d3dc4e6128aad37e6d6fca08917040af77672f0671846a7c9a30ca",
+    "src/battle_command_file1/message_controller_impl.inc": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+    "src/battle_command_file1/xeno_battle_command_file1_controller.h": "97239a2c1055e4ee110215377e39c7346f10864b0cdf7909e9cb4268c15e6635",
+    "tools/scripts/extract_battle_command_file1.py": "556df9670b79dcd1a893774b322cffa93ee6395a214b69f6f4c0bad322a5dc07",
+    "pc_port/tests/battle_command_file1_controller_retail_test.c": "daa882b3c2fa17a4e3416b6ff4a2f12ec439c617063b73427ab6363043bd3e7e",
+    "pc_port/tests/run_battle_command_file1_controller_retail_test.py": "562df5ede785454d1872570e0e47f78661b024edecd63088d198fc7eb38cfe0f",
+    "tools/scripts/check_battle_command_file1.py": "922454ff427098861893bebf0ba7f9a4172da66b0a252ecc7279f2d008fb8a08"
+  },
+  "tests": [
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-cqhai0if/manifest.json",
+      "sha256": "c2dbc1c1df6130a23150325f21e247e7723283648d6f97af940d0fffe7aca633",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/scratchpad/decomp-candidates/battle-command-file1-20260906/xeno_battle_command_file1_controller.c",
+        "sha256": "a3085667773e2cc494e5c863a8a07bd92832e64abc2d5f3a9e716f5ca959fa4a",
+        "size": 6976
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "7adfa3da8473e8a8bbb74ea7deb2894f4c81a01e9df7f8b3c394f3d89c0f097e",
+        "size": 10781
+      },
+      "mutants": 11
+    },
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-eoyt_1yy/manifest.json",
+      "sha256": "e7ec3c4a8cd7ab2a77bf92c0a2e83011480f9721c695464cd06daefc84926ba6",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc",
+        "sha256": "a3085667773e2cc494e5c863a8a07bd92832e64abc2d5f3a9e716f5ca959fa4a",
+        "size": 6976
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "4d0b7b2c32f5c639d2565d88cd844cdd93ea65315a708bb5a8ae07a2d887b2b7",
+        "size": 10756
+      },
+      "mutants": 11
+    },
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-u80gd8tf/manifest.json",
+      "sha256": "a4a3488a59d5d7d25a7cc7cdefcd0379be91f64cd95836f45c94d7bc5277495e",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc",
+        "sha256": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+        "size": 7072
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "454c0b1024f9d81acc8c12ececba8121c0adedd7a150ea47ab7ba1d75da79cbf",
+        "size": 11029
+      },
+      "mutants": 11
+    },
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-q_jw41cf/manifest.json",
+      "sha256": "42e74a64726adf703ce47619c80f39ffbd7147b6e3c12c4703d368f60d2bc783",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc",
+        "sha256": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+        "size": 7072
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "454c0b1024f9d81acc8c12ececba8121c0adedd7a150ea47ab7ba1d75da79cbf",
+        "size": 11029
+      },
+      "mutants": 11
+    },
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-erl2rshc/manifest.json",
+      "sha256": "eb0c2e356c22191da3dcb0d4d9aa268271096e2c9883ae8aebcff98eefb4f61c",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc",
+        "sha256": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+        "size": 7072
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "562df5ede785454d1872570e0e47f78661b024edecd63088d198fc7eb38cfe0f",
+        "size": 12051
+      },
+      "mutants": 11,
+      "coverage": [
+        {
+          "branches_both_outcomes": 21,
+          "name": "O0",
+          "retail_slots_covered": 315
+        },
+        {
+          "branches_both_outcomes": 21,
+          "name": "O2",
+          "retail_slots_covered": 315
+        },
+        {
+          "branches_both_outcomes": 21,
+          "name": "UBSan",
+          "retail_slots_covered": 315
+        }
+      ],
+      "audit_yields": 3
+    },
+    {
+      "manifest": "/tmp/xeno-file1-controller-retail-h5bfxx02/manifest.json",
+      "sha256": "e2c23a3a3baae8533f2a9838b1e4f4b493211b6d8e4e717d37d169a287d5f8f4",
+      "status": "PASS",
+      "source": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc",
+        "sha256": "c84a38eba6ec039994841cb2368e78d15bb9a54828001e07bb29ec9b12506951",
+        "size": 7072
+      },
+      "runner": {
+        "path": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_command_file1_controller_retail_test.py",
+        "sha256": "562df5ede785454d1872570e0e47f78661b024edecd63088d198fc7eb38cfe0f",
+        "size": 12051
+      },
+      "mutants": 11,
+      "coverage": [
+        {
+          "branches_both_outcomes": 21,
+          "name": "O0",
+          "retail_slots_covered": 315
+        },
+        {
+          "branches_both_outcomes": 21,
+          "name": "O2",
+          "retail_slots_covered": 315
+        },
+        {
+          "branches_both_outcomes": 21,
+          "name": "UBSan",
+          "retail_slots_covered": 315
+        }
+      ],
+      "audit_yields": 3
+    }
+  ],
+  "native_build": {
+    "status": "PASS",
+    "log": "/tmp/xeno-file1-foundation-native-build-20260906.log",
+    "sha256": "59028f92d36d02ecdf7888727e51b75e138e312defe748054164ec081610537d",
+    "runtime_replay": "NOT_RUN after scaffold-only rebuild; previous constructor replay remains tied to ed9987ed binary"
+  },
+  "global_matching": {
+    "status": "FAIL",
+    "log": "/tmp/xeno-file1-baseline-make-check-20260906.log",
+    "reason": "Existing resident jump-table undefined references"
+  },
+  "module_reconstruction": {
+    "manifest": "/tmp/xeno-file1-build-check-xceyjpdv/manifest.json",
+    "manifest_sha256": "fb9c8cc5e4f96b1c92276e54a5c84cce97aad2ab0588b8f19ddbccd99e8747ee",
+    "results": {
+      "c_controller": {
+        "build_status": "PASS",
+        "full_module_first_difference": {
+          "actual": "0x1F",
+          "expected": "0xF8",
+          "offset": 7524
+        },
+        "full_module_pass": false,
+        "full_module_sha256": "78837da289070055c736c138725f5ba9611bf389e5c989a96e8851122046da74",
+        "full_module_size": 19516,
+        "function_first_difference": {
+          "actual": "0x1F",
+          "expected": "0xF8",
+          "offset": 124
+        },
+        "function_pass": false,
+        "function_sha256": "bd7e99b1b04069c02429dee84e6d8b01f762061f484146b8c6b61b7b9d27b49b",
+        "linker_sha256": "aa4560327ee0b66a2f0ded5a44c9a47083b3bc1291f68ebc1387fa6f0b64678f",
+        "linker_subalign_4": true,
+        "symbol": {
+          "address": "0x801E6CE8",
+          "size": 1260
+        },
+        "symbol_pass": true
+      },
+      "full_asm_module": {
+        "first_difference": null,
+        "linker_sha256": "d10669064f5f3d8bc5772ec5580b131184bfcf4ad653bfab3d90615e6128acf3",
+        "pass": true,
+        "sha256": "64668d85bf48dea46cf6d5f04b38e38ca887877cfef53961f0c26cd2d363b670",
+        "size": 19516
+      }
+    },
+    "exit_code": 1,
+    "reason": "Full ASM exact; C controller has13 mismatched instruction words",
+    "c_exact_words": 302,
+    "retail_instruction_words": 315
+  },
+  "native_adoption": "NOT_RUN"
+}

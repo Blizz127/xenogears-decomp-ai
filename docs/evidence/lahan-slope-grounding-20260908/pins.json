@@ -1,0 +1,29 @@
+{
+  "retail_function": "80084A40",
+  "retail_size": 2704,
+  "compiled_size": 2396,
+  "exact_match": "FAIL size mismatch",
+  "retail_sha256": "87a0225e8cc8189c6ef66a49b5fea22373d04938701d74d2d4754969e7f4078c",
+  "native_build": "PASS",
+  "psx_build": "PASS",
+  "natural_validation": "PENDING frozen live run predates correction",
+  "test": "96 captured-state material/accumulator/gravity perturbations match actor and sprite output after82620,82BB8,84A40; history callback81C54 excluded in both",
+  "old_body": "REJECTED variant f0=0 gravity=32768; original snapshot also mismatches Y and sprite vertical velocity",
+  "hashes": {
+    "src/field/main/misc8.c": "1ca9994af3def91685523519f0ce391b2df67b0d248e6a90f122f23d30ebb2f0",
+    "build/src/field/main/misc8.c.o": "8c12b5a06f45558f1422afa308c287152932d65dfdad71dbda097e33f79838b5",
+    "pc_port/build_native/xeno-port": "0ebb5b95379d474c9f2dc3859e323a6d93acd8ff8e811adccd54b43f31b802da",
+    "scratchpad/lahan-natural-20260908-party-remove/slope-ram.bin": "003e61fbb7cfd74e2a0b260f05c677ff4b742e8cb67de5ef228910e29e895ab5"
+  },
+  "runner_hashes": {
+    "scratchpad/lahan-natural-20260908-party-remove/run-slope-ground.sh": "3544e4406da354d74c0dfb13b8c60f9391282c1c6f8a7511bfa27223902d4afb",
+    "scratchpad/lahan-natural-20260908-party-remove/check-slope-ground.py": "3b72906d781affe20db594ba4f55528f3f18f3318a7d8d5d34419bec6f990830",
+    "scratchpad/lahan-natural-20260908-party-remove/slope-native-ground.c": "0bee41415d03078fa1296da32c8261d592fcc72863a2645b0fa85e2519a2d8e7",
+    "scratchpad/lahan-natural-20260908-party-remove/slope-retail-ground.c": "c338a7dd21bab3d8ee1bbbb89ba38c9c122c71875f9ea437ddf4b9c3ee33ad67",
+    "scratchpad/lahan-natural-20260908-party-remove/slope-unused.c": "8043f5f497a6bcfa3243d2a21c186a8ae0fcdbfac77546820dd924a19ec2cbd5"
+  },
+  "optimization_checks": {
+    "O0": 96,
+    "O2": 96
+  }
+}

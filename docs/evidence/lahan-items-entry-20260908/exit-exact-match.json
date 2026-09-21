@@ -1,0 +1,101 @@
+{
+  "function": "func_801DA518",
+  "object_sha256": "be4ac2297c96321f1570833b114a02df82d8264d71c9de47c16672ee2fab12d0",
+  "compiled_bytes": 164,
+  "retail_bytes": 164,
+  "relocations": [
+    {
+      "offset": 8,
+      "type": 4,
+      "symbol": "func_801D3444",
+      "retail_address": "0x801d3444"
+    },
+    {
+      "offset": 16,
+      "type": 4,
+      "symbol": "func_801D4EA0",
+      "retail_address": "0x801d4ea0"
+    },
+    {
+      "offset": 24,
+      "type": 4,
+      "symbol": "func_801D4EA0",
+      "retail_address": "0x801d4ea0"
+    },
+    {
+      "offset": 32,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 36,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 52,
+      "type": 4,
+      "symbol": "func_801C72BC",
+      "retail_address": "0x801c72bc"
+    },
+    {
+      "offset": 60,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 64,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 84,
+      "type": 4,
+      "symbol": "HeapFree",
+      "retail_address": "0x800320e8"
+    },
+    {
+      "offset": 92,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 96,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 108,
+      "type": 4,
+      "symbol": "HeapFree",
+      "retail_address": "0x800320e8"
+    },
+    {
+      "offset": 116,
+      "type": 5,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 120,
+      "type": 6,
+      "symbol": "g_Menu",
+      "retail_address": "0x800625a0"
+    },
+    {
+      "offset": 140,
+      "type": 4,
+      "symbol": "HeapFree",
+      "retail_address": "0x800320e8"
+    }
+  ],
+  "differences": [],
+  "match": true,
+  "scope": "Object function with zero-addend relocations resolved to retail addresses; not whole-ROM match"
+}

@@ -1,0 +1,12 @@
+[xeno-port][battle-mips] retail adapter ready: functions=24 shared-data=0 host-ranges=34
+COMPMATRIX PASS 5120 retail comparisons plus captured address pattern: five pointer domains, four alias modes, full 32-byte output and return address
+[xeno-port][battle-mips] retail adapter ready: functions=24 shared-data=0 host-ranges=34
+COMPMATRIX PASS 5120 retail comparisons plus captured address pattern: five pointer domains, four alias modes, full 32-byte output and return address
+[xeno-port][battle-mips] retail adapter ready: functions=24 shared-data=0 host-ranges=43
+COMPMATRIX PASS 5120 retail comparisons plus captured address pattern: five pointer domains, four alias modes, full 32-byte output and return address
+COMPMATRIX artifacts: pc_port/build_native/battle_compmatrix.yGR5bymv
+pc_port/tests/run_battle_compmatrix_bridge_retail_test.sh: line 48: 425876 Segmentation fault         (core dumped) "$OUT/$mutant.test" > "$OUT/$mutant.log" 2>&1
+COMPMATRIX control rejected: no-typed-bridge
+COMPMATRIX control rejected: no-low-alias
+COMPMATRIX control rejected: wrong-return
+COMPMATRIX control rejected: missing-word-store

@@ -308,15 +308,49 @@ void func_801C57A0(MenuString* pString, int index, s32 arg2, u32 attributes) {
     pString->unk7F = 0;
 }
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C59E0);
+extern void* GetStringEntry(void* table, s32 index);
+extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
 
-extern void func_801C59E0(void* a0, void* a1, s32 a2, s32 a3);
+/* Retail 0x801C59E0..0x801C5BEC: draw paired menu labels and initialize
+ * their storage. Each lookup completes before the work-buffer pointer reload;
+ * host C argument evaluation must not move that load before GetStringEntry.
+ * The typed RECT copy retains retail's unaligned copy and native field layout.
+ * Index caching preserves the PSYQ loop induction-variable ordering. */
+void func_801C59E0(MenuString* base, u8* strIndices, s32 arg2, s32 count) {
+    s32 i;
+    RECT* rect;
+    void* entry;
+    for (i = 0; i < count; i += 2) {
+        MenuString* item;
+        u8* index = &strIndices[i];
+        entry = GetStringEntry(g_Menu->unk2E0, *index);
+        item = &base[i];
+        item->width = SystemRenderStringEntry(
+            entry,
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 0);
+        rect = &item->vramDest;
+        entry = GetStringEntry(g_Menu->unk2E0, index[1]);
+        base[i + 1].width = SystemRenderStringEntry(
+            entry,
+            g_Menu->unk4E0[0].pVramBuffer, 0x18, 1);
+        item->vramDest.x = (i / 2 & 1) * 32 + 320;
+        item->vramDest.y = (i + arg2) / 4 * 13;
+        item->vramDest.w = 28;
+        item->vramDest.h = 13;
+        base[i + 1].vramDest = item->vramDest;
+        func_801C57A0(item, i, arg2, 0);
+        func_801C57A0(&base[i + 1], i + 1, arg2, 0);
+        LoadImage(rect, (u_long*)g_Menu->unk4E0[0].pVramBuffer);
+        DrawSync(0);
+    }
+}
+
 extern u8 D_801CB400[];
 
 void func_801C5B90(void) {
     SystemTransferPaletteToVRAM(0, 0x1D1);
-    *(void**)((u8*)g_Menu + 0x558) = HeapAlloc(0x38E, 0);
-    func_801C59E0((u8*)g_Menu + 0x4E0, D_801CB400, 0, 4);
+    g_Menu->unk4E0[0].pVramBuffer = HeapAlloc(0x38E, 0);
+    func_801C59E0(g_Menu->unk4E0, D_801CB400, 0, 4);
     func_801C5724();
 }
 
@@ -424,7 +458,7 @@ void MemberChangeMenuSetVertices(SVECTOR* pVertices, u_short x, u_short y, u_sho
     pVertices[3].vz = 0;
 }
 
-void MemberChangeMenuSetWindowBorderPrimitive(P_TAG* pPrim) {
+void MemberChangeMenuSetWindowBorderPrimitive(POLY_FT4* pPrim) {
     SetSemiTrans(pPrim, 1);
     SetShadeTex(pPrim, 0);
     setRGB0(pPrim, 128, 128, 128);
@@ -878,7 +912,7 @@ void MemberChangeMenuUpdateWindows(void) {
 void MemberChangeMenuDrawCursors(void) {
     int i;
 
-    if (g_Menu->pManager->shouldRenderCursors) {
+    if (g_Menu->pManager->shouldRenderPointerCursors) {
         for (i = 0; i < MENU_MAX_NUM_CURSORS; i++) {
             if (g_Menu->pCursors->shouldRender[i]) {
                 if (g_Menu->pCursors->unk144[i]) {
@@ -1501,7 +1535,31 @@ void MemberChangeMenuUpdateAndRender(void) {
     DrawOTag(&g_Menu->pGfxEnv->ot[0xF]);
 }
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", func_801C95A0);
+/* Pre-render a character's two name strings (from g_GameState +
+ * (charByte>>1)*0x28, +0 and +0x14) into a temp buffer via SystemRenderString-
+ * Entry, then LoadImage the result to the character's VRAM texture slot (u/v
+ * from g_MemberChangeMenuCharTexcoords[slot], u offset by 0x180; 0x28 x 0xD). */
+void func_801C95A0(s32 charByte, s32 slot) {
+    u8* buf = (u8*)HeapAlloc(0x3F6, 0);
+    s32 off;
+    s32 s2;
+    RECT rect;
+
+    bzero(buf, 0x3F6);
+    off = (((u32)charByte & 0xFF) >> 1) * 0x28;
+    SystemRenderStringEntry((u8*)&g_GameState + off, buf, 0x24, 0);
+    SystemRenderStringEntry((u8*)&g_GameState + off + 0x14, buf, 0x24, 1);
+    s2 = ((u32)slot << 1) & 0x1FC;
+    /* CharTexcoords are .short data; read as u16 at the byte offset s2
+     * (the migrated int[] is byte-faithful -- see data_member_change_menu.c). */
+    rect.x = *(u16*)((u8*)g_MemberChangeMenuCharTexcoordsU + s2) + 0x180;
+    rect.y = *(u16*)((u8*)g_MemberChangeMenuCharTexcoordsV + s2);
+    rect.w = 0x28;
+    rect.h = 0xD;
+    LoadImage(&rect, (u_long*)buf);
+    DrawSync(0);
+    HeapFree(buf);
+}
 
 void MemberChangeMenuParseNumberToString(unsigned int number) {
     int i;
@@ -1866,7 +1924,7 @@ void MemberChangeMenuSetCursorToCharacter(u_char isBenchedCharWindowActive, int 
         
     g_Menu->pCursors->shouldRender[cursorIndex] = TRUE;
     g_Menu->pCursors->renderContexts[cursorIndex] = g_Menu->renderContext;
-    g_Menu->pManager->shouldRenderCursors = TRUE;
+    g_Menu->pManager->shouldRenderPointerCursors = TRUE;
 }
 
 void MemberChangeMenuInitializeCursors(unsigned char mode) {
@@ -1877,7 +1935,7 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
     
     switch (mode) {
         case 0:
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             g_Menu->pCursors->unk144[0] = 1;
             g_Menu->pCursors->unk144[1] = 1;
             /* fallthrough */
@@ -1900,7 +1958,7 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
                 0x800
             );
             g_Menu->pCursors->renderContexts[0] = g_Menu->renderContext;
-            g_Menu->pManager->shouldRenderCursors = TRUE;
+            g_Menu->pManager->shouldRenderPointerCursors = TRUE;
             return;
         case 1:
             return;
@@ -1908,12 +1966,68 @@ void MemberChangeMenuInitializeCursors(unsigned char mode) {
 }
 
 void MemberChangeMenuFreeCursors(void) {
-    g_Menu->pManager->shouldRenderCursors = FALSE;
+    g_Menu->pManager->shouldRenderPointerCursors = FALSE;
     MemberChangeMenuUpdateAndRender();
     HeapFree(g_Menu->pCursors);
 }
 
-INCLUDE_ASM("asm/member_change_menu/nonmatchings/main/misc", MemberChangeMenuSwapCharacters);
+/* Retail 0x801CAB48..0x801CAD14 (460 bytes). The split empty-slot and
+ * restriction tests preserve the PSYQ register allocation; the fourth argument
+ * is unused in retail. Restriction flags are the game-state halfword at
+ * 0x8006F94C, also written by field script func_800883D4. */
+u_char MemberChangeMenuSwapCharacters(u_char benched, s32 current, s32 offset,
+                                     u_char selectedBenched, s32 selected, s32 selectedOffset) {
+    s32 i;
+    u_char count;
+    u_char temp;
+    u_char currentAllowed;
+    u_char selectedAllowed;
+    u_char result;
+    u_char partyIndex;
+    u_char benchIndex;
+
+    result = 0;
+    currentAllowed = 1;
+    selectedAllowed = 1;
+
+    if (!benched) {
+        partyIndex = current;
+        benchIndex = selected + selectedOffset;
+    } else {
+        partyIndex = selected;
+        benchIndex = current + offset;
+    }
+    if (g_Menu->pManager->currentCharacterIDs[partyIndex] == 0xFF) {
+        currentAllowed = 0;
+    } else if (MemberChangeMenuIsCharacterFlagSet(*(u16*)((u8*)&g_GameState + 0x2318), g_Menu->pManager->currentCharacterIDs[partyIndex])) {
+        currentAllowed = 0;
+    }
+    if (g_Menu->unk1E14[benchIndex] == 0xFF) {
+        selectedAllowed = 0;
+    } else if (MemberChangeMenuIsCharacterFlagSet(*(u16*)((u8*)&g_GameState + 0x2318), g_Menu->unk1E14[benchIndex])) {
+        selectedAllowed = 0;
+    }
+    if (currentAllowed && selectedAllowed) {
+        temp = g_Menu->pManager->currentCharacterIDs[partyIndex];
+        g_Menu->pManager->currentCharacterIDs[partyIndex] = g_Menu->unk1E14[benchIndex];
+        g_Menu->unk1E14[benchIndex] = temp;
+        i = 0;
+        count = 0;
+        for (; i < 3; i++) {
+            if (g_Menu->pManager->currentCharacterIDs[i] != 0xFF) {
+                count++;
+            }
+        }
+        result = 1;
+        if (!count) {
+            temp = g_Menu->pManager->currentCharacterIDs[partyIndex];
+            g_Menu->pManager->currentCharacterIDs[partyIndex] = g_Menu->unk1E14[benchIndex];
+            g_Menu->unk1E14[benchIndex] = temp;
+            result = 0;
+        }
+    }
+    return result;
+}
 
 void MemberChangeMenuMainLoop(void) {
     int i;

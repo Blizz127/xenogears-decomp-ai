@@ -1,0 +1,76 @@
+pc,word,operation,signedness,source_width,destination_width,retail_semantics
+80093740,27BDFFD8,ADDIU sp sp -40,bitwise address,32,32,sign-extended immediate addition modulo 2^32; no overflow trap
+80093748,00809821,ADDU s3 a0 zero,bitwise,32,32,copy modulo 2^32
+80093750,00A08021,ADDU s0 a1 zero,bitwise,32,32,copy X bits
+80093758,00C08821,ADDU s1 a2 zero,bitwise,32,32,copy Z bits
+8009375C,02002021,ADDU a0 s0 zero,bitwise,32,32,copy X bits
+80093760,02202821,ADDU a1 s1 zero,bitwise,32,32,copy Z bits
+80093770,02001821,ADDU v1 s0 zero,bitwise,32,32,copy X bits
+80093774,3C121F80,LUI s2 0x1F80,unsigned bits,16,32,constant 0x1F800000
+80093778,06010002,BGEZ s0,signed,32,predicate,branch when signed X >= 0; delay slot always executes
+8009377C,00402021,ADDU a0 v0 zero,bitwise,32,32,copy returned cell guest address in branch delay slot
+80093780,26030007,ADDIU v1 s0 7,bitwise,32,32,executed only for negative X; modulo addition and cannot overflow signed range for that predicate
+80093784,000310C3,SRA v0 v1 3,signed bit interpretation,32,32,arithmetic right shift with sign fill
+80093788,3050FFFF,ANDI s0 v0 0xFFFF,unsigned mask,32,32,retain low 16 bits and zero-extend
+8009378C,06210002,BGEZ s1,signed,32,predicate,branch when signed Z >= 0; delay slot always executes
+80093790,02201821,ADDU v1 s1 zero,bitwise,32,32,copy Z bits in delay slot
+80093794,26230007,ADDIU v1 s1 7,bitwise,32,32,executed only for negative Z
+80093798,000318C3,SRA v1 v1 3,signed bit interpretation,32,32,arithmetic right shift with sign fill
+800937A4,30420080,ANDI v0 v0 0x80,unsigned mask,32,32,isolate cell flag bit 7
+800937A8,10400032,BEQ v0 zero,unsigned equality,32,predicate,select diagonal family; delay slot always executes
+800937AC,3071FFFF,ANDI s1 v1 0xFFFF,unsigned mask,32,32,retain low 16 Z bits
+800937B0,3C02800A,LUI v0 0x800A,unsigned bits,16,32,global address upper half
+800937BC,02020018,MULT s0 v0,signed,32x32,64,signed full product to HI/LO
+800937C0,00002812,MFLO a1,bitwise,LO32,32,retain product low 32 before any combination
+800937C4,3C03800A,LUI v1 0x800A,unsigned bits,16,32,global address upper half
+800937CC,00111023,SUBU v0 zero s1,unsigned modulo,32,32,0-local_z modulo 2^32; no signed negation
+800937D0,00430018,MULT v0 v1,signed,32x32,64,signed full product using the wrapped operand interpreted s32
+800937D4,00001812,MFLO v1,bitwise,LO32,32,retain independent product low 32
+800937D8,00A31021,ADDU v0 a1 v1,unsigned modulo,32,32,selection sum modulo 2^32
+800937DC,04410013,BGEZ v0,signed,32,predicate,interpret wrapped selection sum as s32; zero takes nonnegative branch
+800937E0,24020010,ADDIU v0 zero 16,exact constant,16,32,+16 in branch delay slot
+800937E8,2402FFF0,ADDIU v0 zero -16,exact constant,16,32,-16
+800937EC,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800937F4,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800937FC,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093810,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,signed-byte height difference encoded modulo 2^32
+80093814,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093828,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,height difference in jump delay slot
+80093830,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093838,2402FFF0,ADDIU v0 zero -16,exact constant,16,32,-16
+8009383C,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093844,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093858,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,signed-byte height difference
+8009385C,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093870,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,height difference in jump delay slot
+80093874,3C02FFFF,LUI v0 0xFFFF,unsigned bits,16,32,constant 0xFFFF0000
+80093878,3C03800A,LUI v1 0x800A,unsigned bits,16,32,global address upper half
+80093880,02021021,ADDU v0 s0 v0,unsigned modulo,32,32,local_x+0xFFFF0000 modulo 2^32
+80093884,00430018,MULT v0 v1,signed,32x32,64,signed full product to HI/LO
+80093888,00002812,MFLO a1,bitwise,LO32,32,retain product low 32
+8009388C,3C03800A,LUI v1 0x800A,unsigned bits,16,32,global address upper half
+80093894,00111023,SUBU v0 zero s1,unsigned modulo,32,32,0-local_z modulo 2^32
+80093898,00430018,MULT v0 v1,signed,32x32,64,signed full product to HI/LO
+8009389C,00001812,MFLO v1,bitwise,LO32,32,retain product low 32
+800938A0,00A31021,ADDU v0 a1 v1,unsigned modulo,32,32,selection sum modulo 2^32
+800938A4,04410011,BGEZ v0,signed,32,predicate,interpret wrapped sum as s32; zero is nonnegative
+800938A8,2402FFF0,ADDIU v0 zero -16,exact constant,16,32,-16 in branch delay slot
+800938B0,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800938B8,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800938C0,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800938D4,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,signed-byte height difference
+800938D8,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800938F0,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+800938F8,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093900,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093914,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,signed-byte height difference
+80093918,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+8009392C,00431023,SUBU v0 v0 v1,unsigned modulo,32,32,signed-byte height difference
+80093930,3C011F80,LUI at 0x1F80,unsigned bits,16,32,scratchpad address
+80093938,36440010,ORI a0 s2 0x10,unsigned bits,32,32,scratchpad edge1 address
+8009393C,02402821,ADDU a1 s2 zero,bitwise address,32,32,scratchpad edge0 address
+80093940,24B00020,ADDIU s0 a1 32,bitwise address,32,32,scratchpad cross address
+80093948,02003021,ADDU a2 s0 zero,bitwise address,32,32,OuterProduct0 output in jal delay slot
+8009394C,02002021,ADDU a0 s0 zero,bitwise address,32,32,VectorNormal input
+80093954,02602821,ADDU a1 s3 zero,bitwise address,32,32,caller output in jal delay slot
+8009396C,27BD0028,ADDIU sp sp 40,bitwise address,32,32,restore stack modulo 2^32

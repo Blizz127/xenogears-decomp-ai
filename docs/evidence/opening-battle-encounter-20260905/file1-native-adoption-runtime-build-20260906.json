@@ -1,0 +1,22 @@
+{
+  "repo": "/var/home/blizz/Projects/xenogears-decomp-ai",
+  "head": "3a3e7aac03a2f166fb924945a489e392d706f282",
+  "source_pins": {
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/member_change_menu/main/misc.c": "97d296853cf835816d0259dd1e10c834f7f2bb4550911753381e2988841f394e",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime.c": "a0ef5fc6c138d894f584b1c0ca17804952ec347771832cf2e3abcb2418970755",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_file1_controller.inc": "a4d8c85d71955d185418d7a6398a519d61d6955e7b0970cb0009caf803f8ddee",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_file1_controller.h": "c3ed7df6a4680986db0b4532586fb6be9db242973883c0622f17a880096fde9b",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime_internal.h": "26de7c57e4c93a481b27084603a6240fd80af9a52052101bade169091dacf9d3",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller.c": "115cc89688da8451a9eecf2d77d3c9454650a1147bfeb6972097094893617fce",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc": "c1d5eab2545fd028a9f45e22350c5f2da639b6027f6b6352c71eb49ee37bdf7b",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_bindings.inc": "deb85054c5d5dfebf2a8bf30a5f06f6b8b29c4ad6f3b3614cb5f97b4750d4041",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/xeno_battle_command_file1_controller.h": "97239a2c1055e4ee110215377e39c7346f10864b0cdf7909e9cb4268c15e6635",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_port.sh": "60d7016744e6f1b728dd9fb811a9aa85d77b8e7c177c886cd0aeb324de079dc5",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/psycross_video_recording.inl": "5d98c739232f16bbab678c9f1d2e915add5ac28377cdc51850557354b5b1e725"
+  },
+  "build_status": "PASS",
+  "binary": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/xeno-port",
+  "binary_sha256": "f59f7f87cb2b611d40441e54e973c7a295c4978f839920f31c0455b9b360c205",
+  "build_log": "/tmp/xeno-file1-adoption-native-build-20260906.log",
+  "build_log_sha256": "d0c0ae98ae67bf40460ff5d2cb170d174fa3c9fd16287de1bfbac61aa2605463"
+}

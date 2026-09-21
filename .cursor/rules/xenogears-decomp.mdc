@@ -1,0 +1,90 @@
+---
+description: Xenogears decomp-accurate PC port — working rules
+alwaysApply: true
+---
+
+# Xenogears Decomp Project — Working Rules
+
+## Identity
+This is a decomp-accurate PSX-to-PC port. Retail behavior is the spec.
+You have shell, git, build, and runtime access. Use them. You are
+expected to form hypotheses, test them, and iterate autonomously.
+
+## What changed from the old rules
+You no longer need to stop and ask before implementing. If you have a
+hypothesis and you can test it by building and running, do that. Chase
+the bug. The old stop-and-report-every-step cadence produced 20 clean
+audits while the real bug (rsin/rcos swap) sat one layer below the
+whole chain. Autonomy found it in 25 minutes. Work that way.
+
+## Non-negotiable guardrails (these stay)
+
+### 1. One logical change per commit
+Not for tidiness — for BISECTABILITY. When something breaks three
+weeks from now you need to find it. Commit the camera fix, the RNG
+change, and the build-config change SEPARATELY, even if you made them
+in the same session. If you can't cleanly separate a diff, that's a
+signal you conflated two things.
+
+### 2. Never lose the make check baseline
+Before starting work: record whether `make check` passes and what
+fails. After: record it again. If you changed five things and the
+checksum broke, you CANNOT tell what did it — the baseline is gone,
+and you can no longer validate anything downstream either.
+If make check state is unknown, establishing it is the FIRST task.
+
+### 3. Build-config changes get their own scrutiny
+config/*.yaml, linker scripts, symbol maps, rodata ownership, section
+layout: these are not source fixes. A wrong one silently poisons match
+verification for the ENTIRE tree — producing false matches and false
+mismatches in unrelated files. Never bundle one with a source change.
+Validate it in isolation. State explicitly what it does and why.
+
+### 4. Diagnostics stay labeled
+Any temporary print, probe, guard, or auto-confirm hack: mark it in
+code AND in the commit message, with removal instructions. A
+diagnostic must never quietly become permanent behavior. (5f1e799's
+auto-confirm is TEST TOOLING, not a fix — keep it labeled as such.)
+
+### 5. Don't invent game logic
+If retail behavior is unknown, say so. Do not fill a gap with a
+plausible guess, a "reasonable" default, or a silent fallback. Cite
+asm, matched C, or a runtime capture. "Seems right" is not evidence.
+
+### 6. Say what you actually proved
+- Built but not run → "build-verified only"
+- Ran but didn't compare to retail → say that
+- Never claim "fixed" or "verified" without runtime evidence
+Negative results are valuable. Disproving your own hypothesis with
+evidence is a good outcome, not a failure.
+
+## Known trap: negative greps are unreliable here
+The port stores flags as BITFIELDS and named struct members where
+retail uses literal masks. Grepping C for `0x800000` will miss
+`scriptFlags_0x16`. This has already produced one wrong "no writer
+exists" conclusion. Search the ASM and the struct definitions, not
+just C literals.
+
+## Known trap: stale handoff notes
+Before targeting a "known next blocker" from an older note, verify it
+hasn't already been landed. `git log --oneline -S'<symbol>'` or just
+read the handler. This cost a full cycle on opcode 0x86, which was
+already implemented.
+
+## Environment
+- `XENO_KERNEL_SEL=0` — required, avoids false-positive spin-wait
+- `XENO_FIELD_TEST=1` — gates field diagnostics (incl. auto-confirm)
+- Build: `./pc_port/build_port.sh` (expect LINK OK)
+- Matching: `make check` (needs disc data in disc/)
+- Log meaningful cycles to `scratchpad/grind_log.md`
+
+## Working style
+Bounded scope is still preferred — chase one blocker at a time, and
+don't refactor unrelated code during a bug hunt. But "bounded" means
+"don't wander," not "stop and ask." If a fix requires touching an
+adjacent function, do it and say so. If you discover a second bug
+while fixing the first, note it and either fix it in a SEPARATE commit
+or add it to the queue.
+
+Prefer the smallest change that's actually correct. A hack that masks
+the real bug is worse than no fix.

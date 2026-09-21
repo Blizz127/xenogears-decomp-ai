@@ -1,0 +1,36 @@
+--- before/src/field/main/misc3.c
++++ src/field/main/misc3.c
+@@ -713,7 +713,8 @@
+ extern void func_800705DC(void);
+ extern void func_8007A7F4(Quad* pPart, int x, int y, int tex);
+ extern void func_8007A5C4(void);
+-extern void func_80077844();
++extern void func_80077844(short* dst, int a, int b, int c,
++                         int d, int e, int f, int g, int h, int i);
+ extern void func_80077C60(void);
+ extern void func_8007469C(void);
+ extern void func_80080F44(s32 actorIndex);
+@@ -1104,8 +1105,10 @@
+     /* Geometry / camera work-area setup (D_800B223C.. and the D_800B00xx block).
+      * The asm emits absolute stores to a set of distinct data symbols; each is a
+      * separate (auto-stubbed) symbol in the port, so we store to them by name. */
+-    func_80077844((short*)D_800B223C, 0x800, 0, 0, 0x800, 0, 0, 0, 0);
+-    func_80077844((short*)(D_800B223C - 0x20), 0x1F8, -0xFC1, -0x1F8, 0, 0, 0, 0, 0);
++    /* Retail 80071640 stores 0x800 at sp+0x1C (matrix element 6).
++     * Both call delay slots store zero at sp+0x24 (matrix element 8). */
++    func_80077844((short*)D_800B223C, 0x800, 0, 0, 0x800, 0, 0, 0x800, 0, 0);
++    func_80077844((short*)(D_800B223C - 0x20), 0x1F8, -0xFC1, -0x1F8, 0, 0, 0, 0, 0, 0);
+ 
+     D_800B225E = 0x1E;
+     D_800B225D = 0x1E;
+--- before/src/field/main/main.c
++++ src/field/main/main.c
+@@ -116,7 +116,7 @@
+     g_FrameDeltaTime = Vsync(1);
+ }
+ 
+-void func_80077844(short* dst, short a, short b, short c, short d, short e, short f, short g, short h, short i) {
++void func_80077844(short* dst, int a, int b, int c, int d, int e, int f, int g, int h, int i) {
+     dst[0] = a;
+     dst[1] = b;
+     dst[2] = c;

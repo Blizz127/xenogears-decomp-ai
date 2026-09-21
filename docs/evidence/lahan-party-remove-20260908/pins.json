@@ -1,0 +1,8 @@
+{
+  "src/field/main/misc.c": "24187d28e26b2d752ec174df254b3c382e5358cced15dfdc6dfa3235a09ea6aa",
+  "pc_port/tests/field_party_remove_context_test.c": "75ad944971cc3aa2599b66ba48d28c01f066266700ac639a182c8821139641ce",
+  "pc_port/tests/run_field_party_remove_context_test.sh": "5a45976e99835b3b22f1b718b3fbcb556d7d732c71b17818abd52d2d8176ffc8",
+  "disc/field.bin": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+  "asm/field/matchings/main/misc/func_8008C180.s": "6c9700e6d3f4382d828e0cafb94686a967bdbb3c26bc783118b1b779204f2e05",
+  "pc_port/tests/field_party_remove_retail_test.c": "0d186366f0d1851f8da6e39c8c2eec8fc0d283b5c64810014aecdf13d447e82b"
+}

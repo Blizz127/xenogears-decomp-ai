@@ -17,6 +17,48 @@ u32 D_80059344;
 // .rodata
 HeapDelayedFreeBlock g_HeapDelayedFreeBlocksHead;
 
+/* HeapDebugDump(Block) format strings. They are TU-owned bytes (yaml
+ * [0x49A48, .sdata, system/memory] + [0x9258, .rodata, system/memory]) kept
+ * in retail order; the D_ names match the disassembly labels so relocs read
+ * the same. Retail addresses every one of them absolutely (lui+addiu, never
+ * %gp_rel), but cc1 -G8 emits literal loads as gp_relativizable macros, so
+ * each call site pins $a0 and materializes the address explicitly (same idiom
+ * as heap_debug.c's HeapDumpToFile). The small-data macro loads elsewhere in
+ * this TU (HeapPrintf's sink pointer, HeapAlloc's globals) still assemble
+ * gp-relative under the SdataSmall preset. */
+char D_80059248[] = "%06x ";
+char D_80059250[] = "%6x ";
+char D_80059258[] = "%s ";
+char D_8005925C[] = "%s";
+char D_80059260[] = " / ";
+char D_80059264[] = "\n";
+char D_80059268[] = "No- ";
+char D_80059270[] = "MCB--- ";
+char D_80059278[] = "ADDR-- ";
+char D_80059280[] = "SIZE-- ";
+char D_80059288[] = "USER ";
+char D_80059290[] = "GETADD ";
+char D_80059298[] = "%3d ";
+char D_800592A0[] = "--- ";
+char D_800592A8[] = "------ ";
+char D_800592B0[] = "---- ";
+const char D_80018A58[] = "FUNCTION/";
+const char D_80018A64[] = "CONTENTS";
+const char D_80018A70[] = "\nFree %6x";
+
+#ifdef XENO_PC_PORT
+#define HEAP_FMT_REG(name) char* name
+#define HEAP_FMT_REG1(name) char* name
+#define HEAP_FMT_REG1U(name) u_int name
+#define HEAP_FMT_PTR(dst, sym) ((dst) = (sym))
+#else
+#define HEAP_FMT_REG(name) register char* name asm("$4")
+#define HEAP_FMT_REG1(name) register char* name asm("$5")
+#define HEAP_FMT_REG1U(name) register u_int name asm("$5")
+#define HEAP_FMT_PTR(dst, sym) __asm__ volatile( \
+    "lui %0,%%hi(" #sym ")\n\taddiu %0,%0,%%lo(" #sym ")" : "=r" (dst))
+#endif
+
 
 void* HeapGetNextBlockHeader(HeapBlock* pHeapBlock) {
     return (HeapBlock*)(pHeapBlock[-1].pNext - (mem_addr)pHeapBlock) - 1;
@@ -356,6 +398,10 @@ void HeapPinBlock(HeapBlock* pBlock) {
 }
 
 void HeapUnpinBlock(HeapBlock* pBlock) {
+#ifdef XENO_PC_PORT
+    if (pBlock == NULL || ((unsigned long)pBlock >> 47) != 0)
+        return;
+#endif
     pBlock[-1].isPinned = 0;
 }
 
@@ -548,29 +594,60 @@ void HeapDebugDumpBlock(HeapBlock* pBlockHeader, void* pBlockMem, u_int blockSiz
     u32 nContentFlag;
 
     if (debugFlags & HEAP_DEBUG_PRINT_MCB) {
-        HeapPrintf("%06x ", (u32)pBlockHeader & 0xFFFFFF);
+        /* Retail sets up the 0xFFFFFF mask in $a1 before $a0. */
+        HEAP_FMT_REG1U(mMCB);
+        HEAP_FMT_REG(fMCB);
+        mMCB = 0xFFFFFF;
+        HEAP_FMT_PTR(fMCB, D_80059248);
+        HeapPrintf(fMCB, (u32)pBlockHeader & mMCB);
     }
     if (debugFlags & HEAP_DEBUG_PRINT_ADDRESS) {
-        HeapPrintf("%06x ", (u32)pBlockMem & 0xFFFFFF);
+        HEAP_FMT_REG1U(mADDR);
+        HEAP_FMT_REG(fADDR);
+        mADDR = 0xFFFFFF;
+        HEAP_FMT_PTR(fADDR, D_80059248);
+        HeapPrintf(fADDR, (u32)pBlockMem & mADDR);
     }
     if (debugFlags & HEAP_DEBUG_PRINT_SIZE) {
-        HeapPrintf("%6x ", blockSize);
+        HEAP_FMT_REG(fSIZE);
+        HEAP_FMT_PTR(fSIZE, D_80059250);
+        HeapPrintf(fSIZE, blockSize);
     }
     if (debugFlags & HEAP_DEBUG_PRINT_USER) {
-        HeapPrintf("%s ", *(&D_80050110 + pBlockHeader->userTag));
+        /* Retail resolves the name into $a1 before materializing $a0. */
+        HEAP_FMT_REG1(uName);
+        HEAP_FMT_REG(fUSER);
+        uName = *(&D_80050110 + pBlockHeader->userTag);
+        HEAP_FMT_PTR(fUSER, D_80059258);
+        HeapPrintf(fUSER, uName);
     }
     if (debugFlags & HEAP_DEBUG_PRINT_GETADD) {
-        HeapPrintf("%06x ", (pBlockHeader->sourceAddress * 4));
+        /* Retail loads the raw header word into $a1 and masks/shifts it
+         * around the $a0 setup (no bitfield extraction). */
+        HEAP_FMT_REG1U(wSrc);
+        u_int mask;
+        HEAP_FMT_REG(fGETADD);
+        mask = 0x1FFFFF;
+        wSrc = ((u_int*)pBlockHeader)[1];
+        HEAP_FMT_PTR(fGETADD, D_80059248);
+        wSrc &= mask;
+        HeapPrintf(fGETADD, wSrc * 4);
     }
     if ((debugFlags & HEAP_DEBUG_PRINT_FUNCTION) && 
         (pBlockHeader->userTag != HEAP_USER_NONE)
     ) {
         HeapGetSymbolNameFromAddress((pBlockHeader->sourceAddress * 4) + VRAM_BASE_ADDRESS, sFunctionName);
         
-        HeapPrintf("%s", sFunctionName);
+        {
+            HEAP_FMT_REG(fFUNC);
+            HEAP_FMT_PTR(fFUNC, D_8005925C);
+            HeapPrintf(fFUNC, sFunctionName);
+        }
         if (debugFlags & HEAP_DEBUG_PRINT_CONTENTS) {
             if (pBlockHeader->contentTag & 0x1F) {
-                HeapPrintf(" / ");
+                HEAP_FMT_REG(fSEP);
+                HEAP_FMT_PTR(fSEP, D_80059260);
+                HeapPrintf(fSEP);
             }
         }
     } 
@@ -584,11 +661,19 @@ void HeapDebugDumpBlock(HeapBlock* pBlockHeader, void* pBlockMem, u_int blockSiz
             } else {
                 sContentType = g_HeapUserContentNames[pBlockHeader->userTag][nContentFlag];
             }
-            HeapPrintf("%s", sContentType);
+            {
+                HEAP_FMT_REG(fCONT);
+                HEAP_FMT_PTR(fCONT, D_8005925C);
+                HeapPrintf(fCONT, sContentType);
+            }
         }
     }
 
-    HeapPrintf("\n");
+    {
+        HEAP_FMT_REG(fNL);
+        HEAP_FMT_PTR(fNL, D_80059264);
+        HeapPrintf(fNL);
+    }
 }
 
 // Only matches on GCC 2.7.2
@@ -633,25 +718,53 @@ void HeapDebugDump(u_int mode, u_int startBlockIdx, int endBlockIdx, u_int flags
     }
 
     // Print table header to screen
-    if (debugFlags & HEAP_DEBUG_PRINT_NO)
-        HeapPrintf("No- ");
-    if (debugFlags & HEAP_DEBUG_PRINT_MCB)
-        HeapPrintf("MCB--- ");
-    if (debugFlags & HEAP_DEBUG_PRINT_ADDRESS)
-        HeapPrintf("ADDR-- ");
-    if (debugFlags & HEAP_DEBUG_PRINT_SIZE)
-        HeapPrintf("SIZE-- ");
-    if (debugFlags & HEAP_DEBUG_PRINT_USER)
-        HeapPrintf("USER ");
-    if (debugFlags & HEAP_DEBUG_PRINT_GETADD)
-        HeapPrintf("GETADD ");
-    if (debugFlags & HEAP_DEBUG_PRINT_FUNCTION)
-        HeapPrintf("FUNCTION/");
-    if (debugFlags & HEAP_DEBUG_PRINT_CONTENTS)
-        HeapPrintf("CONTENTS");
+    if (debugFlags & HEAP_DEBUG_PRINT_NO) {
+        HEAP_FMT_REG(fNo);
+        HEAP_FMT_PTR(fNo, D_80059268);
+        HeapPrintf(fNo);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_MCB) {
+        HEAP_FMT_REG(fMcb);
+        HEAP_FMT_PTR(fMcb, D_80059270);
+        HeapPrintf(fMcb);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_ADDRESS) {
+        HEAP_FMT_REG(fAddr);
+        HEAP_FMT_PTR(fAddr, D_80059278);
+        HeapPrintf(fAddr);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_SIZE) {
+        HEAP_FMT_REG(fSize);
+        HEAP_FMT_PTR(fSize, D_80059280);
+        HeapPrintf(fSize);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_USER) {
+        HEAP_FMT_REG(fUser);
+        HEAP_FMT_PTR(fUser, D_80059288);
+        HeapPrintf(fUser);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_GETADD) {
+        HEAP_FMT_REG(fGetadd);
+        HEAP_FMT_PTR(fGetadd, D_80059290);
+        HeapPrintf(fGetadd);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_FUNCTION) {
+        HEAP_FMT_REG(fFunc);
+        HEAP_FMT_PTR(fFunc, D_80018A58);
+        HeapPrintf(fFunc);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_CONTENTS) {
+        HEAP_FMT_REG(fCont);
+        HEAP_FMT_PTR(fCont, D_80018A64);
+        HeapPrintf(fCont);
+    }
     
+    {
+        HEAP_FMT_REG(fNl);
+        HEAP_FMT_PTR(fNl, D_80059264);
+        HeapPrintf(fNl);
+    }
     nBlockSize = 0;
-    HeapPrintf("\n");
     pCurBlockHeader = (HeapBlock*)g_Heap - 1;
     pCurBlock = (HeapBlock*)g_Heap;
 
@@ -678,7 +791,9 @@ void HeapDebugDump(u_int mode, u_int startBlockIdx, int endBlockIdx, u_int flags
                 nBlocksToSkip -= 1;
             } else {
                 if (debugFlags & HEAP_DEBUG_PRINT_NO) {
-                    HeapPrintf("%3d ", nBlockNumber);
+                    HEAP_FMT_REG(fNum);
+                    HEAP_FMT_PTR(fNum, D_80059298);
+                    HeapPrintf(fNum, nBlockNumber);
                 }
                 
                 // Print block information
@@ -700,21 +815,45 @@ void HeapDebugDump(u_int mode, u_int startBlockIdx, int endBlockIdx, u_int flags
     }
 
     // Print table footer to screen
-    if (debugFlags & HEAP_DEBUG_PRINT_NO)
-        HeapPrintf("--- ");
-    if (debugFlags & HEAP_DEBUG_PRINT_MCB)
-        HeapPrintf("------ ");
-    if (debugFlags & HEAP_DEBUG_PRINT_ADDRESS)
-        HeapPrintf("------ ");
-    if (debugFlags & HEAP_DEBUG_PRINT_SIZE)
-        HeapPrintf("------ ");
-    if (debugFlags & HEAP_DEBUG_PRINT_USER)
-        HeapPrintf("---- ");
+    if (debugFlags & HEAP_DEBUG_PRINT_NO) {
+        HEAP_FMT_REG(fDash);
+        HEAP_FMT_PTR(fDash, D_800592A0);
+        HeapPrintf(fDash);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_MCB) {
+        HEAP_FMT_REG(fDash6a);
+        HEAP_FMT_PTR(fDash6a, D_800592A8);
+        HeapPrintf(fDash6a);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_ADDRESS) {
+        HEAP_FMT_REG(fDash6b);
+        HEAP_FMT_PTR(fDash6b, D_800592A8);
+        HeapPrintf(fDash6b);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_SIZE) {
+        HEAP_FMT_REG(fDash6c);
+        HEAP_FMT_PTR(fDash6c, D_800592A8);
+        HeapPrintf(fDash6c);
+    }
+    if (debugFlags & HEAP_DEBUG_PRINT_USER) {
+        HEAP_FMT_REG(fDash4);
+        HEAP_FMT_PTR(fDash4, D_800592B0);
+        HeapPrintf(fDash4);
+    }
     
-    if (debugFlags & HEAP_DEBUG_PRINT_TOTAL_FREE_SIZE)
-        HeapPrintf("\nFree %6x", HeapGetTotalFreeSize());
+    if (debugFlags & HEAP_DEBUG_PRINT_TOTAL_FREE_SIZE) {
+        /* Retail calls for the size first, then sets up $a0. */
+        u_int nFreeSize = HeapGetTotalFreeSize();
+        HEAP_FMT_REG(fFree);
+        HEAP_FMT_PTR(fFree, D_80018A70);
+        HeapPrintf(fFree, nFreeSize);
+    }
 
-    HeapPrintf("\n");
+    {
+        HEAP_FMT_REG(fNl2);
+        HEAP_FMT_PTR(fNl2, D_80059264);
+        HeapPrintf(fNl2);
+    }
 }
 
 void* HeapAllocSound(u_int allocSize) {
@@ -748,7 +887,7 @@ void HeapForceFree(void* pMem) {
 // HeapPrintf: g_HeapDebugPrintfFn must be GP rel
 // HeapDumpToFile: g_HeapDebugPrintfFn must be extern
 // Because of this, HeapDumpToFile is part of another TU than HeapPrintf
-FnPrintf_t* g_HeapDebugPrintfFn = FontPrintf;
+// (the definition lives in heap_debug.c; see its .sdata slot).
 
 // Variadic args may have been used instead of 
 // single argument, but can't find a match w/ va

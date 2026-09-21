@@ -1,0 +1,15 @@
+W34B47 D2 audit-ahead
+
+Audited three post-frontier regions from retail listings:
+- 0x800719D0..0x80071A4C frame-exit continuation: 31 instructions, six
+  calls, unresolved 0x80096694, unreachable while D554=1.
+- 0x80072238..0x80072998 mode/session initializer: 472 instructions,
+  multi-call setup/resource/CD-polling body with unresolved prerequisites.
+- 0x8007299C..0x80072BAC post-loop teardown: 132 instructions, 26 direct
+  calls, 64-slot and 3-entry cleanup loops.
+
+Classification: all three remain class-(e) in the current route. D1 found
+no class-(a/b) convergence gap. No production code changed; no build or
+natural rerun was required for this evidence-only detour. The carried
+natural proof remains W34B44/TWICE rc=0, scheduler 53/53, D554=1, and all
+mode/renderer/DrawOTag should-not-run tripwires zero-hit.

@@ -1,0 +1,13 @@
+{
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime.c": "a0ef5fc6c138d894f584b1c0ca17804952ec347771832cf2e3abcb2418970755",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_file1_controller.inc": "a4d8c85d71955d185418d7a6398a519d61d6955e7b0970cb0009caf803f8ddee",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_file1_controller.h": "c3ed7df6a4680986db0b4532586fb6be9db242973883c0622f17a880096fde9b",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime_internal.h": "26de7c57e4c93a481b27084603a6240fd80af9a52052101bade169091dacf9d3",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_impl.inc": "c1d5eab2545fd028a9f45e22350c5f2da639b6027f6b6352c71eb49ee37bdf7b",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/message_controller_bindings.inc": "deb85054c5d5dfebf2a8bf30a5f06f6b8b29c4ad6f3b3614cb5f97b4750d4041",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/src/battle_command_file1/xeno_battle_command_file1_controller.h": "97239a2c1055e4ee110215377e39c7346f10864b0cdf7909e9cb4268c15e6635",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/battle_file1_adoption_test.c": "d039264cda724db4ad1c20b77ca5cb24dc63a16fded3ec2033f3b5e45bf863f4",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_battle_file1_adoption_test.py": "09dd3edef7941092a239bd1404877ea62ca4fc27c1e2e034df29b67b1887cc9e",
+  "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/battle_command_file1_controller_retail_test.c": "daa882b3c2fa17a4e3416b6ff4a2f12ec439c617063b73427ab6363043bd3e7e"
+}

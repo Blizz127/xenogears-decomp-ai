@@ -9,6 +9,9 @@
 #include "system/archive.h"
 #include "psyq/pc.h"
 #include "psyq/libcd.h"
+#ifdef XENO_PC_PORT
+#include <stdint.h>
+#endif
 
 extern s8* D_8004FE08;
 extern s32 D_8004FE0C;
@@ -24,7 +27,31 @@ extern s32 D_8005A4DC;
 extern void func_8002B084();
 extern void func_8002B2F0();
 extern void func_8002BA58();
+extern void func_8002BA40(void);
+extern void func_8002AC24(void);
+extern void func_8002804C(s32, s32, s32, s32);
+extern int ArchiveDecodeSizeAligned(int entryIndex);
 extern s32 g_ArchiveCurFileSector;
+extern s32 D_8004FE00;
+extern s32 D_8004FE3C;
+extern s32 D_80059EF8;
+extern s32 D_80059F04;
+extern u16 D_80059F24;
+extern u16 D_80059F28;
+extern u16 D_80059F2C;
+extern u16 D_80059F30;
+extern u16 D_80059F34;
+extern u16 D_80059F38;
+extern s32 D_80059F3C;
+extern u16 D_80059F40;
+extern u16 D_80059F44;
+extern u16 D_80059F48;
+extern s32 D_80059F4C;
+extern s32 D_80059F50;
+extern void func_8002B8B0(s32, s32);
+extern void func_8002BF38(s32, s32);
+extern void func_8002BB50(void);
+extern void func_8002B5D0(void);
 
 // Only matches on GCC 2.7.2
 int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
@@ -176,8 +203,258 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
     return 0;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_80029AFC);
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_80029EB0);
+/* Transcribed from asm/slus_006.64/nonmatchings/system/archive/func_80029AFC.s
+ * (0x80029AFC-0x80029EAC). Count/sort 8-byte StreamDataQueueEntry records
+ * until archiveIndex==0. Empty/NULL returns -3. Selection-sort by unsigned
+ * index. Then ArchiveCdDataSync(0), snapshot g_CurArchiveOffset, zero
+ * D_80059F00 and the two words below it. If first index or pData is 0:
+ * ArchiveCdSeekToFile(arg1) and clear size/count. Else decode sector/size,
+ * CdIntToPos. Debug table: PCopen/PCread each entry. Else arm CD
+ * READ_SECTOR with func_8002BA40 / ArchiveCdDriveCommandHandler /
+ * func_8002AC24 and CdControlF(CdlSetloc). Frame 0x40. */
+int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
+    s32 count;
+    s32 i;
+    s32 j;
+    s32 minIndex;
+    u16 minVal;
+    u16 tmpIndex;
+    void* tmpData;
+    u32* pData;
+    s32 hFile;
+    s32 retry;
+    char* pPath;
+    StreamDataQueueEntry* pCur;
+    CdlLOC* pLoc;
+
+    (void)arg2;
+
+    if (pEntries == NULL) {
+        return -3;
+    }
+    if (pEntries[0].archiveIndex == 0) {
+        return -3;
+    }
+
+    count = 0;
+    pCur = pEntries;
+    do {
+        pCur += 1;
+        count += 1;
+    } while (pCur->archiveIndex != 0);
+
+    if (count - 1 > 0) {
+        for (i = 0; i < count - 1; i++) {
+            minIndex = i;
+            minVal = (u16)pEntries[i].archiveIndex;
+            for (j = i + 1; j < count; j++) {
+                if ((u16)pEntries[j].archiveIndex < minVal) {
+                    minIndex = j;
+                    minVal = (u16)pEntries[j].archiveIndex;
+                }
+            }
+#ifdef ARCHIVE_29AFC_MUTANT_SKIP_SORT
+            (void)minIndex;
+#else
+            tmpIndex = (u16)pEntries[minIndex].archiveIndex;
+            tmpData = pEntries[minIndex].pData;
+            pEntries[minIndex].archiveIndex = pEntries[i].archiveIndex;
+            pEntries[minIndex].pData = pEntries[i].pData;
+            pEntries[i].archiveIndex = (s16)tmpIndex;
+            pEntries[i].pData = tmpData;
+#endif
+        }
+    }
+
+    ArchiveCdDataSync(0);
+    D_8004FE18 = g_CurArchiveOffset;
+    for (i = 2, pData = (u32*)&D_80059F00; i >= 0; i--) {
+        *pData-- = 0;
+    }
+
+    D_8004FE10 = 0;
+#ifdef XENO_PC_PORT
+    D_8004FE0C = (s32)(uintptr_t)pEntries;
+#else
+    D_8004FE0C = (s32)pEntries;
+#endif
+    D_8004FDFC = count;
+    D_8004FE00 = count;
+    D_8004FE08 = pEntries[0].pData;
+
+    if (pEntries[0].archiveIndex == 0 || pEntries[0].pData == NULL) {
+        ArchiveCdSeekToFile(arg1);
+        g_ArchiveCurFileSize = 0;
+        D_8004FDFC = 0;
+        return 0;
+    }
+
+    D_80059F0C = (u16)pEntries[0].archiveIndex;
+    g_ArchiveCurFileSector = ArchiveDecodeSector((u16)pEntries[0].archiveIndex);
+    g_ArchiveCurFileSize = ArchiveDecodeSizeAligned((u16)pEntries[0].archiveIndex);
+    D_8004FE38 = arg1 & 0xFFFF;
+    D_8004FE3C = 0;
+    D_8004FE34 = 0;
+    D_8005A4DC = 0;
+    pLoc = &g_ArchiveCdCurLocation;
+    CdIntToPos(g_ArchiveCurFileSector, pLoc);
+
+    if (g_ArchiveDebugTable != 0) {
+        for (i = 0; i < count; i++) {
+            D_80059F0C = (u16)pEntries[i].archiveIndex;
+            pPath = ArchiveGetFilePath((u16)pEntries[i].archiveIndex);
+            hFile = -1;
+            for (retry = 0; retry < RETRY_COUNT; retry++) {
+                hFile = PCopen(pPath, 0, 0);
+                if (hFile != -1) {
+                    break;
+                }
+                func_8002804C(retry, 0xFF, 0, 0);
+            }
+            if (hFile != -1 && pEntries[i].pData != NULL) {
+                for (retry = 0; retry < RETRY_COUNT; retry++) {
+                    if (PCread(hFile, (char*)pEntries[i].pData,
+                               ArchiveDecodeSizeAligned(
+                                   (u16)pEntries[i].archiveIndex)) != 0) {
+                        break;
+                    }
+                    func_8002804C(retry, 0, 0xFF, 0);
+                }
+            }
+            for (retry = 0; retry < RETRY_COUNT; retry++) {
+                if (PCclose(hFile) == 0) {
+                    break;
+                }
+                func_8002804C(retry, 0, 0, 0xFF);
+            }
+        }
+        g_ArchiveCurFileSize = 0;
+        D_8004FDFC = 0;
+        return 0;
+    }
+
+    g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_READ_SECTOR;
+    CdDataCallback(&func_8002BA40);
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdReadyCallback(&func_8002AC24);
+    D_8005A488 += 1;
+    CdControlF(CdlSetloc, (void*)pLoc);
+    return 0;
+}
+
+/* Transcribed from asm/slus_006.64/nonmatchings/system/archive/func_80029EB0.s
+ * (0x80029EB0-0x8002A260). Arms the streaming-section decoder for one archive
+ * file: ArchiveCdDataSync + snapshot, zero the stream words below D_80059F00,
+ * ArchiveChangeStreamingFile, latch sector/size/buffer pointers, publish the
+ * mode registers D_80059F24-F38 (from the trailing u16 arguments), then either
+ * the debug-table path (PCopen retry, func_8002B8B0/func_8002BF38 pump until
+ * D_8004FDFC drains, PCclose retry) or the CD path (READ_SECTOR callbacks,
+ * CdControlF(CdlSetloc, &g_ArchiveCdCurLocation)). Frame 0x50. */
+int func_80029EB0(s32 archiveIndex, s32* pStreamFile, s32 arg2, s32 arg3, u16 arg4, u16 arg5,
+                  u16 arg6, u16 arg7, u16 arg8, u16 arg9)
+{
+    int nStreamSectors;
+    s16 i;
+    s32* pWord;
+    char* pFilePath;
+    CdlLOC* pLoc;
+
+    (void)arg3;
+
+    if (pStreamFile == NULL)
+        return -4;
+
+    nStreamSectors = *pStreamFile;
+    if (nStreamSectors < 2)
+        return -4;
+
+    if (archiveIndex <= 0)
+        return -3;
+
+    if (ArchiveDecodeSize(archiveIndex) <= 0)
+        return -3;
+
+    ArchiveCdDataSync(0);
+    D_8004FE18 = g_CurArchiveOffset;
+
+    for (i = 0, pWord = &D_80059EF8; i < 3; i++)
+        pWord[i] = 0;
+
+    ArchiveChangeStreamingFile(pStreamFile);
+    D_80059F0C = archiveIndex;
+    g_ArchiveCurFileSector = ArchiveDecodeSector(archiveIndex);
+    g_ArchiveCurFileSize = ArchiveDecodeAlignedSize(archiveIndex);
+    D_8004FE08 = (s8*)pStreamFile + (nStreamSectors * 8) + STREAM_FILE_HEADER_SIZE;
+    D_8004FE2C = (ArchiveStreamFileSectionHeader*)((u8*)pStreamFile + 4);
+#ifdef ARCHIVE_29EB0_MUTANT_SWAP_MODE_XY
+    D_80059F30 = arg8;
+    D_80059F34 = arg7;
+#else
+    D_80059F30 = arg7;
+    D_80059F34 = arg8;
+#endif
+    D_8004FDFC = 1;
+    D_8004FE38 = arg2 & 0xFFFF;
+    D_8004FE10 = 0;
+    D_8004FE40 = nStreamSectors;
+    D_8004FE26 = 0;
+    D_8004FE28 = 0;
+    D_8004FE0C = 0;
+    D_8004FE34 = 0;
+    D_8005A4DC = 0;
+    D_80059F24 = arg4;
+    D_80059F28 = arg5;
+    D_80059F2C = arg6;
+    D_80059F3C = 0;
+    D_80059F40 = 0;
+    D_80059F44 = 0;
+    D_80059F48 = 0;
+    D_80059F4C = 0;
+    D_80059F50 = 0;
+    D_80059F38 = arg9;
+    ArchiveClearStreamFileSections();
+
+    pLoc = &g_ArchiveCdCurLocation;
+    CdIntToPos(g_ArchiveCurFileSector, pLoc);
+
+    if (g_ArchiveDebugTable) {
+        pFilePath = ArchiveGetFilePath(archiveIndex);
+
+        for (i = 0; i < RETRY_COUNT; i++) {
+            D_80059F04 = PCopen(pFilePath, 0, 0);
+            if (D_80059F04 != -1)
+                break;
+            func_8002804C(i, 0xFF, 0, 0);
+        }
+
+        do {
+            func_8002B8B0(0, 0);
+            func_8002BF38(0, 0);
+        } while (D_8004FDFC > 0);
+
+        while (i = PCclose(D_80059F04)) {
+            func_8002804C(i, 0, 0, 0xFF);
+            if (i + 1 < RETRY_COUNT)
+                continue;
+            break;
+        }
+
+        if (i != 0)
+            return -6;
+
+        D_8004FDFC = 0;
+        g_ArchiveCurFileSize = 0;
+        return 0;
+    }
+
+    g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_READ_SECTOR;
+    CdDataCallback(&func_8002BB50);
+    CdSyncCallback(&ArchiveCdDriveCommandHandler);
+    CdReadyCallback(&func_8002B5D0);
+    D_8005A488 += 1;
+    CdControlF(CdlSetloc, (u_char*)pLoc);
+    return 0;
+}
 
 int* ArchiveAllocStreamFile(int numEntries, int allocMode) {
     int* pStreamFile;

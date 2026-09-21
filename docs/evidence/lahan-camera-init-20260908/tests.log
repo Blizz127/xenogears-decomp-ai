@@ -1,0 +1,12 @@
+CAMERA INIT PASS 4096 cases; 103/103 retail instructions; full0x500-byte state and helper count
+CAMERA INIT PASS 4096 cases; 103/103 retail instructions; full0x500-byte state and helper count
+CAMERA INIT PASS 4096 cases; 103/103 retail instructions; full0x500-byte state and helper count
+Artifacts: pc_port/build_native/camera-init.VcdBma8Z
+Negative control rejected: matrix
+Negative control rejected: mode
+Negative control rejected: flags
+Negative control rejected: at-timer
+Negative control rejected: eye-timer
+Negative control rejected: scene-70
+Negative control rejected: scene-80
+Negative control rejected: scene-8C

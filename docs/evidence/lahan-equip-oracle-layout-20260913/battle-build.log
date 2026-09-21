@@ -1,0 +1,1971 @@
+[1/270] Assemble asm/battle/data/53F7C.s (AS)
+[2/270] Assemble asm/battle/main4.s (AS)
+asm/battle/main4.s: Assembler messages:
+asm/battle/main4.s:14: Warning: missing .end
+asm/battle/main4.s:36:  Info: macro invoked from here
+asm/battle/main4.s:14: Warning: missing .end
+asm/battle/main4.s:62:  Info: macro invoked from here
+asm/battle/main4.s: Warning: missing .end at end of assembly
+[3/270] Assemble asm/battle/main5.s (AS)
+asm/battle/main5.s: Assembler messages:
+asm/battle/main5.s:14: Warning: missing .end
+asm/battle/main5.s:41:  Info: macro invoked from here
+asm/battle/main5.s:14: Warning: missing .end
+asm/battle/main5.s:61:  Info: macro invoked from here
+asm/battle/main5.s:14: Warning: missing .end
+asm/battle/main5.s:81:  Info: macro invoked from here
+asm/battle/main5.s:14: Warning: missing .end
+asm/battle/main5.s:101:  Info: macro invoked from here
+asm/battle/main5.s: Warning: missing .end at end of assembly
+[4/270] Assemble asm/battle/main3.s (AS)
+asm/battle/main3.s: Assembler messages:
+asm/battle/main3.s:14: Warning: missing .end
+asm/battle/main3.s:50:  Info: macro invoked from here
+asm/battle/main3.s:14: Warning: missing .end
+asm/battle/main3.s:137:  Info: macro invoked from here
+asm/battle/main3.s:14: Warning: missing .end
+asm/battle/main3.s:330:  Info: macro invoked from here
+asm/battle/main3.s: Warning: missing .end at end of assembly
+[5/270] Assemble asm/battle/main7.s (AS)
+asm/battle/main7.s: Assembler messages:
+asm/battle/main7.s:14: Warning: missing .end
+asm/battle/main7.s:208:  Info: macro invoked from here
+asm/battle/main7.s: Warning: missing .end at end of assembly
+[6/270] Assemble asm/battle/main6.s (AS)
+asm/battle/main6.s: Assembler messages:
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:41:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:72:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:169:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:291:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:482:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:546:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:661:  Info: macro invoked from here
+asm/battle/main6.s:14: Warning: missing .end
+asm/battle/main6.s:683:  Info: macro invoked from here
+asm/battle/main6.s: Warning: missing .end at end of assembly
+[7/270] Assemble asm/battle/main9.s (AS)
+asm/battle/main9.s: Assembler messages:
+asm/battle/main9.s:14: Warning: missing .end
+asm/battle/main9.s:119:  Info: macro invoked from here
+asm/battle/main9.s:14: Warning: missing .end
+asm/battle/main9.s:215:  Info: macro invoked from here
+asm/battle/main9.s:14: Warning: missing .end
+asm/battle/main9.s:238:  Info: macro invoked from here
+asm/battle/main9.s:14: Warning: missing .end
+asm/battle/main9.s:264:  Info: macro invoked from here
+asm/battle/main9.s: Warning: missing .end at end of assembly
+[8/270] Assemble asm/battle/main8.s (AS)
+asm/battle/main8.s: Assembler messages:
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:467:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:534:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:631:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:764:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:821:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:857:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:959:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:1001:  Info: macro invoked from here
+asm/battle/main8.s:14: Warning: missing .end
+asm/battle/main8.s:1053:  Info: macro invoked from here
+asm/battle/main8.s: Warning: missing .end at end of assembly
+[9/270] Assemble asm/battle/main13.s (AS)
+asm/battle/main13.s: Assembler messages:
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:49:  Info: macro invoked from here
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:116:  Info: macro invoked from here
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:220:  Info: macro invoked from here
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:356:  Info: macro invoked from here
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:372:  Info: macro invoked from here
+asm/battle/main13.s:14: Warning: missing .end
+asm/battle/main13.s:387:  Info: macro invoked from here
+asm/battle/main13.s: Warning: missing .end at end of assembly
+[10/270] Assemble asm/battle/main12.s (AS)
+asm/battle/main12.s: Assembler messages:
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:49:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:81:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:118:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:188:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:377:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:446:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:501:  Info: macro invoked from here
+asm/battle/main12.s:14: Warning: missing .end
+asm/battle/main12.s:568:  Info: macro invoked from here
+asm/battle/main12.s: Warning: missing .end at end of assembly
+[11/270] Assemble asm/battle/main11.s (AS)
+asm/battle/main11.s: Assembler messages:
+asm/battle/main11.s:14: Warning: missing .end
+asm/battle/main11.s:44:  Info: macro invoked from here
+asm/battle/main11.s: Warning: missing .end at end of assembly
+[12/270] Assemble asm/battle/main10.s (AS)
+asm/battle/main10.s: Assembler messages:
+asm/battle/main10.s:14: Warning: missing .end
+asm/battle/main10.s:59:  Info: macro invoked from here
+asm/battle/main10.s:14: Warning: missing .end
+asm/battle/main10.s:205:  Info: macro invoked from here
+asm/battle/main10.s: Warning: missing .end at end of assembly
+[13/270] Assemble asm/battle/main15.s (AS)
+asm/battle/main15.s: Assembler messages:
+asm/battle/main15.s:14: Warning: missing .end
+asm/battle/main15.s:29:  Info: macro invoked from here
+asm/battle/main15.s:14: Warning: missing .end
+asm/battle/main15.s:52:  Info: macro invoked from here
+asm/battle/main15.s: Warning: missing .end at end of assembly
+[14/270] Assemble asm/battle/main16.s (AS)
+asm/battle/main16.s: Assembler messages:
+asm/battle/main16.s:14: Warning: missing .end
+asm/battle/main16.s:28:  Info: macro invoked from here
+asm/battle/main16.s:14: Warning: missing .end
+asm/battle/main16.s:47:  Info: macro invoked from here
+asm/battle/main16.s: Warning: missing .end at end of assembly
+[15/270] Assemble asm/battle/main14.s (AS)
+asm/battle/main14.s: Assembler messages:
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:275:  Info: macro invoked from here
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:540:  Info: macro invoked from here
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:584:  Info: macro invoked from here
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:619:  Info: macro invoked from here
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:653:  Info: macro invoked from here
+asm/battle/main14.s:14: Warning: missing .end
+asm/battle/main14.s:683:  Info: macro invoked from here
+asm/battle/main14.s: Warning: missing .end at end of assembly
+[16/270] Assemble asm/battle/main17.s (AS)
+asm/battle/main17.s: Assembler messages:
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:33:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:54:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:80:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:98:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:116:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:133:  Info: macro invoked from here
+asm/battle/main17.s:14: Warning: missing .end
+asm/battle/main17.s:150:  Info: macro invoked from here
+asm/battle/main17.s: Warning: missing .end at end of assembly
+[17/270] Assemble asm/battle/mainc18.s (AS)
+asm/battle/mainc18.s: Assembler messages:
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:36:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:60:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:87:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:108:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:129:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:149:  Info: macro invoked from here
+asm/battle/mainc18.s:14: Warning: missing .end
+asm/battle/mainc18.s:169:  Info: macro invoked from here
+asm/battle/mainc18.s: Warning: missing .end at end of assembly
+[18/270] Assemble asm/battle/main19.s (AS)
+asm/battle/main19.s: Assembler messages:
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:38:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:64:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:95:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:118:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:141:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:161:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:181:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:201:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:232:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:261:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:293:  Info: macro invoked from here
+asm/battle/main19.s:14: Warning: missing .end
+asm/battle/main19.s:319:  Info: macro invoked from here
+asm/battle/main19.s: Warning: missing .end at end of assembly
+[19/270] Assemble asm/battle/main20.s (AS)
+asm/battle/main20.s: Assembler messages:
+asm/battle/main20.s:14: Warning: missing .end
+asm/battle/main20.s:33:  Info: macro invoked from here
+asm/battle/main20.s:14: Warning: missing .end
+asm/battle/main20.s:56:  Info: macro invoked from here
+asm/battle/main20.s:14: Warning: missing .end
+asm/battle/main20.s:79:  Info: macro invoked from here
+asm/battle/main20.s:14: Warning: missing .end
+asm/battle/main20.s:95:  Info: macro invoked from here
+asm/battle/main20.s: Warning: missing .end at end of assembly
+[20/270] Assemble asm/battle/main21.s (AS)
+asm/battle/main21.s: Assembler messages:
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:50:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:103:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:142:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:193:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:259:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:339:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:358:  Info: macro invoked from here
+asm/battle/main21.s:14: Warning: missing .end
+asm/battle/main21.s:378:  Info: macro invoked from here
+asm/battle/main21.s: Warning: missing .end at end of assembly
+[21/270] Assemble asm/battle/main23.s (AS)
+asm/battle/main23.s: Assembler messages:
+asm/battle/main23.s:14: Warning: missing .end
+asm/battle/main23.s:30:  Info: macro invoked from here
+asm/battle/main23.s:14: Warning: missing .end
+asm/battle/main23.s:50:  Info: macro invoked from here
+asm/battle/main23.s:14: Warning: missing .end
+asm/battle/main23.s:79:  Info: macro invoked from here
+asm/battle/main23.s:14: Warning: missing .end
+asm/battle/main23.s:108:  Info: macro invoked from here
+asm/battle/main23.s: Warning: missing .end at end of assembly
+[22/270] Assemble asm/battle/main22.s (AS)
+asm/battle/main22.s: Assembler messages:
+asm/battle/main22.s:14: Warning: missing .end
+asm/battle/main22.s:28:  Info: macro invoked from here
+asm/battle/main22.s:14: Warning: missing .end
+asm/battle/main22.s:46:  Info: macro invoked from here
+asm/battle/main22.s:14: Warning: missing .end
+asm/battle/main22.s:65:  Info: macro invoked from here
+asm/battle/main22.s:14: Warning: missing .end
+asm/battle/main22.s:85:  Info: macro invoked from here
+asm/battle/main22.s:14: Warning: missing .end
+asm/battle/main22.s:101:  Info: macro invoked from here
+asm/battle/main22.s: Warning: missing .end at end of assembly
+[23/270] Assemble asm/battle/main24.s (AS)
+asm/battle/main24.s: Assembler messages:
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:38:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:70:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:161:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:271:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:366:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:476:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:571:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:632:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:699:  Info: macro invoked from here
+asm/battle/main24.s:14: Warning: missing .end
+asm/battle/main24.s:761:  Info: macro invoked from here
+asm/battle/main24.s: Warning: missing .end at end of assembly
+[24/270] Assemble asm/battle/main26.s (AS)
+asm/battle/main26.s: Assembler messages:
+asm/battle/main26.s:14: Warning: missing .end
+asm/battle/main26.s:93:  Info: macro invoked from here
+asm/battle/main26.s: Warning: missing .end at end of assembly
+[25/270] Assemble asm/battle/main25.s (AS)
+asm/battle/main25.s: Assembler messages:
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:119:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:210:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:293:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:347:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:401:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:457:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:532:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:607:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:644:  Info: macro invoked from here
+asm/battle/main25.s:14: Warning: missing .end
+asm/battle/main25.s:671:  Info: macro invoked from here
+asm/battle/main25.s: Warning: missing .end at end of assembly
+[26/270] Assemble asm/battle/main27.s (AS)
+asm/battle/main27.s: Assembler messages:
+asm/battle/main27.s:14: Warning: missing .end
+asm/battle/main27.s:94:  Info: macro invoked from here
+asm/battle/main27.s:14: Warning: missing .end
+asm/battle/main27.s:180:  Info: macro invoked from here
+asm/battle/main27.s:14: Warning: missing .end
+asm/battle/main27.s:209:  Info: macro invoked from here
+asm/battle/main27.s:14: Warning: missing .end
+asm/battle/main27.s:252:  Info: macro invoked from here
+asm/battle/main27.s:14: Warning: missing .end
+asm/battle/main27.s:324:  Info: macro invoked from here
+asm/battle/main27.s: Warning: missing .end at end of assembly
+[27/270] Assemble asm/battle/main28.s (AS)
+asm/battle/main28.s: Assembler messages:
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:104:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:198:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:301:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:404:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:498:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:601:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:637:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:665:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:736:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:809:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:885:  Info: macro invoked from here
+asm/battle/main28.s:14: Warning: missing .end
+asm/battle/main28.s:963:  Info: macro invoked from here
+asm/battle/main28.s: Warning: missing .end at end of assembly
+[28/270] Assemble asm/battle/main29.s (AS)
+asm/battle/main29.s: Assembler messages:
+asm/battle/main29.s:14: Warning: missing .end
+asm/battle/main29.s:33:  Info: macro invoked from here
+asm/battle/main29.s:14: Warning: missing .end
+asm/battle/main29.s:56:  Info: macro invoked from here
+asm/battle/main29.s:14: Warning: missing .end
+asm/battle/main29.s:75:  Info: macro invoked from here
+asm/battle/main29.s:14: Warning: missing .end
+asm/battle/main29.s:94:  Info: macro invoked from here
+asm/battle/main29.s: Warning: missing .end at end of assembly
+[29/270] Assemble asm/battle/main30.s (AS)
+asm/battle/main30.s: Assembler messages:
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:66:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:82:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:106:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:117:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:134:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:154:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:171:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:191:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:208:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:228:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:247:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:268:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:287:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:308:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:325:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:345:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:364:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:385:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:402:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:422:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:441:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:462:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:483:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:504:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:521:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:534:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:543:  Info: macro invoked from here
+asm/battle/main30.s:14: Warning: missing .end
+asm/battle/main30.s:572:  Info: macro invoked from here
+asm/battle/main30.s: Warning: missing .end at end of assembly
+[30/270] Assemble asm/battle/main32.s (AS)
+asm/battle/main32.s: Assembler messages:
+asm/battle/main32.s:14: Warning: missing .end
+asm/battle/main32.s:60:  Info: macro invoked from here
+asm/battle/main32.s: Warning: missing .end at end of assembly
+[31/270] Assemble asm/battle/main31.s (AS)
+asm/battle/main31.s: Assembler messages:
+asm/battle/main31.s:14: Warning: missing .end
+asm/battle/main31.s:725:  Info: macro invoked from here
+asm/battle/main31.s:14: Warning: missing .end
+asm/battle/main31.s:930:  Info: macro invoked from here
+asm/battle/main31.s:14: Warning: missing .end
+asm/battle/main31.s:962:  Info: macro invoked from here
+asm/battle/main31.s:14: Warning: missing .end
+asm/battle/main31.s:1034:  Info: macro invoked from here
+asm/battle/main31.s: Warning: missing .end at end of assembly
+[32/270] Assemble asm/battle/main33.s (AS)
+asm/battle/main33.s: Assembler messages:
+asm/battle/main33.s:14: Warning: missing .end
+asm/battle/main33.s:48:  Info: macro invoked from here
+asm/battle/main33.s:14: Warning: missing .end
+asm/battle/main33.s:71:  Info: macro invoked from here
+asm/battle/main33.s:14: Warning: missing .end
+asm/battle/main33.s:196:  Info: macro invoked from here
+asm/battle/main33.s: Warning: missing .end at end of assembly
+[33/270] Assemble asm/battle/main34.s (AS)
+asm/battle/main34.s: Assembler messages:
+asm/battle/main34.s:14: Warning: missing .end
+asm/battle/main34.s:669:  Info: macro invoked from here
+asm/battle/main34.s:14: Warning: missing .end
+asm/battle/main34.s:707:  Info: macro invoked from here
+asm/battle/main34.s:14: Warning: missing .end
+asm/battle/main34.s:737:  Info: macro invoked from here
+asm/battle/main34.s:14: Warning: missing .end
+asm/battle/main34.s:780:  Info: macro invoked from here
+asm/battle/main34.s: Warning: missing .end at end of assembly
+[34/270] Assemble asm/battle/main36.s (AS)
+asm/battle/main36.s: Assembler messages:
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:65:  Info: macro invoked from here
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:192:  Info: macro invoked from here
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:513:  Info: macro invoked from here
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:555:  Info: macro invoked from here
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:621:  Info: macro invoked from here
+asm/battle/main36.s:14: Warning: missing .end
+asm/battle/main36.s:640:  Info: macro invoked from here
+asm/battle/main36.s: Warning: missing .end at end of assembly
+[35/270] Assemble asm/battle/main37.s (AS)
+asm/battle/main37.s: Assembler messages:
+asm/battle/main37.s:14: Warning: missing .end
+asm/battle/main37.s:39:  Info: macro invoked from here
+asm/battle/main37.s:14: Warning: missing .end
+asm/battle/main37.s:123:  Info: macro invoked from here
+asm/battle/main37.s: Warning: missing .end at end of assembly
+[36/270] Assemble asm/battle/main35.s (AS)
+asm/battle/main35.s: Assembler messages:
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:336:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:461:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:602:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:744:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:864:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:937:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1051:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1421:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1575:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1739:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1869:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:1960:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2093:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2218:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2336:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2491:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2577:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2761:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:2925:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:3055:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:3200:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:3670:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:3744:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:3804:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4044:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4191:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4263:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4415:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4471:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4607:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4660:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:4852:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:5038:  Info: macro invoked from here
+asm/battle/main35.s:14: Warning: missing .end
+asm/battle/main35.s:5057:  Info: macro invoked from here
+asm/battle/main35.s: Warning: missing .end at end of assembly
+[37/270] Assemble asm/battle/main38.s (AS)
+asm/battle/main38.s: Assembler messages:
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:125:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:234:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:907:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:978:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:1179:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:1742:  Info: macro invoked from here
+asm/battle/main38.s:14: Warning: missing .end
+asm/battle/main38.s:1863:  Info: macro invoked from here
+asm/battle/main38.s: Warning: missing .end at end of assembly
+[38/270] Assemble asm/battle/main39.s (AS)
+asm/battle/main39.s: Assembler messages:
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:59:  Info: macro invoked from here
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:324:  Info: macro invoked from here
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:516:  Info: macro invoked from here
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:649:  Info: macro invoked from here
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:710:  Info: macro invoked from here
+asm/battle/main39.s:14: Warning: missing .end
+asm/battle/main39.s:797:  Info: macro invoked from here
+asm/battle/main39.s: Warning: missing .end at end of assembly
+[39/270] Assemble asm/battle/main40.s (AS)
+asm/battle/main40.s: Assembler messages:
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:177:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:256:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:399:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:720:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:779:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:838:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:934:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:1014:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:1139:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:1246:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:1326:  Info: macro invoked from here
+asm/battle/main40.s:14: Warning: missing .end
+asm/battle/main40.s:1463:  Info: macro invoked from here
+asm/battle/main40.s: Warning: missing .end at end of assembly
+[40/270] Assemble asm/battle/main41.s (AS)
+asm/battle/main41.s: Assembler messages:
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:55:  Info: macro invoked from here
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:65:  Info: macro invoked from here
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:75:  Info: macro invoked from here
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:87:  Info: macro invoked from here
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:99:  Info: macro invoked from here
+asm/battle/main41.s:14: Warning: missing .end
+asm/battle/main41.s:116:  Info: macro invoked from here
+asm/battle/main41.s: Warning: missing .end at end of assembly
+[41/270] Assemble asm/battle/main43.s (AS)
+asm/battle/main43.s: Assembler messages:
+asm/battle/main43.s:14: Warning: missing .end
+asm/battle/main43.s:196:  Info: macro invoked from here
+asm/battle/main43.s:14: Warning: missing .end
+asm/battle/main43.s:424:  Info: macro invoked from here
+asm/battle/main43.s:14: Warning: missing .end
+asm/battle/main43.s:464:  Info: macro invoked from here
+asm/battle/main43.s:14: Warning: missing .end
+asm/battle/main43.s:480:  Info: macro invoked from here
+asm/battle/main43.s: Warning: missing .end at end of assembly
+[42/270] Assemble asm/battle/main42.s (AS)
+asm/battle/main42.s: Assembler messages:
+asm/battle/main42.s:14: Warning: missing .end
+asm/battle/main42.s:326:  Info: macro invoked from here
+asm/battle/main42.s:14: Warning: missing .end
+asm/battle/main42.s:406:  Info: macro invoked from here
+asm/battle/main42.s: Warning: missing .end at end of assembly
+[43/270] Assemble asm/battle/main44.s (AS)
+asm/battle/main44.s: Assembler messages:
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:60:  Info: macro invoked from here
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:72:  Info: macro invoked from here
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:84:  Info: macro invoked from here
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:96:  Info: macro invoked from here
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:117:  Info: macro invoked from here
+asm/battle/main44.s:14: Warning: missing .end
+asm/battle/main44.s:140:  Info: macro invoked from here
+asm/battle/main44.s: Warning: missing .end at end of assembly
+[44/270] Assemble asm/battle/main45.s (AS)
+asm/battle/main45.s: Assembler messages:
+asm/battle/main45.s:14: Warning: missing .end
+asm/battle/main45.s:99:  Info: macro invoked from here
+asm/battle/main45.s:14: Warning: missing .end
+asm/battle/main45.s:317:  Info: macro invoked from here
+asm/battle/main45.s:14: Warning: missing .end
+asm/battle/main45.s:345:  Info: macro invoked from here
+asm/battle/main45.s: Warning: missing .end at end of assembly
+[45/270] Assemble asm/battle/main46.s (AS)
+asm/battle/main46.s: Assembler messages:
+asm/battle/main46.s:14: Warning: missing .end
+asm/battle/main46.s:168:  Info: macro invoked from here
+asm/battle/main46.s:14: Warning: missing .end
+asm/battle/main46.s:486:  Info: macro invoked from here
+asm/battle/main46.s:14: Warning: missing .end
+asm/battle/main46.s:705:  Info: macro invoked from here
+asm/battle/main46.s:14: Warning: missing .end
+asm/battle/main46.s:731:  Info: macro invoked from here
+asm/battle/main46.s: Warning: missing .end at end of assembly
+[46/270] Assemble asm/battle/main47.s (AS)
+asm/battle/main47.s: Assembler messages:
+asm/battle/main47.s:14: Warning: missing .end
+asm/battle/main47.s:119:  Info: macro invoked from here
+asm/battle/main47.s:14: Warning: missing .end
+asm/battle/main47.s:438:  Info: macro invoked from here
+asm/battle/main47.s:14: Warning: missing .end
+asm/battle/main47.s:479:  Info: macro invoked from here
+asm/battle/main47.s: Warning: missing .end at end of assembly
+[47/270] Assemble asm/battle/main48.s (AS)
+asm/battle/main48.s: Assembler messages:
+asm/battle/main48.s:14: Warning: missing .end
+asm/battle/main48.s:241:  Info: macro invoked from here
+asm/battle/main48.s:14: Warning: missing .end
+asm/battle/main48.s:565:  Info: macro invoked from here
+asm/battle/main48.s:14: Warning: missing .end
+asm/battle/main48.s:592:  Info: macro invoked from here
+asm/battle/main48.s: Warning: missing .end at end of assembly
+[48/270] Assemble asm/battle/main50.s (AS)
+asm/battle/main50.s: Assembler messages:
+asm/battle/main50.s:14: Warning: missing .end
+asm/battle/main50.s:101:  Info: macro invoked from here
+asm/battle/main50.s:14: Warning: missing .end
+asm/battle/main50.s:220:  Info: macro invoked from here
+asm/battle/main50.s: Warning: missing .end at end of assembly
+[49/270] Assemble asm/battle/main49.s (AS)
+asm/battle/main49.s: Assembler messages:
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:135:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:369:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:533:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:973:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:1095:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:1494:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:1898:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:2300:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:2703:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:2838:  Info: macro invoked from here
+asm/battle/main49.s:14: Warning: missing .end
+asm/battle/main49.s:2935:  Info: macro invoked from here
+asm/battle/main49.s: Warning: missing .end at end of assembly
+[50/270] Assemble asm/battle/main52.s (AS)
+asm/battle/main52.s: Assembler messages:
+asm/battle/main52.s:14: Warning: missing .end
+asm/battle/main52.s:268:  Info: macro invoked from here
+asm/battle/main52.s: Warning: missing .end at end of assembly
+[51/270] Assemble asm/battle/main53.s (AS)
+asm/battle/main53.s: Assembler messages:
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:798:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:922:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:1026:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:1080:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:1591:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:1667:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:1888:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:2185:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:2374:  Info: macro invoked from here
+asm/battle/main53.s:14: Warning: missing .end
+asm/battle/main53.s:2427:  Info: macro invoked from here
+asm/battle/main53.s: Warning: missing .end at end of assembly
+[52/270] Assemble asm/battle/main54.s (AS)
+asm/battle/main54.s: Assembler messages:
+asm/battle/main54.s:14: Warning: missing .end
+asm/battle/main54.s:66:  Info: macro invoked from here
+asm/battle/main54.s:14: Warning: missing .end
+asm/battle/main54.s:119:  Info: macro invoked from here
+asm/battle/main54.s:14: Warning: missing .end
+asm/battle/main54.s:154:  Info: macro invoked from here
+asm/battle/main54.s:14: Warning: missing .end
+asm/battle/main54.s:496:  Info: macro invoked from here
+asm/battle/main54.s: Warning: missing .end at end of assembly
+[53/270] Assemble asm/battle/main51.s (AS)
+asm/battle/main51.s: Assembler messages:
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:292:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:349:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:454:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:624:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:691:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:773:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:927:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:977:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1124:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1253:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1634:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1690:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1802:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:1990:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:2123:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:2230:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:2351:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:2481:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:2803:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:3069:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:3410:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:3729:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:3913:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:4020:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:4104:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:4516:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:4546:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:4908:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:5281:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:5330:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:5455:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:5989:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6078:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6146:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6260:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6316:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6346:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6459:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6658:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:6969:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:7225:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:7268:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:7400:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:7737:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:8180:  Info: macro invoked from here
+asm/battle/main51.s:14: Warning: missing .end
+asm/battle/main51.s:8411:  Info: macro invoked from here
+asm/battle/main51.s: Warning: missing .end at end of assembly
+[54/270] Assemble asm/battle/main55.s (AS)
+asm/battle/main55.s: Assembler messages:
+asm/battle/main55.s:14: Warning: missing .end
+asm/battle/main55.s:42:  Info: macro invoked from here
+asm/battle/main55.s:14: Warning: missing .end
+asm/battle/main55.s:146:  Info: macro invoked from here
+asm/battle/main55.s:14: Warning: missing .end
+asm/battle/main55.s:179:  Info: macro invoked from here
+asm/battle/main55.s:14: Warning: missing .end
+asm/battle/main55.s:231:  Info: macro invoked from here
+asm/battle/main55.s: Warning: missing .end at end of assembly
+[55/270] Assemble asm/battle/main56.s (AS)
+asm/battle/main56.s: Assembler messages:
+asm/battle/main56.s:14: Warning: missing .end
+asm/battle/main56.s:85:  Info: macro invoked from here
+asm/battle/main56.s:14: Warning: missing .end
+asm/battle/main56.s:179:  Info: macro invoked from here
+asm/battle/main56.s:14: Warning: missing .end
+asm/battle/main56.s:276:  Info: macro invoked from here
+asm/battle/main56.s: Warning: missing .end at end of assembly
+[56/270] Assemble asm/battle/main57.s (AS)
+asm/battle/main57.s: Assembler messages:
+asm/battle/main57.s:14: Warning: missing .end
+asm/battle/main57.s:66:  Info: macro invoked from here
+asm/battle/main57.s: Warning: missing .end at end of assembly
+[57/270] Assemble asm/battle/main58.s (AS)
+asm/battle/main58.s: Assembler messages:
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:73:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:239:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:389:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:709:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:908:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:941:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:1099:  Info: macro invoked from here
+asm/battle/main58.s:14: Warning: missing .end
+asm/battle/main58.s:1140:  Info: macro invoked from here
+asm/battle/main58.s: Warning: missing .end at end of assembly
+[58/270] Assemble asm/battle/main59.s (AS)
+asm/battle/main59.s: Assembler messages:
+asm/battle/main59.s:14: Warning: missing .end
+asm/battle/main59.s:40:  Info: macro invoked from here
+asm/battle/main59.s:14: Warning: missing .end
+asm/battle/main59.s:252:  Info: macro invoked from here
+asm/battle/main59.s:14: Warning: missing .end
+asm/battle/main59.s:594:  Info: macro invoked from here
+asm/battle/main59.s:14: Warning: missing .end
+asm/battle/main59.s:649:  Info: macro invoked from here
+asm/battle/main59.s:14: Warning: missing .end
+asm/battle/main59.s:709:  Info: macro invoked from here
+asm/battle/main59.s: Warning: missing .end at end of assembly
+[59/270] Assemble asm/battle/main60.s (AS)
+asm/battle/main60.s: Assembler messages:
+asm/battle/main60.s:14: Warning: missing .end
+asm/battle/main60.s:533:  Info: macro invoked from here
+asm/battle/main60.s: Warning: missing .end at end of assembly
+[60/270] Assemble asm/battle/main61.s (AS)
+asm/battle/main61.s: Assembler messages:
+asm/battle/main61.s:14: Warning: missing .end
+asm/battle/main61.s:392:  Info: macro invoked from here
+asm/battle/main61.s:14: Warning: missing .end
+asm/battle/main61.s:446:  Info: macro invoked from here
+asm/battle/main61.s:14: Warning: missing .end
+asm/battle/main61.s:537:  Info: macro invoked from here
+asm/battle/main61.s:14: Warning: missing .end
+asm/battle/main61.s:587:  Info: macro invoked from here
+asm/battle/main61.s:14: Warning: missing .end
+asm/battle/main61.s:1038:  Info: macro invoked from here
+asm/battle/main61.s: Warning: missing .end at end of assembly
+[61/270] Assemble asm/battle/main62.s (AS)
+asm/battle/main62.s: Assembler messages:
+asm/battle/main62.s:14: Warning: missing .end
+asm/battle/main62.s:42:  Info: macro invoked from here
+asm/battle/main62.s:14: Warning: missing .end
+asm/battle/main62.s:75:  Info: macro invoked from here
+asm/battle/main62.s:14: Warning: missing .end
+asm/battle/main62.s:103:  Info: macro invoked from here
+asm/battle/main62.s: Warning: missing .end at end of assembly
+[62/270] Assemble asm/battle/main63.s (AS)
+asm/battle/main63.s: Assembler messages:
+asm/battle/main63.s:14: Warning: missing .end
+asm/battle/main63.s:44:  Info: macro invoked from here
+asm/battle/main63.s:14: Warning: missing .end
+asm/battle/main63.s:78:  Info: macro invoked from here
+asm/battle/main63.s: Warning: missing .end at end of assembly
+[63/270] Assemble asm/battle/main64.s (AS)
+asm/battle/main64.s: Assembler messages:
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:49:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:169:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:234:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:480:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:526:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:731:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:908:  Info: macro invoked from here
+asm/battle/main64.s:14: Warning: missing .end
+asm/battle/main64.s:1182:  Info: macro invoked from here
+asm/battle/main64.s: Warning: missing .end at end of assembly
+[64/270] Assemble asm/battle/main66.s (AS)
+asm/battle/main66.s: Assembler messages:
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:33:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:85:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:110:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:308:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:570:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:638:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:706:  Info: macro invoked from here
+asm/battle/main66.s:14: Warning: missing .end
+asm/battle/main66.s:741:  Info: macro invoked from here
+asm/battle/main66.s: Warning: missing .end at end of assembly
+[65/270] Assemble asm/battle/main65.s (AS)
+asm/battle/main65.s: Assembler messages:
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:100:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:142:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:194:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:1266:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:2618:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:2735:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:3044:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:3100:  Info: macro invoked from here
+asm/battle/main65.s:14: Warning: missing .end
+asm/battle/main65.s:3135:  Info: macro invoked from here
+asm/battle/main65.s: Warning: missing .end at end of assembly
+[66/270] Assemble asm/battle/main67.s (AS)
+asm/battle/main67.s: Assembler messages:
+asm/battle/main67.s:14: Warning: missing .end
+asm/battle/main67.s:91:  Info: macro invoked from here
+asm/battle/main67.s:14: Warning: missing .end
+asm/battle/main67.s:165:  Info: macro invoked from here
+asm/battle/main67.s:14: Warning: missing .end
+asm/battle/main67.s:187:  Info: macro invoked from here
+asm/battle/main67.s:14: Warning: missing .end
+asm/battle/main67.s:389:  Info: macro invoked from here
+asm/battle/main67.s:14: Warning: missing .end
+asm/battle/main67.s:508:  Info: macro invoked from here
+asm/battle/main67.s: Warning: missing .end at end of assembly
+[67/270] Assemble asm/battle/main68.s (AS)
+asm/battle/main68.s: Assembler messages:
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:48:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:79:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:104:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:140:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:727:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1010:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1061:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1113:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1172:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1279:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1403:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1462:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1624:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1745:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:1798:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:2455:  Info: macro invoked from here
+asm/battle/main68.s:14: Warning: missing .end
+asm/battle/main68.s:2462:  Info: macro invoked from here
+asm/battle/main68.s: Warning: missing .end at end of assembly
+[68/270] Assemble asm/battle/main71.s (AS)
+asm/battle/main71.s: Assembler messages:
+asm/battle/main71.s:14: Warning: missing .end
+asm/battle/main71.s:29:  Info: macro invoked from here
+asm/battle/main71.s: Warning: missing .end at end of assembly
+[69/270] Assemble asm/battle/main69.s (AS)
+asm/battle/main69.s: Assembler messages:
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:69:  Info: macro invoked from here
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:116:  Info: macro invoked from here
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:203:  Info: macro invoked from here
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:313:  Info: macro invoked from here
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:411:  Info: macro invoked from here
+asm/battle/main69.s:14: Warning: missing .end
+asm/battle/main69.s:499:  Info: macro invoked from here
+asm/battle/main69.s: Warning: missing .end at end of assembly
+[70/270] Assemble asm/battle/main70.s (AS)
+asm/battle/main70.s: Assembler messages:
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:380:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:425:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:667:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:841:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:1161:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:1219:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:1823:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:2993:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:3031:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:3094:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:3724:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:3822:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:3883:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4065:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4424:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4451:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4673:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4702:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4758:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4810:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4835:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4878:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4902:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4944:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4982:  Info: macro invoked from here
+asm/battle/main70.s:14: Warning: missing .end
+asm/battle/main70.s:4996:  Info: macro invoked from here
+asm/battle/main70.s: Warning: missing .end at end of assembly
+[71/270] Assemble asm/battle/main73.s (AS)
+asm/battle/main73.s: Assembler messages:
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:42:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:192:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:258:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:285:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:371:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:390:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:458:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:557:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:847:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:898:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:974:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:1056:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:1197:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:1251:  Info: macro invoked from here
+asm/battle/main73.s:14: Warning: missing .end
+asm/battle/main73.s:1284:  Info: macro invoked from here
+asm/battle/main73.s: Warning: missing .end at end of assembly
+[72/270] Assemble asm/battle/main72.s (AS)
+asm/battle/main72.s: Assembler messages:
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:49:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:91:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:158:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:236:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:384:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:3834:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:3939:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:4017:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:4049:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:4092:  Info: macro invoked from here
+asm/battle/main72.s:14: Warning: missing .end
+asm/battle/main72.s:4939:  Info: macro invoked from here
+asm/battle/main72.s: Warning: missing .end at end of assembly
+[73/270] Assemble asm/battle/main75.s (AS)
+asm/battle/main75.s: Assembler messages:
+asm/battle/main75.s:14: Warning: missing .end
+asm/battle/main75.s:88:  Info: macro invoked from here
+asm/battle/main75.s:14: Warning: missing .end
+asm/battle/main75.s:137:  Info: macro invoked from here
+asm/battle/main75.s: Warning: missing .end at end of assembly
+[74/270] Assemble asm/battle/main74.s (AS)
+asm/battle/main74.s: Assembler messages:
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:43:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:114:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:700:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:728:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:893:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:1066:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:1135:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:1267:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:1317:  Info: macro invoked from here
+asm/battle/main74.s:14: Warning: missing .end
+asm/battle/main74.s:1414:  Info: macro invoked from here
+asm/battle/main74.s: Warning: missing .end at end of assembly
+[75/270] Assemble asm/battle/mainc76.s (AS)
+asm/battle/mainc76.s: Assembler messages:
+asm/battle/mainc76.s:14: Warning: missing .end
+asm/battle/mainc76.s:34:  Info: macro invoked from here
+asm/battle/mainc76.s: Warning: missing .end at end of assembly
+[76/270] Assemble asm/battle/mainc79.s (AS)
+asm/battle/mainc79.s: Assembler messages:
+asm/battle/mainc79.s:14: Warning: missing .end
+asm/battle/mainc79.s:39:  Info: macro invoked from here
+asm/battle/mainc79.s:14: Warning: missing .end
+asm/battle/mainc79.s:140:  Info: macro invoked from here
+asm/battle/mainc79.s: Warning: missing .end at end of assembly
+[77/270] Assemble asm/battle/main77.s (AS)
+asm/battle/main77.s: Assembler messages:
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:529:  Info: macro invoked from here
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:561:  Info: macro invoked from here
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:590:  Info: macro invoked from here
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:1378:  Info: macro invoked from here
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:1940:  Info: macro invoked from here
+asm/battle/main77.s:14: Warning: missing .end
+asm/battle/main77.s:1945:  Info: macro invoked from here
+asm/battle/main77.s: Warning: missing .end at end of assembly
+[78/270] Assemble asm/battle/mainc78.s (AS)
+asm/battle/mainc78.s: Assembler messages:
+asm/battle/mainc78.s:14: Warning: missing .end
+asm/battle/mainc78.s:163:  Info: macro invoked from here
+asm/battle/mainc78.s:14: Warning: missing .end
+asm/battle/mainc78.s:180:  Info: macro invoked from here
+asm/battle/mainc78.s: Warning: missing .end at end of assembly
+[79/270] Assemble asm/battle/mainc80.s (AS)
+asm/battle/mainc80.s: Assembler messages:
+asm/battle/mainc80.s:14: Warning: missing .end
+asm/battle/mainc80.s:79:  Info: macro invoked from here
+asm/battle/mainc80.s: Warning: missing .end at end of assembly
+[80/270] Assemble asm/battle/mainl81.s (AS)
+asm/battle/mainl81.s: Assembler messages:
+asm/battle/mainl81.s:14: Warning: missing .end
+asm/battle/mainl81.s:127:  Info: macro invoked from here
+asm/battle/mainl81.s: Warning: missing .end at end of assembly
+[81/270] Assemble asm/battle/mainc82.s (AS)
+asm/battle/mainc82.s: Assembler messages:
+asm/battle/mainc82.s:14: Warning: missing .end
+asm/battle/mainc82.s:54:  Info: macro invoked from here
+asm/battle/mainc82.s: Warning: missing .end at end of assembly
+[82/270] Assemble asm/battle/mainc83.s (AS)
+asm/battle/mainc83.s: Assembler messages:
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:38:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:119:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:186:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1335:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1381:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1471:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1534:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1793:  Info: macro invoked from here
+asm/battle/mainc83.s:14: Warning: missing .end
+asm/battle/mainc83.s:1887:  Info: macro invoked from here
+asm/battle/mainc83.s: Warning: missing .end at end of assembly
+[83/270] Assemble asm/battle/mainc85.s (AS)
+asm/battle/mainc85.s: Assembler messages:
+asm/battle/mainc85.s:14: Warning: missing .end
+asm/battle/mainc85.s:84:  Info: macro invoked from here
+asm/battle/mainc85.s:14: Warning: missing .end
+asm/battle/mainc85.s:117:  Info: macro invoked from here
+asm/battle/mainc85.s:14: Warning: missing .end
+asm/battle/mainc85.s:177:  Info: macro invoked from here
+asm/battle/mainc85.s: Warning: missing .end at end of assembly
+[84/270] Assemble asm/battle/mainc84.s (AS)
+asm/battle/mainc84.s: Assembler messages:
+asm/battle/mainc84.s:14: Warning: missing .end
+asm/battle/mainc84.s:60:  Info: macro invoked from here
+asm/battle/mainc84.s:14: Warning: missing .end
+asm/battle/mainc84.s:91:  Info: macro invoked from here
+asm/battle/mainc84.s:14: Warning: missing .end
+asm/battle/mainc84.s:151:  Info: macro invoked from here
+asm/battle/mainc84.s: Warning: missing .end at end of assembly
+[85/270] Assemble asm/battle/mainc86.s (AS)
+asm/battle/mainc86.s: Assembler messages:
+asm/battle/mainc86.s:14: Warning: missing .end
+asm/battle/mainc86.s:79:  Info: macro invoked from here
+asm/battle/mainc86.s: Warning: missing .end at end of assembly
+[86/270] Assemble asm/battle/main87.s (AS)
+asm/battle/main87.s: Assembler messages:
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:130:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:151:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:262:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:283:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:315:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:341:  Info: macro invoked from here
+asm/battle/main87.s:14: Warning: missing .end
+asm/battle/main87.s:399:  Info: macro invoked from here
+asm/battle/main87.s: Warning: missing .end at end of assembly
+[87/270] Assemble asm/battle/mainc88.s (AS)
+asm/battle/mainc88.s: Assembler messages:
+asm/battle/mainc88.s:14: Warning: missing .end
+asm/battle/mainc88.s:31:  Info: macro invoked from here
+asm/battle/mainc88.s: Warning: missing .end at end of assembly
+[88/270] Assemble asm/battle/mainc89.s (AS)
+asm/battle/mainc89.s: Assembler messages:
+asm/battle/mainc89.s:14: Warning: missing .end
+asm/battle/mainc89.s:43:  Info: macro invoked from here
+asm/battle/mainc89.s: Warning: missing .end at end of assembly
+[89/270] Assemble asm/battle/main90.s (AS)
+asm/battle/main90.s: Assembler messages:
+asm/battle/main90.s:14: Warning: missing .end
+asm/battle/main90.s:51:  Info: macro invoked from here
+asm/battle/main90.s:14: Warning: missing .end
+asm/battle/main90.s:208:  Info: macro invoked from here
+asm/battle/main90.s:14: Warning: missing .end
+asm/battle/main90.s:285:  Info: macro invoked from here
+asm/battle/main90.s:14: Warning: missing .end
+asm/battle/main90.s:312:  Info: macro invoked from here
+asm/battle/main90.s: Warning: missing .end at end of assembly
+[90/270] Assemble asm/battle/main91.s (AS)
+asm/battle/main91.s: Assembler messages:
+asm/battle/main91.s:14: Warning: missing .end
+asm/battle/main91.s:40:  Info: macro invoked from here
+asm/battle/main91.s: Warning: missing .end at end of assembly
+[91/270] Assemble asm/battle/mainl92.s (AS)
+asm/battle/mainl92.s: Assembler messages:
+asm/battle/mainl92.s:14: Warning: missing .end
+asm/battle/mainl92.s:86:  Info: macro invoked from here
+asm/battle/mainl92.s:14: Warning: missing .end
+asm/battle/mainl92.s:114:  Info: macro invoked from here
+asm/battle/mainl92.s: Warning: missing .end at end of assembly
+[92/270] Assemble asm/battle/main93.s (AS)
+asm/battle/main93.s: Assembler messages:
+asm/battle/main93.s:14: Warning: missing .end
+asm/battle/main93.s:34:  Info: macro invoked from here
+asm/battle/main93.s: Warning: missing .end at end of assembly
+[93/270] Assemble asm/battle/mainc95.s (AS)
+asm/battle/mainc95.s: Assembler messages:
+asm/battle/mainc95.s:14: Warning: missing .end
+asm/battle/mainc95.s:47:  Info: macro invoked from here
+asm/battle/mainc95.s:14: Warning: missing .end
+asm/battle/mainc95.s:196:  Info: macro invoked from here
+asm/battle/mainc95.s: Warning: missing .end at end of assembly
+[94/270] Assemble asm/battle/mainl94.s (AS)
+asm/battle/mainl94.s: Assembler messages:
+asm/battle/mainl94.s:14: Warning: missing .end
+asm/battle/mainl94.s:67:  Info: macro invoked from here
+asm/battle/mainl94.s: Warning: missing .end at end of assembly
+[95/270] Assemble asm/battle/main96.s (AS)
+asm/battle/main96.s: Assembler messages:
+asm/battle/main96.s:14: Warning: missing .end
+asm/battle/main96.s:135:  Info: macro invoked from here
+asm/battle/main96.s:14: Warning: missing .end
+asm/battle/main96.s:151:  Info: macro invoked from here
+asm/battle/main96.s: Warning: missing .end at end of assembly
+[96/270] Assemble asm/battle/mainc97.s (AS)
+asm/battle/mainc97.s: Assembler messages:
+asm/battle/mainc97.s: Warning: missing .end at end of assembly
+[97/270] Assemble asm/battle/mainl98.s (AS)
+asm/battle/mainl98.s: Assembler messages:
+asm/battle/mainl98.s: Warning: missing .end at end of assembly
+[98/270] Assemble asm/battle/mainc99.s (AS)
+asm/battle/mainc99.s: Assembler messages:
+asm/battle/mainc99.s:14: Warning: missing .end
+asm/battle/mainc99.s:301:  Info: macro invoked from here
+asm/battle/mainc99.s:14: Warning: missing .end
+asm/battle/mainc99.s:551:  Info: macro invoked from here
+asm/battle/mainc99.s: Warning: missing .end at end of assembly
+[99/270] Assemble asm/battle/mainc100.s (AS)
+asm/battle/mainc100.s: Assembler messages:
+asm/battle/mainc100.s:14: Warning: missing .end
+asm/battle/mainc100.s:169:  Info: macro invoked from here
+asm/battle/mainc100.s:14: Warning: missing .end
+asm/battle/mainc100.s:283:  Info: macro invoked from here
+asm/battle/mainc100.s:14: Warning: missing .end
+asm/battle/mainc100.s:289:  Info: macro invoked from here
+asm/battle/mainc100.s:14: Warning: missing .end
+asm/battle/mainc100.s:297:  Info: macro invoked from here
+asm/battle/mainc100.s: Warning: missing .end at end of assembly
+[100/270] Assemble asm/battle/main101.s (AS)
+asm/battle/main101.s: Assembler messages:
+asm/battle/main101.s:14: Warning: missing .end
+asm/battle/main101.s:92:  Info: macro invoked from here
+asm/battle/main101.s:14: Warning: missing .end
+asm/battle/main101.s:145:  Info: macro invoked from here
+asm/battle/main101.s:14: Warning: missing .end
+asm/battle/main101.s:200:  Info: macro invoked from here
+asm/battle/main101.s: Warning: missing .end at end of assembly
+[101/270] Assemble asm/battle/mainc102.s (AS)
+asm/battle/mainc102.s: Assembler messages:
+asm/battle/mainc102.s:14: Warning: missing .end
+asm/battle/mainc102.s:127:  Info: macro invoked from here
+asm/battle/mainc102.s:14: Warning: missing .end
+asm/battle/mainc102.s:285:  Info: macro invoked from here
+asm/battle/mainc102.s:14: Warning: missing .end
+asm/battle/mainc102.s:341:  Info: macro invoked from here
+asm/battle/mainc102.s: Warning: missing .end at end of assembly
+[102/270] Assemble asm/battle/main103.s (AS)
+asm/battle/main103.s: Assembler messages:
+asm/battle/main103.s:14: Warning: missing .end
+asm/battle/main103.s:93:  Info: macro invoked from here
+asm/battle/main103.s: Warning: missing .end at end of assembly
+[103/270] Assemble asm/battle/mainc104.s (AS)
+asm/battle/mainc104.s: Assembler messages:
+asm/battle/mainc104.s:14: Warning: missing .end
+asm/battle/mainc104.s:220:  Info: macro invoked from here
+asm/battle/mainc104.s: Warning: missing .end at end of assembly
+[104/270] Assemble asm/battle/main105.s (AS)
+asm/battle/main105.s: Assembler messages:
+asm/battle/main105.s: Warning: missing .end at end of assembly
+[105/270] Assemble asm/battle/main106.s (AS)
+asm/battle/main106.s: Assembler messages:
+asm/battle/main106.s:14: Warning: missing .end
+asm/battle/main106.s:86:  Info: macro invoked from here
+asm/battle/main106.s:14: Warning: missing .end
+asm/battle/main106.s:184:  Info: macro invoked from here
+asm/battle/main106.s: Warning: missing .end at end of assembly
+[106/270] Assemble asm/battle/mainc107.s (AS)
+asm/battle/mainc107.s: Assembler messages:
+asm/battle/mainc107.s:14: Warning: missing .end
+asm/battle/mainc107.s:146:  Info: macro invoked from here
+asm/battle/mainc107.s: Warning: missing .end at end of assembly
+[107/270] Assemble asm/battle/mainl109.s (AS)
+asm/battle/mainl109.s: Assembler messages:
+asm/battle/mainl109.s: Warning: missing .end at end of assembly
+[108/270] Assemble asm/battle/mainc108.s (AS)
+asm/battle/mainc108.s: Assembler messages:
+asm/battle/mainc108.s:14: Warning: missing .end
+asm/battle/mainc108.s:182:  Info: macro invoked from here
+asm/battle/mainc108.s:14: Warning: missing .end
+asm/battle/mainc108.s:600:  Info: macro invoked from here
+asm/battle/mainc108.s: Warning: missing .end at end of assembly
+[109/270] Assemble asm/battle/mainl110.s (AS)
+asm/battle/mainl110.s: Assembler messages:
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:43:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:251:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:628:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:681:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:714:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:804:  Info: macro invoked from here
+asm/battle/mainl110.s:14: Warning: missing .end
+asm/battle/mainl110.s:911:  Info: macro invoked from here
+asm/battle/mainl110.s: Warning: missing .end at end of assembly
+[110/270] Assemble asm/battle/main111.s (AS)
+asm/battle/main111.s: Assembler messages:
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:111:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:168:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:201:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:232:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:305:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:368:  Info: macro invoked from here
+asm/battle/main111.s:14: Warning: missing .end
+asm/battle/main111.s:406:  Info: macro invoked from here
+asm/battle/main111.s: Warning: missing .end at end of assembly
+[111/270] Assemble asm/battle/mainc112.s (AS)
+asm/battle/mainc112.s: Assembler messages:
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:97:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:149:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:222:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:277:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:295:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:423:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:486:  Info: macro invoked from here
+asm/battle/mainc112.s:14: Warning: missing .end
+asm/battle/mainc112.s:518:  Info: macro invoked from here
+asm/battle/mainc112.s: Warning: missing .end at end of assembly
+[112/270] Assemble asm/battle/mainc113.s (AS)
+asm/battle/mainc113.s: Assembler messages:
+asm/battle/mainc113.s:14: Warning: missing .end
+asm/battle/mainc113.s:46:  Info: macro invoked from here
+asm/battle/mainc113.s:14: Warning: missing .end
+asm/battle/mainc113.s:87:  Info: macro invoked from here
+asm/battle/mainc113.s: Warning: missing .end at end of assembly
+[113/270] Assemble asm/battle/mainl115.s (AS)
+asm/battle/mainl115.s: Assembler messages:
+asm/battle/mainl115.s:14: Warning: missing .end
+asm/battle/mainl115.s:429:  Info: macro invoked from here
+asm/battle/mainl115.s:14: Warning: missing .end
+asm/battle/mainl115.s:444:  Info: macro invoked from here
+asm/battle/mainl115.s: Warning: missing .end at end of assembly
+[114/270] Assemble asm/battle/mainc114.s (AS)
+asm/battle/mainc114.s: Assembler messages:
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:113:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:175:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:456:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:542:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:631:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:744:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:817:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:823:  Info: macro invoked from here
+asm/battle/mainc114.s:14: Warning: missing .end
+asm/battle/mainc114.s:847:  Info: macro invoked from here
+asm/battle/mainc114.s: Warning: missing .end at end of assembly
+[115/270] Assemble asm/battle/mainc116.s (AS)
+asm/battle/mainc116.s: Assembler messages:
+asm/battle/mainc116.s:14: Warning: missing .end
+asm/battle/mainc116.s:36:  Info: macro invoked from here
+asm/battle/mainc116.s: Warning: missing .end at end of assembly
+[116/270] Assemble asm/battle/mainc117.s (AS)
+asm/battle/mainc117.s: Assembler messages:
+asm/battle/mainc117.s:14: Warning: missing .end
+asm/battle/mainc117.s:58:  Info: macro invoked from here
+asm/battle/mainc117.s:14: Warning: missing .end
+asm/battle/mainc117.s:139:  Info: macro invoked from here
+asm/battle/mainc117.s: Warning: missing .end at end of assembly
+[117/270] Assemble asm/battle/main119.s (AS)
+asm/battle/main119.s: Assembler messages:
+asm/battle/main119.s: Warning: missing .end at end of assembly
+[118/270] Assemble asm/battle/mainc118.s (AS)
+asm/battle/mainc118.s: Assembler messages:
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:88:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:156:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:189:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:221:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:314:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:376:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:433:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:707:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:742:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:835:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:880:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:944:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:975:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:1020:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:1049:  Info: macro invoked from here
+asm/battle/mainc118.s:14: Warning: missing .end
+asm/battle/mainc118.s:1087:  Info: macro invoked from here
+asm/battle/mainc118.s: Warning: missing .end at end of assembly
+[119/270] Assemble asm/battle/mainc120.s (AS)
+asm/battle/mainc120.s: Assembler messages:
+asm/battle/mainc120.s:14: Warning: missing .end
+asm/battle/mainc120.s:86:  Info: macro invoked from here
+asm/battle/mainc120.s:14: Warning: missing .end
+asm/battle/mainc120.s:139:  Info: macro invoked from here
+asm/battle/mainc120.s:14: Warning: missing .end
+asm/battle/mainc120.s:263:  Info: macro invoked from here
+asm/battle/mainc120.s:14: Warning: missing .end
+asm/battle/mainc120.s:278:  Info: macro invoked from here
+asm/battle/mainc120.s: Warning: missing .end at end of assembly
+[120/270] Assemble asm/battle/main121.s (AS)
+asm/battle/main121.s: Assembler messages:
+asm/battle/main121.s: Warning: missing .end at end of assembly
+[121/270] Assemble asm/battle/mainc122.s (AS)
+asm/battle/mainc122.s: Assembler messages:
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:107:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:252:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:353:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:376:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:425:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:662:  Info: macro invoked from here
+asm/battle/mainc122.s:14: Warning: missing .end
+asm/battle/mainc122.s:714:  Info: macro invoked from here
+asm/battle/mainc122.s: Warning: missing .end at end of assembly
+[122/270] Assemble asm/battle/mainc123.s (AS)
+asm/battle/mainc123.s: Assembler messages:
+asm/battle/mainc123.s:14: Warning: missing .end
+asm/battle/mainc123.s:84:  Info: macro invoked from here
+asm/battle/mainc123.s: Warning: missing .end at end of assembly
+[123/270] Assemble asm/battle/mainc124.s (AS)
+asm/battle/mainc124.s: Assembler messages:
+asm/battle/mainc124.s:14: Warning: missing .end
+asm/battle/mainc124.s:52:  Info: macro invoked from here
+asm/battle/mainc124.s: Warning: missing .end at end of assembly
+[124/270] Assemble asm/battle/main125.s (AS)
+asm/battle/main125.s: Assembler messages:
+asm/battle/main125.s:14: Warning: missing .end
+asm/battle/main125.s:47:  Info: macro invoked from here
+asm/battle/main125.s:14: Warning: missing .end
+asm/battle/main125.s:80:  Info: macro invoked from here
+asm/battle/main125.s:14: Warning: missing .end
+asm/battle/main125.s:109:  Info: macro invoked from here
+asm/battle/main125.s:14: Warning: missing .end
+asm/battle/main125.s:138:  Info: macro invoked from here
+asm/battle/main125.s:14: Warning: missing .end
+asm/battle/main125.s:191:  Info: macro invoked from here
+asm/battle/main125.s: Warning: missing .end at end of assembly
+[125/270] Assemble asm/battle/mainc126.s (AS)
+asm/battle/mainc126.s: Assembler messages:
+asm/battle/mainc126.s:14: Warning: missing .end
+asm/battle/mainc126.s:90:  Info: macro invoked from here
+asm/battle/mainc126.s:14: Warning: missing .end
+asm/battle/mainc126.s:144:  Info: macro invoked from here
+asm/battle/mainc126.s:14: Warning: missing .end
+asm/battle/mainc126.s:186:  Info: macro invoked from here
+asm/battle/mainc126.s:14: Warning: missing .end
+asm/battle/mainc126.s:210:  Info: macro invoked from here
+asm/battle/mainc126.s: Warning: missing .end at end of assembly
+[126/270] Assemble asm/battle/main128.s (AS)
+asm/battle/main128.s: Assembler messages:
+asm/battle/main128.s:14: Warning: missing .end
+asm/battle/main128.s:25:  Info: macro invoked from here
+asm/battle/main128.s:14: Warning: missing .end
+asm/battle/main128.s:38:  Info: macro invoked from here
+asm/battle/main128.s: Warning: missing .end at end of assembly
+[127/270] Assemble asm/battle/mainc127.s (AS)
+asm/battle/mainc127.s: Assembler messages:
+asm/battle/mainc127.s:14: Warning: missing .end
+asm/battle/mainc127.s:81:  Info: macro invoked from here
+asm/battle/mainc127.s:14: Warning: missing .end
+asm/battle/mainc127.s:151:  Info: macro invoked from here
+asm/battle/mainc127.s:14: Warning: missing .end
+asm/battle/mainc127.s:160:  Info: macro invoked from here
+asm/battle/mainc127.s: Warning: missing .end at end of assembly
+[128/270] Assemble asm/battle/mainc129.s (AS)
+asm/battle/mainc129.s: Assembler messages:
+asm/battle/mainc129.s: Warning: missing .end at end of assembly
+[129/270] Assemble asm/battle/mainc130.s (AS)
+asm/battle/mainc130.s: Assembler messages:
+asm/battle/mainc130.s:14: Warning: missing .end
+asm/battle/mainc130.s:50:  Info: macro invoked from here
+asm/battle/mainc130.s: Warning: missing .end at end of assembly
+[130/270] Assemble asm/battle/mainc131.s (AS)
+asm/battle/mainc131.s: Assembler messages:
+asm/battle/mainc131.s:14: Warning: missing .end
+asm/battle/mainc131.s:42:  Info: macro invoked from here
+asm/battle/mainc131.s:14: Warning: missing .end
+asm/battle/mainc131.s:84:  Info: macro invoked from here
+asm/battle/mainc131.s:14: Warning: missing .end
+asm/battle/mainc131.s:106:  Info: macro invoked from here
+asm/battle/mainc131.s:14: Warning: missing .end
+asm/battle/mainc131.s:131:  Info: macro invoked from here
+asm/battle/mainc131.s: Warning: missing .end at end of assembly
+[131/270] Assemble asm/battle/mainc132.s (AS)
+asm/battle/mainc132.s: Assembler messages:
+asm/battle/mainc132.s:14: Warning: missing .end
+asm/battle/mainc132.s:84:  Info: macro invoked from here
+asm/battle/mainc132.s: Warning: missing .end at end of assembly
+[132/270] Assemble asm/battle/mainl133.s (AS)
+asm/battle/mainl133.s: Assembler messages:
+asm/battle/mainl133.s:14: Warning: missing .end
+asm/battle/mainl133.s:84:  Info: macro invoked from here
+asm/battle/mainl133.s: Warning: missing .end at end of assembly
+[133/270] Assemble asm/battle/mainc134.s (AS)
+asm/battle/mainc134.s: Assembler messages:
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:54:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:392:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:556:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:661:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:693:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:725:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:751:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:795:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:1101:  Info: macro invoked from here
+asm/battle/mainc134.s:14: Warning: missing .end
+asm/battle/mainc134.s:1254:  Info: macro invoked from here
+asm/battle/mainc134.s: Warning: missing .end at end of assembly
+[134/270] Assemble asm/battle/main135.s (AS)
+asm/battle/main135.s: Assembler messages:
+asm/battle/main135.s:14: Warning: missing .end
+asm/battle/main135.s:122:  Info: macro invoked from here
+asm/battle/main135.s:14: Warning: missing .end
+asm/battle/main135.s:163:  Info: macro invoked from here
+asm/battle/main135.s: Warning: missing .end at end of assembly
+[135/270] Assemble build/src/battle/main.c.s (MASPSX)
+[136/270] Assemble build/src/battle/main3.c.s (MASPSX)
+[137/270] Assemble build/src/battle/main4.c.s (MASPSX)
+[138/270] Assemble build/src/battle/main2.c.s (MASPSX)
+[139/270] Assemble build/src/battle/main5.c.s (MASPSX)
+[140/270] Assemble build/src/battle/main7.c.s (MASPSX)
+[141/270] Assemble build/src/battle/main6.c.s (MASPSX)
+[142/270] Assemble build/src/battle/main8.c.s (MASPSX)
+[143/270] Assemble build/src/battle/main11.c.s (MASPSX)
+[144/270] Assemble build/src/battle/main10.c.s (MASPSX)
+[145/270] Assemble build/src/battle/main9.c.s (MASPSX)
+[146/270] Assemble build/src/battle/main12.c.s (MASPSX)
+[147/270] Assemble build/src/battle/main13.c.s (MASPSX)
+[148/270] Assemble build/src/battle/main15.c.s (MASPSX)
+[149/270] Assemble build/src/battle/main16.c.s (MASPSX)
+[150/270] Assemble build/src/battle/main14.c.s (MASPSX)
+[151/270] Assemble build/src/battle/main17.c.s (MASPSX)
+[152/270] Assemble build/src/battle/main20.c.s (MASPSX)
+[153/270] Assemble build/src/battle/main21.c.s (MASPSX)
+[154/270] Assemble build/src/battle/main19.c.s (MASPSX)
+[155/270] Assemble build/src/battle/main22.c.s (MASPSX)
+[156/270] Assemble build/src/battle/main23.c.s (MASPSX)
+[157/270] Assemble build/src/battle/main25.c.s (MASPSX)
+[158/270] Assemble build/src/battle/main24.c.s (MASPSX)
+[159/270] Assemble build/src/battle/main29.c.s (MASPSX)
+[160/270] Assemble build/src/battle/main28.c.s (MASPSX)
+[161/270] Assemble build/src/battle/main27.c.s (MASPSX)
+[162/270] Assemble build/src/battle/main26.c.s (MASPSX)
+[163/270] Assemble build/src/battle/main32.c.s (MASPSX)
+[164/270] Assemble build/src/battle/main33.c.s (MASPSX)
+[165/270] Assemble build/src/battle/main31.c.s (MASPSX)
+[166/270] Assemble build/src/battle/main30.c.s (MASPSX)
+[167/270] Assemble build/src/battle/main34.c.s (MASPSX)
+[168/270] Assemble build/src/battle/main38.c.s (MASPSX)
+[169/270] Assemble build/src/battle/main35.c.s (MASPSX)
+[170/270] Assemble build/src/battle/main37.c.s (MASPSX)
+[171/270] Assemble build/src/battle/main41.c.s (MASPSX)
+[172/270] Assemble build/src/battle/main39.c.s (MASPSX)
+[173/270] Assemble build/src/battle/main40.c.s (MASPSX)
+[174/270] Assemble build/src/battle/main42.c.s (MASPSX)
+[175/270] Assemble build/src/battle/main44.c.s (MASPSX)
+[176/270] Assemble build/src/battle/main43.c.s (MASPSX)
+[177/270] Assemble build/src/battle/main45.c.s (MASPSX)
+[178/270] Assemble build/src/battle/main46.c.s (MASPSX)
+[179/270] Assemble build/src/battle/main54.c.s (MASPSX)
+[180/270] Assemble build/src/battle/main48.c.s (MASPSX)
+[181/270] Assemble build/src/battle/main53.c.s (MASPSX)
+[182/270] Assemble build/src/battle/main47.c.s (MASPSX)
+[183/270] Assemble build/src/battle/main56.c.s (MASPSX)
+[184/270] Assemble build/src/battle/main60.c.s (MASPSX)
+[185/270] Assemble build/src/battle/main50.c.s (MASPSX)
+[186/270] Assemble build/src/battle/main49.c.s (MASPSX)
+[187/270] Assemble build/src/battle/main52.c.s (MASPSX)
+[188/270] Assemble build/src/battle/main57.c.s (MASPSX)
+[189/270] Assemble build/src/battle/main64.c.s (MASPSX)
+[190/270] Assemble build/src/battle/main51.c.s (MASPSX)
+[191/270] Assemble build/src/battle/main61.c.s (MASPSX)
+[192/270] Assemble build/src/battle/main58.c.s (MASPSX)
+[193/270] Assemble build/src/battle/main55.c.s (MASPSX)
+[194/270] Assemble build/src/battle/main59.c.s (MASPSX)
+[195/270] Assemble build/src/battle/main71.c.s (MASPSX)
+[196/270] Assemble build/src/battle/main63.c.s (MASPSX)
+[197/270] Assemble build/src/battle/main62.c.s (MASPSX)
+[198/270] Assemble build/src/battle/main65.c.s (MASPSX)
+[199/270] Assemble build/src/battle/main67.c.s (MASPSX)
+[200/270] Assemble build/src/battle/main69.c.s (MASPSX)
+[201/270] Assemble build/src/battle/main66.c.s (MASPSX)
+[202/270] Assemble build/src/battle/main68.c.s (MASPSX)
+[203/270] Assemble build/src/battle/main72.c.s (MASPSX)
+[204/270] Assemble build/src/battle/main73.c.s (MASPSX)
+[205/270] Assemble build/src/battle/mainc78.c.s (MASPSX)
+[206/270] Assemble build/src/battle/main70.c.s (MASPSX)
+[207/270] Assemble build/src/battle/mainc80.c.s (MASPSX)
+[208/270] Assemble build/src/battle/main75.c.s (MASPSX)
+[209/270] Assemble build/src/battle/mainc18.c.s (MASPSX)
+[210/270] Assemble build/src/battle/mainc83.c.s (MASPSX)
+[211/270] Assemble build/src/battle/mainc82.c.s (MASPSX)
+[212/270] Assemble build/src/battle/mainc86.c.s (MASPSX)
+[213/270] Assemble build/src/battle/mainc97.c.s (MASPSX)
+[214/270] Assemble build/src/battle/mainc76.c.s (MASPSX)
+[215/270] Assemble build/src/battle/main101.c.s (MASPSX)
+[216/270] Assemble build/src/battle/main91.c.s (MASPSX)
+[217/270] Assemble build/src/battle/mainc84.c.s (MASPSX)
+[218/270] Assemble build/src/battle/mainl92.c.s (MASPSX)
+[219/270] Assemble build/src/battle/mainc124.c.s (MASPSX)
+[220/270] Assemble build/src/battle/mainc95.c.s (MASPSX)
+[221/270] Assemble build/src/battle/mainc100.c.s (MASPSX)
+[222/270] Assemble build/src/battle/mainc102.c.s (MASPSX)
+[223/270] Assemble build/src/battle/mainc120.c.s (MASPSX)
+[224/270] Assemble build/src/battle/main103.c.s (MASPSX)
+[225/270] Assemble build/src/battle/mainc114.c.s (MASPSX)
+[226/270] Assemble build/src/battle/mainc127.c.s (MASPSX)
+[227/270] Assemble build/src/battle/mainc129.c.s (MASPSX)
+[228/270] Assemble build/src/battle/mainc112.c.s (MASPSX)
+[229/270] Assemble build/src/battle/mainc116.c.s (MASPSX)
+[230/270] Assemble build/src/battle/mainc118.c.s (MASPSX)
+[231/270] Assemble build/src/battle/main119.c.s (MASPSX)
+[232/270] Assemble build/src/battle/mainc130.c.s (MASPSX)
+[233/270] Assemble build/src/battle/mainc122.c.s (MASPSX)
+[234/270] Assemble build/src/battle/mainc132.c.s (MASPSX)
+[235/270] Assemble build/src/battle/mainc79.c.s (MASPSX)
+[236/270] Assemble build/src/battle/main74.c.s (MASPSX)
+[237/270] Assemble build/src/battle/main77.c.s (MASPSX)
+[238/270] Assemble build/src/battle/mainl81.c.s (MASPSX)
+[239/270] Assemble build/src/battle/mainc85.c.s (MASPSX)
+[240/270] Assemble build/src/battle/mainc88.c.s (MASPSX)
+[241/270] Assemble build/src/battle/main87.c.s (MASPSX)
+[242/270] Assemble build/src/battle/mainc89.c.s (MASPSX)
+[243/270] Assemble build/src/battle/mainl94.c.s (MASPSX)
+[244/270] Assemble build/src/battle/main90.c.s (MASPSX)
+[245/270] Assemble build/src/battle/main93.c.s (MASPSX)
+[246/270] Assemble build/src/battle/main96.c.s (MASPSX)
+[247/270] Assemble build/src/battle/mainl98.c.s (MASPSX)
+[248/270] Assemble build/src/battle/mainc99.c.s (MASPSX)
+[249/270] Assemble build/src/battle/mainc104.c.s (MASPSX)
+[250/270] Assemble build/src/battle/main105.c.s (MASPSX)
+[251/270] Assemble build/src/battle/mainc107.c.s (MASPSX)
+[252/270] Assemble build/src/battle/mainc108.c.s (MASPSX)
+[253/270] Assemble build/src/battle/main106.c.s (MASPSX)
+[254/270] Assemble build/src/battle/mainl109.c.s (MASPSX)
+[255/270] Assemble build/src/battle/main111.c.s (MASPSX)
+[256/270] Assemble build/src/battle/mainc113.c.s (MASPSX)
+[257/270] Assemble build/src/battle/mainl110.c.s (MASPSX)
+[258/270] Assemble build/src/battle/mainl115.c.s (MASPSX)
+[259/270] Assemble build/src/battle/mainc123.c.s (MASPSX)
+[260/270] Assemble build/src/battle/mainc117.c.s (MASPSX)
+[261/270] Assemble build/src/battle/main121.c.s (MASPSX)
+[262/270] Assemble build/src/battle/main125.c.s (MASPSX)
+[263/270] Assemble build/src/battle/mainc126.c.s (MASPSX)
+[264/270] Assemble build/src/battle/main128.c.s (MASPSX)
+[265/270] Assemble build/src/battle/mainc131.c.s (MASPSX)
+[266/270] Assemble build/src/battle/mainl133.c.s (MASPSX)
+[267/270] Assemble build/src/battle/mainc134.c.s (MASPSX)
+[268/270] Assemble build/src/battle/main135.c.s (MASPSX)
+[269/270] Linking  (LD)
+FAILED: [code=1] build/out/battle.elf 
+mips-linux-gnu-ld -EL -O2 -nostdlib --no-check-sections -Map build/out/battle.map -T linker/battle.ld -T linker/undefined_syms_auto.battle.txt -T linker/undefined_funcs_auto.battle.txt -o build/out/battle.elf
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x8c): undefined reference to `.L80079F00'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x90): undefined reference to `.L80079F24'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x94): undefined reference to `.L80079F48'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x98): undefined reference to `.L80079F6C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x9c): undefined reference to `.L80079F90'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xa0): undefined reference to `.L80079FB4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xa4): undefined reference to `.L80079FD8'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xa8): undefined reference to `.L80079FFC'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xac): undefined reference to `.L8007A020'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xb0): undefined reference to `.L8007A044'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xb4): undefined reference to `.L8007A068'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xb8): undefined reference to `.L8007A08C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xbc): undefined reference to `.L8007A0B0'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xc0): undefined reference to `.L8007A0D4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xc4): undefined reference to `.L8007A0F8'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xc8): undefined reference to `.L8007A11C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xcc): undefined reference to `.L8007A140'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xd0): undefined reference to `.L8007A164'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xd4): undefined reference to `.L8007A188'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xd8): undefined reference to `.L8007A1AC'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xdc): undefined reference to `.L8007A1D0'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xe0): undefined reference to `.L8007A1F4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xe4): undefined reference to `.L8007A218'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xe8): undefined reference to `.L8007A23C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xec): undefined reference to `.L8007A2A8'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xf0): undefined reference to `.L8007A2CC'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xf4): undefined reference to `.L8007A2F0'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xf8): undefined reference to `.L8007A314'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0xfc): undefined reference to `.L8007A338'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x100): undefined reference to `.L8007A35C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x104): undefined reference to `.L8007A380'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x108): undefined reference to `.L8007A3A4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x10c): undefined reference to `.L8007A3C8'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x110): undefined reference to `.L8007A3EC'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x114): undefined reference to `.L8007A410'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x118): undefined reference to `.L8007A434'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x11c): undefined reference to `.L8007A458'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x120): undefined reference to `.L8007A47C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x124): undefined reference to `.L8007A4A0'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x128): undefined reference to `.L8007A4C4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x12c): undefined reference to `.L8007A4E8'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x130): undefined reference to `.L8007A50C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x134): undefined reference to `.L8007A530'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x138): undefined reference to `.L8007A554'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x13c): undefined reference to `.L8007A578'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x140): undefined reference to `.L8007A59C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x144): undefined reference to `.L8007A5C0'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x148): undefined reference to `.L8007A5E4'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x760): undefined reference to `.L8008570C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x764): undefined reference to `.L80085908'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x768): undefined reference to `.L8008583C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x76c): undefined reference to `.L80085954'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x770): undefined reference to `.L80085A70'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x774): undefined reference to `.L8008570C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x778): undefined reference to `.L80085A70'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x77c): undefined reference to `.L8008570C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x780): undefined reference to `.L8008570C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x784): undefined reference to `.L80085908'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x788): undefined reference to `.L800859CC'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x78c): undefined reference to `.L80085A18'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x790): undefined reference to `.L80085F6C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x794): undefined reference to `.L80085F70'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x798): undefined reference to `.L80085F74'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x79c): undefined reference to `.L80085F78'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7a0): undefined reference to `.L80085F7C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7a4): undefined reference to `.L80085F80'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7a8): undefined reference to `.L80085F84'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7ac): undefined reference to `.L80085F88'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7b0): undefined reference to `.L80085F8C'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7b4): undefined reference to `.L80085F90'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7b8): undefined reference to `.L80085F94'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7bc): undefined reference to `.L80085F98'
+mips-linux-gnu-ld: build/asm/battle/data/0.rodata.s.o:(.rodata+0x7c0): undefined reference to `.L80085F9C'
+ninja: build stopped: subcommand failed.

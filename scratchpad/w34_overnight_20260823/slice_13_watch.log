@@ -1,0 +1,14 @@
+W34B39 hardware-watchpoint census (frame 916, scheduler entry 2)
+armed after guest-native ClearOTagR at bucket address 0x800A2EA8
+
+Old value = 0x000A2EA4
+New value = 0x00092EA4
+pc = __memcpy_avx_unaligned_erms
+pt_sh(a=0x000A2EAA, v=9)
+wm_80089580() at pc_port/src/world_map_helper_89580.c:44
+wm_80089748() at pc_port/src/world_map_helper_89748.c:121
+wm_80071A58(slot_idx=14) at pc_port/src/world_map_r4world_71a58.c:55
+wm_80097800() at pc_port/src/world_map_scheduler.c:561
+
+Retail comparison: 0x800896FC..0x80089708 loads slot base from
+0x8009BCC0. Current pre-fix source loaded 0x8009BDE0.

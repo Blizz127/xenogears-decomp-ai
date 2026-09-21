@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-08T15:26:29.067903-05:00",
+  "run": "scratchpad/lahan-natural-20260908-compmatrix",
+  "binary_sha256": "60a0d9ee822b9288e479f128fc2e77305f29444a68819db56edbe7780c6826c2",
+  "game_pid": 430042,
+  "inputs": "ordinary New Game and keyboard inputs; no game state writes",
+  "result": "Prior Stop it SIGSEGV point passed; aftermath Uh... Uhn...? text reached",
+  "limits": [
+    "Single native replay with external allocator wrappers",
+    "No hardware GTE or retail audiovisual parity claim",
+    "Referenced actor lifetime remains unresolved",
+    "Full Lahan start-to-end 1to1 remains unproven"
+  ],
+  "further_observation": "Aftermath field3 visible with Fei, Citan and villagers; screenshot live-aftermath-villagers.png",
+  "run_terminal_observation": {
+    "observed_at": "2026-09-08T16:47:47.696423-05:00",
+    "state": "game, driver and X display absent after host reboot",
+    "limits": "No normal driver termination entry or coredump found; do not attribute disappearance to a game crash. Remaining aftermath was not observed."
+  }
+}

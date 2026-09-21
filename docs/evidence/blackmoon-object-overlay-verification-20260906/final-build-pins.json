@@ -1,0 +1,14 @@
+{
+  "native_build": "podman localhost/xenogears-dev-toolchain:current, ./pc_port/build_port.sh, in-place in the checkout",
+  "result": "LINK OK -> pc_port/build_native/xeno-port (port-owned addresses verified)",
+  "stubs": "Wrote pc_port/build_native/stubs.c: 74 function stubs, 565 data symbols (10 sized from symbol_addrs)",
+  "xeno_port_sha256": "522e901c0789888bb8b7e11a931b47bd30e2d265dc59917a04065d64baca4e5e",
+  "xeno_port_bytes": 4805016,
+  "runtime": "NOT_RUN by this pass; the coordinator's MAP16 observation on the preceding binary is docs/evidence/blackmoon-map16-runtime-20260906/README.md",
+  "preserved_binaries": {
+    "before_this_session": {"path": "/var/tmp/xeno-blackmoon-verify-mT7beL/native-backup/build_native/xeno-port", "sha256": "7739b2b794a430eee899aade8be196e0c8b2d804cbce5d3bb451887b82872da6"},
+    "coordinator_map16_run": {"path": "/var/tmp/xeno-blackmoon-verify-mT7beL/native-backup/coordinator/xeno-port", "sha256": "591ce91ee9a02c180b277e1581c466aee875034090aba6adfd8eff1ef49a822d"},
+    "host_homebrew_build": {"sha256": "e86ad1881b637047bdfaeb6156ad31ed2116cf294dd069531b67a8d70cca0011", "note": "built on the host with PKG_CONFIG_PATH=/home/linuxbrew/.linuxbrew/lib/pkgconfig CMAKE_PREFIX_PATH=/home/linuxbrew/.linuxbrew; overwritten by the container builds"}
+  },
+  "log": "/var/tmp/xeno-blackmoon-verify-mT7beL/native-build-container-final.log"
+}

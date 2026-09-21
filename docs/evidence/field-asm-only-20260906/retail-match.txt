@@ -1,0 +1,44 @@
+Rebuilt from the on-disk working tree at 2026-09-06T13:03:21-05:00
+Toolchain: tools/gcc-2.7.2-psx/cc1, -O2 -G8 -mips1 -mcpu=3000 (matching preset, gears.toml Default)
+
+=== landed functions vs retail (relocation-aware, built object vs retail listing) ===
+function : func_8007234C
+retail   : 19 instructions / 76 bytes
+built    : 19 instructions / 76 bytes
+RESULT   : EXACT MATCH - all 19 instructions / 76 bytes identical (relocations verified against retail operands)
+
+function : func_80072398
+retail   : 19 instructions / 76 bytes
+built    : 19 instructions / 76 bytes
+RESULT   : EXACT MATCH - all 19 instructions / 76 bytes identical (relocations verified against retail operands)
+
+function : func_800A6998
+retail   : 170 instructions / 680 bytes
+built    : 170 instructions / 680 bytes
+RESULT   : EXACT MATCH - all 170 instructions / 680 bytes identical (relocations verified against retail operands)
+
+function : func_800A6C40
+retail   : 140 instructions / 560 bytes
+built    : 140 instructions / 560 bytes
+RESULT   : EXACT MATCH - all 140 instructions / 560 bytes identical (relocations verified against retail operands)
+
+=== overlay layout preserved (section sizes must equal the pre-change baseline) ===
+misc2    now:  .text=0000447c 
+misc2    base: .text=0000447c 
+misc5    now:  .text=00003d08 .rodata=0000001c 
+misc5    base: .text=00003d08 .rodata=0000001c 
+misc9    now:  .text=00002434 
+misc9    base: .text=00002434 
+
+=== func_800AB748 coexistence near-match (port body compiled unconditionally, measurement only) ===
+OK
+function : func_800AB748
+retail   : 48 instructions / 192 bytes
+built    : 48 instructions / 192 bytes
+RESULT   : MISMATCH - 14 differing instruction(s) of 48
+restored: matching object identical to pristine baseline
+
+Landed form keeps INCLUDE_ASM for the matching build; misc9.c.o is byte-for-byte
+identical to the pre-change baseline object (verified above).
+Exactness is structurally unreachable: retail dispatches via jtbl_8006FDD8 in
+asm/field/data/294.rodata.s, whose entries point at labels inside the asm body.

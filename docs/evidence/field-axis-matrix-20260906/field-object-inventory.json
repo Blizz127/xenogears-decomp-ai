@@ -1,0 +1,282 @@
+[
+  {
+    "name": "main/misc3",
+    "retail_raw_start": 764,
+    "retail_text_bytes": 7288,
+    "compiled_text_bytes": 7320,
+    "delta": 32,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldLoadLightRecord",
+      "IsLiveHeapBlock"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "effects/fade",
+    "retail_raw_start": 8052,
+    "retail_text_bytes": 1156,
+    "compiled_text_bytes": 1156,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/init",
+    "retail_raw_start": 9208,
+    "retail_text_bytes": 600,
+    "compiled_text_bytes": 600,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc2",
+    "retail_raw_start": 9808,
+    "retail_text_bytes": 21632,
+    "compiled_text_bytes": 17240,
+    "delta": -4392,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldActorSyncSpritePosition"
+    ],
+    "missing_functions": [
+      "func_800759E4"
+    ]
+  },
+  {
+    "name": "main/main",
+    "retail_raw_start": 31440,
+    "retail_text_bytes": 5532,
+    "compiled_text_bytes": 5488,
+    "delta": -44,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldSetArchiveQueueEntry"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc4",
+    "retail_raw_start": 36972,
+    "retail_text_bytes": 19936,
+    "compiled_text_bytes": 18172,
+    "delta": -1764,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldCopyCameraEdge",
+      "FieldPackedXZ"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "effects/fade_render",
+    "retail_raw_start": 56908,
+    "retail_text_bytes": 956,
+    "compiled_text_bytes": 956,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "dialogue/text_box_render",
+    "retail_raw_start": 57864,
+    "retail_text_bytes": 11076,
+    "compiled_text_bytes": 7088,
+    "delta": -3988,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldTextBoxLinkPrim"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc8",
+    "retail_raw_start": 68940,
+    "retail_text_bytes": 25936,
+    "compiled_text_bytes": 23924,
+    "delta": -2012,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldPositionalSfxScreenPan",
+      "func_80084A40_RestoreActorState"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc",
+    "retail_raw_start": 94876,
+    "retail_text_bytes": 36012,
+    "compiled_text_bytes": 34856,
+    "delta": -1156,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "camera/camera_movement",
+    "retail_raw_start": 130888,
+    "retail_text_bytes": 7948,
+    "compiled_text_bytes": 7940,
+    "delta": -8,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc11",
+    "retail_raw_start": 138836,
+    "retail_text_bytes": 17888,
+    "compiled_text_bytes": 17976,
+    "delta": 88,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "game_logic/gold",
+    "retail_raw_start": 156724,
+    "retail_text_bytes": 340,
+    "compiled_text_bytes": 340,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/input_script_handlers",
+    "retail_raw_start": 157064,
+    "retail_text_bytes": 412,
+    "compiled_text_bytes": 412,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc10",
+    "retail_raw_start": 157476,
+    "retail_text_bytes": 1072,
+    "compiled_text_bytes": 1044,
+    "delta": -28,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "game_logic/scenario_flags",
+    "retail_raw_start": 158548,
+    "retail_text_bytes": 512,
+    "compiled_text_bytes": 512,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "party/stats",
+    "retail_raw_start": 159060,
+    "retail_text_bytes": 2736,
+    "compiled_text_bytes": 2740,
+    "delta": 4,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc7",
+    "retail_raw_start": 161796,
+    "retail_text_bytes": 18456,
+    "compiled_text_bytes": 17900,
+    "delta": -556,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "dialogue/text_box",
+    "retail_raw_start": 180252,
+    "retail_text_bytes": 5220,
+    "compiled_text_bytes": 5252,
+    "delta": 32,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "scripts/variable_handlers",
+    "retail_raw_start": 185472,
+    "retail_text_bytes": 2732,
+    "compiled_text_bytes": 2732,
+    "delta": 0,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc6",
+    "retail_raw_start": 188204,
+    "retail_text_bytes": 15636,
+    "compiled_text_bytes": 14788,
+    "delta": -848,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "scripts/virtual_machine",
+    "retail_raw_start": 203840,
+    "retail_text_bytes": 12452,
+    "compiled_text_bytes": 8668,
+    "delta": -3784,
+    "source_matches_private": true,
+    "extra_functions": [
+      "FieldStateRestoreCopy",
+      "FieldStateSaveCopy"
+    ],
+    "missing_functions": []
+  },
+  {
+    "name": "effects/distortion",
+    "retail_raw_start": 216292,
+    "retail_text_bytes": 3556,
+    "compiled_text_bytes": 3100,
+    "delta": -456,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc5",
+    "retail_raw_start": 219848,
+    "retail_text_bytes": 15548,
+    "compiled_text_bytes": 15624,
+    "delta": 76,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "effects/particles",
+    "retail_raw_start": 235396,
+    "retail_text_bytes": 5992,
+    "compiled_text_bytes": 5996,
+    "delta": 4,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  },
+  {
+    "name": "main/misc9",
+    "retail_raw_start": 241388,
+    "retail_text_bytes": 9288,
+    "compiled_text_bytes": 9268,
+    "delta": -20,
+    "source_matches_private": true,
+    "extra_functions": [],
+    "missing_functions": []
+  }
+]

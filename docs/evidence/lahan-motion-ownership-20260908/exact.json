@@ -1,0 +1,47 @@
+{
+  "object_sha256": "430f8d91b571d10cb64bf8207cc3d30a27901c9aee33ebeeebc3fd35d6d379d6",
+  "functions": {
+    "func_80022B2C": {
+      "bytes": 396,
+      "retail_bytes": 384,
+      "exact": false,
+      "reason": "size differs"
+    },
+    "func_80022CAC": {
+      "bytes": 48,
+      "retail_bytes": 48,
+      "exact": true,
+      "relocations": [],
+      "normalized_sha256": "7edc9e76b551fe6d2b564c8ba92beb0785e2426f125dcc3695d928640f42f3c0",
+      "retail_sha256": "7edc9e76b551fe6d2b564c8ba92beb0785e2426f125dcc3695d928640f42f3c0"
+    },
+    "func_80022CDC": {
+      "bytes": 104,
+      "retail_bytes": 104,
+      "exact": true,
+      "relocations": [
+        {
+          "offset": 20,
+          "target": "func_80022CAC",
+          "address": 2147626156
+        },
+        {
+          "offset": 52,
+          "target": "func_80022CAC",
+          "address": 2147626156
+        },
+        {
+          "offset": 76,
+          "target": "func_80022B2C",
+          "address": 2147625772
+        }
+      ],
+      "normalized_sha256": "d7fe6714b5318024bc151cbb2d3155cdcb31b2b4a64bf5aea73cfcf56a91e082",
+      "retail_sha256": "d7fe6714b5318024bc151cbb2d3155cdcb31b2b4a64bf5aea73cfcf56a91e082"
+    }
+  },
+  "controls_rejected": [
+    "changed instruction byte",
+    "wrong call relocation"
+  ]
+}

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export XENO_UID="${XENO_UID:-$(id -u)}"
+export XENO_GID="${XENO_GID:-$(id -g)}"
+COMPOSE=(docker compose --project-directory "$ROOT/dev/xenogears" -f "$ROOT/dev/xenogears/compose.yml")
+SERVICE=xenogears-dev
+
+container_exec() {
+  "${COMPOSE[@]}" exec -T "$SERVICE" "$@"
+}
+
+container_run() {
+  "${COMPOSE[@]}" run --rm "$SERVICE" "$@"
+}

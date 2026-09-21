@@ -1,0 +1,3 @@
+/usr/bin/ld.bfd: pc_port/build_native/battle_gte_retail_test/O0.test.o: in function `bridge_draw_otag':
+battle_gte_retail_test.c:(.text.bridge_draw_otag+0x296): undefined reference to `g_PcPortPresentedFrames'
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)

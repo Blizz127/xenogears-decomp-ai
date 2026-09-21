@@ -1,0 +1,2 @@
+[xeno-port][battle-mips] retail adapter ready: functions=24 shared-data=0 host-ranges=34
+COMPMATRIX FAIL fixture=0 domain=0 alias=0 rc=-4 v0=00000000 expected=00000040 unresolved call target 0x8004931c

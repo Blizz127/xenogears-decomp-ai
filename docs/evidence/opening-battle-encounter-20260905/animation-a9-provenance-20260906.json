@@ -1,0 +1,73 @@
+{
+  "SLUS_006.64": {
+    "sha256": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119",
+    "size": 303104
+  },
+  "compilers": {
+    "clang": {
+      "path": "/var/home/linuxbrew/.linuxbrew/Cellar/llvm/22.1.8/bin/clang-22",
+      "sha256": "ab50a44e219c787b1a6ba0b8e07172080a4b3619c3f619b801ef058a7bdfad2a",
+      "version": "Homebrew clang version 22.1.8"
+    },
+    "gcc": {
+      "path": "/usr/bin/gcc",
+      "sha256": "153e46b4657620f2baef1b4a70b4b4f275772faa5b0fb9e415697e87ebcb7fea",
+      "version": "gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)"
+    }
+  },
+  "native_helper_body_sha256": "40ac6e9930e7b98cdd1fbcdecd179b8d47c65accfe34fecf74430d59500c9c31",
+  "native_helper_owner": "pc_port/src/game_overrides.c",
+  "native_outer_body_sha256": "3c902d7509d8b6c836b363a9e6737a201325c4f9b398eb889172c8206f4ba39e",
+  "native_outer_test_link": "unrelated temp1 definitions weakened so fail-closed fixture guards own unexpected direct callees",
+  "native_pc_execution": "actual temp1.c func_800248D4 source body linked and differentially executed through A9 then 86 wait",
+  "pc_port/port_owned_overrides.txt": "b8d215ed36e53e3186be81a316d14ca1a1a7d6cfa561df1c5bec6ac0727d4504",
+  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+  "pc_port/src/game_overrides.c": "fff3464fa60aa38f629358753927771fc5f8328cb59e07cf9a1ae066feb4583f",
+  "pc_port/tests/run_sprite_opcode_a9_retail_test.sh": "380bf98ceaaeff8d7b99e852225b16239bf51f8b5111e95500ce6a7d21498c9b",
+  "pc_port/tests/sprite_opcode_a9_retail_test.c": "d439e51b55032b2b84e086e02efd2b6a0e6d92d792e02eb302ee1dd045be87f2",
+  "production_handler_present": true,
+  "production_handler_sha256": "a90dfd10a78014bda2425e1d5e1cef37caf41ded43bf153ac2d513f6eea8c783",
+  "retail": {
+    "a9_entry": "0x80021698",
+    "a9_handler": {
+      "end": "0x800216f4",
+      "sha256": "9c729396bad3f859aa200f99af71826f25260c7f0fd8d8668dda58519b9caf83",
+      "size": 92,
+      "start": "0x80021698"
+    },
+    "a9_length": 2,
+    "dispatch_table": {
+      "end": "0x800185a4",
+      "sha256": "ee73be97683cbf2affa5db0d128e5083ac4b273da3bc5c2f0bfc12bfb75ee0f8",
+      "size": 460,
+      "start": "0x800183d8"
+    },
+    "dispatcher": {
+      "end": "0x80021ad8",
+      "sha256": "7431f354f172d1b450e6c231528af93546595e8aa6d750d10ca489d75e88442c",
+      "size": 7924,
+      "start": "0x8001fbe4"
+    },
+    "opcode_lengths": {
+      "end": "0x8004fd40",
+      "sha256": "f329de9c682e328cd9ca4718972691f3bb716046f2f57803c3a24e9b19326c0a",
+      "size": 256,
+      "start": "0x8004fc40"
+    },
+    "scale_helper": {
+      "end": "0x80022cdc",
+      "sha256": "7edc9e76b551fe6d2b564c8ba92beb0785e2426f125dcc3695d928640f42f3c0",
+      "size": 48,
+      "start": "0x80022cac"
+    },
+    "shared_pc_tail": {
+      "end": "0x80024f00",
+      "sha256": "79d31a7a8066fc17965df52c0f133edd6375cf9fcddf6355fe97b6e98b3330e9",
+      "size": 56,
+      "start": "0x80024ec8"
+    }
+  },
+  "scope": "4608 full retail-dispatch cases; actual retail/native scale helper; shared-tail stride; five handler mutants; no rendering/gameplay claim.",
+  "src/slus_006.64/system/animation_scripts.c": "8e5de18aa4c657cea9026626b4dd9a0d92f104788a4438024fa7a10c910bec5c",
+  "src/slus_006.64/system/temp1.c": "ef557f005fecc41317f7992f968ca819854e1e21dff6f6a953eea8292f30f451"
+}

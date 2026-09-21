@@ -7,7 +7,9 @@
 extern void func_80031FF8();
 extern void func_8003747C(void*);
 extern void FontPrintf(char*, ...);
+#ifndef XENO_PC_PORT
 extern u_int strlen(char* pString);
+#endif
 extern int Sprintf(char* pStr, char* pFormat, ...);
 // --------------------------------------
 

@@ -1,0 +1,14 @@
+W34B49 D4 worktree/evidence hygiene
+
+git worktree prune -v: no output; no stale metadata removed.
+Registered worktrees: 49
+Missing registered directories: 0
+
+Checksum validation (correct path contexts):
+- natural_scheduler_proof_c238e529/SHA256SUMS: exit 0, 6/6 OK
+- natural_scheduler_proof_c238e529_w34b25_f3d046a8/SHA256SUMS: exit 0,
+  8/8 OK
+
+The earlier path-context failure was corrected and did not alter files.
+No source, proof tree, untracked artifact, or worktree directory was
+deleted or regenerated.

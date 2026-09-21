@@ -6,6 +6,10 @@
 #include "field/script_vm.h"
 #include "system/memory.h"
 #include "system/archive.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 #include "system/sound.h"
 #include "psyq/libetc.h"
 #include "psyq/libcd.h"
@@ -73,19 +77,35 @@ s32 func_80080968(u8* pActorData) {
         s32 byteVal;
         u32* finalTable;
 
-        if (tableRow == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+        /* Native fail-closed guard. Retail assumes the relocated table owner
+         * is valid here; retaining this branch is an audited port divergence. */
+        if (tableRow == NULL) return 0;
 
         byteVal = *(u8*)(tableRow + val * 2 + 0x0C);
 
         /* Final lookup: D_800AFB20[byteVal] */
         finalTable = (u32*)(uintptr_t)D_800AFB20;
-        if (finalTable == NULL) return 0;  /* XENO_PC_PORT: guard stubbed table */
+        /* Same native ownership guard for the contiguous field data block. */
+        if (finalTable == NULL) return 0;
 
         return (s32)finalTable[byteVal];
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800809D0);
+extern s16 D_800B14AC;
+
+s32 func_800809D0(u8* pData) {
+    s32 step = *(s32*)(pData + 0x1C);
+    s32 acc = (s32)0xFFEB3000;
+    s32 count = 0;
+    D_800B14AC = 0;
+    while (acc <= 0) {
+        count += acc;
+        acc += step;
+        D_800B14AC += 2;
+    }
+    return count >> 16;
+}
 
 extern s32 D_800ADB58;
 extern s32 D_800ADB5C;
@@ -99,8 +119,7 @@ s32 func_80080A18(void) {
 /* ---- func_80080A74: per-actor second-pass ActorData initialization ----------
  * Called from func_80080F44 for each actor. Initializes ActorData with
  * hardcoded defaults and state-array entries. Calls func_80080968 for
- * additional setup. Conditionally runs func_8007B1C4 distance-init loop
- * (skipped in port: D_800AFB54 stubbed to 0/1).
+ * additional setup. Conditionally runs the func_8007B1C4 distance-init loop.
  *
  * All offsets are byte offsets into the ActorData allocation (0x138 bytes),
  * verified against MIPS asm. */
@@ -109,11 +128,17 @@ extern s32 D_800AFB44[];
 
 void func_80080A74(s32 actorIndex) {
     u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
-    s16 stateBuf[0x34] = { 0 };
-    s32 useStateBuf = 0;
+    /* NOTE: deliberately NOT zero-initialised. This was `= { 0 };`, and GCC 2.7.2
+     * materialises such a local aggregate initialiser as a 104-byte all-zero
+     * constant template in `.rodata` ($LC0 = `.half 0` + `.space 102`, visible in
+     * build/src/field/main/misc8.c.s), then copies it onto the stack. Retail's
+     * `func_80080A74` (asm/field/matchings/main/misc8/func_80080A74.s) has ZERO
+     * `(sh|sw|sb) $zero, N($sp)` stores and no memcpy/memset call - it never zeroes
+     * this buffer. That template was the last 0x68 of field `.rodata` surplus
+     * (field_RODATA_SIZE 0x360 vs retail 0x2FC), so the initialiser is removed to
+     * match retail's behaviour and codegen. */
+    s16 stateBuf[0x34];
     s32 i;
-    s32 actorByteOff = actorIndex * 0x5C;
-    u8* pActorBytes = (u8*)g_FieldActors + actorByteOff;
 
     /* ---- early field defaults ---- */
     *(s32*)(p + 0x00) = 0xB0;
@@ -141,10 +166,15 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0xCC) = 0;
     *(s16*)(p + 0x6E) = 0;
 
-    /* flags at 0x12C / 0x130 / 0x134: clear specific bits */
+    /* flags at 0x12C / 0x130 / 0x134. Immediates are retail addiu/lui
+     * values from asm/field/matchings/main/misc8/func_80080A74.s. */
+#ifdef FIELD_ACTOR_INIT_MUTANT_12C_MASK
     *(s32*)(p + 0x12C) &= ~0x30000;
+#else
+    *(s32*)(p + 0x12C) &= -0x21; /* 0x80080B3C addiu $v1, -0x21 */
+#endif
     *(s16*)(p + 0x1E) = *(s16*)(p + 0x18);
-    *(s32*)(p + 0x12C) &= ~0x3;
+    *(s32*)(p + 0x12C) &= -0x4; /* 0x80080BA4 addiu $v0, -0x4 */
     *(s16*)(p + 0x11E) = 0x200;
     *(u8*)(p + 0x101) = 0x80;
     *(u8*)(p + 0x100) = 0x80;
@@ -153,10 +183,11 @@ void func_80080A74(s32 actorIndex) {
     *(u8*)(p + 0xFD)  = 0x80;
     *(u8*)(p + 0xFC)  = 0x80;
     *(s16*)(p + 0x128) = 0xFFFF;
-    *(s32*)(p + 0x12C) &= 0xFFFCFFFF;
-    *(s32*)(p + 0x130) &= 0xF007FFFF;
-    *(s32*)(p + 0x130) &= ~0x200;
-    *(s32*)(p + 0x12C) &= 0xF003FFFF;
+    *(s32*)(p + 0x12C) &= 0xFFFCFFFF; /* $a2 */
+    *(s32*)(p + 0x130) &= 0xF007FFFF; /* $a1 */
+    *(s32*)(p + 0x130) &= -0x200; /* 0x80080BD8 addiu $v0, -0x200 */
+    *(s32*)(p + 0x130) &= 0xFFF801FF; /* $a3; previously missing */
+    *(s32*)(p + 0x12C) &= 0xF003FFFF; /* $t0 */
 
     /* script slots: 8 entries of 8 bytes each at offset 0x8C */
     for (i = 0; i < 8; i++) {
@@ -176,7 +207,7 @@ void func_80080A74(s32 actorIndex) {
     *(s32*)(p + 0x120) = 0;
     *(s16*)(p + 0xE4) = 0xFF;
     *(s16*)(p + 0x76) = 0x100;
-    *(s32*)(p + 0x12C) &= ~0x1C0;
+    *(s32*)(p + 0x12C) &= -0x1C1; /* 0x80080C58 addiu $v0, -0x1C1 */
     *(u8*)(p + 0x83) = 0;
     *(u8*)(p + 0x82) = 0;
     *(s16*)(p + 0x8A) = 0;
@@ -187,10 +218,10 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0xE8) = 0;
     *(s16*)(p + 0x10) = 0;
     *(s16*)(p + 0xEC) = 0;
-    *(s32*)(p + 0x134) &= ~0x80;
-    *(s32*)(p + 0x12C) &= ~0xE00;
-    *(s32*)(p + 0x12C) &= ~0x1000;
-    *(s32*)(p + 0x134) &= ~0x60;
+    *(s32*)(p + 0x134) &= -0x81; /* 0x80080C64 addiu $v1, -0x81 */
+    *(s32*)(p + 0x12C) &= -0xE01; /* 0x80080C98 addiu $v0, -0xE01 */
+    *(s32*)(p + 0x12C) &= -0x1001; /* 0x80080CA0 addiu $v0, -0x1001 */
+    *(s32*)(p + 0x134) &= -0x61; /* 0x80080CAC addiu $v0, -0x61 */
 
     *(s16*)(p + 0x102) = (s16)rand();
     *(s16*)(p + 0xF4) = 0x1000;
@@ -207,51 +238,72 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0x0C) = 0;
     *(s16*)(p + 0x0A) = 0;
     *(s16*)(p + 0x08) = 0;
-    *(s32*)(p + 0x12C) &= ~0x1C;
+    *(s32*)(p + 0x12C) &= -0x1D; /* 0x80080CFC addiu $v0, -0x1D */
 
-    /* ---- D_800AFB54 loop (distance-based init; skipped when count <= 1) ---- */
-    if (D_800AFB54 > 1) {
+    /* ---- D_800AFB54 loop (blez count-1 at 0x80080D28). ----
+     * Addressing from func_80080A74.s:
+     *   jal pOut is $sp+0x58 + (i<<3) each iter (0x80080D70), not an
+     *     induction pointer;
+     *   fail zeros are sh 0x40/42/44($s2) with $s2 walking from $sp+0x18
+     *     (0x80080DC8);
+     *   dest is sh 0x8($s4) with $s4 starting at ActorData (0x80080D80). */
+    if (D_800AFB54 - 1 > 0) {
         s16* pState = stateBuf;
-        s16* pDst = (s16*)(p + 0x08);
+        s16* pWalk = stateBuf;
+        s16* pDst = (s16*)p;
 
-        useStateBuf = 1;
         for (i = 0; i < D_800AFB54 - 1; i++) {
             s16 r = func_8007B1C4(
-                *(s16*)(pActorBytes + 0x20),
-                *(s16*)(pActorBytes + 0x28),
-                i, (u8*)stateBuf + 0x40 + i * 8, pState);
-            *pDst = r;
+                *(s16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x20),
+                *(s16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x28),
+                i, (s16*)((u8*)stateBuf + 0x40 + (i << 3)), pState);
+            pDst[4] = r;
             if (r != -1 && (u32)r >= (u32)D_800AFB44[i]) {
                 D_800AFB44[i] = 0;
-                pState[0] = 0; pState[1] = 0; pState[2] = 0;
-                pState[3] = 0; pState[4] = 0; pState[5] = 0;
+                ((s32*)pState)[0] = 0;
+                ((s32*)pState)[1] = 0;
+                ((s32*)pState)[2] = 0;
+                *(s16*)((u8*)pWalk + 0x40) = 0;
+                *(s16*)((u8*)pWalk + 0x42) = 0;
+                *(s16*)((u8*)pWalk + 0x44) = 0;
             }
+            pWalk += 4;
             pState += 8;
             pDst += 1;
         }
-
-        /* status & 0x80 check + field_24 copy */
-        if (!(*(s16*)(pActorBytes + 0x58) & 0x80)) {
-            s16 choice = *(s16*)(p + 0x10);
-            *(s32*)(pActorBytes + 0x24) = stateBuf[choice * 4 + (0x5A - 0x18)/2];
-        }
     }
 
-    /* ---- post-loop setup ---- */
+    /* ---- post-loop: always jal func_80080968, always $sp+0x18 ---- */
     *(s32*)(p + 0x14) = func_80080968(p);
-    {
-        s16 choice = *(s16*)(p + 0x10);
-        s16* stateBase = useStateBuf ? stateBuf : (s16*)(p + 0x18);
-        *(s32*)(p + 0x50) = *(s32*)((u8*)stateBase + choice * 16 + 0);
-        *(s32*)(p + 0x54) = *(s32*)((u8*)stateBase + choice * 16 + 4);
-        *(s32*)(p + 0x58) = *(s32*)((u8*)stateBase + choice * 16 + 8);
+    /* Retail reloads lh 0x10($s0) for each of 0x50/54/58 (0x80080E00,
+     * 0x80080E0C, 0x80080E2C) — do not CSE into a local. */
+    *(s32*)(p + 0x50) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 0);
+    *(s32*)(p + 0x54) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 4);
+    *(s32*)(p + 0x58) =
+        *(s32*)((u8*)stateBuf + (*(s16*)(p + 0x10) * 16) + 8);
+
+    /* status & 0x80 / FieldActor+0x24 copy is AFTER 0x50/54/58
+     * (0x80080E6C). Retail keeps actorIndex*0x5C in $a0 and reloads
+     * g_FieldActors at each of 0x20/0x24/0x28/0x72 (0x80080E9C,
+     * 0x80080EBC, 0x80080EDC, 0x80080EFC); 0x72 is lw 0x24 then sh. */
+    if (!(*(u16*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x58) & 0x80)) {
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) =
+            (s32)*(s16*)((u8*)stateBuf + *(s16*)(p + 0x10) * 8 + 0x42);
     }
 
-    /* Copy FieldActor fields 0x20/0x24/0x28 into ActorData */
-    *(s32*)(p + 0x20) = *(s32*)(pActorBytes + 0x20) << 16;
-    *(s32*)(p + 0x24) = *(s32*)(pActorBytes + 0x24) << 16;
-    *(s32*)(p + 0x28) = *(s32*)(pActorBytes + 0x28) << 16;
-    *(s16*)(p + 0x72) = *(s16*)(pActorBytes + 0x24);
+    /* Retail 0x80080E9C / EBC / EDC / EFC: lui/lw g_FieldActors per store.
+     * Each load clobbers the row in $v0 (lw 0x20($v0) etc.). 0x72 is
+     * lw 0x24 then sh (0x80080F0C). */
+    *(s32*)(p + 0x20) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x20) << 16;
+    *(s32*)(p + 0x24) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) << 16;
+    *(s32*)(p + 0x28) =
+        *(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x28) << 16;
+    *(s16*)(p + 0x72) =
+        (s16)*(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24);
 }
 
 /* ---- func_80080F44: per-actor data initialization ---------------------------
@@ -314,7 +366,7 @@ void func_80080F44(s32 actorIndex) {
         }
     }
 
-    /* 4. Per-actor init callback (stubbed in port) */
+    /* 4. Per-actor retail-derived init callback. */
     func_80080A74(actorIndex);
 
     /* 5. Allocate 0x70-byte shadow buffer */
@@ -341,7 +393,9 @@ extern void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor);
 extern void func_80084158(s32 actorIndex, void* actor, void* actorData);
 extern void func_8008399C(s32 actorIndex, void* actor, void* actorData);
 extern void func_800815F0(void);
-extern s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData);
+extern s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
+                         s32 targetState);
+extern void* HeapAlloc(u_int size, u_int allocMode);
 
 void func_8008110C(void) {
     s32 i;
@@ -350,12 +404,11 @@ void func_8008110C(void) {
     func_800A2030();
 
     for (i = 0; i < D_800ADBFC; i++) {
-        u8* actor = (u8*)g_FieldActors + i * 0x5C;
-        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
-
-        *(s16*)(actorData + 0x68) = *(s16*)(actorData + 0x22);
-        *(s16*)(actorData + 0x6A) = *(s16*)(actorData + 0x26);
-        *(s16*)(actorData + 0x6C) = *(s16*)(actorData + 0x2A);
+        /* Retail 80081154..800811C0 reloads g_FieldActors and the actor's
+         * 0x4C data pointer for each of the three stores. */
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x68) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x22);
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x6A) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x26);
+        *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x6C) = *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x2A);
     }
 
     if (g_FieldSystemMode == 0) {
@@ -420,7 +473,8 @@ void func_8008110C(void) {
                 (status & 0x0F80) == 0x0200 &&
                 ((*(u32*)(actorData + 0x00) & 0x00010001) == 0) &&
                 i != g_PlayerActorIndex) {
-                func_80084A40(i, 0x7FFFFFFF, actor, actorData);
+                /* Retail 800814B0 passes targetState 0 in the delay slot. */
+                func_80084A40(i, 0x7FFFFFFF, actor, actorData, 0);
 
                 {
                     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
@@ -438,7 +492,17 @@ void func_8008110C(void) {
         func_80281B00(D_8006FC30);
     }
 
+#ifdef XENO_PC_PORT
+extern int PcPort_RandomBattlesEnabled(void);
+#endif
+    /* The port can suppress random encounters for route testing; the flag is
+     * host-side, so the matching build keeps the retail condition. */
+#ifdef XENO_PC_PORT
+    if (PcPort_RandomBattlesEnabled() &&
+        g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
+#else
     if (g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
+#endif
         u8* player = (u8*)g_FieldActors + g_PlayerActorIndex * 0x5C;
         func_8008399C(g_PlayerActorIndex, player, (void*)(uintptr_t)*(u32*)(player + 0x4C));
     }
@@ -449,29 +513,136 @@ void func_8008110C(void) {
     if (g_FieldSystemMode == 0) {
         func_80281B00(D_8006FC3C);
     }
+#ifdef XENO_PC_PORT
+    {
+        static int s_npcEventDumpEnabled = -1;
+        static int s_npcEventDumpFrame;
+        static int s_dumpInited;
+        static u16 s_lastIp[3];
+        static u8 s_lastOp[3];
+        static u16 s_lastLock = 0xFFFF;
+        static s16 s_lastVis = 0x7FFF;
+        static u16 s_lastWaitf = 0xFFFF;
+        static const int kDumpActors[3] = {16, 22, 40};
+        extern u16 D_800C2694;
+        extern s16 D_800B2174;
+        s32 i;
+
+        if (s_npcEventDumpEnabled < 0) {
+            const char* env = getenv("XENO_NPC_EVENT_DUMP");
+            s_npcEventDumpEnabled =
+                (env != NULL && env[0] != '\0' && env[0] != '0');
+        }
+        if (s_npcEventDumpEnabled && s_npcEventDumpFrame < 240) {
+            u8* scriptData = (u8*)g_FieldScriptVMCurScriptData;
+            u16 lock = (u16)D_800B2174;
+            s16 vis0 = g_FieldTextBoxes[0].visibility;
+            u16 waitf0 = *(u16*)((u8*)&g_FieldTextBoxes[0] + 0x18 + 0x10);
+            int talkedge = (D_800C2694 & 0x20) != 0;
+
+            if (!s_dumpInited || lock != s_lastLock || vis0 != s_lastVis ||
+                talkedge) {
+                printf("[npc-event] frame=%d actors=%d lock=0x%x talkedge=%d pad=0x%x\n",
+                       s_npcEventDumpFrame, (int)D_800ADBFC, (unsigned)lock,
+                       talkedge, (unsigned)D_800C2694);
+            }
+            for (i = 0; i < 3; i++) {
+                int idx = kDumpActors[i];
+                u8* fieldActor;
+                u32 pActorData;
+                ActorData* actor;
+                u16 ip;
+                u8 op;
+
+                if (idx >= D_800ADBFC) {
+                    continue;
+                }
+                fieldActor = (u8*)g_FieldActors + idx * 0x5C;
+                pActorData = *(u32*)(fieldActor + 0x4C);
+                if (pActorData == 0) {
+                    continue;
+                }
+                actor = (ActorData*)(uintptr_t)pActorData;
+                ip = actor->scriptInstructionPointer;
+                op = (scriptData != NULL) ? scriptData[ip] : 0;
+                if (!s_dumpInited || ip != s_lastIp[i] || op != s_lastOp[i]) {
+                    printf("[npc-event] f=%d actor=%d ip=%u op=0x%02x wait=%d "
+                           "flags0=%u mode=%u pos=%d,%d anim=%d\n",
+                           s_npcEventDumpFrame, idx, (unsigned)ip, (unsigned)op,
+                           (int)actor->scripts[actor->curScriptIndex].waitTimer,
+                           (unsigned)actor->scripts[actor->curScriptIndex].flags_0,
+                           (unsigned)actor->scripts[actor->curScriptIndex].flags_0x17,
+                           (int)*(s16*)((u8*)actor + 0x22),
+                           (int)*(s16*)((u8*)actor + 0x2A),
+                           (int)actor->curAnimationId);
+                    s_lastIp[i] = ip;
+                    s_lastOp[i] = op;
+                }
+            }
+            if (!s_dumpInited || vis0 != s_lastVis || waitf0 != s_lastWaitf ||
+                lock != s_lastLock) {
+                printf("[npc-event] f=%d box=0 vis=%d status=%d order=%u "
+                       "owner=%d waitf=0x%x\n",
+                       s_npcEventDumpFrame, (int)vis0,
+                       (int)g_FieldTextBoxes[0].status,
+                       (unsigned)g_FieldTextBoxes[0].order,
+                       (int)g_FieldTextBoxes[0].ownerActorID,
+                       (unsigned)waitf0);
+            }
+            s_lastLock = lock;
+            s_lastVis = vis0;
+            s_lastWaitf = waitf0;
+            s_dumpInited = 1;
+        }
+        if (s_npcEventDumpEnabled) {
+            s_npcEventDumpFrame++;
+        }
+    }
+#endif
 }
 
 extern s16 D_800B234E;
+extern u8 D_800B21CF;
+extern s32 FieldCharacterIdToPartyId(s32 characterId);
+void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor);
+/* Movement-history ring labels (0x48-stride entries; the writer
+ * func_80081C54 below uses the same anchors). */
+extern s32 D_800B2360;
+extern s32 D_800C3910;
+extern u8 D_800B14F0;
+extern u8 D_800B14F8;
+extern u8 D_800B14FA;
+extern u8 D_800B14FC;
+extern u8 D_800B1500;
+extern u8 D_800B1502;
+extern u8 D_800B1504;
+extern u8 D_800B1510;
+extern u8 D_800B1514;
+extern u8 D_800B1518;
+extern u8 D_800B1534;
 
 void func_800815F0(void) {
     s32 i;
 
-    for (i = 0; i < D_800ADBFC; i++) {
-        u8* actor = (u8*)g_FieldActors + i * 0x5C;
-        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+    if (D_800B234E != 0) {
+        /* Held-mode: followers only track the scripted anim (asm
+         * 8008164C-800816F0). */
+        for (i = 0; i < D_800ADBFC; i++) {
+            u8* actor = (u8*)g_FieldActors + i * 0x5C;
+            u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            u8* spriteData;
+            s16 anim;
 
-        if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
-            continue;
-        }
+            if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
+                continue;
+            }
+            if (i == g_PlayerActorIndex ||
+                (*(u16*)(actor + 0x58) & 0x20) != 0) {
+                continue;
+            }
 
-        if (i == g_PlayerActorIndex || (*(u16*)(actor + 0x58) & 0x20) != 0) {
-            continue;
-        }
-
-        if (D_800B234E != 0) {
-            u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
-            s16 anim = *(s16*)(actorData + 0xE6);
-
+            spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+            anim = *(s16*)(actorData + 0xE6);
             if (*(s16*)(actorData + 0xE8) != anim) {
                 *(s16*)(actorData + 0xE8) = anim;
                 if (anim < 0) {
@@ -479,9 +650,151 @@ void func_800815F0(void) {
                 }
                 func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
             }
-        } else {
-            assert(!"func_800815F0 party-history sync branch not migrated");
         }
+        return;
+    }
+
+    /* Party-history sync (asm .L800816F8-80081C04): each follower consumes
+     * the player's movement-history ring that func_80081C54 records (0x48-
+     * stride entries anchored at the D_800B14F0.. labels; the ring head
+     * D_800B2360[0] DECREMENTS, so followers trail the head).  Per-party-
+     * slot cursors live at (&D_800B2360)[partyId]. */
+    for (i = 0; i < D_800ADBFC; i++) {
+        u8* actor = (u8*)g_FieldActors + i * 0x5C;
+        u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+        u8* spriteData;
+        s32 partyId;
+        s32* pCursor;
+        s32 k;
+        u32 histFlags;
+        s32 j;
+
+        if ((*(u32*)(actorData + 0x00) & 0x01000000) == 0) {
+            continue;
+        }
+        if (i == g_PlayerActorIndex ||
+            (*(u16*)(actor + 0x58) & 0x20) != 0) {
+            continue;
+        }
+
+        spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
+        partyId = FieldCharacterIdToPartyId(*(s16*)(actorData + 0xE4));
+        if (partyId == -1) {
+            continue;
+        }
+
+        pCursor = &D_800B2360 + partyId;
+        k = *pCursor;
+
+        /* Turn toward the history entry's facing. */
+        func_80081F80(spriteData, *(s16*)(&D_800B1504 + ((*pCursor) * 9 * 8)), actor);
+
+        histFlags = *(u32*)(&D_800B14F0 + ((*pCursor) * 9 * 8));
+
+        if (D_800B21CF == 1) {
+            /* Snap the follower cursor to just behind the head and consume
+             * immediately (asm jumps to .L8008191C, SKIPPING the caught-up
+             * check; the 0x800 flag test keeps the OLD entry's flags while
+             * anim/apply reload the snapped cursor). */
+            *pCursor = (D_800B2360 + 1) & 0x1F;
+            k = *pCursor;
+            goto consume;
+        } else if (!(histFlags & 0x800)) {
+            /* The history frame is an idle frame. */
+            u32 flags4 = *(u32*)(actorData + 0x04) & ~0x1000u;
+
+            *(u32*)(actorData + 0x04) = flags4;
+            if ((*(u32*)(actorData + 0x14) & 0x420000) == 0) {
+                if (D_800C3910 == -1) {
+                    /* Grounded idle: settle back to the scripted anim. */
+                    if (*(s16*)(spriteData + 0x84) !=
+                        *(s16*)(actorData + 0x26)) {
+                        goto apply_gate;
+                    }
+                    if (*(s16*)(actorData + 0xE8) == 6) {
+                        *(u32*)(actorData + 0x04) = flags4 | 0x1000;
+                        continue;
+                    }
+                    if (*(s16*)(actorData + 0xE8) ==
+                        *(s16*)(actorData + 0xE6)) {
+                        continue;
+                    }
+                    *(s16*)(actorData + 0xE8) = *(s16*)(actorData + 0xE6);
+                    if (*(s16*)(actorData + 0xE8) < 0) {
+                        *(s16*)(actorData + 0xE8) = 0;
+                    }
+                    func_800821F4(spriteData, *(s16*)(actorData + 0xE8),
+                                  actor);
+                    continue;
+                }
+                /* Airborne/track mode: hold until this follower's cursor
+                 * sits exactly `step` entries behind the head (asm
+                 * .L80081898; step 0xA for party slot 1, 0x14 otherwise). */
+                {
+                    s32 step = (partyId != 1) ? 0x14 : 0xA;
+
+                    if (((D_800B2360 + step) & 0x1F) != k) {
+                        continue;
+                    }
+                }
+            }
+            goto apply_gate;
+        }
+
+    apply_gate:
+        /* asm .L800818C8: caught up to the head -> hold the scripted anim
+         * and consume nothing. */
+        if (k == D_800B2360) {
+            *(u32*)(actorData + 0x00) &= ~0x800u;
+            *(s16*)(actorData + 0xE8) = *(s16*)(actorData + 0xE6);
+            if (*(s16*)(actorData + 0xE8) < 0) {
+                *(s16*)(actorData + 0xE8) = 0;
+            }
+            func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
+            continue;
+        }
+
+    consume:
+        /* Consume one history entry (asm .L8008191C-80081C04). */
+        if (histFlags & 0x800) {
+            *(u32*)(actorData + 0x00) |= 0x800;
+        } else {
+            *(u32*)(actorData + 0x00) &= ~0x800u;
+        }
+
+        if (*(s16*)(actorData + 0xE8) != *(s16*)(&D_800B1502 + ((*pCursor) * 9 * 8))) {
+            *(s16*)(actorData + 0xE8) = *(s16*)(&D_800B1502 + ((*pCursor) * 9 * 8));
+            if (*(s16*)(actorData + 0xE8) < 0) {
+                *(s16*)(actorData + 0xE8) = 0;
+            }
+            func_800821F4(spriteData, *(s16*)(actorData + 0xE8), actor);
+        }
+
+        /* The apply block: the exact inverse of func_80081C54's record. */
+        for (j = 0; j < 4; j++) {
+            *(u16*)(actorData + 0x08 + j * 2) =
+                *(u16*)(&D_800B1510 + ((*pCursor) * 9 * 8) - 0x0A + j * 2);
+        }
+        *(s16*)(actorData + 0x10) = *(&D_800B1534 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x0C) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x10) = *(u32*)(&D_800B1514 + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x14) = *(u32*)(&D_800B1518 + ((*pCursor) * 9 * 8));
+        *(u32*)(actorData + 0x50) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x10);
+        *(u32*)(actorData + 0x54) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x14);
+        *(u32*)(actorData + 0x58) = *(u32*)(&D_800B1510 + ((*pCursor) * 9 * 8) + 0x18);
+        *(u32*)(actor + 0x20) = *(s16*)(&D_800B14F8 + ((*pCursor) * 9 * 8));
+        *(u32*)(actor + 0x24) = *(s16*)(&D_800B14FA + ((*pCursor) * 9 * 8));
+        *(u32*)(actor + 0x28) = *(s16*)(&D_800B14FC + ((*pCursor) * 9 * 8));
+        *(u32*)(spriteData + 0x00) = *(s32*)(actor + 0x20) << 16;
+        *(u32*)(actorData + 0x20) = *(s32*)(actor + 0x20) << 16;
+        *(u32*)(spriteData + 0x04) = *(s32*)(actor + 0x24) << 16;
+        *(u32*)(actorData + 0x24) = *(s32*)(actor + 0x24) << 16;
+        *(u32*)(spriteData + 0x08) = *(s32*)(actor + 0x28) << 16;
+        *(u32*)(actorData + 0x28) = *(s32*)(actor + 0x28) << 16;
+        *(u16*)(spriteData + 0x84) = *(u16*)(&D_800B1500 + ((*pCursor) * 9 * 8));
+        *(u16*)(actorData + 0x106) = *(u16*)(&D_800B1504 + ((*pCursor) * 9 * 8));
+        *(u16*)(actorData + 0x104) = *(u16*)(&D_800B1504 + ((*pCursor) * 9 * 8));
+        *pCursor = (k - 1) & 0x1F;
     }
 }
 
@@ -507,8 +820,6 @@ void func_80081C54(s32 actorIndex) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
     u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
-    s32 slot;
-    s32 off;
     s32 i;
 
     if (actorIndex != g_PlayerActorIndex) {
@@ -519,32 +830,33 @@ void func_80081C54(s32 actorIndex) {
         return;
     }
 
-    slot = D_800B2360;
-    off = (slot * 9) * 8;
+    /* Retail 80081C78..80081F34 reloads D_800B2360 and recomputes slot*9*8
+     * (= 72) for EVERY store; the aliasing store through the ring base defeats
+     * CSE, which is what gives this function its 194 instructions. Index the
+     * ring by the live slot at each site instead of caching the offset. */
+    *(u32*)(&D_800B1510 + D_800B2360 * 72) = *(u32*)(spriteData + 0x0C);
+    *(u32*)(&D_800B1514 + D_800B2360 * 72) = *(u32*)(spriteData + 0x10);
+    *(u32*)(&D_800B1518 + D_800B2360 * 72) = *(u32*)(spriteData + 0x14);
 
-    *(u32*)(&D_800B1510 + off) = *(u32*)(spriteData + 0x0C);
-    *(u32*)(&D_800B1514 + off) = *(u32*)(spriteData + 0x10);
-    *(u32*)(&D_800B1518 + off) = *(u32*)(spriteData + 0x14);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x10) = *(u32*)(actorData + 0x50);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x14) = *(u32*)(actorData + 0x54);
+    *(u32*)(&D_800B1510 + D_800B2360 * 72 + 0x18) = *(u32*)(actorData + 0x58);
 
-    *(u32*)(&D_800B1510 + off + 0x10) = *(u32*)(actorData + 0x50);
-    *(u32*)(&D_800B1510 + off + 0x14) = *(u32*)(actorData + 0x54);
-    *(u32*)(&D_800B1510 + off + 0x18) = *(u32*)(actorData + 0x58);
-
-    *(u16*)(&D_800B1504 + off) = *(u16*)(actorData + 0x106) & 0x0FFF;
-    *(u16*)(&D_800B1500 + off) = *(u16*)(spriteData + 0x84);
-    *(u16*)(&D_800B14F8 + off) = *(u16*)(actorData + 0x22);
-    *(u16*)(&D_800B14FA + off) = *(u16*)(actorData + 0x26);
-    *(u16*)(&D_800B14FC + off) = *(u16*)(actorData + 0x2A);
-    *(u16*)(&D_800B1502 + off) = *(u16*)(actorData + 0xE8);
-    *(u32*)(&D_800B1530 + off) = *(u32*)(actorData + 0x14);
-    *(u32*)(&D_800B14F0 + off) = *(u32*)(actorData + 0x00);
-    *(u32*)(&D_800B14F4 + off) = *(u32*)(actorData + 0x04);
+    *(u16*)(&D_800B1504 + D_800B2360 * 72) = *(u16*)(actorData + 0x106) & 0x0FFF;
+    *(u16*)(&D_800B1500 + D_800B2360 * 72) = *(u16*)(spriteData + 0x84);
+    *(u16*)(&D_800B14F8 + D_800B2360 * 72) = *(u16*)(actorData + 0x22);
+    *(u16*)(&D_800B14FA + D_800B2360 * 72) = *(u16*)(actorData + 0x26);
+    *(u16*)(&D_800B14FC + D_800B2360 * 72) = *(u16*)(actorData + 0x2A);
+    *(u16*)(&D_800B1502 + D_800B2360 * 72) = *(u16*)(actorData + 0xE8);
+    *(u32*)(&D_800B1530 + D_800B2360 * 72) = *(u32*)(actorData + 0x14);
+    *(u32*)(&D_800B14F0 + D_800B2360 * 72) = *(u32*)(actorData + 0x00);
+    *(u32*)(&D_800B14F4 + D_800B2360 * 72) = *(u32*)(actorData + 0x04);
 
     for (i = 0; i < 4; i++) {
-        *(u16*)(&D_800B1510 + off - 0x0A + i * 2) = *(u16*)(actorData + 0x08 + i * 2);
+        *(u16*)(&D_800B1510 - 0x0A + D_800B2360 * 72 + i * 2) = *(u16*)(actorData + 0x08 + i * 2);
     }
 
-    *(&D_800B1534 + off) = *(u16*)(actorData + 0x10);
+    *(&D_800B1534 + D_800B2360 * 72) = *(u16*)(actorData + 0x10);
     D_800C3910 = 0;
     D_800B2360 = (D_800B2360 - 1) & 0x1F;
 }
@@ -575,14 +887,22 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
     u8* pAD = NULL;
     u16 moveSpeed = 0;
     s32 stepMag = 0;
-    s32 doStep = 0;
-    s32 set0x18 = 0;
     s32 zeroStep = 0;
+    s32 doStep = 0;
+
+    /* Retail compiles `0x40000 / moveSpeed` as a bare MIPS `div` (which does
+     * not fault on a zero divisor); the host needs the guard, the matching
+     * build must not carry it (it adds branches retail does not have). */
+#ifdef XENO_PC_PORT
+#define FIELD_DIV(n, d) ((d) ? (s32)((n) / (d)) : 0)
+#else
+#define FIELD_DIV(n, d) ((s32)((n) / (d)))
+#endif
 
     if ((status & 0x40) == 0) {
         pAD = (u8*)(uintptr_t)*(u32*)(pFA + 0x4C);
         moveSpeed = *(u16*)(pAD + 0x76);
-        stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+        stepMag = (FIELD_DIV(0x40000, moveSpeed) >> 8) << 5;
         if ((u16)angle & 0x8000) {
             zeroStep = 1;
         } else {
@@ -603,20 +923,26 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
                 u8* pObj = (u8*)(uintptr_t)*(u32*)pEntry;
                 *(s32*)(pSprite + 0xC) = (s32)(-*(s32*)(pObj + 0x128)) << 16;
                 *(s32*)(pSprite + 0x14) = (s32)(-*(s32*)(pObj + 0x130)) << 16;
-            } else {
-                moveSpeed = *(u16*)(pAD + 0x76);
-                stepMag = (((s32)(moveSpeed ? 0x80000 / moveSpeed : 0)) >> 8) << 5;
-                doStep = 1;
+                goto clear;
             }
-        } else if (flags & 0x80000) {
             moveSpeed = *(u16*)(pAD + 0x76);
-            stepMag = (((s32)(moveSpeed ? 0x40000 / moveSpeed : 0)) >> 8) << 5;
+            stepMag = (FIELD_DIV(0x80000, moveSpeed) >> 8) << 5;
             doStep = 1;
-            set0x18 = 1;
+        } else if (flags & 0x80000) {
+            /* asm .L8008203C: its own copy of the rsin/rcos step block
+             * (retail does not share it with the paths above) plus pSprite+0x18. */
+            s32 am = angle & 0xFFF;
+            moveSpeed = *(u16*)(pAD + 0x76);
+            stepMag = (FIELD_DIV(0x40000, moveSpeed) >> 8) << 5;
+            *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * *(s16*)(pAD + 0xF4);
+            *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * *(s16*)(pAD + 0xF8);
+            *(s32*)(pSprite + 0x18) = FIELD_DIV(0x4000000, moveSpeed);
+            goto clear;
         } else {
             /* Fei's path: stamp the angle; func_80021FE0 -> func_80022974
              * computes the step from angle + sprite radius (spriteData+0x18). */
             func_80021FE0(pSpriteData, angle);
+            goto clear;
         }
     }
 
@@ -625,22 +951,24 @@ void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
         *(s32*)(pSprite + 0x14) = 0;
     } else if (doStep) {
         s32 am = angle & 0xFFF;
-        s16 scaleX = *(s16*)(pAD + 0xF4);
-        s16 scaleZ = *(s16*)(pAD + 0xF8);
-        *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * scaleX;
-        *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * scaleZ;
-        if (set0x18) {
-            *(s32*)(pSprite + 0x18) = (s32)(moveSpeed ? 0x4000000 / moveSpeed : 0);
-        }
+        *(s32*)(pSprite + 0xC) = ((rsin(am) * stepMag) >> 12) * *(s16*)(pAD + 0xF4);
+        *(s32*)(pSprite + 0x14) = ((-(rcos(am) * stepMag)) >> 12) * *(s16*)(pAD + 0xF8);
     }
 
+clear:
     /* asm .L800821BC: clear the low 12 (sub-pixel) bits of the X/Z step. */
     *(s32*)(pSprite + 0xC) &= ~0xFFF;
     *(s32*)(pSprite + 0x14) &= ~0xFFF;
+
+#undef FIELD_DIV
 }
 
 extern s16 D_800B2344;
 extern s16 D_800B2346;
+extern u8 D_800ADFB8[];
+/* Field archive 0x6B9 object-animation entry. The native owner adapter keeps
+ * the retail slot/animation contract while translating PSX pointer ownership. */
+extern void func_801E8330(s32 objSlot, s32 unused, s32 animValue);
 
 void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
     u8* actor = pFieldActor;
@@ -674,7 +1002,31 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
         return;
     }
 
-    assert(!"func_800821F4 battle animation branch not migrated");
+    /* asm .L800822D8-.L80082360: battle-animation branch (flags4 & 0x2000 set).
+     * The actor carries an object slot in bits 13..15 of its +0x12C word (the
+     * slot func_800A1364 stamped). Drive that object's anim through the native
+     * archive-0x6B9 owner entry func_801E8330, then
+     * record the resolved anim index into the per-slot anim-state array at
+     * &D_800B2346 - 0x162, indexed by bits 12..15 (even) of the same word.
+     * animIndex < 0x10 uses the D_800ADFB8[] remap; >= 0x10 subtracts 0x10. */
+    {
+        u8* animState = (u8*)&D_800B2346 - 0x162;
+        u32 objSlot = (*(u32*)(actorData + 0x12C) >> 13) & 7;
+
+        if (nextAnim < 0x10) {
+            u8 mapped = D_800ADFB8[nextAnim];
+            func_801E8330(objSlot, 0, mapped);
+            actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            *(u16*)(animState + ((*(u32*)(actorData + 0x12C) >> 12) & 0xE)) =
+                mapped;
+        } else {
+            s16 anim2 = nextAnim - 0x10;
+            func_801E8330(objSlot, 0, anim2);
+            actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+            *(u16*)(animState + ((*(u32*)(actorData + 0x12C) >> 12) & 0xE)) =
+                (u16)anim2;
+        }
+    }
 }
 
 s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
@@ -714,14 +1066,35 @@ s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
 }
 
 s32 func_80082494(s32* pVec, u8* actorData) {
-    (void)pVec;
+    s16* clipPoints;
+    s32 x;
+    s32 z;
+    s32 position;
+    s32 point0;
+    s32 point1;
+    s32 point2;
+    s32 point3;
 
     if ((*(u32*)(actorData + 0x12C) & 0x1000) == 0) {
         return 0;
     }
 
-    assert(!"func_80082494 clipping branch not migrated");
-    return 0;
+    x = (*(s32*)(actorData + 0x20) + pVec[0]) >> 16;
+    z = (*(s32*)(actorData + 0x28) + pVec[2]) >> 16;
+    position = (x << 16) + z;
+
+    clipPoints = (s16*)(uintptr_t)*(u32*)(actorData + 0x114);
+    point0 = ((s32)clipPoints[0] << 16) + clipPoints[1];
+    point1 = ((s32)clipPoints[2] << 16) + clipPoints[3];
+    point2 = ((s32)clipPoints[4] << 16) + clipPoints[5];
+    point3 = ((s32)clipPoints[6] << 16) + clipPoints[7];
+
+    if (NormalClip(point0, point1, position) < 0 ||
+        NormalClip(point1, point2, position) < 0 ||
+        NormalClip(point2, point3, position) < 0) {
+        return -1;
+    }
+    return NormalClip(point3, point0, position) >> 31;
 }
 
 extern long FieldGetVec2Magnitude(long x, long y);
@@ -1151,7 +1524,19 @@ update_animation:
     *(s32*)(actorData + 0x48) = 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80083178);
+s32 func_80083178(s32 current, s32 target) {
+    if (current < 0) {
+        current += 0x4000;
+        target = -target;
+        if (current < target) current = target;
+        if (current > 0) current = 0;
+    } else {
+        current -= 0x4000;
+        if (current > target) current = target;
+        if (current < 0) current = 0;
+    }
+    return current;
+}
 
 void func_800831D0(SVECTOR* out, s16* in) {
     out->vx = in[1];
@@ -1159,267 +1544,441 @@ void func_800831D0(SVECTOR* out, s16* in) {
     out->vz = in[5];
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
+void func_800831F4(void* pSpriteData, u8* pActor, s32 arg2, s32 flags) {
+    u32 val30 = *(u32*)(pActor + 0x30);
+    u32 val38 = *(u32*)(pActor + 0x38);
+    if (val30 != 0 || val38 != 0) {
+        s16 curAngle = *(s16*)(pActor + 0x106);
+        if (!(curAngle & 0x8000)) {
+            u16 newAngle;
+            if (flags & 1) {
+                newAngle = (u16)(curAngle - 0x400);
+            } else {
+                newAngle = (u16)(curAngle + 0x400);
+            }
+            newAngle &= 0xFFF;
+            *(u16*)(pActor + 0x104) = newAngle;
+            *(u16*)(pActor + 0x106) = newAngle;
+            func_80081F80(pSpriteData, *(s16*)(pActor + 0x104), pActor);
+            {
+                u16 final = *(u16*)(pActor + 0x106) | 0x8000;
+                *(u16*)(pActor + 0x104) = final;
+                *(u16*)(pActor + 0x106) = final;
+            }
+        }
+    }
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80083288);
+extern void* func_8007CD3C(s32 arg0);
+extern void func_8007CD60(s32 arg0);
+extern void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4);
+extern MATRIX D_800AFC30;
+/* GTE prototypes come through field/actor.h -> psyq/libgte.h (shimmed to
+ * PsyCross's on the port build). */
+
+/* Point-vs-actor-collision-mesh test (asm 80083288, "POLYCHECK"). Composes
+ * the owning actor's model matrix - rotated about one axis by +0x70 when
+ * +0x12C mode is 1/2/3, else the static/parented composition through the
+ * camera matrix D_800AFC30 (and the +0x75 parent actor's +0x2C matrix when
+ * set) - loads it into the GTE, then walks the mesh's primitive groups
+ * (header word: type byte, count in the top half; types 0xC4/0xC8 skipped;
+ * type bit 3 selects quads). Each tri/quad is transformed with RotTransSV
+ * and tested with NormalClip winding checks against the packed (x<<16)|z
+ * query point; for containing polygons func_8007B07C interpolates the
+ * surface Y at (x, z) (also filling pOut2, which the caller consumes as the
+ * contact data). Returns 0 with *pOutY = the minimum such Y, or -1 when no
+ * polygon contains the point. All locals live in a func_8007CD3C(0xB8)
+ * scratch block, mirroring the retail layout. */
+s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
+                  void* pOut2) {
+    /* Retail places the workspace in the PSX scratchpad via
+     * func_8007CD3C(0xB8) (returns 0x1F800000-based pointers, unmapped on
+     * the PC port). Follow func_80084158's port convention: keep the arena
+     * push/pop balanced but back the workspace with a local. */
+    s32 wsBuf[0xB8 / 4];
+    u8* ws = (u8*)wsBuf;
+    u8* mesh = (u8*)pMesh;
+    u8* prim;
+    u32 rotMode;
+    s32 groupCount;
+
+    func_8007CD3C(0xB8);
+    *(s32*)(ws + 0xA0) = 0x7FFFFFFF;
+    *(u32*)(ws + 0xA4) = *(u32*)(mesh + 0x8);
+    *(s32*)(ws + 0x10) = (curX << 16) + curZ;
+
+    /* Retail 800833E4..8008345C reloads g_FieldActors and recomputes the 0x5C
+     * stride for every actor/actorData access, so index the array per site. */
+    rotMode = *(u32*)((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData + 0x12C) & 0x3;
+
+    if (rotMode != 0) {
+        SVECTOR* rot = (SVECTOR*)(ws + 0xB0);
+
+        if (rotMode == 1) {
+            rot->vx = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
+            rot->vy = 0;
+            rot->vz = 0;
+        } else if (rotMode == 2) {
+            rot->vx = 0;
+            rot->vy = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
+            rot->vz = 0;
+        } else {
+            rot->vx = 0;
+            rot->vy = 0;
+            rot->vz = *(u16*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x70);
+        }
+        RotMatrix(rot, (MATRIX*)(ws + 0x60));
+        MulMatrix2((MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC), (MATRIX*)(ws + 0x60));
+        *(s32*)(ws + 0x74) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x20);
+        *(s32*)(ws + 0x78) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x24);
+        *(s32*)(ws + 0x7C) = *(s32*)(((u8*)&g_FieldActors[ownIndex]) + 0x28);
+        CompMatrix(&g_Scene.worldRotationMatrix, (MATRIX*)(ws + 0x60),
+                   (MATRIX*)(ws + 0x40));
+    } else {
+        u8 parentIdx;
+
+        /* Retail zeroes both work matrices' translation columns first. */
+        *(s32*)(ws + 0x54) = 0;
+        *(s32*)(ws + 0x58) = 0;
+        *(s32*)(ws + 0x5C) = 0;
+        *(s32*)(ws + 0x94) = 0;
+        *(s32*)(ws + 0x98) = 0;
+        *(s32*)(ws + 0x9C) = 0;
+
+        parentIdx = *(u8*)(((u8*)(uintptr_t)g_FieldActors[ownIndex].pActorData) + 0x75);
+        CompMatrix(&g_Scene.worldRotationMatrix, &D_800AFC30,
+                   (MATRIX*)(ws + 0x80));
+        if (parentIdx != 0xFF) {
+            CompMatrix((MATRIX*)(ws + 0x80),
+                       (MATRIX*)((u8*)g_FieldActors + parentIdx * 0x5C + 0x2C),
+                       (MATRIX*)(ws + 0x60));
+            CompMatrix((MATRIX*)(ws + 0x60), (MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC),
+                       (MATRIX*)(ws + 0x40));
+        } else {
+            CompMatrix((MATRIX*)(ws + 0x80), (MATRIX*)(((u8*)&g_FieldActors[ownIndex]) + 0xC),
+                       (MATRIX*)(ws + 0x40));
+        }
+    }
+    SetRotMatrix((MATRIX*)(ws + 0x40));
+    SetTransMatrix((MATRIX*)(ws + 0x40));
+
+    groupCount = *(u16*)(mesh + 0x6);
+    prim = (u8*)(uintptr_t)*(u32*)(mesh + 0x10);
+
+    for (; groupCount > 0; groupCount--) {
+        u32 header = *(u32*)prim;
+        u32 type = header & 0xFF;
+        s32 primCount = header >> 16;
+        s32 n;
+
+        prim += 4;
+        *(u32*)(ws + 0xAC) = type;
+        if (type == 0xC4 || type == 0xC8) {
+            continue;
+        }
+
+        if ((header & 0x8) == 0) {
+            /* Triangles: 3 vertex indices + 1 pad halfword per primitive. */
+            for (n = 0; n < primCount; n++) {
+                u8* verts = (u8*)(uintptr_t)*(u32*)(ws + 0xA4);
+
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x14), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x1C), (long*)(ws + 0x3C));
+                prim += 4;
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x24), (long*)(ws + 0x3C));
+                prim += 4;
+
+                /* Packed (screenX<<16)|screenZ per vertex, ground plane. */
+                *(s32*)(ws + 0x0) =
+                    (*(s16*)(ws + 0x14) << 16) + *(s16*)(ws + 0x18);
+                *(s32*)(ws + 0x4) =
+                    (*(s16*)(ws + 0x1C) << 16) + *(s16*)(ws + 0x20);
+                *(s32*)(ws + 0x8) =
+                    (*(s16*)(ws + 0x24) << 16) + *(s16*)(ws + 0x28);
+
+                if (NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x8), *(s32*)(ws + 0x0),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x8)) < 0) {
+                    continue;
+                }
+
+                *(u16*)(ws + 0x34) = (u16)curX;
+                *(u16*)(ws + 0x38) = (u16)curZ;
+                func_8007B07C((s16*)(ws + 0x14), (s16*)(ws + 0x1C),
+                              (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                              (VECTOR*)pOut2);
+                if (*(s16*)(ws + 0x36) < *(s32*)(ws + 0xA0)) {
+                    *(s32*)(ws + 0xA0) = *(s16*)(ws + 0x36);
+                }
+            }
+        } else {
+            /* Quads: 4 vertex indices per primitive, wound (0,1,3,2); the
+             * final diagonal test picks which half-triangle interpolates. */
+            for (n = 0; n < primCount; n++) {
+                u8* verts = (u8*)(uintptr_t)*(u32*)(ws + 0xA4);
+
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x14), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x1C), (long*)(ws + 0x3C));
+                prim += 4;
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x0) * 8),
+                           (SVECTOR*)(ws + 0x24), (long*)(ws + 0x3C));
+                RotTransSV((SVECTOR*)(verts + *(u16*)(prim + 0x2) * 8),
+                           (SVECTOR*)(ws + 0x2C), (long*)(ws + 0x3C));
+                prim += 4;
+
+                *(s32*)(ws + 0x0) =
+                    (*(s16*)(ws + 0x14) << 16) + *(s16*)(ws + 0x18);
+                *(s32*)(ws + 0x4) =
+                    (*(s16*)(ws + 0x1C) << 16) + *(s16*)(ws + 0x20);
+                *(s32*)(ws + 0x8) =
+                    (*(s16*)(ws + 0x24) << 16) + *(s16*)(ws + 0x28);
+                *(s32*)(ws + 0xC) =
+                    (*(s16*)(ws + 0x2C) << 16) + *(s16*)(ws + 0x30);
+
+                if (NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0xC),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0xC), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x8), *(s32*)(ws + 0x0),
+                               *(s32*)(ws + 0x10)) < 0 ||
+                    NormalClip(*(s32*)(ws + 0x0), *(s32*)(ws + 0x4),
+                               *(s32*)(ws + 0x8)) < 0) {
+                    continue;
+                }
+
+                *(u16*)(ws + 0x34) = (u16)curX;
+                *(u16*)(ws + 0x38) = (u16)curZ;
+                if (NormalClip(*(s32*)(ws + 0x4), *(s32*)(ws + 0x8),
+                               *(s32*)(ws + 0x10)) >= 0) {
+                    func_8007B07C((s16*)(ws + 0x14), (s16*)(ws + 0x1C),
+                                  (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                                  (VECTOR*)pOut2);
+                } else {
+                    func_8007B07C((s16*)(ws + 0x1C), (s16*)(ws + 0x2C),
+                                  (s16*)(ws + 0x24), (s16*)(ws + 0x34),
+                                  (VECTOR*)pOut2);
+                }
+                if (*(s16*)(ws + 0x36) < *(s32*)(ws + 0xA0)) {
+                    *(s32*)(ws + 0xA0) = *(s16*)(ws + 0x36);
+                }
+            }
+        }
+    }
+
+    if (*(s32*)(ws + 0xA0) != 0x7FFFFFFF) {
+        *pOutY = *(s32*)(ws + 0xA0);
+        func_8007CD60(0xB8);
+        return 0;
+    }
+    func_8007CD60(0xB8);
+    return -1;
+}
 
 void func_80083994(void) {
 }
 
 extern u16 D_800C2694;
 extern s16 D_800B2174;
+extern s32 D_80285988;
 extern s32 D_800ADF64;
-extern int g_FieldSystemMode;
 extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
-/* Retail D_80285988 (field-overlay BSS) is written from the flags0&0x2000 path
- * when g_FieldSystemMode==0. PC has no overlay map for 0x8028xxxx yet; keep a
- * local latch so the store is side-effect-safe without inventing readers. */
-#ifdef XENO_PC_PORT
-static s32 s_D_80285988;
-#endif
-
-/* Provenance: asm/field/matchings/main/misc8/func_8008399C.s (SLUS_006.64).
- * s2=scriptId, s4=scriptRoutine (prio packing <<18), s7=found.
- * Confirm (D_800C2694&0x20) selects scriptId=2 / routine=3.
- * Proximity / non-confirm special selects scriptId=3 / routine=4.
- * flags4&0x180 is a distance-independent special interact path. */
+/* Retail 8008399C..80084158. Rectangular, radial, and whole-map
+ * interactions have distinct gates; keep their enqueue join explicit. */
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
-    u8* actorData = (u8*)pActorData;
+    u8* actorData = pActorData;
     s32 playerY = *(s16*)(actorData + 0x26);
     s32 playerFloor = playerY - *(u16*)(actorData + 0x1A);
     s32 innerRadius = *(u16*)(actorData + 0x1E) + 8;
     s32 outerRadius = *(u16*)(actorData + 0x1E) + 0x20;
-    s32 playerRot = *(u16*)(actorData + 0x106) & 0x0FFF;
+    s32 playerRot = *(u16*)(actorData + 0x106) & 0xFFF;
     s32 playerX = *(s16*)(actorData + 0x22);
     s32 playerZ = *(s16*)(actorData + 0x2A);
     s32 found = 0;
+    s32 scriptRoutine = 7;
     s32 i;
 
     for (i = 0; i < D_800ADBFC; i++) {
-        u8* otherActor = (u8*)g_FieldActors + i * 0x5C;
-        u8* otherData = (u8*)(uintptr_t)*(u32*)(otherActor + 0x4C);
-        u32 otherFlags0;
-        u32 otherFlags4;
-        s32 otherY;
-        s32 dx;
-        s32 dz;
-        s32 radius;
-        s32 vec[3];
-        s32 sq[3];
+        u8* otherData = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + i * 0x5C + 0x4C);
+        u32 flags0 = *(u32*)otherData;
+        u32 flags4;
+        s32 otherY, dx, dz, angle, dir, delta;
         s32 scriptId = 0xFF;
-        s32 scriptRoutine = 7;
-        s32 dist;
-        s32 limit[3];
-        s32 limitSq[3];
-        s32 innerSq;
-        s32 outerSq;
-        s32 angle;
-        s32 dir;
-        s32 facingDelta;
+        s32 rectangular;
+        s32 distance = 0;
+        s32 limits[3], squaredLimits[3];
+        s32 vec[3], squared[3];
 
-        otherFlags0 = *(u32*)(otherData + 0x00);
-        if (otherFlags0 & 0x1) {
+        if ((flags0 & 1) || *(u8*)(actorData + 0x74) == i) {
             continue;
         }
-
-        if (*(u8*)(actorData + 0x74) == i) {
-            *(u8*)(actorData + 0x74) = 0xFF;
-            continue;
-        }
-
         otherY = *(s16*)(otherData + 0x26) + *(s16*)(otherData + 0x62);
-        otherFlags4 = *(u32*)(otherData + 0x04);
-
-        /* ---- flags4 & 0x180 special interact (retail 80083A98..80083BFC) ---- */
-        if (otherFlags4 & 0x180) {
-            if (otherFlags4 & 0x100) {
-                if ((D_800C2694 & 0x20) != 0 && found == 0 &&
-                    (otherFlags4 & 0x4000000) == 0) {
-                    if ((otherFlags0 & 0x220000) == 0 && D_800B2174 == 0) {
-                        /* Confirm special: scriptId=2, routine/prio=3 */
+        flags4 = *(u32*)(otherData + 4);
+        if (flags4 & 0x180) {
+            if (flags4 & 0x100) {
+                if ((D_800C2694 & 0x20) && !found && !(flags4 & 0x4000000)) {
+                    if (!(flags0 & 0x220000) && !D_800B2174) {
                         found = 1;
                         scriptId = 2;
                         scriptRoutine = 3;
-                        dx = *(s16*)(otherData + 0x22) - playerX +
-                             *(s16*)(otherData + 0x60);
-                        dz = *(s16*)(otherData + 0x2A) - playerZ +
-                             *(s16*)(otherData + 0x64);
-                        angle = -ratan2(dz, dx);
+                        dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                        dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                        angle = ratan2(dz, dx);
                         *(u32*)(otherData + 0x12C) =
-                            (*(u32*)(otherData + 0x12C) & ~0xE00u) |
-                            ((u32)angle & 0xE00u);
+                            (*(u32*)(otherData + 0x12C) & ~0xE00u) | ((0u - angle) & 0xE00);
                     }
-                } else if ((otherFlags0 & 0xA20000) == 0) {
-                    /* Non-confirm special: scriptId=3, routine/prio=4 */
+                } else if (!(flags0 & 0xA20000)) {
                     scriptId = 3;
                     scriptRoutine = 4;
-                    dx = *(s16*)(otherData + 0x22) - playerX +
-                         *(s16*)(otherData + 0x60);
-                    dz = *(s16*)(otherData + 0x2A) - playerZ +
-                         *(s16*)(otherData + 0x64);
+                    dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                    dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
                     angle = ratan2(dz, dx);
-                    dir = (-angle >> 9) & 7;
+                    dir = (-(angle >> 9)) & 7;
                     *(u32*)(otherData + 0x12C) =
                         (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-                    if (D_800ADF64 == 0 && (otherFlags0 & 0x8000000) != 0) {
-                        u8* fieldActor = (u8*)pFieldActor;
-                        u8* unk4 = (u8*)(uintptr_t)*(u32*)(fieldActor + 0x4);
+                    if (!D_800ADF64 && (*(u32*)otherData & 0x8000000)) {
+                        u8* sprite = (u8*)(uintptr_t)*(u32*)((u8*)pFieldActor + 4);
                         D_800ADF64 = 1;
-                        if (unk4 != NULL) {
-                            *(u32*)(unk4 + 0x10) = 0;
-                        }
+                        *(u32*)(sprite + 0x10) = 0;
                     }
                 }
             } else {
-                /* flags4 has 0x80 but not 0x100 */
                 D_800ADF64 = 0;
             }
         }
 
-        dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
-        dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
-
-        /* ---- flags0 & 0x2000 force interact (retail 80083C08..80083DF4) ---- */
-        if (otherFlags0 & 0x2000) {
-            if (otherY < playerFloor) {
-                goto assign_script;
+        rectangular = (*(u32*)otherData & 0x2000) != 0;
+        if (rectangular) {
+            if (otherY < playerFloor || playerY < otherY - *(u16*)(otherData + 0x1A) ||
+                i == actorIndex || func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
+                goto enqueue;
             }
-            if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-                goto assign_script;
+        } else {
+            vec[0] = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+            vec[2] = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+            vec[1] = outerRadius + *(u16*)(otherData + 0x1E);
+            Square0((VECTOR*)vec, (VECTOR*)squared);
+            if ((s32)((u32)squared[0] + (u32)squared[2]) >= squared[1] || otherY < playerFloor ||
+                playerY < otherY - *(u16*)(otherData + 0x1A) || i == actorIndex) {
+                goto enqueue;
             }
-            if (i == actorIndex) {
-                goto assign_script;
-            }
-            if (func_8008237C(playerX, playerZ, otherData, 0x10) != 0) {
-                goto assign_script;
-            }
-
-            if ((D_800C2694 & 0x20) != 0 && found == 0 &&
-                (otherFlags4 & 0x4000000) == 0) {
-                if ((otherFlags0 & 0x220000) != 0 || D_800B2174 != 0) {
-                    goto assign_script;
-                }
-                angle = -ratan2(dz, dx);
-                dir = (angle >> 9) & 7;
-                facingDelta = (playerRot - (angle & 0xFFF)) & 0xFFF;
-                if ((otherFlags4 & 0x40000) != 0) {
-                    if ((u32)(facingDelta - 0x2BC) < 0xA89u) {
-                        goto assign_script;
-                    }
-                }
-                found = 1;
-                scriptId = 2;
-                scriptRoutine = 3;
-                *(u32*)(otherData + 0x12C) =
-                    (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-#ifdef XENO_PC_PORT
-                if (g_FieldSystemMode == 0) {
-                    s_D_80285988 = found;
-                }
-#endif
-                goto assign_script;
-            }
-
-            if ((otherFlags0 & 0xA20000) != 0) {
-                goto assign_script;
-            }
-            scriptId = 3;
-            scriptRoutine = 4;
-            angle = ratan2(dz, dx);
-            dir = (-angle >> 9) & 7;
-            *(u32*)(otherData + 0x12C) =
-                (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-#ifdef XENO_PC_PORT
-            if (g_FieldSystemMode == 0) {
-                s_D_80285988 = 1;
-            }
-#endif
-            goto assign_script;
+            /* Retail builds the vector twice but only squares it twice total
+             * (jals at 80083EE8 and 80083F20, with sp+0x90 == &vec and
+             * sp+0x88 == &squared set at 80083A2C/80083A38). The previous
+             * duplicate Square0 here re-squared identical inputs into the same
+             * buffer, so it was a redundant third call. */
+            distance = (s32)((u32)squared[0] + (u32)squared[2]);
+            limits[0] = innerRadius + *(u16*)(otherData + 0x1E);
+            limits[1] = 0; /* Retail's unused middle result is not consumed. */
+            limits[2] = outerRadius + *(u16*)(otherData + 0x1E);
+            Square0((VECTOR*)limits, (VECTOR*)squaredLimits);
         }
 
-        /* ---- Normal proximity / confirm (retail 80083DF8..80084088) ---- */
-        radius = outerRadius + *(u16*)(otherData + 0x1E);
-        vec[0] = dx;
-        vec[1] = radius;
-        vec[2] = dz;
-        Square0((VECTOR*)vec, (VECTOR*)sq);
-        dist = sq[0] + sq[2];
-
-        if (dist >= sq[1]) {
-            goto assign_script;
-        }
-        if (otherY < playerFloor) {
-            goto assign_script;
-        }
-        if (playerY < otherY - *(u16*)(otherData + 0x1A)) {
-            goto assign_script;
-        }
-        if (i == actorIndex) {
-            goto assign_script;
-        }
-
-        /* Re-square dx/dz for dist; build (inner,0,outer) limit squares */
-        vec[0] = dx;
-        vec[1] = 0;
-        vec[2] = dz;
-        Square0((VECTOR*)vec, (VECTOR*)sq);
-        dist = sq[0] + sq[2];
-
-        limit[0] = innerRadius + *(u16*)(otherData + 0x1E);
-        limit[1] = 0;
-        limit[2] = outerRadius + *(u16*)(otherData + 0x1E);
-        Square0((VECTOR*)limit, (VECTOR*)limitSq);
-        innerSq = limitSq[0];
-        outerSq = limitSq[2];
-
-        /* Outer-ring (and inward): try confirm first */
-        if (dist < outerSq) {
-            if ((D_800C2694 & 0x20) != 0 && found == 0 &&
-                (otherFlags4 & 0x4000000) == 0) {
-                if ((otherFlags0 & 0x220000) != 0) {
-                    goto assign_script;
+        if (rectangular) {
+            /* Retail 80083C40-80083D68 (rectangular arm). Retail keeps a
+             * SEPARATE copy of this block per arm rather than merging them, and
+             * the rectangular copy additionally requires `otherData+4 & 0x40000`
+             * before the delta test. Splitting the previously-merged block is
+             * behaviour-preserving; the conditions below are the exact
+             * rectangular projections of the old merged ones. */
+            if ((D_800C2694 & 0x20) && !found &&
+                !(*(u32*)(otherData + 4) & 0x4000000)) {
+                if (*(u32*)otherData & 0x220000) {
+                    goto enqueue;
                 }
-                angle = -ratan2(dz, dx);
-                dir = (angle >> 9) & 7;
-                facingDelta = (playerRot - (angle & 0xFFF)) & 0xFFF;
-                /* Reject when facing delta is in the 0x2BC..0x2BC+0xA88 band */
-                if ((u32)(facingDelta - 0x2BC) < 0xA89u) {
-                    goto assign_script;
+                if (D_800B2174) {
+                    goto enqueue;
                 }
-                if (D_800B2174 != 0) {
-                    goto assign_script;
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = ((s32)(0u - angle) >> 9) & 7;
+                delta = (playerRot - ((0u - angle) & 0xFFF)) & 0xFFF;
+                if ((*(u32*)(otherData + 4) & 0x40000) &&
+                    (u32)(delta - 0x2BC) < 0xA89u) {
+                    goto enqueue;
                 }
                 found = 1;
                 scriptId = 2;
                 scriptRoutine = 3;
-                *(u32*)(otherData + 0x12C) =
-                    (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
-                goto assign_script;
+            } else {
+                if (*(u32*)otherData & 0xA20000) {
+                    goto enqueue;
+                }
+                scriptId = 3;
+                scriptRoutine = 4;
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = (-(angle >> 9)) & 7;
+            }
+        } else {
+            /* Retail 80083F40-80083FE0 (non-rectangular arm): the same block
+             * without the `0x40000` requirement - the delta test is bare. */
+            if (distance < squaredLimits[2] && (D_800C2694 & 0x20) && !found &&
+                !(*(u32*)(otherData + 4) & 0x4000000)) {
+                if (*(u32*)otherData & 0x220000) {
+                    goto enqueue;
+                }
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = ((s32)(0u - angle) >> 9) & 7;
+                delta = (playerRot - ((0u - angle) & 0xFFF)) & 0xFFF;
+                if ((u32)(delta - 0x2BC) < 0xA89u) {
+                    goto enqueue;
+                }
+                if (D_800B2174) {
+                    goto enqueue;
+                }
+                found = 1;
+                scriptId = 2;
+                scriptRoutine = 3;
+            } else {
+                if ((*(u32*)otherData & 0xA20000) || distance >= squaredLimits[0]) {
+                    goto enqueue;
+                }
+                scriptId = 3;
+                scriptRoutine = 4;
+                dx = *(s16*)(otherData + 0x22) - playerX + *(s16*)(otherData + 0x60);
+                dz = *(s16*)(otherData + 0x2A) - playerZ + *(s16*)(otherData + 0x64);
+                angle = ratan2(dz, dx);
+                dir = (-(angle >> 9)) & 7;
             }
         }
-
-        /* Non-confirm proximity: inner radius only, scriptId=3 / routine=4 */
-        if ((otherFlags0 & 0xA20000) == 0 && dist < innerSq) {
-            scriptId = 3;
-            scriptRoutine = 4;
-            angle = ratan2(dz, dx);
-            dir = (-angle >> 9) & 7;
-            *(u32*)(otherData + 0x12C) =
-                (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+        *(u32*)(otherData + 0x12C) =
+            (*(u32*)(otherData + 0x12C) & ~0xE00u) | (dir << 9);
+        /* Only the rectangular arm raises D_80285988 (confirm at
+         * 80083D5C-80083D60, passive at 80083DE8-80083DEC), each gated on
+         * g_FieldSystemMode == 0. The non-rectangular arm has no such store:
+         * its confirm/passive converge on .L80084074, which writes only the
+         * 0x12C word. 80083DDC-80083DEC is the RECTANGULAR passive, not a
+         * non-rectangular flag set. */
+        if (rectangular && g_FieldSystemMode == 0) {
+            D_80285988 = 1;
         }
 
-    assign_script:
+enqueue:
         if (scriptId != 0xFF) {
             s32 slot;
             u8* slotBase;
-
             for (slot = 0, slotBase = otherData; slot < 8; slot++, slotBase += 8) {
                 if (*(u8*)(slotBase + 0x8F) == (u8)scriptId) {
                     break;
                 }
             }
-
             if (slot == 8) {
                 for (slot = 0, slotBase = otherData; slot < 8; slot++, slotBase += 8) {
                     u32 word = *(u32*)(slotBase + 0x90);
@@ -1441,6 +2000,8 @@ void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
 
 extern void* func_8007CD3C(s32 arg0);
 extern void func_8007CD60(s32 arg0);
+extern void func_800379C8(char*, ...);
+extern char D_8006FC48[];
 extern char D_8006FC58[];
 extern s32 D_800ADB98;
 
@@ -1498,7 +2059,139 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
         *(u32*)(otherData + 0x04) = otherFlags4 & 0xFFFF3EFF;
 
         if (otherFlags4 & 0x80) {
-            assert(!"func_80084158 func_80083288 branch not migrated");
+            /* asm 800842B8-80084380: interaction-region actor. Test whether
+             * our predicted (x, z) lies inside the other actor's collision
+             * mesh (model header +0x4, via the FieldActor +0x0 pointer);
+             * regionY[0] receives the surface Y under us, contact[] the
+             * func_8007B07C contact data. Miss -> clear 0x400000|0x800000
+             * and skip the actor, exactly like the far case below. */
+            s32 regionY[4];
+            s32 contact[4];
+            u8* otherModel = (u8*)(uintptr_t)*(u32*)(otherActor + 0x0);
+            s32 regionTop;
+
+            if (func_80083288(i,
+                              (void*)(uintptr_t)*(u32*)(otherModel + 0x4),
+                              currentPos.vx, currentPos.vz,
+                              regionY, contact) != 0) {
+                *(u32*)(otherData + 0x04) &= 0xFF3FFFFF;
+                continue;
+            }
+
+            /* Hit ("POLYCHECK"): asm 80084304-80084380 + tail joins. */
+            if (g_FieldSystemMode == 0) {
+                func_800379C8(D_8006FC48, i);
+            }
+            *(u32*)(otherData + 0x04) |= 0x100;
+            regionTop = regionY[0] + *(u16*)(otherData + 0x1A);
+
+            if (*(u8*)(actorData + 0x74) == i) {
+                /* Already interacting with this actor: latch the contact
+                 * data and mark it (asm 8008434C-80084380)... */
+                *(u32*)(actorData + 0x50) = (u32)contact[0];
+                *(u32*)(actorData + 0x54) = (u32)contact[1];
+                *(u32*)(actorData + 0x58) = (u32)contact[2];
+                *(u32*)(otherData + 0x04) |= 0x4000;
+                /* ...then asm .L800844B8 routes straight to the
+                 * select-target machinery unless flags0 has 0x40800 set. */
+                if ((actorFlags0 & 0x40800) == 0) {
+                    goto select_target;
+                }
+            }
+
+            /* asm .L800844D8 dispatch: regionTop plays the raw-top role,
+             * regionY[0] the floor-height role. */
+            if (regionTop < targetYMin ||
+                *(s16*)(actorData + 0x26) < regionY[0]) {
+                /* .L80084660/.L8008465C track-height + .L800846A8 tail. */
+                u32 v = *(u32*)(otherData + 0x04) & ~0x100u;
+
+                if (*(s16*)(actorData + 0x26) < regionY[0]) {
+                    v |= 0x00800000;
+                    if (regionY[0] < selectedY) {
+                        selectedY = regionY[0];
+                    }
+                } else {
+                    v &= ~0x00800000u;
+                }
+                *(u32*)(otherData + 0x04) = v | 0x00400000;
+                continue;
+            }
+            if (*(s16*)(actorData + 0x26) < regionY[0] + 0x10) {
+                goto select_target;
+            }
+            if (*(u32*)(otherData + 0x04) & 0x00800000) {
+                goto select_target;
+            }
+
+            /* .L80084570 standing-on-top machinery: platforms without the
+             * 0x10 no-carry flag ramp a contact counter (+2/frame, cap
+             * 0x30); once it passes 0x20 the player's X/Z velocity bleeds
+             * into the platform (v/4, round toward zero -- retail's
+             * bgez/addiu/sra) and the player's velocity + carried-velocity
+             * latches are zeroed.  Below threshold (or 0x10 flagged) both
+             * sides' velocities and latches reset (asm .L80084628). */
+            if (!(otherFlags4 & 0x10)) {
+                u8 ramp = *(u8*)(otherData + 0xE3);
+
+                if (ramp < 0x30) {
+                    *(u8*)(otherData + 0xE3) = (u8)(ramp + 2);
+                }
+                if (*(u8*)(otherData + 0xE3) >= 0x21) {
+                    s32 v = *(s32*)(actorData + 0x30);
+
+                    if (v < 0) {
+                        v += 3;
+                    }
+                    *(s32*)(otherData + 0x40) += v >> 2;
+                    v = *(s32*)(actorData + 0x38);
+                    if (v < 0) {
+                        v += 3;
+                    }
+                    *(s32*)(otherData + 0x48) += v >> 2;
+                    /* Retail then re-derives v/4 from the just-zeroed
+                     * velocities -- provably zero, so plain zero stores. */
+                    *(s32*)(actorData + 0x30) = 0;
+                    *(s32*)(actorData + 0x34) = 0;
+                    *(s32*)(actorData + 0x38) = 0;
+                    *(s32*)(actorData + 0x40) = 0;
+                    *(s32*)(actorData + 0x44) = 0;
+                    *(s32*)(actorData + 0x48) = 0;
+                    continue;
+                }
+            }
+            *(s32*)(otherData + 0x40) = 0;
+            *(s32*)(otherData + 0x44) = 0;
+            *(s32*)(otherData + 0x48) = 0;
+            *(s32*)(otherData + 0x30) = 0;
+            *(s32*)(otherData + 0x34) = 0;
+            *(s32*)(otherData + 0x38) = 0;
+            *(s32*)(actorData + 0x30) = 0;
+            *(s32*)(actorData + 0x34) = 0;
+            *(s32*)(actorData + 0x38) = 0;
+            *(s32*)(actorData + 0x40) = 0;
+            *(s32*)(actorData + 0x44) = 0;
+            *(s32*)(actorData + 0x48) = 0;
+            continue;
+
+        select_target:
+            /* asm .L80084520: ride/select this region actor.  selectedY
+             * takes the surface Y unconditionally, the region is marked
+             * 0x800000, the platform's velocity (+0x30..0x38) is latched
+             * into the player's carried-velocity block (+0x40..0x48), and
+             * targetState arms (2).  Unless flags0 has 0x40800, the
+             * interact-actor commits and hasTarget latches. */
+            selectedY = regionY[0];
+            *(u32*)(otherData + 0x04) |= 0x00800000;
+            *(u32*)(actorData + 0x40) = *(u32*)(otherData + 0x30);
+            *(u32*)(actorData + 0x44) = *(u32*)(otherData + 0x34);
+            *(u32*)(actorData + 0x48) = *(u32*)(otherData + 0x38);
+            targetState = 2;
+            if ((actorFlags0 & 0x40800) == 0) {
+                *(u8*)(actorData + 0x74) = (u8)i;
+                hasTarget = 1;
+            }
+            continue;
         }
 
         if (otherFlags0 & 0x2000) {
@@ -1562,12 +2255,67 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     if (hasTarget == 0) {
         *(u8*)(actorData + 0x74) = 0xFF;
     } else {
-        assert(!"func_80084158 interaction target branch not migrated");
+        /* asm .L80084718: commit the selected target -- mark it 0x8000 and,
+         * on a FRESH commit only (previous interact-actor was 0xFF),
+         * snapshot the target FieldActor's +0x50/52/54 trio plus the
+         * func_800825AC pairing value into a one-shot 12-byte record at
+         * actorData+0x110 (allocated once, latched by flags 0x134&0x80). */
+        u8 t = *(u8*)(actorData + 0x74);
+        u8* tData = (u8*)(uintptr_t)
+            *(u32*)((u8*)g_FieldActors + t * 0x5C + 0x4C);
+
+        *(u32*)(tData + 0x04) |= 0x8000;
+        if (oldInteractActor == 0xFF) {
+            u8* tActor;
+            u16* rec;
+
+            if (!(*(u32*)(actorData + 0x134) & 0x80)) {
+                *(u32*)(actorData + 0x110) =
+                    (u32)(uintptr_t)HeapAlloc(0xC, 0);
+                *(u32*)(actorData + 0x134) |= 0x80;
+            }
+            tActor = (u8*)g_FieldActors + *(u8*)(actorData + 0x74) * 0x5C;
+            rec = (u16*)(uintptr_t)*(u32*)(actorData + 0x110);
+            rec[0] = *(u16*)(tActor + 0x50);
+            rec[1] = *(u16*)(tActor + 0x52);
+            rec[2] = *(u16*)(tActor + 0x54);
+            rec[4] = (u16)func_800825AC(actorIndex,
+                                        *(u8*)(actorData + 0x74));
+        }
     }
+
+#ifdef XENO_PC_PORT
+    /* DIAGNOSTIC (XENO_MOVE_DIAG=1): the INTERACTION-target result for the
+     * player -- which actor (if any) the player is standing on//next to.
+     *
+     * Do NOT read hasTarget==0 as "no floor under the player". Measured on
+     * map 1, which walks perfectly: hasTarget is 0 and selectedY stays at its
+     * 0x7FFFFFFF sentinel on every sample there too. This search is about
+     * ride/talk targets, not ordinary ground, so a 0 here is the normal case
+     * and says nothing about walkability. (Recorded because the opposite
+     * reading looked briefly like a root cause.) Removal: delete this block. */
+    {
+        static int s_on = -1;
+        static unsigned long s_calls;
+
+        if (s_on < 0) {
+            const char* e = getenv("XENO_MOVE_DIAG");
+            s_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+        }
+        if (s_on && actorIndex == g_PlayerActorIndex && (s_calls++ % 30) == 0) {
+            printf("[xeno-port][move] ground actor=%d pos=(%d,%d) "
+                   "hasTarget=%d selectedY=%d targetState=%d scanned=%d\n",
+                   (int)actorIndex, (int)currentPos.vx, (int)currentPos.vz,
+                   (int)hasTarget, (int)selectedY, (int)targetState,
+                   (int)D_800ADBFC);
+            fflush(stdout);
+        }
+    }
+#endif
 
     if ((*(u32*)(actorData + 0x00) & 0x00010000) == 0 &&
         (*(u32*)(actorData + 0x04) & 0x00200000) == 0) {
-        func_80084A40(actorIndex, selectedY, actor, actorData);
+        func_80084A40(actorIndex, selectedY, actor, actorData, targetState);
     }
 
     {
@@ -1641,11 +2389,12 @@ extern u8 D_800B21CF;
 extern s32 g_FieldSystemMode;
 extern char D_8006FC60[];
 extern char D_8006FC74[];
-extern void func_800379C8(char* arg0, s32 arg1);
+/* (func_800379C8 is the field's variadic printf; declared once at the top
+ * of this file's interaction section.) */
 extern s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
                          VECTOR* outNormal, s16* outTriangle, s32* outHeight1);
 
-static void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
+static inline void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
                                             s32 actorIndex, s32 origX,
                                             s32 origZ, s16 origState,
                                             s16 savedStates[4]) {
@@ -1676,7 +2425,8 @@ static void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData,
     *(s32*)(actor + 0x24) = *(s16*)(actorData + 0x26);
 }
 
-s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData) {
+s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
+                  s32 targetState) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
     u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
     s32 origX;
@@ -1854,11 +2604,14 @@ run_collision:
 
         VectorNormal(&normals[*(s16*)(actorData + 0x10)], (VECTOR*)(actorData + 0x50));
 
+        /* Retail 80084FD8-8008502C conditions on the FIFTH argument
+         * (targetState, incoming slot 0x110(sp)) -- not on y; the writes
+         * use y (asm $s7 = $a1). */
         if (D_800ADB98 != 0) {
-            if ((u32)y < 2) {
+            if ((u32)targetState < 2) {
                 *(s16*)(spriteData + 0x84) = y;
             }
-        } else if (y != 0) {
+        } else if (targetState != 0) {
             if (*(s16*)(spriteData + 0x84) < y + 10) {
                 *(u8*)(actorData + 0x74) = 0xFF;
             }
@@ -1888,8 +2641,13 @@ run_collision:
             } else {
                 goto settle_on_ground;
             }
-        } else if ((stateFlags & 0x420000) == 0) {
+        } else {
 settle_on_ground:
+            /* Retail 80085104-80085144 gates only the accumulator reset
+             * on the material; both paths settle position and velocity. */
+            if ((stateFlags & 0x420000) == 0) {
+                *(s32*)(actorData + 0xF0) = 0;
+            }
             if (*(s32*)(spriteData + 0x10) > 0) {
                 *(s32*)(spriteData + 0x10) = 0;
             }
@@ -1947,51 +2705,115 @@ finish:
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800854D0);
+extern s32 D_800ADBBC;
+extern s32 D_800ADBB8;
+extern s32 D_800ADB2C;
+extern s32 D_800AFEA4;
+extern s32 func_80028B14(void);
+
+// Per-frame CD-stream pump for the in-flight archive read kicked off by
+// func_80085560: func_80028B14 reports the buffered sector address that is
+// ready, or 0 when no chunk transfer is in flight. While a chunk is ready,
+// forward it to
+// the read's registered per-chunk callback (D_800AFEA4, e.g. func_800859DC)
+// and report busy. Once idle and ArchiveDataSync confirms the CD/archive
+// subsystem is fully caught up, free the streaming buffer and clear
+// D_800ADB2C -- the flag func_800932D0 (CHANGE_FIELD) gates on.
+s32 func_800854D0(void) {
+    s32 chunkIndex;
+
+    chunkIndex = func_80028B14();
+    D_800ADBBC = chunkIndex;
+    if (chunkIndex != 0) {
+        ((void (*)(s32))(uintptr_t)D_800AFEA4)(chunkIndex);
+        return 0;
+    }
+
+    if (ArchiveDataSync() != 0) {
+        return 0;
+    }
+    if (D_800ADBBC != 0) {
+        return 0;
+    }
+
+    HeapFree((void*)(uintptr_t)D_800ADBB8);
+    D_800ADB2C = 0;
+    return -1;
+}
 
 extern s32 D_800ADB2C;
 extern s32 D_800ADBB8;
 extern s32 D_800AFEA4;
+extern int* ArchiveAllocStreamFile(int numEntries, int allocMode);
 
 void func_80085560(s32 a0, s32 a1, s32 a2) {
-    s32 r;
+    int* r;
     D_800ADB2C = 1;
-    r = ArchiveAllocStreamFile(8);
-    D_800ADBB8 = r;
+    r = ArchiveAllocStreamFile(8, a1);
+    D_800ADBB8 = (s32)(uintptr_t)r;
     ArchiveReadFileToBuffer(a0, r, 0, 0x100);
     D_800AFEA4 = a2;
 }
 
-/* XENO_PC_PORT temporary audio boundary:
- * Field transition scripts reach func_800855C8 for a sound cue. Retail then
- * enters the deeper sound voice/SED/WDS assignment path
- * (func_8003A20C/func_80039F9C/func_8003B644). That subsystem is not ported
- * yet, and this sound call does not own field transition state, so the native
- * port intentionally treats it as a no-op while field progression is traced.
- * Remove this shim when the real audio engine path is implemented.
- *
- * The variadic form preserves current native call sites while func_80085634 is
- * still a nonmatching register-style transcription that omits the fourth arg in
- * C but preserves it in the original MIPS register flow. */
-void func_800855C8(s32 soundId, s32 volume, s32 pan, ...)
+extern void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan);
+
+// Field SFX cue (script opcodes, transition sounds): stop whatever is on
+// the channel's element pair, then fire the packed effect through the S1
+// play chain (func_80039F9C -> func_8003B644 arm -> the tick plays it).
+// Un-shimmed: the whole downstream is real as of S1.
+void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
 {
-    (void)soundId;
-    (void)volume;
-    (void)pan;
+    s32 slot = channel & 0x7;
+#ifdef XENO_PC_PORT
+    if (getenv("XENO_FIELD_DIAG") != NULL) {
+        printf("[field-sfx] cue id=0x%x vol=%d pan=%d chan=%d\n",
+               soundId, volume, pan, channel);
+    }
+#endif
+    func_8003A20C(slot << 1);
+    func_80039F9C(soundId, slot << 1, (s16)volume, (s16)pan);
 }
 
 extern s32 D_800B21B8;
 
+// Field SFX cue (simple form): id 0 stops the channel pair; otherwise fire
+// at default volume/pan. The channel is the retail fourth argument
+// (a1 & 7, previously dropped in transcription -- latent while
+// func_800855C8 was a no-op shim).
 void func_80085634(int a0, int a1) {
     if (a0 == 0) {
         func_8003A20C((a1 & 7) * 2);
     } else {
         D_800B21B8 = a0;
-        func_800855C8(a0, 0x7F, 0x40);
+        func_800855C8(a0, 0x7F, 0x40, a1 & 7);
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
+extern s16 D_800C3A38;
+extern u16 D_800AE060[];
+extern s32 D_800C3A64;
+extern u16 D_800C3A2C;
+extern s32 D_800B06A0;
+extern void* D_800B235C;
+extern void func_80039EC4(s32 a0);
+
+void func_80085678(void) {
+    u16* pTable = D_800AE060;
+    if (D_800C3A38 == 0xFF) return;
+    while (1) {
+        s32 idx = D_800C3A64;
+        u16 val = pTable[idx * 2];
+        if ((s32)(val + D_800C3A2C) > D_800B06A0) break;
+        {
+            u16 data = pTable[idx * 2 + 1];
+            u32 lo = data & 0xFF;
+            u32 hi = (data >> 7) & 0xE;
+            u32 param = lo | (*(u16*)(*(u32*)((u8*)D_800B235C + 0x14)) << 16);
+            func_80039EC4(param);
+            *(u32*)(&D_800C3A64) = D_800C3A64 + 1;
+        }
+    }
+}
 
 extern s16 D_800C3A38;
 extern void* D_800B235C;
@@ -2004,7 +2826,40 @@ void func_80085738(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085788);
+extern void func_80039FF8(void);
+extern void func_8003BDFC(s32);
+extern void SoundAddSedsEntry(void* pData);
+
+void func_80085788(void) {
+    s32 musicId = D_800C3A38;
+    if (musicId == 0xFF) return;
+    func_80039FF8();
+    ArchiveSetIndex(0x1C, 0);
+    {
+        s32 fileId = musicId + 0x115;
+        D_800B235C = HeapAlloc(ArchiveDecodeAlignedSize(fileId), 1);
+        ArchiveReadFileToBuffer(fileId, D_800B235C, 0, 0x80);
+        ArchiveCdDataSync(0);
+        SoundAddSedsEntry(D_800B235C);
+        func_8003BDFC(0x10);
+    }
+    ArchiveSetIndex(4, 0);
+    {
+        s32 i;
+        s32 idx = 0;
+        s32 count = musicId + 1;
+        if (count > 0) {
+            u16* pTable = D_800AE060;
+            for (i = 0; i < count; i++) {
+                while (pTable[idx * 2] != 0xFFFF) {
+                    idx++;
+                }
+                idx++;
+                D_800C3A64 = idx;
+            }
+        }
+    }
+}
 
 extern void* D_8006259C;
 extern s32 D_8004F32C;
@@ -2040,7 +2895,43 @@ void func_80085988(void) {
     D_8004F32C = -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
+extern s32 D_800B2370;
+extern void* D_800C3A1C;
+extern void* g_GameCurLoadedWDS;
+extern s32 func_800380D0(u8* data, s32 size, s32 a2);
+extern void SoundTransferWdsPart(u8* data, s32 size);
+extern s32 func_8002945C(u8* pSlot);
+
+void func_800859DC(u8* pSrc) {
+    if (D_800B2370 < 0) return;
+    if (D_800B2370 < 4) {
+        u8* pDst = D_800C3A1C + D_800B2370 * 0x800;
+        s32 i;
+        for (i = 0; i < 0x800; i += 16) {
+            *(s32*)(pDst + i) = *(s32*)(pSrc + i);
+            *(s32*)(pDst + i + 4) = *(s32*)(pSrc + i + 4);
+            *(s32*)(pDst + i + 8) = *(s32*)(pSrc + i + 8);
+            *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
+        }
+        D_800B2370++;
+        func_8002945C(pSrc);
+        if (D_800B2370 == 4) {
+            g_GameCurLoadedWDS = func_800380D0(D_800C3A1C, 0x2000, 0);
+        }
+    } else if (D_800B2370 == 4) {
+        u8* pDst = D_800C3A1C;
+        s32 i;
+        func_8003BDFC(0x10);
+        for (i = 0; i < 0x800; i += 16) {
+            *(s32*)(pDst + i) = *(s32*)(pSrc + i);
+            *(s32*)(pDst + i + 4) = *(s32*)(pSrc + i + 4);
+            *(s32*)(pDst + i + 8) = *(s32*)(pSrc + i + 8);
+            *(s32*)(pDst + i + 0xC) = *(s32*)(pSrc + i + 0xC);
+        }
+        SoundTransferWdsPart(D_800C3A1C, 0x800);
+        func_8002945C(pSrc);
+    }
+}
 
 extern u8 D_800ADFCC[];
 extern s32 D_8004F308;
@@ -2050,7 +2941,7 @@ extern s32 D_800AFC54;
 extern s32 D_800B2370;
 extern void* D_800C3A1C;
 extern void func_8001B66C(void);
-extern void func_800859DC(void);
+extern void func_800859DC(u8* pSrc);
 
 void func_80085B20(s32 a0) {
     u8 archiveFile;
@@ -2092,7 +2983,107 @@ s32 func_80085C3C(void) {
     return -1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085C90);
+extern s32 D_8004F338;
+extern s32 D_8004F36C;
+extern s32 D_8004F354;
+extern s32 D_8004F364;
+extern int func_80085F30(void);
+extern void func_80085FB8(void);
+extern void* SoundLoadWdsFile(void* pWdsFile, s32 mode);
+
+extern s32 D_8004F33C;
+extern s32 D_8004F340;
+extern s32 D_8004F348;
+extern s32 D_8004F358;
+extern s32 D_8004F35C;
+extern s32 D_800AFC54;
+extern void* D_8004F2FC;
+extern void* D_80062528;
+extern u8 D_80062648[];
+extern s32 g_GameHasLoadedWDS;
+extern u8 D_800ADFCC[];
+extern void* D_800C3A1C;
+extern void func_8003BDFC(s32);
+
+/* Song-start M3: the retail per-frame music poller.  The bank-swap leg is
+ * completed by the eight-slot archive sector ring and func_800859DC, matching
+ * the original streamed WDS path; no whole-file host staging is used. */
+s32 func_80085C90(s32 a0) {
+    extern void* func_80039850(void* pSongFile);
+    extern void func_80039A80(void* manager, s32 level, s32 steps);
+    extern void func_80039B68(void* manager, s32 level, s32 steps);
+    extern void func_8003A89C(void* manager, s32 level, s32 steps);
+
+    if (D_8004F354 == 1) {
+        if (func_80085C3C() == -1) {
+            return -1;
+        }
+        func_8003BDFC(0x10);
+        HeapFree(D_800C3A1C);
+        g_GameHasLoadedWDS = 1;
+        D_8004F354 = 0;
+        D_8004F33C = D_800ADFCC[a0 * 2];
+    }
+
+    /* Common-bank leg: maps flagged 0 at D_800ADFCC[idx*2+1] use the shared
+     * field bank (dir 0x1C file 3) -- kick its read, then complete it. */
+    if (D_800ADFCC[a0 * 2 + 1] == 0) {
+        s32 state = D_8004F364;
+        if (state == 0) {
+            func_80085FB8();
+            return -1;
+        }
+        if (state & 0x80) {
+            if (func_80085F30() == -1) {
+                return -1;
+            }
+        }
+    }
+
+    /* Song-file leg: on the first frame after a music change, queue the
+     * 'smds' song read into the static song buffer (D_80062648). */
+    if (D_800AFC54 == 1) {
+        if (D_8004F338 != a0) {
+            ArchiveSetIndex(0x1C, 0);
+            ArchiveReadFileToBuffer(a0 * 2 + 0x14, D_80062648, 0, 0x80);
+            D_8004F358 = 1;
+            ArchiveSetIndex(4, 0);
+        }
+        D_800AFC54 = 0;
+        return -1;
+    }
+    if (ArchiveDataSync() != 0) {
+        return -1;
+    }
+
+    /* Song landed: create/start the music manager (the M1 arming chain). */
+    if (D_8004F358 == 1) {
+        if (D_8004F348 == 0) {
+            void* manager = func_80039850(D_80062648);
+            D_80062528 = manager;
+            if (D_8004F340 == -1) {
+                func_80039A80(manager, 0x7F, 0);
+            } else {
+                /* Muted start: a pending scripted fade (FE 0E) raises it. */
+                func_80039A80(manager, 0, 0);
+                func_8003A89C(D_80062528, 0, 0);
+            }
+        } else {
+            /* Same song, bank re-landed: resume the saved manager. */
+            D_80062528 = D_8004F2FC;
+            func_80039B68(D_8004F2FC, 0x7F, 0xF0);
+            D_8004F348 = 0;
+            D_8004F2FC = 0;
+        }
+        D_8004F358 = 0;
+        D_8004F35C = 1;
+        D_8004F338 = a0;
+    }
+
+    D_8004F340 = -1;
+    D_8004F36C = 1;
+    return 0;
+}
 
 extern void* D_8004F2FC;
 
@@ -2107,7 +3098,7 @@ void func_80085EEC(void) {
 extern s32 D_8004F364;
 extern s32 D_8004F368;
 extern s16 D_8004F384;
-extern s32 D_80059560;
+extern SoundWDSEntry* D_80059560;
 extern SoundWDSEntry* D_8006251C;
 extern void* D_800B00E0; // WDS File Buffer
 
@@ -2150,18 +3141,148 @@ void func_80086024(void) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086078);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800860F0);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", FieldActorWorldToScreenPosition);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
-
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800863E8);
-
+extern s16 D_800B21AC;
 extern u16 D_800AFE88[];
 extern u16 D_800AFE8A[];
+extern void func_8003A20C(s32);
+extern void func_8003A344(s32, s32);
+extern void func_8003A55C(s32, s32);
+extern void func_80039F9C(s32, s32, s32, s32);
+
+/* Attenuation from distance vs D_800B21AC, scaled by mode. Writes volume to *out. */
+void func_80086078(s32 distance, s32* outVolume, s32 mode) {
+    s32 maxDist = D_800B21AC;
+    s32 scaled;
+    u32 inv;
+    u32 t;
+
+    if (maxDist < distance) {
+        distance = maxDist;
+    }
+
+    scaled = (0x7F0000 / maxDist) * distance;
+    inv = 0x80 - (scaled >> 16);
+    inv <<= 16;
+    /* Unsigned reciprocal multiply by 0x02040811 ≈ 1/127, then >> 6. */
+    t = (u32)(((u64)inv * 0x02040811u) >> 32);
+    inv = inv - t;
+    inv = (inv >> 1) + t;
+    inv >>= 6;
+    *outVolume = (s32)(((u64)inv * (u32)mode) >> 16);
+}
+
+/* Project actor origin through worldToScreen; write screen X/Y.
+ * Retail addresses worldToScreen as &g_FieldActors - 0xAC (= g_Scene + 0xD4). */
+void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
+    FieldActor* actors = g_FieldActors;
+    MATRIX composed;
+    SVECTOR local;
+    long screenXY;
+    long p;
+    long flag;
+
+    (void)FieldScriptVMGetActorIndex(1);
+
+    CompMatrix(&g_Scene.worldToScreenMatrix, &actors[actorIndex].transformMatrix, &composed);
+    local.vx = 0;
+    local.vy = 0;
+    local.vz = 0;
+    SetRotMatrix(&composed);
+    SetTransMatrix(&composed);
+    RotTransPers(&local, &screenXY, &p, &flag);
+    *outY = (s16)(screenXY >> 16);
+    *outX = (s16)screenXY;
+}
+
+/* Asm multiply chain: (((x*3)*17)*257*2)>>16 == (x * 0x6666)>>16. */
+static inline s32 FieldPositionalSfxScreenPan(s32 screenX) {
+    s32 t = screenX;
+    t = (t << 1) + t;
+    t = t + (t << 4);
+    t = t + (t << 8);
+    t <<= 1;
+    return t >> 16;
+}
+
+/* Update an already-bound positional SFX slot's volume/pan. */
+void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
+    s32 i;
+    s32 volume;
+    s32 screenX;
+    s32 screenY;
+    s32 pan;
+    s32 slot2;
+
+    (void)soundId;
+    (void)deltaX;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE88[i * 3] == (u16)actorIndex) {
+            slot2 = i * 2;
+            func_80086078(distance, &volume, mode);
+            FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
+            if (screenX >= 0x141) {
+                screenX = 0x13F;
+            }
+            if (screenX < 0) {
+                screenX = 0;
+            }
+            pan = FieldPositionalSfxScreenPan(screenX);
+            func_8003A344(slot2, volume);
+            func_8003A55C(slot2, pan);
+            break;
+        }
+    }
+}
+
+/* Allocate a free positional SFX slot and start the voice with distance pan. */
+void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
+    s32 i;
+    s32 volume;
+    s32 screenX;
+    s32 screenY;
+    s32 pan;
+    s32 slot2;
+
+    (void)deltaX;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE8A[i * 3] == 0xFFFF) {
+            slot2 = i * 2;
+            D_800AFE8A[i * 3] = (u16)soundId;
+            D_800AFE88[i * 3] = (u16)actorIndex;
+            func_80086078(distance, &volume, mode);
+            FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
+            if (screenX >= 0x141) {
+                screenX = 0x13F;
+            }
+            if (screenX < 0) {
+                screenX = 0;
+            }
+            pan = FieldPositionalSfxScreenPan(screenX);
+            func_8003A20C(slot2);
+            func_80039F9C(soundId, slot2, volume, pan);
+            break;
+        }
+    }
+}
+
+/* Release the SPU voice channel bound to actor `actorIdx` in the 3-slot
+ * actor->channel table (same table as func_80086470/func_800864F0):
+ * on match, stop the voice (func_8003A20C(i*2)) and free the slot.
+ * asm nonmatchings/main/misc8/func_800863E8.s. */
+void func_800863E8(s32 actorIdx) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE88[i * 3] == (u16)actorIdx) {
+            func_8003A20C(i * 2);
+            D_800AFE8A[i * 3] = 0xFFFF;
+            D_800AFE88[i * 3] = 0xFFFF;
+            break;
+        }
+    }
+}
 
 s32 func_80086470(s32 a0, s32 a1) {
     s32 i;
@@ -2184,7 +3305,30 @@ void func_800864B4(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864F0);
+extern s16 D_800B233C;
+extern void func_8003A20C(s32);
+
+// Field-transition sound-channel teardown: reset the 3-slot channel table
+// (same shape as func_800864B4) and release any of the 4 low D_800B233C
+// channel-mask bits that are still clear, one SPU voice-release call per bit.
+void func_800864F0(void) {
+    s32 i;
+    s16 flags;
+
+    for (i = 0; i < 3; i++) {
+        D_800AFE8A[i * 3] = 0xFFFF;
+        D_800AFE88[i * 3] = 0xFFFF;
+    }
+
+    flags = D_800B233C;
+    for (i = 0; i < 4; i++) {
+        if ((flags & 1) == 0) {
+            func_8003A20C(i * 2);
+        }
+        flags = (u16)flags >> 1;
+    }
+    D_800B233C = flags;
+}
 
 extern s32 D_800ADBFC;
 extern long FieldGetVec3Magnitude(long, long, long);
@@ -2301,11 +3445,92 @@ void FieldScriptVM2Run(void) {
     (*handler)();
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086A1C);
+extern s16 D_800B22E8[];
+extern s16 D_800B22EA[];
+extern s16 D_800B22EC[];
+extern s16 D_800B2300[];
+extern s16 D_800B2302[];
+extern s16 D_800B2304[];
+extern s32 D_800B2318[];
+extern s16 D_800B2324[];
+extern s16 D_800B2326[];
+extern s16 D_800B2328[];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086BA8);
+void func_80086A1C(s32 idx, u8* pSub) {
+    s32 step = D_800B2318[idx];
+    s32 dx, dy, dz, mag;
+    s32 remainder;
+    s16* pOutX = &D_800B2324[idx];
+    s16* pOutY = &D_800B2326[idx];
+    s16* pOutZ = &D_800B2328[idx];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086C34);
+    dx = (D_800B22E8[idx * 4] - D_800B2300[idx * 4]) << 16;
+    dy = (D_800B22EA[idx * 4] - D_800B2302[idx * 4]) << 16;
+    dz = (D_800B22EC[idx * 4] - D_800B2304[idx * 4]) << 16;
+
+    /* Compute vector from sub-structure position delta */
+    {
+        s32 subDx = D_800B2324[idx * 4] - *(s16*)(pSub + 0x02);
+        s32 subDy = D_800B2326[idx * 4] - *(s16*)(pSub + 0x06);
+        s32 subDz = D_800B2328[idx * 4] - *(s16*)(pSub + 0x0A);
+        mag = FieldGetVec3Magnitude(dx, dy, dz);
+    }
+
+    remainder = step - mag;
+    *pOutX = (s16)((dx * remainder) >> 16);
+    *pOutY = (s16)((dy * remainder) >> 16);
+    *pOutZ = (s16)((dz * remainder) >> 16);
+}
+
+extern s16 D_800B22E2[];
+extern void func_80086A1C(s32 idx, u8* pSub);
+
+void func_80086BA8(void) {
+    s32 i;
+    for (i = 0; i < 3; i++) {
+        s16 actorIdx = D_800B22E2[i];
+        if (actorIdx != -1) {
+            u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
+            u32 pSub = *(u32*)(pFieldActor + 0x4C);
+            func_80086A1C(i, (u8*)(pSub + 0x20));
+        }
+    }
+}
+
+extern s32 D_800AFD1C;
+extern u8 g_FieldDefaultParticleBanks[];
+extern void FieldInitializeDefaultParticleBanks(s32 idx);
+extern void FieldInitializeParticleBanks(s32 idx);
+
+void func_80086C34(void) {
+    u8 subOp = SCRIPT_READ_U8_REL(1);
+    switch (subOp) {
+        case 0:
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+            break;
+        case 1: {
+            s32 arg2 = FieldScriptVMGetArgument(2);
+            s32 arg4 = FieldScriptVMGetArgument(4);
+            s32 arg6 = FieldScriptVMGetArgument(6);
+            u16 v;
+            FieldInitializeDefaultParticleBanks(D_800AFD1C);
+            *(u16*)(g_FieldDefaultParticleBanks + 0x2A) = 0x14;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x52) = 1;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x06) = 0x10;
+            *(s16*)(g_FieldDefaultParticleBanks + 0x72) = 0;
+            if (arg6 == 0x27) {
+                v = 0x22;
+            } else {
+                v = 0x20;
+            }
+            *(u16*)(g_FieldDefaultParticleBanks + 0x74) = v;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x04) = 0x1000;
+            FieldInitializeParticleBanks(D_800AFD1C);
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+            break;
+        }
+    }
+}
 
 void func_80086D4C(void) {
     GameSoftReset();

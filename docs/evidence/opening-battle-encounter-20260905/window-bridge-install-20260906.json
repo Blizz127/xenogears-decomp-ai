@@ -1,0 +1,12 @@
+{
+  "install": {
+    "source": "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_runtime.c",
+    "before_sha256": "fd4fae9b90677538e8ec7b754e814690d2de6434c39165a512c32b7ca07a6d80",
+    "candidate_sha256": "e671118805b557588947557075f77870e1ea4357b4a99f6d9b97ab6308d42097",
+    "installed_sha256": "e671118805b557588947557075f77870e1ea4357b4a99f6d9b97ab6308d42097",
+    "root_candidate_test_log_sha256": "6feb181eb37d554c7bc53d213852674f291bd5f10c657ccb67a66263a8667cef"
+  },
+  "binary_sha256": "e7dc594198cd049b1e4a275aee4635a6a15b6e64687bf8f438cc589751866361",
+  "test_directory": "/tmp/xeno-window-abi-test-20260906.hiF8ugeX",
+  "test_log_sha256": "c87aef2f71270e783ef0c22788303134dcfd39994b7633817f51abf04df7024d"
+}

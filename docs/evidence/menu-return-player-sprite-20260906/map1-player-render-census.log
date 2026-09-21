@@ -1,0 +1,80 @@
+[xeno-port][player-render] call=1 sprite=007c60ac frameCount=0 NO-QUADS(frameCount==0) base=007c6160 base30=007c6218 flags40=00100300 flags3c=50000001 mask3d=00
+[xeno-port][player-render] call=2 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000009 mask3d=00
+[xeno-port][player-render] call=120 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000009 mask3d=00
+[xeno-port][test] XENO_MENU_FORCE: roster=0/2/255 availability=0005 FrMask=ffff fallback=preserved
+[xeno-port][test] XENO_MENU_FORCE: seeded harness inventory (18 real item IDs, quantities 11..28) -- cold boot had no save inventory
+[xeno-port][test] XENO_MENU_FORCE: requesting field main menu (D_800ADB64=0x80) at frame 300
+[xeno-port][party-diag] pre-free   buffers=0x6e4070/0x6f8078/0x70c080 skins=0/2/255 numActors=143 liveActors=64 player=1
+[xeno-port][party-diag] pre-free   actor[0] pSpriteData=007c5ed8 pActorData=0075e128 skinId=00 status=01e0
+[xeno-port][party-diag] pre-free   actor[1] pSpriteData=007c60ac pActorData=0075e2e0 skinId=00 status=0241
+[xeno-port][party-diag] pre-free   actor[2] pSpriteData=007c6520 pActorData=0075e498 skinId=00 status=0240
+[xeno-port][party-diag] pre-free   actor[3] pSpriteData=007c6994 pActorData=0075e650 skinId=00 status=0260
+[xeno-port][party-diag] pre-free   actor[4] pSpriteData=007c6e08 pActorData=0075e808 skinId=00 status=0260
+[xeno-port][party-diag] pre-free   actor[5] pSpriteData=007c727c pActorData=0075e9c0 skinId=00 status=0260
+[xeno-port][party-diag] pre-free   actor[6] pSpriteData=007c76f0 pActorData=0075eb78 skinId=00 status=0260
+[xeno-port][party-diag] pre-free   actor[7] pSpriteData=007c7b64 pActorData=0075ed30 skinId=00 status=0260
+[xeno-port][party-diag] post-free  buffers=0x6e4070/0x6f8078/0x70c080 skins=0/2/255 numActors=143 liveActors=64 player=1
+[xeno-port][party-diag] post-free  actor[0] pSpriteData=007c5ed8 pActorData=0075e128 skinId=00 status=01e0
+[xeno-port][party-diag] post-free  actor[1] pSpriteData=007c60ac pActorData=0075e2e0 skinId=00 status=0241
+[xeno-port][party-diag] post-free  actor[2] pSpriteData=007c6520 pActorData=0075e498 skinId=00 status=0240
+[xeno-port][party-diag] post-free  actor[3] pSpriteData=007c6994 pActorData=0075e650 skinId=00 status=0260
+[xeno-port][party-diag] post-free  actor[4] pSpriteData=007c6e08 pActorData=0075e808 skinId=00 status=0260
+[xeno-port][party-diag] post-free  actor[5] pSpriteData=007c727c pActorData=0075e9c0 skinId=00 status=0260
+[xeno-port][party-diag] post-free  actor[6] pSpriteData=007c76f0 pActorData=0075eb78 skinId=00 status=0260
+[xeno-port][party-diag] post-free  actor[7] pSpriteData=007c7b64 pActorData=0075ed30 skinId=00 status=0260
+[xeno-port][menu] func_800799D4 request=128 D_80059460=0 -> MenuMain
+[xeno-port][test] XENO_MENU_FORCE: Cross cancel at reader tick 120
+[xeno-port][menu] MenuMain returned D_800594D0=0
+[xeno-port][party-diag] post-alloc buffers=0x6e4070/0x6f8078/0x70c080 skins=0/2/255 numActors=143 liveActors=64 player=1
+[xeno-port][party-diag] post-alloc actor[0] pSpriteData=007c5ed8 pActorData=0075e128 skinId=00 status=01e0
+[xeno-port][party-diag] post-alloc actor[1] pSpriteData=007c60ac pActorData=0075e2e0 skinId=00 status=0241
+[xeno-port][party-diag] post-alloc actor[2] pSpriteData=007c6520 pActorData=0075e498 skinId=00 status=0240
+[xeno-port][party-diag] post-alloc actor[3] pSpriteData=007c6994 pActorData=0075e650 skinId=00 status=0260
+[xeno-port][party-diag] post-alloc actor[4] pSpriteData=007c6e08 pActorData=0075e808 skinId=00 status=0260
+[xeno-port][party-diag] post-alloc actor[5] pSpriteData=007c727c pActorData=0075e9c0 skinId=00 status=0260
+[xeno-port][party-diag] post-alloc actor[6] pSpriteData=007c76f0 pActorData=0075eb78 skinId=00 status=0260
+[xeno-port][party-diag] post-alloc actor[7] pSpriteData=007c7b64 pActorData=0075ed30 skinId=00 status=0260
+[xeno-port][party-diag] post-lzss  buffers=0x6e4070/0x6f8078/0x70c080 skins=0/2/255 numActors=143 liveActors=64 player=1
+[xeno-port][party-diag] post-lzss  actor[0] pSpriteData=007c5ed8 pActorData=0075e128 skinId=00 status=01e0
+[xeno-port][party-diag] post-lzss  actor[1] pSpriteData=007c60ac pActorData=0075e2e0 skinId=00 status=0241
+[xeno-port][party-diag] post-lzss  actor[2] pSpriteData=007c6520 pActorData=0075e498 skinId=00 status=0240
+[xeno-port][party-diag] post-lzss  actor[3] pSpriteData=007c6994 pActorData=0075e650 skinId=00 status=0260
+[xeno-port][party-diag] post-lzss  actor[4] pSpriteData=007c6e08 pActorData=0075e808 skinId=00 status=0260
+[xeno-port][party-diag] post-lzss  actor[5] pSpriteData=007c727c pActorData=0075e9c0 skinId=00 status=0260
+[xeno-port][party-diag] post-lzss  actor[6] pSpriteData=007c76f0 pActorData=0075eb78 skinId=00 status=0260
+[xeno-port][party-diag] post-lzss  actor[7] pSpriteData=007c7b64 pActorData=0075ed30 skinId=00 status=0260
+[xeno-port][party-diag] post-2488  buffers=0x6e4070/0x6f8078/0x70c080 skins=0/2/255 numActors=143 liveActors=64 player=1
+[xeno-port][party-diag] post-2488  actor[0] pSpriteData=007c5ed8 pActorData=0075e128 skinId=00 status=01e0
+[xeno-port][party-diag] post-2488  actor[1] pSpriteData=007c60ac pActorData=0075e2e0 skinId=00 status=0241
+[xeno-port][party-diag] post-2488  actor[2] pSpriteData=007c6520 pActorData=0075e498 skinId=00 status=0240
+[xeno-port][party-diag] post-2488  actor[3] pSpriteData=007c6994 pActorData=0075e650 skinId=00 status=0260
+[xeno-port][party-diag] post-2488  actor[4] pSpriteData=007c6e08 pActorData=0075e808 skinId=00 status=0260
+[xeno-port][party-diag] post-2488  actor[5] pSpriteData=007c727c pActorData=0075e9c0 skinId=00 status=0260
+[xeno-port][party-diag] post-2488  actor[6] pSpriteData=007c76f0 pActorData=0075eb78 skinId=00 status=0260
+[xeno-port][party-diag] post-2488  actor[7] pSpriteData=007c7b64 pActorData=0075ed30 skinId=00 status=0260
+[xeno-port][menu] WAIT_MENU D_8004F350=0
+[xeno-port][player-render] call=221 sprite=007c60ac frameCount=8 base=007c6160 base30=007c6218 flags40=00000320 flags3c=10000009 mask3d=00
+[xeno-port][player-render] call=222 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=227 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=230 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=239 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=240 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=242 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=251 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=254 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=263 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=266 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=275 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=278 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=287 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=290 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=299 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=302 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=311 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=314 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=323 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=326 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=335 sprite=007c60ac frameCount=9 base=007c6160 base30=007c6218 flags40=00000324 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=338 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=347 sprite=007c60ac frameCount=7 base=007c6160 base30=007c6218 flags40=0000031c flags3c=10000001 mask3d=00
+[xeno-port][player-render] call=350 sprite=007c60ac frameCount=6 base=007c6160 base30=007c6218 flags40=00000318 flags3c=10000001 mask3d=00

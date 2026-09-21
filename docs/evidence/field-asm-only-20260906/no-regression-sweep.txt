@@ -1,0 +1,10 @@
+sym                | BEFORE (pristine .o)      | AFTER (my .o)
+-------------------|---------------------------|---------------------------
+FieldDisplay       | EXACT MATCH - all 29 instructions / 116 bytes ide | EXACT MATCH - all 29 instructions / 116 bytes ide
+func_800A5C40      | MISMATCH - 481 differing instruction(s) of 498 | MISMATCH - 481 differing instruction(s) of 498
+func_800A6E70      | MISMATCH - 121 differing instruction(s) of 125 | MISMATCH - 121 differing instruction(s) of 125
+FieldZoomFadeEffectUpdate | MISMATCH - 112 differing instruction(s) of 141 | MISMATCH - 112 differing instruction(s) of 141
+func_800A7048      | n/a                       | n/a                      
+
+=== every function defined in misc5.c.o: retail status before vs after ===
+(only functions whose exact-match status changed are listed above)

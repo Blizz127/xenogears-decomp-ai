@@ -2,21 +2,56 @@
 #include "field/main.h"
 #include "field/actor.h"
 #include "field/camera.h"
+#include "field/text_box.h"
 #include "system/math.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdlib.h>
+#include "test_input.h"
+
+#ifdef XENO_PC_PORT
+/* PsyX GTE register/intrinsic access for the func_80075B44 sprite-fog branch
+ * (gte_ldrgb/gte_dpcs/C2_RGB2). Port build only. */
+#include <psx/inline_c.h>
+#include <psx/gtereg.h>
+#endif
 #else
 /* <assert.h> is unavailable under the matching build's -nostdinc MIPS
  * preprocessor. The assert(...) calls below mark unimplemented/invariant
  * checks in functions not yet byte-matched, so a no-op assert compiles
  * safely there. */
 #define assert(x) ((void)0)
+/* Matching build uses the PSY-Q inline GTE macros where retail inlines GTE
+ * operations (the port uses PsyCross' <psx/inline_c.h> above). */
+#include "psyq/inline_c.h"
+#include "psyq/gtemac.h"
 #endif
 
 #ifdef XENO_PC_PORT
+static int s_walkFieldDumpFrame;
+static int s_walkFieldDumpEnabled = -1;
+
+static int XenoWalkFieldDumpEnabled(void) {
+    if (s_walkFieldDumpEnabled < 0) {
+        const char* env = getenv("XENO_WALK_ANIM_DUMP");
+        s_walkFieldDumpEnabled =
+            (env != NULL && env[0] != '\0' && env[0] != '0');
+    }
+    return s_walkFieldDumpEnabled;
+}
+
+static int XenoWalkFieldDumpFrame(void) {
+    return XenoWalkFieldDumpEnabled() ? s_walkFieldDumpFrame : 60;
+}
+
+static void XenoWalkFieldDumpAdvance(void) {
+    if (XenoWalkFieldDumpEnabled() && s_walkFieldDumpFrame < 60) {
+        s_walkFieldDumpFrame++;
+    }
+}
+
 static int XenoFieldDiagEnabled(void) {
     static int s_enabled = -1;
 
@@ -73,7 +108,26 @@ void FieldComputeSceneMatrices(void) {
     SetTransMatrix(&g_Scene.worldToScreenMatrix);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072254);
+/* Rebuild an actor's transform matrix from its rotation angles, then apply the
+ * actor's 3D scale (ActorData scaleX/Y/Z; the asm loads them with lh, hence the
+ * signed casts). Called by the EX-0x03 SET_CURRENT_ACTOR_SCALE opcode handler
+ * func_8008D0F4 after it stores the new scale.
+ * asm/field/nonmatchings/main/misc2/func_80072254.s */
+void func_80072254(s32 actorIndex) {
+    VECTOR scale;
+    FieldActor* pActor;
+
+    pActor = &g_FieldActors[actorIndex];
+    scale.vx = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleX;
+    scale.vy = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleY;
+    scale.vz = (s16)((ActorData*)(uintptr_t)pActor->pActorData)->scaleZ;
+
+    pActor = &g_FieldActors[actorIndex];
+    RotMatrix((SVECTOR*)&pActor->rotation, &pActor->transformMatrix);
+
+    pActor = &g_FieldActors[actorIndex];
+    ScaleMatrix(&pActor->transformMatrix, &scale);
+}
 
 void FieldMatrixCreateWorldToScreen(void) {
     FieldComputeSceneMatrices();
@@ -85,9 +139,47 @@ void FieldMatrixCreateWorldToScreen(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007234C);
+extern u8 D_800ADC1C[];
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072398);
+/* Count how many consecutive camera sectors, scanning forward from `index`,
+ * are blocked by `mask`. Stops at the first unblocked sector (returning the
+ * run length so far) or returns 0 if all 8 sectors are blocked.
+ * func_80072398 is the identical scan in the opposite direction; retail emits
+ * the two as byte-identical code apart from the index step (+1 vs -1).
+ * Retail: asm/field/main/misc2.s 8007234C-80072394. */
+s32 func_8007234C(u32 mask, u32 index) {
+    s32 i = 0;
+    s32 found = 0;
+    while (i < 8) {
+        u8 bit = D_800ADC1C[index & 7];
+        index++;
+        if (!(mask & bit)) {
+            return found;
+        }
+        found++;
+        i++;
+    }
+    return 0;
+}
+
+extern u8 D_800ADC1C[];
+
+/* Backward twin of func_8007234C. Retail: asm/field/main/misc2.s
+ * 80072398-800723E0. */
+s32 func_80072398(u32 mask, u32 index) {
+    s32 i = 0;
+    s32 found = 0;
+    while (i < 8) {
+        u8 bit = D_800ADC1C[index & 7];
+        index--;
+        if (!(mask & bit)) {
+            return found;
+        }
+        found++;
+        i++;
+    }
+    return 0;
+}
 
 void func_800723E4(void* arg0, void* arg1, void* arg2) {
     VECTOR delta;
@@ -138,6 +230,10 @@ extern VECTOR g_CameraEye2;
 extern VECTOR g_CameraAt2;
 extern VECTOR D_800AF8D0; /* second up vector, pairs with eye2/at2 */
 extern s32 D_800AF8E0, D_800AF8E4, D_800AF8E8;
+extern s16 g_FieldCameraMode;
+extern u16 g_CamMovementFlags;
+extern s16 g_CamAtMovementDuration, g_CamEyeMovementDuration;
+extern void func_80070594(MATRIX*);
 
 void func_8007254C(void) {
     /* g_CamInterpolation fields */
@@ -169,6 +265,8 @@ void func_8007254C(void) {
     *(s16*)((u8*)&g_Scene + 0x42) = 0;
     *(s16*)((u8*)&g_Scene + 0x44) = 0;
 
+    func_80070594(&g_Scene.camRotationMatrix);
+
     /* Camera vectors — asm 80072640-800726B0, $s0 = &g_CamInterpolation
      * (0x800AF984). Negative-offset decode: -0x104 eye.vx, -0xF4..-0xEC at,
      * -0xE4/-0xE0/-0xDC up, -0xD4..-0xCC eye2, -0xC4..-0xBC at2,
@@ -194,81 +292,126 @@ void func_8007254C(void) {
     D_800AF8E4 = 0;
     D_800AF8E8 = 0;
 
-    /* XENO_PC_PORT TODO: func_80070594 writes a matrix at an unnamed
-     * camera work variable (PSX 0x800AF9B0). Skip until the symbol is
-     * resolved — it initializes camera transform state not needed until
-     * the camera update functions run. */
+    /* Retail 800726B4..800726D0: reset the remaining scene words and
+     * leave scripted camera mode before initializing the next field. */
+    *(s16*)((u8*)&g_Scene + 0x70) = 0;
+    *(s16*)((u8*)&g_Scene + 0x80) = 0;
+    *(s16*)((u8*)&g_Scene + 0x8C) = 0;
+    g_FieldCameraMode = 0;
+    g_CamMovementFlags = 0;
+    g_CamAtMovementDuration = 0;
+    g_CamEyeMovementDuration = 0;
 }
 
-/* ---- func_800726E8: camera mode transition handler --------------------------
- * Called from func_80073230. Checks scene flags and transitions camera modes.
- * With zeroed scene data, most paths are skipped. */
+/* ---- func_800726E8: camera heading transition handler -----------------------
+ * Called from func_80073230. g_Scene+0x56 is the camera heading (0xFFF wrap,
+ * 8 sectors of 0x200); +0x64/+0x65 are per-sector block masks tested against
+ * D_800ADC1C, +0x5C/+0x60/+0x66/+0x7C drive an 8-frame heading interpolation.
+ * Two held-button blocks (D_800AFE9C bits 4/8) start a manual ±0x200 rotate,
+ * each refused while g_Scene+0x48 bit15 is set (script owns the camera) or a
+ * transition is in flight, and refused into a masked sector.
+ * Retail: asm/field/main/misc2.s 800726E8-80072A38.
+ *
+ * Matching notes -- every `mask & D_800ADC1C[...]` below is written mask-first
+ * on purpose. GCC 2.7.2 emits `and $d, <op1>, <op0>`, so writing the array
+ * subscript first flips the operand order against retail; and because the
+ * mask operand is evaluated first it is its address, not g_Scene+0x56's, that
+ * wins the one callee-saved register ($s0) in block 2. Likewise block 2 spells
+ * the g_Scene+0x56 read out at each use rather than hoisting it into a local:
+ * CSE folds the repeats within the block, but a local would put the wrong
+ * address in $s0. */
 extern u8 D_800ADC1C[];
-extern s32 func_8007234C(void);
-extern s32 func_80072398(u8 scene65, s32 modeIdx);
+extern u16 D_800AFE9C;
+extern s32 func_80072398(u32 mask, u32 index);
 extern void func_80284EA4(void);
 
 void func_800726E8(void) {
     u8 scene64 = *(u8*)((u8*)&g_Scene + 0x64);
-    u8 scene65 = *(u8*)((u8*)&g_Scene + 0x65);
-    s16 scene66 = *(s16*)((u8*)&g_Scene + 0x66);
+    u8 scene65;
+    u16 scene56;
+    s32 modeIdx;
 
-    if (scene64 == 0xFF || scene65 == 0xFF) goto tail;
+    if (scene64 == 0xFF) goto tail;
+    scene65 = *(u8*)((u8*)&g_Scene + 0x65);
+    if (scene65 == 0xFF) goto tail;
 
-    if (scene66 == 0) {
-        /* Check mode flags via D_800ADC1C indexed by scene mode */
-        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-        s32 modeIdx = scene56 >> 9;
-        if (D_800ADC1C[modeIdx] & scene64) {
-            s32 scene5C = *(s32*)((u8*)&g_Scene + 0x5C);
-            if (scene5C == (s32)0xFFC00000) {
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            } else if (scene5C == 0x400000) {
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            } else {
-                *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
-                *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
-                *(s16*)((u8*)&g_Scene + 0x66) = 8;
-            }
+    /* Both automatic blocks are skipped while a transition is active
+     * (asm 80072728: bnez -> .L80072850, the first pad block). */
+    if (*(s16*)((u8*)&g_Scene + 0x66) != 0) goto pad_rotate;
+
+    /* Automatic block 1: current sector masked against scene64. */
+    scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
+    if (scene64 & D_800ADC1C[scene56 >> 9]) {
+        s32 scene5C = *(s32*)((u8*)&g_Scene + 0x5C);
+        if (scene5C != (s32)0xFFC00000 && scene5C != 0x400000) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+            *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
+        }
+        *(s16*)((u8*)&g_Scene + 0x66) = 8;
+    }
+
+    /* Automatic block 2: current sector masked against scene65 rotates
+     * toward the nearer side (func_8007234C vs func_80072398). Retail keeps
+     * &g_Scene+0x65 in $s0 and reloads the byte through it either side of the
+     * func_8007234C call; the heading is re-read from its own %hi/%lo pair. */
+    if (*(u8*)((u8*)&g_Scene + 0x65) &
+        D_800ADC1C[(*(u16*)((u8*)&g_Scene + 0x56) & 0xFFF) >> 9]) {
+        s32 r1 = func_8007234C(*(u8*)((u8*)&g_Scene + 0x65),
+                               (*(u16*)((u8*)&g_Scene + 0x56) & 0xFFF) >> 9);
+        if (func_80072398(*(u8*)((u8*)&g_Scene + 0x65),
+                          (*(u16*)((u8*)&g_Scene + 0x56) & 0xFFF) >> 9) < r1) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
+            *(s32*)((u8*)&g_Scene + 0x7C) -= 0x200;
+        } else {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
+            *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
+        }
+        *(s16*)((u8*)&g_Scene + 0x66) = 8;
+    }
+
+pad_rotate:
+    /* Manual rotate, negative direction (asm .L80072850). */
+    if ((D_800AFE9C & 4) &&
+        !(*(s32*)((u8*)&g_Scene + 0x48) & 0x8000) &&
+        *(s16*)((u8*)&g_Scene + 0x66) == 0) {
+        modeIdx = ((*(s16*)((u8*)&g_Scene + 0x56) - 0x200) & 0xFFF) >> 9;
+        if (!(*(u8*)((u8*)&g_Scene + 0x65) & D_800ADC1C[modeIdx])) {
+            *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
+            *(s16*)((u8*)&g_Scene + 0x66) = 8;
+            *(s32*)((u8*)&g_Scene + 0x7C) -= 0x200;
         }
     }
 
-    /* Second mode check using scene65 */
-    {
-        u16 scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-        s32 modeIdx = scene56 >> 9;
-        if (D_800ADC1C[modeIdx] & scene65) {
-            s32 r1 = func_8007234C();
-            s32 r2;
-            scene56 = *(u16*)((u8*)&g_Scene + 0x56) & 0xFFF;
-            r2 = func_80072398(scene65, scene56 >> 9);
-            if (r2 < r1) {
-                *(s32*)((u8*)&g_Scene + 0x5C) = 0xFFC00000;
-                *(s32*)((u8*)&g_Scene + 0x7C) = *(s32*)((u8*)&g_Scene + 0x7C);
+    /* Manual rotate, positive direction (asm .L800728F4). */
+    if (D_800AFE9C & 8) {
+        if (!(*(s32*)((u8*)&g_Scene + 0x48) & 0x8000)) {
+            /* asm 80072930: bnez -> .L800729AC, straight into the
+             * countdown body. */
+            if (*(s16*)((u8*)&g_Scene + 0x66) != 0) goto countdown;
+            modeIdx = ((*(s16*)((u8*)&g_Scene + 0x56) + 0x200) & 0xFFF) >> 9;
+            if (!(*(u8*)((u8*)&g_Scene + 0x65) & D_800ADC1C[modeIdx])) {
+                *(s32*)((u8*)&g_Scene + 0x5C) = 0x400000;
                 *(s16*)((u8*)&g_Scene + 0x66) = 8;
+                *(s32*)((u8*)&g_Scene + 0x7C) += 0x200;
             }
         }
     }
 
 tail:
-    /* Z-scroll transition countdown */
-    if (*(s16*)((u8*)&g_Scene + 0x66) != 0) {
+    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) goto set56;
+countdown:
+    {
         s32 new60 = *(s32*)((u8*)&g_Scene + 0x60) + *(s32*)((u8*)&g_Scene + 0x5C);
         s16 v;
         *(s32*)((u8*)&g_Scene + 0x60) = new60;
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)(new60 >> 16);
-        v = *(u16*)((u8*)&g_Scene + 0x66) - 1;
-        *(u16*)((u8*)&g_Scene + 0x66) = v;
-        if (v == 0) goto set56;
-    } else {
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+        *(s16*)((u8*)&g_Scene + 0x56) = (s16)(new60 >> 16);
+        v = (s16)(*(u16*)((u8*)&g_Scene + 0x66) - 1);
+        *(s16*)((u8*)&g_Scene + 0x66) = v;
+        if (v != 0) goto done;
     }
-
-    if (0) {
-    set56:
-        *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
-    }
-
+set56:
+    *(u16*)((u8*)&g_Scene + 0x56) = (u16)*(s32*)((u8*)&g_Scene + 0x7C);
+done:
     if (g_FieldSystemMode == 0) {
         func_80284EA4();
     }
@@ -337,7 +480,11 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
     sceneScrZ = *(s32*)((u8*)&g_Scene + 0x68);
     scene6E = *(s16*)((u8*)&g_Scene + 0x6E);
 
-    /* Angle calculation: angle*23/8 + 0xC00, then rsin */
+    /* Angle calculation: (91*angle)>>3 + 0xC00, then rsin. The expression below
+     * is the compiler's strength-reduced 91*angle ((3a<<3 - a)<<2 - a); verified
+     * byte-exact against retail asm func_80072A38.s 80072B80-80072BA0 (this is a
+     * matching function). Earlier "angle*23/8" comment was stale (23a is only the
+     * inner (3a<<3 - a) subterm before the final <<2 - a). */
     {
         s32 angleCalc = sceneAngle;
         s32 sinArg = ((angleCalc * 2 + angleCalc) * 8 - angleCalc) * 4 - angleCalc;
@@ -429,6 +576,7 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
  * Also handles screen-Z transitions, shake offsets, and countdowns. */
 extern s32 D_800B21D8;
 extern s32 D_800AF8E0, D_800AF8E4, D_800AF8E8;
+extern int rand(void);
 
 /* Helper: interpolate one 32-bit component toward target.
  * If difference is small enough (diff^2 < threshold), snap. Otherwise step. */
@@ -485,10 +633,36 @@ void func_80072D74(void) {
     cam_lerp(&g_CameraAt.vz,  g_CameraAt2.vz,  g_CamInterpolation.atStepDistance, atStepSq);
     cam_lerp(&g_CameraAt.vy,  g_CameraAt2.vy,  g_CamInterpolation.atStepDistance, atStepSq);
 
-    /* Shake offset clamping (negative → zero + clear flags) */
-    if (D_800AF8E0 < 0) { D_800AF8E0 = 0; *(s32*)((u8*)&g_Scene + 0xA0) = 0; }
-    if (D_800AF8E4 < 0) { D_800AF8E4 = 0; *(s32*)((u8*)&g_Scene + 0xA4) = 0; }
-    if (D_800AF8E8 < 0) { D_800AF8E8 = 0; *(s32*)((u8*)&g_Scene + 0xA8) = 0; }
+    /* Retail 80073068..800731FC: reset the shake accumulators, then either
+     * integrate the per-frame shake velocities (g_Scene+0xAC/B0/B4) when a
+     * shake is active (g_Scene+0x9A != 0), or cancel it (g_Scene+0x9C),
+     * then generate the next per-axis random offsets. */
+    D_800AF8E0 = 0;
+    D_800AF8E4 = 0;
+    D_800AF8E8 = 0;
+
+    if (*(s16*)((u8*)&g_Scene + 0x98) != 0) {
+        if (*(s16*)((u8*)&g_Scene + 0x9A) != 0) {
+            *(s32*)((u8*)&g_Scene + 0xA0) += *(s32*)((u8*)&g_Scene + 0xAC);
+            *(s32*)((u8*)&g_Scene + 0xA4) += *(s32*)((u8*)&g_Scene + 0xB0);
+            *(s32*)((u8*)&g_Scene + 0xA8) += *(s32*)((u8*)&g_Scene + 0xB4);
+        } else if (*(s16*)((u8*)&g_Scene + 0x9C) != 0) {
+            *(s32*)((u8*)&g_Scene + 0xA8) = 0;
+            *(s32*)((u8*)&g_Scene + 0xA4) = 0;
+            *(s32*)((u8*)&g_Scene + 0xA0) = 0;
+            *(s16*)((u8*)&g_Scene + 0x98) = 0;
+            *(s16*)((u8*)&g_Scene + 0x9C) = 0;
+        }
+
+        D_800AF8E0 = rand() * *(s16*)((u8*)&g_Scene + 0xA2);
+        D_800AF8E4 = rand() * *(s16*)((u8*)&g_Scene + 0xA6);
+        D_800AF8E8 = rand() * *(s16*)((u8*)&g_Scene + 0xAA);
+
+        /* Shake offset clamping (negative → zero + clear flag) */
+        if (D_800AF8E0 < 0) { D_800AF8E0 = 0; *(s32*)((u8*)&g_Scene + 0xA0) = 0; }
+        if (D_800AF8E4 < 0) { D_800AF8E4 = 0; *(s32*)((u8*)&g_Scene + 0xA4) = 0; }
+        if (D_800AF8E8 < 0) { D_800AF8E8 = 0; *(s32*)((u8*)&g_Scene + 0xA8) = 0; }
+    }
 
     /* g_Scene + 0x9A countdown */
     {
@@ -609,17 +783,21 @@ void func_80073230(void) {
 
         func_80072A38(&camInput, *(s16*)(pActorData + 0x72));
 
-        /* Collision/ceiling check */
+        /* Camera-eye terrain clamp (asm 800733C4-8007340C): probe the top
+         * walkmesh layer at the eye's (x,z); if the surface Y there is above
+         * the eye, snap eye.vy up to it. Retail loads $a0 from
+         * g_CameraEye2+0x2 (vx>>16) and passes two DISTINCT out buffers
+         * (sp+0x38 surface point, sp+0x28 face normal). */
         if (!(g_Scene.unk48 & 0x4000)) {
-            /* func_8007B1C4 is stubbed (returns 0) — ceiling check */
-            VECTOR stackOut;
+            s16 meshPoint[4];
+            s32 meshNormal[4];
             func_8007B1C4(
-                (s16)(g_CameraEye2.vy >> 16),
+                (s16)(g_CameraEye2.vx >> 16),
                 (s16)(g_CameraEye2.vz >> 16),
                 D_800AFB54 - 1,
-                &stackOut, &stackOut);
-            if (*(s16*)((u8*)&stackOut + 0x02) < (s16)(g_CameraEye2.vy >> 16)) {
-                g_CameraEye2.vy = (s32)*(s16*)((u8*)&stackOut + 0x02) << 16;
+                meshPoint, meshNormal);
+            if (meshPoint[1] < (s16)(g_CameraEye2.vy >> 16)) {
+                g_CameraEye2.vy = (s32)meshPoint[1] << 16;
             }
         }
 
@@ -799,15 +977,18 @@ void func_800739C0(void) {
     D_800AFC48 = 0;
     D_800AFC44 = 0;
 
-    /* Yaw from current eye/at */
+    /* Yaw from current eye/at -> +0xA (curAngleY), asm 80073A10-80073A4C:
+     * sh to g_CamInterpolation+0xA. */
     yawCur = ratan2(g_CameraAt.vz - g_CameraEye.vz,
                     g_CameraAt.vx - g_CameraEye.vx);
-    g_CamInterpolation.targetAngleY = (s16)(yawCur - 0x400);
+    g_CamInterpolation.curAngleY = (s16)(yawCur - 0x400);
 
-    /* Yaw from target eye2/at2 */
+    /* Yaw from target eye2/at2 -> +0x8 (targetAngleY), asm 80073A34-80073A80:
+     * sh to g_CamInterpolation+0x8. This is the term OP_UPDATE_CHARACTER
+     * subtracts (Noah: camera2Tan). The port had these two stores swapped. */
     yawTarget = ratan2(g_CameraAt2.vz - g_CameraEye2.vz,
                        g_CameraAt2.vx - g_CameraEye2.vx);
-    g_CamInterpolation.curAngleY = (s16)(yawTarget - 0x400);
+    g_CamInterpolation.targetAngleY = (s16)(yawTarget - 0x400);
 
     /* Horizontal distance */
     camDist = FieldGetVec2Magnitude(
@@ -870,33 +1051,43 @@ void func_800739C0(void) {
             }
 
             {
+                /* Facing smoothing toward the commanded angle (+0x106 ->
+                 * +0x108). Retail asm 80073CD8-80073D54: SKIP when
+                 * scriptFlags bit 0x8000 is set (the port had this guard
+                 * inverted, freezing every walking actor's facing).
+                 * - pflags(+0x14) bit 0x200000 set AND scriptFlags 0x1800
+                 *   clear: snap toward the octant packed in pflags bits
+                 *   11-13 at fixed speed 0x200 (asm .L80073D38).
+                 * - otherwise: smooth toward +0x106 at speed D_800B21B4
+                 *   (flags +0x04 bit 0x2000) or the actor's own +0x11E
+                 *   (asm .L80073D08). */
                 s32 dataFlags = *(s32*)(pData + 0x00);
-                if (dataFlags & 0x8000) {
-                    /* Has animation */
+                if (!(dataFlags & 0x8000)) {
                     s32 pflags = *(s32*)(pData + 0x14);
-                    if (!(pflags & 0x200000)) {
-                        if (dataFlags & 0x1800) {
-                            /* Use D_800B21B4 angle */
-                            s16 angle = D_800B21B4;
-                            s16 curAng = *(s16*)(pData + 0x108);
-                            s16 targAng = *(s16*)(pData + 0x106);
-                            *(s16*)(pData + 0x108) =
-                                (s16)FieldMathUpdateAngle(curAng, targAng, angle);
-                        } else {
-                            /* Computed angle */
-                            s16 angle = (s16)((((pflags >> 11) - 2) & 7) << 9);
-                            s16 curAng = *(s16*)(pData + 0x108);
-                            *(s16*)(pData + 0x108) =
-                                (s16)FieldMathUpdateAngle(curAng, 0, angle);
-                        }
+                    if ((pflags & 0x200000) && !(dataFlags & 0x1800)) {
+                        s16 targAng = (s16)((((pflags >> 11) - 2) & 7) << 9);
+                        *(s16*)(pData + 0x108) =
+                            (s16)FieldMathUpdateAngle(
+                                *(s16*)(pData + 0x108), targAng, 0x200);
+                    } else {
+                        s32 flags4 = *(s32*)(pData + 0x04);
+                        s16 speed = (flags4 & 0x2000)
+                                        ? D_800B21B4
+                                        : *(s16*)(pData + 0x11E);
+                        *(s16*)(pData + 0x108) =
+                            (s16)FieldMathUpdateAngle(
+                                *(s16*)(pData + 0x108),
+                                *(s16*)(pData + 0x106), speed);
                     }
                 }
 
-                /* Facing direction update */
+                /* Facing direction push to the sprite. Retail asm 80073D94
+                 * reads the CURRENT camera yaw (lhu g_CamInterpolation+0xA)
+                 * unsigned; the port read +0x8. */
                 if (!D_800ADB05) {
                     s32 flags = *(s32*)(pData + 0x04);
                     if (!(flags & 0x1000000)) {
-                        s32 camAng = g_CamInterpolation.targetAngleY;
+                        s32 camAng = *(u16*)((u8*)&g_CamInterpolation + 0xA);
                         s32 actorAng = *(u16*)(pData + 0x108);
                         func_800223B0(*(s32*)(pActor + 0x04),
                                      (camAng + actorAng) << 16 >> 16);
@@ -1133,7 +1324,11 @@ void func_80074108(void) {
         s16 actorAngle = *(s16*)(*(u32*)(pActor + 0x4C) + 0x106);
         s32 targetAngle = actorAngle + (*(u16*)((u8*)&g_CamInterpolation + 0xA) + 0x400);
         D_800ADB4A = (s16)targetAngle;
-        newAngle = FieldMathUpdateAngle(curAngle, (s16)(targetAngle >> 16), 0x40);
+        /* Retail 800742F8--80074308 sign-extends the low half of the
+         * actor/camera angle sum (sll 16; sra 16) before interpolation.
+         * Shifting the sum first collapsed almost every positive target to
+         * zero, rotating the room-background camera away from the painting. */
+        newAngle = FieldMathUpdateAngle(curAngle, (s16)targetAngle, 0x40);
     }
     D_800ADB48 = (s16)newAngle;
 
@@ -1295,6 +1490,38 @@ void FieldPollControllers(void) {
     D_800C3900 &= D_800ADB00;
     D_800C2694 &= D_800ADB00;
 
+#ifdef XENO_PC_PORT
+    /* DIAGNOSTIC / TEST TOOLING (remove with PcPort_FieldTestInput* in
+     * pc_port/src/test_input.c): scripted field input from
+     * XENO_FIELD_TEST_INPUT, merged at retail's post-drain accumulator seam so
+     * button-gated scenes (e.g. the Map 4 prologue's OP31 Circle wait) can be
+     * driven headlessly. Unset => no effect; real pads are still ORed in. */
+    {
+        extern int PcPort_FieldTestInputInit(void);
+        extern void PcPort_FieldTestInputMerge(u16*, u16*, u16*);
+
+        PcPort_FieldTestInputInit();
+        PcPort_FieldTestInputMerge(&D_800AFE9C, &D_800C3900, &D_800C2694);
+    }
+
+    /* Headless field-test: synthesize Circle-released when a text box is
+     * waiting on confirm (window flags bit 0x8). Real pads still work; this
+     * only ORs the bit so well/dialog scripts can finish without a human. */
+    {
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (ft && ft[0] == '1') {
+            s32 i;
+            for (i = 0; i < 4; i++) {
+                u8* pWin = (u8*)&g_FieldTextBoxes[i] + 0x18;
+                if (g_FieldTextBoxes[i].visibility == 0 && (*(u16*)(pWin + 0x10) & 0x8)) {
+                    D_800C2694 |= 0x20;
+                    break;
+                }
+            }
+        }
+    }
+#endif
+
     ControllerResetState();
     func_8007AE78(1, &D_80065848);
 
@@ -1333,11 +1560,33 @@ extern void func_8002C6E0(u8 a0, u8 a1, u8 a2);
 extern void func_80048AB0(s32 a0, s32 a1, s32 a2);
 extern s32 func_800AAA74(void* modelData);
 extern s32 func_8002C700(void* a0, void* a1, void* a2, s32 a3);
+/* PC-HDD timing marker block written by the tail of func_800748E8 when
+ * g_FieldSystemMode == 0 (retail 800751C8). */
+extern u8 D_8006FB10;
+/* func_800748E8's model-offset block (retail 80075004-80075020). */
+extern void func_80030B14(void* pMatrix);
+extern void func_80030C40(s16 a, s16 b, s16 c);
+extern s16 D_800AFB04;
+extern s16 D_800AFB06;
+extern s16 D_800AFB08;
+extern s32 D_800ADB58;
+extern s32 D_800ADB5C;
+extern void func_800305D8(void* pModelOffset);
+#ifdef XENO_PC_PORT
+extern s32 D_800B2264;
+#endif
 
 void func_800748E8(void) {
     VECTOR scale;
     MATRIX work;
     s32 actorIndex;
+#ifdef XENO_PC_PORT
+    static s32 s_modelDiagFrames;
+    s32 modelConsidered = 0;
+    s32 modelEmitted = 0;
+    s32 modelHidden = 0;
+    s32 modelStatus20 = 0;
+#endif
 
     D_80059578 = 0;
     D_800595C0 = 0;
@@ -1383,87 +1632,214 @@ void func_800748E8(void) {
             u8* env = (u8*)&D_800B218E;
             u8 mode;
             MATRIX modelMatrix;
+            MATRIX branchMatrix;
             VECTOR modelPosition;
+            SVECTOR branchRotation;
             SVECTOR row;
+            s32 branchMatrixReady;
             s32 hiddenByModel;
 
             assert(modelData != NULL);
+            branchMatrixReady = 0;
 
             if (actorIndex < D_800ADBFC) {
+                u8 parentActorIndex;
+
                 assert(actorData != NULL);
                 mode = *(u32*)(actorData + 0x12C) & 3;
-                assert(mode == 0);
-                assert(*(u16*)(actorData + 0x128) == 0xFFFF);
-                assert(*(u8*)(actorData + 0x75) == 0xFF);
-            }
 
-            if ((env[0x44] & 0x7F) == 0) {
-                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
-                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
-                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
-            }
+                /* Retail 80074AFC-80074BE8: modes 1/2/3 apply the angle at
+                 * ActorData+0x70 around X/Y/Z respectively, append that to
+                 * the actor transform, then compose it with world-to-screen.
+                 * Mode 0 continues through the optional-matrix/parent paths. */
+                if (mode != 0) {
+                    branchRotation.vx = 0;
+                    branchRotation.vy = 0;
+                    branchRotation.vz = 0;
 
-            if ((env[0x44] & 0x7F) == 1) {
-                *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
-                *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
-                *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
-            }
+                    if (mode == 1) {
+                        branchRotation.vx = *(u16*)(actorData + 0x70);
+                    } else if (mode == 2) {
+                        branchRotation.vy = *(u16*)(actorData + 0x70);
+                    } else {
+                        branchRotation.vz = *(u16*)(actorData + 0x70);
+                    }
 
-            assert((env[0x44] & 0x80) == 0);
-            assert(*(s16*)(modelData + 0x12) != 1);
-            assert((status & 3) == 0);
+                    RotMatrix(&branchRotation, &branchMatrix);
+                    MulMatrix2((MATRIX*)(actor + 0x0C), &branchMatrix);
+                    branchMatrix.t[0] = *(s32*)(actor + 0x20);
+                    branchMatrix.t[1] = *(s32*)(actor + 0x24);
+                    branchMatrix.t[2] = *(s32*)(actor + 0x28);
+                    CompMatrix(&g_Scene.worldToScreenMatrix, &branchMatrix,
+                               &modelMatrix);
+                    branchMatrixReady = 1;
+                } else {
+                    u16 additionalMatrix = *(u16*)(actorData + 0x128);
 
-            D_80050104 = 0;
-            if (status & 0x20) {
-                continue;
-            }
+                    /* Retail 80074BEC-80074C70: a non-FFFF value selects a
+                     * model-resource matrix by high-nibble table selector and
+                     * low-12-bit index. Adjust childMatrix in place, compose it
+                     * through world-to-screen and the actor transform, then
+                     * retain the adjusted child transform for descendants. */
+                    if (additionalMatrix != 0xFFFF) {
+                        MATRIX* childMatrix = (MATRIX*)(actor + 0x2C);
 
-            /*
-             * func_800748E8 is handwritten/nonmatching GTE code. The original
-             * asm (80074E14-80074ED8) builds modelMatrix.R = work.R x actorR
-             * COLUMN by COLUMN: for each j it gathers actor matrix column j
-             * with stride-6 halfword loads (lhu +0x0/+0x6/+0xC from bases
-             * actor+0xC/+0xE/+0x10), transforms it with mvmva cv=3
-             * (= ApplyMatrixSV), and stores the result as modelMatrix column j
-             * (sh +0x0/+0x6/+0xC from dests +0x0/+0x2/+0x4). The previous C
-             * read overlapping SVECTORs and stored rows, producing a
-             * near-degenerate rotation.
-             */
-            {
-                s16* actorR = (s16*)(actor + 0x0C); /* row-major 3x3 */
-                SVECTOR col;
-                s32 j;
+                        func_801E72CC(childMatrix, childMatrix,
+                                      additionalMatrix >> 12,
+                                      additionalMatrix & 0xFFF);
+                        CompMatrix(&g_Scene.worldToScreenMatrix, childMatrix,
+                                   &branchMatrix);
+                        CompMatrix(&branchMatrix, (MATRIX*)(actor + 0x0C),
+                                   &modelMatrix);
+                        CompMatrix(childMatrix, (MATRIX*)(actor + 0x0C),
+                                   childMatrix);
+                        branchMatrixReady = 1;
+                    } else {
+                        /* Retail 80074C74-80074D2C: 0xFF means no parent;
+                         * otherwise compose through the named parent's child
+                         * matrix and update this actor's child matrix in place. */
+                        parentActorIndex = *(u8*)(actorData + 0x75);
+                        if (parentActorIndex != 0xFF) {
+                            FieldActor* parentActor = &g_FieldActors[parentActorIndex];
 
-                for (j = 0; j < 3; j++) {
-                    col.vx = actorR[0 + j];
-                    col.vy = actorR[3 + j];
-                    col.vz = actorR[6 + j];
-                    ApplyMatrixSV(&work, &col, &row);
-                    modelMatrix.m[0][j] = row.vx;
-                    modelMatrix.m[1][j] = row.vy;
-                    modelMatrix.m[2][j] = row.vz;
+                            CompMatrix(&g_Scene.worldToScreenMatrix,
+                                       &parentActor->childMatrix, &branchMatrix);
+                            CompMatrix(&branchMatrix, (MATRIX*)(actor + 0x0C),
+                                       &modelMatrix);
+                            CompMatrix(&parentActor->childMatrix,
+                                       (MATRIX*)(actor + 0x0C),
+                                       (MATRIX*)(actor + 0x2C));
+                            branchMatrixReady = 1;
+                        }
+                    }
                 }
             }
 
-            modelPosition.vx = *(s16*)(actor + 0x20);
-            modelPosition.vy = *(s16*)(actor + 0x24);
-            modelPosition.vz = *(s16*)(actor + 0x28);
-            ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
-            /*
-             * Original func_800748E8 asm (53EC-542C) loads work.t into the GTE
-             * translation registers (ctc2 $5/$6/$7) and transforms the actor
-             * position with mvmva cv=0, which INCLUDES the translation:
-             * modelMatrix.t = work.R * pos + work.t. ApplyMatrixLV is the
-             * rotation-only (cv=3) library op, so add work.t explicitly here.
-             */
-            modelMatrix.t[0] += work.t[0];
-            modelMatrix.t[1] += work.t[1];
-            modelMatrix.t[2] += work.t[2];
-            SetRotMatrix(&modelMatrix);
-            SetTransMatrix(&modelMatrix);
+            if (!branchMatrixReady) {
+                if ((env[0x44] & 0x7F) == 0) {
+                    *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                    *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                    *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+                }
+
+                if ((env[0x44] & 0x7F) == 1) {
+                    *(s32*)(actor + 0x20) += *(s16*)(env + 0x20);
+                    *(s32*)(actor + 0x24) += *(s16*)(env + 0x24);
+                    *(s32*)(actor + 0x28) += *(s16*)(env + 0x22);
+                }
+
+                assert((env[0x44] & 0x80) == 0);
+            }
+
+            if (*(s16*)(modelData + 0x12) == 1) {
+                /* Retail 80074F98-80075020: modelMatrix := work, then the
+                 * model-offset/scale helpers. fp == 1, s3 == &modelMatrix
+                 * (sp+0x78), the source is sp+0x58 (work), sp+0x28 is scale. */
+                modelMatrix = work;
+                ScaleMatrix(&modelMatrix, &scale);
+                func_80030B14(&modelMatrix);
+                func_80030C40(D_800AFB04, D_800AFB06, D_800AFB08);
+            }
+
+            D_80050104 = 0;
+#ifdef XENO_PC_PORT
+            modelConsidered++;
+#endif
+            if (status & 0x20) {
+#ifdef XENO_PC_PORT
+                modelStatus20++;
+#endif
+                continue;
+            }
+
+            /* Retail 8007504C-80075088: when the actor is flagged 0x2000 and
+             * carries a model-offset pointer, hand it to func_800305D8 with the
+             * actor index published in D_800ADB58 and D_800ADB5C cleared. */
+            if ((status & 0x2000) != 0 && *(u32*)(modelData + 0x14) != 0) {
+                D_800ADB58 = actorIndex;
+                D_800ADB5C = 0;
+                func_800305D8((void*)(uintptr_t)*(u32*)(modelData + 0x14));
+            }
+
+            if (!branchMatrixReady) {
+                /*
+                 * func_800748E8 is handwritten/nonmatching GTE code. The original
+                 * asm (80074E14-80074ED8) builds modelMatrix.R = work.R x actorR
+                 * COLUMN by COLUMN: for each j it gathers actor matrix column j
+                 * with stride-6 halfword loads (lhu +0x0/+0x6/+0xC from bases
+                 * actor+0xC/+0xE/+0x10), transforms it with mvmva cv=3
+                 * (= ApplyMatrixSV), and stores the result as modelMatrix column j
+                 * (sh +0x0/+0x6/+0xC from dests +0x0/+0x2/+0x4). The previous C
+                 * read overlapping SVECTORs and stored rows, producing a
+                 * near-degenerate rotation.
+                 */
+                {
+                    s16* actorR = (s16*)(actor + 0x0C); /* row-major 3x3 */
+                    SVECTOR col;
+                    s32 j;
+
+                    for (j = 0; j < 3; j++) {
+                        col.vx = actorR[0 + j];
+                        col.vy = actorR[3 + j];
+                        col.vz = actorR[6 + j];
+                        gte_ApplyMatrixSV(&work, &col, &row);
+                        modelMatrix.m[0][j] = row.vx;
+                        modelMatrix.m[1][j] = row.vy;
+                        modelMatrix.m[2][j] = row.vz;
+                    }
+                }
+
+                modelPosition.vx = *(s16*)(actor + 0x20);
+                modelPosition.vy = *(s16*)(actor + 0x24);
+                modelPosition.vz = *(s16*)(actor + 0x28);
+#ifdef XENO_PC_PORT
+                ApplyMatrixLV(&work, &modelPosition, (VECTOR*)modelMatrix.t);
+                /*
+                 * Original func_800748E8 asm (53EC-542C) loads work.t into the GTE
+                 * translation registers (ctc2 $5/$6/$7) and transforms the actor
+                 * position with mvmva cv=0, which INCLUDES the translation:
+                 * modelMatrix.t = work.R * pos + work.t. ApplyMatrixLV is the
+                 * rotation-only (cv=3) library op, so add work.t explicitly here.
+                 */
+                modelMatrix.t[0] += work.t[0];
+                modelMatrix.t[1] += work.t[1];
+                modelMatrix.t[2] += work.t[2];
+#else
+                /* Retail 80074F80-80074FE4 inlines ApplyMatrixLV: ctc2 TR from
+                 * work.t, then gte_ldlv0 (lhu/or/mtc2 $0 + lwc2 $1), then
+                 * MVMVA 1,0,0,0,0 (cv=TR, so the translation IS included -
+                 * the explicit work.t add above is a port-only workaround) and
+                 * swc2 $25/$26/$27 (== gte_stlvnl). */
+                gte_SetTransMatrix(&work);
+                gte_ldlv0(&modelPosition);
+                gte_rt();
+                gte_stlvnl((VECTOR*)modelMatrix.t);
+#endif
+                /* Retail 80074F3C-80074F94: the low two status bits select
+                 * an alternate model-matrix construction. Mode 0 keeps the
+                 * ordinary matrix above. Mode 1 composes the scaled scene
+                 * matrix with the actor transform. Modes 2/3 copy and scale
+                 * the actor rotation. All nonzero modes then append the
+                 * camera-rotation matrix before rejoining at 80074F98. */
+                if ((status & 3) == 1) {
+                    MulMatrix0(&g_Scene.unkF4, (MATRIX*)(actor + 0x0C),
+                               &modelMatrix);
+                    MulMatrix2(&g_Scene.camRotationMatrix, &modelMatrix);
+                } else if ((status & 3) != 0) {
+                    FieldMatrixCopyTransform(&modelMatrix,
+                                             (MATRIX*)(actor + 0x0C));
+                    ScaleMatrix(&modelMatrix, &scale);
+                    MulMatrix2(&g_Scene.camRotationMatrix, &modelMatrix);
+                }
+            }
+            gte_SetRotMatrix(&modelMatrix);
+            gte_SetTransMatrix(&modelMatrix);
 
             hiddenByModel = func_800AAA74(modelData);
             if (hiddenByModel != 0 && (env[0x44] & 0x80) == 0) {
+#ifdef XENO_PC_PORT
+                modelHidden++;
+#endif
                 continue;
             }
 
@@ -1475,8 +1851,8 @@ void func_800748E8(void) {
              * -> ctc2 $0..$7) before func_8002C700 -- the prim procs' rtpt must
              * run with R = work.R x actorR, TR = work.R x pos + work.t.
              */
-            SetRotMatrix(&modelMatrix);
-            SetTransMatrix(&modelMatrix);
+            gte_SetRotMatrix(&modelMatrix);
+            gte_SetTransMatrix(&modelMatrix);
 
 #ifdef XENO_PC_PORT
             /* Opt-out scaffolding: without the FieldLoad model build the
@@ -1493,12 +1869,43 @@ void func_800748E8(void) {
                 void* modelWork = (void*)(uintptr_t)*(u32*)(modelData + 0x08 + renderIndex * 4);
                 void* ot = renderContext + ((status & 0x8000) ? 0x40D0 : 0xCC);
                 func_8002C700(modelPacket, modelWork, ot, *(s16*)(modelData + 0x12));
+#ifdef XENO_PC_PORT
+                modelEmitted++;
+#endif
             }
         }
     }
 
+#ifdef XENO_PC_PORT
+    if (XenoFieldDiagEnabled() && s_modelDiagFrames < 8) {
+        ActorData* actor3 = NULL;
+        printf("[field-diag] models frame=%d considered=%d emitted=%d hidden=%d status20=%d objects=%d otEmits=%d\n",
+               (int)s_modelDiagFrames, (int)modelConsidered, (int)modelEmitted,
+               (int)modelHidden, (int)modelStatus20, (int)D_800B2264,
+               (int)D_80059578);
+        printf("[field-diag] camera eye=(%d,%d,%d) at=(%d,%d,%d)\n",
+               (int)(g_CameraEye.vx >> 16), (int)(g_CameraEye.vy >> 16),
+               (int)(g_CameraEye.vz >> 16),
+               (int)(g_CameraAt.vx >> 16), (int)(g_CameraAt.vy >> 16),
+               (int)(g_CameraAt.vz >> 16));
+        if (g_FieldNumActors > 3) {
+            actor3 = (ActorData*)(uintptr_t)g_FieldActors[3].pActorData;
+            if (actor3 != NULL) {
+                printf("[field-diag] actor3 ip=%u flags4=%08x status=%04x pos=(%d,%d,%d)\n",
+                       (unsigned)actor3->scriptInstructionPointer,
+                       (unsigned)actor3->flags,
+                       (unsigned)(u16)g_FieldActors[3].status,
+                       (int)*(s16*)((u8*)actor3 + 0x22),
+                       (int)*(s16*)((u8*)actor3 + 0x26),
+                       (int)*(s16*)((u8*)actor3 + 0x2A));
+            }
+        }
+        s_modelDiagFrames++;
+    }
+#endif
+
     if (g_FieldSystemMode == 0) {
-        assert(0 && "func_800748E8 PC-HDD timing marker branch is not migrated");
+        func_80281B00(&D_8006FB10);
     }
 }
 
@@ -1580,8 +1987,36 @@ void func_800752C8(void) {
 
         if (shouldTick) {
             AnimScriptTick((void*)(uintptr_t)*(u32*)(pActor + 0x4));
+#ifdef XENO_PC_PORT
+            if (XenoWalkFieldDumpFrame() < 60) {
+                u8* sprite = (u8*)(uintptr_t)*(u32*)(pActor + 0x4);
+
+                if (sprite != NULL) {
+                    u8* scriptPc = (u8*)(uintptr_t)*(u32*)(sprite + 0x64);
+                    s32 moving = *(s32*)(pActorData + 0x40) |
+                                 *(s32*)(pActorData + 0x44) |
+                                 *(s32*)(pActorData + 0x48);
+                    s16 curAnim = *(s16*)(pActorData + 0xE8);
+
+                    if (moving != 0 || curAnim == 1 || curAnim == 2) {
+                        printf("[walk-anim] field f=%d actor=%d pos=%d,%d "
+                               "anim=%d sprAnim=%d pose=%d wait=%d op=0x%02x\n",
+                               XenoWalkFieldDumpFrame(), i,
+                               (int)*(s16*)(pActorData + 0x22),
+                               (int)*(s16*)(pActorData + 0x2A),
+                               (int)curAnim, (int)*(s8*)(sprite + 0xAF),
+                               (int)*(s16*)(sprite + 0x34),
+                               (int)*(s16*)(sprite + 0x9E),
+                               scriptPc != NULL ? (unsigned)scriptPc[0] : 0u);
+                    }
+                }
+            }
+#endif
         }
     }
+#ifdef XENO_PC_PORT
+    XenoWalkFieldDumpAdvance();
+#endif
 
     func_800764B4((u8*)g_FieldCurRenderContext + 0xCC, g_FieldCurRenderContextIndex);
 
@@ -1620,8 +2055,8 @@ extern s16 D_800B00B2;
 extern s32 D_800ADB50;
 extern s32 D_800B007C;
 extern s16 D_800B21D4;
-extern void func_800273C4(s32 arg0, SVECTOR* eye, SVECTOR* at, void* arg3,
-                          void* prim, s32 renderCtxIndex);
+extern s32 func_800273C4(void* ctx, SVECTOR* eye, SVECTOR* at, MATRIX* mtx,
+                         void* ot, s32 renderCtxIndex);
 
 void func_80075484(void) {
     if (D_800B00B2 != 0 && D_800ADB50 == 0) {
@@ -1636,8 +2071,9 @@ void func_80075484(void) {
         at.vy = (s16)(g_CameraAt.vy >> 16);
         at.vz = (s16)(g_CameraAt.vz >> 16);
 
+        /* asm: a3 = g_CameraEye + 0x1E4 == &g_Scene.worldToScreenMatrix */
         prim = (u8*)g_FieldCurRenderContext + D_800B21D4 * 4 + 0x40CC;
-        func_800273C4(D_800B007C, &eye, &at, (u8*)&g_CameraEye + 0x1E4,
+        func_800273C4((void*)D_800B007C, &eye, &at, &g_Scene.worldToScreenMatrix,
                       prim, g_FieldCurRenderContextIndex);
     }
 }
@@ -1658,7 +2094,7 @@ extern s16 D_800B21D4;
 extern u8 D_800B219C, D_800B219D, D_800B219E;
 extern s32 D_800B0048;
 extern s32 D_800B217C;
-extern void* D_800AF87C;
+extern u32 D_800AF87C;
 extern u8 D_800AFC58[];
 extern void func_800739C0(void);
 extern void func_80086908(void);
@@ -1691,6 +2127,7 @@ void func_8007554C(void) {
 #ifdef XENO_PC_PORT
     s32 diagFrame = g_FieldDiagFrameCount++;
 
+    PcPort_TestInputAdvanceFrame();
     g_FieldDiagSubmittedThisFrame = 0;
 #endif
     D_800ADB9C = Vsync(1);
@@ -1780,7 +2217,7 @@ void func_8007554C(void) {
 
     /* Conditional VRAM upload */
     if (D_800ADBB4 != 0) {
-        LoadImage((RECT*)D_800AFC58, D_800AF87C);
+        LoadImage((RECT*)D_800AFC58, (void*)(uintptr_t)D_800AF87C);
         D_800ADBB4 = 0;
     }
 
@@ -1809,6 +2246,48 @@ void func_8007554C(void) {
                (int)diagFrame, (int)D_800ADC18, (int)g_FieldRenderContextUseOT2,
                (int)g_FieldDiagSubmittedThisFrame);
     }
+    /* DIAGNOSTIC (remove with the title-backdrop probes): histogram the
+     * packet codes reachable from the OT DrawOTag is about to walk, so a
+     * submitted-but-invisible layer (Map 490 horizon FT4s) can be told apart
+     * from one that never reached the list. Host prims sit below 16 MiB, so
+     * the 24-bit links are direct pointers. */
+    if (XenoFieldDiagEnabled() && diagFrame >= 4 && diagFrame < 7) {
+        u32* head = (u32*)((u8*)g_FieldCurRenderContext + 0x80F0);
+        u32 link = *head;
+        int hist[256] = {0};
+        int total = 0, steps = 0, ft4s = 0;
+        char buf[512];
+        int n = 0, c;
+        while ((link & 0xFFFFFF) != 0xFFFFFF && steps < 200000) {
+            u32* pkt = (u32*)(uintptr_t)(link & 0xFFFFFF);
+            u32 len = link >> 24;
+            if (pkt == NULL) break;
+            if (len != 0) {
+                u8 code = ((u8*)pkt)[7];
+                hist[code]++;
+                total++;
+                if ((code & 0xFC) == 0x2C && ft4s < 3) {
+                    s16* v = (s16*)pkt;
+                    printf("[field-diag] ot-ft4 #%d rgb=%02x%02x%02x xy0=(%d,%d) xy3=(%d,%d) "
+                           "uv0=%02x,%02x clut=%04x tpage=%04x\n", ft4s,
+                           ((u8*)pkt)[4], ((u8*)pkt)[5], ((u8*)pkt)[6],
+                           v[4], v[5], v[16], v[17],
+                           ((u8*)pkt)[12], ((u8*)pkt)[13],
+                           *(u16*)((u8*)pkt + 14), *(u16*)((u8*)pkt + 22));
+                    ft4s++;
+                }
+            }
+            link = *pkt;
+            steps++;
+        }
+        for (c = 0; c < 256; c++) {
+            if (hist[c] && n < 440) {
+                n += snprintf(buf + n, sizeof(buf) - n, " %02x:%d", c, hist[c]);
+            }
+        }
+        printf("[field-diag] ot-walk frame=%d steps=%d prims=%d codes:%s\n",
+               (int)diagFrame, steps, total, buf);
+    }
 #endif
     DrawOTag((u_long*)((u8*)g_FieldCurRenderContext + 0x80F0));
 
@@ -1818,6 +2297,57 @@ void func_8007554C(void) {
         while (Vsync(-1) < target) {
         }
     }
+}
+
+extern s32 D_800ADB78;
+extern void func_800A2030(void);
+extern void func_800805F4(void);
+extern void func_8008004C(void* pCtx, s32 idx);
+
+void func_80075910(void) {
+    RECT rect;
+    FieldPollControllers();
+    func_800A2030();
+    func_800805F4();
+    func_8008004C((u8*)g_FieldCurRenderContext + 0x80D4, g_FieldCurRenderContextIndex);
+    DrawSync(0);
+    Vsync(0);
+    rect.w = 0x140;
+    rect.h = 0xE0;
+    rect.x = 0;
+    rect.y = (D_800ADB78 + 1 & 1) << 8;
+    MoveImage(&rect, g_FieldCurRenderContextIndex << 8, 0);
+    PutDispEnv((DISPENV*)((u8*)g_FieldCurRenderContext + 0xB8));
+    PutDrawEnv((DRAWENV*)g_FieldCurRenderContext);
+    DrawOTag(g_FieldCurRenderContext->ot3 + 7);
+}
+
+/* Retail 800759E4..80075B08: construct three matrix rows from the given
+ * axis and two normalized cross products. Translation/padding are retained. */
+#ifdef XENO_PC_PORT
+/* Field rodata 8006FB70 (raw 0x80), read as one 16-byte VECTOR. */
+const VECTOR D_8006FB70 = { 0, 0, 0x1000, 0 };
+#else
+extern VECTOR D_8006FB70;
+#endif
+
+void func_800759E4(MATRIX *matrix,VECTOR *axis) {
+    VECTOR up = D_8006FB70;
+    VECTOR right;
+    VECTOR temporary;
+    OuterProduct12(&up,axis,&temporary);
+    VectorNormal(&temporary,&right);
+    OuterProduct12(&right,axis,&temporary);
+    VectorNormal(&temporary,&up);
+    matrix->m[0][0] = right.vx;
+    matrix->m[0][1] = right.vy;
+    matrix->m[0][2] = right.vz;
+    matrix->m[1][0] = axis->vx;
+    matrix->m[1][1] = axis->vy;
+    matrix->m[1][2] = axis->vz;
+    matrix->m[2][0] = up.vx;
+    matrix->m[2][1] = up.vy;
+    matrix->m[2][2] = up.vz;
 }
 
 void func_80075B08(void* sprite, u8* color) {
@@ -1831,6 +2361,109 @@ extern s32 D_80050100;
 extern s32 D_800B2268;
 extern u8 D_800B2357;
 extern void func_8001E298(void* pSpriteData, void* ot);
+/* Model base color bytes (set by func_8002C6E0 in the fog prologue); retail's
+ * sprite-fog branch lwc2's the word they form into GTE RGBC. Needed by both
+ * builds. */
+extern u8 D_80059598;
+extern u8 D_80059599;
+extern u8 D_8005959A;
+#ifdef XENO_PC_PORT
+extern u32 D_801E8670[];
+extern s32 D_800B220C[];
+
+/* Retail 80076300-80076464 updates the object overlay instead of drawing
+ * a substitute sprite. Slots advance only after this branch processes an
+ * object; ordinary actors and the global skip do not consume slots. */
+static u32 FieldUpdateObjectActor(u8* actor, u32 status, u32 slot) {
+    u8* object;
+    u8* node;
+    u16 flags;
+    u32 product;
+    if (D_8004F380 != 0) return slot;
+    object = (u8*)(uintptr_t)D_801E8670[slot];
+    flags = *(u16*)(object + 0x4A);
+    if ((*(u32*)actor & 0x10000) ||
+        (*(u32*)(actor + 0x14) & 0x200002) ||
+        (*(u32*)(actor + 4) & 0x800)) flags |= 1;
+    else flags &= 0xFFFE;
+    *(u16*)(object + 0x4A) = flags;
+    object[0x34] = (status & 0x20) ? 0 : 1;
+    node = (u8*)(uintptr_t)*(u32*)(object + 4);
+    if (*(u32*)(actor + 4) & 0x20000) {
+        u16 angle = *(u16*)(node + 0x56) - 0xC00;
+        *(u16*)(actor + 0x108) = angle;
+        *(u16*)(actor + 0x106) = angle;
+    } else {
+        *(u16*)(node + 0x56) = *(u16*)(actor + 0x108) + 0xC00;
+    }
+    /* MULT/MFLO followed by SRA: wrap before the signed shift. The scale
+     * table is retail 0x800B220C (D_800B220C, written by func_80077AB4 /
+     * func_800A0FD8 from obj+0x1C). It is addressed through its own alias:
+     * the packed block g_FieldBss_800B20A8 starts at retail 0x800B2078
+     * (g_FieldEffects), so "+0x164" from it is 0x800B21DC, the spriteId<<1
+     * table -- which scaled every MAP16 object by garbage. */
+    product = (u32)(s32)*(s16*)(actor + 0xF4) * (u32)D_800B220C[slot];
+    *(s16*)(object + 0x1C) = (s32)product >> 12;
+    *(s16*)(object + 0x60) = *(s16*)(actor + 0x26);
+    *(s32*)(node + 0x5C) = *(s16*)(actor + 0x22);
+    *(s32*)(node + 0x64) = *(s16*)(actor + 0x2A);
+    *(u32*)(actor + 4) &= ~0x200u;
+    return slot + 1;
+}
+
+extern void func_8001E2F8(void* sprite, void* ot, s16 splitY);
+extern void func_8001E368(void* sprite, void* ot, s16 splitY);
+
+/* Retail 80076118-800762FC, after the common transform and OT adjustment.
+ * Return values classify diagnostic counters only: hidden/plain/special. */
+static int FieldRenderActorSpriteTail(void* sprite, u8* actor, void* ot,
+                                      s32 otIndex, s32 sceneDip) {
+    u8* data = sprite;
+    SVECTOR center;
+    int xy;
+    long p, flag;
+    s32 depth;
+    u32 flags;
+    u32 base = (u32)(uintptr_t)ot;
+    if ((u16)(*(u16*)(actor + 0xE8) + 0x22) < 2) {
+        if (*(u32*)(actor + 4) & 0x02000000) return 0;
+        SpriteSetColor(sprite, actor[0xFC], actor[0xFD], actor[0xFE]);
+        data[0x3D] = 0xEF;
+        func_8001E298(sprite, (void*)(uintptr_t)(base + ((u32)otIndex << 2) - 0x40));
+        center.vx = 0; center.vy = 300; center.vz = 0;
+        depth = RotTransPers(&center, &xy, &p, &flag) >> (D_80050100 & 31);
+        SpriteSetColor(sprite, actor[0xFF], actor[0x100], actor[0x101]);
+        data[0x3D] = 0xF7;
+        func_8001E298(sprite, (void*)(uintptr_t)(base + ((u32)depth << 2)));
+        return 2;
+    }
+    data[0x3D] = 0;
+    if (*(u32*)(actor + 4) & 0x02000000) return 0;
+    flags = *(u32*)(actor + 0x134);
+    if ((flags & 0x60) == 0) {
+        func_80075B08(sprite, actor + 0xFC);
+        func_8001E298(sprite, (void*)(uintptr_t)(base + ((u32)otIndex << 2)));
+        return 1;
+    }
+    if (flags & 0x20) {
+        func_80075B08(sprite, actor + 0xFC);
+        center.vx = 0;
+        center.vy = (u32)(*(s16*)(actor + 0xEE) - sceneDip / 3) << 1;
+        center.vz = 0;
+        depth = RotTransPers(&center, &xy, &p, &flag) >> (D_80050100 & 31);
+        if (depth >= 2) depth -= 2;
+        func_8001E2F8(sprite, (void*)(uintptr_t)(base + ((u32)depth << 2)),
+                      *(s16*)(actor + 0xEE));
+    }
+    /* Retail re-reads flags after the first renderer; both bits may run. */
+    if (*(u32*)(actor + 0x134) & 0x40) {
+        func_80075B08(sprite, actor + 0xFF);
+        func_8001E368(sprite, (void*)(uintptr_t)(base + ((u32)otIndex << 2)),
+                      *(s16*)(actor + 0xEE));
+    }
+    return 2;
+}
+#endif
 
 void func_80075B44(void* ot, s32 renderContextIndex) {
     MATRIX baseSpriteMatrix;
@@ -1847,6 +2480,8 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
     s32 diagActorFlagSkip = 0;
     s32 diagPlain = 0;
     s32 diagSpecial = 0;
+    s32 diagObjectSkip = 0;
+    u32 objectSlot = 0;
 #endif
 
     (void)renderContextIndex;
@@ -1890,24 +2525,77 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 
         actorFlags4 = *(u32*)(pActorData + 0x04);
         if (actorFlags4 & 0x2000) {
-            assert(0 && "func_80075B44 special actor branch is not implemented");
+#ifdef XENO_PC_PORT
+            objectSlot = FieldUpdateObjectActor(pActorData, status, objectSlot);
+            diagObjectSkip++;
+#endif
+            continue;
         }
 
         {
-            SVECTOR row;
+#ifdef XENO_PC_PORT
+            SVECTOR column;
+            SVECTOR transformed;
 
-            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x0C), &row);
-            actorMatrix.m[0][0] = row.vx;
-            actorMatrix.m[0][1] = row.vy;
-            actorMatrix.m[0][2] = row.vz;
-            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x0E), &row);
-            actorMatrix.m[1][0] = row.vx;
-            actorMatrix.m[1][1] = row.vy;
-            actorMatrix.m[1][2] = row.vz;
-            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, (SVECTOR*)(pActor + 0x10), &row);
-            actorMatrix.m[2][0] = row.vx;
-            actorMatrix.m[2][1] = row.vy;
-            actorMatrix.m[2][2] = row.vz;
+            /* Retail 80075CB4-80075D94 gathers the three actor-matrix
+             * columns at halfword offsets 0/6/12, 2/8/14, and 4/10/16,
+             * transforms each column, then stores the result as a column. */
+            column.vx = *(s16*)(pActor + 0x0C);
+            column.vy = *(s16*)(pActor + 0x12);
+            column.vz = *(s16*)(pActor + 0x18);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][0] = transformed.vx;
+            actorMatrix.m[1][0] = transformed.vy;
+            actorMatrix.m[2][0] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x0E);
+            column.vy = *(s16*)(pActor + 0x14);
+            column.vz = *(s16*)(pActor + 0x1A);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][1] = transformed.vx;
+            actorMatrix.m[1][1] = transformed.vy;
+            actorMatrix.m[2][1] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x10);
+            column.vy = *(s16*)(pActor + 0x16);
+            column.vz = *(s16*)(pActor + 0x1C);
+            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][2] = transformed.vx;
+            actorMatrix.m[1][2] = transformed.vy;
+            actorMatrix.m[2][2] = transformed.vz;
+#else
+            /* Retail 80075CB4-80075D94 gathers the three actor-matrix COLUMNS
+             * (halfwords 0/6/0xC relative to pActor+0xC, +0xE, +0x10),
+             * transforms each with the world->screen rotation and stores the
+             * result back as a column. The previous row-wise form here read
+             * contiguous halfwords and produced a different matrix. */
+            SVECTOR column;
+            SVECTOR transformed;
+
+            column.vx = *(s16*)(pActor + 0x0C);
+            column.vy = *(s16*)(pActor + 0x12);
+            column.vz = *(s16*)(pActor + 0x18);
+            gte_ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][0] = transformed.vx;
+            actorMatrix.m[1][0] = transformed.vy;
+            actorMatrix.m[2][0] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x0E);
+            column.vy = *(s16*)(pActor + 0x14);
+            column.vz = *(s16*)(pActor + 0x1A);
+            gte_ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][1] = transformed.vx;
+            actorMatrix.m[1][1] = transformed.vy;
+            actorMatrix.m[2][1] = transformed.vz;
+
+            column.vx = *(s16*)(pActor + 0x10);
+            column.vy = *(s16*)(pActor + 0x16);
+            column.vz = *(s16*)(pActor + 0x1C);
+            gte_ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &column, &transformed);
+            actorMatrix.m[0][2] = transformed.vx;
+            actorMatrix.m[1][2] = transformed.vy;
+            actorMatrix.m[2][2] = transformed.vz;
+#endif
         }
 
         {
@@ -1916,19 +2604,41 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
             actorPosition.vx = *(s16*)(pActor + 0x20);
             actorPosition.vy = *(s16*)(pActor + 0x24);
             actorPosition.vz = *(s16*)(pActor + 0x28);
+#ifdef XENO_PC_PORT
             ApplyMatrixLV(&g_Scene.worldToScreenMatrix, &actorPosition, &actorTranslation);
+            actorTranslation.vx += g_Scene.worldToScreenMatrix.t[0];
+            actorTranslation.vy += g_Scene.worldToScreenMatrix.t[1];
+            actorTranslation.vz += g_Scene.worldToScreenMatrix.t[2];
+#else
+            /* Retail 80075DE4 inlines ApplyMatrixLV: ctc2 TR, then
+             * lhu/or/mtc2 $0 + lwc2 $1 (== gte_ldlv0), MVMVA 1,0,0,0,0
+             * (cv=TR, so the translation IS included), then
+             * swc2 $25/$26/$27 (== gte_stlvnl). */
+            gte_SetTransMatrix(&g_Scene.worldToScreenMatrix);
+            gte_ldlv0(&actorPosition);
+            gte_rt();
+            gte_stlvnl(&actorTranslation);
+#endif
         }
 
         actorMatrix.t[0] = actorTranslation.vx;
         actorMatrix.t[1] = actorTranslation.vy;
         actorMatrix.t[2] = actorTranslation.vz;
-        SetRotMatrix(&actorMatrix);
-        SetTransMatrix(&actorMatrix);
+        gte_SetRotMatrix(&actorMatrix);
+        gte_SetTransMatrix(&actorMatrix);
 
         center.vx = 0;
         center.vy = centerYOffset;
         center.vz = 0;
-        otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+        {
+            /* Retail 80075E38-80075E70 inlines RotTransPers here (lwc2 $0/$1
+             * from sp+0x18, RTPS, then swc2 for SXY2/DP/flags/OTZ) instead of
+             * calling it - the surrounding sites stay as calls. */
+            long otz;
+
+            gte_RotTransPers(&center, &screenXY, &p, &flag, &otz);
+            otIndex = otz >> D_80050100;
+        }
 
         if ((((s16)(screenXY >> 16) + 9) >= 0x143) ||
             (((s16)screenXY + 0x27) >= 0x18F)) {
@@ -1962,7 +2672,22 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         }
 
         pSpriteBase = (u8*)(uintptr_t)*(u32*)(pSpriteData + 0x20);
-        FieldMatrixCopyTransform((MATRIX*)(pSpriteBase + 0x0C), &baseSpriteMatrix);
+        /* Retail 80075F98 inlines this rotation-only copy here (only the
+         * baseSpriteMatrix init at 80075B94 remains a call), so write the nine
+         * halfword moves out explicitly rather than calling the helper. */
+        {
+            MATRIX* pDst = (MATRIX*)(pSpriteBase + 0x0C);
+
+            pDst->m[0][0] = baseSpriteMatrix.m[0][0];
+            pDst->m[0][1] = baseSpriteMatrix.m[0][1];
+            pDst->m[0][2] = baseSpriteMatrix.m[0][2];
+            pDst->m[1][0] = baseSpriteMatrix.m[1][0];
+            pDst->m[1][1] = baseSpriteMatrix.m[1][1];
+            pDst->m[1][2] = baseSpriteMatrix.m[1][2];
+            pDst->m[2][0] = baseSpriteMatrix.m[2][0];
+            pDst->m[2][1] = baseSpriteMatrix.m[2][1];
+            pDst->m[2][2] = baseSpriteMatrix.m[2][2];
+        }
         ScaleMatrix((MATRIX*)(pSpriteBase + 0x0C), &scale);
 
         if (*(u32*)(pActorData + 0x14) & 0x200000) {
@@ -1984,27 +2709,49 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
         }
 
         if (D_800B2357 == 0 && D_800B218E != 0) {
-            assert(0 && "func_80075B44 far-color branch is not implemented");
+#ifdef XENO_PC_PORT
+            /* Retail 0x800760AC: fog the actor's sprite.  RGBC <- the model
+             * base color word (retail lwc2's the u32 at 0x80059598; the port
+             * composes it from the three separate BSS bytes), DPCS depth-cues
+             * it toward the far color using IR0 left by this actor's most
+             * recent RotTransPers (the center transform above, or the
+             * facing-delta re-issue), and the fogged RGB2 tints the sprite.
+             * This is the fog-on counterpart of func_80075B08's fog-off
+             * SpriteSetColor; the DQA/DQB + far-color state is refreshed each
+             * frame by the ported func_800748E8 fog prologue. */
+            u32 rgbc = (u32)D_80059598 | ((u32)D_80059599 << 8) |
+                       ((u32)D_8005959A << 16);
+            u32 fogged;
+
+            gte_ldrgb(&rgbc);
+            gte_dpcs();
+            fogged = (u32)C2_RGB2;
+            SpriteSetColor(pSpriteData, (u8)fogged, (u8)(fogged >> 8),
+                           (u8)(fogged >> 16));
+#else
+            /* Retail 800760AC: lwc2 $6 (RGBC) straight from the model base
+             * color word, DPCS depth-cues it against the far color using the
+             * IR0 left by this actor's RotTransPers, swc2 $22 (RGB2) into a
+             * stack slot, then SpriteSetColor with that slot's three bytes.
+             * Retail reloads g_FieldActors[actorIndex] for the sprite pointer. */
+            u32 fogged;
+
+            gte_ldrgb((u32*)((u8*)&D_80059598));
+            gte_dpcs();
+            gte_strgb(&fogged);
+            SpriteSetColor((u8*)(uintptr_t)g_FieldActors[actorIndex].pSpriteData,
+                           (u8)fogged, (u8)(fogged >> 8), (u8)(fogged >> 16));
+#endif
         }
 
         if (otIndex >= 2) {
             otIndex -= 2;
         }
 
-        if (((*(u16*)(pActorData + 0xE8) + 0x22) & 0xFFFF) < 2) {
-            assert(0 && "func_80075B44 actor double-render branch is not implemented");
-        }
-
-        *(u8*)(pSpriteData + 0x3D) = 0;
-        if (actorFlags4 & 0x02000000) {
 #ifdef XENO_PC_PORT
-            diagActorFlagSkip++;
-#endif
-            continue;
-        }
-
-        if ((*(u32*)(pActorData + 0x134) & 0x60) == 0) {
-#ifdef XENO_PC_PORT
+        switch (FieldRenderActorSpriteTail(pSpriteData, pActorData, ot, otIndex, sceneDip)) {
+        case 0: diagActorFlagSkip++; break;
+        case 1:
             diagPlain++;
             if (XenoFieldDiagEnabled() && s_diagFrames < 4) {
                 printf("[field-diag] func_80075B44 draw actor=%d sprite=%p otIndex=%d ot=%p status=%08x flags4=%08x flag=%08lx screen=%08lx\n",
@@ -2012,39 +2759,115 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
                        (unsigned int)status, (unsigned int)actorFlags4,
                        (unsigned long)flag, (unsigned long)screenXY);
             }
-#endif
+            break;
+        case 2: diagSpecial++; break;
+        }
+#else
+        /* Retail .L80076118: actor "double render" (the 0xE8 counter wrapping
+         * through 0x22). Sets the sprite colour from pActorData+0xFC, links at
+         * otIndex-16, re-transforms a (0, 0x12C, 0) centre and links again
+         * with the +0xFF colour. Skipped entirely when flags4 has 0x02000000. */
+        if (((*(u16*)(pActorData + 0xE8) + 0x22) & 0xFFFF) < 2) {
+            if ((actorFlags4 & 0x02000000) == 0) {
+                SpriteSetColor(pSpriteData, *(u8*)(pActorData + 0xFC),
+                               *(u8*)(pActorData + 0xFD),
+                               *(u8*)(pActorData + 0xFE));
+                *(u8*)(pSpriteData + 0x3D) = 0xEF;
+                func_8001E298(pSpriteData, (u8*)ot + otIndex * 4 - 0x40);
+                center.vx = 0;
+                center.vy = 0x12C;
+                center.vz = 0;
+                otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+                SpriteSetColor(pSpriteData, *(u8*)(pActorData + 0xFF),
+                               *(u8*)(pActorData + 0x100),
+                               *(u8*)(pActorData + 0x101));
+                *(u8*)(pSpriteData + 0x3D) = 0xF7;
+                func_8001E298(pSpriteData, (u8*)ot + otIndex * 4);
+            }
+            continue;
+        }
+
+        /* Retail .L800761E0: the ordinary sprite path. */
+        *(u8*)(pSpriteData + 0x3D) = 0;
+        if (actorFlags4 & 0x02000000) {
+            continue;
+        }
+
+        if ((*(u32*)(pActorData + 0x134) & 0x60) == 0) {
             func_80075B08(pSpriteData, pActorData + 0xFC);
             func_8001E298(pSpriteData, (u8*)ot + otIndex * 4);
-        } else {
-#ifdef XENO_PC_PORT
-            diagSpecial++;
-#endif
-            assert(0 && "func_80075B44 rotated actor branch is not implemented");
+            continue;
         }
+
+        /* Retail .L80076234: rotated variants keyed on (0x134 >> 5) bits 0/1. */
+        if ((*(u32*)(pActorData + 0x134) >> 5) & 1) {
+            func_80075B08(pSpriteData, pActorData + 0xFC);
+            center.vx = 0;
+            center.vy = (*(s16*)(pActorData + 0xEE) - sceneDip / 3) * 2;
+            center.vz = 0;
+            otIndex = RotTransPers(&center, &screenXY, &p, &flag) >> D_80050100;
+            if (otIndex >= 2) {
+                otIndex -= 2;
+            }
+            func_8001E2F8(pSpriteData, (u8*)ot + otIndex * 4,
+                          *(s16*)(pActorData + 0xEE));
+        }
+
+        if (((*(u32*)(pActorData + 0x134) >> 5) & 2) != 0) {
+            func_80075B08(pSpriteData, pActorData + 0xFF);
+            func_8001E368(pSpriteData, (u8*)ot + otIndex * 4,
+                          *(s16*)(pActorData + 0xEE));
+            continue;
+        }
+#endif
     }
 
 #ifdef XENO_PC_PORT
     if (XenoFieldDiagEnabled() && s_diagFrames < 8) {
-        printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d\n",
+        printf("[field-diag] func_80075B44 frame=%d active=%d plain=%d status20=%d flagNeg=%d globalSkip=%d actorFlagSkip=%d special=%d objectSkip=%d\n",
                (int)s_diagFrames, (int)diagActive, (int)diagPlain,
                (int)diagStatus20, (int)diagFlagNeg, (int)diagGlobalSkip,
-               (int)diagActorFlagSkip, (int)diagSpecial);
+               (int)diagActorFlagSkip, (int)diagSpecial, (int)diagObjectSkip);
     }
     s_diagFrames++;
 #endif
 }
 
 extern s32 D_8004F37C;
+extern s32 D_800500F8;
+extern s32 D_800500FC;
 
 #ifdef XENO_PC_PORT
 static s32 s_ActiveActorSkipCount = 0;
+
+/* Retail submits this quad directly and relies on the PSX GPU's raster clip.
+ * PsyCross can still turn a completely off-screen active-actor quad into a
+ * visible, stretched FT4 after its draw-environment offset is applied.  Do
+ * not duplicate a vertex-in-viewport test here: a quad can legitimately cross
+ * an edge with every vertex outside.  Reject only the conservative case where
+ * all four vertices are beyond the same raster edge. */
+static int FieldActiveQuadOutsideRaster(const u8* pPrim) {
+    s32 x0 = *(const s16*)(pPrim + 0x08), y0 = *(const s16*)(pPrim + 0x0A);
+    s32 x1 = *(const s16*)(pPrim + 0x10), y1 = *(const s16*)(pPrim + 0x12);
+    s32 x2 = *(const s16*)(pPrim + 0x18), y2 = *(const s16*)(pPrim + 0x1A);
+    s32 x3 = *(const s16*)(pPrim + 0x20), y3 = *(const s16*)(pPrim + 0x22);
+    s32 maxX = D_800500F8;
+    s32 maxY = D_800500FC >> 16;
+
+    return (x0 < 0 && x1 < 0 && x2 < 0 && x3 < 0) ||
+           (x0 > maxX && x1 > maxX && x2 > maxX && x3 > maxX) ||
+           (y0 < 0 && y1 < 0 && y2 < 0 && y3 < 0) ||
+           (y0 > maxY && y1 > maxY && y2 > maxY && y3 > maxY);
+}
 #endif
 
 void func_800764B4(void* ot, s32 renderContextIndex) {
     s32 actorIndex;
     u8* pActor;
 
+#ifdef XENO_PC_PORT
     (void)s_ActiveActorSkipCount; /* retained fallback for other unmigrated paths */
+#endif
 
     if (D_8004F37C != 0 || D_800ADBFC <= 0) {
         return;
@@ -2100,9 +2923,9 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
         worldZ.vx = 0;
         worldZ.vy = 0;
         worldZ.vz = 0x1000;
-        OuterProduct12(&worldZ, &up, &cross);      /* op1 @80076620: cross(worldZ, up) */
+        gte_OuterProduct12(&worldZ, &up, &cross);      /* op1 @80076620: cross(worldZ, up) */
         VectorNormal(&cross, &normVec1);           /* -> row0 */
-        OuterProduct12(&normVec1, &up, &cross);    /* op1 @80076678: cross(normVec1, up) */
+        gte_OuterProduct12(&normVec1, &up, &cross);    /* op1 @80076678: cross(normVec1, up) */
         VectorNormal(&cross, &normVec2);           /* -> row2 */
 
         billboard.m[0][0] = (s16)normVec1.vx;
@@ -2122,7 +2945,7 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
             col.vx = billboard.m[0][j];
             col.vy = billboard.m[1][j];
             col.vz = billboard.m[2][j];
-            ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &col, &res);
+            gte_ApplyMatrixSV(&g_Scene.worldToScreenMatrix, &col, &res);
             actorMatrix.m[0][j] = res.vx;
             actorMatrix.m[1][j] = res.vy;
             actorMatrix.m[2][j] = res.vz;
@@ -2139,7 +2962,16 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
         pos.vx = *(s16*)(pActor + 0x20);
         pos.vy = *(s16*)(pSpriteData + 0x84);
         pos.vz = *(s16*)(pActor + 0x28);
+#ifdef XENO_PC_PORT
         ApplyMatrixLV(&g_Scene.worldToScreenMatrix, &pos, &trans);
+#else
+        /* Retail 80076850 is the same inlined ApplyMatrixLV form as
+         * func_80075B44 (MVMVA 1,0,0,0,0, cv=TR included). */
+        gte_SetTransMatrix(&g_Scene.worldToScreenMatrix);
+        gte_ldlv0(&pos);
+        gte_rt();
+        gte_stlvnl(&trans);
+#endif
         actorMatrix.t[0] = trans.vx;
         actorMatrix.t[1] = trans.vy;
         actorMatrix.t[2] = trans.vz;
@@ -2157,8 +2989,8 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
         ScaleMatrix(&actorMatrix, &scale);
 
         /* Install the scaled matrix, then project the shared quad and average OTZ. */
-        SetRotMatrix(&actorMatrix);
-        SetTransMatrix(&actorMatrix);
+        gte_SetRotMatrix(&actorMatrix);
+        gte_SetTransMatrix(&actorMatrix);
 
         s0off     = renderContextIndex * 0x28;
         packetOff = s0off + 0x20;         /* s1 = idx*0x28 + 0x20 */
@@ -2174,6 +3006,13 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
             (long*)(pPrim + 0x18),
             (long*)(pPrim + 0x20),
             &p, &flag);
+
+#ifdef XENO_PC_PORT
+        if (FieldActiveQuadOutsideRaster(pPrim)) {
+            s_ActiveActorSkipCount++;
+            continue;
+        }
+#endif
 
         /* Splice the packet at the head of ot[otz >> D_80050100], preserving the
            top (len/code) byte of both the packet tag and the OT slot. 24-bit link
@@ -2210,7 +3049,7 @@ extern s32 g_GamePartySkinsInitialized;
 extern u8 D_800B1F78[];
 extern s32 D_800AFC74;
 
-static void FieldActorSyncSpritePosition(u8* pActor, u8* pSpriteData) {
+static inline void FieldActorSyncSpritePosition(u8* pActor, u8* pSpriteData) {
     u8* pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
 
     *(u32*)(pSpriteData + 0x00) = *(u32*)(pActorData + 0x20);
@@ -2218,7 +3057,9 @@ static void FieldActorSyncSpritePosition(u8* pActor, u8* pSpriteData) {
     *(u32*)(pSpriteData + 0x08) = *(u32*)(pActorData + 0x28);
 }
 
-void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 spriteMode, s32 arg4, s32 texPageOffset, s32 skipInitialTick) {
+/* Retail stack+0x10 is the texture-page offset; stack+0x14 is the saved
+ * skin selector (including bit7 for field-local packages). */
+void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 spriteMode, s32 texPageOffset, s32 skinSelector, s32 skipInitialTick) {
     u8* pActor;
     u8* pActorData;
     u8* pSpriteData;
@@ -2233,7 +3074,7 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
     pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
 
     *(u8*)(pActorData + 0x127) = skinIndex;
-    *(u8*)(pActorData + 0x126) = arg4;
+    *(u8*)(pActorData + 0x126) = skinSelector;
     *(u32*)(pActorData + 0x134) =
         (*(u32*)(pActorData + 0x134) & ~0xF) | (texPageOffset & 0xF);
     *(u32*)(pActorData + 0x130) =
@@ -2245,13 +3086,18 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
         s16 clutX = *(u16*)(D_800B1F78 + skinIndex * 8 + 0);
         s16 clutY = *(u16*)(D_800B1F78 + skinIndex * 8 + 2);
 
-        if (*(u16*)(pActor + 0x5A) & 0x1) {
-            func_800230A8((void*)(uintptr_t)*(u32*)(pActor + 0x04));
-        }
-
+        /* Retail duplicates the flag-guarded sprite-clear into each
+         * texPageOffset arm (three func_800230A8 call sites total in this
+         * function: 80076C44, 80076CB0, 80076D3C). */
         if (texPageOffset == 0) {
+            if (*(u16*)(pActor + 0x5A) & 0x1) {
+                func_800230A8((void*)(uintptr_t)*(u32*)(pActor + 0x04));
+            }
             pSpriteData = func_80024524(pAnimPackage, 0x100, skinIndex + 0x1E0, clutX, clutY, 0x40);
         } else {
+            if (*(u16*)(pActor + 0x5A) & 0x1) {
+                func_800230A8((void*)(uintptr_t)*(u32*)(pActor + 0x04));
+            }
             pSpriteData = func_80024294(pAnimPackage,
                                         (s16)((texPageOffset << 4) + 0x100),
                                         (s16)(skinIndex + 0x1E0),
@@ -2331,18 +3177,28 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
         }
     }
 
-    *(u32*)(pActor + 0x20) = *(s16*)(pActorData + 0x22);
-    *(u32*)(pActor + 0x40) = *(s16*)(pActorData + 0x22);
-    *(u32*)(pActor + 0x24) = *(s16*)(pActorData + 0x26);
-    *(u32*)(pActor + 0x44) = *(s16*)(pActorData + 0x26);
-    *(u32*)(pActor + 0x28) = *(s16*)(pActorData + 0x2A);
-    *(u32*)(pActor + 0x48) = *(s16*)(pActorData + 0x2A);
-    *(s16*)(pSpriteData + 0x84) = *(u32*)(pActor + 0x24);
-    FieldActorSyncSpritePosition(pActor, pSpriteData);
+    /* Retail 80077064..80077118 reloads g_FieldActors[actorIndex] for every
+     * one of these stores/loads (the aliasing store through the actor pointer
+     * prevents CSE), so index the array at each site instead of caching. */
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x20) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x22);
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x40) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x22);
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x24) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x26);
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x44) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x26);
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x28) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x2A);
+    *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x48) = *(s16*)((u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData + 0x2A);
+    *(s16*)(pSpriteData + 0x84) = *(u32*)((u8*)&g_FieldActors[actorIndex] + 0x24);
+    FieldActorSyncSpritePosition((u8*)&g_FieldActors[actorIndex], pSpriteData);
     D_800AFC74++;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800771B0);
+void func_800771B0(u32* pBuf, s32 count) {
+    s32 i;
+    s32 n = (count + 1) / 2 - 1;
+    if (n == -1) return;
+    for (i = n; i >= 0; i--) {
+        *pBuf++ |= 0x80008000;
+    }
+}
 
 void FieldLoadTIM(u_long* pTimData) {
     TIM_IMAGE timImage;
@@ -2365,17 +3221,20 @@ extern s32 D_800B2360;
 extern s32 D_800B2364;
 extern s32 D_800B2368;
 extern s32 FieldCharacterIdToPartyId(s32 characterId);
-extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActorData);
+extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActorData,
+                          s32 targetState);
 extern void func_80081C54(s32 actorIndex);
 
 void func_80077268(void) {
     s32 i;
-    u8* playerActor;
-    u8* playerActorData;
 
-    playerActor = (u8*)g_FieldActors + g_PlayerActorIndex * 0x5C;
-    playerActorData = (u8*)(uintptr_t)*(u32*)(playerActor + 0x4C);
-    func_80084A40(g_PlayerActorIndex, *(s16*)(playerActorData + 0x26), playerActor, playerActorData);
+    /* Retail 80077268 loads g_PlayerActorIndex and g_FieldActors twice here
+     * (once for the first func_80084A40 argument, once for the actor/data), so
+     * index the array per site rather than caching the pointers. */
+    func_80084A40(g_PlayerActorIndex,
+                  *(s16*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData + 0x26),
+                  (u8*)&g_FieldActors[g_PlayerActorIndex],
+                  (u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData, 0);
 
     for (i = 0; i < D_800ADBFC; i++) {
         u8* actor = (u8*)g_FieldActors + i * 0x5C;
@@ -2387,14 +3246,20 @@ void func_80077268(void) {
             if (partyId != -1 && partyId != 0) {
                 u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
 
-                func_80084A40(i, *(s16*)(actorData + 0x26), actor, actorData);
+                func_80084A40(i,
+                              *(s16*)((u8*)(uintptr_t)g_FieldActors[i].pActorData + 0x26),
+                              actor,
+                              (u8*)(uintptr_t)g_FieldActors[i].pActorData, 0);
 
-                *(u32*)(spriteData + 0x00) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x00);
-                *(u32*)(spriteData + 0x04) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x04);
-                *(u32*)(spriteData + 0x08) = *(u32*)((u8*)(uintptr_t)*(u32*)(playerActor + 0x04) + 0x08);
-                *(u32*)(actor + 0x20) = *(u32*)(playerActor + 0x20);
-                *(u32*)(actor + 0x24) = *(u32*)(playerActor + 0x24);
-                *(u32*)(actor + 0x28) = *(u32*)(playerActor + 0x28);
+                /* Retail 80077368..80077450 reloads g_PlayerActorIndex and
+                 * g_FieldActors and recomputes the 0x5C stride for each of
+                 * these six copies, so index the array per site. */
+                *(u32*)(spriteData + 0x00) = *(u32*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pSpriteData + 0x00);
+                *(u32*)(spriteData + 0x04) = *(u32*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pSpriteData + 0x04);
+                *(u32*)(spriteData + 0x08) = *(u32*)((u8*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pSpriteData + 0x08);
+                *(u32*)((u8*)&g_FieldActors[i] + 0x20) = *(u32*)((u8*)&g_FieldActors[g_PlayerActorIndex] + 0x20);
+                *(u32*)((u8*)&g_FieldActors[i] + 0x24) = *(u32*)((u8*)&g_FieldActors[g_PlayerActorIndex] + 0x24);
+                *(u32*)((u8*)&g_FieldActors[i] + 0x28) = *(u32*)((u8*)&g_FieldActors[g_PlayerActorIndex] + 0x28);
             }
         }
     }

@@ -1,0 +1,29 @@
+--- before/data_field.c
++++ after/data_field.c
+@@ -1229,7 +1229,26 @@
+ FIELD_BSS_ALIAS(D_800AF8E0, g_FieldBss_800AF85C, 0x084);
+ FIELD_BSS_ALIAS(D_800AF8E4, g_FieldBss_800AF85C, 0x088);
+ FIELD_BSS_ALIAS(D_800AF8E8, g_FieldBss_800AF85C, 0x08C);
++/* Retail saves/restores 0x1C8 bytes starting at g_CameraEye. Keep scripted
++ * camera state in that same region: independent generated stubs lose mode
++ * and movement state across battle, stranding EF camera waits on return. */
++FIELD_BSS_ALIAS(g_CamAtMovementFrom, g_FieldBss_800AF85C, 0x094);
++FIELD_BSS_ALIAS(g_CamAtMovementTo, g_FieldBss_800AF85C, 0x0A4);
++FIELD_BSS_ALIAS(g_CamEyeMovementFrom, g_FieldBss_800AF85C, 0x0B4);
++FIELD_BSS_ALIAS(g_CamEyeMovementTo, g_FieldBss_800AF85C, 0x0C4);
++FIELD_BSS_ALIAS(D_800AF930, g_FieldBss_800AF85C, 0x0D4);
++FIELD_BSS_ALIAS(g_FieldCameraMode, g_FieldBss_800AF85C, 0x0D8);
++FIELD_BSS_ALIAS(D_800AF936, g_FieldBss_800AF85C, 0x0DA);
++FIELD_BSS_ALIAS(D_800AF938, g_FieldBss_800AF85C, 0x0DC);
+ FIELD_BSS_ALIAS(D_800AF93A, g_FieldBss_800AF85C, 0x0DE);
++FIELD_BSS_ALIAS(g_CamMovementFlags, g_FieldBss_800AF85C, 0x0E0);
++FIELD_BSS_ALIAS(g_CamAtMovementDuration, g_FieldBss_800AF85C, 0x0E2);
++FIELD_BSS_ALIAS(g_CamAtMovementCurrent, g_FieldBss_800AF85C, 0x0E4);
++FIELD_BSS_ALIAS(g_CamAtMovementDelta, g_FieldBss_800AF85C, 0x0F4);
++FIELD_BSS_ALIAS(g_CamEyeMovementDuration, g_FieldBss_800AF85C, 0x104);
++FIELD_BSS_ALIAS(g_CamEyeMovementCurrent, g_FieldBss_800AF85C, 0x108);
++FIELD_BSS_ALIAS(g_CamEyeMovementDelta, g_FieldBss_800AF85C, 0x118);
++FIELD_BSS_ALIAS(g_CamInterpolation, g_FieldBss_800AF85C, 0x128);
+ FIELD_BSS_ALIAS(g_Scene, g_FieldBss_800AF85C, 0x134); /* 0x800AF990; worldToScreen at +0xD4 == g_CameraEye+0x1E4 */
+ FIELD_BSS_ALIAS(g_WorldScale, g_FieldBss_800AF85C, 0x268); /* 0x800AFAC4; was 0x298, same wrong-base (0x800AF82C) error as the camera vectors */
+ 

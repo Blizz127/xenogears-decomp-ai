@@ -1,0 +1,22 @@
+{
+  "source_pins": {
+    "/var/home/blizz/Projects/xenogears-decomp-ai/src/field/main/misc2.c": "c2539494ca3d29971c4af8b2815a5c61ca10452839ef05b338edcec3ed3ecaea",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/disc/field.bin": "38a1ce829a6f094c505f67143d6ace2d328418c65425a7383991179467e1fdfc",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/field_axis_matrix_retail_test.c": "1e2a64ec19f1add95a7fbb22323402c484fd5918b77fcd67e5aab2c0f218f3d1",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/tests/run_field_axis_matrix_retail_test.sh": "39b0e2203922771dc5503cb5a27c287ce5ea1fdce32eed2ca48093141e85efd5",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/src/battle_mips_adapter.h": "acd0133574e1cb546ce2b33ee582d7b8dff48c988298c6ac4fa6cb65e4b5f12a",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/include_shim/psyq/libgte.h": "20ed3f5da90c29195a8763cf5da1981a21e0083bc1d87d4d4bbbaad4c4c7847e",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/extern/PsyCross/include/psx/libgte.h": "c27b928533938f1f5b8ebdd8c34fa3fbc413978df98dd909facdc09cf3e9c33f",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/include/common.h": "1ef8eb5e9904b79fdd883a548000fddf3247eaf76674f27c35d081c12119e914",
+    "/var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_port.sh": "60d7016744e6f1b728dd9fb811a9aa85d77b8e7c177c886cd0aeb324de079dc5"
+  },
+  "retail_function": {
+    "entry": "800759E4",
+    "end": "80075B08",
+    "raw_offset": "5EF4",
+    "bytes": 292
+  },
+  "scope": "full production TU and seed; explicit OuterProduct12/VectorNormal boundary spies, not SDK math or rendering oracle",
+  "clang_compatibility": "test-only forward declarations of four unrelated later full-TU definitions avoid conflicting implicit declarations; no function body or tested helper prototype replaced"
+}

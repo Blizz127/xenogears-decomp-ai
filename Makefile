@@ -72,6 +72,16 @@ build:
 	$(GEARS) matching; \
 	grep -q '^ApplyMatrixSV = ' linker/undefined_funcs_auto.field.txt || \
 		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
+	grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
+		echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
+	grep -q '^D_800578D6 = ' linker/undefined_syms_auto.slus_006.64.txt || \
+		printf 'D_800578D6 = 0x800578D6;\nD_800578D8 = 0x800578D8;\n' >> linker/undefined_syms_auto.slus_006.64.txt; \
+	grep -q '^D_80090F38 = ' linker/undefined_syms_auto.battling.txt || \
+		printf 'D_80090F38 = 0x80090F38;\nD_800925A4 = 0x800925A4;\n' >> linker/undefined_syms_auto.battling.txt; \
+	grep -q '\.world_map_bss 0x8009BBB8' linker/world_map.ld || \
+		sed -i 's/\.world_map_bss (NOLOAD)/.world_map_bss 0x8009BBB8 (NOLOAD)/' linker/world_map.ld; \
+	grep -q '\.battling_bss 0x8009295C' linker/battling.ld || \
+		sed -i 's/\.battling_bss (NOLOAD)/.battling_bss 0x8009295C (NOLOAD)/' linker/battling.ld; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC)
 endif
@@ -79,23 +89,39 @@ endif
 check: clean build
 	@sha256sum --check $(CONFIG_DIR)/checksum.sha
 
+# The full-ROM checksum gate: from-clean rebuild of the pinned matching
+# artifacts + per-overlay PASS/FAIL against config/checksum.sha (retail
+# hashes), with the known-red ledger for legible failures. Never re-pins.
+# See tools/scripts/check_rom_hashes.sh. Matching-side only; does not touch
+# the port workflow.
+rom-check:
+	@bash tools/scripts/check_rom_hashes.sh
+
 objdiff-config:
 	$(MAKE) clean; \
 	$(GEARS) report; \
+	grep -q '^ApplyMatrixSV = ' linker/undefined_funcs_auto.field.txt || \
+		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
+	grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
+		echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC); \
 	mkdir -p $(EXPECTED_DIR); \
+	rm -rf $(EXPECTED_DIR)/asm; \
 	mv build/asm $(EXPECTED_DIR)/asm; \
 	$(PYTHON) $(OBJDIFF_DIR)/objdiff_generate.py $(OBJDIFF_DIR)/config.yaml
 
 report: objdiff-config
 	@$(OBJDIFF) report generate > $(BUILD_DIR)/progress.json
 
+# Do NOT delete $(EXPECTED_DIR): objdiff baselines live there and are expensive
+# to regenerate. gears clean already wipes build artifacts.
 clean:
-	@$(GEARS) clean; \
-	rm -rf $(EXPECTED_DIR)
+	@$(GEARS) clean
 
 ### Settings
 .SECONDARY:
-.PHONY: all clean default
+# `build` and `check` must be phony: a `build/` output directory would otherwise
+# make Make treat the build target as already up-to-date (no-op).
+.PHONY: all clean default build check rom-check objdiff-config report
 SHELL = /bin/bash -e -o pipefail

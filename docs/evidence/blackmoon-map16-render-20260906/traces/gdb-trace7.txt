@@ -1,0 +1,7 @@
+[T] 77AB4 entry D_800B2264=4 slots=00000000 00000000 00000000 00000000
+[T] 742C#1 bt:
+#0  func_801E742C (slot=0, flags=0, pModelArc=0x732358 <g_PsxRam+1160440>, pTexArc=0x7e998c <g_PsxRam+1911596>, x=576, y=256, z=0, w=252, vec=0x9b28e4 <D_800B21EC>) at pc_port/src/field_object_overlay.c:3033
+#1  0x0000000000459e11 in func_80077AB4 () at src/field/main/main.c:232
+#2  0x0000000000459ecb in func_80077C60 () at src/field/main/main.c:253
+#3  0x000000000047405b in FieldLoad () at src/field/main/misc3.c:1249
+[T] main.c:244 i=0 slotptr(void*)=0x73d54c

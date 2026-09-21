@@ -1,0 +1,12 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib64/libthread_db.so.1".
+0x000000000046f104 in func_8007554C () at src/field/main/misc2.c:2226
+2226	        while (Vsync(-1) < target) {
+$1 = 0
+0xa06288 <g_FieldCameraMode>:	0x0000	0x0000	0x0000	0x0000
+$2 = 1
+$3 = 1
+$4 = 0x3
+$5 = {vx = -22282240, vy = 3604480, vz = 31719424, pad = 0}
+$6 = {vx = -22282240, vy = -54099968, vz = 131725440, pad = 0}
+[Inferior 1 (process 3438797) detached]

@@ -1,0 +1,182 @@
+# W34-OVERNIGHT handoff — W34B54 DrawOTag architecture boundary complete
+
+## 1. Frontier and final evidence
+
+The run began at the W34B34/W34B35/W34B36 held edge `0x800719C8`. W34B37
+corrected the production OT-root representation, W34B38 added the narrow
+guest-native OT adapter, and W34B39 corrected the retail slot-table global
+used by particle cleanup. The first-frame natural route is now clean through
+the OT walk, but the D554 frame backedge remains intentionally held.
+
+Final baseline evidence (`slice_13_natural.log`): frame 916; scheduler pass 2
+`29 executed / 0 missing`; guest OT root `0x800A3224`; two packets submitted;
+1025 walk steps; zero range/alignment/length/step aborts; D554 backedge
+`0x800719C8`, `d554=1`, `held=1`, `hit=1`; rc=0. The control frontier is
+therefore still `0x800719C8`, with the OT sub-frontier advanced to the guest
+terminator at `0x8009CE6C`. The latest clean bounded route is
+W34B44/TWICE: three tails, three OT submissions, six packets, scheduler
+entry 4 with `53/53`, and `D554=1`, recorded in `slice_17_natural.log`.
+
+Fresh W34B41 census evidence (`slice_14_census.log`) reproduced frame 916
+and rc=0 against the current binary. W34B42 then executed one reviewed
+re-entry. Its final natural state (`slice_15_natural.log`) has two frame-tail
+passes, four OT packets, 2050 guest-walk steps, scheduler entry 3 with
+`41/41` callbacks, and rc=0. D554 remains nonzero after the second tail, so
+the bounded control frontier is still `0x800719C8`.
+
+The final W34B50 branch census captured both live D554-capable callbacks on
+all three bounded re-entries. Slot 1 callback `0x8008A72C` entered with
+resync `0`, and `wm_80090A84` returned `0` each time; slot 4 callback
+`0x8008C844` entered with resync `0`, which gates its `wm_80090C68` clear
+path off. D554 consequently remained `1` at all three production tail
+records. The complete capture is in `slice_23_d554_callback_census.log`.
+
+W34B53 audited the live wm_80094238 miss rather than forcing a trigger. The
+root 0x8009BD00 -> 0x800B66FC is correctly relocated; list 0 contains two
+valid rectangles and a terminator, while the natural position
+(0,-16384,0) is outside them. The miss is expected data behavior, not a
+stale/uninitialized pointer or missing fixup. Evidence is in
+AUDIT_W34B53_94238_DATA_PLANE.md and slice_24_94238_data_plane.log.
+
+W34B54 completed the strict actual-DrawOTag completion audit. The writer
+correction is valid, but direct PsyCross DrawOTag is class (b): the retail
+four-byte guest OT and 24-bit links are incompatible with the current
+64-bit/simple-primitive PsyCross host-link traversal. The banked direct call
+entered PsyCross and crashed while decoding the guest link. The W34B38
+guest-native adapter is the safe equivalent path and remains rc=0 with zero
+adapter aborts; actual PsyCross DrawOTag remains intentionally zero-hit.
+Evidence is in AUDIT_W34B54_DRAWOTAG_ARCHITECTURE.md and
+slice_25_drawotag_architecture.log.
+
+## 2. Milestones
+
+- Milestone 1 (`0x80072238` mode loop): not reached; entry state is zero-hit,
+  should-not-run guard intact.
+- Milestone 2 (`0x8007299C` renderer/retail teardown entry): not reached;
+  entry state is zero-hit, should-not-run guard intact. Retail audit classifies
+  this function as post-loop teardown rather than first-frame renderer work.
+- Milestone 3 (nonzero framebuffer): not reached; no PNG produced.
+
+## 3. Commit chain
+
+| hash | slice | frontier delta |
+| --- | --- | --- |
+| `2c9ec8f1` | W34B34 upload pump `0x80074F2C` | `0x80071984 -> 0x80075104` |
+| `9b3da910` | W34B35 upload pump `0x80075104` | `0x80075104 -> 0x80071994` |
+| `0cfeaaeb` | W34B36 frame tail + D554 hold | `0x80071994 -> 0x800719C8` |
+| `ba213582` | W34B37 BE3C audit + callback census evidence | no production delta |
+| `71f9c56d` | W34B37 publish guest OT roots | OT root host/guest boundary corrected |
+| `090f075d` | W34B38 guest-native world OT adapter | malformed host walk -> bounded guest walk |
+| `07c7a9b8` | W34B38 bank adapter evidence | no production delta |
+| `80d1f0b8` | W34B39 slot-table base at `0x8009BCC0` | bucket abort -> terminator, 2 packets |
+| `215786b4` | W34B40 audit held backedge and post-convergence boundaries | audit only |
+| `d17fb03d` | W34B41 fresh callback census | no production delta |
+| `a3f20290` | W34B42 reviewed one-frame re-entry | one extra clean frame |
+| `5a79d5b0` | W34B43 post-second-frame census | no production delta |
+| `77ea585c` | W34B44 finite two-reentry bound | two additional clean frames |
+| `aa4b71d2` | W34B45 third-tail callback census | no production delta |
+| `90c9ce77` | W34B46 D554 clear-writer audit | class-(e) audit; no production delta |
+| `67a22478` | W34B47 D2 audit-ahead | three class-(e) regions; no production delta |
+| `6aad1387` | W34B48 D3 tripwire hygiene | all guards intact; no production delta |
+| `87d20684` | W34B49 D4 evidence hygiene | proof hashes/worktrees clean |
+| `d7b13c4e` | W34B50 live D554 callback census | no production delta |
+| `c4a63ca3` | W34B53 BD00/0x80094238 data-plane audit | no production delta |
+| `fd19d698` | W34B54 DrawOTag host ABI architecture audit | no production delta |
+
+W34B53 commit is c4a63ca3 (BD00/0x80094238 data-plane audit; no production
+delta). All production slices above have clean LINK OK and rc=0 natural evidence.
+W34B40, W34B41, W34B43, W34B45, W34B46, W34B47, W34B48, W34B49, and W34B50 contain evidence/audit only. W34B42 adds one
+reviewed frame and W34B44 adds a finite second re-entry; the unbounded retail
+session loop remains deferred.
+
+## 4. Attempted/reverted slices
+
+W34B37 initially exposed a DrawOTag ABI crash; that attempt was resolved by
+the committed W34B37/W34B38 OT representation work. W34B39 was the only
+implementation slice in the final clean run and was not reverted. W34B40
+attempted no production implementation; it audited the held frame edge and
+the next three large regions, then stopped at the explicit second-frame
+restriction.
+
+## 5. BLOCKED-NEEDS-REVIEW
+
+`AUDIT_W34B40_AHEAD.md`, `AUDIT_W34B41_CALLBACK_CENSUS.md`,
+`AUDIT_W34B42_SECOND_FRAME.md`, `AUDIT_W34B43_POST_SECOND_CENSUS.md`,
+`AUDIT_W34B44_TWO_REENTRY.md`, `AUDIT_W34B46_D554_CLEAR_WRITERS.md`, and
+`AUDIT_W34B47_AUDIT_AHEAD.md`, `AUDIT_W34B48_TRIPWIRE_HYGIENE.md`, and
+`AUDIT_W34B50_D554_CALLBACK_CENSUS.md`
+record the current boundaries. Three frame passes are clean and
+callback-covered, but D554 remains 1. The mode
+initializer `0x80072238`
+is approximately 472 instructions with unresolved/gated setup calls, and
+`0x8007299C` is an approximately 0x214-byte, 26-call post-loop teardown.
+Neither is a bounded first-render slice. The convergence lane has no
+uncovered class-(a/b) gap. W34B50 rules out the two live callback clear
+predicates for the current fixture; it does not resolve the class-(e)
+frame-local state machine or the thirteen external retail writers.
+
+## 6. Detours completed
+
+D1 convergence and D3 tripwire audits remain banked. The W34B39 detour fixed
+the slot-table base and completed the first guest-native OT walk. W34B40
+audited the held frame re-entry, mode initializer, and post-loop teardown;
+W34B41 freshly recaptured the full slot table and resolver coverage; W34B42
+executed one reviewed additional frame; W34B43 recaptured the identical
+second-tail table; W34B44 executed two additional bounded frames. W34B46
+established that the frame-local D554 clear region is 183 instructions with
+unresolved callees and that 13 other retail clear sites have no current
+body/mapping. W34B47 then audited the three next regions: the unreachable
+frame-exit continuation, the 472-instruction mode initializer, and the
+132-instruction teardown. D4 was not used to alter unrelated worktree
+contents. W34B48 rechecked the 15-entry tripwire registry, scheduler
+resolver boundary, and sole CD40-style indirect slot; all remain safe and
+intact. W34B49 validated both banked proof manifests and found no stale
+worktree metadata or missing registered worktree directory.
+W34B50 then captured the two live callback entry/gate states and the A72C
+helper return across three clean bounded re-entries; no clear arm fired.
+
+W34B53 inspected the live trigger table and established that the natural
+0x80094238 miss is correct for the captured position; no data-plane fix was
+attempted. Its evidence-only commit is c4a63ca3. W34B54 is the current
+evidence-only architecture audit.
+
+## 7. Tripwire status
+
+| tripwire/guard | status |
+| --- | --- |
+| `0x80072238` mode-loop entry | intact; zero-hit naturally |
+| `0x8007299C` renderer/teardown entry | intact; zero-hit naturally |
+| separate world DrawOTag guard | intact; zero-hit; guest adapter is separate |
+| frame backedge/second-iteration guard | intact; three hits held after two bounded re-entries |
+| loop dispatch/exit guards | intact; zero-hit |
+| scheduler missing/invalid callback guards | intact; pass 2 `29/29`, missing `0`, invalid `0` |
+| W34B38 OT adapter abort guards | intact; naturally zero aborts in W34B39 |
+| W34B50 live callback clear arms | intact; A72C result 0, C844 resync gate 0; D554 remained 1 |
+| actual PsyCross DrawOTag call | not claimed; class-(b) ABI boundary, zero by design |
+
+No should-not-run tripwire was weakened or retired by implementation.
+
+## 8. Honest not-checked list
+
+- An approved guest-aware PsyCross DrawOTag ABI bridge was not implemented.
+- The actual PsyCross DrawOTag call was therefore not made to render the
+  guest OT; only the accepted world-native adapter was exercised.
+- The unbounded/retail second-frame backedge loop was not implemented.
+- Mode-loop entry, renderer/teardown entry, and framebuffer PNG output were
+  not reached or captured.
+
+## 9. Recommended next task
+
+The single recommended next task is human review and approval of one
+guest-aware PsyCross DrawOTag architecture (or formal acceptance of the
+world-only adapter milestone), before any second-frame implementation.
+Do not clear D554 by hand, enable the legacy driver, or claim actual
+DrawOTag execution from the adapter path.
+
+## 10. Confirmation
+
+Nothing was pushed. Quarantined tracked dirt in `include/psyq/inline_c.h` and
+`pc_port/src/game_overrides.c` was not staged, reverted, or modified. Banked
+proof trees were not re-baselined and remain intact. No framebuffer PNG
+exists. W34B50 added no production source changes. The second-frame/backedge
+loop was not implemented.

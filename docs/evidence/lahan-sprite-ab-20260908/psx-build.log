@@ -1,0 +1,5 @@
+[1/5] Compile src/slus_006.64/system/animation_scripts.c (CPP)
+[2/5] Compile build/src/slus_006.64/system/animation_scripts.c.i (CC)
+[3/5] Assemble build/src/slus_006.64/system/animation_scripts.c.s (MASPSX)
+[4/5] Linking  (LD)
+[5/5] Creating ELF build/out/slus_006.64.elf (Objcopy)

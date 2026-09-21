@@ -44,6 +44,7 @@ void func_8001BEEC(void) {
     g_Menu->transitionEffectState = 0;
 }
 
+/* Keep the retail debug-index reloads local to this input routine. */
 void MenuProcessControllerInput(void) {
     u_char input = MENU_INPUT_IDLE;
     if (func_80036410() != 0) {
@@ -78,20 +79,45 @@ void MenuProcessControllerInput(void) {
             break;
         }
         if (g_C1ButtonStatePressedOnce & CTRL_BTN_L1) {
-            if (g_Menu->unk1E95) {
-                g_Menu->unk1E95 -= 1;
+            if ((*(volatile u8*)&g_Menu->unk1E95)) {
+                (*(volatile u8*)&g_Menu->unk1E95) -= 1;
             }
             break;
         }
         if (g_C1ButtonStatePressedOnce & CTRL_BTN_L2) {
-            g_Menu->unk1E95 += 1;
+            (*(volatile u8*)&g_Menu->unk1E95) += 1;
             break;
         }
     }
     g_Menu->input = input;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", func_8001C074);
+extern s32* D_8005917C;
+
+void func_8001C074(void) {
+    GfxEnvironment* env;
+    MenuProcessControllerInput();
+    env = &g_Menu->gfxEnvs[0];
+    if (g_Menu->pGfxEnv == env) {
+        env = &g_Menu->gfxEnvs[1];
+    }
+    g_Menu->pGfxEnv = env;
+    g_Menu->renderContext = g_Menu->renderContext == 0;
+    ClearOTagR(g_Menu->pGfxEnv->ot, 0x10);
+    if (*D_8005917C != -1) {
+        if (g_Menu->unk1E94 != 0) {
+            HeapDebugDump(3, g_Menu->unk1E95, 0xF, 0x80AC);
+        }
+        if (*D_8005917C != -1) {
+            FontDrawLetters(g_Menu->pGfxEnv->ot);
+        }
+    }
+    DrawSync(0);
+    Vsync(0);
+    PutDrawEnv(&g_Menu->pGfxEnv->drawEnv);
+    PutDispEnv(&g_Menu->pGfxEnv->dispEnv);
+    DrawOTag(&g_Menu->pGfxEnv->ot[15]);
+}
 
 extern char D_8001833C[];
 extern char D_80018350[];
@@ -110,9 +136,20 @@ extern GameState g_GameState;
 
 extern void func_8001C074(void);
 extern void func_801C62A8(void);
+#ifdef XENO_PC_PORT
+/* The retail executable names these overlay entry points by address.  In the
+ * matching overlay TUs, the same functions have descriptive C names.  Route
+ * the native all-in-one link to those real bodies instead of generating
+ * address-named oracle stubs; the matching builds remain separate images. */
+extern void MemberChangeMenuMain(void);
+extern void ShopMenuMain(void);
+#define func_801CB0A8 MemberChangeMenuMain
+#define func_801CCD28 ShopMenuMain
+#else
 extern void func_801CB0A8(void);
-extern void func_801CBDBC(void);
 extern void func_801CCD28(void);
+#endif
+extern void func_801CBDBC(void);
 extern void func_801CE024(void);
 
 void MenuExecute(void) {
@@ -222,6 +259,35 @@ void MenuExecute(void) {
 
     ArchiveSetIndex(0x10, 0);
 
+#ifdef XENO_PC_PORT
+    /* Dispatch matches retail jtbl_800183BC (asm/slus_006.64/data/800.rodata.s).
+     * The matching-build C below follows the fall-through listing order in
+     * MenuExecute.s and is left untouched for objdiff; that order swaps title
+     * (2), save/name (3), and shop (4).  Slot 2 is the title field's FE57
+     * opener (D_800ADB64=2): func_801C62A8 → func_801C58EC. */
+    switch (D_80059460) {
+        case 0:
+            func_801C62A8();
+            break;
+        case 1:
+            func_801CB0A8();
+            break;
+        case 2:
+        case 6:
+            func_801C62A8();
+            ChangeGameState(1);
+            break;
+        case 3:
+            func_801CBDBC();
+            break;
+        case 4:
+            func_801CCD28();
+            break;
+        case 5:
+            func_801CE024();
+            break;
+    }
+#else
     switch (D_80059460) {
         case 0:
             func_801C62A8();
@@ -243,6 +309,7 @@ void MenuExecute(void) {
             func_801CE024();
             break;
     }
+#endif
 
     if (g_MenuDebugEnabled) {
         HeapFree(pBuf0);
@@ -271,6 +338,9 @@ void MenuMain() {
     g_Menu->unk2D8 = 0;
     g_Menu->shouldDrawMenu = FALSE;
     MenuInitializeGfxEnvironments();
+    /* Retail keeps isbg=0 so MoveImage of the field snapshot (704,256) under
+     * the menu OT remains visible. isbg=1 only when the debug KernelMenu path
+     * is armed — otherwise title/system menus clear to black every frame. */
     if (g_MenuDebugEnabled) {
         g_Menu->gfxEnvs[0].drawEnv.isbg = 1;
         g_Menu->gfxEnvs[1].drawEnv.isbg = 1;
@@ -289,4 +359,36 @@ void MenuMain() {
     g_MenuDebugEnabled = 1;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/menu", func_8001C76C);
+#ifndef XENO_PC_PORT
+/* MIPS-only: .ent/.end and 4-byte .word are rejected/misread by the host
+ * assembler.  Nothing in the port references this table; the stub generator
+ * covers the symbol if a reference ever appears. */
+__asm__(
+        ".globl func_8001C76C\n\t"
+        ".ent func_8001C76C\n\t"
+        "func_8001C76C:\n\t"
+        ".word 0x00000041, 0x00000000, 0x00000001, 0x000000cc\n\t"
+        ".word 0x00000006, 0x000000fc, 0x0000000d, 0x0000001c\n\t"
+        ".word 0x00000008, 0x00000003, 0x21010304, 0x210000ff\n\t"
+        ".word 0x00010000, 0x00000002, 0x21010304, 0x210000ff\n\t"
+        ".word 0x00010003, 0x00000000, 0x31010506, 0x3162b6c1\n\t"
+        ".word 0x0062b6c1, 0x002954e4, 0x00050004, 0x00000000\n\t"
+        ".word 0x31010506, 0x312954e4, 0x0062b6c1, 0x002954e4\n\t"
+        ".word 0x00050000, 0x00000003, 0x31010506, 0x31445bdf\n\t"
+        ".word 0x0048bde3, 0x004bb4d6, 0x00050002, 0x00000004\n\t"
+        ".word 0x31010506, 0x31445bdf, 0x0048bde3, 0x00445bdf\n\t"
+        ".word 0x00050001, 0x00000002, 0x31010506, 0x31439eab\n\t"
+        ".word 0x000000ff, 0x002954e4, 0x00010005, 0x00000003\n\t"
+        ".word 0x31010506, 0x31273aeb, 0x003cc5cc, 0x002954e4\n\t"
+        ".word 0x00040002, 0x00000000, 0xfff10011, 0x00000002\n\t"
+        ".word 0xfff1ffef, 0x0000fffe, 0xfff1ffef, 0x00000002\n\t"
+        ".word 0xfff10011, 0x0000fffe, 0x00130000, 0x00000002\n\t"
+        ".word 0x00130000, 0x0000fffe, 0xf1d70000, 0x00000774\n\t"
+        ".word 0xf0010000, 0x0000006b, 0xf4d60000, 0x00000b76\n\t"
+        ".word 0xf0010000, 0x0000006b, 0x04eb0a22, 0x00000b5d\n\t"
+        ".word 0x06f80e67, 0x0000fffb, 0x06f80e67, 0x0000fffb\n\t"
+        ".word 0x04e30a22, 0x0000f49f, 0x06f8f199, 0x0000fffb\n\t"
+        ".word 0x06f8f199, 0x0000fffb, 0x06fcf19b, 0x00000024\n\t"
+        ".word 0x04e3f5de, 0x0000f49f, 0x00000000, 0x0000f000\n\t"
+        ".end func_8001C76C");
+#endif

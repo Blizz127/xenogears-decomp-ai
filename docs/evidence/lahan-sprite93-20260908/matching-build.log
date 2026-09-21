@@ -1,0 +1,5 @@
+[1/5] Compile src/slus_006.64/system/rendering.c (CPP)
+[2/5] Compile build/src/slus_006.64/system/rendering.c.i (CC)
+[3/5] Assemble build/src/slus_006.64/system/rendering.c.s (MASPSX)
+[4/5] Linking  (LD)
+[5/5] Creating ELF build/out/slus_006.64.elf (Objcopy)
