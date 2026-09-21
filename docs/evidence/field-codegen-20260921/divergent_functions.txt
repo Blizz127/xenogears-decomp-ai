@@ -1,0 +1,329 @@
+# field.bin: functions whose built code differs from retail
+# kind=size -> instruction count differs; kind=bytes -> same size, different instructions
+# relocated words are masked, so 'bytes' divergence is real codegen, not link-time fixups
+# 324 divergent of 878 total
+TU                           FUNCTION                                     KIND    RETAIL   BUILT  BADWORDS
+camera/camera_movement       FieldScriptStartCameraMovement               bytes     1620    1620       106
+camera/camera_movement       func_8008FB28                                bytes      112     112         7
+camera/camera_movement       func_8008FC4C                                size       244     236          
+dialogue/text_box            func_8009BC98                                size       448     432          
+dialogue/text_box            func_8009C154                                size       996     944          
+dialogue/text_box            func_8009C5A8                                size      1872    2004          
+dialogue/text_box_render     FieldTextBoxInitialize                       size       584     432          
+dialogue/text_box_render     FieldTextBoxInitializePrimitives             size      1952    1584          
+dialogue/text_box_render     func_8007DCF8                                size       468     472          
+dialogue/text_box_render     func_8007E16C                                size        84      88          
+dialogue/text_box_render     func_8007E1C0                                size      3148    1956          
+dialogue/text_box_render     func_8007F5AC                                size       332     320          
+dialogue/text_box_render     func_8007F6F8                                size       284     280          
+dialogue/text_box_render     func_8007F814                                size       200     188          
+dialogue/text_box_render     func_8007F8DC                                size      1804    1396          
+dialogue/text_box_render     func_8008004C                                size      1448    1176          
+effects/distortion           FieldDistortionDraw                          size      2060    1612          
+effects/distortion           FieldDistortionInitialize                    size      1144    1136          
+effects/particles            FieldParticleRender                          size       964     968          
+main/main                    FieldLoadUITextures                          size       444     440          
+main/main                    FieldMain                                    bytes     3284    3284        77
+main/main                    func_80077884                                size       560     540          
+main/main                    func_80077AB4                                size       428     400          
+main/main                    func_80077E10                                size       120     128          
+main/misc                    FieldActorCopyPlacement                      size       496     400          
+main/misc                    FieldScriptWriteActorFlags1                  bytes      136     136        11
+main/misc                    FieldScriptWriteActorFlags2                  bytes      136     136        11
+main/misc                    FieldScriptWriteActorFlags3                  bytes      136     136        11
+main/misc                    FieldScriptWriteActorFlags4                  bytes      136     136        11
+main/misc                    func_80087148                                size       104     112          
+main/misc                    func_800871B0                                size       532     508          
+main/misc                    func_80087420                                size       268     252          
+main/misc                    func_8008764C                                size       436     344          
+main/misc                    func_80087A40                                bytes       60      60         7
+main/misc                    func_80087A7C                                bytes       60      60         7
+main/misc                    func_80087AB8                                size       164     152          
+main/misc                    func_80087B5C                                size       176     148          
+main/misc                    func_80087C34                                size       252     244          
+main/misc                    func_80087D80                                size        96     104          
+main/misc                    func_80087E5C                                bytes       60      60         4
+main/misc                    func_80087E98                                size       268     280          
+main/misc                    func_80087FA4                                size        48      44          
+main/misc                    func_8008800C                                size       396     420          
+main/misc                    func_80088198                                bytes       80      80         7
+main/misc                    func_800881E8                                bytes      116     116         1
+main/misc                    func_800882B8                                size       168     164          
+main/misc                    func_800883D4                                size       184     156          
+main/misc                    func_800884CC                                bytes       60      60         4
+main/misc                    func_80088508                                size       276     280          
+main/misc                    func_8008861C                                size        88      44          
+main/misc                    func_80088674                                size       284     288          
+main/misc                    func_80088790                                size       276     280          
+main/misc                    func_800888A4                                bytes      280     280        55
+main/misc                    func_800889BC                                size       428     436          
+main/misc                    func_80088B68                                size       180     160          
+main/misc                    func_80088C1C                                size       220     152          
+main/misc                    func_80089DCC                                bytes      332     332         6
+main/misc                    func_80089F18                                bytes       60      60         4
+main/misc                    func_80089F54                                bytes       64      64         5
+main/misc                    func_80089FD0                                bytes      188     188         4
+main/misc                    func_8008A08C                                size       188     180          
+main/misc                    func_8008A148                                size       252     244          
+main/misc                    func_8008A2E8                                size       504     508          
+main/misc                    func_8008A604                                bytes       60      60         4
+main/misc                    func_8008A7DC                                size       352     332          
+main/misc                    func_8008AACC                                size       540     520          
+main/misc                    func_8008AE5C                                bytes      108     108         1
+main/misc                    func_8008AEC8                                size       272     280          
+main/misc                    func_8008AFD8                                bytes      272     272         7
+main/misc                    func_8008B0E8                                bytes       92      92         4
+main/misc                    func_8008B144                                bytes       60      60         4
+main/misc                    func_8008B180                                bytes      144     144         7
+main/misc                    func_8008B45C                                size       188     180          
+main/misc                    func_8008B5D4                                size       704     480          
+main/misc                    func_8008B978                                size       776     740          
+main/misc                    func_8008BC80                                size       344     320          
+main/misc                    func_8008BDD8                                size       352     368          
+main/misc                    func_8008BF38                                size       584     564          
+main/misc                    func_8008C180                                size       436     424          
+main/misc                    func_8008C334                                bytes     1188    1188        18
+main/misc                    func_8008CD48                                bytes      140     140         5
+main/misc                    func_8008CDD4                                size       144     152          
+main/misc                    func_8008CF3C                                size        96     104          
+main/misc                    func_8008CFEC                                bytes      140     140         4
+main/misc                    func_8008D0F4                                size       140     144          
+main/misc                    func_8008D180                                size       176     172          
+main/misc                    func_8008D230                                bytes       60      60         4
+main/misc                    func_8008D26C                                size       108     112          
+main/misc                    func_8008D570                                bytes       88      88         8
+main/misc                    func_8008D5C8                                bytes       60      60         7
+main/misc                    func_8008D604                                size       128     120          
+main/misc                    func_8008DA04                                size       248     200          
+main/misc                    func_8008DB2C                                bytes       60      60         4
+main/misc                    func_8008E59C                                size       412     380          
+main/misc                    func_8008E718                                size       324     344          
+main/misc                    func_8008E8C8                                bytes      304     304         2
+main/misc                    func_8008EA58                                size       472     456          
+main/misc                    func_8008EC30                                size       484     476          
+main/misc                    func_8008EE14                                size       328     324          
+main/misc                    func_8008EFE4                                size       140     156          
+main/misc                    func_8008F0B4                                size       276     248          
+main/misc                    func_8008F394                                bytes       60      60         4
+main/misc                    func_8008F5E4                                bytes      132     132         3
+main/misc                    func_8008F7B8                                bytes      340     340        12
+main/misc                    func_8008F90C                                size       300     308          
+main/misc10                  func_80096214                                size       172     176          
+main/misc10                  func_8009635C                                bytes      176     176         4
+main/misc11                  FieldProjectActorOriginToScreen              size       192     180          
+main/misc11                  func_80091A08                                bytes      112     112         5
+main/misc11                  func_80091A78                                bytes       92      92         4
+main/misc11                  func_80091ADC                                size       224     184          
+main/misc11                  func_80091BBC                                size       580     628          
+main/misc11                  func_80091E00                                size       152     156          
+main/misc11                  func_80091E98                                bytes      236     236         9
+main/misc11                  func_80092044                                bytes      148     148         2
+main/misc11                  func_800920D8                                size       112     104          
+main/misc11                  func_80092148                                bytes      160     160         1
+main/misc11                  func_800921E8                                size       508     592          
+main/misc11                  func_800924D4                                size       204     240          
+main/misc11                  func_800926C8                                bytes      160     160         2
+main/misc11                  func_80092768                                bytes      160     160         2
+main/misc11                  func_80092808                                bytes      140     140        28
+main/misc11                  func_80092894                                size       908     884          
+main/misc11                  func_80092C20                                size       476     472          
+main/misc11                  func_80093014                                size       484     480          
+main/misc11                  func_80093664                                bytes      128     128         1
+main/misc11                  func_80093930                                size       112     124          
+main/misc11                  func_800947B0                                size       384     360          
+main/misc11                  func_80094CFC                                bytes       80      80         2
+main/misc11                  func_80094D4C                                bytes       80      80         2
+main/misc11                  func_80094D9C                                bytes       80      80         2
+main/misc11                  func_80094DEC                                bytes       80      80         2
+main/misc11                  func_80094E3C                                bytes       80      80         2
+main/misc11                  func_80094E8C                                bytes       80      80         2
+main/misc11                  func_80094EDC                                bytes       80      80         2
+main/misc11                  func_80094F2C                                bytes       80      80         2
+main/misc11                  func_80094F7C                                bytes       80      80         2
+main/misc11                  func_80094FCC                                bytes       80      80         2
+main/misc11                  func_8009501C                                size       156     132          
+main/misc11                  func_800950A0                                size       156     132          
+main/misc11                  func_80095124                                size       172     148          
+main/misc11                  func_800951B8                                size       168     148          
+main/misc11                  func_80095284                                size       124     120          
+main/misc11                  func_80095CC4                                bytes      168     168         2
+main/misc11                  func_80095D6C                                bytes      220     220         2
+main/misc2                   FieldPollControllers                         bytes      488     488         3
+main/misc2                   func_80072254                                size       160     152          
+main/misc2                   func_800723E4                                size       360     348          
+main/misc2                   func_8007254C                                size       412     520          
+main/misc2                   func_80072A38                                size       828     796          
+main/misc2                   func_80072D74                                size      1212    1188          
+main/misc2                   func_80073230                                size      1108    1072          
+main/misc2                   func_800739C0                                size      1144    1080          
+main/misc2                   func_80073E38                                size       280     260          
+main/misc2                   func_80074108                                size      1428    1412          
+main/misc2                   func_8007469C                                size       100     108          
+main/misc2                   func_800748E8                                size      2340    1956          
+main/misc2                   func_8007520C                                size       188     180          
+main/misc2                   func_800752C8                                size       400     392          
+main/misc2                   func_80075484                                bytes      200     200        12
+main/misc2                   func_8007554C                                size       964     880          
+main/misc2                   func_80075910                                bytes      212     212         9
+main/misc2                   func_80075B44                                size      2416    2164          
+main/misc2                   func_800764B4                                size      1472    1304          
+main/misc2                   func_80076A74                                bytes       76      76         2
+main/misc2                   func_80076AC0                                size      1776    1232          
+main/misc2                   func_800771B0                                size        72      80          
+main/misc2                   func_80077268                                size       732     516          
+main/misc3                   FieldFree                                    size       656     664          
+main/misc3                   FieldLoad                                    size      3484    3416          
+main/misc3                   func_8006FDEC                                size       672     708          
+main/misc3                   func_800705DC                                size      1704    1708          
+main/misc3                   func_80070C84                                bytes       68      68         8
+main/misc4                   func_80078B5C                                size       108     104          
+main/misc4                   func_80078BC8                                size       148     144          
+main/misc4                   func_80078D44                                size      1348    1340          
+main/misc4                   func_80079288                                size       708     704          
+main/misc4                   func_800799D4                                size      2680    2640          
+main/misc4                   func_8007A5C4                                size       560     576          
+main/misc4                   func_8007ADA4                                size       112      96          
+main/misc4                   func_8007AE78                                size       252     248          
+main/misc4                   func_8007AF74                                size       264     272          
+main/misc4                   func_8007B07C                                size       328     336          
+main/misc4                   func_8007B1C4                                size       692     464          
+main/misc4                   func_8007B478                                size       412     408          
+main/misc4                   func_8007B614                                size       128     132          
+main/misc4                   func_8007B6C4                                size       336     328          
+main/misc4                   func_8007B814                                size       684     712          
+main/misc4                   func_8007BAC0                                size      1076    1112          
+main/misc4                   func_8007BEF4                                size      1948    1504          
+main/misc4                   func_8007C694                                size      1736    1276          
+main/misc4                   func_8007CD80                                size      1652    1252          
+main/misc4                   func_8007D3D4                                size      1124    1108          
+main/misc4                   func_8007D8B4                                size       136      88          
+main/misc5                   FieldInitializeParticlePrimitive             size       520     588          
+main/misc5                   FieldZoomFadeEffectInitialize                size       744     772          
+main/misc5                   FieldZoomFadeEffectUpdate                    size       564     464          
+main/misc5                   func_800A5924                                bytes      796     796        81
+main/misc5                   func_800A5C40                                bytes     2020    2020       221
+main/misc5                   func_800A6E70                                size       500     516          
+main/misc5                   func_800A7120                                size       248     212          
+main/misc5                   func_800A7218                                size       276     280          
+main/misc5                   func_800A732C                                size       104     112          
+main/misc5                   func_800A73E8                                size       272     192          
+main/misc5                   func_800A74F8                                size       588     608          
+main/misc5                   func_800A7948                                size       784     780          
+main/misc5                   func_800A7C58                                size      1724    1692          
+main/misc5                   func_800A8408                                size       184     220          
+main/misc5                   func_800A84C0                                size      1764     664          
+main/misc5                   func_800A8BA4                                size       776     708          
+main/misc5                   func_800A90B4                                bytes      168     168         9
+main/misc6                   func_8009E574                                size       668     540          
+main/misc6                   func_8009E810                                size        44      32          
+main/misc6                   func_8009F5F4                                size      1036     964          
+main/misc6                   func_8009FA54                                size       324     292          
+main/misc6                   func_8009FB98                                bytes      120     120         8
+main/misc6                   func_8009FDD4                                bytes      120     120         1
+main/misc6                   func_8009FE4C                                bytes      152     152         1
+main/misc6                   func_800A0228                                size       764     644          
+main/misc6                   func_800A0524                                size       452     380          
+main/misc6                   func_800A06E8                                size       464     472          
+main/misc6                   func_800A08B8                                size       916     824          
+main/misc6                   func_800A0C94                                size       168     152          
+main/misc6                   func_800A0DC0                                bytes       60      60         4
+main/misc6                   func_800A0EE8                                size       240     236          
+main/misc6                   func_800A0FD8                                size       908     844          
+main/misc6                   func_800A14F0                                size       308     312          
+main/misc6                   func_800A1624                                size       268     272          
+main/misc7                   func_8009749C                                size       292     296          
+main/misc7                   func_800975C0                                size       232     228          
+main/misc7                   func_800977A4                                size       192     168          
+main/misc7                   func_80097864                                size       240     184          
+main/misc7                   func_80097954                                size       156     136          
+main/misc7                   func_800979F0                                bytes       96      96         3
+main/misc7                   func_80097A50                                size      1512    1420          
+main/misc7                   func_80098038                                size       196     160          
+main/misc7                   func_800980FC                                size       136     124          
+main/misc7                   func_80098184                                size       240     228          
+main/misc7                   func_80098274                                size       252     240          
+main/misc7                   func_80098370                                size       192     204          
+main/misc7                   func_80098430                                bytes      188     188        13
+main/misc7                   func_800984EC                                size       208     196          
+main/misc7                   func_8009861C                                bytes      284     284         5
+main/misc7                   func_80098738                                bytes      384     384         6
+main/misc7                   func_800988B8                                bytes      228     228         1
+main/misc7                   func_80098A7C                                size       388     344          
+main/misc7                   func_80098CAC                                size      1384    1368          
+main/misc7                   func_80099214                                size      1900    1796          
+main/misc7                   func_80099AC0                                size      1080    1012          
+main/misc7                   func_8009A1E4                                size       196     200          
+main/misc7                   func_8009A34C                                size       212     208          
+main/misc7                   func_8009AA00                                bytes      264     264         8
+main/misc7                   func_8009AE3C                                size       164     160          
+main/misc7                   func_8009AEE0                                size       636     632          
+main/misc7                   func_8009B15C                                bytes       40      40         5
+main/misc7                   func_8009B210                                size       296     288          
+main/misc7                   func_8009B398                                size       716     568          
+main/misc7                   func_8009B708                                bytes      160     160         4
+main/misc7                   func_8009B7A8                                size       124     120          
+main/misc7                   func_8009B8E4                                size       188     212          
+main/misc7                   func_8009B9A0                                size       108     104          
+main/misc7                   func_8009BA7C                                size       144     140          
+main/misc8                   FieldActorWorldToScreenPosition              size       204     200          
+main/misc8                   func_80080968                                size       104     120          
+main/misc8                   func_80080A74                                bytes     1232    1232       268
+main/misc8                   func_80080F44                                size       456     400          
+main/misc8                   func_8008110C                                size      1252    1108          
+main/misc8                   func_800815F0                                size      1636    1656          
+main/misc8                   func_80081C54                                size       776     820          
+main/misc8                   func_80081F80                                size       628     624          
+main/misc8                   func_800821F4                                size       392     352          
+main/misc8                   func_8008237C                                bytes      280     280        14
+main/misc8                   func_800825AC                                bytes      116     116        15
+main/misc8                   func_80082620                                size      1432    1172          
+main/misc8                   func_80082BB8                                size      1472    1440          
+main/misc8                   func_800831D0                                bytes       36      36         3
+main/misc8                   func_800831F4                                size       148     140          
+main/misc8                   func_80083288                                size      1804    1644          
+main/misc8                   func_8008399C                                size      1980    1796          
+main/misc8                   func_80084158                                size      2004    1852          
+main/misc8                   func_8008492C                                bytes      276     276         9
+main/misc8                   func_80084A40                                size      2704    2632          
+main/misc8                   func_800855C8                                size       108     112          
+main/misc8                   func_80085634                                size        68      76          
+main/misc8                   func_80085678                                size       192     180          
+main/misc8                   func_80085788                                size       264     276          
+main/misc8                   func_800859DC                                size       324     360          
+main/misc8                   func_80085B20                                bytes      284     284         4
+main/misc8                   func_80086078                                size       120     140          
+main/misc8                   func_800860F0                                size       272     228          
+main/misc8                   func_800862CC                                size       284     272          
+main/misc8                   func_800863E8                                size       136     132          
+main/misc8                   func_80086470                                size        68      64          
+main/misc8                   func_800864B4                                bytes       60      60         8
+main/misc8                   func_800864F0                                size       160     148          
+main/misc8                   func_80086590                                size       888     776          
+main/misc8                   func_80086A1C                                size       396     304          
+main/misc8                   func_80086BA8                                bytes      140     140         2
+main/misc8                   func_80086C34                                size       280     268          
+main/misc9                   func_800AA9DC                                size       152     148          
+main/misc9                   func_800AAA74                                size       356     364          
+main/misc9                   func_800AB328                                bytes       80      80         9
+main/misc9                   func_800AB748                                size       212     192          
+main/misc9                   func_800AB808                                size       656     600          
+main/misc9                   func_800ABA98                                size       640     620          
+main/misc9                   func_800ABFDC                                size        96      84          
+main/misc9                   func_800AC03C                                size       180     168          
+main/misc9                   func_800AC0F0                                size       536     524          
+main/misc9                   func_800AC3AC                                size      1520    1484          
+main/misc9                   func_800AC99C                                size       500     404          
+main/misc9                   func_800ACB90                                bytes      200     200         4
+main/misc9                   func_800ACC58                                bytes       88      88         4
+party/stats                  func_80096AF4                                bytes      100     100         4
+party/stats                  func_80097108                                size       248     252          
+scripts/virtual_machine      FieldScriptMemoryWriteU16                    bytes       28      28         3
+scripts/virtual_machine      FieldScriptVMHandlerConditionalJmp           size       720     676          
+scripts/virtual_machine      func_800A2030                                size       636     648          
+scripts/virtual_machine      func_800A24C4                                size       592     428          
+scripts/virtual_machine      func_800A28D4                                size      1772    1196          
+scripts/virtual_machine      func_800A30FC                                size       236     240          
+scripts/virtual_machine      func_800A31E8                                size       652     644          
+scripts/virtual_machine      func_800A3474                                size      2072    1864          
+scripts/virtual_machine      func_800A3C8C                                size       704     648          
+scripts/virtual_machine      func_800A3F4C                                size      2044    1996          
