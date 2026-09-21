@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/archive-file-test.XXXXXX")"
 trap 'rm -rf -- "$BUILD_DIR"' EXIT

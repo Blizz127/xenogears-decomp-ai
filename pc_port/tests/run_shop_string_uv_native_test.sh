@@ -4,6 +4,7 @@
 # plus retail-slice and source-shape pins. GCC UBSan is unavailable in this
 # environment (missing libubsan runtime); UBSan runs under clang instead.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 

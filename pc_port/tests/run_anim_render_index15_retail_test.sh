@@ -3,6 +3,7 @@
 # func_800257F0 (main exe) and its renderer dependency func_800B1F6C /
 # func_800B1F0C (battle overlay), plus deliberate mutants the test must reject.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 OUT=$(mktemp -d pc_port/build_native/anim_render_index15_retail_test.XXXXXXXX)

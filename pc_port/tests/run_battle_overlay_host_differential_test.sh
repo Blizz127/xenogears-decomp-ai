@@ -11,6 +11,7 @@
 # host bodies' callees and data come from the generated stub manifest, so this
 # links the same definitions the shipped binary does.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 

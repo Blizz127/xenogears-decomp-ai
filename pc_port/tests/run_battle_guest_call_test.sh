@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 SOURCE=${BATTLE_GUEST_CALL_SOURCE:-"$PWD/pc_port/src/battle_mips_runtime.c"}

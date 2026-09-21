@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 repo_dir=$(cd "$(dirname "$0")/../.." && pwd)
 build_dir=$(mktemp -d /tmp/w34n123-state2.XXXXXX)

@@ -14,6 +14,7 @@
 # so fall back to clang -fsanitize=undefined. If neither compiler can build the
 # regime the runner fails; it never silently skips it.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 # Artifacts go to $TMPDIR, not pc_port/build_native/, so a concurrent

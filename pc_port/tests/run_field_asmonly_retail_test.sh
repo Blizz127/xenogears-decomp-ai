@@ -3,6 +3,7 @@
 # scan helpers that were ASM_ONLY before 2026-09-06, plus retail byte pins read
 # from the shipped field overlay.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
 SOURCE=${FIELD_ASMONLY_SOURCE:-src/field/main/misc2.c}

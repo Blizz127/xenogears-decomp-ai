@@ -19,6 +19,7 @@
 # Artifacts go under $TMPDIR, never pc_port/build_native/, so a concurrent
 # build_port.sh cannot race with this test.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 SOURCE=${MAIN_EXE_CALLBACK_SOURCE:-"$PWD/pc_port/src/battle_mips_runtime.c"}

@@ -17,6 +17,7 @@
 # a broken control and aborts the run -- a control that never links proves
 # nothing.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 cd "$(dirname "$0")/../.."
 OUT=pc_port/build_native/field_menu_party_vram_retail_test

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # W34C9 — wm_80073448 fresh-entry placement certificate, O0/O2/UBSan + mutants M1-M5.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; BUILD_DIR="${W34C9_BUILD_DIR:-$ROOT/pc_port/build_native}"
 PSYX_CMAKE_LIB="$(find "$ROOT/pc_port/build" "$ROOT/pc_port/build_tsan" -name 'libpsycross.a' 2>/dev/null | head -1 || true)"
 PSYCROSS_LIB="${W34C9_PSYCROSS_LIB:-${PSYX_CMAKE_LIB:-$BUILD_DIR/libpsycross.a}}"

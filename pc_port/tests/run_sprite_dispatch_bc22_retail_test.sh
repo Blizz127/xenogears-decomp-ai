@@ -3,6 +3,7 @@
 # new player-relative body in func_8001FBE4 (src/slus_006.64/system/
 # animation_scripts.c), plus deliberate mutants the test must reject.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 OUT=pc_port/build_native/sprite_dispatch_bc22_retail_test
