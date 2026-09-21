@@ -194,6 +194,19 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 		}
 #endif
 	}
+	/* F12 is the keyboard half of the GOD switch, for the same reason F10 is
+	 * the keyboard half of the battle switch: the toolbar's mouse path does
+	 * not reach a headless or scripted session, so a driver had no way to turn
+	 * party protection on before walking into a fight it cannot survive. */
+	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
+		event->key.keysym.scancode == SDL_SCANCODE_F12) {
+#if defined(__GNUC__)
+		if (PcPort_GodModeToggle != NULL) {
+			PcPort_GodModeToggle();
+			return 1;
+		}
+#endif
+	}
 	if (event->type == SDL_MOUSEMOTION) {
 		action = PcPort_HostToolbarHitTest(event->motion.x, event->motion.y);
 		g_xenoHostToolbarHover = action;

@@ -1748,6 +1748,10 @@ int Vsync(int mode)
     { extern void PcPort_FieldPosDiag(void); PcPort_FieldPosDiag(); }
     /* TEST TOOLING: one-shot debug teleport (XENO_FIELD_WARP); inert unset. */
     { extern void PcPort_FieldWarpDiag(void); PcPort_FieldWarpDiag(); }
+    /* TEST TOOLING: launch a chosen battle (XENO_BATTLE_WARP_FILE); inert unset. */
+    { extern void PcPort_DebugBattleWarp(void); PcPort_DebugBattleWarp(); }
+    /* TEST TOOLING: dump the loaded walkmesh (XENO_WALKMESH_DUMP); inert unset. */
+    { extern void PcPort_WalkmeshDump(void); PcPort_WalkmeshDump(); }
     /* Pace first so the newly elapsed tick is serviced before returning.
      * All entry points share one counter cursor, including the guest pump. */
     count = VSync(mode);

@@ -24,6 +24,7 @@
 #include "field/main.h"
 #include "system/math.h"
 #include "field/script_vm.h"
+#include "main/game.h"
 
 #include "quick_checkpoint.h"
 
@@ -248,6 +249,27 @@ void PcPort_FieldPosDiag(void)
      * PsyCross reads HELD buttons from SDL_GetKeyboardState (which is empty
      * unless the window owns X input focus) but latches TAPS from key events,
      * so on a WM-less Xvfb confirms can work while direction holds do not. */
+    /* Party HP.  A headless walk that fights real encounters cannot otherwise
+     * tell a hard fight from a wipe: the 2026-09-20 acceptance run read its
+     * fourth battle as "stalled" when the party had in fact been killed and
+     * the game was sitting on the game-over prompt.  Printing hp/maxHp for the
+     * live party members lets the driver heal before that happens.  Read-only,
+     * same as everything else here. */
+    {
+        int m;
+        printf("[xeno-port][test] PARTYHP");
+        for (m = 0; m < MAX_PARTY_MEMBERS; m++) {
+            int id = g_GamePartyMembers[m];
+            if (id < 0 || id >= MAX_GAME_CHARACTERS) {
+                printf(" -/-");
+            } else {
+                printf(" %u/%u", (unsigned)g_GameState.characters[id].hp,
+                       (unsigned)g_GameState.characters[id].maxHp);
+            }
+        }
+        printf("\n");
+    }
+
     printf("[xeno-port][test] POSDIAG map=%d pos=(%d,%d,%d) inZones=[%s] "
            "scenario=%u var20=%u held=0x%04x newpress=0x%04x "
            "canRun=%d owner=0x%02x b21d0=%u status=0x%04x "

@@ -36,6 +36,17 @@ ZONE2 = ((-978, -1793), (-606, -1314))
 LAYER = 0
 THRESH = 0.4
 
+# The walker was written against map 23 with a hand-extracted mesh and a
+# hard-coded zone-2 rectangle.  XENO_WALKMESH_DUMP now writes the same files
+# for whatever field is loaded, so the map, the mesh directory and the goal
+# rectangle are all selectable and the same planner drives any map.
+WALK_MAP = int(os.environ.get("XENO_WALK_MAP", "23"))
+MESH_DIR = Path(os.environ.get("XENO_WALK_MESH_DIR", str(HERE)))
+_GOAL_XZ = os.environ.get("XENO_WALK_GOAL_XZ")
+if _GOAL_XZ:
+    _g = [int(v) for v in _GOAL_XZ.split(",")]
+    ZONE2 = ((_g[0], _g[1]), (_g[2], _g[3]))
+
 POS_RE = re.compile(
     r"POSDIAG map=(\d+) pos=\((-?\d+),(-?\d+),(-?\d+)\).*?"
     r"canRun=(\d+) owner=(0x[0-9a-f]+).*?"
@@ -134,8 +145,8 @@ def settle():
 
 # ---- walkmesh ----
 def load_layer(L):
-    tb = (HERE / f"map23-tris{L}.bin").read_bytes()
-    vb = (HERE / f"map23-verts{L}.bin").read_bytes()
+    tb = (MESH_DIR / f"map{WALK_MAP}-tris{L}.bin").read_bytes()
+    vb = (MESH_DIR / f"map{WALK_MAP}-verts{L}.bin").read_bytes()
     verts = [struct.unpack_from("<4h", vb, j * 8)[:3]
              for j in range(len(vb) // 8)]
     out = []
@@ -156,7 +167,7 @@ TRIS = load_layer(LAYER)
 # uses (map23-materials.bin = D_800AFB20 rows).
 try:
     import struct as _struct
-    _MAT = (HERE / "map23-materials.bin").read_bytes()
+    _MAT = (MESH_DIR / f"map{WALK_MAP}-materials.bin").read_bytes()
 
     def _mat_flags(mat):
         return (_struct.unpack_from("<I", _MAT, mat * 4)[0]
@@ -179,13 +190,28 @@ def walkable(t):
     return abs(n[1]) >= math.hypot(n[0], n[2]) * THRESH
 
 
-# Walkability: the game refuses a flagged triangle both when stepping DOWN onto
-# it (0x400000, forceEdgeSearch is false because the *current* triangle is
-# unflagged) and when the actor layer is 0 (0x800000).  Refuse both here so the
-# planner only ever routes over ground the player can actually walk.
-OK = [(_mat_flags(t["mat"]) & 0x00C00000) == 0 and t["v"] is not None
+# Walkability: the game refuses a flagged triangle when the actor layer is 0
+# (0x800000) unconditionally, but 0x400000 is CONDITIONAL -- func_8007BEF4 only
+# refuses it when the new surface is BELOW the current one.  Treating 0x400000
+# as an absolute block (which is what the map-23 route needed, and what this
+# planner used to do) walls off map 22 completely: from the arrival triangle it
+# left 176 of 1318 triangles reachable and neither exit zone among them.  So
+# 0x800000 is a node rule and 0x400000 is an EDGE rule, evaluated against the
+# triangle actually being stepped off.
+OK = [(_mat_flags(t["mat"]) & 0x00800000) == 0 and t["v"] is not None
       for t in TRIS]
 CEN = [centroid(t) for t in TRIS]
+_STEPDOWN = [(_mat_flags(t["mat"]) & 0x00400000) != 0 for t in TRIS]
+
+
+def passable(i, j):
+    """Can the player step from triangle i onto triangle j?"""
+    if not OK[j]:
+        return False
+    # Lower ground is more negative y here (the map-23 descent runs 0 -> -140).
+    if _STEPDOWN[j] and CEN[j][1] < CEN[i][1]:
+        return False
+    return True
 # XENO_WALK_GOAL_TRI lets the route aim at one specific triangle (the map's real
 # walkable descent lands in the north-east low ground, which is not a trigger
 # zone), while the default stays the zone-2 rectangle.
@@ -202,7 +228,7 @@ else:
 
 def next_hop(start):
     if start in ZONE_TRIS:
-        return "ZONE", None
+        return "ZONE", None, []
     dist = {start: 0.0}
     prev = {}
     q = [(0.0, start)]
@@ -211,7 +237,7 @@ def next_hop(start):
         if d != dist.get(i):
             continue
         for j in TRIS[i]["n"]:
-            if j >= len(TRIS) or not OK[j]:
+            if j >= len(TRIS) or not passable(i, j):
                 continue
             nd = d + math.dist(CEN[i], CEN[j])
             if nd < dist.get(j, 1e30):
@@ -237,7 +263,7 @@ def next_hop(start):
     # The centroid is unambiguously inside the neighbour, so any step towards it
     # crosses the edge.
     mid = CEN[nxt]
-    return nxt, mid
+    return nxt, mid, path
 
 
 def camera_basis(p):
@@ -255,6 +281,8 @@ def main():
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 60
 
     cached_deltas = {}
+    tri_hist = []
+    stuck = 0
 
     for step in range(steps):
         here = settle()
@@ -264,15 +292,25 @@ def main():
         # A wipe returns to the title (map 490), whose walkmesh has nothing to do
         # with map 23; the walker used to keep planning there and chase tri18
         # across the title screen.
-        if here["map"] != 23 or here["canrun"] != 1:
-            print(f"LEFT MAP 23 (map={here['map']} tri={here['tri']}); stopping",
+        if here["map"] != WALK_MAP or here["canrun"] != 1:
+            print(f"LEFT MAP {WALK_MAP} (map={here['map']} tri={here['tri']}); stopping",
                   flush=True)
             return 3
         hop = next_hop(here["tri"])
         if hop is None:
             print(f"NO ROUTE from tri{here['tri']}", flush=True)
             return 2
-        nxt, mid = hop
+        nxt, mid, path = hop
+        # Aiming at the ADJACENT triangle's centroid stalls when that centroid
+        # is only a few units away: the shortest legal press overshoots past it
+        # and the next plan aims back, so the walker orbits a triangle border
+        # (observed cycling 396/397/403 on map 22 for 30 legs).  After a few
+        # failures, aim several hops down the planned path instead -- a distant
+        # target gives every step the same direction and the intermediate
+        # triangles get crossed on the way.
+        if stuck >= 2 and len(path) > 2:
+            look = min(1 + stuck, len(path) - 1)
+            mid = CEN[path[look]]
         if nxt == "ZONE":
             print(f"IN ZONE at ({here['x']},{here['y']},{here['z']}) "
                   f"tri={here['tri']}", flush=True)
@@ -328,6 +366,8 @@ def main():
             if cos > best_cos:
                 best_cos, best_combo = cos, combo
         keys = list(best_combo) if best_combo else []
+        pred = (sum(deltas.get(k, (0, 0))[0] for k in keys),
+                sum(deltas.get(k, (0, 0))[1] for k in keys))
         print(f"leg {step}: tri={here['tri']} ({here['x']},{here['y']},"
               f"{here['z']}) -> tri{nxt} mid=({mid[0]:.0f},{mid[2]:.0f}) "
               f"want={want:.0f} keys={keys} deltas={deltas}", flush=True)
@@ -348,9 +388,36 @@ def main():
         if (after is not None and before is not None and
                 after["x"] == before["x"] and after["z"] == before["z"]):
             cached_deltas = {}          # the mapping moved: force a re-measure
+        # A zero-move is not the only way the cached basis goes wrong.  At
+        # tri314 the walker moved a full step every time and still ping-ponged
+        # into tri317, because the camera had rotated and the 8-step-old
+        # deltas predicted (+60,0) for a move that actually went (+81,+80).
+        # Re-measure whenever the achieved move disagrees with the prediction.
+        elif after is not None and before is not None:
+            ax, az = after["x"] - before["x"], after["z"] - before["z"]
+            na, np_ = math.hypot(ax, az), math.hypot(*pred)
+            if na > 1.0 and np_ > 1.0 and \
+                    (ax * pred[0] + az * pred[1]) / (na * np_) < 0.7:
+                cached_deltas = {}
         if after is not None and after["tri"] != before["tri"]:
             print(f"  {combo}: tri {before['tri']} -> {after['tri']}",
                   flush=True)
+        if after is not None and after["tri"] == nxt:
+            stuck = 0
+        else:
+            stuck = min(stuck + 1, 8)
+        # Ping-pong guard: A->B->A->B never converges, and the cache reset
+        # above cannot help when both legs move as predicted but the planner
+        # keeps re-aiming.  Detect the repeated pair and force a re-measure
+        # plus a shorter, more careful step.
+        if after is not None:
+            tri_hist.append(after["tri"])
+            del tri_hist[:-6]
+            if len(tri_hist) == 6 and len(set(tri_hist)) <= 2:
+                print(f"  ping-pong {set(tri_hist)}: forcing re-measure",
+                      flush=True)
+                cached_deltas = {}
+                tri_hist.clear()
     return 0
 
 

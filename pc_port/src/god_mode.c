@@ -4,6 +4,7 @@
  * the random-battle switch writes no guest word. */
 #include <stdatomic.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "god_mode.h"
 
 /* Retail 85618 consumes an action row: HP damage kinds 0/5/7/8, amounts at
@@ -25,7 +26,26 @@
 static atomic_int enabled;
 static atomic_int random_battles = 1;
 
-int PcPort_GodModeEnabled(void) { return atomic_load(&enabled); }
+/* XENO_GOD_MODE=1 starts the run with party protection already on.  The
+ * toolbar click and the hotkey both need the window to own input, which a
+ * headless or scripted session cannot rely on -- and a driver that has to
+ * reach a boss it is 40 levels short of needs protection from frame one, not
+ * from whenever a keypress happens to land. */
+static void god_mode_init(void)
+{
+    static int inited;
+    const char* env;
+
+    if (inited) return;
+    inited = 1;
+    env = getenv("XENO_GOD_MODE");
+    if (env != NULL && env[0] != '\0' && env[0] != '0') {
+        atomic_store(&enabled, 1);
+        fprintf(stderr, "[xeno-port][god-mode] ON from XENO_GOD_MODE\n");
+    }
+}
+
+int PcPort_GodModeEnabled(void) { god_mode_init(); return atomic_load(&enabled); }
 
 void PcPort_GodModeToggle(void)
 {

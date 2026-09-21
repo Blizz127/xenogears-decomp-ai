@@ -3362,3 +3362,388 @@ encounters enabled and speed 1X won the sixth logged encounter automatically.
 A seventh encounter started at leg 30 before the user interrupted the turn.
 At resume there was no remaining input driver; the game was waiting at an attack
 ring with Fei 46/84 and Elly 20/40. This is not full-route acceptance.
+
+## Round 41: the forest is finished, and the run reaches the world map (2026-09-20)
+
+Picking up from the Astra takeover.  The goal this round was the one the
+previous forty rounds kept deferring: walk Blackmoon Forest end to end with
+encounters live, and keep going.
+
+### The headline: map 23 -> map 22 -> world map
+
+With random encounters **live** the whole way:
+
+- **Map 23 (Blackmoon Forest)** was walked from the earned checkpoint
+  (-417,0,-1428) on tri240 to the north-east descent at **tri514 (746,-142,525)
+  in 44 legs** (earlier rounds took 80+ and never finished), then north-east to
+  **tri185 (1948,-375,1411)** in 82 more, then east off the boundary:
+  `map=23 pos=(2188,0,1411)` -> `map=22 pos=(-1370,-204,1000)`.
+- **Map 22 (lower forest)** was crossed west to east and then north to its
+  north-east corner, where the party leaves the field entirely and the
+  **world map** takes over (`[worldmap-scheduler] pass complete ...`, minimap
+  drawn with the party marker on the east coast).
+
+Eight encounters were entered and all eight returned.  So the "route is proven
+but never driven with battles on" caveat that stood since round 31 is closed:
+`goal41b-stage1.log`, `goal41b-stage2.log`, `map22-stage2.log`,
+`map22-zone1.log` and `goal41-map22-arrival.png` are the run.
+
+Checkpoints: `recovery-map23-start.xgqs` (`53a26c8c...`, the untouched round-40
+recovery point, re-saved under a name that cannot be clobbered by F7) and
+`map22-entry.xgqs` / `map22-postfight.xgqs` on map 22.
+
+### Correction: the round-40 "stalled battle" was a party wipe
+
+The first attempt this round died at its fourth encounter in exactly the shape
+rounds 8/30/32/36/40 recorded as an unexplained stall -- animating scene, no
+turn, inputs apparently ignored.  It was none of those things.  Both party
+sprites were lying down, and the log shows every battle **returning**:
+
+```
+[xeno-port][battle-mips] retail battle returned after 23708310 instructions
+[field-diag] FieldLoad begin field=490 mapBuf=0x83ba08
+```
+
+`field=490` is the title screen: that is a **game over**.  The party (Fei 84 HP,
+Elly 40 HP, with three Hob-Jerky between them) simply cannot survive four
+Blackmoon encounters, and the "stall" was the game-over prompt waiting for a
+confirm the battle driver never sent -- it deliberately omits Cancel/Cross, and
+Astra's revised driver added X but not the game-over path.  The wipe is
+reproducible and is a *content* problem, not a port defect.
+
+The fix was the harness feature that already existed for exactly this:
+**GOD mode** (party damage blocked, enemy damage forced to 9999).  Every result
+above was produced with GOD on and encounters live.
+
+### Port and harness changes
+
+All port-side changes are test tooling, inert unless their environment variable
+is set, and none writes guest state except the battle warp (which writes the
+same five words the script VM's own opcode writes).
+
+- **`PARTYHP` telemetry** (`pc_port/src/field_pos_diag.c`) -- prints
+  `hp/maxHp` for each live party member next to POSDIAG.  Verified against the
+  in-game menu: telemetry `74/84 40/40`, menu `Fei LV7 74/84`, `Elly LV4 40/40`.
+  Without it a headless run cannot tell a hard fight from a wipe, which is the
+  mistake above.
+- **`XENO_WALKMESH_DUMP=<dir>`** (`pc_port/src/walkmesh_dump.c`, new) -- dumps
+  the loaded field's walkmesh in the exact layout `cam_walk.py` plans over.
+  **Validated**: the dumped `map23-tris0.bin` and `map23-verts0.bin` are
+  byte-identical to the hand-extracted files the map-23 route was built on
+  (`map23-materials.bin` matches over its length; the dump is bounded to the
+  largest material id any triangle references).  This is what made map 22
+  navigable at all -- every previous map needed a manual gdb extraction.
+- **`XENO_BATTLE_WARP_FILE=<path>`** (`pc_port/src/debug_battle_warp.c`, new) --
+  write a battle id to the file and the field hands off to that battle through
+  the retail path (a transcription of `func_80093568`'s guards and stores).
+  Verified live: `[xeno-port][battle-warp] launching battle id=1` followed by
+  `enter retail battle.bin`.  Note the id is the field's own battle id, so what
+  a given id selects is map-dependent; this was built to reach a named boss
+  directly and that identification is **not** done.
+- **`XENO_GOD_MODE=1`** (`pc_port/src/god_mode.c`) -- start with GOD on.  The
+  toolbar's mouse path and the new F12 hotkey both need the window to own input,
+  which a scripted session cannot rely on; a driver walking into a fight it
+  cannot survive needs protection from frame one.
+- **F12 GOD hotkey** (`pc_port/src/psycross_host_toolbar.inl`), mirroring F10.
+  Not observed to fire in this session's desktop runs -- see the focus note
+  below -- so `XENO_GOD_MODE` is the switch to rely on.
+
+### Walker fixes (`cam_walk.py`)
+
+Three planner defects, each found by watching it fail:
+
+1. **Stale camera basis.** The cached key->world deltas were refreshed every 8
+   steps, and at tri314 the camera had rotated enough that the planner predicted
+   `(+60,0)` for a move that actually went `(+81,+80)`.  The walker ping-ponged
+   tri314<->tri317 for ~20 legs.  The cache is now invalidated whenever the
+   achieved move disagrees with the prediction (cosine < 0.7), not only on a
+   zero move.
+2. **Ping-pong guard.** Six consecutive samples over at most two triangles
+   forces a re-measure.
+3. **0x400000 is an EDGE rule, not a node rule.**  `func_8007BEF4` refuses a
+   `0x400000` triangle only when the new surface is *below* the current one.
+   Treating it as an absolute block was harmless on map 23 but left map 22 with
+   **176 of 1318 triangles reachable and neither exit zone among them** -- the
+   walker reported `NO ROUTE`.  Applying the real rule per edge raises that to
+   915 and makes both exits reachable.
+4. **Look-ahead.** Aiming at the adjacent triangle's centroid stalls when it is
+   ~10 units away (the shortest legal press overshoots and the next plan aims
+   back; observed orbiting 396/397/403 on map 22 for 30 legs).  After repeated
+   failures the walker aims several hops down the planned path instead.
+
+The walker is also no longer map-23-specific: `XENO_WALK_MAP`,
+`XENO_WALK_MESH_DIR` and `XENO_WALK_GOAL_XZ` select the map, the dumped mesh and
+the goal rectangle.
+
+### Map 22, mapped
+
+Four trigger zones (`ZONEDUMP map=22 count=4`):
+
+| zone | centre | what it is |
+|---|---|---|
+| 0 | (1737,1073) | entered (`inZones=[0]`) with **no transition** -- an event zone, not an exit |
+| 1 | (1979,1860) | **the exit**: reaching tri223/tri222 in the north-east corner hands off to the world map |
+| 2 | (-1943,1018) | west, back toward map 23 |
+| 3 | (-1813,1015) | west, back toward map 23 |
+
+The southern boundary (walked to tri219 at (-486,0,-1353)) is a hard wall: eight
+sustained presses produced no movement and no transition.  So map 22's only
+forward exit is zone 1.
+
+### Two things that were misread before being pinned down
+
+- **The north-east corner "pins the player".**  It does not.  POSDIAG stops
+  printing there because the field is no longer active -- the **world map** has
+  taken over, which is also why `F8 ignored: not in a field` appears.  The
+  process sitting at ~180% CPU with no field telemetry was the world map
+  running, not a hang.
+- **Movement dying on the real desktop.**  Running on `DISPLAY=:0` so the fight
+  could be watched, movement intermittently stopped while taps (F8, z) still
+  worked, with `held=0x0000` throughout.  Cause: another application held the X
+  input focus (`xdotool getactivewindow getwindowname` returned a different
+  program), and PsyCross reads HELD buttons from `SDL_GetKeyboardState`, which
+  is empty without focus.  `key.py` now calls `windowactivate --sync` before
+  `windowfocus`.  This is the same focus-dependent input asymmetry recorded in
+  the map-14 notes, hit on a real desktop instead of Xvfb.
+
+### A real port defect on the path: sprite opcode 0x90 was unimplemented
+
+Re-running the map-22 leg crashed the process outright:
+
+```
+{"event":"sprite_animation_unimplemented","raw_opcode":144,"dispatch_index":6,...}
+xeno-port: animation_scripts.c:1598: func_8001FBE4: Assertion `0 && "func_8001FBE4
+dispatch path is not implemented"'
+```
+
+Opcode 0x90 (`dispatchIndex = 0x90 - 0x8A = 6`) fires in a **map-22 battle** and
+had no body.  Retail's is `jtbl_800183D8[6] = 0x800210F0`, eleven instructions:
+
+```
+v0 = p[0x44]; a1 = p[0x48]
+if (v0 != a1) { func_800222BC(p, a1);        p[0xB0] &= ~0x400; }
+else          { func_800222BC(p, p[0x4C]);   p[0xB0] |=  0x400; }
+```
+
+i.e. it toggles the sprite between two animation packages and records which one
+is bound in +0xB0 bit 10.  Note the not-equal path reuses the `$a1` loaded at
+800210F4; only the equal path reloads from +0x4C.
+
+Implemented in `src/slus_006.64/system/animation_scripts.c` (a matching TU, so
+the body is a transcription, not a guess -- `$s3` is `pSpriteData`, confirmed
+against the index-0x1E case at 8002176C which the existing C already maps that
+way).  `func_800222BC` was already decompiled, so no new callee was needed.
+
+Test: `pc_port/tests/run_sprite_dispatch_90_retail_test.sh` +
+`sprite_dispatch_90_retail_test.c`, green at O0/O2/UBSan.  It observes
+`func_800222BC`'s real effects (+0x44 bind, +0x3C bit 30) rather than replacing
+it, and its three cases are chosen so each rejects the other's argument source.
+**Mutant-checked**: swapping the flag polarity and making the equal branch bind
++0x48 are both rejected; the clean body passes.
+
+**Verified live**: the same map-22 route that crashed now runs through it --
+7 encounters entered and returned, no opcode-144 line, process still alive, and
+the world map reached.
+
+### Where it stands
+
+Blackmoon Forest is **finished**, map 22 is crossed, and the run is on the
+**world map** -- terrain, coastline and the minimap with the party marker on the
+east coast all render correctly (`wm-map-a.png`).
+
+The next blocker is precise: **the world map takes input but will not move the
+party.**  Triangle reaches the menu code (`func_801C62A8 sel=0
+shouldDrawMenu=1`) and the open loop is ticking (`[worldmap-open-loop]
+frame=10080/unbounded`), so this is not lost input or a stalled loop -- but two
+2.5 s Up presses left the terrain and the minimap marker identical (only the
+cloud layer moved; `wmv0/1/2.png`).  That is this branch's named open area and
+is where the next session should start.
+
+Not done: the Id battle the warp was built for is unidentified (the id space is
+field-relative, so the id must be sourced from the map that hosts the fight);
+world-map navigation to the next location; and the parked Equip/Status/Gear
+screens.
+
+## The Id bridge fight, located and booted (2026-09-20)
+
+**Map 383, formation index 15.**  Confirmed by the user against the scene they
+were after.  `battle-scan/formation-015.png` is the fight: a single red-armoured
+humanoid, staged on the catwalk over the fiery interior that map 383's field
+view shows (`map383-a.png`), rather than in the corridor every other formation
+on that map uses.
+
+### How it was reached, since the run cannot walk there
+
+Two levers, both built this session:
+
+1. **Map warp via the checkpoint.**  `scratchpad/.../xgqs_map.py` rewrites the
+   map id in a `.xgqs` and recomputes the FNV-1a checksum the loader validates
+   (header+24..48 plus the whole game state; a raw byte poke is rejected with
+   `load rejected: missing or invalid`).  `PcPort_QuickCheckpointRestore` writes
+   that map into game state and only rejects ids >= 0x400, so this drops the
+   REAL party and save onto any field the game can load.  Field offsets:
+   map u16 at 0x18, entrance at 0x1A, position 16.16 at 0x1C.
+2. **Battle warp** (`XENO_BATTLE_WARP_FILE`), already described above.
+
+The id space question is settled by retail asm, not inference: battle entry
+`func_80070F40` does
+`memmove(D_8006F9DC, D_800658DC + (D_80059508 << 5), 0x20)` at 80071144 -- the
+warp id is an index into the **currently loaded field's** 0x20-byte formation
+table.  So a formation id only means anything together with a map, which is why
+finding Id needed the map first and then a 16-entry sweep.
+
+`scan_formations.sh` does that sweep with one game process per id.  Winning each
+fight to return to the field proved unreliable -- the attack ring needs AP the
+party may not have, and Cross opens the Deathblow list and traps a scripted
+driver there (seen on formation 7) -- and a screenshot is all the sweep needs,
+so it boots, warps, shoots and kills the process instead.
+
+Map 383's table: 0-5 creatures, 6-13 Gebler Guards (the name banner renders,
+`formation-009.png`), 15 = Id on the bridge.
+
+### It renders, then faults ~8.8M instructions in
+
+```
+[xeno-port][battle-mips] stopped after 8851373 instructions:
+    write8 fault at 0x00000035 (pc=0x800aa3d0)
+```
+
+`func_800AA384` (asm/battle/nonmatchings/main70) loads
+`$v1 = D_800D3368[index]` and stores `sb $v0, 0x35($v1)` at 800AA3D0 **with no
+null check** -- so the slot is NULL.  Two things are worth separating:
+
+- **On hardware this would not crash.**  `0x35` is inside the PSX kernel RAM
+  area, which is writable; retail would silently scribble there.  The port's bus
+  validation turns a silent retail scribble into a hard fault.  That makes the
+  port *stricter* than the console, which is a feature here -- it surfaced the
+  real problem -- but it means "retail does not crash" is not evidence the state
+  is correct.
+- **The NULL is most likely the warp's own fault, not a port defect.**
+  `D_800D3368` is populated by `func_800A8BF0` (battle actor setup), and retail
+  itself guards the same pointer 0x48 bytes later (`beqz $a0` at 800AA420), so
+  a NULL slot is a state the code knows about.  The retail Id fight is fought
+  **party-in-Gears**; this one was entered with Fei and Elly on foot at the
+  wrong scenario flag, so the actor the fight expects plausibly was never built.
+
+**Do not "fix" this with a null guard** -- that would invent behaviour retail
+does not have, and would paper over a state mismatch this harness created.
+
+### Resolved: the NULL was an empty party slot, and no code change was needed
+
+The save's party is `partyMembers = [0x00, 0x01, 0xFF]` -- Fei, Elly, and slot 2
+**empty** (which `PARTYHP ... -/-` had been printing all along).  `D_800D3368` is
+the per-slot battle-actor pointer table, so a fight that addresses the third
+slot reads NULL, and 800AA3D0 stores through it unguarded.
+
+Setting `partyMembers[2] = 2` (character 2, LV6 202/218 -- every character in
+this save is already initialised with sane stats) and recomputing the checkpoint
+checksum fixes it outright: the fight boots with **three** party members
+(`id-party3.png`), runs, and **completes to the victory/EXP screen with a level
+up** (`id-party3-fight.png`).  No port change, no null guard.
+
+That vindicates not patching the guard: the defect was never in the code, it was
+in the state this harness constructed.  The earlier "probably needs Gears"
+reading was wrong -- party *count*, not party *form*, was what mattered.
+
+Caveats on what this does and does not show: GOD mode was on, so this is
+evidence the fight's engine path works end to end (formation load, actor build,
+turn resolution, victory, EXP, level up), **not** that it is balanced or that
+the retail staging is reproduced -- retail fights Id with the party in Gears at
+a later scenario flag, and this party is on foot at scenario 27.
+
+## Battle audio: no SPU voice activity at all (2026-09-20)
+
+**Correction first.**  An earlier note here inferred from `port_main.c`'s
+sequence-probe comments ("real sequence data awaits WDS/B5") that BGM was silent
+game-wide.  That was wrong -- the comments describe a *probe*, not the shipping
+path.  The user hears music in Lahan and other fields.  Field audio works.
+
+What is actually missing is **battle** audio, and it is not a wrong-track
+problem.  Counting SPU key-ons either side of the battle handoff across three
+independent runs (`bgm.log`, `id15p3.log`, `play-id.log`, the last with 81 log
+lines after the warp, i.e. a real window and not a sampling artifact):
+
+| run | field KON | battle KON |
+|---|---|---|
+| bgm.log | 5 | 0 |
+| id15p3.log | 5 | 0 |
+| play-id.log | 5 | 0 |
+
+**That table is WRONG and is retained only to mark the mistake.**
+`PcPort_SpuRegFlushTick` (pc_port/src/port_main.c:490) prints a key-on only
+`if (s_regFlushKeyOns < 4 || s_konTrace)` -- the log caps at the first four
+unless `XENO_SOUND_KON_TRACE=1`.  The counts above measured the print cap, not
+the audio.  Re-measured with the trace enabled: **field 10-11 key-ons, battle
+11-13**, with real volumes, pitches and sample addresses.  Battle audio does
+reach the SPU, and SFX work.  What is missing is specifically the music
+sequence.
+
+### The warp was also feeding the wrong track, and that is fixed
+
+Battle entry `func_80070F40` starts music with `func_800B8098(D_8005954C)` at
+80071160, and `D_8005954C` is copied from `D_800B2356` -- a byte the **field
+script** sets per scene (`func_80087DE0`, src/field/main/misc.c:380), which the
+loader defaults to **5** (src/field/main/misc3.c:430).
+
+A battle warp jumps straight into the fight without that scene script ever
+running, so the fight inherits the default.  Confirmed live:
+
+```
+[xeno-port][battle-warp] launching battle id=15 bgm=5 (field D_800B2356=5)
+```
+
+`pc_port/src/debug_battle_warp.c` now logs the effective track and accepts
+`<id>:<bgm>` in the request file to force one, so the track is selectable the
+same way the formation is.  This is a harness correctness fix; it does not make
+battle audio audible, because of the zero-key-on finding above.
+
+### Not investigated yet
+
+Why the battle overlay produces no key-ons.  `func_800B8098` is `INCLUDE_ASM`
+(src/battle/main101.c) so it executes as retail code through the MIPS
+interpreter -- the question is whether its SPU register writes reach the host
+SPU, or whether the battle overlay's sound bank/voice path is simply unbridged.
+That is the next thing to look at for battle audio, and it covers SFX and BGM
+together.
+
+
+### Battle BGM traced to the cross-overlay music loaders (2026-09-20)
+
+`func_800B8098(D_8005954C)` is the battle BGM starter (called from battle entry
+at 80071160).  It dispatches through `jtbl_80070A10` (asm/battle/data/540.rodata.s:809):
+
+| id | target | meaning |
+|---|---|---|
+| 0 | `.L800B8144` -> `func_800B7870` | no special music |
+| 1 | `.L800B80E4` -> `func_801E8588` | music loader |
+| 2 | `.L800B80FC` -> `func_801E91E8` | music loader |
+| 3 | `.L800B8114` -> `func_801E9594` | music loader |
+| 4 | `.L800B812C` -> `func_801E893C` | music loader |
+| 5 | `.L800B8144` -> `func_800B7870` | no special music |
+
+So the field-load default of **5 is the no-music path**, which is what a battle
+warp inherits.  The warp now forces the track (`<id>:<bgm>`) and logs it.
+
+But forcing a music id does **not** produce music, and the trace says why.  With
+`bgm=2` and `XENO_BATTLE_MIPS_TRACE=1`:
+
+- `func_800B8098` definitely runs -- its call to the main-exe `func_8001BBAC` is
+  traced, immediately followed by the `ArchiveCdDataSync` that only the music
+  cases make at that point.
+- `func_801E91E8` **never appears as a bridged call**, and there is no
+  `unresolved native call target=` line for it either.
+- `func_801E7210`, which the function's common tail `.L800B814C` calls on every
+  path, is **never reached anywhere in the log**.
+
+`D_8005954C` is not the problem: `XENO_BATTLE_UNSHARED_DIAG=1` reports 33
+unshared events for the whole battle and **none** in the 0x800595xx range, so
+the guest sees the value the host writes.
+
+**Conclusion: battle BGM dies at the battle -> menu-overlay call into the music
+loaders.**  `func_801E8588` / `func_801E91E8` / `func_801E9594` / `func_801E893C`
+are present in `battle_bridge_map.inc` and are not in `stubs.c`, yet they do not
+execute -- and control does not return into the starter's tail.  Other 0x801E
+calls in the same battle (801e6fec, 801e6d6c, 801e6f00, 801e6e48, 801e6d34,
+801e6c80) do go through, so the overlay bridge works in general.  That specific
+handful of music entries is the next thing to fix, and it covers BGM for every
+battle, not just this one.

@@ -584,6 +584,11 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_framebuffer_materialize_rgb
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_framebuffer_materialize_rect.patch" "_xeno_fb_materialize_rect"
 # Intro DR_MOVE can pass RECT.x < 0. Mask like GR_CopyVRAM instead of aborting.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_vram_copy_wrap.patch" "_xeno_vram_copy_wrap"
+# GR_CopyVRAM masked the destination origin but never the extent, so a
+# malformed MOVE_IMAGE (map 96: w=6432 h=1956 against 1024x512 VRAM) memcpy'd
+# ~4MB past vram[]. Bound the row count to the end of vram[], keeping every
+# in-bounds copy byte-identical, and log the first clamp.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_vram_copy_extent.patch" "_xeno_vram_copy_extent"
 
 # Host testing speed: pace vblank, sound and streamed disc reads together,
 # without incrementing game clocks on queries or bypassing frame waits.
@@ -741,6 +746,8 @@ PORT_SOURCES=(
     pc_port/src/file_menu_notice.c
     pc_port/src/field_pos_diag.c  # TEST TOOLING: XENO_FIELD_POS_DIAG walk telemetry
     pc_port/src/field_warp_diag.c # TEST TOOLING: XENO_FIELD_WARP one-shot debug teleport
+    pc_port/src/debug_battle_warp.c # TEST TOOLING: XENO_BATTLE_WARP_FILE battle launcher
+    pc_port/src/walkmesh_dump.c   # TEST TOOLING: XENO_WALKMESH_DUMP per-map walkmesh dump
     pc_port/src/game_overrides.c
     pc_port/src/retail_leaf_adapters.c
     pc_port/src/boot_menu.c

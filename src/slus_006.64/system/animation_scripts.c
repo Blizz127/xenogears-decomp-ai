@@ -95,6 +95,9 @@ void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
 extern void func_80022CDC(void* pSpriteData);
 extern s32 D_80059198;
 extern void func_80022974(void* pSpriteData);
+/* Defined below at 800222BC; dispatch index 6 (opcode 0x90) needs it. */
+extern void func_800222BC(SpriteData* pSprite,
+                          SpriteAnimPackageFileHeader* pAnimPackageFile);
 extern void func_8001CE74(void* pTargetEntry);
 extern void func_80023290(u8* pSprite, s32 animType);
 extern s32 func_80021AD8(s32 color, s32 value);
@@ -663,6 +666,13 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     }
     case 0x91: /* 80020DE8 -> 80020E04: no operand; clear color-code bit 0. */
         ((u8*)pSpriteData)[0x2B] &= 0xFEu;
+        func_8001F6B0(pSpriteData);
+        return;
+    case 0x92: /* 80020DF8 -> 80020E04: the exact mirror of 0x91 -- SET the
+                * same bit.  Both store +0x2B in the jal's delay slot, so the
+                * byte lands before func_8001F6B0 reads it.  Reached live in a
+                * map-383 battle, where it was the fail-loud stop. */
+        ((u8*)pSpriteData)[0x2B] |= 0x01u;
         func_8001F6B0(pSpriteData);
         return;
     case 0xBA: /* 80020F38..80020F4C: existing blend/type helper. */
@@ -1561,6 +1571,39 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
                                         ? (u16)amount
                                         : (u16)(AnimationRead16(model + 4) + amount));
         AnimationWrite32(p + 0x3C, AnimationRead32(p + 0x3C) | 0x10000000u);
+        return;
+    }
+
+    if (dispatchIndex == 0x6) {
+        /* Opcode 0x90 (800210F0..8002113C): re-bind the sprite's animation
+         * package and record which one is bound in +0xB0 bit 10.
+         *
+         * Retail compares the CURRENT package at +0x44 against the one at
+         * +0x48.  If they are the same it binds the package at +0x4C and SETS
+         * bit 10; otherwise it binds the +0x48 package and CLEARS bit 10 --
+         * i.e. the opcode toggles between the two, and the flag says which is
+         * live.  Note the argument in the not-equal path is the +0x48 value
+         * already loaded at 800210F4 (it is still in $a1 across the branch);
+         * only the equal path reloads $a1 from +0x4C.
+         *
+         * Reached live in a map-22 (lower Blackmoon forest) battle, where it
+         * was the fail-loud stop that ended the 2026-09-20 route run. */
+        u8* p = pSpriteData;
+        u32 current = AnimationRead32(p + 0x44);
+        u32 alternate = AnimationRead32(p + 0x48);
+        u32 flags;
+
+        if (current == alternate) {
+            func_800222BC((SpriteData*)p,
+                          (SpriteAnimPackageFileHeader*)(uintptr_t)
+                              AnimationRead32(p + 0x4C));
+            flags = AnimationRead32(p + 0xB0) | 0x400u;
+        } else {
+            func_800222BC((SpriteData*)p,
+                          (SpriteAnimPackageFileHeader*)(uintptr_t)alternate);
+            flags = AnimationRead32(p + 0xB0) & ~0x400u;
+        }
+        AnimationWrite32(p + 0xB0, flags);
         return;
     }
 
