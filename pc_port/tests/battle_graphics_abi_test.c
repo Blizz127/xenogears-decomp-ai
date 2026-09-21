@@ -424,10 +424,18 @@ static int check_registered_host_callback(void)
     /* Unknown and truncated pointers must never become callable merely
      * because the address lies in an executable host mapping. */
     runtime.functions[0].host = (void *)(host | (UINT64_C(1) << 32));
-    if (runtime_bridge(&runtime, &cpu, (uint32_t)host) != -1) return 0;
+    if (runtime_bridge(&runtime, &cpu, (uint32_t)host) != -1) {
+        fputs("REGISTERED HOST CALLBACK FAIL truncated-pointer was accepted\n",
+              stderr);
+        return 0;
+    }
     runtime.function_count = 0;
     if (runtime_bridge(&runtime, &cpu, (uint32_t)host) != -1 ||
-        host_callback_calls != 1) return 0;
+        host_callback_calls != 1) {
+        fputs("REGISTERED HOST CALLBACK FAIL unknown-function was accepted\n",
+              stderr);
+        return 0;
+    }
     puts("REGISTERED HOST CALLBACK PASS exact/unknown/truncated");
     return 1;
 }
@@ -525,12 +533,35 @@ static int check_battle_sprite_reentry(void)
     return 1;
 }
 
+/* Name the failing check.  This used to be one long `||` chain returning a
+ * bare 1, so a failure printed NOTHING -- and because two earlier checks
+ * print their own PASS lines first, the run looked like a pass that had
+ * merely been cut short.  See docs/ai_context/HARNESS_REGIMES.md. */
+#define REQUIRE(expr)                                                        \
+    do {                                                                     \
+        if (!(expr)) {                                                       \
+            fprintf(stderr,                                                  \
+                    "BATTLE GRAPHICS ABI FAIL check=%s (%s:%d)\n",           \
+                    #expr, __FILE__, __LINE__);                              \
+            return 1;                                                        \
+        }                                                                    \
+    } while (0)
+
 int main(void)
 {
-    if (!check_battle_sprite_reentry()) return 1;
-    if (!check_lookup_callback_argument() || !check_registered_host_callback() || !check_nested_callback_stack() || !check_tim(1) || !check_tim(0) || !check_failed_tim() || !check_offsets() ||
-        !check_projection() || !check_other_projections() || !check_retail_ot_clear() ||
-        !check_retail_ot_draw() || !check_dma_boundaries()) return 1;
+    REQUIRE(check_battle_sprite_reentry());
+    REQUIRE(check_lookup_callback_argument());
+    REQUIRE(check_registered_host_callback());
+    REQUIRE(check_nested_callback_stack());
+    REQUIRE(check_tim(1));
+    REQUIRE(check_tim(0));
+    REQUIRE(check_failed_tim());
+    REQUIRE(check_offsets());
+    REQUIRE(check_projection());
+    REQUIRE(check_other_projections());
+    REQUIRE(check_retail_ot_clear());
+    REQUIRE(check_retail_ot_draw());
+    REQUIRE(check_dma_boundaries());
     puts("BATTLE GRAPHICS ABI PASS TIM, offsets, RTP1/3/4, OT stride/guards, DMA domains/order/payloads/rejections");
     return 0;
 }

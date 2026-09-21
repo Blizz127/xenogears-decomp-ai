@@ -89,32 +89,137 @@ UBSan runtime errors: NONE
 zero undefined behaviour.** That is a clean negative result, not a null one —
 but it covers only the suites that build in the container.
 
-## Two container gaps that block a full sweep
+## Three container packages were missing -- all three are installable
 
-Both are missing packages in `localhost/xenogears-dev-toolchain:krom-20260913`.
-Neither can be fixed from inside this worktree; the image needs rebuilding.
+The stock image `localhost/xenogears-dev-toolchain:krom-20260913` is missing
+three packages the harness needs. All three install cleanly from the Ubuntu
+archive inside the container (network works; you need `--user 0`, because the
+image runs as uid 1000 and apt needs root):
 
-1. **`clang` / `clang++` are absent.** 54 of the 81 sweep failures are nothing
-   but `clang: command not found`. A large number of suites deliberately use
-   clang for their UBSan regime (e.g.
-   `run_battle_return_state_retail_test.sh` sets `cc=clang` for UBSan), so
-   those regimes still have not run anywhere. **This is the single biggest
-   remaining hole in the O0/O2/UBSan bar.**
-2. **`ripgrep` is absent**, and the runners use `rg` as their assertion
-   matcher. Worked around by `pc_port/tests/lib/compat/rg`, a documented
-   grep shim the sweep puts on `PATH` only when real `rg` is missing. It maps
-   the flags the harness actually uses (`-q -v -m -A -n -c -i -F -l`) onto
-   `grep -E`. It is a stand-in, not ripgrep; prefer installing the real thing.
+| package | why the harness needs it |
+|---|---|
+| `clang` | a large number of runners use **clang, not gcc**, for their UBSan regime (e.g. `run_battle_return_state_retail_test.sh` sets `cc=clang`). Without it the suite dies on `clang: command not found` -- 54 of 81 failures in the first sweep were exactly that. |
+| `libclang-rt-18-dev` | clang's *own* UBSan runtime, `libclang_rt.ubsan_standalone-x86_64.a`. Installing `clang` alone is **not enough**: clang-based UBSan regimes then fail at link with `cannot find .../libclang_rt.ubsan_standalone-x86_64.a`. This one is easy to miss. |
+| `ripgrep` | every runner uses `rg` as its assertion matcher. |
 
-**What the user needs to do to close this:** add `clang` and `ripgrep` to the
-toolchain image (Ubuntu 24.04: `apt-get install -y clang ripgrep`) and rebuild
-it. With those two packages the sweep should be able to attempt every suite.
+`Dockerfile` in this repo has been updated to install them. Note the running
+image is **not** built from that Dockerfile (different WORKDIR, and it already
+carries gcc and the venv), so the Dockerfile change alone will not fix the
+image you are using.
 
-The remaining ~27 failures are compiler-version differences between the
-container's gcc 13 and the host's gcc 16 — 7 suites pass `-fpermissive` with
-`-Werror` (rejected for C by gcc 13), 9 hit undeclared identifiers, 2 want a
-generated `battle_bridge_map.inc`, 2 trip `-Werror=unused-result`. These are
-suites written against the host toolchain; they are not UBSan problems.
+To get a working image right now, build a thin derived one:
+
+```
+podman build -t localhost/xenogears-dev-toolchain:krom-20260913-harness - <<'EOF'
+FROM localhost/xenogears-dev-toolchain:krom-20260913
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+        clang ripgrep libubsan1 libclang-rt-18-dev \
+    && rm -rf /var/lib/apt/lists/*
+USER 1000
+EOF
+```
+
+Then use that tag in the usual podman invocation. With it, the gcc *and*
+clang UBSan regimes both run.
+
+With the stock image the remaining failures are container gcc 13 vs host
+gcc 16 differences -- 7 suites pass `-fpermissive` with `-Werror` (rejected
+for C by gcc 13), 9 hit undeclared identifiers, 2 trip `-Werror=unused-result`
+-- plus 2 suites wanting a generated `battle_bridge_map.inc` that the suite
+itself never generates (it only adds `-Ipc_port/build_native` and hopes an
+earlier build left the file there). Those are suites written against the host
+toolchain, not UBSan problems.
+
+## Three dead gates found in this run, and the pattern behind them
+
+Separately from UBSan, three suites were reporting nothing while appearing to
+work. They are worth reading together, because the shape repeats.
+
+1. **`run_battle_overlay_leaf_bridge_test.sh` was not running at all.** It
+   never linked `god_mode.c`, which `battle_mips_runtime.c` needs, so it died
+   at link; and its negative-control injection anchor had drifted. This is the
+   gate guarding the battle-leaf adoption mechanism, so the mechanism was
+   unguarded while appearing guarded. Fixed by the battle worker in
+   `cc98b9a4`. **Verified here**, with the full toolchain, for the first time
+   end to end: three `BATTLE OVERLAY LEAF PASS checks=40` lines (O0, O2 and a
+   genuine UBSan) followed by
+   `BATTLE OVERLAY LEAF PASS (O0/O2/UBSan + always-interpret control)`,
+   exit 0 -- so the negative control does reject.
+
+2. **`run_battle_native_callback_map_test.sh`** had the same missing link.
+   With it fixed the gate now fails **loudly** and correctly:
+   `NATIVE CALLBACK FAIL generated stub was dispatched`, preceded by
+   `unresolved native call target=0x0050f00d guest-pc=0xfffffff4`. That is a
+   real pre-existing defect, deliberately left unfixed; it now has a voice.
+
+3. **`run_battle_graphics_abi_test.sh` under-ran silently.** Its O0 binary
+   printed two PASS lines and then returned 1 with **no message at all**, so
+   `set -e` abandoned the O2 regime, the UBSan regime, and both mutant
+   negative controls. Visible output was two PASS lines. Fixed here: `main()`
+   was one long `||` chain returning a bare `1`, now a `REQUIRE()` macro that
+   names the failing check, and the two silent `return 0` paths inside
+   `check_registered_host_callback` now say which property failed.
+
+   With that, the real defect is legible:
+
+   ```
+   REGISTERED HOST CALLBACK FAIL truncated-pointer was accepted
+   BATTLE GRAPHICS ABI FAIL check=check_registered_host_callback()
+   ```
+
+   `runtime_bridge()` accepts a host pointer whose high 32 bits have been
+   corrupted (`host | 1<<32`) instead of rejecting it. The test's own comment
+   states the property: *"Unknown and truncated pointers must never become
+   callable merely because the address lies in an executable host mapping."*
+   Pre-existing, in `pc_port/src/battle_mips_runtime.c`, reported not fixed.
+
+## The systemic count: 349 of 566 suites can under-run invisibly
+
+Three dead gates in one session is a pattern, not three accidents, so the
+whole of `pc_port/tests/` was audited for the shape rather than only the three
+being fixed. `pc_port/tests/lib/underrun_audit.py` flags a suite when **both**:
+
+* it emits PASS/CERTIFICATE text somewhere that is not its last statement --
+  either the runner echoes it early, or a test binary it runs prints its own
+  PASS; **and**
+* there is more work afterwards: another regime, a mutant control, or any
+  further statement.
+
+```
+runners audited      : 566
+UNDER-RUN-RISK       : 349
+no early PASS text   : 217
+```
+
+**349 of 566 suites can print PASS and still be abandoning later regimes or
+controls.** That is not 349 dead gates -- it is 349 suites with the structure
+that let three real ones hide. The audit correctly flags the known true
+positive, `run_battle_graphics_abi_test.sh`.
+
+Dynamically confirmed, not just static: a partial container sweep
+(93 of 565 suites completed before it was stopped for time; logs in
+`pc_port/build_native/fullsweep/`) found **4 suites that exited nonzero after
+having printed PASS text** --
+`run_anim_render_index15_retail_test`, `run_battle_effect_callbacks_retail_test`,
+`run_battle_graphics_abi_test`, `run_battle_load_image_cache_test`. The full
+sweep was not completed; at roughly 2.5 suites/minute it needs about four
+hours, and the number above is therefore a **lower bound from a 16% sample**,
+not a final figure. Re-run `pc_port/tests/run_ubsan_sweep.sh` to finish it.
+
+Caveat on that sample: 62 of the 93 exited nonzero, but most of those are the
+container gcc-13-vs-host-gcc-16 build differences described above, not test
+failures. Do not read "62 failing suites" as 62 defects.
+
+### What to do about it
+
+The cheap, general mitigation is the one applied to
+`run_battle_graphics_abi_test.sh`: make the *final* line of a suite the only
+thing that says the suite passed, and make every intermediate failure name
+itself. A suite that prints per-regime PASS lines is fine **provided** its last
+statement is a single summary that cannot be reached early -- and provided a
+reader checks for that line rather than for the word PASS.
 
 ## Rule going forward
 
