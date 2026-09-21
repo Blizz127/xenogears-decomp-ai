@@ -1,8 +1,12 @@
-# Current Status
+# Current status
 
-> Historical detail below is aligned through `3442f3f` (July 9, 2026).
-> Current open work is tracked in [`OPEN_ISSUES.md`](../../OPEN_ISSUES.md).
-> For live detail see [`ACTIVE_HANDOFF.md`](https://github.com/Blizz127/xenogears-decomp-ai/blob/main/docs/ai_context/ACTIVE_HANDOFF.md).
+The numbers for this tree are on [Decompile status](Decompile-Status) and [Port status](Port-Status). Those pages match `main`. The notes under the 2026-08-01 heading are older field milestones. They are not a second set of totals. `OPEN_ISSUES.md` and `docs/ai_context/` are not on `main`.
+
+As of the published tree:
+
+- The matching build's function split has no bare unported row. Field (878) and the member-change menu (67) are plain C. Battle still has 506 `INCLUDE_ASM`s with no port body.
+- The port links 58 game translation units. Psy-Q is PsyCross. 169 battle TUs are reference-only.
+- Field play, including the Blackmoon Forest route, is the exercised native path. Battle beyond the host-leaf allowlist is the interpreter. The world map mode is not the retail world-map overlay.
 
 This page answers six questions the project tracks constantly.
 

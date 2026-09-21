@@ -51,6 +51,32 @@ Byte-exact matched C is the project convention (only a finished body is committe
 
 From here the decompilation sources under `src/` are the baseline. Further commits are the PC port under `pc_port/`.
 
+Longer notes on the game, the decompile, and the port are on the [wiki](https://github.com/Blizz127/xenogears-decomp-ai/wiki).
+
+## Port status
+
+The port compiles decompiled C with `-DXENO_PC_PORT -DSKIP_ASM` and links it to [PsyCross](https://github.com/OpenDriver2/PsyCross) (software GTE, LibGPU to OpenGL, LibSPU to OpenAL, LibCD to a disc image, controllers to SDL2). PsyCross itself is cloned locally and is not in this repository. Disc images and the BIOS are not either.
+
+`pc_port/build_port.sh` is the native driver. On this tree it treats game translation units like this:
+
+| | Count | What that means |
+|---|--:|---|
+| C files under `src/` | 275 | The decompilation |
+| Psy-Q sources | 46 | Not linked. PsyCross plus `pc_port/src/psyq_compat.c` replace them |
+| Intentionally excluded | 2 | `src/slus_006.64/system/archive.c` (see `archive_port.c`) and `src/battling/main.c` |
+| Reference-only | 169 | Almost all of `src/battle`. Kept for the matching build. The port does not link these TUs |
+| Known compile-failure allowlist | 0 | `KNOWN_BROKEN_GAME_TUS` is empty. Any other game-TU compile error aborts the build |
+| Game TUs compiled into the port | 58 | Field, menus, shop, movie, member change, and the rest of the main executable |
+| Port-only C files | 268 | `pc_port/src`, 79,689 lines. Checkpoints, movie player, battle adapter, boot, overrides |
+| Port-owned symbol overrides | 22 | `pc_port/port_owned_overrides.txt`. Each row names the symbol and when it should retire |
+| `INCLUDE_ASM` that also has a port C body | 129 | Menu 80, main executable 26, battle 17, shop 6 |
+| `INCLUDE_ASM` omitted from the port compile | 608 | 506 of these are battle. The matching build still assembles them. The port has no body |
+| `INCLUDE_ASM` in `src/battling` | 169 | Outside the 3,294-function split above |
+
+Battle is the gap. The retail battle overlay is not linked as those 169 TUs. `pc_port/src/battle_mips_adapter.c` and `battle_overlay_host_leaves.inc` run some battle leaves as native C and leave the rest of `disc/battle.bin` to an interpreter. Field code is on the native side: matched C, walkmesh, script VM, and the routes exercised in this tree (including Blackmoon Forest). The world map is not that retail overlay.
+
+A logging stub is generated at build time for a symbol the link still cannot find. Those stubs are not committed. They return without retail behavior. Byte-exact matching is not required for a port body. A function the port omits still needs a C body before that path can run.
+
 ### By overlay
 
 | Overlay | Functions | Matched C | Coexistence | Unported | Matched C share | Done |

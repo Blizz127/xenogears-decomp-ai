@@ -1,13 +1,13 @@
 # GitHub Wiki staging area
 
-`docs/wiki/` is the **source staging area** for GitHub Wiki pages for this project.
-It does not replace the canonical repo docs:
+`docs/wiki/` is the source for the GitHub wiki of
+[Blizz127/xenogears-decomp-ai](https://github.com/Blizz127/xenogears-decomp-ai/wiki).
+The published pages are a separate git repository,
+`Blizz127/xenogears-decomp-ai.wiki.git`.
 
-- [`docs/ai_context/ACTIVE_HANDOFF.md`](../ai_context/ACTIVE_HANDOFF.md) — deep per-session journal and verified state
-- [`docs/ai_context/REFERENCE_SOURCES.md`](../ai_context/REFERENCE_SOURCES.md) — approved external references
-- [`pc_port/README.md`](../../pc_port/README.md) — PC port architecture and build notes
-
-The actual GitHub Wiki is a **separate git repository** from the main code repo.
+The decompile and port totals live in `Home.md`, `Decompile-Status.md`, and
+`Port-Status.md`. They should match the tables on the repository README.
+`pc_port/README.md` is the build and architecture note for the port.
 
 ## Manual sync workflow
 
