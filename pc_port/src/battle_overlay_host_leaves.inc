@@ -1,3 +1,28 @@
+/* Battle overlay functions the port may run as native C instead of
+ * interpreting disc/battle.bin.  Hand-maintained; add a name here, then run
+ * pc_port/build_port.sh and pc_port/tests/run_battle_overlay_host_differential_test.sh.
+ *
+ * DO NOT ADOPT the functions below.  Each was tried and REJECTED by the
+ * differential prover: its existing C body does not match the retail bytes.
+ * They are latent today only because the interpreter still runs those paths.
+ * Fix the body and prove it before adding any of them.  Names are left
+ * unquoted deliberately -- battle_overlay_host_tus.py scrapes "func_..."
+ * string literals out of this file, so a quoted name in a comment would be
+ * read as an adopted leaf.
+ *
+ *   func_800BEDE8  mainc124.c  RAM: 2 bytes differ at guest 800c3612 (retail 00, host 1e)
+ *   func_800AA7DC  main71.c    faults where the interpreter completes; also v0 retail 27 vs host 0
+ *   func_800AA79C  main71.c    faults where the interpreter completes (write8 at 0x34, pc 800aa7b8)
+ *   func_8008887C  main40.c    RAM: 1 byte differs at guest 800c3a9c (retail 3e, host 32)
+ *   func_800885D0  main39.c    rejected 2026-09-21 once main39.c became compilable
+ *   func_800AA760  main70.c    rejected 2026-09-21 once main70.c became compilable
+ *
+ * Both main71.c entries fail the same way, which suggests one shared cause.
+ *
+ * UNPROVEN (not wrong, but the sweep cannot construct a conclusive case, so
+ * adoption would be unverified): func_8008AA40, func_8008AB94 -- both hit
+ * "unresolved native call target=0x80028470".
+ */
     "func_80079934",
     "func_80089B50",
     "func_800A3484",
@@ -98,3 +123,6 @@
     "func_800800E8",
     "func_80085454",
     "func_80085AC4",
+    "func_8009AA44",
+    "func_8009AB00",
+    "func_800AA788",
