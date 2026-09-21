@@ -74,8 +74,27 @@ build:
 		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
 	grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
 		echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
-	grep -q '^D_800578D6 = ' linker/undefined_syms_auto.slus_006.64.txt || \
-		printf 'D_800578D6 = 0x800578D6;\nD_800578D8 = 0x800578D8;\n' >> linker/undefined_syms_auto.slus_006.64.txt; \
+	grep -q '^D_800578A6 = ' linker/undefined_syms_auto.slus_006.64.txt || \
+		printf '%s\n' \
+			'/* Interior fields of the single InterruptEnvironment_t at' \
+			'   g_InterruptEnvironment = 0x800578A4 (size 0x1068, defined by the' \
+			'   split .sdata in asm/slus_006.64/data/3F290.sdata.s).  The struct C' \
+			'   definition in psyq/libetc/intr.c is commented out, and the hand-' \
+			'   written code there reaches six of its fields by raw address instead' \
+			'   of through the struct.  splat only auto-emits interior D_ symbols it' \
+			'   meets in asm it disassembles, and these six appear only in C and' \
+			'   inline asm it never sees -- hence undefined at link time.  Derived' \
+			'   from the base symbol rather than hardcoded so the whole region stays' \
+			'   coherent with include/psyq/interrupts.h.  Offsets are from that' \
+			'   header; they sum to exactly the 0x1068 recorded in' \
+			'   config/symbol_addrs.slus_006.64.txt. */' \
+			'D_800578A6 = g_InterruptEnvironment + 0x02; /* u_short inInterrupt */' \
+			'D_800578A8 = g_InterruptEnvironment + 0x04; /* VoidCallback_t handlers[11] */' \
+			'D_800578D4 = g_InterruptEnvironment + 0x30; /* u_short enabledInterruptsMask */' \
+			'D_800578D6 = g_InterruptEnvironment + 0x32; /* u_short savedMask */' \
+			'D_800578D8 = g_InterruptEnvironment + 0x34; /* int savedPcr */' \
+			'D_800578E0 = g_InterruptEnvironment + 0x3C; /* jmp_buf buf[JB_SP] */' \
+			>> linker/undefined_syms_auto.slus_006.64.txt; \
 	grep -q '^D_80090F38 = ' linker/undefined_syms_auto.battling.txt || \
 		printf 'D_80090F38 = 0x80090F38;\nD_800925A4 = 0x800925A4;\n' >> linker/undefined_syms_auto.battling.txt; \
 	grep -q '\.world_map_bss 0x8009BBB8' linker/world_map.ld || \

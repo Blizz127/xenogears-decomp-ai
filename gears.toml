@@ -93,17 +93,27 @@ name = "SdataSmall"
 # assembler -G flag), while plain externs assemble absolute under the
 # Default preset (maspsx force-appends -G0). Putting such a mixed TU here
 # flips every absolute access to GPREL16 and regresses the whole TU.
+#
+# temp1. and animation_scripts. were removed for exactly that reason: they are
+# mixed TUs, and listing them here was what kept build/out/slus_006.64 from
+# linking at all.  With --dont-force-G0 their plain externs assembled as
+# GPREL16, and four of them sit outside the +/-32 KiB window around the retail
+# gp (0x80059170): D_80050100 (-0x9070), D_8006BE10, D_800C3664, D_800C3E1C,
+# plus D_8006F99C / D_8006F9AC from animation_scripts.  ld then reported
+# "small-data section too large" with truncated R_MIPS_GPREL16 relocations.
+# Retail reaches those four with lui %hi / %lo -- see
+# asm/slus_006.64/matchings/system/temp1/func_800257F0.s:119, which is a
+# plain `lui $s0, %hi(D_80050100)`, not a gp-relative load.  So absolute is
+# the retail-correct encoding here and the Default preset is the right home.
 build_variables = {
     maspsx_flags = "--dont-force-G0 --use-comm-section --run-assembler",
 }
 paths = [
-    "{binary}/system/temp1.",
     "{binary}/system/memory.",
     "{binary}/system/work_list.",
     "{binary}/system/rendering.",
     "{binary}/system/heap_debug.",
     "{binary}/system/graphics.",
-    "{binary}/system/animation_scripts.",
 ]
 
 [[build_preset]]
