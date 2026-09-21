@@ -32,11 +32,11 @@ Earlier numeric coverage claims below are historical, not current certification.
 
 
 
-### world_map IS NOW SPLIT AND BUILDS — 98.5% byte-correct, one diagnosed defect left
+### world_map IS SPLIT, BUILDS, AND MATCHES RETAIL BYTE-FOR-BYTE
 `world_map.bin` (180,422 B, the largest module, previously **never
 disassembled**: no yaml, no `asm/`, no `src/`) now splits, assembles, links and
-builds at the exact retail size. **2,743 of 180,422 bytes differ (98.5%
-correct).** New: `config/world_map.yaml`, `config/symbol_addrs.world_map.txt`,
+builds at the exact retail size. **0 of 180,422 bytes differ — it matches.**
+New: `config/world_map.yaml`, `config/symbol_addrs.world_map.txt`,
 and `world_map` in `gears.toml`.
 
 Geometry (cross-checked against the port's own notes in
@@ -68,15 +68,42 @@ fresh split is the port's `wm_80071B9C`):
    one — inside `asm` splat emits it with `dlabel`, which does not export, and
    the link fails on undefined `D_8009B564` / `D_8009BB48` / `D_8009A5B4`.
 
-**The remaining 2,743 bytes — diagnosed, not guessed.** Every diff is a `%lo()`
-field 8 bytes high on a **bss** symbol, e.g. at offset 0x148C retail is
-`sw $v0, %lo(D_8009C894)($at)` (`0xac22c894`) and the build emits `0xac22c89c`
-— `D_8009C894` is being linked at 0x8009C89C. So bss symbols are **allocated
-by the linker**, not placed at their retail addresses. Nudging the bss start is
-NOT the fix: 0x8009bbb0 is worse (2,907). The fix is to pin the bss symbol
-addresses — they are all encoded in their own names — the way this repo already
-pins `g_Heap` / `ApplyMatrixSV` / `D_800578D6`, or via
-`config/symbol_addrs.world_map.txt`. That is the next step.
+**RESOLVED — world_map.bin now matches retail exactly (0 differing bytes).**
+Re-measured 2026-09-21 from a clean `make build` + `ninja build/out/world_map.bin`:
+size 180,422 and `cmp -l disc/world_map.bin build/out/world_map.bin | wc -l` = **0**;
+sha1 `5fee1deab3558c23bbe9c3a2eda3a2021a570911` on both sides, matching the
+`sha1:` in `config/world_map.yaml`.
+
+The 2,743-byte diagnosis below was correct and the fix it called for was landed
+in `c03af963` — this paragraph is kept only so nobody re-derives it. Every diff
+was a `%lo()` field 8 bytes high on a **bss** symbol (at offset 0x148C retail is
+`sw $v0, %lo(D_8009C894)($at)` = `0xac22c894`, the build emitted `0xac22c89c`):
+bss symbols were being **allocated by the linker** rather than placed at their
+retail addresses. Nudging the bss start is NOT the fix — 0x8009bbb0 is worse
+(2,907). Two things together fix it, both already in tree:
+
+1. `config/symbol_addrs.world_map.txt` pins every bss symbol at the address
+   encoded in its own name (`D_8009C894 = 0x8009C894;`), the way this repo pins
+   `g_Heap` / `ApplyMatrixSV` / `D_800578D6`.
+2. The `Makefile` patch block pins the section VMA itself:
+   `.world_map_bss (NOLOAD)` -> `.world_map_bss 0x8009BBB8 (NOLOAD)`, because
+   splat 0.33.2 emits the nested bss subsegment address-less and 16-byte `.bss`
+   alignment would otherwise round it up to 0x8009BBC0.
+
+Verified in `build/out/world_map.map`: `.world_map_bss 0x8009bbb8`,
+`D_8009C620` at 0x8009c620 (the "E190" render-context blocker) and
+`D_8009C894` at 0x8009c894.
+
+### splat trap: never put a `;` inside a `//` comment in a symbol_addrs file
+splat 0.33.2 asserts `line.count(";") == 1` on the **raw** line, before it strips
+the `//` comment, so a semicolon in the comment text aborts the whole
+`gears matching` run with `AssertionError: Line must contain a single
+semi-colon` — and it fails at the *first* splat invocation, so every overlay
+goes dark, not just the one whose file is malformed. This bit
+`config/symbol_addrs.slus_006.64.txt:412-413` (`firstfile` / `nextfile`,
+introduced in `cb2a215a`); the fix was to change the comment's `;` to `--`.
+Note `config/symbol_addrs.port_buffers.txt` uses `#` comments and is safe only
+because it is port-generator-only and never fed to splat.
 
 ### Three unbuilt overlays wired into the build — movie.bin now MATCHES retail
 `gears.toml` gained `battling`, `movie`, `battle_command_file1` (+192 KB of
