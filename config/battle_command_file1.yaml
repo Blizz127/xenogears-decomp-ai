@@ -1,5 +1,11 @@
 # Raw archive directory 0x20, offset 0, file 1. This is not battle.bin.
 # Other dynamic battle modules reuse 0x801E5000; keep a separate namespace.
+#
+# This layout MATCHES retail byte-for-byte (19,516 B, sha1 below) as of
+# 0b4876e2 and is unchanged since.  If a build reports 19,512 B / ~56%
+# differing, the overlay was NOT rebuilt: `gears matching` died and gears
+# silently ignores splat's exit code, so ninja relinked a stale tree.  Check
+# splat's stderr before touching anything here.
 name: Battle command module, archive 0x20 file 1
 sha1: 846845462141838c9b94a4a61c315b0876bde352
 options:
