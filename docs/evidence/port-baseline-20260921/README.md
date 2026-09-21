@@ -477,3 +477,234 @@ them.
   answers (does a coexistence-claimed `INCLUDE_ASM` site actually have a
   body?), but it is not a replacement for `decomp_status.py`'s broader
   bookkeeping.
+
+---
+
+## Addendum, same day — closing ranked item #1: `gears` swallowing splat's exit code
+
+Two corrections to the numbers above, from sibling work that landed after
+the original measurement pass (both independently re-verified in this
+follow-up, not taken on faith):
+
+- **`slus_006.64` is no longer `NOT_RUN`.** Commit `c1ea7b87` (cherry-picked
+  into this worktree) declared the six interior fields of the single
+  `InterruptEnvironment_t` at `g_InterruptEnvironment = 0x800578A4`
+  coherently (the four this report flagged, `D_800578A6`/`D_800578A8`/
+  `D_800578D4`/`D_800578E0`, plus the two already-patched
+  `D_800578D6`/`D_800578D8`) and removed two mixed TUs (`temp1.`,
+  `animation_scripts.`) from the `SdataSmall` preset, which had been forcing
+  a latent GPREL16 overflow. `slus_006.64.elf` now links. It still does not
+  match retail byte-for-byte (that is a separate, open question, not fixed
+  here) — `sha256sum -c config/checksum.sha` now reports it `FAILED` rather
+  than "no such file or directory," which is real progress: **`make check`
+  reaches a result for the first time in this project's history.**
+- **`field`'s byte-parity failure has been root-caused as CODEGEN, not
+  layout**, per the sibling working it (324 of 878 functions diverge). Out
+  of scope here; noted only so this report doesn't read as stale on the
+  point.
+
+Re-measured after both fixes, same commands as §1/§2:
+
+```
+$ sha256sum -c config/checksum.sha
+build/out/slus_006.64: FAILED
+build/out/field.bin: FAILED
+build/out/member_change_menu.bin: OK
+build/out/shop_menu.bin: OK
+build/out/battle.bin: OK
+build/out/menu.bin: FAILED
+build/out/movie.bin: OK
+build/out/battling.bin: OK
+build/out/world_map.bin: OK
+build/out/battle_command_file1.bin: OK
+sha256sum: WARNING: 3 computed checksums did NOT match
+```
+
+**7 of 10 OK, 3 FAILED (`slus_006.64`, `field`, `menu`) — this matches the
+independently-reported `make check` result exactly**, which is a good
+cross-check for both this report's byte-gate methodology and the sibling's
+link fix.
+
+### The fix: `tools/gears/src/main.rs`, `split_binary()`
+
+Found and fixed exactly where ranked item #1 said it would be. `gears`'s
+*entire* subprocess surface is one function, `split_binary()`
+(`tools/gears/src/main.rs:93`), called once for the main binary and once per
+overlay from `main()`'s split loop (lines ~247–274). A repo-wide search
+(`grep -n "Command::new\|.spawn()\|.output()\|.status()" tools/gears/src/*.rs`)
+confirms this is the **only** subprocess `gears` invokes anywhere — there is
+no second instance of this bug class to find in the same tool. (Ninja and the
+MIPS toolchain are invoked directly by the `Makefile`, not by `gears`, and
+were out of this task's scope — "on the same path" means inside `gears`
+itself.)
+
+Before:
+
+```rust
+fn split_binary(yaml_path: &String) {
+    let splat_child = Command::new("python3")
+        .arg("-m").arg("splat").arg("split")
+        .arg("--disassemble-all").arg("--make-full-disasm-for-code")
+        .arg(format!("{}", yaml_path))
+        .spawn()
+        .expect("Failed to start splat process.");
+    let _ = splat_child.wait_with_output().expect("Failed to wait on splat");
+}
+```
+
+`wait_with_output()` returns `Result<Output, io::Error>`. `.expect(...)`
+only panics if *waiting itself* fails (an OS-level error); it says nothing
+about the child's exit status, which lives in `Output.status`. `let _ = ...`
+then discards that `Output` — status, stdout, and stderr all together — the
+instant it's produced. There is nothing after this line that ever looks at
+whether splat succeeded. Checked: **no comment, commit message, or doc
+anywhere in the repo explains this as deliberate**, and no caller treats a
+nonzero splat exit as tolerable-by-design. This reads as a "spawn it, wait
+for it to finish, move on" oversight from whoever first wrote the loop, not
+a workaround for a known-flaky splat exit code — so the correct fix is to
+stop discarding the status, not to special-case any exit code.
+
+After (`tools/gears/src/main.rs:93-118`):
+
+```rust
+fn split_binary(yaml_path: &String) {
+    let command_description = format!(
+        "python3 -m splat split --disassemble-all --make-full-disasm-for-code {}",
+        yaml_path
+    );
+    let splat_child = Command::new("python3")
+        .arg("-m").arg("splat").arg("split")
+        .arg("--disassemble-all").arg("--make-full-disasm-for-code")
+        .arg(format!("{}", yaml_path))
+        .spawn()
+        .expect("Failed to start splat process.");
+    let output = splat_child.wait_with_output().expect("Failed to wait on splat");
+
+    if !output.status.success() {
+        eprintln!();
+        eprintln!("gears: FATAL: splat exited with {} while splitting '{}'.", output.status, yaml_path);
+        eprintln!("gears: command was: {}", command_description);
+        eprintln!("gears: splat's own error output is printed above (its stderr is inherited, not captured).");
+        eprintln!("gears: stopping now -- a failed split must not fall through to ninja generation or a stale relink.");
+        process::exit(1);
+    }
+}
+```
+
+Deliberately **kept** stdio inherited rather than switching to
+`Stdio::piped()`: splat streams a live progress bar during a multi-minute
+matching pass, and capturing would buffer that away until the end, which
+would be a real regression for anyone watching a long build. Because stdio
+is inherited, splat's actual error text (the Python traceback, the assertion
+message) already prints live, in place, before `gears` ever sees the exit
+status — so `gears` doesn't need to re-capture and re-print that text
+itself; it only needs to (a) notice the failure, (b) say unambiguously that
+it was *splat*, with the exact command and exit status, and (c) stop cold,
+so nothing can print or build *after* the failure to bury it. That is what
+made the original failure "buried" in practice: not that the text was
+invisible, but that `make`'s recipe kept running commands after it (the
+`grep`/`sed` lines patching `linker/` files that splat never generated),
+so the real cause scrolled off screen under irrelevant follow-on noise.
+Stopping immediately is what actually fixes that.
+
+`tools/gears` is built as a prebuilt binary on Linux/x86_64
+(`Makefile`'s `NEED_GEARS := false` branch — `make build` never invokes
+`cargo` at all on this platform); the container has no `cargo`/`rustc`
+installed. Rebuilt on the host (`cargo build --release`, matching how
+`tools/gears/prebuilt/gears` was produced originally) and copied over
+`tools/gears/prebuilt/gears`; confirmed the resulting binary runs correctly
+inside the pinned toolchain container (no glibc-version mismatch) before
+relying on it for anything below.
+
+### Acceptance 1 — healthy tree, `make build` still succeeds, same 7 overlays match
+
+```
+$ podman run ... bash -lc 'source /.venv/bin/activate && make build; echo EXITCODE=$?'
+...
+[1241/1241] Creating ELF build/out/battle.elf (Objcopy)
+EXITCODE=0
+```
+
+Followed by the `sha256sum -c config/checksum.sha` output quoted above:
+7 OK / 3 FAILED, identical to the pre-fix §1 table (`slus_006.64`, `field`,
+`menu` are exactly the three that were already failing for reasons unrelated
+to this fix — the link fix in `c1ea7b87` and the pre-existing
+CODEGEN/layout issues, respectively). **Nothing regressed.**
+
+### Acceptance 2 — reintroduce the exact HEAD defect; prove it now fails loudly
+
+Reintroduced the precise byte-for-byte defect: changed line 412 of
+`config/symbol_addrs.slus_006.64.txt` back to
+
+```
+firstfile = 0x80040584; // type:func (retail .text function; the port generator must not emit a data stub)
+```
+
+(semicolon inside the parenthetical, exactly as it read at `ed221dc0`), then
+ran the identical `make build` command. Full, unedited tail:
+
+```
+splat 0.33.2 (powered by spimdisasm 1.33.0)
+  0%|          | 0/1068 [00:00<?, ?it/s]Loading symbols (symbol_addrs.slus_006.64):   0%|          | 0/1068 [00:00<?, ?it/s]
+error reading config/symbol_addrs.slus_006.64.txt, line 412:
+	firstfile = 0x80040584; // type:func (retail .text function; the port generator must not emit a data stub)
+Line must be of the form
+<function_name> = <address>; // attr0:val0 attr1:val1 [...]
+with <address> in hex preceded by 0x, or dec
+
+Loading symbols (symbol_addrs.slus_006.64):  38%|███▊      | 411/1068 [00:00<00:00, 184488.33it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/.venv/lib/python3.12/site-packages/splat/__main__.py", line 31, in <module>
+    splat_main()
+  File "/.venv/lib/python3.12/site-packages/splat/__main__.py", line 27, in splat_main
+    args.func(args)
+  File "/.venv/lib/python3.12/site-packages/splat/scripts/split.py", line 555, in process_arguments
+    main(
+  File "/.venv/lib/python3.12/site-packages/splat/scripts/split.py", line 483, in main
+    initialize_all_symbols(all_segments)
+  File "/.venv/lib/python3.12/site-packages/splat/scripts/split.py", line 200, in initialize_all_symbols
+    symbols.initialize(all_segments)
+  File "/.venv/lib/python3.12/site-packages/splat/util/symbols.py", line 323, in initialize
+    handle_sym_addrs(path, sym_addrs_lines, all_segments)
+  File "/.venv/lib/python3.12/site-packages/splat/util/symbols.py", line 107, in handle_sym_addrs
+    assert line.count(";") == 1, "Line must contain a single semi-colon"
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: Line must contain a single semi-colon
+
+gears: FATAL: splat exited with exit status: 1 while splitting 'config/slus_006.64.yaml'.
+gears: command was: python3 -m splat split --disassemble-all --make-full-disasm-for-code config/slus_006.64.yaml
+gears: splat's own error output is printed above (its stderr is inherited, not captured).
+gears: stopping now -- a failed split must not fall through to ninja generation or a stale relink.
+make: *** [Makefile:71: build] Error 1
+EXITCODE=2
+```
+
+**No ninja invocation follows the `gears: FATAL` block** — compare this to
+the original `ed221dc0` failure mode, where `gears matching` silently
+returned success and `make`'s recipe went on to run `grep`/`sed` against
+`linker/` files that were never generated, failing later and further away
+from the real cause. Now the build stops at the source of the problem, names
+the tool, quotes the command, and gives the exit status, before anything
+else can run.
+
+Reverted the line immediately after capturing the above (`git diff HEAD --
+config/symbol_addrs.slus_006.64.txt` confirmed clean), then re-ran `make
+build` once more to confirm the healthy path (Acceptance 1) still holds
+after the revert — `EXITCODE=0`, same 7/10 byte-gate result.
+
+### What was and wasn't touched
+
+- Fixed: `tools/gears/src/main.rs` (`split_binary`) and the regenerated
+  `tools/gears/prebuilt/gears` binary it produces. This is the entire fix.
+- Cherry-picked (not authored here, but required to reach a "healthy tree"
+  baseline to test against): `c1ea7b87` (`slus_006.64` link fix, touches
+  `Makefile` and `gears.toml`, not `src/**`/`pc_port/**`/`config/*.yaml`).
+- Not touched: `src/**`, `pc_port/**`, any `config/*.yaml`, `src/field/**`,
+  `config/menu.yaml`, and the sibling-owned evidence docs named in this
+  task's constraints.
+- Checked and found clean: no second subprocess call site in `gears` to fix.
+  If a future contributor adds one (e.g. a new external tool invocation),
+  the same discard-the-`Output` mistake is easy to repeat; there is no
+  lint or test in this repo that would catch it today.
