@@ -4426,38 +4426,43 @@ Last verified @ f7dd5c7e
 
 ---
 
-## Battle overlay: six C bodies diverge from retail and must not be adopted
+## Battle overlay: one C body diverges from retail and is NOT understood
 
-Six battle functions have C bodies that do NOT match the retail bytes in
-`disc/battle.bin`. They are latent today because the MIPS interpreter still
-runs those paths -- the C is compiled but never executed for them. Each is a
-bug waiting for whoever adopts it as a native host leaf.
+Five of the six bodies previously listed here were fixed and adopted at
+e5212e66 (func_800BEDE8, func_800AA7DC, func_800AA79C, func_800885D0,
+func_800AA760), each proven equivalent to the retail bytes by the differential
+prover. One remains, and it is worse than the others were, because the
+divergence is not merely unproven -- it is unexplained:
 
-The warning also lives in `pc_port/src/battle_overlay_host_leaves.inc`, which
-is the file an adopter actually edits, so it should be hit before the mistake
-is made rather than after.
+  func_8008887C  main40.c  RAM: 1 byte differs at guest 800c3a9c,
+                           retail=3e host=5c
 
-  func_800BEDE8  mainc124.c  RAM: 2 bytes differ at guest 800c3612 (retail 00, host 1e)
-  func_800AA7DC  main71.c    host body faults where the interpreter completes;
-                             also returns v0 retail=00000027 vs host=00000000
-  func_800AA79C  main71.c    host body faults where the interpreter completes
-                             (write8 at 0x34, pc 0x800aa7b8)
-  func_8008887C  main40.c    RAM: 1 byte differs at guest 800c3a9c (retail 3e, host 32)
-  func_800885D0  main39.c    rejected once main39.c became compilable in host-bodies mode
-  func_800AA760  main70.c    rejected once main70.c became compilable in host-bodies mode
+It is deterministic: identical across three prover runs, so it is not RNG
+jitter. The only writer of D_800C3A9C inside func_8008887C is the result of
+func_8001BD40, which is the rand()-based pick in [min,max] defined at
+src/slus_006.64/system/temp3.c:969 and called here with (1, 8). Neither 0x3e
+nor 0x5c is in [1,8], so in the failing case NEITHER side stored a result from
+that call -- something outside this function's disassembly is writing that
+byte. Find that writer before proposing a body; a guessed body here is worse
+than the divergence, because the divergence is at least flagged.
 
-Both `main71.c` entries fail the same way, which points at one shared cause in
-that TU rather than two independent bugs.
+A real defect was fixed here in passing and is not the cause: main40.c
+declared `extern u32 func_8001BD40(u32,u32,u32,u32)` for a function actually
+defined as `u8 func_8001BD40(u8,u8)`, which is undefined behaviour. Correcting
+it did not change the observed bytes.
 
-Separately UNPROVEN rather than wrong -- the differential sweep cannot build a
-conclusive case, so adopting them would be unverified: `func_8008AA40` and
-`func_8008AB94`, both hitting "unresolved native call target=0x80028470".
+The same warning is in pc_port/src/battle_overlay_host_leaves.inc, the file an
+adopter actually edits.
 
-Repro: add the name to `pc_port/src/battle_overlay_host_leaves.inc`, then
+Separately UNPROVEN rather than wrong -- the sweep cannot build a conclusive
+case, so adopting them would be unverified: func_8008AA40 and func_8008AB94,
+both hitting "unresolved native call target=0x80028470".
+
+Repro: add the name to pc_port/src/battle_overlay_host_leaves.inc, then
        bash pc_port/build_port.sh
        bash pc_port/tests/run_battle_overlay_host_differential_test.sh
 Evidence: proven (differential prover, retail bytes vs host C, O0/O2/UBSan)
-Last verified @ cc98b9a4
+Last verified @ e5212e66
 
 ## run_battle_native_callback_map_test.sh: "generated stub was dispatched"
 
@@ -4492,6 +4497,11 @@ run_battle_overlay_leaf_bridge_test.sh (fixed @ cc98b9a4) and
 run_battle_native_callback_map_test.sh (link fixed @ cc98b9a4, assertion still
 red). Worth a dedicated pass over pc_port/tests/ for gates that are green only
 because they never get far enough to fail.
+
+Note: because set -e kills the script at the O0 regime, this suite's UBSan
+regime has never actually executed on this host. Routed to the harness-
+integrity worker together with the leaf-bridge and native-callback-map
+gates; deliberately NOT fixed here.
 
 Repro: bash -x pc_port/tests/run_battle_graphics_abi_test.sh; echo $?
 Evidence: proven (runs, exits 1 with no diagnostic)

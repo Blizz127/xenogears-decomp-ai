@@ -55,11 +55,22 @@ extern u8 D_800C3B74;
 
 /* func_800AA760.s */
 void func_800AA760(u32 index, u8 value) {
+#ifdef XENO_PC_PORT
+    /* The index is unbounded and the slot holds a guest address, so both the
+     * table read and the +0x2A store need PSX_ADDR; see func_800AA79C in
+     * main71.c for the same pair of fixes. */
+    u32 p = *(u32*)PSX_ADDR(0x800D3368 + index * 4);
+
+    if (p != 0) {
+        *(u8*)PSX_ADDR(p + 0x2A) = value;
+    }
+#else
     u32 p = D_800D3368[index];
 
     if (p != 0) {
         *(u8*)(p + 0x2A) = value;
     }
+#endif
 }
 /* func_800AA788.s */
 void func_800AA788(u32 value) {
