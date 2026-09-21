@@ -4429,7 +4429,7 @@ Last verified @ f7dd5c7e
 ## Battle overlay: one C body diverges from retail and is NOT understood
 
 Five of the six bodies previously listed here were fixed and adopted at
-e5212e66 (func_800BEDE8, func_800AA7DC, func_800AA79C, func_800885D0,
+bfe89acc (func_800BEDE8, func_800AA7DC, func_800AA79C, func_800885D0,
 func_800AA760), each proven equivalent to the retail bytes by the differential
 prover. One remains, and it is worse than the others were, because the
 divergence is not merely unproven -- it is unexplained:
@@ -4462,7 +4462,7 @@ Repro: add the name to pc_port/src/battle_overlay_host_leaves.inc, then
        bash pc_port/build_port.sh
        bash pc_port/tests/run_battle_overlay_host_differential_test.sh
 Evidence: proven (differential prover, retail bytes vs host C, O0/O2/UBSan)
-Last verified @ e5212e66
+Last verified @ bfe89acc
 
 ## run_battle_native_callback_map_test.sh: "generated stub was dispatched"
 
