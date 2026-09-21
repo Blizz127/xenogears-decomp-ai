@@ -708,3 +708,170 @@ after the revert — `EXITCODE=0`, same 7/10 byte-gate result.
   If a future contributor adds one (e.g. a new external tool invocation),
   the same discard-the-`Output` mistake is easy to repeat; there is no
   lint or test in this repo that would catch it today.
+
+---
+
+## Addendum, same day — closing ranked item #3: menu's port-coexistence gap
+
+Target: the 30 `INCLUDE_ASM` sites in `src/menu/main/misc.c` with no C body
+anywhere (§4c). Result: **3 real bodies written and differentially
+verified, 1 investigated and correctly left as `INCLUDE_ASM`, 26 remaining**
+(30 → 27, measured the same way as §4c: `python3` re-run of the same
+brace-aware "does a real body exist" scan).
+
+```
+$ python3 <the same ad hoc INCLUDE_ASM-body scanner from §4c, re-run>
+menu: total=139 verified=112 no_body=27
+```
+
+### What was ported and verified
+
+`func_801CA8C0`, `func_801E4A28`, `func_801E4D10` now have real C bodies in
+`src/menu/main/misc.c`, each backed by a genuine differential test —
+`pc_port/tests/menu_misc_coexistence_test.c` /
+`run_menu_misc_coexistence_test.sh` — that runs the **actual retail MIPS
+bytes from `disc/menu.bin`** through this project's own interpreter
+(`PcPortMipsRun`) side by side with the **extracted, live port body** (pulled
+out of `src/menu/main/misc.c` by the runner script at test time via a
+brace-aware scanner, so the test cannot silently drift from what actually
+ships), and asserts the resulting memory states match exactly.
+
+```
+$ bash pc_port/tests/run_menu_misc_coexistence_test.sh
+PASS 260 func_801CA8C0 retail/native fixtures   (O0)
+PASS 5 func_801E4A28 retail/native fixtures
+PASS 5 func_801E4D10 retail/native fixtures
+PASS 260 func_801CA8C0 retail/native fixtures   (O2)
+PASS 5 func_801E4A28 retail/native fixtures
+PASS 5 func_801E4D10 retail/native fixtures
+PASS 260 func_801CA8C0 retail/native fixtures   (O1 + UBSan, -fno-sanitize-recover=all)
+PASS 5 func_801E4A28 retail/native fixtures
+PASS 5 func_801E4D10 retail/native fixtures
+REJECTED mutant_bias (differential test correctly caught the corrupted constant)
+```
+
+`func_801CA8C0` is exercised at all 256 values of `(u8)arg0` plus four
+values that exercise the `s32`→`u8` truncation itself (256, 1000, -3, -300);
+`func_801E4A28`/`func_801E4D10` at 5 pseudo-random full-state fixtures each
+(a 0x4600-byte `g_GameState` blob and a 0x2000-byte snapshot buffer are
+large enough that exhaustive coverage isn't practical, but every field these
+functions touch is exercised by every fixture). The negative control
+corrupts one retail constant (`func_801CA8C0`'s `q + 0x4F` → `q + 0x50`) in
+the *extracted* body and confirms the harness rejects it — proof the green
+result above means something.
+
+**This test caught three real transcription bugs during this session**,
+each independently confirmed against the disassembly before being fixed —
+recorded here because they are exactly the kind of "looks plausible, is
+wrong" error the task warned a missing test would let through:
+
+1. **Wrong divisor.** `func_801CA8C0`'s two-digit value looked like a
+   classic GCC signed-divide-by-5 magic-multiply
+   (`0x66666667`/`mfhi`/`sra 2`) at first read. It is actually a divide-by-
+   **10**: `2**34 / 0x66666667 ≈ 10`, not 5 (34 = the implicit 32-bit shift
+   from taking the high word of the 64-bit product, plus the explicit
+   `sra ..., 2`). The bug was invisible for 9 of every 10 input values —
+   floor(n/5) and floor(n/10) only disagree at hundreds-adjacent
+   boundaries — which is exactly why a curated handful of test inputs
+   (the first version of this test used 10) is not the same guarantee as
+   exhaustive coverage over the truncation range.
+2. **Wrong stride.** `func_801E4A28`/`func_801E4D10`'s 20-record party-
+   member loop copies between two arrays with *different* strides: 0xA4 on
+   the `g_GameState` side, but only **0x3C** on the snapshot-buffer side
+   (confirmed algebraically: `0x99C + 20*0x3C == 0xE4C`, the very next
+   region's start, with no gap or overlap). The first version of this body
+   used 0xA4 for both sides.
+3. **Missing block.** `func_801E4A28` was missing an entire verbatim
+   `memcpy` (`dst+0x1024 <- gs+0x1820`, 0x100 bytes) between two others that
+   look superficially similar in the disassembly — an outright dropped
+   line, not a misread one, caught only because the test's snapshot buffer
+   was zero-initialized and the gap showed up as unwritten zeros against
+   the interpreter's real derived bytes.
+
+### What was investigated and left as `INCLUDE_ASM` (1 of the 4 candidates)
+
+`func_801D261C` treats `g_Menu` itself as a flat byte array at fixed retail
+numeric offsets (`g_Menu + menu2Choice*0x80 + {0xAE8, 0xB5D, 0xB5E, ...}`) —
+there is no named `SystemMenu` field for that scratch region. Writing the
+body and building its own differential test **surfaced a real, host-build-
+specific bug before it ever reached this file**: `SystemMenu`'s *compiled*
+layout on this 64-bit host drifts from retail's numeric layout by measured
+amounts —
+
+```
+offsetof(SystemMenu, renderContext) = 0x3a8   (retail: 0x308)
+offsetof(SystemMenu, menu1Choice)   = 0x3e2   (retail: 0x336)
+offsetof(SystemMenu, menu2Choice)   = 0x3e4   (retail: 0x338)
+offsetof(SystemMenu, pManager)      = 0x3e8   (retail: 0x33C)
+sizeof(SystemMenu)                  = 0x20c8  (retail: 0x1E98)
+```
+
+— because several `SystemMenu` fields ahead of these (`unk32C`, `pGfxEnv`,
+`unk2DC`, `unk2E0`, `unk2E4`, …) are native host pointers (8 bytes) where
+retail had 4-byte PSX pointers. A body built on "g_Menu as a retail-offset
+byte array" would have compiled cleanly, looked plausible, and corrupted
+unrelated `SystemMenu` fields at runtime — exactly the failure mode the
+task asked to guard against. Reverted to `INCLUDE_ASM`, with a comment at
+the site explaining why and what a correct body would need to know (which
+named `SystemMenu` field, if any, retail's scratch region actually
+corresponds to — genuinely ambiguous from the disassembly alone). The same
+struct-layout hazard applies to `func_801CA8C0`'s `MenuUnk2` (it embeds a
+`TIM_IMAGE` full of pointers ahead of the fields it uses,
+`offsetof(MenuUnk2, unk4B98)` measured at `0x4ba8` vs. retail's `0x4B98`) —
+handled there by always going through the struct's own named field
+(`card->unk4B98[...]`) rather than a raw offset, which is safe regardless
+of the drift; this is also why the test compares field-by-field rather than
+with a whole-struct `memcmp`.
+
+### Remaining 26 of the original 30
+
+Not attempted this pass; several were surveyed and set aside for reasons
+worth recording so the next pass doesn't re-derive them:
+
+- `func_801D6338`, `func_801D680C`, `func_801D6CF4`, `func_801D7154`,
+  `func_801D74EC`, `func_801D7884` (6 functions, ~240-330 asm lines each):
+  index into `g_GameState` at offsets 0x2B8/0x30C/0x9D8/0x9DC/0x2BA with a
+  164-byte row stride and four `D_801E9CF0`-family lookup tables whose
+  exact semantics were not established with confidence.
+- `func_801E78C8` (238 lines): VRAM texture-strip loader with a 4-way
+  switch on a retail byte value (0x11/0x12/0x13/default) selecting between
+  five output slots — real branching complexity, not mechanical
+  transcription.
+- `func_801E8B4C`/`func_801E86C8` (157/186 lines): a retry-with-growing-
+  batch-size loop (outer count 1..5, inner 0..count) with a flag-reset
+  condition on a nested table lookup that this pass could not derive with
+  confidence in the time available.
+- The remaining ~16 (`func_801C93A8`, `func_801CB304`, `func_801CBA4C`,
+  `func_801CBD90`, `func_801CC6D8`, `func_801CD2AC`, `func_801D5ED4`,
+  `func_801D9808`, `func_801D9F98`, `func_801E1014`, `func_801E1544`,
+  `func_801E1AC8`, `func_801E23CC`, `func_801E4D10`'s siblings, `func_801E56E8`,
+  `func_801E5B88`, `func_801E5E4C`) were not opened this pass; sizes and a
+  first-pass dependency check (which of their callees are already ported)
+  are recorded in this worker's session but not reproduced here to avoid
+  presenting unverified triage as a finding.
+
+### `make check` re-run: still 7 of 10, nothing regressed
+
+```
+$ ninja build/out/<overlay>.bin   # all 9 non-slus overlays
+$ sha256sum -c config/checksum.sha
+build/out/slus_006.64: FAILED         (pre-existing, §1 -- not this pass's concern)
+build/out/field.bin: FAILED           (pre-existing CODEGEN issue, §1 -- not this pass's concern)
+build/out/member_change_menu.bin: OK
+build/out/shop_menu.bin: OK
+build/out/battle.bin: OK
+build/out/menu.bin: FAILED            (pre-existing, KNOWN AND ACCEPTED per this task's brief --
+                                        GCC 2.7.2 hoists file-scope INCLUDE_ASM above all compiled
+                                        functions, putting 305/307 functions off their retail
+                                        address; this is the byte-parity axis, not the
+                                        port-coexistence axis this dispatch worked)
+build/out/movie.bin: OK
+build/out/battling.bin: OK
+build/out/world_map.bin: OK
+build/out/battle_command_file1.bin: OK
+```
+
+Identical 7-OK/3-FAILED result as before this dispatch's changes. `menu.bin`
+was already `FAILED` for the documented, unrelated, accepted reason; this
+dispatch did not touch anything on the byte-parity axis and did not change
+that result.
