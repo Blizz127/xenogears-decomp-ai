@@ -1,9 +1,0 @@
-{
-  "entry": "0x801CE8D8",
-  "end": "0x801CE91C",
-  "size": 68,
-  "sha256": "62321bfbdb3756149ced5268ea0e7022afa1688253efb270110f1a15d3d8740c",
-  "scope": "unchanged GCC2.6 assembly extracted from actual full shop translation unit and linked at retail VMA",
-  "exact": true,
-  "full_module_exact": false
-}

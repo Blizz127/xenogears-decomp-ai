@@ -1,2 +1,0 @@
-FAIL equip resource mode=00000003 seed=0 events=8/12
-[xeno-port][stub-path] func_801C72BC mode 3 not ported (ported: 0, 2, 0x10, 0x12)

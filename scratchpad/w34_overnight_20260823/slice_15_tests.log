@@ -1,8 +1,0 @@
-W34B42 focused production-linked predicate certificate
-Command: bash pc_port/tests/run_w34b42_frame_reentry_predicate_prod_test.sh
-
-W34B42 TEST PASS O0=5/5 O2=5/5 UBSan_O2=5/5 mutants=3/3 DETECTED
-
-Cases cover gate off/on, D554 zero/nonzero, and high nonzero D554. Mutants
-remove the gate, remove the D554 condition, or force unconditional re-entry;
-all three are detected.

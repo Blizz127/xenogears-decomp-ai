@@ -1,8 +1,0 @@
-Visible portrait, context selection, clamp, and OT order: PASS
-Background/portrait retail OT order: PASS
-shouldRenderPortrait gate: PASS
-Flip flag and small-box sizing: PASS
-Portrait mutant negative controls: PASS
-Retail portrait cache-slot selector: PASS
-Distinct owner/speaker: 192 cases PASS
-Portrait render regression: PASS

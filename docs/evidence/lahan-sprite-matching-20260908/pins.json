@@ -1,9 +1,0 @@
-{
-  "scratchpad/lahan-sprite-matching-20260908/before.c": "9e0e2b15bdbab5cdb111a0c4d07217cc9f575b01e58df5ca6c10289883be3960",
-  "src/slus_006.64/system/temp1.c": "836181ef1b9b5c8f3b6d611d634818c74272f18e741b8d2c119fc2d09760a219",
-  "pc_port/tests/sprite_motion_retail_test.c": "63f180783401e6a5f987d142fd0b6170b868dcef349dad3b84130011407a2679",
-  "pc_port/tests/sprite_scale_retail_test.c": "48122fdd7cbadeef9019b3fa9213b71ff4d73498023be2f9c0e165ba4c19a8d8",
-  "pc_port/tests/run_sprite_matching_retail_test.sh": "4922cd6970f6f78354f39c7daf46e7cfb881e2c85fc74255639a9d11f7645956",
-  "pc_port/tests/sprite_matching_bytes_test.py": "8d5fc02a3045305a4a4c9242c69e28a41a60c04b2e867f5c6ff1b73c23a68c61",
-  "build/src/slus_006.64/system/temp1.c.o": "430f8d91b571d10cb64bf8207cc3d30a27901c9aee33ebeeebc3fd35d6d379d6"
-}

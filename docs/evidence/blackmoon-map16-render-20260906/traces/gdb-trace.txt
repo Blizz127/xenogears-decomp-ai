@@ -1,9 +1,0 @@
-[T] 742C slot=0 ids=0 16 16 16
-[T] 742C slot=1 ids=0 16 16 16
-[T] 742C slot=2 ids=0 16 16 16
-[T] 742C slot=3 ids=0 16 16 16
-[T] FB98 camMode=1 actor=2   ip=116 bytes: 99 60 64 63 30 f8 00 00 dc 05 e0 a3 5e fa c6 ff 7e 06 e0 ac
-[T] ATDEST actor=2   ip=119 bytes: 63 30 f8 00 00 dc 05 e0 a3 5e fa c6 ff 7e 06 e0 ac 00 00 80
-[T] EYEDEST actor=2   ip=127 bytes: a3 5e fa c6 ff 7e 06 e0 ac 00 00 80 ac 01 00 80 ef 03 80 5b
-[T] CAMSTART actor=2 eyeFrom=(-2687,1962,-314) eyeTo=(-1442,1662,-58) atFrom=(-3000,2218,0) atTo=(-2000,1500,0)   ip=135 bytes: ac 00 00 80 ac 01 00 80 ef 03 80 5b 00 93 00 80 fe 03 70 97
-[T] CAMSTART actor=2 eyeFrom=(-2687,1962,-314) eyeTo=(-1442,1662,-58) atFrom=(-3000,2218,0) atTo=(-2000,1500,0)   ip=139 bytes: ac 01 00 80 ef 03 80 5b 00 93 00 80 fe 03 70 97 fe 1c 90 e8

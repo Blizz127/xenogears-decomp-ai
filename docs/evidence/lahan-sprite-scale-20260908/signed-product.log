@@ -1,2 +1,0 @@
-scratchpad/lahan-sprite-scale-20260908/final/signed-product.c:3472:7: runtime error: signed integer overflow: 2 * 2147483647 cannot be represented in type 'int'
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior scratchpad/lahan-sprite-scale-20260908/final/signed-product.c:3472:7 

@@ -1,6 +1,0 @@
-walker move=ffffe570,00000000,fffb0fc0 mode=-1
-walker move=fffd01b0,00000000,fffc1200 mode=-1
-walker move=ffffe163,00000000,fffef066 mode=0
-retail status=0 result=ffffffff flags=00000000 steps=1147 error=
-move[0]=ffffab70 move[1]=00000000 move[2]=ffff0e00 
-011a fe12 03a0 0000 0122 fd98 03e7 0000 

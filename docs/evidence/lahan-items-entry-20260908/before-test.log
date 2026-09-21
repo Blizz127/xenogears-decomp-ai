@@ -1,3 +1,0 @@
-OUTPUT /var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/items-init.Bh8yBGwd
-O0: pc_port/tests/menu_items_init_layout_test.c:23: void func_801E8018(int, void *, void *, void *): Assertion `strings == g_Menu->itemMenuStrings' failed.
-pc_port/tests/run_menu_items_init_layout_test.sh: line 20: 2016365 Aborted                    (core dumped) "$OUT/$mode"

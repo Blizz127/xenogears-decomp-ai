@@ -1,8 +1,0 @@
-SPRITE AB artifacts: pc_port/build_native/sprite_dispatch_ab_retail_test.dZdXKu4t
-pc_port/tests/run_sprite_dispatch_ab_retail_test.sh: line 52: 1269609 Aborted                    (core dumped) "$TEST_OUT/$opt.test" > "$TEST_OUT/$opt.log" 2>&1
-SPRITE AB O0 semantic RED: native dispatcher rejects opcode 0xAB
-pc_port/tests/run_sprite_dispatch_ab_retail_test.sh: line 52: 1269715 Aborted                    (core dumped) "$TEST_OUT/$opt.test" > "$TEST_OUT/$opt.log" 2>&1
-SPRITE AB O2 semantic RED: native dispatcher rejects opcode 0xAB
-pc_port/tests/run_sprite_dispatch_ab_retail_test.sh: line 52: 1269840 Aborted                    (core dumped) "$TEST_OUT/$opt.test" > "$TEST_OUT/$opt.log" 2>&1
-SPRITE AB UBSan semantic RED: native dispatcher rejects opcode 0xAB
-SPRITE AB RED: retail handler/helper fixture is runnable; native AB remains unsupported

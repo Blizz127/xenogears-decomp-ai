@@ -1,3 +1,0 @@
-DE5CC instruction words OK, bytes 2824
-pc_port/tests/run_menu_equip_list_test.sh: line 17: 283998 Segmentation fault         (core dumped) "$OUT/$mode"
-     283999 Done                       | tee "$OUT/$mode.log"

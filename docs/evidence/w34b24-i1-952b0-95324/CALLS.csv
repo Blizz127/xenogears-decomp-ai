@@ -1,8 +1,0 @@
-function,site,callee,arguments,return_use,status
-wm_800952B0,-,-,-,-,leaf (no callees)
-wm_80095324,0x80095364,OuterProduct12 (0x8004A480),"v0=normal_vec ($a0 passthrough), v1=0x1F800010 (down vector), v2=0x1F800020 (raw tangent out)",none (void),CANONICAL (PsyCross libgte)
-wm_80095324,0x80095374,VectorNormal (0x80048D7C),"v0=0x1F800020 (raw tangent), v1=0x1F800000 (unit tangent out)",ignored ($v0 unread),CANONICAL (PsyCross libgte)
-caller,0x80095A20,wm_800952B0,"(dir=$s6, out=$s3, ref=fp+0x30)",v0 ignored,retail caller wm_80095414 (redirect tail A; not yet implemented)
-caller,0x80095B90,wm_800952B0,"(dir=$s6, out=$s3, ref=fp+0x40)",v0 ignored,retail caller wm_80095414 (redirect tail B)
-caller,0x80095BD0,wm_800952B0,"(dir=$s6, out=$s3, ref=fp+0x50)",v0 ignored,retail caller wm_80095414 (redirect tail C)
-caller,0x800956FC,wm_80095324,"(normal=0x1F800080, dir=$s6, out=$s3)",v0 ignored,retail caller wm_80095414 (case-1 post-scan)

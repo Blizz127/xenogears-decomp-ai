@@ -1,6 +1,0 @@
-W34B36 production rebuild
-Command: ./pc_port/build_port.sh
-Result: BUILD_RC=0
-Result: compiled=47 skipped=0
-Result: LINK OK -> pc_port/build_native/xeno-port
-New source compiled: pc_port/src/world_map_frame_tail_71984.c

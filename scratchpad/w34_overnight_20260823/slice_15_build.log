@@ -1,4 +1,0 @@
-W34B42 production build
-Command: bash pc_port/build_port.sh
-Result: exit 0; LINK OK -> pc_port/build_native/xeno-port
-Changed production sources compiled: world_map_init.c, world_map_frame_driver.c

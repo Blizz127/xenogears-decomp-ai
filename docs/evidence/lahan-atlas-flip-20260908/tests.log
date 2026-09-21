@@ -1,9 +1,0 @@
-ATLAS FLIP PASS cases=67328 full fixture and return value
-ATLAS FLIP PASS cases=67328 full fixture and return value
-ATLAS FLIP PASS cases=67328 full fixture and return value
-ATLAS FLIP MUTANT REJECTED buffer
-ATLAS FLIP MUTANT REJECTED flip-byte
-ATLAS FLIP MUTANT REJECTED vertical-flip
-ATLAS FLIP MUTANT REJECTED negative-round
-ATLAS FLIP MUTANT REJECTED uv-direction
-ATLAS FLIP MUTANT REJECTED uv-clamp

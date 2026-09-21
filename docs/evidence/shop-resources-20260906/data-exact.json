@@ -1,9 +1,0 @@
-{
-  "symbol": "D_801C5000",
-  "object_rodata_offset": 0,
-  "declared_size": 16,
-  "object_rodata_bytes": 64,
-  "sha256": "47773c1d0ec894732fa108868d6ff3db76a6bcb74ce104902a402c9fc3f2cbc8",
-  "exact": true,
-  "placement": "object rodata offset0, matching retail constant placement; jump-table relocations remain a separate full-module gate"
-}

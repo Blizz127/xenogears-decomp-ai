@@ -1,3 +1,0 @@
-W34B36 focused production-linked certificate
-Command: pc_port/tests/run_w34b36_80071984_tail_prod_test.sh
-Result: W34B36 TEST PASS O0=4/4 O2=4/4 UBSan_O2=4/4 unknown-guard mutant=detected

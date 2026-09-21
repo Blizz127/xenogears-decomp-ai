@@ -1,7 +1,0 @@
-[DDE4] p=0x561d2e785880 count=2 mode=1/1 xy=(576,256) clut=(0,252) w0=00000002 0062cb61 0050e84d 00001101
-[DDE4] blk[0] magic=1101 base=(0,496) offs=(0,0) dest=(0,252) 256x4
-[DDE4] clut16 8ccc 8cd3 8cda 8ce1 8ce8 8cef 8cf6 8cfd 8d04 8d0b 8d12 8d19 8d20 8d27 8d2e 8d35
-[DDE4] clut80 8efc 8f03 8f0a 8f11 8f18 8f1f 8f26 8f2d 8f34 8f3b 8f42 8f49 8f50 8f57 8f5e 8f65
-[DDE4] blk[1] magic=1100 base=(832,256) offs=(0,0) dest=(576,256) 64x136
-[DDE4] tex16 302b 5878 5e56 010a f944 5bfe fb60 c49e
-*** stack smashing detected ***: terminated

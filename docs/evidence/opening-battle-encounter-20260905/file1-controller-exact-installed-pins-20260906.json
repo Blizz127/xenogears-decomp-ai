@@ -1,9 +1,0 @@
-{
-  "src/battle_command_file1/message_controller.c": "f389a678fcf0b6ca17d3023d902125b93cf96bc4bf78f77e2dc1ee9e7d1b9ca8",
-  "src/battle_command_file1/message_controller_impl.inc": "a1dfab198ebc494cb3db6f41da124d55c442ae3c49bee543ea2ebbbbf89c2f45",
-  "src/battle_command_file1/xeno_battle_command_file1_controller.h": "97239a2c1055e4ee110215377e39c7346f10864b0cdf7909e9cb4268c15e6635",
-  "config/battle_command_file1.yaml": "c5c17bc58d7e5784aeabc986b0fcbd06a928358f2712f25456ba4aa9917d061b",
-  "config/symbol_addrs.battle_command_file1.txt": "fd3ebc41285bdd1bda29996a80ffec5f8f8e769162cfef6f2f30b3a96c09f6a2",
-  "tools/scripts/check_battle_command_file1.py": "a4ffea51ad40d54d70c7f96b90f30f8ba8331adafa214a2e56ba3a85468fef23",
-  "pc_port/tests/run_battle_command_file1_controller_retail_test.py": "b226da830d494f8030596402f982e1fd703b38235fae06673cce53b26c788d4f"
-}

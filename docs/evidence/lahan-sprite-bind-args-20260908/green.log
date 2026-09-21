@@ -1,6 +1,0 @@
-BIND ARGS PASS cases=14336 allocation boundary only
-BIND ARGS PASS cases=14336 allocation boundary only
-BIND ARGS PASS cases=14336 allocation boundary only
-BIND ARGS CONTROL REJECTED selector
-BIND ARGS CONTROL REJECTED page-flags
-BIND ARGS CONTROL REJECTED allocator

@@ -1,5 +1,0 @@
-schedule_steps=4095
-runtime_rc=124
-lines: field490=50 fe60=117 fe60exit=128 fe57=159 request2=161 title=163 newgame=180 field4=259 field2=2110
-captures=270
-TITLE SMOKE overall=PASS

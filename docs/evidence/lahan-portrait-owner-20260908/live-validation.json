@@ -1,8 +1,0 @@
-{
-  "run": "scratchpad/lahan-natural-20260908-sprite-c5",
-  "binary_sha256": "f2fa9ee0fb4de62dc091188a1c46b0885577dfb5302a317dd028604a78c1e4b6",
-  "scene": "normal New Game through Alice, mountain, Yui, Citan, music box, dinner, night mountain Giants dialogue",
-  "observation": "Fei portrait visible without prior striped-slot artifact",
-  "screenshot_sha256": "2ebabbd8aeba93e2138ce7531cb6b02bacbaad05b36f7531b690d844c60ee6db",
-  "scope": "specific previously failing native portrait observation; not complete retail image/audio parity"
-}

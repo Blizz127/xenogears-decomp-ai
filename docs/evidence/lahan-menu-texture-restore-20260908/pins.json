@@ -1,6 +1,0 @@
-{
-  "src/field/main/misc4.c": "20de120dfe67b538b674a494793cb6d1761186865a501354ed5eb9a4bf89bcc3",
-  "pc_port/tests/field_menu_texture_restore_test.c": "8d90afc0f681497751989d6f9997039c0b9af76ebf9d7bfe003e62a275bf069a",
-  "pc_port/tests/run_field_menu_texture_restore_test.sh": "543f59c0eef485c49de6068e885e343419e50ef678dca7ea7f401d3c298d9e76",
-  "pc_port/build_native/xeno-port": "8578383f71b5148b0f80aeec89a9582b0ceb99d737e4279a626b32dd7a6ccc02"
-}

@@ -1,8 +1,0 @@
-{
-  "src/slus_006.64/system/animation_scripts.c": "79adae629a94610cd6a6d940210c92ad646d0bcda34bfce1f40cb1e739afad9f",
-  "pc_port/tests/sprite_dispatch_bd_retail_test.c": "ba06bafd2029a34f2f19928d6d888eb5af4e6aed358f352c4b5210d12862fa8f",
-  "pc_port/tests/run_sprite_dispatch_bd_retail_test.sh": "55aadd1121abe48323bfb8fcc3119ffd574b09d1245dbc9bbac5f3239c815e27",
-  "pc_port/tests/sprite_dispatch_noop_retail_test.c": "45233ed377ece4844da0006061f8622de4ad067c50d5a54a92c670619d9ba691",
-  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119",
-  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22"
-}

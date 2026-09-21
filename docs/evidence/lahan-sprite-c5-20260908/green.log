@@ -1,8 +1,0 @@
-SPRITE C5 artifacts: pc_port/build_native/sprite_dispatch_c5_retail_test.LJ1iBGEx
-SPRITE C5 PASS 134145 bounded cases: all byte operands/timing0..255, signed denominator edges, aliased operands, callee mutations
-SPRITE C5 PASS 134145 bounded cases: all byte operands/timing0..255, signed denominator edges, aliased operands, callee mutations
-SPRITE C5 PASS 134145 bounded cases: all byte operands/timing0..255, signed denominator edges, aliased operands, callee mutations
-SPRITE C5 control rejected signed_operand
-SPRITE C5 control rejected wrong_divisor
-SPRITE C5 control rejected extra_call
-SPRITE C5 control rejected missing_call

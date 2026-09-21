@@ -1,3 +1,0 @@
-Command: bash pc_port/build_port.sh
-Result: LINK OK -> pc_port/build_native/xeno-port
-world_map_helper_89580.c compiled and final link completed.

@@ -1,7 +1,0 @@
-{
-  "pc_port/src/game_overrides.c": "10c27ef4354de2388016df999c634207a5ee98b4056cfca9a90b6087bf791f7b",
-  "pc_port/port_owned_overrides.txt": "6c2ed875ba6df630b5d21848bbdc6f232782a4f99fd374bf57d333539aeb78ea",
-  "src/slus_006.64/system/temp1.c": "836181ef1b9b5c8f3b6d611d634818c74272f18e741b8d2c119fc2d09760a219",
-  "pc_port/tests/run_sprite_motion_retail_test.sh": "6251efe39d7bb30b9afd35ba5ecc607f8fc69aadaa6c4ecefb7278f76114862c",
-  "pc_port/tests/run_sprite_scale_retail_test.sh": "240ee8362fd86cc915d3f33a5f50cd9377882cbe3e937660594fc6e79734d5ed"
-}

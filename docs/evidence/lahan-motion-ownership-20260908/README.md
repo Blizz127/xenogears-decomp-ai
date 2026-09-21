@@ -1,7 +1,0 @@
-# Decompiled sprite motion ownership
-
-Removed duplicate native80022CAC/80022B2C/80022CDC definitions and their three retirement rows. The retirement conditions were exercised by the previous matching-tree arithmetic/layout fixtures and the current native-linked fixture:276480motion cases per O0/O2/UBSan with floor-query, bounce, gravity, asymmetric horizontal-axis and signed-shift controls;917504scaling cases per mode with threecontrols. The native-linked fixture builds both production TUs, applies only the current production manifest's weak-symbol rules, and asserts all three motion symbols remain strong in the decompiled object. The real native floor-query wrapper calls a test dispatch fixture; actual battle-floor behavior is not established by this test.
-
-Native build passes with15remaining override rows and73function stubs. ownership.json proves three strong definitions in the decompiled object and linked executable, and none in game_overrides. The per-function retail byte gate still proves48-byte scaling and104-byte horizontal motion; vertical remains396vs384bytes. The linked ownership change does not imply a new byte match or complete Lahan accuracy.
-
-Live replay scratchpad/lahan-natural-20260908-motion-matching remains on frozen3493abd89bee72276c6067a823d152ce76a26e01f62bf83406dfc140f939741b, which predates this retirement. It reachedpainting14 and thenDan'shall. Do not use that replay as runtime proof of retired ownership. Full end-to-end retail parity and remaining aftermath remain open. No commit/push.

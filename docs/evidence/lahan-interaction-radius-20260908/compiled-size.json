@@ -1,8 +1,0 @@
-{
-  "object": "build/src/field/main/misc8.c.o",
-  "object_sha256": "c3e47d605d5b338e37af3619b0a923db0c1ffd6ba45db233a01072fcb655194a",
-  "compiled_bytes": 1732,
-  "retail_bytes": 1980,
-  "exact_match": false,
-  "scope": "Size gate only; relocation-normalized byte comparison not run if sizes differ."
-}

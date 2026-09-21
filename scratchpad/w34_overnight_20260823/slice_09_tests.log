@@ -1,4 +1,0 @@
-W34B37 focused production-linked writer certificate
-Command: pc_port/tests/run_w34b37_7369c_ot_writer_prod_test.sh
-Result: W34B37 TEST PASS O0/O2/UBSan=1/1/1 asymmetric guest mappings
-Fixture: PSX_ADDR(0x80012340) -> 0x80012340 and PSX_ADDR(0x8001E7A0) -> 0x8001E7A0

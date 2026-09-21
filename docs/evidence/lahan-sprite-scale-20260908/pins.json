@@ -1,8 +1,0 @@
-{
-  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119",
-  "scratchpad/lahan-sprite-scale-20260908/before.c": "496d4b00f4dbaf61bfdd0364a55224338170e0505a32bf43631dce47781fb010",
-  "pc_port/src/game_overrides.c": "517c5312bfca6eb9660ff8fb9a11c4da39686d266cdf7d9d32fed2bcdcc61904",
-  "pc_port/tests/sprite_scale_retail_test.c": "48122fdd7cbadeef9019b3fa9213b71ff4d73498023be2f9c0e165ba4c19a8d8",
-  "pc_port/tests/run_sprite_scale_retail_test.sh": "b2728cd3ece9a45f169da9ec72de9d3e26417082eb4eef88d16691eb1c82360f",
-  "pc_port/src/battle_mips_adapter.c": "4e0e896434e6d2f5452b8ac6f82799414ce8378bf9278fa7403cd083a4f2bf22"
-}

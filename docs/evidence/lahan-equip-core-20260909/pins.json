@@ -1,7 +1,0 @@
-{
-  "src/menu/main/misc.c": "fb381bcd4bdef8ef54b3eed79fcf1a776ce961284f4c03439cf09e445b98a95f",
-  "pc_port/tests/menu_equip_core_test.c": "ec8c10668a7412adb0dd208aeb8355155e8488dceecc37dc695cf914ab2a8c95",
-  "pc_port/tests/run_menu_equip_core_test.sh": "efa370ad2985e2cec3b7c99f9b901a59e68ec1186eaac0453c6297e9dd26704f",
-  "pc_port/build_native/xeno-port": "ccde8c5f0fa955aeb914dafb89a8e370e3cd125c68e564beda27e81b222e8fd3",
-  "pc_port/build_native/stubs.c": "740f4c8d11a04487a15f06c2c3e8449642899294d4cf7d92eaf6d596bd40cd35"
-}

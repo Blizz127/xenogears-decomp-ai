@@ -1,9 +1,0 @@
-MASPSX: Warning, no input from stdin, will try to read from a file
-asm/slus_006.64/nonmatchings/system/rendering/func_8001EE88.s: Assembler messages:
-asm/slus_006.64/nonmatchings/system/rendering/func_8001EE88.s:14: Warning: missing .end
-asm/slus_006.64/nonmatchings/system/rendering/func_8001EE88.s:1:  Info: macro invoked from here
-asm/slus_006.64/nonmatchings/system/rendering/func_8001F1D4.s:14: Warning: missing .end
-asm/slus_006.64/nonmatchings/system/rendering/func_8001F1D4.s:1:  Info: macro invoked from here
-asm/slus_006.64/nonmatchings/system/rendering/GraphicsDrawPauseLetters.s:14: Warning: missing .end
-asm/slus_006.64/nonmatchings/system/rendering/GraphicsDrawPauseLetters.s:1:  Info: macro invoked from here
-{standard input}:118: Warning: missing .end

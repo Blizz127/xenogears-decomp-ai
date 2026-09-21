@@ -1,7 +1,0 @@
-{
-  "src/slus_006.64/system/animation_scripts.c": "e4fdb6854c467a10c33f9aa07b513ba97de402496ba6379523d7589fc990c48f",
-  "src/slus_006.64/system/rendering.c": "a68df96306aa1446a48283c0340aa0e2827b2f100346631bfcb435f629e2ec51",
-  "pc_port/tests/sprite_dispatch_cd_retail_test.c": "56b9e9000dc96fdc08f5e2cff1506bab0fa23d10fb1084b15e3f922e08035d0d",
-  "pc_port/tests/run_sprite_dispatch_cd_retail_test.sh": "91cbe48b8bc11acc2e6a37f83e5ebf4c160bc5d92d166f38431559b93f218f95",
-  "disc/SLUS_006.64": "dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119"
-}

@@ -1,2 +1,0 @@
-scratchpad/lahan-sprite-motion-20260908/validated/signed-shift.c:3549:65: runtime error: left shift of negative value -1
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior scratchpad/lahan-sprite-motion-20260908/validated/signed-shift.c:3549:65 

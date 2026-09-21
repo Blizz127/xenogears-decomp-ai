@@ -1,2 +1,0 @@
-pc_port/src/game_overrides.c:3471:7: runtime error: signed integer overflow: 2 * 2147483647 cannot be represented in type 'int'
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior pc_port/src/game_overrides.c:3471:7 

@@ -1,2 +1,0 @@
-OUTPUT /var/home/blizz/Projects/xenogears-decomp-ai/pc_port/build_native/items-exit.qpf3gkAq
-pc_port/tests/run_menu_items_exit_layout_test.sh: line 20: 2047992 Segmentation fault         (core dumped) "$OUT/$mode"

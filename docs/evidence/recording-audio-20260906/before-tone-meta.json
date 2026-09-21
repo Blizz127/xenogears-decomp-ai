@@ -1,8 +1,0 @@
-{
-  "module": "536870916",
-  "sink": "xeno_recorder_probe_109718",
-  "source": "/tmp/xeno-recording-pre-audio-fix-20260906.inl",
-  "source_sha256": "68a814a6ec5e5b2336f9c36301bb495864116fea165eb4a51d78df1aa0799e9f",
-  "sink_id": 38277,
-  "source_id": 38277
-}

@@ -1,5 +1,0 @@
-W34B44 focused/production-linked verification
-Predicate certificate: bash pc_port/tests/run_w34b42_frame_reentry_predicate_prod_test.sh
-W34B42 TEST PASS O0=5/5 O2=5/5 UBSan_O2=5/5 mutants=3/3 DETECTED
-The natural TWICE run additionally verifies the finite two-reentry bound and
-its count=1/count=2 logging.
