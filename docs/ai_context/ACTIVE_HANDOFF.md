@@ -15,6 +15,15 @@ Earlier numeric coverage claims below are historical, not current certification.
 > quality gate, not the deliverable. An `INCLUDE_ASM` body is worth nothing to
 > the port. Anything still running through `battle_mips_runtime.c` can never be
 > restyled.
+>
+> **Before planning work to byte-match an overlay, read
+> [`MATCHING_LAYOUT_CONTRACT.md`](MATCHING_LAYOUT_CONTRACT.md).** It records the
+> layout rules that make an overlay differ by thousands of bytes while every
+> function body is already correct — including the one that decides whether an
+> overlay is matchable at all: GCC 2.7.2 hoists every `INCLUDE_ASM` above all
+> compiled C, so a single TU mixing the two can never match retail ordering.
+> It also lists `menu.bin` as a **known and accepted** mismatch, with the
+> measured reason. Do not re-open it as a bug.
 
 
 

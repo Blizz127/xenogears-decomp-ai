@@ -2710,6 +2710,34 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA8C0);
+#else
+extern u8 D_801C50E0[];
+
+/* Card-line template blit: copies a 27-byte rodata stat-line skeleton into
+ * unk4B98, patches 6 of its bytes with retail constants plus a two-digit
+ * decimal split of n=(u8)arg0+1 (tens digit q=n/10 at unk4B98+0x1B, ones
+ * digit n-q*10 at +0x1D, both biased by 0x4F), then appends the name-
+ * string tail kept at unk4F80+0x7C.
+ *
+ * n's magic-multiply sequence (0x66666667, mfhi, then sra 2 -- 34 bits of
+ * shift total) is /10, not /5: 2**34 / 0x66666667 ~= 10. Verified against
+ * every input 0..255 in pc_port/tests/menu_misc_coexistence_test.c. */
+void func_801CA8C0(s32 arg0) {
+    MenuUnk2* card = g_Menu->unk32C;
+    s32 n = (u8)arg0 + 1;
+    s32 q = n / 10;
+
+    memcpy(card->unk4B98, D_801C50E0, 0x1B);
+    card->unk4B98[0x1A] = 0x82;
+    card->unk4B98[0x1B] = (u8)(q + 0x4F);
+    card->unk4B98[0x1C] = 0x82;
+    card->unk4B98[0x1D] = (u8)(n - q * 10 + 0x4F);
+    card->unk4B98[0x1E] = 0x81;
+    card->unk4B98[0x1F] = 0x40;
+    card->unk4B98[0x20] = 0;
+    card->unk4B98[0x21] = 0;
+    strcat((char*)card->unk4B98, (char*)&card->unk4F80[0x7C]);
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -4782,6 +4810,19 @@ void func_801D25E4(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 #endif
+/* NOT ported in this pass: retail treats g_Menu itself as a flat byte array
+ * (g_Menu + menu2Choice*0x80 + fixed offsets like 0xAE8/0xB5D/0xB5E) with
+ * no named field for that scratch region. Measured directly
+ * (offsetof(SystemMenu, renderContext) on this host build is 0x3a8, not
+ * retail's 0x308 -- SystemMenu carries several native 8-byte pointers
+ * before that point, e.g. unk32C, pGfxEnv, unk2DC/unk2E0/unk2E4, each 4
+ * bytes wider than their PSX 32-bit originals), so any raw-offset access to
+ * g_Menu beyond its named fields lands in the wrong place on the actual
+ * host build. A correct port body needs to know what SystemMenu field (if
+ * any) retail's g_Menu+choice*0x80 scratch region really is -- genuinely
+ * ambiguous from the disassembly alone -- so this one is left as
+ * INCLUDE_ASM rather than risk a body that looks plausible and corrupts
+ * unrelated SystemMenu fields at runtime. */
 
 #ifndef XENO_PC_PORT
 extern void func_801D5BA4(s32 x, s32 y);
@@ -10317,6 +10358,97 @@ void func_801E4998(s32 arg0, u8 idx) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4D10);
+#else
+extern u8 MenuEquipmentStateStorage[0x4600] __asm__("g_GameState");
+extern void func_801E41C0(s32 arg0, u8 idx);
+extern void func_801E4258(void* pCtx, u8 idx);
+extern void func_801E42AC(s32 arg0, u8 idx);
+extern void func_801E433C(void* resourceArg, u8 gearId);
+
+/* Packs the current g_GameState blob into a snapshot buffer (arg0) laid out
+ * for menu display: 11 fixed-stride (0xA4-byte) formation-slot records
+ * verbatim, then 20 party-member records with a hand-picked field subset
+ * (retail skips several bytes each iteration -- not a straight copy): the
+ * g_GameState side is still 0xA4-strided, but the snapshot side is packed
+ * tighter, at 0x3C per record (verified: 0x99C + 20*0x3C == 0xE4C, the
+ * next region's start, with no gap or overlap). Then four verbatim
+ * regions covering the rest of g_GameState. Pure data movement; no
+ * computation. Returns the same pointer as the retail body's tail-call to
+ * memcpy (its return value is a byte pointer into the caller's snapshot
+ * buffer at +0x1124, whatever that field turns out to mean to the
+ * caller). */
+void* func_801E4A28(void* arg0) {
+    u8* dst = (u8*)arg0;
+    u8* gs = MenuEquipmentStateStorage;
+    s32 i;
+
+    for (i = 0; i < 0xB; i++) {
+        memcpy(dst + 0x290 + i * 0xA4, gs + 0x26C + i * 0xA4, 0xA4);
+    }
+    for (i = 0; i < 0x14; i++) {
+        u8* src = gs + 0x978 + i * 0xA4;
+        u8* out = dst + 0x99C + i * 0x3C;
+
+        memcpy(out, src, 0x28);
+        *(u32*)(out + 0x28) = *(u32*)(src + 0x5C);
+        *(u32*)(out + 0x2C) = *(u32*)(src + 0x60);
+        *(u16*)(out + 0x34) = *(u16*)(src + 0x38);
+        out[0x38] = src[0x99];
+        out[0x39] = src[0x74];
+        out[0x3A] = src[0x75];
+    }
+    memcpy(dst + 0x24,   gs,          0xDC);
+    memcpy(dst + 0x100,  gs + 0xDC,   0x190);
+    memcpy(dst + 0xE4C,  gs + 0x1648, 0x78);
+    memcpy(dst + 0xEC4,  gs + 0x16C0, 0x160);
+    memcpy(dst + 0x1024, gs + 0x1820, 0x100);
+    return memcpy(dst + 0x1124, gs + 0x1920, 0xA38);
+}
+
+
+/* Inverse of func_801E4A28: commits an edited snapshot buffer (arg0) back
+ * into g_GameState. Same eleven 0xA4-byte formation rows and twenty
+ * party-member rows (same hand-picked field subset, reversed direction,
+ * same 0x3C snapshot-side stride / 0xA4 g_GameState-side stride) as the
+ * snapshot, then the same four verbatim regions. arg1 is the equip-
+ * resource context threaded through to the per-member gear lookups
+ * (func_801E41C0/4258/42AC/433C), already ported. arg0 is declared s32
+ * (not void*) to match the existing forward declaration at
+ * func_801CB28C's call site -- retail passes a buffer address through an
+ * integer register there, same as the four gear-lookup helpers do with
+ * their own arg0. Returns a pointer into g_GameState (the retail body's
+ * tail-call to memcpy), which func_801CB28C's caller dereferences. */
+void* func_801E4D10(s32 arg0, s32 arg1) {
+    u8* src = (u8*)(uintptr_t)arg0;
+    u8* gs = MenuEquipmentStateStorage;
+    s32 i;
+
+    for (i = 0; i < 0xB; i++) {
+        memcpy(gs + 0x26C + i * 0xA4, src + 0x290 + i * 0xA4, 0xA4);
+    }
+    memcpy(gs + 0x16C0, src + 0xEC4, 0x160);
+    for (i = 0; i < 0x14; i++) {
+        u8* in = src + 0x99C + i * 0x3C;
+        u8* out = gs + 0x978 + i * 0xA4;
+
+        memcpy(out, in, 0x28);
+        *(u32*)(out + 0x5C) = *(u32*)(in + 0x28);
+        func_801E41C0(arg1, (u8)i);
+        func_801E4258((void*)(uintptr_t)arg1, (u8)i);
+        func_801E42AC(arg1, (u8)i);
+        func_801E433C((void*)(uintptr_t)arg1, (u8)i);
+        *(u16*)(out + 0x38) = *(u16*)(in + 0x34);
+        *(u32*)(out + 0x60) = *(u32*)(in + 0x2C);
+        out[0x99] = in[0x38];
+        out[0x74] = in[0x39];
+        out[0x75] = in[0x3A];
+    }
+    memcpy(gs,          src + 0x24,   0xDC);
+    memcpy(gs + 0xDC,   src + 0x100,  0x190);
+    memcpy(gs + 0x1648, src + 0xE4C,  0x78);
+    memcpy(gs + 0x1820, src + 0x1024, 0x100);
+    return memcpy(gs + 0x1920, src + 0x1124, 0xA38);
+}
 #endif
 
 /* Nav N2c-4: the magnitude-1 bulk special (func_801E31C0's effectFlags&0x1
