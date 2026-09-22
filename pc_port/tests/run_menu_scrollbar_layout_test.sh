@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
 OUT=$(mktemp -d "$PWD/pc_port/build_native/scrollbar.XXXXXXXX")

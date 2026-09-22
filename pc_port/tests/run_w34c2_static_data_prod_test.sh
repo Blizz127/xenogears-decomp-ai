@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # W34C2 — PS-X static data load path certificate (O0/O2/UBSan + mutants M1-M5).
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${W34C2_BUILD_DIR:-$ROOT/pc_port/build_native}"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 TEST_OUT=$(mktemp -d pc_port/build_native/battle_heap_pointer_retail_test.XXXXXXXX)
 export TEST_OUT

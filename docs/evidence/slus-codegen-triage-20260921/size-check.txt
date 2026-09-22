@@ -1,0 +1,21 @@
+== cohort retail sizes, .size-respecting vs original ==
+function                   origRetail trueRetail  padB  built  trueDef
+func_80034FFC                    1696       1696     0    492     1204
+func_80034888                    1572       1572     0   1176      396
+func_80032F54                    1240       1240     0    924      316
+func_80023804                     312        312     0    224       88
+func_800234AC                     140        140     0     60       80
+func_80030A30                     228        228     0    160       68
+GfxLoadImageAccelerated           100        100     0     40       60
+func_8003014C                     124        124     0     76       48
+func_800347C0                      64         64     0     20       44
+func_80033B34                     120        120     0     88       32
+NormalClip                         48         36    12     28        8
+func_8004E9FC                      36         24    12     24        0
+func_8004BED8                      24         12    12     12        0
+func_80040C20                      16          4    12      4        0
+Lzc                                28         24     4     16        8
+AverageSZ4                         28         16    12     16        0
+func_8004BEC0                      16          8     8      8        0
+
+total padding wrongly charged to the cohort: 72 bytes

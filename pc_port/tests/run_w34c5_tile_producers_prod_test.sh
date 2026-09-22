@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # W34C5 — tile producers certificate (981C8 / 97DC0 / 980D4), O0/O2/UBSan + mutants.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${W34C5_BUILD_DIR:-$ROOT/pc_port/build_native}"
 PSYX_CMAKE_LIB="$(find "$ROOT/pc_port/build" "$ROOT/pc_port/build_tsan" -name 'libpsycross.a' 2>/dev/null | head -1 || true)"

@@ -29,7 +29,16 @@ s32 func_800347AC(void* arg0)
 }
 s32 func_800347C0(void* arg0)
 {
-    return *(s16*)((u8*)arg0 + 0x6) + (*(s16*)((u8*)arg0 + 0x2) << 2);
+    /* Kept in sync with src/slus_006.64/system/system.c: row index minus
+     * scroll base, wrapping to the last row when negative, times the row
+     * stride at +0x14 -- not a hardcoded <<2. */
+    u8* pWindow = (u8*)arg0;
+    s32 row = *(s16*)(pWindow + 0x02) - *(s16*)(pWindow + 0x16);
+
+    if (row < 0) {
+        row = *(s16*)(pWindow + 0x0C) - 1;
+    }
+    return *(s16*)(pWindow + 0x06) + row * *(s16*)(pWindow + 0x14);
 }
 u16 D_800ADF54;
 u16 D_800ADF56;

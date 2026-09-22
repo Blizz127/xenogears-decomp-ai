@@ -1,0 +1,119 @@
+== slus short-function cohort triage ==
+Method: field-codegen-20260921/TRIAGE.md Tests A/B/C + lui delta.
+
+func                        defB  store  brnch  call  luiD luiInsn  A  B  TU
+func_80034FFC               1204    -17    -52     2     5      10  .  .  system/system.c
+func_80034888                396     -2     -3     1     2       4  .  .  system/system.c
+func_80032F54                316      5      0     0     0       0  .  .  system/system.c
+func_80023804                 88      0     -1     0     3       6  .  .  system/temp1.c
+func_800234AC                 80      0      0     0     0       0  .  .  system/temp1.c
+func_80030A30                 68      0      0     1     2       4  .  .  system/temp2.c
+GfxLoadImageAccelerated       60     -2      0    -2     0       0  !  .  system/graphics.c
+func_8003014C                 48     -3     -1     0     0       0  .  .  system/temp2.c
+func_800347C0                 44      0      0     0     0       0  .  .  system/system.c
+func_80033B34                 32      0      0     0     1       2  .  .  system/system.c
+NormalClip                    20      0      0     0     0       0  .  .  psyq/libgte.c
+func_8004E9FC                 12   NOT COMPARABLE
+func_8004BED8                 12      0      0     0     0       0  .  .  ?
+func_80040C20                 12   NOT COMPARABLE
+Lzc                           12      0      0     0     0       0  .  .  psyq/libgte.c
+AverageSZ4                    12      0      0     0     0       0  .  .  psyq/libgte.c
+func_8004BEC0                  8      0      0     0     0       0  .  .  psyq/libapi_2.c
+
+store/brnch/call columns are BUILT minus RETAIL: a positive call delta
+means the C calls more often than retail, i.e. retail inlined.
+luiD is retail lui minus built lui; luiInsn = 2x that, the instruction
+cost of retail re-materializing base addresses the C hoists.
+'A'/'B' are the decisive tests; '!' means the function FAILS it.
+
+== detail ==
+-- func_80034FFC  deficit 1204  (src/slus_006.64/system/system.c)
+   retail: 6 lui, 36 st, 44 ld, 58 br, 0 calls
+   built : 1 lui, 19 st, 26 ld, 6 br, 2 calls
+   top retail %hi/%lo symbols: D_8005935Cx4, D_80059364x2, D_800501D0x2, D_80059350x2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_80034888  deficit 396  (src/slus_006.64/system/system.c)
+   retail: 3 lui, 50 st, 96 ld, 26 br, 7 calls
+   built : 1 lui, 48 st, 68 ld, 23 br, 8 calls
+   top retail %hi/%lo symbols: g_SystemPalette1x2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_80032F54  deficit 316  (src/slus_006.64/system/system.c)
+   retail: 6 lui, 69 st, 69 ld, 5 br, 9 calls
+   built : 6 lui, 74 st, 39 ld, 5 br, 9 calls
+   top retail %hi/%lo symbols: g_SystemPalette2x2, g_SystemPalette1x2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_80023804  deficit 88  (src/slus_006.64/system/temp1.c)
+   retail: 7 lui, 26 st, 6 ld, 1 br, 0 calls
+   built : 4 lui, 26 st, 6 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: D_80059198x2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_800234AC  deficit 80  (src/slus_006.64/system/temp1.c)
+   retail: 0 lui, 5 st, 10 ld, 1 br, 0 calls
+   built : 0 lui, 5 st, 2 ld, 1 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_80030A30  deficit 68  (src/slus_006.64/system/temp2.c)
+   retail: 4 lui, 9 st, 14 ld, 0 br, 1 calls
+   built : 2 lui, 9 st, 9 ld, 0 br, 2 calls
+   top retail %hi/%lo symbols: D_80059F84x6, D_80059F64x2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- GfxLoadImageAccelerated  deficit 60  (src/slus_006.64/system/graphics.c)
+   retail: 0 lui, 3 st, 5 ld, 0 br, 3 calls
+   built : 0 lui, 1 st, 3 ld, 0 br, 1 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: ['HeapAlloc', 'HeapFree']
+   Test B retail-only stored globals: none
+-- func_8003014C  deficit 48  (src/slus_006.64/system/temp2.c)
+   retail: 0 lui, 4 st, 9 ld, 4 br, 0 calls
+   built : 0 lui, 1 st, 4 ld, 3 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_800347C0  deficit 44  (src/slus_006.64/system/system.c)
+   retail: 0 lui, 0 st, 5 ld, 1 br, 0 calls
+   built : 0 lui, 0 st, 5 ld, 1 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_80033B34  deficit 32  (src/slus_006.64/system/system.c)
+   retail: 1 lui, 3 st, 6 ld, 3 br, 0 calls
+   built : 0 lui, 3 st, 5 ld, 3 br, 0 calls
+   top retail %hi/%lo symbols: g_SystemDataEntriesx2
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- NormalClip  deficit 20  (src/slus_006.64/psyq/libgte.c)
+   retail: 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   built : 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_8004BED8  deficit 12  (None)
+   retail: 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   built : 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- Lzc  deficit 12  (src/slus_006.64/psyq/libgte.c)
+   retail: 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   built : 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- AverageSZ4  deficit 12  (src/slus_006.64/psyq/libgte.c)
+   retail: 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   built : 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none
+-- func_8004BEC0  deficit 8  (src/slus_006.64/psyq/libapi_2.c)
+   retail: 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   built : 0 lui, 0 st, 0 ld, 0 br, 0 calls
+   top retail %hi/%lo symbols: 
+   Test A retail-only callees: none
+   Test B retail-only stored globals: none

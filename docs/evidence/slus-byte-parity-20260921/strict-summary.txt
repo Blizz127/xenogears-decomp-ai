@@ -1,0 +1,18 @@
+== STRICT parity: relocations resolved to retail addresses ==
+functions compared (in a C object and in retail asm): 1118
+byte-exact:                  608  (49960 B, 25.41% of 196624 comparable bytes)
+  of which INCLUDE_ASM:       20
+  genuinely from C:          588  (44612 B, 22.69%)
+same size, different code:   284
+different size:              226
+
+differing words by cause:
+        724  relocated word differs
+        642  plain instruction differs
+        228  unresolvable relocation symbol
+
+unresolvable relocation symbols: 4
+    .L80040350
+    .rodata
+    AnimationC1RotMatrix
+    __gnu_compiled_c

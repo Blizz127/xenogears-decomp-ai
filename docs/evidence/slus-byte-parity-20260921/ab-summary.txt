@@ -1,0 +1,29 @@
+== A/B of the SdataSmall preset removal, per TU, vs retail ==
+A = SdataSmall (old, does not link)   B = Default (committed)
+
+system/temp1
+                          A (SdataSmall)   B (Default)
+  comparable                          71            71
+  exact                               22            19
+  exact_bytes                       4752          4480
+  codegen                              8             5
+  size                                41            47
+  short                               34            28
+  short_bytes                        932           776
+  retail_bytes                     21020         21020
+  text_bytes                       20868         21204
+  functions whose bytes changed A->B: 32 (of 72), of which resized: 26
+
+system/animation_scripts
+                          A (SdataSmall)   B (Default)
+  comparable                          34            34
+  exact                               15            16
+  exact_bytes                        444           488
+  codegen                              8             6
+  size                                11            12
+  short                                6             5
+  short_bytes                       1056          1000
+  retail_bytes                     11880         11880
+  text_bytes                       11724         11808
+  functions whose bytes changed A->B: 16 (of 44), of which resized: 6
+

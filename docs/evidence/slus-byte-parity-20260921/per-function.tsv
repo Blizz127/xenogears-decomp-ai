@@ -1,0 +1,1247 @@
+symbol	verdict	retail	built	bad_words	source
+.L8002C80C	exact	12	12	0	C
+.L8002C818	exact	12	12	0	C
+.L8002C824	exact	12	12	0	C
+.L8002C830	exact	12	12	0	C
+.L8002C83C	exact	12	12	0	C
+.L8002C848	exact	132	132	0	C
+.L80036950	exact	16	16	0	C
+.L80036960	exact	64	64	0	C
+.L800369A0	exact	248	248	0	C
+.L80036A98	exact	20	20	0	C
+.L80036AAC	exact	16	16	0	C
+.L80036ABC	exact	168	168	0	C
+.L80036B64	exact	24	24	0	C
+.L80036B7C	exact	72	72	0	C
+.L80036BC4	exact	16	16	0	C
+.L80036BD4	exact	260	260	0	C
+.L8003FEC0	exact	12	12	0	C
+.L8003FECC	exact	12	12	0	C
+.L8003FED8	exact	44	44	0	C
+.L8003FF04	exact	80	80	0	C
+.L8003FF54	exact	280	280	0	C
+.L8004006C	exact	240	240	0	C
+.L8004015C	exact	20	20	0	C
+.L80040170	exact	16	16	0	C
+.L80040180	exact	248	248	0	C
+.L80040278	exact	32	32	0	C
+.L80040298	exact	132	132	0	C
+.L8004031C	exact	52	52	0	C
+.L80040350	exact	260	260	0	C
+AddPrim	exact	60	60	0	C
+AddPrims	exact	60	60	0	C
+AnimScriptStackPopU16	codegen	48	48	1	C
+AnimScriptStackPopU24	codegen	52	52	1	C
+AnimScriptStackPopU8	codegen	28	28	1	C
+AnimScriptStackPushU16	codegen	52	52	3	C
+AnimScriptStackPushU24	codegen	68	68	4	C
+AnimScriptStackPushU8	codegen	36	36	2	C
+AnimScriptTick	size	128	132		C
+ApplyMatrix	exact	80	80	0	C
+ApplyMatrixLV	exact	352	352	0	C
+ApplyMatrixSV	size	96	92		C
+ApplyRotMatrix	exact	48	48	0	C
+ApplyRotMatrixLV	size	320	312		C
+ArchiveAllocStreamFile	exact	112	112	0	C
+ArchiveCdDataSync	exact	52	52	0	C
+ArchiveCdDriveCommandHandler	exact	1432	1432	0	C
+ArchiveCdSeekToFile	exact	148	148	0	C
+ArchiveCdSetMode	exact	112	112	0	C
+ArchiveChangeStreamingFile	exact	24	24	0	C
+ArchiveClearStreamFileSections	exact	104	104	0	C
+ArchiveConsolidateStreamFileEntry	exact	100	100	0	C
+ArchiveDataSync	exact	108	108	0	C
+ArchiveDecodeAlignedSize	exact	60	60	0	C
+ArchiveDecodeSector	exact	72	72	0	C
+ArchiveDecodeSize	exact	208	208	0	C
+ArchiveDecodeSizeAbsolute	exact	112	112	0	C
+ArchiveDecodeSizeAligned	exact	228	228	0	C
+ArchiveGetArchiveOffsetIndices	exact	124	124	0	C
+ArchiveGetCurFileSize	exact	16	16	0	C
+ArchiveGetDiscNumber	exact	24	24	0	C
+ArchiveGetFilePath	exact	56	56	0	C
+ArchiveInit	exact	420	420	0	C
+ArchiveReadFile	exact	1132	1132	0	C
+ArchiveReadFileFromCdSector	exact	140	140	0	C
+ArchiveReadFileToBuffer	exact	184	184	0	C
+ArchiveReadHddFile	exact	332	332	0	C
+ArchiveReset	exact	156	156	0	C
+ArchiveSetIndex	exact	68	68	0	C
+ArchiveStreamFreeQueueData	exact	88	88	0	C
+AverageSZ3	exact	16	16	0	C
+AverageSZ4	size	28	16		C
+AverageZ3	exact	32	32	0	C
+AverageZ4	exact	36	36	0	C
+CD_cw	exact	1052	1052	0	C
+CD_datasync	exact	364	364	0	C
+CD_flush	exact	224	224	0	C
+CD_getsector	exact	256	256	0	C
+CD_getsector2	exact	240	240	0	C
+CD_init	exact	492	492	0	C
+CD_initintr	exact	80	80	0	C
+CD_initvol	exact	244	244	0	C
+CD_ready	exact	716	716	0	C
+CD_set_test_parmnum	exact	16	16	0	C
+CD_sync	exact	640	640	0	C
+CD_vol	exact	136	136	0	C
+CatPrim	exact	36	36	0	C
+CdComstr	exact	52	52	0	C
+CdControl	exact	312	312	0	C
+CdControlB	exact	324	324	0	C
+CdControlF	exact	300	300	0	C
+CdDataCallback	exact	36	36	0	C
+CdDataSync	exact	32	32	0	C
+CdFlush	exact	32	32	0	C
+CdGetSector	exact	32	32	0	C
+CdGetSector2	exact	32	32	0	C
+CdInit	exact	152	152	0	C
+CdIntToPos	exact	260	260	0	C
+CdIntstr	exact	52	52	0	C
+CdLastCom	exact	16	16	0	C
+CdLastPos	exact	16	16	0	C
+CdMix	exact	32	32	0	C
+CdMode	exact	16	16	0	C
+CdPosToInt	exact	128	128	0	C
+CdRead	exact	260	260	0	C
+CdReadBreak	exact	156	156	0	C
+CdReadCallback	exact	24	24	0	C
+CdReadMode	exact	24	24	0	C
+CdReadSync	exact	204	204	0	C
+CdReady	exact	32	32	0	C
+CdReadyCallback	exact	24	24	0	C
+CdReset	exact	108	108	0	C
+CdSetDebug	exact	24	24	0	C
+CdStatus	exact	16	16	0	C
+CdSync	exact	32	32	0	C
+CdSyncCallback	exact	24	24	0	C
+ChangeClearPAD	size	32	24		C
+ChangeClearRCnt	size	16	12		C
+ChangeGameState	exact	96	96	0	C
+CheckCallback	exact	16	16	0	C
+ClearImage	exact	148	148	0	C
+ClearImage2	exact	156	156	0	C
+ClearMemory	exact	24	24	0	C
+ClearOTag	exact	184	184	0	C
+ClearOTagR	exact	152	152	0	C
+CloseEvent	exact	16	16	0	C
+ColorCol	exact	36	36	0	C
+ColorDpq	exact	40	40	0	C
+CompMatrix	exact	352	352	0	C
+ControllerDebugPrint	exact	228	228	0	C
+ControllerGetButtonState	exact	152	152	0	C
+ControllerGetNumStates	exact	16	16	0	C
+ControllerGetType	exact	140	140	0	C
+ControllerInit	exact	180	180	0	C
+ControllerPoll	exact	848	848	0	C
+ControllerPopState	exact	196	196	0	C
+ControllerPushState	exact	208	208	0	C
+ControllerRemapAnalogJoystickState	exact	88	88	0	C
+ControllerRemapButtonState	exact	108	108	0	C
+ControllerResetState	exact	148	148	0	C
+ControllerStickToAnalogX	exact	28	28	0	C
+ControllerStickToAnalogY	exact	28	28	0	C
+DMACallback	exact	48	48	0	C
+DeliverEvent	exact	16	16	0	C
+DialogGetHeight	exact	36	36	0	C
+DialogGetWidth	exact	36	36	0	C
+DisableEvent	exact	16	16	0	C
+DpqColor	exact	28	28	0	C
+DpqColor3	exact	60	60	0	C
+DpqColorLight	exact	40	40	0	C
+DrawOTag	exact	116	116	0	C
+DrawOTagEnv	exact	284	284	0	C
+DrawPrim	exact	96	96	0	C
+DrawSync	exact	108	108	0	C
+DrawSyncCallback	exact	92	92	0	C
+DumpClut	exact	64	64	0	C
+DumpDispEnv	exact	172	172	0	C
+DumpDrawEnv	exact	276	276	0	C
+DumpTPage	exact	96	96	0	C
+EnableEvent	exact	16	16	0	C
+EnablePAD	exact	20	20	0	C
+EnterCriticalSection	exact	16	16	0	C
+ExitCriticalSection	exact	16	16	0	C
+FlushCache	exact	16	16	0	C
+FontAddLetterPrimitive	exact	496	496	0	C
+FontDrawLetters	exact	344	344	0	C
+FontFree	exact	92	92	0	C
+FontGetCurLetterCount	exact	24	24	0	C
+FontGetCurLetterX	exact	24	24	0	C
+FontGetCurLetterY	exact	24	24	0	C
+FontGetDefaultLetterHeight	exact	24	24	0	C
+FontGetDefaultLetterWidth	exact	24	24	0	C
+FontGetFlags	exact	24	24	0	C
+FontGetLetterFlags	exact	24	24	0	C
+FontLoadClut	exact	248	248	0	C
+FontLoadFont	exact	912	912	0	C
+FontPrintf	exact	76	76	0	C
+FontRemoveFlag	exact	32	32	0	C
+FontRemoveLetterFlag	exact	32	32	0	C
+FontResetLetterRendering	exact	88	88	0	C
+FontRestoreCurrentPositions	exact	40	40	0	C
+FontSetColor	exact	132	132	0	C
+FontSetCurLetterX	exact	16	16	0	C
+FontSetCurLetterY	exact	16	16	0	C
+FontSetFlag	exact	32	32	0	C
+FontSetLetterFlag	exact	32	32	0	C
+FontSetLetterWidth	exact	16	16	0	C
+FontSetPositionsByOffset	exact	52	52	0	C
+FontSetRowHeight	exact	16	16	0	C
+FontStoreCurrentPositions	exact	40	40	0	C
+GameCharacterGetGearID	exact	44	44	0	C
+GameCheckAndHandleSoftReset	exact	48	48	0	C
+GameHandleError	exact	748	748	0	C
+GamePartyCharactersInitializeSkins	exact	364	364	0	C
+GamePartyGearsInitializeSkins	exact	396	396	0	C
+GamePartySignalReinitialize	exact	16	16	0	C
+GamePartyStreamLoadSkinData	exact	592	592	0	C
+GamePartySyncSkinData	exact	276	276	0	C
+GamePartySyncStreamedData	exact	220	220	0	C
+GameShowSplashScreen	exact	432	432	0	C
+GameSoftReset	exact	120	120	0	C
+GameWaitForCdData	exact	48	48	0	C
+GetAccessoryName	size	48	44		C
+GetClut	exact	24	24	0	C
+GetDispEnv	exact	56	56	0	C
+GetDrawEnv	exact	56	56	0	C
+GetGraphDebug	exact	16	16	0	C
+GetIntrMask	exact	24	24	0	C
+GetItemName	size	48	44		C
+GetRCnt	exact	56	56	0	C
+GetStringEntry	exact	20	20	0	C
+GetSystemDataFile	size	16	12		C
+GetSystemFontFile	size	16	12		C
+GetTPage	exact	60	60	0	C
+GetVideoMode	exact	16	16	0	C
+GetWeaponName	size	48	44		C
+GfxAllocateWorkBuffers	size	84	104		C
+GfxFreeWorkBuffers	size	44	48		C
+GfxLineScrollFree	exact	64	64	0	C
+GfxLineScrollInitialize	exact	328	328	0	C
+GfxLineScrollUpdate	exact	352	352	0	C
+GfxLoadClutsAccelerated	size	188	192		C
+GfxLoadImageAccelerated	size	100	40		C
+GfxSetCurrentOT	exact	16	16	0	C
+GraphicsDrawPauseLetters	codegen	124	124	1	C
+HeapAlloc	exact	916	916	0	C
+HeapAllocSound	exact	88	88	0	C
+HeapCalloc	exact	72	72	0	C
+HeapChangeCurrentUser	exact	32	32	0	C
+HeapConsolidate	exact	172	172	0	C
+HeapDebugDump	exact	896	896	0	C
+HeapDebugDumpBlock	exact	520	520	0	C
+HeapDelayedFree	exact	160	160	0	C
+HeapDerefPtr	exact	12	12	0	C
+HeapDumpToFile	exact	120	120	0	C
+HeapForceFree	exact	48	48	0	C
+HeapForceFreeAllBlocks	exact	140	140	0	C
+HeapFree	exact	164	164	0	C
+HeapFreeAllBlocks	exact	120	120	0	C
+HeapFreeAllDelayedBlocks	exact	108	108	0	C
+HeapFreeBlocksWithFlag	exact	176	176	0	C
+HeapGetAllocInformation	exact	24	24	0	C
+HeapGetBlockSourceAddress	exact	32	32	0	C
+HeapGetBlockUser	exact	20	20	0	C
+HeapGetCurrentUser	exact	12	12	0	C
+HeapGetLargestFreeBlockSize	exact	148	148	0	C
+HeapGetNextBlockHeader	exact	20	20	0	C
+HeapGetSymbolNameFromAddress	exact	192	192	0	C
+HeapGetTotalFreeSize	exact	116	116	0	C
+HeapInit	exact	168	168	0	C
+HeapInsertAlloc	exact	136	136	0	C
+HeapIsBlockPinned	exact	20	20	0	C
+HeapLoadSymbols	exact	312	312	0	C
+HeapPinBlock	exact	20	20	0	C
+HeapPrintf	exact	60	60	0	C
+HeapRelocate	exact	140	140	0	C
+HeapReset	exact	56	56	0	C
+HeapResetUser	exact	36	36	0	C
+HeapSetCurrentContentType	exact	12	12	0	C
+HeapSetCurrentUser	exact	12	12	0	C
+HeapTickDelayedFree	exact	168	168	0	C
+HeapToggleErrorHandler	exact	16	16	0	C
+HeapUnpinBlock	exact	24	24	0	C
+HeapUnpinBlockCopy	exact	24	24	0	C
+HeapWalkUntilEnd	exact	80	80	0	C
+HeapWriteToDebugFile	exact	56	56	0	C
+HookEntryInt	size	16	12		C
+InitCARD	exact	84	84	0	C
+InitCARD2	size	16	12		C
+InitGeom	size	136	128		C
+InitPAD	exact	156	156	0	C
+InitPAD2	size	16	12		C
+InterruptCallback	exact	48	48	0	C
+Intpl	exact	36	36	0	C
+InvSquareRoot	size	140	132		C
+IsEndPrim	exact	28	28	0	C
+KernelMenuInitialize	exact	244	244	0	C
+KernelMenuInitializeCursor	exact	108	108	0	C
+KernelMenuMain	exact	280	280	0	C
+KernelMenuUpdate	exact	368	368	0	C
+Krom2RawAdd	exact	16	16	0	C
+LZSSDecompress	exact	160	160	0	C
+LZSSHeapDecompress	exact	44	44	0	C
+LightColor	exact	40	40	0	C
+LoadAverage0	exact	80	80	0	C
+LoadAverage12	exact	80	80	0	C
+LoadAverageByte	exact	96	96	0	C
+LoadAverageCol	size	128	124		C
+LoadGameStateOverlay	exact	256	256	0	C
+LoadImage	exact	100	100	0	C
+LocalLight	exact	36	36	0	C
+Lzc	size	28	16		C
+MainLoop	exact	352	352	0	C
+MenuExecute	codegen	1164	1164	7	C
+MenuInitializeGfxEnvironment	exact	56	56	0	C
+MenuInitializeGfxEnvironments	exact	216	216	0	C
+MenuMain	exact	312	312	0	C
+MenuProcessControllerInput	exact	316	316	0	C
+MoveImage	exact	196	196	0	C
+MulMatrix	size	272	268		C
+MulMatrix0	size	272	268		C
+MulMatrix2	size	272	268		C
+NextPrim	exact	28	28	0	C
+NormalClip	size	48	28		C
+NormalColor	exact	28	28	0	C
+NormalColor3	exact	60	60	0	C
+NormalColorCol3	exact	68	68	0	C
+NormalColorDpq	exact	36	36	0	C
+NormalColorDpq3	exact	72	72	0	C
+NormalLightCol	exact	32	32	0	C
+OpenEvent	exact	16	16	0	C
+OpenTIM	exact	16	16	0	C
+OuterProduct0	exact	88	88	0	C
+OuterProduct12	exact	88	88	0	C
+PCclose	exact	16	16	0	C
+PCcreate	exact	32	32	0	C
+PCinit	exact	12	12	0	C
+PClseek	exact	36	36	0	C
+PCopen	exact	32	32	0	C
+PCread	exact	192	192	0	C
+PCwrite	exact	192	192	0	C
+PopMatrix	exact	160	160	0	C
+PushMatrix	exact	160	160	0	C
+PutDispEnv	exact	1192	1192	0	C
+PutDrawEnv	exact	260	260	0	C
+ReadGeomOffset	exact	32	32	0	C
+ReadGeomScreen	size	16	12		C
+ReadTIM	exact	104	104	0	C
+ResetCallback	exact	48	48	0	C
+ResetEntryInt	size	16	12		C
+ResetGraph	exact	388	388	0	C
+ResetRCnt	exact	56	56	0	C
+ResolveArchiveEntryPointers	exact	72	72	0	C
+ResolveFileEntryPointers	exact	68	68	0	C
+RestartCallback	exact	48	48	0	C
+ReturnFromException	size	16	12		C
+RotAverage4	size	128	124		C
+RotAverageNclip4	exact	176	176	0	C
+RotMatrix	size	376	360		C
+RotMatrixX	size	416	320		C
+RotMatrixY	size	416	320		C
+RotMatrixYXZ	size	656	588		C
+RotMatrixZ	size	416	320		C
+RotMatrixZYX	size	656	588		C
+RotTrans	size	48	40		C
+RotTransPers	size	48	44		C
+RotTransPers3	size	96	84		C
+RotTransPers4	size	128	120		C
+RotTransSV	exact	48	48	0	C
+ScaleMatrix	size	304	292		C
+ScaleMatrixL	size	304	292		C
+SetBackColor	exact	32	32	0	C
+SetColorMatrix	exact	48	48	0	C
+SetDQA	exact	12	12	0	C
+SetDQB	exact	12	12	0	C
+SetData32	exact	12	12	0	C
+SetDefDispEnv	exact	60	60	0	C
+SetDefDrawEnv	exact	184	184	0	C
+SetDispMask	exact	156	156	0	C
+SetDrawMode	exact	88	88	0	C
+SetDrawMove	exact	96	96	0	C
+SetDrawTPage	exact	44	44	0	C
+SetFarColor	exact	32	32	0	C
+SetGeomOffset	size	32	24		C
+SetGeomScreen	size	16	12		C
+SetGraphDebug	exact	100	100	0	C
+SetGraphReverse	exact	276	276	0	C
+SetIR0	exact	12	12	0	C
+SetIR123	exact	20	20	0	C
+SetIntrMask	exact	28	28	0	C
+SetLightMatrix	exact	48	48	0	C
+SetLineF2	exact	20	20	0	C
+SetLineF3	exact	32	32	0	C
+SetLineF4	exact	32	32	0	C
+SetLineG2	exact	20	20	0	C
+SetLineG3	exact	32	32	0	C
+SetLineG4	exact	32	32	0	C
+SetMAC123	exact	20	20	0	C
+SetMulMatrix	exact	272	272	0	C
+SetPolyF3	exact	20	20	0	C
+SetPolyF4	exact	20	20	0	C
+SetPolyFT3	exact	20	20	0	C
+SetPolyFT4	exact	20	20	0	C
+SetPolyG3	exact	20	20	0	C
+SetPolyG4	exact	20	20	0	C
+SetPolyGT3	exact	20	20	0	C
+SetPolyGT4	exact	20	20	0	C
+SetRCnt	exact	156	156	0	C
+SetRGBfifo	exact	20	20	0	C
+SetRii	exact	20	20	0	C
+SetRotMatrix	exact	48	48	0	C
+SetSXSYfifo	exact	20	20	0	C
+SetSZfifo3	exact	20	20	0	C
+SetSZfifo4	exact	24	24	0	C
+SetSemiTrans	exact	40	40	0	C
+SetShadeTex	exact	40	40	0	C
+SetSprt	exact	20	20	0	C
+SetSprt16	exact	20	20	0	C
+SetSprt8	exact	20	20	0	C
+SetTile	exact	20	20	0	C
+SetTile1	exact	20	20	0	C
+SetTile16	exact	20	20	0	C
+SetTile8	exact	20	20	0	C
+SetTransMatrix	exact	32	32	0	C
+SetVertex0	exact	16	16	0	C
+SetVertex1	exact	16	16	0	C
+SetVertex2	exact	16	16	0	C
+SetVertexTri	exact	32	32	0	C
+SetVideoMode	exact	24	24	0	C
+SoundAbortAllVoices	exact	100	100	0	C
+SoundAbortVoiceOnChannel	exact	92	92	0	C
+SoundAddAudioManagerToList	exact	84	84	0	C
+SoundAddSedsEntry	exact	260	260	0	C
+SoundApplyVolumeSettings	exact	120	120	0	C
+SoundAssignVoiceToChannel	exact	92	92	0	C
+SoundAssignVoiceToChannelAndPlay	exact	156	156	0	C
+SoundAssignVoiceToChannelAndStop	exact	188	188	0	C
+SoundCalculateAudioManagerSize	exact	36	36	0	C
+SoundClearVoiceDataPointers	exact	36	36	0	C
+SoundCopyAudioManagerData	exact	104	104	0	C
+SoundEnableAllSpuChannels	exact	88	88	0	C
+SoundExecuteReverbWorkAreaTransfer	exact	284	284	0	C
+SoundFileComputeChecksum	exact	44	44	0	C
+SoundFindWdsEntry	exact	60	60	0	C
+SoundFreeWdsEntry	exact	220	220	0	C
+SoundHandleError	exact	136	136	0	C
+SoundHeapAllocate	exact	268	268	0	C
+SoundHeapClearBlockMemory	exact	116	116	0	C
+SoundHeapFree	size	136	140		C
+SoundHeapInitialize	exact	88	88	0	C
+SoundHeapSetBlockMemory	size	164	168		C
+SoundInitialize	exact	568	568	0	C
+SoundInitializeAudioManager	exact	180	180	0	C
+SoundInitiateReverbWorkAreaTransfer	exact	120	120	0	C
+SoundLoadWdsFile	exact	248	248	0	C
+SoundMuteAllSpuChannels	exact	96	96	0	C
+SoundOnTransferCallback	exact	172	172	0	C
+SoundProcessTransferCommand	exact	312	312	0	C
+SoundQueueSpuReadCommand	exact	36	36	0	C
+SoundQueueSpuWriteCommand	exact	36	36	0	C
+SoundQueueTransferCommand	exact	284	284	0	C
+SoundReleaseAllVoices	exact	76	76	0	C
+SoundReleaseVoiceFromChannel	exact	104	104	0	C
+SoundRemoveAudioManagerFromList	exact	208	208	0	C
+SoundReset	exact	204	204	0	C
+SoundScriptAddManagerUnk1a	exact	28	28	0	C
+SoundScriptAddUnk6E	exact	44	44	0	C
+SoundScriptCallE5BC	exact	56	56	0	C
+SoundScriptClearActiveFlag800	exact	24	24	0	C
+SoundScriptClearUnk04Bit1	exact	24	24	0	C
+SoundScriptClearUnkCEAndF6	exact	32	32	0	C
+SoundScriptClearUnkCEAndUnk116	exact	32	32	0	C
+SoundScriptDefaultHandler	exact	8	8	0	C
+SoundScriptDefaultSkip3	exact	8	8	0	C
+SoundScriptFermata	exact	28	28	0	C
+SoundScriptLowerOctave	exact	24	24	0	C
+SoundScriptNop	exact	8	8	0	C
+SoundScriptNop2	exact	8	8	0	C
+SoundScriptNop3	exact	8	8	0	C
+SoundScriptNop4	exact	8	8	0	C
+SoundScriptNop5	exact	8	8	0	C
+SoundScriptPercussionOff	exact	24	24	0	C
+SoundScriptRaiseOctave	exact	24	24	0	C
+SoundScriptSaveOctaveAndIP	exact	20	20	0	C
+SoundScriptSetActiveFlag800	exact	24	24	0	C
+SoundScriptSetAdsrDRAndSR	exact	40	40	0	C
+SoundScriptSetAttackMode	exact	28	28	0	C
+SoundScriptSetAttackTime	exact	28	28	0	C
+SoundScriptSetDecayTime	exact	28	28	0	C
+SoundScriptSetManagerUnk1a	exact	20	20	0	C
+SoundScriptSetOctave	exact	32	32	0	C
+SoundScriptSetRelease	exact	32	32	0	C
+SoundScriptSetReleaseMode	exact	28	28	0	C
+SoundScriptSetSustain	exact	28	28	0	C
+SoundScriptSetSustainLevel	exact	28	28	0	C
+SoundScriptSetSustainMode	exact	28	28	0	C
+SoundScriptSetUnk62	exact	20	20	0	C
+SoundScriptSetUnk6E	exact	36	36	0	C
+SoundScriptSetUnk74	exact	32	32	0	C
+SoundScriptSetUnkCEAndF6	exact	32	32	0	C
+SoundScriptSetUnkCEAndUnk116	exact	32	32	0	C
+SoundScriptSetUnkCEAndUnk136	exact	32	32	0	C
+SoundScriptSetVoiceFlags2000AndMode	exact	32	32	0	C
+SoundScriptSetVoiceFlags2000ClearMode	exact	32	32	0	C
+SoundScriptSetVoiceFlags4000ClearMode	exact	32	32	0	C
+SoundScriptSkip3	exact	8	8	0	C
+SoundScriptToggleUnk04Bit2	exact	24	24	0	C
+SoundSetCdAttr	exact	64	64	0	C
+SoundSetCdVolumeWithFade	exact	156	156	0	C
+SoundSetFlagsOnActiveVoices	exact	64	64	0	C
+SoundSetMasterVolumeWithFade	exact	176	176	0	C
+SoundSetReverbModeWithAllocation	exact	416	416	0	C
+SoundSetReverbVoices	exact	28	28	0	C
+SoundSetSpuIrqCallback	exact	16	16	0	C
+SoundSetVoiceAdsrAttackModeAndRate	exact	48	48	0	C
+SoundSetVoiceAdsrDecayShift	exact	40	40	0	C
+SoundSetVoiceAdsrReleaseShiftAndMode	exact	48	48	0	C
+SoundSetVoiceAdsrSustainLevel	exact	40	40	0	C
+SoundSetVoiceAdsrSustainRateAndDirection	exact	52	52	0	C
+SoundSetVoiceKeyOff	exact	28	28	0	C
+SoundSetVoiceKeyOn	exact	28	28	0	C
+SoundSetVoiceLoopAddress	exact	28	28	0	C
+SoundSetVoicePitch	exact	24	24	0	C
+SoundSetVoiceStartAddress	exact	28	28	0	C
+SoundSetVoiceVolume	exact	28	28	0	C
+SoundSetVolumeWithPhase	exact	84	84	0	C
+SoundSetupCdMix	exact	120	120	0	INCLUDE_ASM
+SoundSpuIRQHandler	exact	112	112	0	C
+SoundSpuMemoryAllocateBlock	exact	256	256	0	INCLUDE_ASM
+SoundSpuMemoryAllocateBlockAtAddress	exact	296	296	0	INCLUDE_ASM
+SoundSpuMemoryAllocateWDS	exact	112	112	0	C
+SoundSpuMemoryFindBlock	exact	60	60	0	C
+SoundSpuMemoryFreeBlock	exact	104	104	0	C
+SoundSpuMemoryGetFreeBlock	exact	60	60	0	C
+SoundSpuMemoryInitialize	exact	88	88	0	C
+SoundStopVoiceOnChannel	exact	68	68	0	C
+SoundTickInterpolator	exact	64	64	0	C
+SoundTransferQueueSync	exact	56	56	0	C
+SoundTransferWdsPart	exact	148	148	0	INCLUDE_ASM
+SoundUnkDebug0	exact	8	8	0	C
+SoundUnkDebugNoReturn_8003F4BC	exact	8	8	0	C
+SoundValidateFile	exact	104	104	0	C
+SoundWdsSetTransferParamters	exact	24	24	0	C
+Sprintf	exact	712	712	0	INCLUDE_ASM
+SpriteComputeTransformMatrix	size	404	336		C
+SpriteSetColor	exact	52	52	0	C
+SpriteSetScale	size	56	152		C
+SpriteSetSpecialAnimFile	exact	8	8	0	C
+SpuClearReverbWorkArea	exact	412	412	0	C
+SpuGetReverbModeType	exact	16	16	0	C
+SpuGetVoiceEnvelopeAttr	exact	112	112	0	C
+SpuInit	exact	32	32	0	C
+SpuInitMalloc	exact	84	84	0	C
+SpuQuit	exact	124	124	0	C
+SpuRead	exact	96	96	0	C
+SpuReadDecodedData	exact	112	112	0	C
+SpuSetCommonAttr	exact	916	916	0	C
+SpuSetIRQ	exact	320	320	0	C
+SpuSetIRQCallback	exact	68	68	0	C
+SpuSetNoiseClock	exact	80	80	0	C
+SpuSetReverb	exact	208	208	0	C
+SpuSetReverbModeDelayTime	exact	280	280	0	C
+SpuSetReverbModeDepth	exact	44	44	0	C
+SpuSetReverbModeFeedback	exact	188	188	0	C
+SpuSetReverbModeType	exact	476	476	0	C
+SpuSetTransferCallback	exact	36	36	0	C
+SpuSetTransferMode	exact	52	52	0	C
+SpuSetTransferStartAddr	exact	88	88	0	C
+SpuStart	exact	124	124	0	C
+SpuWrite	exact	96	96	0	C
+Square0	exact	40	40	0	C
+Square12	exact	40	40	0	C
+SquareRoot0	size	144	124		C
+SquareSL0	exact	48	48	0	C
+SquareSL12	exact	48	48	0	C
+SquareSS0	exact	56	56	0	C
+SquareSS12	exact	56	56	0	C
+StartCARD	exact	56	56	0	C
+StartCARD2	size	16	12		C
+StartPAD	exact	48	48	0	C
+StartPAD2	size	16	12		C
+StartRCnt	exact	52	52	0	C
+StopCARD	exact	48	48	0	C
+StopCARD2	size	16	12		C
+StopCallback	exact	48	48	0	C
+StopPAD2	size	16	12		C
+StopRCnt	exact	56	56	0	C
+StoreImage	exact	100	100	0	C
+SwEnterCriticalSection	exact	32	32	0	C
+SwExitCriticalSection	exact	32	32	0	C
+SysDeqIntRP	size	16	12		C
+SysEnqIntRP	size	16	12		C
+SystemFreeData	size	64	52		C
+SystemFreeFont	size	64	52		C
+SystemInitialize	exact	48	48	0	C
+SystemInitializeData	size	116	100		C
+SystemInitializeFont	size	156	148		C
+SystemRenderStringEntry	exact	236	236	0	INCLUDE_ASM
+SystemTransferPaletteToVRAM	exact	144	144	0	C
+TermPrim	exact	24	24	0	C
+TestEvent	exact	16	16	0	C
+TimerWorkListAddTask	size	240	188		C
+TimerWorkListAllocateTask	size	92	88		C
+TimerWorkListDeleteTask	exact	48	48	0	C
+TimerWorkListRemoveTask	size	176	168		C
+TimerWorkListSetTaskCallback	exact	8	8	0	C
+TimerWorkListUpdate	size	148	144		C
+TransMatrix	size	48	36		C
+TransposeMatrix	exact	64	64	0	C
+UnDeliverEvent	exact	16	16	0	C
+VectorNormal	exact	44	44	0	C
+VectorNormalS	exact	20	20	0	C
+VectorNormalSS	exact	48	48	0	C
+Vsync	exact	328	328	0	C
+WaitEvent	size	16	12		C
+WorkListAddTask	size	152	156		C
+WorkListAllocateTask	size	88	84		C
+WorkListDeleteTask	exact	48	48	0	C
+WorkListRemoveTask	exact	160	160	0	C
+WorkListSetTaskCallback	exact	8	8	0	C
+WorkListTaskGetOnFreeCallback	exact	12	12	0	C
+WorkListTaskGetTaskCallback	exact	12	12	0	C
+WorkListTaskSetOnFreeCallback	exact	8	8	0	C
+WorkListUpdate	size	96	104		C
+WorkListsAddTasks	codegen	192	192	19	C
+WorkListsDeleteTasks	exact	60	60	0	C
+WorkListsFreeAllEntries	exact	104	104	0	C
+WorkListsReset	size	32	28		C
+_SpuCallback	exact	36	36	0	C
+_SpuDataCallback	exact	36	36	0	C
+_SpuInit	exact	248	248	0	C
+_SpuIsInAllocateArea	exact	128	128	0	C
+_SpuIsInAllocateArea_	exact	140	140	0	C
+_bu_init	exact	16	16	0	C
+_card_info	size	16	12		C
+_patch_pad	exact	104	104	0	C
+_spu_FgetRXXa	exact	60	60	0	C
+_spu_FiDMA	exact	192	192	0	C
+_spu_Fr	exact	104	104	0	C
+_spu_Fr_	exact	172	172	0	C
+_spu_FsetDelayR	exact	44	44	0	C
+_spu_FsetDelayW	exact	44	44	0	C
+_spu_FsetPCR	exact	96	96	0	C
+_spu_FsetRXX	exact	72	72	0	C
+_spu_FsetRXXa	exact	164	164	0	C
+_spu_Fw	exact	136	136	0	C
+_spu_Fw1ts	exact	104	104	0	C
+_spu_FwriteByIO	exact	460	460	0	C
+_spu_init	exact	660	660	0	C
+_spu_setReverbAttr	exact	1232	1232	0	C
+_spu_t	exact	656	656	0	C
+bzero	exact	48	48	0	C
+callback	exact	228	228	0	C
+cb_data	exact	252	252	0	C
+cb_read	exact	720	720	0	C
+cd_read_retry	exact	532	532	0	C
+close	exact	16	16	0	C
+def_cbread	exact	40	40	0	C
+def_cbready	exact	40	40	0	C
+def_cbsync	exact	40	40	0	C
+erase	exact	16	16	0	C
+firstfile	exact	16	16	0	C
+format	exact	16	16	0	C
+func_80019578	exact	1004	1004	0	C
+func_80019C2C	exact	80	80	0	C
+func_8001A5CC	exact	184	184	0	C
+func_8001A684	exact	100	100	0	C
+func_8001A6E8	exact	1012	1012	0	C
+func_8001AADC	exact	440	440	0	C
+func_8001ACA4	exact	76	76	0	C
+func_8001B484	exact	184	184	0	C
+func_8001B53C	exact	108	108	0	C
+func_8001B5A8	exact	64	64	0	C
+func_8001B5E8	exact	132	132	0	C
+func_8001B66C	exact	80	80	0	C
+func_8001B6BC	exact	8	8	0	C
+func_8001B6C4	exact	384	384	0	C
+func_8001B844	exact	264	264	0	C
+func_8001B94C	exact	36	36	0	C
+func_8001B970	exact	412	412	0	C
+func_8001BB0C	exact	68	68	0	C
+func_8001BB50	exact	92	92	0	C
+func_8001BBAC	exact	404	404	0	C
+func_8001BD40	exact	156	156	0	C
+func_8001BEEC	exact	76	76	0	C
+func_8001C074	exact	308	308	0	C
+func_8001C76C	exact	368	368	0	C
+func_8001CE74	exact	448	448	0	C
+func_8001D034	exact	112	112	0	C
+func_8001D0A4	exact	104	104	0	C
+func_8001D10C	exact	88	88	0	C
+func_8001D164	codegen	56	56	2	C
+func_8001D298	exact	12	12	0	C
+func_8001D2A4	exact	12	12	0	C
+func_8001D2B0	size	324	332		C
+func_8001D3F4	size	116	104		C
+func_8001D468	exact	128	128	0	C
+func_8001D4E8	codegen	84	84	1	C
+func_8001D53C	size	1452	1336		C
+func_8001DAE8	size	1632	1528		C
+func_8001E148	size	336	328		C
+func_8001E298	exact	96	96	0	C
+func_8001E2F8	size	112	116		C
+func_8001E368	size	112	116		C
+func_8001E3D8	size	1508	1404		C
+func_8001E9BC	exact	1196	1196	0	INCLUDE_ASM
+func_8001EE68	exact	12	12	0	C
+func_8001EE74	exact	20	20	0	C
+func_8001EE88	exact	844	844	0	INCLUDE_ASM
+func_8001F1D4	exact	860	860	0	INCLUDE_ASM
+func_8001F530	size	140	112		C
+func_8001F5BC	size	244	236		C
+func_8001F6B0	size	160	124		C
+func_8001F750	size	408	388		C
+func_8001F8E8	size	460	424		C
+func_8001FB30	size	116	108		C
+func_8001FBA4	size	64	88		C
+func_8001FBE4	size	7924	7100		C
+func_80021AD8	exact	44	44	0	C
+func_80021B04	exact	16	16	0	C
+func_80021B14	exact	16	16	0	C
+func_80021B24	exact	36	36	0	C
+func_80021B48	exact	36	36	0	C
+func_80021B6C	exact	44	44	0	C
+func_80021BCC	exact	36	36	0	C
+func_80021BF8	exact	8	8	0	C
+func_80021C00	exact	32	32	0	C
+func_80021D3C	exact	20	20	0	C
+func_80021D50	size	364	372		C
+func_80021EBC	size	252	192		C
+func_80021FB8	exact	8	8	0	C
+func_80021FC0	exact	32	32	0	C
+func_80021FE0	size	32	56		C
+func_80022038	exact	88	88	0	C
+func_80022224	size	152	164		C
+func_800222BC	size	244	236		C
+func_800223B0	size	688	648		C
+func_80022660	size	788	816		C
+func_80022974	size	140	220		C
+func_80022A00	exact	12	12	0	C
+func_80022B2C	size	384	396		C
+func_80022CAC	exact	48	48	0	C
+func_80022CDC	exact	104	104	0	C
+func_80022D44	size	176	140		C
+func_80022DF4	exact	152	152	0	C
+func_80022E8C	size	44	52		C
+func_80022EB8	codegen	268	268	2	C
+func_80022FC4	exact	120	120	0	C
+func_8002303C	size	108	96		C
+func_800230A8	size	124	148		C
+func_80023124	size	76	68		C
+func_80023170	size	112	108		C
+func_800231E0	exact	24	24	0	C
+func_800231F8	exact	24	24	0	C
+func_80023290	size	176	172		C
+func_80023340	size	100	88		C
+func_800233A4	size	156	144		C
+func_80023440	exact	40	40	0	C
+func_80023468	size	40	72		C
+func_800234AC	size	140	60		C
+func_80023538	size	716	648		C
+func_80023804	size	312	224		C
+func_8002393C	exact	20	20	0	C
+func_80023950	exact	8	8	0	C
+func_80023958	size	72	64		C
+func_800239A0	size	84	76		C
+func_800239F4	size	84	68		C
+func_80023A48	size	316	312		C
+func_80023B84	size	1108	1120		C
+func_80023FD8	size	700	708		C
+func_80024294	size	96	104		C
+func_800242F4	size	104	112		C
+func_8002435C	size	456	424		C
+func_80024524	codegen	180	180	2	C
+func_800245D8	size	344	332		C
+func_80024730	size	420	356		C
+func_800248D4	size	1612	2192		C
+func_80024F20	codegen	68	68	1	C
+func_80024FF4	codegen	80	80	18	C
+func_80025044	size	156	160		C
+func_800250E0	size	160	180		C
+func_80025180	exact	72	72	0	INCLUDE_ASM
+func_800251C8	size	92	108		C
+func_80025224	size	52	48		C
+func_80025258	size	452	520		C
+func_8002541C	exact	296	296	0	INCLUDE_ASM
+func_80025544	size	460	572		C
+func_80025710	exact	8	8	0	C
+func_80025718	size	216	224		C
+func_800257F0	size	664	592		C
+func_80025A88	size	380	352		C
+func_80025C04	size	328	320		C
+func_80025D4C	size	604	596		C
+func_80025FA8	exact	912	912	0	INCLUDE_ASM
+func_80026338	size	172	168		C
+func_800263E4	size	888	744		C
+func_8002675C	exact	688	688	0	INCLUDE_ASM
+func_80026A0C	codegen	400	400	83	C
+func_80026B9C	exact	8	8	0	C
+func_80026BA4	size	552	544		C
+func_80026DCC	size	376	380		C
+func_80026F44	size	164	156		C
+func_80026FE8	size	180	172		C
+func_8002709C	exact	808	808	0	INCLUDE_ASM
+func_800273C4	size	1332	1316		INCLUDE_ASM
+func_800278F8	exact	1096	1096	0	INCLUDE_ASM
+func_80027D40	exact	36	36	0	C
+func_8002804C	size	484	488		C
+func_80028548	exact	40	40	0	C
+func_80028A18	exact	72	72	0	C
+func_80028B14	size	844	856		C
+func_80028E60	exact	108	108	0	C
+func_80028F30	size	1324	1316		C
+func_8002945C	size	88	92		C
+func_800294B4	codegen	152	152	18	C
+func_80029AFC	size	948	960		C
+func_80029EB0	size	944	928		C
+func_8002A498	exact	140	140	0	C
+func_8002AC24	exact	1120	1120	0	INCLUDE_ASM
+func_8002B084	codegen	620	620	135	C
+func_8002B2F0	size	736	752		C
+func_8002B5D0	codegen	736	736	161	C
+func_8002B8B0	size	400	380		C
+func_8002BA40	exact	24	24	0	C
+func_8002BA58	codegen	248	248	29	C
+func_8002BB50	exact	1000	1000	0	INCLUDE_ASM
+func_8002BF38	size	984	980		C
+func_8002C310	exact	200	200	0	C
+func_8002C3D8	exact	16	16	0	C
+func_8002C3E8	size	212	224		C
+func_8002C4BC	size	224	236		C
+func_8002C59C	size	168	176		C
+func_8002C644	size	72	68		C
+func_8002C68C	exact	84	84	0	C
+func_8002C6E0	exact	32	32	0	C
+func_8002C700	exact	268	268	0	INCLUDE_ASM
+func_8002C8CC	codegen	648	648	135	C
+func_8002CB54	exact	104	104	0	C
+func_8002CBBC	codegen	84	84	13	C
+func_8002CC10	exact	68	68	0	C
+func_8002CC54	exact	32	32	0	C
+func_8002CC74	exact	56	56	0	C
+func_8002CCAC	exact	28	28	0	C
+func_8002CCC8	exact	92	92	0	C
+func_8002CD24	exact	64	64	0	C
+func_8002CD64	size	104	96		C
+func_8002CDCC	exact	360	360	0	C
+func_8002CF34	exact	36	36	0	C
+func_8002CF58	exact	360	360	0	C
+func_8002D0C0	exact	36	36	0	C
+func_8002D0E4	exact	156	156	0	C
+func_8002D180	size	196	212		C
+func_8002D244	size	272	268		C
+func_8002D354	size	204	220		C
+func_8002D420	size	272	268		C
+func_8002D530	size	380	384		C
+func_8002D6AC	size	208	200		C
+func_8002D77C	size	152	144		C
+func_8002D814	size	368	328		C
+func_8002D984	exact	144	144	0	C
+func_8002DA14	size	232	228		C
+func_8002DAFC	size	136	132		C
+func_8002DB84	size	280	292		C
+func_8002DC9C	size	132	108		C
+func_8002DD20	exact	196	196	0	C
+func_8002DDE4	size	508	496		C
+func_8002DFE0	exact	16	16	0	C
+func_8002DFF0	exact	32	32	0	C
+func_8002E010	exact	1080	1080	0	INCLUDE_ASM
+func_8002E448	exact	516	516	0	INCLUDE_ASM
+func_8002E64C	exact	616	616	0	INCLUDE_ASM
+func_8002E8B4	exact	516	516	0	INCLUDE_ASM
+func_8002EAB8	exact	616	616	0	INCLUDE_ASM
+func_8002ED20	exact	472	472	0	INCLUDE_ASM
+func_8002EEF8	exact	492	492	0	INCLUDE_ASM
+func_8002F0E4	exact	508	508	0	INCLUDE_ASM
+func_8002F2E0	exact	468	468	0	INCLUDE_ASM
+func_8002F4B4	exact	512	512	0	INCLUDE_ASM
+func_8002F6B4	exact	540	540	0	INCLUDE_ASM
+func_8002F8D0	exact	536	536	0	INCLUDE_ASM
+func_8002FAE8	exact	532	532	0	INCLUDE_ASM
+func_8002FCFC	exact	528	528	0	INCLUDE_ASM
+func_8002FF0C	exact	576	576	0	INCLUDE_ASM
+func_8003014C	size	124	76		C
+func_800301C8	size	96	92		C
+func_80030228	size	172	164		C
+func_800302D4	size	244	224		C
+func_800303C8	size	528	464		C
+func_800305D8	size	248	260		C
+func_800306D0	exact	128	128	0	C
+func_80030750	size	384	568		INCLUDE_ASM
+func_80030988	size	168	212		C
+func_80030A30	size	228	160		C
+func_80030B14	size	300	484		C
+func_80030C40	exact	56	56	0	C
+func_80030C78	exact	32	32	0	C
+func_80030C98	size	592	552		INCLUDE_ASM
+func_80030EE8	size	308	300		C
+func_8003101C	exact	1412	1412	0	INCLUDE_ASM
+func_800315A0	codegen	36	36	8	C
+func_800315C4	codegen	36	36	8	C
+func_800315E8	codegen	36	36	8	C
+func_8003160C	codegen	36	36	8	C
+func_80031630	codegen	36	36	8	C
+func_80031654	codegen	36	36	8	C
+func_80031678	codegen	36	36	8	C
+func_8003169C	codegen	36	36	8	C
+func_800316C0	codegen	36	36	8	C
+func_800316E4	codegen	36	36	8	C
+func_80031708	codegen	36	36	8	C
+func_8003172C	codegen	36	36	8	C
+func_80031750	codegen	36	36	8	C
+func_80031774	codegen	36	36	8	C
+func_80031798	codegen	36	36	8	C
+func_800317BC	codegen	36	36	8	C
+func_800317E0	codegen	36	36	8	C
+func_80031804	codegen	36	36	8	C
+func_80031828	codegen	36	36	8	C
+func_8003184C	codegen	36	36	8	C
+func_80031870	codegen	36	36	8	C
+func_800318F0	exact	8	8	0	C
+func_80032F54	size	1240	924		C
+func_80033784	size	52	48		C
+func_800337B8	size	48	44		C
+func_80033878	size	48	44		C
+func_800338A8	size	48	44		C
+func_800338D8	size	48	44		C
+func_80033908	size	48	44		C
+func_80033938	size	48	44		C
+func_80033968	size	48	44		C
+func_80033998	size	48	44		C
+func_800339C8	size	52	48		C
+func_800339FC	size	48	44		C
+func_80033A2C	size	48	44		C
+func_80033A5C	size	48	44		C
+func_80033A8C	size	48	44		C
+func_80033ABC	size	120	100		C
+func_80033B34	size	120	88		C
+func_80033BAC	size	116	112		C
+func_80033C20	size	176	168		C
+func_80033CD0	exact	32	32	0	C
+func_80033CF0	size	228	236		C
+func_80033DD4	exact	28	28	0	C
+func_80033DF0	size	2032	1728		C
+func_800345E0	exact	52	52	0	C
+func_80034614	exact	40	40	0	C
+func_8003463C	exact	104	104	0	C
+func_800346A4	exact	48	48	0	C
+func_800346D4	exact	64	64	0	C
+func_80034714	size	152	144		C
+func_800347AC	exact	20	20	0	C
+func_800347C0	size	64	20		C
+func_80034800	size	116	108		C
+func_80034874	exact	8	8	0	C
+func_8003487C	exact	12	12	0	C
+func_80034888	size	1572	1176		C
+func_80034F98	size	100	84		C
+func_80034FFC	size	1696	492		C
+func_80035E44	exact	216	216	0	C
+func_80035F1C	exact	220	220	0	C
+func_80035FF8	exact	292	292	0	C
+func_8003611C	exact	108	108	0	C
+func_80036188	exact	152	152	0	C
+func_80036220	exact	56	56	0	C
+func_80036258	exact	24	24	0	C
+func_80036270	exact	24	24	0	C
+func_8003633C	exact	16	16	0	C
+func_8003634C	exact	148	148	0	C
+func_800363E0	exact	16	16	0	C
+func_800363F0	exact	16	16	0	C
+func_80036400	exact	16	16	0	C
+func_80036410	exact	16	16	0	C
+func_80036420	exact	264	264	0	C
+func_80036528	exact	212	212	0	C
+func_800366E0	exact	16	16	0	C
+func_800366F0	exact	40	40	0	C
+func_80036718	exact	568	568	0	C
+func_8003708C	exact	80	80	0	C
+func_8003747C	exact	16	16	0	C
+func_80037878	exact	316	316	0	C
+func_800379B4	exact	20	20	0	C
+func_800379C8	exact	8	8	0	C
+func_800379D0	exact	8	8	0	C
+func_800379D8	size	432	420		C
+func_80037F44	exact	68	68	0	C
+func_80037F88	exact	80	80	0	C
+func_800380D0	size	292	308		C
+func_8003852C	size	248	232		C
+func_80038624	exact	40	40	0	C
+func_8003864C	codegen	80	80	5	C
+func_8003869C	exact	40	40	0	C
+func_800386C4	exact	352	352	0	INCLUDE_ASM
+func_80038824	exact	56	56	0	C
+func_800388D4	exact	56	56	0	C
+func_8003890C	exact	40	40	0	C
+func_80039024	exact	288	288	0	C
+func_800391CC	exact	124	124	0	C
+func_800394B8	size	256	284		C
+func_80039748	exact	52	52	0	C
+func_8003977C	exact	8	8	0	C
+func_800397FC	exact	84	84	0	C
+func_80039850	exact	192	192	0	C
+func_80039910	exact	196	196	0	C
+func_800399D4	exact	172	172	0	C
+func_80039A80	exact	232	232	0	C
+func_80039B68	exact	228	228	0	C
+func_80039C4C	exact	64	64	0	C
+func_80039C8C	exact	56	56	0	C
+func_80039CC4	exact	96	96	0	C
+func_80039D24	exact	8	8	0	C
+func_80039D2C	exact	76	76	0	C
+func_80039D78	exact	64	64	0	C
+func_80039DB8	exact	96	96	0	C
+func_80039E18	exact	72	72	0	C
+func_80039E60	exact	100	100	0	C
+func_80039EC4	exact	84	84	0	C
+func_80039F18	exact	132	132	0	C
+func_80039F9C	exact	92	92	0	C
+func_80039FF8	exact	156	156	0	C
+func_8003A094	exact	184	184	0	INCLUDE_ASM
+func_8003A14C	exact	192	192	0	C
+func_8003A20C	exact	200	200	0	C
+func_8003A2D4	exact	8	8	0	C
+func_8003A2DC	exact	8	8	0	C
+func_8003A2E4	size	96	116		C
+func_8003A344	exact	116	116	0	C
+func_8003A3B8	size	152	172		C
+func_8003A450	size	172	188		C
+func_8003A4FC	size	96	116		C
+func_8003A55C	exact	116	116	0	C
+func_8003A5D0	size	140	164		C
+func_8003A65C	exact	464	464	0	INCLUDE_ASM
+func_8003A82C	exact	12	12	0	C
+func_8003A838	exact	100	100	0	C
+func_8003A89C	exact	172	172	0	C
+func_8003A948	exact	116	116	0	C
+func_8003A9BC	exact	116	116	0	C
+func_8003AA30	exact	148	148	0	C
+func_8003AAC4	size	292	276		C
+func_8003ABE8	exact	8	8	0	C
+func_8003ABF0	exact	104	104	0	C
+func_8003AC58	size	112	132		C
+func_8003ACC8	size	88	92		C
+func_8003AD20	exact	120	120	0	C
+func_8003AD98	exact	52	52	0	C
+func_8003ADCC	size	184	176		C
+func_8003AE84	exact	160	160	0	C
+func_8003AF24	size	124	148		C
+func_8003AFA0	exact	92	92	0	C
+func_8003B0AC	exact	156	156	0	C
+func_8003B148	exact	180	180	0	C
+func_8003B1FC	exact	48	48	0	C
+func_8003B22C	exact	256	256	0	C
+func_8003B32C	codegen	68	68	9	C
+func_8003B424	exact	544	544	0	INCLUDE_ASM
+func_8003B644	exact	748	748	0	INCLUDE_ASM
+func_8003B930	size	76	80		C
+func_8003BB08	size	56	68		C
+func_8003BC58	exact	36	36	0	C
+func_8003BC7C	exact	36	36	0	C
+func_8003BDF4	exact	8	8	0	C
+func_8003BDFC	size	108	124		C
+func_8003C020	exact	1124	1124	0	INCLUDE_ASM
+func_8003C4C4	exact	548	548	0	INCLUDE_ASM
+func_8003C6E8	exact	1436	1436	0	INCLUDE_ASM
+func_8003CC84	exact	124	124	0	C
+func_8003CD08	exact	40	40	0	C
+func_8003CD54	exact	40	40	0	C
+func_8003CD8C	exact	120	120	0	C
+func_8003CE68	exact	52	52	0	C
+func_8003CE9C	exact	36	36	0	C
+func_8003CEF0	exact	72	72	0	C
+func_8003CF38	exact	108	108	0	C
+func_8003CFA4	exact	76	76	0	C
+func_8003CFF0	exact	68	68	0	C
+func_8003D034	exact	60	60	0	C
+func_8003D070	exact	120	120	0	C
+func_8003D0E8	exact	40	40	0	C
+func_8003D110	exact	44	44	0	INCLUDE_ASM
+func_8003D13C	size	64	60		C
+func_8003D17C	exact	64	64	0	C
+func_8003D1BC	exact	76	76	0	INCLUDE_ASM
+func_8003D21C	exact	124	124	0	C
+func_8003D298	exact	56	56	0	C
+func_8003D2D0	exact	48	48	0	C
+func_8003D300	exact	40	40	0	C
+func_8003D370	exact	52	52	0	C
+func_8003D3A4	exact	52	52	0	C
+func_8003D3D8	exact	96	96	0	C
+func_8003D438	exact	108	108	0	C
+func_8003D4E4	exact	88	88	0	C
+func_8003D53C	exact	96	96	0	INCLUDE_ASM
+func_8003D60C	exact	52	52	0	C
+func_8003D79C	exact	44	44	0	C
+func_8003D7C8	exact	52	52	0	C
+func_8003D7FC	exact	88	88	0	C
+func_8003D884	exact	52	52	0	C
+func_8003D8B8	exact	236	236	0	INCLUDE_ASM
+func_8003D9A4	exact	268	268	0	INCLUDE_ASM
+func_8003DAB0	exact	60	60	0	C
+func_8003DB2C	exact	44	44	0	C
+func_8003DB58	exact	64	64	0	C
+func_8003DB98	exact	76	76	0	C
+func_8003DBE4	exact	108	108	0	INCLUDE_ASM
+func_8003DC50	exact	212	212	0	INCLUDE_ASM
+func_8003DD24	exact	244	244	0	INCLUDE_ASM
+func_8003DE18	exact	60	60	0	C
+func_8003DEB4	exact	48	48	0	C
+func_8003DEE4	exact	88	88	0	C
+func_8003DF3C	exact	60	60	0	C
+func_8003DF78	exact	212	212	0	INCLUDE_ASM
+func_8003E04C	exact	244	244	0	INCLUDE_ASM
+func_8003E160	exact	32	32	0	C
+func_8003E180	exact	120	120	0	C
+func_8003E1F8	exact	152	152	0	INCLUDE_ASM
+func_8003E290	exact	120	120	0	C
+func_8003E308	exact	80	80	0	C
+func_8003E360	exact	128	128	0	INCLUDE_ASM
+func_8003E3E0	exact	44	44	0	C
+func_8003E40C	exact	64	64	0	C
+func_8003E44C	exact	112	112	0	C
+func_8003E4BC	exact	52	52	0	C
+func_8003E4F0	exact	92	92	0	C
+func_8003E54C	exact	112	112	0	C
+func_8003E5BC	exact	196	196	0	INCLUDE_ASM
+func_8003E900	exact	604	604	0	C
+func_8003EB5C	exact	148	148	0	C
+func_8003EBF0	size	688	680		INCLUDE_ASM
+func_8003EEA0	exact	100	100	0	C
+func_8003EFE4	exact	428	428	0	INCLUDE_ASM
+func_8003F190	exact	20	20	0	C
+func_8003F1A4	exact	72	72	0	C
+func_8003F1EC	exact	84	84	0	C
+func_8003F240	exact	96	96	0	C
+func_8003F2A0	exact	104	104	0	C
+func_8003F308	exact	76	76	0	C
+func_8003F354	exact	108	108	0	C
+func_8003F3C0	exact	108	108	0	C
+func_8003F42C	exact	16	16	0	C
+func_8003F43C	exact	44	44	0	C
+func_8004076C	exact	16	16	0	C
+func_8004077C	exact	16	16	0	C
+func_8004078C	exact	156	156	0	C
+func_800408F4	exact	56	56	0	C
+func_8004092C	exact	128	128	0	C
+func_800409AC	exact	56	56	0	C
+func_800409E4	exact	104	104	0	C
+func_80040A4C	exact	64	64	0	C
+func_80040ABC	size	16	12		C
+func_80040B00	exact	20	20	0	C
+func_80040B7C	exact	40	40	0	C
+func_80040BA4	exact	124	124	0	C
+func_80040C20	size	16	4		C
+func_80040C3C	exact	32	32	0	C
+func_80040C5C	exact	96	96	0	C
+func_80040CBC	exact	20	20	0	C
+func_80040CD0	exact	20	20	0	C
+func_80040CE4	exact	36	36	0	C
+func_8004376C	exact	236	236	0	C
+func_80043858	exact	104	104	0	C
+func_800438C0	exact	104	104	0	C
+func_80043EAC	exact	108	108	0	C
+func_80043F18	exact	56	56	0	C
+func_8004440C	exact	172	172	0	C
+func_800444B8	exact	16	16	0	C
+func_8004463C	exact	296	296	0	C
+func_8004537C	exact	48	48	0	C
+func_800453AC	exact	60	60	0	C
+func_800453E8	exact	132	132	0	C
+func_8004546C	exact	68	68	0	C
+func_800454B0	exact	44	44	0	C
+func_80045534	exact	536	536	0	C
+func_8004574C	exact	656	656	0	C
+func_800459DC	exact	88	88	0	C
+func_80045A34	exact	204	204	0	C
+func_80045B00	exact	204	204	0	C
+func_80045BCC	exact	68	68	0	C
+func_80045C10	exact	132	132	0	C
+func_80045C94	exact	176	176	0	C
+func_80045D44	exact	24	24	0	C
+func_80045D5C	exact	232	232	0	C
+func_80045E44	exact	604	604	0	C
+func_800460A0	exact	572	572	0	C
+func_800462DC	exact	644	644	0	C
+func_80046560	exact	40	40	0	C
+func_80046588	exact	20	20	0	C
+func_8004659C	exact	80	80	0	C
+func_800465EC	exact	76	76	0	C
+func_80046638	exact	48	48	0	C
+func_80046668	exact	36	36	0	C
+func_8004668C	exact	736	736	0	C
+func_8004696C	exact	748	748	0	C
+func_80046C58	exact	348	348	0	C
+func_80046DB4	exact	328	328	0	C
+func_80046EFC	exact	52	52	0	C
+func_80046F30	exact	364	364	0	C
+func_8004709C	exact	220	220	0	C
+func_80047178	exact	44	44	0	C
+func_800471A4	exact	16	16	0	C
+func_8004722C	exact	64	64	0	C
+func_8004726C	exact	684	684	0	C
+func_80047518	exact	288	288	0	C
+func_80047638	exact	408	408	0	C
+func_800477D0	exact	4832	4832	0	C
+func_80048AB0	size	268	260		C
+func_80048DD8	size	188	172		C
+func_80048E94	size	232	228		C
+func_8004901C	exact	136	136	0	C
+func_800490A4	exact	136	136	0	C
+func_8004B4AC	exact	104	104	0	C
+func_8004B51C	exact	48	48	0	C
+func_8004B7D0	exact	52	52	0	C
+func_8004B804	exact	48	48	0	C
+func_8004BEC0	size	16	8		C
+func_8004BED0	exact	8	8	0	C
+func_8004BED8	size	24	12		C
+func_8004C458	exact	24	24	0	C
+func_8004C530	exact	24	24	0	C
+func_8004E880	size	20	88		C
+func_8004E8D8	exact	136	136	0	C
+func_8004E960	size	48	40		C
+func_8004E990	exact	108	108	0	C
+func_8004E9FC	size	36	24		C
+func_8004EA20	exact	104	104	0	C
+getintr	exact	1416	1416	0	C
+longjmp	exact	52	52	0	C
+memchr	exact	80	80	0	C
+memclrIntr	exact	44	44	0	C
+memclrIntrDMA	exact	44	44	0	C
+memclrIntrVSync	exact	44	44	0	C
+memcpy	exact	52	52	0	C
+memmove	exact	108	108	0	C
+memset	exact	48	48	0	C
+nextfile	exact	16	16	0	C
+open	exact	16	16	0	C
+printf	exact	8	8	0	C
+putchar	exact	180	180	0	C
+puts	exact	80	80	0	C
+rand	exact	48	48	0	C
+ratan2	exact	384	384	0	C
+rcos	exact	28	28	0	C
+read	exact	16	16	0	C
+rename	exact	16	16	0	C
+restartIntr	exact	136	136	0	C
+rsin	exact	28	28	0	C
+setIntr	exact	340	340	0	C
+setIntrDMA	exact	168	168	0	C
+setIntrVSync	exact	44	44	0	C
+setjmp	exact	60	60	0	C
+srand	exact	16	16	0	C
+start	size	36	60		C
+startIntr	exact	220	220	0	C
+startIntrDMA	exact	80	80	0	C
+startIntrVSync	exact	88	88	0	C
+stopIntr	exact	172	172	0	C
+strcat	exact	168	168	0	C
+strcmp	exact	100	100	0	C
+strcpy	exact	68	68	0	C
+strlen	exact	48	48	0	C
+tolower	exact	48	48	0	C
+toupper	exact	48	48	0	C
+trapIntr	exact	488	488	0	C
+trapIntrDMA	exact	388	388	0	INCLUDE_ASM
+trapIntrVSync	exact	120	120	0	C
+unk_SoundSetFlagsOnActiveVoices	exact	64	64	0	C
+v_wait	exact	156	156	0	C
+write	exact	16	16	0	C

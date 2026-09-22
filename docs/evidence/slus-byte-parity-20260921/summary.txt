@@ -1,0 +1,189 @@
+== function-level parity (relocations masked) ==
+retail functions parsed from asm/: 1308
+built .text symbols:               1676
+comparable (present in both):      1246
+
+byte-exact:                  967  (141920 retail bytes, 65.20% byte-weighted)
+  of which INCLUDE_ASM:       57  (retail asm pasted back in)
+  genuinely from C:          910  (112640 retail bytes, 51.75% byte-weighted)
+different size:              234
+same size, different code:    45
+comparable retail bytes:   217668
+
+live INCLUDE_ASM directives in src/slus_006.64 (comments excluded): 61
+distinct INCLUDE_ASM function names:                        61
+
+== per-TU .text size, retail (yaml span) vs built (linker map) ==
+  delta   retail    built  unit
+  -1316    10056     8740  system/system (c)
+   -376     9916     9540  system/rendering (c)
+   -200    10472    10272  psyq/libgte (c)
+    -68     3084     3016  system/work_list (c)
+    -56    11880    11824  system/animation_scripts (c)
+    -56      288      232  system/graphics (c)
+    -32     1448     1416  psyq/libapi (c)
+    -32      208      176  psyq/libapi_2 (c)
+    -16      252      236  psyq/libcard (c)
+    -12      432      420  system/asset_loader (c)
+     -4       16       12  psyq/libapi/WaitEvent (c)
+     -4       16       12  psyq/libapi_3 (c)
+     -4     5524     5520  system/archive (c)
+      4     1228     1232  graphics/line_scroll (c)
+      8     5216     5224  system/libarchive (c)
+     48     2924     2972  psyq/libc (c)
+    132    27760    27892  system/temp2 (c)
+    188    31664    31852  system/sound (c)
+    212    21048    21260  system/temp1 (c)
+
+sum of per-TU deltas: -1584
+
+== blast radius: the two TUs removed from gears.toml SdataSmall ==
+system/temp1: 71 comparable functions, 21020 retail bytes
+    exact 19 (4480 B) | same-size-different 5 | different-size 47
+    built .text 21260
+system/animation_scripts: 34 comparable functions, 11880 retail bytes
+    exact 16 (488 B) | same-size-different 6 | different-size 12
+    built .text 11824
+
+== per-TU parity rollup (all code TUs) ==
+exact    cg  size   retailB   exactB  unit
+   19     5    47     21020     4480  system/temp1
+   49    26    33     27576    14852  system/temp2
+   16     6    12     11880      488  system/animation_scripts
+   18     0    36     10056     1068  system/system
+    6     2    12      9916     3028  system/rendering
+   66     0    30     10472     4440  psyq/libgte
+  249     2    20     31664    27972  system/sound
+   23     1     3      5216     2808  system/libarchive
+    7     0     2      5056     3164  system/archive
+   17     2    10      3084     1372  system/work_list
+    7     1     0      2816     1652  system/menu
+    3     0     1      1228      744  graphics/line_scroll
+    0     0     1       432        0  system/asset_loader
+    0     0     2       288        0  system/graphics
+   18     0     7      1448     1320  psyq/libapi
+    3     0     5       208      120  psyq/libapi_2
+    3     0     4       252      188  psyq/libcard
+    0     0     1        16        0  psyq/libapi_3
+    0     0     1        16        0  psyq/libapi/WaitEvent
+    2     0     0       204      204  util/lzss
+   27     0     0      6160     6160  system/temp3
+   38     0     0      5432     5432  system/memory
+    4     0     0      1000     1000  system/kernel_menu
+    3     0     0       188      188  system/heap_debug
+   28     0     0      2976     2976  system/font
+   11     0     0      1960     1960  system/controller
+    1     0     0      1232     1232  psyq/libspu/_spu_setReverbAttr
+    2     0     0       268      268  psyq/libspu/_SpuIsInAllocateArea
+    2     0     0       372      372  psyq/libspu/_SpuInit
+    1     0     0        36       36  psyq/libspu/_SpuCallback
+    1     0     0        96       96  psyq/libspu/SpuWrite
+    1     0     0        88       88  psyq/libspu/SpuSetTransferStartAddr
+    1     0     0        52       52  psyq/libspu/SpuSetTransferMode
+    1     0     0        36       36  psyq/libspu/SpuSetTransferCallback
+    1     0     0       476      476  psyq/libspu/SpuSetReverbModeType
+    1     0     0       188      188  psyq/libspu/SpuSetReverbModeFeedback
+    1     0     0        44       44  psyq/libspu/SpuSetReverbModeDepth
+    1     0     0       280      280  psyq/libspu/SpuSetReverbModeDelayTime
+    1     0     0       208      208  psyq/libspu/SpuSetReverb
+    1     0     0        80       80  psyq/libspu/SpuSetNoiseClock
+    1     0     0        68       68  psyq/libspu/SpuSetIRQCallback
+    1     0     0       320      320  psyq/libspu/SpuSetIRQ
+    1     0     0       916      916  psyq/libspu/SpuSetCommonAttr
+    1     0     0       112      112  psyq/libspu/SpuReadDecodedData
+    1     0     0        96       96  psyq/libspu/SpuRead
+    1     0     0       124      124  psyq/libspu/SpuQuit
+    1     0     0        84       84  psyq/libspu/SpuInitMalloc
+    1     0     0        32       32  psyq/libspu/SpuInit
+    1     0     0       112      112  psyq/libspu/SpuGetVoiceEnvelopeAttr
+    1     0     0        16       16  psyq/libspu/SpuGetReverbModeType
+    1     0     0        36       36  psyq/libspu/SpuDataCallback
+    1     0     0       412      412  psyq/libspu/SpuClearReverbWorkArea
+   14     0     0      2964     2964  psyq/libspu/Spu
+    8     0     0       536      536  psyq/libsn
+   65     0     0      6740     6740  psyq/libgpu
+    2     0     0       484      484  psyq/libetc/vsync
+    2     0     0        40       40  psyq/libetc/video_mode
+    4     0     0       296      296  psyq/libetc/intr_vsync
+    4     0     0       680      680  psyq/libetc/intr_dma
+   16     0     0      1808     1808  psyq/libetc/intr
+   23     0     0      1932     1932  psyq/libcd/sys
+    4     0     0       272      272  psyq/libcd/event
+    8     0     0      2172     2172  psyq/libcd/cdread
+   14     0     0      6104     6104  psyq/libcd/bios
+    4     0     0       356      356  psyq/libc2/puts
+   25     0     0      2924     2924  psyq/libc
+    1     0     0        16       16  psyq/libapi/write
+    1     0     0        16       16  psyq/libapi/rename
+    1     0     0        16       16  psyq/libapi/read
+    1     0     0        16       16  psyq/libapi/open
+    1     0     0        16       16  psyq/libapi/nextfile
+    1     0     0        16       16  psyq/libapi/format
+    1     0     0        16       16  psyq/libapi/firstfile
+    1     0     0        16       16  psyq/libapi/erase
+    1     0     0        16       16  psyq/libapi/close
+    1     0     0        16       16  psyq/libapi/_bu_init
+    1     0     0        16       16  psyq/libapi/UnDeliverEvent
+    1     0     0        16       16  psyq/libapi/TestEvent
+    1     0     0        16       16  psyq/libapi/OpenEvent
+    1     0     0        16       16  psyq/libapi/Krom2RawAdd
+    1     0     0        16       16  psyq/libapi/FlushCache
+    1     0     0        16       16  psyq/libapi/ExitCriticalSection
+    1     0     0        16       16  psyq/libapi/EnterCriticalSection
+    1     0     0        16       16  psyq/libapi/EnableEvent
+    1     0     0        16       16  psyq/libapi/DisableEvent
+    1     0     0        16       16  psyq/libapi/DeliverEvent
+    1     0     0        16       16  psyq/libapi/CloseEvent
+    9     0     0      2168     2168  main/main_loop
+    1     0     0      1004     1004  main/main
+
+== placement: built address vs retail address, per function ==
+functions at their retail address: 0 of 1246 (0.0%)
+distinct shift values: 257
+most common shifts (bytes, count):
+        -132  176
+        -324  76
+        +992  64
+        -368  58
+       +1196  50
+        -100  45
+        -148  31
+        +856  26
+       +3188  24
+       +8080  24
+       +2968  23
+        -220  21
+
+== differing-byte density vs disc/SLUS_006.64, 16 KiB buckets ==
+compared 302716 bytes (retail 303104, built 302716)
+differing: 224139
+    offset   diff    pct
+  0x0008000  10980  67.0%
+  0x000C000  13954  85.2%
+  0x0010000  13898  84.8%
+  0x0014000  14203  86.7%
+  0x0018000  14569  88.9%
+  0x001C000  15104  92.2%
+  0x0020000  14406  87.9%
+  0x0024000  14003  85.5%
+  0x0028000  14396  87.9%
+  0x002C000  13956  85.2%
+  0x0030000  14110  86.1%
+  0x0034000  14061  85.8%
+  0x0038000  12480  76.2%
+  0x003C000  13630  83.2%
+  0x0040000  15026  91.7%
+  0x0044000  13968  85.3%
+  0x0048000   1395  17.9%
+
+== section accounting ==
+  .header        size 0x00000800 (2048)  vma 0x00000000
+  .main          size 0x0004913c (299324)  vma 0x80010000
+  .main_bss      size 0x00040020 (262176)  vma 0x80059140
+  ._49AC0        size 0x00000540 (1344)  vma 0x80099160
+  built file 302716  retail file 303104  delta -388
+
+== size-mismatched functions ==
+short of retail: 168 functions, 6152 bytes missing
+longer than retail: 66 functions, 2140 bytes over
+

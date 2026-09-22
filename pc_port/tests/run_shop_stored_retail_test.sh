@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 OUT=${SHOP_STORED_OUT:-pc_port/build_native/shop_stored}
 mkdir -p "$OUT"

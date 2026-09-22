@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${TEMP2_SECTOR_QUEUE_B8B0_BUILD_DIR:-$ROOT/pc_port/build_native/temp2_sector_queue_b8b0}"

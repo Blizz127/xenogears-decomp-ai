@@ -8,6 +8,7 @@
 #   truncate - shrink D_8004FBB8 from 32 to 16 bytes
 #   sdataend - move PSX_EXE_SDATA_END / PSX_EXE_SBSS_START back to 0x800576E4
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 # Artifacts go to $TMPDIR, not pc_port/build_native/, so a concurrent

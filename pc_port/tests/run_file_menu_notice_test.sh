@@ -14,6 +14,7 @@
 # can be built and run here.  The runner mutates the production source and
 # requires every mutant to be rejected.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
 SOURCE=${FILE_MENU_NOTICE_SOURCE:-"$PWD/pc_port/src/file_menu_notice.c"}

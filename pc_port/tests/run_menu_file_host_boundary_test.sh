@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Diagnostic witness of an unresolved backend, never a card acceptance gate.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/menu-file-host-boundary.XXXXXX")
 echo "OUTPUT $OUT"

@@ -10,6 +10,7 @@
 # in the production sources that must BUILD and then FAIL at runtime with the
 # named ASSERTION (a mutant that fails to compile is not a rejection).
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${TITLE_CHAIN_BUILD_DIR:-$ROOT/pc_port/build_native/title_newgame_chain}"

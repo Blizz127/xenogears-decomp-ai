@@ -1,0 +1,22 @@
+== cohort re-measured with static helpers folded into their caller ==
+function                   retail  built helpers    eff realDef  ratio  invented helpers
+func_80034FFC                1696    492    1152   1644      52    97%  func_80034FFC_row1(580), func_80034FFC_row0(572)
+func_80034888                1572   1176       0   1176     396    75%  
+func_80032F54                1240    924       0    924     316    75%  
+func_80023804                 312    224       0    224      88    72%  
+func_800234AC                 140     60       0     60      80    43%  
+func_80030A30                 228    160       0    160      68    70%  
+GfxLoadImageAccelerated       100     40       0     40      60    40%  
+func_8003014C                 124     76       0     76      48    61%  
+func_800347C0                  64     20       0     20      44    31%  
+func_80033B34                 120     88       0     88      32    73%  
+NormalClip                     48     28       0     28      20    58%  
+func_8004E9FC                  36     24   (no built object)
+func_8004BED8                  24     12       0     12      12    50%  
+func_80040C20                  16      4   (no built object)
+Lzc                            28     16       0     16      12    57%  
+AverageSZ4                     28     16       0     16      12    57%  
+func_8004BEC0                  16      8       0      8       8    50%  
+
+cohort deficit as first reported : 2400
+cohort deficit, helper-aware     : 1248
