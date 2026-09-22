@@ -4423,3 +4423,86 @@ Repro: XENO_VM_TRACE=a python3 scratchpad/field14_walk.py <tag> <display> 3.5
        then compare the FE54/FE53 order against `canRun=` in the POSDIAG lines.
 Evidence: proven (runtime, port telemetry, 3 all-actor runs, 2026-09-19)
 Last verified @ f7dd5c7e
+
+---
+
+## Battle overlay: one C body diverges from retail and is NOT understood
+
+Five of the six bodies previously listed here were fixed and adopted at
+bfe89acc (func_800BEDE8, func_800AA7DC, func_800AA79C, func_800885D0,
+func_800AA760), each proven equivalent to the retail bytes by the differential
+prover. One remains, and it is worse than the others were, because the
+divergence is not merely unproven -- it is unexplained:
+
+  func_8008887C  main40.c  RAM: 1 byte differs at guest 800c3a9c,
+                           retail=3e host=5c
+
+It is deterministic: identical across three prover runs, so it is not RNG
+jitter. The only writer of D_800C3A9C inside func_8008887C is the result of
+func_8001BD40, which is the rand()-based pick in [min,max] defined at
+src/slus_006.64/system/temp3.c:969 and called here with (1, 8). Neither 0x3e
+nor 0x5c is in [1,8], so in the failing case NEITHER side stored a result from
+that call -- something outside this function's disassembly is writing that
+byte. Find that writer before proposing a body; a guessed body here is worse
+than the divergence, because the divergence is at least flagged.
+
+A real defect was fixed here in passing and is not the cause: main40.c
+declared `extern u32 func_8001BD40(u32,u32,u32,u32)` for a function actually
+defined as `u8 func_8001BD40(u8,u8)`, which is undefined behaviour. Correcting
+it did not change the observed bytes.
+
+The same warning is in pc_port/src/battle_overlay_host_leaves.inc, the file an
+adopter actually edits.
+
+Separately UNPROVEN rather than wrong -- the sweep cannot build a conclusive
+case, so adopting them would be unverified: func_8008AA40 and func_8008AB94,
+both hitting "unresolved native call target=0x80028470".
+
+Repro: add the name to pc_port/src/battle_overlay_host_leaves.inc, then
+       bash pc_port/build_port.sh
+       bash pc_port/tests/run_battle_overlay_host_differential_test.sh
+Evidence: proven (differential prover, retail bytes vs host C, O0/O2/UBSan)
+Last verified @ bfe89acc
+
+## run_battle_native_callback_map_test.sh: "generated stub was dispatched"
+
+Real pre-existing failure, uncovered at cc98b9a4 by fixing the fixture's
+missing `god_mode.c` link. Before that fix the suite died at link time, so the
+assertion never ran and the suite looked merely "broken" rather than failing.
+Verified to fail identically with the 96-leaf allowlist, so it is not caused by
+any leaf adoption.
+
+The test builds a callback map and expects no generated stub to be dispatched
+through it; one is. Either the stub manifest contains a symbol the callback
+path legitimately reaches, or the callback registration is binding the wrong
+entry. Not diagnosed.
+
+Repro: bash pc_port/tests/run_battle_native_callback_map_test.sh
+Evidence: proven (runs, asserts; NATIVE CALLBACK FAIL generated stub was dispatched)
+Last verified @ cc98b9a4
+
+## run_battle_graphics_abi_test.sh exits nonzero after its first two checks
+
+Pre-existing; verified to fail identically with the 100-leaf allowlist, so it
+is not caused by leaf adoption or by the guest-RAM generator fix.
+
+The O0 test binary prints "BATTLE SPRITE REENTRY PASS" and "TIMER LOOKUP ABI
+PASS" and then exits nonzero, so `set -e` kills the script before the O2 and
+UBSan regimes and before the translation-mutant negative control ever run. Two
+thirds of the suite and its control have therefore not been exercised. The
+failing check is after the two that print; it was not diagnosed.
+
+Third stale/failing fixture found in this area, after
+run_battle_overlay_leaf_bridge_test.sh (fixed @ cc98b9a4) and
+run_battle_native_callback_map_test.sh (link fixed @ cc98b9a4, assertion still
+red). Worth a dedicated pass over pc_port/tests/ for gates that are green only
+because they never get far enough to fail.
+
+Note: because set -e kills the script at the O0 regime, this suite's UBSan
+regime has never actually executed on this host. Routed to the harness-
+integrity worker together with the leaf-bridge and native-callback-map
+gates; deliberately NOT fixed here.
+
+Repro: bash -x pc_port/tests/run_battle_graphics_abi_test.sh; echo $?
+Evidence: proven (runs, exits 1 with no diagnostic)
+Last verified @ cc98b9a4

@@ -134,6 +134,12 @@ extern void* g_Heap;
 // now fixed at the source, but this walk of the heap's own free-list is kept
 // as a cheap, always-safe backstop against any other stale/corrupt pointer,
 // since retail's own asm has no equivalent check at all.
+//
+// Both call sites below are already inside `#ifdef XENO_PC_PORT`, so the
+// definition is guarded too: without this guard the matching build still
+// emitted the (uncalled) body, leaving misc3 112 bytes LONGER than retail --
+// the only place in the field overlay where the build exceeds retail.
+#ifdef XENO_PC_PORT
 static int IsLiveHeapBlock(void* ptr) {
     HeapBlock* pCur;
 
@@ -150,6 +156,7 @@ static int IsLiveHeapBlock(void* ptr) {
     }
     return 0;
 }
+#endif
 
 // FieldMain teardown counterpart to FieldLoad: frees every heap block the
 // outgoing field allocated (per-actor model/sprite/shadow data, trigger

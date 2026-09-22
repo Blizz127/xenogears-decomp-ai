@@ -27,8 +27,13 @@ for mode in ${BATTLE_OVERLAY_LEAF_MODES:-O0 O2 UBSan}; do
         -c pc_port/tests/battle_overlay_leaf_bridge_test.c -o "$OUT/$mode.test.o"
     clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c pc_port/src/battle_mips_adapter.c -o "$OUT/$mode.cpu.o"
+    # battle_mips_runtime.c calls PcPort_GodModeBeforeGuest() on every guest
+    # entry, so god_mode.c has to be in the link or the fixture fails to build.
+    clang "${COMMON[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+        -c pc_port/src/god_mode.c -o "$OUT/$mode.godmode.o"
     clang -no-pie "${flags[@]}" -Wl,--gc-sections \
-        "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" -ldl -o "$OUT/$mode"
+        "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" "$OUT/$mode.godmode.o" \
+        -ldl -o "$OUT/$mode"
     status=0
     "$OUT/$mode" >"$OUT/$mode.log" 2>&1 || status=$?
     cat "$OUT/$mode.log"
@@ -47,7 +52,7 @@ old = """    if (target == 0x801e6ce8u) {
         if (adopted != 0) return adopted;
     }
 
-    resolved = find_function(runtime, target);
+    resolved = NULL;
 """
 new = """    if (target == 0x801e6ce8u) {
         int adopted = file1_try_controller(runtime, cpu);
@@ -56,7 +61,7 @@ new = """    if (target == 0x801e6ce8u) {
     if (target_is_guest_code(target))
         return 0;
 
-    resolved = find_function(runtime, target);
+    resolved = NULL;
 """
 assert src.count(old) == 1, src.count(old)
 (out / 'always-interpret.c').write_text(src.replace(old, new, 1))
@@ -65,7 +70,7 @@ clang "${COMMON[@]}" -O2 -Wall -Wextra -Werror \
     "-DBATTLE_RUNTIME_SOURCE=\"$OUT/always-interpret.c\"" \
     -c pc_port/tests/battle_overlay_leaf_bridge_test.c -o "$OUT/mutant.test.o"
 clang -no-pie -O2 -Wl,--gc-sections \
-    "$OUT/mutant.test.o" "$OUT/O2.cpu.o" -ldl -o "$OUT/mutant"
+    "$OUT/mutant.test.o" "$OUT/O2.cpu.o" "$OUT/O2.godmode.o" -ldl -o "$OUT/mutant"
 status=0
 "$OUT/mutant" >"$OUT/mutant.log" 2>&1 || status=$?
 if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY LEAF FAIL ' "$OUT/mutant.log"; then

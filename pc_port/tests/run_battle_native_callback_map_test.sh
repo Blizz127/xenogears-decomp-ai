@@ -53,8 +53,13 @@ build_case() {
         -c pc_port/src/battle_mips_adapter.c -o "$OUT/$name.cpu.o" >> "$OUT/$name.build.log" 2>&1
     clang "${common[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c "$OUT/stub.c" -o "$OUT/$name.stub.o" >> "$OUT/$name.build.log" 2>&1
+    # battle_mips_runtime.c calls PcPort_GodModeBeforeGuest() on every guest
+    # entry, so god_mode.c has to be in the link or the fixture fails to build.
+    clang "${common[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+        -c pc_port/src/god_mode.c -o "$OUT/$name.godmode.o" >> "$OUT/$name.build.log" 2>&1
     clang -no-pie "${flags[@]}" -Wl,--gc-sections -Wl,--export-dynamic \
         "$OUT/$name.test.o" "$OUT/$name.cpu.o" "$OUT/$name.stub.o" \
+        "$OUT/$name.godmode.o" \
         -ldl -o "$OUT/$name.test" \
         >> "$OUT/$name.build.log" 2>&1
 }
