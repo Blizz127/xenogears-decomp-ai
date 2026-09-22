@@ -4212,7 +4212,7 @@ Repro: iconv -f utf-8 -t utf-8 < pc_port/extern/PsyCross/src/psx/LIBGTE.C > /dev
 Evidence: proven
 Last verified @ ed61298
 
-## Battle-overlay guest-RAM alias generation defects (3, block 11 host-adoption candidates)
+## Battle-overlay guest-RAM alias generation: 1 defect left (was 3), blocks 9 TUs
 
 `tools/scripts/gen_battle_overlay_guest_ram.py` emits one alias per overlay `D_*`
 symbol, but three source patterns defeat it. Each is measured; all three block a
@@ -4243,8 +4243,31 @@ done
    docs/evidence/battle-host-leaf-push-20260918/README.md); fixing the generator
    would be the general repair.
 
-Evidence: proven (host-mode compile failures reproduce)
-Last verified @ 2a148ec4 + working tree (2026-09-18)
+**UPDATE 2026-09-21 (@ 599731f0): defects 1 and 2 are FIXED; only 3 remains.**
+The root cause of both was one assumption in `parse_extern` -- that an extern
+declares exactly one symbol. Fixed with a real base-type/declarator-list split,
+glued-extern normalisation (`}extern u32 D_800D3368[];` was invisible to the
+line-oriented wrapper, so the macro expanded *inside* the surviving
+declaration and the compiler pointed at the macro definition instead of the
+fault), struct-tag preservation, and pointer-to-array element types. Measured
+with a controlled before/after sweep, HEAD reverted for the before run:
+**failing TUs 14 -> 9, five fixed (main35_p3_q1, main35_p4, main39, main55,
+main70), zero newly broken.**
+
+Defect 3 is NOT a generator bug and must not be re-attempted there. Two
+experiments were tried and reverted: preferring a named type so `D_800C3EAC`
+would cast to `struct BattleCommandContext*` broke 12 working TUs including
+one that owns adopted leaves, and a "prefer longer type" tie-break silently
+changed `D_800D32A1` to `u8(*)[8]` and altered main32.c's stride from 8 to 64.
+The limit is structural: one shared header cannot carry per-TU types, and
+several addresses genuinely have conflicting per-TU views. The remaining 9 TUs
+fail in four classes, none a parsing bug -- ptr aliases are rvalues so
+`D_x = buf` cannot compile (needs a *source* change), per-TU struct types, an
+anonymous-struct declarator whose inner semicolon truncates `EXTERN_RE`, and
+two TUs with conflicting prototypes unrelated to guest RAM.
+
+Evidence: proven (controlled before/after host-mode compile sweep)
+Last verified @ 599731f0 (2026-09-21)
 
 ## Battle host leaves the differential prover cannot adjudicate
 
@@ -4481,28 +4504,80 @@ Repro: bash pc_port/tests/run_battle_native_callback_map_test.sh
 Evidence: proven (runs, asserts; NATIVE CALLBACK FAIL generated stub was dispatched)
 Last verified @ cc98b9a4
 
-## run_battle_graphics_abi_test.sh exits nonzero after its first two checks
+## runtime_bridge makes a truncated host pointer callable
 
-Pre-existing; verified to fail identically with the 100-leaf allowlist, so it
-is not caused by leaf adoption or by the guest-RAM generator fix.
+`run_battle_graphics_abi_test.sh` states the property "unknown and truncated
+pointers must never become callable". It does not hold: `runtime_bridge`
+accepts a host pointer whose high 32 bits are corrupted and dispatches it.
 
-The O0 test binary prints "BATTLE SPRITE REENTRY PASS" and "TIMER LOOKUP ABI
-PASS" and then exits nonzero, so `set -e` kills the script before the O2 and
-UBSan regimes and before the translation-mutant negative control ever run. Two
-thirds of the suite and its control have therefore not been exercised. The
-failing check is after the two that print; it was not diagnosed.
+This was invisible until 2026-09-21 because the gate that checks it was dead
+(see below). It is a bridge-security defect, not a reporting one, and was
+deliberately left unfixed by the harness worker as out of scope.
 
-Third stale/failing fixture found in this area, after
-run_battle_overlay_leaf_bridge_test.sh (fixed @ cc98b9a4) and
-run_battle_native_callback_map_test.sh (link fixed @ cc98b9a4, assertion still
-red). Worth a dedicated pass over pc_port/tests/ for gates that are green only
-because they never get far enough to fail.
+Repro: bash pc_port/tests/run_battle_graphics_abi_test.sh
+Evidence: proven (the revived gate fails on it)
+Last verified @ 32e106ef (2026-09-21)
 
-Note: because set -e kills the script at the O0 regime, this suite's UBSan
-regime has never actually executed on this host. Routed to the harness-
-integrity worker together with the leaf-bridge and native-callback-map
-gates; deliberately NOT fixed here.
+## 349 of 566 harness suites can print PASS while abandoning later regimes
 
-Repro: bash -x pc_port/tests/run_battle_graphics_abi_test.sh; echo $?
-Evidence: proven (runs, exits 1 with no diagnostic)
-Last verified @ cc98b9a4
+A structural audit (`pc_port/tests/lib/underrun_audit.py`) flags **349 of 566**
+suites as able to print PASS and then skip later optimisation regimes or their
+negative controls -- typically `set -e` killing the script after an early
+regime has already printed, a missing link making a suite vacuous, or a
+negative-control anchor that has drifted so the control no longer controls
+anything. These are not 349 dead gates. They are 349 with the shape that hid
+three real ones, all found on the same day:
+
+- `run_battle_overlay_leaf_bridge_test.sh` -- never ran at all (never linked
+  god_mode.c, control anchor drifted). It is the gate guarding battle-leaf
+  adoption, so that mechanism was unguarded while appearing guarded. Fixed
+  @ cc98b9a4, verified end to end @ 32e106ef.
+- `run_battle_native_callback_map_test.sh` -- same missing link; now fails
+  loudly with a real pre-existing assertion (separate entry).
+- `run_battle_graphics_abi_test.sh` -- fixed @ 32e106ef; exposed the
+  runtime_bridge defect above.
+
+A dynamic sweep corroborates the shape but is INCOMPLETE: 93 of 565 suites
+completed before it was stopped for time, and 4 exited nonzero *after* printing
+PASS. That 4 is a lower bound from a 16% sample; the full sweep needs about
+four hours and has NOT been run. Most of the 62 nonzero exits in that sample
+are container-gcc-13-vs-host-gcc-16 build differences, not defects.
+
+This matters more than any single overlay: PORT_GOAL_AND_PLAN.md names the
+differential harness as the bar that justifies *not* byte-matching. Until this
+audit is worked through, that bar is partly unproven.
+
+Repro: bash pc_port/tests/run_ubsan_sweep.sh   # classifies PASS / NO-UBSAN /
+                                               # UBSAN-NOT-RUN / FAIL / TIMEOUT
+       python3 pc_port/tests/lib/underrun_audit.py
+Evidence: proven (static audit) + observed (16% dynamic sample)
+Last verified @ 32e106ef (2026-09-21)
+
+## Ten shipped C bodies are wrong from 32-bit PSX assumptions on a 64-bit host
+
+Two classes, found independently in two overlays on the same day, which is why
+this is a class and not two incidents. Both are **silent**: the code compiles,
+links, and looks right.
+
+Class A -- struct layout drift. Five committed functions in
+`src/menu/main/misc.c` (func_801C57A4, func_801CD710, func_801D9E3C,
+func_801D0D90, func_801D6194) read or write `g_Menu` at raw retail offsets that
+land past a native pointer field in `SystemMenu`. Confirmed with `offsetof()`
+measured against each retail literal. `SystemMenu` drifts up to 0xA0 bytes from
+retail here because native pointers are 8 bytes where retail's were 4.
+
+Class B -- address-width confusion. Five battle bodies had guest addresses
+dereferenced as host pointers, unbounded indices running past host RAM where
+retail's `lw`/`lbu` and the interpreter both wrap inside 2 MB, a 64-bit pointer
+truncated to u32 and used as an address, and a pointer-typed shared alias where
+the TU meant the word. These five were FIXED @ bfe89acc; the five Class A ones
+are NOT fixed.
+
+Not fixed here by design -- characterisation only. Note none of the ten was a
+logic error: every one had retail's control flow right.
+
+Repro / detection: differential test against retail bytes that actually
+exercises the offending offset. Nothing else catches it.
+Evidence: proven (offsetof measured against retail literals; prover rejections)
+Last verified @ 7e677332 (2026-09-21)
+Contract: docs/ai_context/MATCHING_LAYOUT_CONTRACT.md, "Port bodies" section

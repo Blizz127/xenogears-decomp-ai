@@ -1,3 +1,62 @@
+### Latest slice — 2026-09-21: `make check` runs for the first time, 7 of 10 OK
+
+**`make check` produced a result for the first time in this project's history:
+7 OK / 3 FAILED.** OK: `member_change_menu`, `shop_menu`, `battle`, `movie`,
+`battling`, `world_map`, `battle_command_file1`. FAILED: `slus_006.64`,
+`field.bin`, `menu.bin`. Verified on the merged tree, not on a branch.
+
+**The byte gate was already at 7 of 10 and nobody knew, because the build lied.**
+`gears` discarded splat's exit code, so a dead split left ninja relinking a
+*stale tree* and the resulting byte counts were written into this file as
+measurements. That is the origin of the "battling 88% differ",
+"battle_command_file1 56% differ" and "world_map 2,743 bytes" figures below —
+all three overlays already matched retail exactly. It also hid a total build
+outage: one semicolon inside a `//` comment in
+`config/symbol_addrs.slus_006.64.txt` stopped every overlay from splitting, and
+the build still appeared to run. **Fixed: `gears` now fails loudly.**
+
+Current measured state (every number has a command behind it in
+`docs/evidence/port-baseline-20260921/README.md`):
+
+| | |
+|---|---|
+| overlays byte-matching retail | **7 of 10** (was claimed 4) |
+| objdiff | **20.44%** code / 42.59% functions — lower than 23.27% only because `world_map` entered the denominator |
+| battle host C leaves | **108 of 857** (was 96) |
+| function stubs / data placeholders | **76 / 489** (was 78 / 577) |
+| `INCLUDE_ASM` sites with no C body anywhere | **720 of 906** |
+| `config/checksum.sha` | already complete at 10/10, contrary to the plan doc |
+
+Landed this slice: the slus link (six interior fields of one
+`InterruptEnvironment_t` at `0x800578A4`, plus a GPREL16 truncation beneath
+it); a real user-visible bug fix in `func_800347C0`, which used a hardcoded
+row stride of 4 where `func_80032F54` sets `0x0E` and put the Lahan dialogue
+continue-arrow ~3.5x too high; battle leaves 96 → 108 via a `parse_extern`
+fix; five of six divergent battle C bodies corrected; three real C bodies for
+menu's coexistence gap.
+
+**Two claims retracted by measurement, recorded so they are not re-derived:**
+
+1. *"field has missing behaviour."* It does not. 18 of 18 functions short by
+   more than 200 bytes triaged **innocent**. GCC 2.7.2 retail re-materialises
+   global base addresses at every use — `g_FieldTextBoxes` 132 times in one
+   function — and inlines and duplicates besides. A size deficit is a reason
+   to triage, never a verdict. See `MATCHING_LAYOUT_CONTRACT.md`.
+2. *"UBSan cannot run here."* It can, inside the podman container; it fails
+   only on the bare host. Read "O0/O2/UBSan" in older evidence as **O0/O2**.
+
+**Two new durable contracts** — read both before planning matching or port-body
+work: `docs/ai_context/MATCHING_LAYOUT_CONTRACT.md` (Rule 0: GCC 2.7.2 hoists
+file-scope `INCLUDE_ASM` above all compiled C, so a mixed single TU can never
+match retail ordering; plus the 32-vs-64-bit port-body hazard, with ten
+confirmed already-shipped instances) and `docs/ai_context/HARNESS_REGIMES.md`.
+
+Everything below this line is **historical**. Numbers in it predate the
+2026-09-21 build-integrity fix and several are known false; treat any figure
+there as suspect unless you have re-measured it.
+
+---
+
 ### Latest native fidelity slice — 2026-09-19
 
 Four battle effect progression callbacks (`800A3490`, `800A3514`, `800A3578`,
