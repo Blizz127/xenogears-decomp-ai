@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 OUT="${SPRITE_RESTORE_BUILD_DIR:-pc_port/build_native/sprite_snapshot_restore_pointer}"
 mkdir -p "$OUT"

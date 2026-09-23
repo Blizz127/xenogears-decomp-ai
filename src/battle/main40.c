@@ -23,7 +23,13 @@ extern u8 *D_800D2DB4;
 extern u32 func_80076A10(u8 sel, u8 *p, u32 m, u32 n);
 extern void func_80076B68(u8 *p);
 extern void func_80076BF0(u8 *p);
-extern u32 func_8001BD40(u32 a0, u32 a1, u32 a2, u32 a3);
+/* The real definition is `u8 func_8001BD40(u8 min, u8 max)` in
+ * src/slus_006.64/system/temp3.c -- a rand()-based pick in [min, max]. The
+ * old four-u32 prototype here was wrong: retail sets only $a0=1 and $a1=8
+ * before the jal, and $a2/$a3 still hold this function's own x1/y1, which the
+ * two-parameter callee simply ignores. Calling through a mismatched prototype
+ * is undefined behaviour, so declare it as it is actually defined. */
+extern u8 func_8001BD40(u8 min, u8 max);
 #ifndef XENO_PC_PORT
 extern u8 D_800C3A94;
 #endif
@@ -173,7 +179,7 @@ void func_8008887C(s32 x0, s32 y0, s32 x1, s32 y1) {
     }
     D_800C2080 = 0;
     D_800C2084 = 0;
-    D_800C3A9C = (s32)(func_8001BD40(1u, 8u, (u32)x1, (u32)y1) & 0xFFu);
+    D_800C3A9C = (s32)(func_8001BD40(1u, 8u) & 0xFFu);
     D_800C207C = 0;
 }
 #endif /* XENO_PC_PORT */

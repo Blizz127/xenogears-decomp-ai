@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Full production misc2 TU vs pinned retail function, with explicit SDK spies.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
 SOURCE=${FIELD_AXIS_MATRIX_SOURCE:-src/field/main/misc2.c}

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vblank-helpers.XXXXXX")"
 trap 'rm -rf -- "$BUILD_DIR"' EXIT

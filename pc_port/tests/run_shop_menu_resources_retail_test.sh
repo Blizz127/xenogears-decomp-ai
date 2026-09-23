@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 SCRIPT=$(realpath "$0")
 cd "${SHOP_MENU_RESOURCES_ROOT:-$(dirname "$0")/../..}"
 ulimit -c 0

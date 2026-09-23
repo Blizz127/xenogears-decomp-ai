@@ -34,7 +34,10 @@ void func_8009AA44(u8 idx) {
     if (D_800D2C34 == 4) {
         D_800C34B0[0x5FC7] = 0x3D;
     }
-}extern u8* D_800C34B0;
+}
+#ifndef XENO_PC_PORT
+extern u8* D_800C34B0;
+#endif
 
 
 /* func_8009AB00.s */

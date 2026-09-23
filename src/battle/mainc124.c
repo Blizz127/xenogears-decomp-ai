@@ -51,8 +51,21 @@ extern u32 D_80059464[];
 extern u8 D_800591AC[];
 extern void HeapFree(u32 p);
 void func_800BEDE8(void) {
+#ifdef XENO_PC_PORT
+    /* This TU declares D_800C3610 as `u32[]`, but another declares it `u8*`,
+     * so the shared guest-RAM alias is pointer-typed: `D_800C3610[0]` reads
+     * the byte at the address held in the word, and assigning to it writes
+     * that byte instead of the word. Retail does `lw`/`sw` at 0x800C3610
+     * itself, which is why the prover saw 0x800C3610..13 left unzeroed.
+     * Go through the word directly, as main59.c does for D_800C3DFC. */
+    HeapFree(*(u32*)PSX_ADDR(0x800C3610));
+    D_80059464[0] = 0;
+    *(u32*)PSX_ADDR(0x800C3610) = 0;
+    D_800591AC[0] = 0;
+#else
     HeapFree(D_800C3610[0]);
     D_80059464[0] = 0;
     D_800C3610[0] = 0;
     D_800591AC[0] = 0;
+#endif
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 OUT=${ARCHIVE_BUFFER_OUT:-$(mktemp -d /tmp/xeno-archive-buffer.XXXXXXXX)}
 SOURCE=${ARCHIVE_BUFFER_SOURCE:-src/slus_006.64/system/libarchive.c}

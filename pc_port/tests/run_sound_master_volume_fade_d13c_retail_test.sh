@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${SOUND_D13C_BUILD_DIR:-$ROOT/pc_port/build_native/sound_master_volume_fade_d13c}"

@@ -1,3 +1,31 @@
+/* Battle overlay functions the port may run as native C instead of
+ * interpreting disc/battle.bin.  Hand-maintained; add a name here, then run
+ * pc_port/build_port.sh and pc_port/tests/run_battle_overlay_host_differential_test.sh.
+ *
+ * DO NOT ADOPT the function below.  It was tried and REJECTED by the
+ * differential prover and the divergence is NOT yet understood, so it is not
+ * merely unproven -- it is unexplained.  Names are left unquoted
+ * deliberately: battle_overlay_host_tus.py scrapes "func_..." string literals
+ * out of this file, so a quoted name in a comment would be read as an
+ * adopted leaf.
+ *
+ *   func_8008887C  main40.c  RAM: 1 byte differs at guest 800c3a9c,
+ *       retail=3e host=5c.  Deterministic -- identical across three prover
+ *       runs, so it is not RNG jitter.  The only writer of D_800C3A9C in this
+ *       function is the result of func_8001BD40, which is the rand()-based
+ *       pick in [min,max] defined in src/slus_006.64/system/temp3.c and here
+ *       called with (1, 8) -- yet NEITHER 0x3e nor 0x5c is in [1,8], so in the
+ *       failing case neither side stored a result from that call.  Something
+ *       outside this function's disassembly is writing that byte.  Do not
+ *       guess a body; find that writer first.
+ *       (A real defect WAS fixed here in passing: main40.c declared a
+ *       four-u32 prototype for a two-u8 function, which is UB.  It did not
+ *       change the observed bytes.)
+ *
+ * UNPROVEN rather than wrong -- the sweep cannot construct a conclusive case,
+ * so adoption would be unverified: func_8008AA40, func_8008AB94, both hitting
+ * "unresolved native call target=0x80028470".
+ */
     "func_80079934",
     "func_80089B50",
     "func_800A3484",
@@ -94,3 +122,15 @@
     "func_800A3514",
     "func_800A3578",
     "func_800A35C8",
+    "func_80085388",
+    "func_800800E8",
+    "func_80085454",
+    "func_80085AC4",
+    "func_8009AA44",
+    "func_8009AB00",
+    "func_800AA788",
+    "func_800BEDE8",
+    "func_800AA7DC",
+    "func_800AA79C",
+    "func_800885D0",
+    "func_800AA760",

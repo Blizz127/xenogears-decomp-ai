@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${ARCHIVE_STREAM_ARM_29EB0_BUILD_DIR:-$ROOT/pc_port/build_native/archive_stream_arm_29eb0}"

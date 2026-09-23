@@ -91,6 +91,10 @@ struct Config {
 }
 
 fn split_binary(yaml_path: &String) {
+    let command_description = format!(
+        "python3 -m splat split --disassemble-all --make-full-disasm-for-code {}",
+        yaml_path
+    );
     let splat_child = Command::new("python3")
         .arg("-m")
         .arg("splat")
@@ -100,7 +104,26 @@ fn split_binary(yaml_path: &String) {
         .arg(format!("{}", yaml_path))
         .spawn()
         .expect("Failed to start splat process.");
-    let _ = splat_child.wait_with_output().expect("Failed to wait on splat");
+    let output = splat_child.wait_with_output().expect("Failed to wait on splat");
+
+    // splat's exit status used to be discarded here (`let _ = ...`), so a
+    // parse/split failure for ANY overlay's symbol file was silently ignored:
+    // gears carried on to write ninja files against whatever asm/ happened to
+    // already exist on disk (stale from a previous run, or nothing at all),
+    // and ninja would relink that stale tree and report success. That is what
+    // let one malformed comment in config/symbol_addrs.slus_006.64.txt take
+    // down every overlay's split while `make build` still appeared to run to
+    // completion. Fail loud and stop immediately instead: splat's own stderr
+    // is inherited (printed above, uncaptured), so name it here and exit
+    // before any further split or ninja generation can happen.
+    if !output.status.success() {
+        eprintln!();
+        eprintln!("gears: FATAL: splat exited with {} while splitting '{}'.", output.status, yaml_path);
+        eprintln!("gears: command was: {}", command_description);
+        eprintln!("gears: splat's own error output is printed above (its stderr is inherited, not captured).");
+        eprintln!("gears: stopping now -- a failed split must not fall through to ninja generation or a stale relink.");
+        process::exit(1);
+    }
 }
 
 struct BinaryPaths {

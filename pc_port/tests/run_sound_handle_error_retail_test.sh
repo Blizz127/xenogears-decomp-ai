@@ -9,6 +9,7 @@
 # shipped. Differential across -O0 / -O2 / UBSan, then one mutant in the real
 # body that must BUILD and then FAIL at runtime with the named ASSERTION.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${SOUND_HANDLE_ERROR_BUILD_DIR:-$ROOT/pc_port/build_native/sound_handle_error}"

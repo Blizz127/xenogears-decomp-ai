@@ -2,6 +2,7 @@
 # Full production misc6 TU vs the pinned retail func_800A1364 bytes, with
 # explicit script-argument / sprite-bind / pose-reset spies on both sides.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
 SOURCE=${FIELD_OBJECT_REGISTER_SOURCE:-src/field/main/misc6.c}
