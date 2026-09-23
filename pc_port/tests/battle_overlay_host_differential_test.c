@@ -517,6 +517,14 @@ int main(void)
     hand_cases();
     sweep();
 
+    /* Per-leaf evidence on request: how many comparisons completed for each
+     * body.  Reporting only; it changes no verdict. */
+    if (getenv("BATTLE_OVERLAY_DIFFERENTIAL_VERBOSE") != NULL) {
+        unsigned i;
+        for (i = 0; i < LEAF_COUNT; i++)
+            fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL LEAF %s proven=%u\n",
+                    kLeaves[i].name, proven[i]);
+    }
     if (failures == 0) {
         /* An allowlisted leaf with no completed comparison is not evidence of
          * anything. Say so by name; the batch has to be pruned. */
