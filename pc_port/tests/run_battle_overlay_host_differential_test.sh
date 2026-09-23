@@ -152,7 +152,12 @@ build_link() {
             for sym in $missing; do
                 case "$sym" in
                     D_*|g_*|jtbl_*|jpt_*|str_*|aD_*|aG_*)
-                        echo "unsigned char $sym[4096];" ;;
+                        # 64 KiB, not 4 KiB: the runtime binds a shared
+                        # global by its retail size (g_GameState is widened
+                        # to 0x2358 in initialize_runtime), so a smaller
+                        # placeholder let an interpreted read of
+                        # g_GameState+0x22B6 run off the end of BSS.
+                        echo "unsigned char $sym[0x10000];" ;;
                     *)
                         echo "void $sym(void) { unresolved(\"$sym\"); }" ;;
                 esac

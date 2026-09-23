@@ -134,3 +134,7 @@
     "func_800AA79C",
     "func_800885D0",
     "func_800AA760",
+    /* fo/bat3 */
+    "func_8009A0DC",
+    "func_8009A258",
+    "func_8009A2D4",
