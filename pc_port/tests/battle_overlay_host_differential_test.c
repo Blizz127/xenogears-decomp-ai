@@ -293,6 +293,23 @@ static void compare(const Leaf *leaf, const uint32_t *args)
      * every random-dependent body would differ for no reason. */
     srand(1);
     g_prover_placeholder_hits = 0;
+    /* The interpreted side calls main-executable code natively through the
+     * bridge (HeapFree, rcos, ...). If that native callee faults, retail did
+     * not complete on this input as far as the harness can tell: count the
+     * case inconclusive. Without this the handler would jump through a stale
+     * buffer left by an earlier host run and blame the wrong side. */
+    if (sigsetjmp(host_fault_jmp, 1) != 0) {
+        unsigned index = (unsigned)(leaf - kLeaves);
+        rt.force_interpret = 0;
+        inconclusive++;
+        inconclusive_per_leaf[index]++;
+        if (inconclusive_logged[index] == 0) {
+            inconclusive_logged[index] = 1;
+            fprintf(stderr, "[prover] inconclusive %s: a native callee of the "
+                    "retail side faulted\n", name);
+        }
+        return;
+    }
     irc = run_interpreted(target, args);
     if (irc == PC_PORT_MIPS_HALTED && g_prover_placeholder_hits != 0) {
         rt.force_interpret = 0;
@@ -499,6 +516,10 @@ static void sweep(void)
     uint32_t pattern;
 
     for (index = 0; index < LEAF_COUNT; index++) {
+        /* Each leaf draws its own sequence, seeded from its address, so
+         * adding or removing an allowlist entry does not silently change the
+         * inputs (and so the evidence) of every leaf after it. */
+        rng_state = 0x12345678u ^ leaf_address(kLeaves[index].name);
         if (kLeaves[index].pointer_params != 0) {
             unsigned mask = kLeaves[index].pointer_params;
 
