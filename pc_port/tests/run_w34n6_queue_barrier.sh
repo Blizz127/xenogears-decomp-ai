@@ -9,7 +9,7 @@ cd "$ROOT"
 
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 SRC=(pc_port/tests/w34n6_queue_barrier_prod_test.c
      pc_port/src/psx_memory.c pc_port/src/world_map_helper_96130.c)

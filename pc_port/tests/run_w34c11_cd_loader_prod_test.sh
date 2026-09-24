@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_prefli
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; BUILD_DIR="${W34C11_BUILD_DIR:-$ROOT/pc_port/build_native}"; mkdir -p "$BUILD_DIR"; cd "$ROOT"
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
 gcc "${BASE[@]}" "${INC[@]}" -w -O0 -c pc_port/src/world_map_helper_9623c.c -o "$BUILD_DIR/w34c11_9623c.o"
 gcc "${BASE[@]}" "${INC[@]}" -w -O0 -c pc_port/src/world_map_helper_96328.c -o "$BUILD_DIR/w34c11_96328.o"
 SRC=(pc_port/tests/w34c11_cd_loader_prod_test.c pc_port/src/psx_memory.c pc_port/src/world_map_helper_96130.c "$BUILD_DIR/w34c11_9623c.o" "$BUILD_DIR/w34c11_96328.o")
