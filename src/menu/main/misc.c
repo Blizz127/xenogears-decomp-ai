@@ -14,8 +14,9 @@ static void MenuStoreRawPointer(u32 offset, void* pointer);
 #include <stdlib.h>
 #include <string.h>
 #include <psx/kernel.h>
-extern struct DIRENTRY* firstfile(char*, struct DIRENTRY*);
-extern struct DIRENTRY* nextfile(struct DIRENTRY*);
+/* Card file calls go to the port's memory-card layer, not host libc. */
+#define XENO_MEMCARD_REMAP
+#include "../../../pc_port/src/memcard_port.h"
 #endif
 
 extern s32 func_801C8D78(u8 port);
