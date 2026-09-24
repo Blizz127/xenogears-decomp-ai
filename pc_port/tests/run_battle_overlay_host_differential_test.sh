@@ -75,7 +75,8 @@ gcc -c "$STUBS" -O0 -g -o "$OUT/stubs.o"
 # Main-executable callees the adopted bodies reach, linked from the objects the
 # port binary itself links, so both sides run the shipped code instead of a
 # placeholder: HeapFree (memory.c), func_8001BD40 (temp3.c), the sprite-list
-# builder func_8002675C (temp1.c), rsin/rcos (PsyCross LIBGTE.C, the
+# builder func_8002675C (temp1.c), GetStringEntry/SystemRenderStringEntry
+# (system.c), rsin/rcos (PsyCross LIBGTE.C, the
 # definitions the runtime's dlsym binds 0x8003F8B0 / 0x8003F8CC to) and the
 # libgpu primitive helpers SetPolyFT4/GetTPage/GetClut/SetSemiTrans/...
 # (PsyCross LIBGPU.C). Their own unresolved references still get counted
@@ -84,6 +85,7 @@ gcc -c "$STUBS" -O0 -g -o "$OUT/stubs.o"
 # with srand(1) before each run, so the two sides draw identical sequences.
 PORT_REAL_OBJS=()
 for obj in pc_port/build_native/obj/src_slus_006.64_system_memory.c.o \
+           pc_port/build_native/obj/src_slus_006.64_system_system.c.o \
            pc_port/build_native/obj/src_slus_006.64_system_temp1.c.o \
            pc_port/build_native/obj/src_slus_006.64_system_temp3.c.o; do
     if [ ! -f "$obj" ]; then
