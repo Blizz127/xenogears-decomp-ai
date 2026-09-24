@@ -74,13 +74,17 @@ gcc -c "$STUBS" -O0 -g -o "$OUT/stubs.o"
 
 # Main-executable callees the adopted bodies reach, linked from the objects the
 # port binary itself links, so both sides run the shipped code instead of a
-# placeholder: HeapFree (memory.c), func_8001BD40 (temp3.c), and rsin/rcos
-# (PsyCross LIBGTE.C, the definitions the runtime's dlsym binds 0x8003F8B0 /
-# 0x8003F8CC to). Their own unresolved references still get counted
-# placeholders below. rand() is the C library's on both sides here, reseeded
+# placeholder: HeapFree (memory.c), func_8001BD40 (temp3.c), the sprite-list
+# builder func_8002675C (temp1.c), rsin/rcos (PsyCross LIBGTE.C, the
+# definitions the runtime's dlsym binds 0x8003F8B0 / 0x8003F8CC to) and the
+# libgpu primitive helpers SetPolyFT4/GetTPage/GetClut/SetSemiTrans/...
+# (PsyCross LIBGPU.C). Their own unresolved references still get counted
+# placeholders below; LIBGPU's display/VRAM entry points (GR_*, PsyX_EndScene)
+# therefore mark any case that reaches them inconclusive. rand() is the C library's on both sides here, reseeded
 # with srand(1) before each run, so the two sides draw identical sequences.
 PORT_REAL_OBJS=()
 for obj in pc_port/build_native/obj/src_slus_006.64_system_memory.c.o \
+           pc_port/build_native/obj/src_slus_006.64_system_temp1.c.o \
            pc_port/build_native/obj/src_slus_006.64_system_temp3.c.o; do
     if [ ! -f "$obj" ]; then
         echo "BATTLE OVERLAY DIFFERENTIAL FAIL missing $obj (build the port first)" >&2
@@ -95,8 +99,8 @@ if [ -z "$PSYLIB" ]; then
 fi
 mkdir -p "$OUT/psycross"
 PSYLIB_ABS="$PWD/$PSYLIB"
-(cd "$OUT/psycross" && ar x "$PSYLIB_ABS" LIBGTE.C.o)
-PORT_REAL_OBJS+=("$OUT/psycross/LIBGTE.C.o")
+(cd "$OUT/psycross" && ar x "$PSYLIB_ABS" LIBGTE.C.o LIBGPU.C.o)
+PORT_REAL_OBJS+=("$OUT/psycross/LIBGTE.C.o" "$OUT/psycross/LIBGPU.C.o")
 
 # main12.c is the mutation target for the negative control: it owns
 # func_80079934, whose whole body is `*pValue += 4`.
@@ -146,9 +150,10 @@ build_link() {
     # link die, give each one a placeholder that fails loudly: a leaf that
     # reaches one is not provable here, and the run must say so instead of
     # reporting a match. The set comes from the linker itself, so nothing the C
-    # library already provides gets a colliding second definition.
+    # library already provides gets a colliding second definition. The probe
+    # link reports mangled names so C++ callees (PsyCross) get placeholders too.
     local extra=()
-    if ! clang -no-pie -rdynamic $flags -Wl,--gc-sections \
+    if ! clang -no-pie -rdynamic $flags -Wl,--gc-sections -Wl,--no-demangle \
         "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" "$hostdir"/*.o "${PORT_REAL_OBJS[@]}" "$OUT/stubs.o" \
         -ldl -o "$target" 2>"$err"; then
         local missing
@@ -181,7 +186,7 @@ build_link() {
             echo '}'
             for sym in $missing; do
                 case "$sym" in
-                    D_*|g_*|jtbl_*|jpt_*|str_*|aD_*|aG_*|gteRegs)
+                    D_*|g_*|jtbl_*|jpt_*|str_*|aD_*|aG_*|gteRegs|activeDispEnv|activeDrawEnv|currentDispEnv)
                         echo "unsigned char $sym[4096];" ;;
                     *)
                         echo "void $sym(void) { unresolved(\"$sym\"); }" ;;
