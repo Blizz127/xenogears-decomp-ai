@@ -46,3 +46,74 @@ void func_8009AB00(u8 index) {
 
     p[0x15A] &= 0xFE;
 }
+
+
+/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
+ * the retail bytes from the INCLUDE_ASM block above. ---- */
+extern u8 g_GameState[];
+#ifdef XENO_PC_PORT
+extern int rand(void);
+extern void func_8009BE0C(void);
+
+/* func_8009A7E4.s: 1 when entry idx's byte +0x581E (16-byte stride off
+ * D_800C34B0) equals one of the four party slot ids at g_GameState+0x502,
+ * +0x50A, +0x512, +0x51A. */
+u32 func_8009A7E4(u8 idx) {
+    u32 id = D_800C34B0[idx * 16 + 0x581E];
+
+    if (g_GameState[0x502] == id) return 1;
+    if (g_GameState[0x50A] == id) return 1;
+    if (g_GameState[0x512] == id) return 1;
+    return g_GameState[0x51A] == id;
+}
+
+/* func_8009A854.s: copy entry a0's three bytes (+0xA/+0xB/+0xC, 16-byte
+ * stride at D_800C34B0+0x54F8) into the party slot whose id matches its +6
+ * byte (the LAST match wins; no match keeps the caller's a1), record a0 in
+ * the slot, mirror +3 into g_GameState+0x2286[a0], then patch every actor of
+ * type 4 among the first three.  Retail stores +0xB twice. */
+void func_8009A854(u32 a0, u32 a1) {
+    u32 idx = a0 & 0xFF;
+    u8* e = D_800C34B0 + idx * 16 + 0x54F8;
+    u32 id = e[6];
+    u32 s;
+    u32 o;
+    u32 i;
+
+    if (g_GameState[0x502] == id) a1 = 0;
+    if (g_GameState[0x50A] == id) a1 = 1;
+    if (g_GameState[0x512] == id) a1 = 2;
+    if (g_GameState[0x51A] == id) a1 = 3;
+    s = a1 & 0xFF;
+    o = s * 8;
+    g_GameState[0x500 + o] = e[0xC];
+    g_GameState[0x4FF + o] = e[0xB];
+    g_GameState[0x4FE + o] = e[0xA];
+    g_GameState[0x4FF + o] = e[0xB];
+    g_GameState[0x56B + s] = a0;
+    g_GameState[0x2286 + idx] = e[3];
+    g_GameState[0x56B + s] = a0;
+    for (i = 0; i < 3; i++) {
+        u8* p = D_800C34B0 + i * 0x170;
+
+        if (p[0x56] == 4) {
+            p[o + 4] = e[0xC];
+            p[o + 3] = e[0xB];
+            p[o + 2] = e[0xA];
+            p[o + 3] = e[0xB];
+            p[s + 0x6F] = a0;
+        }
+    }
+}
+
+/* func_8009A9D0.s: clear the +0x5FC2 mode byte; on a 50% rand() roll run
+ * func_8009BE0C and return 1, else return 0. */
+u32 func_8009A9D0(void) {
+    D_800C34B0[0x5FC2] = 0;
+    if ((s32)(rand() % 100) < 0x32) {
+        func_8009BE0C();
+        return 1;
+    }
+    return 0;
+}
+#endif /* XENO_PC_PORT */
