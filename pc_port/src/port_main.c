@@ -879,6 +879,27 @@ extern void PsyX_Pad_InitPad(int slot, unsigned char* padData);
 extern int g_padCommEnable;
 #define PORT_CONTROLLER_BUFFER_SIZE 0x22
 
+/* XENO_BUTTON_LAYOUT: "usa" (default; retail SLUS-00664 ControllerInit table)
+ * or "jp" (identity remap table: Circle/Triangle are confirm/menu). Anything
+ * else is a configuration error, reported instead of silently guessed. */
+extern void ControllerInit(void);
+static int PortButtonLayoutJp(void) {
+    static int s_layout = -1;
+    if (s_layout < 0) {
+        const char* v = getenv("XENO_BUTTON_LAYOUT");
+        if (v == NULL || *v == '\0' || strcmp(v, "usa") == 0) {
+            s_layout = 0;
+        } else if (strcmp(v, "jp") == 0) {
+            s_layout = 1;
+        } else {
+            fprintf(stderr, "[xeno-port] XENO_BUTTON_LAYOUT=%s: expected usa or jp\n", v);
+            exit(EXIT_FAILURE);
+        }
+        printf("[xeno-port] button layout: %s\n", s_layout ? "jp (identity)" : "usa (retail)");
+    }
+    return s_layout;
+}
+
 /* Disc / archive bring-up. The asm boot (func_80019578) calls
  * ArchiveInit(&D_80010004 [table buf], &D_80018004 [header buf], 0 [CD path])
  * after HeapInit; it CdInit()s and reads the archive index off the disc (sectors
@@ -1224,15 +1245,26 @@ int main(int argc, char** argv) {
     SetVideoMode(0);
     PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-    /* XENO_PC_PORT: PsyCross's default keyboard map puts Circle (the field
-     * confirm/talk button) on V and Triangle (the menu button) on Z. Players
-     * expect Z to confirm, so swap them: Z = Circle (confirm/talk), V = Triangle
-     * (menu). This runs after PsyX_Initialise, which installs the defaults.
-     * Raw SDL scancodes (Z=29, V=25) avoid pulling an SDL header in here; kc_* are
-     * plain ints. Arrows (d-pad), Enter (Start), Space (Select), C (Cross),
-     * X (Square) are unchanged. */
-    g_cfg_keyboardMapping.kc_circle   = 29; /* SDL_SCANCODE_Z */
-    g_cfg_keyboardMapping.kc_triangle = 25; /* SDL_SCANCODE_V */
+    /* XENO_PC_PORT keyboard map. Players expect Z to confirm/talk and V to open
+     * the menu. Which PAD button that is depends on the layout ControllerInit
+     * installs (see PortButtonLayoutJp): the USA layout remaps physical
+     * Cross -> the game's internal confirm bit and Square -> internal menu
+     * bit, the Japanese identity layout uses Circle and Triangle. Bind Z/V to
+     * whichever physical buttons carry confirm/menu, and put the other two
+     * face buttons on the keys they vacate (C, X). Raw SDL scancodes (Z=29,
+     * V=25, C=6, X=27) avoid pulling an SDL header in here; kc_* are plain
+     * ints. Arrows (d-pad), Enter (Start), Space (Select) are unchanged. */
+    if (PortButtonLayoutJp()) {
+        g_cfg_keyboardMapping.kc_circle   = 29; /* Z: confirm (JP layout) */
+        g_cfg_keyboardMapping.kc_triangle = 25; /* V: menu */
+        g_cfg_keyboardMapping.kc_cross    = 6;  /* C */
+        g_cfg_keyboardMapping.kc_square   = 27; /* X */
+    } else {
+        g_cfg_keyboardMapping.kc_cross    = 29; /* Z: confirm (USA layout) */
+        g_cfg_keyboardMapping.kc_square   = 25; /* V: menu */
+        g_cfg_keyboardMapping.kc_circle   = 6;  /* C */
+        g_cfg_keyboardMapping.kc_triangle = 27; /* X */
+    }
 
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
@@ -1327,10 +1359,16 @@ int main(int argc, char** argv) {
         PortRunSoundSeqProbe();
     }
 
-    /* 4b. Wire controller input into the game's BIOS pad buffer (see note above). */
-    PsyX_Pad_InitPad(0, &g_C1Buffer[0]);
-    PsyX_Pad_InitPad(1, &g_C1Buffer[PORT_CONTROLLER_BUFFER_SIZE]);
-    g_padCommEnable = 1;
+    /* 4b. Retail boot 80019600: ControllerInit() -- wires the game's BIOS pad
+     * buffer (see note above) and installs the USA button remap table
+     * (src/slus_006.64/system/controller.c). XENO_BUTTON_LAYOUT=jp restores
+     * the .sdata identity table afterwards (the pre-2026-09-23 port layout). */
+    ControllerInit();
+    if (PortButtonLayoutJp()) {
+        extern u_char g_ControllerButtonMappings[8];
+        int i;
+        for (i = 0; i < 8; i++) g_ControllerButtonMappings[i] = (u_char)i;
+    }
     /* Retail boot 80019618-80019620 registers the game vblank body after
      * controller setup. Native dispatch stays on the game thread. */
     {
