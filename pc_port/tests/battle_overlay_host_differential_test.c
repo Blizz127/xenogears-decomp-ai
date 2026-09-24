@@ -115,6 +115,14 @@ static const uint32_t kPointerGlobals[] = {
 #define POINTER_TARGET_SIZE 0x400u
 
 static BattleMipsRuntime rt;
+/* The native g_GameState both sides share. Main-exe globals resolve to one
+ * native copy for the interpreted and the host run alike, so a write there is
+ * invisible to the guest-RAM diff. Snapshot, seed and compare it explicitly:
+ * many battle bodies do most of their work in the character records. */
+#define NATIVE_GS_SIZE 0x2358u
+static uint8_t *native_gs;
+static uint8_t native_before[NATIVE_GS_SIZE];
+static uint8_t native_expected[NATIVE_GS_SIZE];
 static PcPortMipsCpu cpu;
 static uint8_t image[IMAGE_MAX];
 static size_t image_size;
@@ -168,6 +176,24 @@ static void begin_case(uint32_t pattern, int seed_pointers)
         else
             v = (uint8_t)rnd();
         *((uint8_t *)PSX_ADDR(a)) = v;
+    }
+    /* Small values only (0..3). Bodies index the character records with
+     * bytes read from g_GameState; the shared binding covers 0x2358 bytes, and
+     * past it the interpreter falls through to guest RAM while native code
+     * keeps the native array. A wild index therefore diverges for a reason
+     * that is the harness's binding, not the body, so keep indices in range
+     * while still giving id comparisons something to match. */
+    if (native_gs != NULL) {
+        for (a = 0; a < NATIVE_GS_SIZE; a++) {
+            uint8_t v;
+            if (pattern == 0)
+                v = 0;
+            else if (pattern == 1)
+                v = 1;
+            else
+                v = (uint8_t)(rnd() & 3u);
+            native_gs[a] = v;
+        }
     }
     /* Seeded after the fill: a pointer global that the pattern would leave null
      * (pattern 0) or wild (patterns 1-2) gets a live target instead, which is
@@ -289,6 +315,8 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     char detail[200];
 
     memcpy(before, g_PsxRam, sizeof(before));
+    if (native_gs != NULL)
+        memcpy(native_before, native_gs, NATIVE_GS_SIZE);
     /* Both sides call the same rand(); start each run from the same point or
      * every random-dependent body would differ for no reason. */
     srand(1);
@@ -333,6 +361,10 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     memcpy(expected, g_PsxRam, sizeof(expected));
     iv0 = cpu.gpr[2];
     rt.force_interpret = 0;
+    if (native_gs != NULL) {
+        memcpy(native_expected, native_gs, NATIVE_GS_SIZE);
+        memcpy(native_gs, native_before, NATIVE_GS_SIZE);
+    }
 
     memcpy(g_PsxRam, before, sizeof(g_PsxRam));
     srand(1);
@@ -387,6 +419,23 @@ static void compare(const Leaf *leaf, const uint32_t *args)
                  actual[first]);
         fail(name, "ram", detail);
         return;
+    }
+    if (native_gs != NULL) {
+        for (a = 0; a < NATIVE_GS_SIZE; a++) {
+            if (native_expected[a] != native_gs[a]) {
+                if (diffs == 0)
+                    first = a;
+                diffs++;
+            }
+        }
+        if (diffs != 0) {
+            snprintf(detail, sizeof(detail),
+                     "%zu bytes differ, first at g_GameState+%04x retail=%02x "
+                     "host=%02x", diffs, (unsigned)first,
+                     native_expected[first], native_gs[first]);
+            fail(name, "native", detail);
+            return;
+        }
     }
     checks++;
     proven[(unsigned)(leaf - kLeaves)]++;
@@ -566,6 +615,17 @@ int main(void)
 {
     load();
     runtime_up();
+    {
+        size_t d;
+        for (d = 0; d < rt.data_count; d++) {
+            if (strcmp(rt.data[d].name, "g_GameState") == 0 &&
+                rt.data[d].size >= NATIVE_GS_SIZE)
+                native_gs = rt.data[d].host;
+        }
+        if (native_gs == NULL)
+            fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL note: g_GameState "
+                    "is not a shared native binding; not compared\n");
+    }
 
     /* A host body that runs off g_PsxRam must not take the whole run with it. */
     signal(SIGSEGV, host_fault_handler);
