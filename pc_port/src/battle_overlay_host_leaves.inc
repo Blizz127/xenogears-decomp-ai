@@ -155,3 +155,8 @@
     "func_80076BAC",
     "func_80076BF0",
     "func_80076C34",
+    /* fo/bat2 (main39/main40) */
+    "func_800883AC",
+    "func_80087EDC",
+    "func_800881B8",
+    "func_80088490",
