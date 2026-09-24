@@ -44,6 +44,33 @@ static inline uint32_t BattleGuestCallN(uint32_t target, unsigned argc,
                                     sizeof(battle_guest_args_[0])),         \
                          battle_guest_args_);                               \
     })
+
+/* Guest-address accessors for bodies that follow a guest word (a pointer that
+ * retail keeps as a 32-bit address in overlay data) the way the MIPS code does:
+ * compute the address in 32-bit arithmetic, then touch g_PsxRam through it. */
+#define BATTLE_G8(addr)  (*(u8*)PSX_ADDR((u32)(addr)))
+#define BATTLE_G16(addr) (*(u16*)PSX_ADDR((u32)(addr)))
+#define BATTLE_G32(addr) (*(u32*)PSX_ADDR((u32)(addr)))
+/* A guest word handed to a native main-executable routine that takes a host
+ * pointer (HeapFree, LoadImage, ...): 0 stays NULL, as the bridge does. */
+#define BATTLE_HOST_PTR(word) \
+    ((u32)(word) != 0 ? (void*)PSX_ADDR((u32)(word)) : (void*)0)
+/* MIPS divu/div never trap: a zero divisor leaves LO = all ones (divu) or
+ * +-1 by sign (div).  x86 would raise SIGFPE instead. */
+static inline u32 BattleDivu(u32 n, u32 d) { return d != 0 ? n / d : 0xFFFFFFFFu; }
+static inline u32 BattleRemu(u32 n, u32 d) { return d != 0 ? n % d : n; }
+static inline s32 BattleDiv(s32 n, s32 d)
+{
+    if (d == 0) return n < 0 ? 1 : -1;
+    if (n == (s32)0x80000000 && d == -1) return n;
+    return n / d;
+}
+static inline s32 BattleRem(s32 n, s32 d)
+{
+    if (d == 0) return n;
+    if (n == (s32)0x80000000 && d == -1) return 0;
+    return n % d;
+}
 #endif
 
 #endif

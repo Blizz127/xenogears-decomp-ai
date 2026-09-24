@@ -7,14 +7,17 @@ extern u8* D_800D2F5C;
 #ifndef XENO_PC_PORT
 extern u32 D_800CCB34;
 #endif
-extern s32 func_8002675C(u8*, u8*, u8*, u32, s32, s32, s32);
-/* func_80076A10.s: as func_80076A6C with scale 0x1000. */
-s32 func_80076A10(u8* a0, u8* a1, s16 a2, s16 a3) {
-    return func_8002675C(D_800D2F5C, a0, a1, D_800CCB34, a2, a3, 0x1000);
+extern s32 func_8002675C(u8*, s32, u8*, u32, s32, s32, s32);
+/* func_80076A10.s: draw sprite-table entry `index` of D_800D2F5C into the
+ * POLY_FT4 run at `polys` (slot D_800CCB34) at (x, y), scale 0x1000.  The
+ * first argument is an entry index, not a pointer: func_8002675C forwards it
+ * as its `index` (see main37.c / main40.c callers). */
+s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y) {
+    return func_8002675C(D_800D2F5C, index, polys, D_800CCB34, x, y, 0x1000);
 }
-/* func_80076A6C.s */
-s32 func_80076A6C(u8* a0, u8* a1, s16 a2, s16 a3) {
-    return func_8002675C(D_800D2F5C, a0, a1, D_800CCB34, a2, a3, 0x800);
+/* func_80076A6C.s: as func_80076A10 with scale 0x800. */
+s32 func_80076A6C(s32 index, u8* polys, s16 x, s16 y) {
+    return func_8002675C(D_800D2F5C, index, polys, D_800CCB34, x, y, 0x800);
 }
 
 
