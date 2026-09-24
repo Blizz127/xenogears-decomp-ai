@@ -55,6 +55,15 @@ void ControllerPoll(void) {}
 void PcPort_ServiceVblank(void) {}
 void PcPort_PadVblankPump(void) {}
 void PsyX_UpdateInput(void) {}
+/* runtime_bridge's debug hook (pc_port/src/god_mode.c, not linked here). It is
+ * port instrumentation, not a game callee, so it must not come from the
+ * generated placeholders: those mark the case inconclusive. */
+void PcPort_GodModeBeforeGuest(PcPortMipsCpu *cpu, uint32_t target);
+void PcPort_GodModeBeforeGuest(PcPortMipsCpu *cpu, uint32_t target)
+{
+    (void)cpu;
+    (void)target;
+}
 int PsyX_Sys_GetVBlankCount(void) { return 0; }
 char PsyX_BeginScene(void) { return 1; }
 void ClearSplits(void) { abort(); }
@@ -122,6 +131,14 @@ static unsigned hand_only;
  * harness is willing to make. */
 static unsigned proven[LEAF_COUNT];
 static unsigned inconclusive_logged[LEAF_COUNT];
+static unsigned inconclusive_per_leaf[LEAF_COUNT];
+
+/* Bumped by every generated bridge placeholder (see the runner): a callee that
+ * neither the link nor PsyCross provides. Both sides reach the same
+ * placeholder -- the interpreter resolves it through the bridge map -- and
+ * compare an undefined return register, so a case that touched one proves
+ * nothing and is counted inconclusive. */
+unsigned g_prover_placeholder_hits;
 
 static uint32_t rng_state = 0x12345678u;
 static uint32_t rnd(void)
@@ -248,6 +265,18 @@ static uint32_t leaf_address(const char *name)
     return (uint32_t)strtoul(name + 5, NULL, 16);
 }
 
+static void placeholder_inconclusive(const Leaf *leaf, const char *side)
+{
+    unsigned index = (unsigned)(leaf - kLeaves);
+    inconclusive++;
+    inconclusive_per_leaf[index]++;
+    if (inconclusive_logged[index] == 0) {
+        inconclusive_logged[index] = 1;
+        fprintf(stderr, "[prover] inconclusive %s: %s side reached a bridge "
+                "placeholder callee\n", leaf->name, side);
+    }
+}
+
 static void compare(const Leaf *leaf, const uint32_t *args)
 {
     const char *name = leaf->name;
@@ -263,10 +292,34 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     /* Both sides call the same rand(); start each run from the same point or
      * every random-dependent body would differ for no reason. */
     srand(1);
+    g_prover_placeholder_hits = 0;
+    /* The interpreted side calls main-executable code natively through the
+     * bridge (HeapFree, rcos, ...). If that native callee faults, retail did
+     * not complete on this input as far as the harness can tell: count the
+     * case inconclusive. Without this the handler would jump through a stale
+     * buffer left by an earlier host run and blame the wrong side. */
+    if (sigsetjmp(host_fault_jmp, 1) != 0) {
+        unsigned index = (unsigned)(leaf - kLeaves);
+        rt.force_interpret = 0;
+        inconclusive++;
+        inconclusive_per_leaf[index]++;
+        if (inconclusive_logged[index] == 0) {
+            inconclusive_logged[index] = 1;
+            fprintf(stderr, "[prover] inconclusive %s: a native callee of the "
+                    "retail side faulted\n", name);
+        }
+        return;
+    }
     irc = run_interpreted(target, args);
+    if (irc == PC_PORT_MIPS_HALTED && g_prover_placeholder_hits != 0) {
+        rt.force_interpret = 0;
+        placeholder_inconclusive(leaf, "retail");
+        return;
+    }
     if (irc != PC_PORT_MIPS_HALTED) {
         unsigned index = (unsigned)(leaf - kLeaves);
         inconclusive++;
+        inconclusive_per_leaf[index]++;
         /* Explain the first skip per leaf: "unproven" is only actionable if the
          * reason is on the record. */
         if (inconclusive_logged[index] == 0) {
@@ -296,6 +349,10 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     }
     memcpy(actual, g_PsxRam, sizeof(actual));
     hv0 = cpu.gpr[2];
+    if (g_prover_placeholder_hits != 0) {
+        placeholder_inconclusive(leaf, "host");
+        return;
+    }
 
     /* Compare only the bits the body's return type defines. A void body leaves
      * whatever the callee happened to have in rax, and a u8/u16 return leaves
@@ -459,6 +516,10 @@ static void sweep(void)
     uint32_t pattern;
 
     for (index = 0; index < LEAF_COUNT; index++) {
+        /* Each leaf draws its own sequence, seeded from its address, so
+         * adding or removing an allowlist entry does not silently change the
+         * inputs (and so the evidence) of every leaf after it. */
+        rng_state = 0x12345678u ^ leaf_address(kLeaves[index].name);
         if (kLeaves[index].pointer_params != 0) {
             unsigned mask = kLeaves[index].pointer_params;
 
@@ -517,6 +578,12 @@ int main(void)
     hand_cases();
     sweep();
 
+    if (getenv("BATTLE_OVERLAY_DIFFERENTIAL_PER_LEAF") != NULL) {
+        unsigned i;
+        for (i = 0; i < LEAF_COUNT; i++)
+            fprintf(stderr, "[prover] leaf %s proven=%u inconclusive=%u\n",
+                    kLeaves[i].name, proven[i], inconclusive_per_leaf[i]);
+    }
     if (failures == 0) {
         /* An allowlisted leaf with no completed comparison is not evidence of
          * anything. Say so by name; the batch has to be pruned. */
