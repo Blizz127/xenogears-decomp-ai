@@ -661,12 +661,49 @@ void func_800AD898(void)
     }
 }
 
-/* Battle-transition entry the encounter roll (func_80079288) calls when a
- * formation is selected. The field->battle handoff and the battle system are
- * out of scope; this no-op stub lets the roll link and run so we can validate
- * it up to the battle boundary (the named next blocker). */
-extern void xeno_port_stub(const char* name);
-void func_80281204(s32 formationIndex) { (void)formationIndex; xeno_port_stub("func_80281204"); }
+/* ---- PC-HDD developer debug overlay (retail 0x80280000) ---------------------
+ * field.bin calls ten functions at 0x8028xxxx. They are not field code: they
+ * are the developer debug overlay, archive directory 4 entry 0xAD (25032 bytes
+ * on disc 1), which FieldMain reads to the raw address 0x80280000 -- past the
+ * retail console's 2 MB, i.e. a DTL-H 8 MB dev-kit module -- only when
+ * g_FieldSystemMode == SYSTEM_MODE_PC_HDD. Its rodata is the debug HUD
+ * ("CPU=%04d GPU=%04d", "---------- Player Info -----", ...).
+ *   func_80281B00(label)  CPU profiler section mark ("MATRIX", "FntPrint", ...)
+ *   func_80281204(n)      per-formation encounter counter (NOT the battle
+ *                         handoff -- func_80079288 does that itself, earlier)
+ *   func_802811EC/8028125C/802812A4  profiler/HUD state resets
+ *   func_80281400/80281450  HUD draw submit; func_802815B0/80281678/80284EA4
+ *                         camera/actor/event debug readouts
+ * Retail never runs any of them: D_80010000 is 0xFFFFFFFF on the disc, so
+ * FieldMain always selects SYSTEM_MODE_CD_ROM, and every call site (28 in
+ * field.bin, 25 in src/field) sits behind `if (g_FieldSystemMode == 0)`.
+ * Proof, from the shipped bytes, with negative controls:
+ * pc_port/tests/run_field_debug_overlay_unreachable_test.sh.
+ *
+ * So there is no retail behaviour to port. Reaching one of these means the
+ * port broke the CD-ROM-mode invariant (or FieldMain was bypassed while
+ * g_FieldSystemMode still held its zero-initialised PC-HDD value); on hardware
+ * that jal would land in unloaded memory. Fail closed and name the caller
+ * instead of the generated stubs' silent no-op. */
+static void FieldDebugOverlayUnreachable(const char* name) __attribute__((noreturn));
+static void FieldDebugOverlayUnreachable(const char* name) {
+    fprintf(stderr,
+            "[xeno-port] FATAL: %s is in the PC-HDD debug overlay (archive 4/0xAD "
+            "at 0x80280000), reachable only when g_FieldSystemMode == "
+            "SYSTEM_MODE_PC_HDD; retail never loads it. g_FieldSystemMode=%d\n",
+            name, (int)g_FieldSystemMode);
+    abort();
+}
+void func_802811EC(void) { FieldDebugOverlayUnreachable("func_802811EC"); }
+void func_80281204(s32 formationIndex) { (void)formationIndex; FieldDebugOverlayUnreachable("func_80281204"); }
+void func_8028125C(void) { FieldDebugOverlayUnreachable("func_8028125C"); }
+void func_802812A4(void) { FieldDebugOverlayUnreachable("func_802812A4"); }
+void func_80281400(void) { FieldDebugOverlayUnreachable("func_80281400"); }
+void func_80281450(void) { FieldDebugOverlayUnreachable("func_80281450"); }
+void func_802815B0(void) { FieldDebugOverlayUnreachable("func_802815B0"); }
+void func_80281678(void* actorData) { (void)actorData; FieldDebugOverlayUnreachable("func_80281678"); }
+void func_80281B00(void* label) { (void)label; FieldDebugOverlayUnreachable("func_80281B00"); }
+void func_80284EA4(void) { FieldDebugOverlayUnreachable("func_80284EA4"); }
 
 extern u8* D_80059424;
 extern u32 D_8005953C;
