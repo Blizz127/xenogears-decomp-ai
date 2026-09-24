@@ -593,6 +593,9 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_vram_copy_extent.patch" "_x
 # Host testing speed: pace vblank, sound and streamed disc reads together,
 # without incrementing game clocks on queries or bypassing frame waits.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_speed.patch" "_xeno_host_speed"
+# The BIOS memory-card driver entry points (InitCARD/_card_info/...) are owned
+# by pc_port/src/memcard_port.c; drop PsyCross's silent `return 0` copies.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_card_native_owner.patch" "_xeno_card_native_owner"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
@@ -744,6 +747,7 @@ PORT_SOURCES=(
     pc_port/src/fei_hd2d.c
     pc_port/src/god_mode.c
     pc_port/src/file_menu_notice.c
+    pc_port/src/memcard_port.c
     pc_port/src/field_pos_diag.c  # TEST TOOLING: XENO_FIELD_POS_DIAG walk telemetry
     pc_port/src/field_warp_diag.c # TEST TOOLING: XENO_FIELD_WARP one-shot debug teleport
     pc_port/src/debug_battle_warp.c # TEST TOOLING: XENO_BATTLE_WARP_FILE battle launcher

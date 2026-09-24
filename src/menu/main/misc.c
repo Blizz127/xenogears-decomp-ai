@@ -14,8 +14,9 @@ static void MenuStoreRawPointer(u32 offset, void* pointer);
 #include <stdlib.h>
 #include <string.h>
 #include <psx/kernel.h>
-extern struct DIRENTRY* firstfile(char*, struct DIRENTRY*);
-extern struct DIRENTRY* nextfile(struct DIRENTRY*);
+/* Card file calls go to the port's memory-card layer, not host libc. */
+#define XENO_MEMCARD_REMAP
+#include "../../../pc_port/src/memcard_port.h"
 #endif
 
 extern s32 func_801C8D78(u8 port);
@@ -5948,6 +5949,56 @@ void func_801D5CF8(s32 x, s32 y) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5ED4);
 #endif
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D5ED4 (retail asm/menu/nonmatchings/main/misc/func_801D5ED4.s). */
+extern u16 D_801E9D38;
+extern u16 D_801E9D3C;
+
+/* Batch-init slot 0 (called from func_801D7C3C): the character-name header in
+ * the unk358 side buffer.  One atlas glyph string (id 0x14B + slot) at the
+ * buffer head, its vertex group at +0x1EA0, then the double-buffered name
+ * sprite at +0x50 (retail POLY_FT4 stride 0x28 by render context) with the
+ * 0x180 tpage, a parity-selected CLUT and u/v from D_801EA578/D_801EA5C4,
+ * and its vertex group at +0x1EC0.  `variant` != 0 shifts x left by 0x18,
+ * widens the sprite by 0x18 per step and takes the parity from the
+ * character's gear id instead of the character id. */
+void func_801D5ED4(u8 slot, u8 variant) {
+    u8* buf = MenuRawPointer(0x358);
+    s32 shift = variant != 0 ? 0x18 : 0;
+    s32 width;
+    s32 index;
+    u8* face;
+    u8 parity;
+
+    func_8002675C(g_Menu->unk2DC, slot + 0x14B, buf, g_Menu->renderContext,
+                  0x18 - shift, 0xE, 0x1000);
+    buf = MenuRawPointer(0x358);
+    face = buf + g_Menu->renderContext * 0x28;
+    func_801C851C((SVECTOR*)(buf + 0x1EA0), *(u16*)(face + 8), *(u16*)(face + 0xA), 0x30, 0x30);
+    func_801E927C((POLY_FT4*)(MenuRawPointer(0x358) + 0x50 + g_Menu->renderContext * 0x28));
+    {
+        u16 tpage = (u16)GetTPage(0, 0, 0x180, 0);
+        face = MenuRawPointer(0x358) + 0x50 + g_Menu->renderContext * 0x28;
+        ((POLY_FT4*)face)->tpage = tpage;
+    }
+    if (variant == 0) {
+        parity = g_Menu->pManager->currentCharacterIDs[slot] & 1;
+    } else {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[slot];
+        parity = (u8)((g_GameState.characters[charId].gearId + 0xB) & 1);
+    }
+    ((POLY_FT4*)face)->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
+
+    width = (u16)(variant * 0x18 + 0x48);
+    index = variant * 3 + slot;
+    func_801E920C((POLY_FT4*)(MenuRawPointer(0x358) + 0x50 + g_Menu->renderContext * 0x28),
+                  0, 0, (*(s32*)(D_801EA578 + index * 4) << 2) & 0xFC,
+                  D_801EA5C4[index * 4], width, 0xD);
+    func_801C851C((SVECTOR*)(MenuRawPointer(0x358) + 0x1EC0), (u16)(D_801E9D38 - shift),
+                  D_801E9D3C, width, 0xD);
+}
+#endif /* XENO_PC_PORT */
 
 extern s32 D_801EA39C[];
 extern s32 D_801E9B60[];
