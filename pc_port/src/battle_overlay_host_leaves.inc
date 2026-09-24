@@ -134,3 +134,10 @@
     "func_800AA79C",
     "func_800885D0",
     "func_800AA760",
+    /* fo/bat4 */
+    "func_800BE6A0",
+    "func_800BE6E8",
+    "func_800BF85C",
+    "func_800BF8CC",
+    "func_800B12D0",
+    "func_800B1EA0",

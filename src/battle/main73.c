@@ -33,6 +33,26 @@ s32 func_800AF400(void) {
     return bit;
 }
 #endif /* XENO_PC_PORT */
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+/* func_800AF270.s: for each of the (+0xA) - 1 0x7C-byte entries after the
+ * first, move a pending flag (+0x7 of src entry i) to +0x7 of dst entry i. */
+void func_800AF270(u8* src, u8* dst) {
+    u32 s = BG_ADDR(src);
+    u32 d = BG_ADDR(dst);
+    s32 count = BG_U16(s + 0xA);
+    s32 i;
+
+    for (i = 1; i < count; i++) {
+        u32 flag = s + 7 + (u32)i * 0x7C;
+
+        if (BG_U8(flag) != 0) {
+            BG_U8(flag) = 0;
+            BG_U8(d + (u32)i * 0x7C + 7) = 1;
+        }
+    }
+}
+#endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(1) */
 #if BATTLE_PART(2)
 #endif /* BATTLE_PART(2) */
