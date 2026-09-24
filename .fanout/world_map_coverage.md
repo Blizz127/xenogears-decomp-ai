@@ -8,13 +8,13 @@ Retail: `asm/world_map/120C.s` (386 splat functions, 0x80070CFC..0x80099E8C). Po
 
 | status | all funcs | bytes | reachable from WorldMapMain | reachable bytes |
 |---|---|---|---|---|
-| PORTED | 348 | 159520 | 348 | 159520 |
+| PORTED | 349 | 159692 | 349 | 159692 |
 | UNLINKED | 0 | 0 | 0 | 0 |
 | STUB | 1 | 132 | 1 | 132 |
-| MISSING | 37 | 8684 | 20 | 5484 |
+| MISSING | 36 | 8512 | 19 | 5312 |
 | total | 386 | 168336 | 369 | 165136 |
 
-## Reachable functions with no linked port C (21)
+## Reachable functions with no linked port C (20)
 
 | addr | name | size | status | callers | notes |
 |---|---|---|---|---|---|
@@ -38,7 +38,6 @@ Retail: `asm/world_map/120C.s` (386 splat functions, 0x80070CFC..0x80099E8C). Po
 | 80088F1C | func_80088F1C | 0x38 | MISSING | 80072238 | fn-ptr target;  |
 | 80088F54 | func_80088F54 | 0x8 | MISSING | 80072238 | fn-ptr target;  |
 | 80088F5C | func_80088F5C | 0x8 | MISSING | 80072238 | fn-ptr target;  |
-| 80097CB8 | func_80097CB8 | 0xAC | MISSING | 80072238 |  |
 
 ## Port bodies at addresses that are not splat function starts (14)
 
@@ -438,7 +437,7 @@ These are secondary entry points / mis-split starts; the owning splat function i
 | 800978FC | func_800978FC | 0xCC | Y | PORTED | 80072238, 80075B58, 80077214, 80077A64, 80078A60 (+7) | `world_map_common_tail.c`:wm_800978FC |
 | 800979C8 | func_800979C8 | 0x1F8 | Y | PORTED | 80072238, 80077214, 80077A64, 80078A60, 8007A5DC (+6) | `world_map_init.c`:wm_800979c8_gpu_asset_b |
 | 80097BC0 | func_80097BC0 | 0xF8 | Y | PORTED | 80072238, 80077214, 80077A64, 80078A60, 8007A5DC (+7) | `world_map_terrain_init.c`:wm_80097BC0 |
-| 80097CB8 | func_80097CB8 | 0xAC | Y | MISSING | 80072238 |  |
+| 80097CB8 | func_80097CB8 | 0xAC | Y | PORTED | 80072238 | `world_map_terrain_init.c`:wm_80097CB8 |
 | 80097D64 | func_80097D64 | 0x5C | Y | PORTED | 8007299C, 80077480, 80077CC0, 80078D24, 8007A8AC (+7) | `world_map_teardown_7299c.c`:wm_80097D64 |
 | 80097DC0 | func_80097DC0 | 0x284 | Y | PORTED | 80097BC0, 80097CB8 | `world_map_helper_97dc0.c`:wm_80097DC0 |
 | 80098044 | func_80098044 | 0x90 | Y | PORTED | 80072238, 80077214, 80077A64, 80078A60, 8007A5DC (+6) | `world_map_init.c`:wm_80098044_cross_product_init; `world_map_init.c`:PcPort_WorldMapInitializeModeEnterState[comment] |
@@ -456,4 +455,4 @@ These are secondary entry points / mis-split starts; the owning splat function i
 
 ## External (slus/kernel) callees from world_map code, by call-site count
 
-HeapFree(35), HeapAlloc(26), RotMatrixYXZ(24), DrawSync(22), Vsync(21), ScaleMatrix(18), GetTPage(17), func_800245D8(17), MoveImage(16), VectorNormal(15), rand(14), rcos(14), ArchiveSetIndex(13), ArchiveCdDataSync(13), func_80024524(13), SpriteSetScale(13), ArchiveDecodeAlignedSize(12), memcpy(12), ArchiveDataSync(12), GetClut(12), rsin(12), SetRotMatrix(11), SetTransMatrix(11), func_80039E60(11), SoundAddSedsEntry(10), func_80039FF8(10), func_8003852C(10), SetSemiTrans(7), ratan2(7), func_80039A80(6), func_80039850(6), CompMatrix(6), OuterProduct12(6), func_8002C3D8(6), func_8003A89C(5), RotMatrix(5), LoadImage(5), ApplyMatrix(5), MulMatrix0(5), OuterProduct0(5), PutDrawEnv(4), PutDispEnv(4), func_80029AFC(4), func_8001B66C(4), SoundLoadWdsFile(4), SetDrawTPage(4), LZSSHeapDecompress(4), RotMatrixY(4), TransposeMatrix(4), SquareRoot0(4), func_80034614(4), func_80039CC4(3), ClearOTagR(3), ControllerPopState(3), StoreImage(3), func_8003A3B8(3), NormalClip(3), RotMatrixZ(3), RotMatrixX(3), CdIntToPos(3), CdControlF(3), ControllerResetState(2), HeapChangeCurrentUser(2), ControllerGetType(2), ResetGraph(2), DrawOTag(2), ArchiveReadFileToBuffer(2), func_800399D4(2), SystemTransferPaletteToVRAM(2), func_800230A8(2), SetGeomScreen(2), SetBackColor(2), RotTransPers4(2), GraphicsDrawPauseLetters(2), SoundEnableAllSpuChannels(2), SoundMuteAllSpuChannels(2), func_8002DD20(2), RotTrans(2), ApplyMatrixLV(2), func_80032F54(2), func_80034888(2), func_80034714(2), GetStringEntry(2), func_800346D4(2), CdSyncCallback(2), CdReadyCallback(2), TransMatrix(2), ArchiveDecodeSector(2), ArchiveGetFilePath(2), ClearImage(1), MainLoop(1), InitGeom(1), LoadGameStateOverlay(1), func_8004B7D0(1), ChangeGameState(1), MenuMain(1), func_800250E0(1), CdSync(1), func_8001D468(1), SetGeomOffset(1), func_80025044(1), GameCheckAndHandleSoftReset(1), func_80039B68(1), GfxAllocateWorkBuffers(1), GfxFreeWorkBuffers(1), func_80048AB0(1), SetFarColor(1), SetDefDrawEnv(1), func_8002C6E0(1), SetDefDispEnv(1), func_800453AC(1), MulMatrix(1), LZSSDecompress(1), func_801E7D14(1), ExitCriticalSection(1), FlushCache(1), EnterCriticalSection(1), func_8003A2E4(1), func_80039E18(1), SetDrawMove(1), SetLightMatrix(1), func_8002C3E8(1), func_8002CB54(1), func_8002C8CC(1), SetColorMatrix(1), func_8002CBBC(1), func_8002C700(1), AnimScriptTick(1), func_800223B0(1), func_8001E298(1), func_80024FF4(1), RotMatrixZYX(1), PClseek(1), PCclose(1), PCread(1), PCopen(1), CdPosToInt(1), CdGetSector(1)
+HeapFree(35), HeapAlloc(26), RotMatrixYXZ(24), DrawSync(22), Vsync(21), ScaleMatrix(18), GetTPage(17), func_800245D8(17), MoveImage(16), VectorNormal(15), rand(14), rcos(14), ArchiveSetIndex(13), ArchiveCdDataSync(13), SpriteSetScale(13), func_80024524(13), ArchiveDecodeAlignedSize(12), memcpy(12), ArchiveDataSync(12), GetClut(12), rsin(12), SetTransMatrix(11), SetRotMatrix(11), func_80039E60(11), SoundAddSedsEntry(10), func_80039FF8(10), func_8003852C(10), SetSemiTrans(7), ratan2(7), func_80039850(6), func_80039A80(6), CompMatrix(6), OuterProduct12(6), func_8002C3D8(6), func_8003A89C(5), RotMatrix(5), LoadImage(5), ApplyMatrix(5), MulMatrix0(5), OuterProduct0(5), PutDispEnv(4), PutDrawEnv(4), func_80029AFC(4), func_8001B66C(4), SoundLoadWdsFile(4), SetDrawTPage(4), LZSSHeapDecompress(4), RotMatrixY(4), TransposeMatrix(4), SquareRoot0(4), func_80034614(4), func_80039CC4(3), ClearOTagR(3), ControllerPopState(3), StoreImage(3), func_8003A3B8(3), NormalClip(3), RotMatrixZ(3), RotMatrixX(3), CdControlF(3), CdIntToPos(3), HeapChangeCurrentUser(2), ControllerResetState(2), ResetGraph(2), ControllerGetType(2), DrawOTag(2), ArchiveReadFileToBuffer(2), func_800399D4(2), SystemTransferPaletteToVRAM(2), func_800230A8(2), SetGeomScreen(2), SetBackColor(2), RotTransPers4(2), SoundEnableAllSpuChannels(2), SoundMuteAllSpuChannels(2), GraphicsDrawPauseLetters(2), func_8002DD20(2), RotTrans(2), ApplyMatrixLV(2), func_80032F54(2), func_80034714(2), GetStringEntry(2), func_80034888(2), func_800346D4(2), CdSyncCallback(2), CdReadyCallback(2), TransMatrix(2), ArchiveDecodeSector(2), ArchiveGetFilePath(2), ClearImage(1), InitGeom(1), func_8004B7D0(1), MainLoop(1), LoadGameStateOverlay(1), ChangeGameState(1), GameCheckAndHandleSoftReset(1), MenuMain(1), func_800250E0(1), CdSync(1), func_80025044(1), func_8001D468(1), SetGeomOffset(1), GfxAllocateWorkBuffers(1), func_80039B68(1), GfxFreeWorkBuffers(1), SetDefDrawEnv(1), SetDefDispEnv(1), func_80048AB0(1), SetFarColor(1), func_8002C6E0(1), func_800453AC(1), MulMatrix(1), LZSSDecompress(1), func_801E7D14(1), FlushCache(1), ExitCriticalSection(1), EnterCriticalSection(1), func_8003A2E4(1), func_80039E18(1), SetDrawMove(1), func_8002CB54(1), SetColorMatrix(1), func_8002C8CC(1), SetLightMatrix(1), func_8002C3E8(1), func_8002CBBC(1), func_8002C700(1), AnimScriptTick(1), func_80024FF4(1), func_8001E298(1), func_800223B0(1), RotMatrixZYX(1), PCread(1), PCclose(1), PCopen(1), PClseek(1), CdGetSector(1), CdPosToInt(1)
