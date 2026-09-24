@@ -102,6 +102,17 @@ static inline u32 bg_jalr(u32 target, u32 a0, u32 a1, u32 a2, u32 a3) {
         bg_arg(a0), bg_arg(a1), bg_arg(a2), bg_arg(a3));
 }
 
+/* Retail trig entry points.  The decomp names 0x8003F8B0 `rcos` and
+ * 0x8003F8CC `rsin`, opposite to PsyCross's conventional exports, and the
+ * battle bridge calls PsyCross rsin/rcos for them after masking the angle
+ * to 12 bits (runtime_bridge_call).  Bind the real PsyCross symbols by
+ * assembler name so the pc_port/include_shim/psyq/libgte.h rsin/rcos macros
+ * cannot swap them a second time; bg_rsin/bg_rcos mean the RETAIL entries. */
+extern int bg_psycross_rsin_(int a) __asm__("rsin");
+extern int bg_psycross_rcos_(int a) __asm__("rcos");
+static inline int bg_rsin(int angle) { return bg_psycross_rcos_(angle & 0xFFF); }
+static inline int bg_rcos(int angle) { return bg_psycross_rsin_(angle & 0xFFF); }
+
 /* R3000 DIV/DIVU results for the cases C leaves undefined (the interpreter,
  * pc_port/src/battle_mips_adapter.c, models the same values).  Only for
  * divisions retail emits without its own `break 7` zero check. */

@@ -205,7 +205,7 @@ void func_800B10EC(u32 index, s32 x, s32 z, s32 radius) {
     if (((((u32)(s32)BG_S16(BG_U32(BG_U32(slot) + 4) + 0x56) - (u32)angle) & 0xFFF) - 0x401) < 0x7FF) {
         angle = (s32)((u32)angle + 0x800);
     }
-    t = rcos(angle);
+    t = bg_rcos(angle);
     q = bg_div((s32)((u32)dx * (u32)radius), len);
     gap = (s32)((u32)radius - (u32)len);
     t = (s32)((u32)t * (u32)gap);
@@ -213,7 +213,7 @@ void func_800B10EC(u32 index, s32 x, s32 z, s32 radius) {
         t = (s32)((u32)t + 0xFFF);
     }
     BG_U32(BG_U32(BG_U32(slot) + 4) + 0x5C) = (u32)x - (u32)q - (u32)(t >> 12);
-    t = rsin(angle);
+    t = bg_rsin(angle);
     q = bg_div((s32)((u32)dz * (u32)radius), len);
     t = (s32)((u32)t * (u32)gap);
     if (t < 0) {

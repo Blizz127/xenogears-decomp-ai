@@ -363,9 +363,9 @@ void func_800BA59C(u8* rec, u32 angle) {
     s32 t;
 
     *(u16*)(rec + 0x32) = (u16)angle;
-    t = rsin((s16)angle) >> 1;
+    t = bg_rsin((s16)angle) >> 1;
     *(s32*)(rec + 0xC) = (s32)((u32)t * (u32)speed) >> 8;
-    t = rcos(*(s16*)(rec + 0x32)) >> 1;
+    t = bg_rcos(*(s16*)(rec + 0x32)) >> 1;
     *(s32*)(rec + 0x14) = (s32)(0u - (u32)t * (u32)speed) >> 8;
 }
 
