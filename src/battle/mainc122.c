@@ -110,14 +110,13 @@ void func_800BEBC4(void) {
  * D_800C3784[nibble] + bias.  The shift is SRAV, so `value` is signed and
  * only the low five bits of the shift amount count. */
 void func_800BE6A0(s32 value, u8* out, u32 count, u32 bias) {
-    u32 o = BG_ADDR(out);
     u32 i;
 
     for (i = 0; i != count; i++) {
         u32 nibble = (u32)(value >> (((count - 1 - i) * 4) & 31)) & 0xF;
-        BG_U8(o + i + 1) = (u8)(BG_U8(0x800C3784 + nibble) + bias);
+        out[i + 1] = (u8)(BG_U8(0x800C3784 + nibble) + bias);
     }
-    BG_U8(o) = (u8)count;
+    out[0] = (u8)count;
 }
 
 /* func_800BE6E8.s: format `value` as decimal glyphs.  `digits` indexes the
@@ -126,16 +125,15 @@ void func_800BE6A0(s32 value, u8* out, u32 count, u32 bias) {
  * glyph first and one digit fewer.  out[0] receives the glyph count.  The
  * divisions are DIVU with no zero check, so they use the R3000 results. */
 void func_800BE6E8(s32 value, u8* out, s32 digits, u32 lead, u32 bias) {
-    u32 o = BG_ADDR(out);
-    u32 w = o + 1;
+    u8* w = out + 1;
     u32 count = 0;
     u32 n = (u32)value;
     u32 t;
 
     if (value < 0) {
         count = 1;
-        BG_U8(o + 1) = 0x2D;
-        w = o + 2;
+        out[1] = 0x2D;
+        w = out + 2;
         n = 0u - (u32)value;
         digits--;
     }
@@ -151,13 +149,12 @@ void func_800BE6E8(s32 value, u8* out, s32 digits, u32 lead, u32 bias) {
             lead = 1;
         }
         if ((lead & 0xFF) != 0) {
-            BG_U8(w) = (u8)(q + bias);
-            w++;
+            *w++ = (u8)(q + bias);
             count++;
         }
         n = bg_remu(n, BG_U32(t));
     }
-    BG_U8(w) = (u8)(n + bias);
-    BG_U8(o) = (u8)(count + 1);
+    *w = (u8)(n + bias);
+    out[0] = (u8)(count + 1);
 }
 #endif

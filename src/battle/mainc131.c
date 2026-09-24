@@ -140,12 +140,11 @@ void func_800BF85C(u32 from, u32 to) {
  * D_800D363C chain (D_800D3678 entries); wrap to the first entry when it is
  * the last one or is not in the chain. */
 void func_800BF8CC(u8* rec) {
-    u32 r = BG_ADDR(rec);
     s32 n = BG_S16(0x800D3678);
     s32 i = 0;
 
     if (n != 0) {
-        u32 key = BG_U32(r + 0x74);
+        u32 key = *(u32*)(rec + 0x74);
         u32 slot = 0x800D363C;
 
         do {
@@ -157,9 +156,9 @@ void func_800BF8CC(u8* rec) {
         } while (i != n);
     }
     if (i < BG_S16(0x800D3678)) {
-        BG_U32(r + 0x74) = BG_U32(0x800D3640 + (u32)i * 4);
+        *(u32*)(rec + 0x74) = BG_U32(0x800D3640 + (u32)i * 4);
     } else {
-        BG_U32(r + 0x74) = BG_U32(0x800D363C);
+        *(u32*)(rec + 0x74) = BG_U32(0x800D363C);
     }
 }
 #endif

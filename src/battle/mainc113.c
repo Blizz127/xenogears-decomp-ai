@@ -65,3 +65,46 @@ void func_800BB7F8(void) {
     D_800C3CBC[0] = 1;
     func_800BC2F0(0);
 }
+
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+/* Native owners: src/slus_006.64/system/{memory,libarchive}.c, sdata. */
+extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
+extern u_int HeapFree(void* pMem);
+extern s32 ArchiveDataSync(void);
+extern u8 D_800591AC;
+extern u8 D_800591AF;
+extern void func_800BB690(u8* p);
+
+/* func_800BB6E0.s: timer callback: once the archive is idle and the
+ * D_800C3CB8 counter is 0, run func_800BB690(task) on a private 0x1000-byte
+ * heap stack (retail saves $sp at block + 0xF00 and switches to it; the
+ * native body just calls through) and free it. */
+void func_800BB6E0(u8* task) {
+    if (ArchiveDataSync() == 0 && BG_U8(0x800C3CB8u) == 0) { /* D_800C3CB8 */
+        void* stack = HeapAlloc(0x1000, 1);
+
+        func_800BB690(task);
+        HeapFree(stack);
+    }
+}
+
+/* func_800BB760.s: queue a 4-byte timer task (callback func_800BB6E0) that
+ * carries `slot` at +0x1C, with the heap flags D_800591AC forced to 0 and
+ * D_800591AF to 1 around the allocation, and bump D_800C35D8. */
+void func_800BB760(u32 slot) {
+    u8 saved = D_800591AC;
+    u8* task;
+    u32 pending;
+
+    D_800591AC = 0;
+    D_800591AF = 1;
+    task = TimerWorkListAllocateTask(0, 4);
+    TimerWorkListSetTaskCallback(task, (void*)(uintptr_t)0x800BB6E0u);
+    pending = BG_U32(0x800C35D8u); /* D_800C35D8 */
+    *(u32*)(task + 0x1C) = slot;
+    D_800591AF = 0;
+    BG_U32(0x800C35D8u) = pending + 1;
+    D_800591AC = saved;
+}
+#endif
