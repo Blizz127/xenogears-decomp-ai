@@ -22,7 +22,8 @@ static void q_sw(u32 a, u32 v) { memcpy(PSX_ADDR(a), &v, 4); }
 s32 wm_8009623C(u32 word0, u32 word1, u32 word2)
 {
     u32 counter = q_lw(D_8009D808);
-    if (counter >= QUEUE_MAX) return -1;
+    /* 0x80096248 / 0x800962BC: slti -- the fill count compares signed. */
+    if ((s32)counter >= QUEUE_MAX) return -1;
 
     u32 stride_mul = q_lw(D_8009BE44);
     u32 base = q_lw(D_8009BE08);
@@ -40,11 +41,15 @@ s32 wm_8009623C(u32 word0, u32 word1, u32 word2)
 s32 wm_800962B0(u32 word0, u32 word1, u32 word2, u32 word3)
 {
     u32 counter = q_lw(D_8009D808);
-    if (counter >= QUEUE_MAX) return -1;
+    /* 0x80096248 / 0x800962BC: slti -- the fill count compares signed. */
+    if ((s32)counter >= QUEUE_MAX) return -1;
 
     u32 stride_mul = q_lw(D_8009BE44);
     u32 base = q_lw(D_8009D3C0);
-    u32 record_idx = ((stride_mul * 3 - stride_mul) << 7);
+    /* 0x800962E8-0x80096300: ((m*3) << 2) - m = 11m, << 7 = m * 0x580,
+     * one bank of 0x58 16-byte records.  (Was (3m - m) << 7 = m * 0x100,
+     * which put bank 1 inside bank 0.) */
+    u32 record_idx = (((stride_mul * 3u) << 2) - stride_mul) << 7;
     u32 addr = base + record_idx + counter * 16;
 
     q_sw(D_8009D808, counter + 1);

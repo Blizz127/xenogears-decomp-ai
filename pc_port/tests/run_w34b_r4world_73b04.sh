@@ -16,7 +16,7 @@ cd "$ROOT"
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 WARN=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
-BASE=(-std=gnu17 -fpermissive -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
+BASE=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C)
 LIBS=("$PSYCROSS_LIB" -lSDL2 -lopenal -lGL -lm -ldl -lpthread)
 SRC=(pc_port/tests/w34b_r4world_73b04_prod_test.c
      pc_port/src/psx_memory.c pc_port/src/world_map_helper_73b04.c)

@@ -21,6 +21,11 @@
  * pos_ptr: guest address of initial position vector (typically 0x8009C5AC). */
 void wm_80097BC0(u32 pos_ptr);
 
+/* Resume twin (retail 0x80097CB8..0x80097D60): same matrix copy, clear and
+ * C5BC/C618 stores, but keeps the saved terrain origin and cell indices.
+ * pos_ptr: guest address of the saved position (0x8009BE28 at its call site). */
+void wm_80097CB8(u32 pos_ptr);
+
 /* Instrumentation counter accessors. */
 int wm_tpi_get_calls(void);
 

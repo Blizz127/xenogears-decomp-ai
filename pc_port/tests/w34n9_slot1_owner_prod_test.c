@@ -22,7 +22,7 @@ enum Event {
     EV_FIRST_WDS, EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC,
     EV_DISTANCE, EV_READY, EV_AUDIO, EV_CONV_P1, EV_CONV_P2, EV_CONV_RESUME,
     EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2, EV_TAIL_P3, EV_TAIL_P4,
-    EV_TAIL_P5
+    EV_TAIL_P5, EV_TERRAIN_RESUME, EV_DRAIN_ALL
 };
 
 typedef struct Rect4s { s16 x, y, w, h; } Rect4s;
@@ -189,6 +189,16 @@ void wm_80097BC0(u32 pos)
     check(pos == 0x8009C5ACu, "terrain_position_source");
 }
 
+/* Resume arm, retail 0x80072540..0x80072554: jal 0x80097CB8 with
+ * a0 = 0x8009BE28, then jal 0x80096694 (drain to empty). */
+void wm_80097CB8(u32 pos)
+{
+    event(EV_TERRAIN_RESUME);
+    check(pos == 0x8009BE28u, "terrain_resume_position_source");
+}
+
+void wm_80096694(void) { event(EV_DRAIN_ALL); }
+
 u32 wm_800967E4(void)
 {
     event(EV_CD_WORK);
@@ -268,8 +278,7 @@ static void check_restore_order(void)
         EV_CDSYNC, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX, EV_THIRD,
         EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
         EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
-        EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
-        EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
+        EV_ARCH_INDEX, EV_TERRAIN_RESUME, EV_DRAIN_ALL, EV_READY, EV_AUDIO,
         EV_CONV_P1, EV_CONV_RESUME, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
         EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
     };
@@ -328,8 +337,7 @@ static void check_ee6a_restore_order(void)
         EV_73398, EV_CDSYNC, EV_GPU_A, EV_GPU_B, EV_OBJECT_MATRIX,
         EV_THIRD, EV_BSS, EV_PRIMS, EV_CLUT, EV_GFX, EV_FT4, EV_HEAP,
         EV_UPLOAD_A, EV_UPLOAD_B, EV_DRAW_PACKETS, EV_88F64, EV_ARCH_POLL,
-        EV_ARCH_INDEX, EV_TERRAIN, EV_CD_WORK, EV_VSYNC, EV_DISTANCE,
-        EV_CD_WORK, EV_VSYNC, EV_DISTANCE, EV_READY, EV_AUDIO,
+        EV_ARCH_INDEX, EV_TERRAIN_RESUME, EV_DRAIN_ALL, EV_READY, EV_AUDIO,
         EV_CONV_P1, EV_CONV_RESUME, EV_TAIL_P0, EV_TAIL_P1, EV_TAIL_P2,
         EV_TAIL_P3, EV_TAIL_P4, EV_TAIL_P5
     };

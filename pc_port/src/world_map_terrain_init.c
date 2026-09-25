@@ -184,3 +184,31 @@ void wm_80097BC0(u32 pos_ptr)
 
     fprintf(stderr, "[worldmap-tpi] exit\n");
 }
+
+/* Retail 0x80097CB8..0x80097D60: the resume twin of 0x80097BC0.
+ *
+ * Called from the base-world session setup at retail 0x80072548 when
+ * C894 != 0 (re-entering the world map with a saved position, e.g. after a
+ * world encounter), with a0 = 0x8009BE28 instead of 0x8009C5AC.  It performs
+ * the same matrix copy, descending 256-word clear and C5BC/C618 stores, but
+ * leaves the streamed-terrain origin (BBB4/BBB8/BBBC) and the cell indices
+ * (C838/C83A/C83C) untouched -- those were restored with the saved state --
+ * before running the same two terrain helpers. */
+void wm_80097CB8(u32 pos_ptr)
+{
+    u32 *src = (u32*)PSX_ADDR(WM_IDENTITY_MATRIX_SRC);
+    u32 *dst = (u32*)PSX_ADDR(WM_D534_ABS);
+    u32 clear_addr = WM_C580_ABS;
+    int i;
+
+    for (i = 0; i < WM_MATRIX_SIZE / 4; i++)
+        dst[i] = src[i];
+    for (i = 0; i < WM_CLEAR_WORD_COUNT; i++) {
+        *(volatile u32 *)PSX_ADDR(clear_addr) = 0;
+        clear_addr -= WM_CLEAR_STRIDE;
+    }
+    WM_U32(WM_C5BC_ABS) = 0;
+    WM_U32(WM_C618_ABS) = 1024;
+    wm_800981C8(pos_ptr);
+    wm_80097DC0();
+}

@@ -196,14 +196,26 @@ entry_placement_done:
     if (wm_72238_require(wm_72238_stage_archive_index(), "archive_index") != 0)
         return -1;
 
-    wm_80097BC0(0x8009C5ACu);
-    do {
-        (void)wm_800967E4();
-        (void)Vsync(0);
-#if defined(W34N9_MUTANT_SINGLE_CD_DRAIN)
-        break;
+    /* Retail 0x800724F0..0x80072554 re-reads C894: a fresh session seeds the
+     * terrain from the placed position and drains the CD queue to <2
+     * outstanding; a resumed session (C894 != 0) keeps its restored terrain
+     * origin (0x80097CB8 on 0x8009BE28) and drains the queue completely. */
+#if !defined(WM_72238_MUTANT_FRESH_TERRAIN_ON_RESUME)
+    if (wm_72238_lw(WM_72238_C894) != 0u) {
+        wm_80097CB8(0x8009BE28u);
+        wm_80096694();
+    } else
 #endif
-    } while (wm_80096668_circular_distance() >= 2u);
+    {
+        wm_80097BC0(0x8009C5ACu);
+        do {
+            (void)wm_800967E4();
+            (void)Vsync(0);
+#if defined(W34N9_MUTANT_SINGLE_CD_DRAIN)
+            break;
+#endif
+        } while (wm_80096668_circular_distance() >= 2u);
+    }
 
     wm_ready_buffer_consume();
     wm_mode_audio_setup();
