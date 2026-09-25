@@ -6004,6 +6004,7 @@ extern s32 D_801EA39C[];
 extern s32 D_801E9B60[];
 extern s32 D_801E9C20[];
 
+#ifndef XENO_PC_PORT
 void func_801D6194(u8 slotType) {
     void* pMenu;
     void* pData;
@@ -6070,6 +6071,32 @@ void func_801D6194(u8 slotType) {
         }
     }
 }
+#else
+static void MenuBatchDigitVerts(u32 countOff, u32 primOff, u32 vertOff, s32 tint);
+/* Batch-init slot 1: the per-slot-type label glyphs.  Table D_801EA39C holds
+ * 24 atlas ids per slot type (0xFFFF = none) placed at D_801E9B60/D_801E9C20;
+ * prims at unk358+0xA0 (count +0x2AEC), vertex groups at +0x1EE0.  The
+ * matching C above addresses g_Menu with retail byte offsets, which land on
+ * unrelated fields of the native SystemMenu, so the port owns this body. */
+void func_801D6194(u8 slotType) {
+    s32 base = slotType * 24;
+    s32 i;
+
+    MenuRawPointer(0x358)[0x2AEC] = 0;
+    for (i = 0; i < 0x18; i++) {
+        s32 val = D_801EA39C[base + i];
+        if (val != 0xFFFF) {
+            u8* buf = MenuRawPointer(0x358);
+            s32 drawn = func_8002675C(g_Menu->unk2DC, val, buf + buf[0x2AEC] * 0x50 + 0xA0,
+                                      g_Menu->renderContext, D_801E9B60[base + i],
+                                      D_801E9C20[base + i], 0x1000);
+            buf = MenuRawPointer(0x358);
+            buf[0x2AEC] += (u8)drawn;
+        }
+    }
+    MenuBatchDigitVerts(0x2AEC, 0xA0, 0x1EE0, 0);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D6338);
@@ -6079,6 +6106,286 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7154);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D74EC);
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7884);
 #endif
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D6338 (retail asm/menu/nonmatchings/main/misc/func_801D6338.s). */
+extern s32 D_801E9CF0;
+extern s32 D_801E9CF4;
+extern s32 D_801E9CF8;
+extern s32 D_801E9CFC;
+
+/* Batch-init slot 2: the HP (variant 0: character, 3 digits) or gear HP
+ * (variant != 0: 5 digits) "current / max" digit strings.  Each value goes
+ * through func_801C80B8 into g_Menu->digits; non-blank digits become atlas
+ * glyph prims (two per glyph, 0x50 apart) at unk358+0x1630 / +0x17C0 with
+ * their counts at +0x2AE7 / +0x2AE8, then each glyph gets a vertex group at
+ * +0x2780 / +0x2820 sized from its context prim.  Retail quirk kept: the
+ * current-value cursor advances 8px for blank digits too, the max-value
+ * cursor only for drawn ones. */
+void func_801D6338(u8 slot, u8 variant) {
+    u8* buf;
+    s32 count;
+    s32 start;
+    s32 x;
+    s32 i;
+    u8 charId;
+
+    charId = g_Menu->pManager->currentCharacterIDs[slot];
+    if (variant == 0) {
+        count = 3;
+        start = 6;
+        func_801C80B8(g_GameState.characters[charId].hp);
+        x = D_801E9CF0;
+    } else {
+        count = 5;
+        start = 4;
+        x = D_801E9CF0 + 8;
+        func_801C80B8(g_GameState.gears[g_GameState.characters[charId].gearId].hp);
+    }
+    MenuRawPointer(0x358)[0x2AE7] = 0;
+    for (i = 0; i < count; i++, x += 8) {
+        u8 digit = g_Menu->digits[start + i];
+        if (digit != 0xFF) {
+            buf = MenuRawPointer(0x358);
+            s32 drawn = func_8002675C(g_Menu->unk2DC, digit, buf + buf[0x2AE7] * 0x50 + 0x1630,
+                                      g_Menu->renderContext, x - variant * 0x18, D_801E9CF4, 0x1000);
+            buf = MenuRawPointer(0x358);
+            buf[0x2AE7] += (u8)drawn;
+        }
+    }
+    for (i = 0; i < MenuRawPointer(0x358)[0x2AE7]; i++) {
+        u8* prim;
+        buf = MenuRawPointer(0x358);
+        prim = buf + (i * 2 + g_Menu->renderContext) * 0x28;
+        func_801C851C((SVECTOR*)(buf + 0x2780 + i * 0x20), *(u16*)(prim + 0x1638),
+                      *(u16*)(prim + 0x163A), (u16)(*(u16*)(prim + 0x1640) - *(u16*)(prim + 0x1638)),
+                      (u16)(*(u16*)(prim + 0x1652) - *(u16*)(prim + 0x163A)));
+    }
+
+    charId = g_Menu->pManager->currentCharacterIDs[slot];
+    if (variant == 0) {
+        func_801C80B8(g_GameState.characters[charId].maxHp);
+        x = D_801E9CF8;
+    } else {
+        func_801C80B8(g_GameState.gears[g_GameState.characters[charId].gearId].maxHp);
+        x = D_801E9CF8 - 0x20;
+    }
+    MenuRawPointer(0x358)[0x2AE8] = 0;
+    for (i = 0; i < count; i++) {
+        u8 digit = g_Menu->digits[start + i];
+        if (digit != 0xFF) {
+            buf = MenuRawPointer(0x358);
+            s32 drawn = func_8002675C(g_Menu->unk2DC, digit, buf + buf[0x2AE8] * 0x50 + 0x17C0,
+                                      g_Menu->renderContext, x - variant * 0x18,
+                                      variant * 8 + D_801E9CFC, 0x1000);
+            x += 8;
+            buf = MenuRawPointer(0x358);
+            buf[0x2AE8] += (u8)drawn;
+        }
+    }
+    for (i = 0; i < MenuRawPointer(0x358)[0x2AE8]; i++) {
+        u8* prim;
+        buf = MenuRawPointer(0x358);
+        prim = buf + (i * 2 + g_Menu->renderContext) * 0x28;
+        func_801C851C((SVECTOR*)(buf + 0x2820 + i * 0x20), *(u16*)(prim + 0x17C8),
+                      *(u16*)(prim + 0x17CA), (u16)(*(u16*)(prim + 0x17D0) - *(u16*)(prim + 0x17C8)),
+                      (u16)(*(u16*)(prim + 0x17E2) - *(u16*)(prim + 0x17CA)));
+    }
+}
+#endif /* XENO_PC_PORT */
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D680C (retail asm/menu/nonmatchings/main/misc/func_801D680C.s). */
+extern s32 D_801E9D00;
+extern s32 D_801E9D04;
+extern s32 D_801E9D08;
+extern s32 D_801E9D0C;
+
+/* Shared shape of the batch-init digit strings (func_801D680C..func_801D7884):
+ * draw the non-blank digits g_Menu->digits[start..start+count) as atlas glyph
+ * prims (two per glyph, 0x50 apart) at unk358+primOff, counting the prims in
+ * the byte at unk358+countOff.  The x cursor steps 8px per digit position
+ * (advanceBlank) or per drawn digit only. */
+static void MenuBatchDigits(s32 start, s32 count, s32 x, s32 y, u32 countOff, u32 primOff,
+                            s32 advanceBlank) {
+    s32 i;
+    MenuRawPointer(0x358)[countOff] = 0;
+    for (i = 0; i < count; i++) {
+        u8 digit = g_Menu->digits[start + i];
+        if (digit != 0xFF) {
+            u8* buf = MenuRawPointer(0x358);
+            s32 drawn = func_8002675C(g_Menu->unk2DC, digit, buf + buf[countOff] * 0x50 + primOff,
+                                      g_Menu->renderContext, x, y, 0x1000);
+            buf = MenuRawPointer(0x358);
+            buf[countOff] += (u8)drawn;
+            if (!advanceBlank) x += 8;
+        }
+        if (advanceBlank) x += 8;
+    }
+}
+
+/* One extra glyph appended to a batch digit string. */
+static void MenuBatchGlyph(s32 glyph, s32 x, s32 y, u32 countOff, u32 primOff) {
+    u8* buf = MenuRawPointer(0x358);
+    s32 drawn = func_8002675C(g_Menu->unk2DC, glyph, buf + buf[countOff] * 0x50 + primOff,
+                              g_Menu->renderContext, x, y, 0x1000);
+    buf = MenuRawPointer(0x358);
+    buf[countOff] += (u8)drawn;
+}
+
+/* Vertex groups (0x20 each at unk358+vertOff) sized from each glyph's
+ * current-context prim: x0,y0, width x1-x0, height y3-y0.  `tint` first
+ * untextures-shades the prim to (0,0x80,0) (func_801D6CF4's second string). */
+static void MenuBatchDigitVerts(u32 countOff, u32 primOff, u32 vertOff, s32 tint) {
+    s32 i;
+    for (i = 0; i < MenuRawPointer(0x358)[countOff]; i++) {
+        u8* prim;
+        u8* buf;
+        if (tint) {
+            SetShadeTex((POLY_FT4*)(MenuRawPointer(0x358) + primOff + (i * 2 + g_Menu->renderContext) * 0x28), 0);
+            prim = MenuRawPointer(0x358) + primOff + (i * 2 + g_Menu->renderContext) * 0x28;
+            ((POLY_FT4*)prim)->r0 = 0;
+            prim = MenuRawPointer(0x358) + primOff + (i * 2 + g_Menu->renderContext) * 0x28;
+            ((POLY_FT4*)prim)->g0 = 0x80;
+            prim = MenuRawPointer(0x358) + primOff + (i * 2 + g_Menu->renderContext) * 0x28;
+            ((POLY_FT4*)prim)->b0 = 0;
+        }
+        buf = MenuRawPointer(0x358);
+        prim = buf + primOff + (i * 2 + g_Menu->renderContext) * 0x28;
+        func_801C851C((SVECTOR*)(buf + vertOff + i * 0x20), *(u16*)(prim + 8), *(u16*)(prim + 0xA),
+                      (u16)(*(u16*)(prim + 0x10) - *(u16*)(prim + 8)),
+                      (u16)(*(u16*)(prim + 0x22) - *(u16*)(prim + 0xA)));
+    }
+}
+
+/* Batch-init slot 3: MP (variant 0: character mp/maxMp, 2 digits) or gear
+ * fuel (variant != 0: the two u16 halves at gear +0x38/+0x3A, 4 digits). */
+void func_801D680C(u8 slot, u8 variant) {
+    s32 shift = variant * 0x18;
+    s32 count, start, y;
+    u8 charId = g_Menu->pManager->currentCharacterIDs[slot];
+
+    if (variant == 0) {
+        count = 2;
+        start = 7;
+        func_801C80B8(g_GameState.characters[charId].mp);
+        y = D_801E9D04;
+    } else {
+        count = 4;
+        start = 5;
+        y = D_801E9D04 + 8;
+        func_801C80B8(((u16*)&g_GameState.gears[g_GameState.characters[charId].gearId].fuel)[0]);
+    }
+    MenuBatchDigits(start, count, D_801E9D00 - shift, y, 0x2AE9, 0x1950, 1);
+    MenuBatchDigitVerts(0x2AE9, 0x1950, 0x28C0, 0);
+
+    charId = g_Menu->pManager->currentCharacterIDs[slot];
+    if (variant == 0) {
+        func_801C80B8(g_GameState.characters[charId].maxMp);
+        MenuBatchDigits(start, count, D_801E9D08 - shift, D_801E9D0C, 0x2AEA, 0x1AE0, 0);
+    } else {
+        func_801C80B8(((u16*)&g_GameState.gears[g_GameState.characters[charId].gearId].fuel)[1]);
+        MenuBatchDigits(start, count, D_801E9D08 - 0x20 - shift, D_801E9D0C + 0x10, 0x2AEA, 0x1AE0, 0);
+    }
+    MenuBatchDigitVerts(0x2AEA, 0x1AE0, 0x2960, 0);
+}
+#endif /* XENO_PC_PORT */
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D6CF4 (retail asm/menu/nonmatchings/main/misc/func_801D6CF4.s). */
+extern s32 D_801E9CE0;
+extern s32 D_801E9CE4;
+extern s32 D_801E9CE8;
+extern s32 D_801E9CEC;
+
+/* Batch-init slot 4: character level (3 digits) and the byte after it
+ * (+0x63, 3 digits, drawn untextured green). */
+void func_801D6CF4(u8 slot, u8 variant) {
+    s32 shift = variant * 0x18;
+    func_801C80B8(g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].level);
+    MenuBatchDigits(6, 3, D_801E9CE0 - shift, D_801E9CE4, 0x2AE1, 0xAF0, 1);
+    MenuBatchDigitVerts(0x2AE1, 0xAF0, 0x2300, 0);
+    func_801C80B8(g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].unk63);
+    MenuBatchDigits(6, 3, D_801E9CE8 - shift, D_801E9CEC, 0x2AE2, 0xBE0, 1);
+    MenuBatchDigitVerts(0x2AE2, 0xBE0, 0x2360, 1);
+}
+#endif /* XENO_PC_PORT */
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D7154 (retail asm/menu/nonmatchings/main/misc/func_801D7154.s). */
+extern s32 D_801E9D10;
+extern s32 D_801E9D14;
+extern s32 D_801E9D18;
+extern s32 D_801E9D1C;
+
+/* Batch-init slot 7: the two u32 counters at character +0x3C/+0x40 (8 digits
+ * each; experience / to-next in the status layout). */
+void func_801D7154(u8 slot, u8 variant) {
+    s32 shift = variant * 0x18;
+    func_801C80B8(*(u32*)&g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].field_0x0[0x3C]);
+    MenuBatchDigits(1, 8, D_801E9D10 - shift, D_801E9D14, 0x2AE3, 0xCD0, 1);
+    MenuBatchDigitVerts(0x2AE3, 0xCD0, 0x23C0, 0);
+    func_801C80B8(*(u32*)&g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].field_0x0[0x40]);
+    MenuBatchDigits(1, 8, D_801E9D18 - shift, D_801E9D1C, 0x2AE4, 0xF50, 1);
+    MenuBatchDigitVerts(0x2AE4, 0xF50, 0x24C0, 0);
+}
+#endif /* XENO_PC_PORT */
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D74EC (retail asm/menu/nonmatchings/main/misc/func_801D74EC.s). */
+extern s32 D_801E9D20;
+extern s32 D_801E9D24;
+extern s32 D_801E9D28;
+extern s32 D_801E9D2C;
+
+/* Batch-init slot 5: the two u32 counters at character +0x44/+0x48 (7 digits
+ * each). */
+void func_801D74EC(u8 slot, u8 variant) {
+    s32 shift = variant * 0x18;
+    func_801C80B8(*(u32*)&g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].field_0x0[0x44]);
+    MenuBatchDigits(2, 7, D_801E9D20 - shift, D_801E9D24, 0x2AE5, 0x11D0, 1);
+    MenuBatchDigitVerts(0x2AE5, 0x11D0, 0x25C0, 0);
+    func_801C80B8(*(u32*)&g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]].field_0x0[0x48]);
+    MenuBatchDigits(2, 7, D_801E9D28 - shift, D_801E9D2C, 0x2AE6, 0x1400, 1);
+    MenuBatchDigitVerts(0x2AE6, 0x1400, 0x26A0, 0);
+}
+#endif /* XENO_PC_PORT */
+
+#ifdef XENO_PC_PORT
+/* Port body: func_801D7884 (retail asm/menu/nonmatchings/main/misc/func_801D7884.s). */
+extern s32 D_801E9D30;
+extern s32 D_801E9D34;
+
+/* Batch-init slot 6.  Variant 0: a fixed-point value built from the
+ * character bytes +0x77/+0x78/+0x79 as (u16)(22 * (10 * (b77 + b78) + b79)),
+ * drawn as value/100 (3 digits) plus a tenths glyph ((value % 100) / 10) at
+ * x+0x20.  Variant != 0: the gear u16 at +0x68 (5 digits). */
+void func_801D7884(u8 slot, u8 variant) {
+    s32 tenths = 0;
+    s32 count, start, x;
+    if (variant == 0) {
+        GameCharacter* c = &g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slot]];
+        u8* raw = (u8*)c;
+        u16 value = (u16)(((raw[0x78] + raw[0x77]) * 10 + raw[0x79]) * 22);
+        u16 whole = (u16)(value / 100);
+        tenths = (s32)(value - whole * 100) / 10;
+        count = 3;
+        start = 6;
+        func_801C80B8(whole);
+        x = D_801E9D30;
+    } else {
+        u8 charId = g_Menu->pManager->currentCharacterIDs[slot];
+        func_801C80B8(*(u16*)&g_GameState.gears[g_GameState.characters[charId].gearId].field_0x68[0]);
+        count = 5;
+        start = 4;
+        x = D_801E9D30 + 8;
+    }
+    MenuBatchDigits(start, count, x - variant * 0x18, variant * 8 + D_801E9D34, 0x2AEB, 0x1C70, 1);
+    if (variant == 0)
+        MenuBatchGlyph((u16)tenths, D_801E9D30 + 0x20, D_801E9D34, 0x2AEB, 0x1C70);
+    MenuBatchDigitVerts(0x2AEB, 0x1C70, 0x2A00, 0);
+}
+#endif /* XENO_PC_PORT */
 
 void func_801D7C3C(u8 arg0, u8 arg1) {
     func_801D5ED4(arg0, arg1);
@@ -6094,11 +6401,16 @@ void func_801D7C3C(u8 arg0, u8 arg1) {
         void* pManager = g_Menu->pManager;
         *(u8*)((u8*)pManager + 7) = 1;
     }
+#ifdef XENO_PC_PORT
+    /* Retail reads the low byte of renderContext (retail +0x308). */
+    MenuRawPointer(0x358)[0x2AE0] = (u8)g_Menu->renderContext;
+#else
     {
         void* pMenu = g_Menu;
         void* pData = MenuRawPointer(0x358);
         *(u8*)((u8*)pData + 0x2AE0) = *(u8*)((u8*)pMenu + 0x308);
     }
+#endif
 }
 
 extern s32 D_801E977C[];
