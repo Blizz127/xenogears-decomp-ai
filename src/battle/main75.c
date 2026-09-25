@@ -64,3 +64,49 @@ extern void DrawSync(s32 mode);
 u8* func_800B168C(u8* pArg, u32 iValue) {
     return pArg + (iValue * 0x1C + 0xC);
 }
+
+
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+/* func_800B14CC.s: for each of the three party slots other than `self`,
+ * run func_800AA934(actor, actor, D_800C3D0C, 5) on its D_800D3368 record;
+ * then wait (func_800BE790 per pass) until none of those records has its
+ * +0x34 or +0x38 busy byte set, wait one more frame and run func_800A9FF0
+ * on each of those slots. */
+extern void func_800AA934(u8* a0, u8* a1, u8* a2, u32 a3);
+extern void func_800BE790(void);
+extern void func_800A9FF0(u32 v);
+void func_800B14CC(u32 self) {
+    u32 i;
+    s32 busy;
+
+    for (i = 0; (s32)i < 3; i++) {
+        if (i != self) {
+            u32 ent = BG_U32(0x800D3368 + i * 4); /* D_800D3368 */
+
+            func_800AA934(BG_PTR(ent), BG_PTR(ent), BG_PTR(0x800C3D0C), 5); /* D_800C3D0C */
+        }
+    }
+    do {
+        busy = 0;
+        for (i = 0; (s32)i < 3; i++) {
+            u32 ent;
+
+            if (i == self) {
+                continue;
+            }
+            ent = BG_U32(0x800D3368 + i * 4); /* D_800D3368 */
+            if (ent != 0 && (BG_U8(ent + 0x34) != 0 || BG_U8(ent + 0x38) != 0)) {
+                busy = 1;
+            }
+        }
+        func_800BE790();
+    } while (busy != 0);
+    func_800BE790();
+    for (i = 0; (s32)i < 3; i++) {
+        if (i != self) {
+            func_800A9FF0(i);
+        }
+    }
+}
+#endif

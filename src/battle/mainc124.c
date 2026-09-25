@@ -43,6 +43,9 @@ extern u32 D_800C3548[];
 #endif
 
 
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+#endif
 /* func_800BEDE8.s */
 #ifndef XENO_PC_PORT
 extern u32 D_800C3610[];
@@ -58,7 +61,12 @@ void func_800BEDE8(void) {
      * that byte instead of the word. Retail does `lw`/`sw` at 0x800C3610
      * itself, which is why the prover saw 0x800C3610..13 left unzeroed.
      * Go through the word directly, as main59.c does for D_800C3DFC. */
-    HeapFree(*(u32*)PSX_ADDR(0x800C3610));
+    /* The native HeapFree takes a host pointer: translate the guest word the
+     * way the bridge's translate_argument() does for the interpreted call
+     * (KSEG0 -> g_PsxRam, 0 -> NULL, a raw host address unchanged).  The
+     * file-scope extern above is the matching build's u32 view. */
+    ((u_int (*)(void*))(void*)HeapFree)(
+        bg_arg(*(u32*)PSX_ADDR(0x800C3610)));
     D_80059464[0] = 0;
     *(u32*)PSX_ADDR(0x800C3610) = 0;
     D_800591AC[0] = 0;

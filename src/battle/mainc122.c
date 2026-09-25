@@ -101,3 +101,60 @@ void func_800BEBC4(void) {
         D_80059494[0] = 0;
     }
 }
+
+
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+/* func_800BE6A0.s: expand the low `count` nibbles of `value` (most
+ * significant first) into glyph codes: out[0] = count, out[1..count] =
+ * D_800C3784[nibble] + bias.  The shift is SRAV, so `value` is signed and
+ * only the low five bits of the shift amount count. */
+void func_800BE6A0(s32 value, u8* out, u32 count, u32 bias) {
+    u32 i;
+
+    for (i = 0; i != count; i++) {
+        u32 nibble = (u32)(value >> (((count - 1 - i) * 4) & 31)) & 0xF;
+        out[i + 1] = (u8)(BG_U8(0x800C3784 + nibble) + bias);
+    }
+    out[0] = (u8)count;
+}
+
+/* func_800BE6E8.s: format `value` as decimal glyphs.  `digits` indexes the
+ * power-of-ten table D_800C37A4; leading zero digits are skipped until the
+ * first non-zero digit or until `lead` is set.  A negative value gets a '-'
+ * glyph first and one digit fewer.  out[0] receives the glyph count.  The
+ * divisions are DIVU with no zero check, so they use the R3000 results. */
+void func_800BE6E8(s32 value, u8* out, s32 digits, u32 lead, u32 bias) {
+    u8* w = out + 1;
+    u32 count = 0;
+    u32 n = (u32)value;
+    u32 t;
+
+    if (value < 0) {
+        count = 1;
+        out[1] = 0x2D;
+        w = out + 2;
+        n = 0u - (u32)value;
+        digits--;
+    }
+    t = 0x800C37A4 + (u32)digits * 4;
+    n = bg_remu(n, BG_U32(t));
+    while (digits != 0) {
+        u32 q;
+
+        t -= 4;
+        q = bg_divu(n, BG_U32(t));
+        digits--;
+        if ((q & 0xFF) != 0) {
+            lead = 1;
+        }
+        if ((lead & 0xFF) != 0) {
+            *w++ = (u8)(q + bias);
+            count++;
+        }
+        n = bg_remu(n, BG_U32(t));
+    }
+    *w = (u8)(n + bias);
+    out[0] = (u8)(count + 1);
+}
+#endif

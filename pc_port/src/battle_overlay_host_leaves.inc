@@ -2,21 +2,13 @@
  * interpreting disc/battle.bin.  Hand-maintained; add a name here, then run
  * pc_port/build_port.sh and pc_port/tests/run_battle_overlay_host_differential_test.sh.
  *
- * DO NOT ADOPT the function below.  The prover rejects it and the cause is
- * understood; the body in its TU must be fixed first.  Names are left
- * unquoted deliberately: battle_overlay_host_tus.py scrapes "func_..." string
- * literals out of this file, so a quoted name in a comment would be read as an
- * adopted leaf.
+ * Names in this comment are left unquoted deliberately:
+ * battle_overlay_host_tus.py scrapes "func_..." string literals out of this
+ * file, so a quoted name in a comment would be read as an adopted leaf.
  *
- *   func_800BEDE8  mainc124.c  no passing case once the prover links the
- *       real HeapFree (it passed before only because HeapFree was an unlinked
- *       placeholder on both sides).  Defect: the host body passes the raw
- *       guest word at 0x800C3610 (a KSEG0 address) to the native HeapFree,
- *       which takes a host pointer; retail's call goes through the bridge,
- *       whose translate_argument() maps a KSEG0/KSEG1 value to its g_PsxRam
- *       address first.  With the word seeded the host faults; with it zero
- *       both sides reach HeapFree(NULL), retail's fatal-error path.  Fix:
- *       translate the word the way translate_argument() does.
+ * (func_800BEDE8, mainc124.c, was demoted because its host body handed the raw
+ * KSEG0 word at 0x800C3610 to the native HeapFree.  It now translates the word
+ * the way translate_argument() does, and it is adopted again, fo/bat4.)
  *
  * (func_8008887C, formerly listed here with an "unexplained" 1-byte
  * divergence at D_800C3A9C, is adopted: func_8001BD40 was an unlinked
@@ -191,3 +183,14 @@
     "func_8009DB54",
     "func_8009D3A0",
     "func_8009DBFC",
+    /* fo/bat4 */
+    "func_800BE6A0",
+    "func_800BE6E8",
+    "func_800BF85C",
+    "func_800BF8CC",
+    "func_800B12D0",
+    "func_800B1EA0",
+    "func_800BEDE8",
+    "func_800BEEB4",
+    "func_800BA59C",
+    "func_800B9258",

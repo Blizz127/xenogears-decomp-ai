@@ -110,3 +110,55 @@ void func_800BF9EC(void) {
         D_800C3621[0] = 0;
     }
 }
+
+
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+/* D_800C3EB0 + 0x8C8C: the per-slot record pointer table these two use. */
+#define BATTLE_SLOT_TABLE (0x800C3EB0u + 0x8C8Cu)
+
+/* func_800BF85C.s: make slot `from`'s record current (D_800C3E1C), point its
+ * +0x74 link at slot `to`'s record and restart the D_800D363C chain there.
+ * The table entry is reloaded after the +0x74 store, as retail does. */
+void func_800BF85C(u32 from, u32 to) {
+    u32 rec = BG_U32(BATTLE_SLOT_TABLE + from * 4);
+
+    if (rec != 0) {
+        u32 link;
+
+        BG_U32(0x800C3E1C) = rec;
+        link = BG_U32(BATTLE_SLOT_TABLE + to * 4);
+        BG_U16(0x800D3634) = (u16)(1u << (to & 31));
+        BG_U32(rec + 0x74) = link;
+        link = BG_U32(BATTLE_SLOT_TABLE + to * 4);
+        BG_U32(0x800D3640) = 0;
+        BG_U32(0x800D363C) = link;
+    }
+}
+
+/* func_800BF8CC.s: advance rec->+0x74 to the entry after it in the
+ * D_800D363C chain (D_800D3678 entries); wrap to the first entry when it is
+ * the last one or is not in the chain. */
+void func_800BF8CC(u8* rec) {
+    s32 n = BG_S16(0x800D3678);
+    s32 i = 0;
+
+    if (n != 0) {
+        u32 key = *(u32*)(rec + 0x74);
+        u32 slot = 0x800D363C;
+
+        do {
+            if (BG_U32(slot) == key) {
+                break;
+            }
+            i++;
+            slot += 4;
+        } while (i != n);
+    }
+    if (i < BG_S16(0x800D3678)) {
+        *(u32*)(rec + 0x74) = BG_U32(0x800D3640 + (u32)i * 4);
+    } else {
+        *(u32*)(rec + 0x74) = BG_U32(0x800D363C);
+    }
+}
+#endif

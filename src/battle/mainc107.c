@@ -47,10 +47,24 @@ extern u32 D_800C3548[];
 #ifndef XENO_PC_PORT
 extern u32 D_800C3610[];
 #endif
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+#endif
 void func_800B9258(void) {
+#ifdef XENO_PC_PORT
+    /* The shared guest-RAM alias of D_800C3610 is pointer-typed (another TU
+     * declares it u8*), so `D_800C3610[0]` would read the byte it points at.
+     * Retail loads the word itself and bumps +0x34 of what it points to. */
+    u32 p = BG_U32(0x800C3610);
+
+    if (p != 0) {
+        BG_U32(p + 0x34) += 1;
+    }
+#else
     u8* p = (u8*)(u32)D_800C3610[0];
 
     if (p != 0) {
         *(u32*)(p + 0x34) = *(u32*)(p + 0x34) + 1;
     }
+#endif
 }
