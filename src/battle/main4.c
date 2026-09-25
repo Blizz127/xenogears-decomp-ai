@@ -8,6 +8,21 @@ extern u8* D_800D2F5C;
 extern u32 D_800CCB34;
 #endif
 extern s32 func_8002675C(u8*, s32, u8*, u32, s32, s32, s32);
+#ifdef XENO_PC_PORT
+#include "battle_guest_call.h"
+/* Port bodies: D_800D2F5C is the guest address of the sprite table and
+ * D_800CCB34 the render-slot word; hand func_8002675C (native) the same host
+ * pointer the bridge would, and read the slot as the full word retail loads
+ * (the shared guest-RAM alias for D_800CCB34 is a byte view). */
+s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y) {
+    return func_8002675C((u8*)BATTLE_HOST_PTR(BATTLE_G32(0x800D2F5Cu)), index,
+                         polys, BATTLE_G32(0x800CCB34u), x, y, 0x1000);
+}
+s32 func_80076A6C(s32 index, u8* polys, s16 x, s16 y) {
+    return func_8002675C((u8*)BATTLE_HOST_PTR(BATTLE_G32(0x800D2F5Cu)), index,
+                         polys, BATTLE_G32(0x800CCB34u), x, y, 0x800);
+}
+#else
 /* func_80076A10.s: draw sprite-table entry `index` of D_800D2F5C into the
  * POLY_FT4 run at `polys` (slot D_800CCB34) at (x, y), scale 0x1000.  The
  * first argument is an entry index, not a pointer: func_8002675C forwards it
@@ -19,6 +34,7 @@ s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y) {
 s32 func_80076A6C(s32 index, u8* polys, s16 x, s16 y) {
     return func_8002675C(D_800D2F5C, index, polys, D_800CCB34, x, y, 0x800);
 }
+#endif
 
 
 extern void SetSemiTrans(void* p, s32 v);

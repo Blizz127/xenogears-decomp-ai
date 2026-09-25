@@ -1145,6 +1145,19 @@ static void initialize_cpu(PcPortMipsCpu *cpu, BattleMipsRuntime *runtime)
     cpu->gpr[31] = BATTLE_HALT_PC;
 }
 
+/* The host pointer the guest-to-native bridge would hand a native callee for
+ * the raw guest word `value` (translate_argument): an adopted host body that
+ * passes a guest word to a main-executable routine must see exactly what the
+ * interpreted caller's callee sees, including shared-data redirects and raw
+ * pass-through of non-address values. */
+void *PcPort_BattleGuestWordToHost(uint32_t value)
+{
+    BattleMipsRuntime *runtime = g_ActiveBattleRuntime;
+    if (runtime == NULL || !runtime->initialized)
+        return value != 0 ? (void *)PSX_ADDR(value) : NULL;
+    return (void *)translate_argument(runtime, value);
+}
+
 int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
                               unsigned argc, uint32_t *result)
 {

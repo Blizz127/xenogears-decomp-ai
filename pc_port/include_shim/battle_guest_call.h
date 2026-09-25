@@ -52,9 +52,11 @@ static inline uint32_t BattleGuestCallN(uint32_t target, unsigned argc,
 #define BATTLE_G16(addr) (*(u16*)PSX_ADDR((u32)(addr)))
 #define BATTLE_G32(addr) (*(u32*)PSX_ADDR((u32)(addr)))
 /* A guest word handed to a native main-executable routine that takes a host
- * pointer (HeapFree, LoadImage, ...): 0 stays NULL, as the bridge does. */
-#define BATTLE_HOST_PTR(word) \
-    ((u32)(word) != 0 ? (void*)PSX_ADDR((u32)(word)) : (void*)0)
+ * pointer (HeapFree, LoadImage, ...): translated exactly as the bridge
+ * translates an interpreted caller's argument (0 and other non-addresses pass
+ * through raw; shared main-exe data resolves to its native copy). */
+void *PcPort_BattleGuestWordToHost(uint32_t value);
+#define BATTLE_HOST_PTR(word) PcPort_BattleGuestWordToHost((u32)(word))
 /* MIPS divu/div never trap: a zero divisor leaves LO = all ones (divu) or
  * +-1 by sign (div).  x86 would raise SIGFPE instead. */
 static inline u32 BattleDivu(u32 n, u32 d) { return d != 0 ? n / d : 0xFFFFFFFFu; }
