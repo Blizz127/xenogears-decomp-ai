@@ -62,3 +62,10 @@ extern u8* D_800D2DC8;
 /* func_8009795C.s */
 void func_8009795C(void) {
 }
+
+
+/* ==== fo/bat2 port bodies, part A (func_8008FE18..func_80093578) ==== */
+/* ==== end part A ==== */
+
+/* ==== fo/bat2 port bodies, part B (func_8009382C..func_80097610) ==== */
+/* ==== end part B ==== */
