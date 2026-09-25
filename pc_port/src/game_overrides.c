@@ -146,9 +146,12 @@ extern unsigned short g_C1ButtonStateReleased;
  * the migrated blob). ControllerRemapButtonState() folds the face/shoulder bits
  * through these; with zeroed tables every face button (Circle/Cross/...) is
  * dropped, so KernelMenu navigation (d-pad, passed through directly) worked but
- * Circle = confirm did nothing. Provide the real values (digital pad: identity
- * mapping, masks = the CTRL_BTN_* face/shoulder bits). Real addrs: masks
- * @0x800501e8, mappings @0x80050238 in slus_006.64. */
+ * Circle = confirm did nothing. Provide the real .sdata values (mappings =
+ * identity, masks = the CTRL_BTN_* face/shoulder bits). Real addrs: masks
+ * @0x800501e8, mappings @0x80050238 in slus_006.64. The identity mapping is
+ * only the initial value: retail ControllerInit (now run by port_main, body in
+ * src/slus_006.64/system/controller.c) rewrites it to the USA layout
+ * {1,0,3,2,4,5,6,7} at boot. */
 u_char  g_ControllerButtonMappings[8] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7 };
 u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x08, 0x02 };
 

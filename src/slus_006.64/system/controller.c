@@ -259,3 +259,76 @@ int func_80036410(void) {
     return g_ControllerIsStateStackFull;
 }
 #endif
+
+#ifdef XENO_PC_PORT
+/* Retail 26644.s 8003611C-80036188: clear both 8-byte actuator (rumble)
+ * records at D_8005A1BC -- byte 0, halfword +4, bytes +6/+7 of record 0 --
+ * then copy record 0 over record 1 (the retail lwl/lwr/swl/swr pair) and hand
+ * both to the BIOS pad driver as its actuator output buffers
+ * (func_80040C3C(D_8005A1BC, 4, D_8005A1BC + 8, 4), a jump through the B0
+ * pad-table pointer func_80040BA4 caches). PsyCross has no persistent
+ * actuator-buffer registration (PadSetAct/PsyX_Pad_Vibrate is per call), and
+ * nothing in the port sends rumble yet, so that last step has no host
+ * counterpart; the record state the vblank helper func_80036188 steps is
+ * reproduced exactly. */
+extern u8 D_8005A1BC[16];
+
+void func_8003611C(void) {
+    int i;
+
+    D_8005A1BC[0] = 0;
+    D_8005A1BC[4] = 0;
+    D_8005A1BC[5] = 0;
+    D_8005A1BC[6] = 0;
+    D_8005A1BC[7] = 0;
+    for (i = 0; i < 8; i++) {
+        D_8005A1BC[8 + i] = D_8005A1BC[i];
+    }
+}
+
+/* Retail 26644.s 80036288-80036338, called once from the boot routine
+ * func_80019578 between InitGeom() and InitCARD(1).
+ *
+ *   InitPAD(g_C1Buffer, 0x22, g_C1Buffer + 0x22, 0x22); StartPAD();
+ *   ChangeClearPAD(0);
+ *
+ * PsyCross leaves InitPAD/StartPAD/ChangeClearPAD unimplemented; its
+ * equivalent of "BIOS fills these two 0x22-byte buffers every vblank" is
+ * PsyX_Pad_InitPad per slot plus g_padCommEnable (the buffers are laid out
+ * identically, see pc_port/src/data_controller.c). ChangeClearPAD(0) only
+ * selects whether the BIOS pad IRQ acknowledges itself; there is no host IRQ.
+ *
+ * Then: ControllerResetState(); func_8003611C(); D_80050204 = 0 (write-only:
+ * no load of it exists in SLUS_006.64 or any overlay, so the port keeps no
+ * storage for it); D_8005938C = 1; D_80059390 = 0; and the button remap table
+ * g_ControllerButtonMappings (0x80050238) is rewritten from its .sdata
+ * identity {0..7} to {1,0,3,2,4,5,6,7}. That swap is the only write to the
+ * table anywhere in the game, and it is what gives the USA release its layout:
+ * ControllerRemapButtonState turns a physical Circle into the game's internal
+ * Cross bit, Triangle into Square, and back. The port previously skipped this
+ * function and so played with the identity (Japanese-style) layout.
+ * Regression test: pc_port/tests/run_controller_init_layout_test.sh. */
+extern u8 D_8005938C;
+extern s32 D_80059390;
+extern void PsyX_Pad_InitPad(int slot, unsigned char* padData);
+extern int g_padCommEnable;
+
+void ControllerInit(void) {
+    int i;
+
+    PsyX_Pad_InitPad(0, &g_C1Buffer[0]);
+    PsyX_Pad_InitPad(1, &g_C1Buffer[CONTROLLER_BUFFER_SIZE]);
+    g_padCommEnable = 1;
+    ControllerResetState();
+    func_8003611C();
+    D_8005938C = 1;
+    D_80059390 = 0;
+    for (i = 7; i >= 0; i--) {
+        g_ControllerButtonMappings[i] = (u_char)i;
+    }
+    g_ControllerButtonMappings[0] = 1;
+    g_ControllerButtonMappings[2] = 3;
+    g_ControllerButtonMappings[1] = 0;
+    g_ControllerButtonMappings[3] = 2;
+}
+#endif
