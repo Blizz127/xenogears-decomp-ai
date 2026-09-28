@@ -56,6 +56,7 @@ def load_progress(path):
                 SDK.add(fn["name"])
                 continue
             universe.add(fn["name"])
+            NAME_OVERLAYS.setdefault(fn["name"], set()).add(unit["name"].split("/")[0])
             if fn.get("fuzzy_match_percent") == 100.0:
                 matched.add(fn["name"])
                 MATCHED_IN.add((unit["name"].split("/")[0], fn["name"]))
@@ -65,6 +66,7 @@ def load_progress(path):
 # (overlay, name) pairs that are byte-exact: overlays share address ranges,
 # so a func_XXXXXXXX name can exist in several overlays with different status.
 MATCHED_IN = set()
+NAME_OVERLAYS = {}  # name -> overlays that have a function of that name
 
 
 def src_matched(src, name, matched):
@@ -77,93 +79,228 @@ def src_matched(src, name, matched):
 
 # --- game TU scan: which XENO_PC_PORT arm each function body lives in -------
 DIRECTIVE = re.compile(r"^\s*#\s*(ifdef|ifndef|if|elif|else|endif)\b(.*)")
+FUNC_START = re.compile(r"^(?!\s)(?!(?:if|for|while|switch|return|else|do|extern|typedef)\b)"
+                        r"[A-Za-z_][\w\s\*]*?\b([A-Za-z_]\w*)\s*\([^;{})]*,\s*$")
 FUNC_HEAD = re.compile(r"^(?!\s)(?!(?:if|for|while|switch|return|else|do)\b)"
                        r"[A-Za-z_][\w\s\*]*?\b([A-Za-z_]\w*)\s*\(([^;{}]*)\)\s*(\{)?\s*$")
 
 
-def cond_side(kind, expr):
-    """'port', 'retail' or None for a directive's first branch."""
-    if "XENO_PC_PORT" not in expr:
-        return None
-    # `defined(XENO_PC_PORT) || X` (e.g. menu's MENU_PART translation-unit
-    # guards) is compiled by the port AND by a retail build: not a port arm.
-    if kind == "if" and "||" in expr:
-        return None
+_TOK = re.compile(r"\s*(defined|\|\||&&|!=|==|>=|<=|[!()<>]|\w+)")
+
+
+def eval_cond(kind, expr, port):
+    """Three-valued truth (True / False / None = unknown) of a directive
+    condition with XENO_PC_PORT defined (port=True) or not.  Other macros
+    are unknown, so `defined(XENO_PC_PORT) || MENU_PART == 2` is True in
+    the port build and unknown in the retail build."""
     if kind == "ifdef":
-        return "port"
+        return port if expr.strip() == "XENO_PC_PORT" else None
     if kind == "ifndef":
-        return "retail"
-    e = expr.replace(" ", "")
-    if "!defined(XENO_PC_PORT)" in e or "!XENO_PC_PORT" in e:
-        return "retail"
-    return "port"
+        return (not port) if expr.strip() == "XENO_PC_PORT" else None
+    expr = re.sub(r"/\*.*?\*/|//.*", "", expr)
+    toks = [t for t in _TOK.findall(expr) if t]
+    pos = [0]
+
+    def peek():
+        return toks[pos[0]] if pos[0] < len(toks) else None
+
+    def take():
+        t = peek()
+        pos[0] += 1
+        return t
+
+    def primary():
+        t = take()
+        if t == "!":
+            v = primary()
+            return None if v is None else (not v)
+        if t == "(":
+            v = orexpr()
+            if peek() == ")":
+                take()
+            return v
+        if t == "defined":
+            paren = peek() == "("
+            if paren:
+                take()
+            name = take()
+            if paren and peek() == ")":
+                take()
+            return port if name == "XENO_PC_PORT" else None
+        if t == "XENO_PC_PORT":
+            return port
+        if t is not None and t.isdigit():
+            v = int(t) != 0
+            # comparisons of literals / unknown macros stay unknown
+            if peek() in ("==", "!=", "<", ">", "<=", ">="):
+                take(); primary()
+                return None
+            return v
+        if peek() in ("==", "!=", "<", ">", "<=", ">="):
+            take(); primary()
+        return None
+
+    def andexpr():
+        v = primary()
+        while peek() == "&&":
+            take()
+            w = primary()
+            v = False if (v is False or w is False) else (True if (v and w) else None)
+        return v
+
+    def orexpr():
+        v = andexpr()
+        while peek() == "||":
+            take()
+            w = andexpr()
+            v = True if (v is True or w is True) else (False if (v is False and w is False) else None)
+        return v
+
+    try:
+        return orexpr()
+    except Exception:
+        return None
+
+
+def _and3(a, b):
+    if a is False or b is False:
+        return False
+    if a is True and b is True:
+        return True
+    return None
+
+
+def _not3(a):
+    return None if a is None else (not a)
 
 
 def scan_tu(path):
-    """name -> list of (region, has_inner_port_directive) for C definitions."""
+    """name -> list of (region, has_inner_port_directive) for C definitions.
+
+    region is 'port' (only the port build compiles it), 'retail' (only the
+    retail build), 'both' or 'dead'.  Each #if/#elif/#else branch is
+    evaluated for both builds (eval_cond), nested frames are combined, and
+    brace depth is tracked per arm."""
     defs = defaultdict(list)
-    stack = []  # each: [side_of_first_branch, in_else]
+    # frame: dict(port=[prior conds], retail=[...], cur_p, cur_r, depth0, first_end, cur0, xp)
+    stack = []
     depth = 0
-    cur = None  # [name, region, seam]
+    cur = None  # [name, region, seam, line counts by region]
     pending = None
+    head = None  # [name, header text, region] of a multi-line header
     try:
         lines = open(path, errors="replace").read().split("\n")
     except OSError:
         return defs
 
-    def region():
-        r = "both"
-        for side, in_else, *_ in stack:
-            if side is None:
-                continue
-            eff = side if not in_else else ("retail" if side == "port" else "port")
-            r = eff
-        return r
+    def branch_vals(fr):
+        p, r = fr["cur_p"], fr["cur_r"]
+        for pp, rr in fr["prior"]:
+            p, r = _and3(p, _not3(pp)), _and3(r, _not3(rr))
+        return p, r
 
+    def region():
+        port_ok, retail_ok = True, True
+        for fr in stack:
+            p, r = branch_vals(fr)
+            if p is False:
+                port_ok = False
+            if r is False:
+                retail_ok = False
+        if port_ok and retail_ok:
+            return "both"
+        if port_ok:
+            return "port"
+        if retail_ok:
+            return "retail"
+        return "dead"
+
+    # join continuation lines of directives
+    joined = []
+    buf = ""
     for line in lines:
+        if buf or DIRECTIVE.match(line):
+            if line.rstrip().endswith("\\"):
+                buf += line.rstrip()[:-1] + " "
+                continue
+            joined.append(buf + line)
+            buf = ""
+        else:
+            joined.append(line)
+
+    for line in joined:
         m = DIRECTIVE.match(line)
         if m:
             kind, expr = m.group(1), m.group(2)
-            # Brace depth is tracked per arm: each #else/#elif restarts from
-            # the depth at the #if, and #endif resumes with the first arm's
-            # end depth (arms may each open a brace, e.g. two loop headers).
+            xp = "XENO_PC_PORT" in expr
             if kind in ("ifdef", "ifndef", "if"):
-                stack.append([cond_side(kind, expr), False, depth, None, cur])
-                if cur and "XENO_PC_PORT" in expr:
+                stack.append(dict(prior=[], cur_p=eval_cond(kind, expr, True),
+                                  cur_r=eval_cond(kind, expr, False), depth0=depth,
+                                  first_end=None, cur0=cur, xp=xp))
+                if cur and xp:
                     cur[2] = True
             elif kind in ("else", "elif") and stack:
-                top = stack[-1]
-                if top[3] is None:
-                    top[3] = (depth, cur)
-                top[1] = True
-                depth = top[2]
-                cur = top[4]
-                if cur and top[0] is not None:
+                fr = stack[-1]
+                if fr["first_end"] is None:
+                    fr["first_end"] = (depth, cur)
+                fr["prior"].append((fr["cur_p"], fr["cur_r"]))
+                if kind == "else":
+                    fr["cur_p"], fr["cur_r"] = True, True
+                else:
+                    fr["cur_p"], fr["cur_r"] = eval_cond("if", expr, True), eval_cond("if", expr, False)
+                    fr["xp"] = fr["xp"] or xp
+                depth = fr["depth0"]
+                cur = fr["cur0"]
+                if cur and fr["xp"]:
                     cur[2] = True
             elif kind == "endif" and stack:
-                top = stack.pop()
-                if top[3] is not None:
-                    depth, cur = top[3]
+                fr = stack.pop()
+                if fr["first_end"] is not None:
+                    depth, cur = fr["first_end"]
             continue
         code = re.sub(r"//.*|/\*.*?\*/|\"(\\.|[^\"])*\"|'(\\.|[^'])*'", "", line)
         if depth == 0 and cur is None:
-            fm = FUNC_HEAD.match(code)
-            if fm and fm.group(1) not in ("INCLUDE_ASM", "INCLUDE_RODATA"):
-                pending = [fm.group(1), region(), False]
-                if fm.group(3) is None:
-                    opened = code.count("{")
-                    if not opened:
+            if head is not None:
+                # continuation of a multi-line function header
+                head[1] += " " + code.strip()
+                if head[1].count("(") <= head[1].count(")"):
+                    if head[1].rstrip().endswith(";"):
+                        head = None
                         continue
-            elif pending is not None and code.strip() and not code.strip().startswith("{"):
-                pending = None
+                    pending, head = [head[0], head[2], False, {"port": 0, "retail": 0, "both": 0}], None
+                    if not code.count("{"):
+                        continue
+                else:
+                    continue
+            else:
+                fm = FUNC_HEAD.match(code)
+                hm = FUNC_START.match(code) if not fm else None
+                if fm and fm.group(1) not in ("INCLUDE_ASM", "INCLUDE_RODATA"):
+                    pending = [fm.group(1), region(), False, {"port": 0, "retail": 0, "both": 0}]
+                    if fm.group(3) is None and not code.count("{"):
+                        continue
+                elif hm and hm.group(1) not in ("INCLUDE_ASM", "INCLUDE_RODATA"):
+                    head = [hm.group(1), code.strip(), region()]
+                    continue
+                elif pending is not None and code.strip() and not code.strip().startswith("{"):
+                    pending = None
         opens, closes = code.count("{"), code.count("}")
         if depth == 0 and opens and pending is not None:
             cur, pending = pending, None
+        elif cur is not None and code.strip(" \t{};") :
+            r = region()
+            if r in cur[3]:
+                cur[3][r] += 1
         depth += opens - closes
         if depth <= 0:
             depth = 0
             if cur is not None and closes:
-                defs[cur[0]].append((cur[1], cur[2]))
+                n = cur[3]
+                # A seam whose port arm spans the body: (almost) no statement
+                # is shared by both builds, so the port runs its own body.
+                bodyarm = (cur[1] == "both" and n["port"] > 0 and
+                           n["both"] <= max(2, (n["port"] + n["retail"]) // 8))
+                defs[cur[0]].append((cur[1], cur[2], bodyarm))
                 cur = None
     return defs
 
@@ -186,10 +323,10 @@ def src_class(name, scan, matched, universe, src=""):
     port_side = [e for e in entries if e[0] in ("port", "both")]
     if not port_side:
         return None
-    region, seam = port_side[0]
+    region, seam, bodyarm = port_side[0]
     if not src_matched(src, name, matched):
         return "port-only C (no retail match yet)"
-    if region == "port":
+    if region == "port" or bodyarm:
         return "port-only C shadowing matched C"
     return "matched C with port seam" if seam else "matched C"
 
@@ -203,11 +340,39 @@ def retail_name(name, universe):
     return None
 
 
-def port_class(name, matched, universe):
+PORT_FILE_OVERLAY = [("world_map", "world_map"), ("battle", "battle"), ("field", "field"),
+                     ("menu", "menu"), ("shop", "shop_menu"), ("member", "member_change_menu")]
+
+
+def port_overlay(name, src):
+    """Overlay a pc_port body belongs to, or None when it cannot be told."""
+    if name.startswith("wm_"):
+        return "world_map"
+    base = os.path.basename(src or "")
+    for prefix, ovl in PORT_FILE_OVERLAY:
+        if base.startswith(prefix):
+            return ovl
+    return None
+
+
+def port_class(name, matched, universe, src=""):
+    """Class of a pc_port body.  func_XXXXXXXX names repeat across overlays,
+    so the byte-exact test uses the body's overlay (from its name or file);
+    when that is unknown the name must be byte-exact in every overlay that
+    has it, so a shadow is never claimed from another overlay's match."""
     r = retail_name(name, universe)
     if r is None:
         return "shim/compat", None
-    if r in matched:
+    ovl = port_overlay(name, src)
+    if ovl is not None:
+        if not NAME_OVERLAYS.get(r) or ovl in NAME_OVERLAYS[r]:
+            is_matched = (ovl, r) in MATCHED_IN
+        else:
+            is_matched = False
+    else:
+        ovls = NAME_OVERLAYS.get(r, set())
+        is_matched = bool(ovls) and all((o, r) in MATCHED_IN for o in ovls)
+    if is_matched:
         return "port-only C shadowing matched C", r
     return "port-only C (no retail match yet)", r
 
@@ -258,12 +423,14 @@ def cmd_shadows(args):
                 continue
             if src_matched(tu, name, matched) and any(e[0] == "port" for e in entries):
                 rows.append((name, "port arm in " + tu, name))
+            elif src_matched(tu, name, matched) and any(e[0] == "both" and e[2] for e in entries):
+                rows.append((name, "port arm spanning the body in " + tu, name))
     # (2) pc_port definitions of byte-exact retail functions (incl. wm_)
     for obj, sym in defined_symbols(args.objdir):
         src = obj_to_src(obj, args.objdir)
         if src.startswith("src/"):
             continue
-        cls, r = port_class(sym, matched, universe)
+        cls, r = port_class(sym, matched, universe, src)
         if cls == "port-only C shadowing matched C":
             if src.endswith("stubs.c"):
                 rows.append((r, "generated logging stub (matched C not linked)", sym))
@@ -339,7 +506,7 @@ def cmd_coverage(args):
                 elif src.startswith("src/") and src in scans:
                     cls = src_class(name, scans[src], matched, universe, src)
                 if cls is None:
-                    cls = port_class(name, matched, universe)[0]
+                    cls = port_class(name, matched, universe, src)[0]
             funcs[cls] += 1
             calls[cls] += n
             detail[cls].append((n, name))
