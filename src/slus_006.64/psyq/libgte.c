@@ -1,4 +1,3 @@
-#ifdef XENO_PC_PORT
 #include "common.h"
 #include "psyq/libgte.h"
 #include "psyq/inline_c.h"
@@ -39,6 +38,9 @@ void InitGeom(void) {
         : : : "$2", "$3", "$8", "memory");
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl SquareRoot0\n\t"
         ".ent SquareRoot0\n\t"
@@ -80,6 +82,9 @@ __asm__(
         ".set at\n\t"
         ".end SquareRoot0");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl InvSquareRoot\n\t"
         ".ent InvSquareRoot\n\t"
@@ -292,6 +297,9 @@ __asm__(
         ".word 0xa4aa0010\n\t"
         ".end func_80048E94");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 void LoadAverage12(VECTOR* v0, VECTOR* v1, long p0, long p1, VECTOR* output) {
     __asm__ volatile(
         ".word 0x48864000\n\t"
@@ -481,6 +489,9 @@ void LoadAverageCol(u_char* v0, u_char* v1, long p0, long p1,
         : : : "$2", "$8", "$9", "$10", "$11", "$13", "memory");
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 MATRIX* MulMatrix0(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     MATRIX* result;
 
@@ -561,6 +572,9 @@ MATRIX* MulMatrix0(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     return result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 MATRIX* CompMatrix(MATRIX* m0, MATRIX* m1, MATRIX* m2) {
     MATRIX* result;
 
@@ -947,6 +961,9 @@ __asm__(
         ".word 0xac890010\n\t"
         ".end ScaleMatrixL");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl SetMulMatrix\n\t"
         ".ent SetMulMatrix\n\t"
@@ -1105,6 +1122,9 @@ __asm__(
         ".word 0x00a01021\n\t"
         ".end ApplyRotMatrixLV");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl MulMatrix\n\t"
         ".ent MulMatrix\n\t"
@@ -1178,6 +1198,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end MulMatrix");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl MulMatrix2\n\t"
         ".ent MulMatrix2\n\t"
@@ -1251,6 +1274,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end MulMatrix2");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 VECTOR* ApplyMatrix(MATRIX* matrix, SVECTOR* input, VECTOR* output) {
     register VECTOR* result asm("$2");
     __asm__ volatile(
@@ -1306,6 +1332,9 @@ SVECTOR* ApplyMatrixSV(MATRIX* m, SVECTOR* v0, SVECTOR* v1) {
     return result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 MATRIX* TransMatrix(MATRIX* matrix, VECTOR* translation) {
     register MATRIX* result asm("$2");
     __asm__ volatile(
@@ -1320,6 +1349,9 @@ MATRIX* TransMatrix(MATRIX* matrix, VECTOR* translation) {
     return result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl ScaleMatrix\n\t"
         ".ent ScaleMatrix\n\t"
@@ -1399,6 +1431,9 @@ __asm__(
         ".word 0xac890010\n\t"
         ".end ScaleMatrix");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 void SetRotMatrix(MATRIX* m) {
     __asm__ volatile(
         ".word 0x8c880000\n\t"
@@ -1574,6 +1609,9 @@ long ReadGeomScreen(void) {
     return value;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 void SetBackColor(long red, long green, long blue) {
     red <<= 4;
     green <<= 4;
@@ -1605,10 +1643,16 @@ void SetGeomOffset(long x, long y) {
         : : "r"(x), "r"(y));
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 void SetGeomScreen(long value) {
     __asm__ volatile("ctc2 %0, $26" : : "r"(value));
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 void LocalLight(SVECTOR* input, VECTOR* output) {
     __asm__ volatile(
         ".word 0xc8800000\n\t"
@@ -1779,6 +1823,9 @@ long AverageSZ4(void) {
     return value;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 void LightColor(VECTOR* input, VECTOR* output) {
     __asm__ volatile(
         ".word 0xc8890000\n\t"
@@ -1963,6 +2010,9 @@ long Lzc(long value) {
     return result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 void RotTransSV(SVECTOR* input, SVECTOR* output, long* flag) {
     register long result asm("$2");
     __asm__ volatile(
@@ -2068,6 +2118,9 @@ long RotTransPers(SVECTOR* input, long* sxy, long* p, long* flag) {
     return result >> 2;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 long RotTransPers3(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2,
         long* sxy0, long* sxy1, long* sxy2, long* p, long* flag) {
     register long result asm("$2");
@@ -2096,6 +2149,9 @@ long RotTransPers3(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2,
     return result >> 2;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 void RotTrans(SVECTOR* input, VECTOR* output, long* flag) {
     register long result asm("$2");
     __asm__ volatile(
@@ -2113,6 +2169,9 @@ void RotTrans(SVECTOR* input, VECTOR* output, long* flag) {
     *flag = result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 long NormalClip(long sxy0, long sxy1, long sxy2) {
     long mac0;
 
@@ -2128,6 +2187,9 @@ long NormalClip(long sxy0, long sxy1, long sxy2) {
     return mac0;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl RotTransPers4\n\t"
         ".ent RotTransPers4\n\t"
@@ -2164,6 +2226,9 @@ __asm__(
         ".word 0x00021083\n\t"
         ".end RotTransPers4");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
                  long* sxy0, long* sxy1, long* sxy2, long* sxy3,
                  long* p, long* flag) {
@@ -2203,6 +2268,9 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
     return result;
 }
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 long RotAverageNclip4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
         long* sxy0, long* sxy1, long* sxy2, long* sxy3,
         long* p, long* otz, long* flag) {
@@ -2467,6 +2535,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixYXZ");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl RotMatrixZYX\n\t"
         ".ent RotMatrixZYX\n\t"
@@ -2654,6 +2725,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixZYX");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl RotMatrixX\n\t"
         ".ent RotMatrixX\n\t"
@@ -2764,6 +2838,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixX");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl RotMatrixY\n\t"
         ".ent RotMatrixY\n\t"
@@ -2803,6 +2880,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixY");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl RotMatrixZ\n\t"
         ".ent RotMatrixZ\n\t"
@@ -2842,6 +2922,9 @@ __asm__(
         ".word 0x00000000\n\t"
         ".end RotMatrixZ");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl ratan2\n\t"
         ".ent ratan2\n\t"
@@ -2955,200 +3038,3 @@ __asm__(
         ".word 0x03e00008\n\t"
         ".word 0x00000000\n\t"
         ".end ratan2");
-
-#else /* retail matching build: last byte-exact version (dbb08e3b) */
-#include "common.h"
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InitGeom);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareRoot0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", InvSquareRoot);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormalS);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormal);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", VectorNormalSS);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_80048DD8);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_80048E94);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverage12);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverage0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_8004901C);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", func_800490A4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageByte);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LoadAverageCol);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", CompMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrixLV);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyRotMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PushMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", PopMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ScaleMatrixL);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetMulMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyRotMatrixLV);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", MulMatrix2);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ApplyMatrixSV);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ScaleMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRotMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetLightMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetColorMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetTransMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex1);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertex2);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetVertexTri);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRGBfifo);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetIR123);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetIR0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSZfifo4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetSXSYfifo);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetRii);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetMAC123);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetData32);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetDQA);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetDQB);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomOffset);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ReadGeomScreen);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetBackColor);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetFarColor);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomOffset);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SetGeomScreen);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LocalLight);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColor);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColor);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColor3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorDpq3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalLightCol);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalColorCol3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorDpq);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ColorCol);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageSZ3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageSZ4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", LightColor);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColorLight);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", DpqColor3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Intpl);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square12);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Square0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", AverageZ4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct12);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", OuterProduct0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", Lzc);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransSV);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSS12);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSS0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSL12);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", SquareSL0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers3);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTrans);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", NormalClip);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotTransPers4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverage4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotAverageNclip4);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", TransposeMatrix);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixYXZ);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixZYX);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixX);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixY);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", RotMatrixZ);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libgte", ratan2);
-
-#endif

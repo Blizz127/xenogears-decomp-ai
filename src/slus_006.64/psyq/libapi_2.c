@@ -1,4 +1,3 @@
-#ifdef XENO_PC_PORT
 #include "common.h"
 
 __asm__(
@@ -23,6 +22,9 @@ __asm__(
 
 void func_8004BEC0(void) {}
 
+#ifndef XENO_PC_PORT
+__asm__(".space 8"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl func_8004BED0\n\t"
         ".ent func_8004BED0\n\t"
@@ -40,6 +42,9 @@ __asm__(
         ".word 0x24090072\n\t"
         ".end func_8004BED8");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 12"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl ReturnFromException\n\t"
         ".ent ReturnFromException\n\t"
@@ -49,6 +54,9 @@ __asm__(
         ".word 0x24090017\n\t"
         ".end ReturnFromException");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl ResetEntryInt\n\t"
         ".ent ResetEntryInt\n\t"
@@ -58,6 +66,9 @@ __asm__(
         ".word 0x24090018\n\t"
         ".end ResetEntryInt");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl HookEntryInt\n\t"
         ".ent HookEntryInt\n\t"
@@ -67,22 +78,6 @@ __asm__(
         ".word 0x24090019\n\t"
         ".end HookEntryInt");
 
-#else /* retail matching build: last byte-exact version (dbb08e3b) */
-#include "common.h"
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", setjmp);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", longjmp);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BEC0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BED0);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BED8);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ReturnFromException);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ResetEntryInt);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", HookEntryInt);
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
 #endif

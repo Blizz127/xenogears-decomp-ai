@@ -1,4 +1,3 @@
-#ifdef XENO_PC_PORT
 #include "common.h"
 
 __asm__(
@@ -10,9 +9,6 @@ __asm__(
         ".word 0x2409000a\n\t"
         ".end WaitEvent");
 
-#else /* retail matching build: last byte-exact version (dbb08e3b) */
-#include "common.h"
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi/WaitEvent", WaitEvent);
-
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
 #endif
