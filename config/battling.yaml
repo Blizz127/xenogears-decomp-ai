@@ -66,14 +66,13 @@ segments:
       # `addiu $sp,$sp,-0x18` there instead).  movie.bin and world_map.yaml
       # use `rodata` here for the same reason.
       - [0x0, rodata]
-      - [0xCB8, asm]
-      # Matching uses the splat `asm` TU, not src/battling/main.c: that C
-      # file is INCLUDE_ASM wrappers whose maspsx object drops `.L` jumptable
-      # labels (GNU as local-symbol prefix), so a `c` subsegment cannot
-      # satisfy the leading rodata's `.word .L8008B22C` relocs.  movie.bin
-      # is the same shape (code is `asm`, assembled with `as`).  The C file
-      # stays for the port; it is not the matching-build input.
-      - [0x193A0, asm]
+      - [0xCB8, c, misc]
+      # Both text segments are C TUs (src/battling/misc.c, main.c) whose
+      # functions are INCLUDE_ASM until they have byte-exact C.  (An older note
+      # here said a `c` subsegment could not satisfy the leading rodata's
+      # `.word .L...` jump-table relocs; with the current INCLUDE_ASM wrapper
+      # and macro.inc jlabels it links byte-identically.)
+      - [0x193A0, c, main]
       - { vram: 0x8009295c, type: bss }
   # Overlay length 0x22E69 is not a multiple of 4, so the final byte cannot
   # live in a word-aligned data subsegment -- without a `databin` tail the

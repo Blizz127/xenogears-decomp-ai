@@ -10,7 +10,7 @@ python3 - "$OUT" <<'PY'
 from pathlib import Path
 from hashlib import sha256
 import json,sys
-out=Path(sys.argv[1]); temp=Path('src/slus_006.64/system/temp1.c').read_text(); overrides=Path('pc_port/src/game_overrides.c').read_text()
+out=Path(sys.argv[1]); temp=Path('src/slus_006.64/system/temp1e.c').read_text(); overrides=Path('pc_port/src/game_overrides.c').read_text()
 def fn(src,sig):
  # Match the definition, not a forward declaration: the signature must be
  # followed by its opening '{' before any terminating ';'.
@@ -40,7 +40,7 @@ for line in ['(void (*)(void*))func_80025258, /* 0: billboard */','(void (*)(voi
 (out/'mutant-bindings.c').write_text(q)
 retail=Path('disc/SLUS_006.64').read_bytes()[0x80025258-0x8000f800:0x8002541c-0x8000f800]
 assert sha256(retail).hexdigest()=='d78069fc2f793a0e19306def3c307454192f0fd3eab8c53a7f95d24acb992737'
-files=['src/slus_006.64/system/temp1.c','pc_port/src/game_overrides.c','pc_port/src/battle_mips_runtime.c','pc_port/src/battle_mips_adapter.c','tools/scripts/gen_battle_bridge_map.py','config/symbol_addrs.slus_006.64.txt','linker/undefined_funcs_auto.battle.txt','linker/undefined_syms_auto.battle.txt','config/symbol_addrs.battle.txt','pc_port/tests/battle_child_billboard_retail_test.c','pc_port/tests/run_battle_child_billboard_retail_test.sh']
+files=['src/slus_006.64/system/temp1e.c','pc_port/src/game_overrides.c','pc_port/src/battle_mips_runtime.c','pc_port/src/battle_mips_adapter.c','tools/scripts/gen_battle_bridge_map.py','config/symbol_addrs.slus_006.64.txt','linker/undefined_funcs_auto.battle.txt','linker/undefined_syms_auto.battle.txt','config/symbol_addrs.battle.txt','pc_port/tests/battle_child_billboard_retail_test.c','pc_port/tests/run_battle_child_billboard_retail_test.sh']
 proof={'retail_80025258_8002541c_sha256':sha256(retail).hexdigest(),'source_sha256':{x:sha256(Path(x).read_bytes()).hexdigest() for x in files},'generated_map_sha256':sha256((out/'battle_bridge_map.inc').read_bytes()).hexdigest(),'verbatim_fixture_sha256':sha256(p.encode()).hexdigest(),'controlled_leaves':['SetRotMatrix','SetTransMatrix','RotTransPers','TransMatrix','func_80022038','func_8001E3D8','func_8001E298']}
 (out/'provenance.json').write_text(json.dumps(proof,indent=2)+'\n')
 PY

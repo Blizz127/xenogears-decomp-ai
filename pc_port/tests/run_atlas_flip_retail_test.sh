@@ -9,7 +9,7 @@ from pathlib import Path
 from hashlib import sha256
 import json
 p=Path('pc_port/build_native/atlas_flip_retail_test');b=Path('disc/SLUS_006.64').read_bytes();assert sha256(b).hexdigest()=='dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119'
-s=Path('src/slus_006.64/system/temp1.c').read_text();a=s.index('s32 func_800263E4(');z=s.index('\n}\n',a)+3
+s=Path('src/slus_006.64/system/temp1f.c').read_text();a=s.index('s32 func_800263E4(');z=s.index('\n}\n',a)+3
 (p/'body.c').write_text(s[a:z]);(p/'pins.json').write_text(json.dumps({'retail':sha256(b[0x16be4:0x16f5c]).hexdigest(),'body':sha256(s[a:z].encode()).hexdigest()},indent=2))
 PY
 sed -n -e '/^u_short GetClut(/,/^}/p' -e '/^u_short GetTPage(/,/^}/p' -e '/^void SetSemiTrans(/,/^}/p' -e '/^void SetPolyFT4(/,/^}/p' -e '/^void SetShadeTex(/,/^}/p' pc_port/extern/PsyCross/src/psx/LIBGPU.C > "$OUT/gpu.c"

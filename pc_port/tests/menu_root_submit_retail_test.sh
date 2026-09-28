@@ -31,6 +31,11 @@ if grep -Eq 'XENO_PC_PORT|root submit' <<<"$body"; then
 fi
 
 ce660="$(sed -n '/^void func_801CE660(void)/,/^}/p' "$src")"
+# The definition may carry the retail body behind an inner #else; these
+# checks are about the port body, so keep only its #ifdef XENO_PC_PORT arm.
+if grep -q '^#ifdef XENO_PC_PORT' <<<"$ce660"; then
+    ce660="$(sed -n '/^#ifdef XENO_PC_PORT/,/^#else/p' <<<"$ce660")"
+fi
 test "$(grep -c 'func_801CE198(' <<<"$ce660")" -eq 12
 grep -Fq 'data[0x2AED]' <<<"$ce660"
 grep -Fq 'data[0x2AEE]' <<<"$ce660"

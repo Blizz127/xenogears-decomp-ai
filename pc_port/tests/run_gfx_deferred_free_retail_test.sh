@@ -10,7 +10,7 @@ from pathlib import Path
 from hashlib import sha256
 import re
 b=Path('disc/SLUS_006.64').read_bytes()
-a=Path('asm/slus_006.64/matchings/system/temp1/func_800250E0.s').read_text()
+a=Path('asm/slus_006.64/matchings/system/temp1e/func_800250E0.s').read_text()
 rows=re.findall(r'/\* ([0-9A-F]+) ([0-9A-F]+) ([0-9A-F]+) \*/',a)
 assert len(rows)==40
 for _,address,word in rows:
@@ -27,7 +27,7 @@ for opt in O0 O2 UBSan; do
     flags=(-"$opt")
     if [[ "$opt" == UBSan ]]; then flags=(-O2 -fsanitize=undefined -fno-sanitize-recover=all); fi
     gcc "${base[@]}" "${flags[@]}" -w -fpermissive -include assert.h \
-        -c src/slus_006.64/system/temp1.c -o "$out/$opt.body.o"
+        -c src/slus_006.64/system/temp1e.c -o "$out/$opt.body.o"
     gcc "${base[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         pc_port/tests/gfx_deferred_free_retail_test.c pc_port/src/battle_mips_adapter.c \
         "$out/$opt.body.o" -no-pie -Wl,--gc-sections -o "$out/$opt"
@@ -36,7 +36,7 @@ done
 python3 - "$out" <<'PY'
 from pathlib import Path
 import sys
-source=Path('src/slus_006.64/system/temp1.c').read_text()
+source=Path('src/slus_006.64/system/temp1e.c').read_text()
 edits={
     'head': ('pCurEntry = SpriteRenderAddress((uintptr_t)pCurEntry);',
              'pCurEntry = pCurEntry;'),

@@ -1698,14 +1698,9 @@ s32 func_800391CC(void) {
     return maxFree & ~0xF;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHeapSetBlockMemory);
-#else
 void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
     u32* pCurSrc;
     u32* pCurDst;
-    u8* pCurSrcByte;
-    u8* pCurDstByte;
     u32* pNextSrc;
     u32* pNextDst;
     u32 v0,v1,v2,v3;
@@ -1733,13 +1728,13 @@ void SoundHeapSetBlockMemory(void* pBlockMemory, void* pSrc, int size) {
         *pCurDst++ = *pCurSrc++;
     }
 
-    pCurSrcByte = (u8*)pCurSrc;
-    pCurDstByte = (u8*)pCurDst;
+    /* retail steps the same two pointers bytewise */
     for (nCount = size & 3; nCount != 0; nCount--) {
-        *pCurDstByte++ = *pCurSrcByte++;
+        *(u8*)pCurDst = *(u8*)pCurSrc;
+        pCurDst = (u32*)((u8*)pCurDst + 1);
+        pCurSrc = (u32*)((u8*)pCurSrc + 1);
     }
 }
-#endif
 
 void SoundHeapClearBlockMemory(void* pMemory, s32 size) {
     unsigned int nCount;
@@ -2914,24 +2909,24 @@ u16* func_8003AC58(void* pManager) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ACC8);
-#else
+/* Returns the data block of the audio manager pTarget (or of the list head
+ * when pTarget is NULL: retail skips the search then), or NULL when pTarget
+ * is not in the list. */
 void* func_8003ACC8(void* pTarget) {
-    void* pEntry;
-    if (pTarget == NULL) return NULL;
-    pEntry = g_SoundAudioManagerListHead;
-    while (pEntry != NULL && pEntry != pTarget) {
-        pEntry = *(void**)((u8*)pEntry + 0);
+    void* pEntry = g_SoundAudioManagerListHead;
+    void* pData;
+
+    if (pTarget != 0) {
+        while (pEntry != 0 && pEntry != pTarget) {
+            pEntry = *(void**)((u8*)pEntry + 0);
+        }
     }
-    if (pEntry == NULL) return NULL;
-    {
-        void* pData = *(void**)((u8*)pEntry + 8);
-        u16 offset = *(u16*)((u8*)pData + 0x1E);
-        return (u8*)pData + offset;
+    if (pEntry == 0) {
+        return 0;
     }
+    pData = *(void**)((u8*)pEntry + 8);
+    return (void*)(*(u16*)((u8*)pData + 0x1E) + (uintptr_t)pData);
 }
-#endif
 
 void func_8003AD20(void* pManager, s32 mode) {
     switch (mode) {

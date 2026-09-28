@@ -5,6 +5,18 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+void func_800883AC(s32);
+void func_80088490(s32);
+void func_800BAF48(s32);
+extern void *D_800C3EA4;
+extern void *D_800C3EAC;
+extern s8 D_800C3EB8;
+extern s8 D_800CCD88;
+extern u8 D_800CCE42;
+extern s8 D_800D32A1;
+extern s32 g_GameState;
+s32 func_battle_command_file1_801E80F0(void);
+
 s32 func_battle_command_file1_801E57F8(s32, s32, s32, s32);
 s32 func_battle_command_file1_801E9AD4(s32);
 
@@ -124,7 +136,21 @@ s32 func_battle_command_file1_801E80E8(void) {
     return 1;
 }
 
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E80F0);
+
+s32 func_battle_command_file1_801E80F0(void) {
+    D_800CCD88 = 0;
+    *(s8 *)((s8*)(&g_GameState) + 0x30C) = 0;
+    func_80088490(0);
+    func_800BAF48(0);
+    *(s8 *)((s8*)(D_800C3EAC) + 0x2EB) = 1;
+    D_800CCE42 |= 0x80;
+    func_800883AC(0);
+    D_800D32A1 = 2;
+    *(s8 *)((s8*)(D_800C3EA4) + 0x853D) = 2;
+    D_800C3EB8 = 1;
+    return 1;
+}
+
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E818C);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E81EC);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E823C);

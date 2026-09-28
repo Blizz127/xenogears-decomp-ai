@@ -347,6 +347,8 @@ typedef struct {
  * the matching build assembles the retail bytes; the C is the port's.
  */
 #ifndef XENO_PC_PORT
+s32 func_80075D4C(s32 entryIndex);
+
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_800704E8);
 #else
 void func_800704E8(void)
@@ -1361,7 +1363,15 @@ void func_80075534(void)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075D4C);
+
+/* Raw archive-table size field (bytes 3..6 of the 7-byte entry). */
+s32 func_80075D4C(s32 entryIndex) {
+    void *pEntry;
+
+    pEntry = (entryIndex * 7) + g_ArchiveTable;
+    return ((*(u8 *)((s8*)(pEntry) + 6) << 0x18) + (*(u8 *)((s8*)(pEntry) + 5) << 0x10) + (*(u8 *)((s8*)(pEntry) + 4) << 8)) | *(u8 *)((s8*)(pEntry) + 3);
+}
+
 #else
 s32 func_80075D4C(s32 entryIndex)
 {

@@ -15,7 +15,7 @@ import json, os, sys
 
 out = Path(sys.argv[1])
 source_path = Path(os.environ.get('TYPE9_SOURCE_OVERRIDE',
-                                  'src/slus_006.64/system/temp1.c'))
+                                  'src/slus_006.64/system/temp1e.c'))
 source = source_path.read_text()
 overrides_path = Path(os.environ.get('TYPE9_OVERRIDES_OVERRIDE',
                                      'pc_port/src/game_overrides.c'))
@@ -142,7 +142,7 @@ for opt in O0 O2 UBSan; do
         status=$?
         cat "$OUT/$opt.log" >&2 || true
         if [ "${TYPE9_EXPECT_RED:-0}" = 1 ]; then
-            echo "TYPE9 RED expected from source ${TYPE9_SOURCE_OVERRIDE:-src/slus_006.64/system/temp1.c}" >&2
+            echo "TYPE9 RED expected from source ${TYPE9_SOURCE_OVERRIDE:-src/slus_006.64/system/temp1e.c}" >&2
             exit 1
         fi
         echo "TYPE9 CONTROLLED FAILURE: $opt" >&2
