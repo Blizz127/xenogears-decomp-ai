@@ -2,7 +2,7 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-attack-ring.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-attack-ring.XXXXXX)
 echo "Evidence: $out"
 check_slice() {
     local offset=$1 size=$2 expected=$3 actual

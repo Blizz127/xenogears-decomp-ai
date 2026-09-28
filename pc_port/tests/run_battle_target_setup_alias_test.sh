@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-setup-alias.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-setup-alias.XXXXXX)
 echo "Evidence: $out"
 read -r actual _ < <(sha256sum disc/battle.bin)
 test "$actual" = 1830b4ef1fe37129972fc310dfad534f8161d6c0b123e74254c3711334a3e291

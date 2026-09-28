@@ -9,7 +9,7 @@ python3 - "$OUT" <<'PY'
 from pathlib import Path
 import sys,json,hashlib
 assert hashlib.sha256(Path('disc/menu.bin').read_bytes()[0xec4c:0xedb0]).hexdigest()=='74d828b10b7dcf9abce251f6bc73494794845f9828296af73c30afed3ec551bc'
-p=Path(sys.argv[1]);s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801D3C4C(');b=s.index('\n#ifndef XENO_PC_PORT',a);body=s[a:b];(p/'production.inc').write_text(body)
+p=Path(sys.argv[1]);s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801D3C4C(');b=s.index('\n}\n',a)+3;body=s[a:b];(p/'production.inc').write_text(body)
 assert 'func_801D3C4C(windowIndex, x, y, w, h);' in s
 paths=[Path('src/menu/main/misc.c'),Path('include/system/menu.h'),Path('pc_port/tests/menu_scrollbar_layout_test.c'),Path('pc_port/tests/run_menu_scrollbar_layout_test.sh')]
 (p/'pins.json').write_text(json.dumps({str(x):hashlib.sha256(x.read_bytes()).hexdigest() for x in paths},indent=2))

@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 candidate=${1:-src/battle/mainc114.c}
-out=$(mktemp -d scratchpad/battle-view-matrix-match.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-view-matrix-match.XXXXXX)
 echo "Evidence: $out"
 cpp -P -undef -nostdinc -D_LANGUAGE_C -DSKIP_ASM -Iinclude "$candidate" -o "$out/body.i"
 tools/gcc-2.7.2-cdk-psx/cc1 -O2 -G8 -mips1 -mcpu=3000 -w \

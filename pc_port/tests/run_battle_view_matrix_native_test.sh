@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
-out=$(mktemp -d scratchpad/battle-view-matrix-native.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-view-matrix-native.XXXXXX)
 echo "Evidence: $out"
 read -r pin _ < <(sha256sum disc/battle.bin)
 test "$pin" = 1830b4ef1fe37129972fc310dfad534f8161d6c0b123e74254c3711334a3e291
@@ -36,6 +36,9 @@ for mode in O0 O2 UBSan O2Alias UBSanAlias; do
         warnings=(-Wall -Wextra -Werror)
         case "$source" in
             pc_port/src/psyq_compat.c|src/slus_006.64/system/animation_scripts.c) warnings=(-fpermissive -w);;
+            # src/battle TUs read battle guest RAM through the host-body
+            # aliases (include/common.h -> battle_overlay_guest_ram.h).
+            src/battle/*) warnings+=(-DXENO_BATTLE_OVERLAY_HOST_BODIES);;
         esac
         cc -std=gnu17 "${common[@]}" "${flags[@]}" -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
             -DXENO_BATTLE_VIEW_MATRIX_STAGED -include assert.h -include string.h \
@@ -83,7 +86,7 @@ PERL
 for control in baseline cross-order wrong-row translation-sign missing-pop missing-normal; do
     cc -std=gnu17 "${common[@]}" -O2 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
         -DXENO_BATTLE_VIEW_MATRIX_STAGED -include assert.h -include string.h \
-        -fpermissive -w -c "$out/$control.c" -o "$out/$control.o"
+        -DXENO_BATTLE_OVERLAY_HOST_BODIES -fpermissive -w -c "$out/$control.c" -o "$out/$control.o"
     clang++ -no-pie -O2 -Wl,--gc-sections "$out/$control.o" \
         "$out/O2.battle_view_matrix_native_test.c.o" "$out/O2.battle_mips_adapter.c.o" \
         "$out/O2.psyq_compat.c.o" "$out/O2.animation_scripts.c.o" \

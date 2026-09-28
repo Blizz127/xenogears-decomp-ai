@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-command-sound.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-command-sound.XXXXXX)
 echo "Evidence: $out"
 read -r digest _ < <(dd if=disc/battle.bin bs=1 skip=$((0x1af50)) count=$((0x60)) status=none | sha256sum)
 test "$digest" = 23a387c4a275dd2a77a95f7c3c6e0a9bc4439280b9e8c1d690201fca00f03f72

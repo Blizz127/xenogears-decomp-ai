@@ -14,7 +14,7 @@ RUNNER=pc_port/tests/run_member_change_name_retail_test.sh
 ADAPTER=pc_port/src/battle_mips_adapter.c
 DATA=pc_port/src/data_member_change_menu.c
 MODULE=disc/member_change_menu.bin
-CLANG=/home/linuxbrew/.linuxbrew/bin/clang
+CLANG="${CLANG:-$(command -v clang || echo /home/linuxbrew/.linuxbrew/bin/clang)}"; export CLANG
 
 echo "MEMBER_CHANGE_NAME_RETAIL_OUTPUT $OUT"
 
@@ -162,7 +162,7 @@ signed_body = body.replace(signed_old, signed_reconstructed, 1)
 PY
 
 COMMON=(
-    -std=gnu17 -g -fno-pie -fno-builtin -ffunction-sections -fdata-sections
+    -std=gnu17 -g -fno-pie -fno-builtin -U_FORTIFY_SOURCE -ffunction-sections -fdata-sections
     -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C
     -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h
     -Ipc_port/src -Ipc_port/include_shim -Iinclude
@@ -255,7 +255,7 @@ echo "MEMBER_CHANGE_NAME_RETAIL_RECONSTRUCTED_SIGNED_SHIFT_UBSAN_REJECTED rc=$ol
 python3 - "$SOURCE" "$OUT" <<'PY'
 from hashlib import sha256
 from pathlib import Path
-import json, subprocess, sys
+import json, os, subprocess, sys
 
 source = Path(sys.argv[1])
 out = Path(sys.argv[2])
@@ -279,7 +279,7 @@ for path, wanted in checks.items():
         raise SystemExit(f'MEMBER_CHANGE_NAME_RETAIL_FAIL changed during run {path}: {actual} != {wanted}')
 pins['compiler_manifest'] = {
     compiler: subprocess.check_output([compiler, '--version'], text=True).splitlines()[0]
-    for compiler in ('gcc', '/home/linuxbrew/.linuxbrew/bin/clang')
+    for compiler in ('gcc', os.environ.get('CLANG', 'clang'))
 }
 pins['results'] = [
     'production-O0 PASS', 'production-O2 PASS', 'production-UBSan PASS',

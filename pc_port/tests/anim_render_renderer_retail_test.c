@@ -487,7 +487,7 @@ static void pointer_fault(int sig)
     static const char marker[] =
         "ANIMRENDER POINTER_FAULT SIGSEGV during native case\n";
     if (native_active) {
-        write(2, marker, sizeof(marker) - 1);
+        if (write(2, marker, sizeof(marker) - 1) < 0) { /* best effort from a signal handler */ }
         _exit(90);
     }
     _exit(91);

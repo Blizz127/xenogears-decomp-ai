@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-eligibility-match.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-eligibility-match.XXXXXX)
 BATTLE_MATCH_BUILD_DIR="$out" bash pc_port/tests/run_battle_attack_ring_match.sh
 mips-linux-gnu-objcopy --only-section=.eligibility -O binary "$out/handler.elf" "$out/eligibility.bin"
 perl - "$out" <<'PERL' | tee "$out/eligibility-comparison.log"

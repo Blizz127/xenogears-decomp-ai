@@ -170,12 +170,14 @@ echo "== mutants (each must be rejected) =="
 MUTANTS=(loadimage-no-low-map loadimage-no-rect-kseg0 cache-key-dropped cache-ignored cache-evict-stale loadimage-rect-not-guest)
 for mutant in "${MUTANTS[@]}"; do
     set +e
-    build_and_run "$mutant" gcc "$OUT/$mutant.c" -O0 -w > "$OUT/$mutant.log" 2>&1
+    # Not "$OUT/$mutant.log": build_and_run writes and cats that file itself
+    # (GNU cat refuses "input file is output file" and the FAIL line is lost).
+    build_and_run "$mutant" gcc "$OUT/$mutant.c" -O0 -w > "$OUT/$mutant.run.log" 2>&1
     rc=$?
     set -e
-    if [ "$rc" -eq 0 ] || ! grep -q '^LOADIMAGE CACHE FAIL ' "$OUT/$mutant.log"; then
+    if [ "$rc" -eq 0 ] || ! grep -q '^LOADIMAGE CACHE FAIL ' "$OUT/$mutant.run.log"; then
         echo "LOADIMAGE CACHE MUTANT NOT DETECTED: $mutant rc=$rc" >&2
-        cat "$OUT/$mutant.log" >&2
+        cat "$OUT/$mutant.run.log" >&2
         exit 1
     fi
     printf 'LOADIMAGE CACHE mutant rejected: %s\n' "$mutant"

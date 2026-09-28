@@ -132,6 +132,9 @@ build_case() {
         nm --defined-only "$TEST_OUT/$name.outer.o" | rg -q " [TtWw] $symbol$"
         objcopy --weaken-symbol="$symbol" "$TEST_OUT/$name.outer.o"
     done
+    # temp1.c gained a C body for func_80023B84 (the fixture supplies its own
+    # double); weaken it too when present so the fixture's definition wins.
+    objcopy --weaken-symbol=func_80023B84 "$TEST_OUT/$name.outer.o"
     "$link_driver" -std=c17 -Wall -Wextra -Werror -Ipc_port/src -no-pie "${common[@]}" \
         -Wl,--gc-sections pc_port/tests/sprite_opcode_a9_retail_test.c \
         pc_port/src/battle_mips_adapter.c "$TEST_OUT/$name.body.o" \

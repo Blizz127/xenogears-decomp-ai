@@ -60,7 +60,18 @@ asm_checks = [
     ('asm/battle/nonmatchings/main77/func_800B1F6C.s', battle, BATTLE_BASE, 736),
     ('asm/battle/nonmatchings/main77/func_800B1F0C.s', battle, BATTLE_BASE, 24),
 ]
+def locate(path):
+    """The split layout moves functions between TUs and between matchings/
+    nonmatchings (temp1 -> temp1e, ...); find the listing by name."""
+    p = Path(path)
+    if p.exists():
+        return p
+    hits = sorted(Path(path.split('/')[0], path.split('/')[1]).rglob(p.name))
+    assert len(hits) == 1, f'{p.name}: {len(hits)} listings found'
+    return hits[0]
+
 for path, image, base, expected_count in asm_checks:
+    path = str(locate(path))
     text = Path(path).read_text()
     rows = re.findall(r'/\* ([0-9A-F]+) ([0-9A-F]+) ([0-9A-F]+) \*/', text)
     assert len(rows) == expected_count, f'{path}: {len(rows)} rows'

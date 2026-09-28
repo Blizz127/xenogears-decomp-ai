@@ -25,3 +25,6 @@ xenogears-decomp-ai
 # User mods (replacement assets may be derived from the disc): never commit
 /mods/
 pc_port/mods/
+
+# Local test evidence written by pc_port/tests runners
+/scratchpad/

@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
 ulimit -c 0
-out=$(mktemp -d scratchpad/rotation-zyx-retail.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/rotation-zyx-retail.XXXXXX)
 echo "Evidence: $out"
 read -r pin _ < <(sha256sum disc/SLUS_006.64)
 test "$pin" = dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119

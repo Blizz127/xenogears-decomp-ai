@@ -18,8 +18,12 @@ rg -q '^sha1: 124703d415f570f9cd8d7dad89c6a4eddfd7e6f0$' \
 rg -q 'basename: battle\.bin' config/battle.yaml || fail "wrong overlay basename"
 rg -q 'target_path: disc/battle\.bin' config/battle.yaml || fail "wrong overlay target"
 rg -q 'vram: 0x8006faf0' config/battle.yaml || fail "wrong overlay load address"
-rg -q 'generate_asm_macros_files: False' config/battle.yaml || \
+# The pinned splat (0.33.2) has no generate_asm_macros_files option (the key
+# makes it reject the config), so it never writes include/include_asm.h; the
+# port-aware header is safe as long as nobody turns the option on.
+if rg -q 'generate_asm_macros_files:\s*True' config/battle.yaml; then
     fail "battle split may overwrite the port-aware include_asm header"
+fi
 rg -q '0x133C, asm' config/battle.yaml || \
     fail "first retail code split boundary is missing"
 rg -q '0x1450, c, main' config/battle.yaml || \

@@ -18,6 +18,8 @@ assert sha256(payload).hexdigest()=='64668d85bf48dea46cf6d5f04b38e38ca887877cfef
 assert payload[0x1ce8:0x1cec]==bytes.fromhex('b0ffbd27')
 assert sha256(payload[0x1ce8:0x21d4]).hexdigest()=='1f11c9ac7117c0d702c6829cb3fb57806d73c6413eaec5f9fbf1ecca2b427a2e'
 asm=Path('asm/battle_command_file1/matchings/message_controller/xeno_battle_command_file1_controller.s')
+if not asm.exists():  # the split now emits the controller as one asm segment
+    asm=Path('asm/battle_command_file1/message_controller.s')
 paths=[source,Path('pc_port/src/battle_mips_adapter.c'),Path('pc_port/tests/battle_guest_call_test.c'),Path('pc_port/tests/run_battle_guest_call_test.sh'),asm]
 h=Path('pc_port/src/battle_mips_runtime_internal.h')
 if h.exists():paths.append(h)

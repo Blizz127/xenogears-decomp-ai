@@ -29,7 +29,7 @@ from pathlib import Path
 p=Path('pc_port/build_native/menu_equip_desc')
 s=Path('src/menu/main/misc.c').read_text()
 a=s.index('void func_801DFF5C(s32 categoryArg')
-z=s.index('\n#endif\n\nvoid func_801E0434', a)
+z=s.index('\n}\n', a) + 3  # end of the function body (column-0 brace)
 b=s[a:z]
 mutants={
  'kind_bias':('kind = (u8)(kind + (gearMode << 1))','kind = (u8)(kind + gearMode)'),

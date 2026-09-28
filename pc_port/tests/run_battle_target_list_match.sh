@@ -2,7 +2,7 @@
 # Deliberately fails until all218 retail words and symbol extent match.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-list-match.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-list-match.XXXXXX)
 BATTLE_MATCH_BUILD_DIR="$out" bash pc_port/tests/run_battle_attack_ring_match.sh
 mips-linux-gnu-objcopy --only-section=.target_list -O binary "$out/handler.elf" "$out/list.bin"
 perl - "$out" <<'PERL' | tee "$out/list-comparison.log"

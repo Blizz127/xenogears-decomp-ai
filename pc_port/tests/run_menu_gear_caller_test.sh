@@ -17,7 +17,7 @@ assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95d
 PYGEN
 python3 - <<'PYGEN'
 from pathlib import Path
-s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801DFE2C(u8 slotIdx) {');z=s.index('\n#ifndef XENO_PC_PORT',a)
+s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801DFE2C(u8 slotIdx) {');z=s.index('\n}\n',a)+3
 Path('pc_port/build_native/menu_gear_caller/owner.c').write_text('#include "common.h"\n#include "system/menu.h"\n#include "main/game.h"\nextern void func_801E3ECC(void*,u8);\nextern void func_801E3C2C(void*,u8);\n'+s[a:z])
 PYGEN
 BASE=(-std=gnu17 -fno-pie -ffunction-sections -fdata-sections -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -fpermissive -w -Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)

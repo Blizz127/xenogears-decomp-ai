@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 ulimit -c 0
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-target-setup-runtime.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-target-setup-runtime.XXXXXX)
 echo "Evidence: $out"
 sha256sum pc_port/src/battle_mips_runtime.c pc_port/src/battle_mips_adapter.c \
     pc_port/src/battle_target_setup.c pc_port/src/battle_target_setup.h \
