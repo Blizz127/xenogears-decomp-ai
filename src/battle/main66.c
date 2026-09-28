@@ -3,14 +3,35 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A22E8);
-INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2330);
 #endif
-/* Release a 20-byte pool slot: clear it and lower the first-free index. */
 #ifndef XENO_PC_PORT
+/* A pool of 20-byte slots: base, first free index, slot count. */
 typedef struct {
     u8* base;
     u16 firstFree;
+    u16 count;
 } Pool20;
+
+/* Take the first free slot (NULL when full) and advance the first-free index. */
+u8* func_800A2330(Pool20* pool) {
+    u8* slot;
+
+    if (pool->firstFree < pool->count) {
+        slot = pool->base + pool->firstFree * 20;
+        if (*slot != 0) {
+            return NULL;
+        }
+        for (pool->firstFree++; pool->firstFree < pool->count; pool->firstFree++) {
+            if (pool->base[pool->firstFree * 20] == 0) {
+                break;
+            }
+        }
+        return slot;
+    }
+    return NULL;
+}
+
+/* Release a 20-byte pool slot: clear it and lower the first-free index. */
 s32 func_800A23E8(Pool20* pool, u8* slot) {
     s32 index;
 
