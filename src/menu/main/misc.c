@@ -1473,9 +1473,6 @@ void func_801C7F34(
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
-#else
 /* Arc A portraits: parse a value into g_Menu->digits[9] (decimal, MSD first),
  * blanking leading zeros to 0xFF (the quad builders skip 0xFF; digit glyphs
  * are atlas entries 0-9). */
@@ -1498,7 +1495,6 @@ void func_801C80B8(u32 value) {
         g_Menu->digits[i - 1] = 0xFF;
     }
 }
-#endif
 
 extern void func_801C80B8(u32 value);
 
