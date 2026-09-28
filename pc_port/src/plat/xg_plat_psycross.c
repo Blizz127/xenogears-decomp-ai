@@ -9,6 +9,7 @@
 #include "../../include/xg_plat/audio.h"
 #include "../../include/xg_plat/input.h"
 #include "../../include/xg_plat/timing.h"
+#include "../../include/xg_plat/disc.h"
 
 #include <stdlib.h>
 
@@ -222,4 +223,42 @@ unsigned long xg_plat_audio_upload_samples(const void* data, unsigned long size)
     sent = __real_SpuWrite((unsigned char*)(repl ? repl : data), (unsigned int)size);
     free(repl);
     return sent;
+}
+
+/* --- disc: the game's libcd drive commands and reads -------------------- */
+extern int __real_CdControl(unsigned char com, unsigned char* param, unsigned char* result);
+extern int __real_CdControlB(unsigned char com, unsigned char* param, unsigned char* result);
+extern int __real_CdControlF(unsigned char com, unsigned char* param);
+extern int __real_CdRead(int sectors, unsigned long* buf, int mode);
+
+int __wrap_CdControl(unsigned char com, unsigned char* param, unsigned char* result)
+{
+    return xg_plat_disc_cd_control(com, param, result, XG_PLAT_CD_ASYNC);
+}
+int __wrap_CdControlB(unsigned char com, unsigned char* param, unsigned char* result)
+{
+    return xg_plat_disc_cd_control(com, param, result, XG_PLAT_CD_BLOCKING);
+}
+int __wrap_CdControlF(unsigned char com, unsigned char* param)
+{
+    return xg_plat_disc_cd_control(com, param, NULL, XG_PLAT_CD_NO_RESULT);
+}
+int __wrap_CdRead(int sectors, unsigned long* buf, int mode)
+{
+    return xg_plat_disc_cd_read(sectors, buf, mode);
+}
+
+int xg_plat_disc_cd_control(unsigned char com, unsigned char* param, unsigned char* result,
+                            XgPlatCdWait wait)
+{
+    switch (wait) {
+    case XG_PLAT_CD_BLOCKING: return __real_CdControlB(com, param, result);
+    case XG_PLAT_CD_NO_RESULT: return __real_CdControlF(com, param);
+    default: return __real_CdControl(com, param, result);
+    }
+}
+
+int xg_plat_disc_cd_read(int sectors, void* buf, int mode)
+{
+    return __real_CdRead(sectors, (unsigned long*)buf, mode);
 }
