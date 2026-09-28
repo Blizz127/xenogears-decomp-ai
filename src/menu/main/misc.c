@@ -6082,9 +6082,6 @@ void func_801D50EC(u8 slot, s32 x, s32 y) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D51EC);
-#else
 extern void func_801C80B8(u32 value);
 extern s32 D_801E9B28;
 extern s32 D_801E9B2C;
@@ -6093,39 +6090,35 @@ extern s32 D_801E9B34;
 
 /* Arc A portraits: the HP / maxHP digit quads (3 digits each, digits[6..8],
  * 0xFF = blank).  Lists buf+0xAF0 (count 0x1273) and buf+0xBE0 (0x1274). */
+/* Shared retail/port body (gcc 2.6.3 byte-exact).  The max-HP digits are
+ * placed by a count of digits drawn (j), as retail does. */
 void func_801D51EC(u8 slot, u8 charId, s32 x, s32 y) {
-    u8* buf = PORTRAIT_BUF(slot);
+    u8* buf;
     s32 i;
+    s32 j;
+    u8 d;
 
+    buf = PORTRAIT_BUF(slot);
     func_801C80B8(g_GameState.characters[charId].hp);
     buf[0x1273] = 0;
     for (i = 0; i < 3; i++) {
-        u8 d = g_Menu->digits[6 + i];
-
+        d = g_Menu->digits[6 + i];
         if (d != 0xFF) {
-            buf[0x1273] += (u8)func_8002675C(
-                g_Menu->unk2DC, d, buf + 0xAF0 + buf[0x1273] * 0x50,
-                g_Menu->renderContext,
-                x + D_801E9B28 + i * 8, y + D_801E9B2C, 0x1000);
+            buf[0x1273] += func_8002675C(g_Menu->unk2DC, d, buf + 0xAF0 + buf[0x1273] * 0x50,
+                g_Menu->renderContext, x + D_801E9B28 + i * 8, y + D_801E9B2C, 0x1000);
         }
     }
-
     func_801C80B8(g_GameState.characters[charId].maxHp);
     buf[0x1274] = 0;
-    for (i = 0; i < 3; i++) {
-        u8 d = g_Menu->digits[6 + i];
-
-        /* NB: retail positions max-value digits by BUILD count (left-packed),
-         * not by digit index -- the index bump lives in a branch delay slot. */
+    for (i = 0, j = 0; i < 3; i++) {
+        d = g_Menu->digits[6 + i];
         if (d != 0xFF) {
-            buf[0x1274] += (u8)func_8002675C(
-                g_Menu->unk2DC, d, buf + 0xBE0 + buf[0x1274] * 0x50,
-                g_Menu->renderContext,
-                x + D_801E9B30 + buf[0x1274] * 8, y + D_801E9B34, 0x1000);
+            buf[0x1274] += func_8002675C(g_Menu->unk2DC, d, buf + 0xBE0 + buf[0x1274] * 0x50,
+                g_Menu->renderContext, x + D_801E9B30 + j * 8, y + D_801E9B34, 0x1000);
+            j++;
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D53D0);
