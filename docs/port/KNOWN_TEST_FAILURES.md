@@ -24,12 +24,12 @@ field/menu/controller runners used for integration verification are green
 
 ## Currently failing
 
-| Runner | Cause | Owner / next step |
-|---|---|---|
-| `run_kernel_menu_route_smoke.sh` | The developer KernelMenu → Menu route reaches MenuExecute's `g_MenuDebugEnabled` branch and its overlay loads, then SIGSEGVs in `HeapAlloc` (via `func_801C62A8` → `LZSSHeapDecompress`): the top-allocation heap chain is corrupted after the debug branch. Normal title/field flows never take this branch. | slus (MenuExecute debug branch, `src/slus_006.64/system/menu.c`) |
+None.
 
 ## Fixed on 2026-09-28 (for reference)
 
+- `run_kernel_menu_route_smoke.sh`: the MenuExecute debug-branch heap
+  corruption, fixed in slus a5e5fcee.
 - Link gaps in tests that link a TU without its port collaborators: the port
   hooks are now weak references (`PcPort_GodModeBeforeGuest`,
   `g_PcPortPresentedFrames`, `PcPort_RandomBattlesEnabled`,
