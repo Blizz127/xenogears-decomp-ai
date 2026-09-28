@@ -311,27 +311,19 @@ void func_800879D0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-extern u8 D_800B2357;
+extern u8 D_800B2357[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087A40);
-#else
 void func_80087A40(void) {
-    D_800B2357 = SCRIPT_READ_U8_REL(1);
+    D_800B2357[0] = SCRIPT_READ_U8_REL(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B2354;
+extern u8 D_800B2354[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087A7C);
-#else
 void func_80087A7C(void) {
-    D_800B2354 = SCRIPT_READ_U8_REL(1);
+    D_800B2354[0] = SCRIPT_READ_U8_REL(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087AB8);
@@ -423,16 +415,12 @@ void func_80087DE0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-extern s16 D_800B234C;
+extern s16 D_800B234C[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087E5C);
-#else
 void func_80087E5C(void) {
-    D_800B234C = FieldScriptVMGetArgument(1);
+    D_800B234C[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8005A444[];
 extern s32 D_800ADBFC;
@@ -632,16 +620,12 @@ void func_8008848C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-extern s16 D_800B21AC;
+extern s16 D_800B21AC[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800884CC);
-#else
 void func_800884CC(void) {
-    D_800B21AC = FieldScriptVMGetArgument(1);
+    D_800B21AC[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8005A444[];
 
@@ -1101,27 +1085,19 @@ void func_80089DCC(void) {
 }
 #endif /* XENO_PC_PORT */
 
-extern s16 D_800B22E0;
+extern s16 D_800B22E0[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089F18);
-#else
 void func_80089F18(void) {
-    D_800B22E0 = FieldScriptVMGetArgument(1);
+    D_800B22E0[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B21D2;
+extern u8 D_800B21D2[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089F54);
-#else
 void func_80089F54(void) {
-    D_800B21D2 = FieldScriptVMGetArgument(1) - 0x80;
+    D_800B21D2[0] = FieldScriptVMGetArgument(1) - 0x80;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800AFE84;
 
@@ -1304,16 +1280,12 @@ void func_8008A5A0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
-extern s16 D_800B21D4;
+extern s16 D_800B21D4[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A604);
-#else
 void func_8008A604(void) {
-    D_800B21D4 = FieldScriptVMGetArgument(1);
+    D_800B21D4[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008A640(void) {
     s32 charId = func_8008CF3C(FieldScriptVMGetArgument(3));
@@ -1634,16 +1606,12 @@ void func_8008B0E8(void) {
 }
 #endif /* XENO_PC_PORT */
 
-extern s16 D_800B21B4;
+extern s16 D_800B21B4[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B144);
-#else
 void func_8008B144(void) {
-    D_800B21B4 = FieldScriptVMGetArgument(1);
+    D_800B21B4[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB1C;
 extern u16 D_800B21E4[];
@@ -2561,17 +2529,13 @@ void func_8008D180(void) {
 }
 #endif /* XENO_PC_PORT */
 
-extern s16 D_800B218C;
+extern s16 D_800B218C[];
 
 /* FE3A — write party frame mask. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D230);
-#else
 void func_8008D230(void) {
-    D_800B218C = FieldScriptVMGetArgument(1);
+    D_800B218C[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D26C);
@@ -2653,32 +2617,24 @@ void FieldActorCopyPlacement(int dstActorId, int srcActorId) {
 #endif /* XENO_PC_PORT */
 
 extern s32 D_8005A444[];
-extern u8 D_800B219F;
+extern u8 D_800B219F[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D570);
-#else
 void func_8008D570(void) {
     s32 i;
     for (i = 0; i < 3; i++) {
         if (D_8005A444[i] == D_800AFD1C) {
-            D_800B219F &= ~(1 << i);
+            D_800B219F[0] &= ~(1 << i);
         }
     }
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CD;
+extern u8 D_800B21CD[];
 
 /* FE26 — write distortion/effect flag byte. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D5C8);
-#else
 void func_8008D5C8(void) {
-    D_800B21CD = SCRIPT_READ_U8_REL(1);
+    D_800B21CD[0] = SCRIPT_READ_U8_REL(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* XENO_PC_PORT */
 
 /* FE07/opcode 0x107 -- set (arg 1) or clear (arg 0) the current actor's
  * 0x400 flag; any other arg leaves it untouched.  IP += 2.  As a no-op stub
@@ -2864,65 +2820,45 @@ void FieldScriptSetParentActor(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags1);
-#else
 void FieldScriptWriteActorFlags1(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)pActorData);
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags2);
-#else
 void FieldScriptWriteActorFlags2(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 2));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags3);
-#else
 void FieldScriptWriteActorFlags3(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)(pActorData + 4));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags4);
-#else
 void FieldScriptWriteActorFlags4(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 6));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 // TODO: These two handlers could use more semantic names since they're likely used
 // in certain situations.
@@ -3415,16 +3351,12 @@ void func_8008F348(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-extern s16 D_800B233C;
+extern s16 D_800B233C[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F394);
-#else
 void func_8008F394(void) {
-    D_800B233C = FieldScriptVMGetArgument(1);
+    D_800B233C[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008F3D0(void) {
     func_8003A450(FieldScriptVMGetArgument(3) << 1, FieldScriptVMGetArgument(1), FieldScriptVMGetArgument(5));

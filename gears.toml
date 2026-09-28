@@ -127,20 +127,6 @@ paths = [
 ]
 
 [[build_preset]]
-name = "XenoLiteral"
-# Default preset plus the literal `li` flavour. Retail temp1's compiled code
-# encodes every small constant load as `addiu $r,$zero,K`; its only
-# `ori $r,$zero,K` loads are in the trailing line-scroll bodies
-# (func_8002709C/800273C4/800278F8), which are INCLUDE_ASM.
-build_variables = {
-    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
-}
-paths = [
-    "{binary}/system/temp1.",
-    "{binary}/system/work_list.",
-]
-
-[[build_preset]]
 name = "MenuG0"
 # menu.bin never addresses anything through $gp, so its cc1 runs with -G0 like
 # the other overlays.  (-G8 used to hoist every INCLUDE_ASM ahead of the C
@@ -153,6 +139,20 @@ build_variables = {
     gp_flag = "-G0"
 }
 paths = [ "src/menu/main/misc." ]
+
+[[build_preset]]
+name = "XenoLiteral"
+# Default preset plus the literal `li` flavour. Retail temp1's compiled code
+# encodes every small constant load as `addiu $r,$zero,K`; its only
+# `ori $r,$zero,K` loads are in the trailing line-scroll bodies
+# (func_8002709C/800273C4/800278F8), which are INCLUDE_ASM.
+build_variables = {
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
+}
+paths = [
+    "{binary}/system/temp1.",
+    "{binary}/system/work_list.",
+]
 
 [[build_preset]]
 name = "XenoMain"
