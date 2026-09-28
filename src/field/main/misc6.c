@@ -1,12 +1,3 @@
-#ifndef FIELD_TU_SUB
-#define FIELD_TU_SUB 0
-#endif
-/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
- * run (its retail-asm functions, then its byte-exact C bodies), because
- * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
- * 0 (port/tests) compiles every run. */
-#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
-
 #include "common.h"
 #include "main/game.h"
 #include "system/math.h"
@@ -67,35 +58,26 @@ extern void func_801E742C(s32 slot, s32 flags, void* pModelArc,
                           void* pTexArc, s32 x, s32 y, s32 z, s32 w,
                           s16* vec);
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerDisableDialogActivation(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0xA = 0x1;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerEnableDialogActivation(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0xA = 0x0;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009DA70(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x16 = 0x1;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009DA98(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x16 = 0;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009DAC4(void) {
     int nTextBoxIndex;
     ActorData* pActor;
@@ -113,9 +95,7 @@ void func_8009DAC4(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerEnableActorVM(void) {
     ActorData* pActor;
 
@@ -125,9 +105,7 @@ void FieldScriptVMHandlerEnableActorVM(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009DC4C(void) {
     ActorData* pActor;
     int nTextBoxIndex;
@@ -151,9 +129,7 @@ void func_8009DC4C(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerSleep(void) {
     u_char nScriptId;
 
@@ -175,9 +151,7 @@ void FieldScriptVMHandlerSleep(void) {
 
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerShowActorById(void) {
     FieldActor* pFieldActor;
 
@@ -190,9 +164,7 @@ void FieldScriptVMHandlerShowActorById(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerHideActorById(void) {
     FieldActor* pFieldActor;
 
@@ -202,9 +174,7 @@ void FieldScriptVMHandlerHideActorById(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerShowActor(void) {
     FieldActor* pActor = &g_FieldActors[D_800AFD1C];
     pActor->status &= ~ACTOR_STATUS_INVISIBLE;
@@ -212,9 +182,7 @@ void FieldScriptVMHandlerShowActor(void) {
     g_FieldScriptVMCurActor->flags &= 0xFDFFFFFF;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009DF78(void) {
     FieldActor* pFieldActor;
 
@@ -225,25 +193,19 @@ void func_8009DF78(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E014(void) {
     g_FieldScriptVMCurActor->flags |= 0x02000800;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerHideActor(void) {
     FieldActor* pActor = &g_FieldActors[D_800AFD1C];
     pActor->status |=  ACTOR_STATUS_INVISIBLE;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
 // Update sprite movement or animation speed?
-#if FIELD_SUB(1)
 void func_8009E094(void) {
     unsigned short nMoveSpeed;
 
@@ -252,9 +214,7 @@ void func_8009E094(void) {
     func_80021BCC((void*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData, nMoveSpeed);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E10C(void) {
     int nValue;
     int nUnkFlags;
@@ -271,9 +231,7 @@ void func_8009E10C(void) {
     g_FieldScriptVMCurActor->scriptFlags.flags |= nUnkFlags;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E1A0(void) {
     u32 nValue;
 
@@ -287,9 +245,7 @@ void func_8009E1A0(void) {
     
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E208(void) {
     g_FieldScriptVMCurActor->unkEC = 0;
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x10 = 0x0;
@@ -297,9 +253,7 @@ void func_8009E208(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
     g_FieldScriptVMCurActor->curYPos = CONV_TO_GTE(g_FieldScriptVMCurActor->position.vy);
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E248(void) {
     func_8009E574(
         FieldScriptVMGetInstructionArgumentS16(1),
@@ -309,24 +263,18 @@ void func_8009E248(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x10 = 0x1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E2C8(void) {
     func_8009E810(FieldScriptArgument1(1, SCRIPT_READ_U8_REL(3)));
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0x10 = 0x1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
-#endif /* FIELD_SUB(1) */
 
 // Read short from bytecode, absolute offset
-#if FIELD_SUB(1)
 short func_8009E330(int offset) {
     return SCRIPT_READ_U8(offset) + (SCRIPT_READ_U8(offset + 1) << 8);
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E35C(void) {
     g_FieldScriptVMCurActor->walkmeshId = SCRIPT_READ_U8_REL(5);
     func_8009E574(
@@ -337,9 +285,7 @@ void func_8009E35C(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0xX = 0x0;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E428(void) {
     ActorData* pActor;
 
@@ -351,9 +297,7 @@ void func_8009E428(void) {
     );
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_8009E4BC(void) {
     func_8009E574(
         FieldScriptArgument1(1, SCRIPT_READ_U8_REL(5)), 
@@ -363,10 +307,10 @@ void func_8009E4BC(void) {
     g_FieldScriptVMCurActor->scriptFlags.fields.scriptFlags_0xX = 0x0;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E574);
+#else
 void func_8009E574(s16 x, s16 z) {
     FieldActor* pFieldActor = &g_FieldActors[D_800AFD1C];
     ActorData* pActor = g_FieldScriptVMCurActor;
@@ -442,10 +386,10 @@ void func_8009E574(s16 x, s16 z) {
     pActor->scriptFlags.flags |= 0x400000;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009E810);
+#else
 void func_8009E810(s16 arg0) {
     g_FieldScriptVMCurActor->position.vy = arg0 << 16;
     g_FieldScriptVMCurActor->unkEC = arg0;
@@ -469,9 +413,7 @@ void func_8009E810(s16 arg0) {
 #endif
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009E83C(void) {
     unsigned char width;
     unsigned char zWidth;
@@ -500,7 +442,6 @@ void func_8009E83C(void) {
     
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-#endif /* FIELD_SUB(2) */
 
 /* Field-script opcode 0x17: preserve eight decoded script arguments in the
  * actor-owned 16-byte state block.  The block is also included in the field
@@ -517,7 +458,6 @@ typedef struct {
     u32 flags;
 } FieldScriptActorFlags;
 
-#if FIELD_SUB(2)
 void func_8009E91C(void) {
     if (!(((FieldScriptActorFlags*)g_FieldScriptVMCurActor)->flags & 0x1000)) {
         g_FieldScriptVMCurActor->unk114 =
@@ -543,11 +483,9 @@ void func_8009E91C(void) {
         FieldScriptArgument8(0xF, SCRIPT_READ_U8_REL(0x11));
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x12;
 }
-#endif /* FIELD_SUB(2) */
 
 // -1: Actor has a script slot occupied w/ target ID
 //  0: Actor has no script slot w/ target ID
-#if FIELD_SUB(2)
 int FieldActorGetScriptStatus(ActorData* pActor, int targetId) {
     int i;
 
@@ -558,9 +496,7 @@ int FieldActorGetScriptStatus(ActorData* pActor, int targetId) {
     }
     return 0;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009EB78(void) {
     ActorData* pActor;
     int actorIndex;
@@ -591,9 +527,7 @@ void func_8009EB78(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009ED68(void) {
     ActorData* pActor;
     int actorIndex;
@@ -645,9 +579,7 @@ void func_8009ED68(void) {
     
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009F0A0(void) {
     ActorData* pActor;
     s32 actorIndex;
@@ -706,10 +638,8 @@ void func_8009F0A0(void) {
     
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(2) */
 
 // Randomize X rotation
-#if FIELD_SUB(2)
 void func_8009F424(void) {
     int nRotation;
     
@@ -726,9 +656,7 @@ void func_8009F424(void) {
     g_FieldScriptVMCurActor->rotation.vx = nRotation;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009F4CC(void) {
     short nSpecialRotation;
     int nRotation;
@@ -758,16 +686,13 @@ void func_8009F4CC(void) {
     g_FieldScriptVMCurActor->rotation.vx = nRotation;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_8009F5A8(void) {
     unsigned short nStoredIP = g_FieldScriptVMCurActor->scriptInstructionPointer;
     func_8009F5F4(); // Do Encounter
     D_800B00C0 = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer = nStoredIP;
 }
-#endif /* FIELD_SUB(2) */
 
 
 extern u16 D_800AFE9C;      /* held-button field mask (d-pad in top nibble) */
@@ -797,8 +722,9 @@ extern s32 func_80081F5C(u32*);   /* interaction eligibility */
  * Noah OP_UPDATE_CHARACTER is the readable reference. The 0x4000 test is on
  * scriptFlags at offset 0x00 (asm lw 0x0($a0)), NOT the ->flags field at 0x04
  * that the prior partial port checked. */
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009F5F4);
+#else
 void func_8009F5F4(void) {
 #ifdef XENO_PC_PORT
     {
@@ -945,9 +871,7 @@ updateDirection:
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(3)
 int FieldCharacterIdToPartyId(int characterId) {
     int i;
 
@@ -966,10 +890,10 @@ int FieldCharacterIdToPartyId(int characterId) {
 
     return -1;
 }
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FA54);
+#else
 void func_8009FA54(s32 scriptEntryIndex) {
     u8* scriptData = (u8*)g_FieldScriptVMCurScriptData;
     s32 entryOffset;
@@ -1025,12 +949,12 @@ void func_8009FA54(s32 scriptEntryIndex) {
     g_FieldScriptVMCurActor->rotation.vz = angle;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 extern int g_GameSceneMapNum;
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FB98);
+#else
 void func_8009FB98(void) {
     g_GameSceneMapNum |= 0xC000;
     GameWaitForCdData();
@@ -1040,10 +964,8 @@ void func_8009FB98(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 extern s32 D_8006F990[];
-#if FIELD_SUB(4)
 int func_8009FC10(int actorIndex) {
     int i;
 
@@ -1055,9 +977,7 @@ int func_8009FC10(int actorIndex) {
     
     return 0xFF;
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void FieldScriptPartyMemberRideGear(void) {
     int index = FieldScriptVMGetArgument(1);
     if (index >= 3) {
@@ -1067,9 +987,7 @@ void FieldScriptPartyMemberRideGear(void) {
     func_8009FD10(index);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void FieldScriptPartyMemberDisembarkGear(void) {
     int index = FieldScriptVMGetArgument(1);
     if (index >= 3) {
@@ -1079,10 +997,8 @@ void FieldScriptPartyMemberDisembarkGear(void) {
     func_8009FD10(index);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(4) */
 
 extern int g_GameSceneMapNum;
-#if FIELD_SUB(4)
 void func_8009FD10(int partyMemberIndex) {
     switch (partyMemberIndex) { 
         case 0:
@@ -1102,9 +1018,7 @@ void func_8009FD10(int partyMemberIndex) {
             break;
     }
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void func_8009FDD4(void) {
     s32 result = func_8009FC10(D_800AFD1C);
     if (result != 0xFF) {
@@ -1115,9 +1029,7 @@ void func_8009FDD4(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void func_8009FE4C(void) {
     u8 slot = SCRIPT_READ_U8_REL(1);
     if (g_GamePartyMembers[slot] != 0xFF) {
@@ -1128,12 +1040,10 @@ void func_8009FE4C(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* FIELD_SUB(4) */
 
 extern s32 D_8005A448;
 extern s32 D_8005A44C;
 
-#if FIELD_SUB(4)
 void func_8009FEE4(s32 partyMemberIndex) {
     s32* pPartyActors = D_8005A444;
     s32 actorIndex = pPartyActors[partyMemberIndex];
@@ -1170,9 +1080,7 @@ void func_8009FEE4(s32 partyMemberIndex) {
         }
     }
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void func_800A0158(s32 arg0, s32* arg1, s32* arg2, s32* arg3) {
     switch (arg0) {
         case 0:
@@ -1192,7 +1100,6 @@ void func_800A0158(s32 arg0, s32* arg1, s32* arg2, s32* arg3) {
             break;
     }
 }
-#endif /* FIELD_SUB(4) */
 
 /* Party/gear sprite-load opcode (retail 800A0228-800A051C).
  *
@@ -1202,8 +1109,9 @@ void func_800A0158(s32 arg0, s32* arg1, s32* arg2, s32* arg3) {
  * saved position words are applied.  Keep the raw ActorData/FieldActor
  * offsets here: these are PSX pointer-slot structures and using host-layout
  * fields would move the status, script flags, and instruction pointer. */
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0228);
+#else
 void func_800A0228(void) {
     FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
     ActorData* actor = (ActorData*)(uintptr_t)fieldActor->pActorData;
@@ -1283,10 +1191,10 @@ void func_800A0228(void) {
     D_800B00C0 = 1;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0524);
+#else
 void func_800A0524(s32 srcIdx, s32 dstIdx) {
     u8* pSrcField = (u8*)g_FieldActors + srcIdx * 92;
     u8* pDstField = (u8*)g_FieldActors + dstIdx * 92;
@@ -1322,7 +1230,6 @@ void func_800A0524(s32 srcIdx, s32 dstIdx) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 extern void func_800A0C94(void);
 
@@ -1339,8 +1246,9 @@ extern void func_800A0C94(void);
  * = -0xC0, status &= 0xFFDF, func_800A0C94, scriptFlags ( | 0x100) & ~0x80,
  * status &= 0xFFDF again. Non-party: mode 1, scriptFlags |= 1, flags |=
  * 0x100000, D_800AFFEC = D_800B00C0 = 1. Both paths IP += 3. Frame 0x28. */
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A06E8);
+#else
 void func_800A06E8(void) {
     FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
     s32 characterId = func_8008CF3C(FieldScriptVMGetArgument(1));
@@ -1374,12 +1282,12 @@ void func_800A06E8(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 extern u8 D_800AE294[];
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A08B8);
+#else
 void func_800A08B8(void) {
     FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
     s32 characterId = func_8008CF3C(FieldScriptVMGetArgument(1));
@@ -1460,17 +1368,15 @@ finalizeFlags:
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void func_800A0C4C(void) {
     ((ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData)->scriptFlags.flags |= 0x80;
 }
-#endif /* FIELD_SUB(5) */
 
 // FieldResetActorPosition, set translation and sprite position of actor based on current actor data position
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0C94);
+#else
 void func_800A0C94(void) {
     u8* actorData = (u8*)g_FieldScriptVMCurActor;
     u8* fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
@@ -1494,9 +1400,7 @@ void func_800A0C94(void) {
     *(s16*)(actorData + 0x72) = y;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
-#if FIELD_SUB(6)
 void func_800A0D3C(void) {
     func_80076AC0(D_800AFD1C, 0, (void*)((*(s32*)(g_FieldSpriteData + 4)) + (s32)g_FieldSpriteData), 0, 0, 0x80, 1);
     func_800A0C94();
@@ -1504,29 +1408,25 @@ void func_800A0D3C(void) {
     g_FieldScriptVMCurActor->flags |= 0x800;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(6) */
 
 extern s16 D_800B234A;
 
-#if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q7.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0DC0);
+#else
 void func_800A0DC0(void) {
     D_800B234A = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(7) */
 
-#if FIELD_SUB(7)
 void func_800A0DFC(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), ArchiveGetDiscNumber());
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* FIELD_SUB(7) */
 
 extern s32 D_800ADB74;
 
-#if FIELD_SUB(7)
 void func_800A0E54(void) {
     if (D_800ADB74 == 0) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
@@ -1535,24 +1435,22 @@ void func_800A0E54(void) {
     }
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(7) */
 
 extern s32 D_800ADB84;
 
-#if FIELD_SUB(7)
 void func_800A0EB0(void) {
     D_800B00C0 = 1;
     D_800ADB84++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* FIELD_SUB(7) */
 
 extern s32 D_800B2264;
 extern s32 D_801E8670[];
 extern void func_801E8030(s32 idx);
 
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0EE8);
+#else
 void func_800A0EE8(void) {
     ActorData* pActor = g_FieldScriptVMCurActor;
     u32 flags12C = *(u32*)((u8*)pActor + 0x12C);
@@ -1579,7 +1477,6 @@ void func_800A0EE8(void) {
     D_800B00C0 = 1;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
 /* Object animation archive/state opcode (retail 800A0FD8-800A1360).
  * Sub-op 0 stops the current object animation, sub-op 1 queues the two
@@ -1587,8 +1484,9 @@ void func_800A0EE8(void) {
  * decoded object model.  The queue is deliberately written in its retail
  * eight-byte layout; StreamDataQueueEntry is not a safe substitute on the
  * 64-bit host. */
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0FD8);
+#else
 void func_800A0FD8(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
     s32 slot;
@@ -1692,7 +1590,6 @@ void func_800A0FD8(void) {
     D_800B00C0 = 1;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
 extern s32 D_800B2264;
 extern u16 D_800B21DC[];
@@ -1729,7 +1626,6 @@ extern u8 D_800B225F[];
  * instantiate them through the archive-0x6B9 owners in
  * pc_port/src/field_object_overlay.c, and func_800821F4's object-animation
  * branch in misc8.c. */
-#if FIELD_SUB(8)
 void func_800A1364(void) {
     u8* actorData;
     u8* fieldActor;
@@ -1758,10 +1654,10 @@ void func_800A1364(void) {
         (*(u32*)(actorData + 0x12C) & 0xFFFF1FFF) | ((*(volatile s32*)&D_800B2264 & 7) << 13);
     D_800B2264++;
 }
-#endif /* FIELD_SUB(8) */
 
-#if FIELD_SUB(9)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q9.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A14F0);
+#else
 void func_800A14F0(void) {
     u8* actorData;
     u8* fieldActor;
@@ -1788,10 +1684,10 @@ void func_800A14F0(void) {
     *(u16*)(fieldActor + 0x58) &= ~0x20;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(9) */
 
-#if FIELD_SUB(9)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc6_q9.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A1624);
+#else
 void func_800A1624(void) {
     u8* actorData;
     u8* fieldActor;
@@ -1816,4 +1712,3 @@ void func_800A1624(void) {
     *(u16*)(fieldActor + 0x58) &= ~0x20;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(9) */

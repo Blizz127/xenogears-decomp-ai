@@ -1,12 +1,3 @@
-#ifndef FIELD_TU_SUB
-#define FIELD_TU_SUB 0
-#endif
-/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
- * run (its retail-asm functions, then its byte-exact C bodies), because
- * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
- * 0 (port/tests) compiles every run. */
-#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
-
 #include "common.h"
 #include "field/main.h"
 #include "field/actor.h"
@@ -86,15 +77,12 @@ static int PcPortModelBuildEnabled(void) {
 }
 #endif
 
-#if FIELD_SUB(1)
 void FieldMatrixResetTranslation(MATRIX *matrix) {
     matrix->t[2] = 0;
     matrix->t[1] = 0;
     matrix->t[0] = 0;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldComputeSceneMatrices(void) {
     VECTOR scale;
     MATRIX _unused;
@@ -119,15 +107,15 @@ void FieldComputeSceneMatrices(void) {
     SetRotMatrix(&g_Scene.worldToScreenMatrix);
     SetTransMatrix(&g_Scene.worldToScreenMatrix);
 }
-#endif /* FIELD_SUB(1) */
 
 /* Rebuild an actor's transform matrix from its rotation angles, then apply the
  * actor's 3D scale (ActorData scaleX/Y/Z; the asm loads them with lh, hence the
  * signed casts). Called by the EX-0x03 SET_CURRENT_ACTOR_SCALE opcode handler
  * func_8008D0F4 after it stores the new scale.
  * asm/field/nonmatchings/main/misc2/func_80072254.s */
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072254);
+#else
 void func_80072254(s32 actorIndex) {
     VECTOR scale;
     FieldActor* pActor;
@@ -144,9 +132,7 @@ void func_80072254(s32 actorIndex) {
     ScaleMatrix(&pActor->transformMatrix, &scale);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void FieldMatrixCreateWorldToScreen(void) {
     FieldComputeSceneMatrices();
     SetRotMatrix(&g_Scene.worldToScreenMatrix);
@@ -156,7 +142,6 @@ void FieldMatrixCreateWorldToScreen(void) {
         func_802815B0();
     }
 }
-#endif /* FIELD_SUB(2) */
 
 extern u8 D_800ADC1C[];
 
@@ -166,7 +151,6 @@ extern u8 D_800ADC1C[];
  * func_80072398 is the identical scan in the opposite direction; retail emits
  * the two as byte-identical code apart from the index step (+1 vs -1).
  * Retail: asm/field/main/misc2.s 8007234C-80072394. */
-#if FIELD_SUB(2)
 s32 func_8007234C(u32 mask, u32 index) {
     s32 i = 0;
     s32 found = 0;
@@ -181,13 +165,11 @@ s32 func_8007234C(u32 mask, u32 index) {
     }
     return 0;
 }
-#endif /* FIELD_SUB(2) */
 
 extern u8 D_800ADC1C[];
 
 /* Backward twin of func_8007234C. Retail: asm/field/main/misc2.s
  * 80072398-800723E0. */
-#if FIELD_SUB(2)
 s32 func_80072398(u32 mask, u32 index) {
     s32 i = 0;
     s32 found = 0;
@@ -202,10 +184,10 @@ s32 func_80072398(u32 mask, u32 index) {
     }
     return 0;
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800723E4);
+#else
 void func_800723E4(void* arg0, void* arg1, void* arg2) {
     VECTOR delta;
     VECTOR normal0;
@@ -240,7 +222,6 @@ void func_800723E4(void* arg0, void* arg1, void* arg2) {
         *(u16*)((u8*)arg1 + 0x02) + ((scale * normal1.vz) >> 12);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
 /* ---- func_8007254C: camera/scene default initialization ---------------------
  * Called from FieldLoad. Zeros camera vectors, sets default scene angles,
@@ -262,8 +243,9 @@ extern u16 g_CamMovementFlags;
 extern s16 g_CamAtMovementDuration, g_CamEyeMovementDuration;
 extern void func_80070594(MATRIX*);
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007254C);
+#else
 void func_8007254C(void) {
     /* g_CamInterpolation fields */
     g_CamInterpolation.atStepDistance = 8;
@@ -332,7 +314,6 @@ void func_8007254C(void) {
     g_CamEyeMovementDuration = 0;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
 /* ---- func_800726E8: camera heading transition handler -----------------------
  * Called from func_80073230. g_Scene+0x56 is the camera heading (0xFFF wrap,
@@ -356,7 +337,6 @@ extern u16 D_800AFE9C;
 extern s32 func_80072398(u32 mask, u32 index);
 extern void func_80284EA4(void);
 
-#if FIELD_SUB(3)
 void func_800726E8(void) {
     u8 scene64 = *(u8*)((u8*)&g_Scene + 0x64);
     u8 scene65;
@@ -448,7 +428,6 @@ done:
         func_80284EA4();
     }
 }
-#endif /* FIELD_SUB(3) */
 
 /* ---- func_80072A38: camera position update from input vector ----------------
  * Takes a VECTOR* ($a0/$s0) and a flag ($a1/$s2). Calls func_8007CD80 to
@@ -462,8 +441,9 @@ extern s32 rsin(s32 angle);
 extern s32 rcos(s32 angle);
 extern void func_80073684(VECTOR* pEye, VECTOR* pAt);
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072A38);
+#else
 void func_80072A38(VECTOR* pCamInput, s32 flag) {
     VECTOR vecArg;
     u8 cd80Segment[0x10];
@@ -605,7 +585,6 @@ void func_80072A38(VECTOR* pCamInput, s32 flag) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 /* ---- func_80072D74: camera interpolation/smoothing --------------------------
  * Called every frame at end of func_80073230. Interpolates g_CameraEye/At
@@ -628,8 +607,9 @@ static inline void cam_lerp(s32* pCur, s32 target, s32 step, s32 threshold) {
     *pCur = cur + diff / step;
 }
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80072D74);
+#else
 void func_80072D74(void) {
     s32 scene48 = *(s32*)((u8*)&g_Scene + 0x48);
     s32 eyeStepSq, atStepSq;
@@ -712,7 +692,6 @@ void func_80072D74(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 /* ---- func_80073230: per-frame camera update (FieldComputeSceneMatrices) ------
  * Called every frame. Dispatches on g_FieldCameraMode:
@@ -740,8 +719,9 @@ extern void func_800726E8(void);
 extern s16 func_8007B1C4(s16 a0, s16 a1, s32 a2, void* a3, void* a4);
 extern void func_80072D74(void);
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073230);
+#else
 void func_80073230(void) {
     s16 camMode = g_FieldCameraMode;
 
@@ -865,9 +845,7 @@ void func_80073230(void) {
     *(u16*)((u8*)&g_Scene + 0x56) &= 0x0FFF;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void func_80073684(VECTOR* pEye, VECTOR* pAt) {
     MATRIX matSceneRotation;
     VECTOR distance;
@@ -883,20 +861,16 @@ void func_80073684(VECTOR* pEye, VECTOR* pAt) {
     pEye->vz = transformed.vz + pAt->vz;
     PopMatrix();
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void func_80073734(void* arg0) {
     *(s32*)((u8*)arg0 + 0x0) = *(s16*)((u8*)arg0 + 0x2);
     *(s32*)((u8*)arg0 + 0x4) = *(s16*)((u8*)arg0 + 0x6);
     *(s32*)((u8*)arg0 + 0x8) = *(s16*)((u8*)arg0 + 0xA);
 }
-#endif /* FIELD_SUB(4) */
 
 // Computes a LookAt / View Matrix
 // Eye: The position of the camera
 // At: The point we're looking at
-#if FIELD_SUB(4)
 void FieldMatrixLookAt(MATRIX* pMatLookAt, VECTOR* pEye, VECTOR* pAt, VECTOR* pUp) {
     VECTOR vecWork;
     VECTOR zAxis;
@@ -950,9 +924,7 @@ void FieldMatrixLookAt(MATRIX* pMatLookAt, VECTOR* pEye, VECTOR* pAt, VECTOR* pU
     pMatLookAt->t[1] = -vecWork.vy;
     pMatLookAt->t[2] = -vecWork.vz;
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 int FieldMathInterpolateAngle(int from, int to, int delta) {
     int difference;
     int nextAngle;
@@ -977,12 +949,10 @@ int FieldMathInterpolateAngle(int from, int to, int delta) {
     }
     return PSX_ANGLE(nextAngle);
 }
-#endif /* FIELD_SUB(4) */
 
 // If 0, the angle will be updated in steps rather than directly set to the target
 extern s32 D_800ADC18;
 
-#if FIELD_SUB(4)
 int FieldMathUpdateAngle(int curAngle, int targetAngle, int delta) {
     int result;
     if (D_800ADC18 == 0) {
@@ -992,7 +962,6 @@ int FieldMathUpdateAngle(int curAngle, int targetAngle, int delta) {
     }
     return result;
 }
-#endif /* FIELD_SUB(4) */
 
 /* ---- func_800739C0: scene matrix computation (FieldComputeSceneMatrices2) -----
  * Called every frame from func_8007554C. Computes camera angles from eye/at
@@ -1020,8 +989,9 @@ extern void FieldMatrixCreateWorldToScreen(void);
 extern void func_800223B0(s32 actorIdx, s32 angle);
 extern void func_80021FE0(void* pSpriteData, s16 angle);
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800739C0);
+#else
 void func_800739C0(void) {
     s32 yawCur, yawTarget;
     s32 camDist;
@@ -1163,13 +1133,13 @@ void func_800739C0(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 extern s16 D_800B218E;
 extern void func_800AA9DC(void* pModelData);
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80073E38);
+#else
 void func_80073E38(void) {
     s32 i;
     u8* pActor;
@@ -1199,7 +1169,6 @@ void func_80073E38(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 #ifdef XENO_PC_PORT
 static void FieldClearOTagR4(void* ot, s32 count) {
@@ -1217,7 +1186,6 @@ static void FieldClearOTagR4(void* ot, s32 count) {
 }
 #endif
 
-#if FIELD_SUB(5)
 void FieldClearAndSwapOTagInternal(void) {
     if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
 #ifndef XENO_PC_PORT
@@ -1235,9 +1203,7 @@ void FieldClearAndSwapOTagInternal(void) {
     ClearOTagR(g_FieldCurRenderContext->ot3, 0x8);
 #endif
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void FieldClearAndSwapOTag(void) {
     FieldClearAndSwapOTagInternal();
 #ifdef XENO_PC_PORT
@@ -1252,24 +1218,18 @@ void FieldClearAndSwapOTag(void) {
     }
 #endif
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void FieldMatrixCopy(MATRIX* dest, MATRIX* source) {
     FieldMatrixCopyTransform(dest, source);
     FieldMatrixCopyTranslation(dest, source);
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void FieldMatrixCopyTranslation(MATRIX* dest, MATRIX* source) {
     dest->t[0] = source->t[0];
     dest->t[1] = source->t[1];
     dest->t[2] = source->t[2];
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void FieldMatrixCopyTransform(MATRIX* dest, MATRIX* source) {
     dest->m[0][0] = source->m[0][0];
     dest->m[0][1] = source->m[0][1];
@@ -1281,7 +1241,6 @@ void FieldMatrixCopyTransform(MATRIX* dest, MATRIX* source) {
     dest->m[2][1] = source->m[2][1];
     dest->m[2][2] = source->m[2][2];
 }
-#endif /* FIELD_SUB(5) */
 
 /* ---- func_80074108: background/camera draw dispatch -------------------------
  * Full decompile from ASM (371 lines). Three phases:
@@ -1312,8 +1271,9 @@ extern s32 FieldGetVec2Magnitude(s32 dx, s32 dy);
 extern void func_8007AC58(u_long* ot, void* pQuad, MATRIX* pMat, s32 renderCtx);
 extern void SetTransMatrix(MATRIX* m);
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80074108);
+#else
 void func_80074108(void) {
     s32 i, j;
     u16* pDst;
@@ -1502,11 +1462,11 @@ void func_80074108(void) {
     SetGeomScreen(*(s32*)((u8*)&g_Scene + 0x68));
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007469C);
+#else
 s32 func_8007469C(void) {
     s32 i;
     u8* pActor;
@@ -1527,7 +1487,6 @@ s32 func_8007469C(void) {
     return 0;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern u16 D_800AFE9C;
 extern u16 D_800AFEA0;
@@ -1548,8 +1507,9 @@ extern void ControllerResetState(void);
 extern u8 D_80065848;
 extern void func_8007AE78(s32 arg0, void* arg1);
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", FieldPollControllers);
+#else
 void FieldPollControllers(void) {
     D_800AFE9C = 0;
     D_800AFEA0 = 0;
@@ -1622,7 +1582,6 @@ void FieldPollControllers(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern s32 D_80059578;
 extern s32 D_800595C0;
@@ -1661,8 +1620,9 @@ extern void func_800305D8(void* pModelOffset);
 extern s32 D_800B2264;
 #endif
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800748E8);
+#else
 void func_800748E8(void) {
     VECTOR scale;
     MATRIX work;
@@ -1996,7 +1956,6 @@ void func_800748E8(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern s32 D_8004F380;
 extern s32 D_800B2264;
@@ -2010,8 +1969,9 @@ extern void func_80086BA8(void);
  * local extern here conflicted with it (int vs the real long params). */
 extern void func_801E7D14(void* sceneData, void* arg1, void* prim, s32 renderContextIndex, s32 arg4);
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007520C);
+#else
 void func_8007520C(void) {
     if (D_8004F380 != 0) {
         return;
@@ -2032,7 +1992,6 @@ void func_8007520C(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern u8 D_800ADB05;
 extern void func_800250E0(s32 context);
@@ -2046,8 +2005,9 @@ extern void AnimScriptTick(void* pSpriteData);
 extern void func_800764B4(void* ot, s32 renderContextIndex);
 extern u8 D_8006FB28;
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800752C8);
+#else
 void func_800752C8(void) {
     s32 i;
     u8* pActor;
@@ -2120,9 +2080,7 @@ void func_800752C8(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
-#if FIELD_SUB(6)
 void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
 #ifdef XENO_PC_PORT
     /* Diagnostic-only counters/statics: on the matching build these have no
@@ -2148,7 +2106,6 @@ void FieldAddPrimitives(u_long* ot, u_long* pPrimList, int size) {
 #endif
     AddPrims(ot, (u8*)pPrimList + size * 4, pPrimList);
 }
-#endif /* FIELD_SUB(6) */
 
 extern s16 D_800B00B2;
 extern s32 D_800ADB50;
@@ -2157,8 +2114,9 @@ extern s16 D_800B21D4;
 extern s32 func_800273C4(void* ctx, SVECTOR* eye, SVECTOR* at, MATRIX* mtx,
                          void* ot, s32 renderCtxIndex);
 
-#if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q7.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075484);
+#else
 void func_80075484(void) {
     if (D_800B00B2 != 0 && D_800ADB50 == 0) {
         SVECTOR eye;
@@ -2179,7 +2137,6 @@ void func_80075484(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(7) */
 
 /* ---- func_8007554C: per-frame field render pipeline ------------------------
  * Port-first functional decompile (control flow mirrors the asm). This is the
@@ -2224,8 +2181,9 @@ s32 g_FieldDiagSubmittedThisFrame;
 static s32 g_FieldDiagFrameCount;
 #endif
 
-#if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q7.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007554C);
+#else
 void func_8007554C(void) {
     s32 s1;
     s32 s0 = 0x80D4; /* offset into RenderContext for fade draw args */
@@ -2404,15 +2362,15 @@ void func_8007554C(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(7) */
 
 extern s32 D_800ADB78;
 extern void func_800A2030(void);
 extern void func_800805F4(void);
 extern void func_8008004C(void* pCtx, s32 idx);
 
-#if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q7.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
+#else
 void func_80075910(void) {
     RECT rect;
     FieldPollControllers();
@@ -2431,7 +2389,6 @@ void func_80075910(void) {
     DrawOTag(g_FieldCurRenderContext->ot3 + 7);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(7) */
 
 /* Retail 800759E4..80075B08: construct three matrix rows from the given
  * axis and two normalized cross products. Translation/padding are retained. */
@@ -2442,7 +2399,6 @@ const VECTOR D_8006FB70 = { 0, 0, 0x1000, 0 };
 extern VECTOR D_8006FB70;
 #endif
 
-#if FIELD_SUB(7)
 void func_800759E4(MATRIX *matrix,VECTOR *axis) {
     VECTOR up = D_8006FB70;
     VECTOR right;
@@ -2461,15 +2417,12 @@ void func_800759E4(MATRIX *matrix,VECTOR *axis) {
     matrix->m[2][1] = up.vy;
     matrix->m[2][2] = up.vz;
 }
-#endif /* FIELD_SUB(7) */
 
-#if FIELD_SUB(7)
 void func_80075B08(void* sprite, u8* color) {
     if (D_800B218E == 0) {
         SpriteSetColor(sprite, color[0], color[1], color[2]);
     }
 }
-#endif /* FIELD_SUB(7) */
 
 extern s32 D_8004F37C;
 extern s32 D_80050100;
@@ -2580,8 +2533,9 @@ static int FieldRenderActorSpriteTail(void* sprite, u8* actor, void* ot,
 }
 #endif
 
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075B44);
+#else
 void func_80075B44(void* ot, s32 renderContextIndex) {
     MATRIX baseSpriteMatrix;
     s32 cameraDirection = FieldGetCameraDirection() & 0xFFFF;
@@ -2950,7 +2904,6 @@ void func_80075B44(void* ot, s32 renderContextIndex) {
 #endif
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
 extern s32 D_8004F37C;
 extern s32 D_800500F8;
@@ -2980,8 +2933,9 @@ static int FieldActiveQuadOutsideRaster(const u8* pPrim) {
 }
 #endif
 
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800764B4);
+#else
 void func_800764B4(void* ot, s32 renderContextIndex) {
     s32 actorIndex;
     u8* pActor;
@@ -3145,10 +3099,10 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80076A74);
+#else
 void func_80076A74(void* pSpriteData) {
     u8* pAnimState = (u8*)(uintptr_t)*(u32*)((u8*)pSpriteData + 0x7C);
     s16 actorIndex = *(s16*)(pAnimState + 0x14);
@@ -3158,7 +3112,6 @@ void func_80076A74(void* pSpriteData) {
     *(u32*)(pActorData + 0x04) |= 0x10000;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
 extern void HeapChangeCurrentUser(u_int userTag, char** pContentTypes);
 extern void func_800230A8(void* pSpriteData);
@@ -3186,8 +3139,9 @@ static inline void FieldActorSyncSpritePosition(u8* pActor, u8* pSpriteData) {
 
 /* Retail stack+0x10 is the texture-page offset; stack+0x14 is the saved
  * skin selector (including bit7 for field-local packages). */
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80076AC0);
+#else
 void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 spriteMode, s32 texPageOffset, s32 skinSelector, s32 skipInitialTick) {
     u8* pActor;
     u8* pActorData;
@@ -3320,10 +3274,10 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
     D_800AFC74++;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
-#if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q8.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800771B0);
+#else
 void func_800771B0(u32* pBuf, s32 count) {
     s32 i;
     s32 n = (count + 1) / 2 - 1;
@@ -3333,9 +3287,7 @@ void func_800771B0(u32* pBuf, s32 count) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(8) */
 
-#if FIELD_SUB(8)
 void FieldLoadTIM(u_long* pTimData) {
     TIM_IMAGE timImage;
 
@@ -3349,7 +3301,6 @@ void FieldLoadTIM(u_long* pTimData) {
         }
     }
 }
-#endif /* FIELD_SUB(8) */
 
 
 extern s32 D_800ADBFC;
@@ -3362,8 +3313,9 @@ extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActor
                           s32 targetState);
 extern void func_80081C54(s32 actorIndex);
 
-#if FIELD_SUB(9)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc2_q9.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80077268);
+#else
 void func_80077268(void) {
     s32 i;
 
@@ -3412,7 +3364,6 @@ void func_80077268(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(9) */
 
 extern void func_8003747C(void* pFont);
 extern void* FontLoadFont(int startX, int startY, int width, int height,
@@ -3421,7 +3372,6 @@ extern void* FontLoadFont(int startX, int startY, int width, int height,
                           void* pCompressedFontFile);
 extern void SystemTransferPaletteToVRAM(short xDest, short yDest);
 
-#if FIELD_SUB(9)
 void func_80077544(void) {
     if (g_FieldSystemMode == SYSTEM_MODE_PC_HDD) {
         func_8003747C((void*)0x80270000);
@@ -3431,4 +3381,3 @@ void func_80077544(void) {
 
     SystemTransferPaletteToVRAM(0x100, 0xF0);
 }
-#endif /* FIELD_SUB(9) */

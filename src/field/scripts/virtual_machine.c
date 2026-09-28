@@ -1,12 +1,3 @@
-#ifndef FIELD_TU_SUB
-#define FIELD_TU_SUB 0
-#endif
-/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
- * run (its retail-asm functions, then its byte-exact C bodies), because
- * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
- * 0 (port/tests) compiles every run. */
-#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
-
 #include "common.h"
 #include "main/game.h"
 #include "field/main.h"
@@ -38,7 +29,6 @@ extern char D_8006FD44; // "STACKERR ACT=%d\n"
 u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
 // Store instruction pointer + 5 on stack
-#if FIELD_SUB(1)
 void func_800A1730(void) {
     if (g_FieldScriptVMCurActor->flags12C_0x6 != SCRIPT_MAX_STACK_SIZE) {
         g_FieldScriptVMCurActor->scriptPointersStack[g_FieldScriptVMCurActor->flags12C_0x6] = g_FieldScriptVMCurActor->scriptInstructionPointer + 5;
@@ -53,10 +43,8 @@ void func_800A1730(void) {
     }
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(1) */
 
 // Store instruction pointer + 3 on stack
-#if FIELD_SUB(1)
 void func_800A17F4(void) {
     if (g_FieldScriptVMCurActor->flags12C_0x6 != SCRIPT_MAX_STACK_SIZE) {
         g_FieldScriptVMCurActor->scriptPointersStack[g_FieldScriptVMCurActor->flags12C_0x6] = g_FieldScriptVMCurActor->scriptInstructionPointer + 3;
@@ -71,10 +59,8 @@ void func_800A17F4(void) {
     }
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(1) */
 
 // Restore instruction pointer from stack
-#if FIELD_SUB(1)
 void func_800A18B8(void) {
     // Error, invalid stack value
     if (!g_FieldScriptVMCurActor->flags12C_0x6) {
@@ -91,9 +77,7 @@ void func_800A18B8(void) {
     g_FieldScriptVMCurActor->flags12C_0x6--;
     g_FieldScriptVMCurActor->scriptInstructionPointer = g_FieldScriptVMCurActor->scriptPointersStack[g_FieldScriptVMCurActor->flags12C_0x6];
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_800A19B0(void) {
     int i;
     
@@ -114,10 +98,8 @@ void func_800A19B0(void) {
     D_800B00C0 = 1;
     g_FieldScriptVMCurActor->flags12C_0x6 = 0;
 }
-#endif /* FIELD_SUB(1) */
 
 // Yield / Stop, but change IP conditionally
-#if FIELD_SUB(1)
 void func_800A1A8C(void) {
     int i;
 
@@ -131,19 +113,15 @@ void func_800A1A8C(void) {
     g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].scriptId = 0xFF;
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(1) */
 
 // Yield / Stop Handler
-#if FIELD_SUB(1)
 void func_800A1B70(void) {
     g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x12 = 0xFF;
     g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].scriptId = 0xFF;
     D_800AFFEC = 1;
     D_800B00C0 = 1;
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerConditionalJmp(void) {
     int nValue2;
     int nValue1;
@@ -235,20 +213,15 @@ void FieldScriptVMHandlerConditionalJmp(void) {
         g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(6);
     }
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldScriptVMHandlerJmp(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer = FieldScriptVMGetInstructionArgument(1);
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_800A1E9C(void) {
     g_FieldScriptMaxInstructionCount += 0x20;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(1) */
 
 #ifdef XENO_PC_PORT
 /* DIAGNOSTIC / TEST TOOLING -- XENO_VM_TRACE=<actor index>|all.
@@ -350,7 +323,6 @@ static void PcPort_FieldVmTrace(u_short ip, u_char op) {
 }
 #endif
 
-#if FIELD_SUB(1)
 void FieldScriptVMRun(int maxInstructionCount) {
     int nInstructionCount;
     u_short nInstructionPointer;
@@ -398,7 +370,6 @@ void FieldScriptVMRun(int maxInstructionCount) {
     }
 
 }
-#endif /* FIELD_SUB(1) */
 
 extern s32 D_800ADB68;
 extern s32 D_800ADB74;
@@ -412,8 +383,9 @@ extern s32 D_8005A444[];
 extern u8 D_800B21CC;
 extern FieldActor* D_800B06B8;
 
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A2030);
+#else
 void func_800A2030(void) {
     s32 numActors;
     s32 actorIndex;
@@ -508,12 +480,10 @@ void func_800A2030(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
 // Changes current actor to the top of the field actor array and runs a script routine on it
 extern FieldActor* D_800B06B8;
 extern s32 D_800ADB1C;
-#if FIELD_SUB(2)
 void func_800A22AC(int scriptRoutineIndex) {
     int i;
     ActorData* pNewActor;
@@ -550,7 +520,6 @@ void func_800A22AC(int scriptRoutineIndex) {
     *(ActorData*)(uintptr_t)D_800B06B8->pActorData = *pNewActor;
     HeapFree(pNewActor);
 }
-#endif /* FIELD_SUB(2) */
 
 
 extern s32 D_800ADB8C;
@@ -698,14 +667,12 @@ void func_800ACE24(void) {
 extern void func_800ACE24(void);
 #endif
 
-#if FIELD_SUB(2)
 void func_800A2488(void) {
     D_800ADB8C = 1;
     func_800A22AC(3);
     func_800ACE24();
     D_800ADB8C = 0;
 }
-#endif /* FIELD_SUB(2) */
 
 extern s32 g_GamePartySkinsInitialized;
 extern s32 D_800ADBFC;
@@ -728,8 +695,9 @@ extern s32 g_PlayerActorIndex;
 extern void func_800AD898(void);
 extern void func_801E8330(s32 slot, s32 arg1, s32 objId);
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A24C4);
+#else
 void func_800A24C4(void) {
     u8* playerData;
     s32 i;
@@ -782,9 +750,7 @@ void func_800A24C4(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(3)
 void func_800A2714(void) {
     ActorData* pActor;
     FieldActor* pFieldActors;
@@ -829,10 +795,10 @@ void func_800A2714(void) {
         }
     }
 }
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A28D4);
+#else
 void func_800A28D4(void) {
     int i;
 
@@ -975,23 +941,17 @@ void func_800A28D4(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 void FieldScriptVMHandlerNop(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
-#endif /* FIELD_SUB(4) */
 
 // Script files contains a sections of sign bits for variables. 
 // This function is a bit of a convoluted way to check if a bit in section of data is set or not.
-#if FIELD_SUB(4)
 int FieldScriptVMGetVariableSign(int index) {
     return -((g_FieldCurScriptFile->signBits[index >> 6] & (1 << ((index >> 1) & 0x1F))) != 0);
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
 int FieldScriptVMGetVariableValue(int index) {
     if (!(g_FieldCurScriptFile->signBits[index >> 6] & (1 << ((index >> 1) & 0x1F)))) {
         return ((short*)&g_FieldScriptMemory)[index >> 1];
@@ -999,21 +959,19 @@ int FieldScriptVMGetVariableValue(int index) {
         return ((u_short*)&g_FieldScriptMemory)[index >> 1];
     }
 }
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryWriteU16);
+#else
 void FieldScriptMemoryWriteU16(s32 address, u16 value) {
     s32 index = address >> 1;
 
     ((u16*)&g_FieldScriptMemory)[index] = value;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 // scriptIndex here refers to the index of the script, which will (always?) correspond to an entity index
 // routineIndex is an index into the offset table, which points to a bytecode routine in that script.
-#if FIELD_SUB(5)
 u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex) {
     int nOffset;
     u_short* pScriptData;
@@ -1022,17 +980,16 @@ u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex) {
     nOffset = (scriptIndex * (SCRIPT_OFFSET_TABLE_SIZE / sizeof(u_short)) + routineIndex);
     return *(pScriptData + nOffset);
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptWritePartyMemberIDs);
+#else
 void FieldScriptWritePartyMemberIDs(void) {
     FieldScriptMemoryWriteU16(0x3E, g_GamePartyMembers[0]);
     FieldScriptMemoryWriteU16(0x40, g_GamePartyMembers[1]);
     FieldScriptMemoryWriteU16(0x42, g_GamePartyMembers[2]);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern u16 D_8005941C;
 extern u8 D_80059418, D_80059420, D_80059484, D_800594D0;
@@ -1047,8 +1004,9 @@ extern void func_8009FEE4(s32 arg0);
 extern u32 g_PcPortOpcode56Func8009FEE4ConditionCount;
 #endif
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A30FC);
+#else
 void func_800A30FC(void) {
     s32 i;
     u16* src;
@@ -1074,10 +1032,10 @@ void func_800A30FC(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A31E8);
+#else
 void func_800A31E8(void) {
     s32 i;
 
@@ -1140,7 +1098,6 @@ void func_800A31E8(void) {
     FieldScriptMemoryWriteU16(0x22, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x26));
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern u8 D_8005A4E4[];
 extern s32 D_8005A408[];
@@ -1153,8 +1110,9 @@ extern void func_80021EBC(void*, void*);
 
 extern void* memcpy(void*, const void*, size_t);
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3474);
+#else
 void func_800A3474(void) {
     int i;
 
@@ -1206,7 +1164,6 @@ void func_800A3474(void) {
     D_800AFC50 += 0x800;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 extern s32 D_800B2268;
 extern void func_80021D50(void* pSprite, void* pSave);
@@ -1219,8 +1176,9 @@ extern void func_80021D50(void* pSprite, void* pSave);
  * func_80021D50 unless flags&0x1000000 or (D_800B2268 && scriptFlags&0x600
  * && mismatch); advance 0x168, +0xC if flags134&0x80, +0x10 if +0x12C&0x1000.
  * Frame 0x30. */
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3C8C);
+#else
 void func_800A3C8C(void) {
     s32 i;
     s32 mismatch;
@@ -1272,11 +1230,11 @@ void func_800A3C8C(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
 
-#if FIELD_SUB(6)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in virtual_machine_q6.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3F4C);
+#else
 void func_800A3F4C(void) {
     int i;
 
@@ -1336,15 +1294,11 @@ void func_800A3F4C(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(6) */
 
-#if FIELD_SUB(6)
 void func_800A4748(void) {
     func_800A476C(0x2c0,0x100);
 }
-#endif /* FIELD_SUB(6) */
 
-#if FIELD_SUB(6)
 void func_800A476C(int x, int y) {
     RECT rect;
 
@@ -1365,4 +1319,3 @@ void func_800A476C(int x, int y) {
     MoveImage(&rect, x, y);
     FieldRenderSync();
 }
-#endif /* FIELD_SUB(6) */
