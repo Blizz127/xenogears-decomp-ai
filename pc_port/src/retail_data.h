@@ -82,6 +82,14 @@ typedef struct {
 
 #define XENO_RD_WEAK __attribute__((weak))
 
+/* Guest <-> host pointer mapping for pointer tables, provided by
+ * psx_memory.c.  Referenced weakly and never by naming g_PsxRam, so tests
+ * that link a data TU without psx_memory.c still link (a weak reference to
+ * g_PsxRam is not enough: any other object's strong reference, even in a
+ * section --gc-sections later drops, makes the symbol strongly undefined). */
+void* PsxMemory_GuestToHost(uint32_t guest) __attribute__((weak));
+uint32_t PsxMemory_HostToGuest(const void* host) __attribute__((weak));
+
 typedef struct {
     uint8_t* bytes;
     size_t size;
@@ -352,11 +360,11 @@ XENO_RD_WEAK void XenoRetailData_Dump(const XenoRetailRange* r, const XenoRetail
     if (f == NULL)
         return;
     if (r->kind == XENO_RD_PTR32) {
-        extern uint8_t g_PsxRam[] __attribute__((weak));
         void* const* in = (void* const*)r->dst;
         uint32_t n;
         for (n = 0; n < r->size / 4u; n++) {
-            uint32_t v = in[n] ? (uint32_t)((uint8_t*)in[n] - g_PsxRam) | 0x80000000u : 0;
+            uint32_t (*volatile h2g)(const void*) = PsxMemory_HostToGuest; /* weak */
+            uint32_t v = (in[n] && h2g) ? h2g(in[n]) : 0;
             fwrite(&v, 4, 1, f);
         }
     } else {
@@ -367,7 +375,6 @@ XENO_RD_WEAK void XenoRetailData_Dump(const XenoRetailRange* r, const XenoRetail
 
 XENO_RD_WEAK void XenoRetailData_LoadTable(const char* tag, const XenoRetailRange* ranges, size_t count)
 {
-    extern uint8_t g_PsxRam[] __attribute__((weak));
     size_t i;
     for (i = 0; i < count; i++) {
         const XenoRetailRange* r = &ranges[i];
@@ -381,14 +388,14 @@ XENO_RD_WEAK void XenoRetailData_LoadTable(const char* tag, const XenoRetailRang
         }
         if (r->kind == XENO_RD_PTR32) {
             void** out = (void**)r->dst;
-            uint8_t* volatile ram = g_PsxRam; /* weak: NULL when not linked */
             uint32_t n;
             for (n = 0; n < r->size / 4u; n++) {
                 const uint8_t* p = slot->bytes + r->offset + 4u * n;
                 uint32_t v = (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 |
                              (uint32_t)p[3] << 24;
-                /* Same mapping as PSX_ADDR() in psx_memory.h. */
-                out[n] = (v == 0 || ram == NULL) ? NULL : (void*)(ram + (v & 0x1FFFFFu));
+                /* PSX_ADDR() mapping; NULL where psx_memory.c is not linked. */
+                void* (*volatile g2h)(uint32_t) = PsxMemory_GuestToHost; /* weak */
+                out[n] = (v == 0 || g2h == NULL) ? NULL : g2h(v);
             }
         } else {
             memcpy(r->dst, slot->bytes + r->offset, r->size);

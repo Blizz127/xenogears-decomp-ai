@@ -143,3 +143,15 @@ int PsxMemory_LoadStaticData(void)
     free(image);
     return rc;
 }
+
+/* Guest <-> host mapping for the retail-data loader's pointer tables
+ * (retail_data.h references these weakly). */
+void* PsxMemory_GuestToHost(uint32_t guest)
+{
+    return PSX_ADDR(guest);
+}
+
+uint32_t PsxMemory_HostToGuest(const void* host)
+{
+    return PsxMemory_GuestAddr(host);
+}

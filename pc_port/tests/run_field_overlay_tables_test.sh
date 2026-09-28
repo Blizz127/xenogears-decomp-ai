@@ -23,8 +23,11 @@ for opt in O0 O2 UBSan; do
 done
 for mutant in bytes alias; do
     if [ "$mutant" = bytes ]; then
-        sed '/^u16 g_FieldOverlayLayoutData/,/^};/s/0x0008/0x0009/g' \
+        # The table is loaded from disc/field.bin (retail_data.h): shift its
+        # load row by one halfword so every loaded value is wrong.
+        sed 's/XENO_RD(g_FieldOverlayLayoutData, XENO_RD_FIELD, XENO_RD_FIELD_OFF(0x800AEB68u)/XENO_RD(g_FieldOverlayLayoutData, XENO_RD_FIELD, XENO_RD_FIELD_OFF(0x800AEB6Au)/' \
             pc_port/src/data_field.c > "$OUT/$mutant.c"
+        grep -q '0x800AEB6Au' "$OUT/$mutant.c"
     else
         sed 's/g_FieldOverlayLayoutData + 0x3AE/g_FieldOverlayLayoutData + 0x3AC/' \
             pc_port/src/data_field.c > "$OUT/$mutant.c"

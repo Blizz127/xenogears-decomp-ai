@@ -25,6 +25,10 @@
 
 /* The data file's initializers reference g_PsxRam; provide the storage. */
 uint8_t g_PsxRam[PSX_RAM_SIZE];
+/* ...and the guest<->host mapping the retail-data loader uses for pointer
+ * tables (psx_memory.c in the port). */
+void* PsxMemory_GuestToHost(uint32_t guest) { return PSX_ADDR(guest); }
+uint32_t PsxMemory_HostToGuest(const void* host) { return PsxMemory_GuestAddr(host); }
 uint8_t g_PsxScratchpad[4096];
 
 #ifndef DATA_SLUS_SDATA_SRC
