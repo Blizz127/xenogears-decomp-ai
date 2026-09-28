@@ -188,9 +188,6 @@ void func_80022E8C(void)
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022EB8);
-#else
 void func_80022EB8(void* pWork)
 {
     u8* pWorkData = (u8*)pWork;
@@ -230,7 +227,6 @@ void func_80022EB8(void* pWork)
     WorkListRemoveTask(pWorkData + 0x1C);
     HeapFree(pWork);
 }
-#endif
 
 void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
     u32 pSub = *(u32*)(pSprite + 0x20);
@@ -1147,9 +1143,6 @@ void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024524);
-#else
 void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5) {
     void* pSpriteData;
 
@@ -1158,7 +1151,6 @@ void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
 
     return func_8002435C(pSpriteData, pAnimPackage, texX, texY, clutX, clutY, arg5);
 }
-#endif
 
 extern s32 func_8001EE68(void* arg0);
 extern void func_80023538(void* pSpriteData, void* pAnimation);
@@ -1869,9 +1861,6 @@ reenter:
 extern u8 D_800591AD, D_800591AE;
 extern s32 D_800591A8;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024F20);
-#else
 void func_80024F20(void) {
     D_800591AD = 0;
     D_800591AE = 0;
@@ -1879,7 +1868,6 @@ void func_80024F20(void) {
     WorkListsReset();
     func_8001D298();
 }
-#endif
 
 
 

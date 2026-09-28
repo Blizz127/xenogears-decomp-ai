@@ -3644,9 +3644,6 @@ s16 func_8003BDFC(s32 flags) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundProcessTransferCommand);
-#else
 //----------------------------------------------------------------------------------------------------------------------
 void SoundProcessTransferCommand(void) {
     SpuTransferCallbackProc pPrevCallback;
@@ -3710,7 +3707,6 @@ void SoundProcessTransferCommand(void) {
         SoundHandleError(SOUND_ERR_UNEXPECTED_CALLBACK);
     }
 }
-#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundSpuIRQHandler(void) {
