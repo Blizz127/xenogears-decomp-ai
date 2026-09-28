@@ -11012,30 +11012,27 @@ void func_801E41C0(s32 arg0, u8 idx) {
 /* Party records at g_GameState+0x978 are 0xA4 bytes (func_801E4D10 copies them
  * with the same stride). */
 void func_801E4258(void* pCtx, u8 idx) {
-    uintptr_t off = idx * 0xA4;
-    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
-    s32 tableIdx = pEntry[8];
-    u8* pTbl = *(u8**)((u8*)pCtx + 0x10) + tableIdx * 0x14;
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
+    u8* pTbl = *(u8**)((u8*)pCtx + 0x10);
+    pTbl += pEntry[8] * 0x14;
     *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
     *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
 }
 
-/* Party records are 0xA4 bytes (see func_801E4258).  rec[0x3F] is written
- * unconditionally (retail stores it in the branch delay slot); the volatile
- * reloads keep retail's load order. */
+/* Party records are 0xA4 bytes (see func_801E4258). */
 void func_801E42AC(s32 arg0, u8 idx) {
-    uintptr_t off = idx * 0xA4;
-    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
-    s32 tableIdx = pEntry[3];
-    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC) + tableIdx * 0x10;
-    u16 prev = *(u16*)(pEntry + 0x38);
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
+    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC);
+    u16 prev;
+    pTable += pEntry[3] * 0x10;
+    prev = *(u16*)(pEntry + 0x38);
     *(u16*)(pEntry + 0x3A) = *(u16*)(pTable + 6);
     pEntry[0x3C] = pTable[0xC];
     pEntry[0x3D] = pTable[0xD];
     pEntry[0x3E] = pTable[0xE];
-    pEntry[0x3F] = pTable[0xE];
-    if (*(volatile u16*)(pEntry + 0x3A) < prev) {
-        *(u16*)(pEntry + 0x38) = *(volatile u16*)(pEntry + 0x3A);
+    pEntry[0x3F] = pTable[0xE];  /* unconditional (retail's delay-slot store) */
+    if (*(u16*)(pEntry + 0x3A) < prev) {
+        *(u16*)(pEntry + 0x38) = *(u16*)(pEntry + 0x3A);
     }
 }
 
