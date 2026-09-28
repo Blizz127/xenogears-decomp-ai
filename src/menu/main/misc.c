@@ -10080,45 +10080,46 @@ void func_801DFF5C(s32 categoryArg, s32 rowArg, s32 pageArg, s32 groupArg,
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E0434);
-#else
+/* Retail 0x801E0434: return the slot's unequipped item to the inventory.
+ * Mode 0 takes the character's equipped weapon (unk6F[0]) into weaponIDs;
+ * otherwise the gear's part at +4 goes into unk2120IDs.  Every matching entry
+ * gains one (capped at 99) and suppresses the insert; with no match the
+ * item takes the first empty entry with quantity 1.  Shared retail/port body
+ * (gcc 2.6.3 byte-exact).  The port once suppressed the insert only when a
+ * count hit the cap, so a held item gained a duplicate entry
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801E0434(u8 slotIdx, u8 mode) {
     u8* pTable;
     u8* pCounter;
     u8 val;
     u8 found = 1;
-    s32 limit = 100;
+    u8 limit;
     s32 i;
 
     if (mode == 0) {
-        u8* pGS = (u8*)&g_GameState;
-        u8 charIdx = ((u8*)g_Menu->pManager)[slotIdx + 0x30];
-        pTable = pGS + 0x1D9C;
-        pCounter = pGS + 0x1D38;
-        val = pGS[0x2DB + charIdx * 0xA4];
-        pGS[0x2DB + charIdx * 0xA4] = 0;
+        pTable = g_GameState.weaponIDs;
+        pCounter = pTable - 0x64;
+        val = g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].unk6F[0];
+        g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].unk6F[0] = 0;
+        limit = 100;
     } else {
-        u8* pGS = (u8*)&g_GameState;
-        u8 charIdx = ((u8*)g_Menu->pManager)[slotIdx + 0x30];
-        u8 intermediate = pGS[0x30C + charIdx * 0xA4];
-        pTable = pGS + 0x2120;
-        pCounter = pGS + 0x20BC;
-        val = pGS[0x97C + intermediate * 0xA4];
-        pGS[0x97C + intermediate * 0xA4] = 0;
+        pTable = g_GameState.unk2120IDs;
+        pCounter = pTable - 0x64;
+        val = g_GameState.gears[g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].gearId].field_0x0[4];
+        limit = 100;
+        g_GameState.gears[g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].gearId].field_0x0[4] = 0;
     }
 
     for (i = 0; i < limit; i++) {
         if (pTable[i] == val) {
-            pCounter[i]++;
-            if (pCounter[i] >= 100) {
+            if (++pCounter[i] >= 100) {
                 pCounter[i] = 99;
-                found = 0;
             }
+            found = 0;
         }
     }
 
-    if (found && limit > 0) {
+    if (found) {
         for (i = 0; i < limit; i++) {
             if (pTable[i] == 0) {
                 pTable[i] = val;
@@ -10128,7 +10129,6 @@ void func_801E0434(u8 slotIdx, u8 mode) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E05D0);
