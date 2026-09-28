@@ -1,4 +1,3 @@
-#ifdef XENO_PC_PORT
 #include "common.h"
 
 #include "psyq/libapi.h"
@@ -12,6 +11,9 @@ __asm__(
         ".word 0x240900ab\n\t"
         ".end _card_info");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 void InitCARD(long val) {
     extern void func_8004E8D8(void);
     extern void func_8004E990(void);
@@ -49,6 +51,9 @@ __asm__(
         ".word 0x2409004a\n\t"
         ".end InitCARD2");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl StartCARD2\n\t"
         ".ent StartCARD2\n\t"
@@ -58,6 +63,9 @@ __asm__(
         ".word 0x2409004b\n\t"
         ".end StartCARD2");
 
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
+#endif
 __asm__(
         ".globl StopCARD2\n\t"
         ".ent StopCARD2\n\t"
@@ -67,28 +75,6 @@ __asm__(
         ".word 0x2409004c\n\t"
         ".end StopCARD2");
 
-#else /* retail matching build: last byte-exact version (dbb08e3b) */
-#include "common.h"
-
-#include "psyq/libapi.h"
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", _card_info);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD);
-
-void StartCARD(void) {
-    EnterCriticalSection();
-    StartCARD2();
-    ChangeClearPAD(0);
-    ExitCriticalSection();
-}
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD2);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StartCARD2);
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD2);
-
+#ifndef XENO_PC_PORT
+__asm__(".space 4"); /* retail inter-object padding */
 #endif
