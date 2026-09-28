@@ -104,6 +104,9 @@ typedef struct {
     POLY_G4 frame;   /* 0x114 */
 } MovieRenderEnv;    /* 0x138 */
 
+/* The overlay's data and rodata come from asm/movie/data in the matching
+ * build; these definitions are the port's. */
+#ifdef XENO_PC_PORT
 /* .data */
 s32 D_80076EEC = 0;            /* menu pad repeat counter */
 s32 D_80076EF0 = 0x10;         /* menu pad repeat threshold */
@@ -153,9 +156,11 @@ s32 D_80077450;                /* func_8002C3D8(): 0 CD MODE1, -1 MODE2, else PC
 s32 D_80077454;                /* SCREEN MODE: 1 = 24-bit colour */
 
 static const RECT D_800704E0 = { 0, 0, 0x280, 0x200 };
+#endif
 
 /* ------------------------------------------------------------------------- */
 
+#ifdef XENO_PC_PORT
 static void MovieSwapRenderEnv(void)
 {
     if (D_80077120 == &D_80077124[0]) {
@@ -166,7 +171,9 @@ static void MovieSwapRenderEnv(void)
     D_8007744C = 1 - D_8007744C;
     ClearOTagR(D_80077120->ot, 32);
 }
+#endif
 
+#ifdef XENO_PC_PORT
 static void MoviePresent(void)
 {
     DrawSync(0);
@@ -175,102 +182,181 @@ static void MoviePresent(void)
     PutDispEnv(&D_80077120->disp);
     DrawOTag(&D_80077120->ot[31]);
 }
+#endif
 
 /* 0x80074AF0: menu colour RNG */
-s32 func_80074AF0(void)
-{
-    s32 a = D_80076EF4 * 5 + 1;
-    s32 b = D_80076EF8 * 7 + 3;
-    s32 v;
+/* Retail functions (defined below in retail order). */
+void func_800704E8(void);
+void func_80072480(void);
+void func_80072D84(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h);
+void func_80072F98(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h);
+void func_80073328(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h);
+void func_800734B8(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h);
+void MovieMain(void);
+s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton);
+s32 func_80074AF0(void);
+void func_80074B58(void);
+s32 func_80074BA4(s32 frame);
+s32 func_8007519C(void);
+void func_80075534(void);
+s32 func_80075D4C(s32 entryIndex);
+void func_80075D8C(void);
+void func_8007625C(void);
+void func_800763BC(u8 noSkip);
+s32 func_80076488(void);
+void func_800768D8(u16 frame, u16 x, u16 y);
+void func_800769A4(void);
 
-    D_80076EF4 = a;
-    D_80076EF8 = b;
-    v = (a ^ b) + 1;
-    D_80076EF4 = v;
-    if (v < 0) {
-        D_80076EF4 = -v;
-    }
-    return D_80076EF4;
-}
 
 /* 0x80074B58: clear the whole frame buffer */
-void func_80074B58(void)
-{
-    RECT rect;
-
-    rect.x = 0;
-    rect.y = 0;
-    rect.w = 0x280;
-    rect.h = 0x1E0;
-    ClearImage(&rect, 0, 0, 0);
-    DrawSync(0);
-}
 
 /* 0x800747AC: menu pad handling with key repeat.  Returns -1/+1 for
  * left/right, and stores 1..4 in *pButton for triangle/circle/cross/square. */
-s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
-{
-    D_800773B4 = D_800773AC;
-    D_800773AC = ControllerGetButtonState(0);
-    if (D_800773B4 == D_800773AC) {
-        if (D_800773B4 != 0) {
-            D_80076EEC++;
-            if (D_80076EF0 < D_80076EEC) {
-                D_800773B4 = 0;
-                D_80076EF0 = 1;
-                D_80076EEC = 0;
-            }
-        } else {
-            D_80076EF0 = 0x10;
-            D_80076EEC = 0;
-        }
-    } else {
-        D_80076EF0 = 0x10;
-        D_80076EEC = 0;
-    }
-
-    if (!(D_800773B4 & 0x1000) && (D_800773AC & 0x1000)) {
-        D_80077118--;
-        if ((s32)D_80077118 < minCursor) {
-            D_80077118 = maxCursor;
-        }
-    }
-    if (!(D_800773B4 & 0x4000) && (D_800773AC & 0x4000)) {
-        D_80077118++;
-        if (maxCursor < D_80077118) {
-            D_80077118 = minCursor;
-        }
-    }
-
-    *pButton = 0;
-    if (!(D_800773B4 & 0x10) && (D_800773AC & 0x10)) {
-        *pButton = 1;
-    }
-    if (!(D_800773B4 & 0x20) && (D_800773AC & 0x20)) {
-        *pButton = 2;
-    }
-    if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40)) {
-        *pButton = 3;
-    }
-    if (!(D_800773B4 & 0x80) && (D_800773AC & 0x80)) {
-        *pButton = 4;
-    }
-    if (!(D_800773B4 & 0x100) && (D_800773AC & 0x100)) {
-        D_800773B0 = 1 - D_800773B0;
-    }
-    if (!(D_800773B4 & 0x800) && (D_800773AC & 0x800)) {
-        D_80077394 = 1 - D_80077394;
-    }
-    if (!(D_800773B4 & 0x2000) && (D_800773AC & 0x2000)) {
-        return 1;
-    }
-    if (!(D_800773B4 & 0x8000) && (D_800773AC & 0x8000)) {
-        return -1;
-    }
-    return 0;
-}
 
 /* 0x80072D84: initialise the menu background boxes */
+
+/* 0x80073328: initialise the menu frame boxes */
+
+#ifdef XENO_PC_PORT
+static void MovieSetCorner(POLY_G4* p, s32 corner, u8 r, u8 g, u8 b)
+{
+    switch (corner) {
+    case 0:
+        setRGB0(p, r, g, b);
+        break;
+    case 1:
+        setRGB1(p, r, g, b);
+        break;
+    case 2:
+        setRGB2(p, r, g, b);
+        break;
+    case 3:
+        setRGB3(p, r, g, b);
+        break;
+    }
+}
+#endif
+
+/* 0x80072F98: animate the background box colours and link it into the OT */
+
+/* 0x800734B8: animate the frame box colours and link it into the OT */
+
+/* 0x80075D4C: raw archive table size field for a directory entry */
+
+/* ------------------------------------------------------------------------- */
+/* STR sector scanning (START FRAME / END FRAME menu items)                   */
+/* ------------------------------------------------------------------------- */
+
+/* STR sector header as read from the disc (raw 0x920 sector for movie type 1,
+ * 0x800 for type 0; the picture header sits at +8 in the raw sector). */
+typedef struct {
+    u16 status;      /* 0x160 = picture sector */
+    u16 type;
+    u16 sectorIndex; /* +4 */
+    u16 sectorCount; /* +6 */
+    u32 frameNumber; /* +8 */
+} StrPictureHeader;
+
+/* 0x80074BA4: locate the sector offset of frame `frame` in the selected
+ * movie file.  Returns -1 when not found. */
+
+/* 0x8007519C: frame number stored in the last sector of the selected movie
+ * file (the END FRAME probe).  Returns -1 when unavailable. */
+
+/* ------------------------------------------------------------------------- */
+/* Playback                                                                  */
+/* ------------------------------------------------------------------------- */
+
+/* 0x800768D8: frame callback from the player module.  `y` is the VRAM row the
+ * picture was decoded to; it selects which of the two display environments
+ * shows it. */
+
+/* 0x800769A4: pad polling during playback; cross or start skips the movie
+ * unless skipping is disabled. */
+
+/* 0x80076488: play the selected movie file to completion or skip */
+
+/* 0x800763BC: shipping entry — play movie D_8007711C of the selected type */
+
+/* 0x8007625C: MOVIE START from the developer menu */
+
+/* ------------------------------------------------------------------------- */
+/* Developer CD tools                                                        */
+/* ------------------------------------------------------------------------- */
+
+/* 0x80075D8C: FAT CHECK — list archive table entries */
+
+/* Placeholders for the untranscribed developer tools (see file header).
+ * DIAGNOSTIC: each prints once and returns to the menu.  Removal: transcribe
+ * func_800704E8 / func_80075534 / func_80072480 from asm/movie/9F8.s. */
+
+
+
+/* ------------------------------------------------------------------------- */
+/* 0x800737EC: game state 6 main                                             */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Retail functions in retail order (asm/movie/9F8.s). Not yet byte-matching:
+ * the matching build assembles the retail bytes; the C is the port's.
+ */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800704E8);
+#else
+void func_800704E8(void)
+{
+#ifdef XENO_PC_PORT
+    printf("[movie-debug-tool] CD-ROM CHECK (func_800704E8) not transcribed\n");
+#endif
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80070DCC);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800712C4);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80071BA0);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80071C34);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072428);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072480);
+#else
+void func_80072480(void)
+{
+#ifdef XENO_PC_PORT
+    printf("[movie-debug-tool] DISC CHANGE (func_80072480) not transcribed\n");
+#endif
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007293C);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800729A8);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072A08);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072D84);
+#else
 void func_80072D84(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h)
 {
     s32 i;
@@ -299,54 +385,11 @@ void func_80072D84(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h)
     SetSemiTrans(p1, 0);
     setXY4(p1, x, y, x1, y, x, y1, x1, y1);
 }
+#endif
 
-/* 0x80073328: initialise the menu frame boxes */
-void func_80073328(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h)
-{
-    s32 i;
-    s16 x1;
-    s16 y1;
-
-    for (i = 0; i < 4; i++) {
-        D_80076FCC[i][0] = 0xFF;
-        D_80076FCC[i][1] = 0xFF;
-        D_80076FCC[i][2] = (func_80074AF0() & 0x3F) - 0x42;
-        D_80076FDC[i][0] = 0xFF;
-        D_80076FDC[i][1] = 0xFF;
-        D_80076FDC[i][2] = (func_80074AF0() & 0x3F) - 0x42;
-    }
-    for (i = 0; i < 4; i++) {
-        D_80076FEC[i] = 0;
-        D_80076FFC[i] = (func_80074AF0() & 0xFF) + 0x20;
-    }
-
-    SetPolyG4(p0);
-    x1 = x + w;
-    y1 = y + h;
-    setXY4(p0, x, y, x1, y, x, y1, x1, y1);
-    SetPolyG4(p1);
-    setXY4(p1, x, y, x1, y, x, y1, x1, y1);
-}
-
-static void MovieSetCorner(POLY_G4* p, s32 corner, u8 r, u8 g, u8 b)
-{
-    switch (corner) {
-    case 0:
-        setRGB0(p, r, g, b);
-        break;
-    case 1:
-        setRGB1(p, r, g, b);
-        break;
-    case 2:
-        setRGB2(p, r, g, b);
-        break;
-    case 3:
-        setRGB3(p, r, g, b);
-        break;
-    }
-}
-
-/* 0x80072F98: animate the background box colours and link it into the OT */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072F98);
+#else
 void func_80072F98(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h)
 {
     s32 i;
@@ -379,8 +422,42 @@ void func_80072F98(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h)
     }
     AddPrim(ot, p);
 }
+#endif
 
-/* 0x800734B8: animate the frame box colours and link it into the OT */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80073328);
+#else
+void func_80073328(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h)
+{
+    s32 i;
+    s16 x1;
+    s16 y1;
+
+    for (i = 0; i < 4; i++) {
+        D_80076FCC[i][0] = 0xFF;
+        D_80076FCC[i][1] = 0xFF;
+        D_80076FCC[i][2] = (func_80074AF0() & 0x3F) - 0x42;
+        D_80076FDC[i][0] = 0xFF;
+        D_80076FDC[i][1] = 0xFF;
+        D_80076FDC[i][2] = (func_80074AF0() & 0x3F) - 0x42;
+    }
+    for (i = 0; i < 4; i++) {
+        D_80076FEC[i] = 0;
+        D_80076FFC[i] = (func_80074AF0() & 0xFF) + 0x20;
+    }
+
+    SetPolyG4(p0);
+    x1 = x + w;
+    y1 = y + h;
+    setXY4(p0, x, y, x1, y, x, y1, x1, y1);
+    SetPolyG4(p1);
+    setXY4(p1, x, y, x1, y, x, y1, x1, y1);
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800734B8);
+#else
 void func_800734B8(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h)
 {
     s32 i;
@@ -413,609 +490,11 @@ void func_800734B8(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h)
     }
     AddPrim(ot, p);
 }
-
-/* 0x80075D4C: raw archive table size field for a directory entry */
-s32 func_80075D4C(s32 entryIndex)
-{
-    u8* e = (u8*)(uintptr_t)g_ArchiveTable + entryIndex * ARCHIVE_HEADER_ENTRY_SIZE;
-    return ((e[6] << 24) + (e[5] << 16) + (e[4] << 8)) | e[3];
-}
-
-/* ------------------------------------------------------------------------- */
-/* STR sector scanning (START FRAME / END FRAME menu items)                   */
-/* ------------------------------------------------------------------------- */
-
-/* STR sector header as read from the disc (raw 0x920 sector for movie type 1,
- * 0x800 for type 0; the picture header sits at +8 in the raw sector). */
-typedef struct {
-    u16 status;      /* 0x160 = picture sector */
-    u16 type;
-    u16 sectorIndex; /* +4 */
-    u16 sectorCount; /* +6 */
-    u32 frameNumber; /* +8 */
-} StrPictureHeader;
-
-/* 0x80074BA4: locate the sector offset of frame `frame` in the selected
- * movie file.  Returns -1 when not found. */
-s32 func_80074BA4(s32 frame)
-{
-    u8 sector[0x1000];
-    s32 headerLen;
-    s32 headerOffset;
-    s32 sectorSize;
-    s32 fileIndex;
-    char* path;
-    s32 result = 0;
-    s32 best = 0;
-    s32 pos;
-    s32 start;
-
-    if (D_80077448 == 0) {
-        ArchiveSetIndex(0x18, 0);
-        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(2))) {
-            return 0;
-        }
-        fileIndex = D_8007711C + 3;
-        path = ArchiveGetFilePath(fileIndex);
-        sectorSize = 0x800;
-        headerLen = 0x20;
-        headerOffset = 0;
-    } else if (D_80077448 == 1) {
-        ArchiveSetIndex(0x18, 1);
-        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(1))) {
-            return 0;
-        }
-        fileIndex = D_8007711C + 2;
-        path = ArchiveGetFilePath(fileIndex);
-        sectorSize = 0x920;
-        headerLen = 0x28;
-        headerOffset = 8;
-    } else if (D_80077448 == 2) {
-        return -1;
-    } else {
-        return 0;
-    }
-
-    if (frame < 2) {
-        return 0;
-    }
-
-    if (func_8002C3D8() != 0) {
-        /* PC HDD development mode: the file is read directly. */
-        StrPictureHeader* hdr = (StrPictureHeader*)(sector + headerOffset);
-        s32 fd = PCopen(path, 0, 0);
-        s32 got;
-        s32 perFrame;
-
-        PClseek(fd, 0, 2);
-        PClseek(fd, 0, 0);
-        PCread(fd, sector, headerLen);
-        perFrame = hdr->sectorCount;
-        pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
-        PClseek(fd, pos * sectorSize, 0);
-        got = PCread(fd, sector, headerLen);
-        if ((s32)hdr->frameNumber == frame && got != 0) {
-            if (hdr->sectorIndex == 0) {
-                PCclose(fd);
-                return pos;
-            }
-            start = pos - hdr->sectorIndex - 2;
-        } else {
-            if (hdr->frameNumber < (u32)frame && pos > 0 && got != 0) {
-                best = pos;
-            }
-            pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
-            pos += pos / 7;
-            PClseek(fd, pos * sectorSize, 0);
-            got = PCread(fd, sector, headerLen);
-            if ((s32)hdr->frameNumber == frame && got != 0) {
-                if (hdr->sectorIndex == 0) {
-                    PCclose(fd);
-                    return pos;
-                }
-                start = pos - hdr->sectorIndex - 2;
-            } else {
-                if (hdr->frameNumber < (u32)frame && best < pos && got != 0) {
-                    best = pos;
-                }
-                start = (perFrame - 1) * (frame - 1);
-                if (best > 0) {
-                    start = best;
-                }
-            }
-        }
-        do {
-            pos = start;
-            PClseek(fd, start * sectorSize, 0);
-            got = PCread(fd, sector, headerLen);
-            start = pos + 1;
-            if (hdr->status == 0x160) {
-                start = pos + (hdr->sectorCount - hdr->sectorIndex);
-            }
-        } while ((s32)hdr->frameNumber != frame && got > 0);
-        if (got == 0) {
-            pos = -1;
-        }
-        PCclose(fd);
-        return pos;
-    } else {
-        StrPictureHeader* hdr = (StrPictureHeader*)sector;
-        s32 sectors;
-        s32 perFrame;
-
-        /* 0x80074F00..0x80075164 */
-        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex), sector, 0x800, 0, 0);
-        ArchiveCdDataSync(0);
-        sectors = (ArchiveDecodeAlignedSize(fileIndex) + sectorSize - 1) / sectorSize;
-        perFrame = hdr->sectorCount;
-        pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
-        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
-        ArchiveCdDataSync(0);
-        /* Retail leaves `start` in $s2 (the caller's value) on the direct-hit
-         * exit; 0 keeps the "start < sectors" result identical for any
-         * non-empty file. */
-        start = 0;
-        if ((s32)hdr->frameNumber == frame && pos < sectors) {
-            if (hdr->sectorIndex == 0) {
-                goto done;
-            }
-            start = pos - hdr->sectorIndex - 2;
-        } else {
-            if (hdr->frameNumber < (u32)frame && best < pos && pos < sectors) {
-                best = pos;
-            }
-            pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
-            pos += pos / 7;
-            ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
-            ArchiveCdDataSync(0);
-            if ((s32)hdr->frameNumber == frame && pos < sectors) {
-                if (hdr->sectorIndex == 0) {
-                    goto done;
-                }
-                start = pos - hdr->sectorIndex - 2;
-            } else {
-                if (hdr->frameNumber < (u32)frame && best < pos && pos < sectors) {
-                    best = pos;
-                }
-                start = (perFrame - 1) * (frame - 1);
-                if (best > 0) {
-                    start = best;
-                }
-            }
-        }
-        do {
-            pos = start;
-            ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
-            ArchiveCdDataSync(0);
-            start = pos + 1;
-            if (hdr->status == 0x160) {
-                start = pos + (hdr->sectorCount - hdr->sectorIndex);
-            }
-        } while ((s32)hdr->frameNumber != frame && start < sectors);
-done:
-        result = pos;
-        if (start >= sectors) {
-            result = -1;
-        }
-        return result;
-    }
-}
-
-/* 0x8007519C: frame number stored in the last sector of the selected movie
- * file (the END FRAME probe).  Returns -1 when unavailable. */
-s32 func_8007519C(void)
-{
-    u8 sector[0x800];
-    s32 fileIndex;
-    char* path;
-    s32 sectorSize;
-    s32 headerLen;
-    s32 headerOffset;
-    s32 result = -1;
-
-    if (D_80077448 == 0) {
-        ArchiveSetIndex(0x18, 0);
-        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(2))) {
-            return 0;
-        }
-        fileIndex = D_8007711C + 3;
-        path = ArchiveGetFilePath(fileIndex);
-        sectorSize = 0x800;
-        headerLen = 0x20;
-        headerOffset = 0;
-    } else if (D_80077448 == 1) {
-        ArchiveSetIndex(0x18, 1);
-        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(1))) {
-            return 0;
-        }
-        fileIndex = D_8007711C + 2;
-        path = ArchiveGetFilePath(fileIndex);
-        sectorSize = 0x920;
-        headerLen = 0x28;
-        headerOffset = 8;
-    } else if (D_80077448 == 2) {
-        return -1;
-    } else {
-        return 0;
-    }
-
-    if (func_8002C3D8() != 0) {
-        StrPictureHeader* hdr = (StrPictureHeader*)(sector + headerOffset);
-        s32 fd = PCopen(path, 0, 0);
-        s32 size = PClseek(fd, 0, 2);
-
-        PClseek(fd, 0, 0);
-        PClseek(fd, size - sectorSize, 0);
-        PCread(fd, sector, headerLen);
-        if (hdr->status == 0x160) {
-            result = hdr->frameNumber;
-        }
-        PCclose(fd);
-        return result;
-    } else {
-        StrPictureHeader* hdr = (StrPictureHeader*)sector;
-        s32 sectors = (ArchiveDecodeAlignedSize(fileIndex) + sectorSize - 1) / sectorSize;
-
-        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + sectors - 1, sector, 0x800, 0, 0);
-        ArchiveCdDataSync(0);
-        if (hdr->status == 0x160) {
-            return hdr->frameNumber;
-        }
-        return -1;
-    }
-}
-
-/* ------------------------------------------------------------------------- */
-/* Playback                                                                  */
-/* ------------------------------------------------------------------------- */
-
-/* 0x800768D8: frame callback from the player module.  `y` is the VRAM row the
- * picture was decoded to; it selects which of the two display environments
- * shows it. */
-void func_800768D8(u16 frame, u16 x, u16 y)
-{
-    D_80077010 = frame;
-    if (D_801D68B4 == 1) {
-        if (y != D_80077024) {
-            D_80077018 = 0;
-        } else {
-            D_80077018 = 1;
-        }
-    } else if (y != D_80077024) {
-        D_80077018 = 0;
-        D_8007701C = 0;
-    } else {
-        D_80077018 = 1;
-        D_8007701C = 1;
-    }
-    if (frame >= D_8007739C && D_80077438 == 0) {
-        D_80077014 = 1;
-    }
-}
-
-/* 0x800769A4: pad polling during playback; cross or start skips the movie
- * unless skipping is disabled. */
-void func_800769A4(void)
-{
-    D_800773B4 = D_800773AC;
-    D_800773AC = ControllerGetButtonState(0);
-    if (D_800773B4 == D_800773AC) {
-        if (D_800773B4 != 0) {
-            D_80076F04++;
-            if (D_80076F08 < D_80076F04) {
-                D_800773B4 = 0;
-                D_80076F08 = 1;
-                D_80076F04 = 0;
-            }
-        } else {
-            D_80076F08 = 0x5A;
-            D_80076F04 = 0;
-        }
-    } else {
-        D_80076F08 = 0x5A;
-        D_80076F04 = 0;
-    }
-
-    if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40) && D_80077028 == 0) {
-        SoundSetCdVolumeWithFade(0, 10);
-        D_80077014 = 5;
-    }
-    if (!(D_800773B4 & 0x800) && (D_800773AC & 0x800) && D_80077028 == 0) {
-        SoundSetCdVolumeWithFade(0, 10);
-        D_80077014 = 5;
-    }
-}
-
-/* 0x80076488: play the selected movie file to completion or skip */
-s32 func_80076488(void)
-{
-    RECT clear = D_800704E0;
-    RECT copy;
-    s32 fileIndex;
-    s32 hasAudio;
-    s32 pace;
-    s32 i;
-
-    D_80077014 = 0;
-    D_80077020 = 0;
-    if (D_80077448 == 0) {
-        fileIndex = D_8007711C + 3;
-        hasAudio = 0;
-    } else {
-        fileIndex = D_8007711C + 2;
-        hasAudio = 1;
-    }
-
-    if (ArchiveDecodeSize(fileIndex) == 0x18) {
-        SetDispMask(1);
-        D_8004FE46 = 0;
-        return 0;
-    }
-
-    Vsync(0);
-    ClearImage(&clear, 0, 0, 0);
-    DrawSync(0);
-    Vsync(0);
-    D_80077018 = 0;
-    D_8007701C = 0;
-    func_801D43B0();
-    if (D_800773A0 > 0) {
-        D_80077024 = (0xF0 - D_800773A0) / 2;
-    } else {
-        D_80077024 = 0;
-    }
-    func_801D3538(0x140, 0xF0, 0x80, 0x10, 0x20, 0x800, (u16)D_80077454);
-    D_801D68B4 = 0;
-    func_801D37CC((u16)fileIndex, D_800773A8, (u16)D_800773A4, (u16)D_8007739C, (u16)D_80077398,
-                  hasAudio, D_80077438 != 0, 0, (u16)D_80077024, 0,
-                  (u16)(D_80077024 + 0xF0), (u16)D_800773A0, func_800768D8);
-
-    pace = 30;
-    PutDrawEnv(&D_80077124[D_80077018].draw);
-    PutDispEnv(&D_80077124[D_80077018].disp);
-    SetDispMask(1);
-
-    do {
-        if (D_80077020 == 0) {
-            s32 pumps = pace / 10;
-            s32 slot = 1;
-
-            for (i = 0; i < pumps; i++) {
-                s32 before = Vsync(1);
-                s32 after;
-
-                func_801D3F7C();
-                after = Vsync(1);
-                if (slot < 0x20) {
-                    D_800773B8[i][0] = before;
-                    D_800773B8[i][1] = after;
-                }
-                slot += 2;
-            }
-            pace -= (pace / 10) * 10;
-        }
-        pace += 30;
-
-        func_800769A4();
-        GameCheckAndHandleSoftReset();
-        Vsync(0);
-        PutDispEnv(&D_80077124[D_8007701C].disp);
-        D_8007701C = D_80077018;
-        if (D_80077014 == 1) {
-            break;
-        }
-        if (D_80077014 >= 2) {
-            D_80077014--;
-        }
-    } while (1);
-
-    func_801D4318();
-    if (D_8007701C == 0) {
-        DrawSync(0);
-        Vsync(0);
-        copy.x = 0;
-        copy.y = 0xF0;
-        copy.w = 0x1E0;
-        copy.h = 0xF0;
-        MoveImage(&copy, 0, 0);
-        DrawSync(0);
-        Vsync(0);
-        PutDispEnv(&D_80077124[1].disp);
-    }
-    return 0;
-}
-
-/* 0x800763BC: shipping entry — play movie D_8007711C of the selected type */
-void func_800763BC(u8 noSkip)
-{
-    s32 play;
-
-    D_80077028 = noSkip;
-    D_800773AC = -1;
-    if (D_80077448 == 0) {
-        ArchiveSetIndex(0x18, 0);
-        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(2);
-    } else if (D_80077448 == 1) {
-        ArchiveSetIndex(0x18, 1);
-        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(1);
-    } else if (D_80077448 == 2) {
-        play = 0;
-    } else {
-        play = 1;
-    }
-
-    if (play) {
-        D_80077124[0].draw.isbg = 0;
-        D_80077124[1].draw.isbg = 0;
-        D_80077124[0].disp.isrgb24 = 1;
-        D_80077124[1].disp.isrgb24 = 1;
-        func_80076488();
-    }
-}
-
-/* 0x8007625C: MOVIE START from the developer menu */
-void func_8007625C(void)
-{
-    RECT clear = D_800704E0;
-    s32 play;
-
-    D_80077028 = 0;
-    D_800773AC = -1;
-    if (D_80077448 == 0) {
-        ArchiveSetIndex(0x18, 0);
-        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(2);
-    } else if (D_80077448 == 1) {
-        ArchiveSetIndex(0x18, 1);
-        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(1);
-    } else if (D_80077448 == 2) {
-        play = 0;
-    } else {
-        play = 1;
-    }
-
-    if (play) {
-        SetDispMask(0);
-        D_80077124[0].draw.isbg = 0;
-        D_80077124[1].draw.isbg = 0;
-        if (D_80077454 != 0) {
-            D_80077124[0].disp.isrgb24 = 1;
-            D_80077124[1].disp.isrgb24 = 1;
-        }
-        func_80076488();
-        Vsync(0);
-        ClearImage(&clear, 0, 0, 0);
-        DrawSync(0);
-        Vsync(0);
-        D_80077124[0].draw.isbg = 1;
-        D_80077124[1].draw.isbg = 1;
-        if (D_80077454 != 0) {
-            D_80077124[0].disp.isrgb24 = 0;
-            D_80077124[1].disp.isrgb24 = 0;
-        }
-    }
-}
-
-/* ------------------------------------------------------------------------- */
-/* Developer CD tools                                                        */
-/* ------------------------------------------------------------------------- */
-
-/* 0x80075D8C: FAT CHECK — list archive table entries */
-void func_80075D8C(void)
-{
-    s32 savedDir;
-    s32 savedEntry;
-    s32 button;
-    s32 first = 0;
-    s32 hex = 0;
-    s32 names = 0;
-
-    func_80074B58();
-    ArchiveGetArchiveOffsetIndices(&savedDir, &savedEntry);
-    ArchiveSetIndex(0, 0);
-    do {
-        s32 i;
-
-        MovieSwapRenderEnv();
-        FontPrintf("\n[ FAT CHECK MODE ");
-        FontPrintf(hex ? "HEX ]\n" : "DEC ]\n");
-        func_800747AC(0, 0, &button);
-        if (!(D_800773B4 & 0x1000) && (D_800773AC & 0x1000) && first > 0) {
-            first--;
-        }
-        if (!(D_800773B4 & 0x10) && (D_800773AC & 0x10)) {
-            first -= 0x14;
-            if (first < 0) {
-                first = 0;
-            }
-        }
-        if (!(D_800773B4 & 0x4000) && (D_800773AC & 0x4000) && first < 0x1235) {
-            first++;
-        }
-        if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40)) {
-            first += 0x14;
-            if (first > 0x1235) {
-                first = 0x1235;
-            }
-        }
-        if (!(D_800773B4 & 8) && (D_800773AC & 8)) {
-            hex = 1 - hex;
-        }
-        if (!(D_800773B4 & 4) && (D_800773AC & 4)) {
-            names = 1 - names;
-        }
-
-        for (i = first; i < first + 0x14; i++) {
-            if (func_80075D4C(i) == 0) {
-                FontPrintf(hex ? "No %4x NullFile\n" : "No %4d NullFile\n", i);
-                continue;
-            }
-            FontPrintf(hex ? "No %4x Sect%6x " : "No %4d Sect%6d ", i, ArchiveDecodeSector(i + 1));
-            if (names) {
-                char* path;
-
-                if (func_80075D4C(i) < 0) {
-                    FontPrintf("[P%3d]\n", -func_80075D4C(i));
-                    continue;
-                }
-                path = ArchiveGetFilePath(i + 1);
-                if (path != NULL) {
-                    char* p = path;
-
-                    while (*p != 0) {
-                        if (*p == '\\') {
-                            path = p + 1;
-                        }
-                        p++;
-                    }
-                    FontPrintf("%s\n", path);
-                } else {
-                    FontPrintf("\n", path);
-                }
-            } else {
-                FontPrintf(hex ? "Size%9x\n" : "Size%9d\n", func_80075D4C(i));
-            }
-        }
-
-        FontPrintf("\nPUSH CIRCLE BUTTON TO MENU.");
-        if (D_80077394 > 0) {
-            HeapDebugDump(1, 0, 6, 0x808D);
-        }
-        FontDrawLetters(D_80077120->ot);
-        func_80072F98(D_80077120->ot, &D_80077120->box, 8, 0x14, 0x130, 0xC0);
-        func_800734B8(D_80077120->ot, &D_80077120->frame, 7, 0x13, 0x132, 0xC2);
-        MoviePresent();
-    } while (button != 2);
-    ArchiveSetIndex(savedDir, savedEntry);
-}
-
-/* Placeholders for the untranscribed developer tools (see file header).
- * DIAGNOSTIC: each prints once and returns to the menu.  Removal: transcribe
- * func_800704E8 / func_80075534 / func_80072480 from asm/movie/9F8.s. */
-void func_800704E8(void)
-{
-#ifdef XENO_PC_PORT
-    printf("[movie-debug-tool] CD-ROM CHECK (func_800704E8) not transcribed\n");
 #endif
-}
 
-void func_80075534(void)
-{
-#ifdef XENO_PC_PORT
-    printf("[movie-debug-tool] CD-ROM MONITOR (func_80075534) not transcribed\n");
-#endif
-}
-
-void func_80072480(void)
-{
-#ifdef XENO_PC_PORT
-    printf("[movie-debug-tool] DISC CHANGE (func_80072480) not transcribed\n");
-#endif
-}
-
-/* ------------------------------------------------------------------------- */
-/* 0x800737EC: game state 6 main                                             */
-/* ------------------------------------------------------------------------- */
-
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", MovieMain);
+#else
 void MovieMain(void)
 {
     char trouble[8] = "trouble";
@@ -1369,3 +848,715 @@ void MovieMain(void)
         GameCheckAndHandleSoftReset();
     }
 }
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800747AC);
+#else
+s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
+{
+    D_800773B4 = D_800773AC;
+    D_800773AC = ControllerGetButtonState(0);
+    if (D_800773B4 == D_800773AC) {
+        if (D_800773B4 != 0) {
+            D_80076EEC++;
+            if (D_80076EF0 < D_80076EEC) {
+                D_800773B4 = 0;
+                D_80076EF0 = 1;
+                D_80076EEC = 0;
+            }
+        } else {
+            D_80076EF0 = 0x10;
+            D_80076EEC = 0;
+        }
+    } else {
+        D_80076EF0 = 0x10;
+        D_80076EEC = 0;
+    }
+
+    if (!(D_800773B4 & 0x1000) && (D_800773AC & 0x1000)) {
+        D_80077118--;
+        if ((s32)D_80077118 < minCursor) {
+            D_80077118 = maxCursor;
+        }
+    }
+    if (!(D_800773B4 & 0x4000) && (D_800773AC & 0x4000)) {
+        D_80077118++;
+        if (maxCursor < D_80077118) {
+            D_80077118 = minCursor;
+        }
+    }
+
+    *pButton = 0;
+    if (!(D_800773B4 & 0x10) && (D_800773AC & 0x10)) {
+        *pButton = 1;
+    }
+    if (!(D_800773B4 & 0x20) && (D_800773AC & 0x20)) {
+        *pButton = 2;
+    }
+    if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40)) {
+        *pButton = 3;
+    }
+    if (!(D_800773B4 & 0x80) && (D_800773AC & 0x80)) {
+        *pButton = 4;
+    }
+    if (!(D_800773B4 & 0x100) && (D_800773AC & 0x100)) {
+        D_800773B0 = 1 - D_800773B0;
+    }
+    if (!(D_800773B4 & 0x800) && (D_800773AC & 0x800)) {
+        D_80077394 = 1 - D_80077394;
+    }
+    if (!(D_800773B4 & 0x2000) && (D_800773AC & 0x2000)) {
+        return 1;
+    }
+    if (!(D_800773B4 & 0x8000) && (D_800773AC & 0x8000)) {
+        return -1;
+    }
+    return 0;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074AF0);
+#else
+s32 func_80074AF0(void)
+{
+    s32 a = D_80076EF4 * 5 + 1;
+    s32 b = D_80076EF8 * 7 + 3;
+    s32 v;
+
+    D_80076EF4 = a;
+    D_80076EF8 = b;
+    v = (a ^ b) + 1;
+    D_80076EF4 = v;
+    if (v < 0) {
+        D_80076EF4 = -v;
+    }
+    return D_80076EF4;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074B58);
+#else
+void func_80074B58(void)
+{
+    RECT rect;
+
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x280;
+    rect.h = 0x1E0;
+    ClearImage(&rect, 0, 0, 0);
+    DrawSync(0);
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074BA4);
+#else
+s32 func_80074BA4(s32 frame)
+{
+    u8 sector[0x1000];
+    s32 headerLen;
+    s32 headerOffset;
+    s32 sectorSize;
+    s32 fileIndex;
+    char* path;
+    s32 result = 0;
+    s32 best = 0;
+    s32 pos;
+    s32 start;
+
+    if (D_80077448 == 0) {
+        ArchiveSetIndex(0x18, 0);
+        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(2))) {
+            return 0;
+        }
+        fileIndex = D_8007711C + 3;
+        path = ArchiveGetFilePath(fileIndex);
+        sectorSize = 0x800;
+        headerLen = 0x20;
+        headerOffset = 0;
+    } else if (D_80077448 == 1) {
+        ArchiveSetIndex(0x18, 1);
+        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(1))) {
+            return 0;
+        }
+        fileIndex = D_8007711C + 2;
+        path = ArchiveGetFilePath(fileIndex);
+        sectorSize = 0x920;
+        headerLen = 0x28;
+        headerOffset = 8;
+    } else if (D_80077448 == 2) {
+        return -1;
+    } else {
+        return 0;
+    }
+
+    if (frame < 2) {
+        return 0;
+    }
+
+    if (func_8002C3D8() != 0) {
+        /* PC HDD development mode: the file is read directly. */
+        StrPictureHeader* hdr = (StrPictureHeader*)(sector + headerOffset);
+        s32 fd = PCopen(path, 0, 0);
+        s32 got;
+        s32 perFrame;
+
+        PClseek(fd, 0, 2);
+        PClseek(fd, 0, 0);
+        PCread(fd, sector, headerLen);
+        perFrame = hdr->sectorCount;
+        pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
+        PClseek(fd, pos * sectorSize, 0);
+        got = PCread(fd, sector, headerLen);
+        if ((s32)hdr->frameNumber == frame && got != 0) {
+            if (hdr->sectorIndex == 0) {
+                PCclose(fd);
+                return pos;
+            }
+            start = pos - hdr->sectorIndex - 2;
+        } else {
+            if (hdr->frameNumber < (u32)frame && pos > 0 && got != 0) {
+                best = pos;
+            }
+            pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
+            pos += pos / 7;
+            PClseek(fd, pos * sectorSize, 0);
+            got = PCread(fd, sector, headerLen);
+            if ((s32)hdr->frameNumber == frame && got != 0) {
+                if (hdr->sectorIndex == 0) {
+                    PCclose(fd);
+                    return pos;
+                }
+                start = pos - hdr->sectorIndex - 2;
+            } else {
+                if (hdr->frameNumber < (u32)frame && best < pos && got != 0) {
+                    best = pos;
+                }
+                start = (perFrame - 1) * (frame - 1);
+                if (best > 0) {
+                    start = best;
+                }
+            }
+        }
+        do {
+            pos = start;
+            PClseek(fd, start * sectorSize, 0);
+            got = PCread(fd, sector, headerLen);
+            start = pos + 1;
+            if (hdr->status == 0x160) {
+                start = pos + (hdr->sectorCount - hdr->sectorIndex);
+            }
+        } while ((s32)hdr->frameNumber != frame && got > 0);
+        if (got == 0) {
+            pos = -1;
+        }
+        PCclose(fd);
+        return pos;
+    } else {
+        StrPictureHeader* hdr = (StrPictureHeader*)sector;
+        s32 sectors;
+        s32 perFrame;
+
+        /* 0x80074F00..0x80075164 */
+        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex), sector, 0x800, 0, 0);
+        ArchiveCdDataSync(0);
+        sectors = (ArchiveDecodeAlignedSize(fileIndex) + sectorSize - 1) / sectorSize;
+        perFrame = hdr->sectorCount;
+        pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
+        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
+        ArchiveCdDataSync(0);
+        /* Retail leaves `start` in $s2 (the caller's value) on the direct-hit
+         * exit; 0 keeps the "start < sectors" result identical for any
+         * non-empty file. */
+        start = 0;
+        if ((s32)hdr->frameNumber == frame && pos < sectors) {
+            if (hdr->sectorIndex == 0) {
+                goto done;
+            }
+            start = pos - hdr->sectorIndex - 2;
+        } else {
+            if (hdr->frameNumber < (u32)frame && best < pos && pos < sectors) {
+                best = pos;
+            }
+            pos = (frame - 1) * perFrame - ((frame - 1) >> 2);
+            pos += pos / 7;
+            ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
+            ArchiveCdDataSync(0);
+            if ((s32)hdr->frameNumber == frame && pos < sectors) {
+                if (hdr->sectorIndex == 0) {
+                    goto done;
+                }
+                start = pos - hdr->sectorIndex - 2;
+            } else {
+                if (hdr->frameNumber < (u32)frame && best < pos && pos < sectors) {
+                    best = pos;
+                }
+                start = (perFrame - 1) * (frame - 1);
+                if (best > 0) {
+                    start = best;
+                }
+            }
+        }
+        do {
+            pos = start;
+            ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + pos, sector, 0x800, 0, 0);
+            ArchiveCdDataSync(0);
+            start = pos + 1;
+            if (hdr->status == 0x160) {
+                start = pos + (hdr->sectorCount - hdr->sectorIndex);
+            }
+        } while ((s32)hdr->frameNumber != frame && start < sectors);
+done:
+        result = pos;
+        if (start >= sectors) {
+            result = -1;
+        }
+        return result;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007519C);
+#else
+s32 func_8007519C(void)
+{
+    u8 sector[0x800];
+    s32 fileIndex;
+    char* path;
+    s32 sectorSize;
+    s32 headerLen;
+    s32 headerOffset;
+    s32 result = -1;
+
+    if (D_80077448 == 0) {
+        ArchiveSetIndex(0x18, 0);
+        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(2))) {
+            return 0;
+        }
+        fileIndex = D_8007711C + 3;
+        path = ArchiveGetFilePath(fileIndex);
+        sectorSize = 0x800;
+        headerLen = 0x20;
+        headerOffset = 0;
+    } else if (D_80077448 == 1) {
+        ArchiveSetIndex(0x18, 1);
+        if (!(D_8007711C < ArchiveDecodeSizeAbsolute(1))) {
+            return 0;
+        }
+        fileIndex = D_8007711C + 2;
+        path = ArchiveGetFilePath(fileIndex);
+        sectorSize = 0x920;
+        headerLen = 0x28;
+        headerOffset = 8;
+    } else if (D_80077448 == 2) {
+        return -1;
+    } else {
+        return 0;
+    }
+
+    if (func_8002C3D8() != 0) {
+        StrPictureHeader* hdr = (StrPictureHeader*)(sector + headerOffset);
+        s32 fd = PCopen(path, 0, 0);
+        s32 size = PClseek(fd, 0, 2);
+
+        PClseek(fd, 0, 0);
+        PClseek(fd, size - sectorSize, 0);
+        PCread(fd, sector, headerLen);
+        if (hdr->status == 0x160) {
+            result = hdr->frameNumber;
+        }
+        PCclose(fd);
+        return result;
+    } else {
+        StrPictureHeader* hdr = (StrPictureHeader*)sector;
+        s32 sectors = (ArchiveDecodeAlignedSize(fileIndex) + sectorSize - 1) / sectorSize;
+
+        ArchiveReadFileFromCdSector(ArchiveDecodeSector(fileIndex) + sectors - 1, sector, 0x800, 0, 0);
+        ArchiveCdDataSync(0);
+        if (hdr->status == 0x160) {
+            return hdr->frameNumber;
+        }
+        return -1;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800753B8);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007548C);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075508);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075534);
+#else
+void func_80075534(void)
+{
+#ifdef XENO_PC_PORT
+    printf("[movie-debug-tool] CD-ROM MONITOR (func_80075534) not transcribed\n");
+#endif
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075D4C);
+#else
+s32 func_80075D4C(s32 entryIndex)
+{
+    u8* e = (u8*)(uintptr_t)g_ArchiveTable + entryIndex * ARCHIVE_HEADER_ENTRY_SIZE;
+    return ((e[6] << 24) + (e[5] << 16) + (e[4] << 8)) | e[3];
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075D8C);
+#else
+void func_80075D8C(void)
+{
+    s32 savedDir;
+    s32 savedEntry;
+    s32 button;
+    s32 first = 0;
+    s32 hex = 0;
+    s32 names = 0;
+
+    func_80074B58();
+    ArchiveGetArchiveOffsetIndices(&savedDir, &savedEntry);
+    ArchiveSetIndex(0, 0);
+    do {
+        s32 i;
+
+        MovieSwapRenderEnv();
+        FontPrintf("\n[ FAT CHECK MODE ");
+        FontPrintf(hex ? "HEX ]\n" : "DEC ]\n");
+        func_800747AC(0, 0, &button);
+        if (!(D_800773B4 & 0x1000) && (D_800773AC & 0x1000) && first > 0) {
+            first--;
+        }
+        if (!(D_800773B4 & 0x10) && (D_800773AC & 0x10)) {
+            first -= 0x14;
+            if (first < 0) {
+                first = 0;
+            }
+        }
+        if (!(D_800773B4 & 0x4000) && (D_800773AC & 0x4000) && first < 0x1235) {
+            first++;
+        }
+        if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40)) {
+            first += 0x14;
+            if (first > 0x1235) {
+                first = 0x1235;
+            }
+        }
+        if (!(D_800773B4 & 8) && (D_800773AC & 8)) {
+            hex = 1 - hex;
+        }
+        if (!(D_800773B4 & 4) && (D_800773AC & 4)) {
+            names = 1 - names;
+        }
+
+        for (i = first; i < first + 0x14; i++) {
+            if (func_80075D4C(i) == 0) {
+                FontPrintf(hex ? "No %4x NullFile\n" : "No %4d NullFile\n", i);
+                continue;
+            }
+            FontPrintf(hex ? "No %4x Sect%6x " : "No %4d Sect%6d ", i, ArchiveDecodeSector(i + 1));
+            if (names) {
+                char* path;
+
+                if (func_80075D4C(i) < 0) {
+                    FontPrintf("[P%3d]\n", -func_80075D4C(i));
+                    continue;
+                }
+                path = ArchiveGetFilePath(i + 1);
+                if (path != NULL) {
+                    char* p = path;
+
+                    while (*p != 0) {
+                        if (*p == '\\') {
+                            path = p + 1;
+                        }
+                        p++;
+                    }
+                    FontPrintf("%s\n", path);
+                } else {
+                    FontPrintf("\n", path);
+                }
+            } else {
+                FontPrintf(hex ? "Size%9x\n" : "Size%9d\n", func_80075D4C(i));
+            }
+        }
+
+        FontPrintf("\nPUSH CIRCLE BUTTON TO MENU.");
+        if (D_80077394 > 0) {
+            HeapDebugDump(1, 0, 6, 0x808D);
+        }
+        FontDrawLetters(D_80077120->ot);
+        func_80072F98(D_80077120->ot, &D_80077120->box, 8, 0x14, 0x130, 0xC0);
+        func_800734B8(D_80077120->ot, &D_80077120->frame, 7, 0x13, 0x132, 0xC2);
+        MoviePresent();
+    } while (button != 2);
+    ArchiveSetIndex(savedDir, savedEntry);
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007625C);
+#else
+void func_8007625C(void)
+{
+    RECT clear = D_800704E0;
+    s32 play;
+
+    D_80077028 = 0;
+    D_800773AC = -1;
+    if (D_80077448 == 0) {
+        ArchiveSetIndex(0x18, 0);
+        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(2);
+    } else if (D_80077448 == 1) {
+        ArchiveSetIndex(0x18, 1);
+        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(1);
+    } else if (D_80077448 == 2) {
+        play = 0;
+    } else {
+        play = 1;
+    }
+
+    if (play) {
+        SetDispMask(0);
+        D_80077124[0].draw.isbg = 0;
+        D_80077124[1].draw.isbg = 0;
+        if (D_80077454 != 0) {
+            D_80077124[0].disp.isrgb24 = 1;
+            D_80077124[1].disp.isrgb24 = 1;
+        }
+        func_80076488();
+        Vsync(0);
+        ClearImage(&clear, 0, 0, 0);
+        DrawSync(0);
+        Vsync(0);
+        D_80077124[0].draw.isbg = 1;
+        D_80077124[1].draw.isbg = 1;
+        if (D_80077454 != 0) {
+            D_80077124[0].disp.isrgb24 = 0;
+            D_80077124[1].disp.isrgb24 = 0;
+        }
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800763BC);
+#else
+void func_800763BC(u8 noSkip)
+{
+    s32 play;
+
+    D_80077028 = noSkip;
+    D_800773AC = -1;
+    if (D_80077448 == 0) {
+        ArchiveSetIndex(0x18, 0);
+        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(2);
+    } else if (D_80077448 == 1) {
+        ArchiveSetIndex(0x18, 1);
+        play = D_8007711C < (s16)ArchiveDecodeSizeAbsolute(1);
+    } else if (D_80077448 == 2) {
+        play = 0;
+    } else {
+        play = 1;
+    }
+
+    if (play) {
+        D_80077124[0].draw.isbg = 0;
+        D_80077124[1].draw.isbg = 0;
+        D_80077124[0].disp.isrgb24 = 1;
+        D_80077124[1].disp.isrgb24 = 1;
+        func_80076488();
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076488);
+#else
+s32 func_80076488(void)
+{
+    RECT clear = D_800704E0;
+    RECT copy;
+    s32 fileIndex;
+    s32 hasAudio;
+    s32 pace;
+    s32 i;
+
+    D_80077014 = 0;
+    D_80077020 = 0;
+    if (D_80077448 == 0) {
+        fileIndex = D_8007711C + 3;
+        hasAudio = 0;
+    } else {
+        fileIndex = D_8007711C + 2;
+        hasAudio = 1;
+    }
+
+    if (ArchiveDecodeSize(fileIndex) == 0x18) {
+        SetDispMask(1);
+        D_8004FE46 = 0;
+        return 0;
+    }
+
+    Vsync(0);
+    ClearImage(&clear, 0, 0, 0);
+    DrawSync(0);
+    Vsync(0);
+    D_80077018 = 0;
+    D_8007701C = 0;
+    func_801D43B0();
+    if (D_800773A0 > 0) {
+        D_80077024 = (0xF0 - D_800773A0) / 2;
+    } else {
+        D_80077024 = 0;
+    }
+    func_801D3538(0x140, 0xF0, 0x80, 0x10, 0x20, 0x800, (u16)D_80077454);
+    D_801D68B4 = 0;
+    func_801D37CC((u16)fileIndex, D_800773A8, (u16)D_800773A4, (u16)D_8007739C, (u16)D_80077398,
+                  hasAudio, D_80077438 != 0, 0, (u16)D_80077024, 0,
+                  (u16)(D_80077024 + 0xF0), (u16)D_800773A0, func_800768D8);
+
+    pace = 30;
+    PutDrawEnv(&D_80077124[D_80077018].draw);
+    PutDispEnv(&D_80077124[D_80077018].disp);
+    SetDispMask(1);
+
+    do {
+        if (D_80077020 == 0) {
+            s32 pumps = pace / 10;
+            s32 slot = 1;
+
+            for (i = 0; i < pumps; i++) {
+                s32 before = Vsync(1);
+                s32 after;
+
+                func_801D3F7C();
+                after = Vsync(1);
+                if (slot < 0x20) {
+                    D_800773B8[i][0] = before;
+                    D_800773B8[i][1] = after;
+                }
+                slot += 2;
+            }
+            pace -= (pace / 10) * 10;
+        }
+        pace += 30;
+
+        func_800769A4();
+        GameCheckAndHandleSoftReset();
+        Vsync(0);
+        PutDispEnv(&D_80077124[D_8007701C].disp);
+        D_8007701C = D_80077018;
+        if (D_80077014 == 1) {
+            break;
+        }
+        if (D_80077014 >= 2) {
+            D_80077014--;
+        }
+    } while (1);
+
+    func_801D4318();
+    if (D_8007701C == 0) {
+        DrawSync(0);
+        Vsync(0);
+        copy.x = 0;
+        copy.y = 0xF0;
+        copy.w = 0x1E0;
+        copy.h = 0xF0;
+        MoveImage(&copy, 0, 0);
+        DrawSync(0);
+        Vsync(0);
+        PutDispEnv(&D_80077124[1].disp);
+    }
+    return 0;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800768D8);
+#else
+void func_800768D8(u16 frame, u16 x, u16 y)
+{
+    D_80077010 = frame;
+    if (D_801D68B4 == 1) {
+        if (y != D_80077024) {
+            D_80077018 = 0;
+        } else {
+            D_80077018 = 1;
+        }
+    } else if (y != D_80077024) {
+        D_80077018 = 0;
+        D_8007701C = 0;
+    } else {
+        D_80077018 = 1;
+        D_8007701C = 1;
+    }
+    if (frame >= D_8007739C && D_80077438 == 0) {
+        D_80077014 = 1;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_800769A4);
+#else
+void func_800769A4(void)
+{
+    D_800773B4 = D_800773AC;
+    D_800773AC = ControllerGetButtonState(0);
+    if (D_800773B4 == D_800773AC) {
+        if (D_800773B4 != 0) {
+            D_80076F04++;
+            if (D_80076F08 < D_80076F04) {
+                D_800773B4 = 0;
+                D_80076F08 = 1;
+                D_80076F04 = 0;
+            }
+        } else {
+            D_80076F08 = 0x5A;
+            D_80076F04 = 0;
+        }
+    } else {
+        D_80076F08 = 0x5A;
+        D_80076F04 = 0;
+    }
+
+    if (!(D_800773B4 & 0x40) && (D_800773AC & 0x40) && D_80077028 == 0) {
+        SoundSetCdVolumeWithFade(0, 10);
+        D_80077014 = 5;
+    }
+    if (!(D_800773B4 & 0x800) && (D_800773AC & 0x800) && D_80077028 == 0) {
+        SoundSetCdVolumeWithFade(0, 10);
+        D_80077014 = 5;
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076AF0);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076C68);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076CA4);
+#endif
