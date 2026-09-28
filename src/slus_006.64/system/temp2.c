@@ -2429,6 +2429,11 @@ s32 func_8003014C(s32* pData) {
 }
 #endif
 
+/* Closest C so far (3 words off, only where the -1 loop constant is
+ * scheduled): `volatile u8 unused[1];` for retail's 8-byte frame,
+ * `i = count - 1;` before `if (count != 0)`, a separate
+ * `s16* pIndex = (s16*)(i * 2 + (uintptr_t)pIndices);`, offsets added as
+ * `idx + (uintptr_t)pSrc/pDst`, and `do { ... } while (--i != -1);`. */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
 #else
