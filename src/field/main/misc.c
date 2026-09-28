@@ -2871,7 +2871,7 @@ void func_8008E8C8(void) {
             pActor = g_FieldScriptVMCurActor;
             if (*(u32*)((u8*)pActor + 0x04) & 0x80000) {
                 s32 idx = D_800AFD1C;
-                u8* pFieldActor = (u8*)g_FieldActors + idx * 92;
+                u8* pFieldActor = (u8*)(uintptr_t)((u32)(idx * 92) + (u32)(uintptr_t)g_FieldActors);
                 u32 pSub = *(u32*)(pFieldActor + 0x04);
                 *(u32*)(pSub + 0x18) = 0;
                 *(u32*)(pSub + 0x14) = 0;
