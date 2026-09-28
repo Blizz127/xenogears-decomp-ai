@@ -27,12 +27,12 @@ done
 cp "$OUT/waits.inc" "$OUT/good.inc"
 for mutant in short-wait wrong-sentinel wrong-port narrow-status retained-state wrong-pump; do
     case "$mutant" in
-        short-wait) sed 's/i < 59/i < 58/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
-        wrong-sentinel) sed 's/status == -2/status == -1/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
+        short-wait) sed 's/i = 0x3B/i = 0x3A/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
+        wrong-sentinel) sed 's/val != -2/val != -1/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
         wrong-port) sed 's/idx \* 4/(1 - idx) * 4/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
-        narrow-status) sed 's/status == -2/(s16)status == -2/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
-        retained-state) sed 's/unk4F80\[0x66\] = 0/unk4F80[0x66] = 2/' "$OUT/good.inc" > "$OUT/waits.inc" ;;
-        wrong-pump) sed 's/++i) func_801C7BF4();/++i) Vsync(0);/' "$OUT/good.inc" > "$OUT/waits.inc" ;;
+        narrow-status) sed 's/val != -2/(s16)val != -2/g' "$OUT/good.inc" > "$OUT/waits.inc" ;;
+        retained-state) sed 's/\[MENU_CARD_OFF(0x4FE6)\] = 0;/[MENU_CARD_OFF(0x4FE6)] = 2;/' "$OUT/good.inc" > "$OUT/waits.inc" ;;
+        wrong-pump) sed 's/            func_801C7BF4();/            Vsync(0);/' "$OUT/good.inc" > "$OUT/waits.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/waits.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/menu_card_wait_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"
