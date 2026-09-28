@@ -40,4 +40,16 @@
 #define D_8009BD3A WM_GUEST(u16, 0x8009BD3A)
 #define D_8009BD3C WM_GUEST(s16, 0x8009BD3C)
 
+/* batch 2: story-selector callbacks (func_800877E0, 80087804, 800879A8,
+ * 80087A8C, 80088D64..80088F5C) and their callees func_800848B4 and
+ * func_800879E0 */
+#define D_8009C610 WM_GUEST(s32, 0x8009C610) /* story-progress bracket */
+#define D_8009C620 ((u8*)PSX_ADDR(WM_GUEST(u32, 0x8009C620))) /* 0x54-byte record array */
+#define D_8009B624 ((u16*)PSX_ADDR(0x8009B624))
+#define D_8009B626 ((u16*)PSX_ADDR(0x8009B626))
+#define D_8009B64C ((u16*)PSX_ADDR(0x8009B64C))
+#define D_8009B64E ((u16*)PSX_ADDR(0x8009B64E))
+#define D_8009B69C ((u16*)PSX_ADDR(0x8009B69C))
+#define D_8009B6B0 ((u16*)PSX_ADDR(0x8009B6B0))
+
 #endif /* WORLD_MAP_PORT_DATA_H */
