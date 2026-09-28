@@ -10,6 +10,7 @@
  *   warp <map> <x> <z>          teleport the player once map <map> is active
  *   battle <id>                 start battle <id> from an idle field
  *   speed <1..5>                wall-clock speed (xg_plat/timing.h)
+ *   bind [<button> <key>]       list or change a key binding (xg_plat/input.h)
  *   mods                        list loaded mods
  *
  * Sources of commands: the host toolbar / hotkeys (PcPort_CheatQueue), stdin
@@ -31,6 +32,7 @@
 #include "../include/xg_plat/config.h"
 #include "../include/xg_plat/mods.h"
 #include "../include/xg_plat/timing.h"
+#include "../include/xg_plat/input.h"
 
 extern void PcPort_FieldWarpDiag(void);
 extern void PcPort_FieldWarpArm(int map, int x, int z);
@@ -64,7 +66,7 @@ int PcPort_CheatExec(const char* line)
         return 0;
     if (!strcmp(argv[0], "help")) {
         printf("[cheat] commands: god [on|off], encounters [on|off], save, load, "
-               "warp <map> <x> <z>, battle <id>, speed <1..5>, mods\n");
+               "warp <map> <x> <z>, battle <id>, speed <1..5>, bind [<button> <key>], mods\n");
     } else if (!strcmp(argv[0], "god")) {
         if (parse_onoff(argc > 1 ? argv[1] : NULL, PcPort_GodModeEnabled()) != PcPort_GodModeEnabled())
             PcPort_GodModeToggle();
@@ -82,6 +84,20 @@ int PcPort_CheatExec(const char* line)
         PcPort_DebugBattleWarpQueue(atoi(argv[1]));
     } else if (!strcmp(argv[0], "speed") && argc == 2) {
         xg_plat_timing_set_speed(atoi(argv[1]));
+    } else if (!strcmp(argv[0], "bind") && (argc == 1 || argc == 3)) {
+        int b;
+        if (argc == 3) {
+            for (b = 0; b < XG_PLAT_BTN_COUNT; b++)
+                if (!strcmp(argv[1], xg_plat_input_button_name((XgPlatButton)b)))
+                    break;
+            if (b == XG_PLAT_BTN_COUNT || !xg_plat_input_bind_key((XgPlatButton)b, argv[2])) {
+                printf("[cheat] bind: unknown button '%s' or key '%s'\n", argv[1], argv[2]);
+                return -1;
+            }
+        }
+        for (b = 0; b < XG_PLAT_BTN_COUNT; b++)
+            printf("[cheat] %s = %s\n", xg_plat_input_button_name((XgPlatButton)b),
+                   xg_plat_input_key_name((XgPlatButton)b));
     } else if (!strcmp(argv[0], "mods")) {
         int i;
         for (i = 0; i < xg_plat_mods_count(); i++)

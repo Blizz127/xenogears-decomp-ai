@@ -26,8 +26,20 @@ void PcPort_DebugBattleWarpQueue(int id) { char b[16]; snprintf(b, sizeof b, "B%
 void xg_plat_timing_set_speed(int m) { s_speed = m; }
 void xg_plat_timing_set_fast_forward_speed(int m) { (void)m; }
 int xg_plat_audio_set_user_volume(int p) { (void)p; return 0; }
-const char* xg_plat_input_button_name(XgPlatButton b) { (void)b; return "x"; }
-int xg_plat_input_bind_key(XgPlatButton b, const char* k) { (void)b; (void)k; return 1; }
+static const char* const s_btn[XG_PLAT_BTN_COUNT] = {
+    "square", "circle", "triangle", "cross", "l1", "l2", "r1", "r2",
+    "start", "select", "left", "right", "up", "down",
+};
+static char s_bound[XG_PLAT_BTN_COUNT][16];
+const char* xg_plat_input_button_name(XgPlatButton b) { return s_btn[b]; }
+int xg_plat_input_bind_key(XgPlatButton b, const char* k)
+{
+    if (!strcmp(k, "NoSuchKey"))
+        return 0;
+    snprintf(s_bound[b], sizeof s_bound[b], "%s", k);
+    return 1;
+}
+const char* xg_plat_input_key_name(XgPlatButton b) { return s_bound[b]; }
 
 static int fails;
 #define CHECK(c, what) do { if (!(c)) { fails++; printf("FAIL %s (trace '%s')\n", what, s_trace); } else printf("ok   %s\n", what); } while (0)
@@ -49,6 +61,11 @@ int main(void)
     s_trace[0] = 0;
     CHECK(PcPort_CheatExec("battle 17") == 1 && !strcmp(s_trace, "B17"), "battle queues");
     CHECK(PcPort_CheatExec("speed 3") == 1 && s_speed == 3, "speed");
+    CHECK(PcPort_CheatExec("bind cross Space") == 1 && !strcmp(s_bound[XG_PLAT_BTN_CROSS], "Space"),
+          "bind rebinds a button");
+    CHECK(PcPort_CheatExec("bind cross NoSuchKey") == -1 && PcPort_CheatExec("bind nobutton X") == -1,
+          "bind rejects unknown keys and buttons");
+    CHECK(PcPort_CheatExec("bind") == 1, "bind lists");
     CHECK(PcPort_CheatExec("nonsense") == -1 && PcPort_CheatExec("   ") == 0, "unknown / empty");
     /* queued commands run on frame_tick, after the per-frame services */
     s_trace[0] = 0;
