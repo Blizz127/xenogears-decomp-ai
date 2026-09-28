@@ -540,13 +540,8 @@ void func_80088198(void) {
 extern void func_800A915C(void);
 extern void func_800A91F0(void);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800881E8);
-#else
 void func_800881E8(void) {
-    ActorData* pActor = g_FieldScriptVMCurActor;
-    void* pScript = g_FieldScriptVMCurScriptData;
-    u8 val = *(u8*)(pScript + pActor->scriptInstructionPointer + 1);
+    u8 val = SCRIPT_READ_U8_REL(1);
     if (val == 0) {
         func_800A915C();
     } else {
@@ -554,7 +549,6 @@ void func_800881E8(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8004F308;
 
@@ -1526,21 +1520,14 @@ void func_8008ACE8(void) {
     D_800B00C0 = 1;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AE5C);
-#else
 void func_8008AE5C(void) {
-    ActorData* pActor = g_FieldScriptVMCurActor;
-    void* pScript = g_FieldScriptVMCurScriptData;
-    u8 val = *(u8*)(pScript + pActor->scriptInstructionPointer + 1);
-    if (val == 0) {
-        pActor->flags |= 0x20000;
+    if (SCRIPT_READ_U8_REL(1) == 0) {
+        g_FieldScriptVMCurActor->flags |= 0x20000;
     } else {
-        pActor->flags &= ~0x20000;
+        g_FieldScriptVMCurActor->flags &= ~0x20000;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B221C[];
 

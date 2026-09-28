@@ -38,17 +38,17 @@ void func_80091944(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A08);
-#else
+/* Typed array view of g_Scene: retail schedules these stores like stores to
+ * an array-typed extern. */
+extern s16 g_Scene_s16[] asm("g_Scene");
+
 void func_80091A08(void) {
-    *(s16*)((u8*)&g_Scene + 0x4C) = FieldScriptVMGetInstructionArgumentS16(1);
-    *(s16*)((u8*)&g_Scene + 0x4E) = FieldScriptVMGetInstructionArgumentS16(3);
-    *(s16*)((u8*)&g_Scene + 0x50) = FieldScriptVMGetInstructionArgumentS16(5);
-    *(s16*)((u8*)&g_Scene + 0x52) = -FieldScriptVMGetInstructionArgumentS16(7);
+    g_Scene_s16[0x4C / 2] = FieldScriptVMGetInstructionArgumentS16(1);
+    g_Scene_s16[0x4E / 2] = FieldScriptVMGetInstructionArgumentS16(3);
+    g_Scene_s16[0x50 / 2] = FieldScriptVMGetInstructionArgumentS16(5);
+    g_Scene_s16[0x52 / 2] = -FieldScriptVMGetInstructionArgumentS16(7);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
 }
-#endif /* XENO_PC_PORT */
 
 extern u8 D_800B219C;
 extern u8 D_800B219D;

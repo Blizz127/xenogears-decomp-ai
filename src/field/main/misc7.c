@@ -10,6 +10,11 @@
 #include "field/camera.h"
 #include "field/script_vm.h"
 #include "field/text_box.h"
+/* Typed array views of g_Scene: retail schedules stores into it like stores
+ * to an array-typed extern, so raw-offset accesses go through these. */
+extern s16 g_Scene_s16[] asm("g_Scene");
+extern s32 g_Scene_s32[] asm("g_Scene");
+extern u16 g_Scene_u16[] asm("g_Scene");
 
 extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
@@ -1847,19 +1852,15 @@ s32 func_8009AEE0(s32 partySlot, s32 targetX, s32 targetZ, s32 direction) {
 }
 #endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 
 /* FE44 — enable player interact gate. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B15C);
-#else
 void func_8009B15C(void) {
-    D_800B21CF = 1;
+    D_800B21CF[0] = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 extern u8 D_800B21CC;
 extern s32 D_800B2368;
 extern s32 D_800B2364;
@@ -1870,7 +1871,7 @@ extern void func_80081C54(s32);
 
 void func_8009B184(void) {
     s32 i;
-    D_800B21CF = 0;
+    D_800B21CF[0] = 0;
     D_800B21CC = 0;
     D_800B2368 = 0;
     D_800B2364 = 0;
@@ -2106,18 +2107,14 @@ void func_8009B8E4(void) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B9A0);
-#else
 void func_8009B9A0(void) {
-    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
-        *(s16*)((u8*)&g_Scene + 0xB8) = FieldGetCameraDirection();
-        *(s32*)((u8*)&g_Scene + 0xBC) = g_Scene.sceneScrZ;
-        *(u16*)((u8*)&g_Scene + 0xC0) = g_Scene.sceneDIP;
+    if (g_Scene_s16[0x66 / 2] == 0) {
+        g_Scene_s16[0xB8 / 2] = FieldGetCameraDirection();
+        g_Scene_s32[0xBC / 4] = g_Scene.sceneScrZ;
+        g_Scene_u16[0xC0 / 2] = g_Scene.sceneDIP;
         g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Opcode 0xA0 — restore camera yaw/SCRZ/DIP saved by func_8009B9A0 over 0x20 frames. */
 void func_8009BA0C(void) {
