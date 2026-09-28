@@ -1,4 +1,5 @@
 #include "common.h"
+#include "world_map/wm_obj.h"
 
 #ifdef XENO_PC_PORT
 /* Port view of the overlay data used by the bodies the port runs
@@ -7,7 +8,7 @@
 #endif
 
 #ifndef XENO_PC_PORT
-extern s32 D_8009BE24;
+extern WmObj *D_8009BE24;
 void HeapFree(s32);
 void func_8002CBBC(s32);
 extern s32 D_8009C620;
@@ -67,7 +68,7 @@ void HeapFree(s32);
 extern s32 D_8009C184[];
 extern u16 D_8009A450;
 extern u16 D_8009A46C[];
-extern s32 D_8009BE24;
+extern WmObj *D_8009BE24;
 extern u16 D_8009A698;
 extern u16 D_8009A6AC[];
 extern u16 D_8009B69C[];
@@ -152,7 +153,7 @@ void func_80039FF8();
 extern s16 D_8009BD38;
 extern s16 D_8009BD3C;
 extern s32 D_8009BE0C;
-extern s32 D_8009BE24;
+extern WmObj *D_8009BE24;
 extern s32 D_8009D144;
 extern s32 D_8009D3F0;
 extern s32 D_8009BE28;
@@ -179,7 +180,6 @@ extern s32 D_8009BCC0;
 void SpriteSetScale(void *, s32);
 void *func_80024524(s32, s32, s32, s32, s32, s32);
 void func_800245D8(void *, s32);
-extern s32 D_8009BE24__a_s32[] asm("D_8009BE24");
 extern s32 D_8009CD34[];
 extern s32 D_8009CD38;
 extern s32 g_GameState;
@@ -305,7 +305,7 @@ extern s32 D_8009D7D4;
 extern s32 D_8009BCB8;
 extern s32 D_8009BE44;
 void func_800967E4();
-extern s32 D_8009BE24;
+extern WmObj *D_8009BE24;
 void OuterProduct0(s32 *, s32 *, s32 *);
 extern s32 D_8009BB4C[];
 extern s32 D_8009BB5C[];
@@ -928,7 +928,7 @@ s32 func_80078E2C(s32 arg0) {
     D_8009BE0C = 0x78;
     D_8009D3F0 = 0x200000;
     D_8009D144 = 0;
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s16 *)((s8*)(temp_v1) + 0x20) = 0x10;
     *(s32 *)((s8*)(temp_v1) + 0x58) = 0;
     *(s32 *)((s8*)(temp_v1) + 0x54) = 0;
@@ -961,7 +961,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A1B4);
 
 #ifndef XENO_PC_PORT
 s32 func_8007A410(s32 arg0) {
-    *(s16 *)((s8*)((D_8009BE24 + (arg0 << 7))) + 0x22) = 0x60;
+    *(s16 *)((s8*)(((u8 *)D_8009BE24 + (arg0 << 7))) + 0x22) = 0x60;
     return 3;
 }
 #endif
@@ -1014,7 +1014,7 @@ void func_8007A8AC(void) {
 s32 func_8007A9B4(s32 arg0) {
     void *temp_v1;
 
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x50) = 0;
     *(u16 *)((s8*)(temp_v1) + 0x20) = (u16) D_8009A450;
     *(u16 *)((s8*)(temp_v1) + 0x22) = D_8009A46C[*(s32 *)((s8*)(temp_v1) + 0x50)];
@@ -1039,7 +1039,7 @@ s32 func_8007AD34(s32 arg0) {
     D_8009D560 = D_8009C5B0;
     D_8009BE30 = D_8009C5B4;
     D_8009D564 = D_8009C5B4;
-    *(s32 *)((s8*)((D_8009BE24 + (arg0 << 7))) + 0x50) = 0x1000;
+    *(s32 *)((s8*)(((u8 *)D_8009BE24 + (arg0 << 7))) + 0x50) = 0x1000;
     return 1;
 }
 #endif
@@ -1111,7 +1111,7 @@ s32 func_8007C724(s32 arg0) {
     D_8009BE0C = 0x78;
     D_8009D3F0 = 0x400000;
     D_8009D144 = 1;
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x7C) = 0x1000;
     D_8009BD38 = -0x40;
     (*(s16*)&D_8009BD3A) = 0;
@@ -1160,7 +1160,7 @@ s32 func_8007D690(s32 arg0) {
     void *temp_s1;
 
     temp_s1 = (*(void **)&D_8009C620);
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_s0) + 0x30) = (s32) (*(s32 *)((s8*)(temp_s0) + 0x30) + *(s32 *)((s8*)(temp_s0) + 0x40));
     func_80093354(temp_s0 + 0x28);
     *(s32 *)((s8*)(temp_s0) + 0x2C) = (s32) (func_80093A5C(*(s32 *)((s8*)(temp_s0) + 0x28), *(s32 *)((s8*)(temp_s0) + 0x30)) - 0x4000);
@@ -1194,7 +1194,7 @@ s32 func_8007E450(s32 arg0) {
     void *temp_v1;
 
     D_8009D144 = 0;
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x7C) = 0x1000;
     D_8009BE0C = 0x78;
     D_8009BE28 = D_8009C5AC;
@@ -1264,7 +1264,7 @@ void func_80080218(void) {
 s32 func_8008032C(s32 arg0) {
     void *temp_v1;
 
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x50) = 0;
     *(u16 *)((s8*)(temp_v1) + 0x20) = (u16) D_8009A698;
     *(u16 *)((s8*)(temp_v1) + 0x22) = D_8009A6AC[*(s32 *)((s8*)(temp_v1) + 0x50)];
@@ -1281,7 +1281,7 @@ s32 func_80080578(s32 arg0) {
     void *temp_v1;
 
     D_8009D144 = 0;
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x7C) = 0x1000;
     D_8009BE0C = 0x78;
     D_8009BE28 = D_8009C5AC;
@@ -1303,7 +1303,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80080600);
 s32 func_80080900(s32 arg0) {
     void *temp_v1;
 
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x28) = (s32) D_8009C5AC;
     *(s32 *)((s8*)(temp_v1) + 0x2C) = (s32) D_8009C5B0;
     *(s32 *)((s8*)(temp_v1) + 0x30) = (s32) D_8009C5B4;
@@ -1316,7 +1316,7 @@ s32 func_80080900(s32 arg0) {
 s32 func_80080944(s32 arg0) {
     void *temp_a2;
 
-    temp_a2 = D_8009BE24 + (arg0 << 7);
+    temp_a2 = (u8 *)D_8009BE24 + (arg0 << 7);
     if (*(s16 *)((s8*)(temp_a2) + 4) == 1) {
         *(s16 *)((s8*)(temp_a2) + 4) = 0;
         *(s16 *)0x1F8000A0 = (s16) ((s32) *(s32 *)((s8*)(temp_a2) + 0x28) >> 0xC);
@@ -1394,7 +1394,7 @@ s32 func_800813E8(s32 arg0) {
     void *temp_v1;
 
     D_8009D144 = 0;
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x7C) = 0x1000;
     D_8009BE0C = 0x78;
     D_8009BE28 = D_8009C5AC;
@@ -1431,7 +1431,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80081D80);
 s32 func_80081FB4(s32 arg0) {
     void *temp_v0;
 
-    temp_v0 = D_8009BE24 + (arg0 << 7);
+    temp_v0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s16 *)((s8*)(temp_v0) + 0x20) = 0;
     *(s32 *)((s8*)(temp_v0) + 0x50) = 1;
     return 1;
@@ -1475,7 +1475,7 @@ void func_800826B4(void) {
 
 #ifndef XENO_PC_PORT
 s32 func_800827C8(s32 arg0) {
-    *(s32 **)((s8*)(((arg0 << 7) + D_8009BE24)) + 0x50) = &D_8009A758;
+    *(s32 **)((s8*)(((arg0 << 7) + (uintptr_t)D_8009BE24)) + 0x50) = &D_8009A758;
     return 1;
 }
 #endif
@@ -1506,7 +1506,7 @@ s32 func_800834D0(void) {
 s32 func_800834D8(s32 arg0) {
     void *temp_a0;
 
-    temp_a0 = D_8009BE24 + (arg0 << 7);
+    temp_a0 = (u8 *)D_8009BE24 + (arg0 << 7);
     if (*(s16 *)((s8*)(temp_a0) + 4) == 1) {
         *(s16 *)((s8*)(temp_a0) + 4) = 0;
         DrawSync(0);
@@ -1556,7 +1556,7 @@ void func_800837DC(void) {
 
 #ifndef XENO_PC_PORT
 s32 func_800838E8(s32 arg0) {
-    *(s32 **)((s8*)(((arg0 << 7) + D_8009BE24)) + 0x50) = &D_8009AC60;
+    *(s32 **)((s8*)(((arg0 << 7) + (uintptr_t)D_8009BE24)) + 0x50) = &D_8009AC60;
     return 1;
 }
 #endif
@@ -1696,7 +1696,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086798);
 s32 func_80087710(s32 arg0) {
     void *temp_v0;
 
-    temp_v0 = D_8009BE24 + (arg0 << 7);
+    temp_v0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v0) + 0x50) = 0;
     *(s32 *)((s8*)(temp_v0) + 0x54) = 8;
     return 1;
@@ -1710,7 +1710,7 @@ s32 func_80087734(s32 arg0) {
     void *temp_a1;
     void *temp_s0;
 
-    temp_a1 = D_8009BE24 + (arg0 << 7);
+    temp_a1 = (u8 *)D_8009BE24 + (arg0 << 7);
     temp_s0 = (*(void **)&D_8009C620);
     *(s32 *)((s8*)(temp_a1) + 0x50) = (s32) ((*(s32 *)((s8*)(temp_a1) + 0x50) + *(s32 *)((s8*)(temp_a1) + 0x54)) & 0xFFF);
     *(s16 *)0x1F8000A8 = 0;
@@ -1732,7 +1732,7 @@ s32 func_80087734(s32 arg0) {
 s32 func_800877E0(s32 arg0) {
     void *temp_v0;
 
-    temp_v0 = D_8009BE24 + (arg0 << 7);
+    temp_v0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v0) + 0x50) = 0;
     *(s32 *)((s8*)(temp_v0) + 0x54) = 8;
     return 1;
@@ -1749,7 +1749,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80087904);
 s32 func_800879A8(s32 arg0) {
     void *temp_v0;
 
-    temp_v0 = D_8009BE24 + (arg0 << 7);
+    temp_v0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v0) + 0x50) = 0;
     *(s32 *)((s8*)(temp_v0) + 0x54) = 0x10;
     func_800879E0(arg0);
@@ -1840,7 +1840,7 @@ s32 func_80088D64(s32 arg0) {
     void *temp_a2;
 
     temp_a2 = D_8009C620 + (D_8009B69C[D_8009C610] * 0x54);
-    temp_a1 = D_8009BE24 + (arg0 << 7);
+    temp_a1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_a1) + 0x28) = (s32) (*(s32 *)((s8*)(temp_a2) + 8) << 0xC);
     *(s32 *)((s8*)(temp_a1) + 0x2C) = (s32) ((*(s32 *)((s8*)(temp_a2) + 0xC) << 0xC) + 0x40000);
     *(s32 *)((s8*)(temp_a1) + 0x30) = (s32) (*(s32 *)((s8*)(temp_a2) + 0x10) << 0xC);
@@ -1852,7 +1852,7 @@ s32 func_80088D64(s32 arg0) {
 
 #ifndef XENO_PC_PORT
 s32 func_80088DE4(s32 arg0) {
-    func_8008BFD4(arg0, D_8009BE24 + (arg0 << 7) + 0x28, 0x68, 0x60);
+    func_8008BFD4(arg0, (u8 *)D_8009BE24 + (arg0 << 7) + 0x28, 0x68, 0x60);
     return 1;
 }
 #endif
@@ -1863,7 +1863,7 @@ s32 func_80088DE4(s32 arg0) {
 s32 func_80088E1C(s32 arg0) {
     void *temp_v1;
 
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x28) = (s32) (*(s32 *)((s8*)((*(void **)&D_8009C620)) + 0x18A4) << 0xC);
     *(s32 *)((s8*)(temp_v1) + 0x2C) = (s32) (*(s32 *)((s8*)((*(void **)&D_8009C620)) + 0x18A8) << 0xC);
     *(s32 *)((s8*)(temp_v1) + 0x30) = (s32) (*(s32 *)((s8*)((*(void **)&D_8009C620)) + 0x18AC) << 0xC);
@@ -1875,7 +1875,7 @@ s32 func_80088E1C(s32 arg0) {
 
 #ifndef XENO_PC_PORT
 s32 func_80088E68(s32 arg0) {
-    func_8008BFD4(arg0, D_8009BE24 + (arg0 << 7) + 0x28, 0x10C, 0x1A6);
+    func_8008BFD4(arg0, (u8 *)D_8009BE24 + (arg0 << 7) + 0x28, 0x10C, 0x1A6);
     return 1;
 }
 #endif
@@ -1888,7 +1888,7 @@ s32 func_80088EA0(s32 arg0) {
     void *temp_v1;
 
     temp_a1 = D_8009C620 + (D_8009B6B0[D_8009C610] * 0x54);
-    temp_v1 = D_8009BE24 + (arg0 << 7);
+    temp_v1 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s32 *)((s8*)(temp_v1) + 0x28) = (s32) (*(s32 *)((s8*)(temp_a1) + 8) << 0xC);
     *(s32 *)((s8*)(temp_v1) + 0x2C) = (s32) (*(s32 *)((s8*)(temp_a1) + 0xC) << 0xC);
     *(s32 *)((s8*)(temp_v1) + 0x30) = (s32) (*(s32 *)((s8*)(temp_a1) + 0x10) << 0xC);
@@ -1900,7 +1900,7 @@ s32 func_80088EA0(s32 arg0) {
 
 #ifndef XENO_PC_PORT
 s32 func_80088F1C(s32 arg0) {
-    func_8008BFD4(arg0, D_8009BE24 + (arg0 << 7) + 0x28, 0xC9, 0x392);
+    func_8008BFD4(arg0, (u8 *)D_8009BE24 + (arg0 << 7) + 0x28, 0xC9, 0x392);
     return 1;
 }
 #endif
@@ -1981,7 +1981,7 @@ s32 func_8008A52C(s32 arg0) {
     void *temp_s0;
     void *temp_v0;
 
-    temp_s0 = D_8009BE24__a_s32[0] + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     temp_v0 = func_80024524(D_8009CD34[0], 0x100, 0x1E0, 0x140, 0x100, 0x40);
     *(void **)((s8*)(temp_s0) + 0x4C) = temp_v0;
     func_800245D8(temp_v0, 0);
@@ -2007,7 +2007,7 @@ s32 func_8008B498(s32 arg0) {
     void *temp_s0;
     void *temp_v0;
 
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     var_s1 = 1;
     if (*(u8 *)((s8*)(&g_GameState) + 0x1D35) != 0xFF) {
         temp_v0 = func_80024524(D_8009CD38, 0x110, 0x1E0, 0x150, 0x100, 0x40);
@@ -2038,7 +2038,7 @@ s32 func_8008BD1C(s32 arg0) {
     void *temp_s0;
     void *temp_v0;
 
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     var_s1 = 1;
     if (*(u8 *)((s8*)(&g_GameState) + 0x1D36) != 0xFF) {
         temp_v0 = func_80024524(D_8009CD3C, 0x120, 0x1E0, 0x160, 0x100, 0x40);
@@ -2077,7 +2077,7 @@ s32 func_8008C6EC(s32 arg0) {
     s32 temp_a0;
     void *temp_s0;
 
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     temp_a0 = func_8008C364(temp_s0, 0);
     if (D_8009BE10 > 0) {
         if (D_8009BE10 >= 4) {
@@ -2103,7 +2103,7 @@ s32 func_8008D520(s32 arg0) {
     s32 temp_a0;
     void *temp_s0;
 
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     temp_a0 = func_8008C364(temp_s0, 1);
     if (D_8009BE10 > 0) {
         if (D_8009BE10 >= 4) {
@@ -2129,7 +2129,7 @@ s32 func_8008DE9C(s32 arg0) {
     s32 temp_a0;
     void *temp_s0;
 
-    temp_s0 = D_8009BE24 + (arg0 << 7);
+    temp_s0 = (u8 *)D_8009BE24 + (arg0 << 7);
     temp_a0 = func_8008C364(temp_s0, 2);
     if (D_8009BE10 > 0) {
         if (D_8009BE10 >= 4) {
@@ -2228,7 +2228,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80091FF8);
 s32 func_80092234(s32 arg0) {
     void *temp_a0;
 
-    temp_a0 = D_8009BE24 + (arg0 << 7);
+    temp_a0 = (u8 *)D_8009BE24 + (arg0 << 7);
     if (D_8009BE10 > 0) {
         if (D_8009BE10 < 6) {
             D_8009BE0C = 0x8C;
@@ -2623,7 +2623,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80097440);
 
 #ifndef XENO_PC_PORT
 void func_8009766C(void) {
-    D_8009BE24 = HeapAlloc(0x2000, 0);
+    D_8009BE24 = (WmObj *)HeapAlloc(0x2000, 0);
     func_800976C8();
 }
 #endif
@@ -2632,7 +2632,7 @@ void func_8009766C(void) {
 
 #ifndef XENO_PC_PORT
 void func_800976A0(void) {
-    HeapFree(D_8009BE24);
+    HeapFree((s32)D_8009BE24);
 }
 #endif
 
@@ -2644,7 +2644,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800976C8);
 void func_800976FC(s32 arg0, s32 arg1) {
     void *temp_a1;
 
-    temp_a1 = (arg1 << 7) + D_8009BE24;
+    temp_a1 = (arg1 << 7) + (uintptr_t)D_8009BE24;
     *(s16 *)((s8*)(temp_a1) + 0) = 0;
     *(s32 *)((s8*)(temp_a1) + 0x18) = arg0;
 }
@@ -2685,7 +2685,7 @@ loop_1:
 s32 func_80097770(s32 arg0, s32 arg1) {
     void *temp_a0;
 
-    temp_a0 = D_8009BE24 + (arg0 << 7);
+    temp_a0 = (u8 *)D_8009BE24 + (arg0 << 7);
     if (*(s16 *)((s8*)(temp_a0) + 4) != 0) {
         return 0;
     }
@@ -2705,7 +2705,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800977C4);
 void func_800977E0(s32 arg0, s16 arg1) {
     void *temp_v0;
 
-    temp_v0 = D_8009BE24 + (arg0 << 7);
+    temp_v0 = (u8 *)D_8009BE24 + (arg0 << 7);
     *(s16 *)((s8*)(temp_v0) + 0) = 2;
     *(s16 *)((s8*)(temp_v0) + 2) = arg1;
 }
