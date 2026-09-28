@@ -1615,28 +1615,28 @@ void func_801C8324(u8 slot) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C851C);
-#else
 /* Arc A verts: write one screen-space quad into a 4-SVECTOR strip.
  * (x,y) is the top-left in 320x224 screen coords; the GTE projection origin
  * is the screen center, hence the -0xA0/-0x70 (160/112) rebase.  w/h may be
  * negative (the corner pieces mirror by flipping extent signs). */
 void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h) {
-    verts[0].vx = (s16)(x - 0xA0);
-    verts[0].vy = (s16)(y - 0x70);
+    /* retail adds the 16-bit constants 0xFF60 / 0xFF90 (li + addu); the
+     * low 16 bits equal x - 0xA0 / y - 0x70 */
+    s32 x0 = x + (u16)-0xA0;
+    s32 y0 = y + (u16)-0x70;
+    verts[0].vx = x0;
+    verts[0].vy = y0;
     verts[0].vz = 0;
-    verts[1].vx = (s16)(x + w - 0xA0);
-    verts[1].vy = (s16)(y - 0x70);
+    verts[1].vx = x + w - 0xA0;
+    verts[1].vy = y0;
     verts[1].vz = 0;
-    verts[2].vx = (s16)(x - 0xA0);
-    verts[2].vy = (s16)(y + h - 0x70);
+    verts[2].vx = x0;
+    verts[2].vy = y + h - 0x70;
     verts[2].vz = 0;
-    verts[3].vx = (s16)(x + w - 0xA0);
-    verts[3].vy = (s16)(y + h - 0x70);
+    verts[3].vx = x + w - 0xA0;
+    verts[3].vy = y + h - 0x70;
     verts[3].vz = 0;
 }
-#endif
 
 extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
 
