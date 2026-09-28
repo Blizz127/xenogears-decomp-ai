@@ -14,6 +14,7 @@
 #include "../include/xg_plat/disc.h"
 #include "../include/xg_plat/renderer.h"
 #include "../include/xg_plat/config.h"
+#include "../include/xg_plat/mods.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1273,6 +1274,8 @@ int main(int argc, char** argv) {
     }
     /* Config file / XENO_* overrides: game.speed, input.* bindings, ... */
     xg_plat_config_apply_runtime();
+    /* Mods: scan mods/ (manifests, plugins, asset replacements). */
+    (void)xg_plat_mods_init();
 
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
@@ -1697,6 +1700,7 @@ int main(int argc, char** argv) {
      * handing off to the game. It is fully self-contained (LZSS-decompress the
      * migrated EXE blob, LoadImage CLUT+texture, DrawPrim a sprite with a
      * fade-in/hold/fade-out via Vsync), and bypasses the game ordering table. */
+    (void)xg_plat_mods_emit(XG_PLAT_EVENT_BOOT, 0, 0);
     GameShowSplashScreen();
 
     /* Retail boot tail (func_80019578, 0x80019888..0x80019938): the opening

@@ -46,6 +46,8 @@ extern void* memcpy(void* dest, const void* src, unsigned long size);
  * before they call us: the absolute CD sector and the byte length to read. */
 extern s32 g_ArchiveCurFileSector;
 extern int ArchiveReadFileToBuffer(int entryIndex, void* pDestBuffer, int arg2, int flags);
+#include "../include/xg_plat/mods.h"
+#pragma weak xg_plat_mods_filter_asset
 int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags);
 extern int ArchiveDecodeSize(int entryIndex);
 extern int ArchiveDecodeSector(int entryIndex);
@@ -615,6 +617,13 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
         memcpy(pDestBuffer, pBounce, g_ArchiveCurFileSize);
         free(pBounce);
     }
+
+    /* Mods: hash-keyed asset replacement of the file just read
+     * (xg_plat/mods.h).  Weak so tests that link this TU alone need no mods
+     * layer; with no mods installed it only emits the asset_loaded event. */
+    if (xg_plat_mods_filter_asset)
+        (void)xg_plat_mods_filter_asset(pDestBuffer, (size_t)g_ArchiveCurFileSize,
+                                        (size_t)g_ArchiveCurFileSize);
 
     /* Mark the transfer complete so ArchiveDataSync()/ArchiveCdDataSync() return
      * immediately (g_ArchiveCdDriveState IDLE, no in-flight file). */

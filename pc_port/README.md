@@ -100,6 +100,39 @@ The port ships no game data and no Sony Psy-Q code.
   `tools/analysis/pre-commit-port-guards` as a git pre-commit hook (or use
   `.pre-commit-config.yaml`). CI runs them in `.github/workflows/port-guards.yaml`.
 
+## Port layers, config and mods
+
+Port code reaches the platform through interface headers in
+`include/xg_plat/` (the moddable-port pattern of the Parasite Eve port's
+`docs/ARCHITECTURE-PORT.md`), each with a swappable backend in `src/plat/`:
+
+| Interface | Covers | Backend now |
+|---|---|---|
+| `disc.h` | disc image, retail files, BIOS, sector reads, verification | stdio + `retail_data.h` + `disc_check.c` (weak, overridable) |
+| `renderer.h` | window/output size, fullscreen, vsync, filtering, widescreen query | PsyCross |
+| `input.h` | keyboard bindings by SDL key name | PsyCross |
+| `timing.h` | game speed, fast-forward, vblank clock | PsyCross |
+| `audio.h` | user volume | none yet (reported unsupported) |
+| `config.h` | `xenogears-port.cfg` + `XENO_*` overrides | `src/plat/xg_plat_config.c` |
+| `mods.h` | `mods/` folders, events, C plugins, asset replacement | `src/plat/xg_plat_mods.c` |
+
+The game's own PSX calls still go through PsyCross + `psyq_compat*`; areas
+move behind the interfaces as they are touched.
+
+**Config:** copy `xenogears-port.example.cfg` to `xenogears-port.cfg` (working
+directory) or `~/.config/xenogears-port/`; any key can be overridden as
+`XENO_<SECTION>_<KEY>`. Widescreen, 60 fps and user volume are accepted but
+reported as unsupported until a backend implements them.
+
+**Mods:** each folder in `mods/` (or `~/.local/share/xenogears-port/mods/`)
+has a `mod.txt` (`name`, `version`, `load_order`, `abi = 1`), optional
+`assets/<sha256>.bin` replacements keyed by the SHA-256 of the original game
+file, and an optional `plugin.so` exporting `xg_mod_init()`. Events: `boot`,
+`frame_tick`, `asset_loaded`. `XENO_MODS_LOG_ASSETS=1` prints the hash of each
+file the game loads; `XENO_MODS_DUMP_DIR=dir` saves the originals from your
+disc for editing. Mods are user content: `mods/` is git-ignored and must never
+be committed.
+
 ## Building (Linux)
 
 The native memory-card title font provider reads a user-supplied SCPH-5500

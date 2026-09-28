@@ -14,6 +14,8 @@
 
 #include <errno.h>    /* strtoul validation for the scripted pad schedule below */
 #include "gte_normalize_table.h"
+#include "../include/xg_plat/mods.h"
+#pragma weak xg_plat_mods_emit
 #include <stdarg.h>
 #include <stdint.h>
 #include "system/controller_vblank.h"
@@ -1721,6 +1723,11 @@ int Vsync(int mode)
 
         if (!sceneOpen && mode == 0)
             PsyX_PresentDisplayFromVRAM();
+
+        /* Mods: one frame_tick per presented frame (weak: no-op without the
+         * mods layer or subscribers). */
+        if (xg_plat_mods_emit)
+            (void)xg_plat_mods_emit(XG_PLAT_EVENT_FRAME_TICK, 0, 0);
     }
 
     /* TEST TOOLING: headless walk telemetry (XENO_FIELD_POS_DIAG). */
