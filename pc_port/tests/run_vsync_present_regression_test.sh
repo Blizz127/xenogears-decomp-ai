@@ -23,9 +23,11 @@ read -r -a SDL_CFLAGS <<< "$(pkg-config --cflags sdl2)"
 "$CC" "${GFLAGS[@]}" "${INC[@]}" \
     -c pc_port/tests/vsync_present_regression_test.c \
     -o "$BUILD_DIR/harness.o"
+# Controller vblank bodies: system/controller2.c (one body for both builds).
+"$CC" -c src/slus_006.64/system/controller2.c "${GFLAGS[@]}" "${INC[@]}" -Ipc_port/src \
+    -o "$BUILD_DIR/controller2.o"
 "$CC" "${GFLAGS[@]}" "${INC[@]}" -Wl,--gc-sections \
-    pc_port/src/controller_vblank_service.c pc_port/src/controller_vblank_dispatch.c \
-    pc_port/src/controller_vblank_helpers.c \
+    pc_port/src/controller_vblank_service.c "$BUILD_DIR/controller2.o" \
     "$BUILD_DIR/harness.o" "$BUILD_DIR/psyq_compat.o" "$BUILD_DIR/libapi.o" \
     -o "$BUILD_DIR/test_vsync"
 

@@ -5,9 +5,17 @@
 #include "system/memory.h"
 
 /* Retail TU 0x80035E44..0x80036CD8 (controller state/callback helpers that
- * follow system/controller.c). Retail-only: the port has its own controller
- * layer and never linked these asm bodies. */
-#ifndef XENO_PC_PORT
+ * follow system/controller.c).  One body per function for both builds: the
+ * PC port compiles this TU too, and the few host differences are the inner
+ * #ifdef XENO_PC_PORT blocks (pad BIOS -> PsyCross, the BIOS actuator
+ * hand-off, debugger break -> SIGTRAP, native callback storage, and the
+ * dev-PC VRAM dumps that write raw PSX RAM addresses).  Matching codegen is
+ * unchanged (rom-check). */
+#ifdef XENO_PC_PORT
+/* Host libc pieces without <signal.h> (its types clash with psyq/sys/types.h). */
+extern int raise(int sig);
+#define XENO_SIGTRAP 5 /* Linux/x86-64 SIGTRAP */
+#endif
 
 /* Two 8-byte actuator records at 0x8005A1BC (also reached through
  * D_8005A1C0/C2/C3 by the setters below). */
@@ -22,7 +30,9 @@ typedef struct {
 } ControllerActState;
 
 extern ControllerActState D_8005A1BC[2];
+#ifndef XENO_PC_PORT
 extern void func_80040C3C(void* pSrc, s32 srcLen, void* pDst, s32 dstLen);
+#endif
 
 /* Play-time clock: frames, seconds, minutes, hours; stops at 100 hours. */
 extern u8 D_800501F8; /* clock stopped */
@@ -50,6 +60,10 @@ void func_80035E44(void) {
         }
     }
 }
+
+#ifndef XENO_PC_PORT
+/* Dev-PC debug dumps (PCcreate/PCwrite through a raw PSX RAM staging buffer
+ * at 0x80600000/0x80700000): retail-only, no host equivalent. */
 
 /* Debug: dumps a VRAM rectangle to a 16bpp TIM file on the dev PC. */
 extern int PCcreate(char* name, int mode);
@@ -117,6 +131,7 @@ s32 func_80035FF8(RECT* rect, char* name) {
     PCclose(fd);
     return 0;
 }
+#endif /* !XENO_PC_PORT: dev-PC dumps */
 
 void func_8003611C(void) {
     ControllerActState* p = D_8005A1BC;
@@ -126,7 +141,12 @@ void func_8003611C(void) {
     D_8005A1BC[0].state = 0;
     D_8005A1BC[0].disabled = 0;
     p[1] = p[0];
+#ifndef XENO_PC_PORT
+    /* Hand both records to the BIOS pad driver as actuator buffers.  PsyCross
+     * has no persistent actuator registration and the port sends no rumble,
+     * so the host keeps only the record state func_80036188 steps. */
     func_80040C3C(p, 4, &p[1], 4);
+#endif
 }
 
 void func_80036188(ControllerActState* p) {
@@ -157,19 +177,29 @@ void func_80036220(void) {
 }
 
 /* 8-byte per-controller records at 0x8005A1C0 */
+#ifdef XENO_PC_PORT
+/* Interior fields of D_8005A1BC (count, disabled): one storage on the host. */
+#define D_8005A1C0 ((s16*)((u8*)D_8005A1BC + 4))
+#define D_8005A1C3 ((u8*)D_8005A1BC + 7)
+#else
 extern s16 D_8005A1C0[];
+#endif
 
 void func_80036258(s32 index, s32 value) {
     *(s16*)((u8*)D_8005A1C0 + index * 8) = value;
 }
 
+#ifndef XENO_PC_PORT
 extern u8 D_8005A1C3[];
+#endif
 
 void func_80036270(s32 index, s32 value) {
     D_8005A1C3[index * 8] = value;
 }
 
+#ifndef XENO_PC_PORT
 extern s32 D_80050204;
+#endif
 extern u8 D_8005938C;
 extern s32 D_80059390;
 extern void ControllerResetState(void);
@@ -178,12 +208,28 @@ void ControllerInit(void) {
     s32 i;
     u_char* p;
 
+#ifdef XENO_PC_PORT
+    {
+        /* PsyCross leaves InitPAD/StartPAD/ChangeClearPAD unimplemented; its
+         * "fill both 0x22-byte buffers every vblank" is PsyX_Pad_InitPad per
+         * slot plus g_padCommEnable (buffer layout: data_controller.c).
+         * ChangeClearPAD(0) selects BIOS IRQ acknowledgement: no host IRQ. */
+        extern void PsyX_Pad_InitPad(int slot, unsigned char* padData);
+        extern int g_padCommEnable;
+        PsyX_Pad_InitPad(0, &g_C1Buffer[0]);
+        PsyX_Pad_InitPad(1, &g_C1Buffer[0x22]);
+        g_padCommEnable = 1;
+    }
+#else
     InitPAD(g_C1Buffer, 0x22, g_C1Buffer + 0x22, 0x22);
     StartPAD();
     ChangeClearPAD(0);
+#endif
     ControllerResetState();
     func_8003611C();
-    D_80050204 = 0;
+#ifndef XENO_PC_PORT
+    D_80050204 = 0; /* write-only: no load of it exists in the game */
+#endif
     D_8005938C = 1;
     D_80059390 = 0;
     for (i = 7, p = &g_ControllerButtonMappings[7]; i >= 0; i--) {
@@ -201,7 +247,15 @@ void func_8003633C(s32 value) {
 }
 
 extern s32 D_80059488; /* frame counter */
+#ifdef XENO_PC_PORT
+/* Native callback storage (a host function pointer), not a guest word. */
+void (*D_800501FC)(void);
+/* Optional native input/test seams; absent in isolated retail-body tests. */
+extern void PcPort_PrepareControllerPoll(void) __attribute__((weak));
+extern void PcPort_BeforeControllerPush(void) __attribute__((weak));
+#else
 extern void (*D_800501FC)(void);
+#endif
 extern s32 D_80010000;
 extern void ControllerPoll(void);
 extern void ControllerPushState(void);
@@ -210,10 +264,21 @@ extern void func_80036220(void);
 
 /* Per-frame controller update. */
 void func_8003634C(void) {
+#ifdef XENO_PC_PORT
+    /* ADDIU wraps without trapping: unsigned add, then a (defined,
+     * modulo) conversion back -- no signed-overflow UB at INT_MAX. */
+    D_80059488 = (s32)((u32)D_80059488 + 1u);
+    if (PcPort_PrepareControllerPoll)
+        PcPort_PrepareControllerPoll();
+    ControllerPoll();
+    if (PcPort_BeforeControllerPush)
+        PcPort_BeforeControllerPush();
+#else
     u8 unused[0x28]; /* retail reserves this frame space but never touches it */
 
     D_80059488++;
     ControllerPoll();
+#endif
     ControllerPushState();
     func_80035E44();
     func_80036220();
@@ -221,7 +286,11 @@ void func_8003634C(void) {
         D_800501FC();
     }
     if (D_80010000 != -1 && D_80059390 != 0) {
+#ifdef XENO_PC_PORT
+        raise(XENO_SIGTRAP); /* a native debugger can stop and resume here */
+#else
         __asm__ volatile("break 1024"); /* aspsx 20-bit code: encodes as break 1,0 */
+#endif
     }
 }
 
@@ -234,7 +303,11 @@ void func_800363F0(void (*pCallback)(void)) {
 }
 
 void func_80036400(void (*pCallback)(void)) {
+#ifdef XENO_PC_PORT
+    D_80050200 = (int)(uintptr_t)pCallback; /* .text is below 4 GiB (-no-pie) */
+#else
     D_80050200 = (int)pCallback; /* declared int in system/controller.h */
+#endif
 }
 
 s32 func_80036410(void) {
@@ -324,5 +397,3 @@ void func_800366F0(void) {
 }
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", func_80036718);
-
-#endif /* !XENO_PC_PORT */

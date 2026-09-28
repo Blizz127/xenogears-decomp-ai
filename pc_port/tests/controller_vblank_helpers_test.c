@@ -4,7 +4,7 @@
 #include <string.h>
 
 uint8_t D_800501F8, D_80059370, D_80059418, D_80059420, D_80059484;
-uint8_t D_8005A1BC[16];
+_Alignas(8) uint8_t D_8005A1BC[16];
 extern void func_80035E44(void);
 extern void func_80036188(uint8_t*);
 extern void func_80036220(void);
@@ -21,11 +21,17 @@ int main(void)
     for (unsigned count = 0; count <= UINT16_MAX; ++count) {
         for (unsigned state = 0; state <= UINT8_MAX; ++state) {
             for (unsigned disabled = 0; disabled < 2; ++disabled) {
-                uint8_t record[10] = {0xAC, 7, 8, 9, 10,
+                /* Guard byte, the 8-byte record, guard byte.  The record
+                 * itself is 8-aligned like D_8005A1BC (retail reads the
+                 * count with LH, which faults on a misaligned address). */
+                union { uint8_t b[24]; uint64_t align; } window;
+                const uint8_t init[10] = {0xAC, 7, 8, 9, 10,
                     (uint8_t)count, (uint8_t)(count >> 8),
                     (uint8_t)state, (uint8_t)disabled, 0xCA};
+                uint8_t* record = window.b + 7;
                 uint8_t expected[10];
-                memcpy(expected, record, sizeof(record));
+                memcpy(record, init, sizeof(init));
+                memcpy(expected, record, sizeof(init));
                 if (!disabled) {
                     if (count || state == 1) {
                         expected[1] = 1;
@@ -42,7 +48,7 @@ int main(void)
                     }
                 }
                 func_80036188(record + 1);
-                CHECK(memcmp(record, expected, sizeof(record)) == 0);
+                CHECK(memcmp(record, expected, sizeof(expected)) == 0);
             }
         }
     }
