@@ -74,6 +74,32 @@ python3 tools/scripts/gen_port_stubs.py \
     --undefined undef.txt --out pc_port/generated/stubs.c
 ```
 
+## Game data and Sony code
+
+The port ships no game data and no Sony Psy-Q code.
+
+- **Game data comes from your disc at run time.** Put your Xenogears (USA,
+  SLUS-00664) files in `disc/` (git-ignored): the Disc 1 image
+  (`disc1.bin` + `disc1.cue`, or `XENO_DISC=`) and the files the matching build
+  extracts (`SLUS_006.64`, `field.bin`, `menu.bin`, `shop_menu.bin`,
+  `member_change_menu.bin`, `world_map.bin`; or `XENO_DATA_DIR=`). Native
+  tables in `src/data_*.c` are zero storage plus (file, offset, size) rows;
+  `src/retail_data.h` fills them before `main()` after checking each file
+  against `config/checksum.sha`. On first run `src/disc_check.c` checks the
+  disc image against the Redump dump (redump.org/disc/177) and remembers the
+  result in `~/.cache/xenogears-port/`. A missing or wrong file stops the
+  port with an explanation.
+- **No retail bytes in git.** `tools/analysis/retail_data_guard.py` fails when
+  a tracked file carries retail bytes (compared with your `disc/` files, or
+  with committed one-way hash signatures in CI).
+- **No Psy-Q in the port.** The PSX layer is PsyCross (MIT, pinned; see
+  `THIRD_PARTY.md`) plus `src/psyq_compat*.c`. `tools/analysis/psyq_port_guard.py`
+  fails on Psy-Q functions/tables in `pc_port/`, and `build_port.sh` runs it
+  on the linked binary so no matching-build Psy-Q TU can be linked.
+- Run all checks with `make port-guards`; install
+  `tools/analysis/pre-commit-port-guards` as a git pre-commit hook (or use
+  `.pre-commit-config.yaml`). CI runs them in `.github/workflows/port-guards.yaml`.
+
 ## Building (Linux)
 
 The native memory-card title font provider reads a user-supplied SCPH-5500
@@ -94,7 +120,10 @@ No BIOS payload is embedded in the build. On the immutable Bazzite host, build i
 
 ```bash
 # from repo root
-git clone --depth 1 https://github.com/OpenDriver2/PsyCross.git pc_port/extern/PsyCross   # if not present
+# PsyCross is pinned in pc_port/psycross.lock (MIT, see pc_port/THIRD_PARTY.md);
+# pc_port/build_port.sh clones it at that commit when absent. Manually:
+git clone https://github.com/OpenDriver2/PsyCross.git pc_port/extern/PsyCross
+git -C pc_port/extern/PsyCross checkout e56e4cde1c2b8a15e0d4e38b26cdd9202e0d17e6
 
 cd pc_port
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug

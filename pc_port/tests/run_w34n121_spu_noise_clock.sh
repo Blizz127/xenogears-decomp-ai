@@ -13,7 +13,7 @@ common=(
   -I"$repo_dir/pc_port/extern/PsyCross/include/psx"
   -I"$repo_dir/pc_port/src"
   "$repo_dir/pc_port/tests/w34n121_spu_noise_clock_prod_test.c"
-  "$repo_dir/pc_port/src/psyq_spu_noise_clock.c"
+  "$repo_dir/pc_port/src/psyq_compat_spu_noise_clock.c"
 )
 warnings=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 

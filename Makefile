@@ -116,6 +116,11 @@ check: clean build
 rom-check:
 	@bash tools/scripts/check_rom_hashes.sh
 
+# Port policy guards: no retail bytes/tables committed, no Psy-Q SDK code in
+# pc_port (tools/analysis/run_port_guards.sh; PORT_GUARD_ARGS=--no-disc in CI).
+port-guards:
+	@bash tools/analysis/run_port_guards.sh $(PORT_GUARD_ARGS)
+
 objdiff-config:
 	$(MAKE) clean; \
 	$(GEARS) report; \
@@ -142,5 +147,5 @@ clean:
 .SECONDARY:
 # `build` and `check` must be phony: a `build/` output directory would otherwise
 # make Make treat the build target as already up-to-date (no-op).
-.PHONY: all clean default build check rom-check objdiff-config report
+.PHONY: all clean default build check rom-check port-guards objdiff-config report
 SHELL = /bin/bash -e -o pipefail

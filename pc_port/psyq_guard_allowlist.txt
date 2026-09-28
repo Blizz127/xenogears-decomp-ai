@@ -1,0 +1,17 @@
+# Psy-Q port guard allowlist -- known offenders pending replacement.
+# This file must only SHRINK; the goal state is an empty file and
+# `tools/analysis/psyq_port_guard.py --strict` passing.
+# kind<TAB>key<TAB>where
+bfunc	0x8004B7D0	bin:xeno-port
+func	0x8004463C	pc_port/tests/libgpu_ot_image_retail_test.c
+func	0x8004A70C	pc_port/tests/w34b22_i5_94a5c_integration_test.c
+func	0x8004B7D0	pc_port/src/controller_vblank_service.c
+func	0x8004C458	pc_port/tests/libsn_pcread_retail_test.c
+name	ReadGeomScreen	pc_port/src/retail_leaf_adapters.c
+name	RotMatrixZYX	pc_port/src/retail_leaf_adapters.c
+name	SetLineF2	pc_port/src/retail_leaf_adapters.c
+name	SetLineG2	pc_port/src/retail_leaf_adapters.c
+name	SetMulMatrix	pc_port/src/retail_leaf_adapters.c
+name	SetPolyFT3	pc_port/src/retail_leaf_adapters.c
+name	SetPolyG3	pc_port/src/retail_leaf_adapters.c
+name	SetPolyGT3	pc_port/src/retail_leaf_adapters.c
