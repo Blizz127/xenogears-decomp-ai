@@ -7394,9 +7394,6 @@ void func_801D8EA4(s32 slotArg, s32 modeArg, s32 buildTextArg,
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9704);
-#else
 /* Nav N2c-2b: the target-slot navigator.  Advances `current` with wrap
  * (forward >=3 -> 0, backward <0 -> 2), skipping ineligible slots; any
  * direction other than 0 (forward) / 1 (backward) returns `current`
@@ -7420,69 +7417,50 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9704);
 /* K&R-style (unprototyped) on purpose: the Status-family retail callers in
  * func_801E20C8 pass only 2 args, with gearMode as $a2 residue (the KNOWN
  * RESIDUE CASE catalogue above) — a prototyped def would reject those calls. */
+/* Retail returns the slot unmasked (an int return); the port keeps its u8
+ * declaration. */
+#ifdef XENO_PC_PORT
 u8 func_801D9704(current, backward, gearMode)
 u8 current;
+#else
+s32 func_801D9704(current, backward, gearMode)
+s32 current;
+#endif
 s32 backward, gearMode;
 {
     s32 slot = current;
     s32 mode;
-
-    backward &= 0xFF;
-    if (backward == 0) {
+    SystemMenu* m;
+    switch (backward & 0xFF) {
+    case 0:
         mode = gearMode & 0xFF;
-        slot += 1;
+        m = g_Menu;
         for (;;) {
-            if (slot >= 3) {
-                slot = 0;
-            }
+            slot++;
+            if (slot >= 3) slot = 0;
             if (mode == 0) {
-                if (g_Menu->pManager->currentCharacterIDs[slot] !=
-                    CHARACTER_ID_NONE) {
-                    return (u8)slot;
-                }
-                slot += 1;
+                if (m->pManager->currentCharacterIDs[slot] != 0xFF) break;
             } else {
-                u8 hasGear = g_Menu->pManager->unk5C[4 + slot];
-
-                /* Retail's skip-increment sits in the branch DELAY SLOT and
-                 * executes on BOTH outcomes; the accept path compensates
-                 * with -1 (mirrored +1 on the backward side).  A linear
-                 * reading returns candidate+1 -- an off-by-one that still
-                 * navigates plausibly and only misbehaves in gear mode. */
-                slot += 1;
-                if (hasGear != 0) {
-                    return (u8)(slot - 1);
-                }
+                if (m->pManager->unk5C[4 + slot] != 0) break;
             }
         }
-    }
-    if (backward == 1) {
+        break;
+    case 1:
         mode = gearMode & 0xFF;
-        slot -= 1;
+        m = g_Menu;
         for (;;) {
-            if (slot < 0) {
-                slot = 2;
-            }
+            slot--;
+            if (slot < 0) slot = 2;
             if (mode == 0) {
-                if (g_Menu->pManager->currentCharacterIDs[slot] !=
-                    CHARACTER_ID_NONE) {
-                    return (u8)slot;
-                }
-                slot -= 1;
+                if (m->pManager->currentCharacterIDs[slot] != 0xFF) break;
             } else {
-                u8 hasGear = g_Menu->pManager->unk5C[4 + slot];
-
-                /* Same delay-slot compensation, mirrored. */
-                slot -= 1;
-                if (hasGear != 0) {
-                    return (u8)(slot + 1);
-                }
+                if (m->pManager->unk5C[4 + slot] != 0) break;
             }
         }
+        break;
     }
-    return current;
+    return slot;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9808);
@@ -10844,10 +10822,8 @@ void func_801E36D4(void* resourceArg, u8 characterId) {
 
 /* Retail 801E3A80: aggregate character stats into the Equip resource block
  * (unk330+0xB8..0xC4), not into the GameState character record. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3A80);
-#else
 void func_801E3A80(void* pCtx, u8 charIdx) {
+#ifdef XENO_PC_PORT
     u8* pEntry = (u8*)&g_GameState.characters[charIdx];
     #ifdef XENO_PC_PORT
     u8* pDst = (u8*)&((MenuUnk6*)pCtx)->unkB8;
@@ -10891,8 +10867,30 @@ void func_801E3A80(void* pCtx, u8 charIdx) {
     if (*(u16*)(pDst + 0xC) >= 0x15) {
         *(u16*)(pDst + 0xC) = 0x10;
     }
-}
+#else
+#define E3A80_DST(o) (*(u16*)((u8*)pCtx + 0xB8 + (o)))
+    u8* pEntry = (u8*)&g_GameState + 0x26C + charIdx * 0xA4;
+    if (pEntry[0x56] == 4) {
+        E3A80_DST(0) = (pEntry[4] + pEntry[0x1C]) * 6 / 10;
+    } else {
+        E3A80_DST(0) = pEntry[4] + (pEntry[0x58] + pEntry[0x28]);
+    }
+    E3A80_DST(2) = pEntry[0x5E] + pEntry[0x2E];
+    E3A80_DST(4) = pEntry[0x2D] + (pEntry[0x59] + pEntry[0x29]);
+    E3A80_DST(6) = pEntry[0x5F] + pEntry[0x2F];
+    E3A80_DST(8) = pEntry[0x5B] + pEntry[0x2B];
+    E3A80_DST(0xA) = pEntry[0x5C] + pEntry[0x2C];
+    E3A80_DST(0xC) = pEntry[0x5A] + pEntry[0x2A];
+    if (E3A80_DST(0) >= 0xFB) E3A80_DST(0) = 0xFA;
+    if (E3A80_DST(2) >= 0x64) E3A80_DST(2) = 0x63;
+    if (E3A80_DST(4) >= 0xFB) E3A80_DST(4) = 0xFA;
+    if (E3A80_DST(6) >= 0x64) E3A80_DST(6) = 0x63;
+    if (E3A80_DST(8) >= 0xFB) E3A80_DST(8) = 0xFA;
+    if (E3A80_DST(0xA) >= 0xFB) E3A80_DST(0xA) = 0xFA;
+    if (E3A80_DST(0xC) >= 0x15) E3A80_DST(0xC) = 0x10;
+#undef E3A80_DST
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
@@ -11000,14 +10998,12 @@ void func_801E4170(s32 arg0, u8 arg1) {
     func_801E4258(arg0, arg1);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E41C0);
-#else
+/* Records are 0xA4 bytes; rec[0x9F] is written unconditionally (retail
+ * stores it in the branch delay slot). */
 void func_801E41C0(s32 arg0, u8 idx) {
-    /* Records are 0xA4 bytes; rec[0x9F] is written unconditionally (retail
-     * stores it in the branch delay slot). */
     u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
-    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 8) + pEntry[2] * 0x18;
+    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 8);
+    pTable += pEntry[2] * 0x18;
     *(u32*)(pEntry + 0x60) = *(u32*)(pTable + 4);
     *(u32*)(pEntry + 0x64) = *(u32*)(pTable + 4);
     pEntry[0x98] = pTable[0x14];
@@ -11018,7 +11014,6 @@ void func_801E41C0(s32 arg0, u8 idx) {
         *(u32*)(pEntry + 0x60) = *(u32*)(pEntry + 0x64);
     }
 }
-#endif
 
 /* Party records at g_GameState+0x978 are 0xA4 bytes (func_801E4D10 copies them
  * with the same stride). */
