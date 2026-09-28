@@ -6396,35 +6396,33 @@ void func_801D5BA4(s32 x, s32 y) {
 }
 #undef MENU_GOLD_BUF
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5CF8);
-#else
 /* Arc A verts: build the menu icon strip into the unk340[4] side buffer
- * (7 atlas ids from unk2EC + two 0xEE separators), rows of 8px steps. */
+ * (7 atlas ids from unk2EC + two 0xEE separators), rows of 8px steps.
+ * Shared retail/port body (gcc 2.6.3 byte-exact); retail re-reads the
+ * buffer pointer at every use. */
+#define MENU_ICON_BUF ((u8*)(uintptr_t)*(u32*)&g_Menu->unk340[4])
 void func_801D5CF8(s32 x, s32 y) {
-    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[4];
     s32 i;
-    s32 xa;
 
-    for (i = 0, xa = x; i < 3; i++, xa += 8) {
+    for (i = 0; i < 3; i++) {
         func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
-                      buf + i * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+                      MENU_ICON_BUF + i * 0x50, g_Menu->renderContext, x + i * 8, y, 0x1000);
     }
-    for (i = 3, xa = x + 0x20; i < 5; i++, xa += 8) {
+    for (i = 3; i < 5; i++) {
         func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
-                      buf + 0xF0 + (i - 3) * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+                      MENU_ICON_BUF + i * 0x50, g_Menu->renderContext, x + i * 8 + 8, y, 0x1000);
     }
-    for (i = 5, xa = x + 0x38; i < 7; i++, xa += 8) {
+    for (i = 5; i < 7; i++) {
         func_8002675C(g_Menu->unk2DC, *(s32*)&g_Menu->unk2EC[i * 4],
-                      buf + 0x190 + (i - 5) * 0x50, g_Menu->renderContext, xa, y, 0x1000);
+                      MENU_ICON_BUF + i * 0x50, g_Menu->renderContext, x + i * 8 + 0x10, y, 0x1000);
     }
-    func_8002675C(g_Menu->unk2DC, 0xEE, buf + 0x230, g_Menu->renderContext,
+    func_8002675C(g_Menu->unk2DC, 0xEE, MENU_ICON_BUF + 0x230, g_Menu->renderContext,
                   x + 0x18, y, 0x1000);
-    func_8002675C(g_Menu->unk2DC, 0xEE, buf + 0x2D0, g_Menu->renderContext,
+    func_8002675C(g_Menu->unk2DC, 0xEE, MENU_ICON_BUF + 0x2D0, g_Menu->renderContext,
                   x + 0x30, y, 0x1000);
-    buf[0x370] = (u8)g_Menu->renderContext;
+    MENU_ICON_BUF[0x370] = g_Menu->renderContext;
 }
-#endif
+#undef MENU_ICON_BUF
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5ED4);
