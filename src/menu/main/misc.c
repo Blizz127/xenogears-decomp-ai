@@ -6327,9 +6327,6 @@ void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5A50);
-#else
 extern void func_801D4F2C(u8 slot, u8 charId, s32 x, s32 y);
 extern void func_801D50EC(u8 slot, s32 x, s32 y);
 extern void func_801D51EC(u8 slot, u8 charId, s32 x, s32 y);
@@ -6338,24 +6335,27 @@ extern void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y);
 extern void func_801D5794(u8 slot, u8 charId, s32 x, s32 y);
 
 /* Arc A portraits: rebuild party slot `slot`'s portrait panel at its CURRENT
- * animated position (anim slot cur + acc>>8) -- frame+face, status icons,
+ * animated position (anim slot cur + acc/256) -- frame+face, status icons,
  * HP/MP/EXP/level digits -- and mark it visible (pManager->unk0[slot], which
  * the portrait sub-renderer func_801CE540 checks and the close-anim clears).
- * NB retail passes charId as $a1 register residue from the caller's lbu. */
+ * NB retail passes charId as $a1 register residue from the caller's lbu.
+ * Shared retail/port body (gcc 2.6.3 byte-exact). */
 void func_801D5A50(u8 slot, u8 charId) {
     MenuOpenAnim* pAnim;
     u8* buf;
     s32 x;
     s32 y;
+    SystemMenu* m;
 
     if (slot == 0xFF) {
         return;
     }
-    pAnim = MENU_OPEN_ANIM(slot);
-    buf = PORTRAIT_BUF(slot);
-    /* retail rounds the 8.8 acc toward zero (adds 0xFF before asr on negatives) */
-    x = pAnim->curX + ((pAnim->accX < 0 ? pAnim->accX + 0xFF : pAnim->accX) >> 8);
-    y = pAnim->curY + ((pAnim->accY < 0 ? pAnim->accY + 0xFF : pAnim->accY) >> 8);
+    m = g_Menu;
+    pAnim = (MenuOpenAnim*)((u8*)m + slot * 0x24);
+    buf = (u8*)(uintptr_t)*(u32*)&m->unk39C[slot * 4];
+    /* 8.8 acc divided by 256: rounds toward zero, as retail does */
+    x = pAnim->accX / 256 + pAnim->curX;
+    y = pAnim->accY / 256 + pAnim->curY;
 
     func_801D4F2C(slot, charId, x, y);
     func_801D50EC(slot, x, y);
@@ -6367,36 +6367,34 @@ void func_801D5A50(u8 slot, u8 charId) {
     g_Menu->pManager->unk0[slot] = 1;
     buf[0x1270] = (u8)g_Menu->renderContext;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5BA4);
-#else
 /* Arc A content: the GOLD readout -- parse g_GameState.gold into digits
  * (leading zeros 0xFF-blanked), build up to 9 digit quads into the unk340[0]
  * buffer (count at +0x320) at x+i*8, plus the "G" unit glyph (atlas 0x10) at
- * +0x2D0, x+0x50.  Arms the gold-window content flag unk5[0]; rc at +0x324. */
+ * +0x2D0, x+0x50.  Arms the gold-window content flag unk5[0]; rc at +0x324.
+ * Shared retail/port body (gcc 2.6.3 byte-exact): retail re-reads the
+ * unk340[0] buffer pointer at every use. */
+#define MENU_GOLD_BUF ((u8*)(uintptr_t)*(u32*)&g_Menu->unk340[0])
 void func_801D5BA4(s32 x, s32 y) {
-    u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk340[0];
     s32 i;
+    u8 d;
 
     func_801C80B8(g_GameState.gold);
-    *(s32*)(buf + 0x320) = 0;
+    *(s32*)(MENU_GOLD_BUF + 0x320) = 0;
     for (i = 0; i < 9; i++) {
-        u8 d = g_Menu->digits[i];
-
+        d = g_Menu->digits[i];
         if (d != 0xFF) {
-            *(s32*)(buf + 0x320) += func_8002675C(
-                g_Menu->unk2DC, d, buf + *(s32*)(buf + 0x320) * 0x50,
+            *(s32*)(MENU_GOLD_BUF + 0x320) += func_8002675C(
+                g_Menu->unk2DC, d, MENU_GOLD_BUF + *(s32*)(MENU_GOLD_BUF + 0x320) * 0x50,
                 g_Menu->renderContext, x + i * 8, y, 0x1000);
         }
     }
-    func_8002675C(g_Menu->unk2DC, 0x10, buf + 0x2D0, g_Menu->renderContext,
+    func_8002675C(g_Menu->unk2DC, 0x10, MENU_GOLD_BUF + 0x2D0, g_Menu->renderContext,
                   x + 0x50, y, 0x1000);
     g_Menu->pManager->unk5[0] = 1;
-    buf[0x324] = (u8)g_Menu->renderContext;
+    MENU_GOLD_BUF[0x324] = g_Menu->renderContext;
 }
-#endif
+#undef MENU_GOLD_BUF
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5CF8);
