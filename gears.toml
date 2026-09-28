@@ -119,11 +119,10 @@ paths = [
 [[build_preset]]
 name = "MenuG0"
 # menu.bin never addresses anything through $gp, so its cc1 runs with -G0 like
-# the other overlays.  This also matters for layout: with optimisation on and
-# -G > 0, cc1's MIPS gp-opt mode buffers every function body in a temp file and
-# appends it after the rest of the output, so all file-scope __asm__
-# (INCLUDE_ASM) blocks land ahead of every C body.  Under -G0 they stay in
-# source order and one TU can interleave assembly and C like retail.
+# the other overlays.  (-G8 used to hoist every INCLUDE_ASM ahead of the C
+# bodies.  include/include_asm.h now wraps INCLUDE_ASM in a function, which
+# keeps source order either way, but -G8 still leaves menu.bin 204 bytes off
+# retail: rodata 0x0-0xC4 plus about 40 text words.)
 # Key is prefixed with src/ so it cannot match shop_menu/ or
 # member_change_menu/ paths (preset keys are substring matches).
 build_variables = {
