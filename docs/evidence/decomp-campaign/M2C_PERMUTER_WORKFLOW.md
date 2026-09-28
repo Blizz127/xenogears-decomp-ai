@@ -55,6 +55,10 @@ so m2c_drive always rebuilds and compares the whole overlay.
 - **INCLUDE_ASM order.** INCLUDE_ASM must keep source order with the C bodies.
   The maspsx dummy-function wrapper in `include/include_asm.h` does this. A bare
   top-level `__asm__` is emitted ahead of every C function at -O2.
+- **Divide checks.** A retail signed `div` followed by `break 7` / `break 6`
+  checks was assembled with maspsx `--expand-div`. Give such a TU a preset
+  with that flag, as `BattleDiv` / `BattleGcc263Div` do for main68 / main69.
+  `alt_cc.py` tries it automatically.
 - **objdiff is not byte-exact.** It scored field's `func_800A7948` 100% while two
   stores went to swapped `symbol + offset` targets.
 - **Epilogue delay filling.** Our gcc-2.7.2 cc1 can move a function's last
