@@ -2864,65 +2864,45 @@ void FieldScriptSetParentActor(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags1);
-#else
 void FieldScriptWriteActorFlags1(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)pActorData);
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags2);
-#else
 void FieldScriptWriteActorFlags2(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 2));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags3);
-#else
 void FieldScriptWriteActorFlags3(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u32*)(pActorData + 4));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", FieldScriptWriteActorFlags4);
-#else
 void FieldScriptWriteActorFlags4(void) {
-    FieldActor* actors = g_FieldActors;
     int actorIndex = FieldScriptVMGetActorIndex(1);
 
     if (actorIndex != ACTOR_ID_INVALID) {
-        u8* pActorData = (u8*)(uintptr_t)actors[actorIndex].pActorData;
+        u8* pActorData = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
         FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(pActorData + 6));
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 // TODO: These two handlers could use more semantic names since they're likely used
 // in certain situations.
