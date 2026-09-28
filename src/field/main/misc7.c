@@ -1847,19 +1847,15 @@ s32 func_8009AEE0(s32 partySlot, s32 targetX, s32 targetZ, s32 direction) {
 }
 #endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 
 /* FE44 — enable player interact gate. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B15C);
-#else
 void func_8009B15C(void) {
-    D_800B21CF = 1;
+    D_800B21CF[0] = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 extern u8 D_800B21CC;
 extern s32 D_800B2368;
 extern s32 D_800B2364;
@@ -1870,7 +1866,7 @@ extern void func_80081C54(s32);
 
 void func_8009B184(void) {
     s32 i;
-    D_800B21CF = 0;
+    D_800B21CF[0] = 0;
     D_800B21CC = 0;
     D_800B2368 = 0;
     D_800B2364 = 0;
