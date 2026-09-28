@@ -102,6 +102,8 @@ The port ships no game data and no Sony Psy-Q code.
 
 ## Port layers, config and mods
 
+Full description: [`docs/port/ARCHITECTURE.md`](../docs/port/ARCHITECTURE.md).
+
 Port code reaches the platform through interface headers in
 `include/xg_plat/` (the moddable-port pattern of the Parasite Eve port's
 `docs/ARCHITECTURE-PORT.md`), each with a swappable backend in `src/plat/`:
@@ -113,25 +115,29 @@ Port code reaches the platform through interface headers in
 | `input.h` | keyboard bindings by SDL key name | PsyCross |
 | `timing.h` | game speed, fast-forward, vblank clock | PsyCross |
 | `audio.h` | user volume | none yet (reported unsupported) |
-| `config.h` | `xenogears-port.cfg` + `XENO_*` overrides | `src/plat/xg_plat_config.c` |
+| `config.h` | `config.ini`, `--config`/`--set`, `XENO_*` overrides | `src/plat/xg_plat_config.c` |
 | `mods.h` | `mods/` folders, events, C plugins, asset replacement | `src/plat/xg_plat_mods.c` |
 
 The game's own PSX calls still go through PsyCross + `psyq_compat*`; areas
 move behind the interfaces as they are touched.
 
-**Config:** copy `xenogears-port.example.cfg` to `xenogears-port.cfg` (working
-directory) or `~/.config/xenogears-port/`; any key can be overridden as
-`XENO_<SECTION>_<KEY>`. Widescreen, 60 fps and user volume are accepted but
+**Config:** copy `config.example.ini` to `config.ini` next to the executable or
+to `~/.config/xenogears-port/`, or pass `--config FILE`; `--set key=value` and
+`XENO_<SECTION>_<KEY>` override single keys. Widescreen, 60 fps and user volume are accepted but
 reported as unsupported until a backend implements them.
 
 **Mods:** each folder in `mods/` (or `~/.local/share/xenogears-port/mods/`)
 has a `mod.txt` (`name`, `version`, `load_order`, `abi = 1`), optional
 `assets/<sha256>.bin` replacements keyed by the SHA-256 of the original game
 file, and an optional `plugin.so` exporting `xg_mod_init()`. Events: `boot`,
-`frame_tick`, `asset_loaded`. `XENO_MODS_LOG_ASSETS=1` prints the hash of each
+`frame_tick`, `asset_loaded`, `room_enter`. `XENO_MODS_LOG_ASSETS=1` prints the hash of each
 file the game loads; `XENO_MODS_DUMP_DIR=dir` saves the originals from your
 disc for editing. Mods are user content: `mods/` is git-ignored and must never
 be committed.
+
+**Cheats:** `god`, `encounters`, `save`/`load`, `warp`, `battle`, `speed` are
+cheat-console commands (`src/cheat_console.c`) run on `frame_tick`; the host
+toolbar and F10/F12 queue them, and `cheats.console = on` reads them from stdin.
 
 ## Building (Linux)
 

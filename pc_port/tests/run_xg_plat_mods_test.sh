@@ -18,6 +18,6 @@ head -c 48 /dev/zero > "$mods/b_last/assets/$hB.bin"  # too big for a 40-byte bu
 gcc -std=gnu17 -O2 -Wall -Wextra -Werror -shared -fPIC \
     pc_port/tests/xg_plat_mods_test_plugin.c -o "$mods/b_last/plugin.so"
 gcc -std=gnu17 -O2 -Wall -Wextra -Werror -Wno-unused-function \
-    pc_port/tests/xg_plat_mods_test.c pc_port/src/plat/xg_plat_mods.c \
+    pc_port/tests/xg_plat_mods_test.c pc_port/src/plat/xg_plat_mods.c pc_port/src/mod_events.c \
     pc_port/src/plat/xg_plat_config.c -ldl -o "$base/test"
 "$base/test" "$mods"

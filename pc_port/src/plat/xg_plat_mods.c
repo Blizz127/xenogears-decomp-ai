@@ -38,7 +38,7 @@ static int s_log_assets;
 static const char* s_dump_dir;
 
 static const char* const s_event_names[XG_PLAT_EVENT_COUNT] = {
-    "boot", "frame_tick", "asset_loaded",
+    "boot", "frame_tick", "asset_loaded", "room_enter",
 };
 
 const char* xg_plat_mods_event_name(XgPlatModEvent event)

@@ -123,13 +123,30 @@ static void PcPort_FieldWarpProbe(ActorData* actor, int mapId)
     ticks++;
 }
 
+/* One-shot warp state: armed by XENO_FIELD_WARP or the cheat console's
+ * `warp` command (PcPort_FieldWarpArm). */
+static int armed = 0;
+static int wantMap = -1;
+static int wantX = 0;
+static int wantZ = 0;
+static int s_warp_ticks = 0;
+static int s_warp_fired = 0;
+
+void PcPort_FieldWarpArm(int map, int x, int z)
+{
+    wantMap = map & 0xFFF;
+    wantX = x;
+    wantZ = z;
+    s_warp_ticks = 0;
+    s_warp_fired = 0;
+    armed = 1;
+    printf("[xeno-port][cheat] WARP armed map=%d -> (%d,%d)\n", wantMap, wantX, wantZ);
+    fflush(stdout);
+}
+
 void PcPort_FieldWarpDiag(void)
 {
     static int parsed = 0;
-    static int armed = 0;
-    static int wantMap = -1;
-    static int wantX = 0;
-    static int wantZ = 0;
     /* A single shot at the first field-active frame lands DURING the room's
      * setup scene, which then repositions the player and erases it (measured:
      * fired at (-151,1774), player ended at (112,-458)).  So wait `delay`
@@ -138,8 +155,6 @@ void PcPort_FieldWarpDiag(void)
     static int delay = 600;
     static int repeats = 5;
     static int period = 120;
-    static int ticks = 0;
-    static int fired = 0;
     ActorData* actor;
 
     if (!parsed) {
@@ -184,18 +199,18 @@ void PcPort_FieldWarpDiag(void)
         return;
     if ((g_GameSceneMapNum & 0xFFF) != wantMap)
         return;
-    if (ticks++ < delay)
+    if (s_warp_ticks++ < delay)
         return;
-    if (((ticks - delay) % period) != 0)
+    if (((s_warp_ticks - delay) % period) != 0)
         return;
 
     printf("[xeno-port][test] WARP firing %d/%d: (%d,%d) -> (%d,%d)\n",
-           fired + 1, repeats, (int)CONV_TO_GTE(actor->position.vx),
+           s_warp_fired + 1, repeats, (int)CONV_TO_GTE(actor->position.vx),
            (int)CONV_TO_GTE(actor->position.vz), wantX, wantZ);
     fflush(stdout);
     /* position is stored pre-CONV_TO_GTE; invert the diag's view. */
     actor->position.vx = CONV_FROM_GTE(wantX);
     actor->position.vz = CONV_FROM_GTE(wantZ);
-    if (++fired >= repeats)
+    if (++s_warp_fired >= repeats)
         armed = 0;
 }

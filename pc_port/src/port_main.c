@@ -15,6 +15,7 @@
 #include "../include/xg_plat/renderer.h"
 #include "../include/xg_plat/config.h"
 #include "../include/xg_plat/mods.h"
+#include "cheat_console.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1212,11 +1213,16 @@ static void PcPort_LoadSystemTextData(void) {
 }
 
 int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+    /* --config FILE / --set key=value / --help (xg_plat/config.h). */
+    switch (xg_plat_config_cli(argc, argv)) {
+    case 1: return EXIT_SUCCESS;
+    case -1: return 64; /* EX_USAGE */
+    default: break;
+    }
 
     printf("[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)\n");
-    (void)xg_plat_config_load();
+    if (xg_plat_config_load() < 0)
+        return 78; /* EX_CONFIG: explicit --config / XENO_CONFIG unreadable */
     /* The data_*.c constructors already filled the native retail tables from
      * the user's disc files (retail_data.h); report what they loaded. */
     printf("[xeno-port] retail data: %u objects, %u bytes loaded from the user's "
@@ -1248,7 +1254,7 @@ int main(int argc, char** argv) {
         xg_plat_renderer_default_config(&video);
         video.window_width = SCREEN_WIDTH;
         video.window_height = SCREEN_HEIGHT;
-        xg_plat_config_video(&video); /* xenogears-port.cfg / XENO_VIDEO_* */
+        xg_plat_config_video(&video); /* config.ini / XENO_VIDEO_* / --set */
         (void)xg_plat_renderer_init(WINDOW_TITLE, &video);
     }
 
@@ -1274,8 +1280,16 @@ int main(int argc, char** argv) {
     }
     /* Config file / XENO_* overrides: game.speed, input.* bindings, ... */
     xg_plat_config_apply_runtime();
+    /* Cheat console first: its frame_tick subscribers (field warp, battle
+     * warp, queued commands) must run before any mod hook, in the order the
+     * VSync shim used to call them. */
+    PcPort_CheatConsoleInit();
     /* Mods: scan mods/ (manifests, plugins, asset replacements). */
     (void)xg_plat_mods_init();
+    {   /* game-side event sources (room_enter, ...) */
+        extern void PcPort_ModEventsInit(void);
+        PcPort_ModEventsInit();
+    }
 
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();

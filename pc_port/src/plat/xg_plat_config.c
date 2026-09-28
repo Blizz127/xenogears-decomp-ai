@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "../../include/xg_plat/config.h"
 #include "../../include/xg_plat/audio.h"
@@ -15,6 +16,9 @@ typedef struct { char key[64]; char value[192]; } CfgEntry;
 
 static CfgEntry s_entries[CFG_MAX];
 static int s_count;
+static CfgEntry s_cli[CFG_MAX];   /* --set overrides */
+static int s_cli_count;
+static char s_cli_file[1024];     /* --config */
 static int s_loaded;
 static char s_path[1024];
 
@@ -105,25 +109,88 @@ int xg_plat_config_parse(const char* text)
     return n;
 }
 
+static int exe_dir(char* out, size_t n)
+{
+    ssize_t len = readlink("/proc/self/exe", out, n - 1);
+    char* slash;
+    if (len <= 0)
+        return 0;
+    out[len] = '\0';
+    slash = strrchr(out, '/');
+    if (slash == NULL)
+        return 0;
+    *slash = '\0';
+    return 1;
+}
+
+int xg_plat_config_cli(int argc, char** argv)
+{
+    int i;
+    for (i = 1; i < argc; i++) {
+        const char* a = argv[i];
+        if (!strcmp(a, "--help") || !strcmp(a, "-h")) {
+            printf("usage: %s [--config FILE] [--set key=value]...\n"
+                   "  --config FILE     read FILE instead of config.ini\n"
+                   "  --set key=value   override one config key (e.g. video.width=1280)\n"
+                   "Keys and defaults: pc_port/config.example.ini; XENO_<KEY> environment\n"
+                   "variables also override the file.\n", argv[0]);
+            return 1;
+        }
+        if (!strcmp(a, "--config") || !strncmp(a, "--config=", 9)) {
+            const char* v = a[8] == '=' ? a + 9 : (i + 1 < argc ? argv[++i] : NULL);
+            if (v == NULL || !*v) {
+                fprintf(stderr, "[xg_plat] --config needs a file\n");
+                return -1;
+            }
+            snprintf(s_cli_file, sizeof s_cli_file, "%s", v);
+            continue;
+        }
+        if (!strcmp(a, "--set") || !strncmp(a, "--set=", 6)) {
+            const char* v = a[5] == '=' ? a + 6 : (i + 1 < argc ? argv[++i] : NULL);
+            const char* eq = v ? strchr(v, '=') : NULL;
+            size_t k;
+            if (eq == NULL || eq == v || s_cli_count >= CFG_MAX) {
+                fprintf(stderr, "[xg_plat] --set needs key=value\n");
+                return -1;
+            }
+            k = (size_t)(eq - v) < sizeof s_cli[0].key ? (size_t)(eq - v) : sizeof s_cli[0].key - 1;
+            memcpy(s_cli[s_cli_count].key, v, k);
+            s_cli[s_cli_count].key[k] = '\0';
+            snprintf(s_cli[s_cli_count].value, sizeof s_cli[0].value, "%s", eq + 1);
+            s_cli_count++;
+            continue;
+        }
+        fprintf(stderr, "[xg_plat] unknown option '%s' (try --help)\n", a);
+        return -1;
+    }
+    return 0;
+}
+
 int xg_plat_config_load(void)
 {
     const char* env = getenv("XENO_CONFIG");
     const char* xdg = getenv("XDG_CONFIG_HOME");
     const char* home = getenv("HOME");
-    char cand[3][1024];
+    char cand[4][1024];
+    char dir[900];
     int ncand = 0, i, n;
     FILE* f = NULL;
 
     if (s_loaded)
         return s_count;
     s_loaded = 1;
-    if (env && *env)
+    if (s_cli_file[0])
+        snprintf(cand[ncand++], sizeof cand[0], "%s", s_cli_file);
+    else if (env && *env)
         snprintf(cand[ncand++], sizeof cand[0], "%s", env);
-    snprintf(cand[ncand++], sizeof cand[0], "xenogears-port.cfg");
-    if (xdg && *xdg)
-        snprintf(cand[ncand++], sizeof cand[0], "%s/xenogears-port/xenogears-port.cfg", xdg);
-    else if (home && *home)
-        snprintf(cand[ncand++], sizeof cand[0], "%s/.config/xenogears-port/xenogears-port.cfg", home);
+    else {
+        if (exe_dir(dir, sizeof dir))
+            snprintf(cand[ncand++], sizeof cand[0], "%s/config.ini", dir);
+        if (xdg && *xdg)
+            snprintf(cand[ncand++], sizeof cand[0], "%.900s/xenogears-port/config.ini", xdg);
+        else if (home && *home)
+            snprintf(cand[ncand++], sizeof cand[0], "%.900s/.config/xenogears-port/config.ini", home);
+    }
     for (i = 0; i < ncand && f == NULL; i++) {
         f = fopen(cand[i], "rb");
         if (f) {
@@ -132,8 +199,10 @@ int xg_plat_config_load(void)
         }
     }
     if (f == NULL) {
-        if (env && *env)
-            fprintf(stderr, "[xg_plat] config: XENO_CONFIG=%s not readable; using defaults\n", env);
+        if (s_cli_file[0] || (env && *env)) {
+            fprintf(stderr, "[xg_plat] config: %s not readable\n", cand[0]);
+            return -1;
+        }
         return 0;
     }
     {
@@ -182,8 +251,12 @@ static const char* env_override(const char* key)
 
 const char* xg_plat_config_get(const char* key)
 {
-    const char* env = env_override(key);
+    const char* env;
     int i;
+    for (i = s_cli_count - 1; i >= 0; i--)
+        if (strcmp(s_cli[i].key, key) == 0)
+            return s_cli[i].value;
+    env = env_override(key);
     if (env)
         return env;
     for (i = 0; i < s_count; i++)
@@ -211,18 +284,38 @@ int xg_plat_config_int(const char* key, int fallback)
     return (int)n;
 }
 
+static void check_backend(const char* key)
+{
+    const char* v = xg_plat_config_get(key);
+    if (v && strcmp(v, "psycross") != 0)
+        fprintf(stderr, "[xg_plat] config: %s = %s is not available in this build "
+                        "(only 'psycross'); using psycross\n", key, v);
+}
+
 void xg_plat_config_video(XgPlatVideoConfig* video)
 {
-    const char* fps = xg_plat_config_get("video.fps");
+    int fps = xg_plat_config_int("video.fps", 30);
+    int scale = xg_plat_config_int("video.internal_resolution", 0);
+    check_backend("video.backend");
+    check_backend("audio.backend");
+    check_backend("input.backend");
+    /* PsyCross renders at the output size, so the internal resolution is
+     * the window size: N x the PSX 320x240 unless width/height are given. */
+    if (scale > 0 && scale <= 8) {
+        video->window_width = 320 * scale;
+        video->window_height = 240 * scale;
+    } else if (scale != 0) {
+        fprintf(stderr, "[xg_plat] config: video.internal_resolution must be 1..8\n");
+    }
     video->window_width = xg_plat_config_int("video.width", video->window_width);
     video->window_height = xg_plat_config_int("video.height", video->window_height);
     video->fullscreen = xg_plat_config_int("video.fullscreen", video->fullscreen);
     video->vsync = xg_plat_config_int("video.vsync", video->vsync);
     video->bilinear = xg_plat_config_int("video.bilinear", video->bilinear);
     video->widescreen = xg_plat_config_int("video.widescreen", video->widescreen);
-    if (fps && strcmp(fps, "native") != 0 && strcmp(fps, "30") != 0)
-        fprintf(stderr, "[xg_plat] config: video.fps = %s needs frame interpolation, which "
-                        "no renderer backend has yet; running at the game's native rate\n", fps);
+    if (fps != 30)
+        fprintf(stderr, "[xg_plat] config: video.fps = %d needs frame interpolation, which no "
+                        "renderer backend has yet; running at the game's native 30 fps\n", fps);
 }
 
 void xg_plat_config_apply_runtime(void)
@@ -231,6 +324,8 @@ void xg_plat_config_apply_runtime(void)
     int b;
     if (xg_plat_config_get("game.speed"))
         xg_plat_timing_set_speed(xg_plat_config_int("game.speed", 1));
+    if (xg_plat_config_get("game.fast_forward_speed"))
+        xg_plat_timing_set_fast_forward_speed(xg_plat_config_int("game.fast_forward_speed", 5));
     if (xg_plat_config_get("audio.volume") &&
         !xg_plat_audio_set_user_volume(xg_plat_config_int("audio.volume", 100)))
         fprintf(stderr, "[xg_plat] config: audio.volume is not supported by this audio "

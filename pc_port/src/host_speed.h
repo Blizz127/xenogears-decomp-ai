@@ -8,6 +8,7 @@ extern "C" {
 int PsyX_GetSpeedMultiplier(void);
 void PsyX_SetSpeedMultiplier(int multiplier);
 void PsyX_SetFastForwardHeld(int held);
+void PsyX_SetFastForwardSpeed(int multiplier);
 #ifdef __cplusplus
 }
 #endif

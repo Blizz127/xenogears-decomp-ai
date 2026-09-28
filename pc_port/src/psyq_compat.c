@@ -1723,19 +1723,17 @@ int Vsync(int mode)
 
         if (!sceneOpen && mode == 0)
             PsyX_PresentDisplayFromVRAM();
-
-        /* Mods: one frame_tick per presented frame (weak: no-op without the
-         * mods layer or subscribers). */
-        if (xg_plat_mods_emit)
-            (void)xg_plat_mods_emit(XG_PLAT_EVENT_FRAME_TICK, 0, 0);
     }
 
     /* TEST TOOLING: headless walk telemetry (XENO_FIELD_POS_DIAG). */
     { extern void PcPort_FieldPosDiag(void); PcPort_FieldPosDiag(); }
-    /* TEST TOOLING: one-shot debug teleport (XENO_FIELD_WARP); inert unset. */
-    { extern void PcPort_FieldWarpDiag(void); PcPort_FieldWarpDiag(); }
-    /* TEST TOOLING: launch a chosen battle (XENO_BATTLE_WARP_FILE); inert unset. */
-    { extern void PcPort_DebugBattleWarp(void); PcPort_DebugBattleWarp(); }
+    /* One frame_tick per presented frame (xg_plat/mods.h).  Its first
+     * subscribers are the cheat services that used to be called right here,
+     * in the same order: field warp (XENO_FIELD_WARP / `warp`), battle warp
+     * (XENO_BATTLE_WARP_FILE / `battle`), then queued cheat-console commands
+     * (cheat_console.c), then mods.  Weak: no-op without the layer. */
+    if (xg_plat_mods_emit)
+        (void)xg_plat_mods_emit(XG_PLAT_EVENT_FRAME_TICK, 0, 0);
     /* TEST TOOLING: dump the loaded walkmesh (XENO_WALKMESH_DUMP); inert unset. */
     { extern void PcPort_WalkmeshDump(void); PcPort_WalkmeshDump(); }
     /* Pace first so the newly elapsed tick is serviced before returning.
