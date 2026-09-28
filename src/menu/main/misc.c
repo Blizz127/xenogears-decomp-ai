@@ -946,23 +946,8 @@ void func_801C6D5C(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-/* Retail uploads to RECT {0, 0x1C0, 0x10, 1}; the port body uses {0, 0, 0x1C0, 1}. */
-#endif
+/* A 16-entry CLUT row at VRAM (0, 0x1C0): RECT {0, 0x1C0, 0x10, 1}. */
 void func_801C6D90(void) {
-#ifdef XENO_PC_PORT
-    RECT rect;
-    u16* pBuf = HeapAlloc(0x20, NULL);
-    bzero(pBuf, 0x20);
-    pBuf[1] = 0x7FFF;
-    rect.x = 0;
-    rect.y = 0;
-    rect.w = 0x1C0;
-    rect.h = 1;
-    LoadImage(&rect, (u8*)pBuf);
-    DrawSync(0);
-    HeapFree(pBuf);
-#else
     RECT rect;
     volatile u64 reserve; /* retail frame has 8 unused bytes */
     u16* pBuf = HeapAlloc(0x20, 0);
@@ -975,7 +960,6 @@ void func_801C6D90(void) {
     LoadImage(&rect, (u_long*)pBuf);
     DrawSync(0);
     HeapFree(pBuf);
-#endif
 }
 
 /* B1b: upload the menu palette to VRAM, allocate the first string's work
@@ -3005,28 +2989,16 @@ extern u16 D_8005A3A0[];
 extern s32 D_80059488;
 extern void* func_801E4D10(s32, s32);
 
-#ifndef XENO_PC_PORT
-/* Retail reads the first word at arg0 after the call and ignores the result. */
-#endif
+/* Retail stores the first word of the arg0 buffer and ignores func_801E4D10's
+ * return value (a pointer 0x1920 into g_GameState, not arg0). */
 void func_801CB28C(s32 arg0) {
-#ifdef XENO_PC_PORT
-    void* pMenu = g_Menu;
-    void* pData = func_801E4D10(arg0, *(s32*)((u8*)pMenu + 0x330));
-    s32 i;
-    D_80059488 = *(s32*)pData;
-    for (i = 0; i < 0x10; i++) {
-        D_8005A3A0[i] = D_8006F958[i];
-    }
-    func_801CB184();
-#else
     s32 i;
     func_801E4D10(arg0, *(s32*)((u8*)g_Menu + 0x330));
-    D_80059488 = *(s32*)arg0;
+    D_80059488 = *(s32*)(uintptr_t)arg0;
     for (i = 0; i < 0x10; i++) {
         D_8005A3A0[i] = D_8006F958[i];
     }
     func_801CB184();
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -4230,20 +4202,11 @@ void func_801D0D90(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-/* Retail counts down from 7 and returns the final i, i.e. -1.  The port
- * body below returns 0; it is kept as-is for the port. */
-#endif
+/* Spin delay; returns -1 like retail (callers ignore the result). */
 s32 func_801D0E20(void) {
-#ifdef XENO_PC_PORT
-    s32 i;
-    for (i = 6; i >= 0; i--) {}
-    return i + 1;
-#else
     s32 i;
     for (i = 7; i >= 0; i--) {}
     return i;
-#endif
 }
 
 void func_801D0E38(void) {
@@ -4276,20 +4239,11 @@ void func_801D0E38(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-/* Retail counts down from 5 and returns the final i, i.e. -1.  The port
- * body below returns 0; it is kept as-is for the port. */
-#endif
+/* Spin delay; returns -1 like retail (callers ignore the result). */
 s32 func_801D0EBC(void) {
-#ifdef XENO_PC_PORT
-    s32 i;
-    for (i = 4; i >= 0; i--) {}
-    return i + 1;
-#else
     s32 i;
     for (i = 5; i >= 0; i--) {}
     return i;
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -10460,19 +10414,11 @@ extern u8 D_801EA568[];
 extern void func_801E8018(s32, u8*, s32, void*);
 #endif
 
-#ifndef XENO_PC_PORT
-/* Retail passes the address &D_801EA568[arg0]; the port body passes the byte. */
-#endif
+/* func_801E8018 takes the descriptor-id list as a pointer. */
 void func_801E2324(u8 arg0) {
-#ifdef XENO_PC_PORT
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    func_801E8018(6, (u8*)pMenu + 0x18E0, D_801EA568[arg0], (u8*)pManager + 0x54);
-#else
     void* pMenu = g_Menu;
     void* pManager = g_Menu->pManager;
     func_801E8018(6, (u8*)pMenu + 0x18E0, &D_801EA568[arg0], (u8*)pManager + 0x54);
-#endif
 }
 
 void func_801E2368(void) {
@@ -11022,26 +10968,15 @@ void func_801E41C0(s32 arg0, u8 idx) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-/* Retail indexes the 0xA4-byte party records; the port body steps 0x28. */
-#endif
+/* Party records at g_GameState+0x978 are 0xA4 bytes (func_801E4D10 copies them
+ * with the same stride). */
 void func_801E4258(void* pCtx, u8 idx) {
-#ifdef XENO_PC_PORT
-    s32 i = idx;
-    u8* pBase = (u8*)&g_GameState;
-    u8* pEntry = pBase + 0x978 + i * 0x28;
-    s32 tableIdx = pEntry[8];
-    u8* pTbl = *(u8**)((u8*)pCtx + 0x10);
-    *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + tableIdx * 0x14 + 8);
-    *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + tableIdx * 0x14 + 0xA);
-#else
     s32 off = idx * 0xA4;
     u8* pEntry = (u8*)(off + (s32)&g_GameState + 0x978);
     s32 tableIdx = pEntry[8];
     u8* pTbl = *(u8**)((u8*)pCtx + 0x10) + tableIdx * 0x14;
     *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
     *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -11670,24 +11605,9 @@ void func_801E649C(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-/* Retail clears RECT {0x140, 0xE0, 0x40, 0x20} to 0,0,0; the port body
- * clears {0, 0, 0x140, 0xE0} to 0x40,0x20,0x20. */
+/* Clears the 64x32 VRAM block at (0x140, 0xE0) to black. */
 /* The volatile store keeps retail's epilogue order (sb, then lw $ra). */
-#endif
 void func_801E64E0(void) {
-#ifdef XENO_PC_PORT
-    RECT rect;
-    rect.x = 0;
-    rect.y = 0;
-    rect.w = 0x140;
-    rect.h = 0xE0;
-    ClearImage(&rect, 0x40, 0x20, 0x20);
-    {
-        void* pMenu = g_Menu;
-        ((u8*)g_Menu->pManager)[0xB] = 0;
-    }
-#else
     RECT rect;
     rect.x = 0x140;
     rect.y = 0xE0;
@@ -11695,7 +11615,6 @@ void func_801E64E0(void) {
     rect.h = 0x20;
     ClearImage(&rect, 0, 0, 0);
     *(volatile u8*)((u8*)g_Menu->pManager + 0xB) = 0;
-#endif
 }
 
 void func_801E6544(u8* pEntries) {
