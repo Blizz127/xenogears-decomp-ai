@@ -513,15 +513,13 @@ void func_80087E98(void) {
 #endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(7) */
 
-extern u16 D_800B2348;
+extern u16 D_800B2348[]; /* retail materialises its address (la), as for an array */
 
 #if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc_q7.c */
 void func_80087FA4(void) {
-    D_800B2348++;
+    D_800B2348[0]++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(7) */
 
 #if FIELD_SUB(7)
