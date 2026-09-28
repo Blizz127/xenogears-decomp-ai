@@ -60,3 +60,15 @@ them (they're still INCLUDE_ASM in retail); the port bodies are unchanged.
 | Function (menu.bin) | Retail behaviour | Port behaviour | Suspected cause | Suspected visible effect |
 | --- | --- | --- | --- | --- |
 | `func_801CD710` | case 0 stores 7 to g_Menu+0x334; returns 0 when the called handler (func_801CD2AC / CC6D8 / CB304 / CBD90) returns nonzero | stores 1 in case 0; ignores the handler results and always returns 1 | immediate misread; handler return values dropped | wrong follow-up menu state after the case-0 handler; failures not reported to the caller |
+
+## Resolutions (continued, 2)
+
+| Function | Status | Verification |
+| --- | --- | --- |
+| `func_801E42AC` | fixed in 433db88e (one shared body, retail C matches) | rom-check 10/10; pinned by run_menu_party_record_pins_test (0xA4 stride, unconditional rec[0x3F]) in 0fd709e6 |
+| `func_801E4258` | shared body's `(s32)&g_GameState` host-pointer truncation fixed in 433db88e | run_menu_party_record_pins_test |
+| `func_801E41C0` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test (0xA4 stride, unconditional rec[0x9F]) |
+| `func_801E4998` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test ((v/10)*2/9, rounded to x10; extra-halving mutant rejected); run_menu_gear_weapon passes |
+| `func_801E35BC` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test (0xA4 strides, charIdx slot index, reverse path) |
+| `func_801CB184` | port fixed in 433db88e (retail C still asm) | run_menu_name_decode_pins_test (one contiguous pair buffer, pair count) |
+| `func_801CD710` | port partly fixed in 433db88e (retail C still asm): mode 0 now stores 7. Still open: retail returns 0 when the handler returns nonzero, but func_801CD2AC / CC6D8 / CB304 / CBD90 have no port implementation, so there is no result to use yet | run_menu_card_state_pins_test (7/6/2/3) |

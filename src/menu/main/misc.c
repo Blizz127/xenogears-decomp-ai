@@ -2945,33 +2945,23 @@ extern void func_80033B34(u16*, u8*, s32);  /* true sig: system/system.c */
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB184);
 #else
 void func_801CB184(void) {
-    u8* pState = (u8*)&g_GameState;
+    /* Retail copies each 0x14-byte name entry's byte pairs into ONE buffer
+     * (up to and including the 0,0 terminator pair), decodes it, and
+     * writes the 0x14 decoded bytes back over the entry. */
+    u16 bufWords[0xC];     /* u16-aligned: func_80033B34 reads halfwords */
+    u8* buf = (u8*)bufWords;
+    u8 out[0x18];
     s32 entry;
     for (entry = 0; entry < 0x26C; entry += 0x14) {
-        u8 srcBuf[0x18];
-        u8 dstBuf[0x28];
-        u8* pSrc = srcBuf;
-        u8* pDst = dstBuf;
-        u8* pEntry = pState + entry;
+        u8* e = (u8*)&g_GameState + entry;
         s32 i;
-        s32 count = 0;
         for (i = 0; i < 0x14; i += 2) {
-            u8 v1 = pEntry[i];
-            u8 v2 = pEntry[i + 1];
-            *pSrc++ = v1;
-            *pDst++ = v2;
-            if (v1 == 0 && v2 == 0) break;
-            count += 2;
+            buf[i] = e[i];
+            buf[i + 1] = e[i + 1];
+            if (e[i] == 0 && e[i + 1] == 0) break;
         }
-        func_80033B34(srcBuf, dstBuf, (count + (count >> 31)) >> 1);
-        {
-            u8* pOut = dstBuf;
-            u8* pDest = pState + entry;
-            s32 j;
-            for (j = 0; j < 0x14; j++) {
-                *pDest++ = *pOut++;
-            }
-        }
+        func_80033B34(bufWords, out, i / 2);
+        memcpy(e, out, 0x14);
     }
 }
 #endif
@@ -3087,7 +3077,7 @@ s32 func_801CD710(u8 arg0) {
         u8* pData = (u8*)g_Menu;
         switch (state) {
             case 0:
-                *(u8*)(pData + 0x334) = 1;
+                *(u8*)(pData + 0x334) = 7; /* retail: 7 */
                 func_801CD2AC();
                 break;
             case 1:
@@ -10672,28 +10662,23 @@ s32 func_801E31C0(MenuUnk6* pItemBank, u8 charId, u8 itemId) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E35BC);
 #else
 void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, s32 isReverse) {
-    u8* pChar = (u8*)&g_GameState + 0x26C + charIdx * 0x28;
-    u8* pStat = (u8*)&g_GameState + 0x26C + statIdx * 0x28;
-    u8 entryByte = *(u8*)((u8*)&g_GameState + 0x30C + charIdx * 0x28);
-    u8* pBase = (u8*)&g_GameState + 0x30C + entryByte * 0x28;
-    if (isReverse == 0) {
-        u8* pSlot = *(u8**)((u8*)pCtx + slotIdx * 4 + 0x20);
-        u8* pSlotData = pSlot + slotIdx * 0x28;
-        u8 val = pChar[0x5B];
-        u8 rate = pSlotData[0x11];
-        u16 cur = *(u16*)(pStat + 0x4C);
-        cur += val * rate;
-        *(u16*)(pStat + 0x4C) = cur;
-        if (*(u16*)(pStat + 0x4E) < cur) {
+    /* Records are 0xA4 bytes; the slot table is indexed by charIdx. */
+    u8* gs = (u8*)&g_GameState + 0x26C;
+    u8* pChar = gs + charIdx * 0xA4;
+    u8* pStat = gs + statIdx * 0xA4;
+    u8* pBase = gs + 0x70C + ((u8*)&g_GameState + 0x30C)[charIdx * 0xA4] * 0xA4;
+    if ((u8)isReverse == 0) {
+        u8* pSlot = *(u8**)((u8*)pCtx + charIdx * 4 + 0x20) + slotIdx * 0x28;
+        *(u16*)(pStat + 0x4C) += pChar[0x5B] * pSlot[0x11];
+        if (*(u16*)(pStat + 0x4C) > *(u16*)(pStat + 0x4E)) {
             *(u16*)(pStat + 0x4C) = *(u16*)(pStat + 0x4E);
         }
     } else {
-        u32 val = *(u32*)(pBase + 0x64);
-        u32 step = val / 10;
-        u32 cur = *(u32*)(pBase + 0x60) + step;
+        u32 lim = *(u32*)(pBase + 0x64);
+        u32 cur = lim / 10 + *(u32*)(pBase + 0x60);
         *(u32*)(pBase + 0x60) = cur;
-        if (val < cur) {
-            *(u32*)(pBase + 0x60) = val;
+        if (lim < cur) {
+            *(u32*)(pBase + 0x60) = lim;
         }
     }
 }
@@ -10922,21 +10907,18 @@ void func_801E4170(s32 arg0, u8 arg1) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
 #else
 void func_801E41C0(s32 arg0, u8 idx) {
-    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0x28;
-    u8 tableIdx = pEntry[2];
-    u8* pTable = *(u8**)((u8*)arg0 + 8) + tableIdx * 0x18;
-    u32 val = *(u32*)(pTable + 4);
-    *(u32*)(pEntry + 0x60) = val;
-    *(u32*)(pEntry + 0x64) = val;
+    /* Records are 0xA4 bytes; rec[0x9F] is written unconditionally (retail
+     * stores it in the branch delay slot). */
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
+    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 8) + pEntry[2] * 0x18;
+    *(u32*)(pEntry + 0x60) = *(u32*)(pTable + 4);
+    *(u32*)(pEntry + 0x64) = *(u32*)(pTable + 4);
     pEntry[0x98] = pTable[0x14];
     pEntry[0x9E] = pTable[0x15];
     pEntry[0x9D] = pTable[0x16];
-    {
-        u32 prev = *(u32*)(pEntry + 0x64);
-        if (prev < *(u32*)(pEntry + 0x60)) {
-            pEntry[0x9F] = pTable[0x17];
-            *(u32*)(pEntry + 0x60) = prev;
-        }
+    pEntry[0x9F] = pTable[0x17];
+    if (*(u32*)(pEntry + 0x64) < *(u32*)(pEntry + 0x60)) {
+        *(u32*)(pEntry + 0x60) = *(u32*)(pEntry + 0x64);
     }
 }
 #endif
@@ -10944,32 +10926,32 @@ void func_801E41C0(s32 arg0, u8 idx) {
 /* Party records at g_GameState+0x978 are 0xA4 bytes (func_801E4D10 copies them
  * with the same stride). */
 void func_801E4258(void* pCtx, u8 idx) {
-    s32 off = idx * 0xA4;
-    u8* pEntry = (u8*)(off + (s32)&g_GameState + 0x978);
+    uintptr_t off = idx * 0xA4;
+    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
     s32 tableIdx = pEntry[8];
     u8* pTbl = *(u8**)((u8*)pCtx + 0x10) + tableIdx * 0x14;
     *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
     *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E42AC);
-#else
+/* Party records are 0xA4 bytes (see func_801E4258).  rec[0x3F] is written
+ * unconditionally (retail stores it in the branch delay slot); the volatile
+ * reloads keep retail's load order. */
 void func_801E42AC(s32 arg0, u8 idx) {
-    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0x28;
-    u8 tableIdx = pEntry[3];
-    u8* pTable = *(u8**)((u8*)arg0 + 0xC) + tableIdx * 0x10;
+    uintptr_t off = idx * 0xA4;
+    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
+    s32 tableIdx = pEntry[3];
+    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC) + tableIdx * 0x10;
     u16 prev = *(u16*)(pEntry + 0x38);
     *(u16*)(pEntry + 0x3A) = *(u16*)(pTable + 6);
     pEntry[0x3C] = pTable[0xC];
     pEntry[0x3D] = pTable[0xD];
     pEntry[0x3E] = pTable[0xE];
-    if (*(u16*)(pEntry + 0x3A) < prev) {
-        pEntry[0x3F] = pTable[0xE];
-        *(u16*)(pEntry + 0x38) = *(u16*)(pEntry + 0x3A);
+    pEntry[0x3F] = pTable[0xE];
+    if (*(volatile u16*)(pEntry + 0x3A) < prev) {
+        *(u16*)(pEntry + 0x38) = *(volatile u16*)(pEntry + 0x3A);
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E433C);
@@ -11107,17 +11089,13 @@ u8 func_801E4928(u8 idx) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4998);
 #else
 void func_801E4998(s32 arg0, u8 idx) {
-    u8* pEntry = (u8*)&g_GameState + 0x9DC + (s32)idx * 0xA4;
-    u32 val = *(u32*)pEntry;
-    u32 temp1 = (u32)(((unsigned long long)val * 0xCCCCCCCDULL) >> 32) >> 3;
-    u32 temp2 = (u32)(((unsigned long long)(temp1 * 2) * 0x38E38E39ULL) >> 32) >> 1;
-    u8* pModel = *(u8**)((u8*)arg0 + idx * 4 + 0x4C) + 0x5C8;
-    *(u16*)(pModel + 0x24) = (u16)(temp2 / 2);
-    {
-        u16 result = *(u16*)(pModel + 0x24);
-        u32 rounded = (u32)(((unsigned long long)result * 0xCCCCCCCDULL) >> 32) >> 3;
-        *(u16*)(pModel + 0x24) = (u16)(rounded * 10);
-    }
+    /* Retail: ((val / 10) * 2) / 9, stored, then rounded down to a
+     * multiple of 10. */
+    u8* pModel;
+    u32 val = *(u32*)((u8*)&g_GameState + 0x9DC + idx * 0xA4);
+    pModel = *(u8**)((u8*)(uintptr_t)arg0 + idx * 4 + 0x4C) + 0x5C8;
+    *(u16*)(pModel + 0x24) = (val / 10) * 2 / 9;
+    *(u16*)(pModel + 0x24) = (u16)(*(u16*)(pModel + 0x24) / 10) * 10;
 }
 #endif
 
