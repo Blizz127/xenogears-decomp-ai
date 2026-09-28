@@ -5308,7 +5308,7 @@ extern void func_801D28A8(void);                      /* stub */
 extern u8 D_801EA528[];
 extern u8 D_801EA19C[];
 extern void func_801E8474(s32, void*);                /* content build (stub for now) */
-extern void func_801E8DA8(s32, s32);                  /* portrait build (stub for now) */
+extern void func_801E8DA8(u8, u8);                    /* name-plate build (below) */
 extern void func_801D28FC(void);                      /* post-setup (stub for now) */
 
 /* Arc A: the menu open/close animation.  Slides the three portrait frames
@@ -12565,9 +12565,6 @@ void func_801E8978(s32 count, s32 selected, void* pTable) {
 INCLUDE_ASM(MENU_ASM, func_801E8B4C);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E8DA8);
-#else
 extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
 extern u8 D_801EA578[];   /* per-slot name-plate VRAM x coords (u16, migrated) */
 extern u8 D_801EA5C4[];   /* per-slot name-plate VRAM y coords (u16, migrated) */
@@ -12577,18 +12574,19 @@ extern u8 D_801EA5C4[];   /* per-slot name-plate VRAM y coords (u16, migrated) *
  * as a 0x28x0xD VRAM rect at the slot's plate coords (+0x180 x).  charArg
  * 0xFF uploads a blank plate.  The FACE TIMs are uploaded separately by the
  * resource-load (func_801C65F4); the quads that sample plate+face are the
- * portrait-frame geometry (func_801D5A50 family). */
-void func_801E8DA8(s32 charArg, s32 slot) {
+ * portrait-frame geometry (func_801D5A50 family).  Shared retail/port body
+ * (gcc 2.6.3 byte-exact, u8 arguments as retail masks them). */
+void func_801E8DA8(u8 charArg, u8 slot) {
     u8* pWork = HeapAlloc(0x3F6, 0);
     RECT rect;
     s32 byteOff;
 
     bzero(pWork, 0x3F6);
-    if ((charArg & 0xFF) != 0xFF) {
-        u8* pName = (u8*)&g_GameState + ((charArg & 0xFF) >> 1) * 0x28;
+    if (charArg != 0xFF) {
+        s32 off = (charArg >> 1) * 0x28;
 
-        SystemRenderStringEntry(pName, pWork, 0x24, 0);
-        SystemRenderStringEntry(pName + 0x14, pWork, 0x24, 1);
+        SystemRenderStringEntry((u8*)&g_GameState + off, pWork, 0x24, 0);
+        SystemRenderStringEntry((u8*)&g_GameState + 0x14 + off, pWork, 0x24, 1);
     }
     byteOff = (slot << 1) & 0x1FC;
     rect.x = (s16)(*(u16*)(D_801EA578 + byteOff) + 0x180);
@@ -12599,7 +12597,6 @@ void func_801E8DA8(s32 charArg, s32 slot) {
     DrawSync(0);
     HeapFree(pWork);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E8EAC);
