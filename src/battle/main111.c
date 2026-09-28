@@ -1,11 +1,35 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "system/memory.h"
+#endif
 
+
+#ifndef XENO_PC_PORT
+extern u8 D_800C3664;
+void func_800BAC50(void *arg0);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BA984);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAB0C);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BABDC);
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAC50);
+
+#ifndef XENO_PC_PORT
+void func_800BAC50(void *arg0) {
+    void *temp_s0;
+
+    temp_s0 = *(void **)((s8*)(arg0) + 4);
+    if (D_800C3664 == 0) {
+        AnimScriptTick(temp_s0);
+        func_80022CDC(temp_s0);
+        if (((u32) *(u32 *)((s8*)(temp_s0) + 0xAC) >> 6) & 1) {
+            AnimScriptTick(temp_s0);
+            func_80022CDC(temp_s0);
+        }
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BACBC);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BADD4);
 #endif

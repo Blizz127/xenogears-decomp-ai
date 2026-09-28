@@ -1,5 +1,16 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "system/memory.h"
+#endif
 
+
+#ifndef XENO_PC_PORT
+void func_800728B8(void *, u8, u8);
+extern void *D_800D2D28;
+extern void *D_800D2DB4;
+void func_80074AB8(void);
+void func_80074EEC(void);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80071AE0);
@@ -25,9 +36,55 @@ INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800743A4);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800744BC);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074554);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800745EC);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074AB8);
+
+#ifndef XENO_PC_PORT
+void func_80074AB8(void) {
+    u16 temp_v0;
+
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xC7) != 0) {
+        func_800728B8(D_800D2DB4 + 0x3E80, *(u8 *)((s8*)(D_800D2DB4) + 0x5D77), *(u8 *)((s8*)(D_800D2DB4) + 0x5D86));
+        func_800728B8(D_800D2DB4 + 0x5280, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7C), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8B));
+        func_800728B8(D_800D2DB4 + 0x53C0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7D), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8C));
+        func_800728B8(D_800D2DB4 + 0x43D0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7F), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8E));
+    }
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xAD) != 0) {
+        func_800728B8(D_800D2DB4 + 0x46A0, 0x14U, *(u8 *)((s8*)(D_800D2DB4) + 0x5D98));
+        func_800728B8(D_800D2DB4, *(u8 *)((s8*)(D_800D2DB4) + 0x5D70), *(u8 *)((s8*)(D_800D2DB4) + 0x5D92));
+        func_800728B8(D_800D2DB4 + 0x1720, *(u8 *)((s8*)(D_800D2DB4) + 0x5D74), *(u8 *)((s8*)(D_800D2DB4) + 0x5D83));
+        temp_v0 = *(u16 *)((s8*)(D_800D2DB4) + 0x5DA2) + 1;
+        *(u16 *)((s8*)(D_800D2DB4) + 0x5DA2) = temp_v0;
+        if ((s16) temp_v0 < 0xF) {
+            func_800728B8(D_800D2DB4 + 0x4CE0, *(u8 *)((s8*)(D_800D2DB4) + 0x5DA1), *(u8 *)((s8*)(D_800D2DB4) + 0x5DA0));
+        } else if ((s16) temp_v0 >= 0x15) {
+            *(u16 *)((s8*)(D_800D2DB4) + 0x5DA2) = 0U;
+        }
+        func_800728B8(D_800D2DB4 + 0x3AC0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D75), *(u8 *)((s8*)(D_800D2DB4) + 0x5D84));
+        func_800728B8(D_800D2DB4 + 0x3E30, *(u8 *)((s8*)(D_800D2DB4) + 0x5D76), *(u8 *)((s8*)(D_800D2DB4) + 0x5D85));
+        func_800728B8(D_800D2DB4 + 0x4E70, *(u8 *)((s8*)(D_800D2DB4) + 0x5D78), *(u8 *)((s8*)(D_800D2DB4) + 0x5D87));
+        func_800728B8(D_800D2DB4 + 0x4FB0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D79), *(u8 *)((s8*)(D_800D2DB4) + 0x5D88));
+        func_800728B8(D_800D2DB4 + 0x50A0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7A), *(u8 *)((s8*)(D_800D2DB4) + 0x5D89));
+        func_800728B8(D_800D2DB4 + 0x51E0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7B), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8A));
+        func_800728B8(D_800D2DB4 + 0x2530, *(u8 *)((s8*)(D_800D2DB4) + 0x5D7E), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8D));
+        func_800728B8(D_800D2DB4 + 0x32A0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D96), *(u8 *)((s8*)(D_800D2DB4) + 0x5D97));
+        func_800728B8(D_800D2DB4 + 0x3C0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D71), *(u8 *)((s8*)(D_800D2DB4) + 0x5D93));
+        func_800728B8(D_800D2DB4 + 0xD20, *(u8 *)((s8*)(D_800D2DB4) + 0x5D72), *(u8 *)((s8*)(D_800D2DB4) + 0x5D94));
+        func_800728B8(D_800D2DB4 + 0xFA0, *(u8 *)((s8*)(D_800D2DB4) + 0x5D73), *(u8 *)((s8*)(D_800D2DB4) + 0x5D95));
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074D4C);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074EEC);
+
+#ifndef XENO_PC_PORT
+void func_80074EEC(void) {
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xA8) != 0) {
+        func_800728B8(D_800D2DB4 + 0x5550, *(u8 *)((s8*)(D_800D2DB4) + 0x5D80), *(u8 *)((s8*)(D_800D2DB4) + 0x5D8F));
+        func_800728B8(D_800D2DB4 + 0x5640, *(u8 *)((s8*)(D_800D2DB4) + 0x5D81), *(u8 *)((s8*)(D_800D2DB4) + 0x5D90));
+        func_800728B8(D_800D2DB4 + 0x5C80, *(u8 *)((s8*)(D_800D2DB4) + 0x5D82), *(u8 *)((s8*)(D_800D2DB4) + 0x5D91));
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074F70);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007500C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075168);
