@@ -34,14 +34,14 @@ the produced retail module is byte-identical, not that every function is C.
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.
-The current report measures **285,144 / 1,383,684 code bytes (20.61%)** and
-**1,910 / 4,464 functions (42.79%)** as matching C. The aggregate covers all
+The current report measures **285,264 / 1,383,684 code bytes (20.62%)** and
+**1,911 / 4,464 functions (42.81%)** as matching C. The aggregate covers all
 targets below; the Psy-Q subset overlaps the executable row.
 
 | Target | Matching C functions | Function progress | Matching C bytes | Byte progress | Whole-binary SHA gate |
 |---|---:|---:|---:|---:|---|
 | Main executable (`slus_006.64`) | 813 / 1,223 | 66.48% | 95,180 / 218,072 | 43.65% | FAIL |
-| Field overlay | 564 / 884 | 63.80% | 89,112 / 253,052 | 35.21% | FAIL |
+| Field overlay | 565 / 884 | 63.91% | 89,232 / 253,052 | 35.26% | FAIL |
 | Member-change menu | 67 / 67 | 100.00% | 24,936 / 24,936 | 100.00% | PASS |
 | Shop menu | 104 / 118 | 88.14% | 37,460 / 53,008 | 70.67% | PASS |
 | Main menu | 70 / 307 | 22.80% | 10,784 / 148,360 | 7.27% | FAIL |
@@ -59,8 +59,9 @@ bytes. `AnimScriptStackPopU8`, `AnimScriptStackPopU16`,
 and `AnimScriptStackPushU24` are now exact C matches: these changes increased
 main-executable progress by 284 bytes and six functions. Field C now includes
 the exact 604-byte `func_80085C90`, exact 140-byte `func_8008CD48`, exact
-88-byte `func_800ACC58`, exact 304-byte `func_8008E8C8`, and exact 152-byte
-`func_8009FE4C`. **7 of 10** pinned artifacts pass. The three
+88-byte `func_800ACC58`, exact 304-byte `func_8008E8C8`, exact 152-byte
+`func_8009FE4C`, and exact 120-byte `func_8009FDD4`. **7 of 10** pinned
+artifacts pass. The three
 failures are the executable, field overlay, and main menu; their hashes remain
 red and must be repaired in code. `MenuExecute` is exact at the object level,
 but the main executable as a whole remains checksum-red; more drift remains.

@@ -1003,7 +1003,7 @@ void func_8009FDD4(void) {
     s32 result = func_8009FC10(D_800AFD1C);
     if (result != 0xFF) {
         u8* pGS = (u8*)g_pGameState;
-        if (pGS[result + 0x22B1] == 0) {
+        if ((result + pGS)[0x22B1] == 0) {
             func_800AD4D4(result);
         }
     }
