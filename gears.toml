@@ -60,6 +60,17 @@ paths = [
 ]
 
 [[build_preset]]
+name = "XenoGraphics263"
+# temp1e1 (func_800251C8 alone): aspsx 2.67 like its XenoGraphics
+# neighbours, but only gcc-2.6.3-psx (provenance: see MenuG0) schedules its
+# stack load of `height` before the bounds check, as retail does.
+build_variables = {
+    gcc = "gcc-2.6.3-psx",
+    maspsx_flags = "--aspsx-version=2.67 --use-comm-section --run-assembler"
+}
+paths = [ "{binary}/system/temp1e1." ]
+
+[[build_preset]]
 name = "XenoGraphics"
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
@@ -71,6 +82,7 @@ paths = [
     "{binary}/system/temp1c.",
     "{binary}/system/temp1d.",
     "{binary}/system/temp1e.",
+    "{binary}/system/temp1e2.",
 ]
 
 [[build_preset]]

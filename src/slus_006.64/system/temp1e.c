@@ -13,7 +13,19 @@
  * render callbacks), one of the TUs that were merged into system/temp1.c (the
  * groups reach the shared Gfx globals differently: %gp_rel for their own
  * .sbss, absolute for other TUs'). This is the only copy of these bodies; the
- * port builds it too. Built with gcc-2.7.2-cdk + aspsx 2.67 (XenoGraphics). */
+ * port builds it too. Built with gcc-2.7.2-cdk + aspsx 2.67 (XenoGraphics).
+ *
+ * It is itself three retail TUs: temp1e proper (func_800250E0,
+ * func_80025180), temp1e1 (func_800251C8 alone, which only gcc-2.6.3
+ * reproduces) and temp1e2 (func_80025224..). temp1e1.c / temp1e2.c build
+ * their part by including this file with TEMP1E_PART_1 / TEMP1E_PART_2; the
+ * .sbss definitions below are commons, emitted by every part as retail's
+ * %gp_rel accesses require. The port builds all three parts here. */
+#ifdef TEMP1E_PART_2
+#define TEMP1E_ASM "asm/slus_006.64/nonmatchings/system/temp1e2"
+#else
+#define TEMP1E_ASM "asm/slus_006.64/nonmatchings/system/temp1e"
+#endif
 
 extern void* g_GfxWorkBuffer2;
 extern u32 g_GfxImageList[];
@@ -43,6 +55,7 @@ extern u32 D_80059300[2];
 extern void* g_GfxWorkBuffers[2];
 #endif
 
+#if defined(XENO_PC_PORT) || (!defined(TEMP1E_PART_1) && !defined(TEMP1E_PART_2))
 /* Starts a frame on work buffer `context`: resets the bump pointer and frees
  * the heap blocks queued on that context's list (nodes: pData, pNext). The
  * port keeps the two contexts in separate variables and resolves the
@@ -103,33 +116,36 @@ void func_80025180(void* pData) {
     }
 }
 #endif
+#endif /* temp1e proper */
 
-/* The port body below, written against struct {RECT; u32 addr; u32 pNext}
- * with the same statement order, is retail-exact under gcc-2.6.3-psx +
- * aspsx 2.67, but func_800250E0/func_80025224 are not, so temp1e stays on
- * XenoGraphics and this stays asm (2026-09-28). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_800251C8);
-#else
-// GfxQueueShapeTransfer
-// Add Image to current g_GfxImageList[g_GfxCurContext] linked list
+#if defined(XENO_PC_PORT) || defined(TEMP1E_PART_1)
+/* GfxQueueShapeTransfer: queues a LoadImage of addr into (x, y, width,
+ * height) on this frame's g_GfxImageList[g_GfxCurContext]. The entry's links
+ * are 32-bit fields in both builds. */
+typedef struct GfxQueuedImage {
+    RECT rect;
+    u32 addr;
+    u32 pNext;
+} GfxQueuedImage;
+
 void func_800251C8(u_long* addr, int x, int y, int width, int height) {
-    u8* pCurrent = g_GfxCurWorkBuffer;
-    u8* pNext = pCurrent + 0x10;
+    GfxQueuedImage* pCurrent = (GfxQueuedImage*)g_GfxCurWorkBuffer;
+    GfxQueuedImage* pNext = pCurrent + 1;
 
-    if (pNext < (u8*)g_GfxCurWorkBufferEnd) {
-        *(s16*)(pCurrent + 0x6) = height;
-        *(s16*)(pCurrent + 0x0) = x;
-        *(s16*)(pCurrent + 0x2) = y;
-        *(s16*)(pCurrent + 0x4) = width;
-        *(u32*)(pCurrent + 0x8) = (u32)(uintptr_t)addr;
-        g_GfxCurWorkBuffer = pNext;
-        *(u32*)(pCurrent + 0xC) = g_GfxImageList[g_GfxCurContext];
+    if ((void*)pNext < g_GfxCurWorkBufferEnd) {
+        pCurrent->rect.h = height;
+        pCurrent->rect.x = x;
+        pCurrent->rect.y = y;
+        pCurrent->rect.w = width;
+        pCurrent->addr = (u32)(uintptr_t)addr;
+        g_GfxCurWorkBuffer = (void*)pNext;
+        pCurrent->pNext = g_GfxImageList[g_GfxCurContext];
         g_GfxImageList[g_GfxCurContext] = (u32)(uintptr_t)pCurrent;
     }
 }
-#endif
+#endif /* temp1e1 */
 
+#if defined(XENO_PC_PORT) || defined(TEMP1E_PART_2)
 /* Sets a sprite task's trigger callback from the D_8004FD40 handler table
  * (16 entries: 80025258, 80025710, 80025718, 0, 0, 80025258, 80025258,
  * 80025718, 8002541C, 80025544, 0, 0, 0, 0, 80025258, 800257F0). */
@@ -163,7 +179,7 @@ static u8* SpriteRenderAddress(uintptr_t address) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025258);
+INCLUDE_ASM(TEMP1E_ASM, func_80025258);
 #else
 /* Retail 80025258..80025418: shared render callback for types 0/5/6/14.
  * Task fields and OT entries remain four bytes on the native host. */
@@ -229,7 +245,7 @@ void func_80025258(u8* pEntry) {
 extern s32 D_80050100;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_8002541C);
+INCLUDE_ASM(TEMP1E_ASM, func_8002541C);
 #else
 /* Retail 8002541C..80025540: projected TILE_1 (12-byte packet, tag len 2)
  * followed by an 8-byte draw-mode prim. Sibling of func_80025544. */
@@ -282,7 +298,7 @@ void func_8002541C(u8* pEntry) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025544);
+INCLUDE_ASM(TEMP1E_ASM, func_80025544);
 #else
 /* Retail 80025544..80025710: projected square TILE followed by draw mode. */
 void func_80025544(u8* pEntry) {
@@ -361,7 +377,7 @@ extern MATRIX D_8004FBB8;
 extern void func_8002C700(void* a, void* b, u_long* ot, s32 flags);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025718);
+INCLUDE_ASM(TEMP1E_ASM, func_80025718);
 #else
 void func_80025718(u8* pEntry) {
     u8* pSprite = *(u8**)(pEntry + 0x04);
@@ -419,7 +435,7 @@ extern void func_800B1F6C();
 extern MATRIX D_8004FDA0;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_800257F0);
+INCLUDE_ASM(TEMP1E_ASM, func_800257F0);
 #else
 void func_800257F0(u8* pArg) {
     u8* pSprite = *(u8**)(pArg + 4);
@@ -499,7 +515,7 @@ extern s32 D_80050100;
 extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32 f);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025A88);
+INCLUDE_ASM(TEMP1E_ASM, func_80025A88);
 #else
 void func_80025A88(u8* pEntry) {
     u8* pSprite = *(u8**)(pEntry + 0x04);
@@ -547,5 +563,4 @@ void func_80025A88(u8* pEntry) {
     }
 }
 #endif
-
-
+#endif /* temp1e2 */
