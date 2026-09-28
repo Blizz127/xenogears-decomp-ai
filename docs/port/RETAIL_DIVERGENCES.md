@@ -72,3 +72,9 @@ them (they're still INCLUDE_ASM in retail); the port bodies are unchanged.
 | `func_801E35BC` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test (0xA4 strides, charIdx slot index, reverse path) |
 | `func_801CB184` | port fixed in 433db88e (retail C still asm) | run_menu_name_decode_pins_test (one contiguous pair buffer, pair count) |
 | `func_801CD710` | port partly fixed in 433db88e (retail C still asm): mode 0 now stores 7. Still open: retail returns 0 when the handler returns nonzero, but func_801CD2AC / CC6D8 / CB304 / CBD90 have no port implementation, so there is no result to use yet | run_menu_card_state_pins_test (7/6/2/3) |
+
+## Resolutions (continued, 3)
+
+| Function | Status | Verification |
+| --- | --- | --- |
+| `MenuExecute` (slus `system/menu.c`, `g_MenuDebugEnabled` branch) | port fixed: the two heap reservations sized `(u32)host_ptr + 0x7FE24000` / `+ 0x7FE3B000` (garbage on the host) now use `PsxMemory_GuestAddr(ptr)`, and the object-overlay (archive 0x6B9) and menu-overlay loads go to `PSX_ADDR(0x801DC000)` / `PSX_ADDR(0x801C5000)` instead of raw host addresses; port-only `#ifdef`, retail bytes unchanged | rom-check 10/10; port LINK OK |
