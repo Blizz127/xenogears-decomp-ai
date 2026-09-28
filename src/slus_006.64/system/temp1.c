@@ -258,10 +258,8 @@ void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_8002303C);
-#else
 void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
+#ifdef XENO_PC_PORT
     u8* pData = (u8*)pSpriteData;
     void* pAlloc = HeapAlloc(size * 4, flags);
     u32* pSub = (u32*)(uintptr_t)*(u32*)(pData + 0x7C);
@@ -274,8 +272,12 @@ void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
         pAllocH[1] = *(u16*)(pData + 0x24 + 6);
         pAllocH[0] = *(u16*)(pData + 0x24 + 4);
     }
-}
+#else
+    *(void**)(*(u8**)((u8*)pSpriteData + 0x7C) + 0x18) = HeapAlloc(size * 4, flags);
+    *(u16*)(*(u8**)(*(u8**)((u8*)pSpriteData + 0x7C) + 0x18) + 2) = *(u16*)(*(u8**)((u8*)pSpriteData + 0x24) + 6);
+    **(u16**)(*(u8**)((u8*)pSpriteData + 0x7C) + 0x18) = *(u16*)(*(u8**)((u8*)pSpriteData + 0x24) + 4);
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1_ASM, func_800230A8);
@@ -399,10 +401,8 @@ void func_80023290(u8* pSprite, s32 animType) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023340);
-#else
 void func_80023340(void* pSpriteData, s32 count) {
+#ifdef XENO_PC_PORT
     u8* pData = pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
     void* pFramesData;
@@ -411,8 +411,17 @@ void func_80023340(void* pSpriteData, s32 count) {
     pFramesData = HeapAlloc(count * 0x18, 0);
     *(u32*)(pBase + 0x30) = (u32)(uintptr_t)pFramesData;
     *(u32*)(pBase + 0x2C) = (u32)(uintptr_t)pFramesData;
-}
+#else
+    s32 buf;
+    u8* pSub;
+
+    HeapFree(*(void**)(*(u8**)((u8*)pSpriteData + 0x20) + 0x2C));
+    buf = (s32)HeapAlloc(count * 0x18, 0);
+    pSub = *(u8**)((u8*)pSpriteData + 0x20);
+    *(s32*)(pSub + 0x30) = buf;
+    *(s32*)(pSub + 0x2C) = buf;
 #endif
+}
 
 // Allocate struct stuff
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800233A4.s
@@ -720,10 +729,8 @@ void func_80023950(void* arg0) {
     *(s32*)((u8*)arg0 + 0x20) = 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023958);
-#else
 void func_80023958(void* pSpriteData) {
+#ifdef XENO_PC_PORT
     u8* pData = (u8*)pSpriteData;
     void* pSub = pData + 0xB4;
     *(void**)(pData + 0x20) = pSub;
@@ -733,13 +740,18 @@ void func_80023958(void* pSpriteData) {
         pParent[0x34/4] = 0;
         pParent[0x40/4] = 0;
     }
-}
-#endif
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_800239A0);
 #else
+    u8* pSub = (u8*)pSpriteData + 0xB4;
+
+    *(u8**)((u8*)pSpriteData + 0x20) = pSub;
+    func_8002393C(pSub);
+    *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) = 0;
+    *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x40) = 0;
+#endif
+}
+
 void func_800239A0(void* pSpriteData) {
+#ifdef XENO_PC_PORT
     u8* pData = pSpriteData;
     u8* pBase = pData + 0xB4;
 
@@ -749,13 +761,20 @@ void func_800239A0(void* pSpriteData) {
     *(u32*)(pBase + 0x34) = (u32)(uintptr_t)(pData + 0x124);
     *(u32*)(pData + 0x24) = (u32)(uintptr_t)(pData + 0x110);
     *(u32*)(pBase + 0x38) = 0;
-}
-#endif
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_800239F4);
 #else
+    u8* pSub = (u8*)pSpriteData + 0xB4;
+
+    *(u8**)((u8*)pSpriteData + 0x20) = pSub;
+    func_8002393C(pSub);
+    *(u8**)((u8*)pSpriteData + 0x7C) = (u8*)pSpriteData + 0xF4;
+    *(u8**)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) = (u8*)pSpriteData + 0x124;
+    *(u8**)((u8*)pSpriteData + 0x24) = (u8*)pSpriteData + 0x110;
+    *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x38) = 0;
+#endif
+}
+
 void func_800239F4(u8* pSprite) {
+#ifdef XENO_PC_PORT
     u32 pSub;
     pSub = (u32)(pSprite + 0xB4);
     *(u32*)(pSprite + 0x20) = pSub;
@@ -764,8 +783,16 @@ void func_800239F4(u8* pSprite) {
     *(u32*)(pSub + 0x30) = (u32)(pSprite + 0xF4);
     *(u32*)(pSub + 0x34) = 0;
     *(u32*)(pSub + 0x38) = 0;
-}
+#else
+    u8* pSub = pSprite + 0xB4;
+
+    *(u8**)(pSprite + 0x20) = pSub;
+    func_8002393C(pSub);
+    *(u8**)(*(u8**)(pSprite + 0x20) + 0x30) = pSprite + 0xF4;
+    *(s32*)(*(u8**)(pSprite + 0x20) + 0x34) = 0;
+    *(s32*)(*(u8**)(pSprite + 0x20) + 0x38) = 0;
 #endif
+}
 
 extern u8* D_8006BE10;
 extern u8* D_8005A474;
