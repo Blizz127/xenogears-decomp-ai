@@ -27,6 +27,16 @@ done
 python3 - <<'PYGEN'
 from pathlib import Path
 p=Path('pc_port/build_native/menu_equip_stats');s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801E3A80(void* pCtx');z=s.index('\nINCLUDE_ASM(',a);b=s[a:z]
+# one definition may carry the retail body behind an inner #else: mutate only
+# the port arm (depth-aware, the port arm has its own nested #ifdef)
+if '\n#ifdef XENO_PC_PORT\n' in b[:120]:
+ i=s.index('\n#ifdef XENO_PC_PORT\n',a)+1;d=0;pos=i
+ for line in s[i:].split('\n')[1:]:
+  pos=s.index('\n',pos)+1;t=line.strip()
+  if t.startswith('#if'): d+=1
+  elif t.startswith('#endif'): d-=1
+  elif t.startswith('#else') and d==0: z=pos-1; break
+ b=s[a:z]
 mutants={'layout':('(u8*)&((MenuUnk6*)pCtx)->unkB8','(u8*)pCtx + 0xB8'),'division':('* 6 / 10','* 6 / 5'),'cap':('= 0x10;','= 0x14;'),'bonus':('pEntry[0x5E] + pEntry[0x2E]','pEntry[0x5E] + pEntry[0x2F]')}
 for n,(old,new) in mutants.items():
  assert b.count(old)==1
