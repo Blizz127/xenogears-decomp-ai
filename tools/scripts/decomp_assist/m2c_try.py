@@ -27,7 +27,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from assist_common import CACHE, CC1_FLAGS, M2C, MASPSX_FLAGS, REPO, compare, func_words, load_table
+from assist_common import CACHE, M2C, REPO, compare, func_words, load_table, toolchain
 
 os.chdir(REPO)
 OV, SEG = sys.argv[1], sys.argv[2]
@@ -36,6 +36,9 @@ D = os.path.join(CACHE, 'm2c', OV, SEG)
 os.makedirs(D, exist_ok=True)
 funcs = {f['name']: f for f in load_table(OV)[SEG]}
 names = names or list(funcs)
+# compiler, -G and maspsx flags of this TU's gears.toml preset
+TC = toolchain(OV, SEG)
+print(f"# {OV}/{SEG}: preset {TC['preset']}, {TC['cc1']}", flush=True)
 M2C_DIR = os.path.dirname(M2C)
 
 
@@ -90,11 +93,11 @@ def try_one(n, env):
                            '-P', '-undef', '-lang-c', '-nostdinc', base + '.c', base + '.i'],
                           capture_output=True).returncode:
             return 'cpp-fail'
-        p = subprocess.run(['tools/gcc-2.7.2-psx/cc1'] + CC1_FLAGS + ['-o', base + '.s', base + '.i'],
+        p = subprocess.run([TC['cc1']] + TC['cc1_flags'] + ['-o', base + '.s', base + '.i'],
                            capture_output=True, text=True)
         if p.returncode:
             return 'cc1-fail: ' + (p.stderr.strip().split('\n') or [''])[-1][-90:]
-        p = subprocess.run(['python3', 'tools/maspsx/maspsx.py'] + MASPSX_FLAGS + ['-o', base + '.o', base + '.s'],
+        p = subprocess.run(['python3', 'tools/maspsx/maspsx.py'] + TC['maspsx_flags'] + ['-o', base + '.o', base + '.s'],
                            capture_output=True, text=True, stdin=subprocess.DEVNULL)
         got = func_words(base + '.o', n) if os.path.exists(base + '.o') else None
         if got is None:

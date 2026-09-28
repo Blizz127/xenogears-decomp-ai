@@ -24,7 +24,9 @@ fi
 
 BASE=(-std=gnu17 -fno-pie -no-pie -fno-builtin -fno-stack-protector
       -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0
-      -include assert.h -fpermissive -ffunction-sections -fdata-sections)
+      -include assert.h -ffunction-sections -fdata-sections)
+# -fpermissive only for the game TU (built with -w): gcc < 14 rejects it for C
+# as a warning, which -Werror on the test file would promote to an error.
 INC=(-Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include
      -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 
@@ -32,7 +34,7 @@ build_and_run() {
     local name="$1"
     local linker="$CC"
     shift
-    "$CC" "${BASE[@]}" "${INC[@]}" -w -fno-inline "$@" \
+    "$CC" "${BASE[@]}" "${INC[@]}" -fpermissive -w -fno-inline "$@" \
         -c src/field/main/misc7.c -o "$BUILD_DIR/$name.misc7.o"
     objcopy --weaken-symbol=FieldGetVec1Magnitude \
             --weaken-symbol=FieldGetVec3Magnitude \

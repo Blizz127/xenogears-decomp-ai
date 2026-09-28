@@ -476,7 +476,9 @@ static void pointer_fault(int sig)
     static const char marker[] =
         "INDEX15 POINTER_FAULT SIGSEGV during native case\n";
     if (native_active) {
-        write(2, marker, sizeof(marker) - 1);
+        /* best effort from a signal handler; nothing to do on failure */
+        if (write(2, marker, sizeof(marker) - 1) < 0)
+            _exit(90);
         _exit(90);
     }
     _exit(91);

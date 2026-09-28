@@ -28,7 +28,11 @@ assert sha256(callback).hexdigest() == '66f10552f9af792cfe90720e086429dec9fe4801
 assert sha256(disc).hexdigest() == 'dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119'
 
 def function(src, signature):
+    # The definition, not a prototype: skip occurrences where a ';' comes
+    # before the opening brace.
     start = src.index(signature)
+    while ';' in src[start:src.index('{', start)]:
+        start = src.index(signature, start + 1)
     brace = src.index('{', start)
     depth = 0
     for i in range(brace, len(src)):

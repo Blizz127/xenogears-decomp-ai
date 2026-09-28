@@ -6,8 +6,13 @@ cd "$(dirname "$0")/../.."
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/menu-file-host-boundary.XXXXXX")
 echo "OUTPUT $OUT"
 objdump -d --disassemble=func_801C9038 pc_port/build_native/xeno-port > "$OUT/production-bindings.txt"
+# The host file access goes through the native memory-card layer
+# (pc_port/src/memcard_port.c), not raw libc open/read/close.
 for call in open read close; do
-    grep -q "<$call@plt>" "$OUT/production-bindings.txt"
+    if ! grep -q "<PcPortCard_$call>" "$OUT/production-bindings.txt"; then
+        echo "MENU FILE HOST BOUNDARY FAIL: func_801C9038 does not call PcPortCard_$call" >&2
+        exit 1
+    fi
 done
 awk '/^s32 func_801C9038\(/ {body=1} body {print} /^}/ {body=0}' src/menu/main/misc.c > "$OUT/card_file.inc"
 for mode in O0 O2 UBSan; do

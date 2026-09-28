@@ -252,11 +252,14 @@ void MenuExecute(void) {
             ArchiveSetIndex(0x4, 0);
             D_800658CC = HeapAlloc(0x4, 0x1);
 #ifdef XENO_PC_PORT
-            /* Reserve guest RAM up to the object overlay's retail address and
-             * load it there: sizes come from guest addresses, and the
-             * destination is rebased into g_PsxRam. */
-            D_8006BE24 = HeapAlloc(PsxMemory_GuestAddr(D_800658CC) + 0x7FE24000u, 0x1);
-            ArchiveReadFileToBuffer(0x6B9, PSX_ADDR(0x801DC000), 0, 0x80);
+            /* Retail reserves the top of the heap down to the object
+             * overlay's address (0x801DC000) and loads archive 0x6B9 there.
+             * The port runs that overlay natively (field_object_overlay.c)
+             * and its top-of-heap already reaches below retail's overlay
+             * addresses, so the reservation would be negative-sized and the
+             * load would overwrite live heap blocks. Keep a block for the
+             * HeapFree below; reserve and load nothing. */
+            D_8006BE24 = HeapAlloc(0x4, 0x1);
 #else
             D_8006BE24 = HeapAlloc((u32)D_800658CC + 0x7FE24000, 0x1);
             ArchiveReadFileToBuffer(0x6B9, (void*)0x801DC000, 0, 0x80);
@@ -269,9 +272,11 @@ void MenuExecute(void) {
 
         pBuf0 = HeapAlloc(0x4, 0x1);
 #ifdef XENO_PC_PORT
-        /* Same for the menu overlay at its retail address 0x801C5000. */
-        pBuf1 = HeapAlloc(PsxMemory_GuestAddr(pBuf0) + 0x7FE3B000u, 0x1);
-        ArchiveReadFileToBuffer(D_80059460 + 5, PSX_ADDR(0x801C5000), 0, 0x80);
+        /* Same for the menu overlay (retail 0x801C5000): the port runs it
+         * natively. On the KernelMenu route pBuf0 sits at 0x801BAA80, below
+         * the overlay address, so the retail size would be 0xFFFF5A80 and
+         * the 0x25908-byte load would clobber the top heap chain. */
+        pBuf1 = HeapAlloc(0x4, 0x1);
 #else
         pBuf1 = HeapAlloc((u32)pBuf0 + 0x7FE3B000, 0x1);
         ArchiveReadFileToBuffer(D_80059460 + 5, (void*)0x801C5000, 0, 0x80);

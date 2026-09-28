@@ -1,4 +1,7 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "psyq/libgpu.h"
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -7,9 +10,48 @@ extern u32 D_800C3EA4;
 void func_80077074(void);
 #endif
 
+/* Fill a POLY_FT4's corners and texture coordinates: a 13-pixel-high strip
+ * (func_80076C78) or a w x h quad (func_80076CE8) at (x, y) / (u, v). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076C78);
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076CE8);
+void func_80076C78(POLY_FT4* p, s16 x, s16 y, u8 u, u8 v, u8 w) {
+    p->x0 = x;
+    p->y0 = y;
+    p->y1 = y;
+    p->x2 = x;
+    p->y2 = y + 13;
+    p->y3 = y + 13;
+    p->u0 = u;
+    p->u2 = u;
+    p->x1 = x + w;
+    p->x3 = x + w;
+    p->v0 = v;
+    p->u1 = u + w;
+    p->v1 = v;
+    p->v2 = v + 13;
+    p->u3 = u + w;
+    p->v3 = v + 13;
+}
+
+void func_80076CE8(POLY_FT4* p, s16 x, s16 y, u8 u, u8 v, s32 w, s32 h) {
+    p->x0 = x;
+    p->y0 = y;
+    p->y1 = y;
+    p->x2 = x;
+    p->u0 = u;
+    p->u2 = u;
+    p->x1 = x + w;
+    p->y2 = y + h;
+    p->x3 = x + w;
+    p->y3 = y + h;
+    p->v0 = v;
+    p->u1 = u + w;
+    p->v1 = v;
+    p->v2 = v + h;
+    p->u3 = u + w;
+    p->v3 = v + h;
+}
+#endif
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076D58);
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076EA4);
 

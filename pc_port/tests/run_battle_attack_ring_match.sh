@@ -2,7 +2,7 @@
 # Exact-match gate for the isolated handler and its relocated jump table.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-out=${BATTLE_MATCH_BUILD_DIR:-$(mktemp -d scratchpad/battle-attack-match.XXXXXX)}
+out=${BATTLE_MATCH_BUILD_DIR:-$(mkdir -p scratchpad && mktemp -d scratchpad/battle-attack-match.XXXXXX)}
 mkdir -p "$out"
 echo "Evidence: $out"
 cpp -P -undef -nostdinc -D_LANGUAGE_C -DSKIP_ASM -Iinclude \

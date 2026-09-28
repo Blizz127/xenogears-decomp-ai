@@ -202,6 +202,17 @@ static int compare_set_mul_matrix(unsigned fixture, int alias)
     if (memcmp(original, PSX_ADDR(VERTICES), sizeof(original))) return 0;
     reset_gte(12345);
     MATRIX *result = SetMulMatrix(PSX_ADDR(matrix0), PSX_ADDR(matrix1));
+    /* VZ0..VZ2 (data regs 1, 3, 5) are 16-bit on the GTE: MTC2 keeps the low
+     * halfword and reads return it sign-extended (psx-spx "GTE Registers").
+     * Retail loads the VZ column with a full-word LW, so PsyCross's 32-bit
+     * register model also keeps the neighbouring halfword in the upper bits,
+     * which no hardware read can observe.  Compare them as the hardware does. */
+    for (unsigned vz = 1; vz <= 5; vz += 2) {
+        uint32_t a = load_le((uint8_t*)&gteRegs.CP2D + vz * 4, 4);
+        uint32_t e = load_le((uint8_t*)&expected_gte.CP2D + vz * 4, 4);
+        store_le((uint8_t*)&gteRegs.CP2D + vz * 4, 4, (uint32_t)(int32_t)(int16_t)a);
+        store_le((uint8_t*)&expected_gte.CP2D + vz * 4, 4, (uint32_t)(int32_t)(int16_t)e);
+    }
     if (PsxMemory_GuestAddr(result) != expected_result ||
         memcmp(original, PSX_ADDR(VERTICES), sizeof(original)) ||
         memcmp(&gteRegs.CP2D, &expected_gte.CP2D, sizeof(gteRegs.CP2D)) ||

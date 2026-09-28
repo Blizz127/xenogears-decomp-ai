@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-ui-match.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-ui-match.XXXXXX)
 BATTLE_MATCH_BUILD_DIR="$out" bash pc_port/tests/run_battle_attack_ring_match.sh
 mips-linux-gnu-objcopy --only-section=.target_ui -O binary "$out/handler.elf" "$out/ui.bin"
 mips-linux-gnu-objcopy --only-section=.target_ui_rodata -O binary "$out/handler.elf" "$out/ui-table.bin"

@@ -102,9 +102,11 @@ for n in names:
     c=clean(open(f'{D}/{n}.c').read().split('#include "m2c_macros.h"\n',1)[1])
     m=re.search(r'^(\w[\w\s\*]*?\b'+n+r'\([^)]*\)) \{',c,re.M)
     defs[n]=m[1]; bodies[n]=c
-protos=[defs[n]+';' for n in names if n not in hdrdecl]
 seen|=set(names)
+inserted=[]
 for n in names:
+    # a site left INCLUDE_ASM must not leave its externs or prototype behind
+    snap=(list(externs),set(seen),dict(types),set(arrays),set(reemitted))
     c=bodies[n]; conflicts={}; aliases={}
     lines=c.split('\n'); body=[]; inbody=False
     for l in lines:
@@ -154,16 +156,20 @@ for n in names:
     assert old,n
     old=old[0]
     folded=fold_inner(s,old,fn,n) if INNER else None
-    if folded=='skip': continue
+    if folded=='skip':
+        externs,seen,types,arrays,reemitted=snap
+        continue
+    inserted.append(n)
     s=folded if folded is not None else s.replace(old,'\n#ifndef XENO_PC_PORT\n'+fn+'#endif\n\n')
 # externs/prototypes: a retail-only block after the file's first run of
 # #include lines, so every BATTLE_SUB/FIELD_SUB run of the TU sees them.
 lines=s.split('\n'); k=next((i for i,l in enumerate(lines) if l.startswith('#include')),0)
 while k<len(lines) and (lines[k].startswith('#include') or not lines[k].strip()): k+=1
+protos=[defs[n]+';' for n in inserted if n not in hdrdecl]
 add=externs+protos
 if add:
     lines[k:k]=['#ifndef XENO_PC_PORT']+add+['#endif','']
     s='\n'.join(lines)
 # (no header is added: m2c's own externs cover the callees, and a header
 # can clash with a TU's own declarations)
-open(p,'w').write(s); print(len(names),'inserted;',len(externs),'externs;',len(protos),'protos')
+open(p,'w').write(s); print(len(inserted),'inserted;',len(externs),'externs;',len(protos),'protos')

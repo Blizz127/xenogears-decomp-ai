@@ -710,7 +710,10 @@ extern u16 D_800ADF88[];    /* d-pad -> angle table 2 (16 entries) */
 extern u16 D_800C2694;      /* newly pressed field-button mask */
 extern void func_80079288(void); /* checkForRandomEncounter (side behavior) */
 #ifdef XENO_PC_PORT
-extern int PcPort_RandomBattlesEnabled(void);
+/* Host route-testing switch (god_mode.c); weak so tests that link this TU
+ * without it keep the retail behaviour (encounters enabled). */
+extern int PcPort_RandomBattlesEnabled(void) __attribute__((weak));
+#define XENO_RANDOM_BATTLES_ON() (!PcPort_RandomBattlesEnabled || PcPort_RandomBattlesEnabled())
 #endif
 extern s32 func_80081F5C(u32*);   /* interaction eligibility */
 #ifdef XENO_PC_PORT
@@ -761,7 +764,7 @@ void func_8009F5F4(void) {
          * The port can suppress it for route testing (host-side flag only, so
          * the matching build keeps the retail call). */
 #ifdef XENO_PC_PORT
-        if (PcPort_RandomBattlesEnabled() && (D_800AFE9C >> 12) != 0) {
+        if (XENO_RANDOM_BATTLES_ON() && (D_800AFE9C >> 12) != 0) {
 #else
         if ((D_800AFE9C >> 12) != 0) {
 #endif

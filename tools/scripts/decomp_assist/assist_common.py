@@ -5,11 +5,16 @@ splat output under asm/ and the local build/.
 Environment:
   XENO_ASSIST_CACHE  scratch directory (default ~/.cache/xeno/decomp_assist)
   XENO_M2C           path to m2c.py (default ~/.cache/xeno/m2c/m2c.py)
+  XENO_CC1           cc1 for standalone draft compiles; overrides the one
+                     toolchain() resolves from the TU's gears.toml preset
+                     (the module-level CC1 default is tools/gcc-2.7.2-psx/cc1)
+  XENO_GP_FLAG       -G value; overrides the preset's gp_flag
   XENO_BUILD_WRAP    command prefix that runs a shell string in the build
                      environment, e.g. a docker wrapper "dbuild.sh <repo>";
                      empty (default) runs the command on the host.
 """
 import glob
+import tomllib
 import os
 import re
 import shlex
@@ -19,6 +24,8 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')
 CACHE = os.path.expanduser(os.environ.get('XENO_ASSIST_CACHE', '~/.cache/xeno/decomp_assist'))
 M2C = os.path.expanduser(os.environ.get('XENO_M2C', '~/.cache/xeno/m2c/m2c.py'))
 BUILD_WRAP = os.environ.get('XENO_BUILD_WRAP', '')
+# cc1 used for standalone draft compiles (match the TU's gears.toml preset)
+CC1 = os.environ.get('XENO_CC1', 'tools/gcc-2.7.2-psx/cc1')
 
 # The TU's -G value (gears.toml preset); menu's MenuG0 preset needs -G0.
 GP_FLAG = os.environ.get('XENO_GP_FLAG', '-G8')
@@ -29,6 +36,73 @@ CC1_FLAGS = ['-O2', GP_FLAG, '-mips1', '-mcpu=3000', '-w', '-funsigned-char', '-
 MASPSX_FLAGS = ['--use-comm-section', '--run-assembler', '-EL', '-Iinclude', '-O2', GP_FLAG,
                 '-march=r3000', '-mtune=r3000', '-no-pad-sections']
 
+
+
+def _strip_toml_comment(line):
+    out, quote = [], None
+    for ch in line:
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in '"\'':
+            quote = ch
+        elif ch == '#':
+            break
+        out.append(ch)
+    return ''.join(out)
+
+
+def load_gears_toml():
+    """gears.toml as a dict.  gears' TOML reader accepts multi-line inline
+    tables with comments and trailing commas (`build_variables = {` ... `}`),
+    which tomllib rejects, so flatten those onto one line first."""
+    text = open(os.path.join(REPO, 'gears.toml')).read()
+    out, buf = [], None
+    for line in text.split('\n'):
+        code = _strip_toml_comment(line).rstrip()
+        if buf is None:
+            if code.endswith('{') and '}' not in code:
+                buf = [code]
+            else:
+                out.append(line)
+            continue
+        if code.strip().startswith('}'):
+            items = [x.strip().rstrip(',') for x in buf[1:] if x.strip()]
+            out.append(buf[0] + ' ' + ', '.join(items) + ' }')
+            buf = None
+        else:
+            buf.append(code)
+    return tomllib.loads('\n'.join(out))
+
+
+def toolchain(ov, seg):
+    """cc1, cc1 flags and maspsx flags for src/<ov>/<seg>.c, resolved from
+    gears.toml the way gears does: the Default preset's build_variables,
+    overridden by the preset whose path key ({binary} expanded) is a
+    substring of the TU path (the longest key wins, so the result does not
+    depend on table order).  XENO_CC1 / XENO_GP_FLAG still override."""
+    cfg = load_gears_toml()
+    binary = cfg['compilation']['binary']
+    presets = cfg.get('build_preset', [])
+    bv = dict(next(p for p in presets if p['name'] == 'Default')['build_variables'])
+    tu = f'src/{ov}/{seg}.c'
+    best = None
+    for p in presets:
+        for key in p.get('paths', []):
+            k = key.replace('{binary}', binary)
+            if k in tu and (best is None or len(k) > len(best[0])):
+                best = (k, p)
+    name = 'Default'
+    if best:
+        name = best[1]['name']
+        bv.update(best[1].get('build_variables', {}))
+    gp = os.environ.get('XENO_GP_FLAG', bv.get('gp_flag', '-G8'))
+    opt = bv.get('optimization_flag', '-O2')
+    cc1 = os.environ.get('XENO_CC1', f"tools/{bv['gcc']}/cc1")
+    cc1_flags = [opt, gp] + bv['cc_flags'].split()
+    maspsx = bv['maspsx_flags'].split() + [bv.get('endianness', '-EL'), '-Iinclude', '-I', 'build', opt, gp,
+                                           '-march=r3000', '-mtune=r3000', '-no-pad-sections']
+    return {'preset': name, 'cc1': cc1, 'cc1_flags': cc1_flags, 'maspsx_flags': maspsx}
 
 def run_build(cmd):
     """Run a shell command in the build environment (host or XENO_BUILD_WRAP)."""

@@ -1,11 +1,24 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
+void AddPrim(s32, void *);
+extern void *D_800C3E24;
+extern s32 D_800CCB04;
+extern void * D_800D2D28;
+void func_80034888(s32, s32, s32);
+extern s32 D_800CCB34;
+extern s32 D_800D2DAC;
+extern void *D_800D3278;
+void func_80074D4C(void);
+void func_80074F70(void);
+#endif
+
+#ifndef XENO_PC_PORT
 #include "system/memory.h"
 #endif
 
 
 #ifndef XENO_PC_PORT
-void func_800728B8(void *, u8, u8);
+void func_800728B8(void *prims, s32 count, s32 start);
 extern void *D_800D2D28;
 extern void *D_800D2DB4;
 void func_80074AB8(void);
@@ -19,7 +32,18 @@ INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072270);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072324);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800723E0);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007252C);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800728B8);
+
+#ifndef XENO_PC_PORT
+/* Link `count` primitives of 0x28 bytes, every other one from `start`. */
+void func_800728B8(void* prims, s32 count, s32 start) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        AddPrim(D_800CCB04 + 4, (u8*)prims + (start + i * 2) * 0x28);
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072938);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072DA8);
@@ -73,7 +97,47 @@ void func_80074AB8(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074D4C);
+
+#ifndef XENO_PC_PORT
+void func_80074D4C(void) {
+    s32 temp_a0;
+    s32 temp_v0;
+    s32 temp_v0_2;
+    s32 var_s0;
+
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xC6) != 0) {
+        if (*(u8 *)((s8*)(D_800C3E24) + 0xE5) != 0) {
+            temp_v0 = *(s32 *)((s8*)(D_800C3E24) + 0xE0) - 4;
+            *(s32 *)((s8*)(D_800C3E24) + 0xE0) = temp_v0;
+            if (temp_v0 < 0x40) {
+                *(u8 *)((s8*)(D_800C3E24) + 0xE5) = 0U;
+                *(s32 *)((s8*)(D_800C3E24) + 0xE0) = 0x40;
+            }
+            goto block_6;
+        }
+        temp_v0_2 = *(s32 *)((s8*)(D_800C3E24) + 0xE0) + 4;
+        *(s32 *)((s8*)(D_800C3E24) + 0xE0) = temp_v0_2;
+        var_s0 = 0;
+        if (temp_v0_2 >= 0x100) {
+            *(u8 *)((s8*)(D_800C3E24) + 0xE5) = 1U;
+            *(s32 *)((s8*)(D_800C3E24) + 0xE0) = 0xFC;
+block_6:
+            var_s0 = 0;
+        }
+        do {
+            if (*(u8 *)((s8*)((D_800C3E24 + var_s0)) + 0xE6) != 0) {
+                temp_a0 = var_s0 * 2;
+                *(u8 *)((s8*)((((temp_a0 + *(u8 *)((s8*)(D_800C3E24) + 0xE4)) * 0x1C) + D_800C3E24)) + 4) = (u8) *(s32 *)((s8*)(D_800C3E24) + 0xE0);
+                *(s8 *)((s8*)((((temp_a0 + *(u8 *)((s8*)(D_800C3E24) + 0xE4)) * 0x1C) + D_800C3E24)) + 5) = 0;
+                *(s8 *)((s8*)((((temp_a0 + *(u8 *)((s8*)(D_800C3E24) + 0xE4)) * 0x1C) + D_800C3E24)) + 6) = 0;
+                AddPrim(D_800CCB04 + 4, ((temp_a0 + *(u8 *)((s8*)(D_800C3E24) + 0xE4)) * 0x1C) + D_800C3E24);
+            }
+            var_s0 += 1;
+        } while (var_s0 < 4);
+    }
+}
+#endif
+
 
 #ifndef XENO_PC_PORT
 void func_80074EEC(void) {
@@ -85,7 +149,18 @@ void func_80074EEC(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80074F70);
+
+#ifndef XENO_PC_PORT
+void func_80074F70(void) {
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xC8) != 0) {
+        AddPrim(D_800CCB04 + 4, (*(u8 *)((s8*)(D_800D3278) + 0x7F4) * 0x28) + 0x7A4 + D_800D3278);
+    }
+    if (*(u8 *)((s8*)(D_800D2D28) + 0xC9) != 0) {
+        func_80034888(D_800D2DAC, D_800CCB04 + 4, D_800CCB34);
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007500C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075168);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075938);

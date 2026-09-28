@@ -1,6 +1,9 @@
 #define _GNU_SOURCE
 
 #include "god_mode.h"
+/* Host hooks: weak so the tests that #include/link this runtime without the
+ * port's god_mode.c / game_overrides.c still link. */
+#pragma weak PcPort_GodModeBeforeGuest
 #include "battle_mips_adapter.h"
 #include "battle_mips_runtime_internal.h"
 #include "psx_memory.h"
@@ -758,7 +761,12 @@ static uint8_t *dma_packet_memory(uint32_t address, unsigned bytes)
  * byte of every non-NOP packet, and with XENO_BATTLE_OT_DIAG_SAMPLES=n the
  * first n packets of each frame verbatim (guest words). Read-only; the
  * packet payload and the walk are untouched. Off unless the env is set. */
-extern unsigned g_PcPortPresentedFrames;
+extern unsigned g_PcPortPresentedFrames __attribute__((weak)); /* game_overrides.c */
+static unsigned PcPort_PresentedFramesOrZero(void)
+{
+    const unsigned* volatile p = &g_PcPortPresentedFrames;
+    return p ? *p : 0u;
+}
 static int s_otDiagState = -1;
 static unsigned s_otDiagFrom, s_otDiagTo, s_otDiagSamples;
 static unsigned s_otDiagFrame;
@@ -841,7 +849,7 @@ static int bridge_draw_otag(PcPortMipsCpu *cpu)
             if (otDiag) {
                 unsigned c;
                 fprintf(stderr, "[battle-ot] frame=%u presented=%u packets=%u hist:",
-                        s_otDiagFrame, g_PcPortPresentedFrames, otPackets);
+                        s_otDiagFrame, PcPort_PresentedFramesOrZero(), otPackets);
                 for (c = 0; c < 256; c++)
                     if (otHist[c] != 0)
                         fprintf(stderr, " %02x=%u", c, otHist[c]);
@@ -1100,7 +1108,11 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
     { extern void PcPort_PadVblankPump(void); PcPort_PadVblankPump(); }
     PcPortMipsCpu *previous = runtime->bridge_cpu;
     runtime->bridge_cpu = cpu;
-    PcPort_GodModeBeforeGuest(cpu, target);
+    {
+        void (*volatile god_hook)(PcPortMipsCpu*, uint32_t) = PcPort_GodModeBeforeGuest;
+        if (god_hook)
+            god_hook(cpu, target);
+    }
     int result = runtime_bridge_call(opaque, cpu, target);
     runtime->bridge_cpu = previous;
     return result;

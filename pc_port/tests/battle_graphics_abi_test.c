@@ -422,15 +422,26 @@ static int check_registered_host_callback(void)
         return 0;
     }
     /* Unknown and truncated pointers must never become callable merely
-     * because the address lies in an executable host mapping. */
-    runtime.functions[0].host = (void *)(host | (UINT64_C(1) << 32));
-    if (runtime_bridge(&runtime, &cpu, (uint32_t)host) != -1) {
+     * because the address lies in an executable host mapping.  Use a fresh
+     * runtime: the bridge caches each resolved target, and the port's
+     * function table never changes after start-up. */
+    BattleMipsRuntime truncated = {0};
+    truncated.functions[0] = (ResolvedFunction){0x80011100u,
+        (void *)(host | (UINT64_C(1) << 32)), "test_known_host_callback"};
+    truncated.function_count = 1;
+    initialize_cpu(&cpu, &truncated);
+    cpu.gpr[4] = 0x80180000u;
+    cpu.gpr[29] = 0x801ff000u;
+    if (runtime_bridge(&truncated, &cpu, (uint32_t)host) != -1) {
         fputs("REGISTERED HOST CALLBACK FAIL truncated-pointer was accepted\n",
               stderr);
         return 0;
     }
-    runtime.function_count = 0;
-    if (runtime_bridge(&runtime, &cpu, (uint32_t)host) != -1 ||
+    BattleMipsRuntime unknown = {0};
+    initialize_cpu(&cpu, &unknown);
+    cpu.gpr[4] = 0x80180000u;
+    cpu.gpr[29] = 0x801ff000u;
+    if (runtime_bridge(&unknown, &cpu, (uint32_t)host) != -1 ||
         host_callback_calls != 1) {
         fputs("REGISTERED HOST CALLBACK FAIL unknown-function was accepted\n",
               stderr);

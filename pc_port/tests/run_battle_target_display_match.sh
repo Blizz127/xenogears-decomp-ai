@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-display-match.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-display-match.XXXXXX)
 echo "Evidence: $out"
 cpp -P -undef -nostdinc -D_LANGUAGE_C -DSKIP_ASM -Iinclude src/battle/mainc114.c -o "$out/body.i"
 # gears.toml BattleCdk applies to battle/mainc*, including mainc114.

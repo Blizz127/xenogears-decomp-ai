@@ -2,7 +2,7 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
 cd "$(dirname "$0")/../.."
-out=$(mktemp -d scratchpad/battle-eligibility-bindings.XXXXXX)
+out=$(mkdir -p scratchpad && mktemp -d scratchpad/battle-eligibility-bindings.XXXXXX)
 echo "Evidence: $out"
 for opt in O0 O2 UBSan; do
     flags=(-"$opt")
