@@ -8,6 +8,7 @@
 static u8* MenuRawPointer(u32 offset);
 static void MenuStoreRawPointer(u32 offset, void* pointer);
 
+
 #ifdef XENO_PC_PORT
 #include <stdio.h>
 #include "../../../pc_port/src/krom_rom.h"
@@ -1706,8 +1707,8 @@ extern void func_801E92CC(void);
 extern s32 func_801E93A0(s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8694);
-#else
+extern s32 func_801D32B4(s32);
+#endif
 void func_801C8694(s32 discNum) {
 #ifdef XENO_PC_PORT
     /* Retail 801C86CC sets the wait flag in the branch delay slot even when
@@ -1738,44 +1739,40 @@ void func_801C8694(s32 discNum) {
     }
     func_801D2484();
 #else
-    u8 waiting = 0;
+    u8 waiting = 1;
     func_801D1E80();
-    if (*(u8*)((u8*)g_Menu + 0x329) != 0) {
-        waiting = 1;
-        while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
-            func_801C7BF4();
-        }
+    while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
+        func_801C7BF4();
     }
     func_801D22F4(0);
     if (waiting) {
-        u8 targetDisc = discNum + 1;
-        u8 param = (u8)(discNum * 3 - 0x7D);
-        while (waiting) {
+        s32 targetDisc = (u8)discNum + 1;
+        s32 param = (u8)discNum * 3 - 0x7D;
+        do {
             if (ArchiveGetDiscNumber() == targetDisc) {
                 waiting = 0;
             } else {
                 func_801E92CC();
-                func_801D2F4C(param);
-                if (func_801E93A0(targetDisc)) {
+                func_801D2F4C((u8)param);
+                if (func_801E93A0(targetDisc) != 0) {
                     u8 delay;
-                    func_801D32B4(0);
+                    ((void (*)())func_801D32B4)();
                     func_801D2F4C(0x89);
-                    for (delay = 0x1D; (delay & 0xFF) != 0; delay--) {
+                    for (delay = 0x1D; delay != 0; delay--) {
                         func_801C7BF4();
                     }
-                    func_801D32B4(0);
+                    ((void (*)())func_801D32B4)();
                     func_801C7BF4();
                 } else {
-                    func_801D32B4(0);
+                    ((void (*)())func_801D32B4)();
                     waiting = 0;
                 }
             }
-        }
+        } while (waiting);
     }
     func_801D2484();
 #endif
 }
-#endif
 
 void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x4);
@@ -1784,39 +1781,31 @@ void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x2000);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C881C);
-#else
 static u32 MenuCardEvent(s32 slot);
 s32 func_801C881C(s32 port) {
     while (1) {
-        if (TestEvent(MenuCardEvent(3)) == 1) {
+        if (TestEvent(MENU_CARD_EVENT(3)) == 1) {
             func_801C87C4();
             return 3;
         }
-        if (TestEvent(MenuCardEvent(1)) == 1) {
+        if (TestEvent(MENU_CARD_EVENT(1)) == 1) {
             func_801C87C4();
             return 1;
         }
-        if (TestEvent(MenuCardEvent(0)) == 1) {
+        if (TestEvent(MENU_CARD_EVENT(0)) == 1) {
             func_801C87C4();
             return 0;
         }
-        if (TestEvent(MenuCardEvent(2)) == 1) {
+        if (TestEvent(MENU_CARD_EVENT(2)) == 1) {
             func_801C87C4();
             return 2;
         }
     }
 }
-#endif
 
 extern u32 D_801E9768[];
 extern s32 _card_info(s32);
 
-#ifndef XENO_PC_PORT
-/* Retail calls func_801C881C without reloading $a0: the call has no argument. */
-extern s32 func_801C881C();
-#endif
 s32 func_801C891C(s32 port) {
 #ifdef XENO_PC_PORT
     if (_card_info(port) == 0) return -1;
@@ -1826,7 +1815,8 @@ s32 func_801C891C(s32 port) {
     }
 #else
     if (_card_info(port) == 0) return -1;
-    return D_801E9768[(u8)func_801C881C()];
+    /* Retail calls func_801C881C without reloading $a0: no argument. */
+    return D_801E9768[(u8)((s32 (*)())func_801C881C)()];
 #endif
 }
 
@@ -1851,19 +1841,15 @@ static void MenuSetCardEvent(s32 slot, u32 event) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8960);
-#else
 void func_801C8960(void) {
     func_801C7BF4();
     EnterCriticalSection();
-    CloseEvent(MenuCardEvent(0));
-    CloseEvent(MenuCardEvent(1));
-    CloseEvent(MenuCardEvent(2));
-    CloseEvent(MenuCardEvent(3));
+    CloseEvent(MENU_CARD_EVENT(0));
+    CloseEvent(MENU_CARD_EVENT(1));
+    CloseEvent(MENU_CARD_EVENT(2));
+    CloseEvent(MENU_CARD_EVENT(3));
     ExitCriticalSection();
 }
-#endif
 
 extern s32 D_801EA900;
 
@@ -1980,9 +1966,6 @@ s32 func_801C8A10(u8 port) {
 
 extern u8 D_801E9779;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8BEC);
-#else
 void func_801C8BEC(void) {
 #ifdef XENO_PC_PORT
     s32 status;
@@ -2002,8 +1985,7 @@ void func_801C8BEC(void) {
     }
 #else
     void* pMenu = g_Menu;
-    void* pData = g_Menu->unk32C;
-    if (pData != NULL && *(u8*)((u8*)pData + 0x4FE6) != 0) {
+    if (*(u8*)(*(u8**)((u8*)pMenu + 0x32C) + 0x4FE6) != 0) {
         u8 counter = *(u8*)((u8*)pMenu + 0x326) + 1;
         *(u8*)((u8*)pMenu + 0x326) = counter;
         if (counter > D_801E9779) {
@@ -2011,9 +1993,9 @@ void func_801C8BEC(void) {
             func_801C8A10(1);
             {
                 void* pMenu2 = g_Menu;
-                void* pData2 = *(void**)((u8*)pMenu2 + 0x32C);
-                if (*(s32*)((u8*)pData2 + 0x4F74) == -1 &&
-                    *(s32*)((u8*)pData2 + 0x4F78) == -1) {
+                u8* pData2 = *(u8**)((u8*)pMenu2 + 0x32C);
+                s32 a = *(s32*)(pData2 + 0x4F74);
+                if (a == -1 && *(s32*)(pData2 + 0x4F78) == a) {
                     *(u8*)((u8*)pMenu2 + 0x334) = 0;
                 }
             }
@@ -2022,7 +2004,6 @@ void func_801C8BEC(void) {
     }
 #endif
 }
-#endif
 
 void func_801C8CA4(u8 idx) {
 #ifdef XENO_PC_PORT
@@ -2897,10 +2878,8 @@ extern void func_801D2F4C(u8);
 extern u32 func_801CAA38(u8);
 extern s32 func_801D32B4(s32);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CACF8);
-#else
 u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
+#ifdef XENO_PC_PORT
     u32 result;
     func_801D2F4C(arg0);
     g_Menu->pCursors->shouldRender[3] = 1;
@@ -2913,8 +2892,21 @@ u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
         func_801D32B4(result);
     }
     return (u8)(result & 0xFF);
-}
+#else
+    u8 result;
+    func_801D2F4C(arg0);
+    g_Menu->pCursors->shouldRender[3] = 1;
+    result = func_801CAA38(arg2);
+    ((void (*)())func_801D32B4)();
+    if (arg1 != 0xFF && (result & 0xFF) != 0) {
+        func_801D2F4C(arg1);
+        g_Menu->pCursors->shouldRender[3] = 1;
+        result = func_801CAA38(arg2);
+        ((void (*)())func_801D32B4)();
+    }
+    return (u8)(result & 0xFF);
 #endif
+}
 
 void func_801CADB0(void) {
 #ifdef XENO_PC_PORT
@@ -6830,26 +6822,23 @@ void func_801D827C(void* pPrims, u8 mode) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D83AC);
-#else
 void func_801D83AC(void* pPrims, u8 mode, u8 count, u8 startIdx) {
-    u8 r = 0x40, g = 0x40, b = 0x40;
+    u8 rgb[3];
     s32 i;
+    rgb[1] = 0x40;
     switch (mode) {
-        case 0: g = 0x80; b = 0x10; break;
-        case 1: r = 0x40; g = 0x80; break;
-        case 2: r = 0x40; g = 0x40; b = 0x40; break;
+    case 0: rgb[0] = 0x80; rgb[2] = 0x40; break;
+    case 1: rgb[0] = 0x40; rgb[2] = 0x80; break;
+    case 2: rgb[0] = 0x40; rgb[2] = 0x40; break;
     }
     for (i = 0; i < count; i++) {
-        u8* pPrim = (u8*)pPrims + (startIdx + i * 2) * 0x28;
-        SetShadeTex(pPrim, 0);
-        pPrim[4] = r;
-        pPrim[5] = g;
-        pPrim[6] = b;
+        u8* p = (u8*)pPrims + (startIdx + i * 2) * 0x28;
+        SetShadeTex(p, 0);
+        p[4] = rgb[0];
+        p[5] = rgb[1];
+        p[6] = rgb[2];
     }
 }
-#endif
 
 extern s32 D_801EA6FC;
 extern s32 D_801EA700;
@@ -7073,10 +7062,8 @@ void func_801D8644(u8 slot, u8 w, u8 h, u8 listing, u8 gearMode) {
 extern void func_801D7F50(u8, u8, u8);
 extern void func_801D8644(u8, u8, u8, u8, u8);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8DE4);
-#else
 void func_801D8DE4(u8 arg0, u8 arg1, u8 arg2, u8 arg3) {
+#ifdef XENO_PC_PORT
     u8 w = 0x98;
     u8 h = 0x26;
     u8 val = arg3;
@@ -7096,8 +7083,19 @@ void func_801D8DE4(u8 arg0, u8 arg1, u8 arg2, u8 arg3) {
         void* pData = MenuRawPointer(0x35C);
         *(u8*)((u8*)pData + 0x32F1) = *(u8*)((u8*)pMenu + 0x308);
     }
-}
+#else
+    s32 w = 0x98;
+    s32 h = 0x26;
+    if (arg1 != 0) {
+        w = 0x80;
+        h = 0x90;
+    }
+    ((void (*)())func_801D7F50)(w, h, arg3);
+    ((void (*)())func_801D8644)(arg0, w, h, arg2, arg3);
+    *(u8*)((u8*)g_Menu->pManager + 8) = 1;
+    *(u8*)(*(u8**)((u8*)g_Menu + 0x35C) + 0x32F1) = *(u8*)((u8*)g_Menu + 0x308);
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8EA4);
@@ -7383,9 +7381,6 @@ s32 backward, gearMode;
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9808);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9B08);
-#else
 void func_801D9B08(void) {
     func_801C8960();
     Vsync(0);
@@ -7395,17 +7390,16 @@ void func_801D9B08(void) {
     DrawSync(0);
     Vsync(0);
     EnterCriticalSection();
-    MenuSetCardEvent(0, OpenEvent(0xF4000001, 0x4, 0x2000, NULL));
-    MenuSetCardEvent(1, OpenEvent(0xF4000001, 0x8000, 0x2000, NULL));
-    MenuSetCardEvent(2, OpenEvent(0xF4000001, 0x100, 0x2000, NULL));
-    MenuSetCardEvent(3, OpenEvent(0xF4000001, 0x2000, 0x2000, NULL));
-    EnableEvent(MenuCardEvent(0));
-    EnableEvent(MenuCardEvent(1));
-    EnableEvent(MenuCardEvent(2));
-    EnableEvent(MenuCardEvent(3));
+    MENU_SET_CARD_EVENT(0, OpenEvent(0xF4000001, 0x4, 0x2000, NULL));
+    MENU_SET_CARD_EVENT(1, OpenEvent(0xF4000001, 0x8000, 0x2000, NULL));
+    MENU_SET_CARD_EVENT(2, OpenEvent(0xF4000001, 0x100, 0x2000, NULL));
+    MENU_SET_CARD_EVENT(3, OpenEvent(0xF4000001, 0x2000, 0x2000, NULL));
+    EnableEvent(MENU_CARD_EVENT(0));
+    EnableEvent(MENU_CARD_EVENT(1));
+    EnableEvent(MENU_CARD_EVENT(2));
+    EnableEvent(MENU_CARD_EVENT(3));
     ExitCriticalSection();
 }
-#endif
 
 extern void* D_801EA718;
 extern void* D_801EA71C;
@@ -9129,10 +9123,8 @@ static void MenuPackedE7E68(u8* strings, u8* descriptorIds, s32 yOffset,
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE2C8);
-#else
 void func_801DE2C8(u8 arg0) {
+#ifdef XENO_PC_PORT
     void* pBuf = HeapAlloc(0xA1C, NULL);
     void* pMenu = g_Menu;
     /* menu+0x434 → unk42C[2] via MenuStoreRawPointer remap. */
@@ -9155,8 +9147,20 @@ void func_801DE2C8(u8 arg0) {
     func_801D22F4(3);
     func_801DB02C(0);
     func_801D3488(1, arg0);
-}
+#else
+    void* pBuf = HeapAlloc(0xA1C, 0);
+    *(void**)((u8*)g_Menu + 0x434) = pBuf;
+    bzero(pBuf, 0xA1C);
+    {
+        s32 off = arg0 * 6;
+        func_801E8018(6, (u8*)g_Menu + 0x14E0, (u8*)(off + (s32)D_801EA558), (u8*)g_Menu->pManager + 0x40);
+    }
+    func_801C72BC(7);
+    func_801D22F4(3);
+    func_801DB02C(0);
+    func_801D3488(1, arg0);
 #endif
+}
 
 void func_801DE36C(void) {
 #ifdef XENO_PC_PORT
@@ -10194,12 +10198,8 @@ void func_801E05D0(u8 selected, u8 openAnimation, u8 gearMode) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E0F78);
-#else
 s32 func_801E0F78(u8 arg0, u8 arg1) {
     void* p1;
-    void* pMenu;
     void* p2;
 #ifdef XENO_PC_PORT
     /* TEST TOOLING: Equip acceptance harness. Prefer PAD_ON_CONTROL over
@@ -10217,20 +10217,17 @@ s32 func_801E0F78(u8 arg0, u8 arg1) {
         }
     }
 #endif
-    p1 = HeapAlloc(0x32F4, NULL);
-    pMenu = g_Menu;
-    MenuStoreRawPointer(0x35C, p1);
+    p1 = HeapAlloc(0x32F4, 0);
+    MENU_STORE_RAW(0x35C, p1);
     bzero(p1, 0x32F4);
-    p2 = HeapAlloc(0x2AC, NULL);
-    pMenu = g_Menu;
-    MenuStoreRawPointer(0x360, p2);
+    p2 = HeapAlloc(0x2AC, 0);
+    MENU_STORE_RAW(0x360, p2);
     bzero(p2, 0x2AC);
     func_801C72BC(3);
     func_801E05D0(arg0, arg1, 0);
     func_801C72BC(0x13);
     return 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1014);
@@ -10374,40 +10371,29 @@ extern void func_801C72BC(s32);
 extern void func_801D3488(s32, s32);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2250);
-#else
 u8 func_801E2250(void) {
-    void* pMenu;
-    void* pManager;
+    u8* pManager;
     s32 i;
-    void* p1 = HeapAlloc(0x2AF0, NULL);
-    pMenu = g_Menu;
-    MenuStoreRawPointer(0x358, p1);
-    bzero(p1, 0x2AF0);
-    {
-        void* p2 = HeapAlloc(0x32F4, NULL);
-        pMenu = g_Menu;
-        MenuStoreRawPointer(0x35C, p2);
-        bzero(p2, 0x32F4);
-    }
-    {
-        void* p3 = HeapAlloc(0x2AC, NULL);
-        pMenu = g_Menu;
-        MenuStoreRawPointer(0x360, p3);
-        bzero(p3, 0x2AC);
-    }
+    void* p;
+    p = HeapAlloc(0x2AF0, 0);
+    MENU_STORE_RAW(0x358, p);
+    bzero(p, 0x2AF0);
+    p = HeapAlloc(0x32F4, 0);
+    MENU_STORE_RAW(0x35C, p);
+    bzero(p, 0x32F4);
+    p = HeapAlloc(0x2AC, 0);
+    MENU_STORE_RAW(0x360, p);
+    bzero(p, 0x2AC);
     func_801C72BC(3);
-    pMenu = g_Menu;
-    pManager = g_Menu->pManager;
+    pManager = (u8*)g_Menu->pManager;
     i = 0;
-    while (*(u8*)((u8*)pManager + 0x60 + i) == 0) {
+    while (1) {
+        if (*(u8*)((uintptr_t)pManager + i + 0x60) != 0) break;
         i++;
     }
     func_801D3488(0, 1);
-    return (u8)(i & 0xFF);
+    return i;
 }
-#endif
 
 extern u8 D_801EA568[];
 #ifndef XENO_PC_PORT
@@ -10447,34 +10433,21 @@ extern void func_801D249C(s32);
 extern void func_801D3488(s32, s32);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2AE0);
-#else
 void func_801E2AE0(void) {
-    void* pMenu;
+    void* p;
     func_801D249C(1);
-    {
-        void* p1 = HeapAlloc(0x2AF0, NULL);
-        pMenu = g_Menu;
-        MenuStoreRawPointer(0x358, p1);
-        bzero(p1, 0x2AF0);
-    }
-    {
-        void* p2 = HeapAlloc(0x32F4, NULL);
-        pMenu = g_Menu;
-        MenuStoreRawPointer(0x35C, p2);
-        bzero(p2, 0x32F4);
-    }
-    {
-        void* p3 = HeapAlloc(0x2AC, NULL);
-        pMenu = g_Menu;
-        MenuStoreRawPointer(0x360, p3);
-        bzero(p3, 0x2AC);
-    }
+    p = HeapAlloc(0x2AF0, 0);
+    MENU_STORE_RAW(0x358, p);
+    bzero(p, 0x2AF0);
+    p = HeapAlloc(0x32F4, 0);
+    MENU_STORE_RAW(0x35C, p);
+    bzero(p, 0x32F4);
+    p = HeapAlloc(0x2AC, 0);
+    MENU_STORE_RAW(0x360, p);
+    bzero(p, 0x2AC);
     func_801C72BC(3);
     func_801D3488(0, 0);
 }
-#endif
 
 void func_801E2B80(void) {
 #ifdef XENO_PC_PORT
@@ -11786,33 +11759,12 @@ void func_801E68AC(u8* entry) {
 extern s32 D_801EA004[];
 extern s32 D_801EA010[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6AE8);
-#else
-void func_801E6AE8(u8 slotIdx,
-#ifdef XENO_PC_PORT
-                     u8* entry) {
-    /* Retail reads the character byte from the selected save entry;
-     * each character's render panel occupies 0x87C bytes. */
-    func_8002675C(g_Menu->unk2DC, entry[0x1C + slotIdx] + 0x14E,
-                 MenuRawPointer(0x34C) + 0xA98 + slotIdx * 0x87C,
-                 g_Menu->renderContext, D_801EA004[slotIdx],
-                 D_801EA010[slotIdx], 0x1000);
-#else
-                     s32 arg1) {
-    void* pMenu = g_Menu;
-    u8* pData = MenuRawPointer(0x34C);
-    u8 charIdx = arg1 + slotIdx;
-    s32 arg3 = *(u32*)((u8*)pMenu + 0x308);
-    u8* pSlot = pData + 0xA98 + slotIdx * 0x7C;
-    s32 stackArgs[3];
-    stackArgs[0] = D_801EA004[slotIdx];
-    stackArgs[1] = D_801EA010[slotIdx];
-    stackArgs[2] = 0x1000;
-    func_8002675C(*(u32*)((u8*)pMenu + 0x2DC), charIdx + 0x14E, pSlot, arg3, stackArgs[0], stackArgs[1], stackArgs[2]);
-#endif
+void func_801E6AE8(u8 slotIdx, u8* entry) {
+    uintptr_t off = slotIdx * 0x87C + 0xA98;
+    func_8002675C(g_Menu->unk2DC, (entry + slotIdx)[0x1C] + 0x14E,
+                  (u8*)(off + (uintptr_t)MENU_RAW(0x34C)),
+                  g_Menu->renderContext, D_801EA004[slotIdx], D_801EA010[slotIdx], 0x1000);
 }
-#endif
 
 extern u32 D_801EA01C;
 extern u32 D_801EA020;
@@ -12077,10 +12029,8 @@ extern void func_801E61B0(void);
 extern void func_801E733C(void);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E76EC);
-#else
 void func_801E76EC(s32 screenIdx) {
+#ifdef XENO_PC_PORT
 #ifdef XENO_PC_PORT
     /* Retail saves card+0xC94+screen*512 before the rendering initializer.
      * Its return value is not a pointer; callbacks may replace g_Menu. */
@@ -12119,8 +12069,30 @@ void func_801E76EC(s32 screenIdx) {
 #else
     func_801E733C(pEntry);
 #endif
-}
+#else
+    u8* pEntry = (u8*)((screenIdx << 9) + (s32)g_Menu->unk32C) + 0xC94;
+    s32 i;
+    s32 slotOff;
+    func_801E61B0();
+    for (i = 0, slotOff = 0; i < 3; i++) {
+        if (*(u8*)((s32)pEntry + i + 0x1C) != 0xFF) {
+            u8 idx = i;
+            *(u8*)((s32)MENU_RAW(0x34C) + slotOff + 0x1310) = 1;
+            func_801E6AE8(idx, pEntry);
+            func_801E6B70(idx, pEntry);
+            func_801E6CFC(idx, pEntry);
+            func_801E6F5C(idx, pEntry);
+            func_801E71B4(idx, pEntry, screenIdx);
+        } else {
+            *(u8*)((s32)MENU_RAW(0x34C) + slotOff + 0x1310) = 0;
+        }
+        *(u8*)((s32)MENU_RAW(0x34C) + slotOff + 0x130F) = *(u8*)((u8*)g_Menu + 0x308);
+        slotOff += 0x87C;
+    }
+    func_801E68AC(pEntry);
+    func_801E733C();
 #endif
+}
 
 extern void func_801E76EC(s32);
 extern void func_801E6668(s32);

@@ -561,4 +561,23 @@ typedef struct {
 extern SystemMenu* g_Menu;
 extern u8 g_MenuDebugEnabled;
 
+/* Menu-body access to the retail 32-bit pointer slots and card-event words
+ * in g_Menu, for bodies shared by the matching build and the port.  Retail
+ * reads and writes g_Menu + offset directly.  The port routes through
+ * helpers defined in src/menu/main/misc.c (MenuRawPointer,
+ * MenuStoreRawPointer, MenuCardEvent, MenuSetCardEvent), which keep the PSX width inside the
+ * native-inflated SystemMenu. */
+#ifdef XENO_PC_PORT
+#define MENU_RAW(offset) MenuRawPointer(offset)
+#define MENU_STORE_RAW(offset, p) MenuStoreRawPointer((offset), (p))
+#define MENU_CARD_EVENT(slot) MenuCardEvent(slot)
+#define MENU_SET_CARD_EVENT(slot, ev) MenuSetCardEvent((slot), (ev))
+#else
+#define MENU_RAW(offset) (*(u8**)((u8*)g_Menu + (offset)))
+#define MENU_STORE_RAW(offset, p) (*(void**)((u8*)g_Menu + (offset)) = (p))
+#define MENU_CARD_EVENT(slot) \
+    (*(u32*)(*(u8**)((u8*)g_Menu + 0x32C) + 0x4FEC + (slot) * 4))
+#define MENU_SET_CARD_EVENT(slot, ev) (MENU_CARD_EVENT(slot) = (ev))
+#endif
+
 #endif
