@@ -105,8 +105,8 @@ never faked.
   - streamed archive files (the field sound-bank stream, `CdlModeStream`):
     the original is read whole from the disc, hashed, and a replacement is
     served sector by sector to the stream decoder with no CD seek;
-    *untested live*: no route the port reaches today calls the stream
-    loader (`func_80085560`) with a new bank;
+    tested live by `pc_port/tests/run_stream_replacement_live_test.sh`
+    (field map 1's sound bank, identity mod);
   - textures: the pixel block of each `LoadImage` upload (a replacement must
     be exactly `w*h*2` bytes);
   - sound samples: each `SpuWrite` block (a replacement may be shorter; it
