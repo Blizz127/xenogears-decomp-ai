@@ -34,13 +34,13 @@ the produced retail module is byte-identical, not that every function is C.
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.
-The whole report measures **282,408 / 1,383,684 code bytes (20.41%)** and
-**1,898 / 4,464 functions (42.52%)** as matching C. The aggregate covers all
+The whole report measures **283,572 / 1,383,684 code bytes (20.49%)** and
+**1,899 / 4,464 functions (42.54%)** as matching C. The aggregate covers all
 targets below; the Psy-Q subset overlaps the executable row.
 
 | Target | Matching C functions | Function progress | Matching C bytes | Byte progress | Whole-binary SHA gate |
 |---|---:|---:|---:|---:|---|
-| Main executable (`slus_006.64`) | 806 / 1,223 | 65.90% | 93,732 / 218,072 | 42.98% | FAIL |
+| Main executable (`slus_006.64`) | 807 / 1,223 | 65.98% | 94,896 / 218,072 | 43.52% | FAIL |
 | Field overlay | 559 / 884 | 63.24% | 87,824 / 253,052 | 34.71% | FAIL |
 | Member-change menu | 67 / 67 | 100.00% | 24,936 / 24,936 | 100.00% | PASS |
 | Shop menu | 104 / 118 | 88.14% | 37,460 / 53,008 | 70.67% | PASS |
@@ -52,10 +52,12 @@ targets below; the Psy-Q subset overlaps the executable row.
 | World map overlay | 0 / 386 | 0.00% | 0 / 168,336 | 0.00% | PASS |
 
 The checksum baseline is from a clean `make rom-check` after the current menu
-assembly include was restored. **7 of 10** pinned artifacts pass. The three
+assembly include was restored and `MenuExecute` reached a 100% objdiff match.
+Its containing main-executable TU now matches 8/8 functions and 2,816/2,816
+code bytes. **7 of 10** pinned artifacts pass. The three
 failures are the executable, field overlay, and main menu; their hashes remain
-red and must be repaired in code. The menu failure is newly exposed by the
-current build and should be investigated before matching more menu functions.
+red and must be repaired in code. `MenuExecute` is exact at the object level,
+but the main executable as a whole remains checksum-red; more drift remains.
 
 The dashboard initially omitted the world-map category even though objdiff
 had 386 world-map functions in its unit list. `tools/objdiff/config.yaml` now
@@ -63,8 +65,8 @@ includes that category so future reports expose it explicitly.
 
 ## Priority
 
-1. Main executable: repair the known checksum drift and convert its remaining
-   assembly-backed functions to matching C in bounded batches.
+1. Main executable: repair the remaining checksum drift and convert its
+   remaining assembly-backed functions to matching C in bounded batches.
 2. Field overlay: repair its checksum drift, then address the large remaining
    unmatched C surface in the story and script/event paths.
 3. Main menu: investigate the newly red hash and repair it before expanding

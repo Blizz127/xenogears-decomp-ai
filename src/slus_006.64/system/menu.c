@@ -169,10 +169,12 @@ void MenuExecute(void) {
                 } else {
                     FontPrintf(&D_80018364, j - 0xB);
                 }
-            } else if (i == 6) {
-                FontPrintf(&D_80018390, j);
             } else {
-                FontPrintf(&D_80018378, j);
+                if (i != 6) {
+                    FontPrintf(&D_80018378, j);
+                } else {
+                    FontPrintf(&D_80018390, j);
+                }
             }
 
             switch (g_Menu->input) {
@@ -199,10 +201,12 @@ void MenuExecute(void) {
                         if (j >= 0x1F) {
                             j = 0;
                         }
-                    } else if (i == 6) {
-                        j = (j == 0);
                     } else {
-                        j++;
+                        if (i != 6) {
+                            j++;
+                        } else {
+                            j = (j == 0);
+                        }
                     }
                     break;
                 case 4:
@@ -210,10 +214,12 @@ void MenuExecute(void) {
                     if (j < 0) {
                         if (i < 4) {
                             j = 0x1E;
-                        } else if (i == 6) {
-                            j = (j == 0);
                         } else {
-                            j = 0xFF;
+                            if (i != 6) {
+                                j = 0xFF;
+                            } else {
+                                j = (j == 0);
+                            }
                         }
                     }
                     break;
@@ -295,13 +301,14 @@ void MenuExecute(void) {
         case 1:
             func_801CB0A8();
             break;
-        case 2:
+        case 3:
             func_801CBDBC();
             break;
-        case 3:
+        case 4:
             func_801CCD28();
             break;
-        case 4:
+        case 2:
+        case 6:
             func_801C62A8();
             ChangeGameState(1);
             break;
