@@ -84,7 +84,39 @@ void func_80035F1C(RECT* rect, char* name) {
     PCclose(fd);
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", func_80035FF8);
+extern char D_80018ABC[]; /* "P6\r%d %d\r255\r" */
+
+/* Debug: dumps a VRAM rectangle as a binary PPM on the dev PC. */
+s32 func_80035FF8(RECT* rect, char* name) {
+    char header[0x100];
+    s32 count;
+    s32 i;
+    u16* pSrc;
+    u8* pDst;
+    int fd;
+
+    StoreImage(rect, (u_long*)0x80600000);
+    DrawSync(0);
+    Sprintf(header, D_80018ABC, rect->w, rect->h);
+    count = rect->w * rect->h;
+    pSrc = (u16*)0x80600000;
+    pDst = (u8*)0x80700000;
+    i = count;
+    while (i--) {
+        *pDst++ = (*pSrc & 0x1F) << 3;
+        *pDst++ = (*pSrc >> 2) & 0xF8;
+        *pDst++ = (*pSrc >> 7) & 0xF8;
+        pSrc++;
+    }
+    fd = PCcreate(name, 0);
+    if (fd == -1) {
+        return -1;
+    }
+    PCwrite(fd, header, strlen(header));
+    PCwrite(fd, (char*)0x80700000, count * 3);
+    PCclose(fd);
+    return 0;
+}
 
 void func_8003611C(void) {
     ControllerActState* p = D_8005A1BC;
@@ -168,13 +200,34 @@ void func_8003633C(s32 value) {
     D_8005938C = value;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", func_8003634C);
+extern s32 D_80059488; /* frame counter */
+extern void (*D_800501FC)(void);
+extern s32 D_80010000;
+extern void ControllerPoll(void);
+extern void ControllerPushState(void);
+extern void func_80035E44(void);
+extern void func_80036220(void);
+
+/* Per-frame controller update. */
+void func_8003634C(void) {
+    u8 unused[0x28]; /* retail reserves this frame space but never touches it */
+
+    D_80059488++;
+    ControllerPoll();
+    ControllerPushState();
+    func_80035E44();
+    func_80036220();
+    if (D_800501FC != NULL) {
+        D_800501FC();
+    }
+    if (D_80010000 != -1 && D_80059390 != 0) {
+        __asm__ volatile("break 1024"); /* aspsx 20-bit code: encodes as break 1,0 */
+    }
+}
 
 void func_800363E0(s32 value) {
     D_80059390 = value;
 }
-
-extern void (*D_800501FC)(void);
 
 void func_800363F0(void (*pCallback)(void)) {
     D_800501FC = pCallback;
