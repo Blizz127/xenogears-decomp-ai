@@ -85,6 +85,10 @@ def cond_side(kind, expr):
     """'port', 'retail' or None for a directive's first branch."""
     if "XENO_PC_PORT" not in expr:
         return None
+    # `defined(XENO_PC_PORT) || X` (e.g. menu's MENU_PART translation-unit
+    # guards) is compiled by the port AND by a retail build: not a port arm.
+    if kind == "if" and "||" in expr:
+        return None
     if kind == "ifdef":
         return "port"
     if kind == "ifndef":
