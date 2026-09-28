@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_gamestate.h"
 #include "world_map_common_tail.h"
 #include "world_map_convergence.h"
 #include "world_map_framebuffer_init.h"
@@ -76,7 +77,7 @@ static void m18l_sw(u32 address, u32 value)
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
-static void m18l_sh(u32 address, u16 value)
+__attribute__((unused)) static void m18l_sh(u32 address, u16 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
@@ -212,11 +213,11 @@ void wm_800837DC(void)
     m18l_free_value(WM_M18L_C180);
     wm_800976A0();
 #if defined(W34N114_MUTANT_WRONG_TEARDOWN_STATE)
-    m18l_sh(WM_M18L_F94E, 616u);
+    wm_gs_sh(WM_M18L_F94E, 616u);
 #else
-    m18l_sh(WM_M18L_F94E, 617u);
+    wm_gs_sh(WM_M18L_F94E, 617u);
 #endif
-    m18l_sh(WM_M18L_F954, 4u);
+    wm_gs_sh(WM_M18L_F954, 4u);
     m18l_sw(WM_M18L_BBC4, 1u);
-    m18l_sh(WM_M18L_F950, m18l_lhu(WM_M18L_BD3A));
+    wm_gs_sh(WM_M18L_F950, m18l_lhu(WM_M18L_BD3A));
 }

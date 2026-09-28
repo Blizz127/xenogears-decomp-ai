@@ -12,6 +12,7 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "world_map_helper_8dff4.h"
+#include "world_map_gamestate.h"
 
 #define WM_DFF4_SRC_X  0x8006EE60u
 #define WM_DFF4_SRC_Y  0x8006EE62u
@@ -25,21 +26,21 @@ void wm_8008DFF4(u32 out_addr)
     u32 result;
 
     /* X component */
-    memcpy(&raw, PSX_ADDR(WM_DFF4_SRC_X), sizeof(raw));
+    raw = (s16)wm_gs_lhu(WM_DFF4_SRC_X); /* host g_GameState is authoritative */
     extended = (s32)raw;
     bits = (u32)extended;
     result = bits << 12;
     memcpy(PSX_ADDR(out_addr + 0u), &result, sizeof(result));
 
     /* Y component */
-    memcpy(&raw, PSX_ADDR(WM_DFF4_SRC_Y), sizeof(raw));
+    raw = (s16)wm_gs_lhu(WM_DFF4_SRC_Y); /* host g_GameState is authoritative */
     extended = (s32)raw;
     bits = (u32)extended;
     result = bits << 12;
     memcpy(PSX_ADDR(out_addr + 4u), &result, sizeof(result));
 
     /* Z component */
-    memcpy(&raw, PSX_ADDR(WM_DFF4_SRC_Z), sizeof(raw));
+    raw = (s16)wm_gs_lhu(WM_DFF4_SRC_Z); /* host g_GameState is authoritative */
     extended = (s32)raw;
     bits = (u32)extended;
     result = bits << 12;
