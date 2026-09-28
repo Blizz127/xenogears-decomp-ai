@@ -359,10 +359,10 @@ void FieldParticleRender(ParticlePrimitive* pParticle, MATRIX* pMatWorldToScreen
 
     // Render the POLY_FT4 primitive as long as out OT Z-index is valid
     if ((value - 1) < (FIELD_OT_MAX_SIZE - 1)) {
-        /* Retail 800A9E90..800A9EEC indexes packed words at context +0xCC.
-         * Field clear/submit use that same table, not the LP64 typed OT. */
-        u32* ot = (u32*)((u8*)g_FieldCurRenderContext + 0xCC);
-        addPrim(ot + value, &pParticle->poly[g_FieldCurRenderContextIndex]);
+        /* Retail indexes packed words at context +0xCC. Keeping the table
+         * base separate lets addPrim use the retail constant displacement. */
+        u32* ot = (u32*)g_FieldCurRenderContext;
+        addPrim(ot + value + 0x33, &pParticle->poly[g_FieldCurRenderContextIndex]);
     }
 }
 

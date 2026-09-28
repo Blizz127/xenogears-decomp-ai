@@ -14,8 +14,8 @@ several overlays already and says nothing about how much C exists.
 
 | Measure | Value |
 |---|---|
-| **Code matched** | **20.62%** (285,264 / 1,383,684 bytes) |
-| Functions fully matched | 42.81% (1,911 / 4,464) |
+| **Code matched** | **20.69%** (286,228 / 1,383,684 bytes) |
+| Functions fully matched | 42.83% (1,912 / 4,464) |
 | Fuzzy match | 32.50% |
 | Units (objects) | 337 |
 
@@ -26,7 +26,7 @@ Note: `Psy-Q SDK` is a *subset* of `Main Executable` (`slus_006.64/psyq` inside 
 | Overlay | Code matched | Bytes | Functions | Progress |
 |---|---:|---|---:|---|
 | Battle Overlay | 8.33% | 27,672 / 332,316 | 292 / 857 | `##......................` |
-| Field Overlay | 35.26% | 89,232 / 253,052 | 565 / 884 | `########................` |
+| Field Overlay | 35.64% | 90,196 / 253,052 | 566 / 884 | `#########...............` |
 | Main Executable | 43.65% | 95,180 / 218,072 | 813 / 1,223 | `##########..............` |
 | World Map Overlay | 0.00% | 0 / 168,336 | 0 / 386 | `........................` |
 | Menu Overlay | 7.27% | 10,784 / 148,360 | 70 / 307 | `##......................` |
@@ -75,7 +75,7 @@ effort moves the headline number most.
 | `battle/main53` | 8,984 | 1.1% | 1/11 |
 | `battle/main68` | 8,940 | 0.4% | 2/18 |
 
-## Fully matched units — 104 of 337
+## Fully matched units — 105 of 337
 
 Every function in these objects is byte-identical to retail with no
 `INCLUDE_ASM` remaining.
@@ -84,6 +84,7 @@ Every function in these objects is byte-identical to retail with no
 - `slus_006.64/psyq/libgte` (10,272 bytes, 96 fns)
 - `slus_006.64/psyq/libgpu` (6,740 bytes, 65 fns)
 - `slus_006.64/psyq/libcd/bios` (6,104 bytes, 14 fns)
+- `field/effects/particles` (5,992 bytes, 15 fns)
 - `slus_006.64/system/memory` (5,432 bytes, 38 fns)
 - `shop_menu/main/misc` (3,196 bytes, 16 fns)
 - `slus_006.64/system/font` (2,976 bytes, 28 fns)
@@ -119,8 +120,7 @@ Every function in these objects is byte-identical to retail with no
 - `battle/main23` (344 bytes, 4 fns)
 - `field/game_logic/gold` (340 bytes, 3 fns)
 - `slus_006.64/psyq/libspu/SpuSetIRQ` (320 bytes, 1 fns)
-- `battle/main34_q2` (304 bytes, 3 fns)
-- _... and 64 more_
+- _... and 65 more_
 
 ## Coverage holes — code this report does NOT measure
 
