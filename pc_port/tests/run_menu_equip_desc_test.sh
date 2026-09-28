@@ -8,7 +8,7 @@ python3 - <<'PYGEN'
 from pathlib import Path
 import hashlib, re
 b=Path('disc/menu.bin').read_bytes()
-words=list(re.finditer(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',next(Path('asm/menu').glob('*matchings/main/misc/func_801DFF5C.s')).read_text()))
+words=list(re.finditer(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',next(Path('asm/menu').glob('*matchings/main/misc*/func_801DFF5C.s')).read_text()))
 for m in words:
  off=int(m.group(1),16)-0x801c5000
  assert b[off:off+4]==bytes.fromhex(m.group(2)), (m.group(1),m.group(2))

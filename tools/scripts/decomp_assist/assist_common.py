@@ -5,6 +5,8 @@ splat output under asm/ and the local build/.
 Environment:
   XENO_ASSIST_CACHE  scratch directory (default ~/.cache/xeno/decomp_assist)
   XENO_M2C           path to m2c.py (default ~/.cache/xeno/m2c/m2c.py)
+  XENO_CC1           cc1 for standalone draft compiles (default
+                     tools/gcc-2.7.2-psx/cc1; use the TU's preset compiler)
   XENO_BUILD_WRAP    command prefix that runs a shell string in the build
                      environment, e.g. a docker wrapper "dbuild.sh <repo>";
                      empty (default) runs the command on the host.
@@ -19,6 +21,8 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')
 CACHE = os.path.expanduser(os.environ.get('XENO_ASSIST_CACHE', '~/.cache/xeno/decomp_assist'))
 M2C = os.path.expanduser(os.environ.get('XENO_M2C', '~/.cache/xeno/m2c/m2c.py'))
 BUILD_WRAP = os.environ.get('XENO_BUILD_WRAP', '')
+# cc1 used for standalone draft compiles (match the TU's gears.toml preset)
+CC1 = os.environ.get('XENO_CC1', 'tools/gcc-2.7.2-psx/cc1')
 
 # The TU's -G value (gears.toml preset); menu's MenuG0 preset needs -G0.
 GP_FLAG = os.environ.get('XENO_GP_FLAG', '-G8')

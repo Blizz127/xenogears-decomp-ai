@@ -783,29 +783,27 @@ no_data:
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_8002945C);
-#else
 s32 func_8002945C(u8* pSlot) {
-    u8* pStreamFile = g_ArchiveCurStreamFile;
+    void* pStreamFile = g_ArchiveCurStreamFile;
+    u8* pTable;
+    s32 slotIdx;
+    u16 result;
+
     if (pStreamFile == NULL) return 0xFFFF;
     if (pSlot == NULL) return 0;
+    pTable = (u8*)pStreamFile + 4;
     {
-        s32 count = *(s32*)(pStreamFile);
-        u8* pTable = pStreamFile + 4;
-        u8* pEntry = pTable + ((pSlot - pStreamFile - count * 8 - 0x24) >> 11) * 8;
-        u16 val = *(u16*)(pEntry);
-        *(u16*)(pEntry) = 0;
-        return val;
+        /* retail: unsigned offset of the slot from the data area */
+        u8* pData = (u8*)pStreamFile + *(s32*)pStreamFile * 8 + 0x24;
+        slotIdx = (u32)(pSlot - pData) >> 11;
     }
+    result = *(u16*)(pTable + slotIdx * 8);
+    *(u16*)(pTable + slotIdx * 8) = 0;
+    return result;
 }
-#endif
 
 extern void* g_ArchiveCurStreamFile;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_800294B4);
-#else
 s32 func_800294B4(void* pSlot) {
     void* pStreamFile = g_ArchiveCurStreamFile;
     u8* pTable;
@@ -814,16 +812,20 @@ s32 func_800294B4(void* pSlot) {
     if (pStreamFile == NULL) return 0xFFFF;
     if (pSlot == NULL) return 0;
     pTable = (u8*)pStreamFile + 4;
-    slotIdx = ((u8*)pSlot - ((u8*)pStreamFile + *(s32*)pStreamFile * 8 + 0x24)) >> 11;
+    {
+        /* retail: unsigned offset of the slot from the data area */
+        u8* pData = (u8*)pStreamFile + *(s32*)pStreamFile * 8 + 0x24;
+        slotIdx = (u32)((u8*)pSlot - pData) >> 11;
+    }
     result = *(u16*)(pTable + slotIdx * 8);
     count = *(u16*)((u8*)pSlot + 6);
     for (i = count; i > 0; i--) {
         *(u16*)(pTable + (slotIdx + i) * 8 - 8) = 0;
     }
-    ArchiveConsolidateStreamFileEntry(pSlot);
+    /* takes the section index (retail passes slotIdx, not the slot pointer) */
+    ArchiveConsolidateStreamFileEntry(slotIdx);
     return result;
 }
-#endif
 
 s32 ArchiveReadFileFromCdSector(s32 sector, void* pDestBuffer, s32 fileSize, s32 arg3, u32 flags) {
     if (g_ArchiveDebugTable) {

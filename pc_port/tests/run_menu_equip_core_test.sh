@@ -9,7 +9,7 @@ from pathlib import Path
 import hashlib,re
 b=Path('disc/menu.bin').read_bytes()
 assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d'
-a=next(Path('asm/menu').glob('*matchings/main/misc/func_801E05D0.s')).read_text()
+a=next(Path('asm/menu').glob('*matchings/main/misc*/func_801E05D0.s')).read_text()
 raw=b''.join(bytes.fromhex(w) for addr,w in re.findall(r'/\* [0-9A-F]+ ([0-9A-F]+) ([0-9A-F]{8}) \*/',a) if 0x801e05d0<=int(addr,16)<0x801e0f78)
 assert raw==b[0x1b5d0:0x1bf78]
 s=Path('src/menu/main/misc.c').read_text();a=s.index('void func_801E05D0(u8')

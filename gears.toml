@@ -139,10 +139,22 @@ name = "MenuG0"
 # retail: rodata 0x0-0xC4 plus about 40 text words.)
 # Key is prefixed with src/ so it cannot match shop_menu/ or
 # member_change_menu/ paths (preset keys are substring matches).
+#
+# Compiler: gcc 2.6.3 (psx), not the Default 2.7.2.  Retail menu writes a
+# constant-divide's high word straight into the result register (`mfhi $v0`),
+# which 2.7.2 never does (it goes through a scratch).  2.6.3 matches it, is a
+# strict superset of 2.7.2's matches on the original all-C misc.c (205 vs
+# 204), and also unlocks bodies 2.7.2 can't reach (e.g. func_801D84B4,
+# func_801E4928, func_801D1258, func_801DE29C).
+# tools/gcc-2.6.3-psx/cc1 comes from
+#   https://github.com/decompals/old-gcc/releases/download/0.12/gcc-2.6.3-psx.tar.gz
+# (the decomp.me "gcc2.6.3-psx" ps1 compiler).
+#   sha256(cc1) = 16696ec7b00a15c76bb5c245904799b547af59028416896e833eabc2939ed17a
 build_variables = {
+    gcc = "gcc-2.6.3-psx",
     gp_flag = "-G0"
 }
-paths = [ "src/menu/main/misc." ]
+paths = [ "src/menu/main/misc.", "src/menu/main/misc2.", "src/menu/main/misc3." ]
 
 [[build_preset]]
 name = "XenoLiteral"
@@ -193,3 +205,30 @@ build_variables = {
 paths = [
     "{binary}/graphics/line_scroll.",
 ]
+
+[[build_preset]]
+name = "BattleGcc263"
+# battle TUs whose retail code matches gcc 2.6.3 (psx) rather than the Default
+# 2.7.2 (the same compiler as the src/menu/main/misc. preset above).  Each of
+# these holds a function whose draft matches only under 2.6.x; every listed TU
+# stays byte-exact as a whole under 2.6.3 (checked by rebuilding battle.bin).
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [
+    "src/battle/main40_p2.",
+    "src/battle/main33.",
+    "src/battle/main53.",
+    "src/battle/main51.",
+    "src/battle/main2.",
+]
+
+[[build_preset]]
+name = "Bcf1Gcc263"
+# battle_command_file1 (archive 0x20 file 1) is gcc 2.6.3 (psx) code: 23 of its
+# INCLUDE_ASM bodies match only under 2.6.x, and the TUs stay byte-exact as a
+# whole under it.
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [ "src/battle_command_file1/" ]

@@ -5,10 +5,12 @@ Replace `INCLUDE_ASM("asm/OV/nonmatchings/SEG", name);` lines (or the
 `"../asm/..."` spelling) in src/OV/SEG.c
 with the cleaned m2c_try.py drafts: M2C_FIELD becomes a raw-offset access,
 M2C_UNK becomes s32, the drafts' externs/prototypes are merged at the top of
-the file's first `#ifndef XENO_PC_PORT` block (skipping anything the file's
+a retail-only block after the file's first #include run (skipping anything the file's
 headers already declare, and using each inserted definition's own signature
 as its prototype), and an extern whose type conflicts with one already in
-scope is read through `(*(T*)&sym)`.  Rebuild and compare afterwards.
+scope is read through `(*(T*)&sym)`.  Every inserted body is wrapped in
+#ifndef XENO_PC_PORT, so port-compiled TUs (e.g. battle host TUs) keep
+their port view unchanged.  Rebuild and compare afterwards.
 
 --inner: for a site shaped `#ifndef XENO_PC_PORT / INCLUDE_ASM / #else /
 <port definition> / #endif`, fold the draft into that definition as its
@@ -28,16 +30,32 @@ D=os.path.join(CACHE,'m2c',OV,SEG)
 os.makedirs(CACHE,exist_ok=True)
 INC_C=os.path.join(CACHE,'_inc.c'); INC_I=os.path.join(CACHE,'_inc.i')
 p=f'src/{OV}/{SEG}.c'; s=open(p).read()
+_pending=[n for n in names if f'/nonmatchings/{SEG}", {n});' in s]
+if len(_pending)!=len(names):
+    print('already C (skipped):',' '.join(n for n in names if n not in _pending))
+names=_pending
 # identifiers declared by the file's includes
 incs=''.join(l+'\n' for l in s.split('\n') if l.startswith('#include'))
-open(INC_C,'w').write(incs+'#include "system/memory.h"\n')
+open(INC_C,'w').write(incs)
 subprocess.run(['tools/gcc-2.7.2-psx/cpp','-Iinclude','-D_LANGUAGE_C','-DSKIP_ASM','-P','-undef','-lang-c','-nostdinc',INC_C,INC_I],capture_output=True)
 hdrdecl=set(re.findall(r'\b(\w+)\s*\(',open(INC_I).read()))|set(re.findall(r'\b(\w+)\s*(?:\[[^\]]*\])*\s*;',open(INC_I).read()))
 types={}; arrays=set()
-for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',s,re.M):
+# declarations visible in this TU: the file itself plus any #include "x.c"
+# (BATTLE_SUB/FIELD_SUB run wrappers include the TU that holds them)
+decl_src=s
+for inc in re.findall(r'^#include "([\w./]+\.c)"',s,re.M):
+    ip=os.path.join(os.path.dirname(p),inc)
+    if os.path.exists(ip): decl_src+='\n'+open(ip).read()
+for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',decl_src,re.M):
     types[m[2]]=m[1]
     if m[3]: arrays.add(m[2])
-seen=set(types)|set(re.findall(r'^extern [^;]*?\b(\w+)(?:\[\])?\s+asm\(',s,re.M))|set(re.findall(r'^\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',s,re.M))
+# the TU's own declarations, re-emitted (identically) in the top block when a
+# draft uses a symbol or callee declared only further down the file
+file_types=dict(types); file_arrays=set(arrays); reemitted=set()
+file_sigs={}
+for m in re.finditer(r'^(?:extern\s+)?(\w[\w\s\*]*?\b(\w+)\s*\([^;{)]*\))\s*(?:;|\{)',decl_src,re.M):
+    if not m[1].split()[0] in ('if','while','for','switch','return','else'): file_sigs.setdefault(m[2],m[1])
+seen=set(types)|set(re.findall(r'^extern [^;]*?\b(\w+)(?:\[\])?\s+asm\(',decl_src,re.M))|set(re.findall(r'^(?:extern\s+)?\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',decl_src,re.M))|set(re.findall(r'^\w[\w\s\*]*?\b(\w+)\([^;]*\)\s*\{',decl_src,re.M))
 externs=[]
 def clean(c):
     while 'M2C_FIELD(' in c:
@@ -103,6 +121,8 @@ for n in names:
                             externs.append(f'extern {mt} {alias}[] asm("{sym}");'); seen.add(alias)
                         aliases[sym]=alias
                     continue
+                if sym in file_types and sym not in reemitted:
+                    externs.append(f'extern {file_types[sym]} {sym}{"[]" if sym in file_arrays else ""};'); reemitted.add(sym)
                 if sym not in seen:
                     externs.append(m[1]); seen.add(sym); types[sym]=mt
                     if m[4]: arrays.add(sym)
@@ -116,6 +136,8 @@ for n in names:
                 elif types.get(sym) is not None and types[sym].replace(' ','')!=mt.replace(' ',''): conflicts[sym]=mt
                 continue
             if m2:
+                if m2[2] in file_sigs and m2[2] not in reemitted and m2[2] not in names and m2[2] not in hdrdecl:
+                    externs.append(file_sigs[m2[2]]+';'); reemitted.add(m2[2])
                 if m2[2] not in seen and m2[2] not in hdrdecl: externs.append(m2[1]+';'); seen.add(m2[2])
                 continue
             if re.match(r'^\w.*\)\s*\{',l): inbody=True
@@ -126,13 +148,22 @@ for n in names:
     for sym,al in aliases.items(): fn=re.sub(r'\b'+sym+r'\b',al,fn)
     old=[x for x in (f'INCLUDE_ASM("asm/{OV}/nonmatchings/{SEG}", {n});\n',
                      f'INCLUDE_ASM("../asm/{OV}/nonmatchings/{SEG}", {n});\n') if s.count(x)==1]
+    if not old:  # e.g. a folder macro such as menu's INCLUDE_ASM(MENU_ASM, name)
+        old=[m[0] for m in re.finditer(r'INCLUDE_ASM\([^,()]+, '+n+r'\);\n',s)]
+        old=old if len(old)==1 else []
     assert old,n
     old=old[0]
     folded=fold_inner(s,old,fn,n) if INNER else None
     if folded=='skip': continue
-    s=folded if folded is not None else s.replace(old,'\n'+fn+'\n')
-i=s.index('#ifndef XENO_PC_PORT\n')+len('#ifndef XENO_PC_PORT\n')
+    s=folded if folded is not None else s.replace(old,'\n#ifndef XENO_PC_PORT\n'+fn+'#endif\n\n')
+# externs/prototypes: a retail-only block after the file's first run of
+# #include lines, so every BATTLE_SUB/FIELD_SUB run of the TU sees them.
+lines=s.split('\n'); k=next((i for i,l in enumerate(lines) if l.startswith('#include')),0)
+while k<len(lines) and (lines[k].startswith('#include') or not lines[k].strip()): k+=1
 add=externs+protos
-if add: s=s[:i]+'\n'.join(add)+'\n\n'+s[i:]
-if '#include "system/memory.h"' not in s: s=s.replace('#include "common.h"\n','#include "common.h"\n#include "system/memory.h"\n',1)
+if add:
+    lines[k:k]=['#ifndef XENO_PC_PORT']+add+['#endif','']
+    s='\n'.join(lines)
+# (no header is added: m2c's own externs cover the callees, and a header
+# can clash with a TU's own declarations)
 open(p,'w').write(s); print(len(names),'inserted;',len(externs),'externs;',len(protos),'protos')

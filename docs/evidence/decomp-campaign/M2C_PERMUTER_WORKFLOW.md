@@ -81,3 +81,23 @@ so m2c_drive always rebuilds and compares the whole overlay.
   draft becomes the retail arm of the existing definition rather than a
   second definition. Menu compiles with `-G0` (gears.toml MenuG0), so set
   `XENO_GP_FLAG=-G0` for m2c_try/m2c_insert there.
+- **Survey other cc1 builds when a mismatch is systematic.** If the same
+  codegen difference shows up across many unrelated functions and no source
+  shape moves it (menu: every magic-multiply division wrote `mfhi` into a
+  scratch register where retail writes the result register), the TU was
+  probably built with a different compiler. The decomp.me ps1 compilers are
+  Linux cc1 builds from
+  `https://github.com/decompals/old-gcc/releases` (the Dockerfiles under
+  `platforms/ps1/` in `decompme/compilers` give the exact tarball per
+  version). Download just the cc1 of each candidate (a few MB each) into
+  `~/.cache/xeno/compilers/`, preprocess the TU once, and compile that `.i`
+  with each cc1 using the TU's flags. Then count per-function matches against
+  retail twice: once on the current source, and once on an early, all-C
+  version of the TU (so already-landed shapes tuned for one compiler don't
+  bias the vote). Pick a build that is a superset on the all-C source and
+  fixes the systematic difference; for menu that was gcc-2.6.3-psx (205 vs
+  204, plus seven parked functions matching outright). Then add the cc1 under
+  `tools/gcc-X-psx/` and select it with a per-TU preset (gears.toml
+  `MenuG0`), recording the URL and cc1 sha256 in the preset comment. Re-fit
+  the few bodies that were tuned for the old compiler, and gate on a full
+  rom-check.

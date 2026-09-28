@@ -9,7 +9,7 @@ from pathlib import Path
 import hashlib
 b=Path('disc/menu.bin').read_bytes()
 import re
-for addr,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',next(Path('asm/menu').glob('*matchings/main/misc/func_801E36D4.s')).read_text()):
+for addr,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',next(Path('asm/menu').glob('*matchings/main/misc*/func_801E36D4.s')).read_text()):
  off=int(addr,16)-0x801c5000
  assert b[off:off+4]==bytes.fromhex(h)
 assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d'

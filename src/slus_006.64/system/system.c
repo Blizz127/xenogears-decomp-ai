@@ -383,19 +383,24 @@ extern u8 D_8005A0E4[];
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
 #else
+/* Expands glyph indices to their one- or two-byte codes in D_8005A0E4. */
 void func_80033ABC(u16* pIndices) {
-    u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     u8* pOut = D_8005A0E4;
     u16 idx = pIndices[0];
+    u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
+
     while (idx != 0xFFFF) {
-        u8* pEntry = pTable + idx * 2;
+        u8* pEntry = idx * 2 + pTable;
+
         u8 first = pEntry[0];
-        u8 second = pEntry[1];
-        /* Retail 80033AFC is a branch-delay-slot increment: both the
-         * single-byte and double-byte glyph paths consume this index. */
+        u8 second;
+
         pIndices++;
         if (first != 0) {
             *pOut++ = first;
+            second = pEntry[1];
+        } else {
+            second = pEntry[1];
         }
         *pOut++ = second;
         idx = pIndices[0];
@@ -439,28 +444,31 @@ s32 func_80033BAC(u8 a, u8 b) {
     return 0x8000;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
-#else
+/* Converts a script string to glyph indices (one-byte codes below
+ * D_8005934C, two-byte codes otherwise); -1 on an unknown pair. */
 s32 func_80033C20(u8* pString, u16* pOutIndices) {
     u8 c = *pString++;
+    u8 first;
+    u8 second;
+    u16 idx;
+
     while (c != 0) {
-        u8 next;
-        u16 idx;
-        if (c < D_8005934C) {
-            next = c;
-            c = 0;
+        if ((s32)c < (s32)D_8005934C) {
+            first = 0;
+            second = c;
         } else {
-            next = *pString++;
+            first = c;
+            second = *pString++;
         }
-        idx = func_80033BAC(c, next);
+        idx = func_80033BAC(first, second);
         *pOutIndices++ = idx;
-        if (idx == 0x8000) return -1;
+        if (idx == 0x8000) {
+            return -1;
+        }
         c = *pString++;
     }
     return 0;
 }
-#endif
 
 s32 func_80033CD0(void* arg0) {
     if (*(u16*)((u8*)arg0 + 0x10) & 0x8) {
@@ -995,30 +1003,28 @@ s32 func_800347C0(void* arg0) {
     return *(s16*)((u8*)arg0 + 0x06) + row * *(s16*)((u8*)arg0 + 0x14);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034800);
-#else
+/* Sets the RGB of the four glyph quads of every text row of a window. */
 void func_80034800(void* arg0, s32 r, s32 g, s32 b) {
-    u8* pWindow = arg0;
-    u8* pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
+    u8 unused[1]; /* retail reserves an 8-byte frame it never touches */
     s32 i;
 
-    for (i = 0; i < *(s16*)(pWindow + 0x0C); i++, pRows += 0x60) {
-        pRows[0x04] = r;
-        pRows[0x18] = r;
-        pRows[0x2C] = r;
-        pRows[0x40] = r;
-        pRows[0x05] = g;
-        pRows[0x19] = g;
-        pRows[0x2D] = g;
-        pRows[0x41] = g;
-        pRows[0x06] = b;
-        pRows[0x1A] = b;
-        pRows[0x2E] = b;
-        pRows[0x42] = b;
+    for (i = 0; i < *(s16*)((u8*)arg0 + 0x0C); i++) {
+        u8* pRow = (u8*)(uintptr_t)*(u32*)((u8*)arg0 + 0x28) + i * 0x60;
+
+        pRow[0x40] = r;
+        pRow[0x2C] = r;
+        pRow[0x18] = r;
+        pRow[0x04] = r;
+        pRow[0x41] = g;
+        pRow[0x2D] = g;
+        pRow[0x19] = g;
+        pRow[0x05] = g;
+        pRow[0x42] = b;
+        pRow[0x2E] = b;
+        pRow[0x1A] = b;
+        pRow[0x06] = b;
     }
 }
-#endif
 
 void func_80034874(void* arg0, u8 arg1) {
     *(u8*)((u8*)arg0 + 0x6E) = arg1;

@@ -6,9 +6,23 @@
 */
 
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "system/memory.h"
+#endif
 #include "system/archive.h"
 #include "psyq/pc.h"
 #include "psyq/libcd.h"
+#ifndef XENO_PC_PORT
+s32 ArchiveDataSync();
+extern s32 ArchiveCdDriveCommandHandler__a_s32[] asm("ArchiveCdDriveCommandHandler");
+extern s32 D_8004FE18__a_s32[] asm("D_8004FE18");
+extern s32 g_ArchiveCdCurLocation__a_s32[] asm("g_ArchiveCdCurLocation");
+extern s32 g_ArchiveCdDriveState__a_s32[] asm("g_ArchiveCdDriveState");
+extern s32 g_ArchiveDebugTable__a_s32[] asm("g_ArchiveDebugTable");
+extern s32 g_CurArchiveOffset__a_s32[] asm("g_CurArchiveOffset");
+void func_8002A2D0(s32 arg0);
+#endif
+
 #ifdef XENO_PC_PORT
 #include <stdint.h>
 #endif
@@ -481,7 +495,31 @@ int* ArchiveAllocStreamFile(int numEntries, int allocMode) {
 
 #ifndef XENO_PC_PORT
 /* retail func_8002A2D0; the port names it ArchiveCdSeekOrPause */
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_8002A2D0);
+
+#ifndef XENO_PC_PORT
+void func_8002A2D0(s32 arg0) {
+    s32 *var_a1;
+    s32 var_a0;
+
+    if ((g_ArchiveDebugTable__a_s32[0] == 0) && (ArchiveDataSync() == 0)) {
+        D_8004FE18__a_s32[0] = g_CurArchiveOffset__a_s32[0];
+        if (arg0 > 0) {
+            CdIntToPos(ArchiveDecodeSector(arg0), g_ArchiveCdCurLocation__a_s32);
+            g_ArchiveCdDriveState__a_s32[0] = 3;
+            CdSyncCallback(ArchiveCdDriveCommandHandler__a_s32);
+            var_a0 = 2;
+            var_a1 = g_ArchiveCdCurLocation__a_s32;
+        } else {
+            g_ArchiveCdDriveState__a_s32[0] = 5;
+            CdSyncCallback(ArchiveCdDriveCommandHandler__a_s32);
+            var_a0 = 9;
+            var_a1 = NULL;
+        }
+        CdControlF(var_a0, var_a1);
+    }
+}
+#endif
+
 #else
 void ArchiveCdSeekOrPause(int entryIndex) {
     u_char nCommand;

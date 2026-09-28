@@ -11,7 +11,7 @@ b=pathlib.Path('disc/menu.bin').read_bytes()
 assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d'
 for name in ['801CA750','801CA480','801CA5F0','801C9EF4','801CA1D4']:
     kind='nonmatchings' if name in ['801C9EF4','801CA1D4'] else 'matchings'
-    s=next(pathlib.Path('asm/menu').glob(f'*matchings/main/misc/func_{name}.s')).read_text()
+    s=next(pathlib.Path('asm/menu').glob(f'*matchings/main/misc*/func_{name}.s')).read_text()
     pins=re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',s)
     assert pins,name
     for a,h in pins:

@@ -4522,6 +4522,11 @@ u8* func_8003D110(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D110);
 #endif
 
+/* decomp-permuter (gcc-2.6.0, 2026-09-28) found only a fake-match for this
+ * function: the three pre-division statements duplicated under an
+ * `if (pScript) {...} else {...}` with identical branches. Byte-exact but not
+ * faithful C, so not committed; the plain body below is 4 bytes short (the
+ * `divisor` copy of steps lands in a different register). */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D13C);
 #else
