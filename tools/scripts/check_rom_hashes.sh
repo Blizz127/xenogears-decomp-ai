@@ -99,15 +99,6 @@ while read -r pin path; do
     fi
 done < config/checksum.sha
 
-# Informational only: menu.bin is a WIP overlay whose pin (above) is the
-# retail hash; print its full progress hash so the nav arc's guard value is
-# visible in the same place.
-if [ -f build/out/menu.bin ]; then
-    printf 'info  %-36s %s (%s bytes) [WIP overlay progress hash]\n' \
-        build/out/menu.bin "$(sha256sum build/out/menu.bin | cut -c1-16)" \
-        "$(stat -c%s build/out/menu.bin)"
-fi
-
 echo
 if [ "$fails" -eq 0 ]; then
     echo "rom-check: ALL PINNED ARTIFACTS MATCH RETAIL."

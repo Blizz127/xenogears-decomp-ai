@@ -110,26 +110,49 @@ build_variables = {
 }
 paths = [
     "{binary}/system/memory.",
-    "{binary}/system/work_list.",
-    "{binary}/system/rendering.",
     "{binary}/system/heap_debug.",
+]
+
+[[build_preset]]
+name = "SdataSmallLiteral"
+# SdataSmall's -G handling, plus the literal `li` flavour: retail work_list,
+# rendering and graphics never use the lui/ori `li` expansion (every small
+# constant load is `addiu $r,$zero,K`, 0 `ori $r,$zero,K` in their asm).
+build_variables = {
+    maspsx_flags = "--dont-expand-li --dont-force-G0 --use-comm-section --run-assembler",
+}
+paths = [
+    "{binary}/system/rendering.",
     "{binary}/system/graphics.",
 ]
 
 [[build_preset]]
 name = "MenuG0"
 # menu.bin never addresses anything through $gp, so its cc1 runs with -G0 like
-# the other overlays.  This also matters for layout: with optimisation on and
-# -G > 0, cc1's MIPS gp-opt mode buffers every function body in a temp file and
-# appends it after the rest of the output, so all file-scope __asm__
-# (INCLUDE_ASM) blocks land ahead of every C body.  Under -G0 they stay in
-# source order and one TU can interleave assembly and C like retail.
+# the other overlays.  (-G8 used to hoist every INCLUDE_ASM ahead of the C
+# bodies.  include/include_asm.h now wraps INCLUDE_ASM in a function, which
+# keeps source order either way, but -G8 still leaves menu.bin 204 bytes off
+# retail: rodata 0x0-0xC4 plus about 40 text words.)
 # Key is prefixed with src/ so it cannot match shop_menu/ or
 # member_change_menu/ paths (preset keys are substring matches).
 build_variables = {
     gp_flag = "-G0"
 }
 paths = [ "src/menu/main/misc." ]
+
+[[build_preset]]
+name = "XenoLiteral"
+# Default preset plus the literal `li` flavour. Retail temp1's compiled code
+# encodes every small constant load as `addiu $r,$zero,K`; its only
+# `ori $r,$zero,K` loads are in the trailing line-scroll bodies
+# (func_8002709C/800273C4/800278F8), which are INCLUDE_ASM.
+build_variables = {
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
+}
+paths = [
+    "{binary}/system/temp1.",
+    "{binary}/system/work_list.",
+]
 
 [[build_preset]]
 name = "XenoMain"

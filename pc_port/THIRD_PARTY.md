@@ -25,6 +25,17 @@ pin, then update `psycross.lock` and this file together.
 The patches in `pc_port/patches/` are modifications of PsyCross and are
 distributed under the same MIT license.
 
+### Tables inside PsyCross
+
+PsyCross's GTE emulation (`src/psx/LIBGTE.C`, `src/gte/`) carries its own
+`rcossin_tbl` (sine/cosine) and `SQRT` tables, which are byte-identical to the
+corresponding tables in the retail Psy-Q libgte. They are part of the MIT
+third-party project, not added by this repo, and
+`tools/analysis/psyq_port_guard.py` exempts symbols defined by
+`libpsycross.a` from its binary table check. Everything the port adds on top
+(`pc_port/src/psyq_compat*`, `gte_normalize_table.h`) is written from the
+documented interface or computed from its definition.
+
 ### License text (from PsyCross `LICENSE` at the pinned commit)
 
 ```
