@@ -76,6 +76,33 @@ def port_only_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
+def retail_only_spans(text: str) -> list[tuple[int, int]]:
+    """Byte ranges whose preprocessor branch is taken only WITHOUT XENO_PC_PORT
+    (e.g. `#ifndef XENO_PC_PORT` bodies that the matching build compiles).
+    The port never sees a definition there, so it cannot own a host leaf."""
+    stack: list[list] = []  # [mentions_port, branch_is_retail_only, start]
+    spans: list[tuple[int, int]] = []
+    for m in CONDITIONAL_RE.finditer(text):
+        kind = m.group(1)
+        if kind in ("ifdef", "ifndef", "if"):
+            mentions = "XENO_PC_PORT" in m.group(0)
+            retail = mentions and (kind == "ifndef" or "!" in m.group(0))
+            stack.append([mentions, retail, m.end()])
+        elif kind == "else" and stack:
+            if stack[-1][0]:
+                if stack[-1][1]:
+                    spans.append((stack[-1][2], m.start()))
+                stack[-1][1] = not stack[-1][1]
+                stack[-1][2] = m.end()
+        elif kind == "elif" and stack:
+            stack[-1][1] = False
+        elif kind == "endif" and stack:
+            mentions, retail, start = stack.pop()
+            if retail:
+                spans.append((start, m.start()))
+    return spans
+
+
 def in_spans(offset: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= offset < end for start, end in spans)
 
@@ -99,9 +126,12 @@ def definitions() -> dict[str, list[tuple[str, bool]]]:
     for path in sorted(BATTLE_SRC.glob("*.c")):
         text = path.read_text(errors="ignore")
         port_only = port_only_spans(text)
+        retail_only = retail_only_spans(text)
         for m in DEFINITION_RE.finditer(text):
             if not is_definition(text, m.end() - 1):
                 continue
+            if in_spans(m.start(), retail_only):
+                continue  # matching-build-only body: invisible to the port
             found.setdefault(m.group(3), []).append(
                 (path.name, in_spans(m.start(), port_only))
             )
