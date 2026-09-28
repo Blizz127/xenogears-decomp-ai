@@ -34,14 +34,14 @@ the produced retail module is byte-identical, not that every function is C.
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.
-The current report measures **287,400 / 1,383,684 code bytes (20.77%)** and
-**1,915 / 4,464 functions (42.90%)** as matching C. The aggregate covers all
+The current report measures **287,540 / 1,383,684 code bytes (20.78%)** and
+**1,916 / 4,464 functions (42.92%)** as matching C. The aggregate covers all
 targets below; the Psy-Q subset overlaps the executable row.
 
 | Target | Matching C functions | Function progress | Matching C bytes | Byte progress | Whole-binary SHA gate |
 |---|---:|---:|---:|---:|---|
 | Main executable (`slus_006.64`) | 813 / 1,223 | 66.48% | 95,180 / 218,072 | 43.65% | FAIL |
-| Field overlay | 569 / 884 | 64.37% | 91,368 / 253,052 | 36.11% | FAIL |
+| Field overlay | 570 / 884 | 64.48% | 91,508 / 253,052 | 36.16% | FAIL |
 | Member-change menu | 67 / 67 | 100.00% | 24,936 / 24,936 | 100.00% | PASS |
 | Shop menu | 104 / 118 | 88.14% | 37,460 / 53,008 | 70.67% | PASS |
 | Main menu | 70 / 307 | 22.80% | 10,784 / 148,360 | 7.27% | FAIL |
@@ -62,8 +62,8 @@ the exact 604-byte `func_80085C90`, exact 140-byte `func_8008CD48`, exact
 88-byte `func_800ACC58`, exact 304-byte `func_8008E8C8`, exact 152-byte
 `func_8009FE4C`, exact 120-byte `func_8009FDD4`, exact 964-byte
 `FieldParticleRender`, exact 168-byte `func_80095CC4`, exact 220-byte
-`func_80095D6C`, and exact 784-byte `func_800A7948`. The field particle TU is
-now 15/15 C functions.
+`func_80095D6C`, exact 784-byte `func_800A7948`, and exact 140-byte
+`func_80086BA8`. The field particle TU is now 15/15 C functions.
 **7 of 10** pinned artifacts pass. The three
 failures are the executable, field overlay, and main menu; their hashes remain
 red and must be repaired in code. `MenuExecute` is exact at the object level,

@@ -3490,8 +3490,12 @@ void func_80086BA8(void) {
     for (i = 0; i < 3; i++) {
         s16 actorIdx = D_800B22E2[i];
         if (actorIdx != -1) {
-            u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
-            u32 pSub = *(u32*)(pFieldActor + 0x4C);
+            u32 actorAddr = (u32)(actorIdx * sizeof(FieldActor));
+            u8* pFieldActor;
+            u32 pSub;
+            actorAddr += (u32)(uintptr_t)g_FieldActors;
+            pFieldActor = (u8*)(uintptr_t)actorAddr;
+            pSub = *(u32*)(pFieldActor + 0x4C);
             func_80086A1C(i, (u8*)(pSub + 0x20));
         }
     }
