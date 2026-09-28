@@ -12,7 +12,7 @@ read -r hash _ < <(dd if=disc/SLUS_006.64 bs=1 skip=$((0x8004fdc0-0x8000f800)) c
 test "$hash" = 50fafc982a2c039a6e831df3e512a208cae6e222cd4423a3d070c78d567bf9b4
 read -r hash _ < <(dd if=disc/SLUS_006.64 bs=1 skip=$((0x80043a1c-0x8000f800)) count=$((0x2a8)) status=none | sha256sum)
 test "$hash" = fb063ed80a14270d731dc1f70fe90a5d32e9d79dc9b5c93796ffcab9a72072d8
-sed -n '/^s32 func_80025FA8(/,/^}/p' src/slus_006.64/system/temp1.c > "$OUT/body.c"
+sed -n '/^s32 func_80025FA8(/,/^}/p' src/slus_006.64/system/temp1f.c > "$OUT/body.c"
 sed -n -e '/^u_short GetClut(/,/^}/p' -e '/^u_short GetTPage(/,/^}/p' \
     -e '/^void SetSemiTrans(/,/^}/p' -e '/^void SetPolyFT4(/,/^}/p' \
     -e '/^void SetShadeTex(/,/^}/p' pc_port/extern/PsyCross/src/psx/LIBGPU.C > "$OUT/gpu.c"

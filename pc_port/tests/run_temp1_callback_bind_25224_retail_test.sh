@@ -35,7 +35,7 @@ build_and_run() {
     shift
     "$CC" "${BASE[@]}" "${INC[@]}" -w -fno-inline "$@" \
         -fno-sanitize=object-size \
-        -c src/slus_006.64/system/temp1.c -o "$BUILD_DIR/$name.temp1.o"
+        -c src/slus_006.64/system/temp1e.c -o "$BUILD_DIR/$name.temp1.o"
     "$CC" "${BASE[@]}" "${INC[@]}" -Wall -Wextra -Werror "$@" \
         -c pc_port/tests/temp1_callback_bind_25224_retail_test.c \
         -o "$BUILD_DIR/$name.test.o"
