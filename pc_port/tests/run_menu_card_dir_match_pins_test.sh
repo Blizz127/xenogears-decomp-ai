@@ -24,4 +24,5 @@ mutant() {
     echo "REJECTED $name"
 }
 mutant stride-0x28 's/\* 0x5C;/* 0x28;/'
-mutant fixed-byte 's/pData\[0x4FCE + j\]/pData[port * 0x10 + i + 0x4FCE]/'
+mutant fixed-byte 's/pData\[MENU_CARD_OFF(0x4FCE) + j\]/pData[port * 0x10 + i + MENU_CARD_OFF(0x4FCE)]/'
+mutant raw-offsets 's/MENU_CARD_OFF(\(0x[0-9A-F]*\))/\1/g'

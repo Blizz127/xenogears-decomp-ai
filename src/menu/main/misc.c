@@ -974,13 +974,6 @@ void func_801C6D4C(void) {
 /* B1b: zero the 14-byte scratch block at unk4CC (three words + two bytes,
  * transcribed in asm order). */
 void func_801C6D5C(void) {
-#ifdef XENO_PC_PORT
-    g_Menu->unk4CC[0xC] = 0;
-    *(u32*)&g_Menu->unk4CC[0] = 0;
-    *(u32*)&g_Menu->unk4CC[4] = 0;
-    g_Menu->unk4CC[0xD] = 0;
-    *(u32*)&g_Menu->unk4CC[8] = 0;
-#else
     SystemMenu* menu = g_Menu;
     menu->unk4CC[0xC] = 0;
     {
@@ -990,7 +983,6 @@ void func_801C6D5C(void) {
         menu2->unk4CC[0xD] = 0;
     }
     *(u32*)&g_Menu->unk4CC[8] = 0;
-#endif
 }
 
 /* A 16-entry CLUT row at VRAM (0, 0x1C0): RECT {0, 0x1C0, 0x10, 1}. */
@@ -1708,17 +1700,10 @@ extern void func_80039DB8(s32 packedId);
  * packs the resource SoundFile's bank id (unk2E4->unk14) with the effect id. */
 #endif
 void func_801C8574(s32 soundId) {
-#ifdef XENO_PC_PORT
     if (g_Menu->unk32A) {
         func_80039DB8(((s32)*(u16*)((u8*)g_Menu->unk2E4 + 0x14) << 16) |
                       (soundId & 0xFF));
     }
-#else
-    if (g_Menu->unk32A) {
-        func_80039DB8(((s32)*(u16*)((u8*)g_Menu->unk2E4 + 0x14) << 16) |
-                      (soundId & 0xFF));
-    }
-#endif
 }
 
 extern u16 D_801E96C8[];
@@ -1753,11 +1738,7 @@ extern u16 D_801E96C8[];
 /* Nav N3a-A1a: mask lookup -- D_801E96C8[index] & mask.  Leaf, no frame. */
 #endif
 s32 func_801C8640(s32 mask, s32 index) {
-#ifdef XENO_PC_PORT
     return D_801E96C8[index & 0xFF] & mask;
-#else
-    return D_801E96C8[index & 0xFF] & mask;
-#endif
 }
 
 /* Bit-select: is character `index` present in party mask `mask`?
@@ -2328,16 +2309,16 @@ void func_801C9270(u8 port) {
     u8* pTable;
 
     for (i = 0; i < 0x10; i++) {
-        ((u8*)g_Menu->unk32C)[port * 0x10 + i + 0x4F8E] = 0;
+        ((u8*)g_Menu->unk32C)[port * 0x10 + i + MENU_CARD_OFF(0x4F8E)] = 0;
     }
     pTable = D_801EA6D0 + port * 0x10;
     for (i = 0; i < 0xF; i++) {
         u8* pData = (u8*)g_Menu->unk32C;
-        u8* pSlot = pData + pData[port * 0x10 + i + 0x4FAE] * 0x5C;
+        u8* pSlot = pData + pData[port * 0x10 + i + MENU_CARD_OFF(0x4FAE)] * 0x5C;
         s32 match = 1;
 
         for (j = 0; j < 0xC; j++) {
-            if (pSlot[0x18 + j] != pData[0x4FCE + j]) {
+            if (pSlot[0x18 + j] != pData[MENU_CARD_OFF(0x4FCE) + j]) {
                 match = 0;
                 break;
             }
@@ -2346,8 +2327,8 @@ void func_801C9270(u8 port) {
             u8* block;
 
             pData = (u8*)g_Menu->unk32C;
-            pData[port * 0x10 + i + 0x4F8E] = 1;
-            block = pData + pData[port * 0x10 + i + 0x4FAE] * 0x200 + 0xB94;
+            pData[port * 0x10 + i + MENU_CARD_OFF(0x4F8E)] = 1;
+            block = pData + pData[port * 0x10 + i + MENU_CARD_OFF(0x4FAE)] * 0x200 + MENU_CARD_OFF(0xB94);
             D_801EA6F4 = (s32)(uintptr_t)(block + 0x100);
             pTable[block[0x123]] = 1;
         }
@@ -2373,27 +2354,27 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9BCC);
  * (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801C9BCC(s32 mode) {
     u8* pData = (u8*)g_Menu->unk32C;
-    s32 selector = *(s32*)(pData + 0x4F7C);
+    s32 selector = *(s32*)(pData + MENU_CARD_OFF(0x4F7C));
     s32 result = 1;
     s32 offset;
     u8 v;
 
     switch (mode) {
     case 0:
-        if (!(*(u32*)(pData + 0x4F88) & 0xFFFF0000)) goto fail;
+        if (!(*(u32*)(pData + MENU_CARD_OFF(0x4F88)) & 0xFFFF0000)) goto fail;
         offset = D_801E981C[selector];
-        if ((pData + offset / 16)[0x4FE4] == 0) goto fail;
-        if ((pData + offset)[0x4FAE] == 0xFF) result = 0;
+        if ((pData + offset / 16)[MENU_CARD_OFF(0x4FE4)] == 0) goto fail;
+        if ((pData + offset)[MENU_CARD_OFF(0x4FAE)] == 0xFF) result = 0;
         break;
     case 1:
-        if (!(*(u32*)(pData + 0x4F88) & 0xFFFF0000)) goto fail;
+        if (!(*(u32*)(pData + MENU_CARD_OFF(0x4F88)) & 0xFFFF0000)) goto fail;
         offset = D_801E981C[selector];
-        if ((pData + offset / 16)[0x4FE4] == 0) goto fail;
-        if ((pData + offset)[0x4FAE] == 0xFF) goto fail;
-        v = (pData + offset)[0x4F8E];
+        if ((pData + offset / 16)[MENU_CARD_OFF(0x4FE4)] == 0) goto fail;
+        if ((pData + offset)[MENU_CARD_OFF(0x4FAE)] == 0xFF) goto fail;
+        v = (pData + offset)[MENU_CARD_OFF(0x4F8E)];
         goto check;
     case 2:
-        v = (pData + (s32)D_801E981C[selector] / 16)[0x4FE4];
+        v = (pData + (s32)D_801E981C[selector] / 16)[MENU_CARD_OFF(0x4FE4)];
     check:
         if (v == 0) {
         fail:
@@ -2426,28 +2407,28 @@ s32 func_801C9D34(s32 mode) {
     SystemMenu* m = g_Menu;
     u8 v;
 
-    i = (((u8*)m->unk32C)[0x4FE4] == 0) ? 0xF : 0;
-    if (((u8*)m->unk32C)[0x4FE5] == 0) {
+    i = (((u8*)m->unk32C)[MENU_CARD_OFF(0x4FE4)] == 0) ? 0xF : 0;
+    if (((u8*)m->unk32C)[MENU_CARD_OFF(0x4FE5)] == 0) {
         limit = 0xF;
     }
     for (; i < limit && found; i++) {
         switch (mode) {
         case 0:
-            if (!(*(u32*)((u8*)m->unk32C + 0x4F88) & 0xFFFF0000)) goto stop;
+            if (!(*(u32*)((u8*)m->unk32C + MENU_CARD_OFF(0x4F88)) & 0xFFFF0000)) goto stop;
             offset = D_801E981C[i];
-            if (((u8*)m->unk32C + offset / 16)[0x4FE4] == 0) break;
-            if (((u8*)m->unk32C + offset)[0x4FAE] == 0xFF) break;
+            if (((u8*)m->unk32C + offset / 16)[MENU_CARD_OFF(0x4FE4)] == 0) break;
+            if (((u8*)m->unk32C + offset)[MENU_CARD_OFF(0x4FAE)] == 0xFF) break;
             result = i;
             goto stop;
         case 1:
-            if (!(*(u32*)((u8*)m->unk32C + 0x4F88) & 0xFFFF0000)) goto stop;
+            if (!(*(u32*)((u8*)m->unk32C + MENU_CARD_OFF(0x4F88)) & 0xFFFF0000)) goto stop;
             offset = D_801E981C[i];
-            if (((u8*)m->unk32C + offset / 16)[0x4FE4] == 0) break;
-            if (((u8*)m->unk32C + offset)[0x4FAE] == 0xFF) break;
-            v = ((u8*)m->unk32C + offset)[0x4F8E];
+            if (((u8*)m->unk32C + offset / 16)[MENU_CARD_OFF(0x4FE4)] == 0) break;
+            if (((u8*)m->unk32C + offset)[MENU_CARD_OFF(0x4FAE)] == 0xFF) break;
+            v = ((u8*)m->unk32C + offset)[MENU_CARD_OFF(0x4F8E)];
             goto check;
         case 2:
-            v = ((u8*)m->unk32C + (s32)D_801E981C[i] / 16)[0x4FE4];
+            v = ((u8*)m->unk32C + (s32)D_801E981C[i] / 16)[MENU_CARD_OFF(0x4FE4)];
         check:
             if (v == 0) break;
             result = i;
@@ -3007,18 +2988,18 @@ u8 func_801CB8AC(u8 arg0) {
     u8 changed;
     u8 result;
 
-    saved[0] = ((u8*)g_Menu->unk32C)[0x4FE4];
-    saved[1] = ((u8*)g_Menu->unk32C)[0x4FE5];
+    saved[0] = ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)];
+    saved[1] = ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE5)];
     func_801D2F4C(arg0 * 3 + 0x29);
     g_Menu->input = 8;
     result = 0;
-    ((u8*)g_Menu->unk32C)[0x4FE6] = 2;
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE6)] = 2;
     changed = 0;
     if (g_Menu->input == 8) {
         do {
             func_801C7BF4();
-            if (saved[0] != ((u8*)g_Menu->unk32C)[0x4FE4] ||
-                saved[1] != ((u8*)g_Menu->unk32C)[0x4FE5]) {
+            if (saved[0] != ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)] ||
+                saved[1] != ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE5)]) {
                 changed = 1;
                 break;
             }
@@ -3344,21 +3325,12 @@ extern void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
  * (each entry is a pair; draw the renderCtx half). */
 #endif
 void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
-#ifdef XENO_PC_PORT
     s32 i;
 
     for (i = 0; i < count; i++) {
         AddPrim(&g_Menu->pGfxEnv->ot[4],
                 pList + (renderCtx + i * 2) * sizeof(POLY_FT4));
     }
-#else
-    s32 i;
-
-    for (i = 0; i < count; i++) {
-        AddPrim(&g_Menu->pGfxEnv->ot[4],
-                pList + (renderCtx + i * 2) * sizeof(POLY_FT4));
-    }
-#endif
 }
 
 /* Nav N1: the pointer-cursor sub-renderer (func_801D1B20's list).  Always
@@ -3721,22 +3693,10 @@ void func_801CEC40(void) {
 #endif
 
 void func_801CF308(void) {
-#ifdef XENO_PC_PORT
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    if (*(u8*)((u8*)pManager + 0xA) != 0) {
-        void* pData = *(void**)((u8*)pMenu + 0x354);
-        func_801CE2B4(*(s32*)((u8*)pData + 0x1404), (u8*)pData + 0x500, *(u8*)((u8*)pData + 0x1409));
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x354);
-        func_801CE2B4(*(s32*)((u8*)pData + 0x1400), (u8*)pData, *(u8*)((u8*)pData + 0x1408));
-    }
-#else
     if (((u8*)g_Menu->pManager)[0xA] != 0) {
         func_801CE2B4(g_Menu->unk354->unk1404, (u8*)g_Menu->unk354->polys500, g_Menu->unk354->unk1409);
         func_801CE2B4(g_Menu->unk354->unk1400, (u8*)g_Menu->unk354->polys0, g_Menu->unk354->unk1408);
     }
-#endif
 }
 
 /* Retail g_Menu+off is a 4-byte pointer slot.  Native SystemMenu inflates, so
@@ -4486,7 +4446,6 @@ void func_801D1160(void) {
  * until their own screens reach them. */
 #endif
 void func_801D11F0(void) {
-#ifdef XENO_PC_PORT
     func_801D0D90();
     func_801D0E20();
     func_801D0E38();
@@ -4497,18 +4456,6 @@ void func_801D11F0(void) {
     func_801D0F54();
     func_801D0FD4();
     func_801D1030();
-#else
-    func_801D0D90();
-    func_801D0E20();
-    func_801D0E38();
-    func_801D0EBC();
-    func_801D10DC();
-    func_801D1160();
-    func_801D0ED4();
-    func_801D0F54();
-    func_801D0FD4();
-    func_801D1030();
-#endif
 }
 
 /* OT slot 8 (retail +0x90 in 4-byte entries). */
@@ -4849,18 +4796,6 @@ void func_801D1914(void) {
  * selected a frame and positioned their primitive vertices. */
 #endif
 void func_801D1AAC(void) {
-#ifdef XENO_PC_PORT
-    s32 i;
-
-    for (i = 0; i < MENU_MAX_NUM_ARROW_CURSORS; i++) {
-        if (g_Menu->pManager->shouldRenderArrowCursor[i]) {
-            MenuArrowCursor* cursor = g_Menu->arrowCursors[i];
-
-            func_801CE198(1, cursor->vertices, cursor->polys,
-                          cursor->renderContext);
-        }
-    }
-#else
     s32 i;
 
     i = 0;
@@ -4873,7 +4808,6 @@ void func_801D1AAC(void) {
         }
         i++;
     } while (i < MENU_MAX_NUM_ARROW_CURSORS);
-#endif
 }
 
 /* Run the per-frame menu draw passes in retail order. */
@@ -5006,23 +4940,13 @@ void func_801D1D40(void) {
 }
 
 void func_801D1E80(void) {
-#ifdef XENO_PC_PORT
     g_Menu->transitionEffectState = MENU_OPEN_ANIMATION_START;
     func_801C8574(0x5B);
-#else
-    g_Menu->transitionEffectState = MENU_OPEN_ANIMATION_START;
-    func_801C8574(0x5B);
-#endif
 }
 
 void func_801D1EB0(void) {
-#ifdef XENO_PC_PORT
     g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
     func_801C8574(0x5C);
-#else
-    g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
-    func_801C8574(0x5C);
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -5133,11 +5057,7 @@ void func_801D22F4(s32 mode) {
 }
 
 void func_801D2484(void) {
-#ifdef XENO_PC_PORT
     g_Menu->pManager->shouldRenderPointerCursors = 0;
-#else
-    g_Menu->pManager->shouldRenderPointerCursors = 0;
-#endif
 }
 
 extern u16 D_801EA534;
@@ -5212,13 +5132,8 @@ extern void func_801D5BA4(s32 x, s32 y);
  * shouldRenderWindow[0]) + the gold digit quads. */
 #endif
 void func_801D28A8(void) {
-#ifdef XENO_PC_PORT
     func_801D397C(0, 0xD4, 0xB2, 0x60, 0x10, 0, 0, 4, 0);
     func_801D5BA4(0xD8, 0xB6);
-#else
-    func_801D397C(0, 0xD4, 0xB2, 0x60, 0x10, 0, 0, 4, 0);
-    func_801D5BA4(0xD8, 0xB6);
-#endif
 }
 
 extern void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
@@ -5455,27 +5370,17 @@ void func_801D2F4C(u8 firstString) {
 /* Retail sets no return value; callers ignore it. */
 #endif
 s32 func_801D32B4(s32 arg0) {
+    if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
+        s32 i;
+        func_801D4EA0(2);
+        g_Menu->pManager->unk2E = 0;
+        for (i = 0; i < 4; i++) {
+            HeapFree(g_Menu->unk1DE0[i]);
+        }
+    }
+    func_801C7BF4();
 #ifdef XENO_PC_PORT
-    if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
-        s32 i;
-        func_801D4EA0(2);
-        g_Menu->pManager->unk2E = 0;
-        for (i = 0; i < 4; i++) {
-            HeapFree(g_Menu->unk1DE0[i]);
-        }
-    }
-    func_801C7BF4();
-    return 0;
-#else
-    if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
-        s32 i;
-        func_801D4EA0(2);
-        g_Menu->pManager->unk2E = 0;
-        for (i = 0; i < 4; i++) {
-            HeapFree(g_Menu->unk1DE0[i]);
-        }
-    }
-    func_801C7BF4();
+    return 0; /* retail falls off the end (v0 = func_801C7BF4 residue) */
 #endif
 }
 
@@ -5493,13 +5398,8 @@ void func_801D3344(s32 x, s32 y, s32 width) {
 }
 
 void func_801D3444(void) {
-#ifdef XENO_PC_PORT
     g_Menu->pManager->scrollHandleActive = 0;
     HeapFree(g_Menu->pScrollHandle);
-#else
-    g_Menu->pManager->scrollHandleActive = 0;
-    HeapFree(g_Menu->pScrollHandle);
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -7485,7 +7385,7 @@ s32 func_801D9C84(void) {
     while (g_Menu->transitionEffectState != 0) {
         func_801C7BF4();
     }
-    ((u8*)g_Menu->unk32C)[0x4FE7] = 1;
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE7)] = 1;
     func_801C7BF4();
     func_801D9B08();
     DrawSync(0);
@@ -7497,12 +7397,12 @@ s32 func_801D9C84(void) {
     ExitCriticalSection();
     {
         u8* c = (u8*)g_Menu->unk32C;
-        c[0x4FE9] = 0xFF;
-        c[0x4FE8] = 0xFF;
+        c[MENU_CARD_OFF(0x4FE9)] = 0xFF;
+        c[MENU_CARD_OFF(0x4FE8)] = 0xFF;
     }
-    ((u8*)g_Menu->unk32C)[0x4F88] = 0;
-    ((u8*)g_Menu->unk32C)[0x4F89] = 0;
-    ((u8*)g_Menu->unk32C)[0x4FE6] = 2;
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4F88)] = 0;
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4F89)] = 0;
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE6)] = 2;
     g_Menu->unk326 = 0x3C;
     func_801C7BF4();
     func_801C7BF4();

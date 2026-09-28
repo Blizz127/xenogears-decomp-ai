@@ -11,7 +11,7 @@
 #include "system/menu.h"
 SystemMenu *g_Menu;
 static SystemMenu menu;
-static u8 card[0x5034];
+static u8 card[sizeof(MenuUnk2)];
 u8 D_801EA6D0[0x20];
 s32 D_801EA6F4;
 #include "match.inc"
@@ -20,24 +20,24 @@ int main(void) {
     s32 k;
     g_Menu = &menu;
     menu.unk32C = (MenuUnk2 *)card;
-    memcpy(card + 0x4FCE, prefix, 12);
+    memcpy(card + MENU_CARD_OFF(0x4FCE), prefix, 12);
     for (k = 0; k < 15; k++) {
-        card[0x4FAE + 0x10 + k] = (u8)k;          /* port 1, entry k -> record k */
-        card[0xB94 + k * 0x200 + 0x123] = (u8)k;  /* table slot k */
+        card[MENU_CARD_OFF(0x4FAE) + 0x10 + k] = (u8)k;          /* port 1, entry k -> record k */
+        card[MENU_CARD_OFF(0xB94) + k * 0x200 + 0x123] = (u8)k;  /* table slot k */
     }
     /* Records 2 and 5 carry the prefix at the retail 0x5C stride. */
     memcpy(card + 2 * 0x5C + 0x18, prefix, 12);
     memcpy(card + 5 * 0x5C + 0x18, prefix, 12);
     /* Record 3 matches only in its first byte. */
     card[3 * 0x5C + 0x18] = 'B';
-    memset(card + 0x4F8E + 0x10, 0xEE, 0x10);
+    memset(card + MENU_CARD_OFF(0x4F8E) + 0x10, 0xEE, 0x10);
     func_801C9270(1);
     for (k = 0; k < 15; k++) {
         u8 want = (k == 2 || k == 5);
-        assert(card[0x4F8E + 0x10 + k] == want);
+        assert(card[MENU_CARD_OFF(0x4F8E) + 0x10 + k] == want);
         assert(D_801EA6D0[0x10 + k] == want);
     }
-    assert(card[0x4F8E + 0x10 + 15] == 0);
+    assert(card[MENU_CARD_OFF(0x4F8E) + 0x10 + 15] == 0);
     for (k = 0; k < 0x10; k++) assert(D_801EA6D0[k] == 0);
     printf("PASS menu card dir match pins (C9270 0x5C stride, 12-byte prefix)\n");
     return 0;

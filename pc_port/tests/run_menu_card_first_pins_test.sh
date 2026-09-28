@@ -18,3 +18,9 @@ sed -i 's/g_Menu->unk4CC\[0xC\] = 2;/((u8*)g_Menu->pManager)[0x4D8] = 2;/' "$OUT
 "${CC:-gcc}" "${BASE[@]}" -O0 pc_port/tests/menu_card_first_pins_test.c -o "$OUT/mgr"
 if timeout 30s "$OUT/mgr" >/dev/null 2>&1; then echo "FAIL mutant manager-dest accepted"; exit 1; fi
 echo "REJECTED manager-dest"
+cp "$OUT/good.inc" "$OUT/first.inc"
+sed -i 's/MENU_CARD_OFF(\(0x[0-9A-F]*\))/\1/g' "$OUT/first.inc"
+! cmp -s "$OUT/good.inc" "$OUT/first.inc"
+"${CC:-gcc}" "${BASE[@]}" -O0 -w pc_port/tests/menu_card_first_pins_test.c -o "$OUT/rawoff"
+if timeout 30s "$OUT/rawoff" >/dev/null 2>&1; then echo "FAIL mutant raw-offsets accepted"; exit 1; fi
+echo "REJECTED raw-offsets"
