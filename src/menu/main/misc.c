@@ -2913,7 +2913,16 @@ u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CADB0);
+void func_801CADB0(void) {
+    void* pMenu = g_Menu;
+    u8* pData;
+    *(u32*)(*(u8**)((u8*)pMenu + 0x32C) + 0x4F80) = 0xFF;
+    *(u32*)(*(u8**)((u8*)pMenu + 0x32C) + 0x4F7C) = 0;
+    pData = *(u8**)((u8*)pMenu + 0x32C);
+    if (pData[0x4FE4] == 0 && pData[0x4FE5] != 0) {
+        *(u32*)(pData + 0x4F7C) = 0xF;
+    }
+}
 #else
 void func_801CADB0(void) {
     void* pMenu = g_Menu;
@@ -4924,7 +4933,10 @@ void func_801D1EE0(s32 selected, s32 buildBar) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22C4);
+void func_801D22C4(void) {
+    g_Menu->pManager->unk4 = 0;
+    g_Menu->pManager->unk3 = 0;
+}
 #else
 void func_801D22C4(void) {
     if (g_Menu->pManager == NULL) {
@@ -5094,7 +5106,11 @@ void func_801D28FC(void) {
 extern void func_801D5CF8(s32, s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2968);
+void func_801D2968(void) {
+    if (g_Menu->pManager->unk5[1] != 0) {
+        func_801D5CF8(0xD0, 0xCA);
+    }
+}
 #else
 void func_801D2968(void) {
     if (g_Menu->pManager != NULL && g_Menu->pManager->unk5[1] != 0) {
@@ -9099,7 +9115,18 @@ void func_801DE2C8(u8 arg0) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE36C);
+void func_801DE36C(void) {
+    ((u8*)g_Menu->pManager)[0x4C] = 0;
+    func_801D4EA0(2);
+    func_801D4EA0(3);
+    func_801D4EA0(4);
+    func_801D4EA0(5);
+    func_801C7BF4();
+    func_801E8044(6, (u8*)(g_Menu->pManager) + 0x40);
+    func_801C72BC(0x17);
+    HeapFree(*(void**)((u8*)g_Menu + 0x434));
+    func_801D3444();
+}
 #else
 void func_801DE36C(void) {
     void* pMenu = g_Menu;
@@ -10342,7 +10369,12 @@ extern void func_801E8018(s32, u8*, s32, void*);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2324);
+/* Retail passes the address &D_801EA568[arg0]; the port body passes the byte. */
+void func_801E2324(u8 arg0) {
+    void* pMenu = g_Menu;
+    void* pManager = g_Menu->pManager;
+    func_801E8018(6, (u8*)pMenu + 0x18E0, &D_801EA568[arg0], (u8*)pManager + 0x54);
+}
 #else
 void func_801E2324(u8 arg0) {
     void* pMenu = g_Menu;
