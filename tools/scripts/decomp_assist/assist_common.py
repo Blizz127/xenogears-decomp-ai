@@ -20,10 +20,13 @@ CACHE = os.path.expanduser(os.environ.get('XENO_ASSIST_CACHE', '~/.cache/xeno/de
 M2C = os.path.expanduser(os.environ.get('XENO_M2C', '~/.cache/xeno/m2c/m2c.py'))
 BUILD_WRAP = os.environ.get('XENO_BUILD_WRAP', '')
 
-CC1_FLAGS = ['-O2', '-G8', '-mips1', '-mcpu=3000', '-w', '-funsigned-char', '-fpeephole',
+# The TU's -G value (gears.toml preset); menu's MenuG0 preset needs -G0.
+GP_FLAG = os.environ.get('XENO_GP_FLAG', '-G8')
+
+CC1_FLAGS = ['-O2', GP_FLAG, '-mips1', '-mcpu=3000', '-w', '-funsigned-char', '-fpeephole',
              '-ffunction-cse', '-fpcc-struct-return', '-fcommon', '-msoft-float', '-mgas',
              '-fgnu-linker', '-quiet']
-MASPSX_FLAGS = ['--use-comm-section', '--run-assembler', '-EL', '-Iinclude', '-O2', '-G8',
+MASPSX_FLAGS = ['--use-comm-section', '--run-assembler', '-EL', '-Iinclude', '-O2', GP_FLAG,
                 '-march=r3000', '-mtune=r3000', '-no-pad-sections']
 
 
