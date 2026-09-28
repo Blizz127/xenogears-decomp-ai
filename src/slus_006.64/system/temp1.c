@@ -274,8 +274,9 @@ void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
     {
         u32* pSrcData = (u32*)(uintptr_t)*(u32*)(pData + 0x24);
         u16* pAllocH = (u16*)(uintptr_t)pSrc[0x18/4];
-        pAllocH[1] = *(u16*)(pData + 0x24 + 6);
-        pAllocH[0] = *(u16*)(pData + 0x24 + 4);
+        /* retail reads the header words through the +0x24 pointer */
+        pAllocH[1] = *(u16*)((u8*)pSrcData + 6);
+        pAllocH[0] = *(u16*)((u8*)pSrcData + 4);
     }
 #else
     *(void**)(*(u8**)((u8*)pSpriteData + 0x7C) + 0x18) = HeapAlloc(size * 4, flags);

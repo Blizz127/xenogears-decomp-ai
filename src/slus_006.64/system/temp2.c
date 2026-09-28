@@ -1614,7 +1614,8 @@ s32 func_8002D0E4(u8* pSrc) {
 /* Retail 0x8002D180 returns 1 and lights the 4th vertex from pColor (a0),
  * not the shade word C8CC passes as a2. The matching C body left a2 as a
  * pointer and dropped the return, which made the POLY_G4 builder unusable
- * as a D_8004FE50 buildProc. */
+ * as a D_8004FE50 buildProc. Vertices 0-2 are lit from pColor into +4/+0xC/
+ * +0x14 (retail NormalColorCol3 arguments), vertex 3 into +0x1C. */
 s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
     u8* pPoly = D_80059424;
     s16* normals = (s16*)D_8005952C;
@@ -1624,10 +1625,10 @@ s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
         (SVECTOR*)&normals[pIndices[0] * 4],
         (SVECTOR*)&normals[pIndices[1] * 4],
         (SVECTOR*)&normals[pIndices[2] * 4],
+        (CVECTOR*)pColor,
         (CVECTOR*)(pPoly + 4),
         (CVECTOR*)(pPoly + 0xC),
-        (CVECTOR*)(pPoly + 0x14),
-        (CVECTOR*)(pPoly + 0x1C)
+        (CVECTOR*)(pPoly + 0x14)
     );
     NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pColor, pPoly + 0x1C);
     pPoly[7] = pColor[3];

@@ -1128,9 +1128,10 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003852C);
 void func_8003852C(void* pSed) {
     void* pPrev = NULL;
     void* pCur = g_SoundSedsLinkedList;
+    /* The +0x1C link is a 32-bit SoundPsxAddress (see SoundFile.pNext). */
     while (pCur != NULL && pCur != pSed) {
         pPrev = pCur;
-        pCur = *(void**)((u8*)pCur + 0x1C);
+        pCur = SOUND_PSX_TO_PTR(void, *(SoundPsxAddress*)((u8*)pCur + 0x1C));
     }
     if (pCur == NULL) {
         SoundHandleError(0x10);
@@ -1139,11 +1140,11 @@ void func_8003852C(void* pSed) {
     func_8003A094(pSed);
     DisableEvent(g_unk_SoundEvent);
     if (pPrev != NULL) {
-        *(void**)((u8*)pPrev + 0x1C) = *(void**)((u8*)pSed + 0x1C);
+        *(SoundPsxAddress*)((u8*)pPrev + 0x1C) = *(SoundPsxAddress*)((u8*)pSed + 0x1C);
     } else {
-        g_SoundSedsLinkedList = *(void**)((u8*)pSed + 0x1C);
+        g_SoundSedsLinkedList = SOUND_PSX_TO_PTR(SoundFile, *(SoundPsxAddress*)((u8*)pSed + 0x1C));
     }
-    *(void**)((u8*)pSed + 0x1C) = NULL;
+    *(SoundPsxAddress*)((u8*)pSed + 0x1C) = SOUND_PTR_TO_PSX(NULL);
     if (SoundValidateFile(pSed, 0x73646573, 0x101) != 0) {
         SoundHandleError(0xB);
     } else {
@@ -1159,33 +1160,22 @@ void func_80038624(void) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-#ifndef XENO_PC_PORT
-/* Retail keeps the id in a1: a second argument that pData, when given,
- * overrides. The port body below keeps the original one-argument form. */
+/* Finds the SED list entry with pData's id (+0x14), or with targetId when
+ * pData is NULL. The +0x1C link is a 32-bit SoundPsxAddress on both builds. */
 void* func_8003864C(void* pData, s16 targetId) {
     void* pEntry;
 
     if (pData != NULL) {
         targetId = *(u16*)((u8*)pData + 0x14);
     }
-    for (pEntry = g_SoundSedsLinkedList; pEntry != NULL; pEntry = *(void**)((u8*)pEntry + 0x1C)) {
+    for (pEntry = g_SoundSedsLinkedList; pEntry != NULL;
+         pEntry = SOUND_PSX_TO_PTR(void, *(SoundPsxAddress*)((u8*)pEntry + 0x1C))) {
         if (targetId == *(u16*)((u8*)pEntry + 0x14)) {
             break;
         }
     }
     return pEntry;
 }
-#else
-void* func_8003864C(void* pData) {
-    s16 targetId = pData ? *(u16*)((u8*)pData + 0x14) : 0;
-    void* pEntry = g_SoundSedsLinkedList;
-    while (pEntry != NULL) {
-        if (*(s16*)((u8*)pEntry + 0x14) == targetId) break;
-        pEntry = *(void**)((u8*)pEntry + 0x1C);
-    }
-    return pEntry;
-}
-#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003869C(void) {
