@@ -19,6 +19,14 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include "system/controller_vblank.h"
+/* The vblank service (controller_vblank_service.c) is always in the port
+ * link; weak here so tests that link this TU without it still link (they
+ * then get no deferred vblank delivery). */
+#pragma weak PcPort_ServiceVblank
+#pragma weak PcPort_GetServicedVblankCount
+#pragma weak PcPort_MaskVblank
+#pragma weak PcPort_UnmaskVblank
+#define XENO_SERVICE_VBLANK() do { if (PcPort_ServiceVblank) PcPort_ServiceVblank(); } while (0)
 #include <stdio.h>
 #include <stdlib.h>   /* getenv/atoi for the headless test hook below */
 #include <string.h>   /* memcpy for TIM parsing */
@@ -426,12 +434,13 @@ long RotAverage4(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* v3,
  * dedicated gate. Other native interrupt sources still need separate audit. */
 int EnterCriticalSection(void)
 {
-    return PcPort_MaskVblank();
+    return PcPort_MaskVblank ? PcPort_MaskVblank() : 1;
 }
 
 void ExitCriticalSection(void)
 {
-    PcPort_UnmaskVblank();
+    if (PcPort_UnmaskVblank)
+        PcPort_UnmaskVblank();
 }
 
 int CdDataSync(int mode)
@@ -927,7 +936,7 @@ int g_PcPortFieldMenuOpened;
  * same counter epoch as the presentation path, not a second input producer. */
 void PcPort_PadVblankPump(void)
 {
-    PcPort_ServiceVblank();
+    XENO_SERVICE_VBLANK();
 }
 
 /* TEST TOOLING -- natural field-menu driver after free-roam unlock.
@@ -1692,8 +1701,8 @@ int Vsync(int mode)
      * in the blocking path. */
     if (mode == 1 || mode < 0) {
         count = VSync(mode);
-        PcPort_ServiceVblank();
-        return mode < 0 ? PcPort_GetServicedVblankCount() : count;
+        XENO_SERVICE_VBLANK();
+        return (mode < 0 && PcPort_GetServicedVblankCount) ? PcPort_GetServicedVblankCount() : count;
     }
 
     /* Flush any primitives queued this frame before presenting. DrawOTag flushes
@@ -1719,14 +1728,16 @@ int Vsync(int mode)
         PsyX_EndScene();      /* present the frame the game just finished building */
 
         /* Dev-harness field capture (no-op unless XENO_FIELD_CAPTURE_DIR). */
-        { extern void PcPort_FieldCaptureOnVsync(void); PcPort_FieldCaptureOnVsync(); }
+        { extern void PcPort_FieldCaptureOnVsync(void) __attribute__((weak)); if (PcPort_FieldCaptureOnVsync) PcPort_FieldCaptureOnVsync(); }
 
         if (!sceneOpen && mode == 0)
             PsyX_PresentDisplayFromVRAM();
     }
 
+    /* TEST TOOLING hooks below are weak: tests that link this TU without the
+     * tooling files still link.  Inert unless their XENO_* switch is set. */
     /* TEST TOOLING: headless walk telemetry (XENO_FIELD_POS_DIAG). */
-    { extern void PcPort_FieldPosDiag(void); PcPort_FieldPosDiag(); }
+    { extern void PcPort_FieldPosDiag(void) __attribute__((weak)); if (PcPort_FieldPosDiag) PcPort_FieldPosDiag(); }
     /* One frame_tick per presented frame (xg_plat/mods.h).  Its first
      * subscribers are the cheat services that used to be called right here,
      * in the same order: field warp (XENO_FIELD_WARP / `warp`), battle warp
@@ -1735,11 +1746,11 @@ int Vsync(int mode)
     if (xg_plat_mods_emit)
         (void)xg_plat_mods_emit(XG_PLAT_EVENT_FRAME_TICK, 0, 0);
     /* TEST TOOLING: dump the loaded walkmesh (XENO_WALKMESH_DUMP); inert unset. */
-    { extern void PcPort_WalkmeshDump(void); PcPort_WalkmeshDump(); }
+    { extern void PcPort_WalkmeshDump(void) __attribute__((weak)); if (PcPort_WalkmeshDump) PcPort_WalkmeshDump(); }
     /* Pace first so the newly elapsed tick is serviced before returning.
      * All entry points share one counter cursor, including the guest pump. */
     count = VSync(mode);
-    PcPort_ServiceVblank();
+    XENO_SERVICE_VBLANK();
 
     /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the

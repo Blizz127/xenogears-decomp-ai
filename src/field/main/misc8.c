@@ -508,12 +508,15 @@ void func_8008110C(void) {
     }
 
 #ifdef XENO_PC_PORT
-extern int PcPort_RandomBattlesEnabled(void);
+/* Host route-testing switch (god_mode.c); weak so tests that link this TU
+ * without it keep the retail behaviour (encounters enabled). */
+extern int PcPort_RandomBattlesEnabled(void) __attribute__((weak));
+#define XENO_RANDOM_BATTLES_ON() (!PcPort_RandomBattlesEnabled || PcPort_RandomBattlesEnabled())
 #endif
     /* The port can suppress random encounters for route testing; the flag is
      * host-side, so the matching build keeps the retail condition. */
 #ifdef XENO_PC_PORT
-    if (PcPort_RandomBattlesEnabled() &&
+    if (XENO_RANDOM_BATTLES_ON() &&
         g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
 #else
     if (g_FieldControl.isRandomEncountersEnabled == 0 && D_800B21CC == 0) {
