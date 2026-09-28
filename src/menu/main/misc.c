@@ -12028,10 +12028,10 @@ extern u16 D_801EA5DC[];
 extern void func_80033B34(u16*, u8*, s32);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E71B4);
-#else
-void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
+/* Retail 0x801E71B4: decode card entry pData[0x1C + charIdx]'s name (up to
+ * 10 pairs from the screen block at +0xC94 + screenIdx * 0x200) and upload
+ * it as a 0x28x0xD name plate.  The retail arm is gcc 2.6.3 byte-exact. */
+void func_801E71B4(u8 charIdx, void* pData, s32 screenIdx) {
 #ifdef XENO_PC_PORT
     u8* entry = g_Menu->unk32C->unkB94 + 0x100 + screenIdx * 512;
     u8 character = ((u8*)pData)[0x1C + charIdx];
@@ -12059,45 +12059,38 @@ void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
     DrawSync(0);
     HeapFree(buffer);
 #else
-    u8* pSrc = (u8*)pData + charIdx;
-    void* pMenu = g_Menu;
-    void* pMgrData = *(void**)((u8*)pMenu + 0x32C);
-    u8* pEntry = (u8*)pMgrData + (screenIdx << 9) + 0xC94;
-    u8 buf[0x18];
-    u8 outBuf[0x18];
-    s32 i = 0;
-    u8* pDst = buf;
-    u8* pDst2 = buf + 1;
     RECT rect;
-    void* pRender;
-    void* pAlloc;
+    u8 raw[24];
+    u8 decoded[24];
+    u8* entry;
+    u8* pChar;
+    s32 i;
+    s32 row;
+    void* buffer;
 
-    while (i < 0x14) {
-        u8 charVal = pSrc[0x1C];
-        u8 val0 = pEntry[charVal * 0x14 + i * 2 + 0x24];
-        u8 val1 = pEntry[charVal * 0x14 + i * 2 + 0x25];
-        *pDst = val0;
-        *pDst2 = val1;
-        if (val0 == 0 && val1 == 0) break;
-        pDst += 2;
-        pDst2 += 2;
-        i += 2;
+    i = 0;
+    pChar = (u8*)pData + charIdx;
+    entry = (u8*)g_Menu->unk32C + screenIdx * 512 + 0xC94;
+    for (; i < 20; i += 2) {
+        row = pChar[0x1C] * 20;
+        raw[i] = (entry + row + i)[0x24];
+        row = pChar[0x1C] * 20;
+        raw[i + 1] = (entry + row + i)[0x25];
+        if (raw[i] == 0 && raw[i + 1] == 0) break;
     }
-
-    func_80033B34(buf, outBuf, i >> 1);
-    pAlloc = HeapAlloc(0x3F6, 0);
-    bzero(pAlloc, 0x3F6);
-    SystemRenderStringEntry(outBuf, pAlloc, 0x24, 0);
-    rect.x = D_801EA590[charIdx] + 0x180;
-    rect.y = D_801EA5DC[charIdx];
+    func_80033B34(raw, decoded, i / 2);
+    buffer = HeapAlloc(0x3F6, 0);
+    bzero(buffer, 0x3F6);
+    SystemRenderStringEntry(decoded, buffer, 0x24, 0);
+    rect.x = D_801EA590[charIdx * 2] + 0x180;
+    rect.y = D_801EA5DC[charIdx * 2];
     rect.w = 0x28;
-    rect.h = 0xD;
-    LoadImage(&rect, pAlloc);
+    rect.h = 0x0D;
+    LoadImage(&rect, buffer);
     DrawSync(0);
-    HeapFree(pAlloc);
+    HeapFree(buffer);
 #endif
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E733C);
