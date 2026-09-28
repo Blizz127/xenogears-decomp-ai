@@ -2,9 +2,6 @@
 
 #include "libspu_internal.h"
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libspu/SpuSetCommonAttr", SpuSetCommonAttr);
-#else
 void SpuSetCommonAttr(SpuCommonAttr* attr) {
     u16 mvol_mode_left;
     u16 mvol_mode_right;
@@ -187,4 +184,3 @@ void SpuSetCommonAttr(SpuCommonAttr* attr) {
         }
     }
 }
-#endif

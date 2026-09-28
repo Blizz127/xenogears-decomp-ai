@@ -118,9 +118,6 @@ static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
 
 /* Retail8001D4E8: allocate and initialize eight direction records once. */
 extern void func_800234AC(void* pSpriteData);
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D4E8);
-#else
 void func_8001D4E8(void* pSpriteData) {
     u8* sprite = pSpriteData;
     if (*(u32*)((u8*)(uintptr_t)*(u32*)(sprite + 0x20) + 0x34) == 0) {
@@ -131,7 +128,6 @@ void func_8001D4E8(void* pSpriteData) {
         func_800234AC(sprite);
     }
 }
-#endif
 
 extern void func_800251C8(u_long* addr, int x, int y, int width, int height);
 extern void func_800234AC(void* pSpriteData);
@@ -1387,7 +1383,20 @@ void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
 extern void* g_GfxPauseLettersCompressed[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", GraphicsDrawPauseLetters);
+void GraphicsDrawPauseLetters(int x, int y) {
+    void* pPauseImgData;
+    int dx = x;
+    int dy = y;
+    int iRegSteer;
+    pPauseImgData = LZSSHeapDecompress(&g_GfxPauseLettersCompressed, 0x0);
+    /* Empty asm pair: emits zero bytes but keeps a zero-range quantity live
+     * here so gcc 2.7.2 assigns pPauseImgData to s0 (retail layout). */
+    __asm__ volatile("" : "=r"(iRegSteer));
+    __asm__ volatile("" :: "r"(iRegSteer));
+    func_8002DDE4(pPauseImgData, 1, dx, dy, 0, 0, 0);
+    DrawSync(0);
+    HeapFree(pPauseImgData);
+}
 #endif
 
 extern void* D_800592E4;

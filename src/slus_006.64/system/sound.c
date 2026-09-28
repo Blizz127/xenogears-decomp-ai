@@ -765,6 +765,17 @@ void SoundEnableAllSpuChannels(void) {
     g_SoundControlFlags &= ~0x40;
 }
 
+typedef struct {
+    u16 volL;
+    u16 volR;
+    u16 pitch;
+    u16 addr;
+    u16 adsr1;
+    u16 adsr2;
+    u16 adsrVol;
+    u16 loopAddr;
+} SoundSpuVoiceRegs;
+
 /* Transcribed from
  * asm/slus_006.64/nonmatchings/system/sound/SoundMuteAllSpuChannels.s
  * (0x80037EE4-0x80037F44, 24 instructions). Sets bit 6 of
@@ -773,12 +784,29 @@ void SoundEnableAllSpuChannels(void) {
  * +0x0A word, and forcing the high byte of the +8 word to 0x7F while keeping its
  * low byte. The port keeps its own owner in pc_port/src/world_map_pause.c, so
  * this definition is weak under XENO_PC_PORT. */
-#ifdef XENO_PC_PORT
-__attribute__((weak))
-#endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundMuteAllSpuChannels);
+/* Matching-build statement order: it reproduces retail's code exactly (the
+ * stores still come out as +0,+2,+4,+A,+8). The port keeps its body. */
+void SoundMuteAllSpuChannels(void) {
+    u8* pVoice = (u8*)g_pSoundSpuRegisters;
+    int i;
+
+    g_SoundControlFlags |= 0x40;
+#ifdef SOUND_MUTE_MUTANT_12_VOICES
+    for (i = 0; i < 0x12; i++) {
 #else
+    for (i = 0; i < 0x18; i++) {
+#endif
+        ((SoundSpuVoiceRegs*)pVoice)->volL = 0;
+        ((SoundSpuVoiceRegs*)pVoice)->adsr1 = (u16)(*(u8*)&((SoundSpuVoiceRegs*)pVoice)->adsr1 + 0x7F00);
+        ((SoundSpuVoiceRegs*)pVoice)->volR = 0;
+        ((SoundSpuVoiceRegs*)pVoice)->pitch = 0;
+        ((SoundSpuVoiceRegs*)pVoice)->adsr2 = 0x1FDF;
+        pVoice += sizeof(SoundSpuVoiceRegs);
+    }
+}
+#else
+__attribute__((weak))
 void SoundMuteAllSpuChannels(void) {
     u8* pVoice = (u8*)g_pSoundSpuRegisters;
     int i;
@@ -798,6 +826,7 @@ void SoundMuteAllSpuChannels(void) {
     }
 }
 #endif
+
 
 void func_80037F44(void) {
     if (!(g_SoundControlFlags & 1)) {
@@ -1124,10 +1153,24 @@ void func_80038624(void) {
     g_SoundSedsLinkedList = 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003864C);
-#else
 //----------------------------------------------------------------------------------------------------------------------
+#ifndef XENO_PC_PORT
+/* Retail keeps the id in a1: a second argument that pData, when given,
+ * overrides. The port body below keeps the original one-argument form. */
+void* func_8003864C(void* pData, s16 targetId) {
+    void* pEntry;
+
+    if (pData != NULL) {
+        targetId = *(u16*)((u8*)pData + 0x14);
+    }
+    for (pEntry = g_SoundSedsLinkedList; pEntry != NULL; pEntry = *(void**)((u8*)pEntry + 0x1C)) {
+        if (targetId == *(u16*)((u8*)pEntry + 0x14)) {
+            break;
+        }
+    }
+    return pEntry;
+}
+#else
 void* func_8003864C(void* pData) {
     s16 targetId = pData ? *(u16*)((u8*)pData + 0x14) : 0;
     void* pEntry = g_SoundSedsLinkedList;
@@ -3644,9 +3687,6 @@ s16 func_8003BDFC(s32 flags) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundProcessTransferCommand);
-#else
 //----------------------------------------------------------------------------------------------------------------------
 void SoundProcessTransferCommand(void) {
     SpuTransferCallbackProc pPrevCallback;
@@ -3710,7 +3750,6 @@ void SoundProcessTransferCommand(void) {
         SoundHandleError(SOUND_ERR_UNEXPECTED_CALLBACK);
     }
 }
-#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundSpuIRQHandler(void) {

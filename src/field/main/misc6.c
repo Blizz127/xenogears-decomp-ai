@@ -1409,16 +1409,12 @@ void func_800A0D3C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
 
-extern s16 D_800B234A;
+extern s16 D_800B234A[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0DC0);
-#else
 void func_800A0DC0(void) {
-    D_800B234A = FieldScriptVMGetArgument(1);
+    D_800B234A[0] = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
-#endif /* XENO_PC_PORT */
 
 void func_800A0DFC(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), ArchiveGetDiscNumber());

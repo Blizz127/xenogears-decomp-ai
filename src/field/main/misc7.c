@@ -10,11 +10,16 @@
 #include "field/camera.h"
 #include "field/script_vm.h"
 #include "field/text_box.h"
+/* Typed array views of g_Scene: retail schedules stores into it like stores
+ * to an array-typed extern, so raw-offset accesses go through these. */
+extern s16 g_Scene_s16[] asm("g_Scene");
+extern s32 g_Scene_s32[] asm("g_Scene");
+extern u16 g_Scene_u16[] asm("g_Scene");
 
 extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
-extern s32 D_800B21D8;
+extern s32 D_800B21D8[];
 extern s16 D_800AFB54;
 extern s16 func_8007B1C4(s16 x, s16 z, s32 walkmeshId, s16* out, s32* state);
 extern int FieldScriptArgument1(int index, int mask);
@@ -67,67 +72,52 @@ int FieldGetPlayerActorDirection(void) {
         & MASK_8DIR_MOVEMENT_NUM_DIRECTIONS;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009749C);
-#else
 void func_8009749C(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
-    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
-    u8 scriptByte;
-    ActorData* pTarget;
-    *pSlot = (*pSlot & 0xFE7FFFFF) | 0x1000000;
-    scriptByte = SCRIPT_READ_U8_REL(1);
-    /* FieldActor +0x4C is the PSX 32-bit pActorData slot.  Do not use the
-     * old actor-index stride/native pointer-to-pointer expression here:
-     * FieldActor is
-     * 0x5C bytes and host pointers must be reconstructed from the u32 slot. */
-    pTarget = (ActorData*)(uintptr_t)g_FieldActors[scriptByte].pActorData;
-    *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pTarget + 0x22);
-    *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pTarget + 0x2A);
-    *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pTarget + 0x26);
-    {
-        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
-        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
-        if (pSlot2[0] == 0xFFFF) {
-            s32 arg = FieldScriptVMGetArgument(5);
-            pSlot2[0] = (u16)arg;
-        }
-    }
-    {
-        s32 arg = FieldScriptVMGetArgument(5);
-        if (func_80097A50(arg) == 0) {
-            g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
-        }
-    }
-}
-#endif /* XENO_PC_PORT */
-
-/* VM opcode 0x55: set the current script's movement target to another actor.
- * The target actor index is the instruction byte at +1; its integer position
- * becomes the current actor's movement target before func_80097A50 advances
- * the interpolation. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800975C0);
-#else
-void func_800975C0(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
     ActorData* target;
 
-    slot->flags_0x17 = 2;
+    actor->scripts[actor->curScriptIndex].flags_0x17 = 2;
 
     target = (ActorData*)(uintptr_t)g_FieldActors[SCRIPT_READ_U8_REL(1)].pActorData;
     actor->unkD0.vx = target->position.vx >> 16;
     actor->unkD0.vz = target->position.vz >> 16;
     actor->unkD0.vy = target->position.vy >> 16;
 
-    slot->flags_0 = 0xFFFF;
-    if (func_80097A50(-1) == 0) {
-        actor->scriptInstructionPointer += 5;
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(5);
+    }
+
+    if (func_80097A50(FieldScriptVMGetArgument(5)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
     }
 }
-#endif /* XENO_PC_PORT */
+
+/* VM opcode 0x55: set the current script's movement target to another actor.
+ * The target actor index is the instruction byte at +1; its integer position
+ * becomes the current actor's movement target before func_80097A50 advances
+ * the interpolation. */
+void func_800975C0(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+    ActorData* target;
+
+    actor->scripts[actor->curScriptIndex].flags_0x17 = 2;
+
+    target = (ActorData*)(uintptr_t)g_FieldActors[SCRIPT_READ_U8_REL(1)].pActorData;
+    actor->unkD0.vx = target->position.vx >> 16;
+    actor->unkD0.vz = target->position.vz >> 16;
+    actor->unkD0.vy = target->position.vy >> 16;
+
+    {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        s32 result;
+
+        pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+        result = func_80097A50(0xFFFF);
+        if (result == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        }
+    }
+}
 
 /* Movement-mode variant: capture the current actor position once, retain the
  * script-supplied duration in its slot, then let func_80097A50 advance it. */
@@ -150,85 +140,70 @@ void func_800976A8(void) {
 
 /* Capture current integer position into unkD0 once, force duration 0xFFFF,
  * then wait via func_80097A50 (mode flags_0x17 = 1). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800977A4);
-#else
 void func_800977A4(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-    if (slot->flags_0x17 == 0) {
-        slot->flags_0x17 = 1;
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 1;
         actor->unkD0.vx = actor->position.vx >> 16;
         actor->unkD0.vy = actor->position.vy >> 16;
         actor->unkD0.vz = actor->position.vz >> 16;
     }
 
-    slot->flags_0 = 0xFFFF;
-    if (func_80097A50(0xFFFF) == 0) {
-        actor->scriptInstructionPointer += 8;
+    {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        s32 result;
+
+        pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+        result = func_80097A50(0xFFFF);
+        if (result == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+        }
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Map001-reachable walk wait (opcode 0x46): mode flags_0x17 = 3, duration from
  * arg(5), IP += 8 when func_80097A50 reports done. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097864);
-#else
 void func_80097864(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-    if (slot->flags_0x17 == 0) {
-        slot->flags_0x17 = 3;
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 3;
         actor->unkD0.vx = actor->position.vx >> 16;
         actor->unkD0.vy = actor->position.vy >> 16;
         actor->unkD0.vz = actor->position.vz >> 16;
     }
 
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(5);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 =
+            FieldScriptVMGetArgument(5);
     }
 
     if (func_80097A50(FieldScriptVMGetArgument(5)) == 0) {
-        actor->scriptInstructionPointer += 8;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Duration-from-arg(8) wait wrapper; IP += 0xA on completion. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097954);
-#else
 void func_80097954(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
-
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(8);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(8);
     }
 
     if (func_80097A50(FieldScriptVMGetArgument(8)) == 0) {
-        actor->scriptInstructionPointer += 0xA;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
     }
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800979F0);
-#else
 void func_800979F0(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
+    ActorData* pActor = g_FieldScriptVMCurActor;
     s32 result;
-    *(u16*)((u8*)pActor + 0x90 + idx * 8) = 0xFFFF;
+    pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
     result = func_80097A50(0xFFFF);
     if (result == 0) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc7/func_80097A50.s
  * (0x80097A50-0x80098034). Mode is bits 23-24 of the flags word at
@@ -405,133 +380,93 @@ s32 func_80097A50(s32 targetValue) {
 /* asm 80098038-800980F8, opcode 0x53. Unlike 0x52, the caller supplies the
  * countdown seed and the useStoredAngle flag as an explicit script argument
  * rather than the fixed 0xFFFF sentinel. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098038);
-#else
 void func_80098038(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x17 = 2;
 
-    slot->flags_0x17 = 2;
-
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(2);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(2);
     }
 
     if (func_80099AC0(FieldScriptVMGetArgument(2)) == 0) {
-        actor->scriptInstructionPointer += 4;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* asm 800980FC-80098180, opcode 0x52. Thin wrapper: always (re)start the
  * per-script movement countdown at the 0xFFFF sentinel and wait via
  * func_80099AC0(0xFFFF) -- do not implement against the stub, which returns
  * 0 unconditionally and would fake instant movement completion. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800980FC);
-#else
 void func_800980FC(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    s32 result;
 
-    slot->flags_0x17 = 2;
-    slot->flags_0 = 0xFFFF;
-
-    if (func_80099AC0(0xFFFF) == 0) {
-        actor->scriptInstructionPointer += 2;
+    pActor->scripts[pActor->curScriptIndex].flags_0x17 = 2;
+    pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+    result = func_80099AC0(0xFFFF);
+    if (result == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
     }
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098184);
-#else
 void func_80098184(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
-    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
-    u32 val = *pSlot;
-    if (((val >> 23) & 3) == 0) {
-        *pSlot = val | 0x1800000;
-        *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pActor + 0x22);
-        *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pActor + 0x26);
-        *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pActor + 0x2A);
+    ActorData* actor = g_FieldScriptVMCurActor;
+
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 3;
+        actor->unkD0.vx = actor->position.vx >> 16;
+        actor->unkD0.vy = actor->position.vy >> 16;
+        actor->unkD0.vz = actor->position.vz >> 16;
     }
-    {
-        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
-        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
-        if (pSlot2[0] == 0xFFFF) {
-            s32 arg = FieldScriptVMGetArgument(3);
-            pSlot2[0] = (u16)arg;
-        }
+
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(3);
     }
-    {
-        s32 arg = FieldScriptVMGetArgument(3);
-        if (func_80099AC0(arg) == 0) {
-            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
-        }
+
+    if (func_80099AC0(FieldScriptVMGetArgument(3)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
     }
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098274);
-#else
 void func_80098274(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
-    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
-    u32 val = *pSlot;
-    if (((val >> 23) & 3) == 0) {
-        *pSlot = (val & 0xFE7FFFFF) | 0x800000;
-        *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pActor + 0x22);
-        *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pActor + 0x26);
-        *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pActor + 0x2A);
-    }
-    {
-        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
-        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
-        if (pSlot2[0] == 0xFFFF) {
-            s32 arg = FieldScriptVMGetArgument(6);
-            pSlot2[0] = (u16)arg;
-        }
-    }
-    {
-        s32 arg = FieldScriptVMGetArgument(6);
-        if (func_80099AC0(arg) == 0) {
-            g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
-        }
-    }
-}
-#endif /* XENO_PC_PORT */
+    ActorData* actor = g_FieldScriptVMCurActor;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098370);
-#else
-void func_80098370(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
-    u32* pSlot = (u32*)((u8*)pActor + 0x90 + idx * 8);
-    u32 val = *pSlot;
-    if (((val >> 23) & 3) == 0) {
-        val = (val & 0xFE7FFFFF) | 0x800000;
-        *pSlot = val;
-        *(s32*)((u8*)pActor + 0xD0) = *(s16*)((u8*)pActor + 0x22);
-        *(s32*)((u8*)pActor + 0xD4) = *(s16*)((u8*)pActor + 0x26);
-        *(s32*)((u8*)pActor + 0xD8) = *(s16*)((u8*)pActor + 0x2A);
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 1;
+        actor->unkD0.vx = actor->position.vx >> 16;
+        actor->unkD0.vy = actor->position.vy >> 16;
+        actor->unkD0.vz = actor->position.vz >> 16;
     }
-    {
-        u8 idx2 = *(u8*)((u8*)g_FieldScriptVMCurActor + 0xCE);
-        u16* pSlot2 = (u16*)((u8*)g_FieldScriptVMCurActor + 0x90 + idx2 * 8);
-        pSlot2[0] = 0xFFFF;
-        pSlot2[1] = 0xFFFF;
+
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(6);
     }
-    if (func_80099AC0(0xFFFF) == 0) {
-        g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+
+    if (func_80099AC0(FieldScriptVMGetArgument(6)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
+
+void func_80098370(void) {
+    ActorData* actor = g_FieldScriptVMCurActor;
+
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 1;
+        actor->unkD0.vx = actor->position.vx >> 16;
+        actor->unkD0.vy = actor->position.vy >> 16;
+        actor->unkD0.vz = actor->position.vz >> 16;
+    }
+
+    {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        s32 result;
+
+        pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+        result = func_80099AC0(0xFFFF);
+        if (result == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+        }
+    }
+}
 
 /* asm 80098430-800984E8, opcode 0x4B. Transcribed from
  * asm/field/nonmatchings/main/misc7/func_80098430.s:
@@ -540,32 +475,20 @@ void func_80098370(void) {
  *     after reloading g_FieldScriptVMCurActor (0x80098470-0x800984A4)
  *   always jal GetArgument(6) then func_80099AC0; on 0, lhu 0xCC += 8
  *     (0x800984A8-0x800984D8). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098430);
-#else
 void func_80098430(void) {
-    u8* pActor = (u8*)g_FieldScriptVMCurActor;
-    u8* row = pActor + *(u8*)(pActor + 0xCE) * 8;
+    ActorData* actor = g_FieldScriptVMCurActor;
 
-#ifdef FIELD_98430_MUTANT_SKIP_MASK
-    (void)row;
-#else
-    *(u32*)(row + 0x90) &= 0xFE7FFFFFu;
+#ifndef FIELD_98430_MUTANT_SKIP_MASK
+    actor->scripts[actor->curScriptIndex].flags_0x17 = 0;
 #endif
-    row = pActor + *(u8*)(pActor + 0xCE) * 8;
-    if (*(u16*)(row + 0x90) == 0xFFFF) {
-        s32 arg = FieldScriptVMGetArgument(6);
-        u8* p2 = (u8*)g_FieldScriptVMCurActor;
-        *(u16*)(p2 + *(u8*)(p2 + 0xCE) * 8 + 0x90) = (u16)arg;
+    if (actor->scripts[actor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(6);
     }
-    {
-        s32 arg = FieldScriptVMGetArgument(6);
-        if (func_80099AC0(arg) == 0) {
-            *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) += 8;
-        }
+
+    if (func_80099AC0(FieldScriptVMGetArgument(6)) == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B21AE;
 extern s16 D_800B21B0;
@@ -1410,7 +1333,7 @@ void func_8009A34C(void) {
     if (duration == 0) {
         duration = 1;
         *(s16*)((u8*)&g_Scene + 0x8C) = duration;
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
     }
 
     targetAngle = FieldScriptVMGetArgument(1);
@@ -1430,7 +1353,7 @@ void func_8009A420(s32 targetDip, s32 duration) {
     s32 delta;
 
     if (duration == 0) {
-        D_800B21D8 = 2;
+        D_800B21D8[0] = 2;
         duration = 1;
     }
 
@@ -1737,7 +1660,7 @@ void func_8009AE3C(s32 targetScrZ, s32 duration) {
     } else {
         *(s32*)((u8*)&g_Scene + 0x68) = targetScrZ;
         *(s16*)((u8*)&g_Scene + 0x80) = 0;
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
     }
 
     pFlags = (s32*)((u8*)&g_Scene + 0x48);
@@ -1847,19 +1770,15 @@ s32 func_8009AEE0(s32 partySlot, s32 targetX, s32 targetZ, s32 direction) {
 }
 #endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 
 /* FE44 — enable player interact gate. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B15C);
-#else
 void func_8009B15C(void) {
-    D_800B21CF = 1;
+    D_800B21CF[0] = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 
-extern u8 D_800B21CF;
+extern u8 D_800B21CF[];
 extern u8 D_800B21CC;
 extern s32 D_800B2368;
 extern s32 D_800B2364;
@@ -1870,7 +1789,7 @@ extern void func_80081C54(s32);
 
 void func_8009B184(void) {
     s32 i;
-    D_800B21CF = 0;
+    D_800B21CF[0] = 0;
     D_800B21CC = 0;
     D_800B2368 = 0;
     D_800B2364 = 0;
@@ -2021,9 +1940,6 @@ void func_8009B6AC(void) {
 }
 
 /* Start yaw tween toward a relative 8-way facing over `duration` frames. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B708);
-#else
 void func_8009B708(s32 facingOffset, s32 duration) {
     s32 direction;
     s32 delta;
@@ -2031,7 +1947,7 @@ void func_8009B708(s32 facingOffset, s32 duration) {
 
     direction = FieldGetCameraDirection() & 0xFFFF;
     if (duration == 0) {
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
         duration = 1;
     }
 
@@ -2041,7 +1957,6 @@ void func_8009B708(s32 facingOffset, s32 duration) {
     *(s32*)((u8*)&g_Scene + 0x7C) = ((facingOffset + 4) & 7) << 9;
     *(s32*)((u8*)&g_Scene + 0x5C) = delta;
 }
-#endif /* XENO_PC_PORT */
 
 /* Nudge yaw ±0x200 (45°) over `duration` frames. a0==0 → +0x200, else −0x200. */
 #ifndef XENO_PC_PORT
@@ -2052,7 +1967,7 @@ void func_8009B7A8(s32 negative, s32 duration) {
     s32 target;
 
     if (duration == 0) {
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
         duration = 1;
     }
 
@@ -2110,18 +2025,14 @@ void func_8009B8E4(void) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B9A0);
-#else
 void func_8009B9A0(void) {
-    if (*(s16*)((u8*)&g_Scene + 0x66) == 0) {
-        *(s16*)((u8*)&g_Scene + 0xB8) = FieldGetCameraDirection();
-        *(s32*)((u8*)&g_Scene + 0xBC) = g_Scene.sceneScrZ;
-        *(u16*)((u8*)&g_Scene + 0xC0) = g_Scene.sceneDIP;
+    if (g_Scene_s16[0x66 / 2] == 0) {
+        g_Scene_s16[0xB8 / 2] = FieldGetCameraDirection();
+        g_Scene_s32[0xBC / 4] = g_Scene.sceneScrZ;
+        g_Scene_u16[0xC0 / 2] = g_Scene.sceneDIP;
         g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Opcode 0xA0 — restore camera yaw/SCRZ/DIP saved by func_8009B9A0 over 0x20 frames. */
 void func_8009BA0C(void) {

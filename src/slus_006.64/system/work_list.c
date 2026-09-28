@@ -66,9 +66,6 @@ extern WorkListEntry* D_80059590;
 extern WorkListEntry* g_WorkList;
 extern short D_80059494;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsReset);
-#else
 void WorkListsReset(void) {
     g_TimerWorkList = NULL;
     g_WorkList = NULL;
@@ -76,10 +73,6 @@ void WorkListsReset(void) {
     g_NumWorkListEntries = 0;
     g_WorkListCurTimer = 0;
 }
-#endif
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListUpdate);
-#else
 /*
 void WorkListsReset(void) {
     g_TimerWorkList = NULL;
@@ -93,30 +86,29 @@ void WorkListsReset(void) {
 void TimerWorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
     u8* pEntry;
+    WorkListEntry* pNext;
 
     if (g_WorkListCurTimer) {
         g_WorkListCurTimer--;
         if (g_WorkListCurTimer == 0) {
             D_80059494 = 0;
         }
-        return;
-    }
-
-    D_80059590 = g_TimerWorkList;
-    while (D_80059590 != NULL) {
-        pEntry = (u8*)D_80059590;
-        D_800594C0 = (WorkListEntry*)pEntry;
-        D_80059590 = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
-        pFnCallback = (WorkListCallback_t)(uintptr_t)*(u32*)(pEntry + 0x8);
-        if (pFnCallback) {
-            pFnCallback(pEntry);
+    } else {
+        D_80059590 = g_TimerWorkList;
+        while (D_80059590 != NULL) {
+            /* Retail reads the link and the callback before publishing the
+             * cursor globals. */
+            pEntry = (u8*)D_80059590;
+            pNext = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
+            pFnCallback = (WorkListCallback_t)(uintptr_t)*(u32*)(pEntry + 0x8);
+            D_800594C0 = (WorkListEntry*)pEntry;
+            D_80059590 = pNext;
+            if (pFnCallback) {
+                pFnCallback(pEntry);
+            }
         }
     }
 }
-#endif
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListUpdate);
-#else
 /*
 void TimerWorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
@@ -148,19 +140,20 @@ void TimerWorkListUpdate(void) {
 void WorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
     u8* pEntry;
+    WorkListEntry* pNext;
 
     D_80059590 = g_WorkList;
     while (D_80059590 != NULL) {
         pEntry = (u8*)D_80059590;
-        D_800594C0 = (WorkListEntry*)pEntry;
-        D_80059590 = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
+        pNext = (WorkListEntry*)(uintptr_t)*(u32*)(pEntry + 0x18);
         pFnCallback = (WorkListCallback_t)(uintptr_t)*(u32*)(pEntry + 0x8);
+        D_800594C0 = (WorkListEntry*)pEntry;
+        D_80059590 = pNext;
         if (pFnCallback) {
             pFnCallback(pEntry);
         }
     }
 }
-#endif
 /*
 void WorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
@@ -215,9 +208,6 @@ void WorkListAddTask(void* data, WorkListEntry* pEntry) {
 extern u8 D_800591AF;
 void WorkListDeleteTask(WorkListEntry* pTask);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAllocateTask);
-#else
 WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     WorkListEntry* pEntry;
 
@@ -226,7 +216,6 @@ WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     pEntry->onFreeCallback = WorkListDeleteTask;
     return pEntry;
 }
-#endif
 
 void WorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
@@ -308,9 +297,6 @@ void TimerWorkListAddTask(void* data, WorkListEntry* pEntry) {
 extern u8 D_800591AF;
 void TimerWorkListDeleteTask(WorkListEntry* pTask);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAllocateTask);
-#else
 WorkListEntry* TimerWorkListAllocateTask(void* data, int dataSize) {
     WorkListEntry* pEntry;
     pEntry = HeapAlloc(dataSize + sizeof(WorkListEntry), D_800591AF);
@@ -319,7 +305,6 @@ WorkListEntry* TimerWorkListAllocateTask(void* data, int dataSize) {
     pEntry->unk4 = 0;
     return pEntry;
 }
-#endif
 
 void WorkListSetTaskCallback(WorkListEntry* pTask, WorkListCallback_t callback) {
     pTask->onTriggerCallback = callback;
@@ -341,9 +326,6 @@ WorkListCallback_t WorkListTaskGetOnFreeCallback(WorkListEntry* pTask) {
     return pTask->onFreeCallback;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListRemoveTask);
-#else
 void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
     WorkListEntry* pCurEntry;
@@ -373,7 +355,6 @@ void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     
     g_NumTimerWorkListEntries--;
 }
-#endif
 
 void TimerWorkListDeleteTask(WorkListEntry* pTask) {
     TimerWorkListRemoveTask(pTask);
@@ -481,21 +462,17 @@ void* func_8001D10C(void* pTask) {
     return NULL;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D164);
-#else
+/* Returns the first timer-list entry whose trigger callback is pCallback,
+ * or NULL when there is none (retail returns NULL, not the last entry). */
 void* func_8001D164(void* pCallback) {
-    void* pPrev = NULL;
-    void* pCur = g_TimerWorkList;
-    while (pCur != NULL) {
-        void* pNext = *(void**)((u8*)pCur + 0x08);
-        if (pNext == pCallback) return pCur;
-        pPrev = pCur;
-        pCur = *(void**)((u8*)pCur + 0x18);
+    void* pCur;
+    for (pCur = g_TimerWorkList; pCur != NULL; pCur = *(void**)((u8*)pCur + 0x18)) {
+        if (*(void**)((u8*)pCur + 0x08) == pCallback) {
+            return pCur;
+        }
     }
-    return pPrev;
+    return NULL;
 }
-#endif
 
 void WorkListsDeleteTasks(WorkListEntry* pTasks) {
     WorkListRemoveTask(pTasks + 1);
@@ -529,7 +506,13 @@ WorkListEntry* WorkListsAddTasks(void* timerData, void* timerCb, void* workCb, v
 
 
 // This may be the start of a new TU
+#ifdef XENO_PC_PORT
 extern s32 D_80059190;
+#else
+/* This TU's own .sbss word: retail reaches it %gp_rel, which cc1 only emits
+ * for a same-TU definition (plain externs assemble absolute here). */
+s32 D_80059190;
+#endif
 extern void func_8001DAE8(void* arg0, u16 arg1, u32 arg2);
 extern void func_800234AC(void* pSpriteData);
 extern void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr);
