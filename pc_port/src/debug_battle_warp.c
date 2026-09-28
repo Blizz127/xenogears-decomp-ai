@@ -14,8 +14,8 @@
  * to it, and scripted boss battles (Id, for one) sit many hours past anything
  * the headless harness can currently drive.
  *
- * REMOVAL: delete this file and the PcPort_DebugBattleWarp() call in
- * pc_port/src/psyq_compat.c's Vsync shim.
+ * Also driven by the cheat console (`battle <id>`, PcPort_DebugBattleWarpQueue);
+ * PcPort_DebugBattleWarp runs as a frame_tick subscriber (cheat_console.c).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +35,19 @@ extern u8 D_80059508, D_800594F8, D_8005954C, D_800B2356;
 
 /* Set by warp_read_pending when the request carried an explicit BGM id. */
 static int s_pending_bgm = -1;
+/* Battle id queued by the cheat console's `battle` command. */
+static int s_queued_id = -1;
+
+void PcPort_DebugBattleWarpQueue(int id)
+{
+    if (id < 0 || id > 255) {
+        printf("[xeno-port][cheat] battle id must be 0..255\n");
+        return;
+    }
+    s_queued_id = id;
+    s_pending_bgm = -1;
+    printf("[xeno-port][cheat] battle %d queued (fires when the field is idle)\n", id);
+}
 
 static int warp_read_pending(const char* path)
 {
@@ -77,7 +90,7 @@ void PcPort_DebugBattleWarp(void)
         path = getenv("XENO_BATTLE_WARP_FILE");
         if (path != NULL && path[0] == '\0') path = NULL;
     }
-    if (path == NULL) return;
+    if (path == NULL && s_queued_id < 0) return;
     if (++frame < WARP_POLL_FRAMES) return;
     frame = 0;
 
@@ -89,7 +102,12 @@ void PcPort_DebugBattleWarp(void)
         return;
     }
 
-    id = warp_read_pending(path);
+    if (s_queued_id >= 0) {
+        id = s_queued_id;
+        s_queued_id = -1;
+    } else {
+        id = path ? warp_read_pending(path) : -1;
+    }
     if (id < 0) return;
 
     D_8005954C = (s_pending_bgm >= 0) ? (u8)s_pending_bgm : D_800B2356;

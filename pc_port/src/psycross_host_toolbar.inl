@@ -11,7 +11,23 @@ extern "C" int PcPort_RandomBattlesEnabled(void) __attribute__((weak));
 extern "C" void PcPort_RandomBattlesToggle(void) __attribute__((weak));
 extern "C" int PcPort_FeiHd2dEnabled(void) __attribute__((weak));
 extern "C" void PcPort_FeiHd2dToggle(void) __attribute__((weak));
+extern "C" void PcPort_CheatQueue(const char* line) __attribute__((weak));
 #endif
+
+/* Cheats go through the cheat console (pc_port/src/cheat_console.c): queued
+ * here on the host UI thread, executed on the game thread at the next
+ * frame_tick.  Falls back to the direct call where the console is absent. */
+static void PsyX_HostCheat(const char* command, void (*direct)(void))
+{
+#if defined(__GNUC__)
+	if (PcPort_CheatQueue != NULL) {
+		PcPort_CheatQueue(command);
+		return;
+	}
+#endif
+	if (direct != NULL)
+		direct();
+}
 
 /* The native File/card screen has not been implemented.  The policy (dispatch
  * the notice off the game thread, never call the modal dialog inline) lives in
@@ -133,14 +149,12 @@ static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
 	switch (action) {
 	case PC_PORT_TOOLBAR_QUICK_SAVE:
 #if defined(__GNUC__)
-		if (PcPort_QuickCheckpointRequestSave != NULL)
-			PcPort_QuickCheckpointRequestSave();
+		PsyX_HostCheat("save", PcPort_QuickCheckpointRequestSave);
 #endif
 		break;
 	case PC_PORT_TOOLBAR_QUICK_LOAD:
 #if defined(__GNUC__)
-		if (PcPort_QuickCheckpointRequestLoad != NULL)
-			PcPort_QuickCheckpointRequestLoad();
+		PsyX_HostCheat("load", PcPort_QuickCheckpointRequestLoad);
 #endif
 		break;
 	case PC_PORT_TOOLBAR_FEI_HD2D:
@@ -150,12 +164,12 @@ static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
 		break;
 	case PC_PORT_TOOLBAR_RANDOM_BATTLES:
 #if defined(__GNUC__)
-		if (PcPort_RandomBattlesToggle != NULL) PcPort_RandomBattlesToggle();
+		PsyX_HostCheat("encounters", PcPort_RandomBattlesToggle);
 #endif
 		break;
 	case PC_PORT_TOOLBAR_GOD_MODE:
 #if defined(__GNUC__)
-		if (PcPort_GodModeToggle != NULL) PcPort_GodModeToggle();
+		PsyX_HostCheat("god", PcPort_GodModeToggle);
 #endif
 		break;
 	case PC_PORT_TOOLBAR_RECORD:
@@ -188,8 +202,8 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
 		event->key.keysym.scancode == SDL_SCANCODE_F10) {
 #if defined(__GNUC__)
-		if (PcPort_RandomBattlesToggle != NULL) {
-			PcPort_RandomBattlesToggle();
+		if (PcPort_RandomBattlesToggle != NULL || PcPort_CheatQueue != NULL) {
+			PsyX_HostCheat("encounters", PcPort_RandomBattlesToggle);
 			return 1;
 		}
 #endif
@@ -201,8 +215,8 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
 		event->key.keysym.scancode == SDL_SCANCODE_F12) {
 #if defined(__GNUC__)
-		if (PcPort_GodModeToggle != NULL) {
-			PcPort_GodModeToggle();
+		if (PcPort_GodModeToggle != NULL || PcPort_CheatQueue != NULL) {
+			PsyX_HostCheat("god", PcPort_GodModeToggle);
 			return 1;
 		}
 #endif

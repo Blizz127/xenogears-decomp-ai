@@ -15,6 +15,7 @@
 #include "../include/xg_plat/renderer.h"
 #include "../include/xg_plat/config.h"
 #include "../include/xg_plat/mods.h"
+#include "cheat_console.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1279,6 +1280,10 @@ int main(int argc, char** argv) {
     }
     /* Config file / XENO_* overrides: game.speed, input.* bindings, ... */
     xg_plat_config_apply_runtime();
+    /* Cheat console first: its frame_tick subscribers (field warp, battle
+     * warp, queued commands) must run before any mod hook, in the order the
+     * VSync shim used to call them. */
+    PcPort_CheatConsoleInit();
     /* Mods: scan mods/ (manifests, plugins, asset replacements). */
     (void)xg_plat_mods_init();
     {   /* game-side event sources (room_enter, ...) */
