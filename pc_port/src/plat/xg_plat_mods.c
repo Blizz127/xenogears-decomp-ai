@@ -132,6 +132,8 @@ int xg_plat_mods_parse_manifest(const char* text, XgPlatModManifest* out)
             out->load_order = atoi(v);
         else if (!strcmp(k, "abi"))
             out->abi = atoi(v);
+        else if (!strcmp(k, "script"))
+            snprintf(out->script, sizeof out->script, "%s", v);
     }
     return out->name[0] != '\0' && out->abi == XG_PLAT_MODS_ABI_VERSION;
 }
@@ -148,6 +150,7 @@ static void api_log(const char* fmt, ...)
 
 static const XgPlatModApi s_api = {
     XG_PLAT_MODS_ABI_VERSION, xg_plat_mods_subscribe, xg_plat_mods_unsubscribe, api_log,
+    { NULL, NULL, NULL, NULL },
 };
 
 static int is_hex64(const char* s)
@@ -287,6 +290,10 @@ int xg_plat_mods_init(void)
     for (i = 0; i < s_mod_count; i++) {
         index_assets(i);
         load_plugin(i);
+        if (s_mods[i].script[0])
+            fprintf(stderr, "[xg_plat] mods: %s: script '%s' not run: Lua scripting is reserved "
+                            "but not implemented yet (assets and plugin still load)\n",
+                    s_mods[i].name, s_mods[i].script);
         printf("[xg_plat] mod %d: %s %s (load order %d) from %s\n", i, s_mods[i].name,
                s_mods[i].version, s_mods[i].load_order, s_mods[i].dir);
     }
