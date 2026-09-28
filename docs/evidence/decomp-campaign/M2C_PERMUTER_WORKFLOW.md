@@ -56,3 +56,28 @@ so m2c_drive always rebuilds and compares the whole overlay.
   top-level `__asm__` is emitted ahead of every C function at -O2.
 - **objdiff is not byte-exact.** It scored field's `func_800A7948` 100% while two
   stores went to swapped `symbol + offset` targets.
+- **Epilogue delay filling.** Our gcc-2.7.2 cc1 can move a function's last
+  body instruction after `lw $ra` (into the load's delay) and put
+  `addiu $sp` in the `jr` slot. Retail menu never does this: 0 of 253 retail
+  epilogues. When a mismatch is exactly "last insn swapped with `lw $ra`",
+  and that insn is a store, make the store `volatile`
+  (`*(volatile u8*)&p->field = v;`). Volatile insns are not delay-slot
+  candidates. That matched menu's func_801D28FC, func_801E649C and
+  func_801E64E0. When the last insn is a constant return (`return 1;`, e.g.
+  func_801DE29C) there is no known fix yet. `-fno-delayed-branch` is not the
+  answer: menu matched 145 functions with it, against 204 without.
+- **Load order after stores.** When retail re-reads a field right after
+  storing to a neighbouring one, where gcc could prove the addresses differ
+  and so keeps the value in a register, reading it through
+  `*(volatile T*)` reproduces the reload (menu func_801E42AC, func_801E4998,
+  func_801E35BC).
+- **Operand order of `addu`.** gcc canonicalises pointer + int to
+  `addu base, off`. When retail has `addu off, base`, compute the offset into
+  an `s32`/`uintptr_t` temp and add `(uintptr_t)base`. `uintptr_t` is 32-bit
+  in the retail headers and host-wide on the port, so the same expression is
+  safe in shared bodies (menu func_801D0FD4, func_801D9E3C, func_801E4258).
+- **Menu-style shared TUs.** Where a file keeps `#ifndef XENO_PC_PORT
+  INCLUDE_ASM / #else <port body>` sites, run `m2c_insert.py --inner` so the
+  draft becomes the retail arm of the existing definition rather than a
+  second definition. Menu compiles with `-G0` (gears.toml MenuG0), so set
+  `XENO_GP_FLAG=-G0` for m2c_try/m2c_insert there.
