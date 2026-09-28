@@ -1,0 +1,33 @@
+name: Port guards
+
+# Policy checks that need no game data: no retail bytes/tables in tracked
+# files (hash signatures only, --no-disc) and no Psy-Q SDK code in pc_port.
+# Runs without secrets, so it is safe on pull requests from forks.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Guard self-tests
+        run: python3 tools/analysis/test_port_guards.py
+
+      - name: Retail-data and Psy-Q guards (no disc)
+        run: bash tools/analysis/run_port_guards.sh --no-disc

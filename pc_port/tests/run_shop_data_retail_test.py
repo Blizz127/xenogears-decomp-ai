@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Compare the compiled native data image and every alias with the disc."""
+"""Compare the loaded native data image (filled from disc/shop_menu.bin by
+retail_data.h) and every alias with the disc."""
 import ctypes
 import hashlib
 import os
@@ -18,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix='xeno-shop-data-') as temp:
     out = Path(temp)
     def build_check(src, name):
         library = out / (name + '.so')
-        subprocess.run(['gcc', '-shared', '-fPIC', str(src), '-o', str(library)], check=True)
+        subprocess.run(['gcc', '-shared', '-fPIC', '-Ipc_port/src', str(src), '-o', str(library)], check=True)
         lib = ctypes.CDLL(str(library))
         image = (ctypes.c_ubyte * len(expected)).in_dll(lib, 'xeno_shop_data')
         assert bytes(image) == expected, 'retail data bytes'
@@ -27,7 +28,7 @@ with tempfile.TemporaryDirectory(prefix='xeno-shop-data-') as temp:
             address = ctypes.addressof(ctypes.c_ubyte.in_dll(lib, symbol))
             assert address - base == int(symbol[2:], 16) - 0x801d1f50, symbol
     build_check(source, 'native')
-    for name, old, new in [('value', '0x09', '0x08'), ('alias', 'xeno_shop_data + 0x4\\n', 'xeno_shop_data + 0x8\\n')]:
+    for name, old, new in [('value', 'XENO_RD_MENU_OFF(0x801D1F50u)', 'XENO_RD_MENU_OFF(0x801D1F4Fu)'), ('alias', 'xeno_shop_data + 0x4\\n', 'xeno_shop_data + 0x8\\n')]:
         text = source.read_text()
         assert old in text
         mutant = out / (name + '.c')

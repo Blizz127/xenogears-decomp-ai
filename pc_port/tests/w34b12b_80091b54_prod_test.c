@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
@@ -223,12 +224,10 @@ static void oracle_sw(u32 pc, u32 address, u32 value)
 
 static void seed_memory(u32 salt)
 {
-    static const u16 table_halfwords[16] = {
-        0xFEABu, 0xFE39u, 0xFE00u, 0xFDC8u,
-        0xFF1Du, 0xFE39u, 0xFE00u, 0xFDC8u,
-        0xFF00u, 0xFE20u, 0xFD48u, 0xFC58u,
-        0xFF50u, 0xFE20u, 0xFD48u, 0xFC58u
-    };
+    /* 16 retail halfwords at TABLE_A1, read from the user's
+     * disc/world_map.bin (overlay loaded at 0x8006FAF0); never committed. */
+    static u16 table_halfwords[16];
+    static int table_loaded;
     size_t index;
 
     for (index = 0u; index < sizeof(g_PsxRam); index++) {
@@ -240,6 +239,20 @@ static void seed_memory(u32 salt)
         u32 low = (u32)index;
         g_PsxScratchpad[index] =
             (u8)((low * 31u + salt * 19u + 0xA9u) & 0xFFu);
+    }
+    if (!table_loaded) {
+        unsigned char raw[32];
+        FILE* f = fopen("disc/world_map.bin", "rb");
+        if (f == NULL || fseek(f, (long)(TABLE_A1 - 0x8006FAF0u), SEEK_SET) != 0 ||
+            fread(raw, 1, sizeof raw, f) != sizeof raw) {
+            fprintf(stderr, "w34b12b: cannot read the TABLE_A1 halfwords from "
+                            "disc/world_map.bin (run from the repo root)\n");
+            exit(2);
+        }
+        fclose(f);
+        for (index = 0u; index < 16u; index++)
+            table_halfwords[index] = (u16)(raw[2 * index] | raw[2 * index + 1] << 8);
+        table_loaded = 1;
     }
     for (index = 0u; index < 16u; index++)
         raw_store_u16(TABLE_A1 + (u32)index * 2u,

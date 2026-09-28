@@ -9,6 +9,8 @@
  */
 
 #include <stdio.h>
+#include "retail_data.h"
+#include "disc_check.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1224,6 +1226,12 @@ int main(int argc, char** argv) {
     (void)argv;
 
     printf("[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)\n");
+    /* The data_*.c constructors already filled the native retail tables from
+     * the user's disc files (retail_data.h); report what they loaded. */
+    printf("[xeno-port] retail data: %u objects, %u bytes loaded from the user's "
+           "files (SLUS_006.64: %s)\n", g_XenoRetailRangesLoaded, g_XenoRetailBytesLoaded,
+           g_XenoRetailFiles[XENO_RD_SLUS].state > 0 ? g_XenoRetailFiles[XENO_RD_SLUS].path
+                                                    : "not loaded");
 
     /* 1. PSX main-RAM emulation must come first (PSX_ADDR targets live here). */
     PsxMemory_Init();
@@ -1406,14 +1414,16 @@ int main(int argc, char** argv) {
     {
         const char* disc = PcPort_FindDiscImage();
         /* D_80010000 is static read-only ROM data (asm/.../data/800.rodata.s) with
-         * value 0xFFFFFFFF. The exact retail bytes are now baked by
-         * pc_port/src/data_slus_rodata.c, so the old ad-hoc
+         * value 0xFFFFFFFF. The exact retail bytes are now loaded from the user's
+         * disc/SLUS_006.64 into pc_port/src/data_slus_rodata.c, so the old ad-hoc
          * `*(int*)D_80010000 = -1;` write is gone -- the correction is in the data,
          * not in a boot patch. A zero stub made FieldMain compute
          * g_FieldSystemMode = SYSTEM_MODE_PC_HDD (0) and hit a `break 1` trap meant
          * only for the PC-HDD dev path; the real constant picks SYSTEM_MODE_CD_ROM
          * (1). ArchiveInit treats the value as pDebugTable: -1, like 0, selects the
          * CD path (g_ArchiveDebugTable = NULL), so disc loading is unchanged. */
+        if (disc && PcPort_VerifyDiscImage(disc) != 0)
+            exit(78); /* EX_CONFIG: wrong disc image, explained on stderr */
         if (disc) {
             printf("[xeno-port] CD image: %s\n", disc);
             PsyX_CDFS_Init(disc, 0, PORT_CD_SECTOR_SIZE);
@@ -1675,7 +1685,11 @@ int main(int argc, char** argv) {
             printf("[xeno-port][field] font + party-skin init done\n");
         } else {
             printf("[xeno-port] WARNING: no disc image found "
-                   "(set XENO_DISC or place disc/disc1.bin); archive reads disabled.\n");
+                   "(set XENO_DISC or place disc/disc1.bin); archive reads disabled.\n"
+                   "[xeno-port] The port contains no game data: provide your own "
+                   "Xenogears (USA) Disc 1 BIN image (Redump sha1 "
+                   "12db8ccb93516c391630f046a143762337cc21f4). Without it only the "
+                   "developer KernelMenu is reachable.\n");
         }
     }
 
