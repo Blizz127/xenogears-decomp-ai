@@ -9,11 +9,11 @@ python3 - <<'PYGEN'
 from pathlib import Path
 import hashlib, re
 b=Path('disc/menu.bin').read_bytes()
-for addr,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',Path('asm/menu/nonmatchings/main/misc/func_801DE5CC.s').read_text()):
+for addr,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',next(Path('asm/menu').glob('*matchings/main/misc/func_801DE5CC.s')).read_text()):
  off=int(addr,16)-0x801c5000
  assert b[off:off+4]==bytes.fromhex(h), (addr,h)
 assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d'
-print('DE5CC instruction words OK, bytes', sum(1 for _ in re.finditer(r'/\* \w+ [0-9A-F]{8} [0-9A-F]{8} \*/',Path('asm/menu/nonmatchings/main/misc/func_801DE5CC.s').read_text()))*4)
+print('DE5CC instruction words OK, bytes', sum(1 for _ in re.finditer(r'/\* \w+ [0-9A-F]{8} [0-9A-F]{8} \*/',next(Path('asm/menu').glob('*matchings/main/misc/func_801DE5CC.s')).read_text()))*4)
 PYGEN
 BASE=(-std=gnu17 -fno-pie -ffunction-sections -fdata-sections -fno-strict-aliasing -DXENO_PC_PORT -DXENO_EQUIP_LIST_TEST -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -fpermissive -w -Ipc_port/include_shim -Iinclude -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx -Ipc_port/src)
 for mode in O0 O2 UBSan; do
