@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from assist_common import CACHE, CC1_FLAGS, MASPSX_FLAGS, REPO
+from assist_common import CACHE, REPO, toolchain
 
 ov, seg, name = sys.argv[1:4]
 base = sys.argv[4] if len(sys.argv) > 4 else os.path.join(CACHE, 'm2c', ov, seg, name + '.i')
@@ -26,10 +26,13 @@ open(os.path.join(d, 'target.s'), 'w').write('.include "macro.inc"\n.set noat\n.
 subprocess.run(['mips-linux-gnu-as', '-EL', '-march=r3000', '-mtune=r3000', '-no-pad-sections',
                 '-I' + os.path.join(REPO, 'include'), '-o', os.path.join(d, 'target.o'), os.path.join(d, 'target.s')],
                check=True, capture_output=True)
-maspsx = ' '.join(f.replace('-Iinclude', '-I' + os.path.join(REPO, 'include')) for f in MASPSX_FLAGS)
+TC = toolchain(ov, seg)  # the TU's gears.toml preset (XENO_CC1/XENO_GP_FLAG override)
+maspsx = ' '.join({'-Iinclude': '-I' + os.path.join(REPO, 'include'), 'build': os.path.join(REPO, 'build')}.get(f, f)
+                  for f in TC['maspsx_flags'])
+cc1 = TC['cc1'] if os.path.isabs(TC['cc1']) else os.path.join(REPO, TC['cc1'])
 open(os.path.join(d, 'compile.sh'), 'w').write(f'''#!/bin/bash
 # compile.sh in.c -o out.o  (maspsx reads stdin when it is not a TTY: keep </dev/null)
-{REPO}/tools/gcc-2.7.2-psx/cc1 {' '.join(CC1_FLAGS)} -o "$3.s" "$1" && \\
+{cc1} {' '.join(TC['cc1_flags'])} -o "$3.s" "$1" && \\
 python3 {REPO}/tools/maspsx/maspsx.py {maspsx} -o "$3" "$3.s" 2>/dev/null </dev/null
 ''')
 os.chmod(os.path.join(d, 'compile.sh'), 0o755)
