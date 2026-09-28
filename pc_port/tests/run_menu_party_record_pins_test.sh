@@ -21,7 +21,7 @@ for mutant in stride-0x28 conditional-3f conditional-9f extra-halving slot-by-sl
         conditional-3f) sed -i 's/    pEntry\[0x3F\] = pTable\[0xE\];/    if (0) pEntry[0x3F] = pTable[0xE];/' "$OUT/records.inc" ;;
         conditional-9f) sed -i 's/    pEntry\[0x9F\] = pTable\[0x17\];/    if (0) pEntry[0x9F] = pTable[0x17];/' "$OUT/records.inc" ;;
         extra-halving) sed -i 's|(val / 10) \* 2 / 9;|(val / 10) * 2 / 9 / 2;|' "$OUT/records.inc" ;;
-        slot-by-slotidx) sed -i 's/(u8\*)pCtx + charIdx \* 4 + 0x20/(u8*)pCtx + slotIdx * 4 + 0x20/' "$OUT/records.inc" ;;
+        slot-by-slotidx) sed -i 's/(uintptr_t)pCtx + charIdx \* 4 + 0x20/(uintptr_t)pCtx + slotIdx * 4 + 0x20/' "$OUT/records.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/records.inc"
     "${CC:-gcc}" "${BASE[@]}" -O0 pc_port/tests/menu_party_record_pins_test.c -o "$OUT/$mutant"
