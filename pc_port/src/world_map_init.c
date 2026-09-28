@@ -2859,16 +2859,13 @@ static int wm_8009766C_object_pool(void)
 
     fprintf(stderr, "[worldmap-object-pool] entry\n");
 
+    /* Retail allocates unconditionally.  A non-zero BE24 is the previous
+     * session's pool, already released by 0x800976A0 (which, like retail,
+     * does not clear the pointer), so it is not an error. */
     prior = WM_U32(WM_POOL_BE24);
-    if (prior != 0) {
-        /* Repeat invocation in one process would leak without free (976A0).
-         * Fail loud rather than silent double-alloc. */
-        fprintf(stderr,
-                "[worldmap-object-pool] ERROR: BE24 already set "
-                "psx=0x%08x (refuse re-init; retail free is 0x800976A0)\n",
-                prior);
-        return -1;
-    }
+    if (prior != 0)
+        fprintf(stderr, "[worldmap-object-pool] previous session pool psx=0x%08x "
+                        "(freed by 0x800976A0); allocating a new one\n", prior);
 
     fprintf(stderr, "[worldmap-object-pool] alloc_size=%u\n", WM_POOL_ALLOC_SIZE);
     pool_host = HeapAlloc(WM_POOL_ALLOC_SIZE, 0);
@@ -6977,17 +6974,16 @@ int wm_mode18_stage_second_wave_finish(void)
     return wm_80076954();
 }
 
-void PcPort_WorldMapInitMain(void)
+/* Each world-map session re-runs the whole setup chain (retail 0x80072238
+ * calls the pool, matrix, archive-wave, template ... stages every session,
+ * after the second wave has reloaded their data).  The native stages carry
+ * one-shot guards against a duplicate call within a session; they must start
+ * afresh for every session -- a new field -> world entry (overlay reload) or
+ * a further session inside the same visit.  Without this, the second session
+ * in one visit failed a guard and wm_80071034 called exit().  These resets
+ * do not touch guest game state. */
+void PcPort_WorldMapResetStageGuards(void)
 {
-    int decoded_size;
-    u32 final_write = 0;
-    u8 bss_before[16];
-    u8 bss_after[16];
-
-    /* Retail reloads the overlay and its assets on every field -> world
-     * entry. Native diagnostics outlive that overlay, so their one-shot
-     * ownership must start afresh too. Keep duplicate-stage protection
-     * within an entry; these resets do not touch guest game state. */
     s_wm8440c_completed = 0;
     s_wm979c8_ran = 0;
     s_wm84580_ran = 0;
@@ -7006,6 +7002,17 @@ void PcPort_WorldMapInitMain(void)
     s_wm_gfx_work_rung_dispatches = 0;
     s_wm_gfx_work_world_hits = 0;
     s_wm32b_entry = 0;
+
+}
+
+void PcPort_WorldMapInitMain(void)
+{
+    int decoded_size;
+    u32 final_write = 0;
+    u8 bss_before[16];
+    u8 bss_after[16];
+
+    PcPort_WorldMapResetStageGuards();
 
     s_wm712d0_hits = 0;
     s_wm_drawotag_hits = 0;

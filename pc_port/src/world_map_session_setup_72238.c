@@ -64,12 +64,18 @@ static int wm_72238_require(int result, const char* stage)
     return -1;
 }
 
+void PcPort_WorldMapResetStageGuards(void) __attribute__((weak));
+
 int wm_80072238(void)
 {
     Wm72238Rect source_rect;
     wm_conv_p1_next_t convergence_next;
     u32 initial_c894;
 
+    /* A new session: the native setup stages may run again (retail re-runs
+     * them every session). */
+    if (PcPort_WorldMapResetStageGuards)
+        PcPort_WorldMapResetStageGuards();
     wm_80072BB0();
     source_rect.x = 0;
     source_rect.y = 0;
