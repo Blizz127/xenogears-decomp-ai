@@ -5,6 +5,15 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+void func_800399D4(s32);
+void func_80039C4C(s32);
+void func_800716D8();
+extern s32 D_800C3E54;
+extern void * D_800D3278;
+s32 func_battle_command_file1_801E807C(void);
+#endif
+
+#ifndef XENO_PC_PORT
 s32 xeno_battle_command_file1_controller(s32, u8, u8);
 void func_800B39C0(u16, s32, s32, s32, s32);
 s32 func_battle_command_file1_801E57F8(s32, s32, s32, s32);
@@ -287,7 +296,19 @@ s32 func_battle_command_file1_801E8074(void) {
     return 1;
 }
 
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E807C);
+
+#ifndef XENO_PC_PORT
+s32 func_battle_command_file1_801E807C(void) {
+    if (*(u8 *)((s8*)(D_800D3278) + 0x81F) != 0) {
+        func_80039C4C(D_800C3E54);
+        func_800716D8();
+        func_800399D4(D_800C3E54);
+        *(u8 *)((s8*)(D_800D3278) + 0x81F) = 0U;
+    }
+    return 1;
+}
+#endif
+
 
 s32 func_battle_command_file1_801E80E8(void) {
     return 1;
