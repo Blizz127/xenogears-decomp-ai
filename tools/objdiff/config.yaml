@@ -40,6 +40,10 @@ categories:
     name: Battle Command File1
     paths:
       - battle_command_file1/
+  - id: world_map
+    name: World Map Overlay
+    paths:
+      - world_map/
 
 expected_paths:
   asm: expected/asm
