@@ -12,15 +12,23 @@
 #endif
 
 
-void* g_SystemDataFile;
-void* g_SystemFontFile;
-void* g_SystemDataEntries;
-u32 D_8005934C;
-u32 D_80059350;
-u32 D_80059354;
-u32 D_80059358;
-u32 D_8005935C;
-u32 D_80059364;
+/* Retail reaches all of these absolutely (lui %hi / %lo), i.e. this TU saw
+ * them as externs; a tentative definition here would make cc1 -G8 address
+ * them gp-relative. The port still needs the storage. */
+#ifdef XENO_PC_PORT
+#define SYSTEM_BSS
+#else
+#define SYSTEM_BSS extern
+#endif
+SYSTEM_BSS void* g_SystemDataFile;
+SYSTEM_BSS void* g_SystemFontFile;
+SYSTEM_BSS void* g_SystemDataEntries;
+SYSTEM_BSS u32 D_8005934C;
+SYSTEM_BSS u32 D_80059350;
+SYSTEM_BSS u32 D_80059354;
+SYSTEM_BSS u32 D_80059358;
+SYSTEM_BSS u32 D_8005935C;
+SYSTEM_BSS u32 D_80059364;
 /* Real retail data already defined in asm/slus_006.64/data/3F290.sdata.s
  * (24 bytes, verified byte-identical to the values previously duplicated
  * here); a second C definition of the same symbol caused a link-time
@@ -205,41 +213,25 @@ void ResolveFileEntryPointers(u32* pFile) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetSystemFontFile);
-#else
 void* GetSystemFontFile(void) {
     return g_SystemFontFile;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetSystemDataFile);
-#else
 void* GetSystemDataFile(void) {
     return g_SystemDataFile;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemFreeFont);
-#else
 void SystemFreeFont(void) {
     HeapUnpinBlock(g_SystemFontFile);
     HeapFree(g_SystemFontFile);
     g_SystemFontFile = NULL;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemFreeData);
-#else
 void SystemFreeData(void) {
     HeapUnpinBlock(g_SystemDataFile);
     HeapFree(g_SystemDataFile);
     g_SystemDataFile = NULL;
 }
-#endif
 
 
 #ifndef XENO_PC_PORT
@@ -263,9 +255,6 @@ void SystemInitializeFont(void* pSystemFont) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemInitializeData);
-#else
 void SystemInitializeData(void* pSystemData) {
     if (pSystemData == 0) {
         HeapSetCurrentContentType(HEAP_CONTENT_NONE);
@@ -277,7 +266,6 @@ void SystemInitializeData(void* pSystemData) {
     ResolveArchiveEntryPointers(pSystemData);
     g_SystemDataEntries += 4;
 }
-#endif
 
 void SystemInitialize(void* pSystemFont, void* pSystemData) {
     SystemInitializeFont(pSystemFont);
@@ -313,78 +301,43 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex) {
     return pDialog[1];
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033784);
-#else
 void* func_80033784(s32 tableIndex, s32 stringIndex) {
     /* ResolveArchiveEntryPointers keeps four-byte slots even on the host.
      * Match the retail LW here and in the fixed-offset readers below. */
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4), stringIndex);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800337B8);
-#else
 void* func_800337B8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x40), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetAccessoryName);
-#else
 void* GetAccessoryName(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x44), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetItemName);
-#else
 void* GetItemName(s32 index) {
     /* The system archive table contains PSX-width pointer slots.  Keep the
      * retail lw read on the 64-bit port instead of consuming two entries. */
     return GetStringEntry(
         (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x58), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetWeaponName);
-#else
 void* GetWeaponName(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x5C), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033878);
-#else
 void* func_80033878(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x60), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338A8);
-#else
 void* func_800338A8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x64), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338D8);
-#else
 void* func_800338D8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x48), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033908);
-#else
 void* func_80033908(s32 index) {
     /* The entries table holds four-byte PSX pointer slots: read the slot as
      * u32 (the func_80033B34 idiom), not as a native void**.  Latent until
@@ -392,71 +345,38 @@ void* func_80033908(s32 index) {
     return GetStringEntry(
         (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x50), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033938);
-#else
 void* func_80033938(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x4C), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033968);
-#else
 void* func_80033968(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x54), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033998);
-#else
 void* func_80033998(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339C8);
-#else
 void* func_800339C8(s32 tableIndex, s32 stringIndex) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4 + 0x70), stringIndex);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339FC);
-#else
 void* func_800339FC(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC0), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A2C);
-#else
 void* func_80033A2C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC8), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A5C);
-#else
 void* func_80033A5C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xCC), index);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A8C);
-#else
 void* func_80033A8C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xD0), index);
 }
-#endif
 
 extern u8 D_8005A0E4[];
 
