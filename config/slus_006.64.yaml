@@ -91,6 +91,8 @@ segments:
       - [0xA16C, c, main/main_loop]
       - [0xA9E4, c, system/kernel_menu]
       - [0xADCC, c, system/temp3]
+      - [0xBEC4, c, system/temp3b]
+      - [0xC170, c, system/temp3c]
       - [0xC5DC, c, system/menu]
       - [0xD0DC, c, system/work_list]
       - [0xDCE8, c, system/rendering]

@@ -44,6 +44,13 @@ extern u8* D_800592D8;
  * addressed absolutely under the Default preset. Do NOT move these to
  * headers or mark extern: their TU-local definition is what selects
  * %gp_rel. (D_800594D5/D6 stay extern: retail addresses them absolutely.) */
+/* Retail temp3 is three TUs: temp3 proper (..0x8001B6C4), temp3b
+ * (0x8001B6C4..0x8001B970) and temp3c (0x8001B970..), which
+ * src/slus_006.64/system/temp3b.c / temp3c.c build by including this file
+ * with TEMP3_PART_B / TEMP3_PART_C defined. Each owns the .sbss above that
+ * it reaches %gp_rel; temp3b reaches temp3c's D_8005947C/D_800594F8 as
+ * plain (absolute) externs. The port builds all three parts here. */
+#if defined(XENO_PC_PORT) || defined(TEMP3_PART_C)
 u8 D_8005946C;
 u8 D_8005947C;
 u8* D_80059480;
@@ -52,10 +59,19 @@ u8 D_800594CC;
 u8 D_800594D4;
 u8 D_800594F8;
 u8 D_8005954C;
-u8 D_8005959C;
 s32 D_800595A0;
 u8* D_800595A8;
 u8* D_800595D0;
+#endif
+#if defined(XENO_PC_PORT) || defined(TEMP3_PART_B)
+u8 D_8005959C;
+#endif
+#if !defined(XENO_PC_PORT) && defined(TEMP3_PART_B)
+extern u8 D_8005947C;
+extern u8 D_800594F8;
+#endif
+
+#if defined(XENO_PC_PORT) || (!defined(TEMP3_PART_B) && !defined(TEMP3_PART_C))
 
 void func_8001A5CC(void) {
     s32 row, col;
@@ -616,6 +632,9 @@ void func_8001B66C(void) {
 
 void func_8001B6BC(void) {}
 
+#endif /* temp3 proper */
+
+#if defined(XENO_PC_PORT) || defined(TEMP3_PART_B)
 extern s32* D_8005917C;
 extern u8 D_800C48EA;
 extern u8 D_800D3338;
@@ -629,17 +648,10 @@ extern void func_80070F40(void);
 extern void ChangeGameState(unsigned int state);
 extern void MainLoop(int errorCode);
 
-/* func_8001B6C4 addresses these two bytes absolutely (lui+memop), unlike
- * the TU's other small-data uses of the same symbols which go through
- * %gp_rel. The port has no absolute addresses, so it uses the TU-owned
- * variables directly. */
-#ifdef XENO_PC_PORT
+/* func_8001B6C4 (temp3b) reaches these two temp3c bytes absolutely, as
+ * plain externs; temp3c's own functions reach them %gp_rel. */
 #define T3_ABS7C D_8005947C
 #define T3_ABSF8 D_800594F8
-#else
-#define T3_ABS7C (*(u8*)0x8005947Cu)
-#define T3_ABSF8 (*(u8*)0x800594F8u)
-#endif
 
 void func_8001B6C4(void) {
     s32 state;
@@ -749,6 +761,9 @@ void func_8001B94C(DRAWENV* pDrawEnv) {
     pDrawEnv->b0 = 120;
 }
 
+#endif /* temp3b */
+
+#if defined(XENO_PC_PORT) || defined(TEMP3_PART_C)
 /* New Game gamestate init (asm 8001B970): load the new-game save TEMPLATE
  * from archive index 0x10, file 3 (0x2358 bytes) into g_GameState, then
  * decode the template's 31 character-name records (0x14-byte blocks over
@@ -1004,3 +1019,5 @@ u8 func_8001BD40(u8 min, u8 max) {
 #endif
     }
 }
+
+#endif /* temp3c */
