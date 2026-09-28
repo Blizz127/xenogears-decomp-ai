@@ -222,6 +222,7 @@ paths = [
     "src/battle/main51.",
     "src/battle/main2.",
     "src/battle/main.c",
+    "src/battle/mainasm_1AFB0.",
 ]
 
 [[build_preset]]
