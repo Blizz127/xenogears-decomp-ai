@@ -157,8 +157,9 @@ void func_8001F6B0(void* a) { (void)a; }
 void func_8001FB30(void) {}
 void func_80022DF4(void) {}
 void* func_800233A4(void) { return 0; }
-void* func_80023B84(void) { return 0; }
 void func_80025180(void) {}
+void func_80025224(void) {}
+void func_800BC158(void) {}
 void func_8002C3E8(void) {}
 void func_8002C59C(void) {}
 void func_8002C700(void) {}

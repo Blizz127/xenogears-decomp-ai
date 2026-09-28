@@ -14,8 +14,11 @@ fi
 # Mechanically extract the unchanged production wrapper region. Its callee is
 # defined in the same large TU; isolate that boundary without maintaining a
 # copied implementation or modifying the game's source for a test hook.
-sed -n '/^extern s32 D_800591B8;/,/^extern u8 D_800591AD;/p' \
-    src/slus_006.64/system/temp1.c > "$OUT/production_wrappers.c"
+# temp1.c declares D_800591B8 inside an XENO_PC_PORT/retail #if block (retail
+# defines it for %gp_rel), so start the slice after it and declare it here.
+{ echo 'extern s32 D_800591B8;'
+  sed -n '/^extern void\* func_80024524(/,/^extern u8 D_800591AD;/p' \
+    src/slus_006.64/system/temp1.c; } > "$OUT/production_wrappers.c"
 test "$(rg -c '^void\* func_800242F4\(' "$OUT/production_wrappers.c")" = 1
 COMMON=(-std=gnu17 -fno-pie -fno-builtin -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C
     -DUSE_EXTENDED_PRIM_POINTERS=0 -ffunction-sections -fdata-sections
