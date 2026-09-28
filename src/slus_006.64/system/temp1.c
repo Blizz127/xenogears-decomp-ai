@@ -1870,6 +1870,9 @@ void func_80024F20(void) {
 }
 
 
+/* Everything below is retail TUs temp1b..temp1f (see those files); the
+ * port keeps building these bodies from here. */
+#ifdef XENO_PC_PORT
 
 extern void* g_GfxWorkBuffer2;
 extern s32 g_GfxWorkBufferSize;
@@ -3532,3 +3535,5 @@ void func_80027D40(void* ptr) {
         HeapFree(ptr);
     }
 }
+
+#endif /* XENO_PC_PORT */
