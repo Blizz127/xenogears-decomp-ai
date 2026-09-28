@@ -394,6 +394,59 @@ print_known_broken_game_tus() {
 }
 
 
+# PsyCross pin (pc_port/psycross.lock, license in pc_port/THIRD_PARTY.md).
+# Clone at the pinned commit when absent; refuse a tree not based on the pin.
+ensure_psycross_pinned() {
+    local lock="$ROOT/pc_port/psycross.lock"
+    local url pin git_bin
+    url="$(sed -n 's/^url=//p' "$lock")"
+    pin="$(sed -n 's/^commit=//p' "$lock")"
+    if [ -z "$url" ] || [ -z "$pin" ]; then
+        echo "ERROR: $lock must define url= and commit=" >&2
+        exit 1
+    fi
+    git_bin="$(command -v git || true)"
+    if [ -z "$git_bin" ] && [ -x /run/host/usr/bin/git ]; then
+        git_bin=/run/host/usr/bin/git
+    fi
+    if [ -z "$git_bin" ]; then
+        echo "ERROR: git is required to fetch/verify PsyCross" >&2
+        exit 1
+    fi
+    if [ ! -e "$PSX" ]; then
+        echo "    cloning PsyCross ${pin:0:12} from ${XENO_PSYCROSS_URL:-$url}"
+        mkdir -p "$(dirname "$PSX")"
+        "$git_bin" clone -q "${XENO_PSYCROSS_URL:-$url}" "$PSX" &&
+            "$git_bin" -C "$PSX" -c advice.detachedHead=false checkout -q "$pin" || {
+            echo "ERROR: could not clone PsyCross at $pin" >&2
+            rm -rf "$PSX"
+            exit 1
+        }
+    fi
+    [ "${XENO_PSYCROSS_ALLOW_UNPINNED:-0}" = "1" ] && {
+        echo "    WARNING: XENO_PSYCROSS_ALLOW_UNPINNED=1, PsyCross pin not verified"
+        return 0
+    }
+    local psx_abs toplevel
+    psx_abs="$(cd "$PSX" && pwd)"
+    toplevel="$("$git_bin" -C "$PSX" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ "$toplevel" != "$psx_abs" ] || \
+       ! "$git_bin" -C "$PSX" merge-base --is-ancestor "$pin" HEAD 2>/dev/null; then
+        echo "ERROR: $PSX is not a git checkout based on the pinned PsyCross $pin" >&2
+        echo "       Move it aside and rerun to clone the pin (pc_port/THIRD_PARTY.md)." >&2
+        exit 1
+    fi
+    local extra
+    extra="$("$git_bin" -C "$PSX" log --format=%s "$pin..HEAD" | grep -vx 'vendor baseline for patch apply' || true)"
+    if [ -n "$extra" ]; then
+        echo "ERROR: $PSX has upstream/unknown commits beyond the pin $pin:" >&2
+        echo "$extra" | sed 's/^/       | /' >&2
+        exit 1
+    fi
+    echo "    PsyCross pinned at ${pin:0:12} (MIT)"
+}
+ensure_psycross_pinned
+
 # PsyCross fidelity fixes kept as tracked patches because the vendored tree is
 # gitignored. Apply in dependency order: the ABR patch was generated after the
 # raw-texture dither correction.

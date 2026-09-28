@@ -94,7 +94,10 @@ No BIOS payload is embedded in the build. On the immutable Bazzite host, build i
 
 ```bash
 # from repo root
-git clone --depth 1 https://github.com/OpenDriver2/PsyCross.git pc_port/extern/PsyCross   # if not present
+# PsyCross is pinned in pc_port/psycross.lock (MIT, see pc_port/THIRD_PARTY.md);
+# pc_port/build_port.sh clones it at that commit when absent. Manually:
+git clone https://github.com/OpenDriver2/PsyCross.git pc_port/extern/PsyCross
+git -C pc_port/extern/PsyCross checkout e56e4cde1c2b8a15e0d4e38b26cdd9202e0d17e6
 
 cd pc_port
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
