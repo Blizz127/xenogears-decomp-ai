@@ -5,6 +5,8 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+void func_8008D0A4(void *arg0, void *arg1);
+
 s32 ArchiveDecodeSize();
 void ArchiveReadFileToBuffer(s32, s32, s32, s32);
 void SetGeomOffset(s32, s32);
@@ -542,7 +544,18 @@ INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CEDC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CF30);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CF9C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CFC4);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D0A4);
+
+void func_8008D0A4(void *arg0, void *arg1) {
+    s32 temp_hi;
+    s32 temp_hi_2;
+
+    temp_hi = rand() % (s16) *(s16 *)((s8*)(arg0) + 0x24);
+    *(s16 *)((s8*)(arg1) + 0) = (s16) ((*(u16 *)((s8*)(arg0) + 0x1C) + temp_hi) - *(u16 *)((s8*)(arg0) + 0x2C));
+    temp_hi_2 = rand(temp_hi) % (s16) *(s16 *)((s8*)(arg0) + 0x26);
+    *(s16 *)((s8*)(arg1) + 2) = (s16) ((*(u16 *)((s8*)(arg0) + 0x1E) + temp_hi_2) - *(u16 *)((s8*)(arg0) + 0x2E));
+    *(s16 *)((s8*)(arg1) + 4) = (s16) ((*(u16 *)((s8*)(arg0) + 0x20) + (rand(temp_hi_2) % (s16) *(s16 *)((s8*)(arg0) + 0x28))) - *(u16 *)((s8*)(arg0) + 0x30));
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D14C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D208);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D304);
