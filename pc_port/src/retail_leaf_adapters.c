@@ -1,8 +1,9 @@
 /*
- * Small retail functions whose original implementation is either a direct
- * memory write, a tail-call alias, or a GTE loop that cannot be assembled for
- * the x86-64 port.  Each body below follows the retail instructions in
- * disc/SLUS_006.64; no game state is synthesized here.
+ * Small retail game functions whose original implementation is either a
+ * direct memory write, a tail-call alias, or a GTE loop that cannot be
+ * assembled for the x86-64 port.  Each body below follows the retail game
+ * instructions in disc/SLUS_006.64; no game state is synthesized here.
+ * (No Psy-Q SDK functions: those are in psyq_compat_leaf.inc.)
  */
 #include "common.h"
 #include "psyq/libgpu.h"
@@ -21,120 +22,11 @@ extern unsigned int CFC2(int reg);
 extern void CTC2(unsigned int value, int reg);
 extern int doCOP2(int op);
 
-/* Retail 8004A0DC..8004A0E4: CFC2 v0,H; JR ra; NOP. */
-s32 ReadGeomScreen(void)
-{
-    return (s32)CFC2(26);
-}
-
-/* Retail 8004987C..8004998C. This sets the GTE rotation matrix to m0*m1;
- * it does NOT overwrite either input matrix or their translations. Keep the
- * three MVMVA operations so saturation, IR/MAC and FLAG side effects come
- * from the hardware adapter, not a host floating-point matrix multiply. */
-MATRIX* SetMulMatrix(MATRIX* m0, MATRIX* m1)
-{
-    u32 rotation[5];
-    u32 result[3][3];
-    s32 row, column;
-
-    memcpy(rotation, m0, sizeof(rotation));
-    for (row = 0; row < 5; row++)
-        CTC2(rotation[row], row);
-    for (column = 0; column < 3; column++) {
-        u32 vz;
-        /* Retail uses LW for columns 0/2, but LH for column 1. Retain even
-         * the high halfword passed to the existing COP2 register adapter. */
-        if (column == 1)
-            vz = (u32)(s32)m1->m[2][column];
-        else
-            memcpy(&vz, (u8*)m1 + 12 + column * 2, sizeof(vz));
-        MTC2((u16)m1->m[0][column] | ((u32)(u16)m1->m[1][column] << 16), 0);
-        MTC2(vz, 1);
-        doCOP2(0x00486012); /* MVMVA: rotation, V0, no translation, sf=12 */
-        for (row = 0; row < 3; row++)
-            result[row][column] = MFC2(9 + row);
-    }
-    CTC2((result[0][0] & 0xffffu) | (result[0][1] << 16), 0);
-    CTC2((result[0][2] & 0xffffu) | (result[1][0] << 16), 1);
-    CTC2((result[1][1] & 0xffffu) | (result[1][2] << 16), 2);
-    CTC2((result[2][0] & 0xffffu) | (result[2][1] << 16), 3);
-    CTC2(result[2][2], 4);
-    return m0;
-}
-
-/* Retail libgpu 0x80043C60-0x80043C74 is exactly the setPolyFT3 macro: retain
- * the packet address/color fields and write only length 7 and opcode 0x24. */
-void SetPolyFT3(POLY_FT3* primitive)
-{
-    setlen(primitive, 7);
-    setcode(primitive, 0x24);
-}
-
-/* Retail 80043D78..80043D8C and src/slus_006.64/psyq/libgpu.c: only
- * the length byte and flat two-point line opcode are initialized. */
-void SetLineF2(LINE_F2* primitive)
-{
-    setlen(primitive, 3);
-    setcode(primitive, 0x40);
-}
-
-/* Retail 80043C74..80043C88 (asm/slus_006.64/matchings/psyq/libgpu/SetPolyG3.s):
- * exactly the setPolyG3 macro -- length 6, gouraud triangle opcode 0x30. The
- * retail battle overlay calls this main-exe symbol through the MIPS bridge
- * (dlsym by name), so it needs a real native body like SetPolyF3/SetPolyFT3. */
-void SetPolyG3(POLY_G3* primitive)
-{
-    setlen(primitive, 6);
-    setcode(primitive, 0x30);
-}
-
-/* Retail 80043C88..80043C9C (src/slus_006.64/psyq/libgpu.c): initialize
- * the gouraud textured triangle packet tag exactly like setPolyGT3. */
-void SetPolyGT3(POLY_GT3* primitive)
-{
-    setlen(primitive, 9);
-    setcode(primitive, 0x34);
-}
-
-/* Retail 80043D8C..80043DA0 (SetLineG2.s): length 4, gouraud two-point line
- * opcode 0x50. Same bridge reachability as SetPolyG3. */
-void SetLineG2(LINE_G2* primitive)
-{
-    setlen(primitive, 4);
-    setcode(primitive, 0x50);
-}
-
-/* All operands here are Q12 trig values/products in [-4096,4096]. Floor
- * each product separately as retail SRA does, not the combined expression. */
-static s32 RotationZYXProduct(s32 a, s32 b)
-{
-    s32 product = a * b;
-    return product >= 0 ? product / 4096 : -((4095 - product) / 4096);
-}
-
-/* Retail 8004ABBC..8004AE48 is scalar fixed-point math, with no GTE writes.
- * Sequential RotMatrixX/Y/Z combines terms before rounding and differs by
- * one at ordinary mixed angles. The game shim names rcos=sine, rsin=cosine. */
-MATRIX* RotMatrixZYX(SVECTOR* rotation, MATRIX* matrix)
-{
-    s32 sx = rcos(rotation->vx), cx = rsin(rotation->vx);
-    s32 sy = rcos(rotation->vy), cy = rsin(rotation->vy);
-    s32 sz = rcos(rotation->vz), cz = rsin(rotation->vz);
-    s32 sxsy, sycx;
-
-    matrix->m[2][0] = -sy;
-    matrix->m[2][1] = RotationZYXProduct(sx, cy);
-    matrix->m[2][2] = RotationZYXProduct(cx, cy);
-    matrix->m[0][0] = RotationZYXProduct(cy, cz);
-    matrix->m[1][0] = RotationZYXProduct(sz, cy);
-    sxsy = RotationZYXProduct(sx, sy);
-    matrix->m[0][1] = RotationZYXProduct(sxsy, cz) - RotationZYXProduct(sz, cx);
-    matrix->m[1][1] = RotationZYXProduct(sxsy, sz) + RotationZYXProduct(cx, cz);
-    sycx = RotationZYXProduct(sy, cx);
-    matrix->m[0][2] = RotationZYXProduct(sycx, cz) + RotationZYXProduct(sx, sz);
-    matrix->m[1][2] = RotationZYXProduct(sycx, sz) - RotationZYXProduct(sx, cz);
-    return matrix;
-}
+/* Psy-Q SDK entry points (ReadGeomScreen, SetMulMatrix, SetPolyFT3/G3/GT3,
+ * SetLineF2/G2, RotMatrixZYX) live in the compat layer, written from the
+ * documented interface; included here so the tests that link this TU keep
+ * resolving them. */
+#include "psyq_compat_leaf.inc"
 
 /* Retail 0x8003633C-0x80036348: one byte store and return. */
 void func_8003633C(s32 value)

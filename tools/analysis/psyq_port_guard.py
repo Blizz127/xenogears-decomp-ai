@@ -12,7 +12,9 @@ port.  Adapted from the Parasite Eve decomp's tools/analysis/psyq_port_guard.py.
 Checks (classification: tools/analysis/psyq_classify.py over
 config/slus_006.64.yaml + config/psyq_data_ranges.tsv)
   func    -- a pc_port source DEFINES func_XXXXXXXX at a Psy-Q address, or
-             carries a `decomp-source: func_XXXXXXXX` header for one.
+             carries a `decomp-source: func_XXXXXXXX` header for one.  Test
+             doubles (mock callees under pc_port/tests) are not definitions
+             of SDK code and only count via a decomp-source header.
   name    -- a runtime source (pc_port/src/**) outside COMPAT_FILES defines a
              function with the name of a Psy-Q SDK function (a re-implementation
              that belongs in the compat layer, written from documented
@@ -66,6 +68,8 @@ COMPAT_FILES = {
     "pc_port/src/pc_file_io.c",     # libsn PCopen/PCread... on POSIX file I/O
     "pc_port/src/psyq_compat_normal_light_col.c",
     "pc_port/src/psyq_compat_spu_noise_clock.c",
+    "pc_port/src/psyq_compat_leaf.inc",  # included by retail_leaf_adapters.c
+    "pc_port/src/controller_vblank_service.c",  # libetc vblank callback on the host
 }
 
 FUNC_DEF_RE = re.compile(
@@ -120,7 +124,7 @@ def check_sources(tree: Path, cls: psyq_classify.Classification):
             if fm:
                 a = int(fm.group(1), 16)
                 lib = cls.library(a)
-                if lib and a not in seen:
+                if lib and a not in seen and not r.startswith("pc_port/tests/"):
                     seen.add(a)
                     if r in COMPAT_FILES:
                         COMPAT_ADDRS.add(a)
