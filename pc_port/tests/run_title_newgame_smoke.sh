@@ -46,24 +46,29 @@ if [ ! -f disc/disc1.bin ]; then
     exit 2
 fi
 
-# Schedule (Vsync-shim frames, verified 2026-09-06 at ~32 presented fps
-# headless; see docs/evidence/title-newgame-chain-20260906):
+# Schedule (Vsync-shim frames; values are GAME buttons, which
+# XENO_PAD_TEST_INPUT presses through the active layout's physical button --
+# under the retail USA layout game Circle is the physical Cross):
 #   300     Cross   skip the opening STR (state 6 allows skipping, D_8004FE47=0)
-#   1600    Circle  interrupt the title attract STR inside func_800A7C58
-#   2400    Circle  title script pad wait -> FE57 -> title menu
-#   2800    Up      Continue (1) -> New Game (2)
-#   2900    Circle  confirm on release -> func_801C531C(7) entry 9 -> func_8001B970
-#   3400..  Circle  2-on/2-off pulses page the Map 4 prologue (release edges)
+#   3700    Circle  interrupt the title attract STR inside func_800A7C58 (the
+#                   attract starts near frame 3500 when the pad wait times out;
+#                   an earlier Circle opens the title from the pad wait instead)
+#   4500    Circle  title script pad wait -> FE57 -> title menu
+#   4900    Up      Continue (1) -> New Game (2)
+#   5000    Circle  confirm on release -> func_801C531C(7) entry 9 -> func_8001B970
+#   5500..  Circle  2-on/2-off pulses page the Map 4 prologue (release edges)
+# Re-timed 2026-09-28 (verified: full chain to Lahan map 2); the 2026-09-06
+# schedule (1600/2400/2800/2900/3400) predates the retail USA remap.
 SKIP_FRAME="${XENO_TITLE_SMOKE_SKIP_FRAME:-300}"
 # Optional initial menu wake before the later attract skip. Current runtime
 # traces need three separate Circle presses before Up/confirm; leave the
 # historical schedule unchanged unless this extra slot is explicitly supplied.
 PRE_ATTRACT_FRAME="${XENO_TITLE_SMOKE_PRE_ATTRACT_FRAME:-}"
-ATTRACT_FRAME="${XENO_TITLE_SMOKE_ATTRACT_FRAME:-1600}"
-OPEN_FRAME="${XENO_TITLE_SMOKE_OPEN_FRAME:-2400}"
-UP_FRAME="${XENO_TITLE_SMOKE_UP_FRAME:-2800}"
-CONFIRM_FRAME="${XENO_TITLE_SMOKE_CONFIRM_FRAME:-2900}"
-PROLOGUE_FRAME="${XENO_TITLE_SMOKE_PROLOGUE_FRAME:-3400}"
+ATTRACT_FRAME="${XENO_TITLE_SMOKE_ATTRACT_FRAME:-3700}"
+OPEN_FRAME="${XENO_TITLE_SMOKE_OPEN_FRAME:-4500}"
+UP_FRAME="${XENO_TITLE_SMOKE_UP_FRAME:-4900}"
+CONFIRM_FRAME="${XENO_TITLE_SMOKE_CONFIRM_FRAME:-5000}"
+PROLOGUE_FRAME="${XENO_TITLE_SMOKE_PROLOGUE_FRAME:-5500}"
 # Keep two-frame presses, but optionally spread them past the opening battle
 # entry without exceeding the raw-pad parser's fixed-size schedule buffer.
 PROLOGUE_INTERVAL="${XENO_TITLE_SMOKE_PROLOGUE_INTERVAL:-4}"

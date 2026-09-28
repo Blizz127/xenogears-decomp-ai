@@ -143,6 +143,9 @@ int D_800ADB64;
 int D_800ADB68;
 unsigned char g_GameState[0x8000];
 unsigned char g_C1Buffer[4];
+/* Controller remap tables read by the pad test injector (identity layout). */
+unsigned char g_ControllerButtonMappings[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+unsigned short g_ControllerButtonMasks[8] = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x08, 0x02 };
 int g_XenoMenuNavReaderTicks;
 int g_XenoMenuN2Phase;
 int g_XenoMenuN2c2Phase;

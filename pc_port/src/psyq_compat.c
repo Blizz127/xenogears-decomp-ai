@@ -855,6 +855,30 @@ static int PcPort_PadTestInputInit(void)
     return 0;
 }
 
+/* Weak: standalone-TU tests link this file without the game tables; then
+ * there is no remap to undo (PcPort_PadTestGameToPhysical returns the value). */
+extern unsigned char g_ControllerButtonMappings[8];
+extern unsigned short g_ControllerButtonMasks[8];
+#pragma weak g_ControllerButtonMappings
+#pragma weak g_ControllerButtonMasks
+
+static unsigned short PcPort_PadTestGameToPhysical(unsigned short game)
+{
+    unsigned short remapped = 0, physical;
+    int i;
+
+    if (g_ControllerButtonMappings == NULL || g_ControllerButtonMasks == NULL)
+        return game;
+
+    for (i = 0; i < 8; i++)
+        remapped |= g_ControllerButtonMasks[i];
+    physical = game & (unsigned short)~remapped;
+    for (i = 0; i < 8; i++)
+        if (game & g_ControllerButtonMasks[g_ControllerButtonMappings[i] & 7])
+            physical |= g_ControllerButtonMasks[i];
+    return physical;
+}
+
 /* Must run AFTER PsyX_UpdateInput() refreshes g_C1Buffer from SDL and BEFORE
  * ControllerPoll() derives the edge state from it. */
 static void PcPort_PadTestInputInject(void)
@@ -909,6 +933,14 @@ static void PcPort_PadTestInputInject(void)
      * the pad buffer, so nothing the schedule asks for can happen. */
     value = 0;
 #endif
+
+    /* Schedule values are game (post-remap) CTRL_BTN_* bits, as documented
+     * above, but the buffer holds the PHYSICAL pad.  ControllerInit's retail
+     * remap (g_ControllerButtonMappings; the USA layout swaps Circle/Cross
+     * and Triangle/Square) turns physical button i into game button
+     * masks[map[i]], so press the physical button that the active layout
+     * maps to each requested game button. */
+    value = PcPort_PadTestGameToPhysical(value);
 
     /* CONTROLLER_BUTTONS_1 == 0x2 carries game bits 0xFF00,
      * CONTROLLER_BUTTONS_2 == 0x3 carries game bits 0x00FF, both active low. */
