@@ -1,6 +1,11 @@
 #include "common.h"
 #include "world_map/wm_obj.h"
 
+#ifndef XENO_PC_PORT
+extern WmObj * D_8009BE24;
+void func_800976C8(void);
+#endif
+
 #ifdef XENO_PC_PORT
 /* Port view of the overlay data used by the bodies the port runs
  * (pc_port/src/world_map_port_data.h, owned by the port). */
@@ -2637,7 +2642,19 @@ void func_800976A0(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800976C8);
+
+#ifndef XENO_PC_PORT
+void func_800976C8(void) {
+    s32 i;
+
+    for (i = 0; i < 0x40; i++) {
+        D_8009BE24[i].unk4C = 0;
+        D_8009BE24[i].unk18 = 0;
+        D_8009BE24[i].unk1C = 0;
+    }
+}
+#endif
+
 
 
 #ifndef XENO_PC_PORT
