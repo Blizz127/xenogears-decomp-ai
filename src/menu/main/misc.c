@@ -4026,7 +4026,18 @@ void func_801D02D8(void) {
  * The RotTransPers4+AddPrim window-draw pattern (member_change func_801C7EC8
  * precedent). Leaf of the window-draw chain -- func_801D09F0 loops this. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0954);
+void func_801D0954(SVECTOR* vertices, POLY_FT4* polys, s32 polyIndex, s32 otIndex) {
+    long padA;
+    long padB;
+    s32 off;
+
+    RotTransPers4(&vertices[0], &vertices[1], &vertices[2], &vertices[3],
+                  (long*)&polys[polyIndex].x0, (long*)&polys[polyIndex].x1,
+                  (long*)&polys[polyIndex].x2, (long*)&polys[polyIndex].x3,
+                  &padA, &padB);
+    off = otIndex * 4 + 0x70;
+    AddPrim((void*)(off + (s32)g_Menu->pGfxEnv), &polys[polyIndex]);
+}
 #else
 void func_801D0954(SVECTOR* vertices, POLY_FT4* polys, s32 polyIndex, s32 otIndex) {
     long padA;
@@ -4255,7 +4266,16 @@ void func_801D0F54(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0FD4);
+void func_801D0FD4(void) {
+    void* pMenu = g_Menu;
+    void* pManager = g_Menu->pManager;
+    if (*(u8*)((u8*)pManager + 0x4E) != 0) {
+        u8 idx = *(u8*)((u8*)pMenu + 0x185D);
+        u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
+        s32 off = idx * 0x28 + 0x17E0;
+        AddPrim(pOT, (void*)(off + (s32)pMenu));
+    }
+}
 #else
 void func_801D0FD4(void) {
     void* pMenu = g_Menu;
@@ -5286,7 +5306,18 @@ void func_801D2F4C(u8 firstString) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D32B4);
+/* Retail sets no return value; callers ignore it. */
+s32 func_801D32B4(s32 arg0) {
+    if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
+        s32 i;
+        func_801D4EA0(2);
+        g_Menu->pManager->unk2E = 0;
+        for (i = 0; i < 4; i++) {
+            HeapFree(g_Menu->unk1DE0[i]);
+        }
+    }
+    func_801C7BF4();
+}
 #else
 s32 func_801D32B4(s32 arg0) {
     if (g_Menu->pManager->shouldRenderWindow[2] != 0) {
@@ -7392,7 +7423,32 @@ extern void* D_801EA71C;
 extern void* D_801EA720;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9E3C);
+void func_801D9E3C(void) {
+    void* pMenu;
+    s32 i;
+    pMenu = g_Menu;
+    *(u8*)((u8*)pMenu + 0x4D8) = 0;
+    func_801E64E0();
+    func_801E5B3C();
+    func_801E649C();
+    for (i = 0; i < 0x20; i++) {
+        s32 off = i * 0x5C;
+        *(u8*)(*(s32*)((u8*)g_Menu + 0x32C) + off + 0x58) = 0;
+    }
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4F8C) = 0xFF;
+    pMenu = g_Menu;
+    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4F8D) = 0xFF;
+    D_801EA904 = 0;
+    D_801EA900 = 0;
+    DrawSync(0);
+    Vsync(0);
+    EnterCriticalSection();
+    CdSyncCallback(D_801EA718);
+    CdReadyCallback(D_801EA71C);
+    CdReadCallback(D_801EA720);
+    ExitCriticalSection();
+}
 #else
 void func_801D9E3C(void) {
     void* pMenu;
