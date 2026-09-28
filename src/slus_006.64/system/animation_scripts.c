@@ -2,6 +2,10 @@
 #include "field/actor.h"
 #include "system/memory.h"
 #include "psyq/libgte.h"
+#ifndef XENO_PC_PORT
+void func_80021EBC(void *arg0, void *arg1);
+#endif
+
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdio.h>
@@ -1837,10 +1841,8 @@ void func_80021D50(void* arg0, void* arg1) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021EBC);
-#else
 void func_80021EBC(void* arg0, void* arg1) {
+#ifdef XENO_PC_PORT
     u8* src = arg0;
     u8* dst = arg1;
     u8* src7C = (u8*)(uintptr_t)*(u32*)(src + 0x7C);
@@ -1862,8 +1864,24 @@ void func_80021EBC(void* arg0, void* arg1) {
     *(s16*)(dst + 0x28) = *(u16*)(src20 + 0x0A);
     *(s16*)(dst + 0x2C) = *(u16*)(src + 0x82);
     *(s16*)(dst + 0x2A) = *(u16*)(src + 0x2C);
-}
+#else
+    *(s32 *)((s8*)(arg1) + 0) = (s32) *(s32 *)((s8*)(arg0) + 0);
+    *(s32 *)((s8*)(arg1) + 4) = (s32) *(s32 *)((s8*)(arg0) + 4);
+    *(s32 *)((s8*)(arg1) + 8) = (s32) *(s32 *)((s8*)(arg0) + 8);
+    *(u16 *)((s8*)(arg1) + 0x10) = (u16) *(u16 *)((s8*)(arg0) + 0x80);
+    *(s16 *)((s8*)(arg1) + 0x12) = (s16) (((u32) *(u32 *)((s8*)(arg0) + 0xA8) >> 0xB) & 0x3F);
+    *(s16 *)((s8*)(arg1) + 0x14) = (s16) (s8) *(u8 *)((s8*)(arg0) + 0xAF);
+    *(s16 *)((s8*)(arg1) + 0x16) = (s16) (s8) *(u8 *)((s8*)(arg0) + 0xB0);
+    *(s16 *)((s8*)(arg1) + 0x18) = (s16) (((u32) *(u32 *)((s8*)(arg0) + 0xA8) >> 0x16) & 0x3F);
+    *(s32 *)((s8*)(arg1) + 0x1C) = (s32) *(s32 *)((s8*)(*(void **)((s8*)(arg0) + 0x7C)) + 0);
+    *(s32 *)((s8*)(arg1) + 0x20) = (s32) *(s32 *)((s8*)(*(void **)((s8*)(arg0) + 0x7C)) + 4);
+    *(u16 *)((s8*)(arg1) + 0x24) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(arg0) + 0x20)) + 6);
+    *(u16 *)((s8*)(arg1) + 0x26) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(arg0) + 0x20)) + 8);
+    *(u16 *)((s8*)(arg1) + 0x28) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(arg0) + 0x20)) + 0xA);
+    *(u16 *)((s8*)(arg1) + 0x2C) = (u16) *(u16 *)((s8*)(arg0) + 0x82);
+    *(u16 *)((s8*)(arg1) + 0x2A) = (u16) *(u16 *)((s8*)(arg0) + 0x2C);
 #endif
+}
 
 void func_80021FB8(u8* arg0, u8 arg1) {
     arg0[0xB0] = arg1;
@@ -1876,20 +1894,18 @@ void func_80021FC0(void* a0, s32 a1) {
     func_80022974(a0);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FE0);
-#else
 void func_80021FE0(void* a0, s16 a1) {
+#ifdef XENO_PC_PORT
     AnimationWrite16((u8*)a0 + 0x32, (u16)a1);
+#else
+    *(s16*)((u8*)a0 + 0x32) = a1;
+#endif
     func_80022974(a0);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", SpriteSetScale);
-#else
 void SpriteSetScale(SpriteData* pSpriteData, short scale) {
     u8* pData = (u8*)pSpriteData;
+#ifdef XENO_PC_PORT
     u8* pBase = (u8*)(uintptr_t)AnimationRead32(pData + 0x20);
 
     if (pBase) {
@@ -1901,8 +1917,18 @@ void SpriteSetScale(SpriteData* pSpriteData, short scale) {
         AnimationWrite16(pBase + 0x6, (u16)scale);
         AnimationWrite32(pData + 0x3C, AnimationRead32(pData + 0x3C) | 0x10000000u);
     }
-}
+#else
+    u8* pBase = *(u8**)(pData + 0x20);
+
+    if (pBase != NULL) {
+        *(s16*)(pData + 0x2C) = scale;
+        *(s16*)(pBase + 0xA) = scale;
+        *(s16*)(pBase + 0x8) = scale;
+        *(s16*)(pBase + 0x6) = scale;
+        *(s32*)(pData + 0x3C) = *(s32*)(pData + 0x3C) | 0x10000000;
+    }
 #endif
+}
 
 // Recompute transform matrix if flag is set
 void func_80022038(SpriteData* pSpriteData) {
@@ -2304,13 +2330,11 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022974);
-#else
 /* 80022974..80022A00: horizontal velocity, preserving R3000 DIV/MULT
  * and 32-bit shifts. Decomp rsin names retail cosine; rcos names sine. */
 void func_80022974(void* pSpriteData) {
     u8* pData = pSpriteData;
+#ifdef XENO_PC_PORT
     u32 radius = (u32)((s32)AnimationRead32(pData + 0x18) >> 4) << 8;
     u32 divisor = (AnimationRead32(pData + 0xAC) >> 7) & 0xFFFu;
     u32 scaledRadius = divisor ? (u32)((s32)radius / (s32)divisor)
@@ -2328,8 +2352,13 @@ void func_80022974(void* pSpriteData) {
     trigValue = rcos(angle & 0xFFFu) >> 2;
     product = 0u - (u32)trigValue * scaledRadius;
     AnimationWrite32(pData + 0x14, (u32)((s32)product >> 6));
-}
+#else
+    s32 scaledRadius = (((*(s32*)(pData + 0x18)) >> 4) << 8) / (s32)((*(u32*)(pData + 0xAC) >> 7) & 0xFFF);
+
+    *(s32*)(pData + 0x0C) = ((rsin(*(s16*)(pData + 0x32)) >> 2) * scaledRadius) >> 6;
+    *(s32*)(pData + 0x14) = (-((rcos(*(s16*)(pData + 0x32)) >> 2) * scaledRadius)) >> 6;
 #endif
+}
 
 s32 func_80022A00(s32* arg0) {
     return *arg0;
