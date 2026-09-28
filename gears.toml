@@ -236,7 +236,6 @@ paths = [
     "src/battle/main.c",
     "src/battle/mainasm_1AFB0.",
     "src/battle/main66.",
-    "src/battle/main69.",
 ]
 
 [[build_preset]]
@@ -248,3 +247,23 @@ build_variables = {
     gcc = "gcc-2.6.3-psx"
 }
 paths = [ "src/battle_command_file1/" ]
+
+[[build_preset]]
+name = "BattleGcc263Div"
+# gcc 2.6.3 like BattleGcc263, plus maspsx --expand-div: retail main69's
+# signed division (func_800A5BE8's plane height) carries the aspsx
+# divide-by-zero / overflow `break` checks.
+build_variables = {
+    gcc = "gcc-2.6.3-psx",
+    maspsx_flags = "--expand-div --use-comm-section --run-assembler"
+}
+paths = [ "src/battle/main69." ]
+
+[[build_preset]]
+name = "BattleDiv"
+# Default compiler plus maspsx --expand-div: these battle TUs' retail signed
+# divisions carry the aspsx divide-by-zero / overflow break checks.
+build_variables = {
+    maspsx_flags = "--expand-div --use-comm-section --run-assembler"
+}
+paths = [ "src/battle/main68." ]
