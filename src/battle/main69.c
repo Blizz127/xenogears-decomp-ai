@@ -1,4 +1,7 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "psyq/libgte.h"
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -88,7 +91,52 @@ s32 func_800A5914(s32 arg0, s32 tri, s32 tries, s32 result) {
 }
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5A48);
+#endif
+#ifndef XENO_PC_PORT
+extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
+
+/* Point-in-triangle test on the XZ plane: -1 when point a3 lies on the inner
+ * side of all three edges of (a0, a1, a2) (SVECTOR addresses), else 0. */
+s32 func_800A5A48(s32 a0, s32 a1, s32 a2, s32 a3) {
+    SVECTOR* v0 = (SVECTOR*)a0;
+    SVECTOR* v1 = (SVECTOR*)a1;
+    SVECTOR* v2 = (SVECTOR*)a2;
+    SVECTOR* p = (SVECTOR*)a3;
+    VECTOR edge;
+    VECTOR toP;
+    VECTOR cross;
+
+    edge.vx = v1->vx - v0->vx;
+    edge.vy = 0;
+    edge.vz = v1->vz - v0->vz;
+    toP.vx = p->vx - v0->vx;
+    toP.vy = 0;
+    toP.vz = p->vz - v0->vz;
+    OuterProduct0(&edge, &toP, &cross);
+    if (cross.vy < 0) {
+        return 0;
+    }
+    edge.vx = v2->vx - v1->vx;
+    edge.vy = 0;
+    edge.vz = v2->vz - v1->vz;
+    toP.vx = p->vx - v1->vx;
+    toP.vy = 0;
+    toP.vz = p->vz - v1->vz;
+    OuterProduct0(&edge, &toP, &cross);
+    if (cross.vy >= 0) {
+        edge.vx = v0->vx - v2->vx;
+        edge.vy = 0;
+        edge.vz = v0->vz - v2->vz;
+        toP.vx = p->vx - v2->vx;
+        toP.vy = 0;
+        toP.vz = p->vz - v2->vz;
+        OuterProduct0(&edge, &toP, &cross);
+        return ~cross.vy >> 31;
+    }
+    return 0;
+}
+#endif
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5BE8);
 #endif
 #ifndef XENO_PC_PORT
