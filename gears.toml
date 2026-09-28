@@ -67,6 +67,7 @@ build_variables = {
 }
 paths = [
     "{binary}/system/animation_scripts.",
+    "{binary}/system/temp1a.",
     "{binary}/system/temp1c.",
     "{binary}/system/temp1d.",
     "{binary}/system/temp1e.",

@@ -97,6 +97,7 @@ segments:
       - [0x103A4, c, system/animation_scripts]
       - [0x1320C, c, system/graphics]
       - [0x1332C, c, system/temp1] # Graphics stuff
+      - [0x137C4, c, system/temp1a]
       - [0x15764, c, system/temp1b]
       - [0x157F4, c, system/temp1c]
       - [0x15844, c, system/temp1d]
