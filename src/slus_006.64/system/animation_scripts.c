@@ -1748,15 +1748,15 @@ s32 AnimScriptStackPopU24(SpriteData* pSpriteData) {
 void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value) {
     u8* pData = (u8*)pSpriteData;
     s8 idx = (s8)--pData[0x8C];
-    pData[0x8E + idx] = value;
+    (idx + pData)[0x8E] = value;
 }
 
 void AnimScriptStackPushU16(SpriteData* pSpriteData, u16 value) {
     u8* pData = (u8*)pSpriteData;
     s8 idx = (s8)(pData[0x8C] -= 2);
-    pData[0x8E + idx] = (u8)value;
+    (idx + pData)[0x8E] = (u8)value;
     idx = (s8)pData[0x8C];
-    pData[0x8F + idx] = (u8)(value >> 8);
+    (idx + pData)[0x8F] = (u8)(value >> 8);
 }
 
 void AnimScriptStackPushU24(SpriteData* pSpriteData, s32 value) {
