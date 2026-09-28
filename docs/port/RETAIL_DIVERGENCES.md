@@ -14,3 +14,16 @@ byte-matching body under `#ifndef XENO_PC_PORT`, and the port body under
 | `func_801E4258` | party record = `&g_GameState + 0x978 + idx * 0xA4` | `+ idx * 0x28` | For idx > 0 the port reads and writes the wrong character record (stats at +0x70/+0x72). |
 | `func_801E2324` | passes `&D_801EA568[arg0]` (a pointer) to `func_801E8018` | passes the byte `D_801EA568[arg0]` | `func_801E8018` gets a small integer where retail passes a string/table pointer. Wrong text, or a bad dereference if the port callee uses it. |
 | `func_801CB28C` | stores `*(s32*)arg0` into `D_80059488`; ignores `func_801E4D10`'s result | stores `*(s32*)` of the returned pointer | Same only if `func_801E4D10` returns `arg0`; otherwise the play-time word is taken from the wrong place. |
+
+## Resolutions
+
+| Function | Status | Suspected cause of the port divergence | Verification |
+| --- | --- | --- | --- |
+| `func_801C6D90` | fixed in bffc225f (one shared body) | RECT halfwords shifted one slot (y lost, w/h take y/w) | rom-check 10/10; no port test covers it |
+| `func_801E64E0` | fixed in bffc225f | RECT fields and the ClearImage colour arguments each shifted by two halfwords | rom-check 10/10; no port test covers it |
+| `func_801E4258` | fixed in bffc225f | struct misread: 0x28 is the snapshot-side record size, not the 0xA4 g_GameState record | rom-check 10/10; run_menu_misc_coexistence passes (it stubs this function) |
+| `func_801E2324` | fixed in bffc225f | array element vs address confusion on an unprototyped call | rom-check 10/10; no port test covers it |
+| `func_801CB28C` | fixed in bffc225f | assumed func_801E4D10 returns its buffer argument | rom-check 10/10; run_menu_misc_coexistence passes |
+| `func_801D0E20` | fixed in bffc225f | loop bounds re-derived by hand (6/+1 instead of 7/return i) | rom-check 10/10 |
+| `func_801D0EBC` | fixed in bffc225f | same as func_801D0E20 | rom-check 10/10 |
+| `func_801D1258` | open | the port reinterpreted the ot[8] byte offset for an 8-byte host OT and ended up at slot 4; the retail C doesn't match yet, so no shared body | — |
