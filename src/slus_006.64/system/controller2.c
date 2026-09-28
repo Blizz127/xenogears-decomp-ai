@@ -2,6 +2,7 @@
 #include "psyq/libgpu.h"
 #include "psyq/libapi.h"
 #include "system/controller.h"
+#include "system/memory.h"
 
 /* Retail TU 0x80035E44..0x80036CD8 (controller state/callback helpers that
  * follow system/controller.c). Retail-only: the port has its own controller
@@ -187,11 +188,77 @@ s32 func_80036410(void) {
     return g_ControllerIsStateStackFull;
 }
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", func_80036420);
+extern s32 ControllerPopState(void);
+extern int ControllerGetButtonState(int controllerIndex);
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", func_80036528);
+/* Folds every queued controller state into the current one (or resets when
+ * the state stack overflowed). */
+void func_80036420(void) {
+    s32 c1, c2, c1Released, c2Released, c1Pressed, c2Pressed;
 
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/controller2", ControllerDebugPrint);
+    c2Pressed = 0;
+    c1Pressed = 0;
+    c2Released = 0;
+    c1Released = 0;
+    c2 = 0;
+    c1 = 0;
+
+    if (func_80036410()) {
+        ControllerResetState();
+    } else {
+        while (ControllerPopState()) {
+            c1 |= g_C1ButtonState;
+            c2 |= g_C2ButtonState;
+            c1Released |= g_C1ButtonStateReleased;
+            c2Released |= g_C2ButtonStateReleased;
+            c1Pressed |= g_C1ButtonStatePressedOnce;
+            c2Pressed |= g_C2ButtonStatePressedOnce;
+        }
+    }
+    g_C1ButtonState = c1;
+    g_C2ButtonState = c2;
+    g_C1ButtonStateReleased = c1Released;
+    g_C2ButtonStateReleased = c2Released;
+    g_C1ButtonStatePressedOnce = c1Pressed;
+    g_C2ButtonStatePressedOnce = c2Pressed;
+}
+
+extern char D_80018ACC[];
+extern char D_80018AD4[];
+extern char D_80018AD8[];
+
+/* Debug: prints a raw pad buffer, plus the button word for a digital pad. */
+void func_80036528(u8* pPad) {
+    s32 i;
+    s32 len = (pPad[1] & 0xF) * 2 + 2;
+
+    for (i = 0; i < len; i++) {
+        FontPrintf(D_80018ACC, pPad[i]);
+    }
+    FontPrintf(D_80018AD4);
+    if (pPad[0] == 0 && (pPad[1] & 0xF0) == 0x40) {
+        FontPrintf(D_80018AD8, (u8)~pPad[3] | ((pPad[2] << 8) ^ 0xFF00));
+    }
+}
+
+extern char D_80018AE0[]; /* "vect0 %02x %02x\n" */
+extern char D_80018AF4[]; /* "vect1 %02x %02x\n" */
+extern char D_80018B08[]; /* "PADD %04x ..." */
+extern char D_80018B18[];
+
+void ControllerDebugPrint(void) {
+    u8* pBuffer = g_C1Buffer;
+
+    func_80036528(pBuffer);
+    func_80036528(pBuffer + 0x22);
+    FontPrintf(D_80018AE0, g_C1LeftStickXAxis, g_C1LeftStickYAxis);
+    FontPrintf(D_80018AF4, g_C2LeftStickXAxis, g_C2LeftStickYAxis);
+    FontPrintf(D_80018B08, g_C1ButtonState, g_C2ButtonState);
+    while (ControllerPopState()) {
+        FontPrintf(D_80018B18, ControllerGetButtonState(0), g_C1ButtonState,
+                   g_C1ButtonStateReleased, g_C1ButtonStatePressedOnce);
+    }
+}
 
 extern void (*D_80050594)(void);
 
