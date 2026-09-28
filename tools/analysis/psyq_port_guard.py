@@ -64,6 +64,8 @@ COMPAT_FILES = {
     "pc_port/src/psyq_cd_mix.c",
     "pc_port/src/memcard_port.c",   # BIOS/libcard memory-card API on host files
     "pc_port/src/pc_file_io.c",     # libsn PCopen/PCread... on POSIX file I/O
+    "pc_port/src/psyq_compat_normal_light_col.c",
+    "pc_port/src/psyq_compat_spu_noise_clock.c",
 }
 
 FUNC_DEF_RE = re.compile(
