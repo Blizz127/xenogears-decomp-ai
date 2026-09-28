@@ -2,7 +2,34 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main33", func_8007FE3C);
+s32 ArchiveDecodeAlignedSize(s32);
+void ArchiveReadFileToBuffer(s32, s32, s32, s32);
+void func_8008AB94();
+s32 func_8008ABB8(s32, s32);
+void func_8008AC50();
+extern s32 D_800C3DE8;
+extern u8* D_800D2D28;
+void func_8007FE3C(void);
+#endif
+
+#ifndef XENO_PC_PORT
+
+#ifndef XENO_PC_PORT
+void func_8007FE3C(void) {
+    s32 temp_v0;
+
+    if (*(u8 *)((s8*)((*(void **)&D_800D2D28)) + 0x96) == 0) {
+        func_8008AC50();
+        func_8008AB94();
+        temp_v0 = func_8008ABB8(ArchiveDecodeAlignedSize(3), 0);
+        D_800C3DE8 = temp_v0;
+        ArchiveReadFileToBuffer(3, temp_v0, 0, 0x80);
+        func_8008AC50();
+        *(u8 *)((s8*)((*(void **)&D_800D2D28)) + 0x96) = 1U;
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main33", func_8007FEC4);
 INCLUDE_ASM("asm/battle/nonmatchings/main33", func_8007FF14);
 #endif

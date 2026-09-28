@@ -30,9 +30,13 @@ D=os.path.join(CACHE,'m2c',OV,SEG)
 os.makedirs(CACHE,exist_ok=True)
 INC_C=os.path.join(CACHE,'_inc.c'); INC_I=os.path.join(CACHE,'_inc.i')
 p=f'src/{OV}/{SEG}.c'; s=open(p).read()
+_pending=[n for n in names if f'/nonmatchings/{SEG}", {n});' in s]
+if len(_pending)!=len(names):
+    print('already C (skipped):',' '.join(n for n in names if n not in _pending))
+names=_pending
 # identifiers declared by the file's includes
 incs=''.join(l+'\n' for l in s.split('\n') if l.startswith('#include'))
-open(INC_C,'w').write(incs+'#include "system/memory.h"\n')
+open(INC_C,'w').write(incs)
 subprocess.run(['tools/gcc-2.7.2-psx/cpp','-Iinclude','-D_LANGUAGE_C','-DSKIP_ASM','-P','-undef','-lang-c','-nostdinc',INC_C,INC_I],capture_output=True)
 hdrdecl=set(re.findall(r'\b(\w+)\s*\(',open(INC_I).read()))|set(re.findall(r'\b(\w+)\s*(?:\[[^\]]*\])*\s*;',open(INC_I).read()))
 types={}; arrays=set()
@@ -45,6 +49,12 @@ for inc in re.findall(r'^#include "([\w./]+\.c)"',s,re.M):
 for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',decl_src,re.M):
     types[m[2]]=m[1]
     if m[3]: arrays.add(m[2])
+# the TU's own declarations, re-emitted (identically) in the top block when a
+# draft uses a symbol or callee declared only further down the file
+file_types=dict(types); file_arrays=set(arrays); reemitted=set()
+file_sigs={}
+for m in re.finditer(r'^(?:extern\s+)?(\w[\w\s\*]*?\b(\w+)\s*\([^;{)]*\))\s*(?:;|\{)',decl_src,re.M):
+    if not m[1].split()[0] in ('if','while','for','switch','return','else'): file_sigs.setdefault(m[2],m[1])
 seen=set(types)|set(re.findall(r'^extern [^;]*?\b(\w+)(?:\[\])?\s+asm\(',decl_src,re.M))|set(re.findall(r'^(?:extern\s+)?\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',decl_src,re.M))|set(re.findall(r'^\w[\w\s\*]*?\b(\w+)\([^;]*\)\s*\{',decl_src,re.M))
 externs=[]
 def clean(c):
@@ -111,6 +121,8 @@ for n in names:
                             externs.append(f'extern {mt} {alias}[] asm("{sym}");'); seen.add(alias)
                         aliases[sym]=alias
                     continue
+                if sym in file_types and sym not in reemitted:
+                    externs.append(f'extern {file_types[sym]} {sym}{"[]" if sym in file_arrays else ""};'); reemitted.add(sym)
                 if sym not in seen:
                     externs.append(m[1]); seen.add(sym); types[sym]=mt
                     if m[4]: arrays.add(sym)
@@ -124,6 +136,8 @@ for n in names:
                 elif types.get(sym) is not None and types[sym].replace(' ','')!=mt.replace(' ',''): conflicts[sym]=mt
                 continue
             if m2:
+                if m2[2] in file_sigs and m2[2] not in reemitted and m2[2] not in names and m2[2] not in hdrdecl:
+                    externs.append(file_sigs[m2[2]]+';'); reemitted.add(m2[2])
                 if m2[2] not in seen and m2[2] not in hdrdecl: externs.append(m2[1]+';'); seen.add(m2[2])
                 continue
             if re.match(r'^\w.*\)\s*\{',l): inbody=True
@@ -147,6 +161,6 @@ add=externs+protos
 if add:
     lines[k:k]=['#ifndef XENO_PC_PORT']+add+['#endif','']
     s='\n'.join(lines)
-if '#include "system/memory.h"' not in s:  # retail-only: never change the port's view
-    s=s.replace('#include "common.h"\n','#include "common.h"\n#ifndef XENO_PC_PORT\n#include "system/memory.h"\n#endif\n',1)
+# (no header is added: m2c's own externs cover the callees, and a header
+# can clash with a TU's own declarations)
 open(p,'w').write(s); print(len(names),'inserted;',len(externs),'externs;',len(protos),'protos')
