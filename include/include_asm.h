@@ -20,15 +20,23 @@
 #if !defined(M2CTX) && !defined(PERMUTER) && !defined(SKIP_ASM)
 
 #ifndef INCLUDE_ASM
+/* The asm is wrapped in a dummy function that maspsx strips (only the
+ * `# maspsx-keep` lines survive). This keeps each INCLUDE_ASM in source order
+ * relative to the C functions: at -G8 cc1 defers every function body to the
+ * end of the TU, while a bare top-level __asm__ is emitted immediately, so a
+ * top-level INCLUDE_ASM would be hoisted ahead of all C in its TU. */
 #define INCLUDE_ASM(FOLDER, NAME) \
-    __asm__( \
-        ".section .text\n" \
-        "    .set noat\n" \
-        "    .set noreorder\n" \
-        "    .include \"" FOLDER "/" #NAME ".s\"\n" \
-        "    .set reorder\n" \
-        "    .set at\n" \
-    )
+    void __maspsx_include_asm_hack_##NAME() { \
+        __asm__( \
+            ".text # maspsx-keep\n" \
+            "\t.align\t2 # maspsx-keep\n" \
+            "\t.set noreorder # maspsx-keep\n" \
+            "\t.set noat # maspsx-keep\n" \
+            ".include \"" FOLDER "/" #NAME ".s\" # maspsx-keep\n" \
+            "\t.set reorder # maspsx-keep\n" \
+            "\t.set at # maspsx-keep\n" \
+        ); \
+    }
 #endif
 #ifndef INCLUDE_RODATA
 #define INCLUDE_RODATA(FOLDER, NAME) \
