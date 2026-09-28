@@ -1,12 +1,3 @@
-#ifndef FIELD_TU_SUB
-#define FIELD_TU_SUB 0
-#endif
-/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
- * run (its retail-asm functions, then its byte-exact C bodies), because
- * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
- * 0 (port/tests) compiles every run. */
-#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
-
 #include "common.h"
 #include "psyq/libgpu.h"
 #include "system/memory.h"
@@ -22,8 +13,9 @@
 #endif
 
 
-#if FIELD_SUB(1)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q1.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AA9DC);
+#else
 void func_800AA9DC(void* pModelData) {
     u8* pModel = pModelData;
     u8* pBounds = (u8*)(uintptr_t)*(u32*)(pModel + 0x4);
@@ -48,7 +40,6 @@ void func_800AA9DC(void* pModelData) {
     *(s16*)(pModel + 0x20) = (max << 1) + 1;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(1) */
 
 extern MATRIX D_800B00E8;
 /* On PSX, D_800B00FC/D_800B0100/D_800B0104 alias D_800B00E8+0x14/+0x18/+0x1C —
@@ -57,8 +48,9 @@ extern MATRIX D_800B00E8;
 extern s32 D_800C3A5C;
 extern s32 D_800C3A60;
 
-#if FIELD_SUB(1)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q1.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AAA74);
+#else
 s32 func_800AAA74(void* pModelData) {
     u8* pModel = (u8*)pModelData;
     VECTOR transformed;
@@ -112,19 +104,15 @@ s32 func_800AAA74(void* pModelData) {
     return 0;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(1) */
 
 extern u32 D_800AFC68;
 #define D_800AFC68_PTR ((SpriteList*)(uintptr_t)D_800AFC68)
 
-#if FIELD_SUB(1)
 void func_800AABD8(void) {
     HeapFree((void*)(uintptr_t)D_800AFC68);
     DrawSync(0);
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_800AAC08(void) {
     RECT rect;
     SPRT* pSprite;
@@ -158,17 +146,13 @@ void func_800AAC08(void) {
         *pSprite2 = *pSprite;
     };
 }
-#endif /* FIELD_SUB(1) */
 
 // Set RGB of sprites
-#if FIELD_SUB(1)
 void func_800AADC8(int index, int red, int green, int blue) {
     setRGB0(&D_800AFC68_PTR->sprites[index][0], red, green, blue);
     setRGB0(&D_800AFC68_PTR->sprites[index][1], red, green, blue);
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void func_800AAE4C(int index, int x, int y, int type) {
     switch (type) {
         case 0:
@@ -186,14 +170,12 @@ void func_800AAE4C(int index, int x, int y, int type) {
     addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68_PTR->sprites[index][g_FieldCurRenderContextIndex]);
     addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68_PTR->drModes[index][g_FieldCurRenderContextIndex]);
 }
-#endif /* FIELD_SUB(1) */
 
 extern u32 D_800B1DF0;
 extern u32 D_800C3A3C;
 #define D_800B1DF0_PTR ((SpriteList2*)(uintptr_t)D_800B1DF0)
 #define D_800C3A3C_PTR ((PolyList2*)(uintptr_t)D_800C3A3C)
 
-#if FIELD_SUB(1)
 void func_800AAF80(void) {
     RECT rect;
     POLY_FT4* pPoly;
@@ -251,12 +233,12 @@ void func_800AAF80(void) {
         *pPoly2 = *pPoly;
     }
 }
-#endif /* FIELD_SUB(1) */
 
 extern void* g_pGameState;
 
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB328);
+#else
 s32 func_800AB328(u8 characterId) {
     u8* pGS = (u8*)g_pGameState;
     s32 i;
@@ -268,7 +250,6 @@ s32 func_800AB328(u8 characterId) {
     return -1;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
 extern s32 D_800AFE78;
 extern s32 D_800AFE7C;
@@ -276,7 +257,6 @@ extern s32 g_PlayerActorIndex;
 extern s32 D_800C3914;
 extern s32 D_800C3A18;
 
-#if FIELD_SUB(2)
 void func_800AB378(s8 color) {
     ActorData* pActor;
     int i;
@@ -307,15 +287,15 @@ void func_800AB378(s8 color) {
         addPrim(g_FieldCurRenderContext->ot3, &D_800C3A3C_PTR->drModes[i][g_FieldCurRenderContextIndex]);
     }
 }
-#endif /* FIELD_SUB(2) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AB748.s
  * (0x800AB748-0x800AB804). Retail: sltiu $a0, 5 then jr jtbl_8006FDD8
  * (five entries in asm/field/data/2D8.rodata.s). Cases 0-3 andi 0x8/0x10/
  * 0x20/0x40 and share .L800AB7CC (bit ? 0 : -1). Case 4 andi 0x80 inverts
  * (bit ? -1 : 0). Slot >= 5 returns -1. */
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB748);
+#else
 s32 func_800AB748(s32 slot) {
     s32 ret;
 
@@ -347,7 +327,6 @@ s32 func_800AB748(s32 slot) {
     return ret;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AB808.s
  * (0x800AB808-0x800ABA94). Loads archive 0x802, OpenTIM/ReadTIM, then for
@@ -360,8 +339,9 @@ extern void ArchiveCdDataSync(int mode);
 extern void* memcpy(void* dest, const void* src, int n);
 extern s16 D_800AF5C0[];
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB808);
+#else
 void func_800AB808(void) {
     TIM_IMAGE tim;
     void* pBuf;
@@ -427,7 +407,6 @@ void func_800AB808(void) {
     HeapFree(pImage);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800ABA98.s
  * (0x800ABA98-0x800ABD14). Walk D_800AF47C (stride 0x20, terminator 0xFFFF)
@@ -447,8 +426,9 @@ extern void FieldDisplay(void);
 extern void FieldPollControllers(void);
 extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABA98);
+#else
 void func_800ABA98(void) {
     RECT rect;
     s32 i;
@@ -531,12 +511,10 @@ void func_800ABA98(void) {
     HeapFree(pShot);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
 
 extern SpriteList3 D_800B0188;
 
-#if FIELD_SUB(3)
 void func_800ABD18(void) {
     int i;
     RECT rect;
@@ -559,11 +537,9 @@ void func_800ABD18(void) {
         D_800B0188.sprites[i][1] = D_800B0188.sprites[i][0];
     }
 }
-#endif /* FIELD_SUB(3) */
 
 extern s16 D_800ADB54;
 
-#if FIELD_SUB(3)
 void func_800ABEC8(void) {
     int i;
 
@@ -574,10 +550,10 @@ void func_800ABEC8(void) {
         }
     }
 }
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABFDC);
+#else
 intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
     u16 code = (u16)((u16)pChar[0] << 8) | pChar[1];
     u16 range = (code + 0x7AC0) & 0xFFFF;
@@ -593,10 +569,10 @@ intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
     return (s32)(u16)(code - 0x8540);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC03C);
+#else
 void func_800AC03C(u8* pOut, u16* pData, s32 count) {
     s32 i;
     if (count == -1) {
@@ -625,7 +601,6 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AC0F0.s
  * (0x800AC0F0-0x800AC304). Copy 0x40 stream bytes, clear 0x120 image.
@@ -635,8 +610,9 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
  * Fill remaining of 0x1C slots with the cleared image. */
 extern s32 D_800AF780;
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC0F0);
+#else
 void* func_800AC0F0(void* pStream, s32 destinationX, s32 renderContext) {
     u8 image[0x120];
     u8 encoded[0x40];
@@ -725,13 +701,11 @@ void* func_800AC0F0(void* pStream, s32 destinationX, s32 renderContext) {
     return (u8*)pStream + streamOffset;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 extern s32 D_800AF780;
 extern void* D_800AF76C;
 extern void* D_800AF784;
 
-#if FIELD_SUB(4)
 void func_800AC308(void) {
     ArchiveSetIndex(4, 0);
     D_800AF780 = ArchiveDecodeSize(0xAB);
@@ -742,7 +716,6 @@ void func_800AC308(void) {
     ArchiveReadFileToBuffer(0xAC, D_800AF784, 0, 0x80);
     ArchiveCdDataSync(0);
 }
-#endif /* FIELD_SUB(4) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AC3AC.s
  * (0x800AC3AC-0x800AC998). POLY_GT4 at D_800AF788 and D_800AF7F0: RGB0/1 of
@@ -755,8 +728,9 @@ extern u8 D_800AF7F0[];
 extern u8 D_800AF824[];
 extern void* D_800AF770;
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC3AC);
+#else
 void func_800AC3AC(void) {
     POLY_GT4* first = (POLY_GT4*)D_800AF788;
     POLY_GT4* second = (POLY_GT4*)D_800AF7F0;
@@ -865,7 +839,6 @@ void func_800AC3AC(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AC99C.s
  * (0x800AC99C-0x800ACB8C). OT-insert D_800AF7F0+idx*0x34 then
@@ -882,8 +855,9 @@ extern u8 D_800AF7F0[];
 #define AC99C_PACK_ADDR(p) ((u32)(p) & 0x00FFFFFF)
 #endif
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC99C);
+#else
 void func_800AC99C(void) {
     s32 idx = g_FieldCurRenderContextIndex;
     u32* otHead = (u32*)((u8*)g_FieldCurRenderContext + 0x80D4);
@@ -934,12 +908,12 @@ void func_800AC99C(void) {
     }
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 #undef AC99C_PACK_ADDR
 
-#if FIELD_SUB(5)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc9_q5.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACB90);
+#else
 void func_800ACB90(void) {
     RECT rect;
     s32 i;
@@ -963,7 +937,6 @@ void func_800ACB90(void) {
     HeapFree(pBuf);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(5) */
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;
@@ -971,7 +944,6 @@ extern void* D_800AF774;
 extern s32 D_800AF778;
 extern s32 D_800AF77C;
 
-#if FIELD_SUB(5)
 void func_800ACC58(void) {
     u32 stackSlot;
     if (D_8004F300 != 0) {
@@ -985,22 +957,18 @@ void func_800ACC58(void) {
         D_800AF774 = D_800AF76C;
     }
 }
-#endif /* FIELD_SUB(5) */
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;
 extern void* D_800AF770;
 
-#if FIELD_SUB(5)
 void func_800ACCB0(void) {
     if (D_8004F300 != 0) {
         HeapFree(D_800AF76C);
         HeapFree(D_800AF770);
     }
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 void func_800ACCF4(void) {
     if (D_8004F300 == 0) return;
     if ((D_800AF77C & 0xF) == 0) {
@@ -1009,27 +977,21 @@ void func_800ACCF4(void) {
     }
     D_800AF77C++;
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 short FieldScriptVMGetInstructionArgumentS16(int offset) {
     u_char* pData;
 
     pData = g_FieldScriptVMCurScriptData + (g_FieldScriptVMCurActor->scriptInstructionPointer + offset);
     return (pData[0] + (pData[1] << 8));
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 int FieldScriptVMGetInstructionArgument(int argumentIndex) {
     u_char* pData;
 
     pData = g_FieldScriptVMCurScriptData + (g_FieldScriptVMCurActor->scriptInstructionPointer + argumentIndex);
     return *pData | *(pData + 1) <<  8;
 }
-#endif /* FIELD_SUB(5) */
 
-#if FIELD_SUB(5)
 int FieldScriptVMGetArgument(int index) {
     int nArgument;
 
@@ -1038,4 +1000,3 @@ int FieldScriptVMGetArgument(int index) {
         return FieldScriptVMGetVariableValue(nArgument & 0xFFFF);
     return nArgument & 0x7FFF;
 }
-#endif /* FIELD_SUB(5) */

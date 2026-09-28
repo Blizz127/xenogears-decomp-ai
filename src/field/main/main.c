@@ -1,12 +1,3 @@
-#ifndef FIELD_TU_SUB
-#define FIELD_TU_SUB 0
-#endif
-/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
- * run (its retail-asm functions, then its byte-exact C bodies), because
- * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
- * 0 (port/tests) compiles every run. */
-#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
-
 #include "common.h"
 #include "psyq/libgpu.h"
 #include "psyq/libetc.h"
@@ -17,20 +8,16 @@
 
 extern int g_FrameDeltaTime;
 
-#if FIELD_SUB(1)
 void FieldInitializeControllers(void) {
     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
     ArchiveSetIndex(4, 0);
     FieldInitializeControllersAndMouse();
 }
-#endif /* FIELD_SUB(1) */
 
-#if FIELD_SUB(1)
 void FieldRenderSync(void) {
     DrawSync(0);
     Vsync(0);
 }
-#endif /* FIELD_SUB(1) */
 
 /* ---- FieldLoadUITextures: load UI texture CLUT from archive ------------------
  * Loads archive 0xA7, unpacks 8 TIM images via FieldLoadTIMWithClut,
@@ -48,8 +35,9 @@ extern u16 D_800B004C, D_800B004E, D_800B0050, D_800B0052;
 extern u16 D_800AFC08[0x80];
 extern void ResolveArchiveEntryPointers(void* pData);
 
-#if FIELD_SUB(2)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in main_q2.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldLoadUITextures);
+#else
 void FieldLoadUITextures(void) {
     u16* pTable;
     u16* pScan;
@@ -134,25 +122,19 @@ void FieldLoadUITextures(void) {
     HeapFree(D_8005A4A0);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(2) */
 
 extern s32 g_GameSceneMapNum;
 
-#if FIELD_SUB(2)
 void func_800777DC(void) {
     ArchiveCdDataSync(0);
     while (func_8001B484((g_GameSceneMapNum & 0xFFF) << 1, 0) != 0) {
     }
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void FieldUpdateDeltaTime(void) {
     g_FrameDeltaTime = Vsync(1);
 }
-#endif /* FIELD_SUB(2) */
 
-#if FIELD_SUB(2)
 void func_80077844(short* dst, int a, int b, int c, int d, int e, int f, int g, int h, int i) {
     dst[0] = a;
     dst[1] = b;
@@ -164,7 +146,6 @@ void func_80077844(short* dst, int a, int b, int c, int d, int e, int f, int g, 
     dst[7] = h;
     dst[8] = i;
 }
-#endif /* FIELD_SUB(2) */
 
 extern s32 D_800B2264;
 extern u8 D_800B2394;
@@ -198,8 +179,9 @@ static inline void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* 
     *(u32*)(entry + 4) = (u32)(unsigned long)pData;
 }
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in main_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077884);
+#else
 void func_80077884(void) {
     s32 i;
     s16* archiveIds;
@@ -251,10 +233,10 @@ void func_80077884(void) {
     func_80029AFC((StreamDataQueueEntry*)&D_800B2394, 0, 0);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(3)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in main_q3.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077AB4);
+#else
 void func_80077AB4(void) {
     s32 i;
     u8* work;
@@ -299,18 +281,14 @@ void func_80077AB4(void) {
     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(3)
 void func_80077C60(void) {
     func_80077884();
     func_80077AB4();
 }
-#endif /* FIELD_SUB(3) */
 
 extern void* g_PartyDataBuffers[];
 
-#if FIELD_SUB(3)
 void FieldPartyAllocateSkinDataBuffers(void) {
     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
     g_PartyDataBuffers[0] = HeapAlloc(0x14000, 0);
@@ -320,9 +298,7 @@ void FieldPartyAllocateSkinDataBuffers(void) {
     HeapPinBlock(g_PartyDataBuffers[1]);
     HeapPinBlock(g_PartyDataBuffers[2]);
 }
-#endif /* FIELD_SUB(3) */
 
-#if FIELD_SUB(3)
 void FieldPartyFreeSkinDataBuffers(void) {
     HeapUnpinBlock(g_PartyDataBuffers[0]);
     HeapUnpinBlock(g_PartyDataBuffers[1]);
@@ -331,7 +307,6 @@ void FieldPartyFreeSkinDataBuffers(void) {
     HeapFree(g_PartyDataBuffers[1]);
     HeapFree(g_PartyDataBuffers[2]);
 }
-#endif /* FIELD_SUB(3) */
 
 extern s32 D_800ADB9C;
 extern int g_FieldSystemMode;
@@ -341,7 +316,6 @@ extern void func_80281B00(void* arg0);
 extern u8 D_8006FB80;
 extern void func_800A31E8(void);
 
-#if FIELD_SUB(3)
 void func_80077DAC(void) {
     D_800ADB9C = Vsync(1);
     FieldClearAndSwapOTag();
@@ -353,15 +327,15 @@ void func_80077DAC(void) {
 
     func_800A31E8();
 }
-#endif /* FIELD_SUB(3) */
 
 extern FieldActor* volatile g_FieldActors;
 extern s32 D_800ADBD0;
 extern s16 D_800B2344;
 extern s32 g_PlayerActorIndex;
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in main_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077E10);
+#else
 s32 func_80077E10(void) {
     if (D_800ADBD0 == 1 && D_800B2344 == 0) {
         /* FieldActor is 0x5C on the PSX.  Its +0x4C pActorData member is a
@@ -374,7 +348,6 @@ s32 func_80077E10(void) {
     return 0;
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
 
 /* ---- FieldMain: field game-state driver (Phase C gateway) -------------------
  * Functional decompile (port-first; not yet byte-matched). Control flow mirrors
@@ -464,8 +437,9 @@ extern void MainLoop(int errorCode) __attribute__((noreturn));
     (*(s32*)(uintptr_t)(*(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C)))
 #endif
 
-#if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in main_q4.c */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldMain);
+#else
 void FieldMain(void) {
     int exitCode = 0;   /* s0 at teardown (set 0/1/2/3 on the exit paths) */
     int savedSound;     /* s0 reuse: D_80059488 save/restore in the wait loops */
@@ -756,4 +730,3 @@ teardown:  /* .L80078ABC */
     func_8007954C(exitCode);
 }
 #endif /* XENO_PC_PORT */
-#endif /* FIELD_SUB(4) */
