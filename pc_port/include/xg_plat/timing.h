@@ -18,6 +18,16 @@ void xg_plat_timing_fast_forward(int held);    /* held: run at the fast-forward 
 void xg_plat_timing_set_fast_forward_speed(int multiplier); /* 1..5, default 5 */
 int  xg_plat_timing_vblank_count(void);        /* host vblanks since start */
 
+/* The game's VSync and root-counter calls (link-time routing,
+ * build_port.sh XG_PLAT_WRAP_SYMS).  vsync: mode 0 waits for the next
+ * vblank, n > 0 waits n vblanks after the previous one, 1 / negative query
+ * the time / count without waiting.  Counters: `spec` names a root counter
+ * (PSX RCntCNT0..3); target / mode as the PSX counter registers. */
+int xg_plat_timing_vsync(int mode);
+int xg_plat_timing_counter_set(int spec, unsigned short target, int mode);
+int xg_plat_timing_counter_get(int spec);
+int xg_plat_timing_counter_start(int spec);
+
 #ifdef __cplusplus
 }
 #endif
