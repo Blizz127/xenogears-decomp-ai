@@ -1,4 +1,9 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+void func_8001D3F4(void *);
+void func_800230A8(void *arg0);
+#endif
+
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdio.h>
@@ -280,7 +285,20 @@ void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_800230A8);
+void func_800230A8(void *arg0) {
+    void *temp_a0;
+
+    /* retail tests the flag as a 1-bit field compared with 1 */
+    if (((struct { u32 b0 : 1; }*)((s8*)arg0 + 0xA8))->b0 == 1) {
+        temp_a0 = *(void **)((s8*)(*(void **)((s8*)(arg0) + 0x7C)) + 0x18);
+        if (temp_a0 != NULL) {
+            HeapFree(temp_a0);
+        }
+    }
+    func_8001D3F4(arg0);
+    HeapFree(*(void **)((s8*)(*(void **)((s8*)(arg0) + 0x20)) + 0x2C));
+    HeapFree(arg0);
+}
 #else
 void func_800230A8(void* pSpriteData)
 {
