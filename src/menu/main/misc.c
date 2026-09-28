@@ -1629,7 +1629,8 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8324);
 #else
 
 /* Step anim slot by `speed` ticks and mark done once the dominant axis has
- * passed its target. */
+ * passed its target.  The 8.8 accumulator is divided by 256 (rounding toward
+ * zero) as retail does; the port once used >> 8. */
 void func_801C8324(u8 slot) {
     MenuOpenAnim* s = MENU_OPEN_ANIM(slot);
     s32 i;
@@ -1649,21 +1650,21 @@ void func_801C8324(u8 slot) {
 
     if (s->stepX == 0x100) {
         if (s->dirX) {
-            if (s->curX + (s->accX >> 8) < s->toX) {
+            if (s->curX + s->accX / 256 < s->toX) {
                 s->done = 1;
             }
         } else {
-            if (s->toX < s->curX + (s->accX >> 8)) {
+            if (s->toX < s->curX + s->accX / 256) {
                 s->done = 1;
             }
         }
     } else {
         if (s->dirY) {
-            if (s->curY + (s->accY >> 8) < s->toY) {
+            if (s->curY + s->accY / 256 < s->toY) {
                 s->done = 1;
             }
         } else {
-            if (s->toY < s->curY + (s->accY >> 8)) {
+            if (s->toY < s->curY + s->accY / 256) {
                 s->done = 1;
             }
         }
