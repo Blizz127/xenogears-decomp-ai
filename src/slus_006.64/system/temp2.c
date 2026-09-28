@@ -807,19 +807,19 @@ void func_8002C59C(u8* pBlock) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C644);
-#else
 /* Finalizes a model control block: pins its backing buffer into the heap so it
  * won't move. Reads a flags word at +0x4; if bit 0x2 is already set the block is
  * already pinned and it returns 1. Otherwise it sets bit 0x2, computes the
  * distance from the block base (a0) to the buffer stored at +0x24, and hands
  * that to HeapInsertAlloc to register the region. */
 s32 func_8002C644(u8* a0) {
+    s32 result;
     s32 v1 = *(s32*)(a0 + 0x4);
     if ((v1 & 0x2) == 0) {
-        s32 a1 = *(s32*)(a0 + 0x24);
+        s32 a1;
+
         *(s32*)(a0 + 0x4) = v1 | 0x2;
+        a1 = *(s32*)(a0 + 0x24);
 #ifdef XENO_PC_PORT
         /* PC-port hardening: this pin is only meaningful for heap-standalone
          * models, where a0 is a real heap block and +0x24 holds an end pointer.
@@ -854,11 +854,12 @@ s32 func_8002C644(u8* a0) {
         }
 #endif
         HeapInsertAlloc((HeapBlock*)a0, (u_int)(a1 - (s32)a0));
-        return 0;
+        result = 0;
+    } else {
+        result = 1;
     }
-    return 1;
+    return result;
 }
-#endif
 
 s32 func_8002C68C(u8* pBlock) {
     u16 flags = *(u16*)(pBlock);
