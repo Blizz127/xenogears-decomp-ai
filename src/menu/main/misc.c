@@ -3015,46 +3015,44 @@ void func_801CB28C(s32 arg0) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB8AC);
-#else
+/* Retail 0x801CB8AC: show prompt arg0 * 3 + 0x29, then pump frames while
+ * input stays 8 and the card state bytes (+0x4FE4/5) are unchanged.  A card
+ * change returns 0; otherwise the func_801CACF8(0x2F) answer is returned.
+ * Shared retail/port body (gcc 2.6.3 byte-exact).  The port once read the
+ * card buffer through a raw host offset, capped the wait at 0x80 frames and
+ * returned 1 on a card change (docs/port/RETAIL_DIVERGENCES.md). */
 u8 func_801CB8AC(u8 arg0) {
-    void* pMenu = g_Menu;
-    void* pData = *(void**)((u8*)pMenu + 0x32C);
-    u8 savedE4 = *(u8*)((u8*)pData + 0x4FE4);
-    u8 savedE5 = *(u8*)((u8*)pData + 0x4FE5);
-    u8 param = (u8)((arg0 & 0xFF) * 3 + 0x29);
-    u8 result = 0;
-    func_801D2F4C(param);
-    pMenu = g_Menu;
-    *(u8*)((u8*)pMenu + 0x325) = 8;
-    pMenu = g_Menu;
-    *(u8*)(*(void**)((u8*)pMenu + 0x32C) + 0x4FE6) = 2;
-    pMenu = g_Menu;
-    {
-        void* pManager = *(void**)((u8*)pMenu + 0x32C);
-        if (*(u8*)((u8*)pMenu + 0x325) == 8) {
-            s32 i;
-            for (i = 0; i < 0x80; i++) {
-                func_801C7BF4();
-                pMenu = g_Menu;
-                pData = *(void**)((u8*)pMenu + 0x32C);
-                if (savedE4 != *(u8*)((u8*)pData + 0x4FE4) ||
-                    savedE5 != *(u8*)((u8*)pData + 0x4FE5)) {
-                    result = 1;
-                    break;
-                }
-                if (*(u8*)((u8*)pMenu + 0x325) != 8) break;
+    u8 saved[2];
+    u8 changed;
+    u8 result;
+
+    saved[0] = ((u8*)g_Menu->unk32C)[0x4FE4];
+    saved[1] = ((u8*)g_Menu->unk32C)[0x4FE5];
+    func_801D2F4C(arg0 * 3 + 0x29);
+    g_Menu->input = 8;
+    result = 0;
+    ((u8*)g_Menu->unk32C)[0x4FE6] = 2;
+    changed = 0;
+    if (g_Menu->input == 8) {
+        do {
+            func_801C7BF4();
+            if (saved[0] != ((u8*)g_Menu->unk32C)[0x4FE4] ||
+                saved[1] != ((u8*)g_Menu->unk32C)[0x4FE5]) {
+                changed = 1;
+                break;
             }
-        }
+        } while (g_Menu->input == 8);
     }
+#ifdef XENO_PC_PORT
     func_801D32B4(0);
-    if (result == 0) {
+#else
+    ((s32 (*)())func_801D32B4)(); /* retail leaves a0 unset (arg unused) */
+#endif
+    if (changed == 0) {
         result = func_801CACF8(0x2F, 0xFF, 1);
     }
     return result;
 }
-#endif
 
 extern u8 D_801EA6D0[];
 
@@ -5795,28 +5793,27 @@ void func_801D3B00(void) {
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern s32 func_800263E4(u8*, s32, void*, s32, s32, s32, s32, s32, s32);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3C4C);
-#else
-void func_801D3C4C(u8 slotIdx, s32 x, s32 y, s32 w, s32 h) {
+/* Retail 0x801D3C4C: the window's scrollbar -- two end caps and the empty
+ * track (polys + verts).  Retail ignores a3 (w) and takes the height as a
+ * u16.  Shared retail/port body (gcc 2.6.3 byte-exact). */
+void func_801D3C4C(u8 slotIdx, s32 x, s32 y, s32 w, u16 h) {
     MenuWindow* window = g_Menu->windows[slotIdx];
     u32 ux = (u16)x;
     u32 uy = (u16)y;
-    (void)w; /* Retail ignores a3 and reads height from the fifth argument. */
+    u16 y16 = y;
+
+    (void)w;
     func_8002675C(g_Menu->unk2DC, 0x105, &window->polysScrollBarEnds[0],
-                 g_Menu->renderContext, ux, uy, 0x1000);
+                  g_Menu->renderContext, ux, uy, 0x1000);
     func_800263E4(g_Menu->unk2DC, 0x105, &window->polysScrollBarEnds[2],
-                 g_Menu->renderContext, ux, (s32)(uy + (u16)h) - 8,
-                 0x1000, 0, 1);
+                  g_Menu->renderContext, ux, (s32)(uy + h) - 8, 0x1000, 0, 1);
     func_8002675C(g_Menu->unk2DC, 0x106, window->polysScrollBarEmpty,
-                 g_Menu->renderContext, ux, uy + 8, 0x1000);
+                  g_Menu->renderContext, ux, uy + 8, 0x1000);
     func_801C851C(&window->vertsScrollBarEnds[0], ux, uy, 8, 8);
-    func_801C851C(&window->vertsScrollBarEnds[4], ux,
-                 (u16)((u32)y + (u32)h), 8, 0xFFF8);
-    func_801C851C(window->vertsScrollBarEmpty, ux,
-                 (u16)((u32)y + 8), 8, (u16)((u32)h - 8));
+    func_801C851C(&window->vertsScrollBarEnds[4], ux, (u16)(y16 + h), 8, 0xFFF8);
+    func_801C851C(window->vertsScrollBarEmpty, ux, (u16)(y16 + 8), 8,
+                  (u16)(h - 8));
 }
-#endif
 
 extern s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx,
                          s32 x, s32 y, s32 scale);
@@ -10404,55 +10401,48 @@ void func_801E1398(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1418);
 #else
+/* Retail 0x801E1418: average per-stat ratio (percent, capped at 100) of
+ * character slot `slotIdx`'s seven u16 stats (g_GameState + 0x2FC, 0xA4 per
+ * character) against the u16 caps row `arg1` of the 0x110-byte per-character
+ * table that the pointer at MENU_RAW(0x438) + 0x2578 points to.  A 0xFFFF cap
+ * counts without adding; a zero cap is skipped; a zero stat counts only when
+ * its cap is nonzero.  Rows >= 7 need story flag 0x22B6 & 0x4000.  The port
+ * once used 0x28 / 0x280 strides, read the table inline at +0x2578 and
+ * skipped 0xFFFF caps (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801E1418(s32 slotIdx, u8 arg1) {
     s32 total = 0;
-    s32 count = 0;
+    s32 count;
     s32 i;
-    void* pMenu;
-    void* pManager;
     u8 charIdx;
-    u8* pGameData;
-    u8* pEquip;
-    void* pEquipData;
-    u16* pEquipTable;
-    if (arg1 >= 7) {
-        if (!(*(u16*)((u8*)&g_GameState + 0x22B6) & 0x4000)) {
-            return 0;
-        }
+    u16* pStat;
+    u8* pTable;
+    u16 val;
+    s32 cap;
+    u32 ratio;
+
+    if (arg1 >= 7 && !(*(u16*)((u8*)&g_GameState + 0x22B6) & 0x4000)) {
+        return 0;
     }
-    pMenu = g_Menu;
-    pManager = g_Menu->pManager;
-    charIdx = *(u8*)((u8*)pManager + 0x30 + slotIdx);
-    pEquipData = *(void**)((u8*)pMenu + 0x438);
-    pGameData = (u8*)&g_GameState + 0x2FC + charIdx * 0x28;
-    pEquip = (u8*)pEquipData + 0x2578;
-    for (i = 0; i < 7; i++) {
-        u16 val = *(u16*)(pGameData + i * 2);
-        u8* pTableEntry = pEquip + charIdx * 0x280 + arg1 * 0xE;
-        u16 equipVal = *(u16*)(pTableEntry + i * 2);
+    count = 0;
+    charIdx = ((u8*)g_Menu->pManager)[0x30 + (u8)slotIdx];
+    pTable = (u8*)(uintptr_t)*(u32*)(MENU_RAW(0x438) + 0x2578);
+    pStat = (u16*)((u8*)&g_GameState + 0x2FC + charIdx * 0xA4);
+    for (i = 0; i < 7; i++, pStat++) {
+        val = *pStat;
+        cap = *(u16*)(pTable + charIdx * 0x110 + arg1 * 0xE + i * 2);
         if (val != 0) {
-            if (equipVal == 0) goto next;
-            if (equipVal == 0xFFFF) goto next;
-            {
-                s32 ratio = val * 100 / equipVal;
-                if (ratio >= 100) {
-                    total += 100;
-                } else {
-                    total += ratio;
-                }
+            if (cap == 0) continue;
+            if (cap != 0xFFFF) {
+                ratio = (u32)(val * 100) / cap;
+                total += ratio < 100 ? ratio : 100;
             }
-            count++;
-        } else {
-            if (equipVal == 0) goto next;
-            count++;
+        } else if (cap == 0) {
+            continue;
         }
-next:
-        ;
+        count++;
     }
-    if (count != 0) {
-        return total / count;
-    }
-    return 0;
+    if (count == 0) return 0;
+    return (u32)total / count;
 }
 #endif
 
@@ -12706,30 +12696,32 @@ void func_801E91C4(POLY_FT4* p) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E920C);
-#else
 /* Arc A portraits: set an FT4's screen quad + UV rect directly (absolute
- * screen coords -- no projection). */
+ * screen coords -- no projection).  Shared retail/port body (gcc 2.6.3
+ * byte-exact: the narrowed corner copies are locals). */
 void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h) {
-    p->x0 = (s16)x;
-    p->y0 = (s16)y;
-    p->y1 = (s16)y;
-    p->x2 = (s16)x;
-    p->u0 = (u8)u;
-    p->u2 = (u8)u;
-    p->x1 = (s16)(x + w);
-    p->y2 = (s16)(y + h);
-    p->x3 = (s16)(x + w);
-    p->y3 = (s16)(y + h);
-    p->v0 = (u8)v;
-    p->u1 = (u8)(u + w);
-    p->v1 = (u8)v;
-    p->v2 = (u8)(v + h);
-    p->u3 = (u8)(u + w);
-    p->v3 = (u8)(v + h);
+    s16 sx = x;
+    s16 sy = y;
+    u8 su = u;
+    u8 sv = v;
+
+    p->x0 = sx;
+    p->y0 = sy;
+    p->y1 = sy;
+    p->x2 = sx;
+    p->u0 = su;
+    p->u2 = su;
+    p->x1 = x + w;
+    p->y2 = y + h;
+    p->x3 = x + w;
+    p->y3 = y + h;
+    p->v0 = sv;
+    p->u1 = u + w;
+    p->v1 = sv;
+    p->v2 = v + h;
+    p->u3 = u + w;
+    p->v3 = v + h;
 }
-#endif
 
 #ifdef XENO_PC_PORT
 /* Arc A portraits: init the face quad -- opaque, shading enabled, neutral
