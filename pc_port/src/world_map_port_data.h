@@ -11,7 +11,9 @@
  * Guest pointers (words holding a PSX address) are turned into host addresses
  * with WM_GUEST_PTR.  The value is an s32 like the retail declaration: the
  * port is linked non-PIE with all statics (g_PsxRam included) below 2 GiB, so
- * the host address survives the 32-bit round trip.
+ * the host address survives the 32-bit round trip.  The object pool pointer
+ * D_8009BE24 is the exception: retail declares it WmObj * (world_map/wm_obj.h),
+ * so here it is a real host pointer and no s32 round trip applies to it.
  *
  * Grow the list per switch batch (docs/ARCHITECTURE-PORT.md).  Everything here
  * is port-only; the retail build never sees this header. */
@@ -20,13 +22,14 @@
 
 #include <stdint.h>
 #include "psx_memory.h"
+#include "world_map/wm_obj.h"
 
 #define WM_GUEST(type, addr) (*(type*)PSX_ADDR(addr))
 #define WM_GUEST_PTR(addr) ((s32)(intptr_t)PSX_ADDR(WM_GUEST(u32, addr)))
 
 /* batch 1: func_80071A50, func_800834D0, func_80080900, func_80087710,
  * func_80078E2C */
-#define D_8009BE24 WM_GUEST_PTR(0x8009BE24) /* actor slot pool (0x80-byte slots) */
+#define D_8009BE24 ((WmObj*)PSX_ADDR(WM_GUEST(u32, 0x8009BE24))) /* actor slot pool (0x80-byte slots) */
 #define D_8009C5AC WM_GUEST(s32, 0x8009C5AC)
 #define D_8009C5B0 WM_GUEST(s32, 0x8009C5B0)
 #define D_8009C5B4 WM_GUEST(s32, 0x8009C5B4)
