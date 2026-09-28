@@ -104,6 +104,10 @@ void func_80025180(void* pData) {
 }
 #endif
 
+/* The port body below, written against struct {RECT; u32 addr; u32 pNext}
+ * with the same statement order, is retail-exact under gcc-2.6.3-psx +
+ * aspsx 2.67, but func_800250E0/func_80025224 are not, so temp1e stays on
+ * XenoGraphics and this stays asm (2026-09-28). */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_800251C8);
 #else
