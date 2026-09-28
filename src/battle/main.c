@@ -2,6 +2,13 @@
 
 
 #ifndef XENO_PC_PORT
+void func_800BE790();
+void func_8028022C();
+extern s32 *D_8005917C;
+s32 func_800716D8(void);
+#endif
+
+#ifndef XENO_PC_PORT
 #else
 /* The port builds this TU with -DXENO_PC_PORT -DSKIP_ASM (build_port.sh
  * excludes src/battle/main.c from the shipped executable and the animation
@@ -87,7 +94,17 @@ void func_800BDD34(void) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_80070F40);
-INCLUDE_ASM("asm/battle/nonmatchings/main", func_800716D8);
+
+#ifndef XENO_PC_PORT
+s32 func_800716D8(void) {
+    if (*D_8005917C != -1) {
+        func_8028022C();
+    }
+    func_800BE790();
+    return 0;
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_8007171C);
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_800718BC);
 #endif
@@ -143,7 +160,7 @@ extern u8 g_GameState[];
 #ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
 #endif
-extern void func_800716D8(void);
+extern s32 func_800716D8(void); /* retail returns 0 */
 #ifndef XENO_PC_PORT
 extern u8 D_800D3725[];
 #endif

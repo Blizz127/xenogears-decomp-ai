@@ -18,7 +18,7 @@ void func_80074F70(void);
 
 
 #ifndef XENO_PC_PORT
-void func_800728B8(void *, u8, u8);
+void func_800728B8(void *prims, s32 count, s32 start);
 extern void *D_800D2D28;
 extern void *D_800D2DB4;
 void func_80074AB8(void);
@@ -32,7 +32,18 @@ INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072270);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072324);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800723E0);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007252C);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800728B8);
+
+#ifndef XENO_PC_PORT
+/* Link `count` primitives of 0x28 bytes, every other one from `start`. */
+void func_800728B8(void* prims, s32 count, s32 start) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        AddPrim(D_800CCB04 + 4, (u8*)prims + (start + i * 2) * 0x28);
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072938);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072DA8);
