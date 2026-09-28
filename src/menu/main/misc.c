@@ -949,7 +949,21 @@ void func_801C6D5C(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D90);
+/* Retail uploads to RECT {0, 0x1C0, 0x10, 1}; the port body uses {0, 0, 0x1C0, 1}. */
+void func_801C6D90(void) {
+    RECT rect;
+    volatile u64 reserve; /* retail frame has 8 unused bytes */
+    u16* pBuf = HeapAlloc(0x20, 0);
+    bzero(pBuf, 0x20);
+    pBuf[1] = 0x7FFF;
+    rect.x = 0;
+    rect.y = 0x1C0;
+    rect.w = 0x10;
+    rect.h = 1;
+    LoadImage(&rect, (u_long*)pBuf);
+    DrawSync(0);
+    HeapFree(pBuf);
+}
 #else
 void func_801C6D90(void) {
     RECT rect;
@@ -10987,7 +11001,15 @@ void func_801E41C0(s32 arg0, u8 idx) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4258);
+/* Retail indexes the 0xA4-byte party records; the port body steps 0x28. */
+void func_801E4258(void* pCtx, u8 idx) {
+    s32 off = idx * 0xA4;
+    u8* pEntry = (u8*)(off + (s32)&g_GameState + 0x978);
+    s32 tableIdx = pEntry[8];
+    u8* pTbl = *(u8**)((u8*)pCtx + 0x10) + tableIdx * 0x14;
+    *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
+    *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
+}
 #else
 void func_801E4258(void* pCtx, u8 idx) {
     s32 i = idx;
@@ -11581,7 +11603,14 @@ extern void func_801E5B88(void);
 extern void func_801E5E4C(void);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6450);
+void func_801E6450(void) {
+    volatile u64 reserve; /* retail frame has 8 unused bytes */
+    void* pBuf = HeapAlloc(0x2DC0, 0);
+    *(void**)((u8*)g_Menu + 0x34C) = pBuf;
+    bzero(pBuf, 0x2DC0);
+    func_801E5B88();
+    func_801E5E4C();
+}
 #else
 void func_801E6450(void) {
     volatile u64 reserve;
@@ -11649,7 +11678,23 @@ extern u8 D_801EA8C0;
 extern u16 D_801EA5D0[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E65E4);
+void* func_801E65E4(u8* pChar) {
+    u8 lo = pChar[0];
+    u8 hi = pChar[1];
+    D_801EA8C0 = 1;
+    if (lo < 0x80) {
+        if (lo >= 0x20) {
+            hi = *(u8*)&D_801EA5D0[lo];
+            lo = D_801EA5D0[lo] >> 8;
+            D_801EA8C0 = 0;
+        } else {
+            lo = 0x81;
+            hi = 0x40;
+            D_801EA8C0 = 0;
+        }
+    }
+    return Krom2RawAdd((lo << 8) | hi);
+}
 #else
 void* func_801E65E4(u8* pChar) {
 #ifdef XENO_PC_PORT
