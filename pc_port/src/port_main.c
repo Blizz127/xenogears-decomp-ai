@@ -13,6 +13,7 @@
 #include "disc_check.h"
 #include "../include/xg_plat/disc.h"
 #include "../include/xg_plat/renderer.h"
+#include "../include/xg_plat/config.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1214,6 +1215,7 @@ int main(int argc, char** argv) {
     (void)argv;
 
     printf("[xeno-port] booting (Silent-Hill-style: PSX RAM emu + runtime dispatch table)\n");
+    (void)xg_plat_config_load();
     /* The data_*.c constructors already filled the native retail tables from
      * the user's disc files (retail_data.h); report what they loaded. */
     printf("[xeno-port] retail data: %u objects, %u bytes loaded from the user's "
@@ -1245,6 +1247,7 @@ int main(int argc, char** argv) {
         xg_plat_renderer_default_config(&video);
         video.window_width = SCREEN_WIDTH;
         video.window_height = SCREEN_HEIGHT;
+        xg_plat_config_video(&video); /* xenogears-port.cfg / XENO_VIDEO_* */
         (void)xg_plat_renderer_init(WINDOW_TITLE, &video);
     }
 
@@ -1268,6 +1271,8 @@ int main(int argc, char** argv) {
         g_cfg_keyboardMapping.kc_circle   = 6;  /* C */
         g_cfg_keyboardMapping.kc_triangle = 27; /* X */
     }
+    /* Config file / XENO_* overrides: game.speed, input.* bindings, ... */
+    xg_plat_config_apply_runtime();
 
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();

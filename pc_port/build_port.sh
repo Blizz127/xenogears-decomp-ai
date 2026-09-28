@@ -789,6 +789,7 @@ PORT_SOURCES=(
     pc_port/src/krom_rom.c
     pc_port/src/disc_check.c
     pc_port/src/plat/xg_plat_psycross.c
+    pc_port/src/plat/xg_plat_config.c
     pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c
