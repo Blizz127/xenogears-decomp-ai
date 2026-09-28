@@ -220,20 +220,15 @@ void func_80097954(void) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800979F0);
-#else
 void func_800979F0(void) {
-    void* pActor = g_FieldScriptVMCurActor;
-    u8 idx = *(u8*)((u8*)pActor + 0xCE);
+    ActorData* pActor = g_FieldScriptVMCurActor;
     s32 result;
-    *(u16*)((u8*)pActor + 0x90 + idx * 8) = 0xFFFF;
+    pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
     result = func_80097A50(0xFFFF);
     if (result == 0) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc7/func_80097A50.s
  * (0x80097A50-0x80098034). Mode is bits 23-24 of the flags word at
