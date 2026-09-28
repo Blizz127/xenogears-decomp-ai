@@ -5,6 +5,5 @@
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7_q4", func_8009861C);
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7_q4", func_80098738);
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7_q4", func_800988B8);
 #endif
 #include "misc7.c"
