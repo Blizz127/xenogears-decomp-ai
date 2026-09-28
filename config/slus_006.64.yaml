@@ -63,6 +63,9 @@ segments:
     align: 4
     subsegments:
       - [0x800, rodata]
+      # MenuExecute switch tables jtbl_800183A4 (0x18) + jtbl_800183BC (0x1C)
+      - [0x8BA4, .rodata, system/menu]
+      - [0x8BD8, rodata]
       - [0x8EE0, rodata]
       #- [0x88FC, .rodata, main/main_loop]
       #- [0x8A6C, rodata]
