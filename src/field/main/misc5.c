@@ -1879,16 +1879,12 @@ void func_800A915C(void) {
 }
 
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A91F0);
-#else
 void func_800A91F0(void) {
     if (D_800ADB34) {
-        setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
         D_800ADB34 = 0;
+        setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
         LoadImage(&g_FieldStoredImageDest[0], (u_long*)(uintptr_t)D_800AFC70);
         DrawSync(0);
         HeapFree((void*)(uintptr_t)D_800AFC70);
     }
 }
-#endif /* XENO_PC_PORT */
