@@ -9,6 +9,7 @@
 #include "../../include/xg_plat/audio.h"
 #include "../../include/xg_plat/input.h"
 #include "../../include/xg_plat/timing.h"
+#include "../../include/xg_plat/disc.h"
 
 #include <stdlib.h>
 
@@ -154,6 +155,33 @@ unsigned int __wrap_SpuWrite(unsigned char* addr, unsigned int size)
     return (unsigned int)xg_plat_audio_upload_samples(addr, size);
 }
 
+extern void __real_DrawOTag(unsigned long* ot);
+extern void* __real_PutDrawEnv(void* env);
+extern void* __real_PutDispEnv(void* env);
+extern unsigned long* __real_ClearOTag(unsigned long* ot, int n);
+extern unsigned long* __real_ClearOTagR(unsigned long* ot, int n);
+
+void __wrap_DrawOTag(unsigned long* ot) { xg_plat_renderer_draw_ot(ot); }
+void* __wrap_PutDrawEnv(void* env) { return xg_plat_renderer_set_draw_env(env); }
+void* __wrap_PutDispEnv(void* env) { return xg_plat_renderer_set_display_env(env); }
+unsigned long* __wrap_ClearOTag(unsigned long* ot, int n)
+{
+    return (unsigned long*)xg_plat_renderer_clear_ot(ot, n, 0);
+}
+unsigned long* __wrap_ClearOTagR(unsigned long* ot, int n)
+{
+    return (unsigned long*)xg_plat_renderer_clear_ot(ot, n, 1);
+}
+
+void xg_plat_renderer_draw_ot(void* ot) { __real_DrawOTag((unsigned long*)ot); }
+void* xg_plat_renderer_set_draw_env(void* drawenv) { return __real_PutDrawEnv(drawenv); }
+void* xg_plat_renderer_set_display_env(void* dispenv) { return __real_PutDispEnv(dispenv); }
+void* xg_plat_renderer_clear_ot(void* ot, int n, int reverse)
+{
+    return reverse ? __real_ClearOTagR((unsigned long*)ot, n)
+                   : __real_ClearOTag((unsigned long*)ot, n);
+}
+
 int xg_plat_renderer_upload_image(int x, int y, int w, int h, const void* pixels)
 {
     XgPlatPsxRect rect = { (short)x, (short)y, (short)w, (short)h };
@@ -196,3 +224,68 @@ unsigned long xg_plat_audio_upload_samples(const void* data, unsigned long size)
     free(repl);
     return sent;
 }
+
+/* --- disc: the game's libcd drive commands and reads -------------------- */
+extern int __real_CdControl(unsigned char com, unsigned char* param, unsigned char* result);
+extern int __real_CdControlB(unsigned char com, unsigned char* param, unsigned char* result);
+extern int __real_CdControlF(unsigned char com, unsigned char* param);
+extern int __real_CdRead(int sectors, unsigned long* buf, int mode);
+
+int __wrap_CdControl(unsigned char com, unsigned char* param, unsigned char* result)
+{
+    return xg_plat_disc_cd_control(com, param, result, XG_PLAT_CD_ASYNC);
+}
+int __wrap_CdControlB(unsigned char com, unsigned char* param, unsigned char* result)
+{
+    return xg_plat_disc_cd_control(com, param, result, XG_PLAT_CD_BLOCKING);
+}
+int __wrap_CdControlF(unsigned char com, unsigned char* param)
+{
+    return xg_plat_disc_cd_control(com, param, NULL, XG_PLAT_CD_NO_RESULT);
+}
+int __wrap_CdRead(int sectors, unsigned long* buf, int mode)
+{
+    return xg_plat_disc_cd_read(sectors, buf, mode);
+}
+
+int xg_plat_disc_cd_control(unsigned char com, unsigned char* param, unsigned char* result,
+                            XgPlatCdWait wait)
+{
+    switch (wait) {
+    case XG_PLAT_CD_BLOCKING: return __real_CdControlB(com, param, result);
+    case XG_PLAT_CD_NO_RESULT: return __real_CdControlF(com, param);
+    default: return __real_CdControl(com, param, result);
+    }
+}
+
+int xg_plat_disc_cd_read(int sectors, void* buf, int mode)
+{
+    return __real_CdRead(sectors, (unsigned long*)buf, mode);
+}
+
+/* --- input: the game's PadRead ------------------------------------------ */
+extern unsigned int __real_PadRead(int id);
+unsigned int __wrap_PadRead(int id) { return xg_plat_input_read_pads(id); }
+unsigned int xg_plat_input_read_pads(int id) { return __real_PadRead(id); }
+
+/* --- timing: the game's VSync and root counters ------------------------- */
+extern int __real_VSync(int mode);
+extern int __real_SetRCnt(int spec, unsigned short target, int mode);
+extern int __real_GetRCnt(int spec);
+extern int __real_StartRCnt(int spec);
+
+int __wrap_VSync(int mode) { return xg_plat_timing_vsync(mode); }
+int __wrap_SetRCnt(int spec, unsigned short target, int mode)
+{
+    return xg_plat_timing_counter_set(spec, target, mode);
+}
+int __wrap_GetRCnt(int spec) { return xg_plat_timing_counter_get(spec); }
+int __wrap_StartRCnt(int spec) { return xg_plat_timing_counter_start(spec); }
+
+int xg_plat_timing_vsync(int mode) { return __real_VSync(mode); }
+int xg_plat_timing_counter_set(int spec, unsigned short target, int mode)
+{
+    return __real_SetRCnt(spec, target, mode);
+}
+int xg_plat_timing_counter_get(int spec) { return __real_GetRCnt(spec); }
+int xg_plat_timing_counter_start(int spec) { return __real_StartRCnt(spec); }
