@@ -1718,7 +1718,7 @@ u_char AnimScriptStackPopU8(SpriteData* pSpriteData) {
     u_char nStackValue;
     s8 idx = (s8)pData[0x8C];
 
-    nStackValue = pData[0x8E + idx];
+    nStackValue = (idx + pData)[0x8E];
     pData[0x8C]++;
     return nStackValue;
 }
@@ -1729,8 +1729,8 @@ s32 AnimScriptStackPopU16(SpriteData* pSpriteData) {
      * the complete register, so a host short return is insufficient. */
     u8* pData = (u8*)pSpriteData;
     s8 idx = (s8)pData[0x8C];
-    u16 lo = pData[0x8E + idx];
-    u16 hi = pData[0x8F + idx];
+    u16 lo = (idx + pData)[0x8E];
+    u16 hi = (idx + pData)[0x8F];
     pData[0x8C] += 2;
     return (s16)(lo + hi * 256);
 }
