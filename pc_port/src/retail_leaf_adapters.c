@@ -13,7 +13,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-extern u8 D_8005938C;
 extern s32 D_80050618;
 extern void func_80036718(int mode, char* format, va_list args);
 extern void MTC2(unsigned int value, int reg);
@@ -27,12 +26,6 @@ extern int doCOP2(int op);
  * documented interface; included here so the tests that link this TU keep
  * resolving them. */
 #include "psyq_compat_leaf.inc"
-
-/* Retail 0x8003633C-0x80036348: one byte store and return. */
-void func_8003633C(s32 value)
-{
-    D_8005938C = (u8)value;
-}
 
 /* Retail 0x800379B4-0x800379C4: one word store and return. */
 void func_800379B4(s32 value)

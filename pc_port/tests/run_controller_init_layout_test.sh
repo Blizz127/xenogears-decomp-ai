@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Retail ControllerInit (0x80036288) installs the USA button layout. The
-# production port body (src/slus_006.64/system/controller.c) is compared with
+# production body (src/slus_006.64/system/controller2.c, one body for both
+# builds; ControllerResetState comes from system/controller.c) is compared with
 # an independent interpreter over the retail bytes, at O0/O2/UBSan, then two
 # defective copies of the body must be rejected. Finally, if a port binary is
 # present, XENO_BUTTON_LAYOUT must reject an unknown value.
@@ -16,30 +17,32 @@ GAME=(-std=gnu17 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C -include assert.h
       -ffunction-sections -fdata-sections -fno-builtin
       -Ipc_port/include_shim -Iinclude -Ipc_port/src
       -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
-build_and_run() {  # $1=label $2=controller source $3..=flags
+build_and_run() {  # $1=label $2=controller2 source $3..=flags
     local label="$1" src="$2"; shift 2
-    gcc "${GAME[@]}" "$@" -w -c "$src" -o "$OUT/$label.controller.o"
+    gcc "${GAME[@]}" "$@" -w -c "$src" -o "$OUT/$label.controller2.o"
+    gcc "${GAME[@]}" "$@" -w -c src/slus_006.64/system/controller.c -o "$OUT/$label.controller.o"
     gcc -std=gnu17 "$@" -Wall -Wextra -Werror -I"$OUT" \
         -c pc_port/tests/controller_init_layout_test.c -o "$OUT/$label.test.o"
-    gcc "$@" -Wl,--gc-sections "$OUT/$label.controller.o" "$OUT/$label.test.o" -o "$OUT/$label"
+    gcc "$@" -Wl,--gc-sections "$OUT/$label.controller2.o" "$OUT/$label.controller.o" \
+        "$OUT/$label.test.o" -o "$OUT/$label"
     "$OUT/$label"
 }
 for mode in O0 O2 UBSan; do
     flags=(-"$mode")
     if [ "$mode" = UBSan ]; then flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
     echo "CONTROLLER INIT production TU $mode"
-    build_and_run "$mode" src/slus_006.64/system/controller.c "${flags[@]}"
+    build_and_run "$mode" src/slus_006.64/system/controller2.c "${flags[@]}"
 done
 
 # Negative controls: mechanical copies of the production body, each must fail.
 body_start='^void ControllerInit(void) {'
 declare -A mutants=(
     [no-usa-swap]='/g_ControllerButtonMappings\[0\] = 1;/d; /g_ControllerButtonMappings\[1\] = 0;/d'
-    [actuator-not-copied]='s/D_8005A1BC\[8 + i\] = D_8005A1BC\[i\];/;/'
+    [actuator-not-copied]='s/    p\[1\] = p\[0\];/    ;/'
 )
 for name in "${!mutants[@]}"; do
-    sed "${mutants[$name]}" src/slus_006.64/system/controller.c > "$OUT/$name.c"
-    if cmp -s "$OUT/$name.c" src/slus_006.64/system/controller.c; then
+    sed "${mutants[$name]}" src/slus_006.64/system/controller2.c > "$OUT/$name.c"
+    if cmp -s "$OUT/$name.c" src/slus_006.64/system/controller2.c; then
         echo "FAIL: mutant $name did not change the source"; exit 1
     fi
     if build_and_run "mut-$name" "$OUT/$name.c" -O2 > "$OUT/$name.log" 2>&1; then
@@ -47,7 +50,7 @@ for name in "${!mutants[@]}"; do
     fi
     echo "control $name rejected: $(grep -m1 'FAIL' "$OUT/$name.log")"
 done
-grep -q "$body_start" src/slus_006.64/system/controller.c
+grep -q "$body_start" src/slus_006.64/system/controller2.c
 
 BIN=pc_port/build_native/xeno-port
 if [ -x "$BIN" ]; then

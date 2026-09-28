@@ -9,7 +9,7 @@
 
 int32_t D_80059488, D_80010000, D_80059390;
 uint8_t D_800501F8, D_80059370, D_80059418, D_80059420, D_80059484;
-uint8_t D_8005A1BC[16];
+_Alignas(8) uint8_t D_8005A1BC[16];
 extern void (*D_800501FC)(void);
 #ifdef VBLANK_TEST_TRUNCATE_CALLBACK
 void __real_func_800363F0(void (*callback)(void));
@@ -19,6 +19,14 @@ void __wrap_func_800363F0(void (*callback)(void))
 }
 #endif
 static char order[16];
+/* The helpers are in the same TU as the dispatcher (system/controller2.c),
+ * so their calls cannot be intercepted; each is observed through its effect
+ * instead: func_80035E44 advances the play clock, func_80036220 counts the
+ * actuator record down.  Both must be unchanged at ControllerPushState and
+ * done by the callback / end of the tick. */
+static uint8_t clock0;
+static uint16_t count0;
+static int helpers_noted;
 static unsigned index_in_order;
 static uint32_t expected_tick;
 static int callback_changes_debug;
@@ -37,9 +45,24 @@ void ControllerPoll(void)
     CHECK((uint32_t)D_80059488 == expected_tick);
     order[index_in_order++] = 'P';
 }
+static uint16_t record0_count(void)
+{
+    return (uint16_t)(D_8005A1BC[4] | (D_8005A1BC[5] << 8));
+}
+static void note_helpers(void)
+{
+    if (helpers_noted)
+        return;
+    CHECK(D_80059370 != clock0);                            /* 'T' ran */
+    CHECK(record0_count() == (uint16_t)(count0 - 1u));      /* 'R' ran */
+    order[index_in_order++] = 'T';
+    order[index_in_order++] = 'R';
+    helpers_noted = 1;
+}
 void ControllerPushState(void)
 {
     CHECK(input_phase == 3);
+    CHECK(D_80059370 == clock0 && record0_count() == count0); /* helpers not yet */
     input_phase = 0;
     order[index_in_order++] = 'S';
 }
@@ -54,21 +77,10 @@ void PcPort_BeforeControllerPush(void)
     CHECK(input_phase == 2);
     input_phase = 3;
 }
-void __real_func_80035E44(void);
-void __real_func_80036220(void);
-void __wrap_func_80035E44(void)
-{
-    order[index_in_order++] = 'T';
-    __real_func_80035E44();
-}
-void __wrap_func_80036220(void)
-{
-    order[index_in_order++] = 'R';
-    __real_func_80036220();
-}
-static void callback_b(void) { order[index_in_order++] = 'B'; }
+static void callback_b(void) { note_helpers(); order[index_in_order++] = 'B'; }
 static void callback_a(void)
 {
+    note_helpers();
     order[index_in_order++] = 'A';
     CHECK(D_80059370 == 0 && D_80059418 == 1);
     CHECK(D_8005A1BC[4] == 0 && D_8005A1BC[6] == 1);
@@ -81,8 +93,16 @@ static void run_tick(const char* expected_order)
 {
     memset(order, 0, sizeof(order));
     index_in_order = 0;
+    helpers_noted = 0;
+    if (record0_count() == 0) {        /* keep the actuator step observable */
+        D_8005A1BC[4] = 0xE8;
+        D_8005A1BC[5] = 0x03;
+    }
+    clock0 = D_80059370;
+    count0 = record0_count();
     expected_tick = (uint32_t)D_80059488 + 1u;
     func_8003634C();
+    note_helpers();
     CHECK(strcmp(order, expected_order) == 0);
 }
 

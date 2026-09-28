@@ -820,8 +820,6 @@ PORT_SOURCES=(
     pc_port/src/boot_sound_commit.c
     pc_port/src/movie_player.c
     pc_port/src/pc_file_io.c
-    pc_port/src/controller_vblank_helpers.c
-    pc_port/src/controller_vblank_dispatch.c
     pc_port/src/controller_vblank_service.c
     pc_port/src/field_object_overlay.c
     pc_port/src/field_party_gear.c
