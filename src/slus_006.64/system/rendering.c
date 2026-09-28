@@ -593,12 +593,18 @@ void func_8001E298(void* pSpriteData, void* ot) {
     }
 }
 
-extern void func_8001EE88(void* pSpriteData, void* ot, s16 angle);
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E2F8);
+/* Retail takes the split value as a plain int (it is passed through without
+ * re-extension); the port keeps the s16 that field/main/misc2.c declares. */
+#ifdef XENO_PC_PORT
+#define RENDER_SPLIT_T s16
 #else
-void func_8001E2F8(void* pSpriteData, void* ot, s16 angle) {
+#define RENDER_SPLIT_T s32
+#endif
+
+extern void func_8001EE88(void* pSpriteData, void* ot, RENDER_SPLIT_T angle);
+
+
+void func_8001E2F8(void* pSpriteData, void* ot, RENDER_SPLIT_T angle) {
     u8* pData = pSpriteData;
 
     func_8001E148(pData);
@@ -607,14 +613,10 @@ void func_8001E2F8(void* pSpriteData, void* ot, s16 angle) {
         func_8001E9BC(pData, ot);
     }
 }
-#endif
 
-extern void func_8001F1D4(void* pSpriteData, void* ot, s16 angle);
+extern void func_8001F1D4(void* pSpriteData, void* ot, RENDER_SPLIT_T angle);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E368);
-#else
-void func_8001E368(void* pSpriteData, void* ot, s16 angle) {
+void func_8001E368(void* pSpriteData, void* ot, RENDER_SPLIT_T angle) {
     u8* pData = pSpriteData;
 
     func_8001E148(pData);
@@ -623,7 +625,6 @@ void func_8001E368(void* pSpriteData, void* ot, s16 angle) {
         func_8001E9BC(pData, ot);
     }
 }
-#endif
 
 extern void* g_GfxCurWorkBuffer;
 extern void* g_GfxCurWorkBufferEnd;
