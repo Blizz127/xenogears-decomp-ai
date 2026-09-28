@@ -9044,33 +9044,37 @@ extern void func_801E8F60(s32, u8);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD5E8);
 #else
+/* Retail 0x801DD5E8: apply charIdx's tint to the Abilities screen prims.
+ * func_801E8F60 tints strings 5 and 6; then each of the 12 list rows in the
+ * MENU_RAW(0x430) buffer whose current prim is not an empty slot (code 0x20)
+ * gets both its row prims tinted (+0, +0x700), followed by the first arrow
+ * cursor, the +0xE00 prim and the two +0xF00 prims.  The port once skipped
+ * the 12-row loop and read the buffers through raw host offsets
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801DD5E8(u8 charIdx) {
-    void* pMenu;
-    u8* pData;
     s32 i;
+    u8* p;
+
     func_801E8F60(5, charIdx);
     func_801E8F60(6, charIdx);
-    pMenu = g_Menu;
-    pData = *(u8**)((u8*)pMenu + 0x444);
-    {
-        u8 tableIdx = pData[0x75];
-        func_801E8EAC(pData + tableIdx * 0x28, charIdx);
-    }
-    pMenu = g_Menu;
-    pData = *(u8**)((u8*)pMenu + 0x430);
-    {
-        u8 tableIdx = pData[0xE7D];
-        func_801E8EAC(pData + 0xE00 + tableIdx * 0x28, charIdx);
-    }
-    for (i = 0; i < 2; i++) {
-        pMenu = g_Menu;
-        pData = *(u8**)((u8*)pMenu + 0x430);
-        {
-            u8 tableIdx = pData[i * 0x80 + 0xF7D];
-            func_801E8EAC(pData + 0xF00 + i * 0x80 + tableIdx * 0x28, charIdx);
+    for (i = 0; i < 12; i++) {
+        p = MENU_RAW(0x430);
+        if ((p + (p + i * 0x80)[0x7D] * 0x28 + i * 0x80)[4] != 0x20) {
+            func_801E8EAC((POLY_FT4*)((p + i * 0x80) + (p + i * 0x80)[0x7D] * 0x28), charIdx);
+            p = MENU_RAW(0x430);
+            func_801E8EAC((POLY_FT4*)((p + 0x700 + i * 0x80) + (p + i * 0x80)[0x77D] * 0x28), charIdx);
         }
     }
+    p = (u8*)g_Menu->arrowCursors[0];
+    func_801E8EAC((POLY_FT4*)(p + p[0x75] * 0x28), charIdx);
+    p = MENU_RAW(0x430);
+    func_801E8EAC((POLY_FT4*)(p + 0xE00 + p[0xE7D] * 0x28), charIdx);
+    for (i = 0; i < 2; i++) {
+        p = MENU_RAW(0x430);
+        func_801E8EAC((POLY_FT4*)(p + 0xF00 + i * 0x80 + (p + i * 0x80)[0xF7D] * 0x28), charIdx);
+    }
 }
+
 #endif
 
 #ifndef XENO_PC_PORT
