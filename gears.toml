@@ -122,7 +122,6 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --dont-force-G0 --use-comm-section --run-assembler",
 }
 paths = [
-    "{binary}/system/work_list.",
     "{binary}/system/rendering.",
     "{binary}/system/graphics.",
 ]
@@ -136,7 +135,10 @@ name = "XenoLiteral"
 build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
 }
-paths = [ "{binary}/system/temp1." ]
+paths = [
+    "{binary}/system/temp1.",
+    "{binary}/system/work_list.",
+]
 
 [[build_preset]]
 name = "XenoMain"
