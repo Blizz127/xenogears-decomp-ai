@@ -41,22 +41,29 @@ Rules:
 
 | Interface | Covers | Backend now |
 |---|---|---|
-| `disc.h` | Disc 1 image, retail files (`SLUS_006.64`, overlay `.bin`s), BIOS, sector reads, Redump / checksum verification | stdio + `retail_data.h` + `disc_check.c`; weak, pulled in by the header so every TU/test links it; a strong backend overrides it |
+| `disc.h` | Disc 1 image, retail files (`SLUS_006.64`, overlay `.bin`s), BIOS, sector reads, Redump / checksum verification; the game's CD drive commands and reads | stdio + `retail_data.h` + `disc_check.c`; weak, pulled in by the header so every TU/test links it; a strong backend overrides it |
 | `renderer.h` | output window size (= internal resolution with PsyCross), fullscreen, vsync, filtering; capability query (`widescreen`); VRAM image upload (`xg_plat_renderer_upload_image`) | PsyCross |
 | `audio.h` | user output volume; SPU sample upload (`xg_plat_audio_upload_samples`) | PsyCross; output volume: none yet (PsyCross's master volume is the game's own `SpuSetCommonAttr` value) |
-| `input.h` | keyboard bindings by SDL key name | PsyCross keyboard mapping |
-| `timing.h` | speed multiplier, fast-forward (hold) and its speed, vblank clock | PsyCross host speed |
+| `input.h` | keyboard bindings by SDL key name and runtime rebinding; the game's pad buffers (attach, per-frame fill, state query) | PsyCross keyboard/controller mapping |
+| `timing.h` | speed multiplier, fast-forward (hold) and its speed, vblank clock; the game's VSync and root counters | PsyCross host speed |
 | `config.h` | `config.ini`, `--config` / `--set`, `XENO_*` overrides | `src/plat/xg_plat_config.c` |
 | `mods.h` | `mods/` folders, manifests, events, C plugins, asset replacement | `src/plat/xg_plat_mods.c` |
 
 ### Routing the game's SDK calls
 
-The game's `LoadImage` and `SpuWrite` calls reach the interfaces through
-link-time wrapping (`XG_PLAT_WRAPS` in `pc_port/build_port.sh`:
-`-Wl,--wrap=LoadImage -Wl,--wrap=SpuWrite`). No game TU changes: every call
-goes to `__wrap_*` in `src/plat/xg_plat_psycross.c`, which calls the
-interface, and the PsyCross backend forwards to the real function
-(`__real_*`). Other SDK calls are routed the same way as they are touched.
+The game's PSX SDK calls reach the interfaces through link-time wrapping
+(`XG_PLAT_WRAP_SYMS` in `pc_port/build_port.sh`, `-Wl,--wrap=<sym>` each).
+No game TU changes: every call goes to `__wrap_<sym>` in
+`src/plat/xg_plat_psycross.c`, which calls the interface, and the PsyCross
+backend forwards to the real function (`__real_<sym>`).
+
+| Interface | Routed calls |
+|---|---|
+| renderer | `LoadImage`, `DrawOTag`, `PutDrawEnv`, `PutDispEnv`, `ClearOTag`, `ClearOTagR` |
+| audio | `SpuWrite` |
+| disc | `CdRead`, `CdControl`, `CdControlB`, `CdControlF` |
+| input | the pad path: `PsyX_Pad_InitPad` (ControllerInit attaches the game's two `g_C1Buffer` pad buffers, which the BIOS filled on PSX) and `PsyX_UpdateInput` (the once-per-frame refresh from the VSync shim). The game never calls `PadRead`. Key bindings and rebinding (`input.<button>` config keys, the `bind` cheat) belong to the interface. |
+| timing | `VSync`, `SetRCnt`, `GetRCnt`, `StartRCnt` |
 
 The storage interface came first because the run-off-the-disc loader
 already centralised it; timing and input followed.
@@ -134,8 +141,7 @@ working and stay off by default.
 2. Config file and CLI (done); mods loader, asset replacement, first hooks
    (done); cheat console on the hooks (done).
 3. Move the game's own SDK calls (drawing, sound, CD) behind the
-   renderer/audio/disc interfaces as those areas are worked on (`LoadImage`
-   and `SpuWrite` done); asset replacement for streamed files, textures and
+   renderer/audio/disc/input/timing interfaces (done: see the routing table); asset replacement for streamed files, textures and
    sound samples (done); movie (`.str`) data still to do.
 4. A modern renderer backend (widescreen, 60 fps interpolation, texture
    replacement) only needs the renderer interface.

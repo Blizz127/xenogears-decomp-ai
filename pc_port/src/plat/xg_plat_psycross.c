@@ -263,10 +263,42 @@ int xg_plat_disc_cd_read(int sectors, void* buf, int mode)
     return __real_CdRead(sectors, (unsigned long*)buf, mode);
 }
 
-/* --- input: the game's PadRead ------------------------------------------ */
-extern unsigned int __real_PadRead(int id);
-unsigned int __wrap_PadRead(int id) { return xg_plat_input_read_pads(id); }
-unsigned int xg_plat_input_read_pads(int id) { return __real_PadRead(id); }
+/* --- input: the game's pad buffers ------------------------------------- */
+extern void __real_PsyX_Pad_InitPad(int slot, unsigned char* padData);
+extern void __real_PsyX_UpdateInput(void);
+extern const char* SDL_GetScancodeName(int scancode);
+
+static unsigned char* s_pad_buffer[2];
+
+void __wrap_PsyX_Pad_InitPad(int slot, unsigned char* padData) { xg_plat_input_attach_pad(slot, padData); }
+void __wrap_PsyX_UpdateInput(void) { xg_plat_input_poll(); }
+
+void xg_plat_input_attach_pad(int slot, unsigned char* buffer)
+{
+    if (slot == 0 || slot == 1)
+        s_pad_buffer[slot] = buffer;
+    __real_PsyX_Pad_InitPad(slot, buffer);
+}
+
+void xg_plat_input_poll(void) { __real_PsyX_UpdateInput(); }
+
+unsigned int xg_plat_input_read_pads(void)
+{
+    unsigned int state = 0;
+    int slot;
+    for (slot = 0; slot < 2; slot++) {
+        const unsigned char* b = s_pad_buffer[slot];
+        if (b != NULL && b[0] == 0 && (b[1] == 0x41 || b[1] == 0x73))
+            state |= (unsigned int)(~(b[2] | (b[3] << 8)) & 0xFFFF) << (16 * slot);
+    }
+    return state;
+}
+
+const char* xg_plat_input_key_name(XgPlatButton button)
+{
+    int* slot = key_slot(button);
+    return slot ? SDL_GetScancodeName(*slot) : NULL;
+}
 
 /* --- timing: the game's VSync and root counters ------------------------- */
 extern int __real_VSync(int mode);
