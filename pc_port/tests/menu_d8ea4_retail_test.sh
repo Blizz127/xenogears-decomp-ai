@@ -20,12 +20,15 @@ if grep -Fq '#include <stdio.h>' <<<"$pre_pc_prefix"; then
     exit 1
 fi
 
-# Retail authority: func_801D8EA4 is exactly the menu.elf interval below and
-# directly calls only this closed dependency set.
-retail="$(mips-linux-gnu-objdump -d --start-address=0x801d83b4 \
-    --stop-address=0x801d8c14 "$elf")"
-grep -Fq '801d83b4 <func_801D8EA4>:' <<<"$retail"
-grep -Fq '801d8c0c:' <<<"$retail"
+# Retail authority: func_801D8EA4's menu.elf interval (from its symbol, now
+# that menu.bin links every function at its retail address) directly calls
+# only this closed dependency set.
+read -r start size <<<"$(mips-linux-gnu-nm -S "$elf" | awk '$4 == "func_801D8EA4" {print $1, $2}')"
+test -n "$start" && test -n "$size"
+stop=$(printf '0x%x' $((0x$start + 0x$size)))
+retail="$(mips-linux-gnu-objdump -d --start-address=0x$start \
+    --stop-address=$stop "$elf")"
+grep -Fq "$(printf '%x' $((0x$start))) <func_801D8EA4>:" <<<"$retail"
 
 actual_callees="$(sed -n 's/.*jal[[:space:]][^<]*<\([^>]*\)>.*/\1/p' \
     <<<"$retail" | sort -u)"
@@ -95,8 +98,8 @@ if grep -En '\*\(u32\*\).*0x(358|35C|360)' "$src"; then
     exit 1
 fi
 for offset in 358 35C 360; do
-    grep -Fq "MenuRawPointer(0x$offset)" "$src"
-    grep -Fq "MenuStoreRawPointer(0x$offset" "$src"
+    grep -Eq "(MenuRawPointer|MENU_RAW)\(0x$offset\)" "$src"
+    grep -Eq "(MenuStoreRawPointer|MENU_STORE_RAW)\(0x$offset" "$src"
 done
 
 out="$(mktemp -d)"
