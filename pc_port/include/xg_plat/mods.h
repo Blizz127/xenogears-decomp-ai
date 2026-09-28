@@ -16,6 +16,10 @@
  *                  original (from your own disc) as <dir>/<sha256>.bin to
  *                  edit.  Replacement files come from modders; nothing from
  *                  the disc is shipped.
+ *   script = <file>.lua   (optional manifest key) RESERVED for Lua
+ *                  scripting: recognised and reported, not run yet; the
+ *                  mod's assets and plugin still load.  See
+ *                  docs/port/MODDING.md.
  *   plugin.so      optional C plugin exporting
  *                    int xg_mod_init(const XgPlatModApi* api);
  *                  which may subscribe to events through the api.
@@ -58,6 +62,7 @@ typedef struct {
     int  load_order;
     int  abi;
     char dir[512];
+    char script[128];            /* reserved: Lua script named by the manifest */
 } XgPlatModManifest;
 
 /* What a plugin gets from xg_mod_init. */
@@ -66,6 +71,10 @@ typedef struct {
     int (*subscribe)(XgPlatModEvent event, XgPlatModHook hook, void* user);
     int (*unsubscribe)(int handle);
     void (*log)(const char* fmt, ...);
+    /* Reserved for later ABI 1 additions (first: the Lua scripting bridge).
+     * Always NULL today; plugins must not use them.  New members are only
+     * appended, so plugins built against ABI 1 keep working. */
+    void* reserved[4];
 } XgPlatModApi;
 
 /* Scan the mod folders, load manifests and plugins, index asset

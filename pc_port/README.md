@@ -134,7 +134,7 @@ blocks), and an optional `plugin.so` exporting `xg_mod_init()`. Events: `boot`,
 `frame_tick`, `asset_loaded`, `room_enter`. `XENO_MODS_LOG_ASSETS=1` prints the hash of each
 file the game loads; `XENO_MODS_DUMP_DIR=dir` saves the originals from your
 disc for editing. Mods are user content: `mods/` is git-ignored and must never
-be committed.
+be committed. Full guide: [docs/port/MODDING.md](../docs/port/MODDING.md).
 
 **Cheats:** `god`, `encounters`, `save`/`load`, `warp`, `battle`, `speed` are
 cheat-console commands (`src/cheat_console.c`) run on `frame_tick`; the host

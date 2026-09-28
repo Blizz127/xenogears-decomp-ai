@@ -93,6 +93,9 @@ never faked.
 
 ## Mods
 
+User guide: [MODDING.md](MODDING.md) (layout, dumping originals, plugins,
+cheats, the example mod under `pc_port/examples/mods/`).
+
 - Folders under `mods/` (or `mods.dir`) and
   `~/.local/share/xenogears-port/mods/`, each with a `mod.txt` manifest
   (`name`, `version`, `load_order`, `abi = 1`). Lower load order loads
@@ -121,6 +124,8 @@ never faked.
 - **C plugins**: optional `plugin.so` exporting
   `int xg_mod_init(const XgPlatModApi*)` (subscribe / unsubscribe / log),
   versioned by `XG_PLAT_MODS_ABI_VERSION`.
+- **Lua (reserved)**: the manifest key `script` and `XgPlatModApi.reserved[]`
+  are reserved for a later scripting bridge; a `script` is reported, not run.
 
 ## Cheats
 

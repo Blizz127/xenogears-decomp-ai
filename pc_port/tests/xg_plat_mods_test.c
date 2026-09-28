@@ -41,6 +41,8 @@ int main(int argc, char** argv)
     (void)argc;
     CHECK(xg_plat_mods_parse_manifest("name = A\nversion = 2\nload_order = 5\n", &m) &&
           m.load_order == 5 && !strcmp(m.version, "2"), "manifest parse");
+    CHECK(xg_plat_mods_parse_manifest("name = S\nscript = main.lua\n", &m) &&
+              !strcmp(m.script, "main.lua"), "reserved script key parsed (not run)");
     CHECK(!xg_plat_mods_parse_manifest("version = 1\n", &m), "manifest without name rejected");
     CHECK(!xg_plat_mods_parse_manifest("name = B\nabi = 99\n", &m), "incompatible abi rejected");
 
