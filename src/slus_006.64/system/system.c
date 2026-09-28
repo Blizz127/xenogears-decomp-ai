@@ -429,19 +429,15 @@ void func_80033B34(u16* src, u8* dst, s32 count) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033BAC);
-#else
-s16 func_80033BAC(u8 a, u8 b) {
+s32 func_80033BAC(u8 a, u8 b) {
     u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     s16 i;
     for (i = 0; i < 0x144; i++) {
-        u8* pEntry = pTable + i * 2;
+        u8* pEntry = (u8*)((uintptr_t)(i * 2) + (uintptr_t)pTable);
         if (pEntry[0] == a && pEntry[1] == b) return i;
     }
     return 0x8000;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
@@ -962,9 +958,6 @@ s32 func_800347AC(void* arg0) {
     return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347C0);
-#else
 /* Retail 800347C0 (asm/slus_006.64/matchings/system/system/func_800347C0.s).
  *
  * This is NOT the vertical twin of func_800347AC above.  It was written as if
@@ -994,15 +987,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347C0);
  * the same formula this must agree with.
  */
 s32 func_800347C0(void* arg0) {
-    u8* pWindow = arg0;
-    s32 row = *(s16*)(pWindow + 0x02) - *(s16*)(pWindow + 0x16);
+    s32 row = *(s16*)((u8*)arg0 + 0x02) - *(s16*)((u8*)arg0 + 0x16);
 
     if (row < 0) {
-        row = *(s16*)(pWindow + 0x0C) - 1;
+        row = *(s16*)((u8*)arg0 + 0x0C) - 1;
     }
-    return *(s16*)(pWindow + 0x06) + row * *(s16*)(pWindow + 0x14);
+    return *(s16*)((u8*)arg0 + 0x06) + row * *(s16*)((u8*)arg0 + 0x14);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034800);
@@ -1241,9 +1232,6 @@ s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemRenderStringEntry);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034F98);
-#else
 s32 func_80034F98(s32 arg0, s32 arg1) {
     u16 lead = arg0;
     u16 trail = arg1;
@@ -1256,14 +1244,13 @@ s32 func_80034F98(s32 arg0, s32 arg1) {
     }
 
     if (lead == D_8005934C) {
-        if (trail < D_80059358) {
+        if ((s32)trail < (s32)D_80059358) {
             return 2;
         }
     }
 
     return 3;
 }
-#endif
 
 #ifdef XENO_PC_PORT
 static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
