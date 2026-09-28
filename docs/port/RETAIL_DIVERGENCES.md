@@ -78,3 +78,4 @@ them (they're still INCLUDE_ASM in retail); the port bodies are unchanged.
 | Function | Status | Verification |
 | --- | --- | --- |
 | `MenuExecute` (slus `system/menu.c`, `g_MenuDebugEnabled` branch) | port fixed: the two heap reservations sized `(u32)host_ptr + 0x7FE24000` / `+ 0x7FE3B000` (garbage on the host) now use `PsxMemory_GuestAddr(ptr)`, and the object-overlay (archive 0x6B9) and menu-overlay loads go to `PSX_ADDR(0x801DC000)` / `PSX_ADDR(0x801C5000)` instead of raw host addresses; port-only `#ifdef`, retail bytes unchanged | rom-check 10/10; port LINK OK |
+| `func_800294B4` (slus `system/libarchive.c`) | fixed: the shared body passed the slot pointer to `ArchiveConsolidateStreamFileEntry(int sectionIndex)`; retail passes the slot's section index. Now one retail-matching body | rom-check 10/10 (byte-exact); port LINK OK |
