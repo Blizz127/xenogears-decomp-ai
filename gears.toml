@@ -272,8 +272,9 @@ paths = [ "src/battle/main68." ]
 name = "WorldMapDiv"
 # world_map: default compiler (the gcc-2.7.2 survey matched 33 m2c drafts
 # standalone) plus maspsx --expand-div: all 18 of its functions with a div
-# carry the aspsx divide-by-zero / overflow break checks.
+# carry the aspsx divide-by-zero / overflow break checks, and small
+# constants are literal li (addiu $x, $zero, n), so --dont-expand-li too.
 build_variables = {
-    maspsx_flags = "--expand-div --use-comm-section --run-assembler"
+    maspsx_flags = "--dont-expand-li --expand-div --use-comm-section --run-assembler"
 }
 paths = [ "src/world_map/" ]
