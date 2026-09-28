@@ -637,9 +637,6 @@ StreamDataQueueEntry* ArchiveStreamAllocQueueData(int archiveIndex, StreamDataQu
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", ArchiveCdDriveCommandHandler);
-#else
 void ArchiveCdDriveCommandHandler(u_char status, u_char* pResult) {
     char channel;
 
@@ -830,4 +827,3 @@ void ArchiveCdDriveCommandHandler(u_char status, u_char* pResult) {
             return;
     }
 }
-#endif
