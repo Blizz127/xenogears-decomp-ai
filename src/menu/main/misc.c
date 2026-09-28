@@ -2214,9 +2214,6 @@ s32 func_801C8D78(u8 port) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8EE8);
-#else
 void func_801C8EE8(void) {
 #ifdef XENO_PC_PORT
     u8 state;
@@ -2235,42 +2232,34 @@ void func_801C8EE8(void) {
         }
     }
 #else
-    void* pMenu = g_Menu;
-    void* pData = g_Menu->unk32C;
-    u8 state;
-    if (pData == NULL) {
-        return;
-    }
-    state = *(u8*)((u8*)pData + 0x4FE6);
-    if (state == 1) {
-        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
-            if (func_801C8D78(0) != 0) {
-                *(u8*)((u8*)g_Menu + 0x334) = 1;
+    switch (g_Menu->unk32C->unk4F80[0x66]) {
+    case 1:
+        if (g_Menu->unk32C->unk4F80[8] == 0) {
+            if ((u8)func_801C8D78(0) != 0) {
+                g_Menu->unk334 = 1;
             }
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+            g_Menu->unk32C->unk4F80[8] = 1;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
-            func_801C8D78(1);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
-            *(u8*)((u8*)g_Menu + 0x334) = 1;
+        if (g_Menu->unk32C->unk4F80[9] == 0) {
+            if ((u8)func_801C8D78(1) != 0) {
+                g_Menu->unk334 = 1;
+            }
+            g_Menu->unk32C->unk4F80[9] = 1;
         }
-    } else if (state == 2) {
-        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
+        break;
+    case 2:
+        if (g_Menu->unk32C->unk4F80[8] == 0) {
             func_801C8D78(0);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+            g_Menu->unk32C->unk4F80[8] = 1;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
+        if (g_Menu->unk32C->unk4F80[9] == 0) {
             func_801C8D78(1);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
+            g_Menu->unk32C->unk4F80[9] = 1;
         }
+        break;
     }
 #endif
 }
-#endif
 
 s32 func_801C9038(char* path, void* pBuf) {
     s32 fd = open(path, 3);
