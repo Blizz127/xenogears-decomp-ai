@@ -181,7 +181,7 @@ static void test_init(void)
     write32(SLOT + 0x54u, 2u);
     write32(SLOT + 0x58u, 3u);
     write32(SLOT + 0x74u, 4u);
-    check(wm_80078E2C(SLOT_INDEX) == 1, "init.return");
+    check(func_80078E2C(SLOT_INDEX) == 1, "init.return");
     check(read32(GEOM_Y) == 120u && read32(HEIGHT) == 0x00200000u &&
           read32(MODE_STATE) == 0u,
           "init.world_state");

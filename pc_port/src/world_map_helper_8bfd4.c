@@ -32,3 +32,14 @@ void wm_8008BFD4(u16 tag, u32 src_vec, u16 half2, s16 sh_val)
     idx = (idx + 1) & BFD4_MASK;
     bfd4_sh(BFD4_INDEX, idx);
 }
+
+/* Entry for the matched C in src/world_map/main.c (0x8008BFD4 itself is not
+ * matched yet).  Those callers pass the source vector as a host pointer into
+ * g_PsxRam (the port view of D_8009BE24 is a real pointer), in a 32-bit
+ * argument (lossless: non-PIE host below 2 GiB); turn it back into the guest
+ * address the retail-shaped body above works on. */
+void func_8008BFD4(s32 tag, s32 src_vec_host, s32 half2, s32 sh_val)
+{
+    wm_8008BFD4((u16)tag, PsxMemory_GuestAddr((const void*)(uintptr_t)(u32)src_vec_host),
+                (u16)half2, (s16)sh_val);
+}

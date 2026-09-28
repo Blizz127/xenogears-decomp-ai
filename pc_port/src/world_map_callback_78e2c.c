@@ -113,28 +113,7 @@ static void m10e_build_view(void)
                  m10e_as_s32(m10e_lw(WM_M10E_HEIGHT)), WM_M10E_ANGLES);
 }
 
-s32 wm_80078E2C(s32 slot_index)
-{
-    u32 slot = m10e_slot(slot_index);
-
-    m10e_sw(WM_M10E_GEOM_Y, 120u);
-    m10e_sw(WM_M10E_HEIGHT, 0x00200000u);
-    m10e_sw(WM_M10E_MODE_STATE, 0u);
-#if defined(W34N64_MUTANT_WRONG_INITIAL_STATE)
-    m10e_sh(slot + 0x20u, 15u);
-#else
-    m10e_sh(slot + 0x20u, 16u);
-#endif
-    m10e_sw(slot + 0x58u, 0u);
-    m10e_sw(slot + 0x54u, 0u);
-    m10e_sw(slot + 0x50u, 0u);
-    m10e_sh(WM_M10E_ANGLES + 0u, (u16)-192);
-    m10e_sh(WM_M10E_ANGLES + 2u, 1664u);
-    m10e_sh(WM_M10E_ANGLES + 4u, 0u);
-    m10e_sh(slot + 0x22u, 64u);
-    m10e_sw(slot + 0x74u, 0u);
-    return 1;
-}
+/* 0x80078E2C (init) is the matched C func_80078E2C (src/world_map/main.c). */
 
 static void m10e_state0(u32 slot)
 {
