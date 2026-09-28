@@ -1,0 +1,179 @@
+# Xenogears PC port: purpose, standard and measured state
+
+## Purpose
+
+The port exists to **preserve** Xenogears: it runs the retail game 1:1, with
+no changes or fibs. The game logic that runs is the decompiled retail code,
+and the goal is that every retail function the port executes is the
+byte-exact matched C that rebuilds the retail binaries.
+
+Platform-layer design (interfaces, PsyCross backend, config, mods, cheats)
+is in [port/ARCHITECTURE.md](port/ARCHITECTURE.md). Modding guide:
+[port/MODDING.md](port/MODDING.md).
+
+## The 1:1 standard
+
+Only three kinds of non-retail code are allowed in what the port runs:
+
+1. **The platform layer**, which faithfully reproduces the PlayStation
+   hardware and BIOS/SDK behaviour the game relies on: PsyCross (GPU, SPU,
+   CD, pads, timers), the clean-room `psyq_compat*` layer, and the `xg_plat_*`
+   interfaces. It may change *how* the hardware is emulated, never *what*
+   the game does.
+2. **Opt-in mods**, off by default. With no mods installed every mod hook is
+   a no-op ([port/MODDING.md](port/MODDING.md)).
+3. **Cheats and test tooling**, off by default and only active when asked
+   for (cheat console, `XENO_*` harness switches).
+
+Everything else is retail game code. Where the port runs anything other
+than the matched C for a retail function, that is either work still to do
+(listed below) or a known divergence (listed below). Nothing is hidden.
+
+## Classification (definitions, verbatim)
+
+Each executed function is put in exactly one class:
+
+- **matched C**: the function is in objdiff's byte-exact set
+  (`build/progress.json` from `make report`, `fuzzy_match_percent == 100`,
+  and the tree passes `make rom-check`), AND the body the port compiles is
+  that same source, with no `#ifdef XENO_PC_PORT` / `#else` alternative arm
+  inside the function.
+- **matched C with port seam**: the same shared body, but with a small inner
+  `#ifdef XENO_PC_PORT` for pointer width or host behaviour.
+- **port-only C shadowing matched C**: the port runs a different body for a
+  byte-exact function: a `XENO_PC_PORT` arm in the game TU, or a definition
+  in `pc_port/` (including the world map's `wm_XXXXXXXX` for
+  `func_XXXXXXXX`).
+- **port-only C (no retail match yet)**: a port body for a retail function
+  that has no byte-exact C yet.
+- **shim/compat**: port infrastructure that is not a retail game function:
+  `psyq_compat*`, `xg_plat`, the replaced Psy-Q SDK functions, harness and
+  diagnostics helpers, generated stubs.
+- **PsyCross**: the pinned PsyCross library.
+
+The **matched-C ratio** counts matched C (with and without seam) over all
+executed retail game functions, i.e. the first four classes. It is reported
+by distinct functions and by executed calls. The strict figure (matched C
+without seams) is given alongside.
+
+Retail functions are the objdiff universe minus the Psy-Q SDK category.
+Overlays share address ranges, so the byte-exact test for a function compiled
+from a game TU uses that TU's overlay.
+
+### How it is measured
+
+- `XENO_COVERAGE=1 ./pc_port/build_port.sh` builds `pc_port/build_native_cov/`
+  with `-finstrument-functions` on every game, port and PsyCross TU.
+  `pc_port/tools/coverage_recorder.c` counts each function's calls and writes
+  them to `$XENO_COVERAGE_OUT`. Run the coverage build twice: the battle
+  bridge map uses the previous binary in the same directory as evidence.
+- `tools/analysis/port_preservation.py coverage` classifies a coverage file
+  using the link map, the objects' DWARF source names, a scan of each game
+  TU's `XENO_PC_PORT` arms and `build/progress.json`.
+- `tools/analysis/port_preservation.py shadows` lists every port body that
+  shadows byte-exact matched C: [port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv).
+
+## Measured state (2026-09-28, integration 9dddbd6b)
+
+objdiff: 2,512 of 4,440 retail game functions byte-exact. `make rom-check`:
+10/10.
+
+Routes (coverage build, retail disc):
+
+| Route | What it reaches |
+|---|---|
+| R1 title | boot → title map 490 → attract movie (the headless title smoke; Circle does not interrupt the attract yet, so new game is not reached, see D6) |
+| R2 field | `XENO_FIELD_TEST=1` developer field entry, 60 s |
+| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; retail `battle.bin` runs about 694,700 instructions, then stops (D5) |
+
+Executed functions by class:
+
+| Class | R1 title | R2 field | R3 battle | all routes |
+|---|---:|---:|---:|---:|
+| matched C | 196 | 230 | 301 | 349 |
+| matched C with port seam | 21 | 23 | 25 | 26 |
+| port-only C shadowing matched C | 26 | 29 | 30 | 32 |
+| port-only C (no retail match yet) | 110 | 149 | 159 | 198 |
+| shim/compat | 226 | 214 | 227 | 281 |
+| PsyCross | 310 | 294 | 287 | 322 |
+
+**Matched-C ratio** (executed retail game functions):
+
+| Route | by functions | by calls | strict (no seam), by functions |
+|---|---:|---:|---:|
+| R1 title | 217/353 = 61.5% | 76.1% | 196/353 = 55.5% |
+| R2 field | 253/431 = 58.7% | 66.2% | 230/431 = 53.4% |
+| R3 battle | 326/515 = 63.3% | 68.4% | 301/515 = 58.4% |
+| all routes | 375/605 = 62.0% | 71.6% | 349/605 = 57.7% |
+
+Battle code that runs in the MIPS interpreter is retail machine code from
+the disc. It is not counted in these tables, which count native functions
+only; only the interpreter itself appears, as shim.
+
+### Port bodies shadowing matched C
+
+384 port bodies shadow 373 byte-exact functions
+([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
+
+| Where | Bodies |
+|---|---:|
+| `XENO_PC_PORT` arms in game TUs: menu 166, slus 60, battle 25, movie 1 | 252 |
+| world map `wm_XXXXXXXX` / named bodies in `pc_port/src/world_map_*.c` | 77 |
+| other `pc_port/src` bodies (`work_list_port.c`, `game_overrides.c`, `archive_port.c`, ...) | 37 |
+| generated logging stubs standing in for matched C that is not linked | 18 |
+
+Their equivalence to retail is not proven. They are switched to the matched
+C in route-tested batches (see below). Until then each one is a potential
+divergence.
+
+## Known divergences (public list)
+
+Behaviour that differs from retail and is known. Detailed history of every
+found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
+
+| # | Area | Divergence | Status |
+|---|---|---|---|
+| D1 | field `func_800ACB90` | uploads a TIM at VRAM (0x380, 0) instead of (0x380, 0x100) | open; retail C still `INCLUDE_ASM` |
+| D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
+| D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
+| D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
+| D5 | battle | the tested battle stops after about 694,700 retail instructions at an unresolved native call (0x80044bd0) | open: battle native-call bridge incomplete |
+| D6 | title | in the headless title smoke, Circle does not interrupt the attract movie, so the new-game chain is not reached there | open (the chain's own runner, `run_title_newgame_chain.sh`, passes) |
+| D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (107 world_map functions have byte-exact C now; the port calls none of them) | open: switch batches below |
+| D8 | missing bodies | 72 retail functions still have only a generated logging stub, which returns without retail behaviour; 18 of them have matched C that the port does not link | open |
+
+Options that are reported as unsupported and ignored, never faked:
+
+| # | Option | Status |
+|---|---|---|
+| U1 | `video.widescreen` | unsupported, 4:3 used |
+| U2 | `video.fps = 60` | unsupported (needs interpolation), 30 used |
+| U3 | user output volume | no backend control; PsyCross master volume is the game's own `SpuSetCommonAttr` value |
+
+Untested: routes beyond R1–R3 (story progress past the prologue, world map
+entry from play, save/load via the memory card UI). Asset replacement for
+textures and sound samples is covered by tests only through the identity
+mod on boot; streamed-file replacement has a live test.
+
+**Divergence count: 8 known divergences (D1–D8) plus 3 unsupported options
+(U1–U3). A further 373 matched functions run port bodies of unproven
+equivalence.**
+
+## Switching shadowing bodies to the matched C
+
+Each batch is one commit:
+
+1. Make the port compile the matched body: drop the port arm, or turn the
+   `pc_port` body into a call, keeping only host/pointer seams as small inner
+   `#ifdef XENO_PC_PORT` blocks in the shared body (so the retail bytes stay
+   exact).
+2. Verify: port build, guards, `make rom-check` 10/10, the TU's port runners,
+   and a route that executes the functions (coverage file shows them).
+3. Re-measure: the function moves to "matched C" or "matched C with port
+   seam" in this document.
+
+The world map batches follow `wm_XXXXXXXX` ↔ `func_XXXXXXXX` (63 of the 97
+matched functions in the slus mapping have a `wm_` counterpart) and are coordinated with the slus
+agent, which adds any inner seams in `src/world_map/main.c`. They are
+verified by the world-map port tests (`run_world_map_differential_test` and
+the others) plus a route that enters the world map.
