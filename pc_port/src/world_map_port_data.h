@@ -1,0 +1,40 @@
+/* world_map_port_data.h -- port view of the world-map overlay's data for the
+ * matched C in src/world_map/main.c (included there under XENO_PC_PORT).
+ *
+ * On the port the world-map overlay lives in emulated PSX RAM: world_map_init.c
+ * copies the user's world_map.bin to its retail address, and the port's
+ * world-map code keeps all overlay state at the retail guest addresses.  The
+ * matched bodies name that state through retail data symbols (D_8009xxxx), so
+ * each symbol a switched body uses is defined here as its guest location.  The
+ * bodies themselves stay byte-identical to the retail-matching source.
+ *
+ * Guest pointers (words holding a PSX address) are turned into host addresses
+ * with WM_GUEST_PTR.  The value is an s32 like the retail declaration: the
+ * port is linked non-PIE with all statics (g_PsxRam included) below 2 GiB, so
+ * the host address survives the 32-bit round trip.
+ *
+ * Grow the list per switch batch (docs/ARCHITECTURE-PORT.md).  Everything here
+ * is port-only; the retail build never sees this header. */
+#ifndef WORLD_MAP_PORT_DATA_H
+#define WORLD_MAP_PORT_DATA_H
+
+#include <stdint.h>
+#include "psx_memory.h"
+
+#define WM_GUEST(type, addr) (*(type*)PSX_ADDR(addr))
+#define WM_GUEST_PTR(addr) ((s32)(intptr_t)PSX_ADDR(WM_GUEST(u32, addr)))
+
+/* batch 1: func_80071A50, func_800834D0, func_80080900, func_80087710,
+ * func_80078E2C */
+#define D_8009BE24 WM_GUEST_PTR(0x8009BE24) /* actor slot pool (0x80-byte slots) */
+#define D_8009C5AC WM_GUEST(s32, 0x8009C5AC)
+#define D_8009C5B0 WM_GUEST(s32, 0x8009C5B0)
+#define D_8009C5B4 WM_GUEST(s32, 0x8009C5B4)
+#define D_8009BE0C WM_GUEST(s32, 0x8009BE0C)
+#define D_8009D3F0 WM_GUEST(s32, 0x8009D3F0)
+#define D_8009D144 WM_GUEST(s32, 0x8009D144)
+#define D_8009BD38 WM_GUEST(s16, 0x8009BD38)
+#define D_8009BD3A WM_GUEST(u16, 0x8009BD3A)
+#define D_8009BD3C WM_GUEST(s16, 0x8009BD3C)
+
+#endif /* WORLD_MAP_PORT_DATA_H */

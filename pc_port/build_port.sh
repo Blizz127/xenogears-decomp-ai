@@ -32,6 +32,11 @@ OBJ="$OUT/obj"
 # is mutually exclusive with XENO_TSAN.
 TSAN_FLAGS=""
 PSYX_BUILD="pc_port/build"
+COV_OBJ=""
+if [ "${XENO_COVERAGE:-0}" = "1" ] && { [ "${XENO_TSAN:-0}" = "1" ] || [ "${XENO_ASAN:-0}" = "1" ]; }; then
+    echo "ERROR: XENO_COVERAGE is mutually exclusive with XENO_TSAN / XENO_ASAN."
+    exit 1
+fi
 if [ "${XENO_TSAN:-0}" = "1" ] && [ "${XENO_ASAN:-0}" = "1" ]; then
     echo "ERROR: XENO_TSAN and XENO_ASAN are mutually exclusive."
     exit 1
@@ -42,6 +47,16 @@ if [ "${XENO_TSAN:-0}" = "1" ]; then
     OUT="pc_port/build_native_tsan"
     OBJ="$OUT/obj"
     echo "==> XENO_TSAN=1: ThreadSanitizer build -> $OUT"
+elif [ "${XENO_COVERAGE:-0}" = "1" ]; then
+    # Function coverage for the preservation report: every game, port and
+    # PsyCross function entry is recorded (pc_port/tools/coverage_recorder.c,
+    # tools/analysis/port_preservation.py).  Own build dirs.
+    TSAN_FLAGS="-finstrument-functions"
+    PSYX_BUILD="pc_port/build_cov"
+    OUT="pc_port/build_native_cov"
+    OBJ="$OUT/obj"
+    COV_OBJ="$OBJ/coverage_recorder.o"
+    echo "==> XENO_COVERAGE=1: function-coverage build -> $OUT"
 elif [ "${XENO_ASAN:-0}" = "1" ]; then
     # -fno-omit-frame-pointer keeps ASan's reports readable; the sanitizer is
     # otherwise configured entirely through ASAN_OPTIONS at run time.
@@ -1345,7 +1360,10 @@ XG_PLAT_WRAP_SYMS+=" PsyX_Pad_InitPad PsyX_UpdateInput"                     # in
 XG_PLAT_WRAP_SYMS+=" VSync SetRCnt GetRCnt StartRCnt"                        # timing
 XG_PLAT_WRAPS=""
 for _sym in $XG_PLAT_WRAP_SYMS; do XG_PLAT_WRAPS+=" -Wl,--wrap=$_sym"; done
-LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")
+if [ -n "$COV_OBJ" ]; then
+    gcc -c pc_port/tools/coverage_recorder.c -O2 -g -o "$COV_OBJ"
+fi
+LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" ${COV_OBJ:+"$COV_OBJ"} "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
 "${LINK[@]}" 2> "$OUT/link1.err"
@@ -1466,7 +1484,7 @@ fi
 
 echo "==> [5/5] Final link"
 LINK_MAP="$OUT/xeno-port.map"
-gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS \
+gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" ${COV_OBJ:+"$COV_OBJ"} "$PSYLIB" $LIBS \
     $XG_PLAT_WRAPS -Wl,-Map="$LINK_MAP" -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     port_text_start=""
