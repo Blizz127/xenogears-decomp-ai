@@ -324,11 +324,11 @@ extern s32 func_8002D0C0(s32* a0);
 extern s32 func_8002D984(u8* pSrc);
 extern s32 func_8002D0E4(u8* pSrc);
 extern s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags);
-/* Rows 0x02 / 0x06 build passes (temp2.c:1297, :1317).  Both return void on
- * retail; only the first argument is consumed through the cast, as with the
- * other build handlers above. */
-extern void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags);
-extern void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc);
+/* Rows 0x02 / 0x06 build passes (temp2.c). Retail-matching bodies with the
+ * retail signatures: they return 1, and func_8002D6AC takes flags as its
+ * third argument (the dispatcher's `shade`). */
+extern s32 func_8002D6AC(u8* pColor, s16* pIndices, s32 flags);
+extern s32 func_8002D77C(u8* pColor, s16* pIndices);
 extern s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags);
 extern s32 func_8002DA14(u8* pColor, s16* pIndices);
 extern s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade);
