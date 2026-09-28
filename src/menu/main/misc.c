@@ -1473,9 +1473,6 @@ void func_801C7F34(
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
-#else
 /* Arc A portraits: parse a value into g_Menu->digits[9] (decimal, MSD first),
  * blanking leading zeros to 0xFF (the quad builders skip 0xFF; digit glyphs
  * are atlas entries 0-9). */
@@ -1498,7 +1495,6 @@ void func_801C80B8(u32 value) {
         g_Menu->digits[i - 1] = 0xFF;
     }
 }
-#endif
 
 extern void func_801C80B8(u32 value);
 
@@ -5774,9 +5770,6 @@ void func_801D3C4C(u8 slotIdx, s32 x, s32 y, s32 w, s32 h) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3DB0);
-#else
 extern s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx,
                          s32 x, s32 y, s32 scale);
 extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
@@ -5802,10 +5795,10 @@ void func_801D3DB0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
                                      &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
                                      g_Menu->renderContext, 0, 0, 0x1000);
 
-    func_801C851C(&pWindow->vertsWindowBorderCorners[0],  (u16)(x - 8),     (u16)(y + 8),  0x10, -0x10);
-    func_801C851C(&pWindow->vertsWindowBorderCorners[4],  (u16)(x + w + 8), (u16)(y + 8), -0x10, -0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[0],  (u16)(x - 8),     (u16)(y + 8),  0x10, 0xFFF0);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[4],  (u16)(x + w + 8), (u16)(y + 8), 0xFFF0, 0xFFF0);
     func_801C851C(&pWindow->vertsWindowBorderCorners[8],  (u16)(x - 8),     (u16)(y + h - 8), 0x10, 0x10);
-    func_801C851C(&pWindow->vertsWindowBorderCorners[12], (u16)(x + w + 8), (u16)(y + h - 8), -0x10, 0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[12], (u16)(x + w + 8), (u16)(y + h - 8), 0xFFF0, 0x10);
 
     {
         s32 i;
@@ -5814,7 +5807,6 @@ void func_801D3DB0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3FF8);
