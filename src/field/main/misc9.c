@@ -901,7 +901,11 @@ extern s32 D_800AF778;
 extern s32 D_800AF77C;
 
 void func_800ACC58(void) {
+    u32 stackSlot;
     if (D_8004F300 != 0) {
+        /* Retail reserves one extra word in this caller frame. Preserve that
+         * otherwise-unused slot without emitting instructions. */
+        __asm__ volatile("" : "=m"(stackSlot));
         func_800AC308();
         func_800AC3AC();
         D_800AF77C = 0;
