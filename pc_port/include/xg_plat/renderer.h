@@ -1,0 +1,34 @@
+/* xg_plat/renderer.h -- renderer interface: window/output setup and
+ * presentation options.  The game still submits PSX primitives through the
+ * PsyCross libgpu layer; this interface owns what a replacement renderer
+ * would decide (output size, filtering, vsync, aspect).  Backend: PsyCross
+ * (src/plat/xg_plat_psycross.c). */
+#ifndef XG_PLAT_RENDERER_H
+#define XG_PLAT_RENDERER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    int window_width;    /* output window size in pixels */
+    int window_height;
+    int fullscreen;      /* 0/1 */
+    int vsync;           /* 0/1: swap interval */
+    int bilinear;        /* 0/1: bilinear texture filtering */
+    int widescreen;      /* 0/1: 16:9 view (needs a backend that supports it) */
+} XgPlatVideoConfig;
+
+/* Defaults: 640x480 window, vsync on, no filtering, 4:3. */
+void xg_plat_renderer_default_config(XgPlatVideoConfig* cfg);
+/* Open the output.  Options the backend cannot honour are reported once
+ * and ignored; returns the number of such options. */
+int  xg_plat_renderer_init(const char* title, const XgPlatVideoConfig* cfg);
+/* 1 when the backend implements the option (e.g. "widescreen"). */
+int  xg_plat_renderer_supports(const char* option);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

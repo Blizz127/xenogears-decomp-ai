@@ -12,6 +12,7 @@
 #include "retail_data.h"
 #include "disc_check.h"
 #include "../include/xg_plat/disc.h"
+#include "../include/xg_plat/renderer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1238,7 +1239,14 @@ int main(int argc, char** argv) {
      * Publish it before PsyX_Initialise starts the interrupt thread; the
      * backend's unset mode otherwise selects the 50-Hz PAL clock. */
     SetVideoMode(0);
-    PsyX_Initialise(WINDOW_TITLE, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+    {
+        /* Output through the renderer interface (xg_plat/renderer.h). */
+        XgPlatVideoConfig video;
+        xg_plat_renderer_default_config(&video);
+        video.window_width = SCREEN_WIDTH;
+        video.window_height = SCREEN_HEIGHT;
+        (void)xg_plat_renderer_init(WINDOW_TITLE, &video);
+    }
 
     /* XENO_PC_PORT keyboard map. Players expect Z to confirm/talk and V to open
      * the menu. Which PAD button that is depends on the layout ControllerInit
