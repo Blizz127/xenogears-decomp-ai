@@ -5,6 +5,8 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+s16 func_80089B50(s32, s32);
+
 s32 func_8003852C(void *);
 s32 func_800399D4(s32);
 s32 func_80039C4C(s32);
@@ -58,21 +60,57 @@ INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_batt
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E5EF8);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E5F8C);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6084);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E60E8);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6118);
+
+s32 func_battle_command_file1_801E60E8(s32 arg0, void *arg1) {
+    *(s16 *)((s8*)(((((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278))) + 0x394) = 1;
+    return 3;
+}
+
+
+s32 func_battle_command_file1_801E6118(s32 arg0, void *arg1) {
+    *(s16 *)((s8*)(((((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278))) + 0x394) = 0;
+    return 3;
+}
+
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6144);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E61B4);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6224);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6294);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6304);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E633C);
+
+s32 func_battle_command_file1_801E6304(s32 arg0, void *arg1) {
+    void *temp_v1;
+
+    temp_v1 = (((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278);
+    *(u16 *)((s8*)(temp_v1) + 0x394) = (u16) (*(u16 *)((s8*)(temp_v1) + 0x394) + 1);
+    return 3;
+}
+
+
+s32 func_battle_command_file1_801E633C(s32 arg0, void *arg1) {
+    void *temp_v1;
+
+    temp_v1 = (((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278);
+    *(u16 *)((s8*)(temp_v1) + 0x394) = (u16) (*(u16 *)((s8*)(temp_v1) + 0x394) - 1);
+    return 3;
+}
+
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6374);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E63E4);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6454);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E64C4);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6534);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E65A4);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E65FC);
+
+s32 func_battle_command_file1_801E65A4(s32 arg0, void *arg1) {
+    *(s16 *)((s8*)(((((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278))) + 0x394) = func_80089B50(0, 0x7FFF);
+    return 3;
+}
+
+
+s32 func_battle_command_file1_801E65FC(s32 arg0, void *arg1) {
+    *(s16 *)((s8*)(((((*(u8 *)((s8*)(arg1) + 4) << 8) | *(u8 *)((s8*)(arg1) + 3)) & 0xFFFE) + (*(s32*)&D_800D3278))) + 0x394) = func_80089B50(0, *(u8 *)((s8*)(arg1) + 1) | (*(u8 *)((s8*)(arg1) + 2) << 8));
+    return 5;
+}
+
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6660);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E66D8);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", xeno_battle_command_file1_helper_6750);
