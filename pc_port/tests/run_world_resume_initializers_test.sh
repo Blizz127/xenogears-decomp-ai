@@ -6,7 +6,7 @@ build=$(mktemp -d)
 trap 'rm -rf "$build"' EXIT
 python3 - <<'PY'
 import re,pathlib,hashlib
-s=pathlib.Path('asm/world_map/120C.s').read_text();d=pathlib.Path('disc/world_map.bin').read_bytes()
+L=pathlib.Path('asm/world_map/120C.s');s=L.read_text() if L.exists() else '\n'.join(f.read_text() for f in sorted(pathlib.Path('asm/world_map').rglob('*.s')) if '/data/' not in str(f));d=pathlib.Path('disc/world_map.bin').read_bytes()
 for name in '8008A52C 8008B498 8008BD1C 8008C6EC 8008D520 8008DE9C 8008E4F4 800907C4 80087F60 8008868C 800879E0 80087904 80088C90'.split():
  text=s[s.index('glabel func_'+name):s.index('.size func_'+name)]
  rows=[(int(a,16),bytes.fromhex(b)) for a,b in re.findall(r'/\* [0-9A-F]+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',text)]

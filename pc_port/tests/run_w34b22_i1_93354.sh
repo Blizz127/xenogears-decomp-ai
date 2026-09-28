@@ -95,7 +95,7 @@ echo "== natural noninterference =="
 gcc -c pc_port/src/world_map_image_transfer_25044.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.xfer.o"
 gcc -c pc_port/src/world_map_upload_pump_74f2c.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.pump.o"
 gcc -c pc_port/src/world_map_ot_adapter.c -std=gnu17 -O2 -g -DXENO_PC_PORT -fno-pie -ffunction-sections -fdata-sections -Ipc_port/include_shim -Iinclude -Ipc_port/src -o "$BUILD_DIR/noninterfer.ot.o"
-gcc -std=gnu17 -O2 -Wall -Wextra -Werror -DXENO_PC_PORT -DSKIP_ASM \
+gcc -std=gnu17 -O2 -no-pie -Wall -Wextra -Werror -DXENO_PC_PORT -DSKIP_ASM \
     -D_LANGUAGE_C -Iinclude -Ipc_port/src -Ipc_port/include_shim \
     -DWM_7169C_CONTINUATION_DISABLED -DWM_7197C_CONTINUATION_DISABLED \
     -DWM_71984_CONTINUATION_DISABLED -DWM_71490_CONTINUATION_DISABLED \

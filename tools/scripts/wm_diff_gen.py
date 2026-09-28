@@ -50,7 +50,13 @@ def linked_world_tus():
 
 def retail_starts():
     starts = {}
-    for ln in (ROOT / "asm/world_map/120C.s").read_text().splitlines():
+    legacy = ROOT / "asm/world_map/120C.s"
+    if legacy.exists():
+        text = legacy.read_text()
+    else:  # world_map has a C TU (b3fb9a39): splat writes per-function .s files
+        text = "\n".join(f.read_text() for f in sorted((ROOT / "asm/world_map").rglob("*.s"))
+                         if "/data/" not in str(f))
+    for ln in text.splitlines():
         m = re.match(r'glabel (\w+)', ln)
         if m:
             cur = m.group(1)
