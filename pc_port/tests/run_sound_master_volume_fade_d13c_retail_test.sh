@@ -43,7 +43,7 @@ grep -Eq '^SOUND MASTER VOLUME FADE D13C certificate PASS checks=125$' "$OUT/O0.
 echo 'SOUND MASTER VOLUME FADE D13C O0/O2/UBSAN PASS'
 
 set +e
-sed '/^u8\* func_8003D13C(/,/^}/ s/if (divisor != 0 && diff != 0)/if (divisor != 0)/' src/slus_006.64/system/sound.c >"$OUT/mutant.c"
+sed '/^u8\* func_8003D13C(/,/^}/ s/if (steps != 0 && diff != 0)/if (steps != 0)/' src/slus_006.64/system/sound.c >"$OUT/mutant.c"
 build_and_run mutant "$OUT/mutant.c" -O0 -g
 rc=$?
 set -e

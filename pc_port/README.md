@@ -128,8 +128,9 @@ reported as unsupported until a backend implements them.
 
 **Mods:** each folder in `mods/` (or `~/.local/share/xenogears-port/mods/`)
 has a `mod.txt` (`name`, `version`, `load_order`, `abi = 1`), optional
-`assets/<sha256>.bin` replacements keyed by the SHA-256 of the original game
-file, and an optional `plugin.so` exporting `xg_mod_init()`. Events: `boot`,
+`assets/<sha256>.bin` replacements keyed by the SHA-256 of the original bytes
+(archive files, streamed files, `LoadImage` texture blocks, `SpuWrite` sample
+blocks), and an optional `plugin.so` exporting `xg_mod_init()`. Events: `boot`,
 `frame_tick`, `asset_loaded`, `room_enter`. `XENO_MODS_LOG_ASSETS=1` prints the hash of each
 file the game loads; `XENO_MODS_DUMP_DIR=dir` saves the originals from your
 disc for editing. Mods are user content: `mods/` is git-ignored and must never

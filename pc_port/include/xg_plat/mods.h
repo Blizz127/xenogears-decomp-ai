@@ -90,6 +90,16 @@ int  xg_plat_mods_parse_manifest(const char* text, XgPlatModManifest* out);
  * larger than `capacity` are refused with a message. */
 size_t xg_plat_mods_filter_asset(void* buffer, size_t size, size_t capacity);
 
+/* 1 when any mod replaces assets or asset logging/dumping is on, i.e. when a
+ * loader should hash what it reads (streamed data reads the whole file up
+ * front only in that case). */
+int xg_plat_mods_assets_active(void);
+
+/* Replacement for a game file given its ORIGINAL bytes: a malloc'd copy of
+ * the mod's file (caller frees) with *out_size set, or NULL when no mod
+ * replaces it.  Also performs XENO_MODS_LOG_ASSETS / XENO_MODS_DUMP_DIR. */
+void* xg_plat_mods_lookup_asset(const void* data, size_t size, size_t* out_size);
+
 #ifdef __cplusplus
 }
 #endif

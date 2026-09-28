@@ -1049,7 +1049,9 @@ g_Menu = 0x800625A0; // type:SystemMenu size:0x1E98
 
 g_PartyIsWaitingForStreamData = 0x8004F374;
 g_PartyDataBuffers = 0x8005A414;
-g_PartyStreamDataQueue = 0x800625A4; // type:StreamDataQueueEntry[] size:0x20
+// g_PartyStreamDataQueue spans to g_C1Buffer: GamePartyStreamLoadSkinData queues up to six entries
+// (3 skins, 0xA7, 0xA8, terminator); a 0x20 port stub overran into g_SoundAudioManagerListHead.
+g_PartyStreamDataQueue = 0x800625A4; // type:StreamDataQueueEntry[] size:0x58
 g_PartyStreamDataPointers = 0x80065AFC;
 
 g_GamePartyMemberSkins = 0x8006FABC; // size:0xC
