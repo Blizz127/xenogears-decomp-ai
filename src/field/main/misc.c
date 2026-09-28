@@ -2220,13 +2220,16 @@ void func_8008CC74(void) {
 extern void func_800863E8(s32 actorIdx);
 
 void func_8008CD48(void) {
-    g_FieldScriptVMCurActor->unk10A = (s16)FieldScriptVMGetArgument(1);
-    g_FieldScriptVMCurActor->unk10D = 0;
-    g_FieldScriptVMCurActor->unk10C = (u_char)FieldScriptVMGetArgument(3);
+    /* The retail opcode addresses these script-owned bytes directly. The
+     * ActorData member layout includes the overlapping rotation vector, so
+     * spell out the retail offsets here. */
+    *(s16*)((u8*)g_FieldScriptVMCurActor + 0x10A) = (s16)FieldScriptVMGetArgument(1);
+    *((u8*)g_FieldScriptVMCurActor + 0x10D) = 0;
+    *((u8*)g_FieldScriptVMCurActor + 0x10C) = (u_char)FieldScriptVMGetArgument(3);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
     func_800863E8(D_800AFD1C);
-    if ((u16)g_FieldScriptVMCurActor->unk10A == 0) {
-        g_FieldScriptVMCurActor->unk10D = 0xFF;
+    if (*(u16*)((u8*)g_FieldScriptVMCurActor + 0x10A) == 0) {
+        *((u8*)g_FieldScriptVMCurActor + 0x10D) = 0xFF;
     }
 }
 

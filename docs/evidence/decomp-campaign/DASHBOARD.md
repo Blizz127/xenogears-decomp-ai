@@ -14,8 +14,8 @@ several overlays already and says nothing about how much C exists.
 
 | Measure | Value |
 |---|---|
-| **Code matched** | **20.56%** (284,460 / 1,383,684 bytes) |
-| Functions fully matched | 42.70% (1,906 / 4,464) |
+| **Code matched** | **20.57%** (284,600 / 1,383,684 bytes) |
+| Functions fully matched | 42.72% (1,907 / 4,464) |
 | Fuzzy match | 32.50% |
 | Units (objects) | 337 |
 
@@ -26,7 +26,7 @@ Note: `Psy-Q SDK` is a *subset* of `Main Executable` (`slus_006.64/psyq` inside 
 | Overlay | Code matched | Bytes | Functions | Progress |
 |---|---:|---|---:|---|
 | Battle Overlay | 8.33% | 27,672 / 332,316 | 292 / 857 | `##......................` |
-| Field Overlay | 34.94% | 88,428 / 253,052 | 560 / 884 | `########................` |
+| Field Overlay | 35.00% | 88,568 / 253,052 | 561 / 884 | `########................` |
 | Main Executable | 43.65% | 95,180 / 218,072 | 813 / 1,223 | `##########..............` |
 | World Map Overlay | 0.00% | 0 / 168,336 | 0 / 386 | `........................` |
 | Menu Overlay | 7.27% | 10,784 / 148,360 | 70 / 307 | `##......................` |
@@ -53,7 +53,7 @@ effort moves the headline number most.
 | `slus_006.64/system/temp2` | 25,100 | 9.6% | 25/102 |
 | `field/main/misc8` | 22,976 | 11.4% | 21/58 |
 | `slus_006.64/system/temp1` | 19,164 | 9.0% | 17/71 |
-| `field/main/misc` | 19,140 | 46.9% | 119/198 |
+| `field/main/misc` | 19,000 | 47.2% | 120/198 |
 | `battle/main2` | 18,744 | 1.6% | 3/33 |
 | `battle/main70` | 18,476 | 1.0% | 3/27 |
 | `field/main/misc2` | 18,368 | 15.1% | 21/44 |
