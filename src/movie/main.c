@@ -373,8 +373,22 @@ INCLUDE_ASM("asm/movie/nonmatchings/main", func_80071BA0);
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_80071C34);
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80072428);
+extern s32 D_80076E5C;
+extern s32 D_80076EC8;
+extern s32 D_80076ECC;
+
+void func_80072428(void)
+{
+    D_80076E5C++;
+    D_80076ECC++;
+    if (D_80076ECC >= 0x3C) {
+        D_80076ECC = 0;
+        D_80076EC8 += 1;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -388,12 +402,39 @@ void func_80072480(void)
 }
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007293C);
+extern void func_8002A498(s32 arg0);
+extern void ArchiveCdSetMode(s32 mode);
+extern int CdControlB(u_char com, u_char* param, u_char* result);
+extern u_char D_80076F84[];
+
+void func_8007293C(void)
+{
+    if (func_8002C3D8() == 0) {
+        func_8002A498(0);
+        ArchiveCdDataSync(0);
+        ArchiveCdSetMode(0);
+        ArchiveCdDataSync(0);
+        Vsync(3);
+        while (CdControlB(8, 0, D_80076F84) == 0) {
+        }
+    }
+}
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800729A8);
+
+void func_800729A8(char* name, void* buff, int len)
+{
+    int fd = PCopen(name, 0, 0);
+
+    PCread(fd, buff, len);
+    PCclose(fd);
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -896,9 +937,6 @@ void MovieMain(void)
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800747AC);
-#else
 s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
 {
     D_800773B4 = D_800773AC;
@@ -928,7 +966,7 @@ s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
     }
     if (!(D_800773B4 & 0x4000) && (D_800773AC & 0x4000)) {
         D_80077118++;
-        if (maxCursor < D_80077118) {
+        if ((s32)maxCursor < (s32)D_80077118) {
             D_80077118 = minCursor;
         }
     }
@@ -960,7 +998,6 @@ s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
     }
     return 0;
 }
-#endif
 
 s32 func_80074AF0(void)
 {
@@ -1228,12 +1265,37 @@ s32 func_8007519C(void)
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_800753B8);
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007548C);
+extern s32 ArchiveReadHddFile(char* name, s32 arg1);
+extern void SoundLoadWdsFile(s32 pData, s32 arg1);
+extern s32 func_80039850(s32 pData);
+extern s32 func_8003BDFC(s32 arg0);
+extern char D_80070370[];
+extern char D_80070394[];
+
+void func_8007548C(void)
+{
+    s32 pWds = ArchiveReadHddFile(D_80070370, 0);
+
+    SoundLoadWdsFile(pWds, 0);
+    while ((func_8003BDFC(0) << 0x10) != 0) {
+    }
+    HeapFree((void*)pWds);
+    D_8007700C = func_80039850(ArchiveReadHddFile(D_80070394, 0));
+}
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80075508);
+extern void func_80039A80(s32 arg0, s32 arg1, s32 arg2);
+
+void func_80075508(void)
+{
+    func_80039A80(D_8007700C, 0x7F, 0);
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -1583,8 +1645,21 @@ void func_800769A4(void)
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076AF0);
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076C68);
+extern MATRIX D_80077050;
+void func_80076CA4(void);
+
+void func_80076C68(void)
+{
+    SVECTOR unusedRot;   /* retail reserves 0x18 bytes of locals it never */
+    VECTOR unusedTrans;  /* touches */
+
+    func_80076CA4();
+    SetRotMatrix(&D_80077050);
+    SetTransMatrix(&D_80077050);
+}
 #endif
 
 #ifndef XENO_PC_PORT
