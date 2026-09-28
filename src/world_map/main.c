@@ -1,5 +1,11 @@
 #include "common.h"
 
+#ifdef XENO_PC_PORT
+/* Port view of the overlay data used by the bodies the port runs
+ * (pc_port/src/world_map_port_data.h, owned by the port). */
+#include "../../pc_port/src/world_map_port_data.h"
+#endif
+
 #ifndef XENO_PC_PORT
 extern s32 D_8009BE24;
 void HeapFree(s32);
@@ -352,11 +358,9 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", WorldMapMain);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800712D0);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80071A50(void) {
     return 1;
 }
-#endif
 
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80071A58);
@@ -918,7 +922,6 @@ void func_80078D24(void) {
 
 
 
-#ifndef XENO_PC_PORT
 s32 func_80078E2C(s32 arg0) {
     void *temp_v1;
 
@@ -937,7 +940,6 @@ s32 func_80078E2C(s32 arg0) {
     *(s32 *)((s8*)(temp_v1) + 0x74) = 0;
     return 1;
 }
-#endif
 
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80078EA4);
@@ -1298,7 +1300,6 @@ s32 func_80080578(s32 arg0) {
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80080600);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80080900(s32 arg0) {
     void *temp_v1;
 
@@ -1308,7 +1309,6 @@ s32 func_80080900(s32 arg0) {
     *(s32 *)((s8*)(temp_v1) + 0x30) = (s32) D_8009C5B4;
     return 1;
 }
-#endif
 
 
 
@@ -1496,11 +1496,9 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083214);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083264);
 
 
-#ifndef XENO_PC_PORT
 s32 func_800834D0(void) {
     return 1;
 }
-#endif
 
 
 
@@ -1695,7 +1693,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086700);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086798);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80087710(s32 arg0) {
     void *temp_v0;
 
@@ -1704,7 +1701,6 @@ s32 func_80087710(s32 arg0) {
     *(s32 *)((s8*)(temp_v0) + 0x54) = 8;
     return 1;
 }
-#endif
 
 
 
