@@ -154,7 +154,7 @@ build_variables = {
     gcc = "gcc-2.6.3-psx",
     gp_flag = "-G0"
 }
-paths = [ "src/menu/main/misc." ]
+paths = [ "src/menu/main/misc.", "src/menu/main/misc2.", "src/menu/main/misc3." ]
 
 [[build_preset]]
 name = "XenoLiteral"
@@ -205,3 +205,30 @@ build_variables = {
 paths = [
     "{binary}/graphics/line_scroll.",
 ]
+
+[[build_preset]]
+name = "BattleGcc263"
+# battle TUs whose retail code matches gcc 2.6.3 (psx) rather than the Default
+# 2.7.2 (the same compiler as the src/menu/main/misc. preset above).  Each of
+# these holds a function whose draft matches only under 2.6.x; every listed TU
+# stays byte-exact as a whole under 2.6.3 (checked by rebuilding battle.bin).
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [
+    "src/battle/main40_p2.",
+    "src/battle/main33.",
+    "src/battle/main53.",
+    "src/battle/main51.",
+    "src/battle/main2.",
+]
+
+[[build_preset]]
+name = "Bcf1Gcc263"
+# battle_command_file1 (archive 0x20 file 1) is gcc 2.6.3 (psx) code: 23 of its
+# INCLUDE_ASM bodies match only under 2.6.x, and the TUs stay byte-exact as a
+# whole under it.
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [ "src/battle_command_file1/" ]

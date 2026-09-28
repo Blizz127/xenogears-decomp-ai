@@ -148,6 +148,9 @@ for n in names:
     for sym,al in aliases.items(): fn=re.sub(r'\b'+sym+r'\b',al,fn)
     old=[x for x in (f'INCLUDE_ASM("asm/{OV}/nonmatchings/{SEG}", {n});\n',
                      f'INCLUDE_ASM("../asm/{OV}/nonmatchings/{SEG}", {n});\n') if s.count(x)==1]
+    if not old:  # e.g. a folder macro such as menu's INCLUDE_ASM(MENU_ASM, name)
+        old=[m[0] for m in re.finditer(r'INCLUDE_ASM\([^,()]+, '+n+r'\);\n',s)]
+        old=old if len(old)==1 else []
     assert old,n
     old=old[0]
     folded=fold_inner(s,old,fn,n) if INNER else None
