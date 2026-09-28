@@ -981,15 +981,11 @@ u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex) {
     return *(pScriptData + nOffset);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptWritePartyMemberIDs);
-#else
 void FieldScriptWritePartyMemberIDs(void) {
     FieldScriptMemoryWriteU16(0x3E, g_GamePartyMembers[0]);
     FieldScriptMemoryWriteU16(0x40, g_GamePartyMembers[1]);
     FieldScriptMemoryWriteU16(0x42, g_GamePartyMembers[2]);
 }
-#endif /* XENO_PC_PORT */
 
 extern u16 D_8005941C;
 extern u8 D_80059418, D_80059420, D_80059484, D_800594D0;

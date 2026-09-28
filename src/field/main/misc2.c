@@ -3100,18 +3100,12 @@ void func_800764B4(void* ot, s32 renderContextIndex) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80076A74);
-#else
 void func_80076A74(void* pSpriteData) {
     u8* pAnimState = (u8*)(uintptr_t)*(u32*)((u8*)pSpriteData + 0x7C);
-    s16 actorIndex = *(s16*)(pAnimState + 0x14);
-    u8* pActor = (u8*)g_FieldActors + actorIndex * 0x5C;
-    u8* pActorData = (u8*)(uintptr_t)*(u32*)(pActor + 0x4C);
+    u8* pActorData = (u8*)(uintptr_t)g_FieldActors[*(s16*)(pAnimState + 0x14)].pActorData;
 
     *(u32*)(pActorData + 0x04) |= 0x10000;
 }
-#endif /* XENO_PC_PORT */
 
 extern void HeapChangeCurrentUser(u_int userTag, char** pContentTypes);
 extern void func_800230A8(void* pSpriteData);

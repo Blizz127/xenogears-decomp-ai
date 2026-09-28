@@ -1586,15 +1586,13 @@ s32 func_80083178(s32 current, s32 target) {
     return current;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831D0);
-#else
-void func_800831D0(SVECTOR* out, s16* in) {
-    out->vx = in[1];
-    out->vy = in[3];
-    out->vz = in[5];
+/* 16.16 fixed-point VECTOR -> SVECTOR integer parts (retail loads the high
+ * halves with lh). */
+void func_800831D0(SVECTOR* out, s32* in) {
+    out->vx = in[0] >> 16;
+    out->vy = in[1] >> 16;
+    out->vz = in[2] >> 16;
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
@@ -2093,7 +2091,7 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     predicted[0] = *(s32*)(actorData + 0x20) + *(s32*)(actorData + 0x30);
     predicted[1] = *(s32*)(actorData + 0x24) + *(s32*)(actorData + 0x34);
     predicted[2] = *(s32*)(actorData + 0x28) + *(s32*)(actorData + 0x38);
-    func_800831D0(&currentPos, (s16*)predicted);
+    func_800831D0(&currentPos, predicted);
 
     targetYMin = *(s16*)(actorData + 0x26) - *(u16*)(actorData + 0x1A);
     actorFlags0 = *(u32*)(actorData + 0x00);

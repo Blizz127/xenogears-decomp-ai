@@ -860,9 +860,6 @@ extern s16 D_800C3A20, D_800C3A22, D_800C3A24, D_800C3A26, D_800C3A28, D_800C3A2
 extern s16 D_800C3A30, D_800C3A32, D_800C3A34, D_800C3A36, D_800C3A38, D_800C3A3A;
 extern void func_801D3538(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A708C);
-#else
 void func_800A708C(void) {
     HeapChangeCurrentUser(4, NULL);
     if (D_800ADB74 == 2) {
@@ -870,11 +867,10 @@ void func_800A708C(void) {
     } else {
         D_801D68B4 = 0;
     }
-    func_801D3538(0x140, 0xE0, 0x80, 0x10, 0x20, 0x800, (s32)D_800C3A36);
+    func_801D3538(0x140, 0xE0, 0x80, 0x10, 0x20, 0x800, (u16)D_800C3A36);
     D_800ADB6C = 0;
     HeapChangeCurrentUser(8, NULL);
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800B06A0;
 extern s32 D_800B00E4;

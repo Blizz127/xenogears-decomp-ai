@@ -197,9 +197,6 @@ void func_80091F84(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092044);
-#else
 void func_80092044(void) {
     u16 addr1, addr2, addr3, addr4;
     s32 val1, val2;
@@ -208,12 +205,11 @@ void func_80092044(void) {
     addr2 = (u16)FieldScriptVMGetInstructionArgument(3);
     val2 = FieldScriptVMGetVariableValue(addr2);
     addr3 = (u16)FieldScriptVMGetInstructionArgument(3);
-    FieldScriptMemoryWriteU16(addr3, (u16)val1);
+    FieldScriptMemoryWriteU16(addr3, val1);
     addr4 = (u16)FieldScriptVMGetInstructionArgument(1);
-    FieldScriptMemoryWriteU16(addr4, (u16)val2);
+    FieldScriptMemoryWriteU16(addr4, val2);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800AFEA8;
 extern void GfxLineScrollUpdate(void* pLineScroll);
@@ -394,27 +390,19 @@ void func_80092664(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800926C8);
-#else
 void func_800926C8(void) {
     u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
-    u32 arg = FieldScriptVMGetArgument(3);
-    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur | arg);
+    cur |= FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-#endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092768);
-#else
 void func_80092768(void) {
     u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
-    u32 arg = FieldScriptVMGetArgument(3);
-    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur & arg);
+    cur &= FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092808);
