@@ -1231,8 +1231,8 @@ void func_800A7948(void) {
     SetDefDrawEnv(&g_FieldRenderContexts[1].drawEnvs[0], 0, 0x100, 0x280, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[0].dispEnv, 0, 0x100, 0x280, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[1].dispEnv, 0, 0, 0x280, 0xE0);
-    g_FieldRenderContexts[0].dispEnv.isrgb24 = 0;
     g_FieldRenderContexts[1].dispEnv.isrgb24 = 0;
+    g_FieldRenderContexts[0].dispEnv.isrgb24 = 0;
     PutDispEnv(&g_FieldCurRenderContext->dispEnv);
     PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
 
@@ -1276,10 +1276,10 @@ void func_800A7948(void) {
     SetDefDispEnv(&g_FieldRenderContexts[0].dispEnv, 0, 0x100, 0x140, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[1].dispEnv, 0, 0, 0x140, 0xE0);
 #endif
-    g_FieldRenderContexts[0].dispEnv.isrgb24 = 1;
     g_FieldRenderContexts[1].dispEnv.isrgb24 = 1;
-    g_FieldRenderContexts[0].dispEnv.isinter = 0;
+    g_FieldRenderContexts[0].dispEnv.isrgb24 = 1;
     g_FieldRenderContexts[1].dispEnv.isinter = 0;
+    g_FieldRenderContexts[0].dispEnv.isinter = 0;
     func_800ACCB0();
 }
 #endif /* FIELD_SUB(5) */
