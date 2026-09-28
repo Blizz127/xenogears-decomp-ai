@@ -2215,20 +2215,16 @@ void func_801C8EE8(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9038);
-#else
 s32 func_801C9038(char* path, void* pBuf) {
     s32 fd = open(path, 3);
     if (fd == -1) return -1;
-    if (read(fd, pBuf, 0x200) == 0x200) {
+    if (read(fd, pBuf, 0x200) != 0x200) {
         close(fd);
-        return 0;
+        return -1;
     }
     close(fd);
-    return -1;
+    return 0;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C90B0);
@@ -4168,7 +4164,13 @@ void func_801D0D90(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0E20);
+/* Retail counts down from 7 and returns the final i, i.e. -1.  The port
+ * body below returns 0; it is kept as-is for the port. */
+s32 func_801D0E20(void) {
+    s32 i;
+    for (i = 7; i >= 0; i--) {}
+    return i;
+}
 #else
 s32 func_801D0E20(void) {
     s32 i;
@@ -4197,7 +4199,13 @@ void func_801D0E38(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0EBC);
+/* Retail counts down from 5 and returns the final i, i.e. -1.  The port
+ * body below returns 0; it is kept as-is for the port. */
+s32 func_801D0EBC(void) {
+    s32 i;
+    for (i = 5; i >= 0; i--) {}
+    return i;
+}
 #else
 s32 func_801D0EBC(void) {
     s32 i;
