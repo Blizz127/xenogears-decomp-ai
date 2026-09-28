@@ -141,6 +141,20 @@ paths = [
 ]
 
 [[build_preset]]
+name = "MenuG0"
+# menu.bin never addresses anything through $gp, so its cc1 runs with -G0 like
+# the other overlays.  (-G8 used to hoist every INCLUDE_ASM ahead of the C
+# bodies.  include/include_asm.h now wraps INCLUDE_ASM in a function, which
+# keeps source order either way, but -G8 still leaves menu.bin 204 bytes off
+# retail: rodata 0x0-0xC4 plus about 40 text words.)
+# Key is prefixed with src/ so it cannot match shop_menu/ or
+# member_change_menu/ paths (preset keys are substring matches).
+build_variables = {
+    gp_flag = "-G0"
+}
+paths = [ "src/menu/main/misc." ]
+
+[[build_preset]]
 name = "XenoMain"
 build_variables = {
     gp_flag = "-G0"

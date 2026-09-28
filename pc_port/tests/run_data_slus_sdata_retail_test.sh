@@ -4,8 +4,8 @@
 # Verifies the disc hash and main-exe section boundaries, then builds the
 # generated-data test at O0/O2/UBSan and runs three negative controls that must
 # each fail a named assertion:
-#   zero     - re-zero D_8004FBB8 inside the generated data file
-#   truncate - shrink D_8004FBB8 from 32 to 16 bytes
+#   zero     - drop D_8004FBB8 from the load table (stays zero)
+#   truncate - load only 16 of D_8004FBB8's 32 bytes
 #   sdataend - move PSX_EXE_SDATA_END / PSX_EXE_SBSS_START back to 0x800576E4
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sanitizer_preflight.sh"; ubsan_preflight
@@ -46,23 +46,17 @@ import sys
 from pathlib import Path
 out = Path(sys.argv[1])
 src = Path('pc_port/src/data_slus_sdata.c').read_text()
-pat = re.compile(r'(unsigned char D_8004FBB8\[32\][^=]*= \{)(.*?)(\};)', re.S)
-m = pat.search(src)
-assert m, 'D_8004FBB8 initializer not found'
-vals = re.findall(r'0x[0-9a-fA-F]{2}', m.group(2))
-assert len(vals) == 32, len(vals)
+# The data file declares zero storage plus a load table (retail_data.h);
+# the mutants corrupt D_8004FBB8's row so the loaded bytes go wrong.
+row = '    XENO_RD(D_8004FBB8, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004FBB8u), 0x20),\n'
+assert row in src, 'D_8004FBB8 load row not found'
 
-# Mutant 1: re-zero D_8004FBB8.
-zeros = '\n' + '\n'.join('    ' + ','.join('0x00' for _ in range(16)) + ','
-                         for _ in range(2)) + '\n'
-(out / 'mutant_zero.c').write_text(
-    pat.sub(lambda mm: mm.group(1) + zeros + mm.group(3), src, count=1))
+# Mutant 1: D_8004FBB8 no longer loaded (stays zero).
+(out / 'mutant_zero.c').write_text(src.replace(row, '', 1))
 
-# Mutant 2: truncate D_8004FBB8 to its first 16 bytes.
-small = '\n    ' + ','.join(vals[:16]) + ',\n'
-trunc = pat.sub(lambda mm: 'unsigned char D_8004FBB8[16] = {' + small + '};',
-                src, count=1)
-assert 'D_8004FBB8[16]' in trunc
+# Mutant 2: load only the first 16 bytes of D_8004FBB8.
+trunc = src.replace(row, row.replace(', 0x20),', ', 0x10),'), 1)
+assert trunc != src
 (out / 'mutant_truncate.c').write_text(trunc)
 
 # Mutant 3: revert the loader boundary constants.

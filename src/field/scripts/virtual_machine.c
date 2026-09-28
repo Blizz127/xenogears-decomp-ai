@@ -383,6 +383,9 @@ extern s32 D_8005A444[];
 extern u8 D_800B21CC;
 extern FieldActor* D_800B06B8;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A2030);
+#else
 void func_800A2030(void) {
     s32 numActors;
     s32 actorIndex;
@@ -476,6 +479,7 @@ void func_800A2030(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 // Changes current actor to the top of the field actor array and runs a script routine on it
 extern FieldActor* D_800B06B8;
@@ -691,6 +695,9 @@ extern s32 g_PlayerActorIndex;
 extern void func_800AD898(void);
 extern void func_801E8330(s32 slot, s32 arg1, s32 objId);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A24C4);
+#else
 void func_800A24C4(void) {
     u8* playerData;
     s32 i;
@@ -742,6 +749,7 @@ void func_800A24C4(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 void func_800A2714(void) {
     ActorData* pActor;
@@ -788,6 +796,9 @@ void func_800A2714(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A28D4);
+#else
 void func_800A28D4(void) {
     int i;
 
@@ -929,6 +940,7 @@ void func_800A28D4(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 void FieldScriptVMHandlerNop(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
@@ -948,11 +960,15 @@ int FieldScriptVMGetVariableValue(int index) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryWriteU16);
+#else
 void FieldScriptMemoryWriteU16(s32 address, u16 value) {
     s32 index = address >> 1;
 
     ((u16*)&g_FieldScriptMemory)[index] = value;
 }
+#endif /* XENO_PC_PORT */
 
 // scriptIndex here refers to the index of the script, which will (always?) correspond to an entity index
 // routineIndex is an index into the offset table, which points to a bytecode routine in that script.
@@ -984,6 +1000,9 @@ extern void func_8009FEE4(s32 arg0);
 extern u32 g_PcPortOpcode56Func8009FEE4ConditionCount;
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A30FC);
+#else
 void func_800A30FC(void) {
     s32 i;
     u16* src;
@@ -1008,7 +1027,11 @@ void func_800A30FC(void) {
         *dst++ = *src++;
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A31E8);
+#else
 void func_800A31E8(void) {
     s32 i;
 
@@ -1070,6 +1093,7 @@ void func_800A31E8(void) {
     FieldScriptMemoryWriteU16(0x20, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x2A));
     FieldScriptMemoryWriteU16(0x22, *(s16*)((u8*)g_FieldActors[g_PlayerActorIndex].pActorData + 0x26));
 }
+#endif /* XENO_PC_PORT */
 
 extern u8 D_8005A4E4[];
 extern s32 D_8005A408[];
@@ -1082,6 +1106,9 @@ extern void func_80021EBC(void*, void*);
 
 extern void* memcpy(void*, const void*, size_t);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3474);
+#else
 void func_800A3474(void) {
     int i;
 
@@ -1132,6 +1159,7 @@ void func_800A3474(void) {
     memcpy(&g_FieldScriptMemory, D_800AFC50, 0x800);
     D_800AFC50 += 0x800;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800B2268;
 extern void func_80021D50(void* pSprite, void* pSave);
@@ -1144,6 +1172,9 @@ extern void func_80021D50(void* pSprite, void* pSave);
  * func_80021D50 unless flags&0x1000000 or (D_800B2268 && scriptFlags&0x600
  * && mismatch); advance 0x168, +0xC if flags134&0x80, +0x10 if +0x12C&0x1000.
  * Frame 0x30. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3C8C);
+#else
 void func_800A3C8C(void) {
     s32 i;
     s32 mismatch;
@@ -1194,8 +1225,12 @@ void func_800A3C8C(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", func_800A3F4C);
+#else
 void func_800A3F4C(void) {
     int i;
 
@@ -1254,6 +1289,7 @@ void func_800A3F4C(void) {
         func_800379C8(&D_8006FD9C, D_800AFC50 - D_8005A4E4, D_800AFC50 - D_8005A4E4);
     }
 }
+#endif /* XENO_PC_PORT */
 
 void func_800A4748(void) {
     func_800A476C(0x2c0,0x100);

@@ -8,9 +8,11 @@
 # saved before MenuMain nor restored after it -- a party member came back from
 # the menu with transparent texels and stopped being visible.
 #
-# The oracle is disc/field.bin, and the table values are pulled out of
-# pc_port/src/data_field.c by sed so the test cannot drift from the shipping
-# definition (and so the mutants below can rewrite exactly those values).
+# The oracle is disc/field.bin.  The shipping tables are zero storage that
+# pc_port/src/data_field.c's load table fills from disc/field.bin at startup;
+# the test checks those load rows, then renders the same bytes from the disc
+# into C in the (git-ignored) build directory so the mutants below can rewrite
+# exactly those values.  No retail values are committed.
 #
 # Regimes: -O0, -O2 and UBSan (differential), then four mutants that must each
 # BUILD and then FAIL AT RUNTIME.  A mutant that fails to compile is treated as
@@ -28,8 +30,6 @@ test -f disc/field.bin
 
 # Pin the retail oracle: the 0x30 bytes at field.bin 0x3E1C0 (RAM 0x800ADCB0,
 # field overlay base 0x8006FAF0) covering both tables back to back.
-# Bytes: 0000 00e0 | 0040 00e0 | 0080 00e0 | 00c0 00e0 | 0100 00e0 | 0100 01e0
-#        02c0 0000 | 02c0 0020 | 02c0 0040 | 02c0 0060 | 02c0 0080 | 02c0 00a0
 read -r hash _ < <(dd if=disc/field.bin bs=1 skip=$((0x3E1C0)) count=$((0x30)) status=none | sha256sum)
 test "$hash" = 8bd7b18aa22af76fe507ac3d499b40b21ff2609d854cd09a9befa28e325c9eac
 
@@ -40,12 +40,24 @@ grep -q 'rect\.h = 0x20;' src/field/main/misc4.c
 grep -q 'pFieldRects = D_800ADCB0;' src/field/main/misc4.c
 grep -q 'pFieldRects = D_800ADCC8;' src/field/main/misc4.c
 
-# Extract the shipping table definitions.
-{
-    sed -n '/^unsigned short D_800ADCB0\[12\] = {/,/^};/p' pc_port/src/data_field.c
-    sed -n '/^unsigned short D_800ADCC8\[12\] = {/,/^};/p' pc_port/src/data_field.c
-} > "$OUT/tables.c"
-# Both tables must actually have been found (12 values each + 2 braces lines).
+# The shipping definitions: zero storage plus load rows at the retail offsets.
+grep -q '^unsigned short D_800ADCB0\[12\];' pc_port/src/data_field.c
+grep -q '^unsigned short D_800ADCC8\[12\];' pc_port/src/data_field.c
+grep -q 'XENO_RD(D_800ADCB0, XENO_RD_FIELD, XENO_RD_FIELD_OFF(0x800ADCB0u), 0x18),' pc_port/src/data_field.c
+grep -q 'XENO_RD(D_800ADCC8, XENO_RD_FIELD, XENO_RD_FIELD_OFF(0x800ADCC8u), 0x18),' pc_port/src/data_field.c
+# Render the loaded values (from the disc) as the definitions the replay links.
+python3 - "$OUT/tables.c" <<'PY'
+import struct, sys
+raw = open('disc/field.bin', 'rb').read()[0x3E1C0:0x3E1F0]
+vals = struct.unpack('<24H', raw)
+with open(sys.argv[1], 'w') as out:
+    for name, part in (('D_800ADCB0', vals[:12]), ('D_800ADCC8', vals[12:])):
+        out.write('unsigned short %s[12] = {\n' % name)
+        for i in range(0, 12, 2):
+            out.write('    0x%04X, 0x%04X,\n' % (part[i], part[i + 1]))
+        out.write('};\n')
+PY
+# Both tables must actually have been rendered (12 values each + 2 braces lines).
 test "$(grep -c '0x' "$OUT/tables.c")" -ge 12
 grep -q 'D_800ADCB0' "$OUT/tables.c"
 grep -q 'D_800ADCC8' "$OUT/tables.c"

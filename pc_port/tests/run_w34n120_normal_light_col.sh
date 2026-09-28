@@ -13,7 +13,7 @@ common=(
   -I"$repo_dir/pc_port/extern/PsyCross/include/psx"
   -I"$repo_dir/pc_port/src"
   "$repo_dir/pc_port/tests/w34n120_normal_light_col_prod_test.c"
-  "$repo_dir/pc_port/src/psyq_normal_light_col.c"
+  "$repo_dir/pc_port/src/psyq_compat_normal_light_col.c"
 )
 warnings=(-Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 

@@ -35,6 +35,9 @@ extern u16 D_800B004C, D_800B004E, D_800B0050, D_800B0052;
 extern u16 D_800AFC08[0x80];
 extern void ResolveArchiveEntryPointers(void* pData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldLoadUITextures);
+#else
 void FieldLoadUITextures(void) {
     u16* pTable;
     u16* pScan;
@@ -118,6 +121,7 @@ void FieldLoadUITextures(void) {
 #endif
     HeapFree(D_8005A4A0);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 g_GameSceneMapNum;
 
@@ -175,6 +179,9 @@ static inline void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* 
     *(u32*)(entry + 4) = (u32)(unsigned long)pData;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077884);
+#else
 void func_80077884(void) {
     s32 i;
     s16* archiveIds;
@@ -225,7 +232,11 @@ void func_80077884(void) {
     func_8008A520();
     func_80029AFC((StreamDataQueueEntry*)&D_800B2394, 0, 0);
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077AB4);
+#else
 void func_80077AB4(void) {
     s32 i;
     u8* work;
@@ -269,6 +280,7 @@ void func_80077AB4(void) {
 
     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
 }
+#endif /* XENO_PC_PORT */
 
 void func_80077C60(void) {
     func_80077884();
@@ -321,6 +333,9 @@ extern s32 D_800ADBD0;
 extern s16 D_800B2344;
 extern s32 g_PlayerActorIndex;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077E10);
+#else
 s32 func_80077E10(void) {
     if (D_800ADBD0 == 1 && D_800B2344 == 0) {
         /* FieldActor is 0x5C on the PSX.  Its +0x4C pActorData member is a
@@ -332,6 +347,7 @@ s32 func_80077E10(void) {
     }
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 /* ---- FieldMain: field game-state driver (Phase C gateway) -------------------
  * Functional decompile (port-first; not yet byte-matched). Control flow mirrors
@@ -421,6 +437,9 @@ extern void MainLoop(int errorCode) __attribute__((noreturn));
     (*(s32*)(uintptr_t)(*(u32*)((u8*)g_FieldActors + (idx) * 0x5C + 0x4C)))
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/main", FieldMain);
+#else
 void FieldMain(void) {
     int exitCode = 0;   /* s0 at teardown (set 0/1/2/3 on the exit paths) */
     int savedSound;     /* s0 reuse: D_80059488 save/restore in the wait loops */
@@ -710,3 +729,4 @@ teardown:  /* .L80078ABC */
 #endif
     func_8007954C(exitCode);
 }
+#endif /* XENO_PC_PORT */

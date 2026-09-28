@@ -71,6 +71,9 @@ void FieldDistortionFree(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/effects/distortion", FieldDistortionInitialize);
+#else
 void FieldDistortionInitialize(int useExistingTarget) {
     POLY_FT4* pPoly;
     POLY_FT4* pPoly2;
@@ -155,6 +158,7 @@ void FieldDistortionInitialize(int useExistingTarget) {
 
     g_FieldEffects.distortion.isFinished = 0;
 }
+#endif /* XENO_PC_PORT */
 
 void FieldDistortionSetTarget(int t1, int t2, int t3, int t4, int t5, int t6, int duration) {
     if (duration == 0)
@@ -169,6 +173,9 @@ void FieldDistortionSetTarget(int t1, int t2, int t3, int t4, int t5, int t6, in
     g_FieldEffects.distortion.delta6 = (t6 * 0x10000 - g_FieldEffects.distortion.v6) / duration;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/effects/distortion", FieldDistortionDraw);
+#else
 void FieldDistortionDraw(void) {
     FieldDistortion* distortion = &g_FieldEffects.distortion;
     DR_MOVE* moves;
@@ -382,3 +389,4 @@ void FieldDistortionDraw(void) {
     dmode = D_800B1E18 + context * 0xC0;
     addPrim(ot, dmode);
 }
+#endif /* XENO_PC_PORT */

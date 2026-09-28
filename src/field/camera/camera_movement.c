@@ -66,6 +66,9 @@ void func_8008FABC(void) {
 }
 
 /* FE6D — snapshot current SCRZ×scale / DIP / yaw into the scripted-cam scratch. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FB28);
+#else
 void func_8008FB28(void) {
     D_800AF93A[0] = 0x1000;
     D_800AF936 = *(u16*)((u8*)&g_Scene + 0x6C);
@@ -73,6 +76,7 @@ void func_8008FB28(void) {
     D_800AF930 = (*(s32*)((u8*)&g_Scene + 0x68) * *(s16*)((u8*)&g_Scene + 0x6E)) >> 12;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
+#endif /* XENO_PC_PORT */
 
 void func_8008FB98(void) {
 #ifdef XENO_PC_PORT
@@ -98,6 +102,9 @@ void func_8008FB98(void) {
     D_800AF936 = dip;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FC4C);
+#else
 void func_8008FC4C(void) {
 #ifdef XENO_PC_PORT
     ActorData* actor;
@@ -145,6 +152,7 @@ mode1:
 advance:
     actor->scriptInstructionPointer += 3;
 }
+#endif /* XENO_PC_PORT */
 
 void FieldScriptSetCameraInterpolationStep(void) {
     g_CamInterpolation.atStepDistance = FieldScriptVMGetArgument(1);
@@ -250,6 +258,9 @@ void FieldScriptResetCameraMovements(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", FieldScriptStartCameraMovement);
+#else
 void FieldScriptStartCameraMovement(void) {
     s32 duration;
     s32 speed;
@@ -390,6 +401,7 @@ void FieldScriptStartCameraMovement(void) {
 
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* XENO_PC_PORT */
 
 // Write the current interpolated value
 void FieldScriptWriteCurCameraTarget(void) {

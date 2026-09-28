@@ -13,6 +13,9 @@ extern u16 D_800C3900;
 void func_80034874(void* arg0, u8 arg1);
 int func_8003487C(void* arg0);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007DCF8);
+#else
 void func_8007DCF8(s32 index, void* ot, s32 renderContextIndex) {
     (void)ot;
     (void)renderContextIndex;
@@ -53,6 +56,7 @@ void func_8007DCF8(s32 index, void* ot, s32 renderContextIndex) {
                   g_FieldTextBoxes[index].cursor.curPosition +
                       g_FieldTextBoxes[index].cursor.startPosition);
 }
+#endif /* XENO_PC_PORT */
 
 // https://decomp.me/scratch/NE0tE
 extern u8 D_800B1DF4[];
@@ -96,6 +100,9 @@ static inline void FieldTextBoxLinkPrim(void* ot, void* prim) {
     *(u32*)ot = (old & 0xFF000000) | addr;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", FieldTextBoxInitialize);
+#else
 void FieldTextBoxInitialize(void) {
     RECT rect;
     s32 i;
@@ -137,6 +144,7 @@ void FieldTextBoxInitialize(void) {
         SetDrawMode(&g_FieldTextBoxes[i].drawModes[1], 0, 0, tpage, &rect);
     }
 }
+#endif /* XENO_PC_PORT */
 
 // _pad[0x4A] is possibly a RECT?
 void func_8007E114(int index, int arg1, int arg2, int arg3, s32 arg4) {
@@ -146,6 +154,9 @@ void func_8007E114(int index, int arg1, int arg2, int arg3, s32 arg4) {
     g_FieldTextBoxes[index]._pad[0x4D] = arg4;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007E16C);
+#else
 void func_8007E16C(void* arg0, s32 x, s32 y, s32 w, s32 h, s32 flipX) {
     u8* pPrim = arg0;
     s32 x1;
@@ -172,7 +183,11 @@ void func_8007E16C(void* arg0, s32 x, s32 y, s32 w, s32 h, s32 flipX) {
     *(s16*)(pPrim + 0x1A) = y1;
     *(s16*)(pPrim + 0x22) = y1;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007E1C0);
+#else
 void func_8007E1C0(void* ot, s32 renderContextIndex, s32 textBoxIndex) {
     u8* pTextBox = (u8*)&g_FieldTextBoxes[textBoxIndex];
     s32 x;
@@ -368,6 +383,7 @@ void func_8007E1C0(void* ot, s32 renderContextIndex, s32 textBoxIndex) {
         FieldTextBoxLinkPrim(ot, &pBackground->drawModes[renderContextIndex]);
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern u8 D_800594D4;
 extern u8 D_800594D5;
@@ -376,6 +392,9 @@ extern RECT D_800ADE9C[];
 extern RECT D_800ADEDC;
 extern RECT D_800ADF04;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", FieldTextBoxInitializePrimitives);
+#else
 void FieldTextBoxInitializePrimitives(int index) {
     int i;
     RECT rect;
@@ -474,9 +493,13 @@ void FieldTextBoxInitializePrimitives(int index) {
     pPoly->tpage = GetTPage(1, 0, 0x2C0, 0x100);
     *pPoly2 = *pPoly;
 }
+#endif /* XENO_PC_PORT */
 
 extern u8 D_800ADF34[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F5AC);
+#else
 void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
     /* Retail 8007F5AC .. 8007F6F8: both portrait primitives are written
      * unrolled, corner by corner (poly0 then poly1 for each byte), each store
@@ -511,7 +534,11 @@ void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
     g_FieldTextBoxes[textBoxIndex].portrait.polys[0].clut = clut;
     g_FieldTextBoxes[textBoxIndex].portrait.polys[1].clut = clut;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F6F8);
+#else
 void func_8007F6F8(s16 index) {
     u32 mask;
 
@@ -535,8 +562,12 @@ void func_8007F6F8(s16 index) {
     g_FieldTextBoxes[index].ownerActorID = 0xFF;
     g_FieldTextBoxes[index].unk412 = 0;
 }
+#endif /* XENO_PC_PORT */
 
 // Project (0, Y, 0) from actor's model/local space to screen
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F814);
+#else
 void func_8007F814(s32 actorIndex, s32* screenX, s32* screenY, s32 yOffset) {
     MATRIX matrix;
     SVECTOR localPos;
@@ -556,7 +587,11 @@ void func_8007F814(s32 actorIndex, s32* screenX, s32* screenY, s32 yOffset) {
     *screenX = (s16)screenXY;
     *screenY = (s16)(screenXY >> 16);
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F8DC);
+#else
 s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s32 height,
                   s32 ownerActorIndex, s32 talkingActorIndex, s32 mode, s32 orientationFlags,
                   s32 dialogFlags) {
@@ -686,6 +721,7 @@ s32 func_8007F8DC(s32 x, s32 y, s32 stringIndex, s32 textBoxIndex, s32 width, s3
 
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 void func_8007FFE8(void) {
     int i;
@@ -697,6 +733,9 @@ void func_8007FFE8(void) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8008004C);
+#else
 void func_8008004C(void* ot, s32 renderContextIndex) {
     s32 skipIndex;
     s32 orders[4];
@@ -812,6 +851,7 @@ void func_8008004C(void* ot, s32 renderContextIndex) {
 
     FieldTextBoxLinkPrim(ot, D_800B1DF4 + g_FieldCurRenderContextIndex * 0xC0);
 }
+#endif /* XENO_PC_PORT */
 
 void func_800805F4(void) {
     int i;

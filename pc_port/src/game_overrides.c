@@ -152,8 +152,8 @@ extern unsigned short g_C1ButtonStateReleased;
  * only the initial value: retail ControllerInit (now run by port_main, body in
  * src/slus_006.64/system/controller.c) rewrites it to the USA layout
  * {1,0,3,2,4,5,6,7} at boot. */
-u_char  g_ControllerButtonMappings[8] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7 };
-u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x08, 0x02 };
+u_char  g_ControllerButtonMappings[8];
+u_short g_ControllerButtonMasks[8];
 
 /* State->overlay-archive-index table (real ROM data @0x8004EAA0, .sdata). The
  * stub generator zeroes it, so LoadGameStateOverlay(state) read archive offset 0
@@ -162,20 +162,18 @@ u_short g_ControllerButtonMasks[8]    = { 0x20, 0x40, 0x10, 0x80, 0x04, 0x01, 0x
  * the button tables / D_80010000: initialised game data the port must supply.
  * Order: KernelMenu=0, Field=0xE, Battle=0x10, Worldmap=0xF, Battling=0xD,
  * Menu=0x11, Movie=0x12. */
-int g_GameStateOverlayArchiveOffsets[NUM_GAME_STATE_OVERLAYS] = {
-    0x0, 0xE, 0x10, 0xF, 0xD, 0x11, 0x12,
-};
+int g_GameStateOverlayArchiveOffsets[NUM_GAME_STATE_OVERLAYS];
 
 /* Main executable .sdata sentinels near 0x8004F308. These are initialized ROM
  * data, not BSS; leaving them as zeroed auto-stubs changes cold field state. */
-s32 D_8004F308 = -1;
-s32 D_8004F324 = 0xFF;
-s32 D_8004F328 = 0xFF;
-s32 D_8004F330 = -1;
-s32 D_8004F334 = -1;
-s32 D_8004F338 = -1;
-s32 D_8004F340 = -1;
-s32 g_GameSceneMapNum = -1;
+s32 D_8004F308;
+s32 D_8004F324;
+s32 D_8004F328;
+s32 D_8004F330;
+s32 D_8004F334;
+s32 D_8004F338;
+s32 D_8004F340;
+s32 g_GameSceneMapNum;
 
 /* F14 transition capture instrumentation. Opcode 0x56 itself remains a
  * retail-faithful state writer in src/field/main/misc11.c. Retail scripts the
@@ -3783,3 +3781,33 @@ void func_8002C59C(u8* pModel)
 /* Native animation-render callback 15 (func_800257F0) and its battle-overlay
  * renderer dependency (func_800B1F6C / func_800B1F0C). */
 #include "../../src/battle/anim_render_index15.inc"
+
+/* Retail data, loaded from the user's disc before main() (retail_data.h):
+ * symbol, retail file, file offset (from the guest address), size. */
+#include "retail_data.h"
+
+_Static_assert(sizeof(g_ControllerButtonMappings) == 0x8, "g_ControllerButtonMappings size");
+_Static_assert(sizeof(g_ControllerButtonMasks) == 0x10, "g_ControllerButtonMasks size");
+_Static_assert(sizeof(g_GameStateOverlayArchiveOffsets) == 0x1C, "g_GameStateOverlayArchiveOffsets size");
+_Static_assert(sizeof(D_8004F308) == 0x4, "D_8004F308 size");
+_Static_assert(sizeof(D_8004F324) == 0x4, "D_8004F324 size");
+_Static_assert(sizeof(D_8004F328) == 0x4, "D_8004F328 size");
+_Static_assert(sizeof(D_8004F330) == 0x4, "D_8004F330 size");
+_Static_assert(sizeof(D_8004F334) == 0x4, "D_8004F334 size");
+_Static_assert(sizeof(D_8004F338) == 0x4, "D_8004F338 size");
+_Static_assert(sizeof(D_8004F340) == 0x4, "D_8004F340 size");
+_Static_assert(sizeof(g_GameSceneMapNum) == 0x4, "g_GameSceneMapNum size");
+
+XENO_RETAIL_DATA_BEGIN(game_overrides)
+    XENO_RD(g_ControllerButtonMappings, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80050238u), 0x8),
+    XENO_RD(g_ControllerButtonMasks, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x800501E8u), 0x10),
+    XENO_RD(g_GameStateOverlayArchiveOffsets, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004EAA0u), 0x1C),
+    XENO_RD(D_8004F308, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F308u), 0x4),
+    XENO_RD(D_8004F324, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F324u), 0x4),
+    XENO_RD(D_8004F328, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F328u), 0x4),
+    XENO_RD(D_8004F330, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F330u), 0x4),
+    XENO_RD(D_8004F334, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F334u), 0x4),
+    XENO_RD(D_8004F338, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F338u), 0x4),
+    XENO_RD(D_8004F340, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F340u), 0x4),
+    XENO_RD(g_GameSceneMapNum, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004F34Cu), 0x4),
+XENO_RETAIL_DATA_END(game_overrides)

@@ -34,6 +34,9 @@
 /* Per-frame helper: rand seed, map-load check, angle-step timer. */
 extern s32 D_8004F308, D_8004F324, D_800ADC18;
 extern int func_80085C90(int);
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078B5C);
+#else
 void func_80078B5C(void) {
     rand();
     if (D_8004F308 == -1) {
@@ -43,12 +46,16 @@ void func_80078B5C(void) {
         D_800ADC18--;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB2C;
 extern s32 D_800ADB90;
 extern s32 D_800ADB34;
 extern s32 D_800ADBC4;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078BC8);
+#else
 s32 func_80078BC8(void) {
     if (D_800ADB2C != 0) {
         return -1;
@@ -67,6 +74,7 @@ s32 func_80078BC8(void) {
     }
     return D_800ADBC4 != 0xFF ? -1 : 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B2344;
 void func_80078C5C(void) {
@@ -120,6 +128,9 @@ extern void func_800A5600(), func_80039C4C(), func_800399D4(), func_800A24C4();
 extern void func_8001B66C(), func_80085B20(), func_80085EEC(), func_800A31E8();
 extern void func_800A91F0(), func_80077DAC(), func_80078B5C(), func_8007554C();
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078D44);
+#else
 void func_80078D44(void) {
     RECT rect;
     s32 s0, s1, s2;
@@ -272,6 +283,7 @@ void func_80078D44(void) {
     func_80077544();
     D_800AFD04 = 0;
 }
+#endif /* XENO_PC_PORT */
 
 /* func_80079288 -- per-step random-encounter roll. Decompiled from
  * asm/field/nonmatchings/main/misc4/func_80079288.s (was INCLUDE_ASM ->
@@ -293,6 +305,9 @@ extern void  func_8008E718(void);
 extern void  func_80281204(s32);
 extern void *LoadGameStateOverlay(unsigned int);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80079288);
+#else
 void func_80079288(void) {
     u16 *timers = (u16 *)D_800B22A0;
     s32  cumulative[16];
@@ -361,6 +376,7 @@ void func_80079288(void) {
         func_80281204(selected);
     }
 }
+#endif /* XENO_PC_PORT */
 
 /* Field-state exit dispatcher. */
 extern s16 D_8004F384;
@@ -717,6 +733,9 @@ static void PcPort_MenuPartyDiag(const char* tag)
  * Overlay HeapAlloc uses ArchiveDecodeAlignedSize((id+5)&0x7F) when
  * D_8004F370==1, else (D_800ADB30&0xFFFFFF)+0xFFE3AFF8. Restore 0x6B9 uses
  * the same D_800ADB30 word +0xFFE23FF8 when D_8004F370==0. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_800799D4);
+#else
 void func_800799D4(void) {
     FieldVramCoord* pFieldRects;
     FieldVramCoord* pBackupRects;
@@ -1064,6 +1083,7 @@ void func_800799D4(void) {
     fflush(stdout);
 #endif
 }
+#endif /* XENO_PC_PORT */
 
 
 // Quad rendering
@@ -1101,6 +1121,9 @@ extern u8 D_800B0FEC[];
 extern s16 D_800ADE30[][8];
 extern u8 D_800ADE70[][8];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007A5C4);
+#else
 void func_8007A5C4(void) {
     s32 i;
 
@@ -1135,6 +1158,7 @@ void func_8007A5C4(void) {
         pPart->polys[1] = *pPoly;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern SVec4 D_800ADCE0[]; // X0 -> X3 positions
 extern SVec4 D_800ADD28[]; // Y0 -> Y3 positions
@@ -1344,6 +1368,9 @@ void FieldSetMousePosition(int mouseIndex, int xMovement, int yMovement) {
 
 extern void func_8007AF74(s32 mouseIndex);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AE78);
+#else
 void func_8007AE78(s32 mouseIndex, void* out) {
     s32* pOut = out;
     u8* pController;
@@ -1362,7 +1389,11 @@ void func_8007AE78(s32 mouseIndex, void* out) {
         pOut[2] = (u8)(~pController[3]) & 0x0C;
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AF74);
+#else
 void func_8007AF74(s32 mouseIndex) {
     u8* pController = (u8*)(uintptr_t)(mouseIndex ? g_pFieldControllerBuffer2 : g_pFieldControllerBuffer1);
     s32 pos;
@@ -1388,7 +1419,11 @@ void func_8007AF74(s32 mouseIndex) {
         g_FieldMousePositionsY[mouseIndex] = D_800C3A4C;
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
+#else
 void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4) {
     VECTOR vec0;
     VECTOR normal0;
@@ -1416,6 +1451,7 @@ void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4) {
                 (arg4->vz * (arg3[2] - arg0[2]))) /
                arg4->vy);
 }
+#endif /* XENO_PC_PORT */
 
 /* ---- func_8007B1C4: walkmesh point-to-triangle locator ---------------------
  * Faithful port of the handwritten GTE asm (asm/.../misc4/func_8007B1C4.s,
@@ -1436,6 +1472,9 @@ extern u32 D_800AFB20[];
 extern u8 D_800B21CC;
 extern s16 D_800AFB54;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B1C4);
+#else
 s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
     u8* triBase = (u8*)(uintptr_t)(u32)D_800AFB24[idx];
     s32 count = D_800AFB44[idx];
@@ -1488,7 +1527,11 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
     pState[2] = 0;
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
+#else
 s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
     VECTOR edge1, edge2, cross;
     /* Edge1 = p1 - p0, Edge2 = p2 - p0 */
@@ -1521,9 +1564,13 @@ s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
     OuterProduct0(&edge1, &edge2, &cross);
     return cross.vz >> 31;
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B218C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B614);
+#else
 void func_8007B614(s32* pOut, s16 scale, s16 angle) {
     s32 magnitude = (scale << 4) * D_800B218C;
 
@@ -1534,6 +1581,7 @@ void func_8007B614(s32* pOut, s16 scale, s16 angle) {
     pOut[1] = 0;
     pOut[2] = -(rcos(angle) * magnitude);
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_8007B694(s32* arg0) {
     return -ratan2(arg0[2], arg0[0]) & 0xFFF;
@@ -1541,6 +1589,9 @@ s32 func_8007B694(s32* arg0) {
 
 extern long FieldGetVec2Magnitude(long x, long y);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B6C4);
+#else
 s32 func_8007B6C4(s16 angle, s16* edge, s32* vec) {
     VECTOR side;
     VECTOR normal;
@@ -1577,11 +1628,15 @@ s32 func_8007B6C4(s16 angle, s16* edge, s32* vec) {
     vec[2] = normal.vz * magnitude;
     return edgeAngle;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB98;
 extern s32 func_8007C694(s32* move, s32* base, void* pActorData,
                          s16* outEdge, s16* outPoint, s32 mode);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B814);
+#else
 void* func_8007B814(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
     u8* actorData = pActorData;
     s16 resolvedAngle = angle;
@@ -1657,7 +1712,11 @@ void* func_8007B814(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
     *(s16*)(actorData + 0x72) = (*(s32*)(actorData + 0x24) + pVec[1]) >> 16;
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007BAC0);
+#else
 void* func_8007BAC0(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
     u8* actorData = pActorData;
     s16 signedAngle = angle;
@@ -1772,6 +1831,7 @@ retry_along_normal:
     *(s16*)(actorData + 0x72) = (*(s32*)(actorData + 0x24) + pVec[1]) >> 16;
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 static inline s32 FieldPackedXZ(const s16* vert) {
     return ((s32)vert[0] << 16) + vert[2];
@@ -1786,6 +1846,9 @@ static inline void FieldCopyCameraEdge(u8* out, const s16* a, const s16* b) {
     *(u16*)(out + 0x0C) = (u16)b[2];
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007BEF4);
+#else
 s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
                   s16* outPoint, s32 mode, s32* outFlags) {
     s32 state = *(s16*)(actorData + 0x10);
@@ -2011,6 +2074,7 @@ s32 func_8007BEF4(s32* move, s32* base, u8* actorData, s16* outEdge,
 
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
 void func_8007C670(s32* arg0, s32* arg1, s32 arg2) {
     s32 value = *arg0;
@@ -2025,6 +2089,9 @@ void func_8007C670(s32* arg0, s32* arg1, s32 arg2) {
     *arg1 = value;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007C694);
+#else
 s32 func_8007C694(s32* move, s32* base, void* pActorData,
                   s16* outEdge, s16* outPoint, s32 mode) {
     u8* actorData = pActorData;
@@ -2185,6 +2252,7 @@ s32 func_8007C694(s32* move, s32* base, void* pActorData,
 
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADC10;
 
@@ -2198,6 +2266,9 @@ void func_8007CD60(s32 a0) {
     D_800ADC10 -= a0;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007CD80);
+#else
 s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
     s16 posX = *(s16*)((u8*)arg0 + 0x02);
     s16 posZ = *(s16*)((u8*)arg0 + 0x0A);
@@ -2394,7 +2465,11 @@ s32 func_8007CD80(void* arg0, void* arg1, void* arg2) {
     *(s16*)((u8*)arg2 + 0x06) = clampedZ;
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D3D4);
+#else
 s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
                   VECTOR* outNormal, s16* outTriangle, s32* outHeight1) {
     s16 triIndex;
@@ -2569,6 +2644,7 @@ s32 func_8007D3D4(u8* actorData, s32 idx, s32* outHeight0,
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 func_8007D8B4(s32 a, s32 b, s32 c);
 
@@ -2585,6 +2661,9 @@ void func_8007D818(s32* pVec, VECTOR* pOut) {
     VectorNormal((VECTOR*)pVec, pOut);
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
+#else
 s32 func_8007D8B4(s32 x, s32 y, s32 z) {
     s32 ax = x < 0 ? -x : x;
     s32 ay = y < 0 ? -y : y;
@@ -2596,3 +2675,4 @@ s32 func_8007D8B4(s32 x, s32 y, s32 z) {
     }
     return z;
 }
+#endif /* XENO_PC_PORT */

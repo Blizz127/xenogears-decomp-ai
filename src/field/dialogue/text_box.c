@@ -70,6 +70,9 @@ void func_8009BB0C(void) {
     D_800B00C0 = 1;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009BC98);
+#else
 void func_8009BC98(void) {
     s32 textBoxIndex;
     u8* pTextBox;
@@ -107,6 +110,7 @@ void func_8009BC98(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
     D_800B00C0 = 1;
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_8009BE58(void) {
     return ((g_FieldScriptVMCurActor->direction - (FieldGetCameraDirection() & 0xffff)) & MASK_8DIR_MOVEMENT_NUM_DIRECTIONS) < 5;
@@ -199,6 +203,9 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
 int func_8009C538(int targetId);
 
 // https://decomp.me/scratch/tL6mE
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009C154);
+#else
 s32 func_8009C154(s32 faceId) {
     s32 slot;
     s32 attempt;
@@ -294,6 +301,7 @@ s32 func_8009C154(s32 faceId) {
     func_80029AFC(D_800B00C8, 0, 0);
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
 // Check if there is a portrait w/ targetId that's free to use?
 int func_8009C538(int targetId) {
@@ -313,6 +321,9 @@ int func_8009C538(int targetId) {
 }
 
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009C5A8);
+#else
 s32 func_8009C5A8(s32 actorIndex, s32 mode) {
     s32 existingTextBoxIndex;
     s32 textBoxIndex;
@@ -528,6 +539,7 @@ s32 func_8009C5A8(s32 actorIndex, s32 mode) {
 #endif
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern u16 D_800B2174[];
 

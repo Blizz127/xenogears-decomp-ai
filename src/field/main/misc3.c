@@ -55,6 +55,9 @@ static inline void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
     *ppLightData = pData;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_8006FDEC);
+#else
 void func_8006FDEC(void* pLightData) {
     u8* pData = pLightData;
     u8* pScene = (u8*)&g_Scene;
@@ -95,6 +98,7 @@ void func_8006FDEC(void* pLightData) {
     SetRotMatrix(&g_Scene.worldToScreenMatrix);
     SetTransMatrix(&g_Scene.worldToScreenMatrix);
 }
+#endif /* XENO_PC_PORT */
 
 void FieldLZSSDecompress(void* _unused, void* pCompressed, void* pDecompressed) {
     LZSSDecompress(pCompressed, pDecompressed);
@@ -164,6 +168,9 @@ static int IsLiveHeapBlock(void* ptr) {
 // party-skin overlay) so func_800A5C40's persistent-block re-allocation and
 // FieldLoad's fresh allocations have room. Actors with status&0x40 keep
 // their model data (shared/static model, not owned by this actor slot).
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc3", FieldFree);
+#else
 void FieldFree(void) {
     s32 i;
     s32 renderCtxStep;
@@ -256,6 +263,7 @@ void FieldFree(void) {
     HeapFreeBlocksWithFlag(3);
     func_800A83B4();
 }
+#endif /* XENO_PC_PORT */
 
 void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short clutY, short clutWidth, short clutHeight) {
     TIM_IMAGE* pTIM;
@@ -413,6 +421,9 @@ int PcPort_FieldTestMusicBootstrapAllowed(void) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_800705DC);
+#else
 void func_800705DC(void) {
     SVECTOR rotation;
     s32 i;
@@ -657,11 +668,15 @@ void func_800705DC(void) {
     FieldInitializeParticles();
     func_800ABD18();
 }
+#endif /* XENO_PC_PORT */
 
 extern u16 D_800B06A4[];
 extern u16 D_800B06A6[];
 extern s32 D_800ADB0C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070C84);
+#else
 void func_80070C84(void) {
     s32 i;
     for (i = 0; i < 3; i++) {
@@ -670,6 +685,7 @@ void func_80070C84(void) {
     }
     D_800ADB0C = 0;
 }
+#endif /* XENO_PC_PORT */
 
 /* ---- FieldLoad: parse the raw map file and build the field runtime state -----
  * Port-first functional decompile (control flow mirrors
@@ -758,6 +774,9 @@ extern void FieldLoadTIM(u_long* pTimData);
 extern void GfxLoadClutsAccelerated(void* pClutData, s32 x, s32 y);
 extern void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc3", FieldLoad);
+#else
 void FieldLoad(void) {
     u8* pMap;
     u32* pTimTable;   /* decompressed TIM-package section */
@@ -1310,3 +1329,4 @@ void FieldLoad(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */

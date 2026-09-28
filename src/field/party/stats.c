@@ -64,6 +64,9 @@ extern s16 D_800B2344;
 extern s16 D_800B2346;
 
 /* FEAE — arm animation/dolly counters (not CLUT). */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/party/stats", func_80096AF4);
+#else
 void func_80096AF4(void) {
     D_800B2344 = FieldScriptVMGetArgument(1);
     D_800B2346 = FieldScriptVMGetArgument(3);
@@ -71,6 +74,7 @@ void func_80096AF4(void) {
     D_800B2342 = 0;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* XENO_PC_PORT */
 
 void FieldScriptVMHandlerWritePartyMemberHp(void) {
     if (g_GamePartyMembers[SCRIPT_READ_U8_REL(ARG(2))] != CHARACTER_ID_NONE) {
@@ -162,6 +166,9 @@ extern s32 g_GamePartyMembers[];
 extern s16 g_FieldNumPartyMembersMasks[];
 extern void FieldPartyMemberIncreaseMp(s32, s32);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/party/stats", func_80097108);
+#else
 void func_80097108(void) {
     u8 mask1 = SCRIPT_READ_U8_REL(3);
     s32 mpAmount = FieldScriptArgument1(1, mask1);
@@ -176,6 +183,7 @@ void func_80097108(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* XENO_PC_PORT */
 
 void FieldScriptVMHandlerRestoreCharacterHpAndMp(void) {
     int id = FieldScriptVMGetArgument(1);

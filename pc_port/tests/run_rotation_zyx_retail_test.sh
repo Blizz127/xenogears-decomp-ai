@@ -7,7 +7,7 @@ out=$(mktemp -d scratchpad/rotation-zyx-retail.XXXXXX)
 echo "Evidence: $out"
 read -r pin _ < <(sha256sum disc/SLUS_006.64)
 test "$pin" = dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119
-sha256sum pc_port/src/retail_leaf_adapters.c pc_port/include_shim/psyq/libgte.h \
+sha256sum pc_port/src/retail_leaf_adapters.c pc_port/src/psyq_compat_leaf.inc pc_port/include_shim/psyq/libgte.h \
     pc_port/src/battle_mips_adapter.c pc_port/tests/rotation_zyx_retail_test.c \
     pc_port/extern/PsyCross/src/psx/LIBGTE.C \
     pc_port/extern/PsyCross/src/gte/rcossin_tbl.h > "$out/source-pins.txt"
@@ -31,12 +31,16 @@ for mode in O0 O2 UBSan; do
 done
 perl - "$out" <<'PERL'
 use strict; use warnings;
-open my $f,'<','pc_port/src/retail_leaf_adapters.c' or die $!; local $/; my $s=<$f>;
+open my $f,'<','pc_port/src/retail_leaf_adapters.c' or die $!; local $/; my $outer=<$f>;
+# RotMatrixZYX lives in the compat layer, which retail_leaf_adapters.c includes;
+# each control inlines a mutated copy of it in place of the #include.
+open my $g,'<','pc_port/src/psyq_compat_leaf.inc' or die $!; my $s=<$g>;
+my $inc=qq{#include "psyq_compat_leaf.inc"\n}; index($outer,$inc)>=0 or die 'missing include';
 my @controls=(
  ['baseline','','',''],
- ['combined-rounding','RotationZYXProduct(sxsy, cz) - RotationZYXProduct(sz, cx)','((sxsy * cz - sz * cx) >> 12)','matrix/input/guards'],
- ['sine-sign','matrix->m[2][0] = -sy;','matrix->m[2][0] = sy;','matrix/input/guards'],
- ['missing-store','matrix->m[2][1] = RotationZYXProduct(sx, cy);','/* missing matrix store */','matrix/input/guards'],
+ ['combined-rounding','CompatQ12Mul(sxsy, cos_z) - CompatQ12Mul(cos_x, sin_z)','((sxsy * cos_z - cos_x * sin_z) >> 12)','matrix/input/guards'],
+ ['sine-sign','matrix->m[2][0] = -sin_y;','matrix->m[2][0] = sin_y;','matrix/input/guards'],
+ ['missing-store','matrix->m[2][1] = CompatQ12Mul(sin_x, cos_y);','/* missing matrix store */','matrix/input/guards'],
  ['translation-write','return matrix;','matrix->t[0] = 0; return matrix;','matrix/input/guards'],
  ['gte-write','return matrix;','CTC2(0, 0); return matrix;','GTE unchanged'],
  ['wrong-return','return matrix;','return 0;','native return']
@@ -46,12 +50,14 @@ for my $c (@controls) {
  my ($name,$old,$new,$reason)=@$c; my $b=$body;
  if(length $old) { my $n=($b =~ s/\Q$old\E/$new/g); die "$name replacements=$n" unless $n==1; }
  my $copy=$s; $copy =~ s/\Q$body\E/$b/ or die 'replace body';
- open my $o,'>',"$ARGV[0]/$name.c" or die $!; print $o $copy; close $o;
+ my $c=$outer; $c =~ s/\Q$inc\E/$copy/ or die 'inline';
+ open my $o,'>',"$ARGV[0]/$name.c" or die $!; print $o $c; close $o;
 }
 my $legacy=$s;
 my $delegate="MATRIX* RotMatrixZYX(SVECTOR* rotation, MATRIX* matrix)\n{\n extern MATRIX* RotMatrixZYX_gte(SVECTOR*, MATRIX*);\n return RotMatrixZYX_gte(rotation, matrix);\n}";
 $legacy =~ s/\Q$body\E/$delegate/ or die 'restore legacy delegate';
-open my $o,'>',"$ARGV[0]/legacy-delegate.c" or die $!; print $o $legacy; close $o;
+my $lc=$outer; $lc =~ s/\Q$inc\E/$legacy/ or die 'inline';
+open my $o,'>',"$ARGV[0]/legacy-delegate.c" or die $!; print $o $lc; close $o;
 PERL
 for control in baseline combined-rounding sine-sign missing-store translation-write gte-write wrong-return legacy-delegate; do
     cc -std=gnu17 "${common[@]}" -O2 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \

@@ -13,6 +13,9 @@
 #endif
 
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AA9DC);
+#else
 void func_800AA9DC(void* pModelData) {
     u8* pModel = pModelData;
     u8* pBounds = (u8*)(uintptr_t)*(u32*)(pModel + 0x4);
@@ -36,6 +39,7 @@ void func_800AA9DC(void* pModelData) {
     *(s16*)(pModel + 0x1C) = minZ + ((dz + ((u32)dz >> 31)) >> 1);
     *(s16*)(pModel + 0x20) = (max << 1) + 1;
 }
+#endif /* XENO_PC_PORT */
 
 extern MATRIX D_800B00E8;
 /* On PSX, D_800B00FC/D_800B0100/D_800B0104 alias D_800B00E8+0x14/+0x18/+0x1C —
@@ -44,6 +48,9 @@ extern MATRIX D_800B00E8;
 extern s32 D_800C3A5C;
 extern s32 D_800C3A60;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AAA74);
+#else
 s32 func_800AAA74(void* pModelData) {
     u8* pModel = (u8*)pModelData;
     VECTOR transformed;
@@ -96,6 +103,7 @@ s32 func_800AAA74(void* pModelData) {
     }
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern u32 D_800AFC68;
 #define D_800AFC68_PTR ((SpriteList*)(uintptr_t)D_800AFC68)
@@ -228,6 +236,9 @@ void func_800AAF80(void) {
 
 extern void* g_pGameState;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB328);
+#else
 s32 func_800AB328(u8 characterId) {
     u8* pGS = (u8*)g_pGameState;
     s32 i;
@@ -238,6 +249,7 @@ s32 func_800AB328(u8 characterId) {
     }
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800AFE78;
 extern s32 D_800AFE7C;
@@ -281,6 +293,9 @@ void func_800AB378(s8 color) {
  * (five entries in asm/field/data/2D8.rodata.s). Cases 0-3 andi 0x8/0x10/
  * 0x20/0x40 and share .L800AB7CC (bit ? 0 : -1). Case 4 andi 0x80 inverts
  * (bit ? -1 : 0). Slot >= 5 returns -1. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB748);
+#else
 s32 func_800AB748(s32 slot) {
     s32 ret;
 
@@ -311,6 +326,7 @@ s32 func_800AB748(s32 slot) {
 
     return ret;
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AB808.s
  * (0x800AB808-0x800ABA94). Loads archive 0x802, OpenTIM/ReadTIM, then for
@@ -323,6 +339,9 @@ extern void ArchiveCdDataSync(int mode);
 extern void* memcpy(void* dest, const void* src, int n);
 extern s16 D_800AF5C0[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB808);
+#else
 void func_800AB808(void) {
     TIM_IMAGE tim;
     void* pBuf;
@@ -387,6 +406,7 @@ void func_800AB808(void) {
     HeapFree(pBuf);
     HeapFree(pImage);
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800ABA98.s
  * (0x800ABA98-0x800ABD14). Walk D_800AF47C (stride 0x20, terminator 0xFFFF)
@@ -406,6 +426,9 @@ extern void FieldDisplay(void);
 extern void FieldPollControllers(void);
 extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABA98);
+#else
 void func_800ABA98(void) {
     RECT rect;
     s32 i;
@@ -487,6 +510,7 @@ void func_800ABA98(void) {
     DrawSync(0);
     HeapFree(pShot);
 }
+#endif /* XENO_PC_PORT */
 
 
 extern SpriteList3 D_800B0188;
@@ -527,11 +551,10 @@ void func_800ABEC8(void) {
     }
 }
 
-#ifdef XENO_PC_PORT
-intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABFDC);
 #else
-s32 func_800ABFDC(u8* pChar, s32* pOutIndex) {
-#endif
+intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
     u16 code = (u16)((u16)pChar[0] << 8) | pChar[1];
     u16 range = (code + 0x7AC0) & 0xFFFF;
     if (range >= 0x340) {
@@ -545,7 +568,11 @@ s32 func_800ABFDC(u8* pChar, s32* pOutIndex) {
     *pOutIndex = 1;
     return (s32)(u16)(code - 0x8540);
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC03C);
+#else
 void func_800AC03C(u8* pOut, u16* pData, s32 count) {
     s32 i;
     if (count == -1) {
@@ -573,6 +600,7 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
         pData++;
     }
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AC0F0.s
  * (0x800AC0F0-0x800AC304). Copy 0x40 stream bytes, clear 0x120 image.
@@ -582,6 +610,9 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
  * Fill remaining of 0x1C slots with the cleared image. */
 extern s32 D_800AF780;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC0F0);
+#else
 void* func_800AC0F0(void* pStream, s32 destinationX, s32 renderContext) {
     u8 image[0x120];
     u8 encoded[0x40];
@@ -669,6 +700,7 @@ void* func_800AC0F0(void* pStream, s32 destinationX, s32 renderContext) {
     D_800AF780 -= streamOffset;
     return (u8*)pStream + streamOffset;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800AF780;
 extern void* D_800AF76C;
@@ -696,6 +728,9 @@ extern u8 D_800AF7F0[];
 extern u8 D_800AF824[];
 extern void* D_800AF770;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC3AC);
+#else
 void func_800AC3AC(void) {
     POLY_GT4* first = (POLY_GT4*)D_800AF788;
     POLY_GT4* second = (POLY_GT4*)D_800AF7F0;
@@ -803,6 +838,7 @@ void func_800AC3AC(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc9/func_800AC99C.s
  * (0x800AC99C-0x800ACB8C). OT-insert D_800AF7F0+idx*0x34 then
@@ -819,6 +855,9 @@ extern u8 D_800AF7F0[];
 #define AC99C_PACK_ADDR(p) ((u32)(p) & 0x00FFFFFF)
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC99C);
+#else
 void func_800AC99C(void) {
     s32 idx = g_FieldCurRenderContextIndex;
     u32* otHead = (u32*)((u8*)g_FieldCurRenderContext + 0x80D4);
@@ -868,9 +907,13 @@ void func_800AC99C(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 #undef AC99C_PACK_ADDR
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACB90);
+#else
 void func_800ACB90(void) {
     RECT rect;
     s32 i;
@@ -893,6 +936,7 @@ void func_800ACB90(void) {
     DrawSync(0);
     HeapFree(pBuf);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;

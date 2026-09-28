@@ -157,6 +157,9 @@ extern void FieldFadeToWhite(s32 duration);
 extern void func_800A91F0(void);
 extern void func_80077544(void);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A5924);
+#else
 void func_800A5924(void) {
     s32 i;
     s32 color;
@@ -248,6 +251,7 @@ void func_800A5924(void) {
         return;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800B0048;
 extern s32 D_800AFD14;
@@ -284,6 +288,9 @@ extern void FieldFadeUpdateAndDraw(void* ot, int renderContextIndex);
 // jtbl_8006FDAC) to one of 7 fade/zoom variants around the actual
 // FieldLoad() call, and finally normalizes state for the next transition
 // (D_800B0048=2, D_800AFD14=0x20, D_800AFD04=0).
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A5C40);
+#else
 void func_800A5C40(void) {
     void* pSaved;
     s32 savedMapMode;
@@ -511,11 +518,15 @@ void func_800A5C40(void) {
     func_80077544();
     HeapConsolidate();
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800C2684;
 extern SVECTOR D_800B00B8;
 
 // Or Draw?
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectUpdate);
+#else
 void FieldZoomFadeEffectUpdate(void) {
     MATRIX matrix;
     VECTOR scale;
@@ -555,7 +566,11 @@ void FieldZoomFadeEffectUpdate(void) {
         addPrim(g_FieldCurRenderContext->ot3, drMode);
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectInitialize);
+#else
 void FieldZoomFadeEffectInitialize(int semiTrans, int abr) {
     int i;
     int tpageX;
@@ -624,6 +639,7 @@ void FieldZoomFadeEffectInitialize(int semiTrans, int abr) {
         vx1 += 0x20;
     }
 }
+#endif /* XENO_PC_PORT */
 
 void FieldDisplay(void) {
     DrawSync(0);
@@ -759,6 +775,9 @@ void func_800A6C40(void) {
 
 extern void* D_800B00C4;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A6E70);
+#else
 void func_800A6E70(void) {
     u8* pBuf;
     s32 row, col;
@@ -820,6 +839,7 @@ void func_800A6E70(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern void* D_800B00C4;
 
@@ -847,7 +867,7 @@ void func_800A708C(void) {
     } else {
         D_801D68B4 = 0;
     }
-    func_801D3538(0x140, 0xE0, 0x80, 0x10, 0x20, 0x800, (s32)D_800C3A36);
+    func_801D3538(0x140, 0xE0, 0x80, 0x10, 0x20, 0x800, (u16)D_800C3A36);
     D_800ADB6C = 0;
     HeapChangeCurrentUser(8, NULL);
 }
@@ -859,6 +879,9 @@ extern s32 D_800ADB74;
 extern s32 D_800AFE74;
 extern s16 D_800C3A36;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7120);
+#else
 void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
     D_800B06A0 = arg0;
     D_800B00E4 = 0;
@@ -875,7 +898,11 @@ void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
+#else
 void func_800A7218(void) {
     D_800B06A0 = 0;
     HeapChangeCurrentUser(4, NULL);
@@ -900,9 +927,13 @@ void func_800A7218(void) {
     }
     HeapChangeCurrentUser(8, NULL);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB6C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A732C);
+#else
 void func_800A732C(s32 count) {
     s32 i;
     GameCheckAndHandleSoftReset();
@@ -913,6 +944,7 @@ void func_800A732C(s32 count) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 void func_800A7394(void) {
     do {
@@ -925,6 +957,9 @@ void func_800A7394(void) {
 extern void* D_8005A418;
 extern void* D_8005A41C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A73E8);
+#else
 void func_800A73E8(void) {
     if (D_800ADB74 == 2) {
         HeapUnpinBlock(D_8005A418);
@@ -944,6 +979,7 @@ void func_800A73E8(void) {
     HeapFree(D_8005A418);
     HeapFree(D_8005A41C);
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc5/func_800A74F8.s
  * (0x800A74F8-0x800A7740). Captures party slots 1 and 2 into D_8005A418 /
@@ -958,6 +994,9 @@ extern void* g_PartyDataBuffers[3];
 extern s32 func_80029AFC(StreamDataQueueEntry* entries, s32 arg1, s32 arg2);
 extern u32 LZSSDecompress(void* source, void* destination);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A74F8);
+#else
 void func_800A74F8(void) {
     s32 slot;
 
@@ -1024,6 +1063,7 @@ void func_800A74F8(void) {
         DrawSync(0);
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern int g_FieldPixelIndex;
 /* These image-convert buffers are 32-bit words on PSX (u_long == u32 == 4 bytes
@@ -1149,8 +1189,8 @@ void func_800A7948(void) {
     SetDefDrawEnv(&g_FieldRenderContexts[1].drawEnvs[0], 0, 0x100, 0x280, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[0].dispEnv, 0, 0x100, 0x280, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[1].dispEnv, 0, 0, 0x280, 0xE0);
-    g_FieldRenderContexts[0].dispEnv.isrgb24 = 0;
     g_FieldRenderContexts[1].dispEnv.isrgb24 = 0;
+    g_FieldRenderContexts[0].dispEnv.isrgb24 = 0;
     PutDispEnv(&g_FieldCurRenderContext->dispEnv);
     PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
 
@@ -1194,10 +1234,10 @@ void func_800A7948(void) {
     SetDefDispEnv(&g_FieldRenderContexts[0].dispEnv, 0, 0x100, 0x140, 0xE0);
     SetDefDispEnv(&g_FieldRenderContexts[1].dispEnv, 0, 0, 0x140, 0xE0);
 #endif
-    g_FieldRenderContexts[0].dispEnv.isrgb24 = 1;
     g_FieldRenderContexts[1].dispEnv.isrgb24 = 1;
-    g_FieldRenderContexts[0].dispEnv.isinter = 0;
+    g_FieldRenderContexts[0].dispEnv.isrgb24 = 1;
     g_FieldRenderContexts[1].dispEnv.isinter = 0;
+    g_FieldRenderContexts[0].dispEnv.isinter = 0;
     func_800ACCB0();
 }
 
@@ -1238,6 +1278,9 @@ extern void func_801D43B0(void);
 extern void FieldRenderSyncAndFlush(void);
 extern void FieldRenderSync(void);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7C58);
+#else
 void func_800A7C58(void) {
     RECT rect;
     void* pArchiveA9;
@@ -1494,6 +1537,7 @@ void func_800A7C58(void) {
     D_800ADB74 = 0;
     D_800ADB6C = -1;
 }
+#endif /* XENO_PC_PORT */
 
 void func_800A8314(void) {
     u8* pBuf;
@@ -1528,6 +1572,9 @@ extern u16 D_800AEB6A[];
 extern u16 D_800AEB6C[];
 extern u16 D_800AEB6E[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8408);
+#else
 void func_800A8408(s32 index, s32 xOfs, s32 yOfs) {
     s32 texIdx = D_800AEF14[index * 4];
     s32 x = D_800AEB68[texIdx * 4] + xOfs;
@@ -1548,6 +1595,7 @@ void func_800A8408(s32 index, s32 xOfs, s32 yOfs) {
     y -= 1;
     FieldClampPolyFT4UVs(pPoly, x, y2, x2, y2, x, y, x2, y);
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc5/func_800A84C0.s
  * (0x800A84C0-0x800A8BA0). Early-out if D_800AF278==0. Pitch is
@@ -1561,6 +1609,9 @@ extern long FieldGetVec2Magnitude(long x, long y);
 extern s32 D_800AEB60;
 extern s32 D_800AEB64;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A84C0);
+#else
 void func_800A84C0(void) {
     s32 yaw;
     s32 pitch;
@@ -1621,6 +1672,7 @@ void func_800A84C0(void) {
     }
     D_800AEB60 = (s32)((u32)D_800AEB60 + 1u);
 }
+#endif /* XENO_PC_PORT */
 
 /* Transcribed from asm/field/nonmatchings/main/misc5/func_800A8BA4.s
  * (0x800A8BA4-0x800A8EA8). HeapAlloc two 0x1108 buffers into D_800AFC60/64,
@@ -1630,6 +1682,9 @@ void func_800A84C0(void) {
 extern u16 D_800AEF10[];
 extern u16 D_800AEF16[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A8BA4);
+#else
 void func_800A8BA4(void) {
     s32 i;
     s32 blend = 0;
@@ -1674,6 +1729,7 @@ void func_800A8BA4(void) {
     }
     D_800AF278 = 1;
 }
+#endif /* XENO_PC_PORT */
 
 extern u16 D_800AF27C[];
 extern u16 D_800AF27E[];
@@ -1688,6 +1744,9 @@ extern u16 D_800AF28E[];
 extern u16 D_800AF290[];
 extern u16 D_800AF292[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldInitializeParticlePrimitive);
+#else
 void FieldInitializeParticlePrimitive(void* pParticle, s32 index, s32 abr) {
     POLY_FT4* poly = (POLY_FT4*)((u8*)pParticle + 0x50);
     s32 stride = index * 24;
@@ -1763,6 +1822,7 @@ void FieldInitializeParticlePrimitive(void* pParticle, s32 index, s32 abr) {
         d[9] = src[9];
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB34;
 extern u32 D_800AFC70;
@@ -1770,6 +1830,9 @@ extern u32 D_800AFC70;
 // Re-pin the 0x8000-byte persistent buffer under a new heap user (only while
 // D_800ADB34 marks it active, e.g. a pause-menu background snapshot): alloc
 // a fresh block under HEAP_USER_YOSI, copy the old contents over, free the old.
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A90B4);
+#else
 void func_800A90B4(s32 pinFlag) {
     void* pNew;
 
@@ -1795,6 +1858,7 @@ void func_800A90B4(s32 pinFlag) {
         D_800AFC70 = (u32)(uintptr_t)pNew;
     }
 }
+#endif /* XENO_PC_PORT */
 
 /* Matches, but g_FieldStoredImageDest seems to be part of some struct which
  * needs recovery first. */
@@ -1817,8 +1881,8 @@ void func_800A915C(void) {
 
 void func_800A91F0(void) {
     if (D_800ADB34) {
-        setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
         D_800ADB34 = 0;
+        setRECT(&g_FieldStoredImageDest[0], 0x3C0, 0x100, 0x40, 0x100);
         LoadImage(&g_FieldStoredImageDest[0], (u_long*)(uintptr_t)D_800AFC70);
         DrawSync(0);
         HeapFree((void*)(uintptr_t)D_800AFC70);

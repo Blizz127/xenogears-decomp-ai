@@ -56,6 +56,9 @@ void func_8008083C(int actorIndex) {
 extern s32 D_800AFB20;
 extern s32 D_800AFB24[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080968);
+#else
 s32 func_80080968(u8* pActorData) {
     s16 stateIdx = *(s16*)(pActorData + 0x10);
     s32 gateWord = *(s32*)(pActorData + 0x04);
@@ -91,6 +94,7 @@ s32 func_80080968(u8* pActorData) {
         return (s32)finalTable[byteVal];
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B14AC;
 
@@ -126,6 +130,9 @@ s32 func_80080A18(void) {
 extern s16 D_800AFB54;
 extern s32 D_800AFB44[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080A74);
+#else
 void func_80080A74(s32 actorIndex) {
     u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
     /* NOTE: deliberately NOT zero-initialised. This was `= { 0 };`, and GCC 2.7.2
@@ -305,6 +312,7 @@ void func_80080A74(s32 actorIndex) {
     *(s16*)(p + 0x72) =
         (s16)*(s32*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24);
 }
+#endif /* XENO_PC_PORT */
 
 /* ---- func_80080F44: per-actor data initialization ---------------------------
  * Called from FieldLoad for each actor (0..D_800ADBFC-1).
@@ -325,6 +333,9 @@ void func_80080A74(s32 actorIndex) {
 extern s32 D_800B2180;
 extern void func_8007AA44(void*);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080F44);
+#else
 void func_80080F44(s32 actorIndex) {
     FieldActor* pActor;
     ActorData* pData;
@@ -373,6 +384,7 @@ void func_80080F44(s32 actorIndex) {
     g_FieldActors[actorIndex].pShadow = (u32)(uintptr_t)HeapAlloc(0x70, 0);
     func_8007AA44((void*)(uintptr_t)g_FieldActors[actorIndex].pShadow);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800AF858;
 extern s32 D_800ADC0C;
@@ -397,6 +409,9 @@ extern s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData
                          s32 targetState);
 extern void* HeapAlloc(u_int size, u_int allocMode);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008110C);
+#else
 void func_8008110C(void) {
     s32 i;
 
@@ -600,6 +615,7 @@ extern int PcPort_RandomBattlesEnabled(void);
     }
 #endif
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B234E;
 extern u8 D_800B21CF;
@@ -621,6 +637,9 @@ extern u8 D_800B1514;
 extern u8 D_800B1518;
 extern u8 D_800B1534;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800815F0);
+#else
 void func_800815F0(void) {
     s32 i;
 
@@ -797,6 +816,7 @@ void func_800815F0(void) {
         *pCursor = (k - 1) & 0x1F;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 g_PlayerActorIndex;
 extern u8 D_800B21CC;
@@ -816,6 +836,9 @@ extern u8 D_800B1518;
 extern u8 D_800B1530;
 extern u8 D_800B1534;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081C54);
+#else
 void func_80081C54(s32 actorIndex) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
     u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
@@ -860,6 +883,7 @@ void func_80081C54(s32 actorIndex) {
     D_800C3910 = 0;
     D_800B2360 = (D_800B2360 - 1) & 0x1F;
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_80081F5C(u32* a0) {
     u32 a = (a0[0] >> 9) & 3;
@@ -880,6 +904,9 @@ extern void* D_801E8670[];
  * into the sprite so func_80022974 derives the step from angle + sprite radius.
  * Divisions are guarded against moveSpeed==0 for host safety (PSX tolerates
  * div-by-zero; the guard is a no-op whenever moveSpeed != 0). */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081F80);
+#else
 void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
     u8* pSprite = (u8*)pSpriteData;
     u8* pFA = (u8*)pFieldActor;
@@ -962,6 +989,7 @@ clear:
 
 #undef FIELD_DIV
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B2344;
 extern s16 D_800B2346;
@@ -970,6 +998,9 @@ extern u8 D_800ADFB8[];
  * the retail slot/animation contract while translating PSX pointer ownership. */
 extern void func_801E8330(s32 objSlot, s32 unused, s32 animValue);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800821F4);
+#else
 void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
     u8* actor = pFieldActor;
     u8* actorData;
@@ -1028,7 +1059,11 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008237C);
+#else
 s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
     u8* actorData = pActorData;
     s32 xMin;
@@ -1064,6 +1099,7 @@ s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
     }
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_80082494(s32* pVec, u8* actorData) {
     s16* clipPoints;
@@ -1104,6 +1140,9 @@ extern long FieldGetVec2Magnitude(long x, long y);
  * actor's ActorData (FieldActor stride 0x5C, pActorData at +0x4C) integer XZ
  * position (+0x22 / +0x2A) and returns FieldGetVec2Magnitude of the delta.
  * Used by func_80082620's actor-follow branch. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800825AC);
+#else
 s32 func_800825AC(s32 actorA, s32 actorB) {
     u8* dataA = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + actorA * 0x5C + 0x4C);
     u8* dataB = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + actorB * 0x5C + 0x4C);
@@ -1111,6 +1150,7 @@ s32 func_800825AC(s32 actorA, s32 actorB) {
     s32 dz = *(s16*)(dataB + 0x2A) - *(s16*)(dataA + 0x2A);
     return FieldGetVec2Magnitude(dx, dz);
 }
+#endif /* XENO_PC_PORT */
 
 extern u16 D_800ADFA8[];
 extern s16 D_800ADFC4[];
@@ -1125,6 +1165,9 @@ extern void func_8007B614(s32* pOut, s16 scale, s16 angle);
  * ratan2/rsin/rcos), and the D_801E8670 work-object divide path (.L80082AF4).
  * gotos mirror the shared asm labels; the previous "unsupported branch" assert
  * is now covered by real retail behavior. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80082620);
+#else
 void func_80082620(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actor = pFieldActor;
     u8* actorData = pActorData;
@@ -1295,6 +1338,7 @@ work_object: /* asm .L80082AF4 */
             ((*(s32*)(obj + 0x130) << 16) / speed) << 8;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_8005A448;
 extern s32 D_8005A44C;
@@ -1308,6 +1352,9 @@ extern void* func_8007BAC0(s32* pVec, void* pActorData, s32* pOut, s16 angle);
 
 extern s32 D_80065B08;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80082BB8);
+#else
 void func_80082BB8(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actor = pFieldActor;
     u8* actorData = pActorData;
@@ -1523,6 +1570,7 @@ update_animation:
     *(s32*)(actorData + 0x44) = 0;
     *(s32*)(actorData + 0x48) = 0;
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_80083178(s32 current, s32 target) {
     if (current < 0) {
@@ -1538,12 +1586,17 @@ s32 func_80083178(s32 current, s32 target) {
     return current;
 }
 
-void func_800831D0(SVECTOR* out, s16* in) {
-    out->vx = in[1];
-    out->vy = in[3];
-    out->vz = in[5];
+/* 16.16 fixed-point VECTOR -> SVECTOR integer parts (retail loads the high
+ * halves with lh). */
+void func_800831D0(SVECTOR* out, s32* in) {
+    out->vx = in[0] >> 16;
+    out->vy = in[1] >> 16;
+    out->vz = in[2] >> 16;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
+#else
 void func_800831F4(void* pSpriteData, u8* pActor, s32 arg2, s32 flags) {
     u32 val30 = *(u32*)(pActor + 0x30);
     u32 val38 = *(u32*)(pActor + 0x38);
@@ -1568,6 +1621,7 @@ void func_800831F4(void* pSpriteData, u8* pActor, s32 arg2, s32 flags) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern void* func_8007CD3C(s32 arg0);
 extern void func_8007CD60(s32 arg0);
@@ -1589,6 +1643,9 @@ extern MATRIX D_800AFC30;
  * contact data). Returns 0 with *pOutY = the minimum such Y, or -1 when no
  * polygon contains the point. All locals live in a func_8007CD3C(0xB8)
  * scratch block, mirroring the retail layout. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80083288);
+#else
 s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
                   void* pOut2) {
     /* Retail places the workspace in the PSX scratchpad via
@@ -1785,6 +1842,7 @@ s32 func_80083288(s32 ownIndex, void* pMesh, s32 curX, s32 curZ, s32* pOutY,
     func_8007CD60(0xB8);
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
 void func_80083994(void) {
 }
@@ -1797,6 +1855,9 @@ extern u_short FieldScriptGetBytecodeOffset(int scriptIndex, int routineIndex);
 
 /* Retail 8008399C..80084158. Rectangular, radial, and whole-map
  * interactions have distinct gates; keep their enqueue join explicit. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008399C);
+#else
 void func_8008399C(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actorData = pActorData;
     s32 playerY = *(s16*)(actorData + 0x26);
@@ -1997,6 +2058,7 @@ enqueue:
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern void* func_8007CD3C(s32 arg0);
 extern void func_8007CD60(s32 arg0);
@@ -2005,6 +2067,9 @@ extern char D_8006FC48[];
 extern char D_8006FC58[];
 extern s32 D_800ADB98;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80084158);
+#else
 void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     u8* actor = (u8*)pFieldActor;
     u8* actorData = (u8*)pActorData;
@@ -2026,7 +2091,7 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     predicted[0] = *(s32*)(actorData + 0x20) + *(s32*)(actorData + 0x30);
     predicted[1] = *(s32*)(actorData + 0x24) + *(s32*)(actorData + 0x34);
     predicted[2] = *(s32*)(actorData + 0x28) + *(s32*)(actorData + 0x38);
-    func_800831D0(&currentPos, (s16*)predicted);
+    func_800831D0(&currentPos, predicted);
 
     targetYMin = *(s16*)(actorData + 0x26) - *(u16*)(actorData + 0x1A);
     actorFlags0 = *(u32*)(actorData + 0x00);
@@ -2332,10 +2397,14 @@ void func_80084158(s32 actorIndex, void* pFieldActor, void* pActorData) {
     (void)targetState;
     func_8007CD60(0x20);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB98;
 extern s32 D_800ADC0C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008492C);
+#else
 s32 func_8008492C(u8* actorData) {
     if (*(u32*)(actorData + 0x14) & 0x00420000) {
         return -1;
@@ -2383,6 +2452,7 @@ s32 func_8008492C(u8* actorData) {
 
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800ADB00;
 extern u8 D_800B21CF;
@@ -2425,6 +2495,9 @@ static inline void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData
     *(s32*)(actor + 0x24) = *(s16*)(actorData + 0x26);
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80084A40);
+#else
 s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
                   s32 targetState) {
     u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
@@ -2704,6 +2777,7 @@ finish:
     func_80081C54(actorIndex);
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADBBC;
 extern s32 D_800ADBB8;
@@ -2761,6 +2835,9 @@ extern void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan);
 // the channel's element pair, then fire the packed effect through the S1
 // play chain (func_80039F9C -> func_8003B644 arm -> the tick plays it).
 // Un-shimmed: the whole downstream is real as of S1.
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800855C8);
+#else
 void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
 {
     s32 slot = channel & 0x7;
@@ -2773,6 +2850,7 @@ void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
     func_8003A20C(slot << 1);
     func_80039F9C(soundId, slot << 1, (s16)volume, (s16)pan);
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800B21B8;
 
@@ -2780,6 +2858,9 @@ extern s32 D_800B21B8;
 // at default volume/pan. The channel is the retail fourth argument
 // (a1 & 7, previously dropped in transcription -- latent while
 // func_800855C8 was a no-op shim).
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085634);
+#else
 void func_80085634(int a0, int a1) {
     if (a0 == 0) {
         func_8003A20C((a1 & 7) * 2);
@@ -2788,6 +2869,7 @@ void func_80085634(int a0, int a1) {
         func_800855C8(a0, 0x7F, 0x40, a1 & 7);
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800C3A38;
 extern u16 D_800AE060[];
@@ -2797,6 +2879,9 @@ extern s32 D_800B06A0;
 extern void* D_800B235C;
 extern void func_80039EC4(s32 a0);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
+#else
 void func_80085678(void) {
     u16* pTable = D_800AE060;
     if (D_800C3A38 == 0xFF) return;
@@ -2814,6 +2899,7 @@ void func_80085678(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800C3A38;
 extern void* D_800B235C;
@@ -2830,6 +2916,9 @@ extern void func_80039FF8(void);
 extern void func_8003BDFC(s32);
 extern void SoundAddSedsEntry(void* pData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085788);
+#else
 void func_80085788(void) {
     s32 musicId = D_800C3A38;
     if (musicId == 0xFF) return;
@@ -2860,6 +2949,7 @@ void func_80085788(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern void* D_8006259C;
 extern s32 D_8004F32C;
@@ -2902,6 +2992,9 @@ extern s32 func_800380D0(u8* data, s32 size, s32 a2);
 extern void SoundTransferWdsPart(u8* data, s32 size);
 extern s32 func_8002945C(u8* pSlot);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800859DC);
+#else
 void func_800859DC(u8* pSrc) {
     if (D_800B2370 < 0) return;
     if (D_800B2370 < 4) {
@@ -2932,6 +3025,7 @@ void func_800859DC(u8* pSrc) {
         func_8002945C(pSrc);
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern u8 D_800ADFCC[];
 extern s32 D_8004F308;
@@ -2943,6 +3037,9 @@ extern void* D_800C3A1C;
 extern void func_8001B66C(void);
 extern void func_800859DC(u8* pSrc);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085B20);
+#else
 void func_80085B20(s32 a0) {
     u8 archiveFile;
 
@@ -2972,6 +3069,7 @@ void func_80085B20(s32 a0) {
     D_8004F308 = -1;
     D_800AFC54 = 1;
 }
+#endif /* XENO_PC_PORT */
 
 s32 func_80085C3C(void) {
     s32 count;
@@ -3150,6 +3248,9 @@ extern void func_8003A55C(s32, s32);
 extern void func_80039F9C(s32, s32, s32, s32);
 
 /* Attenuation from distance vs D_800B21AC, scaled by mode. Writes volume to *out. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086078);
+#else
 void func_80086078(s32 distance, s32* outVolume, s32 mode) {
     s32 maxDist = D_800B21AC;
     s32 scaled;
@@ -3170,29 +3271,7 @@ void func_80086078(s32 distance, s32* outVolume, s32 mode) {
     inv >>= 6;
     *outVolume = (s32)(((u64)inv * (u32)mode) >> 16);
 }
-
-/* Project actor origin through worldToScreen; write screen X/Y.
- * Retail addresses worldToScreen as &g_FieldActors - 0xAC (= g_Scene + 0xD4). */
-void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
-    FieldActor* actors = g_FieldActors;
-    MATRIX composed;
-    SVECTOR local;
-    long screenXY;
-    long p;
-    long flag;
-
-    (void)FieldScriptVMGetActorIndex(1);
-
-    CompMatrix(&g_Scene.worldToScreenMatrix, &actors[actorIndex].transformMatrix, &composed);
-    local.vx = 0;
-    local.vy = 0;
-    local.vz = 0;
-    SetRotMatrix(&composed);
-    SetTransMatrix(&composed);
-    RotTransPers(&local, &screenXY, &p, &flag);
-    *outY = (s16)(screenXY >> 16);
-    *outX = (s16)screenXY;
-}
+#endif /* XENO_PC_PORT */
 
 /* Asm multiply chain: (((x*3)*17)*257*2)>>16 == (x * 0x6666)>>16. */
 static inline s32 FieldPositionalSfxScreenPan(s32 screenX) {
@@ -3204,7 +3283,12 @@ static inline s32 FieldPositionalSfxScreenPan(s32 screenX) {
     return t >> 16;
 }
 
+void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY);
+
 /* Update an already-bound positional SFX slot's volume/pan. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800860F0);
+#else
 void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
     s32 i;
     s32 volume;
@@ -3234,8 +3318,39 @@ void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
         }
     }
 }
+#endif /* XENO_PC_PORT */
+
+/* Project actor origin through worldToScreen; write screen X/Y.
+ * Retail addresses worldToScreen as &g_FieldActors - 0xAC (= g_Scene + 0xD4). */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", FieldActorWorldToScreenPosition);
+#else
+void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
+    FieldActor* actors = g_FieldActors;
+    MATRIX composed;
+    SVECTOR local;
+    long screenXY;
+    long p;
+    long flag;
+
+    (void)FieldScriptVMGetActorIndex(1);
+
+    CompMatrix(&g_Scene.worldToScreenMatrix, &actors[actorIndex].transformMatrix, &composed);
+    local.vx = 0;
+    local.vy = 0;
+    local.vz = 0;
+    SetRotMatrix(&composed);
+    SetTransMatrix(&composed);
+    RotTransPers(&local, &screenXY, &p, &flag);
+    *outY = (s16)(screenXY >> 16);
+    *outX = (s16)screenXY;
+}
+#endif /* XENO_PC_PORT */
 
 /* Allocate a free positional SFX slot and start the voice with distance pan. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
+#else
 void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
     s32 i;
     s32 volume;
@@ -3266,11 +3381,15 @@ void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 /* Release the SPU voice channel bound to actor `actorIdx` in the 3-slot
  * actor->channel table (same table as func_80086470/func_800864F0):
  * on match, stop the voice (func_8003A20C(i*2)) and free the slot.
  * asm nonmatchings/main/misc8/func_800863E8.s. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800863E8);
+#else
 void func_800863E8(s32 actorIdx) {
     s32 i;
 
@@ -3283,7 +3402,11 @@ void func_800863E8(s32 actorIdx) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086470);
+#else
 s32 func_80086470(s32 a0, s32 a1) {
     s32 i;
     if (a0 == -1) {
@@ -3296,7 +3419,11 @@ s32 func_80086470(s32 a0, s32 a1) {
     }
     return -1;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864B4);
+#else
 void func_800864B4(void) {
     s32 i;
     for (i = 0; i < 3; i++) {
@@ -3304,6 +3431,7 @@ void func_800864B4(void) {
         D_800AFE8A[i * 3] = 0xFFFF;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B233C;
 extern void func_8003A20C(s32);
@@ -3311,6 +3439,9 @@ extern void func_8003A20C(s32);
 // Field-transition sound-channel teardown: reset the 3-slot channel table
 // (same shape as func_800864B4) and release any of the 4 low D_800B233C
 // channel-mask bits that are still clear, one SPU voice-release call per bit.
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864F0);
+#else
 void func_800864F0(void) {
     s32 i;
     s16 flags;
@@ -3329,6 +3460,7 @@ void func_800864F0(void) {
     }
     D_800B233C = flags;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADBFC;
 extern long FieldGetVec3Magnitude(long, long, long);
@@ -3336,6 +3468,9 @@ extern void func_8003A20C(s32);
 extern void func_800860F0(s32, s32, s16, s32, s32);
 extern void func_800862CC(s32, s32, s16, s32, s32);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086590);
+#else
 void func_80086590(VECTOR* pos) {
     s32 dist[3];
     s32 soundId[3];
@@ -3413,6 +3548,7 @@ void func_80086590(VECTOR* pos) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern VECTOR g_CameraEye;
 extern VECTOR g_CameraAt;
@@ -3456,6 +3592,9 @@ extern s16 D_800B2324[];
 extern s16 D_800B2326[];
 extern s16 D_800B2328[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086A1C);
+#else
 void func_80086A1C(s32 idx, u8* pSub) {
     s32 step = D_800B2318[idx];
     s32 dx, dy, dz, mag;
@@ -3481,6 +3620,7 @@ void func_80086A1C(s32 idx, u8* pSub) {
     *pOutY = (s16)((dy * remainder) >> 16);
     *pOutZ = (s16)((dz * remainder) >> 16);
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800B22E2[];
 extern void func_80086A1C(s32 idx, u8* pSub);
@@ -3506,6 +3646,9 @@ extern u8 g_FieldDefaultParticleBanks[];
 extern void FieldInitializeDefaultParticleBanks(s32 idx);
 extern void FieldInitializeParticleBanks(s32 idx);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086C34);
+#else
 void func_80086C34(void) {
     u8 subOp = SCRIPT_READ_U8_REL(1);
     switch (subOp) {
@@ -3535,6 +3678,7 @@ void func_80086C34(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
 
 void func_80086D4C(void) {
     GameSoftReset();

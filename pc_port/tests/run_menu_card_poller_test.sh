@@ -10,7 +10,7 @@ import hashlib,pathlib,re
 b=pathlib.Path('disc/menu.bin').read_bytes()
 assert hashlib.sha256(b).hexdigest()=='82f84a24ac1fd1979754e1cc9c861405fb59ce95dd78db00a76f00c8f1bd177d'
 for name in ['801C8BEC','801C8A10']:
-    s=pathlib.Path(f'asm/menu/matchings/main/misc/func_{name}.s').read_text()
+    s=next(pathlib.Path('asm/menu').glob(f'*matchings/main/misc/func_{name}.s')).read_text()
     for a,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',s):
         off=int(a,16)-0x801c5000
         assert b[off:off+4]==bytes.fromhex(h),a

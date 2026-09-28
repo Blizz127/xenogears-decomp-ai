@@ -38,6 +38,9 @@ void func_80091944(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A08);
+#else
 void func_80091A08(void) {
     *(s16*)((u8*)&g_Scene + 0x4C) = FieldScriptVMGetInstructionArgumentS16(1);
     *(s16*)((u8*)&g_Scene + 0x4E) = FieldScriptVMGetInstructionArgumentS16(3);
@@ -45,17 +48,22 @@ void func_80091A08(void) {
     *(s16*)((u8*)&g_Scene + 0x52) = -FieldScriptVMGetInstructionArgumentS16(7);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
 }
+#endif /* XENO_PC_PORT */
 
 extern u8 D_800B219C;
 extern u8 D_800B219D;
 extern u8 D_800B219E;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A78);
+#else
 void func_80091A78(void) {
     D_800B219C = FieldScriptVMGetArgument(1);
     D_800B219D = FieldScriptVMGetArgument(3);
     D_800B219E = FieldScriptVMGetArgument(5);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* XENO_PC_PORT */
 
 void func_80091AD4(void) {
 }
@@ -65,6 +73,9 @@ extern s16 D_800AF6E8[];
 extern s16 D_800AF728[];
 extern u16 D_800AF768;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091ADC);
+#else
 void func_80091ADC(s16 x, s16 y, s16 w, s16 h, s16 extra, s16 mode, s32 doMove) {
     u16 idx = D_800AF768 & 0x1F;
     s16* rect = (s16*)((u8*)D_800AF5E8 + idx * 8);
@@ -81,10 +92,14 @@ void func_80091ADC(s16 x, s16 y, s16 w, s16 h, s16 extra, s16 mode, s32 doMove) 
     }
     D_800AF768++;
 }
+#endif /* XENO_PC_PORT */
 
 extern int FieldScriptArgument5(int index, int mask);
 extern int FieldScriptArgument6(int index, int mask);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091BBC);
+#else
 void func_80091BBC(void) {
     u8 mask;
     s32 arg1, arg2, arg3, arg4, arg5, arg6;
@@ -117,7 +132,11 @@ void func_80091BBC(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xE;
 }
+#endif /* XENO_PC_PORT */
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E00);
+#else
 void func_80091E00(void) {
     u8 mask = SCRIPT_READ_U8_REL(5);
     s32 arg1 = FieldScriptArgument1(1, mask);
@@ -128,11 +147,15 @@ void func_80091E00(void) {
     *(u16*)((u8*)g_FieldScriptVMCurActor + 0xEE) = (u16)FieldScriptArgument2(3, mask);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
+#endif /* XENO_PC_PORT */
 
 extern int FieldScriptVMGetActorIndex(int);
 extern int FieldScriptArgument1(int index, int mask);
 extern int FieldScriptArgument2(int index, int mask);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E98);
+#else
 void func_80091E98(void) {
     u8 mask;
     FieldActor* pActor;
@@ -152,6 +175,7 @@ void func_80091E98(void) {
     *(s16*)((u8*)pActorData + 0xEE) = (s16)FieldScriptArgument2(4, mask);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* XENO_PC_PORT */
 
 /* ---- func_80091F84: VM opcode 0xDB — write clamped value into the actor's
  * animation dispatch table.
@@ -181,15 +205,18 @@ void func_80092044(void) {
     addr2 = (u16)FieldScriptVMGetInstructionArgument(3);
     val2 = FieldScriptVMGetVariableValue(addr2);
     addr3 = (u16)FieldScriptVMGetInstructionArgument(3);
-    FieldScriptMemoryWriteU16(addr3, (u16)val1);
+    FieldScriptMemoryWriteU16(addr3, val1);
     addr4 = (u16)FieldScriptVMGetInstructionArgument(1);
-    FieldScriptMemoryWriteU16(addr4, (u16)val2);
+    FieldScriptMemoryWriteU16(addr4, val2);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
 extern s16 D_800AFEA8;
 extern void GfxLineScrollUpdate(void* pLineScroll);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800920D8);
+#else
 void func_800920D8(void) {
     s32 i;
     u32* entries;
@@ -203,9 +230,13 @@ void func_800920D8(void) {
         GfxLineScrollUpdate((void*)(uintptr_t)entries[i]);
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s16 D_800AFFAC[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
+#else
 void func_80092148(void) {
     s32 arg1 = FieldScriptVMGetArgument(1);
     s32 arg3 = FieldScriptVMGetArgument(3);
@@ -216,10 +247,14 @@ void func_80092148(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB8C;
 extern s16 D_800AFEA8;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
+#else
 void func_800921E8(void) {
     s16 count;
     u16 initVal;
@@ -266,6 +301,7 @@ void func_800921E8(void) {
     D_800AFEA8++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
 }
+#endif /* XENO_PC_PORT */
 
 void func_800923E4(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
@@ -295,6 +331,9 @@ u32 func_80092424(s32 index, s32 component) {
     return 0;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800924D4);
+#else
 void func_800924D4(s32 index, s32 component, s32 value) {
     u32* entry;
     u32 mask;
@@ -325,6 +364,7 @@ void func_800924D4(s32 index, s32 component, s32 value) {
             break;
     }
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800B217C;
 extern s16 D_800B21D6;
@@ -352,18 +392,21 @@ void func_80092664(void) {
 
 void func_800926C8(void) {
     u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
-    u32 arg = FieldScriptVMGetArgument(3);
-    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur | arg);
+    cur |= FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
 void func_80092768(void) {
     u32 cur = func_80092424(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2));
-    u32 arg = FieldScriptVMGetArgument(3);
-    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur & arg);
+    cur &= FieldScriptVMGetArgument(3);
+    func_800924D4(SCRIPT_READ_U8_REL(1), SCRIPT_READ_U8_REL(2), cur);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092808);
+#else
 void func_80092808(void) {
     u8* actorData = (u8*)g_FieldScriptVMCurActor;
     s16 angle = *(s16*)((u8*)D_800B06B8 + 0x52);
@@ -380,6 +423,7 @@ void func_80092808(void) {
     *(u32*)(actorData + 0x4) |= 0x800;
     *(u16*)(actorData + 0xCC) += 1;
 }
+#endif /* XENO_PC_PORT */
 
 extern FieldActor* D_800B06B8;
 extern long FieldGetVec1Magnitude(long x);
@@ -391,6 +435,9 @@ extern s32 D_800ADBDC;
 extern s32 D_800ADBE4;
 extern s32 D_800ADBEC;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
+#else
 s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     s32 dx, dy, dz;
     s32 targetX, targetZ;
@@ -495,6 +542,7 @@ finalize:
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
     return 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800B2350;
 extern s32 D_800ADBDC;
@@ -503,6 +551,9 @@ extern s32 D_800ADB2C;
 extern s32 D_8004F308;
 extern s32 D_800ADB90;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092C20);
+#else
 void func_80092C20(void) {
     s32 arg1, arg2;
     s32 result;
@@ -535,6 +586,7 @@ void func_80092C20(void) {
     }
     D_800B2350 = 0;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADBDC;
 extern s32 D_800ADBE4;
@@ -668,6 +720,10 @@ void func_80093014(void) {
         readinessBefore, refreshConditionCountBefore, opcodeActor, opcodeIp);
 }
 #else
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093014);
+/* Retail-shaped C, not yet byte-matching (the matching build assembles the
+ * retail bytes above). */
+#ifdef NON_MATCHING
 void func_80093014(void) {
     u8 mask;
     s32 arg3, heading;
@@ -705,6 +761,7 @@ void func_80093014(void) {
     D_800B00C0 = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
 }
+#endif /* NON_MATCHING */
 #endif
 
 void func_800931F8(void) {
@@ -827,7 +884,7 @@ void func_80093664(void) {
     u8 b2 = SCRIPT_READ_U8_REL(2);
     s32 result = func_80092424(b1, b2);
     u16 addr = (u16)FieldScriptVMGetInstructionArgument(3);
-    FieldScriptMemoryWriteU16(addr, (u16)result);
+    FieldScriptMemoryWriteU16(addr, result);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
@@ -905,6 +962,9 @@ extern s32 D_800ADB64;
 extern s32 D_800C3A6A;
 extern s32 D_8004F350;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80093930);
+#else
 void func_80093930(void) {
     s32 arg1 = FieldScriptVMGetArgument(1);
     D_800ADB64 = 1;
@@ -915,6 +975,7 @@ void func_80093930(void) {
     D_8004F350++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
+#endif /* XENO_PC_PORT */
 
 void func_800939A0(void) {
     D_80059171 = FieldScriptVMGetArgument(1);
@@ -1348,10 +1409,11 @@ void func_80094C8C(void) {
 s32 func_80094CFC(void) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x1F90 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1F90] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x2026 + i] == 0) {
+        if (p[0x2026] == 0) {
             return i;
         }
     }
@@ -1361,10 +1423,11 @@ s32 func_80094CFC(void) {
 s32 func_80094D4C(void) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x1D38 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1D38] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x1D9C + i] == 0) {
+        if (p[0x1D9C] == 0) {
             return i;
         }
     }
@@ -1374,10 +1437,11 @@ s32 func_80094D4C(void) {
 s32 func_80094D9C(void) {
     s32 i;
     for (i = 0; i < 0xC8; i++) {
-        if (((u8*)g_pGameState)[0x1E00 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1E00] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x1EC8 + i] == 0) {
+        if (p[0x1EC8] == 0) {
             return i;
         }
     }
@@ -1387,10 +1451,11 @@ s32 func_80094D9C(void) {
 s32 func_80094DEC(void) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x20BC + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x20BC] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x2120 + i] == 0) {
+        if (p[0x2120] == 0) {
             return i;
         }
     }
@@ -1400,10 +1465,11 @@ s32 func_80094DEC(void) {
 s32 func_80094E3C(void) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x2184 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2184] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x221A + i] == 0) {
+        if (p[0x221A] == 0) {
             return i;
         }
     }
@@ -1413,7 +1479,8 @@ s32 func_80094E3C(void) {
 s32 func_80094E8C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x2026 + i] == a0 && ((u8*)g_pGameState)[0x1F90 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2026] == a0 && p[0x1F90] != 0) {
             return i;
         }
     }
@@ -1423,7 +1490,8 @@ s32 func_80094E8C(s32 a0) {
 s32 func_80094EDC(s32 a0) {
     s32 i;
     for (i = 0; i < 0xC8; i++) {
-        if (((u8*)g_pGameState)[0x1EC8 + i] == a0 && ((u8*)g_pGameState)[0x1E00 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1EC8] == a0 && p[0x1E00] != 0) {
             return i;
         }
     }
@@ -1433,7 +1501,8 @@ s32 func_80094EDC(s32 a0) {
 s32 func_80094F2C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x1D9C + i] == a0 && ((u8*)g_pGameState)[0x1D38 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1D9C] == a0 && p[0x1D38] != 0) {
             return i;
         }
     }
@@ -1443,7 +1512,8 @@ s32 func_80094F2C(s32 a0) {
 s32 func_80094F7C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x2120 + i] == a0 && ((u8*)g_pGameState)[0x20BC + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2120] == a0 && p[0x20BC] != 0) {
             return i;
         }
     }
@@ -1453,7 +1523,8 @@ s32 func_80094F7C(s32 a0) {
 s32 func_80094FCC(s32 a0) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x221A + i] == a0 && ((u8*)g_pGameState)[0x2184 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x221A] == a0 && p[0x2184] != 0) {
             return i;
         }
     }
@@ -1540,6 +1611,9 @@ void func_8009524C(void) {
  * +0x14, +0x18), and sets D_800B00C0 = 1 (yields the VM turn). Does NOT
  * advance scriptInstructionPointer — the opcode re-runs every turn (hold).
  * func_8009524C (opcode 0x5A) is the halt-then-advance variant. */
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80095284);
+#else
 void func_80095284(void) {
     FieldActor* fieldActor = &g_FieldActors[D_800AFD1C];
     u8* pSprite = (u8*)(uintptr_t)fieldActor->pSpriteData;
@@ -1560,6 +1634,7 @@ void func_80095284(void) {
     *(s32*)(pSprite + 0x14) = 0;
     *(s32*)(pSprite + 0x18) = 0;
 }
+#endif /* XENO_PC_PORT */
 
 void func_80095300(void) {
     g_FieldControl.unkAngle = FieldScriptVMGetArgument(1);
@@ -1724,6 +1799,9 @@ void FieldScriptCheckTriggerZone(void) {
     g_FieldScriptMaxInstructionCount += 1;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/field/nonmatchings/main/misc11", FieldProjectActorOriginToScreen);
+#else
 void FieldProjectActorOriginToScreen(int* screenX, int* screenY) {
     MATRIX matrix;
     SVECTOR origin;
@@ -1746,6 +1824,7 @@ void FieldProjectActorOriginToScreen(int* screenX, int* screenY) {
     *screenY = (s16)(screenXY >> 16);
     *screenX = (s16)screenXY;
 }
+#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADC18;
 
