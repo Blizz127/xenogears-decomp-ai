@@ -7527,71 +7527,55 @@ extern void* D_801EA718;
 extern void* D_801EA71C;
 extern void* D_801EA720;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9C84);
-#else
+/* Retail 0x801D9C84: enter the card screen.  Waits out the transition,
+ * parks the CD callbacks, resets the card state bytes and returns 1, or 0
+ * whenever func_801C93A8 reports failure (closing the prompt if it is still
+ * up).  Shared retail/port body (gcc 2.6.3 byte-exact).  The port once
+ * returned 0 only when the prompt was still up, and read the card buffer
+ * through a raw host offset (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801D9C84(void) {
-    void* pMenu;
-    void* pData;
-    s32 result = 1;
+    s32 result;
 
     func_801D2F4C(0x20);
-    pMenu = g_Menu;
-    ((u8*)g_Menu->pManager)[0x33] = 1;
-
-    while (1) {
-        pMenu = g_Menu;
-        if (*(u8*)((u8*)pMenu + 0x329) == 0) break;
+    result = 1;
+    ((u8*)g_Menu->pManager)[0x33] = result;
+    while (g_Menu->transitionEffectState != 0) {
         func_801C7BF4();
     }
-
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4FE7) = 1;
+    ((u8*)g_Menu->unk32C)[0x4FE7] = 1;
     func_801C7BF4();
     func_801D9B08();
     DrawSync(0);
     Vsync(0);
-
     EnterCriticalSection();
     D_801EA718 = CdSyncCallback(0);
     D_801EA71C = CdReadyCallback(0);
     D_801EA720 = CdReadCallback(0);
     ExitCriticalSection();
-
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4FE9) = 0xFF;
-    *(u8*)(pData + 0x4FE8) = 0xFF;
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4F88) = 0;
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4F89) = 0;
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + 0x4FE6) = 2;
-    pMenu = g_Menu;
-    *(u8*)((u8*)pMenu + 0x326) = 0x3C;
-
+    {
+        u8* c = (u8*)g_Menu->unk32C;
+        c[0x4FE9] = 0xFF;
+        c[0x4FE8] = 0xFF;
+    }
+    ((u8*)g_Menu->unk32C)[0x4F88] = 0;
+    ((u8*)g_Menu->unk32C)[0x4F89] = 0;
+    ((u8*)g_Menu->unk32C)[0x4FE6] = 2;
+    g_Menu->unk326 = 0x3C;
     func_801C7BF4();
     func_801C7BF4();
-
     if ((u8)func_801C93A8() == 0) {
-        pMenu = g_Menu;
-        pData = g_Menu->pManager;
-        if (*(u8*)(pData + 0x33) != 0) {
-            result = 0;
+        result = 0;
+        if (((u8*)g_Menu->pManager)[0x33] != 0) {
+#ifdef XENO_PC_PORT
             func_801D32B4(0);
-            pMenu = g_Menu;
+#else
+            ((s32 (*)())func_801D32B4)(); /* retail leaves a0 unset (arg unused) */
+#endif
             ((u8*)g_Menu->pManager)[0x33] = 0;
         }
     }
-
     return result;
 }
-#endif
 
 extern s32 D_801EA904;
 extern s32 D_801EA900;
