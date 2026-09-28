@@ -9044,33 +9044,37 @@ extern void func_801E8F60(s32, u8);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD5E8);
 #else
+/* Retail 0x801DD5E8: apply charIdx's tint to the Abilities screen prims.
+ * func_801E8F60 tints strings 5 and 6; then each of the 12 list rows in the
+ * MENU_RAW(0x430) buffer whose current prim is not an empty slot (code 0x20)
+ * gets both its row prims tinted (+0, +0x700), followed by the first arrow
+ * cursor, the +0xE00 prim and the two +0xF00 prims.  The port once skipped
+ * the 12-row loop and read the buffers through raw host offsets
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801DD5E8(u8 charIdx) {
-    void* pMenu;
-    u8* pData;
     s32 i;
+    u8* p;
+
     func_801E8F60(5, charIdx);
     func_801E8F60(6, charIdx);
-    pMenu = g_Menu;
-    pData = *(u8**)((u8*)pMenu + 0x444);
-    {
-        u8 tableIdx = pData[0x75];
-        func_801E8EAC(pData + tableIdx * 0x28, charIdx);
-    }
-    pMenu = g_Menu;
-    pData = *(u8**)((u8*)pMenu + 0x430);
-    {
-        u8 tableIdx = pData[0xE7D];
-        func_801E8EAC(pData + 0xE00 + tableIdx * 0x28, charIdx);
-    }
-    for (i = 0; i < 2; i++) {
-        pMenu = g_Menu;
-        pData = *(u8**)((u8*)pMenu + 0x430);
-        {
-            u8 tableIdx = pData[i * 0x80 + 0xF7D];
-            func_801E8EAC(pData + 0xF00 + i * 0x80 + tableIdx * 0x28, charIdx);
+    for (i = 0; i < 12; i++) {
+        p = MENU_RAW(0x430);
+        if ((p + (p + i * 0x80)[0x7D] * 0x28 + i * 0x80)[4] != 0x20) {
+            func_801E8EAC((POLY_FT4*)((p + i * 0x80) + (p + i * 0x80)[0x7D] * 0x28), charIdx);
+            p = MENU_RAW(0x430);
+            func_801E8EAC((POLY_FT4*)((p + 0x700 + i * 0x80) + (p + i * 0x80)[0x77D] * 0x28), charIdx);
         }
     }
+    p = (u8*)g_Menu->arrowCursors[0];
+    func_801E8EAC((POLY_FT4*)(p + p[0x75] * 0x28), charIdx);
+    p = MENU_RAW(0x430);
+    func_801E8EAC((POLY_FT4*)(p + 0xE00 + p[0xE7D] * 0x28), charIdx);
+    for (i = 0; i < 2; i++) {
+        p = MENU_RAW(0x430);
+        func_801E8EAC((POLY_FT4*)(p + 0xF00 + i * 0x80 + (p + i * 0x80)[0xF7D] * 0x28), charIdx);
+    }
 }
+
 #endif
 
 #ifndef XENO_PC_PORT
@@ -11530,33 +11534,50 @@ extern u16 D_801E9914[];
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E5924);
 #else
+/* Retail 0x801E5924: the two corner-bracket LINE_F3 pairs of title slot
+ * `slotIdx` (green, 16px) at the slot's x/y from the 4-byte-stride tables
+ * D_801E9894 / D_801E9914, plus their vertex quads at +0x100 / +0x120.
+ * The port once read the tables at a 2-byte stride, stored the vertices as
+ * single bytes (retail writes halfwords) and put the second line's middle
+ * vertex at x + 16 (retail: x) (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801E5924(s32 slotIdx) {
-    u16* pX = &D_801E9894[slotIdx];
-    u16* pY = &D_801E9914[slotIdx];
-    void* pMenu = g_Menu;
-    u8* pBuf = MenuRawPointer(0x3A8 + slotIdx * 4);
-    u8* pBase = pBuf;
+    u16* pX = &D_801E9894[slotIdx * 2];
+    u16* pY = &D_801E9914[slotIdx * 2];
+    u8* pBuf = MENU_RAW(0x3A8 + slotIdx * 4);
+    LINE_F3* p = (LINE_F3*)pBuf;
     s32 i;
     u32 off1 = 0x50;
     u32 off2 = 0x80;
+
     for (i = 0; i < 2; i++) {
-        SetLineF3(pBuf + off1);
-        pBase[0x54] = 0; pBase[0x55] = 0xFF; pBase[0x56] = 0;
-        pBase[0x58] = (u8)*pX; pBase[0x5A] = (u8)*pY;
-        pBase[0x5C] = (u8)(*pX + 0x10); pBase[0x5E] = (u8)*pY;
-        pBase[0x60] = (u8)(*pX + 0x10); pBase[0x62] = (u8)(*pY + 0x10);
-        func_801C851C(pBuf + 0x100, *pX, *pY, 0x10, 0x10);
-        SetLineF3(pBuf + off2);
-        pBase[0x84] = 0; pBase[0x85] = 0xFF; pBase[0x86] = 0;
-        pBase[0x88] = (u8)*pX; pBase[0x8A] = (u8)*pY;
-        pBase[0x8C] = (u8)(*pX + 0x10); pBase[0x8E] = (u8)(*pY + 0x10);
-        pBase[0x90] = (u8)(*pX + 0x10); pBase[0x92] = (u8)(*pY + 0x10);
-        func_801C851C(pBuf + 0x120, *pX, *pY, 0x10, 0x10);
+        SetLineF3((LINE_F3*)(pBuf + off1));
+        ((LINE_F3*)((u8*)p + 0x50))->r0 = 0;
+        ((LINE_F3*)((u8*)p + 0x50))->g0 = 0xFF;
+        ((LINE_F3*)((u8*)p + 0x50))->b0 = 0;
+        ((LINE_F3*)((u8*)p + 0x50))->x0 = *pX;
+        ((LINE_F3*)((u8*)p + 0x50))->y0 = *pY;
+        ((LINE_F3*)((u8*)p + 0x50))->x1 = *pX + 0x10;
+        ((LINE_F3*)((u8*)p + 0x50))->y1 = *pY;
+        ((LINE_F3*)((u8*)p + 0x50))->x2 = *pX + 0x10;
+        ((LINE_F3*)((u8*)p + 0x50))->y2 = *pY + 0x10;
+        func_801C851C((SVECTOR*)(pBuf + 0x100), *pX, *pY, 0x10, 0x10);
+        SetLineF3((LINE_F3*)(pBuf + off2));
+        ((LINE_F3*)((u8*)p + 0x80))->r0 = 0;
+        ((LINE_F3*)((u8*)p + 0x80))->g0 = 0xFF;
+        ((LINE_F3*)((u8*)p + 0x80))->b0 = 0;
+        ((LINE_F3*)((u8*)p + 0x80))->x0 = *pX;
+        ((LINE_F3*)((u8*)p + 0x80))->y0 = *pY;
+        ((LINE_F3*)((u8*)p + 0x80))->x1 = *pX;
+        ((LINE_F3*)((u8*)p + 0x80))->y1 = *pY + 0x10;
+        ((LINE_F3*)((u8*)p + 0x80))->x2 = *pX + 0x10;
+        ((LINE_F3*)((u8*)p + 0x80))->y2 = *pY + 0x10;
+        func_801C851C((SVECTOR*)(pBuf + 0x120), *pX, *pY, 0x10, 0x10);
         off1 += 0x18;
         off2 += 0x18;
-        pBase += 0x18;
+        p = (LINE_F3*)((u8*)p + 0x18);
     }
 }
+
 #endif
 
 extern void func_801E56E8(s32);
