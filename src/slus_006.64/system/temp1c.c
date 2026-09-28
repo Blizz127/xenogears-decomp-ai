@@ -1,13 +1,18 @@
 #include "common.h"
+#ifdef XENO_PC_PORT
+#include <stdio.h>
+#include "psx_memory.h"
+#include "guest_prim_link.h"
+#endif
+#include "field/actor.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
 #include "system/memory.h"
 
-/* Retail TU 0x80024FF4..0x80025044 (D_8004FBB8 matrix setter), split out of system/temp1.c: retail temp1
- * was several TUs, which is visible in how each group reaches the shared Gfx
- * globals (gp-relative for its own .sbss, absolute for other TUs'). The port
- * still builds these functions from temp1.c, so this TU is empty there. */
-#ifndef XENO_PC_PORT
+/* Retail TU 0x80024FF4..0x80025044 (D_8004FBB8 matrix setter), one of the TUs that were merged into
+ * system/temp1.c (the groups reach the shared Gfx globals differently:
+ * %gp_rel for their own .sbss, absolute for other TUs'). This is the only
+ * copy of these bodies; the port builds it too. */
 
 extern MATRIX D_8004FBB8;
 
@@ -15,5 +20,3 @@ extern MATRIX D_8004FBB8;
 void func_80024FF4(MATRIX* matrix) {
     D_8004FBB8 = *matrix;
 }
-
-#endif /* !XENO_PC_PORT */

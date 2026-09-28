@@ -8,7 +8,7 @@ python3 - "$out" <<'PY'
 from pathlib import Path
 from hashlib import sha256
 import sys
-out=Path(sys.argv[1]);s=Path('src/slus_006.64/system/temp1.c').read_text();start=s.index('void func_80026BA4(');end=s.index('\n}\n',start)+3;s=s[start:end]
+out=Path(sys.argv[1]);s=Path('src/slus_006.64/system/temp1f.c').read_text();start=s.index('void func_80026BA4(');end=s.index('\n}\n',start)+3;s=s[start:end]
 retail=Path('disc/SLUS_006.64').read_bytes();assert sha256(retail).hexdigest()=='dc0b2dd786203d4cce5927c5a3fc85a18f39a3f7406078860076ebb0bbae7119'
 old='u8* pPrimBuffer)' in s
 header='#include <stdint.h>\ntypedef uint8_t u8;typedef uint16_t u16;typedef uint32_t u32;typedef int16_t s16;typedef int32_t s32;\nextern void *g_GfxCurWorkBuffer,*g_GfxCurWorkBufferEnd;extern u8 *g_GfxCurOT;int GetClut(int,int);int GetTPage(int,int,int,int);void AddPrim(void*,void*);\n'

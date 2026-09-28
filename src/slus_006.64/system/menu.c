@@ -251,8 +251,16 @@ void MenuExecute(void) {
         if (D_80059460 == 5) {
             ArchiveSetIndex(0x4, 0);
             D_800658CC = HeapAlloc(0x4, 0x1);
+#ifdef XENO_PC_PORT
+            /* Reserve guest RAM up to the object overlay's retail address and
+             * load it there: sizes come from guest addresses, and the
+             * destination is rebased into g_PsxRam. */
+            D_8006BE24 = HeapAlloc(PsxMemory_GuestAddr(D_800658CC) + 0x7FE24000u, 0x1);
+            ArchiveReadFileToBuffer(0x6B9, PSX_ADDR(0x801DC000), 0, 0x80);
+#else
             D_8006BE24 = HeapAlloc((u32)D_800658CC + 0x7FE24000, 0x1);
             ArchiveReadFileToBuffer(0x6B9, (void*)0x801DC000, 0, 0x80);
+#endif
             ArchiveCdDataSync(0);
             ArchiveSetIndex(0x10, 0);
             D_8005A4AC = HeapAlloc(0x4000, 0);
@@ -260,8 +268,14 @@ void MenuExecute(void) {
         }
 
         pBuf0 = HeapAlloc(0x4, 0x1);
+#ifdef XENO_PC_PORT
+        /* Same for the menu overlay at its retail address 0x801C5000. */
+        pBuf1 = HeapAlloc(PsxMemory_GuestAddr(pBuf0) + 0x7FE3B000u, 0x1);
+        ArchiveReadFileToBuffer(D_80059460 + 5, PSX_ADDR(0x801C5000), 0, 0x80);
+#else
         pBuf1 = HeapAlloc((u32)pBuf0 + 0x7FE3B000, 0x1);
         ArchiveReadFileToBuffer(D_80059460 + 5, (void*)0x801C5000, 0, 0x80);
+#endif
         ArchiveCdDataSync(0);
     }
 

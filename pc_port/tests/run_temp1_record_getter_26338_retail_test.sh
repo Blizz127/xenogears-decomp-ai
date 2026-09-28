@@ -29,7 +29,7 @@ build_and_run() {
     local linker="$CC"
     shift
     "$CC" "${BASE[@]}" "${INC[@]}" -w -fno-inline -O2 "$@" \
-        -fno-sanitize=object-size -c src/slus_006.64/system/temp1.c \
+        -fno-sanitize=object-size -c src/slus_006.64/system/temp1f.c \
         -o "$BUILD_DIR/$name.temp1.o"
     "$CC" "${BASE[@]}" "${INC[@]}" -Wall -Wextra -Werror "$@" \
         -c pc_port/tests/temp1_record_getter_26338_retail_test.c \
