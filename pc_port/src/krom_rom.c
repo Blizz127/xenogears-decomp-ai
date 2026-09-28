@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "../include/xg_plat/disc.h"
 
 struct PcPortKromRom { uint8_t bytes[0x80000]; };
 
@@ -71,8 +72,15 @@ static pthread_once_t font_once = PTHREAD_ONCE_INIT;
  * another lookup or by shutdown ordering between game/render threads. */
 static PcPortKromRom *font_rom;
 static void load_font_rom(void) {
+    /* An explicit XENO_BIOS is authoritative (no fallback); otherwise look
+     * for scph5500.bin next to the user's other files (xg_plat/disc.h).
+     * The SHA-256 check below applies either way. */
+    static char resolved[1024];
     const char *path = getenv("XENO_BIOS");
-    if (!path) path = "disc/scph5500.bin";
+    if (!path || !*path) {
+        path = "disc/scph5500.bin";
+        if (xg_plat_data_file_path("scph5500.bin", resolved, sizeof resolved)) path = resolved;
+    }
     PcPortKromRomResult result = PcPortKromRomLoad(path, &font_rom);
     if (result != PC_PORT_KROM_ROM_OK) {
         fprintf(stderr, "KROM_UNRESOLVED load=%d path=%s\n", result, path);

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "retail_data.h"
 #include "disc_check.h"
+#include "../include/xg_plat/disc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1178,24 +1179,10 @@ static void PortRunSoundAdpcmProbe(void) {
 /* MODE2/2352 image; PsyCross extracts the 2048-byte data payload per sector. */
 #define PORT_CD_SECTOR_SIZE 2352
 
-/* Return the first readable disc-image path, or NULL. XENO_DISC overrides; the
- * defaults assume the binary is run from pc_port/build_native (repo disc/ dir). */
+/* Disc image path from the disc/storage layer (xg_plat/disc.h): XENO_DISC,
+ * else disc/disc1.bin relative to the working directory, ../ or ../../. */
 static const char* PcPort_FindDiscImage(void) {
-    static const char* defaults[] = {
-        "../../disc/disc1.bin", "disc/disc1.bin", "../disc/disc1.bin",
-    };
-    const char* env = getenv("XENO_DISC");
-    unsigned i;
-    FILE* f;
-    if (env && *env) {
-        f = fopen(env, "rb");
-        if (f) { fclose(f); return env; }
-    }
-    for (i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++) {
-        f = fopen(defaults[i], "rb");
-        if (f) { fclose(f); return defaults[i]; }
-    }
-    return NULL;
+    return xg_plat_disc_image_path();
 }
 
 static void PcPort_LoadSystemTextData(void) {
@@ -1422,7 +1409,7 @@ int main(int argc, char** argv) {
          * only for the PC-HDD dev path; the real constant picks SYSTEM_MODE_CD_ROM
          * (1). ArchiveInit treats the value as pDebugTable: -1, like 0, selects the
          * CD path (g_ArchiveDebugTable = NULL), so disc loading is unchanged. */
-        if (disc && PcPort_VerifyDiscImage(disc) != 0)
+        if (disc && xg_plat_disc_verify() != 0)
             exit(78); /* EX_CONFIG: wrong disc image, explained on stderr */
         if (disc) {
             printf("[xeno-port] CD image: %s\n", disc);

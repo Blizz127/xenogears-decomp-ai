@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include "../include/xg_plat/disc.h"
 
 #ifndef BOOT_CERT_DIRECT_DISC
 #include "common.h"
@@ -46,68 +47,12 @@ static int BootStrEntry(void)
 #endif
 }
 
-static const char* BootFindDisc(void)
-{
-    static const char* defaults[] = {
-        "disc/disc1.bin",
-        "../disc/disc1.bin",
-        "../../disc/disc1.bin",
-    };
-    const char* env = getenv("XENO_DISC");
-    unsigned i;
-    FILE* f;
-
-    if (env && env[0]) {
-        f = fopen(env, "rb");
-        if (f) {
-            fclose(f);
-            return env;
-        }
-    }
-    for (i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++) {
-        f = fopen(defaults[i], "rb");
-        if (f) {
-            fclose(f);
-            return defaults[i];
-        }
-    }
-    return NULL;
-}
-
+/* Raw user-sector reads from the Disc 1 image via the disc/storage layer. */
 static int BootDiscReadRaw(int lba, int count, void* dst)
 {
-    const char* path;
-    FILE* f;
-    struct stat st;
-    int sec_size = 2048;
-    int data_off = 0;
-    int i;
-    unsigned char* out = (unsigned char*)dst;
-
-    path = BootFindDisc();
-    if (!path)
+    if (lba < 0 || count < 0)
         return -1;
-    if (stat(path, &st) != 0)
-        return -1;
-    if (st.st_size % 2352 == 0 && st.st_size / 2352 > 1000) {
-        sec_size = 2352;
-        data_off = 24;
-    }
-    f = fopen(path, "rb");
-    if (!f)
-        return -1;
-    for (i = 0; i < count; i++) {
-        if (fseek(f, (long)(lba + i) * sec_size + data_off, SEEK_SET) != 0) {
-            fclose(f);
-            return -1;
-        }
-        if (fread(out + i * 0x800, 1, 0x800, f) != 0x800) {
-            fclose(f);
-            return -1;
-        }
-    }
-    fclose(f);
-    return 0;
+    return xg_plat_disc_read_sectors((uint32_t)lba, (uint32_t)count, dst);
 }
 
 int PcPort_BootDiscReadSectors(int lba, int count, void* dst)

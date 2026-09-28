@@ -37,6 +37,7 @@ typedef enum {
     XENO_RD_MENU,            /* menu.bin */
     XENO_RD_SHOP_MENU,       /* shop_menu.bin */
     XENO_RD_MEMBER_CHANGE,   /* member_change_menu.bin */
+    XENO_RD_WORLD_MAP,       /* world_map.bin */
     XENO_RD_FILE_COUNT
 } XenoRetailFile;
 
@@ -108,6 +109,8 @@ XENO_RD_WEAK const XenoRetailFileInfo* XenoRetailData_FileInfo(int file)
           "7890e14bcabddcf85368de10783ecff8daa166dc5ac254e06db5e27959cab4cf", 55296 },
         { "member_change_menu.bin",
           "3b9e2b890c27ae0de97fe343ac75cd35c05fe7f9605ae387d2166da0be78109c", 26624 },
+        { "world_map.bin",
+          "4c15fd32b3a03d7cd5ea4403dcaabc70abaf99b6aaca65d63d6866803edaac70", 180422 },
     };
     return (file >= 0 && file < XENO_RD_FILE_COUNT) ? &info[file] : NULL;
 }
@@ -246,43 +249,67 @@ XENO_RD_WEAK void XenoRetailData_Fail(const char* what, int file, const char* de
     exit(78); /* EX_CONFIG */
 }
 
-XENO_RD_WEAK XenoRetailFileSlot* XenoRetailData_File(int file)
+/* Resolve a user file by name; the single search order for the port's
+ * disc/storage layer (xg_plat/disc.h uses it too):
+ *   $XENO_BIOS (scph5500.bin only), $XENO_DATA_DIR/<name>,
+ *   $XENO_SLUS (SLUS_006.64) or its directory, disc/, ../disc/, ../../disc/.
+ * Returns 1 and fills `out`; `tried` (optional) lists the candidates. */
+XENO_RD_WEAK int XenoRetailData_Resolve(const char* name, char* out, size_t out_size,
+                                        char* tried, size_t tried_size)
 {
     static const char* const dirs[] = { "disc", "../disc", "../../disc" };
-    XenoRetailFileSlot* slot = &g_XenoRetailFiles[file];
-    const XenoRetailFileInfo* fi = XenoRetailData_FileInfo(file);
+    const char* env_bios = getenv("XENO_BIOS");
     const char* env_dir = getenv("XENO_DATA_DIR");
     const char* env_slus = getenv("XENO_SLUS");
+    char cand[1024];
+    unsigned i;
+    FILE* f;
+
+    if (tried && tried_size)
+        tried[0] = '\0';
+    for (i = 0; i < 6; i++) {
+        cand[0] = '\0';
+        if (i == 0 && env_bios && *env_bios && strcmp(name, "scph5500.bin") == 0)
+            snprintf(cand, sizeof cand, "%s", env_bios);
+        else if (i == 1 && env_dir && *env_dir)
+            snprintf(cand, sizeof cand, "%s/%s", env_dir, name);
+        else if (i == 2 && env_slus && *env_slus) {
+            const char* slash = strrchr(env_slus, '/');
+            if (strcmp(name, "SLUS_006.64") == 0)
+                snprintf(cand, sizeof cand, "%s", env_slus);
+            else if (slash)
+                snprintf(cand, sizeof cand, "%.*s/%s", (int)(slash - env_slus), env_slus, name);
+        } else if (i >= 3)
+            snprintf(cand, sizeof cand, "%s/%s", dirs[i - 3], name);
+        if (cand[0] == '\0')
+            continue;
+        if (tried && strlen(tried) + strlen(cand) + 3 < tried_size) {
+            strcat(tried, tried[0] ? ", " : "");
+            strcat(tried, cand);
+        }
+        if ((f = fopen(cand, "rb")) != NULL) {
+            fclose(f);
+            snprintf(out, out_size, "%s", cand);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+XENO_RD_WEAK XenoRetailFileSlot* XenoRetailData_File(int file)
+{
+    XenoRetailFileSlot* slot = &g_XenoRetailFiles[file];
+    const XenoRetailFileInfo* fi = XenoRetailData_FileInfo(file);
     char tried[2048] = "";
     char cand[1024];
     char digest[65];
     XenoSha256 sha;
-    size_t i;
 
     if (slot->state != 0)
         return slot->state > 0 ? slot : NULL;
     slot->state = -1;
-    for (i = 0; slot->bytes == NULL && i < 5; i++) {
-        cand[0] = '\0';
-        if (i == 0 && env_dir && *env_dir)
-            snprintf(cand, sizeof cand, "%s/%s", env_dir, fi->name);
-        else if (i == 1 && env_slus && *env_slus) {
-            if (file == XENO_RD_SLUS)
-                snprintf(cand, sizeof cand, "%s", env_slus);
-            else {
-                const char* slash = strrchr(env_slus, '/');
-                if (slash)
-                    snprintf(cand, sizeof cand, "%.*s/%s", (int)(slash - env_slus), env_slus, fi->name);
-            }
-        } else if (i >= 2)
-            snprintf(cand, sizeof cand, "%s/%s", dirs[i - 2], fi->name);
-        if (cand[0] == '\0')
-            continue;
+    if (XenoRetailData_Resolve(fi->name, cand, sizeof cand, tried, sizeof tried)) {
         slot->bytes = XenoRetailData_ReadFile(cand, &slot->size);
-        if (strlen(tried) + strlen(cand) + 4 < sizeof tried) {
-            strcat(tried, tried[0] ? ", " : "");
-            strcat(tried, cand);
-        }
         if (slot->bytes)
             snprintf(slot->path, sizeof slot->path, "%s", cand);
     }

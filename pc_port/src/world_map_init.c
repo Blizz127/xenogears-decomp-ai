@@ -156,6 +156,7 @@
 #include "psyq/libcd.h"
 #include "psyq/pc.h"
 #include "psx_memory.h"
+#include "../include/xg_plat/disc.h"
 #include "world_map_convergence.h"
 #include "world_map_selector.h"
 #include "world_map_framebuffer_init.h"
@@ -2285,13 +2286,19 @@ static int ensure_world_overlay_image(u32* out_final_write)
             "disc/world_map.bin (%u bytes) at 0x%08x\n",
             fingerprint, WM_OVERLAY_IMAGE_SIZE, WM_OVERLAY_BASE);
 
-    fp = fopen("disc/world_map.bin", "rb");
-    if (fp == NULL) {
-        fprintf(stderr, "[worldmap-init] ERROR: cannot open disc/world_map.bin\n");
-        return -1;
+    {
+        /* The user's disc/world_map.bin, hash-checked by the disc/storage
+         * layer (xg_plat/disc.h); a missing or wrong file stops there. */
+        size_t size = 0;
+        const uint8_t* image = xg_plat_data_file("world_map.bin", &size);
+        if (image == NULL) {
+            fprintf(stderr, "[worldmap-init] ERROR: world_map.bin unavailable\n");
+            return -1;
+        }
+        n = size < WM_OVERLAY_IMAGE_SIZE ? size : WM_OVERLAY_IMAGE_SIZE;
+        wm_memcpy(dst, image, (unsigned)n);
+        (void)fp;
     }
-    n = fread(dst, 1, WM_OVERLAY_IMAGE_SIZE, fp);
-    fclose(fp);
     if (n != WM_OVERLAY_IMAGE_SIZE) {
         fprintf(stderr, "[worldmap-init] ERROR: short read %zu\n", n);
         return -1;
