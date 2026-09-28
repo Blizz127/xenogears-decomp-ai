@@ -54,10 +54,17 @@ def leaves() -> list[str]:
     return re.findall(r'"(func_\w+)"', LEAVES.read_text())
 
 
-def port_only_spans(text: str) -> list[tuple[int, int]]:
-    """Byte ranges whose preprocessor branch is taken only with XENO_PC_PORT."""
+def _branch_spans(text: str, port: bool) -> list[tuple[int, int]]:
+    """Byte ranges whose innermost XENO_PC_PORT branch is taken only with
+    (port=True) or only without (port=False) XENO_PC_PORT defined."""
     stack: list[list] = []  # [mentions_port, branch_is_port_only, start]
     spans: list[tuple[int, int]] = []
+
+    def close(end: int) -> None:
+        mentions, taken, start = stack[-1]
+        if mentions and taken == port:
+            spans.append((start, end))
+
     for m in CONDITIONAL_RE.finditer(text):
         kind = m.group(1)
         if kind in ("ifdef", "ifndef", "if"):
@@ -66,14 +73,29 @@ def port_only_spans(text: str) -> list[tuple[int, int]]:
             taken = (not mentions) if kind == "ifndef" else mentions
             stack.append([mentions, taken, m.end()])
         elif kind == "else" and stack:
+            close(m.start())
             stack[-1][1] = not stack[-1][1]
+            stack[-1][2] = m.end()
         elif kind == "elif" and stack:
+            close(m.start())
             stack[-1][1] = False
+            stack[-1][2] = m.end()
         elif kind == "endif" and stack:
-            _, taken, start = stack.pop()
-            if taken:
-                spans.append((start, m.start()))
+            close(m.start())
+            stack.pop()
     return spans
+
+
+def port_only_spans(text: str) -> list[tuple[int, int]]:
+    """Byte ranges whose preprocessor branch is taken only with XENO_PC_PORT."""
+    return _branch_spans(text, True)
+
+
+def retail_only_spans(text: str) -> list[tuple[int, int]]:
+    """Byte ranges compiled only WITHOUT XENO_PC_PORT (e.g. `#ifndef
+    XENO_PC_PORT` retail-only matched C).  The port never sees these, so they
+    cannot own a host leaf."""
+    return _branch_spans(text, False)
 
 
 def in_spans(offset: int, spans: list[tuple[int, int]]) -> bool:
@@ -99,9 +121,12 @@ def definitions() -> dict[str, list[tuple[str, bool]]]:
     for path in sorted(BATTLE_SRC.glob("*.c")):
         text = path.read_text(errors="ignore")
         port_only = port_only_spans(text)
+        retail_only = retail_only_spans(text)
         for m in DEFINITION_RE.finditer(text):
             if not is_definition(text, m.end() - 1):
                 continue
+            if in_spans(m.start(), retail_only):
+                continue  # invisible to the port's host build
             found.setdefault(m.group(3), []).append(
                 (path.name, in_spans(m.start(), port_only))
             )
