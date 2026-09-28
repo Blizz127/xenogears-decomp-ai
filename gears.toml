@@ -258,3 +258,12 @@ build_variables = {
     maspsx_flags = "--expand-div --use-comm-section --run-assembler"
 }
 paths = [ "src/battle/main69." ]
+
+[[build_preset]]
+name = "BattleDiv"
+# Default compiler plus maspsx --expand-div: these battle TUs' retail signed
+# divisions carry the aspsx divide-by-zero / overflow break checks.
+build_variables = {
+    maspsx_flags = "--expand-div --use-comm-section --run-assembler"
+}
+paths = [ "src/battle/main68." ]
