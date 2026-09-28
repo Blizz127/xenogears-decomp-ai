@@ -10,27 +10,31 @@
 #ifndef XENO_PC_PORT
 
 // This function is in another TU than func_80024F64 due to GP Rel variables
-extern void* g_GfxCurWorkBuffer;
-extern void* g_GfxCurWorkBufferEnd;
-extern uintptr_t D_80059524;
-
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_800250E0);
-/*
-Matches on GCC 2.7.2-970404, ASPSX 2.67
-
-typedef struct {
+typedef struct LinkedListEntry {
     void* pData;
     struct LinkedListEntry* pNext;
 } LinkedListEntry;
 
+typedef struct ImageEntry {
+    RECT rect;
+    u_long* addr;
+    struct ImageEntry* pNext;
+} ImageEntry;
+
+/* This TU's own .sbss (reached %gp_rel); g_GfxWorkBufferSize is shared with
+ * temp1b as a common. */
 s32 g_GfxCurContext;
 int g_GfxWorkBufferSize;
-extern LinkedListEntry* D_80059300[2];
-extern int g_GfxWorkBuffers[];
 s32 D_80059524;
 void* g_GfxCurWorkBufferEnd;
 void* g_GfxCurWorkBuffer;
 
+extern LinkedListEntry* D_80059300[2];
+extern void* g_GfxWorkBuffers[];
+extern ImageEntry* g_GfxImageList[];
+
+/* Starts a frame on work buffer `context`: resets the bump pointer and frees
+ * the heap blocks queued on that context's list. */
 void func_800250E0(int context) {
     void* pPrimBuffer;
     LinkedListEntry* pCurEntry;
@@ -39,61 +43,46 @@ void func_800250E0(int context) {
     pCurEntry = D_80059300[context];
     g_GfxCurContext = context;
     g_GfxCurWorkBuffer = pPrimBuffer;
-    D_80059524 = pPrimBuffer;
-    g_GfxCurWorkBufferEnd = pPrimBuffer + g_GfxWorkBufferSize;
+    D_80059524 = (s32)pPrimBuffer;
+    g_GfxCurWorkBufferEnd = (u8*)pPrimBuffer + g_GfxWorkBufferSize;
     while (pCurEntry != NULL) {
         HeapFree(pCurEntry->pData);
         pCurEntry = pCurEntry->pNext;
     }
-    
+
     D_80059300[context] = NULL;
 }
-*/
 
+/* Queues pData to be freed when this context's buffer is next reused: bumps
+ * an 8-byte node off the work buffer (retail advances even when it is NULL). */
+void func_80025180(void* pData) {
+    LinkedListEntry* pEntry = (LinkedListEntry*)g_GfxCurWorkBuffer;
 
-/* func_80025180: GfxQueueWorkEntry -- bump an 8-byte node off
- * g_GfxCurWorkBuffer (retail advances the head by 8 even when it is NULL) and
- * push it onto the D_80059300[g_GfxCurContext] list, pData at +0 and the
- * previous head at +4.  Not decompiled here on purpose: retail reaches
- * g_GfxCurWorkBuffer and g_GfxCurContext through $gp in one instruction each
- * because they are DEFINED small objects in its TU, while they are `extern`
- * here, so a C body costs three extra instructions (84 vs 72 bytes).  The PORT
- * already owns this symbol as a host-safe override in
- * pc_port/src/game_overrides.c (g_GfxCurWorkBuffer is a u32 there, not a
- * pointer), so adding a body here would be a duplicate definition. */
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025180);
+    g_GfxCurWorkBuffer = pEntry + 1;
+    if (pEntry != NULL) {
+        pEntry->pData = pData;
+        pEntry->pNext = D_80059300[g_GfxCurContext];
+        D_80059300[g_GfxCurContext] = pEntry;
+    }
+}
 
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_800251C8);
-/*
-Matches, but uses variable in COMMON so can't compile in yet.
-
-struct ImageEntry {
-    RECT rect;
-    u_long* addr;
-    struct ImageEntry* pNext;
-};
-
-typedef struct ImageEntry ImageEntry;
-
-extern ImageEntry* g_GfxImageList[];
-int g_GfxCurContext; // Cur index?
-void* g_GfxCurWorkBufferEnd;
-ImageEntry* g_GfxCurWorkBuffer;
-
-// GfxQueueShapeTransfer
+/* Candidate C: same instructions except that retail loads `height` from
+ * the stack before the bounds check (scheduling only).
+ Queues a LoadImage of addr into (x, y, width, height) for this frame. 
 void func_800251C8(u_long* addr, int x, int y, int width, int height) {
     ImageEntry* pCurrent;
     ImageEntry* pNext;
 
-    pCurrent = (ImageEntry*) g_GfxCurWorkBuffer;
+    pCurrent = (ImageEntry*)g_GfxCurWorkBuffer;
     pNext = pCurrent + 1;
-    if (pNext < g_GfxCurWorkBufferEnd) {
+    if ((void*)pNext < g_GfxCurWorkBufferEnd) {
         pCurrent->rect.h = height;
         pCurrent->rect.x = x;
         pCurrent->rect.y = y;
         pCurrent->rect.w = width;
         pCurrent->addr = addr;
-        g_GfxCurWorkBuffer = (void*) pNext;
+        g_GfxCurWorkBuffer = (void*)pNext;
 
         pCurrent->pNext = g_GfxImageList[g_GfxCurContext];
         g_GfxImageList[g_GfxCurContext] = pCurrent;
@@ -101,38 +90,13 @@ void func_800251C8(u_long* addr, int x, int y, int width, int height) {
 }
 */
 
-// Sets pStruct->unk8 callback
-/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80025224.s
- * (0x80025224-0x80025258). Loads the handler pointer from the retail callback
- * table at D_8004FD40 (16 entries; see the table listing below) and hands it to
- * WorkListSetTaskCallback. NOTE: in the current build that table symbol is
- * parked at 0x8004FDBC instead of 0x8004FD40 (data-symbol placement, see
- * ACTIVE_HANDOFF), so the emitted immediate is not yet retail-identical. */
+/* Sets a sprite task's trigger callback from the D_8004FD40 handler table. */
 extern void (*D_8004FD40[])(void*);
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1e", func_80025224);
-/*
-CALLBACK_TABLE
-8004fd40 func_80025258
-8004fd44 func_80025710 => Dummy function
-8004fd48 func_80025718
-8004fd4c NULL
-8004fd50 NULL
-8004fd54 func_80025258
-8004fd58 func_80025258
-8004fd5c func_80025718
-8004fd60 func_8002541c
-8004fd64 func_80025544
-8004fd68 NULL
-8004fd6c NULL
-8004fd70 NULL
-8004fd74 NULL
-8004fd78 func_80025258
-8004fd7c func_800257f0
+extern void WorkListSetTaskCallback(void* pTask, void (*pCallback)(void*));
 
-void func_80025224(WorkListEntry* pTask, int handlerIndex) {
-    WorkListSetTaskCallback(pTask, &CALLBACK_TABLE[handlerIndex]);
+void func_80025224(void* pTask, int handlerIndex) {
+    WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex]);
 }
-*/
 
 extern s32 D_80050100;
 extern u8 D_800C3664;
