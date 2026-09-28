@@ -154,6 +154,33 @@ unsigned int __wrap_SpuWrite(unsigned char* addr, unsigned int size)
     return (unsigned int)xg_plat_audio_upload_samples(addr, size);
 }
 
+extern void __real_DrawOTag(unsigned long* ot);
+extern void* __real_PutDrawEnv(void* env);
+extern void* __real_PutDispEnv(void* env);
+extern unsigned long* __real_ClearOTag(unsigned long* ot, int n);
+extern unsigned long* __real_ClearOTagR(unsigned long* ot, int n);
+
+void __wrap_DrawOTag(unsigned long* ot) { xg_plat_renderer_draw_ot(ot); }
+void* __wrap_PutDrawEnv(void* env) { return xg_plat_renderer_set_draw_env(env); }
+void* __wrap_PutDispEnv(void* env) { return xg_plat_renderer_set_display_env(env); }
+unsigned long* __wrap_ClearOTag(unsigned long* ot, int n)
+{
+    return (unsigned long*)xg_plat_renderer_clear_ot(ot, n, 0);
+}
+unsigned long* __wrap_ClearOTagR(unsigned long* ot, int n)
+{
+    return (unsigned long*)xg_plat_renderer_clear_ot(ot, n, 1);
+}
+
+void xg_plat_renderer_draw_ot(void* ot) { __real_DrawOTag((unsigned long*)ot); }
+void* xg_plat_renderer_set_draw_env(void* drawenv) { return __real_PutDrawEnv(drawenv); }
+void* xg_plat_renderer_set_display_env(void* dispenv) { return __real_PutDispEnv(dispenv); }
+void* xg_plat_renderer_clear_ot(void* ot, int n, int reverse)
+{
+    return reverse ? __real_ClearOTagR((unsigned long*)ot, n)
+                   : __real_ClearOTag((unsigned long*)ot, n);
+}
+
 int xg_plat_renderer_upload_image(int x, int y, int w, int h, const void* pixels)
 {
     XgPlatPsxRect rect = { (short)x, (short)y, (short)w, (short)h };

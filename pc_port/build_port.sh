@@ -1335,10 +1335,13 @@ fi
 # all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
 # low 32-bit address space makes every such truncation a lossless round-trip.
 NOPIE="-no-pie -fno-pie -rdynamic"
-# xg_plat routing: the game's LoadImage (VRAM upload) and SpuWrite (SPU
-# sample upload) calls go through the renderer / audio interfaces
-# (src/plat/xg_plat_psycross.c: __wrap_* -> interface -> PsyCross __real_*).
-XG_PLAT_WRAPS="-Wl,--wrap=LoadImage -Wl,--wrap=SpuWrite"
+# xg_plat routing: the game's PSX SDK calls listed here go through the
+# xg_plat interfaces (src/plat/xg_plat_psycross.c: __wrap_* -> interface ->
+# PsyCross __real_*); game C is unchanged.
+XG_PLAT_WRAP_SYMS="LoadImage SpuWrite"
+XG_PLAT_WRAP_SYMS+=" DrawOTag PutDrawEnv PutDispEnv ClearOTag ClearOTagR"   # renderer
+XG_PLAT_WRAPS=""
+for _sym in $XG_PLAT_WRAP_SYMS; do XG_PLAT_WRAPS+=" -Wl,--wrap=$_sym"; done
 LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
