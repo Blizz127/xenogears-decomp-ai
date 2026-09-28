@@ -6120,9 +6120,6 @@ void func_801D51EC(u8 slot, u8 charId, s32 x, s32 y) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D53D0);
-#else
 extern s32 D_801E9B38;
 extern s32 D_801E9B3C;
 extern s32 D_801E9B40;
@@ -6130,37 +6127,35 @@ extern s32 D_801E9B44;
 
 /* Arc A portraits: the MP / maxMP digit quads (2 digits each, digits[7..8]).
  * Lists buf+0xCD0 (count 0x1275) and buf+0xD70 (0x1276; left-packed). */
+/* Shared retail/port body (gcc 2.6.3 byte-exact).  The max-MP digits are
+ * placed by a count of digits drawn (j), as retail does. */
 void func_801D53D0(u8 slot, u8 charId, s32 x, s32 y) {
-    u8* buf = PORTRAIT_BUF(slot);
+    u8* buf;
     s32 i;
+    s32 j;
+    u8 d;
 
+    buf = PORTRAIT_BUF(slot);
     func_801C80B8(g_GameState.characters[charId].mp);
     buf[0x1275] = 0;
     for (i = 0; i < 2; i++) {
-        u8 d = g_Menu->digits[7 + i];
-
+        d = g_Menu->digits[7 + i];
         if (d != 0xFF) {
-            buf[0x1275] += (u8)func_8002675C(
-                g_Menu->unk2DC, d, buf + 0xCD0 + buf[0x1275] * 0x50,
-                g_Menu->renderContext,
-                x + D_801E9B38 + i * 8, y + D_801E9B3C, 0x1000);
+            buf[0x1275] += func_8002675C(g_Menu->unk2DC, d, buf + 0xCD0 + buf[0x1275] * 0x50,
+                g_Menu->renderContext, x + D_801E9B38 + i * 8, y + D_801E9B3C, 0x1000);
         }
     }
-
     func_801C80B8(g_GameState.characters[charId].maxMp);
     buf[0x1276] = 0;
-    for (i = 0; i < 2; i++) {
-        u8 d = g_Menu->digits[7 + i];
-
+    for (i = 0, j = 0; i < 2; i++) {
+        d = g_Menu->digits[7 + i];
         if (d != 0xFF) {
-            buf[0x1276] += (u8)func_8002675C(
-                g_Menu->unk2DC, d, buf + 0xD70 + buf[0x1276] * 0x50,
-                g_Menu->renderContext,
-                x + D_801E9B40 + buf[0x1276] * 8, y + D_801E9B44, 0x1000);
+            buf[0x1276] += func_8002675C(g_Menu->unk2DC, d, buf + 0xD70 + buf[0x1276] * 0x50,
+                g_Menu->renderContext, x + D_801E9B40 + j * 8, y + D_801E9B44, 0x1000);
+            j++;
         }
     }
 }
-#endif
 
 extern s32 D_801E9B48;
 extern s32 D_801E9B4C;
