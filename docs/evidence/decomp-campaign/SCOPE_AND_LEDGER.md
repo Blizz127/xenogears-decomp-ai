@@ -31,6 +31,11 @@ fails if a target is missing or differs. Hashes are never updated to make a
 build pass. A target with checksum PASS can still contain assembly; PASS means
 the produced retail module is byte-identical, not that every function is C.
 
+rom-check, not objdiff, is the authority on whether a function matches.
+objdiff can score a function 100% while its bytes differ: field's
+func_800A7948 scored 100% even though two of its stores went to swapped
+`symbol + offset` targets.
+
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.

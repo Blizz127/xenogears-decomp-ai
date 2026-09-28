@@ -22,9 +22,9 @@ extern VECTOR g_CamAtMovementDelta;
 extern VECTOR g_CamEyeMovementCurrent;
 extern VECTOR g_CamEyeMovementDelta;
 extern s16 g_FieldCameraMode;
-extern s32 D_800AF930;
-extern s16 D_800AF936;
-extern s16 D_800AF938;
+extern s32 D_800AF930[];
+extern s16 D_800AF936[];
+extern s16 D_800AF938[];
 extern s16 D_800AF93A[];
 extern s32 D_800B21D8;
 extern s16 g_FieldCameraModes[] asm("g_FieldCameraMode");
@@ -66,17 +66,13 @@ void func_8008FABC(void) {
 }
 
 /* FE6D — snapshot current SCRZ×scale / DIP / yaw into the scripted-cam scratch. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/camera/camera_movement", func_8008FB28);
-#else
 void func_8008FB28(void) {
     D_800AF93A[0] = 0x1000;
-    D_800AF936 = *(u16*)((u8*)&g_Scene + 0x6C);
-    D_800AF938 = *(u16*)((u8*)&g_Scene + 0x56);
-    D_800AF930 = (*(s32*)((u8*)&g_Scene + 0x68) * *(s16*)((u8*)&g_Scene + 0x6E)) >> 12;
+    D_800AF938[0] = *(u16*)((u8*)&g_Scene + 0x56);
+    D_800AF936[0] = *(u16*)((u8*)&g_Scene + 0x6C);
+    D_800AF930[0] = (*(s32*)((u8*)&g_Scene + 0x68) * *(s16*)((u8*)&g_Scene + 0x6E)) >> 12;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008FB98(void) {
 #ifdef XENO_PC_PORT
@@ -92,14 +88,14 @@ void func_8008FB98(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 
     D_800AF93A[0] = 0x1000;
-    D_800AF930 = ((s32)g_Scene.sceneScrZ * (s16)g_Scene.sceneScale) >> 12;
+    D_800AF930[0] = ((s32)g_Scene.sceneScrZ * (s16)g_Scene.sceneScale) >> 12;
     angleY = g_Scene.sceneAngle.vy;
     dip = g_Scene.sceneDIP;
     g_CamInterpolation.atStepDistance = 0xC;
     g_CamInterpolation.eyeStepDistance = 0xC;
-    D_800AF938 = angleY;
+    D_800AF938[0] = angleY;
     g_Scene.unk48 |= 0x8000;
-    D_800AF936 = dip;
+    D_800AF936[0] = dip;
 }
 
 #ifndef XENO_PC_PORT
@@ -447,9 +443,9 @@ void func_80090C20(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
             FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
-            D_800AF938);
+            D_800AF938[0]);
     } else {
-        D_800AF938 = FieldScriptVMGetInstructionArgument(1);
+        D_800AF938[0] = FieldScriptVMGetInstructionArgument(1);
     }
 
     g_FieldScriptMaxInstructionCount++;
@@ -460,9 +456,9 @@ void func_80090CB8(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
             FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
-            D_800AF936);
+            D_800AF936[0]);
     } else {
-        D_800AF936 = FieldScriptVMGetInstructionArgument(1);
+        D_800AF936[0] = FieldScriptVMGetInstructionArgument(1);
     }
 
     g_FieldScriptMaxInstructionCount++;
@@ -473,9 +469,9 @@ void func_80090D50(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
             FieldScriptVMGetInstructionArgument(1) & 0xFFFF,
-            D_800AF930);
+            D_800AF930[0]);
     } else {
-        D_800AF930 = FieldScriptVMGetInstructionArgument(1) & 0xFFFF;
+        D_800AF930[0] = FieldScriptVMGetInstructionArgument(1) & 0xFFFF;
     }
 
     g_FieldScriptMaxInstructionCount++;
@@ -483,9 +479,9 @@ void func_80090D50(void) {
 }
 
 void func_80090DEC(void) {
-    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, D_800AF938);
-    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(3) & 0xFFFF, D_800AF936);
-    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(5) & 0xFFFF, D_800AF930);
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, D_800AF938[0]);
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(3) & 0xFFFF, D_800AF936[0]);
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(5) & 0xFFFF, D_800AF930[0]);
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }

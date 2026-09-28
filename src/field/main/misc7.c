@@ -14,7 +14,7 @@
 extern FieldActor* D_800B06B8;
 extern s32 D_800AFD1C;
 extern s32 g_PlayerActorIndex;
-extern s32 D_800B21D8;
+extern s32 D_800B21D8[];
 extern s16 D_800AFB54;
 extern s16 func_8007B1C4(s16 x, s16 z, s32 walkmeshId, s16* out, s32* state);
 extern int FieldScriptArgument1(int index, int mask);
@@ -1410,7 +1410,7 @@ void func_8009A34C(void) {
     if (duration == 0) {
         duration = 1;
         *(s16*)((u8*)&g_Scene + 0x8C) = duration;
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
     }
 
     targetAngle = FieldScriptVMGetArgument(1);
@@ -1430,7 +1430,7 @@ void func_8009A420(s32 targetDip, s32 duration) {
     s32 delta;
 
     if (duration == 0) {
-        D_800B21D8 = 2;
+        D_800B21D8[0] = 2;
         duration = 1;
     }
 
@@ -1737,7 +1737,7 @@ void func_8009AE3C(s32 targetScrZ, s32 duration) {
     } else {
         *(s32*)((u8*)&g_Scene + 0x68) = targetScrZ;
         *(s16*)((u8*)&g_Scene + 0x80) = 0;
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
     }
 
     pFlags = (s32*)((u8*)&g_Scene + 0x48);
@@ -2021,9 +2021,6 @@ void func_8009B6AC(void) {
 }
 
 /* Start yaw tween toward a relative 8-way facing over `duration` frames. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B708);
-#else
 void func_8009B708(s32 facingOffset, s32 duration) {
     s32 direction;
     s32 delta;
@@ -2031,7 +2028,7 @@ void func_8009B708(s32 facingOffset, s32 duration) {
 
     direction = FieldGetCameraDirection() & 0xFFFF;
     if (duration == 0) {
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
         duration = 1;
     }
 
@@ -2041,7 +2038,6 @@ void func_8009B708(s32 facingOffset, s32 duration) {
     *(s32*)((u8*)&g_Scene + 0x7C) = ((facingOffset + 4) & 7) << 9;
     *(s32*)((u8*)&g_Scene + 0x5C) = delta;
 }
-#endif /* XENO_PC_PORT */
 
 /* Nudge yaw ±0x200 (45°) over `duration` frames. a0==0 → +0x200, else −0x200. */
 #ifndef XENO_PC_PORT
@@ -2052,7 +2048,7 @@ void func_8009B7A8(s32 negative, s32 duration) {
     s32 target;
 
     if (duration == 0) {
-        D_800B21D8 += 2;
+        D_800B21D8[0] += 2;
         duration = 1;
     }
 
