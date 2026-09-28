@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
-"""m2c_insert.py OV SEG names...
+"""m2c_insert.py [--inner] OV SEG names...
 
-Replace `INCLUDE_ASM("asm/OV/nonmatchings/SEG", name);` lines in src/OV/SEG.c
+Replace `INCLUDE_ASM("asm/OV/nonmatchings/SEG", name);` lines (or the
+`"../asm/..."` spelling) in src/OV/SEG.c
 with the cleaned m2c_try.py drafts: M2C_FIELD becomes a raw-offset access,
 M2C_UNK becomes s32, the drafts' externs/prototypes are merged at the top of
 the file's first `#ifndef XENO_PC_PORT` block (skipping anything the file's
 headers already declare, and using each inserted definition's own signature
 as its prototype), and an extern whose type conflicts with one already in
-scope is read through `(*(T*)&sym)`.  Rebuild and compare afterwards."""
+scope is read through `(*(T*)&sym)`.  Rebuild and compare afterwards.
+
+--inner: for a site shaped `#ifndef XENO_PC_PORT / INCLUDE_ASM / #else /
+<port definition> / #endif`, fold the draft into that definition as its
+retail arm (one signature, `#ifdef XENO_PC_PORT <port body> #else <draft
+body> #endif`) instead of adding a second definition.  Twin definitions break
+port tests that extract a function's source with awk.  A site whose port
+signature differs from the draft's is skipped (left INCLUDE_ASM) with a note;
+other sites fall back to the plain replacement."""
 import sys,os,re,subprocess
 sys.path.insert(0, os.path.dirname(__file__))
 from assist_common import CACHE, REPO
 os.chdir(REPO)
-OV,SEG=sys.argv[1],sys.argv[2]; names=sys.argv[3:]
+INNER='--inner' in sys.argv[1:]
+argv=[a for a in sys.argv[1:] if a!='--inner']
+OV,SEG=argv[0],argv[1]; names=argv[2:]
 D=os.path.join(CACHE,'m2c',OV,SEG)
 os.makedirs(CACHE,exist_ok=True)
 INC_C=os.path.join(CACHE,'_inc.c'); INC_I=os.path.join(CACHE,'_inc.i')
@@ -45,6 +56,29 @@ def clean(c):
         e,t,o=[a.strip() for a in args]
         c=c[:i]+f'*({t})((s8*)({e}) + {o})'+c[j+1:]
     return c.replace('M2C_UNK','s32')
+def fold_inner(s,old,fn,n):
+    """--inner: merge draft fn into the site's existing port definition.
+    Returns the new text, None when the site is not an #ifndef/#else port
+    site, or 'skip' when the signatures differ."""
+    site='#ifndef XENO_PC_PORT\n'+old+'#else\n'
+    if s.count(site)!=1: return None
+    a=s.index(site); L=s[a+len(site):].split('\n'); d=0
+    for j,l in enumerate(L):
+        t=l.strip()
+        if re.match(r'#\s*if',t): d+=1
+        elif re.match(r'#\s*endif',t):
+            if d==0: break
+            d-=1
+    port=L[:j]; rest='\n'.join(L[j+1:])
+    sig=re.compile(r'^\w[\w\s\*]*?\b'+n+r'\s*\([^;{]*\)\s*\{\s*$')
+    k=[i for i,l in enumerate(port) if sig.match(l)]
+    rl=fn.rstrip('\n').split('\n'); rk=[i for i,l in enumerate(rl) if sig.match(l)]
+    if not k or not rk or port[-1]!='}' or rl[-1]!='}': return None
+    norm=lambda x: re.sub(r'\s','',x)
+    if norm(port[k[0]])!=norm(rl[rk[0]]):
+        print(f'{n}: port signature differs from the draft; left INCLUDE_ASM'); return 'skip'
+    body=port[:k[0]]+rl[:rk[0]]+[port[k[0]],'#ifdef XENO_PC_PORT']+port[k[0]+1:-1]+['#else']+rl[rk[0]+1:-1]+['#endif','}']
+    return s[:a]+'\n'.join(body)+'\n'+rest
 defs={}; bodies={}
 for n in names:
     c=clean(open(f'{D}/{n}.c').read().split('#include "m2c_macros.h"\n',1)[1])
@@ -61,7 +95,14 @@ for n in names:
             m2=re.match(r'^(\w[\w\s\*]*?(\w+)\(.*\));\s*/\* extern \*/',l)
             if m:
                 sym=m[3]; mt=m[2].strip()
-                if sym in hdrdecl and sym not in types: continue
+                if sym in hdrdecl and sym not in types:
+                    if m[4]:
+                        # header-declared scalar read as an array: alias it
+                        alias=f'{sym}__a_'+re.sub(r'\W','',mt)
+                        if alias not in seen:
+                            externs.append(f'extern {mt} {alias}[] asm("{sym}");'); seen.add(alias)
+                        aliases[sym]=alias
+                    continue
                 if sym not in seen:
                     externs.append(m[1]); seen.add(sym); types[sym]=mt
                     if m[4]: arrays.add(sym)
@@ -83,9 +124,13 @@ for n in names:
     fn='\n'.join(body).strip()+'\n'
     for sym,t in conflicts.items(): fn=re.sub(r'\b'+sym+r'\b',f'(*({t}*)&{sym})',fn)
     for sym,al in aliases.items(): fn=re.sub(r'\b'+sym+r'\b',al,fn)
-    old=f'INCLUDE_ASM("asm/{OV}/nonmatchings/{SEG}", {n});\n'
-    assert s.count(old)==1,n
-    s=s.replace(old,'\n'+fn+'\n')
+    old=[x for x in (f'INCLUDE_ASM("asm/{OV}/nonmatchings/{SEG}", {n});\n',
+                     f'INCLUDE_ASM("../asm/{OV}/nonmatchings/{SEG}", {n});\n') if s.count(x)==1]
+    assert old,n
+    old=old[0]
+    folded=fold_inner(s,old,fn,n) if INNER else None
+    if folded=='skip': continue
+    s=folded if folded is not None else s.replace(old,'\n'+fn+'\n')
 i=s.index('#ifndef XENO_PC_PORT\n')+len('#ifndef XENO_PC_PORT\n')
 add=externs+protos
 if add: s=s[:i]+'\n'.join(add)+'\n\n'+s[i:]
