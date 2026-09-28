@@ -1,0 +1,88 @@
+"""Shared helpers for the decomp-assist scripts (try_func, m2c_try, m2c_insert,
+elf_cmp, perm_setup).  No retail data lives here: everything is read from the
+splat output under asm/ and the local build/.
+
+Environment:
+  XENO_ASSIST_CACHE  scratch directory (default ~/.cache/xeno/decomp_assist)
+  XENO_M2C           path to m2c.py (default ~/.cache/xeno/m2c/m2c.py)
+  XENO_BUILD_WRAP    command prefix that runs a shell string in the build
+                     environment, e.g. a docker wrapper "dbuild.sh <repo>";
+                     empty (default) runs the command on the host.
+"""
+import glob
+import os
+import re
+import shlex
+import subprocess
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+CACHE = os.path.expanduser(os.environ.get('XENO_ASSIST_CACHE', '~/.cache/xeno/decomp_assist'))
+M2C = os.path.expanduser(os.environ.get('XENO_M2C', '~/.cache/xeno/m2c/m2c.py'))
+BUILD_WRAP = os.environ.get('XENO_BUILD_WRAP', '')
+
+CC1_FLAGS = ['-O2', '-G8', '-mips1', '-mcpu=3000', '-w', '-funsigned-char', '-fpeephole',
+             '-ffunction-cse', '-fpcc-struct-return', '-fcommon', '-msoft-float', '-mgas',
+             '-fgnu-linker', '-quiet']
+MASPSX_FLAGS = ['--use-comm-section', '--run-assembler', '-EL', '-Iinclude', '-O2', '-G8',
+                '-march=r3000', '-mtune=r3000', '-no-pad-sections']
+
+
+def run_build(cmd):
+    """Run a shell command in the build environment (host or XENO_BUILD_WRAP)."""
+    if BUILD_WRAP:
+        return subprocess.run(shlex.split(BUILD_WRAP) + [cmd], capture_output=True, text=True, cwd=REPO)
+    return subprocess.run(['bash', '-lc', cmd], capture_output=True, text=True, cwd=REPO)
+
+
+def load_table(ov):
+    """{segment: [ {name, ins:[(offset, word, mask)]} ]} from asm/<ov>/**/*.s.
+
+    The mask hides relocated fields (%hi/%lo/%gp_rel immediates and j/jal
+    targets), so a match here is a code match; `make rom-check` is still the
+    byte-exact authority (relocation targets are not compared)."""
+    table = {}
+    for f in glob.glob(os.path.join(REPO, f'asm/{ov}/**/*.s'), recursive=True):
+        if 'matchings' in f or '/data/' in f:
+            continue
+        rel = os.path.relpath(f, os.path.join(REPO, 'asm', ov))[:-2]
+        cur = None
+        funcs = []
+        for line in open(f):
+            m = re.match(r'\s*glabel (\S+)', line)
+            if m:
+                cur = {'name': m[1], 'ins': []}
+                funcs.append(cur)
+                continue
+            m = re.match(r'\s*/\* ([0-9A-F]+) ([0-9A-F]{8}) ([0-9A-F]{8}) \*/\s+(\S+)\s*(.*)', line)
+            if m and cur:
+                word = int.from_bytes(bytes.fromhex(m[3]), 'little')
+                op, args = m[4], m[5]
+                mask = 0xFFFFFFFF
+                if '%hi(' in args or '%lo(' in args or '%gp_rel' in args:
+                    mask = 0xFFFF0000
+                elif op in ('jal', 'j'):
+                    mask = 0xFC000000
+                cur['ins'].append((int(m[1], 16), word, mask))
+        table[rel] = funcs
+    return table
+
+
+def func_words(obj, name):
+    """(size, [words]) of symbol `name` in an object file's .text, or None."""
+    nm = subprocess.run(['mips-linux-gnu-nm', '-S', obj], capture_output=True, text=True).stdout
+    sym = [l.split() for l in nm.splitlines() if len(l.split()) == 4 and l.split()[3] == name]
+    if not sym:
+        return None
+    off, size = int(sym[0][0], 16), int(sym[0][1], 16)
+    tmp = os.path.join(CACHE, '_text.bin')
+    os.makedirs(CACHE, exist_ok=True)
+    subprocess.run(['mips-linux-gnu-objcopy', '-O', 'binary', '-j', '.text', obj, tmp])
+    data = open(tmp, 'rb').read()
+    return size, [int.from_bytes(data[off + 4 * i:off + 4 * i + 4], 'little') for i in range(size // 4)]
+
+
+def compare(ins, words):
+    """Number of masked mismatches, or -1 on a size mismatch."""
+    if len(words) != len(ins):
+        return -1
+    return sum(1 for (o, w, k), b in zip(ins, words) if (b & k) != (w & k))
