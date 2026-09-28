@@ -30,7 +30,7 @@ done
 cp "$OUT/name.inc" "$OUT/good.inc"
 for mutant in wrong-character wrong-stride raw-resource raw-context wrong-scale; do
     case "$mutant" in
-        wrong-character) sed 's/entry\[0x1C + slotIdx\]/entry[0x1B + slotIdx]/' "$OUT/good.inc" > "$OUT/name.inc" ;;
+        wrong-character) sed 's/(entry + slotIdx)\[0x1C\]/(entry + slotIdx)[0x1B]/' "$OUT/good.inc" > "$OUT/name.inc" ;;
         wrong-stride) sed 's/slotIdx \* 0x87C/slotIdx * 0x7C/' "$OUT/good.inc" > "$OUT/name.inc" ;;
         raw-resource) sed 's/g_Menu->unk2DC/(u8*)(uintptr_t)*(u32*)((u8*)g_Menu + 0x2DC)/' "$OUT/good.inc" > "$OUT/name.inc" ;;
         raw-context) sed 's/g_Menu->renderContext/ *(s32*)((u8*)g_Menu + 0x308)/' "$OUT/good.inc" > "$OUT/name.inc" ;;
