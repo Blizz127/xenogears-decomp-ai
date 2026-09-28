@@ -2606,33 +2606,34 @@ void func_8003A55C(s32 slot, s32 pan) {
     } while (count != 0);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A5D0);
-#else
+/* Bitmask of active entries (optionally only those whose +8 word is pData).
+ * The -1 loop advances the pointer before testing the flags it just read,
+ * as retail does. */
 u32 func_8003A5D0(s32 pData) {
-    u8* pBase = (u8*)(uintptr_t)D_800595D8;
-    u8* pEntry = pBase + 0x94;
-    s32 count = D_80059478;
-    u32 mask = 0;
     u32 bit = 1;
+    s32 count = D_80059478;
+    u8* pEntry = (u8*)(uintptr_t)D_800595D8 + 0x94;
+    u32 mask = 0;
     if (pData == -1) {
-        while (count-- != 0) {
-            if (*(u16*)pEntry & 1) mask |= bit;
+        do {
+            u16 flags = *(u16*)pEntry;
             pEntry += 0x158;
+            if (flags & 1) mask |= bit;
+            count--;
             bit <<= 1;
-        }
+        } while (count != 0);
     } else {
-        while (count-- != 0) {
+        do {
+            count--;
             if ((*(u16*)pEntry & 1) && *(s32*)(pEntry + 8) == pData) {
                 mask |= bit;
             }
             pEntry += 0x158;
             bit <<= 1;
-        }
+        } while (count != 0);
     }
     return mask;
 }
-#endif
 
 #ifdef XENO_PC_PORT
 /* Coexistence (d88f13c pattern): logic-verified port C body; the matching
@@ -3458,24 +3459,21 @@ void func_8003B644(s32 elementSpec, s32 packedId, s32 volume, s32 pan) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B930);
-#else
+/* Frees the chain hanging off manager->unk_Manager_0x4. Retail reuses the
+ * manager register as the next-entry holder, hence the one variable. */
 void func_8003B930(AudioManager* manager) {
     AudioManager* pEntry;
-    AudioManager* pNext;
 
     pEntry = SOUND_PSX_TO_PTR(AudioManager, manager->unk_Manager_0x4);
     if (pEntry != NULL) {
         manager->unk_Manager_0x4 = SOUND_PTR_TO_PSX(NULL);
         do {
-            pNext = SOUND_PSX_TO_PTR(AudioManager, pEntry->unk_Manager_0x4);
+            manager = SOUND_PSX_TO_PTR(AudioManager, pEntry->unk_Manager_0x4);
             SoundHeapFree(pEntry);
-            pEntry = pNext;
-        } while (pEntry != NULL);
+            pEntry = manager;
+        } while (manager != NULL);
     }
 }
-#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 void SoundCopyAudioManagerData(AudioManager* pDest, AudioManager* pSrc) {
@@ -4527,38 +4525,22 @@ u8* func_8003D110(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D110);
 #endif
 
-/* decomp-permuter (gcc-2.6.0, 2026-09-28) found only a fake-match for this
- * function: the three pre-division statements duplicated under an
- * `if (pScript) {...} else {...}` with identical branches. Byte-exact but not
- * faithful C, so not committed; the plain body below is 4 bytes short (the
- * `divisor` copy of steps lands in a different register). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D13C);
-#else
 // Seq cmd: master volume fade -- target + step count for the inline
-// interpolator at manager+0x58.
+// interpolator at manager+0x58. steps is an s16: widening it for the
+// division is retail's `move a2,a3`.
 u8* func_8003D13C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
     s32 target = pScript[1];
-    s32 steps = pScript[0];
-    s32 current = pAudioManager->unk_0x58;
+    s16 steps = pScript[0];
     s32 diff;
-    s32 shifted;
-    s32 divisor;
+
     *(u16*)&pAudioManager->unk_0x62 = target;
-    shifted = target << 16;
-#if defined(__mips__)
-    __asm__ volatile("addu %0, %1, $zero" : "=r"(divisor) : "r"(steps));
-#else
-    divisor = steps;
-#endif
-    diff = shifted - current;
-    if (divisor != 0 && diff != 0) {
-        pAudioManager->unk_0x5c = diff / divisor;
+    diff = (target << 16) - pAudioManager->unk_0x58;
+    if (steps != 0 && diff != 0) {
+        pAudioManager->unk_0x5c = diff / steps;
         pAudioManager->unk_0x60 = steps;
     }
     return pScript + 2;
 }
-#endif
 
 // Seq cmd: channel level immediate -- set interp70 and flag volume change on
 // active voices.
