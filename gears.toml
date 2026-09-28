@@ -222,3 +222,13 @@ paths = [
     "src/battle/main51.",
     "src/battle/main2.",
 ]
+
+[[build_preset]]
+name = "Bcf1Gcc263"
+# battle_command_file1 (archive 0x20 file 1) is gcc 2.6.3 (psx) code: 23 of its
+# INCLUDE_ASM bodies match only under 2.6.x, and the TUs stay byte-exact as a
+# whole under it.
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [ "src/battle_command_file1/" ]
