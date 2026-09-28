@@ -34,13 +34,13 @@ the produced retail module is byte-identical, not that every function is C.
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.
-The current report measures **283,788 / 1,383,684 code bytes (20.51%)** and
-**1,904 / 4,464 functions (42.65%)** as matching C. The aggregate covers all
+The current report measures **283,856 / 1,383,684 code bytes (20.51%)** and
+**1,905 / 4,464 functions (42.67%)** as matching C. The aggregate covers all
 targets below; the Psy-Q subset overlaps the executable row.
 
 | Target | Matching C functions | Function progress | Matching C bytes | Byte progress | Whole-binary SHA gate |
 |---|---:|---:|---:|---:|---|
-| Main executable (`slus_006.64`) | 812 / 1,223 | 66.39% | 95,112 / 218,072 | 43.61% | FAIL |
+| Main executable (`slus_006.64`) | 813 / 1,223 | 66.48% | 95,180 / 218,072 | 43.65% | FAIL |
 | Field overlay | 559 / 884 | 63.24% | 87,824 / 253,052 | 34.71% | FAIL |
 | Member-change menu | 67 / 67 | 100.00% | 24,936 / 24,936 | 100.00% | PASS |
 | Shop menu | 104 / 118 | 88.14% | 37,460 / 53,008 | 70.67% | PASS |
@@ -55,9 +55,9 @@ The checksum baseline is from a clean `make rom-check` after the current menu
 assembly include was restored and `MenuExecute` reached a 100% objdiff match.
 Its containing main-executable TU matches 8/8 functions and 2,816/2,816 code
 bytes. `AnimScriptStackPopU8`, `AnimScriptStackPopU16`,
-`AnimScriptStackPopU24`, `AnimScriptStackPushU8`, and
-`AnimScriptStackPushU16` are now exact C matches: these changes increased
-main-executable progress by 216 bytes and five functions. **7 of 10**
+`AnimScriptStackPopU24`, `AnimScriptStackPushU8`, `AnimScriptStackPushU16`,
+and `AnimScriptStackPushU24` are now exact C matches: these changes increased
+main-executable progress by 284 bytes and six functions. **7 of 10**
 pinned artifacts pass. The three
 failures are the executable, field overlay, and main menu; their hashes remain
 red and must be repaired in code. `MenuExecute` is exact at the object level,

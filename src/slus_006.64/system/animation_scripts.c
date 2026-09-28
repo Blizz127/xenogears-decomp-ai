@@ -1762,11 +1762,11 @@ void AnimScriptStackPushU16(SpriteData* pSpriteData, u16 value) {
 void AnimScriptStackPushU24(SpriteData* pSpriteData, s32 value) {
     u8* pData = (u8*)pSpriteData;
     s8 idx = (s8)(pData[0x8C] -= 3);
-    pData[0x8E + idx] = (u8)value;
+    (idx + pData)[0x8E] = (u8)value;
     idx = (s8)pData[0x8C];
-    pData[0x8F + idx] = (u8)(value >> 8);
+    (idx + pData)[0x8F] = (u8)(value >> 8);
     idx = (s8)pData[0x8C];
-    pData[0x90 + idx] = (u8)(value >> 16);
+    (idx + pData)[0x90] = (u8)(value >> 16);
 }
 
 void func_80021D3C(void* arg0, s32 arg1, s32 arg2) {
