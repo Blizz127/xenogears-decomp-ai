@@ -114,7 +114,7 @@ segments:
       - [0x23688, hasm, util/lzss]
       - [0x23754, c, system/system]
       - [0x25E9C, c, system/controller]
-      - [0x26644, asm]
+      - [0x26644, c, system/controller2]
       - [0x274D8, c, system/font]
       - [0x28078, asm]
       - [0x281D8, c, system/asset_loader]
