@@ -936,16 +936,14 @@ void func_80093568(void) {
 #endif /* FIELD_SUB(7) */
 
 #if FIELD_SUB(8)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q8.c */
 void func_80093664(void) {
     u8 b1 = SCRIPT_READ_U8_REL(1);
     u8 b2 = SCRIPT_READ_U8_REL(2);
     s32 result = func_80092424(b1, b2);
     u16 addr = (u16)FieldScriptVMGetInstructionArgument(3);
-    FieldScriptMemoryWriteU16(addr, (u16)result);
+    FieldScriptMemoryWriteU16(addr, result);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(8) */
 
 extern s32 D_8004F350;
@@ -1543,158 +1541,148 @@ void func_80094C8C(void) {
 #endif /* FIELD_SUB(9) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094CFC(void) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x1F90 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1F90] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x2026 + i] == 0) {
+        if (p[0x2026] == 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094D4C(void) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x1D38 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1D38] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x1D9C + i] == 0) {
+        if (p[0x1D9C] == 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094D9C(void) {
     s32 i;
     for (i = 0; i < 0xC8; i++) {
-        if (((u8*)g_pGameState)[0x1E00 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1E00] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x1EC8 + i] == 0) {
+        if (p[0x1EC8] == 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094DEC(void) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x20BC + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x20BC] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x2120 + i] == 0) {
+        if (p[0x2120] == 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094E3C(void) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x2184 + i] == 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2184] == 0) {
             return i;
         }
-        if (((u8*)g_pGameState)[0x221A + i] == 0) {
+        if (p[0x221A] == 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094E8C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x2026 + i] == a0 && ((u8*)g_pGameState)[0x1F90 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2026] == a0 && p[0x1F90] != 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094EDC(s32 a0) {
     s32 i;
     for (i = 0; i < 0xC8; i++) {
-        if (((u8*)g_pGameState)[0x1EC8 + i] == a0 && ((u8*)g_pGameState)[0x1E00 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1EC8] == a0 && p[0x1E00] != 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094F2C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x1D9C + i] == a0 && ((u8*)g_pGameState)[0x1D38 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x1D9C] == a0 && p[0x1D38] != 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094F7C(s32 a0) {
     s32 i;
     for (i = 0; i < 0x64; i++) {
-        if (((u8*)g_pGameState)[0x2120 + i] == a0 && ((u8*)g_pGameState)[0x20BC + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x2120] == a0 && p[0x20BC] != 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc11_q10.c */
 s32 func_80094FCC(s32 a0) {
     s32 i;
     for (i = 0; i < 0x96; i++) {
-        if (((u8*)g_pGameState)[0x221A + i] == a0 && ((u8*)g_pGameState)[0x2184 + i] != 0) {
+        u8* p = (u8*)g_pGameState + i;
+        if (p[0x221A] == a0 && p[0x2184] != 0) {
             return i;
         }
     }
     return -1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(10) */
 
 #if FIELD_SUB(10)

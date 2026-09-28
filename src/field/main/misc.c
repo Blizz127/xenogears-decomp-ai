@@ -513,15 +513,13 @@ void func_80087E98(void) {
 #endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(7) */
 
-extern u16 D_800B2348;
+extern u16 D_800B2348[]; /* retail materialises its address (la), as for an array */
 
 #if FIELD_SUB(7)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc_q7.c */
 void func_80087FA4(void) {
-    D_800B2348++;
+    D_800B2348[0]++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(7) */
 
 #if FIELD_SUB(7)
@@ -3712,19 +3710,17 @@ void func_8008F558(void) {
 extern s32 func_8003A5D0(s32);
 
 #if FIELD_SUB(35)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc_q35.c */
 void func_8008F5E4(void) {
     s32 soundBits = func_8003A5D0(-1);
     s32 mask = FieldScriptVMGetArgument(1) << 8;
 
-    if ((soundBits & mask) != 0) {
-        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
-    } else {
+    if ((soundBits & mask) == 0) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+    } else {
+        g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
     }
     D_800B00C0 = 1;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(35) */
 
 #if FIELD_SUB(35)

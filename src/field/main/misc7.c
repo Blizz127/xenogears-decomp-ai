@@ -674,7 +674,6 @@ void func_80098738(void) {
 extern s32 FieldMathInterpolateAngle(s32, s32, s32);
 
 #if FIELD_SUB(4)
-#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc7_q4.c */
 void func_800988B8(void) {
     u8 mask2 = SCRIPT_READ_U8_REL(9);
     s32 arg2 = FieldScriptArgument2(3, mask2);
@@ -684,10 +683,9 @@ void func_800988B8(void) {
     s32 arg4 = FieldScriptArgument4(7, mask4);
     s32 result = FieldMathInterpolateAngle(arg2, arg3, arg4);
     u16 addr = (u16)FieldScriptVMGetInstructionArgument(1);
-    FieldScriptMemoryWriteU16(addr, (u16)result);
+    FieldScriptMemoryWriteU16(addr, result);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
 }
-#endif /* XENO_PC_PORT */
 #endif /* FIELD_SUB(4) */
 
 #if FIELD_SUB(4)
