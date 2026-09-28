@@ -1790,9 +1790,14 @@ void FieldScriptCheckActorOnScreen(void) {
 void func_80095CC4(void) {
     s32 actorIdx = FieldScriptVMGetActorIndex(1);
     if (actorIdx != ACTOR_ID_INVALID) {
-        FieldActor* pActor = &g_FieldActors[FieldScriptVMGetActorIndex(1)];
-        void* pActorData = (void*)(uintptr_t)pActor->pActorData;
-        s32 arg2 = FieldScriptVMGetArgument(2);
+        u32 actorAddr = (u32)(FieldScriptVMGetActorIndex(1) * sizeof(FieldActor));
+        FieldActor* pActor;
+        void* pActorData;
+        s32 arg2;
+        actorAddr += (u32)(uintptr_t)g_FieldActors;
+        pActor = (FieldActor*)(uintptr_t)actorAddr;
+        pActorData = (void*)(uintptr_t)pActor->pActorData;
+        arg2 = FieldScriptVMGetArgument(2);
         if (arg2 == *(s16*)((u8*)pActorData + 0x10)) {
             g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
             return;

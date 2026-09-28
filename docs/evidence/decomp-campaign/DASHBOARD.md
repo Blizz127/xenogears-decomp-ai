@@ -14,8 +14,8 @@ several overlays already and says nothing about how much C exists.
 
 | Measure | Value |
 |---|---|
-| **Code matched** | **20.69%** (286,228 / 1,383,684 bytes) |
-| Functions fully matched | 42.83% (1,912 / 4,464) |
+| **Code matched** | **20.70%** (286,396 / 1,383,684 bytes) |
+| Functions fully matched | 42.85% (1,913 / 4,464) |
 | Fuzzy match | 32.50% |
 | Units (objects) | 337 |
 
@@ -26,7 +26,7 @@ Note: `Psy-Q SDK` is a *subset* of `Main Executable` (`slus_006.64/psyq` inside 
 | Overlay | Code matched | Bytes | Functions | Progress |
 |---|---:|---|---:|---|
 | Battle Overlay | 8.33% | 27,672 / 332,316 | 292 / 857 | `##......................` |
-| Field Overlay | 35.64% | 90,196 / 253,052 | 566 / 884 | `#########...............` |
+| Field Overlay | 35.71% | 90,364 / 253,052 | 567 / 884 | `#########...............` |
 | Main Executable | 43.65% | 95,180 / 218,072 | 813 / 1,223 | `##########..............` |
 | World Map Overlay | 0.00% | 0 / 168,336 | 0 / 386 | `........................` |
 | Menu Overlay | 7.27% | 10,784 / 148,360 | 70 / 307 | `##......................` |
