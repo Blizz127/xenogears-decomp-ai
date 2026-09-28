@@ -34,13 +34,13 @@ the produced retail module is byte-identical, not that every function is C.
 ## Baseline — 2026-09-28
 
 Source counts below come from objdiff report version 2 after `make report`.
-The whole report measures **283,572 / 1,383,684 code bytes (20.49%)** and
-**1,899 / 4,464 functions (42.54%)** as matching C. The aggregate covers all
+The current report measures **283,624 / 1,383,684 code bytes (20.50%)** and
+**1,900 / 4,464 functions (42.56%)** as matching C. The aggregate covers all
 targets below; the Psy-Q subset overlaps the executable row.
 
 | Target | Matching C functions | Function progress | Matching C bytes | Byte progress | Whole-binary SHA gate |
 |---|---:|---:|---:|---:|---|
-| Main executable (`slus_006.64`) | 807 / 1,223 | 65.98% | 94,896 / 218,072 | 43.52% | FAIL |
+| Main executable (`slus_006.64`) | 808 / 1,223 | 66.07% | 94,948 / 218,072 | 43.54% | FAIL |
 | Field overlay | 559 / 884 | 63.24% | 87,824 / 253,052 | 34.71% | FAIL |
 | Member-change menu | 67 / 67 | 100.00% | 24,936 / 24,936 | 100.00% | PASS |
 | Shop menu | 104 / 118 | 88.14% | 37,460 / 53,008 | 70.67% | PASS |
@@ -53,8 +53,10 @@ targets below; the Psy-Q subset overlaps the executable row.
 
 The checksum baseline is from a clean `make rom-check` after the current menu
 assembly include was restored and `MenuExecute` reached a 100% objdiff match.
-Its containing main-executable TU now matches 8/8 functions and 2,816/2,816
-code bytes. **7 of 10** pinned artifacts pass. The three
+Its containing main-executable TU matches 8/8 functions and 2,816/2,816 code
+bytes. `AnimScriptStackPopU24` is now an additional exact C match: its change
+increased main-executable progress by 52 bytes and one function. **7 of 10**
+pinned artifacts pass. The three
 failures are the executable, field overlay, and main menu; their hashes remain
 red and must be repaired in code. `MenuExecute` is exact at the object level,
 but the main executable as a whole remains checksum-red; more drift remains.

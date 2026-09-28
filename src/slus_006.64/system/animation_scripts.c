@@ -1738,9 +1738,9 @@ s32 AnimScriptStackPopU16(SpriteData* pSpriteData) {
 s32 AnimScriptStackPopU24(SpriteData* pSpriteData) {
     u8* pData = (u8*)pSpriteData;
     s8 idx = (s8)pData[0x8C];
-    u32 b0 = pData[0x8E + idx];
-    u32 b1 = pData[0x8F + idx];
-    u32 b2 = pData[0x90 + idx];
+    u32 b0 = (idx + pData)[0x8E];
+    u32 b1 = (idx + pData)[0x8F];
+    u32 b2 = (idx + pData)[0x90];
     pData[0x8C] += 3;
     return b0 + b1 * 256 + b2 * 65536;
 }
