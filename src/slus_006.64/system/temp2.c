@@ -1,5 +1,9 @@
 #include "common.h"
 #include "psyq/libgte.h"
+#ifndef XENO_PC_PORT
+s32 func_8002D180(void *arg0, void *arg1);
+#endif
+
 #ifdef XENO_PC_PORT
 /* Execute GTE operations through the host adapter, not PsyQ's assembler
  * placeholders (which the x86 assembler also accepts as raw data). */
@@ -1308,23 +1312,17 @@ void func_8002CB54(u8* modelData, u32* out1, u32* out2) {
     *out2 = (u32)((u8*)buf + *(s32*)(modelData + 0x34));
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CBBC);
-#else
 // Frees the model's optional secondary buffer at modelData+0x18 iff the
 // model's own flags word (+0x0) has bit 0x1 set, then clears that bit. The
 // flag is self-describing: it is only set when +0x18 was actually populated
 // with a real allocation, so this never frees an unowned/uninitialized field.
 void func_8002CBBC(u8* modelData) {
-    u16 flags = *(u16*)(modelData + 0x0);
-
-    if (flags & 0x1) {
+    if (*(u16*)(modelData + 0x0) & 0x1) {
         /* The optional buffer is stored in the model's PSX u32 slot. */
         HeapFree((void*)(uintptr_t)*(u32*)(modelData + 0x18));
-        *(u16*)(modelData + 0x0) = flags & 0xFFFE;
+        *(u16*)(modelData + 0x0) = *(u16*)(modelData + 0x0) & 0xFFFE;
     }
 }
-#endif
 
 extern s32 D_80059310;
 extern s32 D_80050108;
@@ -1636,7 +1634,20 @@ s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
     return 1;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D180);
+
+#ifndef XENO_PC_PORT
+s32 func_8002D180(void *arg0, void *arg1) {
+    void *temp_s0;
+
+    temp_s0 = (*(void **)&D_80059424);
+    *(s8 *)((s8*)(temp_s0) + 3) = 8;
+    NormalColorCol3((*(s32*)&D_8005952C) + (*(s16 *)((s8*)(arg1) + 0) * 8), (*(s32*)&D_8005952C) + (*(s16 *)((s8*)(arg1) + 2) * 8), (*(s32*)&D_8005952C) + (*(s16 *)((s8*)(arg1) + 4) * 8), arg0, temp_s0 + 4, temp_s0 + 0xC, temp_s0 + 0x14);
+    NormalLightCol((*(s32*)&D_8005952C) + (*(s16 *)((s8*)(arg1) + 6) * 8), arg0, temp_s0 + 0x1C);
+    *(u8 *)((s8*)(temp_s0) + 7) = (u8) *(u8 *)((s8*)(arg0) + 3);
+    return 1;
+}
+#endif
+
 #endif
 
 #ifndef XENO_PC_PORT
@@ -2429,6 +2440,11 @@ s32 func_8003014C(s32* pData) {
 }
 #endif
 
+/* Closest C so far (3 words off, only where the -1 loop constant is
+ * scheduled): `volatile u8 unused[1];` for retail's 8-byte frame,
+ * `i = count - 1;` before `if (count != 0)`, a separate
+ * `s16* pIndex = (s16*)(i * 2 + (uintptr_t)pIndices);`, offsets added as
+ * `idx + (uintptr_t)pSrc/pDst`, and `do { ... } while (--i != -1);`. */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
 #else
