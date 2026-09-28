@@ -1,5 +1,11 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
+s16 func_800A3490(s16 arg0, s16 arg1, s32 arg2);
+s16 func_800A3578(s16 arg0, s16 arg1, s32 arg2);
+s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2);
+#endif
+
+#ifndef XENO_PC_PORT
 #include "system/memory.h"
 #endif
 #ifndef XENO_PC_PORT
@@ -12,10 +18,36 @@ void func_800A429C(void *arg0);
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3490);
+
+#ifndef XENO_PC_PORT
+s16 func_800A3490(s16 arg0, s16 arg1, s32 arg2) {
+    return (s16) (arg2 + ((s32) (rsin(arg0) + 0x1000) / arg1));
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3514);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3578);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A35C8);
+
+#ifndef XENO_PC_PORT
+s16 func_800A3578(s16 arg0, s16 arg1, s32 arg2) {
+    return (s16) (arg2 - (arg0 / arg1));
+}
+#endif
+
+
+#ifndef XENO_PC_PORT
+s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
+    s16 temp_v0;
+    s16 var_v1;
+
+    temp_v0 = 0x20 - (arg0 / arg1);
+    var_v1 = temp_v0;
+    if (temp_v0 < arg2) {
+        var_v1 = arg2;
+    }
+    return var_v1;
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3640);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
 
