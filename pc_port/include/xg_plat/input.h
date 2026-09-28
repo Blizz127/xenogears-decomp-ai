@@ -21,6 +21,11 @@ const char* xg_plat_input_button_name(XgPlatButton button);
  * Returns 1 when the key name is known. */
 int xg_plat_input_bind_key(XgPlatButton button, const char* key_name);
 
+/* Pad state for the game's PadRead calls (link-time routing,
+ * build_port.sh XG_PLAT_WRAP_SYMS): pad 1 in the low 16 bits, pad 2 in the
+ * high 16, PSX button bit layout, bit set = pressed. */
+unsigned int xg_plat_input_read_pads(int id);
+
 #ifdef __cplusplus
 }
 #endif

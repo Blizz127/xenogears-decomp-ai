@@ -34,6 +34,16 @@ int  xg_plat_renderer_supports(const char* option);
  * backend's LoadImage result. */
 int  xg_plat_renderer_upload_image(int x, int y, int w, int h, const void* pixels);
 
+/* Frame submission.  The game builds PSX-format data (an ordering table of
+ * linked GPU primitives, DRAWENV / DISPENV structs); these entry points take
+ * it as-is, so a backend other than PsyCross interprets that format.  The
+ * game's DrawOTag / PutDrawEnv / PutDispEnv / ClearOTag(R) calls arrive here
+ * (link-time routing, build_port.sh XG_PLAT_WRAP_SYMS). */
+void  xg_plat_renderer_draw_ot(void* ot);                 /* draw a linked primitive list */
+void* xg_plat_renderer_set_draw_env(void* drawenv);       /* drawing area, offset, clip */
+void* xg_plat_renderer_set_display_env(void* dispenv);    /* displayed framebuffer area */
+void* xg_plat_renderer_clear_ot(void* ot, int n, int reverse); /* link n empty entries */
+
 #ifdef __cplusplus
 }
 #endif

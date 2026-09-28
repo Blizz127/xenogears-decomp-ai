@@ -7,6 +7,8 @@ This repository is a matching decompilation of Xenogears for the PlayStation, US
 
 <img src="https://i.imgur.com/FfAa7QA.png" />
 
+> **History rewritten (2026-09-28).** Earlier revisions of this repository accidentally contained data copied from the retail Xenogears disc. All branches and tags were rewritten to remove it, so every commit ID has changed. If you cloned or forked before this date, delete your copy and re-clone (`git clone https://github.com/Blizz127/xenogears-decomp-ai.git`). Do not push or merge old history back. The project ships no game data: the PC port reads everything from your own disc image at runtime.
+
 ## Original starter
 
 This repository continues the original decompilation starter by ladysilverberg:

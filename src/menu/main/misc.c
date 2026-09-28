@@ -2214,9 +2214,6 @@ s32 func_801C8D78(u8 port) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8EE8);
-#else
 void func_801C8EE8(void) {
 #ifdef XENO_PC_PORT
     u8 state;
@@ -2235,42 +2232,34 @@ void func_801C8EE8(void) {
         }
     }
 #else
-    void* pMenu = g_Menu;
-    void* pData = g_Menu->unk32C;
-    u8 state;
-    if (pData == NULL) {
-        return;
-    }
-    state = *(u8*)((u8*)pData + 0x4FE6);
-    if (state == 1) {
-        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
-            if (func_801C8D78(0) != 0) {
-                *(u8*)((u8*)g_Menu + 0x334) = 1;
+    switch (g_Menu->unk32C->unk4F80[0x66]) {
+    case 1:
+        if (g_Menu->unk32C->unk4F80[8] == 0) {
+            if ((u8)func_801C8D78(0) != 0) {
+                g_Menu->unk334 = 1;
             }
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+            g_Menu->unk32C->unk4F80[8] = 1;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
-            func_801C8D78(1);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
-            *(u8*)((u8*)g_Menu + 0x334) = 1;
+        if (g_Menu->unk32C->unk4F80[9] == 0) {
+            if ((u8)func_801C8D78(1) != 0) {
+                g_Menu->unk334 = 1;
+            }
+            g_Menu->unk32C->unk4F80[9] = 1;
         }
-    } else if (state == 2) {
-        if (*(u8*)((u8*)pData + 0x4F88) == 0) {
+        break;
+    case 2:
+        if (g_Menu->unk32C->unk4F80[8] == 0) {
             func_801C8D78(0);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F88) = 1;
+            g_Menu->unk32C->unk4F80[8] = 1;
         }
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (*(u8*)((u8*)pData + 0x4F89) == 0) {
+        if (g_Menu->unk32C->unk4F80[9] == 0) {
             func_801C8D78(1);
-            *(u8*)(*(void**)((u8*)g_Menu + 0x32C) + 0x4F89) = 1;
+            g_Menu->unk32C->unk4F80[9] = 1;
         }
+        break;
     }
 #endif
 }
-#endif
 
 s32 func_801C9038(char* path, void* pBuf) {
     s32 fd = open(path, 3);
@@ -5319,7 +5308,7 @@ extern void func_801D28A8(void);                      /* stub */
 extern u8 D_801EA528[];
 extern u8 D_801EA19C[];
 extern void func_801E8474(s32, void*);                /* content build (stub for now) */
-extern void func_801E8DA8(s32, s32);                  /* portrait build (stub for now) */
+extern void func_801E8DA8(u8, u8);                    /* name-plate build (below) */
 extern void func_801D28FC(void);                      /* post-setup (stub for now) */
 
 /* Arc A: the menu open/close animation.  Slides the three portrait frames
@@ -5700,7 +5689,7 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D397C);
 #else
-extern void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+extern void func_801D4D1C(u8 windowIndex, u16 x, u16 y, u16 w, u16 h,
                           u8 unk714, s32 zIndex, u8 hasScrollBar);
 
 /* Arc A verts: (re)create window `windowIndex` -- windows 2+ get allocated on
@@ -5742,7 +5731,7 @@ void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h, u8 directParams,
 #endif
 
 #ifndef XENO_PC_PORT
-extern void func_801D4D1C(u8, s32, s32, s32, s32, u8, s32, u8);
+extern void func_801D4D1C(u8, u16, u16, u16, u16, u8, s32, u8);
 #endif
 
 void func_801D3B00(void) {
@@ -6024,20 +6013,15 @@ void func_801D49D0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4D1C);
-#else
 /* Arc A verts: build window `windowIndex`'s full frame geometry from its rect
  * -- the background quad, the four corner pieces, the four split borders, and
  * (optionally) the scrollbar -- then set the window props and ARM the draw
- * guard.  THIS is what turns the zero-size quads into a real window. */
-void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+ * guard.  THIS is what turns the zero-size quads into a real window.
+ * Shared retail/port body (gcc 2.6.3 byte-exact): the rect is u16, so h is
+ * narrowed too, as retail does (the port once passed h through unmasked). */
+void func_801D4D1C(u8 windowIndex, u16 x, u16 y, u16 w, u16 h,
                    u8 unk714, s32 zIndex, u8 hasScrollBar) {
     MenuWindow* pWindow = g_Menu->windows[windowIndex];
-
-    x &= 0xFFFF;
-    y &= 0xFFFF;
-    w &= 0xFFFF;
 
     g_Menu->pManager->shouldRenderWindow[windowIndex] = 0;
     func_801C851C(pWindow->vertsBackground, x, y, w, h);
@@ -6055,7 +6039,6 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
     pWindow->renderContext = (u8)g_Menu->renderContext;
     g_Menu->pManager->shouldRenderWindow[windowIndex] = 1;
 }
-#endif
 
 #ifdef XENO_PC_PORT
 /* Window destruction belongs to the dispatcher cleanup, not the Items screen. */
@@ -7469,9 +7452,8 @@ void func_801D8EA4(s32 slotArg, s32 modeArg, s32 buildTextArg,
  *     dispatcher's saved arg0) as `current`, and a2 = 1 (GEAR mode) -- the
  *     mode whose compensation below is unexercisable from Items.  Flagged
  *     for N3-Gear; catalogue only. */
-/* K&R-style (unprototyped) on purpose: the Status-family retail callers in
- * func_801E20C8 pass only 2 args, with gearMode as $a2 residue (the KNOWN
- * RESIDUE CASE catalogue above) — a prototyped def would reject those calls. */
+/* K&R-style (unprototyped) on purpose (see the KNOWN RESIDUE CASE catalogue
+ * above).  func_801E20C8 passes all three, (slotIdx, dir, 0). */
 /* Retail returns the slot unmasked (an int return); the port keeps its u8
  * declaration. */
 #ifdef XENO_PC_PORT
@@ -10098,45 +10080,46 @@ void func_801DFF5C(s32 categoryArg, s32 rowArg, s32 pageArg, s32 groupArg,
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E0434);
-#else
+/* Retail 0x801E0434: return the slot's unequipped item to the inventory.
+ * Mode 0 takes the character's equipped weapon (unk6F[0]) into weaponIDs;
+ * otherwise the gear's part at +4 goes into unk2120IDs.  Every matching entry
+ * gains one (capped at 99) and suppresses the insert; with no match the
+ * item takes the first empty entry with quantity 1.  Shared retail/port body
+ * (gcc 2.6.3 byte-exact).  The port once suppressed the insert only when a
+ * count hit the cap, so a held item gained a duplicate entry
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801E0434(u8 slotIdx, u8 mode) {
     u8* pTable;
     u8* pCounter;
     u8 val;
     u8 found = 1;
-    s32 limit = 100;
+    u8 limit;
     s32 i;
 
     if (mode == 0) {
-        u8* pGS = (u8*)&g_GameState;
-        u8 charIdx = ((u8*)g_Menu->pManager)[slotIdx + 0x30];
-        pTable = pGS + 0x1D9C;
-        pCounter = pGS + 0x1D38;
-        val = pGS[0x2DB + charIdx * 0xA4];
-        pGS[0x2DB + charIdx * 0xA4] = 0;
+        pTable = g_GameState.weaponIDs;
+        pCounter = pTable - 0x64;
+        val = g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].unk6F[0];
+        g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].unk6F[0] = 0;
+        limit = 100;
     } else {
-        u8* pGS = (u8*)&g_GameState;
-        u8 charIdx = ((u8*)g_Menu->pManager)[slotIdx + 0x30];
-        u8 intermediate = pGS[0x30C + charIdx * 0xA4];
-        pTable = pGS + 0x2120;
-        pCounter = pGS + 0x20BC;
-        val = pGS[0x97C + intermediate * 0xA4];
-        pGS[0x97C + intermediate * 0xA4] = 0;
+        pTable = g_GameState.unk2120IDs;
+        pCounter = pTable - 0x64;
+        val = g_GameState.gears[g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].gearId].field_0x0[4];
+        limit = 100;
+        g_GameState.gears[g_GameState.characters[g_Menu->pManager->currentCharacterIDs[slotIdx]].gearId].field_0x0[4] = 0;
     }
 
     for (i = 0; i < limit; i++) {
         if (pTable[i] == val) {
-            pCounter[i]++;
-            if (pCounter[i] >= 100) {
+            if (++pCounter[i] >= 100) {
                 pCounter[i] = 99;
-                found = 0;
             }
+            found = 0;
         }
     }
 
-    if (found && limit > 0) {
+    if (found) {
         for (i = 0; i < limit; i++) {
             if (pTable[i] == 0) {
                 pTable[i] = val;
@@ -10146,7 +10129,6 @@ void func_801E0434(u8 slotIdx, u8 mode) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E05D0);
@@ -10481,55 +10463,48 @@ extern void func_801E1014(void);
 extern void func_801E1AC8(u8);
 extern void func_801E1398(void);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E20C8);
-#else
+/* Retail 0x801E20C8: the Status screen loop.  Slot types 7..8 (unsigned
+ * test) bounce straight back; otherwise the page for slotIdx is (re)built
+ * whenever it changes, and input 9 / 10 steps to the previous / next member
+ * via func_801D9704(slotIdx, dir, 0), skipping types 7..8, until input 5.
+ * Shared retail/port body (gcc 2.6.3 byte-exact).  The port once tested the
+ * slot type signed (so every type below 9 bounced) and called
+ * func_801D9704(dir, 0), dropping the current slot
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801E20C8(u8 slotIdx) {
+    u8 cont = 1;
     u8 lastSlot = 0xFF;
-    u8 result = 1;
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    u8 slotType = *(u8*)((u8*)pManager + 0x30 + slotIdx);
-    if (slotType - 7 < 2) {
+
+    if ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2) {
         func_801C8574(4);
         return 1;
     }
     func_801E1014();
-    while (result) {
+    do {
         func_801C7BF4();
-        if ((u8)slotIdx != (u8)lastSlot) {
+        if (slotIdx != lastSlot) {
             func_801E1AC8(slotIdx);
             lastSlot = slotIdx;
         }
-        {
-            u8 menuState = *(u8*)((u8*)g_Menu + 0x325);
-            if (menuState == 9) {
-                slotIdx = (u8)func_801D9704(0, 0);
-                pMenu = g_Menu;
-                pManager = g_Menu->pManager;
-                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
-                    slotIdx = (u8)func_801D9704(0, 0);
-                    pMenu = g_Menu;
-                    pManager = g_Menu->pManager;
-                }
-            } else if (menuState == 10) {
-                slotIdx = (u8)func_801D9704(1, 0);
-                pMenu = g_Menu;
-                pManager = g_Menu->pManager;
-                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
-                    slotIdx = (u8)func_801D9704(1, 0);
-                    pMenu = g_Menu;
-                    pManager = g_Menu->pManager;
-                }
-            } else if (menuState == 5) {
-                result = 0;
-            }
+        switch (g_Menu->input) {
+        case 5:
+            cont = 0;
+            break;
+        case 9:
+            do {
+                slotIdx = func_801D9704(slotIdx, 0, 0);
+            } while ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2);
+            break;
+        case 10:
+            do {
+                slotIdx = func_801D9704(slotIdx, 1, 0);
+            } while ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2);
+            break;
         }
-    }
+    } while (cont);
     func_801E1398();
     return 1;
 }
-#endif
 
 extern void func_801C72BC(s32);
 #ifndef XENO_PC_PORT
@@ -12053,10 +12028,10 @@ extern u16 D_801EA5DC[];
 extern void func_80033B34(u16*, u8*, s32);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E71B4);
-#else
-void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
+/* Retail 0x801E71B4: decode card entry pData[0x1C + charIdx]'s name (up to
+ * 10 pairs from the screen block at +0xC94 + screenIdx * 0x200) and upload
+ * it as a 0x28x0xD name plate.  The retail arm is gcc 2.6.3 byte-exact. */
+void func_801E71B4(u8 charIdx, void* pData, s32 screenIdx) {
 #ifdef XENO_PC_PORT
     u8* entry = g_Menu->unk32C->unkB94 + 0x100 + screenIdx * 512;
     u8 character = ((u8*)pData)[0x1C + charIdx];
@@ -12084,45 +12059,38 @@ void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
     DrawSync(0);
     HeapFree(buffer);
 #else
-    u8* pSrc = (u8*)pData + charIdx;
-    void* pMenu = g_Menu;
-    void* pMgrData = *(void**)((u8*)pMenu + 0x32C);
-    u8* pEntry = (u8*)pMgrData + (screenIdx << 9) + 0xC94;
-    u8 buf[0x18];
-    u8 outBuf[0x18];
-    s32 i = 0;
-    u8* pDst = buf;
-    u8* pDst2 = buf + 1;
     RECT rect;
-    void* pRender;
-    void* pAlloc;
+    u8 raw[24];
+    u8 decoded[24];
+    u8* entry;
+    u8* pChar;
+    s32 i;
+    s32 row;
+    void* buffer;
 
-    while (i < 0x14) {
-        u8 charVal = pSrc[0x1C];
-        u8 val0 = pEntry[charVal * 0x14 + i * 2 + 0x24];
-        u8 val1 = pEntry[charVal * 0x14 + i * 2 + 0x25];
-        *pDst = val0;
-        *pDst2 = val1;
-        if (val0 == 0 && val1 == 0) break;
-        pDst += 2;
-        pDst2 += 2;
-        i += 2;
+    i = 0;
+    pChar = (u8*)pData + charIdx;
+    entry = (u8*)g_Menu->unk32C + screenIdx * 512 + 0xC94;
+    for (; i < 20; i += 2) {
+        row = pChar[0x1C] * 20;
+        raw[i] = (entry + row + i)[0x24];
+        row = pChar[0x1C] * 20;
+        raw[i + 1] = (entry + row + i)[0x25];
+        if (raw[i] == 0 && raw[i + 1] == 0) break;
     }
-
-    func_80033B34(buf, outBuf, i >> 1);
-    pAlloc = HeapAlloc(0x3F6, 0);
-    bzero(pAlloc, 0x3F6);
-    SystemRenderStringEntry(outBuf, pAlloc, 0x24, 0);
-    rect.x = D_801EA590[charIdx] + 0x180;
-    rect.y = D_801EA5DC[charIdx];
+    func_80033B34(raw, decoded, i / 2);
+    buffer = HeapAlloc(0x3F6, 0);
+    bzero(buffer, 0x3F6);
+    SystemRenderStringEntry(decoded, buffer, 0x24, 0);
+    rect.x = D_801EA590[charIdx * 2] + 0x180;
+    rect.y = D_801EA5DC[charIdx * 2];
     rect.w = 0x28;
-    rect.h = 0xD;
-    LoadImage(&rect, pAlloc);
+    rect.h = 0x0D;
+    LoadImage(&rect, buffer);
     DrawSync(0);
-    HeapFree(pAlloc);
+    HeapFree(buffer);
 #endif
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E733C);
@@ -12590,9 +12558,6 @@ void func_801E8978(s32 count, s32 selected, void* pTable) {
 INCLUDE_ASM(MENU_ASM, func_801E8B4C);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(MENU_ASM, func_801E8DA8);
-#else
 extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
 extern u8 D_801EA578[];   /* per-slot name-plate VRAM x coords (u16, migrated) */
 extern u8 D_801EA5C4[];   /* per-slot name-plate VRAM y coords (u16, migrated) */
@@ -12602,18 +12567,19 @@ extern u8 D_801EA5C4[];   /* per-slot name-plate VRAM y coords (u16, migrated) *
  * as a 0x28x0xD VRAM rect at the slot's plate coords (+0x180 x).  charArg
  * 0xFF uploads a blank plate.  The FACE TIMs are uploaded separately by the
  * resource-load (func_801C65F4); the quads that sample plate+face are the
- * portrait-frame geometry (func_801D5A50 family). */
-void func_801E8DA8(s32 charArg, s32 slot) {
+ * portrait-frame geometry (func_801D5A50 family).  Shared retail/port body
+ * (gcc 2.6.3 byte-exact, u8 arguments as retail masks them). */
+void func_801E8DA8(u8 charArg, u8 slot) {
     u8* pWork = HeapAlloc(0x3F6, 0);
     RECT rect;
     s32 byteOff;
 
     bzero(pWork, 0x3F6);
-    if ((charArg & 0xFF) != 0xFF) {
-        u8* pName = (u8*)&g_GameState + ((charArg & 0xFF) >> 1) * 0x28;
+    if (charArg != 0xFF) {
+        s32 off = (charArg >> 1) * 0x28;
 
-        SystemRenderStringEntry(pName, pWork, 0x24, 0);
-        SystemRenderStringEntry(pName + 0x14, pWork, 0x24, 1);
+        SystemRenderStringEntry((u8*)&g_GameState + off, pWork, 0x24, 0);
+        SystemRenderStringEntry((u8*)&g_GameState + 0x14 + off, pWork, 0x24, 1);
     }
     byteOff = (slot << 1) & 0x1FC;
     rect.x = (s16)(*(u16*)(D_801EA578 + byteOff) + 0x180);
@@ -12624,7 +12590,6 @@ void func_801E8DA8(s32 charArg, s32 slot) {
     DrawSync(0);
     HeapFree(pWork);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E8EAC);

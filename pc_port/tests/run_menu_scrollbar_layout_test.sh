@@ -26,7 +26,7 @@ from pathlib import Path
 import sys,hashlib
 assert hashlib.sha256(Path('disc/menu.bin').read_bytes()[0xec4c:0xedb0]).hexdigest()=='74d828b10b7dcf9abce251f6bc73494794845f9828296af73c30afed3ec551bc'
 p=Path(sys.argv[1]);s=(p/'good.inc').read_text()
-for name,old,new in [('width-as-height','(void)w;','h = w;'),('middle-height','(u16)((u32)h - 8)','(u16)h'),('signed-bottom','8, 0xFFF8','8, -8'),('missing-wrap','(u16)((u32)y + (u32)h)','(u32)y + (u32)h'),('wrong-cap','polysScrollBarEnds[2]','polysScrollBarEnds[0]')]:
+for name,old,new in [('width-as-height','(void)w;','h = w;'),('middle-height','(u16)(h - 8)','(u16)h'),('signed-bottom','8, 0xFFF8','8, -8'),('missing-wrap','(u16)(y16 + h)','(y16 + h)'),('wrong-cap','polysScrollBarEnds[2]','polysScrollBarEnds[0]')]:
  assert s.count(old)==1;(p/(name+'.inc')).write_text(s.replace(old,new,1))
 (p/'cached-menu.inc').write_text(s.replace('MenuWindow* window =','SystemMenu* cached = g_Menu;\n    MenuWindow* window =',1).replace('g_Menu->','cached->'))
 PY

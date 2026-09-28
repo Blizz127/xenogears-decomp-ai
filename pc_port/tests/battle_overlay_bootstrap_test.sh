@@ -24,7 +24,7 @@ rg -q 'vram: 0x8006faf0' config/battle.yaml || fail "wrong overlay load address"
 if rg -q 'generate_asm_macros_files:\s*True' config/battle.yaml; then
     fail "battle split may overwrite the port-aware include_asm header"
 fi
-rg -q '0x133C, asm' config/battle.yaml || \
+rg -q '0x133C, (asm|c)' config/battle.yaml || \
     fail "first retail code split boundary is missing"
 rg -q '0x1450, c, main' config/battle.yaml || \
     fail "state-2 entry split boundary is missing"

@@ -50,6 +50,21 @@ int xg_plat_data_file_path(const char* name, char* out, size_t out_size);
  * wrong file stops the program with an explanation (see retail_data.h). */
 const uint8_t* xg_plat_data_file(const char* name, size_t* size);
 
+/* The game's CD drive commands and data reads (libcd CdControl / CdControlB /
+ * CdControlF / CdRead calls arrive here by link-time routing,
+ * build_port.sh XG_PLAT_WRAP_SYMS).  `com` / `param` / `result` are the CD
+ * drive's command byte, parameter bytes and result bytes; `mode` is the read
+ * mode.  Implemented by the drive backend (PsyCross: src/plat/xg_plat_psycross.c),
+ * not by the header default. */
+typedef enum {
+    XG_PLAT_CD_ASYNC,     /* CdControl: issue, completion by callback/sync */
+    XG_PLAT_CD_BLOCKING,  /* CdControlB: wait for the command to complete */
+    XG_PLAT_CD_NO_RESULT  /* CdControlF: issue, no result bytes */
+} XgPlatCdWait;
+int xg_plat_disc_cd_control(unsigned char com, unsigned char* param, unsigned char* result,
+                            XgPlatCdWait wait);
+int xg_plat_disc_cd_read(int sectors, void* buf, int mode);
+
 #ifdef __cplusplus
 }
 #endif
