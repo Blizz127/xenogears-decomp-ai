@@ -7452,9 +7452,8 @@ void func_801D8EA4(s32 slotArg, s32 modeArg, s32 buildTextArg,
  *     dispatcher's saved arg0) as `current`, and a2 = 1 (GEAR mode) -- the
  *     mode whose compensation below is unexercisable from Items.  Flagged
  *     for N3-Gear; catalogue only. */
-/* K&R-style (unprototyped) on purpose: the Status-family retail callers in
- * func_801E20C8 pass only 2 args, with gearMode as $a2 residue (the KNOWN
- * RESIDUE CASE catalogue above) — a prototyped def would reject those calls. */
+/* K&R-style (unprototyped) on purpose (see the KNOWN RESIDUE CASE catalogue
+ * above).  func_801E20C8 passes all three, (slotIdx, dir, 0). */
 /* Retail returns the slot unmasked (an int return); the port keeps its u8
  * declaration. */
 #ifdef XENO_PC_PORT
@@ -10464,55 +10463,48 @@ extern void func_801E1014(void);
 extern void func_801E1AC8(u8);
 extern void func_801E1398(void);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E20C8);
-#else
+/* Retail 0x801E20C8: the Status screen loop.  Slot types 7..8 (unsigned
+ * test) bounce straight back; otherwise the page for slotIdx is (re)built
+ * whenever it changes, and input 9 / 10 steps to the previous / next member
+ * via func_801D9704(slotIdx, dir, 0), skipping types 7..8, until input 5.
+ * Shared retail/port body (gcc 2.6.3 byte-exact).  The port once tested the
+ * slot type signed (so every type below 9 bounced) and called
+ * func_801D9704(dir, 0), dropping the current slot
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801E20C8(u8 slotIdx) {
+    u8 cont = 1;
     u8 lastSlot = 0xFF;
-    u8 result = 1;
-    void* pMenu = g_Menu;
-    void* pManager = g_Menu->pManager;
-    u8 slotType = *(u8*)((u8*)pManager + 0x30 + slotIdx);
-    if (slotType - 7 < 2) {
+
+    if ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2) {
         func_801C8574(4);
         return 1;
     }
     func_801E1014();
-    while (result) {
+    do {
         func_801C7BF4();
-        if ((u8)slotIdx != (u8)lastSlot) {
+        if (slotIdx != lastSlot) {
             func_801E1AC8(slotIdx);
             lastSlot = slotIdx;
         }
-        {
-            u8 menuState = *(u8*)((u8*)g_Menu + 0x325);
-            if (menuState == 9) {
-                slotIdx = (u8)func_801D9704(0, 0);
-                pMenu = g_Menu;
-                pManager = g_Menu->pManager;
-                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
-                    slotIdx = (u8)func_801D9704(0, 0);
-                    pMenu = g_Menu;
-                    pManager = g_Menu->pManager;
-                }
-            } else if (menuState == 10) {
-                slotIdx = (u8)func_801D9704(1, 0);
-                pMenu = g_Menu;
-                pManager = g_Menu->pManager;
-                while (*(u8*)((u8*)pManager + 0x30 + slotIdx) - 7 < 2) {
-                    slotIdx = (u8)func_801D9704(1, 0);
-                    pMenu = g_Menu;
-                    pManager = g_Menu->pManager;
-                }
-            } else if (menuState == 5) {
-                result = 0;
-            }
+        switch (g_Menu->input) {
+        case 5:
+            cont = 0;
+            break;
+        case 9:
+            do {
+                slotIdx = func_801D9704(slotIdx, 0, 0);
+            } while ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2);
+            break;
+        case 10:
+            do {
+                slotIdx = func_801D9704(slotIdx, 1, 0);
+            } while ((u32)(g_Menu->pManager->currentCharacterIDs[slotIdx] - 7) < 2);
+            break;
         }
-    }
+    } while (cont);
     func_801E1398();
     return 1;
 }
-#endif
 
 extern void func_801C72BC(s32);
 #ifndef XENO_PC_PORT
