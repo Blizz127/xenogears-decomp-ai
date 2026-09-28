@@ -3020,8 +3020,8 @@ s32 func_80085C90(s32 a0) {
         }
         func_8003BDFC(0x10);
         HeapFree(D_800C3A1C);
-        g_GameHasLoadedWDS = 1;
         D_8004F354 = 0;
+        g_GameHasLoadedWDS = 1;
         D_8004F33C = D_800ADFCC[a0 * 2];
     }
 
