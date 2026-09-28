@@ -477,9 +477,6 @@ void func_801C58EC(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5B54);
-#else
 void func_801C5B54(u8 init) {
     if (init) {
         g_Menu->unk32C = HeapAlloc(sizeof(MenuUnk2), 0);
@@ -488,11 +485,7 @@ void func_801C5B54(u8 init) {
     }
     HeapFree(g_Menu->unk32C);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5BB8);
-#else
 void func_801C5BB8(u8 init) {
     if (init) {
         g_Menu->pManager = HeapAlloc(sizeof(MenuManager), 0);
@@ -501,11 +494,7 @@ void func_801C5BB8(u8 init) {
     }
     HeapFree(g_Menu->pManager);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5C1C);
-#else
 void func_801C5C1C(u8 init) {
     if (init) {
         g_Menu->pSelectionMenu = HeapAlloc(sizeof(MenuSelectionMenu), 0);
@@ -514,11 +503,7 @@ void func_801C5C1C(u8 init) {
     }
     HeapFree(g_Menu->pSelectionMenu);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5C80);
-#else
 void func_801C5C80(u8 init) {
     if (init) {
         g_Menu->unk354 = HeapAlloc(sizeof(MenuUnk5), 0);
@@ -527,11 +512,7 @@ void func_801C5C80(u8 init) {
     }
     HeapFree(g_Menu->unk354);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5CE4);
-#else
 void func_801C5CE4(u8 init) {
     if (init) {
         g_Menu->unk330 = HeapAlloc(sizeof(MenuUnk6), 0);
@@ -540,11 +521,7 @@ void func_801C5CE4(u8 init) {
     }
     HeapFree(g_Menu->unk330);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5D48);
-#else
 void func_801C5D48(u8 init) {
     if (init) {
         void* p = HeapAlloc(0x328, 0);
@@ -554,11 +531,7 @@ void func_801C5D48(u8 init) {
     }
     HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk340[0]);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5DAC);
-#else
 void func_801C5DAC(u8 init) {
     if (init) {
         void* p = HeapAlloc(0x374, 0);
@@ -568,11 +541,7 @@ void func_801C5DAC(u8 init) {
     }
     HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk340[4]);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5E10);
-#else
 void func_801C5E10(u8 init) {
     if (init) {
         g_Menu->unk348 = HeapAlloc(sizeof(MenuUnk1), 0);
@@ -581,11 +550,7 @@ void func_801C5E10(u8 init) {
     }
     HeapFree(g_Menu->unk348);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C5E74);
-#else
 void func_801C5E74(u8 init) {
     int i;
     if (init) {
@@ -600,7 +565,6 @@ void func_801C5E74(u8 init) {
         HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk39C[i * 4]);
     }
 }
-#endif
 
 /* These earlier menu ports are functional native C but are not yet MIPS
  * matches.  Keep retail assembly in the matching build so their accumulated
@@ -956,18 +920,24 @@ void func_801C6AA0(void) {
 #endif
 
 /* B1b: reset the menu's active render context. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D4C);
-#else
 void func_801C6D4C(void) {
     g_Menu->renderContext = 0;
 }
-#endif
 
 /* B1b: zero the 14-byte scratch block at unk4CC (three words + two bytes,
  * transcribed in asm order). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6D5C);
+void func_801C6D5C(void) {
+    SystemMenu* menu = g_Menu;
+    menu->unk4CC[0xC] = 0;
+    {
+        SystemMenu* menu2 = g_Menu;
+        *(u32*)&menu->unk4CC[0] = 0;
+        *(u32*)&menu->unk4CC[4] = 0;
+        menu2->unk4CC[0xD] = 0;
+    }
+    *(u32*)&g_Menu->unk4CC[8] = 0;
+}
 #else
 void func_801C6D5C(void) {
     g_Menu->unk4CC[0xC] = 0;
@@ -999,24 +969,17 @@ void func_801C6D90(void) {
 /* B1b: upload the menu palette to VRAM, allocate the first string's work
  * buffer, and pre-render its content.  Twin of member_change's func_801C5B90.
  * func_801E7E68 (content) + func_801C6D90 (image) are still INCLUDE_ASM stubs. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6E0C);
-#else
 void func_801C6E0C(void) {
     SystemTransferPaletteToVRAM(0, 0x1D1);
     g_Menu->unk4E0[0].pVramBuffer = HeapAlloc(0x38E, 0);
     func_801E7E68(&g_Menu->unk4E0[0], D_801EA524, 0, 4);
     func_801C6D90();
 }
-#endif
 
 /* B1b: unpack the 4 window-frame border textures (top/bottom/left/right) from
  * the atlas (unk2DC) into g_Menu's border texPage/clut/UV fields -- the coords
  * the border POLY builder + B2 render read.  Verbatim twin of member_change's
  * MemberChangeMenuInitializeWindowBorders (identical atlas indices). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6E68);
-#else
 void func_801C6E68(void) {
     POLY_FT4 _unused;
 
@@ -1037,7 +1000,6 @@ void func_801C6E68(void) {
                   &g_Menu->clutX3, &g_Menu->clutY3,
                   &g_Menu->texPageX3, &g_Menu->texPageY3);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6F70);
@@ -1397,9 +1359,6 @@ extern s32 D_80059488;
 int g_XenoMenuNavReaderTicks = 0;
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7D78);
-#else
 void func_801C7D78(void) {
     s32 present = 1;
     s32 input = 0;
@@ -1465,7 +1424,6 @@ void func_801C7D78(void) {
     }
     g_Menu->input = (u8)input;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C7F34);
@@ -1532,9 +1490,6 @@ void func_801C80B8(u32 value) {
 
 extern void func_801C80B8(u32 value);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8164);
-#else
 void func_801C8164(POLY_G4* p, u8 r, u8 g, u8 b) {
     SetPolyG4(p);
     p->r0 = r; p->g0 = g; p->b0 = b;
@@ -1542,7 +1497,6 @@ void func_801C8164(POLY_G4* p, u8 r, u8 g, u8 b) {
     p->r2 = 0; p->g2 = 0; p->b2 = 0;
     p->r3 = 0; p->g3 = 0; p->b3 = 0;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C81E0);
@@ -1677,7 +1631,12 @@ extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
 #ifndef XENO_PC_PORT
 extern void func_80039DB8(s32 packedId);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8574);
+void func_801C8574(s32 soundId) {
+    if (g_Menu->unk32A) {
+        func_80039DB8(((s32)*(u16*)((u8*)g_Menu->unk2E4 + 0x14) << 16) |
+                      (soundId & 0xFF));
+    }
+}
 #else
 extern void func_80039DB8(s32 packedId);
 
@@ -1693,45 +1652,31 @@ void func_801C8574(s32 soundId) {
 
 extern u16 D_801E96C8[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85C0);
-#else
 u16 func_801C85C0(u8 idx) {
     return D_801E96C8[idx];
 }
-#endif
 
 extern u16 D_801E96A8[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85DC);
-#else
 u16 func_801C85DC(u8 idx) {
     return D_801E96A8[idx];
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C85F8);
-#else
 u16 func_801C85F8(u8 idx) {
     return (u16)(~D_801E96C8[idx]);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C861C);
-#else
 u16 func_801C861C(u8 idx) {
     return (u16)(~D_801E96A8[idx]);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 
 extern u16 D_801E96C8[];
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8640);
+s32 func_801C8640(s32 mask, s32 index) {
+    return D_801E96C8[index & 0xFF] & mask;
+}
 #else
 
 extern u16 D_801E96C8[];
@@ -1744,23 +1689,15 @@ s32 func_801C8640(s32 mask, s32 index) {
 
 /* Bit-select: is character `index` present in party mask `mask`?
  * (D_801E96A8 is the {1,2,4,8,...} table.) */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C865C);
-#else
 u16 func_801C865C(u16 mask, u8 index) {
     return D_801E96A8[index & 0xFF] & mask;
 }
-#endif
 
 extern u32 D_801E96E8[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8678);
-#else
 u32 func_801C8678(u32 mask, u8 idx) {
     return mask & D_801E96E8[idx];
 }
-#endif
 
 extern void func_801D1E80(void);
 extern void func_801D22F4(s32);
@@ -1840,16 +1777,12 @@ void func_801C8694(s32 discNum) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C87C4);
-#else
 void func_801C87C4(void) {
     UnDeliverEvent(0xF4000001, 0x4);
     UnDeliverEvent(0xF4000001, 0x8000);
     UnDeliverEvent(0xF4000001, 0x100);
     UnDeliverEvent(0xF4000001, 0x2000);
 }
-#endif
 
 static u32 MenuCardEvent(s32 slot);
 
@@ -2087,9 +2020,6 @@ void func_801C8BEC(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8CA4);
-#else
 void func_801C8CA4(u8 idx) {
 #ifdef XENO_PC_PORT
     s32 status;
@@ -2115,11 +2045,7 @@ void func_801C8CA4(u8 idx) {
     }
 #endif
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8D1C);
-#else
 void func_801C8D1C(u8 idx) {
 #ifdef XENO_PC_PORT
     s32 status;
@@ -2139,7 +2065,6 @@ void func_801C8D1C(u8 idx) {
     }
 #endif
 }
-#endif
 
 extern char D_801C50A8[];
 extern char D_801C50AC;
@@ -2799,9 +2724,6 @@ extern void func_801CA1D4(s32 direction, s32 selection);
 extern void func_801E781C(s32 screenId, u8 animFlag);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA750);
-#else
 s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
 #ifdef XENO_PC_PORT
     s32 result = 0;
@@ -2872,7 +2794,6 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
     return result;
 #endif
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CA8C0);
@@ -3205,7 +3126,14 @@ extern void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
 extern void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
                           s32* xTable, s32* yTable, u8 mode);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE0CC);
+void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable, u8 mode) {
+    func_801CD81C(panel, charId, slot, xTable, yTable, mode);
+    func_801CDB1C(panel, charId, slot, xTable, yTable);
+    func_801CDC6C(panel, charId, slot, xTable, yTable, mode);
+    panel->unkBE7 = 1;
+    panel->renderContext = *(u8*)&g_Menu->renderContext;
+}
 #else
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern void func_801C80B8(u32);
@@ -3353,7 +3281,24 @@ void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE198);
+void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
+                   s32 renderContext) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        long interpolated;
+        long flag;
+
+        RotTransPers4(&vertices[i * 4], &vertices[i * 4 + 1],
+                      &vertices[i * 4 + 2], &vertices[i * 4 + 3],
+                      (long*)&polys[renderContext + i * 2].x0,
+                      (long*)&polys[renderContext + i * 2].x1,
+                      (long*)&polys[renderContext + i * 2].x2,
+                      (long*)&polys[renderContext + i * 2].x3,
+                      &interpolated, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], &polys[renderContext + i * 2]);
+    }
+}
 #else
 /* Project and queue `count` double-buffered textured quads.  Retail advances
  * the render-context index by two per logical string, selecting the same half
@@ -3381,7 +3326,14 @@ extern void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
                           s32 renderContext);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CE2B4);
+void func_801CE2B4(s32 count, u8* pList, s32 renderCtx) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                pList + (renderCtx + i * 2) * sizeof(POLY_FT4));
+    }
+}
 #else
 /* Arc A portraits: AddPrim `count` double-buffered polys from a portrait list
  * (each entry is a pair; draw the renderCtx half). */
@@ -4095,9 +4047,6 @@ void func_801D0954(SVECTOR* vertices, POLY_FT4* polys, s32 polyIndex, s32 otInde
 /* Project and queue every primitive that makes up one menu window.  The
  * textured border pieces share func_801D0954; the untextured background needs
  * its own RotTransPers4 because it is a POLY_G4 rather than a POLY_FT4. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D09F0);
-#else
 void func_801D09F0(s32 windowIndex, u8 hasScrollBar) {
     long interpolated;
     long flag;
@@ -4165,13 +4114,9 @@ void func_801D09F0(s32 windowIndex, u8 hasScrollBar) {
                     (uintptr_t)g_Menu->pGfxEnv->ot),
             &pWindow->drawModes[pWindow->renderContext]);
 }
-#endif
 
 /* Render each active window under either its caller-provided transform or the
  * retail default: no rotation and a +512 Z translation. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0C78);
-#else
 void func_801D0C78(void) {
     SVECTOR rotation;
     VECTOR translation;
@@ -4201,7 +4146,6 @@ void func_801D0C78(void) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0D90);
@@ -4317,9 +4261,6 @@ void func_801D0FD4(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1030);
-#else
 void func_801D1030(void) {
     if (g_Menu->pManager->unk2E != 0) {
         s32 i;
@@ -4335,7 +4276,6 @@ void func_801D1030(void) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D10DC);
@@ -4377,7 +4317,18 @@ void func_801D1160(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D11F0);
+void func_801D11F0(void) {
+    func_801D0D90();
+    func_801D0E20();
+    func_801D0E38();
+    func_801D0EBC();
+    func_801D10DC();
+    func_801D1160();
+    func_801D0ED4();
+    func_801D0F54();
+    func_801D0FD4();
+    func_801D1030();
+}
 #else
 /* Retail draw-pass aggregator, kept in its exact call order.  A1b-2 ports
  * only func_801D0ED4; the other nine existing PC stubs stay fail-visible
@@ -4409,9 +4360,46 @@ void func_801D1258(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D12D4);
+void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
+    if (!panel->unkBE7) {
+        return;
+    }
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D13F8);
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polysPortraitSmall[panel->renderContext]);
+    AddPrim(&g_Menu->pGfxEnv->ot[4],
+            &panel->polys4B0[panel->renderContext]);
+    func_801CE2B4(panel->descriptionStringsLength,
+                  (u8*)panel->polysDescriptionStrings, panel->renderContext);
+    func_801CE2B4(panel->levelStringLength,
+                  (u8*)panel->polysLevelString, panel->renderContext);
+    func_801CE2B4(panel->unkBE1, (u8*)panel->polys5F0,
+                  panel->renderContext);
+    func_801CE2B4(panel->hpStringLength, (u8*)panel->polysHpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxHpStringLength,
+                  (u8*)panel->polysMaxHpString, panel->renderContext);
+    func_801CE2B4(panel->mpStringLength, (u8*)panel->polysMpString,
+                  panel->renderContext);
+    func_801CE2B4(panel->maxMpStringLength,
+                  (u8*)panel->polysMaxMpString, panel->renderContext);
+    if (drawFixedLabels & 0xFF) {
+        func_801CE2B4(5, (u8*)panel->polys2D0,
+                      panel->renderContext);
+    }
+}
+
+void func_801D13F8(void) {
+    s32 i;
+    if (g_Menu->pManager->unk46) {
+        i = 0;
+        do {
+            MenuCharacter* panel = g_Menu->currentCharacters[i];
+            i++;
+            func_801D12D4(panel, 1);
+        } while (i < MAX_PARTY_MEMBERS);
+    }
+}
 #else
 void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
     if (!panel->unkBE7) {
@@ -4456,16 +4444,12 @@ void func_801D13F8(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1464);
-#else
 void func_801D1464(void) {
     if (g_Menu->pManager->scrollHandleActive != 0) {
         MenuScrollBarHandle* handle = g_Menu->pScrollHandle;
         func_801CE198(1, handle->vertices, handle->polys, handle->renderContext);
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D14B0);
@@ -4669,7 +4653,20 @@ void func_801D1914(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1AAC);
+void func_801D1AAC(void) {
+    s32 i;
+
+    i = 0;
+    do {
+        if (g_Menu->pManager->shouldRenderArrowCursor[i]) {
+            MenuArrowCursor* cursor = g_Menu->arrowCursors[i];
+
+            func_801CE198(1, cursor->vertices, cursor->polys,
+                          cursor->renderContext);
+        }
+        i++;
+    } while (i < MENU_MAX_NUM_ARROW_CURSORS);
+}
 #else
 /* Draw the two animated arrow cursors after their per-frame builders have
  * selected a frame and positioned their primitive vertices. */
@@ -4688,9 +4685,6 @@ void func_801D1AAC(void) {
 #endif
 
 /* Run the per-frame menu draw passes in retail order. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1B20);
-#else
 void func_801D1B20(void) {
     func_801D3B00();
     func_801D11F0();
@@ -4715,7 +4709,6 @@ void func_801D1B20(void) {
     func_801CEC40();
     func_801CF308();
 }
-#endif
 
 extern void func_801D3B00(void);
 extern void func_801D11F0(void);
@@ -4727,9 +4720,6 @@ extern void func_801CEC40(void);
 extern void func_801CF308(void);
 extern void func_801D0C78(void);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1BE8);
-#else
 void func_801D1BE8(void) {
     func_801D3B00();
     func_801D11F0();
@@ -4741,11 +4731,7 @@ void func_801D1BE8(void) {
     func_801CF308();
     func_801D0C78();
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1C48);
-#else
 void func_801D1C48(void) {
     func_801D3B00();
     func_801CE3C8();
@@ -4756,14 +4742,10 @@ void func_801D1C48(void) {
     func_801D0C78();
     func_801CF308();
 }
-#endif
 
 /* Gate the draw dispatcher on the menu's render flag, then select the active
  * menu-mode pass.  The common trailing pass runs even when drawing is
  * disabled, matching retail. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1CA0);
-#else
 void func_801D1CA0(void) {
     if (g_Menu->shouldDrawMenu) {
         switch (D_80059460) {
@@ -4780,7 +4762,6 @@ void func_801D1CA0(void) {
     }
     func_801D1258();
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1D40);
@@ -4835,7 +4816,10 @@ void func_801D1D40(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1E80);
+void func_801D1E80(void) {
+    g_Menu->transitionEffectState = MENU_OPEN_ANIMATION_START;
+    func_801C8574(0x5B);
+}
 #else
 void func_801D1E80(void) {
     g_Menu->transitionEffectState = MENU_OPEN_ANIMATION_START;
@@ -4844,7 +4828,10 @@ void func_801D1E80(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1EB0);
+void func_801D1EB0(void) {
+    g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
+    func_801C8574(0x5C);
+}
 #else
 void func_801D1EB0(void) {
     g_Menu->transitionEffectState = MENU_CLOSE_ANIMATION_START;
@@ -4961,7 +4948,9 @@ void func_801D22F4(s32 mode) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2484);
+void func_801D2484(void) {
+    g_Menu->pManager->shouldRenderPointerCursors = 0;
+}
 #else
 void func_801D2484(void) {
     g_Menu->pManager->shouldRenderPointerCursors = 0;
@@ -5041,7 +5030,10 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D261C);
 #ifndef XENO_PC_PORT
 extern void func_801D5BA4(s32 x, s32 y);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D28A8);
+void func_801D28A8(void) {
+    func_801D397C(0, 0xD4, 0xB2, 0x60, 0x10, 0, 0, 4, 0);
+    func_801D5BA4(0xD8, 0xB6);
+}
 #else
 extern void func_801D5BA4(s32 x, s32 y);
 
@@ -5214,9 +5206,6 @@ void func_801D2D38(void) {
 extern void func_801D7CFC(s32, s32, s32);
 extern void func_801D8EA4(s32, s32, s32, s32);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2EC0);
-#else
 void func_801D2EC0(u8 arg0, u8 arg1) {
     func_801D7C3C(arg0, arg1);
     {
@@ -5228,7 +5217,6 @@ void func_801D2EC0(u8 arg0, u8 arg1) {
     func_801C7BF4();
     func_801D8EA4(arg0, 0, 0, arg1);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D2F4C);
@@ -5306,9 +5294,6 @@ s32 func_801D32B4(s32 arg0) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3344);
-#else
 void func_801D3344(s32 x, s32 y, s32 width) {
     if (g_Menu->pManager->scrollHandleActive == 0) {
         g_Menu->pScrollHandle = HeapAlloc(sizeof(MenuScrollBarHandle), 0);
@@ -5321,10 +5306,12 @@ void func_801D3344(s32 x, s32 y, s32 width) {
     g_Menu->pScrollHandle->renderContext = *(u8*)&g_Menu->renderContext;
     g_Menu->pManager->scrollHandleActive = 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3444);
+void func_801D3444(void) {
+    g_Menu->pManager->scrollHandleActive = 0;
+    HeapFree(g_Menu->pScrollHandle);
+}
 #else
 void func_801D3444(void) {
     g_Menu->pManager->scrollHandleActive = 0;
@@ -5385,7 +5372,13 @@ void func_801D3488(s32 bank, u8 category) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3674);
+void func_801D3674(void) {
+    if (g_Menu->pManager->unk5C[0xB] != 0) {
+        g_Menu->pManager->unk52[1] = 0;
+        g_Menu->pManager->unk5C[0xB] = 0;
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk440[0]);
+    }
+}
 #else
 void func_801D3674(void) {
     /* manager+0x67 is the owner flag; +0x53 is its render guard. */
@@ -5806,7 +5799,13 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4EA0);
+void func_801D4EA0(s32 windowIndex) {
+    u8 index = (u8)windowIndex;
+    g_Menu->pManager->shouldRenderWindow[index] = 0;
+    g_Menu->pManager->unk27[index] = 0;
+    HeapFree(g_Menu->windows[index]);
+    HeapFree(g_Menu->windowParameters[index]);
+}
 #else
 /* Window destruction belongs to the dispatcher cleanup, not the Items screen. */
 void func_801D4EA0(s32 windowIndex) {
@@ -5983,9 +5982,6 @@ extern s32 D_801E9B54;
 /* Arc A portraits: the EXP / next-EXP digit quads (7 digits each,
  * digits[2..8]).  Lists buf+0xE10 (count 0x1277) and buf+0x1040 (0x1278).
  * The exp values live in the GameCharacter head blob (+0x44 / +0x48). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D55B4);
-#else
 void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
     u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[slot * 4];
     s32 i;
@@ -6016,7 +6012,6 @@ void func_801D55B4(u8 slot, u8 charId, s32 x, s32 y) {
         }
     }
 }
-#endif
 
 extern s32 D_801E9B18;
 extern s32 D_801E9B1C;
@@ -6026,9 +6021,6 @@ extern s32 D_801E9B24;
 /* Arc A portraits: the LEVEL digit quads (3 digits, digits[6..8]) into
  * buf+0x910 (count 0x1271), and the second level number (char+0x63) into
  * buf+0xA00 (count 0x1272) -- tinted green in a post-pass. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5794);
-#else
 void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
     u8* buf = (u8*)(uintptr_t)*(u32*)&g_Menu->unk39C[slot * 4];
     s32 i;
@@ -6070,7 +6062,6 @@ void func_801D5794(u8 slot, u8 charId, s32 x, s32 y) {
             (i * 2 + g_Menu->renderContext) * sizeof(POLY_FT4)))->b0 = 0;
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D5A50);
@@ -6720,9 +6711,6 @@ void func_801D7F50(u8 w, u8 h, u8 gearMode) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D827C);
-#else
 void func_801D827C(void* pPrims, u8 mode) {
     u8 color[3];
     s32 i;
@@ -6741,7 +6729,6 @@ void func_801D827C(void* pPrims, u8 mode) {
         pPrim[0x1C] = 0; pPrim[0x1D] = 0; pPrim[0x1E] = 0;
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D83AC);
@@ -7452,9 +7439,6 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
 
 extern u8 D_801EA548[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA4A8);
-#else
 void func_801DA4A8(void) {
     ItemMenuWork* work;
 
@@ -7468,11 +7452,7 @@ void func_801DA4A8(void) {
     bzero(work, sizeof(ItemMenuWork));
     func_801C72BC(0);
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA518);
-#else
 void func_801DA518(void) {
     func_801D3444();
     func_801D4EA0(3);
@@ -7485,7 +7465,6 @@ void func_801DA518(void) {
     HeapFree((void*)(uintptr_t)g_Menu->unk42C[0]);
     HeapFree(g_Menu->unk330->pItemsData);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DA5BC);
@@ -7683,7 +7662,13 @@ void func_801DA9A8(s32 row, s32 page) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB02C);
+void func_801DB02C(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    g_Menu->arrowCursors[index] = HeapAlloc(sizeof(MenuArrowCursor), 0);
+    bzero(g_Menu->arrowCursors[index], sizeof(MenuArrowCursor));
+    g_Menu->arrowCursors[index]->curAnimFrame = 4;
+    g_Menu->arrowCursors[index]->animFrameDuration = 0;
+}
 #else
 void func_801DB02C(s32 cursorIndex) {
     u8 index = (u8)cursorIndex;
@@ -7780,7 +7765,11 @@ void func_801DB0A8(s32 row, s32 page, s32 mode, s32 cursorIndex) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DB340);
+void func_801DB340(s32 cursorIndex) {
+    u8 index = (u8)cursorIndex;
+    HeapFree(g_Menu->arrowCursors[index]);
+    g_Menu->pManager->shouldRenderArrowCursor[index] = 0;
+}
 #else
 void func_801DB340(s32 cursorIndex) {
     u8 index = (u8)cursorIndex;
@@ -8077,7 +8066,19 @@ s32 func_801DB920(s32 page, s32 row) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBD4C);
+void func_801DBD4C(s32 inventoryIndexA, s32 inventoryIndexB) {
+    u8 temp;
+
+    temp = g_GameState.itemIDs[inventoryIndexA];
+    g_GameState.itemIDs[inventoryIndexA] =
+        g_GameState.itemIDs[inventoryIndexB];
+    g_GameState.itemIDs[inventoryIndexB] = temp;
+
+    temp = g_GameState.itemQuantities[inventoryIndexA];
+    g_GameState.itemQuantities[inventoryIndexA] =
+        g_GameState.itemQuantities[inventoryIndexB];
+    g_GameState.itemQuantities[inventoryIndexB] = temp;
+}
 #else
 void func_801DBD4C(s32 inventoryIndexA, s32 inventoryIndexB) {
     u8 temp;
@@ -8333,9 +8334,6 @@ void func_801DC1D4(u8 category) {
  * AbilityMenuWork allocation, then re-arms the main-menu window.
  * Same category switch as func_801DC1D4; the unwritten-$s1 default arm is
  * unreachable (E3088 passes 0, Status 0, Gear 1 and 2). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC2CC);
-#else
 void func_801DC2CC(s32 category) {
     AbilityMenuWork* work;
     s32 mode;
@@ -8368,7 +8366,6 @@ void func_801DC2CC(s32 category) {
     g_Menu->pManager->unk5[1] = 1;
     g_Menu->pManager->shouldRenderWindow[1] = 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DC3D8);
@@ -10107,9 +10104,6 @@ extern void func_801D4EA0(s32);
 extern void func_801E8044(s32, void*);
 extern void func_801C72BC(s32);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1398);
-#else
 void func_801E1398(void) {
     void* pMenu;
     func_801D3674();
@@ -10123,7 +10117,6 @@ void func_801E1398(void) {
     pMenu = g_Menu;
     HeapFree(*(void**)((u8*)pMenu + 0x438));
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1418);
@@ -10750,6 +10743,10 @@ void func_801E3C2C(void* resourceArg, u8 gearId) {
 extern void func_801E433C(void*, u8);
 extern void func_801E4754(void*, u8);
 
+/* The text of this body matches retail, but cc1 puts `.align 3` ahead of every
+ * jump table, and retail jtbl_801C522C sits at 0x801C522C (4 mod 8).  So the
+ * table can only match where it opens a TU's .rodata; until menu is split
+ * that way, the retail build takes the function from assembly. */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3ECC);
 #else
@@ -10802,15 +10799,11 @@ void func_801E3ECC(void* arg0, u8 idx) {
 extern void func_801E41C0(s32, u8);
 extern void func_801E42AC(s32, u8);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4170);
-#else
 void func_801E4170(s32 arg0, u8 arg1) {
     func_801E41C0(arg0, arg1);
     func_801E42AC(arg0, arg1);
     func_801E4258(arg0, arg1);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
@@ -11128,9 +11121,6 @@ void* func_801E4D10(s32 arg0, s32 arg1) {
  * the items loop additionally writes at [i+2] (slots 3..0x4D get IDs
  * 1..0x4B), leaving item slots 0-2 -- where the special item itself
  * lives -- intact. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5058);
-#else
 void func_801E5058(void) {
     u8 i;   /* the u8 index IS the byte-match shape: retail masks it to
              * 0xFF at every use (andi), which a u8 var reproduces exactly
@@ -11157,7 +11147,6 @@ void func_801E5058(void) {
         g_GameState.unk2184Quantities[i] = 10;
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5178);
@@ -11475,9 +11464,6 @@ void func_801E64E0(void) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6544);
-#else
 void func_801E6544(u8* pEntries) {
     s32 i;
     for (i = 0; i < 0x10; i++) {
@@ -11500,7 +11486,6 @@ void func_801E6544(u8* pEntries) {
         p[0xB] = bF;
     }
 }
-#endif
 
 extern u8 D_801EA8C0;
 extern u16 D_801EA5D0[];
@@ -12054,7 +12039,9 @@ void func_801E7C50(MenuString* string, s32 index, s32 yOffset, s32 style) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
 
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8018);
+void func_801E8018(s32 count, u8* strings, s32 descriptorIds, void* unused) {
+    func_801E7E68((MenuString*)strings, (u8*)descriptorIds, 4, count & 0xFF);
+}
 #else
 /* Render descriptor pairs into their two buffered MenuString quads.  The
  * index and descriptor pointer advance before DrawSync, preserving the retail
@@ -12097,9 +12084,6 @@ void func_801E8018(s32 count, MenuString* strings, u8* descriptorIds) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8044);
-#else
 void func_801E8044(s32 count, void* pFlags) {
     u8* end;
 
@@ -12112,7 +12096,6 @@ void func_801E8044(s32 count, void* pFlags) {
         } while ((s32)pFlags < (s32)end);
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
@@ -12430,7 +12413,13 @@ void func_801E8F60(s32 windowIndex, s32 dim) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E91C4);
+void func_801E91C4(POLY_FT4* p) {
+    SetSemiTrans(p, 1);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
 #else
 /* Arc A verts: border-poly display fixup -- semi-transparent, shading ENABLED
  * (SetShadeTex 0) with the neutral 0x80 modulate color. */
@@ -12469,7 +12458,14 @@ void func_801E920C(POLY_FT4* p, s32 x, s32 y, s32 u, s32 v, s32 w, s32 h) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E927C);
+void func_801E927C(POLY_FT4* p) {
+    SetPolyFT4(p);
+    SetSemiTrans(p, 0);
+    SetShadeTex(p, 0);
+    p->r0 = 0x80;
+    p->g0 = 0x80;
+    p->b0 = 0x80;
+}
 #else
 /* Arc A portraits: init the face quad -- opaque, shading enabled, neutral
  * 0x80 modulate. */
@@ -12489,9 +12485,6 @@ extern void ArchiveCdDataSync(s32);
 extern void ArchiveCdSetMode(s32);
 extern u8 D_801EA8F4[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E92CC);
-#else
 void func_801E92CC(void) {
     if (func_8002C3D8() == 0) {
         func_8002A498(0);
@@ -12504,17 +12497,12 @@ void func_801E92CC(void) {
         } while (CdControlB(8, NULL, D_801EA8F4) == 0);
     }
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E9340);
-#else
 void func_801E9340(char* path, void* pBuf, s32 size) {
     s32 fd = PCopen(path, 0, 0);
     PCread(fd, pBuf, size);
     PCclose(fd);
 }
-#endif
 
 #ifdef XENO_PC_PORT
 extern u32 g_ArchiveTable, g_ArchiveHeader, g_ArchiveDebugTable;
