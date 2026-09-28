@@ -42,15 +42,7 @@ static u32 m17t_slot(s32 slot_index)
     return m17t_lw(WM_M17T_POOL_PTR) + ((u32)slot_index << 7u);
 }
 
-s32 wm_800834D0(s32 slot_index)
-{
-    (void)slot_index;
-#if defined(W34N110_MUTANT_WRONG_INIT_RETURN)
-    return 0;
-#else
-    return 1;
-#endif
-}
+/* 0x800834D0 (init) is the matched C func_800834D0 (src/world_map/main.c). */
 
 s32 wm_800834D8(s32 slot_index)
 {

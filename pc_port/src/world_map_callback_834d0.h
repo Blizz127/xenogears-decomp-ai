@@ -3,7 +3,8 @@
 
 #include "common.h"
 
-s32 wm_800834D0(s32 slot_index);
+/* 0x800834D0 (init) runs the matched C in src/world_map/main.c. */
+s32 func_800834D0(void);
 s32 wm_800834D8(s32 slot_index);
 
 #endif

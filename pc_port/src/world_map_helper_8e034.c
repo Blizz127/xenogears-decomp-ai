@@ -11,6 +11,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_gamestate.h"
 #include "world_map_helper_8e034.h"
 
 #define WM_E034_DST_X  0x8006EE60u
@@ -38,17 +39,17 @@ void wm_8008E034(u32 in_addr)
     memcpy(&word, PSX_ADDR(in_addr + 0u), sizeof(word));
     shifted = sra_12(word);
     result = (u16)shifted;
-    memcpy(PSX_ADDR(WM_E034_DST_X), &result, sizeof(result));
+    wm_gs_sh(WM_E034_DST_X, result); /* guest + host g_GameState */
 
     /* Y component */
     memcpy(&word, PSX_ADDR(in_addr + 4u), sizeof(word));
     shifted = sra_12(word);
     result = (u16)shifted;
-    memcpy(PSX_ADDR(WM_E034_DST_Y), &result, sizeof(result));
+    wm_gs_sh(WM_E034_DST_Y, result); /* guest + host g_GameState */
 
     /* Z component */
     memcpy(&word, PSX_ADDR(in_addr + 8u), sizeof(word));
     shifted = sra_12(word);
     result = (u16)shifted;
-    memcpy(PSX_ADDR(WM_E034_DST_Z), &result, sizeof(result));
+    wm_gs_sh(WM_E034_DST_Z, result); /* guest + host g_GameState */
 }

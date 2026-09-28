@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "world_map_gamestate.h"
 #include "world_map_common_tail.h"
 #include "world_map_convergence.h"
 #include "world_map_framebuffer_init.h"
@@ -96,7 +97,7 @@ static void m15l_sw(u32 address, u32 value)
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
-static void m15l_sh(u32 address, u16 value)
+__attribute__((unused)) static void m15l_sh(u32 address, u16 value)
 {
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
@@ -274,12 +275,12 @@ void wm_8007DCE0(void)
 
     selector = m15l_lw(WM_M15L_D3D4);
 #if defined(W34N97_MUTANT_WRONG_TEARDOWN_STATE)
-    m15l_sh(WM_M15L_F94E, 416u);
+    wm_gs_sh(WM_M15L_F94E, 416u);
 #else
-    m15l_sh(WM_M15L_F94E, 417u);
+    wm_gs_sh(WM_M15L_F94E, 417u);
 #endif
-    m15l_sh(WM_M15L_F950, m15l_lhu(WM_M15L_BD3A));
-    m15l_sh(WM_M15L_F954,
+    wm_gs_sh(WM_M15L_F950, m15l_lhu(WM_M15L_BD3A));
+    wm_gs_sh(WM_M15L_F954,
             m15l_lhu(WM_M15L_EXIT_TABLE + selector * 2u));
     m15l_sw(WM_M15L_BBC4, 1u);
 }

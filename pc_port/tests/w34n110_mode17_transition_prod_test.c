@@ -128,7 +128,7 @@ u32 wm_80096668_circular_distance(void)
 static void test_initializer(void)
 {
     seed();
-    check(wm_800834D0(SLOT_INDEX) == 1, "init.return");
+    check(func_800834D0() == 1, "init.return");
     check(event_count == 0u, "init.no_side_effects");
 }
 
