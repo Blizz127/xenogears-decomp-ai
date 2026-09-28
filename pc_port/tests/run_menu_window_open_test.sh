@@ -8,7 +8,7 @@ echo "OUTPUT $OUT"
 python3 - <<'PY'
 import pathlib,re
 b=pathlib.Path('disc/menu.bin').read_bytes()
-s=next(pathlib.Path('asm/menu').glob('*matchings/main/misc/func_801D3B00.s')).read_text()
+s=next(pathlib.Path('asm/menu').glob('*matchings/main/misc*/func_801D3B00.s')).read_text()
 for a,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',s):
     off=int(a,16)-0x801c5000
     assert b[off:off+4]==bytes.fromhex(h), a

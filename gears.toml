@@ -154,7 +154,7 @@ build_variables = {
     gcc = "gcc-2.6.3-psx",
     gp_flag = "-G0"
 }
-paths = [ "src/menu/main/misc." ]
+paths = [ "src/menu/main/misc.", "src/menu/main/misc2.", "src/menu/main/misc3." ]
 
 [[build_preset]]
 name = "XenoLiteral"
