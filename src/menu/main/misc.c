@@ -3007,7 +3007,16 @@ extern s32 D_80059488;
 extern void* func_801E4D10(s32, s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB28C);
+/* Retail reads the first word at arg0 after the call and ignores the result. */
+void func_801CB28C(s32 arg0) {
+    s32 i;
+    func_801E4D10(arg0, *(s32*)((u8*)g_Menu + 0x330));
+    D_80059488 = *(s32*)arg0;
+    for (i = 0; i < 0x10; i++) {
+        D_8005A3A0[i] = D_8006F958[i];
+    }
+    func_801CB184();
+}
 #else
 void func_801CB28C(s32 arg0) {
     void* pMenu = g_Menu;
@@ -3586,7 +3595,19 @@ void func_801CEB5C(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CEBB4);
+void func_801CEBB4(void) {
+    if (*(u8*)((u8*)g_Menu->pManager + 0x4B) != 0) {
+        s32 i;
+        for (i = 0; i < 5; i++) {
+            u8* pData = *(u8**)((u8*)g_Menu + 0x360);
+            if (*(u8*)((s32)pData + i + 0x294) != 0) {
+                s32 off = i << 7;
+                u8* pPoly = (u8*)(off + (s32)pData);
+                func_801CE198(1, pPoly + 0x50, pPoly, pData[0x299]);
+            }
+        }
+    }
+}
 #else
 void func_801CEBB4(void) {
     void* pMenu = g_Menu;
@@ -10493,7 +10514,12 @@ void func_801E2324(u8 arg0) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2368);
+void func_801E2368(void) {
+    HeapFree(*(void**)((u8*)g_Menu + 0x358));
+    HeapFree(*(void**)((u8*)g_Menu + 0x35C));
+    HeapFree(*(void**)((u8*)g_Menu + 0x360));
+    func_801C72BC(0x13);
+}
 #else
 void func_801E2368(void) {
     void* pMenu = g_Menu;
@@ -10545,7 +10571,12 @@ void func_801E2AE0(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2B80);
+void func_801E2B80(void) {
+    HeapFree(*(void**)((u8*)g_Menu + 0x358));
+    HeapFree(*(void**)((u8*)g_Menu + 0x35C));
+    HeapFree(*(void**)((u8*)g_Menu + 0x360));
+    func_801C72BC(0x13);
+}
 #else
 void func_801E2B80(void) {
     void* pMenu = g_Menu;
@@ -12216,7 +12247,19 @@ extern void func_801E76EC(s32);
 extern void func_801E6668(s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E781C);
+void func_801E781C(s32 screenId, u8 animFlag) {
+    func_801E64E0();
+    if (screenId == 0xFF) return;
+    if ((animFlag & 0xFF) != 0) {
+        func_801E76EC(screenId);
+        func_801E6668(screenId);
+        *(u8*)(*(u8**)((u8*)g_Menu + 0x34C) + 0x2DBC) = 1;
+    } else {
+        func_801E6668(screenId);
+        *(u8*)(*(u8**)((u8*)g_Menu + 0x34C) + 0x2DBC) = 0;
+    }
+    ((u8*)g_Menu->pManager)[0xB] = 1;
+}
 #else
 void func_801E781C(s32 screenId, u8 animFlag) {
     void* pMenu;
