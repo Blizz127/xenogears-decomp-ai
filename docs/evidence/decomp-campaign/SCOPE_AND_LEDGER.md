@@ -92,3 +92,53 @@ includes that category so future reports expose it explicitly.
 Never mark a target complete on inferred C status alone. A target is byte
 verified only when its `make rom-check` row passes against the unchanged retail
 pin.
+
+## Checkpoint — 2026-09-28 02:55 CDT (claude/integration @ 203a0780)
+
+`make rom-check` from clean: **10 of 10** pinned artifacts pass
+("ALL PINNED ARTIFACTS MATCH RETAIL"). Every target in scope is byte-exact
+against its unchanged retail pin.
+
+objdiff (`make report`) now measures **283,720 / 1,383,684 code bytes
+(20.50%)** and **1,886 / 4,464 functions (42.25%)**. It is lower than the
+baseline above because C that never byte-matched retail was returned to
+`INCLUDE_ASM` for the retail build (the C stays under `#ifdef XENO_PC_PORT`).
+objdiff is not the authority: it scored `func_800A7948` 100% although two
+same-shaped relocations were stored in swapped order, and four main-executable
+functions fail under `-DSKIP_ASM` although they are byte-exact in the real
+link. Only the rom-check row decides whether a target is verified.
+
+| Target | Matching C functions | Matching C bytes | Whole-binary SHA gate |
+|---|---:|---:|---|
+| Main executable (`slus_006.64`) | 722 / 1,223 | 85,256 / 218,072 | PASS |
+| Field overlay | 592 / 884 | 93,776 / 253,052 | PASS |
+| Member-change menu | 67 / 67 | 24,936 / 24,936 | PASS |
+| Shop menu | 104 / 118 | 37,460 / 53,008 | PASS |
+| Main menu | 109 / 307 | 14,620 / 148,360 | PASS |
+| Battle overlay | 292 / 857 | 27,672 / 332,316 | PASS |
+| Battling overlay | 0 / 483 | 0 / 139,692 | PASS |
+| Movie overlay | 0 / 34 | 0 / 26,972 | PASS |
+| Battle command file 1 | 0 / 105 | 0 / 18,940 | PASS |
+| World map overlay | 0 / 386 | 0 / 168,336 | PASS |
+
+Root causes of the three red rows:
+
+- **Function order.** be7f3582 made `INCLUDE_ASM` a bare top-level `__asm__`.
+  At `-O2 -G8`, cc1's gp-opt mode spools every C body after all file-scope asm,
+  so assembly and C no longer interleaved in source order. The maspsx
+  dummy-function wrapper is restored in `include/include_asm.h`.
+- **C committed as matching that did not match:** about 240 main-executable
+  functions, 308 field functions and 103 menu functions. Found with a
+  relocation-masked per-function compare against the retail objects.
+- **Main executable only.** PsyQ stubs had become `.word` blobs that dropped
+  retail padding. `MenuExecute`'s jump tables were emitted twice. One real bug
+  in `func_8001AADC`'s clear range.
+- **Menu build model.** Retail menu never uses `$gp`, so it now builds with
+  `-G0` (the `MenuG0` preset). Port-only helpers and edits had leaked into
+  code the retail build compiles.
+- **Main-executable build model.** Retail loads small constants with `addiu`
+  in some TUs (the `XenoLiteral` preset), and reaches other TUs' globals
+  absolutely rather than through `$gp`.
+
+Behaviour differences found between the port and retail are listed in
+[docs/port/RETAIL_DIVERGENCES.md](../../port/RETAIL_DIVERGENCES.md).
