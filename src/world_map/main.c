@@ -2,6 +2,19 @@
 #include "world_map/wm_obj.h"
 
 #ifndef XENO_PC_PORT
+void RotMatrix(s32, void *);
+extern u16 D_8009B624[];
+extern u16 D_8009B626[];
+extern WmObj * D_8009BE24;
+extern s32 D_8009C610;
+extern s32 D_8009C620;
+extern u16 D_8009B64C[];
+extern u16 D_8009B64E[];
+s32 func_80087804(s32 arg0);
+s32 func_80087A8C(s32 arg0);
+#endif
+
+#ifndef XENO_PC_PORT
 extern WmObj * D_8009BE24;
 void func_800976C8(void);
 #endif
@@ -1745,7 +1758,38 @@ s32 func_800877E0(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80087804);
+
+#ifndef XENO_PC_PORT
+s32 func_80087804(s32 arg0) {
+    u8 pad[8];
+    void *obj;
+    s32 base;
+    s32 idxA;
+    s32 idxB;
+    void *a;
+    void *b;
+    u16 angle;
+
+    obj = (*(s32*)&D_8009BE24) + (arg0 << 7);
+    base = D_8009C620;
+    idxA = D_8009B624[D_8009C610 * 2];
+    idxB = D_8009B626[D_8009C610 * 2];
+    *(s32 *)((s8*)(obj) + 0x50) = (*(s32 *)((s8*)(obj) + 0x50) + *(s32 *)((s8*)(obj) + 0x54)) & 0xFFF;
+    *(s16 *)0x1F8000A8 = 0;
+    *(s16 *)0x1F8000A0 = 0;
+    a = base + idxA * 0x54;
+    *(u16 *)0x1F8000A2 = *(u16 *)((s8*)(a) + 0x1A);
+    b = base + idxB * 0x54;
+    *(u16 *)0x1F8000AA = *(u16 *)((s8*)(b) + 0x1A);
+    angle = *(u16 *)((s8*)(obj) + 0x50);
+    *(u16 *)0x1F8000AC = angle;
+    *(u16 *)0x1F8000A4 = angle;
+    RotMatrix((void *)0x1F8000A0, a + 0x20);
+    RotMatrix((void *)0x1F8000A8, b + 0x20);
+    return 1;
+}
+#endif
+
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80087904);
 
@@ -1781,7 +1825,36 @@ s32 func_800879E0(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80087A8C);
+
+#ifndef XENO_PC_PORT
+s32 func_80087A8C(s32 arg0) {
+    u8 pad[8];
+    void *obj;
+    s32 base;
+    s32 idxA;
+    s32 idxB;
+    u16 angle;
+    void *b;
+
+    obj = (*(s32*)&D_8009BE24) + (arg0 << 7);
+    base = D_8009C620;
+    idxA = D_8009B64C[D_8009C610 * 2];
+    idxB = D_8009B64E[D_8009C610 * 2];
+    *(s32 *)((s8*)(obj) + 0x50) = (*(s32 *)((s8*)(obj) + 0x50) + *(s32 *)((s8*)(obj) + 0x54)) & 0xFFF;
+    *(s16 *)0x1F8000AC = 0;
+    *(s16 *)0x1F8000A4 = 0;
+    *(s16 *)0x1F8000A8 = 0;
+    *(s16 *)0x1F8000A0 = 0;
+    angle = *(u16 *)((s8*)(obj) + 0x50);
+    *(u16 *)0x1F8000AA = angle;
+    *(u16 *)0x1F8000A2 = angle;
+    b = base + idxB * 0x54;
+    RotMatrix((void *)0x1F8000A0, base + idxA * 0x54 + 0x20);
+    RotMatrix((void *)0x1F8000A8, b + 0x20);
+    return 1;
+}
+#endif
+
 
 
 #ifndef XENO_PC_PORT
