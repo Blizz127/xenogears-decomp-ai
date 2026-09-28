@@ -331,8 +331,9 @@ void func_8001AADC(void) {
         pSlots[i] = 0;
         pMembers[i] = 0;
     }
+    /* Retail clears the four words ending at D_80062524 (0x80062518..0x80062524). */
     for (i = 3; i >= 0; i--) {
-        D_80062524[i] = 0;
+        D_80062524[i - 3] = 0;
     }
 }
 
