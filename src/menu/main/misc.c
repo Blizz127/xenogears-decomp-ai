@@ -5700,7 +5700,7 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D397C);
 #else
-extern void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+extern void func_801D4D1C(u8 windowIndex, u16 x, u16 y, u16 w, u16 h,
                           u8 unk714, s32 zIndex, u8 hasScrollBar);
 
 /* Arc A verts: (re)create window `windowIndex` -- windows 2+ get allocated on
@@ -5742,7 +5742,7 @@ void func_801D397C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h, u8 directParams,
 #endif
 
 #ifndef XENO_PC_PORT
-extern void func_801D4D1C(u8, s32, s32, s32, s32, u8, s32, u8);
+extern void func_801D4D1C(u8, u16, u16, u16, u16, u8, s32, u8);
 #endif
 
 void func_801D3B00(void) {
@@ -6024,20 +6024,15 @@ void func_801D49D0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D4D1C);
-#else
 /* Arc A verts: build window `windowIndex`'s full frame geometry from its rect
  * -- the background quad, the four corner pieces, the four split borders, and
  * (optionally) the scrollbar -- then set the window props and ARM the draw
- * guard.  THIS is what turns the zero-size quads into a real window. */
-void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
+ * guard.  THIS is what turns the zero-size quads into a real window.
+ * Shared retail/port body (gcc 2.6.3 byte-exact): the rect is u16, so h is
+ * narrowed too, as retail does (the port once passed h through unmasked). */
+void func_801D4D1C(u8 windowIndex, u16 x, u16 y, u16 w, u16 h,
                    u8 unk714, s32 zIndex, u8 hasScrollBar) {
     MenuWindow* pWindow = g_Menu->windows[windowIndex];
-
-    x &= 0xFFFF;
-    y &= 0xFFFF;
-    w &= 0xFFFF;
 
     g_Menu->pManager->shouldRenderWindow[windowIndex] = 0;
     func_801C851C(pWindow->vertsBackground, x, y, w, h);
@@ -6055,7 +6050,6 @@ void func_801D4D1C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h,
     pWindow->renderContext = (u8)g_Menu->renderContext;
     g_Menu->pManager->shouldRenderWindow[windowIndex] = 1;
 }
-#endif
 
 #ifdef XENO_PC_PORT
 /* Window destruction belongs to the dispatcher cleanup, not the Items screen. */
