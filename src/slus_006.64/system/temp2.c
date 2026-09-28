@@ -1678,27 +1678,20 @@ s32 func_8002D244(u8* pColor, s16* pIndices) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D354);
-#else
-void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
+/* Lit POLY_G4 (tag 8): copies the base colour, lights three vertices with
+ * NormalColorCol3 and the fourth with NormalLightCol, all from pColor.
+ * Build-pass proc: fn(pColor, pIndices, shade); retail returns 1. */
+s32 func_8002D354(u8* pColor, s16* pIndices) {
     u8* pPoly = D_80059424;
-    s16* normals = (s16*)D_8005952C;
-    pPoly[3] = 8; /* POLY_G4 tag */
-    *(s32*)(pPoly + 4) = *(s32*)(pColor);
-    NormalColorCol3(
-        (SVECTOR*)&normals[pIndices[0] * 4],
-        (SVECTOR*)&normals[pIndices[1] * 4],
-        (SVECTOR*)&normals[pIndices[2] * 4],
-        (CVECTOR*)(pPoly + 4),
-        (CVECTOR*)(pPoly + 0xC),
-        (CVECTOR*)(pPoly + 0x14),
-        (CVECTOR*)(pPoly + 0x1C)
-    );
-    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
+
+    pPoly[3] = 8;
+    *(s32*)(pPoly + 4) = *(s32*)pColor;
+    NormalColorCol3((SVECTOR*)(uintptr_t)(D_8005952C + pIndices[0] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[1] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[2] * 8), (CVECTOR*)pColor,
+                    (CVECTOR*)(pPoly + 4), (CVECTOR*)(pPoly + 0xC), (CVECTOR*)(pPoly + 0x14));
+    NormalLightCol((SVECTOR*)(uintptr_t)(D_8005952C + pIndices[3] * 8), pColor, pPoly + 0x1C);
     pPoly[7] = pColor[3];
+    return 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
@@ -1728,93 +1721,70 @@ s32 func_8002D420(u8* pColor, s16* pIndices) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
-#else
+/* Textured lit POLY_GT3 (tag 9): tpage/clut words and UVs from pColor, one
+ * face normal lit with NormalColor. flags bit 0: compute the normal from the
+ * three vertex normals (into the D_80059498 stream with bit 1, else a
+ * scratch vector); bit 2 alone: reuse the stream's current normal. The
+ * stream always advances by 8. Build-pass proc: fn(pColor, pIndices, flags). */
 s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags) {
+    SVECTOR normal;
     u8* pPoly;
-    s16* normals;
 
-    if (func_8002CD64(pColor) == 0) return 0;
+    if (func_8002CD64(pColor) == 0) {
+        return 0;
+    }
     pPoly = D_80059424;
-    normals = (s16*)D_8005953C;
-    pPoly[3] = 0xC; /* POLY_GT4 tag */
-
-    /* Vertex color tpage/clut merge */
+    pPoly[3] = 9;
     *(u32*)(pPoly + 0x0C) = *(u16*)(pColor + 4) | ((u32)D_8005930C << 16);
     *(u32*)(pPoly + 0x14) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);
-    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);
-    *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 8);
-
+    *(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 8);
+    *(u16*)(pPoly + 0x24) = *(u16*)(pColor + 0xA);
     if (flags & 1) {
-        SVECTOR* n0 = (SVECTOR*)&normals[pIndices[0] * 4];
-        SVECTOR* n1 = (SVECTOR*)&normals[pIndices[1] * 4];
-        SVECTOR* n2 = (SVECTOR*)&normals[pIndices[2] * 4];
         if (flags & 2) {
-            func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
-            NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
+            func_8002DB84((SVECTOR*)(uintptr_t)(D_8005953C + pIndices[0] * 8), (SVECTOR*)(uintptr_t)(D_8005953C + pIndices[1] * 8), (SVECTOR*)(uintptr_t)(D_8005953C + pIndices[2] * 8), (SVECTOR*)(uintptr_t)D_80059498);
+            NormalColor((SVECTOR*)(uintptr_t)D_80059498, (CVECTOR*)(pPoly + 4));
         } else {
-            SVECTOR tmpNormal;
-            func_8002DB84(n0, n1, n2, &tmpNormal);
-            NormalLightCol(&tmpNormal, pColor, pPoly + 4);
+            func_8002DB84((SVECTOR*)(uintptr_t)(D_8005953C + pIndices[0] * 8), (SVECTOR*)(uintptr_t)(D_8005953C + pIndices[1] * 8), (SVECTOR*)(uintptr_t)(D_8005953C + pIndices[2] * 8), &normal);
+            NormalColor(&normal, (CVECTOR*)(pPoly + 4));
         }
-        D_80059498 += 8;
     } else if (flags & 4) {
-        NormalLightCol((SVECTOR*)(uintptr_t)D_80059498, pColor, pPoly + 4);
-        D_80059498 += 4;
+        NormalColor((SVECTOR*)(uintptr_t)D_80059498, (CVECTOR*)(pPoly + 4));
     }
-
-    *(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);
+    D_80059498 += 8;
     pPoly[7] = pColor[3];
     return 1;
 }
-#endif
 
 extern u32 D_80059498;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D6AC);
-#else
-void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags) {
+/* Lit POLY_G3 (tag 6); with flags bit 1 it also appends the base colour
+ * word to the D_80059498 stream. Build-pass proc: fn(pColor, pIndices,
+ * flags) -- flags is the third argument; retail returns 1. */
+s32 func_8002D6AC(u8* pColor, s16* pIndices, s32 flags) {
     u8* pPoly = D_80059424;
-    s16* normals = (s16*)D_8005952C;
-    pPoly[3] = 6; /* POLY_G3 tag */
+
+    pPoly[3] = 6;
     if (flags & 2) {
-        *(s32*)(uintptr_t)D_80059498 = *(s32*)(pColor);
+        *(s32*)(uintptr_t)D_80059498 = *(s32*)pColor;
         D_80059498 += 4;
     }
-    NormalColorCol3(
-        (SVECTOR*)&normals[pIndices[0] * 4],
-        (SVECTOR*)&normals[pIndices[1] * 4],
-        (SVECTOR*)&normals[pIndices[2] * 4],
-        (CVECTOR*)(pPoly + 4),
-        (CVECTOR*)(pPoly + 0xC),
-        (CVECTOR*)(pPoly + 0x14),
-        (CVECTOR*)(pPoly + 0x14)
-    );
+    NormalColorCol3((SVECTOR*)(uintptr_t)(D_8005952C + pIndices[0] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[1] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[2] * 8), (CVECTOR*)pColor,
+                    (CVECTOR*)(pPoly + 4), (CVECTOR*)(pPoly + 0xC), (CVECTOR*)(pPoly + 0x14));
     pPoly[7] = pColor[3];
+    return 1;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D77C);
-#else
-void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
+/* Lit POLY_G3 (tag 6). Build-pass proc: fn(pColor, pIndices, shade);
+ * retail returns 1. */
+s32 func_8002D77C(u8* pColor, s16* pIndices) {
     u8* pPoly = D_80059424;
-    s16* normals = (s16*)D_8005952C;
-    pPoly[3] = 6; /* POLY_G3 tag */
-    NormalColorCol3(
-        (SVECTOR*)&normals[pIndices[0] * 4],
-        (SVECTOR*)&normals[pIndices[1] * 4],
-        (SVECTOR*)&normals[pIndices[2] * 4],
-        (CVECTOR*)(pPoly + 4),
-        (CVECTOR*)(pPoly + 0xC),
-        (CVECTOR*)(pPoly + 0x14),
-        (CVECTOR*)(pPoly + 0x14)
-    );
+
+    pPoly[3] = 6;
+    NormalColorCol3((SVECTOR*)(uintptr_t)(D_8005952C + pIndices[0] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[1] * 8), (SVECTOR*)(uintptr_t)(D_8005952C + pIndices[2] * 8), (CVECTOR*)pColor,
+                    (CVECTOR*)(pPoly + 4), (CVECTOR*)(pPoly + 0xC), (CVECTOR*)(pPoly + 0x14));
     pPoly[7] = pColor[3];
+    return 1;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
