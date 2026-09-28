@@ -110,9 +110,20 @@ build_variables = {
 }
 paths = [
     "{binary}/system/memory.",
+    "{binary}/system/heap_debug.",
+]
+
+[[build_preset]]
+name = "SdataSmallLiteral"
+# SdataSmall's -G handling, plus the literal `li` flavour: retail work_list,
+# rendering and graphics never use the lui/ori `li` expansion (every small
+# constant load is `addiu $r,$zero,K`, 0 `ori $r,$zero,K` in their asm).
+build_variables = {
+    maspsx_flags = "--dont-expand-li --dont-force-G0 --use-comm-section --run-assembler",
+}
+paths = [
     "{binary}/system/work_list.",
     "{binary}/system/rendering.",
-    "{binary}/system/heap_debug.",
     "{binary}/system/graphics.",
 ]
 
