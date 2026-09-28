@@ -2,8 +2,52 @@
 
 
 #ifndef XENO_PC_PORT
+extern u8* D_800C34B0;
+s32 func_8009A1AC(s32 arg0);
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A0DC);
-INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A1AC);
+
+#ifndef XENO_PC_PORT
+s32 func_8009A1AC(s32 arg0) {
+    s32 temp_v1_2;
+    s32 var_a0;
+    u16 temp_a2;
+    u16 temp_v1;
+    u32 temp_v0;
+    u32 temp_v0_2;
+    void *temp_a1;
+
+    temp_a1 = ((arg0 & 0xFF) * 0x170) + (*(s32*)&D_800C34B0);
+    temp_a2 = *(u16 *)((s8*)(temp_a1) + 0x7C);
+    var_a0 = 0;
+    if (temp_a2 & 0x8000) {
+        return 0;
+    }
+    temp_v1 = *(u16 *)((s8*)(temp_a1) + 0x80);
+    if (temp_v1 & 0x1000) {
+        var_a0 = 0x8000;
+    }
+    if (temp_v1 & 0x2000) {
+        var_a0 |= 0x4000;
+    }
+    if (temp_a2 & 0x800) {
+        var_a0 |= 0x2000;
+    }
+    temp_v1_2 = *(u16 *)((s8*)(temp_a1) + 0x8C) | *(u16 *)((s8*)(temp_a1) + 0x8E);
+    temp_v0 = temp_v1_2 & 0xF00;
+    if (temp_v0 != 0) {
+        var_a0 |= temp_v0 >> 3;
+    }
+    temp_v0_2 = temp_v1_2 & 0xF000;
+    if (temp_v0_2 != 0) {
+        var_a0 |= temp_v0_2 >> 3;
+    }
+    return var_a0 & 0xFFFF;
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A258);
 INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A2D4);
 #endif
