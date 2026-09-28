@@ -1341,6 +1341,8 @@ NOPIE="-no-pie -fno-pie -rdynamic"
 XG_PLAT_WRAP_SYMS="LoadImage SpuWrite"
 XG_PLAT_WRAP_SYMS+=" DrawOTag PutDrawEnv PutDispEnv ClearOTag ClearOTagR"   # renderer
 XG_PLAT_WRAP_SYMS+=" CdRead CdControl CdControlB CdControlF"                # disc
+XG_PLAT_WRAP_SYMS+=" PadRead"                                               # input
+XG_PLAT_WRAP_SYMS+=" VSync SetRCnt GetRCnt StartRCnt"                        # timing
 XG_PLAT_WRAPS=""
 for _sym in $XG_PLAT_WRAP_SYMS; do XG_PLAT_WRAPS+=" -Wl,--wrap=$_sym"; done
 LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")

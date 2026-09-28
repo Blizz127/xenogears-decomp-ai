@@ -262,3 +262,30 @@ int xg_plat_disc_cd_read(int sectors, void* buf, int mode)
 {
     return __real_CdRead(sectors, (unsigned long*)buf, mode);
 }
+
+/* --- input: the game's PadRead ------------------------------------------ */
+extern unsigned int __real_PadRead(int id);
+unsigned int __wrap_PadRead(int id) { return xg_plat_input_read_pads(id); }
+unsigned int xg_plat_input_read_pads(int id) { return __real_PadRead(id); }
+
+/* --- timing: the game's VSync and root counters ------------------------- */
+extern int __real_VSync(int mode);
+extern int __real_SetRCnt(int spec, unsigned short target, int mode);
+extern int __real_GetRCnt(int spec);
+extern int __real_StartRCnt(int spec);
+
+int __wrap_VSync(int mode) { return xg_plat_timing_vsync(mode); }
+int __wrap_SetRCnt(int spec, unsigned short target, int mode)
+{
+    return xg_plat_timing_counter_set(spec, target, mode);
+}
+int __wrap_GetRCnt(int spec) { return xg_plat_timing_counter_get(spec); }
+int __wrap_StartRCnt(int spec) { return xg_plat_timing_counter_start(spec); }
+
+int xg_plat_timing_vsync(int mode) { return __real_VSync(mode); }
+int xg_plat_timing_counter_set(int spec, unsigned short target, int mode)
+{
+    return __real_SetRCnt(spec, target, mode);
+}
+int xg_plat_timing_counter_get(int spec) { return __real_GetRCnt(spec); }
+int xg_plat_timing_counter_start(int spec) { return __real_StartRCnt(spec); }
