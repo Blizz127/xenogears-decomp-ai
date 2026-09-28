@@ -1120,14 +1120,17 @@ extern void func_800ACCB0(void);
 
 void func_800A7948(void) {
     RECT rect;
+    s32 frame;
 
     if (D_8004F300 == 0) {
         return;
     }
-    if (D_800B06A0 < 0x687) {
+    frame = D_800B06A0;
+    if (frame < 0x687) {
         return;
     }
-    if (D_800B06A0 >= 0x18E2) {
+    __asm__ volatile("" ::: "memory");
+    if (frame >= 0x18E2) {
         return;
     }
 
