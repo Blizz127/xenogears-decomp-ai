@@ -1,3 +1,4 @@
+#ifdef XENO_PC_PORT
 #include "common.h"
 
 __asm__(
@@ -65,3 +66,23 @@ __asm__(
         ".word 0x01400008\n\t"
         ".word 0x24090019\n\t"
         ".end HookEntryInt");
+
+#else /* retail matching build: last byte-exact version (dbb08e3b) */
+#include "common.h"
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", setjmp);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", longjmp);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BEC0);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BED0);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", func_8004BED8);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ReturnFromException);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", ResetEntryInt);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libapi_2", HookEntryInt);
+#endif

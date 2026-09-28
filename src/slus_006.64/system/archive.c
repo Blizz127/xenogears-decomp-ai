@@ -203,6 +203,9 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
     return 0;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_80029AFC);
+#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/archive/func_80029AFC.s
  * (0x80029AFC-0x80029EAC). Count/sort 8-byte StreamDataQueueEntry records
  * until archiveIndex==0. Empty/NULL returns -3. Selection-sort by unsigned
@@ -341,7 +344,11 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
     CdControlF(CdlSetloc, (void*)pLoc);
     return 0;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_80029EB0);
+#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/archive/func_80029EB0.s
  * (0x80029EB0-0x8002A260). Arms the streaming-section decoder for one archive
  * file: ArchiveCdDataSync + snapshot, zero the stream words below D_80059F00,
@@ -455,6 +462,7 @@ int func_80029EB0(s32 archiveIndex, s32* pStreamFile, s32 arg2, s32 arg3, u16 ar
     CdControlF(CdlSetloc, (u_char*)pLoc);
     return 0;
 }
+#endif
 
 int* ArchiveAllocStreamFile(int numEntries, int allocMode) {
     int* pStreamFile;
@@ -471,6 +479,10 @@ int* ArchiveAllocStreamFile(int numEntries, int allocMode) {
     return NULL;
 }
 
+#ifndef XENO_PC_PORT
+/* retail func_8002A2D0; the port names it ArchiveCdSeekOrPause */
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_8002A2D0);
+#else
 void ArchiveCdSeekOrPause(int entryIndex) {
     u_char nCommand;
     u_char* nParam;
@@ -497,6 +509,7 @@ void ArchiveCdSeekOrPause(int entryIndex) {
         CdControlF(nCommand, nParam);
     }
 }
+#endif
 
 void ArchiveCdSeekToFile(int entryIndex) {
     u_char nCommand;
@@ -575,6 +588,10 @@ void ArchiveStreamFreeQueueData(StreamDataQueueEntry* pEntries) {
     }
 }
 
+#ifndef XENO_PC_PORT
+/* retail func_8002A57C; the port names it ArchiveStreamAllocQueueData */
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_8002A57C);
+#else
 StreamDataQueueEntry* ArchiveStreamAllocQueueData(int archiveIndex, StreamDataQueueEntry* pEntries) {
     int entryIndex;
     int numEntries;
@@ -618,7 +635,11 @@ StreamDataQueueEntry* ArchiveStreamAllocQueueData(int archiveIndex, StreamDataQu
 
     return pEntries;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", ArchiveCdDriveCommandHandler);
+#else
 void ArchiveCdDriveCommandHandler(u_char status, u_char* pResult) {
     char channel;
 
@@ -809,3 +830,4 @@ void ArchiveCdDriveCommandHandler(u_char status, u_char* pResult) {
             return;
     }
 }
+#endif

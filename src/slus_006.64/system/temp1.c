@@ -34,6 +34,9 @@ static int XenoWalkAnimDumpEnabled(void)
 
 extern void func_800BA8F4(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022B2C);
+#else
 void func_80022B2C(u8* pSpriteData)
 {
     u8* p = pSpriteData;
@@ -93,6 +96,7 @@ void func_80022B2C(u8* pSpriteData)
     }
     *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
 }
+#endif
 
 s32 func_80022CAC(void* pSpriteData, s32 value)
 {
@@ -119,6 +123,9 @@ void func_80022CDC(u8* pSprite) {
 
 extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022D44);
+#else
 void func_80022D44(void* pSpriteData) {
     u8* pData = pSpriteData;
     u32 flagsA8 = *(u32*)(pData + 0xA8);
@@ -142,6 +149,7 @@ void func_80022D44(void* pSpriteData) {
 
     func_8001D2B0(pData, tileIndex);
 }
+#endif
 
 #ifndef XENO_PC_PORT
 void func_80022DF4(pWork)
@@ -170,12 +178,19 @@ void* pWork;
 
 extern s32 D_800592EC;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022E8C);
+#else
 void func_80022E8C(void)
 {
     D_800592EC++;
     func_80022DF4();
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022EB8);
+#else
 void func_80022EB8(void* pWork)
 {
     u8* pWorkData = (u8*)pWork;
@@ -215,6 +230,7 @@ void func_80022EB8(void* pWork)
     WorkListRemoveTask(pWorkData + 0x1C);
     HeapFree(pWork);
 }
+#endif
 
 void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
     u32 pSub = *(u32*)(pSprite + 0x20);
@@ -230,6 +246,9 @@ void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002303C);
+#else
 void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
     u8* pData = (u8*)pSpriteData;
     void* pAlloc = HeapAlloc(size * 4, flags);
@@ -244,7 +263,11 @@ void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
         pAllocH[0] = *(u16*)(pData + 0x24 + 4);
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800230A8);
+#else
 void func_800230A8(void* pSpriteData)
 {
     u32* sprite = (u32*)pSpriteData;
@@ -267,7 +290,11 @@ void func_800230A8(void* pSpriteData)
 
     HeapFree(pSpriteData);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023124);
+#else
 s32 func_80023124(s32 pointA, s32 pointB) {
     s16 ax = (s16)(pointA & 0xFFFF);
     s16 ay = (s16)((pointA >> 16) & 0xFFFF);
@@ -275,7 +302,11 @@ s32 func_80023124(s32 pointA, s32 pointB) {
     s16 by = (s16)((pointB >> 16) & 0xFFFF);
     return (-ratan2(ay - by, ax - bx)) & 0xFFF;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023170);
+#else
 void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
     u8* pData = (u8*)pSpriteData;
     u32 flags3C = *(u32*)(pData + 0x3C);
@@ -293,6 +324,7 @@ void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
 
     func_8001D2B0(pSpriteData, animFrame);
 }
+#endif
 
 s32 func_800231E0(u8* a0) {
     s32 p = *(s32*)(a0 + 0xC);
@@ -309,6 +341,9 @@ s32 func_800231F8(u8* a0) {
 extern s32 D_80059198;
 extern void func_800248D4(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", AnimScriptTick);
+#else
 void AnimScriptTick(void* pSpriteData) {
     u8* pData = pSpriteData;
     s32 i;
@@ -326,7 +361,11 @@ void AnimScriptTick(void* pSpriteData) {
         }
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023290);
+#else
 void func_80023290(u8* pSprite, s32 animType) {
     u32 flags3C;
     animType &= 7;
@@ -350,7 +389,11 @@ void func_80023290(u8* pSprite, s32 animType) {
         }
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023340);
+#else
 void func_80023340(void* pSpriteData, s32 count) {
     u8* pData = pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
@@ -361,6 +404,7 @@ void func_80023340(void* pSpriteData, s32 count) {
     *(u32*)(pBase + 0x30) = (u32)(uintptr_t)pFramesData;
     *(u32*)(pBase + 0x2C) = (u32)(uintptr_t)pFramesData;
 }
+#endif
 
 // Allocate struct stuff
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800233A4.s
@@ -382,6 +426,9 @@ extern void WorkListTaskSetOnFreeCallback(void* pTask, void (*pCallback)(void*))
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800233A4);
+#else
 void* func_800233A4(void* pOwner, s32 dataSize) {
     u8* pWrapper;
     u8* pInner;
@@ -397,6 +444,7 @@ void* func_800233A4(void* pOwner, s32 dataSize) {
     WorkListTaskSetOnFreeCallback(pWrapper, func_80022EB8);
     return pWrapper;
 }
+#endif
 /*
 Matches on  GCC 2.7.2-970404, ASPSX 2.67
 
@@ -439,6 +487,9 @@ s32 func_80023440(void* pData)
     return result;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023468);
+#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023468.s
  * (0x80023468-0x800234AC, 17 instructions). Small dispatch on `type`: retail
  * rejects `type >= 0x10` up front, then jtbl_80018664 maps cases 0/5/6/10-14 to
@@ -476,7 +527,11 @@ s32 func_80023468(s32 type, s32 arg1) {
         return arg1;
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800234AC);
+#else
 void func_800234AC(void* pSpriteData) {
     u8* pData = pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
@@ -493,12 +548,16 @@ void func_800234AC(void* pSpriteData) {
         *(s16*)(pDir + 0x6) = 0;
     }
 }
+#endif
 
 extern s32 D_800591A8;
 extern s32 D_80059198;
 extern u8 D_800591AD;
 extern void SpriteComputeTransformMatrix(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023538);
+#else
 void func_80023538(void* pSpriteData, void* pAnimation) {
     u8* pData = pSpriteData;
     u8* pAnim = pAnimation;
@@ -597,10 +656,14 @@ void func_80023538(void* pSpriteData, void* pAnimation) {
         *(s16*)(pState + 0xC) = 0;
     }
 }
+#endif
 
 // SpriteData stuff
 extern s32 D_80059198;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023804);
+#else
 void func_80023804(void* pSpriteData) {
     u8* pData = pSpriteData;
     s32 work;
@@ -638,6 +701,7 @@ void func_80023804(void* pSpriteData) {
     *(s32*)(pData + 0x6C) = 0;
     *(s32*)(pData + 0x50) = 0;
 }
+#endif
 
 
 
@@ -652,6 +716,9 @@ void func_80023950(void* arg0) {
     *(s32*)((u8*)arg0 + 0x20) = 0;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023958);
+#else
 void func_80023958(void* pSpriteData) {
     u8* pData = (u8*)pSpriteData;
     void* pSub = pData + 0xB4;
@@ -663,7 +730,11 @@ void func_80023958(void* pSpriteData) {
         pParent[0x40/4] = 0;
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800239A0);
+#else
 void func_800239A0(void* pSpriteData) {
     u8* pData = pSpriteData;
     u8* pBase = pData + 0xB4;
@@ -675,7 +746,11 @@ void func_800239A0(void* pSpriteData) {
     *(u32*)(pData + 0x24) = (u32)(uintptr_t)(pData + 0x110);
     *(u32*)(pBase + 0x38) = 0;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800239F4);
+#else
 void func_800239F4(u8* pSprite) {
     u32 pSub;
     pSub = (u32)(pSprite + 0xB4);
@@ -686,6 +761,7 @@ void func_800239F4(u8* pSprite) {
     *(u32*)(pSub + 0x34) = 0;
     *(u32*)(pSub + 0x38) = 0;
 }
+#endif
 
 extern u8* D_8006BE10;
 extern u8* D_8005A474;
@@ -693,6 +769,9 @@ extern s32 func_8001EE74(void* arg0);
 extern void func_80023950(void* arg0);
 extern void func_80023958(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023A48);
+#else
 void* func_80023A48(s32 type, s32 mode, u8* pAnimData, s32 extraSize, u8* pCallback) {
     u8* pResult;
     s32 allocSize;
@@ -736,10 +815,14 @@ void* func_80023A48(s32 type, s32 mode, u8* pAnimData, s32 extraSize, u8* pCallb
     }
     return pResult;
 }
+#endif
 
 extern u8 D_800591AC;
 extern void func_80024730(u8* pOwner);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023B84);
+#else
 void* func_80023B84(void* pSpriteData, void* pScript, void* pAnimPackage) {
     u8* pSprite = pSpriteData;
     void* pEntry = pScript;
@@ -851,6 +934,7 @@ void* func_80023B84(void* pSpriteData, void* pScript, void* pAnimPackage) {
     D_800591AC = prevFlag;
     return pNode;
 }
+#endif
 
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023FD8.s
  * (0x80023FD8-0x80024294, 175 instructions). Sprite-script spawn: resolves the
@@ -877,6 +961,9 @@ extern u32 D_800C3E1C;
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023FD8);
+#else
 u8* func_80023FD8(s32 index, u8* pAnimData, s16* pPosition, s32 extraSize) {
     u8* pScriptTable;
     u8* pEntry;
@@ -957,12 +1044,16 @@ u8* func_80023FD8(s32 index, u8* pAnimData, s16* pPosition, s32 extraSize) {
     func_80024730(pWrapper);
     return pWrapper;
 }
+#endif
 
 extern s32 D_800591B8;
 extern void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5);
 void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY,
                     s16 clutX, s16 clutY, s16 arg6);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024294);
+#else
 void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
     void* pSpriteData;
 
@@ -972,7 +1063,11 @@ void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
 
     return pSpriteData;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800242F4);
+#else
 void* func_800242F4(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg6, s32 flags) {
     void* pResult;
 
@@ -983,12 +1078,16 @@ void* func_800242F4(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s
     D_800591B8 = 0;
     return pResult;
 }
+#endif
 
 extern u8 D_800591AD;
 extern s32 func_8001EE74(void* arg0);
 extern void func_800222BC(void* pSpriteData, void* pAnimPackageFile);
 extern void func_800245D8(void* pSpriteData, s16 animIndex);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002435C);
+#else
 void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg6) {
     u8* pData = pSpriteData;
     u8* pPackage = pAnimPackage;
@@ -1046,7 +1145,11 @@ void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s
 
     return pData;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024524);
+#else
 void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5) {
     void* pSpriteData;
 
@@ -1055,11 +1158,15 @@ void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
 
     return func_8002435C(pSpriteData, pAnimPackage, texX, texY, clutX, clutY, arg5);
 }
+#endif
 
 extern s32 func_8001EE68(void* arg0);
 extern void func_80023538(void* pSpriteData, void* pAnimation);
 extern void func_800223B0(void* pSpriteData, s16 arg1);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800245D8);
+#else
 void func_800245D8(void* pSpriteData, s16 animIndex) {
     u8* pData = pSpriteData;
     u8* pDefaultAnimFile;
@@ -1123,6 +1230,7 @@ void func_800245D8(void* pSpriteData, s16 animIndex) {
     }
 #endif
 }
+#endif
 
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80024730.s
  * (0x80024730-0x800248D4; the next retail symbol func_800248D4 starts there, so
@@ -1149,6 +1257,9 @@ void func_800245D8(void* pSpriteData, s16 animIndex) {
 extern u32 D_8006F99C[];
 extern u32 D_8006F9AC[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024730);
+#else
 void func_80024730(u8* pOwner) {
     u8* pState = pOwner + 0x38;
     u8* pInner = pOwner + 0x1C;
@@ -1199,6 +1310,7 @@ void func_80024730(u8* pOwner) {
 
     func_80025224(pInner, mode);
 }
+#endif
 
 extern u8 D_800591AD;
 extern s32 g_WorkListCurTimer;
@@ -1206,6 +1318,9 @@ extern void func_800C11CC(void* pSpriteData);
 extern void func_80022D44(void* pSpriteData);
 extern void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800248D4);
+#else
 void func_800248D4(void* pSpriteData) {
     u8* pData = pSpriteData;
     u8* pc;
@@ -1749,10 +1864,14 @@ reenter:
 #endif
     assert(0 && "func_800248D4 opcode path is not implemented");
 }
+#endif
 
 extern u8 D_800591AD, D_800591AE;
 extern s32 D_800591A8;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024F20);
+#else
 void func_80024F20(void) {
     D_800591AD = 0;
     D_800591AE = 0;
@@ -1760,6 +1879,7 @@ void func_80024F20(void) {
     WorkListsReset();
     func_8001D298();
 }
+#endif
 
 
 
@@ -1771,6 +1891,9 @@ extern void* g_GfxWorkBuffers;
 extern u32 g_GfxImageList[];
 extern void func_8001D298(void);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", GfxAllocateWorkBuffers);
+#else
 void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag) {
     void* pWorkBuffers;
 
@@ -1783,6 +1906,7 @@ void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag) {
     g_GfxImageList[0] = 0;
     func_8001D298();
 }
+#endif
 /*
 Matches on  GCC 2.7.2-970404, ASPSX 2.67 and GCC 2.7.2
 
@@ -1820,10 +1944,14 @@ extern void func_8001D2A4(void);
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", GfxFreeWorkBuffers);
+#else
 void GfxFreeWorkBuffers(void) {
     HeapFree(g_GfxWorkBuffers);
     func_8001D2A4();
 }
+#endif
 /*
 void GfxFreeWorkBuffers(void) {
     HeapFree(g_GfxWorkBuffers);
@@ -1850,9 +1978,13 @@ void GfxSetCurrentOT(u_long* ot) {
 
 // Set D_8004FBB8 matrix
 extern MATRIX D_8004FBB8;
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024FF4);
+#else
 void func_80024FF4(MATRIX* matrix) {
     D_8004FBB8 = *matrix;
 }
+#endif
 /*
 Matches on GCC 2.8.0 and GCC 2.7.2-970404, ASPSX 2.67
 Co-Authored-By: dezgeg <dezgeg@users.noreply.github.com>
@@ -1874,6 +2006,9 @@ void func_80024FF4(MATRIX* matrix) {
 // Set the list to NULL afterwards.
 extern s32 g_GfxCurContext;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025044);
+#else
 void func_80025044(void) {
     u8* pImage;
 
@@ -1892,6 +2027,7 @@ void func_80025044(void) {
 
     g_GfxImageList[g_GfxCurContext] = 0;
 }
+#endif
 /*
 Matches on GCC 2.7.2-970404, ASPSX 2.67
 Co-Authored-By: dezgeg <dezgeg@users.noreply.github.com>
@@ -1931,6 +2067,9 @@ extern uintptr_t D_80059524;
 static u8* SpriteRenderAddress(uintptr_t address);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800250E0);
+#else
 void func_800250E0(int context) {
     u8* pPrimBuffer = context ? (u8*)g_GfxWorkBuffer2 : (u8*)g_GfxWorkBuffers;
     u32* pListHead = context ? &D_80059304 : &D_80059300;
@@ -1958,6 +2097,7 @@ void func_800250E0(int context) {
 
     *pListHead = 0;
 }
+#endif
 /*
 Matches on GCC 2.7.2-970404, ASPSX 2.67
 
@@ -2008,6 +2148,9 @@ void func_800250E0(int context) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025180);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800251C8);
+#else
 // GfxQueueShapeTransfer
 // Add Image to current g_GfxImageList[g_GfxCurContext] linked list
 void func_800251C8(u_long* addr, int x, int y, int width, int height) {
@@ -2025,6 +2168,7 @@ void func_800251C8(u_long* addr, int x, int y, int width, int height) {
         g_GfxImageList[g_GfxCurContext] = (u32)(uintptr_t)pCurrent;
     }
 }
+#endif
 /*
 Matches, but uses variable in COMMON so can't compile in yet.
 
@@ -2070,6 +2214,9 @@ void func_800251C8(u_long* addr, int x, int y, int width, int height) {
  * parked at 0x8004FDBC instead of 0x8004FD40 (data-symbol placement, see
  * ACTIVE_HANDOFF), so the emitted immediate is not yet retail-identical. */
 extern void (*D_8004FD40[])(void*);
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025224);
+#else
 void func_80025224(void* pTask, int handlerIndex) {
 #ifdef TEMP1_25224_MUTANT_INDEX_PLUS1
     WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex + 1]);
@@ -2077,6 +2224,7 @@ void func_80025224(void* pTask, int handlerIndex) {
     WorkListSetTaskCallback(pTask, D_8004FD40[handlerIndex]);
 #endif
 }
+#endif
 /*
 CALLBACK_TABLE
 8004fd40 func_80025258
@@ -2106,6 +2254,7 @@ extern u8 D_800C3664;
 extern void func_8001E3D8(void* pSpriteData, void* ot);
 extern void func_8001E298(void* pSpriteData, void* ot);
 
+#ifdef XENO_PC_PORT
 static u8* SpriteRenderAddress(uintptr_t address) {
 #ifdef XENO_PC_PORT
     if ((address & ~(uintptr_t)0x1FFFFFu) == 0x80000000u ||
@@ -2115,7 +2264,11 @@ static u8* SpriteRenderAddress(uintptr_t address) {
 #endif
     return (u8*)address;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025258);
+#else
 /* Retail 80025258..80025418: shared render callback for types 0/5/6/14.
  * Task fields and OT entries remain four bytes on the native host. */
 void func_80025258(u8* pEntry) {
@@ -2175,6 +2328,7 @@ void func_80025258(u8* pEntry) {
         }
     }
 }
+#endif
 
 extern s32 D_80050100;
 
@@ -2231,6 +2385,9 @@ void func_8002541C(u8* pEntry) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025544);
+#else
 /* Retail 80025544..80025710: projected square TILE followed by draw mode. */
 void func_80025544(u8* pEntry) {
     u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
@@ -2300,12 +2457,16 @@ void func_80025544(u8* pEntry) {
     AddPrim(SpriteRenderAddress(otAddress + otOffset), pMode);
 #endif
 }
+#endif
 
 void func_80025710(void) {}
 
 extern MATRIX D_8004FBB8;
 extern void func_8002C700(void* a, void* b, u_long* ot, s32 flags);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025718);
+#else
 void func_80025718(u8* pEntry) {
     u8* pSprite = *(u8**)(pEntry + 0x04);
     u8* pSub;
@@ -2343,6 +2504,7 @@ void func_80025718(u8* pEntry) {
         );
     }
 }
+#endif
 
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800257F0.s
  * (0x800257F0-0x800258A0 ... 0x80025A6C). Sprite transform/render setup:
@@ -2360,6 +2522,9 @@ extern u16 D_8004FD80[];
 extern void func_800B1F6C();
 extern MATRIX D_8004FDA0;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800257F0);
+#else
 void func_800257F0(u8* pArg) {
     u8* pSprite = *(u8**)(pArg + 4);
     u8* pData;
@@ -2432,10 +2597,14 @@ void func_800257F0(u8* pArg) {
         SetGeomOffset(geomX, geomY);
     }
 }
+#endif
 
 extern s32 D_80050100;
 extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32 f);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025A88);
+#else
 void func_80025A88(u8* pEntry) {
     u8* pSprite = *(u8**)(pEntry + 0x04);
     u8* pSub;
@@ -2481,93 +2650,15 @@ void func_80025A88(u8* pEntry) {
         }
     }
 }
+#endif
 
 #ifndef XENO_PC_PORT
-/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
- * assembler (same guard as menu.c func_8001C76C). */
-__asm__(
-        ".globl func_80025C04\n\t"
-        ".ent func_80025C04\n\t"
-        "func_80025C04:\n\t"
-        ".word 0x3c081f80, 0x000529c0, 0x48854000, 0x2484ffff\n\t"
-        ".word 0x2402ffff, 0x1082004a, 0x00000000\n\t"
-        ".Lfunc_80025C04_loop:\n\t"
-        ".word 0x94e20000, 0x00000000, 0x3042001f, 0xad020004\n\t"
-        ".word 0x94e20000, 0x00000000, 0x304203e0, 0xad020008\n\t"
-        ".word 0x94e20000, 0x00000000, 0x30427c00, 0xad02000c\n\t"
-        ".reloc ., R_MIPS_LO16, D_1F800004\n\t"
-        ".word 0x25020000, 0xc8490000, 0xc84a0004, 0xc84b0008\n\t"
-        ".word 0x00000000, 0x00000000, 0x4b98003d\n\t"
-        ".reloc ., R_MIPS_LO16, D_1F800014\n\t"
-        ".word 0x25020000, 0xe8490000, 0xe84a0004, 0xe84b0008\n\t"
-        ".word 0x8d020014, 0x00000000, 0x28420020, 0x10400004\n\t"
-        ".word 0x2402001f, 0x95020014, 0x00000000, 0x3042001f\n\t"
-        ".word 0xa5020000, 0x8d020018, 0x00000000, 0x284203e1\n\t"
-        ".word 0x14400006, 0x00000000, 0x95020000, 0x00000000\n\t"
-        ".word 0x344203e0\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025C04_green_done\n\t"
-        ".word 0x08000000, 0xa5020000\n\t"
-        ".word 0x95020018, 0x95030000, 0x304203e0, 0x00621825\n\t"
-        ".word 0xa5030000\n\t"
-        ".Lfunc_80025C04_green_done:\n\t"
-        ".word 0x8d02001c, 0x00000000, 0x28427c01, 0x14400006\n\t"
-        ".word 0x00000000, 0x95020000, 0x00000000, 0x34427c00\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025C04_blue_done\n\t"
-        ".word 0x08000000, 0xa5020000\n\t"
-        ".word 0x9502001c, 0x95030000, 0x30427c00, 0x00621825\n\t"
-        ".word 0xa5030000\n\t"
-        ".Lfunc_80025C04_blue_done:\n\t"
-        ".word 0x94e30000, 0x24e70002, 0x2484ffff, 0x95020000\n\t"
-        ".word 0x30638000, 0x00431025, 0xa5020000, 0xa4c20000\n\t"
-        ".word 0x2402ffff, 0x1482ffb8, 0x24c60002\n\t"
-        ".word 0x03e00008, 0x00000000\n\t"
-        ".end func_80025C04");
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025C04);
 #endif
 
 /* Handwritten GTE color-processing routine retained as assembly. */
 #ifndef XENO_PC_PORT
-/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
- * assembler (same guard as func_80025C04 above). */
-__asm__(
-        ".globl func_80025D4C\n\t"
-        ".ent func_80025D4C\n\t"
-        "func_80025D4C:\n\t"
-        ".word 0x27bdffe8, 0x8fb9002c, 0x8fa30038, 0x8fb80030, 0x00806821, 0xafb00010, 0x8fb00028, 0x8fae0034\n\t"
-        ".word 0x00a07821, 0x28620021, 0x14400002, 0xafb10014, 0x24030020, 0x000311c0, 0x48824000, 0x0018c280\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_loop_test\n\t"
-        ".word 0x08000000, 0x0019c940, 0x95e80000, 0x11c20011, 0x29c20002, 0x10400005, 0x24020002, 0x11c00009\n\t"
-        ".word 0x01901021\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_apply\n\t"
-        ".word 0x08000000, 0x00402021, 0x11c20010, 0x24020003, 0x11c20015, 0x01901021\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_apply\n\t"
-        ".word 0x08000000, 0x00402021, 0x310c001f, 0x310b03e0\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
-        ".word 0x08000000, 0x310a7c00, 0x3102001e, 0x00026042, 0x310203c0\n\t"
-        ".word 0x00025842, 0x31027800\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
-        ".word 0x08000000, 0x00025042, 0x3102001c, 0x00026082, 0x31020380, 0x00025882\n\t"
-        ".word 0x31027000\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80025D4C_components_done\n\t"
-        ".word 0x08000000, 0x00025082, 0x3c055555, 0x34a55556, 0x310303e0, 0x31047c00, 0x3102001f\n\t"
-        ".word 0x00031942, 0x00431021, 0x00042282, 0x00441021, 0x00450018, 0x000217c3, 0x00008810, 0x02221023\n\t"
-        ".word 0x00406021, 0x00025940, 0x00025280\n\t"
-        ".Lfunc_80025D4C_components_done:\n\t"
-        ".word 0x01901021, 0x00402021\n\t"
-        ".Lfunc_80025D4C_apply:\n\t"
-        ".word 0x00021400, 0x04410002, 0x01791021\n\t"
-        ".word 0x00002021, 0x00404821, 0x00021400, 0x04410002, 0x01581021, 0x00004821, 0x00402821, 0x00021400\n\t"
-        ".word 0x04410002, 0x00041400, 0x00002821, 0x00021403, 0x28420020, 0x14400002, 0x00091400, 0x2404001f\n\t"
-        ".word 0x00021403, 0x284203e1, 0x14400002, 0x00051400, 0x240903e0, 0x00021403, 0x28427c01, 0x14400002\n\t"
-        ".word 0x00041400, 0x24057c00, 0x94c30000, 0x00021403, 0x3063001f, 0x00621823, 0x00091400, 0xafa30000\n\t"
-        ".word 0x94c30000, 0x00021403, 0x306303e0, 0x00621823, 0x00051400, 0xafa30004, 0x94c30000, 0x00021403\n\t"
-        ".word 0x30637c00, 0x00621823, 0xafa30008, 0xcba90000, 0xcbaa0004, 0xcbab0008, 0x00000000, 0x00000000\n\t"
-        ".word 0x4b98003d, 0xeba90000, 0xebaa0004, 0xebab0008, 0x1100000e, 0x00000000, 0x97a20000, 0x97a30008\n\t"
-        ".word 0x3042001f, 0x00821021, 0x34428000, 0x30637c00, 0x97a40004, 0x00a31821, 0x308403e0, 0x01242021\n\t"
-        ".word 0x00441025, 0x00431025, 0xa4e20000, 0x25ef0002, 0x24c60002, 0x24e70002\n\t"
-        ".Lfunc_80025D4C_loop_test:\n\t"
-        ".word 0x25adffff, 0x2402ffff\n\t"
-        ".word 0x15a2ff81, 0x24020001, 0x8fb10014, 0x8fb00010, 0x27bd0018, 0x03e00008, 0x00000000\n\t"
-        ".end func_80025D4C");
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80025D4C);
 #endif
 
 #ifdef XENO_PC_PORT
@@ -2681,39 +2772,12 @@ void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage, s32* pClutX,
     *pTexY = (s32)(s16)(*(u16*)(item + 0x18) & 0xFF00) + *(s16*)(item + 2);
 }
 #else
-/* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80026338.s
- * (0x80026338-0x800263E4). Record getter: `index` selects a u16 offset from
- * `base`; the resulting record holds a signed first field, a u16 at +4 whose
- * (s16) value is shifted right by 2 or 4 depending on whether the signed +0x14
- * field is non-zero, four more signed fields, and two masked sums (0xFFC0 at
- * +0x1A plus the shift, 0xFF00 at +0x1C plus the signed +6 field). All six
- * results go to the caller's out-pointers. */
-void func_80026338(u8* base, s32 index, s32* pOut0, s32* pOut1, s32* pOut2,
-                   s32* pOut3, s32* pOut4, s32* pOut5) {
-    u16* pEntry = (u16*)(base + index * 2);
-    u8* pRec = base + pEntry[2];
-    u16 n;
-    s32 shift;
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026338);
+#endif
 
-    *pOut0 = *(s16*)(pRec + 0);
-    n = *(u16*)(pRec + 4);
-#ifdef TEMP1_26338_MUTANT_SHIFT3
-    shift = (s16)n >> 3;
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800263E4);
 #else
-    if (*(s16*)(pRec + 0x14) != 0) {
-        shift = (s16)n >> 2;
-    } else {
-        shift = (s16)n >> 4;
-    }
-#endif
-    *pOut1 = *(s16*)(pRec + 0x14);
-    *pOut2 = *(s16*)(pRec + 0x16);
-    *pOut3 = *(s16*)(pRec + 0x18);
-    *pOut4 = (s16)(*(u16*)(pRec + 0x1A) & 0xFFC0) + shift;
-    *pOut5 = (s16)(*(u16*)(pRec + 0x1C) & 0xFF00) + *(s16*)(pRec + 6);
-}
-#endif
-
 /* Retail 800263E4..8002675C. The last two arguments are independent
  * byte-sized axis flips; packet coordinates narrow before the UV test. */
 s32 func_800263E4(u8* table, s32 index, void* packets, s32 buffer,
@@ -2785,6 +2849,7 @@ s32 func_800263E4(u8* table, s32 index, void* packets, s32 buffer,
     }
     return *(s16*)entry;
 }
+#endif
 
 #ifdef XENO_PC_PORT
 /* Build a run of POLY_FT4 sprites for atlas entry `index` (window borders,
@@ -2872,6 +2937,9 @@ s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx, s32 x, s32 y
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002675C);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026A0C);
+#else
 s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 ofsX, s16 ofsY) {
     u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
     s32 count = *(s16*)(pDesc);
@@ -2904,10 +2972,14 @@ s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 of
     }
     return count + 1;
 }
+#endif
 
 void func_80026B9C(void) {
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026BA4);
+#else
 /* Retail 80026BA4..80026DCC takes five arguments. Packets come from the
  * current graphics work buffer; the fifth argument is the ordering-table
  * entry itself. A sixth stack word belongs to the caller, not this API. */
@@ -2951,7 +3023,11 @@ void func_80026BA4(u8* pTable, s32 index, s32 ofsX, s32 ofsY, void* ot) {
         AddPrim(ot, poly);
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026DCC);
+#else
 s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
     u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
     s32 count = *(s16*)(pDesc);
@@ -2994,53 +3070,14 @@ s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
     }
     return count;
 }
-
-#ifndef XENO_PC_PORT
-/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
- * assembler (same guard as func_80025C04 / func_80025D4C above). */
-__asm__(
-        ".globl func_80026F44\n\t"
-        ".ent func_80026F44\n\t"
-        "func_80026F44:\n\t"
-        ".word 0x28aa0020, 0x140a0002, 0x00000000, 0x20050020\n\t"
-        ".word 0x000529c0, 0x48854000, 0x240affff\n\t"
-        ".Lfunc_80026F44_loop:\n\t"
-        ".word 0x2484ffff, 0x108a001e, 0x94ee0000, 0x24e70002\n\t"
-        ".word 0x31cd001f, 0x31cc03e0, 0x31cb7c00\n\t"
-        ".word 0x488d4800, 0x488c5000, 0x488b5800\n\t"
-        ".word 0x00000000, 0x00000000, 0x4b98003d\n\t"
-        ".word 0x480d4800, 0x480c5000, 0x480b5800\n\t"
-        ".word 0x31ad001f, 0x318c03e0, 0x316b7c00\n\t"
-        ".word 0x01ac6825, 0x016d6825, 0x100e0004, 0x00000000\n\t"
-        ".word 0x140d0002, 0x00000000, 0x35ad0001\n\t"
-        ".word 0x31ce8000, 0x01cd7025, 0xa4ce0000, 0x24c60002\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80026F44_loop\n\t"
-        ".word 0x08000000, 0x00000000, 0x03e00008, 0x00000000\n\t"
-        ".end func_80026F44");
 #endif
 
 #ifndef XENO_PC_PORT
-/* MIPS-only: .ent/.end and R_MIPS_* relocs are rejected by the host
- * assembler (same guard as func_80025C04 / func_80025D4C / func_80026F44). */
-__asm__(
-        ".globl func_80026FE8\n\t"
-        ".ent func_80026FE8\n\t"
-        "func_80026FE8:\n\t"
-        ".word 0x8fa80010, 0x28a20021, 0x14400002, 0x00c05021\n\t"
-        ".word 0x24050020, 0x000511c0, 0x48824000, 0x24840001\n\t"
-        ".Lfunc_80026FE8_loop:\n\t"
-        ".word 0x2484ffff, 0x10800021, 0x950c0000, 0x94e20000\n\t"
-        ".word 0x21080002, 0x304d001f, 0x304e03e0, 0x304f7c00\n\t"
-        ".word 0x3183001f, 0x006d5823, 0x488b4800, 0x318303e0\n\t"
-        ".word 0x006e5023, 0x488a5000, 0x31837c00, 0x006f4823\n\t"
-        ".word 0x48895800, 0x00000000, 0x00000000, 0x4b98003d\n\t"
-        ".word 0x480b4800, 0x480a5000, 0x48095800, 0x316b001f\n\t"
-        ".word 0x01ab5820, 0x314a03e0, 0x01ca5020, 0x31297c00\n\t"
-        ".word 0x01e94820, 0x016a5825, 0x01695825, 0xa4cb0000\n\t"
-        ".word 0x20e70002\n\t"
-        ".reloc ., R_MIPS_26, .Lfunc_80026FE8_loop\n\t"
-        ".word 0x08000000, 0x20c60002, 0x03e00008, 0x00000000\n\t"
-        ".end func_80026FE8");
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026F44);
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80026FE8);
 #endif
 
 #ifndef XENO_PC_PORT

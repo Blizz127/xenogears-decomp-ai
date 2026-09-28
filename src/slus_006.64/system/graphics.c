@@ -5,9 +5,16 @@
 RECT* D_800592F0;
 u_long* D_800592F4;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/graphics", GfxLoadImageAccelerated);
+#else
 void GfxLoadImageAccelerated(void) {
     LoadImage(D_800592F0, D_800592F4);
 }
+#endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/graphics", GfxLoadClutsAccelerated);
+#else
 /*
 Matches on ASPSX 2.56, GCC 2.6.0
 
@@ -57,3 +64,4 @@ void GfxLoadClutsAccelerated(void* pClutData, s32 x, s32 y) {
         GfxLoadImageAccelerated();
     }
 }
+#endif

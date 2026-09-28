@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check_rom_hashes.sh — the full-ROM checksum gate.
 #
-# Builds the four pinned matching artifacts FROM CLEAN and verifies them
+# Builds every pinned matching artifact FROM CLEAN and verifies them
 # against config/checksum.sha (the RETAIL overlay hashes — ground truth,
 # never re-pinned by this script or anything else).
 #
@@ -39,14 +39,14 @@ if ! command -v mips-linux-gnu-ld >/dev/null 2>&1; then
     exit 2
 fi
 
-# Known-red ledger (diagnostic of 2026-07-24). Purely informational: it makes
-# an expected FAIL legible. It does not and must not gate anything.
+# Known-red ledger. Purely informational: it makes an expected FAIL legible.
+# It does not and must not gate anything. Keep it current: an artifact that
+# passes has no business here (slus_006.64, member_change_menu and shop_menu
+# were removed on 2026-09-28 once they matched retail again).
 known_red() {
     case "$1" in
-        *slus_006.64*)         echo "known red since c55fd03 (2026-06-30, MenuExecute nonmatching decompile + jtbl literal-data); last green dbb08e3" ;;
-        *member_change_menu*)  echo "known red since 310c391 (Phase-2b text-path port changed plain-C matching code); parent 01c8c92 was green" ;;
-        *shop_menu*)           echo "known red; first-red in (310c391..48ea933] via shared include/system/menu.h evolution (exact commit unbisected)" ;;
         *field*)               echo "known red at HEAD (first-red unscanned; includes the jtbl_8006FC88 literal-u32 era)" ;;
+        */menu.bin)            echo "known red: WIP overlay bring-up since cedab7d (first-red unscanned); the pin is the retail menu.bin" ;;
         *)                     echo "not in the known-red ledger — NEW drift, investigate before anything else" ;;
     esac
 }
@@ -99,10 +99,11 @@ while read -r pin path; do
     fi
 done < config/checksum.sha
 
-# Informational only: menu.bin is a WIP overlay (progress hash, not a retail
-# pin) — printed so the nav arc's guard value is visible in the same place.
+# Informational only: menu.bin is a WIP overlay whose pin (above) is the
+# retail hash; print its full progress hash so the nav arc's guard value is
+# visible in the same place.
 if [ -f build/out/menu.bin ]; then
-    printf 'info  %-36s %s (%s bytes) [WIP overlay, not pinned]\n' \
+    printf 'info  %-36s %s (%s bytes) [WIP overlay progress hash]\n' \
         build/out/menu.bin "$(sha256sum build/out/menu.bin | cut -c1-16)" \
         "$(stat -c%s build/out/menu.bin)"
 fi

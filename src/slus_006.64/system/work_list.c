@@ -66,6 +66,9 @@ extern WorkListEntry* D_80059590;
 extern WorkListEntry* g_WorkList;
 extern short D_80059494;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsReset);
+#else
 void WorkListsReset(void) {
     g_TimerWorkList = NULL;
     g_WorkList = NULL;
@@ -73,6 +76,10 @@ void WorkListsReset(void) {
     g_NumWorkListEntries = 0;
     g_WorkListCurTimer = 0;
 }
+#endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListUpdate);
+#else
 /*
 void WorkListsReset(void) {
     g_TimerWorkList = NULL;
@@ -106,6 +113,10 @@ void TimerWorkListUpdate(void) {
         }
     }
 }
+#endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListUpdate);
+#else
 /*
 void TimerWorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
@@ -149,6 +160,7 @@ void WorkListUpdate(void) {
         }
     }
 }
+#endif
 /*
 void WorkListUpdate(void) {
     WorkListCallback_t pFnCallback;
@@ -170,6 +182,9 @@ void WorkListUpdate(void) {
 extern s32 D_80059184;
 extern void WorkListRemoveTask(WorkListEntry* pEntry);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAddTask);
+#else
 void WorkListAddTask(void* data, WorkListEntry* pEntry) {
     u32 old14 = *(u32*)((u8*)pEntry + 0x14);
     u32 old10 = *(u32*)((u8*)pEntry + 0x10);
@@ -195,10 +210,14 @@ void WorkListAddTask(void* data, WorkListEntry* pEntry) {
     D_80059184 = timer + 1;
     g_NumWorkListEntries++;
 }
+#endif
 
 extern u8 D_800591AF;
 void WorkListDeleteTask(WorkListEntry* pTask);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListAllocateTask);
+#else
 WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     WorkListEntry* pEntry;
 
@@ -207,6 +226,7 @@ WorkListEntry* WorkListAllocateTask(void* data, int dataSize) {
     pEntry->onFreeCallback = WorkListDeleteTask;
     return pEntry;
 }
+#endif
 
 void WorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
@@ -248,6 +268,9 @@ extern void TimerWorkListRemoveTask(WorkListEntry* pEntry);
 extern u8 D_800591AC;
 extern s32 D_80059464;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAddTask);
+#else
 void TimerWorkListAddTask(void* data, WorkListEntry* pEntry) {
     u32 old14, old10, taskFlags;
     s32 timer;
@@ -280,10 +303,14 @@ void TimerWorkListAddTask(void* data, WorkListEntry* pEntry) {
     }
     g_NumTimerWorkListEntries++;
 }
+#endif
 
 extern u8 D_800591AF;
 void TimerWorkListDeleteTask(WorkListEntry* pTask);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListAllocateTask);
+#else
 WorkListEntry* TimerWorkListAllocateTask(void* data, int dataSize) {
     WorkListEntry* pEntry;
     pEntry = HeapAlloc(dataSize + sizeof(WorkListEntry), D_800591AF);
@@ -292,6 +319,7 @@ WorkListEntry* TimerWorkListAllocateTask(void* data, int dataSize) {
     pEntry->unk4 = 0;
     return pEntry;
 }
+#endif
 
 void WorkListSetTaskCallback(WorkListEntry* pTask, WorkListCallback_t callback) {
     pTask->onTriggerCallback = callback;
@@ -313,6 +341,9 @@ WorkListCallback_t WorkListTaskGetOnFreeCallback(WorkListEntry* pTask) {
     return pTask->onFreeCallback;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", TimerWorkListRemoveTask);
+#else
 void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     WorkListEntry* pPrevEntry;
     WorkListEntry* pCurEntry;
@@ -342,6 +373,7 @@ void TimerWorkListRemoveTask(WorkListEntry* pTargetEntry) {
     
     g_NumTimerWorkListEntries--;
 }
+#endif
 
 void TimerWorkListDeleteTask(WorkListEntry* pTask) {
     TimerWorkListRemoveTask(pTask);
@@ -449,6 +481,9 @@ void* func_8001D10C(void* pTask) {
     return NULL;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D164);
+#else
 void* func_8001D164(void* pCallback) {
     void* pPrev = NULL;
     void* pCur = g_TimerWorkList;
@@ -460,6 +495,7 @@ void* func_8001D164(void* pCallback) {
     }
     return pPrev;
 }
+#endif
 
 void WorkListsDeleteTasks(WorkListEntry* pTasks) {
     WorkListRemoveTask(pTasks + 1);
@@ -467,6 +503,9 @@ void WorkListsDeleteTasks(WorkListEntry* pTasks) {
     HeapFree(pTasks);
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsAddTasks);
+#else
 WorkListEntry* WorkListsAddTasks(void* timerData, void* timerCb, void* workCb, void* onFreeCb) {
     WorkListEntry* pEntry;
     WorkListEntry* pWorkEntry;
@@ -485,6 +524,7 @@ WorkListEntry* WorkListsAddTasks(void* timerData, void* timerCb, void* workCb, v
     pWorkEntry->unk4 = pEntry;
     return pEntry;
 }
+#endif
 
 
 
@@ -504,6 +544,9 @@ void func_8001D2A4(void) {
     D_80059190 = 0;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D2B0);
+#else
 // Change Sprite Animation Frame maybe?
 void func_8001D2B0(void* pSpriteData, s16 frameIndex) {
     u8* pData = pSpriteData;
@@ -546,7 +589,11 @@ void func_8001D2B0(void* pSpriteData, s16 frameIndex) {
     *(u32*)((u8*)(uintptr_t)*(u32*)(pData + 0x20) + 0x38) = (u32)D_80059190;
     D_80059190 = (s32)(uintptr_t)pData;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D3F4);
+#else
 // Unlink SpriteData entry from list
 void func_8001D3F4(u8* pTarget) {
     u8* pPrev = NULL;
@@ -568,6 +615,7 @@ void func_8001D3F4(u8* pTarget) {
         pCur = (u8*)(uintptr_t)pNext;
     }
 }
+#endif
 
 void func_8001D468(void) {
     u8* pEntry = (u8*)(uintptr_t)D_80059190;

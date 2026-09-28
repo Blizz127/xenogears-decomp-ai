@@ -414,6 +414,9 @@ extern void func_8002804C(s32, s32, s32, s32);
  * field smoke passes with it. */
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_80028B14);
+#else
 s32 func_80028B14(void) {
     u8* pStreamFile;
     u8* pBuffers;
@@ -539,6 +542,7 @@ s32 func_80028B14(void) {
     D_8004FDFC -= 1;
     return (s32)(uintptr_t)pSector;
 }
+#endif
 
 int func_80028E60(int sectionIndex, int maxEntries, int targetState) {
     int i;
@@ -599,6 +603,9 @@ extern s16 D_80059F60;
 extern u16 D_8005A4B8;
 extern u8 D_800596F8[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_80028F30);
+#else
 /* Output slots retain the retail 32-bit address ABI. Native callers must
  * receive them in u32 locals and widen explicitly, not pass void**. Port
  * archive buffers are allocated in the existing low-address heap. */
@@ -774,7 +781,11 @@ no_data:
     D_8004FE24 += *(u16*)(pSector + 6);
     return 0;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_8002945C);
+#else
 s32 func_8002945C(u8* pSlot) {
     u8* pStreamFile = g_ArchiveCurStreamFile;
     if (pStreamFile == NULL) return 0xFFFF;
@@ -788,9 +799,13 @@ s32 func_8002945C(u8* pSlot) {
         return val;
     }
 }
+#endif
 
 extern void* g_ArchiveCurStreamFile;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_800294B4);
+#else
 s32 func_800294B4(void* pSlot) {
     void* pStreamFile = g_ArchiveCurStreamFile;
     u8* pTable;
@@ -808,6 +823,7 @@ s32 func_800294B4(void* pSlot) {
     ArchiveConsolidateStreamFileEntry(pSlot);
     return result;
 }
+#endif
 
 s32 ArchiveReadFileFromCdSector(s32 sector, void* pDestBuffer, s32 fileSize, s32 arg3, u32 flags) {
     if (g_ArchiveDebugTable) {

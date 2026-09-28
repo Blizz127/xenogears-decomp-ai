@@ -75,6 +75,10 @@ static int XenoPlayerRenderDiagEnabled(void) {
 }
 #endif
 
+#ifdef XENO_PC_PORT
+/* Port-side copies of retail .data tables (0x8004FAB8/0x8004FAF8) and
+ * scratch (0x8004FB98); only the port bodies use them, so they stay out of
+ * the retail link. */
 static const s16 s_TPageCoords8004FAB8[] = {
     0x300, 0x000,
     0x340, 0x000,
@@ -98,7 +102,9 @@ static const u16 s_DirectionMask8004FAF8[] = {
 };
 
 static SVECTOR s_QuadWork8004FB98[4];
+#endif
 
+#ifdef XENO_PC_PORT
 static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
     s32 result = value * scale;
 
@@ -108,9 +114,13 @@ static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
 
     return result >> 12;
 }
+#endif
 
 /* Retail8001D4E8: allocate and initialize eight direction records once. */
 extern void func_800234AC(void* pSpriteData);
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D4E8);
+#else
 void func_8001D4E8(void* pSpriteData) {
     u8* sprite = pSpriteData;
     if (*(u32*)((u8*)(uintptr_t)*(u32*)(sprite + 0x20) + 0x34) == 0) {
@@ -121,11 +131,15 @@ void func_8001D4E8(void* pSpriteData) {
         func_800234AC(sprite);
     }
 }
+#endif
 
 extern void func_800251C8(u_long* addr, int x, int y, int width, int height);
 extern void func_800234AC(void* pSpriteData);
 extern void func_8001F530(void* arg0, s32 arg1);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D53C);
+#else
 void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
     u8* pData = pSpriteData;
     u8* pPackage = pAnimPackage;
@@ -305,7 +319,11 @@ void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
 
     *(u32*)(pData + 0x40) = (*(u32*)(pData + 0x40) & ~0xFC) | ((i & 0x3F) << 2);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001DAE8);
+#else
 void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
     u8* pData = pSpriteData;
     u8* pAnimPackage = (u8*)(uintptr_t)animPackageAddr;
@@ -516,12 +534,16 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         func_800251C8(NULL, (s16)vramX, (s16)vramYWord, pFrame[4], pFrame[5]);
     }
 }
+#endif
 
 extern MATRIX D_8004FBB8;
 extern u8 D_800591AD;
 extern u8 D_800591AE;
 extern void func_80022038(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E148);
+#else
 void func_8001E148(void* pSpriteData) {
     u8* pData = pSpriteData;
     u8* pBase;
@@ -561,6 +583,7 @@ void func_8001E148(void* pSpriteData) {
     SetRotMatrix(pMatrix);
     SetTransMatrix(pMatrix);
 }
+#endif
 
 extern void func_8001E9BC(void* pSpriteData, void* ot);
 
@@ -576,6 +599,9 @@ void func_8001E298(void* pSpriteData, void* ot) {
 
 extern void func_8001EE88(void* pSpriteData, void* ot, s16 angle);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E2F8);
+#else
 void func_8001E2F8(void* pSpriteData, void* ot, s16 angle) {
     u8* pData = pSpriteData;
 
@@ -585,9 +611,13 @@ void func_8001E2F8(void* pSpriteData, void* ot, s16 angle) {
         func_8001E9BC(pData, ot);
     }
 }
+#endif
 
 extern void func_8001F1D4(void* pSpriteData, void* ot, s16 angle);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E368);
+#else
 void func_8001E368(void* pSpriteData, void* ot, s16 angle) {
     u8* pData = pSpriteData;
 
@@ -597,10 +627,14 @@ void func_8001E368(void* pSpriteData, void* ot, s16 angle) {
         func_8001E9BC(pData, ot);
     }
 }
+#endif
 
 extern void* g_GfxCurWorkBuffer;
 extern void* g_GfxCurWorkBufferEnd;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001E3D8);
+#else
 void func_8001E3D8(void* pSpriteData, void* ot) {
     u8* pData = pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
@@ -880,6 +914,7 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
     }
 #endif
 }
+#endif
 
 #ifdef XENO_PC_PORT
 /* Retail 8004FAD8: four initially-zero vectors, separate from the sprite
@@ -1089,6 +1124,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F1D4);
 extern s16 D_80059194;
 extern s16 D_80059196;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F530);
+#else
 void func_8001F530(void* pOut, s32 advance) {
     u16* p = (u16*)pOut;
     s16 y = D_80059196;
@@ -1109,7 +1147,9 @@ void func_8001F530(void* pOut, s32 advance) {
     }
     D_80059196 += advance;
 }
+#endif
 
+#ifdef XENO_PC_PORT
 static s32 ScaleFrameExtent(s32 value, s16 scale) {
     s32 result = value * scale;
 
@@ -1119,7 +1159,11 @@ static s32 ScaleFrameExtent(s32 value, s16 scale) {
 
     return result >> 12;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F5BC);
+#else
 void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY) {
     u8* pData = pSpriteData;
     u8* pVramData = (u8*)(uintptr_t)*(u32*)(pData + 0x24);
@@ -1146,7 +1190,11 @@ void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY)
     *outY = ScaleFrameExtent(*(u8*)(pFrame + 0x1), scale);
     *outZ = ScaleFrameExtent(*(u8*)(pFrame + 0x2), scale);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F6B0);
+#else
 void func_8001F6B0(void* pSpriteData) {
     u8* pData = pSpriteData;
     u32 flags3C = *(u32*)(pData + 0x3C);
@@ -1178,9 +1226,13 @@ void func_8001F6B0(void* pSpriteData) {
         *(u16*)(pPrim + 0xA) = tpage;
     }
 }
+#endif
 
 extern void func_800234AC(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F750);
+#else
 void func_8001F750(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
     u8* pData = pSpriteData;
     u8* pPackage = pAnimPackage;
@@ -1237,7 +1289,11 @@ void func_8001F750(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
         }
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F8E8);
+#else
 // Animation frame and tile data stuff
 void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
     u8* pAnimPackage = (u8*)(uintptr_t)animPackageAddr;
@@ -1320,6 +1376,7 @@ void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         }
     }
 }
+#endif
 
 
 
@@ -1330,26 +1387,16 @@ void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
 extern void* g_GfxPauseLettersCompressed[];
 
 #ifndef XENO_PC_PORT
-void GraphicsDrawPauseLetters(int x, int y) {
-    void* pPauseImgData;
-    int dx = x;
-    int dy = y;
-    int iRegSteer;
-    pPauseImgData = LZSSHeapDecompress(&g_GfxPauseLettersCompressed, 0x0);
-    /* Empty asm pair: emits zero bytes but keeps a zero-range quantity live
-     * here so gcc 2.7.2 assigns pPauseImgData to s0 (retail layout). */
-    __asm__ volatile("" : "=r"(iRegSteer));
-    __asm__ volatile("" :: "r"(iRegSteer));
-    func_8002DDE4(pPauseImgData, 1, dx, dy, 0, 0, 0);
-    DrawSync(0);
-    HeapFree(pPauseImgData);
-}
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", GraphicsDrawPauseLetters);
 #endif
 
 extern void* D_800592E4;
 extern s16 D_800592E8;
 extern s16 D_800592EA;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001FB30);
+#else
 void func_8001FB30(void) {
     u8* pStack = HeapAlloc(0x2000, 1);
 #ifdef XENO_PC_PORT
@@ -1367,3 +1414,4 @@ void func_8001FB30(void) {
 #endif
     HeapFree(pStack);
 }
+#endif
