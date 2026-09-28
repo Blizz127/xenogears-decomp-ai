@@ -51,10 +51,77 @@ s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5914);
+#endif
+#ifndef XENO_PC_PORT
+extern u8 D_800D2F64; /* pass counter; its wrap clears every triangle's +0xD flag */
+extern s32 func_800A5D54(s32 arg0, s32 tri, s32 depth);
+
+/* Up to `tries` attempts of func_800A5D54 on triangle `tri`, stopping at the
+ * first non-negative result, which is returned (-1 when the tables are not
+ * loaded or `tri` is out of range). */
+s32 func_800A5914(s32 arg0, s32 tri, s32 tries, s32 result) {
+    s32 i;
+
+    if (D_800D3344 == 0) {
+        return -1;
+    }
+    if (D_800D39CC == 0) {
+        return -1;
+    }
+    if (tri >= D_800D3348) {
+        return -1;
+    }
+    for (i = 0; i < tries; i++) {
+        result = func_800A5D54(arg0, tri, tries);
+        if (result >= 0) {
+            break;
+        }
+    }
+    D_800D2F64++;
+    if (D_800D2F64 == 0) {
+        D_800D2F64 = 1;
+        for (i = 0; i < D_800D3348; i++) {
+            *(u8*)(i * 14 + D_800D39CC + 0xD) = 0;
+        }
+    }
+    return result;
+}
+#endif
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5A48);
 INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5BE8);
-INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5D54);
+#endif
+#ifndef XENO_PC_PORT
+/* Depth-limited search from triangle `tri` through its three neighbours
+ * (+6/+8/+A): the first triangle not yet visited this pass (+0xD != the pass
+ * counter) for which func_800A5A48 returns -1; -1 when none is found. */
+s32 func_800A5D54(s32 arg0, s32 tri, s32 depth) {
+    s32 r;
+
+    if (tri < 0) {
+        return -1;
+    }
+    if (*(u8*)(tri * 14 + D_800D39CC + 0xD) != D_800D2F64) {
+        s16* t;
+
+        *(u8*)(tri * 14 + D_800D39CC + 0xD) = D_800D2F64;
+        t = (s16*)(tri * 14 + D_800D39CC);
+        if (func_800A5A48(t[0] * 8 + D_800D3344, t[1] * 8 + D_800D3344, t[2] * 8 + D_800D3344, arg0) == -1) {
+            return tri;
+        }
+    }
+    if (depth <= 0) {
+        return -1;
+    }
+    if ((r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[3], depth - 1)) < 0
+        && (r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[4], depth - 1)) < 0
+        && (r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[5], depth - 1)) < 0) {
+        r = -1;
+    }
+    return r;
+}
+#endif
+#ifndef XENO_PC_PORT
 #endif
 
 
