@@ -2449,60 +2449,55 @@ s32 func_801C9BCC(s32 mode) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9D34);
 #else
+/* Retail 0x801C9D34: find the first entry the card screen can act on, over
+ * slots 0..29 (0..14 without card 1, from 15 without card 0), with the same
+ * per-mode tests as func_801C9BCC; returns the slot or 0xFF and sets
+ * g_Menu+0x4D8 (unk4CC[0xC]) to 2.  The port once wrote pManager[0x4D8] and
+ * read the card buffer through a raw host offset
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 s32 func_801C9D34(s32 mode) {
-    void* pMenu;
-    void* pData;
     s32 result = 0xFF;
     s32 found = 1;
     s32 limit = 0x1E;
-    s32 start;
     s32 i;
+    s32 offset;
+    SystemMenu* m = g_Menu;
+    u8 v;
 
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    start = (*(u8*)(pData + 0x4FE4) == 0) ? 0xF : 0;
-    if (*(u8*)(pData + 0x4FE5) == 0) {
+    i = (((u8*)m->unk32C)[0x4FE4] == 0) ? 0xF : 0;
+    if (((u8*)m->unk32C)[0x4FE5] == 0) {
         limit = 0xF;
     }
-
-    for (i = start; i < limit && found; i++) {
-        s32 offset = D_801E981C[i];
-        s32 group = (offset < 0) ? (offset + 0xF) : offset;
-        group >>= 4;
-
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-
-        if (mode == 0) {
-            if (!(*(u32*)((u8*)pData + 0x4F88) & 0xFFFF0000)) {
-                found = 0;
-                break;
-            }
-            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
-            if (*(u8*)(pData + offset + 0x4FAE) == 0xFF) continue;
+    for (; i < limit && found; i++) {
+        switch (mode) {
+        case 0:
+            if (!(*(u32*)((u8*)m->unk32C + 0x4F88) & 0xFFFF0000)) goto stop;
+            offset = D_801E981C[i];
+            if (((u8*)m->unk32C + offset / 16)[0x4FE4] == 0) break;
+            if (((u8*)m->unk32C + offset)[0x4FAE] == 0xFF) break;
             result = i;
-            found = 0;
-        } else if (mode == 1) {
-            if (!(*(u32*)((u8*)pData + 0x4F88) & 0xFFFF0000)) {
-                found = 0;
-                break;
-            }
-            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
-            if (*(u8*)(pData + offset + 0x4FAE) == 0xFF) continue;
-            if (*(u8*)(pData + offset + 0x4F8E) == 0) continue;
+            goto stop;
+        case 1:
+            if (!(*(u32*)((u8*)m->unk32C + 0x4F88) & 0xFFFF0000)) goto stop;
+            offset = D_801E981C[i];
+            if (((u8*)m->unk32C + offset / 16)[0x4FE4] == 0) break;
+            if (((u8*)m->unk32C + offset)[0x4FAE] == 0xFF) break;
+            v = ((u8*)m->unk32C + offset)[0x4F8E];
+            goto check;
+        case 2:
+            v = ((u8*)m->unk32C + (s32)D_801E981C[i] / 16)[0x4FE4];
+        check:
+            if (v == 0) break;
             result = i;
+        stop:
             found = 0;
-        } else if (mode == 2) {
-            if (*(u8*)(pData + group + 0x4FE4) == 0) continue;
-            result = i;
-            found = 0;
+            break;
         }
     }
-
-    pMenu = g_Menu;
-    ((u8*)g_Menu->pManager)[0x4D8] = 2;
+    g_Menu->unk4CC[0xC] = 2;
     return result;
 }
+
 #endif
 
 #ifdef XENO_PC_PORT
@@ -5137,45 +5132,43 @@ void func_801D22C4(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22F4);
-#else
 extern u8 D_801E9A58[];
 extern u8 D_801E9A68[];
 
 /* Configure the shared pointer-cursor bank.  Items uses mode 2, which rebuilds
- * all four cursor sprites without arming their live-position flags. */
+ * all four cursor sprites without arming their live-position flags; mode 0
+ * also arms them; mode 1 only hides the bank.  Shared retail/port body (gcc
+ * 2.6.3 byte-exact; the permuter found the y-table pointer local). */
 void func_801D22F4(s32 mode) {
     s32 i;
+    s32* pY;
     s32 offset;
-    u8 m = (u8)mode;
 
     g_Menu->pManager->shouldRenderPointerCursors = 0;
-    if (m == 1) {
-        return;
-    }
-    if (m == 0) {
+    switch ((u8)mode) {
+    case 1:
+        break;
+    case 0:
         g_Menu->pManager->shouldRenderPointerCursors = 1;
         g_Menu->pCursors->unk144[0] = 1;
         g_Menu->pCursors->unk144[1] = 1;
-    }
-    if (m == 0 || m == 2) {
-        offset = 0;
-        for (i = 0; i < MENU_MAX_NUM_CURSORS; i++, offset += 0x50) {
-            func_8002675C(g_Menu->unk2DC, 0x108,
-                          (u8*)g_Menu->pCursors + offset,
-                          g_Menu->renderContext,
-                          *(s32*)(D_801E9A58 + i * 4),
-                          *(s32*)(D_801E9A68 + i * 4), 0x800);
-            g_Menu->pCursors->renderContexts[i] = (u8)g_Menu->renderContext;
+        /* fall through */
+    case 2:
+        for (i = 0, offset = 0; i < MENU_MAX_NUM_CURSORS; i++, offset += 0x50) {
+            pY = (s32*)(D_801E9A68 + i * 4);
+            func_8002675C(g_Menu->unk2DC, 0x108, (u8*)g_Menu->pCursors + offset,
+                          g_Menu->renderContext, *(s32*)(D_801E9A58 + i * 4),
+                          *pY, 0x800);
+            g_Menu->pCursors->renderContexts[i] = g_Menu->renderContext;
         }
-    } else if (m == 3) {
+        break;
+    case 3:
         func_8002675C(g_Menu->unk2DC, 0x108, g_Menu->pCursors,
                       g_Menu->renderContext, 0, 0, 0x800);
-        g_Menu->pCursors->renderContexts[0] = (u8)g_Menu->renderContext;
+        g_Menu->pCursors->renderContexts[0] = g_Menu->renderContext;
+        break;
     }
 }
-#endif
 
 void func_801D2484(void) {
 #ifdef XENO_PC_PORT
