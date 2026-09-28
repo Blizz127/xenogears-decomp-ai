@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Run the port data/SDK policy guards (see pc_port/THIRD_PARTY.md and
-# docs/ARCHITECTURE-PORT.md):
+# Run the port data/SDK policy guards (see pc_port/README.md "Game data and
+# Sony code" and pc_port/THIRD_PARTY.md):
 #   1. retail_data_guard.py  -- no retail game bytes/tables in tracked files
 #   2. psyq_classify.py      -- config/psyq_classification.tsv is current
 #   3. psyq_port_guard.py    -- no Psy-Q SDK code/tables in pc_port (and, when
