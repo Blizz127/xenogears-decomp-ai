@@ -305,19 +305,18 @@ const XgPlatModManifest* xg_plat_mods_get(int index)
     return (index >= 0 && index < s_mod_count) ? &s_mods[index] : NULL;
 }
 
-size_t xg_plat_mods_filter_asset(void* buffer, size_t size, size_t capacity)
+int xg_plat_mods_assets_active(void)
 {
-    char digest[65];
+    return s_asset_count > 0 || s_log_assets || s_dump_dir != NULL;
+}
+
+static int find_replacement(const void* data, size_t size, char digest[65])
+{
     XenoSha256 sha;
     int i;
     FILE* f;
-    long len;
-
-    xg_plat_mods_emit(XG_PLAT_EVENT_ASSET_LOADED, (uint32_t)size, 0);
-    if ((s_asset_count == 0 && !s_log_assets && !s_dump_dir) || buffer == NULL || size == 0)
-        return size;
     XenoSha256_Init(&sha);
-    XenoSha256_Update(&sha, buffer, size);
+    XenoSha256_Update(&sha, data, size);
     XenoSha256_HexFinal(&sha, digest);
     if (s_log_assets)
         printf("[xg_plat] asset %zu bytes sha256 %s\n", size, digest);
@@ -328,36 +327,69 @@ size_t xg_plat_mods_filter_asset(void* buffer, size_t size, size_t capacity)
         struct stat st;
         snprintf(path, sizeof path, "%s/%s.bin", s_dump_dir, digest);
         if (stat(path, &st) != 0 && (f = fopen(path, "wb")) != NULL) {
-            fwrite(buffer, 1, size, f);
+            fwrite(data, 1, size, f);
             fclose(f);
         }
     }
-    for (i = 0; i < s_asset_count; i++) {
-        if (strcmp(s_assets[i].sha256, digest) != 0)
-            continue;
-        if ((f = fopen(s_assets[i].path, "rb")) == NULL)
-            return size;
-        if (fseek(f, 0, SEEK_END) != 0 || (len = ftell(f)) < 0 || fseek(f, 0, SEEK_SET) != 0) {
-            fclose(f);
-            return size;
-        }
-        if ((size_t)len > capacity) {
-            fprintf(stderr, "[xg_plat] mods: %s: replacement %s is %ld bytes, larger than the "
-                            "game's %zu-byte buffer; not applied\n",
-                    s_mods[s_assets[i].mod].name, digest, len, capacity);
-            fclose(f);
-            return size;
-        }
-        if (fread(buffer, 1, (size_t)len, f) != (size_t)len) {
-            fclose(f);
-            return size;
-        }
-        fclose(f);
-        if ((size_t)len < capacity)
-            memset((uint8_t*)buffer + len, 0, capacity - (size_t)len);
-        printf("[xg_plat] mods: %s replaced asset %s (%zu -> %ld bytes)\n",
-               s_mods[s_assets[i].mod].name, digest, size, len);
-        return (size_t)len;
+    for (i = 0; i < s_asset_count; i++)
+        if (strcmp(s_assets[i].sha256, digest) == 0)
+            return i;
+    return -1;
+}
+
+static void* read_whole(const char* path, size_t* out_size)
+{
+    FILE* f = fopen(path, "rb");
+    long len;
+    void* buf = NULL;
+    if (f == NULL)
+        return NULL;
+    if (fseek(f, 0, SEEK_END) == 0 && (len = ftell(f)) >= 0 && fseek(f, 0, SEEK_SET) == 0 &&
+        (buf = malloc((size_t)len ? (size_t)len : 1)) != NULL &&
+        fread(buf, 1, (size_t)len, f) != (size_t)len) {
+        free(buf);
+        buf = NULL;
     }
-    return size;
+    if (buf)
+        *out_size = (size_t)len;
+    fclose(f);
+    return buf;
+}
+
+void* xg_plat_mods_lookup_asset(const void* data, size_t size, size_t* out_size)
+{
+    char digest[65];
+    int i;
+    void* repl;
+    if (!xg_plat_mods_assets_active() || data == NULL || size == 0)
+        return NULL;
+    if ((i = find_replacement(data, size, digest)) < 0)
+        return NULL;
+    repl = read_whole(s_assets[i].path, out_size);
+    if (repl)
+        printf("[xg_plat] mods: %s replaced asset %s (%zu -> %zu bytes)\n",
+               s_mods[s_assets[i].mod].name, digest, size, *out_size);
+    return repl;
+}
+
+size_t xg_plat_mods_filter_asset(void* buffer, size_t size, size_t capacity)
+{
+    size_t repl_size = 0;
+    void* repl;
+
+    xg_plat_mods_emit(XG_PLAT_EVENT_ASSET_LOADED, (uint32_t)size, 0);
+    repl = xg_plat_mods_lookup_asset(buffer, size, &repl_size);
+    if (repl == NULL)
+        return size;
+    if (repl_size > capacity) {
+        fprintf(stderr, "[xg_plat] mods: replacement is %zu bytes, larger than the game's "
+                        "%zu-byte buffer; not applied\n", repl_size, capacity);
+        free(repl);
+        return size;
+    }
+    memcpy(buffer, repl, repl_size);
+    if (repl_size < capacity)
+        memset((uint8_t*)buffer + repl_size, 0, capacity - repl_size);
+    free(repl);
+    return repl_size;
 }

@@ -1335,7 +1335,11 @@ fi
 # all over (e.g. the heap's `(u32)pHeapStart & -4`); keeping that memory in the
 # low 32-bit address space makes every such truncation a lossless round-trip.
 NOPIE="-no-pie -fno-pie -rdynamic"
-LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS -o "$OUT/xeno-port")
+# xg_plat routing: the game's LoadImage (VRAM upload) and SpuWrite (SPU
+# sample upload) calls go through the renderer / audio interfaces
+# (src/plat/xg_plat_psycross.c: __wrap_* -> interface -> PsyCross __real_*).
+XG_PLAT_WRAPS="-Wl,--wrap=LoadImage -Wl,--wrap=SpuWrite"
+LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")
 
 echo "==> [4/5] Trial link to discover undefined references"
 "${LINK[@]}" 2> "$OUT/link1.err"
@@ -1457,7 +1461,7 @@ fi
 echo "==> [5/5] Final link"
 LINK_MAP="$OUT/xeno-port.map"
 gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" "$PSYLIB" $LIBS \
-    -Wl,-Map="$LINK_MAP" -o "$OUT/xeno-port" 2> "$OUT/link2.err"
+    $XG_PLAT_WRAPS -Wl,-Map="$LINK_MAP" -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     port_text_start=""
     port_text_size=""

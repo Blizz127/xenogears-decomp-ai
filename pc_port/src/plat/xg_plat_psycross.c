@@ -10,6 +10,9 @@
 #include "../../include/xg_plat/input.h"
 #include "../../include/xg_plat/timing.h"
 
+#include <stdlib.h>
+
+#include "../../include/xg_plat/mods.h"
 #include "PsyX/PsyX_public.h"
 #include "../host_speed.h"
 
@@ -133,4 +136,63 @@ void xg_plat_timing_set_fast_forward_speed(int multiplier)
 int xg_plat_timing_vblank_count(void)
 {
     return PsyX_Sys_GetVBlankCount();
+}
+
+/* --- routing of the game's SDK calls (link-time --wrap, build_port.sh) --- */
+typedef struct { short x, y, w, h; } XgPlatPsxRect;
+
+extern int __real_LoadImage(XgPlatPsxRect* rect, unsigned long* pixels);
+extern unsigned int __real_SpuWrite(unsigned char* addr, unsigned int size);
+
+int __wrap_LoadImage(XgPlatPsxRect* rect, unsigned long* pixels)
+{
+    return xg_plat_renderer_upload_image(rect->x, rect->y, rect->w, rect->h, pixels);
+}
+
+unsigned int __wrap_SpuWrite(unsigned char* addr, unsigned int size)
+{
+    return (unsigned int)xg_plat_audio_upload_samples(addr, size);
+}
+
+int xg_plat_renderer_upload_image(int x, int y, int w, int h, const void* pixels)
+{
+    XgPlatPsxRect rect = { (short)x, (short)y, (short)w, (short)h };
+    size_t bytes = (w > 0 && h > 0) ? (size_t)w * (size_t)h * 2u : 0;
+    size_t repl_size = 0;
+    void* repl = (bytes && pixels) ? xg_plat_mods_lookup_asset(pixels, bytes, &repl_size) : NULL;
+    int result;
+
+    if (repl != NULL && repl_size != bytes) {
+        fprintf(stderr, "[xg_plat] mods: texture replacement for %dx%d at (%d,%d) is %zu bytes, "
+                        "expected %zu; not applied\n", w, h, x, y, repl_size, bytes);
+        free(repl);
+        repl = NULL;
+    }
+    result = __real_LoadImage(&rect, (unsigned long*)(repl ? repl : pixels));
+    free(repl); /* PsyCross copies the pixels into its VRAM during LoadImage */
+    return result;
+}
+
+unsigned long xg_plat_audio_upload_samples(const void* data, unsigned long size)
+{
+    size_t repl_size = 0;
+    void* repl = (data && size) ? xg_plat_mods_lookup_asset(data, size, &repl_size) : NULL;
+    unsigned long sent;
+
+    if (repl != NULL && repl_size > size) {
+        fprintf(stderr, "[xg_plat] mods: sound replacement is %zu bytes, larger than the "
+                        "original %lu (SPU RAM layout is fixed); not applied\n", repl_size, size);
+        free(repl);
+        repl = NULL;
+    }
+    if (repl != NULL && repl_size < size) {
+        void* padded = calloc(1, size);
+        if (padded)
+            memcpy(padded, repl, repl_size);
+        free(repl);
+        repl = padded;
+    }
+    sent = __real_SpuWrite((unsigned char*)(repl ? repl : data), (unsigned int)size);
+    free(repl);
+    return sent;
 }

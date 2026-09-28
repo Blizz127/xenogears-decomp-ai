@@ -41,13 +41,22 @@ extern void* malloc(unsigned long size);
 extern void  free(void* ptr);
 extern int   printf(const char* format, ...);
 extern void* memcpy(void* dest, const void* src, unsigned long size);
+extern void* memset(void* dest, int value, unsigned long size);
 
 /* Set by ArchiveReadFileToBuffer/ArchiveReadFileFromCdSector (libarchive.c) just
  * before they call us: the absolute CD sector and the byte length to read. */
 extern s32 g_ArchiveCurFileSector;
 extern int ArchiveReadFileToBuffer(int entryIndex, void* pDestBuffer, int arg2, int flags);
 #include "../include/xg_plat/mods.h"
+/* xg_plat/disc.h itself pulls libc headers whose types clash with the
+ * psyq ones this TU uses; declare the one call needed (weak, like the mods
+ * hooks, so tests linking this TU alone still link). */
+extern int xg_plat_disc_read_sectors(unsigned int lba, unsigned int count, void* out)
+    __attribute__((weak));
 #pragma weak xg_plat_mods_filter_asset
+#pragma weak xg_plat_mods_assets_active
+#pragma weak xg_plat_mods_lookup_asset
+
 int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags);
 extern int ArchiveDecodeSize(int entryIndex);
 extern int ArchiveDecodeSector(int entryIndex);
@@ -72,9 +81,56 @@ typedef struct {
     s32 slot;
     s32 readPending;
     u16 producedId; /* DMA producer; D_8004FE24 remains the consumer cursor. */
+    u8* replacement;  /* mod replacement served instead of the disc (xg_plat/mods.h) */
+    s32 replacementSector;
 } ArchivePortStreamReadState;
 
 static ArchivePortStreamReadState s_ArchivePortStreamRead;
+
+/* Streamed files: when mods replace assets, read the whole file from the
+ * user's disc image up front, look it up by the SHA-256 of its original
+ * bytes, and if a mod replaces it serve the stream's sectors from the
+ * replacement (padded to whole sectors) instead of the CD.  Returns 1 when
+ * a replacement is installed.  No-op without mods. */
+static int ArchivePortStreamReplacement(s32 firstSector, s32 size, s32* pSectors)
+{
+    s32 nSectors = (size + (CD_SECTOR_SIZE - 1)) / CD_SECTOR_SIZE;
+    u8* original;
+    void* repl;
+    unsigned long replSize = 0;
+
+    if (!xg_plat_mods_assets_active || !xg_plat_mods_lookup_asset ||
+        !xg_plat_disc_read_sectors || !xg_plat_mods_assets_active() || nSectors <= 0)
+        return 0;
+    original = (u8*)malloc((unsigned long)nSectors * CD_SECTOR_SIZE);
+    if (original == NULL)
+        return 0;
+    if (xg_plat_disc_read_sectors((unsigned int)firstSector, (unsigned int)nSectors, original) != 0) {
+        free(original);
+        return 0;
+    }
+    repl = xg_plat_mods_lookup_asset(original, (unsigned long)size, (void*)&replSize);
+    free(original);
+    if (repl == NULL || replSize == 0) {
+        free(repl);
+        return 0;
+    }
+    nSectors = (s32)((replSize + (CD_SECTOR_SIZE - 1)) / CD_SECTOR_SIZE);
+    s_ArchivePortStreamRead.replacement = (u8*)malloc((unsigned long)nSectors * CD_SECTOR_SIZE);
+    if (s_ArchivePortStreamRead.replacement == NULL) {
+        free(repl);
+        return 0;
+    }
+    memset(s_ArchivePortStreamRead.replacement, 0, (unsigned long)nSectors * CD_SECTOR_SIZE);
+    memcpy(s_ArchivePortStreamRead.replacement, repl, replSize);
+    free(repl);
+    s_ArchivePortStreamRead.replacementSector = 0;
+    printf("[xg_plat] mods: streamed file at sector %d served from a replacement "
+           "(%d sectors)\n", (int)firstSector, (int)nSectors);
+    *pSectors = nSectors;
+    g_ArchiveCurFileSize = (s32)replSize;
+    return 1;
+}
 
 static u16 ArchivePsxQueueGetIndex(u8* pEntries, int index) {
     return *(u16*)(pEntries + index * 8);
@@ -473,6 +529,27 @@ void PcPort_ArchivePollTransport(void) {
         return;
     }
 
+    if (s_ArchivePortStreamRead.replacement != NULL) {
+        /* Mod replacement: deliver the next sector at once, with the same
+         * slot bookkeeping as a completed CD read. */
+        memcpy(buffers + s_ArchivePortStreamRead.slot * CD_SECTOR_SIZE,
+               s_ArchivePortStreamRead.replacement +
+                   (unsigned long)s_ArchivePortStreamRead.replacementSector * CD_SECTOR_SIZE,
+               CD_SECTOR_SIZE);
+        s_ArchivePortStreamRead.replacementSector += 1;
+        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 0) = 3;
+        *(u16*)(table + s_ArchivePortStreamRead.slot * 8 + 2) = s_ArchivePortStreamRead.producedId++;
+        s_ArchivePortStreamRead.sectorsLeft -= 1;
+        if (s_ArchivePortStreamRead.sectorsLeft == 0) {
+            free(s_ArchivePortStreamRead.replacement);
+            s_ArchivePortStreamRead.replacement = NULL;
+            g_ArchiveCurFileSize = 0;
+            D_8004FDFC = 0;
+            g_ArchiveCdDriveState = ARCHIVE_CD_DRIVE_IDLE;
+        }
+        return;
+    }
+
     /* The read starts at the archive sector captured by libarchive.c.  Each
      * subsequent one-sector queue advances PsyCross's image cursor naturally. */
     if (!s_ArchivePortStreamRead.readPending) {
@@ -559,6 +636,11 @@ int ArchiveReadFile(u32 dbgEntryIndex, u8* pDestBuffer, s32 arg2, s32 flags) {
         s_ArchivePortStreamRead.producedId = 0;
         s_ArchivePortStreamRead.slot = 0;
         s_ArchivePortStreamRead.readPending = 0;
+        free(s_ArchivePortStreamRead.replacement);
+        s_ArchivePortStreamRead.replacement = NULL;
+        if (ArchivePortStreamReplacement(g_ArchiveCurFileSector, g_ArchiveCurFileSize,
+                                         &s_ArchivePortStreamRead.sectorsLeft))
+            return 0; /* served from memory: no CD seek */
 
         if (s_ArchivePortStreamRead.sectorsLeft <= 0) {
             g_ArchiveCurFileSize = 0;

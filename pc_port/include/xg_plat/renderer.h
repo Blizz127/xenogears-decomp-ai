@@ -27,6 +27,13 @@ int  xg_plat_renderer_init(const char* title, const XgPlatVideoConfig* cfg);
 /* 1 when the backend implements the option (e.g. "widescreen"). */
 int  xg_plat_renderer_supports(const char* option);
 
+/* VRAM upload (the game's LoadImage): `pixels` holds w*h 16-bit words for
+ * the rect at (x, y) in the 1024x512 VRAM.  Routed here so a backend can
+ * cache or replace textures; mods replace an upload keyed by the SHA-256 of
+ * its original pixels (same size only: VRAM layout is fixed).  Returns the
+ * backend's LoadImage result. */
+int  xg_plat_renderer_upload_image(int x, int y, int w, int h, const void* pixels);
+
 #ifdef __cplusplus
 }
 #endif
