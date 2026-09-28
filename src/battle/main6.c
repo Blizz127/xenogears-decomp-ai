@@ -2,11 +2,43 @@
 
 
 #ifndef XENO_PC_PORT
+void func_80076D58(void *, s32, s32);
+extern u32 D_800C3EA4;
+void func_80077074(void);
+#endif
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076C78);
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076CE8);
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076D58);
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076EA4);
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077074);
+
+#ifndef XENO_PC_PORT
+void func_80077074(void) {
+    *(s8 *)((s8*)(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230)) + 0x669) = 0;
+    *(s8 *)((s8*)(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230)) + 0x66B) = 0;
+    *(s8 *)((s8*)(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230)) + 0x66D) = 0;
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230), 0, 1);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x50, 0, 1);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0xA0, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0xF0, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x140, 0, 1);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x190, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x1E0, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x230, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x280, 0, 3);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x2D0, 1, 3);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x320, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x370, 1, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x3C0, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x410, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x460, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x4B0, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x500, 0, 2);
+    func_80076D58(*(void **)((s8*)((*(void **)&D_800C3EA4)) + 0xA230) + 0x550, 0, 2);
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077364);
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077454);
 #endif

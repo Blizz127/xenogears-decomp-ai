@@ -1473,9 +1473,6 @@ void func_801C7F34(
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C80B8);
-#else
 /* Arc A portraits: parse a value into g_Menu->digits[9] (decimal, MSD first),
  * blanking leading zeros to 0xFF (the quad builders skip 0xFF; digit glyphs
  * are atlas entries 0-9). */
@@ -1498,7 +1495,6 @@ void func_801C80B8(u32 value) {
         g_Menu->digits[i - 1] = 0xFF;
     }
 }
-#endif
 
 extern void func_801C80B8(u32 value);
 
@@ -4502,17 +4498,11 @@ void func_801D11F0(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1258);
-#else
+/* OT slot 8 (retail +0x90 in 4-byte entries). */
 void func_801D1258(void) {
-    /* Semi-trans full-screen dim + its DR_MODE (built by func_801C6F70). */
-    AddPrim(&g_Menu->pGfxEnv->ot[4],
-            &g_Menu->unk348->polysDimEffect[g_Menu->renderContext]);
-    AddPrim(&g_Menu->pGfxEnv->ot[4],
-            &g_Menu->unk348->drawModeDimEffect[g_Menu->renderContext]);
+    AddPrim(&g_Menu->pGfxEnv->ot[8], &g_Menu->unk348->polysDimEffect[g_Menu->renderContext]);
+    AddPrim(&g_Menu->pGfxEnv->ot[8], &g_Menu->unk348->drawModeDimEffect[g_Menu->renderContext]);
 }
-#endif
 
 void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
 #ifdef XENO_PC_PORT
@@ -5780,9 +5770,6 @@ void func_801D3C4C(u8 slotIdx, s32 x, s32 y, s32 w, s32 h) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3DB0);
-#else
 extern s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx,
                          s32 x, s32 y, s32 scale);
 extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
@@ -5808,10 +5795,10 @@ void func_801D3DB0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
                                      &pWindow->polysWindowBorderCorners[pWindow->unk710 * 2],
                                      g_Menu->renderContext, 0, 0, 0x1000);
 
-    func_801C851C(&pWindow->vertsWindowBorderCorners[0],  (u16)(x - 8),     (u16)(y + 8),  0x10, -0x10);
-    func_801C851C(&pWindow->vertsWindowBorderCorners[4],  (u16)(x + w + 8), (u16)(y + 8), -0x10, -0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[0],  (u16)(x - 8),     (u16)(y + 8),  0x10, 0xFFF0);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[4],  (u16)(x + w + 8), (u16)(y + 8), 0xFFF0, 0xFFF0);
     func_801C851C(&pWindow->vertsWindowBorderCorners[8],  (u16)(x - 8),     (u16)(y + h - 8), 0x10, 0x10);
-    func_801C851C(&pWindow->vertsWindowBorderCorners[12], (u16)(x + w + 8), (u16)(y + h - 8), -0x10, 0x10);
+    func_801C851C(&pWindow->vertsWindowBorderCorners[12], (u16)(x + w + 8), (u16)(y + h - 8), 0xFFF0, 0x10);
 
     {
         s32 i;
@@ -5820,7 +5807,6 @@ void func_801D3DB0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3FF8);
@@ -6958,44 +6944,36 @@ extern s32 D_801EA70C;
 extern u8 D_801EA710;
 extern u8 D_801EA714;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D84B4);
-#else
 void func_801D84B4(u16 start, u16 target, s32 frames) {
     s32 delta;
     D_801EA6FC = start;
     D_801EA700 = target;
-    delta = (s32)target - (s32)start;
+    delta = target - start;
     D_801EA704 = delta;
-    D_801EA708 = (delta * 25600 / frames * 1000) >> 12;
+    D_801EA708 = ((s32)(start * 100) / frames) * 0x1900 / 10000;
     if (delta >= 0) {
         D_801EA710 = 2;
         D_801EA714 = 0xE3;
     } else {
         D_801EA710 = 3;
         D_801EA714 = 0xE5;
-        D_801EA704 = (s32)start - (s32)target;
+        D_801EA704 = start - target;
     }
-    D_801EA70C = (D_801EA704 * 25600 / frames * 1000) >> 12;
+    D_801EA70C = ((s32)(D_801EA704 * 100) / frames) * 0x1900 / 10000;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D85DC);
-#else
 s32 func_801D85DC(s32 arg0, u16* pArr1, u16* pArr2) {
-    u32 maxVal = 0;
-    s32 i, count;
+    u16 pad[12]; /* retail frame has 0x18 unused bytes */
+    u16 maxVal = 0;
+    s32 count;
     for (count = 0; count < 7; count++) {
-        if (pArr1[count] > maxVal) maxVal = pArr1[count];
+        if (maxVal < pArr1[count]) maxVal = pArr1[count];
     }
-    pArr1 += 7;
     for (count = 0; count < 7; count++) {
-        if (pArr2[count] > maxVal) maxVal = pArr2[count];
+        if (maxVal < pArr2[count]) maxVal = pArr2[count];
     }
-    return (s32)maxVal;
+    return maxVal;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D8644);
@@ -8333,14 +8311,17 @@ u32 PcPort_N2c1ReadItemPair(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBDB4);
-#else
 extern u16 D_801EA724;
 extern s32 D_801EA728;
 extern u16 D_801EA72C;
 
+#ifndef XENO_PC_PORT
+extern u16 D_801EA724x asm("D_801EA724");
+extern s32 D_801EA728x asm("D_801EA728");
+extern u16 D_801EA72Cx asm("D_801EA72C");
+#endif
 void func_801DBDB4(void) {
+#ifdef XENO_PC_PORT
     s32 i;
     s32 lastOccupied = 0;
 
@@ -8360,8 +8341,26 @@ void func_801DBDB4(void) {
         D_801EA728 = pages;
         D_801EA72C = 0x1068 / pages;
     }
-}
+#else
+    s32 i;
+    s32 last;
+    for (i = 0; i < MAX_INVENTORY_ITEMS; i++) {
+        if (g_GameState.itemIDs[i] != 0) {
+            last = i;
+        }
+    }
+    if (last < 0x10) {
+        D_801EA724x = 0x74;
+        D_801EA728x = 0;
+        D_801EA72Cx = 0;
+    } else {
+        s32 pages = (last - 0x10) / 2 + 1;
+        D_801EA724x = 0x4A;
+        D_801EA728x = pages;
+        D_801EA72Cx = 0x1068 / pages;
+    }
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBE54);
@@ -9153,9 +9152,6 @@ void func_801DDF24(u8 charSel, u8 openAnim, u8 category) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE29C);
-#else
 
 /* Nav N3a-A1a: Abilities dispatch entry (dispatch case 3).  Retail masks both
  * bytes, runs the screen with category 0, and always reports "keep the menu". */
@@ -9163,7 +9159,6 @@ s32 func_801DE29C(s32 charSel, s32 openAnim) {
     func_801DDF24(charSel & 0xFF, openAnim & 0xFF, 0);
     return 1;
 }
-#endif
 
 extern u8 D_801EA558[];
 extern void func_801D22F4(s32);
@@ -10744,31 +10739,30 @@ s32 func_801E31C0(MenuUnk6* pItemBank, u8 charId, u8 itemId) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E35BC);
-#else
-void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, s32 isReverse) {
-    /* Records are 0xA4 bytes; the slot table is indexed by charIdx. */
+void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, u8 isReverse) {
+    uintptr_t co = charIdx * 0xA4;
     u8* gs = (u8*)&g_GameState + 0x26C;
-    u8* pChar = gs + charIdx * 0xA4;
-    u8* pStat = gs + statIdx * 0xA4;
-    u8* pBase = gs + 0x70C + ((u8*)&g_GameState + 0x30C)[charIdx * 0xA4] * 0xA4;
-    if ((u8)isReverse == 0) {
-        u8* pSlot = *(u8**)((u8*)pCtx + charIdx * 4 + 0x20) + slotIdx * 0x28;
+    u8* pChar = (u8*)(co + (uintptr_t)gs);
+    u8* pStat = (u8*)(statIdx * 0xA4 + (uintptr_t)gs);
+    u8* gs2 = gs + 0x70C;
+    u8* pBase = (u8*)(((u8*)&g_GameState + 0x30C)[co] * 0xA4 + (uintptr_t)gs2);
+    if (isReverse == 0) {
+        u8* pSlot = *(u8**)((uintptr_t)pCtx + charIdx * 4 + 0x20);
+        pSlot += slotIdx * 0x28;
         *(u16*)(pStat + 0x4C) += pChar[0x5B] * pSlot[0x11];
-        if (*(u16*)(pStat + 0x4C) > *(u16*)(pStat + 0x4E)) {
-            *(u16*)(pStat + 0x4C) = *(u16*)(pStat + 0x4E);
+        if (*(volatile u16*)(pStat + 0x4C) > *(volatile u16*)(pStat + 0x4E)) {
+            *(u16*)(pStat + 0x4C) = *(volatile u16*)(pStat + 0x4E);
         }
     } else {
-        u32 lim = *(u32*)(pBase + 0x64);
-        u32 cur = lim / 10 + *(u32*)(pBase + 0x60);
+        u32 cur = *(volatile u32*)(pBase + 0x64) / 10;
+        u32 lim = *(volatile u32*)(pBase + 0x64);
+        cur += *(u32*)(pBase + 0x60);
         *(u32*)(pBase + 0x60) = cur;
         if (lim < cur) {
             *(u32*)(pBase + 0x60) = lim;
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E36D4);
@@ -11012,30 +11006,27 @@ void func_801E41C0(s32 arg0, u8 idx) {
 /* Party records at g_GameState+0x978 are 0xA4 bytes (func_801E4D10 copies them
  * with the same stride). */
 void func_801E4258(void* pCtx, u8 idx) {
-    uintptr_t off = idx * 0xA4;
-    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
-    s32 tableIdx = pEntry[8];
-    u8* pTbl = *(u8**)((u8*)pCtx + 0x10) + tableIdx * 0x14;
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
+    u8* pTbl = *(u8**)((u8*)pCtx + 0x10);
+    pTbl += pEntry[8] * 0x14;
     *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
     *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
 }
 
-/* Party records are 0xA4 bytes (see func_801E4258).  rec[0x3F] is written
- * unconditionally (retail stores it in the branch delay slot); the volatile
- * reloads keep retail's load order. */
+/* Party records are 0xA4 bytes (see func_801E4258). */
 void func_801E42AC(s32 arg0, u8 idx) {
-    uintptr_t off = idx * 0xA4;
-    u8* pEntry = (u8*)(off + (uintptr_t)((u8*)&g_GameState + 0x978));
-    s32 tableIdx = pEntry[3];
-    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC) + tableIdx * 0x10;
-    u16 prev = *(u16*)(pEntry + 0x38);
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
+    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC);
+    u16 prev;
+    pTable += pEntry[3] * 0x10;
+    prev = *(u16*)(pEntry + 0x38);
     *(u16*)(pEntry + 0x3A) = *(u16*)(pTable + 6);
     pEntry[0x3C] = pTable[0xC];
     pEntry[0x3D] = pTable[0xD];
     pEntry[0x3E] = pTable[0xE];
-    pEntry[0x3F] = pTable[0xE];
-    if (*(volatile u16*)(pEntry + 0x3A) < prev) {
-        *(u16*)(pEntry + 0x38) = *(volatile u16*)(pEntry + 0x3A);
+    pEntry[0x3F] = pTable[0xE];  /* unconditional (retail's delay-slot store) */
+    if (*(u16*)(pEntry + 0x3A) < prev) {
+        *(u16*)(pEntry + 0x38) = *(u16*)(pEntry + 0x3A);
     }
 }
 
@@ -11157,19 +11148,13 @@ void func_801E4754(void* arg0, u8 charIdx) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4928);
-#else
 u8 func_801E4928(u8 idx) {
-    u8* pEntry = (u8*)&g_GameState + 0x978 + (s32)idx * 0xA4;
+    u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
     u16 val = *(u16*)(pEntry + 0x44);
-    u8 base = pEntry[0x75];
-    s32 result = (s32)(val / 120) - base;
-    result /= 2;
+    s16 result = ((u16)(val / 120) - pEntry[0x75]) / 2;
     if (result < 0) result = 0;
-    return (u8)(result & 0xFF);
+    return result;
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4998);

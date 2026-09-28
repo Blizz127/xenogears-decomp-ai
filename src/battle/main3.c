@@ -2,7 +2,31 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main3", func_80076544);
+void func_80076418();
+void func_800764B4();
+void func_800764EC();
+extern u8 D_800C3E4C;
+void func_80076544(void);
+#endif
+
+#ifndef XENO_PC_PORT
+
+#ifndef XENO_PC_PORT
+void func_80076544(void) {
+    switch (D_800C3E4C) {                           /* irregular */
+    case 0:
+        func_800764B4();
+        return;
+    case 1:
+        func_80076418();
+        return;
+    case 2:
+        func_800764EC();
+        return;
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main3", func_800765C4);
 INCLUDE_ASM("asm/battle/nonmatchings/main3", func_80076710);
 #endif
