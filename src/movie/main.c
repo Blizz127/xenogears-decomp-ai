@@ -365,8 +365,32 @@ INCLUDE_ASM("asm/movie/nonmatchings/main", func_80070DCC);
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_800712C4);
 #endif
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80071BA0);
+extern void* D_80076EA0;
+extern s32 D_80076E4C;
+extern s32 D_80076EAC;
+extern s32 D_80076EB0;
+extern s32 D_80076F3C[];
+
+void func_80071BA0(void)
+{
+    s32 value;
+
+    if (D_80076EA0 == NULL) {
+        D_80076EA0 = HeapAlloc(0x2000, 0);
+    }
+    if (D_80076EA0 != NULL) {
+        ArchiveReadFileFromCdSector(0x40, D_80076EA0, 0x2000, 0, 0);
+    }
+    D_80076F3C[0] += 1;
+    if (D_80076E4C == 0) {
+        value = D_80076EB0;
+        D_80076EB0 = 0;
+        D_80076EAC = value;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -1261,10 +1285,6 @@ s32 func_8007519C(void)
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800753B8);
-#endif
-
 /* Developer-menu helper: retail build only (the port's menu entries are
  * placeholders). */
 #ifndef XENO_PC_PORT
@@ -1272,6 +1292,37 @@ extern s32 ArchiveReadHddFile(char* name, s32 arg1);
 extern void SoundLoadWdsFile(s32 pData, s32 arg1);
 extern s32 func_80039850(s32 pData);
 extern s32 func_8003BDFC(s32 arg0);
+extern char D_80070304[];
+extern char D_80070328[];
+extern char D_8007034C[];
+
+void func_800753B8(void)
+{
+    s32 pWds;
+
+    pWds = ArchiveReadHddFile(D_80070304, 0);
+    SoundLoadWdsFile(pWds, 0);
+    while ((func_8003BDFC(0) << 0x10) != 0) {
+    }
+    HeapFree((void*)pWds);
+
+    pWds = ArchiveReadHddFile(D_80070328, 0);
+    SoundLoadWdsFile(pWds, 0);
+    while ((func_8003BDFC(0) << 0x10) != 0) {
+    }
+    HeapFree((void*)pWds);
+
+    pWds = ArchiveReadHddFile(D_8007034C, 0);
+    SoundLoadWdsFile(pWds, 0);
+    while ((func_8003BDFC(0) << 0x10) != 0) {
+    }
+    HeapFree((void*)pWds);
+}
+#endif
+
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
+#ifndef XENO_PC_PORT
 extern char D_80070370[];
 extern char D_80070394[];
 
@@ -1641,8 +1692,57 @@ void func_800769A4(void)
     }
 }
 
+/* Developer-menu helper: retail build only (the port's menu entries are
+ * placeholders). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076AF0);
+extern MATRIX D_80077070; /* colour matrix */
+extern MATRIX D_80077090; /* light matrix */
+extern MATRIX D_800770B8;
+extern MATRIX D_800770F8;
+
+void func_80076AF0(void)
+{
+    SetGeomScreen(0x200);
+    SetGeomOffset(0xA0, 0x78);
+    D_800770B8.m[0][0] = 0x1000;
+    D_800770B8.m[1][1] = 0x1000;
+    D_800770B8.m[2][2] = 0x1000;
+    D_800770F8.m[0][0] = 0x1000;
+    D_800770F8.m[1][1] = 0x1000;
+    D_800770F8.m[2][2] = 0x1000;
+    D_80077090.m[0][0] = 0x93D;
+    D_80077090.m[0][1] = -0x93D;
+    D_80077090.m[0][2] = -0x93D;
+    D_800770B8.m[0][1] = 0;
+    D_800770B8.m[0][2] = 0;
+    D_800770B8.m[1][0] = 0;
+    D_800770B8.m[1][2] = 0;
+    D_800770B8.m[2][0] = 0;
+    D_800770B8.m[2][1] = 0;
+    D_800770F8.m[0][1] = 0;
+    D_800770F8.m[0][2] = 0;
+    D_800770F8.m[1][0] = 0;
+    D_800770F8.m[1][2] = 0;
+    D_800770F8.m[2][0] = 0;
+    D_800770F8.m[2][1] = 0;
+    D_80077090.m[1][0] = 0;
+    D_80077090.m[1][1] = 0;
+    D_80077090.m[1][2] = 0;
+    D_80077090.m[2][0] = 0;
+    D_80077090.m[2][1] = 0;
+    D_80077090.m[2][2] = 0;
+    D_80077070.m[0][0] = 0x969;
+    D_80077070.m[0][1] = 0;
+    D_80077070.m[0][2] = 0;
+    D_80077070.m[1][0] = 0x969;
+    D_80077070.m[1][1] = 0;
+    D_80077070.m[1][2] = 0;
+    D_80077070.m[2][0] = 0x969;
+    D_80077070.m[2][1] = 0;
+    D_80077070.m[2][2] = 0;
+    SetColorMatrix(&D_80077070);
+    SetBackColor(0x60, 0x60, 0x60);
+}
 #endif
 
 /* Developer-menu helper: retail build only (the port's menu entries are
