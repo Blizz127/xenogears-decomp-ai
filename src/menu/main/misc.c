@@ -3682,7 +3682,12 @@ void func_801CEC40(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF308);
+void func_801CF308(void) {
+    if (((u8*)g_Menu->pManager)[0xA] != 0) {
+        func_801CE2B4(g_Menu->unk354->unk1404, (u8*)g_Menu->unk354->polys500, g_Menu->unk354->unk1409);
+        func_801CE2B4(g_Menu->unk354->unk1400, (u8*)g_Menu->unk354->polys0, g_Menu->unk354->unk1408);
+    }
+}
 #else
 void func_801CF308(void) {
     void* pMenu = g_Menu;
@@ -4205,7 +4210,19 @@ void func_801D0C78(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0D90);
+void func_801D0D90(void) {
+    void* pMenu; s32 offset; s32 i;
+    for (i = 0, offset = 0x4E0; i < 4; i++) {
+        pMenu = g_Menu;
+        if (*(u8*)(*(s32*)((u8*)pMenu + 0x33C) + i + 0x34) != 0) {
+            u8 idx = *(u8*)((s32)pMenu + (i << 7) + 0x55D);
+            u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
+            s32 base = offset + (s32)pMenu;
+            AddPrim(pOT, (void*)(base + idx * 0x28));
+        }
+        offset += 0x80;
+    }
+}
 #else
 void func_801D0D90(void) {
     s32 i;
@@ -11583,7 +11600,17 @@ void func_801E5924(s32 slotIdx) {
 extern void func_801E56E8(s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5ACC);
+void func_801E5ACC(void) {
+    s32 i;
+    for (i = 0; i < 0x20; i++) {
+        void* pBuf = HeapAlloc(0x158, 0);
+        s32 off = i * 4;
+        *(void**)(off + (s32)g_Menu + 0x3A8) = pBuf;
+        bzero(pBuf, 0x158);
+        func_801E56E8(i);
+        func_801E5924(i);
+    }
+}
 #else
 void func_801E5ACC(void) {
     s32 i;
