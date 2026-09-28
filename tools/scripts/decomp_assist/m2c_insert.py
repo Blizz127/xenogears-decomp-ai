@@ -26,7 +26,7 @@ types={}; arrays=set()
 for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',s,re.M):
     types[m[2]]=m[1]
     if m[3]: arrays.add(m[2])
-seen=set(types)|set(re.findall(r'^\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',s,re.M))
+seen=set(types)|set(re.findall(r'^extern [^;]*?\b(\w+)(?:\[\])?\s+asm\(',s,re.M))|set(re.findall(r'^\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',s,re.M))
 externs=[]
 def clean(c):
     while 'M2C_FIELD(' in c:
@@ -68,7 +68,7 @@ for n in names:
                     continue
                 elif m[4] or sym in arrays:
                     if (sym in arrays)!=bool(m[4]) or types.get(sym,'').replace(' ','')!=mt.replace(' ',''):
-                        alias=f'{sym}__{"a" if m[4] else "s"}'
+                        alias=f'{sym}__{"a" if m[4] else "s"}_'+re.sub(r'\W','',mt)
                         if alias not in seen:
                             externs.append(f'extern {mt} {alias}{"[]" if m[4] else ""} asm("{sym}");'); seen.add(alias)
                         aliases[sym]=alias

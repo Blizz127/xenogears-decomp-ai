@@ -5,6 +5,23 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+s32 GetStringEntry(s32, s32);
+void func_80034714(s32 *, s32);
+void func_8007191C(s32);
+extern s32 D_80090F38[];
+extern s32 D_800925DC[];
+extern s8 D_80092604[];
+extern s32 D_80092880[];
+extern s8 D_80092884__a_s8[] asm("D_80092884");
+extern s32 D_800928C8__a_s32[] asm("D_800928C8");
+extern s32 D_80092900__a_s32[] asm("D_80092900");
+extern s32 D_80092904[];
+extern s32 D_80092954__a_s32[] asm("D_80092954");
+extern s8 D_800929BC[];
+extern s8 D_80099D9D__a_s8[] asm("D_80099D9D");
+extern s8 D_80099D9E__a_s8[] asm("D_80099D9E");
+void func_800719F0(void);
+
 extern u8 D_80099DA1__a[] asm("D_80099DA1");
 extern u8 D_80099D9A__a[] asm("D_80099D9A");
 extern u8 D_80099D9D__a[] asm("D_80099D9D");
@@ -272,7 +289,24 @@ void func_800718C0(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007191C);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800719F0);
+
+void func_800719F0(void) {
+    D_80099D9D__a_s8[0] = 0;
+    D_80099D9E__a_s8[0] = 0;
+    func_80083C0C(7);
+    D_800928C8__a_s32[0] = 5;
+    D_80092884__a_s8[0] = 0;
+    func_80032F54(D_80092954__a_s32, 0x140, 0x70, 0xA2, 0x2A, 0x1C, 8);
+    func_80034714(D_80092954__a_s32, GetStringEntry(D_80092880[0], 0x42));
+    D_800929BC[0] = 0x1E;
+    D_800925DC[0] = 0;
+    func_80070F80(D_80090F38);
+    D_80092604[0] = 0;
+    D_80092904[0] = 0;
+    D_80092900__a_s32[0] = 0;
+    func_8007191C(9);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80071AD0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80071DA4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80071F8C);
