@@ -50,5 +50,5 @@ mutate 74EC-start 'MenuBatchDigits(2, 7, D_801E9D28' 'MenuBatchDigits(1, 7, D_80
 mutate 7884-tenths 'tenths = (s32)(value - whole * 100) / 10;' 'tenths = (s32)(value - whole * 100) % 10;'
 mutate 7884-scale 'raw[0x79]) * 22)' 'raw[0x79]) * 21)'
 mutate 6194-prims 'buf + buf[0x2AEC] * 0x50 + 0xA0,' 'buf + buf[0x2AEC] * 0x28 + 0xA0,'
-mutate 7C3C-rc 'MenuRawPointer(0x358)[0x2AE0] = (u8)g_Menu->renderContext;' 'MenuRawPointer(0x358)[0x2AE0] = (u8)g_Menu->unk2D8;'
+mutate 7C3C-rc 'MENU_RAW(0x358)[0x2AE0] = *(u8*)&g_Menu->renderContext;' 'MENU_RAW(0x358)[0x2AE0] = (u8)g_Menu->unk2D8;'
 echo "PASS menu batch prims (O0/O2/UBSan + mutants)"

@@ -585,6 +585,22 @@ extern u8 g_MenuDebugEnabled;
  * +0xB94 on sits later by offsetof(unkB94) - 0xB94; on the PSX it is the
  * identity, so retail code generation is unchanged.  Use it for every raw
  * card-buffer offset: ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)]. */
+/* Calls whose retail code leaves $a0 unset (the callee ignores it).  The port
+ * passes a real argument; retail keeps the argument-less call shape.
+ * MENU_KR(f) is the same for calls retail makes unprototyped. */
+#ifdef XENO_PC_PORT
+#define MENU_CALL_D32B4() func_801D32B4(0)
+#define MENU_CALL_C881C(port) func_801C881C(port)
+#define MENU_KR(f) f
+#else
+#define MENU_CALL_D32B4() ((s32 (*)())func_801D32B4)()
+#define MENU_CALL_C881C(port) ((s32 (*)())func_801C881C)()
+#define MENU_KR(f) ((void (*)())f)
+#endif
+
+/* The unk340[0] / unk340[4] side buffers hold 4-byte PSX-width pointers. */
+#define MENU_SIDE_BUF(o) ((u8*)(uintptr_t)*(u32*)&g_Menu->unk340[o])
+
 #ifdef XENO_PC_PORT
 #define MENU_CARD_OFF(off) \
     ((off) >= 0xB94 ? (off) + (s32)(offsetof(MenuUnk2, unkB94) - 0xB94) : (off))

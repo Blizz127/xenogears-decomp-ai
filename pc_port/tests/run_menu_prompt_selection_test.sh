@@ -26,7 +26,7 @@ done
 cp "$OUT/selection.inc" "$OUT/good.inc"
 for mutant in lost-result wrong-second-prompt timeout-extra-frame missing-cancel missing-card-mode; do
     case "$mutant" in
-        lost-result) sed 's/^    func_801D32B4(result);/    result = func_801D32B4(result);/' "$OUT/good.inc" > "$OUT/selection.inc" ;;
+        lost-result) sed 's/^    MENU_CALL_D32B4();/    result = MENU_CALL_D32B4();/' "$OUT/good.inc" > "$OUT/selection.inc" ;;
         wrong-second-prompt) sed 's/func_801D2F4C(arg1);/func_801D2F4C(arg0);/' "$OUT/good.inc" > "$OUT/selection.inc" ;;
         timeout-extra-frame) sed 's/--remaining == 0/remaining-- == 0/' "$OUT/good.inc" > "$OUT/selection.inc" ;;
         missing-cancel) sed '/D_801EA8FC = 1;/d' "$OUT/good.inc" > "$OUT/selection.inc" ;;
