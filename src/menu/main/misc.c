@@ -1925,9 +1925,6 @@ void func_801C8960(void) {
 
 extern s32 D_801EA900;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8A10);
-#else
 s32 func_801C8A10(u8 port) {
 #ifdef XENO_PC_PORT
     extern s32 D_801EA904;
@@ -1966,75 +1963,40 @@ s32 func_801C8A10(u8 port) {
     }
     return result != -2;
 #else
-    void* pMenu;
-    void* pData;
-    s32 result;
     s32 ret = 1;
-    u8 portIdx = port;
-    s32 off1;
+    s32 result;
     s32 i;
+    s32 off;
 
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(u8*)(pData + portIdx + 0x4FE4) = 1;
-
-    result = func_801C891C((portIdx != 0) << 4);
-
-    if (result == 0) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        if (*(s32*)(pData + portIdx * 4 + 0x4F74) == -1) {
-            result = 1;
-            *(s32*)(pData + portIdx * 4 + 0x4F74) = 0;
-        }
+    (((u8*)g_Menu->unk32C) + port)[0x4FE4] = ret;
+    result = func_801C891C((port != 0) << 4);
+    if (result == 0 && *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) == -1) {
+        result = 1;
+        *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) = 0;
+    } else {
+        *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) = result;
     }
-
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    *(s32*)(pData + portIdx * 4 + 0x4F74) = result;
-
     if (result == -1) {
-        off1 = portIdx << 4;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + portIdx + 0x4F8A) = 0;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + portIdx + 0x4FE4) = 0;
-        D_801EA900 = 0;
-        for (i = 0; i < 0x10; i++) {
-            pMenu = g_Menu;
-            pData = *(void**)((u8*)pMenu + 0x32C);
-            *(u8*)(pData + off1 + i + 0x4FAE) = 0xFF;
-            pMenu = g_Menu;
-            pData = *(void**)((u8*)pMenu + 0x32C);
-            *(u8*)(pData + off1 + i + 0x4F8E) = 0;
-            pMenu = g_Menu;
-            pData = *(void**)((u8*)pMenu + 0x32C);
-            off1 += 0x3C;
-            *(u8*)(pData + off1 + 0x58) = 0;
+        (((u8*)g_Menu->unk32C) + port)[0x4F8A] = 0;
+        (((u8*)g_Menu->unk32C) + port)[0x4FE4] = 0;
+        ((s32*)&D_801EA900)[port] = 0;
+        for (i = 0; i < 16; i++) {
+            (((u8*)g_Menu->unk32C) + (port * 16 + i))[0x4FAE] = 0xFF;
+            (((u8*)g_Menu->unk32C) + (port * 16 + i))[0x4F8E] = 0;
+            off = (port * 16 + i) * 0x5C;
+            (((u8*)g_Menu->unk32C) + off)[0x58] = 0;
         }
     }
-
     if (result == -2) {
         ret = 0;
     }
-
-    pMenu = g_Menu;
-    pData = *(void**)((u8*)pMenu + 0x32C);
-    if (*(u8*)(pData + portIdx + 0x4FE8) != *(u8*)(pData + portIdx + 0x4FE4)) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + portIdx + 0x4F88) = 0;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + portIdx + 0x4FE8) = *(u8*)(pData + portIdx + 0x4FE4);
+    if ((((u8*)g_Menu->unk32C) + port)[0x4FE8] != (((u8*)g_Menu->unk32C) + port)[0x4FE4]) {
+        (((u8*)g_Menu->unk32C) + port)[0x4F88] = 0;
+        (((u8*)g_Menu->unk32C) + port)[0x4FE8] = (((u8*)g_Menu->unk32C) + port)[0x4FE4];
     }
-
     return ret;
 #endif
 }
-#endif
 
 extern u8 D_801E9779;
 
