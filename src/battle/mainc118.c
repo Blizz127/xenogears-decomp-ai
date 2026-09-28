@@ -1,11 +1,34 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "system/memory.h"
+#endif
 
+
+#ifndef XENO_PC_PORT
+void func_800BD024(void *arg0);
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCD98);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCEAC);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCFAC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD024);
+
+#ifndef XENO_PC_PORT
+void func_800BD024(void *arg0) {
+    void *temp_a0;
+    void *temp_s1;
+
+    temp_s1 = *(void **)((s8*)(arg0) + 4);
+    temp_a0 = *(void **)((s8*)(temp_s1) + 0x38);
+    *(u8 *)((s8*)(temp_a0) + 0x2B) = (u8) (*(u8 *)((s8*)(temp_a0) + 0x2B) | 1);
+    func_8001F6B0(temp_a0);
+    func_80025180(*(s32 *)((s8*)(temp_s1) + 0x5C));
+    func_8001CE74(arg0);
+    TimerWorkListRemoveTask(arg0);
+    HeapFree(temp_s1);
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD098);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD2E4);

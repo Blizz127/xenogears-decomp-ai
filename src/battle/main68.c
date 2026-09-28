@@ -1,4 +1,11 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "system/memory.h"
+#endif
+#ifndef XENO_PC_PORT
+void func_800A429C(void *arg0);
+#endif
+
 #ifdef XENO_PC_PORT
 #include "psyq/libgte.h"
 #endif
@@ -11,7 +18,37 @@ INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3578);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A35C8);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3640);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A429C);
+
+#ifndef XENO_PC_PORT
+void func_800A429C(void *arg0) {
+    s32 temp_a0;
+    s32 temp_a0_2;
+    s32 temp_a1;
+
+    if (*(u16 *)((s8*)(arg0) + 0x1A) != 0) {
+        temp_a1 = *(s32 *)((s8*)(arg0) + 4);
+        if (temp_a1 != 0) {
+            if ((u8) *(u8 *)((s8*)(arg0) + 0x10) < 4U) {
+                LoadImage(arg0 + 0x28, temp_a1);
+            }
+            HeapFree(*(s32 *)((s8*)(arg0) + 4));
+            *(s32 *)((s8*)(arg0) + 4) = 0;
+        }
+        temp_a0 = *(s32 *)((s8*)(arg0) + 8);
+        if (temp_a0 != 0) {
+            HeapFree(temp_a0);
+            *(s32 *)((s8*)(arg0) + 8) = 0;
+        }
+        temp_a0_2 = *(s32 *)((s8*)(arg0) + 0xC);
+        if (temp_a0_2 != 0) {
+            HeapFree(temp_a0_2);
+            *(s32 *)((s8*)(arg0) + 0xC) = 0;
+        }
+        *(u16 *)((s8*)(arg0) + 0x1A) = 0U;
+    }
+}
+#endif
+
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4348);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A43F8);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A44C0);
