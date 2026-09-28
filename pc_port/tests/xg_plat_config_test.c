@@ -11,6 +11,8 @@
 static int s_speed, s_volume_calls, s_binds;
 static char s_bound[64];
 void xg_plat_timing_set_speed(int m) { s_speed = m; }
+static int s_ff;
+void xg_plat_timing_set_fast_forward_speed(int m) { s_ff = m; }
 int xg_plat_audio_set_user_volume(int p) { (void)p; s_volume_calls++; return 0; }
 const char* xg_plat_input_button_name(XgPlatButton b)
 {
@@ -56,6 +58,27 @@ int main(void)
     CHECK(s_volume_calls == 1, "audio.volume forwarded to the backend");
     xg_plat_config_parse("video.width = abc\n");
     CHECK(xg_plat_config_int("video.width", 77) == 77, "non-number falls back");
+    {
+        char* argv1[] = { "xeno-port", "--set", "video.width=999", "--set=game.speed=5",
+                          "--config", "nonexistent.ini", NULL };
+        char* argv2[] = { "xeno-port", "--bogus", NULL };
+        char* argv3[] = { "xeno-port", "--set", "novalue", NULL };
+        XgPlatVideoConfig v2 = { 640, 480, 0, 1, 0, 0 };
+        CHECK(xg_plat_config_cli(6, argv1) == 0, "CLI options accepted");
+        setenv("XENO_VIDEO_WIDTH", "1920", 1);
+        CHECK(xg_plat_config_int("video.width", 0) == 999, "--set beats environment");
+        unsetenv("XENO_VIDEO_WIDTH");
+        CHECK(xg_plat_config_int("game.speed", 0) == 5, "--set=key=value form");
+        CHECK(xg_plat_config_load() == -1, "explicit --config that is missing is an error");
+        CHECK(xg_plat_config_cli(2, argv2) == -1, "unknown option rejected");
+        CHECK(xg_plat_config_cli(3, argv3) == -1, "--set without = rejected");
+        xg_plat_config_parse("[video]\ninternal_resolution = 3\nfps = 60\n[game]\nfast_forward_speed = 3\n");
+        xg_plat_config_video(&v2);
+        CHECK(v2.window_width == 999 && v2.window_height == 720,
+              "internal_resolution 3 -> 960x720, --set width still wins");
+        xg_plat_config_apply_runtime();
+        CHECK(s_ff == 3, "fast_forward_speed applied");
+    }
     printf("xg_plat config test: %s\n", fails ? "FAIL" : "PASS");
     return fails != 0;
 }

@@ -1,14 +1,14 @@
 /* xg_plat/config.h -- port configuration (moddable port layer).
  *
- * One `key = value` per line, `#` or `;` comments, optional `[section]`
- * headers that prefix keys ("[video]" + "width = 1280" == "video.width").
- * The first file found is used:
- *   $XENO_CONFIG, ./xenogears-port.cfg,
- *   ${XDG_CONFIG_HOME:-~/.config}/xenogears-port/xenogears-port.cfg
- * Every key can be overridden from the environment as XENO_<KEY> with dots
- * as underscores, upper-case ("video.width" -> XENO_VIDEO_WIDTH); a few
- * historical names are aliases (XENO_SPEED == game.speed).  Environment wins
- * over the file.  Keys: see pc_port/xenogears-port.example.cfg.
+ * config.ini: one `key = value` per line, `#` or `;` comments, optional
+ * `[section]` headers that prefix keys ("[video]" + "width = 1280" ==
+ * "video.width").  The first file found is used:
+ *   --config FILE, $XENO_CONFIG, config.ini next to the executable,
+ *   ${XDG_CONFIG_HOME:-~/.config}/xenogears-port/config.ini
+ * Precedence per key: --set key=value  >  environment  >  file.  The
+ * environment name is XENO_<KEY> with dots as underscores, upper-case
+ * ("video.width" -> XENO_VIDEO_WIDTH); historical names stay aliases
+ * (XENO_SPEED == game.speed).  Keys: pc_port/config.example.ini.
  */
 #ifndef XG_PLAT_CONFIG_H
 #define XG_PLAT_CONFIG_H
@@ -18,6 +18,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Command line: --config FILE, --set key=value (repeatable), --help.
+ * Recognised options are consumed; returns 0 to continue, 1 when --help
+ * was printed, -1 on a usage error (message printed). */
+int xg_plat_config_cli(int argc, char** argv);
 
 /* Load the config file (once).  Returns the number of keys read, 0 when no
  * file exists, -1 on a read error. */

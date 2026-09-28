@@ -4,11 +4,22 @@
 
 static SDL_atomic_t s_xenoSpeed = { 1 };
 static SDL_atomic_t s_xenoFastForwardHeld = { 0 };
+static SDL_atomic_t s_xenoFastForwardSpeed = { 5 };
 void PsyX_SPUAL_RefreshHostSpeed();
 
 int PsyX_GetSpeedMultiplier(void)
 {
-    return SDL_AtomicGet(&s_xenoFastForwardHeld) ? 5 : SDL_AtomicGet(&s_xenoSpeed);
+    return SDL_AtomicGet(&s_xenoFastForwardHeld) ? SDL_AtomicGet(&s_xenoFastForwardSpeed)
+                                                 : SDL_AtomicGet(&s_xenoSpeed);
+}
+
+/* Speed while the fast-forward key is held (default 5x); set from the
+ * port config (game.fast_forward_speed) through xg_plat/timing.h. */
+void PsyX_SetFastForwardSpeed(int multiplier)
+{
+    if (multiplier < 1) multiplier = 1;
+    if (multiplier > 5) multiplier = 5;
+    SDL_AtomicSet(&s_xenoFastForwardSpeed, multiplier);
 }
 
 void PsyX_SetSpeedMultiplier(int multiplier)

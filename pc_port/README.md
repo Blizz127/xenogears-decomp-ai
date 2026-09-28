@@ -113,15 +113,15 @@ Port code reaches the platform through interface headers in
 | `input.h` | keyboard bindings by SDL key name | PsyCross |
 | `timing.h` | game speed, fast-forward, vblank clock | PsyCross |
 | `audio.h` | user volume | none yet (reported unsupported) |
-| `config.h` | `xenogears-port.cfg` + `XENO_*` overrides | `src/plat/xg_plat_config.c` |
+| `config.h` | `config.ini`, `--config`/`--set`, `XENO_*` overrides | `src/plat/xg_plat_config.c` |
 | `mods.h` | `mods/` folders, events, C plugins, asset replacement | `src/plat/xg_plat_mods.c` |
 
 The game's own PSX calls still go through PsyCross + `psyq_compat*`; areas
 move behind the interfaces as they are touched.
 
-**Config:** copy `xenogears-port.example.cfg` to `xenogears-port.cfg` (working
-directory) or `~/.config/xenogears-port/`; any key can be overridden as
-`XENO_<SECTION>_<KEY>`. Widescreen, 60 fps and user volume are accepted but
+**Config:** copy `config.example.ini` to `config.ini` next to the executable or
+to `~/.config/xenogears-port/`, or pass `--config FILE`; `--set key=value` and
+`XENO_<SECTION>_<KEY>` override single keys. Widescreen, 60 fps and user volume are accepted but
 reported as unsupported until a backend implements them.
 
 **Mods:** each folder in `mods/` (or `~/.local/share/xenogears-port/mods/`)

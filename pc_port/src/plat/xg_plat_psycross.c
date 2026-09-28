@@ -125,6 +125,11 @@ void xg_plat_timing_fast_forward(int held)
     PsyX_SetFastForwardHeld(held);
 }
 
+void xg_plat_timing_set_fast_forward_speed(int multiplier)
+{
+    PsyX_SetFastForwardSpeed(multiplier);
+}
+
 int xg_plat_timing_vblank_count(void)
 {
     return PsyX_Sys_GetVBlankCount();
