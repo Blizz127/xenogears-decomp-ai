@@ -2322,43 +2322,41 @@ void func_801C90B0(u8 port, u8 slot) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C9270);
 #else
+/* Retail 0x801C9270: mark which of card `port`'s 15 directory entries are
+ * this game's saves.  Entry k (index port * 16 + k at +0x4FAE) names a
+ * 0x5C-byte record whose 12 bytes at +0x18 must equal the 12-byte product
+ * prefix at +0x4FCE.  A matching entry sets its flag at +0x4F8E and the
+ * table byte D_801EA6D0[port * 16 + block[0x123]], where block is the
+ * 0x200-byte header at +0xB94.  The port once used a 0x28 record stride and
+ * compared every byte against one fixed byte
+ * (docs/port/RETAIL_DIVERGENCES.md). */
 void func_801C9270(u8 port) {
-    void* pMenu;
-    void* pData;
     s32 i, j;
     u8* pTable;
+
     for (i = 0; i < 0x10; i++) {
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        *(u8*)(pData + port * 0x10 + i + 0x4F8E) = 0;
+        ((u8*)g_Menu->unk32C)[port * 0x10 + i + 0x4F8E] = 0;
     }
     pTable = D_801EA6D0 + port * 0x10;
     for (i = 0; i < 0xF; i++) {
-        u8 charIdx;
-        u8* pSlot;
-        u8 match;
-        pMenu = g_Menu;
-        pData = *(void**)((u8*)pMenu + 0x32C);
-        charIdx = *(u8*)(pData + port * 0x10 + i + 0x4FAE);
-        pSlot = pData + charIdx * 0x28;
-        match = 1;
+        u8* pData = (u8*)g_Menu->unk32C;
+        u8* pSlot = pData + pData[port * 0x10 + i + 0x4FAE] * 0x5C;
+        s32 match = 1;
+
         for (j = 0; j < 0xC; j++) {
-            if (*(u8*)(pSlot + 0x18 + j) != *(u8*)(pData + port * 0x10 + i + 0x4FCE)) {
+            if (pSlot[0x18 + j] != pData[0x4FCE + j]) {
                 match = 0;
                 break;
             }
         }
         if (match) {
-            pMenu = g_Menu;
-            *(u8*)(*(void**)((u8*)pMenu + 0x32C) + port * 0x10 + i + 0x4F8E) = 1;
-            pMenu = g_Menu;
-            pData = *(void**)((u8*)pMenu + 0x32C);
-            {
-                u8 idx = *(u8*)(pData + port * 0x10 + i + 0x4FAE);
-                s32 offset = idx * 0x200 + 0xB94;
-                D_801EA6F4 = (s32)(pData + offset + 0x100);
-                *(u8*)(pTable + *(u8*)(pData + offset + 0x123)) = 1;
-            }
+            u8* block;
+
+            pData = (u8*)g_Menu->unk32C;
+            pData[port * 0x10 + i + 0x4F8E] = 1;
+            block = pData + pData[port * 0x10 + i + 0x4FAE] * 0x200 + 0xB94;
+            D_801EA6F4 = (s32)(uintptr_t)(block + 0x100);
+            pTable[block[0x123]] = 1;
         }
     }
 }
@@ -3130,9 +3128,40 @@ s32 func_801CD710(u8 arg0) {
 }
 #endif
 
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+extern void func_801C80B8(u32 value);
+
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD81C);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDB1C);
+#endif
+
+/* Retail 0x801CDB1C: the panel's level digits.  func_801C80B8 splits the
+ * level into g_Menu->digits; the three digits 6..8 (0xFF = blank) go to
+ * polysLevelString at 8px columns, then unk63 is split (its digits are not used
+ * here) and the unkBE1 count is cleared.  Shared retail/port body
+ * (gcc 2.6.3 byte-exact). */
+void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
+                   s32* xTable, s32* yTable) {
+    s32 i;
+    u8 d;
+
+    func_801C80B8(g_GameState.characters[charId].level);
+    panel->levelStringLength = 0;
+    for (i = 0; i < 3; i++) {
+        d = g_Menu->digits[6 + i];
+        if (d != 0xFF) {
+            panel->levelStringLength += func_8002675C(
+                g_Menu->unk2DC, d,
+                &panel->polysLevelString[panel->levelStringLength * 2],
+                g_Menu->renderContext, i * 8 + xTable[10],
+                slot * 0x38 + yTable[10], 0x1000);
+        }
+    }
+    func_801C80B8(g_GameState.characters[charId].unk63);
+    panel->unkBE1 = 0;
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDC6C);
 
 extern void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
@@ -3235,16 +3264,6 @@ void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
                   (*(s32*)(D_801EA578 + (mode * 3 + slot) * 4) << 2) & 0xFC,
                   D_801EA5C4[mode * 12 + slot * 4], mode * 0x18 + 0x48,
                   0xD);
-}
-
-void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
-                   s32* xTable, s32* yTable) {
-    MenuBuildPanelDigits(panel, panel->polysLevelString,
-                         &panel->levelStringLength,
-                         g_GameState.characters[charId].level, 6, 3,
-                         xTable[10], yTable[10] + slot * 0x38, 0);
-    func_801C80B8(g_GameState.characters[charId].unk63);
-    panel->unkBE1 = 0;
 }
 
 void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
@@ -9828,10 +9847,8 @@ void func_801DFB68(s32 slotArg, s32 category, s32 row, s32 scroll,
 extern void func_801E3ECC(void*, u8);
 extern void func_801E3C2C(void*, u8);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFE2C);
-#else
 void func_801DFE2C(u8 slotIdx) {
+#ifdef XENO_PC_PORT
     u8 characterId = g_Menu->pManager->currentCharacterIDs[slotIdx];
     u8 gearId = ((u8*)&g_GameState)[0x30C + characterId * 0xA4];
     MenuUnk6* resource;
@@ -9851,8 +9868,21 @@ void func_801DFE2C(u8 slotIdx) {
     *(u16*)(destination + 6) = source[0x92];
     *(u16*)(destination + 8) = source[0x93];
     *(u16*)(destination + 10) = source[0x94];
-}
+#else
+    s32 off;
+    SystemMenu* m;
+    off = g_Menu->pManager->currentCharacterIDs[slotIdx] * 0xA4;
+    func_801E3ECC(g_Menu->unk330, ((u8*)&g_GameState)[0x30C + off]);
+    func_801E3C2C(g_Menu->unk330, ((u8*)&g_GameState)[0x30C + g_Menu->pManager->currentCharacterIDs[slotIdx] * 0xA4]);
+    m = g_Menu;
+    *(u16*)((u8*)m->unk330 + 0xB8) = *(u16*)((u8*)m->unk330 + 0xB0);
+    *(u16*)((u8*)m->unk330 + 0xBA) = *(u16*)((u8*)m->unk330 + 0xA4);
+    *(u16*)((u8*)m->unk330 + 0xBC) = *(u16*)((u8*)m->unk330 + 0xA6);
+    *(u16*)((u8*)m->unk330 + 0xBE) = *((u8*)m->unk330 + 0xB2);
+    *(u16*)((u8*)m->unk330 + 0xC0) = *((u8*)m->unk330 + 0xB3);
+    *(u16*)((u8*)m->unk330 + 0xC2) = *((u8*)m->unk330 + 0xB4);
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DFF5C);
