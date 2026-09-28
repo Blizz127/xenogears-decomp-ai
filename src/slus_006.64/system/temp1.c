@@ -176,17 +176,19 @@ void* pWork;
 }
 #endif
 
+#ifdef XENO_PC_PORT
 extern s32 D_800592EC;
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022E8C);
 #else
+/* temp1's own .sbss word: retail reaches it only %gp_rel, which cc1 emits
+ * for a same-TU definition (plain externs assemble absolute here). */
+s32 D_800592EC;
+#endif
+
 void func_80022E8C(void)
 {
     D_800592EC++;
     func_80022DF4();
 }
-#endif
 
 void func_80022EB8(void* pWork)
 {
@@ -1042,14 +1044,17 @@ u8* func_80023FD8(s32 index, u8* pAnimData, s16* pPosition, s32 extraSize) {
 }
 #endif
 
+#ifdef XENO_PC_PORT
 extern s32 D_800591B8;
+#else
+/* temp1's own .sbss word: retail reaches it only %gp_rel, which cc1 emits
+ * for a same-TU definition (plain externs assemble absolute here). */
+s32 D_800591B8;
+#endif
 extern void* func_80024524(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5);
 void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY,
                     s16 clutX, s16 clutY, s16 arg6);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024294);
-#else
 void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg5, s32 arg6) {
     void* pSpriteData;
 
@@ -1059,11 +1064,7 @@ void* func_80024294(void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY
 
     return pSpriteData;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800242F4);
-#else
 void* func_800242F4(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg6, s32 flags) {
     void* pResult;
 
@@ -1074,7 +1075,6 @@ void* func_800242F4(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s
     D_800591B8 = 0;
     return pResult;
 }
-#endif
 
 extern u8 D_800591AD;
 extern s32 func_8001EE74(void* arg0);
