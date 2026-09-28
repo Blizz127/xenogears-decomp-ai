@@ -4,10 +4,10 @@
 # Verifies the disc hash and main-exe .rodata boundaries, then builds the
 # generated-data test at O0/O2/UBSan and runs five negative controls that must
 # each fail a named assertion:
-#   zero        - re-zero D_800181C8 inside the generated data file
-#   truncate    - shrink D_80018258 from 82 to 40 bytes
-#   flip        - flip the first byte of D_80018974
-#   mode        - re-zero the D_80010000 build/mode word (was 0xFFFFFFFF)
+#   zero        - drop D_800181C8 from the load table (stays zero)
+#   truncate    - load only 40 of D_80018258's 82 bytes
+#   flip        - load D_80018974 one byte late (first byte wrong)
+#   mode        - drop the D_80010000 build/mode word (was 0xFFFFFFFF)
 #   rodataend   - move PSX_EXE_RODATA_END/PSX_EXE_TEXT_START back by 4 bytes
 #
 # UBSan: this host's gcc cannot link libubsan (missing /usr/lib64/libubsan.so.1.0.0),
@@ -65,57 +65,38 @@ import sys
 from pathlib import Path
 out = Path(sys.argv[1])
 src = Path('pc_port/src/data_slus_rodata.c').read_text()
-pat = re.compile(r'(unsigned char (\w+)\[(\d+)\][^=]*= \{)(.*?)(\};)', re.S)
+# The data file declares zero storage plus a load table (retail_data.h);
+# the mutants corrupt the table rows, so the loaded bytes go wrong at run time.
 
 
-def body_bytes(body):
-    return re.findall(r'0x[0-9a-fA-F]{2}', body)
-
-
-def replace(name, mutate):
-    pat_n = re.compile(r'(unsigned char %s\[(\d+)\][^=]*= \{)(.*?)(\};)' % name,
-                       re.S)
-    m = pat_n.search(src)
+def row(name):
+    m = re.search(r'^    XENO_RD\(%s, XENO_RD_SLUS, XENO_RD_SLUS_OFF\((0x[0-9A-F]+)u\), '
+                  r'(0x[0-9A-F]+)\),\n' % name, src, re.M)
     assert m, name
-    vals = body_bytes(m.group(3))
-    decl_size = int(m.group(2))
-    assert len(vals) == decl_size, (name, len(vals), decl_size)
-    return pat_n.sub(lambda mm: mutate(mm.group(1), vals, mm.group(4)), src, count=1)
+    return m
 
 
-def as_lines(vals, per=16):
-    return '\n' + '\n'.join(
-        '    ' + ','.join(vals[i:i + per]) + ',' for i in range(0, len(vals), per)) + '\n'
+def mutate_row(name, new_line):
+    m = row(name)
+    return src[:m.start()] + new_line + src[m.end():]
 
 
-# Mutant 1: re-zero D_800181C8.
-(out / 'mutant_zero.c').write_text(
-    replace('D_800181C8', lambda head, vals, tail:
-            head + as_lines(['0x00'] * len(vals)) + tail))
+# Mutant 1: D_800181C8 no longer loaded (stays zero).
+(out / 'mutant_zero.c').write_text(mutate_row('D_800181C8', ''))
 
-# Mutant 2: truncate D_80018258 from 82 to 40 bytes.
-def trunc(head, vals, tail):
-    head2 = re.sub(r'\[82\]', '[40]', head)
-    assert head2 != head
-    return head2 + as_lines(vals[:40]) + tail
+# Mutant 2: load only 40 of D_80018258's 82 bytes.
+m = row('D_80018258')
+assert m.group(2) == '0x52'
+(out / 'mutant_truncate.c').write_text(mutate_row(
+    'D_80018258', m.group(0).replace(', 0x52),', ', 0x28),')))
 
+# Mutant 3: D_80018974 read one byte late (first byte wrong).
+m = row('D_80018974')
+(out / 'mutant_flip.c').write_text(mutate_row(
+    'D_80018974', m.group(0).replace(m.group(1) + 'u', '0x%Xu' % (int(m.group(1), 16) + 1))))
 
-(out / 'mutant_truncate.c').write_text(replace('D_80018258', trunc))
-
-# Mutant 3: flip the first byte of D_80018974.
-def flip(head, vals, tail):
-    v = list(vals)
-    assert v[0] == '0x25'
-    v[0] = '0x24'
-    return head + as_lines(v) + tail
-
-
-(out / 'mutant_flip.c').write_text(replace('D_80018974', flip))
-
-# Mutant 4: re-zero the D_80010000 build/mode word.
-(out / 'mutant_mode.c').write_text(
-    replace('D_80010000', lambda head, vals, tail:
-            head + as_lines(['0x00'] * len(vals)) + tail))
+# Mutant 4: the D_80010000 build/mode word no longer loaded.
+(out / 'mutant_mode.c').write_text(mutate_row('D_80010000', ''))
 
 # Mutant 5: revert the loader rodata boundary by one word.
 hdr = Path('pc_port/src/psx_memory.h').read_text()

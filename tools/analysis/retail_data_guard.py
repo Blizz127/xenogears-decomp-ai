@@ -107,11 +107,14 @@ def window_ok(w: bytes, width: int = 4) -> bool:
 
 
 def address_only(w: bytes) -> bool:
-    """Every u32 is a KSEG0 RAM or I/O address: a pointer/jump table.  Those
+    """Every u32 is a KSEG0 RAM or I/O address (or NULL): a pointer/jump table.  Those
     are the same facts as the committed symbol maps; reported separately
     ('address-table') and only failed under --strict."""
-    return all(0x80000000 <= x < 0x80200000 or 0x1F800000 <= x < 0x1F802000
-               for x in array("I", w))
+    u = array("I", w)
+    addrs = sum(1 for x in u if 0x80000000 <= x < 0x80200000 or 0x1F800000 <= x < 0x1F802000)
+    # NULL entries (terminators, empty slots) are allowed next to addresses
+    return addrs >= 4 and all(x == 0 or 0x80000000 <= x < 0x80200000 or
+                              0x1F800000 <= x < 0x1F802000 for x in u)
 
 
 def blake8(w: bytes) -> str:
@@ -610,7 +613,7 @@ def main(argv=None) -> int:
         eprint(f"[guard] FAIL: {len(fails)} retail byte run(s) in {len(files)} file(s) "
                f"(scanned {nfiles}): {', '.join(files[:20])}{' ...' if len(files) > 20 else ''}")
         eprint("[guard] Load these bytes from the user's disc at runtime "
-               "(pc_port/src/retail_data.c) instead of committing them.")
+               "(pc_port/src/retail_data.h) instead of committing them.")
         return 1
     if stale:
         eprint(f"[guard] FAIL: {len(stale)} stale allowlist row(s)")
