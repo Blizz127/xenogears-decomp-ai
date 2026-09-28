@@ -156,6 +156,52 @@ s32 D_80077450;                /* func_8002C3D8(): 0 CD MODE1, -1 MODE2, else PC
 s32 D_80077454;                /* SCREEN MODE: 1 = 24-bit colour */
 
 static const RECT D_800704E0 = { 0, 0, 0x280, 0x200 };
+#else
+extern s32 D_80076EEC;
+extern s32 D_80076EF0;
+extern s32 D_80076EF4;
+extern s32 D_80076EF8;
+extern s32 D_80076F04;
+extern s32 D_80076F08;
+extern u8 D_80076F8C[4][4];
+extern u8 D_80076F9C[4][4];
+extern s32 D_80076FAC[4];
+extern s32 D_80076FBC[4];
+extern u8 D_80076FCC[4][4];
+extern u8 D_80076FDC[4][4];
+extern s32 D_80076FEC[4];
+extern s32 D_80076FFC[4];
+extern s32 D_8007700C;
+extern s32 D_80077010;
+extern s32 D_80077014;
+extern s32 D_80077018;
+extern s32 D_8007701C;
+extern s32 D_80077020;
+extern s32 D_80077024;
+extern s32 D_80077028;
+extern u32 D_80077118;
+extern s32 D_8007711C;
+extern MovieRenderEnv* D_80077120;
+extern MovieRenderEnv D_80077124[2];
+extern s32 D_80077394;
+extern s32 D_80077398;
+extern s32 D_8007739C;
+extern s32 D_800773A0;
+extern s32 D_800773A4;
+extern s32 D_800773A8;
+extern s32 D_800773AC;
+extern s32 D_800773B0;
+extern s32 D_800773B4;
+extern s32 D_800773B8[16][2];
+extern s32 D_80077438;
+extern s32 D_8007743C;
+extern s32 D_80077440;
+extern s32 D_80077444;
+extern s32 D_80077448;
+extern s32 D_8007744C;
+extern s32 D_80077450;
+extern s32 D_80077454;
+extern const RECT D_800704E0;
 #endif
 
 /* ------------------------------------------------------------------------- */
@@ -916,9 +962,6 @@ s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074AF0);
-#else
 s32 func_80074AF0(void)
 {
     s32 a = D_80076EF4 * 5 + 1;
@@ -934,11 +977,7 @@ s32 func_80074AF0(void)
     }
     return D_80076EF4;
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074B58);
-#else
 void func_80074B58(void)
 {
     RECT rect;
@@ -950,7 +989,6 @@ void func_80074B58(void)
     ClearImage(&rect, 0, 0, 0);
     DrawSync(0);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_80074BA4);
@@ -1489,9 +1527,6 @@ s32 func_80076488(void)
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800768D8);
-#else
 void func_800768D8(u16 frame, u16 x, u16 y)
 {
     D_80077010 = frame;
@@ -1512,11 +1547,7 @@ void func_800768D8(u16 frame, u16 x, u16 y)
         D_80077014 = 1;
     }
 }
-#endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800769A4);
-#else
 void func_800769A4(void)
 {
     D_800773B4 = D_800773AC;
@@ -1547,7 +1578,6 @@ void func_800769A4(void)
         D_80077014 = 5;
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/movie/nonmatchings/main", func_80076AF0);
