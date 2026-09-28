@@ -4289,7 +4289,18 @@ void func_801D0ED4(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D0F54);
+void func_801D0F54(void) {
+    void* pMenu; s32 offset; s32 i;
+    for (i = 0, offset = 0x14E0; i < 6; i++) {
+        pMenu = g_Menu;
+        if (*(u8*)(*(s32*)((u8*)pMenu + 0x33C) + i + 0x40) != 0) {
+            s32 o = i << 7;
+            u8* pData = (u8*)(offset + (s32)pMenu);
+            func_801CE198(1, pData + 0x50, pData, *(u8*)((s32)pMenu + o + 0x155D));
+        }
+        offset += 0x80;
+    }
+}
 #else
 void func_801D0F54(void) {
     s32 i;
@@ -4348,7 +4359,20 @@ void func_801D1030(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D10DC);
+void func_801D10DC(void) {
+    s32 i;
+    for (i = 0; i < 6; i++) {
+        void* pMenu = g_Menu;
+        if (*(u8*)(*(s32*)((u8*)pMenu + 0x33C) + i + 0x54) != 0) {
+            u8* pSlot = (u8*)((s32)pMenu + (i << 7));
+            if (pSlot[0x195F] != 0) {
+                s32 off = (i << 7) + 0x18E0;
+                u8* pData = (u8*)(off + (s32)pMenu);
+                func_801CE198(1, pData + 0x50, pData, pSlot[0x195D]);
+            }
+        }
+    }
+}
 #else
 void func_801D10DC(void) {
     s32 i;
@@ -7568,7 +7592,16 @@ extern u8 D_801EA53C[];
 extern u8 D_801EA542[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F34);
+void func_801D9F34(void) {
+    void* pMenu;
+    if (D_80059460 != 2) {
+        pMenu = g_Menu;
+        func_801E8018(6, (u8*)pMenu + 0xDE0, D_801EA53C, (u8*)*(void**)((u8*)pMenu + 0x33C) + 0x1A);
+    } else {
+        pMenu = g_Menu;
+        func_801E8018(6, (u8*)pMenu + 0xDE0, D_801EA542, (u8*)*(void**)((u8*)pMenu + 0x33C) + 0x1A);
+    }
+}
 #else
 void func_801D9F34(void) {
     void* pMenu;
@@ -11535,7 +11568,13 @@ void func_801E5ACC(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5B3C);
+void func_801E5B3C(void) {
+    s32 i;
+    for (i = 0; i < 0x20; i++) {
+        s32 off = i * 4;
+        HeapFree(*(void**)(off + (s32)g_Menu + 0x3A8));
+    }
+}
 #else
 void func_801E5B3C(void) {
     s32 i;
@@ -11624,7 +11663,11 @@ void func_801E6450(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E649C);
+/* The volatile store keeps retail's epilogue order (sb, then lw $ra). */
+void func_801E649C(void) {
+    HeapFree(*(void**)((u8*)g_Menu + 0x34C));
+    *(volatile u8*)((u8*)g_Menu->pManager + 0xB) = 0;
+}
 #else
 void func_801E649C(void) {
     void* pMenu = g_Menu;
@@ -11635,7 +11678,18 @@ void func_801E649C(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E64E0);
+/* Retail clears RECT {0x140, 0xE0, 0x40, 0x20} to 0,0,0; the port body
+ * clears {0, 0, 0x140, 0xE0} to 0x40,0x20,0x20. */
+/* The volatile store keeps retail's epilogue order (sb, then lw $ra). */
+void func_801E64E0(void) {
+    RECT rect;
+    rect.x = 0x140;
+    rect.y = 0xE0;
+    rect.w = 0x40;
+    rect.h = 0x20;
+    ClearImage(&rect, 0, 0, 0);
+    *(volatile u8*)((u8*)g_Menu->pManager + 0xB) = 0;
+}
 #else
 void func_801E64E0(void) {
     RECT rect;
