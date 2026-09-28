@@ -150,6 +150,25 @@ int g_XenoMenuN3aPhase = 0;
 unsigned char g_XenoMenuN3aRowFlags[0xE];
 #endif
 
+/* menu.bin is three retail TUs, all built from this file:
+ *   misc  (this TU)  0x801C531C..0x801E3ECC, .rodata 0x0..0x22C
+ *   misc2            0x801E3ECC..0x801E8070, .rodata 0x22C..0x278
+ *   misc3            0x801E8070..end,        .rodata 0x278..0x31C
+ * src/menu/main/misc2.c and misc3.c define MENU_PART and include this file;
+ * each part's functions are guarded below.  The split exists because cc1
+ * aligns every jump table to 8: jtbl_801C522C (func_801E3ECC) and
+ * jtbl_801C5278 (func_801E8070) only land at their retail addresses as the
+ * first .rodata of a TU.  The port compiles this file whole (XENO_PC_PORT);
+ * misc2.c and misc3.c are empty there. */
+#if !defined(MENU_PART) || defined(XENO_PC_PORT)
+#define MENU_ASM "../asm/menu/nonmatchings/main/misc"
+#elif MENU_PART == 2
+#define MENU_ASM "../asm/menu/nonmatchings/main/misc2"
+#else
+#define MENU_ASM "../asm/menu/nonmatchings/main/misc3"
+#endif
+
+#if defined(XENO_PC_PORT) || !defined(MENU_PART) /* part 1: misc */
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
 #else
@@ -10918,16 +10937,15 @@ void func_801E3C2C(void* resourceArg, u8 gearId) {
 }
 #endif
 
+#endif /* part 1 */
+
+#if defined(XENO_PC_PORT) || MENU_PART == 2 /* part 2: misc2 */
 extern void func_801E433C(void*, u8);
 extern void func_801E4754(void*, u8);
 
-/* The text of this body matches retail, but cc1 puts `.align 3` ahead of every
- * jump table, and retail jtbl_801C522C sits at 0x801C522C (4 mod 8).  So the
- * table can only match where it opens a TU's .rodata; until menu is split
- * that way, the retail build takes the function from assembly. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3ECC);
-#else
+/* First function of retail TU misc2: its jump table jtbl_801C522C
+ * (0x801C522C, 4 mod 8) only matches as the first .rodata of a TU, since cc1
+ * aligns every jump table to 8. */
 void func_801E3ECC(void* arg0, u8 idx) {
     u8 i;
 
@@ -10972,7 +10990,6 @@ void func_801E3ECC(void* arg0, u8 idx) {
         break;
     }
 }
-#endif
 
 extern void func_801E41C0(s32, u8);
 extern void func_801E42AC(s32, u8);
@@ -10984,7 +11001,7 @@ void func_801E4170(s32 arg0, u8 arg1) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E41C0);
+INCLUDE_ASM(MENU_ASM, func_801E41C0);
 #else
 void func_801E41C0(s32 arg0, u8 idx) {
     /* Records are 0xA4 bytes; rec[0x9F] is written unconditionally (retail
@@ -11031,7 +11048,7 @@ void func_801E42AC(s32 arg0, u8 idx) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E433C);
+INCLUDE_ASM(MENU_ASM, func_801E433C);
 #else
 extern u8 func_801E4928(u8);
 /* Retail Gear accessories: resource+0x14 is a retained 32-bit pointer slot. */
@@ -11093,7 +11110,7 @@ void func_801E433C(void* resourceArg, u8 gearId) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4754);
+INCLUDE_ASM(MENU_ASM, func_801E4754);
 #else
 void func_801E4754(void* arg0, u8 charIdx) {
     u8* pGS = (u8*)&g_GameState + 0x978 + charIdx * 0xA4;
@@ -11157,7 +11174,7 @@ u8 func_801E4928(u8 idx) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4998);
+INCLUDE_ASM(MENU_ASM, func_801E4998);
 #else
 void func_801E4998(s32 arg0, u8 idx) {
     /* Retail: ((val / 10) * 2) / 9, stored, then rounded down to a
@@ -11171,8 +11188,8 @@ void func_801E4998(s32 arg0, u8 idx) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4A28);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E4D10);
+INCLUDE_ASM(MENU_ASM, func_801E4A28);
+INCLUDE_ASM(MENU_ASM, func_801E4D10);
 #else
 extern u8 MenuEquipmentStateStorage[0x4600] __asm__("g_GameState");
 extern void func_801E41C0(s32 arg0, u8 idx);
@@ -11308,7 +11325,7 @@ void func_801E5058(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5178);
+INCLUDE_ASM(MENU_ASM, func_801E5178);
 #else
 void func_801E5178(void) {
     u8* gs = (u8*)&g_GameState;
@@ -11385,7 +11402,7 @@ void func_801E5178(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E53CC);
+INCLUDE_ASM(MENU_ASM, func_801E53CC);
 #else
 /* Arc A pixels slice: initialize window `windowIndex`'s frame primitives.
  * Sets up the double-buffered background G4 pair (semi-trans, RGB 0x68) +
@@ -11457,14 +11474,14 @@ void func_801E53CC(u8 windowIndex) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E56E8);
+INCLUDE_ASM(MENU_ASM, func_801E56E8);
 #endif
 
 extern u16 D_801E9894[];
 extern u16 D_801E9914[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5924);
+INCLUDE_ASM(MENU_ASM, func_801E5924);
 #else
 void func_801E5924(s32 slotIdx) {
     u16* pX = &D_801E9894[slotIdx];
@@ -11538,12 +11555,12 @@ void func_801E5B3C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5B88);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E5E4C);
+INCLUDE_ASM(MENU_ASM, func_801E5B88);
+INCLUDE_ASM(MENU_ASM, func_801E5E4C);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E61B0);
+INCLUDE_ASM(MENU_ASM, func_801E61B0);
 #else
 extern u32 D_801EA494[], D_801E9F98[], D_801E9FBC[];
 extern u16 D_801EA590[], D_801EA5DC[];
@@ -11720,7 +11737,7 @@ void* func_801E65E4(u8* pChar) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6668);
+INCLUDE_ASM(MENU_ASM, func_801E6668);
 #else
 /* This overlay address is also a field-object routine with two pointers. */
 #define func_801E6668 MenuRenderCardTitle
@@ -11770,7 +11787,7 @@ void func_801E6668(s32 screenId) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E68AC);
+INCLUDE_ASM(MENU_ASM, func_801E68AC);
 #else
 extern u32 D_801E9FE0[];
 
@@ -11819,7 +11836,7 @@ extern u32 D_801EA01C;
 extern u32 D_801EA020;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6B70);
+INCLUDE_ASM(MENU_ASM, func_801E6B70);
 #else
 void func_801E6B70(u8 slotIdx, u8* pTable) {
 #ifdef XENO_PC_PORT
@@ -11883,7 +11900,7 @@ void func_801E6B70(u8 slotIdx, u8* pTable) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6CFC);
+INCLUDE_ASM(MENU_ASM, func_801E6CFC);
 #else
 extern u32 D_801EA02C, D_801EA030, D_801EA034, D_801EA038;
 
@@ -11922,7 +11939,7 @@ void func_801E6CFC(u8 slotIdx, u8* entry) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E6F5C);
+INCLUDE_ASM(MENU_ASM, func_801E6F5C);
 #else
 extern u32 D_801EA03C, D_801EA040, D_801EA044, D_801EA048;
 
@@ -11965,7 +11982,7 @@ extern void func_80033B34(u16*, u8*, s32);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E71B4);
+INCLUDE_ASM(MENU_ASM, func_801E71B4);
 #else
 void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
 #ifdef XENO_PC_PORT
@@ -12036,7 +12053,7 @@ void func_801E71B4(u8 charIdx, void* pData, u8 screenIdx) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E733C);
+INCLUDE_ASM(MENU_ASM, func_801E733C);
 #else
 extern u16 D_801EA04C, D_801EA050;
 extern void func_801E927C(POLY_FT4*);
@@ -12179,11 +12196,11 @@ void func_801E781C(s32 screenId, u8 animFlag) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E78C8);
+INCLUDE_ASM(MENU_ASM, func_801E78C8);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7C50);
+INCLUDE_ASM(MENU_ASM, func_801E7C50);
 #else
 /* Initialize both buffered textured quads for a MenuString.  `style` selects
  * the text atlas/palette and disabled-state treatment; `index` selects the
@@ -12235,7 +12252,7 @@ void func_801E7C50(MenuString* string, s32 index, s32 yOffset, s32 style) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E7E68);
+INCLUDE_ASM(MENU_ASM, func_801E7E68);
 
 void func_801E8018(s32 count, u8* strings, s32 descriptorIds, void* unused) {
     func_801E7E68((MenuString*)strings, (u8*)descriptorIds, 4, count & 0xFF);
@@ -12295,8 +12312,11 @@ void func_801E8044(s32 count, void* pFlags) {
     }
 }
 
+#endif /* part 2 */
+
+#if defined(XENO_PC_PORT) || MENU_PART == 3 /* part 3: misc3 */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8070);
+INCLUDE_ASM(MENU_ASM, func_801E8070);
 #else
 extern u8 D_801E9E64[];   /* per-option string x-offset table (u16 at *4) */
 extern u8 D_801E9EC4[];   /* Items description label x positions */
@@ -12397,7 +12417,7 @@ void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8474);
+INCLUDE_ASM(MENU_ASM, func_801E8474);
 #else
 /* Arc A content: the OPTION-LABEL REVEAL.  Staged open animation: each stage
  * rebuilds the highlight set (polysCursors, pTable[i*2]) and the normal set
@@ -12454,11 +12474,11 @@ void func_801E8474(s32 count, void* pTable) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E86C8);
+INCLUDE_ASM(MENU_ASM, func_801E86C8);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8978);
+INCLUDE_ASM(MENU_ASM, func_801E8978);
 #else
 extern void func_801D1EE0(s32 selected, s32 buildBar);
 
@@ -12495,11 +12515,11 @@ void func_801E8978(s32 count, s32 selected, void* pTable) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8B4C);
+INCLUDE_ASM(MENU_ASM, func_801E8B4C);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8DA8);
+INCLUDE_ASM(MENU_ASM, func_801E8DA8);
 #else
 extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
 extern u8 D_801EA578[];   /* per-slot name-plate VRAM x coords (u16, migrated) */
@@ -12535,8 +12555,8 @@ void func_801E8DA8(s32 charArg, s32 slot) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8EAC);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E8F60);
+INCLUDE_ASM(MENU_ASM, func_801E8EAC);
+INCLUDE_ASM(MENU_ASM, func_801E8F60);
 #else
 void func_801E8EAC(POLY_FT4* poly, s32 mode) {
     SetShadeTex(poly, 0);
@@ -12631,7 +12651,7 @@ void func_801E91C4(POLY_FT4* p) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E920C);
+INCLUDE_ASM(MENU_ASM, func_801E920C);
 #else
 /* Arc A portraits: set an FT4's screen quad + UV rect directly (absolute
  * screen coords -- no projection). */
@@ -12771,5 +12791,6 @@ s32 func_801E93A0(s32 disc) {
     return 0;
 }
 #else
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E93A0);
+INCLUDE_ASM(MENU_ASM, func_801E93A0);
 #endif
+#endif /* part 3 */

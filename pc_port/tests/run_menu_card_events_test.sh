@@ -9,7 +9,7 @@ python3 - <<'PY'
 import pathlib,re
 b=pathlib.Path('disc/menu.bin').read_bytes()
 for name in ['801C8960','801D9B08','801C881C','801C87C4','801C9270']:
-    s=next(pathlib.Path('asm/menu').glob(f'*matchings/main/misc/func_{name}.s')).read_text()
+    s=next(pathlib.Path('asm/menu').glob(f'*matchings/main/misc*/func_{name}.s')).read_text()
     for a,h in re.findall(r'/\* \w+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/',s):
         off=int(a,16)-0x801c5000
         assert b[off:off+4]==bytes.fromhex(h),a
