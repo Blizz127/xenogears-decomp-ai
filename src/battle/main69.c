@@ -5,7 +5,7 @@
 
 
 #ifndef XENO_PC_PORT
-void func_800A5BE8(s32, s32, s32, s32, s32);
+void func_800A5BE8(s32 a0, s32 a1, s32 a2, s32 a3, VECTOR* normal);
 extern s32 D_800D3344;
 extern s32 D_800D39CC;
 s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2);
@@ -137,7 +137,37 @@ s32 func_800A5A48(s32 a0, s32 a1, s32 a2, s32 a3) {
 }
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main69", func_800A5BE8);
+#endif
+#ifndef XENO_PC_PORT
+/* Height of triangle (a0, a1, a2) (SVECTOR addresses) at point a3's x/z:
+ * the plane normal goes to *normal and the height into the point's vy
+ * (0 for a vertical plane). */
+void func_800A5BE8(s32 a0, s32 a1, s32 a2, s32 a3, VECTOR* normal) {
+    SVECTOR* v0 = (SVECTOR*)a0;
+    SVECTOR* v1 = (SVECTOR*)a1;
+    SVECTOR* v2 = (SVECTOR*)a2;
+    SVECTOR* p = (SVECTOR*)a3;
+    VECTOR n1;
+    VECTOR n2;
+    VECTOR d;
+
+    d.vx = v1->vx - v0->vx;
+    d.vy = v1->vy - v0->vy;
+    d.vz = v1->vz - v0->vz;
+    VectorNormal(&d, &n1);
+    d.vx = v2->vx - v0->vx;
+    d.vy = v2->vy - v0->vy;
+    d.vz = v2->vz - v0->vz;
+    VectorNormal(&d, &n2);
+    OuterProduct12(&n1, &n2, normal);
+    if (normal->vy == 0) {
+        p->vy = 0;
+        return;
+    }
+    p->vy = v0->vy + (-((p->vx - v0->vx) * normal->vx) - (p->vz - v0->vz) * normal->vz) / normal->vy;
+}
+#endif
+#ifndef XENO_PC_PORT
 #endif
 #ifndef XENO_PC_PORT
 /* Depth-limited search from triangle `tri` through its three neighbours
