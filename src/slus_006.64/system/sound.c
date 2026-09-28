@@ -3,6 +3,11 @@
 #include "psyq/kernel.h"
 #include "psyq/libspu.h"
 
+#ifndef XENO_PC_PORT
+s32 func_8003E290();
+void *func_8003E1F8(void *arg0, s32 arg1, void *arg2);
+#endif
+
 #ifdef XENO_PC_PORT
 /* Host GNU C has no implicit int(): prototypes must precede first use.
  * Matching build keeps the original implicit-decl order (gcc 2.7.2). */
@@ -5351,7 +5356,27 @@ u8* func_8003E1F8(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript + 3;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E1F8);
+
+#ifndef XENO_PC_PORT
+void *func_8003E1F8(void *arg0, s32 arg1, void *arg2) {
+    s16 temp_a1;
+    s32 var_v1;
+    u8 temp_v0;
+    void *temp_s2;
+
+    temp_v0 = *(u8 *)((s8*)(arg0) + 0);
+    var_v1 = temp_v0 * temp_v0;
+    temp_s2 = arg2 + ((*(u16 *)((s8*)(arg2) + 0xCC) << 5) + 0xD8);
+    if (var_v1 < 0) {
+        var_v1 += 0x3F;
+    }
+    temp_a1 = *(u8 *)((s8*)(arg0) + 0) + (var_v1 >> 6);
+    *(s32 *)((s8*)(temp_s2) + 0xC) = func_8003E290((*(s8 *)((s8*)(arg0) + 1) << 0x18) | (*(u8 *)((s8*)(arg0) + 2) << 0x10), temp_a1, *(u8 *)((s8*)(temp_s2) + 0x1D));
+    *(s16 *)((s8*)(temp_s2) + 0x12) = temp_a1;
+    return arg0 + 3;
+}
+#endif
+
 #endif
 
 // Envelope target packing: scale the packed target by the step count for
