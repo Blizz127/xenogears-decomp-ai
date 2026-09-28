@@ -39,6 +39,10 @@ so m2c_drive always rebuilds and compares the whole overlay.
   `X[0]` (field script-VM setters, `D_800B2348`, `D_80076F3C`). For a struct
   global accessed by raw offset, use a typed alias:
   `extern s16 g_Scene_s16[] asm("g_Scene");`.
+  `m2c_try.py` drafts this form with `ARRAYIFY=all` (or named symbols). When
+  the TU already declares the global as a scalar, `m2c_insert.py` adds an
+  `asm("sym")` alias for the array view, as it did for battling's
+  `func_80080090` family.
 - **Reload after aliasing stores.** Retail re-reads a global pointer such as
   `g_FieldScriptVMCurActor` after any store that could alias it, and indexes
   `scripts[curScriptIndex]` inline. Caching either in a local changes the code.
