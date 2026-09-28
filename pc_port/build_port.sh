@@ -1515,6 +1515,17 @@ if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
         echo "ERROR: adopted overlay leaves reach generated stubs."
         exit 1
     fi
+
+    # No Sony Psy-Q code in the port (pc_port/THIRD_PARTY.md): refuse a binary
+    # that links a matching-build Psy-Q TU (src/**/psyq/**, via DWARF compile
+    # units) or defines func_XXXXXXXX at a Psy-Q address outside the compat
+    # layer. Known offenders pending replacement: pc_port/psyq_guard_allowlist.txt.
+    if ! python3 tools/analysis/psyq_port_guard.py -q --no-sources --no-disc \
+        --binary "$OUT/xeno-port"; then
+        echo "ERROR: Psy-Q SDK code linked into the port (tools/analysis/psyq_port_guard.py)."
+        exit 1
+    fi
+    echo "    Psy-Q exclusion verified against the linked binary"
 else
     echo "    LINK incomplete; remaining errors:"
     grep -oE "undefined reference to \`[A-Za-z0-9_]+'|multiple definition of \`[A-Za-z0-9_]+'" "$OUT/link2.err" | sort | uniq -c | sort -rn | head -20
