@@ -1525,11 +1525,6 @@ void func_801C8164(POLY_G4* p, u8 r, u8 g, u8 b) {
     p->r3 = 0; p->g3 = 0; p->b3 = 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C81E0);
-
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8324);
-#else
 /* Arc A: the menu-open animation state -- three 0x24-byte slots living in
  * g_Menu->unk0[0x6C] (3 x 0x24), one per party-member portrait frame. */
 typedef struct {
@@ -1548,9 +1543,14 @@ typedef struct {
 } MenuOpenAnim;
 #define MENU_OPEN_ANIM(slot) (&((MenuOpenAnim*)g_Menu->unk0)[slot])
 
+/* Retail addresses a slot as g_Menu + byte offset (slot * 0x24). */
+#define MENU_OPEN_ANIM_AT(off) ((MenuOpenAnim*)((u8*)g_Menu + (off)))
+
 /* Initialize anim slot: from (fromX,fromY) toward (toX,toY); the dominant axis
- * steps 1.0/tick (0x100), the other axis proportionally. */
-void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, s32 speed, u8 slot) {
+ * steps 1.0/tick (0x100), the other axis proportionally.  The retail arm is
+ * gcc 2.6.3 byte-exact; the port arm keeps its host divide-by-zero guard. */
+void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, u8 speed, u8 slot) {
+#ifdef XENO_PC_PORT
     MenuOpenAnim* s = MENU_OPEN_ANIM(slot);
     s32 dx, dy;
 
@@ -1585,7 +1585,48 @@ void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, s32 speed, u8 slot) {
     s->accX = 0;
     s->accY = 0;
     s->done = 0;
+#else
+    s32 dx, dy;
+    u32 off;
+    u32 off2;
+
+    off = slot * 0x24;
+    MENU_OPEN_ANIM_AT(off)->curX = fromX;
+    MENU_OPEN_ANIM_AT(off)->curY = fromY;
+    MENU_OPEN_ANIM_AT(off)->toX = toX;
+    MENU_OPEN_ANIM_AT(off)->toY = toY;
+    if (toX < fromX) {
+        dx = fromX - toX;
+        MENU_OPEN_ANIM_AT(off)->dirX = 1;
+    } else {
+        dx = toX - fromX;
+        MENU_OPEN_ANIM_AT(off)->dirX = 0;
+    }
+    if (toY < fromY) {
+        dy = fromY - toY;
+        MENU_OPEN_ANIM_AT(off = slot * 0x24)->dirY = 1;
+    } else {
+        dy = toY - fromY;
+        MENU_OPEN_ANIM_AT(off = slot * 0x24)->dirY = 0;
+    }
+    if (dx >= dy) {
+        MENU_OPEN_ANIM_AT(off = slot * 0x24)->stepX = 0x100;
+        MENU_OPEN_ANIM_AT(off)->stepY = (dy << 8) / dx;
+    } else {
+        MENU_OPEN_ANIM_AT(off = slot * 0x24)->stepY = 0x100;
+        MENU_OPEN_ANIM_AT(off)->stepX = (dx << 8) / dy;
+    }
+    off2 = slot * 0x24;
+    MENU_OPEN_ANIM_AT(off2)->speed = speed;
+    MENU_OPEN_ANIM_AT(off2)->accX = 0;
+    MENU_OPEN_ANIM_AT(off2)->accY = 0;
+    MENU_OPEN_ANIM_AT(off2)->done = 0;
+#endif
 }
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C8324);
+#else
 
 /* Step anim slot by `speed` ticks and mark done once the dominant axis has
  * passed its target. */
