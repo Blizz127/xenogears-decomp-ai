@@ -32,6 +32,22 @@ __asm__(
         ".end\tbzero");
 #endif
 
+void* memchr(unsigned char* ptr, unsigned char value, int count) {
+    if (ptr == NULL || count <= 0) {
+        return NULL;
+    }
+
+    count--;
+    while (count >= 0) {
+        if (*ptr++ == value) {
+            return ptr - 1;
+        }
+        count--;
+    }
+
+    return NULL;
+}
+
 #if defined(SKIP_ASM) || defined(XENO_PC_PORT)
 void* memcpy(void* dst, const void* src, int n) {
     u8* d = (u8*)dst;
@@ -65,22 +81,7 @@ __asm__(
         ".end\tmemcpy");
 #endif
 
-void* memchr(unsigned char* ptr, unsigned char value, int count) {
-    if (ptr == NULL || count <= 0) {
-        return NULL;
-    }
-
-    count--;
-    while (count >= 0) {
-        if (*ptr++ == value) {
-            return ptr - 1;
-        }
-        count--;
-    }
-
-    return NULL;
-}
-
+#ifdef XENO_PC_PORT
 /* PSYQ gcc 2.7 often lowers memcpy() to jal bcopy (BSD arg order: src,dst,n).
  * Retail has no standalone bcopy; provide a small non-builtin loop so matching
  * links when decompiled C still goes through that lowering. */
@@ -91,6 +92,7 @@ void bcopy(void* src, void* dst, int n) {
         *d++ = *s++;
     }
 }
+#endif
 
 void* memmove(u_char* pDst, u_char* pSrc, int size) {
     if (pDst >= pSrc) {

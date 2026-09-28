@@ -1,3 +1,4 @@
+#ifdef XENO_PC_PORT
 #include "common.h"
 
 #include "psyq/libapi.h"
@@ -65,3 +66,29 @@ __asm__(
         ".word 0x01400008\n\t"
         ".word 0x2409004c\n\t"
         ".end StopCARD2");
+
+#else /* retail matching build: last byte-exact version (dbb08e3b) */
+#include "common.h"
+
+#include "psyq/libapi.h"
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", _card_info);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD);
+
+void StartCARD(void) {
+    EnterCriticalSection();
+    StartCARD2();
+    ChangeClearPAD(0);
+    ExitCriticalSection();
+}
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", InitCARD2);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StartCARD2);
+
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/psyq/libcard", StopCARD2);
+
+#endif
