@@ -1,3 +1,12 @@
+#ifndef FIELD_TU_SUB
+#define FIELD_TU_SUB 0
+#endif
+/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
+ * run (its retail-asm functions, then its byte-exact C bodies), because
+ * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
+ * 0 (port/tests) compiles every run. */
+#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
+
 #include "common.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
@@ -55,6 +64,8 @@ static inline void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
     *ppLightData = pData;
 }
 
+#if FIELD_SUB(1)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc3_q1.c */
 void func_8006FDEC(void* pLightData) {
     u8* pData = pLightData;
     u8* pScene = (u8*)&g_Scene;
@@ -95,10 +106,14 @@ void func_8006FDEC(void* pLightData) {
     SetRotMatrix(&g_Scene.worldToScreenMatrix);
     SetTransMatrix(&g_Scene.worldToScreenMatrix);
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(1)
 void FieldLZSSDecompress(void* _unused, void* pCompressed, void* pDecompressed) {
     LZSSDecompress(pCompressed, pDecompressed);
 }
+#endif /* FIELD_SUB(1) */
 
 extern void WorkListsFreeAllEntries(void);
 extern void func_80025044(void);
@@ -164,6 +179,8 @@ static int IsLiveHeapBlock(void* ptr) {
 // party-skin overlay) so func_800A5C40's persistent-block re-allocation and
 // FieldLoad's fresh allocations have room. Actors with status&0x40 keep
 // their model data (shared/static model, not owned by this actor slot).
+#if FIELD_SUB(2)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc3_q2.c */
 void FieldFree(void) {
     s32 i;
     s32 renderCtxStep;
@@ -256,7 +273,10 @@ void FieldFree(void) {
     HeapFreeBlocksWithFlag(3);
     func_800A83B4();
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short clutY, short clutWidth, short clutHeight) {
     TIM_IMAGE* pTIM;
     TIM_IMAGE tim;   
@@ -287,6 +307,7 @@ void FieldLoadTIMWithClut(u_long *pTimData, short x, short y, short clutX, short
         LoadImage(tim.prect, tim.paddr);
     }
 }
+#endif /* FIELD_SUB(2) */
 
 extern s32 D_800ADB60;
 extern void* D_800ADC14;
@@ -294,6 +315,7 @@ extern s32 g_GameSceneMapNum;
 extern int* ArchiveAllocStreamFile(int numEntries, int allocMode);
 extern int func_80029EB0(s32 archiveIndex, void* pStreamFile, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7, s32 arg8, s32 arg9);
 
+#if FIELD_SUB(2)
 void func_80070488(void) {
     if (D_800ADB60 == 0) {
         D_800ADB60 = 1;
@@ -310,7 +332,9 @@ void func_80070488(void) {
                       0);
     }
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_80070508(void) {
     if (D_800ADB60 == 1) {
         ArchiveCdDataSync(0);
@@ -320,13 +344,17 @@ void func_80070508(void) {
     }
     func_80078C5C();
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_80070560(s32* dest, s16* src) {
     dest[0] = src[0] << 16;
     dest[1] = src[1] << 16;
     dest[2] = src[2] << 16;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_80070594(MATRIX* dest) {
     SVECTOR rotation;
 
@@ -338,6 +366,7 @@ void func_80070594(MATRIX* dest) {
     dest->t[1] = 0;
     dest->t[0] = 0;
 }
+#endif /* FIELD_SUB(2) */
 
 extern void func_8028125C(void);
 extern void func_8007254C(void);
@@ -413,6 +442,8 @@ int PcPort_FieldTestMusicBootstrapAllowed(void) {
 }
 #endif
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc3_q3.c */
 void func_800705DC(void) {
     SVECTOR rotation;
     s32 i;
@@ -657,11 +688,15 @@ void func_800705DC(void) {
     FieldInitializeParticles();
     func_800ABD18();
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */
 
 extern u16 D_800B06A4[];
 extern u16 D_800B06A6[];
 extern s32 D_800ADB0C;
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc3_q3.c */
 void func_80070C84(void) {
     s32 i;
     for (i = 0; i < 3; i++) {
@@ -670,6 +705,8 @@ void func_80070C84(void) {
     }
     D_800ADB0C = 0;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */
 
 /* ---- FieldLoad: parse the raw map file and build the field runtime state -----
  * Port-first functional decompile (control flow mirrors
@@ -758,6 +795,8 @@ extern void FieldLoadTIM(u_long* pTimData);
 extern void GfxLoadClutsAccelerated(void* pClutData, s32 x, s32 y);
 extern void GfxAllocateWorkBuffers(int workBufferSize, unsigned int allocFlag);
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in misc3_q3.c */
 void FieldLoad(void) {
     u8* pMap;
     u32* pTimTable;   /* decompressed TIM-package section */
@@ -1310,3 +1349,5 @@ void FieldLoad(void) {
         }
     }
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */

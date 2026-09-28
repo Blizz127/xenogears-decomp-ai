@@ -1,3 +1,12 @@
+#ifndef FIELD_TU_SUB
+#define FIELD_TU_SUB 0
+#endif
+/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
+ * run (its retail-asm functions, then its byte-exact C bodies), because
+ * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
+ * 0 (port/tests) compiles every run. */
+#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
+
 #include "common.h"
 #include "main/game.h"
 #include "system/math.h"
@@ -30,6 +39,7 @@ extern s32 D_800B21D8;
 extern s16 g_FieldCameraModes[] asm("g_FieldCameraMode");
 
 
+#if FIELD_SUB(1)
 void FieldScriptWaitForCameraMovement(void) {
     int targetFlags;
     int camMovementFlags;
@@ -54,8 +64,10 @@ void FieldScriptWaitForCameraMovement(void) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
     }
 }
+#endif /* FIELD_SUB(1) */
 
 
+#if FIELD_SUB(1)
 void func_8008FABC(void) {
     s16 angleY;
 
@@ -64,8 +76,11 @@ void func_8008FABC(void) {
     g_Scene.unk7C = angleY;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(1) */
 
 /* FE6D — snapshot current SCRZ×scale / DIP / yaw into the scripted-cam scratch. */
+#if FIELD_SUB(2)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in camera_movement_q2.c */
 void func_8008FB28(void) {
     D_800AF93A[0] = 0x1000;
     D_800AF936 = *(u16*)((u8*)&g_Scene + 0x6C);
@@ -73,7 +88,10 @@ void func_8008FB28(void) {
     D_800AF930 = (*(s32*)((u8*)&g_Scene + 0x68) * *(s16*)((u8*)&g_Scene + 0x6E)) >> 12;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8008FB98(void) {
 #ifdef XENO_PC_PORT
     u16 angleY;
@@ -97,7 +115,10 @@ void func_8008FB98(void) {
     g_Scene.unk48 |= 0x8000;
     D_800AF936 = dip;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in camera_movement_q3.c */
 void func_8008FC4C(void) {
 #ifdef XENO_PC_PORT
     ActorData* actor;
@@ -145,7 +166,10 @@ mode1:
 advance:
     actor->scriptInstructionPointer += 3;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraInterpolationStep(void) {
     g_CamInterpolation.atStepDistance = FieldScriptVMGetArgument(1);
     g_CamInterpolation.eyeStepDistance = FieldScriptVMGetArgument(3);
@@ -159,8 +183,10 @@ void FieldScriptSetCameraInterpolationStep(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
+#endif /* FIELD_SUB(3) */
 
 // Reset initial camera target movement to current camera target
+#if FIELD_SUB(3)
 void FieldScriptResetCameraTargetMovement(void) {
     g_CamAtMovementFrom.vx = g_CameraAt2.vx;
     g_CamAtMovementFrom.vy = g_CameraAt2.vy;
@@ -168,7 +194,9 @@ void FieldScriptResetCameraTargetMovement(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraTargetMovementFrom(void) {
     g_CamAtMovementFrom.vx = CONV_FROM_GTE(FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(7)));
     g_CamAtMovementFrom.vz = CONV_FROM_GTE(FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(7))); 
@@ -176,8 +204,10 @@ void FieldScriptSetCameraTargetMovementFrom(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
+#endif /* FIELD_SUB(3) */
 
 // Set initial camera target movement to position of an actor
+#if FIELD_SUB(3)
 void FieldScriptSetCameraTargetMovementDestToActor(void) {
     ActorData* pActor = (ActorData*)(uintptr_t)g_FieldActors[func_8009CD7C(1)].pActorData;
     g_CamAtMovementTo.vx = pActor->position.vx;
@@ -186,7 +216,9 @@ void FieldScriptSetCameraTargetMovementDestToActor(void) {
     g_FieldScriptMaxInstructionCount += 1;    
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraTargetMovementDest(void) {
     g_CamAtMovementTo.vx = CONV_FROM_GTE(FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(7)));
     g_CamAtMovementTo.vz = CONV_FROM_GTE(FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(7)));
@@ -194,8 +226,10 @@ void FieldScriptSetCameraTargetMovementDest(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
+#endif /* FIELD_SUB(3) */
 
 // Reset initial camera position movement to current camera position
+#if FIELD_SUB(3)
 void FieldScriptResetCameraPosMovement(void) {
     g_CamEyeMovementFrom.vx = g_CameraEye2.vx;
     g_CamEyeMovementFrom.vy = g_CameraEye2.vy;
@@ -203,7 +237,9 @@ void FieldScriptResetCameraPosMovement(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraPosMovementFrom(void) {
     g_CamEyeMovementFrom.vx = CONV_FROM_GTE(FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(7)));
     g_CamEyeMovementFrom.vz = CONV_FROM_GTE(FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(7))); 
@@ -211,7 +247,9 @@ void FieldScriptSetCameraPosMovementFrom(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraPosMovementDestToActor(void) {
     ActorData* pActor = (ActorData*)(uintptr_t)g_FieldActors[func_8009CD7C(1)].pActorData;
     g_CamEyeMovementTo.vx = pActor->position.vx;
@@ -220,7 +258,9 @@ void FieldScriptSetCameraPosMovementDestToActor(void) {
     g_FieldScriptMaxInstructionCount += 1;    
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptSetCameraPosMovementDest(void) {
     g_CamEyeMovementTo.vx = CONV_FROM_GTE(FieldScriptArgument1(ARG(1), SCRIPT_READ_U8_REL(7)));
     g_CamEyeMovementTo.vz = CONV_FROM_GTE(FieldScriptArgument2(ARG(2), SCRIPT_READ_U8_REL(7)));
@@ -228,7 +268,9 @@ void FieldScriptSetCameraPosMovementDest(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptResetCameraMovements(void) {
     g_CamAtMovementFrom.vx = g_CameraAt2.vx;
     g_CamAtMovementFrom.vy = g_CameraAt2.vy;
@@ -249,7 +291,10 @@ void FieldScriptResetCameraMovements(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 1;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(4)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in camera_movement_q4.c */
 void FieldScriptStartCameraMovement(void) {
     s32 duration;
     s32 speed;
@@ -390,8 +435,11 @@ void FieldScriptStartCameraMovement(void) {
 
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(4) */
 
 // Write the current interpolated value
+#if FIELD_SUB(4)
 void FieldScriptWriteCurCameraTarget(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), CONV_TO_GTE(g_CameraAt.vx));
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), CONV_TO_GTE(g_CameraAt.vz));
@@ -399,8 +447,10 @@ void FieldScriptWriteCurCameraTarget(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
 // Write the current interpolated value
+#if FIELD_SUB(4)
 void FieldScriptWriteCurCameraPosition(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), CONV_TO_GTE(g_CameraEye.vx));
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), CONV_TO_GTE(g_CameraEye.vz));
@@ -408,8 +458,10 @@ void FieldScriptWriteCurCameraPosition(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
 // Write the target / desired value
+#if FIELD_SUB(4)
 void FieldScriptWriteCameraTweenTarget(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), CONV_TO_GTE(g_CameraAt2.vx));
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), CONV_TO_GTE(g_CameraAt2.vz));
@@ -417,8 +469,10 @@ void FieldScriptWriteCameraTweenTarget(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
 // Write the target / desired value
+#if FIELD_SUB(4)
 void FieldScriptWriteCameraTweenPosition(void) {
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), CONV_TO_GTE(g_CameraEye2.vx));
     FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), CONV_TO_GTE(g_CameraEye2.vz));
@@ -426,11 +480,13 @@ void FieldScriptWriteCameraTweenPosition(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
 /* Camera mode 1 exposes its yaw, pitch, and distance through script
  * variables.  A zero type byte means read the live value into the supplied
  * variable; any nonzero type byte writes the supplied immediate value back
  * into the camera-mode state. */
+#if FIELD_SUB(4)
 void func_80090C20(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
@@ -443,7 +499,9 @@ void func_80090C20(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80090CB8(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
@@ -456,7 +514,9 @@ void func_80090CB8(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80090D50(void) {
     if (SCRIPT_READ_U8_REL(3) == 0) {
         FieldScriptMemoryWriteU16(
@@ -469,7 +529,9 @@ void func_80090D50(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80090DEC(void) {
     FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, D_800AF938);
     FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(3) & 0xFFFF, D_800AF936);
@@ -477,7 +539,9 @@ void func_80090DEC(void) {
     g_FieldScriptMaxInstructionCount++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80090E70(void) {
     VECTOR camAtDest;
     VECTOR camEyeDest;
@@ -526,7 +590,9 @@ void func_80090E70(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80091008(VECTOR* destination, VECTOR* origin, s32 angle) {
     MATRIX rotationMatrix;
     VECTOR offset;
@@ -548,7 +614,9 @@ void func_80091008(VECTOR* destination, VECTOR* origin, s32 angle) {
     destination->vz = rotatedOffset.vz + origin->vz;
     PopMatrix();
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_800910C0(void) {
     VECTOR parameter;
     VECTOR vecResult;
@@ -578,7 +646,9 @@ void func_800910C0(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x14;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void func_80091318(void) {
     VECTOR parameter;
     VECTOR vecResult;
@@ -635,7 +705,9 @@ void func_80091318(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 15;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void FieldScriptWriteCameraMovementParameter(void) {
     int mode;
     VECTOR movementParam;
@@ -671,7 +743,9 @@ void FieldScriptWriteCameraMovementParameter(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 void FieldScriptSetCameraMovementParameter(void) {
     VECTOR parameter;
     u8 srcParameter;
@@ -728,3 +802,4 @@ void FieldScriptSetCameraMovementParameter(void) {
     g_FieldScriptMaxInstructionCount += 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
+#endif /* FIELD_SUB(4) */

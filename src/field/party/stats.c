@@ -1,16 +1,28 @@
+#ifndef FIELD_TU_SUB
+#define FIELD_TU_SUB 0
+#endif
+/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
+ * run (its retail-asm functions, then its byte-exact C bodies), because
+ * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
+ * 0 (port/tests) compiles every run. */
+#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
+
 #include "common.h"
 #include "main/game.h"
 #include "field/main.h"
 #include "field/actor.h"
 #include "field/script_vm.h"
 
+#if FIELD_SUB(1)
 void FieldPartyMemberIncreaseHp(int i, int amount) {
     g_pGameState->characters[g_GamePartyMembers[i]].hp += amount;
     if (g_pGameState->characters[g_GamePartyMembers[i]].maxHp < g_pGameState->characters[g_GamePartyMembers[i]].hp) {
         g_pGameState->characters[g_GamePartyMembers[i]].hp = g_pGameState->characters[g_GamePartyMembers[i]].maxHp;
     }
 }
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(1)
 void FieldPartyMemberDecreaseHp(int partyMemberIndex, int amount) {
     int newHp;
     int characterId = g_GamePartyMembers[partyMemberIndex];
@@ -20,14 +32,18 @@ void FieldPartyMemberDecreaseHp(int partyMemberIndex, int amount) {
     }
     g_pGameState->characters[characterId].hp = newHp;
 }
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(1)
 void FieldPartyMemberIncreaseMp(int i, int amount) {
     g_pGameState->characters[g_GamePartyMembers[i]].mp += amount;
     if (g_pGameState->characters[g_GamePartyMembers[i]].maxMp < g_pGameState->characters[g_GamePartyMembers[i]].mp) {
         g_pGameState->characters[g_GamePartyMembers[i]].mp = g_pGameState->characters[g_GamePartyMembers[i]].maxMp;
     }
 }
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(1)
 void FieldPartyMemberDecreaseMp(int partyMemberIndex, int amount) {
     int newMp;
     int characterId = g_GamePartyMembers[partyMemberIndex];
@@ -37,9 +53,11 @@ void FieldPartyMemberDecreaseMp(int partyMemberIndex, int amount) {
     }
     g_pGameState->characters[characterId].mp = newMp;
 }
+#endif /* FIELD_SUB(1) */
 
 extern s16 g_FieldNumPartyMembersMasks[4];
 
+#if FIELD_SUB(1)
 void FieldScriptVMHandlerDecreasePartyHp(void) {
     int mask;
     int amount;
@@ -56,6 +74,7 @@ void FieldScriptVMHandlerDecreasePartyHp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(1) */
 
 
 extern s16 D_800B2340;
@@ -64,6 +83,8 @@ extern s16 D_800B2344;
 extern s16 D_800B2346;
 
 /* FEAE — arm animation/dolly counters (not CLUT). */
+#if FIELD_SUB(2)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in stats_q2.c */
 void func_80096AF4(void) {
     D_800B2344 = FieldScriptVMGetArgument(1);
     D_800B2346 = FieldScriptVMGetArgument(3);
@@ -71,7 +92,10 @@ void func_80096AF4(void) {
     D_800B2342 = 0;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerWritePartyMemberHp(void) {
     if (g_GamePartyMembers[SCRIPT_READ_U8_REL(ARG(2))] != CHARACTER_ID_NONE) {
         FieldScriptMemoryWriteU16(
@@ -81,7 +105,9 @@ void FieldScriptVMHandlerWritePartyMemberHp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerWritePartyMemberMp(void) {
     if (g_GamePartyMembers[SCRIPT_READ_U8_REL(ARG(2))] != CHARACTER_ID_NONE) {
         FieldScriptMemoryWriteU16(
@@ -91,8 +117,10 @@ void FieldScriptVMHandlerWritePartyMemberMp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
 // Sets the HP of a character to a target amount, but only if we have a full party
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerSetPartyMemberHp(void) {
     int targetHp;
     int characterHp;
@@ -107,8 +135,10 @@ void FieldScriptVMHandlerSetPartyMemberHp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
 // Sets the MP of a character to a target amount, but only if we have a full party
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerSetPartyMemberMp(void) {
     int targetMp;
     int characterMp;
@@ -123,7 +153,9 @@ void FieldScriptVMHandlerSetPartyMemberMp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerIncreasePartyMp(void) {
     int mask;
     int amount;
@@ -140,7 +172,9 @@ void FieldScriptVMHandlerIncreasePartyMp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldScriptVMHandlerDecreasePartyMp(void) {
     int mask;
     int amount;
@@ -157,11 +191,14 @@ void FieldScriptVMHandlerDecreasePartyMp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* FIELD_SUB(2) */
 
 extern s32 g_GamePartyMembers[];
 extern s16 g_FieldNumPartyMembersMasks[];
 extern void FieldPartyMemberIncreaseMp(s32, s32);
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in stats_q3.c */
 void func_80097108(void) {
     u8 mask1 = SCRIPT_READ_U8_REL(3);
     s32 mpAmount = FieldScriptArgument1(1, mask1);
@@ -176,14 +213,19 @@ void func_80097108(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptVMHandlerRestoreCharacterHpAndMp(void) {
     int id = FieldScriptVMGetArgument(1);
     g_pGameState->characters[id].hp = g_pGameState->characters[id].maxHp;
     g_pGameState->characters[id].mp = g_pGameState->characters[id].maxMp;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptVMHandlerRestoreHp(void) {
     int i;
     for (i = 0; i < MAX_GAME_CHARACTERS; i++) {
@@ -191,7 +233,9 @@ void FieldScriptVMHandlerRestoreHp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
+#endif /* FIELD_SUB(3) */
 
+#if FIELD_SUB(3)
 void FieldScriptVMHandlerRestoreMp(void) {
     int i;
     for (i = 0; i < MAX_GAME_CHARACTERS; i++) {
@@ -199,3 +243,4 @@ void FieldScriptVMHandlerRestoreMp(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer++;
 }
+#endif /* FIELD_SUB(3) */

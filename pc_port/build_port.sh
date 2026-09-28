@@ -122,6 +122,7 @@ fi
 # entry needs a reviewed ownership decision or issue.
 INTENTIONALLY_EXCLUDED_GAME_TU_PATTERNS=(
     "*/psyq/*"
+    "src/field/*_q[0-9]*.c"
 )
 INTENTIONALLY_EXCLUDED_GAME_TUS=(
     "src/battling/main.c"
@@ -353,6 +354,8 @@ excluded_game_tu_reason() {
     case "$1" in
         "*/psyq/*")
             echo "PsyQ originals are replaced at runtime by PsyCross" ;;
+        "src/field/*_q[0-9]*.c")
+            echo "matching-build run wrappers (FIELD_TU_SUB) of a field TU the port already compiles whole" ;;
         src/battling/main.c)
             echo "retail state-4 MIPS overlay scaffold; not a native host translation unit" ;;
         src/slus_006.64/system/archive.c)

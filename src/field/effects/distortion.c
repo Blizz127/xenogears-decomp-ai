@@ -1,3 +1,12 @@
+#ifndef FIELD_TU_SUB
+#define FIELD_TU_SUB 0
+#endif
+/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
+ * run (its retail-asm functions, then its byte-exact C bodies), because
+ * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
+ * 0 (port/tests) compiles every run. */
+#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
+
 #include "common.h"
 #include "system/memory.h"
 #include "field/effects.h"
@@ -53,6 +62,7 @@ int PcPort_DistortionDiagEnabled(void) {
 }
 #endif
 
+#if FIELD_SUB(1)
 void FieldDistortionFree(void) {
     g_FieldEffects.distortion.isActive = 0;
     if (D_800ADB24) {
@@ -70,7 +80,10 @@ void FieldDistortionFree(void) {
         D_800ADB24 = 0;
     }
 }
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(2)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in distortion_q2.c */
 void FieldDistortionInitialize(int useExistingTarget) {
     POLY_FT4* pPoly;
     POLY_FT4* pPoly2;
@@ -155,7 +168,10 @@ void FieldDistortionInitialize(int useExistingTarget) {
 
     g_FieldEffects.distortion.isFinished = 0;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void FieldDistortionSetTarget(int t1, int t2, int t3, int t4, int t5, int t6, int duration) {
     if (duration == 0)
         duration = 1;
@@ -168,7 +184,10 @@ void FieldDistortionSetTarget(int t1, int t2, int t3, int t4, int t5, int t6, in
     g_FieldEffects.distortion.delta5 = (t5 * 0x10000 - g_FieldEffects.distortion.v5) / duration;
     g_FieldEffects.distortion.delta6 = (t6 * 0x10000 - g_FieldEffects.distortion.v6) / duration;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in distortion_q3.c */
 void FieldDistortionDraw(void) {
     FieldDistortion* distortion = &g_FieldEffects.distortion;
     DR_MOVE* moves;
@@ -382,3 +401,5 @@ void FieldDistortionDraw(void) {
     dmode = D_800B1E18 + context * 0xC0;
     addPrim(ot, dmode);
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */

@@ -1,3 +1,12 @@
+#ifndef FIELD_TU_SUB
+#define FIELD_TU_SUB 0
+#endif
+/* Selects one retail run of this TU: each <tu>_q<n>.c wrapper compiles one
+ * run (its retail-asm functions, then its byte-exact C bodies), because
+ * gcc-2.7.2 -O2 emits every top-level INCLUDE_ASM before any C function.
+ * 0 (port/tests) compiles every run. */
+#define FIELD_SUB(n) (FIELD_TU_SUB == 0 || FIELD_TU_SUB == (n))
+
 #include "common.h"
 #include "main/game.h"
 #include "field/main.h"
@@ -39,6 +48,7 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex);
 s32 func_80033CD0(void* arg0);
 void func_80034800(void* arg0, s32 r, s32 g, s32 b);
 
+#if FIELD_SUB(1)
 void func_8009BB0C(void) {
     int nTextBoxIndex;
     u32 lowerFlags;
@@ -69,7 +79,10 @@ void func_8009BB0C(void) {
     }
     D_800B00C0 = 1;
 }
+#endif /* FIELD_SUB(1) */
 
+#if FIELD_SUB(2)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in text_box_q2.c */
 void func_8009BC98(void) {
     s32 textBoxIndex;
     u8* pTextBox;
@@ -107,12 +120,17 @@ void func_8009BC98(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
     D_800B00C0 = 1;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 s32 func_8009BE58(void) {
     return ((g_FieldScriptVMCurActor->direction - (FieldGetCameraDirection() & 0xffff)) & MASK_8DIR_MOVEMENT_NUM_DIRECTIONS) < 5;
 }
+#endif /* FIELD_SUB(2) */
 
 // Reset text box?
+#if FIELD_SUB(2)
 void func_8009BE9C(void) {
     int index;
     
@@ -133,8 +151,10 @@ void func_8009BE9C(void) {
     }
     D_800B00C0 = 1;
 }
+#endif /* FIELD_SUB(2) */
 
 // modifies the face id.. is this changing out the portrait?
+#if FIELD_SUB(2)
 void func_8009BF8C(void) {
     if (FieldScriptVMGetActorIndex(1) != ACTOR_ID_INVALID) {
         g_FieldScriptVMCurActor->faceId = ((ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData)->faceId;
@@ -143,7 +163,9 @@ void func_8009BF8C(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8009C01C(void) {
     s32 actorIndex;
 
@@ -161,22 +183,31 @@ void func_8009C01C(void) {
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8009C0B4(void) {
     func_8009C5A8(D_800AFD1C, 0);
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8009C0DC(void) {
     func_8009C5A8(D_800AFD1C, 1);
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8009C104(void) {
     func_8009C5A8(D_800AFD1C, 2);
 }
+#endif /* FIELD_SUB(2) */
 
+#if FIELD_SUB(2)
 void func_8009C12C(void) {
     func_8009C5A8(D_800AFD1C, 3);
 }
+#endif /* FIELD_SUB(2) */
 
 /* Portrait TIM load slots: 3 entries of {faceId, state, dualTim}, stride 6. */
 extern s16 D_800B06A4[];
@@ -199,6 +230,8 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2);
 int func_8009C538(int targetId);
 
 // https://decomp.me/scratch/tL6mE
+#if FIELD_SUB(3)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in text_box_q3.c */
 s32 func_8009C154(s32 faceId) {
     s32 slot;
     s32 attempt;
@@ -294,8 +327,11 @@ s32 func_8009C154(s32 faceId) {
     func_80029AFC(D_800B00C8, 0, 0);
     return -1;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(3) */
 
 // Check if there is a portrait w/ targetId that's free to use?
+#if FIELD_SUB(3)
 int func_8009C538(int targetId) {
     int i;
     
@@ -311,8 +347,11 @@ int func_8009C538(int targetId) {
 
     return 0;
 }
+#endif /* FIELD_SUB(3) */
 
 
+#if FIELD_SUB(4)
+#ifdef XENO_PC_PORT /* retail bytes: INCLUDE_ASM in text_box_q4.c */
 s32 func_8009C5A8(s32 actorIndex, s32 mode) {
     s32 existingTextBoxIndex;
     s32 textBoxIndex;
@@ -528,13 +567,18 @@ s32 func_8009C5A8(s32 actorIndex, s32 mode) {
 #endif
     return 0;
 }
+#endif /* XENO_PC_PORT */
+#endif /* FIELD_SUB(4) */
 
 extern u16 D_800B2174[];
 
+#if FIELD_SUB(4)
 void func_8009CCF8(int arg0) {
     D_800B2174[0] |= 1 << arg0;
 }
+#endif /* FIELD_SUB(4) */
 // find_first_unused()?
+#if FIELD_SUB(4)
 int func_8009CD18(int* pTextBoxIndex) {
     int i;
 
@@ -547,7 +591,9 @@ int func_8009CD18(int* pTextBoxIndex) {
 
     return -1;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 u32 func_8009CD7C(int bytecodeOffset) {
     u32 nActorIndex = FieldScriptVMGetActorIndex(bytecodeOffset);
     if (nActorIndex == ACTOR_ID_INVALID) {
@@ -555,7 +601,9 @@ u32 func_8009CD7C(int bytecodeOffset) {
     }
     return nActorIndex;
 }
+#endif /* FIELD_SUB(4) */
 
+#if FIELD_SUB(4)
 u32 FieldScriptVMGetActorIndex(int bytecodeOffset) {
     u32 actorID = SCRIPT_READ_U8_REL(bytecodeOffset);
     if (actorID == ACTOR_ID_INVALID) {
@@ -569,9 +617,11 @@ u32 FieldScriptVMGetActorIndex(int bytecodeOffset) {
     }
     return actorID;
 }
+#endif /* FIELD_SUB(4) */
 
 
 // Set up dialog window / text box
+#if FIELD_SUB(4)
 void func_8009CE48(void) {
     g_FieldScriptVMCurActor->dialogPixelWidth = SCRIPT_READ_U8_REL(1) * 2;
     g_FieldScriptVMCurActor->dialogPixelHeight = SCRIPT_READ_U8_REL(2);
@@ -579,9 +629,11 @@ void func_8009CE48(void) {
     g_FieldScriptVMCurActor->dialogHeight = SCRIPT_READ_U8_REL(4);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
+#endif /* FIELD_SUB(4) */
 
 
 // Set up dialog window / text box
+#if FIELD_SUB(4)
 void func_8009CEE0(void) {
     g_FieldScriptVMCurActor->dialogPixelWidth = FieldScriptVMGetArgument(1);
     g_FieldScriptVMCurActor->dialogPixelHeight = FieldScriptVMGetArgument(3);
@@ -590,3 +642,4 @@ void func_8009CEE0(void) {
     g_FieldScriptVMCurActor->dialogFlags = FieldScriptVMGetArgument(9);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xB;
 }
+#endif /* FIELD_SUB(4) */
