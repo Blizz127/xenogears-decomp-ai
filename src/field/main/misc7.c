@@ -112,27 +112,28 @@ void func_8009749C(void) {
  * The target actor index is the instruction byte at +1; its integer position
  * becomes the current actor's movement target before func_80097A50 advances
  * the interpolation. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800975C0);
-#else
 void func_800975C0(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
     ActorData* target;
 
-    slot->flags_0x17 = 2;
+    actor->scripts[actor->curScriptIndex].flags_0x17 = 2;
 
     target = (ActorData*)(uintptr_t)g_FieldActors[SCRIPT_READ_U8_REL(1)].pActorData;
     actor->unkD0.vx = target->position.vx >> 16;
     actor->unkD0.vz = target->position.vz >> 16;
     actor->unkD0.vy = target->position.vy >> 16;
 
-    slot->flags_0 = 0xFFFF;
-    if (func_80097A50(-1) == 0) {
-        actor->scriptInstructionPointer += 5;
+    {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        s32 result;
+
+        pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+        result = func_80097A50(0xFFFF);
+        if (result == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+        }
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Movement-mode variant: capture the current actor position once, retain the
  * script-supplied duration in its slot, then let func_80097A50 advance it. */
@@ -155,70 +156,60 @@ void func_800976A8(void) {
 
 /* Capture current integer position into unkD0 once, force duration 0xFFFF,
  * then wait via func_80097A50 (mode flags_0x17 = 1). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800977A4);
-#else
 void func_800977A4(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-    if (slot->flags_0x17 == 0) {
-        slot->flags_0x17 = 1;
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 1;
         actor->unkD0.vx = actor->position.vx >> 16;
         actor->unkD0.vy = actor->position.vy >> 16;
         actor->unkD0.vz = actor->position.vz >> 16;
     }
 
-    slot->flags_0 = 0xFFFF;
-    if (func_80097A50(0xFFFF) == 0) {
-        actor->scriptInstructionPointer += 8;
+    {
+        ActorData* pActor = g_FieldScriptVMCurActor;
+        s32 result;
+
+        pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+        result = func_80097A50(0xFFFF);
+        if (result == 0) {
+            g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+        }
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Map001-reachable walk wait (opcode 0x46): mode flags_0x17 = 3, duration from
  * arg(5), IP += 8 when func_80097A50 reports done. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097864);
-#else
 void func_80097864(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
 
-    if (slot->flags_0x17 == 0) {
-        slot->flags_0x17 = 3;
+    if (actor->scripts[actor->curScriptIndex].flags_0x17 == 0) {
+        actor->scripts[actor->curScriptIndex].flags_0x17 = 3;
         actor->unkD0.vx = actor->position.vx >> 16;
         actor->unkD0.vy = actor->position.vy >> 16;
         actor->unkD0.vz = actor->position.vz >> 16;
     }
 
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(5);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 =
+            FieldScriptVMGetArgument(5);
     }
 
     if (func_80097A50(FieldScriptVMGetArgument(5)) == 0) {
-        actor->scriptInstructionPointer += 8;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* Duration-from-arg(8) wait wrapper; IP += 0xA on completion. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80097954);
-#else
 void func_80097954(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
-
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(8);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(8);
     }
 
     if (func_80097A50(FieldScriptVMGetArgument(8)) == 0) {
-        actor->scriptInstructionPointer += 0xA;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 0xA;
     }
 }
-#endif /* XENO_PC_PORT */
 
 void func_800979F0(void) {
     ActorData* pActor = g_FieldScriptVMCurActor;
@@ -405,44 +396,33 @@ s32 func_80097A50(s32 targetValue) {
 /* asm 80098038-800980F8, opcode 0x53. Unlike 0x52, the caller supplies the
  * countdown seed and the useStoredAngle flag as an explicit script argument
  * rather than the fixed 0xFFFF sentinel. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098038);
-#else
 void func_80098038(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0x17 = 2;
 
-    slot->flags_0x17 = 2;
-
-    if (slot->flags_0 == 0xFFFF) {
-        slot->flags_0 = FieldScriptVMGetArgument(2);
+    if (g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 == 0xFFFF) {
+        g_FieldScriptVMCurActor->scripts[g_FieldScriptVMCurActor->curScriptIndex].flags_0 = FieldScriptVMGetArgument(2);
     }
 
     if (func_80099AC0(FieldScriptVMGetArgument(2)) == 0) {
-        actor->scriptInstructionPointer += 4;
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
     }
 }
-#endif /* XENO_PC_PORT */
 
 /* asm 800980FC-80098180, opcode 0x52. Thin wrapper: always (re)start the
  * per-script movement countdown at the 0xFFFF sentinel and wait via
  * func_80099AC0(0xFFFF) -- do not implement against the stub, which returns
  * 0 unconditionally and would fake instant movement completion. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800980FC);
-#else
 void func_800980FC(void) {
-    ActorData* actor = g_FieldScriptVMCurActor;
-    ActorScriptSlot* slot = &actor->scripts[actor->curScriptIndex];
+    ActorData* pActor = g_FieldScriptVMCurActor;
+    s32 result;
 
-    slot->flags_0x17 = 2;
-    slot->flags_0 = 0xFFFF;
-
-    if (func_80099AC0(0xFFFF) == 0) {
-        actor->scriptInstructionPointer += 2;
+    pActor->scripts[pActor->curScriptIndex].flags_0x17 = 2;
+    pActor->scripts[pActor->curScriptIndex].flags_0 = 0xFFFF;
+    result = func_80099AC0(0xFFFF);
+    if (result == 0) {
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
     }
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098184);
