@@ -640,6 +640,9 @@ extern void MainLoop(int errorCode);
 #define T3_ABSF8 (*(u8*)0x800594F8u)
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp3", func_8001B6C4);
+#else
 void func_8001B6C4(void) {
     s32 state;
     s32 next;
@@ -701,6 +704,7 @@ battle_return:
     }
     MainLoop(0);
 }
+#endif
 
 extern u8 D_800C4A7C[];
 #ifdef XENO_PC_PORT

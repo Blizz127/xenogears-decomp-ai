@@ -68,6 +68,9 @@ void func_80033DD4(void* arg0, s32 arg1);
 void func_80033DF0(void* arg0);
 int func_80034F98(s32 arg0, s32 arg1);
 void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4);
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80032F54);
+#else
 void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, s32 mode, s32 height) {
     u8* pWindow = arg0;
     s32 i;
@@ -173,6 +176,7 @@ void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, 
     tpage1 = GetTPage(0, 0, tpageX + 0x40, tpageY);
     SetDrawMode((DR_MODE*)(pWindow + 0x3C), 0, 0, tpage1, NULL);
 }
+#endif
 
 unsigned int ResolveArchiveEntryPointers(u32* pFile) {
     int i;
@@ -201,27 +205,46 @@ void ResolveFileEntryPointers(u32* pFile) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetSystemFontFile);
+#else
 void* GetSystemFontFile(void) {
     return g_SystemFontFile;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetSystemDataFile);
+#else
 void* GetSystemDataFile(void) {
     return g_SystemDataFile;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemFreeFont);
+#else
 void SystemFreeFont(void) {
     HeapUnpinBlock(g_SystemFontFile);
     HeapFree(g_SystemFontFile);
     g_SystemFontFile = NULL;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemFreeData);
+#else
 void SystemFreeData(void) {
     HeapUnpinBlock(g_SystemDataFile);
     HeapFree(g_SystemDataFile);
     g_SystemDataFile = NULL;
 }
+#endif
 
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemInitializeFont);
+#else
 void SystemInitializeFont(void* pSystemFont) {
     if (pSystemFont == NULL) {
         HeapSetCurrentContentType(0x20);
@@ -238,7 +261,11 @@ void SystemInitializeFont(void* pSystemFont) {
     D_8005935C = (u32)(uintptr_t)((u8*)pSystemFont + *(u16*)((u8*)pSystemFont + 0x02));
     D_80059364 = *(u16*)((u8*)pSystemFont + 0x0C);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemInitializeData);
+#else
 void SystemInitializeData(void* pSystemData) {
     if (pSystemData == 0) {
         HeapSetCurrentContentType(HEAP_CONTENT_NONE);
@@ -250,6 +277,7 @@ void SystemInitializeData(void* pSystemData) {
     ResolveArchiveEntryPointers(pSystemData);
     g_SystemDataEntries += 4;
 }
+#endif
 
 void SystemInitialize(void* pSystemFont, void* pSystemData) {
     SystemInitializeFont(pSystemFont);
@@ -285,43 +313,78 @@ u8 DialogGetHeight(u16* pDialogData, int dialogIndex) {
     return pDialog[1];
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033784);
+#else
 void* func_80033784(s32 tableIndex, s32 stringIndex) {
     /* ResolveArchiveEntryPointers keeps four-byte slots even on the host.
      * Match the retail LW here and in the fixed-offset readers below. */
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4), stringIndex);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800337B8);
+#else
 void* func_800337B8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x40), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetAccessoryName);
+#else
 void* GetAccessoryName(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x44), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetItemName);
+#else
 void* GetItemName(s32 index) {
     /* The system archive table contains PSX-width pointer slots.  Keep the
      * retail lw read on the 64-bit port instead of consuming two entries. */
     return GetStringEntry(
         (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x58), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", GetWeaponName);
+#else
 void* GetWeaponName(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x5C), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033878);
+#else
 void* func_80033878(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x60), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338A8);
+#else
 void* func_800338A8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x64), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800338D8);
+#else
 void* func_800338D8(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x48), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033908);
+#else
 void* func_80033908(s32 index) {
     /* The entries table holds four-byte PSX pointer slots: read the slot as
      * u32 (the func_80033B34 idiom), not as a native void**.  Latent until
@@ -329,41 +392,77 @@ void* func_80033908(s32 index) {
     return GetStringEntry(
         (void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x50), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033938);
+#else
 void* func_80033938(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x4C), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033968);
+#else
 void* func_80033968(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x54), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033998);
+#else
 void* func_80033998(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339C8);
+#else
 void* func_800339C8(s32 tableIndex, s32 stringIndex) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + tableIndex * 4 + 0x70), stringIndex);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800339FC);
+#else
 void* func_800339FC(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC0), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A2C);
+#else
 void* func_80033A2C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xC8), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A5C);
+#else
 void* func_80033A5C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xCC), index);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033A8C);
+#else
 void* func_80033A8C(s32 index) {
     return GetStringEntry((void*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0xD0), index);
 }
+#endif
 
 extern u8 D_8005A0E4[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
+#else
 void func_80033ABC(u16* pIndices) {
     u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     u8* pOut = D_8005A0E4;
@@ -383,7 +482,11 @@ void func_80033ABC(u16* pIndices) {
     }
     *pOut = 0;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033B34);
+#else
 /* Save-format name decode (asm 80033B34): each u16 char code indexes a
  * 2-byte glyph pair in the table at g_SystemDataEntries+0x6C; byte 0 is
  * written only when nonzero, byte 1 always; NUL-terminated.  Used by the
@@ -404,7 +507,11 @@ void func_80033B34(u16* src, u8* dst, s32 count) {
     }
     *dst = 0;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033BAC);
+#else
 s16 func_80033BAC(u8 a, u8 b) {
     u8* pTable = (u8*)(uintptr_t)*(u32*)((u8*)g_SystemDataEntries + 0x6C);
     s16 i;
@@ -414,7 +521,11 @@ s16 func_80033BAC(u8 a, u8 b) {
     }
     return 0x8000;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033C20);
+#else
 s32 func_80033C20(u8* pString, u16* pOutIndices) {
     u8 c = *pString++;
     while (c != 0) {
@@ -433,6 +544,7 @@ s32 func_80033C20(u8* pString, u16* pOutIndices) {
     }
     return 0;
 }
+#endif
 
 s32 func_80033CD0(void* arg0) {
     if (*(u16*)((u8*)arg0 + 0x10) & 0x8) {
@@ -459,6 +571,9 @@ extern u16 D_8005A0DE;
 #define NUM_SCRATCH_TERM     (&D_8005A0DE)
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033CF0);
+#else
 /* Render a decimal number into the glyph-index scratch and decode it into
  * D_8005A0E4 (asm 80033CF0). Args follow the asm: a0 value, a1 font offset
  * (glyph row, <<4), a2 signed mode. Signed mode always emits a sign glyph:
@@ -509,6 +624,7 @@ void func_80033CF0(s32 value, s32 fontOffset, s32 signedMode) {
 
     func_80033ABC(p);
 }
+#endif
 
 #ifdef XENO_PC_PORT
 void func_80033DD4(void* arg0, void* arg1) {
@@ -522,6 +638,9 @@ void func_80033DD4(void* arg0, s32 arg1) {
     *(u16*)((u8*)arg0 + 0x10) |= 0x80;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033DF0);
+#else
 void func_80033DF0(void* arg0) {
     u8* pWindow = arg0;
     s32 count;
@@ -839,6 +958,7 @@ void func_80033DF0(void* arg0) {
         count--;
     }
 }
+#endif
 
 void func_800345E0(void* a0) {
     u16 flags = *(u16*)((u8*)a0 + 0x10);
@@ -891,6 +1011,9 @@ void func_800346D4(void* arg0) {
     HeapFree((void*)(uintptr_t)*(u32*)(pWindow + 0x2C));
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034714);
+#else
 void func_80034714(void* arg0, void* arg1) {
     u8* pWindow = arg0;
     u32 oldHead;
@@ -913,11 +1036,15 @@ void func_80034714(void* arg0, void* arg1) {
     }
     *(u32*)(uintptr_t)oldHead = (u32)(uintptr_t)node;
 }
+#endif
 
 s32 func_800347AC(void* arg0) {
     return *(s16*)((u8*)arg0 + 0x4) + (*(s16*)((u8*)arg0 + 0x0) << 2);
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_800347C0);
+#else
 /* Retail 800347C0 (asm/slus_006.64/matchings/system/system/func_800347C0.s).
  *
  * This is NOT the vertical twin of func_800347AC above.  It was written as if
@@ -955,7 +1082,11 @@ s32 func_800347C0(void* arg0) {
     }
     return *(s16*)(pWindow + 0x06) + row * *(s16*)(pWindow + 0x14);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034800);
+#else
 void func_80034800(void* arg0, s32 r, s32 g, s32 b) {
     u8* pWindow = arg0;
     u8* pRows = (u8*)(uintptr_t)*(u32*)(pWindow + 0x28);
@@ -976,6 +1107,7 @@ void func_80034800(void* arg0, s32 r, s32 g, s32 b) {
         pRows[0x42] = b;
     }
 }
+#endif
 
 void func_80034874(void* arg0, u8 arg1) {
     *(u8*)((u8*)arg0 + 0x6E) = arg1;
@@ -987,6 +1119,9 @@ int func_8003487C(void* arg0) {
     return value;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034888);
+#else
 void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
     u8* pWindow = arg0;
     u16 flags;
@@ -1143,6 +1278,7 @@ void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
     *(u16*)(pWindow + 0x10) &= 0xFEFF;
     SYSTEM_ADD_PRIM(ot, pWindow + 0x30);
 }
+#endif
 
 // Render string entry to a buffer
 #ifdef XENO_PC_PORT
@@ -1185,6 +1321,9 @@ s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemRenderStringEntry);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034F98);
+#else
 s32 func_80034F98(s32 arg0, s32 arg1) {
     u16 lead = arg0;
     u16 trail = arg1;
@@ -1204,7 +1343,9 @@ s32 func_80034F98(s32 arg0, s32 arg1) {
 
     return 3;
 }
+#endif
 
+#ifdef XENO_PC_PORT
 static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
     u16 v;
     u16 w;
@@ -1276,7 +1417,9 @@ static void func_80034FFC_row0(u16* prev, u16* cur, u16* next, u16 glyph) {
     if (glyph & 0x2000) v |= 0x1200;
     cur[2] |= (glyph & 0x1000) ? (u16)(v | 0x2000) : v;
 }
+#endif
 
+#ifdef XENO_PC_PORT
 static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
     u16 v;
     u16 w;
@@ -1347,7 +1490,11 @@ static void func_80034FFC_row1(u16* prev, u16* cur, u16* next, u16 glyph) {
     if (glyph & 0x2000) v |= 0x4800;
     cur[2] |= (glyph & 0x1000) ? (u16)(v | 0x8000) : v;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034FFC);
+#else
 void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4) {
     u16 lead = arg0;
     u16 trail = arg1;
@@ -1408,3 +1555,4 @@ void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4) {
         next = (u16*)((u8*)next + step);
     }
 }
+#endif

@@ -28,6 +28,9 @@ extern StreamDataQueueEntry D_8005A1DC[3];
 #define QUEUE_BUFFER(p) ((u8*)(p))
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/asset_loader", func_800379D8);
+#else
 /* Retail 800379D8..80037B88. Loads the selected pair from archive 0xC/3,
  * retaining both pinned allocations and exposing the second file past its
  * four-byte header. No replacement data or success-on-failure path is added. */
@@ -75,3 +78,4 @@ s32 func_800379D8(s32 index, s32 variant,
     ArchiveSetIndex(savedDirectory, savedEntry);
     return result;
 }
+#endif

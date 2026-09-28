@@ -16,6 +16,7 @@ extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
 #define assert(x) ((void)0)
 #endif
 
+#ifdef XENO_PC_PORT
 /* C1 fixes the Z rotation at zero. Preserve the signed Q12 stages in
  * retail RotMatrix (8003F738..8003F8AC); the host trig-identity version
  * rounds at different points. Decomp rcos is sine, rsin is cosine, as
@@ -38,6 +39,7 @@ static void AnimationC1RotMatrix(const SVECTOR* angles, MATRIX* matrix) {
     matrix->m[2][1] = (s16)sx;
     matrix->m[2][2] = (s16)((cy * cx) >> 12);
 }
+#endif
 
 static u32 AnimationRead32(const u8* p);
 #ifdef XENO_PC_PORT
@@ -82,6 +84,9 @@ extern void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value);
 extern int rand(void);
 extern s32 func_80022CAC(void* pSpriteData, s32 value);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_8001FBA4);
+#else
 void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
     u8* pData = (u8*)pSpriteData;
     u8 index = *pIndex;
@@ -91,6 +96,7 @@ void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
     }
     return (void*)(uintptr_t)(AnimationRead32(pData + 0x88) + (index & 0x7F));
 }
+#endif
 
 extern void func_80022CDC(void* pSpriteData);
 extern s32 D_80059198;
@@ -149,12 +155,8 @@ static u8* AnimationSoundBankPointer(u32 address) {
 }
 #else
 extern u32 D_8005919C;
-static u32 AnimationSoundBankSelector(void) {
-    return D_8005919C;
-}
-static u8* AnimationSoundBankPointer(u32 address) {
-    return (u8*)(uintptr_t)address;
-}
+
+
 #endif
 
 /* Model-data load helpers for opcodes 0xF5/0xF6. Relocators live in
@@ -173,6 +175,7 @@ extern s32 D_8006F9AC;
 extern u8 D_800C3EB0[];
 extern MATRIX D_8004FBB8;
 
+#ifdef XENO_PC_PORT
 /* .L80020654 (asm 80020650-8002072C): anchor-table position for the 0xBC
  * sub-commands 8-0xA (target) and 0xB-0x11 (parent; 0x19-0x1F use the
  * player and stay unported).  Anchor entries are s8 (dx,dy) pairs at
@@ -222,7 +225,9 @@ static void Xeno0xBCAnchorVec(u8* ref, s32 anchorIdx, SVECTOR* vec) {
     vec->vy = (s16)(sy + *(s16*)(ref + 0x6));
     vec->vz = *(s16*)(ref + 0xA);
 }
+#endif
 
+#ifdef XENO_PC_PORT
 /* jtbl_800183D8 has 0x73 entries. These exact entries branch directly to
  * the register-restoring return at 80021AB8; they are not missing handlers.
  * Keep this predicate separate so its complete domain can be checked against
@@ -242,25 +247,34 @@ int AnimationScriptOpcodeIsNoop(u32 opcodeIndex) {
         return 0;
     }
 }
+#endif
 
+#ifdef XENO_PC_PORT
 /* Packed little-endian accesses for the retail data handlers. Byte accesses
  * also preserve script/sprite aliasing without C effective-type assumptions. */
 static u16 AnimationRead16(const u8* p) {
     return (u16)((u32)p[0] | ((u32)p[1] << 8));
 }
+#endif
+#ifdef XENO_PC_PORT
 static u32 AnimationRead32(const u8* p) {
     return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
 }
+#endif
+#ifdef XENO_PC_PORT
 static void AnimationWrite16(u8* p, u16 value) {
     p[0] = (u8)value;
     p[1] = (u8)(value >> 8);
 }
+#endif
+#ifdef XENO_PC_PORT
 static void AnimationWrite32(u8* p, u32 value) {
     p[0] = (u8)value;
     p[1] = (u8)(value >> 8);
     p[2] = (u8)(value >> 16);
     p[3] = (u8)(value >> 24);
 }
+#endif
 
 /* Player/leader sprite pointer for the 0xBC player-relative sub-commands
  * (0x22 reads it here; 0x01, 0x19-0x1F and 0x20/0x21/0x23 share the source and
@@ -288,11 +302,12 @@ static u8* AnimationPlayerSprite(void) {
 }
 #else
 extern u32 D_800C3E1C;
-static u8* AnimationPlayerSprite(void) {
-    return (u8*)(uintptr_t)D_800C3E1C;
-}
+
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_8001FBE4);
+#else
 void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
     u32 dispatchIndex = (u8)opcodeIndex - 0x8A;
 
@@ -1640,6 +1655,7 @@ void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands) {
 #endif
     assert(0 && "func_8001FBE4 dispatch path is not implemented");
 }
+#endif
 
 s32 func_80021AD8(s32 color, s32 value) {
     color += value;
@@ -1778,6 +1794,9 @@ extern s32 D_80059198;
 extern void func_800245D8(void*, s32);
 extern void AnimScriptTick(void*);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021D50);
+#else
 void func_80021D50(void* arg0, void* arg1) {
     s32 savedD80059198 = D_80059198;
     void* pData;
@@ -1816,7 +1835,11 @@ void func_80021D50(void* arg0, void* arg1) {
     }
     D_80059198 = savedD80059198;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021EBC);
+#else
 void func_80021EBC(void* arg0, void* arg1) {
     u8* src = arg0;
     u8* dst = arg1;
@@ -1840,6 +1863,7 @@ void func_80021EBC(void* arg0, void* arg1) {
     *(s16*)(dst + 0x2C) = *(u16*)(src + 0x82);
     *(s16*)(dst + 0x2A) = *(u16*)(src + 0x2C);
 }
+#endif
 
 void func_80021FB8(u8* arg0, u8 arg1) {
     arg0[0xB0] = arg1;
@@ -1852,11 +1876,18 @@ void func_80021FC0(void* a0, s32 a1) {
     func_80022974(a0);
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80021FE0);
+#else
 void func_80021FE0(void* a0, s16 a1) {
     AnimationWrite16((u8*)a0 + 0x32, (u16)a1);
     func_80022974(a0);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", SpriteSetScale);
+#else
 void SpriteSetScale(SpriteData* pSpriteData, short scale) {
     u8* pData = (u8*)pSpriteData;
     u8* pBase = (u8*)(uintptr_t)AnimationRead32(pData + 0x20);
@@ -1871,6 +1902,7 @@ void SpriteSetScale(SpriteData* pSpriteData, short scale) {
         AnimationWrite32(pData + 0x3C, AnimationRead32(pData + 0x3C) | 0x10000000u);
     }
 }
+#endif
 
 // Recompute transform matrix if flag is set
 void func_80022038(SpriteData* pSpriteData) {
@@ -1884,6 +1916,9 @@ void func_80022038(SpriteData* pSpriteData) {
 
 extern MATRIX D_80018644;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", SpriteComputeTransformMatrix);
+#else
 void SpriteComputeTransformMatrix(SpriteData* pSpriteData) {
     u8* pData = (u8*)pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
@@ -1914,6 +1949,7 @@ void SpriteComputeTransformMatrix(SpriteData* pSpriteData) {
         ScaleMatrix((MATRIX*)(pBase + 0xC), &scale);
     }
 }
+#endif
 
 extern u8 D_800591AD;
 extern u8 D_800591B0;
@@ -1921,6 +1957,9 @@ extern u8 D_800591B3;
 
 extern s32 func_8001EE68(void*);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022224);
+#else
 // Set animation package
 void func_80022224(SpriteAnimPackage* pAnimPackage, void* pAnimPackageFile, SVEC2 tex, SVEC2 clut, u32 arg4) {
     u8* pPackage = (u8*)pAnimPackage;
@@ -1940,7 +1979,11 @@ void func_80022224(SpriteAnimPackage* pAnimPackage, void* pAnimPackageFile, SVEC
         }
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_800222BC);
+#else
 void func_800222BC(SpriteData* pSprite, SpriteAnimPackageFileHeader* pAnimPackageFile) {
     u8* pSpriteData = (u8*)pSprite;
     u8* pAnimPackage;
@@ -1969,10 +2012,14 @@ void func_800222BC(SpriteData* pSprite, SpriteAnimPackageFileHeader* pAnimPackag
         }
     }
 }
+#endif
 
 extern void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2);
 extern void func_80022D44(void* pSpriteData);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_800223B0);
+#else
 void func_800223B0(void* pSpriteData, s16 arg1) {
     u8* pData = pSpriteData;
     u8* pAnim;
@@ -2059,6 +2106,7 @@ void func_800223B0(void* pSpriteData, s16 arg1) {
     flags3C |= ((((flagsAC >> 3) & 0x1) ^ ((flagsAC >> 2) & 0x1)) << 3);
     *(u32*)(pData + 0x3C) = flags3C;
 }
+#endif
 
 /* Animation bytecode length table. Retail lives in sdata
  * (asm/slus_006.64/data/3F290.sdata.s, dlabel D_8004FC40). Matching build
@@ -2087,6 +2135,9 @@ const u8 D_8004FC40[256] = {
 extern u8 D_8004FC40[256];
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022660);
+#else
 // Run Sprite Animation VM
 void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
     u8* pData = pSpriteData;
@@ -2251,7 +2302,11 @@ void func_80022660(void* pSpriteData, void* pBytecode, s32 arg2) {
         *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022974);
+#else
 /* 80022974..80022A00: horizontal velocity, preserving R3000 DIV/MULT
  * and 32-bit shifts. Decomp rsin names retail cosine; rcos names sine. */
 void func_80022974(void* pSpriteData) {
@@ -2274,6 +2329,7 @@ void func_80022974(void* pSpriteData) {
     product = 0u - (u32)trigValue * scaledRadius;
     AnimationWrite32(pData + 0x14, (u32)((s32)product >> 6));
 }
+#endif
 
 s32 func_80022A00(s32* arg0) {
     return *arg0;

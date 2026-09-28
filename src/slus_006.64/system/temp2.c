@@ -49,6 +49,9 @@ extern u16 D_8004FE26;
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B084);
+#else
 s32 func_8002B084(u8 status) {
     s32 size;
 
@@ -112,6 +115,7 @@ rearm:
     CdControlF(1, NULL);
     return 0;
 }
+#endif
 
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B2F0.s
  * (0x8002B2F0-0x8002B5B4, 184 instructions). The ring-slot variant of the CD
@@ -130,6 +134,9 @@ rearm:
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B2F0);
+#else
 s32 func_8002B2F0(u8 status) {
     u8* pSlot;
     s32 nSectors;
@@ -223,6 +230,7 @@ rearm:
     CdControlF(1, NULL);
     return 0;
 }
+#endif
 
 extern s32 D_8004FE10;
 extern u16 D_8004FE26;
@@ -236,6 +244,9 @@ extern s32 D_8005A4DC;
 extern CdlLOC D_80059EF8;
 extern u8 D_800596F8[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B5D0);
+#else
 /* Transcribed from asm/slus_006.64/nonmonmatchings/system/temp2/func_8002B5D0.s
  * (0x8002B5D0-0x8002B8B0, frame 0x28). CdReadyCallback handler for the
  * streaming read: on status 1 it queues the next sector into a free ring slot,
@@ -360,8 +371,12 @@ no_room:
     CdSyncCallback(&ArchiveCdDriveCommandHandler);
     CdControlF(1, NULL);
 }
+#endif
 
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B8B0);
+#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B8B0.s
  * (0x8002B8B0-0x8002BA40, frame 0x20). Queue one 0x800 sector from the open
  * PC file into the ring:
@@ -433,6 +448,7 @@ tail:
     }
     g_ArchiveCurFileSize = 0;
 }
+#endif
 
 extern s32 D_8004FE00;
 extern s32 D_8004FDFC;
@@ -446,6 +462,9 @@ extern s16 D_8004FE28;
 extern s32 D_8004FE38;
 extern s32 g_ArchiveCurFileSize;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
+#else
 void func_8002BA58(void) {
     s32 slotCount = D_8004FE40;
     u8* slot = (u8*)D_8004FE2C;
@@ -477,6 +496,7 @@ void func_8002BA58(void) {
         D_8004FDFC = 0;
     }
 }
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BB50);
@@ -513,6 +533,9 @@ extern s32 D_80059F3C;
 extern u16* D_80059F4C;
 extern s32 D_80059F50;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BF38);
+#else
 void func_8002BF38(void) {
     s32 slotCount = D_8004FE40;
     u8* slot = (u8*)D_8004FE2C;
@@ -629,6 +652,7 @@ void func_8002BF38(void) {
         D_8004FDFC = 0;
     }
 }
+#endif
 
 extern void func_800379C8(char*, ...);
 extern char D_80018944[];
@@ -657,6 +681,9 @@ u32 func_8002C3D8(void) {
     return g_ArchiveDebugTable;
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C3E8);
+#else
 /* Relocates a model's internal offset fields to absolute addresses (adds the model
  * base). Runs once per model (guarded by flag bit 0x1 at +0x4). For each of the
  * `count` (at +0x0) sub-entries (0x38 stride from +0x2C): relocate the four offset
@@ -708,7 +735,11 @@ int func_8002C3E8(u8* pModel) {
     }
     return count;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
+#else
 s32 func_8002C4BC(u8* pBlock) {
     u32 flags = *(u32*)(pBlock + 4);
     s32 count = *(s32*)(pBlock);
@@ -744,7 +775,11 @@ s32 func_8002C4BC(u8* pBlock) {
     }
     return count;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C59C);
+#else
 void func_8002C59C(u8* pBlock) {
     u16 flags = *(u16*)(pBlock);
     s32 count;
@@ -770,7 +805,11 @@ void func_8002C59C(u8* pBlock) {
         *(u32*)(pTable + i * 12 + 8) += (u32)pBlock;
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C644);
+#else
 /* Finalizes a model control block: pins its backing buffer into the heap so it
  * won't move. Reads a flags word at +0x4; if bit 0x2 is already set the block is
  * already pinned and it returns 1. Otherwise it sets bit 0x2, computes the
@@ -819,6 +858,7 @@ s32 func_8002C644(u8* a0) {
     }
     return 1;
 }
+#endif
 
 s32 func_8002C68C(u8* pBlock) {
     u16 flags = *(u16*)(pBlock);
@@ -1065,6 +1105,9 @@ s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C8CC);
+#else
 /* Builds the render command list for one model into the destination double
  * buffer half (a0=dst header, a1=src buffer, a2=mode).
  *
@@ -1247,6 +1290,7 @@ void func_8002C8CC(u8* a0, void* a1, s32 a2) {
 
     func_8002CCAC();
 }
+#endif
 
 /* Allocates the per-model double buffer. modelData+0x34 is the model's byte
  * size; it allocates 2x that, hands out1 (first half) via out1 and out2 (second
@@ -1263,6 +1307,9 @@ void func_8002CB54(u8* modelData, u32* out1, u32* out2) {
     *out2 = (u32)((u8*)buf + *(s32*)(modelData + 0x34));
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CBBC);
+#else
 // Frees the model's optional secondary buffer at modelData+0x18 iff the
 // model's own flags word (+0x0) has bit 0x1 set, then clears that bit. The
 // flag is self-describing: it is only set when +0x18 was actually populated
@@ -1276,6 +1323,7 @@ void func_8002CBBC(u8* modelData) {
         *(u16*)(modelData + 0x0) = flags & 0xFFFE;
     }
 }
+#endif
 
 extern s32 D_80059310;
 extern s32 D_80050108;
@@ -1347,6 +1395,9 @@ void func_8002CD24(u8* pSrc) {
     }
 }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD64);
+#else
 /* Gate shared by the textured model buildProcs (func_8002D984/func_8002D0E4):
  * packet-source records whose code byte (+0x3) is a 0xC0-class inline state
  * command dispatch to a state handler and emit no primitive (return 0);
@@ -1368,6 +1419,7 @@ s32 func_8002CD64(u8* pSrc) {
     }
     return 1;
 }
+#endif
 
 /* buildProc for prim 0x00 (lit flat tri template, tag len 4). Byte-identical
  * retail clone of prim 0x08's builder func_8002CF58 below -- only the three
@@ -1583,24 +1635,12 @@ s32 func_8002D180(u8* pColor, s16* pIndices, s32 shade) {
     return 1;
 }
 #else
-void func_8002D180(u8* pColor, s16* pIndices, u8* pLightSrc) {
-    u8* pPoly = D_80059424;
-    s16* normals = (s16*)D_8005952C;
-    pPoly[3] = 8; /* POLY_G4 tag */
-    NormalColorCol3(
-        (SVECTOR*)&normals[pIndices[0] * 4],
-        (SVECTOR*)&normals[pIndices[1] * 4],
-        (SVECTOR*)&normals[pIndices[2] * 4],
-        (CVECTOR*)(pPoly + 4),
-        (CVECTOR*)(pPoly + 0xC),
-        (CVECTOR*)(pPoly + 0x14),
-        (CVECTOR*)(pPoly + 0x1C)
-    );
-    NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
-    pPoly[7] = pColor[3];
-}
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D180);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D244);
+#else
 s32 func_8002D244(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
     {
@@ -1624,7 +1664,11 @@ s32 func_8002D244(u8* pColor, s16* pIndices) {
     }
     return 1;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D354);
+#else
 void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
     u8* pPoly = D_80059424;
     s16* normals = (s16*)D_8005952C;
@@ -1642,7 +1686,11 @@ void func_8002D354(u8* pColor, s16* pIndices, u8* pLightSrc) {
     NormalLightCol((SVECTOR*)&normals[pIndices[3] * 4], pLightSrc, pPoly + 0x1C);
     pPoly[7] = pColor[3];
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
+#else
 s32 func_8002D420(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
     {
@@ -1666,7 +1714,11 @@ s32 func_8002D420(u8* pColor, s16* pIndices) {
     }
     return 1;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D530);
+#else
 s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags) {
     u8* pPoly;
     s16* normals;
@@ -1704,9 +1756,13 @@ s32 func_8002D530(u8* pColor, s16* pIndices, s32 flags) {
     pPoly[7] = pColor[3];
     return 1;
 }
+#endif
 
 extern u32 D_80059498;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D6AC);
+#else
 void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags) {
     u8* pPoly = D_80059424;
     s16* normals = (s16*)D_8005952C;
@@ -1726,7 +1782,11 @@ void func_8002D6AC(u8* pColor, s16* pIndices, u8* pNormalSrc, s32 flags) {
     );
     pPoly[7] = pColor[3];
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D77C);
+#else
 void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
     u8* pPoly = D_80059424;
     s16* normals = (s16*)D_8005952C;
@@ -1742,7 +1802,11 @@ void func_8002D77C(u8* pColor, s16* pIndices, u8* pNormalSrc) {
     );
     pPoly[7] = pColor[3];
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
+#else
 s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
     u8* pPoly;
     s16* normals;
@@ -1791,6 +1855,7 @@ s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
 #endif
     return 1;
 }
+#endif
 
 /* buildProc for prim 0x05 (textured tri, POLY_FT3 template, tag len 7).
  * Reads one 0x08-byte packet-source record and writes the static packet fields;
@@ -1815,6 +1880,9 @@ s32 func_8002D984(u8* pSrc) {
 extern u16 D_80059308;
 extern u16 D_8005930C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
+#else
 s32 func_8002DA14(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
     {
@@ -1836,7 +1904,11 @@ s32 func_8002DA14(u8* pColor, s16* pIndices) {
     }
     return 1;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DAFC);
+#else
 void func_8002DAFC(void) {
     u8* pPoly = D_80059424;
     SetPolyFT3((POLY_FT3*)pPoly);
@@ -1850,6 +1922,7 @@ void func_8002DAFC(void) {
         *(u16*)(pPoly + 0x0E) = (clut & 0xF) | D_80059314;
     }
 }
+#endif
 
 /* Computes the normalized face normal of the triangle (v0,v1,v2) into
  * outNormal (SVECTOR, 4096-scale via VectorNormalS). asm: edge diffs ->
@@ -1863,6 +1936,9 @@ extern long VectorNormalS(VECTOR* in, SVECTOR* out);
 extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out);
 s32 func_8002DC9C(s32 x, s32 y, s32 z);
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DB84);
+#else
 void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
     VECTOR d1;
     VECTOR d2;
@@ -1891,7 +1967,11 @@ void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
     }
     VectorNormalS(&cross, outNormal);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DC9C);
+#else
 /* Returns the signed component with the largest absolute value (ties favor
  * x, then y). Used by func_8002DB84 as the range-reduction pivot before
  * normalizing a face normal. asm: abs-compare branch tree in func_8002DC9C.s
@@ -1909,6 +1989,7 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z) {
     }
     return z;
 }
+#endif
 
 #ifdef XENO_PC_PORT
 /* TIM resource loader: pList[0] = entry count + 1; pList[1..count] is an offset
@@ -1968,6 +2049,9 @@ void func_8002DD20(u_long* table) {
 }
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DDE4);
+#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002DDE4.s
  * (0x8002DDE4-0x8002DFE0, 127 instructions). Uploads a sequence of images: the
  * header word at pImageData[0] is the count, records follow at +4 with a 0x1100
@@ -2032,6 +2116,7 @@ s32 func_8002DDE4(u32* pImageData, s32 arg1, s32 texX, s32 texY, s32 modeB, u16 
     } while (i < (s32)count);
     return 0;
 }
+#endif
 
 extern u8 D_8006FAF0[];
 
@@ -2323,6 +2408,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FCFC);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003014C);
+#else
 s32 func_8003014C(s32* pData) {
     s32 cur = pData[2];
     s32 target = pData[1];
@@ -2338,7 +2426,11 @@ s32 func_8003014C(s32* pData) {
     }
     return pData[2];
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
+#else
 void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
     s32 i;
     if (count == 0) return;
@@ -2353,7 +2445,11 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
         pIndices--;
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
+#else
 void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
     s32 i;
     if (scale == 0 || count == 0) return;
@@ -2369,7 +2465,11 @@ void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
         pVert[2] += d;
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
+#else
 void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
     s32 i;
     if (scale == 0 || count == 0) return;
@@ -2386,7 +2486,11 @@ void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
         VectorNormalSS(pNorm, pNorm);
     }
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800303C8);
+#else
 /* Allocates and populates the "animation/joint" work block for a model that has
  * the 0x2000 (skeletal) status bit. a0=modelData, a1=heap flags (0).
  *
@@ -2462,7 +2566,11 @@ void* func_800303C8(u8* a0, s32 a1) {
 
     return s1;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
+#else
 void func_800305D8(u8* pAnimData) {
     u8* pModel;
     u8* pDeltas;
@@ -2509,6 +2617,7 @@ void func_800305D8(u8* pAnimData) {
         pJoint += 0xC;
     }
 }
+#endif
 
 // Hands a model's shared anim-work buffers (pAnimInfo->+0x0, a pointer to a
 // per-model-type shared work block) back before freeing pAnimInfo itself:
@@ -2540,6 +2649,9 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
 
 extern s16 D_800308D0[];
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030988);
+#else
 void func_80030988(u16 u, u16 v, s16 texX, s16 texY) {
     u16 uVal = u << 6;
     u16 vVal = v << 6;
@@ -2556,10 +2668,12 @@ void func_80030988(u16 u, u16 v, s16 texX, s16 texY) {
     D_800308D0[0x36] = texY;
     D_800308D0[0x46] = texY;
 }
+#endif
 
 MATRIX D_80059F64;
 MATRIX D_80059F84;
 
+#ifdef XENO_PC_PORT
 static s16 func_80030A18(s64 value) {
     value >>= 12;
     if (value > 0x7FFF) {
@@ -2570,7 +2684,11 @@ static s16 func_80030A18(s64 value) {
     }
     return value;
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030A30);
+#else
 void func_80030A30(s32 lightId, void* pLight) {
     VECTOR lightDirection;
     u16 id = lightId;
@@ -2587,7 +2705,11 @@ void func_80030A30(s32 lightId, void* pLight) {
     pColorMatrix[id + 6] = *(u16*)((u8*)pLight + 0x10);
     SetColorMatrix(&D_80059F84);
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030B14);
+#else
 void func_80030B14(MATRIX* pMatrix) {
     MATRIX matrix;
     s32 row;
@@ -2603,6 +2725,7 @@ void func_80030B14(MATRIX* pMatrix) {
     }
     SetLightMatrix(&matrix);
 }
+#endif
 
 void func_80030C40(u16 a, u16 b, u16 c) {
     gte_SetBackColor((u32)a >> 4, (u32)b >> 4, (u32)c >> 4);
@@ -2653,6 +2776,22 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003101C);
         *(u32*)(uintptr_t)nextAddr = old | tag; \
     }
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315A0);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315C4);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800315E8);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003160C);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031630);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031654);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031678);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003169C);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316C0);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800316E4);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031708);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003172C);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031750);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031774);
+#else
 GPU_LINK_FUNC(func_800315A0, 0x04000000)
 GPU_LINK_FUNC(func_800315C4, 0x07000000)
 GPU_LINK_FUNC(func_800315E8, 0x06000000)
@@ -2668,7 +2807,11 @@ GPU_LINK_FUNC(func_80031708, 0x0E000000)
 GPU_LINK_FUNC(func_8003172C, 0x07000000)
 GPU_LINK_FUNC(func_80031750, 0x06000000)
 GPU_LINK_FUNC(func_80031774, 0x09000000)
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031798);
+#else
 void func_80031798(void* ot, void* prim) {
 #ifdef XENO_PC_PORT
     *(u32*)prim = (*(u32*)prim & 0x00FFFFFFu) | 0x04000000u;
@@ -2681,7 +2824,16 @@ void func_80031798(void* ot, void* prim) {
     *(u32*)(uintptr_t)primAddr = old | 0x04000000;
 #endif
 }
+#endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317BC);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800317E0);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031804);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031828);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003184C);
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80031870);
+#else
 GPU_LINK_FUNC(func_800317BC, 0x03000000)
 GPU_LINK_FUNC(func_800317E0, 0x03000000)
 GPU_LINK_FUNC(func_80031804, 0x03000000)
@@ -2689,3 +2841,4 @@ GPU_LINK_FUNC(func_80031804, 0x03000000)
 GPU_LINK_FUNC(func_80031828, 0x02000000)
 GPU_LINK_FUNC(func_8003184C, 0x02000000)
 GPU_LINK_FUNC(func_80031870, 0x02000000)
+#endif

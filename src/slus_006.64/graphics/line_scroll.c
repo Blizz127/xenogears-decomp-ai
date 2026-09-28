@@ -150,6 +150,9 @@ extern char D_800188EC[];
 extern char D_800188F0[];
 extern u32 D_80059F0C;
 
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/slus_006.64/nonmatchings/graphics/line_scroll", func_8002804C);
+#else
 void func_8002804C(s32 retryCount, u8 r, u8 g, u8 b) {
     RECT rect;
     DRAWENV draw;
@@ -200,3 +203,4 @@ void func_8002804C(s32 retryCount, u8 r, u8 g, u8 b) {
         DrawSync(0);
     }
 }
+#endif
