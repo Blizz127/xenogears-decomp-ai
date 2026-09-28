@@ -22,8 +22,10 @@ incs=''.join(l+'\n' for l in s.split('\n') if l.startswith('#include'))
 open(INC_C,'w').write(incs+'#include "system/memory.h"\n')
 subprocess.run(['tools/gcc-2.7.2-psx/cpp','-Iinclude','-D_LANGUAGE_C','-DSKIP_ASM','-P','-undef','-lang-c','-nostdinc',INC_C,INC_I],capture_output=True)
 hdrdecl=set(re.findall(r'\b(\w+)\s*\(',open(INC_I).read()))|set(re.findall(r'\b(\w+)\s*(?:\[[^\]]*\])*\s*;',open(INC_I).read()))
-types={}
-for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',s,re.M): types[m[2]]=m[1]
+types={}; arrays=set()
+for m in re.finditer(r'^extern ([^;(]*?)\s*\b(\w+)(\[\])?;',s,re.M):
+    types[m[2]]=m[1]
+    if m[3]: arrays.add(m[2])
 seen=set(types)|set(re.findall(r'^\w[\w\s\*]*?(\w+)\([^;{]*\);\s*$',s,re.M))
 externs=[]
 def clean(c):
@@ -51,7 +53,7 @@ for n in names:
 protos=[defs[n]+';' for n in names if n not in hdrdecl]
 seen|=set(names)
 for n in names:
-    c=bodies[n]; conflicts={}
+    c=bodies[n]; conflicts={}; aliases={}
     lines=c.split('\n'); body=[]; inbody=False
     for l in lines:
         if not inbody:
@@ -60,8 +62,17 @@ for n in names:
             if m:
                 sym=m[3]; mt=m[2].strip()
                 if sym in hdrdecl and sym not in types: continue
-                if sym not in seen: externs.append(m[1]); seen.add(sym); types[sym]=mt
-                elif types.get(sym) is not None and types[sym].replace(' ','')!=mt.replace(' ','') and not m[4]: conflicts[sym]=mt
+                if sym not in seen:
+                    externs.append(m[1]); seen.add(sym); types[sym]=mt
+                    if m[4]: arrays.add(sym)
+                    continue
+                elif m[4] or sym in arrays:
+                    if (sym in arrays)!=bool(m[4]) or types.get(sym,'').replace(' ','')!=mt.replace(' ',''):
+                        alias=f'{sym}__{"a" if m[4] else "s"}'
+                        if alias not in seen:
+                            externs.append(f'extern {mt} {alias}{"[]" if m[4] else ""} asm("{sym}");'); seen.add(alias)
+                        aliases[sym]=alias
+                elif types.get(sym) is not None and types[sym].replace(' ','')!=mt.replace(' ',''): conflicts[sym]=mt
                 continue
             if m2:
                 if m2[2] not in seen and m2[2] not in hdrdecl: externs.append(m2[1]+';'); seen.add(m2[2])
@@ -71,6 +82,7 @@ for n in names:
         body.append(l)
     fn='\n'.join(body).strip()+'\n'
     for sym,t in conflicts.items(): fn=re.sub(r'\b'+sym+r'\b',f'(*({t}*)&{sym})',fn)
+    for sym,al in aliases.items(): fn=re.sub(r'\b'+sym+r'\b',al,fn)
     old=f'INCLUDE_ASM("asm/{OV}/nonmatchings/{SEG}", {n});\n'
     assert s.count(old)==1,n
     s=s.replace(old,'\n'+fn+'\n')

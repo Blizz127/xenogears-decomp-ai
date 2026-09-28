@@ -14,6 +14,8 @@ Draft fix-ups (each learned from a real mismatch):
     declared void.  m2c's int guess keeps v0 live across the call and changes
     register allocation (found by decomp-permuter on bcf1 801E6144).
   * FORCE_VOID="fn ..." / FORCE_TYPES="sym=type ..." override guesses.
+  * ARRAYIFY="sym ..."|all declares scalar externs as arrays and accesses
+    element 0 (retail keeps such an address in a register).
   * KR_PROTOS=1 turns m2c's guessed extern prototypes into unprototyped ones.
 A standalone MATCH is not proof: insert with m2c_insert.py and rebuild."""
 import json
@@ -74,6 +76,15 @@ for n in names:
     for kv in os.environ.get('FORCE_TYPES', '').split():
         sym, t = kv.split('=')
         c = re.sub(r'^extern [^;]*\b' + sym + ';', f'extern {t} {sym};', c, flags=re.M)
+    arr = os.environ.get('ARRAYIFY', '').split()
+    if arr:
+        head, sep, body = c.partition('/* extern */')
+        for m in re.finditer(r'^extern ([\w\s\*]+?)\s*\b(\w+);', c, flags=re.M):
+            sym = m[2]
+            if 'all' in arr or sym in arr:
+                c = c.replace(m[0], f'extern {m[1]} {sym}[];')
+                decl_end = c.index(f'{sym}[];') + len(sym) + 3
+                c = c[:decl_end] + re.sub(r'&' + sym + r'\b', sym, re.sub(r'\b' + sym + r'\b(?!\[)', sym + '[0]', c[decl_end:]))
     base = os.path.join(D, n)
     open(base + '.c', 'w').write('#include "common.h"\n#include "m2c_macros.h"\n' + c)
     if subprocess.run(['tools/gcc-2.7.2-psx/cpp', '-Iinclude', '-I' + M2C_DIR, '-D_LANGUAGE_C', '-DSKIP_ASM',
