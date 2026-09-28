@@ -97,6 +97,12 @@ segments:
       - [0x103A4, c, system/animation_scripts]
       - [0x1320C, c, system/graphics]
       - [0x1332C, c, system/temp1] # Graphics stuff
+      - [0x137C4, c, system/temp1a]
+      - [0x15764, c, system/temp1b]
+      - [0x157F4, c, system/temp1c]
+      - [0x15844, c, system/temp1d]
+      - [0x158E0, c, system/temp1e]
+      - [0x16404, c, system/temp1f]
       - [0x18564, c, graphics/line_scroll]
       - [0x18A30, c, system/libarchive]
       - [0x19E90, c, system/archive]

@@ -66,7 +66,11 @@ build_variables = {
     maspsx_flags = "--aspsx-version=2.67 --use-comm-section --run-assembler"
 }
 paths = [
-    "{binary}/system/animation_scripts."
+    "{binary}/system/animation_scripts.",
+    "{binary}/system/temp1a.",
+    "{binary}/system/temp1c.",
+    "{binary}/system/temp1d.",
+    "{binary}/system/temp1e.",
 ]
 
 [[build_preset]]
@@ -151,6 +155,8 @@ build_variables = {
 }
 paths = [
     "{binary}/system/temp1.",
+    "{binary}/system/temp1b.",
+    "{binary}/system/temp1f.",
     "{binary}/system/work_list.",
 ]
 

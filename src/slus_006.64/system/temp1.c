@@ -32,6 +32,17 @@ static int XenoWalkAnimDumpEnabled(void)
 
 // Sprite / Animation functions
 
+/* Retail temp1 is two TUs up to 0x80024F64: temp1 proper (..0x80022FC4,
+ * gcc-2.7.2-psx) and temp1a (0x80022FC4..0x80024F64, gcc-2.7.2-cdk +
+ * aspsx 2.67), which src/slus_006.64/system/temp1a.c builds by including
+ * this file with TEMP1_PART_A2 defined. The port builds both halves here. */
+#ifdef TEMP1_PART_A2
+#define TEMP1_ASM "asm/slus_006.64/nonmatchings/system/temp1a"
+#else
+#define TEMP1_ASM "asm/slus_006.64/nonmatchings/system/temp1"
+#endif
+
+#if defined(XENO_PC_PORT) || !defined(TEMP1_PART_A2)
 extern void func_800BA8F4(void* pSpriteData);
 
 #ifndef XENO_PC_PORT
@@ -229,6 +240,9 @@ void func_80022EB8(void* pWork)
     WorkListRemoveTask(pWorkData + 0x1C);
     HeapFree(pWork);
 }
+#endif /* temp1 proper */
+
+#if defined(XENO_PC_PORT) || defined(TEMP1_PART_A2)
 
 void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
     u32 pSub = *(u32*)(pSprite + 0x20);
@@ -245,7 +259,7 @@ void func_80022FC4(u8* pSprite, s32 count, s32 tag) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002303C);
+INCLUDE_ASM(TEMP1_ASM, func_8002303C);
 #else
 void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
     u8* pData = (u8*)pSpriteData;
@@ -264,7 +278,7 @@ void func_8002303C(void* pSpriteData, s32 size, s32 flags) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800230A8);
+INCLUDE_ASM(TEMP1_ASM, func_800230A8);
 #else
 void func_800230A8(void* pSpriteData)
 {
@@ -291,7 +305,7 @@ void func_800230A8(void* pSpriteData)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023124);
+INCLUDE_ASM(TEMP1_ASM, func_80023124);
 #else
 s32 func_80023124(s32 pointA, s32 pointB) {
     s16 ax = (s16)(pointA & 0xFFFF);
@@ -303,7 +317,7 @@ s32 func_80023124(s32 pointA, s32 pointB) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023170);
+INCLUDE_ASM(TEMP1_ASM, func_80023170);
 #else
 void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
     u8* pData = (u8*)pSpriteData;
@@ -339,9 +353,6 @@ s32 func_800231F8(u8* a0) {
 extern s32 D_80059198;
 extern void func_800248D4(void* pSpriteData);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", AnimScriptTick);
-#else
 void AnimScriptTick(void* pSpriteData) {
     u8* pData = pSpriteData;
     s32 i;
@@ -359,10 +370,9 @@ void AnimScriptTick(void* pSpriteData) {
         }
     }
 }
-#endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023290);
+INCLUDE_ASM(TEMP1_ASM, func_80023290);
 #else
 void func_80023290(u8* pSprite, s32 animType) {
     u32 flags3C;
@@ -390,7 +400,7 @@ void func_80023290(u8* pSprite, s32 animType) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023340);
+INCLUDE_ASM(TEMP1_ASM, func_80023340);
 #else
 void func_80023340(void* pSpriteData, s32 count) {
     u8* pData = pSpriteData;
@@ -424,9 +434,6 @@ extern void WorkListTaskSetOnFreeCallback(void* pTask, void (*pCallback)(void*))
 #ifdef XENO_PC_PORT
 __attribute__((weak))
 #endif
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800233A4);
-#else
 void* func_800233A4(void* pOwner, s32 dataSize) {
     u8* pWrapper;
     u8* pInner;
@@ -442,7 +449,6 @@ void* func_800233A4(void* pOwner, s32 dataSize) {
     WorkListTaskSetOnFreeCallback(pWrapper, func_80022EB8);
     return pWrapper;
 }
-#endif
 /*
 Matches on  GCC 2.7.2-970404, ASPSX 2.67
 
@@ -486,7 +492,7 @@ s32 func_80023440(void* pData)
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023468);
+INCLUDE_ASM(TEMP1_ASM, func_80023468);
 #else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023468.s
  * (0x80023468-0x800234AC, 17 instructions). Small dispatch on `type`: retail
@@ -528,7 +534,7 @@ s32 func_80023468(s32 type, s32 arg1) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800234AC);
+INCLUDE_ASM(TEMP1_ASM, func_800234AC);
 #else
 void func_800234AC(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -554,7 +560,7 @@ extern u8 D_800591AD;
 extern void SpriteComputeTransformMatrix(void* pSpriteData);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023538);
+INCLUDE_ASM(TEMP1_ASM, func_80023538);
 #else
 void func_80023538(void* pSpriteData, void* pAnimation) {
     u8* pData = pSpriteData;
@@ -660,7 +666,7 @@ void func_80023538(void* pSpriteData, void* pAnimation) {
 extern s32 D_80059198;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023804);
+INCLUDE_ASM(TEMP1_ASM, func_80023804);
 #else
 void func_80023804(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -715,7 +721,7 @@ void func_80023950(void* arg0) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023958);
+INCLUDE_ASM(TEMP1_ASM, func_80023958);
 #else
 void func_80023958(void* pSpriteData) {
     u8* pData = (u8*)pSpriteData;
@@ -731,7 +737,7 @@ void func_80023958(void* pSpriteData) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800239A0);
+INCLUDE_ASM(TEMP1_ASM, func_800239A0);
 #else
 void func_800239A0(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -747,7 +753,7 @@ void func_800239A0(void* pSpriteData) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800239F4);
+INCLUDE_ASM(TEMP1_ASM, func_800239F4);
 #else
 void func_800239F4(u8* pSprite) {
     u32 pSub;
@@ -768,7 +774,7 @@ extern void func_80023950(void* arg0);
 extern void func_80023958(void* pSpriteData);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023A48);
+INCLUDE_ASM(TEMP1_ASM, func_80023A48);
 #else
 void* func_80023A48(s32 type, s32 mode, u8* pAnimData, s32 extraSize, u8* pCallback) {
     u8* pResult;
@@ -819,7 +825,7 @@ extern u8 D_800591AC;
 extern void func_80024730(u8* pOwner);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023B84);
+INCLUDE_ASM(TEMP1_ASM, func_80023B84);
 #else
 void* func_80023B84(void* pSpriteData, void* pScript, void* pAnimPackage) {
     u8* pSprite = pSpriteData;
@@ -960,7 +966,7 @@ extern u32 D_800C3E1C;
 __attribute__((weak))
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80023FD8);
+INCLUDE_ASM(TEMP1_ASM, func_80023FD8);
 #else
 u8* func_80023FD8(s32 index, u8* pAnimData, s16* pPosition, s32 extraSize) {
     u8* pScriptTable;
@@ -1082,7 +1088,7 @@ extern void func_800222BC(void* pSpriteData, void* pAnimPackageFile);
 extern void func_800245D8(void* pSpriteData, s16 animIndex);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_8002435C);
+INCLUDE_ASM(TEMP1_ASM, func_8002435C);
 #else
 void* func_8002435C(void* pSpriteData, void* pAnimPackage, s16 texX, s16 texY, s16 clutX, s16 clutY, s16 arg6) {
     u8* pData = pSpriteData;
@@ -1157,7 +1163,7 @@ extern void func_80023538(void* pSpriteData, void* pAnimation);
 extern void func_800223B0(void* pSpriteData, s16 arg1);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800245D8);
+INCLUDE_ASM(TEMP1_ASM, func_800245D8);
 #else
 void func_800245D8(void* pSpriteData, s16 animIndex) {
     u8* pData = pSpriteData;
@@ -1250,7 +1256,7 @@ extern u32 D_8006F99C[];
 extern u32 D_8006F9AC[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80024730);
+INCLUDE_ASM(TEMP1_ASM, func_80024730);
 #else
 void func_80024730(u8* pOwner) {
     u8* pState = pOwner + 0x38;
@@ -1311,7 +1317,7 @@ extern void func_80022D44(void* pSpriteData);
 extern void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_800248D4);
+INCLUDE_ASM(TEMP1_ASM, func_800248D4);
 #else
 void func_800248D4(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -1868,8 +1874,12 @@ void func_80024F20(void) {
     WorkListsReset();
     func_8001D298();
 }
+#endif /* temp1a */
 
 
+/* Everything below is retail TUs temp1b..temp1f (see those files); the
+ * port keeps building these bodies from here. */
+#ifdef XENO_PC_PORT
 
 extern void* g_GfxWorkBuffer2;
 extern s32 g_GfxWorkBufferSize;
@@ -3532,3 +3542,5 @@ void func_80027D40(void* ptr) {
         HeapFree(ptr);
     }
 }
+
+#endif /* XENO_PC_PORT */
