@@ -5137,45 +5137,43 @@ void func_801D22C4(void) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D22F4);
-#else
 extern u8 D_801E9A58[];
 extern u8 D_801E9A68[];
 
 /* Configure the shared pointer-cursor bank.  Items uses mode 2, which rebuilds
- * all four cursor sprites without arming their live-position flags. */
+ * all four cursor sprites without arming their live-position flags; mode 0
+ * also arms them; mode 1 only hides the bank.  Shared retail/port body (gcc
+ * 2.6.3 byte-exact; the permuter found the y-table pointer local). */
 void func_801D22F4(s32 mode) {
     s32 i;
+    s32* pY;
     s32 offset;
-    u8 m = (u8)mode;
 
     g_Menu->pManager->shouldRenderPointerCursors = 0;
-    if (m == 1) {
-        return;
-    }
-    if (m == 0) {
+    switch ((u8)mode) {
+    case 1:
+        break;
+    case 0:
         g_Menu->pManager->shouldRenderPointerCursors = 1;
         g_Menu->pCursors->unk144[0] = 1;
         g_Menu->pCursors->unk144[1] = 1;
-    }
-    if (m == 0 || m == 2) {
-        offset = 0;
-        for (i = 0; i < MENU_MAX_NUM_CURSORS; i++, offset += 0x50) {
-            func_8002675C(g_Menu->unk2DC, 0x108,
-                          (u8*)g_Menu->pCursors + offset,
-                          g_Menu->renderContext,
-                          *(s32*)(D_801E9A58 + i * 4),
-                          *(s32*)(D_801E9A68 + i * 4), 0x800);
-            g_Menu->pCursors->renderContexts[i] = (u8)g_Menu->renderContext;
+        /* fall through */
+    case 2:
+        for (i = 0, offset = 0; i < MENU_MAX_NUM_CURSORS; i++, offset += 0x50) {
+            pY = (s32*)(D_801E9A68 + i * 4);
+            func_8002675C(g_Menu->unk2DC, 0x108, (u8*)g_Menu->pCursors + offset,
+                          g_Menu->renderContext, *(s32*)(D_801E9A58 + i * 4),
+                          *pY, 0x800);
+            g_Menu->pCursors->renderContexts[i] = g_Menu->renderContext;
         }
-    } else if (m == 3) {
+        break;
+    case 3:
         func_8002675C(g_Menu->unk2DC, 0x108, g_Menu->pCursors,
                       g_Menu->renderContext, 0, 0, 0x800);
-        g_Menu->pCursors->renderContexts[0] = (u8)g_Menu->renderContext;
+        g_Menu->pCursors->renderContexts[0] = g_Menu->renderContext;
+        break;
     }
 }
-#endif
 
 void func_801D2484(void) {
 #ifdef XENO_PC_PORT
