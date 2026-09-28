@@ -580,4 +580,16 @@ extern u8 g_MenuDebugEnabled;
 #define MENU_SET_CARD_EVENT(slot, ev) (MENU_CARD_EVENT(slot) = (ev))
 #endif
 
+/* Retail MenuUnk2 (g_Menu->unk32C) byte offset -> this build's offset.  The
+ * embedded TIM_IMAGE holds pointers, so on the 64-bit host every field from
+ * +0xB94 on sits later by offsetof(unkB94) - 0xB94; on the PSX it is the
+ * identity, so retail code generation is unchanged.  Use it for every raw
+ * card-buffer offset: ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)]. */
+#ifdef XENO_PC_PORT
+#define MENU_CARD_OFF(off) \
+    ((off) >= 0xB94 ? (off) + (s32)(offsetof(MenuUnk2, unkB94) - 0xB94) : (off))
+#else
+#define MENU_CARD_OFF(off) (off)
+#endif
+
 #endif

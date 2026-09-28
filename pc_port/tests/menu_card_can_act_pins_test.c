@@ -12,16 +12,16 @@
 SystemMenu *g_Menu;
 static SystemMenu menu;
 static u8 manager[0x600];
-static u8 card[0x5034];
+static u8 card[sizeof(MenuUnk2)];
 u32 D_801E981C[4] = {0, 0x12, 0, 0};
 #include "act.inc"
 static s32 run(s32 mode, u8 used, u8 flag) {
     memset(card, 0, sizeof(card));
-    *(s32 *)(card + 0x4F7C) = 1;               /* selector -> offset 0x12 */
-    *(u32 *)(card + 0x4F88) = 0x10000;
-    card[0x4FE4 + 1] = 1;                      /* group 0x12/16 = 1 */
-    card[0x4FAE + 0x12] = used ? 3 : 0xFF;
-    card[0x4F8E + 0x12] = flag;
+    *(s32 *)(card + MENU_CARD_OFF(0x4F7C)) = 1;               /* selector -> offset 0x12 */
+    *(u32 *)(card + MENU_CARD_OFF(0x4F88)) = 0x10000;
+    card[MENU_CARD_OFF(0x4FE4) + 1] = 1;                      /* group 0x12/16 = 1 */
+    card[MENU_CARD_OFF(0x4FAE) + 0x12] = used ? 3 : 0xFF;
+    card[MENU_CARD_OFF(0x4F8E) + 0x12] = flag;
     menu.unk4CC[0xC] = 0;
     memset(manager, 0, sizeof(manager));
     return func_801C9BCC(mode);

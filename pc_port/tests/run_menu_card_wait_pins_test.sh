@@ -25,3 +25,4 @@ mutant() {
 }
 mutant change-returns-1 's/                changed = 1;/                changed = 1; result = 1;/'
 mutant frame-cap 's/} while (g_Menu->input == 8);/} while (g_Menu->input == 8 \&\& frames < 0x80);/'
+mutant raw-offsets 's/MENU_CARD_OFF(\(0x[0-9A-F]*\))/\1/g'

@@ -23,4 +23,5 @@ mutant() {
     echo "REJECTED $name"
 }
 mutant manager-dest 's/g_Menu->unk4CC\[0xC\] = 2;/((u8*)g_Menu->pManager)[0x4D8 % 0x600] = 2;/'
-mutant mode1-no-used-check '0,/if ((pData + offset)\[0x4FAE\] == 0xFF) goto fail;/s//;/'
+mutant mode1-no-used-check '0,/if ((pData + offset)\[MENU_CARD_OFF(0x4FAE)\] == 0xFF) goto fail;/s//;/'
+mutant raw-offsets 's/MENU_CARD_OFF(\(0x[0-9A-F]*\))/\1/g'

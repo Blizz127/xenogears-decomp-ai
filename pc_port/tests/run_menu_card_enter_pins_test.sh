@@ -26,3 +26,9 @@ PY
 "${CC:-gcc}" "${BASE[@]}" -O0 -w pc_port/tests/menu_card_enter_pins_test.c -o "$OUT/nested"
 if timeout 30s "$OUT/nested" >/dev/null 2>&1; then echo "FAIL mutant nested-result accepted"; exit 1; fi
 echo "REJECTED nested-result"
+cp "$OUT/good.inc" "$OUT/enter.inc"
+sed -i 's/MENU_CARD_OFF(\(0x[0-9A-F]*\))/\1/g' "$OUT/enter.inc"
+! cmp -s "$OUT/good.inc" "$OUT/enter.inc"
+"${CC:-gcc}" "${BASE[@]}" -O0 -w pc_port/tests/menu_card_enter_pins_test.c -o "$OUT/rawoff"
+if timeout 30s "$OUT/rawoff" >/dev/null 2>&1; then echo "FAIL mutant raw-offsets accepted"; exit 1; fi
+echo "REJECTED raw-offsets"

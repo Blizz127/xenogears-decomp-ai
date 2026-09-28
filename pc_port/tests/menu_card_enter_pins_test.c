@@ -10,7 +10,7 @@
 SystemMenu *g_Menu;
 static SystemMenu menu;
 static u8 manager[0x100];
-static u8 card[0x5034];
+static u8 card[sizeof(MenuUnk2)];
 void* D_801EA718; void* D_801EA71C; void* D_801EA720;
 static int ok93, closed, frames, clear_prompt;
 void func_801D2F4C(u8 id) { assert(id == 0x20); }
@@ -36,7 +36,7 @@ int main(void) {
     menu.pManager = (MenuManager*)manager;
     menu.unk32C = (MenuUnk2*)card;
     ok93 = 1; assert(func_801D9C84() == 1 && closed == 0);
-    assert(card[0x4FE6] == 2 && card[0x4FE8] == 0xFF && card[0x4FE9] == 0xFF && menu.unk326 == 0x3C);
+    assert(card[MENU_CARD_OFF(0x4FE6)] == 2 && card[MENU_CARD_OFF(0x4FE8)] == 0xFF && card[MENU_CARD_OFF(0x4FE9)] == 0xFF && menu.unk326 == 0x3C);
     ok93 = 0; clear_prompt = 0; assert(func_801D9C84() == 0 && closed == 1 && manager[0x33] == 0);
     ok93 = 0; clear_prompt = 1; assert(func_801D9C84() == 0 && closed == 1);
     printf("PASS menu card enter pins (D9C84 failure returns 0)\n");

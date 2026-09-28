@@ -11,7 +11,7 @@
 SystemMenu *g_Menu;
 static SystemMenu menu;
 static u8 manager[0x600];
-static u8 card[0x5034];
+static u8 card[sizeof(MenuUnk2)];
 u32 D_801E981C[32];
 #include "first.inc"
 int main(void) {
@@ -20,18 +20,18 @@ int main(void) {
     menu.unk32C = (MenuUnk2*)card;
     menu.pManager = (MenuManager*)manager;
     for (k = 0; k < 32; k++) D_801E981C[k] = k;
-    card[0x4FE4] = 1; card[0x4FE5] = 1;          /* both cards present */
-    *(u32*)(card + 0x4F88) = 0x10000;
-    memset(card + 0x4FAE, 0xFF, 0x20);
-    card[0x4FAE + 7] = 3;                        /* slot 7 used */
+    card[MENU_CARD_OFF(0x4FE4)] = 1; card[MENU_CARD_OFF(0x4FE5)] = 1;          /* both cards present */
+    *(u32*)(card + MENU_CARD_OFF(0x4F88)) = 0x10000;
+    memset(card + MENU_CARD_OFF(0x4FAE), 0xFF, 0x20);
+    card[MENU_CARD_OFF(0x4FAE) + 7] = 3;                        /* slot 7 used */
     assert(func_801C9D34(0) == 7 && menu.unk4CC[0xC] == 2);
     assert(manager[0x4D8] == 0);
-    card[0x4F8E + 7] = 0; menu.unk4CC[0xC] = 0;
+    card[MENU_CARD_OFF(0x4F8E) + 7] = 0; menu.unk4CC[0xC] = 0;
     assert(func_801C9D34(1) == 0xFF && menu.unk4CC[0xC] == 2);
-    card[0x4F8E + 7] = 1;
+    card[MENU_CARD_OFF(0x4F8E) + 7] = 1;
     assert(func_801C9D34(1) == 7);
-    card[0x4FE4] = 0;                            /* no card 0: start at 15 */
-    card[0x4FE4 + 1] = 1;
+    card[MENU_CARD_OFF(0x4FE4)] = 0;                            /* no card 0: start at 15 */
+    card[MENU_CARD_OFF(0x4FE4) + 1] = 1;
     assert(func_801C9D34(2) == 16);  /* 15 is in group 0 (absent) */
     printf("PASS menu card first pins (C9D34 search, g_Menu+0x4D8)\n");
     return 0;
