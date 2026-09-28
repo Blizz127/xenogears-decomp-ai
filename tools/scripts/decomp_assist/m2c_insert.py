@@ -17,8 +17,13 @@ their port view unchanged.  Rebuild and compare afterwards.
 retail arm (one signature, `#ifdef XENO_PC_PORT <port body> #else <draft
 body> #endif`) instead of adding a second definition.  Twin definitions break
 port tests that extract a function's source with awk.  A site whose port
-signature differs from the draft's is skipped (left INCLUDE_ASM) with a note;
-other sites fall back to the plain replacement."""
+signature differs from the draft's is skipped (left INCLUDE_ASM) with a note
+(a difference in parameter names only is fine: the draft is renamed to the
+port's names); other sites fall back to the plain replacement.
+
+Include-trick TUs (SEG.c only #includes the file holding the source and
+keeps an `#if 0` INCLUDE_ASM list for splat) are handled: the sites are
+edited in the included file and inserted names leave the list."""
 import sys,os,re,subprocess
 sys.path.insert(0, os.path.dirname(__file__))
 from assist_common import CACHE, REPO
@@ -30,7 +35,20 @@ D=os.path.join(CACHE,'m2c',OV,SEG)
 os.makedirs(CACHE,exist_ok=True)
 INC_C=os.path.join(CACHE,'_inc.c'); INC_I=os.path.join(CACHE,'_inc.i')
 p=f'src/{OV}/{SEG}.c'; s=open(p).read()
-_pending=[n for n in names if f'/nonmatchings/{SEG}", {n});' in s]
+# Include-trick TUs (slus temp1a/temp3b/temp1e2, menu misc2, ...): SEG.c only
+# `#include`s the file that holds the source and lists its INCLUDE_ASM sites
+# in an `#if 0` block for splat.  Edit the sites in the included file, and
+# drop inserted names from the wrapper's list.
+wrapper=None
+_inc=re.search(r'^#include "([\w./]+\.c)"',s,re.M)
+if _inc and re.search(r'^#if 0\b',s,re.M) and not re.search(r'^\w[\w\s\*]*\([^;]*\)\s*\{',s,re.M):
+    wrapper=(p,s)
+    p=os.path.join(os.path.dirname(p),_inc[1]); s=open(p).read()
+    print(f'# include-trick TU: editing {p}, splat list in {wrapper[0]}')
+    _pending=[n for n in names if re.search(r'^INCLUDE_ASM\(\w+, '+n+r'\);',wrapper[1],re.M)
+              and re.search(r'INCLUDE_ASM\([^,()]+, '+n+r'\);',s)]
+else:
+    _pending=[n for n in names if f'/nonmatchings/{SEG}", {n});' in s]
 if len(_pending)!=len(names):
     print('already C (skipped):',' '.join(n for n in names if n not in _pending))
 names=_pending
@@ -94,7 +112,23 @@ def fold_inner(s,old,fn,n):
     if not k or not rk or port[-1]!='}' or rl[-1]!='}': return None
     norm=lambda x: re.sub(r'\s','',x)
     if norm(port[k[0]])!=norm(rl[rk[0]]):
-        print(f'{n}: port signature differs from the draft; left INCLUDE_ASM'); return 'skip'
+        # same types, different parameter names: rename the draft's
+        def params(l):
+            m=re.match(r'^(.*?\b'+n+r')\s*\((.*)\)\s*\{\s*$',l)
+            if not m: return None
+            ps=[x.strip() for x in m[2].split(',')] if m[2].strip() not in ('','void') else []
+            out=[]
+            for x in ps:
+                mm=re.match(r'^(.*?)(\w+)$',x)
+                if not mm: return None
+                out.append((norm(mm[1]),mm[2]))
+            return norm(m[1]),out
+        pp,dp=params(port[k[0]]),params(rl[rk[0]])
+        if not pp or not dp or pp[0]!=dp[0] or [t for t,_ in pp[1]]!=[t for t,_ in dp[1]]:
+            print(f'{n}: port signature differs from the draft; left INCLUDE_ASM'); return 'skip'
+        ren={d:q for (_,d),(_,q) in zip(dp[1],pp[1]) if d!=q}
+        rl=[re.sub(r'\b('+'|'.join(map(re.escape,ren))+r')\b',lambda m:ren[m[1]],l) for l in rl] if ren else rl
+        rl[rk[0]]=port[k[0]]
     body=port[:k[0]]+rl[:rk[0]]+[port[k[0]],'#ifdef XENO_PC_PORT']+port[k[0]+1:-1]+['#else']+rl[rk[0]+1:-1]+['#endif','}']
     return s[:a]+'\n'.join(body)+'\n'+rest
 defs={}; bodies={}
@@ -102,9 +136,11 @@ for n in names:
     c=clean(open(f'{D}/{n}.c').read().split('#include "m2c_macros.h"\n',1)[1])
     m=re.search(r'^(\w[\w\s\*]*?\b'+n+r'\([^)]*\)) \{',c,re.M)
     defs[n]=m[1]; bodies[n]=c
-protos=[defs[n]+';' for n in names if n not in hdrdecl]
 seen|=set(names)
+inserted=[]
 for n in names:
+    # a site left INCLUDE_ASM must not leave its externs or prototype behind
+    snap=(list(externs),set(seen),dict(types),set(arrays),set(reemitted))
     c=bodies[n]; conflicts={}; aliases={}
     lines=c.split('\n'); body=[]; inbody=False
     for l in lines:
@@ -154,16 +190,25 @@ for n in names:
     assert old,n
     old=old[0]
     folded=fold_inner(s,old,fn,n) if INNER else None
-    if folded=='skip': continue
+    if folded=='skip':
+        externs,seen,types,arrays,reemitted=snap
+        continue
+    inserted.append(n)
     s=folded if folded is not None else s.replace(old,'\n#ifndef XENO_PC_PORT\n'+fn+'#endif\n\n')
 # externs/prototypes: a retail-only block after the file's first run of
 # #include lines, so every BATTLE_SUB/FIELD_SUB run of the TU sees them.
 lines=s.split('\n'); k=next((i for i,l in enumerate(lines) if l.startswith('#include')),0)
 while k<len(lines) and (lines[k].startswith('#include') or not lines[k].strip()): k+=1
+protos=[defs[n]+';' for n in inserted if n not in hdrdecl]
 add=externs+protos
 if add:
     lines[k:k]=['#ifndef XENO_PC_PORT']+add+['#endif','']
     s='\n'.join(lines)
 # (no header is added: m2c's own externs cover the callees, and a header
 # can clash with a TU's own declarations)
-open(p,'w').write(s); print(len(names),'inserted;',len(externs),'externs;',len(protos),'protos')
+if wrapper and inserted:
+    wp,ws=wrapper
+    for n in inserted:
+        ws=re.sub(r'^INCLUDE_ASM\(\w+, '+n+r'\);\n','',ws,flags=re.M)
+    open(wp,'w').write(ws)
+open(p,'w').write(s); print(len(inserted),'inserted;',len(externs),'externs;',len(protos),'protos')

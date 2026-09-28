@@ -20,6 +20,7 @@ is a way to get there faster, and none of them replaces rom-check.
 | `m2c_drive.sh OV VRAM SEG...` | Runs the whole loop: m2c_try, insert every standalone match, `make build`. It skips functions that fail to compile, or that `elf_cmp.py` shows mismatching inside their TU, and repeats until `build/out/OV.bin` equals `disc/OV.bin`. |
 | `elf_cmp.py OV VRAM` | Masked per-function compare of the linked overlay against retail. |
 | `try_func.py OV NAME [--keep]` | Flips one `#ifndef XENO_PC_PORT INCLUDE_ASM / #else <C>` function to C, rebuilds only its object, and shows an aligned diff. It reverts on a mismatch. |
+| `alt_cc.py OV` | First pass for stubborn regalloc/`mfhi` near-misses: recompiles the cached drafts with each tools/ cc1 (2.6.3, 2.6.0, 2.7.2-cdk) and lists what matches under which. A hit means the TU may belong under that compiler's gears.toml preset, if the whole TU stays byte-exact (bcf1 is 2.6.3 code; five battle TUs are too). Drafts for such a TU are compiled with `XENO_CC1=tools/<cc>/cc1`. |
 | `perm_setup.py OV SEG NAME [BASE.c]` | Prepares a decomp-permuter directory (base.c, target.o, compile.sh). Run it as `nice -n 15 permuter.py -j1 --best-only --stop-on-zero DIR`, one at a time and never alongside a rom-check. |
 
 A standalone match is not proof. The same draft can compile differently inside
