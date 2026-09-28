@@ -9400,15 +9400,13 @@ extern u8 D_801EA558[];
 extern u8 D_801E9EA0[];
 extern void func_801E8070(s32, void*, void*, void*, void*, s32, s32, s32);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE474);
-#else
+/* Shared retail/port body (gcc 2.6.3 byte-exact). */
 void func_801DE474(u8 arg0, u8 arg1) {
     s32 i;
     s32 start, end;
     s32 yOff;
     for (i = 0; i < 6; i++) {
-        ((u8*)g_Menu->pManager)[0x40 + i] = 0;
+        ((u8*)g_Menu->pManager + i)[0x40] = 0;
     }
     if (arg0) {
         start = 2;
@@ -9422,19 +9420,16 @@ void func_801DE474(u8 arg0, u8 arg1) {
     /* Retail 801DE4FC..: E8070(count=6, strings@menu+0x14E0, idTable,
      * offTable, flags@manager+0x40, selected=i, arg6=i, mode=3). */
     for (i = start; i < end; i++) {
-        u8* pTable = D_801EA558 + arg1 * 6;
-        func_801E8070(6, g_Menu->unk14E0, pTable, D_801E9EA0,
-                      (u8*)g_Menu->pManager + 0x40, i, i, 3);
+        func_801E8070(6, g_Menu->unk14E0, D_801EA558 + arg1 * 6, D_801E9EA0,
+                      (u8*)g_Menu->pManager + 0x40, (u8)i, (u8)i, 3);
     }
     /* Retail 801DE56C: beqz shouldRenderWindow[4] has delay-slot ori a0,4
-     * so BOTH arms fall into D397C(4,...).  The nonzero arm frees first.
-     * (An earlier port used window 6 from the E8070 loop's a0 residue.) */
+     * so BOTH arms fall into D397C(4,...).  The nonzero arm frees first. */
     if (g_Menu->pManager->shouldRenderWindow[4] != 0) {
         func_801D4EA0(4);
     }
     func_801D397C(4, 0x10, 0xC, 0x80, yOff, 0, 1, 4, 0);
 }
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DE5CC);
