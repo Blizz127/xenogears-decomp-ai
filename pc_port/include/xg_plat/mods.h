@@ -40,6 +40,7 @@ typedef enum {
     XG_PLAT_EVENT_BOOT = 0,      /* once, before the game's main loop */
     XG_PLAT_EVENT_FRAME_TICK,    /* every presented frame */
     XG_PLAT_EVENT_ASSET_LOADED,  /* arg0 = size; a game file was read */
+    XG_PLAT_EVENT_ROOM_ENTER,    /* arg0 = field map number (g_GameSceneMapNum & 0xFFFF) */
     XG_PLAT_EVENT_COUNT
 } XgPlatModEvent;
 

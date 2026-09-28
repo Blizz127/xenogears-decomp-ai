@@ -1281,6 +1281,10 @@ int main(int argc, char** argv) {
     xg_plat_config_apply_runtime();
     /* Mods: scan mods/ (manifests, plugins, asset replacements). */
     (void)xg_plat_mods_init();
+    {   /* game-side event sources (room_enter, ...) */
+        extern void PcPort_ModEventsInit(void);
+        PcPort_ModEventsInit();
+    }
 
     /* 4. PsyQ subsystem init normally done by the asm `start` before MainLoop. */
     ResetCallback();
