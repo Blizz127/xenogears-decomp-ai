@@ -126,6 +126,7 @@
     "func_800AA79C",
     "func_800885D0",
     "func_800AA760",
+    "func_800AA600",
     /* fo/bat2 */
     "func_8008887C",
 /* fo/bat1 */

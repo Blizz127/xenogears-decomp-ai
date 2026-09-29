@@ -125,8 +125,21 @@ s32 func_800AA514(s16 arg0, s16 arg1, s32 arg2) {
 }
 #endif
 
+#endif /* XENO_PC_PORT excludes the other main70 matching bodies above. */
+
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA564);
+#ifndef XENO_PC_PORT
 extern u32 D_800D3368[];
+#define BATTLE_600_SLOT(index) D_800D3368[index]
+#define BATTLE_600_U32(address) (*(u32*)(address))
+#define BATTLE_600_S16(address) (*(s16*)(address))
+#define BATTLE_600_MID register s32 mid asm("$2")
+#else
+#define BATTLE_600_SLOT(index) (*(u32*)PSX_ADDR(0x800D3368 + (index) * 4))
+#define BATTLE_600_U32(address) (*(u32*)PSX_ADDR(address))
+#define BATTLE_600_S16(address) (*(s16*)PSX_ADDR(address))
+#define BATTLE_600_MID s32 mid
+#endif
 
 /* func_800AA600: look up actor record p = D_800D3368[index]; if present,
  * combine two fixed-point (Q12) multiplies: mid = (p->0x1C * (*(p->4))->0x4E) >> 12,
@@ -139,20 +152,20 @@ extern u32 D_800D3368[];
  * for both multiplies; only the first needs an explicit pin, the final
  * result naturally lands in v0 as the function's return register. */
 s32 func_800AA600(s32 index) {
-    register s32 mid asm("$2");
+    BATTLE_600_MID;
     u32 p;
     s32 result;
 
-    p = D_800D3368[index];
+    p = BATTLE_600_SLOT(index);
     result = 0;
     if (p != 0) {
-        u32 q = *(u32 *)(p + 4);
-        s16 val1 = *(s16 *)(p + 0x1C);
-        s16 val2 = *(s16 *)(q + 0x4E);
+        u32 q = BATTLE_600_U32(p + 4);
+        s16 val1 = BATTLE_600_S16(p + 0x1C);
+        s16 val2 = BATTLE_600_S16(q + 0x4E);
         s16 val3;
         mid = val1 * val2;
         mid >>= 12;
-        val3 = *(s16 *)(p + 0x24);
+        val3 = BATTLE_600_S16(p + 0x24);
         result = val3 * mid;
         result >>= 12;
     }
@@ -160,7 +173,10 @@ s32 func_800AA600(s32 index) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA650);
-#endif
+#undef BATTLE_600_SLOT
+#undef BATTLE_600_U32
+#undef BATTLE_600_S16
+#undef BATTLE_600_MID
 extern void* HeapAlloc(u32 size, u32 flags);
 /* func_800AA6E0.s: allocate p[0x10C] 0x70-byte records into *(p + 0x110),
  * each with halfword +0 = -1 and word +8 = 0; nothing when the count is 0.

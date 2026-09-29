@@ -463,6 +463,18 @@ static void hand_cases(void)
 {
     uint32_t args[4];
 
+    /* AA600 follows a guest table slot -> record -> subrecord pointer chain.
+     * Give the retail interpreter and the shipped host body the same valid
+     * graph so this adapter is proven through the production runtime bridge. */
+    begin_case(0, 0);
+    *((uint32_t *)PSX_ADDR(0x800D3368u)) = REC;
+    *((uint32_t *)PSX_ADDR(REC + 4)) = SRC;
+    *((int16_t *)PSX_ADDR(REC + 0x1C)) = 0x300;
+    *((int16_t *)PSX_ADDR(SRC + 0x4E)) = 0x280;
+    *((int16_t *)PSX_ADDR(REC + 0x24)) = 0x500;
+    args[0] = 0; args[1] = args[2] = args[3] = 0;
+    compare_name("func_800AA600", args);
+
     begin_case(0, 0);
     *((uint32_t *)PSX_ADDR(WORD)) = 10;
     args[0] = WORD; args[1] = args[2] = args[3] = 0;
