@@ -1,5 +1,10 @@
 #include "common.h"
 
+extern u8 D_800D3420[];
+extern u8 D_800D3430[];
+extern u32 func_80079E7C(u16 value);
+extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
+
 #ifdef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
@@ -27,30 +32,12 @@ INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B424);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B4B8);
 #endif
-#ifdef XENO_PC_PORT
-/* Port body for the row-halfword conversion wrapper. */
-void func_8007B578(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
-    u8* row = D_800D3420 + ((u32)index << 6);
-    u8 source = p[3];
-    u8 mapped = (u8)func_80079E7C(*(u16*)(row + ((u32)source << 1)));
-    u16 result = (u16)func_8007A280(mapped, p[2], 0, 1);
-
-    *(u16*)(row + ((u32)p[1] << 1)) = result;
-}
-#else
-extern u8 D_800D3420[];
-extern u32 func_80079E7C(u16 value);
-extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
-
 void func_8007B578(u8** pp, u8 index) {
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
     u16 result = func_8007A280(func_80079E7C(row[(*pp)[3]]), (*pp)[2], 0, 1);
 
     row[(*pp)[1]] = result;
 }
-
-#endif
 #ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
 extern u32 func_80079E7C(u16 value);

@@ -97,7 +97,6 @@ func_8007A568	pc_port body wm_8007A568 (pc_port/src/world_map_callback_794d8.c)	
 func_8007A8AC	pc_port body wm_8007A8AC (pc_port/src/world_map_mode14_lifecycle.c)	wm_8007A8AC
 func_8007A9B4	pc_port body wm_8007A9B4 (pc_port/src/world_map_callback_7a9b4.c)	wm_8007A9B4
 func_8007AD34	pc_port body wm_8007AD34 (pc_port/src/world_map_callback_7ad34.c)	wm_8007AD34
-func_8007B578	port arm in src/battle/main21.c	func_8007B578
 func_8007B98C	port arm spanning the body in src/battle/main22.c	func_8007B98C
 func_8007B9C8	port arm spanning the body in src/battle/main22.c	func_8007B9C8
 func_8007BA04	port arm in src/battle/main22.c	func_8007BA04

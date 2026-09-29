@@ -122,7 +122,7 @@ only; only the interpreter itself appears, as shim.
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 85, slus 27, menu 24, field 12, movie 1, shop menu 1 | 150 |
+| `XENO_PC_PORT` arms in game TUs: battle 84, slus 27, menu 24, field 12, movie 1, shop menu 1 | 149 |
 | `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
@@ -140,6 +140,9 @@ Its retail output is exact (16/16 words); the existing remu differential passed
 registers and a host declaration seam. It compiles to the exact 27 words; the
 remu differential passed 238 seeds at O0, O2 and UBSan and rejected the add
 mutant.
+`func_8007B578` now also uses the shared matched C body. Its 36 MIPS words are
+exact; the existing remu differential passed 256 seeds and rejected the
+wrong-destination mutant.
 
 ## Known divergences (public list)
 

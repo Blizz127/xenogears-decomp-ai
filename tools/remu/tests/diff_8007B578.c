@@ -84,7 +84,7 @@ int main(void)
     int i;
 
     if (m == NULL) return 1;
-    entry = remu_load_s(m, "asm/battle/nonmatchings/main21/func_8007B578.s");
+    entry = remu_load_s(m, "asm/battle/matchings/main21/func_8007B578.s");
     if (entry != 0x8007B578u) {
         fprintf(stderr, "B578 FAIL load entry=%08x\n", entry);
         return 1;
