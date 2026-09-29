@@ -31,7 +31,7 @@ extern u8 D_800CCE4A[];
 #endif
 
 #ifdef XENO_PC_PORT
-#define BATTLE_C3D60_BYTE ((u8*)PSX_ADDR(D_800C3D60))
+#define BATTLE_C3D60_BYTE D_800C3D60_P
 #else
 #define BATTLE_C3D60_BYTE ((u8*)D_800C3D60)
 #endif
