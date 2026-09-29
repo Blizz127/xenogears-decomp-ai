@@ -5,7 +5,7 @@ This is an early test build of a native Linux port of Xenogears (USA,
 SLUS-00664) built from the decompilation. It contains no game data: you
 supply files from your own copy of the game.
 
-WHAT YOU NEED (put them all in one folder)
+WHAT YOU NEED (put them all in one folder, or in the game's disc/ folder)
   File                      Size (bytes)  SHA-256 (or SHA-1 for the image)
   disc1.bin                  718,738,272  sha1 12db8ccb93516c391630f046a143762337cc21f4
                                           (Disc 1 as a single raw MODE2/2352 BIN track,

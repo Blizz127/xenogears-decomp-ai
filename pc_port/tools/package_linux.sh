@@ -91,7 +91,18 @@ else
 fi
 [ -d "$data" ] || { echo "xenogears.sh: data folder not found: $data" >&2; exit 2; }
 
-export XENO_DATA_DIR="$data"
+data_files="$data"
+if [ ! -f "$data_files/SLUS_006.64" ] && [ -f "$data/disc/SLUS_006.64" ]; then
+    data_files="$data/disc"
+fi
+export XENO_DATA_DIR="$data_files"
+if [ -z "${XENO_DISC:-}" ]; then
+    if [ -f "$data_files/disc1.bin" ]; then
+        export XENO_DISC="$data_files/disc1.bin"
+    elif [ -f "$data/disc/disc1.bin" ]; then
+        export XENO_DISC="$data/disc/disc1.bin"
+    fi
+fi
 export XENO_MEMCARD_DIR="$DATA_HOME/memcards"
 export XENO_QUICKSAVE_PATH="$DATA_HOME/quicksaves/quick.xgqs"
 [ -n "${XENOGEARS_WINDOWED:-}" ] || export XENO_VIDEO_FULLSCREEN="${XENO_VIDEO_FULLSCREEN:-on}"
