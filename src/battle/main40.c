@@ -141,50 +141,6 @@ void func_8008860C(void) {
 }
 #endif /* XENO_PC_PORT */
 
-/* func_8008887C.s */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8008887C(s32 x0, s32 y0, s32 x1, s32 y1) {
-    s32 dx;
-    s32 dy;
-    D_800C3A7C = x0;
-    D_800C3A80 = y0;
-    D_800C3A84 = x1;
-    D_800C3A88 = y1;
-    if (x1 == x0)
-        return;
-    if (y1 == y0)
-        return;
-    if (x1 < x0) {
-        D_800C3A94 = 1;
-        dx = (s32)((u32)x0 - (u32)x1);
-    } else {
-        D_800C3A94 = 0;
-        dx = (s32)((u32)x1 - (u32)x0);
-    }
-    if (y1 < y0) {
-        D_800C3A98 = 1;
-        dy = (s32)((u32)y0 - (u32)y1);
-    } else {
-        D_800C3A98 = 0;
-        dy = (s32)((u32)y1 - (u32)y0);
-    }
-    if (dx < dy) {
-        D_800C3A90 = 0x100;
-        D_800C3A8C = (s32)((u32)dx << 8) / dy;
-    } else {
-        D_800C3A8C = 0x100;
-        D_800C3A90 = (s32)((u32)dy << 8) / dx;
-    }
-    D_800C2080 = 0;
-    D_800C2084 = 0;
-    D_800C3A9C = (s32)(func_8001BD40(1u, 8u) & 0xFFu);
-    D_800C207C = 0;
-}
-#endif /* XENO_PC_PORT */
-
 /* func_80088990.s: retail evaluates the rounding shift separately inside each
  * direction arm rather than hoisting it above the flag test. */
 /* Not yet byte-matching: the matching build assembles retail bytes for
