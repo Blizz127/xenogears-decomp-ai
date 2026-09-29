@@ -10,7 +10,7 @@
  * catches any width/scale error on either side).
  *
  * Build (from repo root):
- *   tools/remu/run_diff.sh diff_8007BA44 src/battle/main22.c
+ *   tools/remu/run_diff.sh diff_8007BA44 src/battle/mainasm_BF14.c
  */
 #include <stdio.h>
 #include <stdint.h>
@@ -18,7 +18,7 @@
 
 #include "remu.h"
 
-/* ---- host side: the real TU object (main22.c built with remu_shim.h so
+/* ---- host side: the real TU object (mainasm_BF14.c built with remu_shim.h so
  * INCLUDE_ASM is neutralized but every C body is identical). ---- */
 #include "common.h"
 void func_8007BA44(u8 **pp, s32 idx);

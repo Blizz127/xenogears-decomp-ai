@@ -2,7 +2,6 @@
  * retail bytes executed by remu.
  *   func_8007B98C: u16 T[p[2]] = T[p[1]]           (base D_800D3420)
  *   func_8007B9C8: u32 T[p[2]] = T[p[1]]           (base D_800D3410)
- *   func_8007BA04: u16 T[p[2]] = B16byte[p[1]]     (B16 = base+0x10)
  * T-row = base + ((idx & 0xFF) << 6), p = *pp (byte indices).
  */
 #include <stdio.h>
@@ -15,7 +14,6 @@
 
 void func_8007B98C(u8 **pp, s32 idx);
 void func_8007B9C8(u8 **pp, s32 idx);
-void func_8007BA04(u8 **pp, s32 idx);
 
 /* TU externs provided by the test (row table bases). */
 u8 D_800D3420[18432];
@@ -91,8 +89,7 @@ int main(void) {
     if (!m) { printf("FAIL create\n"); return 1; }
     uint32_t e16 = remu_load_s(m, "asm/battle/matchings/main22_q1/func_8007B98C.s");
     uint32_t e32 = remu_load_s(m, "asm/battle/matchings/main22_q1/func_8007B9C8.s");
-    uint32_t e816 = remu_load_s(m, "asm/battle/matchings/mainasm_BF14/func_8007BA04.s");
-    if (e16 != 0x8007B98Cu || e32 != 0x8007B9C8u || e816 != 0x8007BA04u) {
+    if (e16 != 0x8007B98Cu || e32 != 0x8007B9C8u) {
         printf("FAIL load\n");
         return 1;
     }
@@ -105,8 +102,7 @@ int main(void) {
             uint8_t x1 = be[k], x2 = be[(k + 4) % 9];
             if (!check_one(m, e16, func_8007B98C, 0, B20, D_800D3420, idxe[i], x1, x2)) return 1;
             if (!check_one(m, e32, func_8007B9C8, 1, B10, D_800D3410, idxe[i], x1, x2)) return 1;
-            if (!check_one(m, e816, func_8007BA04, 2, B20, D_800D3420, idxe[i], x1, x2)) return 1;
-            n += 3;
+            n += 2;
         }
     }
     uint32_t s = 0x10ADBEEFu;
@@ -118,11 +114,10 @@ int main(void) {
             uint8_t x1 = (uint8_t)(s >> 4), x2 = (uint8_t)(s >> 13);
             if (!check_one(m, e16, func_8007B98C, 0, B20, D_800D3420, idx, x1, x2)) return 1;
             if (!check_one(m, e32, func_8007B9C8, 1, B10, D_800D3410, idx, x1, x2)) return 1;
-            if (!check_one(m, e816, func_8007BA04, 2, B20, D_800D3420, idx, x1, x2)) return 1;
-            n += 3;
+            n += 2;
         }
     }
-    printf("DIFF 8007B98C/B9C8/BA04 OK (%d checks, retail-exact)\n", n);
+    printf("DIFF 8007B98C/B9C8 OK (%d checks, retail-exact)\n", n);
     remu_destroy(m);
     return 0;
 }
