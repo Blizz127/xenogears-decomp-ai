@@ -655,7 +655,29 @@ INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D980);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D9F0);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DA48);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DBC0);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DC28);
+extern void *D_80092834;
+void *func_8008D3F4(s32, s32);
+void func_8008D5C0(void *, s32);
+
+void func_8008DC28(void) {
+    s32 state;
+    void *sprite;
+
+    sprite = func_8008D3F4(1, 0);
+    *(u8 *)((u8 *)sprite + 0x74) = 0xFF;
+    *(u8 *)((u8 *)sprite + 0x75) = 0xA0;
+    *(s8 *)((u8 *)sprite + 0x76) = 0x70;
+    func_8008D5C0(sprite, 0x100);
+    state = 4;
+    *(s16 *)sprite = state;
+    *(s16 *)((u8 *)sprite + 0x44) = 0x60;
+    *(s16 *)((u8 *)sprite + 0x4A) = 0x60;
+    *(s16 *)((u8 *)sprite + 0x48) = state;
+    *(s16 *)((u8 *)sprite + 0x68) = 0;
+    *(s16 *)((u8 *)sprite + 0x6A) = 0x20;
+    D_80092834 = sprite;
+}
+
 
 void func_8008DCA8(s32 arg0) {
     D_80092838 = arg0;
