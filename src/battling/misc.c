@@ -5,6 +5,11 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+extern s32 D_80092AD8;
+void func_8007BB7C(void);
+#endif
+
+#ifndef XENO_PC_PORT
 s32 GetStringEntry(s32, s32);
 void func_80034714(s32 *, s32);
 void func_8007191C(s32);
@@ -611,7 +616,22 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007B210);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007B270);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007B388);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007BACC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007BB7C);
+
+#ifndef XENO_PC_PORT
+void func_8007BB7C(void) {
+    u8 *var_v1;
+    s32 var_v0;
+
+    var_v1 = (u8 *) &D_80092AD8;
+    var_v0 = 0x3B;
+    do {
+        *(s8 *)((s8*)(var_v1) + 0x50) = 0;
+        var_v0 -= 1;
+        var_v1 += 0x7C;
+    } while (var_v0 >= 0);
+}
+#endif
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007BBA0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C100);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C124);
