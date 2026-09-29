@@ -526,7 +526,22 @@ void func_8008800C(void) {
  * never advanced the IP -> the VM desynced MAP3's script and fed garbage actor
  * index 128 to func_8009EB78 (the boot SEGV) -- same class as the FE07 fix. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088198);
+void func_80088198(void) {
+    u8 *entry;
+    void *p;
+    s32 i;
+
+    i = 0;
+    p = g_pGameState;
+    do {
+        i++;
+        *(s32 *)((entry = (u8 *)p) + 0x9D8) = *(s32 *)((u8 *)p + 0x9DC);
+        *(u16 *)(entry + 0x9B0) = *(u16 *)((u8 *)p + 0x9B2);
+        p += 0xA4;
+    } while (i < 0x14);
+    entry = (u8 *)g_FieldScriptVMCurActor + 0xCC;
+    *(u16 *)((u8 *)g_FieldScriptVMCurActor + 0xCC) = *(u16 *)entry + 1;
+}
 #else
 void func_80088198(void) {
     u8* p = (u8*)g_pGameState;

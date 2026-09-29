@@ -2883,7 +2883,18 @@ extern void func_80039F9C(s32 packedId, s32 slot, s32 volume, s32 pan);
 // play chain (func_80039F9C -> func_8003B644 arm -> the tick plays it).
 // Un-shimmed: the whole downstream is real as of S1.
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800855C8);
+void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
+{
+    s32 slot = channel & 0x7;
+
+    func_8003A20C(slot << 1);
+    /* No-op pair: retail recomputes slot << 1 after the call instead of
+     * keeping it in a saved register; this is the form that reproduces it
+     * (found with decomp-permuter). */
+    slot++;
+    slot--;
+    func_80039F9C(soundId, slot << 1, (s16)volume, (s16)pan);
+}
 #else
 void func_800855C8(s32 soundId, s32 volume, s32 pan, s32 channel)
 {

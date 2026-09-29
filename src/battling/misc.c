@@ -1239,7 +1239,14 @@ void func_80085070(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008509C);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80085134);
+extern s32 D_800927B4[];
+void func_80085134(s32 arg0) {
+    ArchiveCdDataSync(0);
+    if (D_800927B4[arg0] != 0) {
+        HeapFree(D_800927B4[arg0]);
+        D_800927B4[arg0] = 0;
+    }
+}
 
 void func_8008518C(void *arg0, s32 arg1) {
     *(s32 *)((s8*)(arg0) + 4) = HeapAlloc(ArchiveDecodeAlignedSize(*(u16 *)((s8*)(arg0) + 0)), arg1);
