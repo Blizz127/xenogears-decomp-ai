@@ -17,8 +17,8 @@ extern u8* D_800C3DFC;
 extern u8 D_800C3E50;
 #endif
 #ifdef XENO_PC_PORT
-/* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
- * matching build assembles retail bytes below and the port uses this body. */
+/* Port body: D_800C3DFC is a guest-RAM alias here, so the cursor word is
+ * advanced through PSX_ADDR; the matching build compiles the retail C below. */
 /* func_8009CA90.s: advance the D_800C3DFC cursor by 0x78 when the +0x5FC2 mode
  * is 0xC..0xE, or by 0x258 when it is 0..2; either way only while the active
  * actor's +0x15A flag has bit7 clear.  D_800C34B0 is loaded once. */
@@ -41,7 +41,24 @@ void func_8009CA90(void) {
     }
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009CA90);
+void func_8009CA90(void) {
+    u8 *p = D_800C34B0;
+    u8 *flags;
+
+    if ((u32)(p[0x5FC2] - 0xC) < 3) {
+        flags = &(p + D_800C3E50 * 0x170)[0x15A];
+        if ((*flags & 0x80) == 0) {
+            D_800C3DFC += 0x78;
+            return;
+        }
+    }
+    if (p[0x5FC2] < 3) {
+        flags = &(p + D_800C3E50 * 0x170)[0x15A];
+        if ((*flags & 0x80) == 0) {
+            D_800C3DFC += 0x258;
+        }
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800CCD8C[];
