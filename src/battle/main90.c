@@ -2,7 +2,36 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main90", func_800B6518);
+typedef struct {
+    s16 x;
+    s16 z;
+} PairXZ;
+
+extern s16 func_80023124(PairXZ a, PairXZ b);
+extern void func_80021FE0(u8* obj, s16 angle);
+extern void func_800223B0(u8* obj, s16 angle);
+
+/* turn the object toward its +0xA0/+0xA4 target. */
+void func_800B6518(u8* obj) {
+    PairXZ pa;
+    PairXZ pb;
+    s32 ax, az;
+    u32 bx, bz;
+    s16 angle;
+
+    ax = *(s16*)(obj + 2);
+    pa.x = ax;
+    az = *(s16*)(obj + 0xA);
+    pa.z = az;
+    bx = *(u16*)(obj + 0xA0);
+    pb.x = bx;
+    bz = *(u16*)(obj + 0xA4);
+    pb.z = bz;
+    angle = func_80023124(pb, pa);
+    func_80021FE0(obj, angle);
+    func_800223B0(obj, angle);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main90", func_800B65B0);
 INCLUDE_ASM("asm/battle/nonmatchings/main90", func_800B6808);
 #endif

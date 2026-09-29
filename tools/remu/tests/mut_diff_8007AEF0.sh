@@ -5,7 +5,7 @@ set -uo pipefail
 python3 - "$1" "$2" <<'PY'
 import sys
 src = open(sys.argv[1]).read()
-old = "(s32)pRow[p[1]] * (s32)pRow[p[2]]"
+old = "prod = v1term * v2term;"
 assert src.count(old) == 1
-open(sys.argv[2], "w").write(src.replace(old, "(s32)pRow[p[1]] + (s32)pRow[p[2]]"))
+open(sys.argv[2], "w").write(src.replace(old, "prod = v1term + v2term;"))
 PY

@@ -2,11 +2,53 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E53C);
+extern u8* D_800C34B0;
+#endif
+extern u8 g_GameState[];
+
+/* 1 when entry idx's +0x5B47 byte (20-byte stride off D_800C34B0) is one of
+ * the three Gear slot ids (+0x98D/+0x995/+0x99D) of the current Gear party
+ * record (g_GameState[0x59C] selects the 0xA4-stride record). */
+s32 func_8009E53C(u8 idx) {
+    u8 id = D_800C34B0[idx * 20 + 0x5B47];
+    s32 o = g_GameState[0x59C] * 0xA4;
+
+    if (g_GameState[0x98D + o] == id || g_GameState[0x995 + o] == id) {
+        return 1;
+    }
+    return g_GameState[0x99D + o] == id;
+}
+
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E5C8);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E788);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E868);
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EBA8);
+typedef struct {
+    u8** items;
+    u32 count;
+} ItemList;
+
+extern void HeapChangeCurrentUser(u32 user, u32 a1);
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 func_8002C3E8(u8* data);
+
+/* build a pointer list over the 0x38-byte records at data + 0x10. */
+ItemList* func_8009EBA8(u8* data, ItemList* list) {
+    u32 n;
+    u32 i;
+
+    HeapChangeCurrentUser(4, 0);
+    n = func_8002C3E8(data);
+    list->items = HeapAlloc(n * 4, 0);
+    list->count = n;
+    if (list->items != NULL) {
+        for (i = 0; i < n; i++) {
+            list->items[i] = data + 0x10 + i * 0x38;
+        }
+    }
+    return list;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EC4C);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EF3C);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009F1C4);
@@ -26,29 +68,14 @@ void func_8009F5B0(void) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above. ---- */
+/* ---- Port bodies (fo/bat3). ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800D2D6C;
 #endif
-extern u8 g_GameState[];
 #ifdef XENO_PC_PORT
-/* func_8009E53C.s: 1 when entry idx's +0x5B47 byte (20-byte stride off
- * D_800C34B0) is one of the three Gear slot ids of the current Gear party
- * record (g_GameState+0x59C selects the 0xA4-stride record; ids at
- * +0x98D/+0x995/+0x99D). */
-u32 func_8009E53C(u8 idx) {
-    u32 o = g_GameState[0x59C] * 0xA4;
-    u32 id = D_800C34B0[idx * 20 + 0x5B47];
-
-    if (g_GameState[0x98D + o] == id) return 1;
-    if (g_GameState[0x995 + o] == id) return 1;
-    return g_GameState[0x99D + o] == id;
-}
-
 /* func_8009E5C8.s: the Gear counterpart of func_8009A854: copy entry a0's
  * bytes (+0xE/+0x10/+0x11, 20-byte stride at D_800C34B0+0x5750) into the
  * Gear slot whose id matches its +0xF byte (slot 0, 1 or 3; the last match

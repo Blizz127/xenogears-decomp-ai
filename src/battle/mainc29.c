@@ -8,6 +8,14 @@
 
 #ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
+#define BATTLE_U32_ROW(idx) ({ \
+    register u32 *base asm("$6"); \
+    u32 offset = ((idx) & 0xFF) << 6; \
+    base = (u32 *)D_800D3410; \
+    (u32 *)((u8 *)base + offset); \
+})
+#else
+#define BATTLE_U32_ROW(idx) ((u32 *)(D_800D3410 + (((idx) & 0xFF) << 6)))
 #endif
 
 
@@ -15,15 +23,7 @@ extern u8 D_800D3410[];
 #if BATTLE_SUB(1)
 void func_8007E6A0(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u32 *base asm("$6");
-    u32 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u32 *)D_800D3410;
-    t = (u32 *)((u8 *)base + offset);
-#else
-    u32 *t = (u32 *)(D_800D3410 + ((idx & 0xFF) << 6));
-#endif
+    u32 *t = BATTLE_U32_ROW(idx);
 
     t[p[3]] = t[p[1]] + t[p[2]];
 }
@@ -33,19 +33,13 @@ void func_8007E6A0(u8 **pp, s32 idx) {
 #if BATTLE_SUB(1)
 void func_8007E6F0(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u32 *base asm("$6");
-    u32 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u32 *)D_800D3410;
-    t = (u32 *)((u8 *)base + offset);
-#else
-    u32 *t = (u32 *)(D_800D3410 + ((idx & 0xFF) << 6));
-#endif
+    u32 *t = BATTLE_U32_ROW(idx);
 
     t[p[3]] = t[p[1]] - t[p[2]];
 }
 #endif /* BATTLE_SUB(1) */
+
+#undef BATTLE_U32_ROW
 
 /* func_8007E740.s: row[(idx&0xFF)] table mul: T[p[1]] = T[p[1]] * p[2]. */
 /* Not yet byte-matching: the matching build assembles retail bytes for

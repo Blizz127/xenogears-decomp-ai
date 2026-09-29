@@ -3,7 +3,35 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1720);
-INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1EA0);
+#include "psyq/libgte.h"
+
+typedef struct {
+    s32 offset; /* vertex block offset from the header */
+    s32 count;
+    u8 pad[0x10];
+    s32 flags;
+} Header;
+
+/* One-shot scale of a vertex block: if flag 0x8000 is clear, set it and
+ * shift every vertex (vx, vy, vz) left by `shift`. */
+void func_800B1EA0(Header* header, s32 shift) {
+    s32 i;
+    s32 n;
+    SVECTOR* v;
+    s32 f = header->flags;
+
+    if (!(f & 0x8000)) {
+        header->flags = f | 0x8000;
+        v = (SVECTOR*)(header->offset + (s32)header);
+        n = header->count;
+        for (i = 0; i != n; i++) {
+            v[i].vx <<= shift;
+            v[i].vy <<= shift;
+            v[i].vz <<= shift;
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F0C);
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F6C);
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B2AEC);

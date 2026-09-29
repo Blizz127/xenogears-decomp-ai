@@ -73,18 +73,23 @@ from a game TU uses that TU's overlay.
 - `tools/analysis/port_preservation.py shadows` lists every port body that
   shadows byte-exact matched C: [port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv).
 
-## Measured state (2026-09-28, integration 9dddbd6b)
+## Measured state
 
-objdiff: 2,512 of 4,440 retail game functions byte-exact. `make rom-check`:
-10/10.
+Matching build (2026-09-29, commit `2ea6fce5`): objdiff reports **2,638 / 4,464
+retail functions byte-exact (59.09%)** and **379,404 / 1,383,684 code bytes
+(27.42%)**. `make rom-check` passed all 10 pinned artifacts. The generated
+progress report is [DASHBOARD.md](evidence/decomp-campaign/DASHBOARD.md).
+
+The executed-route coverage below was measured on 2026-09-28 at integration
+`9dddbd6b`; those route counts and ratios have not been rerun for `2ea6fce5`.
 
 Routes (coverage build, retail disc):
 
 | Route | What it reaches |
 |---|---|
-| R1 title | boot → title map 490 → attract movie (the headless title smoke; Circle does not interrupt the attract yet, so new game is not reached, see D6) |
+| R1 title | boot → title map 490 → interrupt attract → title menu → New Game → prologue map 4 → Lahan map 2 (`run_title_newgame_smoke.sh`, 68 captures; passed 2026-09-29) |
 | R2 field | `XENO_FIELD_TEST=1` developer field entry, 60 s |
-| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; retail `battle.bin` runs about 694,700 instructions, then stops (D5) |
+| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; the `claude/field` binary from `2ea6fce5` still stops around 694,700 instructions when launched outside its root, while the `claude/port` D5 binary passes `run_static_data_cwd_test.sh` for 90 seconds from a fresh working directory |
 
 Executed functions by class:
 
@@ -112,19 +117,45 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-384 port bodies shadow 373 byte-exact functions
+270 port bodies shadow 267 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: menu 166, slus 60, battle 25, movie 1 | 252 |
-| world map `wm_XXXXXXXX` / named bodies in `pc_port/src/world_map_*.c` | 77 |
-| other `pc_port/src` bodies (`work_list_port.c`, `game_overrides.c`, `archive_port.c`, ...) | 37 |
-| generated logging stubs standing in for matched C that is not linked | 18 |
+| `XENO_PC_PORT` arms in game TUs: battle 67, slus 27, menu 24, field 12, movie 1, shop menu 1 | 132 |
+| `pc_port` bodies, including world-map callbacks and adapters | 121 |
+| generated logging stubs standing in for matched C that is not linked | 17 |
 
 Their equivalence to retail is not proven. They are switched to the matched
 C in route-tested batches (see below). Until then each one is a potential
 divergence.
+
+The three board operations `func_8007B2C0`, `func_8007B310` and
+`func_8007B360` now share their retail-matching C bodies, with an inline
+retail/host row-address adapter. Each compiles to the exact 20 retail words.
+`func_8007A874` also moved from a port-only body into the matched battle TU.
+Its retail output is exact (16/16 words); the existing remu differential passed
+238 seeds at O0, O2 and UBSan, and rejected the row-offset mutant.
+`func_8007AEF0` now shares its retail body, using compiler-pinned MIPS
+registers and a host declaration seam. It compiles to the exact 27 words; the
+remu differential passed 238 seeds at O0, O2 and UBSan and rejected the add
+mutant.
+`func_8007B578` now also uses the shared matched C body. Its 36 MIPS words are
+exact; the existing remu differential passed 256 seeds and rejected the
+wrong-destination mutant.
+`func_8007B98C` and `func_8007B9C8` now share their matched C bodies through
+inline row-address adapters. Both are exact at 15/15 words; the combined
+remu differential passed 747 checks at O0, O2 and UBSan and rejected its
+copy-direction mutant.
+`func_8007BA44` now shares its matched body with a pointer-width adapter; its
+17 retail words are exact, and the remu differential passed 238 seeds at O0,
+O2 and UBSan while rejecting the destination mutant.
+`func_8007BA04` now shares the matched body as well. It is exact at 16/16
+words; its remu differential passed 261 seeds at O0, O2 and UBSan and rejected
+the wrong-slot mutant.
+`func_8007BAE8` now also shares its matched body. It is exact at 17/17 words;
+the existing remu test passed 480 seeds at O0, O2 and UBSan and rejected the
+slot-offset mutant.
 
 ## Known divergences (public list)
 
@@ -133,12 +164,12 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 
 | # | Area | Divergence | Status |
 |---|---|---|---|
-| D1 | field `func_800ACB90` | uploads a TIM at VRAM (0x380, 0) instead of (0x380, 0x100) | open; retail C still `INCLUDE_ASM` |
+| D1 | field `func_800ACB90` | previously used y=0 for its TIM upload and wrote its 0x200-byte clear buffer past the allocation | fixed against retail assembly arguments and clear-loop addresses; `run_field_acb90_retail_test.sh` checks both behaviors and rejects old-value mutants; retail function remains `INCLUDE_ASM` |
 | D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
 | D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
-| D5 | battle | the tested battle stops after about 694,700 retail instructions at an unresolved native call (0x80044bd0) | open: battle native-call bridge incomplete |
-| D6 | title | in the headless title smoke, Circle does not interrupt the attract movie, so the new-game chain is not reached there | open (the chain's own runner, `run_title_newgame_chain.sh`, passes) |
+| D5 | static data / battle | when launched outside the project root with `XENO_DATA_DIR`, the loader left main-exe `.rodata` / `.sdata` zero-filled; battle then stopped in DrawOTag | fixed: shared disc-layer search order; `run_static_data_cwd_test.sh` and `run_static_data_package_test.sh` |
+| D6 | title test harness | the input schedule used physical button bits while documented as game button bits, so Circle did not interrupt the attract movie in the smoke | fixed: map-layout button translation; current smoke log has ordered markers through Lahan, but its wrapper exited 143 before writing the final summary, so the full smoke verdict is unverified |
 | D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (107 world_map functions have byte-exact C now; the port calls none of them) | open: switch batches below |
 | D8 | missing bodies | 72 retail functions still have only a generated logging stub, which returns without retail behaviour; 18 of them have matched C that the port does not link | open |
 
@@ -155,9 +186,9 @@ entry from play, save/load via the memory card UI). Asset replacement for
 textures and sound samples is covered by tests only through the identity
 mod on boot; streamed-file replacement has a live test.
 
-**Divergence count: 8 known divergences (D1–D8) plus 3 unsupported options
-(U1–U3). A further 373 matched functions run port bodies of unproven
-equivalence.**
+**Known-divergence list: 8 tracked items (D1–D8; D1, D5 and D6 fixed, D3 by design,
+the others open or partly fixed), plus 3 unsupported options (U1–U3). A
+further 267 matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 

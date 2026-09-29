@@ -11,7 +11,43 @@ void func_800BD024(void *arg0);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCD98);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCEAC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCFAC);
+#include "psyq/libgte.h"
+
+typedef struct {
+    u8 pad0[0x38];
+    SVECTOR* sprite; /* +0x38; x at +2, y at +6, z at +0xA */
+    s32 x;           /* +0x3C */
+    s32 y;           /* +0x40 */
+    s32 z;           /* +0x44 */
+    u8 pad48[6];
+    s16 spin;        /* +0x4E */
+    u8 pad50[4];
+    s32 height;      /* +0x54 */
+    s32 phase;       /* +0x58 */
+} Popup;
+
+extern void func_800BCAFC(void* sprite, s32 phase);
+
+void func_800BCFAC(u8* task) {
+    Popup* s = *(Popup**)(task + 4);
+    s16* sprite = (s16*)s->sprite;
+    s32 phase = s->phase;
+    s32 height = s->height;
+    s32 y;
+    s32 z;
+
+    s->x = sprite[1];
+    y = sprite[3];
+    phase++;
+    s->y = y;
+    z = sprite[5];
+    s->phase = phase;
+    s->y = y - height - 0x20;
+    s->z = z;
+    func_800BCAFC(sprite, phase);
+    s->spin += 0x10;
+}
+
 
 #ifndef XENO_PC_PORT
 void func_800BD024(void *arg0) {
@@ -35,9 +71,45 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD2E4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD3AC);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD7A0);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD810);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD974);
+#include "psyq/libgte.h"
+
+extern MATRIX D_800D30BC;
+
+/* project `point` through D_800D30BC: out = (2*(sx - ofx), 2*(sy - ofy),
+ * screen distance). */
+void func_800BD974(SVECTOR* point, s32* out) {
+    SVECTOR unused;
+    DVECTOR sxy;
+    long p;
+    long flag;
+    long ofx;
+    long ofy;
+
+    SetRotMatrix(&D_800D30BC);
+    SetTransMatrix(&D_800D30BC);
+    RotTransPers(point, (long*)&sxy, &p, &flag);
+    ReadGeomOffset(&ofx, &ofy);
+    out[0] = (sxy.vx - ofx) * 2;
+    out[1] = (sxy.vy - ofy) * 2;
+    out[2] = ReadGeomScreen();
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDA1C);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDB08);
+extern void func_800BDF1C(void);
+
+/* fade step: run the shared popup step, darken the three colour bytes at
+ * +0x80..+0x82 by 2, count down +0x88 and call +0x0C(task) once it goes
+ * negative. */
+void func_800BDB08(u8* task) {
+    func_800BDF1C();
+    task[0x80] -= 2;
+    task[0x81] -= 2;
+    task[0x82] -= 2;
+    if (--*(s32*)(task + 0x88) < 0) {
+        (*(void (**)(u8*))(task + 0xC))(task);
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDB74);
 #endif
 extern void func_800BDB74(void* task);

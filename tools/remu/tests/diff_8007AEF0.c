@@ -1,9 +1,9 @@
-/* Differential test: host-compiled src/battle/main19.c func_8007AEF0
- * vs the retail bytes (asm/battle/nonmatchings/main19/func_8007AEF0.s)
+/* Differential test: host-compiled src/battle/mainasm_B400.c func_8007AEF0
+ * vs the retail bytes (asm/battle/matchings/mainasm_B400/func_8007AEF0.s)
  * executed by remu. Fails on any behavioral mismatch.
  *
  * Build (from repo root):
- *   tools/remu/run_diff.sh diff_8007AEF0 src/battle/main19.c
+ *   tools/remu/run_diff.sh diff_8007AEF0 src/battle/mainasm_B400.c
  */
 #include <stdio.h>
 #include <stdint.h>
@@ -21,7 +21,7 @@ void func_8007AEF0(u8 **ppBoard, u8 index);
 u8 D_800D3430[64 * 256 + 256];
 u8 D_800D3420[64 * 256 + 256];
 
-#define RETAIL_S "asm/battle/nonmatchings/main19/func_8007AEF0.s"
+#define RETAIL_S "asm/battle/matchings/mainasm_B400/func_8007AEF0.s"
 #define RETAIL_ENTRY 0x8007AEF0u
 #define GVAR 0x800D3430u
 #define PP_ADDR 0x800F0000u

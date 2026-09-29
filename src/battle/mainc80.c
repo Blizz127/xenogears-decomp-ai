@@ -2,7 +2,33 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc80", func_800B3878);
+#include "psyq/libgpu.h"
+
+/* Declared as arrays so the CDK build shares each %hi, as retail does. */
+extern void* g_GfxCurWorkBuffer[];
+extern void* g_GfxCurWorkBufferEnd[];
+extern u_long* g_GfxCurOT[];
+
+/* Full-screen (-32..320 x -32..240) semi-transparent flat quad in the task's
+ * +0x48 colour and +0x41 blend mode, queued at OT slot 2. */
+void func_800B3878(u8* task) {
+    POLY_F4* poly = g_GfxCurWorkBuffer[0];
+    u8* o = *(u8**)(task + 4);
+    DR_MODE* mode;
+
+    if ((u8*)poly + 0x50 < (u8*)g_GfxCurWorkBufferEnd[0]) {
+        g_GfxCurWorkBuffer[0] = (u8*)poly + 0x24;
+        SetPolyF4(poly);
+        SetSemiTrans(poly, 1);
+        setRGB0(poly, o[0x48], o[0x49], o[0x4A]);
+        setXY4(poly, -0x20, -0x20, 0x140, -0x20, -0x20, 0xF0, 0x140, 0xF0);
+        mode = (DR_MODE*)(poly + 1);
+        SetDrawMode(mode, 0, 0, GetTPage(0, o[0x41], 0, 0), NULL);
+        AddPrim(g_GfxCurOT[0] + 2, poly);
+        AddPrim(g_GfxCurOT[0] + 2, mode);
+    }
+}
+
 #endif
 
 

@@ -5,10 +5,10 @@ set -uo pipefail
 python3 - "$1" "$2" <<'PY'
 import sys
 src = open(sys.argv[1]).read()
-start = src.index("u8 func_80080AE4(")
+start = src.index("s32 func_80080AE4(")
 end = src.index("\n}\n", start)
 body = src[start:end]
-old = "if (*slot < (s16)lim && v1 != target) {"
+old = "if (*slot < lim && v != target) {"
 assert body.count(old) == 1, body.count(old)
 src = src[:start] + body.replace(old, "if (*slot < (s16)lim) {") + src[end:]
 open(sys.argv[2], "w").write(src)

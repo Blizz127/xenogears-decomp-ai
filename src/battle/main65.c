@@ -3,8 +3,71 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F5B8);
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F708);
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F794);
+typedef struct {
+    u8 pad0[0x5C];
+    void* buf; /* +0x5C */
+    s32 size;  /* +0x60 */
+    u8 pad64[0x18];
+} Entry; /* 0x7C */
+
+typedef struct {
+    u8 pad0[0xA];
+    u16 count;        /* +0xA */
+    Entry entries[1]; /* +0xC */
+} Set;
+
+
+/* free every entry buffer of the set (clearing buf/size), then the set. */
+void func_8009F708(Set* set) {
+    s32 i;
+    Entry* e;
+
+    if (set != NULL) {
+        i = 0;
+        if (i < set->count) {
+            e = set->entries;
+            do {
+                void* buf = e->buf;
+
+                i++;
+                if (buf != NULL) {
+                    HeapFree(buf);
+                    e->buf = NULL;
+                    e->size = 0;
+                }
+                e++;
+            } while (i < set->count);
+        }
+        set->count = 0;
+        HeapFree(set);
+    }
+}
+
+typedef struct {
+    u8** items;
+    u32 count;
+} ItemList;
+
+extern void func_8002CBBC(u8* item);
+
+/* release an ItemList: optionally func_8002CBBC every item, then free the
+ * pointer array. */
+void func_8009F794(ItemList* list, s32 release) {
+    u32 i;
+
+    if (list != NULL) {
+        for (i = 0; i < list->count; i++) {
+            if (list->items != NULL && list->items[i] != NULL && release != 0) {
+                func_8002CBBC(list->items[i]);
+            }
+        }
+        if (list->items != NULL) {
+            HeapFree(list->items);
+            list->items = NULL;
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F844);
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A0838);
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A1B50);

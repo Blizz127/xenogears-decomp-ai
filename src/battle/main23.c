@@ -5,22 +5,7 @@
 extern u8 D_800CCE34[];
 #endif
 
-/* func_8007BAE8.s: slot = (a1 & 0xFF) + 3; store (u32)(p[1] | (p[2] << 8))
- * (p = *a0) to D_800CCE34 + slot * 368. Retail leaves the offset in v0,
- * but the only caller (main31 func_8007EF6C) ignores it, so void like the
- * sibling slot stores below. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8007BAE8(u8** a0, u8 a1) {
-    u8* p = *a0;
-    u32 slot = ((u32)a1 & 0xFFu) + 3;
-    u32 off = slot * 368;
 
-    *(u32*)(D_800CCE34 + off) = (u32)p[1] | ((u32)p[2] << 8);
-}
-#endif /* XENO_PC_PORT */
 
 
 #ifndef XENO_PC_PORT

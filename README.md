@@ -40,7 +40,7 @@ the main executable `slus_006.64`, `field`, `menu`, `shop_menu`, `member_change_
 `movie`, `battle_command_file1` and `world_map`. Every retail function is either byte-exact C or the
 retail assembly (`INCLUDE_ASM`), and the linked result is byte-identical. The pins are never edited.
 
-**Byte-exact matched C: 2,402 / 4,464 functions (53.8%), 345,744 / 1,383,684 code bytes (25.0%).**
+**Byte-exact matched C: 2,638 / 4,464 functions (59.1%), 379,404 / 1,383,684 code bytes (27.4%).**
 This is the objdiff report (`make report`, then `tools/scripts/progress_dashboard.py`), built with
 `-DSKIP_ASM`, so a function still carried as `INCLUDE_ASM` counts toward the total and not the matched
 share. objdiff alone is not proof: it can score 100% on a function whose relocated stores are swapped,
@@ -49,15 +49,15 @@ so C only stays in the retail build when the whole binary still passes `make rom
 | Target | Matched C functions | Matched C bytes | rom-check |
 |---|--:|--:|:-:|
 | Main executable (`slus_006.64`) | 910 / 1,223 | 104,108 / 218,072 | PASS |
-| Field | 628 / 884 | 98,300 / 253,052 | PASS |
-| Menu | 164 / 307 | 28,716 / 148,360 | PASS |
+| Field | 638 / 884 | 99,776 / 253,052 | PASS |
+| Menu | 175 / 307 | 33,180 / 148,360 | PASS |
 | Shop menu | 104 / 118 | 37,460 / 53,008 | PASS |
 | Member-change menu | 67 / 67 | 24,936 / 24,936 | PASS |
-| Battle | 335 / 857 | 36,208 / 332,316 | PASS |
+| Battle | 430 / 857 | 51,332 / 332,316 | PASS |
 | Battling | 126 / 483 | 9,116 / 139,692 | PASS |
 | Battle command file 1 | 52 / 105 | 4,020 / 18,940 | PASS |
 | Movie | 15 / 34 | 2,872 / 26,972 | PASS |
-| World map | 1 / 386 | 8 / 168,336 | PASS |
+| World map | 121 / 386 | 12,604 / 168,336 | PASS |
 
 Earlier versions of this section reported "2,557 matched C bodies (77.6%)" and "field 878/878". That
 count treated any C body without `INCLUDE_ASM` as matched without checking its bytes, and several
@@ -83,7 +83,7 @@ The port compiles decompiled C with `-DXENO_PC_PORT -DSKIP_ASM` and links it to 
 | Game TUs compiled into the port | 58 | Field, menus, shop, movie, member change, and the rest of the main executable |
 | Port-only C files | 268 | `pc_port/src`, 79,689 lines. Checkpoints, movie player, battle adapter, boot, overrides |
 | Port-owned symbol overrides | 22 | `pc_port/port_owned_overrides.txt`. Each row names the symbol and when it should retire |
-| `INCLUDE_ASM` that also has a port C body | 129 | Menu 80, main executable 26, battle 17, shop 6 |
+| `INCLUDE_ASM` that also has a port C body | 127 | Menu 80, main executable 26, battle 15, shop 6 |
 | `INCLUDE_ASM` omitted from the port compile | 608 | 506 of these are battle. The matching build still assembles them. The port has no body |
 | `INCLUDE_ASM` in `src/battling` | 169 | Outside the 3,294-function split above |
 

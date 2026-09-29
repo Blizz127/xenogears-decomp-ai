@@ -4,6 +4,14 @@
  * port's own TU. */
 #include "common.h"
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_BFF8", func_8007BAE8);
-#endif
+extern u8 D_800CCE34[];
+
+void func_8007BAE8(u8** a0, s32 a1) {
+    u8* p;
+    s32 hi;
+
+    a1 = (a1 & 0xFF) + 3;
+    p = *a0;
+    hi = p[2] << 8;
+    *(u32*)(D_800CCE34 + a1 * 0x170) = p[1] | hi;
+}

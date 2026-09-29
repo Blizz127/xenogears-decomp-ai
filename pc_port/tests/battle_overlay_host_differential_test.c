@@ -463,6 +463,34 @@ static void hand_cases(void)
 {
     uint32_t args[4];
 
+    /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
+     * valid 11-entry cycle so both sides return a defined selected value. */
+    begin_case(0, 0);
+    {
+        uint8_t *base = (uint8_t *)PSX_ADDR(0x800D2DD7u);
+        unsigned i;
+        base[0] = 0;
+        for (i = 0; i < 11; i++) {
+            uint8_t value = (uint8_t)(i + 1);
+            base[1 + i] = value;
+            *(int16_t *)(base + 0x2F + value * 2) = (int16_t)((11 - i) * 16);
+        }
+    }
+    args[0] = 0xFE; args[1] = args[2] = args[3] = 0;
+    compare_name("func_80080AE4", args);
+
+    /* AA600 follows a guest table slot -> record -> subrecord pointer chain.
+     * Give the retail interpreter and the shipped host body the same valid
+     * graph so this adapter is proven through the production runtime bridge. */
+    begin_case(0, 0);
+    *((uint32_t *)PSX_ADDR(0x800D3368u)) = REC;
+    *((uint32_t *)PSX_ADDR(REC + 4)) = SRC;
+    *((int16_t *)PSX_ADDR(REC + 0x1C)) = 0x300;
+    *((int16_t *)PSX_ADDR(SRC + 0x4E)) = 0x280;
+    *((int16_t *)PSX_ADDR(REC + 0x24)) = 0x500;
+    args[0] = 0; args[1] = args[2] = args[3] = 0;
+    compare_name("func_800AA600", args);
+
     begin_case(0, 0);
     *((uint32_t *)PSX_ADDR(WORD)) = 10;
     args[0] = WORD; args[1] = args[2] = args[3] = 0;
@@ -565,6 +593,10 @@ static void sweep(void)
     uint32_t pattern;
 
     for (index = 0; index < LEAF_COUNT; index++) {
+        /* The dedicated hand case and remu differential cover AA80AE4's
+         * valid input domain. Random scalar values can leave best undefined. */
+        if (strcmp(kLeaves[index].name, "func_80080AE4") == 0)
+            continue;
         /* Each leaf draws its own sequence, seeded from its address, so
          * adding or removing an allowlist entry does not silently change the
          * inputs (and so the evidence) of every leaf after it. */

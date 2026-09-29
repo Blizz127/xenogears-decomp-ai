@@ -7,8 +7,7 @@
 #include "system/memory.h"
 #endif
 
-#ifndef XENO_PC_PORT
-s32 func_8001BD40(s32, s32);
+#ifndef XENO_BATTLE_OVERLAY_HOST_BODIES
 extern s8 D_800C207C;
 extern s32 D_800C2080;
 extern s32 D_800C2084;
@@ -21,13 +20,13 @@ extern s32 D_800C3A90;
 extern s8 D_800C3A94;
 extern s8 D_800C3A98;
 extern s32 D_800C3A9C;
-void func_8008887C(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
 #endif
+extern s32 func_8001BD40(s32, s32);
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainasm_18B1C", func_8008860C);
+#endif
 
-#ifndef XENO_PC_PORT
 void func_8008887C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     s32 var_a0;
     s32 var_a1;
@@ -64,7 +63,7 @@ void func_8008887C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         D_800C207C = 0;
     }
 }
-#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainasm_18B1C", func_80088990);
 #endif

@@ -3,11 +3,79 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B5DF4);
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B5FBC);
+extern void WorkListSetTaskCallback(void* pTask, void* callback);
+extern void func_800B5DF4(u8* task);
+
+void func_800B5FBC(u8* obj) {
+    *(s16*)(obj + 0x34) = 1;
+    WorkListSetTaskCallback(*(u8**)(obj + 0x6C) + 0x1C, func_800B5DF4);
+    *(s8*)(obj + 0x2B) = 0x40;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B6004);
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B61B0);
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B61F8);
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B626C);
+extern void WorkListSetTaskCallback(void* pTask, void* callback);
+extern void func_800B6004(u8* task);
+
+void func_800B61B0(u8* obj) {
+    *(s16*)(obj + 0x34) = 1;
+    WorkListSetTaskCallback(*(u8**)(obj + 0x6C) + 0x1C, func_800B6004);
+    *(s8*)(obj + 0x2B) = 0x40;
+}
+
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 HeapFree(void* p);
+extern void func_800A96B4(u8 a0);
+extern s16 D_800D36BC[];
+
+/* clear D_800D36BC and run func_800A96B4(p[0]) on a HeapAlloc(0x4000, 1)
+ * stack (caller $sp saved at stack + 0x3E00). */
+void func_800B61F8(u32 unused, u8* p) {
+    u8* stack = HeapAlloc(0x4000, 1);
+
+    __asm__ volatile(
+        "\taddu  $t0, %0, $zero\n"
+        "\tsw    $sp, 0($t0)\n"
+        "\taddiu $t0, $t0, -4\n"
+        "\taddu  $sp, $t0, $zero\n"
+        :
+        : "r"(stack + 0x3E00)
+        : "t0", "memory");
+    D_800D36BC[0] = 0;
+    func_800A96B4(p[0]);
+    __asm__ volatile(
+        "\taddiu $sp, $sp, 4\n"
+        "\tlw    $sp, 0($sp)\n"
+        :
+        :
+        : "memory");
+    HeapFree(stack);
+}
+
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 HeapFree(void* p);
+extern void func_800A9FF0(u32 a0);
+
+void func_800B626C(void) {
+    u8* stack = HeapAlloc(0x4000, 1);
+
+    __asm__ volatile(
+        "\taddu  $t0, %0, $zero\n"
+        "\tsw    $sp, 0($t0)\n"
+        "\taddiu $t0, $t0, -4\n"
+        "\taddu  $sp, $t0, $zero\n"
+        :
+        : "r"(stack + 0x3E00)
+        : "t0", "memory");
+    func_800A9FF0(0xB);
+    __asm__ volatile(
+        "\taddiu $sp, $sp, 4\n"
+        "\tlw    $sp, 0($sp)\n"
+        :
+        :
+        : "memory");
+    HeapFree(stack);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B62C8);
 #endif
 

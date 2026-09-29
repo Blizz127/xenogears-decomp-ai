@@ -2,8 +2,71 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2D5C);
-INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2E88);
+extern void SetPolyFT4(void* p);
+extern void SetSemiTrans(void* p, int abe);
+extern u_short GetClut(int x, int y);
+extern u_short GetTPage(int tp, int abr, int x, int y);
+
+/* Initialise all (count + 1) 124-byte entries of the list at p (+0 entries,
+ * +4 s16 count): +0x16 = -1, +0x1E = 0, and for both double-buffered
+ * POLY_FT4s at +0x2C/+0x54: SetPolyFT4, semi-trans on, CLUT (0,0x1CD),
+ * tpage (0,1,0x380,0) and fixed u/v corners. */
+void func_800A2D5C(u8* p) {
+    u8* e = *(u8**)p;
+    s32 i;
+    s32 j;
+
+    for (i = 0; i < *(s16*)(p + 4) + 1; e += 0x7C, i++) {
+        *(s16*)(e + 0x16) = -1;
+        *(u16*)(e + 0x1E) = 0;
+        for (j = 0; j < 2; j++) {
+            u8* prim = e + 0x2C + j * 0x28;
+            u8* q = e + j * 0x28;
+            u16 tpage;
+
+            SetPolyFT4(prim);
+            SetSemiTrans(prim, 1);
+            *(u16*)(q + 0x3A) = GetClut(0, 0x1CD);
+            tpage = GetTPage(0, 1, 0x380, 0);
+            q[0x48] = 0xF;
+            *(u16*)(q + 0x42) = tpage;
+            q[0x38] = 0;
+            q[0x39] = 0xC1;
+            q[0x40] = 0;
+            q[0x41] = 0xC1;
+            q[0x49] = 0xC1;
+            q[0x50] = 0xF;
+            q[0x51] = 0xC1;
+        }
+    }
+}
+
+extern void SetSemiTrans(void* p, int abe);
+
+/* Allocate the entry at the list cursor (+6) when it is below the count (+4)
+ * and free (+0x16 == -1): advance the cursor past the following used
+ * entries, set semi-trans on both prims and return it.  Otherwise return the
+ * entry at index count (the spare slot). */
+u8* func_800A2E88(u8* list, s16 semi) {
+    s16 cur = *(s16*)(list + 6);
+    u8* e;
+
+    if (cur < *(s16*)(list + 4)) {
+        e = (u8*)(cur * 0x7C + *(u32*)list);
+        if (*(s16*)(e + 0x16) == -1) {
+            for (*(s16*)(list + 6) = cur + 1; *(s16*)(list + 6) < *(s16*)(list + 4); (*(s16*)(list + 6))++) {
+                if (*(s16*)(*(u8**)list + *(s16*)(list + 6) * 0x7C + 0x16) == -1) {
+                    break;
+                }
+            }
+            SetSemiTrans(e + 0x2C, semi);
+            SetSemiTrans(e + 0x54, semi);
+            return e;
+        }
+    }
+    return (u8*)(*(s16*)(list + 4) * 0x7C + *(u32*)list);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2F94);
 INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2FD8);
 INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A32D8);

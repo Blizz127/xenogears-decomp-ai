@@ -979,12 +979,20 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
         resolved->address == 0x800a3578u || resolved->address == 0x800a35c8u) {
         /* Effect callbacks take three scalar halfwords, never guest pointers.
          * Let retail execute BREAK 7 for a zero divisor. */
-        int32_t (*effect)(int16_t, int16_t, int16_t) =
-            (int32_t (*)(int16_t, int16_t, int16_t))resolved->host;
         if ((int16_t)cpu->gpr[5] == 0) return 0;
-        cpu->gpr[2] = (uint32_t)effect((int16_t)cpu->gpr[4],
-                                     (int16_t)cpu->gpr[5],
-                                     (int16_t)cpu->gpr[6]);
+        if (resolved->address == 0x800a3514u) {
+            int32_t (*effect)(int16_t, int16_t, int16_t) =
+                (int32_t (*)(int16_t, int16_t, int16_t))resolved->host;
+            cpu->gpr[2] = (uint32_t)effect((int16_t)cpu->gpr[4],
+                                         (int16_t)cpu->gpr[5],
+                                         (int16_t)cpu->gpr[6]);
+        } else {
+            int16_t (*effect)(int16_t, int16_t, int16_t) =
+                (int16_t (*)(int16_t, int16_t, int16_t))resolved->host;
+            cpu->gpr[2] = (uint32_t)(int32_t)effect((int16_t)cpu->gpr[4],
+                                                  (int16_t)cpu->gpr[5],
+                                                  (int16_t)cpu->gpr[6]);
+        }
         return 1;
     }
 

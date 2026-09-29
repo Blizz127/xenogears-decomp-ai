@@ -5,8 +5,59 @@
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE1C4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE330);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE538);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE6A0);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE6E8);
+extern u8 D_800C3784[];
+
+void func_800BE6A0(s32 value, u8* out, s32 count, s32 bias) {
+    s32 i;
+    s32 n;
+
+    for (i = 0; i != count; i++) {
+        n = count - 1;
+        out[i + 1] = D_800C3784[(value >> ((n - i) * 4)) & 0xF] + bias;
+    }
+    out[0] = count;
+}
+
+extern u32 D_800C37A4[];
+
+/* format `value` as decimal glyphs: `digits` indexes the power-of-ten table
+ * D_800C37A4; leading zero digits are skipped until the first non-zero digit
+ * or until `lead` is set; a negative value gets a 0x2D glyph first and one
+ * digit fewer; out[0] = glyph count.  Divisions are unsigned. */
+void func_800BE6E8(s32 value, u8* out, s32 digits, u8 lead, s32 bias) {
+    s32 count = 0;
+    u8* w = out + 1;
+    u32* p;
+    u8* base;
+    u32 q;
+
+    if (value < 0) {
+        count = 1;
+        out[1] = 0x2D;
+        w = out + 2;
+        value = -value;
+        digits--;
+    }
+    base = (u8*)D_800C37A4;
+    p = (u32*)(base + digits * 4);
+    value = (u32)value % *p;
+    while (digits != 0) {
+        p--;
+        q = (u32)value / *p;
+        digits--;
+        if ((u8)q != 0) {
+            lead = 1;
+        }
+        if (lead != 0) {
+            *w++ = q + bias;
+            count++;
+        }
+        value = (u32)value % *p;
+    }
+    *w = value + bias;
+    out[0] = count + 1;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE790);
 #endif
 

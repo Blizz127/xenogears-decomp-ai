@@ -8,12 +8,31 @@
 
 #ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
-#endif
-#ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
+extern u8 D_800D343F;
+extern u8 D_800D342E;
 #endif
+
 #ifndef XENO_PC_PORT
-extern u8 D_800D3430[];
+static __inline__ u16* BattleCopyRow16(s32 idx) {
+    register u16* base asm("$4");
+    u32 offset = (idx & 0xFF) << 6;
+    base = (u16*)D_800D3420;
+    return (u16*)((u8*)base + offset);
+}
+static __inline__ u32* BattleCopyRow32(s32 idx) {
+    register u32* base asm("$4");
+    u32 offset = (idx & 0xFF) << 6;
+    base = (u32*)D_800D3410;
+    return (u32*)((u8*)base + offset);
+}
+#else
+static __inline__ u16* BattleCopyRow16(s32 idx) {
+    return (u16*)(D_800D3420 + ((idx & 0xFF) << 6));
+}
+static __inline__ u32* BattleCopyRow32(s32 idx) {
+    return (u32*)(D_800D3410 + ((idx & 0xFF) << 6));
+}
 #endif
 
 
@@ -21,15 +40,7 @@ extern u8 D_800D3430[];
 #if BATTLE_SUB(1)
 void func_8007B98C(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u16 *base asm("$4");
-    u16 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u16 *)D_800D3420;
-    t = (u16 *)((u8 *)base + offset);
-#else
-    u16 *t = (u16 *)(D_800D3420 + ((idx & 0xFF) << 6));
-#endif
+    u16 *t = BattleCopyRow16(idx);
 
     t[p[2]] = t[p[1]];
 }
@@ -39,52 +50,15 @@ void func_8007B98C(u8 **pp, s32 idx) {
 #if BATTLE_SUB(1)
 void func_8007B9C8(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u32 *base asm("$4");
-    u32 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u32 *)D_800D3410;
-    t = (u32 *)((u8 *)base + offset);
-#else
-    u32 *t = (u32 *)(D_800D3410 + ((idx & 0xFF) << 6));
-#endif
+    u32 *t = BattleCopyRow32(idx);
 
     t[p[2]] = t[p[1]];
 }
 #endif /* BATTLE_SUB(1) */
 
-/* func_8007BA04.s: row u8->u16: T[p[2]] = B16[p[1]] (B16 = row base + 0x10). */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8007BA04(u8 **pp, s32 idx) {
-    u32 row = (idx & 0xFF) << 6;
-    u8 *base = D_800D3420;
-    u16 *t = (u16 *)(base + row);
-    u8 *b16 = base + 0x10 + row;
-    u8 *p = *pp;
 
-    t[p[2]] = b16[p[1]];
-}
-#endif /* XENO_PC_PORT */
 
-/* func_8007BA44.s: row u32 = u16: T[p[2]] = B16[p[1]] (T = D_800D3410 row,
- * B16 = row base + 0x10, p[1] scaled by 2, p[2] scaled by 4). */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8007BA44(u8 **pp, s32 idx) {
-    u32 row = (idx & 0xFF) << 6;
-    u8 *base = D_800D3410;
-    u32 *t = (u32 *)(base + row);
-    u16 *b16 = (u16 *)(base + 0x10 + row);
-    u8 *p = *pp;
 
-    t[p[2]] = b16[p[1]];
-}
-#endif /* XENO_PC_PORT */
 
 
 

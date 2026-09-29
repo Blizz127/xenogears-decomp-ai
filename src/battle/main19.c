@@ -44,28 +44,7 @@ void func_8007AE98(u8** ppBoard, u8 index) {
     pRow[p[3]] = value;
 }
 #endif /* BATTLE_SUB(1) */
-/* func_8007AEF0.s: u8 multiply of two row cells, saturate at 0xFF (16-bit sign-extended compare) */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8007AEF0(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
-    u8* pRow = D_800D3430 + ((u32)index << 6);
-    /* NOT YET EXACT (1 word, size exact): retail emits `mult cell1,cell2`
-     * keeping p in $a2; this shape gives `mult cell2,cell1` with p in $a0.
-     * Same open register-allocation artifact as main17/func_8007AA60. */
-    s32 x = pRow[p[1]];
-    u8 y = pRow[p[2]];
-    s32 prod = y * x;
-    u8 value = prod;
 
-    if ((s32)(s16)prod >= 0x100) {
-        value = 0xFF;
-    }
-    pRow[p[3]] = value;
-}
-#endif /* XENO_PC_PORT */
 
 /* func_8007AF5C.s */
 #if BATTLE_SUB(2)

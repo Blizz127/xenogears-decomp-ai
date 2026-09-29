@@ -3,7 +3,25 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc85", func_800B59BC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc85", func_800B5AC4);
+typedef struct {
+    s16 x;
+    s16 y;
+} Point16;
+
+extern Point16 func_800B59BC(void);
+
+/* func_800B59BC() offset by the object's (+2, +6). */
+Point16 func_800B5AC4(s16* obj) {
+    Point16 p = func_800B59BC();
+    s32 d;
+
+    d = obj[1];
+    p.x += d;
+    d = obj[3];
+    p.y += d;
+    return p;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc85", func_800B5B3C);
 #endif
 

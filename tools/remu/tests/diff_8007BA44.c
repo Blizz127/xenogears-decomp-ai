@@ -1,5 +1,5 @@
-/* Differential test: host-compiled src/battle/main22.c func_8007BA44
- * vs the retail bytes (asm/battle/nonmatchings/main22/func_8007BA44.s)
+/* Differential test: host-compiled src/battle/mainasm_BF14.c func_8007BA44
+ * vs the retail bytes (asm/battle/matchings/mainasm_BF14/func_8007BA44.s)
  * executed by remu. Fails on any behavioral mismatch.
  *
  * func_8007BA44(pp, idx): T-row = D_800D3410 + ((idx & 0xFF) << 6), p = *pp;
@@ -10,7 +10,7 @@
  * catches any width/scale error on either side).
  *
  * Build (from repo root):
- *   tools/remu/run_diff.sh diff_8007BA44 src/battle/main22.c
+ *   tools/remu/run_diff.sh diff_8007BA44 src/battle/mainasm_BF14.c
  */
 #include <stdio.h>
 #include <stdint.h>
@@ -18,7 +18,7 @@
 
 #include "remu.h"
 
-/* ---- host side: the real TU object (main22.c built with remu_shim.h so
+/* ---- host side: the real TU object (mainasm_BF14.c built with remu_shim.h so
  * INCLUDE_ASM is neutralized but every C body is identical). ---- */
 #include "common.h"
 void func_8007BA44(u8 **pp, s32 idx);
@@ -29,7 +29,7 @@ u8 D_800D3410[18432];
 u8 D_800D343F;
 u8 D_800D342E;
 
-#define RETAIL_S "asm/battle/matchings/main22/func_8007BA44.s"
+#define RETAIL_S "asm/battle/matchings/mainasm_BF14/func_8007BA44.s"
 #define B10 0x800D3410u
 #define PBOX 0x80181000u
 #define PBYTES (PBOX + 0x10u)

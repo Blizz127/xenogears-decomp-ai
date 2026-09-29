@@ -2,11 +2,55 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3C74);
+typedef struct {
+    u8 pad[0x44];
+    s16 cur;
+    s16 target;
+    s16 a;
+    s16 b;
+    s16 c;
+    s16 d;
+} Obj;
+
+extern void func_800A6444(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5);
+
+/* task->0x04 object: when cur (+0x44) != target (+0x46), cur = target and
+ * func_800A6444(0, +0x48, 0x20 - target, +0x4A, +0x4C, +0x4E). */
+void func_800B3C74(Obj** task) {
+    Obj* w = task[1];
+
+    if (w->cur != w->target) {
+        w->cur = w->target;
+        func_800A6444(0, w->a, 0x20 - w->target, w->b, w->c, w->d);
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3CD4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3E04);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3F04);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B4EDC);
+#include "psyq/libgpu.h"
+
+/* copy an 8x8 texture cell (u = +4 >> 2, v = +5, page from tpage +0xA) to
+ * VRAM (0x3F0, 0x1F0) and its 16-entry CLUT (+0xC) to (0x3F0, 0x1EE). */
+void func_800B4EDC(u8* task) {
+    RECT rect;
+    u8* spr = *(u8**)(*(u8**)(task + 0x20) + 0x30);
+    u16 tpage = *(u16*)(spr + 0xA);
+    u16 clut;
+
+    rect.x = (spr[4] >> 2) + ((tpage & 0xF) << 6);
+    rect.y = spr[5] + ((tpage << 4) & 0x100);
+    rect.w = 8;
+    rect.h = 8;
+    MoveImage(&rect, 0x3F0, 0x1F0);
+    clut = *(u16*)(spr + 0xC);
+    rect.w = 16;
+    rect.h = 1;
+    rect.x = clut & 0x3F;
+    rect.y = (clut >> 6) & 0x1FF;
+    MoveImage(&rect, 0x3F0, 0x1EE);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B4F88);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B50D4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B51B0);
