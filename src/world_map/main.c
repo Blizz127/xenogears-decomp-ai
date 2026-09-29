@@ -1980,7 +1980,36 @@ void func_800866C8(void) {
 #endif
 
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086700);
+#else
+/* FAKEMATCH: natural semantic reconstruction for port execution only. It is
+ * not retail-byte-matched; the retail build continues to use the pinned asm. */
+void func_80086700(void) {
+    s32 i;
+    s32 *pos;
+    s16 *delta;
+    s32 x;
+    s32 z;
+
+    i = 0;
+    pos = (s32 *)(intptr_t)WM_GUEST_PTR(0x8009D150);
+    delta = (s16 *)(intptr_t)WM_GUEST_PTR(0x8009CEB4);
+    do {
+        x = pos[0] + delta[0];
+        z = pos[2] + delta[2];
+        if (x > 0x1FFFFFF) x -= 0x2000000;
+        if (x < 0) x += 0x2000000;
+        if (z > 0x1FFFFFF) z -= 0x2000000;
+        if (z < 0) z += 0x2000000;
+        pos[0] = x;
+        pos[2] = z;
+        pos += 4;
+        delta += 4;
+        i++;
+    } while (i < 0x50);
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086798);
 
@@ -2598,7 +2627,28 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C040);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C1DC);
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C28C);
+#else
+/* FAKEMATCH: natural semantic reconstruction for port execution only. The
+ * matching build keeps retail asm; see docs/FAKEMATCHES.md. */
+void func_8008C28C(WmObj *arg0, s32 arg1) {
+    u8 *package_table = (u8 *)PSX_ADDR(0x8009BDF8);
+    s16 *tex_x = (s16 *)PSX_ADDR(0x8009B18C);
+    s16 *tex_y = (s16 *)PSX_ADDR(0x8009B194);
+    s16 *clut_x = (s16 *)PSX_ADDR(0x8009B19C);
+    s16 *clut_y = (s16 *)PSX_ADDR(0x8009B1A4);
+    u32 package_bits = *(u32 *)(package_table + arg1 * 4);
+    void *sprite = func_80024524(
+        package_bits ? PSX_ADDR(package_bits) : NULL,
+        tex_x[arg1], tex_y[arg1], clut_x[arg1], clut_y[arg1], 0x40);
+
+    arg0->unk4C = (s32)(intptr_t)sprite;
+    func_800245D8(sprite, g_GameState[0x22B1 + arg1] == 1 ? 0 : 3);
+    SpriteSetScale((void *)(intptr_t)arg0->unk4C, 0x2000);
+    *(s32 *)((u8 *)(intptr_t)arg0->unk4C + 0x3C) &= ~4;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C364);
 

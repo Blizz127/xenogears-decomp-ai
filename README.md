@@ -46,6 +46,10 @@ This is the objdiff report (`make report`, then `tools/scripts/progress_dashboar
 share. objdiff alone is not proof: it can score 100% on a function whose relocated stores are swapped,
 so C only stays in the retail build when the whole binary still passes `make rom-check`.
 
+Port-only semantic reconstructions tagged `/* FAKEMATCH */` are not byte-exact
+matches and never count in this headline. The current list and reasons are in
+[docs/FAKEMATCHES.md](docs/FAKEMATCHES.md).
+
 | Target | Matched C functions | Matched C bytes | rom-check |
 |---|--:|--:|:-:|
 | Main executable (`slus_006.64`) | 910 / 1,223 | 104,108 / 218,072 | PASS |
