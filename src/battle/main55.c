@@ -3,6 +3,7 @@
 
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
+#endif
 extern u8 g_GameState[];
 
 /* func_8009A7E4: 1 when entry idx's byte +0x581E (16-byte stride off
@@ -36,6 +37,7 @@ u32 func_8009A7E4(u8 idx) {
     return result;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A854);
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A9D0);
 #endif
@@ -81,24 +83,10 @@ void func_8009AB00(u8 index) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above. ---- */
-extern u8 g_GameState[];
+/* ---- Port bodies (fo/bat3). ---- */
 #ifdef XENO_PC_PORT
 extern int rand(void);
 extern void func_8009BE0C(void);
-
-/* func_8009A7E4.s: 1 when entry idx's byte +0x581E (16-byte stride off
- * D_800C34B0) equals one of the four party slot ids at g_GameState+0x502,
- * +0x50A, +0x512, +0x51A. */
-u32 func_8009A7E4(u8 idx) {
-    u32 id = D_800C34B0[idx * 16 + 0x581E];
-
-    if (g_GameState[0x502] == id) return 1;
-    if (g_GameState[0x50A] == id) return 1;
-    if (g_GameState[0x512] == id) return 1;
-    return g_GameState[0x51A] == id;
-}
 
 /* func_8009A854.s: copy entry a0's three bytes (+0xA/+0xB/+0xC, 16-byte
  * stride at D_800C34B0+0x54F8) into the party slot whose id matches its +6
