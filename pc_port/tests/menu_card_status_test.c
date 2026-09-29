@@ -6,7 +6,11 @@
 #include "system/menu.h"
 #include "battle_mips_adapter.h"
 SystemMenu *g_Menu;
-s32 D_801EA900,D_801EA904;
+/* Retail (and the port data blob) keep these two words adjacent; the body
+ * indexes them as ((s32*)&D_801EA900)[port]. */
+s32 D_801EA90x[2];
+#define D_801EA900 (D_801EA90x[0])
+#define D_801EA904 (D_801EA90x[1])
 static SystemMenu menus[2];
 static MenuUnk2 cards[2],expected[2];
 static uint8_t ram[0x200000];

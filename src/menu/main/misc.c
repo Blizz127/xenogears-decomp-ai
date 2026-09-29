@@ -1740,38 +1740,9 @@ extern s32 func_801E93A0(s32);
 extern s32 func_801D32B4(s32);
 #endif
 void func_801C8694(s32 discNum) {
-#ifdef XENO_PC_PORT
-    /* Retail 801C86CC sets the wait flag in the branch delay slot even when
-     * transition state is already zero.  Only the animation wait is optional.
-     * 801C8704 masks the input before adding one, so target 256 is retained. */
-    s32 targetDisc = (u8)discNum + 1;
-    u8 param = (u8)((u8)discNum * 3 - 0x7D);
-    func_801D1E80();
-    while (g_Menu->transitionEffectState != 0) {
-        func_801C7BF4();
-    }
-    func_801D22F4(0);
-    for (;;) {
-        if (ArchiveGetDiscNumber() == targetDisc) break;
-        func_801E92CC();
-        func_801D2F4C(param);
-        if (func_801E93A0(targetDisc) == 0) {
-            func_801D32B4(0);
-            break;
-        }
-        func_801D32B4(0);
-        func_801D2F4C(0x89);
-        for (s32 delay = 0x1D; delay != 0; --delay) {
-            func_801C7BF4();
-        }
-        func_801D32B4(0);
-        func_801C7BF4();
-    }
-    func_801D2484();
-#else
     u8 waiting = 1;
     func_801D1E80();
-    while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
+    while (g_Menu->transitionEffectState != 0) {
         func_801C7BF4();
     }
     func_801D22F4(0);
@@ -1786,22 +1757,21 @@ void func_801C8694(s32 discNum) {
                 func_801D2F4C((u8)param);
                 if (func_801E93A0(targetDisc) != 0) {
                     u8 delay;
-                    ((void (*)())func_801D32B4)();
+                    MENU_CALL_D32B4();
                     func_801D2F4C(0x89);
                     for (delay = 0x1D; delay != 0; delay--) {
                         func_801C7BF4();
                     }
-                    ((void (*)())func_801D32B4)();
+                    MENU_CALL_D32B4();
                     func_801C7BF4();
                 } else {
-                    ((void (*)())func_801D32B4)();
+                    MENU_CALL_D32B4();
                     waiting = 0;
                 }
             }
         } while (waiting);
     }
     func_801D2484();
-#endif
 }
 
 void func_801C87C4(void) {
@@ -1875,63 +1845,26 @@ void func_801C8960(void) {
 extern s32 D_801EA900;
 
 s32 func_801C8A10(u8 port) {
-#ifdef XENO_PC_PORT
-    extern s32 D_801EA904;
-    MenuUnk2* card;
-    s32 previous, result, stored;
-    s32 i;
-    g_Menu->unk32C->unk4F80[0x64 + port] = 1;
-    result = func_801C891C((port != 0) << 4);
-    card = g_Menu->unk32C;
-    stored = result;
-    /* 8A84..8A8C skips the normal status store: a newly present card
-     * reports the transition internally but keeps persistent status zero. */
-    if (result == 0) {
-        memcpy(&previous, &card->unk4C94[0x2E0 + port * 4], sizeof(previous));
-        if (previous == -1) {
-            result = 1;
-            stored = 0;
-        }
-    }
-    memcpy(&card->unk4C94[0x2E0 + port * 4], &stored, sizeof(stored));
-    if (result == -1) {
-        card->unk4F80[0x0A + port] = 0;
-        card->unk4F80[0x64 + port] = 0;
-        if (port == 0) D_801EA900 = 0;
-        else D_801EA904 = 0;
-        for (i = 0; i < 16; ++i) {
-            s32 index = port * 16 + i;
-            card->unk4F80[0x2E + index] = 0xFF;
-            card->unk4F80[0x0E + index] = 0;
-            card->unk0[index * 0x5C + 0x58] = 0;
-        }
-    }
-    if (card->unk4F80[0x68 + port] != card->unk4F80[0x64 + port]) {
-        card->unk4F80[8 + port] = 0;
-        card->unk4F80[0x68 + port] = card->unk4F80[0x64 + port];
-    }
-    return result != -2;
-#else
     s32 ret = 1;
     s32 result;
     s32 i;
     s32 off;
 
-    (((u8*)g_Menu->unk32C) + port)[0x4FE4] = ret;
+    (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE4)] = ret;
     result = func_801C891C((port != 0) << 4);
-    if (result == 0 && *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) == -1) {
+    if (result == 0 && *(s32*)((u8*)g_Menu->unk32C + port * 4 + MENU_CARD_OFF(0x4F74)) == -1) {
         result = 1;
-        *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) = 0;
+        *(s32*)((u8*)g_Menu->unk32C + port * 4 + MENU_CARD_OFF(0x4F74)) = 0;
     } else {
-        *(s32*)((u8*)g_Menu->unk32C + port * 4 + 0x4F74) = result;
+        *(s32*)((u8*)g_Menu->unk32C + port * 4 + MENU_CARD_OFF(0x4F74)) = result;
     }
     if (result == -1) {
-        (((u8*)g_Menu->unk32C) + port)[0x4F8A] = 0;
-        (((u8*)g_Menu->unk32C) + port)[0x4FE4] = 0;
+        (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4F8A)] = 0;
+        (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE4)] = 0;
         ((s32*)&D_801EA900)[port] = 0;
         for (i = 0; i < 16; i++) {
-            (((u8*)g_Menu->unk32C) + (port * 16 + i))[0x4FAE] = 0xFF;
-            (((u8*)g_Menu->unk32C) + (port * 16 + i))[0x4F8E] = 0;
+            (((u8*)g_Menu->unk32C) + (port * 16 + i))[MENU_CARD_OFF(0x4FAE)] = 0xFF;
+            (((u8*)g_Menu->unk32C) + (port * 16 + i))[MENU_CARD_OFF(0x4F8E)] = 0;
             off = (port * 16 + i) * 0x5C;
             (((u8*)g_Menu->unk32C) + off)[0x58] = 0;
         }
@@ -1939,53 +1872,34 @@ s32 func_801C8A10(u8 port) {
     if (result == -2) {
         ret = 0;
     }
-    if ((((u8*)g_Menu->unk32C) + port)[0x4FE8] != (((u8*)g_Menu->unk32C) + port)[0x4FE4]) {
-        (((u8*)g_Menu->unk32C) + port)[0x4F88] = 0;
-        (((u8*)g_Menu->unk32C) + port)[0x4FE8] = (((u8*)g_Menu->unk32C) + port)[0x4FE4];
+    if ((((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE8)] != (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE4)]) {
+        (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4F88)] = 0;
+        (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE8)] = (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE4)];
     }
     return ret;
-#endif
 }
 
 extern u8 D_801E9779;
 
 void func_801C8BEC(void) {
-#ifdef XENO_PC_PORT
-    s32 status;
-    if (g_Menu->unk32C == NULL || g_Menu->unk32C->unk4F80[0x66] == 0) return;
-    g_Menu->unk326 = (u8)(g_Menu->unk326 + 1);
-    if (g_Menu->unk326 > D_801E9779) {
-        func_801C8A10(0);
-        func_801C8A10(1);
-        /* Both polls may replace the menu; inspect and reset the current
-         * owner, retaining the retail byte-counter wrap and strict test. */
-        memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E0], sizeof(status));
-        if (status == -1) {
-            memcpy(&status, &g_Menu->unk32C->unk4C94[0x2E4], sizeof(status));
-            if (status == -1) g_Menu->unk334 = 0;
-        }
-        g_Menu->unk326 = 0;
-    }
-#else
-    void* pMenu = g_Menu;
-    if (*(u8*)(*(u8**)((u8*)pMenu + 0x32C) + 0x4FE6) != 0) {
-        u8 counter = *(u8*)((u8*)pMenu + 0x326) + 1;
-        *(u8*)((u8*)pMenu + 0x326) = counter;
+    SystemMenu* pMenu = g_Menu;
+    if (((u8*)MENU_GUEST_PTR(pMenu->unk32C))[MENU_CARD_OFF(0x4FE6)] != 0) {
+        u8 counter = pMenu->unk326 + 1;
+        pMenu->unk326 = counter;
         if (counter > D_801E9779) {
             func_801C8A10(0);
             func_801C8A10(1);
             {
-                void* pMenu2 = g_Menu;
-                u8* pData2 = *(u8**)((u8*)pMenu2 + 0x32C);
-                s32 a = *(s32*)(pData2 + 0x4F74);
-                if (a == -1 && *(s32*)(pData2 + 0x4F78) == a) {
-                    *(u8*)((u8*)pMenu2 + 0x334) = 0;
+                SystemMenu* pMenu2 = g_Menu;
+                u8* pData2 = (u8*)MENU_GUEST_PTR(pMenu2->unk32C);
+                s32 a = *(s32*)(pData2 + MENU_CARD_OFF(0x4F74));
+                if (a == -1 && *(s32*)(pData2 + MENU_CARD_OFF(0x4F78)) == a) {
+                    pMenu2->unk334 = 0;
                 }
             }
-            *(u8*)((u8*)g_Menu + 0x326) = 0;
+            g_Menu->unk326 = 0;
         }
     }
-#endif
 }
 
 void func_801C8CA4(u8 idx) {
@@ -2642,43 +2556,11 @@ extern void func_801E781C(s32 screenId, u8 animFlag);
 #endif
 
 s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
-#ifdef XENO_PC_PORT
-    s32 result = 0;
-    s32 previous;
-    MenuUnk2* card;
-    (void)unused;
-    switch (g_Menu->input) {
-    case MENU_INPUT_CONFIRM: result = 1; break;
-    case MENU_INPUT_BACK: result = 2; break;
-    case MENU_INPUT_RIGHT:
-        func_801C9EF4(direction, g_Menu->unk32C->unk4F7C);
-        break;
-    case MENU_INPUT_LEFT:
-        func_801CA1D4(direction, g_Menu->unk32C->unk4F7C);
-        break;
-    case MENU_INPUT_DOWN:
-        func_801CA480(direction, g_Menu->unk32C->unk4F7C, limit);
-        break;
-    case MENU_INPUT_UP:
-        func_801CA5F0(direction, g_Menu->unk32C->unk4F7C, limit);
-        break;
-    }
-    card = g_Menu->unk32C;
-    memcpy(&previous, card->unk4F80, sizeof(previous));
-    if (card->unk4F7C != previous) {
-        u32 slot = D_801E981C[card->unk4F7C];
-        func_801E781C(card->unk4F80[0x2E + slot], card->unk4F80[0x0E + slot]);
-        /* The refresh callback may change both ownership and selection. */
-        card = g_Menu->unk32C;
-        memcpy(card->unk4F80, &card->unk4F7C, sizeof(card->unk4F7C));
-    }
-    return result;
-#else
     s32 result = 0;
     u8* data;
     s32 selection;
 
-    switch (*((u8*)g_Menu + 0x325)) {
+    switch (g_Menu->input) {
     case 4:
         result = 1;
         break;
@@ -2686,30 +2568,29 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
         result = 2;
         break;
     case 0:
-        func_801C9EF4(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C));
+        func_801C9EF4(direction, *(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4F7C)));
         break;
     case 2:
-        func_801CA1D4(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C));
+        func_801CA1D4(direction, *(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4F7C)));
         break;
     case 1:
-        func_801CA480(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C), limit);
+        func_801CA480(direction, *(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4F7C)), limit);
         break;
     case 3:
-        func_801CA5F0(direction, *(s32*)((u8*)g_Menu->unk32C + 0x4F7C), limit);
+        func_801CA5F0(direction, *(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4F7C)), limit);
         break;
     }
 
     data = (u8*)g_Menu->unk32C;
-    selection = *(s32*)(data + 0x4F7C);
-    if (selection != *(s32*)(data + 0x4F80)) {
+    selection = *(s32*)(data + MENU_CARD_OFF(0x4F7C));
+    if (selection != *(s32*)(data + MENU_CARD_OFF(0x4F80))) {
         u8* entry = data + D_801E981C[selection];
 
-        func_801E781C(entry[0x4FAE], entry[0x4F8E]);
+        func_801E781C(entry[MENU_CARD_OFF(0x4FAE)], entry[MENU_CARD_OFF(0x4F8E)]);
         data = (u8*)g_Menu->unk32C;
-        *(s32*)(data + 0x4F80) = *(s32*)(data + 0x4F7C);
+        *(s32*)(data + MENU_CARD_OFF(0x4F80)) = *(s32*)(data + MENU_CARD_OFF(0x4F7C));
     }
     return result;
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -4682,16 +4563,8 @@ void func_801D1EE0(s32 selected, s32 buildBar) {
 #endif
 
 void func_801D22C4(void) {
-#ifdef XENO_PC_PORT
-    if (g_Menu->pManager == NULL) {
-        return;
-    }
-    g_Menu->pManager->unk4 = 0;
-    g_Menu->pManager->unk3 = 0;
-#else
-    g_Menu->pManager->unk4 = 0;
-    g_Menu->pManager->unk3 = 0;
-#endif
+    MENU_GUEST_PTR(g_Menu->pManager)->unk4 = 0;
+    MENU_GUEST_PTR(g_Menu->pManager)->unk3 = 0;
 }
 
 extern u8 D_801E9A58[];
@@ -4820,15 +4693,9 @@ void func_801D28FC(void) {
 extern void func_801D5CF8(s32, s32);
 
 void func_801D2968(void) {
-#ifdef XENO_PC_PORT
-    if (g_Menu->pManager != NULL && g_Menu->pManager->unk5[1] != 0) {
+    if (MENU_GUEST_PTR(g_Menu->pManager)->unk5[1] != 0) {
         func_801D5CF8(0xD0, 0xCA);
     }
-#else
-    if (g_Menu->pManager->unk5[1] != 0) {
-        func_801D5CF8(0xD0, 0xCA);
-    }
-#endif
 }
 
 #ifndef XENO_PC_PORT

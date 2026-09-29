@@ -30,11 +30,11 @@ done
 cp "$OUT/poller.inc" "$OUT/good.inc"
 for mutant in inclusive-threshold wrong-port retained-counter wrong-status stale-owner; do
     case "$mutant" in
-        inclusive-threshold) sed 's/unk326 > D_801E9779/unk326 >= D_801E9779/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
+        inclusive-threshold) sed 's/counter > D_801E9779/counter >= D_801E9779/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
         wrong-port) sed 's/func_801C8A10(1)/func_801C8A10(0)/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
         retained-counter) sed 's/g_Menu->unk326 = 0;/g_Menu->unk326 = 1;/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
-        wrong-status) sed 's/status == -1/status != -2/g' "$OUT/good.inc" > "$OUT/poller.inc" ;;
-        stale-owner) sed '/^    s32 status;/a\    SystemMenu* owner = g_Menu;' "$OUT/good.inc" | sed 's/g_Menu->/owner->/g' > "$OUT/poller.inc" ;;
+        wrong-status) sed 's/a == -1 \&\&/a == -2 \&\&/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
+        stale-owner) sed 's/SystemMenu\* pMenu2 = g_Menu;/SystemMenu* pMenu2 = pMenu;/' "$OUT/good.inc" > "$OUT/poller.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/poller.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/menu_card_poller_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"
@@ -50,8 +50,8 @@ cp "$OUT/good.inc" "$OUT/poller.inc"
 cp "$OUT/status.inc" "$OUT/good-status.inc"
 for mutant in transition-store removal-stride; do
     case "$mutant" in
-        transition-store) sed 's/stored = 0;/stored = 1;/' "$OUT/good-status.inc" > "$OUT/status.inc" ;;
-        removal-stride) sed 's/index \* 0x5C/index * 0x3C/' "$OUT/good-status.inc" > "$OUT/status.inc" ;;
+        transition-store) sed 's/+ MENU_CARD_OFF(0x4F74)) = 0;/+ MENU_CARD_OFF(0x4F74)) = 1;/' "$OUT/good-status.inc" > "$OUT/status.inc" ;;
+        removal-stride) sed 's/(port \* 16 + i) \* 0x5C/(port * 16 + i) * 0x3C/' "$OUT/good-status.inc" > "$OUT/status.inc" ;;
     esac
     ! cmp -s "$OUT/good-status.inc" "$OUT/status.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 -DINTEGRATED_STATUS pc_port/tests/menu_card_poller_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"

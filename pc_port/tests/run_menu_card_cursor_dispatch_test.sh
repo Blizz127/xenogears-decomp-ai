@@ -41,9 +41,9 @@ for mutant in wrong-route lost-result wrong-selection stale-refresh extra-byte; 
     case "$mutant" in
         wrong-route) sed 's/func_801C9EF4(direction/func_801CA1D4(direction/' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
         lost-result) sed 's/result = 2;/result = 0;/' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
-        wrong-selection) sed 's/func_801C9EF4(direction, g_Menu->unk32C->unk4F7C)/func_801C9EF4(direction, 0)/' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
-        stale-refresh) sed '/^        func_801E781C(card->/i\        MenuUnk2* oldCard = card;' "$OUT/good.inc" | sed '/refresh callback/,+1s/card = g_Menu->unk32C;/card = oldCard;/' > "$OUT/dispatch.inc" ;;
-        extra-byte) sed '/memcpy(card->unk4F80, \&card->unk4F7C/a\        card->unk4F80[4] = 0;' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
+        wrong-selection) sed 's/func_801C9EF4(direction, \*(s32\*)((u8\*)g_Menu->unk32C + MENU_CARD_OFF(0x4F7C)))/func_801C9EF4(direction, 0)/' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
+        stale-refresh) sed '/func_801E781C(entry/{n;s/data = (u8\*)g_Menu->unk32C;/;/}' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
+        extra-byte) sed '/= \*(s32\*)(data + MENU_CARD_OFF(0x4F7C));/a\        data[MENU_CARD_OFF(0x4F84)] = 0;' "$OUT/good.inc" > "$OUT/dispatch.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/dispatch.inc"
     "${CC:-gcc}" "${BASE[@]}" "${extra[@]}" -O2 pc_port/tests/menu_card_cursor_dispatch_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"

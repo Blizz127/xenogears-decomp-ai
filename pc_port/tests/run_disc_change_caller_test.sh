@@ -23,8 +23,8 @@ for mutant in raw-state zero-state-exit byte-target full-input short-delay skipp
         zero-state-exit) sed '/^    func_801D1E80();/a\    if (g_Menu->transitionEffectState == 0) { func_801D2484(); return; }' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
         byte-target) sed 's/s32 targetDisc = (u8)discNum + 1;/u8 targetDisc = (u8)discNum + 1;/' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
         full-input) sed 's/s32 targetDisc = (u8)discNum + 1;/s32 targetDisc = (u32)discNum + 1u;/' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
-        short-delay) sed 's/s32 delay = 0x1D/s32 delay = 0x1C/' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
-        skipped-success-close) sed '/if (func_801E93A0(targetDisc) == 0)/{n;d;}' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
+        short-delay) sed 's/delay = 0x1D/delay = 0x1C/' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
+        skipped-success-close) sed '/MENU_CALL_D32B4();/{N;/waiting = 0;/s/^[^\n]*\n//}' "$OUT/good.inc" > "$OUT/disc_caller.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/disc_caller.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/disc_change_caller_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"

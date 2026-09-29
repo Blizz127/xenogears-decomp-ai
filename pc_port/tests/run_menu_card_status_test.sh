@@ -26,11 +26,11 @@ done
 cp "$OUT/status.inc" "$OUT/good.inc"
 for mutant in transition-store record-stride wrong-port wrong-return lost-change; do
     case "$mutant" in
-        transition-store) sed 's/stored = 0;/stored = 1;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
-        record-stride) sed 's/index \* 0x5C/index * 0x3C/' "$OUT/good.inc" > "$OUT/status.inc" ;;
-        wrong-port) sed 's/else D_801EA904 = 0;/else D_801EA900 = 0;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
-        wrong-return) sed 's/return result != -2;/return result != -1;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
-        lost-change) sed 's/card->unk4F80\[8 + port\] = 0;/card->unk4F80[8 + port] = 1;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
+        transition-store) sed 's/+ MENU_CARD_OFF(0x4F74)) = 0;/+ MENU_CARD_OFF(0x4F74)) = 1;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
+        record-stride) sed 's/(port \* 16 + i) \* 0x5C/(port * 16 + i) * 0x3C/' "$OUT/good.inc" > "$OUT/status.inc" ;;
+        wrong-port) sed 's/((s32\*)\&D_801EA900)\[port\] = 0;/((s32*)\&D_801EA900)[0] = 0;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
+        wrong-return) sed 's/if (result == -2) {/if (result == -1) {/' "$OUT/good.inc" > "$OUT/status.inc" ;;
+        lost-change) sed 's/+ port)\[MENU_CARD_OFF(0x4F88)\] = 0;/+ port)[MENU_CARD_OFF(0x4F88)] = 1;/' "$OUT/good.inc" > "$OUT/status.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/status.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/menu_card_status_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"

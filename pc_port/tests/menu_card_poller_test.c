@@ -4,6 +4,7 @@
 #include <string.h>
 #include "common.h"
 #include "system/menu.h"
+uint8_t g_PsxRam[0x200000]; /* MENU_GUEST_PTR maps NULL to guest address 0 */
 #include "battle_mips_adapter.h"
 SystemMenu *g_Menu;
 u8 D_801E9779;
@@ -13,7 +14,10 @@ static uint8_t ram[0x200000];
 static unsigned calls,gcalls,replace;
 static void put32(void *p,uint32_t v) { memcpy(p,&v,4); }
 #ifdef INTEGRATED_STATUS
-s32 D_801EA900,D_801EA904;
+/* Adjacent in retail and in the port data blob; bodies index them as a pair. */
+s32 D_801EA90x[2];
+#define D_801EA900 (D_801EA90x[0])
+#define D_801EA904 (D_801EA90x[1])
 static s32 response[2];
 static s32 func_801C891C(s32 channel) {
     assert(calls<2 && channel==(s32)(calls*16));
