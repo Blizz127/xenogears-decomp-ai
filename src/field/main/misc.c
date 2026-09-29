@@ -1162,7 +1162,23 @@ extern u8 D_800B00A0, D_800B00A1, D_800B00A2, D_800B00A4, D_800B00A5, D_800B00A6
 extern s16 D_800B00AC, D_800B00AE, D_800B00B0, D_800B00B2;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A148);
+void func_8008A148(void) {
+    D_800B00A0 = FieldScriptVMGetArgument(1);
+    D_800B00A1 = FieldScriptVMGetArgument(3);
+    D_800B00A2 = FieldScriptVMGetArgument(5);
+    D_800B00A4 = FieldScriptVMGetArgument(7);
+    D_800B00A5 = FieldScriptVMGetArgument(9);
+    D_800B00A6 = FieldScriptVMGetArgument(0xB);
+    D_800B00A8 = FieldScriptVMGetArgument(0xD);
+    D_800B00A9 = FieldScriptVMGetArgument(0xF);
+    D_800B00AA = FieldScriptVMGetArgument(0x11);
+    D_800B00AC = FieldScriptVMGetArgument(0x13);
+    D_800B00AE = FieldScriptVMGetArgument(0x15);
+    D_800B00B0 = FieldScriptVMGetArgument(0x17);
+    /* scriptInstructionPointer; the port keeps the typed field below */
+    *(u16 *)((u8 *)g_FieldScriptVMCurActor + 0xCC) += 0x19;
+    D_800B00B2 = 1;
+}
 #else
 void func_8008A148(void) {
     D_800B00A0 = (u8)FieldScriptVMGetArgument(1);

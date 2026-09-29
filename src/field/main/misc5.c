@@ -931,20 +931,18 @@ void func_800A7218(void) {
 
 extern s32 D_800ADB6C;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A732C);
-#else
-void func_800A732C(s32 count) {
+void func_800A732C(s32 arg0) {
     s32 i;
+    u8 unused[1]; /* retail frame has one stack slot no code touches */
+
     GameCheckAndHandleSoftReset();
-    if (D_800ADB6C == 0 && count > 0) {
-        for (i = 0; i < count; i++) {
+    if (D_800ADB6C == 0) {
+        for (i = 0; i < arg0; i++) {
             func_801D3F7C();
             func_80085678();
         }
     }
 }
-#endif /* XENO_PC_PORT */
 
 void func_800A7394(void) {
     do {
