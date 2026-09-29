@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_8007D774)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x8007D774 - 0x8006FAF0)) \
@@ -57,12 +59,9 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N79_MUTANT_WRONG_CONTEXT_STATE init.context_state
-run_mutant m2 -DW34N79_MUTANT_SKIP_ROTATION_INIT init.rotation
-run_mutant m3 -DW34N79_MUTANT_WRONG_Y_SEED init.slot_seed
 run_mutant m4 -DW34N79_MUTANT_WRONG_LATCH1_OFFSET latch1.position_reset
 run_mutant m5 -DW34N79_MUTANT_WRONG_LATCH2_STATE latch2.state
 run_mutant m6 -DW34N79_MUTANT_WRAP_WRONG_VECTOR update.wrap_target
 run_mutant m7 -DW34N79_MUTANT_SKIP_POSITION_COPY latch2.position_copy
 
-echo "W34N79 MODE12 MOVING TARGET CERTIFICATE PASS: O0/O2/UBSan; M1-M7 detected; strict warnings clean"
+echo "W34N79 MODE12 MOVING TARGET CERTIFICATE PASS: O0/O2/UBSan; M4-M7 detected (M1-M3 targeted the retired wm_8007D774; 0x8007D774 now runs the matched C); strict warnings clean"

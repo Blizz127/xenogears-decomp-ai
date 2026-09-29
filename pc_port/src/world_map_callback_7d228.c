@@ -63,40 +63,6 @@ static void m12b_publish_scratch(u32 slot)
              (u16)m12b_sra12(m12b_lw(slot + 0x30u)));
 }
 
-s32 wm_8007D228(s32 slot_index)
-{
-    u32 context;
-    u32 slot;
-
-#if defined(W34N81_MUTANT_WRONG_CONTEXT_LINK)
-    wm_800848B4(10, 12);
-#else
-    wm_800848B4(10, 11);
-#endif
-    context = m12b_lw(WM_M12B_CONTEXT_PTR);
-    m12b_sh(context + 0x348u, 0u);
-    m12b_sh(context + 0x360u, 0u);
-    m12b_sh(context + 0x362u, 0u);
-    m12b_sh(context + 0x364u, 0u);
-#if !defined(W34N81_MUTANT_SKIP_ROTATION_INIT)
-    (void)RotMatrixYXZ((SVECTOR *)PSX_ADDR(context + 0x360u),
-                       (MATRIX *)PSX_ADDR(context + 0x368u));
-#endif
-
-    slot = m12b_slot(slot_index);
-    m12b_sw(slot + 0x40u, UINT32_C(0xFFFFC000));
-    m12b_sw(slot + 0x28u, UINT32_C(0x00E00000));
-    m12b_sw(slot + 0x2Cu, 0u);
-#if defined(W34N81_MUTANT_WRONG_Z_SEED)
-    m12b_sw(slot + 0x30u, UINT32_C(0x00200000));
-#else
-    m12b_sw(slot + 0x30u, UINT32_C(0x00100000));
-#endif
-    m12b_sw(slot + 0x38u, 0u);
-    m12b_sw(slot + 0x3Cu, 0u);
-    return 1;
-}
-
 s32 wm_8007D2B8(s32 slot_index)
 {
     u32 slot = m12b_slot(slot_index);

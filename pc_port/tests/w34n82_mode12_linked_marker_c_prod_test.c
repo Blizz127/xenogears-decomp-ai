@@ -9,6 +9,9 @@
 #include "world_map_callback_7d414.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007D414(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -159,8 +162,9 @@ static void test_initializer(void)
     write16(CONTEXT + 0x40Au, UINT16_C(0x2222));
     write16(CONTEXT + 0x40Cu, UINT16_C(0x3333));
 
-    check(wm_8007D414(SLOT_INDEX) == 1, "init.return");
-    check(link_count == 1u && link_source == 12 && link_destination == 15,
+    check(func_8007D414(SLOT_INDEX) == 1, "init.return");
+    /* func_800848B4 stores record src's guest address at record dst +0x50 */
+    check(read32(CONTEXT + 15u * 0x54u + 0x50u) == CONTEXT + 12u * 0x54u,
           "init.link");
     check(read16(CONTEXT + 0x3F0u) == 0u &&
           read16(CONTEXT + 0x408u) == 0u &&

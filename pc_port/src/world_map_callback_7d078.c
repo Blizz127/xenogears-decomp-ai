@@ -53,41 +53,6 @@ static u32 m12l_slot(s32 slot_index)
     return m12l_lw(WM_M12L_POOL_PTR) + ((u32)slot_index << 7u);
 }
 
-s32 wm_8007D078(s32 slot_index)
-{
-    u32 context;
-    u32 slot;
-
-    wm_800848B4(9, 7);
-#if defined(W34N80_MUTANT_WRONG_SECOND_LINK)
-    wm_800848B4(9, 7);
-#else
-    wm_800848B4(9, 8);
-#endif
-    context = m12l_lw(WM_M12L_CONTEXT_PTR);
-    m12l_sh(context + 0x2F4u, 0u);
-    m12l_sh(context + 0x30Cu, 0u);
-    m12l_sh(context + 0x30Eu, 0u);
-    m12l_sh(context + 0x310u, 0u);
-#if !defined(W34N80_MUTANT_SKIP_ROTATION_INIT)
-    (void)RotMatrixYXZ((SVECTOR *)PSX_ADDR(context + 0x30Cu),
-                       (MATRIX *)PSX_ADDR(context + 0x314u));
-#endif
-
-    slot = m12l_slot(slot_index);
-    m12l_sw(slot + 0x40u, UINT32_C(0xFFFFC000));
-#if defined(W34N80_MUTANT_WRONG_X_SEED)
-    m12l_sw(slot + 0x28u, UINT32_C(0x00D00000));
-#else
-    m12l_sw(slot + 0x28u, UINT32_C(0x00C00000));
-#endif
-    m12l_sw(slot + 0x2Cu, 0u);
-    m12l_sw(slot + 0x30u, 0u);
-    m12l_sw(slot + 0x38u, 0u);
-    m12l_sw(slot + 0x3Cu, 0u);
-    return 1;
-}
-
 s32 wm_8007D110(s32 slot_index)
 {
     u32 slot = m12l_slot(slot_index);

@@ -1299,7 +1299,6 @@ s32 func_8007C724(s32 arg0) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007C7D8);
 
-#ifndef XENO_PC_PORT
 s32 func_8007CC6C(s32 arg0) {
     WmObj *obj;
 
@@ -1321,11 +1320,9 @@ s32 func_8007CC6C(s32 arg0) {
     obj->pos[2] = 0x400000;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CD20);
 
-#ifndef XENO_PC_PORT
 s32 func_8007CE84(s32 arg0) {
     WmObj *obj;
 
@@ -1345,11 +1342,9 @@ s32 func_8007CE84(s32 arg0) {
     obj->pos[2] = 0x200000;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CF18);
 
-#ifndef XENO_PC_PORT
 s32 func_8007D078(s32 arg0) {
     WmObj *obj;
 
@@ -1369,11 +1364,9 @@ s32 func_8007D078(s32 arg0) {
     obj->pos[2] = 0;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D110);
 
-#ifndef XENO_PC_PORT
 s32 func_8007D228(s32 arg0) {
     WmObj* obj;
 
@@ -1392,11 +1385,9 @@ s32 func_8007D228(s32 arg0) {
     obj->pos[2] = 0x100000;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D2B8);
 
-#ifndef XENO_PC_PORT
 s32 func_8007D414(s32 arg0) {
     WmObj* obj;
 
@@ -1415,11 +1406,9 @@ s32 func_8007D414(s32 arg0) {
     obj->pos[2] = 0x280000;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D4A4);
 
-#ifndef XENO_PC_PORT
 s32 func_8007D600(s32 arg0) {
     WmObj* obj;
 
@@ -1438,7 +1427,6 @@ s32 func_8007D600(s32 arg0) {
     obj->pos[2] = 0x380000;
     return 1;
 }
-#endif
 
 
 #ifndef XENO_PC_PORT
@@ -1463,7 +1451,6 @@ s32 func_8007D690(s32 arg0) {
 #endif
 
 
-#ifndef XENO_PC_PORT
 s32 func_8007D774(s32 arg0) {
     WmObj *obj;
 
@@ -1481,7 +1468,6 @@ s32 func_8007D774(s32 arg0) {
     obj->unk40 = -0x6000;
     return 3;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D7FC);
 

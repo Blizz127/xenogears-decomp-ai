@@ -9,6 +9,9 @@
 #include "world_map_callback_7cc6c.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007CC6C(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -156,13 +159,14 @@ static void test_initializer(void)
     write16(CONTEXT + 0x168u, UINT16_C(0x1111));
     write16(CONTEXT + 0x16Au, UINT16_C(0x2222));
     write16(CONTEXT + 0x16Cu, UINT16_C(0x3333));
+    write16(SLOT + 0x20u, UINT16_C(0x5A5A));
 
-    check(wm_8007CC6C(SLOT_INDEX) == 1, "init.return");
-    check(link_count == 4u &&
-          links[0].source == 4 && links[0].destination == 0 &&
-          links[1].source == 4 && links[1].destination == 2 &&
-          links[2].source == 4 && links[2].destination == 1 &&
-          links[3].source == 4 && links[3].destination == 3,
+    check(func_8007CC6C(SLOT_INDEX) == 1, "init.return");
+    /* func_800848B4 stores record src's guest address at record dst +0x50 */
+    check(read32(CONTEXT + 0u * 0x54u + 0x50u) == CONTEXT + 4u * 0x54u &&
+          read32(CONTEXT + 2u * 0x54u + 0x50u) == CONTEXT + 4u * 0x54u &&
+          read32(CONTEXT + 1u * 0x54u + 0x50u) == CONTEXT + 4u * 0x54u &&
+          read32(CONTEXT + 3u * 0x54u + 0x50u) == CONTEXT + 4u * 0x54u,
           "init.links");
     check(read16(CONTEXT + 0x150u) == 0u &&
           read16(CONTEXT + 0x168u) == 0u &&
@@ -179,7 +183,9 @@ static void test_initializer(void)
           read32(SLOT + 0x30u) == UINT32_C(0x00400000) &&
           read32(SLOT + 0x38u) == 0u &&
           read32(SLOT + 0x3Cu) == 0u &&
-          read16(SLOT + 0x20u) == 0u,
+          /* retail 0x8007CC6C never stores slot +0x20; the retired
+           * wm_8007CC6C cleared it (docs/port/RETAIL_DIVERGENCES.md) */
+          read16(SLOT + 0x20u) == UINT16_C(0x5A5A),
           "init.slot_seed");
 }
 

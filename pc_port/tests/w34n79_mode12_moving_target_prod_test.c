@@ -9,6 +9,9 @@
 #include "world_map_callback_7d774.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007D774(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -131,7 +134,7 @@ static void test_initializer(void)
     write16(CONTEXT + 0x55Au, UINT16_C(0x2222));
     write16(CONTEXT + 0x55Cu, UINT16_C(0x3333));
 
-    check(wm_8007D774(SLOT_INDEX) == 3, "init.return");
+    check(func_8007D774(SLOT_INDEX) == 3, "init.return");
     check(read16(CONTEXT + 0x540u) == 1u,
           "init.context_state");
     check(read16(CONTEXT + 0x558u) == 0u &&

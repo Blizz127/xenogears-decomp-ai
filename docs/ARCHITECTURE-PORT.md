@@ -117,13 +117,13 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-281 port bodies shadow 277 byte-exact functions
+266 port bodies shadow 262 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 68, slus 27, field 12, menu 10, movie 1, shop menu 1 | 119 |
-| `pc_port` bodies, including world-map callbacks and adapters | 138 |
+| `XENO_PC_PORT` arms in game TUs: battle 68, slus 28, field 14, menu 10, movie 1, shop menu 1 | 122 |
+| `pc_port` bodies, including world-map callbacks and adapters | 120 |
 | generated logging stubs standing in for matched C that is not linked | 24 |
 
 Their equivalence to retail is not proven. They are switched to the matched
@@ -170,7 +170,7 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
 | D5 | static data / battle | when launched outside the project root with `XENO_DATA_DIR`, the loader left main-exe `.rodata` / `.sdata` zero-filled; battle then stopped in DrawOTag | fixed: shared disc-layer search order; `run_static_data_cwd_test.sh` and `run_static_data_package_test.sh` |
 | D6 | title test harness | the input schedule used physical button bits while documented as game button bits, so Circle did not interrupt the attract movie in the smoke | fixed: map-layout button translation; current smoke log has ordered markers through Lahan, but its wrapper exited 143 before writing the final summary, so the full smoke verdict is unverified |
-| D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (107 world_map functions have byte-exact C now; the port calls none of them) | open: switch batches below |
+| D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (world-map switch batches 1-4 moved 29 scheduler callbacks to the byte-exact C; the rest still run `wm_` bodies) | open: switch batches below |
 | D8 | missing bodies | 72 retail functions still have only a generated logging stub, which returns without retail behaviour; 18 of them have matched C that the port does not link | open |
 
 Options that are reported as unsupported and ignored, never faked:
@@ -188,7 +188,7 @@ mod on boot; streamed-file replacement has a live test.
 
 **Known-divergence list: 8 tracked items (D1–D8; D1, D5 and D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
-further 277 matched functions run port bodies of unproven equivalence.**
+further 262 matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 

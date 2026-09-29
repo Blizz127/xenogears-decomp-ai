@@ -200,19 +200,26 @@ extern s32 wm_8007B200(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007B394(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007B604(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007B798(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007D600(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007D600(s32 arg0) __attribute__((weak));
 extern s32 wm_8007D690(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007D774(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007D774(s32 arg0) __attribute__((weak));
 extern s32 wm_8007D7FC(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007D078(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007D078(s32 arg0) __attribute__((weak));
 extern s32 wm_8007D110(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007D228(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007D228(s32 arg0) __attribute__((weak));
 extern s32 wm_8007D2B8(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007D414(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007D414(s32 arg0) __attribute__((weak));
 extern s32 wm_8007D4A4(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007CE84(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007CE84(s32 arg0) __attribute__((weak));
 extern s32 wm_8007CF18(s32 slot_index) __attribute__((weak));
-extern s32 wm_8007CC6C(s32 slot_index) __attribute__((weak));
+/* matched C (src/world_map/main.c) */
+extern s32 func_8007CC6C(s32 arg0) __attribute__((weak));
 extern s32 wm_8007CD20(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007C36C(s32 slot_index) __attribute__((weak));
 extern s32 wm_8007C3B8(s32 slot_index) __attribute__((weak));
@@ -818,7 +825,7 @@ static s16 wm_sched_builtin_8007B798(int slot_index)
 
 static s16 wm_sched_builtin_8007D600(int slot_index)
 {
-    return (s16)wm_8007D600((s32)slot_index);
+    return (s16)func_8007D600((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007D690(int slot_index)
@@ -828,7 +835,7 @@ static s16 wm_sched_builtin_8007D690(int slot_index)
 
 static s16 wm_sched_builtin_8007D774(int slot_index)
 {
-    return (s16)wm_8007D774((s32)slot_index);
+    return (s16)func_8007D774((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007D7FC(int slot_index)
@@ -838,7 +845,7 @@ static s16 wm_sched_builtin_8007D7FC(int slot_index)
 
 static s16 wm_sched_builtin_8007D078(int slot_index)
 {
-    return (s16)wm_8007D078((s32)slot_index);
+    return (s16)func_8007D078((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007D110(int slot_index)
@@ -858,7 +865,7 @@ static s16 wm_sched_builtin_80076A1C(int slot_index)
 
 static s16 wm_sched_builtin_8007D228(int slot_index)
 {
-    return (s16)wm_8007D228((s32)slot_index);
+    return (s16)func_8007D228((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007D2B8(int slot_index)
@@ -868,7 +875,7 @@ static s16 wm_sched_builtin_8007D2B8(int slot_index)
 
 static s16 wm_sched_builtin_8007D414(int slot_index)
 {
-    return (s16)wm_8007D414((s32)slot_index);
+    return (s16)func_8007D414((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007D4A4(int slot_index)
@@ -878,7 +885,7 @@ static s16 wm_sched_builtin_8007D4A4(int slot_index)
 
 static s16 wm_sched_builtin_8007CE84(int slot_index)
 {
-    return (s16)wm_8007CE84((s32)slot_index);
+    return (s16)func_8007CE84((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007CF18(int slot_index)
@@ -888,7 +895,7 @@ static s16 wm_sched_builtin_8007CF18(int slot_index)
 
 static s16 wm_sched_builtin_8007CC6C(int slot_index)
 {
-    return (s16)wm_8007CC6C((s32)slot_index);
+    return (s16)func_8007CC6C((s32)slot_index);
 }
 
 static s16 wm_sched_builtin_8007CD20(int slot_index)
@@ -1539,7 +1546,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007B798;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007D600u && wm_8007D600 != 0) {
+    if (guest_addr == 0x8007D600u && func_8007D600 != 0) {
         *out_fn = wm_sched_builtin_8007D600;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1547,7 +1554,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007D690;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007D774u && wm_8007D774 != 0) {
+    if (guest_addr == 0x8007D774u && func_8007D774 != 0) {
         *out_fn = wm_sched_builtin_8007D774;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1555,7 +1562,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007D7FC;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007D078u && wm_8007D078 != 0) {
+    if (guest_addr == 0x8007D078u && func_8007D078 != 0) {
         *out_fn = wm_sched_builtin_8007D078;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1563,7 +1570,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007D110;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007D228u && wm_8007D228 != 0) {
+    if (guest_addr == 0x8007D228u && func_8007D228 != 0) {
         *out_fn = wm_sched_builtin_8007D228;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1571,7 +1578,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007D2B8;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007D414u && wm_8007D414 != 0) {
+    if (guest_addr == 0x8007D414u && func_8007D414 != 0) {
         *out_fn = wm_sched_builtin_8007D414;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1579,7 +1586,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007D4A4;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007CE84u && wm_8007CE84 != 0) {
+    if (guest_addr == 0x8007CE84u && func_8007CE84 != 0) {
         *out_fn = wm_sched_builtin_8007CE84;
         return WM_SCHED_CB_IMPLEMENTED;
     }
@@ -1587,7 +1594,7 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
         *out_fn = wm_sched_builtin_8007CF18;
         return WM_SCHED_CB_IMPLEMENTED;
     }
-    if (guest_addr == 0x8007CC6Cu && wm_8007CC6C != 0) {
+    if (guest_addr == 0x8007CC6Cu && func_8007CC6C != 0) {
         *out_fn = wm_sched_builtin_8007CC6C;
         return WM_SCHED_CB_IMPLEMENTED;
     }
