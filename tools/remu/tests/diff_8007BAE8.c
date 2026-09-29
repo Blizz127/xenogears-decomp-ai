@@ -1,5 +1,5 @@
-/* Differential test: host-compiled src/battle/main23.c func_8007BAE8
- * vs the retail bytes (asm/battle/nonmatchings/main23/func_8007BAE8.s)
+/* Differential test: host-compiled src/battle/mainasm_BFF8.c func_8007BAE8
+ * vs the retail bytes (asm/battle/matchings/mainasm_BFF8/func_8007BAE8.s)
  * executed by remu. Fails on any behavioral mismatch.
  *
  * func_8007BAE8(ppBoard, a1): slot = (a1 & 0xFF) + 3;
@@ -19,9 +19,9 @@
 
 #include "remu.h"
 #include "common.h"
-void func_8007BAE8(u8** a0, u8 a1);
+void func_8007BAE8(u8** a0, s32 a1);
 
-#define RETAIL_S "asm/battle/nonmatchings/main23/func_8007BAE8.s"
+#define RETAIL_S "asm/battle/matchings/mainasm_BFF8/func_8007BAE8.s"
 #define TAB_BASE 0x800CCE34u
 #define TAB_LEN (368u * 258u + 4u) /* max slot 0xFF+3, plus the stored word */
 /* TU extern the test must provide. */

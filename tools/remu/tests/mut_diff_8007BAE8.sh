@@ -8,8 +8,8 @@ src = open(sys.argv[1]).read()
 start = src.index("void func_8007BAE8(")
 end = src.index("\n}\n", start)
 body = src[start:end]
-old = "((u32)a1 & 0xFFu) + 3"
+old = "(a1 & 0xFF) + 3"
 assert body.count(old) == 1, body.count(old)
-src = src[:start] + body.replace(old, "((u32)a1 & 0xFFu) + 4") + src[end:]
+src = src[:start] + body.replace(old, "(a1 & 0xFF) + 4") + src[end:]
 open(sys.argv[2], "w").write(src)
 PY

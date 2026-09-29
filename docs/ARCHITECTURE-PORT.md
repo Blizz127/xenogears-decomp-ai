@@ -117,12 +117,12 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-289 port bodies shadow 286 byte-exact functions
+283 port bodies shadow 280 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 80, slus 27, menu 24, field 12, movie 1, shop menu 1 | 145 |
+| `XENO_PC_PORT` arms in game TUs: battle 79, slus 27, menu 24, field 12, movie 1, shop menu 1 | 144 |
 | `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
@@ -153,6 +153,9 @@ O2 and UBSan while rejecting the destination mutant.
 `func_8007BA04` now shares the matched body as well. It is exact at 16/16
 words; its remu differential passed 261 seeds at O0, O2 and UBSan and rejected
 the wrong-slot mutant.
+`func_8007BAE8` now also shares its matched body. It is exact at 17/17 words;
+the existing remu test passed 480 seeds at O0, O2 and UBSan and rejected the
+slot-offset mutant.
 
 ## Known divergences (public list)
 
