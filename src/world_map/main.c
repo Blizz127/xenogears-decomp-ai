@@ -643,7 +643,19 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007634C);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80076594);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800767D4);
+#ifndef XENO_PC_PORT
+extern s32 D_80062648;
+void func_800767D4(s32 arg0, s32 arg1) {
+    s32 temp_v0;
+
+    func_80039CC4();
+    func_800399D4(D_80062528);
+    memcpy(&D_80062648, arg0, ArchiveDecodeAlignedSize(arg1));
+    temp_v0 = func_80039850(&D_80062648);
+    D_80062528 = temp_v0;
+    func_80039A80(temp_v0, 0x7F, 0);
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
