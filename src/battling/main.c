@@ -5,6 +5,12 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+void func_8007639C(void *, s32);
+void func_8008EF74(s32 arg0, void *arg1);
+void func_8008F060(s32 arg0, void *arg1);
+#endif
+
+#ifndef XENO_PC_PORT
 void func_8008D0A4(void *arg0, void *arg1);
 
 s32 ArchiveDecodeSize();
@@ -644,10 +650,24 @@ void func_8008EF00(s32 arg0, void *arg1) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EF30);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EF74);
+
+#ifndef XENO_PC_PORT
+void func_8008EF74(s32 arg0, void *arg1) {
+    func_8007639C(arg0, 3);
+    *(s16 *)((s8*)(arg1) + 4) = 0x3C;
+}
+#endif
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EFA8);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F014);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F060);
+
+#ifndef XENO_PC_PORT
+void func_8008F060(s32 arg0, void *arg1) {
+    func_8007639C(arg0, 4);
+    *(s16 *)((s8*)(arg1) + 4) = 0x3C;
+}
+#endif
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F094);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F17C);
 
