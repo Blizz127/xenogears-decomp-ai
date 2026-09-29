@@ -35,6 +35,7 @@ for opt in O0 O2 UBSan; do
     gcc -std=gnu17 "${common[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c pc_port/src/battle_mips_adapter.c -o "$TEST_OUT/$opt.cpu.o"
     gcc -std=gnu17 "${common[@]}" "${flags[@]}" -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
+        -include assert.h \
         -DXENO_BATTLE_OVERLAY_HOST_BODIES -Ipc_port/include_shim -Iinclude -Ipc_port/src -c src/battle/main68.c -o "$TEST_OUT/$opt.effects.o"
     clang++ -no-pie "${flags[@]}" -Wl,--gc-sections \
         -Wl,--export-dynamic-symbol=rsin -Wl,--export-dynamic-symbol=rcos \
@@ -60,13 +61,14 @@ from pathlib import Path
 import sys
 s=Path('src/battle/main68.c').read_text()
 a,b={'cap':('value < 0x21','value < 0x20'),
-     'wrap':('s16 value = (s16)(0x20 - effect_divide(phase, divisor));','s32 value = 0x20 - effect_divide(phase, divisor);'),
-     'trig':('rsin(phase)','rcos(phase)')}[sys.argv[1]]
+     'wrap':('s16 temp_v0;','s32 temp_v0;'),
+     'trig':('rsin(arg0)','rcos(arg0)')}[sys.argv[1]]
 assert s.count(a)==1
 (Path(sys.argv[2])/(sys.argv[1]+'.c')).write_text(s.replace(a,b))
 PYM
     gcc -std=gnu17 "${common[@]}" -O2 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
-        -DXENO_BATTLE_OVERLAY_HOST_BODIES -Ipc_port/include_shim -Iinclude -Ipc_port/src \
+        -include assert.h -DXENO_BATTLE_OVERLAY_HOST_BODIES \
+        -Ipc_port/include_shim -Iinclude -Ipc_port/src \
         -c "$TEST_OUT/$mutant.c" -o "$TEST_OUT/$mutant.o"
     clang++ -no-pie -Wl,--gc-sections \
         -Wl,--export-dynamic-symbol=rsin -Wl,--export-dynamic-symbol=rcos \

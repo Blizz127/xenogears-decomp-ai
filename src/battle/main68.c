@@ -24,28 +24,32 @@ void func_800A429C(void *arg0);
 s16 func_800A3490(s16 arg0, s16 arg1, s32 arg2) {
     return (s16) (arg2 + ((s32) (rsin(arg0) + 0x1000) / arg1));
 }
+/* The retail target traps on a zero divisor. Keep that host seam out of the
+ * matching preprocessor output so the retail body remains the plain divide. */
+#ifdef XENO_PC_PORT
+#define M68_EFFECT_DIVIDE(numerator, divisor) \
+    ((divisor) == 0 ? (__builtin_trap(), 0) : (numerator) / (divisor))
+#else
+#define M68_EFFECT_DIVIDE(numerator, divisor) ((numerator) / (divisor))
+#endif
 #ifndef XENO_PC_PORT
+#define M68_EFFECT_RESULT_DECL register s32 result asm("$2") = -1
+#else
+#define M68_EFFECT_RESULT_DECL s32 result = -1
+#endif
 
-/* func_800A3514: value = (s16)(base + phase/divisor); return value<0x21 ?
- * value : -1. Signature/logic taken from src/battle/main68.c's not-yet-
- * matching XENO_PC_PORT body (effect_divide wraps the retail div/BREAK 7
- * pattern; here plain '/' plus the [BattleDiv] compiler preset already
- * matches that half byte-exact). The clamp needs "result" pinned to $2/v0
- * so it's the live register across the branch (retail keeps -1/value in
- * v0 throughout and only uses v1 as the compare temp); unpinned, gcc puts
- * the branch's "value" operand in v0 and the -1/result in v1, needing an
- * extra final move that retail doesn't have. */
+/* Matched C. Pin the live result to v0 only for the MIPS matching build; the
+ * host uses the same control flow without a target-specific register name. */
 s32 func_800A3514(s16 phase, s16 divisor, s16 base) {
-    register s32 result asm("$2") = -1;
-    s16 value = (s16)(base + phase / divisor);
+    M68_EFFECT_RESULT_DECL;
+    s16 value = (s16)(base + M68_EFFECT_DIVIDE(phase, divisor));
     if (value < 0x21) {
         result = value;
     }
     return result;
 }
-
-
-#endif
+#undef M68_EFFECT_DIVIDE
+#undef M68_EFFECT_RESULT_DECL
 /* Shared by the matching build and the port (matched C). */
 s16 func_800A3578(s16 arg0, s16 arg1, s32 arg2) {
     return (s16) (arg2 - (arg0 / arg1));
@@ -110,23 +114,6 @@ INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A48EC);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4B3C);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4CF8);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4DB8);
-#endif
-
-
-#ifdef XENO_PC_PORT
-/* Retail effect progression callbacks selected by func_800AA820.
- * Arithmetic is signed 16-bit on entry and wraps to signed 16-bit on
- * return. Zero divisors are invalid in retail (BREAK 7), never a value. */
-static s32 effect_divide(s32 numerator, s16 divisor) {
-    if (divisor == 0) __builtin_trap();
-    return numerator / divisor;
-}
-
-s32 func_800A3514(s16 phase, s16 divisor, s16 base) {
-    s16 value = (s16)(base + effect_divide(phase, divisor));
-    return value < 0x21 ? value : -1;
-}
-
 #endif
 
 

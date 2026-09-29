@@ -117,12 +117,12 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-300 port bodies shadow 297 byte-exact functions
+299 port bodies shadow 296 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 96, slus 27, menu 24, field 12, movie 1, shop menu 1 | 161 |
+| `XENO_PC_PORT` arms in game TUs: battle 95, slus 27, menu 24, field 12, movie 1, shop menu 1 | 160 |
 | `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
@@ -161,7 +161,7 @@ mod on boot; streamed-file replacement has a live test.
 
 **Known-divergence list: 8 tracked items (D1–D8; D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
-further 297 matched functions run port bodies of unproven equivalence.**
+further 296 matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 
