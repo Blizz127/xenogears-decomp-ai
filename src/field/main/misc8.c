@@ -1177,7 +1177,18 @@ extern long FieldGetVec2Magnitude(long x, long y);
  * position (+0x22 / +0x2A) and returns FieldGetVec2Magnitude of the delta.
  * Used by func_80082620's actor-follow branch. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800825AC);
+s32 func_800825AC(s32 actorA, s32 actorB) {
+    u8 *dataA;
+    u8 *dataB;
+    s32 bx;
+    s32 bz;
+
+    dataB = *(u8 **)((u8 *)g_FieldActors + actorB * 0x5C + 0x4C);
+    dataA = *(u8 **)((u8 *)g_FieldActors + actorA * 0x5C + 0x4C);
+    bx = *(s16 *)(dataB + 0x22);
+    bz = *(s16 *)(dataB + 0x2A);
+    return FieldGetVec2Magnitude(bx - *(s16 *)(dataA + 0x22), bz - *(s16 *)(dataA + 0x2A));
+}
 #else
 s32 func_800825AC(s32 actorA, s32 actorB) {
     u8* dataA = (u8*)(uintptr_t)*(u32*)((u8*)g_FieldActors + actorA * 0x5C + 0x4C);
@@ -2894,18 +2905,16 @@ extern s32 D_800B21B8;
 // at default volume/pan. The channel is the retail fourth argument
 // (a1 & 7, previously dropped in transcription -- latent while
 // func_800855C8 was a no-op shim).
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085634);
-#else
 void func_80085634(int a0, int a1) {
+    s32 channel = a1 & 7;
+
     if (a0 == 0) {
-        func_8003A20C((a1 & 7) * 2);
+        func_8003A20C(channel * 2);
     } else {
         D_800B21B8 = a0;
-        func_800855C8(a0, 0x7F, 0x40, a1 & 7);
+        func_800855C8(a0, 0x7F, 0x40, channel);
     }
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800C3A38;
 extern u16 D_800AE060[];
