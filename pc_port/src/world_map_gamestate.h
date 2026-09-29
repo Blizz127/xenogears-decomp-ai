@@ -48,4 +48,18 @@ static inline uint16_t wm_gs_lhu(uint32_t guest)
     return value;
 }
 
+static inline void wm_gs_sb(uint32_t guest, uint8_t value)
+{
+    unsigned char* host = wm_gs_host(guest, 1u);
+    *(uint8_t*)PSX_ADDR(guest) = value;
+    if (host != NULL)
+        *host = value;
+}
+
+static inline uint8_t wm_gs_lbu(uint32_t guest)
+{
+    unsigned char* host = wm_gs_host(guest, 1u);
+    return host != NULL ? *host : *(const uint8_t*)PSX_ADDR(guest);
+}
+
 #endif /* WORLD_MAP_GAMESTATE_H */

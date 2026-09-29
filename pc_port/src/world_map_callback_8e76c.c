@@ -35,6 +35,7 @@
 #include "world_map_helper_95cd4.h"
 #include "world_map_helper_97770.h"
 #include "world_map_state2_8eb64.h"
+#include "world_map_state_vertical_8f690.h"
 #include "world_map_state01_8eb30.h"
 #include "world_map_terrain_sampler.h"
 
@@ -287,6 +288,15 @@ restored_main_dispatch:
             return wm_8008E76C_state01(slot_idx, s2);
         if (state == 2)
             return wm_8008E76C_state2(s2);
+        /* jtbl_80070A50 entries 8/12/16/20: the vertical transitions */
+        if (state == 8)
+            return wm_8008E76C_state8(s2);
+        if (state == 12)
+            return wm_8008E76C_state12(s2);
+        if (state == 16)
+            return wm_8008E76C_state16(s2);
+        if (state == 20)
+            return wm_8008E76C_state20(s2);
     }
 
     /* --- Legacy fallback for not-yet-restored states --- */
