@@ -5,7 +5,9 @@
 #else
 #define BATTLE_PHASE_CALL0(fn, addr) fn()
 #endif
+#ifndef XENO_PC_PORT
 extern u8 D_800C3E4C;
+#endif
 
 
 #ifndef XENO_PC_PORT

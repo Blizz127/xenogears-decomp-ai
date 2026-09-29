@@ -6,10 +6,12 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
+#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
 extern u8 D_800D3410[];
 extern u8 D_800D343F;
 extern u8 D_800D342E;
+#endif
 
 #ifndef XENO_PC_PORT
 static __inline__ u16* BattleCopyRow16(s32 idx) {
