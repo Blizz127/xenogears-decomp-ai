@@ -185,7 +185,6 @@ func_800A579C	generated logging stub (matched C not linked)	func_800A579C
 func_800A5870	generated logging stub (matched C not linked)	func_800A5870
 func_800A5914	generated logging stub (matched C not linked)	func_800A5914
 func_800AA600	generated logging stub (matched C not linked)	func_800AA600
-func_800AA760	port arm spanning the body in src/battle/main70.c	func_800AA760
 func_800AA79C	port arm spanning the body in src/battle/main71.c	func_800AA79C
 func_800AE1BC	port arm in src/battle/main72.c	func_800AE1BC
 func_800AE220	port arm in src/battle/main72.c	func_800AE220

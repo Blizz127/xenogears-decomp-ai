@@ -117,12 +117,12 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-273 port bodies shadow 270 byte-exact functions
+272 port bodies shadow 269 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 69, slus 27, menu 24, field 12, movie 1, shop menu 1 | 134 |
+| `XENO_PC_PORT` arms in game TUs: battle 68, slus 27, menu 24, field 12, movie 1, shop menu 1 | 133 |
 | `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
@@ -168,8 +168,8 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 | D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
 | D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
-| D5 | battle | the tested battle stops after about 694,700 retail instructions at an unresolved native call (0x80044bd0) | open: battle native-call bridge incomplete |
-| D6 | title test harness | the previous pad schedule mapped game Circle to the wrong physical button, so the headless smoke never reached New Game | fixed by the USA-layout schedule; `run_title_newgame_chain.sh` passes O0/O2/UBSan and detects M1–M5; `run_title_newgame_smoke.sh` reaches Lahan map 2 |
+| D5 | static data / battle | when launched outside the project root with `XENO_DATA_DIR`, the loader left main-exe `.rodata` / `.sdata` zero-filled; battle then stopped in DrawOTag | fixed: shared disc-layer search order; `run_static_data_cwd_test.sh` and `run_static_data_package_test.sh` |
+| D6 | title test harness | the input schedule used physical button bits while documented as game button bits, so Circle did not interrupt the attract movie in the smoke | fixed: map-layout button translation; current smoke log has ordered markers through Lahan, but its wrapper exited 143 before writing the final summary, so the full smoke verdict is unverified |
 | D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (107 world_map functions have byte-exact C now; the port calls none of them) | open: switch batches below |
 | D8 | missing bodies | 72 retail functions still have only a generated logging stub, which returns without retail behaviour; 18 of them have matched C that the port does not link | open |
 
@@ -186,9 +186,9 @@ entry from play, save/load via the memory card UI). Asset replacement for
 textures and sound samples is covered by tests only through the identity
 mod on boot; streamed-file replacement has a live test.
 
-**Known-divergence list: 8 tracked items (D1–D8; D6 fixed, D3 by design,
+**Known-divergence list: 8 tracked items (D1–D8; D5 and D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
-further 270 matched functions run port bodies of unproven equivalence.**
+further 269 matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 
