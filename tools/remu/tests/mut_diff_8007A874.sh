@@ -5,7 +5,7 @@ set -uo pipefail
 python3 - "$1" "$2" <<'PY'
 import sys
 src = open(sys.argv[1]).read()
-old = "(D_800D3430 + ((u32)index << 6))[p[2]]"
+old = "((row & 0xFF) << 6)"
 assert src.count(old) == 1
-open(sys.argv[2], "w").write(src.replace(old, "(D_800D3430 + ((u32)index << 5))[p[2]]"))
+open(sys.argv[2], "w").write(src.replace(old, "((row & 0xFF) << 5)"))
 PY

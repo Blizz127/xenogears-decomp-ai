@@ -1,9 +1,9 @@
-/* Differential test: host-compiled src/battle/mainc15.c func_8007A874
- * vs the retail bytes (asm/battle/nonmatchings/main15/func_8007A874.s)
+/* Differential test: host-compiled src/battle/mainasm_AD84.c func_8007A874
+ * vs the retail bytes (asm/battle/matchings/mainasm_AD84/func_8007A874.s)
  * executed by remu. Fails on any behavioral mismatch.
  *
  * Build (from repo root):
- *   tools/remu/run_diff.sh diff_8007A874 src/battle/mainc15.c
+ *   tools/remu/run_diff.sh diff_8007A874 src/battle/mainasm_AD84.c
  */
 #include <stdio.h>
 #include <stdint.h>
@@ -11,10 +11,10 @@
 
 #include "remu.h"
 
-/* ---- host side: the real TU object (main15.c built with remu_shim.h so
+/* ---- host side: the real TU object (mainasm_AD84.c built with remu_shim.h so
  * INCLUDE_ASM is neutralized but every C body is identical). ---- */
 #include "common.h"
-u8 func_8007A874(u8 **ppBoard, u8 *pDst, u8 index, u8 i);
+u8 func_8007A874(u8 **ppBoard, u8 *pDst, s32 index, s32 i);
 
 /* TU externs the test must provide (sizes generous; D_800D3430 is used). */
 u8 *D_800D2D28;
@@ -41,7 +41,7 @@ void *tu_bzero(unsigned char *p, int size) {
 }
 void func_80077074(void) {}
 
-#define RETAIL_S "asm/battle/nonmatchings/main15/func_8007A874.s"
+#define RETAIL_S "asm/battle/matchings/mainasm_AD84/func_8007A874.s"
 #define TAB_BASE 0x800D3430u
 /* 256x64 rows plus slack: retail indexes row[p[2]] with p[2] up to 0xFF,
  * so the max touch is (0xFF << 6) + 0xFF = 16575. */

@@ -4,20 +4,6 @@
 #ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
 #endif
-/* func_8007A874.s: copy D_800D3430[index][p[2]] to pDst[(i << 3) + p[1]], return it */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-u8 func_8007A874(u8** ppBoard, u8* pDst, u8 index, u8 i) {
-    u8* p = *ppBoard;
-    u8 v = (D_800D3430 + ((u32)index << 6))[p[2]];
-
-    pDst[((u32)i << 3) + p[1]] = v;
-    return v;
-}
-#endif /* XENO_PC_PORT */
-
 
 #ifndef XENO_PC_PORT
 extern u8* D_800D2D28;
