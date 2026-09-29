@@ -52,4 +52,22 @@
 #define D_8009B69C ((u16*)PSX_ADDR(0x8009B69C))
 #define D_8009B6B0 ((u16*)PSX_ADDR(0x8009B6B0))
 
+/* batch 3: story-selector callbacks func_80087C6C, 80087FD0, 80088B40,
+ * 80088D00 and their matched callees func_80087B84, 80087F60, 800894C8,
+ * 80093354, 80093534, 80094154 */
+#define D_8009A180 WM_GUEST(WmMat, 0x8009A180)
+#define D_8009AF80 ((u16*)PSX_ADDR(0x8009AF80))
+#define D_8009AF90 ((u16*)PSX_ADDR(0x8009AF90))
+#define D_8009AFDC ((s16*)PSX_ADDR(0x8009AFDC))
+#define D_8009B674 ((u16*)PSX_ADDR(0x8009B674))
+#define D_8009CD68 ((WmSVec*)PSX_ADDR(0x8009CD68))
+#define D_8009CD6C ((WmSVec*)PSX_ADDR(0x8009CD6C))
+#define D_8009CD70 ((s16*)PSX_ADDR(0x8009CD70))
+#define D_8009BCC0 ((u8*)PSX_ADDR(WM_GUEST(u32, 0x8009BCC0))) /* guest pointer */
+#define D_8009D160 WM_GUEST(s32, 0x8009D160)
+#define D_8009D2B4 WM_GUEST(s32, 0x8009D2B4)
+/* g_GameState is the port's host copy (authoritative; world_map_gamestate.h):
+ * the bodies address it as (u8 *)&g_GameState + offset. */
+extern s32 g_GameState;
+
 #endif /* WORLD_MAP_PORT_DATA_H */

@@ -19,7 +19,13 @@ byte-matching body under `#ifndef XENO_PC_PORT`, and the port body under
 | --- | --- | --- | --- |
 | `func_800A708C` (misc5.c) | passes `D_800C3A36` zero-extended (lhu) to `func_801D3538` | sign-extended it (lh) | Differs only for values >= 0x8000. Port fixed to retail in 063a970a. |
 | `func_80098370` (misc7.c) | sets only the current script slot's `flags_0` (u16 at slot+4) to 0xFFFF | also wrote 0xFFFF to the slot's upper flag half (state, isInUse and the other bitfields) | The port marked the slot's state/in-use bits all set, which could change later script scheduling. Port fixed to retail in the func_80098370 match. |
+| `func_800A476C` (field scripts/virtual_machine.c) | `MoveImage` copies the 320x224 frame at VRAM (0,0) to the offscreen snapshot rect; the GPU has already written those pixels to VRAM | before the `MoveImage`, always calls `GR_StoreFrameBufferImmediate(0, 0, 0x140, 0xE0)` to read the PsyCross GL backbuffer back into the CPU VRAM mirror. It is not gated. | Host seam, always on. It makes the copy see what retail's VRAM holds, since PsyCross draws to GL rather than VRAM. No game-visible divergence is expected; it costs one framebuffer readback per call, on the title/menu backdrop path. |
 | `func_800ACB90` (misc9.c) | `FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0)` | passes y = 0 | The TIM is uploaded at VRAM (0x380, 0) instead of (0x380, 0x100). Open: the function is still INCLUDE_ASM. |
+
+| Function (world_map.bin) | Retail behaviour | Port behaviour | Suspected impact |
+| --- | --- | --- | --- |
+| `func_80088570` (story-selector callback, brackets 3-7) | still INCLUDE_ASM: not matched yet. The best faithful C is 1 instruction long (71 vs 72); only the final `return 1` scheduling differs, a register tie-break (~20 faithful variants tried) | no port body yet: the port agent adds a hand-written wm_80088570 stopgap (option b); the other callbacks in the D_8009A034 streams run matched C | Open: preservation gap, not a known behaviour difference. Tracked in the claude/slus world_map work; the wm_ body retires when the matched C lands. |
+| `func_80088720` (story-selector callback, brackets 3-7) | still INCLUDE_ASM: not matched yet. The best faithful C is 139 of 264 lines off: gcc 2.7.2 records the single `sp = 0x1F800000` scratchpad assignment as a known constant, so the first scheduling pass moves a g_GameState load above a scratchpad store, which retail does not do | no port body yet: the port agent adds a hand-written wm_80088720 stopgap | Open: preservation gap, not a known behaviour difference. Tracked as above. |
 
 ## Resolutions
 
