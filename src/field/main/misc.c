@@ -346,10 +346,8 @@ void func_80087AB8(void) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087B5C);
-#else
 void func_80087B5C(void) {
+#ifdef XENO_PC_PORT
     u8* pGS = (u8*)g_pGameState;
     u16 arg1 = (u16)FieldScriptVMGetInstructionArgument(1);
     FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x182C));
@@ -360,8 +358,14 @@ void func_80087B5C(void) {
     arg1 = (u16)FieldScriptVMGetInstructionArgument(7);
     FieldScriptMemoryWriteU16(arg1, *(u16*)(pGS + 0x1832));
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+#else
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(1) & 0xFFFF, *(u16 *)((s8*)(g_pGameState) + 0x182C));
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(3) & 0xFFFF, *(u16 *)((s8*)(g_pGameState) + 0x182E));
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(5) & 0xFFFF, *(u16 *)((s8*)(g_pGameState) + 0x1830));
+    FieldScriptMemoryWriteU16(FieldScriptVMGetInstructionArgument(7) & 0xFFFF, *(u16 *)((s8*)(g_pGameState) + 0x1832));
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 9);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8004F300;
 
@@ -1102,10 +1106,8 @@ void func_80089F94(void) {
 
 extern s16 D_800B0080, D_800B0082, D_800B0084, D_800B0086, D_800B0088, D_800B008A, D_800B008C, D_800B008E;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089FD0);
-#else
 void func_80089FD0(void) {
+#ifdef XENO_PC_PORT
     D_800B0080 = (s16)FieldScriptVMGetInstructionArgument(1);
     D_800B0082 = (s16)FieldScriptVMGetInstructionArgument(3);
     {
@@ -1121,8 +1123,24 @@ void func_80089FD0(void) {
     D_800B008C = (s16)FieldScriptVMGetInstructionArgument(11);
     D_800B008E = (s16)FieldScriptVMGetInstructionArgument(13);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 15;
+#else
+    s16 temp_v0;
+
+    D_800B0080 = FieldScriptVMGetInstructionArgument(1);
+    D_800B0082 = FieldScriptVMGetInstructionArgument(3);
+    temp_v0 = FieldScriptVMGetInstructionArgument(5);
+    D_800B0084 = temp_v0;
+    if ((temp_v0 << 0x10) == 0) {
+        D_800B0084 = temp_v0 + 1;
+    }
+    D_800B0086 = FieldScriptVMGetInstructionArgument(7);
+    D_800B0088 = 0;
+    D_800B008A = FieldScriptVMGetInstructionArgument(9);
+    D_800B008C = FieldScriptVMGetInstructionArgument(0xB);
+    (*(s16*)&D_800B008E) = FieldScriptVMGetInstructionArgument(0xD);
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 0xF);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800B0090, D_800B0094, D_800B0098;
 
@@ -1582,16 +1600,19 @@ extern u8 D_800B225C;
 extern u8 D_800B225D;
 extern u8 D_800B225E;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B0E8);
-#else
 void func_8008B0E8(void) {
+#ifdef XENO_PC_PORT
     D_800B225C = FieldScriptVMGetArgument(1);
     D_800B225D = FieldScriptVMGetArgument(3);
     D_800B225E = FieldScriptVMGetArgument(5);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#else
+    (*(s8*)&D_800B225C) = FieldScriptVMGetArgument(1);
+    (*(s8*)&D_800B225D) = FieldScriptVMGetArgument(3);
+    (*(s8*)&D_800B225E) = FieldScriptVMGetArgument(5);
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 7);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B21B4[];
 
@@ -2448,10 +2469,8 @@ void func_8008CF9C(void) {
 
 extern s16 D_800B21A0, D_800B21A2, D_800B21A4, D_800B21A6, D_800B21A8, D_800B21AA;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CFEC);
-#else
 void func_8008CFEC(void) {
+#ifdef XENO_PC_PORT
     D_800B21A0 = (s16)FieldScriptVMGetInstructionArgument(1);
     D_800B21A4 = (s16)FieldScriptVMGetInstructionArgument(3);
     D_800B21A2 = (s16)FieldScriptVMGetInstructionArgument(5);
@@ -2459,8 +2478,16 @@ void func_8008CFEC(void) {
     D_800B21AA = (s16)FieldScriptVMGetInstructionArgument(9);
     D_800B21A8 = (s16)FieldScriptVMGetInstructionArgument(11);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 13;
+#else
+    D_800B21A0 = FieldScriptVMGetInstructionArgument(1);
+    D_800B21A4 = FieldScriptVMGetInstructionArgument(3);
+    D_800B21A2 = FieldScriptVMGetInstructionArgument(5);
+    D_800B21A6 = FieldScriptVMGetInstructionArgument(7);
+    (*(s16*)&D_800B21AA) = FieldScriptVMGetInstructionArgument(9);
+    D_800B21A8 = FieldScriptVMGetInstructionArgument(0xB);
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 0xD);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008D078(void) {
     if (FieldScriptVMGetArgument(1) == 0) {
@@ -2723,14 +2750,15 @@ void func_8008DAFC(void) {
 
 extern s16 D_800B233E;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008DB2C);
-#else
 void func_8008DB2C(void) {
+#ifdef XENO_PC_PORT
     D_800B233E = FieldScriptVMGetActorIndex(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+#else
+    D_800B233E = FieldScriptVMGetActorIndex(1);
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 2);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 
 int FieldPartyMemberIncreaseGearHp(int partyMemberIndex, unsigned int amount) {
@@ -3259,18 +3287,26 @@ void func_8008EFA0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008EFE4);
-#else
 void func_8008EFE4(void) {
+#ifdef XENO_PC_PORT
     s32 arg1 = FieldScriptVMGetArgument(1);
     s32 arg3 = FieldScriptVMGetArgument(3);
     s32 arg5 = FieldScriptVMGetArgument(5);
     s32 arg7 = FieldScriptVMGetArgument(7);
     FieldSetClipDimensions((short)arg1, (short)arg3, (short)arg5, (short)arg7);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+#else
+    s32 temp_s0;
+    s32 temp_s1;
+    s32 temp_s2;
+
+    temp_s2 = FieldScriptVMGetArgument(1);
+    temp_s1 = FieldScriptVMGetArgument(3);
+    temp_s0 = FieldScriptVMGetArgument(5);
+    FieldSetClipDimensions(temp_s2, temp_s1, temp_s0, FieldScriptVMGetArgument(7));
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 9);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008F070(void) {
     D_800ADB3C = FieldScriptVMGetArgument(1);
