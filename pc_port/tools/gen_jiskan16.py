@@ -10,6 +10,10 @@ import sys
 EXPECTED_SHA256 = "cb177cddeb3cf73bd3e62dc93a7db1ad8c162256a50b93ecf7fc3bd641ea26d1"
 GRID = 94 * 94
 GLYPH_BYTES = 32
+# These public-domain cells happen to be identical to 32-byte runs in the
+# local retail BIOS image. Keep the port binary free of those bytes; render the
+# rare punctuation cells as blank rather than triggering the retail-data guard.
+RETAIL_OVERLAP_CELLS = {"2169", "224f"}
 
 
 def main() -> int:
@@ -33,7 +37,7 @@ def main() -> int:
         if len(glyph) != GLYPH_BYTES:
             raise SystemExit(f"invalid glyph size at {source}:{line_number}: {code}")
         index = (row - 0x21) * 94 + cell - 0x21
-        glyphs[index] = glyph
+        glyphs[index] = bytes(GLYPH_BYTES) if code.lower() in RETAIL_OVERLAP_CELLS else glyph
 
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="ascii", newline="\n") as stream:
