@@ -88,6 +88,16 @@ World map / main exe:
    the scheduler stopped at their slots. Switched to the matched C in
    batches 2–3 (17 callbacks). `func_80088720` runs a stopgap
    transcription until it matches. No current route reaches these brackets.
+   Batch 4 (4ea5cab0) switched the seven mode-12 initializers
+   (`func_8007CC6C`..`func_8007D774`) to the matched C; the retired
+   `wm_8007CC6C` had an extra store (slot +0x20) retail does not make.
+6a. `func_8008E76C` (player callback, not matched yet): states 8/12/16/20
+   run `world_map_state_vertical_8f690.c` (1f4d64f5), a **hand translation
+   from the retail assembly**, not matched C, like the restored states 0-2.
+   It stays a hand body in this audit and in the shadow counts until
+   `func_8008E76C` matches; then the port switches to that C and the module
+   retires. `wm_800767D4` in the same file is a port body of the matched
+   `func_800767D4` (guest-address arguments), counted as a faithful adapter.
 7. `func_80087734`: the port calls `RotMatrixYXZ`, where retail calls
    0x8003F738 (named `RotMatrix`, a table-driven routine). Unconfirmed: needs a
    numeric check of 0x8003F738's rotation order.
