@@ -54,16 +54,19 @@ extern u8 D_800B219C;
 extern u8 D_800B219D;
 extern u8 D_800B219E;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091A78);
-#else
 void func_80091A78(void) {
+#ifdef XENO_PC_PORT
     D_800B219C = FieldScriptVMGetArgument(1);
     D_800B219D = FieldScriptVMGetArgument(3);
     D_800B219E = FieldScriptVMGetArgument(5);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#else
+    (*(s8*)&D_800B219C) = FieldScriptVMGetArgument(1);
+    (*(s8*)&D_800B219D) = FieldScriptVMGetArgument(3);
+    (*(s8*)&D_800B219E) = FieldScriptVMGetArgument(5);
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 7);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_80091AD4(void) {
 }

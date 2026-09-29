@@ -1064,10 +1064,8 @@ void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008237C);
-#else
 s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
+#ifdef XENO_PC_PORT
     u8* actorData = pActorData;
     s32 xMin;
     s32 xMax;
@@ -1101,8 +1099,43 @@ s32 func_8008237C(s32 x, s32 z, void* pActorData, s32 extraRadius) {
         func_80281678(actorData);
     }
     return 0;
+#else
+    s16 temp_v0;
+    s16 temp_v1;
+    s32 temp_a1;
+    s32 temp_s0;
+    s32 temp_s1;
+    s32 temp_s3;
+    s32 temp_s4;
+    s32 temp_s5;
+    s32 temp_t0;
+    s32 temp_v0_2;
+    s32 temp_v1_2;
+    u16 temp_t1;
+    u16 temp_t2;
+
+    temp_s3 = (x << 0x10) + z;
+    temp_v1 = *(s16 *)((s8*)(pActorData) + 0x22);
+    temp_t1 = *(u16 *)((s8*)(pActorData) + 0x18);
+    temp_v0 = *(s16 *)((s8*)(pActorData) + 0x2A);
+    temp_t2 = *(u16 *)((s8*)(pActorData) + 0x1C);
+    temp_t0 = ((temp_v1 - temp_t1) - extraRadius) << 0x10;
+    temp_a1 = temp_v0 + temp_t2 + extraRadius;
+    temp_s5 = temp_t0 + temp_a1;
+    temp_v1_2 = (temp_v1 + temp_t1 + extraRadius) << 0x10;
+    temp_s0 = temp_v1_2 + temp_a1;
+    temp_v0_2 = (temp_v0 - temp_t2) - extraRadius;
+    temp_s1 = temp_v1_2 + temp_v0_2;
+    temp_s4 = temp_t0 + temp_v0_2;
+    if ((NormalClip(temp_s5, temp_s0, temp_s3) < 0) || (NormalClip(temp_s0, temp_s1, temp_s3) < 0) || (NormalClip(temp_s1, temp_s4, temp_s3) < 0) || (NormalClip(temp_s4, temp_s5, temp_s3) < 0)) {
+        return -1;
+    }
+    if (g_FieldSystemMode == 0) {
+        func_80281678(pActorData);
+    }
+    return 0;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 s32 func_80082494(s32* pVec, u8* actorData) {
     s16* clipPoints;

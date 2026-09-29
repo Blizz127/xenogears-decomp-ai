@@ -99,6 +99,11 @@ static uint8_t* psx_exe_read_file(const char* path, size_t* out_size)
     return buf;
 }
 
+/* Weak: the default backend is header-pulled by the port's disc.h users;
+ * standalone tests that link this file alone skip it. */
+extern int xg_plat_data_file_path(const char* name, char* out, size_t out_size)
+    __attribute__((weak));
+
 int PsxMemory_LoadStaticData(void)
 {
     /* Same resolution order as the disc image in port_main.c (run from
@@ -107,6 +112,7 @@ int PsxMemory_LoadStaticData(void)
         "../../disc/SLUS_006.64", "disc/SLUS_006.64", "../disc/SLUS_006.64",
     };
     const char* env = getenv("XENO_SLUS");
+    static char resolved[1024];
     const char* used = NULL;
     uint8_t* image = NULL;
     size_t size = 0;
@@ -116,6 +122,17 @@ int PsxMemory_LoadStaticData(void)
     if (env != NULL && env[0] != '\0') {
         image = psx_exe_read_file(env, &size);
         used = env;
+    }
+    /* The disc/storage layer's single search order (xg_plat/disc.h:
+     * XENO_DATA_DIR, XENO_SLUS's directory, disc/ ../disc/ ../../disc/), the
+     * same one that finds and verifies every other retail file.  Before this,
+     * a run whose working directory was not the repo root or build_native
+     * (XENO_DATA_DIR set) left main-exe static data zero-filled; battle's OT
+     * sentinel 0x8005698C then read 0 and DrawOTag stopped (divergence D5). */
+    if (image == NULL && xg_plat_data_file_path != NULL &&
+        xg_plat_data_file_path("SLUS_006.64", resolved, sizeof resolved)) {
+        image = psx_exe_read_file(resolved, &size);
+        used = resolved;
     }
     for (i = 0; image == NULL && i < sizeof(defaults) / sizeof(defaults[0]); i++) {
         image = psx_exe_read_file(defaults[i], &size);

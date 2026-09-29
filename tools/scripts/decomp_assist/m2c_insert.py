@@ -12,6 +12,9 @@ scope is read through `(*(T*)&sym)`.  Every inserted body is wrapped in
 #ifndef XENO_PC_PORT, so port-compiled TUs (e.g. battle host TUs) keep
 their port view unchanged.  Rebuild and compare afterwards.
 
+XENO_INSERT_NO_TOP=1 skips that top block (use it for bodies tu_test.py
+already matched inside the TU).
+
 --inner: for a site shaped `#ifndef XENO_PC_PORT / INCLUDE_ASM / #else /
 <port definition> / #endif`, fold the draft into that definition as its
 retail arm (one signature, `#ifdef XENO_PC_PORT <port body> #else <draft
@@ -201,7 +204,10 @@ lines=s.split('\n'); k=next((i for i,l in enumerate(lines) if l.startswith('#inc
 while k<len(lines) and (lines[k].startswith('#include') or not lines[k].strip()): k+=1
 protos=[defs[n]+';' for n in inserted if n not in hdrdecl]
 add=externs+protos
-if add:
+# XENO_INSERT_NO_TOP=1: add no top block, for bodies already verified inside
+# their TU (tu_test.py).  Hoisting the TU's own later prototypes would turn
+# earlier implicit calls into prototyped ones and change their code.
+if add and not os.environ.get('XENO_INSERT_NO_TOP'):
     lines[k:k]=['#ifndef XENO_PC_PORT']+add+['#endif','']
     s='\n'.join(lines)
 # (no header is added: m2c's own externs cover the callees, and a header

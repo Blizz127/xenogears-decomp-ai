@@ -496,9 +496,10 @@ extern s16 D_800B21B2;
 extern u8 D_800B21D2;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_800984EC);
-#else
+extern s32 g_FieldScriptVMCurScriptData_s32 asm("g_FieldScriptVMCurScriptData");
+#endif
 void func_800984EC(void) {
+#ifdef XENO_PC_PORT
     u8 mask1 = SCRIPT_READ_U8_REL(7);
     D_800B21AE = (s16)FieldScriptArgument1(1, mask1);
     mask1 = SCRIPT_READ_U8_REL(7);
@@ -507,8 +508,16 @@ void func_800984EC(void) {
     D_800B21B2 = (s16)FieldScriptArgument3(5, mask1);
     D_800B21D2 |= 0x80;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+#else
+    /* Raw-offset actor reads: a struct-field access lets gcc hoist the final
+     * load above the D_800B21D2 store, which retail does not do. */
+    D_800B21AE = FieldScriptArgument1(1, *(u8*)(*(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) + g_FieldScriptVMCurScriptData_s32 + 7));
+    D_800B21B0 = FieldScriptArgument2(3, *(u8*)(*(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) + g_FieldScriptVMCurScriptData_s32 + 7));
+    D_800B21B2 = FieldScriptArgument3(5, *(u8*)(*(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) + g_FieldScriptVMCurScriptData_s32 + 7));
+    D_800B21D2 |= 0x80;
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) = *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) + 8;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern u8 D_8006FD1C[];
 
