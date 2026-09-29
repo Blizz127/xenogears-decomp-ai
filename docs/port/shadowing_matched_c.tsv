@@ -258,7 +258,6 @@ func_800BDCF8	port arm in src/battle/mainc118.c	func_800BDCF8
 func_800BDD34	port arm in src/battle/main.c	func_800BDD34
 func_800BE6A0	port arm in src/battle/mainc122.c	func_800BE6A0
 func_800BE6E8	port arm in src/battle/mainc122.c	func_800BE6E8
-func_800BED30	port arm spanning the body in src/battle/mainc123.c	func_800BED30
 func_800BEDE8	port arm spanning the body in src/battle/mainc124.c	func_800BEDE8
 func_800BEEB4	port arm in src/battle/main125.c	func_800BEEB4
 func_800BEF24	port arm in src/battle/main125.c	func_800BEF24
