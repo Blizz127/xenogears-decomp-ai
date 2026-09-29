@@ -1155,6 +1155,15 @@ s32 func_8007A9B4(s32 arg0) {
     *(u16 *)((s8*)(temp_v1) + 0x22) = D_8009A46C[*(s32 *)((s8*)(temp_v1) + 0x50)];
     return 1;
 }
+#else
+s32 func_8007A9B4(s32 arg0) {
+    u8 *actor = (u8 *)D_8009BE24 + (arg0 << 7);
+
+    *(s32 *)(actor + 0x50) = 0;
+    *(u16 *)(actor + 0x20) = D_8009A450;
+    *(u16 *)(actor + 0x22) = D_8009A46C[0];
+    return 1;
+}
 #endif
 
 
@@ -1568,6 +1577,15 @@ s32 func_8008032C(s32 arg0) {
     *(u16 *)((s8*)(temp_v1) + 0x22) = D_8009A6AC[*(s32 *)((s8*)(temp_v1) + 0x50)];
     return 1;
 }
+#else
+s32 func_8008032C(s32 arg0) {
+    u8 *actor = (u8 *)D_8009BE24 + (arg0 << 7);
+
+    *(s32 *)(actor + 0x50) = 0;
+    *(u16 *)(actor + 0x20) = D_8009A698;
+    *(u16 *)(actor + 0x22) = D_8009A6AC[0];
+    return 1;
+}
 #endif
 
 
@@ -1772,6 +1790,13 @@ s32 func_800827C8(s32 arg0) {
     *(s32 **)((s8*)(((arg0 << 7) + (uintptr_t)D_8009BE24)) + 0x50) = &D_8009A758;
     return 1;
 }
+#else
+s32 func_800827C8(s32 arg0) {
+    u8 *actor = (u8 *)D_8009BE24 + (arg0 << 7);
+
+    *(u32 *)(actor + 0x50) = 0x8009A758;
+    return 1;
+}
 #endif
 
 
@@ -1851,6 +1876,13 @@ void func_800837DC(void) {
 #ifndef XENO_PC_PORT
 s32 func_800838E8(s32 arg0) {
     *(s32 **)((s8*)(((arg0 << 7) + (uintptr_t)D_8009BE24)) + 0x50) = &D_8009AC60;
+    return 1;
+}
+#else
+s32 func_800838E8(s32 arg0) {
+    u8 *actor = (u8 *)D_8009BE24 + (arg0 << 7);
+
+    *(u32 *)(actor + 0x50) = 0x8009AC60;
     return 1;
 }
 #endif

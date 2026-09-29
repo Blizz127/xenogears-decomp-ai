@@ -76,4 +76,10 @@ extern u8 g_GameState[];
 #define D_8009D55C_vec WM_GUEST(WmVec, 0x8009D55C) /* published position */
 #define D_8009BD3A_arr ((s16*)PSX_ADDR(0x8009BD3A)) /* array view of D_8009BD3A */
 
+/* batch 6: world-map event callbacks for the selector cleanup/init states */
+#define D_8009A450 WM_GUEST(u16, 0x8009A450)
+#define D_8009A46C ((u16*)PSX_ADDR(0x8009A46C))
+#define D_8009A698 WM_GUEST(u16, 0x8009A698)
+#define D_8009A6AC ((u16*)PSX_ADDR(0x8009A6AC))
+
 #endif /* WORLD_MAP_PORT_DATA_H */
