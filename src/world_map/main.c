@@ -193,7 +193,7 @@ extern s32 D_8009C5B0;
 extern s32 D_8009C5B4;
 void func_80089160(s32, void *, void *);
 void func_80089514(s32);
-void func_8003A89C(s32);
+void func_8003A89C(); /* (AudioManager*, s32 level, s32 steps); one caller passes only a0 */
 extern s32 D_80062528;
 void func_80039E60(s32);
 void func_8003A3B8(s32, s32, s32);
@@ -1047,7 +1047,19 @@ s32 func_8007A568(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A570);
+#ifndef XENO_PC_PORT
+s32 func_8007A570(s32 arg0) {
+    WmObj* obj;
+
+    obj = &D_8009BE24[arg0];
+    obj->unk4 = 0;
+    *(s16 *)0x1F8000A0 = *(s32 *)(D_8009C620 + 8);
+    *(s16 *)0x1F8000A2 = *(s32 *)(D_8009C620 + 0xC);
+    *(s16 *)0x1F8000A4 = *(s32 *)(D_8009C620 + 0x10);
+    func_80089160(0xA, 0x1F8000A0, 0);
+    return 3;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A5DC);
 
@@ -1201,27 +1213,146 @@ s32 func_8007C724(s32 arg0) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007C7D8);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CC6C);
+#ifndef XENO_PC_PORT
+s32 func_8007CC6C(s32 arg0) {
+    WmObj *obj;
+
+    func_800848B4(4, 0);
+    func_800848B4(4, 2);
+    func_800848B4(4, 1);
+    func_800848B4(4, 3);
+    *(s16 *)(D_8009C620 + 0x150) = 0;
+    *(s16 *)(D_8009C620 + 0x16C) = 0;
+    *(s16 *)(D_8009C620 + 0x16A) = 0;
+    *(s16 *)(D_8009C620 + 0x168) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x168, D_8009C620 + 0x170);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->pos[0] = 0xD00000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0x400000;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CD20);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CE84);
+#ifndef XENO_PC_PORT
+s32 func_8007CE84(s32 arg0) {
+    WmObj *obj;
+
+    func_800848B4(5, 6);
+    *(s16 *)(D_8009C620 + 0x1A4) = 0;
+    *(s16 *)(D_8009C620 + 0x1C0) = 0;
+    *(s16 *)(D_8009C620 + 0x1BE) = 0;
+    *(s16 *)(D_8009C620 + 0x1BC) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x1BC, D_8009C620 + 0x1C4);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->pos[0] = 0xB00000;
+    obj->unk20 = 0;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0x200000;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007CF18);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D078);
+#ifndef XENO_PC_PORT
+s32 func_8007D078(s32 arg0) {
+    WmObj *obj;
+
+    func_800848B4(9, 7);
+    func_800848B4(9, 8);
+    *(s16 *)(D_8009C620 + 0x2F4) = 0;
+    *(s16 *)(D_8009C620 + 0x310) = 0;
+    *(s16 *)(D_8009C620 + 0x30E) = 0;
+    *(s16 *)(D_8009C620 + 0x30C) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x30C, D_8009C620 + 0x314);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[0] = 0xC00000;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D110);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D228);
+#ifndef XENO_PC_PORT
+s32 func_8007D228(s32 arg0) {
+    WmObj* obj;
+
+    func_800848B4(0xA, 0xB);
+    *(s16*)(D_8009C620 + 0x348) = 0;
+    *(s16*)(D_8009C620 + 0x364) = 0;
+    *(s16*)(D_8009C620 + 0x362) = 0;
+    *(s16*)(D_8009C620 + 0x360) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x360, D_8009C620 + 0x368);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->pos[0] = 0xE00000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0x100000;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D2B8);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D414);
+#ifndef XENO_PC_PORT
+s32 func_8007D414(s32 arg0) {
+    WmObj* obj;
+
+    func_800848B4(0xC, 0xF);
+    *(s16*)(D_8009C620 + 0x3F0) = 0;
+    *(s16*)(D_8009C620 + 0x40C) = 0;
+    *(s16*)(D_8009C620 + 0x40A) = 0;
+    *(s16*)(D_8009C620 + 0x408) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x408, D_8009C620 + 0x410);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->pos[0] = 0xE80000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0x280000;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D4A4);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D600);
+#ifndef XENO_PC_PORT
+s32 func_8007D600(s32 arg0) {
+    WmObj* obj;
+
+    func_800848B4(0xD, 0xE);
+    *(s16*)(D_8009C620 + 0x444) = 0;
+    *(s16*)(D_8009C620 + 0x460) = 0;
+    *(s16*)(D_8009C620 + 0x45E) = 0;
+    *(s16*)(D_8009C620 + 0x45C) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x45C, D_8009C620 + 0x464);
+    obj = &D_8009BE24[arg0];
+    obj->unk40 = -0x4000;
+    obj->pos[0] = 0xF80000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->pos[1] = 0;
+    obj->pos[2] = 0x380000;
+    return 1;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -1246,13 +1377,58 @@ s32 func_8007D690(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D774);
+#ifndef XENO_PC_PORT
+s32 func_8007D774(s32 arg0) {
+    WmObj *obj;
+
+    *(s16 *)(D_8009C620 + 0x540) = 1;
+    *(s16 *)(D_8009C620 + 0x55C) = 0;
+    *(s16 *)(D_8009C620 + 0x55A) = 0;
+    *(s16 *)(D_8009C620 + 0x558) = 0;
+    RotMatrixYXZ(D_8009C620 + 0x558, D_8009C620 + 0x560);
+    obj = &D_8009BE24[arg0];
+    obj->pos[0] = 0xD00000;
+    obj->pos[2] = 0x400000;
+    obj->pos[1] = 0xFFD80000;
+    obj->unk3C = 0;
+    obj->unk38 = 0;
+    obj->unk40 = -0x6000;
+    return 3;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D7FC);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007D918);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007DCE0);
+#ifndef XENO_PC_PORT
+extern u16 D_8009A5CC[];
+extern s32 D_8009D3D4;
+void func_8007DCE0(void) {
+    func_8003A89C(D_80062528, 0, 0xF0);
+    func_80039FF8();
+    func_8003852C(D_8006259C);
+    HeapFree(D_8006259C);
+    func_80084818();
+    func_80086568();
+    func_800866C8();
+    func_80074F04();
+    func_800750DC();
+    func_80088FF4();
+    func_80089128();
+    func_80097D64();
+    HeapFree(D_8009BC38);
+    HeapFree(D_8009BCB0);
+    HeapFree(D_8009BC3C);
+    HeapFree(D_8009BCB4);
+    HeapFree(D_8009C180);
+    func_800976A0();
+    D_8006F954 = D_8009A5CC[D_8009D3D4];
+    D_8006F94E = 0x1A1;
+    D_8009BBC4 = 1;
+    D_8006F950 = D_8009BD3A;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007DE14);
 
