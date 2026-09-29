@@ -1,8 +1,8 @@
-/* Differential test: host-compiled src/battle/main34.c func_80080AE4
+/* Differential test: host-compiled src/battle/mainasm_10FF4.c func_80080AE4
  * (12-slot min search) vs the retail bytes executed by remu.
  *
- * Layout: B = D_800D2DD7 (init count, CONSTRAINED to 0..11; larger values
- * hang retail: the wrap only fires at 11 so i never re-equals B), E =
+ * Layout: B = D_800D2DD7 (init count, constrained to 0..10; 11 is not a
+ * valid start because the retail wrap fires at 11 before it can re-equal B), E =
  * D_800D2DD8[i] (slot keys), halves at B+0x2F+v*2. Both sides share one
  * backing image (host symbols aliased into `backing`, emu poked at the
  * retail addresses). Seeds guarantee >= 1 qualifying slot: retail returns
@@ -16,13 +16,13 @@
 #include "common.h"
 #include "remu.h"
 
-u8 func_80080AE4(u8 target);
+s32 func_80080AE4(u8 target);
 
 /* Host symbols aliased into one backing image (halves are reached by raw
  * pointer arithmetic from &D_800D2DD7, so they need real adjacent backing). */
 static u8 backing[0x400];
-__asm__(".globl D_800D2DD7\n.set D_800D2DD7, backing+0x100");
-__asm__(".globl D_800D2DD8\n.set D_800D2DD8, backing+0x101");
+__asm__(".globl D_800D2DD7\n.set D_800D2DD7, backing+1");
+__asm__(".globl D_800D2DD8\n.set D_800D2DD8, backing+2");
 
 #define BVAR 0x800D2DD7u
 #define IMG 0x330u
@@ -31,7 +31,7 @@ static int check_one(remu_t *m, uint32_t entry, uint8_t target,
                      uint8_t init, const uint8_t ev[12],
                      const uint8_t *img) {
     /* host side */
-    memcpy(backing, img, IMG);
+    memcpy(backing + 1, img, IMG);
     uint8_t want = func_80080AE4(target);
     /* retail side */
     if (remu_poke(m, BVAR, img, IMG)) { printf("FAIL poke\n"); return 0; }
@@ -84,12 +84,12 @@ static void make_img(uint8_t *img, uint32_t *s, uint8_t init,
 int main(void) {
     remu_t *m = remu_create();
     if (!m) { printf("FAIL create\n"); return 1; }
-    uint32_t entry = remu_load_s(m, "asm/battle/nonmatchings/main34/func_80080AE4.s");
+    uint32_t entry = remu_load_s(m, "asm/battle/matchings/mainasm_10FF4/func_80080AE4.s");
     if (entry != 0x80080AE4u) { printf("FAIL load entry=%08X\n", entry); return 1; }
     static uint8_t img[0x330];
     int n = 0;
-    /* structured: every init 0..11, sequential keys, target outside keys */
-    for (uint8_t init = 0; init <= 11; init++) {
+    /* structured: every valid init 0..10, sequential keys, target outside keys */
+    for (uint8_t init = 0; init < 11; init++) {
         uint8_t ev[12];
         for (int k = 0; k < 12; k++) ev[k] = (uint8_t)(k * 3 + 1);
         uint32_t s = 1;
@@ -120,7 +120,7 @@ int main(void) {
                 s = s * 1103515245u + 12345u;
                 ev[k] = (uint8_t)(s >> 17);
             }
-            uint8_t init = (uint8_t)((s >> 5) % 12u);
+            uint8_t init = (uint8_t)((s >> 5) % 11u);
             uint8_t target = (uint8_t)(s >> 11);
             ev[0] = (uint8_t)(target + 1); /* slot 0 always qualifies */
             make_img(img, &s, init, ev, 2);
