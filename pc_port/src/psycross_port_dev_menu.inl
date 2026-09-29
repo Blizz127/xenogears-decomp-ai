@@ -11,7 +11,9 @@ static int PsyX_PortDevMenuHandleEvent(SDL_Event *event)
         int pressed = event->type == SDL_KEYDOWN;
         int key = event->key.keysym.scancode;
         if (pressed && event->key.repeat) return open;
-        if (key == SDL_SCANCODE_F8 && !(event->key.keysym.mod & KMOD_SHIFT))
+        /* The key left of 1: unused by the game's keyboard map and by every
+         * PsyCross/host hotkey (F7/F8 stay quick save/load). */
+        if (key == SDL_SCANCODE_GRAVE)
             return PcPort_DevMenuKey(PC_DEV_OPEN, pressed);
         if (!open) return 0;
         if (key == SDL_SCANCODE_UP) PcPort_DevMenuKey(PC_DEV_UP, pressed);
@@ -74,7 +76,7 @@ static void PsyX_PortDevMenuDraw()
         PsyX_HostToolbarDrawText(PcPort_DevMenuRow(i), 24, y);
     }
     PsyX_HostToolbarDrawText("DPAD OR STICK  A PICK  B BACK", 20, top - 28 * (rows + 1));
-    PsyX_HostToolbarDrawText("F8 OR L3 AND R3 CLOSE", 20, top - 28 * (rows + 2));
+    PsyX_HostToolbarDrawText("KEY LEFT OF 1 OR L3 AND R3 CLOSE", 20, top - 28 * (rows + 2));
     PsyX_HostToolbarDrawText(PcPort_DevMenuStatus(), 20, top - 28 * (rows + 3));
     glClearColor(clear[0], clear[1], clear[2], clear[3]);
     glColorMask(mask[0], mask[1], mask[2], mask[3]);

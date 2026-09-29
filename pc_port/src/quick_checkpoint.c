@@ -86,6 +86,15 @@ void PcPort_QuickCheckpointRequestSave(void)
     fprintf(stderr, "[xeno-port][quick] save queued\n");
 }
 
+void PcPort_QuickCheckpointSafetyDescribe(char* out, size_t n)
+{
+    ActorData* actor = player_actor(NULL);
+    snprintf(out, n, "map=%d field=%d actor=%d ADB68=%d ADB64=0x%X B21D0=%d lock=0x%X",
+             (int)(g_GameSceneMapNum & 0x3FFF), s_fieldActive, actor != NULL,
+             (int)D_800ADB68, (unsigned)D_800ADB64, (int)D_800B21D0,
+             actor ? (unsigned)(*(u32*)actor & 0x1800u) : 0u);
+}
+
 int PcPort_QuickCheckpointFieldIsSafe(void)
 {
     return (g_GameSceneMapNum & 0x3FFF) != 490 && checkpoint_is_safe();

@@ -280,14 +280,19 @@ static const unsigned char* PsyX_HostToolbarGlyph(char ch)
 	static const unsigned char glyphV[7] = {17, 17, 17, 17, 17, 10, 4};
 	static const unsigned char glyphW[7] = {17, 17, 17, 17, 21, 21, 10};
 	static const unsigned char glyphX[7] = {17, 17, 10, 4, 10, 17, 17};
-	static const unsigned char digits[5][7] = {
+	static const unsigned char digits[10][7] = {
+		{14, 17, 19, 21, 25, 17, 14},
 		{4, 12, 4, 4, 4, 4, 14},
 		{14, 17, 1, 2, 4, 8, 31},
 		{30, 1, 1, 14, 1, 1, 30},
 		{2, 6, 10, 18, 31, 2, 2},
-		{31, 16, 16, 30, 1, 1, 30}
+		{31, 16, 16, 30, 1, 1, 30},
+		{14, 16, 16, 30, 17, 17, 14},
+		{31, 1, 2, 4, 8, 8, 8},
+		{14, 17, 17, 14, 17, 17, 14},
+		{14, 17, 17, 15, 1, 1, 14}
 	};
-	if (ch >= '1' && ch <= '5') return digits[ch - '1'];
+	if (ch >= '0' && ch <= '9') return digits[ch - '0'];
 
 	switch (ch) {
 	case 'A': return glyphA;

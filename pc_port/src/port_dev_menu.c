@@ -86,7 +86,9 @@ int PcPort_DevMenuAction(const char *command) {
     if (!PcPort_DevMenuEnabled()) return -1;
     if (!PcPort_QuickCheckpointFieldIsSafe()) {
         snprintf(status, sizeof status, "WAIT FOR FREE FIELD CONTROL");
-        fprintf(stderr, "[dev-menu] rejected %s: field is not safe\n", command);
+        char why[160];
+        PcPort_QuickCheckpointSafetyDescribe(why, sizeof why);
+        fprintf(stderr, "[dev-menu] rejected %s: field is not safe (%s)\n", command, why);
         return -1;
     }
     if (!strcmp(command, "heal")) {

@@ -1,3 +1,4 @@
+diff --git a/src/pad/PsyX_pad.cpp b/src/pad/PsyX_pad.cpp
 --- a/src/pad/PsyX_pad.cpp
 +++ b/src/pad/PsyX_pad.cpp
 @@ -6,6 +6,8 @@
@@ -17,7 +18,7 @@
  
  	if (g_padCommEnable == 0)
  		return;
-@@ -216,6 +219,17 @@
+@@ -216,6 +219,18 @@
  
  			PsyX_Pad_UpdateGameControllerInput(controller->gc, pad);
  
@@ -32,6 +33,7 @@
 +				memset(pad->analog, 128, sizeof pad->analog);
 +				continue;
 +			}
- 
++
  			ushort test = *(u_short*)pad->buttons;
  
+ 			// In order to switch From/To analog user has to use left gamepad stick
