@@ -850,7 +850,22 @@ void func_8007ED84(u8 *arg0, s32 arg1) {
     D_800926E8 = savedX;
     D_800926EC += 0x14;
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EE08);
+extern u8 D_800926F0;
+extern u8 D_800926F4;
+extern u8 D_800926F8;
+void func_8007EE08(s32 arg0) {
+    s32 unset = 0xFF;
+
+    if (arg0 != 0) {
+        D_800926F4 = 0xFF;
+        D_800926F8 = 0;
+        D_800926F0 = D_80059488 * 0x14;
+    } else {
+        D_800926F0 = unset;
+        D_800926F4 = unset;
+        D_800926F8 = unset;
+    }
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EE68);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EEE8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EFB4);
