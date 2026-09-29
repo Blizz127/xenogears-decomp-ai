@@ -30,7 +30,19 @@ void func_8009E364(void) {
     ((u32*)(D_800C34B0 + 0x5F6C))[D_800C3E50] = prod;
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main62", func_8009E364);
+extern u8* D_800C3E00;
+extern u8* D_800C3DFC;
+extern u8 D_800C3E50;
+extern u8* D_800C34B0;
+
+void func_8009E364(void) {
+    u32 prod;
+
+    prod = D_800C3E00[0x5B] * D_800C3DFC[0x11];
+    (D_800C34B0 + D_800C3E50)[0x5FA0] = 2;
+    ((u32*)(D_800C34B0 + 0x5F6C))[D_800C3E50] = prod;
+}
+
 #endif
 #ifndef XENO_PC_PORT
 extern u32 D_800C3D60;
