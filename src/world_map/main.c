@@ -58,6 +58,16 @@ void func_8008BFD4(s32, void *, s32, s32);
 void func_80087904(void *, s32, u16, s32);
 s32 func_800879E0(s32);
 void func_800848B4(s32, s32);
+void func_80089160(s32, void *, void *);
+s32 func_80093978(s32, s32);
+void func_80097070(void *, void *);
+void func_80087B84(void *, void *, void *);
+s32 func_80087F60(s32);
+void func_800894C8(s32);
+void func_80093354(void *);
+void func_80093534(void *);
+s32 func_80094154(void *, void *);
+int abs(int);
 #endif
 
 #ifndef XENO_PC_PORT
@@ -1880,7 +1890,6 @@ s32 func_80087A8C(s32 arg0) {
 
 
 
-#ifndef XENO_PC_PORT
 void func_80087B84(void *arg0, void *arg1, void *arg2) {
     *(s32 *)((s8*)(arg1) + 8) = 0;
     *(s32 *)((s8*)(arg1) + 0) = 0;
@@ -1900,11 +1909,9 @@ void func_80087B84(void *arg0, void *arg1, void *arg2) {
     *(s16 *)((s8*)(arg2) + 0x10) = (s16) *(s32 *)((s8*)(arg0) + 8);
     TransposeMatrix(arg2, arg2);
 }
-#endif
 
 
 
-#ifndef XENO_PC_PORT
 s32 func_80087C6C(s32 arg0) {
     WmVec *sp;
     WmObj *obj;
@@ -1959,11 +1966,9 @@ s32 func_80087C6C(s32 arg0) {
     }
     return 1;
 }
-#endif
 
 
 
-#ifndef XENO_PC_PORT
 s32 func_80087F60(s32 arg0) {
     u16 temp_s0;
 
@@ -1974,11 +1979,9 @@ s32 func_80087F60(s32 arg0) {
     func_800848B4(temp_s0, temp_s0 - 1);
     return 1;
 }
-#endif
 
 
 
-#ifndef XENO_PC_PORT
 s32 func_80087FD0(s32 arg0) {
     WmVec *sp;
     u8 *obj;
@@ -2061,7 +2064,6 @@ s32 func_80087FD0(s32 arg0) {
     func_8008BFD4(arg0, sp, 0x80, 0xB0);
     return 1;
 }
-#endif
 
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088570);
@@ -2071,7 +2073,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008868C);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088720);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80088B40(s32 arg0) {
     s32 i;
     u8 *obj;
@@ -2098,13 +2099,11 @@ s32 func_80088B40(s32 arg0) {
     *(s32 *)((s8*)(rec) + 0x10) = *(s32 *)((s8*)(obj) + 0x30) >> 12;
     return ret;
 }
-#endif
 
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088C90);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80088D00(s32 arg0) {
     u8 *a1;
     WmObj *obj;
@@ -2119,7 +2118,6 @@ s32 func_80088D00(s32 arg0) {
     }
     return 1;
 }
-#endif
 
 
 
@@ -2221,7 +2219,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80089160);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800893E0);
 
 
-#ifndef XENO_PC_PORT
 void func_800894C8(s32 arg0) {
     s32 var_a1;
     u8 *var_v1;
@@ -2234,7 +2231,6 @@ void func_800894C8(s32 arg0) {
         var_v1 += 0x54;
     } while (var_a1 != -1);
 }
-#endif
 
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80089514);
@@ -2549,7 +2545,6 @@ void func_800931B0(void) {
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800931D8);
 
 
-#ifndef XENO_PC_PORT
 void func_80093354(void *arg0) {
     s32 temp_a1;
     s32 temp_a1_2;
@@ -2577,7 +2572,6 @@ void func_80093354(void *arg0) {
         *(s32 *)((s8*)(arg0) + 8) = (s32) (temp_v1_4 + (D_8009D2B4 << 0x17));
     }
 }
-#endif
 
 
 
@@ -2615,7 +2609,6 @@ void func_800933EC(void *arg0) {
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093484);
 
 
-#ifndef XENO_PC_PORT
 void func_80093534(void *arg0) {
     s32 temp_v1;
     s32 temp_v1_2;
@@ -2643,7 +2636,6 @@ block_9:
         *(s32 *)((s8*)(arg0) + 8) = var_v0_2;
     }
 }
-#endif
 
 
 
@@ -2699,7 +2691,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094060);
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094088);
 
 
-#ifndef XENO_PC_PORT
 s32 func_80094154(void *arg0, void *arg1) {
     s32 temp_lo;
     s32 temp_v0;
@@ -2714,7 +2705,6 @@ s32 func_80094154(void *arg0, void *arg1) {
     temp_v0_2 = var_v0_2 >> 0xC;
     return SquareRoot0(temp_lo + (temp_v0_2 * temp_v0_2));
 }
-#endif
 
 
 
