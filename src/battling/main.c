@@ -723,7 +723,12 @@ s32 func_8008F4F4(void *arg0, s32 arg1) {
     return ((*(s16 *)((s8*)(arg0) + 0xBC) * arg1) / 255) < *(s16 *)((s8*)(arg0) + 0xB4);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F530);
+s32 func_8008F530(void *arg0, s32 arg1) {
+    if (arg1 != 0) {
+        return func_80073DE4(arg0, *(s16 *)((u8 *)arg0 + 0xBE));
+    }
+    return *(s16 *)((u8 *)arg0 + 0xB6) < 0x1000 - *(s16 *)((u8 *)arg0 + 0xBE);
+}
 
 s32 func_8008F570(void *arg0) {
     return 0x1000 - *(s16 *)((s8*)(arg0) + 0xBE);

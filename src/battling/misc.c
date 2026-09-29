@@ -376,7 +376,22 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800730F4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007313C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800731F8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800732AC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800732CC);
+void func_800732CC(void) {
+    void *temp_v0;
+
+    temp_v0 = func_8008D3F4(3, 0);
+    (*(u8 *)((u8 *)(temp_v0) + 0x74)) = 0x80;
+    (*(u8 *)((u8 *)(temp_v0) + 0x75)) = 0x80;
+    (*(u8 *)((u8 *)(temp_v0) + 0x76)) = 0xC0;
+    func_8008D5C0(temp_v0, 0x60);
+    (*(s16 *)((u8 *)(temp_v0) + 0)) = 4;
+    (*(s16 *)((u8 *)(temp_v0) + 0x44)) = 0x300;
+    (*(s16 *)((u8 *)(temp_v0) + 0x48)) = 8;
+    (*(s16 *)((u8 *)(temp_v0) + 0x4A)) = 0x20;
+    (*(s16 *)((u8 *)(temp_v0) + 0x68)) = 0;
+    (*(s16 *)((u8 *)(temp_v0) + 0x6A)) = 0x20;
+    D_80092644 = temp_v0;
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007334C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80073424);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80073644);
@@ -687,7 +702,25 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007DC74);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E020);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E24C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E2D8);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E31C);
+extern s32 D_800926B0;
+extern s32 D_80094818;
+void func_8007E31C(void *arg0, void *arg1, void *arg2) {
+    void *temp_v1;
+
+    if (D_800926B0 < 0x64) {
+        temp_v1 = (D_800926B0 << 5) + (u8 *)&D_80094818;
+        (*(s16 *)((u8 *)(temp_v1) + 0x10)) = (s16) (*(s32 *)((u8 *)(arg0) + 0));
+        (*(s16 *)((u8 *)(temp_v1) + 0x12)) = (s16) (*(s32 *)((u8 *)(arg0) + 4));
+        (*(s16 *)((u8 *)(temp_v1) + 0x14)) = (s16) (*(s32 *)((u8 *)(arg0) + 8));
+        (*(s16 *)((u8 *)(temp_v1) + 0x18)) = (s16) (*(s32 *)((u8 *)(arg1) + 0));
+        (*(s16 *)((u8 *)(temp_v1) + 0x1A)) = (s16) (*(s32 *)((u8 *)(arg1) + 4));
+        (*(s16 *)((u8 *)(temp_v1) + 0x1C)) = (s16) (*(s32 *)((u8 *)(arg1) + 8));
+        (*(u8 *)((u8 *)(temp_v1) + 4)) = (u8) (*(u8 *)((u8 *)(arg2) + 0));
+        (*(u8 *)((u8 *)(temp_v1) + 5)) = (u8) (*(u8 *)((u8 *)(arg2) + 1));
+        (*(u8 *)((u8 *)(temp_v1) + 6)) = (u8) (*(u8 *)((u8 *)(arg2) + 2));
+        D_800926B0 += 1;
+    }
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E3CC);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E528);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E574);
@@ -932,7 +965,24 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80081094);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80081100);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800811AC);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800812BC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800814AC);
+extern s32 D_80092700;
+extern s32 D_80092704;
+void func_800814AC(void) {
+    u8 *entry;
+    u32 i;
+
+    i = 0;
+    entry = D_800915AC;
+    do {
+        func_800812BC(entry);
+        i++;
+        entry += 0x3C;
+    } while (i < 8);
+    D_80092734 = 0;
+    D_80092700 = 0;
+    D_80092704 = 1;
+    func_80080F04();
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008151C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008162C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80081A44);
@@ -1165,7 +1215,10 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80085EC8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800864B4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800866D4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800868E0);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086E24);
+extern s32 D_8009A300;
+void func_80086E24(void) {
+    AddPrim(D_80092938, (D_800928A0 * 0x310) + (u8 *)&D_8009A300);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086E70);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086FF8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087068);
@@ -1232,6 +1285,15 @@ void func_80088C28(void) {
     HeapDebugDump(1, D_800927F4, 0xA, 0x80AD);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088CBC);
+extern s32 D_8009A0D8;
+void func_80088CBC(s32 arg0) {
+    void *temp_s0;
+
+    temp_s0 = (arg0 * 0xF8) + (u8 *)&D_8009A0D8;
+    (*(s8 *)((u8 *)(temp_s0) + 0x77)) = 3;
+    (*(s8 *)((u8 *)(temp_s0) + 0x7B)) = 0x7D;
+    (*(s16 *)((u8 *)(temp_s0) + 0x80)) = 0x3000;
+    (*(s16 *)((u8 *)(temp_s0) + 0x82)) = GetClut(0x3F0, 0xC0);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088D1C);
 #endif
