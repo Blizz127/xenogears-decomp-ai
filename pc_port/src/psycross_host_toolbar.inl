@@ -97,6 +97,8 @@ void (*PcPort_FileMenuNoticeDialog)(const char *title, const char *text) =
 	(defined(RENDERER_OGL) || defined(RENDERER_OGLES))
 
 static int g_xenoHostToolbarActive = 0;
+static int PsyX_PortDevMenuHandleEvent(SDL_Event *event);
+static void PsyX_PortDevMenuDraw();
 static PcPortHostToolbarAction g_xenoHostToolbarHover = PC_PORT_TOOLBAR_NONE;
 
 static PcPortQuickUiState PsyX_HostToolbarQuickUiState()
@@ -186,6 +188,7 @@ static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
 static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 {
 	PcPortHostToolbarAction action;
+	if (PsyX_PortDevMenuHandleEvent(event)) return 1;
 
 	if (!g_xenoHostToolbarActive)
 		return 0;
@@ -251,6 +254,15 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 static const unsigned char* PsyX_HostToolbarGlyph(char ch)
 {
 	static const unsigned char glyphA[7] = {14, 17, 17, 31, 17, 17, 17};
+	static const unsigned char glyphB[7] = {30, 17, 17, 30, 17, 17, 30};
+	static const unsigned char glyphJ[7] = {7, 2, 2, 2, 18, 18, 12};
+	static const unsigned char glyphK[7] = {17, 18, 20, 24, 20, 18, 17};
+	static const unsigned char glyphM[7] = {17, 27, 21, 21, 17, 17, 17};
+	static const unsigned char glyphQ[7] = {14, 17, 17, 17, 21, 18, 13};
+	static const unsigned char glyphU[7] = {17, 17, 17, 17, 17, 17, 14};
+	static const unsigned char glyphY[7] = {17, 17, 10, 4, 4, 4, 4};
+	static const unsigned char glyphZ[7] = {31, 1, 2, 4, 8, 16, 31};
+	static const unsigned char glyphDash[7] = {0, 0, 0, 31, 0, 0, 0};
 	static const unsigned char glyphC[7] = {14, 17, 16, 16, 16, 17, 14};
 	static const unsigned char glyphD[7] = {30, 17, 17, 17, 17, 17, 30};
 	static const unsigned char glyphE[7] = {31, 16, 16, 30, 16, 16, 31};
@@ -279,6 +291,15 @@ static const unsigned char* PsyX_HostToolbarGlyph(char ch)
 
 	switch (ch) {
 	case 'A': return glyphA;
+	case 'B': return glyphB;
+	case 'J': return glyphJ;
+	case 'K': return glyphK;
+	case 'M': return glyphM;
+	case 'Q': return glyphQ;
+	case 'U': return glyphU;
+	case 'Y': return glyphY;
+	case 'Z': return glyphZ;
+	case '-': return glyphDash;
 	case 'C': return glyphC;
 	case 'D': return glyphD;
 	case 'E': return glyphE;
@@ -335,6 +356,8 @@ static void PsyX_HostToolbarDrawText(const char* text, int x, int y)
 	}
 }
 
+#include "psycross_port_dev_menu.inl"
+
 static void PsyX_HostToolbarDrawButton(int x, int width,
 	PcPortHostToolbarAction action, const char* label, int labelX, int state)
 {
@@ -379,8 +402,10 @@ static void PsyX_HostToolbarDraw()
 	GLint oldScissor[4];
 	GLfloat oldClearColor[4];
 
-	if (!g_xenoHostToolbarActive)
+	if (!g_xenoHostToolbarActive) {
+		PsyX_PortDevMenuDraw();
 		return;
+	}
 	scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 	glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
 	glGetIntegerv(GL_SCISSOR_BOX, oldScissor);
@@ -450,6 +475,7 @@ static void PsyX_HostToolbarDraw()
 	glScissor(oldScissor[0], oldScissor[1], oldScissor[2], oldScissor[3]);
 	if (!scissorEnabled)
 		glDisable(GL_SCISSOR_TEST);
+	PsyX_PortDevMenuDraw();
 }
 
 static void PsyX_HostToolbarShutdown()

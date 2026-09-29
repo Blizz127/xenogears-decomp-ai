@@ -581,6 +581,7 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_video_recording.patch" "_xe
 # Clickable host controls occupy pixels reserved above the PSX framebuffer;
 # capture readback remains limited to the retail game region below the bar.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_toolbar.patch" "_xeno_host_toolbar"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_port_dev_menu_input.patch" "_xeno_dev_menu_input"
 # Texture-cache format key (F10): GR_SetTexture's cache early-returned on
 # texture ID alone (PsyX_render.cpp GR_SetTexture), and the return fires
 # BEFORE the per-shader sampler uniforms (u_tex=0/u_lut=1) are initialized.
@@ -808,6 +809,7 @@ PORT_SOURCES=(
     pc_port/src/plat/xg_plat_mods.c
     pc_port/src/mod_events.c
     pc_port/src/cheat_console.c
+    pc_port/src/port_dev_menu.c
     pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c
