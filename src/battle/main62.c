@@ -30,17 +30,18 @@ extern u8 D_800C3E50;
 extern u8 D_800CCE4A[];
 #endif
 
+#ifdef XENO_PC_PORT
+#define BATTLE_C3D60_BYTE ((u8*)PSX_ADDR(D_800C3D60))
+#else
+#define BATTLE_C3D60_BYTE ((u8*)D_800C3D60)
+#endif
 
 /* func_8009E3C8.s */
 void func_8009E3C8(void) {
-#ifdef XENO_PC_PORT
-    /* D_800C3D60 holds a guest address; rebase it into g_PsxRam. */
-    *(u8*)PSX_ADDR(D_800C3D60) = 4;
-#else
-    *(u8*)D_800C3D60 = 4;
-#endif
+    *BATTLE_C3D60_BYTE = 4;
     *(u8*)(D_800CCE4A + (u32)D_800C3E50 * 0x170) = 3;
 }
+#undef BATTLE_C3D60_BYTE
 
 
 /* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps

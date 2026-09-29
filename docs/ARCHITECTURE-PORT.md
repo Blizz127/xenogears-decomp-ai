@@ -117,7 +117,7 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-297 port bodies shadow 294 byte-exact functions
+296 port bodies shadow 293 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
