@@ -11,12 +11,14 @@
 #   4. the terminal lane handed FieldMain map 1.
 # Requires a host display (default :10) and the normal xeno-port build.
 #
-# Usage: run_w34n124_world_walk_entry.sh [lahan|mountain]
+# Usage: run_w34n124_world_walk_entry.sh [lahan|mountain|blackmoon]
 #   lahan    (default) 30 frames of 0x2000, circle at frame 40:
 #            record 1 (id 1) -> map 1 entrance 9.
 #   mountain 120 frames of 0x2000 (Fei stops against the mountain wall inside
 #            record 0), circle at frame 130: record 0 (id 2) -> map 15
 #            entrance 2 (the Mountain Path world entrance).
+#   blackmoon takes that same world route and checks whether the field scripts
+#            continue from map 15 into map 16 (Blackmoon Forest).
 set -uo pipefail
 
 target=${1:-lahan}
@@ -28,6 +30,12 @@ case "$target" in
     expect_map=1
     ;;
   mountain)
+    schedule='0:0x2000,120:0,130:0x20,131:0'
+    sample_call=121
+    expect_id=2
+    expect_map=15
+    ;;
+  blackmoon)
     schedule='0:0x2000,120:0,130:0x20,131:0'
     sample_call=121
     expect_id=2
@@ -80,6 +88,14 @@ name="natural world exit with D7CC=0"
 check grep -aq '\[worldmap-open-loop\] natural state exit frames=[0-9]* D7CC=0' "$log"
 name="terminal lane entered FieldMain map $expect_map"
 check grep -aq "\[FieldMain\] g_pGameState=0x[0-9a-f]* g_GameSceneMapNum=$expect_map\$" "$log"
+if [ "$target" = blackmoon ]; then
+    name="Blackmoon Forest map 16 reached from Mountain Path"
+    check grep -aq '\[FieldMain\] g_pGameState=0x[0-9a-f]* g_GameSceneMapNum=16$' "$log"
+    if ! grep -aq '\[FieldMain\] g_pGameState=0x[0-9a-f]* g_GameSceneMapNum=16$' "$log"; then
+        last_map=$(grep -a '\[FieldMain\] g_pGameState=' "$log" | tail -1 | sed 's/.*g_GameSceneMapNum=//')
+        echo "W34N124 INFO blackmoon.stop_map=${last_map:-unobserved}"
+    fi
+fi
 name="no worldmap stub reached"
 check test "$(grep -ac '\[worldmap-stub\]' "$log")" = 0
 

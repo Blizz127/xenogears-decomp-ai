@@ -39,8 +39,9 @@ RUNNING
 HOW FAR IT PLAYS (tested on the build machine)
   Boot, title screen, New Game, the opening, into Lahan (field map 2).
   The world map runs partly on hand-written port code: walking from the
-  world map onto the Lahan entrance works in tests; other world-map
-  transitions (and the trip to Black Moon Forest) are not tested yet.
+  world map onto the Lahan entrance works in tests. The headless Black Moon
+  Forest attempt walks to the Mountain Path trigger, exits the world map, and
+  loads map 15; it does not reach map 16 during the 150-second observation.
   Battles run the retail battle code in a MIPS interpreter.
 
 KNOWN ISSUES
@@ -49,6 +50,9 @@ KNOWN ISSUES
   - Widescreen, 60 fps and volume settings are not implemented.
   - Movie playback has not been tested.
   - A few menus run port code that is not yet verified against retail.
+  - Port-only semantic reconstructions `func_80086700` and `func_8008C28C`
+    are tagged FAKEMATCH, excluded from byte-exact matched-C totals, and need
+    later retail matching; see `docs/FAKEMATCHES.md` in the source repository.
 
 REPORTING BUGS
   Say what you did and what happened, and include version.txt, the last

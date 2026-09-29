@@ -10,7 +10,8 @@
 #     bin/xeno-port       the port
 #     lib/                non-system shared libraries the port needs
 #     config.example.ini  settings reference (copy to ~/.config/xenogears-port/)
-#     version.txt, build-info.json, MANIFEST (sha256 of every file)
+#     version.txt, build-info.json, MANIFEST (sha256 of every file),
+#     MANIFEST.sizes.tsv (sha256, size, path for every file)
 #     README-TEST.txt     what to supply, how far it plays, known issues
 #     THIRD_PARTY.md      licences of bundled/linked third-party code
 #
@@ -153,6 +154,11 @@ LD_LIBRARY_PATH="$PKG/lib" ldd "$PKG/bin/xeno-port" > "$OUTDIR/$NAME.ldd.txt"
 }
 
 (cd "$PKG" && find . -type f ! -name MANIFEST -print0 | sort -z | xargs -0 sha256sum > MANIFEST)
+(cd "$PKG" && find . -type f ! -name MANIFEST ! -name MANIFEST.sizes.tsv -print0 | sort -z |
+    while IFS= read -r -d '' file; do
+        printf '%s\t%s\t%s\n' "$(sha256sum "$file" | cut -d' ' -f1)" \
+            "$(stat -c '%s' "$file")" "$file"
+    done > MANIFEST.sizes.tsv)
 tar -C "$OUTDIR" -czf "$OUTDIR/$NAME.tar.gz" "$NAME"
 (cd "$OUTDIR" && sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
 echo "$OUTDIR/$NAME.tar.gz"
