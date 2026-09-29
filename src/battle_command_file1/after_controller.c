@@ -6,6 +6,13 @@
 
 #ifndef XENO_PC_PORT
 s32 func_battle_command_file1_801E57F8(s32, s32, s32, s32);
+void func_battle_command_file1_801E7DE4(s32 arg0, s32 arg1);
+extern void * D_800D3278;
+s32 func_battle_command_file1_801E7EA4(s32 arg0, s32 arg1);
+#endif
+
+#ifndef XENO_PC_PORT
+s32 func_battle_command_file1_801E57F8(s32, s32, s32, s32);
 void func_battle_command_file1_801E9958(s32 arg0, u16 arg1);
 extern void * D_800D3278;
 s32 func_battle_command_file1_801E79E0(s32 arg0, s32 arg1);
@@ -282,7 +289,16 @@ s32 func_battle_command_file1_801E7E5C(s32 arg0, s32 arg1) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7EA4);
+
+#ifndef XENO_PC_PORT
+s32 func_battle_command_file1_801E7EA4(s32 arg0, s32 arg1) {
+    func_battle_command_file1_801E57F8(arg1, 2, 0, 1);
+    *(u8 *)((s8*)(D_800D3278) + 0x81E) = (u8) *(u8 *)((s8*)(D_800D3278) + 0x380);
+    func_battle_command_file1_801E7DE4((u16) *(u16 *)((s8*)(D_800D3278) + 0x380), *(u16 *)((s8*)(D_800D3278) + 0x382));
+    return 5;
+}
+#endif
+
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7F08);
 
 #ifndef XENO_PC_PORT
