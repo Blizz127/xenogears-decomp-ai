@@ -14,9 +14,9 @@ several overlays already and says nothing about how much C exists.
 
 | Measure | Value |
 |---|---|
-| **Code matched** | **27.42%** (379,404 / 1,383,684 bytes) |
-| Functions fully matched | 59.09% (2,638 / 4,464) |
-| Fuzzy match | 27.78% |
+| **Code matched** | **27.58%** (381,600 / 1,383,684 bytes) |
+| Functions fully matched | 59.39% (2,651 / 4,464) |
+| Fuzzy match | 28.04% |
 | Units (objects) | 347 |
 
 ## Per overlay
@@ -28,14 +28,14 @@ Note: `Psy-Q SDK` is a *subset* of `Main Executable` (`slus_006.64/psyq` inside 
 | Battle Overlay | 15.45% | 51,332 / 332,316 | 430 / 857 | `####....................` |
 | Field Overlay | 39.43% | 99,776 / 253,052 | 638 / 884 | `#########...............` |
 | Main Executable | 47.74% | 104,108 / 218,072 | 910 / 1,223 | `###########.............` |
-| World Map Overlay | 7.49% | 12,604 / 168,336 | 121 / 386 | `##......................` |
+| World Map Overlay | 8.36% | 14,080 / 168,336 | 125 / 386 | `##......................` |
 | Menu Overlay | 22.36% | 33,180 / 148,360 | 175 / 307 | `#####...................` |
-| Battling Overlay | 6.53% | 9,116 / 139,692 | 126 / 483 | `##......................` |
+| Battling Overlay | 6.65% | 9,292 / 139,692 | 130 / 483 | `##......................` |
 | Shop Menu Overlay | 70.67% | 37,460 / 53,008 | 104 / 118 | `#################.......` |
 | Psy-Q SDK | 88.46% | 40,228 / 45,476 | 331 / 367 | `#####################...` |
 | Movie Overlay | 10.65% | 2,872 / 26,972 | 15 / 34 | `###.....................` |
 | Member Change Menu Overlay | 100.00% | 24,936 / 24,936 | 67 / 67 | `########################` |
-| Battle Command File1 | 21.22% | 4,020 / 18,940 | 52 / 105 | `#####...................` |
+| Battle Command File1 | 24.10% | 4,564 / 18,940 | 57 / 105 | `######..................` |
 
 ## Burn-down — largest unmatched objects
 
@@ -44,10 +44,10 @@ effort moves the headline number most.
 
 | Unit | Unmatched bytes | Code matched | Functions |
 |---|---:|---:|---:|
-| `world_map/main` | 155,732 | 7.5% | 121/386 |
+| `world_map/main` | 154,256 | 8.4% | 125/386 |
 | `menu/main/misc` | 96,780 | 23.1% | 149/252 |
-| `battling/misc` | 94,916 | 5.1% | 71/285 |
-| `battling/main` | 35,660 | 10.0% | 55/198 |
+| `battling/misc` | 94,844 | 5.2% | 73/285 |
+| `battling/main` | 35,556 | 10.3% | 57/198 |
 | `battle/main51` | 29,820 | 5.5% | 10/47 |
 | `movie/main` | 24,100 | 10.6% | 15/34 |
 | `slus_006.64/system/temp2` | 23,804 | 14.3% | 32/102 |
@@ -70,10 +70,10 @@ effort moves the headline number most.
 | `field/main/misc7` | 9,872 | 46.5% | 74/91 |
 | `slus_006.64/system/rendering` | 9,356 | 5.6% | 7/20 |
 | `field/scripts/virtual_machine` | 8,736 | 29.8% | 20/29 |
-| `battle_command_file1/after_controller` | 8,532 | 19.8% | 34/71 |
 | `slus_006.64/system/temp1f` | 8,500 | 0.5% | 2/16 |
 | `battle/main68` | 8,336 | 7.1% | 7/18 |
 | `battle/main53` | 8,280 | 8.9% | 2/11 |
+| `battle_command_file1/after_controller` | 7,988 | 24.9% | 39/71 |
 
 ## Fully matched units — 129 of 347
 

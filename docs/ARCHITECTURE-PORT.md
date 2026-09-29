@@ -75,9 +75,9 @@ from a game TU uses that TU's overlay.
 
 ## Measured state
 
-Matching build (2026-09-29, commit `2ea6fce5`): objdiff reports **2,638 / 4,464
-retail functions byte-exact (59.09%)** and **379,404 / 1,383,684 code bytes
-(27.42%)**. `make rom-check` passed all 10 pinned artifacts. The generated
+Matching build (2026-09-29, integration merge `d169e0a5`): objdiff reports **2,651 / 4,464
+retail functions byte-exact (59.39%)** and **381,600 / 1,383,684 code bytes
+(27.58%)**. `make rom-check` passed all 10 pinned artifacts. The generated
 progress report is [DASHBOARD.md](evidence/decomp-campaign/DASHBOARD.md).
 
 The executed-route coverage below was measured on 2026-09-28 at integration
@@ -117,14 +117,14 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-270 port bodies shadow 267 byte-exact functions
+281 port bodies shadow 277 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 67, slus 27, menu 24, field 12, movie 1, shop menu 1 | 132 |
-| `pc_port` bodies, including world-map callbacks and adapters | 121 |
-| generated logging stubs standing in for matched C that is not linked | 17 |
+| `XENO_PC_PORT` arms in game TUs: battle 68, slus 27, field 12, menu 10, movie 1, shop menu 1 | 119 |
+| `pc_port` bodies, including world-map callbacks and adapters | 138 |
+| generated logging stubs standing in for matched C that is not linked | 24 |
 
 Their equivalence to retail is not proven. They are switched to the matched
 C in route-tested batches (see below). Until then each one is a potential
@@ -188,7 +188,7 @@ mod on boot; streamed-file replacement has a live test.
 
 **Known-divergence list: 8 tracked items (D1–D8; D1, D5 and D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
-further @SHADOWS@ matched functions run port bodies of unproven equivalence.**
+further 277 matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 

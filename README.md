@@ -40,7 +40,7 @@ the main executable `slus_006.64`, `field`, `menu`, `shop_menu`, `member_change_
 `movie`, `battle_command_file1` and `world_map`. Every retail function is either byte-exact C or the
 retail assembly (`INCLUDE_ASM`), and the linked result is byte-identical. The pins are never edited.
 
-**Byte-exact matched C: 2,638 / 4,464 functions (59.1%), 379,404 / 1,383,684 code bytes (27.4%).**
+**Byte-exact matched C: 2,651 / 4,464 functions (59.4%), 381,600 / 1,383,684 code bytes (27.6%).**
 This is the objdiff report (`make report`, then `tools/scripts/progress_dashboard.py`), built with
 `-DSKIP_ASM`, so a function still carried as `INCLUDE_ASM` counts toward the total and not the matched
 share. objdiff alone is not proof: it can score 100% on a function whose relocated stores are swapped,
@@ -54,10 +54,10 @@ so C only stays in the retail build when the whole binary still passes `make rom
 | Shop menu | 104 / 118 | 37,460 / 53,008 | PASS |
 | Member-change menu | 67 / 67 | 24,936 / 24,936 | PASS |
 | Battle | 430 / 857 | 51,332 / 332,316 | PASS |
-| Battling | 126 / 483 | 9,116 / 139,692 | PASS |
-| Battle command file 1 | 52 / 105 | 4,020 / 18,940 | PASS |
+| Battling | 130 / 483 | 9,292 / 139,692 | PASS |
+| Battle command file 1 | 57 / 105 | 4,564 / 18,940 | PASS |
 | Movie | 15 / 34 | 2,872 / 26,972 | PASS |
-| World map | 121 / 386 | 12,604 / 168,336 | PASS |
+| World map | 125 / 386 | 14,080 / 168,336 | PASS |
 
 Earlier versions of this section reported "2,557 matched C bodies (77.6%)" and "field 878/878". That
 count treated any C body without `INCLUDE_ASM` as matched without checking its bytes, and several
