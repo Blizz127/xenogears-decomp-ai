@@ -5,6 +5,13 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+s32 func_battle_command_file1_801E57F8(s32, s32, s32, s32);
+void func_battle_command_file1_801E9958(s32 arg0, u16 arg1);
+extern void * D_800D3278;
+s32 func_battle_command_file1_801E79E0(s32 arg0, s32 arg1);
+#endif
+
+#ifndef XENO_PC_PORT
 extern void *D_800D3368;
 s32 func_battle_command_file1_801E8718(void);
 #endif
@@ -215,7 +222,20 @@ s32 func_battle_command_file1_801E786C(s32 arg0, void *arg1) {
 
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E78A8);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7914);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E79E0);
+
+#ifndef XENO_PC_PORT
+s32 func_battle_command_file1_801E79E0(s32 arg0, s32 arg1) {
+    void *temp_v1;
+
+    func_battle_command_file1_801E57F8(arg1, 2, 0, 1);
+    temp_v1 = D_800D3278 - (-(((*(u8 *)((s8*)(D_800D3278) + 0x380) + 0xD) & 0xFF) * 0x38));
+    if (*(u8 *)((s8*)(temp_v1) + 0x35) != 0) {
+        func_battle_command_file1_801E9958(*(s32 *)((s8*)(temp_v1) + 0x30), *(u16 *)((s8*)(D_800D3278) + 0x382));
+    }
+    return 5;
+}
+#endif
+
 
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7A5C);
 
@@ -441,7 +461,7 @@ INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battl
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E9760);
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E9894);
 
-void func_battle_command_file1_801E9958(s32 arg0) {
+void func_battle_command_file1_801E9958(s32 arg0, u16 arg1) {
     func_800245D8(arg0 + 0x38);
 }
 
