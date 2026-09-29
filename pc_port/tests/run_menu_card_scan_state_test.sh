@@ -24,12 +24,12 @@ for mode in O0 O2 UBSan; do
     timeout 30s "$OUT/$mode"
 done
 cp "$OUT/scan_state.inc" "$OUT/good.inc"
-for mutant in wide-result unconditional-refresh refetched-state wrong-port; do
+for mutant in wide-result unconditional-refresh missing-mode2 wrong-port; do
     case "$mutant" in
-        wide-result) sed 's/(u8)count != 0/count != 0/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
-        unconditional-refresh) sed 's/state == 1 \&\& (u8)count != 0/state == 1/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
-        refetched-state) sed 's/state == 1 \&\&/g_Menu->unk32C->unk4F80[0x66] == 1 \&\&/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
-        wrong-port) sed 's/func_801C8D78((u8)port)/func_801C8D78(0)/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
+        wide-result) sed 's/(u8)func_801C8D78(\([01]\)) != 0/func_801C8D78(\1) != 0/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
+        unconditional-refresh) sed 's/if ((u8)func_801C8D78(\([01]\)) != 0)/func_801C8D78(\1); if (1)/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
+        missing-mode2) sed 's/case 2:/case 3:/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
+        wrong-port) sed 's/func_801C8D78(1)/func_801C8D78(0)/' "$OUT/good.inc" > "$OUT/scan_state.inc" ;;
     esac
     ! cmp -s "$OUT/good.inc" "$OUT/scan_state.inc"
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/menu_card_scan_state_test.c pc_port/src/battle_mips_adapter.c -o "$OUT/$mutant"

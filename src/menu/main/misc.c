@@ -1516,45 +1516,9 @@ typedef struct {
 #define MENU_OPEN_ANIM_AT(off) ((MenuOpenAnim*)((u8*)g_Menu + (off)))
 
 /* Initialize anim slot: from (fromX,fromY) toward (toX,toY); the dominant axis
- * steps 1.0/tick (0x100), the other axis proportionally.  The retail arm is
- * gcc 2.6.3 byte-exact; the port arm keeps its host divide-by-zero guard. */
+ * steps 1.0/tick (0x100), the other axis proportionally.  Shared retail/port
+ * body (gcc 2.6.3 byte-exact); MENU_DIV gives the R3000 result for x / 0. */
 void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, u8 speed, u8 slot) {
-#ifdef XENO_PC_PORT
-    MenuOpenAnim* s = MENU_OPEN_ANIM(slot);
-    s32 dx, dy;
-
-    s->curX = fromX;
-    s->curY = fromY;
-    s->toX = toX;
-    s->toY = toY;
-    if (toX < fromX) {
-        dx = fromX - toX;
-        s->dirX = 1;
-    } else {
-        dx = toX - fromX;
-        s->dirX = 0;
-    }
-    if (toY < fromY) {
-        dy = fromY - toY;
-        s->dirY = 1;
-    } else {
-        dy = toY - fromY;
-        s->dirY = 0;
-    }
-    if (dy < dx || dy == dx) {
-        s->stepX = 0x100;
-        /* retail divides unconditionally; dx==0 implies dy==0 (from==to),
-         * which the menu never requests -- guard the host SIGFPE anyway. */
-        s->stepY = (dx != 0) ? ((dy << 8) / dx) : 0x100;
-    } else {
-        s->stepY = 0x100;
-        s->stepX = (dx << 8) / dy;
-    }
-    s->speed = (u8)speed;
-    s->accX = 0;
-    s->accY = 0;
-    s->done = 0;
-#else
     s32 dx, dy;
     u32 off;
     u32 off2;
@@ -1580,17 +1544,16 @@ void func_801C81E0(s32 fromX, s32 fromY, s32 toX, s32 toY, u8 speed, u8 slot) {
     }
     if (dx >= dy) {
         MENU_OPEN_ANIM_AT(off = slot * 0x24)->stepX = 0x100;
-        MENU_OPEN_ANIM_AT(off)->stepY = (dy << 8) / dx;
+        MENU_OPEN_ANIM_AT(off)->stepY = MENU_DIV(dy << 8, dx);
     } else {
         MENU_OPEN_ANIM_AT(off = slot * 0x24)->stepY = 0x100;
-        MENU_OPEN_ANIM_AT(off)->stepX = (dx << 8) / dy;
+        MENU_OPEN_ANIM_AT(off)->stepX = MENU_DIV(dx << 8, dy);
     }
     off2 = slot * 0x24;
     MENU_OPEN_ANIM_AT(off2)->speed = speed;
     MENU_OPEN_ANIM_AT(off2)->accX = 0;
     MENU_OPEN_ANIM_AT(off2)->accY = 0;
     MENU_OPEN_ANIM_AT(off2)->done = 0;
-#endif
 }
 
 #ifndef XENO_PC_PORT
@@ -2018,50 +1981,32 @@ s32 func_801C8D78(u8 port) {
 #endif
 
 void func_801C8EE8(void) {
-#ifdef XENO_PC_PORT
-    u8 state;
-    s32 port;
-    if (g_Menu->unk32C == NULL) return;
-    state = g_Menu->unk32C->unk4F80[0x66];
-    if (state != 1 && state != 2) return;
-
-    /* Retail 8EE8..9034 keeps the entry state but reloads menu ownership
-     * and the next port's ready byte after each enumeration callback. */
-    for (port = 0; port < 2; ++port) {
-        if (g_Menu->unk32C->unk4F80[8 + port] == 0) {
-            s32 count = func_801C8D78((u8)port);
-            if (state == 1 && (u8)count != 0) g_Menu->unk334 = 1;
-            g_Menu->unk32C->unk4F80[8 + port] = 1;
-        }
-    }
-#else
-    switch (g_Menu->unk32C->unk4F80[0x66]) {
+    switch (MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[0x66]) {
     case 1:
-        if (g_Menu->unk32C->unk4F80[8] == 0) {
+        if (MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[8] == 0) {
             if ((u8)func_801C8D78(0) != 0) {
                 g_Menu->unk334 = 1;
             }
-            g_Menu->unk32C->unk4F80[8] = 1;
+            MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[8] = 1;
         }
-        if (g_Menu->unk32C->unk4F80[9] == 0) {
+        if (MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[9] == 0) {
             if ((u8)func_801C8D78(1) != 0) {
                 g_Menu->unk334 = 1;
             }
-            g_Menu->unk32C->unk4F80[9] = 1;
+            MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[9] = 1;
         }
         break;
     case 2:
-        if (g_Menu->unk32C->unk4F80[8] == 0) {
+        if (MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[8] == 0) {
             func_801C8D78(0);
-            g_Menu->unk32C->unk4F80[8] = 1;
+            MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[8] = 1;
         }
-        if (g_Menu->unk32C->unk4F80[9] == 0) {
+        if (MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[9] == 0) {
             func_801C8D78(1);
-            g_Menu->unk32C->unk4F80[9] = 1;
+            MENU_GUEST_PTR(g_Menu->unk32C)->unk4F80[9] = 1;
         }
         break;
     }
-#endif
 }
 
 s32 func_801C9038(char* path, void* pBuf) {
@@ -2927,14 +2872,6 @@ extern void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
 extern void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
                           s32* xTable, s32* yTable, u8 mode);
 
-void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
-                   s32* xTable, s32* yTable, u8 mode) {
-    func_801CD81C(panel, charId, slot, xTable, yTable, mode);
-    func_801CDB1C(panel, charId, slot, xTable, yTable);
-    func_801CDC6C(panel, charId, slot, xTable, yTable, mode);
-    panel->unkBE7 = 1;
-    panel->renderContext = *(u8*)&g_Menu->renderContext;
-}
 #else
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern void func_801C80B8(u32);
@@ -3061,17 +2998,17 @@ void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
     }
 }
 
+#endif
+
 void func_801CE0CC(MenuCharacter* panel, u8 charId, u8 slot,
                    s32* xTable, s32* yTable, u8 mode) {
     func_801CD81C(panel, charId, slot, xTable, yTable, mode);
     func_801CDB1C(panel, charId, slot, xTable, yTable);
     func_801CDC6C(panel, charId, slot, xTable, yTable, mode);
     panel->unkBE7 = 1;
-    panel->renderContext = (u8)g_Menu->renderContext;
+    panel->renderContext = *(u8*)&g_Menu->renderContext;
 }
-#endif
 
-#ifndef XENO_PC_PORT
 void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
                    s32 renderContext) {
     s32 i;
@@ -3090,28 +3027,6 @@ void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
         AddPrim(&g_Menu->pGfxEnv->ot[4], &polys[renderContext + i * 2]);
     }
 }
-#else
-/* Project and queue `count` double-buffered textured quads.  Retail advances
- * the render-context index by two per logical string, selecting the same half
- * of each MenuString's POLY_FT4 pair. */
-void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
-                   s32 renderContext) {
-    s32 i;
-
-    for (i = 0; i < count; i++) {
-        POLY_FT4* poly = &polys[renderContext + i * 2];
-        SVECTOR* quad = &vertices[i * 4];
-        long interpolated;
-        long flag;
-
-        RotTransPers4(&quad[0], &quad[1], &quad[2], &quad[3],
-                      (long*)&poly->x0, (long*)&poly->x1,
-                      (long*)&poly->x2, (long*)&poly->x3,
-                      &interpolated, &flag);
-        AddPrim(&g_Menu->pGfxEnv->ot[4], poly);
-    }
-}
-#endif
 
 extern void func_801CE198(s32 count, SVECTOR* vertices, POLY_FT4* polys,
                           s32 renderContext);
@@ -4033,7 +3948,6 @@ void func_801D1258(void) {
 }
 
 void func_801D12D4(MenuCharacter* panel, s32 drawFixedLabels) {
-#ifdef XENO_PC_PORT
     if (!panel->unkBE7) {
         return;
     }
@@ -4073,46 +3987,6 @@ void func_801D13F8(void) {
             func_801D12D4(panel, 1);
         } while (i < MAX_PARTY_MEMBERS);
     }
-#else
-    if (!panel->unkBE7) {
-        return;
-    }
-
-    AddPrim(&g_Menu->pGfxEnv->ot[4],
-            &panel->polysPortraitSmall[panel->renderContext]);
-    AddPrim(&g_Menu->pGfxEnv->ot[4],
-            &panel->polys4B0[panel->renderContext]);
-    func_801CE2B4(panel->descriptionStringsLength,
-                  (u8*)panel->polysDescriptionStrings, panel->renderContext);
-    func_801CE2B4(panel->levelStringLength,
-                  (u8*)panel->polysLevelString, panel->renderContext);
-    func_801CE2B4(panel->unkBE1, (u8*)panel->polys5F0,
-                  panel->renderContext);
-    func_801CE2B4(panel->hpStringLength, (u8*)panel->polysHpString,
-                  panel->renderContext);
-    func_801CE2B4(panel->maxHpStringLength,
-                  (u8*)panel->polysMaxHpString, panel->renderContext);
-    func_801CE2B4(panel->mpStringLength, (u8*)panel->polysMpString,
-                  panel->renderContext);
-    func_801CE2B4(panel->maxMpStringLength,
-                  (u8*)panel->polysMaxMpString, panel->renderContext);
-    if (drawFixedLabels & 0xFF) {
-        func_801CE2B4(5, (u8*)panel->polys2D0,
-                      panel->renderContext);
-    }
-}
-
-void func_801D13F8(void) {
-    s32 i;
-    if (g_Menu->pManager->unk46) {
-        i = 0;
-        do {
-            MenuCharacter* panel = g_Menu->currentCharacters[i];
-            i++;
-            func_801D12D4(panel, 1);
-        } while (i < MAX_PARTY_MEMBERS);
-    }
-#endif
 }
 
 void func_801D1464(void) {
@@ -5115,61 +4989,13 @@ extern void func_801D4D1C(u8, u16, u16, u16, u16, u8, s32, u8);
 #endif
 
 void func_801D3B00(void) {
-#ifdef XENO_PC_PORT
-    s32 i;
-    /* Host Menu is larger than retail (pManager lives at 0x3F8, not 0x33C).
-     * Always use typed members — raw PSX offsets SEGV on the port. */
-    for (i = 0; i < MENU_MAX_NUM_WINDOWS; i++) {
-        MenuManager* pManager = g_Menu->pManager;
-        MenuWindowParameters* pData = g_Menu->windowParameters[i];
-        u32 scrollX = 0, scrollY = 0;
-        if (pManager == NULL || pData == NULL) {
-            continue;
-        }
-        if (pManager->unk27[i] != 0 && pData->unk11 == 0) {
-            u16 curW = pData->unk8;
-            u16 maxW = pData->width;
-            u16 curH, maxH;
-            if (curW + 0x20 >= maxW) {
-                pData->unk8 = maxW;
-                scrollX = 1;
-            } else {
-                pData->unk8 = curW + 0x20;
-            }
-            curH = pData->unkA;
-            maxH = pData->height;
-            if (curH + 0x20 >= maxH) {
-                pData->unkA = maxH;
-                scrollY = 1;
-            } else {
-                pData->unkA = curH + 0x20;
-            }
-            /* Retail increments a completion count once per clamped axis. */
-            if (scrollX + scrollY == 2) {
-                pData->unk11 = 1;
-            }
-            {
-                u16 h = pData->unkA;
-                u16 w = pData->width;
-                u16 x0 = pData->x;
-                u16 y0 = pData->y;
-                u16 curW2 = pData->unk8;
-                u16 curH2 = pData->height;
-                s32 x = (s32)(x0 + w / 2 - curW2 / 2) & 0xFFFF;
-                s32 y = (s32)(y0 + curH2 / 2 - h / 2) & 0xFFFF;
-                func_801D4D1C(pData->index, x, y, curW2, h,
-                              pData->unk12, pData->zIndex, pData->hasScrollBar);
-            }
-        }
-    }
-#else
     s32 i;
     MenuWindowParameters* p;
     u8 n;
 
     for (i = 0; i < 7; i++) {
-        p = g_Menu->windowParameters[i];
-        if (g_Menu->pManager->unk27[i] != 0 && p->unk11 == 0) {
+        p = MENU_GUEST_PTR(g_Menu->windowParameters[i]);
+        if (MENU_GUEST_PTR(g_Menu->pManager)->unk27[i] != 0 && p->unk11 == 0) {
             n = 0;
             if (p->unk8 + 0x20 >= p->width) {
                 p->unk8 = p->width;
@@ -5191,7 +5017,6 @@ void func_801D3B00(void) {
                           p->unk8, p->unkA, p->unk12, p->zIndex, p->hasScrollBar);
         }
     }
-#endif
 }
 
 extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
@@ -7582,51 +7407,27 @@ extern u16 D_801EA724;
 extern s32 D_801EA728;
 extern u16 D_801EA72C;
 
-#ifndef XENO_PC_PORT
-extern u16 D_801EA724x asm("D_801EA724");
-extern s32 D_801EA728x asm("D_801EA728");
-extern u16 D_801EA72Cx asm("D_801EA72C");
-#endif
 void func_801DBDB4(void) {
-#ifdef XENO_PC_PORT
-    s32 i;
-    s32 lastOccupied = 0;
-
-    for (i = 0; i < MAX_INVENTORY_ITEMS; i++) {
-        if (g_GameState.itemIDs[i] != 0) {
-            lastOccupied = i;
-        }
-    }
-
-    if (lastOccupied < 0x10) {
-        D_801EA724 = 0x74;
-        D_801EA728 = 0;
-        D_801EA72C = 0;
-    } else {
-        s32 pages = ((lastOccupied - 0x10) / 2) + 1;
-        D_801EA724 = 0x4A;
-        D_801EA728 = pages;
-        D_801EA72C = 0x1068 / pages;
-    }
-#else
     s32 i;
     s32 last;
+#ifdef XENO_PC_PORT
+    last = 0; /* retail reads an uninitialised register on an empty bag */
+#endif
     for (i = 0; i < MAX_INVENTORY_ITEMS; i++) {
         if (g_GameState.itemIDs[i] != 0) {
             last = i;
         }
     }
     if (last < 0x10) {
-        D_801EA724x = 0x74;
-        D_801EA728x = 0;
-        D_801EA72Cx = 0;
+        D_801EA724 = 0x74;
+        D_801EA728 = 0;
+        D_801EA72C = 0;
     } else {
         s32 pages = (last - 0x10) / 2 + 1;
-        D_801EA724x = 0x4A;
-        D_801EA728x = pages;
-        D_801EA72Cx = 0x1068 / pages;
+        D_801EA724 = 0x4A;
+        D_801EA728 = pages;
+        D_801EA72C = 0x1068 / pages;
     }
-#endif
 }
 
 #ifndef XENO_PC_PORT

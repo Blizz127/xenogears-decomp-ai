@@ -608,6 +608,16 @@ extern u8 g_MenuDebugEnabled;
 #define MENU_GUEST_PTR(p) (p)
 #endif
 
+/* Retail divides with no zero check (menu code has no break 7 sequence), so
+ * on the R3000 x / 0 leaves LO = -1 for a non-negative dividend and +1 for a
+ * negative one.  The host would trap, so the port reproduces that quotient.
+ * Plain division on the PSX build. */
+#ifdef XENO_PC_PORT
+#define MENU_DIV(a, b) ((b) != 0 ? (a) / (b) : ((a) < 0 ? 1 : -1))
+#else
+#define MENU_DIV(a, b) ((a) / (b))
+#endif
+
 /* The unk340[0] / unk340[4] side buffers hold 4-byte PSX-width pointers. */
 #define MENU_SIDE_BUF(o) ((u8*)(uintptr_t)*(u32*)&g_Menu->unk340[o])
 

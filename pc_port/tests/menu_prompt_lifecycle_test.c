@@ -11,6 +11,7 @@
 extern void bzero(void*, size_t);
 
 SystemMenu *g_Menu;
+uint8_t g_PsxRam[0x200000];
 static SystemMenu menu;
 static MenuManager manager;
 static MenuWindowParameters window;

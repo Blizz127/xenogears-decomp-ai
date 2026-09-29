@@ -6,6 +6,7 @@
 #include "common.h"
 #include "system/menu.h"
 SystemMenu *g_Menu;
+uint8_t g_PsxRam[0x200000];
 static SystemMenu menu;
 static MenuManager manager;
 static MenuWindowParameters params[7], expected[7];

@@ -7,6 +7,7 @@
 #include "system/menu.h"
 #include "battle_mips_adapter.h"
 SystemMenu *g_Menu;
+uint8_t g_PsxRam[0x200000];
 static SystemMenu menus[3], expectedMenus[3];
 static MenuUnk2 cards[3], expectedCards[3];
 static uint8_t ram[0x200000];

@@ -25,10 +25,10 @@ done
 cp "$OUT/window.inc" "$OUT/good.inc"
 for mutant in never-ready early-ready swapped-dimensions wrong-index; do
     case "$mutant" in
-        never-ready) sed 's/scrollX + scrollY/(scrollX | scrollY)/' "$OUT/good.inc" > "$OUT/window.inc" ;;
-        early-ready) sed 's/scrollX + scrollY == 2/scrollX + scrollY != 0/' "$OUT/good.inc" > "$OUT/window.inc" ;;
-        swapped-dimensions) sed 's/x, y, curW2, h,/x, y, h, curW2,/' "$OUT/good.inc" > "$OUT/window.inc" ;;
-        wrong-index) sed 's/func_801D4D1C(pData->index,/func_801D4D1C(i,/' "$OUT/good.inc" > "$OUT/window.inc" ;;
+        never-ready) sed 's/n = 1;/n = 0;/' "$OUT/good.inc" > "$OUT/window.inc" ;;
+        early-ready) sed 's/if (n == 2)/if (n != 0)/' "$OUT/good.inc" > "$OUT/window.inc" ;;
+        swapped-dimensions) sed 's/p->unk8, p->unkA, p->unk12/p->unkA, p->unk8, p->unk12/' "$OUT/good.inc" > "$OUT/window.inc" ;;
+        wrong-index) sed 's/func_801D4D1C(p->index,/func_801D4D1C(i,/' "$OUT/good.inc" > "$OUT/window.inc" ;;
     esac
     "${CC:-gcc}" "${BASE[@]}" -O2 pc_port/tests/menu_window_open_test.c -o "$OUT/$mutant"
     if "$OUT/$mutant" > "$OUT/$mutant.log" 2>&1; then echo "FAIL mutant survived: $mutant"; exit 1; fi
