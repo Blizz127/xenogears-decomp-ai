@@ -1626,7 +1626,7 @@ void func_80084818(void) {
 
 
 void func_800848B4(s32 arg0, s32 arg1) {
-    *(s32 *)((s8*)(((arg1 * 0x54) + (uintptr_t)D_8009C620)) + 0x50) = (s32) (D_8009C620 + (arg0 * 0x54));
+    *(s32 *)((s8*)(((arg1 * 0x54) + (uintptr_t)D_8009C620)) + 0x50) = (s32) WM_GADDR(D_8009C620 + (arg0 * 0x54));
 }
 
 
@@ -1817,8 +1817,8 @@ s32 func_800879E0(s32 arg0) {
     temp_v1 = D_8009C610 * 2;
     temp_a0 = D_8009C620 + (D_8009B64C[temp_v1] * 0x54);
     temp_s0 = D_8009C620 + (D_8009B64E[temp_v1] * 0x54);
-    func_80087904(temp_a0, *(s32 *)((s8*)(temp_a0) + 0x48), *(u16 *)((s8*)(*(void **)((s8*)(temp_a0) + 0x40)) + 4), 3);
-    func_80087904(temp_s0, *(s32 *)((s8*)(temp_s0) + 0x48), *(u16 *)((s8*)(*(void **)((s8*)(temp_s0) + 0x40)) + 4), 3);
+    func_80087904(temp_a0, *(s32 *)((s8*)(temp_a0) + 0x48), *(u16 *)((s8*)(WM_GPTR(*(u32 *)((s8*)(temp_a0) + 0x40))) + 4), 3);
+    func_80087904(temp_s0, *(s32 *)((s8*)(temp_s0) + 0x48), *(u16 *)((s8*)(WM_GPTR(*(u32 *)((s8*)(temp_s0) + 0x40))) + 4), 3);
     return 1;
 }
 
