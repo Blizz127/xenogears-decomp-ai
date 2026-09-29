@@ -1890,7 +1890,16 @@ s32 func_8002DA14(u8* pColor, s16* pIndices) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DAFC);
+s32 func_8002DAFC(void) {
+    void *poly;
+
+    poly = D_80059424;
+    SetPolyFT3(poly);
+    SetShadeTex(poly, 1);
+    *(s16 *)((u8 *)poly + 0x16) = (GetTPage(1, 0, 0x280, 0) & 0xFFE0) | D_80059310;
+    *(s16 *)((u8 *)poly + 0xE) = (GetClut(0, 0x1E0) & 0xF) | D_80059314;
+    return 1;
+}
 #else
 void func_8002DAFC(void) {
     u8* pPoly = D_80059424;

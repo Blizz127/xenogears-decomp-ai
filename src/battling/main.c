@@ -643,7 +643,25 @@ void func_8008E064(void) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E0C8);
+void func_8008E0C8(void) {
+    s32 n;
+    u32 *src;
+    u32 *dst;
+    u32 v;
+    u8 *out;
+
+    n = 0xA7F;
+    out = (u8 *)D_80092844;
+    dst = (u32 *)D_8009283C;
+    src = (u32 *)D_80092840;
+    do {
+        v = *src++;
+        n--;
+        *dst++ = v;
+        *out++ = v;
+        *out++ = v >> 16;
+    } while (n != -1);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E120);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E2B8);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E3CC);

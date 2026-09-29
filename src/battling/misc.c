@@ -790,7 +790,13 @@ void func_8007E31C(void *arg0, void *arg1, void *arg2) {
     }
 }
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E3CC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E528);
+extern u8 D_80092708;
+void func_8007E528(s32 arg0) {
+    if (D_80092708 == 0 && arg0 == 0xA) {
+        func_8008EB4C(0x24);
+    }
+    D_80092708 = arg0;
+}
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E574);
 
 s32 func_8007E624(void) {
