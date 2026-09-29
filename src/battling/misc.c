@@ -5,6 +5,13 @@
 #include "system/memory.h"
 
 #ifndef XENO_PC_PORT
+extern s32 D_800912F4;
+extern u8 D_80099D98[];
+extern u8 D_80099D98__s_u8 asm("D_80099D98");
+s32 func_8007F97C(void);
+#endif
+
+#ifndef XENO_PC_PORT
 extern s32 D_80092AD8;
 void func_8007BB7C(void);
 #endif
@@ -718,7 +725,13 @@ void func_8007F8E4(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F948);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F97C);
+
+#ifndef XENO_PC_PORT
+s32 func_8007F97C(void) {
+    return *(s32 *)((u8 *) &D_800912F4 + (D_80099D98__s_u8 * 4));
+}
+#endif
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F9A0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007FB0C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007FBEC);
