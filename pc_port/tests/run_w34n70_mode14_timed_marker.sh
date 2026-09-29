@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_8007BA08)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x8007BA08 - 0x8006FAF0)) \
@@ -57,10 +59,9 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N70_MUTANT_WRONG_LEAF_RETURN leaf.return
 run_mutant m2 -DW34N70_MUTANT_WRONG_TIMER_SEED latch.timer_seed
 run_mutant m3 -DW34N70_MUTANT_SKIP_X_STEP active.velocity
 run_mutant m4 -DW34N70_MUTANT_WRONG_MARKER_DATA active.marker_arguments
 run_mutant m5 -DW34N70_MUTANT_SKIP_RESET_HEADING expiry.reset_record
 
-echo "W34N70 MODE14 TIMED MARKER CERTIFICATE PASS: O0/O2/UBSan; M1-M5 detected; strict warnings clean"
+echo "W34N70 MODE14 TIMED MARKER CERTIFICATE PASS: O0/O2/UBSan; M2-M5 detected; strict warnings clean; M1 targeted the retired wm_8007BA08, which now runs the matched C"

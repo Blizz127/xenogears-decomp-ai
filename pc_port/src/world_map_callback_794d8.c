@@ -71,17 +71,6 @@ static u32 m10_slot(s32 slot_index)
     return m10_lw(WM_M10_POOL_PTR) + ((u32)slot_index << 7u);
 }
 
-s32 wm_8007A410(s32 slot_index)
-{
-    u32 slot = m10_slot(slot_index);
-#if defined(W34N62_MUTANT_WRONG_TIMER_SEED)
-    m10_sh(slot + 0x22u, 95u);
-#else
-    m10_sh(slot + 0x22u, 96u);
-#endif
-    return 3;
-}
-
 s32 wm_8007A430(s32 slot_index)
 {
     u32 slot = m10_slot(slot_index);
@@ -121,12 +110,6 @@ s32 wm_8007A430(s32 slot_index)
     m10_sw(slot + 0x34u, m10_lw(WM_M10_RESET_POSITION + 0x0Cu));
 #endif
     wm_800894C8(9u);
-    return 3;
-}
-
-s32 wm_8007A568(s32 slot_index)
-{
-    (void)slot_index;
     return 3;
 }
 

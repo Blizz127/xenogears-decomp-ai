@@ -78,7 +78,6 @@ func_800762FC	pc_port body wm_800762FC (pc_port/src/world_map_helper_762fc.c)	wm
 func_800767D4	pc_port body wm_800767D4 (pc_port/src/world_map_state_vertical_8f690.c)	wm_800767D4
 func_80076858	pc_port body wm_80076858 (pc_port/src/world_map_helper_76858.c)	wm_80076858
 func_80076A10	generated logging stub (matched C not linked)	func_80076A10
-func_80076A14	pc_port body wm_80076A14 (pc_port/src/world_map_callback_76a14.c)	wm_80076A14
 func_80076B68	generated logging stub (matched C not linked)	func_80076B68
 func_80076BF0	generated logging stub (matched C not linked)	func_80076BF0
 func_80076DA4	pc_port body wm_80076DA4 (pc_port/src/world_map_callback_827ec.c)	wm_80076DA4
@@ -86,14 +85,10 @@ func_80076F54	pc_port body wm_80076F54 (pc_port/src/world_map_callback_827ec.c)	
 func_800771D8	pc_port body wm_800771D8 (pc_port/src/world_map_callback_827ec.c)	wm_800771D8
 func_80077480	pc_port body wm_80077480 (pc_port/src/world_map_mode811_lifecycle.c)	wm_80077480
 func_80077CC0	pc_port body wm_80077CC0 (pc_port/src/world_map_mode9_lifecycle.c)	wm_80077CC0
-func_80078948	pc_port body wm_80078948 (pc_port/src/world_map_callback_78948.c)	wm_80078948
 func_80078D24	pc_port body wm_80078D24 (pc_port/src/world_map_mode10_lifecycle.c)	wm_80078D24
-func_8007A410	pc_port body wm_8007A410 (pc_port/src/world_map_callback_794d8.c)	wm_8007A410
-func_8007A568	pc_port body wm_8007A568 (pc_port/src/world_map_callback_794d8.c)	wm_8007A568
 func_8007A8AC	pc_port body wm_8007A8AC (pc_port/src/world_map_mode14_lifecycle.c)	wm_8007A8AC
 func_8007A9B4	pc_port body wm_8007A9B4 (pc_port/src/world_map_callback_7a9b4.c)	wm_8007A9B4
 func_8007AD34	pc_port body wm_8007AD34 (pc_port/src/world_map_callback_7ad34.c)	wm_8007AD34
-func_8007BA08	pc_port body wm_8007BA08 (pc_port/src/world_map_callback_7ba08.c)	wm_8007BA08
 func_8007C260	pc_port body wm_8007C260 (pc_port/src/world_map_mode12_lifecycle.c)	wm_8007C260
 func_8007C724	pc_port body wm_8007C724 (pc_port/src/world_map_callback_7c724.c)	wm_8007C724
 func_8007D1A8	port arm in src/battle/mainc25.c	func_8007D1A8
@@ -110,7 +105,6 @@ func_80080944	pc_port body wm_80080944 (pc_port/src/world_map_callback_80900.c)	
 func_800809EC	pc_port body wm_800809EC (pc_port/src/world_map_callback_80a28.c)	wm_800809EC
 func_8008106C	pc_port body wm_8008106C (pc_port/src/world_map_mode16_lifecycle.c)	wm_8008106C
 func_800813E8	pc_port body wm_800813E8 (pc_port/src/world_map_callback_813e8.c)	wm_800813E8
-func_80081FB4	pc_port body wm_80081FB4 (pc_port/src/world_map_callback_81fb4.c)	wm_80081FB4
 func_8008237C	port arm spanning the body in src/field/main/misc8.c	func_8008237C
 func_800825AC	port arm in src/field/main/misc8.c	func_800825AC
 func_800826B4	pc_port body wm_800826B4 (pc_port/src/world_map_mode17_lifecycle.c)	wm_800826B4

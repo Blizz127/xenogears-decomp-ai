@@ -63,16 +63,6 @@ static u32 m14_slot(s32 slot_index)
     return m14_lw(WM_M14_POOL_PTR) + ((u32)slot_index << 7u);
 }
 
-s32 wm_8007BA08(s32 slot_index)
-{
-    (void)slot_index;
-#if defined(W34N70_MUTANT_WRONG_LEAF_RETURN)
-    return 1;
-#else
-    return 3;
-#endif
-}
-
 s32 wm_8007BA10(s32 slot_index)
 {
     u32 slot = m14_slot(slot_index);

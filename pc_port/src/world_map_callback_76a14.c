@@ -46,12 +46,6 @@ static void m76a1c_sw(u32 address, u32 value)
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
-s32 wm_80076A14(s32 slot_index)
-{
-    (void)slot_index;
-    return 1;
-}
-
 s32 wm_80076A1C(s32 slot_index)
 {
     u32 context;

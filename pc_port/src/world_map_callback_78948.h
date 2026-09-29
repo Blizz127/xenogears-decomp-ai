@@ -4,7 +4,6 @@
 
 #include "common.h"
 
-s32 wm_80078948(s32 slot_index);
 s32 wm_80078950(s32 slot_index);
 
 #endif /* WORLD_MAP_CALLBACK_78948_H */

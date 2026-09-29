@@ -70,23 +70,6 @@ static void m16w_randomize_band(u32 table, u32 band)
     }
 }
 
-s32 wm_80081FB4(s32 slot_index)
-{
-    u32 slot = m16w_slot(slot_index);
-
-#if defined(W34N108_MUTANT_WRONG_INITIAL_STATE)
-    m16w_sh(slot + 0x20u, 1u);
-#else
-    m16w_sh(slot + 0x20u, 0u);
-#endif
-#if defined(W34N108_MUTANT_WRONG_INITIAL_WIDTH)
-    m16w_sw(slot + 0x50u, 2u);
-#else
-    m16w_sw(slot + 0x50u, 1u);
-#endif
-    return 1;
-}
-
 static void m16w_consume_command(u32 slot)
 {
     s16 command = (s16)(u16)(m16w_lhu(slot + 0x04u) - 1u);

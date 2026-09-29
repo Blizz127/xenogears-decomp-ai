@@ -8,6 +8,9 @@
 #include "world_map_callback_76a14.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_80076A14(void);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -238,7 +241,7 @@ static void test_init(void)
 {
     seed();
     snapshot();
-    check(wm_80076A14(123) == 1, "init.return_one");
+    check(func_80076A14() == 1, "init.return_one");
     check(event_count == 0, "init.no_calls");
     check(memcmp(ram_before, g_PsxRam, sizeof(ram_before)) == 0,
           "init.no_writes");

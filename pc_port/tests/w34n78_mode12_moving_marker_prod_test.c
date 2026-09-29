@@ -6,8 +6,10 @@
 #include "common.h"
 #include "psx_memory.h"
 #include "psyq/libgte.h"
-#include "world_map_callback_7d600.h"
 #include "world_map_scheduler.h"
+
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007D690(s32 arg0);
 
 /* matched C (src/world_map/main.c), linked from the matched object */
 s32 func_8007D600(s32 arg0);
@@ -147,6 +149,17 @@ void wm_80089160(u32 id, u32 vector, u32 flags)
     marker_flags = flags;
 }
 
+s32 func_80093A5C(s32 x, s32 z)
+{
+    return wm_80093A5C((u32)x, (u32)z);
+}
+
+void func_80089160(s32 id, void *vector, void *flags)
+{
+    wm_80089160((u32)id, PsxMemory_GuestAddr(vector),
+                flags != NULL ? PsxMemory_GuestAddr(flags) : 0u);
+}
+
 void wm_800894C8(u32 record_index)
 {
     (void)record_index;
@@ -189,28 +202,31 @@ static void test_update(void)
     write32(SLOT + 0x2Cu, UINT32_C(0xDEADBEEF));
     write32(SLOT + 0x30u, UINT32_C(0x00380000));
     write32(SLOT + 0x40u, UINT32_C(0xFFFFC000));
+    /* The wrap is the matched func_80093354 now (not a mock): a 0x800000
+     * world in both axes wraps x 0xF80000 to 0x780000 and leaves z. */
+    write32(UINT32_C(0x8009D160), 1u);
+    write32(UINT32_C(0x8009D2B4), 1u);
 
-    check(wm_8007D690(SLOT_INDEX) == 1, "update.return");
-    check(wrap_count == 1u && wrap_address == SLOT + 0x28u &&
-          wrap_x_before == UINT32_C(0x00F80000) &&
-          wrap_z_before == UINT32_C(0x0037C000),
+    check(func_8007D690(SLOT_INDEX) == 1, "update.return");
+    check(read32(SLOT + 0x28u) == UINT32_C(0x00780000) &&
+          read32(SLOT + 0x30u) == UINT32_C(0x0037C000),
           "update.wrap_target");
     check(height_count == 1u &&
-          height_x == UINT32_C(0xFFF00000) &&
-          height_z == UINT32_C(0x00400000),
+          height_x == UINT32_C(0x00780000) &&
+          height_z == UINT32_C(0x0037C000),
           "update.reload_after_wrap");
     check(read32(SLOT + 0x2Cu) == UINT32_C(0x00006000),
           "update.height_bias");
-    check(read32(CONTEXT + 0x44Cu) == UINT32_C(0xFFFFFF00) &&
+    check(read32(CONTEXT + 0x44Cu) == UINT32_C(0x00000780) &&
           read32(CONTEXT + 0x450u) == 6u &&
-          read32(CONTEXT + 0x454u) == UINT32_C(0x00000400),
+          read32(CONTEXT + 0x454u) == UINT32_C(0x0000037C),
           "update.context_position");
-    check(read16(SCRATCH_VEC + 0u) == UINT16_C(0xFF00) &&
+    check(read16(SCRATCH_VEC + 0u) == UINT16_C(0x0780) &&
           read16(SCRATCH_VEC + 2u) == 6u &&
-          read16(SCRATCH_VEC + 4u) == UINT16_C(0x0400),
+          read16(SCRATCH_VEC + 4u) == UINT16_C(0x037C),
           "update.scratch_vector");
     check(marker_count == 1u && marker_id == 25u &&
-          marker_vector == SCRATCH_VEC && marker_flags == 0u,
+          PSX_ADDR(marker_vector) == PSX_ADDR(SCRATCH_VEC) && marker_flags == 0u,
           "update.marker");
 }
 

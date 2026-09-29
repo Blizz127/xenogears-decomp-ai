@@ -8,6 +8,9 @@
 #include "world_map_callback_7ba08.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007BA08(void);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -99,7 +102,7 @@ static void test_leaf(void)
     seed();
     memset(PSX_ADDR(SLOT), 0x5A, sizeof(before));
     memcpy(before, PSX_ADDR(SLOT), sizeof(before));
-    check(wm_8007BA08(SLOT_INDEX) == 3, "leaf.return");
+    check(func_8007BA08() == 3, "leaf.return");
     check(memcmp(before, PSX_ADDR(SLOT), sizeof(before)) == 0,
           "leaf.read_only");
 }

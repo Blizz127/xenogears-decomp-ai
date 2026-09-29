@@ -19,7 +19,7 @@ COMMON=(
 
 mkdir -p "$OUT"
 source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
-COMMON+=("$(world_map_matched_obj "$OUT" func_800794D8 func_80079538 func_8007A570)")
+COMMON+=("$(world_map_matched_obj "$OUT" func_800794D8 func_80079538 func_8007A570 func_8007A410 func_8007A568)")
 
 check_slice() {
   local start="$1"
@@ -68,8 +68,7 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m3 -DW34N62_MUTANT_WRONG_TIMER_SEED beacon_init.timer
 run_mutant m4 -DW34N62_MUTANT_WRONG_ACTIVE_MARKER beacon_active.marker
 run_mutant m5 -DW34N62_MUTANT_SKIP_RESET_HEADING beacon_reset.heading
 
-echo "W34N62 MODE10 SMALL CALLBACK CERTIFICATE PASS: O0/O2/UBSan; M3-M5 detected (M1, M2 and M6 targeted the retired wm_800794D8, wm_80079538 and wm_8007A570; those now run the matched C); strict warnings clean"
+echo "W34N62 MODE10 SMALL CALLBACK CERTIFICATE PASS: O0/O2/UBSan; M4-M5 detected (M1, M2, M3 and M6 targeted the retired wm_800794D8, wm_80079538, wm_8007A410 and wm_8007A570; those now run the matched C); strict warnings clean"

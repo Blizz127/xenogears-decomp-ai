@@ -8,6 +8,9 @@
 #include "world_map_callback_81fb4.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_80081FB4(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -110,7 +113,7 @@ static void test_initializer(void)
     seed(UINT16_C(0x7777));
     write16(SLOT + 0x20u, UINT16_C(0x1234));
     write32(SLOT + 0x50u, UINT32_C(0x55667788));
-    check(wm_80081FB4(SLOT_INDEX) == 1, "init.return");
+    check(func_80081FB4(SLOT_INDEX) == 1, "init.return");
     check(read16(SLOT + 0x20u) == 0u, "init.state");
     check(read32(SLOT + 0x50u) == 1u, "init.width");
 }

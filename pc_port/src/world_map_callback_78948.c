@@ -45,12 +45,6 @@ static void m78950_sw(u32 address, u32 value)
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
-s32 wm_80078948(s32 slot_index)
-{
-    (void)slot_index;
-    return 1;
-}
-
 s32 wm_80078950(s32 slot_index)
 {
     u32 context;

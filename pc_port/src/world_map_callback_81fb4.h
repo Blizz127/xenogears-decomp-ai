@@ -3,7 +3,6 @@
 
 #include "common.h"
 
-s32 wm_80081FB4(s32 slot_index);
 s32 wm_80081FD8(s32 slot_index);
 
 #endif

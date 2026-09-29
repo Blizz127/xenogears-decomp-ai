@@ -10,6 +10,10 @@
 #include "world_map_scheduler.h"
 
 /* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007A410(s32 arg0);
+s32 func_8007A568(void);
+
+/* matched C (src/world_map/main.c), linked from the matched object */
 s32 func_800794D8(s32 arg0);
 s32 func_80079538(s32 arg0);
 s32 func_8007A570(s32 arg0);
@@ -200,7 +204,7 @@ static void test_orbit_follow(void)
 static void test_timed_marker(void)
 {
     seed();
-    check(wm_8007A410(SLOT_INDEX) == 3 &&
+    check(func_8007A410(SLOT_INDEX) == 3 &&
           read16(SLOT + 0x22u) == 96u,
           "beacon_init.timer");
 
@@ -244,7 +248,7 @@ static void test_marker_initializer(void)
     uint8_t ram_before[32];
     seed();
     memcpy(ram_before, PSX_ADDR(SLOT + 0x28u), sizeof(ram_before));
-    check(wm_8007A568(SLOT_INDEX) == 3, "marker_leaf.return");
+    check(func_8007A568() == 3, "marker_leaf.return");
     check(memcmp(ram_before, PSX_ADDR(SLOT + 0x28u),
                  sizeof(ram_before)) == 0 && presence_calls == 0,
           "marker_leaf.read_only");

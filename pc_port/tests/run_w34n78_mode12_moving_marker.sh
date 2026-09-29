@@ -13,13 +13,12 @@ COMMON=(
   -I"$ROOT/pc_port/extern/PsyCross/include/psx"
   -I"$ROOT/pc_port/src"
   "$ROOT/pc_port/tests/w34n78_mode12_moving_marker_prod_test.c"
-  "$ROOT/pc_port/src/world_map_callback_7d600.c"
   "$ROOT/pc_port/src/world_map_scheduler.c"
 )
 
 mkdir -p "$OUT"
 source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
-COMMON+=("$(world_map_matched_obj "$OUT" func_8007D600)")
+COMMON+=("$(world_map_matched_obj "$OUT" func_8007D600 func_8007D690)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x8007D600 - 0x8006FAF0)) \
@@ -59,8 +58,5 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m4 -DW34N78_MUTANT_WRAP_WRONG_VECTOR update.wrap_target
-run_mutant m5 -DW34N78_MUTANT_SKIP_HEIGHT_BIAS update.height_bias
-run_mutant m6 -DW34N78_MUTANT_WRONG_MARKER_ID update.marker
 
-echo "W34N78 MODE12 MOVING MARKER CERTIFICATE PASS: O0/O2/UBSan; M4-M6 detected (M1-M3 targeted the retired wm_8007D600; 0x8007D600 now runs the matched C); strict warnings clean"
+echo "W34N78 MODE12 MOVING MARKER CERTIFICATE PASS: O0/O2/UBSan; strict warnings clean (both 0x8007D600 and 0x8007D690 now run the matched C, so the mutants of the retired wm_ bodies are gone)"

@@ -13,13 +13,12 @@ COMMON=(
   -I"$ROOT/pc_port/extern/PsyCross/include/psx"
   -I"$ROOT/pc_port/src"
   "$ROOT/pc_port/tests/w34n89_mode13_marker_prod_test.c"
-  "$ROOT/pc_port/src/world_map_callback_80900.c"
   "$ROOT/pc_port/src/world_map_scheduler.c"
 )
 
 mkdir -p "$OUT"
 source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
-COMMON+=("$(world_map_matched_obj "$OUT" func_80080900)")
+COMMON+=("$(world_map_matched_obj "$OUT" func_80080900 func_80080944)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x80080900 - 0x8006FAF0)) \
@@ -59,10 +58,5 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N89_MUTANT_WRONG_SLOT_STRIDE update.latch_clear
-run_mutant m3 -DW34N89_MUTANT_WRONG_LATCH_VALUE update.latch_clear
-run_mutant m4 -DW34N89_MUTANT_SKIP_LATCH_CLEAR update.latch_clear
-run_mutant m5 -DW34N89_MUTANT_WRONG_VECTOR_SHIFT update.vector_shift
-run_mutant m6 -DW34N89_MUTANT_WRONG_MARKER_ID update.marker_ids
 
-echo "W34N89 MODE13 MARKER CERTIFICATE PASS: O0/O2/UBSan; M1,M3-M6 detected (M2 targeted the retired wm_80080900; 0x80080900 now runs the matched C); strict warnings clean"
+echo "W34N89 MODE13 MARKER CERTIFICATE PASS: O0/O2/UBSan; strict warnings clean (both 0x80080900 and 0x80080944 now run the matched C, so the mutants of the retired wm_ bodies are gone)"

@@ -5,8 +5,11 @@
 
 #include "common.h"
 #include "psx_memory.h"
-#include "world_map_callback_80900.h"
 #include "world_map_scheduler.h"
+
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_80080900(s32 arg0);
+s32 func_80080944(s32 arg0);
 
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
@@ -83,6 +86,12 @@ void wm_80089160(u32 id, u32 vector, u32 flags)
     marker_count++;
 }
 
+void func_80089160(s32 id, void *vector, void *flags)
+{
+    wm_80089160((u32)id, PsxMemory_GuestAddr(vector),
+                flags != NULL ? PsxMemory_GuestAddr(flags) : 0u);
+}
+
 static void test_initializer(void)
 {
     seed();
@@ -107,7 +116,7 @@ static void test_latched_markers(void)
     write32(SLOT + 0x2Cu, UINT32_C(0xFFFED000));
     write32(SLOT + 0x30u, UINT32_C(0x00456000));
 
-    check(wm_80080944(SLOT_INDEX) == 1, "update.return");
+    check(func_80080944(SLOT_INDEX) == 1, "update.return");
     check(read16(SLOT + 0x04u) == 0u, "update.latch_clear");
     check(read16(VECTOR + 0u) == UINT16_C(0x0123) &&
           read16(VECTOR + 2u) == UINT16_C(0xFFED) &&
@@ -116,8 +125,10 @@ static void test_latched_markers(void)
     check(marker_count == 3u && marker_ids[0] == 40u &&
           marker_ids[1] == 41u && marker_ids[2] == 42u,
           "update.marker_ids");
-    check(marker_vectors[0] == VECTOR && marker_vectors[1] == VECTOR &&
-          marker_vectors[2] == VECTOR && marker_flags[0] == 0u &&
+    /* WM_SPAD(0x1F8000A0) reaches the mock as the RAM alias of the same bytes */
+    check(PSX_ADDR(marker_vectors[0]) == PSX_ADDR(VECTOR) &&
+          PSX_ADDR(marker_vectors[1]) == PSX_ADDR(VECTOR) &&
+          PSX_ADDR(marker_vectors[2]) == PSX_ADDR(VECTOR) && marker_flags[0] == 0u &&
           marker_flags[1] == 0u && marker_flags[2] == 0u,
           "update.marker_args");
 }
@@ -127,7 +138,7 @@ static void test_nonmatching_latch(void)
     seed();
     write16(SLOT + 0x04u, 2u);
     write16(VECTOR + 0u, UINT16_C(0x1111));
-    check(wm_80080944(SLOT_INDEX) == 1, "noop.return");
+    check(func_80080944(SLOT_INDEX) == 1, "noop.return");
     check(read16(SLOT + 0x04u) == 2u && marker_count == 0u &&
           read16(VECTOR + 0u) == UINT16_C(0x1111),
           "noop.guard");

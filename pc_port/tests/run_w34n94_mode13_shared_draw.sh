@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_80076A14)")
 
 check_slice() {
   local lo="$1"
@@ -84,4 +86,4 @@ if rg -n '\(u32\)\(uintptr_t\)' \
   exit 1
 fi
 
-echo "W34N94 MODE13 SHARED DRAW CERTIFICATE PASS: O0/O2/UBSan; M1-M8 detected; strict warnings clean"
+echo "W34N94 MODE13 SHARED DRAW CERTIFICATE PASS: O0/O2/UBSan; M1-M8 detected; strict warnings clean; 0x80076A14 now runs the matched C"

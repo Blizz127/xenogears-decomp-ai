@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_80081FB4)")
 
 check_slice() {
   local lo="$1"
@@ -69,8 +71,6 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N108_MUTANT_WRONG_INITIAL_STATE init.state
-run_mutant m2 -DW34N108_MUTANT_WRONG_INITIAL_WIDTH init.width
 run_mutant m3 -DW34N108_MUTANT_KEEP_COMMAND command.consume_and_map
 run_mutant m4 -DW34N108_MUTANT_WRONG_COMMAND_MAP command.consume_and_map
 run_mutant m5 -DW34N108_MUTANT_SKIP_STATE0_FILL state0.fill_and_bands
@@ -79,4 +79,4 @@ run_mutant m7 -DW34N108_MUTANT_WRONG_SHRINK_CLAMP state2.shrink_clamp_fill
 run_mutant m8 -DW34N108_MUTANT_WRONG_RANDOM_GATE state3.sparse_randomization
 run_mutant m9 -DW34N108_MUTANT_WRONG_CONSTANT_FILL state4.constant_fill
 
-echo "W34N108 MODE16 WIDTH CONTROL CERTIFICATE PASS: O0/O2/UBSan; M1-M9 detected; strict warnings clean"
+echo "W34N108 MODE16 WIDTH CONTROL CERTIFICATE PASS: O0/O2/UBSan; M3-M9 detected; strict warnings clean; M1-M2 targeted the retired wm_80081FB4, which now runs the matched C"

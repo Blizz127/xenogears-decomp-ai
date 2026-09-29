@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_80078948)")
 
 run_regime() {
   local name="$1"
@@ -53,4 +55,4 @@ run_mutant m3 -DW34N58_MUTANT_SKIP_PAGING_CHAIN paging.chain_present
 run_mutant m4 -DW34N58_MUTANT_WRONG_TERRAIN_POSITION paging.visibility_position
 run_mutant m5 -DW34N58_MUTANT_WRONG_PALETTE_STEP no_paging.palette_step
 
-echo "W34N58 SHARED MODE DRAW CERTIFICATE PASS: O0/O2/UBSan; M1-M5 detected; strict warnings clean"
+echo "W34N58 SHARED MODE DRAW CERTIFICATE PASS: O0/O2/UBSan; M1-M5 detected; strict warnings clean; 0x80078948 now runs the matched C"
