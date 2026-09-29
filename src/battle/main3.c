@@ -1,36 +1,37 @@
 #include "common.h"
+#ifdef XENO_PC_PORT
+#include "battle_guest_call.h"
+#define BATTLE_PHASE_CALL0(fn, addr) BATTLE_GUEST_CALL0(addr)
+#else
+#define BATTLE_PHASE_CALL0(fn, addr) fn()
+#endif
+extern u8 D_800C3E4C;
 
 
 #ifndef XENO_PC_PORT
 void func_80076418();
 void func_800764B4();
 void func_800764EC();
-extern u8 D_800C3E4C;
-void func_80076544(void);
 #endif
 
-#ifndef XENO_PC_PORT
-
-#ifndef XENO_PC_PORT
 void func_80076544(void) {
     switch (D_800C3E4C) {                           /* irregular */
     case 0:
-        func_800764B4();
+        BATTLE_PHASE_CALL0(func_800764B4, 0x800764B4u);
         return;
     case 1:
-        func_80076418();
+        BATTLE_PHASE_CALL0(func_80076418, 0x80076418u);
         return;
     case 2:
-        func_800764EC();
+        BATTLE_PHASE_CALL0(func_800764EC, 0x800764ECu);
         return;
     }
 }
-#endif
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main3", func_800765C4);
 INCLUDE_ASM("asm/battle/nonmatchings/main3", func_80076710);
 #endif
-
 
 #ifndef XENO_PC_PORT
 extern u32 D_800D2D40;
@@ -83,25 +84,6 @@ void func_800769E8(void* pRect, void* pData) {
 #ifdef XENO_PC_PORT
 /* Port-side bodies transcribed from the retail listings; the matching build
  * still assembles the INCLUDE_ASM bytes above. */
-#include "battle_guest_call.h"
-
-/* func_80076544.s: dispatch on the D_800C3E4C phase byte (0, 1, 2).  The
- * three targets have C bodies in main2.c, which the port does not compile
- * yet, so they run as retail bytes. */
-void func_80076544(void) {
-    switch (D_800C3E4C) {
-    case 0:
-        BATTLE_GUEST_CALL0(0x800764B4u);
-        break;
-    case 1:
-        BATTLE_GUEST_CALL0(0x80076418u);
-        break;
-    case 2:
-        BATTLE_GUEST_CALL0(0x800764ECu);
-        break;
-    }
-}
-
 /* func_800765C4.s: set up the D_800D2D28 scroll window for actor `index`
  * from the D_800C3254 layout table (row D_800D3280), then consume one of the
  * actor's D_800D2D28+0x90 counters.  `index` arrives unmasked, so every
