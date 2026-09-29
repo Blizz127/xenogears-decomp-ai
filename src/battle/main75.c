@@ -30,8 +30,8 @@ u32 func_800B15D8(u8* a0, s32 idx) {
         D_800C3BD0.w[2] += (u32)e;
         D_800C3BD0.w[4] += (u32)e;
     }
-    D_800C3BF0 = 0;
-    D_800C3BEC = D_800C3BD0.w[4];
+    D_800C3BF0[0] = 0;
+    D_800C3BEC[0] = D_800C3BD0.w[4];
     return *(u32*)(e + 0x14);
 }
 #else
