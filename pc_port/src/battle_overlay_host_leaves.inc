@@ -43,6 +43,7 @@
     "func_8007BA88",
     "func_8007BAB8",
     "func_8007E674",
+    "func_8007E934",
     "func_8007EED0",
     "func_800BF720",
     "func_8007EEE8",
