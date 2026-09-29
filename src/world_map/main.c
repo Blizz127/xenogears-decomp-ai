@@ -3,6 +3,12 @@
 #include "world_map/wm_spad.h"
 
 #ifndef XENO_PC_PORT
+extern WmObj * D_8009BE24;
+s32 func_8008868C(s32);
+s32 func_80088570(s32 arg0);
+#endif
+
+#ifndef XENO_PC_PORT
 void VectorNormal(void *, void *);
 void func_80093534(void *arg0);
 s32 func_80094154(void *arg0, void *arg1);
@@ -16,7 +22,7 @@ extern u8 * D_8009C620;
 extern WmSVec D_8009CD68[];
 extern WmSVec D_8009CD6C[];
 extern s16 D_8009CD70[];
-extern s32 g_GameState;
+extern u8 g_GameState[];
 s32 SquareRoot0(s32);
 void func_80089160(s32, void *, void *);
 void func_8008BFD4(s32, void *, s32, s32);
@@ -68,6 +74,7 @@ void func_80093354(void *);
 void func_80093534(void *);
 s32 func_80094154(void *, void *);
 int abs(int);
+s32 func_8008868C(s32);
 #endif
 
 #ifndef XENO_PC_PORT
@@ -245,7 +252,7 @@ void *func_80024524(s32, s32, s32, s32, s32, s32);
 void func_800245D8(void *, s32);
 extern s32 D_8009CD34[];
 extern s32 D_8009CD38;
-extern s32 g_GameState;
+extern u8 g_GameState[];
 extern s32 D_8009CD3C;
 s32 func_8008C364(void *, s32);
 extern s32 D_8009BE10;
@@ -350,7 +357,7 @@ extern s32 D_8009D7FC;
 extern s32 D_8009BDF4;
 extern s32 D_8009BE1C;
 extern s32 D_8009BE20;
-extern s32 g_GameState;
+extern u8 g_GameState[];
 void func_800346D4(s32 *);
 extern s32 D_8009D498;
 extern s32 D_8009BD64;
@@ -2066,7 +2073,40 @@ s32 func_80087FD0(s32 arg0) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088570);
+
+s32 func_80088570(s32 arg0) {
+    void *temp_a1;
+    u16 *pVisits;
+
+    func_8008868C(arg0);
+    temp_a1 = (u8 *)D_8009BE24 + (arg0 << 7);
+    pVisits = (u16 *)((u8 *)&g_GameState + 0x1854);
+    *(s32 *)((s8*)(temp_a1) + 0x54) = 4;
+    *(s16 *)((s8*)(temp_a1) + 0x20) = 0;
+    *(s32 *)((s8*)(temp_a1) + 0x50) = 0;
+    *(s32 *)((s8*)(temp_a1) + 0x58) = 0;
+    *(s32 *)((s8*)(temp_a1) + 0x5C) = 0xC;
+    if (*pVisits == 0) {
+        *pVisits = *pVisits + 1;
+        *(s32 *)((s8*)(temp_a1) + 0x2C) = 0xFFD80000;
+        *(s32 *)((s8*)(temp_a1) + 0x28) = 0;
+        *(s32 *)((s8*)(temp_a1) + 0x30) = 0x04800000;
+    } else {
+        *(s32 *)((s8*)(temp_a1) + 0x28) = (s32) ((*(s16 *)((s8*)(&g_GameState) + 0x184E) << 0xC) + *(u16 *)((s8*)(&g_GameState) + 0x184C));
+        *(s32 *)((s8*)(temp_a1) + 0x2C) = 0xFFD80000;
+        *(s32 *)((s8*)(temp_a1) + 0x30) = (*(s16 *)((s8*)(&g_GameState) + 0x1852) << 0xC) + *(u16 *)((s8*)(&g_GameState) + 0x1850);
+    }
+    *(s32 *)((s8*)(temp_a1) + 0x40) = 0xB50;
+    *(s32 *)((s8*)(temp_a1) + 0x38) = 0xB50;
+    *(s32 *)((s8*)(temp_a1) + 0x3C) = 0;
+    *(s16 *)((s8*)(temp_a1) + 0x4A) = 1;
+    *(u16 *)((s8*)(&g_GameState) + 0x184C) = (u16) *(s32 *)((s8*)(temp_a1) + 0x28);
+    *(s16 *)((s8*)(&g_GameState) + 0x184E) = (s16) ((s32) *(s32 *)((s8*)(temp_a1) + 0x28) >> 0xC);
+    *(u16 *)((s8*)(&g_GameState) + 0x1850) = (u16) *(s32 *)((s8*)(temp_a1) + 0x30);
+    *(s16 *)((s8*)(&g_GameState) + 0x1852) = (s16) ((s32) *(s32 *)((s8*)(temp_a1) + 0x30) >> 0xC);
+    return 1;
+}
+
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008868C);
 

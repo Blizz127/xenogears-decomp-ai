@@ -68,6 +68,6 @@
 #define D_8009D2B4 WM_GUEST(s32, 0x8009D2B4)
 /* g_GameState is the port's host copy (authoritative; world_map_gamestate.h):
  * the bodies address it as (u8 *)&g_GameState + offset. */
-extern s32 g_GameState;
+extern u8 g_GameState[];
 
 #endif /* WORLD_MAP_PORT_DATA_H */
