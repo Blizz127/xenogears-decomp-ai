@@ -37,4 +37,10 @@ typedef struct WmObj {
 /* Compile-time size check both the PSX compiler and the port accept. */
 typedef char WmObjSizeIs0x80[(sizeof(WmObj) == 0x80) ? 1 : -1];
 
+/* libgte-shaped helpers the world-map code uses on raw memory (the
+ * scratchpad, the 0x54-byte records): VECTOR, SVECTOR and a 32-byte MATRIX. */
+typedef struct { s32 vx, vy, vz, pad; } WmVec;
+typedef struct { s16 vx, vy, vz, pad; } WmSVec;
+typedef struct { s32 m[8]; } WmMat;
+
 #endif /* WORLD_MAP_WM_OBJ_H */
