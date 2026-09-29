@@ -41,6 +41,22 @@ XG_PLAT_WEAK const char* xg_plat_disc_image_path(void)
             return path = defaults[i];
         }
     }
+    /* An installed port started from another directory: disc/ beside the
+     * executable, or the image next to it. */
+    {
+        static char beside[1100];
+        char dir[1024];
+        if (XenoRetailData_ExeDir(dir, sizeof dir)) {
+            const char* const forms[] = { "%s/disc/disc1.bin", "%s/disc1.bin" };
+            for (i = 0; i < 2; i++) {
+                snprintf(beside, sizeof beside, forms[i], dir);
+                if ((f = fopen(beside, "rb")) != NULL) {
+                    fclose(f);
+                    return path = beside;
+                }
+            }
+        }
+    }
     return path = NULL;
 }
 
