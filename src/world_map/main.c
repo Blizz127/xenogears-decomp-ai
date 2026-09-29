@@ -1065,7 +1065,25 @@ s32 func_800794D8(s32 arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80079538);
+#ifndef XENO_PC_PORT
+s32 func_80079538(s32 arg0) {
+    WmObj *obj;
+    u8 *scene;
+
+    obj = &D_8009BE24[arg0];
+    if (obj->unk4 != 0) {
+        scene = D_8009C620;
+        obj->unk4 = 0;
+        *(s16 *)(scene + 0x540) = 1;
+    }
+    func_80093354(obj->pos);
+    obj->pos[1] = func_80093A5C(obj->pos[0], obj->pos[2]) + 0x18000;
+    *(s32 *)(D_8009C620 + 0x548) = obj->pos[0] >> 0xC;
+    *(s32 *)(D_8009C620 + 0x54C) = obj->pos[1] >> 0xC;
+    *(s32 *)(D_8009C620 + 0x550) = obj->pos[2] >> 0xC;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800795E4);
 
@@ -1196,7 +1214,26 @@ s32 func_8007BA08(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007BA10);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007BB60);
+#ifndef XENO_PC_PORT
+s32 func_8007BB60(s32 arg0) {
+    WmObj *temp_v0;
+    u8 *scene;
+
+    func_800848B4(0, 1);
+    func_800848B4(0, 2);
+    func_800848B4(0, 3);
+    temp_v0 = &D_8009BE24[arg0];
+    scene = D_8009C620;
+    temp_v0->unk50 = 0;
+    temp_v0->unk54 = 0x100;
+    temp_v0->unk58 = 0x100;
+    (*(s16 *)((u8 *)(scene) + 0x18)) = 0;
+    (*(s16 *)((u8 *)(scene) + 0x1A)) = 0;
+    (*(s16 *)((u8 *)(scene) + 0x1C)) = 0;
+    RotMatrixYXZ(scene + 0x18, scene + 0x20, scene);
+    return 3;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007BBEC);
 
@@ -2747,7 +2784,27 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80090E14);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80090FB4);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80091430);
+#ifndef XENO_PC_PORT
+extern WmVec D_8009D55C_vec asm("D_8009D55C");
+extern s16 D_8009BD3A_arr[] asm("D_8009BD3A");
+extern u16 D_8009D52C;
+s32 func_80091430(s32 arg0) {
+    WmObj *obj;
+
+    obj = &D_8009BE24[arg0];
+    *(WmVec *)obj->pos = D_8009D55C_vec;
+    D_8009BD3C = 0;
+    D_8009BD3A_arr[0] = D_8009D52C;
+    obj->unk50 = (s16)D_8009D52C;
+    obj->unk58 = D_8009BD3A_arr[0] << 0xC;
+    if (D_8009BE10 < 8) {
+        if (D_8009BE10 >= 6) {
+            obj->unk20 = 3;
+        }
+    }
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800914D0);
 
