@@ -4,7 +4,19 @@
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007EF6C);
 INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007F8C0);
-INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007FB70);
+extern u8 D_800D2D24[];
+extern u8* D_800D2D28;
+extern void func_8008FA60(s32 a0);
+extern void func_8007765C(void);
+
+void func_8007FB70(u8 index) {
+    if (D_800D2D24[index] == 4 && D_800D2D28[0x8E] != 0) {
+        func_8008FA60(0);
+        func_8007765C();
+        D_800D2D28[0x8E] = 0;
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007FBE0);
 #endif
 

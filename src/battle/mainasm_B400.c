@@ -5,5 +5,36 @@
 #include "common.h"
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_B400", func_8007AEF0);
+extern u8 D_800D3430[];
+
+/* func_8007AEF0: row = D_800D3430 + ((idx&0xFF)<<6); prod = row[p[1]] *
+ * row[p[2]]; row[p[3]] = (prod as s16 >= 0x100) ? 0xFF : (u8)prod. Row-table
+ * idiom shared with src/battle/main21.c/main17.c/mainc25.c (same
+ * D_800D3430 array). Byte-exact reg alloc needs p pinned to $6/a2 (retail
+ * moves *pp there right after loading it, freeing a0) and both mult
+ * operands pinned to $4/a0 and $2/v0 respectively; without pins gcc keeps
+ * p in a0 and picks the opposite v0/v1 pair for the mult, which mismatches
+ * retail's mult a0,v0 encoding. */
+void func_8007AEF0(u8 **pp, s32 idx) {
+    register u8 *p asm("$6");
+    register u32 v1term asm("$4");
+    register u32 v2term asm("$2");
+    u8 *row;
+    u32 prod;
+    s16 clipped;
+    u8 result;
+
+    p = *pp;
+    row = D_800D3430 + ((idx & 0xFF) << 6);
+    v1term = row[p[1]];
+    v2term = row[p[2]];
+    prod = v1term * v2term;
+    result = (u8)prod;
+    clipped = (s16)prod;
+    if (clipped >= 0x100) {
+        result = 0xFF;
+    }
+    row[p[3]] = result;
+}
+
 #endif

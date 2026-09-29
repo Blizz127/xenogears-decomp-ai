@@ -26,7 +26,24 @@ s16 func_800A3490(s16 arg0, s16 arg1, s32 arg2) {
 }
 #ifndef XENO_PC_PORT
 
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3514);
+/* func_800A3514: value = (s16)(base + phase/divisor); return value<0x21 ?
+ * value : -1. Signature/logic taken from src/battle/main68.c's not-yet-
+ * matching XENO_PC_PORT body (effect_divide wraps the retail div/BREAK 7
+ * pattern; here plain '/' plus the [BattleDiv] compiler preset already
+ * matches that half byte-exact). The clamp needs "result" pinned to $2/v0
+ * so it's the live register across the branch (retail keeps -1/value in
+ * v0 throughout and only uses v1 as the compare temp); unpinned, gcc puts
+ * the branch's "value" operand in v0 and the -1/result in v1, needing an
+ * extra final move that retail doesn't have. */
+s32 func_800A3514(s16 phase, s16 divisor, s16 base) {
+    register s32 result asm("$2") = -1;
+    s16 value = (s16)(base + phase / divisor);
+    if (value < 0x21) {
+        result = value;
+    }
+    return result;
+}
+
 
 #endif
 /* Shared by the matching build and the port (matched C). */

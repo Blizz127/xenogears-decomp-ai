@@ -106,7 +106,23 @@ s32 func_800716D8(void) {
 #endif
 
 INCLUDE_ASM("asm/battle/nonmatchings/main", func_8007171C);
-INCLUDE_ASM("asm/battle/nonmatchings/main", func_800718BC);
+extern u8* D_800C3EAC;
+extern u8 D_800D2DE4[];
+extern u16 D_800D2E06[];
+extern u16 func_80098AF8(u8 idx, u32 a1);
+
+/* clear the current actor's D_800D2DE4 flag unless it is 0xFF, refresh its
+ * D_800D2E06 halfword from func_80098AF8 and mirror it 11 halfwords back. */
+void func_800718BC(void) {
+    u8 idx = D_800C3EAC[0x2D3];
+
+    if (D_800D2DE4[idx] != 0xFF) {
+        D_800D2DE4[idx] = 0;
+    }
+    D_800D2E06[D_800C3EAC[0x2D3]] = func_80098AF8(D_800C3EAC[0x2D3], 0);
+    (D_800D2E06 - 11)[D_800C3EAC[0x2D3]] = D_800D2E06[D_800C3EAC[0x2D3]];
+}
+
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800D2CAF;

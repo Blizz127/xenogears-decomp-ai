@@ -2,8 +2,64 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc113", func_800BB6E0);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc113", func_800BB760);
+extern s32 ArchiveDataSync(void);
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 HeapFree(void* p);
+extern void func_800BB690(u8* task);
+extern u8 D_800C3CB8[];
+
+/* once the archive is idle and D_800C3CB8 is clear, run func_800BB690(task)
+ * on a HeapAlloc(0x1000, 1) stack (caller $sp saved at +0xF00). */
+void func_800BB6E0(u8* task) {
+    u8* stack;
+
+    if (ArchiveDataSync() == 0 && D_800C3CB8[0] == 0) {
+        stack = HeapAlloc(0x1000, 1);
+        __asm__ volatile(
+            "\taddu  $t0, %0, $zero\n"
+            "\tsw    $sp, 0($t0)\n"
+            "\taddiu $t0, $t0, -4\n"
+            "\taddu  $sp, $t0, $zero\n"
+            :
+            : "r"(stack + 0xF00)
+            : "t0", "memory");
+        func_800BB690(task);
+        __asm__ volatile(
+            "\taddiu $sp, $sp, 4\n"
+            "\tlw    $sp, 0($sp)\n"
+            :
+            :
+            : "memory");
+        HeapFree(stack);
+    }
+}
+
+extern u8* TimerWorkListAllocateTask(u32 owner, u32 size);
+extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
+extern void func_800BB6E0(u8* task);
+extern u8 D_800591AC[];
+extern u8 D_800591AF[];
+extern s32 D_800C35D8[];
+
+/* queue a 4-byte timer task (callback func_800BB6E0) for `slot` with
+ * D_800591AC cleared and D_800591AF set around the allocation, and count it
+ * in D_800C35D8. */
+void func_800BB760(u32 slot) {
+    u8 saved = D_800591AC[0];
+    u8* task;
+    s32 count;
+
+    D_800591AC[0] = 0;
+    D_800591AF[0] = 1;
+    task = TimerWorkListAllocateTask(0, 4);
+    TimerWorkListSetTaskCallback(task, func_800BB6E0);
+    count = D_800C35D8[0];
+    *(u32*)(task + 0x1C) = slot;
+    D_800591AF[0] = 0;
+    D_800C35D8[0] = count + 1;
+    D_800591AC[0] = saved;
+}
+
 #endif
 
 

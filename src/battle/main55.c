@@ -2,7 +2,40 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A7E4);
+extern u8* D_800C34B0;
+extern u8 g_GameState[];
+
+/* func_8009A7E4: 1 when entry idx's byte +0x581E (16-byte stride off
+ * D_800C34B0) equals one of the four party slot ids at g_GameState+0x502,
+ * +0x50A, +0x512, +0x51A. Signature/logic taken from src/battle/main55.c's
+ * not-yet-matching INCLUDE_ASM comment/body for this function.
+ * Two source-shape requirements were needed to get byte-exact scheduling:
+ * (1) fold the id load into the first comparison via `(id = ...)` so it's
+ * scheduled right after the first g_GameState fetch, not before it (a bare
+ * preceding `id = ...;` statement makes gcc load id first, mismatching
+ * retail's state-then-id order); (2) use if/else-if assigning to a single
+ * `result` with one `return result;` at the end, not a chain of
+ * `if (...) return 1;` early returns — the early-return chain's third
+ * branch gets a different merge/tail-jump treatment from gcc (an extra
+ * `j` plus a relocated `ori v0,zero,1`), while the if/else-if chain
+ * naturally reuses the same branch target for all three "hit" arms and
+ * matches retail exactly. */
+u32 func_8009A7E4(u8 idx) {
+    u32 id;
+    u32 result;
+
+    if (g_GameState[0x502] == (id = D_800C34B0[idx * 16 + 0x581E])) {
+        result = 1;
+    } else if (g_GameState[0x50A] == id) {
+        result = 1;
+    } else if (g_GameState[0x512] == id) {
+        result = 1;
+    } else {
+        result = g_GameState[0x51A] == id;
+    }
+    return result;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A854);
 INCLUDE_ASM("asm/battle/nonmatchings/main55", func_8009A9D0);
 #endif

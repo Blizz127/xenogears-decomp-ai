@@ -2,14 +2,108 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800BFDA8);
+extern u8 D_8006BE10[];
+extern u8 D_800591AC[];
+extern u8* func_80023B84(void* pSpriteData, void* pScript, void* pAnimPackage);
+extern u32 func_800BFC80(u8* sprite, u32 index, u32 a2);
+
+/* when the sprite is live (+0x48) and has no child of kind `index` yet
+ * (func_800BFC80), spawn child script `index` from the shared package
+ * D_8006BE10 (table pointer at +0x10, halfword offsets from +2) with the
+ * D_800591AC timer flag suppressed, then tag the child (+0xAF = index,
+ * +0x74 = parent, +0xB0 |= 0x100). */
+void func_800BFDA8(u8* sprite, u32 index) {
+    u8* table;
+    u8* child;
+    u8 saved;
+    u8* pkg;
+    u8* script;
+    u32 flags;
+
+    if (*(u32*)(sprite + 0x48) == 0) {
+        return;
+    }
+    if (func_800BFC80(sprite, index, 0) != 0) {
+        return;
+    }
+    pkg = D_8006BE10;
+    table = *(u8**)(pkg + 0x10);
+    script = (u8*)(*(u16*)(index * 2 + table + 2) + (u32)table);
+    saved = D_800591AC[0];
+    D_800591AC[0] = 0;
+    child = func_80023B84(sprite, script, pkg);
+    flags = *(u32*)(child + 0xB0);
+    *(u8*)(child + 0xAF) = index;
+    *(u8**)(child + 0x74) = sprite;
+    D_800591AC[0] = saved;
+    *(u32*)(child + 0xB0) = flags | 0x100;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800BFE48);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0314);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0564);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C06E4);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0758);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C07CC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0828);
+#include "psyq/libgte.h"
+
+/* distance between two word vectors (x, y, z) */
+s32 func_800C06E4(VECTOR* a, VECTOR* b) {
+    VECTOR v;
+
+    v.vx = a->vx - b->vx;
+    v.vy = a->vy - b->vy;
+    v.vz = a->vz - b->vz;
+    Square0(&v, &v);
+    return SquareRoot0(v.vy + v.vz + v.vx);
+}
+
+#include "psyq/libgte.h"
+
+/* distance between two halfword vectors (x, y, z) */
+s32 func_800C0758(SVECTOR* a, SVECTOR* b) {
+    VECTOR v;
+
+    v.vx = a->vx - b->vx;
+    v.vy = a->vy - b->vy;
+    v.vz = a->vz - b->vz;
+    Square0(&v, &v);
+    return SquareRoot0(v.vy + v.vz + v.vx);
+}
+
+#include "psyq/libgte.h"
+
+typedef struct {
+    s16 x;
+    s16 z;
+} Pos2;
+
+s32 func_800C07CC(Pos2 a, Pos2 b) {
+    VECTOR v;
+
+    v.vx = a.x - b.x;
+    v.vz = a.z - b.z;
+    Square0(&v, &v);
+    return SquareRoot0(v.vx + v.vz);
+}
+
+#include "psyq/libgte.h"
+
+/* rotation from halfword point `to` towards `from`:
+ * out = (0, ratan2(dz, dx), ratan2(dy, planar length)). */
+void func_800C0828(SVECTOR* from, SVECTOR* to, SVECTOR* out) {
+    MATRIX unused;
+    VECTOR v;
+    VECTOR sq;
+    s32 len;
+
+    v.vx = from->vx - to->vx;
+    v.vy = from->vy - to->vy;
+    v.vz = from->vz - to->vz;
+    Square0(&v, &sq);
+    len = SquareRoot0(sq.vx + sq.vz);
+    out->vy = ratan2(v.vz, v.vx);
+    out->vz = ratan2(v.vy, len);
+    out->vx = 0;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C08CC);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0D18);
 #endif
